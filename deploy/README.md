@@ -119,7 +119,7 @@ Firewall tidak diubah; sebagai gantinya:
 
 - `DOMAIN`, `SESSION_SECRET`, `LLM_BASE_URL=http://127.0.0.1:20128/v1`, `LLM_API_KEY`, model LLM.
 - `URUSIN_PII_KEY` (base64 >= 32 byte, wajib di mode llm; `openssl rand -base64 32`),
-  `URUSIN_DAILY_IDR_CAP` (angka > 0, wajib di mode llm), `LLM_EVAL_DAILY_BUDGET_USD`.
+  `URUSIN_DAILY_IDR_CAP` (angka > 0, wajib di mode llm).
 - Embedding/rerank (Jina): `LLM_EMBED_BASE_URL`, `LLM_EMBED_API_KEY`, `LLM_EMBED_MODEL`,
   `RERANK_BASE_URL`, `RERANK_API_KEY`, `RERANK_MODEL`.
 - IP klien untuk kuota per-IP: compose sudah mengisi `ADDRESS_HEADER=X-Forwarded-For` dan `XFF_DEPTH=1`.
