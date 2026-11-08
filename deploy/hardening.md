@@ -149,4 +149,7 @@ Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan meng
 - Isinya hanya blok situs Urusin dan snippet `(urusin_common)`, tanpa opsi global. CSP hanya dari aplikasi.
 - `/api/health*` publik dijawab `404` (memuat gitSha/versi/runningTurns). Smoke publik dan monitor memakai
   `/api/ready`; `deploy.sh` membaca `/api/health` lewat `127.0.0.1`.
+- UI membaca kemampuan server dari `/api/kemampuan`, yang publik dan berisi subset tidak sensitif: mode `llm`, status
+  `ai`/`vision`/`rag`, dan flag fitur pencarian. Endpoint ini tidak memuat sha, versi, nama model, jumlah chunk, biaya,
+  atau turn berjalan, sehingga tidak perlu aturan Caddy.
 - Setiap perubahan hanya lewat `deploy/caddy-install.sh` dengan go-ahead pengguna (prosedur di "Model izin").

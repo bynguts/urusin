@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 /** Runtime uji (DB harness di memori) dipasang sebelum endpoint diimpor. */
 async function withRuntime(ragDbPath?: string) {
   const rt = await import('#lib/server/runtime.js');
-  rt.setRuntimeForTests(rt.createRuntime({ config: { dbPath: ':memory:', ragDbPath } }));
+  rt.setRuntimeForTests(rt.createRuntime({ config: { dbPath: ':memory:', ragDbPath }, env: {} }));
   return import('./+server');
 }
 
@@ -72,6 +72,8 @@ describe('GET /api/health', () => {
         chunks: 1,
         vectors: 0,
         vectorModel: null,
+        // Tanpa env penyedia: agen memakai BM25 saja (dilaporkan apa adanya).
+        pencarian: { vektor: false, rerank: false, embedModel: null, rerankModel: null },
       });
       // Tutup handle read-only sebelum direktori dihapus (Windows menolak hapus berkas yang terbuka).
       (await (await import('#lib/server/runtime.js')).getRuntime()).deps.ragDb?.close();
@@ -82,8 +84,7 @@ describe('GET /api/health', () => {
 
   it('runtime gagal dirakit -> rag error, health tetap menjawab', async () => {
     const rt = await import('#lib/server/runtime.js');
-    rt.setRuntimeForTests(undefined);
-    vi.spyOn(rt, 'getRuntime').mockRejectedValue(new Error('URUSIN_PII_KEY wajib'));
+    rt.setRuntimeForTests(Promise.reject(new Error('URUSIN_PII_KEY wajib')));
     const { GET } = await import('./+server');
     const res = await GET({} as never);
     expect(res.status).toBe(200);
@@ -93,7 +94,7 @@ describe('GET /api/health', () => {
   it('runtime masih dirakit (probe LLM lambat) -> rag memuat, tanpa menunggu lebih dari 2 detik', async () => {
     vi.useFakeTimers();
     const rt = await import('#lib/server/runtime.js');
-    vi.spyOn(rt, 'getRuntime').mockReturnValue(new Promise(() => {}));
+    rt.setRuntimeForTests(new Promise(() => {}));
     const { GET } = await import('./+server');
     const pending = GET({} as never);
     await vi.advanceTimersByTimeAsync(2_000);
