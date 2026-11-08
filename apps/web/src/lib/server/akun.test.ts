@@ -593,8 +593,8 @@ describe('form action halaman akun (App 15–20)', () => {
     expect(
       ((await verifLoad(ev(get(`/verifikasi-email?token=${token}`)) as never)) as any).tokenBerlaku,
     ).toBe(true);
-    expect(await verifPage.default(ev(form({ token })))).toEqual({ terverifikasi: true });
-    const lagi = (await verifPage.default(ev(form({ token })))) as any;
+    expect(await verifPage.pastikan(ev(form({ token })))).toEqual({ terverifikasi: true });
+    const lagi = (await verifPage.pastikan(ev(form({ token })))) as any;
     expect([lagi.status, lagi.data.kode]).toEqual([400, 'TOKEN_TIDAK_VALID']);
 
     const jar = new Jar();
@@ -611,9 +611,7 @@ describe('form action halaman akun (App 15–20)', () => {
     const kosong = (await profilPage.default(ev(form({ namaLengkap: '' }), { locals }))) as any;
     expect(kosong.status).toBe(422);
     const p = await caught(
-      profilPage.default(
-        ev(form({ namaLengkap: 'Warga Uji', hp: HP_SINTETIS, next: '/lacak' }), { locals }),
-      ),
+      profilPage.default(ev(form({ namaLengkap: 'Warga Uji', hp: HP_SINTETIS, next: '/lacak' }), { locals })),
     );
     expect(isRedirect(p) && p.location).toBe('/lacak');
     expect(rt.akun.vault.getDataDiri(locals.akun.id)?.data).toMatchObject({ namaLengkap: 'Warga Uji' });

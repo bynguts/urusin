@@ -6,17 +6,19 @@ import type { Actions, PageServerLoad } from './$types';
 /**
  * Tautan email membuka halaman ini dengan `?token=`. Membuka halaman TIDAK memakai token (pemindai tautan di
  * kotak surat sering membuka URL lebih dulu); token dipakai saat warga menekan tombol (POST). Tanpa token:
- * formulir kirim ulang tautan.
+ * formulir kirim ulang tautan. Referrer-Policy same-origin: token di URL tidak bocor ke situs lain (no-referrer
+ * membuat peramban mengirim `Origin: null` pada POST, yang ditolak cek CSRF).
  */
 export const load: PageServerLoad = async ({ url, setHeaders }) => {
-  setHeaders({ 'referrer-policy': 'no-referrer', 'cache-control': 'no-store' });
+  setHeaders({ 'referrer-policy': 'same-origin', 'cache-control': 'no-store' });
   const token = url.searchParams.get('token') ?? '';
   const rt = await getRuntime();
   return { token, tokenBerlaku: token !== '' && rt.akun.tokenBerlaku(token, 'verify') };
 };
 
 export const actions: Actions = {
-  default: async (event) => {
+  /** SvelteKit melarang `default` bersama aksi bernama: tombol memakai `?/pastikan`. */
+  pastikan: async (event) => {
     const form = await event.request.formData();
     const rt = await getRuntime();
     try {

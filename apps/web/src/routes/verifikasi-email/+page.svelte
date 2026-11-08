@@ -20,7 +20,7 @@
       <p role="alert" data-kode={form.kode}>{form.pesanWarga}</p>
     {/if}
     {#if data.tokenBerlaku}
-      <form method="POST">
+      <form method="POST" action="?/pastikan">
         <input type="hidden" name="token" value={data.token} />
         <button type="submit">Pastikan email saya</button>
       </form>
