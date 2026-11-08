@@ -1,0 +1,26 @@
+# Pemilik kode. Pola terakhir yang cocok menang. Area bersama ditinjau kedua anggota.
+# @bynguts: web, harness, llm, retrieval rag, deploy
+# @rafilajhh: ekstensi, fixtures, registry/adapter, korpus dan data rag
+
+*                                  @bynguts @rafilajhh
+
+/apps/web/                         @bynguts
+/packages/llm/                     @bynguts
+/packages/harness/                 @bynguts
+/deploy/                           @bynguts
+
+/apps/extension/                   @rafilajhh
+/apps/fixtures/                    @rafilajhh
+/packages/registry/                @rafilajhh
+/packages/adapters/                @rafilajhh
+
+# rag: retrieval (pencarian, fusi, vektor, tool) milik @bynguts; ingest dan data milik @rafilajhh
+/packages/rag/                     @bynguts
+/packages/rag/src/ingest/          @rafilajhh
+/data/                             @rafilajhh
+
+# Dokumen dan konfigurasi bersama
+/packages/core/                    @bynguts @rafilajhh
+/docs/                             @bynguts @rafilajhh
+/.github/                          @bynguts @rafilajhh
+/scripts/                          @bynguts @rafilajhh
