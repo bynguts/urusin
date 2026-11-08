@@ -7,6 +7,8 @@ import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const DESTRUCTIVE = /\b(DROP|RENAME)\b/i; // ALTER ... DROP tertangkap lewat DROP
+// Skema inline (bukan berkas migrations/): yang diperiksa hanya baris yang ditambahkan sejak tag dasar.
+const SCHEMA_FILES = ['packages/harness/src/db.ts'];
 const MIGRATION_FILE = /(^|\/)migrations?\/.+\.(sql|ts|js|mjs|cjs)$/;
 
 export function isMigrationFile(path) {
@@ -33,14 +35,28 @@ function main() {
     console.log(`check-additive-migrations: tag ${base} belum ada, tidak ada yang diperiksa (dilewati).`);
     return 0;
   }
+  let failed = 0;
+  for (const file of SCHEMA_FILES) {
+    const diff = git('diff', '-U0', `refs/tags/${base}..HEAD`, '--', file);
+    const plus = diff
+      .split(/\r?\n/)
+      .filter((l) => l.startsWith('+') && !l.startsWith('+++'))
+      .map((l) => l.slice(1))
+      .join('\n');
+    for (const { text } of findDestructive(plus)) {
+      console.error(`${file}: skema tidak aditif sejak ${base} (${text})`);
+      failed++;
+    }
+  }
   const added = git('diff', '--name-only', '--diff-filter=A', `refs/tags/${base}..HEAD`)
     .split('\n')
     .filter((p) => p && isMigrationFile(p));
   if (added.length === 0) {
-    console.log(`check-additive-migrations: tidak ada migrasi baru sejak ${base}.`);
-    return 0;
+    console.log(
+      `check-additive-migrations: tidak ada berkas migrasi baru sejak ${base}, ${failed} pelanggaran skema.`,
+    );
+    return failed === 0 ? 0 : 1;
   }
-  let failed = 0;
   for (const file of added) {
     for (const { line, text } of findDestructive(readFileSync(file, 'utf8'))) {
       console.error(`${file}:${line}: migrasi tidak aditif (${text})`);
