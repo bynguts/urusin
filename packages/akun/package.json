@@ -2,7 +2,7 @@
   "name": "@urusin/akun",
   "version": "0.0.0",
   "private": true,
-  "description": "Akun warga Urusin: email + sandi (argon2id), Google OIDC, sesi server, token email, vault terenkripsi per akun",
+  "description": "Akun warga Urusin: email + sandi (argon2id), Google OIDC, sesi server, token email, vault terenkripsi per pemilik",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -24,7 +24,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "akun:demo": "tsc -p tsconfig.build.json && node dist/seed-cli.js"
+    "kek:rotate": "tsc -p tsconfig.build.json && node dist/kek-rotate-cli.js"
   },
   "dependencies": {
     "@urusin/harness": "workspace:*",

@@ -6,7 +6,10 @@ import { describe, expect, it } from 'vitest';
 import { maskEmail, normalizeEmail } from './email.js';
 import { ARGON2_PARAMS, hashPassword, needsRehash, periksaSandi, verifyPassword } from './password.js';
 import { newId, randomToken, safeEqual, sha256Hex, TOKEN_RE } from './token.js';
-import { deriveKek, open, seal, Vault, VaultError } from './vault.js';
+import type { AkunError } from './errors.js';
+import { rotasiKek } from './kek-rotate.js';
+import { deriveKek, kunciPlaceholderHmac, LABEL_KEK, LABEL_PLACEHOLDER_HMAC, turunkanKunci } from './keys.js';
+import { aad, open, seal, Vault, VaultError } from './vault.js';
 
 const KEY_B64 = Buffer.alloc(32, 7).toString('base64');
 
@@ -97,16 +100,20 @@ describe('envelope encryption', () => {
     expect(() => deriveKek(Buffer.alloc(16).toString('base64'))).toThrow(/terlalu pendek/);
   });
 
-  it('KEK terpisah domain dari kunci mentah dan deterministik', () => {
+  it('KEK dan kunci HMAC placeholder: label HKDF terpisah, deterministik, bukan kunci mentah', () => {
+    expect([LABEL_KEK, LABEL_PLACEHOLDER_HMAC]).toEqual(['urusin/kek/v1', 'urusin/placeholder-hmac/v1']);
     expect(deriveKek(KEY_B64).equals(deriveKek(KEY_B64))).toBe(true);
     expect(deriveKek(KEY_B64).equals(Buffer.from(KEY_B64, 'base64'))).toBe(false);
+    expect(deriveKek(KEY_B64).equals(turunkanKunci(KEY_B64, LABEL_KEK))).toBe(true);
+    expect(kunciPlaceholderHmac(KEY_B64)).toMatch(/^[0-9a-f]{64}$/);
+    expect(kunciPlaceholderHmac(KEY_B64)).not.toBe(deriveKek(KEY_B64).toString('hex'));
   });
 });
 
-function vaultUji() {
+function vaultUji(opts: ConstructorParameters<typeof Vault>[3] = {}) {
   const db = openHarnessDb();
   const dir = mkdtempSync(join(tmpdir(), 'vault-'));
-  const vault = new Vault(db, deriveKek(KEY_B64), dir);
+  const vault = new Vault(db, deriveKek(KEY_B64), dir, { diskPersen: () => 10, ...opts });
   const user = (id: string) =>
     db
       .prepare("INSERT INTO users (id, email, created_at) VALUES (?, ?, '2026-11-09T00:00:00.000Z')")
@@ -199,11 +206,11 @@ describe('Vault per akun', () => {
       deriveKek(KEY_B64),
       (db.prepare('SELECT wrapped_dek FROM user_keys WHERE user_id = ?').get(A) as { wrapped_dek: Buffer })
         .wrapped_dek,
-      `dek|${A}`,
+      aad.dek(A),
     );
-    expect(() => open(dekBaru, sisaCt, `data-diri|${A}`)).toThrow(VaultError);
-    expect(() => open(dekBaru, sisaBerkas, `dokumen|${A}|${doc.id}`)).toThrow(VaultError);
-    expect(wrapped.equals(open(deriveKek(KEY_B64), wrapped, `dek|${A}`))).toBe(false);
+    expect(() => open(dekBaru, sisaCt, aad.dataDiri(A))).toThrow(VaultError);
+    expect(() => open(dekBaru, sisaBerkas, aad.dokumen(A, doc.id))).toThrow(VaultError);
+    expect(wrapped.equals(open(deriveKek(KEY_B64), wrapped, aad.dek(A)))).toBe(false);
     expect(readdirSync(dir)).toEqual([]);
   });
 
@@ -214,5 +221,95 @@ describe('Vault per akun', () => {
     const lain = new Vault(db, deriveKek(Buffer.alloc(32, 9).toString('base64')), dir);
     expect(() => lain.getDataDiri(A)).toThrow(VaultError);
     expect(() => new Vault(db, Buffer.alloc(16), dir)).toThrow(/32 byte/);
+    expect(() => new Vault(db, deriveKek(KEY_B64), dir, { kekLama: Buffer.alloc(8) })).toThrow(/32 byte/);
+  });
+
+  it('AAD memuat versi skema', () => {
+    expect(aad.dataDiri(A)).toBe(`v1|data-diri|${A}`);
+    expect(aad.dokumen(A, 'dok_1')).toBe(`v1|dokumen|${A}|dok_1`);
+  });
+
+  it('batas: berkas per pemilik, ukuran, total global, dan ambang disk (alert)', () => {
+    const alert: string[] = [];
+    let persen = 10;
+    const { vault, user } = vaultUji({
+      batas: { berkasPerPemilik: 2, ukuranMaks: 10, totalMaks: 25 },
+      diskPersen: () => persen,
+      alert: (p) => alert.push(p),
+    });
+    user(A);
+    user(B);
+    const doc = (v: Vault, u: string, n: number) =>
+      v.putDocument(u, { jenis: 'ktp', judul: 'x', mime: 'image/png', bytes: Buffer.alloc(n) });
+    const kode = (f: () => unknown) => {
+      try {
+        f();
+      } catch (e) {
+        return (e as AkunError).kode;
+      }
+      return null;
+    };
+    expect(kode(() => doc(vault, A, 11))).toBe('DOKUMEN_TERLALU_BESAR');
+    doc(vault, A, 10);
+    doc(vault, A, 10);
+    expect(kode(() => doc(vault, A, 1))).toBe('DOKUMEN_KUOTA_PENUH');
+    expect(kode(() => doc(vault, B, 6))).toBe('PENYIMPANAN_PENUH');
+    doc(vault, B, 5);
+    expect(vault.totalBytes()).toBe(25);
+    const kedua = vaultUji({ diskPersen: () => persen, alert: (p) => alert.push(p) });
+    kedua.user(A);
+    persen = 85;
+    expect(kode(() => doc(kedua.vault, A, 1))).toBe('PENYIMPANAN_PENUH');
+    expect(alert).toHaveLength(2);
+    expect(alert[1]).toMatch(/disk vault 85%/);
+    expect(new Vault(openHarnessDb(), deriveKek(KEY_B64), '/').batas).toMatchObject({
+      berkasPerPemilik: 10,
+      ukuranMaks: 9 * 1024 * 1024,
+      diskPersenMaks: 85,
+    });
+  });
+
+  it('rotasi KEK: DEK dari URUSIN_PII_KEY_PREV dibuka lalu dibungkus ulang; data tetap terbaca', () => {
+    const { db, dir, vault, user } = vaultUji();
+    user(A);
+    user(B);
+    vault.setDataDiri(A, { namaLengkap: 'A' });
+    vault.setDataDiri(B, { namaLengkap: 'B' });
+    const KEY2 = Buffer.alloc(32, 11).toString('base64');
+    expect(() => new Vault(db, deriveKek(KEY2), dir).getDataDiri(A)).toThrow(VaultError);
+    expect(() => new Vault(db, deriveKek(KEY2), dir).bungkusUlangSemua()).toThrow(/PREV/);
+    const malas = new Vault(db, deriveKek(KEY2), dir, { kekLama: deriveKek(KEY_B64) });
+    expect(malas.getDataDiri(A)?.data).toEqual({ namaLengkap: 'A' });
+    expect(new Vault(db, deriveKek(KEY2), dir).getDataDiri(A)?.data).toEqual({ namaLengkap: 'A' });
+    expect(malas.bungkusUlangSemua()).toEqual({ dibungkusUlang: 1, sudahBaru: 1 });
+    expect(new Vault(db, deriveKek(KEY2), dir).getDataDiri(B)?.data).toEqual({ namaLengkap: 'B' });
+    expect(db.prepare('SELECT kek_version FROM user_keys ORDER BY user_id').all()).toEqual([
+      { kek_version: 2 },
+      { kek_version: 2 },
+    ]);
+  });
+
+  it('pnpm kek:rotate (rotasiKek) terhadap berkas DB', () => {
+    const path = join(mkdtempSync(join(tmpdir(), 'kek-')), 'urusin.sqlite');
+    const db = openHarnessDb(path);
+    db.prepare("INSERT INTO users (id, email, created_at) VALUES (?, 'a@example.com', 'x')").run(A);
+    new Vault(db, deriveKek(KEY_B64), '').setDataDiri(A, { namaLengkap: 'Warga' });
+    db.close();
+    const KEY2 = Buffer.alloc(32, 12).toString('base64');
+    expect(() => rotasiKek({ URUSIN_PII_KEY: KEY2 })).toThrow(/PREV/);
+    expect(() => rotasiKek({ URUSIN_PII_KEY_PREV: KEY_B64 })).toThrow(/URUSIN_PII_KEY/);
+    expect(() =>
+      rotasiKek({ URUSIN_PII_KEY: KEY2, URUSIN_PII_KEY_PREV: KEY2, URUSIN_DB_PATH: path }),
+    ).toThrow(/sama/);
+    expect(rotasiKek({ URUSIN_PII_KEY: KEY2, URUSIN_PII_KEY_PREV: KEY_B64, URUSIN_DB_PATH: path })).toEqual({
+      dibungkusUlang: 1,
+      sudahBaru: 0,
+    });
+    expect(
+      rotasiKek({ URUSIN_PII_KEY: KEY2, URUSIN_PII_KEY_PREV: KEY_B64, DATABASE_URL: `file:${path}` }),
+    ).toEqual({ dibungkusUlang: 0, sudahBaru: 1 });
+    const db2 = openHarnessDb(path);
+    expect(new Vault(db2, deriveKek(KEY2), '').getDataDiri(A)?.data).toEqual({ namaLengkap: 'Warga' });
+    db2.close();
   });
 });

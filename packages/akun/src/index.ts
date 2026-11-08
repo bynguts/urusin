@@ -4,6 +4,7 @@ export * from './password.js';
 export * from './mailer.js';
 export * from './templates.js';
 export * from './google.js';
+export * from './keys.js';
 export * from './vault.js';
 export * from './errors.js';
 export * from './service.js';

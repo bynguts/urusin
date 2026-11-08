@@ -20,7 +20,7 @@ export type EmailMessage = {
 };
 
 export interface Mailer {
-  readonly kind: 'resend' | 'dev' | 'memory';
+  readonly kind: 'resend' | 'log' | 'memory';
   send(msg: EmailMessage): Promise<void>;
 }
 
@@ -29,7 +29,11 @@ export const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 /** Galat kirim email. Tidak memuat isi respons penyedia (bisa berisi alamat penerima). */
 export class MailerError extends Error {
   constructor(readonly status: number) {
-    super(`pengiriman email gagal (HTTP ${status})`);
+    super(
+      status === 429
+        ? 'pengiriman email gagal: kuota penyedia habis (HTTP 429)'
+        : `pengiriman email gagal (HTTP ${status})`,
+    );
     this.name = 'MailerError';
   }
 }
@@ -62,10 +66,10 @@ export class ResendMailer implements Mailer {
 
 /**
  * Mailer pengembangan: tidak mengirim apa pun, hanya mencatat tautan ke log (penerima disamarkan).
- * `outbox` (opsional, AUTH_EMAIL_OUTBOX) menambahkan satu baris JSON per email: dipakai e2e lokal.
+ * `outbox` (opsional, URUSIN_EMAIL_OUTBOX) menambahkan satu baris JSON per email: dipakai e2e lokal.
  */
 export class DevMailer implements Mailer {
-  readonly kind = 'dev' as const;
+  readonly kind = 'log' as const;
   constructor(
     private readonly log: (line: string) => void,
     private readonly outbox?: string,
@@ -86,7 +90,10 @@ export class DevMailer implements Mailer {
 export class MemoryMailer implements Mailer {
   readonly kind = 'memory' as const;
   readonly sent: EmailMessage[] = [];
+  /** true = setiap kirim gagal seperti kuota penyedia habis (HTTP 429). */
+  gagal = false;
   async send(msg: EmailMessage): Promise<void> {
+    if (this.gagal) throw new MailerError(429);
     this.sent.push(msg);
   }
   /** Pesan terakhir untuk penerima (opsional jenis tertentu). */
@@ -95,22 +102,34 @@ export class MemoryMailer implements Mailer {
   }
 }
 
+export type ModeEmail = 'resend' | 'log';
+
+/** Pengirim default (domain Urusin; SPF/DKIM Resend dipasang pemilik domain). */
+export const EMAIL_FROM_DEFAULT = 'Urusin <no-reply@urusinai.web.id>';
+
 /**
- * Pilih mailer dari env. AUTH_EMAIL_DEV=1 memaksa mailer dev. Tanpa itu: RESEND_API_KEY + EMAIL_FROM →
- * Resend; di produksi (NODE_ENV=production) tanpa konfigurasi Resend → melempar (server menolak boot).
+ * Pilih mailer dari env:
+ * - `URUSIN_EMAIL_MODE=resend` (default di produksi): `RESEND_API_KEY` wajib, pengirim `URUSIN_EMAIL_FROM`.
+ * - `URUSIN_EMAIL_MODE=log` (default di luar produksi): tidak mengirim apa pun, tautan dicatat ke log dan
+ *   (opsional) `URUSIN_EMAIL_OUTBOX`. Di produksi hanya boleh bila `CI=true` (e2e terhadap image produksi).
+ * Konfigurasi yang tidak memenuhi syarat melempar galat: server menolak boot.
  */
 export function mailerFromEnv(
   env: Record<string, string | undefined>,
   fetch: HttpFetch,
   log: (line: string) => void,
 ): Mailer {
-  const dev = env.AUTH_EMAIL_DEV?.trim() === '1';
-  const apiKey = env.RESEND_API_KEY?.trim();
-  const from = env.EMAIL_FROM?.trim();
-  if (!dev && apiKey && from) return new ResendMailer({ apiKey, from, fetch });
-  if (dev || env.NODE_ENV !== 'production')
-    return new DevMailer(log, env.AUTH_EMAIL_OUTBOX?.trim() || undefined);
-  throw new Error(
-    'RESEND_API_KEY dan EMAIL_FROM wajib di produksi (atau AUTH_EMAIL_DEV=1 untuk demo tanpa email sungguhan)',
-  );
+  const produksi = env.NODE_ENV === 'production';
+  const mode = env.URUSIN_EMAIL_MODE?.trim() || (produksi ? 'resend' : 'log');
+  if (mode === 'resend') {
+    const apiKey = env.RESEND_API_KEY?.trim();
+    if (!apiKey) throw new Error('URUSIN_EMAIL_MODE=resend butuh RESEND_API_KEY');
+    return new ResendMailer({ apiKey, from: env.URUSIN_EMAIL_FROM?.trim() || EMAIL_FROM_DEFAULT, fetch });
+  }
+  if (mode === 'log') {
+    if (produksi && env.CI !== 'true')
+      throw new Error('URUSIN_EMAIL_MODE=log hanya untuk dev/CI; produksi memakai resend');
+    return new DevMailer(log, env.URUSIN_EMAIL_OUTBOX?.trim() || undefined);
+  }
+  throw new Error(`URUSIN_EMAIL_MODE tidak dikenal: ${mode} (resend atau log)`);
 }

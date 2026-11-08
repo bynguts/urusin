@@ -20,7 +20,27 @@ export const SANDI_MIN = 8;
 /** Batas atas menahan DoS lewat sandi raksasa (argon2 tetap memproses semua byte). */
 export const SANDI_MAX = 128;
 
+/** Paling banyak 2 hash argon2 serentak (19 MiB tiap hash): CPU dan RAM host bersama tetap aman. */
+export const ARGON2_SERENTAK = 2;
+let berjalan = 0;
+const antre: (() => void)[] = [];
+
+async function denganSemafor<T>(fn: () => Promise<T>): Promise<T> {
+  if (berjalan >= ARGON2_SERENTAK) await new Promise<void>((r) => antre.push(r));
+  berjalan++;
+  try {
+    return await fn();
+  } finally {
+    berjalan--;
+    antre.shift()?.();
+  }
+}
+
 function derive(password: string, salt: Buffer, p: Argon2Params): Promise<Buffer> {
+  return denganSemafor(() => deriveLangsung(password, salt, p));
+}
+
+function deriveLangsung(password: string, salt: Buffer, p: Argon2Params): Promise<Buffer> {
   const params: Argon2Parameters = {
     message: Buffer.from(password.normalize('NFKC'), 'utf8'),
     nonce: salt,

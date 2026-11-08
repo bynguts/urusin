@@ -8,7 +8,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/index.ts', 'src/seed-cli.ts'],
+      exclude: ['src/**/*.test.ts', 'src/index.ts', 'src/kek-rotate-cli.ts'],
       reporter: ['text-summary', 'json-summary', 'lcov', 'html'],
       thresholds: { lines: 90, branches: 85 },
     },

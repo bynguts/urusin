@@ -58,7 +58,7 @@ export function emailVerifikasi(to: string, link: string): EmailMessage {
     'Pastikan email Anda untuk Urusin',
     [
       'Terima kasih sudah mendaftar di Urusin.',
-      'Tekan tombol di bawah untuk memastikan email ini milik Anda.',
+      'Tekan tombol di bawah, lalu masukkan kata sandi yang Anda buat saat mendaftar di situs Urusin.',
     ],
     { teks: 'Pastikan email', href: link },
     'Tautan berlaku 24 jam dan hanya bisa dipakai sekali. Bila Anda tidak mendaftar, abaikan email ini.',

@@ -35,7 +35,7 @@ export type GoogleOidcOptions = {
   /** Persis `${origin}/auth/google/callback` (didaftarkan di Google Cloud). */
   redirectUri: string;
   fetch: HttpFetch;
-  endpoints?: Partial<typeof GOOGLE_ENDPOINTS>;
+  endpoints?: Partial<Record<keyof typeof GOOGLE_ENDPOINTS, string>>;
   /** Issuer yang diterima (default Google); diganti hanya oleh Google palsu di tes. */
   issuers?: readonly string[];
   now?: () => number;
@@ -64,7 +64,7 @@ export const pkceChallenge = (verifier: string) => createHash('sha256').update(v
  * (tanda tangan via JWKS, iss, aud, exp, nonce) memakai `jose`; semua HTTP lewat `fetch` yang disuntikkan.
  */
 export class GoogleOidc {
-  private readonly ep: typeof GOOGLE_ENDPOINTS;
+  private readonly ep: Record<keyof typeof GOOGLE_ENDPOINTS, string>;
   private readonly now: () => number;
   private jwksCache: { set: ReturnType<typeof createLocalJWKSet>; at: number } | undefined;
 
