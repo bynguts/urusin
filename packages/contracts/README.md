@@ -1,7 +1,7 @@
 # @urusin/contracts
 
 Kontrak zod-first antara server, UI, dan ekstensi: event SSE, skema endpoint, bentuk store, dan fixture per layar x state.
-Semua nama memakai bahasa Indonesia. Setelah beku (Rab 11 Nov 12:00), perubahan hanya boleh menambah.
+Semua nama memakai bahasa Indonesia. Setelah tag `contracts-take1` dibuat, perubahan hanya boleh menambah (diperiksa CI).
 
 ## Isi
 
