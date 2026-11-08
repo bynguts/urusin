@@ -1,6 +1,6 @@
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
 import { getRuntime, publicOrigin, startTurnInBackground } from '#lib/server/runtime.js';
-import { batasi, ensureSession } from '#lib/server/sesi.js';
+import { batasi, catatTerakhir, ensureSession } from '#lib/server/sesi.js';
 
 const PERISTIWA = ['kelahiran', 'kematian', 'perkawinan', 'pindah', 'lainnya'] as const;
 type Peristiwa = (typeof PERISTIWA)[number];
@@ -39,5 +39,6 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
     ...(jenis ? { jenis } : {}),
   });
   if (pesan) startTurnInBackground(rt, { urusanId: u.id, userText: pesan });
+  catatTerakhir(event.cookies, u.id, publicOrigin());
   redirect(303, `/urusan/${u.id}`);
 }

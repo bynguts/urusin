@@ -121,6 +121,42 @@ export function infoStatus(state: UrusanState | null | undefined): InfoStatus {
   return state ? PETA[state] : PETA.BARU;
 }
 
+/** Empat fase perjalanan urusan di Ringkasan (frame uCOBS: "Langkah 2 dari 4 · Siapkan dokumen"). */
+export const FASE = [
+  { judul: 'Kenali kebutuhan', ket: 'Ceritakan kebutuhan Anda, lalu kita tentukan layanan yang sesuai.' },
+  {
+    judul: 'Siapkan dokumen',
+    ket: 'Sesudah foto jelas, kita cocokkan kebutuhan dokumen dengan rujukan layanan.',
+  },
+  { judul: 'Lanjut ke situs resmi', ket: 'Tinjau langkah di situs resmi sebelum memberi izin.' },
+  { judul: 'Pantau hasil', ket: 'Kita pantau tanggapan instansi sampai urusan selesai.' },
+] as const;
+
+/** Nomor fase 1–4 dari state urusan. */
+export function faseUrusan(state: UrusanState | null | undefined): 1 | 2 | 3 | 4 {
+  switch (state) {
+    case 'RENCANA_DISETUJUI':
+    case 'MENYIAPKAN_BERKAS':
+      return 2;
+    case 'BERKAS_SIAP':
+    case 'MENUNGGU_LOGIN_WARGA':
+    case 'MENUNGGU_PROFIL_WARGA':
+    case 'MENGISI':
+    case 'MENUNGGU_KONFIRMASI':
+    case 'MENGUNGGAH':
+    case 'MENUNGGU_SUBMIT_WARGA':
+    case 'DIPANDU':
+      return 3;
+    case 'TERKIRIM':
+    case 'DIPANTAU':
+    case 'SELESAI':
+    case 'DITOLAK':
+      return 4;
+    default:
+      return 1;
+  }
+}
+
 /** Waktu singkat Indonesia: "5 Nov, 19.20". */
 export function waktuSingkat(iso: string): string {
   const d = new Date(iso);

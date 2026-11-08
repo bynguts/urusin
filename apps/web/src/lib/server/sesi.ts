@@ -25,6 +25,29 @@ export function ensureSession(cookies: Cookies, publicOrigin: string): string {
   return sid;
 }
 
+/**
+ * Urusan terakhir yang dibuka di peramban ini, supaya Ringkasan (/beranda) bisa dirender di server tanpa
+ * menunggu localStorage. Isinya id kapabilitas, jadi HttpOnly seperti cookie sesi.
+ */
+export const TERAKHIR_COOKIE = 'urusin_terakhir';
+const ID_URUSAN_RE = /^u_[0-9a-f]{32}$/;
+
+export function catatTerakhir(cookies: Cookies, id: string, publicOrigin: string): void {
+  if (!ID_URUSAN_RE.test(id)) return;
+  cookies.set(TERAKHIR_COOKIE, id, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: publicOrigin.startsWith('https://'),
+    maxAge: SID_TTL_SEC,
+  });
+}
+
+export function bacaTerakhir(cookies: Cookies): string | null {
+  const id = cookies.get(TERAKHIR_COOKIE);
+  return id && ID_URUSAN_RE.test(id) ? id : null;
+}
+
 type Aksi = 'buat' | 'turn';
 
 /** Kuota per-IP dan per-sesi. 429 + Retry-After bila lewat; undefined bila boleh lanjut. Titik pasang Turnstile nanti. */

@@ -29,7 +29,7 @@
 </script>
 
 <header
-  class="sticky top-16 z-10 flex min-h-16 flex-wrap items-center gap-3 border-b border-line bg-bg/95 px-4 py-3 backdrop-blur sm:px-7 lg:top-0 lg:min-h-20 lg:rounded-t-2xl lg:bg-surface/95"
+  class="sticky top-20 z-10 flex min-h-16 flex-wrap items-center gap-3 border-b border-line bg-bg/95 px-4 py-3 backdrop-blur sm:px-7 lg:top-0 lg:min-h-[4.5rem]"
 >
   {#if awal}{@render awal()}{/if}
   <h1 class="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight text-ink sm:text-xl">{judul}</h1>
