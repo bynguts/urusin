@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { KANAL_PATH } from '../kanal.js';
+import { egressFetch } from '@urusin/egress';
 import { PoliteFetcher, type Deps } from './fetcher.js';
 import { runKanal } from './kanal-verify.js';
 import type { ProbeGet } from './kontak.js';
@@ -14,7 +15,7 @@ const deps: Deps = {
   now: () => Date.now(),
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
   fetch: async (url, init) => {
-    const res = await fetch(url, init);
+    const res = await egressFetch(url, init);
     finalUrls.set(url, res.url || url);
     return res;
   },
