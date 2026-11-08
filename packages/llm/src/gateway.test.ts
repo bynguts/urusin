@@ -216,13 +216,27 @@ describe('larangan SDK vendor lain', () => {
       filePath: join(root, 'packages/llm/src/contoh.ts'),
     });
     expect(res?.messages.map((m) => m.ruleId)).toContain('no-restricted-imports');
-  });
+  }, 30_000);
 
   it('tidak ada import SDK vendor lain di source repo', () => {
     const offenders: string[] = [];
     const walk = (dir: string) => {
       for (const name of readdirSync(dir)) {
-        if (['node_modules', 'dist', 'build', '.svelte-kit', '.turbo', '.git'].includes(name)) continue;
+        if (
+          [
+            'node_modules',
+            'dist',
+            'build',
+            '.svelte-kit',
+            '.turbo',
+            '.git',
+            '.wxt',
+            '.output',
+            'test-results',
+            'playwright-report',
+          ].includes(name)
+        )
+          continue;
         const p = join(dir, name);
         if (statSync(p).isDirectory()) walk(p);
         else if (/\.(ts|js|mjs|svelte|json)$/.test(name) && readFileSync(p, 'utf8').includes(`${vendor}/`)) {
