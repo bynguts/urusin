@@ -5,6 +5,7 @@ import { placeTokens } from './place-names.js';
 import { safeRewrite, type QueryRewriter } from './llm-stage.js';
 import { rerankHits, type RerankDeps, type RerankStatus } from './rerank.js';
 import type { RetrievalDebug } from './schema.js';
+import { outOfScopeNoun } from './out-of-scope.js';
 import { toHit, type Hit, type Row, type SearchOptions } from './search.js';
 import { isStopword, rawTokens, stemToken, stemTokens } from './stem/stem.js';
 import { GENERIC_QUERY_WORDS } from './stem/stopwords.js';
@@ -32,7 +33,7 @@ export type RetrievalDeps = {
   useVector?: boolean | undefined;
   /** Bobot leg perluasan terhadap kata asli (default 0.4). */
   expandWeight?: number | undefined;
-  /** Ambang cakupan abstain (default 0.3, atau env RAG_ABSTAIN_MIN_COVERAGE; 0 = mati). Lihat DEFAULT_MIN_COVERAGE. */
+  /** Ambang cakupan abstain (default 0.1, atau env RAG_ABSTAIN_MIN_COVERAGE; 0 = mati). Lihat DEFAULT_MIN_COVERAGE. */
   minCoverage?: number | undefined;
   /** Top-N kandidat untuk rerank (default 20). */
   rerankTopN?: number | undefined;
@@ -199,10 +200,11 @@ function envMinCoverage(): number | undefined {
 export type AbstainReason = 'di_luar_cakupan' | 'skor_rendah';
 
 /**
- * Ambang abstain default: cakupan (0..1) kata kueri yang bermakna pada 3 hasil teratas. Dikalibrasi di
- * `abstain.test.ts` (korpus sintetis); 0 mematikan gerbang. Lihat README untuk angka kalibrasi.
+ * Ambang abstain default: cakupan (0..1) kata kueri yang bermakna pada 3 hasil teratas; 0 mematikan gerbang.
+ * Dikalibrasi pada korpus nyata (data/gold/tuning.json): 0.1 tidak menurunkan recall@3 dan menahan
+ * abstain-precision 100%; 0.3 (bawaan awal, korpus sintetis) menurunkan recall@3 5 poin. Lihat README.
  */
-export const DEFAULT_MIN_COVERAGE = 0.3;
+export const DEFAULT_MIN_COVERAGE = 0.1;
 
 export type SyncResult = {
   hits: Hit[];
@@ -273,11 +275,16 @@ export function retrieveSync(
   });
   const t3 = performance.now();
 
-  const coverage = hits.length
-    ? coverageOf(db, opts.query, hits.slice(0, 3), expansion.explained, extraTerms, [
-        ...new Set(expansion.terms.flatMap((e) => stemTokens(e))),
-      ])
-    : null;
+  // Layanan luar cakupan yang disebut eksplisit (SIM, SKCK, ...) dan tidak ada di judul chunk mana pun:
+  // cakupan dipaksa 0 sehingga gerbang abstain menjawab di_luar_cakupan.
+  const oosNoun = outOfScopeNoun(db, opts.query);
+  const coverage = oosNoun
+    ? 0
+    : hits.length
+      ? coverageOf(db, opts.query, hits.slice(0, 3), expansion.explained, extraTerms, [
+          ...new Set(expansion.terms.flatMap((e) => stemTokens(e))),
+        ])
+      : null;
   return {
     hits,
     coverage,

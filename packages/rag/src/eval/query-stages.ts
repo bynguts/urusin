@@ -25,6 +25,17 @@ export function createQueryStages(opts: QueryStageOptions = {}): PipelineStages 
       const { terms } = expandQuery(query, opts.glossary);
       return terms.length ? `${query}${MARK}${terms.join(' | ')}` : query;
     },
+    coverage(db, q, cfg) {
+      // Persis seperti produksi: kueri asli + glosarium (bukan istilah perluasan sebagai kata tulis-ulang).
+      const [query = '', rest] = q.query.split(MARK);
+      return retrieveSync(
+        db,
+        { query, kodeKabKota: q.kodeKabKota },
+        { bm25: { stemmed: cfg.stemmed }, expand: rest !== undefined },
+        6,
+        { glossary: opts.glossary, expandWeight: opts.expandWeight },
+      ).coverage;
+    },
     bm25(db, q, cfg, limit) {
       const [query = '', rest] = q.query.split(MARK);
       const extra = rest ? rest.split(' | ') : [];

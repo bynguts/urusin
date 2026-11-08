@@ -18,6 +18,8 @@ export type RetrievalPipeline = {
   /** Tanpa `vector`: tabel ablasi penuh (A, B, C, D). Dengan `transform`: A + satu baris vektor itu. */
   vector?: { transform: FitOptions };
   rerank?: boolean;
+  /** Gerbang abstain: kosongkan hasil bila cakupan leksikal top-3 < minCoverage (butuh `stages.coverage`). */
+  abstain?: { minCoverage: number };
 };
 
 export type StageCandidate = { id: string; text: string };
@@ -32,6 +34,12 @@ export type PipelineStages = {
     limit: number,
   ) => string[];
   expand?: (query: string) => string;
+  /** Cakupan leksikal top-3 (null = tidak ada hasil sama sekali); dasar gerbang abstain. */
+  coverage?: (
+    db: Db,
+    q: { query: string; kodeKabKota?: string | undefined },
+    cfg: { stemmed: boolean },
+  ) => number | null;
   /** Urutkan ulang kandidat; mengembalikan id berurutan. */
   rerank?: (query: string, candidates: StageCandidate[]) => Promise<string[]>;
 };
@@ -46,6 +54,10 @@ export type EvalRow = {
   recall5: number;
   mrr10: number;
   ndcg10: number;
+  /** Porsi abstain yang memang luar cakupan; null bila tidak ada abstain. */
+  abstainPrecision: number | null;
+  /** Porsi pertanyaan luar cakupan yang di-abstain; null bila gold tak punya pertanyaan luar cakupan. */
+  abstainRecall: number | null;
 };
 
 export type PipelineReport = { name: string; config: RetrievalPipeline; rows: EvalRow[]; notes: string[] };
@@ -53,6 +65,8 @@ export type PipelineReport = { name: string; config: RetrievalPipeline; rows: Ev
 export type EvalReport = {
   pipelines: PipelineReport[];
   questions: number;
+  /** Dari `questions`: jumlah pertanyaan luar cakupan. */
+  outOfScope: number;
   chunks: number;
   /** Pertanyaan yang referensi gold-nya tidak cocok dengan chunk mana pun (cek gold set). */
   tanpaChunkRelevan: string[];
@@ -87,14 +101,16 @@ export async function runEval(opts: {
     .all() as ChunkMeta[];
   const byId = new Map(chunks.map((c) => [c.id, c]));
   const refsOf = (id: string): RankedHit => ({ refs: [id, byId.get(id)?.url ?? ''] });
+  const inScope = gold.filter((g) => !g.luarCakupan);
   const relevantChunks = (g: GoldItem) => {
     const want = new Set(g.relevan);
     return chunks.filter((c) => want.has(c.id) || want.has(c.url)).length;
   };
-  const tanpaChunkRelevan = gold.filter((g) => relevantChunks(g) === 0).map((g) => g.id);
+  const tanpaChunkRelevan = inScope.filter((g) => relevantChunks(g) === 0).map((g) => g.id);
   const report: EvalReport = {
     pipelines: [],
     questions: gold.length,
+    outOfScope: gold.length - inScope.length,
     chunks: chunks.length,
     tanpaChunkRelevan,
   };
@@ -121,8 +137,25 @@ export async function runEval(opts: {
     if (config.expand && !stages.expand) notes.push('expand: tahap tidak tersedia, diabaikan (no-op)');
     if (config.rerank && !stages.rerank) notes.push('rerank: tahap tidak tersedia, diabaikan (no-op)');
 
+    const gate = config.abstain;
+    if (gate && !stages.coverage) notes.push('abstain: tahap coverage tidak tersedia, diabaikan (no-op)');
+    const abstainMemo = new Map<string, boolean>();
+    /** Gerbang abstain berbasis cakupan leksikal (sama untuk semua mode, seperti produksi). */
+    const abstains = (g: GoldItem): boolean => {
+      if (!gate || !stages.coverage) return false;
+      let v = abstainMemo.get(g.id);
+      if (v === undefined) {
+        const query = config.expand && stages.expand ? stages.expand(g.pertanyaan) : g.pertanyaan;
+        const c = stages.coverage(db, { query, kodeKabKota: g.kodeWilayah }, { stemmed });
+        v = c === null || c < gate.minCoverage;
+        abstainMemo.set(g.id, v);
+      }
+      return v;
+    };
+
     /** Peringkat id untuk satu pertanyaan: [expand] -> BM25 -> [RRF vektor] -> [rerank] -> top-10. */
     const rankFor = async (g: GoldItem, vectorIds?: readonly string[]): Promise<string[]> => {
+      if (abstains(g)) return [];
       const query = config.expand && stages.expand ? stages.expand(g.pertanyaan) : g.pertanyaan;
       const q = { query, kodeKabKota: g.kodeWilayah };
       const bm =
@@ -148,15 +181,24 @@ export async function runEval(opts: {
       idsFor: (g: GoldItem, i: number) => Promise<string[]>,
     ): Promise<EvalRow> => {
       const s = { r1: 0, r3: 0, r5: 0, mrr: 0, ndcg: 0 };
+      let abstained = 0;
+      let abstainedOos = 0;
       for (const [i, g] of gold.entries()) {
-        const ranked = (await idsFor(g, i)).map(refsOf);
+        const ids = await idsFor(g, i);
+        if (ids.length === 0 && abstains(g)) {
+          abstained++;
+          if (g.luarCakupan) abstainedOos++;
+        }
+        if (g.luarCakupan) continue;
+        const ranked = ids.map(refsOf);
         s.r1 += recallAtK(ranked, g.relevan, 1);
         s.r3 += recallAtK(ranked, g.relevan, 3);
         s.r5 += recallAtK(ranked, g.relevan, 5);
         s.mrr += mrrAtK(ranked, g.relevan, 10);
         s.ndcg += ndcgAtK(ranked, g.relevan, 10, relevantChunks(g));
       }
-      const n = gold.length;
+      const n = inScope.length || 1;
+      const oos = gold.length - inScope.length;
       return {
         mode,
         label,
@@ -165,6 +207,8 @@ export async function runEval(opts: {
         recall5: s.r5 / n,
         mrr10: s.mrr / n,
         ndcg10: s.ndcg / n,
+        abstainPrecision: abstained ? abstainedOos / abstained : null,
+        abstainRecall: oos ? abstainedOos / oos : null,
       };
     };
 
@@ -201,24 +245,28 @@ export async function runEval(opts: {
 }
 
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
+const pctN = (x: number | null) => (x === null ? '-' : pct(x));
 
 export function renderMarkdown(r: EvalReport): string {
   const out: string[] = [];
   for (const p of r.pipelines) {
     out.push(`### Pipeline: ${p.name}`, '', `Konfigurasi: \`${JSON.stringify(p.config)}\``, '');
     out.push(
-      '| Mode | Konfigurasi | recall@1 | recall@3 | recall@5 | MRR@10 | nDCG@10 |',
-      '|---|---|---:|---:|---:|---:|---:|',
+      '| Mode | Konfigurasi | recall@1 | recall@3 | recall@5 | MRR@10 | nDCG@10 | abstain P | abstain R |',
+      '|---|---|---:|---:|---:|---:|---:|---:|---:|',
       ...p.rows.map(
         (x) =>
-          `| ${x.mode} | ${x.label} | ${pct(x.recall1)} | ${pct(x.recall3)} | ${pct(x.recall5)} | ${x.mrr10.toFixed(3)} | ${x.ndcg10.toFixed(3)} |`,
+          `| ${x.mode} | ${x.label} | ${pct(x.recall1)} | ${pct(x.recall3)} | ${pct(x.recall5)} | ${x.mrr10.toFixed(3)} | ${x.ndcg10.toFixed(3)} | ${pctN(x.abstainPrecision)} | ${pctN(x.abstainRecall)} |`,
       ),
       '',
     );
     for (const n of p.notes) out.push(`Catatan: ${n}.`);
     if (p.notes.length) out.push('');
   }
-  const notes = [`Pertanyaan: ${r.questions}; chunk: ${r.chunks}.`];
+  const notes = [
+    `Pertanyaan: ${r.questions} (${r.questions - r.outOfScope} dalam cakupan, ${r.outOfScope} luar cakupan); chunk: ${r.chunks}.`,
+    'recall/MRR/nDCG dihitung pada pertanyaan dalam cakupan; abstain pada pertanyaan dalam cakupan dihitung peringkat kosong.',
+  ];
   if (r.vectorsSkipped) notes.push(`Catatan: ${r.vectorsSkipped}.`);
   if (r.tanpaChunkRelevan.length)
     notes.push(`Peringatan: gold tanpa chunk cocok di DB: ${r.tanpaChunkRelevan.join(', ')}.`);

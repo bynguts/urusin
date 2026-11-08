@@ -134,3 +134,80 @@ describe('runEval', () => {
     expect(r.tanpaChunkRelevan).toEqual(['g3']);
   });
 });
+
+describe('runEval: abstain', () => {
+  const db2 = openDb(':memory:');
+  upsertChunks(db2, [
+    {
+      id: 'ktp',
+      text: 'Penggantian KTP-el hilang butuh surat kehilangan kepolisian',
+      sourceRef: { url: 'https://contoh.go.id/ktp', judul: 'KTP-el', instansi: 'Dinas Contoh' },
+      verifiedAt: '2026-11-08T00:00:00.000Z',
+    },
+  ]);
+  const gold = [
+    { id: 'a', pertanyaan: 'KTP-el hilang', relevan: ['ktp'] },
+    { id: 'b', pertanyaan: 'resep rendang', relevan: [], luarCakupan: true },
+    { id: 'c', pertanyaan: 'harga emas', relevan: [], luarCakupan: true },
+  ];
+  // cakupan palsu: pertanyaan 'b' di bawah ambang, 'c' lolos (bocor), 'a' tinggi
+  const coverage = (_db: unknown, q: { query: string }) =>
+    q.query.includes('rendang') ? 0.05 : q.query.includes('emas') ? 0.5 : 0.9;
+
+  it('hitung presisi/recall abstain; metrik retrieval hanya pada pertanyaan dalam cakupan', async () => {
+    const r = await runEval({
+      db: db2,
+      gold,
+      embed: null,
+      pipelines: [
+        { name: 'tanpa', config: {} },
+        { name: 'gerbang', config: { abstain: { minCoverage: 0.3 } } },
+      ],
+      stages: { coverage },
+    });
+    const [tanpa, gerbang] = r.pipelines.map((p) => p.rows[0]!);
+    expect(r.outOfScope).toBe(2);
+    expect(r.tanpaChunkRelevan).toEqual([]);
+    expect(tanpa!.recall3).toBe(1);
+    expect(tanpa!.abstainPrecision).toBeNull();
+    expect(tanpa!.abstainRecall).toBe(0);
+    expect(gerbang!.recall3).toBe(1);
+    expect(gerbang!.abstainPrecision).toBe(1);
+    expect(gerbang!.abstainRecall).toBe(0.5);
+    expect(renderMarkdown(r)).toContain('| abstain P | abstain R |');
+  });
+
+  it('abstain pada pertanyaan dalam cakupan menurunkan recall dan presisi', async () => {
+    const r = await runEval({
+      db: db2,
+      gold,
+      embed: null,
+      pipelines: [{ name: 'ketat', config: { abstain: { minCoverage: 0.95 } } }],
+      stages: { coverage },
+    });
+    const row = r.pipelines[0]!.rows[0]!;
+    expect(row.recall3).toBe(0);
+    expect(row.abstainPrecision).toBeCloseTo(2 / 3);
+    expect(row.abstainRecall).toBe(1);
+  });
+
+  it('tanpa stage coverage gerbang menjadi no-op dan dicatat', async () => {
+    const r = await runEval({
+      db: db2,
+      gold,
+      embed: null,
+      pipelines: [{ name: 'p', config: { abstain: { minCoverage: 0.3 } } }],
+    });
+    expect(r.pipelines[0]!.notes.join(' ')).toContain('abstain');
+    expect(r.pipelines[0]!.rows[0]!.abstainRecall).toBe(0);
+  });
+
+  it('skema gold: luarCakupan wajib relevan kosong, selain itu wajib terisi', () => {
+    expect(() =>
+      GoldSetSchema.parse([{ id: 'x', pertanyaan: 'q', relevan: ['a'], luarCakupan: true }]),
+    ).toThrow();
+    expect(() =>
+      GoldSetSchema.parse([{ id: 'x', pertanyaan: 'q', relevan: [], luarCakupan: true }]),
+    ).not.toThrow();
+  });
+});

@@ -1,0 +1,120 @@
+[
+  {
+    "id": "h01",
+    "pertanyaan": "Anak saya lahir di luar negeri, melaporkannya ke Surabaya gimana?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#sipil-pelaporan-kelahiran-luar-negeri"]
+  },
+  {
+    "id": "h02",
+    "pertanyaan": "Mau pindah ke luar negeri, urus surat pindahnya di Surabaya bagaimana?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#daftar-pindah-luar-negeri"]
+  },
+  {
+    "id": "h03",
+    "pertanyaan": "Mengakui anak sebagai anak kandung di Surabaya lewat layanan apa?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#sipil-pengakuan-anak"]
+  },
+  {
+    "id": "h04",
+    "pertanyaan": "Surat pindah (SKPWNI) saya hilang, bisa dicetak ulang di Surabaya?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#daftar-cetak-ulang-skpwni"]
+  },
+  {
+    "id": "h05",
+    "pertanyaan": "Akta kelahiran saya rusak, minta cetak ulang kutipan kedua di Surabaya",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#sipil-kutipan-kedua-akta-catatan-sipil-cetak-ulang-akta"]
+  },
+  {
+    "id": "h06",
+    "pertanyaan": "Bikin KK di Wonogiri bayar berapa?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-kk#5"]
+  },
+  {
+    "id": "h07",
+    "pertanyaan": "KTP-el saya rusak, apa yang harus dibawa ke Disdukcapil Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-ktp-el#0"]
+  },
+  {
+    "id": "h08",
+    "pertanyaan": "Berapa lama akta kelahiran selesai di Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-akta-kelahiran#2"]
+  },
+  {
+    "id": "h09",
+    "pertanyaan": "Aturan apa yang jadi dasar hukum layanan KIA di Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-kia#5"]
+  },
+  {
+    "id": "h10",
+    "pertanyaan": "Surat keterangan datang dari Disdukcapil Wonogiri kena biaya nggak?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-skdwni#4"]
+  },
+  {
+    "id": "h11",
+    "pertanyaan": "Daftar KIA anak di Semarang butuh pas foto atau nggak?",
+    "kodeWilayah": "3374",
+    "relevan": ["semarang-data-dukung#4"]
+  },
+  {
+    "id": "h12",
+    "pertanyaan": "Akta kelahiran di Semarang kalau syaratnya tidak lengkap, bisa pakai surat pernyataan dan dua saksi?",
+    "kodeWilayah": "3374",
+    "relevan": ["semarang-data-dukung#2"]
+  },
+  {
+    "id": "h13",
+    "pertanyaan": "Cek apakah keluarga saya dapat bantuan sosial lewat NIK",
+    "relevan": ["cek-bansos#1"]
+  },
+  {
+    "id": "h14",
+    "pertanyaan": "Mau mengadukan buruknya pelayanan publik ke Ombudsman secara online",
+    "relevan": ["ombudsman-pengaduan#1"]
+  },
+  {
+    "id": "h15",
+    "pertanyaan": "Cara mengurus STNK yang hilang",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "h16",
+    "pertanyaan": "Jadwal sidang perceraian di pengadilan agama",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "h17",
+    "pertanyaan": "Cara mengurus IMB rumah",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "h18",
+    "pertanyaan": "Jadwal vaksin anak di puskesmas",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "h19",
+    "pertanyaan": "Harga tiket kereta Jakarta ke Bandung",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "h20",
+    "pertanyaan": "Cara melamar kerja lewat Kartu Prakerja",
+    "relevan": [],
+    "luarCakupan": true
+  }
+]
