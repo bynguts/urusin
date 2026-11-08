@@ -82,6 +82,7 @@ describe('lease turn lintas instance (B2b)', () => {
     const db = openHarnessDb(path);
     dbs.push(db);
     db.exec('ALTER TABLE turns DROP COLUMN owner_instance; ALTER TABLE turns DROP COLUMN lease_until;');
+    db.pragma('user_version = 0'); // seolah DB dibuat sebelum migrasi berversi
     const again = openHarnessDb(path);
     dbs.push(again);
     const cols = (again.prepare('PRAGMA table_info(turns)').all() as { name: string }[]).map((c) => c.name);

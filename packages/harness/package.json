@@ -12,7 +12,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "migrations"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -20,7 +21,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "eval": "tsc -p tsconfig.build.json && node dist/eval/cli.js",
-    "record:fixtures": "tsc -p tsconfig.build.json && node dist/eval/record.js"
+    "record:fixtures": "tsc -p tsconfig.build.json && node dist/eval/record.js",
+    "migrate": "tsc -p tsconfig.build.json && node dist/migrate-cli.js"
   },
   "dependencies": {
     "@urusin/contracts": "workspace:*",
