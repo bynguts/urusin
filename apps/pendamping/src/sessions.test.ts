@@ -38,7 +38,6 @@ function harness(over: Partial<Config> = {}) {
       ambilAlih: () => void calls.push('ambilAlih'),
       kembalikan: () => void calls.push('kembalikan'),
       setViewer: async (s) => void calls.push(s ? 'viewer' : 'noviewer'),
-      pageText: async () => 'teks halaman',
       destroy: async () => void calls.push('destroy'),
     };
     runs.push(run);
@@ -211,7 +210,6 @@ describe('SessionManager', () => {
     run.init.hooks.event({ jenis: 'langkah', indeks: 1, total: 5, label: 'x' });
     run.init.hooks.activity();
     expect(h.manager.status(owner('u1')).mode).toBe('ai');
-    expect(await h.manager.pageText(owner('u1'))).toBe('teks halaman');
     await h.manager.handleClient(s.sesiId, { type: 'ping', t: 5 });
     expect(v.sent.at(-1)).toEqual({ type: 'pong', t: 5 });
 
@@ -298,7 +296,7 @@ describe('server HTTP + WebSocket', () => {
     return { h, port, base, call };
   }
 
-  it('API internal: token wajib, validasi body, alur buat-status-tiket-serahkan-teks-akhiri', async () => {
+  it('API internal: token wajib, validasi body, alur buat-status-tiket-serahkan-akhiri; tidak ada jalur teks halaman', async () => {
     const { call, base } = await start();
     expect((await fetch(`${base}/health`)).status).toBe(200);
     expect((await call('/internal/antrean', undefined, 'salah')).status).toBe(401);
@@ -315,7 +313,8 @@ describe('server HTTP + WebSocket', () => {
     };
     expect(tiket.wsUrl).toMatch(/\/ws\/[0-9a-f-]{36}$/);
     expect((await call('/internal/sesi/serahkan', owner('u1'))).status).toBe(200);
-    expect(await (await call('/internal/sesi/teks', owner('u1'))).json()).toEqual({ teks: 'teks halaman' });
+    // Temuan arsitek B-e: teks halaman bebas tidak pernah keluar dari pendamping.
+    expect((await call('/internal/sesi/teks', owner('u1'))).status).toBe(404);
     expect((await call('/internal/sesi/lain', owner('u1'))).status).toBe(404);
     expect((await call('/internal/antrean')).status).toBe(200);
     expect((await call('/internal/sesi/akhiri', owner('u1'))).status).toBe(200);

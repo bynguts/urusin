@@ -118,8 +118,6 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
           return json(res, 200, manager.serahkan(owner));
         case '/internal/sesi/akhiri':
           return json(res, 200, await manager.akhiri(owner));
-        case '/internal/sesi/teks':
-          return json(res, 200, { teks: await manager.pageText(owner) });
         default:
           return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'Tidak ditemukan.' });
       }

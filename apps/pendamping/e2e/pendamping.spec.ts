@@ -130,11 +130,9 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
   await page.locator('#layar').click({ position: { x: s.x + s.lebar / 2, y: s.y + s.tinggi / 2 } });
 
   // Login sukses membuktikan HP diisi AI dengan benar (fixture memeriksa HP + CAPTCHA). AI lanjut mengunggah.
+  // Sampai di giliran final = kedua unggahan lolos pascakondisi adapter (jumlah .uploaded-item bertambah).
   const final = await tungguGiliran(page, 'final');
-  const teks = await internal<{ teks: string }>('/internal/sesi/teks', owner('u-e2e-1'));
-  expect(teks.data.teks).toContain('Berkas terunggah: 2');
-  expect(teks.data.teks).toContain('ktp.png');
-  expect(teks.data.teks).toContain('kk.png');
+  expect((await internal('/internal/sesi/teks', owner('u-e2e-1'))).status).toBe(404);
   const langkah = (await peristiwa(page)).filter((e) => e.jenis === 'langkah');
   expect(langkah.map((e) => (e as { label: string }).label)).toContain('Mengunggah berkas');
   expect(JSON.stringify(await peristiwa(page))).not.toContain(TEST_HP);

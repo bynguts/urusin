@@ -40,7 +40,6 @@ export type ActiveRun = {
   ambilAlih(): void;
   kembalikan(): void;
   setViewer(send: ((f: Frame) => void) | null): Promise<void>;
-  pageText(maxChars: number): Promise<string>;
   destroy(): Promise<void>;
 };
 
@@ -218,11 +217,6 @@ export class SessionManager {
     const s = this.requireOwned(owner);
     await this.end(s, 'dibatalkan', 'dibatalkan', PESAN.dibatalkan);
     return this.status(owner);
-  }
-
-  async pageText(owner: { urusanId: string; sidHash: string }, maxChars = 4000): Promise<string> {
-    const s = this.requireOwned(owner);
-    return s.run ? s.run.pageText(maxChars) : '';
   }
 
   antrean(): AntreanPendampingResponse {

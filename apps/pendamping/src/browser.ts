@@ -459,10 +459,6 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
         await cdp.send('Page.stopScreencast').catch(() => {});
       }
     },
-    async pageText(maxChars) {
-      const r = await evaluate({ kind: 'text', maxChars });
-      return r !== 'interrupted' && r.ok && typeof r.value === 'string' ? r.value : '';
-    },
     async destroy() {
       if (destroyed) return;
       destroyed = true;
