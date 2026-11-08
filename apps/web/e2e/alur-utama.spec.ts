@@ -1,18 +1,16 @@
 import { expect, test } from '@playwright/test';
 
-// Alur utama warga: Beranda → Rencana peristiwa → layar urusan (percakapan) di HP 390px dan laptop 1440px.
+// Alur utama warga: Landing → Rencana peristiwa → layar urusan (percakapan) di HP 390px dan laptop 1440px.
 // Server memakai DemoProvider (tanpa kunci LLM), jadi tidak ada yang dikirim ke situs pemerintah.
 for (const lebar of [390, 1440]) {
-  test(`beranda → peristiwa → urusan di ${lebar}px`, async ({ page }) => {
+  test(`landing → peristiwa → urusan di ${lebar}px`, async ({ page }) => {
     await page.setViewportSize({ width: lebar, height: lebar < 600 ? 844 : 960 });
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Apa yang ingin Anda urus?');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Teman AI untuk');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
 
-    // Kartu peristiwa → rencana langkah dengan sumber resmi
-    await page
-      .getByRole('link', { name: /Kelahiran/ })
-      .first()
-      .click();
+    // Kartu cerita → rencana langkah dengan sumber resmi
+    await page.getByRole('link', { name: /Mulai cerita.*Baru punya anak/ }).click();
     await expect(page).toHaveURL(/\/peristiwa\/kelahiran/);
     await expect(page.getByRole('button', { name: 'Mulai urusan ini' })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
