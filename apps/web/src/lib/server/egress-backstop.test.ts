@@ -22,6 +22,8 @@ describe('backstop egress setelah boot (hooks.server.ts)', () => {
       EgressBlockedError,
     );
     expect(await causeOf(fetch('http://127.0.0.1:4320/'))).toBeInstanceOf(EgressBlockedError);
-    expect(await causeOf(fetch('http://169.254.169.254/latest/meta-data/'))).toBeInstanceOf(EgressBlockedError);
+    expect(await causeOf(fetch('http://169.254.169.254/latest/meta-data/'))).toBeInstanceOf(
+      EgressBlockedError,
+    );
   });
 });
