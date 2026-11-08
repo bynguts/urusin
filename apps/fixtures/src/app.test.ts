@@ -76,6 +76,8 @@ describe('semua halaman', () => {
       expect(text, path).toContain(BANNER_TEXT);
       expect(text, path).toContain('noindex');
       expect(res.headers.get('x-robots-tag')).toContain('noindex');
+      // bukan no-referrer: Chrome akan mengirim 'Origin: null' pada POST form dan cek anti-CSRF gagal
+      expect(res.headers.get('referrer-policy')).toBe('same-origin');
       expect(res.headers.get('content-security-policy')).toContain("default-src 'self'");
     }
   });

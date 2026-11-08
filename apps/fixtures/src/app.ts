@@ -32,6 +32,8 @@ export function createApp(config: Config) {
   app.use(
     '*',
     secureHeaders({
+      // same-origin (bukan no-referrer): no-referrer membuat Chrome mengirim "Origin: null" pada POST form.
+      referrerPolicy: 'same-origin',
       contentSecurityPolicy: {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
