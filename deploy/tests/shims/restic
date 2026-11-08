@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+echo "restic $*" >> "$SHIM_DIR/calls.log"
+exit 0

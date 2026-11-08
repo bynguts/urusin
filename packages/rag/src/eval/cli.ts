@@ -4,6 +4,8 @@ import { parseArgs } from 'node:util';
 import { openDb } from '../db.js';
 import { loadRealEmbedder } from '../embedder.js';
 import { loadGold } from './gold.js';
+import { loadRealRerankDeps } from './llm-rerank.js';
+import { createQueryStages } from './query-stages.js';
 import { renderMarkdown, runEval, type NamedPipeline } from './run.js';
 
 const { values } = parseArgs({
@@ -25,7 +27,11 @@ if (!real) console.error('embedding tidak tersedia: hanya mode A (BM25) yang die
 const pipelines = values.pipelines
   ? (JSON.parse(readFileSync(resolve(values.pipelines), 'utf8')) as NamedPipeline[])
   : undefined;
-const report = await runEval({ db, gold, embed: real?.embed ?? null, pipelines });
+const rerank = pipelines?.some((p) => p.config.rerank) ? await loadRealRerankDeps() : null;
+if (pipelines?.some((p) => p.config.rerank) && !rerank)
+  console.error('LLM untuk rerank tidak tersedia: tahap rerank menjadi no-op');
+const stages = createQueryStages({ rerank: rerank ?? undefined });
+const report = await runEval({ db, gold, embed: real?.embed ?? null, pipelines, stages });
 db.close();
 
 const md = renderMarkdown(report);

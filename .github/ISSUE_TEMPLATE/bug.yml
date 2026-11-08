@@ -1,0 +1,47 @@
+name: Laporan bug
+description: Sesuatu tidak berjalan sebagaimana mestinya
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Untuk kerentanan keamanan, **jangan** pakai formulir ini. Ikuti SECURITY.md di akar repositori.
+        Jangan menempelkan data pribadi nyata (NIK, KK, HP, alamat, foto dokumen).
+  - type: dropdown
+    id: komponen
+    attributes:
+      label: Komponen
+      options: [web, ekstensi, fixtures, core, llm, registry, rag, deploy, dokumentasi]
+    validations:
+      required: true
+  - type: textarea
+    id: terjadi
+    attributes:
+      label: Yang terjadi
+    validations:
+      required: true
+  - type: textarea
+    id: harapan
+    attributes:
+      label: Yang diharapkan
+    validations:
+      required: true
+  - type: textarea
+    id: langkah
+    attributes:
+      label: Langkah mereproduksi
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: versi
+    attributes:
+      label: Versi
+      description: '`v<sha7>` di footer aplikasi atau SHA commit'
+  - type: textarea
+    id: lingkungan
+    attributes:
+      label: Lingkungan
+      description: Peramban dan versinya, sistem operasi, perangkat

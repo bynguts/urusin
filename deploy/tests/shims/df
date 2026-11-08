@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# df palsu: SHIM_DF_PCT menentukan persentase pemakaian.
+echo "Use%"
+echo " ${SHIM_DF_PCT:-10}%"

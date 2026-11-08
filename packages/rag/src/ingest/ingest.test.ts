@@ -146,7 +146,7 @@ describe('extract + chunk', () => {
   });
   it('chunk per heading, tabel utuh', () => {
     const cs = chunkByHeading(htmlToText(HTML));
-    expect(cs.map((c) => c.heading)).toEqual(['Akta Kelahiran', 'Tabel']);
+    expect(cs.map((c) => c.heading)).toEqual(['Akta Kelahiran › persyaratan', 'Tabel']);
     expect(cs[1]!.text).toContain('Berkas | Keterangan');
   });
   it('bagian panjang dipecah', () => {

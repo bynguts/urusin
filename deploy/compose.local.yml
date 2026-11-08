@@ -33,6 +33,8 @@ services:
     tmpfs:
       - /tmp:size=64m
     mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 256
 
 volumes:
   data:

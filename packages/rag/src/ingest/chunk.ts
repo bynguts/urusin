@@ -1,15 +1,29 @@
 export type TextChunk = { heading: string; text: string };
 
+/** Baris penanda blok layanan yang berdiri sendiri ("Syarat:", "Prosedur", "Biaya", "Dasar Hukum"). */
+const LABEL_RE =
+  /^(?:[-*#]\s*)?(?:\*\*)?(persyaratan|syarat|prosedur|tata cara|alur|biaya|tarif|jangka waktu|waktu|lama proses|dasar hukum)(?:[^\n|]{0,30}?)(?:\*\*)?\s*:?\s*$/i;
+
 /**
- * Pecah teks per heading; bagian panjang dipecah di batas baris (~maxChars). Baris tabel
- * ("a | b") yang berurutan tidak dipecah bila masih muat dalam 2x batas, agar tabel syarat utuh.
+ * Pecah teks per heading, lalu per blok layanan (syarat / prosedur / biaya / waktu / dasar hukum)
+ * di dalam heading itu, baru jatuh ke ukuran: bagian panjang dipecah di batas baris (~maxChars).
+ * Daftar ("- ...") dan baris tabel ("a | b") yang berurutan tidak dipecah bila masih muat dalam
+ * 2x batas, agar daftar syarat utuh.
  */
 export function chunkByHeading(text: string, maxChars = 1800): TextChunk[] {
   const sections: { heading: string; lines: string[] }[] = [{ heading: '', lines: [] }];
   for (const line of text.split('\n')) {
     const h = /^#{1,6}\s+(.*)$/.exec(line);
-    if (h) sections.push({ heading: h[1]!.trim(), lines: [] });
-    else sections[sections.length - 1]!.lines.push(line);
+    if (h) {
+      sections.push({ heading: h[1]!.trim(), lines: [] });
+      continue;
+    }
+    const label = LABEL_RE.exec(line.trim());
+    const cur = sections[sections.length - 1]!;
+    if (label && cur.heading) {
+      const base = cur.heading.split(' › ')[0]!;
+      sections.push({ heading: `${base} › ${label[1]!.toLowerCase()}`, lines: [line] });
+    } else cur.lines.push(line);
   }
   const out: TextChunk[] = [];
   for (const sec of sections) {
@@ -22,7 +36,8 @@ export function chunkByHeading(text: string, maxChars = 1800): TextChunk[] {
     let buf: string[] = [];
     let len = 0;
     for (const line of sec.lines) {
-      if (len + line.length > maxChars && buf.length) {
+      const inList = /^\s*[-*]\s/.test(line) && /^\s*[-*]\s/.test(buf[buf.length - 1] ?? '');
+      if (len + line.length > maxChars && buf.length && !(inList && len + line.length <= maxChars * 2)) {
         out.push({ heading: sec.heading, text: buf.join('\n').trim() });
         buf = [];
         len = 0;
