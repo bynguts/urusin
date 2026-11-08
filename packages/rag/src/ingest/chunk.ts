@@ -50,3 +50,18 @@ export function chunkByHeading(text: string, maxChars = 1800): TextChunk[] {
   }
   return out.filter((c) => c.text.length > 0);
 }
+
+/** Potongan terlalu pendek / hampir tanpa huruf (menu, "Selengkapnya", tanggal, "Klik disini") tidak berguna untuk retrieval. */
+export const MIN_CHUNK_CHARS = 25;
+
+export function dropBoilerplate(pieces: readonly TextChunk[]): TextChunk[] {
+  const seen = new Set<string>();
+  return pieces.filter((p) => {
+    const letters = (p.text.match(/\p{L}/gu) ?? []).length;
+    if (p.text.length < MIN_CHUNK_CHARS || letters < 15) return false;
+    const key = p.text.replace(/\s+/g, ' ').toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
