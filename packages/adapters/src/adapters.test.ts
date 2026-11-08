@@ -1,6 +1,13 @@
-import { css, fill, gate, nav, urlIncludes, type Step } from '@urusin/core';
+import { byRole, css, fill, gate, nav, urlIncludes, type Step } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
-import { buildProgram, finalGateIndex, requiredData, type Params } from './adapters.js';
+import {
+  ADAPTERS,
+  buildProgram,
+  finalGateIndex,
+  requiredData,
+  type Adapter,
+  type Params,
+} from './adapters.js';
 import { humanOnlyTargets } from '@urusin/executor';
 
 describe('adapter bawaan', () => {
@@ -68,5 +75,59 @@ describe('adapter bawaan', () => {
     });
     expect(finalGateIndex(steps)).toBe(-1);
     expect(finalGateIndex([...steps, gate.human('g', { until: urlIncludes('/z') })])).toBe(4);
+  });
+
+  it('alur baca-saja situs nyata: origin resmi, nilai warga lewat placeholder vault, AI tidak menekan tombol warga', () => {
+    const kasus: [string, string, string[]][] = [
+      ['samsat-dki', 'cek_pkb', ['{{KENDARAAN.NOPOL_ANGKA}}', '{{KENDARAAN.NOPOL_HURUF}}']],
+      ['oss-nib', 'cari_nib', ['{{USAHA.NIB}}']],
+      ['klampid-surabaya', 'cek_status', ['{{URUSAN.KITIR}}']],
+      ['sidnok-semarang', 'cek_status', ['{{URUSAN.KODE_PELAYANAN}}']],
+      ['telunjuk-sakti-wonogiri', 'cek_status', []],
+    ];
+    for (const [a, f, ph] of kasus) {
+      const r = buildProgram(a, f, {});
+      expect(r, `${a}/${f}`).toMatchObject({ ok: true, program: { bacaSaja: true } });
+      if (!r.ok) continue;
+      expect(r.program.origin).toBe(ADAPTERS[a]!.origin);
+      expect(requiredData(r.program.steps).placeholder).toEqual(ph);
+      // Baca saja: tidak ada klik write/final oleh AI.
+      expect(r.program.steps.some((s) => s.op === 'click' && s.effect !== 'read')).toBe(false);
+    }
+    // Captcha matematika: tombol Cari/Cek Status khusus warga.
+    const smg = buildProgram('sidnok-semarang', 'cek_status', {});
+    expect(smg.ok && humanOnlyTargets(smg.program.steps)[0]).toEqual([
+      byRole('button', 'Cek Status'),
+      css('#cek-form button'),
+    ]);
+  });
+
+  it('probe masuk akun dan bukti dideklarasikan adapter (Telunjuk Sakti), bukan ditulis model', () => {
+    const r = buildProgram('telunjuk-sakti-wonogiri', 'ajukan', { layanan_id: 1 });
+    expect(r.ok && r.program.masuk).toEqual({
+      sudah: { kind: 'elementExists', target: [css('a[href$="/users/logout"]')] },
+      halaman: '/telunjuksakti/index.php/users/login',
+    });
+    expect(r.ok && r.program.bukti?.nomor).toEqual([
+      css('#tblPermohonan tbody tr:last-child td.no-registrasi'),
+    ]);
+    expect(r.ok && r.program.bacaSaja).toBeUndefined();
+    const samsat = buildProgram('samsat-dki', 'cek_pkb', {});
+    expect(samsat.ok && samsat.program.masuk).toBeUndefined();
+  });
+
+  it('alur berkamera (swafoto) ditolak: prasyarat di perangkat warga, urusan dipandu', () => {
+    const uji: Record<string, Adapter> = {
+      x: {
+        origin: 'https://telunjuksakti.wonogirikab.go.id',
+        flows: { swafoto: { langkah: () => [nav('/a')], kamera: true } },
+      },
+      luar: { origin: 'https://contoh.example', flows: { a: { langkah: () => [nav('/a')] } } },
+    };
+    expect(buildProgram('x', 'swafoto', {}, uji)).toMatchObject({ ok: false, code: 'PERLU_PERANGKAT_WARGA' });
+    expect(buildProgram('luar', 'a', {}, uji)).toMatchObject({
+      ok: false,
+      code: 'ADAPTER_ORIGIN_NOT_OFFICIAL',
+    });
   });
 });
