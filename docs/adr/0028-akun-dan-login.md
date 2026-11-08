@@ -1,106 +1,110 @@
-# 0028. Akun warga: email + sandi dan Google, sesi server, vault terenkripsi per akun
+# 0028. Akun warga: email + sandi dan Google, sesi server, vault terenkripsi per pemilik
 
-- **Status:** Diterima. Diimplementasikan di `packages/akun`, migrasi `packages/harness/migrations/0003_akun.sql`, dan rute `apps/web/src/routes/{api/akun,auth/google,masuk,daftar,verifikasi-email,lupa-sandi,atur-ulang-sandi,lengkapi-profil}`. Untuk akun yang masuk, ADR ini menggantikan sebagian [ADR 0007](0007-vault-pii-di-peramban.md). Mode tamu tetap mengikuti ADR 0007.
+- **Status:** Diterima (revisi v14: arsitek v13 + critic). Diimplementasikan di `packages/akun`, migrasi `packages/harness/migrations/0003_akun.sql`, rute `apps/web/src/routes/{api/akun,api/vault,auth/google,masuk,daftar,verifikasi-email,lupa-sandi,atur-ulang-sandi,lengkapi-profil,dev/oidc}`, dan penyelesai PII `apps/web/src/lib/server/pii/resolver.ts`. Untuk akun yang masuk, ADR ini menggantikan sebagian [ADR 0007](0007-vault-pii-di-peramban.md).
 - **Dicatat:** 2026-11-09
-- **Sumber keputusan:** keputusan pengguna (login Google + email/sandi, email lewat Resend, Data Diri dan dokumen ikut akun lintas perangkat)
+- **Sumber keputusan:** keputusan pengguna (login Google + email/sandi, email lewat Resend, Data Diri dan dokumen ikut akun lintas perangkat); rencana §3.26–§3.26.6; review arsitek v13 dan critic.
 
 ## Konteks dan masalah
 
-Warga memakai HP dan laptop bergantian. HP biasanya dipakai untuk memotret dokumen, laptop untuk mengisi formulir lewat ekstensi. Vault di peramban (ADR 0007) terikat ke satu perangkat, sehingga Data Diri harus diketik ulang dan dokumen difoto ulang di perangkat lain. Pengguna memutuskan bahwa Data Diri dan dokumen mengikuti akun di semua perangkat. Keputusan itu menuntut hal-hal berikut:
+Warga memakai HP dan laptop bergantian. HP biasanya dipakai memotret dokumen, laptop untuk mengisi formulir. Vault di peramban (ADR 0007) terikat ke satu perangkat. Pengguna memutuskan Data Diri dan dokumen mengikuti akun di semua perangkat. Keputusan itu menuntut:
 
 - akun dan login (email + sandi serta Google);
-- penyimpanan PII di server, karena tidak ada cara lain untuk sinkron lintas perangkat tanpa server memegang ciphertext;
-- tetap ada jalan tanpa akun bagi juri dan warga yang tidak mau mendaftar (guidebook: tanpa akses khusus).
+- penyimpanan PII di server, karena sinkron lintas perangkat tanpa server memegang ciphertext tidak mungkin;
+- jalan tanpa akun bagi juri dan warga yang tidak mau mendaftar (guidebook: tanpa akses khusus).
 
 ## Keputusan
 
-1. **Akun opsional.** Mode tamu (cookie `urusin_sid`, "Coba tanpa daftar") tetap utuh. Urusan yang dibuat tamu dicatat pemiliknya (`urusan_owner.guest_sid`) dan dipindahkan ke akun saat warga masuk dari peramban yang sama. Data Diri tamu tetap di peramban (ADR 0007). Klien mengunggahnya ke `/api/akun/data-diri` setelah masuk bila warga menyetujui.
-2. **Sandi.** argon2id lewat `crypto.argon2` bawaan Node 26 (OpenSSL 3.5). Tidak ada modul native, jadi hasilnya sama di linux/arm64, linux/amd64, dan Windows, dan tidak perlu skrip install, sesuai `--ignore-scripts` di Dockerfile. Parameter memakai minimum OWASP: m = 19 MiB, t = 2, p = 1. Hash disimpan sebagai string PHC dan di-hash ulang otomatis bila parameter naik. Kebijakan sandi: minimal 8 karakter, maksimal 128, bukan anggota daftar sandi umum, dan bukan email sendiri.
-3. **Sesi server.** Token acak 256-bit disimpan di cookie `__Host-urusin_akun` (HttpOnly, Secure, SameSite=Lax, Path=/). Server hanya menyimpan SHA-256 token itu. Sesi berakhir setelah 7 hari tidak dipakai atau 30 hari sejak login, dan keduanya bisa diatur lewat env. Setiap login menerbitkan token baru dan menghapus sesi lama yang dibawa cookie. Tersedia "keluar" dan "keluar dari semua perangkat". Ubah sandi menghapus semua sesi lain dan merotasi sesi yang sedang dipakai. Atur ulang sandi menghapus semua sesi.
-4. **Token email.** Token verifikasi berlaku 24 jam dan token atur ulang 30 menit. Server menyimpan hash-nya saja. Token dipakai sekali secara atomik (`UPDATE … RETURNING`), dan menerbitkan token baru membatalkan token lama dengan tujuan yang sama. Membuka tautan (GET) tidak memakai token, sebab pemindai tautan di kotak surat sering membukanya lebih dulu. Token baru dipakai saat warga menekan tombol (POST).
-5. **Anti-enumerasi.** Respons yang tidak boleh membocorkan apakah email terdaftar:
-   - daftar, lupa sandi, dan kirim ulang selalu menjawab 202 dengan body yang sama;
-   - masuk dengan email tak dikenal, akun Google-saja, atau sandi salah selalu menjawab 401 yang sama, dengan argon2 dummy agar waktunya setara;
-   - email dikirim tanpa ditunggu, sehingga latensi penyedia email tidak membedakan cabang;
-   - daftar dengan email yang sudah terverifikasi mengirim email "akun sudah ada" ke pemiliknya.
-6. **Batas laju dan penguncian.** Batas laju dihitung per IP dan per email (hash). Login terkunci setelah 5 kegagalan beruntun: mula-mula 30 detik, lalu berlipat dua tiap kegagalan sampai maksimal 1 jam. Penguncian juga berlaku untuk email yang tidak terdaftar, dan dibuka oleh login berhasil atau atur ulang sandi.
-7. **Google.** Alurnya Authorization Code + PKCE (S256) + state + nonce dengan scope `openid email profile`. State disimpan di cookie `__Host-urusin_oauth` dan dibandingkan dengan query, lalu baris server-nya dipakai sekali. Verifier dan nonce hanya ada di server. ID token diverifikasi dengan `jose`: tanda tangan RS256 lewat JWKS Google (cache 1 jam, diambil ulang saat kid baru muncul), lalu iss, aud, exp, iat, dan nonce. Callback-nya persis `/auth/google/callback`. Identitas baru ditautkan ke akun ber-email sama hanya bila Google menyatakan `email_verified`. Bila akun lama itu belum terverifikasi, sandi lamanya dibuang dan semua sesinya dihapus (anti pra-pembajakan). `arctic` tidak dipilih karena tidak memverifikasi ID token. `openid-client` tidak dipilih karena memerlukan discovery dan fetch global. `jose` (penulis yang sama dengan `openid-client`) cukup untuk verifikasi, dan kode pertukaran token cukup 20 baris.
-8. **Vault per akun dengan envelope encryption.**
-   - Setiap akun punya DEK acak 256-bit (AES-256-GCM). DEK disimpan terbungkus oleh KEK = HKDF-SHA256(`URUSIN_PII_KEY`, salt `urusin/vault/kek`, info `v1`). Pemisahan domain ini menjaga KEK berbeda dari kunci HMAC placeholder.
-   - Data Diri (JSON), judul dokumen, dan isi berkas dienkripsi dengan DEK. AAD mengikat ciphertext ke akun dan objeknya.
-   - Berkas disimpan di `URUSIN_VAULT_DIR/<akun>/<dokumen>.bin` (default `/data/vault`).
-   - Hapus akun berarti crypto-shred: DEK terbungkus ditimpa nol lalu dihapus, baris dan berkas dihapus, `secure_delete` aktif, dan WAL di-checkpoint (TRUNCATE).
-   - Placeholder `{{PEMOHON.NIK}}` dan aturan bahwa model tidak pernah melihat PII mentah tidak berubah, karena vault tidak pernah dirangkai ke prompt.
-9. **Email.** Antarmuka `Mailer` punya tiga implementasi:
-   - Resend lewat HTTPS API `api.resend.com`, tanpa SDK karena SDK memakai fetch global;
-   - mailer dev yang mencatat tautan ke log;
-   - mailer memori untuk tes.
+1. **Tiga jenis pemilik vault** (`users.jenis`):
+   - `akun`: email + sandi dan/atau Google;
+   - `tamu`: terikat hash cookie `urusin_sid`, dibuat **malas** (tulis vault pertama atau `/turn` pertama; menjelajah tidak membuat baris), maksimal 20 per IP per hari (`TAMU_PENUH` 429), dihapus 24 jam setelah aktivitas terakhir;
+   - `demo`: salinan terisolasi dari "Masuk sebagai juri", berisi Data Diri sintetis, berumur 24 jam.
 
-   Produksi (`NODE_ENV=production`) menolak start tanpa `RESEND_API_KEY` + `EMAIL_FROM` kecuali `AUTH_EMAIL_DEV=1`, dan juga menolak start tanpa `URUSIN_PII_KEY`.
+   Akun yang emailnya **belum terverifikasi** boleh masuk tetapi diperlakukan seperti tamu: vault tetap di perangkat (pemilik vault = tamu dari `urusin_sid`), urusan tidak dipindahkan. Hanya akun terverifikasi dan demo yang `sinkron`.
 
-10. **Egress.** Semua HTTP keluar akun (Google token/JWKS dan Resend) melewati satu fungsi yang disuntikkan, `apps/web/src/lib/server/http-keluar.ts`. Begitu `@urusin/egress` masuk main, isi fungsi itu diganti `egressFetch` dan host `oauth2.googleapis.com`, `www.googleapis.com`, `accounts.google.com`, `api.resend.com` ditambahkan ke allowlist egress.
-11. **CSRF.** Semua POST akun, baik API maupun form action, tetap melalui pemeriksaan Origin persis di `hooks.server.ts` tanpa pengecualian baru. Callback Google berupa GET.
+2. **Sandi.** argon2id lewat `crypto.argon2` Node 26 (m = 19 MiB, t = 2, p = 1; PHC; hash ulang otomatis), dibatasi semafor 2 hash serentak. Kebijakan: minimal 8 karakter (spesifikasi lead; rencana menyebut 10, lihat Konsekuensi), maksimal 128, bukan sandi umum, bukan email sendiri.
+3. **Sesi server.** Token acak 256-bit di cookie `__Host-urusin_akun` (HttpOnly, Secure, SameSite=Lax, Path=/); server hanya menyimpan SHA-256-nya. Idle 7 hari, absolut 30 hari. Setiap login menerbitkan token baru, menghapus sesi lama yang dibawa cookie, dan **memutar `urusin_sid`**. Ada keluar dan keluar dari semua perangkat. Ubah sandi merotasi sesi ini dan menghapus sesi lain; atur ulang sandi menghapus semua sesi. `auth_at` mencatat bukti kredensial terakhir (login, konfirmasi sandi, Google).
+4. **Rotasi tamu → akun atomik (§3.26.6).** Saat login, `rotasiPemilik` berjalan dalam satu transaksi: `urusan_owner` berpindah dari hash sid lama ke akun (atau ke hash sid baru untuk akun belum terverifikasi/demo), vault tamu dienkripsi ulang ke DEK akun (Data Diri digabung, nilai akun menang; berkas ditulis ulang), DEK tamu dihancurkan, dan setiap `PengikatPemilik` terdaftar (pengendali Pendamping: hash pemilik sesi) diikat ulang. Satu kegagalan membatalkan semuanya.
+5. **Token email.** Verifikasi 24 jam, atur ulang 30 menit, hanya hash disimpan, dipakai sekali secara atomik, token baru membatalkan yang lama. Membuka tautan (GET) tidak memakai token; tombol (POST) yang memakai. **Verifikasi butuh sandi yang dibuat saat mendaftar**: token menyimpan hash sandi pendaftaran itu, jadi tautan yang bocor saja tidak cukup.
+6. **Anti pra-pembajakan (§3.26.3).**
+   - Akun sandi yang belum terverifikasi tidak pernah memblokir siapa pun: daftar ulang mengirim verifikasi baru dengan sandi baru; sandi lama batal saat verifikasi.
+   - Google dengan `email_verified` pada akun sandi **belum terverifikasi** menghapus sandi dan semua sesinya; akun diberikan ke identitas Google.
+   - Akun **terverifikasi** dengan email sama **tidak** ditautkan otomatis (meski `email_verified`): callback menyimpan tiket (`oauth_link_pending`, cookie `__Host-urusin_tautkan`, 10 menit) dan meminta masuk dengan sandi; tiket hanya berlaku untuk akun yang sama. Warga yang sudah masuk boleh menautkan Google langsung (bukti = sesi).
+   - Akun belum terverifikasi dihapus setelah 24 jam.
+7. **Anti-enumerasi.** Daftar, lupa sandi, kirim ulang: 202 dengan body sama. Masuk gagal: 401 sama dengan argon2 dummy. Daftar dengan email terverifikasi mengirim "akun sudah ada" ke pemiliknya.
+8. **Batas laju dan penguncian.** Per IP dan per email (hash). Turnstile wajib setelah 3 kegagalan; kunci 15 menit setelah 5 kegagalan dalam 15 menit. Berlaku juga untuk email tak terdaftar (pesan identik).
+9. **Google.** Authorization Code + PKCE S256 + state + nonce, scope `openid email profile`. State di cookie `__Host-urusin_oauth`, dibandingkan dengan query, baris server dipakai sekali. ID token diverifikasi `jose` (JWKS, iss, aud, exp, iat, nonce). Callback persis `/auth/google/callback`; redirect URI dibangun dari `DOMAIN` runtime (`https://${DOMAIN}/auth/google/callback`) sehingga setiap set host di `deploy/hosts.json` memakai callback-nya sendiri. e2e memakai IdP OIDC tiruan (`URUSIN_OIDC_FIXTURE=1`, ditolak di produksi) dengan klien OIDC yang sama.
+10. **Vault dengan envelope encryption.**
+    - DEK acak 256-bit per pemilik (AES-256-GCM), dibungkus KEK. Data Diri, judul, dan isi berkas dienkripsi dengan DEK; AAD berversi (`v1|…`) mengikat ciphertext ke pemilik dan objeknya.
+    - Label HKDF terpisah dari `URUSIN_PII_KEY`: `urusin/kek/v1` untuk KEK dan `urusin/placeholder-hmac/v1` untuk kunci HMAC placeholder.
+    - Rotasi KEK: `URUSIN_PII_KEY_PREV` membuka DEK lama secara malas (dibungkus ulang saat dipakai) dan `pnpm kek:rotate` membungkus ulang semuanya sekaligus. Prosedur dan escrow kunci di `deploy/README.md`.
+    - Hapus akun = crypto-shred: DEK terbungkus ditimpa nol lalu dihapus, baris dan berkas dihapus, `secure_delete` aktif, WAL di-checkpoint.
+11. **Batas penyimpanan (§3.26.4).** Per pemilik 10 berkas × 9 MB (JPG/PNG/WebP/PDF); total vault global (`URUSIN_VAULT_MAX_MB`, default 2048) dan ambang isi volume host (`URUSIN_VAULT_DISK_THRESHOLD`, default 85%). Melewati batas global → 507 "Penyimpanan sedang penuh" + log `[ALERT]`. `BODY_SIZE_LIMIT` 10M. Penyapu tiap jam menghapus tamu, demo, dan akun belum terverifikasi yang lewat 24 jam.
+12. **Akses nilai vault (§3.26.1).**
+    - `GET /api/vault*` hanya untuk pemilik, dengan `Sec-Fetch-Site: same-origin`, Origin persis (bila ada), dan `Cache-Control: no-store`; dokumen pemilik lain = 404.
+    - Mengunduh dokumen di **perangkat baru** (sesi yang belum pernah mengunduh) butuh bukti kredensial ≤ 15 menit (`PERLU_MASUK_ULANG` 401 → `POST /api/akun/konfirmasi-sandi` atau masuk ulang dengan Google).
+    - **Penyelesai PII tunggal** `lib/server/pii/resolver.ts`: `izinkanIsi` menerbitkan token persetujuan sekali pakai (5 menit) yang terikat pemilik, hash daftar write (`pendamping.izinkan`), dan origin tujuan; `resolusiNilai` hanya mengembalikan field di daftar itu. Satu-satunya pemanggil sah adalah `lib/server/pendamping/**` (ditegakkan tes impor). Salinan demo hanya boleh menuju situs latihan (`NILAI_SINTETIS_DITOLAK`). Nilai tidak pernah dicatat.
+13. **"Masuk sebagai juri" (critic).** Tidak ada sandi demo yang dipublikasikan atau bisa dikunci. Tombol membuat salinan `demo` terisolasi dengan data sintetis; Turnstile wajib (produksi tanpa Turnstile gagal tertutup: `TURNSTILE_TIDAK_AKTIF`), maksimal 3 per IP per hari, dan batas global salinan aktif (`URUSIN_DEMO_AKTIF_MAKS`, default 200).
+14. **Email.** `Mailer` punya implementasi Resend (`api.resend.com`, tanpa SDK), mode `log` (tautan ke log/outbox), dan memori (tes). `URUSIN_EMAIL_MODE=resend|log`; `log` hanya di dev/CI (produksi menolak boot kecuali `CI=true`). Pengirim `URUSIN_EMAIL_FROM` (default `no-reply@urusinai.web.id`). Bila kirim gagal (kuota Resend habis, DNS belum siap): respons jujur `tertunda: true` ("Pengiriman email sedang tertunda…"), `[ALERT]` di log, tanpa fallback berbayar. Verifikasi tidak memblokir: akun tetap bisa dipakai di perangkat itu seperti tamu sampai email dipastikan.
+15. **Egress.** Semua HTTP keluar akun lewat `@urusin/egress` (`egressFetch`); allowlist runtime memuat `AUTH_HOSTS` (Google, Resend) dan `TURNSTILE_HOSTS` (`challenges.cloudflare.com`). Lint melarang fetch mentah di server.
+16. **CSRF.** Semua POST/PUT/DELETE (API dan form action) melalui pemeriksaan Origin persis di `hooks.server.ts`. Callback Google berupa GET dan dilindungi state.
 
 ## Alternatif yang dipertimbangkan
 
-- **Tetap vault di peramban saja (ADR 0007).** Ditolak karena keputusan pengguna: Data Diri dan dokumen harus ikut lintas perangkat.
-- **Enkripsi end-to-end dengan kunci dari sandi warga** (server tidak bisa membuka). Ditolak untuk sekarang. Login Google tidak memberi rahasia untuk menurunkan kunci, lupa sandi berarti data hilang, dan pengisian formulir dari laptop tetap butuh kunci di perangkat. Ini kandidat penguatan berikutnya (kunci dibungkus passkey/PRF).
-- **JWT tanpa sesi server.** Ditolak karena tidak bisa dicabut ("keluar dari semua perangkat", reset sandi) tanpa daftar hitam, padahal daftar hitam sama saja dengan sesi server.
-- **Modul native argon2 (`argon2`, `@node-rs/argon2`).** Tidak perlu karena Node 26 sudah punya `crypto.argon2`.
+- **Tetap vault di peramban saja (ADR 0007).** Ditolak karena keputusan pengguna.
+- **Enkripsi end-to-end dengan kunci dari sandi warga.** Ditolak untuk sekarang: login Google tidak memberi rahasia untuk kunci, lupa sandi berarti data hilang, dan Pendamping di server tetap butuh nilai. Kandidat penguatan (passkey/PRF).
+- **JWT tanpa sesi server.** Ditolak: tidak bisa dicabut tanpa daftar hitam.
+- **Akun demo dengan sandi di README.** Ditolak (critic): sandi publik bisa dikunci atau diubah orang lain dan datanya bercampur antarjuri.
+- **Penautan otomatis Google ke email yang sama.** Ditolak: `email_verified` dari IdP tidak membuktikan penguasaan akun Urusin yang sudah ada.
 
 ## Model ancaman
 
-| Ancaman                                      | Mitigasi                                                                                                                                                                        |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pencurian DB (salinan `urusin.db`)           | Token sesi dan token email hanya hash. Sandi argon2id. Data Diri, judul, dan berkas terenkripsi; DEK terbungkus KEK yang tidak ada di DB. **Email polos tetap terbaca**         |
-| Pencurian DB + `URUSIN_PII_KEY` (host bobol) | Vault terbuka. Risiko sisa **tinggi**: server memegang kunci. Mitigasi: kunci hanya di env container, hak akses `/data` milik user `node`, rotasi KEK (`kek_version`)           |
-| Credential stuffing / brute force            | Batas laju per IP dan per email, penguncian berlipat (maks 1 jam), daftar sandi umum, argon2id                                                                                  |
-| Enumerasi akun                               | Respons dan waktu seragam (poin 5). Diuji di `akun.test.ts` dan `service.test.ts`                                                                                               |
-| Fiksasi sesi                                 | Token hanya diterbitkan server, rotasi saat login, prefiks `__Host-` (subdomain tidak bisa menanam cookie)                                                                      |
-| CSRF / CSRF login                            | Origin persis untuk semua POST, SameSite=Lax, state OAuth dari cookie dibandingkan dengan query                                                                                 |
-| Open redirect (`next=`)                      | `amanNext()` hanya menerima path relatif tanpa `//`, backslash, skema, atau karakter kontrol. Redirect eksternal SvelteKit hanya ke origin otorisasi Google                     |
-| Token di tautan bocor                        | Sekali pakai, umur pendek, `Referrer-Policy: same-origin` dan `no-store` di halaman token, tanpa skrip pihak ketiga (CSP)                                                       |
-| Pra-pembajakan akun (daftar duluan)          | Daftar ulang email belum terverifikasi mengganti sandi dan membatalkan tautan lama. Login perlu email terverifikasi. Tautan Google membuang sandi akun yang belum terverifikasi |
-| Penguncian sebagai DoS terhadap korban       | Diterima: maksimal 1 jam per gelombang, dan atur ulang sandi membuka kunci. Dicatat sebagai risiko sisa **rendah**                                                              |
-| ID token palsu / replay                      | Tanda tangan JWKS, iss, aud, exp, nonce sekali pakai (baris state dihapus saat dipakai), PKCE                                                                                   |
-| Penyedia email membaca tautan                | Tautan hanya memberi verifikasi atau atur ulang sandi (umur pendek), tidak membuka vault tanpa login                                                                            |
+| Ancaman                                       | Mitigasi                                                                                                                                              |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pencurian DB (salinan `urusin.db`)            | Token sesi/email hanya hash, sandi argon2id, vault terenkripsi dan DEK terbungkus KEK yang tidak ada di DB. **Email polos tetap terbaca**             |
+| Pencurian DB + `URUSIN_PII_KEY` (host bobol)  | Vault terbuka. Risiko sisa **tinggi**: server memegang kunci. Mitigasi: kunci hanya di env, escrow terpisah, rotasi `kek:rotate`, label HKDF terpisah |
+| Credential stuffing / brute force             | Batas laju per IP dan email, Turnstile setelah 3 gagal, kunci 15 menit setelah 5, daftar sandi umum, argon2id dengan semafor                          |
+| Enumerasi akun                                | Respons dan waktu seragam (poin 7); e2e #45                                                                                                           |
+| Fiksasi sesi / sid                            | Token hanya dari server, rotasi token dan `urusin_sid` saat login, prefiks `__Host-`                                                                  |
+| CSRF / CSRF login                             | Origin persis untuk semua penulisan, SameSite=Lax, state OAuth cookie vs query                                                                        |
+| Pencurian nilai vault lintas situs            | `Sec-Fetch-Site: same-origin` + Origin persis + `no-store` untuk GET vault; dokumen pemilik lain 404                                                  |
+| Sesi curian mengunduh dokumen                 | Perangkat baru butuh bukti kredensial ≤ 15 menit                                                                                                      |
+| Kode server membaca PII di luar alur isi      | Penyelesai tunggal + token persetujuan terikat hash daftar write dan origin + tes impor                                                               |
+| Data sintetis terkirim ke situs pemerintah    | Pemilik demo hanya boleh menuju origin situs latihan (`NILAI_SINTETIS_DITOLAK`)                                                                       |
+| Open redirect (`next=`)                       | `amanNext()`; redirect eksternal hanya ke origin otorisasi Google                                                                                     |
+| Token di tautan bocor                         | Sekali pakai, umur pendek, `Referrer-Policy: same-origin` + `no-store`; verifikasi juga butuh sandi pendaftaran                                       |
+| Pra-pembajakan akun                           | Poin 6; e2e #48b                                                                                                                                      |
+| Penautan Google ke akun korban                | Tidak ada penautan otomatis ke akun terverifikasi; tiket + bukti sandi, terikat akun yang sama; e2e #48                                               |
+| ID token palsu / replay / intersepsi kode     | JWKS, iss, aud, exp, nonce sekali pakai, PKCE S256, state sekali pakai; e2e #48 (state/nonce salah, replay, PKCE tidak cocok)                         |
+| Penguncian sebagai DoS terhadap korban        | Diterima: maksimal 15 menit per gelombang; atur ulang sandi tetap tersedia. Risiko sisa **rendah**                                                    |
+| Pengisian disk / penyalahgunaan juri dan tamu | Tamu malas + 20/IP/hari, juri 3/IP/hari + batas global + Turnstile, 10 × 9 MB per pemilik, batas total dan ambang disk (507 jujur), penyapu 24 jam    |
+| Penyedia email membaca tautan                 | Tautan tidak membuka vault; verifikasi butuh sandi                                                                                                    |
 
 ## DPIA: perubahan (delta)
 
-- **Data baru di server:**
-  - email akun (polos, untuk login dan pengiriman email);
-  - hash sandi;
-  - metadata sesi (waktu, ringkasan peramban seperti "Chrome di Android"; UA mentah dan IP tidak disimpan);
-  - `sub` Google;
-  - Data Diri dan dokumen milik akun (terenkripsi; termasuk NIK, KK, alamat, HP, foto KTP/KK).
-- **Pemroses baru:** Resend (alamat email penerima dan isi email berisi tautan), Google (identitas OIDC, hanya bila warga memilih Google).
-- **Dasar dan tujuan:** persetujuan warga saat mendaftar. Tujuannya sinkron lintas perangkat dan mengisi formulir.
-- **Retensi:**
-  - akun belum terverifikasi dihapus setelah 7 hari;
-  - sesi, token, dan state kedaluwarsa dibersihkan tiap jam;
-  - Data Diri dan dokumen disimpan sampai warga menghapusnya atau menghapus akun (crypto-shred);
-  - cadangan DB berisi ciphertext yang tidak bisa dibuka setelah DEK dihapus.
-- **Hak subjek (UU PDP):** akses (`GET /api/akun/data-diri`, unduh dokumen), perbaikan (`PUT`), dan penghapusan (`POST /api/akun/hapus`).
-- **Yang TIDAK berubah:** model dan log tidak pernah menerima PII mentah, mode tamu tidak menyimpan PII di server, dan tabel harness tetap tanpa PII.
+- **Data baru di server:** email akun (polos), hash sandi, metadata sesi (waktu, ringkasan peramban; UA mentah dan IP tidak disimpan), hash IP asal untuk kuota tamu/demo, `sub` Google, Data Diri dan dokumen (terenkripsi; termasuk NIK, KK, alamat, HP, foto KTP/KK).
+- **Pemroses dan transfer lintas negara:**
+  - **Resend (Amerika Serikat):** alamat email penerima dan isi email berisi tautan verifikasi/atur ulang. Ini transfer data pribadi ke luar Indonesia (UU PDP Pasal 56): hanya email dan tautan, tanpa Data Diri atau dokumen; dasar = persetujuan warga saat mendaftar, disebut di halaman privasi. Warga yang tidak mau email-nya melintas batas bisa memakai Google atau mode tamu.
+  - **Oracle Cloud (Singapura):** host VPS menyimpan DB dan berkas vault terenkripsi. Kunci (`URUSIN_PII_KEY`) hanya di env host dan escrow pemilik proyek.
+  - **Google (bila warga memilih Google):** identitas OIDC.
+- **Dasar dan tujuan:** persetujuan warga saat mendaftar; tujuan sinkron lintas perangkat dan mengisi formulir.
+- **Retensi:** tamu, demo, dan akun belum terverifikasi dihapus 24 jam setelah aktivitas terakhir (penyapu tiap jam); sesi, token, state, dan tiket kedaluwarsa dibersihkan tiap jam; Data Diri dan dokumen sampai warga menghapusnya atau menghapus akun (crypto-shred); cadangan DB berisi ciphertext yang tidak bisa dibuka setelah DEK dihapus.
+- **Hak subjek (UU PDP):** akses (`GET /api/vault/data-diri`, `GET /api/vault/:id`), perbaikan (`PUT /api/vault/data-diri`), penghapusan (`DELETE /api/vault/:id`, `POST /api/akun/hapus`).
+- **Yang TIDAK berubah:** model dan log tidak pernah menerima PII mentah; tabel harness tetap tanpa PII.
 
 ## Teks yang harus diubah (README dan halaman privasi)
 
-Klaim lama "server tidak menyimpan PII" tidak lagi benar untuk akun. Teks yang wajib diganti sebelum demo:
-
-1. README §5 Arsitektur, poin "nilai asli diisi dari vault di sisi eksekutor": tambahkan "vault ada di peramban (tamu) atau di server terenkripsi per akun (bila warga masuk)".
-2. README "Keamanan & Privasi": tambahkan login (argon2id, sesi `__Host-`, Google OIDC), vault server terenkripsi (AES-256-GCM, DEK per akun, crypto-shred), dan bahwa threat model + DPIA ada di ADR 0028.
-3. README §3 Fitur: tambahkan akun opsional serta Data Diri dan dokumen yang ikut lintas perangkat.
-4. Halaman `/privasi` (milik Rafi) dan `docs/arsitektur.md` (alur data PII):
-   - ganti "Data pribadi Anda hanya tersimpan di perangkat Anda" dengan dua mode: **tanpa akun**, data hanya di perangkat; **dengan akun**, data disimpan terenkripsi di server Urusin agar bisa dipakai di HP dan laptop, dan dihapus permanen saat akun dihapus;
-   - sebut pemroses Resend (email) dan Google (bila memilih masuk dengan Google);
-   - sebut bahwa model AI tetap tidak pernah melihat NIK, KK, HP, atau email;
-   - sebut retensi: akun belum dipastikan dihapus setelah 7 hari.
-5. Lencana beranda "Data di perangkat ini" (README UI §4 layar ★1): tampilkan "Data di akun Anda (terenkripsi)" saat warga masuk.
-6. `SECURITY.md`: tambahkan cakupan akun (sesi, token email, vault server) ke ruang lingkup laporan.
+1. README §5 Arsitektur: vault ada di perangkat (tamu) atau di server terenkripsi per akun.
+2. README "Keamanan & Privasi": login (argon2id, sesi `__Host-`, Google OIDC), vault server terenkripsi (AES-256-GCM, DEK per pemilik, crypto-shred), rujukan ke ADR ini.
+3. README §3 Fitur: akun opsional; Data Diri dan dokumen ikut lintas perangkat.
+4. Halaman `/privasi` (milik Rafi) dan `docs/arsitektur.md`: dua mode (tanpa akun / dengan akun), pemroses Resend (AS) dan Google, penyimpanan Oracle Singapura, retensi 24 jam untuk akun belum dipastikan, model AI tidak pernah melihat NIK/KK/HP/email.
+5. Lencana beranda: "Data di akun Anda (terenkripsi)" saat akun `sinkron`; selain itu "Data di perangkat ini".
+6. `SECURITY.md`: cakupan akun (sesi, token email, vault server).
 
 ## Konsekuensi
 
-- Server kini memegang ciphertext PII sekaligus kuncinya. Ini harga sinkron lintas perangkat dan diungkap di sini, bukan disembunyikan.
-- `URUSIN_PII_KEY` menjadi rahasia paling kritis. Kehilangannya berarti semua vault akun tidak bisa dibuka, dan kebocorannya bersama DB membuka vault. Rotasi lewat `kek_version`, yaitu bungkus ulang DEK tanpa mengenkripsi ulang data, belum punya skrip.
-- Deploy produksi wajib menyetel `RESEND_API_KEY`, `EMAIL_FROM` (atau `AUTH_EMAIL_DEV=1`), dan `URUSIN_PII_KEY`. Untuk Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, dan redirect URI `https://<domain>/auth/google/callback`.
-- Batas laju dan penguncian disimpan di memori proses dan di DB. Deploy blue/green berbagi DB, jadi penguncian ikut, tetapi batas laju per instance tidak.
+- Server memegang ciphertext PII sekaligus kuncinya. Ini harga sinkron lintas perangkat dan diungkap di sini.
+- `URUSIN_PII_KEY` menjadi rahasia paling kritis: kehilangan = semua vault hilang (escrow wajib), bocor bersama DB = vault terbuka (rotasi `kek:rotate`). Kunci HMAC placeholder kini diturunkan lewat HKDF, sehingga nilai HMAC placeholder berbeda dari versi sebelum ADR ini; pemetaan placeholder yang dibuat sebelumnya tidak cocok lagi (belum ada data produksi).
+- Deploy produksi wajib: `RESEND_API_KEY` (atau CI dengan `URUSIN_EMAIL_MODE=log`), `URUSIN_PII_KEY`, Turnstile (`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`) untuk tombol juri, dan untuk Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, plus redirect URI untuk **setiap** set host di `deploy/hosts.json`.
+- Panjang minimal sandi 8 (spesifikasi lead) berbeda dari rencana (10 + daftar 10 ribu sandi bocor); keputusan akhir di lead.
+- Batas laju disimpan di memori proses; penguncian dan kuota tamu/demo di DB (ikut lintas blue/green).
+- Pendamping belum ada di kode: penyelesai PII dan kait `PengikatPemilik` sudah siap dipakai pengendalinya.
