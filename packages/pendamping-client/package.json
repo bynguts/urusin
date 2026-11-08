@@ -1,0 +1,30 @@
+{
+  "name": "@urusin/pendamping-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Klien penampil Browser Pendamping tanpa framework: frame ke canvas, input sentuh/mouse/keyboard/IME, sambung ulang",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@urusin/contracts": "workspace:*",
+    "@vitest/coverage-v8": "5.1.0",
+    "vitest": "5.1.0"
+  }
+}
