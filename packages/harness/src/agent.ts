@@ -557,6 +557,7 @@ class TurnRunner {
           type: 'gate',
           jenis: outcome.rule === 'FINAL_REQUIRES_CITIZEN' ? 'final' : 'konfirmasi',
           pesan: outcome.message,
+          ...(outcome.paramsHash ? { tool: name, paramsHash: outcome.paramsHash } : {}),
         });
       }
       return {

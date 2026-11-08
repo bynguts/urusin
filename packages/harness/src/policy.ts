@@ -23,7 +23,7 @@ export type GateOutcome =
       paramsHash?: string;
       confirmationId?: string;
     }
-  | { allow: false; rule: GateRule; message: string; toolKnown: boolean };
+  | { allow: false; rule: GateRule; message: string; toolKnown: boolean; paramsHash?: string };
 
 const deny = (rule: GateRule, message: string, toolKnown = true): GateOutcome => ({
   allow: false,
@@ -76,7 +76,10 @@ export class PolicyGate {
     let hash: string | undefined;
     if (tool.effect === 'write') {
       if (typeof confirmationId !== 'string' || confirmationId.length === 0) {
-        return deny('CONFIRMATION_REQUIRED', 'tindakan ini membutuhkan konfirmasi warga terlebih dahulu');
+        return {
+          ...deny('CONFIRMATION_REQUIRED', 'tindakan ini membutuhkan konfirmasi warga terlebih dahulu'),
+          paramsHash: paramsHash(tool.name, cleanArgs),
+        };
       }
       const conf = this.store.getConfirmation(confirmationId);
       if (!conf || conf.urusanId !== input.urusan.id || conf.tool !== tool.name || conf.usedAt) {

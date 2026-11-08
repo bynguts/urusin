@@ -10,7 +10,7 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ params, url }) => {
   try {
     const rt = await getRuntime();
-    if (!rt.store.getUrusan(params.id)) return apiError(404, 'NOT_FOUND', 'urusan tidak ditemukan');
+    if (!rt.store.getUrusan(params.id)) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
     return apiJson(jejakView(rt.store, params.id, url.searchParams.get('head') ?? undefined));
   } catch (e) {
     return errorResponse(e);

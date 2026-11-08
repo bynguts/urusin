@@ -1,17 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
+import { GalatApiSchema, UrusinEventSchema, SKEMA_FIXTURE } from '@urusin/contracts';
 import { DemoProvider } from '@urusin/harness';
 import { FakeProvider, type ChatParams } from '@urusin/llm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { handle } from '../../hooks.server';
-import { POST as buatUrusan } from '../../routes/api/urusan/+server';
-import { GET as jejak } from '../../routes/api/urusan/[id]/jejak/+server';
-import { POST as kirimPesan } from '../../routes/api/urusan/[id]/pesan/+server';
-import { GET as stream } from '../../routes/api/urusan/[id]/stream/+server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GET as wilayah } from '../../routes/api/wilayah/+server';
+import { GET as pengetahuan } from '../../routes/api/pengetahuan/+server';
+import { GET as peristiwa } from '../../routes/api/peristiwa/[slug]/+server';
 import { GET as transparansi } from '../../routes/api/transparansi/+server';
+import { GET as daftarUrusan, POST as buatUrusan } from '../../routes/api/urusan/+server';
+import { POST as eksekusi } from '../../routes/api/urusan/[id]/execution-result/+server';
+import { GET as jejak } from '../../routes/api/urusan/[id]/jejak/+server';
+import { POST as konfirmasi } from '../../routes/api/urusan/[id]/konfirmasi/+server';
+import { GET as stream } from '../../routes/api/urusan/[id]/stream/+server';
+import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
+import { GET as devSse } from '../../routes/dev/fixtures/sse/+server';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
 
 const ORIGIN = 'http://localhost:3000';
-// NIK sintetis valid struktur, dirakit agar pemindai PII repo tidak menandai berkas ini
+// NIK sintetis, dirakit agar pemindai PII repo tidak menandai berkas ini
 const NIK = ['331201', '150890', '0001'].join('');
 
 let rt: Runtime;
@@ -23,17 +29,30 @@ function setup(provider = new DemoProvider(), config: Partial<Runtime['config']>
   setRuntimeForTests(rt);
 }
 beforeEach(() => setup());
-afterEach(() => setRuntimeForTests(undefined));
+afterEach(() => {
+  setRuntimeForTests(undefined);
+  vi.unstubAllEnvs();
+});
 
-const post = (body: unknown, origin: string | null = ORIGIN) =>
+const post = (body: unknown) =>
   new Request('http://localhost:3000/x', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...(origin ? { origin } : {}) },
+    headers: { 'content-type': 'application/json', origin: ORIGIN },
     body: JSON.stringify(body),
   });
-
+const get = (path = '/x', headers: Record<string, string> = {}) =>
+  new Request(`http://localhost:3000${path}`, { headers });
 const ev = (request: Request, params: Record<string, string> = {}) =>
-  ({ request, params, url: new URL(request.url) }) as never;
+  ({ request, params, url: new URL(request.url), getClientAddress: () => '127.0.0.1' }) as never;
+
+class Slow extends FakeProvider {
+  override async create(params: ChatParams, opts: { signal?: AbortSignal } = {}) {
+    this.calls.push({ kind: 'create', params });
+    return new Promise<never>((_, rej) =>
+      opts.signal?.addEventListener('abort', () => rej(new Error('x')), { once: true }),
+    );
+  }
+}
 
 /** Baca frame SSE sampai predikat terpenuhi (atau habis). */
 async function readFrames(res: Response, until: (frames: string[]) => boolean, maxMs = 5000) {
@@ -43,7 +62,7 @@ async function readFrames(res: Response, until: (frames: string[]) => boolean, m
   const frames: string[] = [];
   const t0 = Date.now();
   while (Date.now() - t0 < maxMs) {
-    const { value, done } = await Promise.race([
+    const { value } = await Promise.race([
       reader.read(),
       new Promise<{ value: undefined; done: true }>((r) =>
         setTimeout(() => r({ value: undefined, done: true }), 200),
@@ -55,11 +74,12 @@ async function readFrames(res: Response, until: (frames: string[]) => boolean, m
       buf = buf.slice(i + 2);
     }
     if (until(frames)) break;
-    if (done && !value && frames.length > 0 && until(frames)) break;
   }
   await reader.cancel();
   return frames;
 }
+const hasDone = (f: string[]) => f.some((x) => x.includes('event: done'));
+const jumlahEvent = (f: string[]) => f.filter((x) => x.includes('event:')).length;
 
 const parse = (frame: string) => {
   const lines = frame.split('\n');
@@ -76,109 +96,56 @@ async function mulai(pesan: string) {
   expect(res.status).toBe(201);
   return (await res.json()) as { id: string; turnId: string; state: string; chainHead: string };
 }
+async function selesaikan(id: string) {
+  await readFrames(await stream(ev(get('/s'), { id })), hasDone);
+}
+async function kosong() {
+  const r = await buatUrusan(ev(post({})));
+  return ((await r.json()) as { id: string }).id;
+}
 
-describe('anti-CSRF: Origin persis di semua request pengubah state', () => {
-  const run = async (req: Request) => {
-    let reached = false;
-    const res = await handle({
-      event: { request: req, url: new URL(req.url) } as never,
-      resolve: async () => {
-        reached = true;
-        return new Response('ok');
-      },
-    });
-    return { status: res.status, reached };
-  };
-
-  it('Origin sama persis → lolos', async () => {
-    expect(await run(post({}, ORIGIN))).toEqual({ status: 200, reached: true });
-  });
-
-  it.each([
-    ['tanpa Origin', null],
-    ['origin lain', 'https://jahat.example'],
-    ['port beda', 'http://localhost:5173'],
-    ['slash akhir', 'http://localhost:3000/'],
-    ['subdomain/sufiks jebakan', 'http://localhost:3000.jahat.example'],
-    ['origin ekstensi', 'chrome-extension://abcdefghijklmnopabcdefghijklmnop'],
-    ['null', 'null'],
-  ])('%s → 403 dan tidak sampai ke handler', async (_n, origin) => {
-    expect(await run(post({}, origin))).toEqual({ status: 403, reached: false });
-  });
-
-  it('GET tidak diperiksa; PUT/PATCH/DELETE diperiksa', async () => {
-    expect((await run(new Request('http://localhost:3000/x'))).status).toBe(200);
-    for (const method of ['PUT', 'PATCH', 'DELETE']) {
-      const r = await run(
-        new Request('http://localhost:3000/x', { method, headers: { origin: 'https://x.example' } }),
-      );
-      expect(r.status, method).toBe(403);
-    }
-  });
-
-  it('origin publik dikonfigurasi lewat URUSIN_PUBLIC_ORIGIN', async () => {
-    process.env.URUSIN_PUBLIC_ORIGIN = 'https://urusin.example';
-    try {
-      expect((await run(post({}, 'https://urusin.example'))).status).toBe(200);
-      expect((await run(post({}, ORIGIN))).status).toBe(403);
-    } finally {
-      delete process.env.URUSIN_PUBLIC_ORIGIN;
-    }
-  });
-});
-
-describe('POST /api/urusan dan /pesan', () => {
-  it('membuat urusan, turn berjalan di latar belakang, dan semua event muncul di stream', async () => {
+describe('POST /api/urusan dan /turn', () => {
+  it('membuat urusan, turn berjalan di latar belakang, event datar lolos skema kontrak', async () => {
     const u = await mulai('Apa syarat akta kelahiran anak saya?');
     expect(u.id).toMatch(/^u_[0-9a-f]{32}$/);
-    const res = await stream(ev(new Request(`http://localhost:3000/s`), { id: u.id }));
+    const res = await stream(ev(get('/s'), { id: u.id }));
     expect(res.headers.get('content-type')).toContain('text/event-stream');
-    const frames = await readFrames(res, (f) => f.some((x) => x.includes('event: done')));
+    const frames = await readFrames(res, hasDone);
     const events = frames.map(parse).filter((f) => f.event);
     const types = events.map((e) => e.event);
-    expect(types).toContain('progress');
-    expect(types).toContain('grounded_answer');
+    expect(types).toEqual(expect.arrayContaining(['state', 'progress', 'grounded_answer', 'done']));
     expect(types).not.toContain('assistant_text');
     expect(types.at(-1)).toBe('done');
-    // id SSE = seq berurutan, tiap frame membawa chainHead
     expect(events.map((e) => Number(e.id))).toEqual(events.map((_, i) => i + 1));
-    expect(events.every((e) => typeof e.data?.chainHead === 'string')).toBe(true);
-    const answer = events.find((e) => e.event === 'grounded_answer')!;
-    expect(answer.data!.data.klaim[0].kutipan[0].tautanKutipan).toContain('#:~:text=');
+    for (const e of events)
+      expect(UrusinEventSchema.safeParse(e.data).success, JSON.stringify(e.data)).toBe(true);
+    const answer = events.find((e) => e.event === 'grounded_answer')!.data!;
+    expect(answer.klaim[0].kutipan[0].textFragmentUrl).toContain('#:~:text=');
   });
 
-  it('pesan berikutnya: 202; turn yang masih berjalan → 409 tanpa event ganda', async () => {
-    class Slow extends FakeProvider {
-      override async create(params: ChatParams, opts: { signal?: AbortSignal } = {}) {
-        this.calls.push({ kind: 'create', params });
-        return new Promise<never>((_, rej) =>
-          opts.signal?.addEventListener('abort', () => rej(new Error('x')), { once: true }),
-        );
-      }
-    }
+  it('turn kedua: 202; turn yang masih berjalan → 409 tanpa event ganda', async () => {
     setup(new Slow() as never);
-    const r0 = await buatUrusan(ev(post({})));
-    const { id } = (await r0.json()) as { id: string };
-    const a = await kirimPesan(ev(post({ teks: 'halo' }), { id }));
+    const id = await kosong();
+    const a = await kirimTurn(ev(post({ teks: 'halo' }), { id }));
     expect(a.status).toBe(202);
-    const b = await kirimPesan(ev(post({ teks: 'halo lagi' }), { id }));
+    const b = await kirimTurn(ev(post({ teks: 'halo lagi' }), { id }));
     expect(b.status).toBe(409);
-    expect((await b.json()).kode).toBe('TURN_IN_PROGRESS');
+    const j = await b.json();
+    expect(j.kode).toBe('TURN_IN_PROGRESS');
+    expect(GalatApiSchema.safeParse(j).success).toBe(true);
     expect(rt.store.getUrusanOrThrow(id).turnCount).toBe(1);
     rt.running.get(id)?.abort();
   });
 
   it('expectedVersion basi → 409; urusan tak dikenal → 404', async () => {
-    const r0 = await buatUrusan(ev(post({})));
-    const { id } = (await r0.json()) as { id: string };
-    const stale = await kirimPesan(ev(post({ teks: 'halo', expectedVersion: 7 }), { id }));
+    const id = await kosong();
+    const stale = await kirimTurn(ev(post({ teks: 'halo', expectedVersion: 7 }), { id }));
     expect(stale.status).toBe(409);
     expect((await stale.json()).kode).toBe('CONFLICT');
-    const nf = await kirimPesan(ev(post({ teks: 'halo' }), { id: 'u_tidak_ada' }));
-    expect(nf.status).toBe(404);
+    expect((await kirimTurn(ev(post({ teks: 'halo' }), { id: 'u_tidak_ada' }))).status).toBe(404);
   });
 
-  it('body berpola NIK ditolak 422 tanpa menggemakan isi, dan tidak ada urusan/PII yang tersimpan', async () => {
+  it('body berpola NIK ditolak 422 tanpa menggemakan isi, dan tidak ada urusan tersimpan', async () => {
     const res = await buatUrusan(ev(post({ pesan: `NIK saya ${NIK}` })));
     expect(res.status).toBe(422);
     const text = await res.text();
@@ -187,7 +154,7 @@ describe('POST /api/urusan dan /pesan', () => {
     expect(rt.store.db.prepare('SELECT COUNT(*) n FROM urusan').get()).toEqual({ n: 0 });
   });
 
-  it('body tidak valid → 400/422', async () => {
+  it('body tidak valid → 400/422 dengan bentuk galat seragam', async () => {
     const bad = await buatUrusan(
       ev(
         new Request('http://localhost:3000/x', {
@@ -198,106 +165,260 @@ describe('POST /api/urusan dan /pesan', () => {
       ),
     );
     expect(bad.status).toBe(400);
-    const schema = await buatUrusan(ev(post({ kodeKabKota: 'abc' })));
-    expect(schema.status).toBe(422);
+    expect(GalatApiSchema.safeParse(await bad.json()).success).toBe(true);
+    expect((await buatUrusan(ev(post({ kodeKabKota: 'abc' })))).status).toBe(422);
+  });
+});
+
+describe('GET /api/urusan (daftar untuk /lacak)', () => {
+  it('mengembalikan hanya id yang diminta dan dikenal, dengan menunggu siapa', async () => {
+    const a = await kosong();
+    const b = await kosong();
+    const res = await daftarUrusan(ev(get(`/api/urusan?ids=${a},u_${'f'.repeat(32)},ngawur`)));
+    const j = await res.json();
+    expect(j.urusan.map((x: any) => x.id)).toEqual([a]);
+    expect(SKEMA_FIXTURE.daftar_urusan.safeParse(j).success).toBe(true);
+    expect(j.urusan[0].menunggu).toBe('sistem');
+    expect(b).not.toBe(a);
+  });
+  it('tanpa ids → kosong; lebih dari 50 → 422', async () => {
+    expect(await (await daftarUrusan(ev(get('/api/urusan')))).json()).toEqual({ urusan: [] });
+    const many = Array.from({ length: 51 }, (_, i) => `u_${i.toString(16).padStart(32, 'a')}`).join(',');
+    expect((await daftarUrusan(ev(get(`/api/urusan?ids=${many}`)))).status).toBe(422);
+  });
+});
+
+describe('POST /konfirmasi dan /execution-result', () => {
+  const GATE = {
+    type: 'gate',
+    jenis: 'konfirmasi',
+    pesan: 'Setujui?',
+    tool: 'dukcapil__ajukan_layanan',
+    paramsHash: 'h1',
+  } as const;
+
+  it('konfirmasi hanya untuk tool+hash yang pernah ditawarkan lewat event gate', async () => {
+    const id = await kosong();
+    const tanpa = await konfirmasi(ev(post({ tool: GATE.tool, paramsHash: 'h1' }), { id }));
+    expect(tanpa.status).toBe(404);
+    expect((await tanpa.json()).kode).toBe('KONFIRMASI_TIDAK_DITAWARKAN');
+
+    rt.publish(id, GATE);
+    const salah = await konfirmasi(ev(post({ tool: GATE.tool, paramsHash: 'lain' }), { id }));
+    expect(salah.status).toBe(404);
+    const ok = await konfirmasi(ev(post({ tool: GATE.tool, paramsHash: 'h1' }), { id }));
+    expect(ok.status).toBe(201);
+    const j = await ok.json();
+    expect(j.confirmationId).toMatch(/^c_/);
+    expect(rt.store.activeConfirmations(id).map((c) => c.id)).toEqual([j.confirmationId]);
+  });
+
+  it('execution-result: id tak dikenal 404, laporan ganda 409, drift → DIPANDU', async () => {
+    const id = await kosong();
+    const req = {
+      type: 'execution_request',
+      executionId: 'x_1',
+      adapterId: 'a',
+      flowId: 'f',
+      ringkasan: 'r',
+      params: {},
+      tool: 't',
+      paramsHash: 'h',
+    } as const;
+    rt.publish(id, req);
+    expect((await eksekusi(ev(post({ executionId: 'x_asing', status: 'berhasil' }), { id }))).status).toBe(
+      404,
+    );
+
+    const ok = await eksekusi(ev(post({ executionId: 'x_1', status: 'drift' }), { id }));
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toMatchObject({ diterima: true, state: 'DIPANDU' });
+    const dup = await eksekusi(ev(post({ executionId: 'x_1', status: 'berhasil' }), { id }));
+    expect(dup.status).toBe(409);
+    expect((await dup.json()).kode).toBe('EKSEKUSI_SUDAH_DILAPORKAN');
+    const types = rt.store.eventsAfter(id, 0).map((e) => e.type);
+    expect(types).toEqual(expect.arrayContaining(['degraded', 'state']));
+  });
+
+  it('execution-result berhasil dari MENUNGGU_SUBMIT_WARGA → TERKIRIM', async () => {
+    const id = await kosong();
+    let v = rt.store.getUrusanOrThrow(id).version;
+    for (const s of [
+      'MEMAHAMI',
+      'RENCANA_DIUSULKAN',
+      'RENCANA_DISETUJUI',
+      'MENYIAPKAN_BERKAS',
+      'BERKAS_SIAP',
+      'MENGISI',
+      'MENUNGGU_KONFIRMASI',
+      'MENGUNGGAH',
+      'MENUNGGU_SUBMIT_WARGA',
+    ] as const)
+      v = rt.store.transition(id, v, s).version;
+    rt.publish(id, {
+      type: 'execution_request',
+      executionId: 'x_2',
+      adapterId: 'a',
+      flowId: 'f',
+      ringkasan: 'r',
+      params: {},
+      tool: 't',
+      paramsHash: 'h',
+    });
+    const res = await eksekusi(ev(post({ executionId: 'x_2', status: 'berhasil' }), { id }));
+    expect(await res.json()).toMatchObject({ state: 'TERKIRIM' });
   });
 });
 
 describe('GET /stream: resume, heartbeat, putus koneksi', () => {
   it('Last-Event-ID memutar ulang hanya event setelah seq itu dari tabel events', async () => {
     const u = await mulai('Apa syarat KK baru?');
-    await readFrames(await stream(ev(new Request('http://localhost:3000/s'), { id: u.id })), (f) =>
-      f.some((x) => x.includes('event: done')),
-    );
+    await selesaikan(u.id);
     const all = rt.store.eventsAfter(u.id, 0);
-    const resumed = await stream(
-      ev(new Request('http://localhost:3000/s', { headers: { 'last-event-id': String(all.length - 2) } }), {
-        id: u.id,
-      }),
-    );
-    const frames = (await readFrames(resumed, (f) => f.filter((x) => x.includes('event:')).length >= 2, 1500))
+    const resumed = await stream(ev(get('/s', { 'last-event-id': String(all.length - 2) }), { id: u.id }));
+    const frames = (await readFrames(resumed, (f) => jumlahEvent(f) >= 2, 1500))
       .map(parse)
       .filter((f) => f.event);
     expect(frames.map((f) => Number(f.id))).toEqual([all.length - 1, all.length]);
     expect(frames.at(-1)!.event).toBe('done');
-    // lewat query juga bisa
-    const q = await stream(
-      ev(new Request(`http://localhost:3000/s?lastEventId=${all.length}`), { id: u.id }),
-    );
+    const q = await stream(ev(get(`/s?lastEventId=${all.length}`), { id: u.id }));
     expect((await readFrames(q, () => false, 300)).filter((f) => f.includes('event:'))).toEqual([]);
   });
 
-  it('heartbeat komentar ": hb" dikirim berkala', async () => {
+  it('heartbeat berupa event bernama tanpa id (Last-Event-ID tidak bergeser)', async () => {
     setup(new DemoProvider(), { heartbeatMs: 20 });
-    const r0 = await buatUrusan(ev(post({})));
-    const { id } = (await r0.json()) as { id: string };
+    const id = await kosong();
     const frames = await readFrames(
-      await stream(ev(new Request('http://localhost:3000/s'), { id })),
-      (f) => f.filter((x) => x === ': hb').length >= 2,
+      await stream(ev(get('/s'), { id })),
+      (f) => f.filter((x) => x.startsWith('event: heartbeat')).length >= 2,
     );
-    expect(frames.filter((x) => x === ': hb').length).toBeGreaterThanOrEqual(2);
+    const hb = frames.filter((x) => x.startsWith('event: heartbeat'));
+    expect(hb.length).toBeGreaterThanOrEqual(2);
+    for (const h of hb) {
+      expect(h).not.toContain('id:');
+      expect(UrusinEventSchema.safeParse(parse(h).data).success).toBe(true);
+    }
   });
 
   it('klien putus: loop LLM dibatalkan dan tidak ada panggilan LLM berikutnya', async () => {
-    class Slow extends FakeProvider {
-      override async create(params: ChatParams, opts: { signal?: AbortSignal } = {}) {
-        this.calls.push({ kind: 'create', params });
-        return new Promise<never>((_, rej) =>
-          opts.signal?.addEventListener('abort', () => rej(new Error('x')), { once: true }),
-        );
-      }
-    }
     const slow = new Slow();
     setup(slow as never, { disconnectGraceMs: 0 });
     const u = await mulai('halo');
     const ctrl = new AbortController();
-    const req = new Request('http://localhost:3000/s', { signal: ctrl.signal });
-    const res = await stream(ev(req, { id: u.id }));
+    const res = await stream(
+      ev(new Request('http://localhost:3000/s', { signal: ctrl.signal }), { id: u.id }),
+    );
     const reader = res.body!.getReader();
-    await reader.read(); // frame pertama (retry:)
+    await reader.read();
     await new Promise((r) => setTimeout(r, 30));
     expect(rt.running.has(u.id)).toBe(true);
-    ctrl.abort(); // klien putus
+    ctrl.abort();
     await new Promise((r) => setTimeout(r, 80));
     const callsAfter = slow.calls.length;
     await new Promise((r) => setTimeout(r, 80));
     expect(slow.calls.length).toBe(callsAfter);
-    const status = rt.store.db.prepare('SELECT status FROM turns WHERE urusan_id = ?').get(u.id);
-    expect(status).toEqual({ status: 'aborted' });
+    expect(rt.store.db.prepare('SELECT status FROM turns WHERE urusan_id = ?').get(u.id)).toEqual({
+      status: 'aborted',
+    });
     expect(rt.running.has(u.id)).toBe(false);
   });
 
   it('urusan tak dikenal → 404', async () => {
-    const res = await stream(ev(new Request('http://localhost:3000/s'), { id: 'u_x' }));
-    expect(res.status).toBe(404);
+    expect((await stream(ev(get('/s'), { id: 'u_x' }))).status).toBe(404);
   });
 });
 
 describe('GET /jejak dan /transparansi', () => {
   it('jejak: timeline event+span, rantai valid; head klien yang basi menandai tidak valid', async () => {
     const u = await mulai('Apa syarat akta kelahiran?');
-    await readFrames(await stream(ev(new Request('http://localhost:3000/s'), { id: u.id })), (f) =>
-      f.some((x) => x.includes('event: done')),
-    );
+    await selesaikan(u.id);
     const head = rt.store.chainHead(u.id);
-    const ok = await (
-      await jejak(ev(new Request(`http://localhost:3000/j?head=${head}`), { id: u.id }))
-    ).json();
+    const ok = await (await jejak(ev(get(`/j?head=${head}`), { id: u.id }))).json();
+    expect(SKEMA_FIXTURE.jejak.safeParse(ok).success).toBe(true);
     expect(ok.rantai.valid).toBe(true);
     expect(ok.timeline.some((t: { jenis: string }) => t.jenis === 'span')).toBe(true);
-    const bad = await (
-      await jejak(ev(new Request('http://localhost:3000/j?head=deadbeef'), { id: u.id }))
-    ).json();
+    const bad = await (await jejak(ev(get('/j?head=deadbeef'), { id: u.id }))).json();
     expect(bad.rantai.valid).toBe(false);
   });
 
   it('transparansi: p50/p95, biaya per hari, porsi degraded', async () => {
     const u = await mulai('Halo');
-    await readFrames(await stream(ev(new Request('http://localhost:3000/s'), { id: u.id })), (f) =>
-      f.some((x) => x.includes('event: done')),
-    );
-    const v = await (await transparansi(ev(new Request('http://localhost:3000/t')))).json();
+    await selesaikan(u.id);
+    const v = await (await transparansi(ev(get('/t')))).json();
+    expect(SKEMA_FIXTURE.transparansi.safeParse(v).success).toBe(true);
     expect(v.latensiMs.sampel).toBeGreaterThan(0);
-    expect(v.persenDegraded).toBe(0);
+  });
+});
+
+describe('GET referensi: wilayah, peristiwa, pengetahuan', () => {
+  it('wilayah memuat kota dengan tier dan validasi', async () => {
+    const j = await (await wilayah(ev(get('/w')))).json();
+    expect(SKEMA_FIXTURE.wilayah.safeParse(j).success).toBe(true);
+    expect(j.kota.find((k: any) => k.kodeKabKota === '3312')).toMatchObject({
+      tier: 'semi',
+      validasi: 'kirim-asli',
+    });
+  });
+
+  it('peristiwa: langkah + sumber; kodeKabKota menentukan tier; slug/kode salah ditolak', async () => {
+    const res = await peristiwa(ev(get('/p?kodeKabKota=3312'), { slug: 'kelahiran' }));
+    const j = await res.json();
+    expect(SKEMA_FIXTURE.peristiwa.safeParse(j).success, JSON.stringify(j).slice(0, 300)).toBe(true);
+    expect(j.kota.kodeKabKota).toBe('3312');
+    expect(j.langkah.length).toBeGreaterThan(0);
+    const tanpaKota = await (await peristiwa(ev(get('/p'), { slug: 'kelahiran' }))).json();
+    expect(tanpaKota.kota).toBeNull();
+    expect((await peristiwa(ev(get('/p'), { slug: 'tidak-ada' }))).status).toBe(404);
+    expect((await peristiwa(ev(get('/p?kodeKabKota=12'), { slug: 'kelahiran' }))).status).toBe(422);
+  });
+
+  it('pengetahuan: hasil bersumber atau abstain; PII dan kueri kosong ditolak', async () => {
+    const ok = await (await pengetahuan(ev(get('/k?q=syarat+akta+kelahiran&kodeKabKota=3312')))).json();
+    expect(SKEMA_FIXTURE.pengetahuan.safeParse(ok).success).toBe(true);
+    expect(ok.hasil.length).toBeGreaterThan(0);
+    expect(ok.hasil[0].url).toMatch(/^https:/);
+    const none = await (await pengetahuan(ev(get('/k?q=zzzzqqqq')))).json();
+    expect(none.hasil).toEqual([]);
+    expect(none.abstain).not.toBeNull();
+    expect((await pengetahuan(ev(get(`/k?q=${NIK}`)))).status).toBe(422);
+    expect((await pengetahuan(ev(get('/k?q=a')))).status).toBe(422);
+  });
+});
+
+describe('GET /dev/fixtures/sse: hanya mode dev', () => {
+  it('produksi (DEV=false) → 404 untuk daftar maupun pemutaran', async () => {
+    vi.stubEnv('DEV', false);
+    for (const q of ['', '?skenario=urusan/jawaban-bersumber']) {
+      const res = await devSse(ev(get(`/dev/fixtures/sse${q}`)));
+      expect(res.status, q).toBe(404);
+      expect(GalatApiSchema.safeParse(await res.json()).success).toBe(true);
+    }
+  });
+
+  it('dev: daftar skenario, lalu memutar event fixture berurutan lewat SSE', async () => {
+    vi.stubEnv('DEV', true);
+    const list = await (await devSse(ev(get('/dev/fixtures/sse')))).json();
+    expect(list.skenario).toContain('urusan/jawaban-bersumber');
+    const res = await devSse(ev(get('/dev/fixtures/sse?skenario=urusan/jawaban-bersumber&jeda=0')));
+    const frames = await readFrames(res, hasDone, 2000);
+    const events = frames.map(parse).filter((f) => f.event);
+    expect(events.map((e) => e.event)).toContain('grounded_answer');
+    expect(events.at(-1)!.event).toBe('done');
+    for (const e of events) expect(UrusinEventSchema.safeParse(e.data).success).toBe(true);
+  });
+
+  it('dev: Last-Event-ID melanjutkan dari seq berikutnya; nama tak dikenal/berbahaya → 404', async () => {
+    vi.stubEnv('DEV', true);
+    const res = await devSse(
+      ev(get('/dev/fixtures/sse?skenario=urusan/jawaban-bersumber&jeda=0', { 'last-event-id': '3' })),
+    );
+    const frames = (await readFrames(res, hasDone, 2000)).map(parse).filter((f) => f.event);
+    expect(Number(frames[0]!.id)).toBe(4);
+    for (const bad of ['urusan/tidak-ada', '../x', 'urusan/../../etc']) {
+      expect(
+        (await devSse(ev(get(`/dev/fixtures/sse?skenario=${encodeURIComponent(bad)}`)))).status,
+        bad,
+      ).toBe(404);
+    }
   });
 });

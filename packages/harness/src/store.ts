@@ -433,24 +433,28 @@ export class HarnessStore {
     return { id, expiresAt };
   }
 
-  /** Event execution_request yang benar-benar pernah dikirim ke warga pada urusan ini (bukan rekaan klien). */
-  findExecutionRequest(
+  /**
+   * Event bertipe `execution_request` atau `gate` yang benar-benar pernah dikirim ke warga pada urusan ini,
+   * cocok pada field yang diberikan. Klien tidak bisa menyetujui/melaporkan sesuatu yang tidak pernah ditawarkan.
+   */
+  findOffered(
     urusanId: string,
+    type: 'execution_request' | 'gate',
     match: { executionId?: string; tool?: string; paramsHash?: string },
-  ): { executionId: string; tool: string; paramsHash: string } | undefined {
+  ): { executionId?: string; tool: string; paramsHash: string } | undefined {
     const rows = this.db
-      .prepare(
-        "SELECT payload FROM events WHERE urusan_id = ? AND type = 'execution_request' ORDER BY seq DESC",
-      )
-      .all(urusanId) as { payload: string }[];
+      .prepare('SELECT payload FROM events WHERE urusan_id = ? AND type = ? ORDER BY seq DESC')
+      .all(urusanId, type) as { payload: string }[];
     for (const r of rows) {
-      const p = JSON.parse(r.payload) as { executionId: string; tool: string; paramsHash: string };
+      const p = JSON.parse(r.payload) as { executionId?: string; tool?: string; paramsHash?: string };
       if (
+        p.tool !== undefined &&
+        p.paramsHash !== undefined &&
         (match.executionId === undefined || p.executionId === match.executionId) &&
         (match.tool === undefined || p.tool === match.tool) &&
         (match.paramsHash === undefined || p.paramsHash === match.paramsHash)
       )
-        return p;
+        return { ...p, tool: p.tool, paramsHash: p.paramsHash };
     }
     return undefined;
   }

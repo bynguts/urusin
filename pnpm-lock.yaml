@@ -103,6 +103,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@urusin/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@urusin/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -115,6 +118,9 @@ importers:
       '@urusin/rag':
         specifier: workspace:*
         version: link:../../packages/rag
+      '@urusin/registry':
+        specifier: workspace:*
+        version: link:../../packages/registry
       better-sqlite3:
         specifier: 13.0.3
         version: 13.0.3

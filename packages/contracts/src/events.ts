@@ -114,6 +114,9 @@ export const ExecutionRequestEventSchema = event('execution_request', {
 export const GateEventSchema = event('gate', {
   jenis: z.enum(['konfirmasi', 'login', 'captcha', 'profil', 'final']),
   pesan: z.string(),
+  /** Hanya `konfirmasi`: tool + hash parameter yang akan disetujui warga lewat POST /konfirmasi. */
+  tool: z.string().optional(),
+  paramsHash: z.string().optional(),
 });
 
 export const StateEventSchema = event('state', {
