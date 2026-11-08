@@ -1,0 +1,132 @@
+import { ErrorCode } from './errors.js';
+
+/**
+ * Registry domain resmi (rencana §3.8). Pencocokan EXACT origin `https://<host>`:
+ * tanpa http, tanpa userinfo, tanpa port non-standar, tanpa punycode yang tidak terdaftar,
+ * tanpa sufiks/subdomain jebakan. Salinan di ekstensi adalah yang otoritatif.
+ */
+export type OfficialDomain = {
+  host: string;
+  instansi: string;
+  layanan: string;
+  /** Kode wilayah Kemendagri (kab/kota) bila layanan bersifat daerah. */
+  wilayah?: string;
+  /** Tanggal verifikasi manual (ISO). null = seed dari rencana, verifikasi manual belum dicatat. */
+  verifiedAt: string | null;
+};
+
+export const OFFICIAL_DOMAINS: readonly OfficialDomain[] = Object.freeze([
+  {
+    host: 'telunjuksakti.wonogirikab.go.id',
+    instansi: 'Disdukcapil Kabupaten Wonogiri',
+    layanan: 'Telunjuk Sakti (layanan adminduk daring)',
+    wilayah: '3312',
+    verifiedAt: null,
+  },
+  {
+    host: 'disdukcapil.wonogirikab.go.id',
+    instansi: 'Disdukcapil Kabupaten Wonogiri',
+    layanan: 'Situs informasi Disdukcapil',
+    wilayah: '3312',
+    verifiedAt: null,
+  },
+  { host: 'www.lapor.go.id', instansi: 'SP4N-LAPOR!', layanan: 'Pengaduan publik', verifiedAt: null },
+  {
+    host: 'prod.lapor.go.id',
+    instansi: 'SP4N-LAPOR!',
+    layanan: 'Pengaduan publik (aplikasi)',
+    verifiedAt: null,
+  },
+  {
+    host: 'samsat-pkb2.jakarta.go.id',
+    instansi: 'Bapenda Provinsi DKI Jakarta',
+    layanan: 'Info pajak kendaraan bermotor',
+    wilayah: '31',
+    verifiedAt: null,
+  },
+  { host: 'cekdptonline.kpu.go.id', instansi: 'KPU', layanan: 'Cek DPT online', verifiedAt: null },
+  {
+    host: 'cekbansos.kemensos.go.id',
+    instansi: 'Kementerian Sosial',
+    layanan: 'Cek bansos',
+    verifiedAt: null,
+  },
+  {
+    host: 'oss.go.id',
+    instansi: 'Kementerian Investasi/BKPM',
+    layanan: 'OSS perizinan berusaha',
+    verifiedAt: null,
+  },
+  {
+    host: 'klampid-disdukcapil.surabaya.go.id',
+    instansi: 'Dispendukcapil Kota Surabaya',
+    layanan: 'Klampid (layanan adminduk daring)',
+    wilayah: '3578',
+    verifiedAt: null,
+  },
+  {
+    host: 'wargaklampid-dispendukcapil.surabaya.go.id',
+    instansi: 'Dispendukcapil Kota Surabaya',
+    layanan: 'Klampid warga',
+    wilayah: '3578',
+    verifiedAt: null,
+  },
+  {
+    host: 'sidnok.semarangkota.go.id',
+    instansi: 'Disdukcapil Kota Semarang',
+    layanan: 'Sidnok (layanan adminduk daring)',
+    wilayah: '3374',
+    verifiedAt: null,
+  },
+]);
+
+const BY_HOST = new Map(OFFICIAL_DOMAINS.map((d) => [d.host, d]));
+
+export type MatchResult = { ok: true; domain: OfficialDomain; url: URL } | { ok: false; code: ErrorCode };
+
+/** Periksa URL lengkap terhadap registry. */
+export function matchOfficialUrl(
+  input: string,
+  registry: ReadonlyMap<string, OfficialDomain> = BY_HOST,
+): MatchResult {
+  // Spasi/kontrol di awal-akhir dibuang oleh parser URL secara diam-diam; tolak agar eksplisit.
+  // eslint-disable-next-line no-control-regex -- sengaja menolak karakter kontrol yang dibuang diam-diam oleh parser URL
+  if (input !== input.trim() || /[\u0000-\u001f\u007f\s]/.test(input))
+    return { ok: false, code: ErrorCode.URL_INVALID };
+  let url: URL;
+  try {
+    url = new URL(input);
+  } catch {
+    return { ok: false, code: ErrorCode.URL_INVALID };
+  }
+  if (url.protocol !== 'https:') return { ok: false, code: ErrorCode.URL_NOT_HTTPS };
+  if (url.username !== '' || url.password !== '' || /^[^/]*\/\/[^/?#]*@/.test(input)) {
+    return { ok: false, code: ErrorCode.URL_HAS_USERINFO };
+  }
+  if (url.port !== '') return { ok: false, code: ErrorCode.URL_NONSTANDARD_PORT };
+  const host = url.hostname;
+  const domain = registry.get(host);
+  if (!domain) {
+    if (host.split('.').some((label) => label.startsWith('xn--'))) {
+      return { ok: false, code: ErrorCode.URL_PUNYCODE };
+    }
+    return { ok: false, code: ErrorCode.DOMAIN_NOT_OFFICIAL };
+  }
+  return { ok: true, domain, url };
+}
+
+/** Periksa origin persis `https://<host>` (tanpa path, tanpa slash akhir). */
+export function matchOfficialOrigin(origin: string): MatchResult {
+  const result = matchOfficialUrl(origin);
+  if (!result.ok) return result;
+  if (result.url.origin !== origin) return { ok: false, code: ErrorCode.DOMAIN_NOT_OFFICIAL };
+  return result;
+}
+
+export function isOfficialUrl(input: string): boolean {
+  return matchOfficialUrl(input).ok;
+}
+
+export function getOfficialDomain(host: string): OfficialDomain | undefined {
+  return BY_HOST.get(host);
+}
