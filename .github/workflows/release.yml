@@ -154,25 +154,27 @@ jobs:
 
       # Zip untuk SETIAP SHA main (bukan hanya tag): penguji memakai zip SHA kandidat; tag rc1 nanti menunjuk SHA yang sama.
       - name: Beri nama zip dengan SHA dan catat sha256
-        id: zip
         run: |
           sha7="${GITHUB_SHA:0:7}"
+          zip="urusin-ext-${sha7}.zip"
           mkdir -p dist-ext
-          cp apps/extension/.output/*-chrome.zip "dist-ext/urusin-extension-${sha7}.zip"
-          digest="$(sha256sum "dist-ext/urusin-extension-${sha7}.zip" | cut -d' ' -f1)"
+          cp apps/extension/.output/*-chrome.zip "dist-ext/${zip}"
+          (cd dist-ext && sha256sum "${zip}" > "${zip}.sha256")
           {
             echo "### Zip ekstensi"
             echo
-            echo "- Berkas: \`urusin-extension-${sha7}.zip\`"
+            echo "- Berkas: \`${zip}\`"
             echo "- SHA: \`${GITHUB_SHA}\`"
-            echo "- sha256: \`${digest}\`"
+            echo "- sha256: \`$(cut -d' ' -f1 "dist-ext/${zip}.sha256")\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Unggah zip
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: extension-zip
-          path: dist-ext/urusin-extension-*.zip
+          path: |
+            dist-ext/urusin-ext-*.zip
+            dist-ext/urusin-ext-*.zip.sha256
           if-no-files-found: error
 
   github-release:
