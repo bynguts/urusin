@@ -33,6 +33,9 @@ export const AUTH_HOSTS: readonly string[] = Object.freeze([
   'api.resend.com',
 ]);
 
+/** Verifikasi token Turnstile (siteverify) untuk "Masuk sebagai juri" dan login setelah 3 kegagalan. */
+export const TURNSTILE_HOSTS: readonly string[] = Object.freeze(['challenges.cloudflare.com']);
+
 /** Sufiks domain pemerintah yang boleh diambil korpus RAG (`rag:ingest` / `rag:verify`). */
 export const OFFICIAL_SUFFIX = '.go.id';
 
@@ -158,7 +161,7 @@ export function buildAllowlist(
   }
   const llm = parseOrigin(env.LLM_BASE_URL);
   return {
-    hosts: new Set([...JINA_HOSTS, ...AUTH_HOSTS]),
+    hosts: new Set([...JINA_HOSTS, ...AUTH_HOSTS, ...TURNSTILE_HOSTS]),
     suffixes: [],
     configured,
     llmProxy: !!llm && llm.host === LLM_PROXY.host && llm.port === LLM_PROXY.port,
