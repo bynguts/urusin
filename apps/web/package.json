@@ -16,7 +16,8 @@
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "lint": "eslint .",
     "test": "vitest run",
-    "budget": "node scripts/bundle-budget.mjs"
+    "budget": "node scripts/bundle-budget.mjs",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@urusin/contracts": "workspace:*",
@@ -30,6 +31,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.0",
     "@sveltejs/adapter-node": "6.0.1",
     "@sveltejs/kit": "3.1.1",
     "@sveltejs/vite-plugin-svelte": "7.3.1",

@@ -1,6 +1,6 @@
 # Panduan UI Urusin (pemilik: Rafi, @rafilajhh)
 
-Rafi memegang UI sepenuhnya: desain di pen.dev (Pencil) sekaligus implementasi di `apps/web`. Agen tidak menulis UI. Agen menyediakan kontrak data bertipe, fixture, dan pagar CI. Dokumen ini berisi semua yang perlu diketahui sebelum mulai.
+Rafi memegang desain UI di pen.dev (Pencil): `urusin.pen` beserta `design-system/DESIGN.md`. Desain itu final. Implementasi di `apps/web` dibangun langsung dari desain Rafi: token, font, aset, dan layar App 01–20. Agen boleh menulis UI asalkan setia pada desain tersebut; keputusan visual tetap milik Rafi. Agen juga menyediakan kontrak data bertipe, fixture, dan pagar CI. Dokumen ini berisi semua yang perlu diketahui sebelum mulai.
 
 ## 1. Mulai sekarang
 
