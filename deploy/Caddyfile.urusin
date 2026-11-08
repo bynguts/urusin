@@ -78,6 +78,14 @@
 
 # Aplikasi memilih rute /verify dari header Host mentah, jadi kedua host ke upstream yang sama.
 {$DOMAIN}, verify.{$DOMAIN} {
+	# Browser Pendamping (WebSocket layar). Nonaktif: butuh persetujuan port 127.0.0.1:4330 dan
+	# `COMPOSE_PROFILES=pendamping` (lihat deploy/compose.prod.yml). HANYA /pendamping/ws/* yang diteruskan;
+	# /internal/* pendamping tidak pernah diekspos. Origin + tiket sekali pakai diperiksa pendamping.
+	#
+	# handle /pendamping/ws/* {
+	# 	uri strip_prefix /pendamping
+	# 	reverse_proxy 127.0.0.1:4330
+	# }
 	import urusin_common
 }
 

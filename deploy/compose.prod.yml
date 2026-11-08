@@ -105,5 +105,48 @@ services:
         max-size: 10m
         max-file: '3'
 
+  # Opsional: Browser Pendamping (Chromium di server per sesi warga; docs/adr/0028-browser-pendamping.md).
+  # Aktifkan dengan `COMPOSE_PROFILES=pendamping`, PENDAMPING_IMAGE@digest, dan di .env:
+  #   PENDAMPING_INTERNAL_TOKEN=<acak >= 32 karakter>   (dipakai web DAN pendamping)
+  #   PENDAMPING_INTERNAL_URL=http://pendamping:4000    (dibaca web lewat env_file)
+  # Web memanggil API internal lewat jaringan compose; port host hanya untuk WebSocket layar yang
+  # diteruskan Caddy (/pendamping/ws/*). Chromium tidak bisa menjangkau web/jaringan privat: proxy egress
+  # menolak IP privat/loopback/link-local setelah resolusi DNS.
+  pendamping:
+    profiles: [pendamping]
+    image: ${PENDAMPING_IMAGE:-ghcr.io/bynguts/urusin-pendamping:unset}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '4000'
+      HOST: 0.0.0.0
+      GIT_SHA: ${GIT_SHA_PENDAMPING:-}
+      PENDAMPING_INTERNAL_TOKEN: ${PENDAMPING_INTERNAL_TOKEN:-} # wajib >= 32 karakter; pendamping menolak start tanpanya
+      URUSIN_PUBLIC_ORIGIN: https://${DOMAIN:?DOMAIN wajib diisi}
+      PENDAMPING_PUBLIC_WS_URL: wss://${DOMAIN:?DOMAIN wajib diisi}/pendamping/ws
+      PENDAMPING_MAX_SESSIONS: ${PENDAMPING_MAX_SESSIONS:-2}
+      PENDAMPING_MAX_QUEUE: ${PENDAMPING_MAX_QUEUE:-20}
+      PENDAMPING_SESSION_MEM_MB: ${PENDAMPING_SESSION_MEM_MB:-700}
+    # BUTUH PERSETUJUAN USER: port host baru di luar 4310/4311/4320. Tanpa ini WebSocket layar tidak
+    # bisa dijangkau Caddy; API internal tetap jalan lewat jaringan compose.
+    # ports:
+    #   - '127.0.0.1:4330:4000'
+    read_only: true
+    tmpfs:
+      # Profil Chromium sementara per sesi + berkas unggahan sementara; dihapus saat sesi berakhir.
+      - /tmp:size=512m
+    # 2 sesi x ~700 MB batas per sesi + Node + proxy. Host bersama (agent-vm): jangan dinaikkan tanpa ukur.
+    mem_limit: 1600m
+    cpus: 2.0
+    pids_limit: 512
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
 volumes:
   data:
