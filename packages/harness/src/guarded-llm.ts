@@ -35,7 +35,12 @@ export function redactingProvider(inner: ChatProvider): ChatProvider {
     stream: (params, opts) => inner.stream({ ...params, messages: scrub(params.messages) }, opts),
     transcribe: (input) => inner.transcribe(input),
     embed: (input) =>
-      inner.embed({ ...input, texts: input.texts.map((t) => t.replace(LONG_DIGITS, DIGITS_PLACEHOLDER)) }),
+      inner.embed({
+        ...input,
+        texts: input.texts.map((t) =>
+          new PiiInterceptor().redact(t).text.replace(LONG_DIGITS, DIGITS_PLACEHOLDER),
+        ),
+      }),
   };
 }
 

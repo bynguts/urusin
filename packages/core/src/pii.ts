@@ -49,7 +49,10 @@ export const PROVINCE_CODES: ReadonlySet<string> = new Set([
 const GAP = String.raw`[^\p{L}\p{N}]{0,3}`;
 const NIK_RE = new RegExp(String.raw`(?<!\d)(?:\d${GAP}){15}\d(?!\d)`, 'gu');
 const DUA_BELAS_RE = new RegExp(String.raw`(?<!\d)(?:\d${GAP}){11}\d(?!\d)`, 'gu');
-const PHONE_RE = new RegExp(String.raw`(?<!\d)(?:\+${GAP}62|62|0)${GAP}8[1-9](?:${GAP}\d){6,10}(?!\d)`, 'gu');
+const PHONE_RE = new RegExp(
+  String.raw`(?<!\d)(?:\+${GAP}6${GAP}2|6${GAP}2|0)${GAP}8${GAP}[1-9](?:${GAP}\d){6,10}(?!\d)`,
+  'gu',
+);
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
 const FORMAT_CHAR = /\p{Cf}/u;
 const DECIMAL_DIGIT = /\p{Nd}/u;
