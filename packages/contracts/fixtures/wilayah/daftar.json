@@ -1,0 +1,21 @@
+{
+  "skema": "wilayah",
+  "data": {
+    "kota": [
+      {
+        "kodeKabKota": "3312",
+        "nama": "Kabupaten Wonogiri",
+        "tier": "semi",
+        "validasi": "kirim-asli",
+        "verifiedAt": "2026-11-05T02:00:00.000Z"
+      },
+      {
+        "kodeKabKota": "3374",
+        "nama": "Kota Semarang",
+        "tier": "dipandu",
+        "validasi": "read-only",
+        "verifiedAt": null
+      }
+    ]
+  }
+}

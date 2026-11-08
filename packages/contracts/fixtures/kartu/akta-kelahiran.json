@@ -1,0 +1,19 @@
+{
+  "skema": "kartu",
+  "data": {
+    "layanan": "akta-kelahiran",
+    "judul": "Akta kelahiran",
+    "kodeKabKota": "3312",
+    "bawa": ["KK", "KTP-el pelapor", "Surat keterangan lahir"],
+    "lokasi": "Kantor Disdukcapil Wonogiri",
+    "catatan": "Bisa dibuka offline.",
+    "sumber": [
+      {
+        "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+        "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+        "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri"
+      }
+    ],
+    "verifiedAt": "2026-11-05T02:00:00.000Z"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "@urusin/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Kontrak zod-first untuk UI, server, dan ekstensi: event SSE, endpoint, store, fixture",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./fixtures-node": {
+      "types": "./dist/fixtures-node.d.ts",
+      "default": "./dist/fixtures-node.js"
+    },
+    "./fixtures/*": "./fixtures/*"
+  },
+  "files": [
+    "dist",
+    "fixtures"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "vitest": "5.1.0"
+  }
+}

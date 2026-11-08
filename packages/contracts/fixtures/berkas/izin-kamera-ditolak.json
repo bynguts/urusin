@@ -1,0 +1,9 @@
+{
+  "skema": "keadaan_layar",
+  "data": {
+    "keadaan": "izin_ditolak",
+    "izin": "kamera",
+    "pesanWarga": "Kamera belum diizinkan. Buka pengaturan browser untuk mengizinkan, atau pilih foto dari galeri.",
+    "aksi": "Pilih dari galeri"
+  }
+}

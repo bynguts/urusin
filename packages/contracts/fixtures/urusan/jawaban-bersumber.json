@@ -1,0 +1,87 @@
+{
+  "skema": "sse",
+  "data": [
+    {
+      "type": "state",
+      "state": "MEMAHAMI",
+      "tier": "dipandu",
+      "version": 2,
+      "dari": "BARU",
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "progress",
+      "label": "Memahami kebutuhan Anda…",
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "progress",
+      "label": "Mencari sumber resmi…",
+      "toolName": "rag__cari_pengetahuan",
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    },
+    {
+      "type": "progress",
+      "label": "Memverifikasi kutipan ke sumber resmi…",
+      "seq": 4,
+      "at": "2026-11-09T03:00:02.100Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf4"
+    },
+    {
+      "type": "grounded_answer",
+      "klaim": [
+        {
+          "teks": "Akta kelahiran memerlukan surat keterangan lahir dari fasilitas kesehatan.",
+          "kutipan": [
+            {
+              "refId": "doc-1#c2",
+              "kutipanPersis": "surat keterangan lahir dari dokter atau bidan",
+              "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+              "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+              "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+              "verifiedAt": "2026-11-05T02:00:00.000Z",
+              "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia#:~:text=surat%20keterangan%20lahir%20dari%20dokter%20atau%20bidan",
+              "perluDicekUlang": false
+            }
+          ]
+        },
+        {
+          "teks": "Pelapor membawa Kartu Keluarga dan KTP-el kedua orang tua.",
+          "kutipan": [
+            {
+              "refId": "doc-1#c3",
+              "kutipanPersis": "KK dan KTP-el orang tua",
+              "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+              "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+              "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+              "verifiedAt": "2026-11-05T02:00:00.000Z",
+              "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia#:~:text=KK%20dan%20KTP%2Del%20orang%20tua",
+              "perluDicekUlang": false
+            }
+          ]
+        }
+      ],
+      "klaimDibuang": 0,
+      "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+      "seq": 5,
+      "at": "2026-11-09T03:00:02.800Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf5"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 6,
+      "at": "2026-11-09T03:00:03.500Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf6"
+    }
+  ]
+}

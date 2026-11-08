@@ -1,0 +1,8 @@
+{
+  "skema": "keadaan_layar",
+  "data": {
+    "keadaan": "izin_ditolak",
+    "izin": "penyimpanan",
+    "pesanWarga": "Browser mungkin menghapus data di perangkat ini. Tambahkan ke Layar Utama untuk melindunginya."
+  }
+}

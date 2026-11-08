@@ -1,0 +1,50 @@
+{
+  "skema": "sse",
+  "data": [
+    {
+      "type": "state",
+      "state": "MENYIAPKAN_BERKAS",
+      "tier": "dipandu",
+      "version": 5,
+      "dari": "RENCANA_DISETUJUI",
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "checklist",
+      "item": [
+        {
+          "id": "kk",
+          "label": "Kartu Keluarga",
+          "status": "ok"
+        },
+        {
+          "id": "surat-lahir",
+          "label": "Surat keterangan lahir",
+          "status": "perlu",
+          "alasan": "Foto belum diambil."
+        },
+        {
+          "id": "ktp-ibu",
+          "label": "KTP-el ibu",
+          "status": "kurang",
+          "alasan": "Foto terlalu gelap. Ambil ulang di tempat terang."
+        }
+      ],
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    }
+  ]
+}

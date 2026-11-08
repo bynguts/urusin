@@ -1,0 +1,8 @@
+{
+  "skema": "keadaan_layar",
+  "data": {
+    "keadaan": "ekstensi_id_salah",
+    "pesanWarga": "ID ekstensi tidak cocok. Pasang ekstensi dari tautan resmi Urusin.",
+    "aksi": "Buka tautan resmi"
+  }
+}

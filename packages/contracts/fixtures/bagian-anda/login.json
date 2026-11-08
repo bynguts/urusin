@@ -1,0 +1,33 @@
+{
+  "skema": "sse",
+  "data": [
+    {
+      "type": "state",
+      "state": "MENUNGGU_LOGIN_WARGA",
+      "tier": "dipandu",
+      "version": 10,
+      "dari": "BERKAS_SIAP",
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "gate",
+      "jenis": "login",
+      "pesan": "Masuk ke akun portal Anda sendiri. Kami tidak melihat kata sandi.",
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    }
+  ]
+}

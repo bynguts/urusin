@@ -1,0 +1,9 @@
+{
+  "skema": "keadaan_layar",
+  "data": {
+    "keadaan": "izin_ditolak",
+    "izin": "mikrofon",
+    "pesanWarga": "Mikrofon belum diizinkan. Anda tetap bisa mengetik.",
+    "aksi": "Ketik saja"
+  }
+}

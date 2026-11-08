@@ -1,0 +1,47 @@
+{
+  "skema": "sse",
+  "data": [
+    {
+      "type": "progress",
+      "label": "Memverifikasi kutipan ke sumber resmi…",
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "grounded_answer",
+      "klaim": [
+        {
+          "teks": "Akta kelahiran memerlukan surat keterangan lahir dari fasilitas kesehatan.",
+          "kutipan": [
+            {
+              "refId": "doc-1#c2",
+              "kutipanPersis": "surat keterangan lahir dari dokter atau bidan",
+              "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+              "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+              "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+              "verifiedAt": null,
+              "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia#:~:text=surat%20keterangan%20lahir%20dari%20dokter%20atau%20bidan",
+              "perluDicekUlang": true
+            }
+          ]
+        }
+      ],
+      "klaimDibuang": 0,
+      "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    }
+  ]
+}

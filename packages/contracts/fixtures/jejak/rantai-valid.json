@@ -1,0 +1,46 @@
+{
+  "skema": "jejak",
+  "data": {
+    "urusanId": "u_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1",
+    "state": "MEMAHAMI",
+    "version": 3,
+    "chainHead": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "rantai": {
+      "valid": true,
+      "jumlahEvent": 7
+    },
+    "biayaIdr": 3.2,
+    "tokenMasuk": 412,
+    "tokenKeluar": 96,
+    "timeline": [
+      {
+        "jenis": "event",
+        "seq": 1,
+        "at": "2026-11-09T03:00:00.000Z",
+        "type": "state",
+        "ringkas": "BARU menjadi MEMAHAMI"
+      },
+      {
+        "jenis": "span",
+        "id": "s1",
+        "at": "2026-11-09T03:00:00.100Z",
+        "nama": "chat gpt",
+        "operasi": "chat",
+        "durasiMs": 820,
+        "model": "model-contoh",
+        "tokenMasuk": 412,
+        "tokenKeluar": 96,
+        "biayaIdr": 3.2,
+        "modeStruktur": "strict",
+        "status": "ok"
+      },
+      {
+        "jenis": "event",
+        "seq": 6,
+        "at": "2026-11-09T03:00:03.000Z",
+        "type": "grounded_answer",
+        "ringkas": "2 klaim terverifikasi"
+      }
+    ]
+  }
+}

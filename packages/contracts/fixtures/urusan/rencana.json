@@ -1,0 +1,93 @@
+{
+  "skema": "sse",
+  "data": [
+    {
+      "type": "state",
+      "state": "MEMAHAMI",
+      "tier": "dipandu",
+      "version": 2,
+      "dari": "BARU",
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "plan_card",
+      "ringkasan": "Tiga langkah untuk akta kelahiran anak Anda.",
+      "langkah": [
+        {
+          "id": "surat-lahir",
+          "jenis": "offline",
+          "judul": "Ambil surat keterangan lahir di faskes",
+          "lokasi": "Rumah sakit atau bidan",
+          "bawa": ["KTP-el ibu", "Buku KIA"],
+          "sumber": [
+            {
+              "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+              "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+              "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri"
+            }
+          ]
+        },
+        {
+          "id": "ajukan-online",
+          "jenis": "online-adapter",
+          "judul": "Ajukan akta kelahiran lewat portal",
+          "bawa": ["Surat keterangan lahir", "Kartu Keluarga"],
+          "sumber": [
+            {
+              "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+              "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+              "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri"
+            }
+          ]
+        },
+        {
+          "id": "ambil-akta",
+          "jenis": "offline",
+          "judul": "Ambil akta di kantor kecamatan",
+          "lokasi": "Kantor kecamatan",
+          "bawa": ["KTP-el pelapor"],
+          "sumber": [
+            {
+              "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+              "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+              "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri"
+            }
+          ]
+        }
+      ],
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "eligibility",
+      "mungkin": ["Anak lahir di Wonogiri"],
+      "perluKonfirmasi": ["Usia anak di bawah 60 hari (tanpa denda)"],
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    },
+    {
+      "type": "state",
+      "state": "RENCANA_DIUSULKAN",
+      "tier": "dipandu",
+      "version": 3,
+      "dari": "MEMAHAMI",
+      "seq": 4,
+      "at": "2026-11-09T03:00:02.100Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf4"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 5,
+      "at": "2026-11-09T03:00:02.800Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf5"
+    }
+  ]
+}

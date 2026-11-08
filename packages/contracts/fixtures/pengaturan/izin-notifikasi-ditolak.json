@@ -1,0 +1,8 @@
+{
+  "skema": "keadaan_layar",
+  "data": {
+    "keadaan": "izin_ditolak",
+    "izin": "notifikasi",
+    "pesanWarga": "Notifikasi mati. Buka halaman Lacak untuk melihat kabar terbaru."
+  }
+}

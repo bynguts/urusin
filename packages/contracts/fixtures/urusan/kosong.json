@@ -1,0 +1,8 @@
+{
+  "skema": "keadaan_layar",
+  "data": {
+    "keadaan": "kosong",
+    "pesanWarga": "Belum ada percakapan. Ceritakan apa yang ingin Anda urus.",
+    "aksi": "Mulai bercerita"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "skema": "sse",
+  "catatan": "Turn sedang berjalan: belum ada event done.",
+  "data": [
+    {
+      "type": "state",
+      "state": "MEMAHAMI",
+      "tier": "dipandu",
+      "version": 2,
+      "dari": "BARU",
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "progress",
+      "label": "Memahami kebutuhan Anda…",
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "progress",
+      "label": "Mencari sumber resmi…",
+      "toolName": "rag__cari_pengetahuan",
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    }
+  ]
+}
