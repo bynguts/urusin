@@ -15,7 +15,15 @@
     },
     {
       "id": "ktp-hilang",
-      "pemicu": ["ktp hilang", "ktp ilang", "ktp kececer", "ktp tercecer", "e-ktp hilang", "ektp hilang", "kehilangan ktp"],
+      "pemicu": [
+        "ktp hilang",
+        "ktp ilang",
+        "ktp kececer",
+        "ktp tercecer",
+        "e-ktp hilang",
+        "ektp hilang",
+        "kehilangan ktp"
+      ],
       "resmi": ["penggantian", "ktp-el", "kehilangan", "surat kehilangan", "kepolisian"],
       "sourceRef": {
         "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018",
@@ -70,7 +78,14 @@
     },
     {
       "id": "akta-mati",
-      "pemicu": ["akta kematian", "akta meninggal", "akte meninggal", "orang meninggal", "ada yang meninggal", "meninggal dunia"],
+      "pemicu": [
+        "akta kematian",
+        "akta meninggal",
+        "akte meninggal",
+        "orang meninggal",
+        "ada yang meninggal",
+        "meninggal dunia"
+      ],
       "resmi": ["akta kematian", "pencatatan", "kematian"],
       "sourceRef": {
         "url": "https://peraturan.go.id/id/uu-no-24-tahun-2013",
@@ -103,7 +118,18 @@
     },
     {
       "id": "pindah",
-      "pemicu": ["pindah domisili", "pindah alamat", "pindah rumah", "pindah kota", "pindahan", "surat pindah", "pindah kk", "mau pindah", "pindah datang", "pindah ke"],
+      "pemicu": [
+        "pindah domisili",
+        "pindah alamat",
+        "pindah rumah",
+        "pindah kota",
+        "pindahan",
+        "surat pindah",
+        "pindah kk",
+        "mau pindah",
+        "pindah datang",
+        "pindah ke"
+      ],
       "resmi": ["skpwni", "surat keterangan pindah", "perpindahan", "pindah datang"],
       "sourceRef": {
         "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018",
@@ -147,7 +173,16 @@
     },
     {
       "id": "ubah-data",
-      "pemicu": ["salah nama", "salah ketik", "salah data", "ubah data", "ganti nama", "ganti alamat", "benerin data", "betulin data"],
+      "pemicu": [
+        "salah nama",
+        "salah ketik",
+        "salah data",
+        "ubah data",
+        "ganti nama",
+        "ganti alamat",
+        "benerin data",
+        "betulin data"
+      ],
       "resmi": ["perubahan data", "pembetulan", "data kependudukan", "biodata"],
       "sourceRef": {
         "url": "https://peraturan.go.id/id/permendagri-no-109-tahun-2019",
@@ -180,7 +215,15 @@
     },
     {
       "id": "pajak-kendaraan",
-      "pemicu": ["stnk", "pajak motor", "pajak mobil", "pajak kendaraan", "bayar pajak motor", "pajak tahunan", "pkb"],
+      "pemicu": [
+        "stnk",
+        "pajak motor",
+        "pajak mobil",
+        "pajak kendaraan",
+        "bayar pajak motor",
+        "pajak tahunan",
+        "pkb"
+      ],
       "resmi": ["pajak kendaraan bermotor", "pkb", "samsat", "stnk", "pengesahan"],
       "sourceRef": {
         "url": "https://bapenda.jatengprov.go.id/",
@@ -224,7 +267,16 @@
     },
     {
       "id": "bpjs",
-      "pemicu": ["bpjs", "bpjs kesehatan", "kartu bpjs", "jkn", "kis", "berobat gratis", "bpjs mati", "bpjs nunggak"],
+      "pemicu": [
+        "bpjs",
+        "bpjs kesehatan",
+        "kartu bpjs",
+        "jkn",
+        "kis",
+        "berobat gratis",
+        "bpjs mati",
+        "bpjs nunggak"
+      ],
       "resmi": ["bpjs kesehatan", "jaminan kesehatan nasional", "jkn", "peserta", "iuran"],
       "sourceRef": {
         "url": "https://www.bpjs-kesehatan.go.id/",
@@ -235,7 +287,17 @@
     },
     {
       "id": "bansos",
-      "pemicu": ["bansos", "bantuan sosial", "bantuan pemerintah", "pkh", "bpnt", "sembako", "bantuan miskin", "cek bansos", "terima bansos"],
+      "pemicu": [
+        "bansos",
+        "bantuan sosial",
+        "bantuan pemerintah",
+        "pkh",
+        "bpnt",
+        "sembako",
+        "bantuan miskin",
+        "cek bansos",
+        "terima bansos"
+      ],
       "resmi": ["bantuan sosial", "program keluarga harapan", "bantuan pangan non tunai", "penerima"],
       "sourceRef": {
         "url": "https://cekbansos.kemensos.go.id/",
@@ -247,7 +309,12 @@
     {
       "id": "dtks",
       "pemicu": ["dtks", "dtsen", "data bansos", "terdaftar bansos", "masuk dtks"],
-      "resmi": ["data terpadu kesejahteraan sosial", "dtks", "data tunggal sosial dan ekonomi nasional", "dtsen"],
+      "resmi": [
+        "data terpadu kesejahteraan sosial",
+        "dtks",
+        "data tunggal sosial dan ekonomi nasional",
+        "dtsen"
+      ],
       "sourceRef": {
         "url": "https://cekbansos.kemensos.go.id/",
         "judul": "Cek Bansos",
@@ -257,7 +324,16 @@
     },
     {
       "id": "nib",
-      "pemicu": ["nib", "izin usaha", "izin usaha kecil", "bikin usaha", "buka usaha", "daftar usaha", "umkm", "oss"],
+      "pemicu": [
+        "nib",
+        "izin usaha",
+        "izin usaha kecil",
+        "bikin usaha",
+        "buka usaha",
+        "daftar usaha",
+        "umkm",
+        "oss"
+      ],
       "resmi": ["nomor induk berusaha", "nib", "perizinan berusaha", "oss"],
       "sourceRef": {
         "url": "https://oss.go.id/id",
@@ -290,7 +366,15 @@
     },
     {
       "id": "dpt",
-      "pemicu": ["dpt", "cek dpt", "terdaftar pemilih", "daftar pemilih", "nama saya di dpt", "coblos", "pemilu"],
+      "pemicu": [
+        "dpt",
+        "cek dpt",
+        "terdaftar pemilih",
+        "daftar pemilih",
+        "nama saya di dpt",
+        "coblos",
+        "pemilu"
+      ],
       "resmi": ["daftar pemilih tetap", "dpt", "pemilih", "kpu"],
       "sourceRef": {
         "url": "https://cekdptonline.kpu.go.id/",
@@ -301,7 +385,13 @@
     },
     {
       "id": "perlindungan-data",
-      "pemicu": ["data bocor", "data pribadi bocor", "nik disalahgunakan", "nik dipakai orang", "data dicuri"],
+      "pemicu": [
+        "data bocor",
+        "data pribadi bocor",
+        "nik disalahgunakan",
+        "nik dipakai orang",
+        "data dicuri"
+      ],
       "resmi": ["pelindungan data pribadi", "data pribadi", "pengendali data"],
       "sourceRef": {
         "url": "https://peraturan.go.id/id/uu-no-27-tahun-2022",
