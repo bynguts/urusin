@@ -1,6 +1,6 @@
 <script lang="ts">
   import { SvelteMap } from 'svelte/reactivity';
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { resolve } from '$app/paths';
   import type { EventOf, KutipanTerverifikasi } from '#lib/contracts.js';
   import Icon from '#lib/components/Icon.svelte';
@@ -79,8 +79,17 @@
   const pendampingAktif = $derived(sesi.data.keadaan !== 'mati');
   const kosong = $derived(linimasa.length === 0 && !k.sedangBerjalan);
 
+  // Hanya bergantung pada id urusan; store dan catatan perangkat dibaca/ditulis tanpa dilacak.
   $effect(() => {
     const id = data.urusan.id;
+    untrack(() => buka(id));
+    return () => {
+      store.putus();
+      sesi.tutup();
+    };
+  });
+
+  function buka(id: string) {
     pesan = lokal.pesanWarga(id);
     const tertunda = lokal.ambilTertunda();
     if (tertunda && pesan.length === 0) {
@@ -94,11 +103,7 @@
       dibuatPada: data.urusan.dibuatPada,
     });
     store.sambung(id);
-    return () => {
-      store.putus();
-      sesi.tutup();
-    };
-  });
+  }
 
   // Gulir ke pesan terbaru saat ada item baru.
   $effect(() => {
