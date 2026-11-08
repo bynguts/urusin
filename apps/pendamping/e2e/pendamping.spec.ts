@@ -1,12 +1,14 @@
+import { existsSync, readFileSync } from 'node:fs';
 import http from 'node:http';
+import { join } from 'node:path';
 import type net from 'node:net';
 import { expect, test, type Page } from '@playwright/test';
 import { byRole, click, css } from '@urusin/core';
 import type { PendampingEvent, SesiPendamping, TiketPendampingResponse } from '@urusin/contracts';
-import { launchIsolated } from '../src/browser.js';
+import { createBrowserFactory, launchIsolated } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
 import { runnerExpression } from '../src/runner-script.js';
-import { sidHashOf } from '../src/sessions.js';
+import { SessionManager, sidHashOf } from '../src/sessions.js';
 import { FIXTURE_ORIGIN, INTERNAL_TOKEN, PENDAMPING_ORIGIN } from '../playwright.config.js';
 
 /**
@@ -264,4 +266,56 @@ test('SSRF: dari dalam peramban pendamping, 127.0.0.1:2019 dan 169.254.169.254 t
     canary.close();
   }
   expect((canary.address() as net.AddressInfo | null) ?? null).toBeNull();
+});
+
+test('residu: profil sesi (cookie, Login Data) terhapus total setelah ditutup; pengelola sandi mati', async () => {
+  const config = loadConfig({ PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN, PENDAMPING_HEADLESS: '1' });
+  const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true });
+  const dir = iso.userDataDir;
+  try {
+    const page = iso.context.pages()[0] ?? (await iso.context.newPage());
+    await page.goto(`${FIXTURE_ORIGIN}/telunjuksakti/index.php/users/login`);
+    await page.fill('#hp', TEST_HP);
+    await page.fill('#captcha', 'DEV123');
+    await page.click('#loginSubmit');
+    await expect(page).toHaveURL(/\/welcome$/);
+    expect((await iso.context.cookies()).length).toBeGreaterThan(0);
+    expect(existsSync(dir)).toBe(true);
+    const prefs = JSON.parse(readFileSync(join(dir, 'Default', 'Preferences'), 'utf8')) as {
+      credentials_enable_service?: boolean;
+      profile?: { password_manager_enabled?: boolean };
+    };
+    expect(prefs.credentials_enable_service).toBe(false);
+    expect(prefs.profile?.password_manager_enabled).toBe(false);
+  } finally {
+    await iso.close();
+  }
+  expect(existsSync(join(dir, 'Default', 'Login Data'))).toBe(false);
+  expect(existsSync(dir)).toBe(false);
+});
+
+test('pengawas memori: sesi di atas anggaran dihentikan (gagal) dan slot dibebaskan', async () => {
+  const config = {
+    ...loadConfig({
+      PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN,
+      PENDAMPING_ORIGIN_OVERRIDES: `https://telunjuksakti.wonogirikab.go.id=${FIXTURE_ORIGIN}`,
+      PENDAMPING_HEADLESS: '1',
+    }),
+    sessionMemMb: 0,
+    memCheckMs: 300,
+  };
+  const manager = new SessionManager(config, createBrowserFactory(config));
+  const o = { urusanId: 'u-mem', sidHash: SID };
+  await manager.create({
+    ...o,
+    executionId: 'x_mem',
+    adapterId: 'telunjuk-sakti-wonogiri',
+    flowId: 'ajukan',
+    origin: 'https://telunjuksakti.wonogirikab.go.id',
+    params: { layanan_id: 1 },
+  });
+  await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('gagal');
+  expect(manager.status(o).pesan).toContain('terlalu berat');
+  expect(manager.antrean()).toEqual({ aktif: 0, maks: 2, menunggu: 0 });
+  await manager.shutdown();
 });

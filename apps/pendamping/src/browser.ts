@@ -1,4 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { PendampingSorot, PendampingViewport } from '@urusin/contracts';
 import { egressAllowedHosts, type Step } from '@urusin/core';
 import {
@@ -11,7 +14,7 @@ import {
   type RunnerOp,
   type RunnerResult,
 } from '@urusin/executor';
-import { chromium, type Browser, type BrowserContext, type CDPSession, type Page } from 'playwright-core';
+import { chromium, type BrowserContext, type CDPSession, type Page } from 'playwright-core';
 import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import { toCdp } from './input.js';
@@ -87,6 +90,10 @@ export function chromiumArgs(config: Pick<Config, 'jsHeapMb'>): string[] {
     '--disable-sync',
     '--disable-default-apps',
     '--no-first-run',
+    // Tanpa laporan crash (bisa memuat isi memori/halaman) dan tanpa prompt izin yang tak terlihat warga.
+    '--disable-breakpad',
+    '--deny-permission-prompts',
+    '--password-store=basic',
     '--renderer-process-limit=2',
     `--js-flags=--max-old-space-size=${config.jsHeapMb}`,
     // WebRTC hanya lewat proxy: UDP langsung (bisa melewati allowlist) dimatikan.
@@ -108,20 +115,51 @@ export function proxyOption(port: number): { server: string; bypass: string } {
 }
 delete process.env.PLAYWRIGHT_DISABLE_FORCED_CHROMIUM_PROXIED_LOOPBACK;
 
+async function sessionMemMb(userDataDir: string, cdp: CDPSession): Promise<number> {
+  const rss = rssMb(pidsOfProfile(userDataDir));
+  if (rss !== undefined && rss > 0) return rss;
+  const heap = (await cdp.send('Runtime.getHeapUsage')) as { usedSize: number };
+  return Math.round(heap.usedSize / 1024 / 1024);
+}
+
 export function createBrowserFactory(config: Config): RunFactory {
   return (init) => startBrowserRun(config, init);
 }
 
 export type Isolated = {
-  browser: Browser;
   context: BrowserContext;
   proxy: EgressProxy;
+  /** Profil sementara sesi (tmpfs di kontainer); dihapus total oleh `close()`. */
+  userDataDir: string;
   close(): Promise<void>;
 };
 
 /**
- * Chromium + konteks non-persisten di belakang proxy egress sendiri, dengan lapis kedua `context.route`.
- * Dipakai setiap sesi (dan oleh e2e SSRF agar yang diuji persis konfigurasi produksi).
+ * Preferensi profil: pengelola sandi, autofill, dan izin perangkat dimatikan sejak awal agar tidak ada
+ * residu kredensial (Login Data/Web Data kosong) walau profil hanya hidup selama sesi.
+ */
+export const PROFIL_PREFS = Object.freeze({
+  credentials_enable_service: false,
+  credentials_enable_autosignin: false,
+  profile: {
+    password_manager_enabled: false,
+    password_manager_leak_detection: false,
+    // 2 = blokir: peramban server tidak punya kamera/mikrofon/lokasi; langkah foto dilakukan di perangkat warga.
+    default_content_setting_values: {
+      media_stream_camera: 2,
+      media_stream_mic: 2,
+      geolocation: 2,
+      notifications: 2,
+    },
+  },
+  autofill: { enabled: false, profile_enabled: false, credit_card_enabled: false },
+  search: { suggest_enabled: false },
+  translate: { enabled: false },
+});
+
+/**
+ * Chromium + profil sementara (persistent context di direktori acak, dihapus saat tutup) di belakang proxy
+ * egress sendiri, dengan lapis kedua `context.route`. Dipakai setiap sesi dan oleh e2e SSRF/residu.
  */
 export async function launchIsolated(
   config: Config,
@@ -132,16 +170,18 @@ export async function launchIsolated(
   const allowedHosts = new Set(rules.map((r) => `${r.host}:${r.port}`));
   const proxy = await startEgressProxy(rules);
   proxy.onBlocked(onBlocked);
-  let browser: Browser | undefined;
+  const userDataDir = await mkdtemp(join(tmpdir(), 'urusin-pendamping-'));
+  const hapus = () => rm(userDataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  let context: BrowserContext | undefined;
   try {
-    browser = await chromium.launch({
+    await mkdir(join(userDataDir, 'Default'));
+    await writeFile(join(userDataDir, 'Default', 'Preferences'), JSON.stringify(PROFIL_PREFS));
+    context = await chromium.launchPersistentContext(userDataDir, {
       headless: config.headless,
       ...(config.chromiumPath ? { executablePath: config.chromiumPath } : {}),
       proxy: proxyOption(proxy.port),
       args: chromiumArgs(config),
-      env: { TZ: 'Asia/Jakarta' },
-    });
-    const context = await browser.newContext({
+      env: { ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}), TZ: 'Asia/Jakarta' },
       viewport: { width: viewport.lebar, height: viewport.tinggi },
       deviceScaleFactor: 1,
       isMobile: viewport.seluler,
@@ -150,6 +190,7 @@ export async function launchIsolated(
       timezoneId: 'Asia/Jakarta',
       acceptDownloads: false,
       serviceWorkers: 'block',
+      permissions: [],
       // Agen pengguna = bawaan Chromium apa adanya (tidak ditimpa); lihat tanpa-evasi.test.ts.
     });
     // Lapis kedua (selain proxy): permintaan ke host:port di luar allowlist dibatalkan di peramban.
@@ -160,23 +201,57 @@ export async function launchIsolated(
         (u?.protocol === 'https:' || u?.protocol === 'http:') && allowedHosts.has(`${u.hostname}:${port}`);
       return ok ? route.continue() : route.abort('blockedbyclient');
     });
-    const b = browser;
+    const ctx = context;
     return {
-      browser: b,
-      context,
+      context: ctx,
       proxy,
+      userDataDir,
       async close() {
-        // Konteks non-persisten + profil sementara dihapus Playwright saat browser ditutup.
-        await context.close().catch(() => {});
-        await b.close().catch(() => {});
+        await ctx.close().catch(() => {});
         await proxy.close();
+        // Profil (cookie, storage, cache, Login Data) dihapus seluruhnya: tidak ada yang tersisa.
+        await hapus();
       },
     };
   } catch (e) {
-    await browser?.close().catch(() => {});
+    await context?.close().catch(() => {});
     await proxy.close();
+    await hapus();
     throw e;
   }
+}
+
+/**
+ * PID pohon proses Chromium milik profil ini (Linux, /proc): proses utama dikenali dari
+ * `--user-data-dir=<dir>`, lalu semua turunannya (renderer, GPU, utilitas) lewat ppid.
+ */
+export function pidsOfProfile(userDataDir: string, proc = '/proc'): number[] {
+  if (process.platform !== 'linux' && proc === '/proc') return [];
+  const parent = new Map<number, number>();
+  const roots: number[] = [];
+  for (const name of readdirSync(proc)) {
+    const pid = Number(name);
+    if (!Number.isInteger(pid)) continue;
+    try {
+      const stat = readFileSync(join(proc, name, 'stat'), 'utf8');
+      parent.set(pid, Number(stat.slice(stat.lastIndexOf(')') + 2).split(' ')[1]));
+      const cmd = readFileSync(join(proc, name, 'cmdline'), 'utf8').split('\0');
+      if (cmd.includes(`--user-data-dir=${userDataDir}`)) roots.push(pid);
+    } catch {
+      // proses sudah keluar
+    }
+  }
+  const out = new Set(roots);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const [pid, ppid] of parent)
+      if (!out.has(pid) && out.has(ppid)) {
+        out.add(pid);
+        grew = true;
+      }
+  }
+  return [...out];
 }
 
 export async function startBrowserRun(config: Config, init: RunInit): Promise<ActiveRun> {
@@ -196,18 +271,17 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
 }
 
 async function wire(config: Config, init: RunInit, iso: Isolated): Promise<ActiveRun> {
-  const { browser, context } = iso;
+  const { context } = iso;
   const { hooks, program } = init;
   const steps = program.steps;
   const finalIdx = finalGateIndex(steps);
 
-  const page: Page = await context.newPage();
+  const page: Page = context.pages()[0] ?? (await context.newPage());
   // Pop-up / tab baru tidak terlihat di layar warga: tutup.
   context.on('page', (p) => {
     if (p !== page) void p.close();
   });
   const cdp: CDPSession = await context.newCDPSession(page);
-  const browserCdp = await browser.newBrowserCDPSession();
 
   let loading = false;
   let destroyed = false;
@@ -409,12 +483,11 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     });
   });
 
-  // Pengawas memori per sesi: RSS pohon proses Chromium (Linux).
+  // Pengawas memori per sesi: RSS pohon proses Chromium (Linux); di luar Linux, heap JS halaman (perkiraan).
   const memTimer = setInterval(async () => {
     try {
-      const info = (await browserCdp.send('SystemInfo.getProcessInfo')) as { processInfo: { id: number }[] };
-      const mb = rssMb(info.processInfo.map((p) => p.id));
-      if (mb !== undefined && mb > config.sessionMemMb)
+      const mb = await sessionMemMb(iso.userDataDir, cdp);
+      if (mb > config.sessionMemMb)
         hooks.ended(
           'gagal',
           'gagal',
