@@ -20,8 +20,10 @@ async function main() {
   } finally {
     src.close();
   }
-  const copy = new Database(OUT_PATH, { readonly: true, fileMustExist: true });
+  // Salinan mewarisi mode WAL; ubah ke DELETE agar berkas tunggal (tanpa -wal/-shm sisa) lalu periksa.
+  const copy = new Database(OUT_PATH, { fileMustExist: true });
   try {
+    copy.pragma('journal_mode = DELETE');
     const rows = copy.pragma('integrity_check');
     if (rows.length !== 1 || rows[0].integrity_check !== 'ok') {
       throw new Error(`integrity_check gagal: ${JSON.stringify(rows).slice(0, 300)}`);

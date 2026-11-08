@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "prepare": "wxt prepare",
+    "types": "wxt prepare",
     "build": "wxt build",
     "dev": "wxt",
     "typecheck": "wxt prepare && tsc --noEmit",

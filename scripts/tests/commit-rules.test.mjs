@@ -6,7 +6,7 @@ import {
   isBannedSubject,
   stripGitComments,
 } from '../lib/commit-rules.mjs';
-import { auditCommits, parseLog } from '../audit-history.mjs';
+import { auditCommits, loadHeaderExceptions, parseLog } from '../audit-history.mjs';
 
 describe('checkCommitMessage', () => {
   it('meloloskan header konvensional yang bermakna', () => {
@@ -66,5 +66,21 @@ describe('audit-history', () => {
       v.map((x) => x.hash),
       ['b2', 'c3', 'd4'],
     );
+  });
+  it('pengecualian hanya membebaskan format header, bukan author atau atribusi', () => {
+    const commits = parseLog(
+      rec('e5', 'a@example.com', "Merge remote-tracking branch 'origin/main' into feat/x") +
+        rec('f6', 'bot@example.com', "Merge branch 'main'") +
+        rec('g7', 'a@example.com', 'Merge it\n\nCo-Authored-By: z') +
+        rec('h8', 'a@example.com', "Merge branch 'main'"),
+    );
+    const v = auditCommits(commits, ['a@example.com'], ['e5', 'f6', 'G7']);
+    assert.deepEqual(
+      v.map((x) => x.hash),
+      ['f6', 'g7', 'h8'],
+    );
+  });
+  it('file pengecualian berisi hash lengkap 40 karakter', () => {
+    for (const h of loadHeaderExceptions()) assert.match(h, /^[0-9a-f]{40}$/);
   });
 });
