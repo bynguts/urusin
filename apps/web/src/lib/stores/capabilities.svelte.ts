@@ -1,8 +1,11 @@
 import type { KeadaanKapabilitas, StoreKapabilitas } from '#lib/contracts.js';
 
-type HealthKapabilitas = Partial<Pick<KeadaanKapabilitas, 'ai' | 'vision' | 'rag'>>;
+type KemampuanServer = Partial<Pick<KeadaanKapabilitas, 'ai' | 'vision' | 'rag'>>;
 
-/** Kemampuan server dari `/api/health`. Sebelum dimuat atau saat gagal: anggap normal, jangan menyembunyikan fitur. */
+/**
+ * Kemampuan server dari `/api/kemampuan` (publik; /api/health 404 di balik Caddy). Sebelum dimuat, saat runtime
+ * masih dirakit (503) atau saat gagal: anggap normal, jangan menyembunyikan fitur.
+ */
 export class CapabilitiesStore implements StoreKapabilitas {
   keadaan = $state<KeadaanKapabilitas>({ ai: 'normal', vision: true, rag: 'tidak_diketahui', dimuat: false });
 
@@ -10,9 +13,9 @@ export class CapabilitiesStore implements StoreKapabilitas {
 
   async muat(): Promise<void> {
     try {
-      const res = await this.ambil('/api/health', { headers: { accept: 'application/json' } });
+      const res = await this.ambil('/api/kemampuan', { headers: { accept: 'application/json' } });
       if (!res.ok) return;
-      const j = (await res.json()) as { kapabilitas?: HealthKapabilitas };
+      const j = (await res.json()) as { kapabilitas?: KemampuanServer };
       const k = j.kapabilitas;
       this.keadaan = {
         ai: k?.ai ?? 'normal',
