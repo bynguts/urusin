@@ -156,7 +156,7 @@ export class SessionManager {
     if (built.program.origin !== new URL(input.origin).origin)
       throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'origin registry tidak cocok dengan adapter');
     if (this.active.size >= this.config.maxSessions && this.queue.length >= this.config.maxQueue)
-      throw new PendampingError('ANTREAN_PENUH', 503, 'antrean pendamping penuh');
+      throw new PendampingError('ANTREAN_PENUH', 429, 'antrean pendamping penuh');
 
     // Dev/uji/demo: origin resmi dipetakan ke fixture (path sama). Produksi tanpa override = origin resmi.
     const origin = this.config.originOverrides.get(built.program.origin) ?? built.program.origin;

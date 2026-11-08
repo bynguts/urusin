@@ -70,7 +70,7 @@ describe('SessionManager', () => {
     await h.flush();
     expect(s3).toMatchObject({ status: 'antre', antrean: { posisi: 1, panjang: 1 } });
     expect(h.manager.antrean()).toEqual({ aktif: 2, maks: 2, menunggu: 1 });
-    await expect(h.manager.create(input('u4'))).rejects.toMatchObject({ kode: 'ANTREAN_PENUH', status: 503 });
+    await expect(h.manager.create(input('u4'))).rejects.toMatchObject({ kode: 'ANTREAN_PENUH', status: 429 });
     await h.manager.akhiri(owner('u1'));
     await h.flush();
     expect(h.manager.status(owner('u3')).status).toBe('menunggu_data');
