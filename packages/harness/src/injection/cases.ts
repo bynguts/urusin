@@ -1,4 +1,4 @@
-import type { GateRule, UrusanState } from '../contracts.js';
+import type { GateRule, UrusanState } from '@urusin/contracts';
 import { FAKE_NIK } from '../pii-fixtures.js';
 
 /**

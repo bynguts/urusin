@@ -1,0 +1,40 @@
+{
+  "skema": "sse",
+  "catatan": "Rekaman DemoProvider: \"Saya mau melaporkan jalan rusak di desa saya.\"",
+  "data": [
+    {
+      "dari": "BARU",
+      "state": "MEMAHAMI",
+      "tier": null,
+      "version": 2,
+      "type": "state",
+      "seq": 1,
+      "at": "2026-11-08T12:29:47.724Z",
+      "chainHead": "414df9780e1b7b3340e47ac5c12e352ffc3b9cf6d5a9f261a859c442d2936a19"
+    },
+    {
+      "label": "Memahami kebutuhan Anda…",
+      "type": "progress",
+      "seq": 2,
+      "at": "2026-11-08T12:29:47.724Z",
+      "chainHead": "c257e4836677a6af9867474adc5277c27a8172315c4fe0ab8819157c7fd830bf"
+    },
+    {
+      "delta": "Halo! Saya Urusin. Ceritakan urusan apa yang ingin Anda selesaikan.",
+      "type": "assistant_text",
+      "seq": 3,
+      "at": "2026-11-08T12:29:47.729Z",
+      "chainHead": "af565d15bb8c6178433844524be785519f119ee4391c83e2c7070a11f4061ab1"
+    },
+    {
+      "degraded": false,
+      "lanjutkan": false,
+      "status": "selesai",
+      "turnId": "t_cca63a35-8716-4c9d-a5e2-a5c84fb6bc5c",
+      "type": "done",
+      "seq": 4,
+      "at": "2026-11-08T12:29:47.730Z",
+      "chainHead": "5f0f4f66783868d086604cd03d62188a100f2bbe083905bbc80ec5ecd70b2633"
+    }
+  ]
+}

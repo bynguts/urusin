@@ -9,10 +9,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./contracts": {
-      "types": "./dist/contracts.d.ts",
-      "default": "./dist/contracts.js"
     }
   },
   "files": [
@@ -23,9 +19,11 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "eval": "tsc -p tsconfig.build.json && node dist/eval/cli.js"
+    "eval": "tsc -p tsconfig.build.json && node dist/eval/cli.js",
+    "record:fixtures": "tsc -p tsconfig.build.json && node dist/eval/record.js"
   },
   "dependencies": {
+    "@urusin/contracts": "workspace:*",
     "@urusin/core": "workspace:*",
     "@urusin/llm": "workspace:*",
     "@urusin/rag": "workspace:*",

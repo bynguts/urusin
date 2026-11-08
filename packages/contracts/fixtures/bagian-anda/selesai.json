@@ -1,0 +1,25 @@
+{
+  "skema": "sse",
+  "data": [
+    {
+      "type": "state",
+      "state": "SELESAI",
+      "tier": "dipandu",
+      "version": 14,
+      "dari": "DIPANTAU",
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    }
+  ]
+}

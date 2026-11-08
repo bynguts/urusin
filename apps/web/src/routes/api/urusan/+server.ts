@@ -1,24 +1,21 @@
-import { z } from 'zod';
-import type { BuatUrusanResponse } from '#lib/contracts.js';
-import { apiJson, errorResponse, readBody } from '#lib/server/http.js';
+import {
+  BuatUrusanRequestSchema,
+  type BuatUrusanResponse,
+  type DaftarUrusanResponse,
+} from '@urusin/contracts';
+import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
+import { menungguSiapa } from '#lib/server/ringkasan.js';
 import type { RequestHandler } from './$types';
-
-const Body = z.object({
-  kodeKabKota: z
-    .string()
-    .regex(/^\d{4}$/)
-    .optional(),
-  pesan: z.string().min(1).max(2000).optional(),
-});
 
 /** Buat urusan baru; bila `pesan` diberikan, turn pertama langsung berjalan (ikuti lewat stream). */
 export const POST: RequestHandler = async ({ request }) => {
-  const body = await readBody(request, Body);
+  const body = await readBody(request, BuatUrusanRequestSchema);
   if (!body.ok) return body.response;
   try {
     const rt = await getRuntime();
-    const u = rt.store.createUrusan({ kodeKabKota: body.data.kodeKabKota });
+    const jenis = body.data.peristiwa && body.data.peristiwa !== 'lainnya' ? body.data.peristiwa : undefined;
+    const u = rt.store.createUrusan({ kodeKabKota: body.data.kodeKabKota, jenis });
     const turn = body.data.pesan
       ? startTurnInBackground(rt, { urusanId: u.id, userText: body.data.pesan })
       : undefined;
@@ -30,9 +27,38 @@ export const POST: RequestHandler = async ({ request }) => {
         version: current.version,
         chainHead: rt.store.chainHead(u.id),
         ...(turn ? { turnId: turn.turnId } : {}),
-      } satisfies BuatUrusanResponse & { turnId?: string },
+      } satisfies BuatUrusanResponse,
       201,
     );
+  } catch (e) {
+    return errorResponse(e);
+  }
+};
+
+/**
+ * Daftar urusan untuk /lacak. Tidak ada akun: klien menyebut id urusan yang ia pegang (`?ids=a,b`).
+ * Id adalah token kapabilitas yang tidak bisa ditebak; id yang tidak dikenal diabaikan begitu saja.
+ */
+export const GET: RequestHandler = async ({ url }) => {
+  const ids = (url.searchParams.get('ids') ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => /^u_[0-9a-f]{32}$/.test(s));
+  if (ids.length > 50)
+    return apiError(422, 'TERLALU_BANYAK', 'Terlalu banyak urusan sekaligus. Maksimal 50.');
+  try {
+    const rt = await getRuntime();
+    return apiJson({
+      urusan: rt.store.listUrusan([...new Set(ids)]).map((u) => ({
+        id: u.id,
+        state: u.state,
+        version: u.version,
+        kodeKabKota: u.kodeKabKota,
+        menunggu: menungguSiapa(u.state),
+        dibuatPada: u.createdAt,
+        diubahPada: u.updatedAt,
+      })),
+    } satisfies DaftarUrusanResponse);
   } catch (e) {
     return errorResponse(e);
   }

@@ -1,0 +1,47 @@
+{
+  "skema": "sse",
+  "data": [
+    {
+      "type": "degraded",
+      "kapabilitas": ["adapter"],
+      "mode": null,
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "state",
+      "state": "DIPANDU",
+      "tier": "dipandu",
+      "version": 11,
+      "dari": "MENGISI",
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "handoff",
+      "sebab": "tanpa_sumber",
+      "alasan": "Tampilan situs berubah. Ikuti panduan langkah, kami tidak mengisi otomatis.",
+      "kanal": [
+        {
+          "nama": "Portal Disdukcapil Wonogiri",
+          "url": "https://disdukcapil.wonogirikab.go.id/"
+        }
+      ],
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 4,
+      "at": "2026-11-09T03:00:02.100Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf4"
+    }
+  ]
+}

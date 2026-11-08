@@ -1,22 +1,23 @@
-import type { StreamEnvelope } from '#lib/contracts.js';
+import { toEvent } from '@urusin/harness';
+import type { UrusinEvent } from '#lib/contracts.js';
 import { apiError, errorResponse } from '#lib/server/http.js';
 import { getRuntime } from '#lib/server/runtime.js';
-import { frame } from '#lib/server/sse.js';
+import { frame, heartbeatFrame } from '#lib/server/sse.js';
 import type { RequestHandler } from './$types';
 
 const encoder = new TextEncoder();
 
 /**
  * SSE per urusan. Resume: header `Last-Event-ID` (atau `?lastEventId=`) memutar ulang event dari tabel `events`
- * dengan seq lebih besar, lalu melanjutkan secara langsung. Heartbeat komentar `: hb` tiap 15 detik menjaga koneksi
- * di balik proxy. Saat klien putus: berhenti berlangganan; bila tidak ada pelanggan tersisa setelah masa tenggang,
- * loop LLM yang sedang berjalan dibatalkan (AbortController), sehingga tidak ada panggilan LLM berikutnya.
+ * dengan seq lebih besar, lalu melanjutkan secara langsung. Heartbeat (event `heartbeat`, tanpa `id:`) tiap 15 detik
+ * menjaga koneksi di balik proxy. Saat klien putus: berhenti berlangganan; bila tidak ada pelanggan tersisa setelah
+ * masa tenggang, loop LLM yang sedang berjalan dibatalkan (AbortController), sehingga tidak ada panggilan LLM berikutnya.
  */
 export const GET: RequestHandler = async ({ params, request, url }) => {
   try {
     const rt = await getRuntime();
     const id = params.id;
-    if (!rt.store.getUrusan(id)) return apiError(404, 'NOT_FOUND', 'urusan tidak ditemukan');
+    if (!rt.store.getUrusan(id)) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
 
     const raw = request.headers.get('last-event-id') ?? url.searchParams.get('lastEventId') ?? '0';
     const last = Number.parseInt(raw, 10);
@@ -34,34 +35,29 @@ export const GET: RequestHandler = async ({ params, request, url }) => {
             close();
           }
         };
-        const send = (ev: StreamEnvelope) => {
+        const send = (ev: UrusinEvent) => {
           if (ev.seq <= lastSent) return;
           lastSent = ev.seq;
           write(frame(ev));
         };
 
         // Berlangganan DULU (buffer), lalu putar ulang dari DB, lalu kuras buffer: tidak ada event hilang/ganda.
-        const buffer: StreamEnvelope[] = [];
+        const buffer: UrusinEvent[] = [];
         let replaying = true;
         const unsubscribe = rt.bus.subscribe(id, (ev) => (replaying ? buffer.push(ev) : send(ev)));
         write('retry: 3000\n\n');
         for (;;) {
           const batch = rt.store.eventsAfter(id, lastSent, 500);
           if (batch.length === 0) break;
-          for (const e of batch) {
-            send({
-              seq: e.seq,
-              at: e.at,
-              chainHead: e.hash,
-              type: e.type as StreamEnvelope['type'],
-              data: e.payload as StreamEnvelope['data'],
-            });
-          }
+          for (const e of batch) send(toEvent(e));
         }
         replaying = false;
         for (const ev of buffer.sort((a, b) => a.seq - b.seq)) send(ev);
 
-        const heartbeat = setInterval(() => write(': hb\n\n'), rt.config.heartbeatMs);
+        const heartbeat = setInterval(
+          () => write(heartbeatFrame(lastSent, rt.store.chainHead(id))),
+          rt.config.heartbeatMs,
+        );
         let graceTimer: ReturnType<typeof setTimeout> | undefined;
 
         function close() {

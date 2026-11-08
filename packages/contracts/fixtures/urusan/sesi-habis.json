@@ -1,0 +1,8 @@
+{
+  "skema": "keadaan_layar",
+  "data": {
+    "keadaan": "sesi_habis",
+    "pesanWarga": "Sesi urusan ini sudah berakhir. Tulisan Anda masih ada. Mulai lagi untuk melanjutkan.",
+    "aksi": "Mulai lagi"
+  }
+}

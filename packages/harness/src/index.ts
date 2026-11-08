@@ -1,4 +1,4 @@
-export * from './contracts.js';
+export * from './envelope.js';
 export * from './state.js';
 export * from './errors.js';
 export * from './audit.js';
@@ -20,3 +20,4 @@ export * from './agent.js';
 export * from './demo.js';
 export * from './runtime.js';
 export * from './pii-fixtures.js';
+export * from './guarded-llm.js';

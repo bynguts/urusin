@@ -55,8 +55,8 @@ describe('verifyGrounded (klaim-level)', () => {
     expect(r.handoff).toBeUndefined();
     expect(r.klaimDibuang).toBe(0);
     const cit = r.klaim[0]!.kutipan[0]!;
-    expect(cit.sumber.url).toBe(URL1);
-    expect(cit.tautanKutipan.startsWith(`${URL1}#:~:text=`)).toBe(true);
+    expect(cit.url).toBe(URL1);
+    expect(cit.textFragmentUrl.startsWith(`${URL1}#:~:text=`)).toBe(true);
     expect(cit.perluDicekUlang).toBe(false);
   });
 
@@ -95,7 +95,7 @@ describe('verifyGrounded (klaim-level)', () => {
       NOW,
     );
     expect(r.klaim).toHaveLength(0);
-    expect(r.handoff?.alasan).toBe('kutipan_tidak_terverifikasi');
+    expect(r.handoff?.sebab).toBe('kutipan_tidak_terverifikasi');
   });
 
   it('refId yang tidak pernah diambil (halusinasi) dibuang', () => {
@@ -128,14 +128,14 @@ describe('verifyGrounded (klaim-level)', () => {
     );
     expect(r.klaim).toEqual([]);
     expect(r.klaimDibuang).toBe(2);
-    expect(r.handoff?.pesan).toContain('Saya belum menemukan sumber resmi');
+    expect(r.handoff?.alasan).toContain('Saya belum menemukan sumber resmi');
     expect(r.handoff?.kanal.length).toBeGreaterThan(0);
-    expect(r.handoff?.kanal.every((k) => k.url.startsWith('https://'))).toBe(true);
+    expect(r.handoff?.kanal.every((k) => k.url?.startsWith('https://'))).toBe(true);
   });
 
   it('tanpa chunk sama sekali → hand-off tanpa_sumber', () => {
     const r = verifyGrounded({ klaim: [{ teks: 'x', kutipan: [real] }] }, [], {}, NOW);
-    expect(r.handoff?.alasan).toBe('tanpa_sumber');
+    expect(r.handoff?.sebab).toBe('tanpa_sumber');
     expect(r.handoff?.kanal[0]?.url).toMatch(/^https:\/\//);
   });
 

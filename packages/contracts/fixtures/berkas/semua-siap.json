@@ -1,0 +1,43 @@
+{
+  "skema": "sse",
+  "data": [
+    {
+      "type": "checklist",
+      "item": [
+        {
+          "id": "kk",
+          "label": "Kartu Keluarga",
+          "status": "ok"
+        },
+        {
+          "id": "surat-lahir",
+          "label": "Surat keterangan lahir",
+          "status": "ok"
+        }
+      ],
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "state",
+      "state": "BERKAS_SIAP",
+      "tier": "dipandu",
+      "version": 6,
+      "dari": "MENYIAPKAN_BERKAS",
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    }
+  ]
+}

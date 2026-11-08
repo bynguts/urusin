@@ -1,0 +1,23 @@
+{
+  "skema": "transparansi",
+  "data": {
+    "jendela": {
+      "dari": "2026-10-26T00:00:00.000Z",
+      "sampai": "2026-11-09T00:00:00.000Z"
+    },
+    "latensiMs": {
+      "p50": 1200,
+      "p95": 4100,
+      "sampel": 340
+    },
+    "biayaPerHariIdr": [
+      {
+        "hari": "2026-11-08",
+        "biayaIdr": 4200,
+        "permintaan": 61
+      }
+    ],
+    "persenDegraded": 3.2,
+    "totalPermintaan": 340
+  }
+}

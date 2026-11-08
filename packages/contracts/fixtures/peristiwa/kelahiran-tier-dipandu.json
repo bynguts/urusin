@@ -1,0 +1,38 @@
+{
+  "skema": "peristiwa",
+  "data": {
+    "slug": "kelahiran",
+    "judul": "Kelahiran",
+    "tier": "dipandu",
+    "kodeKabKota": "3374",
+    "kota": {
+      "kodeKabKota": "3374",
+      "nama": "Kota Semarang",
+      "tier": "dipandu",
+      "validasi": "read-only",
+      "verifiedAt": null
+    },
+    "keluaran": ["Akta kelahiran"],
+    "peringatan": "Di kota ini kami hanya memandu. Anda mengisi sendiri di portal.",
+    "catatan": "Belum diverifikasi tangan.",
+    "langkah": [
+      {
+        "id": "ajukan",
+        "judul": "Ajukan lewat portal resmi",
+        "jenis": "online-manual",
+        "dependsOn": [],
+        "dokumen": [],
+        "bawa": [],
+        "keterangan": "Ikuti petunjuk di halaman resmi.",
+        "sumber": [
+          {
+            "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+            "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+            "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri"
+          }
+        ],
+        "verifiedAt": null
+      }
+    ]
+  }
+}

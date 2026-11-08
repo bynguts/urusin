@@ -1,0 +1,31 @@
+{
+  "skema": "sse",
+  "catatan": "Mode JSON satu aksi: klien mengirim \"lanjut\".",
+  "data": [
+    {
+      "type": "degraded",
+      "kapabilitas": ["tool_calling"],
+      "mode": "hemat",
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "progress",
+      "label": "Memahami kebutuhan Anda…",
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": true,
+      "degraded": true,
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    }
+  ]
+}

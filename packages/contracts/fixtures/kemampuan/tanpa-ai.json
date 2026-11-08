@@ -1,0 +1,14 @@
+{
+  "skema": "health",
+  "data": {
+    "ok": true,
+    "status": "ok",
+    "gitSha": "abc1234",
+    "version": "0.0.0",
+    "kapabilitas": {
+      "ai": "tanpa_ai",
+      "vision": false,
+      "rag": "siap"
+    }
+  }
+}

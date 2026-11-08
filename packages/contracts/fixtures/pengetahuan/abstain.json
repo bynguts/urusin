@@ -1,0 +1,9 @@
+{
+  "skema": "pengetahuan",
+  "data": {
+    "hasil": [],
+    "abstain": {
+      "alasan": "di_luar_cakupan"
+    }
+  }
+}

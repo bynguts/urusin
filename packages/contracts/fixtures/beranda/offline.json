@@ -1,0 +1,8 @@
+{
+  "skema": "keadaan_layar",
+  "data": {
+    "keadaan": "offline",
+    "pesanWarga": "Anda offline. Kartu bawa ke kantor tetap bisa dibuka.",
+    "aksi": "Buka kartu"
+  }
+}

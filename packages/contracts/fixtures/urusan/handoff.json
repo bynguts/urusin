@@ -1,0 +1,41 @@
+{
+  "skema": "sse",
+  "data": [
+    {
+      "type": "progress",
+      "label": "Mencari sumber resmi…",
+      "toolName": "rag__cari_pengetahuan",
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "handoff",
+      "sebab": "tanpa_sumber",
+      "alasan": "Belum ada sumber resmi untuk pertanyaan ini. Tanyakan langsung ke kanal resmi berikut.",
+      "kanal": [
+        {
+          "nama": "Disdukcapil Kabupaten Wonogiri",
+          "url": "https://disdukcapil.wonogirikab.go.id/"
+        },
+        {
+          "nama": "Layanan Dukcapil Kementerian Dalam Negeri",
+          "kontak": "1500537"
+        }
+      ],
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    }
+  ]
+}

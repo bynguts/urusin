@@ -7,6 +7,7 @@ import {
   createHarness,
   openHarnessDb,
   prepareTurn,
+  toEvent,
   type Db,
   type HarnessOptions,
 } from '@urusin/harness';
@@ -22,6 +23,7 @@ import {
   type Prices,
 } from '@urusin/llm';
 import { openDb } from '@urusin/rag';
+import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 
 /** Konfigurasi runtime dari env (dibaca sekali saat boot). Semua opsional kecuali yang bertanda. */
 export type RuntimeConfig = {
@@ -57,6 +59,8 @@ export type Runtime = ReturnType<typeof createHarness> & {
   mode: 'demo' | 'llm';
   /** Turn yang sedang berjalan per urusan (untuk pembatalan saat klien putus). */
   running: Map<string, AbortController>;
+  /** Catat + siarkan satu event di luar turn (hasil eksekusi, konfirmasi): sumber kebenaran tetap tabel events. */
+  publish(urusanId: string, e: EventPayload): UrusinEvent;
 };
 
 type RuntimeInit = {
@@ -78,8 +82,14 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     ragDb,
     ...init.harness,
   });
-  h.store.abandonRunningTurns();
-  return { ...h, config, mode: init.mode ?? 'demo', running: new Map() };
+  h.store.reapExpiredTurns();
+  const publish = (urusanId: string, e: EventPayload): UrusinEvent => {
+    const { type, ...isi } = e;
+    const ev = toEvent(h.store.appendEvent(urusanId, type, isi));
+    h.bus.publish(urusanId, ev);
+    return ev;
+  };
+  return { ...h, config, mode: init.mode ?? 'demo', running: new Map(), publish };
 }
 
 function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {

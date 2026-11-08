@@ -1,4 +1,4 @@
-import type { StreamEnvelope } from './contracts.js';
+import type { UrusinEvent as StreamEnvelope } from '@urusin/contracts';
 
 type Listener = (ev: StreamEnvelope) => void;
 

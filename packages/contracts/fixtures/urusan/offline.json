@@ -1,0 +1,7 @@
+{
+  "skema": "keadaan_layar",
+  "data": {
+    "keadaan": "offline",
+    "pesanWarga": "Anda sedang offline. Tulisan Anda disimpan dan dikirim saat tersambung."
+  }
+}

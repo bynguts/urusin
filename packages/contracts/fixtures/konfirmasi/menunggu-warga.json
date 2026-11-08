@@ -1,0 +1,49 @@
+{
+  "skema": "sse",
+  "data": [
+    {
+      "type": "state",
+      "state": "MENUNGGU_KONFIRMASI",
+      "tier": "dipandu",
+      "version": 9,
+      "dari": "MENGISI",
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "execution_request",
+      "executionId": "ex_contoh-0001",
+      "adapterId": "dukcapil-wonogiri",
+      "flowId": "akta-kelahiran",
+      "ringkasan": "Ajukan akta kelahiran di portal Disdukcapil Wonogiri. Berkas: 2. Nama dan NIK tersamar.",
+      "params": {
+        "nama": "{{NAMA_ANAK}}",
+        "nikIbu": "{{NIK_IBU}}"
+      },
+      "tool": "dukcapil__ajukan_layanan",
+      "paramsHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "gate",
+      "jenis": "konfirmasi",
+      "pesan": "Periksa ringkasan, lalu setujui untuk melanjutkan.",
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 4,
+      "at": "2026-11-09T03:00:02.100Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf4"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { CapabilityFlags, ChatProvider, ChatTool, Usage } from '@urusin/llm';
 import type { Db } from './db.js';
-import type { ExecutionRequest, UrusanState, UrusinEvent } from './contracts.js';
+import type { EventPayload, PayloadOf, UrusanState } from '@urusin/contracts';
 import type { UrusanRow, HarnessStore } from './store.js';
 import { TERMINAL_STATES, URUSAN_STATES } from './state.js';
 
@@ -41,7 +41,8 @@ export type ToolContext = {
   signal: AbortSignal;
 };
 
-export type EmittableEvent = UrusinEvent;
+export type EmittableEvent = EventPayload;
+export type ExecutionRequest = PayloadOf<'execution_request'>;
 
 export type ToolResult = {
   /** Teks ringkas untuk model; konten tak tepercaya SUDAH dibungkus spotlight oleh tool. */

@@ -1,4 +1,9 @@
-import type { JejakItem, JejakView, TransparansiView, UrusinEventType } from './contracts.js';
+import type {
+  JejakItem,
+  JejakResponse as JejakView,
+  TransparansiResponse as TransparansiView,
+  UrusinEventType,
+} from '@urusin/contracts';
 import type { Db } from './db.js';
 import type { HarnessStore, SpanInput } from './store.js';
 
@@ -82,20 +87,22 @@ type SpanRow = {
 
 function ringkasEvent(type: string, payload: Record<string, unknown>): string {
   switch (type) {
-    case 'gate':
+    case 'policy_gate':
       return `${String(payload.keputusan)} ${String(payload.tool)}${payload.aturan ? ` (${String(payload.aturan)})` : ''}`;
     case 'state':
-      return `${String(payload.dari)} → ${String(payload.ke)}`;
+      return `${String(payload.dari ?? '?')} → ${String(payload.state)}`;
     case 'progress':
-      return String(payload.pesan ?? '');
+      return String(payload.label ?? '');
     case 'error':
-      return `${String(payload.kode)}: ${String(payload.pesan)}`;
+      return `${String(payload.kode)}: ${String(payload.pesanWarga)}`;
     case 'handoff':
       return String(payload.alasan ?? 'handoff');
     case 'grounded_answer':
       return `${(payload.klaim as unknown[] | undefined)?.length ?? 0} klaim bersumber`;
     case 'execution_request':
       return `${String(payload.adapterId)}/${String(payload.flowId)}`;
+    case 'gate':
+      return `menunggu warga: ${String(payload.jenis)}`;
     case 'done':
       return String(payload.status);
     default:

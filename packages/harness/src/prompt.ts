@@ -1,4 +1,4 @@
-import type { UrusanState } from './contracts.js';
+import type { UrusanState } from '@urusin/contracts';
 import { spotlightPolicyText } from './spotlight.js';
 import type { ToolDef } from './tools.js';
 

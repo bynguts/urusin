@@ -1,0 +1,38 @@
+{
+  "skema": "sse",
+  "catatan": "Checklist manual karena pemeriksaan foto otomatis mati.",
+  "data": [
+    {
+      "type": "degraded",
+      "kapabilitas": ["vision"],
+      "mode": null,
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "checklist",
+      "item": [
+        {
+          "id": "kk",
+          "label": "Kartu Keluarga",
+          "status": "perlu",
+          "alasan": "Periksa sendiri: foto jelas dan semua tulisan terbaca."
+        }
+      ],
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "skema": "daftar_urusan",
+  "data": {
+    "urusan": [
+      {
+        "id": "u_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1",
+        "state": "MENUNGGU_LOGIN_WARGA",
+        "version": 4,
+        "kodeKabKota": "3312",
+        "menunggu": "warga",
+        "dibuatPada": "2026-11-08T03:00:00.000Z",
+        "diubahPada": "2026-11-09T01:00:00.000Z"
+      }
+    ]
+  }
+}

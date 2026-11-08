@@ -1,0 +1,37 @@
+{
+  "skema": "sse",
+  "data": [
+    {
+      "type": "degraded",
+      "kapabilitas": ["rerank", "vision", "rewrite"],
+      "mode": "tanpa_ai",
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "handoff",
+      "sebab": "kuota",
+      "alasan": "Asisten sedang istirahat hari ini. Anda tetap bisa memakai panduan langkah dan kanal resmi.",
+      "kanal": [
+        {
+          "nama": "Disdukcapil Kabupaten Wonogiri",
+          "url": "https://disdukcapil.wonogirikab.go.id/"
+        }
+      ],
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0001",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": true,
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    }
+  ]
+}

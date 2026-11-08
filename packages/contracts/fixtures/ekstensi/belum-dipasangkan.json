@@ -1,0 +1,8 @@
+{
+  "skema": "keadaan_layar",
+  "data": {
+    "keadaan": "ekstensi_belum_dipasangkan",
+    "pesanWarga": "Ekstensi sudah terpasang, tapi belum terhubung ke akun ini.",
+    "aksi": "Hubungkan"
+  }
+}

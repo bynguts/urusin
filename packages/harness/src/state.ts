@@ -1,4 +1,4 @@
-import { URUSAN_STATES, type UrusanState } from './contracts.js';
+import { URUSAN_STATES, type UrusanState } from '@urusin/contracts';
 
 export { URUSAN_STATES, type UrusanState };
 
