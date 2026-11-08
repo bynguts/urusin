@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { llmText } from '@urusin/core';
-import { cariPengetahuanTool } from '@urusin/rag';
+import { LAYANAN_KORPUS, cariPengetahuanTool } from '@urusin/rag';
 import { routeByKode } from '@urusin/registry';
 import { z } from 'zod';
 import type { PayloadOf } from '@urusin/contracts';
@@ -27,13 +27,19 @@ export function formatHits(hits: readonly Hit[], nonce: string, max = 4): string
 }
 
 function retrieve(ctx: ToolContext, query: string, kode: string | null | undefined, layanan?: string) {
-  if (!ctx.deps.ragDb) return { hasil: [] as Hit[], tanpaHasil: true };
-  const out = cariPengetahuanTool.execute(ctx.deps.ragDb, {
-    query,
-    ...(kode ? { kodeKabKota: kode } : {}),
-    ...(layanan ? { layanan } : {}),
-    k: 4,
-  });
+  const ragDb = ctx.deps.ragDb;
+  if (!ragDb) return { hasil: [] as Hit[], tanpaHasil: true };
+  const cari = (lay?: string) =>
+    cariPengetahuanTool.execute(ragDb, {
+      query,
+      ...(kode ? { kodeKabKota: kode } : {}),
+      ...(lay ? { layanan: lay } : {}),
+      k: 4,
+    });
+  // `layanan` dari model adalah teks bebas, sedangkan korpus memakai kategori (adminduk, samsat, ...).
+  // Filter yang tidak cocok dengan kategori mana pun tidak boleh memaksa abstain: ulangi tanpa filter.
+  let out = cari(layanan);
+  if (layanan && out.hasil.length === 0) out = cari();
   const chunks: ChunkRecord[] = out.hasil.map((h) => ({
     refId: h.id,
     text: h.text,
@@ -55,7 +61,14 @@ export const ragCariPengetahuan = defineTool({
   input: z.object({
     query: llmText().max(500),
     kodeKabKota: kodeKabKota.optional(),
-    layanan: llmText().max(80).optional(),
+    // Nilai di luar enum (mis. "akta kelahiran") diabaikan (`catch`), bukan ditolak atau memfilter ke 0 hasil.
+    layanan: z
+      .enum(LAYANAN_KORPUS)
+      .optional()
+      .catch(undefined)
+      .describe(
+        'Opsional. Kategori korpus, BUKAN nama layanan: adminduk (KTP, KK, akta, pindah), samsat (pajak kendaraan), lapor, ombudsman, oss (izin usaha), bansos, pdp, pemilu, bpjs, skck, sim, ikd. Kosongkan bila ragu; tulis nama layanan di query.',
+      ),
   }),
   allowedStates: NON_TERMINAL_STATES,
   execute(ctx, args): ToolResult {

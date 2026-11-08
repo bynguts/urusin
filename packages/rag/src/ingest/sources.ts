@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
-import { KodeWilayahSchema } from '../schema.js';
+import { KodeWilayahSchema, LayananKorpusSchema } from '../schema.js';
 
 export const SourceEntrySchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
@@ -10,7 +10,7 @@ export const SourceEntrySchema = z.object({
   jenis: z.enum(['halaman', 'pdf', 'regulasi']),
   domain: z.string().min(1),
   kodeWilayah: KodeWilayahSchema.nullable(),
-  layanan: z.string().min(1).nullable(),
+  layanan: LayananKorpusSchema.nullable(),
   status: z.enum(['confirmed', 'unverified']),
   robots: z.enum(['ditemukan', 'tidak-ada', 'tidak-terjangkau']),
   lastFetched: z.string().nullable(),
