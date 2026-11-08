@@ -1,6 +1,8 @@
 import type { Db } from './db.js';
 
 type ModuleImporter = (name: string) => Promise<unknown>;
+// Satu-satunya import() non-literal yang diizinkan: nama hanya 'sqlite-vec' (lihat tryLoadSqliteVec), bukan modul HTTP.
+// eslint-disable-next-line no-restricted-syntax
 const defaultImporter: ModuleImporter = (name) => import(/* @vite-ignore */ name);
 
 /**
