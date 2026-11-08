@@ -35,6 +35,11 @@ export type RetrievalDeps = {
   expandWeight?: number | undefined;
   /** Ambang cakupan abstain (default 0.1, atau env RAG_ABSTAIN_MIN_COVERAGE; 0 = mati). Lihat DEFAULT_MIN_COVERAGE. */
   minCoverage?: number | undefined;
+  /**
+   * Lantai skor rerank endpoint: skor hasil teratas di bawahnya = abstain (di_luar_cakupan). Tanpa nilai atau
+   * tanpa endpoint (LLM/fallback tidak punya skor) gerbang ini tidak aktif. Env RAG_ABSTAIN_MIN_RERANK_SCORE.
+   */
+  minRerankScore?: number | undefined;
   /** Top-N kandidat untuk rerank (default 20). */
   rerankTopN?: number | undefined;
   rerank?: RerankDeps | undefined;
@@ -195,6 +200,14 @@ function envMinCoverage(): number | undefined {
   if (raw === undefined || raw.trim() === '') return undefined;
   const v = Number(raw);
   return Number.isFinite(v) && v >= 0 && v <= 1 ? v : undefined;
+}
+
+/** Env `RAG_ABSTAIN_MIN_RERANK_SCORE` (angka apa pun; skala tergantung model rerank). */
+function envMinRerankScore(): number | undefined {
+  const raw = process.env['RAG_ABSTAIN_MIN_RERANK_SCORE'];
+  if (raw === undefined || raw.trim() === '') return undefined;
+  const v = Number(raw);
+  return Number.isFinite(v) ? v : undefined;
 }
 
 export type AbstainReason = 'di_luar_cakupan' | 'skor_rendah';
@@ -397,6 +410,22 @@ export async function retrieve(
     const r = await rerankHits(opts.query, s.hits, k, deps.rerank);
     hits = r.hits;
     rerankStatus = r.status;
+    const floor = deps.minRerankScore ?? envMinRerankScore();
+    const top = r.hits[0]?.skor;
+    if (r.status === 'endpoint' && floor !== undefined && top !== undefined && top < floor) {
+      return {
+        hits: [],
+        alasan: 'di_luar_cakupan',
+        mode: s.usedVector ? 'hybrid' : 'bm25',
+        debug: debugOf(pipeline, s, {
+          rerank: ms(t1, performance.now()),
+          total: ms(t0, performance.now()),
+          rerankStatus: r.status,
+          rewriteStatus,
+          candidates: s.hits.length,
+        }),
+      };
+    }
   }
   const t2 = performance.now();
 
