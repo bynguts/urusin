@@ -56,7 +56,7 @@ export async function postJson(opts: HttpOpts, path: string, body: unknown): Pro
       lastStatus = 0;
       if (attempt >= retries) {
         if (opts.stats) opts.stats.errors++;
-        throw new Error(`panggilan penyedia gagal: ${(e as Error).name}`);
+        throw new Error(`panggilan penyedia gagal: ${(e as Error).name}`, { cause: e });
       }
       await sleep(500 * 2 ** attempt);
     } finally {
