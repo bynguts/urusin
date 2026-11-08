@@ -90,6 +90,9 @@
 # 	header {
 # 		Strict-Transport-Security "max-age=31536000"
 # 		X-Content-Type-Options "nosniff"
+# 		# Situs uji: jangan diindeks dan tandai jelas bukan situs pemerintah (nilai header ASCII).
+# 		X-Robots-Tag "noindex, nofollow"
+# 		X-Site-Notice "Situs uji - bukan situs pemerintah"
 # 		-Server
 # 	}
 # 	reverse_proxy 127.0.0.1:4320

@@ -270,7 +270,7 @@ COMPOSE_PROFILES=fixtures ./deploy.sh <git-sha> sha256:<digest>
 Port `127.0.0.1:4320`, profil `public` (`FIXTURES_PUBLIC_ORIGIN` diisi compose menjadi
 `https://fixtures.$DOMAIN`). Blok Caddy `fixtures.{$DOMAIN}` ada di `Caddyfile.urusin` dalam bentuk
 **komentar** (nonaktif bawaan). Untuk mengaktifkan: tambahkan DNS A/AAAA `fixtures.$DOMAIN`, buka komentar
-blok itu, `caddy validate`, lalu `systemctl reload caddy`.
+blok itu (sudah mengirim `X-Robots-Tag: noindex, nofollow` dan `X-Site-Notice: Situs uji - bukan situs pemerintah`), `caddy validate`, lalu `systemctl reload caddy`.
 
 ## Uji skrip (tanpa Docker)
 
