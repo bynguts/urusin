@@ -8,10 +8,10 @@ const harness = (name) => fileURLToPath(new URL(`../../deploy/tests/${name}`, im
 const hasBash = spawnSync('bash', ['--version']).status === 0;
 
 describe(
-  'skrip deploy (blue/green, rollback, provenance, retensi image)',
+  'skrip deploy (blue/green, rollback, provenance, retensi image, pemasangan Caddy)',
   { skip: !hasBash && 'bash tidak tersedia' },
   () => {
-    for (const name of ['deploy.test.sh', 'image-retention.test.sh']) {
+    for (const name of ['deploy.test.sh', 'image-retention.test.sh', 'caddy-install.test.sh']) {
       it(`${name}: lulus semua kasus harness`, () => {
         const r = spawnSync('bash', [harness(name)], { encoding: 'utf8' });
         assert.equal(r.status, 0, r.stdout + r.stderr);
