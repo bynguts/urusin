@@ -50,6 +50,7 @@ export function verifyRows(
 ): ChainVerification {
   let prev = genesisHash(urusanId, createdAt);
   let expectedSeq = 1;
+  let headKnown = expectedHead === prev;
   for (const row of rows) {
     if (row.seq !== expectedSeq)
       return { ok: false, count: rows.length, brokenAtSeq: row.seq, reason: 'seq_gap' };
@@ -59,9 +60,11 @@ export function verifyRows(
       return { ok: false, count: rows.length, brokenAtSeq: row.seq, reason: 'hash' };
     }
     prev = row.hash;
+    if (row.hash === expectedHead) headKnown = true;
     expectedSeq++;
   }
-  if (expectedHead !== undefined && expectedHead !== prev) {
+  // Head klien yang lebih lama (hash baris mana pun) sah; tak cocok sama sekali = rantai bukan milik klien / dirusak.
+  if (expectedHead !== undefined && !headKnown) {
     return { ok: false, count: rows.length, brokenAtSeq: rows.length, reason: 'head_mismatch' };
   }
   return { ok: true, count: rows.length, head: prev };

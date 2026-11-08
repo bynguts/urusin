@@ -1,6 +1,9 @@
 // Pembanding JSON Schema untuk pembekuan kontrak: perubahan aditif lolos; yang merusak konsumen lama gagal.
 // Pelanggaran: properti dihapus/diganti nama, tipe menyempit, nilai enum dihapus, optional menjadi required,
 // batas validasi diperketat, cabang anyOf dihapus, ekspor skema dihapus.
+// Arah skema menentukan satu aturan tambahan: properti BARU yang required pada objek yang sudah ada melanggar untuk
+// skema permintaan (klien -> server, klien lama tidak mengirimnya) tetapi boleh untuk skema respons/event
+// (server -> klien, klien lama mengabaikan properti tambahan).
 
 const isObj = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
 
@@ -19,11 +22,14 @@ function typeSet(s) {
   return null;
 }
 
+/** Arah skema dari nama ekspor: `*RequestSchema` = permintaan (klien -> server); lainnya respons/event. */
+export const isRequestExport = (name) => /Request(Schema)?$/.test(name);
+
 const LOWER_BOUNDS = ['minLength', 'minItems', 'minimum', 'exclusiveMinimum', 'minProperties'];
 const UPPER_BOUNDS = ['maxLength', 'maxItems', 'maximum', 'exclusiveMaximum', 'maxProperties'];
 
 /** Daftar pelanggaran { path, message } saat berpindah dari skema `a` (lama) ke `b` (baru). */
-export function diffSchemas(a, b, path = '') {
+export function diffSchemas(a, b, path = '', opts = {}) {
   const out = [];
   const add = (message, p = path) => out.push({ path: p, message });
   if (!isObj(a) || !isObj(b)) return out;
@@ -66,22 +72,27 @@ export function diffSchemas(a, b, path = '') {
         continue;
       }
       if (!reqA.has(k) && reqB.has(k)) add('properti optional menjadi required', p);
-      out.push(...diffSchemas(v, propsB[k], p));
+      out.push(...diffSchemas(v, propsB[k], p, opts));
+    }
+    if (opts.request) {
+      for (const k of reqB) {
+        if (!(k in a.properties)) add('properti required baru pada skema permintaan', `${path}.${k}`);
+      }
     }
     if (a.additionalProperties !== false && b.additionalProperties === false) {
       add('properti tambahan tidak lagi diizinkan');
     }
   }
 
-  if (isObj(a.items) && isObj(b.items)) out.push(...diffSchemas(a.items, b.items, `${path}[]`));
+  if (isObj(a.items) && isObj(b.items)) out.push(...diffSchemas(a.items, b.items, `${path}[]`, opts));
 
   if (Array.isArray(a.anyOf)) {
     if (!Array.isArray(b.anyOf)) {
       // union lama menjadi skema tunggal: skema baru harus menerima semua cabang lama
-      a.anyOf.forEach((branch, i) => out.push(...diffSchemas(branch, b, `${path}|${i}`)));
+      a.anyOf.forEach((branch, i) => out.push(...diffSchemas(branch, b, `${path}|${i}`, opts)));
     } else {
       a.anyOf.forEach((branch, i) => {
-        const ok = b.anyOf.some((cand) => diffSchemas(branch, cand, '').length === 0);
+        const ok = b.anyOf.some((cand) => diffSchemas(branch, cand, '', opts).length === 0);
         if (!ok) add(`cabang anyOf #${i} dihapus atau menyempit`, `${path}|${i}`);
       });
     }
@@ -92,7 +103,7 @@ export function diffSchemas(a, b, path = '') {
     for (const [k, v] of Object.entries(a[key])) {
       const nb = isObj(b[key]) ? b[key][k] : undefined;
       if (nb === undefined) add('definisi dihapus', `${path}/${key}/${k}`);
-      else out.push(...diffSchemas(v, nb, `${path}/${key}/${k}`));
+      else out.push(...diffSchemas(v, nb, `${path}/${key}/${k}`, opts));
     }
   }
   return out;
@@ -106,7 +117,7 @@ export function diffContracts(oldMap, newMap) {
       out.push({ path: name, message: 'skema diekspor dihapus atau diganti nama' });
       continue;
     }
-    for (const v of diffSchemas(schema, newMap[name], '')) {
+    for (const v of diffSchemas(schema, newMap[name], '', { request: isRequestExport(name) })) {
       out.push({ path: `${name}${v.path}`, message: v.message });
     }
   }

@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ESLint } from 'eslint';
 import OpenAI from 'openai';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ALL_ON, CAPABILITIES, MemoryCapabilityStore, probeCapabilities } from './capabilities.js';
 import { OpenAIProvider, createOpenAIClient, isRetryableError, isUnsupportedParamError } from './client.js';
 import { FORCE_ENV, loadLlmConfig } from './config.js';
@@ -252,5 +252,41 @@ describe('larangan SDK vendor lain', () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('stream selalu eksplisit di body permintaan', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const bodies: Record<string, unknown>[] = [];
+  const stub = (respond: () => Response) =>
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_u: unknown, init?: { body?: string }) => {
+        bodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+        return respond();
+      }),
+    );
+  const base = { model: 'm', messages: [{ role: 'user' as const, content: 'hai' }] };
+
+  it('create() mengirim stream:false walau pemanggil menghilangkannya', async () => {
+    bodies.length = 0;
+    stub(
+      () =>
+        new Response(JSON.stringify(fakeCompletion({ content: 'ok' })), {
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    const p = new OpenAIProvider(loadLlmConfig({ ...ENV, LLM_MAX_RETRIES: '0' }));
+    await p.create(base);
+    expect(bodies[0]).toHaveProperty('stream', false);
+  });
+
+  it('stream() mengirim stream:true', async () => {
+    bodies.length = 0;
+    stub(() => new Response('data: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } }));
+    const p = new OpenAIProvider(loadLlmConfig({ ...ENV, LLM_MAX_RETRIES: '0' }));
+    const it = await p.stream({ ...base, stream: true });
+    for await (const _c of it) void _c;
+    expect(bodies[0]).toHaveProperty('stream', true);
   });
 });

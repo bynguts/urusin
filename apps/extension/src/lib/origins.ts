@@ -1,4 +1,5 @@
 /** Parsing origin dari env saat build (manifest) dan pola origin saat runtime. */
+import hosts from '../../../../deploy/hosts.json';
 
 const LOOPBACK = new Set(['localhost', '127.0.0.1']);
 const DEFAULT_APP_ORIGINS = ['http://localhost:3000'];
@@ -26,15 +27,26 @@ function parseList(raw: string | undefined): string[] {
 
 const unique = (xs: string[]) => [...new Set(xs)];
 
-/** Origin web app yang boleh `externally_connectable`: URUSIN_PUBLIC_ORIGIN + localhost:3000. */
+/** Host produksi dari deploy/hosts.json (primary + fallback): sumber tunggal, host persis tanpa wildcard. */
+const HOST_SETS = Object.values(hosts) as { app: string; verify: string; fixtures: string }[];
+export const HOST_APP_ORIGINS = HOST_SETS.map((h) => `https://${h.app}`);
+export const HOST_FIXTURE_ORIGINS = HOST_SETS.map((h) => `https://${h.fixtures}`);
+
+/**
+ * Origin web app yang boleh `externally_connectable`: URUSIN_PUBLIC_ORIGIN (opsional), host primary dan fallback
+ * dari deploy/hosts.json, dan localhost:3000 (dev).
+ */
 export function appOrigins(env: Record<string, string | undefined>): string[] {
-  return unique([...parseList(env.URUSIN_PUBLIC_ORIGIN), ...DEFAULT_APP_ORIGINS]);
+  return unique([...parseList(env.URUSIN_PUBLIC_ORIGIN), ...HOST_APP_ORIGINS, ...DEFAULT_APP_ORIGINS]);
 }
 
-/** Origin fixture: URUSIN_FIXTURES_ORIGINS (dipisah koma) atau default lokal port 4320. */
+/**
+ * Origin fixture (hanya sah di Mode Uji): URUSIN_FIXTURES_ORIGINS (dipisah koma) atau default lokal port 4320,
+ * ditambah host fixtures primary dan fallback dari deploy/hosts.json.
+ */
 export function fixtureOrigins(env: Record<string, string | undefined>): string[] {
   const list = parseList(env.URUSIN_FIXTURES_ORIGINS);
-  return list.length > 0 ? unique(list) : DEFAULT_FIXTURE_ORIGINS;
+  return unique([...(list.length > 0 ? list : DEFAULT_FIXTURE_ORIGINS), ...HOST_FIXTURE_ORIGINS]);
 }
 
 export function toMatchPattern(origin: string): string {

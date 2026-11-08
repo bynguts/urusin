@@ -1,4 +1,4 @@
-import { findPiiSpans, type PiiKind } from '@urusin/core';
+import { findPiiSpans, normalizeForScan, type PiiKind, type PiiOptions } from '@urusin/core';
 import type { ChatMessage } from '@urusin/llm';
 
 /**
@@ -20,6 +20,14 @@ export interface KnownValueMatcher {
   match(text: string): { start: number; end: number; placeholder: string }[];
 }
 
+/** Penyimpanan pemetaan placeholder per urusan (kunci sudah di-HMAC; tanpa nilai asli). */
+export interface PlaceholderPersistence {
+  /** Kunci stabil untuk (jenis, nilai ternormalisasi); HMAC dengan rahasia server. */
+  key(kind: string, normalized: string): string;
+  entries: readonly { key: string; kind: string; token: string }[];
+  save(key: string, kind: string, token: string): void;
+}
+
 export type PlaceholderKind = PiiKind | 'kk' | 'dikenal';
 
 export type Replacement = { kind: PlaceholderKind; placeholder: string };
@@ -36,6 +44,12 @@ const SUFFIX: Record<PlaceholderKind, string> = {
   dikenal: 'DATA',
 };
 
+/** Kebalikan `namespaceFor`: `{{ORANG3.NIK}}` -> 2, `{{PEMOHON.HP}}` -> 0. */
+function indexOfToken(token: string): number {
+  const m = /^\{\{(?:PEMOHON|ORANG(\d+))\./.exec(token);
+  return m?.[1] ? Number(m[1]) - 1 : 0;
+}
+
 /** Nama namespace berurutan: orang pertama = PEMOHON, berikutnya ORANG2, ORANG3, ... */
 function namespaceFor(index: number): string {
   return index === 0 ? 'PEMOHON' : `ORANG${index + 1}`;
@@ -51,22 +65,35 @@ export class PiiInterceptor {
   /** Total penggantian sejak dibuat; dicatat di span sebagai `urusin.pii_redactions` bila perlu. */
   redactions = 0;
 
-  constructor(private readonly matcher?: KnownValueMatcher) {}
+  constructor(
+    private readonly matcher?: KnownValueMatcher,
+    /** Konteks urusan: kode kab/kota yang diketahui, agar NIK yang dipecah antar bidang/turn tetap terdeteksi. */
+    private readonly ctx: PiiOptions = {},
+    private readonly persist?: PlaceholderPersistence,
+  ) {
+    for (const e of persist?.entries ?? []) {
+      this.byValue.set(e.key, e.token);
+      const kind = e.kind as PlaceholderKind;
+      this.counters.set(kind, Math.max(this.counters.get(kind) ?? 0, indexOfToken(e.token) + 1));
+    }
+  }
 
   private placeholderFor(kind: PlaceholderKind, value: string): string {
-    const key = `${kind}:${value.replace(/\D/g, '') || value.toLowerCase()}`;
+    const norm = normalizeForScan(value).text.replace(/\D/g, '') || value.toLowerCase();
+    const key = this.persist ? this.persist.key(kind, norm) : `${kind}:${norm}`;
     const existing = this.byValue.get(key);
     if (existing) return existing;
     const n = this.counters.get(kind) ?? 0;
     this.counters.set(kind, n + 1);
     const token = `{{${namespaceFor(n)}.${SUFFIX[kind]}}}`;
     this.byValue.set(key, token);
+    this.persist?.save(key, kind, token);
     return token;
   }
 
   redact(text: string): RedactResult {
     const hits: { start: number; end: number; kind: PlaceholderKind; value: string; token?: string }[] = [];
-    for (const s of findPiiSpans(text)) {
+    for (const s of findPiiSpans(text, this.ctx)) {
       const kind: PlaceholderKind =
         s.kind === 'nik' && KK_CONTEXT_RE.test(text.slice(Math.max(0, s.start - 25), s.start))
           ? 'kk'
@@ -116,6 +143,19 @@ export class PiiInterceptor {
       return base as unknown as ChatMessage;
     });
   }
+}
+
+/**
+ * Redaksi pada DAUN string sebuah nilai JSON (bukan pada hasil serialisasi): placeholder menggantikan isi string,
+ * sehingga struktur JSON tetap valid walau angka/teks menyerupai HP/NIK.
+ */
+export function redactLeaves<T>(value: T): T {
+  if (typeof value === 'string') return redactForStorage(value) as T;
+  if (Array.isArray(value)) return value.map(redactLeaves) as T;
+  if (typeof value === 'object' && value !== null) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, redactLeaves(v)])) as T;
+  }
+  return value;
 }
 
 /** Redaksi sekali pakai tanpa pemetaan stabil (untuk penyimpanan: hanya perlu memastikan nol PII). */

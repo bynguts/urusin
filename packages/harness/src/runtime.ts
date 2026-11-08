@@ -22,12 +22,17 @@ export type HarnessOptions = {
   /** Basis pengetahuan RAG untuk tool retrieval. */
   ragDb?: Db;
   tools?: readonly ToolDef[];
+  /** Rahasia HMAC pemetaan placeholder PII (lihat `StoreOptions.piiKey`). */
+  piiKey?: string;
 };
 
 /** Komposisi akar: store + registry + kuota + tracer + bus → `AgentDeps` siap dipakai `runTurn`. */
 export function createHarness(opts: HarnessOptions) {
   const now = opts.now ?? (() => new Date());
-  const store = new HarnessStore(opts.db ?? openHarnessDb(), { now });
+  const store = new HarnessStore(opts.db ?? openHarnessDb(), {
+    now,
+    ...(opts.piiKey ? { piiKey: opts.piiKey } : {}),
+  });
   const registry = new ToolRegistry(opts.tools ?? builtinTools());
   const quota = new QuotaMeter(store, opts.prices ?? { inputPerMTok: 0, outputPerMTok: 0, audioPerMin: 0 }, {
     ...DEFAULT_QUOTA,

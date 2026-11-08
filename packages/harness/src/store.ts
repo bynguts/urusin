@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import type { ChatMessage } from '@urusin/llm';
 import {
   canonicalJson,
@@ -17,7 +17,7 @@ import {
   TerminalStateError,
   TurnInProgressError,
 } from './errors.js';
-import { redactForStorage } from './pii.js';
+import { redactForStorage, redactLeaves, type PlaceholderPersistence } from './pii.js';
 import { canTransition, isTerminal } from './state.js';
 
 export type UrusanRow = {
@@ -109,6 +109,8 @@ export type StoreOptions = {
   instanceId?: string;
   /** Masa berlaku lease turn; diperpanjang berkala selama turn berjalan. */
   leaseMs?: number;
+  /** Rahasia HMAC untuk kunci pemetaan placeholder (URUSIN_PII_KEY). Default acak per proses: antar-restart token baru, tetap aman. */
+  piiKey?: string;
 };
 
 /**
@@ -120,6 +122,7 @@ export class HarnessStore {
   private readonly now: () => Date;
   readonly instanceId: string;
   readonly leaseMs: number;
+  private readonly piiKey: string;
 
   constructor(
     readonly db: Db,
@@ -128,6 +131,24 @@ export class HarnessStore {
     this.now = opts.now ?? (() => new Date());
     this.instanceId = opts.instanceId ?? `i_${randomBytes(8).toString('hex')}`;
     this.leaseMs = opts.leaseMs ?? 30_000;
+    this.piiKey = opts.piiKey ?? randomBytes(32).toString('hex');
+  }
+
+  /** Pemetaan placeholder yang bertahan antar turn (kunci di-HMAC; tidak ada nilai asli di DB). */
+  placeholderPersistence(urusanId: string): PlaceholderPersistence {
+    const entries = this.db
+      .prepare('SELECT key, kind, token FROM pii_placeholders WHERE urusan_id = ?')
+      .all(urusanId) as { key: string; kind: string; token: string }[];
+    return {
+      key: (kind, normalized) =>
+        createHmac('sha256', this.piiKey).update(`${urusanId}|${kind}|${normalized}`).digest('hex'),
+      entries,
+      save: (key, kind, token) => {
+        this.db
+          .prepare('INSERT OR IGNORE INTO pii_placeholders (urusan_id, key, kind, token) VALUES (?,?,?,?)')
+          .run(urusanId, key, kind, token);
+      },
+    };
   }
 
   private leaseUntil(): string {
@@ -208,6 +229,20 @@ export class HarnessStore {
       const u = this.getUrusanOrThrow(urusanId);
       if (isTerminal(u.state)) throw new TerminalStateError(u.state);
       if (opts.expectedVersion !== undefined && u.version !== opts.expectedVersion) throw new ConflictError();
+      // Turn yatim (pemilik mati, lease lewat) dilepas di sini juga: reaper saat boot saja tidak cukup pada blue/green.
+      const now = this.iso();
+      const yatim = this.db
+        .prepare(
+          "UPDATE turns SET status = 'error', error_code = 'ABANDONED', ended_at = ? WHERE urusan_id = ? AND status = 'running' AND (lease_until IS NULL OR lease_until < ?)",
+        )
+        .run(now, urusanId, now).changes;
+      if (yatim > 0) {
+        this.appendEvent(urusanId, 'error', {
+          kode: 'ABORTED',
+          pesanWarga: 'Proses sebelumnya terhenti karena server dipindahkan. Silakan lanjutkan.',
+          bisaUlang: true,
+        });
+      }
       const running = this.db
         .prepare("SELECT 1 FROM turns WHERE urusan_id = ? AND status = 'running'")
         .get(urusanId);
@@ -258,7 +293,7 @@ export class HarnessStore {
       )
       .run(
         patch.status,
-        redactForStorage(JSON.stringify(patch.messages)),
+        JSON.stringify(redactLeaves(patch.messages)),
         this.iso(),
         patch.tokensIn,
         patch.tokensOut,
@@ -315,7 +350,7 @@ export class HarnessStore {
       const prev = last?.hash ?? genesisHash(u.id, u.createdAt);
       const seq = (last?.seq ?? 0) + 1;
       const at = this.iso();
-      const body = redactForStorage(canonicalJson(payload));
+      const body = canonicalJson(redactLeaves(payload));
       const hash = chainHash(prev, { seq, type, at, payload: body });
       this.db
         .prepare(
@@ -407,7 +442,7 @@ export class HarnessStore {
         s.structuredMode ?? null,
         s.costIdr ?? null,
         s.degraded ? 1 : 0,
-        JSON.stringify(s.attrs ?? {}),
+        JSON.stringify(redactLeaves(s.attrs ?? {})),
       );
     return id;
   }
@@ -526,6 +561,11 @@ export class HarnessStore {
         .prepare('UPDATE confirmations SET used_at = ? WHERE id = ? AND used_at IS NULL')
         .run(this.iso(), id).changes === 1
     );
+  }
+
+  /** Kembalikan konfirmasi yang sudah dikonsumsi bila turn gagal sebelum tindakan sampai ke warga. */
+  releaseConfirmation(id: string): void {
+    this.db.prepare('UPDATE confirmations SET used_at = NULL WHERE id = ?').run(id);
   }
 
   // --- potongan korpus yang sah dikutip ---

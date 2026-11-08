@@ -45,6 +45,9 @@ jobs:
       - name: Semua `uses:` dipin ke commit SHA
         run: node scripts/check-action-pins.mjs
 
+      - name: Job tag tidak membangun image (hanya alias digest)
+        run: node scripts/check-tag-no-build.mjs
+
       - name: Lint
         run: pnpm lint && pnpm format:check
 
