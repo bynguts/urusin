@@ -6,7 +6,9 @@
 FROM node:26-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS base
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
-    CI=true \n    HUSKY=0 \n    npm_config_store_dir=/pnpm/store
+    CI=true \
+    HUSKY=0 \
+    npm_config_store_dir=/pnpm/store
 # Versi pnpm harus sama dengan "packageManager" di package.json.
 RUN npm install -g pnpm@11.1.1 --no-fund --no-audit
 
