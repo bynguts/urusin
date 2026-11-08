@@ -3,6 +3,13 @@
 echo "docker $*" >> "$SHIM_DIR/calls.log"
 case "$1" in
   pull | ps | rm) exit 0 ;;
+  run)
+    # backup.sh: wadah sqlite3 menulis .partial.db ke direktori yang di-mount sebagai /backup.
+    [ -z "${SHIM_RUN_FAIL:-}" ] || exit 1
+    for a in "$@"; do
+      case "$a" in *:/backup) echo "isi-db-palsu" > "${a%:/backup}/.partial.db" ;; esac
+    done
+    exit 0 ;;
   image) echo "${SHIM_LABEL-}"; exit 0 ;;
   buildx)
     case "$*" in

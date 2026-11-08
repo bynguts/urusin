@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034  # RC dipakai lewat eval di check()
 # Uji deploy.sh dengan docker/curl palsu (tanpa Docker): bash deploy/tests/deploy.test.sh
 # Berjalan di Git Bash/CI. Tiap kasus memakai direktori sandbox sendiri.
 set -uo pipefail
@@ -110,6 +111,43 @@ export SHIM_LABEL="$SHA_B"
 run_deploy "$SHA_B" "$DIG_B"
 check "exit 0" '[ $RC -eq 0 ]'
 check "green aktif, legacy dihentikan" 'images | grep -q "^ACTIVE_COLOR=green$" && [ ! -f "$SHIM_DIR/running.blue" ]'
+
+echo "10. backup.sh: berkas dibuat, retensi, restic opsional"
+new_sandbox
+export BACKUP_DIR="$SB/bk"
+mkdir -p "$BACKUP_DIR"
+echo lama > "$BACKUP_DIR/urusin-20200101T000000Z.db.gz"
+touch -d '5 days ago' "$BACKUP_DIR/urusin-20200101T000000Z.db.gz"
+echo baru > "$BACKUP_DIR/urusin-20990101T000000Z.db.gz"
+touch -d '1 day ago' "$BACKUP_DIR/urusin-20990101T000000Z.db.gz"
+(bash "$DEPLOY/backup.sh") > "$SB/out.log" 2>&1; RC=$?
+check "exit 0" '[ $RC -eq 0 ]'
+check "backup baru dibuat (urusin-2026*.db.gz, tidak kosong)" 'ls "$BACKUP_DIR"/urusin-202[6-9]*T*Z.db.gz | grep -v 20990101 | grep -q . && [ "$(ls "$BACKUP_DIR"/urusin-*.db.gz | wc -l)" -eq 2 ]'
+check "backup > 3 hari dihapus, 1 hari dipertahankan" '[ ! -e "$BACKUP_DIR/urusin-20200101T000000Z.db.gz" ] && [ -e "$BACKUP_DIR/urusin-20990101T000000Z.db.gz" ]'
+check "tanpa sisa .partial" '[ ! -e "$BACKUP_DIR/.partial.db" ]'
+check "restic tidak dipanggil tanpa RESTIC_REPOSITORY" '! calls | grep -q "^restic"'
+export RESTIC_REPOSITORY="/tmp/repo-palsu"
+(bash "$DEPLOY/backup.sh") > "$SB/out.log" 2>&1; RC=$?
+check "restic dipanggil bila RESTIC_REPOSITORY diset" '[ $RC -eq 0 ] && calls | grep -q "^restic backup"'
+unset RESTIC_REPOSITORY
+export SHIM_RUN_FAIL=1
+(bash "$DEPLOY/backup.sh") > "$SB/out.log" 2>&1; RC=$?
+check "kegagalan sqlite -> exit non-zero, tanpa .partial" '[ $RC -ne 0 ] && [ ! -e "$BACKUP_DIR/.partial.db" ]'
+unset SHIM_RUN_FAIL BACKUP_DIR
+
+echo "11. disk-alert.sh: ambang 85%"
+new_sandbox
+export SHIM_DF_PCT=91
+(bash "$DEPLOY/disk-alert.sh") > "$SB/out.log" 2>&1; RC=$?
+check "91% -> exit 1" '[ $RC -eq 1 ]'
+export NTFY_URL="https://ntfy.test/topik"
+(bash "$DEPLOY/disk-alert.sh") > "$SB/out.log" 2>&1
+check "ntfy dikirim saat lewat ambang" 'calls | grep -q "ntfy.test/topik"'
+export SHIM_DF_PCT=40
+: > "$SHIM_DIR/calls.log"
+(bash "$DEPLOY/disk-alert.sh") > "$SB/out.log" 2>&1; RC=$?
+check "40% -> exit 0, tanpa notifikasi" '[ $RC -eq 0 ] && ! calls | grep -q ntfy'
+unset SHIM_DF_PCT NTFY_URL
 
 echo
 echo "lulus: $pass, gagal: $fail"
