@@ -65,13 +65,27 @@ export function stepLabel(step: Step | undefined): string {
   }
 }
 
-/** Jumlah RSS (MB) proses-proses Chromium; Linux saja (/proc), selain itu undefined. */
-export function rssMb(pids: number[]): number | undefined {
-  if (process.platform !== 'linux') return undefined;
+/**
+ * Memori (MB) proses-proses Chromium sebuah sesi sebagai jumlah PSS (/proc/<pid>/smaps_rollup): halaman
+ * bersama (biner Chromium, pustaka, memori bersama antarproses) dibagi rata, jadi tidak terhitung berkali-kali
+ * seperti jumlah VmRSS (yang membesar ~2x dan membuat pengawas membunuh sesi sehat). Kernel tanpa
+ * smaps_rollup jatuh ke VmRSS. Linux saja; selain itu undefined.
+ */
+export function pssMb(pids: number[], proc = '/proc', platform = process.platform): number | undefined {
+  if (platform !== 'linux') return undefined;
   let kb = 0;
   for (const pid of pids) {
     try {
-      const m = /VmRSS:\s+(\d+)\s+kB/.exec(readFileSync(`/proc/${pid}/status`, 'utf8'));
+      const m = /^Pss:\s+(\d+)\s+kB/m.exec(readFileSync(`${proc}/${pid}/smaps_rollup`, 'utf8'));
+      if (m) {
+        kb += Number(m[1]);
+        continue;
+      }
+    } catch {
+      // smaps_rollup tidak ada/terbaca: pakai VmRSS
+    }
+    try {
+      const m = /VmRSS:\s+(\d+)\s+kB/.exec(readFileSync(`${proc}/${pid}/status`, 'utf8'));
       kb += Number(m?.[1] ?? 0);
     } catch {
       // proses sudah keluar
@@ -116,8 +130,8 @@ export function proxyOption(port: number): { server: string; bypass: string } {
 delete process.env.PLAYWRIGHT_DISABLE_FORCED_CHROMIUM_PROXIED_LOOPBACK;
 
 async function sessionMemMb(userDataDir: string, cdp: CDPSession): Promise<number> {
-  const rss = rssMb(pidsOfProfile(userDataDir));
-  if (rss !== undefined && rss > 0) return rss;
+  const pss = pssMb(pidsOfProfile(userDataDir));
+  if (pss !== undefined && pss > 0) return pss;
   const heap = (await cdp.send('Runtime.getHeapUsage')) as { usedSize: number };
   return Math.round(heap.usedSize / 1024 / 1024);
 }
@@ -490,7 +504,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     });
   });
 
-  // Pengawas memori per sesi: RSS pohon proses Chromium (Linux); di luar Linux, heap JS halaman (perkiraan).
+  // Pengawas memori per sesi: PSS pohon proses Chromium (Linux); di luar Linux, heap JS halaman (perkiraan).
   const memTimer = setInterval(async () => {
     try {
       const mb = await sessionMemMb(iso.userDataDir, cdp);

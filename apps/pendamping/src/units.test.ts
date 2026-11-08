@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { css, fill, gate, nav, upload, urlIncludes } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
-import { chromiumArgs, pidsOfProfile, PROFIL_PREFS, proxyOption, rssMb, stepLabel } from './browser.js';
+import { chromiumArgs, pidsOfProfile, PROFIL_PREFS, proxyOption, pssMb, stepLabel } from './browser.js';
 import { loadConfig } from './config.js';
 import { createTouchMapper, toCdp } from './input.js';
 import { runnerExpression, runnerScript, toInjectable } from './runner-script.js';
@@ -289,9 +289,19 @@ describe('peramban: utilitas', () => {
     expect(args.join(' ')).not.toMatch(/stealth|AutomationControlled|user-agent/i);
   });
 
-  it('rssMb: undefined di luar Linux, angka di Linux', () => {
-    const r = rssMb([process.pid]);
-    if (process.platform === 'linux') expect(r).toBeGreaterThan(0);
-    else expect(r).toBeUndefined();
+  it('pssMb: jumlah PSS (bukan RSS ganda), jatuh ke VmRSS, proses hilang = 0, non-Linux = undefined', () => {
+    const proc = mkdtempSync(join(tmpdir(), 'proc-'));
+    try {
+      mkdirSync(join(proc, '10'));
+      writeFileSync(join(proc, '10', 'smaps_rollup'), 'Rss:  409600 kB\nPss:  102400 kB\n');
+      writeFileSync(join(proc, '10', 'status'), 'VmRSS:  409600 kB\n');
+      mkdirSync(join(proc, '11'));
+      writeFileSync(join(proc, '11', 'status'), 'VmRSS:  51200 kB\n');
+      expect(pssMb([10], proc, 'linux')).toBe(100);
+      expect(pssMb([10, 11, 12], proc, 'linux')).toBe(150);
+      expect(pssMb([10], proc, 'win32')).toBeUndefined();
+    } finally {
+      rmSync(proc, { recursive: true, force: true });
+    }
   });
 });
