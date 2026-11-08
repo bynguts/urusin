@@ -17,7 +17,7 @@
   "crossCheck": {
    "nama": "yonatanyl/KODE-WILAYAH-KEPMENDAGRI-2025 (OCR dari PDF resmi)",
    "url": "https://github.com/yonatanyl/KODE-WILAYAH-KEPMENDAGRI-2025",
-   "hasil": "504 dari 514 kode kab/kota dan 37 dari 38 provinsi terbaca di mirror kedua dengan nama identik (setelah normalisasi spasi); selisih sisanya karena pembacaan sel mirror kedua, bukan beda kode. Total 38/416/98 sama dengan rekapitulasi resmi. PDF lampiran resmi belum diperiksa baris per baris."
+   "hasil": "511 dari 514 kode kab/kota (3 tidak terbaca di mirror kedua: 35.79, 53.02, 95.02) dan 37 dari 38 provinsi terbaca di mirror kedua dengan nama identik (setelah normalisasi spasi); tidak ada kode dengan nama berbeda. Total 38/416/98 sama dengan rekapitulasi resmi. PDF lampiran resmi belum diperiksa baris per baris."
   },
   "accessedAt": "2026-11-08"
  },
