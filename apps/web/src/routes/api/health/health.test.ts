@@ -17,6 +17,7 @@ describe('GET /api/health', () => {
       gitSha: 'dev',
       version: '0.0.0',
       rag: { status: 'uninitialized' },
+      csp: { violations: {} },
     });
   });
 

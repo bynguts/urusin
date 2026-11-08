@@ -1,6 +1,7 @@
 import type { Db } from './db.js';
 import { reciprocalRankFusion } from './rrf.js';
 import type { SourceRef } from './schema.js';
+import { isStopword } from './stem/stem.js';
 
 export type SearchOptions = {
   query: string;
@@ -44,7 +45,10 @@ export function tokenize(q: string): string[] {
 /** Bangun ekspresi MATCH aman: token dikutip, digabung OR. Null bila tidak ada token. */
 export function buildMatch(q: string): string | null {
   const norm = q.toLowerCase();
-  const tokens = new Set(tokenize(norm));
+  const all = tokenize(norm);
+  // Stopword dibuang (jatuh ke semua token bila kueri hanya berisi stopword).
+  const kept = all.filter((t) => !isStopword(t));
+  const tokens = new Set(kept.length ? kept : all);
   for (const [phrase, extra] of Object.entries(SINONIM)) {
     if (norm.includes(phrase)) for (const e of extra) tokens.add(e);
   }
@@ -52,7 +56,7 @@ export function buildMatch(q: string): string | null {
   return [...tokens].map((t) => `"${t.replace(/"/g, '')}"`).join(' OR ');
 }
 
-type Row = {
+export type Row = {
   id: string;
   text: string;
   judul: string;
@@ -64,7 +68,7 @@ type Row = {
   skor: number;
 };
 
-function toHit(r: Row): Hit {
+export function toHit(r: Row): Hit {
   return {
     id: r.id,
     text: r.text,
@@ -77,7 +81,7 @@ function toHit(r: Row): Hit {
   };
 }
 
-/** Filter wilayah dulu, lalu BM25 (bobot kolom: judul 5, teks 1, instansi 0.5). */
+/** Filter wilayah dulu, lalu BM25 (bobot kolom: judul 5, teks 1, instansi 0.5, ctx 0.7). */
 export function searchBm25(db: Db, opts: SearchOptions, limit = opts.k ?? 6): Hit[] {
   const match = buildMatch(opts.query);
   if (!match) return [];
@@ -85,7 +89,7 @@ export function searchBm25(db: Db, opts: SearchOptions, limit = opts.k ?? 6): Hi
   const marks = wilayah.map(() => '?').join(',');
   const sql = `
     SELECT c.id, c.text, c.judul, c.instansi, c.url, c.verified_at, c.kode_wilayah, c.layanan,
-           bm25(chunks_fts, 5.0, 1.0, 0.5) AS skor
+           bm25(chunks_fts, 5.0, 1.0, 0.5, 0.7) AS skor
     FROM chunks_fts JOIN chunks c ON c.rowid = chunks_fts.rowid
     WHERE chunks_fts MATCH ?
       AND (c.kode_wilayah IS NULL${wilayah.length ? ` OR c.kode_wilayah IN (${marks})` : ''})

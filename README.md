@@ -1,5 +1,9 @@
 # Urusin
 
+[![CI](https://github.com/bynguts/urusin/actions/workflows/ci.yml/badge.svg)](https://github.com/bynguts/urusin/actions/workflows/ci.yml)
+[![Release image](https://github.com/bynguts/urusin/actions/workflows/release.yml/badge.svg)](https://github.com/bynguts/urusin/actions/workflows/release.yml)
+<!-- Badge coverage sengaja belum ada: angka coverage dihitung lokal (`pnpm coverage`) dan belum dipublikasikan oleh CI. Tambahkan badge hanya bila datanya berasal dari CI. -->
+
 Agen AI yang ikut mengurus layanan publik bersama warga: membaca syarat dari sumber resmi, membantu
 mengisi formulir di situs pemerintah, dan selalu menyerahkan tombol kirim terakhir kepada warga.
 
@@ -44,15 +48,19 @@ Fitur agen, ekstensi peramban, MCP, RAG, PWA, dan pengingat: **akan dilengkapi**
 
 ## 4. Teknologi
 
-| Lapisan          | Pilihan                                                                  |
-| ---------------- | ------------------------------------------------------------------------ |
-| Bahasa & runtime | TypeScript (strict), Node.js 26, pnpm 11, Turborepo                      |
-| Web              | SvelteKit 3 + Svelte 5, `@sveltejs/adapter-node`, Vite 8, Tailwind CSS 4 |
-| LLM              | SDK resmi `openai` ke endpoint OpenAI-compatible (Chat Completions saja) |
-| Validasi         | zod 4                                                                    |
-| Pengujian        | Vitest, `node:test` untuk skrip repositori                               |
-| Kualitas         | ESLint (flat config), Prettier, commitlint, husky                        |
-| CI               | GitHub Actions (tanpa bot yang membuat commit, tanpa Dependabot)         |
+| Lapisan          | Pilihan                                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Bahasa & runtime | TypeScript (strict), Node.js 26, pnpm 11, Turborepo                                                                      |
+| Web              | SvelteKit 3 + Svelte 5, `@sveltejs/adapter-node`, Vite 8, Tailwind CSS 4                                                 |
+| LLM              | SDK resmi `openai` ke endpoint OpenAI-compatible (Chat Completions saja)                                                 |
+| Validasi         | zod 4                                                                                                                    |
+| Pengujian        | Vitest, `node:test` untuk skrip repositori                                                                               |
+| Kualitas         | ESLint (flat config), Prettier, commitlint, husky                                                                        |
+| Basis data       | SQLite (`better-sqlite3`, mode WAL); pencarian BM25 lewat FTS5                                                           |
+| Vektor (RAG)     | Cosine brute-force di JS atas blob SQLite, transform center/whiten opsional digerbang eval. Bukan `sqlite-vec`           |
+| Proxy & TLS      | Caddy milik host bersama (VPS), meneruskan ke `127.0.0.1:4310`; Caddy tidak mengirim CSP                                 |
+| CSP              | SvelteKit `kit.csp` mode `auto` (nonce untuk halaman dinamis, hash untuk prerender)                                      |
+| CI & rilis       | GitHub Actions (tanpa bot yang membuat commit, tanpa Dependabot); image multi-arch ke GHCR, di-deploy berdasarkan digest |
 
 ## 5. Arsitektur
 
@@ -70,7 +78,7 @@ Prinsip yang sudah dikodekan:
 - Pengiriman akhir hanya lewat `gate.human` (warga menekan tombolnya sendiri).
 - Hanya origin `https://` yang terdaftar persis di registry yang dianggap resmi.
 
-Diagram alur data, aliran PII, dan state machine: **akan dilengkapi**.
+Diagram C4 (konteks dan kontainer) serta alur data PII ada di [`docs/arsitektur.md`](docs/arsitektur.md). State machine harness: **akan dilengkapi**.
 
 ## 6. Instalasi & menjalankan
 
@@ -118,7 +126,7 @@ kode wilayah, dan formulir resmi: **akan dilengkapi**.
 
 ## Keamanan & Privasi
 
-- CSP tunggal dari SvelteKit (nonce per request), termasuk `worker-src 'self'`, `manifest-src 'self'`,
+- CSP tunggal dari SvelteKit (mode `auto`: nonce per request untuk halaman dinamis, hash untuk halaman prerender), termasuk `worker-src 'self'`, `manifest-src 'self'`,
   `object-src 'none'`, dan `frame-ancestors 'none'`.
 - Hook `pre-commit` memindai NIK, nomor HP, email, dan private key sebelum commit; CI memindai ulang
   semua file terlacak.
@@ -140,6 +148,15 @@ capability probe, endpoint health, serta pemindai PII dan audit riwayat commit.
 - Baru fondasi: belum ada agen, ekstensi peramban, adapter situs, MCP, RAG, PWA, atau pengingat.
 - Domain di registry masih berupa seed; tanggal verifikasi manual tiap domain belum dicatat.
 - Capability probe belum dijalankan terhadap penyedia nyata.
+
+## Dokumentasi
+
+- [Arsitektur (C4 dan alur data PII)](docs/arsitektur.md)
+- [Architecture Decision Records](docs/adr/README.md) (27 keputusan, format MADR)
+- [Kebijakan keamanan](SECURITY.md) (Indonesia dan English)
+- [Panduan kontribusi](CONTRIBUTING.md)
+- [Deploy di VPS](deploy/README.md)
+- [RAG: transform vektor dan evaluasi](packages/rag/README.md)
 
 ## Lisensi
 

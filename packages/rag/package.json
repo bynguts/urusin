@@ -19,10 +19,13 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "rag:ingest": "tsc -p tsconfig.build.json && node dist/ingest/cli.js",
-    "rag:eval": "tsc -p tsconfig.build.json && node dist/eval/cli.js"
+    "rag:eval": "tsc -p tsconfig.build.json && node dist/eval/cli.js",
+    "rag:verify": "tsc -p tsconfig.build.json && node dist/ingest/verify-cli.js"
   },
   "dependencies": {
+    "@urusin/core": "workspace:*",
     "@urusin/llm": "workspace:*",
     "better-sqlite3": "13.0.3",
     "zod": "4.6.7"
@@ -30,6 +33,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "26.6.6",
+    "@vitest/coverage-v8": "5.1.0",
     "vitest": "5.1.0"
   }
 }

@@ -83,7 +83,8 @@ describe('embedAndFit + vectorIdsForQuery', () => {
 
 describe('jalur BM25-saja tidak berubah tanpa embedding', () => {
   it('tool tetap mode bm25, hasil sama dengan searchBm25, dan tabel vektor kosong', async () => {
-    const out = cariPengetahuanTool.execute(db, { query: 'ktp hilang' });
+    // Pipeline kosong = BM25 polos (bawaan tool kini menambah stem + perluasan).
+    const out = cariPengetahuanTool.execute(db, { query: 'ktp hilang' }, { pipeline: {} });
     expect(out.mode).toBe('bm25');
     expect(out.hasil.map((h) => h.id)).toEqual(searchBm25(db, { query: 'ktp hilang' }).map((h) => h.id));
     expect(out.hasil[0]?.id).toBe('ktp');
