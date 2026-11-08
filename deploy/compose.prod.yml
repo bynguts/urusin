@@ -1,0 +1,64 @@
+# Produksi (VPS arm64/amd64). Jalankan lewat deploy/deploy.sh; jangan `up` manual tanpa .env.images.
+# Port hanya di loopback; Caddy sistem (host) meneruskan {$DOMAIN} dan verify.{$DOMAIN} ke 4310.
+name: urusin
+
+services:
+  web:
+    # Selalu berdasarkan digest, mis. ghcr.io/bynguts/urusin-web@sha256:... (ditulis deploy.sh ke .env.images).
+    image: ${WEB_IMAGE:?WEB_IMAGE wajib diisi (ghcr.io/bynguts/urusin-web@sha256:...)}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      HOST: 0.0.0.0
+      ORIGIN: https://${DOMAIN:?DOMAIN wajib diisi}
+      PROTOCOL_HEADER: x-forwarded-proto
+      ADDRESS_HEADER: x-forwarded-for
+      XFF_DEPTH: '1'
+      BODY_SIZE_LIMIT: 6M
+      DATABASE_URL: file:/data/urusin.db
+      GIT_SHA: ${GIT_SHA:-}
+    ports:
+      - '127.0.0.1:4310:3000'
+    volumes:
+      # SQLite (mode WAL: berkas -wal/-shm ikut di volume ini).
+      - data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    mem_limit: 512m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+  # Opsional: profil fixture publik (portal palsu untuk demo). Belum tentu ada imagenya.
+  # Aktifkan dengan `COMPOSE_PROFILES=fixtures` dan FIXTURES_IMAGE@digest.
+  fixtures:
+    profiles: [fixtures]
+    image: ${FIXTURES_IMAGE:-ghcr.io/bynguts/urusin-fixtures:unset}
+    restart: unless-stopped
+    environment:
+      FIXTURES_PROFILE: public
+    ports:
+      - '127.0.0.1:4320:4000'
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    mem_limit: 128m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+volumes:
+  data:

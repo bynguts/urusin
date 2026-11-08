@@ -1,0 +1,28 @@
+# Snippet untuk di-import ke Caddyfile host (Caddy sistem yang sudah memegang 80/443):
+#
+#   import /opt/urusin/deploy/Caddyfile.urusin
+#
+# Caddy membaca {$DOMAIN} dari environment proses Caddy (lihat deploy/README.md). Satu-satunya
+# Content-Security-Policy dikirim aplikasi (SvelteKit); jangan menambah CSP di sini.
+
+(urusin_common) {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(self), geolocation=()"
+		-Server
+	}
+
+	# flush_interval -1: teruskan SSE tanpa buffering.
+	reverse_proxy 127.0.0.1:4310 {
+		flush_interval -1
+	}
+}
+
+# Aplikasi memilih rute /verify dari header Host mentah, jadi kedua host ke upstream yang sama.
+{$DOMAIN}, verify.{$DOMAIN} {
+	import urusin_common
+}

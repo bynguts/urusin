@@ -11,12 +11,21 @@ describe('GET /api/health', () => {
     const { GET } = await import('./+server');
     const res = await GET({} as never);
     expect(res.headers.get('cache-control')).toBe('no-store');
-    expect(await res.json()).toEqual({ status: 'ok', gitSha: 'dev' });
+    expect(await res.json()).toEqual({
+      ok: true,
+      status: 'ok',
+      gitSha: 'dev',
+      version: '0.0.0',
+      rag: { status: 'uninitialized' },
+    });
   });
 
   it('mengembalikan GIT_SHA dari environment', async () => {
     vi.stubEnv('GIT_SHA', 'abcdef1234567890');
     const { GET } = await import('./+server');
-    expect(await (await GET({} as never)).json()).toEqual({ status: 'ok', gitSha: 'abcdef1234567890' });
+    const body = await (await GET({} as never)).json();
+    expect(body.gitSha).toBe('abcdef1234567890');
+    expect(body.ok).toBe(true);
+    expect(body.rag).toEqual({ status: 'uninitialized' });
   });
 });
