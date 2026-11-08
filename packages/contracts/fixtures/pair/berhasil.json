@@ -1,0 +1,8 @@
+{
+  "skema": "keadaan_layar",
+  "data": {
+    "keadaan": "pair_berhasil",
+    "pesanWarga": "Ekstensi terhubung. Kita bisa mulai.",
+    "aksi": "Mulai urus"
+  }
+}

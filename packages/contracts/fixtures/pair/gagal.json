@@ -1,0 +1,8 @@
+{
+  "skema": "keadaan_layar",
+  "data": {
+    "keadaan": "pair_gagal",
+    "pesanWarga": "Belum terhubung. Pastikan ekstensi aktif, lalu coba lagi.",
+    "aksi": "Coba lagi"
+  }
+}
