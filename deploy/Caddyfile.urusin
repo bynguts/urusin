@@ -57,14 +57,17 @@
 	}
 
 	# Blue/green: dua instance web (4310 = blue, 4311 = green). `lb_policy first` memilih upstream
-	# sehat pertama; saat blue mati, green mengambil alih. `health_uri` memeriksa aktif, dan
+	# sehat pertama. `/api/ready` (bukan /api/health) hanya 200 pada warna yang DIPROMOSIKAN deploy.sh
+	# (setelah smoke test lulus), jadi warna baru tidak menerima lalu lintas sebelum waktunya walau
+	# port 4310 sudah hidup. PERHATIAN urutan upgrade pertama: lihat README "Upgrade ke /api/ready".
+	# `health_uri` memeriksa aktif, dan
 	# `lb_try_duration` mengulang permintaan yang gagal tersambung sehingga tidak ada respons 502
 	# selama pergantian. flush_interval -1: teruskan SSE tanpa buffering.
 	reverse_proxy 127.0.0.1:4310 127.0.0.1:4311 {
 		lb_policy first
 		lb_try_duration 5s
 		lb_try_interval 250ms
-		health_uri /api/health
+		health_uri /api/ready
 		health_interval 2s
 		health_timeout 2s
 		health_status 200
@@ -77,3 +80,17 @@
 {$DOMAIN}, verify.{$DOMAIN} {
 	import urusin_common
 }
+
+# Fixture publik (portal palsu untuk demo), profil `public`, 127.0.0.1:4320. Nonaktif secara bawaan:
+# buka komentar setelah DNS fixtures.DOMAIN ada dan `COMPOSE_PROFILES=fixtures` + FIXTURES_IMAGE diset
+# (lihat deploy/README.md). FIXTURES_PUBLIC_ORIGIN diisi compose menjadi https://fixtures.$DOMAIN.
+#
+# fixtures.{$DOMAIN} {
+# 	encode zstd gzip
+# 	header {
+# 		Strict-Transport-Security "max-age=31536000"
+# 		X-Content-Type-Options "nosniff"
+# 		-Server
+# 	}
+# 	reverse_proxy 127.0.0.1:4320
+# }

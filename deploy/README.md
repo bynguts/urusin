@@ -35,7 +35,7 @@ $EDITOR .env        # isi DOMAIN, SESSION_SECRET, LLM_*, VAPID_*, TURNSTILE_*
 Snippet `Caddyfile.urusin` mendefinisikan `{$DOMAIN}` dan `verify.{$DOMAIN}`. Isinya:
 
 - `reverse_proxy 127.0.0.1:4310 127.0.0.1:4311` dengan `lb_policy first`, health check aktif
-  `/api/health` tiap 2 detik, dan `lb_try_duration 5s` (permintaan yang gagal tersambung diulang ke
+  **`/api/ready`** tiap 2 detik (200 hanya pada warna yang dipromosikan `deploy.sh`; `/api/health` tetap liveness), dan `lb_try_duration 5s` (permintaan yang gagal tersambung diulang ke
   upstream sehat, sehingga pergantian blue/green tidak menghasilkan 502). `flush_interval -1` untuk SSE.
 - `encode zstd gzip` dengan **matcher eksplisit**. Matcher bawaan Caddy menyertakan `text/*`, sehingga
   `text/event-stream` (SSE) ikut dikompres dan tertahan di buffer encoder. Matcher respons Caddy tidak
@@ -88,24 +88,43 @@ cd /opt/urusin/deploy
 Urutan `deploy.sh`:
 
 1. `docker pull` berdasarkan digest.
-2. **Provenance (#14e)** sebelum `up`: label `org.opencontainers.image.revision` harus cocok dengan SHA
-   yang diharapkan, dan `docker buildx imagetools inspect --format '{{json .Provenance}}'` harus memuat
-   SHA tersebut. Bila provenance tidak tersedia, label revision dipakai sebagai cadangan; set
-   `REQUIRE_PROVENANCE=1` untuk menolak tanpa provenance. Ketidakcocokan = ditolak, tidak ada yang berubah.
+2. **Provenance (#14e), wajib (`REQUIRE_PROVENANCE=1` adalah bawaan)** sebelum `up`:
+   label `org.opencontainers.image.revision` harus **SHA git lengkap (40 hex)** dan cocok dengan SHA yang
+   diberikan, dan keluaran `docker buildx imagetools inspect --format '{{json .Provenance}}'` harus memuat
+   **SHA lengkap yang sama** (bukan substring SHA7). Salah satu gagal = ditolak, tidak ada yang berubah.
+   `REQUIRE_PROVENANCE=0` (hanya label) tidak untuk produksi. Catatan jujur: ini mencocokkan _isi_
+   metadata provenance; **tanda tangan/attestation tidak diverifikasi secara kriptografis** (belum ada
+   cosign/`gh attestation verify`), jadi bukan perlindungan terhadap registry yang disusupi.
 3. Menentukan warna aktif dari `.env.images` (`ACTIVE_COLOR`), menaikkan **warna idle**
-   (`web-blue` = 4310, `web-green` = 4311) dan menunggu `/api/health` sehat dengan `gitSha` yang cocok.
-   Warna aktif tidak disentuh sampai di sini.
-4. Menghentikan warna lama (Caddy memindahkan lalu lintas), lalu smoke test publik bila `DOMAIN` ada di `.env`:
-   `https://$DOMAIN/api/health` (gitSha publik), `https://verify.$DOMAIN/` (HTTP < 500) dan masa berlaku
-   sertifikat TLS keduanya (> 7 hari, butuh `openssl`). `SKIP_SMOKE=1` melewatinya.
-5. **Rollback otomatis**: gagal di langkah 3 atau 4 (tidak sehat, `gitSha` salah, smoke gagal) =>
-   `.env.images` dikembalikan ke digest sebelumnya, versi lama dijalankan ulang bila sempat berhenti,
-   warna yang gagal dihentikan, `deploy.sh` exit 1. Sukses mencetak `rollback manual: ./deploy.sh <sha> <digest lama>`.
+   (`web-blue` = 4310, `web-green` = 4311), menunggu `/api/health` sehat dengan `gitSha` yang cocok, dan
+   memastikan `/api/ready` masih 503 (belum dipromosikan; 404 = image tanpa rute itu, ditolak).
+   Warna aktif tidak disentuh.
+4. **Promosi**: setelah smoke ke port langsung warna idle lulus, `deploy.sh` menulis `/data/.active-color`
+   (volume bersama, lewat `docker compose exec`) berisi nama warna baru. Setiap instance membandingkan
+   berkas itu dengan `URUSIN_COLOR`; hanya warna yang dipromosikan menjawab 200 di `/api/ready`, sehingga
+   Caddy tidak mengirim lalu lintas ke warna baru (mis. green -> blue, saat blue di 4310 yang diutamakan
+   `lb_policy first`) sebelum smoke lulus.
+5. Smoke publik bila `DOMAIN` ada di `.env`: `https://$DOMAIN/api/health` (gitSha publik, diulang sampai
+   Caddy berpindah), `https://verify.$DOMAIN/` (HTTP < 500) dan masa berlaku sertifikat TLS keduanya
+   (> 7 hari, butuh `openssl`). `SKIP_SMOKE=1` melewatinya. Baru setelah lulus warna lama dihentikan.
+6. **Rollback otomatis**: gagal di langkah 3-5 (tidak sehat, `gitSha` salah, `/api/ready` tidak ada,
+   smoke gagal) => `.env.images` dikembalikan ke digest sebelumnya, versi lama dijalankan ulang bila sempat
+   berhenti, dipromosikan ulang, warna yang gagal dihentikan, `deploy.sh` exit 1. Sukses mencetak
+   `rollback manual: ./deploy.sh <sha> <digest lama>`.
 
 `.env.images` memuat `ACTIVE_COLOR`, `WEB_IMAGE_{BLUE,GREEN}`, `GIT_SHA_{BLUE,GREEN}`,
 `RUN_MIGRATIONS_{BLUE,GREEN}`. Idempotent; menjalankan ulang dengan argumen sama aman (warna berganti).
 Deploy pertama setelah layout lama (satu service `web`, `WEB_IMAGE=`) dikenali otomatis: kontainer lama
 dianggap blue, versi baru naik di green, lalu kontainer lama dihapus.
+
+### Upgrade ke `/api/ready` (sekali saja)
+
+Image lama tidak punya `/api/ready`; bila snippet Caddy baru dimuat saat image lama masih melayani, Caddy
+menganggap semua upstream tidak sehat. Urutan aman untuk rilis pertama yang membawa `/api/ready`:
+
+1. `SKIP_SMOKE=1 ./deploy.sh <sha> sha256:<digest>` (kontainer lama, bila layout lama, dihentikan setelah promosi).
+2. Baru perbarui snippet Caddy (`/api/ready`) dan `sudo systemctl reload caddy`.
+3. Deploy berikutnya berjalan normal dengan smoke publik.
 
 ### Migrasi database (hanya satu instance)
 
@@ -248,7 +267,10 @@ echo 'FIXTURES_IMAGE=ghcr.io/bynguts/urusin-fixtures@sha256:...' >> .env
 COMPOSE_PROFILES=fixtures ./deploy.sh <git-sha> sha256:<digest>
 ```
 
-Port `127.0.0.1:4320`; routing Caddy-nya ditambahkan terpisah setelah host fixtures ditetapkan.
+Port `127.0.0.1:4320`, profil `public` (`FIXTURES_PUBLIC_ORIGIN` diisi compose menjadi
+`https://fixtures.$DOMAIN`). Blok Caddy `fixtures.{$DOMAIN}` ada di `Caddyfile.urusin` dalam bentuk
+**komentar** (nonaktif bawaan). Untuk mengaktifkan: tambahkan DNS A/AAAA `fixtures.$DOMAIN`, buka komentar
+blok itu, `caddy validate`, lalu `systemctl reload caddy`.
 
 ## Uji skrip (tanpa Docker)
 
@@ -258,8 +280,8 @@ shellcheck -x deploy/*.sh deploy/tests/deploy.test.sh deploy/tests/shims/*
 ```
 
 Kasus: `zero-downtime.sh` (lulus/gagal), deploy pertama dan kedua (pindah warna), `gitSha` salah / warna baru tidak sehat / smoke publik
-gagal (rollback otomatis, exit non-zero), label revision tidak cocok dan `REQUIRE_PROVENANCE=1` (ditolak
-sebelum `up`), provenance cocok, migrasi dari layout lama, backup + retensi + restic opsional, alert disk.
+gagal (rollback otomatis, exit non-zero), label revision tidak cocok/pendek, provenance tanpa/SHA7 saja/SHA lengkap, `REQUIRE_PROVENANCE=0`,
+image tanpa `/api/ready` (ditolak sebelum `up` atau sebelum promosi), migrasi dari layout lama, backup + retensi + restic opsional, alert disk.
 
 ## Uji lokal (laptop)
 
