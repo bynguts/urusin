@@ -32,6 +32,7 @@ import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
 
 const ORIGIN = 'http://localhost:3000';
 const SID = 'ab'.repeat(16);
+const SESI = '00000000-0000-4000-8000-000000000001';
 const NIK = ['3312', '0101', '0190', '0001'].join('');
 
 let rt: Runtime;
@@ -42,6 +43,7 @@ type Panggilan = {
   raw: string;
   method: string;
   waktu: string | null;
+  nonce: string | null;
   tanda: string | null;
 };
 let calls: Panggilan[];
@@ -89,6 +91,7 @@ beforeEach(() => {
       body: raw ? JSON.parse(raw) : undefined,
       method: init.method ?? 'GET',
       waktu: headers.get('x-urusin-waktu'),
+      nonce: headers.get('x-urusin-nonce'),
       tanda: headers.get('x-urusin-tanda'),
     });
     const r = reply(u.pathname, raw ? JSON.parse(raw) : undefined, u.host);
@@ -150,16 +153,19 @@ describe('broker Browser Pendamping', () => {
     // Kanal ditandatangani HMAC atas (waktu, metode, jalur, isi mentah); tanpa bearer polos.
     const c = calls[0]!;
     expect(c.waktu).toMatch(/^\d{13}$/);
-    expect(c.tanda).toBe(tandaInternal('token-uji', c.waktu!, 'POST', '/internal/sesi', c.raw));
+    expect(c.nonce).toMatch(/^[0-9a-f]{32}$/);
+    expect(c.tanda).toBe(tandaInternal('token-uji', c.waktu!, c.nonce!, 'POST', '/internal/sesi', c.raw));
   });
 
   it('tanda tangan HMAC: vektor uji sama dengan apps/pendamping (tanda.test.ts)', () => {
-    expect(tandaInternal('r'.repeat(40), '1700000000000', 'POST', '/internal/sesi/status', '{"a":1}')).toBe(
-      '6bd9c7bef9d2879b430256daf6c406aa8bc10ad6f13f130bbc9ad37ecb8f89d3',
-    );
-    expect(tandaInternal('r'.repeat(40), '1700000000000', 'post', '/internal/sesi/status', '{"a":1}')).toBe(
-      '6bd9c7bef9d2879b430256daf6c406aa8bc10ad6f13f130bbc9ad37ecb8f89d3',
-    );
+    const N = '0123456789abcdef0123456789abcdef';
+    const VEKTOR = 'cc8335efcf547bb99e33a916b615c9152474c8613649f175e650158ffa14af4e';
+    expect(
+      tandaInternal('r'.repeat(40), '1700000000000', N, 'POST', '/internal/sesi/status', '{"a":1}'),
+    ).toBe(VEKTOR);
+    expect(
+      tandaInternal('r'.repeat(40), '1700000000000', N, 'post', '/internal/sesi/status', '{"a":1}'),
+    ).toBe(VEKTOR);
   });
 
   it('tanpa cookie sesi yang sudah ada -> 401; eksekusi asing -> 404; kota tanpa portal -> 422', async () => {
@@ -226,6 +232,20 @@ describe('broker Browser Pendamping', () => {
     expect(await g.json()).toEqual({ kode: 'SESI_BUKAN_MILIK', pesanWarga: 'sesi milik perangkat lain' });
   });
 
+  it('wsUrl dipatok ke PENDAMPING_PUBLIC_WS_URL; id sesi bukan UUID dari worker -> 503', async () => {
+    vi.stubEnv('PENDAMPING_PUBLIC_WS_URL', 'wss://urusin.test/pendamping/ws/');
+    const u = urusanDenganEksekusi();
+    const jawab = (wsUrl: string) => (path: string) =>
+      path.endsWith('/tiket')
+        ? { status: 201, body: { wsUrl, tiket: 't'.repeat(43), kedaluwarsa: '2026-11-09T00:00:30.000Z' } }
+        : { status: 200, body: sesi({ mode: 'ai', status: 'berjalan' }) };
+    reply = jawab(`ws://127.0.0.1:4330/ws/${SESI}`);
+    const r = await tiket(ev(req('POST'), u.id));
+    expect(((await r.json()) as any).wsUrl).toBe(`wss://urusin.test/pendamping/ws/${SESI}`);
+    reply = jawab('wss://evil.example/ws/..%2F..%2Fadmin');
+    expect((await tiket(ev(req('POST'), u.id))).status).toBe(503);
+  });
+
   it('pendamping mati / jawaban rusak / tanpa konfigurasi -> 503 LAYANAN_TIDAK_TERSEDIA', async () => {
     const u = urusanDenganEksekusi();
     reply = () => ({ status: 500, body: { stack: 'rahasia' } });
@@ -276,8 +296,23 @@ describe('broker Browser Pendamping', () => {
   });
 
   describe('multi-worker (PENDAMPING_WORKERS)', () => {
-    const VPS = { id: 'vps', url: 'http://vps:4330', region: 'umum', maxSessions: 2 };
-    const LAPTOP = { id: 'laptop-a', url: 'http://laptop-a:4330', region: 'id', maxSessions: 1 };
+    const WS = 'wss://urusin.test/pendamping';
+    const TOKEN_LAPTOP = 'l'.repeat(40);
+    const VPS = {
+      id: 'vps',
+      url: 'http://127.0.0.1:4330',
+      region: 'umum',
+      maxSessions: 2,
+      wsUrl: `${WS}/ws`,
+    };
+    const LAPTOP = {
+      id: 'laptop-a',
+      url: 'http://100.101.1.2:4330',
+      region: 'id',
+      maxSessions: 1,
+      wsUrl: `${WS}/w/laptop-a/ws`,
+      token: TOKEN_LAPTOP,
+    };
     beforeEach(() => vi.stubEnv('PENDAMPING_WORKERS', JSON.stringify([VPS, LAPTOP])));
 
     it('konfigurasi: JSON valid; JSON rusak, id ganda, url berjalur, tanpa token -> null; fallback satu URL', () => {
@@ -285,7 +320,12 @@ describe('broker Browser Pendamping', () => {
       const env = (w: string) => ({ PENDAMPING_INTERNAL_TOKEN: 't', PENDAMPING_WORKERS: w });
       expect(pendampingConfig(env('[{'))).toBeNull();
       expect(pendampingConfig(env(JSON.stringify([VPS, VPS])))).toBeNull();
-      expect(pendampingConfig(env(JSON.stringify([{ ...VPS, url: 'http://vps:4330/x' }])))).toBeNull();
+      expect(pendampingConfig(env(JSON.stringify([{ ...VPS, url: 'http://127.0.0.1:4330/x' }])))).toBeNull();
+      // Worker di luar 127.0.0.1 tanpa rahasia sendiri ditolak; wsUrl wajib ws(s) polos.
+      expect(pendampingConfig(env(JSON.stringify([{ ...LAPTOP, token: undefined }])))).toBeNull();
+      expect(pendampingConfig(env(JSON.stringify([{ ...LAPTOP, token: 'pendek' }])))).toBeNull();
+      expect(pendampingConfig(env(JSON.stringify([{ ...VPS, wsUrl: 'https://x/ws' }])))).toBeNull();
+      expect(pendampingConfig(env(JSON.stringify([{ ...VPS, wsUrl: undefined }])))).toBeNull();
       expect(pendampingConfig(env(JSON.stringify([{ ...VPS, maxSessions: 0 }])))).toBeNull();
       expect(pendampingConfig({ PENDAMPING_WORKERS: JSON.stringify([VPS]) })).toBeNull();
       expect(
@@ -299,22 +339,32 @@ describe('broker Browser Pendamping', () => {
     it('situs khusus IP Indonesia -> worker region id; panggilan berikutnya (tiket) ke worker yang sama', async () => {
       const u = urusanDenganEksekusi();
       expect((await mulai(ev(req('POST', { executionId: 'x_1' }), u.id))).status).toBe(201);
-      expect(calls[0]).toMatchObject({ host: 'laptop-a:4330', url: 'http://laptop-a:4330/internal/sesi' });
+      expect(calls[0]).toMatchObject({
+        host: '100.101.1.2:4330',
+        url: 'http://100.101.1.2:4330/internal/sesi',
+      });
       reply = () => ({
         status: 201,
         body: {
-          wsUrl: 'wss://x/pendamping/w/laptop-a/ws',
+          wsUrl: `wss://evil.example/ws/${SESI}`, // dipatok ulang oleh web
           tiket: 't'.repeat(43),
           kedaluwarsa: '2026-11-09T00:00:30.000Z',
         },
       });
-      expect((await tiket(ev(req('POST'), u.id))).status).toBe(201);
-      expect(calls.at(-1)?.host).toBe('laptop-a:4330');
+      const t = await tiket(ev(req('POST'), u.id));
+      expect(t.status).toBe(201);
+      expect(calls.at(-1)?.host).toBe('100.101.1.2:4330');
+      // Laptop memakai rahasianya sendiri, bukan PENDAMPING_INTERNAL_TOKEN.
+      const c = calls.at(-1)!;
+      expect(c.tanda).toBe(
+        tandaInternal(TOKEN_LAPTOP, c.waktu!, c.nonce!, 'POST', '/internal/sesi/tiket', c.raw),
+      );
+      expect(((await t.json()) as any).wsUrl).toBe(`${WS}/w/laptop-a/ws/${SESI}`);
     });
 
     it('tanpa worker id yang sehat -> 503 jujur + urusan beralih ke dipandu (bukan "tampilan berubah")', async () => {
       const u = urusanDenganEksekusi();
-      kesehatan = (host) => (host.startsWith('laptop') ? 'mati' : { status: 200, body: SEHAT });
+      kesehatan = (host) => (host.startsWith('100.101') ? 'mati' : { status: 200, body: SEHAT });
       const r = await mulai(ev(req('POST', { executionId: 'x_1' }), u.id));
       expect(r.status).toBe(503);
       expect(await r.json()).toEqual({
@@ -339,22 +389,22 @@ describe('broker Browser Pendamping', () => {
       const OSS = 'https://oss.go.id';
       kesehatan = (host) => ({
         status: 200,
-        body: host.startsWith('vps') ? { ...SEHAT, aktif: 2, menunggu: 3 } : SEHAT,
+        body: host.startsWith('127.0.0.1') ? { ...SEHAT, aktif: 2, menunggu: 3 } : SEHAT,
       });
       expect((await pilihWorker(cfg, OSS, 'u1'))?.id).toBe('vps');
       resetBrokerPendamping();
       kesehatan = (host) =>
-        host.startsWith('vps') ? { status: 503, body: {} } : { status: 200, body: SEHAT };
+        host.startsWith('127.0.0.1') ? { status: 503, body: {} } : { status: 200, body: SEHAT };
       expect((await pilihWorker(cfg, OSS, 'u1'))?.id).toBe('laptop-a');
       // Dua worker umum: beban (aktif+menunggu)/min(maxSessions, maks) terendah menang.
       const dua: PendampingConfig = {
         token: 't',
-        workers: [VPS, { ...VPS, id: 'vps-b', url: 'http://vps-b:4330' }],
+        workers: [VPS, { ...VPS, id: 'vps-b', url: 'http://127.0.0.2:4330' }],
       };
       resetBrokerPendamping();
       kesehatan = (host) => ({
         status: 200,
-        body: host.startsWith('vps-b') ? SEHAT : { ...SEHAT, aktif: 1 },
+        body: host.startsWith('127.0.0.2') ? SEHAT : { ...SEHAT, aktif: 1 },
       });
       expect((await pilihWorker(dua, OSS, 'u2'))?.id).toBe('vps-b');
       resetBrokerPendamping();
@@ -366,13 +416,13 @@ describe('broker Browser Pendamping', () => {
     it('setelah web restart: pemegang sesi ditemukan lewat status; 404 di semua worker diteruskan', async () => {
       const u = urusanDenganEksekusi();
       reply = (_p, _b, host) =>
-        host.startsWith('laptop')
+        host.startsWith('100.101')
           ? { status: 200, body: sesi({ mode: 'ai', status: 'berjalan' }) }
           : { status: 404, body: { kode: 'SESI_TIDAK_ADA', pesanWarga: 'tidak ada sesi pendamping' } };
       expect((await status(ev(req('GET'), u.id))).status).toBe(200);
       calls = [];
       expect((await serahkan(ev(req('POST'), u.id))).status).toBe(200);
-      expect(calls.map((c) => c.host)).toEqual(['laptop-a:4330']);
+      expect(calls.map((c) => c.host)).toEqual(['100.101.1.2:4330']);
       reply = () => ({
         status: 404,
         body: { kode: 'SESI_TIDAK_ADA', pesanWarga: 'tidak ada sesi pendamping' },
@@ -385,7 +435,7 @@ describe('broker Browser Pendamping', () => {
     it('antrean: gabungan worker sehat; maks dibatasi maxSessions; semua mati -> 503', async () => {
       kesehatan = (host) => ({
         status: 200,
-        body: host.startsWith('vps')
+        body: host.startsWith('127.0.0.1')
           ? { ok: true, aktif: 2, maks: 4, menunggu: 1 }
           : { ok: true, aktif: 1, maks: 2, menunggu: 0 },
       });

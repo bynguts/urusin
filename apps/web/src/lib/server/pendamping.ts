@@ -1,4 +1,4 @@
-import { createHash, createHmac } from 'node:crypto';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
 import {
   AntreanPendampingResponseSchema,
   PendampingGalatSchema,
@@ -21,25 +21,37 @@ import { SID_COOKIE } from '#lib/server/sesi.js';
  * Origin persis lewat hooks); web memanggil API internal pendamping dengan tanda tangan HMAC. Pendamping
  * tidak pernah melihat cookie mentah, hanya sha256-nya, dan sesi terikat ke urusan + hash itu.
  *
- * MULTI-WORKER: `PENDAMPING_WORKERS` = JSON `[{id, url, region, maxSessions}]` (container identik di tiap
+ * MULTI-WORKER: `PENDAMPING_WORKERS` = JSON `[{id, url, region, maxSessions, wsUrl, token?}]` (container identik di tiap
  * host; mis. VPS + laptop anggota lewat Tailscale). Situs registry `aksesWilayah: 'id-only'` hanya dirutekan
  * ke worker `region: 'id'` (IP Indonesia); bila tak ada yang sehat, urusan beralih ke mode dipandu dengan
  * pesan jujur. Situs lain memakai worker non-`id` lebih dulu (laptop dihemat), lalu beban terendah.
  * Tanpa `PENDAMPING_WORKERS`: satu worker dari `PENDAMPING_INTERNAL_URL` (region
- * `PENDAMPING_INTERNAL_REGION`, bawaan `umum`).
+ * `PENDAMPING_INTERNAL_REGION`, bawaan `umum`; URL WS `PENDAMPING_PUBLIC_WS_URL` bila diisi).
+ *
+ * Rahasia per worker (`token`): wajib untuk worker selain 127.0.0.1 (laptop lewat Tailscale), supaya satu
+ * worker yang bocor tidak bisa memalsukan panggilan ke worker lain. URL WebSocket yang diberikan ke warga
+ * DIPATOK ke `wsUrl` worker yang dikonfigurasi: jawaban tiket worker hanya menyumbang id sesi.
  *
  * Semua panggilan lewat `@urusin/egress`: origin worker hanya terjangkau bila `http://IP:port` dengan IP
  * 127.0.0.1 atau Tailscale 100.64.0.0/10 (pengecualian persis di kebijakan egress), bukan nama DNS.
  */
 
-const WorkerSchema = z.object({
-  id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/),
-  /** Origin internal worker TANPA jalur (yang ditandatangani adalah jalur /internal/* apa adanya). */
-  url: z.url().refine((u) => new URL(u).pathname === '/' && !new URL(u).search, 'url tanpa jalur'),
-  region: z.string().regex(/^[a-z]{2,16}$/),
-  maxSessions: z.number().int().positive().max(64),
-});
-export type PendampingWorker = z.infer<typeof WorkerSchema>;
+const WorkerSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/),
+    /** Origin internal worker TANPA jalur (yang ditandatangani adalah jalur /internal/* apa adanya). */
+    url: z.url().refine((u) => new URL(u).pathname === '/' && !new URL(u).search, 'url tanpa jalur'),
+    region: z.string().regex(/^[a-z]{2,16}$/),
+    maxSessions: z.number().int().positive().max(64),
+    /** Basis URL WS publik worker ini (mis. wss://domain/pendamping/w/<id>/ws), tanpa garis miring akhir. */
+    wsUrl: z.url({ protocol: /^wss?$/ }).refine((u) => !new URL(u).search && !new URL(u).hash, 'wsUrl polos'),
+    /** Rahasia HMAC khusus worker ini (>= 32 karakter); wajib bila url bukan 127.0.0.1. */
+    token: z.string().min(32).optional(),
+  })
+  .refine((w) => w.token !== undefined || new URL(w.url).hostname === '127.0.0.1', {
+    message: 'worker di luar 127.0.0.1 wajib punya token sendiri',
+  });
+export type PendampingWorker = Omit<z.infer<typeof WorkerSchema>, 'wsUrl'> & { wsUrl?: string | undefined };
 export type PendampingConfig = { token: string; workers: PendampingWorker[] };
 /** Satu worker yang dipanggil (`panggil`). */
 export type PendampingTarget = { url: string; token: string };
@@ -61,7 +73,14 @@ export function pendampingConfig(
     }
     const w = z.array(WorkerSchema).min(1).max(16).safeParse(raw);
     if (!w.success || new Set(w.data.map((x) => x.id)).size !== w.data.length) return null;
-    return { token, workers: w.data.map((x) => ({ ...x, url: x.url.replace(/\/$/, '') })) };
+    return {
+      token,
+      workers: w.data.map((x) => ({
+        ...x,
+        url: x.url.replace(/\/$/, ''),
+        wsUrl: x.wsUrl.replace(/\/$/, ''),
+      })),
+    };
   }
   const url = env.PENDAMPING_INTERNAL_URL?.trim();
   if (!url) return null;
@@ -73,6 +92,9 @@ export function pendampingConfig(
         url: url.replace(/\/$/, ''),
         region: env.PENDAMPING_INTERNAL_REGION?.trim() || 'umum',
         maxSessions: 64,
+        ...(env.PENDAMPING_PUBLIC_WS_URL?.trim()
+          ? { wsUrl: env.PENDAMPING_PUBLIC_WS_URL.trim().replace(/\/$/, '') }
+          : {}),
       },
     ],
   };
@@ -115,20 +137,23 @@ export const PESAN_WILAYAH =
 
 /**
  * Tanda tangan HMAC kanal web -> worker. Salinan identik apps/pendamping/src/tanda.ts; vektor uji yang sama
- * di kedua sisi menjaga keduanya cocok. Rahasia = PENDAMPING_INTERNAL_TOKEN.
+ * di kedua sisi menjaga keduanya cocok. Rahasia = token worker (atau PENDAMPING_INTERNAL_TOKEN). Nonce acak
+ * per permintaan; worker menolak nonce yang sudah terlihat dalam jendela 60 detik (anti putar ulang).
  */
 export const HEADER_WAKTU = 'x-urusin-waktu';
+export const HEADER_NONCE = 'x-urusin-nonce';
 export const HEADER_TANDA = 'x-urusin-tanda';
 export function tandaInternal(
   rahasia: string,
   waktu: string,
+  nonce: string,
   metode: string,
   jalur: string,
   isi: string,
 ): string {
   const hashIsi = createHash('sha256').update(isi).digest('hex');
   return createHmac('sha256', rahasia)
-    .update(`${waktu}\n${metode.toUpperCase()}\n${jalur}\n${hashIsi}`)
+    .update(`${waktu}\n${nonce}\n${metode.toUpperCase()}\n${jalur}\n${hashIsi}`)
     .digest('hex');
 }
 
@@ -144,13 +169,15 @@ export async function panggil<T>(
   const metode = body === undefined ? 'GET' : 'POST';
   const isi = body === undefined ? '' : JSON.stringify(body);
   const waktu = String(Date.now());
+  const nonce = randomBytes(16).toString('hex');
   let res: Response;
   try {
     res = await fetcher(`${cfg.url}${path}`, {
       method: metode,
       headers: {
         [HEADER_WAKTU]: waktu,
-        [HEADER_TANDA]: tandaInternal(cfg.token, waktu, metode, path, isi),
+        [HEADER_NONCE]: nonce,
+        [HEADER_TANDA]: tandaInternal(cfg.token, waktu, nonce, metode, path, isi),
         'content-type': 'application/json',
       },
       ...(body === undefined ? {} : { body: isi }),
@@ -272,7 +299,13 @@ export async function mulaiSesi(
           dipandu: PESAN_WILAYAH,
         }
       : { ok: false, response: TIDAK_TERSEDIA() };
-  const r = await panggil({ url: w.url, token: cfg.token }, '/internal/sesi', skema.sesi, body, fetcher);
+  const r = await panggil(
+    { url: w.url, token: w.token ?? cfg.token },
+    '/internal/sesi',
+    skema.sesi,
+    body,
+    fetcher,
+  );
   if (r.ok) ingatLokasi(body.urusanId, w.id);
   return r;
 }
@@ -289,7 +322,7 @@ export async function panggilPemilik<T>(
   fetcher: EgressFetch = egressFetch,
 ): Promise<Hasil<T>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
-  const target = (w: PendampingWorker) => ({ url: w.url, token: cfg.token });
+  const target = (w: PendampingWorker) => ({ url: w.url, token: w.token ?? cfg.token });
   const tercatat = cfg.workers.find((w) => w.id === lokasi.get(owner.urusanId));
   let tidakAda: Hasil<T> | null = null;
   if (tercatat) {
@@ -365,4 +398,25 @@ export function labelBukti(s: SesiPendamping): string | null {
     Boolean,
   );
   return redactForStorage(`Bukti dari situs resmi: ${bagian.join(', ')}.`);
+}
+
+const SESI_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * Tiket WebSocket dari worker pemegang sesi, dengan `wsUrl` DIPATOK ke `wsUrl` worker yang dikonfigurasi
+ * (bukan URL yang dikirim worker): worker hanya menyumbang id sesi, divalidasi sebagai UUID. Worker tanpa
+ * `wsUrl` (mode satu worker tanpa PENDAMPING_PUBLIC_WS_URL) memakai jawaban worker apa adanya.
+ */
+export async function tiketSesi(
+  cfg: PendampingConfig | null,
+  owner: PemilikSesiInternal,
+  fetcher: EgressFetch = egressFetch,
+): Promise<Hasil<z.infer<typeof TiketPendampingResponseSchema>>> {
+  const r = await panggilPemilik(cfg, '/internal/sesi/tiket', skema.tiket, owner, fetcher);
+  if (!r.ok || !cfg) return r;
+  const w = cfg.workers.find((x) => x.id === lokasi.get(owner.urusanId));
+  if (!w?.wsUrl) return r;
+  const sesiId = decodeURIComponent(new URL(r.data.wsUrl, 'ws://x').pathname.split('/').pop() ?? '');
+  if (!SESI_ID_RE.test(sesiId)) return { ok: false, response: TIDAK_TERSEDIA() };
+  return { ...r, data: { ...r.data, wsUrl: `${w.wsUrl}/${sesiId}` } };
 }
