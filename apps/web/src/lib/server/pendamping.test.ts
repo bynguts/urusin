@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
 import { DemoProvider } from '@urusin/harness';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Kebijakan egress diuji di packages/egress; di sini egressFetch diteruskan ke fetch global yang di-stub.
+vi.mock('@urusin/egress', async (asli) => ({
+  ...(await asli<typeof import('@urusin/egress')>()),
+  egressFetch: (input: string | URL, init?: RequestInit) => fetch(input, init),
+}));
 import { GET as antrean } from '../../routes/api/pendamping/antrean/+server';
 import {
   DELETE as akhiri,

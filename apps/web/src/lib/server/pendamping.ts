@@ -10,6 +10,7 @@ import {
   type SesiPendamping,
 } from '@urusin/contracts';
 import { getOfficialDomain } from '@urusin/core';
+import { egressFetch, type EgressFetch } from '@urusin/egress';
 import { redactForStorage } from '@urusin/harness';
 import { z, type ZodType } from 'zod';
 import { apiError, apiJson } from '#lib/server/http.js';
@@ -26,6 +27,9 @@ import { SID_COOKIE } from '#lib/server/sesi.js';
  * pesan jujur. Situs lain memakai worker non-`id` lebih dulu (laptop dihemat), lalu beban terendah.
  * Tanpa `PENDAMPING_WORKERS`: satu worker dari `PENDAMPING_INTERNAL_URL` (region
  * `PENDAMPING_INTERNAL_REGION`, bawaan `umum`).
+ *
+ * Semua panggilan lewat `@urusin/egress`: origin worker hanya terjangkau bila `http://IP:port` dengan IP
+ * 127.0.0.1 atau Tailscale 100.64.0.0/10 (pengecualian persis di kebijakan egress), bukan nama DNS.
  */
 
 const WorkerSchema = z.object({
@@ -134,7 +138,7 @@ export async function panggil<T>(
   path: string,
   schema: ZodType<T>,
   body?: MulaiSesiInternal | PemilikSesiInternal,
-  fetcher: typeof fetch = fetch,
+  fetcher: EgressFetch = egressFetch,
 ): Promise<Hasil<T>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const metode = body === undefined ? 'GET' : 'POST';
@@ -200,7 +204,7 @@ function ingatLokasi(urusanId: string, workerId: string): void {
   if (lokasi.size > LOKASI_MAKS) lokasi.delete(lokasi.keys().next().value as string);
 }
 
-async function sehat(w: PendampingWorker, fetcher: typeof fetch, now = Date.now()): Promise<Sehat | null> {
+async function sehat(w: PendampingWorker, fetcher: EgressFetch, now = Date.now()): Promise<Sehat | null> {
   const key = `${w.id}|${w.url}`;
   const c = kesehatan.get(key);
   if (c && now - c.waktu < SEHAT_TTL_MS) return c.data;
@@ -235,7 +239,7 @@ export async function pilihWorker(
   cfg: PendampingConfig,
   origin: string,
   urusanId: string,
-  fetcher: typeof fetch = fetch,
+  fetcher: EgressFetch = egressFetch,
 ): Promise<PendampingWorker | null> {
   const idSaja = butuhWilayahId(origin);
   const kandidat = cfg.workers.filter((w) => !idSaja || w.region === REGION_ID);
@@ -256,7 +260,7 @@ export async function pilihWorker(
 export async function mulaiSesi(
   cfg: PendampingConfig | null,
   body: MulaiSesiInternal,
-  fetcher: typeof fetch = fetch,
+  fetcher: EgressFetch = egressFetch,
 ): Promise<Hasil<SesiPendamping>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const w = await pilihWorker(cfg, body.origin, body.urusanId, fetcher);
@@ -282,7 +286,7 @@ export async function panggilPemilik<T>(
   path: string,
   schema: ZodType<T>,
   owner: PemilikSesiInternal,
-  fetcher: typeof fetch = fetch,
+  fetcher: EgressFetch = egressFetch,
 ): Promise<Hasil<T>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const target = (w: PendampingWorker) => ({ url: w.url, token: cfg.token });
@@ -317,7 +321,7 @@ export async function panggilPemilik<T>(
 /** Ringkasan antrean gabungan semua worker sehat (tanpa data warga). */
 export async function antreanGabungan(
   cfg: PendampingConfig | null,
-  fetcher: typeof fetch = fetch,
+  fetcher: EgressFetch = egressFetch,
 ): Promise<Hasil<AntreanPendampingResponse>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const semua = await Promise.all(cfg.workers.map(async (w) => ({ w, s: await sehat(w, fetcher) })));
