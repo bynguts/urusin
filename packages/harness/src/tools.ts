@@ -47,6 +47,8 @@ export type ExecutionRequest = PayloadOf<'execution_request'>;
 export type ToolResult = {
   /** Teks ringkas untuk model; konten tak tepercaya SUDAH dibungkus spotlight oleh tool. */
   content: string;
+  /** Konten sudah dianggarkan per bagian dan dibungkus spotlight: harness TIDAK boleh memotongnya (penutup pembungkus hilang). */
+  terbungkus?: boolean;
   events?: EmittableEvent[];
   execution?: ExecutionRequest;
   /** Transisi state yang diminta tool; diterapkan harness lewat CAS dan state machine. */

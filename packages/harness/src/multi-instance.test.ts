@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openHarnessDb } from './db.js';
 import { ConflictError, TurnInProgressError } from './errors.js';
+import { PiiInterceptor } from './pii.js';
 import { HarnessStore } from './store.js';
 
 /** Dua instance web (blue/green) memakai satu berkas SQLite WAL lewat koneksi terpisah. */
@@ -63,6 +64,25 @@ describe('lease turn lintas instance (B2b)', () => {
     expect(() => b.claimTurn(u.id, 'lanjut')).not.toThrow();
   });
 
+  it('claimTurn melepas turn yatim sendiri: 409 sebelum lease habis, berhasil sesudahnya, dengan event', () => {
+    let t = Date.parse('2026-11-09T00:00:00Z');
+    const now = () => new Date(t);
+    const { a, b } = dua({ leaseMs: 1000, nowA: now, nowB: now });
+    const u = a.createUrusan();
+    const lama = a.claimTurn(u.id, 'halo');
+    t += 500; // A "mati": tidak memperpanjang
+    expect(() => b.claimTurn(u.id, 'lagi')).toThrow(TurnInProgressError);
+    t += 1000;
+    const baru = b.claimTurn(u.id, 'lagi');
+    expect(baru.turnId).not.toBe(lama.turnId);
+    expect(a.db.prepare('SELECT status, error_code FROM turns WHERE id = ?').get(lama.turnId)).toEqual({
+      status: 'error',
+      error_code: 'ABANDONED',
+    });
+    expect(b.eventsAfter(u.id, 0).some((e) => e.type === 'error')).toBe(true);
+    expect(b.verifyChain(u.id).ok).toBe(true);
+  });
+
   it('renewLease memperpanjang hanya turn milik instance sendiri', () => {
     let t = Date.parse('2026-11-09T00:00:00Z');
     const { a, b } = dua({ leaseMs: 1000, nowA: () => new Date(t), nowB: () => new Date(t) });
@@ -82,6 +102,7 @@ describe('lease turn lintas instance (B2b)', () => {
     const db = openHarnessDb(path);
     dbs.push(db);
     db.exec('ALTER TABLE turns DROP COLUMN owner_instance; ALTER TABLE turns DROP COLUMN lease_until;');
+    db.pragma('user_version = 0'); // seolah DB dibuat sebelum migrasi berversi
     const again = openHarnessDb(path);
     dbs.push(again);
     const cols = (again.prepare('PRAGMA table_info(turns)').all() as { name: string }[]).map((c) => c.name);
@@ -143,5 +164,23 @@ describe('jaminan lintas koneksi: CAS version + kunci turn tingkat DB (B2c)', ()
     const u = a.createUrusan();
     a.claimTurn(u.id, 'satu'); // version 0 → 1
     expect(() => b.claimTurn(u.id, 'dua', { expectedVersion: 0 })).toThrow();
+  });
+});
+
+describe('kunci PII bersama (blue/green)', () => {
+  const NIK = ['3271', '0101', '0190', '0001'].join('');
+  it('dua store dengan kunci sama memetakan NIK yang sama ke token yang sama; kunci beda tidak', () => {
+    const { a, b } = dua();
+    const kunci = 'k'.repeat(44);
+    const sa = new HarnessStore(a.db, { piiKey: kunci });
+    const sb = new HarnessStore(b.db, { piiKey: kunci });
+    const sc = new HarnessStore(b.db, { piiKey: 'z'.repeat(44) });
+    const u = sa.createUrusan();
+    const redact = (s: HarnessStore) =>
+      new PiiInterceptor(undefined, {}, s.placeholderPersistence(u.id)).redact(`nik ${NIK}`).text;
+    expect(redact(sa)).toBe('nik {{PEMOHON.NIK}}');
+    expect(redact(sb)).toBe('nik {{PEMOHON.NIK}}');
+    // kunci lain tidak mengenali entri lama: NIK yang sama dianggap orang baru, tidak bertabrakan
+    expect(redact(sc)).toBe('nik {{ORANG2.NIK}}');
   });
 });

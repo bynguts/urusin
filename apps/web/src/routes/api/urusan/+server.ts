@@ -6,14 +6,17 @@ import {
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
 import { menungguSiapa } from '#lib/server/ringkasan.js';
+import { batasi } from '#lib/server/sesi.js';
 import type { RequestHandler } from './$types';
 
 /** Buat urusan baru; bila `pesan` diberikan, turn pertama langsung berjalan (ikuti lewat stream). */
-export const POST: RequestHandler = async ({ request }) => {
-  const body = await readBody(request, BuatUrusanRequestSchema);
+export const POST: RequestHandler = async (event) => {
+  const body = await readBody(event.request, BuatUrusanRequestSchema);
   if (!body.ok) return body.response;
   try {
     const rt = await getRuntime();
+    const ditolak = batasi(rt, event, 'buat');
+    if (ditolak) return ditolak;
     const jenis = body.data.peristiwa && body.data.peristiwa !== 'lainnya' ? body.data.peristiwa : undefined;
     const u = rt.store.createUrusan({ kodeKabKota: body.data.kodeKabKota, jenis });
     const turn = body.data.pesan

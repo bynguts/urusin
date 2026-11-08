@@ -19,7 +19,7 @@ import type { EventBus } from './bus.js';
 import type { Db } from './db.js';
 import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/contracts';
 import { HarnessError, TurnInProgressError } from './errors.js';
-import { routeByKode } from '@urusin/registry';
+import { findBundel, routeByKode } from '@urusin/registry';
 import { toEvent } from './envelope.js';
 import { buildHandoff } from './grounding.js';
 import { classifyIntent } from './intent.js';
@@ -76,6 +76,10 @@ export type TurnOutcome = {
 
 const GLOBAL_LOCKS = new Set<string>();
 
+/** Nama tool sah: huruf kecil, angka, garis bawah; maksimal 64 karakter. */
+const TOOL_NAME_RE = /^[a-z0-9_]{1,64}$/;
+const safeToolName = (n: string) => (TOOL_NAME_RE.test(n) ? n : 'tool_tak_valid');
+
 class TurnAbort extends Error {
   constructor(readonly kind: 'timeout' | 'external') {
     super(`turn dihentikan: ${kind}`);
@@ -103,7 +107,11 @@ export function prepareTurn(
   if (locks.has(args.urusanId)) throw new TurnInProgressError();
   locks.add(args.urusanId);
   let claim: ReturnType<HarnessStore['claimTurn']>;
-  const pii = new PiiInterceptor();
+  const pii = new PiiInterceptor(
+    undefined,
+    { kodeKabKota: deps.store.getUrusan(args.urusanId)?.kodeKabKota },
+    deps.store.placeholderPersistence(args.urusanId),
+  );
   const userText = pii.redact(args.userText).text;
   try {
     claim = deps.store.claimTurn(args.urusanId, userText, {
@@ -320,6 +328,7 @@ class TurnRunner {
     let errorCode: string | undefined;
     try {
       await this.body();
+      this.proposeRencana();
     } catch (err) {
       const reason = this.ctrl.signal.aborted ? (this.ctrl.signal.reason as unknown) : undefined;
       if (reason instanceof TurnAbort && reason.kind === 'timeout') {
@@ -370,6 +379,32 @@ class TurnRunner {
       tokensOut: this.tokensOut,
       costIdr: this.costIdr,
     };
+  }
+
+  /**
+   * Harness sendiri yang memajukan MEMAHAMI → RENCANA_DIUSULKAN (tidak bergantung pada model memanggil tool):
+   * begitu jenis peristiwa dan kota diketahui, rencana dibangun deterministik dari bundel registry beserta sumber
+   * resminya. Berlaku juga saat AI mati/kuota habis (jalur dipandu). Rencana tetap hanya usulan sampai warga setuju.
+   */
+  private proposeRencana(): void {
+    const u = this.urusan;
+    if (u.state !== 'MEMAHAMI' || !u.kodeKabKota || !u.jenis) return;
+    const bundel = findBundel(u.jenis);
+    if (!bundel) return;
+    const dipandu = routeByKode(u.kodeKabKota).entry.tier === 'dipandu';
+    this.emit({
+      type: 'plan_card',
+      ringkasan: bundel.judul,
+      langkah: bundel.langkah.map((l) => ({
+        id: l.id,
+        judul: l.judul,
+        jenis: dipandu && l.jenis === 'online-adapter' ? ('online-manual' as const) : l.jenis,
+        ...(l.lokasi ? { lokasi: l.lokasi } : {}),
+        bawa: l.bawa,
+        sumber: l.sourceRef,
+      })),
+    });
+    this.applyTransition('RENCANA_DIUSULKAN');
   }
 
   private async body(): Promise<void> {
@@ -476,7 +511,11 @@ class TurnRunner {
         {
           role: 'assistant',
           content: msg.content ?? null,
-          tool_calls: calls.map((c) => ({ id: c.id, type: 'function' as const, function: c.function })),
+          tool_calls: calls.map((c) => ({
+            id: c.id,
+            type: 'function' as const,
+            function: { ...c.function, name: safeToolName(c.function.name) },
+          })),
         },
       ];
       let ended = false;
@@ -507,7 +546,12 @@ class TurnRunner {
   }
 
   /** Satu-satunya jalur eksekusi tool (normal maupun degraded): selalu lewat policy gate. */
-  private async handleToolCall(name: string, argsJson: string): Promise<{ content: string; end: boolean }> {
+  private async handleToolCall(
+    rawName: string,
+    argsJson: string,
+  ): Promise<{ content: string; end: boolean }> {
+    // Nama tool datang dari model: jangan pernah dicatat/dipantulkan mentah (bisa memuat PII atau berukuran besar).
+    const name = safeToolName(rawName);
     let raw: unknown;
     try {
       raw = JSON.parse(argsJson || '{}');
@@ -606,8 +650,10 @@ class TurnRunner {
           return { content: JSON.stringify({ is_error: true, pesan: e.message }), end: false };
         }
       }
-      return { content: clip(res.content), end: res.endTurn === true };
+      return { content: res.terbungkus ? res.content : clip(res.content), end: res.endTurn === true };
     } catch (e) {
+      // Tindakan tidak sampai ke warga: konfirmasi tidak boleh hangus.
+      if (outcome.confirmationId) this.store.releaseConfirmation(outcome.confirmationId);
       span.end({ status: 'error', errorCode: (e as Error).name, attrs: { [OTEL.toolName]: name } });
       if (this.ctrl.signal.aborted || isLlmTerminalError(e)) throw e;
       if (e instanceof HarnessError) throw e;

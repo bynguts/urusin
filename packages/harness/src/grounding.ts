@@ -29,6 +29,32 @@ export const KALIMAT_TETAP = 'Keputusan ada di petugas instansi terkait.';
 
 const STALE_DAYS = 30;
 const MIN_QUOTE_CHARS = 12;
+export const MAX_KLAIM = 8;
+export const MAX_KLAIM_CHARS = 400;
+
+/** Token faktual yang harus terbukti di kutipan: angka (termasuk Rp/titik/koma), URL, dan nomor telepon. */
+const FACT_TOKEN_RE = /https?:\/\/\S+|www\.\S+|\+?\d[\d.,/-]*\d|\d/giu;
+
+const digitsOnly = (t: string) => t.replace(/\D/g, '');
+
+/** Nilai faktual di teks klaim yang TIDAK muncul di salah satu kutipan yang dirujuk. */
+export function unsupportedFacts(teks: string, kutipan: readonly string[]): string[] {
+  const haystack = kutipan.map((q) => normalizeForMatch(q)).join(' | ');
+  const haystackDigits = kutipan.map((q) => digitsOnly(q));
+  const bad: string[] = [];
+  for (const m of teks.matchAll(FACT_TOKEN_RE)) {
+    const tok = m[0].replace(/[.,;:)]+$/, '');
+    if (/^(https?:|www\.)/i.test(tok)) {
+      if (!kutipan.some((q) => q.toLowerCase().includes(tok.toLowerCase()))) bad.push(tok);
+      continue;
+    }
+    const d = digitsOnly(tok);
+    if (d === '') continue;
+    if (!haystackDigits.some((h) => h.includes(d)) && !haystack.includes(normalizeForMatch(tok)))
+      bad.push(tok);
+  }
+  return bad;
+}
 
 /**
  * Normalisasi untuk pencocokan kutipan: huruf kecil, tanda baca dan penanda datamark menjadi spasi,
@@ -147,7 +173,11 @@ export function verifyGrounded(
   const klaim: GroundedResult['klaim'] = [];
   let dropped = 0;
 
-  for (const k of answer.klaim) {
+  for (const k of answer.klaim.slice(0, MAX_KLAIM)) {
+    if (k.teks.length > MAX_KLAIM_CHARS) {
+      dropped++;
+      continue;
+    }
     const citations: KutipanTerverifikasi[] = [];
     let ok = k.kutipan.length > 0;
     for (const c of k.kutipan) {
@@ -168,10 +198,19 @@ export function verifyGrounded(
         perluDicekUlang: stale(chunk.verifiedAt, now),
       });
     }
+    if (
+      ok &&
+      unsupportedFacts(
+        k.teks,
+        citations.map((c) => c.kutipanPersis),
+      ).length > 0
+    )
+      ok = false;
     if (ok) klaim.push({ teks: k.teks, kutipan: citations });
     else dropped++;
   }
 
+  dropped += Math.max(0, answer.klaim.length - MAX_KLAIM);
   if (klaim.length === 0) {
     const sebab = chunks.length === 0 ? 'tanpa_sumber' : 'kutipan_tidak_terverifikasi';
     return { klaim: [], klaimDibuang: dropped, handoff: buildHandoff({ ...ctx, chunks }, sebab) };
