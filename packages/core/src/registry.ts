@@ -13,6 +13,12 @@ export type OfficialDomain = {
   wilayah?: string;
   /** Tanggal verifikasi manual (ISO). null = seed dari rencana, verifikasi manual belum dicatat. */
   verifiedAt: string | null;
+  /**
+   * `id-only`: situs menolak IP pusat data/luar negeri (diukur dari agent-vm: 403 atau tantangan bot), jadi
+   * Browser Pendamping harus berjalan di worker berwilayah `id` (laptop anggota lewat Tailscale). Tanpa
+   * worker `id` yang sehat urusan beralih ke mode dipandu. Kosong = worker mana pun.
+   */
+  aksesWilayah?: 'id-only';
 };
 
 export const OFFICIAL_DOMAINS: readonly OfficialDomain[] = Object.freeze([
@@ -22,6 +28,7 @@ export const OFFICIAL_DOMAINS: readonly OfficialDomain[] = Object.freeze([
     layanan: 'Telunjuk Sakti (layanan adminduk daring)',
     wilayah: '3312',
     verifiedAt: null,
+    aksesWilayah: 'id-only',
   },
   {
     host: 'disdukcapil.wonogirikab.go.id',
@@ -57,6 +64,25 @@ export const OFFICIAL_DOMAINS: readonly OfficialDomain[] = Object.freeze([
     layanan: 'OSS perizinan berusaha',
     verifiedAt: null,
   },
+  // Dipanggil halaman oss.go.id sendiri (recon rea-samsat-oss): API Cari NIB, CMS portal, aset gambar.
+  {
+    host: 'api-prd.oss.go.id',
+    instansi: 'Kementerian Investasi/BKPM',
+    layanan: 'API OSS (Cari NIB dari halaman oss.go.id)',
+    verifiedAt: null,
+  },
+  {
+    host: 'gw.oss.go.id',
+    instansi: 'Kementerian Investasi/BKPM',
+    layanan: 'Gateway konten portal OSS',
+    verifiedAt: null,
+  },
+  {
+    host: 's3.oss.go.id',
+    instansi: 'Kementerian Investasi/BKPM',
+    layanan: 'Aset portal OSS',
+    verifiedAt: null,
+  },
   {
     host: 'klampid-disdukcapil.surabaya.go.id',
     instansi: 'Dispendukcapil Kota Surabaya',
@@ -77,6 +103,7 @@ export const OFFICIAL_DOMAINS: readonly OfficialDomain[] = Object.freeze([
     layanan: 'Sidnok (layanan adminduk daring)',
     wilayah: '3374',
     verifiedAt: null,
+    aksesWilayah: 'id-only',
   },
 ]);
 

@@ -13,11 +13,16 @@ import {
 const T = 'telunjuksakti.wonogirikab.go.id';
 
 describe('registry domain resmi', () => {
-  it('memuat 11 domain seed tanpa duplikat, semuanya .go.id', () => {
+  it('memuat 14 domain seed tanpa duplikat, semuanya .go.id', () => {
     const hosts = OFFICIAL_DOMAINS.map((d) => d.host);
-    expect(hosts).toHaveLength(11);
+    expect(hosts).toHaveLength(14);
     expect(new Set(hosts).size).toBe(hosts.length);
     for (const h of hosts) expect(h.endsWith('.go.id') || h === 'oss.go.id').toBe(true);
+  });
+
+  it('situs yang menolak IP pusat data ditandai aksesWilayah id-only (diukur dari agent-vm)', () => {
+    const idOnly = OFFICIAL_DOMAINS.filter((d) => d.aksesWilayah === 'id-only').map((d) => d.host);
+    expect(idOnly).toEqual(['telunjuksakti.wonogirikab.go.id', 'sidnok.semarangkota.go.id']);
   });
 
   it.each(OFFICIAL_DOMAINS.map((d) => d.host))('menerima https://%s/', (host) => {
