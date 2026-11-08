@@ -24,15 +24,22 @@ describe('PERISTIWA_BUNDEL', () => {
     expect(LangkahSchema.safeParse(tanpa).success).toBe(false);
   });
   it('langkah offline wajib punya lokasi; kelahiran dan kematian punya langkah offline', () => {
-    const bad = { ...PERISTIWA_BUNDEL[0]!, langkah: [{ ...PERISTIWA_BUNDEL[0]!.langkah[2]!, lokasi: undefined }] };
+    const bad = {
+      ...PERISTIWA_BUNDEL[0]!,
+      langkah: [{ ...PERISTIWA_BUNDEL[0]!.langkah[2]!, lokasi: undefined }],
+    };
     expect(BundelSchema.safeParse(bad).success).toBe(false);
     expect(findBundel('kelahiran')!.langkah.some((l) => l.jenis === 'offline')).toBe(true);
     expect(findBundel('kematian')!.langkah.some((l) => l.jenis === 'offline')).toBe(true);
   });
   it('DAG valid: dependsOn dikenal dan tanpa siklus', () => {
     const b = findBundel('kelahiran')!;
-    expect(BundelSchema.safeParse({ ...b, langkah: [{ ...b.langkah[0]!, dependsOn: ['x'] }] }).success).toBe(false);
-    expect(BundelSchema.safeParse({ ...b, langkah: [{ ...b.langkah[0]!, id: 'a', dependsOn: ['a'] }] }).success).toBe(false);
+    expect(BundelSchema.safeParse({ ...b, langkah: [{ ...b.langkah[0]!, dependsOn: ['x'] }] }).success).toBe(
+      false,
+    );
+    expect(
+      BundelSchema.safeParse({ ...b, langkah: [{ ...b.langkah[0]!, id: 'a', dependsOn: ['a'] }] }).success,
+    ).toBe(false);
   });
   it('Pindah berurutan SKPWNI -> SKDWNI -> KK -> KTP-el dan diberi peringatan risiko', () => {
     const p = findBundel('pindah')!;

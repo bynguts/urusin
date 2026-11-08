@@ -12,7 +12,9 @@ export const LangkahSchema = z.object({
   judul: z.string().min(1),
   jenis: z.enum(['online-adapter', 'online-manual', 'offline']),
   /** Hanya langkah offline yang wajib punya lokasi. */
-  lokasi: z.enum(['loket-online', 'kecamatan', 'disdukcapil', 'kelurahan-desa', 'pt-pos', 'kepolisian']).optional(),
+  lokasi: z
+    .enum(['loket-online', 'kecamatan', 'disdukcapil', 'kelurahan-desa', 'pt-pos', 'kepolisian'])
+    .optional(),
   dependsOn: z.array(z.string()),
   dokumen: z.array(z.string().min(1)),
   bawa: z.array(z.string().min(1)),
@@ -27,7 +29,10 @@ export const BundelSchema = z
     slug: z.enum(['kelahiran', 'kematian', 'perkawinan', 'pindah']),
     judul: z.string().min(1),
     /** null = lintas instansi / tidak terikat satu wilayah. */
-    kodeWilayah: z.string().regex(/^\d{4}$/).nullable(),
+    kodeWilayah: z
+      .string()
+      .regex(/^\d{4}$/)
+      .nullable(),
     tier: z.enum(['semi', 'dipandu']),
     keluaran: z.array(z.string().min(1)).min(1),
     peringatan: z.string().optional(),
@@ -41,12 +46,14 @@ export const BundelSchema = z
       for (const d of l.dependsOn) {
         if (!ids.has(d)) ctx.addIssue({ code: 'custom', message: `dependsOn tidak dikenal: ${d}` });
       }
-      if (l.jenis === 'offline' && !l.lokasi) ctx.addIssue({ code: 'custom', message: `langkah offline tanpa lokasi: ${l.id}` });
+      if (l.jenis === 'offline' && !l.lokasi)
+        ctx.addIssue({ code: 'custom', message: `langkah offline tanpa lokasi: ${l.id}` });
     }
     // Tanpa siklus: setiap langkah hanya boleh bergantung pada langkah yang muncul lebih dulu.
     const seen = new Set<string>();
     for (const l of b.langkah) {
-      if (l.dependsOn.some((d) => !seen.has(d))) ctx.addIssue({ code: 'custom', message: `urutan/siklus: ${l.id}` });
+      if (l.dependsOn.some((d) => !seen.has(d)))
+        ctx.addIssue({ code: 'custom', message: `urutan/siklus: ${l.id}` });
       seen.add(l.id);
     }
   });
@@ -59,16 +66,38 @@ const wng = (slug: string, judul: string): SourceRef => ({
   instansi: WNG,
 });
 
-const REF_LAHIR = wng('terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia', 'Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA');
-const REF_MATI = wng('terintegrasi-pencatatan-akta-kematian-kartu-keluarga-dan-ktp-el', 'Terintegrasi Pencatatan Akta Kematian, Kartu Keluarga, dan KTP-el');
-const REF_KAWIN = wng('terintegrasi-pencatatan-akta-perkawinan-kartu-keluarga-ktp-el', 'Terintegrasi Pencatatan Akta Perkawinan, Kartu Keluarga, KTP-el');
-const REF_SKPWNI = wng('pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni', 'Penerbitan Surat Keterangan Pindah WNI (SKPWNI)');
-const REF_SKDWNI = wng('pelayanan-penerbitan-surat-keterangan-datang-warga-negara-indonesia-skdwni', 'Penerbitan Surat Keterangan Datang WNI (SKDWNI)');
-const REF_KK = wng('pelayanan-penerbitan-kartu-keluarga-baru-perubahan-data-penambahan-anggota-keluarga-pengurangan-anggota-keluarga-hilang-dan-rusak', 'Penerbitan Kartu Keluarga');
-const REF_KTP = wng('pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak', 'Penerbitan KTP-el');
+const REF_LAHIR = wng(
+  'terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia',
+  'Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA',
+);
+const REF_MATI = wng(
+  'terintegrasi-pencatatan-akta-kematian-kartu-keluarga-dan-ktp-el',
+  'Terintegrasi Pencatatan Akta Kematian, Kartu Keluarga, dan KTP-el',
+);
+const REF_KAWIN = wng(
+  'terintegrasi-pencatatan-akta-perkawinan-kartu-keluarga-ktp-el',
+  'Terintegrasi Pencatatan Akta Perkawinan, Kartu Keluarga, KTP-el',
+);
+const REF_SKPWNI = wng(
+  'pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni',
+  'Penerbitan Surat Keterangan Pindah WNI (SKPWNI)',
+);
+const REF_SKDWNI = wng(
+  'pelayanan-penerbitan-surat-keterangan-datang-warga-negara-indonesia-skdwni',
+  'Penerbitan Surat Keterangan Datang WNI (SKDWNI)',
+);
+const REF_KK = wng(
+  'pelayanan-penerbitan-kartu-keluarga-baru-perubahan-data-penambahan-anggota-keluarga-pengurangan-anggota-keluarga-hilang-dan-rusak',
+  'Penerbitan Kartu Keluarga',
+);
+const REF_KTP = wng(
+  'pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak',
+  'Penerbitan KTP-el',
+);
 const REF_PERPRES: SourceRef = {
   url: 'https://peraturan.go.id/id/perpres-no-96-tahun-2018',
-  judul: 'Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil',
+  judul:
+    'Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil',
   instansi: 'Pemerintah Republik Indonesia',
 };
 
@@ -173,7 +202,8 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
     kodeWilayah: '3312',
     tier: 'dipandu',
     keluaran: ['Akta Perkawinan', 'Kartu Keluarga', 'KTP-el'],
-    peringatan: 'Ada langkah fisik: berkas dikirim lewat PT POS dan pencatatan dilakukan tatap muka di Dinas.',
+    peringatan:
+      'Ada langkah fisik: berkas dikirim lewat PT POS dan pencatatan dilakukan tatap muka di Dinas.',
     catatan: 'Wonogiri: 1 hari kerja, tanpa biaya. Dipandu dengan pelacak karena ada langkah offline wajib.',
     langkah: [
       L({
@@ -225,7 +255,8 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
     kodeWilayah: null,
     tier: 'dipandu',
     keluaran: ['SKPWNI', 'SKDWNI', 'Kartu Keluarga', 'KTP-el'],
-    peringatan: 'Risiko lebih tinggi: dua sistem berbeda. Tidak ada bundel resmi; alur ini orkestrasi buatan Urusin.',
+    peringatan:
+      'Risiko lebih tinggi: dua sistem berbeda. Tidak ada bundel resmi; alur ini orkestrasi buatan Urusin.',
     catatan:
       'Persyaratan di bawah merujuk halaman Wonogiri sebagai contoh; ketersediaan online di instansi asal dan tujuan harus diperiksa per situs sebelum dijanjikan.',
     langkah: [
@@ -235,9 +266,15 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
         jenis: 'online-manual',
         lokasi: 'disdukcapil',
         dependsOn: [],
-        dokumen: ['Formulir F-1.03', 'KTP asli dan fotokopi', 'Fotokopi KK sebelum pindah', 'Surat nikah (bagi yang sudah menikah)'],
+        dokumen: [
+          'Formulir F-1.03',
+          'KTP asli dan fotokopi',
+          'Fotokopi KK sebelum pindah',
+          'Surat nikah (bagi yang sudah menikah)',
+        ],
         bawa: [],
-        keterangan: 'Di Wonogiri tersedia tatap muka dan daring, 1 hari kerja, tanpa biaya; daerah lain bisa berbeda.',
+        keterangan:
+          'Di Wonogiri tersedia tatap muka dan daring, 1 hari kerja, tanpa biaya; daerah lain bisa berbeda.',
         sourceRef: [REF_SKPWNI, REF_PERPRES],
       }),
       L({
@@ -260,7 +297,10 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
         judul: 'Terbitkan Kartu Keluarga di alamat baru',
         jenis: 'online-manual',
         dependsOn: ['skdwni'],
-        dokumen: ['Surat Keterangan Pindah/Datang', 'Fotokopi akta kelahiran dan ijazah untuk verifikasi data'],
+        dokumen: [
+          'Surat Keterangan Pindah/Datang',
+          'Fotokopi akta kelahiran dan ijazah untuk verifikasi data',
+        ],
         bawa: [],
         keterangan: 'Syarat KK baru menurut halaman Wonogiri; periksa syarat instansi tujuan.',
         sourceRef: [REF_KK],

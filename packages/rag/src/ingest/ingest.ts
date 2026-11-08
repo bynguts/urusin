@@ -6,7 +6,13 @@ import { PoliteFetcher, RobotsBlockedError, type Deps } from './fetcher.js';
 import type { SourceEntry } from './sources.js';
 
 export type IngestAction = 'planned' | 'ingested' | 'skipped' | 'blocked' | 'error';
-export type IngestReport = { id: string; url: string; action: IngestAction; chunks?: number; reason?: string };
+export type IngestReport = {
+  id: string;
+  url: string;
+  action: IngestAction;
+  chunks?: number;
+  reason?: string;
+};
 
 export type IngestOptions = {
   sources: readonly SourceEntry[];
@@ -76,14 +82,22 @@ export async function runIngest(opts: IngestOptions): Promise<IngestReport[]> {
         ...(s.kodeWilayah ? { kodeWilayah: s.kodeWilayah } : {}),
         ...(s.layanan ? { layanan: s.layanan } : {}),
       }));
-      opts.db.prepare('DELETE FROM chunks WHERE id LIKE ?').run(`${s.id}#%`);
-      upsertChunks(opts.db, chunks);
+      const db = opts.db;
+      db.transaction(() => {
+        db.prepare('DELETE FROM chunks WHERE id LIKE ?').run(`${s.id}#%`);
+        upsertChunks(db, chunks);
+      })();
       reports.push({ id: s.id, url: s.url, action: 'ingested', chunks: chunks.length });
     } catch (e) {
       if (e instanceof RobotsBlockedError) {
         reports.push({ id: s.id, url: s.url, action: 'blocked', reason: 'robots.txt' });
       } else {
-        reports.push({ id: s.id, url: s.url, action: 'error', reason: e instanceof Error ? e.name : 'galat' });
+        reports.push({
+          id: s.id,
+          url: s.url,
+          action: 'error',
+          reason: e instanceof Error ? e.name : 'galat',
+        });
       }
     }
   }

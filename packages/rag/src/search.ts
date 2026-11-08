@@ -33,7 +33,12 @@ export const SINONIM: Readonly<Record<string, readonly string[]>> = {
 };
 
 export function tokenize(q: string): string[] {
-  return q.toLowerCase().match(/[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*/gu)?.filter((t) => t.length >= 2) ?? [];
+  return (
+    q
+      .toLowerCase()
+      .match(/[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*/gu)
+      ?.filter((t) => t.length >= 2) ?? []
+  );
 }
 
 /** Bangun ekspresi MATCH aman: token dikutip, digabung OR. Null bila tidak ada token. */

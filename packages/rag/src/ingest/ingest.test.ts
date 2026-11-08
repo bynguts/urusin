@@ -41,7 +41,9 @@ function fakeDeps(routes: Record<string, { status?: number; body: string; type?:
     const r = routes[url] ?? { status: 404, body: '' };
     return {
       status: r.status ?? 200,
-      headers: { get: (n) => (n.toLowerCase() === 'content-type' ? (r.type ?? 'text/html; charset=utf-8') : null) },
+      headers: {
+        get: (n) => (n.toLowerCase() === 'content-type' ? (r.type ?? 'text/html; charset=utf-8') : null),
+      },
       text: async () => r.body,
     };
   };
@@ -57,7 +59,15 @@ function fakeDeps(routes: Record<string, { status?: number; body: string; type?:
 
 describe('Robots', () => {
   const r = new Robots(
-    ['User-agent: *', 'Disallow: /privat', 'Allow: /privat/umum', 'Disallow: /*.pdf$', '', 'User-agent: urusinbot', 'Disallow: /khusus'].join('\n'),
+    [
+      'User-agent: *',
+      'Disallow: /privat',
+      'Allow: /privat/umum',
+      'Disallow: /*.pdf$',
+      '',
+      'User-agent: urusinbot',
+      'Disallow: /khusus',
+    ].join('\n'),
     'urusinbot',
   );
   it('grup spesifik mengalahkan *', () => {
@@ -65,7 +75,10 @@ describe('Robots', () => {
     expect(r.isAllowed('/privat')).toBe(true);
   });
   it('wildcard, Allow terpanjang, dan akhiran $', () => {
-    const star = new Robots(['User-agent: *', 'Disallow: /privat', 'Allow: /privat/umum', 'Disallow: /*.pdf$'].join('\n'), 'urusinbot');
+    const star = new Robots(
+      ['User-agent: *', 'Disallow: /privat', 'Allow: /privat/umum', 'Disallow: /*.pdf$'].join('\n'),
+      'urusinbot',
+    );
     expect(star.isAllowed('/privat/rahasia')).toBe(false);
     expect(star.isAllowed('/privat/umum/x')).toBe(true);
     expect(star.isAllowed('/a/b.pdf')).toBe(false);
@@ -90,13 +103,21 @@ describe('PoliteFetcher', () => {
     const f = new PoliteFetcher(deps);
     await f.get('https://a.go.id/1');
     await f.get('https://a.go.id/2');
-    expect(calls.map((c) => c.url)).toEqual(['https://a.go.id/robots.txt', 'https://a.go.id/1', 'https://a.go.id/2']);
-    for (let i = 1; i < calls.length; i++) expect(calls[i]!.at - calls[i - 1]!.at).toBeGreaterThanOrEqual(MIN_INTERVAL_MS);
+    expect(calls.map((c) => c.url)).toEqual([
+      'https://a.go.id/robots.txt',
+      'https://a.go.id/1',
+      'https://a.go.id/2',
+    ]);
+    for (let i = 1; i < calls.length; i++)
+      expect(calls[i]!.at - calls[i - 1]!.at).toBeGreaterThanOrEqual(MIN_INTERVAL_MS);
     expect(calls.every((c) => c.ua === USER_AGENT)).toBe(true);
     expect(USER_AGENT).not.toMatch(/@/);
   });
   it('host berbeda tidak saling menunggu', async () => {
-    const { deps, calls } = fakeDeps({ 'https://a.go.id/1': { body: 'x' }, 'https://b.go.id/1': { body: 'x' } });
+    const { deps, calls } = fakeDeps({
+      'https://a.go.id/1': { body: 'x' },
+      'https://b.go.id/1': { body: 'x' },
+    });
     const f = new PoliteFetcher(deps);
     await f.get('https://a.go.id/1');
     await f.get('https://b.go.id/1');
@@ -137,7 +158,12 @@ describe('extract + chunk', () => {
 describe('runIngest', () => {
   it('dry-run: tanpa jaringan, tanpa DB; melewati sumber non-korpus dan unverified', async () => {
     const reports = await runIngest({
-      sources: [src(), src({ id: 'p', ingest: false }), src({ id: 'u', status: 'unverified' }), src({ id: 'f', jenis: 'pdf' })],
+      sources: [
+        src(),
+        src({ id: 'p', ingest: false }),
+        src({ id: 'u', status: 'unverified' }),
+        src({ id: 'f', jenis: 'pdf' }),
+      ],
       dryRun: true,
     });
     expect(reports.map((r) => [r.id, r.action, r.reason])).toEqual([
@@ -183,9 +209,15 @@ describe('runIngest', () => {
   it('HTTP non-200 dan tipe konten tak didukung tidak menulis apa pun', async () => {
     const db = openDb(':memory:');
     const a = fakeDeps({ 'https://disdukcapil.contoh.go.id/layanan': { status: 503, body: '' } });
-    expect((await runIngest({ sources: [src()], dryRun: false, db, deps: a.deps }))[0]).toMatchObject({ action: 'error' });
-    const b = fakeDeps({ 'https://disdukcapil.contoh.go.id/layanan': { body: '%PDF', type: 'application/pdf' } });
-    expect((await runIngest({ sources: [src()], dryRun: false, db, deps: b.deps }))[0]).toMatchObject({ action: 'skipped' });
+    expect((await runIngest({ sources: [src()], dryRun: false, db, deps: a.deps }))[0]).toMatchObject({
+      action: 'error',
+    });
+    const b = fakeDeps({
+      'https://disdukcapil.contoh.go.id/layanan': { body: '%PDF', type: 'application/pdf' },
+    });
+    expect((await runIngest({ sources: [src()], dryRun: false, db, deps: b.deps }))[0]).toMatchObject({
+      action: 'skipped',
+    });
     expect(countChunks(db)).toBe(0);
   });
   it('origin di luar allowlist ditolak saat penulisan', async () => {
@@ -210,7 +242,16 @@ describe('data/sources.json', () => {
   });
   it('mencakup sumber yang diminta', () => {
     const ids = sources.map((s) => s.id);
-    for (const id of ['wonogiri-layanan', 'klampid-katalog', 'semarang-data-dukung', 'uu-23-2006', 'uu-27-2022', 'cek-dpt', 'cek-bansos', 'ombudsman-pengaduan']) {
+    for (const id of [
+      'wonogiri-layanan',
+      'klampid-katalog',
+      'semarang-data-dukung',
+      'uu-23-2006',
+      'uu-27-2022',
+      'cek-dpt',
+      'cek-bansos',
+      'ombudsman-pengaduan',
+    ]) {
       expect(ids).toContain(id);
     }
   });

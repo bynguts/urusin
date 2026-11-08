@@ -24,7 +24,10 @@ export type Chunk = z.infer<typeof ChunkSchema>;
 export const CariPengetahuanInputSchema = z.object({
   query: z.string().min(1).max(500),
   /** Kode kab/kota warga (4 digit); tanpa ini hanya korpus nasional. */
-  kodeKabKota: z.string().regex(/^\d{4}$/).optional(),
+  kodeKabKota: z
+    .string()
+    .regex(/^\d{4}$/)
+    .optional(),
   layanan: z.string().min(1).optional(),
   k: z.number().int().min(1).max(20).default(6),
 });

@@ -14,7 +14,8 @@ export function upsertChunks(db: Db, chunks: readonly unknown[]): number {
   const parsed: Chunk[] = chunks.map((c, i) => {
     const r = ChunkSchema.safeParse(c);
     if (!r.success) throw new ChunkRejectedError(`#${i} tidak sesuai skema`);
-    if (!isAllowedUrl(r.data.sourceRef.url)) throw new ChunkRejectedError(`#${i} origin di luar allowlist resmi`);
+    if (!isAllowedUrl(r.data.sourceRef.url))
+      throw new ChunkRejectedError(`#${i} origin di luar allowlist resmi`);
     return r.data;
   });
   const del = db.prepare('DELETE FROM chunks WHERE id = ?');

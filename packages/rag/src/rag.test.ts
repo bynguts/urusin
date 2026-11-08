@@ -24,8 +24,16 @@ const mk = (id: string, judul: string, text: string, extra: Record<string, unkno
 });
 
 const CORPUS = [
-  mk('nas-ktp', 'Penggantian KTP-el hilang', 'Penggantian KTP-el yang hilang memerlukan surat kehilangan dari kepolisian.'),
-  mk('nas-akta', 'Akta kelahiran', 'Pencatatan akta kelahiran memerlukan surat keterangan lahir dan KK orang tua.'),
+  mk(
+    'nas-ktp',
+    'Penggantian KTP-el hilang',
+    'Penggantian KTP-el yang hilang memerlukan surat kehilangan dari kepolisian.',
+  ),
+  mk(
+    'nas-akta',
+    'Akta kelahiran',
+    'Pencatatan akta kelahiran memerlukan surat keterangan lahir dan KK orang tua.',
+  ),
   mk('wng-kk', 'KK baru Wonogiri', 'Pengurusan KK baru di Telunjuk Sakti Wonogiri membutuhkan akta nikah.', {
     kodeWilayah: '3312',
     layanan: 'kk',
@@ -34,7 +42,9 @@ const CORPUS = [
     kodeWilayah: '3578',
     layanan: 'kk',
   }),
-  mk('jt-pajak', 'Samsat Jawa Tengah', 'Pembayaran pajak kendaraan di Jawa Tengah lewat Samsat.', { kodeWilayah: '33' }),
+  mk('jt-pajak', 'Samsat Jawa Tengah', 'Pembayaran pajak kendaraan di Jawa Tengah lewat Samsat.', {
+    kodeWilayah: '33',
+  }),
 ];
 
 let db: Db;
@@ -63,7 +73,10 @@ describe('store', () => {
     expect(upsertChunks(db, [mk('x', 'X', 'teks x', { verifiedAt: null })])).toBe(1);
   });
   it('menolak origin di luar allowlist dan atomik', () => {
-    const bad = { ...mk('evil', 'E', 'teks'), sourceRef: { url: 'https://contoh.com/a', judul: 'E', instansi: 'X' } };
+    const bad = {
+      ...mk('evil', 'E', 'teks'),
+      sourceRef: { url: 'https://contoh.com/a', judul: 'E', instansi: 'X' },
+    };
     expect(() => upsertChunks(db, [mk('ok2', 'O', 'teks ok'), bad])).toThrow(ChunkRejectedError);
     expect(countChunks(db)).toBe(5);
   });
@@ -105,7 +118,9 @@ describe('searchBm25', () => {
     expect(wng).not.toContain('sby-kk');
   });
   it('chunk provinsi terlihat bagi kab/kota di provinsi itu', () => {
-    expect(searchBm25(db, { query: 'pajak kendaraan', kodeKabKota: '3312' }).map((h) => h.id)).toEqual(['jt-pajak']);
+    expect(searchBm25(db, { query: 'pajak kendaraan', kodeKabKota: '3312' }).map((h) => h.id)).toEqual([
+      'jt-pajak',
+    ]);
     expect(searchBm25(db, { query: 'pajak kendaraan', kodeKabKota: '3578' })).toEqual([]);
   });
   it('filter layanan', () => {
@@ -173,7 +188,9 @@ describe('cari_pengetahuan', () => {
     expect(out).toMatchObject({ tanpaHasil: true, hasil: [] });
   });
   it('mode hybrid bila ada leg vektor', () => {
-    expect(cariPengetahuanTool.execute(db, { query: 'akta' }, { vectorIds: ['nas-akta'] }).mode).toBe('hybrid');
+    expect(cariPengetahuanTool.execute(db, { query: 'akta' }, { vectorIds: ['nas-akta'] }).mode).toBe(
+      'hybrid',
+    );
   });
   it('menolak input tidak valid', () => {
     expect(() => cariPengetahuanTool.execute(db, { query: '' })).toThrow();
