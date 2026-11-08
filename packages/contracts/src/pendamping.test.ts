@@ -1,0 +1,110 @@
+import { describe, expect, it } from 'vitest';
+import {
+  ENDPOINT,
+  MulaiPendampingRequestSchema,
+  MulaiSesiInternalSchema,
+  PENDAMPING_WS_CLOSE,
+  PendampingClientMessageSchema,
+  PendampingServerMessageSchema,
+  SesiPendampingSchema,
+} from './index.js';
+
+const SID_HASH = 'a'.repeat(64);
+
+describe('kontrak pendamping', () => {
+  it('pesan klien: input, kendali, vault, berkas', () => {
+    const ok = [
+      { type: 'halo', tiket: 't'.repeat(32) },
+      { type: 'pointer', aksi: 'down', x: 10, y: 20, jenis: 'touch', tombol: 'left', klik: 1 },
+      { type: 'wheel', x: 1, y: 2, dx: 0, dy: 120 },
+      { type: 'key', aksi: 'down', key: 'Enter', code: 'Enter' },
+      { type: 'text', teks: 'DEV123' },
+      { type: 'ambil_alih' },
+      { type: 'kembalikan' },
+      { type: 'vault', isian: { '{{PEMOHON.HP}}': '08000000001' } },
+      { type: 'berkas', nama: 'berkas1', namaBerkas: 'ktp.png', mime: 'image/png', dataBase64: 'AAAA' },
+      { type: 'akhiri' },
+      { type: 'ping', t: 1 },
+    ];
+    for (const m of ok) expect(PendampingClientMessageSchema.safeParse(m).success, m.type).toBe(true);
+  });
+
+  it('pesan klien rusak ditolak (kunci vault bukan placeholder, teks kosong, tipe asing)', () => {
+    const bad = [
+      { type: 'vault', isian: { NIK: '1' } },
+      { type: 'text', teks: '' },
+      { type: 'pointer', aksi: 'tap', x: 0, y: 0, jenis: 'mouse', tombol: 'left' },
+      { type: 'berkas', nama: '../x', namaBerkas: 'a', mime: 'image/png', dataBase64: 'A' },
+      { type: 'eval', kode: 'x' },
+    ];
+    for (const m of bad) expect(PendampingClientMessageSchema.safeParse(m).success).toBe(false);
+  });
+
+  it('pesan server: frame, mode, event, status, butuh_data, galat', () => {
+    const sesi = {
+      sesiId: 's1',
+      urusanId: 'u1',
+      executionId: 'x1',
+      status: 'antre',
+      mode: null,
+      antrean: { posisi: 1, panjang: 3 },
+      dibuatPada: '2026-11-08T00:00:00.000Z',
+      kedaluwarsaPada: '2026-11-08T00:15:00.000Z',
+    };
+    expect(SesiPendampingSchema.safeParse(sesi).success).toBe(true);
+    const ok = [
+      {
+        type: 'frame',
+        seq: 0,
+        data: '/9j/',
+        meta: { lebar: 390, tinggi: 844, skala: 1, offsetAtas: 0, scrollX: 0, scrollY: 0 },
+      },
+      { type: 'mode', mode: 'takeover', pesan: 'Giliran Anda' },
+      { type: 'event', event: { jenis: 'giliran_anda', alasan: 'final', pesan: 'Tekan Kirim' } },
+      { type: 'event', event: { jenis: 'selesai', hasil: 'berhasil', pesan: 'ok' } },
+      { type: 'status', sesi },
+      { type: 'butuh_data', placeholder: ['{{PEMOHON.HP}}'], berkas: ['berkas1'] },
+      { type: 'galat', kode: 'INPUT_DITOLAK_MODE_AI', pesanWarga: 'x' },
+    ];
+    for (const m of ok) expect(PendampingServerMessageSchema.safeParse(m).success, m.type).toBe(true);
+  });
+
+  it('request mulai dan internal', () => {
+    expect(MulaiPendampingRequestSchema.safeParse({ executionId: 'x_1' }).success).toBe(true);
+    expect(
+      MulaiPendampingRequestSchema.safeParse({
+        executionId: 'x_1',
+        viewport: { lebar: 100, tinggi: 844, dpr: 2, seluler: true },
+      }).success,
+    ).toBe(false);
+    const internal = {
+      urusanId: 'u1',
+      sidHash: SID_HASH,
+      executionId: 'x1',
+      adapterId: 'telunjuk-sakti-wonogiri',
+      flowId: 'ajukan',
+      origin: 'https://telunjuksakti.wonogirikab.go.id',
+      params: { layanan_id: 1 },
+    };
+    expect(MulaiSesiInternalSchema.safeParse(internal).success).toBe(true);
+    expect(MulaiSesiInternalSchema.safeParse({ ...internal, sidHash: 'raw-cookie' }).success).toBe(false);
+  });
+
+  it('endpoint pendamping terdaftar dan kode tutup WS di rentang aplikasi', () => {
+    const paths = Object.values(ENDPOINT).map((e) => `${e.method} ${e.path}`);
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        'POST /api/urusan/[id]/pendamping',
+        'GET /api/urusan/[id]/pendamping',
+        'POST /api/urusan/[id]/pendamping/tiket',
+        'POST /api/urusan/[id]/pendamping/serahkan',
+        'DELETE /api/urusan/[id]/pendamping',
+        'GET /api/pendamping/antrean',
+      ]),
+    );
+    for (const code of Object.values(PENDAMPING_WS_CLOSE)) {
+      expect(code).toBeGreaterThanOrEqual(4000);
+      expect(code).toBeLessThan(5000);
+    }
+  });
+});
