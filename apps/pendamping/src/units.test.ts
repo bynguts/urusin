@@ -198,6 +198,18 @@ describe('pemetaan input ke CDP', () => {
     expect(toCdp({ ...tap, aksi: 'cancel' })).toEqual([]);
   });
 
+  it('hanya tombol kiri: tekan/lepas kanan dan tengah dibuang; gerak sambil menahan menjadi gerak biasa', () => {
+    const tap = { type: 'pointer', aksi: 'down', x: 5, y: 6, jenis: 'mouse', tombol: 'right' } as const;
+    for (const tombol of ['right', 'middle'] as const)
+      for (const aksi of ['down', 'up'] as const) expect(toCdp({ ...tap, tombol, aksi })).toEqual([]);
+    expect(toCdp({ ...tap, tombol: 'middle', aksi: 'move' })[0]?.params).toMatchObject({
+      type: 'mouseMoved',
+      button: 'none',
+      buttons: 0,
+    });
+    expect(toCdp({ ...tap, jenis: 'pen', aksi: 'down' })).toEqual([]);
+  });
+
   it('roda, teks (insertText), Enter dengan teks \\r, tombol khusus ber-kode virtual', () => {
     expect(toCdp({ type: 'wheel', x: 1, y: 2, dx: 0, dy: 100 })[0]?.params).toMatchObject({
       type: 'mouseWheel',

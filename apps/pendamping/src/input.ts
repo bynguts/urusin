@@ -25,7 +25,7 @@ const VK: Record<string, number> = {
   Delete: 46,
 };
 
-const BUTTONS_MASK = { none: 0, left: 1, right: 2, middle: 4 } as const;
+const BUTTONS_MASK = { none: 0, left: 1 } as const;
 
 export function isInputMessage(m: PendampingClientMessage): m is InputMessage {
   return m.type === 'pointer' || m.type === 'wheel' || m.type === 'key' || m.type === 'text';
@@ -111,8 +111,12 @@ export function toCdp(
     case 'pointer': {
       if (m.jenis === 'touch') return touch(m);
       if (m.aksi === 'cancel') return [];
+      // Hanya tombol kiri yang diteruskan (temuan keamanan m5): tekan/lepas kanan/tengah dibuang, gerak
+      // sambil menahannya menjadi gerak biasa. Menu konteks dan klik tengah peramban tidak dibutuhkan warga.
+      const lain = m.tombol === 'right' || m.tombol === 'middle';
+      if (lain && m.aksi !== 'move') return [];
       const type = { down: 'mousePressed', move: 'mouseMoved', up: 'mouseReleased' }[m.aksi];
-      const button = m.tombol === 'none' && m.aksi !== 'move' ? 'left' : m.tombol;
+      const button = lain || (m.aksi === 'move' && m.tombol === 'none') ? 'none' : 'left';
       return [
         {
           method: 'Input.dispatchMouseEvent',
