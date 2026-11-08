@@ -1,4 +1,4 @@
-import { findPiiSpans, type PiiKind } from '@urusin/core';
+import { findPiiSpans, normalizeForScan, type PiiKind, type PiiOptions } from '@urusin/core';
 import type { ChatMessage } from '@urusin/llm';
 
 /**
@@ -51,10 +51,14 @@ export class PiiInterceptor {
   /** Total penggantian sejak dibuat; dicatat di span sebagai `urusin.pii_redactions` bila perlu. */
   redactions = 0;
 
-  constructor(private readonly matcher?: KnownValueMatcher) {}
+  constructor(
+    private readonly matcher?: KnownValueMatcher,
+    /** Konteks urusan: kode kab/kota yang diketahui, agar NIK yang dipecah antar bidang/turn tetap terdeteksi. */
+    private readonly ctx: PiiOptions = {},
+  ) {}
 
   private placeholderFor(kind: PlaceholderKind, value: string): string {
-    const key = `${kind}:${value.replace(/\D/g, '') || value.toLowerCase()}`;
+    const key = `${kind}:${normalizeForScan(value).text.replace(/\D/g, '') || value.toLowerCase()}`;
     const existing = this.byValue.get(key);
     if (existing) return existing;
     const n = this.counters.get(kind) ?? 0;
@@ -66,7 +70,7 @@ export class PiiInterceptor {
 
   redact(text: string): RedactResult {
     const hits: { start: number; end: number; kind: PlaceholderKind; value: string; token?: string }[] = [];
-    for (const s of findPiiSpans(text)) {
+    for (const s of findPiiSpans(text, this.ctx)) {
       const kind: PlaceholderKind =
         s.kind === 'nik' && KK_CONTEXT_RE.test(text.slice(Math.max(0, s.start - 25), s.start))
           ? 'kk'
@@ -116,6 +120,19 @@ export class PiiInterceptor {
       return base as unknown as ChatMessage;
     });
   }
+}
+
+/**
+ * Redaksi pada DAUN string sebuah nilai JSON (bukan pada hasil serialisasi): placeholder menggantikan isi string,
+ * sehingga struktur JSON tetap valid walau angka/teks menyerupai HP/NIK.
+ */
+export function redactLeaves<T>(value: T): T {
+  if (typeof value === 'string') return redactForStorage(value) as T;
+  if (Array.isArray(value)) return value.map(redactLeaves) as T;
+  if (typeof value === 'object' && value !== null) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, redactLeaves(v)])) as T;
+  }
+  return value;
 }
 
 /** Redaksi sekali pakai tanpa pemetaan stabil (untuk penyimpanan: hanya perlu memastikan nol PII). */

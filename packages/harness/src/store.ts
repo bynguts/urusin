@@ -17,7 +17,7 @@ import {
   TerminalStateError,
   TurnInProgressError,
 } from './errors.js';
-import { redactForStorage } from './pii.js';
+import { redactForStorage, redactLeaves } from './pii.js';
 import { canTransition, isTerminal } from './state.js';
 
 export type UrusanRow = {
@@ -258,7 +258,7 @@ export class HarnessStore {
       )
       .run(
         patch.status,
-        redactForStorage(JSON.stringify(patch.messages)),
+        JSON.stringify(redactLeaves(patch.messages)),
         this.iso(),
         patch.tokensIn,
         patch.tokensOut,
@@ -315,7 +315,7 @@ export class HarnessStore {
       const prev = last?.hash ?? genesisHash(u.id, u.createdAt);
       const seq = (last?.seq ?? 0) + 1;
       const at = this.iso();
-      const body = redactForStorage(canonicalJson(payload));
+      const body = canonicalJson(redactLeaves(payload));
       const hash = chainHash(prev, { seq, type, at, payload: body });
       this.db
         .prepare(
@@ -526,6 +526,11 @@ export class HarnessStore {
         .prepare('UPDATE confirmations SET used_at = ? WHERE id = ? AND used_at IS NULL')
         .run(this.iso(), id).changes === 1
     );
+  }
+
+  /** Kembalikan konfirmasi yang sudah dikonsumsi bila turn gagal sebelum tindakan sampai ke warga. */
+  releaseConfirmation(id: string): void {
+    this.db.prepare('UPDATE confirmations SET used_at = NULL WHERE id = ?').run(id);
   }
 
   // --- potongan korpus yang sah dikutip ---

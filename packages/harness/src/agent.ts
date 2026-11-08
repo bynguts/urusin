@@ -103,7 +103,9 @@ export function prepareTurn(
   if (locks.has(args.urusanId)) throw new TurnInProgressError();
   locks.add(args.urusanId);
   let claim: ReturnType<HarnessStore['claimTurn']>;
-  const pii = new PiiInterceptor();
+  const pii = new PiiInterceptor(undefined, {
+    kodeKabKota: deps.store.getUrusan(args.urusanId)?.kodeKabKota,
+  });
   const userText = pii.redact(args.userText).text;
   try {
     claim = deps.store.claimTurn(args.urusanId, userText, {
@@ -608,6 +610,8 @@ class TurnRunner {
       }
       return { content: clip(res.content), end: res.endTurn === true };
     } catch (e) {
+      // Tindakan tidak sampai ke warga: konfirmasi tidak boleh hangus.
+      if (outcome.confirmationId) this.store.releaseConfirmation(outcome.confirmationId);
       span.end({ status: 'error', errorCode: (e as Error).name, attrs: { [OTEL.toolName]: name } });
       if (this.ctrl.signal.aborted || isLlmTerminalError(e)) throw e;
       if (e instanceof HarnessError) throw e;
