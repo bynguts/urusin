@@ -116,11 +116,20 @@ korpus sintetis `abstain.test.ts`; di korpus nyata ia menurunkan recall@3 5 poin
 (lihat "Korpus nyata dan gold set"). Cakupan dihitung pada top-3 hasil fusi, sehingga gerbang berlaku sama di mode `bm25` dan `hybrid` (diuji dengan embedder palsu). Ambang bisa ditimpa lewat env `RAG_ABSTAIN_MIN_COVERAGE`. Lantai cosine untuk leg vektor sengaja tidak dipakai: skor cosine tidak terkalibrasi antar model embedding. Stopword dipakai di
 semua jalur pencarian (BM25 lama, leg asli, leg ter-stem, perluasan).
 
-Leksikon layanan luar cakupan (`data/glossary/luar-cakupan.json`: SIM, SKCK, paspor, BPJS, DPT, NPWP) memaksa
+Leksikon layanan luar cakupan (`data/glossary/luar-cakupan.json`: SIM, SKCK, paspor, BPJS, DPT, NPWP, IKD) memaksa
 `alasan: di_luar_cakupan` bila kueri menyebut salah satunya dan tak ada judul chunk yang memuat nama itu (kata umum
 seperti "syarat perpanjang" bisa membuat cakupan leksikal 1.0 sendirian). STNK/BPKB tidak dimasukkan karena halaman
 Samsat ada di korpus. Di gold tuning abstain recall naik dari 41.7% ke 83.3% (presisi 100%, recall@3 tidak berubah);
 di held-out tetap 66.7% (tak ada istilah leksikon di soal luar cakupannya).
+
+### Hand-off ke kanal resmi
+
+Bila `tanpaHasil`, output tool dapat memuat `kanal` (layanan luar cakupan yang disebut kueri: instansi, deskripsi, dan
+tautan + `verifiedAt` HANYA bila terverifikasi; sumber `data/kanal-resmi.json`, `pnpm --filter @urusin/rag rag:kanal`) dan
+`kontak` (situs Disdukcapil kab/kota dari `kodeKabKota`, hanya yang `terverifikasi`; sumber
+`data/wilayah/kontak-dukcapil.json`, `pnpm --filter @urusin/rag rag:kontak`). Pemeriksa hanya GET baca-saja, menghormati
+robots.txt, maks 1 permintaan per detik; telepon dan alamat tidak pernah dikarang (alamat hanya bila tertulis di halaman
+resmi yang sama, lalu dibersihkan dari nomor telepon dan teks non-alamat).
 
 ### Korpus nyata dan gold set
 
@@ -178,15 +187,27 @@ top-3 (tuning n=38, held-out n=14). Baseline BM25 + stem + glosarium: tuning 28/
 MRR 0.700. Latensi = satu panggilan per kueri (p50 / p95); harga per token tidak dimasukkan (env `*_PRICE_PER_MTOK`
 tersedia untuk meter biaya, nilai Jina tak diverifikasi).
 
+**Ringkasan held-out (n=14 dalam cakupan, 6 luar cakupan), konfigurasi default:**
+
+| Pipeline                                   | hits@3 (recall@3) | abstain presisi / recall |
+| ------------------------------------------ | ----------------: | -----------------------: |
+| BM25 + stem + glosarium                    |     11/14 (78.6%) |             100% / 66.7% |
+| Hybrid (v5-omni-small, tanpa transformasi) |     13/14 (92.9%) |             100% / 66.7% |
+| Hybrid + jina-reranker-v3 + lantai 0.05    |      14/14 (100%) |              100% / 100% |
+
+Abstain di baris BM25 dan hybrid memakai gerbang leksikal 0.1 + leksikon; lantai skor rerank menambah recall abstain.
+Tuning: BM25 28/38, hybrid 35/38, hybrid + rerank v3 35/38, abstain 100% / 100%. Angka diambil dari eval 2026-11-08
+di bawah (belum diulang setelah penambahan `ikd` ke leksikon luar cakupan, yang tidak menyentuh soal gold).
+
 **Tahap 1: embedding dalam hybrid (BM25 + vektor, RRF), tanpa transformasi.**
 
-| Model (task query/passage) | tuning hits@3 | tuning MRR | latensi | token/kueri |
-|---|---:|---:|---:|---:|
-| BM25 saja | 28/38 | 0.685 | - | - |
-| jina-embeddings-v3 | 35/38 | 0.825 | 454 / 536 ms | 27.6 |
-| **jina-embeddings-v5-omni-small** | 35/38 | 0.829 | 296 / 409 ms | 21.4 |
-| jina-embeddings-v5-text-small | 35/38 | 0.816 | 279 / 383 ms | 21.4 |
-| jina-embeddings-v4 (2048-d) | 32/38 | 0.760 | 446 / 684 ms | 21.4 |
+| Model (task query/passage)        | tuning hits@3 | tuning MRR |      latensi | token/kueri |
+| --------------------------------- | ------------: | ---------: | -----------: | ----------: |
+| BM25 saja                         |         28/38 |      0.685 |            - |           - |
+| jina-embeddings-v3                |         35/38 |      0.825 | 454 / 536 ms |        27.6 |
+| **jina-embeddings-v5-omni-small** |         35/38 |      0.829 | 296 / 409 ms |        21.4 |
+| jina-embeddings-v5-text-small     |         35/38 |      0.816 | 279 / 383 ms |        21.4 |
+| jina-embeddings-v4 (2048-d)       |         32/38 |      0.760 | 446 / 684 ms |        21.4 |
 
 Semua menang >= 2 hit atas BM25; v3, v5-omni dan v5-text seri (35/38), dipilih v5-omni-small (MRR tertinggi, latensi dan
 token lebih rendah). Held-out: v5-omni 13/14 (92.9%) tidak kalah dari BM25 (11/14). Tanpa field task, v5-omni turun ke 84.2%
@@ -199,12 +220,12 @@ transformasi (`--vector-mode none`)**.
 **Tahap 3: reranker pada kandidat hybrid v5-omni** (kandidat top-20, judul + teks dikirim; kriteria: +>= 2 hit@1 di tuning
 dan tidak kehilangan hits@3 di tuning maupun held-out):
 
-| Reranker | tuning R@1 / hits@3 / MRR | held-out R@1 / hits@3 / MRR | latensi | token/kueri | lolos? |
-|---|---|---|---:|---:|---|
-| tanpa rerank | 72.4% / 35 / 0.829 | 57.1% / 13 / 0.768 | - | - | - |
-| jina-reranker-v2-base-multilingual | 67.1% / 34 / 0.790 | 78.6% / 14 / 0.893 | 409 / 504 ms | 3806 | tidak (kalah di tuning) |
-| jina-reranker-m0 | 75.0% / 34 / 0.836 | 78.6% / 14 / 0.893 | 533 / 830 ms | 5834 | tidak (kalah 1 hit@3) |
-| **jina-reranker-v3** | **82.9% / 35 / 0.891** | 64.3% / 14 / 0.810 | 346 / 419 ms | 5655 | ya |
+| Reranker                           | tuning R@1 / hits@3 / MRR | held-out R@1 / hits@3 / MRR |      latensi | token/kueri | lolos?                  |
+| ---------------------------------- | ------------------------- | --------------------------- | -----------: | ----------: | ----------------------- |
+| tanpa rerank                       | 72.4% / 35 / 0.829        | 57.1% / 13 / 0.768          |            - |           - | -                       |
+| jina-reranker-v2-base-multilingual | 67.1% / 34 / 0.790        | 78.6% / 14 / 0.893          | 409 / 504 ms |        3806 | tidak (kalah di tuning) |
+| jina-reranker-m0                   | 75.0% / 34 / 0.836        | 78.6% / 14 / 0.893          | 533 / 830 ms |        5834 | tidak (kalah 1 hit@3)   |
+| **jina-reranker-v3**               | **82.9% / 35 / 0.891**    | 64.3% / 14 / 0.810          | 346 / 419 ms |        5655 | ya                      |
 
 Daftar yang diminta hanya v2 dan m0 (keduanya tidak lolos); v3 ikut diukur karena ada dan lolos. Rerank hanya efektif bila
 judul sumber ikut dikirim: tanpa judul, potongan pendek seperti "Biaya: tidak ada biaya/tarif" tak bermakna dan hybrid
