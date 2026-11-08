@@ -1,4 +1,4 @@
-import { byRole, css, fill, gate, nav, urlIncludes, type Step } from '@urusin/core';
+import { byName, byRole, css, fill, gate, nav, urlIncludes, type Step } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
 import {
   ADAPTERS,
@@ -105,7 +105,7 @@ describe('adapter bawaan', () => {
   it('probe masuk akun dan bukti dideklarasikan adapter (Telunjuk Sakti), bukan ditulis model', () => {
     const r = buildProgram('telunjuk-sakti-wonogiri', 'ajukan', { layanan_id: 1 });
     expect(r.ok && r.program.masuk).toEqual({
-      sudah: { kind: 'elementExists', target: [css('a[href$="/users/logout"]')] },
+      keluar: { kind: 'elementExists', target: [css('#loginSubmit'), byName('loginSubmit')] },
       halaman: '/telunjuksakti/index.php/users/login',
     });
     expect(r.ok && r.program.bukti?.nomor).toEqual([

@@ -36,8 +36,12 @@ import {
  */
 
 export type Params = Record<string, string | number | boolean>;
-/** Probe masuk akun: `sudah` benar bila warga sedang masuk; `halaman` = jalur halaman login situs. */
-export type ProbeMasuk = { sudah: Check; halaman: string };
+/**
+ * Probe masuk akun: `keluar` benar bila halaman menunjukkan warga belum/tidak lagi masuk (formulir login
+ * tampil); `halaman` = jalur halaman login situs. Memeriksa formulir login lebih tahan daripada mencari
+ * tautan Keluar yang belum tentu ada di setiap halaman.
+ */
+export type ProbeMasuk = { keluar: Check; halaman: string };
 export type BuktiSelektor = { nomor?: Target; status?: Target };
 export type Program = {
   origin: string;
@@ -74,7 +78,10 @@ function berkasDari(params: Params): string[] | string {
 
 const telunjukSakti: Adapter = {
   origin: 'https://telunjuksakti.wonogirikab.go.id',
-  masuk: { sudah: elementExists(css('a[href$="/users/logout"]')), halaman: `${TS_BASE}/users/login` },
+  masuk: {
+    keluar: elementExists([css('#loginSubmit'), byName('loginSubmit')]),
+    halaman: `${TS_BASE}/users/login`,
+  },
   flows: {
     /** Login (warga: sandi + CAPTCHA), unggah berkas satu per satu (AI), Selesai (warga). */
     ajukan: {
