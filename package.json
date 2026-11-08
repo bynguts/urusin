@@ -22,7 +22,8 @@
     "lint:root": "eslint scripts commitlint.config.mjs eslint.config.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "budget": "turbo run budget"
+    "budget": "turbo run budget",
+    "e2e": "turbo run e2e"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

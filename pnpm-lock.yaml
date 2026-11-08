@@ -66,6 +66,12 @@ importers:
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6
+      '@urusin/fixtures':
+        specifier: workspace:*
+        version: link:../fixtures
+      '@urusin/web':
+        specifier: workspace:*
+        version: link:../web
       happy-dom:
         specifier: 21.0.4
         version: 21.0.4
