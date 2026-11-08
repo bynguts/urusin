@@ -15,7 +15,8 @@
     "prepare": "svelte-kit sync || echo \"\"",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "budget": "node scripts/bundle-budget.mjs"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "6.0.1",

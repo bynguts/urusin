@@ -21,7 +21,8 @@
     "prepare": "husky",
     "lint:root": "eslint scripts commitlint.config.mjs eslint.config.js",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "budget": "turbo run budget"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

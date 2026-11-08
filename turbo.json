@@ -18,6 +18,10 @@
     },
     "test": {
       "dependsOn": ["^build"]
+    },
+    "budget": {
+      "dependsOn": ["build"],
+      "cache": false
     }
   }
 }
