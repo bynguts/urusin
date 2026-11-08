@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- tes menelusuri JSON Schema dinamis */
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { ALL_ON } from './capabilities.js';
