@@ -1,0 +1,7 @@
+{
+  "note": "Commit yang sudah terdorong ke main dan tidak boleh ditulis ulang (larangan rebase/force-push). Hanya aturan format header yang dikecualikan; author dan atribusi AI tetap diperiksa. Jangan menambah entri baru: merge wajib memakai -m \"chore: merge ...\".",
+  "headerFormat": {
+    "ed650325811011aef637e1de3f97d6718a0cb136": "merge otomatis git saat menyinkronkan main ke feat/rag-query-pipeline",
+    "778617564e103a66eede46c2a7ee59bf3bff298d": "merge otomatis git saat menyinkronkan main ke feat/rag-query-pipeline"
+  }
+}
