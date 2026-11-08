@@ -390,9 +390,7 @@ export class HarnessStore {
     return id;
   }
 
-  getConfirmation(
-    id: string,
-  ):
+  getConfirmation(id: string):
     | {
         id: string;
         urusanId: string;
