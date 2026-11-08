@@ -89,21 +89,51 @@ caddy/systemctl/curl palsu dan tidak pernah menyentuh host.
 
 - Web memakai `network_mode: host` karena iptables host men-DROP `:20128` dari bridge Docker. Akibatnya
   web berbagi namespace jaringan host, jadi ada dua pagar:
-  - **Bind**: `HOST=127.0.0.1`. `deploy.sh` memeriksa dengan `ss -ltn` bahwa `4310`/`4311` tidak terikat
-    ke `0.0.0.0`/`::`, dan menggagalkan deploy (rollback) bila terikat.
-  - **Egress** (`@urusin/egress`): semua HTTP keluar server lewat satu Agent undici.
+  - **Bind**: `HOST=127.0.0.1`. `deploy.sh` memeriksa dengan `ss -ltn` bahwa `4310`/`4311` hanya terikat
+    ke `127.0.0.1`: selama menunggu warna baru sehat, sesudahnya, dan juga pada warna aktif. Alamat lain
+    (wildcard atau IP non-loopback) menggagalkan deploy dengan rollback.
+  - **Egress** (`@urusin/egress`): semua HTTP keluar server lewat Agent undici yang dijaga.
     - Tujuan diperiksa sebelum tersambung, dan setiap alamat hasil DNS diperiksa juga. Loopback, privat,
-      link-local (termasuk `169.254.169.254`), CGNAT `100.64/10` dan padanan IPv6 ditolak.
-    - Satu-satunya pengecualian lokal adalah persis `127.0.0.1:20128`, yaitu proxy LLM.
-    - Host lain hanya dari allowlist: Jina, registry domain resmi, `*.go.id`, dan base URL LLM dari env.
+      link-local (termasuk `169.254.169.254`), CGNAT `100.64/10` dan padanan IPv6 (termasuk
+      `::ffff:0:0/96` dan `::ffff:0:0:0/96`) ditolak.
+    - Pengecualian lokal satu-satunya adalah persis `127.0.0.1:20128` (proxy LLM). Itu pun hanya berlaku bila
+      `LLM_BASE_URL` memang origin itu, dan redirect dari host lain ke sana selalu ditolak.
+    - Dua profil terpisah:
+      - **runtime** (server web): host Jina dan origin base URL LLM/embedding/rerank dari env;
+      - **ingest** (`rag:ingest`, `rag:verify`, CLI kanal/kontak): registry domain resmi dan `*.go.id`,
+        hanya https:443.
     - Redirect diikuti manual, dan setiap hop diperiksa ulang.
-    - ESLint melarang `fetch`, `undici`, dan `node:http(s)`/`net`/`tls` mentah di kode server di luar modul itu.
-    - Tes membuktikan `127.0.0.1:2019` (admin Caddy), `:4320`, `:22` dan metadata cloud tidak terjangkau.
+    - **Backstop**: `hooks.server.ts` dan entry CLI rag memasang Agent egress sebagai dispatcher global
+      undici. Akibatnya fetch global, `event.fetch`, default SDK openai dan WebSocket undici juga dijaga.
+    - ESLint melarang di kode server (`.ts`/`.js`, termasuk `+page.ts`/`+layout.ts`) di luar modul itu:
+      `fetch`, `WebSocket` dan `EventSource` global, `undici` dan subpath-nya, `node:http(s)`/`http2`/
+      `net`/`tls`, dan `child_process`.
+    - Tes membuktikan `127.0.0.1:2019` (admin Caddy), `:4320`, `:22` dan metadata cloud tidak terjangkau,
+      juga lewat fetch global setelah boot.
+  - Firewall host (iptables) tidak diubah sebagai pagar tambahan; itu di luar izin Urusin.
 - Fixtures tetap di bridge, tanpa akses ke proxy dan tanpa berbagi jaringan host.
+
+### IP klien dan kuota per-IP (`X-Forwarded-For`)
+
+- Compose mengisi `ADDRESS_HEADER=X-Forwarded-For` dan `XFF_DEPTH=1`. Caddy adalah satu-satunya hop dan
+  menimpa `X-Forwarded-For` dari klien, jadi entri terakhir = IP peer TCP yang dilihat Caddy.
+- Batasan yang harus diingat:
+  - **CDN di depan atau `trusted_proxies` di Caddy merusak kuota per-IP.** Dengan CDN (mis. Cloudflare
+    proxied), IP peer yang dilihat Caddy adalah IP edge CDN. Banyak klien runtuh menjadi sedikit IP, sehingga
+    kuota per-IP menolak pengguna sah. Bila `trusted_proxies` ditambahkan, Caddy meneruskan XFF dari hop
+    tepercaya, dan `XFF_DEPTH=1` lalu menunjuk ke entri yang salah. Kuota lalu bisa runtuh, atau bisa
+    dipalsukan bila depth tidak disesuaikan. Mengaktifkan salah satunya menuntut `XFF_DEPTH` dan dokumen
+    ini diperbarui bersama.
+  - **Proses lokal bisa memalsukan XFF.** Web berjalan di network host dan mendengarkan
+    `127.0.0.1:4310/4311` tanpa melewati Caddy. Proses apa pun di host (milik pengguna atau penyerang
+    yang sudah di host) dapat mengirim `X-Forwarded-For` sembarang langsung ke port itu dan menghindari
+    kuota per-IP. Kuota per-sesi dan batas biaya harian (`URUSIN_DAILY_IDR_CAP`) tetap berlaku.
 
 ## Caddy
 
 - Snippet literal dari `deploy/hosts.json` (`node scripts/gen-caddyfile.mjs`, dicek CI). Tidak ada
   placeholder `{$…}`, jadi environment proses Caddy tidak pernah diubah dan Caddy tidak pernah di-restart.
 - Isinya hanya blok situs Urusin dan snippet `(urusin_common)`, tanpa opsi global. CSP hanya dari aplikasi.
+- `/api/health*` publik dijawab `404` (memuat gitSha/versi/runningTurns). Smoke publik dan monitor memakai
+  `/api/ready`; `deploy.sh` membaca `/api/health` lewat `127.0.0.1`.
 - Setiap perubahan hanya lewat `deploy/caddy-install.sh` dengan go-ahead pengguna (prosedur di "Model izin").
