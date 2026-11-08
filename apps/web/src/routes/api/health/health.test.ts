@@ -17,6 +17,7 @@ describe('GET /api/health', () => {
       gitSha: 'dev',
       version: '0.0.0',
       rag: { status: 'uninitialized' },
+      runningTurns: 0,
       csp: { violations: {} },
     });
   });
@@ -28,5 +29,12 @@ describe('GET /api/health', () => {
     expect(body.gitSha).toBe('abcdef1234567890');
     expect(body.ok).toBe(true);
     expect(body.rag).toEqual({ status: 'uninitialized' });
+  });
+
+  it('melaporkan jumlah turn yang sedang berjalan dari runtime', async () => {
+    const turns = await import('#lib/server/running-turns.js');
+    turns.setRunningTurnsSource(() => 3);
+    const { GET } = await import('./+server');
+    expect((await (await GET({} as never)).json()).runningTurns).toBe(3);
   });
 });

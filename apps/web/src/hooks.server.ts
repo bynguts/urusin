@@ -1,10 +1,16 @@
 import { assertAkunEnv } from '@urusin/akun';
 import type { Handle } from '@sveltejs/kit/hooks';
+import { installEgressBackstop } from '@urusin/egress';
 import { AKUN_COOKIE, hapusAkunCookie } from '#lib/server/akun.js';
 import { assertHostEnv } from '#lib/server/hosts.js';
 import { checkOrigin } from '#lib/server/origin.js';
 import { getRuntime, publicOrigin } from '#lib/server/runtime.js';
 import { ensureSession } from '#lib/server/sesi.js';
+
+// Backstop egress (review v11 M2): web berjalan di network host. Jadikan Agent egress runtime (LLM + Jina,
+// tolak loopback/privat) dispatcher global undici, agar fetch global, event.fetch, default SDK openai dan
+// WebSocket undici tidak bisa menjangkau layanan loopback pengguna (mis. admin Caddy :2019).
+installEgressBackstop();
 
 // Gagal cepat saat startup bila DOMAIN/VERIFY_HOST/FIXTURES_HOST bukan salah satu set di deploy/hosts.json.
 assertHostEnv(process.env);

@@ -1,9 +1,13 @@
 import { lookup } from 'node:dns/promises';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import { ingestEgressFetch, installEgressBackstop } from '@urusin/egress';
 import { PoliteFetcher, type Deps } from './fetcher.js';
 import type { ProbeGet } from './kontak.js';
 import { runKontak } from './kontak-run.js';
+
+// Backstop (M2): fetch global apa pun di proses CLI ini lewat konektor egress profil ingest.
+installEgressBackstop('ingest');
 
 /**
  * Isi `data/wilayah/kontak-dukcapil.json` dengan situs Disdukcapil yang BISA diverifikasi. Hanya baca (GET),
@@ -29,7 +33,7 @@ const deps: Deps = {
     const wait = lastReq + 1000 - Date.now();
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     lastReq = Date.now();
-    const res = await fetch(url, init);
+    const res = await ingestEgressFetch(url, init);
     finalUrls.set(url, res.url || url);
     return res;
   },

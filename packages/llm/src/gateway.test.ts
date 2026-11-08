@@ -258,6 +258,8 @@ describe('larangan SDK vendor lain', () => {
 describe('stream selalu eksplisit di body permintaan', () => {
   afterEach(() => vi.unstubAllGlobals());
   const bodies: Record<string, unknown>[] = [];
+  // fetch global di-stub; provider diarahkan ke sana (default-nya egress, yang tidak ikut di-stub).
+  const globalFetch = { fetch: (u: string | URL | Request, i?: RequestInit) => fetch(u, i) };
   const stub = (respond: () => Response) =>
     vi.stubGlobal(
       'fetch',
@@ -276,7 +278,7 @@ describe('stream selalu eksplisit di body permintaan', () => {
           headers: { 'content-type': 'application/json' },
         }),
     );
-    const p = new OpenAIProvider(loadLlmConfig({ ...ENV, LLM_MAX_RETRIES: '0' }));
+    const p = new OpenAIProvider(loadLlmConfig({ ...ENV, LLM_MAX_RETRIES: '0' }), globalFetch);
     await p.create(base);
     expect(bodies[0]).toHaveProperty('stream', false);
   });
@@ -284,7 +286,7 @@ describe('stream selalu eksplisit di body permintaan', () => {
   it('stream() mengirim stream:true', async () => {
     bodies.length = 0;
     stub(() => new Response('data: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } }));
-    const p = new OpenAIProvider(loadLlmConfig({ ...ENV, LLM_MAX_RETRIES: '0' }));
+    const p = new OpenAIProvider(loadLlmConfig({ ...ENV, LLM_MAX_RETRIES: '0' }), globalFetch);
     const it = await p.stream({ ...base, stream: true });
     for await (const _c of it) void _c;
     expect(bodies[0]).toHaveProperty('stream', true);

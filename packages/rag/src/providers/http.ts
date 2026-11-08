@@ -1,3 +1,4 @@
+import { egressFetch } from '@urusin/egress';
 /** Statistik panggilan ke penyedia: dipakai eval untuk latensi dan biaya token per kueri. */
 export type ProviderStats = { calls: number; tokens: number; latenciesMs: number[]; errors: number };
 export const newStats = (): ProviderStats => ({ calls: 0, tokens: 0, latenciesMs: [], errors: 0 });
@@ -17,7 +18,8 @@ export type HttpOpts = {
   sleep?: ((ms: number) => Promise<void>) | undefined;
 };
 
-const defaultFetch: FetchFn = (url, init) => fetch(url, init);
+// Penyedia embedding/rerank (Jina) lewat egress server: allowlist host + tolak alamat lokal/privat.
+const defaultFetch: FetchFn = (url, init) => egressFetch(url, init);
 
 /** POST JSON dengan timeout, retry 429/5xx (backoff), dan pencatatan statistik. Kunci tidak pernah dicatat. */
 export async function postJson(opts: HttpOpts, path: string, body: unknown): Promise<unknown> {

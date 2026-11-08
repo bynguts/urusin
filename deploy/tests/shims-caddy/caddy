@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# caddy palsu: `validate --config F` gagal bila F (atau berkas yang di-import-nya) memuat INVALID.
+echo "caddy $*" >> "$SHIM_DIR/calls.log"
+[ "$1" = validate ] || exit 0
+cfg="${*: -1}"
+files=("$cfg")
+while read -r _ path; do files+=("$path"); done < <(grep -E '^import /' "$cfg" || true)
+for f in "${files[@]}"; do
+  if [ -f "$f" ] && grep -q INVALID "$f"; then echo "Error: invalid $f" >&2; exit 1; fi
+done
+echo "Valid configuration"

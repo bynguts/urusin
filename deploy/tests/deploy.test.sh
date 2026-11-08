@@ -155,6 +155,81 @@ export SHIM_RUN_FAIL=1
 check "kegagalan sqlite -> exit non-zero, tanpa .partial" '[ $RC -ne 0 ] && [ ! -e "$BACKUP_DIR/.partial.db" ]'
 unset SHIM_RUN_FAIL BACKUP_DIR
 
+echo "13. host network: bind loopback + cek jangkauan LLM"
+new_sandbox
+cp "$DEPLOY/check-llm-reach.sh" "$SB/deploy/check-llm-reach.sh"
+export SHIM_LABEL="$SHA_A"
+run_deploy "$SHA_A" "$DIG_A"
+check "deploy sukses; pemeriksaan LLM dijalankan sebelum promosi" '[ $RC -eq 0 ] && grep -q "HTTP 401" "$SB/out.log"'
+export SHIM_LLM_FAIL=1 SHIM_LABEL="$SHA_B"
+run_deploy "$SHA_B" "$DIG_B"
+check "LLM tak terjangkau: hanya peringatan, deploy tetap sukses" '[ $RC -eq 0 ] && grep -q "tidak menjangkau LLM_BASE_URL" "$SB/out.log"'
+export REQUIRE_LLM=1 SHIM_LABEL="$SHA_A"
+run_deploy "$SHA_A" "$DIG_A"
+check "REQUIRE_LLM=1: gagal + rollback, warna lama tetap dipromosikan" '[ $RC -ne 0 ] && grep -q "ROLLBACK" "$SB/out.log" && [ "$(cat "$SHIM_DIR/promoted")" = "$(sed -n "s/^ACTIVE_COLOR=//p" "$SB/deploy/.env.images")" ]'
+unset SHIM_LLM_FAIL REQUIRE_LLM
+export SHIM_SS_WILDCARD=1 SHIM_LABEL="$SHA_B"
+run_deploy "$SHA_B" "$DIG_B"
+check "bind 0.0.0.0 ditolak + rollback" '[ $RC -ne 0 ] && grep -q "semua antarmuka" "$SB/out.log"'
+unset SHIM_SS_WILDCARD
+check "bind non-loopback tertangkap di loop tunggu (sebelum promosi)" 'grep -q "tidak sehat" "$SB/out.log" && ! grep -q "smoke publik OK" "$SB/out.log"'
+new_sandbox
+export SHIM_LABEL="$SHA_A"
+run_deploy "$SHA_A" "$DIG_A"
+export SHIM_LABEL="$SHA_B" SHIM_SS_WILDCARD_PORT=4310
+run_deploy "$SHA_B" "$DIG_B"
+check "warna aktif (:4310) terikat 0.0.0.0: deploy gagal + rollback" '[ $RC -ne 0 ] && grep -q "web-blue (aktif, :4310) mendengarkan di luar 127.0.0.1" "$SB/out.log" && grep -q ROLLBACK "$SB/out.log"'
+unset SHIM_SS_WILDCARD_PORT
+
+echo "13e. smoke publik lewat /api/ready; /api/health publik harus 404"
+new_sandbox
+export SHIM_LABEL="$SHA_A"
+run_deploy "$SHA_A" "$DIG_A"
+check "smoke publik memakai /api/ready, bukan /api/health" '[ $RC -eq 0 ] && grep -q "https://urusin.test/api/ready" "$SHIM_DIR/calls.log" && ! grep -q "fsS.*https://urusin.test/api/health" "$SHIM_DIR/calls.log"'
+check "/api/health publik 404: tanpa peringatan" '! grep -q "api/health publik" "$SB/out.log"'
+export SHIM_PUBLIC_HEALTH_CODE=200 SHIM_LABEL="$SHA_B"
+run_deploy "$SHA_B" "$DIG_B"
+check "/api/health publik 200: peringatan snippet lama, deploy tetap sukses" '[ $RC -eq 0 ] && grep -q "api/health publik -> HTTP 200" "$SB/out.log"'
+unset SHIM_PUBLIC_HEALTH_CODE
+
+echo "13b. drain turn sebelum menghentikan warna lama"
+new_sandbox
+export SHIM_LABEL="$SHA_A"
+run_deploy "$SHA_A" "$DIG_A"
+export SHIM_LABEL="$SHA_B" SHIM_TURNS=0
+run_deploy "$SHA_B" "$DIG_B"
+check "runningTurns=0: tidak menunggu" '[ $RC -eq 0 ] && ! grep -q "menunggu .* di web-" "$SB/out.log"'
+export SHIM_LABEL="$SHA_A" SHIM_TURNS=2
+run_deploy "$SHA_A" "$DIG_A"
+check "runningTurns>0: menunggu sampai batas drain lalu tetap berhenti (peringatan)" '[ $RC -eq 0 ] && grep -q "menunggu 2 di web-" "$SB/out.log" && grep -q "batas drain" "$SB/out.log"'
+unset SHIM_TURNS
+export SHIM_LABEL="$SHA_B"
+run_deploy "$SHA_B" "$DIG_B"
+check "field runningTurns tidak ada (image lama): menunggu penuh" '[ $RC -eq 0 ] && grep -q "jumlah tidak diketahui" "$SB/out.log"'
+check "DOCKER_CONFIG tidak ditulis: skrip tidak menyebut ~/.docker" '! grep -rEq "(~|\$HOME)/\.docker" "$DEPLOY"/*.sh'
+
+echo "13c. login GHCR sementara lewat GHCR_TOKEN"
+new_sandbox
+export SHIM_LABEL="$SHA_A" GHCR_TOKEN="tok-uji-ghcr" TMPDIR="$SB/tmp"
+mkdir -p "$TMPDIR"
+run_deploy "$SHA_A" "$DIG_A"
+check "login ke DOCKER_CONFIG sementara, token lewat stdin" '[ $RC -eq 0 ] && [ "$(cat "$SHIM_DIR/login.stdin")" = tok-uji-ghcr ] && case "$(cat "$SHIM_DIR/login.dir")" in "$TMPDIR"/urusin-docker-*) true ;; *) false ;; esac'
+check "pull memakai DOCKER_CONFIG sementara" '[ "$(cat "$SHIM_DIR/pull.config")" = "$(cat "$SHIM_DIR/login.dir")" ]'
+check "DOCKER_CONFIG sementara dihapus setelah selesai; token tidak di argumen" '[ ! -e "$(cat "$SHIM_DIR/login.dir")" ] && ! grep -q tok-uji-ghcr "$SHIM_DIR/calls.log"'
+export SHIM_LOGIN_FAIL=1 SHIM_LABEL="$SHA_B"
+run_deploy "$SHA_B" "$DIG_B"
+check "login gagal: berhenti sebelum pull, direktori sementara dibersihkan" '[ $RC -ne 0 ] && grep -q "docker login ghcr.io gagal" "$SB/out.log" && [ -z "$(ls -A "$TMPDIR")" ]'
+unset SHIM_LOGIN_FAIL GHCR_TOKEN TMPDIR
+export DOCKER_CONFIG="$SB/dc" SHIM_LABEL="$SHA_A"
+mkdir -p "$DOCKER_CONFIG"; rm -f "$SHIM_DIR/login.dir"
+GHCR_TOKEN=tok-uji-ghcr run_deploy "$SHA_A" "$DIG_A"
+check "DOCKER_CONFIG dari lingkungan dihormati (tanpa login baru)" '[ $RC -eq 0 ] && [ ! -e "$SHIM_DIR/login.dir" ] && [ "$(cat "$SHIM_DIR/pull.config")" = "$SB/dc" ]'
+unset DOCKER_CONFIG
+
+echo "14. compose.prod.yml dirender: host network, loopback saja"
+PATH="$PATH_ORIG" bash "$HERE/compose-config.test.sh" 2>&1 | sed "s/^/  /"
+check "compose-config lulus" '[ "${PIPESTATUS[0]}" -eq 0 ]'
+
 echo "11. zero-downtime.sh: lulus tanpa kegagalan, gagal bila ada respons 5xx atau deploy gagal"
 new_sandbox
 printf '#!/usr/bin/env bash
@@ -164,7 +239,7 @@ printf '#!/usr/bin/env bash
 exit 1
 ' > "$SB/deploy-bad"
 chmod +x "$SB/deploy-ok" "$SB/deploy-bad"
-zd() { (cd "$SB" && URL=https://zd.test/api/health GRACE=0 RPS=200 LOG="$SB/zd.log" DEPLOY_CMD="$1" bash "$HERE/zero-downtime.sh" "${@:2}") > "$SB/out.log" 2>&1; RC=$?; }
+zd() { (cd "$SB" && URL=https://zd.test/ GRACE=0 RPS=200 LOG="$SB/zd.log" DEPLOY_CMD="$1" bash "$HERE/zero-downtime.sh" "${@:2}") > "$SB/out.log" 2>&1; RC=$?; }
 zd "$SB/deploy-ok" aaaaaaa bbbbbbb@sha256:abc
 check "semua 2xx -> exit 0 dan LULUS" '[ $RC -eq 0 ] && grep -q "LULUS" "$SB/out.log"'
 export SHIM_ZD_FAIL=1

@@ -36,6 +36,7 @@ import { openDb } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { httpKeluar } from './http-keluar.js';
 import { RateLimiter } from './limiter.js';
+import { setRunningTurnsSource } from './running-turns.js';
 
 /** Konfigurasi runtime dari env (dibaca sekali saat boot). Semua opsional kecuali yang bertanda. */
 export type RuntimeConfig = {
@@ -170,6 +171,8 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     h.bus.publish(urusanId, ev);
     return ev;
   };
+  const running = new Map<string, AbortController>();
+  setRunningTurnsSource(() => running.size);
   const jam = 3_600_000;
   const menit = 60_000;
   const limits: Runtime['limits'] = {
@@ -183,7 +186,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     },
   };
   const akun = createAkun(db, config, (id) => h.store.deleteUrusan(id), init.akun);
-  return { ...h, config, mode: init.mode ?? 'demo', running: new Map(), publish, limits, akun };
+  return { ...h, config, mode: init.mode ?? 'demo', running, publish, limits, akun };
 }
 
 function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {
