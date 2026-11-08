@@ -21,7 +21,7 @@ import { detectBotWall, suspicious } from './waf.js';
 
 /**
  * Satu sesi = satu proses Chromium (headless, profil sementara non-persisten) di belakang proxy egress
- * sendiri. Tidak ada stealth/anti-deteksi: UA jujur (Chromium Linux), navigator.webdriver apa adanya.
+ * sendiri. Tidak ada stealth/anti-deteksi: agen pengguna bawaan Chromium, flag otomasi bawaan Playwright.
  * Frame screencast hanya diteruskan ke perangkat warga, tidak pernah disimpan atau dicatat.
  */
 
@@ -130,8 +130,6 @@ export async function launchIsolated(
       args: chromiumArgs(config),
       env: { TZ: 'Asia/Jakarta' },
     });
-    const major = browser.version().split('.')[0] ?? '0';
-    const arch = process.arch === 'arm64' ? 'aarch64' : 'x86_64';
     const context = await browser.newContext({
       viewport: { width: viewport.lebar, height: viewport.tinggi },
       deviceScaleFactor: 1,
@@ -141,8 +139,7 @@ export async function launchIsolated(
       timezoneId: 'Asia/Jakarta',
       acceptDownloads: false,
       serviceWorkers: 'block',
-      // UA jujur: Chromium di Linux (tanpa "HeadlessChrome", tanpa menyamar sebagai perangkat lain).
-      userAgent: `Mozilla/5.0 (X11; Linux ${arch}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`,
+      // Agen pengguna = bawaan Chromium apa adanya (tidak ditimpa); lihat tanpa-evasi.test.ts.
     });
     // Lapis kedua (selain proxy): permintaan ke host:port di luar allowlist dibatalkan di peramban.
     await context.route('**/*', (route) => {
