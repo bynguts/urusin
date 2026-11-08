@@ -1,0 +1,1 @@
+node scripts/pii-scan.mjs --staged

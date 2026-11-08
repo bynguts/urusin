@@ -1,0 +1,4 @@
+{
+  "$comment": "Email author commit anggota tim (sudah publik di metadata git). Dipakai audit-history (default allowlist) dan pii-scan (allowlist).",
+  "authors": ["muhammadbibin70@gmail.com"]
+}
