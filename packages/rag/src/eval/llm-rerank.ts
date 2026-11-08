@@ -1,6 +1,6 @@
 import { OpenAIProvider, generateStructured, loadLlmConfig, probeCapabilities } from '@urusin/llm';
 import type { JsonCall } from '../llm-stage.js';
-import { newStats, type ProviderStats } from '../providers/http.js';
+import { newStats, type FetchFn, type ProviderStats } from '../providers/http.js';
 import { createHttpRerankEndpoint, loadRerankConfig } from '../providers/rerank-endpoint.js';
 import type { RerankDeps } from '../rerank.js';
 
@@ -11,10 +11,14 @@ import type { RerankDeps } from '../rerank.js';
 export async function loadRealRerankDeps(
   env: Record<string, string | undefined> = process.env,
   stats?: ProviderStats,
+  fetch?: FetchFn | undefined,
 ): Promise<RerankDeps | null> {
   const rr = loadRerankConfig(env);
   if (rr)
-    return { endpoint: createHttpRerankEndpoint(rr, { stats: stats ?? newStats() }), timeoutMs: 20_000 };
+    return {
+      endpoint: createHttpRerankEndpoint(rr, { stats: stats ?? newStats(), fetch }),
+      timeoutMs: 20_000,
+    };
   let config;
   try {
     config = loadLlmConfig(env);

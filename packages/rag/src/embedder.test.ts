@@ -61,4 +61,15 @@ describe('tryLoadSqliteVec', () => {
   it('false bila sqlite-vec tidak terpasang', async () => {
     expect(await tryLoadSqliteVec(openDb(':memory:'))).toBe(false);
   });
+  it('true bila modul memuat ekstensi dan vec_version() tersedia', async () => {
+    const db = openDb(':memory:');
+    const fake = { load: (d: typeof db) => void d.function('vec_version', () => 'v0.0-uji') };
+    expect(await tryLoadSqliteVec(db, async () => fake)).toBe(true);
+  });
+  it('false bila modul tanpa load atau ekstensi gagal', async () => {
+    const db = openDb(':memory:');
+    expect(await tryLoadSqliteVec(db, async () => ({}))).toBe(false);
+    // load tidak mendaftarkan vec_version -> pemeriksaan versi gagal
+    expect(await tryLoadSqliteVec(db, async () => ({ load: () => undefined }))).toBe(false);
+  });
 });
