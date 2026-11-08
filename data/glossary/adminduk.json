@@ -1,0 +1,325 @@
+{
+  "version": 1,
+  "catatan": "Glosarium istilah awam -> istilah resmi untuk perluasan kueri RAG. Istilah resmi diambil dari nama regulasi/portal resmi yang tercatat di data/sources.json (sourceRef menunjuk ke sumber itu). verifiedAt null = belum dicek tangan pemilik data. Perluasan hanya menambah istilah pencarian; bukan klaim prosedur.",
+  "entries": [
+    {
+      "id": "ktp-bikin",
+      "pemicu": ["bikin ktp", "buat ktp", "bikin e-ktp", "bikin ektp", "ngurus ktp", "rekam ktp", "ktp baru"],
+      "resmi": ["perekaman", "pencetakan", "ktp-el", "kartu tanda penduduk elektronik"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/uu-no-24-tahun-2013",
+        "judul": "UU No. 24 Tahun 2013 tentang Perubahan atas UU No. 23 Tahun 2006 tentang Administrasi Kependudukan",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "ktp-hilang",
+      "pemicu": ["ktp hilang", "ktp ilang", "ktp kececer", "ktp tercecer", "e-ktp hilang", "ektp hilang", "kehilangan ktp"],
+      "resmi": ["penggantian", "ktp-el", "kehilangan", "surat kehilangan", "kepolisian"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018",
+        "judul": "Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "ktp-rusak",
+      "pemicu": ["ktp rusak", "ktp robek", "ktp patah", "ktp luntur", "ktp lecek"],
+      "resmi": ["penggantian", "ktp-el", "rusak"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018",
+        "judul": "Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "ktp-belum-jadi",
+      "pemicu": ["ktp belum jadi", "ktp belum keluar", "ktp belum selesai", "suket", "blanko ktp habis"],
+      "resmi": ["surat keterangan", "suket", "ktp-el", "pencetakan"],
+      "sourceRef": {
+        "url": "https://dukcapil.kemendagri.go.id/",
+        "judul": "Direktorat Jenderal Kependudukan dan Pencatatan Sipil",
+        "instansi": "Kementerian Dalam Negeri"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "ktp-el",
+      "pemicu": ["e-ktp", "ektp", "ktp elektronik", "ktp digital"],
+      "resmi": ["ktp-el", "kartu tanda penduduk elektronik"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/uu-no-24-tahun-2013",
+        "judul": "UU No. 24 Tahun 2013 tentang Perubahan atas UU No. 23 Tahun 2006 tentang Administrasi Kependudukan",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "akta-lahir",
+      "pemicu": ["akta lahir", "akte lahir", "akta anak", "akte anak", "akta kelahiran", "akta bayi"],
+      "resmi": ["akta kelahiran", "pencatatan", "kelahiran", "surat keterangan lahir"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/uu-no-24-tahun-2013",
+        "judul": "UU No. 24 Tahun 2013 tentang Perubahan atas UU No. 23 Tahun 2006 tentang Administrasi Kependudukan",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "akta-mati",
+      "pemicu": ["akta kematian", "akta meninggal", "akte meninggal", "orang meninggal", "ada yang meninggal", "meninggal dunia"],
+      "resmi": ["akta kematian", "pencatatan", "kematian"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/uu-no-24-tahun-2013",
+        "judul": "UU No. 24 Tahun 2013 tentang Perubahan atas UU No. 23 Tahun 2006 tentang Administrasi Kependudukan",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "akta-nikah",
+      "pemicu": ["akta nikah", "akte nikah", "surat nikah", "buku nikah", "baru nikah", "mau nikah", "nikah"],
+      "resmi": ["akta perkawinan", "pencatatan", "perkawinan"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/uu-no-23-tahun-2006",
+        "judul": "UU No. 23 Tahun 2006 tentang Administrasi Kependudukan",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "akta-cerai",
+      "pemicu": ["akta cerai", "akte cerai", "surat cerai", "bercerai", "cerai"],
+      "resmi": ["akta perceraian", "pencatatan", "perceraian"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/uu-no-23-tahun-2006",
+        "judul": "UU No. 23 Tahun 2006 tentang Administrasi Kependudukan",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "pindah",
+      "pemicu": ["pindah domisili", "pindah alamat", "pindah rumah", "pindah kota", "pindahan", "surat pindah", "pindah kk", "mau pindah", "pindah datang", "pindah ke"],
+      "resmi": ["skpwni", "surat keterangan pindah", "perpindahan", "pindah datang"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018",
+        "judul": "Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "kk",
+      "pemicu": ["kk", "kk baru", "bikin kk", "buat kk", "kk hilang", "ganti kk", "kartu keluarga"],
+      "resmi": ["kartu keluarga", "penerbitan"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/uu-no-24-tahun-2013",
+        "judul": "UU No. 24 Tahun 2013 tentang Perubahan atas UU No. 23 Tahun 2006 tentang Administrasi Kependudukan",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "kia",
+      "pemicu": ["kia", "ktp anak", "kartu anak", "identitas anak"],
+      "resmi": ["kartu identitas anak", "kia"],
+      "sourceRef": {
+        "url": "https://dukcapil.kemendagri.go.id/",
+        "judul": "Direktorat Jenderal Kependudukan dan Pencatatan Sipil",
+        "instansi": "Kementerian Dalam Negeri"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "ikd",
+      "pemicu": ["ikd", "ktp digital hp", "ktp di hp", "identitas digital"],
+      "resmi": ["identitas kependudukan digital", "ikd"],
+      "sourceRef": {
+        "url": "https://ikd.dukcapil.kemendagri.go.id/",
+        "judul": "Identitas Kependudukan Digital (IKD)",
+        "instansi": "Kementerian Dalam Negeri"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "ubah-data",
+      "pemicu": ["salah nama", "salah ketik", "salah data", "ubah data", "ganti nama", "ganti alamat", "benerin data", "betulin data"],
+      "resmi": ["perubahan data", "pembetulan", "data kependudukan", "biodata"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/permendagri-no-109-tahun-2019",
+        "judul": "Permendagri No. 109 Tahun 2019 tentang Formulir dan Buku yang Digunakan dalam Administrasi Kependudukan",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "nik",
+      "pemicu": ["nik", "nomor ktp", "no ktp"],
+      "resmi": ["nomor induk kependudukan", "nik"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/uu-no-24-tahun-2013",
+        "judul": "UU No. 24 Tahun 2013 tentang Perubahan atas UU No. 23 Tahun 2006 tentang Administrasi Kependudukan",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "dukcapil",
+      "pemicu": ["dukcapil", "disdukcapil", "kantor dukcapil", "kantor kependudukan"],
+      "resmi": ["dinas kependudukan dan pencatatan sipil", "dukcapil"],
+      "sourceRef": {
+        "url": "https://dukcapil.kemendagri.go.id/",
+        "judul": "Direktorat Jenderal Kependudukan dan Pencatatan Sipil",
+        "instansi": "Kementerian Dalam Negeri"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "pajak-kendaraan",
+      "pemicu": ["stnk", "pajak motor", "pajak mobil", "pajak kendaraan", "bayar pajak motor", "pajak tahunan", "pkb"],
+      "resmi": ["pajak kendaraan bermotor", "pkb", "samsat", "stnk", "pengesahan"],
+      "sourceRef": {
+        "url": "https://bapenda.jatengprov.go.id/",
+        "judul": "Bapenda Provinsi Jawa Tengah",
+        "instansi": "Badan Pendapatan Daerah Provinsi Jawa Tengah"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "samsat",
+      "pemicu": ["samsat", "kantor samsat", "bapenda", "bayar pajak"],
+      "resmi": ["samsat", "pajak kendaraan bermotor", "badan pendapatan daerah"],
+      "sourceRef": {
+        "url": "https://bapenda.jatimprov.go.id/",
+        "judul": "Bapenda Jawa Timur",
+        "instansi": "Badan Pendapatan Daerah Provinsi Jawa Timur"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "skck",
+      "pemicu": ["skck", "surat kelakuan baik", "surat catatan polisi", "skck online"],
+      "resmi": ["surat keterangan catatan kepolisian", "skck"],
+      "sourceRef": {
+        "url": "https://skck.polri.go.id/",
+        "judul": "SKCK Online Polri",
+        "instansi": "Kepolisian Negara Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "sim",
+      "pemicu": ["sim", "bikin sim", "buat sim", "perpanjang sim", "sim mati", "sim hilang", "ujian sim"],
+      "resmi": ["surat izin mengemudi", "sim", "pembuatan", "perpanjangan"],
+      "sourceRef": {
+        "url": "https://sim.korlantas.polri.go.id/",
+        "judul": "SIM Online Korlantas Polri",
+        "instansi": "Korps Lalu Lintas Kepolisian Negara Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "bpjs",
+      "pemicu": ["bpjs", "bpjs kesehatan", "kartu bpjs", "jkn", "kis", "berobat gratis", "bpjs mati", "bpjs nunggak"],
+      "resmi": ["bpjs kesehatan", "jaminan kesehatan nasional", "jkn", "peserta", "iuran"],
+      "sourceRef": {
+        "url": "https://www.bpjs-kesehatan.go.id/",
+        "judul": "BPJS Kesehatan",
+        "instansi": "BPJS Kesehatan"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "bansos",
+      "pemicu": ["bansos", "bantuan sosial", "bantuan pemerintah", "pkh", "bpnt", "sembako", "bantuan miskin", "cek bansos", "terima bansos"],
+      "resmi": ["bantuan sosial", "program keluarga harapan", "bantuan pangan non tunai", "penerima"],
+      "sourceRef": {
+        "url": "https://cekbansos.kemensos.go.id/",
+        "judul": "Cek Bansos",
+        "instansi": "Kementerian Sosial"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "dtks",
+      "pemicu": ["dtks", "dtsen", "data bansos", "terdaftar bansos", "masuk dtks"],
+      "resmi": ["data terpadu kesejahteraan sosial", "dtks", "data tunggal sosial dan ekonomi nasional", "dtsen"],
+      "sourceRef": {
+        "url": "https://cekbansos.kemensos.go.id/",
+        "judul": "Cek Bansos",
+        "instansi": "Kementerian Sosial"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "nib",
+      "pemicu": ["nib", "izin usaha", "izin usaha kecil", "bikin usaha", "buka usaha", "daftar usaha", "umkm", "oss"],
+      "resmi": ["nomor induk berusaha", "nib", "perizinan berusaha", "oss"],
+      "sourceRef": {
+        "url": "https://oss.go.id/id",
+        "judul": "OSS - Perizinan Berusaha Terintegrasi Secara Elektronik",
+        "instansi": "Kementerian Investasi dan Hilirisasi/BKPM"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "lapor",
+      "pemicu": ["lapor", "lapor!", "aduan", "mengadu", "keluhan", "komplain", "laporan warga", "pengaduan"],
+      "resmi": ["pengaduan", "laporan", "lapor", "layanan aspirasi dan pengaduan online rakyat"],
+      "sourceRef": {
+        "url": "https://www.lapor.go.id/tentang",
+        "judul": "Tentang LAPOR!",
+        "instansi": "Kementerian Pendayagunaan Aparatur Negara dan Reformasi Birokrasi"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "ombudsman",
+      "pemicu": ["ombudsman", "pelayanan buruk", "pungli", "dipersulit", "maladministrasi"],
+      "resmi": ["ombudsman", "pengaduan", "maladministrasi", "pelayanan publik"],
+      "sourceRef": {
+        "url": "https://ombudsman.go.id/pengaduan",
+        "judul": "Pengaduan Online Ombudsman RI",
+        "instansi": "Ombudsman Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "dpt",
+      "pemicu": ["dpt", "cek dpt", "terdaftar pemilih", "daftar pemilih", "nama saya di dpt", "coblos", "pemilu"],
+      "resmi": ["daftar pemilih tetap", "dpt", "pemilih", "kpu"],
+      "sourceRef": {
+        "url": "https://cekdptonline.kpu.go.id/",
+        "judul": "Cek DPT Online",
+        "instansi": "Komisi Pemilihan Umum"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "perlindungan-data",
+      "pemicu": ["data bocor", "data pribadi bocor", "nik disalahgunakan", "nik dipakai orang", "data dicuri"],
+      "resmi": ["pelindungan data pribadi", "data pribadi", "pengendali data"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/uu-no-27-tahun-2022",
+        "judul": "UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    },
+    {
+      "id": "syarat",
+      "pemicu": ["syarat apa", "apa saja syaratnya", "berkas apa", "dokumen apa", "bawa apa"],
+      "resmi": ["persyaratan", "syarat", "berkas", "dokumen"],
+      "sourceRef": {
+        "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018",
+        "judul": "Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil",
+        "instansi": "Pemerintah Republik Indonesia"
+      },
+      "verifiedAt": null
+    }
+  ]
+}
