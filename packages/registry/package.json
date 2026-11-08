@@ -1,0 +1,30 @@
+{
+  "name": "@urusin/registry",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Registry multi-kota Dukcapil dan router kode wilayah (digit 1-4 NIK) untuk Urusin",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "vitest": "5.1.0"
+  }
+}
