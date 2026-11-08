@@ -1,6 +1,6 @@
 # Produksi (VPS arm64/amd64). Jalankan lewat deploy/deploy.sh; jangan `up` manual tanpa .env.images.
-# Caddy sistem (host) meneruskan {$DOMAIN} dan verify.{$DOMAIN} ke 4310 (web-blue) dan 4311
-# (web-green) dengan `lb_policy first` (lihat Caddyfile.urusin).
+# Caddy sistem (host) meneruskan host app dan verify (literal, dari deploy/hosts.json) ke 4310 (web-blue)
+# dan 4311 (web-green) dengan `lb_policy first` (lihat Caddyfile.urusin).
 #
 # JARINGAN: web memakai `network_mode: host` dan mengikat HANYA 127.0.0.1:<port> (HOST=127.0.0.1).
 # Alasan: proxy LLM di host mendengarkan 0.0.0.0:20128, tetapi iptables INPUT men-DROP 20128 dari
@@ -49,7 +49,12 @@ x-web-env: &web-env
   NODE_ENV: production
   # PORT dan HOST ditimpa per service (host network: ikat 127.0.0.1:<port> saja, jangan 0.0.0.0).
   HOST: 127.0.0.1
+  # Semua host diturunkan dari DOMAIN agar tetap satu set deploy/hosts.json (startup menolak campuran).
+  DOMAIN: ${DOMAIN:?DOMAIN wajib diisi}
+  VERIFY_HOST: verify.${DOMAIN:?DOMAIN wajib diisi}
+  FIXTURES_HOST: fixtures.${DOMAIN:?DOMAIN wajib diisi}
   ORIGIN: https://${DOMAIN:?DOMAIN wajib diisi}
+  URUSIN_PUBLIC_ORIGIN: https://${DOMAIN:?DOMAIN wajib diisi}
   PROTOCOL_HEADER: x-forwarded-proto
   # Caddy = satu-satunya hop dan menimpa X-Forwarded-For dari klien (bukan proxy tepercaya), jadi entri
   # terakhir (XFF_DEPTH=1) adalah IP klien asli. Dipakai kuota per-IP.

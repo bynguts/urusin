@@ -30,11 +30,15 @@ for (const [color, port] of [['blue', '4310'], ['green', '4311']]) {
   check(`web-${color}: HOST=127.0.0.1 (bukan 0.0.0.0)`, env.HOST === '127.0.0.1');
   check(`web-${color}: PORT=${port}`, env.PORT === port);
   check(`web-${color}: URUSIN_COLOR=${color}`, env.URUSIN_COLOR === color);
+  check(`web-${color}: host satu set dari DOMAIN`, env.DOMAIN === 'urusin.test' && env.VERIFY_HOST === 'verify.urusin.test' && env.FIXTURES_HOST === 'fixtures.urusin.test' && env.ORIGIN === 'https://urusin.test' && env.URUSIN_PUBLIC_ORIGIN === 'https://urusin.test');
+  check(`web-${color}: ADDRESS_HEADER=X-Forwarded-For, XFF_DEPTH=1`, env.ADDRESS_HEADER === 'X-Forwarded-For' && env.XFF_DEPTH === '1');
+  check(`web-${color}: logging json-file berbatas`, s.logging.driver === 'json-file' && s.logging.options['max-size'] && s.logging.options['max-file']);
   check(`web-${color}: read_only, cap_drop ALL, no-new-privileges`, s.read_only === true && s.cap_drop.includes('ALL') && s.security_opt.includes('no-new-privileges:true'));
   check(`web-${color}: mem 512m, cpus, pids_limit`, Number(s.mem_limit) === 536870912 && Number(s.cpus) > 0 && Number(s.pids_limit) > 0);
   check(`web-${color}: healthcheck memakai PORT`, s.healthcheck.test.join(' ').includes('process.env.PORT'));
 }
 const fx = cfg.services.fixtures;
+check('fixtures: logging json-file berbatas', fx.logging.driver === 'json-file' && !!fx.logging.options['max-size']);
 check('fixtures: bridge, publish 127.0.0.1:4320 saja', fx.network_mode !== 'host' && fx.ports.length === 1 && fx.ports[0].host_ip === '127.0.0.1' && String(fx.ports[0].published) === '4320');
 process.exit(bad ? 1 : 0);
 EOF
