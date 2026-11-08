@@ -32,7 +32,7 @@ pnpm rag:eval --write                        # tulis docs/rag-eval.md (mode A-D:
 pnpm rag:ingest --vector-mode center         # atau: --vector-mode whiten --vector-k 128
 ```
 
-Tanpa `--vector-mode`, ingest memakai `center` (hasil eval penyedia nyata di bawah: whitening menurunkan recall di korpus ini).
+Tanpa `--vector-mode`, ingest memakai `none` (hasil eval penyedia nyata di bawah: center dan whitening tidak menang di korpus ini).
 Tanpa konfigurasi embedding lengkap (`LLM_EMBED_*`), ingest dan eval berjalan BM25 saja (fallback otomatis).
 
 ## Evaluasi (`rag:eval`)
@@ -171,56 +171,59 @@ Evaluasi: `pnpm --filter @urusin/rag exec node dist/eval/matrix-cli.js --gold ..
 
 ### Hasil evaluasi penyedia nyata (Jina, 2026-11-08)
 
-Dipilih di gold tuning (38 pertanyaan dalam cakupan), dikonfirmasi di held-out (14). Baseline = BM25 + stem + glosarium:
-tuning recall@3 73.7%, MRR 0.685; held-out recall@3 78.6%, MRR 0.700. Latensi = satu panggilan per kueri (p50 / p95), token
-= rata-rata per kueri (kueri untuk embedding; kueri + 20 kandidat untuk rerank). Harga per token tidak dimasukkan (tak diverifikasi).
+Seleksi dua tahap dengan aturan tetap (agar tidak menyetel belasan konfigurasi pada 50 pertanyaan): hybrid menggantikan
+BM25 hanya bila menang >= 2 pertanyaan hits@3 di tuning DAN tidak kalah di held-out; seri jatuh ke pilihan yang lebih
+sederhana/murah (BM25 atau tanpa transformasi). Angka dalam hit = pertanyaan dalam cakupan yang punya chunk relevan di
+top-3 (tuning n=38, held-out n=14). Baseline BM25 + stem + glosarium: tuning 28/38 (73.7%), MRR 0.685; held-out 11/14 (78.6%),
+MRR 0.700. Latensi = satu panggilan per kueri (p50 / p95); harga per token tidak dimasukkan (env `*_PRICE_PER_MTOK`
+tersedia untuk meter biaya, nilai Jina tak diverifikasi).
 
-Embedding dalam hybrid (BM25 + vektor, RRF), tuning:
+**Tahap 1: embedding dalam hybrid (BM25 + vektor, RRF), tanpa transformasi.**
 
-| Model (task query/passage)    | mentah R@3 / MRR |              center R@3 / MRR | whiten k=64 R@3 / MRR |      latensi | token |
-| ----------------------------- | ---------------: | ----------------------------: | --------------------: | -----------: | ----: |
-| jina-embeddings-v3 (1024-d)   |    92.1% / 0.825 | **92.1% / 0.850** (R@1 75.0%) |         89.5% / 0.788 | 454 / 536 ms |  27.6 |
-| jina-embeddings-v5-omni-small |    92.1% / 0.829 |                 89.5% / 0.823 |         86.8% / 0.740 | 296 / 409 ms |  21.4 |
-| jina-embeddings-v5-text-small |    92.1% / 0.816 |                 89.5% / 0.823 |         86.8% / 0.740 | 279 / 383 ms |  21.4 |
-| jina-embeddings-v4 (2048-d)   |    84.2% / 0.760 |                 84.2% / 0.769 |         81.6% / 0.703 | 446 / 684 ms |  21.4 |
+| Model (task query/passage) | tuning hits@3 | tuning MRR | latensi | token/kueri |
+|---|---:|---:|---:|---:|
+| BM25 saja | 28/38 | 0.685 | - | - |
+| jina-embeddings-v3 | 35/38 | 0.825 | 454 / 536 ms | 27.6 |
+| **jina-embeddings-v5-omni-small** | 35/38 | 0.829 | 296 / 409 ms | 21.4 |
+| jina-embeddings-v5-text-small | 35/38 | 0.816 | 279 / 383 ms | 21.4 |
+| jina-embeddings-v4 (2048-d) | 32/38 | 0.760 | 446 / 684 ms | 21.4 |
 
-Whitening menurunkan hasil di semua model (k=128: v3 81.6%, k=256: 64.5%), jadi **whitening dimatikan; mode aktif center**.
-Tanpa field task, v5-omni-small turun ke recall@3 84.2% / MRR 0.720: task wajib dikirim.
+Semua menang >= 2 hit atas BM25; v3, v5-omni dan v5-text seri (35/38), dipilih v5-omni-small (MRR tertinggi, latensi dan
+token lebih rendah). Held-out: v5-omni 13/14 (92.9%) tidak kalah dari BM25 (11/14). Tanpa field task, v5-omni turun ke 84.2%
+(32/38): task wajib dikirim.
 
-Rerank, tuning (kandidat top-20; judul + teks dikirim):
+**Tahap 2: whitening, hanya untuk pemenang.** v5-omni-small: mentah 35/38 (MRR 0.829), center 34/38 (0.823), whiten k=64
+33/38 (0.740), k=128 78.9% dan k=256 56.6% recall@3. Whitening menurunkan hasil di semua model yang diuji, center tidak menang: **tanpa
+transformasi (`--vector-mode none`)**.
 
-| Reranker                           | Kandidat BM25: R@1 / R@3 / MRR / nDCG | Kandidat hybrid v3 center: R@1 / R@3 / MRR / nDCG |      latensi | token (BM25 / hybrid) |
-| ---------------------------------- | ------------------------------------- | ------------------------------------------------- | -----------: | --------------------: |
-| tanpa rerank                       | 56.6 / 73.7 / 0.685 / 0.753           | 75.0 / 92.1 / 0.850 / 0.887                       |            - |                     - |
-| jina-reranker-v2-base-multilingual | 67.1 / 92.1 / 0.796 / 0.844           | 64.5 / 89.5 / 0.780 / 0.833                       | 394 / 571 ms |           1776 / 3736 |
-| jina-reranker-m0                   | 72.4 / 89.5 / 0.820 / 0.857           | 75.0 / 89.5 / 0.835 / 0.874                       | 497 / 650 ms |           2717 / 5711 |
-| **jina-reranker-v3**               | 80.3 / 86.8 / 0.866 / 0.892           | **85.5 / 89.5 / 0.897 / 0.915**                   | 328 / 534 ms |           2630 / 5531 |
+**Tahap 3: reranker pada kandidat hybrid v5-omni** (kandidat top-20, judul + teks dikirim; kriteria: +>= 2 hit@1 di tuning
+dan tidak kehilangan hits@3 di tuning maupun held-out):
 
-Pemenang di tuning: hybrid v3 center + jina-reranker-v3 (MRR terbaik, nDCG terbaik, R@1 85.5%). Rerank menukar sedikit
-recall@3 (satu pertanyaan, 92.1% -> 89.5%) dengan urutan teratas yang jauh lebih baik. Held-out (konfirmasi): hybrid
-center 71.4 / 92.9 / 0.810 / 0.840; hybrid + v3 sama (71.4 / 92.9 / 0.810 / 0.840); BM25 + v3 78.6 / 100 / 0.881 / 0.912.
-Selisih BM25+rerank versus hybrid+rerank hanya satu-dua pertanyaan dan arahnya berbeda di tuning dan held-out: keduanya
-setara secara statistik, BM25 + rerank lebih murah (tanpa indeks vektor; 2.4 ribu token/kueri) dan menjadi jalur
-fallback bila embedding mati.
+| Reranker | tuning R@1 / hits@3 / MRR | held-out R@1 / hits@3 / MRR | latensi | token/kueri | lolos? |
+|---|---|---|---:|---:|---|
+| tanpa rerank | 72.4% / 35 / 0.829 | 57.1% / 13 / 0.768 | - | - | - |
+| jina-reranker-v2-base-multilingual | 67.1% / 34 / 0.790 | 78.6% / 14 / 0.893 | 409 / 504 ms | 3806 | tidak (kalah di tuning) |
+| jina-reranker-m0 | 75.0% / 34 / 0.836 | 78.6% / 14 / 0.893 | 533 / 830 ms | 5834 | tidak (kalah 1 hit@3) |
+| **jina-reranker-v3** | **82.9% / 35 / 0.891** | 64.3% / 14 / 0.810 | 346 / 419 ms | 5655 | ya |
 
-Lantai skor rerank sebagai gerbang abstain (jina-reranker-v3, skor `relevance_score`):
+Daftar yang diminta hanya v2 dan m0 (keduanya tidak lolos); v3 ikut diukur karena ada dan lolos. Rerank hanya efektif bila
+judul sumber ikut dikirim: tanpa judul, potongan pendek seperti "Biaya: tidak ada biaya/tarif" tak bermakna dan hybrid
+turun dari 92.1% ke 81.6%.
 
-| Konfigurasi                                | tuning abstain P / R |                                                                                   tuning recall@3 |           held-out abstain P / R | held-out recall@3 |
-| ------------------------------------------ | -------------------: | ------------------------------------------------------------------------------------------------: | -------------------------------: | ----------------: |
-| leksikal 0.1 + leksikon (tanpa lantai)     |           100 / 83.3 |                                                                                       tak berubah |                       100 / 66.7 |       tak berubah |
-| + lantai 0.05 (diadopsi)                   |            100 / 100 |                                                                                       tak berubah |                        100 / 100 |       tak berubah |
-| + lantai 0.15                              |           92.3 / 100 | recall@3 sama, MRR 0.897 -> 0.890 (pertanyaan dalam cakupan mulai ter-abstain); lantai 0.2: 81.6% |                                - |                 - |
-| lantai 0.05 saja (tanpa leksikal/leksikon) |    100 / 91.7 (BM25) |                                                                                       tak berubah | 100 / 66.7 (BM25), 83.3 (hybrid) |       tak berubah |
-| lantai 0.1 saja                            |           100 / 91.7 |                                                                                       tak berubah |                        100 / 100 |       tak berubah |
+**Lantai skor rerank sebagai gerbang abstain (jina-reranker-v3).** Dengan gerbang leksikal 0.1 + leksikon + lantai 0.05:
+tuning abstain presisi/recall 100% / 100% (tanpa lantai 100% / 83.3%), hits@3 tak berubah (35/38); held-out 100% / 100%
+(tanpa lantai 100% / 66.7%). Lantai 0.1 saja (tanpa gerbang lain) menurunkan hits@3 ke 34/38 dan presisi ke 91.7%, jadi
+dipilih 0.05. Skor v2 dan m0 tidak terkalibrasi untuk ini (lantai sampai 0.5 hampir tak menahan apa pun); lantai berlaku
+khusus untuk v3 dan harus dikalibrasi ulang bila model diganti.
 
-Lantai skor menangkap "SIM A" tanpa leksikon (kasus ini sekarang diabstain oleh kedua mekanisme). Skor v2 dan m0 tidak
-terkalibrasi untuk ini (lantai sampai 0.5 tak menahan apa pun di m0, v2 hanya menangkap 25%), jadi lantai berlaku khusus
-untuk reranker yang diukur; skala tiap model harus dikalibrasi ulang bila model diganti.
+**Keandalan.** Kueri embedding dibatasi 2 detik dan rerank 3 detik, tanpa retry, dengan pemutus sirkuit (3 kegagalan
+beruntun -> lewati penyedia 30 detik -> BM25 / urutan fusi). Vektor tersimpan bersama model, dimensi dan parameter transformasi;
+kueri dengan model embedding berbeda ditolak (BM25 saja). Eval memakai retry tanpa pemutus karena mengukur kualitas.
 
-**Default** (`.env.example`): embedding `jina-embeddings-v3` task `retrieval.query`/`retrieval.passage`, ingest `--vector-mode
-center`, reranker `jina-reranker-v3`, `RAG_ABSTAIN_MIN_COVERAGE=0.1`, `RAG_ABSTAIN_MIN_RERANK_SCORE=0.05`. Tanpa kunci apa pun
+**Default** (`.env.example`): `jina-embeddings-v5-omni-small` (task `retrieval.query`/`retrieval.passage`), ingest tanpa
+transformasi, `jina-reranker-v3`, `RAG_ABSTAIN_MIN_COVERAGE=0.1`, `RAG_ABSTAIN_MIN_RERANK_SCORE=0.05`. Tanpa kunci apa pun
 pipeline tetap BM25 + stem + glosarium + gerbang leksikal/leksikon. Catatan: gerbang cakupan di eval dihitung dari BM25
-saja, produksi menghitungnya dari top-3 hasil fusi.
+saja, produksi dari top-3 hasil fusi.
 
 ### rag:verify
 

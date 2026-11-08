@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import Database from 'better-sqlite3';
 import { openDb } from '../db.js';
+import { costUsd, createBreaker, priceFromEnv } from '../providers/breaker.js';
 import { createHttpEmbedder, withEmbedCache } from '../providers/embedder.js';
 import { newStats, percentile, type ProviderStats } from '../providers/http.js';
 import { createHttpRerankEndpoint } from '../providers/rerank-endpoint.js';
@@ -40,9 +41,10 @@ const cacheDb = new Database(cachePath);
 const minCoverage = Number(values.coverage);
 const env = process.env;
 
-const fmt = (s: ProviderStats, perQuery: number) =>
+const fmt = (s: ProviderStats, perQuery: number, pricePerMTok = 0) =>
   `p50 ${percentile(s.latenciesMs, 50).toFixed(0)} ms, p95 ${percentile(s.latenciesMs, 95).toFixed(0)} ms, ` +
-  `${(s.tokens / Math.max(1, perQuery)).toFixed(1)} token/kueri, galat ${s.errors}`;
+  `${(s.tokens / Math.max(1, perQuery)).toFixed(1)} token/kueri, ` +
+  `USD ${(costUsd(s.tokens, pricePerMTok) / Math.max(1, perQuery)).toFixed(6)}/kueri, galat ${s.errors}`;
 
 const stages0 = createQueryStages();
 const base: NamedPipeline[] = [
@@ -81,7 +83,7 @@ for (const spec of (values.embed ?? '').split(',').filter(Boolean)) {
   const one = createHttpEmbedder(cfg, taskQuery, { stats: single });
   for (const g of gold.slice(0, 20)) await one([g.pertanyaan]);
   console.log(
-    `Embedding kueri tunggal: ${fmt(single, 20)}. Embedding dokumen baru (di luar cache): ${pStats.tokens} token.`,
+    `Embedding kueri tunggal: ${fmt(single, 20, priceFromEnv(env, 'LLM_EMBED_PRICE_PER_MTOK'))}. Embedding dokumen baru (di luar cache): ${pStats.tokens} token.`,
   );
 }
 
@@ -105,7 +107,12 @@ for (const model of (values.rerank ?? '').split(',').filter(Boolean)) {
   const apiKey = env['RERANK_API_KEY'];
   if (!baseUrl || !apiKey) throw new Error('RERANK_BASE_URL / RERANK_API_KEY belum diset');
   const rStats = newStats();
-  const endpoint = createHttpRerankEndpoint({ baseUrl, apiKey, model }, { stats: rStats });
+  const endpoint = createHttpRerankEndpoint(
+    { baseUrl, apiKey, model },
+    // Eval mengukur kualitas: retry untuk 429 dan tanpa pemutus sirkuit (produksi: 3 s, tanpa retry, dengan pemutus).
+    { stats: rStats, maxRetries: 4, timeoutMs: 20_000 },
+    createBreaker({ threshold: Number.MAX_SAFE_INTEGER }),
+  );
   const stages = createQueryStages({ rerank: { endpoint, timeoutMs: 30_000 } });
   const withVec = (c: RetrievalPipeline): RetrievalPipeline =>
     combo ? { ...c, vector: { transform: { mode: comboMode } } } : c;
@@ -145,7 +152,7 @@ for (const model of (values.rerank ?? '').split(',').filter(Boolean)) {
   });
   console.log(`\n## ${combo ? `Hybrid (${combo.model}, ${comboMode}) + ` : ''}Rerank: ${model}\n`);
   console.log(renderMarkdown(report));
-  console.log(`Rerank: ${fmt(rStats, gold.length)}.`);
+  console.log(`Rerank: ${fmt(rStats, gold.length, priceFromEnv(env, 'RERANK_PRICE_PER_MTOK'))}.`);
 }
 db.close();
 cacheDb.close();

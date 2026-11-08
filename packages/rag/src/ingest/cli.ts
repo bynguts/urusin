@@ -12,7 +12,7 @@ const { values } = parseArgs({
     only: { type: 'string' },
     sources: { type: 'string', default: '../../data/sources.json' },
     db: { type: 'string', default: '.cache/rag.db' },
-    'vector-mode': { type: 'string', default: 'center' },
+    'vector-mode': { type: 'string', default: 'none' },
     'vector-k': { type: 'string' },
   },
 });

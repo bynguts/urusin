@@ -1,7 +1,10 @@
 import type { Db } from './db.js';
+import { createBreaker } from './providers/breaker.js';
 import { createHttpEmbedder, loadEmbedConfig, withEmbedCache } from './providers/embedder.js';
 import { newStats, type ProviderStats } from './providers/http.js';
 import type { Embedder } from './vector/store.js';
+
+export const QUERY_EMBED_TIMEOUT_MS = 2000;
 
 export type RealEmbedder = {
   /** Embedder dokumen (task passage). */
@@ -25,12 +28,19 @@ export async function loadRealEmbedder(
   const cfg = loadEmbedConfig(env);
   if (!cfg) return null;
   const stats = { query: newStats(), passage: newStats() };
-  const mk = (task: string | undefined, st: ProviderStats): Embedder => {
-    const raw = createHttpEmbedder(cfg, task, { stats: st, fetch: opts.fetch });
+  const mk = (
+    task: string | undefined,
+    st: ProviderStats,
+    http: { timeoutMs: number; maxRetries: number },
+  ): Embedder => {
+    const raw = createHttpEmbedder(cfg, task, { stats: st, fetch: opts.fetch, ...http });
     return opts.cache ? withEmbedCache(raw, opts.cache, { model: cfg.model, task }) : raw;
   };
-  const embedQuery = mk(cfg.taskQuery, stats.query);
-  const embed = mk(cfg.taskPassage, stats.passage);
+  // Kueri warga: batas 2 detik tanpa retry + pemutus sirkuit (jatuh ke BM25); dokumen (ingest) boleh lebih lama.
+  const breaker = createBreaker();
+  const q = mk(cfg.taskQuery, stats.query, { timeoutMs: QUERY_EMBED_TIMEOUT_MS, maxRetries: 0 });
+  const embedQuery: Embedder = (texts) => breaker.run(() => q(texts));
+  const embed = mk(cfg.taskPassage, stats.passage, { timeoutMs: 30_000, maxRetries: 2 });
   try {
     const [v] = await createHttpEmbedder(cfg, cfg.taskQuery, { fetch: opts.fetch })(['uji']);
     if (!v || v.length === 0) return null;
