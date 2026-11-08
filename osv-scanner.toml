@@ -1,0 +1,18 @@
+# Konfigurasi osv-scanner (dibaca otomatis berdampingan dengan pnpm-lock.yaml).
+# Pengecualian hanya untuk celah pada dependensi DEV yang tidak masuk image/ekstensi produksi
+# (`pnpm why <paket> --prod` kosong), dan kedaluwarsa agar ditinjau ulang. Jangan menambah entri untuk dependensi produksi.
+
+[[IgnoredVulns]]
+id = "GHSA-c475-qrg2-pj4r" # basic-ftp 5.3.1, hanya lewat @lhci/cli -> puppeteer (alat uji)
+ignoreUntil = 2026-12-15
+reason = "dependensi dev (Lighthouse CI), tidak dikirim ke produksi; menunggu rilis lhci/puppeteer"
+
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4" # deepmerge 4.3.1, hanya lewat @sveltejs/vite-plugin-svelte (build time)
+ignoreUntil = 2026-12-15
+reason = "dependensi build SvelteKit, tidak ada di runtime image; belum ada versi perbaikan"
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249" # minimatch 10.2.6, hanya lewat eslint (lint)
+ignoreUntil = 2026-12-15
+reason = "dependensi dev (eslint), tidak dikirim ke produksi"
