@@ -120,22 +120,41 @@ echo lama > "$BACKUP_DIR/urusin-20200101T000000Z.db.gz"
 touch -d '5 days ago' "$BACKUP_DIR/urusin-20200101T000000Z.db.gz"
 echo baru > "$BACKUP_DIR/urusin-20990101T000000Z.db.gz"
 touch -d '1 day ago' "$BACKUP_DIR/urusin-20990101T000000Z.db.gz"
-(bash "$DEPLOY/backup.sh") > "$SB/out.log" 2>&1; RC=$?
+(BACKUP_IMAGE=ghcr.io/x@sha256:aa bash "$DEPLOY/backup.sh") > "$SB/out.log" 2>&1; RC=$?
 check "exit 0" '[ $RC -eq 0 ]'
 check "backup baru dibuat (urusin-2026*.db.gz, tidak kosong)" 'ls "$BACKUP_DIR"/urusin-202[6-9]*T*Z.db.gz | grep -v 20990101 | grep -q . && [ "$(ls "$BACKUP_DIR"/urusin-*.db.gz | wc -l)" -eq 2 ]'
 check "backup > 3 hari dihapus, 1 hari dipertahankan" '[ ! -e "$BACKUP_DIR/urusin-20200101T000000Z.db.gz" ] && [ -e "$BACKUP_DIR/urusin-20990101T000000Z.db.gz" ]'
 check "tanpa sisa .partial" '[ ! -e "$BACKUP_DIR/.partial.db" ]'
 check "restic tidak dipanggil tanpa RESTIC_REPOSITORY" '! calls | grep -q "^restic"'
 export RESTIC_REPOSITORY="/tmp/repo-palsu"
-(bash "$DEPLOY/backup.sh") > "$SB/out.log" 2>&1; RC=$?
+(BACKUP_IMAGE=ghcr.io/x@sha256:aa bash "$DEPLOY/backup.sh") > "$SB/out.log" 2>&1; RC=$?
 check "restic dipanggil bila RESTIC_REPOSITORY diset" '[ $RC -eq 0 ] && calls | grep -q "^restic backup"'
 unset RESTIC_REPOSITORY
 export SHIM_RUN_FAIL=1
-(bash "$DEPLOY/backup.sh") > "$SB/out.log" 2>&1; RC=$?
+(BACKUP_IMAGE=ghcr.io/x@sha256:aa bash "$DEPLOY/backup.sh") > "$SB/out.log" 2>&1; RC=$?
 check "kegagalan sqlite -> exit non-zero, tanpa .partial" '[ $RC -ne 0 ] && [ ! -e "$BACKUP_DIR/.partial.db" ]'
 unset SHIM_RUN_FAIL BACKUP_DIR
 
-echo "11. disk-alert.sh: ambang 85%"
+echo "11. zero-downtime.sh: lulus tanpa kegagalan, gagal bila ada respons 5xx atau deploy gagal"
+new_sandbox
+printf '#!/usr/bin/env bash
+exit 0
+' > "$SB/deploy-ok"
+printf '#!/usr/bin/env bash
+exit 1
+' > "$SB/deploy-bad"
+chmod +x "$SB/deploy-ok" "$SB/deploy-bad"
+zd() { (cd "$SB" && URL=https://zd.test/api/health GRACE=0 RPS=200 LOG="$SB/zd.log" DEPLOY_CMD="$1" bash "$HERE/zero-downtime.sh" "${@:2}") > "$SB/out.log" 2>&1; RC=$?; }
+zd "$SB/deploy-ok" aaaaaaa bbbbbbb@sha256:abc
+check "semua 2xx -> exit 0 dan LULUS" '[ $RC -eq 0 ] && grep -q "LULUS" "$SB/out.log"'
+export SHIM_ZD_FAIL=1
+zd "$SB/deploy-ok" aaaaaaa
+check "respons 503 -> exit 1 dan gagal>0" '[ $RC -eq 1 ] && grep -q "GAGAL" "$SB/out.log" && [ -s "$SB/zd.log" ]'
+unset SHIM_ZD_FAIL
+zd "$SB/deploy-bad" aaaaaaa
+check "deploy gagal -> exit 1" '[ $RC -eq 1 ]'
+
+echo "12. disk-alert.sh: ambang 85%"
 new_sandbox
 export SHIM_DF_PCT=91
 (bash "$DEPLOY/disk-alert.sh") > "$SB/out.log" 2>&1; RC=$?

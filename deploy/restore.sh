@@ -5,14 +5,15 @@
 #   deploy/restore.sh /var/backups/urusin/urusin-20261110T060000Z.db.gz [--yes]
 #   restic restore latest --tag urusin --target /tmp/restore   # lalu beri berkas dari sana
 #
-# Variabel: DATA_VOLUME, DB_FILE, SQLITE_IMAGE (sama seperti backup.sh), HEALTH_WAIT (default 60 detik).
+# Variabel: DATA_VOLUME, DB_FILE, BACKUP_IMAGE, SCRIPT_DIR (sama seperti backup.sh), HEALTH_WAIT (default 60 detik).
+# Memakai image web kita sendiri (digest dari .env.images), bukan image pihak ketiga.
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
 DATA_VOLUME="${DATA_VOLUME:-urusin_data}"
 DB_FILE="${DB_FILE:-urusin.db}"
-SQLITE_IMAGE="${SQLITE_IMAGE:-keinos/sqlite3:3.47.2}"
+SCRIPT_DIR="${SCRIPT_DIR:-../apps/web/scripts}"
 HEALTH_WAIT="${HEALTH_WAIT:-60}"
 
 die() { echo "restore: $*" >&2; exit 1; }
@@ -31,12 +32,20 @@ case "$src" in
   *) cp "$src" "$work/restore.db" ;;
 esac
 
-# Validasi backup SEBELUM mengubah apa pun.
-check() {
-  docker run --rm --network none --read-only --user 0:0 -v "$work:/w:ro" --entrypoint sh "$SQLITE_IMAGE" -c \
-    '[ "$(sqlite3 "file:/w/restore.db?mode=ro" "PRAGMA integrity_check;")" = ok ]'
+active=""
+[ -f .env.images ] && active="$(sed -n 's/^ACTIVE_COLOR=//p' .env.images | head -n1)"
+active="${active:-blue}"
+image="${BACKUP_IMAGE:-$(sed -n "s/^WEB_IMAGE_$(printf '%s' "$active" | tr '[:lower:]' '[:upper:]')=//p" .env.images 2>/dev/null | head -n1)}"
+[ -n "$image" ] || die "image web tidak diketahui (.env.images kosong dan BACKUP_IMAGE tidak diset)"
+[ -f "$SCRIPT_DIR/db-restore.mjs" ] || die "$SCRIPT_DIR/db-restore.mjs tidak ada (clone repo penuh atau set SCRIPT_DIR)"
+
+# Jalankan db-restore.mjs di wadah image web (skrip lewat stdin). Argumen: env tambahan (-e ...).
+run_restore() {
+  docker run --rm -i --network none --user 0:0 -v "${DATA_VOLUME}:/data" -v "$work:/w:ro" "$@"     -e SRC_PATH=/w/restore.db -e "DB_PATH=/data/${DB_FILE}" --entrypoint node "$image"     --input-type=module - < "$SCRIPT_DIR/db-restore.mjs"
 }
-check || die "integrity_check backup GAGAL; tidak ada yang diubah"
+
+# Validasi backup SEBELUM mengubah apa pun (CHECK_ONLY: hanya integrity_check).
+run_restore -e CHECK_ONLY=1 || die "integrity_check backup GAGAL; tidak ada yang diubah"
 echo "restore: backup valid ($src)"
 
 if [ "$yes" != "--yes" ]; then
@@ -44,29 +53,13 @@ if [ "$yes" != "--yes" ]; then
   [ "$answer" = "ya" ] || die "dibatalkan"
 fi
 
-active=""
-[ -f .env.images ] && active="$(sed -n 's/^ACTIVE_COLOR=//p' .env.images | head -n1)"
-active="${active:-blue}"
 compose=(docker compose -f compose.prod.yml --env-file .env --env-file .env.images)
 
 echo "restore: menghentikan web-blue dan web-green"
 "${compose[@]}" stop web-blue web-green
 
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
-docker run --rm --network none --user 0:0 -v "${DATA_VOLUME}:/data" -v "$work:/w:ro" --entrypoint sh "$SQLITE_IMAGE" -c '
-  set -e
-  db="/data/$1"
-  if [ -f "$db" ]; then
-    mv "$db" "$db.pre-restore-$2"
-    rm -f "$db-wal" "$db-shm"
-    owner="$(stat -c %u:%g "$db.pre-restore-$2")"
-  else
-    owner="$(stat -c %u:%g /data)"
-  fi
-  cp /w/restore.db "$db"
-  chown "$owner" "$db"
-  chmod 600 "$db"
-' sh "$DB_FILE" "$ts"
+run_restore -e "STAMP=$ts" || die "db-restore gagal; web masih berhenti, periksa volume ${DATA_VOLUME}"
 echo "restore: DB diganti; DB lama: ${DB_FILE}.pre-restore-${ts} (di volume ${DATA_VOLUME})"
 
 echo "restore: memulai web-${active}"
