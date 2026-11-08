@@ -30,6 +30,24 @@ const RAW_HTTP_MODULES = ['undici', 'http', 'https', 'http2', 'net', 'tls', 'chi
 );
 const EXEC_MSG = 'child_process dilarang di kode server (bisa menjalankan curl/wget melewati egress).';
 
+// Penyelesai nilai PII tunggal (ADR 0028, arsitek v13 #1): satu-satunya pemanggil sah adalah jalur isi
+// Pendamping. Impor dari tempat lain ditolak; direktori yang diizinkan memakai blok terakhir di bawah.
+const RESOLVER = {
+  group: ['**/vault/resolver', '**/vault/resolver.*'],
+  message: 'Penyelesai nilai PII hanya boleh dipanggil jalur isi Pendamping (src/lib/server/pendamping/**).',
+};
+const RESOLVER_BOLEH = ['apps/web/src/lib/server/pendamping/**', 'apps/web/src/lib/server/vault/**'];
+const rawHttpImports = (extra) => [
+  'error',
+  {
+    paths: RAW_HTTP_MODULES.map((name) => ({
+      name,
+      message: name.endsWith('child_process') ? EXEC_MSG : EGRESS_MSG,
+    })),
+    patterns: [VENDOR_SDK, { group: ['undici/*'], message: EGRESS_MSG }, ...extra],
+  },
+];
+
 export default ts.config(
   {
     ignores: [
@@ -54,7 +72,7 @@ export default ts.config(
     },
     rules: {
       // Gateway LLM wajib OpenAI-compatible: SDK vendor lain dilarang (rencana §3.11).
-      'no-restricted-imports': ['error', { patterns: [VENDOR_SDK] }],
+      'no-restricted-imports': ['error', { patterns: [VENDOR_SDK, RESOLVER] }],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
@@ -73,17 +91,14 @@ export default ts.config(
         { object: 'globalThis', property: 'fetch', message: EGRESS_MSG },
         { object: 'global', property: 'fetch', message: EGRESS_MSG },
       ],
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: RAW_HTTP_MODULES.map((name) => ({
-            name,
-            message: name.endsWith('child_process') ? EXEC_MSG : EGRESS_MSG,
-          })),
-          patterns: [VENDOR_SDK, { group: ['undici/*'], message: EGRESS_MSG }],
-        },
-      ],
+      'no-restricted-imports': rawHttpImports([RESOLVER]),
     },
+  },
+  {
+    // Jalur isi Pendamping dan modul vault sendiri boleh mengimpor penyelesai (aturan egress tetap).
+    files: RESOLVER_BOLEH,
+    ignores: ['**/*.test.{ts,js}'],
+    rules: { 'no-restricted-imports': rawHttpImports([]) },
   },
   {
     files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],

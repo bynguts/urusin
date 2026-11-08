@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AkunError } from '@urusin/akun';
+import { ESLint } from 'eslint';
 import { MemoryMailer } from '@urusin/akun/testing';
 import { DemoProvider } from '@urusin/harness';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -95,11 +96,11 @@ describe('penyelesai nilai PII', () => {
 });
 
 describe('batas impor: penyelesai hanya dipanggil jalur isi Pendamping', () => {
-  it('tidak ada berkas di luar src/lib/server/pendamping/** yang mengimpor pii/resolver', () => {
+  it('tidak ada berkas di luar src/lib/server/pendamping/** yang mengimpor vault/resolver', () => {
     const src = fileURLToPath(new URL('../../../', import.meta.url));
     const sendiri = [
-      join('lib', 'server', 'pii', 'resolver.ts'),
-      join('lib', 'server', 'pii', 'resolver.test.ts'),
+      join('lib', 'server', 'vault', 'resolver.ts'),
+      join('lib', 'server', 'vault', 'resolver.test.ts'),
     ];
     const izin = (rel: string) =>
       rel.startsWith(['lib', 'server', 'pendamping', ''].join(sep)) || sendiri.includes(rel);
@@ -110,7 +111,7 @@ describe('batas impor: penyelesai hanya dipanggil jalur isi Pendamping', () => {
         if (statSync(p).isDirectory()) jelajah(p);
         else if (/\.(ts|js|svelte)$/.test(n)) {
           const rel = relative(src, p);
-          if (!izin(rel) && /pii\/resolver(\.js|\.ts)?['"]/.test(readFileSync(p, 'utf8')))
+          if (!izin(rel) && /vault\/resolver(\.js|\.ts)?['"]/.test(readFileSync(p, 'utf8')))
             pelanggar.push(rel);
         }
       }
@@ -118,4 +119,22 @@ describe('batas impor: penyelesai hanya dipanggil jalur isi Pendamping', () => {
     jelajah(src);
     expect(pelanggar).toEqual([]);
   });
+});
+
+describe('aturan lint no-restricted-imports untuk penyelesai', () => {
+  const root = resolve(import.meta.dirname, '../../../../../..');
+  const eslint = new ESLint({ cwd: root });
+  const kode = `import { resolusiNilai } from '#lib/server/vault/resolver.js';
+export const x = resolusiNilai;
+`;
+  const aturan = async (file: string) => {
+    const [r] = await eslint.lintText(kode, { filePath: resolve(root, file) });
+    return (r?.messages ?? []).map((m) => m.ruleId);
+  };
+
+  it('menolak impor dari rute/lib lain, mengizinkan jalur isi Pendamping', async () => {
+    expect(await aturan('apps/web/src/routes/api/x/+server.ts')).toContain('no-restricted-imports');
+    expect(await aturan('apps/web/src/lib/server/akun.ts')).toContain('no-restricted-imports');
+    expect(await aturan('apps/web/src/lib/server/pendamping/isi.ts')).not.toContain('no-restricted-imports');
+  }, 120_000);
 });
