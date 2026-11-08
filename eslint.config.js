@@ -13,17 +13,22 @@ const VENDOR_SDK = {
 // Egress server (review v11 B2): web berjalan di network host, jadi HTTP keluar mentah bisa menjangkau
 // layanan loopback pengguna (admin Caddy :2019, dll.). Semua HTTP keluar server wajib lewat @urusin/egress.
 const EGRESS_MSG = 'HTTP keluar di server wajib lewat @urusin/egress (egressFetch / sharedEgress().agent).';
+// Kode yang berjalan di server, .ts maupun .js. `+page.ts`/`+layout.ts` (load universal) ikut, karena
+// juga berjalan di server saat SSR; di sana pakai `fetch` dari argumen load, bukan global.
 const SERVER_CODE = [
-  'packages/*/src/**/*.ts',
-  'apps/web/src/lib/server/**/*.ts',
-  'apps/web/src/routes/**/+server.ts',
-  'apps/web/src/routes/**/+page.server.ts',
-  'apps/web/src/routes/**/+layout.server.ts',
-  'apps/web/src/hooks.server.ts',
+  'packages/*/src/**/*.{ts,js}',
+  'apps/web/src/lib/server/**/*.{ts,js}',
+  'apps/web/src/routes/**/+server.{ts,js}',
+  'apps/web/src/routes/**/+page.server.{ts,js}',
+  'apps/web/src/routes/**/+layout.server.{ts,js}',
+  'apps/web/src/routes/**/+page.{ts,js}',
+  'apps/web/src/routes/**/+layout.{ts,js}',
+  'apps/web/src/hooks.server.{ts,js}',
 ];
-const RAW_HTTP_MODULES = ['undici', 'http', 'https', 'http2', 'net', 'tls'].flatMap((m) =>
+const RAW_HTTP_MODULES = ['undici', 'http', 'https', 'http2', 'net', 'tls', 'child_process'].flatMap((m) =>
   m === 'undici' ? [m] : [m, `node:${m}`],
 );
+const EXEC_MSG = 'child_process dilarang di kode server (bisa menjalankan curl/wget melewati egress).';
 
 export default ts.config(
   {
@@ -55,9 +60,14 @@ export default ts.config(
   },
   {
     files: SERVER_CODE,
-    ignores: ['**/*.test.ts', 'packages/egress/src/**'],
+    ignores: ['**/*.test.{ts,js}', 'packages/egress/src/**'],
     rules: {
-      'no-restricted-globals': ['error', { name: 'fetch', message: EGRESS_MSG }],
+      'no-restricted-globals': [
+        'error',
+        { name: 'fetch', message: EGRESS_MSG },
+        { name: 'WebSocket', message: EGRESS_MSG },
+        { name: 'EventSource', message: EGRESS_MSG },
+      ],
       'no-restricted-properties': [
         'error',
         { object: 'globalThis', property: 'fetch', message: EGRESS_MSG },
@@ -66,8 +76,11 @@ export default ts.config(
       'no-restricted-imports': [
         'error',
         {
-          paths: RAW_HTTP_MODULES.map((name) => ({ name, message: EGRESS_MSG })),
-          patterns: [VENDOR_SDK],
+          paths: RAW_HTTP_MODULES.map((name) => ({
+            name,
+            message: name.endsWith('child_process') ? EXEC_MSG : EGRESS_MSG,
+          })),
+          patterns: [VENDOR_SDK, { group: ['undici/*'], message: EGRESS_MSG }],
         },
       ],
     },

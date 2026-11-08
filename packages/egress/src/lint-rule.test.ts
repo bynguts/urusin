@@ -12,6 +12,51 @@ const rules = async (code: string, file: string) => {
 describe('lint: HTTP keluar server hanya lewat @urusin/egress', () => {
   it.each([
     [
+      'packages/rag/src/contoh.js',
+      `export const f = () => fetch('http://127.0.0.1:2019/load');
+`,
+      'no-restricted-globals',
+    ],
+    [
+      'apps/web/src/routes/x/+page.ts',
+      `export const load = () => fetch('http://127.0.0.1:2019/load');
+`,
+      'no-restricted-globals',
+    ],
+    [
+      'apps/web/src/routes/x/+layout.js',
+      `export const load = () => new WebSocket('ws://127.0.0.1:2019/');
+`,
+      'no-restricted-globals',
+    ],
+    [
+      'packages/harness/src/contoh.ts',
+      `export const f = () => new EventSource('http://x');
+`,
+      'no-restricted-globals',
+    ],
+    [
+      'packages/rag/src/contoh.ts',
+      `import { execFile } from 'node:child_process';
+export const f = execFile;
+`,
+      'no-restricted-imports',
+    ],
+    [
+      'apps/web/src/lib/server/contoh.ts',
+      `import { spawn } from 'child_process';
+export const f = spawn;
+`,
+      'no-restricted-imports',
+    ],
+    [
+      'packages/llm/src/contoh.ts',
+      `import { fetch as f } from 'undici/lib/web/fetch/index.js';
+export default f;
+`,
+      'no-restricted-imports',
+    ],
+    [
       'packages/rag/src/contoh.ts',
       `export const f = () => fetch('http://127.0.0.1:2019/load');\n`,
       'no-restricted-globals',
@@ -49,6 +94,14 @@ describe('lint: HTTP keluar server hanya lewat @urusin/egress', () => {
     expect(await rules(code, 'packages/egress/src/contoh.ts')).toEqual([]);
     expect(await rules(code, 'packages/rag/src/contoh.test.ts')).toEqual([]);
     expect(await rules(code, 'apps/web/src/lib/stores/contoh.svelte.ts')).toEqual([]);
+    // load universal memakai `fetch` dari argumen (bukan global): diizinkan.
+    expect(
+      await rules(
+        `export const load = ({ fetch }) => fetch('/api/x');
+`,
+        'apps/web/src/routes/x/+page.js',
+      ),
+    ).toEqual([]);
   }, 30_000);
 
   it('larangan SDK vendor lain tetap berlaku di kode server', async () => {
