@@ -146,3 +146,26 @@ export function domain(url: string): string {
     return url;
   }
 }
+
+/** Nama state untuk warga (layar Jejak). */
+export const LABEL_STATE: Record<UrusanState, string> = {
+  BARU: 'Baru',
+  MEMAHAMI: 'Memahami kebutuhan',
+  RENCANA_DIUSULKAN: 'Rencana diusulkan',
+  RENCANA_DISETUJUI: 'Rencana disetujui',
+  MENYIAPKAN_BERKAS: 'Menyiapkan berkas',
+  BERKAS_SIAP: 'Berkas siap',
+  MENUNGGU_LOGIN_WARGA: 'Menunggu Anda masuk akun',
+  MENUNGGU_PROFIL_WARGA: 'Menunggu data diri',
+  MENGISI: 'AI mengisi formulir',
+  MENUNGGU_KONFIRMASI: 'Menunggu persetujuan Anda',
+  MENGUNGGAH: 'AI mengunggah berkas',
+  MENUNGGU_SUBMIT_WARGA: 'Menunggu Anda menekan Kirim',
+  TERKIRIM: 'Terkirim',
+  DIPANTAU: 'Dipantau',
+  SELESAI: 'Selesai',
+  DITOLAK: 'Ditolak',
+  DIBATALKAN: 'Dibatalkan',
+  DIPANDU: 'Mode dipandu',
+  GAGAL_AMAN: 'Berhenti dengan aman',
+};
