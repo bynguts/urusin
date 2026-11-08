@@ -40,6 +40,22 @@ die() { echo "deploy: $*" >&2; exit 1; }
 
 [ $# -ge 1 ] && [ $# -le 2 ] || die "pemakaian: $0 <git-sha> [sha256:<digest>] | $0 sha256:<digest>"
 [ -f "$ENV_FILE" ] || die "$ENV_FILE tidak ada (salin ../.env.example, isi nilai, chmod 600)"
+
+# Izin direktori deploy dan rahasia (hardening.md): direktori paling longgar 0751 (others hanya --x agar user
+# Caddy bisa menelusuri ke snippet lama; tidak bisa membaca daftar isi atau menulis), .env dan
+# .restic-password 0600. Dilewati di Windows (MSYS/Cygwin): NTFS tidak punya mode POSIX.
+check_secret_perms() {
+  case "$(uname -s)" in MINGW* | MSYS* | CYGWIN*) return 0 ;; esac
+  local f
+  [ -z "$(find . -maxdepth 0 -perm /026)" ] \
+    || die "direktori $(pwd) bisa ditulis group atau dibaca/ditulis others; jalankan: chmod 0751 $(pwd)"
+  for f in "$ENV_FILE" .restic-password; do
+    [ -e "$f" ] || continue
+    [ -z "$(find "$f" -maxdepth 0 -perm /077)" ] || die "$f bisa diakses group/others; jalankan: chmod 600 $(pwd)/$f"
+  done
+}
+check_secret_perms
+
 command -v docker >/dev/null || die "docker tidak ditemukan"
 command -v curl >/dev/null || die "curl tidak ditemukan"
 

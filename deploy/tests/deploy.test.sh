@@ -25,6 +25,7 @@ new_sandbox() {
   cp "$DEPLOY/deploy.sh" "$SB/deploy/deploy.sh"
   : > "$SB/deploy/compose.prod.yml"
   printf 'DOMAIN=urusin.test\n' > "$SB/deploy/.env"
+  chmod 751 "$SB/deploy" && chmod 600 "$SB/deploy/.env"
   export SHIM_DIR="$SB/state"
   : > "$SHIM_DIR/calls.log"
   unset SHIM_LABEL SHIM_PROVENANCE SHIM_SERVE_BLUE SHIM_SERVE_GREEN SHIM_DOWN_BLUE SHIM_DOWN_GREEN \
@@ -262,6 +263,25 @@ export SHIM_DF_PCT=40
 (bash "$DEPLOY/disk-alert.sh") > "$SB/out.log" 2>&1; RC=$?
 check "40% -> exit 0, tanpa notifikasi" '[ $RC -eq 0 ] && ! calls | grep -q ntfy'
 unset SHIM_DF_PCT NTFY_URL
+
+echo "izin direktori deploy dan rahasia (0751 / 0600)"
+case "$(uname -s)" in
+  MINGW* | MSYS* | CYGWIN*) echo "  (dilewati: NTFS tanpa mode POSIX)" ;;
+  *)
+    new_sandbox
+    chmod 644 "$SB/deploy/.env"
+    run_deploy "$SHA_A" "$DIG_A"
+    check ".env 0644 -> ditolak sebelum docker dipanggil" '[ $RC -ne 0 ] && grep -q "chmod 600" "$SB/out.log" && ! calls | grep -q "^docker"'
+    new_sandbox
+    chmod 755 "$SB/deploy"
+    run_deploy "$SHA_A" "$DIG_A"
+    check "direktori 0755 (others bisa membaca) -> ditolak" '[ $RC -ne 0 ] && grep -q "chmod 0751" "$SB/out.log"'
+    new_sandbox
+    install -m 640 /dev/null "$SB/deploy/.restic-password"
+    run_deploy "$SHA_A" "$DIG_A"
+    check ".restic-password 0640 -> ditolak" '[ $RC -ne 0 ] && grep -q ".restic-password" "$SB/out.log"'
+    ;;
+esac
 
 echo
 echo "lulus: $pass, gagal: $fail"

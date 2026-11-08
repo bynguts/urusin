@@ -20,4 +20,4 @@ Turnstile dimuat hanya di iframe sandbox pada `verify.{$DOMAIN}`, dan token diki
 ## Konsekuensi
 
 - Origin vault bebas skrip pihak ketiga.
-- Satu host tambahan (`verify.`) di DNS dan Caddy; kedua host menuju upstream yang sama (`deploy/Caddyfile.urusin`).
+- Satu host tambahan (`verify.`) di DNS dan Caddy; kedua host menuju upstream yang sama (`deploy/Caddyfile.urusin.primary`).
