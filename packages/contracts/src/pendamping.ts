@@ -13,12 +13,17 @@ import { IsoWaktuSchema } from './common.js';
 export const PendampingModeSchema = z.enum(['ai', 'takeover', 'done']);
 export type PendampingMode = z.infer<typeof PendampingModeSchema>;
 
-/** Siklus hidup sesi. Status akhir: selesai, gagal, dipandu, kedaluwarsa, dibatalkan. */
+/**
+ * Siklus hidup sesi. Status akhir: selesai, gagal, dipandu, kedaluwarsa, dibatalkan.
+ * `siaga`: satu langkah (execution) selesai, peramban tetap hidup untuk langkah berikutnya di urusan yang
+ * sama (warga cukup login sekali) sampai TTL/idle atau diakhiri; tidak ada yang disimpan setelah ditutup.
+ */
 export const PendampingStatusSchema = z.enum([
   'antre',
   'memulai',
   'menunggu_data',
   'berjalan',
+  'siaga',
   'selesai',
   'gagal',
   'dipandu',
@@ -85,6 +90,21 @@ export const PendampingGalatSchema = z.object({
 });
 export type PendampingGalat = z.infer<typeof PendampingGalatSchema>;
 
+/**
+ * Nilai terstruktur yang dibaca dari halaman konfirmasi lewat selektor yang dideklarasikan adapter (bukan teks
+ * halaman bebas): nomor registrasi/permohonan dan status. Dipakai warga untuk melacak sendiri / `cek_status`.
+ */
+export const PendampingBuktiSchema = z.object({
+  nomor: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(/^[A-Za-z0-9][A-Za-z0-9 ./_-]*$/)
+    .optional(),
+  status: z.string().min(1).max(120).optional(),
+});
+export type PendampingBukti = z.infer<typeof PendampingBuktiSchema>;
+
 /** Status sesi untuk UI (layar antrean, banner mode, layar selesai). Tanpa data pribadi. */
 export const SesiPendampingSchema = z.object({
   sesiId: z.string().min(1),
@@ -100,6 +120,8 @@ export const SesiPendampingSchema = z.object({
   /** Pesan untuk warga (mis. "Giliran Anda: ketik kode CAPTCHA"). */
   pesan: z.string().optional(),
   hasil: PendampingHasilSchema.optional(),
+  /** Bukti dari halaman konfirmasi untuk `executionId` ini (bila adapter mendeklarasikannya). */
+  bukti: PendampingBuktiSchema.optional(),
 });
 export type SesiPendamping = z.infer<typeof SesiPendampingSchema>;
 
@@ -203,6 +225,8 @@ export const PendampingClientMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('akhiri') }),
   z.object({ type: z.literal('ping'), t: z.number() }),
+  /** Frame `seq` sudah digambar: pendamping mengirim paling banyak 2 frame yang belum di-ack. */
+  z.object({ type: z.literal('ack'), seq: z.number().int().nonnegative() }),
 ]);
 export type PendampingClientMessage = z.infer<typeof PendampingClientMessageSchema>;
 
@@ -229,7 +253,11 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
   /** Giliran warga: login/OTP/CAPTCHA (`login`), pengiriman akhir (`final`), atau diminta warga. */
   z.object({
     jenis: z.literal('giliran_anda'),
-    alasan: z.enum(['login', 'final', 'diminta_warga', 'periksa']),
+    /**
+     * `masuk_akun`: halaman keluar/login terdeteksi probe adapter; `verifikasi_situs`: halaman tantangan situs
+     * (mis. Cloudflare) yang hanya boleh diselesaikan warga sendiri. `login` dipertahankan untuk gerbang lama.
+     */
+    alasan: z.enum(['login', 'final', 'diminta_warga', 'periksa', 'masuk_akun', 'verifikasi_situs']),
     pesan: z.string(),
     sorot: PendampingSorotSchema.optional(),
   }),
@@ -237,7 +265,12 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
   z.object({ jenis: z.literal('dipandu'), pesan: z.string() }),
   /** Permintaan peramban ke host di luar allowlist ditolak (tanpa path/isi). */
   z.object({ jenis: z.literal('diblokir'), host: z.string() }),
-  z.object({ jenis: z.literal('selesai'), hasil: PendampingHasilSchema, pesan: z.string() }),
+  z.object({
+    jenis: z.literal('selesai'),
+    hasil: PendampingHasilSchema,
+    pesan: z.string(),
+    bukti: PendampingBuktiSchema.optional(),
+  }),
 ]);
 export type PendampingEvent = z.infer<typeof PendampingEventSchema>;
 
@@ -264,6 +297,11 @@ export const PendampingServerMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('galat'), kode: PendampingKodeGalatSchema, pesanWarga: z.string() }),
   z.object({ type: z.literal('pong'), t: z.number() }),
+  /**
+   * Jenis elemen yang sedang fokus di peramban pendamping (tanpa nilai): klien menyesuaikan input tersembunyi
+   * (type=password untuk sandi, autocomplete=one-time-code untuk OTP) agar keyboard ponsel tidak menyimpan.
+   */
+  z.object({ type: z.literal('fokus'), jenis: z.enum(['tidak_ada', 'teks', 'sandi', 'otp', 'angka']) }),
 ]);
 export type PendampingServerMessage = z.infer<typeof PendampingServerMessageSchema>;
 
@@ -278,3 +316,43 @@ export const PENDAMPING_WS_CLOSE = {
   /** Digantikan koneksi lain dari warga yang sama. */
   DIGANTIKAN: 4409,
 } as const;
+
+/**
+ * Frame layar biner (WebSocket binary): [u8 versi=1][u32 seq BE][u16 panjang meta BE][meta JSON UTF-8][JPEG].
+ * Menggantikan `{type:'frame', data: base64}` (tetap valid untuk kompatibilitas) agar hemat ~33% dan tanpa
+ * dekode base64 di ponsel. Isi frame tidak pernah direkam atau dicatat.
+ */
+export const PENDAMPING_FRAME_VERSI = 1;
+
+export function encodePendampingFrame(seq: number, meta: PendampingFrameMeta, jpeg: Uint8Array): Uint8Array {
+  const m = new TextEncoder().encode(JSON.stringify(meta));
+  const out = new Uint8Array(7 + m.length + jpeg.length);
+  const v = new DataView(out.buffer);
+  v.setUint8(0, PENDAMPING_FRAME_VERSI);
+  v.setUint32(1, seq >>> 0);
+  v.setUint16(5, m.length);
+  out.set(m, 7);
+  out.set(jpeg, 7 + m.length);
+  return out;
+}
+
+export type PendampingFrameBiner = { seq: number; meta: PendampingFrameMeta; jpeg: Uint8Array };
+
+/** null bila bukan frame versi yang dikenal atau meta tidak valid. */
+export function decodePendampingFrame(buf: ArrayBuffer | Uint8Array): PendampingFrameBiner | null {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  if (bytes.length < 8) return null;
+  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (v.getUint8(0) !== PENDAMPING_FRAME_VERSI) return null;
+  const len = v.getUint16(5);
+  if (7 + len >= bytes.length) return null;
+  let meta: unknown;
+  try {
+    meta = JSON.parse(new TextDecoder().decode(bytes.subarray(7, 7 + len)));
+  } catch {
+    return null;
+  }
+  const parsed = PendampingFrameMetaSchema.safeParse(meta);
+  if (!parsed.success) return null;
+  return { seq: v.getUint32(1), meta: parsed.data, jpeg: bytes.subarray(7 + len) };
+}
