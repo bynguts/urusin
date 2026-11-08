@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import type { HtmlEscapedString } from 'hono/utils/html';
 
-export const BANNER_TEXT = 'FIXTURE — bukan situs pemerintah';
+export const BANNER_TEXT = 'Situs uji — bukan situs pemerintah';
 
 type Content = HtmlEscapedString | Promise<HtmlEscapedString>;
 

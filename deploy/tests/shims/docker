@@ -13,15 +13,21 @@ case "$1" in
   image) echo "${SHIM_LABEL-}"; exit 0 ;;
   buildx)
     case "$*" in
-      *Provenance*) echo "${SHIM_PROVENANCE:-null}" ;;
+      *Provenance*)
+        if [ -n "${SHIM_PROVENANCE+x}" ]; then echo "$SHIM_PROVENANCE"
+        elif [ -n "${SHIM_LABEL:-}" ]; then echo "{\"vcs\":{\"revision\":\"$SHIM_LABEL\"}}"
+        else echo null; fi ;;
       *) echo "\"${SHIM_DIGEST:-sha256:0000000000000000000000000000000000000000000000000000000000000000}\"" ;;
     esac
     exit 0 ;;
   compose)
-    args=("$@"); imgs=""; sub=""
+    args=("$@"); imgs=""; sub=""; svc=""
     for i in "${!args[@]}"; do [ "${args[$i]}" = "--env-file" ] && imgs="${args[$((i + 1))]}"; done
-    for a in "${args[@]}"; do case "$a" in up | stop | logs) sub="$a" ;; esac; done
-    svc="${args[$((${#args[@]} - 1))]}"; color="${svc#web-}"; C="$(echo "$color" | tr '[:lower:]' '[:upper:]')"
+    for a in "${args[@]}"; do
+      case "$a" in up | stop | logs | exec) [ -n "$sub" ] || sub="$a" ;; esac
+      case "$a" in web-*) svc="$a" ;; esac
+    done
+    color="${svc#web-}"; C="$(echo "$color" | tr '[:lower:]' '[:upper:]')"
     case "$sub" in
       up)
         sha="$(sed -n "s/^GIT_SHA_${C}=//p" "$imgs" | head -n1)"
@@ -29,6 +35,12 @@ case "$1" in
         [ -z "${!override:-}" ] || sha="${!override}"
         if [ -n "${!down:-}" ]; then rm -f "$SHIM_DIR/running.$color"; else echo "$sha" > "$SHIM_DIR/running.$color"; fi ;;
       stop) rm -f "$SHIM_DIR/running.$color" ;;
+      exec)
+        # promote(): argumen terakhir = warna yang dipromosikan; `rm -f` menghapus penanda.
+        case "$*" in
+          *"rm -f"*) rm -f "$SHIM_DIR/promoted" ;;
+          *) [ -f "$SHIM_DIR/running.$color" ] || exit 1; echo "${args[$((${#args[@]} - 1))]}" > "$SHIM_DIR/promoted" ;;
+        esac ;;
     esac
     exit 0 ;;
 esac
