@@ -1,11 +1,26 @@
 import { json } from '@sveltejs/kit';
 import { violationCounts } from '#lib/server/csp-report.js';
 import { runningTurns } from '#lib/server/running-turns.js';
+import { runtimeWithin, type RagInfo } from '#lib/server/runtime.js';
 import { appVersion, gitSha } from '#lib/server/build-info.js';
 import type { RequestHandler } from './$types';
 
-/** Dipakai uptime monitor dan smoke test deploy (assert gitSha == SHA yang di-deploy). */
-export const GET: RequestHandler = () =>
+/** Batas tunggu runtime per request health; runtime mode LLM dirakit lazy (probe kapabilitas). */
+const RAG_WAIT_MS = 2_000;
+
+type RagHealth = RagInfo | { status: 'memuat' } | { status: 'error' };
+
+/**
+ * Status korpus dari runtime. Health tidak pernah menunggu lebih dari RAG_WAIT_MS: bila runtime masih dirakit
+ * (mis. probe LLM lambat), jawab `memuat` dan biarkan perakitan berlanjut di latar belakang. Gagal rakit = `error`.
+ */
+async function ragHealth(): Promise<RagHealth> {
+  const rt = await runtimeWithin(RAG_WAIT_MS);
+  return typeof rt === 'string' ? { status: rt } : rt.rag;
+}
+
+/** Dipakai uptime monitor dan smoke test deploy (assert gitSha == SHA yang di-deploy). Publik: 404 dari Caddy. */
+export const GET: RequestHandler = async () =>
   json(
     {
       ok: true,
@@ -13,8 +28,8 @@ export const GET: RequestHandler = () =>
       status: 'ok',
       gitSha: gitSha(),
       version: appVersion(),
-      // Diisi modul RAG (M20) kelak; sampai ada, tidak diinisialisasi.
-      rag: { status: 'uninitialized' },
+      // Korpus RAG dari runtime: ready (+ jumlah chunk/vektor, model embedding, leg pencarian), demo, memuat, error.
+      rag: await ragHealth(),
       // Turn agen yang sedang berjalan; deploy.sh menunggu 0 sebelum menghentikan warna lama.
       runningTurns: runningTurns(),
       // Hitungan pelanggaran CSP per direktif sejak proses start (tanpa isi laporan).

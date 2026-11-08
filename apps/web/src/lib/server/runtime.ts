@@ -22,7 +22,7 @@ import {
   type ChatProvider,
   type Prices,
 } from '@urusin/llm';
-import { openDb } from '@urusin/rag';
+import { createRagSearcher, openDb, type RagSearchInfo } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { RateLimiter } from './limiter.js';
 import { setRunningTurnsSource } from './running-turns.js';
@@ -64,8 +64,38 @@ export function publicOrigin(): string {
   return readConfig().publicOrigin;
 }
 
+/** Status korpus RAG yang dipakai runtime (dilaporkan /api/health). */
+export type RagInfo =
+  | { status: 'demo'; chunks: number }
+  | {
+      status: 'ready';
+      chunks: number;
+      vectors: number;
+      vectorModel: string | null;
+      /** Leg pencarian agen yang aktif (vektor hybrid, rerank endpoint). */
+      pencarian?: RagSearchInfo;
+    };
+
+/** Hitung isi korpus yang sudah dibuka; `ready` hanya untuk berkas URUSIN_RAG_DB, `demo` untuk korpus contoh. */
+export function ragInfo(ragDb: Db, fromFile: boolean, pencarian?: RagSearchInfo): RagInfo {
+  const count = (sql: string) => (ragDb.prepare(sql).get() as { n: number }).n;
+  const chunks = count('SELECT count(*) AS n FROM chunks');
+  if (!fromFile) return { status: 'demo', chunks };
+  const t = ragDb.prepare('SELECT model FROM vector_transform WHERE id = 1').get() as
+    { model: string | null } | undefined;
+  return {
+    status: 'ready',
+    chunks,
+    vectors: count('SELECT count(*) AS n FROM chunk_vectors'),
+    vectorModel: t?.model ?? null,
+    ...(pencarian ? { pencarian } : {}),
+  };
+}
+
 export type Runtime = ReturnType<typeof createHarness> & {
   config: RuntimeConfig;
+  /** Korpus RAG yang terbuka (dihitung sekali saat runtime dirakit). */
+  rag: RagInfo;
   /** 'demo' = FakeProvider berskrip (tanpa kunci LLM); 'llm' = provider OpenAI-compatible nyata. */
   mode: 'demo' | 'llm';
   /** Turn yang sedang berjalan per urusan (untuk pembatalan saat klien putus). */
@@ -81,6 +111,8 @@ type RuntimeInit = {
   provider?: ChatProvider;
   harness?: Partial<HarnessOptions>;
   mode?: Runtime['mode'];
+  /** Env penyedia embedding/rerank dan gerbang abstain untuk pencari RAG (default process.env). */
+  env?: Record<string, string | undefined>;
 };
 
 /** Rakit runtime dari komponen yang diberikan (dipakai tes dan `getRuntime`). */
@@ -89,10 +121,14 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   if (config.dbPath !== ':memory:') mkdirSync(dirname(config.dbPath), { recursive: true });
   const db = openHarnessDb(config.dbPath);
   const ragDb: Db = config.ragDbPath ? openDb(config.ragDbPath, { readonly: true }) : createDemoRagDb();
+  // Korpus nyata: jalur produksi hybrid (BM25 + vektor Jina) + rerank endpoint, jatuh ke BM25 bila penyedia
+  // gagal. Korpus demo tetap BM25 sinkron (tanpa vektor, tanpa jaringan).
+  const searcher = config.ragDbPath ? createRagSearcher(ragDb, init.env ?? process.env) : undefined;
   const h = createHarness({
     provider: init.provider ?? new DemoProvider(),
     db,
     ragDb,
+    ragSearch: searcher?.search,
     ...init.harness,
   });
   h.store.reapExpiredTurns();
@@ -116,7 +152,8 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
       sesi: new RateLimiter(config.turnPerMenitSesi, menit),
     },
   };
-  return { ...h, config, mode: init.mode ?? 'demo', running, publish, limits };
+  const rag = ragInfo(ragDb, Boolean(config.ragDbPath), searcher?.info);
+  return { ...h, config, rag, mode: init.mode ?? 'demo', running, publish, limits };
 }
 
 function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {
@@ -210,8 +247,26 @@ export function getRuntime(): Promise<Runtime> {
   return instance;
 }
 
-/** Hanya untuk tes: ganti/hapus singleton. */
-export function setRuntimeForTests(rt: Runtime | undefined): void {
+/**
+ * Runtime bila siap dalam `ms`; `memuat` bila masih dirakit (mis. probe LLM lambat, perakitan berlanjut di latar
+ * belakang), `error` bila gagal dirakit. Dipakai endpoint status agar tidak pernah menggantung.
+ */
+export async function runtimeWithin(ms: number): Promise<Runtime | 'memuat' | 'error'> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const wait = new Promise<'memuat'>((resolve) => {
+    timer = setTimeout(() => resolve('memuat'), ms);
+  });
+  try {
+    return await Promise.race([getRuntime(), wait]);
+  } catch {
+    return 'error';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Hanya untuk tes: ganti/hapus singleton (Promise = runtime yang masih dirakit atau gagal dirakit). */
+export function setRuntimeForTests(rt: Runtime | Promise<Runtime> | undefined): void {
   instance = rt ? Promise.resolve(rt) : undefined;
 }
 

@@ -8,13 +8,14 @@ melayani situs lain; Urusin hanya mengikat `127.0.0.1:4310` (web-blue, host netw
 dan `127.0.0.1:4320` (fixtures, opsional). Port terpakai lain di host: 3000, 3100, 8000, 8080, 8082,
 8765, 20128. VPS dipakai bersama layanan lain: jangan menyentuh kontainer/layanan di luar proyek `urusin`.
 
-Berkas: `compose.prod.yml`, `Caddyfile.urusin` (+ `.fallback`), `hardening.md`, `deploy.sh`, `backup.sh`, `restore.sh`, `disk-alert.sh`,
+Berkas: `compose.prod.yml`, `Caddyfile.urusin.primary` (+ `.fallback`), `hardening.md`, `deploy.sh`, `backup.sh`, `restore.sh`, `disk-alert.sh`,
 `tests/` (harness tanpa Docker).
 
 ## Instalasi pertama
 
 ```sh
 sudo mkdir -p /opt/urusin && sudo chown "$USER" /opt/urusin
+chmod 0751 /opt/urusin   # others hanya --x (user caddy menelusuri ke snippet lama), tidak bisa membaca daftar isi
 git clone https://github.com/bynguts/urusin.git /opt/urusin   # atau salin folder deploy/ saja
 cd /opt/urusin/deploy
 
@@ -23,11 +24,13 @@ cd /opt/urusin/deploy
 
 # 2. Konfigurasi. File ini berisi rahasia: jangan di-commit.
 cp ../.env.example .env
-chmod 600 .env
+chmod 600 .env      # deploy.sh menolak .env/.restic-password yang bisa diakses group/others
 $EDITOR .env        # isi DOMAIN, SESSION_SECRET, LLM_*, VAPID_*, TURNSTILE_*
 ```
 
-`.env` di `/opt/urusin/deploy/.env` dibaca compose (`env_file`) dan oleh `deploy.sh`.
+`.env` di `/opt/urusin/deploy/.env` dibaca compose (`env_file`) dan oleh `deploy.sh`. Izin wajib (diperiksa
+`deploy.sh` sebelum menyentuh docker): direktori deploy paling longgar `0751` (bukan 0755/0775), `.env` dan
+`.restic-password` `0600`. Di agent-vm berkas deploy ada langsung di `/opt/urusin` (bukan subfolder `deploy/`).
 `DOMAIN` wajib dan harus host `app` salah satu set di `deploy/hosts.json`. Compose menurunkan `ORIGIN` dan
 `URUSIN_PUBLIC_ORIGIN` (`https://$DOMAIN`), `VERIFY_HOST` (`verify.$DOMAIN`) dan `FIXTURES_HOST`
 (`fixtures.$DOMAIN`); startup aplikasi menolak host di luar satu set.
@@ -41,11 +44,11 @@ diperiksa CI (`node scripts/gen-caddyfile.mjs --check`, juga `scripts/tests/gen-
 
 | Set        | Berkas                      | Host                                         |
 | ---------- | --------------------------- | -------------------------------------------- |
-| `primary`  | `Caddyfile.urusin`          | `hosts.json` `primary.app`, `primary.verify` |
+| `primary`  | `Caddyfile.urusin.primary`  | `hosts.json` `primary.app`, `primary.verify` |
 | `fallback` | `Caddyfile.urusin.fallback` | sslip (`fallback.*`), tanpa DNS sendiri      |
 
 Pemilihan host hanya terjadi di VPS: `.env` (`DOMAIN`) dan salinan snippet set yang sama di
-`/opt/urusin/Caddyfile.urusin`. Image dan ekstensi identik untuk kedua set. Isi snippet:
+`/etc/caddy/urusin/Caddyfile.urusin`. Image identik untuk kedua set. Isi snippet:
 
 - `reverse_proxy 127.0.0.1:4310 127.0.0.1:4311` dengan `lb_policy first`, health check aktif
   **`/api/ready`** tiap 2 detik (200 hanya pada warna yang dipromosikan `deploy.sh`; `/api/health` tetap liveness, tetapi **publik dijawab 404** oleh `respond /api/health* 404` karena memuat gitSha/versi/runningTurns; hanya `deploy.sh` yang membacanya lewat `127.0.0.1`), dan `lb_try_duration 5s` (permintaan yang gagal tersambung diulang ke
@@ -68,7 +71,10 @@ Langkah host (setiap perubahan Caddy = **go-ahead pengguna per kejadian**, prose
 2. Rencana read-only (boleh kapan saja): `deploy/caddy-install.sh fallback --dry-run` (atau `primary`).
    Snapshot status situs pengguna, validasi snippet dan Caddyfile host, tanpa mengubah apa pun.
 3. Setelah go-ahead: `sudo deploy/caddy-install.sh fallback`. Skrip mem-backup Caddyfile (bertimestamp),
-   memasang `/opt/urusin/Caddyfile.urusin`, menambah tepat satu `import /opt/urusin/Caddyfile.urusin`,
+   memasang snippet ke path import yang SUDAH ada di Caddyfile (tanpa import: `/etc/caddy/urusin/Caddyfile.urusin`),
+   jadi selalu tepat satu baris import snippet Urusin. VPS saat ini meng-import `/opt/urusin/Caddyfile.urusin` (milik
+   ubuntu); skrip menolak menulis ke sana sebagai root dan menyarankan
+   `TARGET=/etc/caddy/urusin/Caddyfile.urusin` (memindahkan snippet, import lama diganti). Backup ke `/var/backups/urusin-caddy/`,
    `caddy validate`, `systemctl reload caddy` (bukan restart), lalu membandingkan kode status
    gutstore.my.id, admin.gutstore.my.id dan pythia.web.id sebelum/sesudah. Berubah => rollback otomatis.
 4. Pindah set (mis. fallback -> primary setelah DNS siap): ulangi langkah 2-3 dengan set baru, ubah `DOMAIN`
@@ -346,8 +352,8 @@ Port `127.0.0.1:4320`, profil `public` (`FIXTURES_PUBLIC_ORIGIN` diisi compose m
 `https://fixtures.$DOMAIN`). Blok Caddy fixtures ada di snippet dalam bentuk **komentar** (nonaktif
 bawaan). Untuk mengaktifkan: tambahkan DNS A/AAAA host `fixtures` set itu, bangkitkan snippet dengan blok
 aktif (sudah mengirim `X-Robots-Tag: noindex, nofollow` dan `X-Site-Notice: Situs uji - bukan situs pemerintah`)
-`node scripts/gen-caddyfile.mjs --set <primary|fallback> --fixtures --out Caddyfile.urusin`, salin ke
-`/opt/urusin/Caddyfile.urusin`, `caddy validate`, lalu `systemctl reload caddy` (izin per kejadian).
+`node scripts/gen-caddyfile.mjs --set <primary|fallback> --fixtures --out /tmp/Caddyfile.urusin.fixtures`, lalu
+pasang lewat `sudo deploy/caddy-install.sh /tmp/Caddyfile.urusin.fixtures` (izin per kejadian).
 
 ## Uji skrip (tanpa Docker)
 

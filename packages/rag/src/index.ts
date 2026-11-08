@@ -20,3 +20,4 @@ export * from './ingest/state.js';
 export * from './ingest/verify.js';
 export * from './kanal.js';
 export * from './out-of-scope.js';
+export * from './searcher.js';

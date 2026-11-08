@@ -18,7 +18,7 @@ Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat
 | Jenis                                      | Cakupan                                                                                                                                                                    | Izin                                                                                                                        |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Tetap (standing), **diberikan 2026-11-08** | `deploy.sh`, rollback (otomatis di `deploy.sh` maupun manual), `restore.sh`, `backup.sh`                                                                                   | Diberikan 2026-11-08. Hanya sumber daya Urusin: kontainer dan volume `urusin-*`, `/opt/urusin`, `127.0.0.1:4310/4311/4320`. |
-| Per kejadian                               | Memasang atau mengubah snippet Caddy (`/opt/urusin/Caddyfile.urusin` dan baris `import` di `/etc/caddy/Caddyfile`), `caddy reload`                                         | Go-ahead pengguna setiap kali, lewat `deploy/caddy-install.sh` (prosedur di bawah).                                         |
+| Per kejadian                               | Memasang atau mengubah snippet Caddy (`/etc/caddy/urusin/Caddyfile.urusin` dan baris `import` di `/etc/caddy/Caddyfile`), `caddy reload`                                   | Go-ahead pengguna setiap kali, lewat `deploy/caddy-install.sh` (prosedur di bawah).                                         |
 | Tidak pernah                               | Mengedit blok situs lain di Caddy, restart Caddy, iptables/ufw/tailscale, `daemon.json`, `docker system/image prune`, kontainer/volume/network/image non-Urusin, proxy LLM | Tidak ada izin yang mencakup ini.                                                                                           |
 
 - `image-retention.sh --apply` dan `disk-alert.sh` tidak disebut dalam izin tetap. `disk-alert.sh` hanya
@@ -26,8 +26,11 @@ Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat
   pengguna menyatakan itu termasuk izin tetap; dry-run boleh kapan saja.
 - Bila DNS domain utama sudah resolve tetapi pengguna tidak bisa dihubungi untuk izin Caddy, `DOMAIN` tetap
   di set `fallback` (sslip). Pindah set butuh izin per kejadian (snippet baru + reload).
-- Agen tidak men-deploy dan tidak pernah menjalankan `caddy-install.sh` ke VPS; hanya lead, setelah
-  go-ahead. Pemeriksaan read-only (`ss -ltn`, `docker ps`, `caddy version`) tidak butuh izin.
+- Sejak 2026-11-08 (keputusan lead): satu agen `ops-sec` adalah satu-satunya yang menjalankan `deploy.sh` dan
+  mengubah `/opt/urusin/.env`; permintaan deploy lewat lead. `caddy-install.sh` tetap hanya dijalankan lead,
+  setelah go-ahead. Pemeriksaan read-only (`ss -ltn`, `docker ps`, `caddy version`) tidak butuh izin.
+- Riwayat Caddy: snippet fallback dipasang 2026-11-08 (backup `20261108T184610Z`), lalu primary
+  `urusinai.web.id` (backup `20261108T185039Z`; izin tetap pengguna mencakup pemasangan primary ini).
 
 ### Prosedur Caddy per kejadian (`deploy/caddy-install.sh`)
 
@@ -38,41 +41,53 @@ sudo deploy/caddy-install.sh fallback        # hanya setelah go-ahead pengguna (
 
 1. Snapshot kode status `https://gutstore.my.id/`, `https://admin.gutstore.my.id/` dan
    `https://pythia.web.id/` **sebelum** perubahan. `000` berarti tidak terjangkau, dan tetap dibandingkan.
-2. Backup bertimestamp `/etc/caddy/Caddyfile` (dan snippet lama bila ada) ke `/opt/urusin/caddy-backups/`
-   (chmod 700). Backup yang sudah ada tidak pernah ditimpa.
-3. Pasang snippet ke `/opt/urusin/Caddyfile.urusin`. Tambahkan `import /opt/urusin/Caddyfile.urusin` bila
-   belum ada (tepat satu baris), lalu jalankan
+2. Backup bertimestamp `/etc/caddy/Caddyfile` (dan snippet lama bila ada) ke `/var/backups/urusin-caddy/`
+   (milik root, chmod 700). Backup yang sudah ada tidak pernah ditimpa.
+3. Pasang snippet ke TARGET: path dari baris `import .../Caddyfile.urusin` yang sudah ada di Caddyfile host, atau
+   `/etc/caddy/urusin/Caddyfile.urusin` bila belum ada (`TARGET=` eksplisit menang dan mengganti import lama).
+   Hasilnya selalu tepat satu baris import snippet Urusin; lebih dari satu = galat sebelum perubahan. Direktori
+   TARGET milik pengguna lain (mis. `/opt/urusin` milik ubuntu) ditolak dengan saran `TARGET=` di atas,
+   lalu jalankan
    `caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile`. Bila gagal, backup dipulihkan dan
    Caddy tidak di-reload.
-4. Jalankan `systemctl reload caddy` (bukan restart). Tunggu `SETTLE_SECONDS` (5), lalu ambil snapshot
+   Sebelum berkas live diubah, snippet baru (sebagai berkas sementara di direktori tujuan) dan Caddyfile host
+   wajib terbaca oleh user proses Caddy (`User=` unit, biasanya `caddy`), dan `caddy validate` dijalankan sebagai
+   user itu. Insiden 2026-11-08: `/opt/urusin` berizin 0750, validate sebagai root lolos, reload gagal ("File to
+   import not found") dan rollback otomatis berjalan; perbaikannya `chmod 0751 /opt/urusin`.
+4. Jalankan `systemctl reload caddy` (bukan restart; perintah tetap, tidak dibaca dari env). Tunggu `SETTLE_SECONDS` (5), lalu ambil snapshot
    **sesudah**.
 5. Bila ada kode status yang berubah, atau reload gagal, rollback berjalan otomatis: backup dipulihkan,
    Caddy di-reload, status sesudah rollback dicetak, dan skrip keluar dengan exit 1.
 
-Snippet berisi placeholder `{$…}` ditolak. Tes: `bash deploy/tests/caddy-install.test.sh` memakai
-caddy/systemctl/curl palsu dan tidak pernah menyentuh host.
+Sumber `primary`/`fallback` adalah `deploy/Caddyfile.urusin.primary` / `.fallback`; sumber yang sama dengan TARGET
+ditolak (dulu `primary` = `Caddyfile.urusin` = TARGET lama, sehingga setelah fallback, `primary` memasang ulang
+fallback dan melapor sukses). Snippet berisi placeholder `{$…}` ditolak. Skrip berjalan sebagai root, jadi direktori snippet dan backup
+wajib milik root, bukan symlink, dan tidak bisa ditulis group/others (`/opt/urusin` milik `ubuntu`, karena itu
+snippet tidak lagi di sana). Berkas sementara dibuat dengan `mktemp` di direktori tujuan lalu di-`mv` atomik.
+Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan mengganti fungsi `reload_caddy`
+(skrip di-source); tidak pernah menyentuh host. Hanya valid di Linux (CI), karena izin berkas dan symlink diuji.
 
 ## Tulisan host
 
-| Lokasi / sumber daya                                                     | Ditulis oleh                                     | Isi                                                                                 | Catatan                                                                                    |
-| ------------------------------------------------------------------------ | ------------------------------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `/opt/urusin/`                                                           | instalasi pertama (`git clone`)                  | repo; `deploy/` dipakai di host                                                     | milik user deploy, bukan root                                                              |
-| `/opt/urusin/deploy/.env`                                                | manual (lead)                                    | rahasia produksi                                                                    | `chmod 600`; tidak pernah di-commit                                                        |
-| `/opt/urusin/deploy/.env.images`                                         | `deploy.sh` (atomik, `umask 077`)                | digest per warna, warna aktif                                                       | rollback menulis ulang dari nilai sebelumnya                                               |
-| `/opt/urusin/deploy/.env.images.history`                                 | `deploy.sh` (append)                             | waktu, warna, SHA, `repo@digest`                                                    | tidak dipangkas; sumber retensi                                                            |
-| `/opt/urusin/deploy/.env.images.keep`                                    | manual (lead)                                    | digest yang wajib disimpan (mis. rc1)                                               | dibaca `image-retention.sh`                                                                |
-| `/opt/urusin/Caddyfile.urusin`                                           | `caddy-install.sh`, izin per kejadian            | salinan `deploy/Caddyfile.urusin[.fallback]`                                        | satu-satunya file yang di-`import` Caddy                                                   |
-| `/etc/caddy/Caddyfile`                                                   | `caddy-install.sh`, per kejadian (import sekali) | satu baris `import /opt/urusin/Caddyfile.urusin`                                    | blok situs lain tidak disentuh                                                             |
-| `DOCKER_CONFIG` sementara `/tmp/urusin-docker-XXXXXX`                    | `deploy.sh` bila `GHCR_TOKEN` diset              | login GHCR (`read:packages`)                                                        | `chmod 700`, dihapus saat skrip keluar; `~/.docker` pengguna tidak disentuh                |
-| Kontainer `urusin-web-blue-1`, `urusin-web-green-1`, `urusin-fixtures-1` | `deploy.sh` (compose project `urusin`)           | web (network host, bind `127.0.0.1:4310/4311`), fixtures (bridge, `127.0.0.1:4320`) | `read_only`, `cap_drop: [ALL]`, `no-new-privileges`, batas mem/cpu/pids                    |
-| Volume `urusin_data`                                                     | compose                                          | SQLite (WAL) + penanda warna aktif `/data/.active-color`                            | penanda ditulis `deploy.sh` lewat `docker compose exec`, di dalam volume, bukan di FS host |
-| Network `urusin_default`                                                 | compose                                          | bridge untuk fixtures                                                               | web memakai network host, tidak membuat network                                            |
-| Log kontainer                                                            | Docker json-file per service                     | `max-size: 10m`, `max-file: 3` di `compose.prod.yml`                                | **bukan** `daemon.json` (mengubahnya me-restart semua kontainer)                           |
-| Image `ghcr.io/bynguts/urusin-*`                                         | `deploy.sh` (`docker pull` per digest)           | arm64                                                                               | retensi lihat di bawah                                                                     |
-| `/var/backups/urusin/` (`BACKUP_DIR`)                                    | `backup.sh` (cron)                               | `urusin-*.db.gz`, `.lock.d`, `.partial.db` sementara                                | retensi `KEEP_DAYS`; restic off-site opsional                                              |
-| `/opt/urusin/caddy-backups/`                                             | `caddy-install.sh` (izin per kejadian)           | `Caddyfile.<ts>`, `Caddyfile.urusin.<ts>`                                           | `chmod 700`; tidak pernah ditimpa                                                          |
-| `/var/log/urusin-backup.log`                                             | cron `backup.sh`                                 | log backup                                                                          |                                                                                            |
-| crontab user deploy                                                      | manual (lead)                                    | baris `backup.sh` dan `disk-alert.sh`                                               | lihat README "Backup" dan "Alert disk"                                                     |
+| Lokasi / sumber daya                                                     | Ditulis oleh                                     | Isi                                                                                 | Catatan                                                                                                                                                                   |
+| ------------------------------------------------------------------------ | ------------------------------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/opt/urusin/`                                                           | instalasi pertama (`git clone`)                  | repo; `deploy/` dipakai di host                                                     | milik user deploy, bukan root                                                                                                                                             |
+| `/opt/urusin/deploy/.env`                                                | manual (lead)                                    | rahasia produksi                                                                    | `chmod 600`; tidak pernah di-commit                                                                                                                                       |
+| `/opt/urusin/deploy/.env.images`                                         | `deploy.sh` (atomik, `umask 077`)                | digest per warna, warna aktif                                                       | rollback menulis ulang dari nilai sebelumnya                                                                                                                              |
+| `/opt/urusin/deploy/.env.images.history`                                 | `deploy.sh` (append)                             | waktu, warna, SHA, `repo@digest`                                                    | tidak dipangkas; sumber retensi                                                                                                                                           |
+| `/opt/urusin/deploy/.env.images.keep`                                    | manual (lead)                                    | digest yang wajib disimpan (mis. rc1)                                               | dibaca `image-retention.sh`                                                                                                                                               |
+| `/etc/caddy/urusin/Caddyfile.urusin`                                     | `caddy-install.sh`, izin per kejadian            | salinan `deploy/Caddyfile.urusin[.fallback]`                                        | satu-satunya file yang di-`import` Caddy; direktori milik root (VPS saat ini masih meng-import `/opt/urusin/Caddyfile.urusin`; dipindah hanya dengan `TARGET=` eksplisit) |
+| `/etc/caddy/Caddyfile`                                                   | `caddy-install.sh`, per kejadian (import sekali) | satu baris `import /etc/caddy/urusin/Caddyfile.urusin`                              | blok situs lain tidak disentuh                                                                                                                                            |
+| `DOCKER_CONFIG` sementara `/tmp/urusin-docker-XXXXXX`                    | `deploy.sh` bila `GHCR_TOKEN` diset              | login GHCR (`read:packages`)                                                        | `chmod 700`, dihapus saat skrip keluar; `~/.docker` pengguna tidak disentuh                                                                                               |
+| Kontainer `urusin-web-blue-1`, `urusin-web-green-1`, `urusin-fixtures-1` | `deploy.sh` (compose project `urusin`)           | web (network host, bind `127.0.0.1:4310/4311`), fixtures (bridge, `127.0.0.1:4320`) | `read_only`, `cap_drop: [ALL]`, `no-new-privileges`, batas mem/cpu/pids                                                                                                   |
+| Volume `urusin_data`                                                     | compose                                          | SQLite (WAL) + penanda warna aktif `/data/.active-color`                            | penanda ditulis `deploy.sh` lewat `docker compose exec`, di dalam volume, bukan di FS host                                                                                |
+| Network `urusin_default`                                                 | compose                                          | bridge untuk fixtures                                                               | web memakai network host, tidak membuat network                                                                                                                           |
+| Log kontainer                                                            | Docker json-file per service                     | `max-size: 10m`, `max-file: 3` di `compose.prod.yml`                                | **bukan** `daemon.json` (mengubahnya me-restart semua kontainer)                                                                                                          |
+| Image `ghcr.io/bynguts/urusin-*`                                         | `deploy.sh` (`docker pull` per digest)           | arm64                                                                               | retensi lihat di bawah                                                                                                                                                    |
+| `/var/backups/urusin/` (`BACKUP_DIR`)                                    | `backup.sh` (cron)                               | `urusin-*.db.gz`, `.lock.d`, `.partial.db` sementara                                | retensi `KEEP_DAYS`; restic off-site opsional                                                                                                                             |
+| `/var/backups/urusin-caddy/`                                             | `caddy-install.sh` (izin per kejadian)           | `Caddyfile.<ts>`, `Caddyfile.urusin.<ts>`                                           | milik root, `chmod 700`; tidak pernah ditimpa (`/opt/urusin/caddy-backups/` = lokasi lama)                                                                                |
+| `/var/log/urusin-backup.log`                                             | cron `backup.sh`                                 | log backup                                                                          |                                                                                                                                                                           |
+| crontab user deploy                                                      | manual (lead)                                    | baris `backup.sh` dan `disk-alert.sh`                                               | lihat README "Backup" dan "Alert disk"                                                                                                                                    |
 
 ## Retensi image
 
@@ -136,4 +151,7 @@ caddy/systemctl/curl palsu dan tidak pernah menyentuh host.
 - Isinya hanya blok situs Urusin dan snippet `(urusin_common)`, tanpa opsi global. CSP hanya dari aplikasi.
 - `/api/health*` publik dijawab `404` (memuat gitSha/versi/runningTurns). Smoke publik dan monitor memakai
   `/api/ready`; `deploy.sh` membaca `/api/health` lewat `127.0.0.1`.
+- UI membaca kemampuan server dari `/api/kemampuan`, yang publik dan berisi subset tidak sensitif: mode `llm`, status
+  `ai`/`vision`/`rag`, dan flag fitur pencarian. Endpoint ini tidak memuat sha, versi, nama model, jumlah chunk, biaya,
+  atau turn berjalan, sehingga tidak perlu aturan Caddy.
 - Setiap perubahan hanya lewat `deploy/caddy-install.sh` dengan go-ahead pengguna (prosedur di "Model izin").

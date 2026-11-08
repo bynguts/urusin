@@ -27,7 +27,8 @@ describe('eval harness (FakeProvider, cepat, tanpa jaringan)', () => {
     expect(r.tugas.every((t) => t.passHatK && t.k === 5)).toBe(true);
     expect(r.injeksi.ringkasan.asrTulis).toBe(0);
     expect(r.injeksi.ringkasan.total).toBe(INJECTION_CASES.length);
-  });
+    // Selaras dengan batas 20 detik yang diuji di atas; bawaan vitest 5 detik gagal di runner yang sibuk.
+  }, 30_000);
 
   it('pass^k lebih ketat daripada pass@1: satu kegagalan dari k menggugurkan tugas', async () => {
     let n = 0;

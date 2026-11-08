@@ -113,6 +113,7 @@ describe('kuota per-IP dan per-sesi', () => {
     expect((await buatUrusan(ev(post({}), '10.0.1.9', 'sama'))).status).toBe(429);
   });
 
+  // Batas eksplisit: tes paling lambat di berkas ini (~1-2 dtk sendirian dan di turbo paralel penuh).
   it('turn: batas per-menit per IP; permintaan yang ditolak tidak memulai turn', async () => {
     setup({ turnPerMenitIp: 1, turnPerMenitSesi: 100 });
     const u = rt.store.createUrusan();
@@ -124,5 +125,5 @@ describe('kuota per-IP dan per-sesi', () => {
     expect(
       (rt.store.db.prepare('SELECT COUNT(*) n FROM turns WHERE urusan_id = ?').get(u.id) as { n: number }).n,
     ).toBe(1);
-  });
+  }, 20_000);
 });

@@ -40,7 +40,8 @@ describe('alur normal dengan DemoProvider', () => {
     expect(data.klaim[0]!.kutipan[0]!.textFragmentUrl).toContain('#:~:text=');
     expect(env.store.getUrusanOrThrow(u.id).jenis).toBe('kelahiran');
     expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
-  });
+    // Alur penuh DemoProvider (~1 detik sendiri); di runner CI paralel bisa melewati 5 detik bawaan.
+  }, 20_000);
 
   it('sapaan: assistant_text biasa (non-persyaratan) tanpa tool', async () => {
     const env = makeEnv({ provider: new DemoProvider() });
@@ -376,6 +377,139 @@ describe('timeout, pembatalan, konkurensi', () => {
     );
     // kunci in-process dilepas saat klaim gagal
     expect(() => prepareTurn(env.deps, { urusanId: u.id, userText: 'a' })).not.toThrow();
+  });
+
+  it('rag__cari_pengetahuan: layanan teks bebas yang bukan kategori korpus tidak memaksa abstain', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        fakeCompletion({
+          toolCalls: [
+            {
+              name: 'rag__cari_pengetahuan',
+              arguments: JSON.stringify({ query: 'syarat akta kelahiran', layanan: 'akta kelahiran anak' }),
+            },
+          ],
+        }),
+        fakeCompletion({ content: 'Selesai.' }),
+      ],
+    });
+    const env = makeEnv({ provider });
+    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    advance(env, u.id, ['MEMAHAMI']);
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
+    expect(types(out.events)).not.toContain('error');
+    expect(env.store.getChunks(u.id).length).toBeGreaterThan(0);
+  });
+
+  it('catatan state tidak memisahkan assistant(tool_calls) dari hasil tool-nya (penyedia menolak: 400)', async () => {
+    const call = (name: string, args: object) => ({ name, arguments: JSON.stringify(args) });
+    const provider = new FakeProvider({
+      replies: [
+        fakeCompletion({ toolCalls: [call('rag__cari_pengetahuan', { query: 'syarat akta kelahiran' })] }),
+        fakeCompletion({
+          toolCalls: [
+            call('rag__cari_pengetahuan', { query: 'akta kelahiran terlambat' }),
+            call('rag__cari_pengetahuan', { query: 'biaya akta kelahiran' }),
+          ],
+        }),
+        fakeCompletion({ content: 'Selesai.' }),
+      ],
+    });
+    const env = makeEnv({ provider });
+    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    advance(env, u.id, ['MEMAHAMI']);
+    await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
+    const sent = provider.calls.flatMap((c) => (c.kind === 'create' ? [c.params.messages] : []));
+    expect(sent).toHaveLength(3);
+    for (const msgs of sent) {
+      msgs.forEach((m, i) => {
+        if (m.role !== 'assistant' || !m.tool_calls?.length) return;
+        const ids = m.tool_calls.map((tc) => tc.id);
+        const next = msgs.slice(i + 1, i + 1 + ids.length);
+        expect(next.map((n) => n.role)).toEqual(ids.map(() => 'tool'));
+        expect(next.map((n) => (n.role === 'tool' ? n.tool_call_id : null))).toEqual(ids);
+      });
+    }
+    // Catatan state tetap ada di setiap panggilan (sebelum grup tool terakhir).
+    for (const msgs of sent) expect(msgs.filter((m) => m.role === 'system')).toHaveLength(2);
+  });
+
+  it('rag__cari_pengetahuan: kategori sah tanpa hasil diulang tanpa filter', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        fakeCompletion({
+          toolCalls: [
+            {
+              name: 'rag__cari_pengetahuan',
+              arguments: JSON.stringify({ query: 'syarat akta kelahiran', layanan: 'samsat' }),
+            },
+          ],
+        }),
+        fakeCompletion({ content: 'Selesai.' }),
+      ],
+    });
+    const env = makeEnv({ provider });
+    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    advance(env, u.id, ['MEMAHAMI']);
+    await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
+    expect(env.store.getChunks(u.id).length).toBeGreaterThan(0);
+  });
+
+  it('rag__cari_pengetahuan: pencari produksi (ragSearch async) dipakai bila ada, dengan wilayah urusan', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        fakeCompletion({
+          toolCalls: [{ name: 'rag__cari_pengetahuan', arguments: JSON.stringify({ query: 'syarat akta' }) }],
+        }),
+        fakeCompletion({ content: 'Selesai.' }),
+      ],
+    });
+    const inputs: unknown[] = [];
+    const ragSearch = async (input: unknown) => {
+      inputs.push(input);
+      return {
+        mode: 'hybrid' as const,
+        tanpaHasil: false,
+        hasil: [
+          {
+            id: 'hybrid-1',
+            text: 'Akta kelahiran: surat keterangan lahir (hasil hybrid + rerank).',
+            skor: 0.9,
+            kutipan: { url: 'https://contoh.go.id/akta', judul: 'Akta', instansi: 'Disdukcapil' },
+            verifiedAt: '2026-11-01T00:00:00.000Z',
+            kodeWilayah: '3312',
+            layanan: 'adminduk',
+          },
+        ],
+      };
+    };
+    const env = makeEnv({ provider, ragSearch });
+    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    advance(env, u.id, ['MEMAHAMI']);
+    await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
+    expect(inputs).toEqual([{ query: 'syarat akta', kodeKabKota: '3312', k: 4 }]);
+    expect(env.store.getChunks(u.id).map((c) => c.text)).toContain(
+      'Akta kelahiran: surat keterangan lahir (hasil hybrid + rerank).',
+    );
+  });
+
+  it('rag__cari_pengetahuan: layanan ditawarkan sebagai enum kategori; nilai lain diabaikan', async () => {
+    const { ragCariPengetahuan } = await import('./builtin-tools.js');
+    const { LAYANAN_KORPUS } = await import('@urusin/rag');
+    const { z } = await import('zod');
+    const schema = z.toJSONSchema(ragCariPengetahuan.input, {
+      target: 'draft-7',
+      io: 'input',
+    }) as unknown as {
+      properties: { layanan: { enum: string[]; description: string } };
+    };
+    expect(schema.properties.layanan.enum).toEqual([...LAYANAN_KORPUS]);
+    expect(schema.properties.layanan.description).toMatch(/Kategori korpus/);
+    expect(ragCariPengetahuan.input.parse({ query: 'a', layanan: 'akta kelahiran' })).toEqual({ query: 'a' });
+    expect(ragCariPengetahuan.input.parse({ query: 'a', layanan: 'samsat' })).toEqual({
+      query: 'a',
+      layanan: 'samsat',
+    });
   });
 
   it('batas langkah: model yang terus memanggil tool berhenti di maxSteps dengan error', async () => {
