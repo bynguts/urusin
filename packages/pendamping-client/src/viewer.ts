@@ -100,6 +100,8 @@ export type ViewerOptions = {
   backoffMs?: number;
   /** Jeda minimum antar pesan pointer `move` (ms). */
   jedaGerakMs?: number;
+  /** Jeda antar potongan berkas (ms), menjaga laju di bawah batas pesan per detik pendamping. */
+  jedaPotongMs?: number;
 };
 
 export type PendampingViewer = {
@@ -179,6 +181,10 @@ export function aturInputTeks(el: HTMLInputElement | HTMLTextAreaElement, jenis:
   el.value = '';
 }
 
+/** Ukuran potongan berkas biner; sama dengan BERKAS_POTONG_BYTE di @urusin/contracts (diuji). */
+export const BERKAS_POTONG_BYTE = 36 * 1024;
+const jeda = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 function base64Dari(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
   let bin = '';
@@ -197,6 +203,7 @@ export function createPendampingViewer(
   const maxUlang = opts.maxSambungUlang ?? 6;
   const backoff = opts.backoffMs ?? 500;
   const jedaGerak = opts.jedaGerakMs ?? 16;
+  const jedaPotongMs = opts.jedaPotongMs ?? 8;
 
   const listeners = new Map<keyof ViewerEvents, Set<(v: never) => void>>();
   const emit = <K extends keyof ViewerEvents>(type: K, v: ViewerEvents[K]) => {
@@ -479,14 +486,23 @@ export function createPendampingViewer(
     akhiri: () => kirim({ type: 'akhiri' }),
     kirimVault: (isian) => kirim({ type: 'vault', isian }),
     async kirimBerkas(nama, berkas, namaBerkas) {
-      const dataBase64 = base64Dari(await berkas.arrayBuffer());
-      kirim({
-        type: 'berkas',
+      // Potongan berurutan (batas pesan WS 64 KB), diberi jeda kecil agar tidak menabrak batas laju pesan.
+      const buf = await berkas.arrayBuffer();
+      if (buf.byteLength === 0) throw new Error('berkas kosong');
+      const total = Math.max(1, Math.ceil(buf.byteLength / BERKAS_POTONG_BYTE));
+      const dasar = {
+        type: 'berkas_potong' as const,
         nama,
         namaBerkas: namaBerkas ?? (berkas as Blob & { name?: string }).name ?? nama,
         mime: berkas.type || 'application/octet-stream',
-        dataBase64,
-      });
+        ukuran: buf.byteLength,
+        total,
+      };
+      for (let indeks = 0; indeks < total; indeks++) {
+        const potong = buf.slice(indeks * BERKAS_POTONG_BYTE, (indeks + 1) * BERKAS_POTONG_BYTE);
+        kirim({ ...dasar, indeks, dataBase64: base64Dari(potong) });
+        if (indeks + 1 < total) await jeda(jedaPotongMs);
+      }
     },
     tutup() {
       ditutup = true;

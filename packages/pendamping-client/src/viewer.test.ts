@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { encodePendampingFrame } from '@urusin/contracts';
 import {
+  BERKAS_POTONG_BYTE as KONTRAK_POTONG,
+  encodePendampingFrame,
+  PendampingClientMessageSchema,
+} from '@urusin/contracts';
+import {
+  BERKAS_POTONG_BYTE,
   createPendampingViewer,
   dekodeFrameBiner,
   modifier,
@@ -35,6 +40,7 @@ class FakeWs {
   static all: FakeWs[] = [];
   readyState = 0;
   sent: Record<string, unknown>[] = [];
+  raw: string[] = [];
   closed: number | undefined;
   onopen: ((ev: unknown) => void) | null = null;
   onmessage: ((ev: { data: unknown }) => void) | null = null;
@@ -48,7 +54,10 @@ class FakeWs {
     const m = JSON.parse(d) as Record<string, unknown>;
     // ack frame dicatat terpisah agar urutan pesan lain tetap mudah diperiksa
     if (m.type === 'ack') this.acks.push(m.seq as number);
-    else this.sent.push(m);
+    else {
+      this.sent.push(m);
+      this.raw.push(d);
+    }
   }
   close(code?: number) {
     this.closed = code;
@@ -158,6 +167,7 @@ function setup(extra: Partial<ViewerOptions> = {}) {
     dpr: () => 2,
     backoffMs: 10,
     jedaGerakMs: 0,
+    jedaPotongMs: 0,
     ...extra,
   });
   return { canvas, input, viewer };
@@ -206,9 +216,12 @@ describe('createPendampingViewer', () => {
       'kembalikan',
       'akhiri',
       'vault',
-      'berkas',
+      'berkas_potong',
     ]);
     expect(ws.sent.at(-1)).toMatchObject({
+      indeks: 0,
+      total: 1,
+      ukuran: 3,
       nama: 'ktp',
       namaBerkas: 'ktp.png',
       mime: 'image/png',
@@ -326,6 +339,32 @@ describe('createPendampingViewer', () => {
     expect(viewer.koneksi).toBe('selesai');
   });
 
+  it('berkas besar dikirim berpotongan berurutan, tiap pesan sah menurut kontrak dan < 64 KB; kosong ditolak', async () => {
+    expect(BERKAS_POTONG_BYTE).toBe(KONTRAK_POTONG);
+    const { viewer } = setup();
+    await tick();
+    const ws = FakeWs.all[0]!;
+    ws.open();
+    const ukuran = BERKAS_POTONG_BYTE * 2 + 5;
+    const isi = new Uint8Array(ukuran).map((_, i) => i % 251);
+    await viewer.kirimBerkas('ktp', new Blob([isi], { type: 'image/jpeg' }), 'ktp.jpg');
+    const potong = ws.raw.slice(1);
+    expect(potong).toHaveLength(3);
+    const pesan = potong.map((r) => PendampingClientMessageSchema.parse(JSON.parse(r)));
+    expect(pesan.map((p) => p.type === 'berkas_potong' && [p.indeks, p.total, p.ukuran])).toEqual([
+      [0, 3, ukuran],
+      [1, 3, ukuran],
+      [2, 3, ukuran],
+    ]);
+    for (const r of potong) expect(r.length).toBeLessThan(64 * 1024);
+    const gabung = Buffer.concat(
+      pesan.map((p) => Buffer.from(p.type === 'berkas_potong' ? p.dataBase64 : '', 'base64')),
+    );
+    expect(gabung.equals(Buffer.from(isi))).toBe(true);
+    await expect(viewer.kirimBerkas('kk', new Blob([]))).rejects.toThrow(/kosong/);
+    viewer.tutup();
+  });
+
   it('kasus tepi: tanpa frame tidak ada input; pena tombol kanan; berkas tanpa nama/tipe; frame bertumpuk', async () => {
     const { canvas, viewer } = setup();
     await tick();
@@ -352,7 +391,14 @@ describe('createPendampingViewer', () => {
     const sent = ws.sent.slice(1);
     expect(sent[0]).toMatchObject({ jenis: 'pen', tombol: 'right' });
     expect(sent[1]).toMatchObject({ aksi: 'cancel', tombol: 'left' });
-    expect(sent.at(-1)).toMatchObject({ type: 'berkas', namaBerkas: 'kk', mime: 'application/octet-stream' });
+    expect(sent.at(-1)).toMatchObject({
+      type: 'berkas_potong',
+      namaBerkas: 'kk',
+      mime: 'application/octet-stream',
+      ukuran: 1,
+      indeks: 0,
+      total: 1,
+    });
     expect(sent).toHaveLength(3);
     viewer.tutup();
     viewer.tutup();
