@@ -41,3 +41,11 @@ Membaca gold set `data/rag-gold.json`: larik `{ id, pertanyaan, kodeWilayah?, re
 File yang ada saat ini hanya **contoh sintetis** (5 pertanyaan) untuk memperlihatkan skema; ganti dengan gold set tim
 (target recall@5 >= 90% pada 50 pertanyaan). Metrik: recall@1/3/5 (porsi referensi gold yang tercakup),
 MRR@10, nDCG@10 (relevansi biner). Opsi: `--gold`, `--db`, `--out`, `--write`.
+
+### Pipeline yang dapat dipasang
+
+`rag:eval` menerima `--pipelines berkas.json`: larik `{ "name": "...", "config": RetrievalPipeline }` dengan
+`RetrievalPipeline = { bm25?: { stemmed? }, expand?, vector?: { transform }, rerank? }`. Tiap pipeline mendapat tabel
+mode sendiri (tanpa `vector`: ablasi penuh A-D; dengan `vector.transform`: A + satu baris vektor). Tahap yang dinyalakan
+tetapi tidak punya implementasi (`PipelineStages` pada `runEval`) menjadi no-op dan dicatat di laporan, sehingga
+tahap stemming, perluasan kueri, header chunk kontekstual, dan rerank dapat ditambahkan tanpa mengubah eval.
