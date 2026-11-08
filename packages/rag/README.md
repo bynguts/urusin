@@ -32,8 +32,8 @@ pnpm rag:eval --write                        # tulis docs/rag-eval.md (mode A-D:
 pnpm rag:ingest --vector-mode center         # atau: --vector-mode whiten --vector-k 128
 ```
 
-Tanpa `--vector-mode`, ingest memakai `none`. Tanpa env LLM lengkap + `LLM_EMBED_MODEL` + probe `embeddings`
-yang lolos, ingest dan eval berjalan BM25 saja.
+Tanpa `--vector-mode`, ingest memakai `none` (hasil eval penyedia nyata di bawah: center dan whitening tidak menang di korpus ini).
+Tanpa konfigurasi embedding lengkap (`LLM_EMBED_*`), ingest dan eval berjalan BM25 saja (fallback otomatis).
 
 ## Evaluasi (`rag:eval`)
 
@@ -116,11 +116,20 @@ korpus sintetis `abstain.test.ts`; di korpus nyata ia menurunkan recall@3 5 poin
 (lihat "Korpus nyata dan gold set"). Cakupan dihitung pada top-3 hasil fusi, sehingga gerbang berlaku sama di mode `bm25` dan `hybrid` (diuji dengan embedder palsu). Ambang bisa ditimpa lewat env `RAG_ABSTAIN_MIN_COVERAGE`. Lantai cosine untuk leg vektor sengaja tidak dipakai: skor cosine tidak terkalibrasi antar model embedding. Stopword dipakai di
 semua jalur pencarian (BM25 lama, leg asli, leg ter-stem, perluasan).
 
-Leksikon layanan luar cakupan (`data/glossary/luar-cakupan.json`: SIM, SKCK, paspor, BPJS, DPT, NPWP) memaksa
+Leksikon layanan luar cakupan (`data/glossary/luar-cakupan.json`: SIM, SKCK, paspor, BPJS, DPT, NPWP, IKD) memaksa
 `alasan: di_luar_cakupan` bila kueri menyebut salah satunya dan tak ada judul chunk yang memuat nama itu (kata umum
 seperti "syarat perpanjang" bisa membuat cakupan leksikal 1.0 sendirian). STNK/BPKB tidak dimasukkan karena halaman
 Samsat ada di korpus. Di gold tuning abstain recall naik dari 41.7% ke 83.3% (presisi 100%, recall@3 tidak berubah);
 di held-out tetap 66.7% (tak ada istilah leksikon di soal luar cakupannya).
+
+### Hand-off ke kanal resmi
+
+Bila `tanpaHasil`, output tool dapat memuat `kanal` (layanan luar cakupan yang disebut kueri: instansi, deskripsi, dan
+tautan + `verifiedAt` HANYA bila terverifikasi; sumber `data/kanal-resmi.json`, `pnpm --filter @urusin/rag rag:kanal`) dan
+`kontak` (situs Disdukcapil kab/kota dari `kodeKabKota`, hanya yang `terverifikasi`; sumber
+`data/wilayah/kontak-dukcapil.json`, `pnpm --filter @urusin/rag rag:kontak`). Pemeriksa hanya GET baca-saja, menghormati
+robots.txt, maks 1 permintaan per detik; telepon dan alamat tidak pernah dikarang (alamat hanya bila tertulis di halaman
+resmi yang sama, lalu dibersihkan dari nomor telepon dan teks non-alamat).
 
 ### Korpus nyata dan gold set
 
@@ -150,6 +159,92 @@ Keterbatasan korpus yang perlu diketahui sebelum menilai angka:
 - SKCK, SIM, BPJS, Cek DPT, dan IKD umum belum ada di korpus (sumber tak terjangkau atau tak terverifikasi);
   pertanyaan tentangnya diperlakukan sebagai luar cakupan.
 - Tahap hybrid dan rerank butuh kunci embedding/LLM; tanpanya `rag:eval` hanya mengukur BM25.
+
+### Penyedia embedding dan rerank
+
+Konfigurasi terpisah dari LLM agen (lihat `.env.example`): `LLM_EMBED_BASE_URL` (bawaan `LLM_BASE_URL`),
+`LLM_EMBED_API_KEY`, `LLM_EMBED_MODEL`, `LLM_EMBED_TASK_QUERY` / `LLM_EMBED_TASK_PASSAGE` (field `task` Jina) dan
+`RERANK_BASE_URL` / `RERANK_API_KEY` / `RERANK_MODEL` (`POST /rerank`). `LLM_API_KEY` tidak pernah dikirim ke base URL
+embedding yang berbeda. Kueri dan dokumen diredaksi PII (NIK, HP, email -> `[DATA]`) sebelum SETIAP panggilan
+embedding dan rerank. Vektor dokumen di-cache per (model, task, hash teks) (`--cache` pada `matrix-cli`). Tanpa
+konfigurasi atau bila panggilan gagal, pipeline jatuh ke BM25 + stem + glosarium. Tes dan CI tidak pernah
+memanggil penyedia (fetch palsu).
+
+Reranker menerima judul sumber + teks chunk (potongan pendek seperti "Biaya: tidak ada" tak bermakna tanpa nama
+layanannya; tanpa judul reranker justru menurunkan hasil hybrid). `minRerankScore` (env
+`RAG_ABSTAIN_MIN_RERANK_SCORE`) menjadi gerbang abstain tambahan bila endpoint rerank dipakai.
+
+Evaluasi: `pnpm --filter @urusin/rag exec node dist/eval/matrix-cli.js --gold ../../data/gold/tuning.json --embed
+"jina-embeddings-v3:retrieval.query:retrieval.passage" --rerank "jina-reranker-v3" --combo "jina-embeddings-v3:retrieval.query:retrieval.passage"`
+(kredensial dari env; jangan dicetak atau di-commit).
+
+### Hasil evaluasi penyedia nyata (Jina, 2026-11-08)
+
+Seleksi dua tahap dengan aturan tetap (agar tidak menyetel belasan konfigurasi pada 50 pertanyaan): hybrid menggantikan
+BM25 hanya bila menang >= 2 pertanyaan hits@3 di tuning DAN tidak kalah di held-out; seri jatuh ke pilihan yang lebih
+sederhana/murah (BM25 atau tanpa transformasi). Angka dalam hit = pertanyaan dalam cakupan yang punya chunk relevan di
+top-3 (tuning n=38, held-out n=14). Baseline BM25 + stem + glosarium: tuning 28/38 (73.7%), MRR 0.685; held-out 11/14 (78.6%),
+MRR 0.700. Latensi = satu panggilan per kueri (p50 / p95); harga per token tidak dimasukkan (env `*_PRICE_PER_MTOK`
+tersedia untuk meter biaya, nilai Jina tak diverifikasi).
+
+**Ringkasan held-out (n=14 dalam cakupan, 6 luar cakupan), konfigurasi default:**
+
+| Pipeline                                   | hits@3 (recall@3) | abstain presisi / recall |
+| ------------------------------------------ | ----------------: | -----------------------: |
+| BM25 + stem + glosarium                    |     11/14 (78.6%) |             100% / 66.7% |
+| Hybrid (v5-omni-small, tanpa transformasi) |     13/14 (92.9%) |             100% / 66.7% |
+| Hybrid + jina-reranker-v3 + lantai 0.05    |      14/14 (100%) |              100% / 100% |
+
+Abstain di baris BM25 dan hybrid memakai gerbang leksikal 0.1 + leksikon; lantai skor rerank menambah recall abstain.
+Tuning: BM25 28/38, hybrid 35/38, hybrid + rerank v3 35/38, abstain 100% / 100%. Angka diambil dari eval 2026-11-08
+di bawah (belum diulang setelah penambahan `ikd` ke leksikon luar cakupan, yang tidak menyentuh soal gold).
+
+**Tahap 1: embedding dalam hybrid (BM25 + vektor, RRF), tanpa transformasi.**
+
+| Model (task query/passage)        | tuning hits@3 | tuning MRR |      latensi | token/kueri |
+| --------------------------------- | ------------: | ---------: | -----------: | ----------: |
+| BM25 saja                         |         28/38 |      0.685 |            - |           - |
+| jina-embeddings-v3                |         35/38 |      0.825 | 454 / 536 ms |        27.6 |
+| **jina-embeddings-v5-omni-small** |         35/38 |      0.829 | 296 / 409 ms |        21.4 |
+| jina-embeddings-v5-text-small     |         35/38 |      0.816 | 279 / 383 ms |        21.4 |
+| jina-embeddings-v4 (2048-d)       |         32/38 |      0.760 | 446 / 684 ms |        21.4 |
+
+Semua menang >= 2 hit atas BM25; v3, v5-omni dan v5-text seri (35/38), dipilih v5-omni-small (MRR tertinggi, latensi dan
+token lebih rendah). Held-out: v5-omni 13/14 (92.9%) tidak kalah dari BM25 (11/14). Tanpa field task, v5-omni turun ke 84.2%
+(32/38): task wajib dikirim.
+
+**Tahap 2: whitening, hanya untuk pemenang.** v5-omni-small: mentah 35/38 (MRR 0.829), center 34/38 (0.823), whiten k=64
+33/38 (0.740), k=128 78.9% dan k=256 56.6% recall@3. Whitening menurunkan hasil di semua model yang diuji, center tidak menang: **tanpa
+transformasi (`--vector-mode none`)**.
+
+**Tahap 3: reranker pada kandidat hybrid v5-omni** (kandidat top-20, judul + teks dikirim; kriteria: +>= 2 hit@1 di tuning
+dan tidak kehilangan hits@3 di tuning maupun held-out):
+
+| Reranker                           | tuning R@1 / hits@3 / MRR | held-out R@1 / hits@3 / MRR |      latensi | token/kueri | lolos?                  |
+| ---------------------------------- | ------------------------- | --------------------------- | -----------: | ----------: | ----------------------- |
+| tanpa rerank                       | 72.4% / 35 / 0.829        | 57.1% / 13 / 0.768          |            - |           - | -                       |
+| jina-reranker-v2-base-multilingual | 67.1% / 34 / 0.790        | 78.6% / 14 / 0.893          | 409 / 504 ms |        3806 | tidak (kalah di tuning) |
+| jina-reranker-m0                   | 75.0% / 34 / 0.836        | 78.6% / 14 / 0.893          | 533 / 830 ms |        5834 | tidak (kalah 1 hit@3)   |
+| **jina-reranker-v3**               | **82.9% / 35 / 0.891**    | 64.3% / 14 / 0.810          | 346 / 419 ms |        5655 | ya                      |
+
+Daftar yang diminta hanya v2 dan m0 (keduanya tidak lolos); v3 ikut diukur karena ada dan lolos. Rerank hanya efektif bila
+judul sumber ikut dikirim: tanpa judul, potongan pendek seperti "Biaya: tidak ada biaya/tarif" tak bermakna dan hybrid
+turun dari 92.1% ke 81.6%.
+
+**Lantai skor rerank sebagai gerbang abstain (jina-reranker-v3).** Dengan gerbang leksikal 0.1 + leksikon + lantai 0.05:
+tuning abstain presisi/recall 100% / 100% (tanpa lantai 100% / 83.3%), hits@3 tak berubah (35/38); held-out 100% / 100%
+(tanpa lantai 100% / 66.7%). Lantai 0.1 saja (tanpa gerbang lain) menurunkan hits@3 ke 34/38 dan presisi ke 91.7%, jadi
+dipilih 0.05. Skor v2 dan m0 tidak terkalibrasi untuk ini (lantai sampai 0.5 hampir tak menahan apa pun); lantai berlaku
+khusus untuk v3 dan harus dikalibrasi ulang bila model diganti.
+
+**Keandalan.** Kueri embedding dibatasi 2 detik dan rerank 3 detik, tanpa retry, dengan pemutus sirkuit (3 kegagalan
+beruntun -> lewati penyedia 30 detik -> BM25 / urutan fusi). Vektor tersimpan bersama model, dimensi dan parameter transformasi;
+kueri dengan model embedding berbeda ditolak (BM25 saja). Eval memakai retry tanpa pemutus karena mengukur kualitas.
+
+**Default** (`.env.example`): `jina-embeddings-v5-omni-small` (task `retrieval.query`/`retrieval.passage`), ingest tanpa
+transformasi, `jina-reranker-v3`, `RAG_ABSTAIN_MIN_COVERAGE=0.1`, `RAG_ABSTAIN_MIN_RERANK_SCORE=0.05`. Tanpa kunci apa pun
+pipeline tetap BM25 + stem + glosarium + gerbang leksikal/leksikon. Catatan: gerbang cakupan di eval dihitung dari BM25
+saja, produksi dari top-3 hasil fusi.
 
 ### rag:verify
 

@@ -1,32 +1,51 @@
-import { OpenAIProvider, loadLlmConfig, probeCapabilities } from '@urusin/llm';
+import type { Db } from './db.js';
+import { createBreaker } from './providers/breaker.js';
+import { createHttpEmbedder, loadEmbedConfig, withEmbedCache } from './providers/embedder.js';
+import { newStats, type ProviderStats } from './providers/http.js';
 import type { Embedder } from './vector/store.js';
 
+export const QUERY_EMBED_TIMEOUT_MS = 2000;
+
+export type RealEmbedder = {
+  /** Embedder dokumen (task passage). */
+  embed: Embedder;
+  /** Embedder kueri (task query); sama dengan `embed` bila task tidak dibedakan. */
+  embedQuery: Embedder;
+  model: string;
+  /** Statistik latensi/token panggilan kueri dan dokumen (sebelum cache). */
+  stats: { query: ProviderStats; passage: ProviderStats };
+};
+
 /**
- * Embedder nyata lewat gateway `@urusin/llm`, hanya bila env LLM lengkap, `LLM_EMBED_MODEL` diset,
- * dan probe kapabilitas `embeddings` lolos. Selain itu null => pemanggil tetap BM25-saja.
- * Sengaja tidak diekspor dari index.ts agar konsumen pustaka tidak menarik SDK LLM.
+ * Embedder nyata dari env LLM_EMBED_* (lihat `loadEmbedConfig`), hanya bila konfigurasi lengkap dan satu
+ * panggilan uji berhasil. Selain itu null => pemanggil tetap BM25-saja. `cache` (opsional) menyimpan vektor per
+ * (model, task, hash teks). Sengaja tidak diekspor dari index.ts.
  */
 export async function loadRealEmbedder(
   env: Record<string, string | undefined> = process.env,
-): Promise<{ embed: Embedder; model: string } | null> {
-  let config;
+  opts: { cache?: Db | undefined; fetch?: import('./providers/http.js').FetchFn | undefined } = {},
+): Promise<RealEmbedder | null> {
+  const cfg = loadEmbedConfig(env);
+  if (!cfg) return null;
+  const stats = { query: newStats(), passage: newStats() };
+  const mk = (
+    task: string | undefined,
+    st: ProviderStats,
+    http: { timeoutMs: number; maxRetries: number },
+  ): Embedder => {
+    const raw = createHttpEmbedder(cfg, task, { stats: st, fetch: opts.fetch, ...http });
+    return opts.cache ? withEmbedCache(raw, opts.cache, { model: cfg.model, task }) : raw;
+  };
+  // Kueri warga: batas 2 detik tanpa retry + pemutus sirkuit (jatuh ke BM25); dokumen (ingest) boleh lebih lama.
+  const breaker = createBreaker();
+  const q = mk(cfg.taskQuery, stats.query, { timeoutMs: QUERY_EMBED_TIMEOUT_MS, maxRetries: 0 });
+  const embedQuery: Embedder = (texts) => breaker.run(() => q(texts));
+  const embed = mk(cfg.taskPassage, stats.passage, { timeoutMs: 30_000, maxRetries: 2 });
   try {
-    config = loadLlmConfig(env);
+    const [v] = await createHttpEmbedder(cfg, cfg.taskQuery, { fetch: opts.fetch })(['uji']);
+    if (!v || v.length === 0) return null;
   } catch {
     return null;
   }
-  const model = config.models.embed;
-  if (!model) return null;
-  const provider = new OpenAIProvider(config);
-  const report = await probeCapabilities({
-    provider,
-    models: config.models,
-    forcedOff: config.forcedOff,
-  });
-  if (!report.flags.embeddings) return null;
-  const embed: Embedder = async (texts) => {
-    const out = await provider.embed({ model, texts });
-    return out.map((v) => Float32Array.from(v));
-  };
-  return { embed, model };
+  return { embed, embedQuery, model: cfg.model, stats };
 }

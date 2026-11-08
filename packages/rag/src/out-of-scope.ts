@@ -5,16 +5,20 @@ import type { Db } from './db.js';
 import { rawTokens } from './stem/stem.js';
 
 const PATH = new URL('../../../data/glossary/luar-cakupan.json', import.meta.url);
-const FileSchema = z.object({ layanan: z.array(z.array(z.string().min(1)).min(1)) });
+const FileSchema = z.object({
+  layanan: z.array(z.object({ id: z.string().min(1), istilah: z.array(z.string().min(1)).min(1) })),
+});
 
-let cached: readonly (readonly string[])[] | undefined;
+export type OosService = { id: string; istilah: readonly string[] };
 
-/** Kelompok alias nama layanan di luar cakupan (huruf kecil). Kosong bila berkas tidak ada. */
-export function outOfScopeTerms(): readonly (readonly string[])[] {
+let cached: readonly OosService[] | undefined;
+
+/** Layanan luar cakupan dengan alias (huruf kecil). Kosong bila berkas tidak ada. */
+export function outOfScopeServices(): readonly OosService[] {
   if (!cached) {
     try {
       const j = FileSchema.parse(JSON.parse(readFileSync(fileURLToPath(PATH), 'utf8')));
-      cached = j.layanan.map((g) => g.map((t) => t.toLowerCase()));
+      cached = j.layanan.map((g) => ({ id: g.id, istilah: g.istilah.map((t) => t.toLowerCase()) }));
     } catch {
       cached = [];
     }
@@ -24,17 +28,37 @@ export function outOfScopeTerms(): readonly (readonly string[])[] {
 
 const words = (s: string) => ` ${rawTokens(s).join(' ').toLowerCase()} `;
 
-/**
- * Istilah layanan luar cakupan (mis. "SIM", "SKCK") yang disebut kueri dan tidak muncul di judul chunk
- * mana pun; null bila tidak ada. Jika judul korpus memuat istilah itu, layanannya ada di korpus.
- */
-export function outOfScopeNoun(db: Db, query: string): string | null {
+/** Layanan luar cakupan yang disebut kueri (tanpa memeriksa judul korpus); null bila tidak ada. */
+export function mentionedService(query: string): OosService | null {
   const q = words(query);
-  const group = outOfScopeTerms().find((g) => g.some((t) => q.includes(` ${t} `)));
+  return outOfScopeServices().find((g) => g.istilah.some((t) => q.includes(` ${t} `))) ?? null;
+}
+
+/** Kueri tanpa alias layanan tersebut (sisanya = sinyal layanan dalam cakupan, bila ada). */
+export function withoutService(query: string, g: OosService): string {
+  const drop = new Set(g.istilah.flatMap((t) => t.split(' ')));
+  return rawTokens(query)
+    .filter((t) => !drop.has(t.toLowerCase()))
+    .join(' ');
+}
+
+/**
+ * Layanan luar cakupan (mis. "SIM", "SKCK") yang disebut kueri dan tidak muncul di judul chunk mana pun;
+ * null bila tidak ada. Jika judul korpus memuat salah satu aliasnya, layanannya ada di korpus.
+ */
+export function outOfScopeService(db: Db, query: string): OosService | null {
+  const group = mentionedService(query);
   if (!group) return null;
   const titles = (db.prepare('SELECT DISTINCT judul FROM chunks').all() as { judul: string }[]).map((r) =>
     words(r.judul),
   );
-  if (titles.some((t) => group.some((a) => t.includes(` ${a} `)))) return null;
-  return group.find((t) => q.includes(` ${t} `)) ?? null;
+  return titles.some((t) => group.istilah.some((a) => t.includes(` ${a} `))) ? null : group;
+}
+
+/** Alias kompatibel: istilah pertama yang disebut kueri, atau null. */
+export function outOfScopeNoun(db: Db, query: string): string | null {
+  const g = outOfScopeService(db, query);
+  if (!g) return null;
+  const q = words(query);
+  return g.istilah.find((t) => q.includes(` ${t} `)) ?? null;
 }
