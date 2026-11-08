@@ -6,7 +6,7 @@
 #   Contoh (dua arah blue->green->blue):  zero-downtime.sh abc1234@sha256:... def5678@sha256:...
 #
 # Variabel (opsional):
-#   URL            yang ditembak (default https://$DOMAIN/api/health, DOMAIN dari deploy/.env)
+#   URL            yang ditembak (default https://$DOMAIN/, DOMAIN dari deploy/.env; /api/health publik 404)
 #   RPS            perkiraan permintaan per detik (default 20)
 #   MAX_FAILURES   batas respons gagal yang masih lulus (default 0)
 #   TIMEOUT        detik per permintaan (default 5)
@@ -32,7 +32,7 @@ command -v curl >/dev/null || die "curl tidak ditemukan"
 if [ -z "${URL:-}" ]; then
   domain="$(sed -n 's/^DOMAIN=//p' "$DEPLOY_DIR/.env" 2>/dev/null | head -n1 | tr -d "\"' \r")"
   [ -n "$domain" ] || die "set URL atau DOMAIN di deploy/.env"
-  URL="https://${domain}/api/health"
+  URL="https://${domain}/"
 fi
 interval="$(awk -v r="$RPS" 'BEGIN { printf "%.3f", 1 / r }')"
 

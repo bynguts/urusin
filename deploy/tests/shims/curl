@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# curl palsu: /api/health lokal per warna, dan "publik" (https) mengikuti warna pertama yang hidup.
+# curl palsu: /api/health lokal per warna; publik hanya /api/ready (mengikuti warna yang dipromosikan),
+# /api/health publik dijawab 404 seperti snippet Caddy.
 url="${*: -1}"
 echo "curl $*" >> "$SHIM_DIR/calls.log"
-body() { printf '{"ok":true,"status":"ok","gitSha":"%s","version":"0.0.0"}' "$(cat "$SHIM_DIR/running.$1")"; }
+body() { printf '{"ok":true,"status":"ok","gitSha":"%s","version":"0.0.0"%s}' "$(cat "$SHIM_DIR/running.$1")" "${SHIM_TURNS:+,\"runningTurns\":$SHIM_TURNS}"; }
 case "$url" in
   https://zd.test/*) if [ -n "${SHIM_ZD_FAIL:-}" ]; then echo 503; else echo 200; fi; exit 0 ;;
   http://127.0.0.1:431[01]/api/ready)
@@ -13,12 +14,14 @@ case "$url" in
   http://127.0.0.1:4310/api/health) [ -f "$SHIM_DIR/running.blue" ] && { body blue; exit 0; }; exit 7 ;;
   http://127.0.0.1:4311/api/health) [ -f "$SHIM_DIR/running.green" ] && { body green; exit 0; }; exit 7 ;;
   https://verify.*) [ -z "${SHIM_PUBLIC_FAIL:-}" ] || exit 60; echo 200; exit 0 ;;
-  https://*/api/health)
+  https://*/api/health) echo "${SHIM_PUBLIC_HEALTH_CODE:-404}"; exit 0 ;; # Caddy: respond /api/health 404
+  https://*/api/ready)
     [ -z "${SHIM_PUBLIC_FAIL:-}" ] || exit 60
-    # Caddy (`/api/ready`): ikut warna yang dipromosikan; tanpa penanda (layout lama) warna pertama yang hidup.
+    # Caddy (`health_uri /api/ready`): ikut warna yang dipromosikan; tanpa penanda, warna pertama yang hidup.
     p="$(cat "$SHIM_DIR/promoted" 2>/dev/null)"
-    if [ -n "$p" ]; then [ -f "$SHIM_DIR/running.$p" ] && { body "$p"; exit 0; }; exit 22; fi
-    for c in blue green; do [ -f "$SHIM_DIR/running.$c" ] && { body "$c"; exit 0; }; done
+    ready() { printf '{"ready":true,"color":"%s"}' "$1"; }
+    if [ -n "$p" ]; then [ -f "$SHIM_DIR/running.$p" ] && { ready "$p"; exit 0; }; exit 22; fi
+    for c in blue green; do [ -f "$SHIM_DIR/running.$c" ] && { ready "$c"; exit 0; }; done
     exit 22 ;;
 esac
 exit 1

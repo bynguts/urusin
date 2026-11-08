@@ -1,3 +1,4 @@
+import { ingestEgressFetch } from '@urusin/egress';
 import type { Db } from '../db.js';
 import { PoliteFetcher, RobotsBlockedError, type Deps } from './fetcher.js';
 import type { SourceEntry } from './sources.js';
@@ -23,7 +24,7 @@ export type VerifyOptions = {
  */
 export async function runVerify(opts: VerifyOptions): Promise<VerifyReport[]> {
   const deps: Deps = opts.deps ?? {
-    fetch: (url, init) => fetch(url, init),
+    fetch: ingestEgressFetch,
     now: () => Date.now(),
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
   };

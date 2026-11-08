@@ -25,6 +25,7 @@ import {
 import { openDb } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { RateLimiter } from './limiter.js';
+import { setRunningTurnsSource } from './running-turns.js';
 
 /** Konfigurasi runtime dari env (dibaca sekali saat boot). Semua opsional kecuali yang bertanda. */
 export type RuntimeConfig = {
@@ -101,6 +102,8 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     h.bus.publish(urusanId, ev);
     return ev;
   };
+  const running = new Map<string, AbortController>();
+  setRunningTurnsSource(() => running.size);
   const jam = 3_600_000;
   const menit = 60_000;
   const limits: Runtime['limits'] = {
@@ -113,7 +116,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
       sesi: new RateLimiter(config.turnPerMenitSesi, menit),
     },
   };
-  return { ...h, config, mode: init.mode ?? 'demo', running: new Map(), publish, limits };
+  return { ...h, config, mode: init.mode ?? 'demo', running, publish, limits };
 }
 
 function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {

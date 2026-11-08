@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { violationCounts } from '#lib/server/csp-report.js';
+import { runningTurns } from '#lib/server/running-turns.js';
 import { appVersion, gitSha } from '#lib/server/build-info.js';
 import type { RequestHandler } from './$types';
 
@@ -14,6 +15,8 @@ export const GET: RequestHandler = () =>
       version: appVersion(),
       // Diisi modul RAG (M20) kelak; sampai ada, tidak diinisialisasi.
       rag: { status: 'uninitialized' },
+      // Turn agen yang sedang berjalan; deploy.sh menunggu 0 sebelum menghentikan warna lama.
+      runningTurns: runningTurns(),
       // Hitungan pelanggaran CSP per direktif sejak proses start (tanpa isi laporan).
       csp: { violations: violationCounts() },
     },

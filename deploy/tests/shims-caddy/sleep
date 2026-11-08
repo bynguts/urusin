@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# sleep palsu: tes tidak menunggu.
+exit 0
