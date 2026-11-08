@@ -173,3 +173,47 @@ describe('upload dan permohonan', () => {
     expect(await read()).toContain('Baru diajukan (data uji)');
   });
 });
+
+describe('tiruan halaman tantangan bot (uji verifikasi situs)', () => {
+  const tekan = (app: ReturnType<typeof make>, kembali: string) =>
+    app.request(`${ORIGIN}/cdn-cgi/challenge-platform/uji/`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ kembali }),
+    });
+
+  it('tanpa cookie: 403 + cf-mitigated + judul interstitial + iframe widget; widget boleh dibingkai sendiri', async () => {
+    const app = make();
+    const res = await app.request(`${ORIGIN}/uji-cf/`);
+    expect(res.status).toBe(403);
+    expect(res.headers.get('cf-mitigated')).toBe('challenge');
+    expect(res.headers.get('content-security-policy')).toContain("frame-ancestors 'none'");
+    const t = await res.text();
+    expect(t).toContain('<title>Just a moment... (fixture)</title>');
+    expect(t).toContain('src="/cdn-cgi/challenge-platform/uji/?kembali=%2Fuji-cf%2F"');
+    const w = await app.request(`${ORIGIN}/cdn-cgi/challenge-platform/uji/?kembali=%2Fuji-cf%2F`);
+    expect(w.status).toBe(200);
+    expect(w.headers.get('content-security-policy')).toContain("frame-ancestors 'self'");
+    expect(await w.text()).toContain('id="saya-manusia"');
+    expect((await app.request(`${ORIGIN}/cdn-cgi/challenge-platform/uji/?kembali=https://x`)).status).toBe(
+      400,
+    );
+  });
+
+  it('ketukan diterima -> cookie lolos -> halaman cek status; varian gagal selalu kembali ke tantangan', async () => {
+    const app = make();
+    const ok = await tekan(app, '/uji-cf/');
+    expect(ok.status).toBe(303);
+    expect(ok.headers.get('location')).toBe('/uji-cf/');
+    const cookie = (ok.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+    const lolos = await app.request(`${ORIGIN}/uji-cf/`, { headers: { cookie } });
+    expect(lolos.status).toBe(200);
+    expect(await lolos.text()).toContain('id="nopol"');
+
+    const gagal = await tekan(app, '/uji-cf/gagal/');
+    expect(gagal.headers.get('set-cookie')).toBeNull();
+    const lagi = await app.request(`${ORIGIN}/uji-cf/gagal/`, { headers: { cookie } });
+    expect(lagi.status).toBe(403);
+    expect((await tekan(app, '//evil.example/')).status).toBe(400);
+  });
+});

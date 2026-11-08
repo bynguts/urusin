@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { secureHeaders } from 'hono/secure-headers';
+import { JALUR_WIDGET, registerUjiCf } from './cf.js';
 import type { Config } from './config.js';
 import { html, page } from './layout.js';
 import { registerPoisoned } from './poisoned.js';
@@ -32,8 +33,7 @@ export function createApp(config: Config) {
   const secure = config.publicOrigin?.startsWith('https://') === true;
   const cookieName = secure ? '__Host-fx_session' : 'fx_session';
 
-  app.use(
-    '*',
+  const keamanan = (frameAncestors: string[]) =>
     secureHeaders({
       // same-origin (bukan no-referrer): no-referrer membuat Chrome mengirim "Origin: null" pada POST form.
       referrerPolicy: 'same-origin',
@@ -42,10 +42,13 @@ export function createApp(config: Config) {
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:'],
         formAction: ["'self'"],
-        frameAncestors: ["'none'"],
+        frameAncestors,
       },
-    }),
-  );
+    });
+  const ketat = keamanan(["'none'"]);
+  // Widget tantangan tiruan dimuat dalam iframe halaman fixture sendiri (X-Frame-Options bawaan SAMEORIGIN).
+  const widget = keamanan(["'self'"]);
+  app.use('*', (c, next) => (c.req.path.startsWith(JALUR_WIDGET) ? widget(c, next) : ketat(c, next)));
   app.use('*', async (c, next) => {
     await next();
     c.header('X-Robots-Tag', 'noindex, nofollow');
@@ -76,6 +79,7 @@ export function createApp(config: Config) {
             <li><a href="${BASE}/welcome/permohonan">Daftar permohonan</a></li>
             <li><a href="/sby/">Replika Klampid Surabaya (publik)</a></li>
             <li><a href="/smg/">Replika Si D'nOK Semarang (publik)</a></li>
+            <li><a href="/uji-cf/">Tiruan halaman tantangan bot (uji verifikasi situs)</a></li>
           </ul>`,
       ),
     ),
@@ -270,6 +274,7 @@ export function createApp(config: Config) {
   // Replika alur publik read-only (jinak, ada di kedua profil).
   registerSurabaya(app);
   registerSemarang(app, { secure });
+  registerUjiCf(app);
 
   // Rute berbahaya: terdaftar HANYA di profil local (placeholder), tidak ada sama sekali di public (404).
   if (config.profile === 'local') {
