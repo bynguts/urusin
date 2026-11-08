@@ -16,7 +16,6 @@ export type RunnerOp =
     }
   | { kind: 'upload'; target: Target; file: UploadFile }
   | { kind: 'rect'; target: Target }
-  | { kind: 'text'; maxChars: number }
   | { kind: 'check'; check: Check; baseline?: number | undefined }
   | { kind: 'wait'; check: Check; timeoutMs: number; baseline?: number | undefined }
   | { kind: 'count'; target: Target }
@@ -282,8 +281,6 @@ export async function runOp(
         return uploadFile(doc, op.target, op.file);
       case 'rect':
         return rectOf(doc, op.target);
-      case 'text':
-        return { ok: true, value: ((doc.body as HTMLElement | null)?.innerText ?? '').slice(0, op.maxChars) };
       case 'check':
         return { ok: true, value: evalCheck(doc, op.check, op.baseline) };
       case 'wait':

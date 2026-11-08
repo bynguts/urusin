@@ -216,15 +216,13 @@ describe('ekstensi eksekutor: select, upload, rect, text, elemen khusus warga', 
     });
   });
 
-  it('rect dan text', async () => {
+  it('rect', async () => {
     body('<button id="b">Kirim</button><p>Halo dunia</p>');
     expect(await runOp({ kind: 'rect', target: [css('#b')] })).toMatchObject({
       ok: true,
       value: { x: expect.any(Number), lebar: expect.any(Number) },
     });
     expect(await runOp({ kind: 'rect', target: [css('#none')] })).toMatchObject({ code: 'ADAPTER_DRIFT' });
-    const t = await runOp({ kind: 'text', maxChars: 5 });
-    expect(t.ok && typeof t.value === 'string' && t.value.length <= 5).toBe(true);
   });
 
   it('klik ke elemen khusus warga (highlight gate.human) ditolak walau effect read', async () => {
