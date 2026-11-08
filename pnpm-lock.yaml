@@ -109,6 +109,9 @@ importers:
       '@urusin/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@urusin/egress':
+        specifier: workspace:*
+        version: link:../../packages/egress
       '@urusin/harness':
         specifier: workspace:*
         version: link:../../packages/harness
