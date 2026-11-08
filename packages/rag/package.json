@@ -22,6 +22,7 @@
     "coverage": "vitest run --coverage",
     "rag:ingest": "tsc -p tsconfig.build.json && node dist/ingest/cli.js",
     "rag:eval": "tsc -p tsconfig.build.json && node dist/eval/cli.js",
+    "rag:eval-agent": "tsc -p tsconfig.build.json && node dist/eval/agent-cli.js",
     "rag:verify": "tsc -p tsconfig.build.json && node dist/ingest/verify-cli.js",
     "rag:kanal": "tsc -p tsconfig.build.json && node dist/ingest/kanal-cli.js",
     "rag:kontak": "tsc -p tsconfig.build.json && node dist/ingest/kontak-cli.js"

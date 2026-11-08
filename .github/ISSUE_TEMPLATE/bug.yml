@@ -11,7 +11,7 @@ body:
     id: komponen
     attributes:
       label: Komponen
-      options: [web, ekstensi, fixtures, core, llm, registry, rag, deploy, dokumentasi]
+      options: [web, pendamping, fixtures, core, llm, registry, rag, deploy, dokumentasi]
     validations:
       required: true
   - type: textarea

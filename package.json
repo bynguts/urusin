@@ -21,6 +21,7 @@
     "audit:timeline": "node scripts/audit-history.mjs --timeline",
     "rag:ingest": "pnpm --filter @urusin/rag rag:ingest",
     "rag:eval": "pnpm --filter @urusin/rag rag:eval",
+    "rag:eval-agent": "pnpm --filter @urusin/rag rag:eval-agent",
     "rag:verify": "pnpm --filter @urusin/rag rag:verify",
     "pii:scan": "node scripts/pii-scan.mjs --all",
     "prepare": "husky",

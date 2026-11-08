@@ -1,3 +1,4 @@
+import type { RagSearcher } from '@urusin/rag';
 import { z } from 'zod';
 import type { CapabilityFlags, ChatProvider, ChatTool, Usage } from '@urusin/llm';
 import type { Db } from './db.js';
@@ -29,6 +30,8 @@ export type ToolDeps = {
   caps: CapabilityFlags;
   /** Basis pengetahuan RAG (opsional; tanpa ini tool retrieval mengembalikan "tanpa hasil"). */
   ragDb?: Db | undefined;
+  /** Pencari produksi (hybrid + rerank, @urusin/rag createRagSearcher); tanpa ini BM25 sinkron atas ragDb. */
+  ragSearch?: RagSearcher['search'] | undefined;
   now: () => Date;
 };
 

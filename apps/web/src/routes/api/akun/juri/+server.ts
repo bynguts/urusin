@@ -14,7 +14,7 @@ export const POST: RequestHandler = async (event) => {
   try {
     const rt = await getRuntime();
     const akun = await masukJuri(rt, event, body.data.turnstile);
-    return apiJson({ akun: akunPublik(rt, akun), next: '/' });
+    return apiJson({ akun: akunPublik(rt, akun), next: '/beranda' });
   } catch (e) {
     return akunErrorResponse(e);
   }

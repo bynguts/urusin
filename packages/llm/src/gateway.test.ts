@@ -230,8 +230,6 @@ describe('larangan SDK vendor lain', () => {
             '.svelte-kit',
             '.turbo',
             '.git',
-            '.wxt',
-            '.output',
             'test-results',
             'playwright-report',
           ].includes(name)

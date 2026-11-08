@@ -1,6 +1,6 @@
 # Produksi (VPS arm64/amd64). Jalankan lewat deploy/deploy.sh; jangan `up` manual tanpa .env.images.
 # Caddy sistem (host) meneruskan host app dan verify (literal, dari deploy/hosts.json) ke 4310 (web-blue)
-# dan 4311 (web-green) dengan `lb_policy first` (lihat Caddyfile.urusin).
+# dan 4311 (web-green) dengan `lb_policy first` (lihat Caddyfile.urusin.primary).
 #
 # JARINGAN: web memakai `network_mode: host` dan mengikat HANYA 127.0.0.1:<port> (HOST=127.0.0.1).
 # Alasan: proxy LLM di host mendengarkan 0.0.0.0:20128, tetapi iptables INPUT men-DROP 20128 dari

@@ -74,6 +74,6 @@ export const actions: Actions = {
     } catch (e) {
       return gagalForm(e);
     }
-    redirect(303, '/');
+    redirect(303, '/beranda');
   },
 };

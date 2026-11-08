@@ -1,6 +1,6 @@
 # 0011. Host permissions ekstensi statis, dihasilkan dari registry domain resmi
 
-- **Status:** Diterima. Terimplementasi di `apps/extension/wxt.config.ts` dan `packages/core/src/registry.ts`.
+- **Status:** Digantikan (2026-11-09). Ekstensi dihapus dari repositori; eksekutor kini Browser Pendamping (Chromium di server per sesi warga). Isi di bawah dipertahankan sebagai catatan keputusan.
 - **Dicatat:** 2026-11-08
 - **Sumber keputusan:** rencana D11 (§1.3, §10)
 

@@ -11,7 +11,7 @@ Jangan membuka issue publik untuk kerentanan. Laporkan secara privat lewat salah
 1. Tab **Security** di repositori GitHub ini, tombol **Report a vulnerability** (laporan privat ke pengelola).
 2. Email ke `muhammadbibin70@gmail.com` dengan subjek diawali `[urusin-security]`.
 
-Sertakan: komponen yang terdampak (web, ekstensi, fixtures, paket), langkah mereproduksi, dampak yang Anda
+Sertakan: komponen yang terdampak (web, Browser Pendamping, fixtures, paket), langkah mereproduksi, dampak yang Anda
 perkirakan, dan versi (`v<sha7>` di footer aplikasi atau SHA commit). **Jangan melampirkan data pribadi nyata**
 (NIK, KK, nomor HP, alamat, foto dokumen). Gunakan data karangan.
 
@@ -22,10 +22,10 @@ Kami berusaha membalas dalam beberapa hari kerja. Ini proyek tim kecil: kami tid
 
 Dalam cakupan:
 
-- Kode di repositori ini: `apps/web`, `apps/extension`, `apps/fixtures`, `packages/*`, dan `deploy/`.
+- Kode di repositori ini: `apps/web`, `apps/fixtures`, `packages/*`, dan `deploy/`.
 - Instansi yang berjalan dari image yang dibangun repositori ini, misalnya kebocoran data pribadi lewat server
   atau log, pembobolan guard placeholder (`noPlaceholder()`), pelolosan registry domain resmi (origin
-  lookalike), pelanggaran gate kedua ekstensi, injeksi prompt yang menyebabkan aksi tulis tanpa persetujuan
+  lookalike), pelanggaran gate kedua Browser Pendamping, injeksi prompt yang menyebabkan aksi tulis tanpa persetujuan
   warga, kebocoran rahasia, atau kelemahan CSP/CSRF.
 
 Di luar cakupan:
@@ -63,7 +63,7 @@ Do not open a public issue for a vulnerability. Report it privately through one 
 1. The **Security** tab of this GitHub repository, **Report a vulnerability** (private report to the maintainers).
 2. Email `muhammadbibin70@gmail.com` with a subject starting with `[urusin-security]`.
 
-Include: the affected component (web, extension, fixtures, packages), reproduction steps, your estimate of the
+Include: the affected component (web, Browser Pendamping, fixtures, packages), reproduction steps, your estimate of the
 impact, and the version (`v<sha7>` in the app footer, or the commit SHA). **Do not attach real personal data**
 (national ID numbers, family card numbers, phone numbers, addresses, document photos). Use made-up data.
 
@@ -74,10 +74,10 @@ We will credit you in the fix notes if you wish.
 
 In scope:
 
-- Code in this repository: `apps/web`, `apps/extension`, `apps/fixtures`, `packages/*`, and `deploy/`.
+- Code in this repository: `apps/web`, `apps/fixtures`, `packages/*`, and `deploy/`.
 - Instances running images built from this repository, for example personal-data leaks through the server or
   logs, bypassing the placeholder guard (`noPlaceholder()`), getting past the official-domain registry
-  (lookalike origins), violating the extension's second gate, prompt injection that causes a write action
+  (lookalike origins), violating the Browser Pendamping second gate, prompt injection that causes a write action
   without the citizen's approval, secret leaks, or CSP/CSRF weaknesses.
 
 Out of scope:

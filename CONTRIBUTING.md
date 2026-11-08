@@ -76,14 +76,14 @@ pnpm turbo run lint typecheck test build   # semuanya harus hijau sebelum PR
 pnpm format:check                          # Prettier; perbaiki dengan `pnpm format`
 pnpm coverage                              # coverage vitest v8 per paket + tabel ringkasan
 pnpm budget                                # JS awal beranda <= 70 KB gzip (setelah build)
-pnpm e2e                                   # Playwright (ekstensi + fixture + web app)
+pnpm e2e                                   # Playwright (web app)
 ```
 
 - Tes unit memakai Vitest (`*.test.ts`), skrip repositori memakai `node:test` (`pnpm test:scripts`).
 - Tes properti memakai `fast-check` (lihat `packages/core/src/properties.test.ts`). Bila sebuah properti gagal,
   fast-check mencetak `seed` dan counterexample yang bisa diputar ulang; jangan melemahkan properti untuk meloloskannya.
 - E2E: sekali per mesin jalankan `npx playwright install chromium`. E2E hanya menyentuh fixture lokal, tidak pernah
-  situs pemerintah asli. Rincian di [`apps/extension/README.md`](apps/extension/README.md).
+  situs pemerintah asli. Rincian di [`apps/web/playwright.config.ts`](apps/web/playwright.config.ts).
 - Coverage punya ambang per paket di `packages/*/vitest.config.ts`. Menurunkan ambang butuh alasan di PR.
 
 ## Pull request

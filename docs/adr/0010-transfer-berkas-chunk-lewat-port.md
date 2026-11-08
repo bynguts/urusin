@@ -1,6 +1,6 @@
 # 0010. Transfer berkas ke ekstensi lewat chunk base64 pada port dengan verifikasi SHA-256
 
-- **Status:** Diterima. Belum diimplementasikan.
+- **Status:** Digantikan (2026-11-09). Ekstensi dihapus dari repositori; eksekutor kini Browser Pendamping (Chromium di server per sesi warga). Isi di bawah dipertahankan sebagai catatan keputusan.
 - **Dicatat:** 2026-11-08
 - **Sumber keputusan:** rencana D10 (§1.3, §10)
 

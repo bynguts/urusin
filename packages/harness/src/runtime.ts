@@ -1,3 +1,4 @@
+import type { RagSearcher } from '@urusin/rag';
 import { ALL_ON, type CapabilityFlags, type ChatProvider, type Prices } from '@urusin/llm';
 import { redactingProvider } from './guarded-llm.js';
 import type { AgentDeps } from './agent.js';
@@ -21,6 +22,8 @@ export type HarnessOptions = {
   db?: Db;
   /** Basis pengetahuan RAG untuk tool retrieval. */
   ragDb?: Db;
+  /** Pencari produksi (hybrid + rerank) atas ragDb; tanpa ini retrieval BM25 sinkron. */
+  ragSearch?: RagSearcher['search'];
   tools?: readonly ToolDef[];
   /** Rahasia HMAC pemetaan placeholder PII (lihat `StoreOptions.piiKey`). */
   piiKey?: string;
@@ -48,6 +51,7 @@ export function createHarness(opts: HarnessOptions) {
     quota,
     tracer: new Tracer(store),
     ragDb: opts.ragDb,
+    ragSearch: opts.ragSearch,
     bus,
     config: opts.config,
     now,

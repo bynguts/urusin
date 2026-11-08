@@ -245,7 +245,7 @@ test('#45 Turnstile setelah 3 gagal, kunci setelah 5, pesan identik; juri butuh 
     .locator('form[data-juri] input[name="turnstile"]')
     .evaluate((el, v) => ((el as HTMLInputElement).value = v), TURNSTILE);
   await page.getByRole('button', { name: 'Masuk sebagai juri' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/beranda$/);
   expect((await sesiApi(page)).akun).toMatchObject({ jenis: 'demo', email: null });
   for (let i = 0; i < 2; i++)
     expect((await api(page, 'POST', '/api/akun/juri', { turnstile: TURNSTILE })).status).toBe(200);
@@ -333,7 +333,7 @@ test('#47 coba tanpa daftar: menjelajah tidak membuat baris; juri terisolasi; da
   await page.goto('/');
   await page.goto('/masuk');
   await page.getByRole('link', { name: 'Coba tanpa daftar' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/beranda$/);
   expect((await sesiApi(page)).masuk).toBe(false);
   const v = await api(page, 'GET', '/api/vault');
   expect([v.status, v.json.pemilik, v.json.dataDiri.ada]).toEqual([200, 'tamu', false]);
@@ -377,7 +377,7 @@ test('#47 coba tanpa daftar: menjelajah tidak membuat baris; juri terisolasi; da
 /** Mulai "Masuk dengan Google" lalu kembalikan URL layar persetujuan IdP tiruan. */
 async function mulaiGoogle(page: Page): Promise<string> {
   await page.goto('/masuk');
-  await page.getByRole('button', { name: 'Masuk dengan Google' }).click();
+  await page.getByRole('button', { name: 'Lanjutkan dengan Google' }).click();
   await expect(page).toHaveURL(/\/dev\/oidc\/authorize\?/);
   return page.url();
 }

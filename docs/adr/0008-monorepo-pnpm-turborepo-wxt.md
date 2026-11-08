@@ -1,6 +1,6 @@
 # 0008. Monorepo pnpm + Turborepo dengan WXT untuk ekstensi
 
-- **Status:** Diterima. Terimplementasi.
+- **Status:** Diterima. pnpm + Turborepo terimplementasi; WXT tidak dipakai lagi sejak ekstensi dihapus (2026-11-09).
 - **Dicatat:** 2026-11-08
 - **Sumber keputusan:** rencana D8 (§1.3, §10)
 

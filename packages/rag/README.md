@@ -199,6 +199,20 @@ Abstain di baris BM25 dan hybrid memakai gerbang leksikal 0.1 + leksikon; lantai
 Tuning: BM25 28/38, hybrid 35/38, hybrid + rerank v3 35/38, abstain 100% / 100%. Angka diambil dari eval 2026-11-08
 di bawah (belum diulang setelah penambahan `ikd` ke leksikon luar cakupan, yang tidak menyentuh soal gold).
 
+**Jalur agen (yang di-deploy).** Tool agen `rag__cari_pengetahuan` / `dukcapil__cek_persyaratan` memakai `createRagSearcher`
+(BM25 stem + glosarium + vektor RRF + rerank endpoint + gerbang abstain, env yang sama dengan produksi, k=4).
+`pnpm rag:eval-agent --db <rag.db> --gold ../../data/gold/heldout.json --gold ../../data/gold/tuning.json --strict`
+mengukur jalur itu langsung, dan `--strict` gagal bila ada pertanyaan yang jatuh ke fallback. Hasil 2026-11-09 pada DB
+yang di-deploy (v5-omni-small, jina-reranker-v3, lantai 0.05, cakupan 0.1):
+
+| Jalur agen                 | held-out R@1 / R@3 / MRR@4 | held-out abstain P / R | tuning R@1 / R@3 / MRR@4 | tuning abstain P / R |
+| -------------------------- | -------------------------- | ---------------------: | ------------------------ | -------------------: |
+| tanpa env penyedia (BM25)  | 57.1% / 78.6% / 0.679      |           100% / 66.7% | 56.6% / 73.7% / 0.645    |         100% / 83.3% |
+| hybrid + rerank (produksi) | 71.4% / 100% / 0.845       |            100% / 100% | 82.9% / 89.5% / 0.875    |          100% / 100% |
+
+Semua 70 pertanyaan berjalan di mode hybrid. Rerank endpoint dipanggil pada 57 pertanyaan, dan tidak ada yang jatuh ke
+fallback. Sisanya sudah diabstain oleh gerbang cakupan sebelum rerank.
+
 **Tahap 1: embedding dalam hybrid (BM25 + vektor, RRF), tanpa transformasi.**
 
 | Model (task query/passage)        | tuning hits@3 | tuning MRR |      latensi | token/kueri |

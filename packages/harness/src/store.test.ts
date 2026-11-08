@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { findGuardIssues } from '@urusin/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openHarnessDb } from './db.js';
 import { ConflictError, IllegalTransitionError, TerminalStateError, TurnInProgressError } from './errors.js';
@@ -276,5 +277,20 @@ describe('tidak menyimpan PII asli', () => {
     expect(dump).not.toContain(FAKE_HP);
     expect(dump).not.toContain(FAKE_EMAIL);
     expect(dump).toContain('{{');
+  });
+});
+
+describe('id konfirmasi', () => {
+  it('tanpa digit: id yang ditulis ulang model tidak pernah tersaring gerbang PII', () => {
+    const store = new HarnessStore(openHarnessDb());
+    const u = store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    const ids = new Set<string>();
+    for (let i = 0; i < 2000; i++) {
+      const id = store.createConfirmationByHash(u.id, 'dukcapil__ajukan_layanan', 'h', 60_000).id;
+      expect(id).toMatch(/^c_[a-p]{32}$/);
+      expect(findGuardIssues({ confirmationId: id })).toEqual([]);
+      ids.add(id);
+    }
+    expect(ids.size).toBe(2000);
   });
 });

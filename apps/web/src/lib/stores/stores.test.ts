@@ -230,14 +230,17 @@ describe('TtsStore', () => {
 });
 
 describe('CapabilitiesStore dan ConnectivityStore', () => {
-  it('capabilities membaca kapabilitas dari /api/health; gagal → default aman', async () => {
+  it('capabilities membaca kapabilitas dari /api/kemampuan; gagal → default aman', async () => {
     const ok = vi
       .fn()
       .mockResolvedValue(
-        new Response(JSON.stringify({ ok: true, kapabilitas: { ai: 'hemat', vision: false, rag: 'siap' } })),
+        new Response(
+          JSON.stringify({ llm: 'llm', kapabilitas: { ai: 'hemat', vision: false, rag: 'siap' } }),
+        ),
       );
     const c = new CapabilitiesStore(ok as never);
     await c.muat();
+    expect(ok).toHaveBeenCalledWith('/api/kemampuan', expect.anything());
     expect(c.keadaan).toEqual({ ai: 'hemat', vision: false, rag: 'siap', dimuat: true });
     const gagal = new CapabilitiesStore(vi.fn().mockRejectedValue(new Error('offline')) as never);
     await gagal.muat();
@@ -245,6 +248,11 @@ describe('CapabilitiesStore dan ConnectivityStore', () => {
     const tanpaField = new CapabilitiesStore(vi.fn().mockResolvedValue(new Response('{"ok":true}')) as never);
     await tanpaField.muat();
     expect(tanpaField.keadaan).toMatchObject({ ai: 'normal', vision: true, dimuat: true });
+    const memuat = new CapabilitiesStore(
+      vi.fn().mockResolvedValue(new Response('{}', { status: 503 })) as never,
+    );
+    await memuat.muat();
+    expect(memuat.keadaan).toMatchObject({ ai: 'normal', dimuat: false });
   });
 
   it('connectivity: default online di SSR/tanpa window', () => {

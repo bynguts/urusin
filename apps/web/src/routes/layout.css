@@ -1,15 +1,209 @@
 @import 'tailwindcss';
 
-@theme {
-  /* Font sistem: tanpa unduhan font, cepat di HP kelas bawah. */
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
-  --color-brand-50: #f0fdfa;
-  --color-brand-100: #ccfbf1;
-  --color-brand-600: #0d9488;
-  --color-brand-700: #0f766e;
-  --color-brand-800: #115e59;
+/*
+ * Token desain Urusin dari design-rafi/Urusin/design-system (strawberry.tokens.css + variabel ur.* di urusin.pen).
+ * Light adalah bawaan; Dark aktif lewat data-theme="dark" di <html> (tanpa deteksi sistem, sesuai DESIGN.md).
+ */
+@font-face {
+  font-family: 'Strawberry Sans';
+  src: url('../lib/assets/fonts/strawberry-sans.woff2') format('woff2');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+  --sb-bg-primary: #fffcfa;
+  --sb-bg-secondary: #f7f2ed;
+  --sb-bg-white: #ffffff;
+  --sb-bg-card: #fcf8f5;
+  --sb-text-primary: #252522;
+  --sb-text-body: #252522b3;
+  --sb-text-card: #252522d1;
+  --ur-muted: #666563;
+  --sb-stroke: #efe6dc;
+  --sb-stroke-secondary: #e6dbd1;
+  --sb-stroke-tertiary: #efebe7;
+  --sb-brand-orange: #ed5a31;
+  --sb-brand-leaf: #d6c530;
+  --sb-accent-orange: #f2805d;
+  --sb-error: #ef4343;
+  --sb-a11y-error-text: #a92727;
+  --sb-valid: #50ad25;
+  --sb-stage: #fcf5ef;
+  --sb-focus: #2525224d;
+  --sb-primary-bg: #252522;
+  --sb-primary-ink: #ffffff;
+  --sb-badge-rose-bg: #f1e8e5;
+  --sb-badge-rose-ink: #8e544f;
+  --sb-badge-green-bg: #ebf0e7;
+  --sb-badge-green-ink: #567c4d;
+  --sb-badge-blue-bg: #eaf0f5;
+  --sb-badge-blue-ink: #4b6889;
+  --sb-badge-purple-bg: #f3eaf4;
+  --sb-badge-purple-ink: #894f8e;
+  --ur-green-bg: #eaf0df;
+  --ur-green-ink: #405934;
+  --ur-amber-bg: #f7ecd8;
+  --ur-amber-ink: #77531e;
+  --ur-indigo-bg: #e6e8f5;
+  --ur-indigo-ink: #36438a;
+  --ur-dot: #2525221a;
+  --sb-shadow-soft:
+    0 0 0 1px rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06), 0 2px 4px rgb(0 0 0 / 0.04);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --sb-bg-primary: #191a18;
+  --sb-bg-secondary: #22231f;
+  --sb-bg-white: #2c2d28;
+  --sb-bg-card: #24251f;
+  --sb-text-primary: #f7f3ed;
+  --sb-text-body: #cdcac2;
+  --sb-text-card: #ddd9d1;
+  --ur-muted: #b9b7af;
+  --sb-stroke: #3a3c34;
+  --sb-stroke-secondary: #54564b;
+  --sb-stroke-tertiary: #30322b;
+  --sb-accent-orange: #ffa184;
+  --sb-error: #ff8d8d;
+  --sb-a11y-error-text: #ffb0aa;
+  --sb-valid: #a8d881;
+  --sb-stage: #292720;
+  --sb-focus: #f7f3ed80;
+  --sb-primary-bg: #f7f3ed;
+  --sb-primary-ink: #191a18;
+  --sb-badge-rose-bg: #42312e;
+  --sb-badge-rose-ink: #f1b7af;
+  --sb-badge-green-bg: #2d382b;
+  --sb-badge-green-ink: #b7d7a7;
+  --sb-badge-blue-bg: #293641;
+  --sb-badge-blue-ink: #b5d2ef;
+  --sb-badge-purple-bg: #3b2d3d;
+  --sb-badge-purple-ink: #dbb3e4;
+  --ur-green-bg: #2e3827;
+  --ur-green-ink: #c4dbaa;
+  --ur-amber-bg: #3b3021;
+  --ur-amber-ink: #e9c588;
+  --ur-indigo-bg: #262a40;
+  --ur-indigo-ink: #b8c0f0;
+  --ur-dot: #f7f3ed14;
+}
+
+/* Kontras tinggi (Pengaturan): teks sekunder memakai warna utama, garis lebih tegas. */
+[data-kontras='tinggi'] {
+  --sb-text-body: var(--sb-text-primary);
+  --sb-text-card: var(--sb-text-primary);
+  --ur-muted: var(--sb-text-primary);
+  --sb-stroke: var(--sb-stroke-secondary);
+  --sb-stroke-tertiary: var(--sb-stroke-secondary);
+}
+
+@theme inline {
+  --font-sans:
+    'Strawberry Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --color-bg: var(--sb-bg-primary);
+  --color-bg-2: var(--sb-bg-secondary);
+  --color-surface: var(--sb-bg-white);
+  --color-card: var(--sb-bg-card);
+  --color-stage: var(--sb-stage);
+  --color-ink: var(--sb-text-primary);
+  --color-body: var(--sb-text-body);
+  --color-card-ink: var(--sb-text-card);
+  --color-muted: var(--ur-muted);
+  --color-line: var(--sb-stroke);
+  --color-line-2: var(--sb-stroke-secondary);
+  --color-line-3: var(--sb-stroke-tertiary);
+  --color-brand: var(--sb-brand-orange);
+  --color-leaf: var(--sb-brand-leaf);
+  --color-accent: var(--sb-accent-orange);
+  --color-galat: var(--sb-a11y-error-text);
+  --color-galat-garis: var(--sb-error);
+  --color-primer: var(--sb-primary-bg);
+  --color-primer-ink: var(--sb-primary-ink);
+  --color-hijau: var(--ur-green-bg);
+  --color-hijau-ink: var(--ur-green-ink);
+  --color-kuning: var(--ur-amber-bg);
+  --color-kuning-ink: var(--ur-amber-ink);
+  --color-nila: var(--ur-indigo-bg);
+  --color-nila-ink: var(--ur-indigo-ink);
+  --color-mawar: var(--sb-badge-rose-bg);
+  --color-mawar-ink: var(--sb-badge-rose-ink);
+  --color-daun: var(--sb-badge-green-bg);
+  --color-daun-ink: var(--sb-badge-green-ink);
+  --color-biru: var(--sb-badge-blue-bg);
+  --color-biru-ink: var(--sb-badge-blue-ink);
+  --color-ungu: var(--sb-badge-purple-bg);
+  --color-ungu-ink: var(--sb-badge-purple-ink);
+  --radius-base: 10px;
+  --radius-kartu: 20px;
+  --shadow-lembut: var(--sb-shadow-soft);
+  --ease-seimbang: cubic-bezier(0.45, 0, 0.55, 1);
+  --ease-masuk: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* Ukuran huruf dari Pengaturan: 1 = 16px dasar peramban; semua ukuran memakai rem. */
+  font-size: calc(100% * var(--skala-huruf, 1));
+  background: var(--sb-bg-secondary);
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--sb-text-primary);
+  background: var(--sb-bg-secondary);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+
+/* Di layer base supaya kelas utilitas pada judul (berat, tracking, leading) tetap berlaku. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-weight: 480;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--sb-text-primary);
+  outline-offset: 2px;
+}
+
+/* Fokus tidak tertutup header/nav bawah (WCAG 2.4.11). */
+:target,
+[id] {
+  scroll-margin-top: 5rem;
+  scroll-margin-bottom: 6rem;
+}
+
+/* Latar titik-titik Pattern/Hero: grid titik yang memudar. */
+.pola-titik {
+  background-image: radial-gradient(var(--ur-dot) 1.4px, transparent 1.6px);
+  background-size: 14px 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+[data-gerak='kurang'] *,
+[data-gerak='kurang'] *::before,
+[data-gerak='kurang'] *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
 }
