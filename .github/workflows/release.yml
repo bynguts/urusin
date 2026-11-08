@@ -41,6 +41,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # QEMU hanya dipakai untuk smoke test image arm64 di bawah; build image tidak membutuhkannya.
+      - name: Setup QEMU (smoke arm64)
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
       - name: Setup Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -68,6 +72,22 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
           sbom: true
           provenance: mode=max
+
+      # Smoke test image yang baru di-push, per arsitektur: modul native harus termuat dan server harus hidup.
+      - name: Smoke test image (amd64 dan arm64)
+        env:
+          REF: ${{ matrix.image }}@${{ steps.build.outputs.digest }}
+          NAME: ${{ matrix.name }}
+        run: |
+          for arch in amd64 arm64; do
+            echo "::group::${NAME} linux/${arch}"
+            if [ "$NAME" = "web" ]; then
+              docker run --rm --platform "linux/${arch}" --entrypoint node "$REF"                 -e "const a=process.arch;const r=require('better-sqlite3')(':memory:').prepare('select 1 as x').get();if(r.x!==1)process.exit(1);console.log(a,'better-sqlite3 ok')"
+            else
+              docker run --rm --platform "linux/${arch}" --entrypoint sh "$REF" -c                 'node dist/server.js & sleep 5; node -e "fetch(\"http://127.0.0.1:4000/health\").then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" && echo "fixtures ok"'
+            fi
+            echo "::endgroup::"
+          done
 
       # SBOM disimpan sebagai attestation di registry; ekstrak untuk dilampirkan ke GitHub Release.
       - name: Ekstrak SBOM
