@@ -4,7 +4,7 @@ Image web dibangun CI (`.github/workflows/release.yml`) per commit di `main`, mu
 dan ditarik VPS berdasarkan digest. VPS tidak pernah build.
 
 Target: VPS `agent-vm` (Ubuntu 24.04, Docker + compose v2). Caddy sistem sudah memegang 80/443 dan
-melayani situs lain; Urusin hanya mengikat `127.0.0.1:4310` (web-blue), `127.0.0.1:4311` (web-green)
+melayani situs lain; Urusin hanya mengikat `127.0.0.1:4310` (web-blue, host network), `127.0.0.1:4311` (web-green)
 dan `127.0.0.1:4320` (fixtures, opsional). Port terpakai lain di host: 3000, 3100, 8000, 8080, 8082,
 8765, 20128. VPS dipakai bersama layanan lain: jangan menyentuh kontainer/layanan di luar proyek `urusin`.
 
@@ -74,6 +74,58 @@ Langkah host:
    `strict-transport-security` tidak boleh memuat `includeSubDomains`; `content-security-policy` muncul
    tepat satu kali.
 
+## Jaringan web dan proxy LLM (host network)
+
+Proxy LLM di host mendengarkan `0.0.0.0:20128`, tetapi `iptables INPUT` men-DROP port 20128/9119/8765 untuk
+semua antarmuka kecuali `lo` dan `tailscale0`. Paket dari kontainer di jaringan bridge Docker datang dengan
+src `172.x` lewat `br-*`/`docker0`, jadi ikut ter-DROP: web di bridge **tidak bisa** menjangkau proxy.
+Firewall tidak diubah; sebagai gantinya:
+
+- `web-blue`/`web-green` memakai `network_mode: host` dengan `HOST=127.0.0.1` dan `PORT=4310`/`4311`
+  (adapter-node). Tidak ada `ports:` (tidak valid di host network). Tetap `read_only`, `cap_drop: [ALL]`,
+  `no-new-privileges`, healthcheck (memakai `$PORT`), dan batas sumber daya.
+- `.env` produksi: `LLM_BASE_URL=http://127.0.0.1:20128/v1` (loopback diizinkan `-i lo`; tidak bergantung
+  pada tailscaled). Placeholder saja di `.env.example`; kunci API tetap di `.env` (chmod 600).
+- Konsekuensi: web berbagi namespace jaringan host, jadi bind ke `0.0.0.0` akan membuka port ke publik.
+  `deploy.sh` memeriksa dengan `ss -ltn` bahwa `4310`/`4311` hanya terikat ke `127.0.0.1` dan menggagalkan
+  deploy (rollback) bila tidak. Cek manual: `ss -ltnH 'sport = :4310 or sport = :4311'` harus hanya
+  menampilkan `127.0.0.1:...`.
+- **Fixtures** tetap di bridge dengan publish `127.0.0.1:4320`: tidak butuh proxy LLM, dan bridge menjaga
+  isolasi (konten uji tidak berbagi jaringan host). Hanya web yang pindah.
+- Backup/restore memakai `--network none`; tidak terpengaruh. Smoke langsung `deploy.sh` tetap ke
+  `127.0.0.1:4310/4311`.
+- **`deploy/check-llm-reach.sh <warna>`** (M11a) berjalan di DALAM kontainer: `node -e fetch(${LLM_BASE_URL}/models)`;
+  status HTTP apa pun (200/401/403) = terjangkau, timeout/koneksi gagal = gagal. `deploy.sh` memanggilnya
+  setelah health dan sebelum promosi: hanya peringatan, kecuali `REQUIRE_LLM=1` (gagal + rollback).
+  Jalankan manual: `./check-llm-reach.sh green`.
+
+## Env produksi (placeholder; nilai asli hanya di `.env`, chmod 600)
+
+`.env.example` memuat semua nama. Yang wajib/khusus produksi:
+
+- `DOMAIN`, `SESSION_SECRET`, `LLM_BASE_URL=http://127.0.0.1:20128/v1`, `LLM_API_KEY`, model LLM.
+- `URUSIN_PII_KEY` (base64 >= 32 byte, wajib di mode llm; `openssl rand -base64 32`),
+  `URUSIN_DAILY_IDR_CAP` (angka > 0, wajib di mode llm), `LLM_EVAL_DAILY_BUDGET_USD`.
+- Embedding/rerank (Jina): `LLM_EMBED_BASE_URL`, `LLM_EMBED_API_KEY`, `LLM_EMBED_MODEL`,
+  `RERANK_BASE_URL`, `RERANK_API_KEY`, `RERANK_MODEL`.
+- IP klien untuk kuota per-IP: compose sudah mengisi `ADDRESS_HEADER=X-Forwarded-For` dan `XFF_DEPTH=1`.
+  Caddy adalah satu-satunya hop dan **menimpa** `X-Forwarded-For` dari klien (klien bukan proxy tepercaya),
+  jadi entri terakhir = IP klien asli. Diverifikasi dengan Caddy 2 sungguhan: permintaan dengan
+  `X-Forwarded-For: 6.6.6.6` sampai ke upstream hanya dengan IP peer asli. Jangan menambah
+  `trusted_proxies` di Caddy kecuali ada CDN di depan (itu mengubah `XFF_DEPTH`).
+
+## Login GHCR sementara
+
+`deploy.sh` menghormati `DOCKER_CONFIG` dari lingkungan dan tidak pernah menulis ke konfigurasi docker
+pengguna. Pola yang aman untuk pull dengan token sementara:
+
+```sh
+export DOCKER_CONFIG="$(mktemp -d /tmp/urusin-docker-XXXX)"; chmod 700 "$DOCKER_CONFIG"
+docker login ghcr.io -u bynguts --password-stdin <<<"$GHCR_PAT"   # token lewat stdin, bukan argumen
+./deploy.sh <git-sha> sha256:<digest>
+rm -rf "$DOCKER_CONFIG"; unset DOCKER_CONFIG
+```
+
 ## Deploy (blue/green)
 
 SHA dan digest ada di ringkasan job `Release image` di GitHub Actions.
@@ -106,7 +158,10 @@ Urutan `deploy.sh`:
    `lb_policy first`) sebelum smoke lulus.
 5. Smoke publik bila `DOMAIN` ada di `.env`: `https://$DOMAIN/api/health` (gitSha publik, diulang sampai
    Caddy berpindah), `https://verify.$DOMAIN/` (HTTP < 500) dan masa berlaku sertifikat TLS keduanya
-   (> 7 hari, butuh `openssl`). `SKIP_SMOKE=1` melewatinya. Baru setelah lulus warna lama dihentikan.
+   (> 7 hari, butuh `openssl`). `SKIP_SMOKE=1` melewatinya. Baru setelah lulus warna lama dihentikan,
+   **setelah drain**: `deploy.sh` menunggu `runningTurns` di `/api/health` warna lama menjadi 0, paling lama
+   `DRAIN_SECONDS` (default 120 = batas turn agen). Image lama tanpa field itu ditunggu penuh; kontainer yang
+   sudah mati dilewati; bila batas tercapai ada peringatan lalu tetap dihentikan.
 6. **Rollback otomatis**: gagal di langkah 3-5 (tidak sehat, `gitSha` salah, `/api/ready` tidak ada,
    smoke gagal) => `.env.images` dikembalikan ke digest sebelumnya, versi lama dijalankan ulang bila sempat
    berhenti, dipromosikan ulang, warna yang gagal dihentikan, `deploy.sh` exit 1. Sukses mencetak
@@ -279,9 +334,17 @@ bash deploy/tests/deploy.test.sh   # docker/curl/restic/df palsu di tests/shims;
 shellcheck -x deploy/*.sh deploy/tests/deploy.test.sh deploy/tests/shims/*
 ```
 
-Kasus: `zero-downtime.sh` (lulus/gagal), deploy pertama dan kedua (pindah warna), `gitSha` salah / warna baru tidak sehat / smoke publik
+Kasus: bind loopback/`REQUIRE_LLM`/jangkauan LLM, render `compose.prod.yml` (`tests/compose-config.test.sh`, memakai `docker compose config` sungguhan bila ada), `zero-downtime.sh` (lulus/gagal), deploy pertama dan kedua (pindah warna), `gitSha` salah / warna baru tidak sehat / smoke publik
 gagal (rollback otomatis, exit non-zero), label revision tidak cocok/pendek, provenance tanpa/SHA7 saja/SHA lengkap, `REQUIRE_PROVENANCE=0`,
 image tanpa `/api/ready` (ditolak sebelum `up` atau sebelum promosi), migrasi dari layout lama, backup + retensi + restic opsional, alert disk.
+
+### Uji lokal dengan host network (Docker Desktop)
+
+Pada Docker Desktop (Windows/macOS) `network_mode: host` berarti jaringan VM Linux, bukan jaringan laptop:
+`127.0.0.1:4310` di laptop tidak menjangkau kontainer. Uji lokal harus menjalankan klien (curl, Caddy,
+`ss`, server LLM palsu) di kontainer dengan `--network host` juga; di VPS Linux semuanya langsung bekerja.
+Hasil uji lokal yang dilakukan dicatat di laporan PR; yang tidak bisa diuji lokal: perilaku iptables host
+nyata dan akses ke proxy LLM sungguhan.
 
 ## Uji lokal (laptop)
 
