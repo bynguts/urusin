@@ -122,7 +122,8 @@ Firewall tidak diubah; sebagai gantinya:
   `X-Forwarded-For: 6.6.6.6` sampai ke upstream hanya dengan IP peer asli. Jangan menambah
   `trusted_proxies` di Caddy kecuali ada CDN di depan (itu mengubah `XFF_DEPTH`).
 
-- Akun warga (ADR 0028): `RESEND_API_KEY` + `URUSIN_EMAIL_FROM` (SPF/DKIM Resend di DNS domain),
+- Akun warga (ADR 0028), semuanya opsional (app boot tanpa ini): `RESEND_API_KEY` + `URUSIN_EMAIL_FROM`
+  (SPF/DKIM Resend di DNS domain; tanpa kunci email ditahan dan verifikasi tidak memblokir),
   `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` dengan redirect URI `https://<host app>/auth/google/callback`
   untuk **kedua** set host di `hosts.json`, dan `TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY` (tanpa
   Turnstile, tombol "Masuk sebagai juri" mati di produksi). `URUSIN_OIDC_FIXTURE`/`URUSIN_TURNSTILE_FIXTURE`
