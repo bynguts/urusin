@@ -172,6 +172,10 @@ export const KeadaanLayarSchema = z.object({
     'ekstensi_menunggu_selesai',
     'ekstensi_selesai',
     'adapter_drift_dipandu',
+    'pair_menghubungkan',
+    'pair_berhasil',
+    'pair_gagal',
+    'pair_dibuka_di_hp',
   ]),
   pesanWarga: z.string().min(1),
   /** Satu tombol aksi utama bila ada. */
