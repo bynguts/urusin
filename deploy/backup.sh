@@ -9,7 +9,8 @@
 #   KEEP_DAYS            retensi lokal dalam hari (default 3)
 #   DATA_VOLUME          volume Docker data (default urusin_data)
 #   DB_FILE              nama berkas DB di volume (default urusin.db)
-#   SQLITE_IMAGE         image berisi CLI sqlite3 (default keinos/sqlite3:3.47.2; pin digest bila bisa)
+#   BACKUP_IMAGE        image web by digest yang dipakai menjalankan skrip (default: image warna aktif di .env.images)
+#   SCRIPT_DIR          folder berisi db-backup.mjs (default ../apps/web/scripts)
 #   RESTIC_REPOSITORY    bila diset: kirim backup terbaru ke repo restic (off-site)
 #   RESTIC_PASSWORD_FILE berkas kata sandi restic (dibaca restic; jangan di git)
 #   RESTIC_FORGET=1      jalankan `restic forget --keep-daily 14 --keep-weekly 8 --prune`
@@ -20,7 +21,8 @@ BACKUP_DIR="${BACKUP_DIR:-/var/backups/urusin}"
 KEEP_DAYS="${KEEP_DAYS:-3}"
 DATA_VOLUME="${DATA_VOLUME:-urusin_data}"
 DB_FILE="${DB_FILE:-urusin.db}"
-SQLITE_IMAGE="${SQLITE_IMAGE:-keinos/sqlite3:3.47.2}"
+cd "$(dirname "$0")"
+SCRIPT_DIR="${SCRIPT_DIR:-../apps/web/scripts}"
 
 log() { echo "backup: $(date -u +%FT%TZ) $*"; }
 ping_hc() { # suffix
@@ -31,6 +33,20 @@ fail() { log "GAGAL: $*" >&2; ping_hc /fail; exit 1; }
 
 command -v docker >/dev/null || fail "docker tidak ditemukan"
 [[ "$KEEP_DAYS" =~ ^[0-9]+$ ]] && [ "$KEEP_DAYS" -ge 1 ] || fail "KEEP_DAYS harus bilangan bulat >= 1"
+
+# Image kita sendiri (sudah berisi node + better-sqlite3), berdasarkan digest; tanpa image pihak ketiga.
+resolve_image() {
+  [ -n "${BACKUP_IMAGE:-}" ] && { echo "$BACKUP_IMAGE"; return; }
+  [ -f .env.images ] || return 0
+  local c img
+  c="$(sed -n 's/^ACTIVE_COLOR=//p' .env.images | head -n1)"
+  img="$(sed -n "s/^WEB_IMAGE_$(printf '%s' "${c:-blue}" | tr '[:lower:]' '[:upper:]')=//p" .env.images | head -n1)"
+  [ -n "$img" ] || img="$(sed -n 's/^WEB_IMAGE=//p' .env.images | head -n1)"
+  echo "$img"
+}
+image="$(resolve_image)"
+[ -n "$image" ] || fail "image web tidak diketahui (.env.images kosong dan BACKUP_IMAGE tidak diset)"
+[ -f "$SCRIPT_DIR/db-backup.mjs" ] || fail "$SCRIPT_DIR/db-backup.mjs tidak ada (clone repo penuh atau set SCRIPT_DIR)"
 
 umask 077
 mkdir -p "$BACKUP_DIR"
@@ -46,15 +62,11 @@ rm -f "$partial" "$partial.gz"
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 final="$BACKUP_DIR/urusin-${stamp}.db.gz"
 
-# Wadah sementara: tanpa jaringan, rootfs read-only. Volume data di-mount rw karena membaca DB mode
-# WAL membutuhkan akses ke -shm. `.backup` membuat salinan konsisten; lalu integrity_check pada salinan.
-log "mulai backup ${DATA_VOLUME}/${DB_FILE}"
-docker run --rm --network none --read-only --user 0:0 --security-opt no-new-privileges:true \
-  -v "${DATA_VOLUME}:/data" -v "${BACKUP_DIR}:/backup" --entrypoint sh "$SQLITE_IMAGE" -c '
-    set -e
-    sqlite3 "/data/$1" ".timeout 15000" ".backup /backup/.partial.db"
-    [ "$(sqlite3 /backup/.partial.db "PRAGMA integrity_check;")" = ok ]
-  ' sh "$DB_FILE" || { rm -f "$partial"; fail "sqlite .backup/integrity_check gagal"; }
+# Wadah sementara dari image web: tanpa jaringan, rootfs read-only. Skrip dikirim lewat stdin sehingga
+# Dockerfile tidak perlu menyalinnya. Volume data di-mount rw karena membaca DB mode WAL membutuhkan
+# akses ke -shm. db-backup.mjs: API backup better-sqlite3 + integrity_check pada salinan.
+log "mulai backup ${DATA_VOLUME}/${DB_FILE} dengan ${image}"
+docker run --rm -i --network none --read-only --user 0:0 --security-opt no-new-privileges:true   -e "DB_PATH=/data/${DB_FILE}" -e OUT_PATH=/backup/.partial.db   -v "${DATA_VOLUME}:/data" -v "${BACKUP_DIR}:/backup" --entrypoint node "$image"   --input-type=module - < "$SCRIPT_DIR/db-backup.mjs" || { rm -f "$partial"; fail "db-backup gagal (backup/integrity_check)"; }
 
 [ -s "$partial" ] || fail "hasil backup kosong"
 gzip -c "$partial" > "$final.tmp" && mv "$final.tmp" "$final"

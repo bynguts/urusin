@@ -122,7 +122,7 @@ lama masih melayani sampai versi baru sehat dan saat rollback.
 Rencana uji (jalankan dari laptop/host lain, bukan dari VPS):
 
 ```sh
-# Terminal 1: ~20 req/detik, catat kode status selain 2xx/3xx; berjalan sampai Ctrl-C
+# Terminal 1 (manual): ~20 req/detik, catat kode status selain 2xx/3xx; berjalan sampai Ctrl-C
 while :; do
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "https://$DOMAIN/api/health" || echo 000)
   case "$code" in 2*|3*) ;; *) echo "$(date +%T) GAGAL $code" ;; esac
@@ -133,6 +133,11 @@ done | tee deploy-failures.log
 ./deploy.sh <sha-lama> sha256:<digest-lama>
 ./deploy.sh <sha-baru> sha256:<digest-baru>
 ```
+
+Otomatis: `deploy/tests/zero-downtime.sh <sha>@sha256:<digest> <sha>@sha256:<digest>` menembak
+`https://$DOMAIN/api/health` (~20 rps, `RPS`/`URL` bisa diubah) selama dua deploy berurutan dan exit 1 bila
+ada respons non-2xx/3xx lebih dari `MAX_FAILURES` (default 0) atau deploy gagal. Jalankan di VPS saat gladi,
+bukan di CI. Manual (setara):
 
 Lulus bila `deploy-failures.log` kosong untuk kedua deploy. Ulangi sekali dengan SSE aktif
 (`curl -N https://$DOMAIN/<rute-sse>`): koneksi lama boleh putus saat warna lama berhenti, tetapi koneksi
@@ -154,8 +159,12 @@ exit 1 dan log tetap kosong (warna aktif tidak pernah berhenti).
 **Pilihan: skrip cron di host (`backup.sh`), bukan service compose.** Alasan: tetap berjalan saat web mati
 atau sedang deploy, tidak menambah kontainer yang selalu hidup di VPS bersama (RAM terbatas), tidak ada
 loop `sleep` di dalam kontainer, dan restore memakai alat yang sama. Skrip memakai wadah sementara
-`SQLITE_IMAGE` (CLI `sqlite3`, `.backup` online + `PRAGMA integrity_check` pada salinan), tanpa jaringan.
-Image web tidak perlu berisi `sqlite3`.
+**image web kita sendiri** (digest warna aktif dari `.env.images`, atau `BACKUP_IMAGE`) yang sudah berisi
+node + `better-sqlite3`: `apps/web/scripts/db-backup.mjs` memakai API backup online `.backup()`, lalu
+`PRAGMA integrity_check` pada salinan, dan exit non-zero bila hasilnya bukan `ok`. Skrip dikirim lewat stdin
+(`docker run --entrypoint node ... --input-type=module -`), jadi `Dockerfile` tidak perlu menyalinnya, tanpa
+jaringan dan rootfs read-only. Tidak ada image pihak ketiga. Konsekuensi: clone repo penuh (skrip dibaca dari
+`../apps/web/scripts`, atau set `SCRIPT_DIR`) dan `better-sqlite3` harus menjadi dependency `@urusin/web`.
 
 ```sh
 sudo mkdir -p /var/backups/urusin && sudo chown "$USER" /var/backups/urusin
@@ -164,8 +173,6 @@ sudo mkdir -p /var/backups/urusin && sudo chown "$USER" /var/backups/urusin
 ```
 
 - Retensi lokal: 3 hari (`KEEP_DAYS`, selalu menyisakan yang terbaru). Berkas: `urusin-<UTC>.db.gz`, mode 600.
-- Pin image sqlite dengan digest: `docker pull keinos/sqlite3:<tag>` lalu
-  `export SQLITE_IMAGE=keinos/sqlite3@sha256:...` di crontab. Periksa tag yang dipakai ada untuk arm64.
 - **Off-site opsional (restic)**: atur lewat environment, tidak ada rahasia di git.
   ```sh
   sudo apt-get install -y restic
@@ -191,7 +198,7 @@ ls -1t /var/backups/urusin | head -3
 restic restore latest --tag urusin --target /tmp/restore && ./restore.sh /tmp/restore/var/backups/urusin/urusin-<UTC>.db.gz
 ```
 
-`restore.sh` memvalidasi backup (`integrity_check`) sebelum mengubah apa pun, menghentikan kedua warna web,
+`restore.sh` memakai image dan `apps/web/scripts/db-restore.mjs` yang sama; memvalidasi backup (`integrity_check`) sebelum mengubah apa pun, menghentikan kedua warna web,
 menyimpan DB lama sebagai `urusin.db.pre-restore-<UTC>` di volume, mengganti DB, menyalakan warna aktif,
 dan menunggu `/api/health`.
 
@@ -250,7 +257,7 @@ bash deploy/tests/deploy.test.sh   # docker/curl/restic/df palsu di tests/shims;
 shellcheck -x deploy/*.sh deploy/tests/deploy.test.sh deploy/tests/shims/*
 ```
 
-Kasus: deploy pertama dan kedua (pindah warna), `gitSha` salah / warna baru tidak sehat / smoke publik
+Kasus: `zero-downtime.sh` (lulus/gagal), deploy pertama dan kedua (pindah warna), `gitSha` salah / warna baru tidak sehat / smoke publik
 gagal (rollback otomatis, exit non-zero), label revision tidak cocok dan `REQUIRE_PROVENANCE=1` (ditolak
 sebelum `up`), provenance cocok, migrasi dari layout lama, backup + retensi + restic opsional, alert disk.
 
