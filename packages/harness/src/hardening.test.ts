@@ -180,3 +180,15 @@ describe('temuan 7: karakter tak terlihat (Tag block, variation selector) dibuan
     expect(bersih).toBe('Biaya gratis.');
   });
 });
+
+describe('temuan 8: head klien yang lebih lama bukan tanda rusak', () => {
+  it('head = hash baris mana pun lolos; head asing atau ekor terpotong tetap head_mismatch', () => {
+    const s = new HarnessStore(openHarnessDb());
+    const u = s.createUrusan();
+    const heads = [1, 2, 3, 4].map((i) => s.appendEvent(u.id, 'progress', { label: `l${i}` }).hash);
+    expect(s.verifyChain(u.id, heads[1])).toMatchObject({ ok: true, count: 4 });
+    expect(s.verifyChain(u.id, 'x'.repeat(64))).toMatchObject({ ok: false, reason: 'head_mismatch' });
+    s.db.prepare('DELETE FROM events WHERE urusan_id = ? AND seq = 4').run(u.id);
+    expect(s.verifyChain(u.id, heads[3])).toMatchObject({ ok: false, reason: 'head_mismatch' });
+  });
+});
