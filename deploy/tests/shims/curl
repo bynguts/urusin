@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# curl palsu: /api/health lokal per warna, dan "publik" (https) mengikuti warna pertama yang hidup.
+url="${*: -1}"
+echo "curl $*" >> "$SHIM_DIR/calls.log"
+body() { printf '{"ok":true,"status":"ok","gitSha":"%s","version":"0.0.0"}' "$(cat "$SHIM_DIR/running.$1")"; }
+case "$url" in
+  https://zd.test/*) if [ -n "${SHIM_ZD_FAIL:-}" ]; then echo 503; else echo 200; fi; exit 0 ;;
+  http://127.0.0.1:4310/api/health) [ -f "$SHIM_DIR/running.blue" ] && { body blue; exit 0; }; exit 7 ;;
+  http://127.0.0.1:4311/api/health) [ -f "$SHIM_DIR/running.green" ] && { body green; exit 0; }; exit 7 ;;
+  https://verify.*) [ -z "${SHIM_PUBLIC_FAIL:-}" ] || exit 60; echo 200; exit 0 ;;
+  https://*/api/health)
+    [ -z "${SHIM_PUBLIC_FAIL:-}" ] || exit 60
+    for c in blue green; do [ -f "$SHIM_DIR/running.$c" ] && { body "$c"; exit 0; }; done
+    exit 22 ;;
+esac
+exit 1

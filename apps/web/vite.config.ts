@@ -30,6 +30,10 @@ export default defineConfig({
           'base-uri': ['self'],
           'form-action': ['self'],
           'frame-ancestors': ['none'],
+          // Pelaporan pelanggaran: report-uri untuk browser lama, report-to merujuk endpoint
+          // `csp-endpoint` dari header Reporting-Endpoints (dikirim Caddy, lihat deploy/Caddyfile.urusin).
+          'report-uri': ['/api/csp-report'],
+          'report-to': ['csp-endpoint'],
         },
       },
     }),

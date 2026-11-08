@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { violationCounts } from '#lib/server/csp-report.js';
 import { appVersion, gitSha } from '#lib/server/build-info.js';
 import type { RequestHandler } from './$types';
 
@@ -13,6 +14,8 @@ export const GET: RequestHandler = () =>
       version: appVersion(),
       // Diisi modul RAG (M20) kelak; sampai ada, tidak diinisialisasi.
       rag: { status: 'uninitialized' },
+      // Hitungan pelanggaran CSP per direktif sejak proses start (tanpa isi laporan).
+      csp: { violations: violationCounts() },
     },
     { headers: { 'cache-control': 'no-store' } },
   );
