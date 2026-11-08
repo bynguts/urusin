@@ -1,5 +1,15 @@
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { mkdirSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import {
+  AkunService,
+  GoogleOidc,
+  Vault,
+  akunConfigFromEnv,
+  mailerFromEnv,
+  type AkunDeps,
+  type Mailer,
+} from '@urusin/akun';
 import {
   DemoProvider,
   HarnessError,
@@ -24,6 +34,7 @@ import {
 } from '@urusin/llm';
 import { openDb } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
+import { httpKeluar } from './http-keluar.js';
 import { RateLimiter } from './limiter.js';
 
 /** Konfigurasi runtime dari env (dibaca sekali saat boot). Semua opsional kecuali yang bertanda. */
@@ -73,6 +84,20 @@ export type Runtime = ReturnType<typeof createHarness> & {
   publish(urusanId: string, e: EventPayload): UrusinEvent;
   /** Pembatas laju per aksi; kunci IP dan sesi dihitung terpisah. */
   limits: Record<'buat' | 'turn', { ip: RateLimiter; sesi: RateLimiter }>;
+  /** Akun warga, sesi login, dan vault terenkripsi per akun (ADR 0028). */
+  akun: AkunService;
+};
+
+/** Komponen akun yang bisa diganti tes (mailer palsu, Google palsu, folder vault sementara). */
+export type AkunInit = {
+  mailer?: Mailer;
+  /** null = Google dimatikan walau env terisi. */
+  google?: GoogleOidc | null;
+  vaultDir?: string;
+  kek?: Buffer;
+  ttl?: AkunDeps['ttl'];
+  limits?: AkunDeps['limits'];
+  now?: () => Date;
 };
 
 type RuntimeInit = {
@@ -80,7 +105,51 @@ type RuntimeInit = {
   provider?: ChatProvider;
   harness?: Partial<HarnessOptions>;
   mode?: Runtime['mode'];
+  akun?: AkunInit;
 };
+
+/** Folder berkas vault: URUSIN_VAULT_DIR, atau `vault/` di samping DB; DB memori → folder sementara. */
+function vaultDirFor(dbPath: string, env: Record<string, string | undefined>): string {
+  const dir = env.URUSIN_VAULT_DIR?.trim();
+  if (dir) return dir;
+  if (dbPath === ':memory:') return mkdtempSync(join(tmpdir(), 'urusin-vault-'));
+  return join(dirname(dbPath), 'vault');
+}
+
+function createAkun(
+  db: Db,
+  config: RuntimeConfig,
+  hapusUrusan: (id: string) => void,
+  init: AkunInit = {},
+  env: Record<string, string | undefined> = process.env,
+): AkunService {
+  const cfg = akunConfigFromEnv(env);
+  const log = (line: string) => console.warn(line);
+  const google =
+    init.google === null
+      ? undefined
+      : (init.google ??
+        (cfg.google
+          ? new GoogleOidc({
+              ...cfg.google,
+              redirectUri: new URL('/auth/google/callback', config.publicOrigin).href,
+              fetch: httpKeluar,
+            })
+          : undefined));
+  return new AkunService({
+    db,
+    mailer: init.mailer ?? mailerFromEnv(env, httpKeluar, log),
+    vault: new Vault(db, init.kek ?? cfg.kek, init.vaultDir ?? vaultDirFor(config.dbPath, env), init.now),
+    publicOrigin: config.publicOrigin,
+    limiter: (r) => new RateLimiter(r.limit, r.windowMs),
+    google,
+    ttl: { ...cfg.ttl, ...init.ttl },
+    ...(init.limits ? { limits: init.limits } : {}),
+    ...(init.now ? { now: init.now } : {}),
+    hapusUrusan,
+    log,
+  });
+}
 
 /** Rakit runtime dari komponen yang diberikan (dipakai tes dan `getRuntime`). */
 export function createRuntime(init: RuntimeInit = {}): Runtime {
@@ -113,7 +182,8 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
       sesi: new RateLimiter(config.turnPerMenitSesi, menit),
     },
   };
-  return { ...h, config, mode: init.mode ?? 'demo', running: new Map(), publish, limits };
+  const akun = createAkun(db, config, (id) => h.store.deleteUrusan(id), init.akun);
+  return { ...h, config, mode: init.mode ?? 'demo', running: new Map(), publish, limits, akun };
 }
 
 function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {
@@ -201,9 +271,13 @@ async function buildFromEnv(): Promise<Runtime> {
 
 let instance: Promise<Runtime> | undefined;
 
-/** Singleton proses (server tunggal). */
+/** Singleton proses (server tunggal). Membersihkan sesi/token akun kedaluwarsa saat boot lalu tiap jam. */
 export function getRuntime(): Promise<Runtime> {
-  instance ??= buildFromEnv();
+  instance ??= buildFromEnv().then((rt) => {
+    rt.akun.bersihkan();
+    setInterval(() => rt.akun.bersihkan(), 3_600_000).unref();
+    return rt;
+  });
   return instance;
 }
 
