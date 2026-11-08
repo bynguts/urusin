@@ -14,6 +14,11 @@
     <p role="status">
       Bila {form.email} terdaftar, kami sudah mengirim tautan untuk membuat kata sandi baru. Tautan berlaku 30 menit.
     </p>
+    {#if form.tertunda}
+      <p role="alert" data-kode="EMAIL_TERTUNDA">
+        Pengiriman email sedang tertunda (layanan email kami sedang penuh). Coba kirim ulang tautan nanti.
+      </p>
+    {/if}
   {:else}
     {#if form && 'kode' in form}
       <p role="alert" data-kode={form.kode}>{form.pesanWarga}</p>

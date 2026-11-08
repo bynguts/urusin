@@ -6,9 +6,11 @@ import {
   GoogleOidc,
   Vault,
   akunConfigFromEnv,
+  kunciPlaceholderHmac,
   mailerFromEnv,
   type AkunDeps,
   type Mailer,
+  type VaultOptions,
 } from '@urusin/akun';
 import {
   DemoProvider,
@@ -35,6 +37,8 @@ import {
 import { openDb } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { httpKeluar } from './http-keluar.js';
+import { buatOidcFixture, type OidcFixture } from './oidc-fixture.js';
+import { turnstileFromEnv, type Turnstile } from './turnstile.js';
 import { RateLimiter } from './limiter.js';
 import { setRunningTurnsSource } from './running-turns.js';
 
@@ -85,8 +89,12 @@ export type Runtime = ReturnType<typeof createHarness> & {
   publish(urusanId: string, e: EventPayload): UrusinEvent;
   /** Pembatas laju per aksi; kunci IP dan sesi dihitung terpisah. */
   limits: Record<'buat' | 'turn', { ip: RateLimiter; sesi: RateLimiter }>;
-  /** Akun warga, sesi login, dan vault terenkripsi per akun (ADR 0028). */
+  /** Akun warga, sesi login, dan vault terenkripsi per pemilik (ADR 0028). */
   akun: AkunService;
+  /** Turnstile untuk "Masuk sebagai juri" dan login setelah 3 kegagalan. */
+  turnstile: Turnstile;
+  /** IdP OIDC tiruan (hanya e2e, URUSIN_OIDC_FIXTURE=1). */
+  oidcFixture?: OidcFixture | undefined;
 };
 
 /** Komponen akun yang bisa diganti tes (mailer palsu, Google palsu, folder vault sementara). */
@@ -98,7 +106,10 @@ export type AkunInit = {
   kek?: Buffer;
   ttl?: AkunDeps['ttl'];
   limits?: AkunDeps['limits'];
+  kuota?: AkunDeps['kuota'];
+  vault?: Omit<VaultOptions, 'now'>;
   now?: () => Date;
+  turnstile?: Turnstile;
 };
 
 type RuntimeInit = {
@@ -117,39 +128,59 @@ function vaultDirFor(dbPath: string, env: Record<string, string | undefined>): s
   return join(dirname(dbPath), 'vault');
 }
 
+/**
+ * Redirect URI Google dari DOMAIN runtime (`https://${DOMAIN}/auth/google/callback`), sehingga set host
+ * mana pun di deploy/hosts.json (primary, fallback) memakai callback-nya sendiri; tanpa DOMAIN (dev) dari
+ * origin publik. Setiap URI harus didaftarkan di Google Cloud.
+ */
+export function googleRedirectUri(env: Record<string, string | undefined>, publicOrigin: string): string {
+  const domain = env.DOMAIN?.trim();
+  return new URL('/auth/google/callback', domain ? `https://${domain}` : publicOrigin).href;
+}
+
+const alertOperator = (pesan: string) => console.error(`[ALERT] ${pesan}`);
+
 function createAkun(
   db: Db,
   config: RuntimeConfig,
   hapusUrusan: (id: string) => void,
   init: AkunInit = {},
   env: Record<string, string | undefined> = process.env,
-): AkunService {
+): { akun: AkunService; oidcFixture?: OidcFixture | undefined } {
   const cfg = akunConfigFromEnv(env);
   const log = (line: string) => console.warn(line);
-  const google =
-    init.google === null
-      ? undefined
-      : (init.google ??
-        (cfg.google
-          ? new GoogleOidc({
-              ...cfg.google,
-              redirectUri: new URL('/auth/google/callback', config.publicOrigin).href,
-              fetch: httpKeluar,
-            })
-          : undefined));
-  return new AkunService({
+  const redirectUri = googleRedirectUri(env, config.publicOrigin);
+  let oidcFixture: OidcFixture | undefined;
+  let google: GoogleOidc | undefined;
+  if (init.google === null) google = undefined;
+  else if (init.google) google = init.google;
+  else if (cfg.oidcFixture) {
+    const f = buatOidcFixture(config.publicOrigin, redirectUri);
+    oidcFixture = f.fixture;
+    google = f.oidc;
+  } else if (cfg.google) google = new GoogleOidc({ ...cfg.google, redirectUri, fetch: httpKeluar });
+  const akun = new AkunService({
     db,
     mailer: init.mailer ?? mailerFromEnv(env, httpKeluar, log),
-    vault: new Vault(db, init.kek ?? cfg.kek, init.vaultDir ?? vaultDirFor(config.dbPath, env), init.now),
+    vault: new Vault(db, init.kek ?? cfg.kek, init.vaultDir ?? vaultDirFor(config.dbPath, env), {
+      kekLama: cfg.kekLama,
+      batas: cfg.batasVault,
+      alert: alertOperator,
+      ...init.vault,
+      ...(init.now ? { now: init.now } : {}),
+    }),
     publicOrigin: config.publicOrigin,
     limiter: (r) => new RateLimiter(r.limit, r.windowMs),
     google,
     ttl: { ...cfg.ttl, ...init.ttl },
+    kuota: { ...cfg.kuota, ...init.kuota },
     ...(init.limits ? { limits: init.limits } : {}),
     ...(init.now ? { now: init.now } : {}),
     hapusUrusan,
     log,
+    alert: alertOperator,
   });
+  return { akun, oidcFixture };
 }
 
 /** Rakit runtime dari komponen yang diberikan (dipakai tes dan `getRuntime`). */
@@ -185,8 +216,9 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
       sesi: new RateLimiter(config.turnPerMenitSesi, menit),
     },
   };
-  const akun = createAkun(db, config, (id) => h.store.deleteUrusan(id), init.akun);
-  return { ...h, config, mode: init.mode ?? 'demo', running, publish, limits, akun };
+  const { akun, oidcFixture } = createAkun(db, config, (id) => h.store.deleteUrusan(id), init.akun);
+  const turnstile = init.akun?.turnstile ?? turnstileFromEnv();
+  return { ...h, config, mode: init.mode ?? 'demo', running, publish, limits, akun, turnstile, oidcFixture };
 }
 
 function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {
@@ -267,7 +299,8 @@ async function buildFromEnv(): Promise<Runtime> {
       caps,
       prices,
       quota: quotaFromEnv(env),
-      ...(piiKey ? { piiKey } : {}),
+      // Kunci HMAC placeholder = HKDF(URUSIN_PII_KEY, 'urusin/placeholder-hmac/v1'), terpisah dari KEK vault.
+      ...(piiKey ? { piiKey: kunciPlaceholderHmac(piiKey) } : {}),
     },
   });
 }

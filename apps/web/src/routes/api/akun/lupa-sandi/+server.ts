@@ -10,8 +10,8 @@ export const POST: RequestHandler = async (event) => {
   if (!body.ok) return body.response;
   try {
     const rt = await getRuntime();
-    await rt.akun.lupaSandi(body.data.email, konteks(event));
-    return apiJson({ terkirim: true }, 202);
+    const { tertunda } = await rt.akun.lupaSandi(body.data.email, konteks(event));
+    return apiJson({ terkirim: true, tertunda }, 202);
   } catch (e) {
     return akunErrorResponse(e);
   }

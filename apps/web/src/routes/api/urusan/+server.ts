@@ -3,6 +3,7 @@ import {
   type BuatUrusanResponse,
   type DaftarUrusanResponse,
 } from '@urusin/contracts';
+import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
 import { menungguSiapa } from '#lib/server/ringkasan.js';
@@ -17,10 +18,14 @@ export const POST: RequestHandler = async (event) => {
     const rt = await getRuntime();
     const ditolak = batasi(rt, event, 'buat');
     if (ditolak) return ditolak;
+    if (body.data.pesan) {
+      const tamu = pastikanTamuUntukTurn(rt, event);
+      if (tamu) return tamu;
+    }
     const jenis = body.data.peristiwa && body.data.peristiwa !== 'lainnya' ? body.data.peristiwa : undefined;
     const u = rt.store.createUrusan({ kodeKabKota: body.data.kodeKabKota, jenis });
-    // Pemilik: akun yang masuk, atau sesi tamu (dipindahkan ke akun saat warga daftar/masuk).
-    rt.akun.catatPemilikUrusan(u.id, { userId: event.locals.akun?.id, guestSid: event.locals.sid });
+    // Pemilik: akun sinkron yang masuk, atau hash sid (diikat ulang ke akun saat warga masuk).
+    rt.akun.catatPemilikUrusan(u.id, { akun: event.locals.akun, sid: event.locals.sid });
     const turn = body.data.pesan
       ? startTurnInBackground(rt, { urusanId: u.id, userText: body.data.pesan })
       : undefined;

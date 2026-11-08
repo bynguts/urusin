@@ -48,3 +48,19 @@ export function batasi(
   res.headers.set('retry-after', String(kena.retryAfterSec));
   return res;
 }
+
+/**
+ * Putar cookie urusin_sid (anti fiksasi saat naik hak tamu → akun, §3.26.6). Pemanggil wajib mengikat ulang
+ * semua yang terikat hash sid lama dalam satu transaksi (`AkunService.rotasiPemilik`).
+ */
+export function rotasiSid(cookies: Cookies, publicOrigin: string): string {
+  const sid = randomBytes(16).toString('hex');
+  cookies.set(SID_COOKIE, sid, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: publicOrigin.startsWith('https://'),
+    maxAge: SID_TTL_SEC,
+  });
+  return sid;
+}

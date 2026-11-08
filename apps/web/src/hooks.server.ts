@@ -6,6 +6,7 @@ import { assertHostEnv } from '#lib/server/hosts.js';
 import { checkOrigin } from '#lib/server/origin.js';
 import { getRuntime, publicOrigin } from '#lib/server/runtime.js';
 import { ensureSession } from '#lib/server/sesi.js';
+import { turnstileFromEnv } from '#lib/server/turnstile.js';
 
 // Backstop egress (review v11 M2): web berjalan di network host. Jadikan Agent egress runtime (LLM + Jina,
 // tolak loopback/privat) dispatcher global undici, agar fetch global, event.fetch, default SDK openai dan
@@ -14,8 +15,10 @@ installEgressBackstop();
 
 // Gagal cepat saat startup bila DOMAIN/VERIFY_HOST/FIXTURES_HOST bukan salah satu set di deploy/hosts.json.
 assertHostEnv(process.env);
-// Produksi menolak start tanpa Resend (kecuali AUTH_EMAIL_DEV=1) atau tanpa URUSIN_PII_KEY (ADR 0028).
+// Produksi menolak start tanpa Resend (URUSIN_EMAIL_MODE=log hanya dev/CI), tanpa URUSIN_PII_KEY, atau dengan
+// IdP/Turnstile tiruan (ADR 0028).
 assertAkunEnv(process.env);
+turnstileFromEnv(process.env);
 
 /**
  * Anti-CSRF (rencana §3.2): request pengubah state wajib membawa `Origin` yang PERSIS sama dengan
@@ -47,12 +50,8 @@ export const handle: Handle = async ({ event, resolve }) => {
       .then((rt) => rt.akun.sesi(token))
       .catch(() => null);
     if (s) {
-      event.locals.akun = {
-        id: s.akun.id,
-        email: s.akun.email,
-        emailTerverifikasi: s.akun.emailVerifiedAt !== null,
-      };
-      event.locals.akunTokenHash = s.tokenHash;
+      event.locals.akun = s.akun;
+      event.locals.akunSesi = { tokenHash: s.tokenHash, authAt: s.authAt, pernahUnduh: s.pernahUnduh };
     } else hapusAkunCookie(event.cookies);
   }
   return resolve(event);

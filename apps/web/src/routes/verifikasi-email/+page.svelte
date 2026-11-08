@@ -11,10 +11,16 @@
 <main>
   <h1>Pastikan email</h1>
   {#if form && 'terverifikasi' in form}
-    <p role="status">Email sudah dipastikan. Silakan masuk.</p>
+    <p role="status">Email sudah dipastikan. Silakan masuk lagi; akun Anda kini sama di semua perangkat.</p>
     <p><a href={resolve('/masuk')}>Masuk</a></p>
   {:else if form && 'terkirim' in form}
     <p role="status">Bila email {form.email} terdaftar dan belum dipastikan, tautan baru sudah kami kirim.</p>
+    {#if form.tertunda}
+      <p role="alert" data-kode="EMAIL_TERTUNDA">
+        Pengiriman email sedang tertunda (layanan email kami sedang penuh). Akun tetap bisa dipakai di
+        perangkat ini seperti tamu; coba kirim ulang tautan nanti.
+      </p>
+    {/if}
   {:else}
     {#if form && 'kode' in form}
       <p role="alert" data-kode={form.kode}>{form.pesanWarga}</p>
@@ -22,6 +28,8 @@
     {#if data.tokenBerlaku}
       <form method="POST" action="?/pastikan">
         <input type="hidden" name="token" value={data.token} />
+        <label for="sandi">Kata sandi yang Anda buat saat mendaftar</label>
+        <input id="sandi" name="sandi" type="password" autocomplete="current-password" required />
         <button type="submit">Pastikan email saya</button>
       </form>
     {:else}

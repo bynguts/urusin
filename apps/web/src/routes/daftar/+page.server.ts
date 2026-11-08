@@ -11,16 +11,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-  /** Daftar → selalu "cek email Anda" (tidak membocorkan apakah email sudah terdaftar). */
+  /** Daftar → selalu "cek email Anda" (tidak membocorkan apakah email sudah terdaftar); jujur bila tertunda. */
   default: async (event) => {
     const form = await event.request.formData();
     const email = teks(form, 'email');
     const rt = await getRuntime();
+    let tertunda;
     try {
-      await rt.akun.daftar({ email, sandi: teks(form, 'sandi') }, konteks(event));
+      ({ tertunda } = await rt.akun.daftar({ email, sandi: teks(form, 'sandi') }, konteks(event)));
     } catch (e) {
       return gagalForm(e, email);
     }
-    return { terkirim: true as const, email };
+    return { terkirim: true as const, tertunda, email };
   },
 };

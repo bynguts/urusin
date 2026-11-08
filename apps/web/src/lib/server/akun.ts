@@ -4,12 +4,13 @@ import {
   type Akun,
   type DataDiriResponse,
   type LengkapiProfilRequest,
+  type StatusEmail,
 } from '@urusin/contracts';
 import type { Cookies } from '@sveltejs/kit';
 import type { ZodType } from 'zod';
 import { apiError, errorResponse } from '#lib/server/http.js';
-import type { Runtime } from '#lib/server/runtime.js';
-import { SID_COOKIE } from '#lib/server/sesi.js';
+import { publicOrigin, type Runtime } from '#lib/server/runtime.js';
+import { ensureSession, rotasiSid, SID_COOKIE } from '#lib/server/sesi.js';
 
 /**
  * Cookie sesi login. Prefiks `__Host-` memaksa Secure, Path=/, tanpa Domain: subdomain lain tidak bisa
@@ -19,6 +20,8 @@ import { SID_COOKIE } from '#lib/server/sesi.js';
 export const AKUN_COOKIE = '__Host-urusin_akun';
 /** State OAuth Google (10 menit); dibandingkan dengan `state` di callback (anti CSRF login). */
 export const OAUTH_COOKIE = '__Host-urusin_oauth';
+/** Tiket identitas Google yang menunggu bukti sandi (10 menit); dipakai setelah masuk dengan sandi. */
+export const TAUTKAN_COOKIE = '__Host-urusin_tautkan';
 
 const BASE = { path: '/', httpOnly: true, secure: true, sameSite: 'lax' } as const;
 
@@ -36,6 +39,10 @@ export function setOauthCookie(cookies: Cookies, state: string): void {
 
 export function hapusOauthCookie(cookies: Cookies): void {
   cookies.delete(OAUTH_COOKIE, BASE);
+}
+
+export function setTautkanCookie(cookies: Cookies, tiket: string): void {
+  cookies.set(TAUTKAN_COOKIE, tiket, { ...BASE, maxAge: 600 });
 }
 
 type EventLike = {
@@ -87,41 +94,151 @@ export async function readAkunBody<T>(
   return { ok: true, data: parsed.data };
 }
 
-/** Bentuk publik akun (kontrak). */
-export function akunPublik(rt: Runtime, a: AkunInternal): Akun {
-  const nama = rt.akun.vault.getDataDiri(a.id)?.data.namaLengkap;
+export function statusEmail(rt: Runtime): StatusEmail {
+  return { mode: rt.akun.modeEmail === 'resend' ? 'resend' : 'log', tertunda: rt.akun.emailTertunda };
+}
+
+/** Bentuk publik akun/demo (kontrak). `sid` = cookie urusin_sid (profil akun belum terverifikasi ada di tamu). */
+export function akunPublik(rt: Runtime, a: AkunInternal, sid?: string): Akun {
+  const sinkron = rt.akun.sinkron(a);
+  const pemilikVault = sinkron ? a.id : rt.akun.tamuDariSid(sid);
+  const nama = pemilikVault ? rt.akun.vault.getDataDiri(pemilikVault)?.data.namaLengkap : undefined;
   return {
     id: a.id,
+    jenis: a.jenis === 'demo' ? 'demo' : 'akun',
     email: a.email,
     emailTerverifikasi: a.emailVerifiedAt !== null,
     punyaSandi: a.punyaSandi,
     terhubungGoogle: rt.akun.terhubungGoogle(a.id),
     profilLengkap: typeof nama === 'string' && nama.trim().length > 0,
+    sinkron,
     dibuatPada: a.createdAt,
   };
 }
 
 /**
- * Selesaikan login: hapus sesi lama yang dibawa cookie (rotasi), pasang cookie token baru, dan pindahkan
- * urusan tamu (cookie urusin_sid) ke akun. Mengembalikan jumlah urusan yang dipindahkan.
+ * Selesaikan login: hapus sesi lama yang dibawa cookie (rotasi), pasang cookie token baru, putar urusin_sid
+ * dan ikat ulang semua yang terikat sid lama dalam satu transaksi (akun terverifikasi: urusan + vault tamu
+ * pindah ke akun; akun belum terverifikasi/demo: tetap terikat sid baru), lalu tautkan identitas Google yang
+ * menunggu bukti sandi bila ada cookie tiketnya.
  */
-export function pasangSesi(rt: Runtime, cookies: Cookies, userId: string, token: string): number {
+export function pasangSesi(
+  rt: Runtime,
+  cookies: Cookies,
+  akun: AkunInternal,
+  token: string,
+  opts: { buktiSandi?: boolean } = {},
+): { urusanDipindahkan: number; vaultDipindahkan: boolean; googleTertaut: boolean } {
   const lama = cookies.get(AKUN_COOKIE);
   if (lama && lama !== token) rt.akun.keluar(lama);
   const s = rt.akun.sesi(token);
   const maxAge = s ? Math.max(60, Math.floor((Date.parse(s.kedaluwarsa) - Date.now()) / 1000)) : 60;
   setAkunCookie(cookies, token, maxAge);
-  return rt.akun.migrasiTamu(userId, cookies.get(SID_COOKIE));
+  const sidLama = cookies.get(SID_COOKIE);
+  const sidBaru = rotasiSid(cookies, publicOrigin());
+  const terverifikasi = akun.jenis === 'akun' && akun.emailVerifiedAt !== null;
+  const r = rt.akun.rotasiPemilik({ sidLama, sidBaru, userId: terverifikasi ? akun.id : null });
+  let googleTertaut = false;
+  const tiket = cookies.get(TAUTKAN_COOKIE);
+  if (tiket) {
+    if (opts.buktiSandi) googleTertaut = rt.akun.tautkanGoogle(tiket, akun.id);
+    cookies.delete(TAUTKAN_COOKIE, BASE);
+  }
+  // Akun belum terverifikasi: urusan hanya diikat ulang ke sid baru, tidak dipindahkan ke akun.
+  return {
+    urusanDipindahkan: terverifikasi ? r.urusanDipindahkan : 0,
+    vaultDipindahkan: r.vaultDipindahkan,
+    googleTertaut,
+  };
 }
 
-/** Gabungkan nama lengkap (dan HP) ke Data Diri terenkripsi akun. */
-export function lengkapiProfil(rt: Runtime, userId: string, input: LengkapiProfilRequest): DataDiriResponse {
-  const dataDiri = DataDiriSchema.parse({ ...rt.akun.vault.getDataDiri(userId)?.data, ...input });
-  return { dataDiri, diubahPada: rt.akun.vault.setDataDiri(userId, dataDiri) };
+export type PemilikVault = { id: string; jenis: 'akun' | 'tamu' | 'demo'; sinkron: boolean };
+
+type VaultEvent = EventLike & { locals: App.Locals; cookies: Cookies };
+
+/**
+ * Pemilik vault untuk permintaan ini: akun terverifikasi/demo → dirinya (sinkron antar perangkat); selain itu
+ * (tamu, atau akun yang emailnya belum dipastikan) → tamu terikat cookie urusin_sid, dibuat malas hanya bila
+ * `buat` (tulis pertama). null = belum ada vault (baca saja).
+ */
+export function pemilikVault(rt: Runtime, event: VaultEvent, opts: { buat: boolean }): PemilikVault | null {
+  const a = event.locals.akun;
+  if (a && rt.akun.sinkron(a)) return { id: a.id, jenis: a.jenis, sinkron: true };
+  let sid = event.locals.sid ?? event.cookies.get(SID_COOKIE);
+  if (!sid && opts.buat) sid = ensureSession(event.cookies, publicOrigin());
+  if (!sid) return null;
+  const id = opts.buat ? rt.akun.pastikanTamu(sid, konteks(event)) : rt.akun.tamuDariSid(sid);
+  return id ? { id, jenis: 'tamu', sinkron: false } : null;
 }
 
-/** Akun yang sedang masuk, atau respons 401. */
-export function wajibMasuk(locals: App.Locals): { ok: true; id: string } | { ok: false; response: Response } {
+/**
+ * Baca nilai vault (GET /api/vault/*): hanya dari halaman kita sendiri. `Sec-Fetch-Site` wajib `same-origin`
+ * (fetch/navigasi dari origin kita; peramban mengisinya, situs lain tidak bisa memalsukannya) dan `Origin`, bila
+ * ada, harus persis origin publik. Mengembalikan respons 403 bila ditolak.
+ */
+export function tolakBacaVault(request: Request): Response | undefined {
+  const site = request.headers.get('sec-fetch-site');
+  const origin = request.headers.get('origin');
+  if (site !== 'same-origin' || (origin !== null && origin !== publicOrigin()))
+    return apiError(403, 'CSRF', 'Permintaan ditolak karena berasal dari situs yang tidak dikenal.');
+  return undefined;
+}
+
+/** Gabungkan nama lengkap (dan HP) ke Data Diri terenkripsi pemilik. */
+export function lengkapiProfil(rt: Runtime, ownerId: string, input: LengkapiProfilRequest): DataDiriResponse {
+  const dataDiri = DataDiriSchema.parse({ ...rt.akun.vault.getDataDiri(ownerId)?.data, ...input });
+  return { dataDiri, diubahPada: rt.akun.vault.setDataDiri(ownerId, dataDiri) };
+}
+
+/**
+ * Turnstile untuk masuk setelah 3 kegagalan: token sah → true. Turnstile nonaktif (belum dikonfigurasi) tidak
+ * bisa diwajibkan, jadi dianggap lolos; penguncian 5× / 15 menit tetap berlaku.
+ */
+export async function turnstileLolos(rt: Runtime, token: string | undefined, ip: string): Promise<boolean> {
+  if (rt.turnstile.mode === 'nonaktif') return true;
+  return rt.turnstile.verifikasi(token, ip);
+}
+
+/**
+ * "Masuk sebagai juri": Turnstile wajib (mode nonaktif hanya diizinkan di luar produksi; produksi gagal
+ * tertutup), lalu salinan demo terisolasi dengan batas per IP + global.
+ */
+export async function masukJuri(rt: Runtime, event: EventLike & { cookies: Cookies }, turnstile?: string) {
+  const ctx = konteks(event);
+  if (rt.turnstile.mode === 'nonaktif') {
+    if (process.env.NODE_ENV === 'production') throw new AkunError('TURNSTILE_TIDAK_AKTIF');
+  } else if (!(await rt.turnstile.verifikasi(turnstile, ctx.ip))) throw new AkunError('TURNSTILE_WAJIB');
+  const { token, akun } = rt.akun.buatDemo(ctx);
+  pasangSesi(rt, event.cookies, akun, token);
+  return akun;
+}
+
+/** Tombol juri ditampilkan: Turnstile aktif, atau mode dev tanpa Turnstile. */
+export const juriTersedia = (rt: Runtime): boolean =>
+  rt.turnstile.mode !== 'nonaktif' || process.env.NODE_ENV !== 'production';
+
+/** Akun/demo yang sedang masuk, atau respons 401. */
+export function wajibMasuk(
+  locals: App.Locals,
+): { ok: true; id: string; akun: AkunInternal } | { ok: false; response: Response } {
   if (!locals.akun) return { ok: false, response: apiError(401, 'BELUM_MASUK', 'Silakan masuk dulu.') };
-  return { ok: true, id: locals.akun.id };
+  return { ok: true, id: locals.akun.id, akun: locals.akun };
+}
+
+/**
+ * Tamu dibuat malas: tulis vault pertama atau turn pertama (bukan sekadar membuka situs). Akun sinkron tidak
+ * butuh baris tamu. Melebihi kuota pembuatan tamu per IP per hari → respons 429 TAMU_PENUH.
+ */
+export function pastikanTamuUntukTurn(
+  rt: Runtime,
+  event: EventLike & { locals: App.Locals },
+): Response | undefined {
+  const { akun, sid } = event.locals;
+  if ((akun && rt.akun.sinkron(akun)) || !sid) return undefined;
+  try {
+    rt.akun.pastikanTamu(sid, konteks(event));
+    return undefined;
+  } catch (e) {
+    return akunErrorResponse(e);
+  }
 }

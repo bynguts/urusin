@@ -13,7 +13,7 @@ export const POST: RequestHandler = async (event) => {
   try {
     const rt = await getRuntime();
     const token = await rt.akun.ubahSandi(m.id, body.data, konteks(event));
-    pasangSesi(rt, event.cookies, m.id, token);
+    pasangSesi(rt, event.cookies, rt.akun.akun(m.id)!, token);
     return apiJson({ berhasil: true });
   } catch (e) {
     return akunErrorResponse(e);

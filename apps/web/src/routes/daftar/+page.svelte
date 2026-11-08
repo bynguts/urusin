@@ -11,7 +11,16 @@
 <main>
   <h1>Daftar</h1>
   {#if form && 'terkirim' in form}
-    <p role="status">Cek email Anda. Kami mengirim tautan untuk memastikan email {form.email}.</p>
+    <p role="status">
+      Cek email Anda. Kami mengirim tautan untuk memastikan email {form.email}. Buka tautannya dan masukkan
+      kata sandi yang baru Anda buat.
+    </p>
+    {#if form.tertunda}
+      <p role="alert" data-kode="EMAIL_TERTUNDA">
+        Pengiriman email sedang tertunda (layanan email kami sedang penuh). Akun tetap bisa dipakai di
+        perangkat ini seperti tamu; coba kirim ulang tautan nanti.
+      </p>
+    {/if}
   {:else}
     {#if form && 'kode' in form}
       <p role="alert" data-kode={form.kode}>{form.pesanWarga}</p>
