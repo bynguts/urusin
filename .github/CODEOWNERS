@@ -1,6 +1,6 @@
 # Pemilik kode. Pola terakhir yang cocok menang. Area bersama ditinjau kedua anggota.
-# @bynguts: web, harness, llm, retrieval rag, deploy
-# @rafilajhh: ekstensi, fixtures, registry/adapter, korpus dan data rag
+# @rafilajhh: seluruh UI/UX (halaman, layout, komponen web; popup dan overlay ekstensi)
+# @bynguts: sisanya (server/API web, harness, llm, rag, fixtures, adapter, registry, data, deploy)
 
 *                                  @bynguts @rafilajhh
 
@@ -10,14 +10,26 @@
 /deploy/                           @bynguts
 
 /apps/extension/                   @rafilajhh
-/apps/fixtures/                    @rafilajhh
-/packages/registry/                @rafilajhh
-/packages/adapters/                @rafilajhh
+/apps/fixtures/                    @bynguts
+/packages/registry/                @bynguts
+/packages/adapters/                @bynguts
 
-# rag: retrieval (pencarian, fusi, vektor, tool) milik @bynguts; ingest dan data milik @rafilajhh
 /packages/rag/                     @bynguts
-/packages/rag/src/ingest/          @rafilajhh
-/data/                             @rafilajhh
+/data/                             @bynguts
+
+# UI/UX milik @rafilajhh (di bawah /apps/web/ yang lain tetap @bynguts). Pola setelahnya menang.
+/apps/web/src/routes/**/+page.svelte    @rafilajhh
+/apps/web/src/routes/**/+layout.svelte  @rafilajhh
+/apps/web/src/routes/**/+error.svelte   @rafilajhh
+/apps/web/src/lib/components/           @rafilajhh
+/apps/extension/src/entrypoints/popup/  @rafilajhh
+/apps/extension/src/lib/overlay.ts      @rafilajhh
+/apps/extension/src/lib/overlay.test.ts @rafilajhh
+/apps/extension/src/**/presentasi/      @rafilajhh
+
+# Sisi server web tetap @bynguts walau berada di dalam folder routes (menang atas pola UI di atas)
+/apps/web/src/routes/api/               @bynguts
+/apps/web/src/routes/**/*.server.ts     @bynguts
 
 # Dokumen dan konfigurasi bersama
 /packages/core/                    @bynguts @rafilajhh

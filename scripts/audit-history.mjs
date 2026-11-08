@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { checkCommitMessage, loadTeamEmails } from './lib/commit-rules.mjs';
+import { TIMELINE_FORMAT, formatTable, parseTimelineLog, tally, windowLabel } from './lib/timeline.mjs';
 
 const FS = '\x1f';
 const RS = '\x1e';
@@ -41,7 +42,44 @@ export function auditCommits(commits, allowedEmails, headerExceptions = []) {
   return violations;
 }
 
+/** Laporan ritme per anggota: per hari dan per jendela merge (commit yang dibawa tiap merge). Bukan gerbang. */
+function timeline(range) {
+  const git = (...args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const commits = parseTimelineLog(git('log', `--format=${TIMELINE_FORMAT}`, range));
+  console.log(`timeline: ${commits.length} commit pada ${range} (tanggal author, zona waktu commit)
+`);
+  console.log(
+    formatTable(
+      'Commit per hari',
+      'hari',
+      tally(commits, (c) => c.day),
+    ),
+  );
+
+  const windows = [];
+  for (const m of commits.filter((c) => c.parents.length > 1)) {
+    const inner = parseTimelineLog(
+      git('log', `--format=${TIMELINE_FORMAT}`, `${m.parents[0]}..${m.parents[1]}`),
+    );
+    if (inner.length > 0) windows.push({ label: windowLabel(m), inner });
+  }
+  if (windows.length === 0) {
+    console.log('Jendela merge: tidak ada merge commit pada rentang ini.');
+    return 0;
+  }
+  const flat = windows.flatMap((w) => w.inner.map((c) => ({ ...c, windowKey: w.label })));
+  console.log(
+    formatTable(
+      'Commit per jendela merge',
+      'merge',
+      tally(flat, (c) => c.windowKey),
+    ),
+  );
+  return 0;
+}
+
 function main(argv) {
+  if (argv[0] === '--timeline') return timeline(argv[1] ?? 'HEAD');
   const range = argv[0] ?? 'HEAD';
   const allowed = process.env.URUSIN_AUTHOR_EMAILS
     ? process.env.URUSIN_AUTHOR_EMAILS.split(',')

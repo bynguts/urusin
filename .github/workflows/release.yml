@@ -1,8 +1,10 @@
 name: Release
 
 # Membangun image web + fixtures multi-arch (amd64 + arm64) dan zip ekstensi.
-#   - push ke main : image bertag <sha> (VPS menarik berdasarkan digest, lihat deploy/deploy.sh).
-#   - tag rc* / v* : sama, ditambah tag image <tag> dan GitHub Release (catatan otomatis, zip ekstensi, SBOM).
+#   - push ke main : image bertag <sha> (VPS menarik berdasarkan digest, lihat deploy/deploy.sh) dan zip ekstensi.
+#   - tag rc* / v* : TIDAK membangun ulang. Image <sha> milik commit bertag di-alias (digest sama) menjadi <tag>,
+#     lalu GitHub Release dibuat dari zip ekstensi dan SBOM hasil run main untuk SHA yang sama. Jadi yang diuji
+#     di main, yang dirilis. Gagal bila image <sha> atau run main untuk commit itu tidak ada.
 # Tidak ada QEMU: Dockerfile membangun JS di platform runner dan hanya menyalin dependensi produksi per arsitektur
 # (lihat apps/web/Dockerfile). Rilis bukan commit, jadi aman untuk scripts/audit-history.mjs.
 
@@ -22,6 +24,7 @@ concurrency:
 jobs:
   images:
     name: Image ${{ matrix.name }}
+    if: ${{ github.ref_type != 'tag' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -63,9 +66,7 @@ jobs:
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ${{ matrix.image }}:${{ github.sha }}
-            ${{ github.ref_type == 'tag' && format('{0}:{1}', matrix.image, github.ref_name) || '' }}
+          tags: ${{ matrix.image }}:${{ github.sha }}
           build-args: |
             GIT_SHA=${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.name }}
@@ -125,6 +126,7 @@ jobs:
 
   extension:
     name: Zip ekstensi
+    if: ${{ github.ref_type != 'tag' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -177,28 +179,80 @@ jobs:
             dist-ext/urusin-ext-*.zip.sha256
           if-no-files-found: error
 
+  promote:
+    name: Alias image <sha> menjadi tag rilis (tanpa build ulang)
+    if: ${{ github.ref_type == 'tag' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Login GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Alias image web dan fixtures ke tag rilis
+        run: |
+          {
+            echo "### Image rilis ${TAG}"
+            echo
+            echo "Commit bertag: \`${GITHUB_SHA}\` (tidak ada build ulang; digest sama dengan yang diuji di main)"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+          for image in ghcr.io/bynguts/urusin-web ghcr.io/bynguts/urusin-fixtures; do
+            if ! digest="$(docker buildx imagetools inspect "${image}:${GITHUB_SHA}" --format '{{.Manifest.Digest}}' 2>/dev/null)" || [ -z "$digest" ]; then
+              echo "::error::tidak ada image ${image}:${GITHUB_SHA}. Tag harus menunjuk commit main yang sudah dibangun oleh workflow Release."
+              exit 1
+            fi
+            docker buildx imagetools create -t "${image}:${TAG}" "${image}@${digest}"
+            echo "- \`${image}:${TAG}\` = \`${image}@${digest}\`" >> "$GITHUB_STEP_SUMMARY"
+          done
+
   github-release:
     name: GitHub Release
     if: ${{ github.ref_type == 'tag' }}
-    needs: [images, extension]
+    needs: [promote]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.ref_name }}
     steps:
-      - name: Unduh zip ekstensi dan SBOM
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          path: assets
-          merge-multiple: true
+      # Zip ekstensi dan SBOM dibuat oleh run main untuk SHA yang sama; disalin, bukan dibangun ulang.
+      - name: Cari run Release yang sukses untuk SHA ini
+        id: run
+        run: |
+          id="$(gh run list --workflow release.yml --commit "$GITHUB_SHA" --event push --status success --json databaseId,headBranch --jq '[.[] | select(.headBranch=="main")][0].databaseId')"
+          if [ -z "$id" ] || [ "$id" = "null" ]; then
+            echo "::error::tidak ada run Release sukses di main untuk ${GITHUB_SHA}; tidak ada zip/SBOM untuk dilampirkan."
+            exit 1
+          fi
+          echo "id=${id}" >> "$GITHUB_OUTPUT"
+
+      - name: Unduh zip ekstensi (+ .sha256) dan SBOM dari run tersebut
+        run: |
+          mkdir -p assets
+          for name in extension-zip sbom-web sbom-fixtures; do
+            gh run download "${{ steps.run.outputs.id }}" --dir assets --name "$name"
+          done
+          ls -l assets
+          (cd assets && sha256sum -c ./*.sha256)
 
       - name: Buat GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_name }}
-          GH_REPO: ${{ github.repository }}
         run: |
           flags=""
           case "$TAG" in rc*) flags="--prerelease" ;; esac
-          ls -l assets
           gh release create "$TAG" --verify-tag --generate-notes --title "$TAG" $flags assets/*

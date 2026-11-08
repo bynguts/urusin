@@ -18,6 +18,7 @@
     "test:scripts": "node --test scripts/tests/",
     "coverage": "turbo run coverage && node scripts/coverage-summary.mjs",
     "audit:history": "node scripts/audit-history.mjs",
+    "audit:timeline": "node scripts/audit-history.mjs --timeline",
     "rag:ingest": "pnpm --filter @urusin/rag rag:ingest",
     "rag:eval": "pnpm --filter @urusin/rag rag:eval",
     "rag:verify": "pnpm --filter @urusin/rag rag:verify",

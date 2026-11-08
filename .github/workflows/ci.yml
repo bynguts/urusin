@@ -295,13 +295,17 @@ jobs:
           echo "- image: \`${RC_REPO}@${digest}\`" >> "$GITHUB_STEP_SUMMARY"
           docker pull "${RC_REPO}@${digest}"
 
-      # DB dibuat dan dimigrasi oleh kode HEAD (openHarnessDb -> migrateHarness).
-      - name: Migrasi HEAD pada DB baru
+      # DB dibuat, dimigrasi, dan diisi oleh kode HEAD: satu urusan normal (3 event berantai hash) dan satu
+      # urusan ber-state dari masa depan (harus terdegradasi, bukan 5xx, di image rc).
+      - name: Migrasi dan seed DB dengan kode HEAD
         if: steps.rc.outputs.present == 'true'
+        id: seed
         run: |
           pnpm turbo run build --filter=@urusin/harness
           mkdir -p rc-compat-data && chmod 777 rc-compat-data
-          DB_PATH="${PWD}/rc-compat-data/urusin.db" node apps/web/scripts/db-migrate.mjs
+          ids="$(DB_PATH="${PWD}/rc-compat-data/urusin.db" node apps/web/scripts/db-seed.mjs | tail -n1)"
+          echo "ids=${ids}" >> "$GITHUB_OUTPUT"
+          echo "- DB uji: ${ids}" >> "$GITHUB_STEP_SUMMARY"
           chmod 666 rc-compat-data/urusin.db* 2>/dev/null || true
 
       - name: Boot image rc di atas DB HEAD dan smoke test
@@ -311,18 +315,48 @@ jobs:
             -v "${PWD}/rc-compat-data:/data" "${{ steps.img.outputs.ref }}"
           ok=0
           for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:3000/api/health; then ok=1; break; fi
+            if curl -fsS -o /dev/null http://127.0.0.1:3000/api/health; then ok=1; break; fi
             sleep 2
           done
-          echo
           [ "$ok" = 1 ] || { docker logs rc; exit 1; }
-          curl -fsS "http://127.0.0.1:3000${RC_READ_PATH}" | head -c 400 || { docker logs rc; exit 1; }
-          echo
-          echo "- smoke: /api/health dan ${RC_READ_PATH} OK di atas DB migrasi HEAD." >> "$GITHUB_STEP_SUMMARY"
+          node scripts/rc-compat-smoke.mjs http://127.0.0.1:3000 '${{ steps.seed.outputs.ids }}' | tee -a rc-smoke.log || { docker logs rc; exit 1; }
+          { echo '```'; cat rc-smoke.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Log kontainer bila gagal
         if: failure() && steps.rc.outputs.present == 'true'
         run: docker logs rc || true
+
+  contract-freeze:
+    name: Pembekuan kontrak (vs contracts-take1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HUSKY: '0'
+    steps:
+      - name: Checkout (riwayat dan tag lengkap)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Bangun kontrak
+        run: pnpm --filter @urusin/contracts build
+
+      # Dilewati dengan log jelas selama tag contracts-take1 belum ada. Sesudahnya: hanya perubahan aditif yang lolos.
+      - name: Bandingkan skema dengan tag contracts-take1
+        run: node scripts/check-contract-freeze.mjs contracts-take1
 
   gitleaks:
     name: Gitleaks
