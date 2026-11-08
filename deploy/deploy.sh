@@ -160,9 +160,29 @@ health_body() { curl -fsS --max-time 3 "http://127.0.0.1:$1/api/health" 2>/dev/n
 gitsha_of() { printf '%s' "$1" | sed -n 's/.*"gitSha":"\([^"]*\)".*/\1/p'; }
 ready_code() { curl -s -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:$1/api/ready" 2>/dev/null || true; }
 
+# Host network: port web harus terikat ke 127.0.0.1 saja. Tanpa `ss` pemeriksaan dilewati dengan peringatan.
+# nonloopback_bind <port>: 0 (BURUK) bila ada listener pada port itu dengan alamat lokal selain 127.0.0.1.
+nonloopback_bind() {
+  command -v ss >/dev/null || return 1
+  local out bad
+  out="$(ss -ltnH "sport = :$1" 2>/dev/null || true)"
+  bad="$(awk -v want="127.0.0.1:$1" '$4 != want { print }' <<<"$out")"
+  [ -n "$bad" ] || return 1
+  echo "deploy: :$1 terikat ke semua antarmuka / alamat non-loopback (harus 127.0.0.1):" >&2
+  echo "$bad" >&2
+  return 0
+}
+listeners_loopback_only() { # port
+  command -v ss >/dev/null || { echo "deploy: peringatan: ss tidak ada; pemeriksaan bind dilewati" >&2; return 0; }
+  [ -n "$(ss -ltnH "sport = :$1" 2>/dev/null || true)" ] || { echo "deploy: :$1 tidak terlihat mendengarkan" >&2; return 1; }
+  ! nonloopback_bind "$1"
+}
+
 wait_healthy() { # port expected_sha -> 0 bila sehat dan gitSha cocok
   local port="$1" want="$2" body="" got=""
   for _ in $(seq 1 "$WAIT_SECONDS"); do
+    # Bind non-loopback terdeteksi selagi menunggu: berhenti saat itu juga (port terbuka ke publik).
+    if nonloopback_bind "$port"; then return 1; fi
     body="$(health_body "$port")"
     [ -n "$body" ] && break
     sleep 1
@@ -266,18 +286,11 @@ echo "deploy: menaikkan web-${idle} (:${idle_port}) dengan ${web_image}"
 echo "deploy: menunggu http://127.0.0.1:${idle_port}/api/health (maks ${WAIT_SECONDS}s)"
 wait_healthy "$idle_port" "$expected_sha" || fail "web-$idle tidak sehat / gitSha salah"
 
-# Host network: port harus terikat ke 127.0.0.1 saja. Tanpa `ss` pemeriksaan dilewati dengan peringatan.
-listeners_loopback_only() { # port
-  command -v ss >/dev/null || { echo "deploy: peringatan: ss tidak ada; pemeriksaan bind dilewati" >&2; return 0; }
-  local out
-  out="$(ss -ltnH "sport = :$1" 2>/dev/null || true)"
-  [ -n "$out" ] || { echo "deploy: :$1 tidak terlihat mendengarkan" >&2; return 1; }
-  if grep -Eq '(^|[[:space:]])(0\.0\.0\.0|\*|\[::\]|::):'"$1"'([[:space:]]|$)' <<<"$out"; then
-    echo "deploy: :$1 terikat ke semua antarmuka (harus 127.0.0.1):" >&2; echo "$out" >&2; return 1
-  fi
-  return 0
-}
 listeners_loopback_only "$idle_port" || fail "web-$idle tidak boleh mendengarkan di luar 127.0.0.1"
+# Warna aktif juga di network host: bind non-loopback di sana sama berbahayanya.
+if [ -n "$active" ] && [ "$active_port" != "$idle_port" ] && nonloopback_bind "$active_port"; then
+  fail "web-$active (aktif, :$active_port) mendengarkan di luar 127.0.0.1"
+fi
 
 # M11a: web (di dalam kontainer) harus menjangkau proxy LLM. Peringatan saja kecuali REQUIRE_LLM=1.
 if ! bash ./check-llm-reach.sh "$idle"; then
