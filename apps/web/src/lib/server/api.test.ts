@@ -111,6 +111,7 @@ async function kosong() {
 }
 
 describe('POST /api/urusan dan /turn', () => {
+  // Batas eksplisit: tes paling lambat di berkas ini (~1-2 dtk sendirian dan di turbo paralel penuh).
   it('membuat urusan, turn berjalan di latar belakang, event datar lolos skema kontrak', async () => {
     const u = await mulai('Apa syarat akta kelahiran anak saya?');
     expect(u.id).toMatch(/^u_[0-9a-f]{32}$/);
@@ -127,7 +128,7 @@ describe('POST /api/urusan dan /turn', () => {
       expect(UrusinEventSchema.safeParse(e.data).success, JSON.stringify(e.data)).toBe(true);
     const answer = events.find((e) => e.event === 'grounded_answer')!.data!;
     expect(answer.klaim[0].kutipan[0].textFragmentUrl).toContain('#:~:text=');
-  });
+  }, 20_000);
 
   it('turn kedua: 202; turn yang masih berjalan → 409 tanpa event ganda', async () => {
     setup(new Slow() as never);

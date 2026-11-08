@@ -25,6 +25,7 @@ describe('GET /api/kemampuan (publik)', () => {
     vi.resetModules();
   });
 
+  // Batas eksplisit: tes paling lambat di berkas ini (~1-2 dtk sendirian dan di turbo paralel penuh).
   it('mode demo: subset tidak sensitif saja, korpus demo = rag tidak_siap', async () => {
     const { GET } = await withRuntime();
     const { res, body } = await get(GET);
@@ -37,7 +38,7 @@ describe('GET /api/kemampuan (publik)', () => {
     });
     // Tidak ada internal: sha, versi, model, jumlah chunk, biaya, turn berjalan.
     expect(JSON.stringify(body)).not.toMatch(/sha|version|versi|model|chunk|idr|running/i);
-  });
+  }, 20_000);
 
   it('korpus URUSIN_RAG_DB + env rerank: rag siap, flag rerank aktif, nama model tidak bocor', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'urusin-kemampuan-'));
