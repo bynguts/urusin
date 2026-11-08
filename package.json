@@ -12,19 +12,31 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
+    "lint": "turbo run lint && pnpm run lint:root",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test && pnpm run test:scripts",
     "test:scripts": "node --test scripts/tests/",
     "audit:history": "node scripts/audit-history.mjs",
     "pii:scan": "node scripts/pii-scan.mjs --all",
-    "prepare": "husky"
+    "prepare": "husky",
+    "lint:root": "eslint scripts commitlint.config.mjs eslint.config.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
     "@commitlint/config-conventional": "21.2.4",
+    "@eslint/js": "10.0.1",
+    "eslint": "10.14.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-svelte": "3.24.1",
+    "globals": "17.14.0",
     "husky": "9.1.7",
+    "prettier": "3.9.10",
+    "prettier-plugin-svelte": "4.1.1",
+    "svelte": "5.57.3",
     "turbo": "2.11.10",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1"
   }
 }

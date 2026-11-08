@@ -34,7 +34,9 @@ export function auditCommits(commits, allowedEmails) {
 function main(argv) {
   const range = argv[0] ?? 'HEAD';
   const allowed = process.env.URUSIN_AUTHOR_EMAILS
-    ? process.env.URUSIN_AUTHOR_EMAILS.split(',').map((s) => s.trim()).filter(Boolean)
+    ? process.env.URUSIN_AUTHOR_EMAILS.split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
     : loadTeamEmails();
   const raw = execFileSync('git', ['log', `--format=%H${FS}%ae${FS}%an${FS}%B${RS}`, range], {
     encoding: 'utf8',

@@ -1,6 +1,11 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkCommitMessage, hasAiAttribution, isBannedSubject, stripGitComments } from '../lib/commit-rules.mjs';
+import {
+  checkCommitMessage,
+  hasAiAttribution,
+  isBannedSubject,
+  stripGitComments,
+} from '../lib/commit-rules.mjs';
 import { auditCommits, parseLog } from '../audit-history.mjs';
 
 describe('checkCommitMessage', () => {
@@ -30,7 +35,8 @@ describe('checkCommitMessage', () => {
 
 describe('stripGitComments', () => {
   it('membuang komentar dan diff verbose', () => {
-    const raw = 'feat: x\n# komentar\nbody\n# ------------------------ >8 ------------------------\nCo-Authored-By: diff';
+    const raw =
+      'feat: x\n# komentar\nbody\n# ------------------------ >8 ------------------------\nCo-Authored-By: diff';
     assert.equal(stripGitComments(raw), 'feat: x\nbody');
   });
 });
@@ -41,7 +47,9 @@ describe('audit-history', () => {
   const rec = (h, e, m) => `${h}${FS}${e}${FS}nama${FS}${m}${RS}\n`;
 
   it('mengurai log git', () => {
-    const commits = parseLog(rec('a1', 'A@EXAMPLE.COM', 'feat: add a\n') + rec('b2', 'b@example.com', 'docs: add readme'));
+    const commits = parseLog(
+      rec('a1', 'A@EXAMPLE.COM', 'feat: add a\n') + rec('b2', 'b@example.com', 'docs: add readme'),
+    );
     assert.equal(commits.length, 2);
     assert.equal(commits[0]?.email, 'a@example.com');
     assert.equal(commits[1]?.message, 'docs: add readme');
