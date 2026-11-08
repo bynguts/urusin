@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { nilaiEnv } from './env.js';
 import { deriveKek } from './keys.js';
 import { mailerFromEnv, type HttpFetch } from './mailer.js';
 import type { AkunTtl, Kuota } from './service.js';
@@ -56,8 +57,9 @@ export function akunConfigFromEnv(env: Env): AkunEnvConfig {
     batasVault.diskPersenMaks = disk;
   }
 
-  const clientId = env.GOOGLE_CLIENT_ID?.trim();
-  const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
+  // Placeholder .env.example dianggap kosong: tanpa kredensial asli tombol Google tersembunyi, bukan rusak.
+  const clientId = nilaiEnv(env.GOOGLE_CLIENT_ID);
+  const clientSecret = nilaiEnv(env.GOOGLE_CLIENT_SECRET);
   if (Boolean(clientId) !== Boolean(clientSecret))
     throw new Error('GOOGLE_CLIENT_ID dan GOOGLE_CLIENT_SECRET harus diisi berdua atau dikosongkan berdua');
 
@@ -83,9 +85,9 @@ export function akunConfigFromEnv(env: Env): AkunEnvConfig {
 }
 
 /**
- * Pemeriksaan saat boot (hooks.server.ts): server menolak start bila mode email tidak memenuhi syarat
- * (produksi: resend + RESEND_API_KEY; log hanya dev/CI), tanpa URUSIN_PII_KEY di produksi, IdP tiruan di
- * produksi, atau nilai TTL/kuota/Google yang tidak konsisten.
+ * Pemeriksaan saat boot (hooks.server.ts): server menolak start bila mode email tidak dikenal atau `resend`
+ * tanpa RESEND_API_KEY, tanpa URUSIN_PII_KEY di produksi, IdP tiruan di produksi, atau nilai TTL/kuota/Google
+ * yang tidak konsisten. Tanpa kredensial Resend/Google app tetap boot (email ditahan, Google tersembunyi).
  */
 export function assertAkunEnv(env: Env): void {
   akunConfigFromEnv(env);

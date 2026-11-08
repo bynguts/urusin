@@ -48,6 +48,14 @@ describe('ResendMailer', () => {
 });
 
 describe('DevMailer dan pemilihan mailer dari env', () => {
+  it('ditahan (produksi tanpa Resend): tidak mencatat tautan dan tidak menulis outbox', async () => {
+    const log: string[] = [];
+    const m = new DevMailer((l) => log.push(l), undefined, true);
+    await m.send(emailAturUlang('warga@example.com', 'https://x.example.com/atur-ulang-sandi?token=rahasia'));
+    expect(log).toEqual(['[email-ditahan] atur-ulang ke w***@example.com: Resend belum dikonfigurasi']);
+    expect(log.join('')).not.toContain('rahasia');
+  });
+
   it('dev: mencatat tautan dengan penerima tersamar, outbox JSONL opsional', async () => {
     const log: string[] = [];
     const outbox = join(mkdtempSync(join(tmpdir(), 'outbox-')), 'mail.jsonl');
@@ -62,15 +70,25 @@ describe('DevMailer dan pemilihan mailer dari env', () => {
     });
   });
 
-  it('URUSIN_EMAIL_MODE: resend wajib di produksi (butuh RESEND_API_KEY), log hanya dev/CI', () => {
+  it('URUSIN_EMAIL_MODE: kosong = resend bila ada kunci, selain itu log; log sah di produksi (ditahan)', () => {
     const log = () => undefined;
-    expect(() => mailerFromEnv({ NODE_ENV: 'production' }, tolak, log)).toThrow(/RESEND_API_KEY/);
-    expect(() => mailerFromEnv({ NODE_ENV: 'production', URUSIN_EMAIL_MODE: 'log' }, tolak, log)).toThrow(
-      /dev\/CI/,
+    const prod = mailerFromEnv({ NODE_ENV: 'production' }, tolak, log);
+    expect([prod.kind, prod.ditahan]).toEqual(['log', true]);
+    const prodLog = mailerFromEnv({ NODE_ENV: 'production', URUSIN_EMAIL_MODE: 'log' }, tolak, log);
+    expect([prodLog.kind, prodLog.ditahan]).toEqual(['log', true]);
+    // placeholder .env.example tidak menyalakan Resend
+    const contoh = { NODE_ENV: 'production', RESEND_API_KEY: 'ganti-dengan-kunci-resend' };
+    expect(mailerFromEnv(contoh, tolak, log).kind).toBe('log');
+    expect(() => mailerFromEnv({ ...contoh, URUSIN_EMAIL_MODE: 'resend' }, tolak, log)).toThrow(
+      /RESEND_API_KEY/,
     );
     const ci = { NODE_ENV: 'production', URUSIN_EMAIL_MODE: 'log', CI: 'true' };
-    expect(mailerFromEnv(ci, tolak, log).kind).toBe('log');
-    expect(mailerFromEnv({}, tolak, log).kind).toBe('log');
+    const ciM = mailerFromEnv(ci, tolak, log);
+    expect([ciM.kind, ciM.ditahan]).toEqual(['log', false]);
+    expect([mailerFromEnv({}, tolak, log).kind, mailerFromEnv({}, tolak, log).ditahan]).toEqual([
+      'log',
+      false,
+    ]);
     expect(() => mailerFromEnv({ URUSIN_EMAIL_MODE: 'smtp' }, tolak, log)).toThrow(/tidak dikenal/);
     expect(mailerFromEnv({ NODE_ENV: 'production', RESEND_API_KEY: 're_x' }, tolak, log).kind).toBe('resend');
     const dev = { URUSIN_EMAIL_MODE: 'resend', RESEND_API_KEY: 're_x' };
@@ -152,12 +170,21 @@ describe('konfigurasi akun dari env', () => {
       akunConfigFromEnv({ AUTH_SESSION_IDLE_TTL_SEC: '7200', AUTH_SESSION_ABSOLUTE_TTL_SEC: '3600' }),
     ).toThrow(/melebihi/);
     expect(() => akunConfigFromEnv({ GOOGLE_CLIENT_ID: 'id' })).toThrow(/berdua/);
+    // placeholder .env.example = Google mati (tombol tersembunyi), bukan galat
+    const contoh = {
+      GOOGLE_CLIENT_ID: 'ganti-dengan-client-id.apps.googleusercontent.com',
+      GOOGLE_CLIENT_SECRET: 'ganti-dengan-client-secret',
+    };
+    expect(akunConfigFromEnv(contoh).google).toBeUndefined();
     expect(() => akunConfigFromEnv({ NODE_ENV: 'production' })).toThrow(/URUSIN_PII_KEY/);
     expect(() => akunConfigFromEnv({ URUSIN_PII_KEY_PREV: KEY })).toThrow(/kunci baru/);
     expect(() => akunConfigFromEnv({ URUSIN_VAULT_DISK_THRESHOLD: '101' })).toThrow(/0..100/);
     const fixtureProd = { NODE_ENV: 'production', URUSIN_PII_KEY: KEY, URUSIN_OIDC_FIXTURE: '1' };
     expect(() => akunConfigFromEnv(fixtureProd)).toThrow(/produksi/);
-    expect(() => assertAkunEnv({ NODE_ENV: 'production', URUSIN_PII_KEY: KEY })).toThrow(/RESEND_API_KEY/);
+    // tanpa kredensial Resend/Google produksi tetap boot (email ditahan)
+    expect(() => assertAkunEnv({ NODE_ENV: 'production', URUSIN_PII_KEY: KEY })).not.toThrow();
+    const resendTanpaKunci = { NODE_ENV: 'production', URUSIN_PII_KEY: KEY, URUSIN_EMAIL_MODE: 'resend' };
+    expect(() => assertAkunEnv(resendTanpaKunci)).toThrow(/RESEND_API_KEY/);
     const prod = { NODE_ENV: 'production', URUSIN_PII_KEY: KEY, RESEND_API_KEY: 're_x' };
     expect(() => assertAkunEnv(prod)).not.toThrow();
   });

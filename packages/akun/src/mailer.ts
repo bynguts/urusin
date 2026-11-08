@@ -1,4 +1,5 @@
 import { appendFileSync } from 'node:fs';
+import { nilaiEnv } from './env.js';
 import { maskEmail } from './email.js';
 
 /**
@@ -21,6 +22,11 @@ export type EmailMessage = {
 
 export interface Mailer {
   readonly kind: 'resend' | 'log' | 'memory';
+  /**
+   * true = email TIDAK sampai ke penerima (mode log di produksi, Resend belum dikonfigurasi). Layanan akun
+   * selalu melaporkan `tertunda` sehingga warga mendapat pesan jujur; verifikasi tidak memblokir.
+   */
+  readonly ditahan?: boolean;
   send(msg: EmailMessage): Promise<void>;
 }
 
@@ -65,17 +71,25 @@ export class ResendMailer implements Mailer {
 }
 
 /**
- * Mailer pengembangan: tidak mengirim apa pun, hanya mencatat tautan ke log (penerima disamarkan).
- * `outbox` (opsional, URUSIN_EMAIL_OUTBOX) menambahkan satu baris JSON per email: dipakai e2e lokal.
+ * Mailer mode log: tidak mengirim apa pun.
+ * - Dev/CI: mencatat tautan ke log (penerima disamarkan); `outbox` (opsional, URUSIN_EMAIL_OUTBOX) menambah
+ *   satu baris JSON per email untuk e2e.
+ * - `ditahan` (produksi tanpa Resend): hanya mencatat bahwa email ditahan, TANPA tautan (tautan atur ulang di
+ *   log = siapa pun yang membaca log bisa mengambil alih akun) dan tanpa outbox.
  */
 export class DevMailer implements Mailer {
   readonly kind = 'log' as const;
   constructor(
     private readonly log: (line: string) => void,
     private readonly outbox?: string,
+    readonly ditahan = false,
   ) {}
 
   async send(msg: EmailMessage): Promise<void> {
+    if (this.ditahan) {
+      this.log(`[email-ditahan] ${msg.jenis} ke ${maskEmail(msg.to)}: Resend belum dikonfigurasi`);
+      return;
+    }
     this.log(`[email-dev] ${msg.jenis} ke ${maskEmail(msg.to)}: ${msg.link}`);
     if (this.outbox) {
       appendFileSync(
@@ -108,11 +122,12 @@ export type ModeEmail = 'resend' | 'log';
 export const EMAIL_FROM_DEFAULT = 'Urusin <no-reply@urusinai.web.id>';
 
 /**
- * Pilih mailer dari env:
- * - `URUSIN_EMAIL_MODE=resend` (default di produksi): `RESEND_API_KEY` wajib, pengirim `URUSIN_EMAIL_FROM`.
- * - `URUSIN_EMAIL_MODE=log` (default di luar produksi): tidak mengirim apa pun, tautan dicatat ke log dan
- *   (opsional) `URUSIN_EMAIL_OUTBOX`. Di produksi hanya boleh bila `CI=true` (e2e terhadap image produksi).
- * Konfigurasi yang tidak memenuhi syarat melempar galat: server menolak boot.
+ * Pilih mailer dari env. `URUSIN_EMAIL_MODE` kosong = `resend` bila `RESEND_API_KEY` terisi, selain itu `log`.
+ * - `resend`: `RESEND_API_KEY` wajib (eksplisit tanpa kunci = server menolak boot), pengirim
+ *   `URUSIN_EMAIL_FROM`.
+ * - `log`: tidak mengirim apa pun. Di dev/CI tautan dicatat ke log (+ `URUSIN_EMAIL_OUTBOX` opsional). Di
+ *   produksi (tanpa `CI=true`) email DITAHAN: tanpa tautan di log, semua respons `tertunda`, verifikasi tidak
+ *   memblokir (akun dipakai seperti tamu di perangkat itu). App tetap boot tanpa kredensial Resend.
  */
 export function mailerFromEnv(
   env: Record<string, string | undefined>,
@@ -120,16 +135,15 @@ export function mailerFromEnv(
   log: (line: string) => void,
 ): Mailer {
   const produksi = env.NODE_ENV === 'production';
-  const mode = env.URUSIN_EMAIL_MODE?.trim() || (produksi ? 'resend' : 'log');
+  const apiKey = nilaiEnv(env.RESEND_API_KEY);
+  const mode = env.URUSIN_EMAIL_MODE?.trim() || (apiKey ? 'resend' : 'log');
   if (mode === 'resend') {
-    const apiKey = env.RESEND_API_KEY?.trim();
     if (!apiKey) throw new Error('URUSIN_EMAIL_MODE=resend butuh RESEND_API_KEY');
     return new ResendMailer({ apiKey, from: env.URUSIN_EMAIL_FROM?.trim() || EMAIL_FROM_DEFAULT, fetch });
   }
   if (mode === 'log') {
-    if (produksi && env.CI !== 'true')
-      throw new Error('URUSIN_EMAIL_MODE=log hanya untuk dev/CI; produksi memakai resend');
-    return new DevMailer(log, env.URUSIN_EMAIL_OUTBOX?.trim() || undefined);
+    const ditahan = produksi && env.CI !== 'true';
+    return new DevMailer(log, ditahan ? undefined : env.URUSIN_EMAIL_OUTBOX?.trim() || undefined, ditahan);
   }
   throw new Error(`URUSIN_EMAIL_MODE tidak dikenal: ${mode} (resend atau log)`);
 }

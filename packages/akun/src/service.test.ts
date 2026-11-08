@@ -1003,6 +1003,16 @@ describe('email tertunda (kuota Resend habis / DNS belum siap)', () => {
     expect(akun.emailTertunda).toBe(false);
     expect(await akun.daftar({ email: 'b@example.com', sandi: SANDI }, ctx)).toEqual({ tertunda: false });
   });
+
+  it('email ditahan (mode log di produksi): selalu tertunda, akun tetap bisa masuk seperti tamu', async () => {
+    const terkirim: string[] = [];
+    akun = buat({ mailer: { kind: 'log', ditahan: true, send: async (m) => void terkirim.push(m.jenis) } });
+    expect([akun.modeEmail, akun.emailTertunda]).toEqual(['log', true]);
+    expect(await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx)).toEqual({ tertunda: true });
+    expect(await akun.lupaSandi(EMAIL, ctx)).toEqual({ tertunda: true });
+    const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
+    expect([a.emailVerifiedAt, akun.sinkron(a)]).toEqual([null, false]);
+  });
 });
 
 describe('penyapu', () => {

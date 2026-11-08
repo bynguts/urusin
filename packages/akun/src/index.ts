@@ -9,3 +9,4 @@ export * from './vault.js';
 export * from './errors.js';
 export * from './service.js';
 export * from './config.js';
+export * from './env.js';

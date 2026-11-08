@@ -256,9 +256,12 @@ export class AkunService {
     return this.deps.mailer.kind;
   }
 
-  /** true bila pengiriman email terakhir gagal (kuota habis, DNS/domain belum siap) dalam 15 menit terakhir. */
+  /**
+   * true bila email ditahan (mode log di produksi: Resend belum dikonfigurasi) atau pengiriman terakhir gagal
+   * (kuota habis, DNS/domain belum siap) dalam 15 menit terakhir.
+   */
   get emailTertunda(): boolean {
-    return this.now().getTime() < this.tertundaSampai;
+    return this.deps.mailer.ditahan === true || this.now().getTime() < this.tertundaSampai;
   }
 
   /** Daftarkan pengikat ulang pemilik (Pendamping). */
@@ -554,7 +557,7 @@ export class AkunService {
         this.link('/verifikasi-email', this.terbitkanToken(userId, 'verify', hash)),
       );
     }
-    return { tertunda: !(await this.kirimDanTunggu(msg)) };
+    return { tertunda: !(await this.kirimDanTunggu(msg)) || this.emailTertunda };
   }
 
   /**
