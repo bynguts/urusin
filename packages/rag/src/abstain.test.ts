@@ -173,10 +173,10 @@ describe.each<Mode>(['bm25', 'hybrid'])('abstain / hand-off (mode %s)', (mode) =
   it('mode keluaran sesuai', () => {
     expect(run('ktp hilang', mode).mode).toBe(mode);
   });
-  it('10 pertanyaan di luar cakupan -> tanpaHasil true dengan alasan', () => {
+  it('10 pertanyaan di luar cakupan -> tanpaHasil true dengan alasan (ambang 0.3 di celah korpus sintetis)', () => {
     expect(OUT_OF_SCOPE).toHaveLength(10);
     for (const q of OUT_OF_SCOPE) {
-      const out = run(q, mode);
+      const out = run(q, mode, 0.3);
       expect(out.tanpaHasil, q).toBe(true);
       expect(out.hasil, q).toEqual([]);
       expect(['di_luar_cakupan', 'skor_rendah'], q).toContain(out.alasan);
@@ -206,10 +206,11 @@ describe.each<Mode>(['bm25', 'hybrid'])('abstain / hand-off (mode %s)', (mode) =
 });
 
 describe('abstain: konfigurasi', () => {
-  it('bawaan 0.3 dan alasan', () => {
-    expect(DEFAULT_MIN_COVERAGE).toBe(0.3);
+  it('bawaan 0.1 (dikalibrasi di korpus nyata) dan alasan', () => {
+    expect(DEFAULT_MIN_COVERAGE).toBe(0.1);
     expect(run('resep rendang padang', 'bm25').alasan).toBe('di_luar_cakupan');
-    expect(run('lirik lagu terbaru', 'bm25').alasan).toBe('skor_rendah');
+    // korpus sintetis punya celah 0.26..0.33, jadi 'skor_rendah' diuji dengan ambang 0.3 eksplisit
+    expect(run('lirik lagu terbaru', 'bm25', 0.3).alasan).toBe('skor_rendah');
   });
   it('env RAG_ABSTAIN_MIN_COVERAGE menimpa bawaan; nilai tak valid diabaikan', () => {
     const prev = process.env['RAG_ABSTAIN_MIN_COVERAGE'];
@@ -217,7 +218,7 @@ describe('abstain: konfigurasi', () => {
       process.env['RAG_ABSTAIN_MIN_COVERAGE'] = '0';
       expect(run('lirik lagu terbaru', 'bm25').tanpaHasil).toBe(false);
       process.env['RAG_ABSTAIN_MIN_COVERAGE'] = 'abc';
-      expect(run('lirik lagu terbaru', 'bm25').tanpaHasil).toBe(true);
+      expect(run('resep rendang padang', 'bm25').tanpaHasil).toBe(true);
     } finally {
       if (prev === undefined) delete process.env['RAG_ABSTAIN_MIN_COVERAGE'];
       else process.env['RAG_ABSTAIN_MIN_COVERAGE'] = prev;

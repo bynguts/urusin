@@ -32,7 +32,7 @@ export type RetrievalDeps = {
   useVector?: boolean | undefined;
   /** Bobot leg perluasan terhadap kata asli (default 0.4). */
   expandWeight?: number | undefined;
-  /** Ambang cakupan abstain (default 0.3, atau env RAG_ABSTAIN_MIN_COVERAGE; 0 = mati). Lihat DEFAULT_MIN_COVERAGE. */
+  /** Ambang cakupan abstain (default 0.1, atau env RAG_ABSTAIN_MIN_COVERAGE; 0 = mati). Lihat DEFAULT_MIN_COVERAGE. */
   minCoverage?: number | undefined;
   /** Top-N kandidat untuk rerank (default 20). */
   rerankTopN?: number | undefined;
@@ -199,10 +199,11 @@ function envMinCoverage(): number | undefined {
 export type AbstainReason = 'di_luar_cakupan' | 'skor_rendah';
 
 /**
- * Ambang abstain default: cakupan (0..1) kata kueri yang bermakna pada 3 hasil teratas. Dikalibrasi di
- * `abstain.test.ts` (korpus sintetis); 0 mematikan gerbang. Lihat README untuk angka kalibrasi.
+ * Ambang abstain default: cakupan (0..1) kata kueri yang bermakna pada 3 hasil teratas; 0 mematikan gerbang.
+ * Dikalibrasi pada korpus nyata (data/gold/tuning.json): 0.1 tidak menurunkan recall@3 dan menahan
+ * abstain-precision 100%; 0.3 (bawaan awal, korpus sintetis) menurunkan recall@3 5 poin. Lihat README.
  */
-export const DEFAULT_MIN_COVERAGE = 0.3;
+export const DEFAULT_MIN_COVERAGE = 0.1;
 
 export type SyncResult = {
   hits: Hit[];
