@@ -160,6 +160,9 @@ export class SessionManager {
 
     // Dev/uji/demo: origin resmi dipetakan ke fixture (path sama). Produksi tanpa override = origin resmi.
     const origin = this.config.originOverrides.get(built.program.origin) ?? built.program.origin;
+    // Headless hanya untuk CI terhadap fixture: situs nyata selalu lewat Chromium headed (Xvfb).
+    if (this.config.headless && !this.config.fixtureOrigins.includes(origin))
+      throw new PendampingError('LAYANAN_TIDAK_TERSEDIA', 503, 'mode headless hanya untuk fixture');
     const t = this.now();
     const s: Sesi = {
       id: randomUUID(),

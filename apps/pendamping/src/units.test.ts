@@ -10,14 +10,57 @@ import { runnerExpression, runnerScript, toInjectable } from './runner-script.js
 import { detectBotWall, suspicious } from './waf.js';
 
 describe('config', () => {
-  it('default aman: 2 sesi, TTL 15 menit, idle 3 menit, halaman dev mati', () => {
+  it('default aman: 127.0.0.1:4330, 2 sesi, TTL 15 menit, idle 3 menit, headed, dev/debug mati', () => {
     const c = loadConfig({});
     expect(c).toMatchObject({
+      host: '127.0.0.1',
+      port: 4330,
       maxSessions: 2,
       ttlMs: 900_000,
       idleMs: 180_000,
       devPage: false,
       ticketTtlMs: 30_000,
+      haloTimeoutMs: 5_000,
+      msgPerDetik: 200,
+      fps: 8,
+      frameInflight: 2,
+      wsBufferBytes: 131_072,
+      sessionMemMb: 450,
+      headless: false,
+      debugToken: undefined,
+      upstreamProxy: undefined,
+    });
+  });
+
+  it('HOST wildcard ditolak; headless hanya dengan fixture di luar produksi', () => {
+    for (const HOST of ['0.0.0.0', '::', '', '[::]']) expect(() => loadConfig({ HOST })).toThrow(/HOST/);
+    expect(loadConfig({ HOST: '100.101.102.103' }).host).toBe('100.101.102.103');
+    expect(() => loadConfig({ PENDAMPING_HEADLESS: '1' })).toThrow(/HEADLESS/);
+    expect(
+      loadConfig({ PENDAMPING_HEADLESS: '1', PENDAMPING_FIXTURE_ORIGINS: 'http://127.0.0.1:4320' }).headless,
+    ).toBe(true);
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'production',
+        PENDAMPING_INTERNAL_TOKEN: 'x'.repeat(40),
+        URUSIN_PUBLIC_ORIGIN: 'https://urusinai.web.id',
+        PENDAMPING_FIXTURE_ORIGINS: 'https://fixtures.urusinai.web.id',
+        PENDAMPING_HEADLESS: '1',
+      }),
+    ).toThrow(/HEADLESS/);
+  });
+
+  it('proxy hulu hanya http://host:port; token debug >= 32 karakter', () => {
+    expect(loadConfig({ PENDAMPING_UPSTREAM_PROXY: 'http://u:p@10.0.0.5:3128' }).upstreamProxy?.host).toBe(
+      '10.0.0.5:3128',
+    );
+    for (const v of ['https://x:1', 'http://x:1/path', 'socks5://x:1'])
+      expect(() => loadConfig({ PENDAMPING_UPSTREAM_PROXY: v })).toThrow(/UPSTREAM/);
+    expect(() => loadConfig({ PENDAMPING_DEBUG_TOKEN: 'pendek' })).toThrow(/DEBUG/);
+    expect(loadConfig({ PENDAMPING_DEBUG_TOKEN: 'd'.repeat(32) }).debugToken).toBe('d'.repeat(32));
+    expect(loadConfig({ PENDAMPING_FPS: '999', PENDAMPING_MSG_PER_DETIK: '1' })).toMatchObject({
+      fps: 30,
+      msgPerDetik: 10,
     });
   });
 

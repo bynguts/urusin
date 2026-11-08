@@ -412,7 +412,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     } catch {
       // peramban sedang ditutup
     }
-  }, 10_000);
+  }, config.memCheckMs);
   memTimer.unref?.();
 
   const resume = () => {

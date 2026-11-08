@@ -220,7 +220,7 @@ test('SSRF: dari dalam peramban pendamping, 127.0.0.1:2019 dan 169.254.169.254 t
     canary.listen(2019, '127.0.0.1', () => resolve(true));
   });
   const blocked: string[] = [];
-  const config = { ...loadConfig({ PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN }) };
+  const config = { ...loadConfig({ PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN, PENDAMPING_HEADLESS: '1' }) };
   const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true }, (h) =>
     blocked.push(h),
   );

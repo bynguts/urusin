@@ -62,6 +62,19 @@ function harness(over: Partial<Config> = {}) {
 const owner = (urusanId: string, sidHash = SID) => ({ urusanId, sidHash });
 
 describe('SessionManager', () => {
+  it('headless (CI) hanya untuk origin fixture: situs nyata ditolak sebelum Chromium dibuat', async () => {
+    const fx = 'http://127.0.0.1:4320';
+    const h = harness({ headless: true, fixtureOrigins: [fx] });
+    await expect(h.manager.create(input('u-real'))).rejects.toMatchObject({ kode: 'LAYANAN_TIDAK_TERSEDIA' });
+    const h2 = harness({
+      headless: true,
+      fixtureOrigins: [fx],
+      originOverrides: new Map([['https://telunjuksakti.wonogirikab.go.id', fx]]),
+    });
+    expect((await h2.manager.create(input('u-fx'))).status).not.toBe('gagal');
+    expect(h.runs).toHaveLength(0);
+  });
+
   it('antrean FIFO dengan maks sesi aktif; posisi dilaporkan; sesi berikutnya naik saat satu berakhir', async () => {
     const h = harness({ maxSessions: 2, maxQueue: 1 });
     await h.manager.create(input('u1'));

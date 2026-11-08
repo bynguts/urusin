@@ -27,8 +27,6 @@ import { PendampingError, type SessionManager } from './sessions.js';
  */
 
 const MAX_JSON = 64 * 1024;
-const HALO_TIMEOUT_MS = 5_000;
-const MAX_MSG_PER_DETIK = 200;
 
 const json = (res: http.ServerResponse, status: number, body: unknown) => {
   res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
@@ -150,7 +148,10 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
     };
     const viewer = { send, close: (code: number, reason: string) => ws.close(code, reason) };
-    const halo = setTimeout(() => ws.close(PENDAMPING_WS_CLOSE.TIDAK_SAH, 'halo terlambat'), HALO_TIMEOUT_MS);
+    const halo = setTimeout(
+      () => ws.close(PENDAMPING_WS_CLOSE.TIDAK_SAH, 'halo terlambat'),
+      config.haloTimeoutMs,
+    );
 
     ws.on('message', (data, isBinary) => {
       const now = Date.now();
@@ -158,7 +159,7 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         windowStart = now;
         count = 0;
       }
-      if (++count > MAX_MSG_PER_DETIK) return;
+      if (++count > config.msgPerDetik) return;
       let parsed;
       try {
         parsed = isBinary ? null : PendampingClientMessageSchema.safeParse(JSON.parse(data.toString()));

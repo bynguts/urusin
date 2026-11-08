@@ -38,6 +38,8 @@ export default defineConfig({
         PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN,
         PENDAMPING_ORIGIN_OVERRIDES: `https://telunjuksakti.wonogirikab.go.id=${FIXTURE_ORIGIN}`,
         PENDAMPING_MAX_SESSIONS: '1',
+        // CI terhadap fixture saja; situs nyata selalu headed (PENDAMPING_E2E_HEADED=1 untuk uji lokal).
+        ...(process.env.PENDAMPING_E2E_HEADED === '1' ? {} : { PENDAMPING_HEADLESS: '1' }),
       },
     },
   ],
