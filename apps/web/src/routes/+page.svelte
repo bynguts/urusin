@@ -237,6 +237,8 @@
             alt=""
             width="380"
             height="315"
+            loading="lazy"
+            decoding="async"
             class="absolute -top-[7.5625rem] right-[4rem] z-10 hidden w-[10.625rem] lg:block"
           />
 
