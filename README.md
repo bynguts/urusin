@@ -8,10 +8,10 @@ mengisi formulir di situs pemerintah, dan selalu menyerahkan tombol kirim terakh
 
 ## 1. Tim & anggota
 
-| Peran                        | Anggota         | GitHub                                 |
-| ---------------------------- | --------------- | -------------------------------------- |
-| Anggota A (web, gateway LLM) | Tim Urusin      | [@bynguts](https://github.com/bynguts) |
-| Anggota B                    | akan dilengkapi | akan dilengkapi                        |
+| Peran                                                    | Anggota                        | Kampus                      | GitHub                                     |
+| -------------------------------------------------------- | ------------------------------ | --------------------------- | ------------------------------------------ |
+| Ketua — harness agen, AI/LLM, RAG, UI, VPS               | Muhammad Muqorrobin Al Anshori | President University        | [@bynguts](https://github.com/bynguts)     |
+| Anggota — ekstensi, adapter layanan & kota, fixture, e2e | Rafi Cahya Mahardika           | Universitas Negeri Surabaya | [@rafilajhh](https://github.com/rafilajhh) |
 
 ## 2. Kategori, nama, deskripsi, masalah, target
 
