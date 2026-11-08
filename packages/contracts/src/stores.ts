@@ -57,6 +57,8 @@ export type KeadaanUrusan = {
   gate: Extract<UrusinEvent, { type: 'gate' }> | null;
   degraded: Extract<UrusinEvent, { type: 'degraded' }> | null;
   galat: Extract<UrusinEvent, { type: 'error' }> | null;
+  /** true bila turn terakhir melewati batas waktu (event timeout). */
+  waktuHabis: boolean;
   teksAsisten: string;
   /** true bila agen di mode degraded meminta warga mengirim "lanjut". */
   perluLanjut: boolean;
@@ -69,6 +71,10 @@ export interface StoreUrusan {
   /** Buka stream (resume dari `lastSeq` lewat Last-Event-ID) dan terapkan event ke state. */
   sambung(id: string): void;
   putus(): void;
+  /** Buat urusan baru (opsional dengan pesan pertama); mengembalikan id atau null bila gagal. */
+  buat(opsi?: { kodeKabKota?: string; pesan?: string }): Promise<string | null>;
+  /** Kirim pesan warga. 'konflik' = turn masih berjalan/versi basi (tulisan tidak hilang: kirim ulang). */
+  kirim(teks: string): Promise<'ok' | 'konflik' | 'galat'>;
   /** Terapkan satu event; dipakai stream dan pemutar fixture. */
   terapkan(e: UrusinEvent): void;
   reset(): void;
