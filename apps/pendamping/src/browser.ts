@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { PendampingSorot, PendampingViewport } from '@urusin/contracts';
 import { egressAllowedHosts, type Step } from '@urusin/core';
+import { finalGateIndex } from '@urusin/adapters';
 import {
   checkUrl,
-  finalGateIndex,
   Interpreter,
   type Cursor,
   type Driver,

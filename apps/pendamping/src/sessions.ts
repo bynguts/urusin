@@ -12,7 +12,8 @@ import type {
   PendampingViewport,
   SesiPendamping,
 } from '@urusin/contracts';
-import { buildProgram, checkUrl, requiredData, type Program, type UploadFile } from '@urusin/executor';
+import { buildProgram, requiredData, type Program } from '@urusin/adapters';
+import { checkUrl, type UploadFile } from '@urusin/executor';
 import type { Config } from './config.js';
 import { isInputMessage } from './input.js';
 import type { FrameMasuk } from './stream.js';

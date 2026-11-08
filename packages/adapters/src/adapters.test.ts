@@ -1,7 +1,7 @@
 import { css, fill, gate, nav, urlIncludes, type Step } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
 import { buildProgram, finalGateIndex, requiredData, type Params } from './adapters.js';
-import { humanOnlyTargets } from './interpreter.js';
+import { humanOnlyTargets } from '@urusin/executor';
 
 describe('adapter bawaan', () => {
   it('Telunjuk Sakti ajukan: origin resmi, nilai pribadi bertoken, final hanya lewat gate.human', () => {

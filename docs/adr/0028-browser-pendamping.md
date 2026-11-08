@@ -1,6 +1,6 @@
 # 0028. Browser Pendamping di server sebagai eksekutor utama; ekstensi menjadi Mode Privasi
 
-- **Status:** Diterima. Terimplementasi di `apps/pendamping`, `packages/executor`, `packages/pendamping-client`, dan broker `apps/web/src/routes/api/urusan/[id]/pendamping`.
+- **Status:** Diterima. Terimplementasi di `apps/pendamping`, `packages/executor`, `packages/adapters`, `packages/pendamping-client`, dan broker `apps/web/src/routes/api/urusan/[id]/pendamping`.
 - **Dicatat:** 2026-11-09
 - **Sumber keputusan:** keputusan tim
 
@@ -15,6 +15,8 @@ Eksekutor utama adalah **Browser Pendamping**: satu Chromium headless per sesi d
 Aturan ADR 0025 tetap berlaku dan ditegakkan di kode yang sama:
 
 - DSL langkah dan interpreter diekstrak ke `@urusin/executor` dan dipakai bersama ekstensi dan pendamping, bukan disalin.
+- Program adapter situs (alur, probe sesi, bukti) ada di `@urusin/adapters`, terpisah dari interpreter: ekstensi
+  dihentikan (pendamping saja), `apps/extension` tetap ada dan tetap memakai `@urusin/executor`.
 - AI mengisi kolom dan mengunggah berkas. Login, OTP, CAPTCHA, dan **tombol kirim akhir** dikerjakan warga dalam mode _takeover_. Runner menolak klik pada target `gate.human` (`FINAL_NOT_AUTOMATABLE`) dan ini diuji di unit dan e2e.
 - Tanpa plugin stealth, tanpa penyelesai CAPTCHA, agen pengguna jujur. Bila situs memasang WAF/bot wall (status 403/429/503, `cf-mitigated`, penanda halaman), sesi berakhir `dipandu` dengan pesan jelas. Tidak ada percobaan melewati.
 
