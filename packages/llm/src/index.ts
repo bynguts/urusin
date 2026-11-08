@@ -7,3 +7,5 @@ export * from './structured.js';
 export * from './cost.js';
 export * from './fake.js';
 export { digitPng, silentWav } from './probe-assets.js';
+export * from './errors.js';
+export * from './strict-schema.js';

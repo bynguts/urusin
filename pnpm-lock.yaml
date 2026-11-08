@@ -103,9 +103,24 @@ importers:
 
   apps/web:
     dependencies:
+      '@urusin/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@urusin/harness':
+        specifier: workspace:*
+        version: link:../../packages/harness
+      '@urusin/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
+      '@urusin/rag':
+        specifier: workspace:*
+        version: link:../../packages/rag
       better-sqlite3:
         specifier: 13.0.3
         version: 13.0.3
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
       '@sveltejs/adapter-node':
         specifier: 6.0.1
@@ -159,6 +174,37 @@ importers:
       fast-check:
         specifier: 4.10.2
         version: 4.10.2
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+
+  packages/harness:
+    dependencies:
+      '@urusin/core':
+        specifier: workspace:*
+        version: link:../core
+      '@urusin/llm':
+        specifier: workspace:*
+        version: link:../llm
+      '@urusin/rag':
+        specifier: workspace:*
+        version: link:../rag
+      '@urusin/registry':
+        specifier: workspace:*
+        version: link:../registry
+      better-sqlite3:
+        specifier: 13.0.3
+        version: 13.0.3
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@types/better-sqlite3':
+        specifier: 9.6.0
+        version: 9.6.0
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
       vitest:
         specifier: 5.1.0
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
