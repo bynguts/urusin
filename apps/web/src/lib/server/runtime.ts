@@ -24,6 +24,7 @@ import {
 } from '@urusin/llm';
 import { openDb } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
+import { RateLimiter } from './limiter.js';
 import { setRunningTurnsSource } from './running-turns.js';
 
 /** Konfigurasi runtime dari env (dibaca sekali saat boot). Semua opsional kecuali yang bertanda. */
@@ -35,6 +36,11 @@ export type RuntimeConfig = {
   /** Jeda sebelum loop LLM dibatalkan setelah semua pelanggan SSE putus. */
   disconnectGraceMs: number;
   heartbeatMs: number;
+  /** Batas laju: urusan baru per jam dan turn per menit, masing-masing per IP dan per sesi. */
+  buatPerJamIp: number;
+  buatPerJamSesi: number;
+  turnPerMenitIp: number;
+  turnPerMenitSesi: number;
 };
 
 export function readConfig(env: Record<string, string | undefined> = process.env): RuntimeConfig {
@@ -47,6 +53,10 @@ export function readConfig(env: Record<string, string | undefined> = process.env
     ragDbPath: env.URUSIN_RAG_DB?.trim() || undefined,
     disconnectGraceMs: num(env.URUSIN_SSE_DISCONNECT_GRACE_MS, 10_000),
     heartbeatMs: num(env.URUSIN_SSE_HEARTBEAT_MS, 15_000),
+    buatPerJamIp: num(env.URUSIN_LIMIT_BUAT_IP_PER_JAM, 20),
+    buatPerJamSesi: num(env.URUSIN_LIMIT_BUAT_SESI_PER_JAM, 10),
+    turnPerMenitIp: num(env.URUSIN_LIMIT_TURN_IP_PER_MENIT, 30),
+    turnPerMenitSesi: num(env.URUSIN_LIMIT_TURN_SESI_PER_MENIT, 20),
   };
 }
 
@@ -62,6 +72,8 @@ export type Runtime = ReturnType<typeof createHarness> & {
   running: Map<string, AbortController>;
   /** Catat + siarkan satu event di luar turn (hasil eksekusi, konfirmasi): sumber kebenaran tetap tabel events. */
   publish(urusanId: string, e: EventPayload): UrusinEvent;
+  /** Pembatas laju per aksi; kunci IP dan sesi dihitung terpisah. */
+  limits: Record<'buat' | 'turn', { ip: RateLimiter; sesi: RateLimiter }>;
 };
 
 type RuntimeInit = {
@@ -92,7 +104,19 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   };
   const running = new Map<string, AbortController>();
   setRunningTurnsSource(() => running.size);
-  return { ...h, config, mode: init.mode ?? 'demo', running, publish };
+  const jam = 3_600_000;
+  const menit = 60_000;
+  const limits: Runtime['limits'] = {
+    buat: {
+      ip: new RateLimiter(config.buatPerJamIp, jam),
+      sesi: new RateLimiter(config.buatPerJamSesi, jam),
+    },
+    turn: {
+      ip: new RateLimiter(config.turnPerMenitIp, menit),
+      sesi: new RateLimiter(config.turnPerMenitSesi, menit),
+    },
+  };
+  return { ...h, config, mode: init.mode ?? 'demo', running, publish, limits };
 }
 
 function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {
@@ -105,6 +129,45 @@ function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {
   } catch {
     return undefined;
   }
+}
+
+const num = (v: string | undefined, d: number) => (v && v.trim() !== '' ? Number(v) : d);
+
+/**
+ * Kunci HMAC placeholder PII dari env: base64, minimal 32 byte. Di mode LLM wajib (kunci acak per proses membuat token
+ * placeholder berbeda antar instance blue/green dan antar restart). Mode demo/dev boleh tanpa kunci (acak per proses).
+ */
+export function piiKeyFromEnv(env: Record<string, string | undefined>, wajib: boolean): string | undefined {
+  const raw = env.URUSIN_PII_KEY?.trim();
+  if (!raw) {
+    if (wajib) throw new Error('URUSIN_PII_KEY wajib di mode LLM (base64 dari minimal 32 byte acak)');
+    return undefined;
+  }
+  if (Buffer.from(raw, 'base64').length < 32)
+    throw new Error('URUSIN_PII_KEY terlalu pendek: butuh base64 dari minimal 32 byte');
+  return raw;
+}
+
+/**
+ * Kuota dari env. Mode LLM menolak boot tanpa batas biaya harian yang berhingga > 0 (0 atau NaN = tanpa batas
+ * berarti tagihan tak terbatas), dan setiap angka lain harus berhingga.
+ */
+export function quotaFromEnv(env: Record<string, string | undefined>) {
+  const quota = {
+    idrPerUsd: num(env.IDR_PER_USD, 16_500),
+    sessionTurnCap: num(env.URUSIN_SESSION_TURN_CAP, 40),
+    sessionTokenCap: num(env.URUSIN_SESSION_TOKEN_CAP, 200_000),
+    dailyIdrCap: num(env.URUSIN_DAILY_IDR_CAP, 0),
+  };
+  for (const [k, v] of Object.entries(quota)) {
+    if (!Number.isFinite(v) || v < 0) throw new Error(`konfigurasi kuota tidak valid: ${k}=${String(v)}`);
+  }
+  if (quota.dailyIdrCap <= 0) {
+    throw new Error(
+      'URUSIN_DAILY_IDR_CAP wajib diisi (angka > 0) di mode LLM; tanpa batas berarti biaya tak terbatas',
+    );
+  }
+  return quota;
 }
 
 async function buildFromEnv(): Promise<Runtime> {
@@ -125,7 +188,7 @@ async function buildFromEnv(): Promise<Runtime> {
     }
   }
   const prices: Prices = cfg.prices;
-  const num = (v: string | undefined, d: number) => (v && v.trim() !== '' ? Number(v) : d);
+  const piiKey = piiKeyFromEnv(env, true);
   return createRuntime({
     mode: 'llm',
     provider,
@@ -133,12 +196,8 @@ async function buildFromEnv(): Promise<Runtime> {
       model: cfg.models.agent,
       caps,
       prices,
-      quota: {
-        idrPerUsd: num(env.IDR_PER_USD, 16_500),
-        sessionTurnCap: num(env.URUSIN_SESSION_TURN_CAP, 40),
-        sessionTokenCap: num(env.URUSIN_SESSION_TOKEN_CAP, 200_000),
-        dailyIdrCap: num(env.URUSIN_DAILY_IDR_CAP, 0),
-      },
+      quota: quotaFromEnv(env),
+      ...(piiKey ? { piiKey } : {}),
     },
   });
 }

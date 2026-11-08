@@ -14,11 +14,11 @@ import { POST as konfirmasi } from '../../routes/api/urusan/[id]/konfirmasi/+ser
 import { GET as stream } from '../../routes/api/urusan/[id]/stream/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
 import { GET as devSse } from '../../routes/dev/fixtures/sse/+server';
-import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
+import { createRuntime, piiKeyFromEnv, quotaFromEnv, setRuntimeForTests, type Runtime } from './runtime';
 
 const ORIGIN = 'http://localhost:3000';
 // NIK sintetis, dirakit agar pemindai PII repo tidak menandai berkas ini
-const NIK = ['331201', '150890', '0001'].join('');
+const NIK = ['3271', '0101', '0190', '0001'].join('');
 
 let rt: Runtime;
 function setup(provider = new DemoProvider(), config: Partial<Runtime['config']> = {}) {
@@ -43,7 +43,13 @@ const post = (body: unknown) =>
 const get = (path = '/x', headers: Record<string, string> = {}) =>
   new Request(`http://localhost:3000${path}`, { headers });
 const ev = (request: Request, params: Record<string, string> = {}) =>
-  ({ request, params, url: new URL(request.url), getClientAddress: () => '127.0.0.1' }) as never;
+  ({
+    request,
+    params,
+    url: new URL(request.url),
+    locals: { sid: 'sid-uji' },
+    getClientAddress: () => '127.0.0.1',
+  }) as never;
 
 class Slow extends FakeProvider {
   override async create(params: ChatParams, opts: { signal?: AbortSignal } = {}) {
@@ -323,6 +329,26 @@ describe('GET /stream: resume, heartbeat, putus koneksi', () => {
     expect(rt.running.has(u.id)).toBe(false);
   });
 
+  it('temuan 9: masa tenggang tidak membatalkan turn yang LEBIH BARU dari yang berjalan saat koneksi putus', async () => {
+    const slow = new Slow();
+    setup(slow as never, { disconnectGraceMs: 60 });
+    const u = await mulai('halo');
+    const ctrl = new AbortController();
+    const res = await stream(
+      ev(new Request('http://localhost:3000/s', { signal: ctrl.signal }), { id: u.id }),
+    );
+    await res.body!.getReader().read();
+    await new Promise((r) => setTimeout(r, 30));
+    ctrl.abort();
+    const lama = rt.running.get(u.id)!;
+    const baru = new AbortController();
+    rt.running.set(u.id, baru);
+    await new Promise((r) => setTimeout(r, 150));
+    expect(baru.signal.aborted).toBe(false);
+    expect(lama.signal.aborted).toBe(false);
+    lama.abort();
+  });
+
   it('urusan tak dikenal → 404', async () => {
     expect((await stream(ev(get('/s'), { id: 'u_x' }))).status).toBe(404);
   });
@@ -420,5 +446,61 @@ describe('GET /dev/fixtures/sse: hanya mode dev', () => {
         bad,
       ).toBe(404);
     }
+  });
+});
+
+describe('temuan 2: PII di balik escape JSON dan pemecahan bidang ditolak 422', () => {
+  const HP = ['0812', '3456', '7890'].join('');
+  const duaBelas = NIK.slice(4);
+  const kasus: [string, unknown][] = [
+    ['baris baru (escape \n) sebelum HP', { pesan: `hp saya:\n${HP}` }],
+    ['tab dan petik di sekitar NIK', { pesan: `"nik"\t${NIK}` }],
+    ['NIK bersepasi', { pesan: [0, 4, 8, 12].map((i) => NIK.slice(i, i + 4)).join('  ') }],
+    ['NIK terpecah: kodeKabKota + pesan', { kodeKabKota: NIK.slice(0, 4), pesan: duaBelas }],
+    ['bersarang dalam objek/array', { pesan: 'halo', lain: { a: [`kontak ${HP}`] } }],
+  ];
+
+  it.each(kasus)('buat urusan: %s', async (_n, body) => {
+    const res = await buatUrusan(ev(post(body as never)));
+    expect(res.status).toBe(422);
+    const teks = await res.text();
+    expect(teks).not.toContain(HP);
+    expect(teks).not.toContain(duaBelas);
+  });
+
+  it('turn: NIK terpecah memakai kodeKabKota urusan yang tersimpan', async () => {
+    const r = await buatUrusan(ev(post({ kodeKabKota: NIK.slice(0, 4) })));
+    const { id } = (await r.json()) as { id: string };
+    const res = await kirimTurn(ev(post({ teks: `nomornya ${duaBelas}` }), { id }));
+    expect(res.status).toBe(422);
+    expect(rt.store.getUrusanOrThrow(id).turnCount).toBe(0);
+  });
+});
+
+describe('temuan 5: kuota harian wajib di mode LLM', () => {
+  it.each([
+    ['tanpa URUSIN_DAILY_IDR_CAP', {}],
+    ['0 (tanpa batas)', { URUSIN_DAILY_IDR_CAP: '0' }],
+    ['NaN', { URUSIN_DAILY_IDR_CAP: 'abc' }],
+    ['Infinity', { URUSIN_DAILY_IDR_CAP: 'Infinity' }],
+    ['negatif', { URUSIN_DAILY_IDR_CAP: '-5' }],
+    ['kuota sesi NaN', { URUSIN_DAILY_IDR_CAP: '50000', URUSIN_SESSION_TURN_CAP: 'x' }],
+  ])('menolak boot: %s', (_n, env) => {
+    expect(() => quotaFromEnv(env)).toThrow();
+  });
+
+  it('menerima batas harian berhingga > 0', () => {
+    expect(quotaFromEnv({ URUSIN_DAILY_IDR_CAP: '50000' }).dailyIdrCap).toBe(50000);
+  });
+});
+
+describe('URUSIN_PII_KEY', () => {
+  const kunci = Buffer.alloc(32, 7).toString('base64');
+  it('mode LLM wajib dan minimal 32 byte; dev boleh kosong', () => {
+    expect(() => piiKeyFromEnv({}, true)).toThrow();
+    expect(() => piiKeyFromEnv({ URUSIN_PII_KEY: Buffer.alloc(16, 1).toString('base64') }, true)).toThrow();
+    expect(() => piiKeyFromEnv({ URUSIN_PII_KEY: 'bukan-base64-pendek' }, false)).toThrow();
+    expect(piiKeyFromEnv({}, false)).toBeUndefined();
+    expect(piiKeyFromEnv({ URUSIN_PII_KEY: kunci }, true)).toBe(kunci);
   });
 });

@@ -19,6 +19,18 @@ Larangan:
 - force push, rebase, squash, atau amend;
 - trailer `Co-Authored-By` (hook akan menolaknya).
 
+### Commit pertama sambil desain di pen.dev
+
+Tidak perlu menunggu desain selesai. Setiap langkah di bawah adalah satu commit kecil yang bermakna, karena mengubah kode, bukan dokumen:
+
+1. `feat(web): design tokens` berisi warna, jarak, radius, dan tipografi sebagai variabel CSS/`@theme` di `apps/web/src/routes/layout.css`, sesuai pen.dev. Nilainya boleh berubah lagi nanti.
+2. `feat(web): komponen Button` dibuat di `apps/web/src/lib/components/Button.svelte`, dengan varian, ukuran sentuh ≥ 48 px, dan fokus terlihat.
+3. `feat(web): komponen Field` berisi label, petunjuk, dan pesan galat yang terhubung lewat `aria-describedby`.
+4. `feat(web): komponen Card dan Badge status`.
+5. `feat(web): layar ★ pertama` (beranda/chat). Datanya dari fixture `packages/contracts/fixtures/`.
+
+Targetnya: minimal satu commit bermakna di setiap gelombang. Jangan memecah atau menggembungkan commit hanya demi menambah hitungan.
+
 ## 2. Status kesiapan
 
 | Bagian                                                                                                             | Status                                                                                                                                                                                                                                                                                  |

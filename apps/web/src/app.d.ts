@@ -3,7 +3,10 @@
 declare global {
   namespace App {
     // interface Error {}
-    // interface Locals {}
+    interface Locals {
+      /** Id sesi anonim (cookie urusin_sid); hanya terisi untuk /api/*. */
+      sid?: string;
+    }
     // interface PageData {}
     // interface PageState {}
     // interface Platform {}

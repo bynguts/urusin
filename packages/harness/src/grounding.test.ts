@@ -254,3 +254,44 @@ describe('generateGroundedAnswer', () => {
     expect(v.klaim).toHaveLength(1);
   });
 });
+
+describe('temuan 4: fakta di klaim harus terbukti di kutipan', () => {
+  const c = chunk({
+    text: 'Biaya pembuatan akta kelahiran Rp 0 dan layanan dapat diakses di https://telunjuksakti.wonogirikab.go.id/layanan.',
+  });
+  const klaim = (teks: string) => ({
+    klaim: [{ teks, kutipan: [{ refId: 'c1', kutipanPersis: 'Biaya pembuatan akta kelahiran Rp 0' }] }],
+  });
+
+  it('klaim dengan angka yang tidak ada di kutipan dibuang (kutipan sah, klaim menyelundupkan angka)', () => {
+    const r = verifyGrounded(klaim('Biaya pembuatan akta kelahiran Rp 500.000'), [c], {}, NOW);
+    expect(r.klaim).toEqual([]);
+    expect(r.klaimDibuang).toBe(1);
+    expect(r.handoff).toBeDefined();
+  });
+
+  it('klaim dengan URL/telepon yang tidak ada di kutipan dibuang', () => {
+    expect(
+      verifyGrounded(klaim('Biaya Rp 0, bayar di https://evil.example/bayar'), [c], {}, NOW).klaim,
+    ).toEqual([]);
+    expect(
+      verifyGrounded(klaim('Biaya Rp 0, hubungi ' + ['0812', '3456', '7890'].join('')), [c], {}, NOW).klaim,
+    ).toEqual([]);
+  });
+
+  it('angka yang memang ada di kutipan lolos', () => {
+    expect(verifyGrounded(klaim('Biaya pembuatan akta kelahiran Rp 0'), [c], {}, NOW).klaim).toHaveLength(1);
+  });
+
+  it('klaim terlalu panjang dan jumlah klaim berlebih dipangkas', () => {
+    const q = { refId: 'c1', kutipanPersis: 'Biaya pembuatan akta kelahiran Rp 0' };
+    const panjang = { teks: 'Biaya pembuatan akta kelahiran ' + 'x'.repeat(500), kutipan: [q] };
+    expect(verifyGrounded({ klaim: [panjang] }, [c], {}, NOW).klaim).toEqual([]);
+    const banyak = {
+      klaim: Array.from({ length: 12 }, () => ({ teks: 'Biaya akta kelahiran gratis', kutipan: [q] })),
+    };
+    const r = verifyGrounded(banyak, [c], {}, NOW);
+    expect(r.klaim).toHaveLength(8);
+    expect(r.klaimDibuang).toBe(4);
+  });
+});

@@ -28,6 +28,8 @@ export function errorResponse(e: unknown): Response {
 export async function readBody<T>(
   request: Request,
   schema: ZodType<T>,
+  /** Kode kab/kota yang sudah diketahui (mis. dari urusan), agar NIK yang dipecah antar bidang tertangkap. */
+  konteks: { kodeKabKota?: string | null } = {},
 ): Promise<{ ok: true; data: T } | { ok: false; response: Response }> {
   let raw: unknown;
   try {
@@ -41,7 +43,8 @@ export async function readBody<T>(
       ok: false,
       response: apiError(422, 'BODY_INVALID', 'Isi permintaan tidak sesuai. Periksa lagi.'),
     };
-  const kinds = detectPii(JSON.stringify(raw));
+  const kode = konteks.kodeKabKota ?? stringLeaves(raw).kode;
+  const kinds = [...new Set(stringLeaves(raw).teks.flatMap((t) => detectPii(t, { kodeKabKota: kode })))];
   if (kinds.length > 0) {
     return {
       ok: false,
@@ -53,4 +56,17 @@ export async function readBody<T>(
     };
   }
   return { ok: true, data: parsed.data };
+}
+
+/** Semua string di dalam JSON (pada daun, bukan hasil serialisasi: escape JSON tidak menyembunyikan apa pun). */
+function stringLeaves(raw: unknown): { teks: string[]; kode: string | undefined } {
+  const teks: string[] = [];
+  const kunjungi = (v: unknown) => {
+    if (typeof v === 'string') teks.push(v);
+    else if (Array.isArray(v)) v.forEach(kunjungi);
+    else if (typeof v === 'object' && v !== null) Object.values(v).forEach(kunjungi);
+  };
+  kunjungi(raw);
+  const k = (raw as { kodeKabKota?: unknown } | null)?.kodeKabKota;
+  return { teks, kode: typeof k === 'string' ? k : undefined };
 }

@@ -15,7 +15,12 @@ const req = (path: string, origin: string | null, method = 'POST') =>
 async function run(request: Request) {
   let reached = false;
   const res = await handle({
-    event: { request, url: new URL(request.url) } as never,
+    event: {
+      request,
+      url: new URL(request.url),
+      cookies: { get: () => undefined, set() {} },
+      locals: {},
+    } as never,
     resolve: async () => {
       reached = true;
       return new Response('ok');
@@ -98,7 +103,12 @@ describe('pengecualian Origin terdaftar (satu tempat: lib/server/origin.ts)', ()
         body,
       });
       const res = await handle({
-        event: { request, url: new URL(request.url) } as never,
+        event: {
+          request,
+          url: new URL(request.url),
+          cookies: { get: () => undefined, set() {} },
+          locals: {},
+        } as never,
         resolve: async () => cspReport({ request, getClientAddress: () => '127.0.0.1' } as never),
       });
 

@@ -7,26 +7,20 @@ import type { PayloadOf } from '@urusin/contracts';
 import { KALIMAT_TETAP, buildHandoff, generateGroundedAnswer, verifyGrounded } from './grounding.js';
 import { spotlight } from './spotlight.js';
 import { paramsHash, type ChunkRecord } from './store.js';
-import {
-  NON_TERMINAL_STATES,
-  clip,
-  defineTool,
-  type ToolContext,
-  type ToolDef,
-  type ToolResult,
-} from './tools.js';
+import { NON_TERMINAL_STATES, defineTool, type ToolContext, type ToolDef, type ToolResult } from './tools.js';
 
 const kodeKabKota = z.string().regex(/^\d{4}$/);
 
 type Hit = ReturnType<typeof cariPengetahuanTool.execute>['hasil'][number];
 
-function formatHits(hits: readonly Hit[], nonce: string, max = 4): string {
+/** Anggaran per hit ditetapkan SEBELUM dibungkus (spotlight maxChars); keluaran terbungkus tidak boleh dipotong lagi. */
+export function formatHits(hits: readonly Hit[], nonce: string, max = 4): string {
   if (hits.length === 0) return 'Tidak ada hasil di basis pengetahuan resmi. Arahkan warga ke kanal resmi.';
   return hits
     .slice(0, max)
     .map(
       (h) =>
-        `[${h.id}] ${h.kutipan.judul} — ${h.kutipan.instansi} (diverifikasi: ${h.verifiedAt ?? 'belum'})\n` +
+        `[${h.id}] ${h.kutipan.judul.slice(0, 120)} — ${h.kutipan.instansi.slice(0, 120)} (diverifikasi: ${h.verifiedAt ?? 'belum'})\n` +
         spotlight('rag', h.text, { nonce, id: h.id, maxChars: 500 }),
     )
     .join('\n');
@@ -66,7 +60,7 @@ export const ragCariPengetahuan = defineTool({
   allowedStates: NON_TERMINAL_STATES,
   execute(ctx, args): ToolResult {
     const out = retrieve(ctx, args.query, args.kodeKabKota ?? ctx.urusan.kodeKabKota, args.layanan);
-    return { content: clip(formatHits(out.hasil, ctx.nonce)) };
+    return { content: formatHits(out.hasil, ctx.nonce), terbungkus: true };
   },
 });
 
@@ -82,7 +76,11 @@ export const dukcapilCekPersyaratan = defineTool({
     const { entry } = routeByKode(args.kodeKabKota);
     const out = retrieve(ctx, `persyaratan ${args.layanan}`, args.kodeKabKota, undefined);
     const head = `${entry.nama}: tingkat ${entry.tier}, validasi ${entry.validasi}${entry.portal ? `, portal ${entry.portal.nama}` : ''}.`;
-    return { content: clip(`${head}\n${formatHits(out.hasil, ctx.nonce)}`) };
+    return {
+      content: `${head}
+${formatHits(out.hasil, ctx.nonce)}`,
+      terbungkus: true,
+    };
   },
 });
 
