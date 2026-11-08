@@ -17,6 +17,7 @@
     "test": "turbo run test && pnpm run test:scripts",
     "test:scripts": "node --test scripts/tests/",
     "audit:history": "node scripts/audit-history.mjs",
+    "rag:ingest": "pnpm --filter @urusin/rag rag:ingest",
     "pii:scan": "node scripts/pii-scan.mjs --all",
     "prepare": "husky",
     "lint:root": "eslint scripts commitlint.config.mjs eslint.config.js",
