@@ -53,6 +53,8 @@ export type Expansion = {
   terms: string[];
   /** id entri yang cocok (bukan teks kueri; aman untuk debug). */
   matched: string[];
+  /** Token kueri (ter-stem) yang dijelaskan pemicu glosarium; tidak dihitung sebagai "tak dikenal" saat abstain. */
+  explained: string[];
 };
 
 function containsSeq(hay: readonly string[], needle: readonly string[]): boolean {
@@ -85,15 +87,18 @@ function compile(g: Glossary): Compiled[] {
  * tidak ditambahkan lagi. Pemanggil memberi bobot lebih rendah pada hasil perluasan.
  */
 export function expandQuery(query: string, glossary: Glossary | null = defaultGlossary()): Expansion {
-  if (!glossary) return { terms: [], matched: [] };
+  if (!glossary) return { terms: [], matched: [], explained: [] };
   const q = stemTokens(query);
   const original = new Set(rawTokens(query).map((t) => t.toLowerCase()));
   const terms = new Set<string>();
   const matched: string[] = [];
+  const explained = new Set<string>();
   for (const { entry, triggers, terms: official } of compile(glossary)) {
-    if (!triggers.some((t) => containsSeq(q, t))) continue;
+    const hit = triggers.filter((t) => containsSeq(q, t));
+    if (hit.length === 0) continue;
     matched.push(entry.id);
+    for (const t of hit) for (const w of t) explained.add(w);
     for (const t of official) if (!t.split(' ').every((w) => original.has(w))) terms.add(t);
   }
-  return { terms: [...terms], matched };
+  return { terms: [...terms], matched, explained: [...explained] };
 }

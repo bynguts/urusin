@@ -1,11 +1,13 @@
 import type { Db } from './db.js';
 import type { RetrievalPipeline } from './eval/run.js';
 import { defaultGlossary, expandQuery, type Glossary } from './glossary.js';
+import { placeTokens } from './place-names.js';
 import { safeRewrite, type QueryRewriter } from './llm-stage.js';
 import { rerankHits, type RerankDeps, type RerankStatus } from './rerank.js';
 import type { RetrievalDebug } from './schema.js';
 import { toHit, type Hit, type Row, type SearchOptions } from './search.js';
-import { isStopword, rawTokens, stemTokens } from './stem/stem.js';
+import { isStopword, rawTokens, stemToken, stemTokens } from './stem/stem.js';
+import { GENERIC_QUERY_WORDS } from './stem/stopwords.js';
 
 /**
  * Tipe konfigurasi dimiliki `eval/run.ts` (dipakai juga oleh rag:eval): `bm25.stemmed`, `expand`,
@@ -30,6 +32,8 @@ export type RetrievalDeps = {
   useVector?: boolean | undefined;
   /** Bobot leg perluasan terhadap kata asli (default 0.4). */
   expandWeight?: number | undefined;
+  /** Ambang cakupan abstain (default 0.5; 0 = mati). Lihat DEFAULT_MIN_COVERAGE. */
+  minCoverage?: number | undefined;
   /** Top-N kandidat untuk rerank (default 20). */
   rerankTopN?: number | undefined;
   rerank?: RerankDeps | undefined;
@@ -125,8 +129,77 @@ function expandCfg(p: RetrievalPipeline, deps: RetrievalDeps): { on: boolean; we
   return { on: Boolean(p.expand), weight: deps.expandWeight ?? DEFAULT_EXPAND_WEIGHT };
 }
 
+/** Pecah teks ter-stem jadi himpunan token (termasuk bagian sebelum/sesudah '-' dan '.'). */
+function tokenSet(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const t of text.split(/\s+/)) {
+    if (!t) continue;
+    out.add(t);
+    for (const part of t.split(/[-.]/)) if (part) out.add(part);
+  }
+  return out;
+}
+
+/**
+ * Cakupan: jumlah bobot IDF token kueri (ter-stem, tanpa stopword, di luar yang dijelaskan glosarium)
+ * yang muncul pada satu hasil teratas, dibagi bobot semua token; diambil maksimum atas hasil.
+ * Token yang tak ada di korpus mana pun bobotnya paling besar, sehingga kueri seperti "cara daftar CPNS"
+ * (hanya kata umum yang cocok) berskor rendah. Tanpa token bermakna -> 1.
+ */
+function coverageOf(
+  db: Db,
+  query: string,
+  top: readonly Hit[],
+  explained: readonly string[],
+  rewriteTerms: readonly string[],
+  expandTokens: readonly string[],
+): number {
+  // Bila tulis-ulang LLM aktif, istilah hasil tulis-ulang yang dinilai (kata awam asli tak dikenal korpus).
+  const source = rewriteTerms.length ? rewriteTerms.join(' ') : query;
+  const explainedSet = new Set(rewriteTerms.length ? [] : explained);
+  const skip = new Set([...placeTokens(), ...[...GENERIC_QUERY_WORDS].map(stemToken)]);
+  const toks = [...new Set(stemTokens(source))].filter((t) => !skip.has(t));
+  if (toks.length === 0) return 1;
+  const n = (db.prepare('SELECT COUNT(*) AS n FROM chunks').get() as { n: number }).n;
+  const dfStmt = db.prepare('SELECT COUNT(*) AS n FROM chunks_stem_fts WHERE chunks_stem_fts MATCH ?');
+  const idf = toks.map((t) => {
+    const df = (dfStmt.get('"' + t.replace(/"/g, '') + '"') as { n: number }).n;
+    return Math.log(1 + (n - df + 0.5) / (df + 0.5));
+  });
+  const total = idf.reduce((a, b) => a + b, 0);
+  if (total <= 0) return 1;
+  const rowStmt = db.prepare(
+    `SELECT s.judul || ' ' || s.text || ' ' || s.instansi || ' ' || COALESCE(s.ctx, '') AS doc
+     FROM chunks c JOIN chunks_stem_fts s ON s.rowid = c.rowid WHERE c.id = ?`,
+  );
+  let best = 0;
+  for (const h of top) {
+    const row = rowStmt.get(h.id) as { doc: string } | undefined;
+    if (!row) continue;
+    const set = tokenSet(row.doc);
+    // Token yang dijelaskan glosarium dihitung tercakup bila hasil memuat istilah resminya.
+    const viaGlossary = expandTokens.some((t) => set.has(t));
+    const got = toks.reduce(
+      (acc, t, i) => acc + (set.has(t) || (viaGlossary && explainedSet.has(t)) ? (idf[i] as number) : 0),
+      0,
+    );
+    best = Math.max(best, got / total);
+  }
+  return best;
+}
+
+export type AbstainReason = 'di_luar_cakupan' | 'skor_rendah';
+
+/**
+ * Ambang abstain default: cakupan (0..1) kata kueri yang bermakna pada 3 hasil teratas. Dikalibrasi di
+ * `abstain.test.ts` (korpus sintetis); 0 mematikan gerbang. Lihat README untuk angka kalibrasi.
+ */
+export const DEFAULT_MIN_COVERAGE = 0.3;
+
 export type SyncResult = {
   hits: Hit[];
+  /** Cakupan IDF-berbobot kata kueri pada top-3 (null bila tidak dihitung). */
+  coverage: number | null;
   usedVector: boolean;
   timings: { expand: number; bm25: number; fuse: number };
   glossaryMatched: string[];
@@ -150,7 +223,7 @@ export function retrieveSync(
   const stemmed = pipeline.bm25?.stemmed === true;
   const exp = expandCfg(pipeline, deps);
   const glossary = deps.glossary === undefined ? defaultGlossary() : deps.glossary;
-  const expansion = exp.on ? expandQuery(opts.query, glossary) : { terms: [], matched: [] };
+  const expansion = exp.on ? expandQuery(opts.query, glossary) : { terms: [], matched: [], explained: [] };
   const expandTerms = [...new Set([...expansion.terms, ...extraTerms])];
   const t1 = performance.now();
 
@@ -192,8 +265,14 @@ export function retrieveSync(
   });
   const t3 = performance.now();
 
+  const coverage = hits.length
+    ? coverageOf(db, opts.query, hits.slice(0, 3), expansion.explained, extraTerms, [
+        ...new Set(expansion.terms.flatMap((e) => stemTokens(e))),
+      ])
+    : null;
   return {
     hits,
+    coverage,
     usedVector: useVector,
     timings: { expand: ms(t0, t1), bm25: ms(t1, t2), fuse: ms(t2, t3) },
     glossaryMatched: expansion.matched,
@@ -203,6 +282,8 @@ export function retrieveSync(
 
 export type RetrievalResult = {
   hits: Hit[];
+  /** Terisi bila pipeline memilih abstain (hits kosong): hand-off ke kanal resmi. */
+  alasan?: AbstainReason | undefined;
   mode: 'bm25' | 'hybrid';
   debug: RetrievalDebug;
 };
@@ -229,9 +310,19 @@ function debugOf(
     candidates: extra.candidates,
     glossaryMatched: s.glossaryMatched,
     expandedTerms: s.expandedTerms,
+    coverage: s.coverage === null ? null : Math.round(s.coverage * 1000) / 1000,
     rerankStatus: extra.rerankStatus,
     rewriteStatus: extra.rewriteStatus,
   };
+}
+
+/** Abstain bila tak ada hasil, atau (tanpa leg vektor) cakupan di bawah ambang. */
+function abstainOf(s: SyncResult, deps: RetrievalDeps): AbstainReason | undefined {
+  if (s.hits.length === 0) return 'di_luar_cakupan';
+  const min = deps.minCoverage ?? DEFAULT_MIN_COVERAGE;
+  // Leg vektor tidak punya skor terkalibrasi di sini; gerbang leksikal dilewati saat vektor aktif.
+  if (min <= 0 || s.usedVector || s.coverage === null || s.coverage >= min) return undefined;
+  return s.coverage === 0 ? 'di_luar_cakupan' : 'skor_rendah';
 }
 
 /** Versi sinkron (tanpa LLM): stem + perluasan glosarium + vektor bila ada. */
@@ -244,9 +335,11 @@ export function retrieveSyncFull(
   const k = opts.k ?? 6;
   const t0 = performance.now();
   const s = retrieveSync(db, opts, pipeline, k, deps);
-  const hits = s.hits.slice(0, k);
+  const alasan = abstainOf(s, deps);
+  const hits = alasan ? [] : s.hits.slice(0, k);
   return {
     hits,
+    alasan,
     mode: s.usedVector ? 'hybrid' : 'bm25',
     debug: debugOf(pipeline, s, {
       rerank: 0,
@@ -281,10 +374,11 @@ export async function retrieve(
   const topN = rr ? Math.max(k, deps.rerankTopN ?? DEFAULT_TOP_N) : k;
   const s = retrieveSync(db, opts, pipeline, topN, deps, extra);
 
-  let hits = s.hits.slice(0, k);
+  const alasan = abstainOf(s, deps);
+  let hits = alasan ? [] : s.hits.slice(0, k);
   let rerankStatus: RerankStatus = 'off';
   const t1 = performance.now();
-  if (rr && deps.rerank) {
+  if (!alasan && rr && deps.rerank) {
     const r = await rerankHits(opts.query, s.hits, k, deps.rerank);
     hits = r.hits;
     rerankStatus = r.status;
@@ -293,6 +387,7 @@ export async function retrieve(
 
   return {
     hits,
+    alasan,
     mode: s.usedVector ? 'hybrid' : 'bm25',
     debug: debugOf(pipeline, s, {
       rerank: ms(t1, t2),

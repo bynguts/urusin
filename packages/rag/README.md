@@ -105,6 +105,27 @@ Output berisi `debug`: konfigurasi efektif, `timingsMs` per tahap (`expand`, `bm
 `total`), jumlah kandidat, id entri glosarium yang cocok, serta status rerank/tulis ulang
 (`off | endpoint | llm | fallback | skipped`). Tidak memuat teks kueri atau PII.
 
+### Abstain (hand-off) dan stopword
+
+Setelah fusi, pipeline menghitung **cakupan** (0..1): bobot IDF kata kueri bermakna (ter-stem, tanpa
+stopword, tanpa nama tempat, tanpa kata maksud umum seperti "cara/urus/bikin", dan token yang dijelaskan
+glosarium dihitung tercakup bila hasil memuat istilah resminya) yang muncul pada 3 hasil teratas. Cakupan di bawah
+`minCoverage` (default `DEFAULT_MIN_COVERAGE = 0.3`, `0` = mati) membuat `tanpaHasil = true`, `hasil = []` dan
+`alasan`: `di_luar_cakupan` (tanpa hasil atau cakupan 0) atau `skor_rendah` (cocok sebagian). Kalibrasi pada
+korpus sintetis `abstain.test.ts` (18 chunk): 25 kueri dalam cakupan berskor 0.33 sampai 1.0, 10 kueri di luar
+cakupan berskor 0 sampai 0.26 atau tanpa hasil sama sekali; 0.3 ada di celah itu. Ambang perlu dikalibrasi ulang di
+korpus nyata. Saat leg vektor aktif gerbang leksikal dilewati (skor vektor belum terkalibrasi). Stopword dipakai di
+semua jalur pencarian (BM25 lama, leg asli, leg ter-stem, perluasan).
+
+### rag:verify
+
+`pnpm rag:verify [--only id]` mengambil ulang tiap sumber yang pernah di-ingest dengan conditional GET
+(ETag / Last-Modified, lalu hash teks ter-ekstrak), menghormati robots.txt, >= 2 detik per host, UA jujur.
+Tidak berubah -> `verifiedAt` chunk diperbarui. Berubah -> sumber ditandai dan hasil pencarian mendapat
+`peringatan: "sumber berubah sejak diverifikasi"` sampai di-ingest ulang. `sourceFreshness(db)` memberi umur
+sumber tertua untuk halaman transparansi. Ingest menolak chunk tanpa `verifiedAt` (`requireVerified`); data registry
+dan peristiwa tidak lewat jalur ini.
+
 ### Sumber dan lisensi
 
 - Stemmer (`src/stem/stem.ts`): implementasi sendiri bergaya Nazief-Adriani; kamus akar

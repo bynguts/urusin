@@ -19,6 +19,7 @@
     "audit:history": "node scripts/audit-history.mjs",
     "rag:ingest": "pnpm --filter @urusin/rag rag:ingest",
     "rag:eval": "pnpm --filter @urusin/rag rag:eval",
+    "rag:verify": "pnpm --filter @urusin/rag rag:verify",
     "pii:scan": "node scripts/pii-scan.mjs --all",
     "prepare": "husky",
     "lint:root": "eslint scripts commitlint.config.mjs eslint.config.js",

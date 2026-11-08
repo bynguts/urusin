@@ -53,6 +53,8 @@ export const RetrievalDebugSchema = z.object({
   candidates: z.number().int(),
   glossaryMatched: z.array(z.string()),
   expandedTerms: z.number().int(),
+  /** Cakupan kata kueri pada top-3 (0..1); null bila tidak dihitung. */
+  coverage: z.number().nullable(),
   rerankStatus: z.enum(['off', 'endpoint', 'llm', 'fallback', 'skipped']),
   rewriteStatus: z.enum(['off', 'applied', 'fallback', 'skipped']),
 });
@@ -62,6 +64,8 @@ export const CariPengetahuanOutputSchema = z.object({
   mode: z.enum(['bm25', 'hybrid']),
   /** true bila tidak ada chunk relevan: hand-off ke kanal resmi, jangan menjawab dari ingatan. */
   tanpaHasil: z.boolean(),
+  /** Alasan bila pipeline abstain; kosong bila korpus tidak punya hasil sama sekali. */
+  alasan: z.enum(['di_luar_cakupan', 'skor_rendah']).optional(),
   hasil: z.array(
     z.object({
       id: z.string(),
@@ -71,6 +75,8 @@ export const CariPengetahuanOutputSchema = z.object({
       verifiedAt: z.string().nullable(),
       kodeWilayah: z.string().nullable(),
       layanan: z.string().nullable(),
+      /** Terisi bila sumber berubah sejak terakhir diverifikasi (rag:verify). */
+      peringatan: z.string().optional(),
     }),
   ),
   debug: RetrievalDebugSchema.optional(),

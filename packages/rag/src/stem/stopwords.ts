@@ -21,3 +21,16 @@ export const STOPWORDS: ReadonlySet<string> = new Set(
     .split(/\s+/)
     .filter(Boolean),
 );
+
+/**
+ * Kata maksud/kualifikasi umum yang tidak membedakan topik ("cara ngurus", "syarat bikin ... kecil").
+ * TIDAK dibuang dari pencarian; hanya diabaikan saat menilai apakah kueri berada dalam cakupan korpus.
+ */
+export const GENERIC_QUERY_WORDS: ReadonlySet<string> = new Set(
+  `
+  cara urus ngurus ngurusin mengurus butuh bikin buat membuat daftar mendaftar syarat persyaratan
+  prosedur biaya proses umur usia kecil antar online daring langsung
+  `
+    .split(/\s+/)
+    .filter(Boolean),
+);

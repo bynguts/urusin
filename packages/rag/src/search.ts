@@ -1,6 +1,7 @@
 import type { Db } from './db.js';
 import { reciprocalRankFusion } from './rrf.js';
 import type { SourceRef } from './schema.js';
+import { isStopword } from './stem/stem.js';
 
 export type SearchOptions = {
   query: string;
@@ -44,7 +45,10 @@ export function tokenize(q: string): string[] {
 /** Bangun ekspresi MATCH aman: token dikutip, digabung OR. Null bila tidak ada token. */
 export function buildMatch(q: string): string | null {
   const norm = q.toLowerCase();
-  const tokens = new Set(tokenize(norm));
+  const all = tokenize(norm);
+  // Stopword dibuang (jatuh ke semua token bila kueri hanya berisi stopword).
+  const kept = all.filter((t) => !isStopword(t));
+  const tokens = new Set(kept.length ? kept : all);
   for (const [phrase, extra] of Object.entries(SINONIM)) {
     if (norm.includes(phrase)) for (const e of extra) tokens.add(e);
   }

@@ -68,7 +68,7 @@ describe('expandQuery', () => {
   });
   it('istilah yang sudah ada di kueri tidak diulang; kueri tak dikenal -> kosong', () => {
     expect(terms('ktp hilang penggantian')).not.toContain('penggantian');
-    expect(expandQuery('resep rendang padang', g)).toEqual({ terms: [], matched: [] });
+    expect(expandQuery('resep rendang padang', g)).toEqual({ terms: [], matched: [], explained: [] });
   });
   it('mengembalikan id entri (bukan teks kueri) dan deterministik', () => {
     const a = expandQuery('ktp hilang', g);
@@ -76,6 +76,6 @@ describe('expandQuery', () => {
     expect(expandQuery('ktp hilang', g)).toEqual(a);
   });
   it('tanpa glosarium -> tanpa perluasan', () => {
-    expect(expandQuery('ktp hilang', null)).toEqual({ terms: [], matched: [] });
+    expect(expandQuery('ktp hilang', null)).toEqual({ terms: [], matched: [], explained: [] });
   });
 });
