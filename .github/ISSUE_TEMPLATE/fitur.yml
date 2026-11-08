@@ -1,0 +1,36 @@
+name: Usulan fitur
+description: Usulkan fitur atau perbaikan
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Jangan menempelkan data pribadi nyata. Fitur yang melonggarkan batas PII, gate kedua ekstensi, atau
+        registry domain harus menjelaskan dampaknya terhadap SECURITY.md.
+  - type: textarea
+    id: masalah
+    attributes:
+      label: Masalah warga yang diselesaikan
+    validations:
+      required: true
+  - type: textarea
+    id: usulan
+    attributes:
+      label: Usulan
+    validations:
+      required: true
+  - type: textarea
+    id: alternatif
+    attributes:
+      label: Alternatif yang dipertimbangkan
+  - type: dropdown
+    id: komponen
+    attributes:
+      label: Komponen
+      options: [web, ekstensi, fixtures, core, llm, registry, rag, deploy, dokumentasi]
+    validations:
+      required: true
+  - type: input
+    id: rubrik
+    attributes:
+      label: Item rubrik atau rencana terkait
