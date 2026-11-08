@@ -32,5 +32,18 @@ for (const lebar of [390, 1440]) {
     // Urusan tercatat di Urusanku perangkat ini
     await page.goto('/urusanku');
     await expect(page.getByRole('heading', { name: 'Akta kelahiran' }).first()).toBeVisible();
+
+    // Ringkasan melanjutkan urusan terakhir: pertanyaan terakhir warga dan fase urusan tampil
+    await page.goto('/beranda');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Kita lanjutkan');
+    await expect(page.getByRole('region', { name: 'Percakapan terakhir' })).toContainText(
+      'Apa saja dokumen yang perlu saya bawa?',
+    );
+    await expect(page.getByText(/Langkah \d dari 4/)).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
+
+    // Urusan baru tetap bisa dimulai dari kotak cerita
+    await page.goto('/beranda?baru');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Apa yang ingin Anda urus?');
   });
 }
