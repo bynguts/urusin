@@ -94,8 +94,8 @@ caddy/systemctl/curl palsu dan tidak pernah menyentuh host.
     (wildcard atau IP non-loopback) menggagalkan deploy dengan rollback.
   - **Egress** (`@urusin/egress`): semua HTTP keluar server lewat Agent undici yang dijaga.
     - Tujuan diperiksa sebelum tersambung, dan setiap alamat hasil DNS diperiksa juga. Loopback, privat,
-      link-local (termasuk `169.254.169.254`), CGNAT `100.64/10` dan padanan IPv6 (termasuk
-      `::ffff:0:0/96` dan `::ffff:0:0:0/96`) ditolak.
+      link-local (termasuk `169.254.169.254`), CGNAT `100.64/10` dan padanan IPv6 ditolak. Alamat
+      IPv4-mapped (`::ffff:a.b.c.d`) diperiksa sebagai IPv4; `::ffff:0:0:0/96`, NAT64 dan 6to4 diblokir utuh.
     - Pengecualian lokal satu-satunya adalah persis `127.0.0.1:20128` (proxy LLM). Itu pun hanya berlaku bila
       `LLM_BASE_URL` memang origin itu, dan redirect dari host lain ke sana selalu ditolak.
     - Dua profil terpisah:
