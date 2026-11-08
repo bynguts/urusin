@@ -116,6 +116,12 @@ korpus sintetis `abstain.test.ts`; di korpus nyata ia menurunkan recall@3 5 poin
 (lihat "Korpus nyata dan gold set"). Cakupan dihitung pada top-3 hasil fusi, sehingga gerbang berlaku sama di mode `bm25` dan `hybrid` (diuji dengan embedder palsu). Ambang bisa ditimpa lewat env `RAG_ABSTAIN_MIN_COVERAGE`. Lantai cosine untuk leg vektor sengaja tidak dipakai: skor cosine tidak terkalibrasi antar model embedding. Stopword dipakai di
 semua jalur pencarian (BM25 lama, leg asli, leg ter-stem, perluasan).
 
+Leksikon layanan luar cakupan (`data/glossary/luar-cakupan.json`: SIM, SKCK, paspor, BPJS, DPT, NPWP) memaksa
+`alasan: di_luar_cakupan` bila kueri menyebut salah satunya dan tak ada judul chunk yang memuat nama itu (kata umum
+seperti "syarat perpanjang" bisa membuat cakupan leksikal 1.0 sendirian). STNK/BPKB tidak dimasukkan karena halaman
+Samsat ada di korpus. Di gold tuning abstain recall naik dari 41.7% ke 83.3% (presisi 100%, recall@3 tidak berubah);
+di held-out tetap 66.7% (tak ada istilah leksikon di soal luar cakupannya).
+
 ### Korpus nyata dan gold set
 
 Bangun korpus dari sumber resmi di `data/sources.json` (butuh jaringan; sopan: robots.txt, >= 2 detik per host):
