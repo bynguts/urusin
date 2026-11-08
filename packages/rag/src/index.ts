@@ -16,3 +16,5 @@ export * from './tool.js';
 export * from './vector/transform.js';
 export * from './vector/store.js';
 export * from './vector/pipeline.js';
+export * from './ingest/state.js';
+export * from './ingest/verify.js';

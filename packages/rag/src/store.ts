@@ -12,10 +12,16 @@ export class ChunkRejectedError extends Error {
 }
 
 /** Validasi (sourceRef, verifiedAt, origin resmi) lalu upsert; satu transaksi, semua atau tidak sama sekali. */
-export function upsertChunks(db: Db, chunks: readonly unknown[]): number {
+export function upsertChunks(
+  db: Db,
+  chunks: readonly unknown[],
+  opts: { requireVerified?: boolean } = {},
+): number {
   const parsed: Chunk[] = chunks.map((c, i) => {
     const r = ChunkSchema.safeParse(c);
     if (!r.success) throw new ChunkRejectedError(`#${i} tidak sesuai skema`);
+    if (opts.requireVerified && r.data.verifiedAt === null)
+      throw new ChunkRejectedError(`#${i} tanpa verifiedAt (wajib untuk korpus hasil ingest)`);
     if (!isAllowedUrl(r.data.sourceRef.url))
       throw new ChunkRejectedError(`#${i} origin di luar allowlist resmi`);
     return r.data;

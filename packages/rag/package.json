@@ -20,7 +20,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "rag:ingest": "tsc -p tsconfig.build.json && node dist/ingest/cli.js",
-    "rag:eval": "tsc -p tsconfig.build.json && node dist/eval/cli.js"
+    "rag:eval": "tsc -p tsconfig.build.json && node dist/eval/cli.js",
+    "rag:verify": "tsc -p tsconfig.build.json && node dist/ingest/verify-cli.js"
   },
   "dependencies": {
     "@urusin/core": "workspace:*",

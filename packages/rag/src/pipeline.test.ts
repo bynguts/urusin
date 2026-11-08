@@ -377,7 +377,7 @@ describe('rewrite LLM opsional', () => {
   it('istilah dari LLM masuk sebagai perluasan', async () => {
     db = openDb(':memory:');
     upsertChunks(db, [mk('s1', 'Pelaporan', 'Pelaporan pencurian dilakukan di kantor polisi setempat.')]);
-    const p = new FakeProvider({ replies: [reply({ istilah: ['Pelaporan', 'kehilangan 123456'] })] });
+    const p = new FakeProvider({ replies: [reply({ istilah: ['Pelaporan', 'pencurian 123456'] })] });
     const r = await retrieve(db, { query: 'dompet raib' }, pipe, { rewrite: createLlmRewriter(jsonVia(p)) });
     expect(r.debug.rewriteStatus).toBe('applied');
     expect(ids(r.hits)).toEqual(['s1']);

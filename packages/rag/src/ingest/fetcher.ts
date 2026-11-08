@@ -16,6 +16,14 @@ export type Deps = {
   sleep: (ms: number) => Promise<void>;
 };
 
+export type FetchResult = {
+  status: number;
+  body: string;
+  contentType: string;
+  etag: string | null;
+  lastModified: string | null;
+};
+
 export class RobotsBlockedError extends Error {
   constructor() {
     super('Diblokir robots.txt; tidak diambil.');
@@ -42,14 +50,24 @@ export class PoliteFetcher {
     this.lastAt.set(host, this.deps.now());
   }
 
-  private async rawGet(url: string): Promise<{ status: number; body: string; contentType: string }> {
+  private async rawGet(url: string, extra: Record<string, string> = {}): Promise<FetchResult> {
     await this.throttle(new URL(url).host);
     const res = await this.deps.fetch(url, {
-      headers: { 'user-agent': USER_AGENT, accept: 'text/html,application/xhtml+xml,text/plain;q=0.8' },
+      headers: {
+        'user-agent': USER_AGENT,
+        accept: 'text/html,application/xhtml+xml,text/plain;q=0.8',
+        ...extra,
+      },
       redirect: 'follow',
       signal: AbortSignal.timeout(20_000),
     });
-    return { status: res.status, body: await res.text(), contentType: res.headers.get('content-type') ?? '' };
+    return {
+      status: res.status,
+      body: await res.text(),
+      contentType: res.headers.get('content-type') ?? '',
+      etag: res.headers.get('etag'),
+      lastModified: res.headers.get('last-modified'),
+    };
   }
 
   private robotsFor(origin: string): Promise<Robots> {
@@ -64,10 +82,11 @@ export class PoliteFetcher {
     return p;
   }
 
-  async get(url: string): Promise<{ status: number; body: string; contentType: string }> {
+  /** `headers` = header kondisional opsional (If-None-Match / If-Modified-Since). */
+  async get(url: string, headers?: Record<string, string>): Promise<FetchResult> {
     const u = new URL(url);
     const robots = await this.robotsFor(u.origin);
     if (!robots.isAllowed(u.pathname + u.search)) throw new RobotsBlockedError();
-    return this.rawGet(url);
+    return this.rawGet(url, headers);
   }
 }

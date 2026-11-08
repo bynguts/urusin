@@ -65,6 +65,17 @@ export function migrate(db: Db): void {
       judul, text, instansi, ctx,
       tokenize='unicode61 remove_diacritics 2'
     );
+    -- Status verifikasi sumber (rag:verify): validator HTTP + hash isi teks ter-ekstrak.
+    CREATE TABLE IF NOT EXISTS source_state (
+      source_id TEXT PRIMARY KEY,
+      etag TEXT,
+      last_modified TEXT,
+      content_hash TEXT NOT NULL,
+      verified_at TEXT NOT NULL,
+      checked_at TEXT NOT NULL,
+      changed INTEGER NOT NULL DEFAULT 0,
+      changed_at TEXT
+    );
     -- Vektor (opsional): raw = keluaran embedding, vec = hasil transformasi aktif. Kosong = mode BM25.
     CREATE TABLE IF NOT EXISTS chunk_vectors (
       id TEXT PRIMARY KEY,
