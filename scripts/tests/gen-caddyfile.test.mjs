@@ -26,6 +26,8 @@ describe('gen-caddyfile', () => {
       assert.deepEqual(siteLines(text), [`${hosts[set].app}, ${hosts[set].verify}`]);
       assert.match(text, /reverse_proxy 127\.0\.0\.1:4310 127\.0\.0\.1:4311 \{/);
       assert.match(text, /health_uri \/api\/ready/);
+      assert.match(code, /^\s+respond \/api\/health\* 404$/m, '/api/health tidak boleh publik');
+      assert.ok(code.indexOf('respond /api/health') < code.indexOf('reverse_proxy'));
       assert.doesNotMatch(code, /Content-Security-Policy/i, 'CSP milik aplikasi');
     });
   }

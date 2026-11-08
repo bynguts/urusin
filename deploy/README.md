@@ -48,7 +48,7 @@ Pemilihan host hanya terjadi di VPS: `.env` (`DOMAIN`) dan salinan snippet set y
 `/opt/urusin/Caddyfile.urusin`. Image dan ekstensi identik untuk kedua set. Isi snippet:
 
 - `reverse_proxy 127.0.0.1:4310 127.0.0.1:4311` dengan `lb_policy first`, health check aktif
-  **`/api/ready`** tiap 2 detik (200 hanya pada warna yang dipromosikan `deploy.sh`; `/api/health` tetap liveness), dan `lb_try_duration 5s` (permintaan yang gagal tersambung diulang ke
+  **`/api/ready`** tiap 2 detik (200 hanya pada warna yang dipromosikan `deploy.sh`; `/api/health` tetap liveness, tetapi **publik dijawab 404** oleh `respond /api/health* 404` karena memuat gitSha/versi/runningTurns; hanya `deploy.sh` yang membacanya lewat `127.0.0.1`), dan `lb_try_duration 5s` (permintaan yang gagal tersambung diulang ke
   upstream sehat, sehingga pergantian blue/green tidak menghasilkan 502). Lalu lintas hanya ke warna aktif
   tanpa reload Caddy. `flush_interval -1` untuk SSE.
 - `encode zstd gzip` dengan **matcher eksplisit**. Matcher bawaan Caddy menyertakan `text/*`, sehingga
@@ -76,7 +76,8 @@ Langkah host (setiap perubahan Caddy = **go-ahead pengguna per kejadian**, prose
 5. Uji header (dari mana saja):
    ```sh
    curl -sI https://$DOMAIN/ | grep -iE 'strict-transport|permissions-policy|cross-origin|reporting-endpoints|content-security'
-   curl -sI -H 'Accept-Encoding: gzip' https://$DOMAIN/api/health | grep -i content-encoding
+   curl -sI -H 'Accept-Encoding: gzip' https://$DOMAIN/api/ready | grep -i content-encoding
+   curl -s -o /dev/null -w '%{http_code}' https://$DOMAIN/api/health   # harus 404
    ```
    `strict-transport-security` tidak boleh memuat `includeSubDomains`; `content-security-policy` muncul
    tepat satu kali.
@@ -171,8 +172,9 @@ Urutan `deploy.sh`:
    berkas itu dengan `URUSIN_COLOR`; hanya warna yang dipromosikan menjawab 200 di `/api/ready`, sehingga
    Caddy tidak mengirim lalu lintas ke warna baru (mis. green -> blue, saat blue di 4310 yang diutamakan
    `lb_policy first`) sebelum smoke lulus.
-5. Smoke publik bila `DOMAIN` ada di `.env`: `https://$DOMAIN/api/health` (gitSha publik, diulang sampai
-   Caddy berpindah), `https://verify.$DOMAIN/` (HTTP < 500) dan masa berlaku sertifikat TLS keduanya
+5. Smoke publik bila `DOMAIN` ada di `.env`: `https://$DOMAIN/api/ready` (warna publik = warna baru, diulang
+   sampai Caddy berpindah; `gitSha` sudah dicek lewat `127.0.0.1`), peringatan bila `https://$DOMAIN/api/health`
+   publik bukan 404 (snippet Caddy lama), `https://verify.$DOMAIN/` (HTTP < 500) dan masa berlaku sertifikat TLS keduanya
    (> 7 hari, butuh `openssl`). `SKIP_SMOKE=1` melewatinya. Baru setelah lulus warna lama dihentikan,
    **setelah drain**: `deploy.sh` menunggu `runningTurns` di `/api/health` warna lama menjadi 0, paling lama
    `DRAIN_SECONDS` (default 120 = batas turn agen). Image lama tanpa field itu ditunggu penuh; kontainer yang
@@ -213,7 +215,7 @@ Rencana uji (jalankan dari laptop/host lain, bukan dari VPS):
 ```sh
 # Terminal 1 (manual): ~20 req/detik, catat kode status selain 2xx/3xx; berjalan sampai Ctrl-C
 while :; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "https://$DOMAIN/api/health" || echo 000)
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "https://$DOMAIN/" || echo 000)
   case "$code" in 2*|3*) ;; *) echo "$(date +%T) GAGAL $code" ;; esac
   sleep 0.05
 done | tee deploy-failures.log
@@ -224,7 +226,7 @@ done | tee deploy-failures.log
 ```
 
 Otomatis: `deploy/tests/zero-downtime.sh <sha>@sha256:<digest> <sha>@sha256:<digest>` menembak
-`https://$DOMAIN/api/health` (~20 rps, `RPS`/`URL` bisa diubah) selama dua deploy berurutan dan exit 1 bila
+`https://$DOMAIN/` (~20 rps, `RPS`/`URL` bisa diubah; bukan `/api/ready`, yang sesaat 503 di warna lama) selama dua deploy berurutan dan exit 1 bila
 ada respons non-2xx/3xx lebih dari `MAX_FAILURES` (default 0) atau deploy gagal. Jalankan di VPS saat gladi,
 bukan di CI. Manual (setara):
 
@@ -321,7 +323,7 @@ Latihan (lakukan sebelum produksi dan catat hasilnya di `docs/` atau issue):
 
 Tidak ada akun eksternal yang dibuat oleh repo ini. Pilihan:
 
-- **UptimeRobot** (gratis): monitor HTTPS ke `https://$DOMAIN/api/health` (kata kunci `"ok":true`, interval
+- **UptimeRobot** (gratis): monitor HTTPS ke `https://$DOMAIN/api/ready` (kata kunci `"ready":true`, interval
   5 menit) dan `https://verify.$DOMAIN/`; aktifkan monitor sertifikat/kedaluwarsa TLS dan "Status Page"
   publik; kirim peringatan ke email/ntfy.
 - **Uptime Kuma** (self-host, bila RAM cukup; jalankan di mesin lain, bukan di VPS bersama ini): monitor

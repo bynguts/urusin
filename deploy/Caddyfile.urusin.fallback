@@ -60,6 +60,10 @@
 		-Server
 	}
 
+	# /api/health (liveness: gitSha, versi, runningTurns) tidak untuk publik. deploy.sh membacanya langsung
+	# lewat 127.0.0.1:4310/4311; smoke publik dan monitor memakai /api/ready.
+	respond /api/health* 404
+
 	# Blue/green: lalu lintas hanya ke warna AKTIF. Kedua port didaftarkan, tetapi `/api/ready` hanya 200
 	# pada warna yang dipromosikan deploy.sh (setelah smoke lulus), jadi health check aktif menandai warna
 	# lain tidak sehat dan `lb_policy first` memilih warna aktif. Pergantian warna tidak butuh reload Caddy.

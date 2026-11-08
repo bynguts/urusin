@@ -172,6 +172,25 @@ export SHIM_SS_WILDCARD=1 SHIM_LABEL="$SHA_B"
 run_deploy "$SHA_B" "$DIG_B"
 check "bind 0.0.0.0 ditolak + rollback" '[ $RC -ne 0 ] && grep -q "semua antarmuka" "$SB/out.log"'
 unset SHIM_SS_WILDCARD
+check "bind non-loopback tertangkap di loop tunggu (sebelum promosi)" 'grep -q "tidak sehat" "$SB/out.log" && ! grep -q "smoke publik OK" "$SB/out.log"'
+new_sandbox
+export SHIM_LABEL="$SHA_A"
+run_deploy "$SHA_A" "$DIG_A"
+export SHIM_LABEL="$SHA_B" SHIM_SS_WILDCARD_PORT=4310
+run_deploy "$SHA_B" "$DIG_B"
+check "warna aktif (:4310) terikat 0.0.0.0: deploy gagal + rollback" '[ $RC -ne 0 ] && grep -q "web-blue (aktif, :4310) mendengarkan di luar 127.0.0.1" "$SB/out.log" && grep -q ROLLBACK "$SB/out.log"'
+unset SHIM_SS_WILDCARD_PORT
+
+echo "13e. smoke publik lewat /api/ready; /api/health publik harus 404"
+new_sandbox
+export SHIM_LABEL="$SHA_A"
+run_deploy "$SHA_A" "$DIG_A"
+check "smoke publik memakai /api/ready, bukan /api/health" '[ $RC -eq 0 ] && grep -q "https://urusin.test/api/ready" "$SHIM_DIR/calls.log" && ! grep -q "fsS.*https://urusin.test/api/health" "$SHIM_DIR/calls.log"'
+check "/api/health publik 404: tanpa peringatan" '! grep -q "api/health publik" "$SB/out.log"'
+export SHIM_PUBLIC_HEALTH_CODE=200 SHIM_LABEL="$SHA_B"
+run_deploy "$SHA_B" "$DIG_B"
+check "/api/health publik 200: peringatan snippet lama, deploy tetap sukses" '[ $RC -eq 0 ] && grep -q "api/health publik -> HTTP 200" "$SB/out.log"'
+unset SHIM_PUBLIC_HEALTH_CODE
 
 echo "13b. drain turn sebelum menghentikan warna lama"
 new_sandbox
@@ -220,7 +239,7 @@ printf '#!/usr/bin/env bash
 exit 1
 ' > "$SB/deploy-bad"
 chmod +x "$SB/deploy-ok" "$SB/deploy-bad"
-zd() { (cd "$SB" && URL=https://zd.test/api/health GRACE=0 RPS=200 LOG="$SB/zd.log" DEPLOY_CMD="$1" bash "$HERE/zero-downtime.sh" "${@:2}") > "$SB/out.log" 2>&1; RC=$?; }
+zd() { (cd "$SB" && URL=https://zd.test/ GRACE=0 RPS=200 LOG="$SB/zd.log" DEPLOY_CMD="$1" bash "$HERE/zero-downtime.sh" "${@:2}") > "$SB/out.log" 2>&1; RC=$?; }
 zd "$SB/deploy-ok" aaaaaaa bbbbbbb@sha256:abc
 check "semua 2xx -> exit 0 dan LULUS" '[ $RC -eq 0 ] && grep -q "LULUS" "$SB/out.log"'
 export SHIM_ZD_FAIL=1

@@ -203,17 +203,20 @@ smoke_public() {
   local domain
   domain="$(sed -n 's/^DOMAIN=//p' "$ENV_FILE" | head -n1 | tr -d "\"' \r")"
   if [ -z "$domain" ]; then echo "deploy: DOMAIN tidak diset di $ENV_FILE; smoke publik dilewati"; return 0; fi
-  local body="" got="" code host
-  # Caddy butuh beberapa detik memindahkan lalu lintas setelah promosi: ulangi sampai gitSha cocok.
-  # curl menolak sertifikat tidak valid secara bawaan, jadi ini sekaligus memeriksa TLS.
+  local body="" color="" code host
+  # Publik hanya /api/ready ({ready,color}); /api/health (gitSha, versi, runningTurns) dijawab 404 oleh
+  # Caddy dan hanya diperiksa lewat 127.0.0.1. Caddy butuh beberapa detik memindahkan lalu lintas setelah
+  # promosi: ulangi sampai warna publik = warna baru. curl menolak sertifikat tidak valid (cek TLS).
   for _ in 1 2 3 4 5 6 7 8; do
-    body="$(curl -fsS --max-time 10 "https://${domain}/api/health" 2>/dev/null)" || body=""
-    got="$(gitsha_of "$body")"
-    if [ -n "$body" ] && sha_match "$got" "$expected_sha"; then break; fi
+    body="$(curl -fsS --max-time 10 "https://${domain}/api/ready" 2>/dev/null)" || body=""
+    color="$(printf '%s' "$body" | sed -n 's/.*"color":"\([a-z]*\)".*/\1/p')"
+    if [ "$color" = "$idle" ]; then break; fi
     sleep 2
   done
-  [ -n "$body" ] || { echo "deploy: smoke: https://${domain}/api/health gagal (TLS/DNS/Caddy?)" >&2; return 1; }
-  sha_match "$got" "$expected_sha" || { echo "deploy: smoke: gitSha publik=${got:-kosong}, diharapkan=${expected_sha}" >&2; return 1; }
+  [ -n "$body" ] || { echo "deploy: smoke: https://${domain}/api/ready gagal (TLS/DNS/Caddy?)" >&2; return 1; }
+  [ "$color" = "$idle" ] || { echo "deploy: smoke: warna publik=${color:-kosong}, diharapkan=${idle}" >&2; return 1; }
+  code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://${domain}/api/health" 2>/dev/null || true)"
+  [ "$code" = 404 ] || echo "deploy: peringatan: https://${domain}/api/health publik -> HTTP ${code:-?} (harus 404; snippet Caddy lama?)" >&2
   code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "https://verify.${domain}/")" || { echo "deploy: smoke: https://verify.${domain}/ gagal (TLS/DNS?)" >&2; return 1; }
   case "$code" in 2*|3*|4*) ;; *) echo "deploy: smoke: https://verify.${domain}/ -> HTTP $code" >&2; return 1 ;; esac
   if command -v openssl >/dev/null; then
