@@ -18,7 +18,7 @@ import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
 
 const ORIGIN = 'http://localhost:3000';
 // NIK sintetis, dirakit agar pemindai PII repo tidak menandai berkas ini
-const NIK = ['331201', '150890', '0001'].join('');
+const NIK = ['3271', '0101', '0190', '0001'].join('');
 
 let rt: Runtime;
 function setup(provider = new DemoProvider(), config: Partial<Runtime['config']> = {}) {
@@ -420,5 +420,33 @@ describe('GET /dev/fixtures/sse: hanya mode dev', () => {
         bad,
       ).toBe(404);
     }
+  });
+});
+
+describe('temuan 2: PII di balik escape JSON dan pemecahan bidang ditolak 422', () => {
+  const HP = ['0812', '3456', '7890'].join('');
+  const duaBelas = NIK.slice(4);
+  const kasus: [string, unknown][] = [
+    ['baris baru (escape \n) sebelum HP', { pesan: `hp saya:\n${HP}` }],
+    ['tab dan petik di sekitar NIK', { pesan: `"nik"\t${NIK}` }],
+    ['NIK bersepasi', { pesan: [0, 4, 8, 12].map((i) => NIK.slice(i, i + 4)).join('  ') }],
+    ['NIK terpecah: kodeKabKota + pesan', { kodeKabKota: NIK.slice(0, 4), pesan: duaBelas }],
+    ['bersarang dalam objek/array', { pesan: 'halo', lain: { a: [`kontak ${HP}`] } }],
+  ];
+
+  it.each(kasus)('buat urusan: %s', async (_n, body) => {
+    const res = await buatUrusan(ev(post(body as never)));
+    expect(res.status).toBe(422);
+    const teks = await res.text();
+    expect(teks).not.toContain(HP);
+    expect(teks).not.toContain(duaBelas);
+  });
+
+  it('turn: NIK terpecah memakai kodeKabKota urusan yang tersimpan', async () => {
+    const r = await buatUrusan(ev(post({ kodeKabKota: NIK.slice(0, 4) })));
+    const { id } = (await r.json()) as { id: string };
+    const res = await kirimTurn(ev(post({ teks: `nomornya ${duaBelas}` }), { id }));
+    expect(res.status).toBe(422);
+    expect(rt.store.getUrusanOrThrow(id).turnCount).toBe(0);
   });
 });
