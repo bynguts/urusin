@@ -256,6 +256,26 @@ describe('egress: logika redirect', () => {
     ]);
   });
 
+  it('redirect dari host lain ke worker pendamping internal ditolak; dalam origin yang sama diikuti', async () => {
+    const calls: string[] = [];
+    const responses = [redirect(302, 'http://127.0.0.1:4330/internal/sesi/akhiri')];
+    const e = createEgress({
+      env: { PENDAMPING_INTERNAL_URL: 'http://127.0.0.1:4330' },
+      transport: async (url) => {
+        calls.push(url.href);
+        return responses.shift() ?? new Response('akhir');
+      },
+    });
+    await expect(e.fetch('https://api.jina.ai/v1/rerank')).rejects.toThrow(/worker pendamping internal/);
+    expect(calls).toHaveLength(1);
+    responses.push(redirect(302, '/health'));
+    expect(await (await e.fetch('http://127.0.0.1:4330/internal/antrean')).text()).toBe('akhir');
+    expect(calls.slice(1)).toEqual([
+      'http://127.0.0.1:4330/internal/antrean',
+      'http://127.0.0.1:4330/health',
+    ]);
+  });
+
   it('redirect ke host di luar allowlist ditolak sebelum hop berikutnya dikirim', async () => {
     const { e, calls } = scripted([redirect(301, 'http://127.0.0.1:2019/load')]);
     await expect(e.fetch('https://api.jina.ai/')).rejects.toBeInstanceOf(EgressBlockedError);

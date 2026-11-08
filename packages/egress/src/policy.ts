@@ -4,9 +4,11 @@ import { OFFICIAL_DOMAINS } from '@urusin/core';
 /**
  * Kebijakan egress server (review v11 B2). Web berjalan di network host, jadi SSRF bisa menjangkau
  * layanan loopback milik pengguna (mis. admin API Caddy di 127.0.0.1:2019). Aturannya:
- * - SATU-SATUNYA alamat lokal yang boleh: persis `127.0.0.1:20128` (proxy LLM di host), hanya sebagai
- *   IP literal, dan HANYA bila `LLM_BASE_URL` memang origin itu (profil runtime). Nama DNS yang resolve
- *   ke loopback tetap ditolak.
+ * - Alamat lokal yang boleh hanya: persis `127.0.0.1:20128` (proxy LLM di host), sebagai IP literal, dan
+ *   HANYA bila `LLM_BASE_URL` memang origin itu; serta origin internal worker Browser Pendamping yang
+ *   dikonfigurasi operator (`PENDAMPING_INTERNAL_URL` / `PENDAMPING_WORKERS[].url`), HANYA http, IP literal
+ *   127.0.0.1 atau Tailscale 100.64.0.0/10 dengan port eksplisit, persis (profil runtime). Nama DNS yang
+ *   resolve ke loopback tetap ditolak.
  * - Dua profil terpisah (L2):
  *   - `runtime` (server web): host Jina + origin base URL LLM/embedding/rerank dari env operator.
  *   - `ingest` (rag:ingest/verify, CLI kanal/kontak): registry domain resmi + sufiks `.go.id`, https:443.
@@ -96,6 +98,8 @@ export type Allowlist = {
   configured: ReadonlySet<string>;
   /** true hanya bila LLM_BASE_URL = 127.0.0.1:20128: pengecualian loopback proxy LLM aktif. */
   llmProxy: boolean;
+  /** Origin internal worker pendamping (`http://IP:port`, loopback/Tailscale) yang boleh persis. */
+  internal?: ReadonlySet<string>;
 };
 
 const defaultPort = (protocol: string) => (protocol === 'https:' ? 443 : protocol === 'http:' ? 80 : NaN);
@@ -120,6 +124,49 @@ const parseOrigin = (raw: string | undefined): { protocol: string; host: string;
     port: Number(u.port) || defaultPort(u.protocol),
   };
 };
+
+const TAILSCALE = new BlockList();
+TAILSCALE.addSubnet('100.64.0.0', 10, 'ipv4');
+/** Port lokal yang tidak pernah boleh jadi origin internal (admin Caddy, proxy LLM). */
+const PORT_TERLARANG = new Set([2019, LLM_PROXY.port]);
+
+/**
+ * Origin internal worker Browser Pendamping dari env operator: `PENDAMPING_INTERNAL_URL` dan setiap `url`
+ * di JSON `PENDAMPING_WORKERS`. Hanya `http:` dengan IP literal 127.0.0.1 atau 100.64.0.0/10 (Tailscale)
+ * dan port eksplisit; selain itu diabaikan (tetap diblokir).
+ */
+export function pendampingInternalOrigins(env: Record<string, string | undefined>): Set<string> {
+  const raw: (string | undefined)[] = [env.PENDAMPING_INTERNAL_URL];
+  try {
+    const w: unknown = JSON.parse(env.PENDAMPING_WORKERS ?? '[]');
+    if (Array.isArray(w))
+      for (const x of w)
+        if (x && typeof x === 'object' && 'url' in x && typeof x.url === 'string') raw.push(x.url);
+  } catch {
+    /* JSON rusak: tidak ada worker tambahan */
+  }
+  const out = new Set<string>();
+  for (const r of raw) {
+    let u: URL;
+    try {
+      u = new URL(r ?? '');
+    } catch {
+      continue;
+    }
+    const host = unbracket(u.hostname);
+    const port = Number(u.port);
+    if (u.protocol !== 'http:' || !port || PORT_TERLARANG.has(port) || isIP(host) !== 4) continue;
+    if (host !== '127.0.0.1' && !TAILSCALE.check(host, 'ipv4')) continue;
+    out.add(originKey('http:', host, port));
+  }
+  return out;
+}
+
+/** true bila URL menuju persis origin internal worker pendamping yang dikonfigurasi. */
+export function isPendampingInternal(u: URL, allow: Allowlist): boolean {
+  const port = Number(u.port) || defaultPort(u.protocol);
+  return allow.internal?.has(originKey(u.protocol, unbracket(u.hostname), port)) ?? false;
+}
 
 /** true bila URL menuju persis proxy LLM 127.0.0.1:20128. */
 export function isLlmProxy(u: URL): boolean {
@@ -150,6 +197,7 @@ export function buildAllowlist(
     suffixes: [],
     configured,
     llmProxy: !!llm && llm.host === LLM_PROXY.host && llm.port === LLM_PROXY.port,
+    internal: pendampingInternalOrigins(env),
   };
 }
 
@@ -170,6 +218,7 @@ export function assertTargetAllowed(
     throw new EgressBlockedError(`port ${port} tidak valid`);
   if (isIP(host) !== 0) {
     if (allow.llmProxy && host === LLM_PROXY.host && port === LLM_PROXY.port) return true;
+    if (allow.internal?.has(originKey(protocol, host, port))) return true;
     if (isBlockedAddress(host)) throw new EgressBlockedError(`alamat ${host}:${port} lokal/privat`);
     if (allow.configured.has(originKey(protocol, host, port))) return true;
     throw new EgressBlockedError(`IP literal ${host}:${port} tidak di allowlist`);

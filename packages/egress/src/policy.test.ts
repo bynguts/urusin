@@ -6,6 +6,7 @@ import {
   EgressBlockedError,
   isBlockedAddress,
   isLlmProxy,
+  isPendampingInternal,
   JINA_HOSTS,
   LLM_PROXY,
 } from './policy.js';
@@ -71,6 +72,42 @@ describe('assertTargetAllowed', () => {
     expect(buildAllowlist('runtime', { LLM_BASE_URL: 'http://127.0.0.1:20129/v1' }).llmProxy).toBe(false);
     expect(buildAllowlist('runtime', { LLM_BASE_URL: 'https://127.0.0.1:20128' }).llmProxy).toBe(true);
     expect(() => assertTargetAllowed('http:', '127.0.0.1', 20128, ingest)).toThrow(EgressBlockedError);
+  });
+
+  it('worker pendamping internal: hanya http IP literal 127.0.0.1/Tailscale + port persis dari env', () => {
+    const env = {
+      PENDAMPING_INTERNAL_URL: 'http://127.0.0.1:4330',
+      PENDAMPING_WORKERS: JSON.stringify([
+        { url: 'http://100.101.1.2:4330' },
+        { url: 'http://10.0.0.5:4330' }, // privat non-Tailscale: diabaikan
+        { url: 'https://127.0.0.1:4331' }, // https: diabaikan
+        { url: 'http://pendamping:4000' }, // nama DNS: diabaikan
+        { url: 'http://127.0.0.1:2019' }, // admin Caddy: tidak pernah
+        { url: 'http://127.0.0.1:20128' }, // proxy LLM: jalurnya sendiri
+        { url: 'http://127.0.0.1' }, // tanpa port eksplisit
+        { bukan: 'url' },
+      ]),
+    };
+    const a = buildAllowlist('runtime', env);
+    expect([...(a.internal ?? [])]).toEqual(['http://127.0.0.1:4330', 'http://100.101.1.2:4330']);
+    expect(assertTargetAllowed('http:', '127.0.0.1', 4330, a)).toBe(true);
+    expect(assertTargetAllowed('http:', '100.101.1.2', 4330, a)).toBe(true);
+    for (const [proto, host, port] of [
+      ['http:', '127.0.0.1', 4331],
+      ['https:', '127.0.0.1', 4330],
+      ['http:', '127.0.0.1', 2019],
+      ['http:', '10.0.0.5', 4330],
+      ['http:', '100.101.1.3', 4330],
+    ] as const)
+      expect(() => assertTargetAllowed(proto, host, port, a), `${host}:${port}`).toThrow(EgressBlockedError);
+    expect(isPendampingInternal(new URL('http://127.0.0.1:4330/internal/sesi'), a)).toBe(true);
+    expect(isPendampingInternal(new URL('http://127.0.0.1:4331/'), a)).toBe(false);
+    // Tanpa env (atau JSON rusak) dan profil ingest: tidak ada pengecualian.
+    expect(buildAllowlist('runtime', { PENDAMPING_WORKERS: '[{' }).internal?.size).toBe(0);
+    expect(() => assertTargetAllowed('http:', '127.0.0.1', 4330, allow)).toThrow(EgressBlockedError);
+    expect(() => assertTargetAllowed('http:', '127.0.0.1', 4330, buildAllowlist('ingest', env))).toThrow(
+      EgressBlockedError,
+    );
   });
 
   it('isLlmProxy: hanya 127.0.0.1:20128', () => {
