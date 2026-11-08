@@ -58,6 +58,7 @@ services:
     environment:
       <<: *web-env
       GIT_SHA: ${GIT_SHA_BLUE:-}
+      URUSIN_COLOR: blue
       RUN_MIGRATIONS: ${RUN_MIGRATIONS_BLUE:-0}
     ports:
       - '127.0.0.1:4310:3000'
@@ -71,6 +72,7 @@ services:
     environment:
       <<: *web-env
       GIT_SHA: ${GIT_SHA_GREEN:-}
+      URUSIN_COLOR: green
       RUN_MIGRATIONS: ${RUN_MIGRATIONS_GREEN:-0}
     ports:
       - '127.0.0.1:4311:3000'
@@ -85,6 +87,7 @@ services:
     restart: unless-stopped
     environment:
       FIXTURES_PROFILE: public
+      FIXTURES_PUBLIC_ORIGIN: https://fixtures.${DOMAIN:?DOMAIN wajib diisi}
     ports:
       - '127.0.0.1:4320:4000'
     read_only: true

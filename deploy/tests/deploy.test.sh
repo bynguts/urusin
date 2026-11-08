@@ -43,6 +43,7 @@ run_deploy "$SHA_A" "$DIG_A"
 check "exit 0" '[ $RC -eq 0 ]'
 check "ACTIVE_COLOR=blue" 'images | grep -q "^ACTIVE_COLOR=blue$"'
 check "blue berjalan dengan SHA A" '[ "$(cat "$SHIM_DIR/running.blue")" = "$SHA_A" ]'
+check "blue dipromosikan (penanda warna aktif)" '[ "$(cat "$SHIM_DIR/promoted")" = blue ]'
 check "riwayat tercatat" '[ "$(wc -l < "$SB/deploy/.env.images.history")" -eq 1 ]'
 
 echo "2. deploy kedua: pindah ke green, blue dihentikan"
@@ -53,6 +54,7 @@ check "ACTIVE_COLOR=green" 'images | grep -q "^ACTIVE_COLOR=green$"'
 check "migrasi: green=0 setelah sukses, blue tidak 1" 'images | grep -q "^RUN_MIGRATIONS_GREEN=0$" && ! images | grep -q "^RUN_MIGRATIONS_BLUE=1$"'
 check "blue dihentikan" '[ ! -f "$SHIM_DIR/running.blue" ]'
 check "green berjalan dengan SHA B" '[ "$(cat "$SHIM_DIR/running.green")" = "$SHA_B" ]'
+check "green dipromosikan" '[ "$(cat "$SHIM_DIR/promoted")" = green ]'
 check "cetak perintah rollback manual" 'grep -q "rollback manual" "$SB/out.log"'
 check "smoke publik OK" 'grep -q "smoke publik OK" "$SB/out.log"'
 
@@ -63,6 +65,7 @@ check "exit non-zero" '[ $RC -ne 0 ]'
 check "pesan ROLLBACK" 'grep -q "ROLLBACK" "$SB/out.log"'
 check "green (lama) tetap melayani SHA B" '[ "$(cat "$SHIM_DIR/running.green")" = "$SHA_B" ]'
 check "blue yang gagal dihentikan" '[ ! -f "$SHIM_DIR/running.blue" ]'
+check "penanda tetap green (tidak pernah dipromosikan ke blue)" '[ "$(cat "$SHIM_DIR/promoted")" = green ]'
 check ".env.images kembali: green aktif dengan digest B" 'images | grep -q "^ACTIVE_COLOR=green$" && images | grep -q "^WEB_IMAGE_GREEN=.*${DIG_B}$"'
 
 echo "4. warna baru tidak sehat: rollback"
@@ -83,25 +86,42 @@ check "ACTIVE_COLOR=green" 'images | grep -q "^ACTIVE_COLOR=green$"'
 
 echo "6. label revision tidak cocok: ditolak sebelum up"
 unset SHIM_PUBLIC_FAIL
-export SHIM_LABEL="cccccccccccccccc"
+export SHIM_LABEL="cccccccccccccccccccccccccccccccccccccccc"
 : > "$SHIM_DIR/calls.log"
 run_deploy "$SHA_A" "$DIG_A"
 check "exit non-zero" '[ $RC -ne 0 ]'
 check "tidak ada compose up" '! calls | grep -q "compose.* up "'
 check "pesan label" 'grep -q "label revision" "$SB/out.log"'
 
-echo "7. REQUIRE_PROVENANCE=1 tanpa provenance: ditolak"
-export SHIM_LABEL="$SHA_A" REQUIRE_PROVENANCE=1
+echo "7. provenance wajib (default): tanpa provenance, hanya SHA7, atau label pendek => ditolak sebelum up"
+export SHIM_LABEL="$SHA_A" SHIM_PROVENANCE=null
 : > "$SHIM_DIR/calls.log"
 run_deploy "$SHA_A" "$DIG_A"
-check "exit non-zero" '[ $RC -ne 0 ]'
+check "tanpa provenance -> exit non-zero" '[ $RC -ne 0 ]'
 check "tidak ada compose up" '! calls | grep -q "compose.* up "'
+export SHIM_PROVENANCE="{\"rev\":\"${SHA_A:0:7}\"}"
+run_deploy "$SHA_A" "$DIG_A"
+check "provenance hanya SHA7 -> ditolak (harus SHA lengkap)" '[ $RC -ne 0 ] && grep -q "SHA lengkap" "$SB/out.log"'
+export SHIM_LABEL="${SHA_A:0:7}" SHIM_PROVENANCE="{\"rev\":\"$SHA_A\"}"
+run_deploy "$SHA_A" "$DIG_A"
+check "label SHA pendek -> ditolak" '[ $RC -ne 0 ] && grep -q "bukan SHA lengkap" "$SB/out.log"'
+export SHIM_LABEL="$SHA_A" SHIM_PROVENANCE=null REQUIRE_PROVENANCE=0
+run_deploy "$SHA_A" "$DIG_A"
+check "REQUIRE_PROVENANCE=0 hanya label -> diterima dengan peringatan" '[ $RC -eq 0 ] && grep -q "PERINGATAN" "$SB/out.log"'
+unset REQUIRE_PROVENANCE
 
-echo "8. provenance memuat SHA: diterima"
+echo "8. provenance memuat SHA lengkap: diterima"
 export SHIM_PROVENANCE="{\"SLSA\":{\"invocation\":{\"configSource\":{\"digest\":{\"sha1\":\"$SHA_A\"}}}}}"
 run_deploy "$SHA_A" "$DIG_A"
 check "exit 0" '[ $RC -eq 0 ]'
-check "pesan provenance cocok" 'grep -q "provenance cocok" "$SB/out.log"'
+check "pesan provenance memuat SHA lengkap" 'grep -q "provenance memuat SHA lengkap" "$SB/out.log"'
+unset SHIM_PROVENANCE
+
+echo "8b. image tanpa /api/ready: ditolak sebelum promosi"
+export SHIM_NO_READY=1
+run_deploy "$SHA_A" "$DIG_A"
+check "exit non-zero, tidak ada promosi ke warna baru" '[ $RC -ne 0 ] && grep -q "api/ready" "$SB/out.log"'
+unset SHIM_NO_READY
 
 echo "9. migrasi dari layout lama (WEB_IMAGE tunggal)"
 new_sandbox
