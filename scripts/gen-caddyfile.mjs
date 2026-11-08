@@ -14,7 +14,10 @@ import { pathToFileURL } from 'node:url';
 const ROOT = resolve(import.meta.dirname, '..');
 const HOSTS_FILE = resolve(ROOT, 'deploy/hosts.json');
 /** Berkas yang di-commit per set. Primary = catatan utama; fallback = sslip (tanpa DNS sendiri). */
-export const COMMITTED = { primary: 'deploy/Caddyfile.urusin.primary', fallback: 'deploy/Caddyfile.urusin.fallback' };
+export const COMMITTED = {
+  primary: 'deploy/Caddyfile.urusin.primary',
+  fallback: 'deploy/Caddyfile.urusin.fallback',
+};
 const HOST_RE = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 
 /** Validasi satu set host: harus hostname DNS polos huruf kecil (tanpa skema, port, wildcard, `{`). */
