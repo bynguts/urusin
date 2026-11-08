@@ -227,7 +227,7 @@ jobs:
           if-no-files-found: ignore
 
   rc-compat:
-    name: Kompatibilitas rc1 (migrasi HEAD, image rc1)
+    name: Kompatibilitas rilis kandidat (image rc* terakhir di atas DB HEAD)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -235,8 +235,8 @@ jobs:
       packages: read
     env:
       HUSKY: '0'
-      RC_TAG: rc1
-      RC_IMAGE: ghcr.io/bynguts/urusin-web:rc1
+      RC_REPO: ghcr.io/bynguts/urusin-web
+      RC_READ_PATH: /api/transparansi
     steps:
       - name: Checkout (riwayat dan tag lengkap)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -244,21 +244,24 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      # Tidak berbuat apa pun sebelum tag rc1 ada; setelah itu semua langkah di bawah aktif.
-      - name: Deteksi tag rc1
+      # Tidak berbuat apa pun selama belum ada tag rc*; setelah ada, langkah di bawah aktif otomatis.
+      - name: Cari tag rc* terakhir
         id: rc
         run: |
-          if git rev-parse -q --verify "refs/tags/${RC_TAG}" >/dev/null; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
+          tag="$(git tag -l 'rc*' --sort=-version:refname | head -n1)"
+          if [ -z "$tag" ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::tag ${RC_TAG} belum ada: rc-compat dilewati (tidak ada yang diperiksa)"
-            echo "rc-compat: tag ${RC_TAG} belum ada, dilewati." >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice::belum ada tag rc*: rc-compat dilewati (tidak ada yang diperiksa)"
+            echo "rc-compat: belum ada tag rc*, dilewati." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+            echo "rc-compat: memakai tag ${tag}" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Migrasi sejak rc1 harus aditif (tanpa DROP/RENAME)
+      - name: Migrasi sejak tag rc harus aditif (tanpa DROP/RENAME)
         if: steps.rc.outputs.present == 'true'
-        run: node scripts/check-additive-migrations.mjs "$RC_TAG"
+        run: node scripts/check-additive-migrations.mjs "${{ steps.rc.outputs.tag }}"
 
       - name: Setup pnpm
         if: steps.rc.outputs.present == 'true'
@@ -283,37 +286,43 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Tarik image rc1
+      - name: Resolusi digest image tag rc
         if: steps.rc.outputs.present == 'true'
-        run: docker pull "$RC_IMAGE"
+        id: img
+        run: |
+          digest="$(docker buildx imagetools inspect "${RC_REPO}:${{ steps.rc.outputs.tag }}" --format '{{.Manifest.Digest}}')"
+          echo "ref=${RC_REPO}@${digest}" >> "$GITHUB_OUTPUT"
+          echo "- image: \`${RC_REPO}@${digest}\`" >> "$GITHUB_STEP_SUMMARY"
+          docker pull "${RC_REPO}@${digest}"
 
-      # Entrypoint migrasi: skrip `migrate` di packages/harness (belum ada = dilewati dengan log jelas, bukan lolos palsu).
-      - name: Jalankan migrasi HEAD pada DB baru
+      # DB dibuat dan dimigrasi oleh kode HEAD (openHarnessDb -> migrateHarness).
+      - name: Migrasi HEAD pada DB baru
         if: steps.rc.outputs.present == 'true'
         run: |
+          pnpm turbo run build --filter=@urusin/harness
           mkdir -p rc-compat-data && chmod 777 rc-compat-data
-          if [ -f packages/harness/package.json ] && node -e "process.exit(require('./packages/harness/package.json').scripts?.migrate ? 0 : 1)"; then
-            DATABASE_URL="file:${PWD}/rc-compat-data/urusin.db" pnpm --filter @urusin/harness run migrate
-            echo "- Migrasi HEAD dijalankan pada DB uji." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "::warning::tidak ada migrasi (packages/harness dengan skrip migrate belum ada): langkah migrasi DILEWATI"
-            echo "- Migrasi HEAD DILEWATI: belum ada migrasi." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          DB_PATH="${PWD}/rc-compat-data/urusin.db" node apps/web/scripts/db-migrate.mjs
+          chmod 666 rc-compat-data/urusin.db* 2>/dev/null || true
 
-      - name: Boot image rc1 di atas DB tersebut dan smoke test /api/health
+      - name: Boot image rc di atas DB HEAD dan smoke test
         if: steps.rc.outputs.present == 'true'
         run: |
-          docker run -d --name rc1 -p 127.0.0.1:3000:3000 -e ORIGIN=http://localhost:3000             -v "${PWD}/rc-compat-data:/data" "$RC_IMAGE"
+          docker run -d --name rc -p 127.0.0.1:3000:3000 -e ORIGIN=http://localhost:3000 \
+            -v "${PWD}/rc-compat-data:/data" "${{ steps.img.outputs.ref }}"
+          ok=0
           for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:3000/api/health; then echo; echo "- image rc1 sehat di atas DB HEAD." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+            if curl -fsS http://127.0.0.1:3000/api/health; then ok=1; break; fi
             sleep 2
           done
-          docker logs rc1
-          exit 1
+          echo
+          [ "$ok" = 1 ] || { docker logs rc; exit 1; }
+          curl -fsS "http://127.0.0.1:3000${RC_READ_PATH}" | head -c 400 || { docker logs rc; exit 1; }
+          echo
+          echo "- smoke: /api/health dan ${RC_READ_PATH} OK di atas DB migrasi HEAD." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Log kontainer bila gagal
         if: failure() && steps.rc.outputs.present == 'true'
-        run: docker logs rc1 || true
+        run: docker logs rc || true
 
   gitleaks:
     name: Gitleaks
