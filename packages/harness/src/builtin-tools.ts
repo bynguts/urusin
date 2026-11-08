@@ -26,20 +26,21 @@ export function formatHits(hits: readonly Hit[], nonce: string, max = 4): string
     .join('\n');
 }
 
-function retrieve(ctx: ToolContext, query: string, kode: string | null | undefined, layanan?: string) {
+/**
+ * Retrieval untuk tool agen. Dengan `ragSearch` (produksi): hybrid BM25 + vektor + rerank endpoint, jatuh ke BM25
+ * sendiri bila penyedia gagal. Tanpa itu (tes, mode demo): BM25 sinkron atas `ragDb`.
+ */
+async function retrieve(ctx: ToolContext, query: string, kode: string | null | undefined, layanan?: string) {
   const ragDb = ctx.deps.ragDb;
   if (!ragDb) return { hasil: [] as Hit[], tanpaHasil: true };
-  const cari = (lay?: string) =>
-    cariPengetahuanTool.execute(ragDb, {
-      query,
-      ...(kode ? { kodeKabKota: kode } : {}),
-      ...(lay ? { layanan: lay } : {}),
-      k: 4,
-    });
-  // `layanan` dari model adalah teks bebas, sedangkan korpus memakai kategori (adminduk, samsat, ...).
-  // Filter yang tidak cocok dengan kategori mana pun tidak boleh memaksa abstain: ulangi tanpa filter.
-  let out = cari(layanan);
-  if (layanan && out.hasil.length === 0) out = cari();
+  const search = ctx.deps.ragSearch;
+  const cari = async (lay?: string) => {
+    const input = { query, ...(kode ? { kodeKabKota: kode } : {}), ...(lay ? { layanan: lay } : {}), k: 4 };
+    return search ? await search(input) : cariPengetahuanTool.execute(ragDb, input);
+  };
+  // Kategori sah yang tetap 0 hasil (mis. salah kategori) tidak boleh memaksa abstain: ulangi tanpa filter.
+  let out = await cari(layanan);
+  if (layanan && out.hasil.length === 0) out = await cari();
   const chunks: ChunkRecord[] = out.hasil.map((h) => ({
     refId: h.id,
     text: h.text,
@@ -71,8 +72,8 @@ export const ragCariPengetahuan = defineTool({
       ),
   }),
   allowedStates: NON_TERMINAL_STATES,
-  execute(ctx, args): ToolResult {
-    const out = retrieve(ctx, args.query, args.kodeKabKota ?? ctx.urusan.kodeKabKota, args.layanan);
+  async execute(ctx, args): Promise<ToolResult> {
+    const out = await retrieve(ctx, args.query, args.kodeKabKota ?? ctx.urusan.kodeKabKota, args.layanan);
     return { content: formatHits(out.hasil, ctx.nonce), terbungkus: true };
   },
 });
@@ -85,9 +86,9 @@ export const dukcapilCekPersyaratan = defineTool({
   spanOperation: 'retrieval',
   input: z.object({ kodeKabKota, layanan: llmText().max(80) }),
   allowedStates: NON_TERMINAL_STATES,
-  execute(ctx, args): ToolResult {
+  async execute(ctx, args): Promise<ToolResult> {
     const { entry } = routeByKode(args.kodeKabKota);
-    const out = retrieve(ctx, `persyaratan ${args.layanan}`, args.kodeKabKota, undefined);
+    const out = await retrieve(ctx, `persyaratan ${args.layanan}`, args.kodeKabKota, undefined);
     const head = `${entry.nama}: tingkat ${entry.tier}, validasi ${entry.validasi}${entry.portal ? `, portal ${entry.portal.nama}` : ''}.`;
     return {
       content: `${head}

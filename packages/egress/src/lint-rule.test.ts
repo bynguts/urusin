@@ -81,6 +81,51 @@ export default f;
       `import { request } from 'https';\nexport const f = request;\n`,
       'no-restricted-imports',
     ],
+    // Varian dinamis (review keamanan 1e77b2e..5d90702, LOW).
+    [
+      'packages/rag/src/contoh.ts',
+      `export const f = async () => (await import('node:http')).request;\n`,
+      'no-restricted-syntax',
+    ],
+    [
+      'apps/web/src/lib/server/contoh.ts',
+      `export const f = async () => (await import('https')).get;\n`,
+      'no-restricted-syntax',
+    ],
+    ['packages/llm/src/contoh.ts', `export const f = () => import('net');\n`, 'no-restricted-syntax'],
+    ['packages/harness/src/contoh.ts', `export const f = () => import('tls');\n`, 'no-restricted-syntax'],
+    [
+      'apps/web/src/routes/api/x/+server.ts',
+      `export const f = () => import('node:http2');\n`,
+      'no-restricted-syntax',
+    ],
+    [
+      'packages/rag/src/contoh.ts',
+      `export const f = () => import('undici/lib/web/fetch/index.js');\n`,
+      'no-restricted-syntax',
+    ],
+    [
+      'packages/rag/src/contoh.ts',
+      `const m = 'node:' + 'http';\nexport const f = () => import(m);\n`,
+      'no-restricted-syntax',
+    ],
+    ['packages/rag/src/contoh.ts', 'export const f = () => import(`node:http`);\n', 'no-restricted-syntax'],
+    ['packages/rag/src/contoh.js', `export const f = () => require('node:https');\n`, 'no-restricted-syntax'],
+    [
+      'packages/rag/src/contoh.ts',
+      `import { createRequire } from 'node:module';\nexport const r = createRequire(import.meta.url);\n`,
+      'no-restricted-imports',
+    ],
+    [
+      'apps/web/src/lib/server/contoh.ts',
+      `import { createRequire } from 'module';\nexport const r = createRequire(import.meta.url);\n`,
+      'no-restricted-syntax',
+    ],
+    [
+      'packages/harness/src/contoh.ts',
+      `import mod from 'node:module';\nexport const r = mod.createRequire(import.meta.url)('http');\n`,
+      'no-restricted-syntax',
+    ],
   ])(
     '%s ditolak',
     async (file, code, rule) => {
@@ -102,6 +147,15 @@ export default f;
         'apps/web/src/routes/x/+page.js',
       ),
     ).toEqual([]);
+  }, 30_000);
+
+  it('import() literal modul biasa tetap diizinkan', async () => {
+    const code = `export const f = async () => (await import('node:fs')).readFileSync;\nexport const g = () => import('./x.js');\n`;
+    expect(await rules(code, 'packages/rag/src/contoh.ts')).toEqual([]);
+    // require() sendiri ditolak aturan lain (no-require-imports); yang diuji di sini hanya aturan egress.
+    expect(
+      await rules(`export const g = () => require('node:fs');\n`, 'packages/rag/src/contoh.js'),
+    ).not.toContain('no-restricted-syntax');
   }, 30_000);
 
   it('larangan SDK vendor lain tetap berlaku di kode server', async () => {
