@@ -1,0 +1,35 @@
+# Rahasia dan konfigurasi lokal
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Materi riset dan alat lokal
+recon/
+.playwright-mcp/
+.omc/
+.claude/
+
+# Artefak build dan dependensi (dibangun ulang di dalam image)
+**/node_modules
+**/build
+**/dist
+**/.svelte-kit
+**/.turbo
+**/coverage
+.pnpm-store
+
+# Data lokal
+*.db
+*.db-*
+*.sqlite
+deploy/data/
+
+# VCS dan lain-lain
+.git
+.github
+.husky
+**/*.log
+**/.DS_Store
