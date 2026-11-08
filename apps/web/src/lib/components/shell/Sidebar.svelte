@@ -9,8 +9,10 @@
   /** App/Sidebar (XNGdB): 248 px, menu utama, urusan aktif, dan kartu akun di bawah. */
   const lokal = ambilLokal();
   const aktif = $derived(lokal.data.urusan.slice(0, 4));
-  const akun = $derived(page.data.akun as { email: string } | null | undefined);
-  const inisial = $derived(akun ? akun.email.slice(0, 2).toUpperCase() : '');
+  /** Sesi juri (`jenis: 'demo'`) tidak punya email (docs/ui/auth.md). */
+  const akun = $derived(page.data.akun as { email: string | null } | null | undefined);
+  const label = $derived(akun ? (akun.email ?? 'Salinan demo juri') : '');
+  const inisial = $derived(label.slice(0, 2).toUpperCase());
 </script>
 
 <aside
@@ -79,7 +81,7 @@
           aria-hidden="true">{inisial}</span
         >
         <span class="min-w-0 flex-1">
-          <span class="block truncate text-[0.9375rem] font-semibold text-ink">{akun.email}</span>
+          <span class="block truncate text-[0.9375rem] font-semibold text-ink">{label}</span>
           <span class="block text-[0.8125rem] text-muted">Akun Urusin</span>
         </span>
         <Icon name="atas-bawah" class="size-4 text-muted" />

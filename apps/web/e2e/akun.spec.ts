@@ -246,6 +246,7 @@ test('#45 Turnstile setelah 3 gagal, kunci setelah 5, pesan identik; juri butuh 
     .evaluate((el, v) => ((el as HTMLInputElement).value = v), TURNSTILE);
   await page.getByRole('button', { name: 'Masuk sebagai juri' }).click();
   await expect(page).toHaveURL(/\/beranda$/);
+  await expect(page.getByText('Salinan demo juri').first()).toBeAttached(); // tanpa email: tetap render
   expect((await sesiApi(page)).akun).toMatchObject({ jenis: 'demo', email: null });
   for (let i = 0; i < 2; i++)
     expect((await api(page, 'POST', '/api/akun/juri', { turnstile: TURNSTILE })).status).toBe(200);

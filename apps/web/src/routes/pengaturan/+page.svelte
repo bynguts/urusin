@@ -12,7 +12,7 @@
   const prefs = ambilPrefs();
   const lokal = ambilLokal();
   const tts = ambilTts();
-  const akun = $derived(page.data.akun as { email: string } | null | undefined);
+  const akun = $derived(page.data.akun as { email: string | null } | null | undefined);
 
   const BAGIAN: { id: string; label: string; ikon: NamaIkon }[] = [
     { id: 'tampilan', label: 'Tampilan & suara', ikon: 'huruf' },
@@ -244,7 +244,9 @@
       >
         {#if akun}
           <p class="min-w-0 text-base text-ink">
-            Masuk sebagai <span class="font-semibold break-all">{akun.email}</span>
+            Masuk sebagai <span class="font-semibold break-all"
+              >{akun.email ?? 'salinan demo juri (terhapus dalam 24 jam)'}</span
+            >
           </p>
           <div class="flex flex-wrap gap-2">
             <a
