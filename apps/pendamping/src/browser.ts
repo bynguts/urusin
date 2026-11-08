@@ -168,7 +168,7 @@ export async function launchIsolated(
 ): Promise<Isolated> {
   const rules = egressRules(egressAllowedHosts(), config.fixtureOrigins);
   const allowedHosts = new Set(rules.map((r) => `${r.host}:${r.port}`));
-  const proxy = await startEgressProxy(rules);
+  const proxy = await startEgressProxy(rules, { upstream: config.upstreamProxy });
   proxy.onBlocked(onBlocked);
   const userDataDir = await mkdtemp(join(tmpdir(), 'urusin-pendamping-'));
   const hapus = () => rm(userDataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });

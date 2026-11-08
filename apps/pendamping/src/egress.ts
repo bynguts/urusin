@@ -73,7 +73,8 @@ export type Resolver = (host: string) => Promise<string[]>;
 const defaultResolver: Resolver = async (host) =>
   (await dnsLookup(host, { all: true, verbatim: true })).map((a) => a.address);
 
-export type EgressDecision = { ok: true; address: string } | { ok: false; reason: string };
+/** `local`: tujuan fixture lokal terdaftar (tidak pernah lewat proxy hulu). */
+export type EgressDecision = { ok: true; address: string; local: boolean } | { ok: false; reason: string };
 
 export type EgressProxy = {
   port: number;
@@ -106,7 +107,7 @@ export function createEgressPolicy(rules: readonly EgressRule[], resolve: Resolv
     if (addresses.length === 0) return { ok: false, reason: 'dns_kosong' };
     // Semua alamat harus lolos: satu alamat privat = tolak (cegah rebinding berbasis round-robin).
     if (!rule.allowPrivate && addresses.some(isBlockedAddress)) return { ok: false, reason: 'alamat_privat' };
-    return { ok: true, address: addresses[0]! };
+    return { ok: true, address: addresses[0]!, local: rule.allowPrivate === true };
   };
 }
 
@@ -128,9 +129,53 @@ const HOP_BY_HOP = [
   'upgrade',
 ];
 
+const proxyAuth = (u: URL) =>
+  u.username
+    ? `Basic ${Buffer.from(`${decodeURIComponent(u.username)}:${decodeURIComponent(u.password)}`).toString('base64')}`
+    : undefined;
+
+/**
+ * Terowongan lewat proxy hulu milik operator (PENDAMPING_UPSTREAM_PROXY): CONNECT host:port. Nama host (bukan
+ * IP hasil resolusi lokal) dikirim agar CDN memilih lokasi sesuai egress hulu; kebijakan allowlist dan
+ * penolakan alamat privat SUDAH diterapkan sebelum titik ini.
+ */
+function dialUpstream(upstream: URL, host: string, port: number): Promise<net.Socket> {
+  return new Promise((resolve, reject) => {
+    const s = net.connect(Number(upstream.port || 80), upstream.hostname);
+    const auth = proxyAuth(upstream);
+    const authority = `${isIP(host) === 6 ? `[${host}]` : host}:${port}`;
+    s.once('connect', () =>
+      s.write(
+        `CONNECT ${authority} HTTP/1.1\r\nHost: ${authority}\r\n${auth ? `Proxy-Authorization: ${auth}\r\n` : ''}\r\n`,
+      ),
+    );
+    let buf = Buffer.alloc(0);
+    const onData = (d: Buffer) => {
+      buf = Buffer.concat([buf, d]);
+      const end = buf.indexOf('\r\n\r\n');
+      if (end < 0) {
+        if (buf.length > 8192) fail(new Error('jawaban proxy hulu terlalu panjang'));
+        return;
+      }
+      s.off('data', onData);
+      if (!/^HTTP\/1\.[01] 200/.test(buf.toString('latin1', 0, end)))
+        return fail(new Error('proxy hulu menolak'));
+      const rest = buf.subarray(end + 4);
+      if (rest.length > 0) s.unshift(rest);
+      resolve(s);
+    };
+    const fail = (e: Error) => {
+      s.destroy();
+      reject(e);
+    };
+    s.on('data', onData);
+    s.once('error', fail);
+  });
+}
+
 export async function startEgressProxy(
   rules: readonly EgressRule[],
-  opts: { resolve?: Resolver } = {},
+  opts: { resolve?: Resolver; upstream?: URL | undefined } = {},
 ): Promise<EgressProxy> {
   const decide = createEgressPolicy(rules, opts.resolve);
   const listeners: ((host: string) => void)[] = [];
@@ -166,8 +211,26 @@ export async function startEgressProxy(
     }
     const headers: http.OutgoingHttpHeaders = { ...req.headers, host: url.host };
     for (const h of HOP_BY_HOP) delete headers[h];
+    const viaHulu = opts.upstream && !d.local ? opts.upstream : undefined;
+    const auth = viaHulu ? proxyAuth(viaHulu) : undefined;
     const upstream = http.request(
-      { host: d.address, port, method: req.method, path: url.pathname + url.search, headers, setHost: false },
+      viaHulu
+        ? {
+            host: viaHulu.hostname,
+            port: Number(viaHulu.port || 80),
+            method: req.method,
+            path: url.href,
+            headers: auth ? { ...headers, 'proxy-authorization': auth } : headers,
+            setHost: false,
+          }
+        : {
+            host: d.address,
+            port,
+            method: req.method,
+            path: url.pathname + url.search,
+            headers,
+            setHost: false,
+          },
       (up) => {
         res.writeHead(up.statusCode ?? 502, up.headers);
         up.pipe(res);
@@ -190,14 +253,20 @@ export async function startEgressProxy(
       client.end('HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n');
       return;
     }
-    const upstream = net.connect(target.port, d.address, () => {
+    const sambung = (upstream: net.Socket) => {
+      track(upstream);
       client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
       if (head.length > 0) upstream.write(head);
       upstream.pipe(client);
       client.pipe(upstream);
-    });
-    track(upstream);
-    upstream.on('error', () => client.end('HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n'));
+    };
+    const gagal = () => client.end('HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n');
+    if (opts.upstream && !d.local) {
+      dialUpstream(opts.upstream, normHost(target.host), target.port).then(sambung, gagal);
+      return;
+    }
+    const upstream = net.connect(target.port, d.address, () => sambung(upstream));
+    upstream.on('error', gagal);
   });
 
   await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));

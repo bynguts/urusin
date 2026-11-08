@@ -51,7 +51,7 @@ describe('kebijakan egress', () => {
   );
 
   it('host:port persis; selain :443 ditolak', async () => {
-    expect(await decide('RESMI.go.id.', 443)).toEqual({ ok: true, address: '103.10.20.30' });
+    expect(await decide('RESMI.go.id.', 443)).toEqual({ ok: true, address: '103.10.20.30', local: false });
     expect(await decide('resmi.go.id', 80)).toMatchObject({ ok: false, reason: 'host_tidak_diizinkan' });
     expect(await decide('sub.resmi.go.id', 443)).toMatchObject({ ok: false });
   });
@@ -64,7 +64,7 @@ describe('kebijakan egress', () => {
   });
 
   it('fixture lokal hanya pada port persisnya; IP literal lain ditolak', async () => {
-    expect(await decide('127.0.0.1', 4320)).toEqual({ ok: true, address: '127.0.0.1' });
+    expect(await decide('127.0.0.1', 4320)).toEqual({ ok: true, address: '127.0.0.1', local: true });
     expect(await decide('127.0.0.1', 2019)).toMatchObject({ ok: false });
     expect(await decide('169.254.169.254', 80)).toMatchObject({ ok: false });
     expect(await decide('[::1]', 4320)).toMatchObject({ ok: false });
@@ -167,5 +167,106 @@ describe('proxy egress (soket nyata)', () => {
   it('permintaan non-absolute / skema lain ditolak 400', async () => {
     expect((await viaProxy('/relatif')).status).toBe(400);
     expect((await viaProxy('ftp://127.0.0.1/x')).status).toBe(400);
+  });
+});
+
+describe('proxy hulu operator (PENDAMPING_UPSTREAM_PROXY)', () => {
+  const seen: { connect: string[]; http: string[]; auth: (string | undefined)[] } = {
+    connect: [],
+    http: [],
+    auth: [],
+  };
+  let hulu: http.Server;
+  let lokal: http.Server;
+  let proxy: EgressProxy;
+  let tolak = false;
+  const resolve = async (h: string) => (h === 'resmi.go.id' ? ['103.10.20.30'] : ['10.0.0.9']);
+
+  beforeAll(async () => {
+    hulu = http.createServer((req, res) => {
+      seen.http.push(req.url ?? '');
+      seen.auth.push(req.headers['proxy-authorization']);
+      res.end('dari hulu');
+    });
+    hulu.on('connect', (req, sock: net.Socket) => {
+      seen.connect.push(req.url ?? '');
+      seen.auth.push(req.headers['proxy-authorization']);
+      if (tolak) return sock.end('HTTP/1.1 407 Proxy Authentication Required\r\n\r\n');
+      sock.write('HTTP/1.1 200 OK\r\n\r\n');
+      sock.on('data', (d) => sock.write(`gema:${d.toString()}`));
+    });
+    lokal = http.createServer((_req, res) => res.end('lokal'));
+    await new Promise<void>((r) => hulu.listen(0, '127.0.0.1', r));
+    await new Promise<void>((r) => lokal.listen(0, '127.0.0.1', r));
+    const huluPort = (hulu.address() as net.AddressInfo).port;
+    const lokalPort = (lokal.address() as net.AddressInfo).port;
+    proxy = await startEgressProxy(
+      [
+        { host: 'resmi.go.id', port: 443 },
+        { host: 'resmi.go.id', port: 80 },
+        { host: 'privat.go.id', port: 443 },
+        { host: '127.0.0.1', port: lokalPort, allowPrivate: true },
+      ],
+      { resolve, upstream: new URL(`http://op%40x:rah%3Asia@127.0.0.1:${huluPort}`) },
+    );
+  });
+  afterAll(async () => {
+    await proxy.close();
+    hulu.close();
+    lokal.close();
+  });
+
+  const tunnel = (authority: string, kirim?: string) =>
+    new Promise<string>((resolve, reject) => {
+      const s = net.connect(proxy.port, '127.0.0.1', () =>
+        s.write(`CONNECT ${authority} HTTP/1.1\r\nHost: ${authority}\r\n\r\n`),
+      );
+      let out = '';
+      s.on('data', (d) => {
+        out += d.toString();
+        if (out.includes('\r\n\r\n') && kirim && !out.includes('gema:')) s.write(kirim);
+        if (!kirim || out.includes('gema:')) {
+          resolve(out);
+          s.destroy();
+        }
+      });
+      s.on('error', reject);
+    });
+
+  const get = (target: string) =>
+    new Promise<string>((resolve, reject) => {
+      http
+        .get({ host: '127.0.0.1', port: proxy.port, path: target }, (res) => {
+          let b = '';
+          res.on('data', (c) => (b += c));
+          res.on('end', () => resolve(`${res.statusCode} ${b}`));
+        })
+        .on('error', reject);
+    });
+
+  it('CONNECT yang lolos kebijakan diteruskan ke hulu dengan nama host + Proxy-Authorization', async () => {
+    const out = await tunnel('resmi.go.id:443', 'halo');
+    expect(out).toContain('200 Connection Established');
+    expect(out).toContain('gema:halo');
+    expect(seen.connect).toEqual(['resmi.go.id:443']);
+    expect(seen.auth[0]).toBe(`Basic ${Buffer.from('op@x:rah:sia').toString('base64')}`);
+  });
+
+  it('HTTP absolute-form lewat hulu; fixture lokal tetap langsung (tidak lewat hulu)', async () => {
+    expect(await get('http://resmi.go.id/x?y=1')).toBe('200 dari hulu');
+    expect(seen.http).toEqual(['http://resmi.go.id/x?y=1']);
+    const lokalPort = (lokal.address() as net.AddressInfo).port;
+    expect(await get(`http://127.0.0.1:${lokalPort}/`)).toBe('200 lokal');
+    expect(seen.http).toHaveLength(1);
+  });
+
+  it('kebijakan tetap sebelum hulu: privat/asing tidak pernah sampai ke hulu; hulu menolak -> 502', async () => {
+    const sebelum = seen.connect.length;
+    expect(await tunnel('privat.go.id:443')).toContain('403');
+    expect(await tunnel('evil.example:443')).toContain('403');
+    expect(seen.connect).toHaveLength(sebelum);
+    tolak = true;
+    expect(await tunnel('resmi.go.id:443')).toContain('502');
+    tolak = false;
   });
 });
