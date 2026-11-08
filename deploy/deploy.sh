@@ -16,10 +16,11 @@
 #      warna lama (warna lama tetap hidup sampai smoke lulus agar rollback seketika).
 #   5. Gagal di langkah 2-4 => rollback otomatis (promosikan ulang yang lama) dan exit non-zero.
 #
-# Variabel (opsional): DRAIN_SECONDS (default 120 = batas turn agen), REQUIRE_LLM=1 (gagal bila web tidak menjangkau LLM_BASE_URL), IMAGE_REPO, WAIT_SECONDS, SETTLE_SECONDS, PORT_BLUE, PORT_GREEN, SKIP_SMOKE=1,
+# Variabel (opsional): GHCR_TOKEN/GHCR_USER (login sementara), DRAIN_SECONDS (default 120 = batas turn agen), REQUIRE_LLM=1 (gagal bila web tidak menjangkau LLM_BASE_URL), IMAGE_REPO, WAIT_SECONDS, SETTLE_SECONDS, PORT_BLUE, PORT_GREEN, SKIP_SMOKE=1,
 # REQUIRE_PROVENANCE (default 1; 0 = cukup label revision, JANGAN dipakai di produksi).
-# DOCKER_CONFIG dari lingkungan dihormati (mis. direktori sementara berisi login GHCR); skrip ini tidak
-# pernah menulis ke konfigurasi docker pengguna. Idempotent: menjalankan ulang dengan argumen sama aman (warna berganti).
+# GHCR: DOCKER_CONFIG dari lingkungan dihormati. Bila GHCR_TOKEN diset (dan DOCKER_CONFIG tidak), skrip
+# membuat DOCKER_CONFIG sementara di /tmp (chmod 700), login lewat stdin, dan menghapusnya saat keluar.
+# Skrip ini tidak pernah menulis ke konfigurasi docker di HOME pengguna. Idempotent: menjalankan ulang dengan argumen sama aman (warna berganti).
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -67,6 +68,17 @@ sha_match() {
 }
 
 compose=(docker compose -f compose.prod.yml --env-file "$ENV_FILE" --env-file "$IMAGES_FILE")
+
+# --- 0. Login GHCR sementara (opsional) -------------------------------------------------------
+if [ -n "${GHCR_TOKEN:-}" ] && [ -z "${DOCKER_CONFIG:-}" ]; then
+  DOCKER_CONFIG="$(mktemp -d "${TMPDIR:-/tmp}/urusin-docker-XXXXXX")"
+  export DOCKER_CONFIG
+  chmod 700 "$DOCKER_CONFIG"
+  trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+  docker login ghcr.io -u "${GHCR_USER:-bynguts}" --password-stdin <<<"$GHCR_TOKEN" >/dev/null     || die "docker login ghcr.io gagal (GHCR_TOKEN butuh scope read:packages)"
+  echo "deploy: login GHCR sementara di $DOCKER_CONFIG (dihapus saat selesai)"
+fi
+unset GHCR_TOKEN
 
 # --- 1. Resolusi digest + pull ---------------------------------------------------------------
 if [ -z "$digest" ]; then

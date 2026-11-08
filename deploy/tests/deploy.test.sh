@@ -189,6 +189,24 @@ run_deploy "$SHA_B" "$DIG_B"
 check "field runningTurns tidak ada (image lama): menunggu penuh" '[ $RC -eq 0 ] && grep -q "jumlah tidak diketahui" "$SB/out.log"'
 check "DOCKER_CONFIG tidak ditulis: skrip tidak menyebut ~/.docker" '! grep -rEq "(~|\$HOME)/\.docker" "$DEPLOY"/*.sh'
 
+echo "13c. login GHCR sementara lewat GHCR_TOKEN"
+new_sandbox
+export SHIM_LABEL="$SHA_A" GHCR_TOKEN="tok-uji-ghcr" TMPDIR="$SB/tmp"
+mkdir -p "$TMPDIR"
+run_deploy "$SHA_A" "$DIG_A"
+check "login ke DOCKER_CONFIG sementara, token lewat stdin" '[ $RC -eq 0 ] && [ "$(cat "$SHIM_DIR/login.stdin")" = tok-uji-ghcr ] && case "$(cat "$SHIM_DIR/login.dir")" in "$TMPDIR"/urusin-docker-*) true ;; *) false ;; esac'
+check "pull memakai DOCKER_CONFIG sementara" '[ "$(cat "$SHIM_DIR/pull.config")" = "$(cat "$SHIM_DIR/login.dir")" ]'
+check "DOCKER_CONFIG sementara dihapus setelah selesai; token tidak di argumen" '[ ! -e "$(cat "$SHIM_DIR/login.dir")" ] && ! grep -q tok-uji-ghcr "$SHIM_DIR/calls.log"'
+export SHIM_LOGIN_FAIL=1 SHIM_LABEL="$SHA_B"
+run_deploy "$SHA_B" "$DIG_B"
+check "login gagal: berhenti sebelum pull, direktori sementara dibersihkan" '[ $RC -ne 0 ] && grep -q "docker login ghcr.io gagal" "$SB/out.log" && [ -z "$(ls -A "$TMPDIR")" ]'
+unset SHIM_LOGIN_FAIL GHCR_TOKEN TMPDIR
+export DOCKER_CONFIG="$SB/dc" SHIM_LABEL="$SHA_A"
+mkdir -p "$DOCKER_CONFIG"; rm -f "$SHIM_DIR/login.dir"
+GHCR_TOKEN=tok-uji-ghcr run_deploy "$SHA_A" "$DIG_A"
+check "DOCKER_CONFIG dari lingkungan dihormati (tanpa login baru)" '[ $RC -eq 0 ] && [ ! -e "$SHIM_DIR/login.dir" ] && [ "$(cat "$SHIM_DIR/pull.config")" = "$SB/dc" ]'
+unset DOCKER_CONFIG
+
 echo "14. compose.prod.yml dirender: host network, loopback saja"
 PATH="$PATH_ORIG" bash "$HERE/compose-config.test.sh" 2>&1 | sed "s/^/  /"
 check "compose-config lulus" '[ "${PIPESTATUS[0]}" -eq 0 ]'

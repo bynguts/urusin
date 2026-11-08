@@ -130,15 +130,23 @@ Firewall tidak diubah; sebagai gantinya:
 
 ## Login GHCR sementara
 
-`deploy.sh` menghormati `DOCKER_CONFIG` dari lingkungan dan tidak pernah menulis ke konfigurasi docker
-pengguna. Pola yang aman untuk pull dengan token sementara:
+`deploy.sh` tidak pernah menulis ke konfigurasi docker di HOME pengguna. Dua cara:
 
-```sh
-export DOCKER_CONFIG="$(mktemp -d /tmp/urusin-docker-XXXX)"; chmod 700 "$DOCKER_CONFIG"
-docker login ghcr.io -u bynguts --password-stdin <<<"$GHCR_PAT"   # token lewat stdin, bukan argumen
-./deploy.sh <git-sha> sha256:<digest>
-rm -rf "$DOCKER_CONFIG"; unset DOCKER_CONFIG
-```
+- `GHCR_TOKEN` (PAT `read:packages`) di lingkungan, tanpa `DOCKER_CONFIG`: `deploy.sh` membuat
+  `DOCKER_CONFIG` sementara `/tmp/urusin-docker-XXXXXX` (chmod 700), login lewat stdin, lalu menghapusnya
+  saat keluar (sukses, gagal, atau rollback). `GHCR_USER` default `bynguts`.
+  ```sh
+  read -rs GHCR_TOKEN && export GHCR_TOKEN   # jangan taruh token di riwayat shell
+  ./deploy.sh <git-sha> sha256:<digest>
+  unset GHCR_TOKEN
+  ```
+- `DOCKER_CONFIG` yang sudah ada dihormati apa adanya (tanpa login baru):
+  ```sh
+  export DOCKER_CONFIG="$(mktemp -d /tmp/urusin-docker-XXXX)"; chmod 700 "$DOCKER_CONFIG"
+  docker login ghcr.io -u bynguts --password-stdin <<<"$GHCR_PAT"   # token lewat stdin, bukan argumen
+  ./deploy.sh <git-sha> sha256:<digest>
+  rm -rf "$DOCKER_CONFIG"; unset DOCKER_CONFIG
+  ```
 
 ## Deploy (blue/green)
 
