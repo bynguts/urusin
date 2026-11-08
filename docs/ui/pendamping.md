@@ -21,12 +21,15 @@ kartu rencana (confirm) ──► [Isi dengan Browser Pendamping]
         ▼
   "berjalan", mode ai ──► layar dialirkan, AI mengisi (event "langkah")
         │
-        ├─ giliran_anda (login) ──► mode takeover: warga login / OTP / CAPTCHA
-        │                          AI lanjut otomatis setelah halaman berikutnya terbuka
+        ├─ giliran_anda (login / masuk_akun / verifikasi_situs) ──► mode takeover:
+        │     warga login, OTP, CAPTCHA, atau mencentang verifikasi situs;
+        │     AI lanjut otomatis setelah halaman berikutnya terbuka
         ▼
   giliran_anda (final) ──► mode takeover: warga memeriksa lalu menekan Kirim sendiri
         ▼
-  mode done + status "selesai" (hasil berhasil) / "dipandu" / "gagal" / "kedaluwarsa"
+  status "siaga" (hasil + bukti; peramban tetap hidup untuk langkah berikutnya urusan ini)
+        ▼  DELETE / TTL / idle
+  status "selesai" / "dipandu" / "gagal" / "kedaluwarsa"
 ```
 
 ## 2. Layar yang perlu didesain
@@ -45,12 +48,14 @@ Selalu terlihat selama `viewer.mode === 'takeover'`. Pesan wajib: **AI berhenti.
 
 Dipicu event `{ jenis: 'giliran_anda', alasan, pesan, sorot? }`:
 
-| `alasan`        | Arti                                     | Saran tampilan                                                  |
-| --------------- | ---------------------------------------- | --------------------------------------------------------------- |
-| `login`         | login, OTP, atau CAPTCHA                 | tampilkan `pesan`, fokus ke canvas, buka keyboard (`inputTeks`) |
-| `final`         | pengiriman akhir, hanya warga yang boleh | prompt periksa + kirim (lihat bagian d)                         |
-| `diminta_warga` | warga menekan Ambil alih                 | banner takeover saja                                            |
-| `periksa`       | AI butuh warga memeriksa halaman         | tampilkan `pesan`                                               |
+| `alasan`           | Arti                                           | Saran tampilan                                                  |
+| ------------------ | ---------------------------------------------- | --------------------------------------------------------------- |
+| `login`            | login, OTP, atau CAPTCHA                       | tampilkan `pesan`, fokus ke canvas, buka keyboard (`inputTeks`) |
+| `final`            | pengiriman akhir, hanya warga yang boleh       | prompt periksa + kirim (lihat bagian d)                         |
+| `diminta_warga`    | warga menekan Ambil alih                       | banner takeover saja                                            |
+| `periksa`          | AI butuh warga memeriksa halaman               | tampilkan `pesan`                                               |
+| `masuk_akun`       | situs meminta warga masuk ke akunnya           | tampilkan `pesan`, sorot tombol Masuk, buka keyboard            |
+| `verifikasi_situs` | situs menampilkan verifikasi (mis. Cloudflare) | tampilkan `pesan`, sorot kotak centang; warga mengetuk sendiri  |
 
 `sorot = { x, y, lebar, tinggi }` adalah kotak elemen (piksel CSS halaman, relatif viewport halaman) yang harus ditekan warga, mis. tombol Masuk atau Kirim. Gambar outline/penanda di atas canvas memakai `meta` frame terakhir (`viewer.on('frame', meta => …)`) dan fungsi `tataLetak`/`petakanKoordinat` yang diekspor klien untuk memetakan koordinat halaman ↔ canvas.
 
@@ -61,11 +66,12 @@ Runner menolak menekan tombol final di kode (`FINAL_NOT_AUTOMATABLE`); AI tidak 
 1. Tampilkan ringkasan dari kartu rencana yang sudah disetujui (bukan dari halaman).
 2. Teks: **Periksa isian di layar. Tekan tombol Kirim di halaman bila sudah benar.**
 3. Sorot tombol (`sorot`). Warga mengetuk tombol di canvas sendiri.
-4. Setelah situs memuat halaman berikutnya, mode menjadi `done` dan status `selesai`/`berhasil`. Tampilkan konfirmasi dan nomor tanda terima bila ada di layar.
+4. Setelah situs memuat halaman berikutnya, status menjadi `siaga` dengan `hasil: 'berhasil'` (mode tetap `takeover`, layar tetap tampil). `sesi.bukti = { nomor?, status? }` berisi nomor registrasi/status yang dibaca dari halaman bila adapter mendeklarasikannya; tampilkan di layar selesai. Event `selesai` dikirim saat itu juga. Langkah berikutnya urusan yang sama (mis. `cek_status`) memakai peramban yang sama tanpa login ulang. Tombol **Selesai** memanggil `DELETE`, lalu status `selesai`.
 
 ### e. Akhir dan galat
 
-- `dipandu` (event atau status): situs memblokir peramban server. Tampilkan `pesan`, lalu alihkan ke mode dipandu (langkah manual) di kartu urusan.
+- `dipandu` (event atau status): situs memblokir peramban server, atau verifikasi situs gagal/berulang dua kali. Tampilkan `pesan`, lalu alihkan ke mode dipandu (langkah manual) di kartu urusan.
+- `POST` dijawab `503 PENDAMPING_WILAYAH_TIDAK_TERSEDIA`: situs hanya bisa dibuka dari jaringan Indonesia dan worker berjaringan Indonesia sedang mati. Urusan sudah dialihkan ke dipandu; tampilkan `pesanWarga` apa adanya.
 - `kedaluwarsa`: sesi melewati 15 menit atau 3 menit tanpa aktivitas. Tawarkan mulai ulang.
 - `galat` (`{ kode, pesanWarga }`): tampilkan `pesanWarga` apa adanya. Daftar `kode` ada di `PendampingKodeGalatSchema`.
 - `diblokir` (`{ host }`): permintaan ke host di luar allowlist ditolak. Cukup log ringan; tidak perlu ditampilkan ke warga kecuali berulang.
@@ -115,7 +121,8 @@ Catatan untuk komponen:
 - Untuk keyboard ponsel, fokuskan `inputTeks` saat canvas diketuk dalam mode takeover. Elemen itu harus bisa difokus (bukan `display:none`); sembunyikan dengan opasitas/ukuran.
 - Viewer menyambung ulang otomatis dengan tiket baru; berhenti saat sesi selesai atau tiket ditolak (`koneksi === 'selesai'`).
 - Panggil `viewer.tutup()` saat komponen di-unmount.
-- WebSocket berada di origin yang sama (`wss://<domain>/pendamping/ws/...`), jadi CSP `connect-src 'self'` cukup.
+- WebSocket berada di origin yang sama (`wss://<domain>/pendamping/ws/...`, atau `/pendamping/w/<worker>/ws/...` untuk worker tambahan), jadi CSP `connect-src 'self'` cukup. Selalu pakai `tiket.wsUrl` apa adanya.
+- Frame layar dikirim sebagai pesan WebSocket biner; klien mengirim `ack` per frame (sudah ditangani viewer), jadi koneksi lambat mendapat fps lebih rendah, bukan antrean menumpuk.
 
 ## 5. Privasi yang harus tampak di UI
 

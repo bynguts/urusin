@@ -6,7 +6,7 @@
  * | -------------------------------- | ------------ | ----------------------------------------------------------- |
  * | HOST                             | 127.0.0.1    | Alamat ikat; wildcard (0.0.0.0, ::) DITOLAK                 |
  * | PORT                             | 4330         | Port HTTP + WebSocket                                       |
- * | PENDAMPING_INTERNAL_TOKEN        | (dev saja)   | Bearer web -> pendamping; wajib >= 32 karakter di produksi  |
+ * | PENDAMPING_INTERNAL_TOKEN        | (dev saja)   | Rahasia HMAC web -> pendamping; >= 32 karakter di produksi  |
  * | PENDAMPING_ALLOWED_ORIGINS       | URUSIN_PUBLIC_ORIGIN | Origin persis yang boleh membuka WebSocket          |
  * | PENDAMPING_PUBLIC_WS_URL         | ws://HOST:PORT/ws | URL WS yang diberikan ke perangkat                     |
  * | PENDAMPING_MAX_SESSIONS          | 2            | Sesi Chromium aktif bersamaan (sisanya antre FIFO)          |
@@ -33,7 +33,7 @@
 export type Config = {
   port: number;
   host: string;
-  /** Token bersama web -> pendamping untuk API internal (Authorization: Bearer). Wajib di produksi. */
+  /** Rahasia bersama web -> pendamping untuk tanda tangan HMAC API internal (tanda.ts). Wajib di produksi. */
   internalToken: string;
   /** Origin halaman web app yang boleh membuka WebSocket (cek header Origin persis). */
   allowedOrigins: string[];

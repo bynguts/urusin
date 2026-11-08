@@ -298,6 +298,16 @@ dengan mengosongkan `PENDAMPING_DEBUG_TOKEN`.
 **WebSocket untuk warga:** setelah port disetujui, buka komentar blok `handle /pendamping/ws/*` di
 `Caddyfile.urusin` (`caddy validate`, `systemctl reload caddy`). Hanya jalur itu yang diteruskan.
 
+**Worker tambahan (opsional, mis. laptop anggota berjaringan Indonesia):** jalankan image yang sama
+(digest sama) dengan `PENDAMPING_INTERNAL_TOKEN` yang sama, `HOST=<IP Tailscale worker>`,
+`URUSIN_PUBLIC_ORIGIN=https://$DOMAIN`, dan `PENDAMPING_PUBLIC_WS_URL=wss://$DOMAIN/pendamping/w/<id>/ws`.
+Di web, ganti `PENDAMPING_INTERNAL_URL` dengan `PENDAMPING_WORKERS` (lihat `.env.example`), mis.
+`[{"id":"vps","url":"http://127.0.0.1:4330","region":"umum","maxSessions":2},{"id":"laptop-a","url":"http://100.x.y.z:4330","region":"id","maxSessions":1}]`.
+Kanal web -> worker ditandatangani HMAC (bukan bearer polos), dan web memeriksa `GET /health` tiap worker.
+Situs `aksesWilayah: 'id-only'` (Telunjuk Sakti, Si D'nOK) hanya dirutekan ke worker `region: "id"`; bila
+semua mati, urusan beralih ke mode dipandu dengan pesan jujur. Rute WS worker tambahan butuh blok Caddy
+sendiri (dikerjakan lead): `handle_path /pendamping/w/<id>/*` -> `reverse_proxy 100.x.y.z:4330`.
+
 **Egress hulu (opsional):** `PENDAMPING_UPSTREAM_PROXY=http://[user:pass@]host:port` mengarahkan semua
 CONNECT/HTTP peramban yang SUDAH lolos allowlist ke proxy milik operator (mis. egress Indonesia untuk situs
 yang menolak IP datacenter). Kebijakan allowlist dan penolakan alamat privat tetap berlaku sebelum hulu.
