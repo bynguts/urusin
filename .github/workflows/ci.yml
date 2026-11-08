@@ -54,8 +54,11 @@ jobs:
       - name: Bundle budget (JS awal <= 70 KB gzip)
         run: pnpm budget
 
+      # Pada PR, checkout berada di merge commit buatan GitHub; audit hanya commit milik PR.
       - name: Audit riwayat commit
-        run: node scripts/audit-history.mjs
+        env:
+          AUDIT_RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || 'HEAD' }}
+        run: node scripts/audit-history.mjs "$AUDIT_RANGE"
 
       - name: Pindai PII/secret di semua file terlacak
         run: node scripts/pii-scan.mjs --all
