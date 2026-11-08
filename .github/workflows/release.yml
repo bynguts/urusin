@@ -152,13 +152,28 @@ jobs:
       - name: Zip ekstensi
         run: pnpm --filter @urusin/extension zip
 
+      # Zip untuk SETIAP SHA main (bukan hanya tag): penguji memakai zip SHA kandidat; tag rc1 nanti menunjuk SHA yang sama.
+      - name: Beri nama zip dengan SHA dan catat sha256
+        id: zip
+        run: |
+          sha7="${GITHUB_SHA:0:7}"
+          mkdir -p dist-ext
+          cp apps/extension/.output/*-chrome.zip "dist-ext/urusin-extension-${sha7}.zip"
+          digest="$(sha256sum "dist-ext/urusin-extension-${sha7}.zip" | cut -d' ' -f1)"
+          {
+            echo "### Zip ekstensi"
+            echo
+            echo "- Berkas: \`urusin-extension-${sha7}.zip\`"
+            echo "- SHA: \`${GITHUB_SHA}\`"
+            echo "- sha256: \`${digest}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Unggah zip
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: extension-zip
-          path: apps/extension/.output/*-chrome.zip
+          path: dist-ext/urusin-extension-*.zip
           if-no-files-found: error
-          include-hidden-files: true # .output/ dianggap tersembunyi
 
   github-release:
     name: GitHub Release
