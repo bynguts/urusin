@@ -11,7 +11,7 @@ import {
 } from '@urusin/contracts';
 import { getOfficialDomain } from '@urusin/core';
 import { egressFetch, type EgressFetch } from '@urusin/egress';
-import { redactForStorage } from '@urusin/harness';
+import { redactForStorage, type UrusanRow } from '@urusin/harness';
 import { z, type ZodType } from 'zod';
 import { apiError, apiJson } from '#lib/server/http.js';
 import { SID_COOKIE } from '#lib/server/sesi.js';
@@ -419,4 +419,26 @@ export async function tiketSesi(
   const sesiId = decodeURIComponent(new URL(r.data.wsUrl, 'ws://x').pathname.split('/').pop() ?? '');
   if (!SESI_ID_RE.test(sesiId)) return { ok: false, response: TIDAK_TERSEDIA() };
   return { ...r, data: { ...r.data, wsUrl: `${w.wsUrl}/${sesiId}` } };
+}
+
+/**
+ * Pemeriksa bahwa urusan milik akun yang sedang masuk, dipasang modul akun lewat
+ * `pasangPemeriksaPemilikAkun` dan dipanggil di setiap endpoint pendamping (`akses`). Selama belum dipasang,
+ * semua urusan lolos pemeriksaan ini; sesi peramban tetap terikat ke hash cookie `urusin_sid` di worker.
+ * Galat di pemeriksa dianggap "bukan milik" (gagal tertutup).
+ */
+export type PemeriksaPemilikAkun = (request: Request, urusan: UrusanRow) => boolean | Promise<boolean>;
+const izinkanSemua: PemeriksaPemilikAkun = () => true;
+let pemeriksaPemilikAkun = izinkanSemua;
+
+export function pasangPemeriksaPemilikAkun(f: PemeriksaPemilikAkun | undefined): void {
+  pemeriksaPemilikAkun = f ?? izinkanSemua;
+}
+
+export async function milikAkun(request: Request, urusan: UrusanRow): Promise<boolean> {
+  try {
+    return (await pemeriksaPemilikAkun(request, urusan)) === true;
+  } catch {
+    return false;
+  }
 }

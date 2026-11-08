@@ -19,6 +19,7 @@ import { checkOrigin } from './origin';
 import {
   hashSid,
   panggil,
+  pasangPemeriksaPemilikAkun,
   pendampingConfig,
   PESAN_WILAYAH,
   pilihWorker,
@@ -99,6 +100,7 @@ beforeEach(() => {
   });
 });
 afterEach(() => {
+  pasangPemeriksaPemilikAkun(undefined);
   setRuntimeForTests(undefined);
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -190,6 +192,34 @@ describe('broker Browser Pendamping', () => {
     expect((await mulai(ev(req('POST', { executionId: 'x_2' }), tanpaKota.id))).status).toBe(422);
     expect((await mulai(ev(req('POST', { executionId: `nik ${NIK}` }), u.id))).status).toBe(422);
     expect(calls).toHaveLength(0);
+  });
+
+  it('pemeriksa pemilik akun: urusan akun lain / pemeriksa galat -> 404 di semua endpoint, tanpa panggil worker', async () => {
+    const u = urusanDenganEksekusi();
+    const dilihat: string[] = [];
+    pasangPemeriksaPemilikAkun((request, urusan) => {
+      dilihat.push(`${urusan.id}:${request.method}`);
+      return false;
+    });
+    expect((await mulai(ev(req('POST', { executionId: 'x_1' }), u.id))).status).toBe(404);
+    expect((await status(ev(req('GET'), u.id))).status).toBe(404);
+    expect((await tiket(ev(req('POST'), u.id))).status).toBe(404);
+    expect((await serahkan(ev(req('POST'), u.id))).status).toBe(404);
+    expect((await akhiri(ev(req('DELETE'), u.id))).status).toBe(404);
+    expect(dilihat).toEqual([
+      `${u.id}:POST`,
+      `${u.id}:GET`,
+      `${u.id}:POST`,
+      `${u.id}:POST`,
+      `${u.id}:DELETE`,
+    ]);
+    pasangPemeriksaPemilikAkun(() => {
+      throw new Error('basis data akun mati');
+    });
+    expect((await tiket(ev(req('POST'), u.id))).status).toBe(404);
+    expect(calls).toHaveLength(0);
+    pasangPemeriksaPemilikAkun(async (_r, urusan) => urusan.id === u.id);
+    expect((await mulai(ev(req('POST', { executionId: 'x_1' }), u.id))).status).toBe(201);
   });
 
   it('status: hasil akhir dicatat sekali ke urusan (berhasil -> progres + TERKIRIM bila boleh)', async () => {
