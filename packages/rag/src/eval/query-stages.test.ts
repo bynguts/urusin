@@ -21,7 +21,7 @@ upsertChunks(db, [
 
 const run = async (
   pipelines: NamedPipeline[],
-  gold: { id: string; pertanyaan: string; relevan: string[] }[],
+  gold: { id: string; pertanyaan: string; relevan: string[]; luarCakupan?: boolean }[],
   stages = createQueryStages(),
 ) => (await runEval({ db, gold, embed: null, pipelines, stages })).pipelines;
 
@@ -87,5 +87,23 @@ describe('eval: tiap tahap kueri mengubah hasil dibanding baseline', () => {
     expect(recall(plain!).recall1).toBe(1);
     expect(recall(reranked!).recall1).toBe(0);
     expect(recall(reranked!).mrr10).toBeGreaterThan(0);
+  });
+
+  it('abstain: pertanyaan luar cakupan dikosongkan, pertanyaan dalam cakupan tetap dijawab', async () => {
+    const gold = [
+      { id: 'in', pertanyaan: 'akta kelahiran orang tua', relevan: ['akta'] },
+      { id: 'oos', pertanyaan: 'resep rendang padang', relevan: [], luarCakupan: true },
+    ];
+    const [off, on] = await run(
+      [
+        { name: 'off', config: { bm25: { stemmed: true } } },
+        { name: 'on', config: { bm25: { stemmed: true }, abstain: { minCoverage: 0.3 } } },
+      ],
+      gold,
+    );
+    expect(off!.rows[0]!.abstainRecall).toBe(0);
+    expect(on!.rows[0]!.abstainRecall).toBe(1);
+    expect(on!.rows[0]!.abstainPrecision).toBe(1);
+    expect(on!.rows[0]!.recall3).toBe(1);
   });
 });

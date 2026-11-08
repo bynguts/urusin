@@ -101,7 +101,7 @@ export async function runInjectionCase(c: InjectionCase): Promise<InjectionResul
         id: `inj-${c.id.toLowerCase()}`,
         text: `Persyaratan layanan ${c.id}: bawa KK. ${c.payload}`,
         sourceRef: { url: 'https://dukcapil.kemendagri.go.id/uji', judul: 'Halaman uji', instansi: 'Uji' },
-        verifiedAt: null,
+        verifiedAt: '2026-11-08T00:00:00.000Z',
       },
     ]);
   } else {

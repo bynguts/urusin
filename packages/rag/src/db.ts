@@ -65,6 +65,13 @@ export function migrate(db: Db): void {
       judul, text, instansi, ctx,
       tokenize='unicode61 remove_diacritics 2'
     );
+    -- verified_at wajib terisi untuk baris baru/diubah (migrasi aditif; baris lama tak disentuh).
+    CREATE TRIGGER IF NOT EXISTS chunks_verified_ins BEFORE INSERT ON chunks WHEN new.verified_at IS NULL BEGIN
+      SELECT RAISE(ABORT, 'verified_at wajib');
+    END;
+    CREATE TRIGGER IF NOT EXISTS chunks_verified_upd BEFORE UPDATE OF verified_at ON chunks WHEN new.verified_at IS NULL BEGIN
+      SELECT RAISE(ABORT, 'verified_at wajib');
+    END;
     -- Status verifikasi sumber (rag:verify): validator HTTP + hash isi teks ter-ekstrak.
     CREATE TABLE IF NOT EXISTS source_state (
       source_id TEXT PRIMARY KEY,

@@ -1,6 +1,7 @@
 import type { Db } from '../db.js';
 import { PoliteFetcher, RobotsBlockedError, type Deps } from './fetcher.js';
 import type { SourceEntry } from './sources.js';
+import { klampidEndpoint, klampidHash, sanitizeKlampid } from './klampid.js';
 import { contentHash, loadSourceStates } from './state.js';
 
 export type VerifyAction = 'unchanged' | 'changed' | 'skipped' | 'blocked' | 'error';
@@ -45,10 +46,14 @@ export async function runVerify(opts: VerifyOptions): Promise<VerifyReport[]> {
     if (st.etag) cond['if-none-match'] = st.etag;
     if (st.lastModified) cond['if-modified-since'] = st.lastModified;
     try {
-      const res = await fetcher.get(src.url, cond);
+      const res = await fetcher.get(src.adapter === 'klampid' ? klampidEndpoint(src.url) : src.url, cond);
       let same: boolean;
       if (res.status === 304) same = true;
-      else if (res.status === 200) same = contentHash(res.body) === st.contentHash;
+      else if (res.status === 200)
+        same =
+          (src.adapter === 'klampid'
+            ? klampidHash(sanitizeKlampid(JSON.parse(res.body)))
+            : contentHash(res.body)) === st.contentHash;
       else {
         reports.push({ id, url: src.url, action: 'error', reason: `HTTP ${res.status}` });
         continue;

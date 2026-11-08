@@ -1,0 +1,298 @@
+[
+  {
+    "id": "t01",
+    "pertanyaan": "Mau pindah ke Surabaya dari Malang, ngurusnya lewat mana ya?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#daftar-pindah-datang"]
+  },
+  {
+    "id": "t02",
+    "pertanyaan": "Saya pindah rumah masih di dalam kota Surabaya, perlu lapor ke Dispendukcapil nggak?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#daftar-pindah-dalam-kota"]
+  },
+  {
+    "id": "t03",
+    "pertanyaan": "KK saya hilang, bisa cetak ulang online di Surabaya?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#daftar-cetak-ulang-kk"]
+  },
+  {
+    "id": "t04",
+    "pertanyaan": "Cara melaporkan kelahiran anak supaya dapat akta di Surabaya",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#sipil-akta-kelahiran"]
+  },
+  {
+    "id": "t05",
+    "pertanyaan": "Nenek saya meninggal, akta kematiannya diurus gimana di Surabaya?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#sipil-akta-kematian"]
+  },
+  {
+    "id": "t06",
+    "pertanyaan": "Bisa nggak legalisir dokumen kependudukan secara online di Surabaya?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#umum-legalisir"]
+  },
+  {
+    "id": "t07",
+    "pertanyaan": "Data KTP saya kena blokir, minta dibuka blokirnya di Dispendukcapil Surabaya",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#mutakhir-buka-blokir"]
+  },
+  {
+    "id": "t08",
+    "pertanyaan": "Mau pisah KK dari orang tua, di Surabaya lewat layanan apa?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#daftar-pecah-kk"]
+  },
+  {
+    "id": "t09",
+    "pertanyaan": "Nama anak salah tulis di akta kelahiran, mau dibetulkan di Surabaya",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#sipil-perubahan-biodata-akta-kelahiran"]
+  },
+  {
+    "id": "t10",
+    "pertanyaan": "Alamat di KTP mau diganti karena sudah pindah rumah, wilayah Surabaya",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#daftar-perubahan-alamat"]
+  },
+  {
+    "id": "t11",
+    "pertanyaan": "Bikin KIA buat anak saya di Surabaya bagaimana?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#daftar-kartu-identitas-anak"]
+  },
+  {
+    "id": "t12",
+    "pertanyaan": "Mau daftarkan akta perceraian di Surabaya",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#sipil-akta-perceraian"]
+  },
+  {
+    "id": "t13",
+    "pertanyaan": "Pengajuan KTP elektronik baru di Surabaya lewat apa?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#daftar-pengajuan-ktp-elektronik", "klampid-katalog#daftar-pengajuan-ktp-el"]
+  },
+  {
+    "id": "t14",
+    "pertanyaan": "Syarat bikin KTP-el yang hilang di Wonogiri apa saja?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-ktp-el#0"]
+  },
+  {
+    "id": "t15",
+    "pertanyaan": "Berapa biaya bikin KTP elektronik di Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-ktp-el#4"]
+  },
+  {
+    "id": "t16",
+    "pertanyaan": "Berapa lama KK baru jadi di Disdukcapil Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-kk#4"]
+  },
+  {
+    "id": "t17",
+    "pertanyaan": "Syarat akta kelahiran anak di Wonogiri apa aja ya",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-akta-kelahiran#0"]
+  },
+  {
+    "id": "t18",
+    "pertanyaan": "Bayi saya lahir meninggal, dokumen apa yang harus dibawa ke dinas di Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-lahir-mati#0"]
+  },
+  {
+    "id": "t19",
+    "pertanyaan": "Saya baru pindah ke Wonogiri dari kota lain, surat datang butuh apa saja?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-skdwni#0"]
+  },
+  {
+    "id": "t20",
+    "pertanyaan": "Persyaratan surat pindah keluar dari Wonogiri",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-skpwni#0"]
+  },
+  {
+    "id": "t21",
+    "pertanyaan": "Ngurus akta kematian di Wonogiri kena biaya nggak?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-akta-kematian#3"]
+  },
+  {
+    "id": "t22",
+    "pertanyaan": "Saya belum punya dokumen kependudukan sama sekali, bisa didaftarkan di Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-dispensasi#0"]
+  },
+  {
+    "id": "t23",
+    "pertanyaan": "Mau menikah, bisa sekalian urus akta nikah, KK dan KTP baru di Wonogiri sekali jalan?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-terintegrasi-perkawinan#0"]
+  },
+  {
+    "id": "t24",
+    "pertanyaan": "KIA anak saya rusak, syarat penggantiannya apa di Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-kia#0"]
+  },
+  {
+    "id": "t25",
+    "pertanyaan": "Berapa hari proses surat pindah di Disdukcapil Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-skpwni#3"]
+  },
+  {
+    "id": "t26",
+    "pertanyaan": "Lahir mati itu apa sih, minimal usia kandungan berapa minggu di Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-layanan#3"]
+  },
+  {
+    "id": "t27",
+    "pertanyaan": "Mau tambah anggota keluarga di KK, lampirannya apa di Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-kk#0"]
+  },
+  {
+    "id": "t28",
+    "pertanyaan": "KK saya hilang, syaratnya apa di Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-kk#1"]
+  },
+  {
+    "id": "t29",
+    "pertanyaan": "Syarat bikin KIA baru untuk anak di Semarang",
+    "kodeWilayah": "3374",
+    "relevan": ["semarang-data-dukung#4"]
+  },
+  {
+    "id": "t30",
+    "pertanyaan": "Pindah antar kelurahan di Semarang harus bawa surat pernyataan apa?",
+    "kodeWilayah": "3374",
+    "relevan": ["semarang-data-dukung#5"]
+  },
+  {
+    "id": "t31",
+    "pertanyaan": "Akta kematian di Semarang kalau tidak ada surat kematian dari kelurahan bagaimana?",
+    "kodeWilayah": "3374",
+    "relevan": ["semarang-data-dukung#3"]
+  },
+  {
+    "id": "t32",
+    "pertanyaan": "Pencatatan perkawinan di Semarang butuh dokumen apa",
+    "kodeWilayah": "3374",
+    "relevan": ["semarang-data-dukung#6"]
+  },
+  {
+    "id": "t33",
+    "pertanyaan": "Akta kelahiran di Semarang kalau tidak punya buku nikah bisa pakai apa?",
+    "kodeWilayah": "3374",
+    "relevan": ["semarang-data-dukung#2"]
+  },
+  {
+    "id": "t34",
+    "pertanyaan": "Apa isi perubahan UU Adminduk tahun 2013?",
+    "relevan": ["uu-24-2013#0"]
+  },
+  {
+    "id": "t35",
+    "pertanyaan": "Cara cek penerima bansos pakai NIK",
+    "relevan": ["cek-bansos#1"]
+  },
+  {
+    "id": "t36",
+    "pertanyaan": "Apa itu desil di data bansos?",
+    "relevan": ["cek-bansos#2"]
+  },
+  {
+    "id": "t37",
+    "pertanyaan": "LAPOR itu apa dan gunanya buat apa?",
+    "relevan": ["lapor-tentang#1"]
+  },
+  {
+    "id": "t38",
+    "pertanyaan": "Nomor Induk Berusaha itu apa, buat apa?",
+    "relevan": ["oss-beranda#1"]
+  },
+  {
+    "id": "t39",
+    "pertanyaan": "Cara bikin SKCK di polres",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "t40",
+    "pertanyaan": "Syarat perpanjang SIM A",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "t41",
+    "pertanyaan": "Mau daftar BPJS Kesehatan mandiri, caranya gimana?",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "t42",
+    "pertanyaan": "Cek DPT pemilu, nama saya sudah terdaftar atau belum?",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "t43",
+    "pertanyaan": "Cara membuat paspor baru",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "t44",
+    "pertanyaan": "Resep rendang yang enak",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "t45",
+    "pertanyaan": "Berapa harga emas hari ini?",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "t46",
+    "pertanyaan": "Cara daftar CPNS tahun ini",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "t47",
+    "pertanyaan": "Syarat daftar SD negeri lewat jalur zonasi",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "t48",
+    "pertanyaan": "Syarat menikah di KUA apa saja?",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "t49",
+    "pertanyaan": "Prakiraan cuaca besok di Surabaya",
+    "kodeWilayah": "3578",
+    "relevan": [],
+    "luarCakupan": true
+  },
+  {
+    "id": "t50",
+    "pertanyaan": "Cara mengurus NPWP pribadi",
+    "relevan": [],
+    "luarCakupan": true
+  }
+]

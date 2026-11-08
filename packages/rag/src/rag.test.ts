@@ -67,10 +67,12 @@ describe('store', () => {
     const { sourceRef: _s, ...bad } = CORPUS[0]!;
     expect(() => upsertChunks(db, [bad])).toThrow(ChunkRejectedError);
   });
-  it('menolak chunk tanpa kunci verifiedAt (null diperbolehkan)', () => {
+  it('menolak chunk tanpa verifiedAt atau dengan verifiedAt null', () => {
     const { verifiedAt: _v, ...bad } = CORPUS[0]!;
     expect(() => upsertChunks(db, [bad])).toThrow(ChunkRejectedError);
-    expect(upsertChunks(db, [mk('x', 'X', 'teks x', { verifiedAt: null })])).toBe(1);
+    expect(() => upsertChunks(db, [mk('x', 'X', 'teks x', { verifiedAt: null })])).toThrow(
+      ChunkRejectedError,
+    );
   });
   it('menolak origin di luar allowlist dan atomik', () => {
     const bad = {
