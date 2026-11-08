@@ -6,7 +6,6 @@
   import { DaftarUrusan } from '#lib/components/urusan/daftar.svelte.js';
   import { PERISTIWA } from '#lib/peristiwa.js';
   import { ambilLokal } from '#lib/stores/app.svelte.js';
-  import { dikteTersedia, mulaiDikte } from '#lib/suara.js';
   import type { PageProps } from './$types';
 
   let { form }: PageProps = $props();
@@ -27,16 +26,18 @@
   );
 
   $effect(() => {
-    bisaDikte = dikteTersedia();
+    // Modul dikte dimuat saat tombol Bicara ditekan supaya JS awal Beranda tetap di bawah anggaran.
+    bisaDikte = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
     void daftar.muat(lokal.data.urusan);
   });
 
-  function bicara() {
+  async function bicara() {
     if (mendikte) {
       hentikanDikte?.();
       return;
     }
     mendikte = true;
+    const { mulaiDikte } = await import('#lib/suara.js');
     hentikanDikte = mulaiDikte(
       (t) => (pesan = t),
       () => (mendikte = false),
