@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CliIo } from './cli-io.js';
+import { agentEvalMain } from './eval/agent-main.js';
 import { evalMain } from './eval/cli-main.js';
 import { matrixMain } from './eval/matrix-main.js';
 import type { Deps, FetchLike } from './ingest/fetcher.js';
@@ -240,5 +241,45 @@ describe('verifyMain / evalMain / matrixMain pada db hasil ingest', () => {
     await expect(
       matrixMain(['--gold', s.gold, '--db', s.db, '--cache', s.cache, '--rerank', 'rm'], io().io),
     ).rejects.toThrow(/RERANK_BASE_URL/);
+  });
+});
+
+describe('agentEvalMain (jalur agen produksi)', () => {
+  const ingestWith = async (env: Record<string, string>) => {
+    const s = setup();
+    const t = io({ env, fetch: providerFetch, deps: pageDeps({ [URL_OK]: 200 }) });
+    await ingestMain(['--sources', s.sources, '--db', s.db, '--only', 'uji'], t.io);
+    return s;
+  };
+
+  it('tanpa penyedia: BM25 murni, baris per gold, exit 0', async () => {
+    const s = await ingestWith({});
+    const t = io();
+    expect(await agentEvalMain(['--gold', s.gold, '--db', s.db], t.io)).toBe(0);
+    expect(t.out[0]).toBe('Jalur agen: vektor=mati, rerank=mati, k=4');
+    const row = t.out.at(-1) ?? '';
+    expect(row).toContain('| 2 (1/1) | 100.0% | 100.0% | 1.000 |');
+    expect(row).toMatch(/\| bm25:2 \| off:2 \|$/);
+    expect(t.err).toEqual([]);
+  });
+
+  it('embedding + rerank palsu: mode hybrid, tanpa fallback', async () => {
+    const s = await ingestWith(EMBED_ENV);
+    const t = io({ env: { ...EMBED_ENV, ...RERANK_ENV }, fetch: providerFetch });
+    const code = await agentEvalMain(['--gold', s.gold, '--db', s.db, '--strict'], t.io);
+    expect(code).toBe(0);
+    expect(t.out[0]).toBe('Jalur agen: vektor=m, rerank=rm, k=4');
+    // Korpus uji hanya satu chunk: rerank tidak perlu (< 2 kandidat), jadi status `off`, bukan fallback.
+    expect(t.out.at(-1)).toMatch(/\| hybrid:2 \| off:2 \|$/);
+    expect(t.err).toEqual([]);
+  });
+
+  it('embedding gagal: jatuh ke BM25 dilaporkan; --strict -> exit 1', async () => {
+    const s = await ingestWith(EMBED_ENV);
+    const down: FetchFn = async () => ({ status: 500, json: async () => ({}) });
+    const t = io({ env: { ...EMBED_ENV, ...RERANK_ENV }, fetch: down });
+    expect(await agentEvalMain(['--gold', s.gold, '--db', s.db, '--strict'], t.io)).toBe(1);
+    expect(t.out.at(-1)).toContain('| bm25:2 |');
+    expect(t.err[0]).toMatch(/jatuh ke fallback/);
   });
 });
