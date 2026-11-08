@@ -97,6 +97,17 @@ export function chromiumArgs(config: Pick<Config, 'jsHeapMb'>): string[] {
   ];
 }
 
+/**
+ * Semua lalu lintas (termasuk loopback) lewat proxy egress. Chromium secara bawaan MELEWATI proxy untuk
+ * localhost/127.0.0.1; `<-loopback>` mencabut pengecualian itu sehingga loopback ikut ke proxy dan ditolak.
+ * Playwright juga menambahkannya kecuali env PLAYWRIGHT_DISABLE_FORCED_CHROMIUM_PROXIED_LOOPBACK diset:
+ * env itu dihapus saat modul dimuat agar perilaku ini tidak bisa dimatikan dari luar.
+ */
+export function proxyOption(port: number): { server: string; bypass: string } {
+  return { server: `http://127.0.0.1:${port}`, bypass: '<-loopback>' };
+}
+delete process.env.PLAYWRIGHT_DISABLE_FORCED_CHROMIUM_PROXIED_LOOPBACK;
+
 export function createBrowserFactory(config: Config): RunFactory {
   return (init) => startBrowserRun(config, init);
 }
@@ -126,7 +137,7 @@ export async function launchIsolated(
     browser = await chromium.launch({
       headless: config.headless,
       ...(config.chromiumPath ? { executablePath: config.chromiumPath } : {}),
-      proxy: { server: `http://127.0.0.1:${proxy.port}` },
+      proxy: proxyOption(proxy.port),
       args: chromiumArgs(config),
       env: { TZ: 'Asia/Jakarta' },
     });

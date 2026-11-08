@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { css, fill, gate, nav, upload, urlIncludes } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
-import { chromiumArgs, rssMb, stepLabel } from './browser.js';
+import { chromiumArgs, proxyOption, rssMb, stepLabel } from './browser.js';
 import { loadConfig } from './config.js';
 import { toCdp } from './input.js';
 import { runnerExpression, runnerScript, toInjectable } from './runner-script.js';
@@ -88,6 +88,16 @@ describe('config', () => {
     expect(() => loadConfig({ PENDAMPING_ORIGIN_OVERRIDES: 'rusak' })).toThrow(/rusak/);
     expect(() => loadConfig({ PENDAMPING_ALLOWED_ORIGINS: 'https://a.id/path' })).toThrow(/origin/);
     expect(loadConfig({ PENDAMPING_DEV_PAGE: '1' }).devPage).toBe(true);
+  });
+});
+
+describe('proxy peramban', () => {
+  it('loopback tidak dikecualikan dari proxy (<-loopback>) dan env pemati Playwright dihapus', () => {
+    expect(proxyOption(5555)).toEqual({ server: 'http://127.0.0.1:5555', bypass: '<-loopback>' });
+    expect(process.env.PLAYWRIGHT_DISABLE_FORCED_CHROMIUM_PROXIED_LOOPBACK).toBeUndefined();
+    expect(chromiumArgs({ jsHeapMb: 1 })).toContain(
+      '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1',
+    );
   });
 });
 
