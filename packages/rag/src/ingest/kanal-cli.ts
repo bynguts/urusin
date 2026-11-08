@@ -1,9 +1,12 @@
 import { fileURLToPath } from 'node:url';
 import { KANAL_PATH } from '../kanal.js';
-import { egressFetch } from '@urusin/egress';
+import { ingestEgressFetch, installEgressBackstop } from '@urusin/egress';
 import { PoliteFetcher, type Deps } from './fetcher.js';
 import { runKanal } from './kanal-verify.js';
 import type { ProbeGet } from './kontak.js';
+
+// Backstop (M2): fetch global apa pun di proses CLI ini lewat konektor egress profil ingest.
+installEgressBackstop('ingest');
 
 /**
  * Verifikasi tautan kanal resmi di data/kanal-resmi.json dengan GET sungguhan (robots.txt dihormati, >= 2 detik per
@@ -15,7 +18,7 @@ const deps: Deps = {
   now: () => Date.now(),
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
   fetch: async (url, init) => {
-    const res = await egressFetch(url, init);
+    const res = await ingestEgressFetch(url, init);
     finalUrls.set(url, res.url || url);
     return res;
   },

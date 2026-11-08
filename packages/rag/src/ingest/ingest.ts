@@ -1,4 +1,4 @@
-import { egressFetch } from '@urusin/egress';
+import { ingestEgressFetch } from '@urusin/egress';
 import type { Db } from '../db.js';
 import { embedAndFit } from '../vector/pipeline.js';
 import type { Embedder } from '../vector/store.js';
@@ -53,7 +53,7 @@ export async function runIngest(opts: IngestOptions): Promise<IngestReport[]> {
   if (!opts.dryRun) {
     if (!opts.db) throw new Error('db wajib bila bukan dry-run');
     const deps: Deps = opts.deps ?? {
-      fetch: egressFetch,
+      fetch: ingestEgressFetch,
       now: () => Date.now(),
       sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     };
