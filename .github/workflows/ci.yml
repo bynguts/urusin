@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -23,21 +24,26 @@ jobs:
       GIT_SHA: ${{ github.sha }}
     steps:
       - name: Checkout (riwayat lengkap untuk audit-history)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
+      # --ignore-scripts: tidak ada skrip lifecycle dependensi di CI (prepare milik workspace dijalankan
+      # oleh turbo/wxt saat dibutuhkan, setelah paket workspace dibangun).
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Semua `uses:` dipin ke commit SHA
+        run: node scripts/check-action-pins.mjs
 
       - name: Lint
         run: pnpm lint && pnpm format:check
@@ -72,25 +78,25 @@ jobs:
       GIT_SHA: ${{ github.sha }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build
         run: pnpm build
 
-      # Preset default Lighthouse = mobile (Moto G Power, slow 4G, simulasi). Sementara warn-only;
-      # angka tetap tercatat di ringkasan job. Naikkan ke "error" setelah scaffold stabil (M19).
+      # Rute dan batas ada di perf-routes.cjs dan lighthouserc.cjs. Emulasi mobile (Moto G Power, slow 4G),
+      # 3 run, median; pelanggaran apa pun menggagalkan job.
       - name: Lighthouse CI
         env:
           PORT: '4173'
@@ -104,8 +110,8 @@ jobs:
           {
             echo "### Lighthouse (mobile, median 3 run)"
             echo
-            echo "| URL | Performance | Accessibility | LCP (ms) |"
-            echo "|---|---|---|---|"
+            echo "| URL | Performance | Accessibility | LCP (ms) | TBT (ms) | Script (KB) | Total (KB) |"
+            echo "|---|---|---|---|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
           node -e '
             const fs = require("fs");
@@ -118,17 +124,196 @@ jobs:
               const p = med(rs.map((r) => r.categories.performance.score * 100));
               const a = med(rs.map((r) => r.categories.accessibility.score * 100));
               const l = med(rs.map((r) => r.audits["largest-contentful-paint"].numericValue));
-              console.log(`| ${url} | ${p} | ${a} | ${Math.round(l)} |`);
+              const t = med(rs.map((r) => r.audits["total-blocking-time"].numericValue));
+              const sc = med(rs.map((r) => r.audits["resource-summary"].details.items.find((i) => i.resourceType === "script").transferSize));
+              const tw = med(rs.map((r) => r.audits["total-byte-weight"].numericValue));
+              console.log(`| ${url} | ${p} | ${a} | ${Math.round(l)} | ${Math.round(t)} | ${(sc / 1024).toFixed(1)} | ${(tw / 1024).toFixed(1)} |`);
             }
           ' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Unggah laporan
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lighthouse-reports
           path: .lighthouseci/*.html
           if-no-files-found: ignore
+
+  e2e:
+    name: E2E ekstensi (Playwright Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HUSKY: '0'
+      GIT_SHA: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Chromium bawaan Playwright, bukan Chrome bermerek: Chrome >= 137 mengabaikan --load-extension.
+      # Tes memakai channel 'chromium' (headless baru, mendukung ekstensi), jadi xvfb tidak diperlukan.
+      - name: Pasang Chromium Playwright
+        run: pnpm --filter @urusin/extension exec playwright install --with-deps chromium
+
+      # turbo membangun web, fixtures, dan ekstensi lebih dulu. Tes memuat ekstensi lewat
+      # launchPersistentContext, menegaskan ID ekstensi == PUBLIC_EXTENSION_ID, dan menyalakan fixtures + web.
+      - name: E2E
+        run: pnpm e2e
+
+      - name: Unggah trace bila gagal
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-traces
+          path: apps/extension/test-results/
+          if-no-files-found: ignore
+
+  coverage:
+    name: Coverage (ambang per paket)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HUSKY: '0'
+      GIT_SHA: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Gagal bila coverage di bawah ambang pada vitest.config.ts tiap paket.
+      - name: Coverage
+        run: pnpm coverage
+
+      - name: Ringkasan coverage
+        if: always()
+        run: |
+          {
+            echo "### Coverage per paket"
+            echo
+            echo '```'
+            node scripts/coverage-summary.mjs || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Unggah laporan lcov dan html
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-reports
+          path: packages/*/coverage/
+          if-no-files-found: ignore
+
+  rc-compat:
+    name: Kompatibilitas rc1 (migrasi HEAD, image rc1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    env:
+      HUSKY: '0'
+      RC_TAG: rc1
+      RC_IMAGE: ghcr.io/bynguts/urusin-web:rc1
+    steps:
+      - name: Checkout (riwayat dan tag lengkap)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # Tidak berbuat apa pun sebelum tag rc1 ada; setelah itu semua langkah di bawah aktif.
+      - name: Deteksi tag rc1
+        id: rc
+        run: |
+          if git rev-parse -q --verify "refs/tags/${RC_TAG}" >/dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::tag ${RC_TAG} belum ada: rc-compat dilewati (tidak ada yang diperiksa)"
+            echo "rc-compat: tag ${RC_TAG} belum ada, dilewati." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Migrasi sejak rc1 harus aditif (tanpa DROP/RENAME)
+        if: steps.rc.outputs.present == 'true'
+        run: node scripts/check-additive-migrations.mjs "$RC_TAG"
+
+      - name: Setup pnpm
+        if: steps.rc.outputs.present == 'true'
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Setup Node
+        if: steps.rc.outputs.present == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        if: steps.rc.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Login GHCR
+        if: steps.rc.outputs.present == 'true'
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tarik image rc1
+        if: steps.rc.outputs.present == 'true'
+        run: docker pull "$RC_IMAGE"
+
+      # Entrypoint migrasi: skrip `migrate` di packages/harness (belum ada = dilewati dengan log jelas, bukan lolos palsu).
+      - name: Jalankan migrasi HEAD pada DB baru
+        if: steps.rc.outputs.present == 'true'
+        run: |
+          mkdir -p rc-compat-data && chmod 777 rc-compat-data
+          if [ -f packages/harness/package.json ] && node -e "process.exit(require('./packages/harness/package.json').scripts?.migrate ? 0 : 1)"; then
+            DATABASE_URL="file:${PWD}/rc-compat-data/urusin.db" pnpm --filter @urusin/harness run migrate
+            echo "- Migrasi HEAD dijalankan pada DB uji." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::tidak ada migrasi (packages/harness dengan skrip migrate belum ada): langkah migrasi DILEWATI"
+            echo "- Migrasi HEAD DILEWATI: belum ada migrasi." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Boot image rc1 di atas DB tersebut dan smoke test /api/health
+        if: steps.rc.outputs.present == 'true'
+        run: |
+          docker run -d --name rc1 -p 127.0.0.1:3000:3000 -e ORIGIN=http://localhost:3000             -v "${PWD}/rc-compat-data:/data" "$RC_IMAGE"
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/health; then echo; echo "- image rc1 sehat di atas DB HEAD." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+            sleep 2
+          done
+          docker logs rc1
+          exit 1
+
+      - name: Log kontainer bila gagal
+        if: failure() && steps.rc.outputs.present == 'true'
+        run: docker logs rc1 || true
 
   gitleaks:
     name: Gitleaks
@@ -138,7 +323,7 @@ jobs:
       GITLEAKS_VERSION: 8.30.1
     steps:
       - name: Checkout (riwayat lengkap)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 

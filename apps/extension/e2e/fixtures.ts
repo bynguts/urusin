@@ -14,7 +14,7 @@ export const PINNED_EXTENSION_ID = /^PUBLIC_EXTENSION_ID=(.+)$/m.exec(
 
 export const test = base.extend<{ context: BrowserContext; extensionId: string }>({
   // eslint-disable-next-line no-empty-pattern -- sintaks fixture Playwright
-  context: async ({}, use) => {
+  context: async ({}, use, testInfo) => {
     const context = await chromium.launchPersistentContext('', {
       channel: 'chromium', // headless baru: mendukung ekstensi
       args: [
@@ -23,7 +23,12 @@ export const test = base.extend<{ context: BrowserContext; extensionId: string }
         `--load-extension=${EXTENSION_PATH}`,
       ],
     });
+    // Context dibuat manual, jadi `use.trace` di playwright.config tidak berlaku: rekam jejak sendiri
+    // dan simpan hanya bila tes gagal (diunggah CI dari test-results/).
+    await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
     await use(context);
+    const failed = testInfo.status !== testInfo.expectedStatus;
+    await context.tracing.stop(failed ? { path: testInfo.outputPath('trace.zip') } : {});
     await context.close();
   },
   extensionId: async ({ context }, use) => {
@@ -33,4 +38,39 @@ export const test = base.extend<{ context: BrowserContext; extensionId: string }
   },
 });
 
-export { expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+export { expect };
+
+export type Reply = {
+  ok: boolean;
+  code?: string;
+  cursor?: { status: string; stepIndex: number; message?: string; results: Record<string, unknown> };
+  type?: string;
+};
+
+/** Pairing lewat popup + halaman /pair sungguhan; mengembalikan pemanggil pesan ber-nonce. */
+export async function pairExtension(context: BrowserContext, extensionId: string) {
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  const [appPage] = await Promise.all([
+    context.waitForEvent('page'),
+    popup.getByRole('button', { name: `Hubungkan ke ${APP_ORIGIN}` }).click(),
+  ]);
+  await appPage.locator('[data-status="ok"]').waitFor({ timeout: 20_000 });
+  const nonce = (await appPage.evaluate(() => sessionStorage.getItem('urusin.pair.nonce'))) ?? '';
+  const call = (msg: object) =>
+    appPage.evaluate(([id, m]) => chrome.runtime.sendMessage(id as string, m), [
+      extensionId,
+      { ...msg, nonce },
+    ] as const) as Promise<Reply>;
+  return { appPage, nonce, call };
+}
+
+/** Mode Uji hanya bisa diubah dari popup ekstensi. */
+export async function setTestMode(context: BrowserContext, extensionId: string, on: boolean) {
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.getByLabel('Mode Uji').setChecked(on);
+  await expect(popup.locator('#banner')).toBeVisible({ visible: on });
+  await popup.close();
+}

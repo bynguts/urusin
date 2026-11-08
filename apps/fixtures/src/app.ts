@@ -3,6 +3,9 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { secureHeaders } from 'hono/secure-headers';
 import type { Config } from './config.js';
 import { html, page } from './layout.js';
+import { registerPoisoned } from './poisoned.js';
+import { registerSemarang } from './semarang.js';
+import { registerSurabaya } from './surabaya.js';
 import { createStore, SERVICES, type Session } from './store.js';
 
 /**
@@ -71,6 +74,8 @@ export function createApp(config: Config) {
           <ul>
             <li><a href="${BASE}/users/login">Login</a></li>
             <li><a href="${BASE}/welcome/permohonan">Daftar permohonan</a></li>
+            <li><a href="/sby/">Replika Klampid Surabaya (publik)</a></li>
+            <li><a href="/smg/">Replika Si D'nOK Semarang (publik)</a></li>
           </ul>`,
       ),
     ),
@@ -262,8 +267,13 @@ export function createApp(config: Config) {
     );
   });
 
+  // Replika alur publik read-only (jinak, ada di kedua profil).
+  registerSurabaya(app);
+  registerSemarang(app, { secure });
+
   // Rute berbahaya: terdaftar HANYA di profil local (placeholder), tidak ada sama sekali di public (404).
   if (config.profile === 'local') {
+    registerPoisoned(app);
     for (const path of LOCAL_ONLY_ROUTES) {
       app.get(path, (c) =>
         c.html(page('Placeholder profil local', html`<p>Belum diimplementasi: ${path}</p>`), 501),
