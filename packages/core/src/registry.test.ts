@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { ErrorCode } from './errors.js';
 import {
+  EGRESS_PIHAK_KETIGA,
   OFFICIAL_DOMAINS,
+  egressAllowedHosts,
   getOfficialDomain,
   isOfficialUrl,
   matchOfficialOrigin,
@@ -92,5 +94,19 @@ describe('matchOfficialOrigin', () => {
   });
   it('menolak origin http', () => {
     expect(matchOfficialOrigin(`http://${T}`).ok).toBe(false);
+  });
+});
+
+describe('egress pihak ketiga', () => {
+  it('host persis huruf kecil tanpa wildcard/port/skema, tidak tumpang tindih dengan domain resmi', () => {
+    const resmi = new Set(OFFICIAL_DOMAINS.map((d) => d.host));
+    for (const { host } of EGRESS_PIHAK_KETIGA) {
+      expect(host).toMatch(/^[a-z0-9-]+(\.[a-z0-9-]+)+$/);
+      expect(resmi.has(host)).toBe(false);
+    }
+    const all = egressAllowedHosts();
+    expect(new Set(all).size).toBe(all.length);
+    expect(all).toContain('telunjuksakti.wonogirikab.go.id');
+    expect(all).toContain('challenges.cloudflare.com');
   });
 });

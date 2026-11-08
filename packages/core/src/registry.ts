@@ -130,3 +130,31 @@ export function isOfficialUrl(input: string): boolean {
 export function getOfficialDomain(host: string): OfficialDomain | undefined {
   return BY_HOST.get(host);
 }
+
+/**
+ * Host pihak ketiga yang lazim dibutuhkan situs resmi agar warga bisa menyelesaikan login (CAPTCHA,
+ * Turnstile) dan memuat aset (CDN). Dipakai allowlist egress Browser Pendamping bersama `OFFICIAL_DOMAINS`:
+ * HANYA https:443, host persis (tanpa wildcard). Tambah baris hanya dari recon situs nyata.
+ */
+export type EgressPihakKetiga = { host: string; alasan: string };
+
+export const EGRESS_PIHAK_KETIGA: readonly EgressPihakKetiga[] = Object.freeze([
+  { host: 'challenges.cloudflare.com', alasan: 'Cloudflare Turnstile' },
+  { host: 'www.google.com', alasan: 'reCAPTCHA (www.google.com/recaptcha)' },
+  { host: 'www.gstatic.com', alasan: 'aset reCAPTCHA' },
+  { host: 'www.recaptcha.net', alasan: 'reCAPTCHA (domain alternatif)' },
+  { host: 'js.hcaptcha.com', alasan: 'hCaptcha' },
+  { host: 'api.hcaptcha.com', alasan: 'hCaptcha' },
+  { host: 'newassets.hcaptcha.com', alasan: 'hCaptcha' },
+  { host: 'cdn.jsdelivr.net', alasan: 'CDN pustaka umum' },
+  { host: 'cdnjs.cloudflare.com', alasan: 'CDN pustaka umum' },
+  { host: 'code.jquery.com', alasan: 'CDN jQuery' },
+  { host: 'ajax.googleapis.com', alasan: 'CDN pustaka umum' },
+  { host: 'fonts.googleapis.com', alasan: 'Google Fonts (CSS)' },
+  { host: 'fonts.gstatic.com', alasan: 'Google Fonts (berkas)' },
+]);
+
+/** Semua host https yang boleh dihubungi peramban pendamping: domain resmi + pihak ketiga terdaftar. */
+export function egressAllowedHosts(): string[] {
+  return [...new Set([...OFFICIAL_DOMAINS.map((d) => d.host), ...EGRESS_PIHAK_KETIGA.map((e) => e.host)])];
+}
