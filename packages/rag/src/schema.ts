@@ -10,6 +10,27 @@ export type SourceRef = z.infer<typeof SourceRefSchema>;
 /** Kode wilayah: 2 digit (provinsi) atau 4 digit (kab/kota). Tidak ada = nasional. */
 export const KodeWilayahSchema = z.string().regex(/^(\d{2}|\d{4})$/);
 
+/**
+ * Kategori layanan korpus (kolom `layanan` chunk dan `data/sources.json`). Satu-satunya daftar: skema
+ * sumber memvalidasi terhadapnya, dan tool agen menawarkannya sebagai enum (nilai lain diabaikan).
+ */
+export const LAYANAN_KORPUS = [
+  'adminduk',
+  'samsat',
+  'lapor',
+  'ombudsman',
+  'oss',
+  'bansos',
+  'pdp',
+  'pemilu',
+  'bpjs',
+  'skck',
+  'sim',
+  'ikd',
+] as const;
+export const LayananKorpusSchema = z.enum(LAYANAN_KORPUS);
+export type LayananKorpus = z.infer<typeof LayananKorpusSchema>;
+
 export const ChunkSchema = z.object({
   id: z.string().min(1),
   text: z.string().min(1),
