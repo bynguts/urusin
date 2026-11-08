@@ -26,8 +26,11 @@ Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat
   pengguna menyatakan itu termasuk izin tetap; dry-run boleh kapan saja.
 - Bila DNS domain utama sudah resolve tetapi pengguna tidak bisa dihubungi untuk izin Caddy, `DOMAIN` tetap
   di set `fallback` (sslip). Pindah set butuh izin per kejadian (snippet baru + reload).
-- Agen tidak men-deploy dan tidak pernah menjalankan `caddy-install.sh` ke VPS; hanya lead, setelah
-  go-ahead. Pemeriksaan read-only (`ss -ltn`, `docker ps`, `caddy version`) tidak butuh izin.
+- Sejak 2026-11-08 (keputusan lead): satu agen `ops-sec` adalah satu-satunya yang menjalankan `deploy.sh` dan
+  mengubah `/opt/urusin/.env`; permintaan deploy lewat lead. `caddy-install.sh` tetap hanya dijalankan lead,
+  setelah go-ahead. Pemeriksaan read-only (`ss -ltn`, `docker ps`, `caddy version`) tidak butuh izin.
+- Riwayat Caddy: snippet fallback dipasang 2026-11-08 (backup `20261108T184610Z`), lalu primary
+  `urusinai.web.id` (backup `20261108T185039Z`; izin tetap pengguna mencakup pemasangan primary ini).
 
 ### Prosedur Caddy per kejadian (`deploy/caddy-install.sh`)
 
@@ -45,12 +48,18 @@ sudo deploy/caddy-install.sh fallback        # hanya setelah go-ahead pengguna (
    lalu jalankan
    `caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile`. Bila gagal, backup dipulihkan dan
    Caddy tidak di-reload.
+   Sebelum berkas live diubah, snippet baru (sebagai berkas sementara di direktori tujuan) dan Caddyfile host
+   wajib terbaca oleh user proses Caddy (`User=` unit, biasanya `caddy`), dan `caddy validate` dijalankan sebagai
+   user itu. Insiden 2026-11-08: `/opt/urusin` berizin 0750, validate sebagai root lolos, reload gagal ("File to
+   import not found") dan rollback otomatis berjalan; perbaikannya `chmod 0751 /opt/urusin`.
 4. Jalankan `systemctl reload caddy` (bukan restart; perintah tetap, tidak dibaca dari env). Tunggu `SETTLE_SECONDS` (5), lalu ambil snapshot
    **sesudah**.
 5. Bila ada kode status yang berubah, atau reload gagal, rollback berjalan otomatis: backup dipulihkan,
    Caddy di-reload, status sesudah rollback dicetak, dan skrip keluar dengan exit 1.
 
-Snippet berisi placeholder `{$…}` ditolak. Skrip berjalan sebagai root, jadi direktori snippet dan backup
+Sumber `primary`/`fallback` adalah `deploy/Caddyfile.urusin.primary` / `.fallback`; sumber yang sama dengan TARGET
+ditolak (dulu `primary` = `Caddyfile.urusin` = TARGET lama, sehingga setelah fallback, `primary` memasang ulang
+fallback dan melapor sukses). Snippet berisi placeholder `{$…}` ditolak. Skrip berjalan sebagai root, jadi direktori snippet dan backup
 wajib milik root, bukan symlink, dan tidak bisa ditulis group/others (`/opt/urusin` milik `ubuntu`, karena itu
 snippet tidak lagi di sana). Berkas sementara dibuat dengan `mktemp` di direktori tujuan lalu di-`mv` atomik.
 Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan mengganti fungsi `reload_caddy`

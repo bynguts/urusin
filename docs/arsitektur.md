@@ -66,7 +66,7 @@ C4Container
 
 Catatan pembacaan:
 
-- **Caddy dimiliki host**, bukan service di `compose.prod.yml`. Snippet `deploy/Caddyfile.urusin` di-`import`
+- **Caddy dimiliki host**, bukan service di `compose.prod.yml`. Snippet `deploy/Caddyfile.urusin.primary` (atau `.fallback`) di-`import`
   ke Caddyfile host yang juga melayani situs lain. Compose hanya mempublikasikan port loopback.
   Alasannya ada di [ADR 0023](adr/0023-caddy-host-bersama-port-loopback.md).
 - `{$DOMAIN}` dan `verify.{$DOMAIN}` menuju upstream yang sama (`127.0.0.1:4310`). Aplikasi memilih rute `/verify`

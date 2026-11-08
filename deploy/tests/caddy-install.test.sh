@@ -26,18 +26,34 @@ new_sandbox() {
   unset SHIM_BREAK_SITE SHIM_RELOAD_FAIL RELOAD_CMD
 }
 # shellcheck disable=SC2154  # FAKE_RELOAD diekspor di atas
-run() {
-  out="$(bash -c 'source "$1"; shift; reload_caddy() { "$FAKE_RELOAD" reload caddy; }; main "$@"' \
-    _ "$DEPLOY/caddy-install.sh" "$@" 2>&1)"
+# Override: reload palsu; user Caddy = "caddy"; as_caddy mencatat panggilan dan (SHIM_CADDY_UNREADABLE) gagal
+# pada `test`, seperti user caddy yang tidak bisa menelusuri direktori milik pengguna lain.
+# shellcheck disable=SC2329  # dipanggil lewat bash -c (export -f)
+caddy_overrides() {
+  reload_caddy() { "$FAKE_RELOAD" reload caddy; }
+  caddy_user() { echo caddy; }
+  as_caddy() {
+    echo "as_caddy $*" >> "$SHIM_DIR/calls.log"
+    if [ -n "${SHIM_CADDY_UNREADABLE:-}" ] && [ "$1" = test ]; then return 1; fi
+    "$@"
+  }
+}
+export -f caddy_overrides
+run_script() {
+  local script="$1"
+  shift
+  out="$(bash -c 'source "$1"; shift; caddy_overrides; main "$@"' _ "$script" "$@" 2>&1)"
   rc=$?
 }
+run() { run_script "$DEPLOY/caddy-install.sh" "$@"; }
 leftovers() { find "$SB/etc" -name '.Caddyfile*' | wc -l; }
 reloads() { grep -c '^systemctl reload caddy' "$SHIM_DIR/calls.log"; }
 
 echo "1. --dry-run: hanya baca"
 new_sandbox
 run fallback --dry-run
-check "exit 0, validasi snippet + Caddyfile, tanpa reload" '[ $rc -eq 0 ] && [ "$(grep -c "caddy validate" "$SHIM_DIR/calls.log")" -eq 2 ] && [ "$(reloads)" -eq 0 ]'
+check "exit 0, validasi snippet + Caddyfile, tanpa reload" '[ $rc -eq 0 ] && [ "$(grep -c "^caddy validate" "$SHIM_DIR/calls.log")" -eq 2 ] && [ "$(reloads)" -eq 0 ]'
+check "dry-run memvalidasi Caddyfile host sebagai user Caddy" 'grep -qF "as_caddy caddy validate --adapter caddyfile --config $CADDYFILE" "$SHIM_DIR/calls.log"'
 check "tidak ada berkas yang diubah atau dibuat" 'cmp -s "$CADDYFILE" "$SB/caddyfile.orig" && [ ! -e "$TARGET" ] && [ ! -e "$BACKUP_DIR" ]'
 check "snapshot ketiga situs pengguna dicatat" 'grep -q "pythia.web.id 401" <<<"$out" && grep -q "admin.gutstore.my.id 302" <<<"$out" && grep -q "gutstore.my.id 200" <<<"$out"'
 check "rencana menyebut import dan pemasangan" 'grep -qF "akan menambah: import $TARGET" <<<"$out" && grep -q "akan memasang" <<<"$out"'
@@ -51,7 +67,7 @@ check "tepat satu baris import; blok situs lain utuh" '[ "$(grep -cxF "import $T
 check "backup di direktori 0700; tanpa sisa berkas sementara" '[ "$(stat -c %a "$BACKUP_DIR")" = 700 ] && [ "$(leftovers)" -eq 0 ]'
 /usr/bin/sleep 1
 run primary
-check "pindah ke primary: import tidak berlipat, snippet lama ikut di-backup" '[ $rc -eq 0 ] && [ "$(grep -cxF "import $TARGET" "$CADDYFILE")" -eq 1 ] && cmp -s "$DEPLOY/Caddyfile.urusin" "$TARGET" && ls "$BACKUP_DIR" | grep -q "^Caddyfile.urusin\."'
+check "pindah ke primary: import tidak berlipat, snippet lama ikut di-backup" '[ $rc -eq 0 ] && [ "$(grep -cxF "import $TARGET" "$CADDYFILE")" -eq 1 ] && cmp -s "$DEPLOY/Caddyfile.urusin.primary" "$TARGET" && ls "$BACKUP_DIR" | grep -q "^Caddyfile.urusin\."'
 
 echo "3. caddy validate gagal: pulihkan, tanpa reload"
 new_sandbox
@@ -132,6 +148,30 @@ new_sandbox
 mkdir -p "$SB/elsewhere" "$(dirname "$BACKUP_DIR")" && ln -s "$SB/elsewhere" "$BACKUP_DIR"
 run fallback
 check "BACKUP_DIR symlink -> exit 1, tanpa backup di target symlink" '[ $rc -ne 0 ] && grep -q "symlink" <<<"$out" && [ -z "$(ls -A "$SB/elsewhere")" ] && [ "$(reloads)" -eq 0 ]'
+
+echo "10. user Caddy tidak bisa membaca snippet: gagal sebelum perubahan apa pun"
+new_sandbox
+export SHIM_CADDY_UNREADABLE=1
+run fallback
+check "exit 1 dengan pesan izin, tanpa reload" '[ $rc -ne 0 ] && grep -q "user Caddy .caddy. tidak bisa membaca" <<<"$out" && [ "$(reloads)" -eq 0 ]'
+check "Caddyfile utuh, TARGET tidak dibuat, tanpa backup dan tanpa berkas sementara" 'cmp -s "$CADDYFILE" "$SB/caddyfile.orig" && [ ! -e "$TARGET" ] && [ -z "$(ls -A "$BACKUP_DIR")" ] && [ "$(leftovers)" -eq 0 ]'
+unset SHIM_CADDY_UNREADABLE
+new_sandbox
+run fallback
+check "pemasangan memvalidasi Caddyfile host sebagai user Caddy" '[ $rc -eq 0 ] && grep -qF "as_caddy caddy validate --adapter caddyfile --config $CADDYFILE" "$SHIM_DIR/calls.log" && grep -q "^as_caddy test -r" "$SHIM_DIR/calls.log"'
+
+echo "11. sumber == TARGET ditolak; fallback -> primary di tata letak /opt/urusin"
+run "$TARGET"
+check "sumber sama dengan TARGET -> exit 1, tanpa reload tambahan" '[ $rc -ne 0 ] && grep -q "sama dengan TARGET" <<<"$out" && [ "$(reloads)" -eq 1 ]'
+new_sandbox
+# Tata letak VPS lama: skrip dan snippet sumber disalin ke direktori yang sama dengan TARGET.
+OPT="$SB/opt/urusin"
+mkdir -p "$OPT" && cp "$DEPLOY"/caddy-install.sh "$DEPLOY"/Caddyfile.urusin.* "$OPT"/
+export TARGET="$OPT/Caddyfile.urusin" LEGACY_TARGET="$OPT/Caddyfile.urusin"
+run_script "$OPT/caddy-install.sh" fallback
+/usr/bin/sleep 1
+run_script "$OPT/caddy-install.sh" primary
+check "primary setelah fallback benar-benar memasang snippet primary" '[ $rc -eq 0 ] && cmp -s "$DEPLOY/Caddyfile.urusin.primary" "$TARGET" && ! cmp -s "$DEPLOY/Caddyfile.urusin.fallback" "$TARGET"'
 
 echo
 echo "lulus: $pass, gagal: $fail"

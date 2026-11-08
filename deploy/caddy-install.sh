@@ -17,6 +17,10 @@
 # Keamanan (root): perintah reload tetap (`systemctl reload caddy`, tidak dibaca dari env). Direktori TARGET
 # dan BACKUP_DIR wajib milik pengguna yang menjalankan (root di produksi), bukan symlink, dan tidak bisa ditulis
 # group/others; berkas sementara dibuat dengan mktemp di direktori tujuan lalu di-mv (atomik).
+# Caddy berjalan sebagai `User=` unit (biasanya `caddy`), bukan root: sebelum berkas live diubah, snippet baru
+# dan Caddyfile host wajib terbaca oleh user itu, dan `caddy validate` dijalankan sebagai user itu (validate
+# sebagai root lolos walau Caddy sendiri tidak bisa membaca import, lalu reload gagal).
+# Sumber `primary`/`fallback` = deploy/Caddyfile.urusin.<set>; sumber yang sama dengan TARGET ditolak.
 #
 # Variabel (opsional): CADDYFILE (/etc/caddy/Caddyfile), TARGET (/etc/caddy/urusin/Caddyfile.urusin),
 # LEGACY_TARGET (/opt/urusin/Caddyfile.urusin), BACKUP_DIR (/var/backups/urusin-caddy),
@@ -37,6 +41,16 @@ log() { echo "caddy-install: $*"; }
 
 # Satu-satunya perintah reload. Tetap, bukan dari env (skrip berjalan sebagai root).
 reload_caddy() { systemctl reload caddy; }
+
+# User proses Caddy dari unit systemd (`User=`); kosong = root.
+caddy_user() { systemctl show -p User --value caddy 2>/dev/null || true; }
+
+# Jalankan perintah sebagai user Caddy (langsung bila user itu root atau pengguna yang sedang berjalan).
+as_caddy() {
+  local u
+  u="$(caddy_user)"
+  if [ -z "$u" ] || [ "$u" = root ] || [ "$u" = "$(id -un)" ]; then "$@"; else sudo -n -u "$u" -- "$@"; fi
+}
 
 # Kode status HTTPS per situs, satu baris "situs kode". 000 = tidak terjangkau (tetap dibandingkan).
 snapshot() {
@@ -60,7 +74,7 @@ main() {
   for a in "$@"; do
     case "$a" in
       --dry-run) dry=1 ;;
-      primary) src="$HERE/Caddyfile.urusin" ;;
+      primary) src="$HERE/Caddyfile.urusin.primary" ;;
       fallback) src="$HERE/Caddyfile.urusin.fallback" ;;
       -*) die "opsi tidak dikenal: $a" ;;
       *) [ -z "$src" ] || die "hanya satu snippet"; src="$a" ;;
@@ -69,6 +83,10 @@ main() {
   [ -n "$src" ] || die "pemakaian: $0 <primary|fallback|berkas-snippet> [--dry-run]"
   [ -f "$src" ] || die "snippet tidak ada: $src"
   [ -f "$CADDYFILE" ] || die "Caddyfile host tidak ada: $CADDYFILE"
+  # Sumber == TARGET berarti memasang ulang snippet yang sedang aktif (bukan set yang diminta) lalu melapor sukses.
+  if [ -e "$TARGET" ] && [ "$(readlink -f "$src")" = "$(readlink -f "$TARGET")" ]; then
+    die "sumber snippet sama dengan TARGET ($TARGET); pakai deploy/Caddyfile.urusin.<primary|fallback>"
+  fi
   command -v caddy >/dev/null || die "caddy tidak ditemukan"
   command -v curl >/dev/null || die "curl tidak ditemukan"
   [[ "$SETTLE_SECONDS" =~ ^[0-9]+$ ]] || die "SETTLE_SECONDS harus angka"
@@ -88,8 +106,9 @@ main() {
   if [ "$dry" = 1 ]; then
     caddy validate --adapter caddyfile --config "$src" >/dev/null 2>&1 || die "snippet tidak valid: $src"
     log "snippet valid (berdiri sendiri): $src"
-    caddy validate --adapter caddyfile --config "$CADDYFILE" >/dev/null 2>&1 || die "Caddyfile host saat ini tidak valid"
-    log "Caddyfile host saat ini valid"
+    as_caddy caddy validate --adapter caddyfile --config "$CADDYFILE" >/dev/null 2>&1       || die "Caddyfile host saat ini tidak valid (divalidasi sebagai user Caddy '$(caddy_user)')"
+    log "Caddyfile host saat ini valid (sebagai user Caddy '$(caddy_user)')"
+    if [ -d "$tdir" ] && ! as_caddy test -x "$tdir"; then log "PERINGATAN: user Caddy tidak bisa menelusuri $tdir"; fi
     if grep -qxF "$import_line" "$CADDYFILE"; then log "baris import sudah ada"; else log "akan menambah: $import_line"; fi
     if [ -n "$legacy_line" ] && grep -qxF "$legacy_line" "$CADDYFILE"; then log "akan menghapus baris lama: $legacy_line"; fi
     if [ -f "$TARGET" ] && cmp -s "$src" "$TARGET"; then log "snippet terpasang sudah sama"; else log "akan memasang $src -> $TARGET"; fi
@@ -106,6 +125,18 @@ main() {
   require_private_dir "$BACKUP_DIR"
   require_private_dir "$tdir"
 
+  # --- Pra-cek user Caddy (sebelum berkas live diubah) ------------------------------------------------
+  # Snippet baru disiapkan sebagai berkas sementara di direktori TARGET; user Caddy harus bisa membacanya di
+  # sana (izin direktori ikut diuji), begitu juga Caddyfile host. Gagal => hapus sementara, tanpa perubahan.
+  local tmp
+  tmp="$(mktemp "$tdir/.Caddyfile.urusin.XXXXXX")"
+  cp "$src" "$tmp"
+  chmod 644 "$tmp"
+  if ! as_caddy test -r "$tmp" || ! as_caddy test -r "$CADDYFILE"; then
+    rm -f "$tmp"
+    die "user Caddy '$(caddy_user)' tidak bisa membaca $tdir atau $CADDYFILE; perbaiki izin (lihat hardening.md), tidak ada yang diubah"
+  fi
+
   # --- Backup bertimestamp -------------------------------------------------------------------------
   local ts had_target=0
   ts="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -121,10 +152,6 @@ main() {
   }
 
   # --- Pasang + validasi ---------------------------------------------------------------------------
-  local tmp
-  tmp="$(mktemp "$tdir/.Caddyfile.urusin.XXXXXX")"
-  cp "$src" "$tmp"
-  chmod 644 "$tmp"
   mv -f "$tmp" "$TARGET"
 
   # Caddyfile host ditulis ulang lewat mktemp di direktorinya (izin/pemilik disalin), lalu mv atomik.
@@ -135,11 +162,12 @@ main() {
   chown --reference="$CADDYFILE" "$tmp" 2>/dev/null || true
   mv -f "$tmp" "$CADDYFILE"
 
-  if ! caddy validate --adapter caddyfile --config "$CADDYFILE" >&2; then
+  # Validasi sebagai user Caddy: import yang tidak terbaca oleh proses Caddy gagal di sini, bukan saat reload.
+  if ! as_caddy caddy validate --adapter caddyfile --config "$CADDYFILE" >&2; then
     restore_files
-    die "caddy validate gagal; berkas dipulihkan dari backup, Caddy TIDAK di-reload"
+    die "caddy validate gagal (sebagai user Caddy '$(caddy_user)'); berkas dipulihkan dari backup, Caddy TIDAK di-reload"
   fi
-  log "caddy validate: valid"
+  log "caddy validate: valid (sebagai user Caddy '$(caddy_user)')"
 
   rollback() {
     echo "caddy-install: ROLLBACK: $1" >&2

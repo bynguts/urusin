@@ -1,6 +1,6 @@
 # 0023. Caddy milik host bersama dengan port loopback, bukan Caddy di dalam compose
 
-- **Status:** Diterima. Terimplementasi di `deploy/Caddyfile.urusin` dan `deploy/compose.prod.yml`. Menggantikan topologi "service caddy di compose" pada rencana §3.10.
+- **Status:** Diterima. Terimplementasi di `deploy/Caddyfile.urusin.primary` (+ `.fallback`) dan `deploy/compose.prod.yml`. Menggantikan topologi "service caddy di compose" pada rencana §3.10.
 - **Dicatat:** 2026-11-08
 - **Sumber keputusan:** implementasi
 
@@ -10,7 +10,7 @@ VPS target sudah menjalankan Caddy sistem yang memegang port 80 dan 443 dan mela
 
 ## Keputusan
 
-Compose tidak memuat Caddy. Container `web` hanya mengikat `127.0.0.1:4310` dan `fixtures` (opsional) `127.0.0.1:4320`. Snippet `deploy/Caddyfile.urusin` di-`import` ke Caddyfile host untuk `{$DOMAIN}` dan `verify.{$DOMAIN}`, dengan `flush_interval -1` agar SSE tidak tertahan, zstd dan gzip, HSTS, `nosniff`, dan `Referrer-Policy`. Caddy tidak mengirim CSP; CSP dimiliki aplikasi (ADR 0026).
+Compose tidak memuat Caddy. Container `web` hanya mengikat `127.0.0.1:4310` dan `fixtures` (opsional) `127.0.0.1:4320`. Snippet `deploy/Caddyfile.urusin.primary` di-`import` ke Caddyfile host untuk `{$DOMAIN}` dan `verify.{$DOMAIN}`, dengan `flush_interval -1` agar SSE tidak tertahan, zstd dan gzip, HSTS, `nosniff`, dan `Referrer-Policy`. Caddy tidak mengirim CSP; CSP dimiliki aplikasi (ADR 0026).
 
 ## Alternatif yang dipertimbangkan
 
