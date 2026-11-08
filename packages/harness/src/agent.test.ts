@@ -40,7 +40,8 @@ describe('alur normal dengan DemoProvider', () => {
     expect(data.klaim[0]!.kutipan[0]!.textFragmentUrl).toContain('#:~:text=');
     expect(env.store.getUrusanOrThrow(u.id).jenis).toBe('kelahiran');
     expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
-  });
+    // Alur penuh DemoProvider (~1 detik sendiri); di runner CI paralel bisa melewati 5 detik bawaan.
+  }, 20_000);
 
   it('sapaan: assistant_text biasa (non-persyaratan) tanpa tool', async () => {
     const env = makeEnv({ provider: new DemoProvider() });
