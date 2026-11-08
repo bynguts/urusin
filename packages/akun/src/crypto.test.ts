@@ -1,0 +1,218 @@
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { openHarnessDb } from '@urusin/harness';
+import { describe, expect, it } from 'vitest';
+import { maskEmail, normalizeEmail } from './email.js';
+import { ARGON2_PARAMS, hashPassword, needsRehash, periksaSandi, verifyPassword } from './password.js';
+import { newId, randomToken, safeEqual, sha256Hex, TOKEN_RE } from './token.js';
+import { deriveKek, open, seal, Vault, VaultError } from './vault.js';
+
+const KEY_B64 = Buffer.alloc(32, 7).toString('base64');
+
+describe('hash sandi argon2id', () => {
+  it('format PHC dengan parameter OWASP, salt acak, verifikasi benar/salah', async () => {
+    const a = await hashPassword('kuda-lari-cepat-9');
+    const b = await hashPassword('kuda-lari-cepat-9');
+    expect(a).toMatch(/^\$argon2id\$v=19\$m=19456,t=2,p=1\$[A-Za-z0-9+/]{22}\$[A-Za-z0-9+/]{43}$/);
+    expect(a).not.toBe(b);
+    expect(await verifyPassword(a, 'kuda-lari-cepat-9')).toBe(true);
+    expect(await verifyPassword(a, 'kuda-lari-cepat-8')).toBe(false);
+    expect(needsRehash(a)).toBe(false);
+  });
+
+  it('normalisasi NFKC: bentuk Unicode berbeda dari sandi yang sama tetap cocok', async () => {
+    const h = await hashPassword('café-sandi-ok');
+    expect(await verifyPassword(h, 'café-sandi-ok')).toBe(true);
+  });
+
+  it('hash rusak atau parameter berbahaya → false, dan perlu di-hash ulang', async () => {
+    expect(await verifyPassword('bukan-phc', 'x')).toBe(false);
+    const besar = `$argon2id$v=19$m=99999999,t=2,p=1$${'A'.repeat(22)}$${'A'.repeat(43)}`;
+    expect(await verifyPassword(besar, 'x')).toBe(false);
+    expect(needsRehash('bukan-phc')).toBe(true);
+    const lama = (await hashPassword('kuda-lari-cepat-9')).replace(
+      `m=${ARGON2_PARAMS.memory},t=2`,
+      'm=8192,t=2',
+    );
+    expect(needsRehash(lama)).toBe(true);
+    // tag tidak cocok dengan parameter baru: verifikasi gagal tanpa melempar
+    expect(await verifyPassword(lama, 'kuda-lari-cepat-9')).toBe(false);
+  });
+
+  it('kebijakan sandi: panjang, batas atas, daftar umum, pengulangan, sama dengan email', () => {
+    expect(periksaSandi('pendek1')).toBe('SANDI_TERLALU_PENDEK');
+    expect(periksaSandi('x'.repeat(129) + 'y')).toBe('SANDI_TERLALU_PANJANG');
+    expect(periksaSandi('Password123')).toBe('SANDI_TERLALU_UMUM');
+    expect(periksaSandi('bismillah')).toBe('SANDI_TERLALU_UMUM');
+    expect(periksaSandi('aaaaaaaaaa')).toBe('SANDI_TERLALU_UMUM');
+    expect(periksaSandi('wargabaik@example.com', 'wargabaik@example.com')).toBe('SANDI_TERLALU_UMUM');
+    expect(periksaSandi('wargabaik', 'wargabaik@example.com')).toBe('SANDI_TERLALU_UMUM');
+    expect(periksaSandi('kuda-lari-cepat-9', 'wargabaik@example.com')).toBeNull();
+    // 8 karakter emoji (code point, bukan unit UTF-16) dihitung 8
+    expect(periksaSandi('🐱🐶🐭🐹🐰🦊🐻🐼')).toBeNull();
+  });
+});
+
+describe('token dan email', () => {
+  it('token 256-bit base64url, unik; hash hex; perbandingan waktu-konstan', () => {
+    const t = randomToken();
+    expect(t).toMatch(TOKEN_RE);
+    expect(randomToken()).not.toBe(t);
+    expect(sha256Hex(t)).toMatch(/^[0-9a-f]{64}$/);
+    expect(safeEqual('abc', 'abc')).toBe(true);
+    expect(safeEqual('abc', 'abd')).toBe(false);
+    expect(safeEqual('abc', 'abcd')).toBe(false);
+    expect(newId('akun')).toMatch(/^akun_[0-9a-f]{32}$/);
+  });
+
+  it('normalisasi email: trim, huruf kecil, NFKC; bentuk aneh ditolak; masker untuk log', () => {
+    expect(normalizeEmail('  Warga.Baik+urusin@Example.COM ')).toBe('warga.baik+urusin@example.com');
+    expect(normalizeEmail('ｗａｒｇａ@example.com')).toBe('warga@example.com');
+    for (const bad of [
+      '',
+      'tanpa-at',
+      'a@b',
+      'a b@example.com',
+      'a@@example.com',
+      `${'a'.repeat(250)}@example.com`,
+    ])
+      expect(normalizeEmail(bad)).toBeNull();
+    expect(maskEmail('warga@example.com')).toBe('w***@example.com');
+  });
+});
+
+describe('envelope encryption', () => {
+  it('seal/open round-trip; AAD, kunci, dan byte yang diubah semuanya ditolak', () => {
+    const k = deriveKek(KEY_B64);
+    expect(k).toHaveLength(32);
+    const s = seal(k, Buffer.from('rahasia'), 'aad-1');
+    expect(open(k, s, 'aad-1').toString()).toBe('rahasia');
+    expect(() => open(k, s, 'aad-2')).toThrow(VaultError);
+    expect(() => open(deriveKek(Buffer.alloc(32, 8).toString('base64')), s, 'aad-1')).toThrow(VaultError);
+    const rusak = Buffer.from(s);
+    rusak[rusak.length - 1]! ^= 1;
+    expect(() => open(k, rusak, 'aad-1')).toThrow(VaultError);
+    expect(() => open(k, Buffer.from([9, 1, 2]), 'aad-1')).toThrow(VaultError);
+    expect(() => deriveKek(Buffer.alloc(16).toString('base64'))).toThrow(/terlalu pendek/);
+  });
+
+  it('KEK terpisah domain dari kunci mentah dan deterministik', () => {
+    expect(deriveKek(KEY_B64).equals(deriveKek(KEY_B64))).toBe(true);
+    expect(deriveKek(KEY_B64).equals(Buffer.from(KEY_B64, 'base64'))).toBe(false);
+  });
+});
+
+function vaultUji() {
+  const db = openHarnessDb();
+  const dir = mkdtempSync(join(tmpdir(), 'vault-'));
+  const vault = new Vault(db, deriveKek(KEY_B64), dir);
+  const user = (id: string) =>
+    db
+      .prepare("INSERT INTO users (id, email, created_at) VALUES (?, ?, '2026-11-09T00:00:00.000Z')")
+      .run(id, `${id}@example.com`);
+  return { db, dir, vault, user };
+}
+
+describe('Vault per akun', () => {
+  const A = `akun_${'a'.repeat(32)}`;
+  const B = `akun_${'b'.repeat(32)}`;
+
+  it('Data Diri dan dokumen terenkripsi at rest, round-trip, terisolasi antar akun', () => {
+    const { db, dir, vault, user } = vaultUji();
+    user(A);
+    user(B);
+    expect(vault.getDataDiri(A)).toBeNull();
+    vault.setDataDiri(A, { namaLengkap: 'Warga Uji', alamat: 'Jalan Melati 3' });
+    vault.setDataDiri(A, { namaLengkap: 'Warga Uji Dua' });
+    expect(vault.getDataDiri(A)?.data).toEqual({ namaLengkap: 'Warga Uji Dua' });
+    const ct = db.prepare('SELECT ciphertext FROM vault_data_diri WHERE user_id = ?').get(A) as {
+      ciphertext: Buffer;
+    };
+    expect(ct.ciphertext.toString('latin1')).not.toContain('Warga');
+
+    const isi = Buffer.from('%PDF-1.7 berkas KK palsu untuk uji');
+    const doc = vault.putDocument(A, {
+      jenis: 'kk',
+      judul: 'KK keluarga',
+      mime: 'application/pdf',
+      bytes: isi,
+    });
+    expect(vault.listDocuments(A).map((d) => d.judul)).toEqual(['KK keluarga']);
+    expect(vault.getDocument(A, doc.id)?.bytes.equals(isi)).toBe(true);
+    const disk = readFileSync(join(dir, A, `${doc.id}.bin`));
+    expect(disk.includes(Buffer.from('berkas KK'))).toBe(false);
+    const meta = db.prepare('SELECT judul_ct FROM vault_documents WHERE id = ?').get(doc.id) as {
+      judul_ct: Buffer;
+    };
+    expect(meta.judul_ct.toString('latin1')).not.toContain('KK keluarga');
+
+    // akun lain tidak bisa membaca/menghapus dokumen A; id aneh ditolak
+    expect(vault.getDocument(B, doc.id)).toBeNull();
+    expect(vault.deleteDocument(B, doc.id)).toBe(false);
+    expect(vault.getDocument(A, '../../etc/passwd')).toBeNull();
+    expect(vault.deleteDocument(A, 'x')).toBe(false);
+    expect(vault.listDocuments(B)).toEqual([]);
+
+    // berkas A yang disalin ke folder B tetap tidak bisa dibuka dengan DEK B (AAD + DEK berbeda)
+    const docB = vault.putDocument(B, {
+      jenis: 'ktp',
+      judul: 'x',
+      mime: 'image/png',
+      bytes: Buffer.from('b'),
+    });
+    writeFileSync(join(dir, B, `${docB.id}.bin`), disk);
+    expect(() => vault.getDocument(B, docB.id)).toThrow(VaultError);
+
+    expect(vault.deleteDocument(A, doc.id)).toBe(true);
+    expect(existsSync(join(dir, A, `${doc.id}.bin`))).toBe(false);
+  });
+
+  it('crypto-shred: DEK hilang, ciphertext yang tersisa tidak bisa dibuka, berkas dan baris terhapus', () => {
+    const { db, dir, vault, user } = vaultUji();
+    user(A);
+    vault.setDataDiri(A, { namaLengkap: 'Warga Uji' });
+    const doc = vault.putDocument(A, {
+      jenis: 'ktp',
+      judul: 'KTP',
+      mime: 'image/jpeg',
+      bytes: Buffer.from('jpg'),
+    });
+    const sisaCt = (
+      db.prepare('SELECT ciphertext FROM vault_data_diri WHERE user_id = ?').get(A) as { ciphertext: Buffer }
+    ).ciphertext;
+    const sisaBerkas = readFileSync(join(dir, A, `${doc.id}.bin`));
+    const wrapped = (
+      db.prepare('SELECT wrapped_dek FROM user_keys WHERE user_id = ?').get(A) as { wrapped_dek: Buffer }
+    ).wrapped_dek;
+
+    vault.shred(A);
+    expect(db.prepare('SELECT COUNT(*) n FROM user_keys').get()).toEqual({ n: 0 });
+    expect(db.prepare('SELECT COUNT(*) n FROM vault_data_diri').get()).toEqual({ n: 0 });
+    expect(db.prepare('SELECT COUNT(*) n FROM vault_documents').get()).toEqual({ n: 0 });
+    expect(existsSync(join(dir, A))).toBe(false);
+    expect(vault.getDataDiri(A)).toBeNull();
+
+    // Salinan ciphertext (mis. cadangan) tanpa DEK: DEK baru akun yang sama pun tidak bisa membukanya.
+    vault.setDataDiri(A, { x: 'baru' });
+    const dekBaru = open(
+      deriveKek(KEY_B64),
+      (db.prepare('SELECT wrapped_dek FROM user_keys WHERE user_id = ?').get(A) as { wrapped_dek: Buffer })
+        .wrapped_dek,
+      `dek|${A}`,
+    );
+    expect(() => open(dekBaru, sisaCt, `data-diri|${A}`)).toThrow(VaultError);
+    expect(() => open(dekBaru, sisaBerkas, `dokumen|${A}|${doc.id}`)).toThrow(VaultError);
+    expect(wrapped.equals(open(deriveKek(KEY_B64), wrapped, `dek|${A}`))).toBe(false);
+    expect(readdirSync(dir)).toEqual([]);
+  });
+
+  it('KEK salah (URUSIN_PII_KEY berganti tanpa rotasi) gagal tertutup', () => {
+    const { db, dir, vault, user } = vaultUji();
+    user(A);
+    vault.setDataDiri(A, { a: '1' });
+    const lain = new Vault(db, deriveKek(Buffer.alloc(32, 9).toString('base64')), dir);
+    expect(() => lain.getDataDiri(A)).toThrow(VaultError);
+    expect(() => new Vault(db, Buffer.alloc(16), dir)).toThrow(/32 byte/);
+  });
+});
