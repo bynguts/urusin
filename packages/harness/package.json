@@ -1,0 +1,41 @@
+{
+  "name": "@urusin/harness",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Harness agen Urusin: loop, state machine CAS, policy gate, audit, grounding, spotlighting, eval",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts.d.ts",
+      "default": "./dist/contracts.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "eval": "tsc -p tsconfig.build.json && node dist/eval/cli.js"
+  },
+  "dependencies": {
+    "@urusin/core": "workspace:*",
+    "@urusin/llm": "workspace:*",
+    "@urusin/rag": "workspace:*",
+    "@urusin/registry": "workspace:*",
+    "better-sqlite3": "13.0.3",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "26.6.6",
+    "vitest": "5.1.0"
+  }
+}

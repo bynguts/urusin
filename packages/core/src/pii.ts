@@ -85,3 +85,29 @@ export function detectPii(text: string): PiiKind[] {
   if (containsEmail(text)) kinds.push('email');
   return kinds;
 }
+
+export type PiiSpan = { kind: PiiKind; start: number; end: number; value: string };
+
+/**
+ * Lokasi tiap PII di dalam teks (untuk penggantian placeholder). NIK/KK 16 digit yang tidak lolos
+ * struktur NIK tidak ikut dilaporkan, agar nomor biasa (resi, nominal) tidak terganti.
+ * Rentang tidak tumpang tindih; urut menurut posisi.
+ */
+export function findPiiSpans(text: string): PiiSpan[] {
+  const spans: PiiSpan[] = [];
+  const push = (kind: PiiKind, m: RegExpMatchArray) => {
+    if (m.index === undefined) return;
+    spans.push({ kind, start: m.index, end: m.index + m[0].length, value: m[0] });
+  };
+  for (const m of text.matchAll(SIXTEEN_DIGITS_RE)) if (isNikLike(m[0])) push('nik', m);
+  for (const m of text.matchAll(GROUPED_NIK_RE)) if (isNikLike(m[0].replace(/\D/g, ''))) push('nik', m);
+  for (const m of text.matchAll(new RegExp(PHONE_RE.source, 'g'))) push('phone', m);
+  for (const m of text.matchAll(new RegExp(EMAIL_RE.source, 'g'))) push('email', m);
+  spans.sort((a, b) => a.start - b.start || b.end - b.start - (a.end - a.start));
+  const out: PiiSpan[] = [];
+  for (const s of spans) {
+    const last = out[out.length - 1];
+    if (!last || s.start >= last.end) out.push(s);
+  }
+  return out;
+}

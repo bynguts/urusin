@@ -49,3 +49,6 @@ Thumbs.db
 npm-debug.log*
 pnpm-debug.log*
 .lighthouseci/
+
+# Keluaran eval (dibuat oleh pnpm eval)
+evals/out/

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { isUnsupportedParamError } from './client.js';
+import { assertCompletionUsable } from './errors.js';
+import { strictSchemaFor, type StrictSchema } from './strict-schema.js';
 import type { CapabilityFlags } from './capabilities.js';
 import type { ChatMessage, ChatProvider, RequestOptions, Usage } from './types.js';
 
@@ -40,16 +42,8 @@ export type StructuredOptions<T> = {
 
 const EMIT_TOOL = 'emit_result';
 
-function jsonSchemaOf(schema: z.ZodType): Record<string, unknown> {
-  const { $schema: _ignored, ...rest } = z.toJSONSchema(schema, { target: 'draft-7' }) as Record<
-    string,
-    unknown
-  >;
-  return rest;
-}
-
 function parseWith<T>(
-  schema: z.ZodType<T>,
+  strict: StrictSchema<T>,
   raw: string | null | undefined,
 ): { ok: true; data: T } | { ok: false; error: string } {
   if (!raw) return { ok: false, error: 'respons kosong' };
@@ -59,7 +53,7 @@ function parseWith<T>(
   } catch (e) {
     return { ok: false, error: `JSON tidak valid: ${(e as Error).message}` };
   }
-  const r = schema.safeParse(json);
+  const r = strict.parse(json);
   return r.success ? { ok: true, data: r.data } : { ok: false, error: z.prettifyError(r.error) };
 }
 
@@ -73,7 +67,8 @@ export async function generateStructured<T>(opts: StructuredOptions<T>): Promise
   const maxTokens = opts.maxTokens ?? 1024;
   const reqOpts = { signal: opts.signal };
   let attempts = 0;
-  const schemaJson = jsonSchemaOf(opts.schema);
+  const strict = strictSchemaFor(opts.schema);
+  const schemaJson = strict.json;
   const failures: string[] = [];
 
   if (opts.caps.json_schema_strict) {
@@ -92,7 +87,8 @@ export async function generateStructured<T>(opts: StructuredOptions<T>): Promise
         reqOpts,
       );
       if (r.usage) usage.push(r.usage);
-      const parsed = parseWith(opts.schema, r.choices[0]?.message.content);
+      assertCompletionUsable(r, maxTokens);
+      const parsed = parseWith(strict, r.choices[0]?.message.content);
       if (parsed.ok) return { data: parsed.data, method: 'json_schema', degraded: false, attempts, usage };
       failures.push(`json_schema: ${parsed.error}`);
     } catch (err) {
@@ -120,10 +116,11 @@ export async function generateStructured<T>(opts: StructuredOptions<T>): Promise
         reqOpts,
       );
       if (r.usage) usage.push(r.usage);
+      assertCompletionUsable(r, maxTokens);
       const call = r.choices[0]?.message.tool_calls?.find(
         (c) => c.type === 'function' && c.function.name === EMIT_TOOL,
       );
-      const parsed = parseWith(opts.schema, call?.type === 'function' ? call.function.arguments : undefined);
+      const parsed = parseWith(strict, call?.type === 'function' ? call.function.arguments : undefined);
       if (parsed.ok) return { data: parsed.data, method: 'forced_tool', degraded: true, attempts, usage };
       failures.push(`forced_tool: ${parsed.error}`);
     } catch (err) {
@@ -147,8 +144,9 @@ export async function generateStructured<T>(opts: StructuredOptions<T>): Promise
       reqOpts,
     );
     if (r.usage) usage.push(r.usage);
+    assertCompletionUsable(r, maxTokens);
     const content = r.choices[0]?.message.content;
-    const parsed = parseWith(opts.schema, content);
+    const parsed = parseWith(strict, content);
     if (parsed.ok) return { data: parsed.data, method: 'json_object', degraded: true, attempts, usage };
     failures.push(`json_object#${repair}: ${parsed.error}`);
     messages.push(

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { ErrorCode } from './errors.js';
-import { containsEmail, containsNikLike, containsPhone, detectPii, isNikLike } from './pii.js';
+import { containsEmail, containsNikLike, containsPhone, detectPii, findPiiSpans, isNikLike } from './pii.js';
 import {
   filePlaceholder,
   findGuardIssues,
@@ -134,5 +134,25 @@ describe('noPlaceholder()', () => {
   });
   it('mengabaikan angka dan boolean', () => {
     expect(findGuardIssues({ n: 3312, b: true, z: null })).toEqual([]);
+  });
+});
+
+describe('findPiiSpans', () => {
+  it('menemukan NIK, HP, dan email dengan posisi yang benar', () => {
+    const text = `NIK ${NIK}, hubungi ${j('0812', '3456', '7890')} atau ${j('budi', '@', 'contoh.id')}.`;
+    const spans = findPiiSpans(text);
+    expect(spans.map((s) => s.kind)).toEqual(['nik', 'phone', 'email']);
+    for (const s of spans) expect(text.slice(s.start, s.end)).toBe(s.value);
+  });
+
+  it('mengabaikan 16 digit yang bukan struktur NIK', () => {
+    expect(findPiiSpans(`resi ${'9'.repeat(16)}`)).toEqual([]);
+  });
+
+  it('NIK berkelompok dikenali sebagai satu rentang', () => {
+    const g = [NIK.slice(0, 4), NIK.slice(4, 8), NIK.slice(8, 12), NIK.slice(12)].join(' ');
+    const spans = findPiiSpans(`nik: ${g} ya`);
+    expect(spans).toHaveLength(1);
+    expect(spans[0]?.kind).toBe('nik');
   });
 });

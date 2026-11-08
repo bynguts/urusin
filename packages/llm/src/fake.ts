@@ -150,6 +150,7 @@ const usageOf = (u?: Partial<Usage>): Usage => ({
 
 export function fakeCompletion(opts: {
   content?: string | null;
+  refusal?: string | null;
   toolCalls?: { name: string; arguments: string; id?: string }[];
   finishReason?: OpenAI.Chat.Completions.ChatCompletion.Choice['finish_reason'];
   usage?: Partial<Usage>;
@@ -173,7 +174,7 @@ export function fakeCompletion(opts: {
         message: {
           role: 'assistant',
           content: opts.content ?? null,
-          refusal: null,
+          refusal: opts.refusal ?? null,
           ...(toolCalls?.length ? { tool_calls: toolCalls } : {}),
         },
       },

@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "e2e": "playwright test",
+    "zip": "wxt zip",
     "key:id": "node scripts/extension-key.mjs id"
   },
   "dependencies": {

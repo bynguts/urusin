@@ -3,3 +3,5 @@ packages:
   - packages/*
 allowBuilds:
   better-sqlite3: false
+# Tolak versi paket yang dipublikasikan < 24 jam lalu (menit); melindungi dari rilis berbahaya yang cepat ditarik.
+minimumReleaseAge: 1440
