@@ -1,0 +1,50 @@
+# Dependensi
+node_modules/
+.pnpm-store/
+
+# Output build
+dist/
+build/
+.svelte-kit/
+.turbo/
+.output/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# Rahasia & konfigurasi lokal (jangan pernah di-commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Data lokal / basis data
+*.db
+*.db-*
+*.db.*
+*.sqlite
+*.sqlite-*
+deploy/data/
+
+# Hasil pengujian
+playwright-report/
+test-results/
+evals/out/
+blob-report/
+
+# Materi riset & alat lokal (tidak boleh masuk repo)
+recon/
+.playwright-mcp/
+.omc/
+
+# Editor & OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
+npm-debug.log*
+pnpm-debug.log*
