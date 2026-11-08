@@ -21,10 +21,11 @@ import { debugPageHtml } from './debug-page.js';
 import { devPageHtml } from './dev-page.js';
 import { PendampingError, sidHashOf, type SessionManager } from './sessions.js';
 import { createFrameGate } from './stream.js';
+import { HEADER_TANDA, HEADER_WAKTU, periksaTanda } from './tanda.js';
 
 /**
  * HTTP + WebSocket layanan pendamping.
- * - `/internal/*`: hanya untuk web broker (Bearer token bersama); pemilik sesi = urusanId + sha256(urusin_sid)
+ * - `/internal/*`: hanya untuk web broker (tanda tangan HMAC rahasia bersama, jendela 60 detik); pemilik sesi = urusanId + sha256(urusin_sid)
  *   di BODY (bukan URL, agar tidak masuk log akses).
  * - `/ws/<sesiId>`: Origin harus persis salah satu origin web app; pesan pertama `halo` dengan tiket sekali
  *   pakai (≤30 detik). Tidak ada pencatatan isi pesan, frame, atau ketikan.
@@ -72,7 +73,8 @@ function tokenOk(header: string | undefined, token: string): boolean {
   return timingSafeEqual(a, b) && got.length > 0;
 }
 
-async function readJson<T>(req: http.IncomingMessage, schema: ZodType<T>): Promise<T | null> {
+/** Isi mentah dibatasi MAX_JSON; null bila lebih. */
+async function readRaw(req: http.IncomingMessage): Promise<Buffer | null> {
   let size = 0;
   const chunks: Buffer[] = [];
   for await (const c of req) {
@@ -80,12 +82,21 @@ async function readJson<T>(req: http.IncomingMessage, schema: ZodType<T>): Promi
     if (size > MAX_JSON) return null;
     chunks.push(c as Buffer);
   }
+  return Buffer.concat(chunks);
+}
+
+function parseJson<T>(raw: Buffer | null, schema: ZodType<T>): T | null {
+  if (!raw) return null;
   try {
-    const parsed = schema.safeParse(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+    const parsed = schema.safeParse(JSON.parse(raw.toString('utf8')));
     return parsed.success ? parsed.data : null;
   } catch {
     return null;
   }
+}
+
+async function readJson<T>(req: http.IncomingMessage, schema: ZodType<T>): Promise<T | null> {
+  return parseJson(await readRaw(req), schema);
 }
 
 function clientDist(): string | undefined {
@@ -166,20 +177,33 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
 
       if (!path.startsWith('/internal/'))
         return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'Tidak ditemukan.' });
-      if (!tokenOk(req.headers.authorization, config.internalToken))
-        return galat(res, 401, { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' });
+      // Kanal web -> worker: tanda tangan HMAC atas waktu + metode + jalur + isi (bukan token polos).
+      const raw = await readRaw(req);
+      if (!raw) return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan terlalu besar.' });
+      const header = (n: string) => {
+        const v = req.headers[n];
+        return typeof v === 'string' ? v : undefined;
+      };
+      const sah = periksaTanda(
+        config.internalToken,
+        { waktu: header(HEADER_WAKTU), tanda: header(HEADER_TANDA) },
+        req.method ?? 'GET',
+        path,
+        raw,
+      );
+      if (!sah) return galat(res, 401, { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' });
 
       if (req.method === 'GET' && path === '/internal/antrean') return json(res, 200, manager.antrean());
       if (req.method !== 'POST')
         return galat(res, 405, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Metode tidak didukung.' });
 
       if (path === '/internal/sesi') {
-        const body = await readJson(req, MulaiSesiInternalSchema);
+        const body = parseJson(raw, MulaiSesiInternalSchema);
         if (!body)
           return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
         return json(res, 201, await manager.create(body));
       }
-      const owner = await readJson(req, PemilikSesiInternalSchema);
+      const owner = parseJson(raw, PemilikSesiInternalSchema);
       if (!owner) return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
       switch (path) {
         case '/internal/sesi/status':

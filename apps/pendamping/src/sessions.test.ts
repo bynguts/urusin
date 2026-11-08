@@ -4,11 +4,17 @@ import { afterEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { loadConfig, type Config } from './config.js';
 import { createServer } from './server.js';
+import { tandaInternal } from './tanda.js';
 import { SessionManager, sidHashOf, type ActiveRun, type RunInit } from './sessions.js';
 
 const SID = sidHashOf('a'.repeat(32));
 const COOKIE = `urusin_sid=${'a'.repeat(32)}`;
 const OTHER = sidHashOf('b'.repeat(32));
+
+function tandaHeader(rahasia: string, metode: string, jalur: string, isi = '') {
+  const waktu = String(Date.now());
+  return { 'x-urusin-waktu': waktu, 'x-urusin-tanda': tandaInternal(rahasia, waktu, metode, jalur, isi) };
+}
 
 function input(urusanId: string, extra: Partial<MulaiSesiInternal> = {}): MulaiSesiInternal {
   return {
@@ -467,12 +473,19 @@ describe('server HTTP + WebSocket', () => {
     await new Promise<void>((r) => server!.listen(0, '127.0.0.1', r));
     const port = (server!.address() as net.AddressInfo).port;
     const base = `http://127.0.0.1:${port}`;
-    const call = (path: string, body?: unknown, token = 't'.repeat(40)) =>
-      fetch(`${base}${path}`, {
-        method: body === undefined ? 'GET' : 'POST',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-        ...(body === undefined ? {} : { body: typeof body === 'string' ? body : JSON.stringify(body) }),
+    const call = (path: string, body?: unknown, token = 't'.repeat(40), waktu = String(Date.now())) => {
+      const isi = body === undefined ? '' : typeof body === 'string' ? body : JSON.stringify(body);
+      const metode = body === undefined ? 'GET' : 'POST';
+      return fetch(`${base}${path}`, {
+        method: metode,
+        headers: {
+          'x-urusin-waktu': waktu,
+          'x-urusin-tanda': tandaInternal(token, waktu, metode, path, isi),
+          'content-type': 'application/json',
+        },
+        ...(body === undefined ? {} : { body: isi }),
       });
+    };
     return { h, port, base, call };
   }
 
@@ -480,6 +493,11 @@ describe('server HTTP + WebSocket', () => {
     const { call, base } = await start();
     expect((await fetch(`${base}/health`)).status).toBe(200);
     expect((await call('/internal/antrean', undefined, 'salah')).status).toBe(401);
+    // Token polos (skema lama) dan tanda kedaluwarsa ditolak.
+    const polos = { authorization: `Bearer ${'t'.repeat(40)}` };
+    expect((await fetch(`${base}/internal/antrean`, { headers: polos })).status).toBe(401);
+    const lama = String(Date.now() - 120_000);
+    expect((await call('/internal/antrean', undefined, 't'.repeat(40), lama)).status).toBe(401);
     expect((await call('/internal/sesi', { urusanId: 'u1' })).status).toBe(422);
     expect((await call('/internal/sesi', '{bukan json')).status).toBe(422);
     expect((await call('/internal/sesi', 'x'.repeat(70_000))).status).toBe(422);
@@ -503,7 +521,7 @@ describe('server HTTP + WebSocket', () => {
       (
         await fetch(`${base}/internal/sesi`, {
           method: 'PUT',
-          headers: { authorization: `Bearer ${'t'.repeat(40)}` },
+          headers: tandaHeader('t'.repeat(40), 'PUT', '/internal/sesi'),
         })
       ).status,
     ).toBe(405);

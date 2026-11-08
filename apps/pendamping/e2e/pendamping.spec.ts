@@ -9,6 +9,7 @@ import { createBrowserFactory, launchIsolated } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
 import { runnerExpression } from '../src/runner-script.js';
 import { SessionManager, sidHashOf } from '../src/sessions.js';
+import { tandaInternal } from '../src/tanda.js';
 import { FIXTURE_ORIGIN, INTERNAL_TOKEN, PENDAMPING_ORIGIN } from '../playwright.config.js';
 
 /**
@@ -26,10 +27,17 @@ const PNG = Buffer.from(
 );
 
 async function internal<T>(path: string, body?: unknown): Promise<{ status: number; data: T }> {
+  const isi = body === undefined ? '' : JSON.stringify(body);
+  const metode = body === undefined ? 'GET' : 'POST';
+  const waktu = String(Date.now());
   const res = await fetch(`${PENDAMPING_ORIGIN}${path}`, {
-    method: body === undefined ? 'GET' : 'POST',
-    headers: { authorization: `Bearer ${INTERNAL_TOKEN}`, 'content-type': 'application/json' },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    method: metode,
+    headers: {
+      'x-urusin-waktu': waktu,
+      'x-urusin-tanda': tandaInternal(INTERNAL_TOKEN, waktu, metode, path, isi),
+      'content-type': 'application/json',
+    },
+    ...(body === undefined ? {} : { body: isi }),
   });
   return { status: res.status, data: (await res.json()) as T };
 }
