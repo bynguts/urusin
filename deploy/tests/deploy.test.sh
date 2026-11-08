@@ -155,6 +155,44 @@ export SHIM_RUN_FAIL=1
 check "kegagalan sqlite -> exit non-zero, tanpa .partial" '[ $RC -ne 0 ] && [ ! -e "$BACKUP_DIR/.partial.db" ]'
 unset SHIM_RUN_FAIL BACKUP_DIR
 
+echo "13. host network: bind loopback + cek jangkauan LLM"
+new_sandbox
+cp "$DEPLOY/check-llm-reach.sh" "$SB/deploy/check-llm-reach.sh"
+export SHIM_LABEL="$SHA_A"
+run_deploy "$SHA_A" "$DIG_A"
+check "deploy sukses; pemeriksaan LLM dijalankan sebelum promosi" '[ $RC -eq 0 ] && grep -q "HTTP 401" "$SB/out.log"'
+export SHIM_LLM_FAIL=1 SHIM_LABEL="$SHA_B"
+run_deploy "$SHA_B" "$DIG_B"
+check "LLM tak terjangkau: hanya peringatan, deploy tetap sukses" '[ $RC -eq 0 ] && grep -q "tidak menjangkau LLM_BASE_URL" "$SB/out.log"'
+export REQUIRE_LLM=1 SHIM_LABEL="$SHA_A"
+run_deploy "$SHA_A" "$DIG_A"
+check "REQUIRE_LLM=1: gagal + rollback, warna lama tetap dipromosikan" '[ $RC -ne 0 ] && grep -q "ROLLBACK" "$SB/out.log" && [ "$(cat "$SHIM_DIR/promoted")" = "$(sed -n "s/^ACTIVE_COLOR=//p" "$SB/deploy/.env.images")" ]'
+unset SHIM_LLM_FAIL REQUIRE_LLM
+export SHIM_SS_WILDCARD=1 SHIM_LABEL="$SHA_B"
+run_deploy "$SHA_B" "$DIG_B"
+check "bind 0.0.0.0 ditolak + rollback" '[ $RC -ne 0 ] && grep -q "semua antarmuka" "$SB/out.log"'
+unset SHIM_SS_WILDCARD
+
+echo "13b. drain turn sebelum menghentikan warna lama"
+new_sandbox
+export SHIM_LABEL="$SHA_A"
+run_deploy "$SHA_A" "$DIG_A"
+export SHIM_LABEL="$SHA_B" SHIM_TURNS=0
+run_deploy "$SHA_B" "$DIG_B"
+check "runningTurns=0: tidak menunggu" '[ $RC -eq 0 ] && ! grep -q "menunggu .* di web-" "$SB/out.log"'
+export SHIM_LABEL="$SHA_A" SHIM_TURNS=2
+run_deploy "$SHA_A" "$DIG_A"
+check "runningTurns>0: menunggu sampai batas drain lalu tetap berhenti (peringatan)" '[ $RC -eq 0 ] && grep -q "menunggu 2 di web-" "$SB/out.log" && grep -q "batas drain" "$SB/out.log"'
+unset SHIM_TURNS
+export SHIM_LABEL="$SHA_B"
+run_deploy "$SHA_B" "$DIG_B"
+check "field runningTurns tidak ada (image lama): menunggu penuh" '[ $RC -eq 0 ] && grep -q "jumlah tidak diketahui" "$SB/out.log"'
+check "DOCKER_CONFIG tidak ditulis: skrip tidak menyebut ~/.docker" '! grep -rEq "(~|\$HOME)/\.docker" "$DEPLOY"/*.sh'
+
+echo "14. compose.prod.yml dirender: host network, loopback saja"
+PATH="$PATH_ORIG" bash "$HERE/compose-config.test.sh" 2>&1 | sed "s/^/  /"
+check "compose-config lulus" '[ "${PIPESTATUS[0]}" -eq 0 ]'
+
 echo "11. zero-downtime.sh: lulus tanpa kegagalan, gagal bila ada respons 5xx atau deploy gagal"
 new_sandbox
 printf '#!/usr/bin/env bash

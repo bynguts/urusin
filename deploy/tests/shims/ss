@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# ss palsu: port web mendengarkan di 127.0.0.1 kecuali SHIM_SS_WILDCARD=1 (0.0.0.0).
+port="${*: -1}"; port="${port#*:}"
+addr=127.0.0.1; [ -z "${SHIM_SS_WILDCARD:-}" ] || addr=0.0.0.0
+echo "LISTEN 0 511 ${addr}:${port} 0.0.0.0:*"

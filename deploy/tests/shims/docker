@@ -38,6 +38,9 @@ case "$1" in
       exec)
         # promote(): argumen terakhir = warna yang dipromosikan; `rm -f` menghapus penanda.
         case "$*" in
+          *" node "*) # check-llm-reach.sh
+            if [ -n "${SHIM_LLM_FAIL:-}" ]; then echo "LLM tidak terjangkau: ETIMEDOUT" >&2; exit 1; fi
+            echo "LLM http://127.0.0.1:20128/v1/models -> HTTP 401"; exit 0 ;;
           *"rm -f"*) rm -f "$SHIM_DIR/promoted" ;;
           *) [ -f "$SHIM_DIR/running.$color" ] || exit 1; echo "${args[$((${#args[@]} - 1))]}" > "$SHIM_DIR/promoted" ;;
         esac ;;

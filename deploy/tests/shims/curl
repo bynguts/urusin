@@ -2,7 +2,7 @@
 # curl palsu: /api/health lokal per warna, dan "publik" (https) mengikuti warna pertama yang hidup.
 url="${*: -1}"
 echo "curl $*" >> "$SHIM_DIR/calls.log"
-body() { printf '{"ok":true,"status":"ok","gitSha":"%s","version":"0.0.0"}' "$(cat "$SHIM_DIR/running.$1")"; }
+body() { printf '{"ok":true,"status":"ok","gitSha":"%s","version":"0.0.0"%s}' "$(cat "$SHIM_DIR/running.$1")" "${SHIM_TURNS:+,\"runningTurns\":$SHIM_TURNS}"; }
 case "$url" in
   https://zd.test/*) if [ -n "${SHIM_ZD_FAIL:-}" ]; then echo 503; else echo 200; fi; exit 0 ;;
   http://127.0.0.1:431[01]/api/ready)

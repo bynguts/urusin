@@ -9,15 +9,17 @@
 #   1. Pull image; label revision harus SHA lengkap dan SHA itu juga harus ada di provenance buildx.
 #   2. Jalankan image di warna yang menganggur (blue=4310, green=4311), tunggu /api/health sehat,
 #      gitSha cocok, dan /api/ready masih 503 (belum dipromosikan). Warna aktif tidak disentuh.
+#      Juga memastikan 127.0.0.1:<port> tidak terikat ke 0.0.0.0 (ss) dan web menjangkau LLM_BASE_URL.
 #   3. Smoke ke port langsung warna idle lulus => PROMOSI: tulis /data/.active-color (volume bersama).
 #      Caddy memakai /api/ready, jadi lalu lintas pindah hanya setelah promosi, bukan saat port hidup.
 #   4. Smoke publik (https://$DOMAIN, https://verify.$DOMAIN, TLS) bila DOMAIN diset, lalu hentikan
 #      warna lama (warna lama tetap hidup sampai smoke lulus agar rollback seketika).
 #   5. Gagal di langkah 2-4 => rollback otomatis (promosikan ulang yang lama) dan exit non-zero.
 #
-# Variabel (opsional): IMAGE_REPO, WAIT_SECONDS, SETTLE_SECONDS, PORT_BLUE, PORT_GREEN, SKIP_SMOKE=1,
+# Variabel (opsional): DRAIN_SECONDS (default 120 = batas turn agen), REQUIRE_LLM=1 (gagal bila web tidak menjangkau LLM_BASE_URL), IMAGE_REPO, WAIT_SECONDS, SETTLE_SECONDS, PORT_BLUE, PORT_GREEN, SKIP_SMOKE=1,
 # REQUIRE_PROVENANCE (default 1; 0 = cukup label revision, JANGAN dipakai di produksi).
-# Idempotent: menjalankan ulang dengan argumen sama aman (warna berganti).
+# DOCKER_CONFIG dari lingkungan dihormati (mis. direktori sementara berisi login GHCR); skrip ini tidak
+# pernah menulis ke konfigurasi docker pengguna. Idempotent: menjalankan ulang dengan argumen sama aman (warna berganti).
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -27,6 +29,7 @@ PORT_BLUE="${PORT_BLUE:-4310}"
 PORT_GREEN="${PORT_GREEN:-4311}"
 WAIT_SECONDS="${WAIT_SECONDS:-90}"
 SETTLE_SECONDS="${SETTLE_SECONDS:-3}"
+DRAIN_SECONDS="${DRAIN_SECONDS:-120}"
 REQUIRE_PROVENANCE="${REQUIRE_PROVENANCE:-1}"
 ENV_FILE=".env"
 IMAGES_FILE=".env.images"
@@ -194,6 +197,23 @@ promote() {
   "${compose[@]}" exec -T "web-$2" sh -c 'printf %s "$0" > /data/.active-color.tmp && mv /data/.active-color.tmp /data/.active-color' "$1"
 }
 
+# Turn agen berjalan di latar belakang dan memakai SSE: jangan hentikan warna lama selagi masih ada.
+# Menunggu runningTurns (dari /api/health) = 0, paling lama DRAIN_SECONDS (>= batas turn 120 dtk).
+# Image lama tanpa field itu: tunggu penuh. Kontainer sudah mati: langsung lanjut.
+drain_old() { # port warna
+  local waited=0 body n
+  while [ "$waited" -lt "$DRAIN_SECONDS" ]; do
+    body="$(health_body "$1")"
+    [ -n "$body" ] || return 0
+    n="$(printf '%s' "$body" | sed -n 's/.*"runningTurns":\([0-9]*\).*/\1/p')"
+    [ "$n" = 0 ] && return 0
+    echo "deploy: menunggu ${n:-turn (jumlah tidak diketahui)} di web-$2 selesai (${waited}/${DRAIN_SECONDS}s)"
+    sleep 5
+    waited=$((waited + 5))
+  done
+  echo "deploy: peringatan: batas drain ${DRAIN_SECONDS}s tercapai; web-$2 dihentikan walau turn masih berjalan" >&2
+}
+
 # --- 5. Rollback ------------------------------------------------------------------------------
 rolled_back=0
 rollback() {
@@ -234,6 +254,25 @@ echo "deploy: menaikkan web-${idle} (:${idle_port}) dengan ${web_image}"
 echo "deploy: menunggu http://127.0.0.1:${idle_port}/api/health (maks ${WAIT_SECONDS}s)"
 wait_healthy "$idle_port" "$expected_sha" || fail "web-$idle tidak sehat / gitSha salah"
 
+# Host network: port harus terikat ke 127.0.0.1 saja. Tanpa `ss` pemeriksaan dilewati dengan peringatan.
+listeners_loopback_only() { # port
+  command -v ss >/dev/null || { echo "deploy: peringatan: ss tidak ada; pemeriksaan bind dilewati" >&2; return 0; }
+  local out
+  out="$(ss -ltnH "sport = :$1" 2>/dev/null || true)"
+  [ -n "$out" ] || { echo "deploy: :$1 tidak terlihat mendengarkan" >&2; return 1; }
+  if grep -Eq '(^|[[:space:]])(0\.0\.0\.0|\*|\[::\]|::):'"$1"'([[:space:]]|$)' <<<"$out"; then
+    echo "deploy: :$1 terikat ke semua antarmuka (harus 127.0.0.1):" >&2; echo "$out" >&2; return 1
+  fi
+  return 0
+}
+listeners_loopback_only "$idle_port" || fail "web-$idle tidak boleh mendengarkan di luar 127.0.0.1"
+
+# M11a: web (di dalam kontainer) harus menjangkau proxy LLM. Peringatan saja kecuali REQUIRE_LLM=1.
+if ! bash ./check-llm-reach.sh "$idle"; then
+  if [ "${REQUIRE_LLM:-0}" = 1 ]; then fail "web-$idle tidak menjangkau LLM_BASE_URL (REQUIRE_LLM=1)"; fi
+  echo "deploy: PERINGATAN: web-$idle tidak menjangkau LLM_BASE_URL; fitur AI akan gagal (set REQUIRE_LLM=1 untuk menggagalkan deploy)" >&2
+fi
+
 # --- 3. Smoke langsung ke warna idle, lalu promosi --------------------------------------------
 # /api/ready harus ada (image mengenal blue/green) dan belum siap: 503. 404 berarti image tanpa rute itu.
 [ "$(ready_code "$idle_port")" = 503 ] || fail "web-$idle: /api/ready harus 503 sebelum promosi (image tanpa rute /api/ready?)"
@@ -249,6 +288,7 @@ sleep "$SETTLE_SECONDS"
 
 # --- 4. Smoke publik, lalu hentikan warna lama --------------------------------------------------
 if [ "$legacy" = 1 ]; then
+  drain_old "$active_port" "$active"
   # Layout lama tidak mengenal /api/ready dan tetap di 4310: hentikan sekarang agar lalu lintas pindah.
   "${compose[@]}" stop -t 30 "web-$active" || echo "deploy: peringatan: stop web-$active gagal" >&2
   legacy_ids="$(docker ps -aq --filter label=com.docker.compose.project=urusin --filter label=com.docker.compose.service=web 2>/dev/null || true)"
@@ -259,6 +299,7 @@ fi
 smoke_public || fail "smoke publik gagal"
 
 if [ -n "$active" ] && [ "$active" != "$idle" ] && [ "$legacy" = 0 ]; then
+  drain_old "$active_port" "$active"
   echo "deploy: menghentikan web-${active}"
   "${compose[@]}" stop -t 30 "web-$active" || echo "deploy: peringatan: stop web-$active gagal" >&2
 fi
