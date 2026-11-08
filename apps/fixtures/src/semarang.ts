@@ -37,7 +37,8 @@ const DATA_DUKUNG: { id: string; judul: string; syarat: string[] }[] = [
 ];
 
 const CHECK_JS = `(() => {
-  const form = document.getElementById('form-cek');
+  const form = document.getElementById('cek-form');
+  const wadah = document.getElementById('container-status');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const out = document.getElementById('hasil');
@@ -46,6 +47,25 @@ const CHECK_JS = `(() => {
     out.textContent = j.flag_status ? j.nama_pelayanan + ' | ' + j.flag_status + ' | ' + j.sent_at
       : j.captcha ? 'Captcha: ' + j.captcha : j.gagal ? 'Gagal: ' + j.gagal : 'Error ' + res.status;
     out.dataset.state = j.flag_status ? 'ok' : 'error';
+    wadah.replaceChildren();
+    document.querySelectorAll('.swal2-popup').forEach((x) => x.remove());
+    if (j.flag_status) {
+      const box = document.createElement('div');
+      box.className = 'box';
+      const st = document.createElement('div');
+      st.className = 'font-medium';
+      st.textContent = j.flag_status;
+      const tgl = document.createElement('div');
+      tgl.className = 'text-xs';
+      tgl.textContent = j.sent_at;
+      box.append(st, tgl);
+      wadah.append(box);
+    } else {
+      const pop = document.createElement('div');
+      pop.className = 'swal2-popup';
+      pop.textContent = 'Terjadi Kesalahan';
+      document.body.append(pop);
+    }
   });
 })();`;
 
@@ -123,7 +143,7 @@ export function registerSemarang(app: Hono, opts: { secure: boolean }): void {
         'Cek status pengajuan',
         html`<meta name="csrf-token" content="${token}" />
           <div class="note">Kode uji (fiktif): <code>${SMG_KODE}</code></div>
-          <form id="form-cek" method="post" action="${SMG}/cek-status/get-pengajuan">
+          <form id="cek-form" method="post" action="${SMG}/cek-status/get-pengajuan">
             <input type="hidden" name="_token" value="${token}" />
             <label for="kode_layanan">Kode Pelayanan (16 karakter)</label>
             <input id="kode_layanan" name="kode_layanan" type="text" maxlength="16" autocomplete="off" />
@@ -135,10 +155,11 @@ export function registerSemarang(app: Hono, opts: { secure: boolean }): void {
               width="140"
               height="44"
             />
-            <input id="captcha" name="captcha" type="text" autocomplete="off" />
-            <p><button type="submit" id="btnCek">Cek</button></p>
+            <input id="jawaban" name="captcha" type="text" autocomplete="off" />
+            <p><button type="submit" id="btnCek">Cek Status</button></p>
           </form>
           <p id="hasil" aria-live="polite"></p>
+          <div id="container-status"></div>
           <script src="${SMG}/static/cek-status.js"></script>`,
       ),
     );

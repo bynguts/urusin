@@ -7,7 +7,7 @@ import { html, page } from './layout.js';
 import { registerPoisoned } from './poisoned.js';
 import { registerSemarang } from './semarang.js';
 import { registerSurabaya } from './surabaya.js';
-import { createStore, SERVICES, type Session } from './store.js';
+import { createStore, nomorRegistrasi, SERVICES, type Session } from './store.js';
 
 /**
  * Fixture mimic struktur DOM Telunjuk Sakti (recon read-only): login + CAPTCHA gambar yang diketik warga,
@@ -250,6 +250,7 @@ export function createApp(config: Config) {
           <thead>
             <tr>
               <th>No</th>
+              <th>No. Registrasi</th>
               <th>Layanan</th>
               <th>Tanggal</th>
               <th>Status</th>
@@ -260,9 +261,10 @@ export function createApp(config: Config) {
               (a) =>
                 html`<tr>
                   <td>${a.no}</td>
+                  <td class="no-registrasi">${nomorRegistrasi(a.no)}</td>
                   <td>${a.layanan}</td>
                   <td>${a.tanggal}</td>
-                  <td>${a.status}</td>
+                  <td class="status">${a.status}</td>
                 </tr>`,
             )}
           </tbody>

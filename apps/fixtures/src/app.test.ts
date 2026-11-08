@@ -171,6 +171,8 @@ describe('upload dan permohonan', () => {
     const done = await app.request(`${ORIGIN}${BASE}/pendaftaran/selesai/2`, { headers: { cookie } });
     expect(done.status).toBe(303);
     expect(await read()).toContain('Baru diajukan (data uji)');
+    // Nomor registrasi per baris (dibaca adapter pendamping sebagai bukti).
+    expect(await read()).toContain('<td class="no-registrasi">FX-REG-0002</td>');
   });
 });
 

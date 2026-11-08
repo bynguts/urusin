@@ -65,6 +65,9 @@ describe.each(profiles)('replika Surabaya (%s)', (profile) => {
     expect(await q('SALAH', '7')).toContain('tracking-empty');
     const ok = await q(SBY_KITIR, '7');
     expect(ok).toContain('id="tracking-result"');
+    // Rute halaman asli /tracking (alias) menyajikan halaman yang sama.
+    const alias = await app.request(`${O}/sby/tracking?kitir=${SBY_KITIR}&captchaAnswer=7&num1=3&num2=4`);
+    expect(await alias.text()).toContain('id="tracking-result"');
     expect(ok).toContain('Verifikasi');
 
     const viaGql = await gql(app, 'query { KitirHistory { submissionNumber } }', {

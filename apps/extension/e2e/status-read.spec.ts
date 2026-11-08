@@ -125,8 +125,8 @@ test('ekstensi: ID dipin, pairing via fragment, ping, dan eksekusi status-read k
 
   const final = await call({ type: 'status', nonce });
   expect(final.cursor?.results.permohonan).toEqual({
-    headers: ['No', 'Layanan', 'Tanggal', 'Status'],
-    rows: [['1', 'Layanan Contoh A', '2026-01-02', 'Diproses (data uji)']],
+    headers: ['No', 'No. Registrasi', 'Layanan', 'Tanggal', 'Status'],
+    rows: [['1', 'FX-REG-0001', 'Layanan Contoh A', '2026-01-02', 'Diproses (data uji)']],
   });
   expect(govPage.url()).toBe(`${FIXTURE_ORIGIN}${BASE}/welcome/permohonan`);
 });

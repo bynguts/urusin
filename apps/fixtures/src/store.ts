@@ -9,6 +9,9 @@ export const SERVICES: readonly Service[] = [
 
 export type Application = { no: number; layanan: string; tanggal: string; status: string };
 
+/** Nomor registrasi fiktif yang tampil di Daftar Permohonan (dibaca adapter sebagai bukti). */
+export const nomorRegistrasi = (no: number) => `FX-REG-${String(no).padStart(4, '0')}`;
+
 export type Session = {
   uploads: Map<number, { name: string; size: number }[]>;
   applications: Application[];

@@ -1,4 +1,4 @@
-import type { Hono } from 'hono';
+import type { Context, Hono } from 'hono';
 import { html, page } from './layout.js';
 
 /**
@@ -145,7 +145,7 @@ export function registerSurabaya(app: Hono): void {
     c.html(page('Panduan (contoh)', html`<p>Isi panduan fiktif untuk ${c.req.param('id')}.</p>`)),
   );
 
-  app.get(`${SBY}/app/tracking`, (c) => {
+  const lacak = (c: Context) => {
     const q = c.req.query();
     let result = html``;
     if (q.kitir !== undefined) {
@@ -195,7 +195,9 @@ export function registerSurabaya(app: Hono): void {
           ${result}`,
       ),
     );
-  });
+  };
+  app.get(`${SBY}/app/tracking`, lacak);
+  app.get(`${SBY}/tracking`, lacak); // rute halaman asli /tracking (dipakai adapter lewat override awalan)
 
   // GraphQL GET same-origin, seperti /new-api asli: wajib header anti-CSRF Apollo.
   app.get(`${SBY}/new-api`, (c) => {
