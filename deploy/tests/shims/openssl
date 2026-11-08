@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# openssl palsu: SHIM_TLS_FAIL=1 membuat pemeriksaan masa berlaku (x509 -checkend) gagal.
+[ -z "${SHIM_TLS_FAIL:-}" ] || [ "$1" != x509 ] || exit 1
+exit 0
