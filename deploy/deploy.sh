@@ -75,7 +75,9 @@ if [ -n "${GHCR_TOKEN:-}" ] && [ -z "${DOCKER_CONFIG:-}" ]; then
   export DOCKER_CONFIG
   chmod 700 "$DOCKER_CONFIG"
   trap 'rm -rf "$DOCKER_CONFIG"' EXIT
-  docker login ghcr.io -u "${GHCR_USER:-bynguts}" --password-stdin <<<"$GHCR_TOKEN" >/dev/null     || die "docker login ghcr.io gagal (GHCR_TOKEN butuh scope read:packages)"
+  # Token lewat pipe ke stdin (bukan argumen, bukan here-string yang ditulis ke berkas sementara).
+  printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USER:-bynguts}" --password-stdin >/dev/null \
+    || die "docker login ghcr.io gagal (GHCR_TOKEN butuh scope read:packages)"
   echo "deploy: login GHCR sementara di $DOCKER_CONFIG (dihapus saat selesai)"
 fi
 unset GHCR_TOKEN
