@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { encodePendampingFrame } from '@urusin/contracts';
 import {
   createPendampingViewer,
+  dekodeFrameBiner,
   modifier,
   petakanKoordinat,
   tataLetak,
@@ -41,8 +43,12 @@ class FakeWs {
   constructor(readonly url: string) {
     FakeWs.all.push(this);
   }
+  acks: number[] = [];
   send(d: string) {
-    this.sent.push(JSON.parse(d) as Record<string, unknown>);
+    const m = JSON.parse(d) as Record<string, unknown>;
+    // ack frame dicatat terpisah agar urutan pesan lain tetap mudah diperiksa
+    if (m.type === 'ack') this.acks.push(m.seq as number);
+    else this.sent.push(m);
   }
   close(code?: number) {
     this.closed = code;
@@ -53,6 +59,9 @@ class FakeWs {
   }
   push(m: object) {
     this.onmessage?.({ data: JSON.stringify(m) });
+  }
+  pushBiner(b: Uint8Array | ArrayBuffer) {
+    this.onmessage?.({ data: b });
   }
   drop(code: number) {
     this.readyState = 3;
@@ -100,6 +109,12 @@ class FakeCanvas extends FakeTarget {
 class FakeInput extends FakeTarget {
   value = 'sisa';
   focused = 0;
+  tagName = 'INPUT';
+  type = 'text';
+  attrs: Record<string, string> = {};
+  setAttribute(k: string, v: string) {
+    this.attrs[k] = v;
+  }
   focus() {
     this.focused++;
   }
@@ -293,8 +308,8 @@ describe('createPendampingViewer', () => {
     await tick();
     const ws = FakeWs.all[0]!;
     ws.open();
-    ws.push({ type: 'frame', seq: 1, data: 'x', meta: META });
-    ws.push({ type: 'frame', seq: 2, data: 'y', meta: META });
+    ws.push({ type: 'frame', seq: 1, data: 'eA==', meta: META });
+    ws.push({ type: 'frame', seq: 2, data: 'eQ==', meta: META });
     await tick();
     await tick();
     b.viewer.tutup();
@@ -320,9 +335,9 @@ describe('createPendampingViewer', () => {
     canvas.fire('pointerdown', pointer(10, 10)); // belum ada frame: tidak tahu skala
     canvas.fire('wheel', { clientX: 1, clientY: 1, deltaX: 0, deltaY: 1 });
     expect(ws.sent).toHaveLength(1);
-    ws.push({ type: 'frame', seq: 1, data: 'a', meta: META });
-    ws.push({ type: 'frame', seq: 2, data: 'b', meta: META });
-    ws.push({ type: 'frame', seq: 3, data: 'c', meta: META });
+    ws.push({ type: 'frame', seq: 1, data: 'YQ==', meta: META });
+    ws.push({ type: 'frame', seq: 2, data: 'Yg==', meta: META });
+    ws.push({ type: 'frame', seq: 3, data: 'Yw==', meta: META });
     await tick();
     await tick();
     await tick();
@@ -354,9 +369,85 @@ describe('createPendampingViewer', () => {
     });
     await tick();
     FakeWs.all[0]!.open();
-    FakeWs.all[0]!.push({ type: 'frame', seq: 1, data: 'a', meta: META });
+    FakeWs.all[0]!.push({ type: 'frame', seq: 1, data: 'YQ==', meta: META });
     await tick();
     expect(canvas.width).toBeGreaterThan(0);
     viewer.tutup();
+  });
+
+  it('frame biner: digambar lalu di-ack; frame antara dibuang tetap di-ack; frame biner rusak diabaikan', async () => {
+    let lepas: () => void = () => {};
+    const tahan = new Promise<void>((r) => (lepas = r));
+    const { ws, viewer } = await (async () => {
+      const b = setup({
+        dekode: async () => {
+          await tahan;
+          return { width: 1, height: 1 };
+        },
+      });
+      await tick();
+      const w = FakeWs.all[0]!;
+      w.open();
+      return { ws: w, viewer: b.viewer };
+    })();
+    const jpeg = Uint8Array.from([0xff, 0xd8, 0xff, 0xd9]);
+    const frames: number[] = [];
+    viewer.on('frame', (m) => frames.push(m.scrollY));
+    ws.pushBiner(encodePendampingFrame(1, { ...META, scrollY: 1 }, jpeg));
+    ws.pushBiner(encodePendampingFrame(2, { ...META, scrollY: 2 }, jpeg).buffer as ArrayBuffer);
+    ws.pushBiner(encodePendampingFrame(3, { ...META, scrollY: 3 }, jpeg));
+    ws.pushBiner(Uint8Array.from([9, 9, 9, 9, 9, 9, 9, 9, 9]));
+    ws.onmessage?.({ data: 42 });
+    await tick();
+    const acks = () => ws.acks;
+    expect(acks()).toEqual([2]); // frame 2 digantikan frame 3 sebelum sempat digambar
+    lepas();
+    await tick();
+    await tick();
+    expect(acks()).toEqual([2, 1, 3]);
+    expect(frames).toEqual([1, 3]);
+  });
+
+  it('dekodeFrameBiner kompatibel dengan encoder kontrak; versi/meta rusak = null', () => {
+    const jpeg = Uint8Array.from([1, 2, 3]);
+    const buf = encodePendampingFrame(77, META, jpeg);
+    expect(dekodeFrameBiner(buf)).toMatchObject({ seq: 77, meta: META });
+    expect([...dekodeFrameBiner(buf)!.jpeg]).toEqual([1, 2, 3]);
+    expect(dekodeFrameBiner(Uint8Array.from([2, ...buf.subarray(1)]))).toBeNull();
+    expect(dekodeFrameBiner(new Uint8Array(3))).toBeNull();
+    expect(dekodeFrameBiner(encodePendampingFrame(1, { ...META, lebar: 0 }, jpeg))).toBeNull();
+    expect(dekodeFrameBiner(encodePendampingFrame(1, { ...META, skala: Number.NaN }, jpeg))).toBeNull();
+    const rusak = Uint8Array.from(buf);
+    rusak[7] = 0x40;
+    expect(dekodeFrameBiner(rusak)).toBeNull();
+    expect(dekodeFrameBiner(buf.subarray(0, 7 + new DataView(buf.buffer).getUint16(5)))).toBeNull();
+  });
+
+  it('input tersembunyi: tanpa autofill; fokus sandi -> type password; OTP -> one-time-code numerik', async () => {
+    const { ws, input, viewer } = await (async () => {
+      const b = setup();
+      await tick();
+      const w = FakeWs.all[0]!;
+      w.open();
+      return { ws: w, input: b.input, viewer: b.viewer };
+    })();
+    expect(input.attrs).toMatchObject({
+      autocomplete: 'off',
+      autocorrect: 'off',
+      autocapitalize: 'off',
+      spellcheck: 'false',
+    });
+    const fokus: string[] = [];
+    viewer.on('fokus', (j) => fokus.push(j));
+    input.value = 'sisa';
+    ws.push({ type: 'fokus', jenis: 'sandi' });
+    expect(input.type).toBe('password');
+    expect(input.value).toBe('');
+    ws.push({ type: 'fokus', jenis: 'otp' });
+    expect(input.type).toBe('text');
+    expect(input.attrs).toMatchObject({ autocomplete: 'one-time-code', inputmode: 'numeric' });
+    ws.push({ type: 'fokus', jenis: 'teks' });
+    expect(input.attrs).toMatchObject({ autocomplete: 'off', inputmode: 'text' });
+    expect(fokus).toEqual(['sandi', 'otp', 'teks']);
   });
 });

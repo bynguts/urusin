@@ -62,6 +62,7 @@ const TOMBOL = ['left', 'middle', 'right'] as const;
 type Gambar = { width: number; height: number; close?: () => void };
 type WsLike = {
   readyState: number;
+  binaryType?: string;
   send(data: string): void;
   close(code?: number, reason?: string): void;
   onopen: ((ev: unknown) => void) | null;
@@ -72,8 +73,12 @@ type WsLike = {
 
 export type ViewerStatus = 'menyambung' | 'tersambung' | 'putus' | 'selesai';
 
+export type JenisFokus = Extract<PendampingServerMessage, { type: 'fokus' }>['jenis'];
+
 export type ViewerEvents = {
   mode: { mode: PendampingMode; pesan?: string | undefined };
+  /** Jenis kolom yang fokus di peramban pendamping (tanpa nilai); input tersembunyi sudah disesuaikan. */
+  fokus: JenisFokus;
   event: PendampingEvent;
   status: SesiPendamping;
   butuh_data: { placeholder: string[]; berkas: string[] };
@@ -89,7 +94,7 @@ export type ViewerOptions = {
   inputTeks?: HTMLInputElement | HTMLTextAreaElement | undefined;
   /** Injeksi untuk tes. */
   WebSocketImpl?: new (url: string) => WsLike;
-  dekode?: (base64: string) => Promise<Gambar>;
+  dekode?: (jpeg: Uint8Array) => Promise<Gambar>;
   dpr?: () => number;
   maxSambungUlang?: number;
   backoffMs?: number;
@@ -126,11 +131,52 @@ const KEY_KHUSUS = new Set([
   'PageDown',
 ]);
 
-async function dekodeBawaan(base64: string): Promise<Gambar> {
+async function dekodeBawaan(jpeg: Uint8Array): Promise<Gambar> {
+  return createImageBitmap(new Blob([jpeg as Uint8Array<ArrayBuffer>], { type: 'image/jpeg' }));
+}
+
+function dariBase64(base64: string): Uint8Array {
   const bin = atob(base64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return createImageBitmap(new Blob([bytes], { type: 'image/jpeg' }));
+  return bytes;
+}
+
+const META_KUNCI = ['lebar', 'tinggi', 'skala', 'offsetAtas', 'scrollX', 'scrollY'] as const;
+
+/**
+ * Dekode frame biner (format di @urusin/contracts `encodePendampingFrame`): [u8 versi=1][u32 seq][u16 n]
+ * [meta JSON n byte][JPEG]. Tanpa dependensi (klien dimuat apa adanya di peramban); null bila rusak.
+ */
+export function dekodeFrameBiner(
+  buf: ArrayBuffer | Uint8Array,
+): { seq: number; meta: PendampingFrameMeta; jpeg: Uint8Array } | null {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  if (bytes.length < 8 || bytes[0] !== 1) return null;
+  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const n = v.getUint16(5);
+  if (7 + n >= bytes.length) return null;
+  let meta: Record<string, unknown>;
+  try {
+    meta = JSON.parse(new TextDecoder().decode(bytes.subarray(7, 7 + n))) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+  if (!meta || META_KUNCI.some((k) => typeof meta[k] !== 'number' || !Number.isFinite(meta[k]))) return null;
+  if ((meta.lebar as number) <= 0 || (meta.tinggi as number) <= 0) return null;
+  return { seq: v.getUint32(1), meta: meta as PendampingFrameMeta, jpeg: bytes.subarray(7 + n) };
+}
+
+/** Atribut input tersembunyi: tanpa autofill/autokoreksi/kamus; sandi = type password; OTP = one-time-code. */
+export function aturInputTeks(el: HTMLInputElement | HTMLTextAreaElement, jenis: JenisFokus = 'teks'): void {
+  el.setAttribute('autocomplete', jenis === 'otp' ? 'one-time-code' : 'off');
+  el.setAttribute('autocorrect', 'off');
+  el.setAttribute('autocapitalize', 'off');
+  el.setAttribute('spellcheck', 'false');
+  el.setAttribute('inputmode', jenis === 'otp' || jenis === 'angka' ? 'numeric' : 'text');
+  if ('type' in el && el.tagName === 'INPUT')
+    (el as HTMLInputElement).type = jenis === 'sandi' ? 'password' : 'text';
+  el.value = '';
 }
 
 function base64Dari(buf: ArrayBuffer): string {
@@ -167,7 +213,7 @@ export function createPendampingViewer(
   let timerPing: ReturnType<typeof setInterval> | undefined;
   let gerakTerakhir = 0;
   let menggambar = false;
-  let frameTertunda: { data: string; meta: PendampingFrameMeta } | null = null;
+  let frameTertunda: { jpeg: Uint8Array; meta: PendampingFrameMeta; seq: number | undefined } | null = null;
 
   const setKoneksi = (s: ViewerStatus) => {
     koneksi = s;
@@ -181,14 +227,18 @@ export function createPendampingViewer(
     if (mode === 'takeover') kirim(m);
   };
 
-  async function gambar(data: string, m: PendampingFrameMeta) {
+  /** Ack = frame sudah ditangani (digambar atau dibuang); pendamping menahan frame bila >2 belum di-ack. */
+  const ack = (seq: number | undefined) => seq !== undefined && kirim({ type: 'ack', seq });
+
+  async function gambar(jpeg: Uint8Array, m: PendampingFrameMeta, seq?: number) {
     if (menggambar) {
-      frameTertunda = { data, meta: m }; // buang frame antara: hanya yang terbaru digambar
+      ack(frameTertunda?.seq); // buang frame antara: hanya yang terbaru digambar
+      frameTertunda = { jpeg, meta: m, seq };
       return;
     }
     menggambar = true;
     try {
-      const img = await dekode(data);
+      const img = await dekode(jpeg);
       const ctx = canvas.getContext('2d');
       const rect = canvas.getBoundingClientRect();
       const r = dpr();
@@ -214,13 +264,21 @@ export function createPendampingViewer(
       // frame rusak dilewati; frame berikutnya menggantikannya
     } finally {
       menggambar = false;
+      ack(seq);
       const next = frameTertunda;
       frameTertunda = null;
-      if (next) void gambar(next.data, next.meta);
+      if (next) void gambar(next.jpeg, next.meta, next.seq);
     }
   }
 
   function terima(raw: unknown) {
+    if (raw instanceof ArrayBuffer || ArrayBuffer.isView(raw)) {
+      const f = dekodeFrameBiner(
+        raw instanceof ArrayBuffer ? raw : new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength),
+      );
+      if (f) void gambar(f.jpeg, f.meta, f.seq);
+      return;
+    }
     if (typeof raw !== 'string') return;
     let msg: PendampingServerMessage;
     try {
@@ -230,7 +288,11 @@ export function createPendampingViewer(
     }
     switch (msg.type) {
       case 'frame':
-        void gambar(msg.data, msg.meta);
+        void gambar(dariBase64(msg.data), msg.meta, msg.seq);
+        break;
+      case 'fokus':
+        if (inputTeks) aturInputTeks(inputTeks, msg.jenis);
+        emit('fokus', msg.jenis);
         break;
       case 'mode':
         mode = msg.mode;
@@ -264,6 +326,7 @@ export function createPendampingViewer(
     }
     if (ditutup) return;
     const sock = new WS(wsUrl);
+    sock.binaryType = 'arraybuffer';
     ws = sock;
     sock.onopen = () => {
       percobaan = 0;
@@ -385,6 +448,7 @@ export function createPendampingViewer(
     [canvas, 'contextmenu', ((e: Event) => e.preventDefault()) as EventListener],
   ];
   if (inputTeks) {
+    aturInputTeks(inputTeks);
     pasang.push(
       [inputTeks, 'beforeinput', onBeforeInput as EventListener],
       [inputTeks, 'compositionend', onCompositionEnd as EventListener],
