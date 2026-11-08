@@ -29,7 +29,8 @@
     "format:check": "prettier --check .",
     "budget": "turbo run budget",
     "e2e": "turbo run e2e",
-    "eval": "pnpm --filter @urusin/harness eval"
+    "eval": "pnpm --filter @urusin/harness eval",
+    "akun:demo": "pnpm --filter @urusin/akun akun:demo"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
