@@ -422,6 +422,15 @@ export class HarnessStore {
     );
   }
 
+  /** Konfirmasi warga yang masih berlaku (belum terpakai/kedaluwarsa); LLM hanya diberi tahu id-nya. */
+  activeConfirmations(urusanId: string): { id: string; tool: string }[] {
+    return this.db
+      .prepare(
+        'SELECT id, tool FROM confirmations WHERE urusan_id = ? AND used_at IS NULL AND expires_at > ?',
+      )
+      .all(urusanId, this.iso()) as { id: string; tool: string }[];
+  }
+
   /** Tandai terpakai (sekali pakai). false bila sudah terpakai (race). */
   consumeConfirmation(id: string): boolean {
     return (
