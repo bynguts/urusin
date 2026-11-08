@@ -1,0 +1,12 @@
+[
+  { "name": "bm25-polos", "config": {} },
+  { "name": "stem+expand", "config": { "bm25": { "stemmed": true }, "expand": true } },
+  {
+    "name": "stem+expand+abstain-0.1",
+    "config": { "bm25": { "stemmed": true }, "expand": true, "abstain": { "minCoverage": 0.1 } }
+  },
+  {
+    "name": "stem+expand+abstain-0.3",
+    "config": { "bm25": { "stemmed": true }, "expand": true, "abstain": { "minCoverage": 0.3 } }
+  }
+]
