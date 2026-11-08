@@ -7,6 +7,11 @@ import { appOrigins, fixtureOrigins, toMatchPattern } from './src/lib/origins';
 // Kunci privat TIDAK ada di repo (lihat README). Turunan ID: `pnpm key:id`.
 const MANIFEST_KEY = readFileSync(new URL('./manifest-key.pub', import.meta.url), 'utf8').trim();
 
+// `version` eksplisit: tanpa ini WXT menurunkannya dari version_name (SHA git) dan gagal bila SHA diawali huruf.
+const VERSION = (
+  JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
+).version;
+
 const app = appOrigins(process.env);
 const fixtures = fixtureOrigins(process.env);
 
@@ -15,6 +20,7 @@ export default defineConfig({
   manifest: {
     name: 'Urusin',
     description: 'Urusin membantu warga mengurus layanan publik langsung di peramban warga sendiri.',
+    version: VERSION,
     key: MANIFEST_KEY,
     ...(process.env.GIT_SHA ? { version_name: process.env.GIT_SHA.slice(0, 7) } : {}),
     minimum_chrome_version: '120',

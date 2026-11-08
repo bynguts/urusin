@@ -21,13 +21,13 @@ Larangan:
 
 ## 2. Status kesiapan
 
-| Bagian                                                                                                             | Status                                                            |
-| ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| App SvelteKit 3 + Svelte 5 + Tailwind v4 di `apps/web`                                                             | ✅ siap. Rute yang ada: `/`, `/pair`, `/peristiwa`, `/api/*`      |
-| Desain di pen.dev (token, komponen, layar)                                                                         | ✅ bisa dimulai sekarang, tanpa ketergantungan                    |
-| Data Peristiwa Hidup, kab/kota, sumber resmi                                                                       | ✅ ada di `@urusin/registry` dan `data/`                          |
-| Kontrak `@urusin/contracts` (event SSE, endpoint, store, fixture JSON per layar × state, endpoint dev pemutar SSE) | 🔄 sedang dibangun agen harness. Dibekukan **Rab 11 pukul 12:00** |
-| Backend chat/agen (harness)                                                                                        | 🔄 sedang dibangun. Sebelum siap, pakai fixture                   |
+| Bagian                                                                                                             | Status                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App SvelteKit 3 + Svelte 5 + Tailwind v4 di `apps/web`                                                             | ✅ siap. Rute yang ada: `/`, `/pair`, `/peristiwa`, `/api/*`                                                                                        |
+| Desain di pen.dev (token, komponen, layar)                                                                         | ✅ bisa dimulai sekarang, tanpa ketergantungan                                                                                                      |
+| Data Peristiwa Hidup, kab/kota, sumber resmi                                                                       | ✅ ada di `@urusin/registry` dan `data/`                                                                                                            |
+| Kontrak `@urusin/contracts` (event SSE, endpoint, store, fixture JSON per layar × state, endpoint dev pemutar SSE) | 🔄 sedang dibangun agen harness. Kontrak layar ★ dibekukan **sebelum Rafi mulai membangun layar ★**; setelah itu hanya boleh ditambah, tidak diubah |
+| Backend chat/agen (harness)                                                                                        | 🔄 sedang dibangun. Sebelum siap, pakai fixture                                                                                                     |
 
 Selama kontrak belum masuk `main`, bangun layar dengan data contoh. Setelah masuk, ganti dengan import dari `@urusin/contracts` beserta fixture-nya.
 

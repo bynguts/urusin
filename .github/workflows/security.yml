@@ -1,0 +1,58 @@
+name: Security
+
+# Pemindaian kerentanan dependensi. Hanya-baca: tidak membuka PR, tidak menulis ke repo, tidak mengunggah SARIF.
+# (Dependabot sengaja tidak dipakai; pembaruan dilakukan manual dan ditahan 24 jam oleh minimumReleaseAge.)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 3 * * 1' # mingguan: celah baru pada versi yang sudah terkunci
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  osv-scanner:
+    name: OSV-Scanner (pnpm-lock.yaml)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OSV_SCANNER_VERSION: 2.7.0
+      # SHA-256 osv-scanner_linux_amd64 v2.7.0 (dipin di sini, bukan diambil dari rilis yang sama).
+      OSV_SCANNER_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Pasang osv-scanner (checksum dipin)
+        run: |
+          curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 -o osv-scanner \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SCANNER_SHA256}  osv-scanner" | sha256sum -c -
+          sudo install -m 0755 osv-scanner /usr/local/bin/osv-scanner
+
+      # Pengecualian dev-only yang berkedaluwarsa ada di osv-scanner.toml.
+      - name: Pindai pnpm-lock.yaml
+        run: osv-scanner scan source --lockfile=pnpm-lock.yaml
+
+  pnpm-audit:
+    name: pnpm audit --prod
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Audit dependensi produksi
+        run: pnpm audit --prod
