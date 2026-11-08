@@ -76,6 +76,10 @@ export type TurnOutcome = {
 
 const GLOBAL_LOCKS = new Set<string>();
 
+/** Nama tool sah: huruf kecil, angka, garis bawah; maksimal 64 karakter. */
+const TOOL_NAME_RE = /^[a-z0-9_]{1,64}$/;
+const safeToolName = (n: string) => (TOOL_NAME_RE.test(n) ? n : 'tool_tak_valid');
+
 class TurnAbort extends Error {
   constructor(readonly kind: 'timeout' | 'external') {
     super(`turn dihentikan: ${kind}`);
@@ -478,7 +482,11 @@ class TurnRunner {
         {
           role: 'assistant',
           content: msg.content ?? null,
-          tool_calls: calls.map((c) => ({ id: c.id, type: 'function' as const, function: c.function })),
+          tool_calls: calls.map((c) => ({
+            id: c.id,
+            type: 'function' as const,
+            function: { ...c.function, name: safeToolName(c.function.name) },
+          })),
         },
       ];
       let ended = false;
@@ -509,7 +517,12 @@ class TurnRunner {
   }
 
   /** Satu-satunya jalur eksekusi tool (normal maupun degraded): selalu lewat policy gate. */
-  private async handleToolCall(name: string, argsJson: string): Promise<{ content: string; end: boolean }> {
+  private async handleToolCall(
+    rawName: string,
+    argsJson: string,
+  ): Promise<{ content: string; end: boolean }> {
+    // Nama tool datang dari model: jangan pernah dicatat/dipantulkan mentah (bisa memuat PII atau berukuran besar).
+    const name = safeToolName(rawName);
     let raw: unknown;
     try {
       raw = JSON.parse(argsJson || '{}');

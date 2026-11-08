@@ -407,7 +407,7 @@ export class HarnessStore {
         s.structuredMode ?? null,
         s.costIdr ?? null,
         s.degraded ? 1 : 0,
-        JSON.stringify(s.attrs ?? {}),
+        JSON.stringify(redactLeaves(s.attrs ?? {})),
       );
     return id;
   }

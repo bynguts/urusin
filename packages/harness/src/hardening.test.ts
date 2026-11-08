@@ -192,3 +192,38 @@ describe('temuan 8: head klien yang lebih lama bukan tanda rusak', () => {
     expect(s.verifyChain(u.id, heads[3])).toMatchObject({ ok: false, reason: 'head_mismatch' });
   });
 });
+
+describe('temuan 10: nama tool dari model tidak dicatat/dipantulkan mentah', () => {
+  it('nama tool berisi PII dan sangat panjang diganti penanda; span, event, dan DB bersih', async () => {
+    const jahat = `x_${HP.join('')}_${'a'.repeat(5000)}`;
+    const provider = new FakeProvider({
+      replies: [
+        fakeCompletion({ toolCalls: [{ name: jahat, arguments: '{}' }] }),
+        fakeCompletion({ content: 'maaf' }),
+      ],
+    });
+    const env = makeEnv({ provider });
+    const u = env.store.createUrusan({ jenis: 'akta' });
+    await runTurn(env.deps, { urusanId: u.id, userText: 'halo' });
+    const db = dumpDb(env.store.db);
+    expect(db).not.toContain(HP.join(''));
+    expect(db).not.toContain('a'.repeat(200));
+    expect(db).toContain('tool_tak_valid');
+    expect(prompts(provider)).not.toContain('a'.repeat(200));
+  });
+
+  it('attrs span diredaksi lewat daun string', () => {
+    const s = new HarnessStore(openHarnessDb());
+    const u = s.createUrusan();
+    s.recordSpan({
+      urusanId: u.id,
+      name: 'x',
+      operation: 'execute_tool',
+      startedAt: new Date(),
+      durationMs: 1,
+      status: 'ok',
+      attrs: { 'gen_ai.tool.name': `hp ${HP.join(' ')}` },
+    });
+    expect(dumpDb(s.db)).not.toContain(HP.join(' '));
+  });
+});
