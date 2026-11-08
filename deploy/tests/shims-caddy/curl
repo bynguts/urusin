@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# curl palsu: kode status https://<situs>/ dari $SHIM_DIR/code.<situs> (default 200).
+url="${*: -1}"
+host="${url#https://}"
+host="${host%%/*}"
+echo "curl $url" >> "$SHIM_DIR/calls.log"
+cat "$SHIM_DIR/code.$host" 2>/dev/null || echo 200

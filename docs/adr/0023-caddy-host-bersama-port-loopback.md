@@ -20,5 +20,6 @@ Compose tidak memuat Caddy. Container `web` hanya mengikat `127.0.0.1:4310` dan 
 ## Konsekuensi
 
 - Satu proses TLS di host, situs lain tidak terganggu; reload Caddy tidak memutus mereka.
-- Konfigurasi proxy berada di host (`/etc/caddy/Caddyfile`) dan variabel `DOMAIN` harus diberikan ke proses Caddy, sehingga langkahnya ada di runbook `deploy/README.md` dan bukan dalam compose.
+- Konfigurasi proxy berada di host (`/etc/caddy/Caddyfile`), sehingga langkahnya ada di runbook `deploy/README.md` dan bukan dalam compose.
+- **Pembaruan (review v11 B1):** snippet tidak lagi memakai `{$DOMAIN}` (itu menuntut perubahan environment proses Caddy dan restart). Snippet dibangkitkan dari `deploy/hosts.json` dengan hostname literal (`scripts/gen-caddyfile.mjs`, dicek CI); host dipilih di VPS dengan menyalin snippet set primary atau fallback ke `/opt/urusin/Caddyfile.urusin`.
 - Aplikasi memercayai `x-forwarded-for` dengan `XFF_DEPTH=1`, sehingga port harus tetap loopback.

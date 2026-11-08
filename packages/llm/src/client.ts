@@ -1,4 +1,5 @@
 import OpenAI, { toFile } from 'openai';
+import { egressFetch, type EgressFetch } from '@urusin/egress';
 import type { LlmConfig } from './config.js';
 import type {
   ChatCompletion,
@@ -9,15 +10,23 @@ import type {
   RequestOptions,
 } from './types.js';
 
-/** Membuat klien SDK resmi `openai` dari konfigurasi env (baseURL, apiKey, timeout, maxRetries). */
+/** Opsi transport. `fetch` default = egress server (allowlist + anti-SSRF); ganti hanya di tes. */
+export type ProviderTransport = { fetch?: EgressFetch | undefined };
+
+/**
+ * Membuat klien SDK resmi `openai` dari konfigurasi env (baseURL, apiKey, timeout, maxRetries).
+ * Semua HTTP lewat `@urusin/egress`, bukan fetch global.
+ */
 export function createOpenAIClient(
   config: Pick<LlmConfig, 'baseURL' | 'apiKey' | 'timeoutMs' | 'maxRetries'>,
+  transport: ProviderTransport = {},
 ) {
   return new OpenAI({
     baseURL: config.baseURL,
     apiKey: config.apiKey,
     timeout: config.timeoutMs,
     maxRetries: config.maxRetries,
+    fetch: transport.fetch ?? egressFetch,
   });
 }
 
@@ -27,11 +36,11 @@ export class OpenAIProvider implements ChatProvider {
   private readonly client: OpenAI;
   private readonly transcribeClient: OpenAI;
 
-  constructor(config: LlmConfig) {
+  constructor(config: LlmConfig, transport: ProviderTransport = {}) {
     this.baseURL = config.baseURL;
-    this.client = createOpenAIClient(config);
+    this.client = createOpenAIClient(config, transport);
     this.transcribeClient = config.transcribeBaseURL
-      ? createOpenAIClient({ ...config, baseURL: config.transcribeBaseURL })
+      ? createOpenAIClient({ ...config, baseURL: config.transcribeBaseURL }, transport)
       : this.client;
   }
 

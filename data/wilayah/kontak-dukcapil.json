@@ -1,0 +1,3037 @@
+{
+  "catatan": "Situs resmi Disdukcapil per kab/kota. Hanya status \"terverifikasi\" yang boleh ditampilkan sebagai fakta; \"belum_terverifikasi\" berarti belum ada situs .go.id yang lolos pemeriksaan otomatis (bukan berarti tidak ada).",
+  "total": 514,
+  "terverifikasi": 112,
+  "kontak": [
+    {
+      "kode": "1101",
+      "nama": "Kabupaten Aceh Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1102",
+      "nama": "Kabupaten Aceh Tenggara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1103",
+      "nama": "Kabupaten Aceh Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1104",
+      "nama": "Kabupaten Aceh Tengah",
+      "status": "terverifikasi",
+      "website": "https://www.disdukcapil.acehtengahkab.go.id",
+      "judulHalaman": "Beranda - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Aceh Tengah",
+      "sourceUrl": "https://www.disdukcapil.acehtengahkab.go.id/",
+      "verifiedAt": "2026-11-08T13:35:04.546Z"
+    },
+    {
+      "kode": "1105",
+      "nama": "Kabupaten Aceh Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1106",
+      "nama": "Kabupaten Aceh Besar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1107",
+      "nama": "Kabupaten Pidie",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1108",
+      "nama": "Kabupaten Aceh Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1109",
+      "nama": "Kabupaten Simeulue",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.simeuluekab.go.id",
+      "judulHalaman": "DISDUKCAPIL SIMEULUE",
+      "sourceUrl": "https://dukcapil.simeuluekab.go.id/",
+      "verifiedAt": "2026-11-08T13:35:36.389Z"
+    },
+    {
+      "kode": "1110",
+      "nama": "Kabupaten Aceh Singkil",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1111",
+      "nama": "Kabupaten Bireuen",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1112",
+      "nama": "Kabupaten Aceh Barat Daya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1113",
+      "nama": "Kabupaten Gayo Lues",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1114",
+      "nama": "Kabupaten Aceh Jaya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1115",
+      "nama": "Kabupaten Nagan Raya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1116",
+      "nama": "Kabupaten Aceh Tamiang",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.acehtamiangkab.go.id",
+      "judulHalaman": "Disdukcapil Kab. Aceh Tamiang - Portal Layanan Administrasi Kependudukan & Pencatatan Sipil",
+      "sourceUrl": "https://disdukcapil.acehtamiangkab.go.id/",
+      "verifiedAt": "2026-11-08T13:37:06.715Z"
+    },
+    {
+      "kode": "1117",
+      "nama": "Kabupaten Bener Meriah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1118",
+      "nama": "Kabupaten Pidie Jaya",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pidiejayakab.go.id",
+      "judulHalaman": "DISDUKCAPIL Kabupaten Pidie Jaya",
+      "sourceUrl": "https://disdukcapil.pidiejayakab.go.id/",
+      "verifiedAt": "2026-11-08T13:37:10.513Z"
+    },
+    {
+      "kode": "1171",
+      "nama": "Kota Banda Aceh",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bandaacehkota.go.id",
+      "judulHalaman": "DISDUKCAPIL &#8211; Dinas Kependudukan dan Pencatatan Sipil Kota Banda Aceh",
+      "sourceUrl": "https://disdukcapil.bandaacehkota.go.id/",
+      "verifiedAt": "2026-11-08T13:37:12.775Z"
+    },
+    {
+      "kode": "1172",
+      "nama": "Kota Sabang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1173",
+      "nama": "Kota Lhokseumawe",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.lhokseumawekota.go.id",
+      "judulHalaman": "DISDUKCAPIL - KOTA LHOKSEUMAWE",
+      "sourceUrl": "https://disdukcapil.lhokseumawekota.go.id/",
+      "verifiedAt": "2026-11-08T13:37:26.482Z"
+    },
+    {
+      "kode": "1174",
+      "nama": "Kota Langsa",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1175",
+      "nama": "Kota Subulussalam",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1201",
+      "nama": "Kabupaten Tapanuli Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1202",
+      "nama": "Kabupaten Tapanuli Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1203",
+      "nama": "Kabupaten Tapanuli Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1204",
+      "nama": "Kabupaten Nias",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.niaskab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Nias - Laman Resmi Dinas Kependudukan dan Pencatatan Sipil Kabupaten Nias",
+      "sourceUrl": "https://disdukcapil.niaskab.go.id/",
+      "verifiedAt": "2026-11-08T13:37:45.469Z"
+    },
+    {
+      "kode": "1205",
+      "nama": "Kabupaten Langkat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1206",
+      "nama": "Kabupaten Karo",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.karokab.go.id",
+      "judulHalaman": "- Disdukcapil Kab. Karo",
+      "sourceUrl": "https://disdukcapil.karokab.go.id/",
+      "verifiedAt": "2026-11-08T13:37:50.037Z"
+    },
+    {
+      "kode": "1207",
+      "nama": "Kabupaten Deli Serdang",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.deliserdangkab.go.id",
+      "judulHalaman": "Disdukcapil Kabupaten Deli Serdang — Portal Layanan",
+      "sourceUrl": "https://disdukcapil.deliserdangkab.go.id/",
+      "verifiedAt": "2026-11-08T13:37:51.395Z"
+    },
+    {
+      "kode": "1208",
+      "nama": "Kabupaten Simalungun",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1209",
+      "nama": "Kabupaten Asahan",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.asahankab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil",
+      "sourceUrl": "https://disdukcapil.asahankab.go.id/",
+      "verifiedAt": "2026-11-08T13:37:59.789Z"
+    },
+    {
+      "kode": "1210",
+      "nama": "Kabupaten Labuhanbatu",
+      "status": "terverifikasi",
+      "website": "https://capil.labuhanbatukab.go.id",
+      "judulHalaman": "Beranda",
+      "sourceUrl": "https://capil.labuhanbatukab.go.id/",
+      "verifiedAt": "2026-11-08T13:38:09.308Z"
+    },
+    {
+      "kode": "1211",
+      "nama": "Kabupaten Dairi",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.dairikab.go.id",
+      "judulHalaman": "Home | DISDUKCAPIL-KAB. DAIRI",
+      "sourceUrl": "https://disdukcapil.dairikab.go.id/",
+      "verifiedAt": "2026-11-08T13:38:12.831Z"
+    },
+    {
+      "kode": "1212",
+      "nama": "Kabupaten Toba",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.tobakab.go.id",
+      "judulHalaman": "HOME - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Toba",
+      "sourceUrl": "https://disdukcapil.tobakab.go.id/",
+      "verifiedAt": "2026-11-08T13:38:14.968Z"
+    },
+    {
+      "kode": "1213",
+      "nama": "Kabupaten Mandailing Natal",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1214",
+      "nama": "Kabupaten Nias Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1215",
+      "nama": "Kabupaten Pakpak Bharat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1216",
+      "nama": "Kabupaten Humbang Hasundutan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1217",
+      "nama": "Kabupaten Samosir",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.samosirkab.go.id",
+      "judulHalaman": "",
+      "sourceUrl": "https://dukcapil.samosirkab.go.id/",
+      "verifiedAt": "2026-11-08T13:39:20.250Z"
+    },
+    {
+      "kode": "1218",
+      "nama": "Kabupaten Serdang Bedagai",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.serdangbedagaikab.go.id",
+      "judulHalaman": "Beranda - Disdukcapil Sergai",
+      "sourceUrl": "https://disdukcapil.serdangbedagaikab.go.id/",
+      "verifiedAt": "2026-11-08T13:39:22.114Z"
+    },
+    {
+      "kode": "1219",
+      "nama": "Kabupaten Batu Bara",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.batubarakab.go.id",
+      "judulHalaman": "Beranda - Disdukcapil Kabupaten Batu Bara",
+      "sourceUrl": "https://disdukcapil.batubarakab.go.id/",
+      "verifiedAt": "2026-11-08T13:39:26.748Z"
+    },
+    {
+      "kode": "1220",
+      "nama": "Kabupaten Padang Lawas Utara",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.padanglawasutarakab.go.id",
+      "judulHalaman": "Dinas Dukcapil",
+      "sourceUrl": "https://disdukcapil.padanglawasutarakab.go.id/",
+      "verifiedAt": "2026-11-08T13:39:28.569Z"
+    },
+    {
+      "kode": "1221",
+      "nama": "Kabupaten Padang Lawas",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1222",
+      "nama": "Kabupaten Labuhanbatu Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1223",
+      "nama": "Kabupaten Labuhanbatu Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1224",
+      "nama": "Kabupaten Nias Utara",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.niasutarakab.go.id",
+      "judulHalaman": "Website Dinas Dukcapil Kabupaten Nias Utara - Dinas Dukcapil Nias Utara",
+      "sourceUrl": "https://dukcapil.niasutarakab.go.id/",
+      "verifiedAt": "2026-11-08T13:39:56.480Z"
+    },
+    {
+      "kode": "1225",
+      "nama": "Kabupaten Nias Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1271",
+      "nama": "Kota Medan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1272",
+      "nama": "Kota Pematangsiantar",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.pematangsiantar.go.id",
+      "judulHalaman": "Website Resmi Dinas Kependudukan dan Pencatatan Sipil Kota Pematangsiantar - Website Resmi Dukcapil Kota Pematangsiantar",
+      "sourceUrl": "https://dukcapil.pematangsiantar.go.id/",
+      "verifiedAt": "2026-11-08T13:41:03.444Z"
+    },
+    {
+      "kode": "1273",
+      "nama": "Kota Sibolga",
+      "status": "terverifikasi",
+      "website": "https://capil.sibolgakota.go.id",
+      "judulHalaman": "Disdukcapil Kota Sibolga",
+      "sourceUrl": "https://capil.sibolgakota.go.id/",
+      "verifiedAt": "2026-11-08T13:41:08.505Z"
+    },
+    {
+      "kode": "1274",
+      "nama": "Kota Tanjungbalai",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.tanjungbalaikota.go.id",
+      "judulHalaman": "DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KOTA TANJUNGBALAI",
+      "sourceUrl": "https://disdukcapil.tanjungbalaikota.go.id/",
+      "verifiedAt": "2026-11-08T13:41:10.417Z"
+    },
+    {
+      "kode": "1275",
+      "nama": "Kota Binjai",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1276",
+      "nama": "Kota Tebing Tinggi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1277",
+      "nama": "Kota Padangsidimpuan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1278",
+      "nama": "Kota Gunungsitoli",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.gunungsitolikota.go.id",
+      "judulHalaman": "Halaman Depan | DUKCAPIL",
+      "sourceUrl": "https://dukcapil.gunungsitolikota.go.id/",
+      "verifiedAt": "2026-11-08T13:41:21.024Z"
+    },
+    {
+      "kode": "1301",
+      "nama": "Kabupaten Pesisir Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1302",
+      "nama": "Kabupaten Solok",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.solokkab.go.id",
+      "judulHalaman": "Website Resmi Disdukcapil Kab Solok",
+      "sourceUrl": "https://disdukcapil.solokkab.go.id/",
+      "verifiedAt": "2026-11-08T13:41:41.686Z"
+    },
+    {
+      "kode": "1303",
+      "nama": "Kabupaten Sijunjung",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1304",
+      "nama": "Kabupaten Tanah Datar",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.tanahdatar.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Tanah Datar &#8211; Melayani dengan CERMAT",
+      "sourceUrl": "https://dukcapil.tanahdatar.go.id/",
+      "verifiedAt": "2026-11-08T13:41:51.760Z"
+    },
+    {
+      "kode": "1305",
+      "nama": "Kabupaten Padang Pariaman",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.padangpariamankab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Padang Pariaman",
+      "sourceUrl": "https://dukcapil.padangpariamankab.go.id/",
+      "verifiedAt": "2026-11-08T13:41:53.979Z"
+    },
+    {
+      "kode": "1306",
+      "nama": "Kabupaten Agam",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.agamkab.go.id",
+      "judulHalaman": "Dinas Kependudukan Dan Pencatatan Sipil Kabupaten Agam",
+      "sourceUrl": "https://dukcapil.agamkab.go.id/",
+      "verifiedAt": "2026-11-08T13:41:57.921Z"
+    },
+    {
+      "kode": "1307",
+      "nama": "Kabupaten Lima Puluh Kota",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.limapuluhkotakab.go.id",
+      "judulHalaman": "Disdukcapil - Home",
+      "sourceUrl": "https://disdukcapil.limapuluhkotakab.go.id/",
+      "verifiedAt": "2026-11-08T13:42:00.384Z"
+    },
+    {
+      "kode": "1308",
+      "nama": "Kabupaten Pasaman",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pasamankab.go.id",
+      "judulHalaman": "DISDUKCAPIL",
+      "sourceUrl": "https://disdukcapil.pasamankab.go.id/",
+      "verifiedAt": "2026-11-08T13:42:02.407Z"
+    },
+    {
+      "kode": "1309",
+      "nama": "Kabupaten Kepulauan Mentawai",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1310",
+      "nama": "Kabupaten Dharmasraya",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.dharmasrayakab.go.id",
+      "judulHalaman": "Dinas Kependudukan Dan Pencatatan Sipil Kabupaten Dharmasraya",
+      "sourceUrl": "https://disdukcapil.dharmasrayakab.go.id/",
+      "verifiedAt": "2026-11-08T13:42:05.564Z"
+    },
+    {
+      "kode": "1311",
+      "nama": "Kabupaten Solok Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1312",
+      "nama": "Kabupaten Pasaman Barat",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pasamanbaratkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kab. Pasaman Barat",
+      "sourceUrl": "https://disdukcapil.pasamanbaratkab.go.id/",
+      "verifiedAt": "2026-11-08T13:42:08.442Z"
+    },
+    {
+      "kode": "1371",
+      "nama": "Kota Padang",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.padang.go.id",
+      "judulHalaman": "DISDUKCAPIL KOTA PADANG",
+      "sourceUrl": "https://disdukcapil.padang.go.id/",
+      "verifiedAt": "2026-11-08T13:42:09.668Z"
+    },
+    {
+      "kode": "1372",
+      "nama": "Kota Solok",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.solokkota.go.id",
+      "judulHalaman": "Disdukcapil Kota Solok",
+      "sourceUrl": "https://disdukcapil.solokkota.go.id/",
+      "verifiedAt": "2026-11-08T13:42:12.591Z"
+    },
+    {
+      "kode": "1373",
+      "nama": "Kota Sawahlunto",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1374",
+      "nama": "Kota Padang Panjang",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.padangpanjang.go.id",
+      "judulHalaman": "DISDUKCAPIL PADANG PANJANG",
+      "sourceUrl": "https://dukcapil.padangpanjang.go.id/",
+      "verifiedAt": "2026-11-08T13:42:55.863Z"
+    },
+    {
+      "kode": "1375",
+      "nama": "Kota Bukittinggi",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.bukittinggikota.go.id",
+      "judulHalaman": "Beranda | Disdukcapil Kota Bukittinggi",
+      "sourceUrl": "https://dukcapil.bukittinggikota.go.id/",
+      "verifiedAt": "2026-11-08T13:42:57.238Z"
+    },
+    {
+      "kode": "1376",
+      "nama": "Kota Payakumbuh",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1377",
+      "nama": "Kota Pariaman",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pariamankota.go.id",
+      "judulHalaman": "Disdukcapil Kota Pariaman &#8211; Jl. Syech Burhanuddin Taluk Pariaman Tengah Kota Pariaman",
+      "sourceUrl": "https://disdukcapil.pariamankota.go.id/",
+      "verifiedAt": "2026-11-08T13:43:01.033Z"
+    },
+    {
+      "kode": "1401",
+      "nama": "Kabupaten Kampar",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.kamparkab.go.id",
+      "judulHalaman": "Home - Website Resmi Disdukcapil Kabupaten Kampar",
+      "sourceUrl": "https://disdukcapil.kamparkab.go.id/",
+      "verifiedAt": "2026-11-08T13:43:02.353Z"
+    },
+    {
+      "kode": "1402",
+      "nama": "Kabupaten Indragiri Hulu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1403",
+      "nama": "Kabupaten Bengkalis",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bengkaliskab.go.id",
+      "judulHalaman": "Disdukcapil Kabupaten Bengkalis",
+      "sourceUrl": "https://disdukcapil.bengkaliskab.go.id/",
+      "verifiedAt": "2026-11-08T13:43:04.284Z"
+    },
+    {
+      "kode": "1404",
+      "nama": "Kabupaten Indragiri Hilir",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1405",
+      "nama": "Kabupaten Pelalawan",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pelalawankab.go.id",
+      "judulHalaman": "Disdukcapil Pelalawan",
+      "sourceUrl": "https://disdukcapil.pelalawankab.go.id/",
+      "verifiedAt": "2026-11-08T13:43:06.251Z"
+    },
+    {
+      "kode": "1406",
+      "nama": "Kabupaten Rokan Hulu",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.rokanhulukab.go.id",
+      "judulHalaman": "Disdukcapil Kabupaten Rokan Hulu",
+      "sourceUrl": "https://disdukcapil.rokanhulukab.go.id/",
+      "verifiedAt": "2026-11-08T13:43:08.368Z"
+    },
+    {
+      "kode": "1407",
+      "nama": "Kabupaten Rokan Hilir",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1408",
+      "nama": "Kabupaten Siak",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.siakkab.go.id",
+      "judulHalaman": "Situs Resmi Dinas Kependudukan Dan Pencatatan Sipil Kabupaten Siak",
+      "sourceUrl": "https://disdukcapil.siakkab.go.id/",
+      "verifiedAt": "2026-11-08T13:43:13.069Z"
+    },
+    {
+      "kode": "1409",
+      "nama": "Kabupaten Kuantan Singingi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1410",
+      "nama": "Kabupaten Kepulauan Meranti",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1471",
+      "nama": "Kota Pekanbaru",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pekanbaru.go.id",
+      "judulHalaman": "Disdukcapil Kota Pekanbaru — Aplikasi Layanan Publik",
+      "sourceUrl": "https://disdukcapil.pekanbaru.go.id/",
+      "verifiedAt": "2026-11-08T13:43:14.737Z"
+    },
+    {
+      "kode": "1472",
+      "nama": "Kota Dumai",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1501",
+      "nama": "Kabupaten Kerinci",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1502",
+      "nama": "Kabupaten Merangin",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.meranginkab.go.id",
+      "judulHalaman": "Dukcapil Merangin — Bahan Lengkap, Proses Cepat",
+      "sourceUrl": "https://disdukcapil.meranginkab.go.id/",
+      "verifiedAt": "2026-11-08T13:43:24.726Z"
+    },
+    {
+      "kode": "1503",
+      "nama": "Kabupaten Sarolangun",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.sarolangunkab.go.id",
+      "judulHalaman": "Beranda - DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KAB. SAROLANGUN",
+      "sourceUrl": "https://disdukcapil.sarolangunkab.go.id/",
+      "verifiedAt": "2026-11-08T13:43:27.785Z"
+    },
+    {
+      "kode": "1504",
+      "nama": "Kabupaten Batanghari",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1505",
+      "nama": "Kabupaten Muaro Jambi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1506",
+      "nama": "Kabupaten Tanjung Jabung Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1507",
+      "nama": "Kabupaten Tanjung Jabung Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1508",
+      "nama": "Kabupaten Bungo",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bungokab.go.id",
+      "judulHalaman": "Disdukcapil Kab. Bungo",
+      "sourceUrl": "https://disdukcapil.bungokab.go.id/",
+      "verifiedAt": "2026-11-08T13:43:55.295Z"
+    },
+    {
+      "kode": "1509",
+      "nama": "Kabupaten Tebo",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.tebokab.go.id",
+      "judulHalaman": "Dukcapil Tebo",
+      "alamat": "Jl. Lintas Tebo-Bungo Km. 12 Komplek Perkantoran Seentak Galah Serengkuh Dayung, Sungai Alai, Kec. Tebo Tengah, Kabupaten Tebo, Jambi 37571",
+      "sourceUrl": "https://dukcapil.tebokab.go.id/",
+      "verifiedAt": "2026-11-08T13:43:57.942Z"
+    },
+    {
+      "kode": "1571",
+      "nama": "Kota Jambi",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.jambikota.go.id",
+      "judulHalaman": "Disdukcapil Kota Jambi",
+      "sourceUrl": "https://disdukcapil.jambikota.go.id/",
+      "verifiedAt": "2026-11-08T13:43:59.892Z"
+    },
+    {
+      "kode": "1572",
+      "nama": "Kota Sungai Penuh",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.sungaipenuhkota.go.id",
+      "judulHalaman": "Website Resmi Dinas Kependudukan Dan Pencatatan Sipil Kota Sungai Penuh",
+      "sourceUrl": "https://disdukcapil.sungaipenuhkota.go.id/",
+      "verifiedAt": "2026-11-08T13:44:02.277Z"
+    },
+    {
+      "kode": "1601",
+      "nama": "Kabupaten Ogan Komering Ulu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1602",
+      "nama": "Kabupaten Ogan Komering Ilir",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1603",
+      "nama": "Kabupaten Muara Enim",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1604",
+      "nama": "Kabupaten Lahat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1605",
+      "nama": "Kabupaten Musi Rawas",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1606",
+      "nama": "Kabupaten Musi Banyuasin",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1607",
+      "nama": "Kabupaten Banyuasin",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1608",
+      "nama": "Kabupaten Ogan Komering Ulu Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1609",
+      "nama": "Kabupaten Ogan Komering Ulu Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1610",
+      "nama": "Kabupaten Ogan Ilir",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1611",
+      "nama": "Kabupaten Empat Lawang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1612",
+      "nama": "Kabupaten Penukal Abab Lematang Ilir",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1613",
+      "nama": "Kabupaten Musi Rawas Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1671",
+      "nama": "Kota Palembang",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.palembang.go.id",
+      "judulHalaman": "Disdukcapil Kota Palembang",
+      "sourceUrl": "https://disdukcapil.palembang.go.id/",
+      "verifiedAt": "2026-11-08T13:44:26.888Z"
+    },
+    {
+      "kode": "1672",
+      "nama": "Kota Pagar Alam",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1673",
+      "nama": "Kota Lubuk Linggau",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1674",
+      "nama": "Kota Prabumulih",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1701",
+      "nama": "Kabupaten Bengkulu Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1702",
+      "nama": "Kabupaten Rejang Lebong",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1703",
+      "nama": "Kabupaten Bengkulu Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1704",
+      "nama": "Kabupaten Kaur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1705",
+      "nama": "Kabupaten Seluma",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1706",
+      "nama": "Kabupaten Mukomuko",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1707",
+      "nama": "Kabupaten Lebong",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1708",
+      "nama": "Kabupaten Kepahiang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1709",
+      "nama": "Kabupaten Bengkulu Tengah",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bengkulutengahkab.go.id",
+      "judulHalaman": "DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL",
+      "sourceUrl": "https://disdukcapil.bengkulutengahkab.go.id/",
+      "verifiedAt": "2026-11-08T13:45:37.937Z"
+    },
+    {
+      "kode": "1771",
+      "nama": "Kota Bengkulu",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.bengkulukota.go.id",
+      "judulHalaman": "Dinas Kependudukan Dan Pencatatan Sipil &#8211; Pemerintah Kota Bengkulu",
+      "sourceUrl": "https://dukcapil.bengkulukota.go.id/",
+      "verifiedAt": "2026-11-08T13:45:41.052Z"
+    },
+    {
+      "kode": "1801",
+      "nama": "Kabupaten Lampung Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1802",
+      "nama": "Kabupaten Lampung Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1803",
+      "nama": "Kabupaten Lampung Utara",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.lampungutarakab.go.id",
+      "judulHalaman": "Disdukcapil Lampung Utara",
+      "sourceUrl": "https://disdukcapil.lampungutarakab.go.id/",
+      "verifiedAt": "2026-11-08T13:46:23.815Z"
+    },
+    {
+      "kode": "1804",
+      "nama": "Kabupaten Lampung Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1805",
+      "nama": "Kabupaten Tulang Bawang",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.tulangbawangkab.go.id",
+      "judulHalaman": "Kabupaten Tulang Bawang",
+      "sourceUrl": "https://disdukcapil.tulangbawangkab.go.id/",
+      "verifiedAt": "2026-11-08T13:46:25.388Z"
+    },
+    {
+      "kode": "1806",
+      "nama": "Kabupaten Tanggamus",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1807",
+      "nama": "Kabupaten Lampung Timur",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.lampungtimurkab.go.id",
+      "judulHalaman": "Lampungtimurkab.go.id",
+      "sourceUrl": "https://dukcapil.lampungtimurkab.go.id/",
+      "verifiedAt": "2026-11-08T13:46:51.403Z"
+    },
+    {
+      "kode": "1808",
+      "nama": "Kabupaten Way Kanan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1809",
+      "nama": "Kabupaten Pesawaran",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1810",
+      "nama": "Kabupaten Pringsewu",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pringsewukab.go.id",
+      "judulHalaman": "Dinas Kependudukan Dan Pencatatan Sipil |",
+      "sourceUrl": "https://disdukcapil.pringsewukab.go.id/",
+      "verifiedAt": "2026-11-08T13:46:57.504Z"
+    },
+    {
+      "kode": "1811",
+      "nama": "Kabupaten Mesuji",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.mesujikab.go.id",
+      "judulHalaman": "Selamat Datang - Di Dinas Kependudukan dan Pencatatan Sipil Kabupaten Mesuji",
+      "sourceUrl": "https://disdukcapil.mesujikab.go.id/",
+      "verifiedAt": "2026-11-08T13:47:00.529Z"
+    },
+    {
+      "kode": "1812",
+      "nama": "Kabupaten Tulang Bawang Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1813",
+      "nama": "Kabupaten Pesisir Barat",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pesisirbaratkab.go.id",
+      "judulHalaman": "Selamat Datang - Disdukcapil Kabupaten Pesisir Barat",
+      "sourceUrl": "https://disdukcapil.pesisirbaratkab.go.id/",
+      "verifiedAt": "2026-11-08T13:47:02.594Z"
+    },
+    {
+      "kode": "1871",
+      "nama": "Kota Bandar Lampung",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bandarlampungkota.go.id",
+      "judulHalaman": "Disdukcapil | Bandar Lampung",
+      "sourceUrl": "https://disdukcapil.bandarlampungkota.go.id/",
+      "verifiedAt": "2026-11-08T13:47:04.182Z"
+    },
+    {
+      "kode": "1872",
+      "nama": "Kota Metro",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.metrokota.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kota Metro",
+      "sourceUrl": "https://dukcapil.metrokota.go.id/",
+      "verifiedAt": "2026-11-08T13:47:08.186Z"
+    },
+    {
+      "kode": "1901",
+      "nama": "Kabupaten Bangka",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.bangka.go.id",
+      "judulHalaman": "Dukcapil Bangka | Portal Layanan",
+      "sourceUrl": "https://dukcapil.bangka.go.id/",
+      "verifiedAt": "2026-11-08T13:47:10.814Z"
+    },
+    {
+      "kode": "1902",
+      "nama": "Kabupaten Belitung",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1903",
+      "nama": "Kabupaten Bangka Selatan",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bangkaselatankab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bangka Selatan",
+      "sourceUrl": "https://disdukcapil.bangkaselatankab.go.id/",
+      "verifiedAt": "2026-11-08T13:47:41.365Z"
+    },
+    {
+      "kode": "1904",
+      "nama": "Kabupaten Bangka Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1905",
+      "nama": "Kabupaten Bangka Barat",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bangkabaratkab.go.id",
+      "judulHalaman": "DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL",
+      "sourceUrl": "https://disdukcapil.bangkabaratkab.go.id/",
+      "verifiedAt": "2026-11-08T13:47:44.572Z"
+    },
+    {
+      "kode": "1906",
+      "nama": "Kabupaten Belitung Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1971",
+      "nama": "Kota Pangkal Pinang",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pangkalpinangkota.go.id",
+      "judulHalaman": "Disdukcapil Kota Pangkal Pinang &#8211; Pangkalpinang Kota Beribu Senyuman",
+      "sourceUrl": "https://disdukcapil.pangkalpinangkota.go.id/",
+      "verifiedAt": "2026-11-08T13:48:13.329Z"
+    },
+    {
+      "kode": "2101",
+      "nama": "Kabupaten Bintan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "2102",
+      "nama": "Kabupaten Karimun",
+      "status": "terverifikasi",
+      "website": "https://www.disdukcapil.karimunkab.go.id",
+      "judulHalaman": "DISDUKCAPIL KARIMUN - Web Resmi Disdukcapil Kabupaten Karimun",
+      "alamat": "Jalan Jenderal Sudirman, Kecamatan Meral, Kabupaten Karimun 29631",
+      "sourceUrl": "https://www.disdukcapil.karimunkab.go.id/",
+      "verifiedAt": "2026-11-08T13:48:17.157Z"
+    },
+    {
+      "kode": "2103",
+      "nama": "Kabupaten Natuna",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.natunakab.go.id",
+      "judulHalaman": "DISDUKCAPIL KABUPATEN NATUNA",
+      "sourceUrl": "https://disdukcapil.natunakab.go.id/",
+      "verifiedAt": "2026-11-08T13:48:20.289Z"
+    },
+    {
+      "kode": "2104",
+      "nama": "Kabupaten Lingga",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "2105",
+      "nama": "Kabupaten Kepulauan Anambas",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "2171",
+      "nama": "Kota Batam",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.batam.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kota Batam",
+      "sourceUrl": "https://disdukcapil.batam.go.id/",
+      "verifiedAt": "2026-11-08T13:48:45.643Z"
+    },
+    {
+      "kode": "2172",
+      "nama": "Kota Tanjung Pinang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3101",
+      "nama": "Kabupaten Administrasi Kepulauan Seribu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3171",
+      "nama": "Kota Administrasi Jakarta Pusat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3172",
+      "nama": "Kota Administrasi Jakarta Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3173",
+      "nama": "Kota Administrasi Jakarta Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3174",
+      "nama": "Kota Administrasi Jakarta Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3175",
+      "nama": "Kota Administrasi Jakarta Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3201",
+      "nama": "Kabupaten Bogor",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3202",
+      "nama": "Kabupaten Sukabumi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3203",
+      "nama": "Kabupaten Cianjur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3204",
+      "nama": "Kabupaten Bandung",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bandungkab.go.id",
+      "judulHalaman": "Website - Dinas Kependudukan dan Pencatatan Sipil",
+      "alamat": "Jl. Raya Soreang KM. 17 Soreang, Kabupaten Bandung Jawa Barat - Indonesia",
+      "sourceUrl": "https://disdukcapil.bandungkab.go.id/",
+      "verifiedAt": "2026-11-08T13:49:18.692Z"
+    },
+    {
+      "kode": "3205",
+      "nama": "Kabupaten Garut",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3206",
+      "nama": "Kabupaten Tasikmalaya",
+      "status": "terverifikasi",
+      "website": "https://disduk.tasikmalayakab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil - Kabupaten Tasikmalaya",
+      "sourceUrl": "https://disduk.tasikmalayakab.go.id/",
+      "verifiedAt": "2026-11-08T13:49:22.367Z"
+    },
+    {
+      "kode": "3207",
+      "nama": "Kabupaten Ciamis",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.ciamiskab.go.id",
+      "judulHalaman": "Dinas Kependudukan Dan Pencatatan Sipil",
+      "sourceUrl": "https://disdukcapil.ciamiskab.go.id/",
+      "verifiedAt": "2026-11-08T13:49:25.557Z"
+    },
+    {
+      "kode": "3208",
+      "nama": "Kabupaten Kuningan",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.kuningankab.go.id",
+      "judulHalaman": "WEBSITE DISDUKCAPIL KUNINGAN",
+      "sourceUrl": "https://disdukcapil.kuningankab.go.id/",
+      "verifiedAt": "2026-11-08T13:49:26.972Z"
+    },
+    {
+      "kode": "3209",
+      "nama": "Kabupaten Cirebon",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3210",
+      "nama": "Kabupaten Majalengka",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.majalengkakab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Majalengka",
+      "sourceUrl": "https://disdukcapil.majalengkakab.go.id/",
+      "verifiedAt": "2026-11-08T13:49:31.080Z"
+    },
+    {
+      "kode": "3211",
+      "nama": "Kabupaten Sumedang",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.sumedangkab.go.id",
+      "judulHalaman": "Home Page",
+      "alamat": "Jl. Prabu Geusan Ulun No. 36 Regol Wetan, Kec. Sumedang Sel., Kabupaten Sumedang, Jawa Barat 45311",
+      "sourceUrl": "https://disdukcapil.sumedangkab.go.id/",
+      "verifiedAt": "2026-11-08T13:49:33.743Z"
+    },
+    {
+      "kode": "3212",
+      "nama": "Kabupaten Indramayu",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.indramayukab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil &#8211; Indramayu Reang",
+      "alamat": "Jl. Ir. H. Juanda No.1 Indramayu, Jawa Barat 45218",
+      "sourceUrl": "https://disdukcapil.indramayukab.go.id/",
+      "verifiedAt": "2026-11-08T13:49:35.171Z"
+    },
+    {
+      "kode": "3213",
+      "nama": "Kabupaten Subang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3214",
+      "nama": "Kabupaten Purwakarta",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.purwakartakab.go.id",
+      "judulHalaman": "DISDUKCAPIL Kabupaten Purwakarta",
+      "sourceUrl": "https://disdukcapil.purwakartakab.go.id/home/",
+      "verifiedAt": "2026-11-08T13:49:39.253Z"
+    },
+    {
+      "kode": "3215",
+      "nama": "Kabupaten Karawang",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.karawangkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil | Beranda",
+      "sourceUrl": "https://dukcapil.karawangkab.go.id/",
+      "verifiedAt": "2026-11-08T13:49:50.668Z"
+    },
+    {
+      "kode": "3216",
+      "nama": "Kabupaten Bekasi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3217",
+      "nama": "Kabupaten Bandung Barat",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bandungbaratkab.go.id",
+      "judulHalaman": "Disdukcapil Kabupaten Bandung Barat - Layanan Kependudukan",
+      "sourceUrl": "https://disdukcapil.bandungbaratkab.go.id/Home/",
+      "verifiedAt": "2026-11-08T13:49:53.778Z"
+    },
+    {
+      "kode": "3218",
+      "nama": "Kabupaten Pangandaran",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3271",
+      "nama": "Kota Bogor",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3272",
+      "nama": "Kota Sukabumi",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.sukabumikota.go.id",
+      "judulHalaman": "Disdukcapil Kota Sukabumi",
+      "sourceUrl": "https://disdukcapil.sukabumikota.go.id/",
+      "verifiedAt": "2026-11-08T13:49:58.521Z"
+    },
+    {
+      "kode": "3273",
+      "nama": "Kota Bandung",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bandung.go.id",
+      "judulHalaman": "DISDUKCAPIL KOTA BANDUNG",
+      "sourceUrl": "https://disdukcapil.bandung.go.id/",
+      "verifiedAt": "2026-11-08T13:49:59.968Z"
+    },
+    {
+      "kode": "3274",
+      "nama": "Kota Cirebon",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.cirebonkota.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil",
+      "alamat": "Jl. Brigjen Dharsono (Bypass) - Komplek Perkantoran Bima",
+      "sourceUrl": "https://disdukcapil.cirebonkota.go.id/",
+      "verifiedAt": "2026-11-08T13:50:02.208Z"
+    },
+    {
+      "kode": "3275",
+      "nama": "Kota Bekasi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3276",
+      "nama": "Kota Depok",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3277",
+      "nama": "Kota Cimahi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3278",
+      "nama": "Kota Tasikmalaya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3279",
+      "nama": "Kota Banjar",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.banjarkota.go.id",
+      "judulHalaman": "Beranda - Dinas Kependudukan dan Pencatatan Sipil Kota Banjar",
+      "sourceUrl": "https://disdukcapil.banjarkota.go.id/",
+      "verifiedAt": "2026-11-08T13:50:34.134Z"
+    },
+    {
+      "kode": "3301",
+      "nama": "Kabupaten Cilacap",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3302",
+      "nama": "Kabupaten Banyumas",
+      "status": "terverifikasi",
+      "website": "https://banyumaskab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Banyumas",
+      "sourceUrl": "https://banyumaskab.go.id/",
+      "verifiedAt": "2026-11-08T13:50:39.812Z"
+    },
+    {
+      "kode": "3303",
+      "nama": "Kabupaten Purbalingga",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3304",
+      "nama": "Kabupaten Banjarnegara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3305",
+      "nama": "Kabupaten Kebumen",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3306",
+      "nama": "Kabupaten Purworejo",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.purworejokab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Purworejo",
+      "sourceUrl": "https://disdukcapil.purworejokab.go.id/",
+      "verifiedAt": "2026-11-08T13:50:43.355Z"
+    },
+    {
+      "kode": "3307",
+      "nama": "Kabupaten Wonosobo",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.wonosobokab.go.id",
+      "judulHalaman": "DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KABUPATEN WONOSOBO",
+      "sourceUrl": "https://disdukcapil.wonosobokab.go.id/",
+      "verifiedAt": "2026-11-08T13:50:46.192Z"
+    },
+    {
+      "kode": "3308",
+      "nama": "Kabupaten Magelang",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.magelangkab.go.id",
+      "judulHalaman": "Kabupaten Magelang",
+      "alamat": "JL Laksda Yos Sudarso No.31C, Magelang, Kec. Magelang Tengah, Kota Magelang, Jawa Tengah 56117",
+      "sourceUrl": "https://disdukcapil.magelangkab.go.id/",
+      "verifiedAt": "2026-11-08T13:50:47.318Z"
+    },
+    {
+      "kode": "3309",
+      "nama": "Kabupaten Boyolali",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3310",
+      "nama": "Kabupaten Klaten",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.klaten.go.id",
+      "judulHalaman": "Disdukcapil - Kabupaten Klaten - Disdukcapil - Kabupaten Klaten",
+      "sourceUrl": "https://dukcapil.klaten.go.id/",
+      "verifiedAt": "2026-11-08T13:50:51.926Z"
+    },
+    {
+      "kode": "3311",
+      "nama": "Kabupaten Sukoharjo",
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.sukoharjokab.go.id",
+      "judulHalaman": "Beranda | Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo",
+      "alamat": "Jalan Kyai Mawardi No. 1 Sukoharjo",
+      "sourceUrl": "https://dispendukcapil.sukoharjokab.go.id/",
+      "verifiedAt": "2026-11-08T13:50:53.831Z"
+    },
+    {
+      "kode": "3312",
+      "nama": "Kabupaten Wonogiri",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.wonogirikab.go.id",
+      "judulHalaman": "Disdukcapil Wonogiri",
+      "alamat": "Jalan Jenderal Sudirman Nomor 147A, Sukorejo, Giritirto, Kecamatan Wonogiri, Kabupaten Wonogiri, Jawa Tengah 57611",
+      "sourceUrl": "https://disdukcapil.wonogirikab.go.id/",
+      "verifiedAt": "2026-11-08T13:50:56.308Z"
+    },
+    {
+      "kode": "3313",
+      "nama": "Kabupaten Karanganyar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3314",
+      "nama": "Kabupaten Sragen",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.sragenkab.go.id",
+      "judulHalaman": "Disdukcapil | Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sragen",
+      "sourceUrl": "https://dukcapil.sragenkab.go.id/",
+      "verifiedAt": "2026-11-08T13:51:00.327Z"
+    },
+    {
+      "kode": "3315",
+      "nama": "Kabupaten Grobogan",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.grobogan.go.id",
+      "judulHalaman": "Disdukcapil Kabupaten Grobogan",
+      "sourceUrl": "https://disdukcapil.grobogan.go.id/",
+      "verifiedAt": "2026-11-08T13:51:02.728Z"
+    },
+    {
+      "kode": "3316",
+      "nama": "Kabupaten Blora",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3317",
+      "nama": "Kabupaten Rembang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3318",
+      "nama": "Kabupaten Pati",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.patikab.go.id",
+      "judulHalaman": "Disdukcapil Kabupaten Pati",
+      "sourceUrl": "https://disdukcapil.patikab.go.id/",
+      "verifiedAt": "2026-11-08T13:51:05.871Z"
+    },
+    {
+      "kode": "3319",
+      "nama": "Kabupaten Kudus",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.kuduskab.go.id",
+      "judulHalaman": "DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL &#8211; PEMERINTAH KABUPATEN KUDUS",
+      "sourceUrl": "https://dukcapil.kuduskab.go.id/",
+      "verifiedAt": "2026-11-08T13:51:21.329Z"
+    },
+    {
+      "kode": "3320",
+      "nama": "Kabupaten Jepara",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.jepara.go.id",
+      "judulHalaman": "DISDUKCAPIL Kabupaten Jepara &#8211; Official Website Dinas Kependudukan dan Pencatatan Sipil Kabupaten Jepara",
+      "sourceUrl": "https://disdukcapil.jepara.go.id/",
+      "verifiedAt": "2026-11-08T13:51:37.137Z"
+    },
+    {
+      "kode": "3321",
+      "nama": "Kabupaten Demak",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.demakkab.go.id",
+      "judulHalaman": "",
+      "sourceUrl": "https://dukcapil.demakkab.go.id/",
+      "verifiedAt": "2026-11-08T13:51:38.641Z"
+    },
+    {
+      "kode": "3322",
+      "nama": "Kabupaten Semarang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3323",
+      "nama": "Kabupaten Temanggung",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3324",
+      "nama": "Kabupaten Kendal",
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.kendalkab.go.id",
+      "judulHalaman": "Home | DISPENDUKCAPIL",
+      "sourceUrl": "https://dispendukcapil.kendalkab.go.id/",
+      "verifiedAt": "2026-11-08T13:51:42.483Z"
+    },
+    {
+      "kode": "3325",
+      "nama": "Kabupaten Batang",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.batangkab.go.id",
+      "judulHalaman": "Dinas Dinas Kependudukan dan Pencatatan Sipil (Disdukcapil) Kabupaten Batang",
+      "sourceUrl": "https://disdukcapil.batangkab.go.id/",
+      "verifiedAt": "2026-11-08T13:51:44.741Z"
+    },
+    {
+      "kode": "3326",
+      "nama": "Kabupaten Pekalongan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3327",
+      "nama": "Kabupaten Pemalang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3328",
+      "nama": "Kabupaten Tegal",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.tegalkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Tegal",
+      "alamat": "Jl. Ir. H. Juanda No.9A, Slawi Slawi, Kabupaten Tegal",
+      "sourceUrl": "https://disdukcapil.tegalkab.go.id/",
+      "verifiedAt": "2026-11-08T13:51:48.655Z"
+    },
+    {
+      "kode": "3329",
+      "nama": "Kabupaten Brebes",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3371",
+      "nama": "Kota Magelang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3372",
+      "nama": "Kota Surakarta",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3373",
+      "nama": "Kota Salatiga",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.salatiga.go.id",
+      "judulHalaman": "Disdukcapil Kota Salatiga | Melayani Sepenuh Hati",
+      "sourceUrl": "https://disdukcapil.salatiga.go.id/",
+      "verifiedAt": "2026-11-08T13:52:48.043Z"
+    },
+    {
+      "kode": "3374",
+      "nama": "Kota Semarang",
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.semarangkota.go.id",
+      "judulHalaman": "Dispendukcapil Kota Semarang",
+      "sourceUrl": "https://dispendukcapil.semarangkota.go.id/",
+      "verifiedAt": "2026-11-08T13:52:51.027Z"
+    },
+    {
+      "kode": "3375",
+      "nama": "Kota Pekalongan",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pekalongankota.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kota Pekalongan - Website Resmi Dinas Kependudukan dan Pencatatan Sipil Kota Pekalongan - DISDUKCAPIL",
+      "sourceUrl": "https://disdukcapil.pekalongankota.go.id/",
+      "verifiedAt": "2026-11-08T13:53:06.161Z"
+    },
+    {
+      "kode": "3376",
+      "nama": "Kota Tegal",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3401",
+      "nama": "Kabupaten Kulon Progo",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.kulonprogokab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil",
+      "sourceUrl": "https://dukcapil.kulonprogokab.go.id/",
+      "verifiedAt": "2026-11-08T13:53:12.988Z"
+    },
+    {
+      "kode": "3402",
+      "nama": "Kabupaten Bantul",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bantulkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bantul - Beranda",
+      "sourceUrl": "https://disdukcapil.bantulkab.go.id/",
+      "verifiedAt": "2026-11-08T13:53:14.210Z"
+    },
+    {
+      "kode": "3403",
+      "nama": "Kabupaten Gunungkidul",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3404",
+      "nama": "Kabupaten Sleman",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3471",
+      "nama": "Kota Yogyakarta",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3501",
+      "nama": "Kabupaten Pacitan",
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.pacitankab.go.id",
+      "judulHalaman": "Home -",
+      "sourceUrl": "https://dispendukcapil.pacitankab.go.id/",
+      "verifiedAt": "2026-11-08T13:53:23.269Z"
+    },
+    {
+      "kode": "3502",
+      "nama": "Kabupaten Ponorogo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3503",
+      "nama": "Kabupaten Trenggalek",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.trenggalekkab.go.id",
+      "judulHalaman": "DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KABUPATEN TRENGGALEK &#8211; WEBSITE RESMI DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KABUPATEN TRENGGALEK",
+      "sourceUrl": "https://dukcapil.trenggalekkab.go.id/",
+      "verifiedAt": "2026-11-08T13:53:33.831Z"
+    },
+    {
+      "kode": "3504",
+      "nama": "Kabupaten Tulungagung",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.tulungagung.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil",
+      "sourceUrl": "https://dukcapil.tulungagung.go.id/",
+      "verifiedAt": "2026-11-08T13:53:35.529Z"
+    },
+    {
+      "kode": "3505",
+      "nama": "Kabupaten Blitar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3506",
+      "nama": "Kabupaten Kediri",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.kedirikab.go.id",
+      "judulHalaman": "DUKCAPIL - Dinas Kependudukan dan Pencatatan Sipil",
+      "sourceUrl": "https://dukcapil.kedirikab.go.id/main?ztDF1s3G=ydDOxg%3D%3D",
+      "verifiedAt": "2026-11-08T13:54:17.458Z"
+    },
+    {
+      "kode": "3507",
+      "nama": "Kabupaten Malang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3508",
+      "nama": "Kabupaten Lumajang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3509",
+      "nama": "Kabupaten Jember",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3510",
+      "nama": "Kabupaten Banyuwangi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3511",
+      "nama": "Kabupaten Bondowoso",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3512",
+      "nama": "Kabupaten Situbondo",
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.situbondokab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil",
+      "alamat": "Jl. Sucipto No.57 Situbondo",
+      "sourceUrl": "https://dispendukcapil.situbondokab.go.id/",
+      "verifiedAt": "2026-11-08T13:54:25.653Z"
+    },
+    {
+      "kode": "3513",
+      "nama": "Kabupaten Probolinggo",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.probolinggokab.go.id",
+      "judulHalaman": "Beranda | Disdukcapil Kabupaten Probolinggo",
+      "sourceUrl": "https://disdukcapil.probolinggokab.go.id/",
+      "verifiedAt": "2026-11-08T13:54:27.604Z"
+    },
+    {
+      "kode": "3514",
+      "nama": "Kabupaten Pasuruan",
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.pasuruankab.go.id",
+      "judulHalaman": "https://dispendukcapil.pasuruankab.go.id/",
+      "sourceUrl": "https://dispendukcapil.pasuruankab.go.id/",
+      "verifiedAt": "2026-11-08T13:54:29.494Z"
+    },
+    {
+      "kode": "3515",
+      "nama": "Kabupaten Sidoarjo",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.sidoarjokab.go.id",
+      "judulHalaman": "Beranda | Disdukcapil",
+      "alamat": "Jl. Sultan Agung No. 23 Sidoarjo",
+      "sourceUrl": "https://disdukcapil.sidoarjokab.go.id/",
+      "verifiedAt": "2026-11-08T13:54:31.713Z"
+    },
+    {
+      "kode": "3516",
+      "nama": "Kabupaten Mojokerto",
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.mojokertokab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil",
+      "sourceUrl": "https://dispendukcapil.mojokertokab.go.id/",
+      "verifiedAt": "2026-11-08T13:54:33.571Z"
+    },
+    {
+      "kode": "3517",
+      "nama": "Kabupaten Jombang",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.jombangkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil - OPD Kabupaten Jombang",
+      "sourceUrl": "https://dukcapil.jombangkab.go.id/",
+      "verifiedAt": "2026-11-08T13:54:35.529Z"
+    },
+    {
+      "kode": "3518",
+      "nama": "Kabupaten Nganjuk",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3519",
+      "nama": "Kabupaten Madiun",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3520",
+      "nama": "Kabupaten Magetan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3521",
+      "nama": "Kabupaten Ngawi",
+      "status": "terverifikasi",
+      "website": "https://dukcapil.ngawikab.go.id",
+      "judulHalaman": "Dukcapil Ngawi - Dinas Kependudukan Dan Pencatatan Sipil Ngawi",
+      "sourceUrl": "https://dukcapil.ngawikab.go.id/",
+      "verifiedAt": "2026-11-08T13:54:54.224Z"
+    },
+    {
+      "kode": "3522",
+      "nama": "Kabupaten Bojonegoro",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3523",
+      "nama": "Kabupaten Tuban",
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.tubankab.go.id",
+      "judulHalaman": "SITUS RESMI DISDUKCAPIL KABUPATEN TUBAN",
+      "sourceUrl": "https://disdukcapil.tubankab.go.id/",
+      "verifiedAt": "2026-11-08T13:54:57.285Z"
+    },
+    {
+      "kode": "3524",
+      "nama": "Kabupaten Lamongan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3525",
+      "nama": "Kabupaten Gresik",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3526",
+      "nama": "Kabupaten Bangkalan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3527",
+      "nama": "Kabupaten Sampang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3528",
+      "nama": "Kabupaten Pamekasan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3529",
+      "nama": "Kabupaten Sumenep",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3571",
+      "nama": "Kota Kediri",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3572",
+      "nama": "Kota Blitar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3573",
+      "nama": "Kota Malang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3574",
+      "nama": "Kota Probolinggo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3575",
+      "nama": "Kota Pasuruan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3576",
+      "nama": "Kota Mojokerto",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3577",
+      "nama": "Kota Madiun",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3578",
+      "nama": "Kota Surabaya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3579",
+      "nama": "Kota Batu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3601",
+      "nama": "Kabupaten Pandeglang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3602",
+      "nama": "Kabupaten Lebak",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3603",
+      "nama": "Kabupaten Tangerang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3604",
+      "nama": "Kabupaten Serang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3671",
+      "nama": "Kota Tangerang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3672",
+      "nama": "Kota Cilegon",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3673",
+      "nama": "Kota Serang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3674",
+      "nama": "Kota Tangerang Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5101",
+      "nama": "Kabupaten Jembrana",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5102",
+      "nama": "Kabupaten Tabanan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5103",
+      "nama": "Kabupaten Badung",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5104",
+      "nama": "Kabupaten Gianyar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5105",
+      "nama": "Kabupaten Klungkung",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5106",
+      "nama": "Kabupaten Bangli",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5107",
+      "nama": "Kabupaten Karangasem",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5108",
+      "nama": "Kabupaten Buleleng",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5171",
+      "nama": "Kota Denpasar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5201",
+      "nama": "Kabupaten Lombok Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5202",
+      "nama": "Kabupaten Lombok Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5203",
+      "nama": "Kabupaten Lombok Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5204",
+      "nama": "Kabupaten Sumbawa",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5205",
+      "nama": "Kabupaten Dompu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5206",
+      "nama": "Kabupaten Bima",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5207",
+      "nama": "Kabupaten Sumbawa Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5208",
+      "nama": "Kabupaten Lombok Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5271",
+      "nama": "Kota Mataram",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5272",
+      "nama": "Kota Bima",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5301",
+      "nama": "Kabupaten Kupang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5302",
+      "nama": "Kabupaten Timor Tengah Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5303",
+      "nama": "Kabupaten Timor Tengah Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5304",
+      "nama": "Kabupaten Belu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5305",
+      "nama": "Kabupaten Alor",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5306",
+      "nama": "Kabupaten Flores Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5307",
+      "nama": "Kabupaten Sikka",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5308",
+      "nama": "Kabupaten Ende",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5309",
+      "nama": "Kabupaten Ngada",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5310",
+      "nama": "Kabupaten Manggarai",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5311",
+      "nama": "Kabupaten Sumba Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5312",
+      "nama": "Kabupaten Sumba Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5313",
+      "nama": "Kabupaten Lembata",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5314",
+      "nama": "Kabupaten Rote Ndao",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5315",
+      "nama": "Kabupaten Manggarai Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5316",
+      "nama": "Kabupaten Nagekeo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5317",
+      "nama": "Kabupaten Sumba Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5318",
+      "nama": "Kabupaten Sumba Barat Daya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5319",
+      "nama": "Kabupaten Manggarai Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5320",
+      "nama": "Kabupaten Sabu Raijua",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5321",
+      "nama": "Kabupaten Malaka",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5371",
+      "nama": "Kota Kupang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6101",
+      "nama": "Kabupaten Sambas",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6102",
+      "nama": "Kabupaten Mempawah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6103",
+      "nama": "Kabupaten Sanggau",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6104",
+      "nama": "Kabupaten Ketapang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6105",
+      "nama": "Kabupaten Sintang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6106",
+      "nama": "Kabupaten Kapuas Hulu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6107",
+      "nama": "Kabupaten Bengkayang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6108",
+      "nama": "Kabupaten Landak",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6109",
+      "nama": "Kabupaten Sekadau",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6110",
+      "nama": "Kabupaten Melawi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6111",
+      "nama": "Kabupaten Kayong Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6112",
+      "nama": "Kabupaten Kubu Raya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6171",
+      "nama": "Kota Pontianak",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6172",
+      "nama": "Kota Singkawang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6201",
+      "nama": "Kabupaten Kotawaringin Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6202",
+      "nama": "Kabupaten Kotawaringin Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6203",
+      "nama": "Kabupaten Kapuas",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6204",
+      "nama": "Kabupaten Barito Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6205",
+      "nama": "Kabupaten Barito Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6206",
+      "nama": "Kabupaten Katingan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6207",
+      "nama": "Kabupaten Seruyan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6208",
+      "nama": "Kabupaten Sukamara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6209",
+      "nama": "Kabupaten Lamandau",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6210",
+      "nama": "Kabupaten Gunung Mas",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6211",
+      "nama": "Kabupaten Pulang Pisau",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6212",
+      "nama": "Kabupaten Murung Raya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6213",
+      "nama": "Kabupaten Barito Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6271",
+      "nama": "Kota Palangkaraya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6301",
+      "nama": "Kabupaten Tanah Laut",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6302",
+      "nama": "Kabupaten Kotabaru",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6303",
+      "nama": "Kabupaten Banjar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6304",
+      "nama": "Kabupaten Barito Kuala",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6305",
+      "nama": "Kabupaten Tapin",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6306",
+      "nama": "Kabupaten Hulu Sungai Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6307",
+      "nama": "Kabupaten Hulu Sungai Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6308",
+      "nama": "Kabupaten Hulu Sungai Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6309",
+      "nama": "Kabupaten Tabalong",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6310",
+      "nama": "Kabupaten Tanah Bumbu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6311",
+      "nama": "Kabupaten Balangan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6371",
+      "nama": "Kota Banjarmasin",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6372",
+      "nama": "Kota Banjarbaru",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6401",
+      "nama": "Kabupaten Paser",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6402",
+      "nama": "Kabupaten Kutai Kartanegara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6403",
+      "nama": "Kabupaten Berau",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6407",
+      "nama": "Kabupaten Kutai Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6408",
+      "nama": "Kabupaten Kutai Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6409",
+      "nama": "Kabupaten Penajam Paser Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6411",
+      "nama": "Kabupaten Mahakam Ulu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6471",
+      "nama": "Kota Balikpapan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6472",
+      "nama": "Kota Samarinda",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6474",
+      "nama": "Kota Bontang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6501",
+      "nama": "Kabupaten Bulungan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6502",
+      "nama": "Kabupaten Malinau",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6503",
+      "nama": "Kabupaten Nunukan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6504",
+      "nama": "Kabupaten Tana Tidung",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6571",
+      "nama": "Kota Tarakan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7101",
+      "nama": "Kabupaten Bolaang Mongondow",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7102",
+      "nama": "Kabupaten Minahasa",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7103",
+      "nama": "Kabupaten Kepulauan Sangihe",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7104",
+      "nama": "Kabupaten Kepulauan Talaud",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7105",
+      "nama": "Kabupaten Minahasa Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7106",
+      "nama": "Kabupaten Minahasa Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7107",
+      "nama": "Kabupaten Minahasa Tenggara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7108",
+      "nama": "Kabupaten Bolaang Mongondow Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7109",
+      "nama": "Kabupaten Kep. Siau Tagulandang Biaro",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7110",
+      "nama": "Kabupaten Bolaang Mongondow Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7111",
+      "nama": "Kabupaten Bolaang Mongondow Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7171",
+      "nama": "Kota Manado",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7172",
+      "nama": "Kota Bitung",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7173",
+      "nama": "Kota Tomohon",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7174",
+      "nama": "Kota Kotamobagu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7201",
+      "nama": "Kabupaten Banggai",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7202",
+      "nama": "Kabupaten Poso",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7203",
+      "nama": "Kabupaten Donggala",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7204",
+      "nama": "Kabupaten Toli-Toli",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7205",
+      "nama": "Kabupaten Buol",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7206",
+      "nama": "Kabupaten Morowali",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7207",
+      "nama": "Kabupaten Banggai Kepulauan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7208",
+      "nama": "Kabupaten Parigi Moutong",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7209",
+      "nama": "Kabupaten Tojo Una Una",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7210",
+      "nama": "Kabupaten Sigi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7211",
+      "nama": "Kabupaten Banggai Laut",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7212",
+      "nama": "Kabupaten Morowali Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7271",
+      "nama": "Kota Palu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7301",
+      "nama": "Kabupaten Kepulauan Selayar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7302",
+      "nama": "Kabupaten Bulukumba",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7303",
+      "nama": "Kabupaten Bantaeng",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7304",
+      "nama": "Kabupaten Jeneponto",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7305",
+      "nama": "Kabupaten Takalar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7306",
+      "nama": "Kabupaten Gowa",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7307",
+      "nama": "Kabupaten Sinjai",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7308",
+      "nama": "Kabupaten Bone",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7309",
+      "nama": "Kabupaten Maros",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7310",
+      "nama": "Kabupaten Pangkajene dan Kepulauan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7311",
+      "nama": "Kabupaten Barru",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7312",
+      "nama": "Kabupaten Soppeng",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7313",
+      "nama": "Kabupaten Wajo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7314",
+      "nama": "Kabupaten Sidenreng Rappang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7315",
+      "nama": "Kabupaten Pinrang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7316",
+      "nama": "Kabupaten Enrekang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7317",
+      "nama": "Kabupaten Luwu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7318",
+      "nama": "Kabupaten Tana Toraja",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7322",
+      "nama": "Kabupaten Luwu Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7324",
+      "nama": "Kabupaten Luwu Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7326",
+      "nama": "Kabupaten Toraja Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7371",
+      "nama": "Kota Makassar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7372",
+      "nama": "Kota Parepare",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7373",
+      "nama": "Kota Palopo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7401",
+      "nama": "Kabupaten Kolaka",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7402",
+      "nama": "Kabupaten Konawe",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7403",
+      "nama": "Kabupaten Muna",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7404",
+      "nama": "Kabupaten Buton",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7405",
+      "nama": "Kabupaten Konawe Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7406",
+      "nama": "Kabupaten Bombana",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7407",
+      "nama": "Kabupaten Wakatobi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7408",
+      "nama": "Kabupaten Kolaka Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7409",
+      "nama": "Kabupaten Konawe Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7410",
+      "nama": "Kabupaten Buton Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7411",
+      "nama": "Kabupaten Kolaka Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7412",
+      "nama": "Kabupaten Konawe Kepulauan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7413",
+      "nama": "Kabupaten Muna Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7414",
+      "nama": "Kabupaten Buton Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7415",
+      "nama": "Kabupaten Buton Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7471",
+      "nama": "Kota Kendari",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7472",
+      "nama": "Kota Bau Bau",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7501",
+      "nama": "Kabupaten Gorontalo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7502",
+      "nama": "Kabupaten Boalemo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7503",
+      "nama": "Kabupaten Bone Bolango",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7504",
+      "nama": "Kabupaten Pohuwato",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7505",
+      "nama": "Kabupaten Gorontalo Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7571",
+      "nama": "Kota Gorontalo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7601",
+      "nama": "Kabupaten Pasangkayu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7602",
+      "nama": "Kabupaten Mamuju",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7603",
+      "nama": "Kabupaten Mamasa",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7604",
+      "nama": "Kabupaten Polewali Mandar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7605",
+      "nama": "Kabupaten Majene",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7606",
+      "nama": "Kabupaten Mamuju Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8101",
+      "nama": "Kabupaten Maluku Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8102",
+      "nama": "Kabupaten Maluku Tenggara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8103",
+      "nama": "Kabupaten Kepulauan Tanimbar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8104",
+      "nama": "Kabupaten Buru",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8105",
+      "nama": "Kabupaten Seram Bagian Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8106",
+      "nama": "Kabupaten Seram Bagian Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8107",
+      "nama": "Kabupaten Kepulauan Aru",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8108",
+      "nama": "Kabupaten Maluku Barat Daya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8109",
+      "nama": "Kabupaten Buru Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8171",
+      "nama": "Kota Ambon",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8172",
+      "nama": "Kota Tual",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8201",
+      "nama": "Kabupaten Halmahera Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8202",
+      "nama": "Kabupaten Halmahera Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8203",
+      "nama": "Kabupaten Halmahera Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8204",
+      "nama": "Kabupaten Halmahera Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8205",
+      "nama": "Kabupaten Kepulauan Sula",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8206",
+      "nama": "Kabupaten Halmahera Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8207",
+      "nama": "Kabupaten Pulau Morotai",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8208",
+      "nama": "Kabupaten Pulau Taliabu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8271",
+      "nama": "Kota Ternate",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8272",
+      "nama": "Kota Tidore Kepulauan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9103",
+      "nama": "Kabupaten Jayapura",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9105",
+      "nama": "Kabupaten Kepulauan Yapen",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9106",
+      "nama": "Kabupaten Biak Numfor",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9110",
+      "nama": "Kabupaten Sarmi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9111",
+      "nama": "Kabupaten Keerom",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9115",
+      "nama": "Kabupaten Waropen",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9119",
+      "nama": "Kabupaten Supiori",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9120",
+      "nama": "Kabupaten Mamberamo Raya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9171",
+      "nama": "Kota Jayapura",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9202",
+      "nama": "Kabupaten Manokwari",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9203",
+      "nama": "Kabupaten Fak Fak",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9206",
+      "nama": "Kabupaten Teluk Bintuni",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9207",
+      "nama": "Kabupaten Teluk Wondama",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9208",
+      "nama": "Kabupaten Kaimana",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9211",
+      "nama": "Kabupaten Manokwari Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9212",
+      "nama": "Kabupaten Pegunungan Arfak",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9301",
+      "nama": "Kabupaten Merauke",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9302",
+      "nama": "Kabupaten Boven Digoel",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9303",
+      "nama": "Kabupaten Mappi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9304",
+      "nama": "Kabupaten Asmat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9401",
+      "nama": "Kabupaten Nabire",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9402",
+      "nama": "Kabupaten Puncak Jaya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9403",
+      "nama": "Kabupaten Paniai",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9404",
+      "nama": "Kabupaten Mimika",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9405",
+      "nama": "Kabupaten Puncak",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9406",
+      "nama": "Kabupaten Dogiyai",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9407",
+      "nama": "Kabupaten Intan Jaya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9408",
+      "nama": "Kabupaten Deiyai",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9501",
+      "nama": "Kabupaten Jayawijaya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9502",
+      "nama": "Kabupaten Pegunungan Bintang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9503",
+      "nama": "Kabupaten Yahukimo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9504",
+      "nama": "Kabupaten Tolikara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9505",
+      "nama": "Kabupaten Mamberamo Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9506",
+      "nama": "Kabupaten Yalimo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9507",
+      "nama": "Kabupaten Lanny Jaya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9508",
+      "nama": "Kabupaten Nduga",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9601",
+      "nama": "Kabupaten Sorong",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9602",
+      "nama": "Kabupaten Sorong Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9603",
+      "nama": "Kabupaten Raja Ampat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9604",
+      "nama": "Kabupaten Tambrauw",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9605",
+      "nama": "Kabupaten Maybrat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9671",
+      "nama": "Kota Sorong",
+      "status": "belum_terverifikasi"
+    }
+  ]
+}

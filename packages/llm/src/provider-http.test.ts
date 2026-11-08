@@ -80,6 +80,8 @@ const provider = (extra: Record<string, string> = {}) =>
       LLM_MAX_RETRIES: '0',
       ...extra,
     }),
+    // Server uji di port loopback acak: egress (benar) memblokirnya, jadi tes memakai fetch global.
+    { fetch: (u, i) => fetch(u, i) },
   );
 
 const lastChatBody = () =>

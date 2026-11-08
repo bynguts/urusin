@@ -1,0 +1,113 @@
+# DIBANGKITKAN dari deploy/hosts.json (set "fallback") oleh scripts/gen-caddyfile.mjs. JANGAN DIEDIT
+# MANUAL: ubah hosts.json lalu jalankan `node scripts/gen-caddyfile.mjs`. CI menolak snippet yang menyimpang.
+#
+# Dipasang ke Caddy sistem (yang sudah memegang 80/443 dan situs lain) lewat SATU baris di Caddyfile host:
+#
+#   import /opt/urusin/Caddyfile.urusin
+#
+# Berkas itu salinan snippet set yang aktif (lihat deploy/README.md "Caddy"). Pasang tepat satu set:
+# nama snippet (urusin_common) sama di kedua set. Hostname ditulis literal; snippet ini tidak memakai
+# placeholder env sehingga environment proses Caddy tidak perlu diubah. Snippet hanya mendefinisikan
+# blok situs Urusin (tanpa opsi global), jadi blok situs lain di Caddyfile host tidak tersentuh.
+# Satu-satunya Content-Security-Policy dikirim aplikasi (SvelteKit); jangan menambah CSP di sini.
+
+(urusin_common) {
+	# Kompresi hanya untuk tipe yang aman dikompres. Matcher bawaan Caddy menyertakan `text/*`
+	# (https://caddyserver.com/docs/caddyfile/directives/encode) sehingga `text/event-stream` (SSE)
+	# ikut terkompres dan tertahan di buffer encoder. Matcher respons Caddy tidak punya negasi
+	# nilai, jadi daftarnya ditulis eksplisit: bawaan Caddy dikurangi `text/*`, ditambah tipe
+	# teks yang memang dilayani aplikasi.
+	encode zstd gzip {
+		match {
+			header Content-Type text/html*
+			header Content-Type text/css*
+			header Content-Type text/plain*
+			header Content-Type text/javascript*
+			header Content-Type text/xml*
+			header Content-Type text/csv*
+			header Content-Type application/atom+xml*
+			header Content-Type application/font*
+			header Content-Type application/geo+json*
+			header Content-Type application/graphql+json*
+			header Content-Type application/javascript*
+			header Content-Type application/json*
+			header Content-Type application/ld+json*
+			header Content-Type application/manifest+json*
+			header Content-Type application/rss+xml*
+			header Content-Type application/vnd.api+json*
+			header Content-Type application/wasm*
+			header Content-Type application/x-javascript*
+			header Content-Type application/xhtml+xml*
+			header Content-Type application/xml*
+			header Content-Type font/*
+			header Content-Type image/svg+xml*
+			header Content-Type image/x-icon*
+		}
+	}
+
+	header {
+		# TANPA includeSubDomains: domain induk bisa dipakai bersama layanan lain, dan sub-domain
+		# milik layanan itu belum tentu siap HTTPS-only.
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Kamera dipakai untuk foto dokumen, mikrofon untuk suara.
+		Permissions-Policy "camera=(self), microphone=(self), geolocation=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		# Tujuan `report-to` pada CSP aplikasi (endpoint relatif terhadap origin).
+		Reporting-Endpoints `csp-endpoint="/api/csp-report"`
+		-Server
+	}
+
+	# /api/health (liveness: gitSha, versi, runningTurns) tidak untuk publik. deploy.sh membacanya langsung
+	# lewat 127.0.0.1:4310/4311; smoke publik dan monitor memakai /api/ready.
+	respond /api/health* 404
+
+	# Blue/green: lalu lintas hanya ke warna AKTIF. Kedua port didaftarkan, tetapi `/api/ready` hanya 200
+	# pada warna yang dipromosikan deploy.sh (setelah smoke lulus), jadi health check aktif menandai warna
+	# lain tidak sehat dan `lb_policy first` memilih warna aktif. Pergantian warna tidak butuh reload Caddy.
+	# `lb_try_duration` mengulang permintaan yang gagal tersambung sehingga tidak ada 502 selama
+	# pergantian. flush_interval -1: teruskan SSE tanpa buffering.
+	reverse_proxy 127.0.0.1:4310 127.0.0.1:4311 {
+		lb_policy first
+		lb_try_duration 5s
+		lb_try_interval 250ms
+		health_uri /api/ready
+		health_interval 2s
+		health_timeout 2s
+		health_status 200
+		fail_duration 10s
+		flush_interval -1
+	}
+}
+
+# Aplikasi memilih rute /verify dari header Host mentah, jadi kedua host ke upstream yang sama.
+158-178-239-106.sslip.io, verify.158-178-239-106.sslip.io {
+	# Browser Pendamping (WebSocket layar). Nonaktif sampai disetujui lead: butuh port 127.0.0.1:4330 dan
+	# `COMPOSE_PROFILES=pendamping` (lihat deploy/compose.prod.yml). HANYA /pendamping/ws/* yang
+	# diteruskan; /internal/* dan /debug pendamping tidak pernah diekspos. Pendamping memeriksa Origin
+	# persis, cookie urusin_sid pemilik, dan tiket sekali pakai.
+	#
+	# handle /pendamping/ws/* {
+	# 	uri strip_prefix /pendamping
+	# 	reverse_proxy 127.0.0.1:4330
+	# }
+	import urusin_common
+}
+
+# Fixture publik (portal palsu untuk demo), profil `public`, 127.0.0.1:4320. Nonaktif secara bawaan:
+# bangkitkan dengan `--fixtures` setelah DNS fixtures.158-178-239-106.sslip.io ada dan `COMPOSE_PROFILES=fixtures` +
+# FIXTURES_IMAGE diset (lihat deploy/README.md).
+# fixtures.158-178-239-106.sslip.io {
+# 	encode zstd gzip
+# 	header {
+# 		Strict-Transport-Security "max-age=31536000"
+# 		X-Content-Type-Options "nosniff"
+# 		# Situs uji: jangan diindeks dan tandai jelas bukan situs pemerintah (nilai header ASCII).
+# 		X-Robots-Tag "noindex, nofollow"
+# 		X-Site-Notice "Situs uji - bukan situs pemerintah"
+# 		-Server
+# 	}
+# 	reverse_proxy 127.0.0.1:4320
+# }

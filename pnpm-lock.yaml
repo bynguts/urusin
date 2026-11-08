@@ -155,6 +155,9 @@ importers:
       '@urusin/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@urusin/egress':
+        specifier: workspace:*
+        version: link:../../packages/egress
       '@urusin/harness':
         specifier: workspace:*
         version: link:../../packages/harness
@@ -262,6 +265,28 @@ importers:
         specifier: 5.1.0
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
+  packages/egress:
+    dependencies:
+      '@urusin/core':
+        specifier: workspace:*
+        version: link:../core
+      undici:
+        specifier: 8.12.2
+        version: 8.12.2
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
+      '@vitest/coverage-v8':
+        specifier: 5.1.0
+        version: 5.1.0(vitest@5.1.0)
+      eslint:
+        specifier: 10.14.0
+        version: 10.14.0(jiti@2.7.0)
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+
   packages/executor:
     dependencies:
       '@urusin/core':
@@ -320,9 +345,12 @@ importers:
 
   packages/llm:
     dependencies:
+      '@urusin/egress':
+        specifier: workspace:*
+        version: link:../egress
       openai:
         specifier: 7.53.0
-        version: 7.53.0(ws@8.22.1)(zod@4.6.7)
+        version: 7.53.0(undici@8.12.2)(ws@8.22.1)(zod@4.6.7)
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -357,6 +385,9 @@ importers:
       '@urusin/core':
         specifier: workspace:*
         version: link:../core
+      '@urusin/egress':
+        specifier: workspace:*
+        version: link:../egress
       '@urusin/llm':
         specifier: workspace:*
         version: link:../llm
@@ -3181,6 +3212,10 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
+  undici@8.12.2:
+    resolution: {integrity: sha512-XtuDWVdqTLr3NAxm2ly9/hU6kUsJOgGh1RASzMBbsw6aWCOaQzHdW+QQDfdERjfJ2V5vL5pRPa4RetO9UfivDg==}
+    engines: {node: '>=22.19.0'}
+
   unimport@6.5.0:
     resolution: {integrity: sha512-t0KLJLRbebz3f7NrQe+vy2ObeugVeM1XqI2oeYnauddmHSglYj3U6bxOJ65IbXmOFkcAGFJK2OyGH7aqHPM6Ug==}
     engines: {node: '>=18.12.0'}
@@ -5606,8 +5641,9 @@ snapshots:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
-  openai@7.53.0(ws@8.22.1)(zod@4.6.7):
+  openai@7.53.0(undici@8.12.2)(ws@8.22.1)(zod@4.6.7):
     optionalDependencies:
+      undici: 8.12.2
       ws: 8.22.1
       zod: 4.6.7
 
@@ -6214,6 +6250,8 @@ snapshots:
   uhyphen@0.2.0: {}
 
   undici-types@8.9.0: {}
+
+  undici@8.12.2: {}
 
   unimport@6.5.0(oxc-parser@0.152.0)(rolldown@1.2.16)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)):
     dependencies:

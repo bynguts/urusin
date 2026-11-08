@@ -25,6 +25,7 @@ import {
 import { openDb } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { RateLimiter } from './limiter.js';
+import { setRunningTurnsSource } from './running-turns.js';
 
 /** Konfigurasi runtime dari env (dibaca sekali saat boot). Semua opsional kecuali yang bertanda. */
 export type RuntimeConfig = {
@@ -63,8 +64,30 @@ export function publicOrigin(): string {
   return readConfig().publicOrigin;
 }
 
+/** Status korpus RAG yang dipakai runtime (dilaporkan /api/health). */
+export type RagInfo =
+  | { status: 'demo'; chunks: number }
+  | { status: 'ready'; chunks: number; vectors: number; vectorModel: string | null };
+
+/** Hitung isi korpus yang sudah dibuka; `ready` hanya untuk berkas URUSIN_RAG_DB, `demo` untuk korpus contoh. */
+export function ragInfo(ragDb: Db, fromFile: boolean): RagInfo {
+  const count = (sql: string) => (ragDb.prepare(sql).get() as { n: number }).n;
+  const chunks = count('SELECT count(*) AS n FROM chunks');
+  if (!fromFile) return { status: 'demo', chunks };
+  const t = ragDb.prepare('SELECT model FROM vector_transform WHERE id = 1').get() as
+    { model: string | null } | undefined;
+  return {
+    status: 'ready',
+    chunks,
+    vectors: count('SELECT count(*) AS n FROM chunk_vectors'),
+    vectorModel: t?.model ?? null,
+  };
+}
+
 export type Runtime = ReturnType<typeof createHarness> & {
   config: RuntimeConfig;
+  /** Korpus RAG yang terbuka (dihitung sekali saat runtime dirakit). */
+  rag: RagInfo;
   /** 'demo' = FakeProvider berskrip (tanpa kunci LLM); 'llm' = provider OpenAI-compatible nyata. */
   mode: 'demo' | 'llm';
   /** Turn yang sedang berjalan per urusan (untuk pembatalan saat klien putus). */
@@ -101,6 +124,8 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     h.bus.publish(urusanId, ev);
     return ev;
   };
+  const running = new Map<string, AbortController>();
+  setRunningTurnsSource(() => running.size);
   const jam = 3_600_000;
   const menit = 60_000;
   const limits: Runtime['limits'] = {
@@ -113,7 +138,8 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
       sesi: new RateLimiter(config.turnPerMenitSesi, menit),
     },
   };
-  return { ...h, config, mode: init.mode ?? 'demo', running: new Map(), publish, limits };
+  const rag = ragInfo(ragDb, Boolean(config.ragDbPath));
+  return { ...h, config, rag, mode: init.mode ?? 'demo', running, publish, limits };
 }
 
 function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {

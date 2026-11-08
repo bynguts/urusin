@@ -48,6 +48,9 @@ jobs:
       - name: Job tag tidak membangun image (hanya alias digest)
         run: node scripts/check-tag-no-build.mjs
 
+      - name: Snippet Caddy cocok dengan deploy/hosts.json (hostname literal)
+        run: node scripts/gen-caddyfile.mjs --check
+
       - name: Lint
         run: pnpm lint && pnpm format:check
 

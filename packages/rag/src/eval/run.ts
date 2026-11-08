@@ -19,10 +19,14 @@ export type RetrievalPipeline = {
   vector?: { transform: FitOptions };
   rerank?: boolean;
   /** Gerbang abstain: kosongkan hasil bila cakupan leksikal top-3 < minCoverage (butuh `stages.coverage`). */
-  abstain?: { minCoverage: number };
+  abstain?: {
+    minCoverage: number;
+    /** Lantai skor rerank (butuh `stages.rerankScored` + rerank): skor teratas di bawahnya = abstain. */
+    minRerankScore?: number;
+  };
 };
 
-export type StageCandidate = { id: string; text: string };
+export type StageCandidate = { id: string; text: string; judul?: string };
 
 /** Implementasi tahap yang disuntikkan. Semua opsional. */
 export type PipelineStages = {
@@ -42,6 +46,11 @@ export type PipelineStages = {
   ) => number | null;
   /** Urutkan ulang kandidat; mengembalikan id berurutan. */
   rerank?: (query: string, candidates: StageCandidate[]) => Promise<string[]>;
+  /** Rerank dengan skor relevansi (null = skor tak tersedia, mis. fallback); diutamakan atas `rerank`. */
+  rerankScored?: (
+    query: string,
+    candidates: StageCandidate[],
+  ) => Promise<{ id: string; score: number | null }[]>;
 };
 
 export type NamedPipeline = { name: string; config: RetrievalPipeline };
@@ -90,6 +99,10 @@ export async function runEval(opts: {
   gold: readonly GoldItem[];
   /** null => hanya mode A (BM25). */
   embed: Embedder | null;
+  /** Embedder khusus kueri (mis. Jina task retrieval.query); bawaan = `embed`. */
+  embedQuery?: Embedder | null;
+  /** true = abaikan vektor tersimpan di DB (bandingkan model berbeda dengan DB yang sama). */
+  ignoreStoredVectors?: boolean;
   whitenKs?: readonly number[];
   pipelines?: readonly NamedPipeline[];
   stages?: PipelineStages;
@@ -120,14 +133,14 @@ export async function runEval(opts: {
   let raw: Float32Array[] = [];
   let qvecs: Float32Array[] = [];
   if (opts.embed) {
-    const cached = new Map(loadRawVectors(db).map((r) => [r.id, r.raw]));
+    const cached = new Map(opts.ignoreStoredVectors ? [] : loadRawVectors(db).map((r) => [r.id, r.raw]));
     const missing = chunks.filter((c) => !cached.has(c.id));
     if (missing.length) {
       const vecs = await opts.embed(missing.map((c) => `${c.judul}\n${c.text}`));
       missing.forEach((c, i) => cached.set(c.id, vecs[i] as Float32Array));
     }
     raw = chunks.map((c) => cached.get(c.id) as Float32Array);
-    qvecs = await opts.embed(gold.map((g) => g.pertanyaan));
+    qvecs = await (opts.embedQuery ?? opts.embed)(gold.map((g) => g.pertanyaan));
   }
 
   for (const { name, config } of opts.pipelines ?? [BASELINE_PIPELINE]) {
@@ -135,7 +148,8 @@ export async function runEval(opts: {
     const stemmed = config.bm25?.stemmed === true;
     if (stemmed && !stages.bm25) notes.push('bm25.stemmed: tahap tidak tersedia, diabaikan (no-op)');
     if (config.expand && !stages.expand) notes.push('expand: tahap tidak tersedia, diabaikan (no-op)');
-    if (config.rerank && !stages.rerank) notes.push('rerank: tahap tidak tersedia, diabaikan (no-op)');
+    if (config.rerank && !stages.rerank && !stages.rerankScored)
+      notes.push('rerank: tahap tidak tersedia, diabaikan (no-op)');
 
     const gate = config.abstain;
     if (gate && !stages.coverage) notes.push('abstain: tahap coverage tidak tersedia, diabaikan (no-op)');
@@ -154,8 +168,11 @@ export async function runEval(opts: {
     };
 
     /** Peringkat id untuk satu pertanyaan: [expand] -> BM25 -> [RRF vektor] -> [rerank] -> top-10. */
-    const rankFor = async (g: GoldItem, vectorIds?: readonly string[]): Promise<string[]> => {
-      if (abstains(g)) return [];
+    const rankFor = async (
+      g: GoldItem,
+      vectorIds?: readonly string[],
+    ): Promise<{ ids: string[]; abstained: boolean }> => {
+      if (abstains(g)) return { ids: [], abstained: true };
       const query = config.expand && stages.expand ? stages.expand(g.pertanyaan) : g.pertanyaan;
       const q = { query, kodeKabKota: g.kodeWilayah };
       const bm =
@@ -165,27 +182,34 @@ export async function runEval(opts: {
       let ids = vectorIds?.length
         ? reciprocalRankFusion([bm.map((id) => ({ id })), vectorIds.map((id) => ({ id }))]).map((f) => f.id)
         : bm;
-      if (config.rerank && stages.rerank) {
+      if (config.rerank && (stages.rerankScored || stages.rerank)) {
         const cands = ids.slice(0, 20).flatMap((id) => {
           const c = byId.get(id);
-          return c ? [{ id, text: c.text }] : [];
+          return c ? [{ id, text: c.text, judul: c.judul }] : [];
         });
-        ids = await stages.rerank(query, cands);
+        if (stages.rerankScored) {
+          const scored = await stages.rerankScored(query, cands);
+          ids = scored.map((s) => s.id);
+          const top = scored[0]?.score;
+          const floor = gate?.minRerankScore;
+          if (floor !== undefined && top !== null && top !== undefined && top < floor)
+            return { ids: [], abstained: true };
+        } else if (stages.rerank) ids = await stages.rerank(query, cands);
       }
-      return ids.slice(0, 10);
+      return { ids: ids.slice(0, 10), abstained: false };
     };
 
     const score = async (
       mode: string,
       label: string,
-      idsFor: (g: GoldItem, i: number) => Promise<string[]>,
+      idsFor: (g: GoldItem, i: number) => Promise<{ ids: string[]; abstained: boolean }>,
     ): Promise<EvalRow> => {
       const s = { r1: 0, r3: 0, r5: 0, mrr: 0, ndcg: 0 };
       let abstained = 0;
       let abstainedOos = 0;
       for (const [i, g] of gold.entries()) {
-        const ids = await idsFor(g, i);
-        if (ids.length === 0 && abstains(g)) {
+        const { ids, abstained: did } = await idsFor(g, i);
+        if (did) {
           abstained++;
           if (g.luarCakupan) abstainedOos++;
         }

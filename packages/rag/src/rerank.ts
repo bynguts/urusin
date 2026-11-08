@@ -60,7 +60,15 @@ export async function rerankHits(
   const maxDoc = deps.maxDocChars ?? 500;
   const maxPrompt = deps.maxPromptChars ?? 12000;
   const perDoc = Math.max(80, Math.min(maxDoc, Math.floor(maxPrompt / candidates.length)));
-  const docs: RerankDoc[] = candidates.map((h) => ({ id: h.id, text: h.text.slice(0, perDoc) }));
+  // Judul sumber ikut dikirim: potongan pendek ("Biaya: tidak ada") tak bermakna tanpa nama layanannya.
+  const docs: RerankDoc[] = candidates.map((h) => ({
+    id: h.id,
+    text: (h.kutipan.judul
+      ? `${h.kutipan.judul}
+${h.text}`
+      : h.text
+    ).slice(0, perDoc),
+  }));
   const byId = new Map(candidates.map((h) => [h.id, h]));
 
   if (deps.budget) {

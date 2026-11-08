@@ -21,6 +21,7 @@
   "dependencies": {
     "@urusin/contracts": "workspace:*",
     "@urusin/core": "workspace:*",
+    "@urusin/egress": "workspace:*",
     "@urusin/harness": "workspace:*",
     "@urusin/llm": "workspace:*",
     "@urusin/rag": "workspace:*",
