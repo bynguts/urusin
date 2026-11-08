@@ -164,6 +164,9 @@ services:
     cpus: 1.0
     cpu_shares: 256
     pids_limit: 512
+    # Tanpa core dump: memori renderer bisa memuat ketikan/kredensial warga.
+    ulimits:
+      core: 0
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
