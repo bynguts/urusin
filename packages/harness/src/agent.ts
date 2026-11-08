@@ -276,16 +276,17 @@ class TurnRunner {
   private buildMessages(note: string, extra: ChatMessage[] = []): ChatMessage[] {
     const turnMsgs = [...this.turnMessages, ...extra];
     const history = this.store.loadHistory(this.turn.urusanId);
-    const head: ChatMessage[] = [
+    // Catatan tidak boleh memisahkan assistant(tool_calls) dari hasil tool-nya: penyedia menolak urutan itu
+    // (400). Bila pesan terakhir hasil tool, sisipkan sebelum assistant pemilik grup tool terakhir.
+    let cut = turnMsgs.length - 1;
+    while (cut > 0 && turnMsgs[cut]?.role === 'tool') cut--;
+    cut = Math.max(cut, 0);
+    return this.turn.pii.redactMessages([
       { role: 'system', content: buildSystemPrompt() },
       ...history,
-      ...turnMsgs.slice(0, -1),
-    ];
-    const last = turnMsgs[turnMsgs.length - 1];
-    return this.turn.pii.redactMessages([
-      ...head,
+      ...turnMsgs.slice(0, cut),
       { role: 'system', content: note },
-      ...(last ? [last] : []),
+      ...turnMsgs.slice(cut),
     ]);
   }
 

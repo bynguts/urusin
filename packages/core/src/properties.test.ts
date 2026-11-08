@@ -160,5 +160,6 @@ describe('property: pencocok allowlist domain', () => {
         if (r.ok) expect(hosts).toContain(r.url.hostname);
       }),
     );
-  });
+    // fc.webUrl lambat di runner CI bersama (5,4 detik terukur); batas eksplisit agar tidak flaky.
+  }, 20_000);
 });
