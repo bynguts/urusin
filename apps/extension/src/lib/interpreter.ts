@@ -130,6 +130,8 @@ export class Interpreter {
         }
         if (changeInfo.status !== 'complete' || !c.awaiting.sawLoading) return;
         const tab = await this.driver.tab(tabId);
+        // Event basi dari tab kosong yang baru dibuka (sebelum navigasi kita commit): abaikan.
+        if (tab && (tab.url === '' || tab.url === 'about:blank')) return;
         const allowed = tab
           ? await this.allow(tab.url)
           : { ok: false as const, code: 'TAB_CLOSED', message: 'tab ditutup' };
