@@ -74,10 +74,13 @@ export async function vectorIdsForQuery(
   query: string,
   filter: VectorFilter = {},
   limit = 20,
+  model?: string,
 ): Promise<string[] | undefined> {
   if (!embed) return undefined;
   const active = loadActiveTransform(db);
   if (!active) return undefined;
+  // Vektor dokumen dibuat model lain: dimensi/ruang berbeda, skor tidak bermakna -> BM25 saja.
+  if (model !== undefined && active.model !== model) return undefined;
   try {
     const [q] = await embed([query]);
     if (!q || q.length !== active.params.dim) return undefined;

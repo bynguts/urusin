@@ -1,14 +1,24 @@
 import { OpenAIProvider, generateStructured, loadLlmConfig, probeCapabilities } from '@urusin/llm';
 import type { JsonCall } from '../llm-stage.js';
+import { newStats, type FetchFn, type ProviderStats } from '../providers/http.js';
+import { createHttpRerankEndpoint, loadRerankConfig } from '../providers/rerank-endpoint.js';
 import type { RerankDeps } from '../rerank.js';
 
 /**
- * Rerank listwise nyata lewat gateway `@urusin/llm`, hanya bila env LLM lengkap. Selain itu null
- * (tahap rerank no-op). Sengaja tidak diekspor dari index.ts, sama seperti embedder.ts.
+ * Dependensi rerank nyata. Prioritas: endpoint khusus (env RERANK_*, skor relevansi) lalu LLM listwise lewat
+ * gateway `@urusin/llm`. Tidak ada keduanya => null (tahap rerank no-op). Sengaja tidak diekspor dari index.ts.
  */
 export async function loadRealRerankDeps(
   env: Record<string, string | undefined> = process.env,
+  stats?: ProviderStats,
+  fetch?: FetchFn | undefined,
 ): Promise<RerankDeps | null> {
+  const rr = loadRerankConfig(env);
+  if (rr)
+    return {
+      endpoint: createHttpRerankEndpoint(rr, { stats: stats ?? newStats(), fetch }),
+      timeoutMs: 20_000,
+    };
   let config;
   try {
     config = loadLlmConfig(env);

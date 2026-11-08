@@ -1,0 +1,69 @@
+{
+  "catatan": "Kanal resmi nasional untuk layanan di luar cakupan Urusin. Tautan hanya dari domain resmi (.go.id) dan hanya ditampilkan bila verifiedAt terisi oleh pemeriksaan nyata (`pnpm --filter @urusin/rag rag:kanal`); entri tanpa verifiedAt cuma menyebut instansinya.",
+  "kanal": [
+    {
+      "id": "skck",
+      "layanan": "SKCK (Surat Keterangan Catatan Kepolisian)",
+      "instansi": "Kepolisian Negara Republik Indonesia (Polri)",
+      "url": "https://skck.polri.go.id/",
+      "deskripsi": "Pengajuan SKCK dilakukan lewat layanan resmi Polri. Tautan diverifikasi dari portal resmi Polri (situs tujuan tidak terjangkau dari lingkungan verifikasi kami).",
+      "cek": "skck.polri.go.id",
+      "verifikasiVia": "https://www.polri.go.id/",
+      "verifiedAt": null
+    },
+    {
+      "id": "sim",
+      "layanan": "SIM (Surat Izin Mengemudi)",
+      "instansi": "Korps Lalu Lintas Polri",
+      "url": "https://korlantas.polri.go.id/",
+      "deskripsi": "Penerbitan dan perpanjangan SIM diurus lewat layanan resmi Korlantas Polri.",
+      "cek": "sim|lalu lintas|korlantas",
+      "verifiedAt": "2026-11-08T13:54:56.112Z"
+    },
+    {
+      "id": "paspor",
+      "layanan": "Paspor",
+      "instansi": "Direktorat Jenderal Imigrasi",
+      "url": "https://www.imigrasi.go.id/",
+      "deskripsi": "Permohonan paspor diurus lewat layanan resmi Imigrasi.",
+      "cek": "paspor|imigrasi",
+      "verifiedAt": "2026-11-08T13:54:58.198Z"
+    },
+    {
+      "id": "bpjs",
+      "layanan": "BPJS Kesehatan",
+      "instansi": "BPJS Kesehatan",
+      "url": "https://www.bpjs-kesehatan.go.id/",
+      "deskripsi": "Pendaftaran dan layanan peserta JKN diurus lewat kanal resmi BPJS Kesehatan.",
+      "cek": "bpjs",
+      "verifiedAt": "2026-11-08T13:55:00.307Z"
+    },
+    {
+      "id": "dpt",
+      "layanan": "Cek DPT (Daftar Pemilih Tetap)",
+      "instansi": "Komisi Pemilihan Umum (KPU)",
+      "url": "https://cekdptonline.kpu.go.id/",
+      "deskripsi": "Pengecekan nama di daftar pemilih tetap lewat layanan resmi KPU.",
+      "cek": "dpt|pemilih",
+      "verifiedAt": "2026-11-08T13:55:02.337Z"
+    },
+    {
+      "id": "npwp",
+      "layanan": "NPWP",
+      "instansi": "Direktorat Jenderal Pajak",
+      "url": "https://www.pajak.go.id/",
+      "deskripsi": "Pendaftaran dan layanan NPWP diurus lewat kanal resmi Direktorat Jenderal Pajak.",
+      "cek": "npwp|pajak",
+      "verifiedAt": "2026-11-08T13:55:04.467Z"
+    },
+    {
+      "id": "ikd",
+      "layanan": "IKD (Identitas Kependudukan Digital)",
+      "instansi": "Direktorat Jenderal Kependudukan dan Pencatatan Sipil, Kemendagri",
+      "url": "https://dukcapil.kemendagri.go.id/",
+      "deskripsi": "Aktivasi dan informasi IKD lewat kanal resmi Ditjen Dukcapil.",
+      "cek": "ikd|identitas kependudukan digital",
+      "verifiedAt": "2026-11-08T13:55:06.727Z"
+    }
+  ]
+}
