@@ -24,6 +24,7 @@
     "@urusin/core": "workspace:*",
     "@urusin/egress": "workspace:*",
     "@urusin/harness": "workspace:*",
+    "@urusin/pendamping-client": "workspace:*",
     "@urusin/llm": "workspace:*",
     "@urusin/rag": "workspace:*",
     "@urusin/registry": "workspace:*",

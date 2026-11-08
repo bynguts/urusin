@@ -167,6 +167,9 @@ importers:
       '@urusin/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@urusin/pendamping-client':
+        specifier: workspace:*
+        version: link:../../packages/pendamping-client
       '@urusin/rag':
         specifier: workspace:*
         version: link:../../packages/rag
