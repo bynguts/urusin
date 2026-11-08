@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Docker palsu untuk tes deploy.sh. Status (warna yang berjalan) disimpan di $SHIM_DIR.
+echo "docker $*" >> "$SHIM_DIR/calls.log"
+case "$1" in
+  pull | ps | rm) exit 0 ;;
+  image) echo "${SHIM_LABEL-}"; exit 0 ;;
+  buildx)
+    case "$*" in
+      *Provenance*) echo "${SHIM_PROVENANCE:-null}" ;;
+      *) echo "\"${SHIM_DIGEST:-sha256:0000000000000000000000000000000000000000000000000000000000000000}\"" ;;
+    esac
+    exit 0 ;;
+  compose)
+    args=("$@"); imgs=""; sub=""
+    for i in "${!args[@]}"; do [ "${args[$i]}" = "--env-file" ] && imgs="${args[$((i + 1))]}"; done
+    for a in "${args[@]}"; do case "$a" in up | stop | logs) sub="$a" ;; esac; done
+    svc="${args[$((${#args[@]} - 1))]}"; color="${svc#web-}"; C="$(echo "$color" | tr '[:lower:]' '[:upper:]')"
+    case "$sub" in
+      up)
+        sha="$(sed -n "s/^GIT_SHA_${C}=//p" "$imgs" | head -n1)"
+        override="SHIM_SERVE_${C}"; down="SHIM_DOWN_${C}"
+        [ -z "${!override:-}" ] || sha="${!override}"
+        if [ -n "${!down:-}" ]; then rm -f "$SHIM_DIR/running.$color"; else echo "$sha" > "$SHIM_DIR/running.$color"; fi ;;
+      stop) rm -f "$SHIM_DIR/running.$color" ;;
+    esac
+    exit 0 ;;
+esac
+exit 0
