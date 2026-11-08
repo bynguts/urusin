@@ -608,7 +608,7 @@ class TurnRunner {
           return { content: JSON.stringify({ is_error: true, pesan: e.message }), end: false };
         }
       }
-      return { content: clip(res.content), end: res.endTurn === true };
+      return { content: res.terbungkus ? res.content : clip(res.content), end: res.endTurn === true };
     } catch (e) {
       // Tindakan tidak sampai ke warga: konfirmasi tidak boleh hangus.
       if (outcome.confirmationId) this.store.releaseConfirmation(outcome.confirmationId);

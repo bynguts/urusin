@@ -122,3 +122,51 @@ describe('temuan 3: redaksi penyimpanan tidak merusak JSON dan konfirmasi tidak 
     expect(env.store.activeConfirmations(u.id).map((c) => c.id)).toEqual([conf]);
   });
 });
+
+describe('temuan 6: keluaran tool terbungkus tidak dipotong sehingga penutup spotlight utuh', () => {
+  it('formatHits: 4 hit panjang tetap memuat 4 penutup pembungkus', async () => {
+    const { formatHits } = await import('./builtin-tools.js');
+    const hit = (i: number) =>
+      ({
+        id: `c${i}`,
+        text: 'kata '.repeat(2000),
+        verifiedAt: null,
+        kutipan: { judul: 'J'.repeat(400), instansi: 'I'.repeat(400) },
+      }) as never;
+    const out = formatHits([hit(1), hit(2), hit(3), hit(4)], 'NONCE1');
+    expect(out.match(/<<\/DATA_TAK_TEPERCAYA nonce="NONCE1">>/g)).toHaveLength(4);
+    expect(out).not.toContain('[dipotong]…');
+  });
+
+  it('harness tidak memotong hasil tool bertanda terbungkus (> 2000 karakter) tetapi tetap memotong yang lain', async () => {
+    const panjang = 'a'.repeat(3000);
+    const mk = (name: string, terbungkus: boolean) =>
+      defineTool({
+        name,
+        description: 'uji',
+        effect: 'read',
+        input: z.object({}),
+        allowedStates: ['BARU', 'MEMAHAMI'],
+        execute: () => ({ content: panjang, terbungkus }),
+      });
+    for (const [terbungkus, panjangDiharapkan] of [
+      [true, 3000],
+      [false, 2000 + '…[dipotong]'.length],
+    ] as const) {
+      const provider = new FakeProvider({
+        replies: [
+          fakeCompletion({ toolCalls: [{ name: 'uji__baca', arguments: '{}' }] }),
+          fakeCompletion({ content: 'selesai' }),
+        ],
+      });
+      const env = makeEnv({ provider, tools: [mk('uji__baca', terbungkus)] });
+      const u = env.store.createUrusan({ jenis: 'akta' });
+      await runTurn(env.deps, { urusanId: u.id, userText: 'halo' });
+      const tool = provider.calls
+        .flatMap((c) => (c.kind === 'create' ? c.params.messages : []))
+        .filter((m) => m.role === 'tool')
+        .map((m) => String(m.content));
+      expect(tool.at(-1)?.length).toBe(panjangDiharapkan);
+    }
+  });
+});
