@@ -63,6 +63,25 @@ describe('lease turn lintas instance (B2b)', () => {
     expect(() => b.claimTurn(u.id, 'lanjut')).not.toThrow();
   });
 
+  it('claimTurn melepas turn yatim sendiri: 409 sebelum lease habis, berhasil sesudahnya, dengan event', () => {
+    let t = Date.parse('2026-11-09T00:00:00Z');
+    const now = () => new Date(t);
+    const { a, b } = dua({ leaseMs: 1000, nowA: now, nowB: now });
+    const u = a.createUrusan();
+    const lama = a.claimTurn(u.id, 'halo');
+    t += 500; // A "mati": tidak memperpanjang
+    expect(() => b.claimTurn(u.id, 'lagi')).toThrow(TurnInProgressError);
+    t += 1000;
+    const baru = b.claimTurn(u.id, 'lagi');
+    expect(baru.turnId).not.toBe(lama.turnId);
+    expect(a.db.prepare('SELECT status, error_code FROM turns WHERE id = ?').get(lama.turnId)).toEqual({
+      status: 'error',
+      error_code: 'ABANDONED',
+    });
+    expect(b.eventsAfter(u.id, 0).some((e) => e.type === 'error')).toBe(true);
+    expect(b.verifyChain(u.id).ok).toBe(true);
+  });
+
   it('renewLease memperpanjang hanya turn milik instance sendiri', () => {
     let t = Date.parse('2026-11-09T00:00:00Z');
     const { a, b } = dua({ leaseMs: 1000, nowA: () => new Date(t), nowB: () => new Date(t) });

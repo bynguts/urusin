@@ -1,7 +1,7 @@
 import type { IntentJenis } from '../intent.js';
 
 /**
- * Set tugas eval intent (rencana §5.1 Rab 11 + audit #6). Data murni: 4 Peristiwa Hidup + urusan umum.
+ * Set tugas eval intent (rencana §5.1 + audit #6). Data murni: 4 Peristiwa Hidup + urusan umum.
  * `ekspektasi`:
  *  - jawaban: ada potongan di korpus → harus keluar `grounded_answer` dengan ≥ 1 klaim, tanpa klaim dibuang
  *  - handoff: tidak ada sumber di korpus → harus `handoff` ke kanal resmi (tidak boleh mengarang)

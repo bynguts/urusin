@@ -229,6 +229,20 @@ export class HarnessStore {
       const u = this.getUrusanOrThrow(urusanId);
       if (isTerminal(u.state)) throw new TerminalStateError(u.state);
       if (opts.expectedVersion !== undefined && u.version !== opts.expectedVersion) throw new ConflictError();
+      // Turn yatim (pemilik mati, lease lewat) dilepas di sini juga: reaper saat boot saja tidak cukup pada blue/green.
+      const now = this.iso();
+      const yatim = this.db
+        .prepare(
+          "UPDATE turns SET status = 'error', error_code = 'ABANDONED', ended_at = ? WHERE urusan_id = ? AND status = 'running' AND (lease_until IS NULL OR lease_until < ?)",
+        )
+        .run(now, urusanId, now).changes;
+      if (yatim > 0) {
+        this.appendEvent(urusanId, 'error', {
+          kode: 'ABORTED',
+          pesanWarga: 'Proses sebelumnya terhenti karena server dipindahkan. Silakan lanjutkan.',
+          bisaUlang: true,
+        });
+      }
       const running = this.db
         .prepare("SELECT 1 FROM turns WHERE urusan_id = ? AND status = 'running'")
         .get(urusanId);
