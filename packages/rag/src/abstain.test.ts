@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cariPengetahuanTool, openDb, upsertChunks, DEFAULT_MIN_COVERAGE } from './index.js';
+import { fakeEmbedder } from './eval/fake-embedder.js';
+import { embedAndFit, vectorIdsForQuery } from './vector/pipeline.js';
 
 const mk = (id: string, judul: string, text: string, extra: Record<string, unknown> = {}) => ({
   id,
@@ -142,54 +144,83 @@ const OUT_OF_SCOPE = [
 
 const db = openDb(':memory:');
 upsertChunks(db, CORPUS);
-const run = (q: string, minCoverage?: number) =>
+const embed = fakeEmbedder();
+await embedAndFit(db, embed, { mode: 'center' });
+/** Leg vektor tiap kueri dihitung sekali (embedder palsu deterministik, tanpa jaringan). */
+const VEC = new Map<string, string[]>();
+for (const q of [...IN_SCOPE.map(([x]) => x), ...OUT_OF_SCOPE, 'ktp hilang di terminal bus', 'ktp hilang'])
+  VEC.set(q, (await vectorIdsForQuery(db, embed, q)) ?? []);
+
+type Mode = 'bm25' | 'hybrid';
+const run = (q: string, mode: Mode, minCoverage?: number) =>
   cariPengetahuanTool.execute(
     db,
     { query: q, k: 3 },
-    { ...(minCoverage === undefined ? {} : { minCoverage }) },
+    {
+      ...(minCoverage === undefined ? {} : { minCoverage }),
+      ...(mode === 'hybrid' ? { vectorIds: VEC.get(q) ?? [] } : {}),
+    },
   );
 
-const recallAt3 = (minCoverage?: number) =>
+const recallAt3 = (mode: Mode, minCoverage?: number) =>
   IN_SCOPE.filter(([q, id]) =>
-    run(q, minCoverage)
+    run(q, mode, minCoverage)
       .hasil.map((h) => h.id)
       .includes(id),
   ).length / IN_SCOPE.length;
 
-describe('abstain / hand-off', () => {
+describe.each<Mode>(['bm25', 'hybrid'])('abstain / hand-off (mode %s)', (mode) => {
+  it('mode keluaran sesuai', () => {
+    expect(run('ktp hilang', mode).mode).toBe(mode);
+  });
   it('10 pertanyaan di luar cakupan -> tanpaHasil true dengan alasan', () => {
     expect(OUT_OF_SCOPE).toHaveLength(10);
     for (const q of OUT_OF_SCOPE) {
-      const out = run(q);
+      const out = run(q, mode);
       expect(out.tanpaHasil, q).toBe(true);
       expect(out.hasil, q).toEqual([]);
       expect(['di_luar_cakupan', 'skor_rendah'], q).toContain(out.alasan);
     }
   });
-  it('tanpa gerbang (minCoverage 0) sebagian kueri di luar cakupan masih mengembalikan hasil', () => {
-    const leaked = OUT_OF_SCOPE.filter((q) => !run(q, 0).tanpaHasil);
-    expect(leaked.length).toBeGreaterThanOrEqual(2);
+  it('tanpa gerbang (minCoverage 0) kueri di luar cakupan masih mengembalikan hasil', () => {
+    const leaked = OUT_OF_SCOPE.filter((q) => !run(q, mode, 0).tanpaHasil);
+    expect(leaked.length).toBeGreaterThanOrEqual(mode === 'hybrid' ? 8 : 2);
   });
-  it('alasan skor_rendah untuk cocok sebagian, di_luar_cakupan untuk tanpa kecocokan', () => {
-    expect(run('resep rendang padang').alasan).toBe('di_luar_cakupan');
-    expect(run('lirik lagu terbaru').alasan).toBe('skor_rendah');
-  });
-  it('recall@3 dalam cakupan turun paling banyak 2 poin dibanding tanpa gerbang', () => {
-    const before = recallAt3(0);
-    const after = recallAt3();
+  it('recall@3 25/25 dalam cakupan, tidak turun lebih dari 2 poin dibanding tanpa gerbang', () => {
+    const before = recallAt3(mode, 0);
+    const after = recallAt3(mode);
     expect(before).toBeGreaterThanOrEqual(0.9);
+    expect(after).toBe(1);
     expect(before - after).toBeLessThanOrEqual(0.02);
   });
   it('kueri dalam cakupan dengan kata konteks asing tetap dijawab', () => {
-    expect(run('ktp hilang di terminal bus').hasil[0]?.id).toBe('ktp-hilang');
+    expect(run('ktp hilang di terminal bus', mode).hasil[0]?.id).toBe('ktp-hilang');
   });
   it('ambang dapat dikonfigurasi', () => {
-    expect(DEFAULT_MIN_COVERAGE).toBe(0.3);
-    expect(run('lirik lagu terbaru', 0.1).tanpaHasil).toBe(false);
-    expect(run('ktp hilang di terminal bus', 0.9).tanpaHasil).toBe(true);
+    expect(run('lirik lagu terbaru', mode, 0.1).tanpaHasil).toBe(false);
+    expect(run('ktp hilang di terminal bus', mode, 0.9).tanpaHasil).toBe(true);
   });
   it('debug memuat coverage (angka, bukan teks kueri)', () => {
-    const d = run('ktp hilang').debug!;
-    expect(d.coverage).toBeGreaterThan(0.9);
+    expect(run('ktp hilang', mode).debug!.coverage).toBeGreaterThan(0.9);
+  });
+});
+
+describe('abstain: konfigurasi', () => {
+  it('bawaan 0.3 dan alasan', () => {
+    expect(DEFAULT_MIN_COVERAGE).toBe(0.3);
+    expect(run('resep rendang padang', 'bm25').alasan).toBe('di_luar_cakupan');
+    expect(run('lirik lagu terbaru', 'bm25').alasan).toBe('skor_rendah');
+  });
+  it('env RAG_ABSTAIN_MIN_COVERAGE menimpa bawaan; nilai tak valid diabaikan', () => {
+    const prev = process.env['RAG_ABSTAIN_MIN_COVERAGE'];
+    try {
+      process.env['RAG_ABSTAIN_MIN_COVERAGE'] = '0';
+      expect(run('lirik lagu terbaru', 'bm25').tanpaHasil).toBe(false);
+      process.env['RAG_ABSTAIN_MIN_COVERAGE'] = 'abc';
+      expect(run('lirik lagu terbaru', 'bm25').tanpaHasil).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env['RAG_ABSTAIN_MIN_COVERAGE'];
+      else process.env['RAG_ABSTAIN_MIN_COVERAGE'] = prev;
+    }
   });
 });

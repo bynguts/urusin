@@ -32,7 +32,7 @@ export type RetrievalDeps = {
   useVector?: boolean | undefined;
   /** Bobot leg perluasan terhadap kata asli (default 0.4). */
   expandWeight?: number | undefined;
-  /** Ambang cakupan abstain (default 0.5; 0 = mati). Lihat DEFAULT_MIN_COVERAGE. */
+  /** Ambang cakupan abstain (default 0.3, atau env RAG_ABSTAIN_MIN_COVERAGE; 0 = mati). Lihat DEFAULT_MIN_COVERAGE. */
   minCoverage?: number | undefined;
   /** Top-N kandidat untuk rerank (default 20). */
   rerankTopN?: number | undefined;
@@ -188,6 +188,14 @@ function coverageOf(
   return best;
 }
 
+/** Env `RAG_ABSTAIN_MIN_COVERAGE` (0..1) menimpa bawaan; nilai tak valid diabaikan. */
+function envMinCoverage(): number | undefined {
+  const raw = process.env['RAG_ABSTAIN_MIN_COVERAGE'];
+  if (raw === undefined || raw.trim() === '') return undefined;
+  const v = Number(raw);
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : undefined;
+}
+
 export type AbstainReason = 'di_luar_cakupan' | 'skor_rendah';
 
 /**
@@ -316,12 +324,12 @@ function debugOf(
   };
 }
 
-/** Abstain bila tak ada hasil, atau (tanpa leg vektor) cakupan di bawah ambang. */
+/** Abstain bila tak ada hasil, atau cakupan leksikal top-3 hasil fusi di bawah ambang. */
 function abstainOf(s: SyncResult, deps: RetrievalDeps): AbstainReason | undefined {
   if (s.hits.length === 0) return 'di_luar_cakupan';
-  const min = deps.minCoverage ?? DEFAULT_MIN_COVERAGE;
-  // Leg vektor tidak punya skor terkalibrasi di sini; gerbang leksikal dilewati saat vektor aktif.
-  if (min <= 0 || s.usedVector || s.coverage === null || s.coverage >= min) return undefined;
+  const min = deps.minCoverage ?? envMinCoverage() ?? DEFAULT_MIN_COVERAGE;
+  // Cakupan leksikal dihitung pada top-3 hasil FUSI, jadi gerbang berlaku juga di mode hybrid.
+  if (min <= 0 || s.coverage === null || s.coverage >= min) return undefined;
   return s.coverage === 0 ? 'di_luar_cakupan' : 'skor_rendah';
 }
 

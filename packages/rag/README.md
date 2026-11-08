@@ -114,7 +114,7 @@ glosarium dihitung tercakup bila hasil memuat istilah resminya) yang muncul pada
 `alasan`: `di_luar_cakupan` (tanpa hasil atau cakupan 0) atau `skor_rendah` (cocok sebagian). Kalibrasi pada
 korpus sintetis `abstain.test.ts` (18 chunk): 25 kueri dalam cakupan berskor 0.33 sampai 1.0, 10 kueri di luar
 cakupan berskor 0 sampai 0.26 atau tanpa hasil sama sekali; 0.3 ada di celah itu. Ambang perlu dikalibrasi ulang di
-korpus nyata. Saat leg vektor aktif gerbang leksikal dilewati (skor vektor belum terkalibrasi). Stopword dipakai di
+korpus nyata. Cakupan dihitung pada top-3 hasil fusi, sehingga gerbang berlaku sama di mode `bm25` dan `hybrid` (diuji dengan embedder palsu). Ambang bisa ditimpa lewat env `RAG_ABSTAIN_MIN_COVERAGE`. Lantai cosine untuk leg vektor sengaja tidak dipakai: skor cosine tidak terkalibrasi antar model embedding. Stopword dipakai di
 semua jalur pencarian (BM25 lama, leg asli, leg ter-stem, perluasan).
 
 ### rag:verify
