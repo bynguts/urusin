@@ -128,3 +128,25 @@ export function toCdp(
     }
   }
 }
+
+/**
+ * Ekspresi (dunia terisolasi) yang mengklasifikasi elemen fokus TANPA membaca nilainya: sandi, OTP, angka,
+ * teks, atau tidak ada. Iframe lintas-origin yang fokus dianggap teks (isinya tidak bisa diperiksa).
+ */
+export const FOKUS_EXPR = `(() => {
+  let el = document.activeElement;
+  while (el && el.shadowRoot && el.shadowRoot.activeElement) el = el.shadowRoot.activeElement;
+  if (!el || el === document.body || el === document.documentElement) return 'tidak_ada';
+  const tag = el.tagName;
+  if (tag === 'IFRAME') return 'teks';
+  if (tag === 'TEXTAREA' || el.isContentEditable) return 'teks';
+  if (tag !== 'INPUT') return 'tidak_ada';
+  const t = (el.getAttribute('type') || 'text').toLowerCase();
+  if (t === 'password') return 'sandi';
+  const ac = (el.getAttribute('autocomplete') || '').toLowerCase();
+  const nama = ((el.getAttribute('name') || '') + ' ' + (el.id || '')).toLowerCase();
+  if (ac.includes('one-time-code') || /otp|kode.?verif|verification|token/.test(nama)) return 'otp';
+  if (t === 'number' || t === 'tel' || (el.getAttribute('inputmode') || '') === 'numeric') return 'angka';
+  if (['text', 'email', 'search', 'url'].includes(t)) return 'teks';
+  return 'tidak_ada';
+})()`;

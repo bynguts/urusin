@@ -17,9 +17,9 @@ import {
 import { chromium, type BrowserContext, type CDPSession, type Page } from 'playwright-core';
 import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
-import { createTouchMapper, toCdp } from './input.js';
+import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
 import { runnerExpression } from './runner-script.js';
-import type { ActiveRun, Frame, RunFactory, RunInit } from './sessions.js';
+import type { ActiveRun, Frame, JenisFokus, RunFactory, RunInit } from './sessions.js';
 import { detectBotWall, suspicious } from './waf.js';
 
 /**
@@ -295,7 +295,6 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   let lastLangkah = -1;
   let viewerSend: ((f: Frame) => void) | null = null;
   let screencasting = false;
-  let frameSeq = 0;
   let status: Cursor['status'] | undefined;
 
   const mainFrameId = async () =>
@@ -469,13 +468,17 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
       );
   });
 
+  // Ack CDP ditunda sebesar jeda fps: Chromium tidak meng-encode frame lebih cepat dari yang dikirim (CPU host
+  // bersama, temuan M-1). Backpressure ke ponsel ada di gerbang frame per koneksi (stream.ts).
+  const jedaFrame = 1000 / config.fps;
   cdp.on('Page.screencastFrame', (f) => {
-    void cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {});
+    setTimeout(
+      () => void cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {}),
+      jedaFrame,
+    ).unref?.();
     const m = f.metadata;
     viewerSend?.({
-      type: 'frame',
-      seq: frameSeq++,
-      data: f.data,
+      jpeg: Buffer.from(f.data, 'base64'),
       meta: {
         lebar: m.deviceWidth ?? init.viewport.lebar,
         tinggi: m.deviceHeight ?? init.viewport.tinggi,
@@ -504,6 +507,29 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   memTimer.unref?.();
 
   const touch = createTouchMapper();
+  let fokusTerakhir: JenisFokus | undefined;
+  const periksaFokus = async () => {
+    if (destroyed) return;
+    try {
+      const { executionContextId } = (await cdp.send('Page.createIsolatedWorld', {
+        frameId: await mainFrameId(),
+        worldName: 'urusin-fokus',
+        grantUniveralAccess: false,
+      })) as { executionContextId: number };
+      const r = (await cdp.send('Runtime.evaluate', {
+        expression: FOKUS_EXPR,
+        contextId: executionContextId,
+        returnByValue: true,
+      })) as { result: { value?: unknown } };
+      const jenis = r.result.value as JenisFokus;
+      if (typeof jenis === 'string' && jenis !== fokusTerakhir) {
+        fokusTerakhir = jenis;
+        hooks.fokus(jenis);
+      }
+    } catch {
+      // halaman sedang berpindah
+    }
+  };
   const resume = () => {
     const w = resumeWaiters;
     resumeWaiters = [];
@@ -527,6 +553,9 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
       for (const cmd of toCdp(m, touch)) {
         await cdp.send(cmd.method as 'Input.insertText', cmd.params as never).catch(() => undefined);
       }
+      // Setelah ketukan/Tab/Enter fokus bisa pindah: beri tahu jenis kolom (sandi/OTP) ke ponsel.
+      if ((m.type === 'pointer' && m.aksi === 'up') || (m.type === 'key' && m.aksi === 'up'))
+        setTimeout(() => void periksaFokus(), 60).unref?.();
     },
     ambilAlih() {
       manual = true;
@@ -546,8 +575,9 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
           .send('Page.startScreencast', {
             format: 'jpeg',
             quality: 60,
-            maxWidth: init.viewport.lebar * 2,
-            maxHeight: init.viewport.tinggi * 2,
+            // Resolusi = lebar CSS penampil x DPR perangkat (tidak lebih tajam dari layar ponsel).
+            maxWidth: Math.round(init.viewport.lebar * init.viewport.dpr),
+            maxHeight: Math.round(init.viewport.tinggi * init.viewport.dpr),
             everyNthFrame: 1,
           })
           .catch(() => (screencasting = false));

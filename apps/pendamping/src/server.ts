@@ -19,6 +19,7 @@ import type { Config } from './config.js';
 import { debugPageHtml } from './debug-page.js';
 import { devPageHtml } from './dev-page.js';
 import { PendampingError, sidHashOf, type SessionManager } from './sessions.js';
+import { createFrameGate } from './stream.js';
 
 /**
  * HTTP + WebSocket layanan pendamping.
@@ -212,7 +213,19 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
     const send = (msg: PendampingServerMessage) => {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
     };
-    const viewer = { send, close: (code: number, reason: string) => ws.close(code, reason) };
+    const gate = createFrameGate({
+      write: (buf) => ws.readyState === ws.OPEN && ws.send(buf, { binary: true }),
+      buffered: () => ws.bufferedAmount,
+      maxInflight: config.frameInflight,
+      maxBuffered: config.wsBufferBytes,
+      fps: config.fps,
+    });
+    const viewer = {
+      send,
+      frame: gate.offer,
+      ack: gate.ack,
+      close: (code: number, reason: string) => ws.close(code, reason),
+    };
     const halo = setTimeout(
       () => ws.close(PENDAMPING_WS_CLOSE.TIDAK_SAH, 'halo terlambat'),
       config.haloTimeoutMs,
@@ -248,6 +261,7 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
     });
     ws.on('close', () => {
       clearTimeout(halo);
+      gate.close();
       if (authed) void manager.detach(sesiId, viewer);
     });
     ws.on('error', () => ws.terminate());

@@ -23,7 +23,11 @@ function input(urusanId: string, extra: Partial<MulaiSesiInternal> = {}): MulaiS
   };
 }
 
-type FakeRun = ActiveRun & { init: RunInit; calls: string[] };
+type FakeRun = ActiveRun & {
+  init: RunInit;
+  calls: string[];
+  frameSink?: Parameters<ActiveRun['setViewer']>[0];
+};
 
 function harness(over: Partial<Config> = {}) {
   let t = 1_000_000;
@@ -38,7 +42,10 @@ function harness(over: Partial<Config> = {}) {
       input: async (m) => void calls.push(`input:${m.type}`),
       ambilAlih: () => void calls.push('ambilAlih'),
       kembalikan: () => void calls.push('kembalikan'),
-      setViewer: async (s) => void calls.push(s ? 'viewer' : 'noviewer'),
+      setViewer: async (s) => {
+        calls.push(s ? 'viewer' : 'noviewer');
+        run.frameSink = s;
+      },
       destroy: async () => void calls.push('destroy'),
     };
     runs.push(run);
@@ -51,7 +58,15 @@ function harness(over: Partial<Config> = {}) {
     return {
       sent,
       closed,
+      frames: [] as unknown[],
+      acks: [] as number[],
       send: (m: PendampingServerMessage) => sent.push(m),
+      frame(f: unknown) {
+        this.frames.push(f);
+      },
+      ack(seq: number) {
+        this.acks.push(seq);
+      },
       close: (c: number) => closed.push(c),
     };
   };
@@ -62,6 +77,35 @@ function harness(over: Partial<Config> = {}) {
 const owner = (urusanId: string, sidHash = SID) => ({ urusanId, sidHash });
 
 describe('SessionManager', () => {
+  it('frame layar ke penampil aktif; ack diteruskan tanpa menunda idle; fokus dikirim tanpa nilai', async () => {
+    const h = harness();
+    const s = await h.manager.create(input('u-frame'));
+    await h.flush();
+    const v = h.viewer();
+    await h.manager.attach(s.sesiId, v);
+    const run = h.runs[0]!;
+    const f = {
+      meta: { lebar: 1, tinggi: 1, skala: 1, offsetAtas: 0, scrollX: 0, scrollY: 0 },
+      jpeg: new Uint8Array(1),
+    };
+    run.frameSink?.(f as never);
+    expect(v.frames).toEqual([f]);
+    const sebelum = h.manager.status(owner('u-frame'));
+    h.advance(170_000);
+    await h.manager.handleClient(s.sesiId, { type: 'ack', seq: 4 });
+    expect(v.acks).toEqual([4]);
+    h.advance(20_000);
+    await h.manager.sweep(); // ack bukan aktivitas: idle 3 menit tetap berlaku
+    expect(h.manager.status(owner('u-frame')).status).toBe('kedaluwarsa');
+    expect(sebelum.status).not.toBe('kedaluwarsa');
+    const s2 = await h.manager.create(input('u-fokus'));
+    await h.flush();
+    const v2 = h.viewer();
+    await h.manager.attach(s2.sesiId, v2);
+    h.runs.at(-1)!.init.hooks.fokus('sandi');
+    expect(v2.sent.at(-1)).toEqual({ type: 'fokus', jenis: 'sandi' });
+  });
+
   it('headless (CI) hanya untuk origin fixture: situs nyata ditolak sebelum Chromium dibuat', async () => {
     const fx = 'http://127.0.0.1:4320';
     const h = harness({ headless: true, fixtureOrigins: [fx] });

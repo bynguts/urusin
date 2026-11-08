@@ -37,7 +37,9 @@ export function devPageHtml(): string {
   viewer.on('butuh_data', (d) => { window.butuh = d; log('butuh_data ' + d.placeholder.length + ' ' + d.berkas.length); });
   viewer.on('galat', (g) => log('galat ' + g.kode));
   viewer.on('status', (s) => (window.statusSesi = s));
-  viewer.on('frame', (m) => (window.frameTerakhir = m));
+  window.jumlahFrame = 0;
+  viewer.on('frame', (m) => { window.frameTerakhir = m; window.jumlahFrame++; });
+  viewer.on('fokus', (j) => (window.fokus = j));
   document.getElementById('ambil').onclick = () => viewer.ambilAlih();
   document.getElementById('kembali').onclick = () => viewer.kembalikan();
   document.getElementById('akhiri').onclick = () => viewer.akhiri();

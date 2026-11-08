@@ -126,10 +126,18 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { frameTerakhir?: unknown }).frameTerakhir))
     .toBeTruthy();
+  // Frame biner + ack: penampil terus menerima frame baru (aliran tidak macet setelah 2 frame).
+  const seqAwal = await page.evaluate(() => (window as unknown as { jumlahFrame: number }).jumlahFrame);
+  await page.waitForTimeout(1500);
+  expect(
+    await page.evaluate(() => (window as unknown as { jumlahFrame: number }).jumlahFrame),
+  ).toBeGreaterThan(seqAwal);
 
   // Warga: Tab dari kolom HP (fokus terakhir AI) ke kolom CAPTCHA, ketik lewat keyboard virtual, tekan Masuk.
   await page.locator('#layar').focus();
   await page.keyboard.press('Tab');
+  // Fokus berpindah ke kolom CAPTCHA (teks): ponsel diberi tahu jenisnya, tanpa nilai.
+  await expect.poll(() => page.evaluate(() => (window as unknown as { fokus?: string }).fokus)).toBe('teks');
   await page.locator('#ketik').pressSequentially('DEV123');
   const s = login.sorot!;
   await page.locator('#layar').click({ position: { x: s.x + s.lebar / 2, y: s.y + s.tinggi / 2 } });

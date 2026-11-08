@@ -15,6 +15,7 @@ import type {
 import { buildProgram, checkUrl, requiredData, type Program, type UploadFile } from '@urusin/executor';
 import type { Config } from './config.js';
 import { isInputMessage } from './input.js';
+import type { FrameMasuk } from './stream.js';
 
 /**
  * Manajer sesi Browser Pendamping: kepemilikan (urusan + hash cookie sesi), antrean FIFO dengan batas sesi
@@ -24,6 +25,8 @@ import { isInputMessage } from './input.js';
 
 export type Hooks = {
   mode(mode: Exclude<PendampingMode, 'done'>, pesan?: string): void;
+  /** Jenis kolom yang fokus setelah input warga (tanpa nilai), untuk input tersembunyi di ponsel. */
+  fokus(jenis: JenisFokus): void;
   event(e: PendampingEvent): void;
   /** Ada kemajuan AI (menunda idle). */
   activity(): void;
@@ -31,7 +34,8 @@ export type Hooks = {
   ended(status: PendampingStatus, hasil: PendampingHasil, pesan: string): void;
 };
 
-export type Frame = Extract<PendampingServerMessage, { type: 'frame' }>;
+export type Frame = FrameMasuk;
+export type JenisFokus = Extract<PendampingServerMessage, { type: 'fokus' }>['jenis'];
 
 export type ActiveRun = {
   /** Mulai AI (dipanggil setelah semua data vault/berkas tersedia). */
@@ -56,7 +60,13 @@ export type RunInit = {
 
 export type RunFactory = (init: RunInit) => Promise<ActiveRun>;
 
-type Viewer = { send(m: PendampingServerMessage): void; close(code: number, reason: string): void };
+type Viewer = {
+  send(m: PendampingServerMessage): void;
+  /** Frame layar (biner, dengan backpressure di sisi koneksi). */
+  frame(f: Frame): void;
+  ack(seq: number): void;
+  close(code: number, reason: string): void;
+};
 
 type Sesi = {
   id: string;
@@ -285,7 +295,7 @@ export class SessionManager {
     viewer.send({ type: 'status', sesi: this.view(s) });
     if (s.mode) viewer.send({ type: 'mode', mode: s.mode, ...(s.pesan ? { pesan: s.pesan } : {}) });
     if (s.status === 'menunggu_data') viewer.send({ type: 'butuh_data', ...this.kurang(s) });
-    await s.run?.setViewer((f) => s.viewer === viewer && viewer.send(f));
+    await s.run?.setViewer((f) => s.viewer === viewer && viewer.frame(f));
   }
 
   async detach(sesiId: string, viewer: Viewer): Promise<void> {
@@ -299,6 +309,8 @@ export class SessionManager {
     const s = this.sessions.get(sesiId);
     if (!s || TERMINAL.has(s.status)) return;
     if (m.type === 'ping') return s.viewer?.send({ type: 'pong', t: m.t });
+    // ack frame otomatis: bukan aktivitas warga (tidak menunda idle).
+    if (m.type === 'ack') return s.viewer?.ack(m.seq);
     s.lastActivity = this.now();
     if (isInputMessage(m)) {
       if (s.mode !== 'takeover' || !s.run) {
@@ -429,6 +441,7 @@ export class SessionManager {
     this.broadcastStatus(s);
     const hooks: Hooks = {
       mode: (mode, pesan) => this.setMode(s, mode, pesan),
+      fokus: (jenis) => s.viewer?.send({ type: 'fokus', jenis }),
       event: (e) => this.emit(s, e),
       activity: () => void (s.lastActivity = this.now()),
       ended: (status, hasil, pesan) => void this.end(s, status, hasil, pesan),
@@ -445,7 +458,7 @@ export class SessionManager {
       });
       if (TERMINAL.has(s.status)) return void (await run.destroy()); // diakhiri saat memulai
       s.run = run;
-      if (s.viewer) await run.setViewer((f) => s.viewer?.send(f));
+      if (s.viewer) await run.setViewer((f) => s.viewer?.frame(f));
       s.status = 'menunggu_data';
       this.broadcastStatus(s);
       await this.maybeStartAi(s);
