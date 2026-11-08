@@ -3,7 +3,7 @@ import { PERISTIWA, URUSAN_LAIN, findPeristiwa } from './peristiwa';
 
 describe('Peristiwa Hidup', () => {
   it('memuat empat peristiwa utama dengan urutan tetap', () => {
-    expect(PERISTIWA.map((p) => p.judul)).toEqual(['Kelahiran', 'Kematian', 'Perkawinan', 'Pindah']);
+    expect(PERISTIWA.map((p) => p.judul)).toEqual(['Kelahiran', 'Kematian', 'Perkawinan', 'Pindah domisili']);
   });
   it('slug unik dan aman untuk URL', () => {
     const slugs = [...PERISTIWA, URUSAN_LAIN].map((p) => p.slug);
