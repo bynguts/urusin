@@ -1,0 +1,139 @@
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { OpenAIProvider } from './client.js';
+import { loadLlmConfig } from './config.js';
+
+type Seen = { url: string; contentType: string; body: Record<string, unknown> | string };
+
+let server: Server;
+let baseURL: string;
+const seen: Seen[] = [];
+
+const completion = {
+  id: 'c1',
+  object: 'chat.completion',
+  created: 0,
+  model: 'm',
+  choices: [{ index: 0, message: { role: 'assistant', content: 'halo' }, finish_reason: 'stop' }],
+};
+
+beforeAll(async () => {
+  server = createServer((req, res) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (c: Buffer) => chunks.push(c));
+    req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf8');
+      const contentType = String(req.headers['content-type'] ?? '');
+      const url = req.url ?? '';
+      const body = contentType.includes('json') ? (JSON.parse(raw) as Record<string, unknown>) : raw;
+      seen.push({ url, contentType, body });
+      if (url.endsWith('/chat/completions')) {
+        // Meniru provider nyata: stream hanya bila field `stream` bernilai true; bila dihilangkan, SSE.
+        const stream = (body as Record<string, unknown>).stream;
+        if (stream === false) {
+          res.setHeader('content-type', 'application/json');
+          res.end(JSON.stringify(completion));
+        } else {
+          res.setHeader('content-type', 'text/event-stream');
+          const chunk = {
+            id: 'c1',
+            object: 'chat.completion.chunk',
+            created: 0,
+            model: 'm',
+            choices: [{ index: 0, delta: { content: 'ha' }, finish_reason: null }],
+          };
+          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+          res.end('data: [DONE]\n\n');
+        }
+        return;
+      }
+      res.setHeader('content-type', 'application/json');
+      if (url.endsWith('/audio/transcriptions')) res.end(JSON.stringify({ text: 'tes suara' }));
+      else if (url.endsWith('/embeddings')) {
+        res.end(
+          JSON.stringify({
+            object: 'list',
+            model: 'e',
+            usage: { prompt_tokens: 1, total_tokens: 1 },
+            data: [{ object: 'embedding', index: 0, embedding: [0.5, 0.25] }],
+          }),
+        );
+      } else {
+        res.statusCode = 404;
+        res.end('{}');
+      }
+    });
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`;
+});
+
+afterAll(() => new Promise<void>((ok) => server.close(() => ok())));
+
+const provider = (extra: Record<string, string> = {}) =>
+  new OpenAIProvider(
+    loadLlmConfig({
+      LLM_BASE_URL: baseURL,
+      LLM_API_KEY: 'sk-uji',
+      LLM_AGENT_MODEL: 'agen',
+      LLM_MAX_RETRIES: '0',
+      ...extra,
+    }),
+  );
+
+const lastChatBody = () =>
+  [...seen].reverse().find((s) => s.url.endsWith('/chat/completions'))!.body as Record<string, unknown>;
+
+describe('OpenAIProvider lewat HTTP', () => {
+  it('create() selalu mengirim stream:false walau pemanggil tidak menyebutnya', async () => {
+    const res = await provider().create({ model: 'agen', messages: [{ role: 'user', content: 'hai' }] });
+    expect(res.choices[0]?.message.content).toBe('halo');
+    expect(lastChatBody().stream).toBe(false);
+  });
+
+  it('stream() selalu mengirim stream:true dan membaca potongan SSE', async () => {
+    const it = await provider().stream({
+      model: 'agen',
+      messages: [{ role: 'user', content: 'hai' }],
+      stream: true,
+    });
+    const parts: string[] = [];
+    for await (const c of it) parts.push(c.choices[0]?.delta.content ?? '');
+    expect(parts.join('')).toBe('ha');
+    expect(lastChatBody().stream).toBe(true);
+  });
+
+  it('stream() tetap stream:true walau field dibuang oleh pemanggil', async () => {
+    const params = { model: 'agen', messages: [{ role: 'user' as const, content: 'hai' }] };
+    await provider().stream(params as unknown as Parameters<OpenAIProvider['stream']>[0]);
+    expect(lastChatBody().stream).toBe(true);
+  });
+
+  it('transcribe() mengunggah multipart dan mengembalikan teks (bahasa opsional)', async () => {
+    const p = provider();
+    const a = await p.transcribe({ model: 'stt', audio: new Uint8Array([1, 2, 3]), filename: 'a.wav' });
+    const b = await p.transcribe({
+      model: 'stt',
+      audio: new Uint8Array([1, 2, 3]),
+      filename: 'a.wav',
+      language: 'id',
+    });
+    expect(a).toEqual({ text: 'tes suara' });
+    expect(b).toEqual({ text: 'tes suara' });
+    const forms = seen.filter((s) => s.url.endsWith('/audio/transcriptions'));
+    expect(forms.at(-2)!.body).not.toContain('name="language"');
+    expect(forms.at(-1)!.body).toContain('name="language"');
+  });
+
+  it('transcribe() memakai transcribeBaseURL bila diset', async () => {
+    const p = provider({ LLM_TRANSCRIBE_BASE_URL: baseURL });
+    const before = seen.length;
+    await p.transcribe({ model: 'stt', audio: new Uint8Array([9]), filename: 'b.wav' });
+    expect(seen.length).toBe(before + 1);
+  });
+
+  it('embed() mengembalikan vektor per teks', async () => {
+    expect(await provider().embed({ model: 'e', texts: ['a'] })).toEqual([[0.5, 0.25]]);
+  });
+});
