@@ -33,8 +33,10 @@ for (const lebar of [390, 1440]) {
     await page.goto('/urusanku');
     await expect(page.getByRole('heading', { name: 'Akta kelahiran' }).first()).toBeVisible();
 
+    // Peramban dengan urusan berjalan masuk ke Ringkasan, bukan landing
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/beranda$/);
     // Ringkasan melanjutkan urusan terakhir: pertanyaan terakhir warga dan fase urusan tampil
-    await page.goto('/beranda');
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Kita lanjutkan');
     await expect(page.getByRole('region', { name: 'Percakapan terakhir' })).toContainText(
       'Apa saja dokumen yang perlu saya bawa?',
