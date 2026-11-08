@@ -4,8 +4,12 @@ Image web dibangun CI (`.github/workflows/release.yml`) per commit di `main`, mu
 dan ditarik VPS berdasarkan digest. VPS tidak pernah build.
 
 Target: VPS `agent-vm` (Ubuntu 24.04, Docker + compose v2). Caddy sistem sudah memegang 80/443 dan
-melayani situs lain; Urusin hanya mengikat `127.0.0.1:4310` (web) dan `127.0.0.1:4320` (fixtures, opsional).
-Port terpakai lain di host: 3000, 3100, 8000, 8080, 8082, 8765, 20128.
+melayani situs lain; Urusin hanya mengikat `127.0.0.1:4310` (web-blue), `127.0.0.1:4311` (web-green)
+dan `127.0.0.1:4320` (fixtures, opsional). Port terpakai lain di host: 3000, 3100, 8000, 8080, 8082,
+8765, 20128. VPS dipakai bersama layanan lain: jangan menyentuh kontainer/layanan di luar proyek `urusin`.
+
+Berkas: `compose.prod.yml`, `Caddyfile.urusin`, `deploy.sh`, `backup.sh`, `restore.sh`, `disk-alert.sh`,
+`tests/` (harness tanpa Docker).
 
 ## Instalasi pertama
 
@@ -28,8 +32,21 @@ $EDITOR .env        # isi DOMAIN, SESSION_SECRET, LLM_*, VAPID_*, TURNSTILE_*
 
 ## Caddy (host)
 
-Snippet `Caddyfile.urusin` mendefinisikan `{$DOMAIN}` dan `verify.{$DOMAIN}` ke `127.0.0.1:4310`
-(SSE tanpa buffering, zstd/gzip, header keamanan + HSTS; CSP hanya dari aplikasi).
+Snippet `Caddyfile.urusin` mendefinisikan `{$DOMAIN}` dan `verify.{$DOMAIN}`. Isinya:
+
+- `reverse_proxy 127.0.0.1:4310 127.0.0.1:4311` dengan `lb_policy first`, health check aktif
+  `/api/health` tiap 2 detik, dan `lb_try_duration 5s` (permintaan yang gagal tersambung diulang ke
+  upstream sehat, sehingga pergantian blue/green tidak menghasilkan 502). `flush_interval -1` untuk SSE.
+- `encode zstd gzip` dengan **matcher eksplisit**. Matcher bawaan Caddy menyertakan `text/*`, sehingga
+  `text/event-stream` (SSE) ikut dikompres dan tertahan di buffer encoder. Matcher respons Caddy tidak
+  bisa menegasikan nilai header, jadi daftar tipe yang aman dikompres ditulis satu per satu.
+- Header: `Strict-Transport-Security: max-age=31536000` (**tanpa `includeSubDomains`**: domain dipakai
+  bersama layanan lain), `Permissions-Policy: camera=(self), microphone=(self), geolocation=()` (kamera =
+  foto dokumen, mikrofon = suara), `Cross-Origin-Opener-Policy: same-origin`,
+  `Cross-Origin-Resource-Policy: same-origin`, `Reporting-Endpoints` (tujuan laporan CSP).
+- CSP **hanya** dari aplikasi (SvelteKit, `report-uri /api/csp-report` + `report-to csp-endpoint`).
+
+Langkah host:
 
 1. DNS: A/AAAA untuk `DOMAIN` dan `verify.DOMAIN` ke IP VPS.
 2. Beri Caddy variabel `DOMAIN`. Untuk Caddy via systemd:
@@ -46,11 +63,18 @@ Snippet `Caddyfile.urusin` mendefinisikan `{$DOMAIN}` dan `verify.{$DOMAIN}` ke 
 4. Validasi lalu reload (tanpa memutus situs lain):
    ```sh
    sudo systemctl restart caddy   # hanya setelah `edit` di atas; berikutnya cukup reload
-   caddy validate --config /etc/caddy/Caddyfile
+   DOMAIN=urusin.web.id caddy validate --config /etc/caddy/Caddyfile
    sudo systemctl reload caddy
    ```
+5. Uji header (dari mana saja):
+   ```sh
+   curl -sI https://$DOMAIN/ | grep -iE 'strict-transport|permissions-policy|cross-origin|reporting-endpoints|content-security'
+   curl -sI -H 'Accept-Encoding: gzip' https://$DOMAIN/api/health | grep -i content-encoding
+   ```
+   `strict-transport-security` tidak boleh memuat `includeSubDomains`; `content-security-policy` muncul
+   tepat satu kali.
 
-## Deploy
+## Deploy (blue/green)
 
 SHA dan digest ada di ringkasan job `Release image` di GitHub Actions.
 
@@ -61,11 +85,154 @@ cd /opt/urusin/deploy
 ./deploy.sh sha256:<digest>             # SHA diambil dari label image
 ```
 
-Skrip: pull berdasarkan digest, tulis `.env.images` (`WEB_IMAGE`, `GIT_SHA`), `docker compose up -d`,
-menunggu `http://127.0.0.1:4310/api/health`, dan **gagal bila `gitSha` tidak sama** dengan argumen.
-Idempotent; menjalankan ulang dengan argumen yang sama aman.
+Urutan `deploy.sh`:
 
-Rollback: skrip mencetak `rollback: ./deploy.sh sha256:<digest sebelumnya>` saat selesai atau gagal.
+1. `docker pull` berdasarkan digest.
+2. **Provenance (#14e)** sebelum `up`: label `org.opencontainers.image.revision` harus cocok dengan SHA
+   yang diharapkan, dan `docker buildx imagetools inspect --format '{{json .Provenance}}'` harus memuat
+   SHA tersebut. Bila provenance tidak tersedia, label revision dipakai sebagai cadangan; set
+   `REQUIRE_PROVENANCE=1` untuk menolak tanpa provenance. Ketidakcocokan = ditolak, tidak ada yang berubah.
+3. Menentukan warna aktif dari `.env.images` (`ACTIVE_COLOR`), menaikkan **warna idle**
+   (`web-blue` = 4310, `web-green` = 4311) dan menunggu `/api/health` sehat dengan `gitSha` yang cocok.
+   Warna aktif tidak disentuh sampai di sini.
+4. Menghentikan warna lama (Caddy memindahkan lalu lintas), lalu smoke test publik bila `DOMAIN` ada di `.env`:
+   `https://$DOMAIN/api/health` (gitSha publik), `https://verify.$DOMAIN/` (HTTP < 500) dan masa berlaku
+   sertifikat TLS keduanya (> 7 hari, butuh `openssl`). `SKIP_SMOKE=1` melewatinya.
+5. **Rollback otomatis**: gagal di langkah 3 atau 4 (tidak sehat, `gitSha` salah, smoke gagal) =>
+   `.env.images` dikembalikan ke digest sebelumnya, versi lama dijalankan ulang bila sempat berhenti,
+   warna yang gagal dihentikan, `deploy.sh` exit 1. Sukses mencetak `rollback manual: ./deploy.sh <sha> <digest lama>`.
+
+`.env.images` memuat `ACTIVE_COLOR`, `WEB_IMAGE_{BLUE,GREEN}`, `GIT_SHA_{BLUE,GREEN}`,
+`RUN_MIGRATIONS_{BLUE,GREEN}`. Idempotent; menjalankan ulang dengan argumen sama aman (warna berganti).
+Deploy pertama setelah layout lama (satu service `web`, `WEB_IMAGE=`) dikenali otomatis: kontainer lama
+dianggap blue, versi baru naik di green, lalu kontainer lama dihapus.
+
+### Migrasi database (hanya satu instance)
+
+Kedua warna memakai volume `data` yang sama (SQLite WAL di satu host aman untuk beberapa proses).
+Agar hanya satu instance yang menjalankan migrasi, `deploy.sh` mengisi `RUN_MIGRATIONS=1` **hanya** untuk
+warna yang baru dinaikkan dan `0` untuk yang lain; setelah sukses nilainya menjadi `0` lagi. Aplikasi
+harus menjalankan migrasi hanya bila `RUN_MIGRATIONS=1` (saat ini belum ada kode migrasi; saat ditambah,
+bacalah variabel ini dan bungkus migrasi dalam `BEGIN IMMEDIATE`). Aturan skema: migrasi harus
+**kompatibel mundur** (tambah kolom/tabel, jangan hapus/ubah nama dalam rilis yang sama) karena versi
+lama masih melayani sampai versi baru sehat dan saat rollback.
+
+### Uji nol respons gagal selama deploy
+
+Rencana uji (jalankan dari laptop/host lain, bukan dari VPS):
+
+```sh
+# Terminal 1: ~20 req/detik, catat kode status selain 2xx/3xx; berjalan sampai Ctrl-C
+while :; do
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "https://$DOMAIN/api/health" || echo 000)
+  case "$code" in 2*|3*) ;; *) echo "$(date +%T) GAGAL $code" ;; esac
+  sleep 0.05
+done | tee deploy-failures.log
+
+# Terminal 2 (di VPS): deploy dua kali berturut-turut agar kedua arah (blue->green, green->blue) teruji
+./deploy.sh <sha-lama> sha256:<digest-lama>
+./deploy.sh <sha-baru> sha256:<digest-baru>
+```
+
+Lulus bila `deploy-failures.log` kosong untuk kedua deploy. Ulangi sekali dengan SSE aktif
+(`curl -N https://$DOMAIN/<rute-sse>`): koneksi lama boleh putus saat warna lama berhenti, tetapi koneksi
+baru harus langsung tersambung. Uji negatif: `./deploy.sh <sha> sha256:<digest>` dengan SHA yang salah harus
+exit 1 dan log tetap kosong (warna aktif tidak pernah berhenti).
+
+### Image rc dan riwayat
+
+- **Jangan** menjalankan `docker image prune -a` atau `docker system prune -a` di host ini: image yang
+  tidak sedang berjalan (termasuk `rc*`) akan terhapus dan rollback manual gagal. Bila perlu membersihkan,
+  pakai `docker image prune` (tanpa `-a`, hanya dangling) atau hapus per-digest secara sadar.
+- Setiap deploy menambah satu baris ke `.env.images.history` (waktu, warna, SHA, `repo@sha256:digest`);
+  berkas ini tidak pernah dipangkas dan menjadi catatan pin digest rc/rilis lama. Salin ke tempat aman
+  (mis. ikut backup) dan lakukan `docker pull <repo>@<digest>` untuk menyimpan ulang image rc bila terhapus.
+- Image rc juga sebaiknya diberi tag tetap di GHCR (`rc1`) dan dipertahankan dari retensi paket GHCR.
+
+## Backup SQLite (#15)
+
+**Pilihan: skrip cron di host (`backup.sh`), bukan service compose.** Alasan: tetap berjalan saat web mati
+atau sedang deploy, tidak menambah kontainer yang selalu hidup di VPS bersama (RAM terbatas), tidak ada
+loop `sleep` di dalam kontainer, dan restore memakai alat yang sama. Skrip memakai wadah sementara
+`SQLITE_IMAGE` (CLI `sqlite3`, `.backup` online + `PRAGMA integrity_check` pada salinan), tanpa jaringan.
+Image web tidak perlu berisi `sqlite3`.
+
+```sh
+sudo mkdir -p /var/backups/urusin && sudo chown "$USER" /var/backups/urusin
+# Cron tiap 6 jam (crontab -e):
+0 */6 * * *  /opt/urusin/deploy/backup.sh >> /var/log/urusin-backup.log 2>&1
+```
+
+- Retensi lokal: 3 hari (`KEEP_DAYS`, selalu menyisakan yang terbaru). Berkas: `urusin-<UTC>.db.gz`, mode 600.
+- Pin image sqlite dengan digest: `docker pull keinos/sqlite3:<tag>` lalu
+  `export SQLITE_IMAGE=keinos/sqlite3@sha256:...` di crontab. Periksa tag yang dipakai ada untuk arm64.
+- **Off-site opsional (restic)**: atur lewat environment, tidak ada rahasia di git.
+  ```sh
+  sudo apt-get install -y restic
+  install -m 600 /dev/null /opt/urusin/deploy/.restic-password && $EDITOR /opt/urusin/deploy/.restic-password
+  export RESTIC_REPOSITORY=s3:s3.amazonaws.com/<bucket>/urusin   # atau sftp:..., rest:..., b2:...
+  export RESTIC_PASSWORD_FILE=/opt/urusin/deploy/.restic-password
+  restic init                                                      # sekali saja
+  # cron: RESTIC_REPOSITORY=... RESTIC_PASSWORD_FILE=... RESTIC_FORGET=1 backup.sh
+  ```
+  Tanpa `RESTIC_REPOSITORY`, bagian ini dilewati. Kegagalan restic membuat `backup.sh` exit 1 (salinan lokal
+  tetap ada). Kredensial backend (mis. `AWS_ACCESS_KEY_ID`) diberikan lewat environment crontab/`EnvironmentFile`
+  milik root, bukan di repo.
+- `HEALTHCHECK_URL=https://hc-ping.com/<uuid>` membuat `backup.sh` mem-ping saat sukses dan `/fail` saat gagal
+  (healthchecks.io akan memperingatkan bila ping tidak datang dalam 7 jam).
+
+### Restore dan latihan restore (restore drill)
+
+```sh
+cd /opt/urusin/deploy
+ls -1t /var/backups/urusin | head -3
+./restore.sh /var/backups/urusin/urusin-<UTC>.db.gz          # minta konfirmasi; --yes untuk non-interaktif
+# dari off-site:
+restic restore latest --tag urusin --target /tmp/restore && ./restore.sh /tmp/restore/var/backups/urusin/urusin-<UTC>.db.gz
+```
+
+`restore.sh` memvalidasi backup (`integrity_check`) sebelum mengubah apa pun, menghentikan kedua warna web,
+menyimpan DB lama sebagai `urusin.db.pre-restore-<UTC>` di volume, mengganti DB, menyalakan warna aktif,
+dan menunggu `/api/health`.
+
+Latihan (lakukan sebelum produksi dan catat hasilnya di `docs/` atau issue):
+
+1. `./backup.sh` lalu pastikan berkas baru ada dan tidak kosong.
+2. Catat jumlah baris tabel kunci / `curl /api/health`.
+3. Ubah data (mis. buat satu catatan uji), lalu `./restore.sh <backup>` .
+4. Pastikan data kembali ke kondisi langkah 2, `/api/health` ok, dan `urusin.db.pre-restore-*` ada.
+5. Catat tanggal, durasi (RTO) dan umur backup (RPO <= 6 jam) sebagai bukti.
+
+## Alert disk
+
+`disk-alert.sh` memperingatkan (exit 1 + log syslog + notifikasi) bila pemakaian > 85 %:
+
+```sh
+# crontab -e, tiap 15 menit. Topik ntfy dibuat sulit ditebak (anggap sebagai rahasia).
+*/15 * * * *  NTFY_URL=https://ntfy.sh/<topik-rahasia> MOUNTS="/ /var/lib/docker" /opt/urusin/deploy/disk-alert.sh
+```
+
+- **ntfy**: pasang aplikasi ntfy di HP, langganan `<topik-rahasia>`. Tambahkan `NTFY_TOKEN` bila memakai
+  server ntfy sendiri dengan autentikasi.
+- **healthchecks.io / Uptime Kuma push**: `HEALTHCHECK_URL=https://hc-ping.com/<uuid>`; skrip mem-ping saat
+  aman dan `/fail` saat lewat ambang, sehingga mati-nya cron pun terdeteksi.
+- Tanpa variabel notifikasi, skrip hanya mencatat log dan exit code. Tidak memakai Telegram.
+
+## Uptime dan halaman status
+
+Tidak ada akun eksternal yang dibuat oleh repo ini. Pilihan:
+
+- **UptimeRobot** (gratis): monitor HTTPS ke `https://$DOMAIN/api/health` (kata kunci `"ok":true`, interval
+  5 menit) dan `https://verify.$DOMAIN/`; aktifkan monitor sertifikat/kedaluwarsa TLS dan "Status Page"
+  publik; kirim peringatan ke email/ntfy.
+- **Uptime Kuma** (self-host, bila RAM cukup; jalankan di mesin lain, bukan di VPS bersama ini): monitor
+  HTTP(s) keyword yang sama, halaman status publik, notifikasi ntfy.
+- Biarkan monitor menunjuk domain publik (bukan 127.0.0.1) agar mencakup Caddy dan TLS.
+
+## Batas sumber daya
+
+Per kontainer web: `mem_limit: 512m`, `cpus: 1.0`, `pids_limit: 256`; fixtures: `128m`, `0.5`, `128`.
+Saat deploy dua warna hidup sebentar (maks 1 GiB dari ~7,6 GiB RAM bebas). Log json-file 3 x 10 MB.
 
 ## Profil fixtures (opsional)
 
@@ -75,6 +242,17 @@ COMPOSE_PROFILES=fixtures ./deploy.sh <git-sha> sha256:<digest>
 ```
 
 Port `127.0.0.1:4320`; routing Caddy-nya ditambahkan terpisah setelah host fixtures ditetapkan.
+
+## Uji skrip (tanpa Docker)
+
+```sh
+bash deploy/tests/deploy.test.sh   # docker/curl/restic/df palsu di tests/shims; juga jalan lewat `pnpm test:scripts`
+shellcheck -x deploy/*.sh deploy/tests/deploy.test.sh deploy/tests/shims/*
+```
+
+Kasus: deploy pertama dan kedua (pindah warna), `gitSha` salah / warna baru tidak sehat / smoke publik
+gagal (rollback otomatis, exit non-zero), label revision tidak cocok dan `REQUIRE_PROVENANCE=1` (ditolak
+sebelum `up`), provenance cocok, migrasi dari layout lama, backup + retensi + restic opsional, alert disk.
 
 ## Uji lokal (laptop)
 
@@ -86,6 +264,5 @@ docker compose -f compose.local.yml --env-file .env up --build   # http://localh
 
 ## Data
 
-SQLite (WAL) ada di volume Docker bernama `urusin_data` (`/data` di container). Cadangkan dengan
-`docker run --rm -v urusin_data:/data -v "$PWD":/backup alpine tar czf /backup/data.tgz -C /data .`
-(hentikan web dulu agar WAL konsisten).
+SQLite (WAL) ada di volume Docker bernama `urusin_data` (`/data` di container), dipakai bersama kedua
+warna. Backup rutin: lihat bagian Backup. Cadangan manual sekali jalan: `./backup.sh`.
