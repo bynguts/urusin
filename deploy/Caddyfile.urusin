@@ -1,9 +1,15 @@
-# Snippet untuk di-import ke Caddyfile host (Caddy sistem yang sudah memegang 80/443):
+# DIBANGKITKAN dari deploy/hosts.json (set "primary") oleh scripts/gen-caddyfile.mjs. JANGAN DIEDIT
+# MANUAL: ubah hosts.json lalu jalankan `node scripts/gen-caddyfile.mjs`. CI menolak snippet yang menyimpang.
 #
-#   import /opt/urusin/deploy/Caddyfile.urusin
+# Dipasang ke Caddy sistem (yang sudah memegang 80/443 dan situs lain) lewat SATU baris di Caddyfile host:
 #
-# Caddy membaca {$DOMAIN} dari environment proses Caddy (lihat deploy/README.md). Satu-satunya
-# Content-Security-Policy dikirim aplikasi (SvelteKit); jangan menambah CSP di sini.
+#   import /opt/urusin/Caddyfile.urusin
+#
+# Berkas itu salinan snippet set yang aktif (lihat deploy/README.md "Caddy"). Pasang tepat satu set:
+# nama snippet (urusin_common) sama di kedua set. Hostname ditulis literal; snippet ini tidak memakai
+# placeholder env sehingga environment proses Caddy tidak perlu diubah. Snippet hanya mendefinisikan
+# blok situs Urusin (tanpa opsi global), jadi blok situs lain di Caddyfile host tidak tersentuh.
+# Satu-satunya Content-Security-Policy dikirim aplikasi (SvelteKit); jangan menambah CSP di sini.
 
 (urusin_common) {
 	# Kompresi hanya untuk tipe yang aman dikompres. Matcher bawaan Caddy menyertakan `text/*`
@@ -40,10 +46,8 @@
 	}
 
 	header {
-		# TANPA includeSubDomains: DOMAIN dipakai bersama layanan lain di host, dan sub-domain
-		# milik layanan itu belum tentu siap HTTPS-only. `verify.` sudah tercakup karena Caddy
-		# mengirim header ini pada kedua host. Naikkan ke includeSubDomains hanya setelah semua
-		# sub-domain dipastikan HTTPS.
+		# TANPA includeSubDomains: domain induk bisa dipakai bersama layanan lain, dan sub-domain
+		# milik layanan itu belum tentu siap HTTPS-only.
 		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
@@ -56,13 +60,11 @@
 		-Server
 	}
 
-	# Blue/green: dua instance web (4310 = blue, 4311 = green). `lb_policy first` memilih upstream
-	# sehat pertama. `/api/ready` (bukan /api/health) hanya 200 pada warna yang DIPROMOSIKAN deploy.sh
-	# (setelah smoke test lulus), jadi warna baru tidak menerima lalu lintas sebelum waktunya walau
-	# port 4310 sudah hidup. PERHATIAN urutan upgrade pertama: lihat README "Upgrade ke /api/ready".
-	# `health_uri` memeriksa aktif, dan
-	# `lb_try_duration` mengulang permintaan yang gagal tersambung sehingga tidak ada respons 502
-	# selama pergantian. flush_interval -1: teruskan SSE tanpa buffering.
+	# Blue/green: lalu lintas hanya ke warna AKTIF. Kedua port didaftarkan, tetapi `/api/ready` hanya 200
+	# pada warna yang dipromosikan deploy.sh (setelah smoke lulus), jadi health check aktif menandai warna
+	# lain tidak sehat dan `lb_policy first` memilih warna aktif. Pergantian warna tidak butuh reload Caddy.
+	# `lb_try_duration` mengulang permintaan yang gagal tersambung sehingga tidak ada 502 selama
+	# pergantian. flush_interval -1: teruskan SSE tanpa buffering.
 	reverse_proxy 127.0.0.1:4310 127.0.0.1:4311 {
 		lb_policy first
 		lb_try_duration 5s
@@ -77,15 +79,14 @@
 }
 
 # Aplikasi memilih rute /verify dari header Host mentah, jadi kedua host ke upstream yang sama.
-{$DOMAIN}, verify.{$DOMAIN} {
+urusinai.web.id, verify.urusinai.web.id {
 	import urusin_common
 }
 
 # Fixture publik (portal palsu untuk demo), profil `public`, 127.0.0.1:4320. Nonaktif secara bawaan:
-# buka komentar setelah DNS fixtures.DOMAIN ada dan `COMPOSE_PROFILES=fixtures` + FIXTURES_IMAGE diset
-# (lihat deploy/README.md). FIXTURES_PUBLIC_ORIGIN diisi compose menjadi https://fixtures.$DOMAIN.
-#
-# fixtures.{$DOMAIN} {
+# bangkitkan dengan `--fixtures` setelah DNS fixtures.urusinai.web.id ada dan `COMPOSE_PROFILES=fixtures` +
+# FIXTURES_IMAGE diset (lihat deploy/README.md).
+# fixtures.urusinai.web.id {
 # 	encode zstd gzip
 # 	header {
 # 		Strict-Transport-Security "max-age=31536000"

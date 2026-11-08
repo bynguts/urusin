@@ -8,7 +8,7 @@ melayani situs lain; Urusin hanya mengikat `127.0.0.1:4310` (web-blue, host netw
 dan `127.0.0.1:4320` (fixtures, opsional). Port terpakai lain di host: 3000, 3100, 8000, 8080, 8082,
 8765, 20128. VPS dipakai bersama layanan lain: jangan menyentuh kontainer/layanan di luar proyek `urusin`.
 
-Berkas: `compose.prod.yml`, `Caddyfile.urusin`, `deploy.sh`, `backup.sh`, `restore.sh`, `disk-alert.sh`,
+Berkas: `compose.prod.yml`, `Caddyfile.urusin` (+ `.fallback`), `hardening.md`, `deploy.sh`, `backup.sh`, `restore.sh`, `disk-alert.sh`,
 `tests/` (harness tanpa Docker).
 
 ## Instalasi pertama
@@ -18,8 +18,8 @@ sudo mkdir -p /opt/urusin && sudo chown "$USER" /opt/urusin
 git clone https://github.com/bynguts/urusin.git /opt/urusin   # atau salin folder deploy/ saja
 cd /opt/urusin/deploy
 
-# 1. Login GHCR (repo privat): PAT dengan scope read:packages saja
-echo "$GHCR_PAT" | docker login ghcr.io -u bynguts --password-stdin
+# 1. Login GHCR (repo privat): PAT read:packages saja, di DOCKER_CONFIG sementara (lihat "Login GHCR
+#    sementara"); jangan menulis ke ~/.docker milik pengguna.
 
 # 2. Konfigurasi. File ini berisi rahasia: jangan di-commit.
 cp ../.env.example .env
@@ -28,15 +28,29 @@ $EDITOR .env        # isi DOMAIN, SESSION_SECRET, LLM_*, VAPID_*, TURNSTILE_*
 ```
 
 `.env` di `/opt/urusin/deploy/.env` dibaca compose (`env_file`) dan oleh `deploy.sh`.
-`DOMAIN` wajib (mis. `urusin.web.id`); `ORIGIN` diturunkan otomatis menjadi `https://$DOMAIN`.
+`DOMAIN` wajib dan harus host `app` salah satu set di `deploy/hosts.json`. Compose menurunkan `ORIGIN` dan
+`URUSIN_PUBLIC_ORIGIN` (`https://$DOMAIN`), `VERIFY_HOST` (`verify.$DOMAIN`) dan `FIXTURES_HOST`
+(`fixtures.$DOMAIN`); startup aplikasi menolak host di luar satu set.
 
 ## Caddy (host)
 
-Snippet `Caddyfile.urusin` mendefinisikan `{$DOMAIN}` dan `verify.{$DOMAIN}`. Isinya:
+Snippet dibangkitkan dari `deploy/hosts.json` oleh `node scripts/gen-caddyfile.mjs` dengan hostname
+**literal** (tanpa placeholder `{$DOMAIN}`): placeholder dibaca dari environment proses Caddy sistem, dan
+mengubahnya berarti mengedit unit Caddy pengguna lalu me-restart Caddy. Dua berkas di-commit, keduanya
+diperiksa CI (`node scripts/gen-caddyfile.mjs --check`, juga `scripts/tests/gen-caddyfile.test.mjs`):
+
+| Set        | Berkas                      | Host                                         |
+| ---------- | --------------------------- | -------------------------------------------- |
+| `primary`  | `Caddyfile.urusin`          | `hosts.json` `primary.app`, `primary.verify` |
+| `fallback` | `Caddyfile.urusin.fallback` | sslip (`fallback.*`), tanpa DNS sendiri      |
+
+Pemilihan host hanya terjadi di VPS: `.env` (`DOMAIN`) dan salinan snippet set yang sama di
+`/opt/urusin/Caddyfile.urusin`. Image dan ekstensi identik untuk kedua set. Isi snippet:
 
 - `reverse_proxy 127.0.0.1:4310 127.0.0.1:4311` dengan `lb_policy first`, health check aktif
   **`/api/ready`** tiap 2 detik (200 hanya pada warna yang dipromosikan `deploy.sh`; `/api/health` tetap liveness), dan `lb_try_duration 5s` (permintaan yang gagal tersambung diulang ke
-  upstream sehat, sehingga pergantian blue/green tidak menghasilkan 502). `flush_interval -1` untuk SSE.
+  upstream sehat, sehingga pergantian blue/green tidak menghasilkan 502). Lalu lintas hanya ke warna aktif
+  tanpa reload Caddy. `flush_interval -1` untuk SSE.
 - `encode zstd gzip` dengan **matcher eksplisit**. Matcher bawaan Caddy menyertakan `text/*`, sehingga
   `text/event-stream` (SSE) ikut dikompres dan tertahan di buffer encoder. Matcher respons Caddy tidak
   bisa menegasikan nilai header, jadi daftar tipe yang aman dikompres ditulis satu per satu.
@@ -45,27 +59,27 @@ Snippet `Caddyfile.urusin` mendefinisikan `{$DOMAIN}` dan `verify.{$DOMAIN}`. Is
   foto dokumen, mikrofon = suara), `Cross-Origin-Opener-Policy: same-origin`,
   `Cross-Origin-Resource-Policy: same-origin`, `Reporting-Endpoints` (tujuan laporan CSP).
 - CSP **hanya** dari aplikasi (SvelteKit, `report-uri /api/csp-report` + `report-to csp-endpoint`).
+- Tanpa opsi global dan tanpa blok situs lain: blok situs pengguna tidak tersentuh.
 
-Langkah host:
+Langkah host (setiap perubahan Caddy = **izin per kejadian** dari pengguna, lihat `hardening.md`):
 
-1. DNS: A/AAAA untuk `DOMAIN` dan `verify.DOMAIN` ke IP VPS.
-2. Beri Caddy variabel `DOMAIN`. Untuk Caddy via systemd:
+1. DNS: A/AAAA untuk host `app` dan `verify` set yang dipilih ke IP VPS (set `fallback` tidak butuh DNS).
+2. Salin snippet set yang dipilih ke path tetap milik Urusin (bukan `/etc/caddy`):
    ```sh
-   sudo systemctl edit caddy
-   # tambahkan:
-   # [Service]
-   # Environment=DOMAIN=urusin.web.id
+   install -m 644 /opt/urusin/deploy/Caddyfile.urusin.fallback /opt/urusin/Caddyfile.urusin   # atau Caddyfile.urusin (primary)
    ```
-3. Tambahkan satu baris ke `/etc/caddy/Caddyfile` (di luar blok situs lain):
+   `DOMAIN` di `.env` harus sama dengan host `app` set itu (startup aplikasi menolak campuran set).
+3. Sekali saja: tambahkan satu baris ke `/etc/caddy/Caddyfile` (di luar blok situs lain):
    ```
-   import /opt/urusin/deploy/Caddyfile.urusin
+   import /opt/urusin/Caddyfile.urusin
    ```
-4. Validasi lalu reload (tanpa memutus situs lain):
+4. Validasi lalu reload (reload tidak memutus situs lain; jangan restart):
    ```sh
-   sudo systemctl restart caddy   # hanya setelah `edit` di atas; berikutnya cukup reload
-   DOMAIN=urusin.web.id caddy validate --config /etc/caddy/Caddyfile
+   caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile
    sudo systemctl reload caddy
    ```
+   Pindah set (mis. fallback -> primary setelah DNS siap): ulangi langkah 2 dan 4, ubah `DOMAIN` di `.env`,
+   lalu `./deploy.sh` ulang. Pairing dan tautan pada host lama tidak ikut pindah.
 5. Uji header (dari mana saja):
    ```sh
    curl -sI https://$DOMAIN/ | grep -iE 'strict-transport|permissions-policy|cross-origin|reporting-endpoints|content-security'
@@ -323,9 +337,11 @@ COMPOSE_PROFILES=fixtures ./deploy.sh <git-sha> sha256:<digest>
 ```
 
 Port `127.0.0.1:4320`, profil `public` (`FIXTURES_PUBLIC_ORIGIN` diisi compose menjadi
-`https://fixtures.$DOMAIN`). Blok Caddy `fixtures.{$DOMAIN}` ada di `Caddyfile.urusin` dalam bentuk
-**komentar** (nonaktif bawaan). Untuk mengaktifkan: tambahkan DNS A/AAAA `fixtures.$DOMAIN`, buka komentar
-blok itu (sudah mengirim `X-Robots-Tag: noindex, nofollow` dan `X-Site-Notice: Situs uji - bukan situs pemerintah`), `caddy validate`, lalu `systemctl reload caddy`.
+`https://fixtures.$DOMAIN`). Blok Caddy fixtures ada di snippet dalam bentuk **komentar** (nonaktif
+bawaan). Untuk mengaktifkan: tambahkan DNS A/AAAA host `fixtures` set itu, bangkitkan snippet dengan blok
+aktif (sudah mengirim `X-Robots-Tag: noindex, nofollow` dan `X-Site-Notice: Situs uji - bukan situs pemerintah`)
+`node scripts/gen-caddyfile.mjs --set <primary|fallback> --fixtures --out Caddyfile.urusin`, salin ke
+`/opt/urusin/Caddyfile.urusin`, `caddy validate`, lalu `systemctl reload caddy` (izin per kejadian).
 
 ## Uji skrip (tanpa Docker)
 
