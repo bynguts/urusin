@@ -1,6 +1,6 @@
 name: Release
 
-# Membangun image web + fixtures multi-arch (amd64 + arm64) dan zip ekstensi.
+# Membangun image web + fixtures + pendamping multi-arch (amd64 + arm64) dan zip ekstensi.
 #   - push ke main : image bertag <sha> (VPS menarik berdasarkan digest, lihat deploy/deploy.sh) dan zip ekstensi.
 #   - tag rc* / v* : TIDAK membangun ulang. Image <sha> milik commit bertag di-alias (digest sama) menjadi <tag>,
 #     lalu GitHub Release dibuat dari zip ekstensi dan SBOM hasil run main untuk SHA yang sama. Jadi yang diuji
@@ -40,6 +40,9 @@ jobs:
           - name: fixtures
             dockerfile: apps/fixtures/Dockerfile
             image: ghcr.io/bynguts/urusin-fixtures
+          - name: pendamping
+            dockerfile: apps/pendamping/Dockerfile
+            image: ghcr.io/bynguts/urusin-pendamping
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -84,6 +87,15 @@ jobs:
             echo "::group::${NAME} linux/${arch}"
             if [ "$NAME" = "web" ]; then
               docker run --rm --platform "linux/${arch}" --entrypoint node "$REF"                 -e "const a=process.arch;const r=require('better-sqlite3')(':memory:').prepare('select 1 as x').get();if(r.x!==1)process.exit(1);console.log(a,'better-sqlite3 ok')"
+            elif [ "$NAME" = "pendamping" ]; then
+              # Boot produksi (Xvfb milik proses + server) lalu /health; Chromium headed hanya di amd64 (QEMU lambat).
+              docker run --rm --platform "linux/${arch}" -e PENDAMPING_INTERNAL_TOKEN=smoke-token-bukan-rahasia-0123456789abcdef \
+                -e URUSIN_PUBLIC_ORIGIN=https://smoke.test --entrypoint sh "$REF" -c \
+                'node dist/main.js & sleep 10; node -e "fetch(\"http://127.0.0.1:4330/health\").then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" && echo "pendamping ok"'
+              if [ "$arch" = "amd64" ]; then
+                docker run --rm --platform "linux/${arch}" --entrypoint xvfb-run "$REF" -a node -e \
+                  "import('playwright-core').then(async({chromium})=>{const b=await chromium.launch({headless:false});console.log('chromium headed',b.version());await b.close()})"
+              fi
             else
               docker run --rm --platform "linux/${arch}" --entrypoint sh "$REF" -c                 'node dist/server.js & sleep 5; node -e "fetch(\"http://127.0.0.1:4000/health\").then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" && echo "fixtures ok"'
             fi
@@ -118,6 +130,8 @@ jobs:
             echo '```sh'
             if [ "$NAME" = "web" ]; then
               echo "deploy/deploy.sh ${GITHUB_SHA} ${IMAGE}@${DIGEST}"
+            elif [ "$NAME" = "pendamping" ]; then
+              echo "PENDAMPING_IMAGE=${IMAGE}@${DIGEST}"
             else
               echo "FIXTURES_IMAGE=${IMAGE}@${DIGEST}"
             fi
@@ -200,7 +214,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Alias image web dan fixtures ke tag rilis
+      - name: Alias image web, fixtures, dan pendamping ke tag rilis
         run: |
           {
             echo "### Image rilis ${TAG}"
@@ -208,7 +222,7 @@ jobs:
             echo "Commit bertag: \`${GITHUB_SHA}\` (tidak ada build ulang; digest sama dengan yang diuji di main)"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
-          for image in ghcr.io/bynguts/urusin-web ghcr.io/bynguts/urusin-fixtures; do
+          for image in ghcr.io/bynguts/urusin-web ghcr.io/bynguts/urusin-fixtures ghcr.io/bynguts/urusin-pendamping; do
             if ! digest="$(docker buildx imagetools inspect "${image}:${GITHUB_SHA}" --format '{{.Manifest.Digest}}' 2>/dev/null)" || [ -z "$digest" ]; then
               echo "::error::tidak ada image ${image}:${GITHUB_SHA}. Tag harus menunjuk commit main yang sudah dibangun oleh workflow Release."
               exit 1
@@ -252,7 +266,7 @@ jobs:
       - name: Unduh zip ekstensi (+ .sha256) dan SBOM dari run tersebut
         run: |
           mkdir -p assets
-          for name in extension-zip sbom-web sbom-fixtures; do
+          for name in extension-zip sbom-web sbom-fixtures sbom-pendamping; do
             gh run download "${{ steps.run.outputs.id }}" --dir assets --name "$name"
           done
           ls -l assets
