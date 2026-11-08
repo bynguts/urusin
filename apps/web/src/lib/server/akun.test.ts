@@ -751,7 +751,7 @@ describe('Masuk sebagai juri (salinan demo terisolasi)', () => {
   it('halaman masuk: aksi juri mengalihkan ke beranda dengan sesi demo', async () => {
     const jar = new Jar();
     const r = await caught(masukPage.juri(ev(form({ turnstile: TURNSTILE_TOKEN_FIXTURE }), { jar })));
-    expect(isRedirect(r) && r.location).toBe('/');
+    expect(isRedirect(r) && r.location).toBe('/beranda');
     expect(akunDari(jar).jenis).toBe('demo');
   });
 });
