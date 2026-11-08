@@ -121,6 +121,9 @@ importers:
 
   packages/rag:
     dependencies:
+      '@urusin/llm':
+        specifier: workspace:*
+        version: link:../llm
       better-sqlite3:
         specifier: 13.0.3
         version: 13.0.3

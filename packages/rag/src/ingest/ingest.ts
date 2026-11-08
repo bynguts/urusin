@@ -1,4 +1,7 @@
 import type { Db } from '../db.js';
+import { embedAndFit } from '../vector/pipeline.js';
+import type { Embedder } from '../vector/store.js';
+import type { TransformMode } from '../vector/transform.js';
 import { upsertChunks } from '../store.js';
 import { chunkByHeading } from './chunk.js';
 import { htmlToText } from './extract.js';
@@ -22,6 +25,12 @@ export type IngestOptions = {
   db?: Db | undefined;
   deps?: Deps | undefined;
   minIntervalMs?: number | undefined;
+  /** Embedding opsional. Tanpa ini ingest murni BM25 (tabel vektor tidak disentuh). */
+  embed?: Embedder | undefined;
+  embedModel?: string | undefined;
+  /** Mode transformasi vektor; default 'none'. Dipilih berdasarkan hasil rag:eval. */
+  vectorMode?: TransformMode | undefined;
+  vectorK?: number | undefined;
 };
 
 function skipReason(s: SourceEntry): string | null {
@@ -99,6 +108,30 @@ export async function runIngest(opts: IngestOptions): Promise<IngestReport[]> {
           reason: e instanceof Error ? e.name : 'galat',
         });
       }
+    }
+  }
+  if (opts.embed && opts.db && !opts.dryRun) {
+    try {
+      const r = await embedAndFit(opts.db, opts.embed, {
+        mode: opts.vectorMode ?? 'none',
+        k: opts.vectorK,
+        model: opts.embedModel,
+      });
+      reports.push({
+        id: 'vektor',
+        url: '-',
+        action: 'ingested',
+        chunks: r.chunks,
+        reason: `mode=${r.mode} k=${r.k} v${r.version}`,
+      });
+    } catch (e) {
+      // Embedding gagal tidak boleh merusak korpus: tetap BM25.
+      reports.push({
+        id: 'vektor',
+        url: '-',
+        action: 'skipped',
+        reason: `embedding-gagal: ${e instanceof Error ? e.name : 'galat'}`,
+      });
     }
   }
   return reports;

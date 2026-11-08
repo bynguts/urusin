@@ -1,0 +1,34 @@
+[
+  {
+    "id": "contoh-sintetis-1",
+    "pertanyaan": "KTP saya hilang, bagaimana cara menggantinya?",
+    "relevan": ["contoh-sintetis#ktp-hilang"],
+    "catatan": "contoh sintetis, ganti dengan gold set tim"
+  },
+  {
+    "id": "contoh-sintetis-2",
+    "pertanyaan": "Syarat membuat akta kelahiran anak",
+    "relevan": ["contoh-sintetis#akta-lahir"],
+    "catatan": "contoh sintetis, ganti dengan gold set tim"
+  },
+  {
+    "id": "contoh-sintetis-3",
+    "pertanyaan": "Pengurusan kartu keluarga baru setelah menikah",
+    "kodeWilayah": "3312",
+    "relevan": ["contoh-sintetis#kk-baru"],
+    "catatan": "contoh sintetis, ganti dengan gold set tim"
+  },
+  {
+    "id": "contoh-sintetis-4",
+    "pertanyaan": "Surat pindah antar kota",
+    "relevan": ["contoh-sintetis#surat-pindah"],
+    "catatan": "contoh sintetis, ganti dengan gold set tim"
+  },
+  {
+    "id": "contoh-sintetis-5",
+    "pertanyaan": "Bayar pajak kendaraan bermotor",
+    "kodeWilayah": "33",
+    "relevan": ["contoh-sintetis#pajak-kendaraan"],
+    "catatan": "contoh sintetis, ganti dengan gold set tim"
+  }
+]
