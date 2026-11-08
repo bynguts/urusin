@@ -1,8 +1,4 @@
-<script lang="ts">
-  import type { Snippet } from 'svelte';
-  import Icon from '../Icon.svelte';
-  import type { NamaIkon } from '../ikon.js';
-
+<script lang="ts" module>
   /**
    * Chip status/pelaku (Label/Pelaku, Chip/Mode, Status/*). Selalu ikon + teks, bukan warna saja.
    * Nada: anda (amber), ai (indigo), instansi (biru), urusin (netral), hijau, kuning, galat, mawar, ungu, daun.
@@ -20,6 +16,12 @@
     | 'daun'
     | 'biru'
     | 'netral';
+</script>
+
+<script lang="ts">
+  import type { Snippet } from 'svelte';
+  import Icon from '../Icon.svelte';
+  import type { NamaIkon } from '../ikon.js';
 
   let {
     nada = 'netral',
