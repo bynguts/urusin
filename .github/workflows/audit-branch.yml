@@ -1,0 +1,35 @@
+name: Audit branch
+
+# Memeriksa commit yang belum ada di main pada setiap push ke branch lain, supaya pesan merge bawaan
+# ("Merge remote-tracking branch...") atau commit non-konvensional tertangkap sebelum sampai ke main
+# (riwayat main tidak bisa ditulis ulang).
+
+on:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-branch-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: audit-history origin/main..HEAD
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout (riwayat lengkap)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Audit commit di luar main
+        run: node scripts/audit-history.mjs origin/main..HEAD

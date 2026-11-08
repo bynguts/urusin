@@ -36,14 +36,15 @@ export class OpenAIProvider implements ChatProvider {
   }
 
   create(params: ChatParams, opts: RequestOptions = {}): Promise<ChatCompletion> {
-    return this.client.chat.completions.create(params, { signal: opts.signal });
+    // `stream` selalu eksplisit: provider nyata mengalirkan SSE bila field ini dihilangkan.
+    return this.client.chat.completions.create({ ...params, stream: false }, { signal: opts.signal });
   }
 
   async stream(
     params: ChatStreamParams,
     opts: RequestOptions = {},
   ): Promise<AsyncIterable<ChatCompletionChunk>> {
-    return this.client.chat.completions.create(params, { signal: opts.signal });
+    return this.client.chat.completions.create({ ...params, stream: true }, { signal: opts.signal });
   }
 
   async transcribe(input: { model: string; audio: Uint8Array; filename: string; language?: string }) {

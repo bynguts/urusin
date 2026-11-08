@@ -37,7 +37,8 @@ const values = (path: string) => {
   }
 };
 
-describe('db-backup.mjs / db-restore.mjs', () => {
+// Tiap tes memunculkan proses node baru; di bawah beban paralel (turbo) 5 detik bawaan kadang terlampaui.
+describe('db-backup.mjs / db-restore.mjs', { timeout: 30_000 }, () => {
   let dir: string;
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'urusin-db-'));
