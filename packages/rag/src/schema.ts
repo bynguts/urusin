@@ -14,8 +14,8 @@ export const ChunkSchema = z.object({
   id: z.string().min(1),
   text: z.string().min(1),
   sourceRef: SourceRefSchema,
-  /** ISO 8601 tanggal sumber dicek; null = belum diverifikasi. Kuncinya wajib ada. */
-  verifiedAt: z.iso.datetime().nullable(),
+  /** ISO 8601 tanggal sumber dicek. Wajib (tidak boleh null) untuk semua chunk korpus. */
+  verifiedAt: z.iso.datetime(),
   kodeWilayah: KodeWilayahSchema.optional(),
   layanan: z.string().min(1).optional(),
   /** Header konteks (judul › bagian › instansi › wilayah › layanan); hanya diindeks, tidak ditampilkan. */
