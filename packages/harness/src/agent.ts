@@ -107,9 +107,11 @@ export function prepareTurn(
   if (locks.has(args.urusanId)) throw new TurnInProgressError();
   locks.add(args.urusanId);
   let claim: ReturnType<HarnessStore['claimTurn']>;
-  const pii = new PiiInterceptor(undefined, {
-    kodeKabKota: deps.store.getUrusan(args.urusanId)?.kodeKabKota,
-  });
+  const pii = new PiiInterceptor(
+    undefined,
+    { kodeKabKota: deps.store.getUrusan(args.urusanId)?.kodeKabKota },
+    deps.store.placeholderPersistence(args.urusanId),
+  );
   const userText = pii.redact(args.userText).text;
   try {
     claim = deps.store.claimTurn(args.urusanId, userText, {

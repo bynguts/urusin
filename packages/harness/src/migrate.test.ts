@@ -52,8 +52,8 @@ describe('migrasi berversi', () => {
     const path = join(tmp(), 'a.sqlite');
     const a = openHarnessDb(path);
     a.prepare("INSERT INTO urusan (id, state, created_at, updated_at) VALUES ('u_1','BARU','x','x')").run();
-    expect(runMigrations(a)).toBe(1);
-    expect(runMigrations(a)).toBe(1);
+    expect(runMigrations(a)).toBe(loadMigrations().length);
+    expect(runMigrations(a)).toBe(loadMigrations().length);
     a.close();
     const b = openHarnessDb(path);
     expect(b.prepare('SELECT COUNT(*) n FROM urusan').get()).toEqual({ n: 1 });
@@ -73,7 +73,7 @@ describe('migrasi berversi', () => {
     expect(schemaVersion(lama)).toBe(0);
     lama.close();
     const db = openHarnessDb(path);
-    expect(schemaVersion(db)).toBe(1);
+    expect(schemaVersion(db)).toBe(loadMigrations().length);
     expect(db.prepare('SELECT id FROM urusan').all()).toEqual([{ id: 'u_lama' }]);
     const cols = (db.prepare('PRAGMA table_info(turns)').all() as { name: string }[]).map((c) => c.name);
     expect(cols).toEqual(expect.arrayContaining(['owner_instance', 'lease_until']));
@@ -97,8 +97,8 @@ describe('migrasi berversi', () => {
     const b = new Database(path);
     a.pragma('busy_timeout = 5000');
     b.pragma('busy_timeout = 5000');
-    expect(runMigrations(a)).toBe(1);
-    expect(runMigrations(b)).toBe(1);
+    expect(runMigrations(a)).toBe(loadMigrations().length);
+    expect(runMigrations(b)).toBe(loadMigrations().length);
     expect(tables(b)).toContain('turns');
     a.close();
     b.close();

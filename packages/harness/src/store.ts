@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import type { ChatMessage } from '@urusin/llm';
 import {
   canonicalJson,
@@ -17,7 +17,7 @@ import {
   TerminalStateError,
   TurnInProgressError,
 } from './errors.js';
-import { redactForStorage, redactLeaves } from './pii.js';
+import { redactForStorage, redactLeaves, type PlaceholderPersistence } from './pii.js';
 import { canTransition, isTerminal } from './state.js';
 
 export type UrusanRow = {
@@ -109,6 +109,8 @@ export type StoreOptions = {
   instanceId?: string;
   /** Masa berlaku lease turn; diperpanjang berkala selama turn berjalan. */
   leaseMs?: number;
+  /** Rahasia HMAC untuk kunci pemetaan placeholder (URUSIN_PII_KEY). Default acak per proses: antar-restart token baru, tetap aman. */
+  piiKey?: string;
 };
 
 /**
@@ -120,6 +122,7 @@ export class HarnessStore {
   private readonly now: () => Date;
   readonly instanceId: string;
   readonly leaseMs: number;
+  private readonly piiKey: string;
 
   constructor(
     readonly db: Db,
@@ -128,6 +131,24 @@ export class HarnessStore {
     this.now = opts.now ?? (() => new Date());
     this.instanceId = opts.instanceId ?? `i_${randomBytes(8).toString('hex')}`;
     this.leaseMs = opts.leaseMs ?? 30_000;
+    this.piiKey = opts.piiKey ?? randomBytes(32).toString('hex');
+  }
+
+  /** Pemetaan placeholder yang bertahan antar turn (kunci di-HMAC; tidak ada nilai asli di DB). */
+  placeholderPersistence(urusanId: string): PlaceholderPersistence {
+    const entries = this.db
+      .prepare('SELECT key, kind, token FROM pii_placeholders WHERE urusan_id = ?')
+      .all(urusanId) as { key: string; kind: string; token: string }[];
+    return {
+      key: (kind, normalized) =>
+        createHmac('sha256', this.piiKey).update(`${urusanId}|${kind}|${normalized}`).digest('hex'),
+      entries,
+      save: (key, kind, token) => {
+        this.db
+          .prepare('INSERT OR IGNORE INTO pii_placeholders (urusan_id, key, kind, token) VALUES (?,?,?,?)')
+          .run(urusanId, key, kind, token);
+      },
+    };
   }
 
   private leaseUntil(): string {

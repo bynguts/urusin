@@ -20,6 +20,14 @@ export interface KnownValueMatcher {
   match(text: string): { start: number; end: number; placeholder: string }[];
 }
 
+/** Penyimpanan pemetaan placeholder per urusan (kunci sudah di-HMAC; tanpa nilai asli). */
+export interface PlaceholderPersistence {
+  /** Kunci stabil untuk (jenis, nilai ternormalisasi); HMAC dengan rahasia server. */
+  key(kind: string, normalized: string): string;
+  entries: readonly { key: string; kind: string; token: string }[];
+  save(key: string, kind: string, token: string): void;
+}
+
 export type PlaceholderKind = PiiKind | 'kk' | 'dikenal';
 
 export type Replacement = { kind: PlaceholderKind; placeholder: string };
@@ -35,6 +43,12 @@ const SUFFIX: Record<PlaceholderKind, string> = {
   email: 'EMAIL',
   dikenal: 'DATA',
 };
+
+/** Kebalikan `namespaceFor`: `{{ORANG3.NIK}}` -> 2, `{{PEMOHON.HP}}` -> 0. */
+function indexOfToken(token: string): number {
+  const m = /^\{\{(?:PEMOHON|ORANG(\d+))\./.exec(token);
+  return m?.[1] ? Number(m[1]) - 1 : 0;
+}
 
 /** Nama namespace berurutan: orang pertama = PEMOHON, berikutnya ORANG2, ORANG3, ... */
 function namespaceFor(index: number): string {
@@ -55,16 +69,25 @@ export class PiiInterceptor {
     private readonly matcher?: KnownValueMatcher,
     /** Konteks urusan: kode kab/kota yang diketahui, agar NIK yang dipecah antar bidang/turn tetap terdeteksi. */
     private readonly ctx: PiiOptions = {},
-  ) {}
+    private readonly persist?: PlaceholderPersistence,
+  ) {
+    for (const e of persist?.entries ?? []) {
+      this.byValue.set(e.key, e.token);
+      const kind = e.kind as PlaceholderKind;
+      this.counters.set(kind, Math.max(this.counters.get(kind) ?? 0, indexOfToken(e.token) + 1));
+    }
+  }
 
   private placeholderFor(kind: PlaceholderKind, value: string): string {
-    const key = `${kind}:${normalizeForScan(value).text.replace(/\D/g, '') || value.toLowerCase()}`;
+    const norm = normalizeForScan(value).text.replace(/\D/g, '') || value.toLowerCase();
+    const key = this.persist ? this.persist.key(kind, norm) : `${kind}:${norm}`;
     const existing = this.byValue.get(key);
     if (existing) return existing;
     const n = this.counters.get(kind) ?? 0;
     this.counters.set(kind, n + 1);
     const token = `{{${namespaceFor(n)}.${SUFFIX[kind]}}}`;
     this.byValue.set(key, token);
+    this.persist?.save(key, kind, token);
     return token;
   }
 

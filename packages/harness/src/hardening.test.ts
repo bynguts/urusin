@@ -227,3 +227,34 @@ describe('temuan 10: nama tool dari model tidak dicatat/dipantulkan mentah', () 
     expect(dumpDb(s.db)).not.toContain(HP.join(' '));
   });
 });
+
+describe('placeholder stabil antar turn tanpa menyimpan nilai asli', () => {
+  const NIK_B = ['3273', '0202', '0291', '0002'].join('');
+  const kirim = async (env: ReturnType<typeof makeEnv>, id: string, teks: string) => {
+    await runTurn(env.deps, { urusanId: id, userText: teks });
+  };
+
+  it('NIK lain di turn berikutnya tidak memakai placeholder yang sama; NIK yang sama tetap', async () => {
+    const provider = new FakeProvider({
+      replies: [1, 2, 3].map(() => fakeCompletion({ content: 'baik' })),
+    });
+    const env = makeEnv({ provider, caps: { tools: false } });
+    const u = env.store.createUrusan({ jenis: 'akta' });
+    await kirim(env, u.id, `NIK saya ${NIK}`);
+    await kirim(env, u.id, `NIK anak ${NIK_B}`);
+    await kirim(env, u.id, `ulang ${NIK}`);
+    const user = provider.calls
+      .flatMap((c) => (c.kind === 'create' ? c.params.messages : []))
+      .filter((m) => m.role === 'user')
+      .map((m) => String(m.content));
+    expect(user.some((t) => t.includes('NIK saya {{PEMOHON.NIK}}'))).toBe(true);
+    expect(user.some((t) => t.includes('NIK anak {{ORANG2.NIK}}'))).toBe(true);
+    expect(user.some((t) => t.includes('ulang {{PEMOHON.NIK}}'))).toBe(true);
+    const db = dumpDb(env.store.db);
+    expect(db).not.toContain(NIK);
+    expect(db).not.toContain(NIK_B);
+    const rows = env.store.db.prepare('SELECT key, token FROM pii_placeholders').all() as { key: string }[];
+    expect(rows).toHaveLength(2);
+    for (const r of rows) expect(r.key).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
