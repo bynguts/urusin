@@ -3,6 +3,7 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { secureHeaders } from 'hono/secure-headers';
 import type { Config } from './config.js';
 import { html, page } from './layout.js';
+import { registerPoisoned } from './poisoned.js';
 import { registerSemarang } from './semarang.js';
 import { registerSurabaya } from './surabaya.js';
 import { createStore, SERVICES, type Session } from './store.js';
@@ -272,6 +273,7 @@ export function createApp(config: Config) {
 
   // Rute berbahaya: terdaftar HANYA di profil local (placeholder), tidak ada sama sekali di public (404).
   if (config.profile === 'local') {
+    registerPoisoned(app);
     for (const path of LOCAL_ONLY_ROUTES) {
       app.get(path, (c) =>
         c.html(page('Placeholder profil local', html`<p>Belum diimplementasi: ${path}</p>`), 501),
