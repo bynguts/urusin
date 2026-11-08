@@ -242,9 +242,12 @@ exit 1 dan log tetap kosong (warna aktif tidak pernah berhenti).
 
 ### Image rc dan riwayat
 
-- **Jangan** menjalankan `docker image prune -a` atau `docker system prune -a` di host ini: image yang
-  tidak sedang berjalan (termasuk `rc*`) akan terhapus dan rollback manual gagal. Bila perlu membersihkan,
-  pakai `docker image prune` (tanpa `-a`, hanya dangling) atau hapus per-digest secara sadar.
+- **Jangan pernah** menjalankan `docker image prune` atau `docker system prune` (dengan atau tanpa `-a`) di
+  host ini: VPS dipakai bersama layanan lain, dan image yang tidak sedang berjalan (termasuk `rc*`) akan
+  terhapus. Retensi image Urusin hanya lewat `./image-retention.sh` (dry-run; `--apply` untuk menghapus):
+  `docker image rm <repo>@<digest>` per referensi `ghcr.io/bynguts/urusin-*`, menyimpan digest di
+  `.env.images`, `.env.images.keep` (mis. rc1, satu per baris) dan 3 image terakhir dari riwayat
+  (`KEEP_LAST`). Lihat `hardening.md`.
 - Setiap deploy menambah satu baris ke `.env.images.history` (waktu, warna, SHA, `repo@sha256:digest`);
   berkas ini tidak pernah dipangkas dan menjadi catatan pin digest rc/rilis lama. Salin ke tempat aman
   (mis. ikut backup) dan lakukan `docker pull <repo>@<digest>` untuk menyimpan ulang image rc bila terhapus.
@@ -355,6 +358,7 @@ aktif (sudah mengirim `X-Robots-Tag: noindex, nofollow` dan `X-Site-Notice: Situ
 
 ```sh
 bash deploy/tests/deploy.test.sh   # docker/curl/restic/df palsu di tests/shims; juga jalan lewat `pnpm test:scripts`
+bash deploy/tests/image-retention.test.sh
 shellcheck -x deploy/*.sh deploy/tests/deploy.test.sh deploy/tests/shims/*
 ```
 

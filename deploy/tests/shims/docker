@@ -19,7 +19,12 @@ case "$1" in
       case "$a" in *:/backup) echo "isi-db-palsu" > "${a%:/backup}/.partial.db" ;; esac
     done
     exit 0 ;;
-  image) echo "${SHIM_LABEL-}"; exit 0 ;;
+  image)
+    case "$2" in
+      ls) cat "$SHIM_DIR/images.tsv" 2>/dev/null; exit 0 ;; # image-retention.sh: repo<TAB>digest
+      rm) echo "$3" >> "$SHIM_DIR/rm.log"; [[ "$3" != *"${SHIM_RM_BUSY:-tidak-ada}"* ]] || exit 1; exit 0 ;;
+      *) echo "${SHIM_LABEL-}"; exit 0 ;;
+    esac ;;
   buildx)
     case "$*" in
       *Provenance*)
