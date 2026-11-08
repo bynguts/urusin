@@ -1,0 +1,31 @@
+{
+  "name": "@urusin/extension",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Ekstensi Chrome MV3 Urusin: interpreter langkah di peramban warga",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "prepare": "wxt prepare",
+    "build": "wxt build",
+    "dev": "wxt",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "key:id": "node scripts/extension-key.mjs id"
+  },
+  "dependencies": {
+    "@urusin/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@types/chrome": "0.3.7",
+    "@types/node": "26.6.6",
+    "@urusin/fixtures": "workspace:*",
+    "@urusin/web": "workspace:*",
+    "happy-dom": "21.0.4",
+    "vitest": "5.1.0",
+    "wxt": "0.21.5"
+  }
+}

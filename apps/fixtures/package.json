@@ -1,0 +1,23 @@
+{
+  "name": "@urusin/fixtures",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Fixture Hono: tiruan situs layanan publik untuk uji (profil public jinak, profil local)",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.1.6",
+    "hono": "4.13.17"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "vitest": "5.1.0"
+  }
+}

@@ -3,7 +3,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "build/**", ".svelte-kit/output/**"],
+      "outputs": ["dist/**", "build/**", ".svelte-kit/output/**", ".output/**"],
       "env": ["GIT_SHA"]
     },
     "dev": {
@@ -21,6 +21,10 @@
     },
     "budget": {
       "dependsOn": ["build"],
+      "cache": false
+    },
+    "e2e": {
+      "dependsOn": ["build", "^build"],
       "cache": false
     }
   }

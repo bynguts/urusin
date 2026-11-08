@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>Urusin</title>
+    <meta name="manifest.type" content="browser_action" />
+    <style>
+      body {
+        font:
+          14px system-ui,
+          sans-serif;
+        min-width: 280px;
+        margin: 12px;
+      }
+      button {
+        margin: 4px 0;
+        padding: 6px 10px;
+      }
+      #banner {
+        background: #c2410c;
+        color: #fff;
+        padding: 4px 8px;
+        display: none;
+        border-radius: 4px;
+      }
+      .row {
+        margin: 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 style="font-size: 16px; margin: 0 0 8px">Urusin</h1>
+    <div id="banner">MODE UJI aktif</div>
+    <div class="row">Status: <span id="pair-status">memuat...</span></div>
+    <div class="row" id="origins"></div>
+    <button id="unpair" type="button">Putuskan</button>
+    <div class="row">
+      <label><input id="test-mode" type="checkbox" /> Mode Uji (izinkan origin fixture)</label>
+    </div>
+    <div class="row">Eksekusi: <span id="exec-status">-</span></div>
+    <button id="recheck" type="button">Cek ulang gerbang</button>
+    <button id="cancel" type="button">Batalkan eksekusi</button>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

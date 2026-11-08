@@ -7,7 +7,16 @@ import ts from 'typescript-eslint';
 
 export default ts.config(
   {
-    ignores: ['**/node_modules/', '**/dist/', '**/build/', '**/.svelte-kit/', '**/.turbo/', '**/coverage/'],
+    ignores: [
+      '**/node_modules/',
+      '**/dist/',
+      '**/build/',
+      '**/.svelte-kit/',
+      '**/.turbo/',
+      '**/coverage/',
+      '**/.wxt/',
+      '**/.output/',
+    ],
   },
   js.configs.recommended,
   ...ts.configs.recommended,
