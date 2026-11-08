@@ -323,6 +323,26 @@ describe('GET /stream: resume, heartbeat, putus koneksi', () => {
     expect(rt.running.has(u.id)).toBe(false);
   });
 
+  it('temuan 9: masa tenggang tidak membatalkan turn yang LEBIH BARU dari yang berjalan saat koneksi putus', async () => {
+    const slow = new Slow();
+    setup(slow as never, { disconnectGraceMs: 60 });
+    const u = await mulai('halo');
+    const ctrl = new AbortController();
+    const res = await stream(
+      ev(new Request('http://localhost:3000/s', { signal: ctrl.signal }), { id: u.id }),
+    );
+    await res.body!.getReader().read();
+    await new Promise((r) => setTimeout(r, 30));
+    ctrl.abort();
+    const lama = rt.running.get(u.id)!;
+    const baru = new AbortController();
+    rt.running.set(u.id, baru);
+    await new Promise((r) => setTimeout(r, 150));
+    expect(baru.signal.aborted).toBe(false);
+    expect(lama.signal.aborted).toBe(false);
+    lama.abort();
+  });
+
   it('urusan tak dikenal → 404', async () => {
     expect((await stream(ev(get('/s'), { id: 'u_x' }))).status).toBe(404);
   });

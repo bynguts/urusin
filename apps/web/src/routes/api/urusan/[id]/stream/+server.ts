@@ -66,9 +66,11 @@ export const GET: RequestHandler = async ({ params, request, url }) => {
           clearInterval(heartbeat);
           unsubscribe();
           // Tidak ada pelanggan tersisa → batalkan turn yang berjalan setelah masa tenggang (jaringan HP sering putus-nyambung).
-          if (rt.bus.subscriberCount(id) === 0 && rt.running.has(id)) {
+          // Tangkap controller SAAT ditutup: turn yang lebih baru (controller lain) tidak boleh ikut dibatalkan.
+          const target = rt.running.get(id);
+          if (rt.bus.subscriberCount(id) === 0 && target) {
             graceTimer = setTimeout(() => {
-              if (rt.bus.subscriberCount(id) === 0) rt.running.get(id)?.abort();
+              if (rt.bus.subscriberCount(id) === 0 && rt.running.get(id) === target) target.abort();
             }, rt.config.disconnectGraceMs);
             graceTimer.unref?.();
           }
