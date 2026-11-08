@@ -82,7 +82,7 @@ describe('ingest merekam status sumber dan mewajibkan verifiedAt', () => {
     };
     expect(nulls.n).toBe(0);
   });
-  it('upsertChunks requireVerified menolak verifiedAt null; bawaan tetap mengizinkan', () => {
+  it('verifiedAt null ditolak oleh skema dan oleh trigger DB (migrasi aditif)', () => {
     const db = openDb(':memory:');
     const c = {
       id: 'x',
@@ -90,8 +90,15 @@ describe('ingest merekam status sumber dan mewajibkan verifiedAt', () => {
       sourceRef: { url: 'https://a.go.id/x', judul: 'J', instansi: 'I' },
       verifiedAt: null,
     };
+    expect(() => upsertChunks(db, [c])).toThrow(ChunkRejectedError);
     expect(() => upsertChunks(db, [c], { requireVerified: true })).toThrow(ChunkRejectedError);
-    expect(upsertChunks(db, [c])).toBe(1);
+    expect(() =>
+      db
+        .prepare(
+          "INSERT INTO chunks(id, judul, text, instansi, url, verified_at) VALUES ('y','j','t','i','https://a.go.id/y',NULL)",
+        )
+        .run(),
+    ).toThrow(/verified_at wajib/);
   });
 });
 

@@ -14,6 +14,8 @@ export const SourceEntrySchema = z.object({
   status: z.enum(['confirmed', 'unverified']),
   robots: z.enum(['ditemukan', 'tidak-ada', 'tidak-terjangkau']),
   lastFetched: z.string().nullable(),
+  /** Adapter khusus untuk sumber non-HTML (katalog GraphQL); tanpa ini = halaman HTML biasa. */
+  adapter: z.enum(['klampid']).optional(),
   /** false = bukan sumber korpus (mis. portal login atau butuh ingester khusus). */
   ingest: z.boolean(),
   catatan: z.string(),

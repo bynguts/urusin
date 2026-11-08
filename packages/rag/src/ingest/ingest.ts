@@ -3,8 +3,9 @@ import { embedAndFit } from '../vector/pipeline.js';
 import type { Embedder } from '../vector/store.js';
 import type { TransformMode } from '../vector/transform.js';
 import { upsertChunks } from '../store.js';
+import { klampidChunkText, klampidEndpoint, klampidHash, sanitizeKlampid } from './klampid.js';
 import { contentHash, recordSourceState } from './state.js';
-import { chunkByHeading } from './chunk.js';
+import { chunkByHeading, dropBoilerplate } from './chunk.js';
 import { buildChunkContextHeader } from './context.js';
 import { htmlToText } from './extract.js';
 import { PoliteFetcher, RobotsBlockedError, type Deps } from './fetcher.js';
@@ -70,17 +71,24 @@ export async function runIngest(opts: IngestOptions): Promise<IngestReport[]> {
       continue;
     }
     try {
-      const res = await fetcher.get(s.url);
+      const res = await fetcher.get(s.adapter === 'klampid' ? klampidEndpoint(s.url) : s.url);
       if (res.status !== 200) {
         reports.push({ id: s.id, url: s.url, action: 'error', reason: `HTTP ${res.status}` });
         continue;
       }
-      if (!/text\/(html|plain)|application\/xhtml/i.test(res.contentType)) {
+      const okType =
+        s.adapter === 'klampid'
+          ? /json/i.test(res.contentType)
+          : /text\/(html|plain)|application\/xhtml/i.test(res.contentType);
+      if (!okType) {
         reports.push({ id: s.id, url: s.url, action: 'skipped', reason: 'tipe-konten-tidak-didukung' });
         continue;
       }
       const verifiedAt = nowIso();
-      const pieces = chunkByHeading(htmlToText(res.body));
+      const services = s.adapter === 'klampid' ? sanitizeKlampid(JSON.parse(res.body)) : null;
+      const pieces = services
+        ? services.map(klampidChunkText)
+        : dropBoilerplate(chunkByHeading(htmlToText(res.body)));
       const chunks = pieces.map((p, i) => ({
         id: `${s.id}#${i}`,
         text: p.text,
@@ -106,7 +114,7 @@ export async function runIngest(opts: IngestOptions): Promise<IngestReport[]> {
         recordSourceState(db, s.id, {
           etag: res.etag,
           lastModified: res.lastModified,
-          hash: contentHash(res.body),
+          hash: services ? klampidHash(services) : contentHash(res.body),
           at: verifiedAt,
         });
       })();
