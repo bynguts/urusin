@@ -1,0 +1,23 @@
+{
+  "name": "urusin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Urusin: agen AI yang ikut mengurus layanan publik bersama warga",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@11.1.1",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "2.11.10",
+    "typescript": "6.0.3"
+  }
+}
