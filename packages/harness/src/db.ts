@@ -44,6 +44,8 @@ export const SCHEMA_SQL = `
     cost_idr REAL NOT NULL DEFAULT 0,
     degraded INTEGER NOT NULL DEFAULT 0,
     error_code TEXT,
+    owner_instance TEXT,
+    lease_until TEXT,
     UNIQUE (urusan_id, seq)
   );
   -- Satu turn berjalan per urusan: klaim kedua gagal di level database.
@@ -92,6 +94,14 @@ export const SCHEMA_SQL = `
     used_at TEXT
   );
 
+  -- Hasil eksekusi yang dilaporkan ekstensi: satu hasil per executionId (laporan ganda = 409).
+  CREATE TABLE IF NOT EXISTS execution_results (
+    execution_id TEXT PRIMARY KEY,
+    urusan_id TEXT NOT NULL REFERENCES urusan(id) ON DELETE CASCADE,
+    status TEXT NOT NULL,
+    at TEXT NOT NULL
+  );
+
   -- Potongan korpus resmi yang pernah dikembalikan tool dalam urusan ini: satu-satunya refId yang sah sebagai kutipan.
   CREATE TABLE IF NOT EXISTS retrieved_chunks (
     urusan_id TEXT NOT NULL REFERENCES urusan(id) ON DELETE CASCADE,
@@ -122,4 +132,8 @@ export const SCHEMA_SQL = `
 
 export function migrateHarness(db: Db): void {
   db.exec(SCHEMA_SQL);
+  // Basis data lama (sebelum lease turn) tidak punya kolom ini; tambahkan tanpa menghapus data.
+  const cols = (db.prepare('PRAGMA table_info(turns)').all() as { name: string }[]).map((c) => c.name);
+  if (!cols.includes('owner_instance')) db.exec('ALTER TABLE turns ADD COLUMN owner_instance TEXT');
+  if (!cols.includes('lease_until')) db.exec('ALTER TABLE turns ADD COLUMN lease_until TEXT');
 }

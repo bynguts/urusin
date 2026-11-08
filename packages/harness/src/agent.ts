@@ -309,6 +309,12 @@ class TurnRunner {
     if (externalSignal?.aborted) onExternal();
     externalSignal?.addEventListener('abort', onExternal, { once: true });
     const timer = setTimeout(() => this.ctrl.abort(new TurnAbort('timeout')), this.cfg.turnTimeoutMs);
+    // Lease diperpanjang selama turn hidup; instance lain tidak boleh menganggap turn ini yatim.
+    const lease = setInterval(
+      () => this.store.renewLease(this.turn.turnId),
+      Math.max(10, this.store.leaseMs / 3),
+    );
+    lease.unref();
     let status: TurnOutcome['status'] = 'selesai';
     let dbStatus: Exclude<TurnStatus, 'running'> = 'done';
     let errorCode: string | undefined;
@@ -334,6 +340,7 @@ class TurnRunner {
       }
     } finally {
       clearTimeout(timer);
+      clearInterval(lease);
       externalSignal?.removeEventListener('abort', onExternal);
     }
     this.store.finishTurn(this.turn.turnId, {

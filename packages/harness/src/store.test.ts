@@ -174,11 +174,13 @@ describe('klaim turn', () => {
     expect(() => s.claimTurn(u.id, 'x')).toThrow(TerminalStateError);
   });
 
-  it('turn yang tertinggal running dibersihkan saat boot', () => {
-    const s = new HarnessStore(openHarnessDb());
+  it('turn yatim (lease habis) dibersihkan saat boot', () => {
+    let t = Date.parse('2026-11-09T00:00:00Z');
+    const s = new HarnessStore(openHarnessDb(), { now: () => new Date(t), leaseMs: 1000 });
     const u = s.createUrusan();
     s.claimTurn(u.id, 'x');
-    expect(s.abandonRunningTurns()).toBe(1);
+    t += 5000;
+    expect(s.reapExpiredTurns()).toBe(1);
     expect(() => s.claimTurn(u.id, 'y')).not.toThrow();
   });
 });

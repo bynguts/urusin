@@ -1,4 +1,5 @@
 import { ALL_ON, type CapabilityFlags, type ChatProvider, type Prices } from '@urusin/llm';
+import { redactingProvider } from './guarded-llm.js';
 import type { AgentDeps } from './agent.js';
 import { EventBus } from './bus.js';
 import { builtinTools } from './builtin-tools.js';
@@ -35,7 +36,7 @@ export function createHarness(opts: HarnessOptions) {
   const bus = new EventBus();
   const deps: AgentDeps = {
     store,
-    provider: opts.provider,
+    provider: redactingProvider(opts.provider),
     model: opts.model ?? 'fake-model',
     caps: { ...ALL_ON, ...opts.caps },
     registry,

@@ -1,0 +1,147 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { openHarnessDb } from './db.js';
+import { ConflictError, TurnInProgressError } from './errors.js';
+import { HarnessStore } from './store.js';
+
+/** Dua instance web (blue/green) memakai satu berkas SQLite WAL lewat koneksi terpisah. */
+const dirs: string[] = [];
+const dbs: ReturnType<typeof openHarnessDb>[] = [];
+afterEach(() => {
+  for (const d of dbs.splice(0)) d.close();
+  for (const d of dirs.splice(0)) {
+    try {
+      rmSync(d, { recursive: true, force: true });
+    } catch {
+      // Windows menahan berkas WAL sesaat; direktori temp dibersihkan OS.
+    }
+  }
+});
+
+function dua(opts: { nowA?: () => Date; nowB?: () => Date; leaseMs?: number } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'urusin-mi-'));
+  dirs.push(dir);
+  const path = join(dir, 'u.sqlite');
+  const dbA = openHarnessDb(path);
+  const dbB = openHarnessDb(path);
+  dbs.push(dbA, dbB);
+  const lease = opts.leaseMs ?? 30_000;
+  const a = new HarnessStore(dbA, {
+    instanceId: 'biru',
+    leaseMs: lease,
+    ...(opts.nowA ? { now: opts.nowA } : {}),
+  });
+  const b = new HarnessStore(dbB, {
+    instanceId: 'hijau',
+    leaseMs: lease,
+    ...(opts.nowB ? { now: opts.nowB } : {}),
+  });
+  return { a, b };
+}
+
+describe('lease turn lintas instance (B2b)', () => {
+  it('instance baru yang boot tidak membunuh turn hidup milik instance lama', () => {
+    const { a, b } = dua();
+    const u = a.createUrusan();
+    const { turnId } = a.claimTurn(u.id, 'halo');
+    expect(b.reapExpiredTurns()).toBe(0);
+    const row = a.db.prepare('SELECT status, owner_instance FROM turns WHERE id = ?').get(turnId);
+    expect(row).toEqual({ status: 'running', owner_instance: 'biru' });
+    // dan turn kedua tidak bisa berjalan bersamaan di instance baru
+    expect(() => b.claimTurn(u.id, 'lagi')).toThrow(TurnInProgressError);
+  });
+
+  it('turn yatim (lease lewat, pemilik mati) dibersihkan instance lain lalu urusan bisa lanjut', () => {
+    let tB = Date.parse('2026-11-09T00:00:00Z');
+    const { a, b } = dua({ leaseMs: 1000, nowB: () => new Date(tB), nowA: () => new Date(tB) });
+    const u = a.createUrusan();
+    a.claimTurn(u.id, 'halo');
+    tB += 1500; // lease habis, A tidak memperpanjang (proses mati)
+    expect(b.reapExpiredTurns()).toBe(1);
+    expect(() => b.claimTurn(u.id, 'lanjut')).not.toThrow();
+  });
+
+  it('renewLease memperpanjang hanya turn milik instance sendiri', () => {
+    let t = Date.parse('2026-11-09T00:00:00Z');
+    const { a, b } = dua({ leaseMs: 1000, nowA: () => new Date(t), nowB: () => new Date(t) });
+    const u = a.createUrusan();
+    const { turnId } = a.claimTurn(u.id, 'halo');
+    expect(b.renewLease(turnId)).toBe(false);
+    t += 800;
+    expect(a.renewLease(turnId)).toBe(true);
+    t += 800; // total 1600 ms: tanpa perpanjangan sudah habis, dengan perpanjangan masih berlaku
+    expect(b.reapExpiredTurns()).toBe(0);
+  });
+
+  it('basis data lama tanpa kolom lease dimigrasi tanpa kehilangan data', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'urusin-mig-'));
+    dirs.push(dir);
+    const path = join(dir, 'u.sqlite');
+    const db = openHarnessDb(path);
+    dbs.push(db);
+    db.exec('ALTER TABLE turns DROP COLUMN owner_instance; ALTER TABLE turns DROP COLUMN lease_until;');
+    const again = openHarnessDb(path);
+    dbs.push(again);
+    const cols = (again.prepare('PRAGMA table_info(turns)').all() as { name: string }[]).map((c) => c.name);
+    expect(cols).toEqual(expect.arrayContaining(['owner_instance', 'lease_until']));
+  });
+});
+
+describe('jaminan lintas koneksi: CAS version + kunci turn tingkat DB (B2c)', () => {
+  it('dua koneksi berebut memulai turn pada urusan yang sama: tepat satu menang', () => {
+    const { a, b } = dua();
+    const u = a.createUrusan();
+    const hasil = [a, b].map((s) => {
+      try {
+        return s.claimTurn(u.id, 'halo').turnId;
+      } catch (e) {
+        return e;
+      }
+    });
+    expect(hasil.filter((h) => typeof h === 'string')).toHaveLength(1);
+    expect(hasil.filter((h) => h instanceof TurnInProgressError)).toHaveLength(1);
+    const n = a.db
+      .prepare("SELECT COUNT(*) n FROM turns WHERE urusan_id = ? AND status = 'running'")
+      .get(u.id);
+    expect(n).toEqual({ n: 1 });
+  });
+
+  it('kunci unik DB menolak turn running ganda walau klaim dilakukan tanpa pemeriksaan aplikasi', () => {
+    const { a } = dua();
+    const u = a.createUrusan();
+    a.claimTurn(u.id, 'satu');
+    expect(() =>
+      a.db
+        .prepare(
+          "INSERT INTO turns (id, urusan_id, seq, status, user_text, started_at) VALUES ('t_x', ?, 99, 'running', 'dua', '2026-11-09T00:00:00Z')",
+        )
+        .run(u.id),
+    ).toThrow(/UNIQUE/);
+  });
+
+  it('CAS version: dua instance dengan version basi yang sama, hanya satu transisi yang berhasil', () => {
+    const { a, b } = dua();
+    const u = a.createUrusan();
+    const v0 = a.transition(u.id, 0, 'MEMAHAMI');
+    expect(v0.state).toBe('MEMAHAMI');
+    // keduanya masih memegang version 1 → RENCANA_DIUSULKAN
+    const r = [a, b].map((s) => {
+      try {
+        return s.transition(u.id, v0.version, 'RENCANA_DIUSULKAN').version;
+      } catch (e) {
+        return e;
+      }
+    });
+    expect(r.filter((x) => typeof x === 'number')).toHaveLength(1);
+    expect(r.filter((x) => x instanceof ConflictError)).toHaveLength(1);
+  });
+
+  it('expectedVersion basi dari klien yang melihat versi lama → ConflictError', () => {
+    const { a, b } = dua();
+    const u = a.createUrusan();
+    a.claimTurn(u.id, 'satu'); // version 0 → 1
+    expect(() => b.claimTurn(u.id, 'dua', { expectedVersion: 0 })).toThrow();
+  });
+});

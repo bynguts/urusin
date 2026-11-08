@@ -103,7 +103,13 @@ const toUrusan = (r: UrusanDbRow): UrusanRow => ({
   costIdr: r.cost_idr,
 });
 
-export type StoreOptions = { now?: () => Date };
+export type StoreOptions = {
+  now?: () => Date;
+  /** Id instance proses ini (acak per proses). Turn yang diklaim instance lain tidak boleh diambil alih. */
+  instanceId?: string;
+  /** Masa berlaku lease turn; diperpanjang berkala selama turn berjalan. */
+  leaseMs?: number;
+};
 
 /**
  * Akses data harness. Semua tulisan yang perlu atomik memakai `BEGIN IMMEDIATE` (`.immediate()`),
@@ -112,12 +118,20 @@ export type StoreOptions = { now?: () => Date };
  */
 export class HarnessStore {
   private readonly now: () => Date;
+  readonly instanceId: string;
+  readonly leaseMs: number;
 
   constructor(
     readonly db: Db,
     opts: StoreOptions = {},
   ) {
     this.now = opts.now ?? (() => new Date());
+    this.instanceId = opts.instanceId ?? `i_${randomBytes(8).toString('hex')}`;
+    this.leaseMs = opts.leaseMs ?? 30_000;
+  }
+
+  private leaseUntil(): string {
+    return new Date(this.now().getTime() + this.leaseMs).toISOString();
   }
 
   private iso(): string {
@@ -202,9 +216,18 @@ export class HarnessStore {
       const seq = u.turnCount + 1;
       this.db
         .prepare(
-          `INSERT INTO turns (id, urusan_id, seq, status, user_text, started_at) VALUES (?, ?, ?, 'running', ?, ?)`,
+          `INSERT INTO turns (id, urusan_id, seq, status, user_text, started_at, owner_instance, lease_until)
+           VALUES (?, ?, ?, 'running', ?, ?, ?, ?)`,
         )
-        .run(turnId, urusanId, seq, redactForStorage(userText), this.iso());
+        .run(
+          turnId,
+          urusanId,
+          seq,
+          redactForStorage(userText),
+          this.iso(),
+          this.instanceId,
+          this.leaseUntil(),
+        );
       const res = this.db
         .prepare(
           'UPDATE urusan SET version = version + 1, turn_count = turn_count + 1, updated_at = ? WHERE id = ? AND version = ?',
@@ -246,13 +269,28 @@ export class HarnessStore {
       );
   }
 
-  /** Turn yang tertinggal `running` (proses mati) ditandai error agar urusan bisa dilanjutkan. */
-  abandonRunningTurns(): number {
+  /** Perpanjang lease turn milik instance ini. false bila turn sudah bukan milik/berjalan di instance ini. */
+  renewLease(turnId: string): boolean {
+    return (
+      this.db
+        .prepare(
+          "UPDATE turns SET lease_until = ? WHERE id = ? AND status = 'running' AND owner_instance = ?",
+        )
+        .run(this.leaseUntil(), turnId, this.instanceId).changes === 1
+    );
+  }
+
+  /**
+   * Tandai turn yang lease-nya sudah lewat (proses pemiliknya mati) sebagai error agar urusan bisa dilanjutkan.
+   * Turn yang lease-nya masih berlaku, termasuk milik instance lain di DB yang sama (blue/green), TIDAK disentuh.
+   */
+  reapExpiredTurns(): number {
+    const now = this.iso();
     return this.db
       .prepare(
-        "UPDATE turns SET status = 'error', error_code = 'ABANDONED', ended_at = ? WHERE status = 'running'",
+        "UPDATE turns SET status = 'error', error_code = 'ABANDONED', ended_at = ? WHERE status = 'running' AND (lease_until IS NULL OR lease_until < ?)",
       )
-      .run(this.iso()).changes;
+      .run(now, now).changes;
   }
 
   /** Riwayat percakapan (pesan pengguna + pesan turn) untuk `maxTurns` turn terakhir yang selesai. */
@@ -377,17 +415,63 @@ export class HarnessStore {
   // --- konfirmasi (dibuat WARGA lewat UI; LLM hanya bisa menyebut id) ---
 
   createConfirmation(urusanId: string, tool: string, params: unknown, ttlMs = 10 * 60_000): string {
+    return this.createConfirmationByHash(urusanId, tool, paramsHash(tool, params), ttlMs).id;
+  }
+
+  /** Konfirmasi atas hash parameter yang ditampilkan ke warga (dari event execution_request). */
+  createConfirmationByHash(
+    urusanId: string,
+    tool: string,
+    hash: string,
+    ttlMs = 10 * 60_000,
+  ): { id: string; expiresAt: string } {
     const id = `c_${randomBytes(16).toString('hex')}`;
+    const expiresAt = new Date(this.now().getTime() + ttlMs).toISOString();
     this.db
       .prepare('INSERT INTO confirmations (id, urusan_id, tool, params_hash, expires_at) VALUES (?,?,?,?,?)')
-      .run(
-        id,
-        urusanId,
-        tool,
-        paramsHash(tool, params),
-        new Date(this.now().getTime() + ttlMs).toISOString(),
-      );
-    return id;
+      .run(id, urusanId, tool, hash, expiresAt);
+    return { id, expiresAt };
+  }
+
+  /** Event execution_request yang benar-benar pernah dikirim ke warga pada urusan ini (bukan rekaan klien). */
+  findExecutionRequest(
+    urusanId: string,
+    match: { executionId?: string; tool?: string; paramsHash?: string },
+  ): { executionId: string; tool: string; paramsHash: string } | undefined {
+    const rows = this.db
+      .prepare(
+        "SELECT payload FROM events WHERE urusan_id = ? AND type = 'execution_request' ORDER BY seq DESC",
+      )
+      .all(urusanId) as { payload: string }[];
+    for (const r of rows) {
+      const p = JSON.parse(r.payload) as { executionId: string; tool: string; paramsHash: string };
+      if (
+        (match.executionId === undefined || p.executionId === match.executionId) &&
+        (match.tool === undefined || p.tool === match.tool) &&
+        (match.paramsHash === undefined || p.paramsHash === match.paramsHash)
+      )
+        return p;
+    }
+    return undefined;
+  }
+
+  /** false bila hasil untuk executionId ini sudah pernah dicatat. */
+  recordExecutionResult(urusanId: string, executionId: string, status: string): boolean {
+    return (
+      this.db
+        .prepare(
+          'INSERT OR IGNORE INTO execution_results (execution_id, urusan_id, status, at) VALUES (?,?,?,?)',
+        )
+        .run(executionId, urusanId, status, this.iso()).changes === 1
+    );
+  }
+
+  listUrusan(ids: readonly string[]): UrusanRow[] {
+    if (ids.length === 0) return [];
+    const rows = this.db
+      .prepare(`SELECT * FROM urusan WHERE id IN (${ids.map(() => '?').join(',')}) ORDER BY updated_at DESC`)
+      .all(...ids) as UrusanDbRow[];
+    return rows.map(toUrusan);
   }
 
   getConfirmation(id: string):
