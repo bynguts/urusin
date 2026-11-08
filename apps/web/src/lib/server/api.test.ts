@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
 import { DemoProvider } from '@urusin/harness';
 import { FakeProvider, type ChatParams } from '@urusin/llm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
