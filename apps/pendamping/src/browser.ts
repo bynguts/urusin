@@ -508,6 +508,14 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
 
   return {
     async mulaiAi() {
+      if (init.manualUrl) {
+        // Mode debug: tidak ada AI; penguji manusia memegang kendali sejak awal.
+        manual = true;
+        hooks.mode('takeover', 'Mode debug: kemudi manual oleh penguji.');
+        hooks.event({ jenis: 'giliran_anda', alasan: 'diminta_warga', pesan: 'Mode debug: kemudi manual.' });
+        await page.goto(init.manualUrl, { waitUntil: 'commit' }).catch(() => undefined);
+        return;
+      }
       const started = await interp.start({ executionId: init.executionId, origin: program.origin, steps });
       if ('ok' in started) hooks.ended('gagal', 'gagal', 'Langkah otomatis tidak bisa dimulai.');
     },

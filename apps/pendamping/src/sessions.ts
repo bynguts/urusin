@@ -12,7 +12,7 @@ import type {
   PendampingViewport,
   SesiPendamping,
 } from '@urusin/contracts';
-import { buildProgram, requiredData, type Program, type UploadFile } from '@urusin/executor';
+import { buildProgram, checkUrl, requiredData, type Program, type UploadFile } from '@urusin/executor';
 import type { Config } from './config.js';
 import { isInputMessage } from './input.js';
 
@@ -46,6 +46,8 @@ export type ActiveRun = {
 export type RunInit = {
   sesiId: string;
   program: Program;
+  /** Mode debug (kemudi manual): buka URL ini lalu langsung takeover; tidak ada langkah AI. */
+  manualUrl?: string | undefined;
   executionId: string;
   viewport: PendampingViewport;
   hooks: Hooks;
@@ -62,6 +64,7 @@ type Sesi = {
   sidHash: string;
   executionId: string;
   program: Program;
+  manualUrl?: string | undefined;
   viewport: PendampingViewport;
   dibuatPada: number;
   kedaluwarsaPada: number;
@@ -154,22 +157,58 @@ export class SessionManager {
     if (!built.ok) throw new PendampingError('ADAPTER_TIDAK_ADA', 422, built.message);
     if (built.program.origin !== new URL(input.origin).origin)
       throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'origin registry tidak cocok dengan adapter');
-    if (this.active.size >= this.config.maxSessions && this.queue.length >= this.config.maxQueue)
-      throw new PendampingError('ANTREAN_PENUH', 429, 'antrean pendamping penuh');
-
     // Dev/uji/demo: origin resmi dipetakan ke fixture (path sama). Produksi tanpa override = origin resmi.
     const origin = this.config.originOverrides.get(built.program.origin) ?? built.program.origin;
-    // Headless hanya untuk CI terhadap fixture: situs nyata selalu lewat Chromium headed (Xvfb).
-    if (this.config.headless && !this.config.fixtureOrigins.includes(origin))
-      throw new PendampingError('LAYANAN_TIDAK_TERSEDIA', 503, 'mode headless hanya untuk fixture');
-    const t = this.now();
-    const s: Sesi = {
-      id: randomUUID(),
+    return this.enqueue({
       urusanId: input.urusanId,
       sidHash: input.sidHash,
       executionId: input.executionId,
       program: { ...built.program, origin },
       viewport: input.viewport ?? DEFAULT_VIEWPORT,
+    });
+  }
+
+  /**
+   * Sesi debug (PENDAMPING_DEBUG_TOKEN): penguji manusia mengemudikan peramban lewat stream, tanpa AI.
+   * URL tetap harus lolos allowlist egress (domain resmi registry, atau fixture saat uji).
+   */
+  async createManual(input: {
+    url: string;
+    sidHash: string;
+    viewport?: PendampingViewport | undefined;
+  }): Promise<SesiPendamping> {
+    const fixtureOrigins = this.config.fixtureOrigins;
+    if (!checkUrl(input.url, { testMode: fixtureOrigins.length > 0, fixtureOrigins }).ok)
+      throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'URL di luar allowlist domain resmi');
+    const url = new URL(input.url);
+    return this.enqueue({
+      urusanId: `debug-${randomUUID()}`,
+      sidHash: input.sidHash,
+      executionId: 'debug-manual',
+      program: { origin: url.origin, steps: [] },
+      manualUrl: url.href,
+      viewport: input.viewport ?? DEFAULT_VIEWPORT,
+    });
+  }
+
+  /** Pemilik sesi debug (untuk tiket dari halaman /debug); undefined bila bukan sesi debug. */
+  debugOwner(sesiId: string): { urusanId: string; sidHash: string } | undefined {
+    const s = this.sessions.get(sesiId);
+    return s?.manualUrl ? { urusanId: s.urusanId, sidHash: s.sidHash } : undefined;
+  }
+
+  private async enqueue(
+    base: Pick<Sesi, 'urusanId' | 'sidHash' | 'executionId' | 'program' | 'manualUrl' | 'viewport'>,
+  ): Promise<SesiPendamping> {
+    if (this.active.size >= this.config.maxSessions && this.queue.length >= this.config.maxQueue)
+      throw new PendampingError('ANTREAN_PENUH', 429, 'antrean pendamping penuh');
+    // Headless hanya untuk CI terhadap fixture: situs nyata selalu lewat Chromium headed (Xvfb).
+    if (this.config.headless && !this.config.fixtureOrigins.includes(base.program.origin))
+      throw new PendampingError('LAYANAN_TIDAK_TERSEDIA', 503, 'mode headless hanya untuk fixture');
+    const t = this.now();
+    const s: Sesi = {
+      ...base,
+      id: randomUUID(),
       dibuatPada: t,
       kedaluwarsaPada: t + this.config.ttlMs,
       status: 'antre',
@@ -177,7 +216,7 @@ export class SessionManager {
       lastActivity: t,
       vault: new Map(),
       files: new Map(),
-      butuh: requiredData(built.program.steps),
+      butuh: requiredData(base.program.steps),
       aiDimulai: false,
       galatInputTerkirim: false,
     };
@@ -225,13 +264,16 @@ export class SessionManager {
 
   // ---- WebSocket -----------------------------------------------------------
 
-  /** Tukar tiket sekali pakai; tiket terikat ke satu sesi (dan karenanya ke urusan + pemilik). */
-  consumeTicket(tiket: string, sesiId: string): boolean {
+  /**
+   * Tukar tiket sekali pakai; tiket terikat ke satu sesi, dan hash cookie `urusin_sid` dari upgrade WS harus
+   * sama dengan pemilik sesi. Sambung ulang selalu memakai tiket baru.
+   */
+  consumeTicket(tiket: string, sesiId: string, sidHash: string): boolean {
     const t = this.tickets.get(tiket);
     this.tickets.delete(tiket);
     if (!t || t.exp < this.now() || t.sesiId !== sesiId) return false;
     const s = this.sessions.get(sesiId);
-    return s !== undefined && !TERMINAL.has(s.status);
+    return s !== undefined && !TERMINAL.has(s.status) && sameHash(s.sidHash, sidHash);
   }
 
   async attach(sesiId: string, viewer: Viewer): Promise<void> {
@@ -299,7 +341,8 @@ export class SessionManager {
   // ---- internal -------------------------------------------------------------
 
   private handleControl(s: Sesi, aksi: 'ambil_alih' | 'kembalikan'): void {
-    if (!s.run || TERMINAL.has(s.status)) return;
+    // Sesi debug tidak punya AI: kendali selalu di tangan penguji.
+    if (!s.run || TERMINAL.has(s.status) || s.manualUrl) return;
     if (aksi === 'ambil_alih') {
       s.run.ambilAlih();
       this.setMode(s, 'takeover', 'Anda memegang kendali. AI berhenti sampai Anda mengembalikannya.');
@@ -394,6 +437,7 @@ export class SessionManager {
       const run = await this.factory({
         sesiId: s.id,
         program: s.program,
+        manualUrl: s.manualUrl,
         executionId: s.executionId,
         viewport: s.viewport,
         hooks,

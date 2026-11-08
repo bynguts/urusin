@@ -18,7 +18,8 @@ import { FIXTURE_ORIGIN, INTERNAL_TOKEN, PENDAMPING_ORIGIN } from '../playwright
  */
 
 const TEST_HP = '08000000001'; // HP uji fiktif yang tercetak di halaman fixture
-const SID = sidHashOf('e2e'.padEnd(32, '0'));
+const SID_MENTAH = 'e2e'.padEnd(32, '0');
+const SID = sidHashOf(SID_MENTAH);
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
   'base64',
@@ -80,6 +81,8 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
 }) => {
   // Perangkat warga: ponsel dengan layar sentuh.
   const device = await browser.newContext({ viewport: { width: 480, height: 1000 }, hasTouch: true });
+  // Cookie sesi pemilik (di produksi: cookie web app di domain yang sama dengan /pendamping/ws).
+  await device.addCookies([{ name: 'urusin_sid', value: SID_MENTAH, url: PENDAMPING_ORIGIN }]);
   const page = await device.newPage();
 
   const created = await mulai('u-e2e-1');

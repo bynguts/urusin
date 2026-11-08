@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import http from 'node:http';
 import { dirname, join } from 'node:path';
@@ -8,15 +8,17 @@ import {
   PENDAMPING_WS_CLOSE,
   PemilikSesiInternalSchema,
   PendampingClientMessageSchema,
+  PendampingViewportSchema,
   type PendampingGalat,
   type PendampingServerMessage,
   type TiketPendampingResponse,
 } from '@urusin/contracts';
 import { WebSocketServer, type WebSocket } from 'ws';
-import type { ZodType } from 'zod';
+import { z, type ZodType } from 'zod';
 import type { Config } from './config.js';
+import { debugPageHtml } from './debug-page.js';
 import { devPageHtml } from './dev-page.js';
-import { PendampingError, type SessionManager } from './sessions.js';
+import { PendampingError, sidHashOf, type SessionManager } from './sessions.js';
 
 /**
  * HTTP + WebSocket layanan pendamping.
@@ -27,6 +29,25 @@ import { PendampingError, type SessionManager } from './sessions.js';
  */
 
 const MAX_JSON = 64 * 1024;
+const SID_COOKIE = 'urusin_sid';
+
+/**
+ * sha256(urusin_sid) dari header Cookie upgrade WebSocket (temuan arsitek M-5): koneksi layar hanya untuk
+ * perangkat yang memegang cookie sesi pemilik, selain tiket sekali pakai. null bila tidak ada/rusak.
+ */
+export function sidHashFromCookie(header: string | undefined): string | null {
+  for (const part of (header ?? '').split(';')) {
+    const [k, ...v] = part.trim().split('=');
+    if (k === SID_COOKIE) {
+      const val = v.join('=');
+      return /^[0-9a-f]{32}$/.test(val) ? sidHashOf(val) : null;
+    }
+  }
+  return null;
+}
+
+const DebugSesiSchema = z.object({ url: z.url(), viewport: PendampingViewportSchema.optional() });
+const DebugTiketSchema = z.object({ sesiId: z.uuid() });
 
 const json = (res: http.ServerResponse, status: number, body: unknown) => {
   res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
@@ -86,6 +107,46 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         return res.end(readFileSync(join(dir, path.slice('/dev/'.length))));
       }
 
+      if (config.debugToken && path.startsWith('/debug')) {
+        if (req.method === 'GET' && path === '/debug') {
+          res.writeHead(200, {
+            'content-type': 'text/html; charset=utf-8',
+            'cache-control': 'no-store',
+            'x-robots-tag': 'noindex',
+          });
+          return res.end(debugPageHtml());
+        }
+        if (req.method === 'GET' && /^\/debug\/(index|viewer)\.js$/.test(path)) {
+          const dir = clientDist();
+          if (!dir) return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'klien belum dibangun' });
+          res.writeHead(200, {
+            'content-type': 'text/javascript; charset=utf-8',
+            'cache-control': 'no-store',
+          });
+          return res.end(readFileSync(join(dir, path.slice('/debug/'.length))));
+        }
+        if (req.method !== 'POST' || !tokenOk(req.headers.authorization, config.debugToken))
+          return galat(res, 401, { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' });
+        if (path === '/debug/sesi') {
+          const body = await readJson(req, DebugSesiSchema);
+          if (!body)
+            return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+          // Cookie sesi khusus debug di origin pendamping sendiri: syarat upgrade WS sama seperti warga.
+          const sid = randomBytes(16).toString('hex');
+          const sesi = await manager.createManual({ ...body, sidHash: sidHashOf(sid) });
+          res.setHeader('set-cookie', `${SID_COOKIE}=${sid}; Path=/; HttpOnly; SameSite=Strict`);
+          return json(res, 201, sesi);
+        }
+        if (path === '/debug/tiket') {
+          const body = await readJson(req, DebugTiketSchema);
+          const owner = body ? manager.debugOwner(body.sesiId) : undefined;
+          if (!owner) return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'Sesi debug tidak ada.' });
+          const t = manager.mintTicket(owner);
+          return json(res, 201, { tiket: t.tiket, kedaluwarsa: new Date(t.exp).toISOString() });
+        }
+        return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'Tidak ditemukan.' });
+      }
+
       if (!path.startsWith('/internal/'))
         return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'Tidak ditemukan.' });
       if (!tokenOk(req.headers.authorization, config.internalToken))
@@ -130,15 +191,21 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
   server.on('upgrade', (req, socket, head) => {
     const m = /^\/ws\/([0-9a-f-]{36})$/.exec(new URL(req.url ?? '/', 'http://p').pathname);
     const origin = req.headers.origin;
-    if (!m?.[1] || !origin || !config.allowedOrigins.includes(origin)) {
+    // Halaman /debug dilayani pendamping sendiri: origin-nya = Host permintaan ini.
+    const debugOrigin =
+      config.debugToken !== undefined &&
+      origin !== undefined &&
+      (origin === `http://${req.headers.host}` || origin === `https://${req.headers.host}`);
+    const sidHash = sidHashFromCookie(req.headers.cookie);
+    if (!m?.[1] || !origin || !(config.allowedOrigins.includes(origin) || debugOrigin) || !sidHash) {
       socket.end('HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n');
       return;
     }
     const sesiId = m[1];
-    wss.handleUpgrade(req, socket, head, (ws) => onSocket(ws, sesiId));
+    wss.handleUpgrade(req, socket, head, (ws) => onSocket(ws, sesiId, sidHash));
   });
 
-  function onSocket(ws: WebSocket, sesiId: string) {
+  function onSocket(ws: WebSocket, sesiId: string, sidHash: string) {
     let authed = false;
     let windowStart = Date.now();
     let count = 0;
@@ -171,7 +238,7 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
       const msg = parsed.data;
       if (!authed) {
         clearTimeout(halo);
-        if (msg.type !== 'halo' || !manager.consumeTicket(msg.tiket, sesiId))
+        if (msg.type !== 'halo' || !manager.consumeTicket(msg.tiket, sesiId, sidHash))
           return ws.close(PENDAMPING_WS_CLOSE.TIDAK_SAH, 'tiket tidak sah');
         authed = true;
         void manager.attach(sesiId, viewer);

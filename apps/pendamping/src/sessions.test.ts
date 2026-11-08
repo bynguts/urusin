@@ -7,6 +7,7 @@ import { createServer } from './server.js';
 import { SessionManager, sidHashOf, type ActiveRun, type RunInit } from './sessions.js';
 
 const SID = sidHashOf('a'.repeat(32));
+const COOKIE = `urusin_sid=${'a'.repeat(32)}`;
 const OTHER = sidHashOf('b'.repeat(32));
 
 function input(urusanId: string, extra: Partial<MulaiSesiInternal> = {}): MulaiSesiInternal {
@@ -130,17 +131,38 @@ describe('SessionManager', () => {
     expect(h.runs[0]!.init.program.origin).toBe('http://127.0.0.1:4320');
   });
 
-  it('tiket sekali pakai, terikat sesi, kedaluwarsa', async () => {
+  it('tiket sekali pakai, terikat sesi + hash cookie pemilik, kedaluwarsa', async () => {
     const h = harness();
     const s = await h.manager.create(input('u1'));
     const t = h.manager.mintTicket(owner('u1'));
-    expect(h.manager.consumeTicket(t.tiket, 'sesi-lain')).toBe(false);
+    expect(h.manager.consumeTicket(t.tiket, 'sesi-lain', SID)).toBe(false);
     const t2 = h.manager.mintTicket(owner('u1'));
-    expect(h.manager.consumeTicket(t2.tiket, s.sesiId)).toBe(true);
-    expect(h.manager.consumeTicket(t2.tiket, s.sesiId)).toBe(false);
+    expect(h.manager.consumeTicket(t2.tiket, s.sesiId, SID)).toBe(true);
+    expect(h.manager.consumeTicket(t2.tiket, s.sesiId, SID)).toBe(false);
     const t3 = h.manager.mintTicket(owner('u1'));
     h.advance(31_000);
-    expect(h.manager.consumeTicket(t3.tiket, s.sesiId)).toBe(false);
+    expect(h.manager.consumeTicket(t3.tiket, s.sesiId, SID)).toBe(false);
+    // Tiket sah tetapi cookie perangkat lain: ditolak (dan tiket hangus).
+    const t4 = h.manager.mintTicket(owner('u1'));
+    expect(h.manager.consumeTicket(t4.tiket, s.sesiId, OTHER)).toBe(false);
+    expect(h.manager.consumeTicket(t4.tiket, s.sesiId, SID)).toBe(false);
+  });
+
+  it('sesi debug: hanya URL allowlist, langsung manual, kendali tidak bisa dikembalikan ke AI', async () => {
+    const h = harness();
+    await expect(
+      h.manager.createManual({ url: 'https://evil.example/', sidHash: SID }),
+    ).rejects.toMatchObject({ kode: 'ADAPTER_TIDAK_ADA' });
+    const s = await h.manager.createManual({ url: 'https://oss.go.id/informasi', sidHash: SID });
+    await h.flush();
+    expect(s.urusanId).toMatch(/^debug-/);
+    expect(h.runs[0]!.init.manualUrl).toBe('https://oss.go.id/informasi');
+    expect(h.runs[0]!.calls).toContain('mulaiAi');
+    expect(h.manager.debugOwner(s.sesiId)).toEqual({ urusanId: s.urusanId, sidHash: SID });
+    await h.manager.handleClient(s.sesiId, { type: 'kembalikan' });
+    expect(h.runs[0]!.calls).not.toContain('kembalikan');
+    const biasa = await h.manager.create(input('u-biasa'));
+    expect(h.manager.debugOwner(biasa.sesiId)).toBeUndefined();
   });
 
   it('data vault/berkas: AI mulai hanya setelah lengkap; input ditolak di mode AI; kendali warga', async () => {
@@ -343,12 +365,12 @@ describe('server HTTP + WebSocket', () => {
     const foreign = new WebSocket(url, { origin: 'http://evil.test' });
     await new Promise((r) => foreign.on('error', r));
 
-    const noHalo = new WebSocket(url, { origin: 'http://app.test' });
+    const noHalo = new WebSocket(url, { origin: 'http://app.test', headers: { cookie: COOKIE } });
     await new Promise((r) => noHalo.on('open', r));
     noHalo.send(JSON.stringify({ type: 'akhiri' }));
     expect(await new Promise((r) => noHalo.on('close', (c) => r(c)))).toBe(4401);
 
-    const ok = new WebSocket(url, { origin: 'http://app.test' });
+    const ok = new WebSocket(url, { origin: 'http://app.test', headers: { cookie: COOKIE } });
     const msgs: PendampingServerMessage[] = [];
     ok.on('message', (d) => msgs.push(JSON.parse(d.toString()) as PendampingServerMessage));
     await new Promise((r) => ok.on('open', r));
@@ -361,13 +383,81 @@ describe('server HTTP + WebSocket', () => {
     expect(msgs.some((m) => m.type === 'galat' && m.kode === 'PESAN_TIDAK_SAH')).toBe(true);
     expect(msgs.some((m) => m.type === 'pong')).toBe(true);
 
-    const reuse = new WebSocket(url, { origin: 'http://app.test' });
+    const reuse = new WebSocket(url, { origin: 'http://app.test', headers: { cookie: COOKIE } });
     await new Promise((r) => reuse.on('open', r));
     reuse.send(JSON.stringify({ type: 'halo', tiket: t.tiket }));
     expect(await new Promise((r) => reuse.on('close', (c) => r(c)))).toBe(4401);
     ok.close();
 
-    const badPath = new WebSocket(`ws://127.0.0.1:${port}/ws/xyz`, { origin: 'http://app.test' });
+    const badPath = new WebSocket(`ws://127.0.0.1:${port}/ws/xyz`, {
+      origin: 'http://app.test',
+      headers: { cookie: COOKIE },
+    });
     await new Promise((r) => badPath.on('error', r));
+
+    // Tanpa cookie urusin_sid (atau cookie rusak): upgrade ditolak sebelum tiket dipakai.
+    for (const headers of [{}, { cookie: 'urusin_sid=ZZ' }]) {
+      const tanpa = new WebSocket(url, { origin: 'http://app.test', headers });
+      await new Promise((r) => tanpa.on('error', r));
+    }
+    // Cookie perangkat lain + tiket sah: ditutup 4401.
+    const t2 = (await (await call('/internal/sesi/tiket', owner('u1'))).json()) as { tiket: string };
+    const lain = new WebSocket(url, {
+      origin: 'http://app.test',
+      headers: { cookie: `urusin_sid=${'b'.repeat(32)}` },
+    });
+    await new Promise((r) => lain.on('open', r));
+    lain.send(JSON.stringify({ type: 'halo', tiket: t2.tiket }));
+    expect(await new Promise((r) => lain.on('close', (c) => r(c)))).toBe(4401);
+  });
+
+  it('halaman /debug: mati tanpa token; dengan token: sesi manual, cookie sendiri, tiket, WS dari origin sendiri', async () => {
+    const tanpa = await start();
+    expect((await fetch(`${tanpa.base}/debug`)).status).toBe(404);
+    server?.close();
+
+    const h = harness({ allowedOrigins: ['http://app.test'], debugToken: 'd'.repeat(32) });
+    server = createServer(h.config, h.manager);
+    await new Promise<void>((r) => server!.listen(0, '127.0.0.1', r));
+    const port = (server!.address() as net.AddressInfo).port;
+    const base = `http://127.0.0.1:${port}`;
+    const page = await fetch(`${base}/debug`);
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain('DEBUG');
+    const post = (path: string, body: unknown, token = 'd'.repeat(32)) =>
+      fetch(`${base}${path}`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    expect((await post('/debug/sesi', { url: 'https://oss.go.id/' }, 'salah'.repeat(8))).status).toBe(401);
+    expect((await post('/debug/sesi', { url: 'bukan url' })).status).toBe(422);
+    expect((await post('/debug/sesi', { url: 'https://evil.example/' })).status).toBe(422);
+    const res = await post('/debug/sesi', { url: 'https://oss.go.id/' });
+    expect(res.status).toBe(201);
+    const cookie = res.headers.get('set-cookie')!.split(';')[0]!;
+    expect(cookie).toMatch(/^urusin_sid=[0-9a-f]{32}$/);
+    const sesi = (await res.json()) as { sesiId: string };
+    expect((await post('/debug/tiket', { sesiId: '00000000-0000-4000-8000-000000000000' })).status).toBe(404);
+    const t = (await (await post('/debug/tiket', { sesiId: sesi.sesiId })).json()) as { tiket: string };
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/${sesi.sesiId}`, {
+      origin: base,
+      headers: { cookie },
+    });
+    const msgs: PendampingServerMessage[] = [];
+    ws.on('message', (d) => msgs.push(JSON.parse(d.toString()) as PendampingServerMessage));
+    await new Promise((r) => ws.on('open', r));
+    ws.send(JSON.stringify({ type: 'halo', tiket: t.tiket }));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(msgs[0]).toMatchObject({ type: 'status' });
+    ws.close();
+    expect(
+      (
+        await fetch(`${base}/debug/lain`, {
+          method: 'POST',
+          headers: { authorization: `Bearer ${'d'.repeat(32)}` },
+        })
+      ).status,
+    ).toBe(404);
   });
 });
