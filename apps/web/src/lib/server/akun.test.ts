@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
-import { GoogleOidc, sha256Hex, type Akun } from '@urusin/akun';
+import { DevMailer, GoogleOidc, sha256Hex, type Akun } from '@urusin/akun';
 import { FakeGoogle, MemoryMailer } from '@urusin/akun/testing';
 import { GalatApiSchema, SesiAkunResponseSchema, VaultResponseSchema } from '@urusin/contracts';
 import { DemoProvider } from '@urusin/harness';
@@ -263,6 +263,22 @@ describe('API akun: daftar → verifikasi → masuk → sesi', () => {
     expect(s.email.tertunda).toBe(true);
     const page = (await daftarPage.default(ev(form({ email: 'b@example.com', sandi: SANDI })))) as any;
     expect(page).toEqual({ terkirim: true, tertunda: true, email: 'b@example.com' });
+  });
+});
+
+describe('produksi tanpa auth.env: email ditahan, Google tersembunyi, app tetap jalan', () => {
+  it('daftar 202 tertunda, masuk tanpa verifikasi seperti tamu, tombol Google tidak tampil', async () => {
+    buatRt({ mailer: new DevMailer(() => undefined, undefined, true), google: null });
+    const s = SesiAkunResponseSchema.parse(
+      await (await lewatHook(get('/api/akun'), new Jar(), sesiAkun)).json(),
+    );
+    expect([s.metode.google, s.email]).toEqual([false, { mode: 'log', tertunda: true }]);
+    expect(((await masukLoad(ev(get('/masuk')) as never)) as any).googleAktif).toBe(false);
+    const r = await daftarApi(ev(post({ email: EMAIL, sandi: SANDI })));
+    expect([r.status, await r.json()]).toEqual([202, { terkirim: true, tertunda: true }]);
+    const { res, body } = await masuk();
+    expect(res.status).toBe(200);
+    expect(body.akun).toMatchObject({ emailTerverifikasi: false, sinkron: false });
   });
 });
 

@@ -181,9 +181,12 @@ function createAkun(
     oidcFixture = f.fixture;
     google = f.oidc;
   } else if (cfg.google) google = new GoogleOidc({ ...cfg.google, redirectUri, fetch: httpKeluar });
+  const mailer = init.mailer ?? mailerFromEnv(env, httpKeluar, log);
+  if (mailer.ditahan)
+    alertOperator('email ditahan: URUSIN_EMAIL_MODE=log di produksi (Resend belum dikonfigurasi)');
   const akun = new AkunService({
     db,
-    mailer: init.mailer ?? mailerFromEnv(env, httpKeluar, log),
+    mailer,
     vault: new Vault(db, init.kek ?? cfg.kek, init.vaultDir ?? vaultDirFor(config.dbPath, env), {
       kekLama: cfg.kekLama,
       batas: cfg.batasVault,

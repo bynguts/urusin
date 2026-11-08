@@ -1,3 +1,4 @@
+import { nilaiEnv } from '@urusin/akun';
 import { egressFetch, type EgressFetch } from '@urusin/egress';
 
 /** Endpoint verifikasi token Turnstile (host ada di allowlist egress `TURNSTILE_HOSTS`). */
@@ -21,17 +22,17 @@ type Env = Record<string, string | undefined>;
  * Turnstile dari env:
  * - `TURNSTILE_SECRET_KEY` terisi → siteverify Cloudflare lewat egress (gagal jaringan = token ditolak);
  * - `URUSIN_TURNSTILE_FIXTURE=1` (hanya di luar produksi) → hanya `TURNSTILE_TOKEN_FIXTURE` diterima (e2e);
- * - selain itu nonaktif. "Masuk sebagai juri" menolak di produksi bila nonaktif (fail closed).
+ * - selain itu (kosong atau placeholder `ganti-dengan-…`) nonaktif. "Masuk sebagai juri" menolak di produksi bila nonaktif (fail closed).
  */
 export function turnstileFromEnv(env: Env = process.env, fetch: EgressFetch = egressFetch): Turnstile {
-  const secret = env.TURNSTILE_SECRET_KEY?.trim();
+  const secret = nilaiEnv(env.TURNSTILE_SECRET_KEY);
   const fixture = env.URUSIN_TURNSTILE_FIXTURE?.trim() === '1';
   if (fixture && env.NODE_ENV === 'production')
     throw new Error('URUSIN_TURNSTILE_FIXTURE hanya untuk e2e; tidak boleh di produksi');
   if (secret) {
     return {
       mode: 'cloudflare',
-      siteKey: env.TURNSTILE_SITE_KEY?.trim() ?? '',
+      siteKey: nilaiEnv(env.TURNSTILE_SITE_KEY) ?? '',
       async verifikasi(token, ip) {
         if (!token || token.length > 4096) return false;
         try {

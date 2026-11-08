@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { TURNSTILE_SITEVERIFY, TURNSTILE_TOKEN_FIXTURE, turnstileFromEnv } from './turnstile';
 
 describe('turnstileFromEnv', () => {
+  it('placeholder .env.example = nonaktif', () => {
+    const env = {
+      TURNSTILE_SITE_KEY: 'ganti-dengan-site-key',
+      TURNSTILE_SECRET_KEY: 'ganti-dengan-secret-key',
+    };
+    expect(turnstileFromEnv(env).mode).toBe('nonaktif');
+  });
+
   it('nonaktif tanpa konfigurasi: tidak pernah lolos', async () => {
     const t = turnstileFromEnv({});
     const lolos = await t.verifikasi(TURNSTILE_TOKEN_FIXTURE, '1.2.3.4');
