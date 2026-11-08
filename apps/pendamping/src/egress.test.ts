@@ -270,3 +270,82 @@ describe('proxy hulu operator (PENDAMPING_UPSTREAM_PROXY)', () => {
     tolak = false;
   });
 });
+
+describe('host di allowlist yang DNS-nya menunjuk ke loopback/privat (klasifikasi @urusin/egress)', () => {
+  let canary: http.Server;
+  let canaryPort = 0;
+  let canaryHits = 0;
+  let proxy: EgressProxy;
+  const dns: Record<string, string[]> = {
+    'llm.go.id': ['127.0.0.1'],
+    'mapped.go.id': ['::ffff:127.0.0.1'],
+    'cgnat.go.id': ['100.100.1.1'],
+    'v6.go.id': ['::1'],
+  };
+
+  beforeAll(async () => {
+    canary = http.createServer((_req, res) => {
+      canaryHits++;
+      res.end('bocor');
+    });
+    await new Promise<void>((r) => canary.listen(0, '127.0.0.1', r));
+    canaryPort = (canary.address() as net.AddressInfo).port;
+    proxy = await startEgressProxy(
+      [
+        // Proxy LLM host (127.0.0.1:20128) dan canary lokal, keduanya lewat nama resmi yang diizinkan.
+        { host: 'llm.go.id', port: 20128 },
+        { host: 'llm.go.id', port: canaryPort },
+        { host: 'mapped.go.id', port: canaryPort },
+        { host: 'cgnat.go.id', port: 443 },
+        { host: 'v6.go.id', port: canaryPort },
+      ],
+      { resolve: async (h) => dns[h] ?? [] },
+    );
+  });
+  afterAll(async () => {
+    await proxy.close();
+    canary.close();
+  });
+
+  const connect = (authority: string) =>
+    new Promise<string>((resolve, reject) => {
+      const s = net.connect(proxy.port, '127.0.0.1', () =>
+        s.write(`CONNECT ${authority} HTTP/1.1\r\nHost: ${authority}\r\n\r\n`),
+      );
+      s.once('data', (d) => {
+        resolve(d.toString().split('\r\n')[0] ?? '');
+        s.destroy();
+      });
+      s.on('error', reject);
+    });
+
+  it('CONNECT dan HTTP ke 127.0.0.1:20128 / ::ffff: / CGNAT / ::1 ditolak; canary tak tersentuh', async () => {
+    for (const a of [
+      'llm.go.id:20128',
+      `llm.go.id:${canaryPort}`,
+      `mapped.go.id:${canaryPort}`,
+      'cgnat.go.id:443',
+      `v6.go.id:${canaryPort}`,
+    ])
+      expect(await connect(a), a).toContain('403');
+    expect(await proxy.decide('llm.go.id', 20128)).toEqual({ ok: false, reason: 'alamat_privat' });
+    const http403 = await new Promise<number>((resolve, reject) => {
+      const req = http.request(
+        {
+          host: '127.0.0.1',
+          port: proxy.port,
+          method: 'GET',
+          path: `http://llm.go.id:${canaryPort}/v1/models`,
+        },
+        (res) => {
+          res.resume();
+          resolve(res.statusCode ?? 0);
+        },
+      );
+      req.on('error', reject);
+      req.end();
+    });
+    expect(http403).toBe(403);
+    expect(canaryHits).toBe(0);
+  });
+});

@@ -115,6 +115,9 @@ importers:
       '@urusin/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@urusin/egress':
+        specifier: workspace:*
+        version: link:../../packages/egress
       '@urusin/executor':
         specifier: workspace:*
         version: link:../../packages/executor

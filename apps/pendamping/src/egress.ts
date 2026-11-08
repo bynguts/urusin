@@ -1,7 +1,8 @@
 import { lookup as dnsLookup } from 'node:dns/promises';
 import http from 'node:http';
-import net, { BlockList, isIP } from 'node:net';
+import net, { isIP } from 'node:net';
 import type { Duplex } from 'node:stream';
+import { isBlockedAddress } from '@urusin/egress';
 
 /**
  * Proxy egress pengizin (allowlisting forward proxy) per sesi. Chromium memakai `--proxy-server` ke sini
@@ -13,52 +14,12 @@ import type { Duplex } from 'node:stream';
  * Tidak mencatat path, query, header, atau isi; hanya host yang ditolak.
  */
 
-const BLOCKED = new BlockList();
-for (const [net4, prefix] of [
-  ['0.0.0.0', 8],
-  ['10.0.0.0', 8],
-  ['100.64.0.0', 10],
-  ['127.0.0.0', 8],
-  ['169.254.0.0', 16],
-  ['172.16.0.0', 12],
-  ['192.0.0.0', 24],
-  ['192.0.2.0', 24],
-  ['192.88.99.0', 24],
-  ['192.168.0.0', 16],
-  ['198.18.0.0', 15],
-  ['198.51.100.0', 24],
-  ['203.0.113.0', 24],
-  ['224.0.0.0', 4],
-  ['240.0.0.0', 4],
-] as const)
-  BLOCKED.addSubnet(net4, prefix, 'ipv4');
-for (const [net6, prefix] of [
-  ['::', 128],
-  ['::1', 128],
-  ['64:ff9b::', 96],
-  ['64:ff9b:1::', 48],
-  ['100::', 64],
-  ['2001::', 23],
-  ['2001:db8::', 32],
-  ['2002::', 16],
-  ['fc00::', 7],
-  ['fe80::', 10],
-  ['fec0::', 10],
-  ['ff00::', 8],
-] as const)
-  BLOCKED.addSubnet(net6, prefix, 'ipv6');
-
-/** True bila alamat IP tidak boleh dihubungi dari peramban (termasuk IPv4-mapped IPv6). */
-export function isBlockedAddress(address: string): boolean {
-  const family = isIP(address);
-  if (family === 0) return true;
-  if (family === 6) {
-    const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address);
-    if (mapped?.[1]) return BLOCKED.check(mapped[1], 'ipv4');
-    return BLOCKED.check(address, 'ipv6');
-  }
-  return BLOCKED.check(address, 'ipv4');
-}
+/**
+ * Klasifikasi alamat (privat, loopback, link-local/metadata, CGNAT, `::ffff:`/NAT64/6to4, dst.) diambil dari
+ * `@urusin/egress`: satu sumber kebenaran daftar blokir untuk semua jalur keluar server. Allowlist host
+ * persis per sesi tetap di sini (lebih ketat dari kebijakan `*.go.id` milik egress server).
+ */
+export { isBlockedAddress };
 
 export type EgressRule = {
   /** Host persis, huruf kecil (tanpa wildcard). */
