@@ -24,6 +24,7 @@ import {
 } from '@urusin/llm';
 import { openDb } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
+import { setRunningTurnsSource } from './running-turns.js';
 
 /** Konfigurasi runtime dari env (dibaca sekali saat boot). Semua opsional kecuali yang bertanda. */
 export type RuntimeConfig = {
@@ -89,7 +90,9 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     h.bus.publish(urusanId, ev);
     return ev;
   };
-  return { ...h, config, mode: init.mode ?? 'demo', running: new Map(), publish };
+  const running = new Map<string, AbortController>();
+  setRunningTurnsSource(() => running.size);
+  return { ...h, config, mode: init.mode ?? 'demo', running, publish };
 }
 
 function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {
