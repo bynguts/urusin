@@ -6,3 +6,6 @@ export * from './search.js';
 export * from './rrf.js';
 export * from './vec.js';
 export * from './tool.js';
+export * from './vector/transform.js';
+export * from './vector/store.js';
+export * from './vector/pipeline.js';
