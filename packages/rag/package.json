@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "rag:ingest": "node --experimental-strip-types src/ingest/cli.ts"
+    "rag:ingest": "tsc -p tsconfig.build.json && node dist/ingest/cli.js"
   },
   "dependencies": {
     "better-sqlite3": "13.0.3",

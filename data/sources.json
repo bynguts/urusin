@@ -15,7 +15,7 @@
    "robots": "ditemukan",
    "lastFetched": "2026-11-08",
    "ingest": true,
-   "catatan": "Daftar layanan dengan halaman per layanan (standar pelayanan + persyaratan). Ingest mengikuti tautan /layanan/* satu tingkat."
+   "catatan": "Daftar layanan dengan halaman per layanan (standar pelayanan + persyaratan). Hanya halaman daftar; halaman per layanan (/layanan/*) ditambahkan sebagai sumber tersendiri setelah dicek."
   },
   {
    "id": "wonogiri-telunjuk",
