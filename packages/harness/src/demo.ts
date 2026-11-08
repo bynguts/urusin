@@ -229,37 +229,37 @@ export const DEMO_CHUNKS = [
     id: 'demo-akta-lahir-1',
     text: 'Persyaratan akta kelahiran: surat keterangan lahir dari rumah sakit atau bidan, Kartu Keluarga orang tua, dan KTP elektronik kedua orang tua. Pengurusan akta kelahiran tidak dipungut biaya.',
     judul: 'Akta Kelahiran (contoh)',
-    layanan: 'akta-kelahiran',
+    layanan: 'adminduk',
   },
   {
     id: 'demo-kk-1',
     text: 'Persyaratan perubahan Kartu Keluarga: Kartu Keluarga lama, surat pengantar RT dan RW, dan dokumen pendukung perubahan seperti akta kelahiran atau akta perkawinan.',
     judul: 'Kartu Keluarga (contoh)',
-    layanan: 'kartu-keluarga',
+    layanan: 'adminduk',
   },
   {
     id: 'demo-ktp-1',
     text: 'Penggantian KTP elektronik yang hilang: surat keterangan kehilangan dari kepolisian, Kartu Keluarga, dan fotokopi dokumen identitas lain bila ada. Pencetakan dilakukan di kantor Dinas Kependudukan.',
     judul: 'KTP Elektronik Hilang (contoh)',
-    layanan: 'ktp-el',
+    layanan: 'adminduk',
   },
   {
     id: 'demo-pindah-1',
     text: 'Pindah antar kabupaten kota memerlukan surat keterangan pindah dari daerah asal dan surat keterangan datang di daerah tujuan sebelum Kartu Keluarga diperbarui.',
     judul: 'Pindah Domisili (contoh)',
-    layanan: 'pindah',
+    layanan: 'adminduk',
   },
   {
     id: 'demo-kematian-1',
     text: 'Akta kematian diurus dengan surat keterangan kematian dari rumah sakit atau kelurahan, Kartu Keluarga almarhum, dan KTP elektronik almarhum serta pelapor.',
     judul: 'Akta Kematian (contoh)',
-    layanan: 'akta-kematian',
+    layanan: 'adminduk',
   },
   {
     id: 'demo-nikah-1',
     text: 'Pencatatan perkawinan memerlukan surat keterangan menikah dari tokoh agama, Kartu Keluarga, KTP elektronik kedua mempelai, dan pas foto bersama.',
     judul: 'Pencatatan Perkawinan (contoh)',
-    layanan: 'perkawinan',
+    layanan: 'adminduk',
   },
 ] as const;
 

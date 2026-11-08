@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { llmText } from '@urusin/core';
-import { cariPengetahuanTool } from '@urusin/rag';
+import { LAYANAN_KORPUS, cariPengetahuanTool } from '@urusin/rag';
 import { routeByKode } from '@urusin/registry';
 import { z } from 'zod';
 import type { PayloadOf } from '@urusin/contracts';
@@ -61,11 +61,13 @@ export const ragCariPengetahuan = defineTool({
   input: z.object({
     query: llmText().max(500),
     kodeKabKota: kodeKabKota.optional(),
-    layanan: llmText()
-      .max(80)
+    // Nilai di luar enum (mis. "akta kelahiran") diabaikan (`catch`), bukan ditolak atau memfilter ke 0 hasil.
+    layanan: z
+      .enum(LAYANAN_KORPUS)
       .optional()
+      .catch(undefined)
       .describe(
-        'Opsional: kategori korpus (adminduk, samsat, lapor, ombudsman, oss, bansos). Kosongkan bila ragu; tulis nama layanan di query.',
+        'Opsional. Kategori korpus, BUKAN nama layanan: adminduk (KTP, KK, akta, pindah), samsat (pajak kendaraan), lapor, ombudsman, oss (izin usaha), bansos, pdp, pemilu, bpjs, skck, sim, ikd. Kosongkan bila ragu; tulis nama layanan di query.',
       ),
   }),
   allowedStates: NON_TERMINAL_STATES,
