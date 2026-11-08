@@ -1,5 +1,5 @@
 import { BlockList, isIP } from 'node:net';
-import { OFFICIAL_DOMAINS } from '@urusin/core';
+import { EGRESS_PIHAK_KETIGA, OFFICIAL_DOMAINS } from '@urusin/core';
 
 /**
  * Kebijakan egress server (review v11 B2). Web berjalan di network host, jadi SSRF bisa menjangkau
@@ -12,11 +12,14 @@ import { OFFICIAL_DOMAINS } from '@urusin/core';
  * - Dua profil terpisah (L2):
  *   - `runtime` (server web): host Jina + origin base URL LLM/embedding/rerank dari env operator.
  *   - `ingest` (rag:ingest/verify, CLI kanal/kontak): registry domain resmi + sufiks `.go.id`, https:443.
+ *   - `browser` (proxy CONNECT peramban Browser Pendamping, `checkConnect`): HANYA https:443 ke host persis
+ *     yang ada di set sesi DAN di union registry (domain resmi + pihak ketiga terdaftar, mis. Turnstile).
+ *     Tanpa pengecualian proxy LLM, tanpa wildcard `*.go.id`, tanpa IP literal.
  * - Setiap alamat hasil resolusi DNS diperiksa: loopback, privat, link-local, CGNAT, dan padanan IPv6
  *   ditolak. Satu alamat terlarang saja sudah cukup untuk menolak seluruh host.
  */
 
-export type EgressProfile = 'runtime' | 'ingest';
+export type EgressProfile = 'runtime' | 'ingest' | 'browser';
 
 export const LLM_PROXY = Object.freeze({ host: '127.0.0.1', port: 20128 });
 
@@ -178,6 +181,9 @@ export function buildAllowlist(
   profile: EgressProfile = 'runtime',
   env: Record<string, string | undefined> = process.env,
 ): Allowlist {
+  if (profile === 'browser') {
+    return { hosts: browserUnion(), suffixes: [], configured: new Set(), llmProxy: false };
+  }
   if (profile === 'ingest') {
     return {
       hosts: new Set(OFFICIAL_DOMAINS.map((d) => d.host)),
@@ -243,3 +249,45 @@ export function assertUrlAllowed(raw: string | URL, allow: Allowlist): URL {
   assertTargetAllowed(u.protocol, u.hostname, Number(u.port) || defaultPort(u.protocol), allow);
   return u;
 }
+
+/**
+ * Union global host peramban: domain resmi registry + pihak ketiga terdaftar (`EGRESS_PIHAK_KETIGA`) + tambahan
+ * operator (mis. host fixture publik). Batas atas yang tidak bisa diperlebar oleh set per sesi.
+ */
+export function browserUnion(tambahan: readonly string[] = []): Set<string> {
+  return new Set(
+    [...OFFICIAL_DOMAINS.map((d) => d.host), ...EGRESS_PIHAK_KETIGA.map((e) => e.host), ...tambahan].map(
+      (h) => h.toLowerCase(),
+    ),
+  );
+}
+
+/** Lingkup satu sesi peramban: host persis sesi itu; `union` = batas global (bawaan `browserUnion()`). */
+export type BrowserScope = { sesi: ReadonlySet<string>; union?: ReadonlySet<string> };
+
+/**
+ * Keputusan CONNECT proxy peramban (profil `browser`), dipanggil SETELAH proxy me-resolve DNS sendiri untuk
+ * SETIAP alamat hasil resolusi; proxy lalu tersambung ke alamat yang sudah diperiksa ini. Melempar
+ * EgressBlockedError bila: bukan https:443, host IP literal, host di luar union global atau di luar set
+ * sesi, atau alamat terlarang (loopback, privat, CGNAT/Tailscale, link-local/metadata, `::ffff:`, NAT64,
+ * 6to4, IPv4-compatible). Port proxy LLM (20128) dan admin Caddy (2019) tidak pernah lolos (hanya :443).
+ */
+export function checkConnect(
+  host: string,
+  port: number,
+  resolvedIp: string,
+  profile: 'browser',
+  scope: BrowserScope,
+): void {
+  if (profile !== 'browser') throw new EgressBlockedError(`profil ${String(profile)} bukan untuk CONNECT`);
+  const h = unbracket(host).toLowerCase().replace(/\.$/, '');
+  if (port !== 443) throw new EgressBlockedError(`${h}:${port} bukan https:443`);
+  if (isIP(h) !== 0) throw new EgressBlockedError(`IP literal ${h} tidak diizinkan untuk peramban`);
+  if (!(scope.union ?? BROWSER_UNION).has(h))
+    throw new EgressBlockedError(`host ${h} di luar union registry`);
+  if (!scope.sesi.has(h)) throw new EgressBlockedError(`host ${h} di luar allowlist sesi`);
+  if (isBlockedAddress(resolvedIp))
+    throw new EgressBlockedError(`${h} resolve ke alamat terlarang ${resolvedIp}`);
+}
+
+const BROWSER_UNION = browserUnion();
