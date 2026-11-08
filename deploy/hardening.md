@@ -7,7 +7,7 @@ milik Urusin dan tidak disentuh.
 
 ## Model izin
 
-Keputusan pengguna (dicatat apa adanya, disampaikan lead):
+Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat apa adanya, disampaikan lead):
 
 > - STANDING permission for deploy.sh, rollback, restore and backup on Urusin-only resources (urusin-*
 >   containers and volume, /opt/urusin, 127.0.0.1:4310/4311/4320).
@@ -15,11 +15,11 @@ Keputusan pengguna (dicatat apa adanya, disampaikan lead):
 >   each time: timestamped Caddyfile backup, `caddy validate`, status-code snapshot of gutstore.my.id,
 >   admin.gutstore.my.id and pythia.web.id before and after, and auto-rollback if any of them changed.
 
-| Jenis                           | Cakupan                                                                                                                                                                    | Izin                                                                                                                   |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Tetap (standing), **diberikan** | `deploy.sh`, rollback (otomatis di `deploy.sh` maupun manual), `restore.sh`, `backup.sh`                                                                                   | Sudah diberikan. Hanya sumber daya Urusin: kontainer dan volume `urusin-*`, `/opt/urusin`, `127.0.0.1:4310/4311/4320`. |
-| Per kejadian                    | Memasang atau mengubah snippet Caddy (`/opt/urusin/Caddyfile.urusin` dan baris `import` di `/etc/caddy/Caddyfile`), `caddy reload`                                         | Go-ahead pengguna setiap kali, lewat `deploy/caddy-install.sh` (prosedur di bawah).                                    |
-| Tidak pernah                    | Mengedit blok situs lain di Caddy, restart Caddy, iptables/ufw/tailscale, `daemon.json`, `docker system/image prune`, kontainer/volume/network/image non-Urusin, proxy LLM | Tidak ada izin yang mencakup ini.                                                                                      |
+| Jenis                                      | Cakupan                                                                                                                                                                    | Izin                                                                                                                        |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Tetap (standing), **diberikan 2026-11-08** | `deploy.sh`, rollback (otomatis di `deploy.sh` maupun manual), `restore.sh`, `backup.sh`                                                                                   | Diberikan 2026-11-08. Hanya sumber daya Urusin: kontainer dan volume `urusin-*`, `/opt/urusin`, `127.0.0.1:4310/4311/4320`. |
+| Per kejadian                               | Memasang atau mengubah snippet Caddy (`/opt/urusin/Caddyfile.urusin` dan baris `import` di `/etc/caddy/Caddyfile`), `caddy reload`                                         | Go-ahead pengguna setiap kali, lewat `deploy/caddy-install.sh` (prosedur di bawah).                                         |
+| Tidak pernah                               | Mengedit blok situs lain di Caddy, restart Caddy, iptables/ufw/tailscale, `daemon.json`, `docker system/image prune`, kontainer/volume/network/image non-Urusin, proxy LLM | Tidak ada izin yang mencakup ini.                                                                                           |
 
 - `image-retention.sh --apply` dan `disk-alert.sh` tidak disebut dalam izin tetap. `disk-alert.sh` hanya
   membaca `df` dan mengirim notifikasi. Untuk `image-retention.sh --apply`, lead meminta go-ahead sampai
