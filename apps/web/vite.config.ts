@@ -13,6 +13,9 @@ const VERIFY_HOSTS = Object.values(
 ).map((h): `https://${string}.${string}` => `https://${h.verify}` as `https://${string}.${string}`);
 
 export default defineConfig({
+  // Gambar kecil (avatar, ikon objek) tetap berkas terpisah, bukan base64 di JS: JS awal tiap rute punya
+  // anggaran 70 KB gzip, sedangkan gambar bisa di-cache dan dimuat tanpa memblokir.
+  build: { assetsInlineLimit: 0 },
   plugins: [
     tailwindcss(),
     sveltekit({
