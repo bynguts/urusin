@@ -2,9 +2,14 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { PendampingSorot, PendampingViewport } from '@urusin/contracts';
-import { egressAllowedHosts, type Step } from '@urusin/core';
-import { finalGateIndex } from '@urusin/adapters';
+import { finalGateIndex, type Program } from '@urusin/adapters';
+import {
+  PendampingBuktiSchema,
+  type PendampingBukti,
+  type PendampingSorot,
+  type PendampingViewport,
+} from '@urusin/contracts';
+import { egressAllowedHosts, type Step, type Target } from '@urusin/core';
 import {
   checkUrl,
   Interpreter,
@@ -136,6 +141,9 @@ async function sessionMemMb(userDataDir: string, cdp: CDPSession): Promise<numbe
   const heap = (await cdp.send('Runtime.getHeapUsage')) as { usedSize: number };
   return Math.round(heap.usedSize / 1024 / 1024);
 }
+
+const PESAN_MASUK =
+  'Masuk ke akun Anda di situs ini (sandi/OTP diketik sendiri). AI melanjutkan setelah Anda masuk.';
 
 const PESAN_VERIFIKASI =
   'Situs meminta verifikasi bahwa Anda manusia. Selesaikan sendiri (ketuk kotak verifikasi); AI menunggu dan tidak akan mengekliknya.';
@@ -297,9 +305,12 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
 
 async function wire(config: Config, init: RunInit, iso: Isolated): Promise<ActiveRun> {
   const { context } = iso;
-  const { hooks, program } = init;
-  const steps = program.steps;
-  const finalIdx = finalGateIndex(steps);
+  const { hooks } = init;
+  // Berubah per execution (sesi siaga dipakai lagi untuk langkah berikutnya di urusan yang sama).
+  let program: Program = init.program;
+  let steps = program.steps;
+  let finalIdx = finalGateIndex(steps);
+  let executionId = init.executionId;
 
   const page: Page = context.pages()[0] ?? (await context.newPage());
   // Pop-up / tab baru tidak terlihat di layar warga: tutup.
@@ -324,8 +335,13 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   let sorotTantanganTerkirim = false;
   let pesanTantangan = '';
   const pantau = createPantauTantangan(2);
-  /** AI diam selama warga memegang kendali ATAU tantangan situs belum diselesaikan warga. */
-  const ditahan = () => manual || pantau.aktif;
+  // Probe masuk akun (adapter): warga keluar/terlempar ke login -> takeover masuk_akun sampai masuk lagi.
+  let masukAktif = false;
+  let masukPoll: ReturnType<typeof setInterval> | undefined;
+  let navTerakhir: string | undefined;
+  let kembaliKe: string | undefined;
+  /** AI diam selama warga memegang kendali, tantangan situs aktif, atau warga perlu masuk akun. */
+  const ditahan = () => manual || pantau.aktif || masukAktif;
 
   const mainFrameId = async () =>
     ((await cdp.send('Page.getFrameTree')) as { frameTree: { frame: { id: string } } }).frameTree.frame.id;
@@ -363,13 +379,16 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     tab: async () => (destroyed ? null : { url: page.url(), status: loading ? 'loading' : 'complete' }),
     async navigate(_tab, url) {
       await waitResume();
+      navTerakhir = url;
       loading = true;
       await cdp.send('Page.navigate', { url }).catch(() => undefined);
     },
     async run(_tab, op) {
       // Saat warga memegang kendali, op yang mengubah halaman menunggu; pemeriksaan (check) tetap jalan.
       // Selama tantangan situs aktif SEMUA op menunggu: AI tidak menyentuh halaman tantangan sama sekali.
-      if (MUTATING.has(op.kind) || pantau.aktif) await waitResume();
+      // Sebelum op yang mengubah halaman, pastikan widget tantangan yang baru muncul sudah diperiksa.
+      if (MUTATING.has(op.kind)) await periksaTantangan();
+      if (MUTATING.has(op.kind) || pantau.aktif || masukAktif) await waitResume();
       if (destroyed) return { ok: false, code: 'CANCELLED', message: 'sesi berakhir' };
       return evaluate(op);
     },
@@ -419,7 +438,8 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
           const box = step?.op === 'gate.human' ? await sorot(step.highlight) : undefined;
           hooks.event({
             jenis: 'giliran_anda',
-            alasan: final ? 'final' : 'login',
+            // Alur baca-saja tidak punya pengiriman akhir: gerbangnya CAPTCHA/login.
+            alasan: final && !program.bacaSaja ? 'final' : 'login',
             pesan,
             ...(box ? { sorot: box } : {}),
           });
@@ -432,10 +452,15 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
         hooks.event({ jenis: 'giliran_anda', alasan: 'periksa', pesan: c.message ?? 'Lanjutkan sendiri.' });
         return;
       case 'done':
-        hooks.ended(
-          'selesai',
-          'berhasil',
-          'Anda sudah menekan Kirim. Sesi peramban ditutup; tidak ada yang disimpan.',
+        // Warga memegang layar (membaca hasil); AI baru bergerak lagi bila ada execution berikutnya.
+        manual = true;
+        void bacaBukti().then((bukti) =>
+          hooks.langkahSelesai(
+            program.bacaSaja
+              ? 'Hasil ada di layar. Baca dulu; tutup sesi bila sudah selesai.'
+              : 'Anda sudah menekan Kirim. Peramban tetap terbuka untuk langkah berikutnya; tidak ada yang disimpan setelah ditutup.',
+            bukti,
+          ),
         );
         return;
       case 'error': {
@@ -458,19 +483,45 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     }
   };
 
-  const interp = new Interpreter(memoryKV(), driver, policy, onChange, {
-    preConsented: true,
-    resolveValue: async (v) => {
-      let missing = false;
-      const out = v.replace(/\{\{[^{}]+\}\}/g, (tok) => {
-        const val = init.data.value(tok);
-        if (val === undefined) missing = true;
-        return val ?? '';
+  const buatInterp = () =>
+    new Interpreter(memoryKV(), driver, policy, onChange, {
+      preConsented: true,
+      resolveValue: async (v) => {
+        let missing = false;
+        const out = v.replace(/\{\{[^{}]+\}\}/g, (tok) => {
+          const val = init.data.value(tok);
+          if (val === undefined) missing = true;
+          return val ?? '';
+        });
+        return missing ? undefined : out;
+      },
+      resolveFile: async (name) => init.data.file(name),
+    });
+  let interp = buatInterp();
+
+  /**
+   * Bukti (nomor registrasi/status) dari elemen yang DIDEKLARASIKAN adapter, dibaca setelah alur selesai.
+   * Best-effort: elemen tidak ada atau nilai tidak lolos skema ketat = dilewati, alur tetap berhasil.
+   */
+  const bacaBukti = async (): Promise<PendampingBukti | undefined> => {
+    const sel = program.bukti;
+    if (!sel) return undefined;
+    const baca = async (target: Target | undefined) => {
+      if (!target) return undefined;
+      const r = await evaluate({
+        kind: 'step',
+        step: { op: 'extract', mode: 'text', target, into: 'bukti', effect: 'read' },
       });
-      return missing ? undefined : out;
-    },
-    resolveFile: async (name) => init.data.file(name),
-  });
+      return r !== 'interrupted' && r.ok && typeof r.value === 'string' ? r.value.trim() : undefined;
+    };
+    const nomor = PendampingBuktiSchema.shape.nomor.safeParse(await baca(sel.nomor));
+    const st = PendampingBuktiSchema.shape.status.safeParse(await baca(sel.status));
+    const bukti: PendampingBukti = {
+      ...(nomor.success && nomor.data ? { nomor: nomor.data } : {}),
+      ...(st.success && st.data ? { status: st.data } : {}),
+    };
+    return Object.keys(bukti).length > 0 ? bukti : undefined;
+  };
 
   // Peristiwa muat halaman utama -> interpreter (pengganti chrome.tabs.onUpdated di ekstensi).
   page.on('request', (r) => {
@@ -483,8 +534,10 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   });
   page.on('load', () => {
     loading = false;
-    // Periksa tantangan dulu agar interpreter tidak pernah melangkah di halaman tantangan.
-    void periksaTantangan().finally(() => void interp.onTabUpdated(1, { status: 'complete' }));
+    // Periksa tantangan dan status masuk dulu agar interpreter tidak melangkah di halaman tantangan/login.
+    void periksaTantangan()
+      .then(() => periksaMasuk())
+      .finally(() => void interp.onTabUpdated(1, { status: 'complete' }));
   });
   page.on('response', async (resp) => {
     const req = resp.request();
@@ -609,15 +662,58 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     return selesai !== true;
   };
 
-  let memeriksa = false;
-  async function periksaTantangan(): Promise<void> {
-    if (destroyed || memeriksa) return;
-    memeriksa = true;
-    try {
-      await tanganiTantangan(await adaTantangan());
-    } finally {
-      memeriksa = false;
+  let memeriksa: Promise<void> | undefined;
+  function periksaTantangan(): Promise<void> {
+    if (destroyed) return Promise.resolve();
+    memeriksa ??= (async () => {
+      try {
+        await tanganiTantangan(await adaTantangan());
+      } finally {
+        memeriksa = undefined;
+      }
+    })();
+    return memeriksa;
+  }
+
+  /**
+   * Probe masuk akun adapter, saat mulai dan setiap halaman selesai dimuat. Halaman login yang dibuka alur
+   * sendiri (langkah login adapter) bukan "keluar akun". Setelah warga masuk, peramban kembali ke halaman
+   * yang tadi dituju alur, lalu AI melanjutkan.
+   */
+  async function periksaMasuk(): Promise<void> {
+    const probe = program.masuk;
+    if (!probe || destroyed || pantau.aktif || (manual && !masukAktif)) return;
+    if (!masukAktif && status !== 'running' && status !== 'waiting_load') return;
+    const r = await evaluate({ kind: 'check', check: probe.keluar });
+    if (r === 'interrupted' || !r.ok) return;
+    const keluar = r.value === true;
+    if (masukAktif) {
+      if (keluar) return;
+      const tujuan = kembaliKe;
+      kembaliKe = undefined;
+      if (tujuan && page.url() !== tujuan) {
+        loading = true;
+        await cdp.send('Page.navigate', { url: tujuan }).catch(() => undefined);
+        return; // dilepas pada pemeriksaan berikutnya, setelah halaman tujuan dimuat
+      }
+      masukAktif = false;
+      clearInterval(masukPoll);
+      masukPoll = undefined;
+      hooks.activity();
+      hooks.mode('ai', 'Anda sudah masuk. AI melanjutkan.');
+      resume();
+      return;
     }
+    if (!keluar || navTerakhir?.includes(probe.halaman)) return;
+    masukAktif = true;
+    kembaliKe = navTerakhir;
+    hooks.mode('takeover', PESAN_MASUK);
+    hooks.event({ jenis: 'giliran_anda', alasan: 'masuk_akun', pesan: PESAN_MASUK });
+    if (!page.url().includes(probe.halaman)) {
+      loading = true;
+      await cdp.send('Page.navigate', { url: `${program.origin}${probe.halaman}` }).catch(() => undefined);
+    }
+    masukPoll ??= setInterval(() => void (loading || periksaMasuk()), 1000);
   }
 
   /** Diserialkan: pemeriksaan dari respons, load, frame, dan poll tidak saling mendahului. */
@@ -679,7 +775,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
         await page.goto(init.manualUrl, { waitUntil: 'commit' }).catch(() => undefined);
         return;
       }
-      const started = await interp.start({ executionId: init.executionId, origin: program.origin, steps });
+      const started = await interp.start({ executionId, origin: program.origin, steps });
       if ('ok' in started) hooks.ended('gagal', 'gagal', 'Langkah otomatis tidak bisa dimulai.');
     },
     async input(m) {
@@ -693,10 +789,27 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     ambilAlih() {
       manual = true;
     },
+    async gantiProgram(p, id) {
+      await interp.cancel().catch(() => {});
+      program = p;
+      steps = p.steps;
+      finalIdx = finalGateIndex(steps);
+      executionId = id;
+      lastLangkah = -1;
+      status = undefined;
+      stopGatePoll();
+      clearInterval(masukPoll);
+      masukPoll = undefined;
+      masukAktif = false;
+      kembaliKe = undefined;
+      manual = false;
+      interp = buatInterp();
+    },
     kembalikan() {
       manual = false;
       resume();
       if (pantau.aktif) return hooks.mode('takeover', PESAN_VERIFIKASI);
+      if (masukAktif) return hooks.mode('takeover', PESAN_MASUK);
       // Gerbang warga belum terpenuhi: tetap giliran warga; selain itu AI lanjut.
       if (status === 'waiting_gate') void interp.recheckGate();
       else if (status !== 'handoff') hooks.mode('ai', 'AI melanjutkan pengisian.');
@@ -726,6 +839,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
       stopGatePoll();
       clearInterval(memTimer);
       clearInterval(tantanganPoll);
+      clearInterval(masukPoll);
       resume();
       viewerSend = null;
       await interp.cancel().catch(() => {});

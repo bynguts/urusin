@@ -27,6 +27,7 @@ async function mulai(jalur: string): Promise<{ run: ActiveRun; rekam: Rekam }> {
     event: (e) => rekam.events.push(e),
     activity: () => {},
     ended: (status, hasil, pesan) => void (rekam.ended ??= { status, hasil, pesan }),
+    langkahSelesai: (pesan) => void (rekam.ended ??= { status: 'siaga', hasil: 'berhasil', pesan }),
   };
   const run = await createBrowserFactory(config)({
     sesiId: `verif-${jalur}`,
@@ -75,7 +76,7 @@ test('tantangan situs: AI berhenti, warga mengetuk sendiri, AI melanjutkan pengi
     await ketuk(run, sorot);
     await expect
       .poll(() => rekam.ended, { timeout: 30_000 })
-      .toMatchObject({ status: 'selesai', hasil: 'berhasil' });
+      .toMatchObject({ status: 'siaga', hasil: 'berhasil' });
     expect(rekam.modes).toContain('ai:Verifikasi selesai. AI melanjutkan pengisian.');
   } finally {
     await run.destroy();

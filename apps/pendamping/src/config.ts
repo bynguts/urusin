@@ -24,7 +24,7 @@
  * | PENDAMPING_JS_HEAP_MB            | 256          | Batas heap V8 per renderer                                  |
  * | PENDAMPING_HEADLESS              | (mati)       | 1 = headless; HANYA non-produksi dengan origin fixture      |
  * | PENDAMPING_FIXTURE_ORIGINS       | (kosong)     | Origin fixture yang diizinkan egress (dev/uji/Mode Uji)     |
- * | PENDAMPING_ORIGIN_OVERRIDES      | (kosong)     | `resmi=fixture`, target wajib terdaftar di FIXTURE_ORIGINS  |
+ * | PENDAMPING_ORIGIN_OVERRIDES      | (kosong)     | `resmi=fixture[/awalan]`, fixture wajib di FIXTURE_ORIGINS  |
  * | PENDAMPING_UPSTREAM_PROXY        | (tidak ada)  | Proxy HTTP hulu milik operator (mis. egress Indonesia)      |
  * | PENDAMPING_DEBUG_TOKEN           | (mati)       | >= 32 karakter: aktifkan /debug (kemudi manual via stream)  |
  * | PENDAMPING_DEV_PAGE              | (mati)       | 1 = halaman /dev untuk e2e; tidak pernah di produksi        |
@@ -106,6 +106,15 @@ function exactOrigin(raw: string): string {
   return u.origin;
 }
 
+/** Target override: origin persis, boleh diikuti awalan jalur (`http://127.0.0.1:4320/smg`), tanpa query. */
+function originBerawalan(raw: string): string {
+  const u = new URL(raw);
+  const awalan = u.pathname.replace(/\/+$/, '');
+  if (`${u.origin}${awalan}` !== raw.replace(/\/+$/, '') || !['http:', 'https:'].includes(u.protocol))
+    throw new Error(`target override tidak valid (skema://host[:port][/awalan]): ${raw}`);
+  return `${u.origin}${awalan}`;
+}
+
 function upstream(raw: string | undefined): URL | undefined {
   if (!raw?.trim()) return undefined;
   const u = new URL(raw.trim());
@@ -130,11 +139,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   for (const pair of list(env.PENDAMPING_ORIGIN_OVERRIDES)) {
     const [from, to] = pair.split('=');
     if (!from || !to) throw new Error(`PENDAMPING_ORIGIN_OVERRIDES rusak: ${pair}`);
-    originOverrides.set(exactOrigin(from), exactOrigin(to));
+    originOverrides.set(exactOrigin(from), originBerawalan(to));
   }
   const fixtureOrigins = list(env.PENDAMPING_FIXTURE_ORIGINS).map(exactOrigin);
   for (const to of originOverrides.values())
-    if (!fixtureOrigins.includes(to))
+    if (!fixtureOrigins.includes(new URL(to).origin))
       throw new Error(`override ${to} harus terdaftar di PENDAMPING_FIXTURE_ORIGINS`);
   const headless = env.PENDAMPING_HEADLESS === '1';
   if (headless && (production || fixtureOrigins.length === 0))

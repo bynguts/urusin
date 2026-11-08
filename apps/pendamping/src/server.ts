@@ -13,6 +13,7 @@ import {
   type PendampingServerMessage,
   type TiketPendampingResponse,
 } from '@urusin/contracts';
+import { ADAPTERS } from '@urusin/adapters';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { z, type ZodType } from 'zod';
 import type { Config } from './config.js';
@@ -47,7 +48,15 @@ export function sidHashFromCookie(header: string | undefined): string | null {
   return null;
 }
 
-const DebugSesiSchema = z.object({ url: z.url(), viewport: PendampingViewportSchema.optional() });
+const DebugSesiSchema = z.union([
+  z.object({ url: z.url(), viewport: PendampingViewportSchema.optional() }),
+  z.object({
+    adapterId: z.string().min(1).max(64),
+    flowId: z.string().min(1).max(64),
+    params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).default({}),
+    viewport: PendampingViewportSchema.optional(),
+  }),
+]);
 const DebugTiketSchema = z.object({ sesiId: z.uuid() });
 
 const json = (res: http.ServerResponse, status: number, body: unknown) => {
@@ -115,7 +124,11 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
             'cache-control': 'no-store',
             'x-robots-tag': 'noindex',
           });
-          return res.end(debugPageHtml());
+          return res.end(
+            debugPageHtml(
+              Object.entries(ADAPTERS).flatMap(([id, a]) => Object.keys(a.flows).map((f) => `${id}/${f}`)),
+            ),
+          );
         }
         if (req.method === 'GET' && /^\/debug\/(index|viewer)\.js$/.test(path)) {
           const dir = clientDist();
@@ -134,7 +147,10 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
             return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
           // Cookie sesi khusus debug di origin pendamping sendiri: syarat upgrade WS sama seperti warga.
           const sid = randomBytes(16).toString('hex');
-          const sesi = await manager.createManual({ ...body, sidHash: sidHashOf(sid) });
+          const sesi =
+            'url' in body
+              ? await manager.createManual({ ...body, sidHash: sidHashOf(sid) })
+              : await manager.createDebugAlur({ ...body, sidHash: sidHashOf(sid) });
           res.setHeader('set-cookie', `${SID_COOKIE}=${sid}; Path=/; HttpOnly; SameSite=Strict`);
           return json(res, 201, sesi);
         }

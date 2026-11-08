@@ -42,6 +42,7 @@ function harness(over: Partial<Config> = {}) {
       input: async (m) => void calls.push(`input:${m.type}`),
       ambilAlih: () => void calls.push('ambilAlih'),
       kembalikan: () => void calls.push('kembalikan'),
+      gantiProgram: async (_p, id) => void calls.push(`ganti:${id}`),
       setViewer: async (s) => {
         calls.push(s ? 'viewer' : 'noviewer');
         run.frameSink = s;
@@ -175,6 +176,98 @@ describe('SessionManager', () => {
     expect(h.runs[0]!.init.program.origin).toBe('http://127.0.0.1:4320');
   });
 
+  it('override berawalan jalur: nav dan halaman login probe diberi awalan fixture', async () => {
+    const h = harness({
+      originOverrides: new Map([['https://telunjuksakti.wonogirikab.go.id', 'http://127.0.0.1:4320/ts']]),
+    });
+    await h.manager.create(input('u1', { flowId: 'cek_status', params: {} }));
+    await h.flush();
+    const p = h.runs[0]!.init.program;
+    expect(p.origin).toBe('http://127.0.0.1:4320');
+    expect(p.steps[0]).toMatchObject({ op: 'nav', path: '/ts/telunjuksakti/index.php/welcome/permohonan' });
+    expect(p.masuk?.halaman).toBe('/ts/telunjuksakti/index.php/users/login');
+    expect(p.bacaSaja).toBe(true);
+  });
+
+  it('siaga: execution selesai -> peramban tetap hidup; execution berikutnya memakai peramban yang sama', async () => {
+    const h = harness();
+    const s = await h.manager.create(input('u1', { flowId: 'cek_status', params: {} }));
+    await h.flush();
+    const run = h.runs[0]!;
+    const v = h.viewer();
+    await h.manager.attach(s.sesiId, v);
+    run.init.hooks.langkahSelesai('Hasil ada di layar.', { nomor: 'FX-REG-0001', status: 'Diproses' });
+    expect(h.manager.status(owner('u1'))).toMatchObject({
+      status: 'siaga',
+      hasil: 'berhasil',
+      mode: 'takeover',
+      bukti: { nomor: 'FX-REG-0001', status: 'Diproses' },
+    });
+    expect(v.sent).toContainEqual({
+      type: 'event',
+      event: {
+        jenis: 'selesai',
+        hasil: 'berhasil',
+        pesan: 'Hasil ada di layar.',
+        bukti: { nomor: 'FX-REG-0001', status: 'Diproses' },
+      },
+    });
+    expect(v.closed).toEqual([]);
+    // Warga tetap bisa menggulir/membaca hasil; "kembalikan" tidak menghidupkan AI di siaga.
+    await h.manager.handleClient(s.sesiId, { type: 'wheel', x: 1, y: 1, dx: 0, dy: 50 });
+    expect(run.calls).toContain('input:wheel');
+    await h.manager.handleClient(s.sesiId, { type: 'kembalikan' });
+    expect(run.calls).not.toContain('kembalikan');
+
+    // Execution baru di situs yang sama: sesi, peramban, dan login dipakai lagi.
+    const lagi = await h.manager.create(
+      input('u1', { executionId: 'x_2', flowId: 'cek_status', params: {} }),
+    );
+    await h.flush();
+    expect(lagi.sesiId).toBe(s.sesiId);
+    expect(h.runs).toHaveLength(1);
+    expect(run.calls).toContain('ganti:x_2');
+    expect(h.manager.status(owner('u1'))).toMatchObject({
+      executionId: 'x_2',
+      status: 'berjalan',
+      mode: 'ai',
+    });
+    expect(h.manager.status(owner('u1')).bukti).toBeUndefined();
+
+    // Siaga lagi lalu diakhiri warga: execution terakhir tetap berhasil, peramban dihancurkan.
+    run.init.hooks.langkahSelesai('Hasil ada di layar.');
+    await h.manager.handleClient(s.sesiId, { type: 'akhiri' });
+    expect(h.manager.status(owner('u1'))).toMatchObject({
+      status: 'selesai',
+      hasil: 'berhasil',
+      executionId: 'x_2',
+    });
+    expect(run.calls).toContain('destroy');
+  });
+
+  it('siaga di situs lain: sesi lama ditutup berhasil, sesi baru dibuat; bukan siaga = SESI_SUDAH_ADA', async () => {
+    const h = harness();
+    await h.manager.create(input('u1', { flowId: 'cek_status', params: {} }));
+    await h.flush();
+    h.runs[0]!.init.hooks.langkahSelesai('Selesai.');
+    const baru = await h.manager.create(
+      input('u1', {
+        executionId: 'x_oss',
+        adapterId: 'oss-nib',
+        flowId: 'cari_nib',
+        origin: 'https://oss.go.id',
+        params: {},
+      }),
+    );
+    await h.flush();
+    expect(h.runs).toHaveLength(2);
+    expect(h.runs[0]!.calls).toContain('destroy');
+    expect(baru.executionId).toBe('x_oss');
+    await expect(h.manager.create(input('u1', { executionId: 'x_3' }))).rejects.toMatchObject({
+      kode: 'SESI_SUDAH_ADA',
+    });
+  });
+
   it('tiket sekali pakai, terikat sesi + hash cookie pemilik, kedaluwarsa', async () => {
     const h = harness();
     const s = await h.manager.create(input('u1'));
@@ -207,6 +300,27 @@ describe('SessionManager', () => {
     expect(h.runs[0]!.calls).not.toContain('kembalikan');
     const biasa = await h.manager.create(input('u-biasa'));
     expect(h.manager.debugOwner(biasa.sesiId)).toBeUndefined();
+  });
+
+  it('sesi debug alur adapter: program adapter (AI mengisi), pemilik debug, adapter tak dikenal ditolak', async () => {
+    const h = harness();
+    await expect(
+      h.manager.createDebugAlur({ adapterId: 'x', flowId: 'y', params: {}, sidHash: SID }),
+    ).rejects.toMatchObject({ kode: 'ADAPTER_TIDAK_ADA' });
+    await expect(
+      h.manager.createDebugAlur({ adapterId: '__proto__', flowId: 'y', params: {}, sidHash: SID }),
+    ).rejects.toMatchObject({ kode: 'ADAPTER_TIDAK_ADA' });
+    const s = await h.manager.createDebugAlur({
+      adapterId: 'samsat-dki',
+      flowId: 'cek_pkb',
+      params: {},
+      sidHash: SID,
+    });
+    await h.flush();
+    expect(h.runs[0]!.init.program.origin).toBe('https://samsat-pkb2.jakarta.go.id');
+    expect(h.runs[0]!.init.manualUrl).toBeUndefined();
+    expect(h.manager.debugOwner(s.sesiId)).toEqual({ urusanId: s.urusanId, sidHash: SID });
+    expect(h.manager.status({ urusanId: s.urusanId, sidHash: SID }).status).toBe('menunggu_data');
   });
 
   it('data vault/berkas: AI mulai hanya setelah lengkap; input ditolak di mode AI; kendali warga', async () => {
@@ -467,7 +581,9 @@ describe('server HTTP + WebSocket', () => {
     const base = `http://127.0.0.1:${port}`;
     const page = await fetch(`${base}/debug`);
     expect(page.status).toBe(200);
-    expect(await page.text()).toContain('DEBUG');
+    const html = await page.text();
+    expect(html).toContain('DEBUG');
+    expect(html).toContain('<option value="samsat-dki/cek_pkb">');
     const post = (path: string, body: unknown, token = 'd'.repeat(32)) =>
       fetch(`${base}${path}`, {
         method: 'POST',
@@ -477,6 +593,10 @@ describe('server HTTP + WebSocket', () => {
     expect((await post('/debug/sesi', { url: 'https://oss.go.id/' }, 'salah'.repeat(8))).status).toBe(401);
     expect((await post('/debug/sesi', { url: 'bukan url' })).status).toBe(422);
     expect((await post('/debug/sesi', { url: 'https://evil.example/' })).status).toBe(422);
+    expect((await post('/debug/sesi', { adapterId: 'x', flowId: 'y' })).status).toBe(422);
+    const alur = await post('/debug/sesi', { adapterId: 'oss-nib', flowId: 'cari_nib' });
+    expect(alur.status).toBe(201);
+    expect(((await alur.json()) as { urusanId: string }).urusanId).toMatch(/^debug-/);
     const res = await post('/debug/sesi', { url: 'https://oss.go.id/' });
     expect(res.status).toBe(201);
     const cookie = res.headers.get('set-cookie')!.split(';')[0]!;

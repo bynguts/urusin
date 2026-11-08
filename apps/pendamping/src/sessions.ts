@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypt
 import type {
   AntreanPendampingResponse,
   MulaiSesiInternal,
+  PendampingBukti,
   PendampingClientMessage,
   PendampingEvent,
   PendampingHasil,
@@ -12,7 +13,8 @@ import type {
   PendampingViewport,
   SesiPendamping,
 } from '@urusin/contracts';
-import { buildProgram, requiredData, type Program } from '@urusin/adapters';
+import { ADAPTERS, buildProgram, requiredData, type Params, type Program } from '@urusin/adapters';
+import type { Step } from '@urusin/core';
 import { checkUrl, type UploadFile } from '@urusin/executor';
 import type { Config } from './config.js';
 import { isInputMessage } from './input.js';
@@ -31,8 +33,13 @@ export type Hooks = {
   event(e: PendampingEvent): void;
   /** Ada kemajuan AI (menunda idle). */
   activity(): void;
-  /** Sesi berakhir dari sisi peramban (selesai, drift, bot wall, memori, galat). */
+  /** Sesi berakhir dari sisi peramban (drift, bot wall, memori, galat). */
   ended(status: PendampingStatus, hasil: PendampingHasil, pesan: string): void;
+  /**
+   * Alur (execution) selesai berhasil: sesi `siaga`, peramban tetap hidup (warga membaca hasil, langkah
+   * berikutnya di urusan yang sama tanpa login ulang) sampai TTL/idle/diakhiri.
+   */
+  langkahSelesai(pesan: string, bukti?: PendampingBukti): void;
 };
 
 export type Frame = FrameMasuk;
@@ -44,6 +51,8 @@ export type ActiveRun = {
   input(m: Extract<PendampingClientMessage, { type: 'pointer' | 'wheel' | 'key' | 'text' }>): Promise<void>;
   ambilAlih(): void;
   kembalikan(): void;
+  /** Ganti program untuk execution berikutnya di peramban yang sama (sesi siaga). */
+  gantiProgram(program: Program, executionId: string): Promise<void>;
   setViewer(send: ((f: Frame) => void) | null): Promise<void>;
   destroy(): Promise<void>;
 };
@@ -76,6 +85,8 @@ type Sesi = {
   executionId: string;
   program: Program;
   manualUrl?: string | undefined;
+  /** Sesi dari halaman /debug (kemudi manual atau alur adapter yang dipantau penguji). */
+  debug?: boolean | undefined;
   viewport: PendampingViewport;
   dibuatPada: number;
   kedaluwarsaPada: number;
@@ -83,6 +94,7 @@ type Sesi = {
   mode: PendampingMode | null;
   pesan?: string | undefined;
   hasil?: PendampingHasil | undefined;
+  bukti?: PendampingBukti | undefined;
   lastActivity: number;
   vault: Map<string, string>;
   files: Map<string, UploadFile>;
@@ -158,25 +170,57 @@ export class SessionManager {
   // ---- API internal (dipanggil web broker) ---------------------------------
 
   async create(input: MulaiSesiInternal): Promise<SesiPendamping> {
+    const program = this.programDari(input);
     const existing = this.byUrusan(input.urusanId);
     if (existing) {
       this.assertOwner(existing, input.sidHash);
       if (existing.executionId === input.executionId) return this.view(existing);
-      throw new PendampingError('SESI_SUDAH_ADA', 409, 'urusan ini sudah punya sesi pendamping aktif');
+      if (existing.status !== 'siaga' || !existing.run)
+        throw new PendampingError('SESI_SUDAH_ADA', 409, 'urusan ini sudah punya sesi pendamping aktif');
+      // Sesi siaga di situs yang sama: peramban (dan login warga) dipakai lagi untuk execution baru.
+      if (existing.program.origin === program.origin)
+        return this.lanjutkan(existing, input.executionId, program);
+      await this.end(
+        existing,
+        'selesai',
+        'berhasil',
+        'Langkah sebelumnya selesai. Situs lain dibuka di sesi baru.',
+      );
     }
-    const built = buildProgram(input.adapterId, input.flowId, input.params);
-    if (!built.ok) throw new PendampingError('ADAPTER_TIDAK_ADA', 422, built.message);
-    if (built.program.origin !== new URL(input.origin).origin)
-      throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'origin registry tidak cocok dengan adapter');
-    // Dev/uji/demo: origin resmi dipetakan ke fixture (path sama). Produksi tanpa override = origin resmi.
-    const origin = this.config.originOverrides.get(built.program.origin) ?? built.program.origin;
     return this.enqueue({
       urusanId: input.urusanId,
       sidHash: input.sidHash,
       executionId: input.executionId,
-      program: { ...built.program, origin },
+      program,
       viewport: input.viewport ?? DEFAULT_VIEWPORT,
     });
+  }
+
+  /** Program tervalidasi dari adapter; origin resmi bisa dipetakan ke fixture (dev/uji) beserta awalan jalur. */
+  private programDari(input: MulaiSesiInternal): Program {
+    const built = buildProgram(input.adapterId, input.flowId, input.params);
+    if (!built.ok) throw new PendampingError('ADAPTER_TIDAK_ADA', 422, built.message);
+    if (built.program.origin !== new URL(input.origin).origin)
+      throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'origin registry tidak cocok dengan adapter');
+    // Produksi tanpa override = origin resmi apa adanya.
+    const ov = this.config.originOverrides.get(built.program.origin);
+    return ov ? withOverride(built.program, ov) : built.program;
+  }
+
+  private async lanjutkan(s: Sesi, executionId: string, program: Program): Promise<SesiPendamping> {
+    s.executionId = executionId;
+    s.program = program;
+    s.butuh = requiredData(program.steps);
+    s.hasil = undefined;
+    s.bukti = undefined;
+    s.pesan = undefined;
+    s.aiDimulai = false;
+    s.status = 'menunggu_data';
+    s.lastActivity = this.now();
+    await s.run?.gantiProgram(program, executionId);
+    this.broadcastStatus(s);
+    await this.maybeStartAi(s);
+    return this.view(s);
   }
 
   /**
@@ -198,6 +242,40 @@ export class SessionManager {
       executionId: 'debug-manual',
       program: { origin: url.origin, steps: [] },
       manualUrl: url.href,
+      debug: true,
+      viewport: input.viewport ?? DEFAULT_VIEWPORT,
+    });
+  }
+
+  /**
+   * Sesi debug yang menjalankan alur adapter (AI mengisi) agar penguji bisa mencoba alur baca-saja terhadap
+   * situs nyata lewat stream: nilai vault diketik penguji di halaman /debug, tantangan/captcha oleh penguji.
+   */
+  async createDebugAlur(input: {
+    adapterId: string;
+    flowId: string;
+    params: Params;
+    sidHash: string;
+    viewport?: PendampingViewport | undefined;
+  }): Promise<SesiPendamping> {
+    const origin = Object.hasOwn(ADAPTERS, input.adapterId) ? ADAPTERS[input.adapterId]?.origin : undefined;
+    if (!origin) throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'adapter tidak dikenal');
+    const id = randomUUID();
+    const program = this.programDari({
+      urusanId: `debug-${id}`,
+      sidHash: input.sidHash,
+      executionId: `debug-${id}`,
+      adapterId: input.adapterId,
+      flowId: input.flowId,
+      origin,
+      params: input.params,
+    });
+    return this.enqueue({
+      urusanId: `debug-${id}`,
+      sidHash: input.sidHash,
+      executionId: `debug-${id}`,
+      program,
+      debug: true,
       viewport: input.viewport ?? DEFAULT_VIEWPORT,
     });
   }
@@ -205,11 +283,12 @@ export class SessionManager {
   /** Pemilik sesi debug (untuk tiket dari halaman /debug); undefined bila bukan sesi debug. */
   debugOwner(sesiId: string): { urusanId: string; sidHash: string } | undefined {
     const s = this.sessions.get(sesiId);
-    return s?.manualUrl ? { urusanId: s.urusanId, sidHash: s.sidHash } : undefined;
+    return s?.debug ? { urusanId: s.urusanId, sidHash: s.sidHash } : undefined;
   }
 
   private async enqueue(
-    base: Pick<Sesi, 'urusanId' | 'sidHash' | 'executionId' | 'program' | 'manualUrl' | 'viewport'>,
+    base: Pick<Sesi, 'urusanId' | 'sidHash' | 'executionId' | 'program' | 'manualUrl' | 'viewport'> &
+      Partial<Pick<Sesi, 'debug'>>,
   ): Promise<SesiPendamping> {
     if (this.active.size >= this.config.maxSessions && this.queue.length >= this.config.maxQueue)
       throw new PendampingError('ANTREAN_PENUH', 429, 'antrean pendamping penuh');
@@ -355,7 +434,7 @@ export class SessionManager {
 
   private handleControl(s: Sesi, aksi: 'ambil_alih' | 'kembalikan'): void {
     // Sesi debug tidak punya AI: kendali selalu di tangan penguji.
-    if (!s.run || TERMINAL.has(s.status) || s.manualUrl) return;
+    if (!s.run || TERMINAL.has(s.status) || s.manualUrl || s.status === 'siaga') return;
     if (aksi === 'ambil_alih') {
       s.run.ambilAlih();
       this.setMode(s, 'takeover', 'Anda memegang kendali. AI berhenti sampai Anda mengembalikannya.');
@@ -402,6 +481,7 @@ export class SessionManager {
       kedaluwarsaPada: new Date(s.kedaluwarsaPada).toISOString(),
       ...(s.pesan ? { pesan: s.pesan } : {}),
       ...(s.hasil ? { hasil: s.hasil } : {}),
+      ...(s.bukti ? { bukti: s.bukti } : {}),
     };
   }
 
@@ -446,6 +526,7 @@ export class SessionManager {
       event: (e) => this.emit(s, e),
       activity: () => void (s.lastActivity = this.now()),
       ended: (status, hasil, pesan) => void this.end(s, status, hasil, pesan),
+      langkahSelesai: (pesan, bukti) => this.siaga(s, pesan, bukti),
     };
     try {
       const run = await this.factory({
@@ -482,8 +563,27 @@ export class SessionManager {
     await s.run.mulaiAi();
   }
 
+  private siaga(s: Sesi, pesan: string, bukti?: PendampingBukti): void {
+    if (TERMINAL.has(s.status)) return;
+    s.status = 'siaga';
+    s.hasil = 'berhasil';
+    s.bukti = bukti;
+    s.lastActivity = this.now();
+    s.viewer?.send({
+      type: 'event',
+      event: { jenis: 'selesai', hasil: 'berhasil', pesan, ...(bukti ? { bukti } : {}) },
+    });
+    this.setMode(s, 'takeover', pesan);
+    this.broadcastStatus(s);
+  }
+
   async end(s: Sesi, status: PendampingStatus, hasil: PendampingHasil, pesan: string): Promise<void> {
     if (TERMINAL.has(s.status)) return;
+    // Sesi siaga yang ditutup (warga, idle, TTL): execution terakhirnya tetap berhasil.
+    if (s.status === 'siaga') {
+      status = 'selesai';
+      hasil = s.hasil ?? 'berhasil';
+    }
     s.status = status;
     s.hasil = hasil;
     s.pesan = pesan;
@@ -522,4 +622,28 @@ export class SessionManager {
       if (t >= s.kedaluwarsaPada || idle) await this.end(s, 'kedaluwarsa', 'dibatalkan', PESAN.kedaluwarsa);
     }
   }
+}
+
+/**
+ * Pemetaan origin resmi ke fixture (dev/uji/Mode Uji). `to` boleh berawalan jalur (mis.
+ * `http://127.0.0.1:4320/smg`): semua langkah nav dan halaman login probe diberi awalan itu.
+ */
+function withOverride(program: Program, to: string): Program {
+  const u = new URL(to);
+  const awalan = u.pathname.replace(/\/+$/, '');
+  if (!awalan) return { ...program, origin: u.origin };
+  const ubah = (steps: Step[]): Step[] =>
+    steps.map((st) => {
+      if (st.op === 'nav') return { ...st, path: `${awalan}${st.path}` };
+      if (st.op === 'forEach') return { ...st, steps: ubah(st.steps) };
+      if (st.op === 'branch')
+        return { ...st, then: ubah(st.then), ...(st.else ? { else: ubah(st.else) } : {}) };
+      return st;
+    });
+  return {
+    ...program,
+    origin: u.origin,
+    steps: ubah(program.steps),
+    ...(program.masuk ? { masuk: { ...program.masuk, halaman: `${awalan}${program.masuk.halaman}` } } : {}),
+  };
 }
