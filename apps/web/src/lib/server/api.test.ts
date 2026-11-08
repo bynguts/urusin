@@ -14,7 +14,7 @@ import { POST as konfirmasi } from '../../routes/api/urusan/[id]/konfirmasi/+ser
 import { GET as stream } from '../../routes/api/urusan/[id]/stream/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
 import { GET as devSse } from '../../routes/dev/fixtures/sse/+server';
-import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
+import { createRuntime, quotaFromEnv, setRuntimeForTests, type Runtime } from './runtime';
 
 const ORIGIN = 'http://localhost:3000';
 // NIK sintetis, dirakit agar pemindai PII repo tidak menandai berkas ini
@@ -448,5 +448,22 @@ describe('temuan 2: PII di balik escape JSON dan pemecahan bidang ditolak 422', 
     const res = await kirimTurn(ev(post({ teks: `nomornya ${duaBelas}` }), { id }));
     expect(res.status).toBe(422);
     expect(rt.store.getUrusanOrThrow(id).turnCount).toBe(0);
+  });
+});
+
+describe('temuan 5: kuota harian wajib di mode LLM', () => {
+  it.each([
+    ['tanpa URUSIN_DAILY_IDR_CAP', {}],
+    ['0 (tanpa batas)', { URUSIN_DAILY_IDR_CAP: '0' }],
+    ['NaN', { URUSIN_DAILY_IDR_CAP: 'abc' }],
+    ['Infinity', { URUSIN_DAILY_IDR_CAP: 'Infinity' }],
+    ['negatif', { URUSIN_DAILY_IDR_CAP: '-5' }],
+    ['kuota sesi NaN', { URUSIN_DAILY_IDR_CAP: '50000', URUSIN_SESSION_TURN_CAP: 'x' }],
+  ])('menolak boot: %s', (_n, env) => {
+    expect(() => quotaFromEnv(env)).toThrow();
+  });
+
+  it('menerima batas harian berhingga > 0', () => {
+    expect(quotaFromEnv({ URUSIN_DAILY_IDR_CAP: '50000' }).dailyIdrCap).toBe(50000);
   });
 });

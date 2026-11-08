@@ -104,6 +104,30 @@ function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {
   }
 }
 
+const num = (v: string | undefined, d: number) => (v && v.trim() !== '' ? Number(v) : d);
+
+/**
+ * Kuota dari env. Mode LLM menolak boot tanpa batas biaya harian yang berhingga > 0 (0 atau NaN = tanpa batas
+ * berarti tagihan tak terbatas), dan setiap angka lain harus berhingga.
+ */
+export function quotaFromEnv(env: Record<string, string | undefined>) {
+  const quota = {
+    idrPerUsd: num(env.IDR_PER_USD, 16_500),
+    sessionTurnCap: num(env.URUSIN_SESSION_TURN_CAP, 40),
+    sessionTokenCap: num(env.URUSIN_SESSION_TOKEN_CAP, 200_000),
+    dailyIdrCap: num(env.URUSIN_DAILY_IDR_CAP, 0),
+  };
+  for (const [k, v] of Object.entries(quota)) {
+    if (!Number.isFinite(v) || v < 0) throw new Error(`konfigurasi kuota tidak valid: ${k}=${String(v)}`);
+  }
+  if (quota.dailyIdrCap <= 0) {
+    throw new Error(
+      'URUSIN_DAILY_IDR_CAP wajib diisi (angka > 0) di mode LLM; tanpa batas berarti biaya tak terbatas',
+    );
+  }
+  return quota;
+}
+
 async function buildFromEnv(): Promise<Runtime> {
   const env = process.env;
   const haveLlm = Boolean(env.LLM_BASE_URL && env.LLM_API_KEY && env.LLM_AGENT_MODEL);
@@ -122,7 +146,6 @@ async function buildFromEnv(): Promise<Runtime> {
     }
   }
   const prices: Prices = cfg.prices;
-  const num = (v: string | undefined, d: number) => (v && v.trim() !== '' ? Number(v) : d);
   return createRuntime({
     mode: 'llm',
     provider,
@@ -130,12 +153,7 @@ async function buildFromEnv(): Promise<Runtime> {
       model: cfg.models.agent,
       caps,
       prices,
-      quota: {
-        idrPerUsd: num(env.IDR_PER_USD, 16_500),
-        sessionTurnCap: num(env.URUSIN_SESSION_TURN_CAP, 40),
-        sessionTokenCap: num(env.URUSIN_SESSION_TOKEN_CAP, 200_000),
-        dailyIdrCap: num(env.URUSIN_DAILY_IDR_CAP, 0),
-      },
+      quota: quotaFromEnv(env),
     },
   });
 }
