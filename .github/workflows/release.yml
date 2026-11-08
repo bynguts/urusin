@@ -138,6 +138,7 @@ jobs:
           name: extension-zip
           path: apps/extension/.output/*-chrome.zip
           if-no-files-found: error
+          include-hidden-files: true # .output/ dianggap tersembunyi
 
   github-release:
     name: GitHub Release
