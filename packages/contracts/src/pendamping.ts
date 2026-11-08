@@ -176,6 +176,12 @@ const koordinat = z.number().min(-10_000).max(10_000);
 /** Bitmask modifier CDP: Alt=1, Ctrl=2, Meta=4, Shift=8. */
 const modifier = z.number().int().min(0).max(15);
 
+/** Ukuran potongan berkas (biner) per pesan WS; base64-nya + JSON muat di batas pesan 64 KB. */
+export const BERKAS_POTONG_BYTE = 36 * 1024;
+const BERKAS_POTONG_BASE64 = Math.ceil(BERKAS_POTONG_BYTE / 3) * 4;
+/** Batas satu pesan WebSocket perangkat -> pendamping (berlaku juga sebelum `halo`). */
+export const PENDAMPING_WS_MAX_PAYLOAD = 64 * 1024;
+
 export const PendampingClientMessageSchema = z.discriminatedUnion('type', [
   /** Wajib pesan pertama; tiket sekali pakai dari POST /tiket. */
   z.object({ type: z.literal('halo'), tiket: z.string().min(16).max(200) }),
@@ -215,7 +221,26 @@ export const PendampingClientMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('vault'),
     isian: z.record(z.string().regex(/^\{\{[A-Z][A-Z0-9_]*(?:\.[A-Z][A-Z0-9_]*)+\}\}$/), z.string().max(500)),
   }),
-  /** Berkas untuk `{{FILE:<nama>}}`; base64, maks ~9 MB biner. Hanya di memori sesi. */
+  /**
+   * Berkas untuk `{{FILE:<nama>}}` dalam potongan berurutan (pesan WS dibatasi 64 KB sebelum dan sesudah
+   * autentikasi): `indeks` 0..total-1, setiap potongan <= BERKAS_POTONG_BYTE biner (kelipatan 3 kecuali
+   * yang terakhir), `ukuran` total biner <= 9 MB. Hanya di memori sesi.
+   */
+  z.object({
+    type: z.literal('berkas_potong'),
+    nama: z.string().max(64).regex(/^[A-Za-z][A-Za-z0-9_]*$/),
+    namaBerkas: z.string().min(1).max(200),
+    mime: z.string().min(1).max(100),
+    ukuran: z
+      .number()
+      .int()
+      .positive()
+      .max(9 * 1024 * 1024),
+    indeks: z.number().int().nonnegative(),
+    total: z.number().int().positive().max(512),
+    dataBase64: z.string().min(1).max(BERKAS_POTONG_BASE64),
+  }),
+  /** Bentuk lama satu pesan (hanya berkas kecil yang muat dalam batas pesan WS 64 KB). */
   z.object({
     type: z.literal('berkas'),
     nama: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),

@@ -1,17 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BERKAS_POTONG_BYTE,
   decodePendampingFrame,
   encodePendampingFrame,
   ENDPOINT,
   MulaiPendampingRequestSchema,
   MulaiSesiInternalSchema,
   PENDAMPING_WS_CLOSE,
+  PENDAMPING_WS_MAX_PAYLOAD,
   PendampingClientMessageSchema,
   PendampingServerMessageSchema,
   SesiPendampingSchema,
 } from './index.js';
 
 const SID_HASH = 'a'.repeat(64);
+
+const POTONG = {
+  type: 'berkas_potong',
+  nama: 'ktp',
+  namaBerkas: 'ktp.pdf',
+  mime: 'application/pdf',
+  ukuran: 100_000,
+  indeks: 0,
+  total: 3,
+  dataBase64: 'AAAA',
+};
 
 describe('kontrak pendamping', () => {
   it('pesan klien: input, kendali, vault, berkas', () => {
@@ -25,10 +38,26 @@ describe('kontrak pendamping', () => {
       { type: 'kembalikan' },
       { type: 'vault', isian: { '{{PEMOHON.HP}}': '08000000001' } },
       { type: 'berkas', nama: 'berkas1', namaBerkas: 'ktp.png', mime: 'image/png', dataBase64: 'AAAA' },
+      { ...POTONG, dataBase64: 'A'.repeat((BERKAS_POTONG_BYTE / 3) * 4) },
       { type: 'akhiri' },
       { type: 'ping', t: 1 },
     ];
     for (const m of ok) expect(PendampingClientMessageSchema.safeParse(m).success, m.type).toBe(true);
+  });
+
+  it('potongan berkas terbesar (nama/mime maksimal) muat dalam batas pesan WS', () => {
+    const terbesar = {
+      ...POTONG,
+      nama: 'a'.repeat(64),
+      namaBerkas: 'n'.repeat(200),
+      mime: 'm'.repeat(100),
+      ukuran: 9 * 1024 * 1024,
+      indeks: 511,
+      total: 512,
+      dataBase64: 'A'.repeat((BERKAS_POTONG_BYTE / 3) * 4),
+    };
+    expect(PendampingClientMessageSchema.safeParse(terbesar).success).toBe(true);
+    expect(Buffer.byteLength(JSON.stringify(terbesar))).toBeLessThan(PENDAMPING_WS_MAX_PAYLOAD);
   });
 
   it('pesan klien rusak ditolak (kunci vault bukan placeholder, teks kosong, tipe asing)', () => {
@@ -37,6 +66,12 @@ describe('kontrak pendamping', () => {
       { type: 'text', teks: '' },
       { type: 'pointer', aksi: 'tap', x: 0, y: 0, jenis: 'mouse', tombol: 'left' },
       { type: 'berkas', nama: '../x', namaBerkas: 'a', mime: 'image/png', dataBase64: 'A' },
+      // Potongan lebih besar dari BERKAS_POTONG_BYTE, ukuran > 9 MB, atau > 512 potongan.
+      { ...POTONG, dataBase64: 'A'.repeat((BERKAS_POTONG_BYTE / 3) * 4 + 4) },
+      { ...POTONG, ukuran: 9 * 1024 * 1024 + 1 },
+      { ...POTONG, total: 513 },
+      { ...POTONG, indeks: -1 },
+      { ...POTONG, nama: 'a'.repeat(65) },
       { type: 'eval', kode: 'x' },
     ];
     for (const m of bad) expect(PendampingClientMessageSchema.safeParse(m).success).toBe(false);
