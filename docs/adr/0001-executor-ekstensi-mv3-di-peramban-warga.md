@@ -1,6 +1,6 @@
 # 0001. Executor aksi di situs pemerintah berupa ekstensi MV3 di peramban warga
 
-- **Status:** Diterima. Kerangka ekstensi sudah ada (`apps/extension`); adapter situs belum.
+- **Status:** Digantikan (2026-11-09). Ekstensi dihapus dari repositori; eksekutor kini Browser Pendamping (Chromium di server per sesi warga). Isi di bawah dipertahankan sebagai catatan keputusan.
 - **Dicatat:** 2026-11-08
 - **Sumber keputusan:** rencana D1 (§1.3, §10)
 

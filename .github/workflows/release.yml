@@ -1,9 +1,9 @@
 name: Release
 
-# Membangun image web + fixtures multi-arch (amd64 + arm64) dan zip ekstensi.
-#   - push ke main : image bertag <sha> (VPS menarik berdasarkan digest, lihat deploy/deploy.sh) dan zip ekstensi.
+# Membangun image web + fixtures multi-arch (amd64 + arm64).
+#   - push ke main : image bertag <sha> (VPS menarik berdasarkan digest, lihat deploy/deploy.sh).
 #   - tag rc* / v* : TIDAK membangun ulang. Image <sha> milik commit bertag di-alias (digest sama) menjadi <tag>,
-#     lalu GitHub Release dibuat dari zip ekstensi dan SBOM hasil run main untuk SHA yang sama. Jadi yang diuji
+#     lalu GitHub Release dibuat dari SBOM hasil run main untuk SHA yang sama. Jadi yang diuji
 #     di main, yang dirilis. Gagal bila image <sha> atau run main untuk commit itu tidak ada.
 # Tidak ada QEMU: Dockerfile membangun JS di platform runner dan hanya menyalin dependensi produksi per arsitektur
 # (lihat apps/web/Dockerfile). Rilis bukan commit, jadi aman untuk scripts/audit-history.mjs.
@@ -124,61 +124,6 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  extension:
-    name: Zip ekstensi
-    if: ${{ github.ref_type != 'tag' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      HUSKY: '0'
-      GIT_SHA: ${{ github.sha }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      - name: Setup Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - name: Install
-        run: pnpm install --frozen-lockfile --ignore-scripts
-
-      - name: Bangun dependensi workspace
-        run: pnpm turbo run build --filter=@urusin/core
-
-      - name: Zip ekstensi
-        run: pnpm --filter @urusin/extension zip
-
-      # Zip untuk SETIAP SHA main (bukan hanya tag): penguji memakai zip SHA kandidat; tag rc1 nanti menunjuk SHA yang sama.
-      - name: Beri nama zip dengan SHA dan catat sha256
-        run: |
-          sha7="${GITHUB_SHA:0:7}"
-          zip="urusin-ext-${sha7}.zip"
-          mkdir -p dist-ext
-          cp apps/extension/.output/*-chrome.zip "dist-ext/${zip}"
-          (cd dist-ext && sha256sum "${zip}" > "${zip}.sha256")
-          {
-            echo "### Zip ekstensi"
-            echo
-            echo "- Berkas: \`${zip}\`"
-            echo "- SHA: \`${GITHUB_SHA}\`"
-            echo "- sha256: \`$(cut -d' ' -f1 "dist-ext/${zip}.sha256")\`"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Unggah zip
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: extension-zip
-          path: |
-            dist-ext/urusin-ext-*.zip
-            dist-ext/urusin-ext-*.zip.sha256
-          if-no-files-found: error
-
   promote:
     name: Alias image <sha> menjadi tag rilis (tanpa build ulang)
     if: ${{ github.ref_type == 'tag' }}
@@ -238,25 +183,24 @@ jobs:
       GH_REPO: ${{ github.repository }}
       TAG: ${{ github.ref_name }}
     steps:
-      # Zip ekstensi dan SBOM dibuat oleh run main untuk SHA yang sama; disalin, bukan dibangun ulang.
+      # SBOM dibuat oleh run main untuk SHA yang sama; disalin, bukan dibangun ulang.
       - name: Cari run Release yang sukses untuk SHA ini
         id: run
         run: |
           id="$(gh run list --workflow release.yml --commit "$GITHUB_SHA" --event push --status success --json databaseId,headBranch --jq '[.[] | select(.headBranch=="main")][0].databaseId')"
           if [ -z "$id" ] || [ "$id" = "null" ]; then
-            echo "::error::tidak ada run Release sukses di main untuk ${GITHUB_SHA}; tidak ada zip/SBOM untuk dilampirkan."
+            echo "::error::tidak ada run Release sukses di main untuk ${GITHUB_SHA}; tidak ada SBOM untuk dilampirkan."
             exit 1
           fi
           echo "id=${id}" >> "$GITHUB_OUTPUT"
 
-      - name: Unduh zip ekstensi (+ .sha256) dan SBOM dari run tersebut
+      - name: Unduh SBOM dari run tersebut
         run: |
           mkdir -p assets
-          for name in extension-zip sbom-web sbom-fixtures; do
+          for name in sbom-web sbom-fixtures; do
             gh run download "${{ steps.run.outputs.id }}" --dir assets --name "$name"
           done
           ls -l assets
-          (cd assets && sha256sum -c ./*.sha256)
 
       - name: Buat GitHub Release
         run: |

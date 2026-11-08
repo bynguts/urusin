@@ -51,16 +51,7 @@ const RAW_HTTP_SYNTAX = [
 
 export default ts.config(
   {
-    ignores: [
-      '**/node_modules/',
-      '**/dist/',
-      '**/build/',
-      '**/.svelte-kit/',
-      '**/.turbo/',
-      '**/coverage/',
-      '**/.wxt/',
-      '**/.output/',
-    ],
+    ignores: ['**/node_modules/', '**/dist/', '**/build/', '**/.svelte-kit/', '**/.turbo/', '**/coverage/'],
   },
   js.configs.recommended,
   ...ts.configs.recommended,

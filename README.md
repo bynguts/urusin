@@ -12,10 +12,10 @@ mengisi formulir di situs pemerintah, dan selalu menyerahkan tombol kirim terakh
 
 ## 1. Tim & anggota
 
-| Peran                                                    | Anggota                        | Kampus                      | GitHub                                     |
-| -------------------------------------------------------- | ------------------------------ | --------------------------- | ------------------------------------------ |
-| Ketua — harness agen, AI/LLM, RAG, UI, VPS               | Muhammad Muqorrobin Al Anshori | President University        | [@bynguts](https://github.com/bynguts)     |
-| Anggota — ekstensi, adapter layanan & kota, fixture, e2e | Rafi Cahya Mahardika           | Universitas Negeri Surabaya | [@rafilajhh](https://github.com/rafilajhh) |
+| Peran                                                 | Anggota                        | Kampus                      | GitHub                                     |
+| ----------------------------------------------------- | ------------------------------ | --------------------------- | ------------------------------------------ |
+| Ketua — harness agen, AI/LLM, RAG, UI, VPS            | Muhammad Muqorrobin Al Anshori | President University        | [@bynguts](https://github.com/bynguts)     |
+| Anggota — UI/UX, adapter layanan & kota, fixture, e2e | Rafi Cahya Mahardika           | Universitas Negeri Surabaya | [@rafilajhh](https://github.com/rafilajhh) |
 
 ## 2. Kategori, nama, deskripsi, masalah, target
 
@@ -44,7 +44,7 @@ Yang sudah berjalan saat ini:
 - `@urusin/llm`: gateway OpenAI-compatible (Chat Completions), capability probe, tangga structured
   output, akumulator stream tool call, meter biaya, dan FakeProvider untuk pengujian.
 
-Fitur agen, ekstensi peramban, MCP, RAG, PWA, dan pengingat: **akan dilengkapi**.
+Fitur agen, Browser Pendamping, MCP, RAG, PWA, dan pengingat: **akan dilengkapi**.
 
 ## 4. Teknologi
 
@@ -94,8 +94,8 @@ pnpm budget                 # cek anggaran JS awal beranda (≤ 70 KB gzip)
 node apps/web/build         # jalankan hasil build (set PORT dan ORIGIN)
 ```
 
-Variabel lingkungan lengkap ada di `.env.example`. Panduan deploy (Docker Compose di VPS), ekstensi,
-dan pemasangan PWA: **akan dilengkapi**.
+Variabel lingkungan lengkap ada di `.env.example`. Panduan deploy (Docker Compose di VPS), Browser
+Pendamping, dan pemasangan PWA: **akan dilengkapi**.
 
 ## 7. Akun demonstrasi
 
@@ -145,7 +145,7 @@ capability probe, endpoint health, serta pemindai PII dan audit riwayat commit.
 
 ## Batasan yang diketahui
 
-- Baru fondasi: belum ada agen, ekstensi peramban, adapter situs, MCP, RAG, PWA, atau pengingat.
+- Baru fondasi: belum ada agen, Browser Pendamping, adapter situs, MCP, RAG, PWA, atau pengingat.
 - Domain di registry masih berupa seed; tanggal verifikasi manual tiap domain belum dicatat.
 - Capability probe belum dijalankan terhadap penyedia nyata.
 

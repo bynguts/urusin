@@ -1,6 +1,6 @@
 # 0002. Komunikasi ekstensi dan harness lewat relay tab web app dengan pairing nonce
 
-- **Status:** Diterima. Rute `/pair` dan pairing di ekstensi sudah ada; kanal sinkron status belum.
+- **Status:** Digantikan (2026-11-09). Ekstensi dihapus dari repositori; eksekutor kini Browser Pendamping (Chromium di server per sesi warga). Isi di bawah dipertahankan sebagai catatan keputusan.
 - **Dicatat:** 2026-11-08
 - **Sumber keputusan:** rencana D2 (§1.3, §10)
 

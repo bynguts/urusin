@@ -1,6 +1,6 @@
 # 0007. Vault PII di peramban (IndexedDB, AES-GCM) dengan ekstensi sebagai gate kedua
 
-- **Status:** Diterima. Belum diimplementasikan; hanya grammar placeholder dan guard di `packages/core`.
+- **Status:** Diterima, sebagian digantikan (2026-11-09): gate kedua di ekstensi dihapus bersama ekstensinya; persetujuan warga kini di Browser Pendamping. Vault belum diimplementasikan; hanya grammar placeholder dan guard di `packages/core`.
 - **Dicatat:** 2026-11-08
 - **Sumber keputusan:** rencana D7 (§1.3, §10)
 
