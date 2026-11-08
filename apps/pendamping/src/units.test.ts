@@ -151,7 +151,10 @@ describe('pemetaan input ke CDP', () => {
         params: { type: 'mouseMoved', x: 5, y: 6, button: 'none', buttons: 0, clickCount: 0, modifiers: 0 },
       },
     ]);
-    expect(toCdp({ ...tap, aksi: 'move', x: 7, y: 7 }, t)).toEqual([]); // di bawah slop: tetap ketukan
+    // Di bawah slop: tetap ketukan; gerak jari nyata diteruskan sebagai mouseMoved.
+    expect(toCdp({ ...tap, aksi: 'move', x: 7, y: 7 }, t).map((c) => c.params)).toEqual([
+      { type: 'mouseMoved', x: 7, y: 7, button: 'none', buttons: 0, clickCount: 0, modifiers: 0 },
+    ]);
     const up = toCdp({ ...tap, aksi: 'up', x: 7, y: 7 }, t).map((c) => c.params);
     expect(up.map((p) => p.type)).toEqual(['mouseMoved', 'mousePressed', 'mouseReleased']);
     expect(up[1]).toMatchObject({ x: 5, y: 6, button: 'left', buttons: 1, clickCount: 1 });

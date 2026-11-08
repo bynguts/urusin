@@ -4,7 +4,7 @@ import type { PendampingEvent, PendampingHasil, PendampingSorot, PendampingStatu
 import { createBrowserFactory } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
 import type { ActiveRun, Hooks } from '../src/sessions.js';
-import { FIXTURE_ORIGIN } from '../playwright.config.js';
+import { FIXTURE_ORIGIN, FIXTURES_PORT } from '../playwright.config.js';
 
 /**
  * Verifikasi situs (B-b) terhadap tiruan halaman tantangan di apps/fixtures (bukan Cloudflare asli):
@@ -18,8 +18,14 @@ type Rekam = {
   ended?: { status: PendampingStatus; hasil: PendampingHasil; pesan: string };
 };
 
+/** Origin pasangan lintas-situs fixture (widget tantangan dalam iframe lintas-proses). */
+const FIXTURE_LINTAS = `http://localhost:${FIXTURES_PORT}`;
+
 async function mulai(jalur: string): Promise<{ run: ActiveRun; rekam: Rekam }> {
-  const config = loadConfig({ PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN, PENDAMPING_HEADLESS: '1' });
+  const config = loadConfig({
+    PENDAMPING_FIXTURE_ORIGINS: `${FIXTURE_ORIGIN},${FIXTURE_LINTAS}`,
+    PENDAMPING_HEADLESS: '1',
+  });
   const rekam: Rekam = { events: [], modes: [] };
   const hooks: Hooks = {
     mode: (m, pesan) => rekam.modes.push(`${m}:${pesan ?? ''}`),
@@ -73,6 +79,21 @@ test('tantangan situs: AI berhenti, warga mengetuk sendiri, AI melanjutkan pengi
     expect(rekam.ended).toBeUndefined();
     expect(verifikasi(rekam).some((e) => e.pesan.includes('belum diterima'))).toBe(false);
 
+    await ketuk(run, sorot);
+    await expect
+      .poll(() => rekam.ended, { timeout: 30_000 })
+      .toMatchObject({ status: 'siaga', hasil: 'berhasil' });
+    expect(rekam.modes).toContain('ai:Verifikasi selesai. AI melanjutkan pengisian.');
+  } finally {
+    await run.destroy();
+  }
+});
+
+test('widget tantangan di iframe LINTAS-origin: ketukan warga diteruskan CDP sampai ke dalamnya', async () => {
+  const { run, rekam } = await mulai('/uji-cf/lintas/');
+  try {
+    const sorot = await tungguSorot(rekam, 'Situs meminta verifikasi');
+    expect(sorot.lebar).toBeGreaterThan(200);
     await ketuk(run, sorot);
     await expect
       .poll(() => rekam.ended, { timeout: 30_000 })

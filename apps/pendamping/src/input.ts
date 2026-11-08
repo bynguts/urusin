@@ -41,6 +41,8 @@ const mouse = (type: string, x: number, y: number, extra: Record<string, unknown
  * Sentuhan warga -> MOUSE di peramban pendamping (bukan touch event): ketukan menjadi klik mouse persis di
  * titik sentuh, sehingga juga sampai ke iframe lintas-origin (mis. kotak centang verifikasi situs).
  * Geser melewati `slop` piksel menjadi gulir (mouseWheel), bukan seret. Satu pemeta per sesi (berstatus).
+ * Urutan klik = gerak nyata warga (mouseMoved di titik sentuh dan tiap sampel jari), lalu mousePressed +
+ * mouseReleased `left`/clickCount 1 di titik sentuh. Tidak ada lintasan atau jeda sintetis (tanpa evasi).
  */
 export function createTouchMapper(slop = 8): (m: Pointer) => CdpCommand[] {
   let start: { x: number; y: number } | null = null;
@@ -56,7 +58,8 @@ export function createTouchMapper(slop = 8): (m: Pointer) => CdpCommand[] {
       case 'move': {
         if (!start) return [];
         if (!scrolling && Math.hypot(m.x - start.x, m.y - start.y) > slop) scrolling = true;
-        if (!scrolling) return [];
+        // Di bawah slop: gerak jari warga yang sebenarnya diteruskan apa adanya (bukan lintasan buatan).
+        if (!scrolling) return [mouse('mouseMoved', m.x, m.y)];
         const delta = { deltaX: last.x - m.x, deltaY: last.y - m.y };
         last = { x: m.x, y: m.y };
         return [mouse('mouseWheel', m.x, m.y, delta)];
