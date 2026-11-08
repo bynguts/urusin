@@ -6,15 +6,18 @@
 #   deploy/deploy.sh sha256:<digest>                # SHA diambil dari label image (revision)
 #
 # Alur:
-#   1. Pull image dan verifikasi provenance/label revision == SHA yang diharapkan (tolak bila beda).
-#   2. Jalankan image di warna yang menganggur (blue=4310, green=4311), tunggu /api/health sehat
-#      dan gitSha cocok. Warna aktif tidak disentuh sampai tahap ini lulus.
-#   3. Hentikan warna lama (Caddy `lb_policy first` memindahkan lalu lintas), lalu smoke test publik
-#      (https://$DOMAIN dan https://verify.$DOMAIN + masa berlaku TLS) bila DOMAIN diset.
-#   4. Gagal di langkah 2-3 => rollback otomatis ke digest sebelumnya dan exit non-zero.
+#   1. Pull image; label revision harus SHA lengkap dan SHA itu juga harus ada di provenance buildx.
+#   2. Jalankan image di warna yang menganggur (blue=4310, green=4311), tunggu /api/health sehat,
+#      gitSha cocok, dan /api/ready masih 503 (belum dipromosikan). Warna aktif tidak disentuh.
+#   3. Smoke ke port langsung warna idle lulus => PROMOSI: tulis /data/.active-color (volume bersama).
+#      Caddy memakai /api/ready, jadi lalu lintas pindah hanya setelah promosi, bukan saat port hidup.
+#   4. Smoke publik (https://$DOMAIN, https://verify.$DOMAIN, TLS) bila DOMAIN diset, lalu hentikan
+#      warna lama (warna lama tetap hidup sampai smoke lulus agar rollback seketika).
+#   5. Gagal di langkah 2-4 => rollback otomatis (promosikan ulang yang lama) dan exit non-zero.
 #
-# Variabel (opsional): IMAGE_REPO, WAIT_SECONDS, SETTLE_SECONDS, REQUIRE_PROVENANCE=1 (tanpa fallback
-# label), PORT_BLUE, PORT_GREEN, SKIP_SMOKE=1. Idempotent: menjalankan ulang dengan argumen sama aman.
+# Variabel (opsional): IMAGE_REPO, WAIT_SECONDS, SETTLE_SECONDS, PORT_BLUE, PORT_GREEN, SKIP_SMOKE=1,
+# REQUIRE_PROVENANCE (default 1; 0 = cukup label revision, JANGAN dipakai di produksi).
+# Idempotent: menjalankan ulang dengan argumen sama aman (warna berganti).
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -24,7 +27,7 @@ PORT_BLUE="${PORT_BLUE:-4310}"
 PORT_GREEN="${PORT_GREEN:-4311}"
 WAIT_SECONDS="${WAIT_SECONDS:-90}"
 SETTLE_SECONDS="${SETTLE_SECONDS:-3}"
-REQUIRE_PROVENANCE="${REQUIRE_PROVENANCE:-0}"
+REQUIRE_PROVENANCE="${REQUIRE_PROVENANCE:-1}"
 ENV_FILE=".env"
 IMAGES_FILE=".env.images"
 HISTORY_FILE=".env.images.history"
@@ -76,22 +79,25 @@ echo "deploy: pull ${web_image}"
 docker pull "$web_image" >/dev/null
 
 label_sha="$(docker image inspect "$web_image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null || true)"
+# Label revision harus SHA git LENGKAP (40 hex); "dev", kosong, atau SHA pendek ditolak.
+[[ "$label_sha" =~ ^[0-9a-f]{40}$ ]] || die "label org.opencontainers.image.revision bukan SHA lengkap (40 hex): '${label_sha:-kosong}'; ditolak"
 if [ -z "$expected_sha" ]; then
   expected_sha="$label_sha"
-  [ -n "$expected_sha" ] && [ "$expected_sha" != "dev" ] || die "SHA tidak diketahui; berikan <git-sha> sebagai argumen"
-fi
-
-# --- 1b. Provenance (#14e): refuse bila image bukan dari SHA yang diharapkan ------------------
-if [ -n "$label_sha" ] && ! sha_match "$label_sha" "$expected_sha"; then
+elif [ "${label_sha#"$expected_sha"}" = "$label_sha" ]; then
   die "label revision image ($label_sha) != SHA yang diharapkan ($expected_sha); ditolak"
 fi
+expected_sha="$label_sha"
+
+# --- 1b. Provenance (#14e): SHA lengkap harus ada di label DAN di provenance buildx ------------
+# Ini pencocokan isi metadata provenance, BUKAN verifikasi kriptografis attestation (tanda tangan/
+# cosign belum dipakai). Melindungi dari image salah-SHA, bukan dari registry yang disusupi.
 provenance="$(docker buildx imagetools inspect "$web_image" --format '{{json .Provenance}}' 2>/dev/null || true)"
-if [ -n "$provenance" ] && [ "$provenance" != "null" ] && [ "$provenance" != "{}" ] && grep -q -- "${expected_sha:0:7}" <<<"$provenance"; then
-  echo "deploy: provenance cocok dengan ${expected_sha:0:12}"
-elif [ "$REQUIRE_PROVENANCE" != "1" ] && [ -n "$label_sha" ] && sha_match "$label_sha" "$expected_sha"; then
-  echo "deploy: peringatan: provenance tidak tersedia/tidak memuat SHA; memakai label revision (${label_sha:0:12})" >&2
+if [ -n "$provenance" ] && [ "$provenance" != "null" ] && [ "$provenance" != "{}" ] && grep -qF -- "$label_sha" <<<"$provenance"; then
+  echo "deploy: provenance memuat SHA lengkap ${label_sha:0:12}... (isi dicocokkan; tanda tangan tidak diverifikasi)"
+elif [ "$REQUIRE_PROVENANCE" = "0" ]; then
+  echo "deploy: PERINGATAN: provenance tidak ada/tidak memuat SHA lengkap; hanya label revision (REQUIRE_PROVENANCE=0)" >&2
 else
-  die "provenance image tidak memverifikasi ${expected_sha:0:12} (set REQUIRE_PROVENANCE=0 hanya bila label revision ada); ditolak"
+  die "provenance buildx tidak memuat SHA lengkap ${label_sha:0:12}...; ditolak (REQUIRE_PROVENANCE=1)"
 fi
 
 # --- 2. Tentukan warna aktif/idle ------------------------------------------------------------
@@ -137,6 +143,7 @@ printf '%s\t%s\t%s\t%s\n' "$(date -u +%FT%TZ)" "$idle" "$expected_sha" "$web_ima
 # --- Utilitas health --------------------------------------------------------------------------
 health_body() { curl -fsS --max-time 3 "http://127.0.0.1:$1/api/health" 2>/dev/null || true; }
 gitsha_of() { printf '%s' "$1" | sed -n 's/.*"gitSha":"\([^"]*\)".*/\1/p'; }
+ready_code() { curl -s -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:$1/api/ready" 2>/dev/null || true; }
 
 wait_healthy() { # port expected_sha -> 0 bila sehat dan gitSha cocok
   local port="$1" want="$2" body="" got=""
@@ -159,10 +166,16 @@ smoke_public() {
   local domain
   domain="$(sed -n 's/^DOMAIN=//p' "$ENV_FILE" | head -n1 | tr -d "\"' \r")"
   if [ -z "$domain" ]; then echo "deploy: DOMAIN tidak diset di $ENV_FILE; smoke publik dilewati"; return 0; fi
-  local body got code host
+  local body="" got="" code host
+  # Caddy butuh beberapa detik memindahkan lalu lintas setelah promosi: ulangi sampai gitSha cocok.
   # curl menolak sertifikat tidak valid secara bawaan, jadi ini sekaligus memeriksa TLS.
-  body="$(curl -fsS --max-time 10 "https://${domain}/api/health")" || { echo "deploy: smoke: https://${domain}/api/health gagal (TLS/DNS/Caddy?)" >&2; return 1; }
-  got="$(gitsha_of "$body")"
+  for _ in 1 2 3 4 5 6 7 8; do
+    body="$(curl -fsS --max-time 10 "https://${domain}/api/health" 2>/dev/null)" || body=""
+    got="$(gitsha_of "$body")"
+    if [ -n "$body" ] && sha_match "$got" "$expected_sha"; then break; fi
+    sleep 2
+  done
+  [ -n "$body" ] || { echo "deploy: smoke: https://${domain}/api/health gagal (TLS/DNS/Caddy?)" >&2; return 1; }
   sha_match "$got" "$expected_sha" || { echo "deploy: smoke: gitSha publik=${got:-kosong}, diharapkan=${expected_sha}" >&2; return 1; }
   code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "https://verify.${domain}/")" || { echo "deploy: smoke: https://verify.${domain}/ gagal (TLS/DNS?)" >&2; return 1; }
   case "$code" in 2*|3*|4*) ;; *) echo "deploy: smoke: https://verify.${domain}/ -> HTTP $code" >&2; return 1 ;; esac
@@ -175,31 +188,36 @@ smoke_public() {
   echo "deploy: smoke publik OK (${domain}, verify.${domain}, TLS)"
 }
 
-# --- 4. Rollback ------------------------------------------------------------------------------
+# --- Promosi (penanda warna aktif di volume bersama; dibaca /api/ready) ------------------------
+# promote <warna-yang-dipromosikan> <warna-kontainer-tempat-exec>
+promote() {
+  "${compose[@]}" exec -T "web-$2" sh -c 'printf %s "$0" > /data/.active-color.tmp && mv /data/.active-color.tmp /data/.active-color' "$1"
+}
+
+# --- 5. Rollback ------------------------------------------------------------------------------
 rolled_back=0
 rollback() {
   [ "$rolled_back" = 0 ] || return 0
   rolled_back=1
   echo "deploy: ROLLBACK ke ${prev_image:-<tidak ada>}" >&2
   if [ -n "$prev_image" ]; then
-    printf 'ACTIVE_COLOR=%s
-WEB_IMAGE_%s=%s
-GIT_SHA_%s=%s
-RUN_MIGRATIONS_%s=0
-'       "$active" "$(upper "$active")" "$prev_image" "$(upper "$active")" "$prev_sha" "$(upper "$active")" > "${IMAGES_FILE}.tmp"
+    printf 'ACTIVE_COLOR=%s\nWEB_IMAGE_%s=%s\nGIT_SHA_%s=%s\nRUN_MIGRATIONS_%s=0\n' \
+      "$active" "$(upper "$active")" "$prev_image" "$(upper "$active")" "$prev_sha" "$(upper "$active")" > "${IMAGES_FILE}.tmp"
     mv "${IMAGES_FILE}.tmp" "$IMAGES_FILE"
   fi
   if [ -z "$prev_image" ]; then
+    "${compose[@]}" exec -T "web-$idle" rm -f /data/.active-color >&2 || true
     "${compose[@]}" stop "web-$idle" >&2 || true
     echo "deploy: rollback: tidak ada image sebelumnya (deploy pertama); web-$idle dihentikan" >&2
     return 0
   fi
-  # Pastikan versi lama berjalan dan sehat, baru hentikan yang gagal.
+  # Pastikan versi lama berjalan dan sehat, promosikan ulang, baru hentikan yang gagal.
   if [ -z "$(health_body "$active_port")" ] || ! sha_match "$(gitsha_of "$(health_body "$active_port")")" "$prev_sha"; then
     echo "deploy: rollback: menjalankan ulang ${prev_image} di web-${active}" >&2
     "${compose[@]}" up -d "web-$active" >&2 || true
     wait_healthy "$active_port" "$prev_sha" || echo "deploy: PERINGATAN: versi sebelumnya juga tidak sehat; periksa manual" >&2
   fi
+  promote "$active" "$active" >&2 || promote "$active" "$idle" >&2 || echo "deploy: PERINGATAN: gagal menulis penanda warna aktif" >&2
   "${compose[@]}" stop "web-$idle" >&2 || true
   echo "deploy: rollback selesai; melayani ${prev_image}" >&2
 }
@@ -216,22 +234,33 @@ echo "deploy: menaikkan web-${idle} (:${idle_port}) dengan ${web_image}"
 echo "deploy: menunggu http://127.0.0.1:${idle_port}/api/health (maks ${WAIT_SECONDS}s)"
 wait_healthy "$idle_port" "$expected_sha" || fail "web-$idle tidak sehat / gitSha salah"
 
-# --- 3. Alihkan: hentikan warna lama, smoke publik --------------------------------------------
-if [ -n "$active" ] && [ "$active" != "$idle" ]; then
-  sleep "$SETTLE_SECONDS"
-  echo "deploy: menghentikan web-${active} (lalu lintas pindah ke web-${idle})"
+# --- 3. Smoke langsung ke warna idle, lalu promosi --------------------------------------------
+# /api/ready harus ada (image mengenal blue/green) dan belum siap: 503. 404 berarti image tanpa rute itu.
+[ "$(ready_code "$idle_port")" = 503 ] || fail "web-$idle: /api/ready harus 503 sebelum promosi (image tanpa rute /api/ready?)"
+echo "deploy: smoke langsung web-${idle} lulus; mempromosikan"
+promote "$idle" "$idle" || fail "gagal menulis penanda warna aktif"
+ok_ready=0
+for _ in $(seq 1 15); do
+  if [ "$(ready_code "$idle_port")" = 200 ]; then ok_ready=1; break; fi
+  sleep 1
+done
+[ "$ok_ready" = 1 ] || fail "web-$idle tidak siap setelah promosi"
+sleep "$SETTLE_SECONDS"
+
+# --- 4. Smoke publik, lalu hentikan warna lama --------------------------------------------------
+if [ "$legacy" = 1 ]; then
+  # Layout lama tidak mengenal /api/ready dan tetap di 4310: hentikan sekarang agar lalu lintas pindah.
   "${compose[@]}" stop -t 30 "web-$active" || echo "deploy: peringatan: stop web-$active gagal" >&2
-  if [ "$legacy" = 1 ]; then
-    # Kontainer `web` dari layout lama sudah yatim; hapus agar port 4310 bebas.
-    legacy_ids="$(docker ps -aq --filter label=com.docker.compose.project=urusin --filter label=com.docker.compose.service=web 2>/dev/null || true)"
-    [ -z "$legacy_ids" ] || docker rm -f $legacy_ids >/dev/null || true
-  fi
-  # Pastikan yang melayani sekarang benar-benar versi baru.
-  wait_healthy "$idle_port" "$expected_sha" || fail "web-$idle tidak sehat setelah pengalihan"
+  legacy_ids="$(docker ps -aq --filter label=com.docker.compose.project=urusin --filter label=com.docker.compose.service=web 2>/dev/null || true)"
+  # shellcheck disable=SC2086
+  [ -z "$legacy_ids" ] || docker rm -f $legacy_ids >/dev/null || true
 fi
 
-if ! smoke_public; then
-  fail "smoke publik gagal"
+smoke_public || fail "smoke publik gagal"
+
+if [ -n "$active" ] && [ "$active" != "$idle" ] && [ "$legacy" = 0 ]; then
+  echo "deploy: menghentikan web-${active}"
+  "${compose[@]}" stop -t 30 "web-$active" || echo "deploy: peringatan: stop web-$active gagal" >&2
 fi
 
 # Sukses: simpan sebagai aktif; migrasi tidak perlu diulang pada restart berikutnya.
