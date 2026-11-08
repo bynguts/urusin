@@ -75,12 +75,57 @@ function structuredKind(params: ChatParams): 'intent' | 'grounded' | 'action' | 
   return null;
 }
 
-/** Ambil chunk pertama dari blok SUMBER (format `[refId] judul\n<<DATA...>>teks<</DATA...>>`). */
-function firstSource(prompt: string): { refId: string; quote: string } | null {
-  const m = /\[([^\]\s]+)\] [^\n]*\n<<DATA_TAK_TEPERCAYA[^>]*>>([\s\S]*?)<<\/DATA_TAK_TEPERCAYA/.exec(prompt);
-  if (!m?.[1] || !m[2]) return null;
-  const words = m[2].split(DATAMARK).filter(Boolean);
-  return { refId: m[1], quote: words.slice(0, 9).join(' ') };
+const STOP = new Set([
+  'apa',
+  'syarat',
+  'persyaratan',
+  'saja',
+  'yang',
+  'dan',
+  'untuk',
+  'saya',
+  'cara',
+  'bagaimana',
+  'dengan',
+  'atau',
+  'dari',
+  'kamu',
+  'perlu',
+  'ingin',
+  'mau',
+  'dokumen',
+  'berkas',
+  'tahun',
+  'harus',
+  'disiapkan',
+  'membuat',
+  'mengurus',
+  'ini',
+  'itu',
+  'ada',
+  'kami',
+  'anda',
+  'baru',
+  'saja',
+]);
+
+/** Sumber paling relevan dari blok SUMBER (`[refId] judul` + blok data ber-spotlight); null bila tak ada yang cocok. */
+function bestSource(prompt: string): { refId: string; quote: string } | null {
+  const question = /Pertanyaan warga: ([^\n]*)/.exec(prompt)?.[1]?.toLowerCase() ?? '';
+  const stems = [...new Set(question.match(/\p{L}{3,}/gu) ?? [])]
+    .filter((w) => !STOP.has(w))
+    .map((w) => w.slice(0, 5));
+  let best: { refId: string; quote: string; score: number } | null = null;
+  const re = /\[([^\]\s]+)\] [^\n]*\n<<DATA_TAK_TEPERCAYA[^>]*>>([\s\S]*?)<<\/DATA_TAK_TEPERCAYA/g;
+  for (const m of prompt.matchAll(re)) {
+    if (!m[1] || !m[2]) continue;
+    const words = m[2].split(DATAMARK).filter(Boolean);
+    const body = words.join(' ').toLowerCase();
+    const score = stems.filter((st) => body.includes(st)).length;
+    if (score >= 2 && (!best || score > best.score))
+      best = { refId: m[1], quote: words.slice(0, 9).join(' '), score };
+  }
+  return best;
 }
 
 /** Langkah berikutnya untuk agen: tool-call berikutnya atau balasan teks. */
@@ -145,7 +190,7 @@ export class DemoProvider extends FakeProvider {
       return asStructured({ jenis: INTENT_JENIS.includes(jenis) ? jenis : 'lainnya', keyakinan: 0.9 });
     }
     if (kind === 'grounded') {
-      const src = firstSource(params.messages.map(text).join('\n'));
+      const src = bestSource(params.messages.map(text).join('\n'));
       return asStructured({
         klaim: src
           ? [
