@@ -14,8 +14,7 @@ export type UntrustedSource = 'rag' | 'dom' | 'tool_output' | 'ocr' | 'user_file
 export const DEFAULT_MAX_UNTRUSTED_CHARS = 1200;
 
 // Karakter tak terlihat / kontrol arah teks: dipakai untuk menyembunyikan instruksi.
-// eslint-disable-next-line no-misleading-character-class -- sengaja mencocokkan kode titik individual
-const INVISIBLE_RE = /[​-‏‪-‮⁠-⁯﻿­᠎]/g;
+const INVISIBLE_RE = new RegExp('[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF\u00AD\u180E]', 'g');
 // eslint-disable-next-line no-control-regex -- membuang karakter kontrol selain \t \n \r
 const CONTROL_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
