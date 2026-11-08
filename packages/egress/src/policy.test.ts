@@ -6,6 +6,7 @@ import {
   EgressBlockedError,
   isBlockedAddress,
   isLlmProxy,
+  AUTH_HOSTS,
   JINA_HOSTS,
   LLM_PROXY,
 } from './policy.js';
@@ -106,6 +107,15 @@ describe('assertTargetAllowed', () => {
       expect(assertTargetAllowed('https:', h, 443, allow)).toBe(false);
     for (const h of ['cekdptonline.kpu.go.id', 'dukcapil.contoh.go.id'])
       expect(() => assertTargetAllowed('https:', h, 443, allow)).toThrow(EgressBlockedError);
+  });
+
+  it('runtime: host akun Google dan Resend lewat https:443 saja; profil ingest menolak (ADR 0028)', () => {
+    for (const h of AUTH_HOSTS) {
+      expect(assertTargetAllowed('https:', h, 443, allow)).toBe(false);
+      expect(() => assertTargetAllowed('http:', h, 80, allow)).toThrow(EgressBlockedError);
+      expect(() => assertTargetAllowed('https:', h, 443, ingest)).toThrow(EgressBlockedError);
+    }
+    expect(() => assertTargetAllowed('https:', 'evil.googleapis.com', 443, allow)).toThrow(EgressBlockedError);
   });
 
   it('ingest: registry resmi dan sufiks .go.id lewat https:443; Jina dan env operator tidak (L2)', () => {
