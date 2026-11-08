@@ -18,6 +18,8 @@ export const ChunkSchema = z.object({
   verifiedAt: z.iso.datetime().nullable(),
   kodeWilayah: KodeWilayahSchema.optional(),
   layanan: z.string().min(1).optional(),
+  /** Header konteks (judul › bagian › instansi › wilayah › layanan); hanya diindeks, tidak ditampilkan. */
+  contextHeader: z.string().max(500).optional(),
 });
 export type Chunk = z.infer<typeof ChunkSchema>;
 
@@ -32,6 +34,29 @@ export const CariPengetahuanInputSchema = z.object({
   k: z.number().int().min(1).max(20).default(6),
 });
 export type CariPengetahuanInput = z.input<typeof CariPengetahuanInputSchema>;
+
+/** Instrumentasi per tahap; hanya angka, id glosarium, dan status (tanpa teks kueri/PII). */
+export const RetrievalDebugSchema = z.object({
+  pipeline: z.object({
+    stemmed: z.boolean(),
+    expand: z.boolean(),
+    vector: z.boolean(),
+    rerank: z.boolean(),
+  }),
+  timingsMs: z.object({
+    expand: z.number(),
+    bm25: z.number(),
+    fuse: z.number(),
+    rerank: z.number(),
+    total: z.number(),
+  }),
+  candidates: z.number().int(),
+  glossaryMatched: z.array(z.string()),
+  expandedTerms: z.number().int(),
+  rerankStatus: z.enum(['off', 'endpoint', 'llm', 'fallback', 'skipped']),
+  rewriteStatus: z.enum(['off', 'applied', 'fallback', 'skipped']),
+});
+export type RetrievalDebug = z.infer<typeof RetrievalDebugSchema>;
 
 export const CariPengetahuanOutputSchema = z.object({
   mode: z.enum(['bm25', 'hybrid']),
@@ -48,5 +73,6 @@ export const CariPengetahuanOutputSchema = z.object({
       layanan: z.string().nullable(),
     }),
   ),
+  debug: RetrievalDebugSchema.optional(),
 });
 export type CariPengetahuanOutput = z.infer<typeof CariPengetahuanOutputSchema>;
