@@ -56,13 +56,18 @@ tahap stemming, perluasan kueri, header chunk kontekstual, dan rerank dapat dita
 turun sendiri bila komponennya tidak ada (tanpa vektor, tanpa reranker, tanpa LLM).
 
 ```ts
+// dimiliki src/eval/run.ts, dipakai bersama rag:eval
 type RetrievalPipeline = {
-  bm25: { stemmed?: boolean }; // default true: tambah leg BM25 atas kolom ter-stem
-  expand?: boolean | { weight?: number; llm?: boolean }; // glosarium; bobot leg perluasan default 0.4
-  vector?: boolean | Record<string, unknown>; // memakai `vectorIds` dari pemanggil
-  rerank?: boolean | { topN?: number }; // top-N (default 20) -> top-k
+  bm25?: { stemmed?: boolean }; // true: tambah leg BM25 atas kolom ter-stem
+  expand?: boolean; // perluasan glosarium adminduk
+  vector?: { transform: FitOptions }; // dipasang saat ingest; di kueri leg aktif bila ada `vectorIds`
+  rerank?: boolean; // top-N (default 20) -> top-k
 };
 ```
+
+Opsi runtime ada di `RetrievalDeps`: `expandWeight` (0.4), `rerankTopN` (20), `useVector`, `rewrite`.
+Tahap kueri juga tersedia sebagai hook eval lewat `createQueryStages()` (`src/eval/query-stages.ts`);
+`pnpm rag:eval --pipelines berkas.json` menjalankannya (rerank nyata hanya bila env LLM lengkap).
 
 Bawaan (`DEFAULT_PIPELINE`): BM25 teks asli + BM25 ter-stem + perluasan glosarium + vektor bila ada +
 rerank bila disuntikkan.
@@ -71,7 +76,7 @@ rerank bila disuntikkan.
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Stem BM25              | better-sqlite3 tidak bisa mendaftarkan tokenizer FTS5 dari JS, jadi teks di-stem di JS saat ingest ke tabel `chunks_stem_fts`; kueri di-stem dengan fungsi yang sama. Kolom asli `chunks_fts` tetap untuk kecocokan persis (KTP-el, NIK, SKPWNI, F1.06). |
 | Ekspansi               | `data/glossary/adminduk.json` memetakan istilah awam ke istilah resmi (tiap entri wajib `sourceRef`). Deterministik; skor leg perluasan dikalikan bobot rendah (0.4) sehingga kata asli tetap menang.                                                    |
-| Tulis ulang LLM (opsi) | `expand: { llm: true }` + `rewrite: createLlmRewriter(jsonCall)`. Kueri berisi PII atau placeholder vault tidak pernah dikirim (guard dari `@urusin/core`); keluaran disanitasi; galat/timeout -> dilewati.                                              |
+| Tulis ulang LLM (opsi) | `expand: true` + `rewrite: createLlmRewriter(jsonCall)`. Kueri berisi PII atau placeholder vault tidak pernah dikirim (guard dari `@urusin/core`); keluaran disanitasi; galat/timeout -> dilewati.                                                       |
 | Header konteks         | Saat ingest, `buildChunkContextHeader` membuat `judul › bagian › instansi › wilayah › layanan` yang hanya diindeks (kolom `ctx`), tidak ditampilkan. `sourceRef` tidak berubah.                                                                          |
 | Chunking               | Dipecah per heading, lalu per blok syarat / prosedur / biaya / waktu / dasar hukum, baru ukuran. Daftar dan tabel dijaga utuh.                                                                                                                           |
 | Rerank                 | Top-N hasil fusi -> top-k. (a) `endpoint` rerank bila probe melaporkan `caps.rerank` (bidang opsional); (b) LLM listwise dengan JSON ketat (hanya penanda dokumen), timeout dan anggaran panggilan; (c) galat apa pun -> urutan fusi.                    |
