@@ -17,7 +17,7 @@ import {
 import { chromium, type BrowserContext, type CDPSession, type Page } from 'playwright-core';
 import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
-import { toCdp } from './input.js';
+import { createTouchMapper, toCdp } from './input.js';
 import { runnerExpression } from './runner-script.js';
 import type { ActiveRun, Frame, RunFactory, RunInit } from './sessions.js';
 import { detectBotWall, suspicious } from './waf.js';
@@ -499,6 +499,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   }, config.memCheckMs);
   memTimer.unref?.();
 
+  const touch = createTouchMapper();
   const resume = () => {
     const w = resumeWaiters;
     resumeWaiters = [];
@@ -511,7 +512,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
       if ('ok' in started) hooks.ended('gagal', 'gagal', 'Langkah otomatis tidak bisa dimulai.');
     },
     async input(m) {
-      for (const cmd of toCdp(m, { touch: init.viewport.seluler })) {
+      for (const cmd of toCdp(m, touch)) {
         await cdp.send(cmd.method as 'Input.insertText', cmd.params as never).catch(() => undefined);
       }
     },

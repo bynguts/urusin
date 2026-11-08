@@ -31,7 +31,58 @@ export function isInputMessage(m: PendampingClientMessage): m is InputMessage {
   return m.type === 'pointer' || m.type === 'wheel' || m.type === 'key' || m.type === 'text';
 }
 
-export function toCdp(m: InputMessage, opts: { touch: boolean }): CdpCommand[] {
+type Pointer = Extract<InputMessage, { type: 'pointer' }>;
+const mouse = (type: string, x: number, y: number, extra: Record<string, unknown> = {}): CdpCommand => ({
+  method: 'Input.dispatchMouseEvent',
+  params: { type, x, y, button: 'none', buttons: 0, clickCount: 0, modifiers: 0, ...extra },
+});
+
+/**
+ * Sentuhan warga -> MOUSE di peramban pendamping (bukan touch event): ketukan menjadi klik mouse persis di
+ * titik sentuh, sehingga juga sampai ke iframe lintas-origin (mis. kotak centang verifikasi situs).
+ * Geser melewati `slop` piksel menjadi gulir (mouseWheel), bukan seret. Satu pemeta per sesi (berstatus).
+ */
+export function createTouchMapper(slop = 8): (m: Pointer) => CdpCommand[] {
+  let start: { x: number; y: number } | null = null;
+  let last = { x: 0, y: 0 };
+  let scrolling = false;
+  return (m) => {
+    switch (m.aksi) {
+      case 'down':
+        start = { x: m.x, y: m.y };
+        last = start;
+        scrolling = false;
+        return [mouse('mouseMoved', m.x, m.y)];
+      case 'move': {
+        if (!start) return [];
+        if (!scrolling && Math.hypot(m.x - start.x, m.y - start.y) > slop) scrolling = true;
+        if (!scrolling) return [];
+        const delta = { deltaX: last.x - m.x, deltaY: last.y - m.y };
+        last = { x: m.x, y: m.y };
+        return [mouse('mouseWheel', m.x, m.y, delta)];
+      }
+      case 'up': {
+        const s = start;
+        start = null;
+        if (!s || scrolling) return [];
+        const klik = { button: 'left', clickCount: 1, modifiers: m.mod ?? 0 };
+        return [
+          mouse('mouseMoved', s.x, s.y),
+          mouse('mousePressed', s.x, s.y, { ...klik, buttons: 1 }),
+          mouse('mouseReleased', s.x, s.y, klik),
+        ];
+      }
+      case 'cancel':
+        start = null;
+        return [];
+    }
+  };
+}
+
+export function toCdp(
+  m: InputMessage,
+  touch: (m: Pointer) => CdpCommand[] = createTouchMapper(),
+): CdpCommand[] {
   switch (m.type) {
     case 'text':
       return [{ method: 'Input.insertText', params: { text: m.teks } }];
@@ -55,11 +106,7 @@ export function toCdp(m: InputMessage, opts: { touch: boolean }): CdpCommand[] {
       return [{ method: 'Input.dispatchKeyEvent', params }];
     }
     case 'pointer': {
-      if (m.jenis === 'touch' && opts.touch) {
-        const type = { down: 'touchStart', move: 'touchMove', up: 'touchEnd', cancel: 'touchCancel' }[m.aksi];
-        const touchPoints = m.aksi === 'up' || m.aksi === 'cancel' ? [] : [{ x: m.x, y: m.y }];
-        return [{ method: 'Input.dispatchTouchEvent', params: { type, touchPoints, modifiers: m.mod ?? 0 } }];
-      }
+      if (m.jenis === 'touch') return touch(m);
       if (m.aksi === 'cancel') return [];
       const type = { down: 'mousePressed', move: 'mouseMoved', up: 'mouseReleased' }[m.aksi];
       const button = m.tombol === 'none' && m.aksi !== 'move' ? 'left' : m.tombol;
