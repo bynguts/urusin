@@ -8,8 +8,7 @@ import {
   type PemilikSesiInternal,
   type SesiPendamping,
 } from '@urusin/contracts';
-import { PiiInterceptor, spotlight } from '@urusin/harness';
-import { z, type ZodType } from 'zod';
+import type { ZodType } from 'zod';
 import { apiError, apiJson } from '#lib/server/http.js';
 import { SID_COOKIE } from '#lib/server/sesi.js';
 
@@ -98,7 +97,6 @@ export const skema = {
   sesi: SesiPendampingSchema,
   tiket: TiketPendampingResponseSchema,
   antrean: AntreanPendampingResponseSchema,
-  teks: z.object({ teks: z.string() }),
 };
 
 export const teruskan = <T>(h: Hasil<T>): Response => (h.ok ? apiJson(h.data, h.status) : h.response);
@@ -106,12 +104,4 @@ export const teruskan = <T>(h: Hasil<T>): Response => (h.ok ? apiJson(h.data, h.
 /** Status akhir pendamping -> hasil eksekusi urusan (null = belum berakhir). */
 export function hasilAkhir(s: SesiPendamping): 'berhasil' | 'gagal' | 'dibatalkan' | 'drift' | null {
   return s.mode === 'done' && s.hasil ? s.hasil : null;
-}
-
-/**
- * Teks halaman pendamping untuk LLM: PII (NIK/KK/HP/email) diganti placeholder, lalu dibungkus spotlight
- * sebagai DATA TAK TEPERCAYA (pertahanan prompt injection). Satu-satunya jalan teks halaman ke model.
- */
-export function teksHalamanUntukLlm(raw: string, nonce: string, maxChars = 1500): string {
-  return spotlight('dom', new PiiInterceptor().redact(raw).text, { nonce, maxChars });
 }
