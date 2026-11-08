@@ -25,10 +25,12 @@ export function catatHasilEksekusi(
   executionId: string,
   status: Status,
   sumber: Sumber = 'Ekstensi',
+  /** Label progres pengganti bila alasan sebenarnya bukan perubahan tampilan (mis. worker wilayah mati). */
+  labelKhusus?: string,
 ): UrusanRow | null {
   if (!rt.store.recordExecutionResult(u.id, executionId, status)) return null;
   const ke: UrusanState | null = status === 'berhasil' ? 'TERKIRIM' : status === 'drift' ? 'DIPANDU' : null;
-  rt.publish(u.id, { type: 'progress', label: label(sumber, status) });
+  rt.publish(u.id, { type: 'progress', label: labelKhusus ?? label(sumber, status) });
   if (status === 'drift') rt.publish(u.id, { type: 'degraded', kapabilitas: ['adapter'], mode: null });
   if (!ke || !canTransition(u.state, ke)) return u;
   const current = rt.store.transition(u.id, u.version, ke);

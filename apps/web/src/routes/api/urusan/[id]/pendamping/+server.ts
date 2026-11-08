@@ -3,7 +3,15 @@ import { routeByKode } from '@urusin/registry';
 import { z } from 'zod';
 import { catatHasilEksekusi } from '#lib/server/eksekusi.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
-import { hasilAkhir, panggil, pendampingConfig, skema, teruskan } from '#lib/server/pendamping.js';
+import {
+  hasilAkhir,
+  labelBukti,
+  mulaiSesi,
+  panggilPemilik,
+  pendampingConfig,
+  skema,
+  teruskan,
+} from '#lib/server/pendamping.js';
 import { akses } from './akses';
 import type { RequestHandler } from './$types';
 
@@ -31,7 +39,7 @@ export const POST: RequestHandler = async ({ request, params }) => {
       return apiError(404, 'EKSEKUSI_TIDAK_DITEMUKAN', 'Permintaan eksekusi ini tidak dikenal.');
     const origin = a.u.kodeKabKota ? routeByKode(a.u.kodeKabKota).entry.portal?.origin : undefined;
     if (!origin) return apiError(422, 'ADAPTER_TIDAK_ADA', 'Kota ini belum mendukung Browser Pendamping.');
-    const r = await panggil(pendampingConfig(), '/internal/sesi', skema.sesi, {
+    const r = await mulaiSesi(pendampingConfig(), {
       urusanId: a.u.id,
       sidHash: a.sidHash,
       executionId: offered.data.executionId,
@@ -42,25 +50,37 @@ export const POST: RequestHandler = async ({ request, params }) => {
       ...(body.data.viewport ? { viewport: body.data.viewport } : {}),
     });
     if (r.ok) a.rt.publish(a.u.id, { type: 'progress', label: 'Browser Pendamping disiapkan.' });
+    // Situs khusus jaringan Indonesia tanpa worker wilayah yang hidup: jujur, lalu beralih ke panduan langkah.
+    else if (r.dipandu)
+      catatHasilEksekusi(a.rt, a.u, offered.data.executionId, 'drift', 'Browser Pendamping', r.dipandu);
     return teruskan(r);
   } catch (e) {
     return errorResponse(e);
   }
 };
 
-/** Status sesi (layar antrean, banner mode). Saat sesi berakhir, hasilnya dicatat ke urusan sekali. */
+/**
+ * Status sesi (layar antrean, banner mode). Saat execution berakhir (sesi selesai atau siaga), hasilnya
+ * dicatat ke urusan sekali, beserta bukti dari halaman konfirmasi (nomor registrasi/status) bila ada.
+ */
 export const GET: RequestHandler = async ({ request, params }) => {
   try {
     const a = await akses(request, params.id, true);
     if (!a.ok) return a.response;
-    const r = await panggil(pendampingConfig(), '/internal/sesi/status', skema.sesi, {
+    const r = await panggilPemilik(pendampingConfig(), '/internal/sesi/status', skema.sesi, {
       urusanId: a.u.id,
       sidHash: a.sidHash,
     });
     if (!r.ok) return r.response;
     const hasil = hasilAkhir(r.data);
-    if (hasil && a.rt.store.findOffered(a.u.id, 'execution_request', { executionId: r.data.executionId }))
-      catatHasilEksekusi(a.rt, a.u, r.data.executionId, hasil, 'Browser Pendamping');
+    if (
+      hasil &&
+      a.rt.store.findOffered(a.u.id, 'execution_request', { executionId: r.data.executionId }) &&
+      catatHasilEksekusi(a.rt, a.u, r.data.executionId, hasil, 'Browser Pendamping')
+    ) {
+      const bukti = labelBukti(r.data);
+      if (bukti) a.rt.publish(a.u.id, { type: 'progress', label: bukti });
+    }
     return apiJson(r.data);
   } catch (e) {
     return errorResponse(e);
@@ -73,7 +93,7 @@ export const DELETE: RequestHandler = async ({ request, params }) => {
     const a = await akses(request, params.id, true);
     if (!a.ok) return a.response;
     const owner = { urusanId: a.u.id, sidHash: a.sidHash };
-    return teruskan(await panggil(pendampingConfig(), '/internal/sesi/akhiri', skema.sesi, owner));
+    return teruskan(await panggilPemilik(pendampingConfig(), '/internal/sesi/akhiri', skema.sesi, owner));
   } catch (e) {
     return errorResponse(e);
   }
