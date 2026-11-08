@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openHarnessDb } from './db.js';
 import { ConflictError, TurnInProgressError } from './errors.js';
+import { PiiInterceptor } from './pii.js';
 import { HarnessStore } from './store.js';
 
 /** Dua instance web (blue/green) memakai satu berkas SQLite WAL lewat koneksi terpisah. */
@@ -163,5 +164,23 @@ describe('jaminan lintas koneksi: CAS version + kunci turn tingkat DB (B2c)', ()
     const u = a.createUrusan();
     a.claimTurn(u.id, 'satu'); // version 0 → 1
     expect(() => b.claimTurn(u.id, 'dua', { expectedVersion: 0 })).toThrow();
+  });
+});
+
+describe('kunci PII bersama (blue/green)', () => {
+  const NIK = ['3271', '0101', '0190', '0001'].join('');
+  it('dua store dengan kunci sama memetakan NIK yang sama ke token yang sama; kunci beda tidak', () => {
+    const { a, b } = dua();
+    const kunci = 'k'.repeat(44);
+    const sa = new HarnessStore(a.db, { piiKey: kunci });
+    const sb = new HarnessStore(b.db, { piiKey: kunci });
+    const sc = new HarnessStore(b.db, { piiKey: 'z'.repeat(44) });
+    const u = sa.createUrusan();
+    const redact = (s: HarnessStore) =>
+      new PiiInterceptor(undefined, {}, s.placeholderPersistence(u.id)).redact(`nik ${NIK}`).text;
+    expect(redact(sa)).toBe('nik {{PEMOHON.NIK}}');
+    expect(redact(sb)).toBe('nik {{PEMOHON.NIK}}');
+    // kunci lain tidak mengenali entri lama: NIK yang sama dianggap orang baru, tidak bertabrakan
+    expect(redact(sc)).toBe('nik {{ORANG2.NIK}}');
   });
 });

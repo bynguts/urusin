@@ -14,7 +14,7 @@ import { POST as konfirmasi } from '../../routes/api/urusan/[id]/konfirmasi/+ser
 import { GET as stream } from '../../routes/api/urusan/[id]/stream/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
 import { GET as devSse } from '../../routes/dev/fixtures/sse/+server';
-import { createRuntime, quotaFromEnv, setRuntimeForTests, type Runtime } from './runtime';
+import { createRuntime, piiKeyFromEnv, quotaFromEnv, setRuntimeForTests, type Runtime } from './runtime';
 
 const ORIGIN = 'http://localhost:3000';
 // NIK sintetis, dirakit agar pemindai PII repo tidak menandai berkas ini
@@ -491,5 +491,16 @@ describe('temuan 5: kuota harian wajib di mode LLM', () => {
 
   it('menerima batas harian berhingga > 0', () => {
     expect(quotaFromEnv({ URUSIN_DAILY_IDR_CAP: '50000' }).dailyIdrCap).toBe(50000);
+  });
+});
+
+describe('URUSIN_PII_KEY', () => {
+  const kunci = Buffer.alloc(32, 7).toString('base64');
+  it('mode LLM wajib dan minimal 32 byte; dev boleh kosong', () => {
+    expect(() => piiKeyFromEnv({}, true)).toThrow();
+    expect(() => piiKeyFromEnv({ URUSIN_PII_KEY: Buffer.alloc(16, 1).toString('base64') }, true)).toThrow();
+    expect(() => piiKeyFromEnv({ URUSIN_PII_KEY: 'bukan-base64-pendek' }, false)).toThrow();
+    expect(piiKeyFromEnv({}, false)).toBeUndefined();
+    expect(piiKeyFromEnv({ URUSIN_PII_KEY: kunci }, true)).toBe(kunci);
   });
 });

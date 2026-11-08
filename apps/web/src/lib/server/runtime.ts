@@ -131,6 +131,21 @@ function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {
 const num = (v: string | undefined, d: number) => (v && v.trim() !== '' ? Number(v) : d);
 
 /**
+ * Kunci HMAC placeholder PII dari env: base64, minimal 32 byte. Di mode LLM wajib (kunci acak per proses membuat token
+ * placeholder berbeda antar instance blue/green dan antar restart). Mode demo/dev boleh tanpa kunci (acak per proses).
+ */
+export function piiKeyFromEnv(env: Record<string, string | undefined>, wajib: boolean): string | undefined {
+  const raw = env.URUSIN_PII_KEY?.trim();
+  if (!raw) {
+    if (wajib) throw new Error('URUSIN_PII_KEY wajib di mode LLM (base64 dari minimal 32 byte acak)');
+    return undefined;
+  }
+  if (Buffer.from(raw, 'base64').length < 32)
+    throw new Error('URUSIN_PII_KEY terlalu pendek: butuh base64 dari minimal 32 byte');
+  return raw;
+}
+
+/**
  * Kuota dari env. Mode LLM menolak boot tanpa batas biaya harian yang berhingga > 0 (0 atau NaN = tanpa batas
  * berarti tagihan tak terbatas), dan setiap angka lain harus berhingga.
  */
@@ -170,6 +185,7 @@ async function buildFromEnv(): Promise<Runtime> {
     }
   }
   const prices: Prices = cfg.prices;
+  const piiKey = piiKeyFromEnv(env, true);
   return createRuntime({
     mode: 'llm',
     provider,
@@ -178,6 +194,7 @@ async function buildFromEnv(): Promise<Runtime> {
       caps,
       prices,
       quota: quotaFromEnv(env),
+      ...(piiKey ? { piiKey } : {}),
     },
   });
 }
