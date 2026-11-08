@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { byLabel, byName, byRole, byText, css, type Check, type Step } from '@urusin/core';
-import { evalCheck, resolveAll, resolveTarget, runOp, setNativeValue } from './runner-ops';
+import { evalCheck, resolveAll, resolveTarget, runOp, setNativeValue } from './runner-ops.js';
 
 const body = (htmlText: string) => {
   document.body.innerHTML = htmlText;
@@ -174,5 +174,87 @@ describe('op lain', () => {
     body('<i class="a"></i><i class="a"></i>');
     expect(await runOp({ kind: 'count', target: [css('.a')] })).toEqual({ ok: true, value: 2 });
     expect(await step({ op: 'nav', path: '/x', effect: 'read' })).toMatchObject({ code: 'UNSUPPORTED_OP' });
+  });
+});
+
+describe('ekstensi eksekutor: select, upload, rect, text, elemen khusus warga', () => {
+  it('select: hanya ke <select>, nilai harus ada di daftar', async () => {
+    body('<select id="s"><option value="a">A</option><option value="b">B</option></select><input id="i" />');
+    expect(await step({ op: 'select', target: [css('#s')], value: 'b', effect: 'input' })).toEqual({
+      ok: true,
+    });
+    expect((document.getElementById('s') as HTMLSelectElement).value).toBe('b');
+    for (const [sel, value] of [
+      ['#s', 'zz'],
+      ['#i', 'a'],
+      ['#none', 'a'],
+    ] as const) {
+      expect(await step({ op: 'select', target: [css(sel)], value, effect: 'input' })).toMatchObject({
+        code: 'ADAPTER_DRIFT',
+      });
+    }
+  });
+
+  it('upload: berkas dipasang lewat DataTransfer; target salah = ADAPTER_DRIFT', async () => {
+    body('<input id="f" type="file" /><input id="t" />');
+    let changed = 0;
+    document.getElementById('f')!.addEventListener('change', () => changed++);
+    const file = { name: 'ktp.png', mime: 'image/png', base64: btoa('abc') };
+    const r = await runOp({ kind: 'upload', target: [css('#f')], file });
+    if (r.ok) {
+      expect((document.getElementById('f') as HTMLInputElement).files?.[0]?.name).toBe('ktp.png');
+      expect(changed).toBe(1);
+    } else {
+      // Lingkungan uji tanpa DataTransfer: tetap gagal aman, tidak melempar. Jalur nyata dicakup e2e.
+      expect(r.code).toBe('RUNNER_ERROR');
+    }
+    expect(await runOp({ kind: 'upload', target: [css('#t')], file })).toMatchObject({
+      code: 'ADAPTER_DRIFT',
+    });
+    expect(await runOp({ kind: 'upload', target: [css('#x')], file })).toMatchObject({
+      code: 'ADAPTER_DRIFT',
+    });
+  });
+
+  it('rect dan text', async () => {
+    body('<button id="b">Kirim</button><p>Halo dunia</p>');
+    expect(await runOp({ kind: 'rect', target: [css('#b')] })).toMatchObject({
+      ok: true,
+      value: { x: expect.any(Number), lebar: expect.any(Number) },
+    });
+    expect(await runOp({ kind: 'rect', target: [css('#none')] })).toMatchObject({ code: 'ADAPTER_DRIFT' });
+    const t = await runOp({ kind: 'text', maxChars: 5 });
+    expect(t.ok && typeof t.value === 'string' && t.value.length <= 5).toBe(true);
+  });
+
+  it('klik ke elemen khusus warga (highlight gate.human) ditolak walau effect read', async () => {
+    let clicked = 0;
+    body(
+      '<form id="f"><button id="kirim" type="button"><span id="ikon">Kirim</span></button></form><a id="ok">Lanjut</a>',
+    );
+    document.getElementById('kirim')!.addEventListener('click', () => clicked++);
+    const finalTargets = [[css('#kirim')]];
+    for (const target of [[css('#kirim')], [css('#ikon')], [css('#f')], [byText('Kirim')]]) {
+      expect(
+        await runOp({ kind: 'step', step: { op: 'click', target, effect: 'read' }, finalTargets }),
+      ).toMatchObject({ ok: false, code: 'FINAL_NOT_AUTOMATABLE' });
+    }
+    expect(clicked).toBe(0);
+    expect(
+      await runOp({
+        kind: 'step',
+        step: { op: 'click', target: [css('#ok')], effect: 'read' },
+        finalTargets,
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it('consent tanpa kait = UNSUPPORTED_OP; dengan kait memakai hasilnya', async () => {
+    const summary = { origin: 'https://x', fills: [], writes: 0 };
+    expect(await runOp({ kind: 'consent', summary })).toMatchObject({ code: 'UNSUPPORTED_OP' });
+    expect(await runOp({ kind: 'consent', summary }, document, { consent: async () => true })).toEqual({
+      ok: true,
+      value: true,
+    });
   });
 });

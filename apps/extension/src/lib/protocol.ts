@@ -1,24 +1,16 @@
 import type { Step } from '@urusin/core';
+import { err, type ErrorReply, type ExecutionRequest } from '@urusin/executor/types';
 
 /** Protokol pesan web app <-> ekstensi (rencana §3.5 butir 4-5). */
 export const PROTOCOL_VERSION = 1;
 
-export type ExecutionRequest = {
-  executionId: string;
-  /** Origin dasar untuk langkah `nav` (path relatif). */
-  origin: string;
-  steps: Step[];
-};
+export { err, type ErrorReply, type ExecutionRequest };
 
 export type WebMessage =
   | { type: 'pair'; nonce: string }
   | { type: 'ping'; nonce: string }
   | { type: 'execute'; nonce: string; request: ExecutionRequest }
   | { type: 'status'; nonce: string };
-
-export type ErrorReply = { ok: false; code: string; message: string };
-
-export const err = (code: string, message: string): ErrorReply => ({ ok: false, code, message });
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 

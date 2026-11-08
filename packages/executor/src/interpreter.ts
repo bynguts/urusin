@@ -1,12 +1,19 @@
-import { getOfficialDomain, validateSteps, type Step } from '@urusin/core';
-import { resolveNavPath, type AllowResult } from './allowlist';
-import { maskValue, type ConsentSummary } from './overlay';
-import type { KV } from './pairing';
-import { err, type ErrorReply, type ExecutionRequest } from './protocol';
-import type { RunnerOp, RunnerResult } from './runner-ops';
+import { getOfficialDomain, parsePlaceholder, validateSteps, type Step, type Target } from '@urusin/core';
+import { resolveNavPath, type AllowResult } from './allowlist.js';
+import type { RunnerOp, RunnerResult } from './runner-ops.js';
+import {
+  err,
+  maskValue,
+  type ConsentSummary,
+  type ErrorReply,
+  type ExecutionRequest,
+  type KV,
+  type UploadFile,
+} from './types.js';
 
 /**
- * Interpreter step DSL di service worker (rencana §3.5). Seluruh state ada di `KV` (chrome.storage.session):
+ * Interpreter step DSL bersama: service worker ekstensi (Mode Privasi) dan Browser Pendamping di server
+ * (rencana §3.5). Seluruh state ada di `KV` (chrome.storage.session / Map):
  * cursor ditulis SEBELUM setiap op, sehingga eksekusi bisa dilanjutkan setelah halaman reload
  * atau service worker dimatikan. Satu op dijalankan di halaman lewat step-runner yang di-inject ulang.
  */
@@ -46,9 +53,32 @@ export interface Driver {
 
 export type Policy = (url: string) => Promise<AllowResult>;
 
+/**
+ * Kait opsional di batas eksekutor. Placeholder (`{{PEMOHON.HP}}`, `{{FILE:ktp}}`) di-resolve TEPAT sebelum
+ * op dikirim ke halaman, sehingga cursor, event `onChange`, dan apa pun yang dilihat LLM tetap bertoken.
+ */
+export type InterpreterOptions = {
+  /** Ganti semua placeholder vault dalam nilai; undefined = ada yang tidak dikenal. */
+  resolveValue?: ((value: string) => Promise<string | undefined>) | undefined;
+  /** Berkas untuk `{{FILE:<nama>}}`. Tanpa kait ini op `upload` tidak didukung. */
+  resolveFile?: ((name: string) => Promise<UploadFile | undefined>) | undefined;
+  /** Persetujuan sudah diberikan di luar halaman (layar konfirmasi web): lewati overlay consent. */
+  preConsented?: boolean | undefined;
+};
+
+/** Semua target `highlight` milik gate.human: elemen khusus warga (mis. tombol Kirim/Selesai). */
+export function humanOnlyTargets(steps: readonly Step[]): Target[] {
+  return steps.flatMap((s): Target[] => {
+    if (s.op === 'gate.human') return s.highlight ? [s.highlight] : [];
+    if (s.op === 'forEach') return humanOnlyTargets(s.steps);
+    if (s.op === 'branch') return [...humanOnlyTargets(s.then), ...humanOnlyTargets(s.else ?? [])];
+    return [];
+  });
+}
+
 const CURSOR_KEY = 'cursor';
 const ACTIVE: Status[] = ['running', 'waiting_load', 'waiting_gate'];
-const UNSUPPORTED = new Set<Step['op']>(['select', 'upload', 'forEach', 'branch']);
+const UNSUPPORTED = new Set<Step['op']>(['forEach', 'branch']);
 const DEFAULT_WAIT_MS = 10_000;
 const WRITE_VERIFY_MS = 3_000;
 
@@ -62,7 +92,12 @@ export class Interpreter {
     private readonly driver: Driver,
     private readonly allow: Policy,
     private readonly onChange: (cursor: Cursor) => void = () => {},
+    private readonly opts: InterpreterOptions = {},
   ) {}
+
+  private unsupported(op: Step['op']): boolean {
+    return UNSUPPORTED.has(op) || (op === 'upload' && !this.opts.resolveFile);
+  }
 
   private enqueue<T>(fn: () => Promise<T>): Promise<T> {
     const run = this.chain.then(fn, fn);
@@ -85,7 +120,7 @@ export class Interpreter {
           valid.issues[0]?.code ?? 'STEP_SCHEMA_INVALID',
           valid.issues[0]?.message ?? 'langkah tidak valid',
         );
-      const unsupported = valid.steps.find((s) => UNSUPPORTED.has(s.op));
+      const unsupported = valid.steps.find((s) => this.unsupported(s.op));
       if (unsupported) return err('UNSUPPORTED_OP', `op "${unsupported.op}" belum didukung`);
 
       let originUrl: string;
@@ -106,7 +141,7 @@ export class Interpreter {
         stepIndex: 0,
         status: 'running',
         completedWrites: [],
-        consented: false,
+        consented: this.opts.preConsented === true,
         results: {},
         seq: 0,
       };
@@ -240,7 +275,7 @@ export class Interpreter {
   }
 
   private async execute(c: Cursor, step: Step): Promise<Outcome> {
-    if (step.op === 'forEach' || step.op === 'branch' || UNSUPPORTED.has(step.op)) {
+    if (step.op === 'forEach' || step.op === 'branch' || this.unsupported(step.op)) {
       return this.fail(c, 'UNSUPPORTED_OP', `op "${step.op}" belum didukung`);
     }
 
@@ -297,7 +332,17 @@ export class Interpreter {
         return r.value === true ? this.advance(c) : this.fail(c, 'VERIFY_FAILED', 'verify tidak terpenuhi');
       }
       case 'fill':
-        return this.runAndAdvance(c, { kind: 'step', step });
+      case 'select': {
+        const value = await this.resolveValue(step.value);
+        if (value === undefined) return this.fail(c, 'PLACEHOLDER_UNRESOLVED', 'data isian belum tersedia');
+        return this.runAndAdvance(c, { kind: 'step', step: { ...step, value } });
+      }
+      case 'upload': {
+        const ph = parsePlaceholder(step.file);
+        const file = ph?.kind === 'file' ? await this.opts.resolveFile?.(ph.name) : undefined;
+        if (!file) return this.fail(c, 'PLACEHOLDER_UNRESOLVED', 'berkas belum tersedia');
+        return this.runAndAdvance(c, { kind: 'upload', target: step.target, file });
+      }
       case 'extract':
         return this.runAndAdvance(c, { kind: 'step', step }, step.into);
       case 'click':
@@ -310,8 +355,18 @@ export class Interpreter {
         return 'stop';
       }
       default:
-        return this.fail(c, 'UNSUPPORTED_OP', `op "${step.op}" belum didukung`);
+        return this.fail(c, 'UNSUPPORTED_OP', 'op belum didukung');
     }
+  }
+
+  private async resolveValue(value: string): Promise<string | undefined> {
+    if (!this.opts.resolveValue || !value.includes('{{')) return value;
+    return this.opts.resolveValue(value);
+  }
+
+  /** Op klik selalu membawa daftar elemen khusus warga; runner menolak bila target mengenai salah satunya. */
+  private clickOp(c: Cursor, step: Extract<Step, { op: 'click' }>): RunnerOp {
+    return { kind: 'step', step, finalTargets: humanOnlyTargets(c.steps) };
   }
 
   private async runAndAdvance(c: Cursor, op: RunnerOp, into?: string): Promise<Outcome> {
@@ -331,7 +386,7 @@ export class Interpreter {
         awaiting: { kind: 'reload', sawLoading: false },
       });
     }
-    const r = await this.driver.run(c.tabId, { kind: 'step', step });
+    const r = await this.driver.run(c.tabId, this.clickOp(c, step));
     if (r !== 'interrupted' && !r.ok) {
       const base = step.expectReload ? { ...c, stepIndex: c.stepIndex + 1 } : c;
       return this.fail(base, r.code, r.message);
@@ -359,7 +414,7 @@ export class Interpreter {
         ? { ...armed, status: 'waiting_load', awaiting: { kind: 'reload', sawLoading: false } }
         : armed,
     );
-    const r = await this.driver.run(c.tabId, { kind: 'step', step });
+    const r = await this.driver.run(c.tabId, this.clickOp(c, step));
     if (r !== 'interrupted' && !r.ok) {
       // Klik gagal (elemen tidak ada): write tidak terjadi, batalkan penanda.
       return this.fail({ ...c, pendingWrite: undefined }, r.code, r.message);

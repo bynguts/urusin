@@ -1,6 +1,4 @@
-import type { Driver, TabInfo } from './interpreter';
-import type { KV } from './pairing';
-import type { RunnerOp, RunnerResult } from './runner-ops';
+import type { Driver, KV, RunnerOp, RunnerResult, TabInfo } from '@urusin/executor';
 
 /** Adapter tipis ke API chrome.* (tidak diuji unit; dicakup e2e). */
 

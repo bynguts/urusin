@@ -1,11 +1,8 @@
 import { err, type ErrorReply } from './protocol';
 
-/** Penyimpanan kunci-nilai minimal (chrome.storage.session di produksi, Map di tes). */
-export type KV = {
-  get<T>(key: string): Promise<T | undefined>;
-  set(key: string, value: unknown): Promise<void>;
-  remove(key: string): Promise<void>;
-};
+import type { KV } from '@urusin/executor';
+
+export type { KV };
 
 export const PAIR_TTL_MS = 5 * 60 * 1000;
 const PENDING = 'pairing.pending';

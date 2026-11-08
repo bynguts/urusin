@@ -3,18 +3,10 @@
  * Persetujuan hanya sah dari klik warga (`event.isTrusted`); klik sintetis dari skrip halaman diabaikan.
  */
 
-export type ConsentSummary = {
-  origin: string;
-  instansi?: string | undefined;
-  /** Nilai yang akan diisi, sudah disamarkan sebagian. */
-  fills: { label: string; masked: string }[];
-  writes: number;
-};
+import { maskValue, type ConsentSummary } from '@urusin/executor/types';
 
-export function maskValue(value: string): string {
-  if (value.length <= 1) return '•';
-  return value.slice(0, 1) + '•'.repeat(Math.min(value.length - 1, 6));
-}
+// Tipe ringkasan + penyamaran nilai kini milik eksekutor bersama (dipakai juga Browser Pendamping).
+export { maskValue, type ConsentSummary };
 
 const HOST_ID = 'urusin-consent-host';
 

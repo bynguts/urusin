@@ -1,20 +1,33 @@
 import type { Check, Selector, Step, Target } from '@urusin/core';
-import { showConsentOverlay, type ConsentSummary } from './overlay';
+import type { ConsentSummary, UploadFile } from './types.js';
 
 /**
- * Operasi step-runner yang berjalan DI DALAM halaman (world terisolasi ekstensi).
- * Satu op per pemanggilan; hasil dilaporkan ke service worker (rencana §3.5 butir 2).
- * Modul ini hanya mengimpor tipe dari core (tanpa zod) agar runner tetap kecil.
+ * Operasi step-runner yang berjalan DI DALAM halaman (world terisolasi ekstensi / isolated world CDP di
+ * Browser Pendamping). Satu op per pemanggilan; hasil dilaporkan ke interpreter (rencana §3.5 butir 2).
+ * WAJIB tanpa impor runtime (hanya `import type`): pendamping menyuntikkan berkas hasil build ini apa adanya.
  */
 
 export type RunnerOp =
-  | { kind: 'step'; step: Step }
+  | {
+      kind: 'step';
+      step: Step;
+      /** Target `highlight` gate.human: elemen khusus warga yang TIDAK BOLEH diklik otomatis. */
+      finalTargets?: Target[] | undefined;
+    }
+  | { kind: 'upload'; target: Target; file: UploadFile }
+  | { kind: 'rect'; target: Target }
+  | { kind: 'text'; maxChars: number }
   | { kind: 'check'; check: Check; baseline?: number | undefined }
   | { kind: 'wait'; check: Check; timeoutMs: number; baseline?: number | undefined }
   | { kind: 'count'; target: Target }
   | { kind: 'consent'; summary: ConsentSummary };
 
 export type RunnerResult = { ok: true; value?: unknown } | { ok: false; code: string; message: string };
+
+/** Kait halaman yang bergantung pada eksekutor (overlay consent hanya ada di ekstensi). */
+export type RunnerHooks = {
+  consent?: ((doc: Document, summary: ConsentSummary) => Promise<boolean>) | undefined;
+};
 
 export const RunnerCode = {
   ADAPTER_DRIFT: 'ADAPTER_DRIFT',
@@ -181,14 +194,50 @@ function extractTable(table: Element): { headers: string[]; rows: string[][] } {
   return { headers, rows };
 }
 
-function runStep(doc: Document, step: Step): RunnerResult {
+/** True bila `el` sama dengan, memuat, atau dimuat oleh salah satu elemen khusus warga. */
+function touchesHumanOnly(doc: Document, el: Element, finalTargets: Target[] | undefined): boolean {
+  return (finalTargets ?? []).some((t) =>
+    resolveAll(doc, t).some((f) => f === el || f.contains(el) || el.contains(f)),
+  );
+}
+
+function uploadFile(doc: Document, target: Target, file: UploadFile): RunnerResult {
+  const win = doc.defaultView;
+  const el = resolveTarget(doc, target);
+  if (!win || !el) return fail(RunnerCode.ADAPTER_DRIFT, 'field berkas tidak ditemukan');
+  if (!(el instanceof win.HTMLInputElement) || el.type !== 'file')
+    return fail(RunnerCode.ADAPTER_DRIFT, 'elemen bukan field berkas');
+  const bin = win.atob(file.base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const dt = new win.DataTransfer();
+  dt.items.add(new win.File([bytes], file.name, { type: file.mime }));
+  el.files = dt.files;
+  el.dispatchEvent(new win.Event('input', { bubbles: true }));
+  el.dispatchEvent(new win.Event('change', { bubbles: true }));
+  return { ok: true };
+}
+
+function rectOf(doc: Document, target: Target): RunnerResult {
+  const el = resolveTarget(doc, target);
+  if (!el) return fail(RunnerCode.ADAPTER_DRIFT, 'target sorotan tidak ditemukan');
+  el.scrollIntoView?.({ block: 'center', inline: 'nearest' });
+  const r = el.getBoundingClientRect();
+  return { ok: true, value: { x: r.x, y: r.y, lebar: r.width, tinggi: r.height } };
+}
+
+function runStep(doc: Document, step: Step, finalTargets?: Target[]): RunnerResult {
   switch (step.op) {
-    case 'fill': {
+    case 'fill':
+    case 'select': {
       const el = resolveTarget(doc, step.target);
-      if (!el) return fail(RunnerCode.ADAPTER_DRIFT, 'field fill tidak ditemukan');
-      return setNativeValue(el, step.value)
-        ? { ok: true }
-        : fail(RunnerCode.ADAPTER_DRIFT, 'elemen bukan field isian');
+      if (!el) return fail(RunnerCode.ADAPTER_DRIFT, `field ${step.op} tidak ditemukan`);
+      const isSelect = el.tagName === 'SELECT';
+      if ((step.op === 'select' && !isSelect) || !setNativeValue(el, step.value))
+        return fail(RunnerCode.ADAPTER_DRIFT, 'elemen bukan field isian yang sesuai');
+      if (isSelect && (el as HTMLSelectElement).value !== step.value)
+        return fail(RunnerCode.ADAPTER_DRIFT, 'pilihan tidak ada di daftar');
+      return { ok: true };
     }
     case 'click': {
       // Pertahanan berlapis: `final` TIDAK PERNAH diklik otomatis (juga ditolak di service worker).
@@ -197,6 +246,10 @@ function runStep(doc: Document, step: Step): RunnerResult {
       }
       const el = resolveTarget(doc, step.target);
       if (!el) return fail(RunnerCode.ADAPTER_DRIFT, 'target klik tidak ditemukan');
+      // Elemen yang ditandai gate.human (tombol Kirim/Selesai) hanya boleh diklik warga, apa pun effect-nya.
+      if (touchesHumanOnly(doc, el, finalTargets)) {
+        return fail(RunnerCode.FINAL_NOT_AUTOMATABLE, 'elemen ini khusus ditekan warga');
+      }
       (el as HTMLElement).click();
       return { ok: true };
     }
@@ -215,12 +268,22 @@ function runStep(doc: Document, step: Step): RunnerResult {
   }
 }
 
-/** Titik masuk tunggal runner. `nav` dan `gate.human` ditangani service worker, bukan di sini. */
-export async function runOp(op: RunnerOp, doc: Document = document): Promise<RunnerResult> {
+/** Titik masuk tunggal runner. `nav` dan `gate.human` ditangani interpreter, bukan di sini. */
+export async function runOp(
+  op: RunnerOp,
+  doc: Document = document,
+  hooks: RunnerHooks = {},
+): Promise<RunnerResult> {
   try {
     switch (op.kind) {
       case 'step':
-        return runStep(doc, op.step);
+        return runStep(doc, op.step, op.finalTargets);
+      case 'upload':
+        return uploadFile(doc, op.target, op.file);
+      case 'rect':
+        return rectOf(doc, op.target);
+      case 'text':
+        return { ok: true, value: ((doc.body as HTMLElement | null)?.innerText ?? '').slice(0, op.maxChars) };
       case 'check':
         return { ok: true, value: evalCheck(doc, op.check, op.baseline) };
       case 'wait':
@@ -228,7 +291,8 @@ export async function runOp(op: RunnerOp, doc: Document = document): Promise<Run
       case 'count':
         return { ok: true, value: resolveAll(doc, op.target).length };
       case 'consent':
-        return { ok: true, value: await showConsentOverlay(doc, op.summary) };
+        if (!hooks.consent) return fail(RunnerCode.UNSUPPORTED_OP, 'consent tidak tersedia di eksekutor ini');
+        return { ok: true, value: await hooks.consent(doc, op.summary) };
     }
   } catch (e) {
     return fail('RUNNER_ERROR', e instanceof Error ? e.message : String(e));

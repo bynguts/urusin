@@ -1,0 +1,41 @@
+{
+  "name": "@urusin/executor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Interpreter Step DSL bersama (ekstensi Mode Privasi dan Browser Pendamping) + step-runner di halaman",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./runner-ops": {
+      "types": "./dist/runner-ops.d.ts",
+      "default": "./dist/runner-ops.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@urusin/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@vitest/coverage-v8": "5.1.0",
+    "happy-dom": "21.0.4",
+    "vitest": "5.1.0"
+  }
+}

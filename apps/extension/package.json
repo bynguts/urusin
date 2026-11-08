@@ -17,7 +17,8 @@
     "key:id": "node scripts/extension-key.mjs id"
   },
   "dependencies": {
-    "@urusin/core": "workspace:*"
+    "@urusin/core": "workspace:*",
+    "@urusin/executor": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "1.65.0",

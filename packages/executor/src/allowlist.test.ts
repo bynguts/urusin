@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkUrl, resolveNavPath } from './allowlist';
+import { checkUrl, resolveNavPath } from './allowlist.js';
 
 const AT = '@'; // hindari pola email pada pemindai PII
 const FX = ['http://localhost:4320'];

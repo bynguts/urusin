@@ -1,5 +1,6 @@
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
-import { runOp, type RunnerOp } from '../lib/runner-ops';
+import { runOp, type RunnerOp } from '@urusin/executor/runner-ops';
+import { showConsentOverlay } from '../lib/overlay';
 
 /**
  * Step-runner tipis: di-inject service worker (chrome.scripting) ke tab yang dilacak pada setiap
@@ -7,5 +8,5 @@ import { runOp, type RunnerOp } from '../lib/runner-ops';
  */
 export default defineUnlistedScript(() => {
   (globalThis as { __urusinRunOp?: (op: RunnerOp) => ReturnType<typeof runOp> }).__urusinRunOp = (op) =>
-    runOp(op);
+    runOp(op, document, { consent: showConsentOverlay });
 });

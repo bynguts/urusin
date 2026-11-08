@@ -1,7 +1,6 @@
 import { defineBackground } from 'wxt/utils/define-background';
-import { checkUrl } from '../lib/allowlist';
+import { checkUrl, Interpreter, type Cursor } from '@urusin/executor';
 import { chromeDriver, localKV, sessionKV } from '../lib/chrome-adapters';
-import { Interpreter, type Cursor } from '../lib/interpreter';
 import { fromMatchPattern } from '../lib/origins';
 import { authorize, completePairing, getPaired, startPairing, unpair } from '../lib/pairing';
 import { err, parseWebMessage, PROTOCOL_VERSION } from '../lib/protocol';

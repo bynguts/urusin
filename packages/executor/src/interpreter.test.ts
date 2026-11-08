@@ -15,10 +15,10 @@ import {
   countIncreased,
 } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
-import { checkUrl } from './allowlist';
-import { Interpreter, type Cursor, type Driver, type TabInfo } from './interpreter';
-import type { KV } from './pairing';
-import type { RunnerOp, RunnerResult } from './runner-ops';
+import { checkUrl } from './allowlist.js';
+import { humanOnlyTargets, Interpreter, type Cursor, type Driver, type TabInfo } from './interpreter.js';
+import type { KV } from './types.js';
+import type { RunnerOp, RunnerResult } from './runner-ops.js';
 
 const FX = 'http://localhost:4320';
 
@@ -328,7 +328,7 @@ describe('interpreter: validasi dan keadaan', () => {
     });
     expect(
       await interp.start(
-        req([{ op: 'select', target: [{ by: 'css', value: 'a' }], value: 'x', effect: 'input' }]),
+        req([{ op: 'upload', target: [{ by: 'css', value: 'a' }], file: '{{FILE:ktp}}', effect: 'input' }]),
       ),
     ).toMatchObject({ ok: false, code: 'UNSUPPORTED_OP' });
   });
@@ -356,5 +356,83 @@ describe('interpreter: validasi dan keadaan', () => {
     expect((await cursorOf(kv)).status).toBe('waiting_load');
     await interp.onTabUpdated(1, { status: 'complete' });
     expect((await cursorOf(kv)).status).toBe('done');
+  });
+});
+
+describe('interpreter: kait eksekutor (pendamping)', () => {
+  const steps: Step[] = [
+    nav('/form'),
+    fill(byLabel('Nomor HP'), '{{PEMOHON.HP}}'),
+    { op: 'select', target: [css('#jenis')], value: 'b', effect: 'input' },
+    { op: 'upload', target: [css('#berkas')], file: '{{FILE:ktp}}', effect: 'input' },
+    click(css('#lanjut'), { effect: 'read' }),
+    gate.human('Tekan Kirim sendiri', { until: urlIncludes('/terkirim'), highlight: css('#kirim') }),
+  ];
+  const vault = new Map([['{{PEMOHON.HP}}', '08000000001']]);
+  const file = { name: 'ktp.png', mime: 'image/png', base64: 'AAAA' };
+  const fromVault = async (v: string) => v.replace(/\{\{[^}]+\}\}/g, (t) => vault.get(t) ?? '');
+
+  function make(resolveValue: (v: string) => Promise<string> = fromVault) {
+    const kv = memoryKV();
+    const driver = new FakeDriver();
+    driver.handler = (op) => ({ ok: true, value: op.kind !== 'check' });
+    const changes: Cursor[] = [];
+    const interp = new Interpreter(kv, driver, policy(), (c) => changes.push(c), {
+      resolveValue: async (v) => {
+        const out = await resolveValue(v);
+        return out === '' ? undefined : out;
+      },
+      resolveFile: async (name) => (name === 'ktp' ? file : undefined),
+      preConsented: true,
+    });
+    return { kv, driver, interp, changes };
+  }
+
+  it('placeholder di-resolve hanya di op ke halaman; cursor/onChange tetap bertoken; tanpa overlay', async () => {
+    const { kv, driver, interp, changes } = make();
+    await interp.start(req(steps));
+    await loadPage(interp, driver, `${FX}/form`);
+    const c = await cursorOf(kv);
+    expect(c.status).toBe('waiting_gate');
+    expect(c.consented).toBe(true);
+    expect(driver.ops.some((o) => o.kind === 'consent')).toBe(false);
+    expect(driver.ops.find((o) => o.kind === 'step' && o.step.op === 'fill')).toMatchObject({
+      step: { value: '08000000001' },
+    });
+    expect(driver.ops.find((o) => o.kind === 'upload')).toMatchObject({ file });
+    expect(driver.ops.find((o) => o.kind === 'step' && o.step.op === 'select')).toMatchObject({
+      step: { value: 'b' },
+    });
+    // Klik membawa elemen khusus warga (highlight gate.human) agar runner bisa menolaknya.
+    expect(driver.ops.find((o) => o.kind === 'step' && o.step.op === 'click')).toMatchObject({
+      finalTargets: [[css('#kirim')]],
+    });
+    expect(JSON.stringify(changes)).not.toContain('08000000001');
+    expect(JSON.stringify(c)).not.toContain('AAAA');
+  });
+
+  it('placeholder atau berkas tak dikenal: gagal aman PLACEHOLDER_UNRESOLVED', async () => {
+    const { kv, driver, interp } = make(async () => '');
+    await interp.start(req(steps));
+    await loadPage(interp, driver, `${FX}/form`);
+    expect((await cursorOf(kv)).error?.code).toBe('PLACEHOLDER_UNRESOLVED');
+
+    const other = make();
+    await other.interp.start(
+      req([nav('/form'), { op: 'upload', target: [css('#berkas')], file: '{{FILE:kk}}', effect: 'input' }]),
+    );
+    await loadPage(other.interp, other.driver, `${FX}/form`);
+    expect((await cursorOf(other.kv)).error?.code).toBe('PLACEHOLDER_UNRESOLVED');
+  });
+
+  it('humanOnlyTargets menelusuri forEach dan branch', () => {
+    const g = gate.human('x', { until: urlIncludes('/y'), highlight: css('#a') });
+    const g2 = gate.human('x', { until: urlIncludes('/y') });
+    expect(
+      humanOnlyTargets([
+        { op: 'forEach', over: 'k', steps: [g] },
+        { op: 'branch', when: urlIncludes('/z'), then: [g2], else: [g] },
+      ]),
+    ).toEqual([[css('#a')], [css('#a')]]);
   });
 });
