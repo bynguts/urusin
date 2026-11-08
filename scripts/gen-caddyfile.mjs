@@ -77,7 +77,7 @@ export function render(setName, set, { fixtures = false } = {}) {
 #
 # Dipasang ke Caddy sistem (yang sudah memegang 80/443 dan situs lain) lewat SATU baris di Caddyfile host:
 #
-#   import /opt/urusin/Caddyfile.urusin
+#   import /etc/caddy/urusin/Caddyfile.urusin
 #
 # Berkas itu salinan snippet set yang aktif (lihat deploy/README.md "Caddy"). Pasang tepat satu set:
 # nama snippet (urusin_common) sama di kedua set. Hostname ditulis literal; snippet ini tidak memakai

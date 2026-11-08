@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# systemctl palsu: `reload caddy`. Reload pertama dapat "merusak" satu situs (SHIM_BREAK_SITE -> 502);
-# reload berikutnya (rollback) memulihkan kode status awal dari $SHIM_DIR/orig.<situs>.
+# Reload palsu, dipanggil override reload_caddy di tes dan dicatat sebagai "systemctl reload caddy".
+# Reload pertama dapat "merusak" satu situs (SHIM_BREAK_SITE -> 502); reload berikutnya (rollback)
+# memulihkan kode status awal dari $SHIM_DIR/orig.<situs>.
 echo "systemctl $*" >> "$SHIM_DIR/calls.log"
 [ -z "${SHIM_RELOAD_FAIL:-}" ] || exit 1
 n=$(($(cat "$SHIM_DIR/reloads" 2>/dev/null || echo 0) + 1))

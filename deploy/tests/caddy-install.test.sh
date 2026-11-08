@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2016,SC2034  # ekspresi check() (memakai rc/out) sengaja dievaluasi lewat eval
-# Uji caddy-install.sh dengan caddy/systemctl/curl palsu: bash deploy/tests/caddy-install.test.sh
+# Uji caddy-install.sh dengan caddy/curl palsu (PATH) dan reload palsu: bash deploy/tests/caddy-install.test.sh
+# Seam reload: skrip di-source lalu fungsi reload_caddy diganti (bukan perintah dari env).
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -8,12 +9,12 @@ DEPLOY="$(cd "$HERE/.." && pwd)"
 pass=0
 fail=0
 check() { if eval "$2"; then pass=$((pass + 1)); echo "  ok   $1"; else fail=$((fail + 1)); echo "  FAIL $1  [$2]"; fi; }
-export PATH="$HERE/shims-caddy:$PATH" SETTLE_SECONDS=0
+export PATH="$HERE/shims-caddy:$PATH" SETTLE_SECONDS=0 FAKE_RELOAD="$HERE/shims-caddy/fake-reload"
 
 new_sandbox() {
   SB="$(mktemp -d)"
-  export SHIM_DIR="$SB/state" CADDYFILE="$SB/etc/Caddyfile" TARGET="$SB/opt/Caddyfile.urusin"
-  export BACKUP_DIR="$SB/opt/caddy-backups"
+  export SHIM_DIR="$SB/state" CADDYFILE="$SB/etc/Caddyfile" TARGET="$SB/etc/urusin/Caddyfile.urusin"
+  export LEGACY_TARGET="$SB/opt/Caddyfile.urusin" BACKUP_DIR="$SB/backups/urusin-caddy"
   mkdir -p "$SHIM_DIR" "$SB/etc" "$SB/opt"
   : > "$SHIM_DIR/calls.log"
   printf 'gutstore.my.id {\n\treverse_proxy 127.0.0.1:3000\n}\n' > "$CADDYFILE"
@@ -22,9 +23,15 @@ new_sandbox() {
   echo 302 > "$SHIM_DIR/orig.admin.gutstore.my.id"
   echo 401 > "$SHIM_DIR/orig.pythia.web.id"
   for f in "$SHIM_DIR"/orig.*; do cp "$f" "$SHIM_DIR/code.${f##*/orig.}"; done
-  unset SHIM_BREAK_SITE SHIM_RELOAD_FAIL
+  unset SHIM_BREAK_SITE SHIM_RELOAD_FAIL RELOAD_CMD
 }
-run() { out="$(bash "$DEPLOY/caddy-install.sh" "$@" 2>&1)"; rc=$?; }
+# shellcheck disable=SC2154  # FAKE_RELOAD diekspor di atas
+run() {
+  out="$(bash -c 'source "$1"; shift; reload_caddy() { "$FAKE_RELOAD" reload caddy; }; main "$@"' \
+    _ "$DEPLOY/caddy-install.sh" "$@" 2>&1)"
+  rc=$?
+}
+leftovers() { find "$SB/etc" -name '.Caddyfile*' | wc -l; }
 reloads() { grep -c '^systemctl reload caddy' "$SHIM_DIR/calls.log"; }
 
 echo "1. --dry-run: hanya baca"
@@ -41,6 +48,7 @@ check "exit 0, reload 1x" '[ $rc -eq 0 ] && [ "$(reloads)" -eq 1 ]'
 check "snippet fallback terpasang" 'cmp -s "$DEPLOY/Caddyfile.urusin.fallback" "$TARGET"'
 check "backup Caddyfile bertimestamp sama dengan aslinya" 'ls "$BACKUP_DIR" | grep -Eq "^Caddyfile\.[0-9]{8}T[0-9]{6}Z$" && cmp -s "$BACKUP_DIR"/Caddyfile.2* "$SB/caddyfile.orig"'
 check "tepat satu baris import; blok situs lain utuh" '[ "$(grep -cxF "import $TARGET" "$CADDYFILE")" -eq 1 ] && grep -q "reverse_proxy 127.0.0.1:3000" "$CADDYFILE"'
+check "backup di direktori 0700; tanpa sisa berkas sementara" '[ "$(stat -c %a "$BACKUP_DIR")" = 700 ] && [ "$(leftovers)" -eq 0 ]'
 /usr/bin/sleep 1
 run primary
 check "pindah ke primary: import tidak berlipat, snippet lama ikut di-backup" '[ $rc -eq 0 ] && [ "$(grep -cxF "import $TARGET" "$CADDYFILE")" -eq 1 ] && cmp -s "$DEPLOY/Caddyfile.urusin" "$TARGET" && ls "$BACKUP_DIR" | grep -q "^Caddyfile.urusin\."'
@@ -59,6 +67,7 @@ check "exit 1, ROLLBACK, reload 2x" '[ $rc -ne 0 ] && grep -q "ROLLBACK: kode st
 check "Caddyfile kembali seperti semula, target dihapus" 'cmp -s "$CADDYFILE" "$SB/caddyfile.orig" && [ ! -e "$TARGET" ]'
 check "status setelah rollback dilaporkan (pythia kembali 401)" 'grep -A3 "status setelah rollback" <<<"$out" | grep -q "pythia.web.id 401"'
 new_sandbox
+mkdir -p "$(dirname "$TARGET")"
 printf '# lama\n' > "$TARGET"
 printf '\nimport %s\n' "$TARGET" >> "$CADDYFILE"
 cp "$CADDYFILE" "$SB/caddyfile.orig"
@@ -86,6 +95,43 @@ check "snippet dengan placeholder env ditolak" '[ $rc -ne 0 ] && grep -q placeho
 run "$SB/tidak-ada" --dry-run
 check "snippet tidak ada ditolak" '[ $rc -ne 0 ]'
 check "kasus gagal tidak pernah reload" '[ "$(reloads)" -eq 0 ]'
+
+echo "7. reload tetap: RELOAD_CMD dari env tidak pernah dievaluasi"
+new_sandbox
+export RELOAD_CMD="touch $SB/pwned"
+run fallback
+check "pasang sukses, RELOAD_CMD diabaikan" '[ $rc -eq 0 ] && [ ! -e "$SB/pwned" ] && [ "$(reloads)" -eq 1 ]'
+unset RELOAD_CMD
+check "fungsi reload bawaan persis systemctl reload caddy" \
+  '[ "$(bash -c "source \"\$1\"; declare -f reload_caddy" _ "$DEPLOY/caddy-install.sh" | grep -c "systemctl reload caddy")" -eq 1 ]'
+check "skrip tidak memuat bash -c atau eval" '! grep -Eq "bash -c|(^|[^a-z_])eval " "$DEPLOY/caddy-install.sh"'
+
+echo "8. migrasi baris import lama (/opt/urusin)"
+new_sandbox
+printf '\nimport %s\n' "$LEGACY_TARGET" >> "$CADDYFILE"
+printf '# lama\n' > "$LEGACY_TARGET"
+cp "$CADDYFILE" "$SB/caddyfile.orig"
+run fallback --dry-run
+check "dry-run menyebut penghapusan baris lama" '[ $rc -eq 0 ] && grep -qF "akan menghapus baris lama: import $LEGACY_TARGET" <<<"$out"'
+run fallback
+check "baris lama hilang, baris baru tepat satu" '[ $rc -eq 0 ] && ! grep -qxF "import $LEGACY_TARGET" "$CADDYFILE" && [ "$(grep -cxF "import $TARGET" "$CADDYFILE")" -eq 1 ]'
+new_sandbox
+printf '\nimport %s\n' "$LEGACY_TARGET" >> "$CADDYFILE"
+cp "$CADDYFILE" "$SB/caddyfile.orig"
+export SHIM_BREAK_SITE=pythia.web.id
+run fallback
+check "rollback memulihkan baris lama" '[ $rc -ne 0 ] && cmp -s "$CADDYFILE" "$SB/caddyfile.orig"'
+unset SHIM_BREAK_SITE
+
+echo "9. direktori tujuan tidak aman ditolak sebelum mengubah apa pun"
+new_sandbox
+mkdir -p "$(dirname "$TARGET")" && chmod 777 "$(dirname "$TARGET")"
+run fallback
+check "direktori TARGET world-writable -> exit 1, tanpa reload, Caddyfile utuh" '[ $rc -ne 0 ] && grep -q "bisa ditulis group/others" <<<"$out" && [ "$(reloads)" -eq 0 ] && cmp -s "$CADDYFILE" "$SB/caddyfile.orig"'
+new_sandbox
+mkdir -p "$SB/elsewhere" "$(dirname "$BACKUP_DIR")" && ln -s "$SB/elsewhere" "$BACKUP_DIR"
+run fallback
+check "BACKUP_DIR symlink -> exit 1, tanpa backup di target symlink" '[ $rc -ne 0 ] && grep -q "symlink" <<<"$out" && [ -z "$(ls -A "$SB/elsewhere")" ] && [ "$(reloads)" -eq 0 ]'
 
 echo
 echo "lulus: $pass, gagal: $fail"
