@@ -71,8 +71,10 @@ Langkah host (setiap perubahan Caddy = **go-ahead pengguna per kejadian**, prose
 2. Rencana read-only (boleh kapan saja): `deploy/caddy-install.sh fallback --dry-run` (atau `primary`).
    Snapshot status situs pengguna, validasi snippet dan Caddyfile host, tanpa mengubah apa pun.
 3. Setelah go-ahead: `sudo deploy/caddy-install.sh fallback`. Skrip mem-backup Caddyfile (bertimestamp),
-   memasang `/etc/caddy/urusin/Caddyfile.urusin`, menambah tepat satu `import /etc/caddy/urusin/Caddyfile.urusin`
-   (baris lama `import /opt/urusin/Caddyfile.urusin` dihapus), backup ke `/var/backups/urusin-caddy/`,
+   memasang snippet ke path import yang SUDAH ada di Caddyfile (tanpa import: `/etc/caddy/urusin/Caddyfile.urusin`),
+   jadi selalu tepat satu baris import snippet Urusin. VPS saat ini meng-import `/opt/urusin/Caddyfile.urusin` (milik
+   ubuntu); skrip menolak menulis ke sana sebagai root dan menyarankan
+   `TARGET=/etc/caddy/urusin/Caddyfile.urusin` (memindahkan snippet, import lama diganti). Backup ke `/var/backups/urusin-caddy/`,
    `caddy validate`, `systemctl reload caddy` (bukan restart), lalu membandingkan kode status
    gutstore.my.id, admin.gutstore.my.id dan pythia.web.id sebelum/sesudah. Berubah => rollback otomatis.
 4. Pindah set (mis. fallback -> primary setelah DNS siap): ulangi langkah 2-3 dengan set baru, ubah `DOMAIN`

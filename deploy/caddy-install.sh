@@ -9,8 +9,8 @@
 # Prosedur (keputusan pengguna):
 #   1. Snapshot kode status HTTPS situs pengguna (SITES) SEBELUM perubahan.
 #   2. Backup bertimestamp Caddyfile host (dan snippet lama) ke BACKUP_DIR.
-#   3. Pasang snippet ke TARGET, pastikan tepat satu baris `import TARGET` di CADDYFILE (baris import lama
-#      LEGACY_TARGET dihapus), `caddy validate`. Validasi gagal => pulihkan backup, tanpa reload.
+#   3. Pasang snippet ke TARGET, pastikan tepat satu baris import snippet Urusin di CADDYFILE (baris
+#      `import <...>/Caddyfile.urusin` lain dihapus), `caddy validate`. Validasi gagal => pulihkan backup, tanpa reload.
 #   4. Reload Caddy (bukan restart), tunggu SETTLE_SECONDS, snapshot SESUDAH.
 #   5. Ada kode status yang berubah (atau reload gagal) => rollback otomatis: pulihkan backup, reload, exit 1.
 #
@@ -22,16 +22,20 @@
 # sebagai root lolos walau Caddy sendiri tidak bisa membaca import, lalu reload gagal).
 # Sumber `primary`/`fallback` = deploy/Caddyfile.urusin.<set>; sumber yang sama dengan TARGET ditolak.
 #
-# Variabel (opsional): CADDYFILE (/etc/caddy/Caddyfile), TARGET (/etc/caddy/urusin/Caddyfile.urusin),
-# LEGACY_TARGET (/opt/urusin/Caddyfile.urusin), BACKUP_DIR (/var/backups/urusin-caddy),
+# TARGET tanpa env = path dari baris import snippet Urusin yang SUDAH ada di CADDYFILE (mis. /opt/urusin di VPS
+# lama), sehingga pemasangan berikutnya tidak pernah menambah import kedua; tanpa baris import = DEFAULT_TARGET.
+# Lebih dari satu baris import snippet Urusin = galat (rapikan manual dulu).
+#
+# Variabel (opsional): CADDYFILE (/etc/caddy/Caddyfile), TARGET (lihat di atas),
+# DEFAULT_TARGET (/etc/caddy/urusin/Caddyfile.urusin), BACKUP_DIR (/var/backups/urusin-caddy),
 # SITES ("gutstore.my.id admin.gutstore.my.id pythia.web.id"), SETTLE_SECONDS (5).
 # Tes mengganti fungsi reload_caddy dengan men-source skrip ini (lihat tests/caddy-install.test.sh).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CADDYFILE="${CADDYFILE:-/etc/caddy/Caddyfile}"
-TARGET="${TARGET:-/etc/caddy/urusin/Caddyfile.urusin}"
-LEGACY_TARGET="${LEGACY_TARGET:-/opt/urusin/Caddyfile.urusin}"
+TARGET="${TARGET:-}"
+DEFAULT_TARGET="${DEFAULT_TARGET:-/etc/caddy/urusin/Caddyfile.urusin}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/urusin-caddy}"
 SITES="${SITES:-gutstore.my.id admin.gutstore.my.id pythia.web.id}"
 SETTLE_SECONDS="${SETTLE_SECONDS:-5}"
@@ -61,6 +65,11 @@ snapshot() {
   done
 }
 
+# Baris import snippet Urusin di Caddyfile host (satu path per baris, apa adanya).
+urusin_imports() {
+  sed -nE 's/^[[:space:]]*import[[:space:]]+(\/[^[:space:]]*\/Caddyfile\.urusin)[[:space:]]*$/\1/p' "$CADDYFILE"
+}
+
 # Direktori tujuan aman: ada, bukan symlink, milik pengguna yang menjalankan, tidak bisa ditulis group/others.
 require_private_dir() {
   local d="$1"
@@ -83,6 +92,14 @@ main() {
   [ -n "$src" ] || die "pemakaian: $0 <primary|fallback|berkas-snippet> [--dry-run]"
   [ -f "$src" ] || die "snippet tidak ada: $src"
   [ -f "$CADDYFILE" ] || die "Caddyfile host tidak ada: $CADDYFILE"
+  local existing detected=0
+  existing="$(urusin_imports | sort -u)"
+  [ "$(grep -c . <<<"$existing")" -le 1 ] || die "lebih dari satu baris import snippet Urusin di $CADDYFILE:
+$existing
+rapikan manual dulu (sisakan satu), tidak ada yang diubah"
+  if [ -z "$TARGET" ]; then
+    if [ -n "$existing" ]; then TARGET="$existing"; detected=1; else TARGET="$DEFAULT_TARGET"; fi
+  fi
   # Sumber == TARGET berarti memasang ulang snippet yang sedang aktif (bukan set yang diminta) lalu melapor sukses.
   if [ -e "$TARGET" ] && [ "$(readlink -f "$src")" = "$(readlink -f "$TARGET")" ]; then
     die "sumber snippet sama dengan TARGET ($TARGET); pakai deploy/Caddyfile.urusin.<primary|fallback>"
@@ -93,9 +110,11 @@ main() {
   # Snippet tidak boleh memakai placeholder env (environment proses Caddy tidak diubah).
   ! grep -v '^[[:space:]]*#' "$src" | grep -qF '{$' || die "snippet memuat placeholder {\$…}; bangkitkan ulang dari hosts.json"
 
-  local import_line="import $TARGET" legacy_line="import $LEGACY_TARGET" tdir
+  local import_line="import $TARGET" legacy_line="" tdir
   tdir="$(dirname "$TARGET")"
-  [ "$LEGACY_TARGET" != "$TARGET" ] || legacy_line=""
+  # Import snippet Urusin lain (path berbeda dari TARGET) diganti, bukan ditambah: tetap tepat satu import.
+  if [ -n "$existing" ] && [ "$existing" != "$TARGET" ]; then legacy_line="import $existing"; fi
+  if [ "$detected" = 1 ]; then log "TARGET dari baris import yang sudah ada: $TARGET"; else log "TARGET: $TARGET"; fi
 
   local before
   before="$(snapshot)"
@@ -120,6 +139,9 @@ main() {
   # Tolak symlink SEBELUM mkdir/chmod (chmod mengikuti symlink).
   [ ! -L "$BACKUP_DIR" ] || die "direktori tidak ada atau symlink: $BACKUP_DIR"
   [ ! -L "$tdir" ] || die "direktori tidak ada atau symlink: $tdir"
+  if [ -d "$tdir" ] && [ "$(stat -c %u "$tdir")" != "$(id -u)" ]; then
+    die "direktori snippet $tdir bukan milik uid $(id -u); skrip tidak menulis ke direktori milik pengguna lain. Untuk memindahkan snippet (baris import lama diganti, tetap satu import): TARGET=$DEFAULT_TARGET $0 <set>. Tidak ada yang diubah"
+  fi
   mkdir -p "$BACKUP_DIR" "$tdir"
   chmod 700 "$BACKUP_DIR"
   require_private_dir "$BACKUP_DIR"
