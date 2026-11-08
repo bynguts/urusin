@@ -18,12 +18,14 @@
     "test:scripts": "node --test scripts/tests/",
     "audit:history": "node scripts/audit-history.mjs",
     "rag:ingest": "pnpm --filter @urusin/rag rag:ingest",
+    "rag:eval": "pnpm --filter @urusin/rag rag:eval",
     "pii:scan": "node scripts/pii-scan.mjs --all",
     "prepare": "husky",
     "lint:root": "eslint scripts commitlint.config.mjs eslint.config.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "budget": "turbo run budget"
+    "budget": "turbo run budget",
+    "e2e": "turbo run e2e"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

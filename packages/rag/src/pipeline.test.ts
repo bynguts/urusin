@@ -87,7 +87,7 @@ beforeEach(() => {
 });
 
 const ids = (hits: readonly { id: string }[]) => hits.map((h) => h.id);
-const BASELINE: RetrievalPipeline = { bm25: { stemmed: false } };
+const BASELINE: RetrievalPipeline = {};
 
 describe('stemming + ekspansi mengalahkan BM25 polos', () => {
   const demo: [string, string][] = [
@@ -373,7 +373,7 @@ describe('rerankHits: LLM listwise lewat FakeProvider', () => {
 });
 
 describe('rewrite LLM opsional', () => {
-  const pipe: RetrievalPipeline = { bm25: { stemmed: true }, expand: { llm: true } };
+  const pipe: RetrievalPipeline = { bm25: { stemmed: true }, expand: true };
   it('istilah dari LLM masuk sebagai perluasan', async () => {
     db = openDb(':memory:');
     upsertChunks(db, [mk('s1', 'Pelaporan', 'Pelaporan pencurian dilakukan di kantor polisi setempat.')]);
@@ -407,12 +407,12 @@ describe('rewrite LLM opsional', () => {
     expect(r.debug.rewriteStatus).toBe('fallback');
     expect(ids(r.hits)[0]).toBe('nas-ktp');
   });
-  it('tidak dipanggil bila expand.llm tidak diaktifkan', async () => {
+  it('tidak dipanggil bila expand mati', async () => {
     const p = new FakeProvider({ replies: [] });
     const r = await retrieve(
       db,
       { query: 'ktp hilang' },
-      { bm25: {}, expand: true },
+      { bm25: {}, expand: false },
       { rewrite: createLlmRewriter(jsonVia(p)) },
     );
     expect(r.debug.rewriteStatus).toBe('off');
@@ -440,7 +440,7 @@ describe('cari_pengetahuan: pipeline bawaan', () => {
     const off = cariPengetahuanTool.execute(
       db,
       { query: 'akta' },
-      { vectorIds: ['nas-akta'], pipeline: { bm25: {}, vector: false } },
+      { vectorIds: ['nas-akta'], useVector: false },
     );
     expect(off.mode).toBe('bm25');
     expect(off.debug?.pipeline.vector).toBe(false);
@@ -480,7 +480,7 @@ describe('cari_pengetahuan: pipeline bawaan', () => {
     await cariPengetahuanTool.executeAsync(
       db,
       { query: 'kk akta' },
-      { pipeline: { bm25: {}, rerank: false }, rerank: { json: jsonVia(p) } },
+      { pipeline: { rerank: false }, rerank: { json: jsonVia(p) } },
     );
     expect(p.calls).toHaveLength(0);
   });

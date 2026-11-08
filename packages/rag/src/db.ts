@@ -65,6 +65,23 @@ export function migrate(db: Db): void {
       judul, text, instansi, ctx,
       tokenize='unicode61 remove_diacritics 2'
     );
+    -- Vektor (opsional): raw = keluaran embedding, vec = hasil transformasi aktif. Kosong = mode BM25.
+    CREATE TABLE IF NOT EXISTS chunk_vectors (
+      id TEXT PRIMARY KEY,
+      raw BLOB NOT NULL,
+      vec BLOB
+    );
+    CREATE TRIGGER IF NOT EXISTS chunks_vec_ad AFTER DELETE ON chunks BEGIN
+      DELETE FROM chunk_vectors WHERE id = old.id;
+    END;
+    -- Satu baris aktif (id = 1); version naik tiap fit ulang.
+    CREATE TABLE IF NOT EXISTS vector_transform (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      version INTEGER NOT NULL,
+      model TEXT,
+      params TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
   if (rebuild) db.exec("INSERT INTO chunks_fts(chunks_fts) VALUES ('rebuild')");
   backfillStem(db);

@@ -1,4 +1,5 @@
 import type { Db } from './db.js';
+import type { RetrievalPipeline } from './eval/run.js';
 import { defaultGlossary, expandQuery, type Glossary } from './glossary.js';
 import { safeRewrite, type QueryRewriter } from './llm-stage.js';
 import { rerankHits, type RerankDeps, type RerankStatus } from './rerank.js';
@@ -7,26 +8,17 @@ import { toHit, type Hit, type Row, type SearchOptions } from './search.js';
 import { isStopword, rawTokens, stemTokens } from './stem/stem.js';
 
 /**
- * Konfigurasi pipeline retrieval; bentuknya dipakai juga oleh `rag:eval` (ablasi) di cabang vektor.
- * Setiap tahap bisa dimatikan; tahap yang tak tersedia (tanpa vektor, tanpa reranker) turun sendiri.
+ * Tipe konfigurasi dimiliki `eval/run.ts` (dipakai juga oleh rag:eval): `bm25.stemmed`, `expand`,
+ * `vector` dan `rerank`. Di sisi kueri, `vector` tidak mengubah apa pun (transformasi vektor
+ * dipasang saat ingest); leg vektor aktif bila pemanggil memberi `vectorIds`. Opsi runtime tambahan
+ * (bobot perluasan, top-N rerank, tulis ulang LLM) ada di `RetrievalDeps`.
  */
-export type RetrievalPipeline = {
-  bm25: {
-    /** Tambah leg BM25 atas kolom ter-stem (selain leg teks asli). Default true. */
-    stemmed?: boolean | undefined;
-  };
-  /** true = glosarium; `weight` = bobot RRF leg perluasan (default 0.4); `llm` = tulis ulang via LLM. */
-  expand?: boolean | { weight?: number | undefined; llm?: boolean | undefined } | undefined;
-  /** Leg vektor memakai `vectorIds` dari pemanggil; bentuk rinci dimiliki cabang vector-transform. */
-  vector?: boolean | Record<string, unknown> | undefined;
-  /** true atau `{topN}`: rerank top-N (default 20) hasil fusi menjadi top-k. */
-  rerank?: boolean | { topN?: number | undefined } | undefined;
-};
+export type { RetrievalPipeline };
 
+/** Bawaan terbaik: BM25 ter-stem + perluasan glosarium + rerank bila disuntikkan (+ vektor bila ada). */
 export const DEFAULT_PIPELINE: RetrievalPipeline = {
   bm25: { stemmed: true },
   expand: true,
-  vector: true,
   rerank: true,
 };
 
@@ -34,6 +26,12 @@ export type RetrievalDeps = {
   glossary?: Glossary | null | undefined;
   /** Id chunk berurutan dari leg vektor (sudah difilter wilayah oleh pemanggil). */
   vectorIds?: readonly string[] | undefined;
+  /** false = abaikan `vectorIds`. Default true. */
+  useVector?: boolean | undefined;
+  /** Bobot leg perluasan terhadap kata asli (default 0.4). */
+  expandWeight?: number | undefined;
+  /** Top-N kandidat untuk rerank (default 20). */
+  rerankTopN?: number | undefined;
   rerank?: RerankDeps | undefined;
   rewrite?: QueryRewriter | undefined;
   rewriteTimeoutMs?: number | undefined;
@@ -123,11 +121,8 @@ function hydrate(db: Db, ids: readonly string[]): Map<string, Hit> {
 
 const ms = (a: number, b: number) => Math.round((b - a) * 100) / 100;
 
-function expandCfg(p: RetrievalPipeline): { on: boolean; weight: number; llm: boolean } {
-  const e = p.expand;
-  if (!e) return { on: false, weight: 0, llm: false };
-  if (e === true) return { on: true, weight: DEFAULT_EXPAND_WEIGHT, llm: false };
-  return { on: true, weight: e.weight ?? DEFAULT_EXPAND_WEIGHT, llm: e.llm ?? false };
+function expandCfg(p: RetrievalPipeline, deps: RetrievalDeps): { on: boolean; weight: number } {
+  return { on: Boolean(p.expand), weight: deps.expandWeight ?? DEFAULT_EXPAND_WEIGHT };
 }
 
 export type SyncResult = {
@@ -152,11 +147,11 @@ export function retrieveSync(
   extraTerms: readonly string[] = [],
 ): SyncResult {
   const t0 = performance.now();
-  const stemmed = pipeline.bm25.stemmed ?? true;
-  const exp = expandCfg(pipeline);
+  const stemmed = pipeline.bm25?.stemmed === true;
+  const exp = expandCfg(pipeline, deps);
   const glossary = deps.glossary === undefined ? defaultGlossary() : deps.glossary;
   const expansion = exp.on ? expandQuery(opts.query, glossary) : { terms: [], matched: [] };
-  const expandTerms = exp.on ? [...new Set([...expansion.terms, ...extraTerms])] : [];
+  const expandTerms = [...new Set([...expansion.terms, ...extraTerms])];
   const t1 = performance.now();
 
   const legs: { hits: Hit[]; weight: number }[] = [];
@@ -168,10 +163,12 @@ export function retrieveSync(
   }
   if (expandTerms.length) {
     const table: Table = stemmed ? 'chunks_stem_fts' : 'chunks_fts';
-    const terms = stemmed ? [...new Set(stemTokens(expandTerms.join(' ')))] : expandTerms;
+    const terms = stemmed
+      ? [...new Set(expandTerms.map((e) => stemTokens(e).join(' ')).filter(Boolean))]
+      : expandTerms;
     legs.push({ hits: leg(db, table, terms, opts, LEG_LIMIT), weight: exp.weight });
   }
-  const useVector = Boolean(pipeline.vector) && (deps.vectorIds?.length ?? 0) > 0;
+  const useVector = deps.useVector !== false && (deps.vectorIds?.length ?? 0) > 0;
   const t2 = performance.now();
 
   const textRanked = combineScores(legs);
@@ -223,8 +220,8 @@ function debugOf(
 ): RetrievalDebug {
   return {
     pipeline: {
-      stemmed: p.bm25.stemmed ?? true,
-      expand: expandCfg(p).on,
+      stemmed: p.bm25?.stemmed === true,
+      expand: Boolean(p.expand),
       vector: s.usedVector,
       rerank: Boolean(p.rerank),
     },
@@ -270,18 +267,18 @@ export async function retrieve(
 ): Promise<RetrievalResult> {
   const k = opts.k ?? 6;
   const t0 = performance.now();
-  const exp = expandCfg(pipeline);
+  const exp = expandCfg(pipeline, deps);
 
   let extra: string[] = [];
   let rewriteStatus: RetrievalDebug['rewriteStatus'] = 'off';
-  if (exp.on && exp.llm && deps.rewrite) {
+  if (exp.on && deps.rewrite) {
     const r = await safeRewrite(opts.query, deps.rewrite, deps.rewriteTimeoutMs);
     extra = r.terms;
     rewriteStatus = r.status;
   }
 
   const rr = pipeline.rerank;
-  const topN = rr ? Math.max(k, (typeof rr === 'object' ? rr.topN : undefined) ?? DEFAULT_TOP_N) : k;
+  const topN = rr ? Math.max(k, deps.rerankTopN ?? DEFAULT_TOP_N) : k;
   const s = retrieveSync(db, opts, pipeline, topN, deps, extra);
 
   let hits = s.hits.slice(0, k);

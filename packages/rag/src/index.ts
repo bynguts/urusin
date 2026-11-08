@@ -13,3 +13,6 @@ export * from './rerank.js';
 export * from './pipeline.js';
 export * from './ingest/context.js';
 export * from './tool.js';
+export * from './vector/transform.js';
+export * from './vector/store.js';
+export * from './vector/pipeline.js';

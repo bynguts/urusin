@@ -30,12 +30,15 @@ describe('glosarium adminduk', () => {
 
 describe('expandQuery', () => {
   const terms = (q: string) => expandQuery(q, g).terms;
+  const flat = (q: string) => terms(q).join(' | ');
   it('bikin ktp -> perekaman/pencetakan KTP-el', () => {
     expect(terms('bikin ktp')).toEqual(expect.arrayContaining(['perekaman', 'pencetakan', 'ktp-el']));
   });
   it('ktp hilang -> penggantian + surat kehilangan kepolisian', () => {
     const t = terms('bikin ktp hilang gimana');
-    expect(t).toEqual(expect.arrayContaining(['penggantian', 'kehilangan', 'surat', 'kepolisian']));
+    expect(t).toEqual(
+      expect.arrayContaining(['penggantian', 'kehilangan', 'surat kehilangan', 'kepolisian']),
+    );
   });
   it('akta lahir -> akta kelahiran', () => {
     expect(terms('ngurus akta anak')).toEqual(expect.arrayContaining(['kelahiran']));
@@ -46,18 +49,18 @@ describe('expandQuery', () => {
       expect(terms(q)).toEqual(expect.arrayContaining(['skpwni', 'perpindahan']));
   });
   it('akronim: kk, kia, ikd, stnk, pajak motor, skck, sim, bpjs, bansos, dtks, dtsen, nib', () => {
-    expect(terms('kk')).toContain('keluarga');
-    expect(terms('kia')).toEqual(expect.arrayContaining(['identitas', 'anak']));
-    expect(terms('ikd')).toContain('digital');
+    expect(terms('kk')).toContain('kartu keluarga');
+    expect(terms('kia')).toContain('kartu identitas anak');
+    expect(terms('ikd')).toContain('identitas kependudukan digital');
     expect(terms('stnk')).toEqual(expect.arrayContaining(['pkb', 'samsat']));
     expect(terms('pajak motor')).toEqual(expect.arrayContaining(['pkb', 'samsat']));
-    expect(terms('skck')).toContain('kepolisian');
-    expect(terms('sim')).toContain('mengemudi');
-    expect(terms('bpjs')).toContain('jaminan');
-    expect(terms('bansos')).toContain('bantuan');
-    expect(terms('dtks')).toContain('terpadu');
-    expect(terms('dtsen')).toContain('tunggal');
-    expect(terms('nib')).toEqual(expect.arrayContaining(['berusaha', 'perizinan']));
+    expect(flat('skck')).toContain('catatan kepolisian');
+    expect(flat('sim')).toContain('izin mengemudi');
+    expect(flat('bpjs')).toContain('jaminan kesehatan');
+    expect(flat('bansos')).toContain('bantuan sosial');
+    expect(flat('dtks')).toContain('data terpadu');
+    expect(flat('dtsen')).toContain('data tunggal');
+    expect(terms('nib')).toEqual(expect.arrayContaining(['nomor induk berusaha', 'perizinan berusaha']));
   });
   it('pemicu dicocokkan sesudah stem + stopword: "ktp yang hilang", "ktp-nya hilang"', () => {
     expect(terms('ktp yang hilang')).toContain('penggantian');

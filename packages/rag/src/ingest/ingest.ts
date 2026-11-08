@@ -1,4 +1,7 @@
 import type { Db } from '../db.js';
+import { embedAndFit } from '../vector/pipeline.js';
+import type { Embedder } from '../vector/store.js';
+import type { TransformMode } from '../vector/transform.js';
 import { upsertChunks } from '../store.js';
 import { chunkByHeading } from './chunk.js';
 import { buildChunkContextHeader } from './context.js';
@@ -23,6 +26,12 @@ export type IngestOptions = {
   db?: Db | undefined;
   deps?: Deps | undefined;
   minIntervalMs?: number | undefined;
+  /** Embedding opsional. Tanpa ini ingest murni BM25 (tabel vektor tidak disentuh). */
+  embed?: Embedder | undefined;
+  embedModel?: string | undefined;
+  /** Mode transformasi vektor; default 'none'. Dipilih berdasarkan hasil rag:eval. */
+  vectorMode?: TransformMode | undefined;
+  vectorK?: number | undefined;
 };
 
 function skipReason(s: SourceEntry): string | null {
@@ -108,5 +117,36 @@ export async function runIngest(opts: IngestOptions): Promise<IngestReport[]> {
       }
     }
   }
+  if (opts.embed && opts.db && !opts.dryRun) reports.push(await fitAndStoreTransform(opts.db, opts));
   return reports;
+}
+
+/** Tahap vektor ingest (satu-satunya titik sentuh): embed semua chunk, fit transform, simpan. Gagal => dilewati, BM25 utuh. */
+export async function fitAndStoreTransform(
+  db: Db,
+  opts: Pick<IngestOptions, 'embed' | 'embedModel' | 'vectorMode' | 'vectorK'>,
+): Promise<IngestReport> {
+  if (!opts.embed) return { id: 'vektor', url: '-', action: 'skipped', reason: 'tanpa-embedding' };
+  try {
+    const r = await embedAndFit(db, opts.embed, {
+      mode: opts.vectorMode ?? 'none',
+      k: opts.vectorK,
+      model: opts.embedModel,
+    });
+    return {
+      id: 'vektor',
+      url: '-',
+      action: 'ingested',
+      chunks: r.chunks,
+      reason: `mode=${r.mode} k=${r.k} v${r.version}`,
+    };
+  } catch (e) {
+    // Embedding gagal tidak boleh merusak korpus: tetap BM25.
+    return {
+      id: 'vektor',
+      url: '-',
+      action: 'skipped',
+      reason: `embedding-gagal: ${e instanceof Error ? e.name : 'galat'}`,
+    };
+  }
 }

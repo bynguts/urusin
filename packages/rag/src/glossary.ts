@@ -49,7 +49,7 @@ export function defaultGlossary(): Glossary | null {
 }
 
 export type Expansion = {
-  /** Token istilah resmi (sudah dinormalisasi) yang belum ada di kueri asli. */
+  /** Istilah resmi (frasa huruf kecil; satu kata atau lebih) yang belum seluruhnya ada di kueri asli. */
   terms: string[];
   /** id entri yang cocok (bukan teks kueri; aman untuk debug). */
   matched: string[];
@@ -72,7 +72,7 @@ function compile(g: Glossary): Compiled[] {
     c = g.entries.map((entry) => ({
       entry,
       triggers: entry.pemicu.map((p) => stemTokens(p)).filter((t) => t.length > 0),
-      terms: entry.resmi.flatMap((r) => rawTokens(r).map((t) => t.toLowerCase())),
+      terms: entry.resmi.map((r) => rawTokens(r).join(' ').toLowerCase()).filter(Boolean),
     }));
     compiledCache.set(g, c);
   }
@@ -93,7 +93,7 @@ export function expandQuery(query: string, glossary: Glossary | null = defaultGl
   for (const { entry, triggers, terms: official } of compile(glossary)) {
     if (!triggers.some((t) => containsSeq(q, t))) continue;
     matched.push(entry.id);
-    for (const t of official) if (!original.has(t)) terms.add(t);
+    for (const t of official) if (!t.split(' ').every((w) => original.has(w))) terms.add(t);
   }
   return { terms: [...terms], matched };
 }
