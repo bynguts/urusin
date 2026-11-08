@@ -61,25 +61,18 @@ Pemilihan host hanya terjadi di VPS: `.env` (`DOMAIN`) dan salinan snippet set y
 - CSP **hanya** dari aplikasi (SvelteKit, `report-uri /api/csp-report` + `report-to csp-endpoint`).
 - Tanpa opsi global dan tanpa blok situs lain: blok situs pengguna tidak tersentuh.
 
-Langkah host (setiap perubahan Caddy = **izin per kejadian** dari pengguna, lihat `hardening.md`):
+Langkah host (setiap perubahan Caddy = **go-ahead pengguna per kejadian**, prosedur lengkap di `hardening.md`):
 
 1. DNS: A/AAAA untuk host `app` dan `verify` set yang dipilih ke IP VPS (set `fallback` tidak butuh DNS).
-2. Salin snippet set yang dipilih ke path tetap milik Urusin (bukan `/etc/caddy`):
-   ```sh
-   install -m 644 /opt/urusin/deploy/Caddyfile.urusin.fallback /opt/urusin/Caddyfile.urusin   # atau Caddyfile.urusin (primary)
-   ```
    `DOMAIN` di `.env` harus sama dengan host `app` set itu (startup aplikasi menolak campuran set).
-3. Sekali saja: tambahkan satu baris ke `/etc/caddy/Caddyfile` (di luar blok situs lain):
-   ```
-   import /opt/urusin/Caddyfile.urusin
-   ```
-4. Validasi lalu reload (reload tidak memutus situs lain; jangan restart):
-   ```sh
-   caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile
-   sudo systemctl reload caddy
-   ```
-   Pindah set (mis. fallback -> primary setelah DNS siap): ulangi langkah 2 dan 4, ubah `DOMAIN` di `.env`,
-   lalu `./deploy.sh` ulang. Pairing dan tautan pada host lama tidak ikut pindah.
+2. Rencana read-only (boleh kapan saja): `deploy/caddy-install.sh fallback --dry-run` (atau `primary`).
+   Snapshot status situs pengguna, validasi snippet dan Caddyfile host, tanpa mengubah apa pun.
+3. Setelah go-ahead: `sudo deploy/caddy-install.sh fallback`. Skrip mem-backup Caddyfile (bertimestamp),
+   memasang `/opt/urusin/Caddyfile.urusin`, menambah tepat satu `import /opt/urusin/Caddyfile.urusin`,
+   `caddy validate`, `systemctl reload caddy` (bukan restart), lalu membandingkan kode status
+   gutstore.my.id, admin.gutstore.my.id dan pythia.web.id sebelum/sesudah. Berubah => rollback otomatis.
+4. Pindah set (mis. fallback -> primary setelah DNS siap): ulangi langkah 2-3 dengan set baru, ubah `DOMAIN`
+   di `.env`, lalu `./deploy.sh` ulang. Pairing dan tautan pada host lama tidak ikut pindah.
 5. Uji header (dari mana saja):
    ```sh
    curl -sI https://$DOMAIN/ | grep -iE 'strict-transport|permissions-policy|cross-origin|reporting-endpoints|content-security'
@@ -359,6 +352,7 @@ aktif (sudah mengirim `X-Robots-Tag: noindex, nofollow` dan `X-Site-Notice: Situ
 ```sh
 bash deploy/tests/deploy.test.sh   # docker/curl/restic/df palsu di tests/shims; juga jalan lewat `pnpm test:scripts`
 bash deploy/tests/image-retention.test.sh
+bash deploy/tests/caddy-install.test.sh
 shellcheck -x deploy/*.sh deploy/tests/deploy.test.sh deploy/tests/shims/*
 ```
 
