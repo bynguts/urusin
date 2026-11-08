@@ -173,6 +173,40 @@ run_script "$OPT/caddy-install.sh" fallback
 run_script "$OPT/caddy-install.sh" primary
 check "primary setelah fallback benar-benar memasang snippet primary" '[ $rc -eq 0 ] && cmp -s "$DEPLOY/Caddyfile.urusin.primary" "$TARGET" && ! cmp -s "$DEPLOY/Caddyfile.urusin.fallback" "$TARGET"'
 
+echo "12. TARGET tanpa env mengikuti baris import yang sudah ada (tidak pernah import kedua)"
+new_sandbox
+unset TARGET
+export DEFAULT_TARGET="$SB/etc/urusin/Caddyfile.urusin"
+LIVE="$SB/opt/urusin/Caddyfile.urusin"
+mkdir -p "$(dirname "$LIVE")" && printf '# live\n' > "$LIVE"
+printf '\nimport %s\n' "$LIVE" >> "$CADDYFILE"
+cp "$CADDYFILE" "$SB/caddyfile.orig"
+nimports() { grep -cE '^[[:space:]]*import[[:space:]]+/.*Caddyfile\.urusin[[:space:]]*$' "$CADDYFILE"; }
+run primary --dry-run
+check "dry-run memakai path import live, tanpa rencana import baru" '[ $rc -eq 0 ] && grep -qF "TARGET dari baris import yang sudah ada: $LIVE" <<<"$out" && grep -q "baris import sudah ada" <<<"$out" && ! grep -q "akan menambah" <<<"$out"'
+run primary
+check "pasang ke path live: tepat satu import, DEFAULT_TARGET tidak dibuat" '[ $rc -eq 0 ] && [ "$(nimports)" -eq 1 ] && grep -qxF "import $LIVE" "$CADDYFILE" && cmp -s "$DEPLOY/Caddyfile.urusin.primary" "$LIVE" && [ ! -e "$DEFAULT_TARGET" ]'
+/usr/bin/sleep 1
+run fallback
+check "pemasangan ulang tetap satu import" '[ $rc -eq 0 ] && [ "$(nimports)" -eq 1 ] && cmp -s "$DEPLOY/Caddyfile.urusin.fallback" "$LIVE"'
+new_sandbox
+unset TARGET
+export DEFAULT_TARGET="$SB/etc/urusin/Caddyfile.urusin"
+run fallback
+check "tanpa baris import: DEFAULT_TARGET dipakai, satu import" '[ $rc -eq 0 ] && grep -qxF "import $DEFAULT_TARGET" "$CADDYFILE" && [ "$(nimports)" -eq 1 ]'
+new_sandbox
+unset TARGET
+export DEFAULT_TARGET="$SB/etc/urusin/Caddyfile.urusin"
+printf '\nimport %s\nimport %s\n' "$SB/a/Caddyfile.urusin" "$SB/b/Caddyfile.urusin" >> "$CADDYFILE"
+cp "$CADDYFILE" "$SB/caddyfile.orig"
+run fallback
+check "dua baris import snippet -> galat sebelum perubahan apa pun" '[ $rc -ne 0 ] && grep -q "lebih dari satu baris import" <<<"$out" && cmp -s "$CADDYFILE" "$SB/caddyfile.orig" && [ "$(reloads)" -eq 0 ] && [ ! -e "$BACKUP_DIR" ]'
+new_sandbox
+LIVE="$SB/opt/urusin/Caddyfile.urusin"
+mkdir -p "$(dirname "$LIVE")" && printf '\nimport %s\n' "$LIVE" >> "$CADDYFILE"
+run fallback
+check "TARGET eksplisit berbeda: import lama diganti, tetap satu" '[ $rc -eq 0 ] && [ "$(nimports)" -eq 1 ] && grep -qxF "import $TARGET" "$CADDYFILE"'
+
 echo
 echo "lulus: $pass, gagal: $fail"
 [ "$fail" -eq 0 ]
