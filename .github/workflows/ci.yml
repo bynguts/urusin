@@ -62,3 +62,95 @@ jobs:
 
       - name: Pindai PII/secret di semua file terlacak
         run: node scripts/pii-scan.mjs --all
+
+  perf:
+    name: Lighthouse CI (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HUSKY: '0'
+      GIT_SHA: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      # Preset default Lighthouse = mobile (Moto G Power, slow 4G, simulasi). Sementara warn-only;
+      # angka tetap tercatat di ringkasan job. Naikkan ke "error" setelah scaffold stabil (M19).
+      - name: Lighthouse CI
+        env:
+          PORT: '4173'
+          HOST: 127.0.0.1
+          ORIGIN: http://127.0.0.1:4173
+        run: pnpm exec lhci autorun
+
+      - name: Ringkasan skor
+        if: always()
+        run: |
+          {
+            echo "### Lighthouse (mobile, median 3 run)"
+            echo
+            echo "| URL | Performance | Accessibility | LCP (ms) |"
+            echo "|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          node -e '
+            const fs = require("fs");
+            const dir = ".lighthouseci";
+            const runs = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /^lhr-.*\.json$/.test(f)).map((f) => JSON.parse(fs.readFileSync(`${dir}/${f}`, "utf8"))) : [];
+            const med = (a) => a.sort((x, y) => x - y)[Math.floor(a.length / 2)];
+            const by = new Map();
+            for (const r of runs) (by.get(r.finalUrl) ?? by.set(r.finalUrl, []).get(r.finalUrl)).push(r);
+            for (const [url, rs] of by) {
+              const p = med(rs.map((r) => r.categories.performance.score * 100));
+              const a = med(rs.map((r) => r.categories.accessibility.score * 100));
+              const l = med(rs.map((r) => r.audits["largest-contentful-paint"].numericValue));
+              console.log(`| ${url} | ${p} | ${a} | ${Math.round(l)} |`);
+            }
+          ' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Unggah laporan
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lighthouse-reports
+          path: .lighthouseci/*.html
+          if-no-files-found: ignore
+
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: 8.9.0
+    steps:
+      - name: Checkout (riwayat lengkap)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Pasang gitleaks (checksum diverifikasi)
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "$tarball" "$base/$tarball"
+          curl -sSfL -o checksums.txt "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          grep " ${tarball}\$" checksums.txt | sha256sum -c -
+          tar -xzf "$tarball" gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+
+      - name: Pindai riwayat
+        run: gitleaks git --redact --no-banner --verbose .
