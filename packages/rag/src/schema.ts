@@ -66,6 +66,25 @@ export const CariPengetahuanOutputSchema = z.object({
   tanpaHasil: z.boolean(),
   /** Alasan bila pipeline abstain; kosong bila korpus tidak punya hasil sama sekali. */
   alasan: z.enum(['di_luar_cakupan', 'skor_rendah']).optional(),
+  /** Hand-off saat tanpaHasil: kanal resmi layanan luar cakupan dan/atau kontak Disdukcapil terverifikasi. */
+  kanal: z
+    .object({
+      layanan: z.string(),
+      instansi: z.string(),
+      deskripsi: z.string(),
+      url: z.string().optional(),
+      verifiedAt: z.string().optional(),
+    })
+    .optional(),
+  kontak: z
+    .object({
+      nama: z.string(),
+      website: z.string(),
+      alamat: z.string().optional(),
+      sourceUrl: z.string(),
+      verifiedAt: z.string(),
+    })
+    .optional(),
   hasil: z.array(
     z.object({
       id: z.string(),

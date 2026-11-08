@@ -1,11 +1,12 @@
 {
-  "catatan": "Layanan publik yang sering ditanyakan warga tetapi BUKAN bagian korpus adminduk (instansi lain). Dipakai gerbang abstain: bila kueri memuat salah satu nama layanan (alias satu kelompok) dan tidak ada nama itu di judul chunk mana pun, jawabannya di luar cakupan. Bukan sumber fakta layanan. STNK/BPKB sengaja tidak dimasukkan: halaman Samsat (pajak kendaraan) ada di korpus dan pertanyaan pajak sering menyebut STNK.",
+  "catatan": "Layanan publik yang sering ditanyakan warga tetapi BUKAN bagian korpus adminduk (instansi lain). Dipakai gerbang abstain: bila kueri memuat salah satu nama layanan (alias satu kelompok) dan tidak ada nama itu di judul chunk mana pun, jawabannya di luar cakupan; id menunjuk ke data/kanal-resmi.json. Bukan sumber fakta layanan. STNK/BPKB sengaja tidak dimasukkan: halaman Samsat (pajak kendaraan) ada di korpus dan pertanyaan pajak sering menyebut STNK.",
   "layanan": [
-    ["sim", "surat izin mengemudi"],
-    ["skck", "surat keterangan catatan kepolisian"],
-    ["paspor"],
-    ["bpjs"],
-    ["dpt", "daftar pemilih tetap"],
-    ["npwp"]
+    { "id": "sim", "istilah": ["sim", "surat izin mengemudi"] },
+    { "id": "skck", "istilah": ["skck", "surat keterangan catatan kepolisian"] },
+    { "id": "paspor", "istilah": ["paspor"] },
+    { "id": "bpjs", "istilah": ["bpjs"] },
+    { "id": "dpt", "istilah": ["dpt", "daftar pemilih tetap"] },
+    { "id": "npwp", "istilah": ["npwp"] },
+    { "id": "ikd", "istilah": ["ikd", "identitas kependudukan digital"] }
   ]
 }
