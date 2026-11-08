@@ -2,8 +2,11 @@ import { createBrowserFactory } from './browser.js';
 import { loadConfig } from './config.js';
 import { createServer } from './server.js';
 import { SessionManager } from './sessions.js';
+import { ensureDisplay } from './xvfb.js';
 
 const config = loadConfig(process.env);
+// Chromium headed butuh layar: di server Linux tanpa DISPLAY, jalankan satu Xvfb milik proses ini.
+const xvfb = await ensureDisplay(process.env, config.headless);
 const manager = new SessionManager(config, createBrowserFactory(config));
 manager.startSweeper();
 const server = createServer(config, manager);
@@ -11,13 +14,14 @@ const server = createServer(config, manager);
 server.listen(config.port, config.host, () => {
   // Hanya metadata boot; tidak ada log per permintaan, frame, atau ketikan.
   console.log(
-    `pendamping mendengarkan di ${config.host}:${config.port} (maks ${config.maxSessions} sesi, TTL ${config.ttlMs / 60_000} menit)`,
+    `pendamping mendengarkan di ${config.host}:${config.port} (maks ${config.maxSessions} sesi, TTL ${config.ttlMs / 60_000} menit, ${config.headless ? 'headless' : `headed${xvfb ? ` di Xvfb ${xvfb.display}` : ''}`})`,
   );
 });
 
 const stop = async () => {
   server.close();
   await manager.shutdown();
+  xvfb?.stop();
   process.exit(0);
 };
 process.on('SIGTERM', () => void stop());

@@ -37,7 +37,8 @@ describe('tanpa evasi', () => {
   it('kode produksi tidak menimpa UA, flag otomasi, atau memakai stealth', () => {
     const temuan: string[] = [];
     for (const f of files) {
-      const isi = tanpaKomentar(readFileSync(f, 'utf8'));
+      const mentah = readFileSync(f, 'utf8');
+      const isi = f.endsWith('Dockerfile') ? mentah.replace(/^\s*#.*$/gm, '') : tanpaKomentar(mentah);
       for (const [re, alasan] of LARANGAN) if (re.test(isi)) temuan.push(`${f}: ${alasan}`);
     }
     expect(temuan).toEqual([]);

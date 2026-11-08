@@ -181,7 +181,11 @@ export async function launchIsolated(
       ...(config.chromiumPath ? { executablePath: config.chromiumPath } : {}),
       proxy: proxyOption(proxy.port),
       args: chromiumArgs(config),
-      env: { ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}), TZ: 'Asia/Jakarta' },
+      env: {
+        ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}),
+        ...(process.env.XAUTHORITY ? { XAUTHORITY: process.env.XAUTHORITY } : {}),
+        TZ: 'Asia/Jakarta',
+      },
       viewport: { width: viewport.lebar, height: viewport.tinggi },
       deviceScaleFactor: 1,
       isMobile: viewport.seluler,
