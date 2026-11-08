@@ -106,4 +106,25 @@ describe('eval: tiap tahap kueri mengubah hasil dibanding baseline', () => {
     expect(on!.rows[0]!.abstainPrecision).toBe(1);
     expect(on!.rows[0]!.recall3).toBe(1);
   });
+
+  it('tahap rerank dan rerankScored dipanggil langsung; hasil berskor di-memo per kueri+kandidat', async () => {
+    let calls = 0;
+    const endpoint: RerankEndpoint = {
+      async rerank(req) {
+        calls++;
+        return req.documents.map((d) => ({ id: d.id, score: d.id === 'umum' ? 0.9 : 0.1 }));
+      },
+    };
+    const stages = createQueryStages({ rerank: { endpoint } });
+    const cands = [
+      { id: 'akta', text: 'Akta kelahiran butuh surat keterangan lahir.', judul: 'Akta kelahiran' },
+      { id: 'umum', text: 'Layanan kependudukan umum setiap hari kerja.' },
+    ];
+    expect(await stages.rerank!('akta kelahiran', cands)).toEqual(['umum', 'akta']);
+    const a = await stages.rerankScored!('akta kelahiran', cands);
+    const b = await stages.rerankScored!('akta kelahiran', cands);
+    expect(a[0]).toMatchObject({ id: 'umum', score: 0.9 });
+    expect(b).toBe(a);
+    expect(calls).toBe(2);
+  });
 });

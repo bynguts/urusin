@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { cariPengetahuanTool, openDb, upsertChunks, ChunkRejectedError, buildMatch } from '../index.js';
 import { MIN_INTERVAL_MS, USER_AGENT, type Deps, type FetchLike } from './fetcher.js';
 import { runIngest } from './ingest.js';
@@ -154,6 +154,23 @@ describe('runVerify', () => {
     const r = await runVerify({ db, sources: [src], deps: fresh.deps });
     expect(r[0]?.action).toBe('blocked');
     expect(fresh.calls.map((c) => c.url)).toEqual(['https://disdukcapil.contoh.go.id/robots.txt']);
+  });
+
+  it('tanpa deps: memakai fetch global; galat non-Error dilaporkan sebagai galat', async () => {
+    const { db } = await setup();
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', async (url: string) => {
+      urls.push(url);
+      if (url.endsWith('/robots.txt')) return new Response('User-agent: *\nAllow: /', { status: 200 });
+      throw 'putus';
+    });
+    try {
+      const r = await runVerify({ db, sources: [src], minIntervalMs: 0 });
+      expect(r[0]).toMatchObject({ action: 'error', reason: 'galat' });
+      expect(urls).toContain(src.url);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('HTTP 500 -> error; sumber tak dikenal -> skipped; --only tanpa ingest -> galat', async () => {
