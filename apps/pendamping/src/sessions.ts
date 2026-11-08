@@ -236,11 +236,14 @@ export class SessionManager {
     if (!checkUrl(input.url, { testMode: fixtureOrigins.length > 0, fixtureOrigins }).ok)
       throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'URL di luar allowlist domain resmi');
     const url = new URL(input.url);
+    // Host sesi: milik adapter bila URL di origin adapter; selain itu hanya host itu + widget Turnstile
+    // (tujuan utama mode ini: uji klik manusia pada verifikasi situs).
+    const adapter = Object.values(ADAPTERS).find((a) => a.origin === url.origin);
     return this.enqueue({
       urusanId: `debug-${randomUUID()}`,
       sidHash: input.sidHash,
       executionId: 'debug-manual',
-      program: { origin: url.origin, steps: [] },
+      program: { origin: url.origin, hosts: adapter?.hosts ?? ['challenges.cloudflare.com'], steps: [] },
       manualUrl: url.href,
       debug: true,
       viewport: input.viewport ?? DEFAULT_VIEWPORT,

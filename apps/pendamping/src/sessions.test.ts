@@ -1,5 +1,6 @@
 import type net from 'node:net';
 import type { MulaiSesiInternal, PendampingServerMessage } from '@urusin/contracts';
+import { ADAPTERS } from '@urusin/adapters';
 import { afterEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { loadConfig, type Config } from './config.js';
@@ -300,6 +301,8 @@ describe('SessionManager', () => {
     await h.flush();
     expect(s.urusanId).toMatch(/^debug-/);
     expect(h.runs[0]!.init.manualUrl).toBe('https://oss.go.id/informasi');
+    // Host sesi = milik adapter OSS (bukan seluruh registry/CDN umum).
+    expect(h.runs[0]!.init.program.hosts).toEqual(ADAPTERS['oss-nib']!.hosts);
     expect(h.runs[0]!.calls).toContain('mulaiAi');
     expect(h.manager.debugOwner(s.sesiId)).toEqual({ urusanId: s.urusanId, sidHash: SID });
     await h.manager.handleClient(s.sesiId, { type: 'kembalikan' });
@@ -324,6 +327,7 @@ describe('SessionManager', () => {
     });
     await h.flush();
     expect(h.runs[0]!.init.program.origin).toBe('https://samsat-pkb2.jakarta.go.id');
+    expect(h.runs[0]!.init.program.hosts).toContain('challenges.cloudflare.com');
     expect(h.runs[0]!.init.manualUrl).toBeUndefined();
     expect(h.manager.debugOwner(s.sesiId)).toEqual({ urusanId: s.urusanId, sidHash: SID });
     expect(h.manager.status({ urusanId: s.urusanId, sidHash: SID }).status).toBe('menunggu_data');

@@ -2,14 +2,14 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { finalGateIndex, type Program } from '@urusin/adapters';
+import { finalGateIndex, hostsSesi, type Program } from '@urusin/adapters';
 import {
   PendampingBuktiSchema,
   type PendampingBukti,
   type PendampingSorot,
   type PendampingViewport,
 } from '@urusin/contracts';
-import { egressAllowedHosts, type Step, type Target } from '@urusin/core';
+import { type Step, type Target } from '@urusin/core';
 import {
   checkUrl,
   Interpreter,
@@ -193,9 +193,11 @@ export const PROFIL_PREFS = Object.freeze({
 export async function launchIsolated(
   config: Config,
   viewport: PendampingViewport,
+  /** Host https sesi ini (host origin + host yang dideklarasikan adapter), bukan seluruh registry. */
+  hosts: readonly string[],
   onBlocked: (host: string) => void = () => {},
 ): Promise<Isolated> {
-  const rules = egressRules(egressAllowedHosts(), config.fixtureOrigins);
+  const rules = egressRules(hosts, config.fixtureOrigins);
   const allowedHosts = new Set(rules.map((r) => `${r.host}:${r.port}`));
   const proxy = await startEgressProxy(rules, { upstream: config.upstreamProxy });
   proxy.onBlocked(onBlocked);
@@ -289,7 +291,7 @@ export function pidsOfProfile(userDataDir: string, proc = '/proc'): number[] {
 
 export async function startBrowserRun(config: Config, init: RunInit): Promise<ActiveRun> {
   const reported = new Set<string>();
-  const iso = await launchIsolated(config, init.viewport, (host) => {
+  const iso = await launchIsolated(config, init.viewport, hostsSesi(init.program), (host) => {
     if (reported.size < 20 && !reported.has(host)) {
       reported.add(host);
       init.hooks.event({ jenis: 'diblokir', host });

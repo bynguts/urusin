@@ -259,8 +259,11 @@ test('SSRF: dari dalam peramban pendamping, 127.0.0.1:2019 dan 169.254.169.254 t
   });
   const blocked: string[] = [];
   const config = { ...loadConfig({ PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN, PENDAMPING_HEADLESS: '1' }) };
-  const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true }, (h) =>
-    blocked.push(h),
+  const iso = await launchIsolated(
+    config,
+    { lebar: 390, tinggi: 844, dpr: 1, seluler: true },
+    ['telunjuksakti.wonogirikab.go.id'],
+    (h) => blocked.push(h),
   );
   try {
     const page = await iso.context.newPage();
@@ -308,7 +311,9 @@ test('SSRF: dari dalam peramban pendamping, 127.0.0.1:2019 dan 169.254.169.254 t
 
 test('residu: profil sesi (cookie, Login Data) terhapus total setelah ditutup; pengelola sandi mati', async () => {
   const config = loadConfig({ PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN, PENDAMPING_HEADLESS: '1' });
-  const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true });
+  const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true }, [
+    'telunjuksakti.wonogirikab.go.id',
+  ]);
   const dir = iso.userDataDir;
   try {
     const page = iso.context.pages()[0] ?? (await iso.context.newPage());
