@@ -98,11 +98,14 @@ describe('egress: tujuan lokal/privat tidak terjangkau', () => {
   it('nama DNS yang resolve ke 127.0.0.1 ditolak saat tersambung', async () => {
     const resolve: Resolver = async () => [{ address: '127.0.0.1', family: 4 }];
     const e = createEgress({ env: {}, resolve });
-    expect(await rootCause(e.fetch('https://jebakan.go.id/'))).toBeInstanceOf(EgressBlockedError);
+    const i = createEgress({ profile: 'ingest', env: {}, resolve });
+    expect(await rootCause(i.fetch('https://jebakan.go.id/'))).toMatchObject({
+      message: expect.stringMatching(/resolve ke alamat lokal\/privat 127\.0\.0\.1/),
+    });
     expect(await rootCause(e.fetch('https://api.jina.ai/v1/rerank'))).toMatchObject({
       message: expect.stringMatching(/127\.0\.0\.1/),
     });
-    await e.agent.close();
+    await Promise.all([e.agent.close(), i.agent.close()]);
   });
 
   it('host dengan campuran alamat publik + privat ditolak seluruhnya', async () => {
@@ -134,8 +137,17 @@ describe('egress: tujuan lokal/privat tidak terjangkau', () => {
   });
 });
 
-describe('egress: proxy LLM 127.0.0.1:20128 diizinkan', () => {
-  const egress = createEgress({ env: {} });
+describe('egress: proxy LLM 127.0.0.1:20128 diizinkan bila LLM_BASE_URL menunjuknya', () => {
+  const egress = createEgress({ env: { LLM_BASE_URL: `${PROXY}/v1` } });
+  const tanpaProxy = createEgress({ env: { LLM_BASE_URL: 'https://llm.contoh.dev/v1' } });
+  afterAll(() => tanpaProxy.agent.close());
+
+  it('LLM_BASE_URL lain: 127.0.0.1:20128 diblokir di fetch dan di koneksi (M1)', async () => {
+    expect(await rootCause(tanpaProxy.fetch(`${PROXY}/api/keys`))).toBeInstanceOf(EgressBlockedError);
+    await expect(
+      tanpaProxy.agent.request({ origin: PROXY, path: '/api/keys', method: 'GET' }),
+    ).rejects.toBeInstanceOf(EgressBlockedError);
+  });
   afterAll(() => egress.agent.close());
 
   it('GET ke proxy LLM tidak diblokir', async () => {
@@ -180,7 +192,7 @@ describe('egress: logika redirect', () => {
   const scripted = (responses: Response[]) => {
     const calls: Call[] = [];
     const e = createEgress({
-      env: {},
+      env: { LLM_BASE_URL: 'http://127.0.0.1:20128/v1' },
       transport: async (url, init) => {
         calls.push({
           url: url.href,
@@ -230,6 +242,18 @@ describe('egress: logika redirect', () => {
     expect(calls[1]!.headers.get('authorization')).toBe('Bearer k');
     expect(calls[2]!.headers.has('authorization')).toBe(false);
     expect(calls[2]!.headers.has('cookie')).toBe(false);
+  });
+
+  it('redirect dari host lain ke proxy LLM lokal ditolak; dari proxy ke proxy diikuti (M1)', async () => {
+    const { e, calls } = scripted([redirect(302, 'http://127.0.0.1:20128/api/keys')]);
+    await expect(e.fetch('https://api.jina.ai/v1/rerank')).rejects.toThrow(/proxy LLM lokal/);
+    expect(calls).toHaveLength(1);
+    const sama = scripted([redirect(302, '/v1/models')]);
+    expect(await (await sama.e.fetch('http://127.0.0.1:20128/v1/x')).text()).toBe('akhir');
+    expect(sama.calls.map((c) => c.url)).toEqual([
+      'http://127.0.0.1:20128/v1/x',
+      'http://127.0.0.1:20128/v1/models',
+    ]);
   });
 
   it('redirect ke host di luar allowlist ditolak sebelum hop berikutnya dikirim', async () => {

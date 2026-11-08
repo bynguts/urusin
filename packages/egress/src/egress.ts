@@ -1,13 +1,14 @@
 import { promises as dns, type LookupAddress } from 'node:dns';
-import { Agent, buildConnector } from 'undici';
+import { Agent, buildConnector, setGlobalDispatcher } from 'undici';
 import {
   assertTargetAllowed,
   assertUrlAllowed,
   buildAllowlist,
   EgressBlockedError,
   isBlockedAddress,
+  isLlmProxy,
 } from './policy.js';
-import type { Allowlist } from './policy.js';
+import type { Allowlist, EgressProfile } from './policy.js';
 
 /** Resolusi DNS (semua alamat). Bisa diganti di tes. */
 export type Resolver = (hostname: string) => Promise<LookupAddress[]>;
@@ -15,6 +16,8 @@ export type Resolver = (hostname: string) => Promise<LookupAddress[]>;
 type LookupCallback = (err: Error | null, address: string | LookupAddress[], family?: number) => void;
 
 export type EgressOptions = {
+  /** `runtime` (default: LLM + Jina) atau `ingest` (registry resmi + `.go.id`). */
+  profile?: EgressProfile;
   /** Sumber base URL operator (default process.env). */
   env?: Record<string, string | undefined>;
   resolve?: Resolver;
@@ -74,7 +77,7 @@ const replayable = (b: unknown) =>
   b instanceof FormData;
 
 export function createEgress(opts: EgressOptions = {}): Egress {
-  const allowlist = buildAllowlist(opts.env);
+  const allowlist = buildAllowlist(opts.profile ?? 'runtime', opts.env);
   const maxRedirects = opts.maxRedirects ?? 5;
   const base = buildConnector({
     lookup: guardedLookup(opts.resolve ?? defaultResolve),
@@ -102,6 +105,7 @@ export function createEgress(opts: EgressOptions = {}): Egress {
     if (input instanceof Request) throw new EgressBlockedError('objek Request tidak didukung; kirim URL');
     const mode = init.redirect ?? 'follow';
     let url = assertUrlAllowed(input, allowlist);
+    const original = url;
     let method = (init.method ?? 'GET').toUpperCase();
     let body = init.body;
     const headers = new Headers(init.headers);
@@ -113,6 +117,9 @@ export function createEgress(opts: EgressOptions = {}): Egress {
       if (mode === 'error') throw new TypeError(`redirect ${res.status} ditolak (redirect: 'error')`);
       if (hop >= maxRedirects) throw new EgressBlockedError(`lebih dari ${maxRedirects} redirect`);
       const next = assertUrlAllowed(new URL(location, url), allowlist);
+      // Host luar (mis. *.go.id) tidak boleh membelokkan permintaan ke proxy LLM lokal (M1).
+      if (isLlmProxy(next) && !isLlmProxy(original))
+        throw new EgressBlockedError('redirect ke proxy LLM lokal dari host lain ditolak');
       if (
         (res.status === 303 && method !== 'HEAD') ||
         ((res.status === 301 || res.status === 302) && method === 'POST')
@@ -134,13 +141,33 @@ export function createEgress(opts: EgressOptions = {}): Egress {
   return { agent, fetch: egressFetch, allowlist };
 }
 
-let shared: Egress | undefined;
+const shared: Partial<Record<EgressProfile, Egress>> = {};
 
-/** Egress bersama proses (dibuat saat pertama dipakai agar env sudah termuat). */
+/** Egress `runtime` bersama proses (dibuat saat pertama dipakai agar env sudah termuat): LLM + Jina. */
 export function sharedEgress(): Egress {
-  shared ??= createEgress();
-  return shared;
+  shared.runtime ??= createEgress({ profile: 'runtime' });
+  return shared.runtime;
 }
 
-/** fetch server yang sah: semua HTTP keluar (LLM, Jina, rag:ingest/verify) lewat sini. */
+/** Egress `ingest` bersama proses: registry resmi + `.go.id` (rag:ingest/verify, CLI kanal/kontak). */
+export function sharedIngestEgress(): Egress {
+  shared.ingest ??= createEgress({ profile: 'ingest' });
+  return shared.ingest;
+}
+
+/** fetch server yang sah untuk LLM dan Jina. */
 export const egressFetch: EgressFetch = (input, init) => sharedEgress().fetch(input, init);
+
+/** fetch untuk mengambil sumber resmi (korpus, kanal, kontak). */
+export const ingestEgressFetch: EgressFetch = (input, init) => sharedIngestEgress().fetch(input, init);
+
+/**
+ * Backstop runtime (M2): jadikan Agent egress sebagai dispatcher global undici, sehingga fetch global,
+ * `event.fetch`, default SDK openai dan WebSocket undici juga lewat konektor yang dijaga.
+ * Panggil sekali saat boot (hooks.server.ts, entry CLI).
+ */
+export function installEgressBackstop(profile: EgressProfile = 'runtime'): Egress {
+  const e = profile === 'ingest' ? sharedIngestEgress() : sharedEgress();
+  setGlobalDispatcher(e.agent);
+  return e;
+}

@@ -5,11 +5,15 @@ import {
   buildAllowlist,
   EgressBlockedError,
   isBlockedAddress,
+  isLlmProxy,
   JINA_HOSTS,
   LLM_PROXY,
 } from './policy.js';
 
-const allow = buildAllowlist({});
+const PROXY_ENV = { LLM_BASE_URL: `http://${LLM_PROXY.host}:${LLM_PROXY.port}/v1` };
+/** Runtime dengan LLM_BASE_URL = proxy loopback (seperti produksi). */
+const allow = buildAllowlist('runtime', PROXY_ENV);
+const ingest = buildAllowlist('ingest', PROXY_ENV);
 
 describe('isBlockedAddress', () => {
   it.each([
@@ -35,6 +39,8 @@ describe('isBlockedAddress', () => {
     '::ffff:127.0.0.1',
     '::ffff:10.0.0.1',
     '::ffff:a9fe:a9fe',
+    '::ffff:0:7f00:1',
+    '::ffff:0:a00:1',
     '64:ff9b::7f00:1',
     '2002:7f00:1::',
     'localhost',
@@ -50,6 +56,27 @@ describe('assertTargetAllowed', () => {
   it('127.0.0.1:20128 (proxy LLM) satu-satunya alamat lokal yang boleh', () => {
     expect(assertTargetAllowed('http:', LLM_PROXY.host, LLM_PROXY.port, allow)).toBe(true);
     expect(assertTargetAllowed('https:', '127.0.0.1', 20128, allow)).toBe(true);
+  });
+
+  it('pengecualian 20128 hanya bila LLM_BASE_URL memang origin itu (M1)', () => {
+    for (const env of [
+      {},
+      { LLM_BASE_URL: 'https://llm.contoh.dev/v1' },
+      { RERANK_BASE_URL: PROXY_ENV.LLM_BASE_URL },
+    ]) {
+      const a = buildAllowlist('runtime', env);
+      expect(a.llmProxy).toBe(false);
+      expect(() => assertTargetAllowed('http:', '127.0.0.1', 20128, a)).toThrow(/lokal\/privat/);
+    }
+    expect(buildAllowlist('runtime', { LLM_BASE_URL: 'http://127.0.0.1:20129/v1' }).llmProxy).toBe(false);
+    expect(buildAllowlist('runtime', { LLM_BASE_URL: 'https://127.0.0.1:20128' }).llmProxy).toBe(true);
+    expect(() => assertTargetAllowed('http:', '127.0.0.1', 20128, ingest)).toThrow(EgressBlockedError);
+  });
+
+  it('isLlmProxy: hanya 127.0.0.1:20128', () => {
+    expect(isLlmProxy(new URL('http://127.0.0.1:20128/v1'))).toBe(true);
+    expect(isLlmProxy(new URL('http://127.0.0.1:2019/'))).toBe(false);
+    expect(isLlmProxy(new URL('https://api.jina.ai/'))).toBe(false);
   });
 
   it.each([
@@ -74,13 +101,24 @@ describe('assertTargetAllowed', () => {
     expect(() => assertTargetAllowed(proto, host, port, allow)).toThrow(EgressBlockedError);
   });
 
-  it('host Jina, registry resmi, dan sufiks .go.id lewat https:443', () => {
-    for (const h of [...JINA_HOSTS, 'cekdptonline.kpu.go.id', 'dukcapil.contoh.go.id', 'API.JINA.AI.'])
+  it('runtime: host Jina lewat https:443; host pemerintah tidak (L2)', () => {
+    for (const h of [...JINA_HOSTS, 'API.JINA.AI.'])
       expect(assertTargetAllowed('https:', h, 443, allow)).toBe(false);
+    for (const h of ['cekdptonline.kpu.go.id', 'dukcapil.contoh.go.id'])
+      expect(() => assertTargetAllowed('https:', h, 443, allow)).toThrow(EgressBlockedError);
+  });
+
+  it('ingest: registry resmi dan sufiks .go.id lewat https:443; Jina dan env operator tidak (L2)', () => {
+    for (const h of ['cekdptonline.kpu.go.id', 'dukcapil.contoh.go.id', 'oss.go.id'])
+      expect(assertTargetAllowed('https:', h, 443, ingest)).toBe(false);
+    expect(() => assertTargetAllowed('http:', 'oss.go.id', 80, ingest)).toThrow(EgressBlockedError);
+    expect(() => assertTargetAllowed('https:', 'api.jina.ai', 443, ingest)).toThrow(EgressBlockedError);
+    const i2 = buildAllowlist('ingest', { LLM_BASE_URL: 'https://llm.contoh.dev/v1' });
+    expect(() => assertTargetAllowed('https:', 'llm.contoh.dev', 443, i2)).toThrow(EgressBlockedError);
   });
 
   it('base URL dari env operator diizinkan persis (skema + host + port), tetapi tidak membuka loopback', () => {
-    const a = buildAllowlist({
+    const a = buildAllowlist('runtime', {
       LLM_BASE_URL: 'https://llm.contoh.dev/v1',
       LLM_EMBED_BASE_URL: 'http://203.0.114.7:8080/v1',
       RERANK_BASE_URL: 'http://127.0.0.1:2019/v1',
@@ -95,7 +133,8 @@ describe('assertTargetAllowed', () => {
   });
 
   it('skema non-http di env diabaikan', () => {
-    expect(buildAllowlist({ LLM_BASE_URL: 'file:///etc/passwd' }).configured.size).toBe(0);
+    expect(buildAllowlist('runtime', { LLM_BASE_URL: 'file:///etc/passwd' }).configured.size).toBe(0);
+    expect(buildAllowlist().hosts.has('api.jina.ai')).toBe(true);
   });
 });
 
