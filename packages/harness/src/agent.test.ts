@@ -39,7 +39,7 @@ describe('alur normal dengan DemoProvider', () => {
     expect(data.klaim.length).toBeGreaterThan(0);
     expect(data.klaim[0]!.kutipan[0]!.textFragmentUrl).toContain('#:~:text=');
     expect(env.store.getUrusanOrThrow(u.id).jenis).toBe('kelahiran');
-    expect(env.store.getUrusanOrThrow(u.id).state).toBe('MEMAHAMI');
+    expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
   });
 
   it('sapaan: assistant_text biasa (non-persyaratan) tanpa tool', async () => {

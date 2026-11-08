@@ -238,7 +238,7 @@ describe('placeholder stabil antar turn tanpa menyimpan nilai asli', () => {
     const provider = new FakeProvider({
       replies: [1, 2, 3].map(() => fakeCompletion({ content: 'baik' })),
     });
-    const env = makeEnv({ provider, caps: { tools: false } });
+    const env = makeEnv({ provider });
     const u = env.store.createUrusan({ jenis: 'akta' });
     await kirim(env, u.id, `NIK saya ${NIK}`);
     await kirim(env, u.id, `NIK anak ${NIK_B}`);
@@ -256,5 +256,53 @@ describe('placeholder stabil antar turn tanpa menyimpan nilai asli', () => {
     const rows = env.store.db.prepare('SELECT key, token FROM pii_placeholders').all() as { key: string }[];
     expect(rows).toHaveLength(2);
     for (const r of rows) expect(r.key).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe('harness memajukan MEMAHAMI -> RENCANA_DIUSULKAN sendiri', () => {
+  const jalankan = async (kode: string | undefined, jenis: string | undefined, teks = 'Halo') => {
+    const provider = new FakeProvider({ replies: [fakeCompletion({ content: 'baik' })] });
+    const env = makeEnv({ provider });
+    const u = env.store.createUrusan({
+      ...(kode ? { kodeKabKota: kode } : {}),
+      ...(jenis ? { jenis: jenis as never } : {}),
+    });
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: teks });
+    return { env, u, out };
+  };
+
+  it('jenis peristiwa + kota diketahui: plan_card dari bundel registry, sumber resmi, state maju (tanpa tool model)', async () => {
+    const { env, u, out } = await jalankan('3312', 'kelahiran');
+    const plan = out.events.find((e) => e.type === 'plan_card');
+    expect(plan).toBeDefined();
+    const langkah = (plan as unknown as { langkah: { sumber: { url: string }[]; id: string }[] }).langkah;
+    expect(langkah.length).toBeGreaterThan(0);
+    for (const l of langkah) expect(l.sumber.length).toBeGreaterThan(0);
+    expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
+    expect(out.events.some((e) => e.type === 'state' && e.state === 'RENCANA_DIUSULKAN')).toBe(true);
+    expect(env.store.verifyChain(u.id).ok).toBe(true);
+  });
+
+  it('tanpa kota atau jenis non-peristiwa: tidak ada rencana otomatis', async () => {
+    for (const [kode, jenis] of [
+      [undefined, 'kelahiran'],
+      ['3312', 'lainnya'],
+      ['3312', 'ktp'],
+    ] as const) {
+      const { env, u, out } = await jalankan(kode, jenis);
+      expect(out.events.some((e) => e.type === 'plan_card')).toBe(false);
+      expect(env.store.getUrusanOrThrow(u.id).state).toBe('MEMAHAMI');
+    }
+  });
+
+  it('turn berikutnya tidak mengusulkan ulang saat sudah RENCANA_DIUSULKAN', async () => {
+    const provider = new FakeProvider({
+      replies: [fakeCompletion({ content: 'a' }), fakeCompletion({ content: 'b' })],
+    });
+    const env = makeEnv({ provider });
+    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'kelahiran' });
+    await runTurn(env.deps, { urusanId: u.id, userText: 'satu' });
+    const out2 = await runTurn(env.deps, { urusanId: u.id, userText: 'dua' });
+    expect(out2.events.some((e) => e.type === 'plan_card')).toBe(false);
   });
 });

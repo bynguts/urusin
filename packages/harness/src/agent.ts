@@ -19,7 +19,7 @@ import type { EventBus } from './bus.js';
 import type { Db } from './db.js';
 import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/contracts';
 import { HarnessError, TurnInProgressError } from './errors.js';
-import { routeByKode } from '@urusin/registry';
+import { findBundel, routeByKode } from '@urusin/registry';
 import { toEvent } from './envelope.js';
 import { buildHandoff } from './grounding.js';
 import { classifyIntent } from './intent.js';
@@ -328,6 +328,7 @@ class TurnRunner {
     let errorCode: string | undefined;
     try {
       await this.body();
+      this.proposeRencana();
     } catch (err) {
       const reason = this.ctrl.signal.aborted ? (this.ctrl.signal.reason as unknown) : undefined;
       if (reason instanceof TurnAbort && reason.kind === 'timeout') {
@@ -378,6 +379,32 @@ class TurnRunner {
       tokensOut: this.tokensOut,
       costIdr: this.costIdr,
     };
+  }
+
+  /**
+   * Harness sendiri yang memajukan MEMAHAMI → RENCANA_DIUSULKAN (tidak bergantung pada model memanggil tool):
+   * begitu jenis peristiwa dan kota diketahui, rencana dibangun deterministik dari bundel registry beserta sumber
+   * resminya. Berlaku juga saat AI mati/kuota habis (jalur dipandu). Rencana tetap hanya usulan sampai warga setuju.
+   */
+  private proposeRencana(): void {
+    const u = this.urusan;
+    if (u.state !== 'MEMAHAMI' || !u.kodeKabKota || !u.jenis) return;
+    const bundel = findBundel(u.jenis);
+    if (!bundel) return;
+    const dipandu = routeByKode(u.kodeKabKota).entry.tier === 'dipandu';
+    this.emit({
+      type: 'plan_card',
+      ringkasan: bundel.judul,
+      langkah: bundel.langkah.map((l) => ({
+        id: l.id,
+        judul: l.judul,
+        jenis: dipandu && l.jenis === 'online-adapter' ? ('online-manual' as const) : l.jenis,
+        ...(l.lokasi ? { lokasi: l.lokasi } : {}),
+        bawa: l.bawa,
+        sumber: l.sourceRef,
+      })),
+    });
+    this.applyTransition('RENCANA_DIUSULKAN');
   }
 
   private async body(): Promise<void> {
