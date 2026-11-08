@@ -36,9 +36,7 @@
         return { pelaku: 'urusin', teks: `Status menjadi: ${LABEL_STATE[tujuan] ?? e.ringkas}` };
       }
       case 'progress':
-        return /Anda/.test(e.ringkas)
-          ? { pelaku: 'anda', teks: e.ringkas }
-          : { pelaku: 'ai', teks: labelProgres(e.ringkas).replace(/…$/, '') };
+        return { pelaku: 'ai', teks: labelProgres(e.ringkas).replace(/…$/, '') };
       case 'grounded_answer':
         return { pelaku: 'ai', teks: 'Menjawab dengan kutipan sumber resmi' };
       case 'handoff':
