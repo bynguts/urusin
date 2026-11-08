@@ -104,6 +104,46 @@ importers:
         specifier: 5.1.0
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
+  apps/pendamping:
+    dependencies:
+      '@urusin/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@urusin/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@urusin/executor':
+        specifier: workspace:*
+        version: link:../../packages/executor
+      playwright-core:
+        specifier: 1.65.0
+        version: 1.65.0
+      ws:
+        specifier: 8.22.1
+        version: 8.22.1
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@playwright/test':
+        specifier: 1.65.0
+        version: 1.65.0
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
+      '@types/ws':
+        specifier: 8.18.2
+        version: 8.18.2
+      '@urusin/fixtures':
+        specifier: workspace:*
+        version: link:../fixtures
+      '@urusin/pendamping-client':
+        specifier: workspace:*
+        version: link:../../packages/pendamping-client
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+
   apps/web:
     dependencies:
       '@urusin/contracts':
@@ -268,6 +308,21 @@ importers:
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6
+      '@vitest/coverage-v8':
+        specifier: 5.1.0
+        version: 5.1.0(vitest@5.1.0)
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+
+  packages/pendamping-client:
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
+      '@urusin/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@vitest/coverage-v8':
         specifier: 5.1.0
         version: 5.1.0(vitest@5.1.0)

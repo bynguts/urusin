@@ -1,0 +1,228 @@
+import { lookup as dnsLookup } from 'node:dns/promises';
+import http from 'node:http';
+import net, { BlockList, isIP } from 'node:net';
+import type { Duplex } from 'node:stream';
+
+/**
+ * Proxy egress pengizin (allowlisting forward proxy) per sesi. Chromium memakai `--proxy-server` ke sini
+ * (termasuk loopback: `<-loopback>`), jadi SEMUA permintaan peramban lewat titik ini:
+ *  1. host:port harus persis ada di allowlist (domain resmi + pihak ketiga terdaftar di :443, fixture persis);
+ *  2. DNS di-resolve DI SINI, lalu setiap alamat diperiksa: privat, loopback, link-local (metadata
+ *     169.254.169.254), CGNAT, multicast, dst. ditolak kecuali entri yang memang eksplisit lokal (fixture);
+ *  3. koneksi dibuka ke ALAMAT yang sudah diperiksa, bukan nama host (aman dari DNS rebinding).
+ * Tidak mencatat path, query, header, atau isi; hanya host yang ditolak.
+ */
+
+const BLOCKED = new BlockList();
+for (const [net4, prefix] of [
+  ['0.0.0.0', 8],
+  ['10.0.0.0', 8],
+  ['100.64.0.0', 10],
+  ['127.0.0.0', 8],
+  ['169.254.0.0', 16],
+  ['172.16.0.0', 12],
+  ['192.0.0.0', 24],
+  ['192.0.2.0', 24],
+  ['192.88.99.0', 24],
+  ['192.168.0.0', 16],
+  ['198.18.0.0', 15],
+  ['198.51.100.0', 24],
+  ['203.0.113.0', 24],
+  ['224.0.0.0', 4],
+  ['240.0.0.0', 4],
+] as const)
+  BLOCKED.addSubnet(net4, prefix, 'ipv4');
+for (const [net6, prefix] of [
+  ['::', 128],
+  ['::1', 128],
+  ['64:ff9b::', 96],
+  ['64:ff9b:1::', 48],
+  ['100::', 64],
+  ['2001::', 23],
+  ['2001:db8::', 32],
+  ['2002::', 16],
+  ['fc00::', 7],
+  ['fe80::', 10],
+  ['fec0::', 10],
+  ['ff00::', 8],
+] as const)
+  BLOCKED.addSubnet(net6, prefix, 'ipv6');
+
+/** True bila alamat IP tidak boleh dihubungi dari peramban (termasuk IPv4-mapped IPv6). */
+export function isBlockedAddress(address: string): boolean {
+  const family = isIP(address);
+  if (family === 0) return true;
+  if (family === 6) {
+    const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address);
+    if (mapped?.[1]) return BLOCKED.check(mapped[1], 'ipv4');
+    return BLOCKED.check(address, 'ipv6');
+  }
+  return BLOCKED.check(address, 'ipv4');
+}
+
+export type EgressRule = {
+  /** Host persis, huruf kecil (tanpa wildcard). */
+  host: string;
+  port: number;
+  /** Hanya untuk fixture lokal yang didaftarkan eksplisit: boleh ke alamat privat/loopback. */
+  allowPrivate?: boolean;
+};
+
+export type Resolver = (host: string) => Promise<string[]>;
+
+const defaultResolver: Resolver = async (host) =>
+  (await dnsLookup(host, { all: true, verbatim: true })).map((a) => a.address);
+
+export type EgressDecision = { ok: true; address: string } | { ok: false; reason: string };
+
+export type EgressProxy = {
+  port: number;
+  /** Host yang ditolak sejak dibuat (untuk event `diblokir`, tanpa path). */
+  onBlocked(listener: (host: string) => void): void;
+  decide(host: string, port: number): Promise<EgressDecision>;
+  close(): Promise<void>;
+};
+
+/** Normalisasi host dari permintaan (buang kurung IPv6, titik akhir, huruf besar). */
+function normHost(host: string): string {
+  return host
+    .replace(/^\[|\]$/g, '')
+    .replace(/\.$/, '')
+    .toLowerCase();
+}
+
+export function createEgressPolicy(rules: readonly EgressRule[], resolve: Resolver = defaultResolver) {
+  const byKey = new Map(rules.map((r) => [`${normHost(r.host)}:${r.port}`, r]));
+  return async function decide(rawHost: string, port: number): Promise<EgressDecision> {
+    const host = normHost(rawHost);
+    const rule = byKey.get(`${host}:${port}`);
+    if (!rule) return { ok: false, reason: 'host_tidak_diizinkan' };
+    let addresses: string[];
+    try {
+      addresses = isIP(host) ? [host] : await resolve(host);
+    } catch {
+      return { ok: false, reason: 'dns_gagal' };
+    }
+    if (addresses.length === 0) return { ok: false, reason: 'dns_kosong' };
+    // Semua alamat harus lolos: satu alamat privat = tolak (cegah rebinding berbasis round-robin).
+    if (!rule.allowPrivate && addresses.some(isBlockedAddress)) return { ok: false, reason: 'alamat_privat' };
+    return { ok: true, address: addresses[0]! };
+  };
+}
+
+function parseAuthority(authority: string): { host: string; port: number } | null {
+  const m = /^(\[[0-9a-fA-F:.]+\]|[^:[\]/]+):(\d{1,5})$/.exec(authority);
+  if (!m?.[1] || !m[2]) return null;
+  const port = Number(m[2]);
+  return port > 0 && port < 65536 ? { host: m[1], port } : null;
+}
+
+const HOP_BY_HOP = [
+  'proxy-connection',
+  'proxy-authorization',
+  'connection',
+  'keep-alive',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+];
+
+export async function startEgressProxy(
+  rules: readonly EgressRule[],
+  opts: { resolve?: Resolver } = {},
+): Promise<EgressProxy> {
+  const decide = createEgressPolicy(rules, opts.resolve);
+  const listeners: ((host: string) => void)[] = [];
+  const sockets = new Set<Duplex>();
+  const blocked = (host: string) => {
+    for (const l of listeners) l(normHost(host));
+  };
+  const track = (s: Duplex) => {
+    sockets.add(s);
+    s.on('close', () => sockets.delete(s));
+    s.on('error', () => s.destroy());
+  };
+
+  const server = http.createServer(async (req, res) => {
+    // Permintaan HTTP biasa lewat proxy memakai absolute-form: GET http://host:port/path
+    let url: URL;
+    try {
+      url = new URL(req.url ?? '');
+    } catch {
+      res.writeHead(400).end();
+      return;
+    }
+    if (url.protocol !== 'http:') {
+      res.writeHead(400).end();
+      return;
+    }
+    const port = Number(url.port || 80);
+    const d = await decide(url.hostname, port);
+    if (!d.ok) {
+      blocked(url.hostname);
+      res.writeHead(403, { 'content-type': 'text/plain' }).end('Diblokir oleh allowlist egress Urusin');
+      return;
+    }
+    const headers: http.OutgoingHttpHeaders = { ...req.headers, host: url.host };
+    for (const h of HOP_BY_HOP) delete headers[h];
+    const upstream = http.request(
+      { host: d.address, port, method: req.method, path: url.pathname + url.search, headers, setHost: false },
+      (up) => {
+        res.writeHead(up.statusCode ?? 502, up.headers);
+        up.pipe(res);
+      },
+    );
+    upstream.on('error', () => {
+      if (!res.headersSent) res.writeHead(502);
+      res.end();
+    });
+    req.pipe(upstream);
+  });
+  server.on('connection', track);
+
+  server.on('connect', async (req, client: Duplex, head: Buffer) => {
+    track(client);
+    const target = parseAuthority(req.url ?? '');
+    const d = target ? await decide(target.host, target.port) : ({ ok: false, reason: 'rusak' } as const);
+    if (!target || !d.ok) {
+      if (target) blocked(target.host);
+      client.end('HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n');
+      return;
+    }
+    const upstream = net.connect(target.port, d.address, () => {
+      client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+      if (head.length > 0) upstream.write(head);
+      upstream.pipe(client);
+      client.pipe(upstream);
+    });
+    track(upstream);
+    upstream.on('error', () => client.end('HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n'));
+  });
+
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const port = (server.address() as net.AddressInfo).port;
+  return {
+    port,
+    onBlocked: (l) => void listeners.push(l),
+    decide,
+    close: () =>
+      new Promise<void>((ok) => {
+        for (const s of sockets) s.destroy();
+        server.close(() => ok());
+      }),
+  };
+}
+
+/** Aturan egress satu sesi: host https resmi + pihak ketiga (:443) dan origin fixture persis. */
+export function egressRules(httpsHosts: readonly string[], fixtureOrigins: readonly string[]): EgressRule[] {
+  const rules: EgressRule[] = httpsHosts.map((host) => ({ host, port: 443 }));
+  for (const origin of fixtureOrigins) {
+    const u = new URL(origin);
+    const port = Number(u.port || (u.protocol === 'https:' ? 443 : 80));
+    const host = normHost(u.hostname);
+    const local = host === 'localhost' || (isIP(host) !== 0 && isBlockedAddress(host));
+    rules.push({ host, port, allowPrivate: local });
+  }
+  return rules;
+}
