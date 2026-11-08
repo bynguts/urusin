@@ -161,12 +161,15 @@ body {
   letter-spacing: -0.01em;
 }
 
-h1,
-h2,
-h3 {
-  font-weight: 480;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
+/* Di layer base supaya kelas utilitas pada judul (berat, tracking, leading) tetap berlaku. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-weight: 480;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+  }
 }
 
 :focus-visible {

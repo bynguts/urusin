@@ -88,7 +88,7 @@
         Urusan yang Anda mulai akan muncul di sini beserta statusnya.
       </p>
       <a
-        href={resolve('/')}
+        href={resolve('/beranda')}
         class="mt-2 inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90"
       >
         <Icon name="tambah" class="size-4.5" /> Mulai urusan
