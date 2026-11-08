@@ -426,7 +426,10 @@ describe('timeout, pembatalan, konkurensi', () => {
     const { ragCariPengetahuan } = await import('./builtin-tools.js');
     const { LAYANAN_KORPUS } = await import('@urusin/rag');
     const { z } = await import('zod');
-    const schema = z.toJSONSchema(ragCariPengetahuan.input, { target: 'draft-7', io: 'input' }) as {
+    const schema = z.toJSONSchema(ragCariPengetahuan.input, {
+      target: 'draft-7',
+      io: 'input',
+    }) as unknown as {
       properties: { layanan: { enum: string[]; description: string } };
     };
     expect(schema.properties.layanan.enum).toEqual([...LAYANAN_KORPUS]);
