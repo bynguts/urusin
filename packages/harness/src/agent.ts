@@ -1,3 +1,4 @@
+import type { RagSearcher } from '@urusin/rag';
 import {
   LlmContentFilterError,
   LlmLengthError,
@@ -56,6 +57,7 @@ export type AgentDeps = {
   quota: QuotaMeter;
   tracer: Tracer;
   ragDb?: Db | undefined;
+  ragSearch?: RagSearcher['search'] | undefined;
   bus?: EventBus | undefined;
   config?: Partial<AgentConfig> | undefined;
   now?: (() => Date) | undefined;
@@ -626,6 +628,7 @@ class TurnRunner {
         model: this.deps.model,
         caps: this.deps.caps,
         ragDb: this.deps.ragDb,
+        ragSearch: this.deps.ragSearch,
         now: this.now,
       },
       nonce: this.nonce,

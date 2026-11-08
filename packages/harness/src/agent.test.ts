@@ -422,6 +422,44 @@ describe('timeout, pembatalan, konkurensi', () => {
     expect(env.store.getChunks(u.id).length).toBeGreaterThan(0);
   });
 
+  it('rag__cari_pengetahuan: pencari produksi (ragSearch async) dipakai bila ada, dengan wilayah urusan', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        fakeCompletion({
+          toolCalls: [{ name: 'rag__cari_pengetahuan', arguments: JSON.stringify({ query: 'syarat akta' }) }],
+        }),
+        fakeCompletion({ content: 'Selesai.' }),
+      ],
+    });
+    const inputs: unknown[] = [];
+    const ragSearch = async (input: unknown) => {
+      inputs.push(input);
+      return {
+        mode: 'hybrid' as const,
+        tanpaHasil: false,
+        hasil: [
+          {
+            id: 'hybrid-1',
+            text: 'Akta kelahiran: surat keterangan lahir (hasil hybrid + rerank).',
+            skor: 0.9,
+            kutipan: { url: 'https://contoh.go.id/akta', judul: 'Akta', instansi: 'Disdukcapil' },
+            verifiedAt: '2026-11-01T00:00:00.000Z',
+            kodeWilayah: '3312',
+            layanan: 'adminduk',
+          },
+        ],
+      };
+    };
+    const env = makeEnv({ provider, ragSearch });
+    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    advance(env, u.id, ['MEMAHAMI']);
+    await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
+    expect(inputs).toEqual([{ query: 'syarat akta', kodeKabKota: '3312', k: 4 }]);
+    expect(env.store.getChunks(u.id).map((c) => c.text)).toContain(
+      'Akta kelahiran: surat keterangan lahir (hasil hybrid + rerank).',
+    );
+  });
+
   it('rag__cari_pengetahuan: layanan ditawarkan sebagai enum kategori; nilai lain diabaikan', async () => {
     const { ragCariPengetahuan } = await import('./builtin-tools.js');
     const { LAYANAN_KORPUS } = await import('@urusin/rag');
