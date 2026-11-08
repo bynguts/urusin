@@ -1,7 +1,11 @@
 import type { Handle } from '@sveltejs/kit/hooks';
+import { assertHostEnv } from '#lib/server/hosts.js';
 import { checkOrigin } from '#lib/server/origin.js';
 import { publicOrigin } from '#lib/server/runtime.js';
 import { ensureSession } from '#lib/server/sesi.js';
+
+// Gagal cepat saat startup bila DOMAIN/VERIFY_HOST/FIXTURES_HOST bukan salah satu set di deploy/hosts.json.
+assertHostEnv(process.env);
 
 /**
  * Anti-CSRF (rencana §3.2): request pengubah state wajib membawa `Origin` yang PERSIS sama dengan

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { diffContracts, diffSchemas } from '../lib/contract-diff.mjs';
+import { diffContracts, diffSchemas, isRequestExport } from '../lib/contract-diff.mjs';
 
 const obj = (properties, required = Object.keys(properties)) => ({ type: 'object', properties, required });
 const msgs = (a, b) => diffSchemas(a, b).map((v) => v.message);
@@ -53,5 +53,46 @@ describe('diffContracts', () => {
   it('menyertakan nama ekspor pada path', () => {
     const v = diffContracts({ A: obj({ x: { type: 'string' } }) }, { A: obj({}) });
     assert.equal(v[0].path, '.x'.replace('.x', 'A.x'));
+  });
+});
+
+describe('properti required baru: arah skema', () => {
+  const lama = obj({ x: { type: 'string' } });
+  const baru = obj({ x: { type: 'string' }, y: { type: 'string' } });
+  const bersarang = (o) => obj({ item: o });
+
+  it('klasifikasi nama ekspor', () => {
+    assert.equal(isRequestExport('TurnRequestSchema'), true);
+    assert.equal(isRequestExport('SambungKlaimRequestSchema'), true);
+    assert.equal(isRequestExport('TurnResponseSchema'), false);
+    assert.equal(isRequestExport('ExecutionRequestEventSchema'), false);
+    assert.equal(isRequestExport('PlanCardEventSchema'), false);
+  });
+  it('skema permintaan: required baru pada objek yang sudah ada melanggar', () => {
+    const v = diffContracts({ TurnRequestSchema: lama }, { TurnRequestSchema: baru });
+    assert.deepEqual(
+      v.map((x) => [x.path, x.message]),
+      [['TurnRequestSchema.y', 'properti required baru pada skema permintaan']],
+    );
+  });
+  it('skema permintaan: required baru pada objek bersarang melanggar, optional baru lolos', () => {
+    const v = diffContracts({ TurnRequestSchema: bersarang(lama) }, { TurnRequestSchema: bersarang(baru) });
+    assert.deepEqual(
+      v.map((x) => x.path),
+      ['TurnRequestSchema.item.y'],
+    );
+    const optional = obj({ x: { type: 'string' }, y: { type: 'string' } }, ['x']);
+    assert.deepEqual(diffContracts({ TurnRequestSchema: lama }, { TurnRequestSchema: optional }), []);
+  });
+  it('skema respons dan event: required baru diizinkan', () => {
+    assert.deepEqual(diffContracts({ TurnResponseSchema: lama }, { TurnResponseSchema: baru }), []);
+    assert.deepEqual(diffContracts({ DoneEventSchema: lama }, { DoneEventSchema: baru }), []);
+    assert.deepEqual(
+      diffContracts({ ExecutionRequestEventSchema: lama }, { ExecutionRequestEventSchema: baru }),
+      [],
+    );
+  });
+  it('tanpa arah (diffSchemas langsung) required baru tetap lolos', () => {
+    assert.deepEqual(diffSchemas(lama, baru), []);
   });
 });

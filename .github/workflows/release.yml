@@ -214,7 +214,14 @@ jobs:
               exit 1
             fi
             docker buildx imagetools create -t "${image}:${TAG}" "${image}@${digest}"
-            echo "- \`${image}:${TAG}\` = \`${image}@${digest}\`" >> "$GITHUB_STEP_SUMMARY"
+            # Tag harus persis image yang diuji: digest :<tag> wajib sama dengan digest :<sha> setelah alias.
+            tag_digest="$(docker buildx imagetools inspect "${image}:${TAG}" --format '{{.Manifest.Digest}}')"
+            sha_digest="$(docker buildx imagetools inspect "${image}:${GITHUB_SHA}" --format '{{.Manifest.Digest}}')"
+            if [ -z "$tag_digest" ] || [ "$tag_digest" != "$sha_digest" ]; then
+              echo "::error::digest ${image}:${TAG} (${tag_digest}) tidak sama dengan ${image}:${GITHUB_SHA} (${sha_digest})."
+              exit 1
+            fi
+            echo "- \`${image}:${TAG}\` = \`${image}@${tag_digest}\` (sama dengan \`:${GITHUB_SHA}\`)" >> "$GITHUB_STEP_SUMMARY"
           done
 
   github-release:

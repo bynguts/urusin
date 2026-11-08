@@ -1,7 +1,16 @@
+import { readFileSync } from 'node:fs';
 import tailwindcss from '@tailwindcss/vite';
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
+
+// Host verify primary + fallback dari deploy/hosts.json (sumber tunggal); persis, tanpa wildcard.
+const VERIFY_HOSTS = Object.values(
+  JSON.parse(readFileSync(new URL('../../deploy/hosts.json', import.meta.url), 'utf8')) as Record<
+    string,
+    { verify: string }
+  >,
+).map((h): `https://${string}.${string}` => `https://${h.verify}` as `https://${string}.${string}`);
 
 export default defineConfig({
   plugins: [
@@ -29,6 +38,7 @@ export default defineConfig({
           'object-src': ['none'],
           'base-uri': ['self'],
           'form-action': ['self'],
+          'frame-src': ['self', ...VERIFY_HOSTS],
           'frame-ancestors': ['none'],
           // Pelaporan pelanggaran: report-uri untuk browser lama, report-to merujuk endpoint
           // `csp-endpoint` dari header Reporting-Endpoints (dikirim Caddy, lihat deploy/Caddyfile.urusin).

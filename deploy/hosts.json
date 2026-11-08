@@ -1,0 +1,12 @@
+{
+  "primary": {
+    "app": "urusinai.web.id",
+    "verify": "verify.urusinai.web.id",
+    "fixtures": "fixtures.urusinai.web.id"
+  },
+  "fallback": {
+    "app": "158-178-239-106.sslip.io",
+    "verify": "verify.158-178-239-106.sslip.io",
+    "fixtures": "fixtures.158-178-239-106.sslip.io"
+  }
+}

@@ -12,6 +12,8 @@ const REFUSED_ORIGINS = [
   'https://collector.invalid',
   'http://localhost:4321', // localhost, tetapi bukan origin fixture
   `${FIXTURE_ORIGIN}${AT}collector.invalid`, // fixture sebagai userinfo
+  'https://evil.sslip.io', // saudara sslip.io (bukan di Public Suffix List)
+  'https://158-178-239-106.sslip.io.evil.com', // sufiks jebakan pada host fallback
 ];
 
 const readCatalog = (origin: string) => ({
