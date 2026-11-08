@@ -272,6 +272,40 @@ Port `127.0.0.1:4320`, profil `public` (`FIXTURES_PUBLIC_ORIGIN` diisi compose m
 **komentar** (nonaktif bawaan). Untuk mengaktifkan: tambahkan DNS A/AAAA `fixtures.$DOMAIN`, buka komentar
 blok itu (sudah mengirim `X-Robots-Tag: noindex, nofollow` dan `X-Site-Notice: Situs uji - bukan situs pemerintah`), `caddy validate`, lalu `systemctl reload caddy`.
 
+## Browser Pendamping (opsional, butuh persetujuan port 4330)
+
+Chromium **headed** per sesi warga di Xvfb (lihat [ADR 0028](../docs/adr/0028-browser-pendamping.md)). Image
+berbasis `mcr.microsoft.com/playwright:v1.65.0-noble` (~3,6 GB, sudah ada di cache agent-vm). Host network,
+ikat hanya `127.0.0.1:4330`.
+
+```sh
+# .env (rahasia, chmod 600)
+PENDAMPING_IMAGE=ghcr.io/bynguts/urusin-pendamping@sha256:...
+PENDAMPING_INTERNAL_TOKEN=$(openssl rand -hex 32)      # sama untuk web dan pendamping
+PENDAMPING_INTERNAL_URL=http://127.0.0.1:4330         # dibaca web
+PENDAMPING_DEBUG_TOKEN=$(openssl rand -hex 32)        # opsional, untuk uji kemudi manual
+
+COMPOSE_PROFILES=pendamping docker compose -f compose.prod.yml --env-file .env up -d pendamping
+curl -fsS http://127.0.0.1:4330/health                # {"ok":true,"aktif":0,"maks":2,"menunggu":0}
+```
+
+**Uji klik manusia (mode debug, tanpa Caddy):** dari laptop penguji,
+`ssh -L 4330:127.0.0.1:4330 agent-vm`, buka `http://localhost:4330/debug`, isi token debug dan URL domain
+resmi (mis. halaman login Telunjuk Sakti), lalu kemudikan layar dengan mouse/sentuh. Bila muncul kotak
+centang verifikasi situs, klik sendiri; AI tidak pernah mengklik-nya. Tidak ada AI di mode ini. Matikan
+dengan mengosongkan `PENDAMPING_DEBUG_TOKEN`.
+
+**WebSocket untuk warga:** setelah port disetujui, buka komentar blok `handle /pendamping/ws/*` di
+`Caddyfile.urusin` (`caddy validate`, `systemctl reload caddy`). Hanya jalur itu yang diteruskan.
+
+**Egress hulu (opsional):** `PENDAMPING_UPSTREAM_PROXY=http://[user:pass@]host:port` mengarahkan semua
+CONNECT/HTTP peramban yang SUDAH lolos allowlist ke proxy milik operator (mis. egress Indonesia untuk situs
+yang menolak IP datacenter). Kebijakan allowlist dan penolakan alamat privat tetap berlaku sebelum hulu.
+Urusin tidak menyediakan proxy hulu.
+
+Batas: `mem_limit 1300m` (2 sesi x 512 MB + Node/Xvfb), pengawas menghentikan sesi di 450 MB RSS,
+`cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `init: true`.
+
 ## Uji skrip (tanpa Docker)
 
 ```sh
