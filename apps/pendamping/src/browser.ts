@@ -20,10 +20,11 @@ import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
 import { runnerExpression } from './runner-script.js';
 import type { ActiveRun, Frame, JenisFokus, RunFactory, RunInit } from './sessions.js';
-import { detectBotWall, suspicious } from './waf.js';
+import { createPantauTantangan, isChallengeFrameUrl, isInterstitialTitle } from './verifikasi.js';
+import { detectBotWall, suspicious, wallBisaDiverifikasi } from './waf.js';
 
 /**
- * Satu sesi = satu proses Chromium (headless, profil sementara non-persisten) di belakang proxy egress
+ * Satu sesi = satu proses Chromium (headed di Xvfb, profil sementara non-persisten) di belakang proxy egress
  * sendiri. Tidak ada stealth/anti-deteksi: agen pengguna bawaan Chromium, flag otomasi bawaan Playwright.
  * Frame screencast hanya diteruskan ke perangkat warga, tidak pernah disimpan atau dicatat.
  */
@@ -135,6 +136,12 @@ async function sessionMemMb(userDataDir: string, cdp: CDPSession): Promise<numbe
   const heap = (await cdp.send('Runtime.getHeapUsage')) as { usedSize: number };
   return Math.round(heap.usedSize / 1024 / 1024);
 }
+
+const PESAN_VERIFIKASI =
+  'Situs meminta verifikasi bahwa Anda manusia. Selesaikan sendiri (ketuk kotak verifikasi); AI menunggu dan tidak akan mengekliknya.';
+
+/** Widget Turnstile sudah menghasilkan token? (hanya ada/tidaknya; nilai token tidak pernah dibaca keluar). */
+const TOKEN_TURNSTILE_ADA = `Array.from(document.querySelectorAll('input[name="cf-turnstile-response"]')).some((e) => e.value.length > 0)`;
 
 export function createBrowserFactory(config: Config): RunFactory {
   return (init) => startBrowserRun(config, init);
@@ -310,6 +317,15 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   let viewerSend: ((f: Frame) => void) | null = null;
   let screencasting = false;
   let status: Cursor['status'] | undefined;
+  // Verifikasi situs (B-b): nomor dokumen utama, sinyal tantangan dari respons terakhir, mesin status.
+  let navKe = 0;
+  let tantanganRespons = false;
+  let tantanganPoll: ReturnType<typeof setInterval> | undefined;
+  let sorotTantanganTerkirim = false;
+  let pesanTantangan = '';
+  const pantau = createPantauTantangan(2);
+  /** AI diam selama warga memegang kendali ATAU tantangan situs belum diselesaikan warga. */
+  const ditahan = () => manual || pantau.aktif;
 
   const mainFrameId = async () =>
     ((await cdp.send('Page.getFrameTree')) as { frameTree: { frame: { id: string } } }).frameTree.frame.id;
@@ -338,8 +354,9 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     }
   }
 
-  const waitResume = () =>
-    manual && !destroyed ? new Promise<void>((r) => resumeWaiters.push(r)) : Promise.resolve();
+  const waitResume = async () => {
+    while (ditahan() && !destroyed) await new Promise<void>((r) => resumeWaiters.push(r));
+  };
 
   const driver: Driver = {
     openTab: async () => 1,
@@ -351,7 +368,8 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     },
     async run(_tab, op) {
       // Saat warga memegang kendali, op yang mengubah halaman menunggu; pemeriksaan (check) tetap jalan.
-      if (MUTATING.has(op.kind)) await waitResume();
+      // Selama tantangan situs aktif SEMUA op menunggu: AI tidak menyentuh halaman tantangan sama sekali.
+      if (MUTATING.has(op.kind) || pantau.aktif) await waitResume();
       if (destroyed) return { ok: false, code: 'CANCELLED', message: 'sesi berakhir' };
       return evaluate(op);
     },
@@ -380,7 +398,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     switch (c.status) {
       case 'running':
       case 'waiting_load':
-        if (!manual) hooks.mode('ai', 'AI sedang mengisi formulir.');
+        if (!ditahan()) hooks.mode('ai', 'AI sedang mengisi formulir.');
         if (c.stepIndex !== lastLangkah && c.stepIndex < steps.length) {
           lastLangkah = c.stepIndex;
           hooks.event({
@@ -406,7 +424,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
             ...(box ? { sorot: box } : {}),
           });
         })();
-        gatePoll ??= setInterval(() => void interp.recheckGate(), 1000);
+        gatePoll ??= setInterval(() => void (pantau.aktif || interp.recheckGate()), 1000);
         return;
       }
       case 'handoff':
@@ -465,21 +483,35 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   });
   page.on('load', () => {
     loading = false;
-    void interp.onTabUpdated(1, { status: 'complete' });
+    // Periksa tantangan dulu agar interpreter tidak pernah melangkah di halaman tantangan.
+    void periksaTantangan().finally(() => void interp.onTabUpdated(1, { status: 'complete' }));
   });
   page.on('response', async (resp) => {
     const req = resp.request();
     if (!req.isNavigationRequest() || req.frame() !== page.mainFrame()) return;
+    navKe++;
     const info = { status: resp.status(), headers: resp.headers() };
+    tantanganRespons = /challenge/i.test(info.headers['cf-mitigated'] ?? '');
+    if (tantanganRespons) void tanganiTantangan(true);
     if (!suspicious(info)) return;
+    const nav = navKe;
     const body = await resp.text().catch(() => '');
     const wall = detectBotWall({ ...info, body: body.slice(0, 20_000) });
-    if (wall)
-      hooks.ended(
-        'dipandu',
-        'drift',
-        'Situs instansi menolak peramban server Urusin (perlindungan bot). Kami beralih ke panduan: buka situs resmi di perangkat Anda sendiri.',
-      );
+    if (!wall || nav !== navKe) return;
+    if (wallBisaDiverifikasi(wall)) {
+      tantanganRespons = true;
+      return void tanganiTantangan(true);
+    }
+    hooks.ended(
+      'dipandu',
+      'drift',
+      'Situs instansi memblokir peramban server Urusin (perlindungan bot, tanpa verifikasi yang bisa Anda selesaikan). Kami beralih ke panduan: buka situs resmi di perangkat Anda sendiri.',
+    );
+  });
+  // Widget Turnstile yang tertanam di halaman (bukan interstitial) juga diperiksa saat frame-nya muncul.
+  page.on('frameattached', () => void periksaTantangan());
+  page.on('framenavigated', (f) => {
+    if (f !== page.mainFrame() && isChallengeFrameUrl(f.url())) void periksaTantangan();
   });
 
   // Ack CDP ditunda sebesar jeda fps: Chromium tidak meng-encode frame lebih cepat dari yang dikirim (CPU host
@@ -522,20 +554,24 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
 
   const touch = createTouchMapper();
   let fokusTerakhir: JenisFokus | undefined;
+  /** Evaluasi ekspresi baca-saja di dunia terisolasi dokumen utama (tidak terlihat skrip halaman). */
+  const nilaiTerisolasi = async (expression: string): Promise<unknown> => {
+    const { executionContextId } = (await cdp.send('Page.createIsolatedWorld', {
+      frameId: await mainFrameId(),
+      worldName: 'urusin-baca',
+      grantUniveralAccess: false,
+    })) as { executionContextId: number };
+    const r = (await cdp.send('Runtime.evaluate', {
+      expression,
+      contextId: executionContextId,
+      returnByValue: true,
+    })) as { result: { value?: unknown } };
+    return r.result.value;
+  };
   const periksaFokus = async () => {
     if (destroyed) return;
     try {
-      const { executionContextId } = (await cdp.send('Page.createIsolatedWorld', {
-        frameId: await mainFrameId(),
-        worldName: 'urusin-fokus',
-        grantUniveralAccess: false,
-      })) as { executionContextId: number };
-      const r = (await cdp.send('Runtime.evaluate', {
-        expression: FOKUS_EXPR,
-        contextId: executionContextId,
-        returnByValue: true,
-      })) as { result: { value?: unknown } };
-      const jenis = r.result.value as JenisFokus;
+      const jenis = (await nilaiTerisolasi(FOKUS_EXPR)) as JenisFokus;
       if (typeof jenis === 'string' && jenis !== fokusTerakhir) {
         fokusTerakhir = jenis;
         hooks.fokus(jenis);
@@ -549,6 +585,89 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     resumeWaiters = [];
     for (const r of w) r();
   };
+
+  /** Kotak iframe tantangan (juga di shadow root tertutup, lewat CDP), relatif viewport, untuk disorot. */
+  const sorotTantangan = async (): Promise<PendampingSorot | undefined> => {
+    const f = page.frames().find((x) => x !== page.mainFrame() && isChallengeFrameUrl(x.url()));
+    const el = await f?.frameElement().catch(() => null);
+    const b = await el?.boundingBox().catch(() => null);
+    await el?.dispose().catch(() => {});
+    return b && b.width > 0 && b.height > 0
+      ? { x: b.x, y: b.y, lebar: b.width, tinggi: b.height }
+      : undefined;
+  };
+
+  /**
+   * Ada tantangan di dokumen ini? Header cf-mitigated/penanda bot wall respons terakhir, judul interstitial,
+   * atau widget Turnstile yang belum menghasilkan token (nilai token tidak dibaca, hanya ada/tidaknya).
+   */
+  const adaTantangan = async (): Promise<boolean> => {
+    if (tantanganRespons) return true;
+    if (isInterstitialTitle(await page.title().catch(() => ''))) return true;
+    if (!page.frames().some((x) => x !== page.mainFrame() && isChallengeFrameUrl(x.url()))) return false;
+    const selesai = await nilaiTerisolasi(TOKEN_TURNSTILE_ADA).catch(() => false);
+    return selesai !== true;
+  };
+
+  let memeriksa = false;
+  async function periksaTantangan(): Promise<void> {
+    if (destroyed || memeriksa) return;
+    memeriksa = true;
+    try {
+      await tanganiTantangan(await adaTantangan());
+    } finally {
+      memeriksa = false;
+    }
+  }
+
+  /** Diserialkan: pemeriksaan dari respons, load, frame, dan poll tidak saling mendahului. */
+  let antreTantangan = Promise.resolve();
+  function tanganiTantangan(ada: boolean): Promise<void> {
+    antreTantangan = antreTantangan.then(() => langkahTantangan(ada)).catch(() => {});
+    return antreTantangan;
+  }
+  async function langkahTantangan(ada: boolean): Promise<void> {
+    if (destroyed) return;
+    const hasil = pantau.amati(ada, navKe);
+    if (hasil === 'tidak_ada') return;
+    if (hasil === 'gagal') {
+      clearInterval(tantanganPoll);
+      tantanganPoll = undefined;
+      return hooks.ended(
+        'dipandu',
+        'drift',
+        'Situs instansi tetap menolak verifikasi dari peramban server Urusin. Kami beralih ke panduan: buka situs resmi di perangkat Anda sendiri.',
+      );
+    }
+    if (hasil === 'lolos') {
+      clearInterval(tantanganPoll);
+      tantanganPoll = undefined;
+      hooks.activity();
+      if (manual || status === 'waiting_gate' || status === 'handoff')
+        hooks.mode('takeover', 'Verifikasi selesai. Lanjutkan sendiri.');
+      else hooks.mode('ai', 'Verifikasi selesai. AI melanjutkan pengisian.');
+      resume();
+      return;
+    }
+    // mulai / ulang / masih: warga memegang kendali; AI tidak pernah mengeklik kotak verifikasi.
+    if (hasil === 'mulai' || hasil === 'ulang') {
+      sorotTantanganTerkirim = false;
+      pesanTantangan =
+        hasil === 'ulang' ? 'Verifikasi belum diterima situs. Coba sekali lagi.' : PESAN_VERIFIKASI;
+      hooks.mode('takeover', pesanTantangan);
+      tantanganPoll ??= setInterval(() => void periksaTantangan(), 1000);
+    }
+    if (sorotTantanganTerkirim && hasil === 'masih') return;
+    const sorot = await sorotTantangan();
+    if (hasil === 'masih' && !sorot) return;
+    sorotTantanganTerkirim = sorot !== undefined;
+    hooks.event({
+      jenis: 'giliran_anda',
+      alasan: 'verifikasi_situs',
+      pesan: pesanTantangan,
+      ...(sorot ? { sorot } : {}),
+    });
+  }
 
   return {
     async mulaiAi() {
@@ -577,6 +696,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     kembalikan() {
       manual = false;
       resume();
+      if (pantau.aktif) return hooks.mode('takeover', PESAN_VERIFIKASI);
       // Gerbang warga belum terpenuhi: tetap giliran warga; selain itu AI lanjut.
       if (status === 'waiting_gate') void interp.recheckGate();
       else if (status !== 'handoff') hooks.mode('ai', 'AI melanjutkan pengisian.');
@@ -605,6 +725,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
       destroyed = true;
       stopGatePoll();
       clearInterval(memTimer);
+      clearInterval(tantanganPoll);
       resume();
       viewerSend = null;
       await interp.cancel().catch(() => {});

@@ -226,7 +226,7 @@ describe('deteksi WAF / bot wall', () => {
       'cloudflare-challenge',
     );
     expect(detectBotWall({ status: 200, headers: { 'cf-mitigated': 'challenge' } })).toBe(
-      'cloudflare-mitigated',
+      'cloudflare-challenge',
     );
     expect(
       detectBotWall({ status: 403, headers: {}, body: 'Request unsuccessful. Incapsula incident ID: 1' }),

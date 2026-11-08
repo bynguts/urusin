@@ -1,6 +1,8 @@
 /**
  * Deteksi WAF / bot wall pada respons dokumen utama. Urusin TIDAK mencoba menembus (tanpa stealth, tanpa
- * pemecah CAPTCHA): bila terdeteksi, sesi berhenti dan urusan beralih ke mode dipandu.
+ * pemecah CAPTCHA). Tantangan yang bisa diselesaikan manusia (Cloudflare challenge, DDoS-Guard) diserahkan
+ * ke warga sebagai takeover `verifikasi_situs` (verifikasi.ts); blokir keras (tanpa apa pun yang bisa
+ * diselesaikan warga) langsung beralih ke mode dipandu.
  * CAPTCHA biasa di formulir login (diketik warga) BUKAN bot wall.
  */
 export type ResponseInfo = {
@@ -34,10 +36,16 @@ export function suspicious(r: Pick<ResponseInfo, 'status' | 'headers'>): boolean
 /** Nama penanda bila respons adalah bot wall, selain itu null. */
 export function detectBotWall(r: ResponseInfo): string | null {
   const mitigated = r.headers['cf-mitigated'];
-  if (mitigated && /challenge|block/i.test(mitigated)) return 'cloudflare-mitigated';
+  if (mitigated && /challenge/i.test(mitigated)) return 'cloudflare-challenge';
+  if (mitigated && /block/i.test(mitigated)) return 'cloudflare-block';
   if (!suspicious(r)) return null;
   const body = r.body ?? '';
   for (const m of MARKERS) if (m.re.test(body)) return m.nama;
   if (r.status === 429) return 'rate-limit';
   return null;
+}
+
+/** Bot wall berupa tantangan yang bisa diselesaikan warga sendiri (bukan blokir keras). */
+export function wallBisaDiverifikasi(nama: string): boolean {
+  return nama === 'cloudflare-challenge' || nama === 'ddos-guard';
 }
