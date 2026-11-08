@@ -1,9 +1,20 @@
-import { byName, byRole, css, fill, gate, nav, urlIncludes, type Step } from '@urusin/core';
+import {
+  byName,
+  byRole,
+  css,
+  egressAllowedHosts,
+  fill,
+  gate,
+  nav,
+  urlIncludes,
+  type Step,
+} from '@urusin/core';
 import { describe, expect, it } from 'vitest';
 import {
   ADAPTERS,
   buildProgram,
   finalGateIndex,
+  hostsSesi,
   requiredData,
   type Adapter,
   type Params,
@@ -120,14 +131,44 @@ describe('adapter bawaan', () => {
     const uji: Record<string, Adapter> = {
       x: {
         origin: 'https://telunjuksakti.wonogirikab.go.id',
+        hosts: [],
         flows: { swafoto: { langkah: () => [nav('/a')], kamera: true } },
       },
-      luar: { origin: 'https://contoh.example', flows: { a: { langkah: () => [nav('/a')] } } },
+      luar: { origin: 'https://contoh.example', hosts: [], flows: { a: { langkah: () => [nav('/a')] } } },
     };
     expect(buildProgram('x', 'swafoto', {}, uji)).toMatchObject({ ok: false, code: 'PERLU_PERANGKAT_WARGA' });
     expect(buildProgram('luar', 'a', {}, uji)).toMatchObject({
       ok: false,
       code: 'ADAPTER_ORIGIN_NOT_OFFICIAL',
+    });
+  });
+
+  it('host egress per adapter: hanya yang dibutuhkan situs itu, semuanya terdaftar di registry', () => {
+    const union = new Set(egressAllowedHosts());
+    for (const [id, a] of Object.entries(ADAPTERS)) {
+      for (const h of a.hosts) expect(union.has(h), `${id}: ${h}`).toBe(true);
+      const flow = Object.keys(a.flows)[0]!;
+      const r = buildProgram(id, flow, { layanan_id: 1 });
+      expect(r.ok, id).toBe(true);
+      if (r.ok) expect(hostsSesi(r.program)).toEqual([new URL(a.origin).hostname, ...a.hosts]);
+    }
+    // CDN umum tidak ikut ke sesi yang tidak memakainya.
+    const smg = buildProgram('sidnok-semarang', 'cek_status', {});
+    expect(smg.ok && hostsSesi(smg.program)).toEqual(['sidnok.semarangkota.go.id']);
+    expect(hostsSesi({ origin: 'https://OSS.go.id', hosts: ['oss.go.id', 'gw.oss.go.id'] })).toEqual([
+      'oss.go.id',
+      'gw.oss.go.id',
+    ]);
+    const asing: Record<string, Adapter> = {
+      x: {
+        origin: 'https://oss.go.id',
+        hosts: ['evil.example'],
+        flows: { a: { langkah: () => [nav('/a')] } },
+      },
+    };
+    expect(buildProgram('x', 'a', {}, asing)).toMatchObject({
+      ok: false,
+      code: 'ADAPTER_HOST_TIDAK_TERDAFTAR',
     });
   });
 });

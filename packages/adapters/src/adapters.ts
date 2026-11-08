@@ -4,6 +4,7 @@ import {
   click,
   countIncreased,
   css,
+  egressAllowedHosts,
   elementExists,
   fill,
   filePlaceholder,
@@ -33,6 +34,9 @@ import {
  * - `bacaSaja`: alur cek status/informasi; selesai = hasil tampil di layar warga.
  * - `kamera`: alur yang butuh kamera (swafoto/verifikasi wajah). Peramban server tidak punya kamera:
  *   prasyarat dikerjakan warga di perangkatnya sendiri, jadi buildProgram menolak dan urusan dipandu.
+ * - `hosts`: host lain (selain host origin) yang BENAR-BENAR dibutuhkan situs ini, dari recon: API saudara,
+ *   widget tantangan, CDN yang dipakai halamannya. Allowlist egress satu sesi = host origin + daftar ini
+ *   (bukan seluruh CDN umum). Semua harus ada di union registry (`egressAllowedHosts`), diuji.
  */
 
 export type Params = Record<string, string | number | boolean>;
@@ -45,6 +49,8 @@ export type ProbeMasuk = { keluar: Check; halaman: string };
 export type BuktiSelektor = { nomor?: Target; status?: Target };
 export type Program = {
   origin: string;
+  /** Host lain yang boleh dihubungi sesi ini selain host origin (dari `Adapter.hosts`). */
+  hosts?: readonly string[] | undefined;
   steps: Step[];
   masuk?: ProbeMasuk | undefined;
   bukti?: BuktiSelektor | undefined;
@@ -58,7 +64,19 @@ type FlowDef = {
   bacaSaja?: boolean;
   kamera?: boolean;
 };
-export type Adapter = { origin: string; masuk?: ProbeMasuk; flows: Record<string, FlowDef> };
+export type Adapter = {
+  origin: string;
+  hosts: readonly string[];
+  masuk?: ProbeMasuk;
+  flows: Record<string, FlowDef>;
+};
+
+/** Host egress satu sesi: host origin + host yang dideklarasikan program (huruf kecil, unik). */
+export function hostsSesi(program: Pick<Program, 'origin' | 'hosts'>): string[] {
+  return [
+    ...new Set([new URL(program.origin).hostname, ...(program.hosts ?? [])].map((h) => h.toLowerCase())),
+  ];
+}
 
 /** Telunjuk Sakti Wonogiri (struktur dari recon read-only; direplikasi di apps/fixtures). */
 const TS_BASE = '/telunjuksakti/index.php';
@@ -78,6 +96,8 @@ function berkasDari(params: Params): string[] | string {
 
 const telunjukSakti: Adapter = {
   origin: 'https://telunjuksakti.wonogirikab.go.id',
+  // Di belakang Cloudflare (recon telunjuksakti.md); pustaka dari cdnjs.
+  hosts: ['challenges.cloudflare.com', 'cdnjs.cloudflare.com'],
   masuk: {
     keluar: elementExists([css('#loginSubmit'), byName('loginSubmit')]),
     halaman: `${TS_BASE}/users/login`,
@@ -136,6 +156,8 @@ const telunjukSakti: Adapter = {
  */
 const samsatDki: Adapter = {
   origin: 'https://samsat-pkb2.jakarta.go.id',
+  // Turnstile tertanam; Bootstrap + jQuery dari CDN (recon rea-samsat-oss.md).
+  hosts: ['challenges.cloudflare.com', 'cdn.jsdelivr.net', 'code.jquery.com'],
   flows: {
     cek_pkb: {
       langkah: () => [
@@ -153,6 +175,8 @@ const samsatDki: Adapter = {
 /** OSS: widget publik "Pencarian NIB" di oss.go.id/id (Turnstile saat mencari; hasil dibaca warga). */
 const oss: Adapter = {
   origin: 'https://oss.go.id',
+  // Widget NIB memanggil api-prd; aset di gw/s3; Turnstile saat mencari (recon rea-samsat-oss.md).
+  hosts: ['api-prd.oss.go.id', 'gw.oss.go.id', 's3.oss.go.id', 'challenges.cloudflare.com'],
   flows: {
     cari_nib: {
       langkah: () => [
@@ -171,6 +195,8 @@ const oss: Adapter = {
  */
 const klampidSurabaya: Adapter = {
   origin: 'https://wargaklampid-dispendukcapil.surabaya.go.id',
+  // Pelacakan publik memakai captcha matematika di halaman sendiri; reCAPTCHA hanya untuk login.
+  hosts: [],
   flows: {
     cek_status: {
       langkah: () => [
@@ -193,6 +219,7 @@ const klampidSurabaya: Adapter = {
 /** Si D'nOK Semarang: cek status 16 karakter + captcha matematika (warga); hasil di #container-status. */
 const sidnokSemarang: Adapter = {
   origin: 'https://sidnok.semarangkota.go.id',
+  hosts: [],
   flows: {
     cek_status: {
       langkah: () => [
@@ -230,6 +257,9 @@ export function buildProgram(
     return { ok: false, code: 'ADAPTER_TIDAK_ADA', message: 'adapter/flow tidak dikenal' };
   if (!matchOfficialOrigin(adapter.origin).ok)
     return { ok: false, code: 'ADAPTER_ORIGIN_NOT_OFFICIAL', message: 'origin adapter tidak resmi' };
+  const terdaftar = new Set(egressAllowedHosts());
+  if (!adapter.hosts.every((h) => terdaftar.has(h)))
+    return { ok: false, code: 'ADAPTER_HOST_TIDAK_TERDAFTAR', message: 'host adapter di luar registry' };
   if (flow.kamera)
     return {
       ok: false,
@@ -250,6 +280,7 @@ export function buildProgram(
     ok: true,
     program: {
       origin: adapter.origin,
+      ...(adapter.hosts.length > 0 ? { hosts: adapter.hosts } : {}),
       steps: valid.steps,
       ...(adapter.masuk ? { masuk: adapter.masuk } : {}),
       ...(flow.bukti ? { bukti: flow.bukti } : {}),
