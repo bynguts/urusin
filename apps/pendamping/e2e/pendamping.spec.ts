@@ -9,7 +9,7 @@ import { createBrowserFactory, launchIsolated } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
 import { runnerExpression } from '../src/runner-script.js';
 import { SessionManager, sidHashOf } from '../src/sessions.js';
-import { tandaInternal } from '../src/tanda.js';
+import { headerTanda } from '../src/tanda.js';
 import { FIXTURE_ORIGIN, INTERNAL_TOKEN, PENDAMPING_ORIGIN } from '../playwright.config.js';
 
 /**
@@ -33,8 +33,7 @@ async function internal<T>(path: string, body?: unknown): Promise<{ status: numb
   const res = await fetch(`${PENDAMPING_ORIGIN}${path}`, {
     method: metode,
     headers: {
-      'x-urusin-waktu': waktu,
-      'x-urusin-tanda': tandaInternal(INTERNAL_TOKEN, waktu, metode, path, isi),
+      ...headerTanda(INTERNAL_TOKEN, metode, path, isi, Number(waktu)),
       'content-type': 'application/json',
     },
     ...(body === undefined ? {} : { body: isi }),

@@ -21,7 +21,7 @@ import { debugPageHtml } from './debug-page.js';
 import { devPageHtml } from './dev-page.js';
 import { PendampingError, sidHashOf, type SessionManager } from './sessions.js';
 import { createFrameGate } from './stream.js';
-import { HEADER_TANDA, HEADER_WAKTU, periksaTanda } from './tanda.js';
+import { createPenjagaUlang, HEADER_NONCE, HEADER_TANDA, HEADER_WAKTU } from './tanda.js';
 
 /**
  * HTTP + WebSocket layanan pendamping.
@@ -110,6 +110,7 @@ function clientDist(): string | undefined {
 export function createServer(config: Config, manager: SessionManager): http.Server {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 13 * 1024 * 1024, perMessageDeflate: false });
 
+  const periksaInternal = createPenjagaUlang(config.internalToken);
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://pendamping');
     const path = url.pathname;
@@ -177,16 +178,16 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
 
       if (!path.startsWith('/internal/'))
         return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'Tidak ditemukan.' });
-      // Kanal web -> worker: tanda tangan HMAC atas waktu + metode + jalur + isi (bukan token polos).
+      // Kanal web -> worker: tanda tangan HMAC atas waktu + nonce + metode + jalur + isi (bukan token polos);
+      // nonce yang sudah dipakai dalam jendela waktu ditolak (anti putar ulang).
       const raw = await readRaw(req);
       if (!raw) return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan terlalu besar.' });
       const header = (n: string) => {
         const v = req.headers[n];
         return typeof v === 'string' ? v : undefined;
       };
-      const sah = periksaTanda(
-        config.internalToken,
-        { waktu: header(HEADER_WAKTU), tanda: header(HEADER_TANDA) },
+      const sah = periksaInternal(
+        { waktu: header(HEADER_WAKTU), nonce: header(HEADER_NONCE), tanda: header(HEADER_TANDA) },
         req.method ?? 'GET',
         path,
         raw,

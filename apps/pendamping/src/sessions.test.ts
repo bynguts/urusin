@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { loadConfig, type Config } from './config.js';
 import { createServer } from './server.js';
-import { tandaInternal } from './tanda.js';
+import { headerTanda } from './tanda.js';
 import { SessionManager, sidHashOf, type ActiveRun, type RunInit } from './sessions.js';
 
 const SID = sidHashOf('a'.repeat(32));
@@ -14,7 +14,7 @@ const OTHER = sidHashOf('b'.repeat(32));
 
 function tandaHeader(rahasia: string, metode: string, jalur: string, isi = '') {
   const waktu = String(Date.now());
-  return { 'x-urusin-waktu': waktu, 'x-urusin-tanda': tandaInternal(rahasia, waktu, metode, jalur, isi) };
+  return headerTanda(rahasia, metode, jalur, isi, Number(waktu));
 }
 
 function input(urusanId: string, extra: Partial<MulaiSesiInternal> = {}): MulaiSesiInternal {
@@ -483,8 +483,7 @@ describe('server HTTP + WebSocket', () => {
       return fetch(`${base}${path}`, {
         method: metode,
         headers: {
-          'x-urusin-waktu': waktu,
-          'x-urusin-tanda': tandaInternal(token, waktu, metode, path, isi),
+          ...headerTanda(token, metode, path, isi, Number(waktu)),
           'content-type': 'application/json',
         },
         ...(body === undefined ? {} : { body: isi }),
@@ -502,6 +501,10 @@ describe('server HTTP + WebSocket', () => {
     expect((await fetch(`${base}/internal/antrean`, { headers: polos })).status).toBe(401);
     const lama = String(Date.now() - 120_000);
     expect((await call('/internal/antrean', undefined, 't'.repeat(40), lama)).status).toBe(401);
+    // Putar ulang: header bertanda yang sama persis ditolak pada pemakaian kedua (nonce terlihat).
+    const sekali = headerTanda('t'.repeat(40), 'GET', '/internal/antrean');
+    expect((await fetch(`${base}/internal/antrean`, { headers: sekali })).status).toBe(200);
+    expect((await fetch(`${base}/internal/antrean`, { headers: sekali })).status).toBe(401);
     expect((await call('/internal/sesi', { urusanId: 'u1' })).status).toBe(422);
     expect((await call('/internal/sesi', '{bukan json')).status).toBe(422);
     expect((await call('/internal/sesi', 'x'.repeat(70_000))).status).toBe(422);
