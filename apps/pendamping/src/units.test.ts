@@ -24,6 +24,7 @@ describe('config', () => {
       ticketTtlMs: 30_000,
       haloTimeoutMs: 5_000,
       msgPerDetik: 200,
+      maksBelumHalo: 16,
       fps: 8,
       frameInflight: 2,
       wsBufferBytes: 131_072,

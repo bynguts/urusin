@@ -46,6 +46,8 @@ export type Config = {
   ticketTtlMs: number;
   haloTimeoutMs: number;
   msgPerDetik: number;
+  /** Batas soket WS yang sudah terbuka tetapi belum mengirim `halo` sah (perlindungan memori pra-autentikasi). */
+  maksBelumHalo: number;
   fps: number;
   frameInflight: number;
   wsBufferBytes: number;
@@ -82,6 +84,7 @@ export const DEFAULTS = Object.freeze({
   ticketTtlMs: 30_000,
   haloTimeoutMs: 5_000,
   msgPerDetik: 200,
+  maksBelumHalo: 16,
   fps: 8,
   frameInflight: 2,
   wsBufferBytes: 128 * 1024,
@@ -163,6 +166,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     ticketTtlMs: num(env.PENDAMPING_TICKET_TTL_MS, DEFAULTS.ticketTtlMs),
     haloTimeoutMs: num(env.PENDAMPING_HALO_TIMEOUT_MS, DEFAULTS.haloTimeoutMs),
     msgPerDetik: Math.max(10, num(env.PENDAMPING_MSG_PER_DETIK, DEFAULTS.msgPerDetik)),
+    maksBelumHalo: Math.max(1, num(env.PENDAMPING_MAKS_BELUM_HALO, DEFAULTS.maksBelumHalo)),
     fps: Math.min(30, Math.max(1, num(env.PENDAMPING_FPS, DEFAULTS.fps))),
     frameInflight: Math.max(1, num(env.PENDAMPING_FRAME_INFLIGHT, DEFAULTS.frameInflight)),
     wsBufferBytes: Math.max(16 * 1024, num(env.PENDAMPING_WS_BUFFER_BYTES, DEFAULTS.wsBufferBytes)),

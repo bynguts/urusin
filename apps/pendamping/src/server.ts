@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   MulaiSesiInternalSchema,
   PENDAMPING_WS_CLOSE,
+  PENDAMPING_WS_MAX_PAYLOAD,
   PemilikSesiInternalSchema,
   PendampingClientMessageSchema,
   PendampingViewportSchema,
@@ -108,7 +109,13 @@ function clientDist(): string | undefined {
 }
 
 export function createServer(config: Config, manager: SessionManager): http.Server {
-  const wss = new WebSocketServer({ noServer: true, maxPayload: 13 * 1024 * 1024, perMessageDeflate: false });
+  // Batas pesan 64 KB berlaku sejak byte pertama (berkas dikirim berpotongan, lihat `berkas_potong`).
+  const wss = new WebSocketServer({
+    noServer: true,
+    maxPayload: PENDAMPING_WS_MAX_PAYLOAD,
+    perMessageDeflate: false,
+  });
+  let belumHalo = 0;
 
   const periksaInternal = createPenjagaUlang(config.internalToken);
   const server = http.createServer(async (req, res) => {
@@ -239,16 +246,33 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
       origin !== undefined &&
       (origin === `http://${req.headers.host}` || origin === `https://${req.headers.host}`);
     const sidHash = sidHashFromCookie(req.headers.cookie);
-    if (!m?.[1] || !origin || !(config.allowedOrigins.includes(origin) || debugOrigin) || !sidHash) {
+    // Sesi harus ada dan milik cookie ini SEBELUM upgrade: soket asing tidak pernah mendapat buffer WS.
+    if (
+      !m?.[1] ||
+      !origin ||
+      !(config.allowedOrigins.includes(origin) || debugOrigin) ||
+      !sidHash ||
+      !manager.pemilikCocok(m[1], sidHash)
+    ) {
       socket.end('HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n');
       return;
     }
+    if (belumHalo >= config.maksBelumHalo) {
+      socket.end('HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n');
+      return;
+    }
     const sesiId = m[1];
+    belumHalo++;
     wss.handleUpgrade(req, socket, head, (ws) => onSocket(ws, sesiId, sidHash));
   });
 
   function onSocket(ws: WebSocket, sesiId: string, sidHash: string) {
     let authed = false;
+    let dihitung = true;
+    const lepasHitung = () => {
+      if (dihitung) belumHalo--;
+      dihitung = false;
+    };
     let windowStart = Date.now();
     let count = 0;
     const send = (msg: PendampingServerMessage) => {
@@ -295,12 +319,14 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         if (msg.type !== 'halo' || !manager.consumeTicket(msg.tiket, sesiId, sidHash))
           return ws.close(PENDAMPING_WS_CLOSE.TIDAK_SAH, 'tiket tidak sah');
         authed = true;
+        lepasHitung();
         void manager.attach(sesiId, viewer);
         return;
       }
       void manager.handleClient(sesiId, msg);
     });
     ws.on('close', () => {
+      lepasHitung();
       clearTimeout(halo);
       gate.close();
       if (authed) void manager.detach(sesiId, viewer);

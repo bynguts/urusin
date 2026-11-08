@@ -333,6 +333,68 @@ describe('SessionManager', () => {
     expect(h.manager.status({ urusanId: s.urusanId, sidHash: SID }).status).toBe('menunggu_data');
   });
 
+  it('berkas berpotongan: dirakit berurutan; urutan salah/ukuran palsu/terlalu besar ditolak', async () => {
+    const h = harness();
+    const s = await h.manager.create(input('u1', { params: { layanan_id: 1, berkas: 'ktp' } }));
+    await h.flush();
+    const v = h.viewer();
+    await h.manager.attach(s.sesiId, v);
+    await h.manager.handleClient(s.sesiId, { type: 'vault', isian: { '{{PEMOHON.HP}}': '08000000001' } });
+    const isi = Buffer.from(Array.from({ length: 10 }, (_, i) => i));
+    const potong = (indeks: number, data: Buffer, over: Record<string, unknown> = {}) =>
+      h.manager.handleClient(s.sesiId, {
+        type: 'berkas_potong',
+        nama: 'ktp',
+        namaBerkas: 'ktp.pdf',
+        mime: 'application/pdf',
+        ukuran: 10,
+        indeks,
+        total: 3,
+        dataBase64: data.toString('base64'),
+        ...over,
+      });
+    const galat = () => v.sent.filter((m) => m.type === 'galat').map((m) => (m as { kode: string }).kode);
+    const run = h.runs[0]!;
+
+    // Mulai di tengah: ditolak.
+    await potong(1, isi.subarray(3, 6));
+    // Melompat urutan: ditolak dan unggahan dibuang.
+    await potong(0, isi.subarray(0, 3));
+    await potong(2, isi.subarray(6));
+    // Melebihi ukuran yang diumumkan.
+    await potong(0, isi.subarray(0, 3));
+    await potong(1, Buffer.alloc(8));
+    // Total kurang dari ukuran.
+    await potong(0, isi.subarray(0, 3));
+    await potong(1, isi.subarray(3, 6));
+    await potong(2, isi.subarray(6, 7));
+    // Ukuran > 9 MB ditolak tanpa menampung apa pun.
+    await potong(0, isi.subarray(0, 3), { ukuran: 9 * 1024 * 1024 + 1 });
+    // Nama yang tidak diminta diabaikan.
+    await potong(0, isi, { nama: 'lain', total: 1 });
+    expect(galat()).toEqual([
+      'PESAN_TIDAK_SAH',
+      'PESAN_TIDAK_SAH',
+      'PESAN_TIDAK_SAH',
+      'PESAN_TIDAK_SAH',
+      'BERKAS_TERLALU_BESAR',
+    ]);
+    expect(run.calls).not.toContain('mulaiAi');
+
+    // Unggahan sah; potongan indeks 0 baru menggantikan unggahan setengah jalan.
+    await potong(0, isi.subarray(0, 3));
+    await potong(0, isi.subarray(0, 3));
+    await potong(1, isi.subarray(3, 6));
+    await potong(2, isi.subarray(6));
+    expect(galat()).toHaveLength(5);
+    expect(run.calls).toContain('mulaiAi');
+    expect(run.init.data.file('ktp')).toEqual({
+      name: 'ktp.pdf',
+      mime: 'application/pdf',
+      base64: isi.toString('base64'),
+    });
+  });
+
   it('data vault/berkas: AI mulai hanya setelah lengkap; input ditolak di mode AI; kendali warga', async () => {
     const h = harness();
     const s = await h.manager.create(input('u1', { params: { layanan_id: 1, berkas: 'ktp' } }));
@@ -376,6 +438,7 @@ describe('SessionManager', () => {
     expect(run.init.data.value('{{PEMOHON.HP}}')).toBe('08000000001');
     expect(run.init.data.value('{{X.Y}}')).toBeUndefined();
     expect(run.init.data.file('ktp')).toEqual({ name: 'ktp.png', mime: 'image/png', base64: 'AAAA' });
+    expect(v.sent.filter((m) => m.type === 'galat' && m.kode === 'PESAN_TIDAK_SAH')).toHaveLength(0);
     expect(h.manager.status(owner('u1'))).toMatchObject({ status: 'berjalan', mode: 'ai' });
 
     await h.manager.handleClient(s.sesiId, { type: 'text', teks: 'x' });
@@ -583,15 +646,62 @@ describe('server HTTP + WebSocket', () => {
       const tanpa = new WebSocket(url, { origin: 'http://app.test', headers });
       await new Promise((r) => tanpa.on('error', r));
     }
-    // Cookie perangkat lain + tiket sah: ditutup 4401.
-    const t2 = (await (await call('/internal/sesi/tiket', owner('u1'))).json()) as { tiket: string };
-    const lain = new WebSocket(url, {
-      origin: 'http://app.test',
-      headers: { cookie: `urusin_sid=${'b'.repeat(32)}` },
+    // Cookie perangkat lain, atau sesi yang tidak ada: upgrade ditolak 403 sebelum soket WS dibuat.
+    const statusUpgrade = (u: string, cookie: string) =>
+      new Promise<number | undefined>((r) => {
+        const w = new WebSocket(u, { origin: 'http://app.test', headers: { cookie } });
+        w.on('unexpected-response', (_req, res) => r(res.statusCode));
+        w.on('open', () => r(101));
+        w.on('error', () => undefined);
+      });
+    expect(await statusUpgrade(url, `urusin_sid=${'b'.repeat(32)}`)).toBe(403);
+    expect(
+      await statusUpgrade(`ws://127.0.0.1:${port}/ws/00000000-0000-4000-8000-000000000000`, COOKIE),
+    ).toBe(403);
+  });
+
+  it('WebSocket pra-autentikasi: pesan > 64 KB memutus soket; soket tanpa halo dibatasi', async () => {
+    const h = harness({
+      allowedOrigins: ['http://app.test'],
+      internalToken: 't'.repeat(40),
+      maksBelumHalo: 2,
     });
-    await new Promise((r) => lain.on('open', r));
-    lain.send(JSON.stringify({ type: 'halo', tiket: t2.tiket }));
-    expect(await new Promise((r) => lain.on('close', (c) => r(c)))).toBe(4401);
+    server = createServer(h.config, h.manager);
+    await new Promise<void>((r) => server!.listen(0, '127.0.0.1', r));
+    const port = (server!.address() as net.AddressInfo).port;
+    const s = await h.manager.create(input('u1'));
+    const url = `ws://127.0.0.1:${port}/ws/${s.sesiId}`;
+    const buka = () =>
+      new Promise<{ ws: WebSocket; status: number }>((r) => {
+        const ws = new WebSocket(url, { origin: 'http://app.test', headers: { cookie: COOKIE } });
+        ws.on('unexpected-response', (_req, res) => r({ ws, status: res.statusCode ?? 0 }));
+        ws.on('open', () => r({ ws, status: 101 }));
+        ws.on('error', () => undefined);
+      });
+    const besar = await buka();
+    expect(besar.status).toBe(101);
+    besar.ws.send('x'.repeat(64 * 1024 + 1));
+    // Server memutus soket (ws: galat maxPayload -> terminate).
+    expect([1006, 1009]).toContain(await new Promise((r) => besar.ws.on('close', (c) => r(c))));
+    await new Promise((r) => setTimeout(r, 20));
+
+    const a = await buka();
+    const b = await buka();
+    expect([a.status, b.status]).toEqual([101, 101]);
+    expect((await buka()).status).toBe(503);
+    // Soket yang lolos halo tidak lagi dihitung; soket yang ditutup membebaskan slot.
+    const t = h.manager.mintTicket(owner('u1'));
+    a.ws.send(JSON.stringify({ type: 'halo', tiket: t.tiket }));
+    await new Promise((r) => setTimeout(r, 50));
+    const c = await buka();
+    expect(c.status).toBe(101);
+    b.ws.close();
+    await new Promise((r) => b.ws.on('close', r));
+    await new Promise((r) => setTimeout(r, 20));
+    const d = await buka();
+    expect(d.status).toBe(101);
+    expect((await buka()).status).toBe(503);
+    for (const w of [a.ws, c.ws, d.ws]) w.close();
   });
 
   it('halaman /debug: mati tanpa token; dengan token: sesi manual, cookie sendiri, tiket, WS dari origin sendiri', async () => {

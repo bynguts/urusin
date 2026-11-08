@@ -98,11 +98,24 @@ type Sesi = {
   lastActivity: number;
   vault: Map<string, string>;
   files: Map<string, UploadFile>;
+  /** Satu unggahan berpotongan yang sedang berjalan (potongan wajib berurutan). */
+  unggah?: Unggahan | undefined;
   butuh: { placeholder: string[]; berkas: string[] };
   run?: ActiveRun | undefined;
   viewer?: Viewer | undefined;
   aiDimulai: boolean;
   galatInputTerkirim: boolean;
+};
+
+type Unggahan = {
+  nama: string;
+  namaBerkas: string;
+  mime: string;
+  ukuran: number;
+  total: number;
+  berikut: number;
+  terkumpul: number;
+  bagian: Buffer[];
 };
 
 export class PendampingError extends Error {
@@ -369,6 +382,15 @@ export class SessionManager {
     return s !== undefined && !TERMINAL.has(s.status) && sameHash(s.sidHash, sidHash);
   }
 
+  /**
+   * Pemeriksaan sebelum upgrade WebSocket (sebelum memori apa pun dialokasikan untuk soket): sesi ada, belum
+   * selesai, dan hash cookie `urusin_sid` sama dengan pemilik sesi.
+   */
+  pemilikCocok(sesiId: string, sidHash: string): boolean {
+    const s = this.sessions.get(sesiId);
+    return s !== undefined && !TERMINAL.has(s.status) && sameHash(s.sidHash, sidHash);
+  }
+
   async attach(sesiId: string, viewer: Viewer): Promise<void> {
     const s = this.sessions.get(sesiId);
     if (!s) return viewer.close(4404, 'sesi tidak ada');
@@ -414,6 +436,8 @@ export class SessionManager {
       case 'vault':
         for (const [k, v] of Object.entries(m.isian)) if (s.butuh.placeholder.includes(k)) s.vault.set(k, v);
         return this.maybeStartAi(s);
+      case 'berkas_potong':
+        return this.terimaPotongan(s, m);
       case 'berkas': {
         if (!s.butuh.berkas.includes(m.nama) || s.files.size >= MAX_FILES) return;
         const bytes = Buffer.byteLength(m.dataBase64, 'base64');
@@ -434,6 +458,54 @@ export class SessionManager {
   }
 
   // ---- internal -------------------------------------------------------------
+
+  /**
+   * Rakit berkas dari potongan berurutan. Potongan indeks 0 memulai (dan menggantikan) unggahan; potongan lain
+   * harus melanjutkan unggahan yang sama tepat pada urutan berikutnya. Total biner dibatasi `ukuran` yang
+   * diumumkan (<= 9 MB), jadi memori yang dipakai tidak pernah melebihi yang sudah divalidasi.
+   */
+  private terimaPotongan(
+    s: Sesi,
+    m: Extract<PendampingClientMessage, { type: 'berkas_potong' }>,
+  ): Promise<void> | undefined {
+    const tolak = (kode: 'PESAN_TIDAK_SAH' | 'BERKAS_TERLALU_BESAR', pesanWarga: string) => {
+      s.unggah = undefined;
+      s.viewer?.send({ type: 'galat', kode, pesanWarga });
+      return undefined;
+    };
+    if (!s.butuh.berkas.includes(m.nama) || s.files.size >= MAX_FILES) return;
+    if (m.ukuran > MAX_FILE_BYTES) return tolak('BERKAS_TERLALU_BESAR', 'Berkas melebihi 9 MB.');
+    if (m.indeks === 0)
+      s.unggah = {
+        nama: m.nama,
+        namaBerkas: m.namaBerkas,
+        mime: m.mime,
+        ukuran: m.ukuran,
+        total: m.total,
+        berikut: 0,
+        terkumpul: 0,
+        bagian: [],
+      };
+    const u = s.unggah;
+    if (!u || u.nama !== m.nama || u.total !== m.total || u.ukuran !== m.ukuran || u.berikut !== m.indeks)
+      return tolak('PESAN_TIDAK_SAH', 'Unggahan berkas terputus. Coba unggah lagi.');
+    const isi = Buffer.from(m.dataBase64, 'base64');
+    if (isi.length === 0 || u.terkumpul + isi.length > u.ukuran)
+      return tolak('PESAN_TIDAK_SAH', 'Unggahan berkas tidak sesuai. Coba unggah lagi.');
+    u.bagian.push(isi);
+    u.terkumpul += isi.length;
+    u.berikut += 1;
+    if (u.berikut < u.total) return;
+    s.unggah = undefined;
+    if (u.terkumpul !== u.ukuran)
+      return tolak('PESAN_TIDAK_SAH', 'Unggahan berkas tidak lengkap. Coba unggah lagi.');
+    s.files.set(u.nama, {
+      name: u.namaBerkas,
+      mime: u.mime,
+      base64: Buffer.concat(u.bagian, u.terkumpul).toString('base64'),
+    });
+    return this.maybeStartAi(s);
+  }
 
   private handleControl(s: Sesi, aksi: 'ambil_alih' | 'kembalikan'): void {
     // Sesi debug tidak punya AI: kendali selalu di tangan penguji.
@@ -600,6 +672,7 @@ export class SessionManager {
     // Hapus semua data warga dari memori sebelum peramban ditutup.
     s.vault.clear();
     s.files.clear();
+    s.unggah = undefined;
     for (const [k, t] of this.tickets) if (t.sesiId === s.id) this.tickets.delete(k);
     const qi = this.queue.indexOf(s.id);
     if (qi >= 0) this.queue.splice(qi, 1);
