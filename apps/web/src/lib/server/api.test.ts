@@ -43,7 +43,13 @@ const post = (body: unknown) =>
 const get = (path = '/x', headers: Record<string, string> = {}) =>
   new Request(`http://localhost:3000${path}`, { headers });
 const ev = (request: Request, params: Record<string, string> = {}) =>
-  ({ request, params, url: new URL(request.url), getClientAddress: () => '127.0.0.1' }) as never;
+  ({
+    request,
+    params,
+    url: new URL(request.url),
+    locals: { sid: 'sid-uji' },
+    getClientAddress: () => '127.0.0.1',
+  }) as never;
 
 class Slow extends FakeProvider {
   override async create(params: ChatParams, opts: { signal?: AbortSignal } = {}) {

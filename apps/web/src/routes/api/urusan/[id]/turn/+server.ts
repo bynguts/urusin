@@ -1,16 +1,20 @@
 import { TurnRequestSchema, type TurnResponse } from '@urusin/contracts';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
+import { batasi } from '#lib/server/sesi.js';
 import type { RequestHandler } from './$types';
 
 /** Kirim pesan warga. 202: turn berjalan di latar belakang, hasil mengalir di /stream. 409: turn berjalan / version basi. */
-export const POST: RequestHandler = async ({ request, params }) => {
+export const POST: RequestHandler = async (event) => {
+  const { request, params } = event;
   let rt;
   try {
     rt = await getRuntime();
   } catch (e) {
     return errorResponse(e);
   }
+  const ditolak = batasi(rt, event, 'turn');
+  if (ditolak) return ditolak;
   const body = await readBody(request, TurnRequestSchema, {
     kodeKabKota: rt.store.getUrusan(params.id)?.kodeKabKota ?? null,
   });

@@ -24,6 +24,7 @@ import {
 } from '@urusin/llm';
 import { openDb } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
+import { RateLimiter } from './limiter.js';
 
 /** Konfigurasi runtime dari env (dibaca sekali saat boot). Semua opsional kecuali yang bertanda. */
 export type RuntimeConfig = {
@@ -34,6 +35,11 @@ export type RuntimeConfig = {
   /** Jeda sebelum loop LLM dibatalkan setelah semua pelanggan SSE putus. */
   disconnectGraceMs: number;
   heartbeatMs: number;
+  /** Batas laju: urusan baru per jam dan turn per menit, masing-masing per IP dan per sesi. */
+  buatPerJamIp: number;
+  buatPerJamSesi: number;
+  turnPerMenitIp: number;
+  turnPerMenitSesi: number;
 };
 
 export function readConfig(env: Record<string, string | undefined> = process.env): RuntimeConfig {
@@ -46,6 +52,10 @@ export function readConfig(env: Record<string, string | undefined> = process.env
     ragDbPath: env.URUSIN_RAG_DB?.trim() || undefined,
     disconnectGraceMs: num(env.URUSIN_SSE_DISCONNECT_GRACE_MS, 10_000),
     heartbeatMs: num(env.URUSIN_SSE_HEARTBEAT_MS, 15_000),
+    buatPerJamIp: num(env.URUSIN_LIMIT_BUAT_IP_PER_JAM, 20),
+    buatPerJamSesi: num(env.URUSIN_LIMIT_BUAT_SESI_PER_JAM, 10),
+    turnPerMenitIp: num(env.URUSIN_LIMIT_TURN_IP_PER_MENIT, 30),
+    turnPerMenitSesi: num(env.URUSIN_LIMIT_TURN_SESI_PER_MENIT, 20),
   };
 }
 
@@ -61,6 +71,8 @@ export type Runtime = ReturnType<typeof createHarness> & {
   running: Map<string, AbortController>;
   /** Catat + siarkan satu event di luar turn (hasil eksekusi, konfirmasi): sumber kebenaran tetap tabel events. */
   publish(urusanId: string, e: EventPayload): UrusinEvent;
+  /** Pembatas laju per aksi; kunci IP dan sesi dihitung terpisah. */
+  limits: Record<'buat' | 'turn', { ip: RateLimiter; sesi: RateLimiter }>;
 };
 
 type RuntimeInit = {
@@ -89,7 +101,19 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     h.bus.publish(urusanId, ev);
     return ev;
   };
-  return { ...h, config, mode: init.mode ?? 'demo', running: new Map(), publish };
+  const jam = 3_600_000;
+  const menit = 60_000;
+  const limits: Runtime['limits'] = {
+    buat: {
+      ip: new RateLimiter(config.buatPerJamIp, jam),
+      sesi: new RateLimiter(config.buatPerJamSesi, jam),
+    },
+    turn: {
+      ip: new RateLimiter(config.turnPerMenitIp, menit),
+      sesi: new RateLimiter(config.turnPerMenitSesi, menit),
+    },
+  };
+  return { ...h, config, mode: init.mode ?? 'demo', running: new Map(), publish, limits };
 }
 
 function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {

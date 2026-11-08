@@ -1,6 +1,7 @@
 import type { Handle } from '@sveltejs/kit/hooks';
 import { checkOrigin } from '#lib/server/origin.js';
 import { publicOrigin } from '#lib/server/runtime.js';
+import { ensureSession } from '#lib/server/sesi.js';
 
 /**
  * Anti-CSRF (rencana §3.2): request pengubah state wajib membawa `Origin` yang PERSIS sama dengan
@@ -23,5 +24,7 @@ export const handle: Handle = async ({ event, resolve }) => {
       { status: 403, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } },
     );
   }
+  // Cookie sesi anonim hanya untuk API (identitas kuota); halaman statis tetap bebas cookie agar bisa di-cache.
+  if (event.url.pathname.startsWith('/api/')) event.locals.sid = ensureSession(event.cookies, publicOrigin());
   return resolve(event);
 };
