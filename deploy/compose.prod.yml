@@ -60,7 +60,7 @@ x-web-env: &web-env
   # terakhir (XFF_DEPTH=1) adalah IP klien asli. Dipakai kuota per-IP.
   ADDRESS_HEADER: X-Forwarded-For
   XFF_DEPTH: '1'
-  BODY_SIZE_LIMIT: 6M
+  BODY_SIZE_LIMIT: 10M
   DATABASE_URL: file:/data/urusin.db
 
 services:

@@ -122,6 +122,32 @@ Firewall tidak diubah; sebagai gantinya:
   `X-Forwarded-For: 6.6.6.6` sampai ke upstream hanya dengan IP peer asli. Jangan menambah
   `trusted_proxies` di Caddy kecuali ada CDN di depan (itu mengubah `XFF_DEPTH`).
 
+- Akun warga (ADR 0028): `RESEND_API_KEY` + `URUSIN_EMAIL_FROM` (SPF/DKIM Resend di DNS domain),
+  `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` dengan redirect URI `https://<host app>/auth/google/callback`
+  untuk **kedua** set host di `hosts.json`, dan `TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY` (tanpa
+  Turnstile, tombol "Masuk sebagai juri" mati di produksi). `URUSIN_OIDC_FIXTURE`/`URUSIN_TURNSTILE_FIXTURE`
+  tidak boleh ada: server menolak boot.
+
+## Kunci vault (`URUSIN_PII_KEY`): escrow dan rotasi
+
+`URUSIN_PII_KEY` menurunkan KEK vault (HKDF `urusin/kek/v1`) dan kunci HMAC placeholder
+(`urusin/placeholder-hmac/v1`). **Kehilangan kunci = semua Data Diri dan dokumen akun hilang**, jadi:
+
+- **Escrow:** simpan salinan kunci di luar VPS, terpisah dari backup DB (pengelola sandi pemilik proyek,
+  plus satu salinan offline). Jangan pernah di repo, di backup yang sama, atau di chat. Backup DB tanpa kunci
+  hanya ciphertext.
+- **Rotasi** (kunci bocor, atau terjadwal):
+  1. `./backup.sh` (cadangan sebelum rotasi).
+  2. Buat kunci baru: `openssl rand -base64 32`. Escrow kunci baru dulu.
+  3. Di `.env`: `URUSIN_PII_KEY_PREV=<kunci lama>`, `URUSIN_PII_KEY=<kunci baru>`; deploy. Server membuka DEK
+     lama dengan `PREV` dan membungkus ulang secara malas saat dipakai.
+  4. Bungkus ulang semuanya sekaligus:
+     `docker exec <container> node node_modules/@urusin/akun/dist/kek-rotate-cli.js` (lokal:
+     `pnpm kek:rotate`). Keluaran hanya hitungan `{dibungkusUlang, sudahBaru}`.
+  5. Hapus `URUSIN_PII_KEY_PREV` dari `.env` dan deploy ulang.
+  6. Simpan kunci lama di escrow sampai backup terakhir yang memakainya kedaluwarsa (retensi backup), lalu
+     musnahkan.
+
 ## Login GHCR sementara
 
 `deploy.sh` tidak pernah menulis ke konfigurasi docker di HOME pengguna. Dua cara:
