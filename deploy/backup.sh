@@ -58,7 +58,7 @@ mkdir "$lock" 2>/dev/null || { log "backup lain masih berjalan; dilewati"; exit 
 trap 'rmdir "$lock" 2>/dev/null || true' EXIT
 
 partial="$BACKUP_DIR/.partial.db"
-rm -f "$partial" "$partial.gz"
+rm -f "$partial" "$partial.gz" "$partial-wal" "$partial-shm"
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 final="$BACKUP_DIR/urusin-${stamp}.db.gz"
 
@@ -70,7 +70,7 @@ docker run --rm -i --network none --read-only --user 0:0 --security-opt no-new-p
 
 [ -s "$partial" ] || fail "hasil backup kosong"
 gzip -c "$partial" > "$final.tmp" && mv "$final.tmp" "$final"
-rm -f "$partial"
+rm -f "$partial" "$partial-wal" "$partial-shm"
 log "OK $final ($(wc -c < "$final") byte)"
 
 # Retensi lokal: hapus yang lebih tua dari KEEP_DAYS hari, tetapi selalu sisakan yang terbaru.
