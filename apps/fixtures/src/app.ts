@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { secureHeaders } from 'hono/secure-headers';
-import { JALUR_WIDGET, registerUjiCf } from './cf.js';
+import { asalSah, JALUR_LINTAS, JALUR_WIDGET, originLintas, registerUjiCf } from './cf.js';
 import type { Config } from './config.js';
 import { html, page } from './layout.js';
 import { registerPoisoned } from './poisoned.js';
@@ -33,22 +33,37 @@ export function createApp(config: Config) {
   const secure = config.publicOrigin?.startsWith('https://') === true;
   const cookieName = secure ? '__Host-fx_session' : 'fx_session';
 
-  const keamanan = (frameAncestors: string[]) =>
+  const keamanan = (frameAncestors: string[], lintas: string | null = null) =>
     secureHeaders({
+      // Widget lintas-origin: X-Frame-Options SAMEORIGIN akan memblokir induk beda origin (frame-ancestors cukup).
+      xFrameOptions: !(lintas && frameAncestors.includes(lintas)),
       // same-origin (bukan no-referrer): no-referrer membuat Chrome mengirim "Origin: null" pada POST form.
       referrerPolicy: 'same-origin',
       contentSecurityPolicy: {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:'],
-        formAction: ["'self'"],
+        formAction: lintas ? ["'self'", lintas] : ["'self'"],
         frameAncestors,
+        ...(lintas ? { frameSrc: ["'self'", lintas] } : {}),
       },
     });
   const ketat = keamanan(["'none'"]);
   // Widget tantangan tiruan dimuat dalam iframe halaman fixture sendiri (X-Frame-Options bawaan SAMEORIGIN).
   const widget = keamanan(["'self'"]);
-  app.use('*', (c, next) => (c.req.path.startsWith(JALUR_WIDGET) ? widget(c, next) : ketat(c, next)));
+  app.use('*', (c, next) => {
+    const host = c.req.header('host');
+    if (c.req.path.startsWith(JALUR_WIDGET)) {
+      // Widget yang dibingkai induk lintas-origin (pasangan loopback) boleh dibingkai dan mengirim form ke induk.
+      const asal = asalSah(c.req.query('asal'), host);
+      return asal ? keamanan(["'self'", asal], asal)(c, next) : widget(c, next);
+    }
+    if (c.req.path === JALUR_LINTAS) {
+      const pasangan = originLintas(host);
+      if (pasangan) return keamanan(["'none'"], pasangan)(c, next);
+    }
+    return ketat(c, next);
+  });
   app.use('*', async (c, next) => {
     await next();
     c.header('X-Robots-Tag', 'noindex, nofollow');
