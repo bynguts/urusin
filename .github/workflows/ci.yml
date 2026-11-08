@@ -226,6 +226,95 @@ jobs:
           path: packages/*/coverage/
           if-no-files-found: ignore
 
+  rc-compat:
+    name: Kompatibilitas rc1 (migrasi HEAD, image rc1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    env:
+      HUSKY: '0'
+      RC_TAG: rc1
+      RC_IMAGE: ghcr.io/bynguts/urusin-web:rc1
+    steps:
+      - name: Checkout (riwayat dan tag lengkap)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # Tidak berbuat apa pun sebelum tag rc1 ada; setelah itu semua langkah di bawah aktif.
+      - name: Deteksi tag rc1
+        id: rc
+        run: |
+          if git rev-parse -q --verify "refs/tags/${RC_TAG}" >/dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::tag ${RC_TAG} belum ada: rc-compat dilewati (tidak ada yang diperiksa)"
+            echo "rc-compat: tag ${RC_TAG} belum ada, dilewati." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Migrasi sejak rc1 harus aditif (tanpa DROP/RENAME)
+        if: steps.rc.outputs.present == 'true'
+        run: node scripts/check-additive-migrations.mjs "$RC_TAG"
+
+      - name: Setup pnpm
+        if: steps.rc.outputs.present == 'true'
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Setup Node
+        if: steps.rc.outputs.present == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        if: steps.rc.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Login GHCR
+        if: steps.rc.outputs.present == 'true'
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tarik image rc1
+        if: steps.rc.outputs.present == 'true'
+        run: docker pull "$RC_IMAGE"
+
+      # Entrypoint migrasi: skrip `migrate` di packages/harness (belum ada = dilewati dengan log jelas, bukan lolos palsu).
+      - name: Jalankan migrasi HEAD pada DB baru
+        if: steps.rc.outputs.present == 'true'
+        run: |
+          mkdir -p rc-compat-data && chmod 777 rc-compat-data
+          if [ -f packages/harness/package.json ] && node -e "process.exit(require('./packages/harness/package.json').scripts?.migrate ? 0 : 1)"; then
+            DATABASE_URL="file:${PWD}/rc-compat-data/urusin.db" pnpm --filter @urusin/harness run migrate
+            echo "- Migrasi HEAD dijalankan pada DB uji." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::tidak ada migrasi (packages/harness dengan skrip migrate belum ada): langkah migrasi DILEWATI"
+            echo "- Migrasi HEAD DILEWATI: belum ada migrasi." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Boot image rc1 di atas DB tersebut dan smoke test /api/health
+        if: steps.rc.outputs.present == 'true'
+        run: |
+          docker run -d --name rc1 -p 127.0.0.1:3000:3000 -e ORIGIN=http://localhost:3000             -v "${PWD}/rc-compat-data:/data" "$RC_IMAGE"
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/health; then echo; echo "- image rc1 sehat di atas DB HEAD." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+            sleep 2
+          done
+          docker logs rc1
+          exit 1
+
+      - name: Log kontainer bila gagal
+        if: failure() && steps.rc.outputs.present == 'true'
+        run: docker logs rc1 || true
+
   gitleaks:
     name: Gitleaks
     runs-on: ubuntu-latest
