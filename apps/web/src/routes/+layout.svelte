@@ -15,7 +15,7 @@
 
   const prefs = ambilPrefs();
   const lokal = ambilLokal();
-  const polos = $derived(rutAuth(page.url.pathname));
+  const polos = $derived(page.url.pathname === '/' || rutAuth(page.url.pathname));
   const akun = $derived(page.data.akun as { email: string } | null | undefined);
 
   // Preferensi tampilan diterapkan di <html>: ukuran huruf, tema, kontras, gerak.
@@ -50,7 +50,7 @@
       <div
         class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-line bg-bg/95 px-4 backdrop-blur lg:hidden"
       >
-        <a href={resolve('/')} class="flex h-12 items-center"><Lockup class="h-8 w-auto" /></a>
+        <a href={resolve('/beranda')} class="flex h-12 items-center"><Lockup class="h-8 w-auto" /></a>
         {#if akun}
           <a
             href={resolve('/pengaturan')}

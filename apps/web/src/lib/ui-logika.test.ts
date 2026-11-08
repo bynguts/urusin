@@ -34,8 +34,8 @@ describe('navigasi', () => {
     expect(rutAuth('/masuk')).toBe(true);
     expect(rutAuth('/verifikasi-email')).toBe(true);
     expect(rutAuth('/masukan')).toBe(false);
-    expect(menuAktif('/', '/peristiwa/kelahiran')).toBe(true);
-    expect(menuAktif('/', '/urusanku')).toBe(false);
+    expect(menuAktif('/beranda', '/peristiwa/kelahiran')).toBe(true);
+    expect(menuAktif('/beranda', '/urusanku')).toBe(false);
     expect(menuAktif('/urusanku', `/urusan/u_${'a'.repeat(32)}`)).toBe(true);
     expect(menuAktif('/urusanku', `/jejak/u_${'a'.repeat(32)}`)).toBe(true);
     expect(menuAktif('/dokumen', '/data-diri')).toBe(true);

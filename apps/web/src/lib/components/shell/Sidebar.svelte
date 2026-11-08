@@ -17,12 +17,12 @@
   class="pola-titik sticky top-0 hidden h-dvh w-62 shrink-0 flex-col gap-6 overflow-y-auto px-5 pt-5 pb-5 lg:flex"
   aria-label="Menu samping"
 >
-  <a href={resolve('/')} class="flex h-10 items-center self-start rounded-lg px-1">
+  <a href={resolve('/beranda')} class="flex h-10 items-center self-start rounded-lg px-1">
     <Lockup class="h-9 w-auto" />
   </a>
 
   <a
-    href={resolve('/')}
+    href={resolve('/beranda')}
     class="flex min-h-12 items-center justify-center gap-2 rounded-full bg-primer px-5 text-[0.9375rem] font-medium text-primer-ink hover:opacity-90"
   >
     <Icon name="tambah" class="size-4" />

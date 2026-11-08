@@ -4,6 +4,7 @@
 // Rute yang butuh data (urusan/[id], jejak/[id]) dan layar akun yang bergantung pada server akun belum didaftarkan.
 const ROUTES = [
   '/',
+  '/beranda',
   '/peristiwa/kelahiran',
   '/urusanku',
   '/dokumen',
