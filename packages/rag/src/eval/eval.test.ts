@@ -61,15 +61,15 @@ describe('runEval', () => {
 
   it('tanpa embedding hanya mode A dan diberi catatan', async () => {
     const r = await runEval({ db, gold, embed: null });
-    expect(r.rows.map((x) => x.mode)).toEqual(['A']);
-    expect(r.rows[0]?.recall5).toBe(1);
+    expect(r.pipelines[0]!.rows.map((x) => x.mode)).toEqual(['A']);
+    expect(r.pipelines[0]!.rows[0]?.recall5).toBe(1);
     expect(renderMarkdown(r)).toContain('hanya mode A');
   });
 
   it('dengan embedder palsu: mode A, B, C, dan D untuk k 64/128/256 (di-clamp)', async () => {
     const r = await runEval({ db, gold, embed: fakeEmbedder() });
-    expect(r.rows.map((x) => x.mode)).toEqual(['A', 'B', 'C', 'D', 'D', 'D']);
-    for (const row of r.rows) {
+    expect(r.pipelines[0]!.rows.map((x) => x.mode)).toEqual(['A', 'B', 'C', 'D', 'D', 'D']);
+    for (const row of r.pipelines[0]!.rows) {
       for (const v of [row.recall1, row.recall3, row.recall5, row.mrr10, row.ndcg10]) {
         expect(Number.isFinite(v)).toBe(true);
       }
@@ -77,6 +77,52 @@ describe('runEval', () => {
     const md = renderMarkdown(r);
     expect(md).toContain('| Mode | Konfigurasi | recall@1 |');
     expect(md).toContain('whiten k=4'); // n=5 chunk => k efektif 4
+  });
+
+  it('pipeline: tahap tanpa implementasi = no-op; hasil sama dengan baseline', async () => {
+    const cfg = { bm25: { stemmed: true }, expand: true, rerank: true };
+    const r = await runEval({
+      db,
+      gold,
+      embed: null,
+      pipelines: [
+        { name: 'baseline', config: {} },
+        { name: 'semua-tahap', config: cfg },
+      ],
+    });
+    const [base, all] = r.pipelines;
+    expect(all!.rows).toEqual(base!.rows);
+    expect(all!.notes).toHaveLength(3);
+    expect(renderMarkdown(r)).toContain('### Pipeline: semua-tahap');
+  });
+
+  it('pipeline: tahap tersuntik dipanggil (expand, bm25 pengganti, rerank)', async () => {
+    const calls: string[] = [];
+    const r = await runEval({
+      db,
+      gold: [gold[0]!],
+      embed: null,
+      pipelines: [{ name: 'p', config: { bm25: { stemmed: true }, expand: true, rerank: true } }],
+      stages: {
+        expand: (q) => (calls.push('expand'), q + ' kepolisian'),
+        bm25: () => (calls.push('bm25'), ['akta', 'ktp']),
+        // rerank membalik urutan: ktp naik ke peringkat 1
+        rerank: async (_q, c) => (calls.push('rerank'), c.map((x) => x.id).reverse()),
+      },
+    });
+    expect(calls).toEqual(['expand', 'bm25', 'rerank']);
+    expect(r.pipelines[0]!.rows[0]!.recall1).toBe(1);
+    expect(r.pipelines[0]!.notes).toEqual([]);
+  });
+
+  it('pipeline: vector.transform membatasi tabel ke A + satu baris', async () => {
+    const r = await runEval({
+      db,
+      gold,
+      embed: fakeEmbedder(),
+      pipelines: [{ name: 'c', config: { vector: { transform: { mode: 'center' } } } }],
+    });
+    expect(r.pipelines[0]!.rows.map((x) => x.mode)).toEqual(['A', 'V']);
   });
 
   it('melaporkan gold tanpa chunk cocok', async () => {
