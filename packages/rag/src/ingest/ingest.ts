@@ -4,6 +4,7 @@ import type { Embedder } from '../vector/store.js';
 import type { TransformMode } from '../vector/transform.js';
 import { upsertChunks } from '../store.js';
 import { chunkByHeading } from './chunk.js';
+import { buildChunkContextHeader } from './context.js';
 import { htmlToText } from './extract.js';
 import { PoliteFetcher, RobotsBlockedError, type Deps } from './fetcher.js';
 import type { SourceEntry } from './sources.js';
@@ -88,6 +89,12 @@ export async function runIngest(opts: IngestOptions): Promise<IngestReport[]> {
           instansi: s.instansi,
         },
         verifiedAt,
+        contextHeader: buildChunkContextHeader({
+          judulHalaman: s.judul,
+          heading: p.heading,
+          instansi: s.instansi,
+          layanan: s.layanan ?? undefined,
+        }),
         ...(s.kodeWilayah ? { kodeWilayah: s.kodeWilayah } : {}),
         ...(s.layanan ? { layanan: s.layanan } : {}),
       }));

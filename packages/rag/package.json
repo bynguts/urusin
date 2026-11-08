@@ -23,6 +23,7 @@
     "rag:eval": "tsc -p tsconfig.build.json && node dist/eval/cli.js"
   },
   "dependencies": {
+    "@urusin/core": "workspace:*",
     "@urusin/llm": "workspace:*",
     "better-sqlite3": "13.0.3",
     "zod": "4.6.7"

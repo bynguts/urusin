@@ -1,6 +1,8 @@
 import { isAllowedUrl } from './allowlist.js';
 import type { Db } from './db.js';
+import { buildChunkContextHeader } from './ingest/context.js';
 import { ChunkSchema, type Chunk } from './schema.js';
+import { stemText } from './stem/stem.js';
 
 export class ChunkRejectedError extends Error {
   constructor(reason: string) {
@@ -20,12 +22,22 @@ export function upsertChunks(db: Db, chunks: readonly unknown[]): number {
   });
   const del = db.prepare('DELETE FROM chunks WHERE id = ?');
   const ins = db.prepare(
-    'INSERT INTO chunks (id, judul, text, instansi, url, verified_at, kode_wilayah, layanan) VALUES (?,?,?,?,?,?,?,?)',
+    'INSERT INTO chunks (id, judul, text, instansi, url, verified_at, kode_wilayah, layanan, ctx) VALUES (?,?,?,?,?,?,?,?,?)',
+  );
+  const insStem = db.prepare(
+    'INSERT INTO chunks_stem_fts (rowid, judul, text, instansi, ctx) VALUES (?,?,?,?,?)',
   );
   db.transaction(() => {
     for (const c of parsed) {
       del.run(c.id);
-      ins.run(
+      const ctx =
+        c.contextHeader ??
+        buildChunkContextHeader({
+          judulHalaman: c.sourceRef.judul,
+          instansi: c.sourceRef.instansi,
+          layanan: c.layanan,
+        });
+      const info = ins.run(
         c.id,
         c.sourceRef.judul,
         c.text,
@@ -34,6 +46,14 @@ export function upsertChunks(db: Db, chunks: readonly unknown[]): number {
         c.verifiedAt,
         c.kodeWilayah ?? null,
         c.layanan ?? null,
+        ctx,
+      );
+      insStem.run(
+        info.lastInsertRowid,
+        stemText(c.sourceRef.judul),
+        stemText(c.text),
+        stemText(c.sourceRef.instansi),
+        stemText(ctx),
       );
     }
   })();

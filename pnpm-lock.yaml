@@ -168,6 +168,9 @@ importers:
 
   packages/rag:
     dependencies:
+      '@urusin/core':
+        specifier: workspace:*
+        version: link:../core
       '@urusin/llm':
         specifier: workspace:*
         version: link:../llm
