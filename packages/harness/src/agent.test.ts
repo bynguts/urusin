@@ -378,6 +378,28 @@ describe('timeout, pembatalan, konkurensi', () => {
     expect(() => prepareTurn(env.deps, { urusanId: u.id, userText: 'a' })).not.toThrow();
   });
 
+  it('rag__cari_pengetahuan: layanan teks bebas yang bukan kategori korpus tidak memaksa abstain', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        fakeCompletion({
+          toolCalls: [
+            {
+              name: 'rag__cari_pengetahuan',
+              arguments: JSON.stringify({ query: 'syarat akta kelahiran', layanan: 'akta kelahiran anak' }),
+            },
+          ],
+        }),
+        fakeCompletion({ content: 'Selesai.' }),
+      ],
+    });
+    const env = makeEnv({ provider });
+    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    advance(env, u.id, ['MEMAHAMI']);
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
+    expect(types(out.events)).not.toContain('error');
+    expect(env.store.getChunks(u.id).length).toBeGreaterThan(0);
+  });
+
   it('batas langkah: model yang terus memanggil tool berhenti di maxSteps dengan error', async () => {
     const loop = () =>
       fakeCompletion({
