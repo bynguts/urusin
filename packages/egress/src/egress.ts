@@ -96,7 +96,7 @@ export function createEgress(opts: EgressOptions = {}): Egress {
     opts.transport ??
     ((url: URL, init: RequestInit) =>
       // Satu-satunya fetch global di server (lint mengecualikan modul ini): selalu dengan dispatcher egress.
-      fetch(url, { ...init, redirect: 'manual', dispatcher: agent } as RequestInit));
+      fetch(url.href, { ...init, redirect: 'manual', dispatcher: agent } as RequestInit));
 
   const egressFetch: EgressFetch = async (input, init = {}) => {
     if (input instanceof Request) throw new EgressBlockedError('objek Request tidak didukung; kirim URL');
