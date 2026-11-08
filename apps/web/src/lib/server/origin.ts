@@ -35,11 +35,6 @@ export const ORIGIN_EXCEPTIONS: readonly OriginException[] = [
     alasan:
       'Laporan CSP dikirim browser otomatis, sering tanpa Origin; endpoint hanya menghitung per direktif.',
   },
-  {
-    path: '/api/sync/status',
-    kebijakan: 'bebas',
-    alasan: 'Dipanggil ekstensi (origin chrome-extension://); hanya status, tidak mengubah data warga.',
-  },
 ];
 
 function exceptionFor(pathname: string): OriginException | undefined {
