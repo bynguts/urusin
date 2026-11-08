@@ -110,12 +110,40 @@ Output berisi `debug`: konfigurasi efektif, `timingsMs` per tahap (`expand`, `bm
 Setelah fusi, pipeline menghitung **cakupan** (0..1): bobot IDF kata kueri bermakna (ter-stem, tanpa
 stopword, tanpa nama tempat, tanpa kata maksud umum seperti "cara/urus/bikin", dan token yang dijelaskan
 glosarium dihitung tercakup bila hasil memuat istilah resminya) yang muncul pada 3 hasil teratas. Cakupan di bawah
-`minCoverage` (default `DEFAULT_MIN_COVERAGE = 0.3`, `0` = mati) membuat `tanpaHasil = true`, `hasil = []` dan
-`alasan`: `di_luar_cakupan` (tanpa hasil atau cakupan 0) atau `skor_rendah` (cocok sebagian). Kalibrasi pada
-korpus sintetis `abstain.test.ts` (18 chunk): 25 kueri dalam cakupan berskor 0.33 sampai 1.0, 10 kueri di luar
-cakupan berskor 0 sampai 0.26 atau tanpa hasil sama sekali; 0.3 ada di celah itu. Ambang perlu dikalibrasi ulang di
-korpus nyata. Cakupan dihitung pada top-3 hasil fusi, sehingga gerbang berlaku sama di mode `bm25` dan `hybrid` (diuji dengan embedder palsu). Ambang bisa ditimpa lewat env `RAG_ABSTAIN_MIN_COVERAGE`. Lantai cosine untuk leg vektor sengaja tidak dipakai: skor cosine tidak terkalibrasi antar model embedding. Stopword dipakai di
+`minCoverage` (default `DEFAULT_MIN_COVERAGE = 0.1`, `0` = mati) membuat `tanpaHasil = true`, `hasil = []` dan
+`alasan`: `di_luar_cakupan` (tanpa hasil atau cakupan 0) atau `skor_rendah` (cocok sebagian). Ambang 0.3 awal dikalibrasi di
+korpus sintetis `abstain.test.ts`; di korpus nyata ia menurunkan recall@3 5 poin, jadi default dikalibrasi ulang ke 0.1
+(lihat "Korpus nyata dan gold set"). Cakupan dihitung pada top-3 hasil fusi, sehingga gerbang berlaku sama di mode `bm25` dan `hybrid` (diuji dengan embedder palsu). Ambang bisa ditimpa lewat env `RAG_ABSTAIN_MIN_COVERAGE`. Lantai cosine untuk leg vektor sengaja tidak dipakai: skor cosine tidak terkalibrasi antar model embedding. Stopword dipakai di
 semua jalur pencarian (BM25 lama, leg asli, leg ter-stem, perluasan).
+
+### Korpus nyata dan gold set
+
+Bangun korpus dari sumber resmi di `data/sources.json` (butuh jaringan; sopan: robots.txt, >= 2 detik per host):
+
+```
+pnpm rag:ingest --sources ../../data/sources.json --db .cache/rag.db
+pnpm rag:eval --gold ../../data/gold/tuning.json --pipelines ../../data/gold/pipelines.json
+pnpm rag:eval --gold ../../data/gold/heldout.json --pipelines ../../data/gold/pipelines.json
+```
+
+Korpus (37 sumber, ~267 chunk): halaman standar pelayanan per layanan Disdukcapil Wonogiri, data dukung Si D'nOK
+Semarang, katalog layanan Klampid Surabaya (adapter GraphQL, disanitasi), Cek Bansos, LAPOR!, regulasi adminduk
+(hanya metadata dari peraturan.go.id), serta beberapa halaman Samsat/OSS/Ombudsman. Setiap chunk wajib punya
+`sourceUrl` dan `verifiedAt` non-null (skema Zod + trigger DB aditif).
+
+Gold set: `data/gold/tuning.json` (50 pertanyaan: 13 Surabaya, 12 luar cakupan) untuk penyetelan dan
+`data/gold/heldout.json` (20 pertanyaan, 6 luar cakupan) yang TIDAK dipakai menyetel. `data/rag-gold.json` tetap contoh
+sintetis. Pertanyaan luar cakupan (`luarCakupan: true`) tidak punya `relevan`; jawaban benar adalah abstain.
+
+Keterbatasan korpus yang perlu diketahui sebelum menilai angka:
+
+- Katalog Klampid hanya memuat nama dan deskripsi layanan (persyaratan per dokumen butuh login), jadi pertanyaan
+  Surabaya hanya bisa diarahkan ke layanan yang tepat, bukan dijawab rinci.
+- Id chunk halaman HTML berbasis urutan, sehingga bergeser bila halaman berubah. Gold yang rujukannya tidak cocok
+  muncul di `tanpaChunkRelevan` pada laporan eval; id chunk Klampid stabil (`klampid-katalog#<kategori>-<slug>`).
+- SKCK, SIM, BPJS, Cek DPT, dan IKD umum belum ada di korpus (sumber tak terjangkau atau tak terverifikasi);
+  pertanyaan tentangnya diperlakukan sebagai luar cakupan.
+- Tahap hybrid dan rerank butuh kunci embedding/LLM; tanpanya `rag:eval` hanya mengukur BM25.
 
 ### rag:verify
 
