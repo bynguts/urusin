@@ -14,7 +14,7 @@ export const PINNED_EXTENSION_ID = /^PUBLIC_EXTENSION_ID=(.+)$/m.exec(
 
 export const test = base.extend<{ context: BrowserContext; extensionId: string }>({
   // eslint-disable-next-line no-empty-pattern -- sintaks fixture Playwright
-  context: async ({}, use) => {
+  context: async ({}, use, testInfo) => {
     const context = await chromium.launchPersistentContext('', {
       channel: 'chromium', // headless baru: mendukung ekstensi
       args: [
@@ -23,7 +23,12 @@ export const test = base.extend<{ context: BrowserContext; extensionId: string }
         `--load-extension=${EXTENSION_PATH}`,
       ],
     });
+    // Context dibuat manual, jadi `use.trace` di playwright.config tidak berlaku: rekam jejak sendiri
+    // dan simpan hanya bila tes gagal (diunggah CI dari test-results/).
+    await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
     await use(context);
+    const failed = testInfo.status !== testInfo.expectedStatus;
+    await context.tracing.stop(failed ? { path: testInfo.outputPath('trace.zip') } : {});
     await context.close();
   },
   extensionId: async ({ context }, use) => {

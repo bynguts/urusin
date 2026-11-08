@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Anggaran performa (perubahan rencana v6): JS awal rute beranda ≤ 70 KB gzip.
-// Menjalankan hasil `vite build` (adapter-node), mengambil HTML beranda, lalu menjumlahkan ukuran gzip
+// Anggaran performa (perubahan rencana v6): JS awal setiap rute di perf-routes.cjs ≤ 70 KB gzip.
+// Menjalankan hasil `vite build` (adapter-node), mengambil HTML tiap rute, lalu menjumlahkan ukuran gzip
 // setiap file JS yang dirujuk HTML (modulepreload + import entry) persis seperti yang diunduh peramban.
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -12,7 +13,8 @@ import { gzipSync } from 'node:zlib';
 const ROOT = resolve(import.meta.dirname, '..');
 const CLIENT_DIR = join(ROOT, 'build', 'client');
 const LIMIT_KB = Number(process.env.BUDGET_JS_KB ?? 70);
-const ROUTE = process.env.BUDGET_ROUTE ?? '/';
+const { ROUTES } = createRequire(import.meta.url)('../../../perf-routes.cjs');
+const ROUTE_LIST = process.env.BUDGET_ROUTE ? [process.env.BUDGET_ROUTE] : ROUTES;
 
 function freePort() {
   return new Promise((ok, fail) => {
@@ -64,25 +66,34 @@ async function main() {
   });
   try {
     await waitFor(`${origin}/api/health`);
-    const html = await (await fetch(`${origin}${ROUTE}`)).text();
-    const scripts = referencedScripts(html);
-    if (scripts.length === 0) {
-      console.log(`budget: rute ${ROUTE} tidak memuat JS klien (0 KB).`);
-      return 0;
+    let failed = 0;
+    for (const route of ROUTE_LIST) {
+      const res = await fetch(`${origin}${route}`);
+      if (!res.ok) {
+        console.log(`budget: rute ${route} membalas HTTP ${res.status} → GAGAL`);
+        failed++;
+        continue;
+      }
+      const scripts = referencedScripts(await res.text());
+      if (scripts.length === 0) {
+        console.log(`budget: rute ${route} tidak memuat JS klien (0 KB) → LOLOS`);
+        continue;
+      }
+      let total = 0;
+      for (const rel of scripts) {
+        const gz = gzipSync(readFileSync(join(CLIENT_DIR, rel)), { level: 9 }).length;
+        total += gz;
+        console.log(`  ${(gz / 1024).toFixed(2).padStart(7)} KB  ${rel}`);
+      }
+      const kb = total / 1024;
+      const ok = kb <= LIMIT_KB;
+      console.log(
+        `budget: JS awal ${route} = ${kb.toFixed(2)} KB gzip (${scripts.length} file), batas ${LIMIT_KB} KB → ${ok ? 'LOLOS' : 'GAGAL'}`,
+      );
+      if (!ok) failed++;
     }
-    let total = 0;
-    for (const rel of scripts) {
-      const file = join(CLIENT_DIR, rel);
-      const gz = gzipSync(readFileSync(file), { level: 9 }).length;
-      total += gz;
-      console.log(`  ${(gz / 1024).toFixed(2).padStart(7)} KB  ${rel}`);
-    }
-    const kb = total / 1024;
-    const verdict = kb <= LIMIT_KB ? 'LOLOS' : 'GAGAL';
-    console.log(
-      `budget: JS awal ${ROUTE} = ${kb.toFixed(2)} KB gzip (${scripts.length} file), batas ${LIMIT_KB} KB → ${verdict}`,
-    );
-    return kb <= LIMIT_KB ? 0 : 1;
+    console.log(`budget: ${ROUTE_LIST.length} rute diperiksa, ${failed} gagal.`);
+    return failed === 0 ? 0 : 1;
   } finally {
     server.kill();
   }

@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -23,21 +24,26 @@ jobs:
       GIT_SHA: ${{ github.sha }}
     steps:
       - name: Checkout (riwayat lengkap untuk audit-history)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
+      # --ignore-scripts: tidak ada skrip lifecycle dependensi di CI (prepare milik workspace dijalankan
+      # oleh turbo/wxt saat dibutuhkan, setelah paket workspace dibangun).
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Semua `uses:` dipin ke commit SHA
+        run: node scripts/check-action-pins.mjs
 
       - name: Lint
         run: pnpm lint && pnpm format:check
@@ -72,25 +78,25 @@ jobs:
       GIT_SHA: ${{ github.sha }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build
         run: pnpm build
 
-      # Preset default Lighthouse = mobile (Moto G Power, slow 4G, simulasi). Sementara warn-only;
-      # angka tetap tercatat di ringkasan job. Naikkan ke "error" setelah scaffold stabil (M19).
+      # Rute dan batas ada di perf-routes.cjs dan lighthouserc.cjs. Emulasi mobile (Moto G Power, slow 4G),
+      # 3 run, median; pelanggaran apa pun menggagalkan job.
       - name: Lighthouse CI
         env:
           PORT: '4173'
@@ -104,8 +110,8 @@ jobs:
           {
             echo "### Lighthouse (mobile, median 3 run)"
             echo
-            echo "| URL | Performance | Accessibility | LCP (ms) |"
-            echo "|---|---|---|---|"
+            echo "| URL | Performance | Accessibility | LCP (ms) | TBT (ms) | Script (KB) | Total (KB) |"
+            echo "|---|---|---|---|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
           node -e '
             const fs = require("fs");
@@ -118,16 +124,106 @@ jobs:
               const p = med(rs.map((r) => r.categories.performance.score * 100));
               const a = med(rs.map((r) => r.categories.accessibility.score * 100));
               const l = med(rs.map((r) => r.audits["largest-contentful-paint"].numericValue));
-              console.log(`| ${url} | ${p} | ${a} | ${Math.round(l)} |`);
+              const t = med(rs.map((r) => r.audits["total-blocking-time"].numericValue));
+              const sc = med(rs.map((r) => r.audits["resource-summary"].details.items.find((i) => i.resourceType === "script").transferSize));
+              const tw = med(rs.map((r) => r.audits["total-byte-weight"].numericValue));
+              console.log(`| ${url} | ${p} | ${a} | ${Math.round(l)} | ${Math.round(t)} | ${(sc / 1024).toFixed(1)} | ${(tw / 1024).toFixed(1)} |`);
             }
           ' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Unggah laporan
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lighthouse-reports
           path: .lighthouseci/*.html
+          if-no-files-found: ignore
+
+  e2e:
+    name: E2E ekstensi (Playwright Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HUSKY: '0'
+      GIT_SHA: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Chromium bawaan Playwright, bukan Chrome bermerek: Chrome >= 137 mengabaikan --load-extension.
+      # Tes memakai channel 'chromium' (headless baru, mendukung ekstensi), jadi xvfb tidak diperlukan.
+      - name: Pasang Chromium Playwright
+        run: pnpm --filter @urusin/extension exec playwright install --with-deps chromium
+
+      # turbo membangun web, fixtures, dan ekstensi lebih dulu. Tes memuat ekstensi lewat
+      # launchPersistentContext, menegaskan ID ekstensi == PUBLIC_EXTENSION_ID, dan menyalakan fixtures + web.
+      - name: E2E
+        run: pnpm e2e
+
+      - name: Unggah trace bila gagal
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-traces
+          path: apps/extension/test-results/
+          if-no-files-found: ignore
+
+  coverage:
+    name: Coverage (ambang per paket)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HUSKY: '0'
+      GIT_SHA: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Gagal bila coverage di bawah ambang pada vitest.config.ts tiap paket.
+      - name: Coverage
+        run: pnpm coverage
+
+      - name: Ringkasan coverage
+        if: always()
+        run: |
+          {
+            echo "### Coverage per paket"
+            echo
+            echo '```'
+            node scripts/coverage-summary.mjs || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Unggah laporan lcov dan html
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-reports
+          path: packages/*/coverage/
           if-no-files-found: ignore
 
   gitleaks:
@@ -138,7 +234,7 @@ jobs:
       GITLEAKS_VERSION: 8.30.1
     steps:
       - name: Checkout (riwayat lengkap)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
