@@ -33,4 +33,39 @@ export const test = base.extend<{ context: BrowserContext; extensionId: string }
   },
 });
 
-export { expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+export { expect };
+
+export type Reply = {
+  ok: boolean;
+  code?: string;
+  cursor?: { status: string; stepIndex: number; message?: string; results: Record<string, unknown> };
+  type?: string;
+};
+
+/** Pairing lewat popup + halaman /pair sungguhan; mengembalikan pemanggil pesan ber-nonce. */
+export async function pairExtension(context: BrowserContext, extensionId: string) {
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  const [appPage] = await Promise.all([
+    context.waitForEvent('page'),
+    popup.getByRole('button', { name: `Hubungkan ke ${APP_ORIGIN}` }).click(),
+  ]);
+  await appPage.locator('[data-status="ok"]').waitFor({ timeout: 20_000 });
+  const nonce = (await appPage.evaluate(() => sessionStorage.getItem('urusin.pair.nonce'))) ?? '';
+  const call = (msg: object) =>
+    appPage.evaluate(([id, m]) => chrome.runtime.sendMessage(id as string, m), [
+      extensionId,
+      { ...msg, nonce },
+    ] as const) as Promise<Reply>;
+  return { appPage, nonce, call };
+}
+
+/** Mode Uji hanya bisa diubah dari popup ekstensi. */
+export async function setTestMode(context: BrowserContext, extensionId: string, on: boolean) {
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.getByLabel('Mode Uji').setChecked(on);
+  await expect(popup.locator('#banner')).toBeVisible({ visible: on });
+  await popup.close();
+}
