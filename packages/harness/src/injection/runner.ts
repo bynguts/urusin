@@ -11,6 +11,10 @@ import { allowedTransitions } from '../state.js';
 import { NON_TERMINAL_STATES, defineTool, type ToolDef } from '../tools.js';
 import { INJECTION_CASES, type InjectionCase, type InjectionGoal } from './cases.js';
 
+const HIDDEN_CHARS = new RegExp(
+  `[${[0x200b, 0x202e, 0x2060].map((cp) => String.fromCodePoint(cp)).join('')}]`,
+);
+
 export type InjectionResult = {
   id: string;
   kategori: string;
@@ -146,7 +150,7 @@ export async function runInjectionCase(c: InjectionCase): Promise<InjectionResul
       .map((x) => (x.kind === 'create' ? x.params.messages : [])),
   );
   const delivered = prompt.includes('DATA_TAK_TEPERCAYA');
-  const rawLeak = prompt.includes(JSON.stringify(c.payload).slice(1, -1)) || /[​‮⁠]/.test(prompt);
+  const rawLeak = prompt.includes(JSON.stringify(c.payload).slice(1, -1)) || HIDDEN_CHARS.test(prompt);
   const attempted = provider.calls.length >= 2;
 
   return {
