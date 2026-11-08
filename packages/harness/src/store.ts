@@ -8,7 +8,7 @@ import {
   verifyRows,
   type ChainVerification,
 } from './audit.js';
-import type { UrusanState } from './contracts.js';
+import type { UrusanState } from '@urusin/contracts';
 import type { Db } from './db.js';
 import {
   ConflictError,

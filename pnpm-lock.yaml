@@ -193,6 +193,9 @@ importers:
 
   packages/harness:
     dependencies:
+      '@urusin/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@urusin/core':
         specifier: workspace:*
         version: link:../core

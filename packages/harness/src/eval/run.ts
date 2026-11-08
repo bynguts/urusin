@@ -88,9 +88,7 @@ async function runOnce(task: EvalTask, o: EvalOptions): Promise<RunResult> {
     const out = await runTurn(env.deps, { urusanId: u.id, userText: task.teks });
     const latensiMs = performance.now() - t0;
     const types = out.events.map((e) => e.type);
-    const gateDenies = out.events.filter(
-      (e) => e.type === 'gate' && (e.data as { keputusan: string }).keputusan === 'deny',
-    ).length;
+    const gateDenies = out.events.filter((e) => e.type === 'policy_gate' && e.keputusan === 'deny').length;
     const executed = (
       env.store.db
         .prepare(
@@ -101,8 +99,9 @@ async function runOnce(task: EvalTask, o: EvalOptions): Promise<RunResult> {
     const grounded = out.events.find((e) => e.type === 'grounded_answer');
     const groundedOk =
       grounded !== undefined &&
-      (grounded.data as { klaim: unknown[]; klaimDibuang: number }).klaim.length > 0 &&
-      (grounded.data as { klaimDibuang: number }).klaimDibuang === 0;
+      grounded.type === 'grounded_answer' &&
+      grounded.klaim.length > 0 &&
+      grounded.klaimDibuang === 0;
     const hasilSesuai =
       task.ekspektasi === 'jawaban'
         ? groundedOk

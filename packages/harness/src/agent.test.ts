@@ -1,13 +1,13 @@
 import { FakeProvider, fakeCompletion, type ChatParams } from '@urusin/llm';
 import { describe, expect, it } from 'vitest';
 import { prepareTurn, runTurn } from './agent.js';
-import type { StreamEnvelope } from './contracts.js';
+import type { UrusinEvent as StreamEnvelope } from '@urusin/contracts';
 import { DemoProvider } from './demo.js';
 import { ConflictError, TurnInProgressError } from './errors.js';
 import { jejakView, transparansiView } from './trace.js';
 import { paramsHash } from './store.js';
 import { FAKE_HP, FAKE_NIK, SIXTEEN_DIGIT_RUN, dumpDb, makeEnv } from './testing.js';
-import type { UrusanState } from './contracts.js';
+import type { UrusanState } from '@urusin/contracts';
 
 const types = (events: readonly StreamEnvelope[]) => events.map((e) => e.type);
 const callNames = (p: FakeProvider) =>
@@ -35,11 +35,9 @@ describe('alur normal dengan DemoProvider', () => {
     expect(t.indexOf('progress')).toBeLessThan(t.indexOf('grounded_answer'));
 
     const answer = out.events.find((e) => e.type === 'grounded_answer')!;
-    const data = answer.data as {
-      klaim: { kutipan: { tautanKutipan: string; sumber: { url: string } }[] }[];
-    };
+    const data = answer as Extract<typeof answer, { type: 'grounded_answer' }>;
     expect(data.klaim.length).toBeGreaterThan(0);
-    expect(data.klaim[0]!.kutipan[0]!.tautanKutipan).toContain('#:~:text=');
+    expect(data.klaim[0]!.kutipan[0]!.textFragmentUrl).toContain('#:~:text=');
     expect(env.store.getUrusanOrThrow(u.id).jenis).toBe('kelahiran');
     expect(env.store.getUrusanOrThrow(u.id).state).toBe('MEMAHAMI');
   });
@@ -116,8 +114,8 @@ describe('policy gate (tool tulis)', () => {
       fakeCompletion({ content: 'Maaf, butuh konfirmasi.' }),
     ]);
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'ajukan sekarang' });
-    const gate = out.events.find((e) => e.type === 'gate')!;
-    expect(gate.data).toMatchObject({ keputusan: 'deny', aturan: 'CONFIRMATION_REQUIRED' });
+    const gate = out.events.find((e) => e.type === 'policy_gate')!;
+    expect(gate).toMatchObject({ keputusan: 'deny', aturan: 'CONFIRMATION_REQUIRED' });
     expect(types(out.events)).not.toContain('execution_request');
   });
 
@@ -137,18 +135,16 @@ describe('policy gate (tool tulis)', () => {
     );
     const first = await runTurn(env.deps, { urusanId: u.id, userText: 'ya, ajukan' });
     const exec = first.events.find((e) => e.type === 'execution_request')!;
-    expect(exec.data).toMatchObject({
+    expect(exec).toMatchObject({
       adapterId: 'telunjuk-sakti-wonogiri',
       flowId: 'ajukan',
       params: { layanan_id: 9 },
     });
-    expect((exec.data as { paramsHash: string }).paramsHash).toBe(
-      paramsHash('dukcapil__ajukan_layanan', args),
-    );
+    expect((exec as { paramsHash: string }).paramsHash).toBe(paramsHash('dukcapil__ajukan_layanan', args));
 
     const second = await runTurn(env.deps, { urusanId: u.id, userText: 'sekali lagi' });
     expect(types(second.events)).not.toContain('execution_request');
-    expect(second.events.find((e) => e.type === 'gate')!.data).toMatchObject({
+    expect(second.events.find((e) => e.type === 'policy_gate')!).toMatchObject({
       aturan: 'CONFIRMATION_MISMATCH',
     });
   });
@@ -168,7 +164,7 @@ describe('policy gate (tool tulis)', () => {
       fakeCompletion({ content: 'gagal' }),
     );
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'x' });
-    expect(out.events.find((e) => e.type === 'gate')!.data).toMatchObject({
+    expect(out.events.find((e) => e.type === 'policy_gate')!).toMatchObject({
       aturan: 'CONFIRMATION_MISMATCH',
     });
   });
@@ -190,7 +186,7 @@ describe('policy gate (tool tulis)', () => {
       fakeCompletion({ content: 'gagal' }),
     );
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'x' });
-    expect(out.events.find((e) => e.type === 'gate')!.data).toMatchObject({
+    expect(out.events.find((e) => e.type === 'policy_gate')!).toMatchObject({
       aturan: 'CONFIRMATION_EXPIRED',
     });
   });
@@ -225,7 +221,9 @@ describe('policy gate (tool tulis)', () => {
       fakeCompletion({ content: 'gagal' }),
     );
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'x' });
-    expect(out.events.find((e) => e.type === 'gate')!.data).toMatchObject({ aturan: 'ORIGIN_NOT_OFFICIAL' });
+    expect(out.events.find((e) => e.type === 'policy_gate')!).toMatchObject({
+      aturan: 'ORIGIN_NOT_OFFICIAL',
+    });
   });
 
   it('tool final dan tool tak dikenal ditolak; placeholder/PII di parameter ditolak', async () => {
@@ -246,8 +244,8 @@ describe('policy gate (tool tulis)', () => {
     ]);
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'x' });
     const rules = out.events
-      .filter((e) => e.type === 'gate')
-      .map((e) => (e.data as { aturan: string }).aturan);
+      .filter((e) => e.type === 'policy_gate')
+      .map((e) => (e as { aturan: string }).aturan);
     expect(rules).toEqual([
       'FINAL_REQUIRES_CITIZEN',
       'UNKNOWN_TOOL',
@@ -262,7 +260,7 @@ describe('policy gate (tool tulis)', () => {
       fakeCompletion({ content: 'ok' }),
     ]);
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'x' });
-    expect(out.events.find((e) => e.type === 'gate')!.data).toMatchObject({ aturan: 'SCHEMA_INVALID' });
+    expect(out.events.find((e) => e.type === 'policy_gate')!).toMatchObject({ aturan: 'SCHEMA_INVALID' });
   });
 });
 
@@ -295,13 +293,13 @@ describe('degraded: JSON satu aksi (tanpa tools)', () => {
     ]);
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'ajukan' });
     expect(out.degraded).toBe(true);
-    expect(out.events.find((e) => e.type === 'gate')!.data).toMatchObject({
+    expect(out.events.find((e) => e.type === 'policy_gate')!).toMatchObject({
       keputusan: 'deny',
       aturan: 'CONFIRMATION_REQUIRED',
     });
     expect(types(out.events)).not.toContain('execution_request');
     const done = out.events.at(-1)!;
-    expect(done.data).toMatchObject({ degraded: true, lanjutkan: true });
+    expect(done).toMatchObject({ degraded: true, lanjutkan: true });
     // tidak ada panggilan yang membawa parameter tools
     expect(provider.calls.every((c) => c.kind !== 'create' || !c.params.tools?.length)).toBe(true);
   });
@@ -311,7 +309,7 @@ describe('degraded: JSON satu aksi (tanpa tools)', () => {
     const env = makeEnv({ provider, caps: { tools: false } });
     const u = env.store.createUrusan();
     const t1 = await runTurn(env.deps, { urusanId: u.id, userText: 'Apa syarat akta kelahiran?' });
-    expect(t1.events.at(-1)!.data).toMatchObject({ degraded: true, lanjutkan: true });
+    expect(t1.events.at(-1)!).toMatchObject({ degraded: true, lanjutkan: true });
     const t2 = await runTurn(env.deps, { urusanId: u.id, userText: 'lanjut' });
     expect(
       types(t2.events).some((t) => t === 'grounded_answer' || t === 'handoff' || t === 'assistant_text'),
@@ -336,11 +334,8 @@ describe('timeout, pembatalan, konkurensi', () => {
     const u = env.store.createUrusan({ jenis: 'akta' });
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'halo' });
     expect(out.status).toBe('timeout');
-    expect(out.events.find((e) => e.type === 'error')!.data).toMatchObject({
-      kode: 'TIMEOUT',
-      dapatDiulang: true,
-    });
-    expect(out.events.at(-1)!.data).toMatchObject({ status: 'timeout' });
+    expect(out.events.map((e) => e.type)).toContain('timeout');
+    expect(out.events.at(-1)!).toMatchObject({ status: 'timeout' });
     const row = env.store.db.prepare('SELECT status FROM turns WHERE id = ?').get(out.turnId);
     expect(row).toEqual({ status: 'timeout' });
     expect(() => env.store.claimTurn(u.id, 'lagi')).not.toThrow();
@@ -393,7 +388,7 @@ describe('timeout, pembatalan, konkurensi', () => {
     const u = env.store.createUrusan({ jenis: 'akta' });
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'x' });
     expect(provider.calls).toHaveLength(3);
-    expect(out.events.find((e) => e.type === 'error')!.data).toMatchObject({ kode: 'LLM_FAILED' });
+    expect(out.events.find((e) => e.type === 'error')!).toMatchObject({ kode: 'LLM_FAILED' });
   });
 });
 
@@ -408,7 +403,7 @@ describe('error LLM bertipe (#22)', () => {
     const u = env.store.createUrusan({ jenis: 'akta' });
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'x' });
     expect(out.status).toBe('galat');
-    expect(out.events.find((e) => e.type === 'error')!.data).toMatchObject({ kode, dapatDiulang: retry });
+    expect(out.events.find((e) => e.type === 'error')!).toMatchObject({ kode, bisaUlang: retry });
     expect(provider.calls).toHaveLength(1);
   });
 });
@@ -441,9 +436,9 @@ describe('kuota dan biaya (jam palsu)', () => {
     await runTurn(env.deps, { urusanId: u.id, userText: 'Halo' });
     const third = await runTurn(env.deps, { urusanId: u.id, userText: 'Halo' });
     expect(types(third.events)).toContain('handoff');
-    expect(third.events.find((e) => e.type === 'error')!.data).toMatchObject({
+    expect(third.events.find((e) => e.type === 'error')!).toMatchObject({
       kode: 'QUOTA',
-      dapatDiulang: false,
+      bisaUlang: false,
     });
   });
 
@@ -471,7 +466,7 @@ describe('kuota dan biaya (jam palsu)', () => {
     const before = provider.calls.length;
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Halo' });
     expect(provider.calls.length).toBe(before);
-    expect(out.events.find((e) => e.type === 'error')!.data).toMatchObject({ kode: 'QUOTA' });
+    expect(out.events.find((e) => e.type === 'error')!).toMatchObject({ kode: 'QUOTA' });
 
     now = new Date('2026-11-09T03:00:00.000Z'); // hari berikutnya: kuota baru
     const next = await runTurn(env.deps, { urusanId: u.id, userText: 'Halo' });

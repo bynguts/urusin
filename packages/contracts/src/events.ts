@@ -202,6 +202,8 @@ export const UrusinEventSchema = z.discriminatedUnion('type', [
 export type UrusinEvent = z.infer<typeof UrusinEventSchema>;
 export type UrusinEventType = UrusinEvent['type'];
 export type EventOf<T extends UrusinEventType> = Extract<UrusinEvent, { type: T }>;
+/** Isi event tanpa amplop dan tanpa `type`. */
+export type PayloadOf<T extends UrusinEventType> = Omit<EventOf<T>, 'seq' | 'at' | 'chainHead' | 'type'>;
 /** Isi event tanpa field amplop: yang dihasilkan harness sebelum diberi seq/at/chainHead. */
 export type EventPayload = {
   [T in UrusinEventType]: { type: T } & Omit<EventOf<T>, 'seq' | 'at' | 'chainHead' | 'type'>;

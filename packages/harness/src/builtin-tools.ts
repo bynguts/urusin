@@ -3,7 +3,7 @@ import { llmText } from '@urusin/core';
 import { cariPengetahuanTool } from '@urusin/rag';
 import { routeByKode } from '@urusin/registry';
 import { z } from 'zod';
-import type { GroundedAnswerEvent, HandoffEvent } from './contracts.js';
+import type { PayloadOf } from '@urusin/contracts';
 import { KALIMAT_TETAP, buildHandoff, generateGroundedAnswer, verifyGrounded } from './grounding.js';
 import { spotlight } from './spotlight.js';
 import { paramsHash, type ChunkRecord } from './store.js';
@@ -98,6 +98,7 @@ export const urusanUsulkanRencana = defineTool({
         z.object({
           judul: llmText().max(120),
           jenis: z.enum(['online-adapter', 'online-manual', 'offline']),
+          bawa: z.array(llmText().max(80)).max(10).optional(),
         }),
       )
       .min(1)
@@ -111,11 +112,15 @@ export const urusanUsulkanRencana = defineTool({
       endTurn: true,
       events: [
         {
-          type: 'plan',
-          data: {
-            ringkasan: args.ringkasan,
-            langkah: args.langkah.map((l, i) => ({ id: `l${i + 1}`, judul: l.judul, jenis: l.jenis })),
-          },
+          type: 'plan_card',
+          ringkasan: args.ringkasan,
+          langkah: args.langkah.map((l, i) => ({
+            id: `l${i + 1}`,
+            judul: l.judul,
+            jenis: l.jenis,
+            bawa: l.bawa ?? [],
+            sumber: [],
+          })),
         },
       ],
     };
@@ -136,10 +141,10 @@ export const urusanJawabPersyaratan = defineTool({
   async execute(ctx, args): Promise<ToolResult> {
     const chunks = ctx.store.getChunks(ctx.urusan.id);
     const ctxHandoff = { kodeKabKota: ctx.urusan.kodeKabKota };
-    const handoffEvent = (alasan: HandoffEvent['data']['alasan']): ToolResult => ({
+    const handoffEvent = (sebab: PayloadOf<'handoff'>['sebab']): ToolResult => ({
       content: 'Tidak ada sumber resmi yang cukup; warga diarahkan ke kanal resmi.',
       endTurn: true,
-      events: [{ type: 'handoff', data: buildHandoff({ ...ctxHandoff, chunks }, alasan) }],
+      events: [{ type: 'handoff', ...buildHandoff({ ...ctxHandoff, chunks }, sebab) }],
     });
     if (chunks.length === 0) return handoffEvent('tanpa_sumber');
 
@@ -155,12 +160,12 @@ export const urusanJawabPersyaratan = defineTool({
     const usage = { usage: gen.usage, structuredMode: gen.method };
     if (verified.handoff) {
       return {
-        ...handoffEvent(verified.handoff.alasan),
-        events: [{ type: 'handoff', data: verified.handoff }],
+        ...handoffEvent(verified.handoff.sebab),
+        events: [{ type: 'handoff', ...verified.handoff }],
         ...usage,
       };
     }
-    const data: GroundedAnswerEvent['data'] = {
+    const data: PayloadOf<'grounded_answer'> = {
       klaim: verified.klaim,
       klaimDibuang: verified.klaimDibuang,
       kalimatTetap: KALIMAT_TETAP,
@@ -168,7 +173,7 @@ export const urusanJawabPersyaratan = defineTool({
     return {
       content: `Jawaban bersumber (${verified.klaim.length} klaim) sudah ditampilkan kepada warga.`,
       endTurn: true,
-      events: [{ type: 'grounded_answer', data }],
+      events: [{ type: 'grounded_answer', ...data }],
       ...usage,
     };
   },
@@ -194,6 +199,7 @@ export const dukcapilAjukanLayanan = defineTool({
         executionId: `x_${randomUUID()}`,
         adapterId: entry.adapterId ?? `dukcapil.${entry.kodeKabKota}`,
         flowId: 'ajukan',
+        ringkasan: `Ajukan layanan ${args.layananId} di ${entry.portal?.nama ?? entry.nama}. Data pribadi tersamar.`,
         params: { layanan_id: args.layananId },
         tool: 'dukcapil__ajukan_layanan',
         paramsHash: paramsHash('dukcapil__ajukan_layanan', args),

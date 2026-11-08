@@ -1,6 +1,6 @@
 import { ErrorCode, findGuardIssues, matchOfficialOrigin } from '@urusin/core';
 import type { z } from 'zod';
-import type { GateRule, UrusanState } from './contracts.js';
+import type { GateRule, UrusanState } from '@urusin/contracts';
 import type { QuotaStatus } from './quota.js';
 import { paramsHash, type HarnessStore, type UrusanRow } from './store.js';
 import { CONFIRMATION_FIELD, modelFacingSchema, type ToolDef, type ToolRegistry } from './tools.js';

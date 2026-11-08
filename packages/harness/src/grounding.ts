@@ -1,7 +1,7 @@
 import { routeByKode } from '@urusin/registry';
 import { generateStructured, type CapabilityFlags, type ChatMessage, type ChatProvider } from '@urusin/llm';
 import { z } from 'zod';
-import type { GroundedAnswerEvent, HandoffEvent, SourceRefView, VerifiedCitationView } from './contracts.js';
+import type { KutipanTerverifikasi, PayloadOf, Sumber } from '@urusin/contracts';
 import { DATAMARK, newNonce, spotlight, spotlightPolicyText } from './spotlight.js';
 import type { ChunkRecord } from './store.js';
 import { textFragmentUrl } from './textfragment.js';
@@ -79,9 +79,9 @@ export function locateQuote(chunkText: string, quote: string): string | null {
 }
 
 export type GroundedResult = {
-  klaim: GroundedAnswerEvent['data']['klaim'];
+  klaim: PayloadOf<'grounded_answer'>['klaim'];
   klaimDibuang: number;
-  handoff?: HandoffEvent['data'];
+  handoff?: PayloadOf<'handoff'>;
 };
 
 export type HandoffContext = {
@@ -89,16 +89,16 @@ export type HandoffContext = {
   chunks: readonly ChunkRecord[];
 };
 
-const NASIONAL: SourceRefView = {
+const NASIONAL: Sumber = {
   url: 'https://dukcapil.kemendagri.go.id',
   judul: 'Direktorat Jenderal Kependudukan dan Pencatatan Sipil',
   instansi: 'Kementerian Dalam Negeri',
 };
 
 /** Kanal resmi untuk hand-off: dari registry kota (sourceRef + portal), lalu sumber chunk, lalu kanal nasional. */
-export function handoffChannels(ctx: HandoffContext): SourceRefView[] {
-  const out: SourceRefView[] = [];
-  const push = (s: SourceRefView) => {
+export function handoffChannels(ctx: HandoffContext): Sumber[] {
+  const out: Sumber[] = [];
+  const push = (s: Sumber) => {
     if (!out.some((o) => o.url === s.url)) out.push(s);
   };
   if (ctx.kodeKabKota && /^\d{4}$/.test(ctx.kodeKabKota)) {
@@ -115,14 +115,14 @@ export function handoffChannels(ctx: HandoffContext): SourceRefView[] {
 
 export function buildHandoff(
   ctx: HandoffContext,
-  alasan: HandoffEvent['data']['alasan'],
-): HandoffEvent['data'] {
+  sebab: PayloadOf<'handoff'>['sebab'],
+): PayloadOf<'handoff'> {
   const kanal = handoffChannels(ctx);
   const first = kanal[0];
   return {
-    pesan: `Saya belum menemukan sumber resmi untuk ini. Tanyakan ke ${first?.instansi ?? 'instansi terkait'} (${first?.url ?? NASIONAL.url}).`,
-    kanal,
-    alasan,
+    alasan: `Saya belum menemukan sumber resmi untuk ini. Tanyakan ke ${first?.instansi ?? 'instansi terkait'} (${first?.url ?? NASIONAL.url}).`,
+    sebab,
+    kanal: kanal.map((k) => ({ nama: k.instansi, url: k.url })),
   };
 }
 
@@ -148,7 +148,7 @@ export function verifyGrounded(
   let dropped = 0;
 
   for (const k of answer.klaim) {
-    const citations: VerifiedCitationView[] = [];
+    const citations: KutipanTerverifikasi[] = [];
     let ok = k.kutipan.length > 0;
     for (const c of k.kutipan) {
       const chunk = byId.get(c.refId);
@@ -160,8 +160,10 @@ export function verifyGrounded(
       citations.push({
         refId: c.refId,
         kutipanPersis: exact,
-        sumber: { url: chunk.url, judul: chunk.judul, instansi: chunk.instansi },
-        tautanKutipan: textFragmentUrl(chunk.url, chunk.text, exact),
+        url: chunk.url,
+        judul: chunk.judul,
+        instansi: chunk.instansi,
+        textFragmentUrl: textFragmentUrl(chunk.url, chunk.text, exact),
         verifiedAt: chunk.verifiedAt,
         perluDicekUlang: stale(chunk.verifiedAt, now),
       });
@@ -171,8 +173,8 @@ export function verifyGrounded(
   }
 
   if (klaim.length === 0) {
-    const alasan = chunks.length === 0 ? 'tanpa_sumber' : 'kutipan_tidak_terverifikasi';
-    return { klaim: [], klaimDibuang: dropped, handoff: buildHandoff({ ...ctx, chunks }, alasan) };
+    const sebab = chunks.length === 0 ? 'tanpa_sumber' : 'kutipan_tidak_terverifikasi';
+    return { klaim: [], klaimDibuang: dropped, handoff: buildHandoff({ ...ctx, chunks }, sebab) };
   }
   return { klaim, klaimDibuang: dropped };
 }

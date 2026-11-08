@@ -17,8 +17,10 @@ import {
 import { z } from 'zod';
 import type { EventBus } from './bus.js';
 import type { Db } from './db.js';
-import type { ErrorCode, StreamEnvelope, UrusanState, UrusinEvent } from './contracts.js';
+import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/contracts';
 import { HarnessError, TurnInProgressError } from './errors.js';
+import { routeByKode } from '@urusin/registry';
+import { toEvent } from './envelope.js';
 import { buildHandoff } from './grounding.js';
 import { classifyIntent } from './intent.js';
 import { PiiInterceptor } from './pii.js';
@@ -66,7 +68,7 @@ export type TurnOutcome = {
   status: 'selesai' | 'timeout' | 'galat' | 'dibatalkan';
   degraded: boolean;
   /** Event yang dipancarkan turn ini (berurutan). */
-  events: StreamEnvelope[];
+  events: UrusinEvent[];
   tokensIn: number;
   tokensOut: number;
   costIdr: number;
@@ -134,12 +136,13 @@ export function runTurn(
   return prepareTurn(deps, args).run(args.signal);
 }
 
-function toErrorEvent(err: unknown, timedOut: boolean): Extract<UrusinEvent, { type: 'error' }> {
-  const mk = (kode: ErrorCode, pesan: string, dapatDiulang: boolean) => ({
+function toErrorEvent(err: unknown): EventPayload & { type: 'error' } {
+  const mk = (kode: EventOf<'error'>['kode'], pesanWarga: string, bisaUlang: boolean) => ({
     type: 'error' as const,
-    data: { kode, pesan, dapatDiulang },
+    kode,
+    pesanWarga,
+    bisaUlang,
   });
-  if (timedOut) return mk('TIMEOUT', 'Waktu pemrosesan habis. Silakan coba lagi.', true);
   if (err instanceof LlmRefusalError) {
     return mk(
       'LLM_REFUSAL',
@@ -174,7 +177,7 @@ class TurnRunner {
   private readonly now: () => Date;
   private readonly nonce = newNonce();
   private readonly ctrl = new AbortController();
-  private readonly events: StreamEnvelope[] = [];
+  private readonly events: UrusinEvent[] = [];
   private readonly turnMessages: ChatMessage[] = [];
   private urusan: UrusanRow;
   private version: number;
@@ -207,33 +210,28 @@ class TurnRunner {
     return { urusanId: this.turn.urusanId, turnId: this.turn.turnId };
   }
 
-  private emit(e: UrusinEvent): StreamEnvelope {
-    const stored = this.store.appendEvent(this.turn.urusanId, e.type, e.data);
-    const env = {
-      seq: stored.seq,
-      at: stored.at,
-      chainHead: stored.hash,
-      type: e.type,
-      data: stored.payload,
-    } as StreamEnvelope;
+  private emit(e: EventPayload): UrusinEvent {
+    const { type, ...isi } = e;
+    const env = toEvent(this.store.appendEvent(this.turn.urusanId, type, isi));
     this.events.push(env);
     this.deps.bus?.publish(this.turn.urusanId, env);
     return env;
   }
 
-  private progress(
-    fase: Extract<UrusinEvent, { type: 'progress' }>['data']['fase'],
-    pesan: string,
-    tool?: string,
-  ) {
-    this.emit({ type: 'progress', data: { fase, pesan, ...(tool ? { tool } : {}) } });
+  private progress(label: string, toolName?: string) {
+    this.emit({ type: 'progress', label, ...(toolName ? { toolName } : {}) });
+  }
+
+  private tier(): 'semi' | 'dipandu' | null {
+    const kode = this.urusan.kodeKabKota;
+    return kode && /^\d{4}$/.test(kode) ? routeByKode(kode).entry.tier : null;
   }
 
   private applyTransition(to: UrusanState): void {
     const from = this.urusan.state;
     this.urusan = this.store.transition(this.turn.urusanId, this.version, to);
     this.version = this.urusan.version;
-    this.emit({ type: 'state', data: { dari: from, ke: to, version: this.version } });
+    this.emit({ type: 'state', state: to, tier: this.tier(), version: this.version, dari: from });
   }
 
   private account(usage: readonly Usage[]): { tokensIn: number; tokensOut: number; costIdr: number } {
@@ -322,7 +320,7 @@ class TurnRunner {
         status = 'timeout';
         dbStatus = 'timeout';
         errorCode = 'TIMEOUT';
-        this.emit(toErrorEvent(err, true));
+        this.emit({ type: 'timeout' });
       } else if (reason instanceof TurnAbort) {
         status = 'dibatalkan';
         dbStatus = 'aborted';
@@ -330,8 +328,8 @@ class TurnRunner {
       } else {
         status = 'galat';
         dbStatus = 'error';
-        const ev = toErrorEvent(err, false);
-        errorCode = ev.data.kode;
+        const ev = toErrorEvent(err);
+        errorCode = ev.kode;
         this.emit(ev);
       }
     } finally {
@@ -350,12 +348,10 @@ class TurnRunner {
     if (status !== 'dibatalkan') {
       this.emit({
         type: 'done',
-        data: {
-          turnId: this.turn.turnId,
-          status: status === 'selesai' ? 'selesai' : status,
-          lanjutkan: this.lanjutkan,
-          degraded: this.degraded,
-        },
+        turnId: this.turn.turnId,
+        status,
+        lanjutkan: this.lanjutkan,
+        degraded: this.degraded,
       });
     }
     return {
@@ -371,11 +367,14 @@ class TurnRunner {
 
   private async body(): Promise<void> {
     if (this.urusan.state === 'BARU') this.applyTransition('MEMAHAMI');
-    this.progress('memahami', 'Memahami kebutuhan Anda…');
+    this.progress('Memahami kebutuhan Anda…');
     if (this.urusan.jenis === null) await this.classify();
+    if (this.quotaStatus().mode === 'hemat')
+      this.emit({ type: 'degraded', kapabilitas: ['rerank'], mode: 'hemat' });
 
     if (!this.deps.caps.tools) {
       this.degraded = true;
+      this.emit({ type: 'degraded', kapabilitas: ['tool_calling'], mode: null });
       await this.degradedAction();
       return;
     }
@@ -418,15 +417,14 @@ class TurnRunner {
       { kodeKabKota: this.urusan.kodeKabKota, chunks: this.store.getChunks(this.turn.urusanId) },
       'kuota',
     );
+    this.emit({ type: 'degraded', kapabilitas: ['llm'], mode: 'tanpa_ai' });
     this.emit({
       type: 'error',
-      data: {
-        kode: 'QUOTA',
-        pesan: `Kuota layanan AI habis (${q.reason ?? 'batas'}). Jalur dipandu tetap tersedia.`,
-        dapatDiulang: false,
-      },
+      kode: 'QUOTA',
+      pesanWarga: `Kuota layanan AI habis (${q.reason ?? 'batas'}). Jalur dipandu tetap tersedia.`,
+      bisaUlang: false,
     });
-    this.emit({ type: 'handoff', data: handoff });
+    this.emit({ type: 'handoff', ...handoff });
   }
 
   // --- mode normal: tool-calling ---
@@ -463,7 +461,7 @@ class TurnRunner {
       if (!msg || calls.length === 0) {
         const text = this.sanitizeOutput(msg?.content ?? '');
         this.turnMessages.push({ role: 'assistant', content: text });
-        if (text) this.emit({ type: 'assistant_text', data: { teks: text } });
+        if (text) this.emit({ type: 'assistant_text', delta: text });
         return;
       }
 
@@ -489,11 +487,9 @@ class TurnRunner {
     }
     this.emit({
       type: 'error',
-      data: {
-        kode: 'LLM_FAILED',
-        pesan: 'Terlalu banyak langkah tanpa hasil. Coba pertanyaan yang lebih spesifik.',
-        dapatDiulang: true,
-      },
+      kode: 'LLM_FAILED',
+      pesanWarga: 'Terlalu banyak langkah tanpa hasil. Coba pertanyaan yang lebih spesifik.',
+      bisaUlang: true,
     });
   }
 
@@ -510,8 +506,11 @@ class TurnRunner {
       raw = JSON.parse(argsJson || '{}');
     } catch {
       this.emit({
-        type: 'gate',
-        data: { tool: name, keputusan: 'deny', aturan: 'SCHEMA_INVALID', pesan: 'argumen bukan JSON valid' },
+        type: 'policy_gate',
+        tool: name,
+        keputusan: 'deny',
+        aturan: 'SCHEMA_INVALID',
+        pesan: 'argumen bukan JSON valid',
       });
       return {
         content: JSON.stringify({
@@ -540,25 +539,27 @@ class TurnRunner {
 
     if (!outcome.allow) {
       this.emit({
-        type: 'gate',
-        data: { tool: name, keputusan: 'deny', aturan: outcome.rule, pesan: outcome.message },
+        type: 'policy_gate',
+        tool: name,
+        keputusan: 'deny',
+        aturan: outcome.rule,
+        pesan: outcome.message,
       });
+      if (outcome.rule === 'CONFIRMATION_REQUIRED' || outcome.rule === 'FINAL_REQUIRES_CITIZEN') {
+        this.emit({
+          type: 'gate',
+          jenis: outcome.rule === 'FINAL_REQUIRES_CITIZEN' ? 'final' : 'konfirmasi',
+          pesan: outcome.message,
+        });
+      }
       return {
         content: JSON.stringify({ is_error: true, aturan: outcome.rule, pesan: outcome.message }),
         end: false,
       };
     }
     const tool = outcome.tool;
-    if (tool.effect === 'write') this.emit({ type: 'gate', data: { tool: name, keputusan: 'allow' } });
-    this.progress(
-      tool.effect === 'answer'
-        ? 'menyusun_jawaban'
-        : tool.spanOperation === 'retrieval'
-          ? 'mencari_sumber'
-          : 'memanggil_tool',
-      `Menjalankan ${name}…`,
-      name,
-    );
+    if (tool.effect === 'write') this.emit({ type: 'policy_gate', tool: name, keputusan: 'allow' });
+    this.progress(`Menjalankan ${name}…`, name);
 
     const span = this.deps.tracer.start(
       this.scope,
@@ -586,10 +587,9 @@ class TurnRunner {
         ...(res.structuredMode ? { structuredMode: res.structuredMode } : {}),
         attrs: { [OTEL.toolName]: name, [OTEL.operationName]: tool.spanOperation ?? 'execute_tool' },
       });
-      if (tool.effect === 'answer')
-        this.progress('memverifikasi_kutipan', 'Memverifikasi kutipan ke sumber resmi…');
+      if (tool.effect === 'answer') this.progress('Memverifikasi kutipan ke sumber resmi…');
       for (const e of res.events ?? []) this.emit(e);
-      if (res.execution) this.emit({ type: 'execution_request', data: res.execution });
+      if (res.execution) this.emit({ type: 'execution_request', ...res.execution });
       if (res.nextState) {
         try {
           this.applyTransition(res.nextState);
@@ -650,7 +650,7 @@ class TurnRunner {
       if (a.jenis === 'balas' || !a.nama) {
         const text = this.sanitizeOutput(a.teks ?? '');
         this.turnMessages.push({ role: 'assistant', content: text });
-        if (text) this.emit({ type: 'assistant_text', data: { teks: text } });
+        if (text) this.emit({ type: 'assistant_text', delta: text });
         return;
       }
       let args: Record<string, unknown> = {};

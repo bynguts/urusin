@@ -187,7 +187,7 @@ describe('audit: rantai hash per urusan', () => {
   function seeded() {
     const s = new HarnessStore(openHarnessDb());
     const u = s.createUrusan();
-    for (let i = 0; i < 5; i++) s.appendEvent(u.id, 'progress', { fase: 'memahami', pesan: `langkah ${i}` });
+    for (let i = 0; i < 5; i++) s.appendEvent(u.id, 'progress', { label: `langkah ${i}` });
     return { s, u };
   }
 
@@ -207,7 +207,7 @@ describe('audit: rantai hash per urusan', () => {
     const { s, u } = seeded();
     s.db
       .prepare('UPDATE events SET payload = ? WHERE urusan_id = ? AND seq = 3')
-      .run('{"fase":"memahami","pesan":"palsu"}', u.id);
+      .run('{"label":"palsu"}', u.id);
     expect(s.verifyChain(u.id)).toMatchObject({ ok: false, brokenAtSeq: 3, reason: 'hash' });
   });
 

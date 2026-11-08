@@ -1,0 +1,81 @@
+{
+  "skema": "sse",
+  "catatan": "Rekaman DemoProvider: \"Anak saya baru lahir kemarin, apa syarat membuat akta kelahirannya?\"",
+  "data": [
+    {
+      "dari": "BARU",
+      "state": "MEMAHAMI",
+      "tier": "semi",
+      "version": 2,
+      "type": "state",
+      "seq": 1,
+      "at": "2026-11-08T12:29:47.654Z",
+      "chainHead": "6d1113fe686b444c139bba871fde5fd60316db6f1c875826aec790fcd200c0cf"
+    },
+    {
+      "label": "Memahami kebutuhan Anda…",
+      "type": "progress",
+      "seq": 2,
+      "at": "2026-11-08T12:29:47.655Z",
+      "chainHead": "3726b1ac418537aed0a660ee63db09561b1614a9c356c873bc4a79e38a763914"
+    },
+    {
+      "label": "Menjalankan rag__cari_pengetahuan…",
+      "toolName": "rag__cari_pengetahuan",
+      "type": "progress",
+      "seq": 3,
+      "at": "2026-11-08T12:29:47.670Z",
+      "chainHead": "c72868a633326792197e895ea645138dfca1d2f6e0bf4e77409aa6961ee9d79d"
+    },
+    {
+      "label": "Menjalankan urusan__jawab_persyaratan…",
+      "toolName": "urusan__jawab_persyaratan",
+      "type": "progress",
+      "seq": 4,
+      "at": "2026-11-08T12:29:47.684Z",
+      "chainHead": "0b6958c45fd887a8d0cde5726d8cdda7c969dab946ac24229c46ade4bcd0f944"
+    },
+    {
+      "label": "Memverifikasi kutipan ke sumber resmi…",
+      "type": "progress",
+      "seq": 5,
+      "at": "2026-11-08T12:29:47.696Z",
+      "chainHead": "8ba691c35c287eaec1f34cf92777f99082623064431a4d44b73380751d1b9ee6"
+    },
+    {
+      "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+      "klaim": [
+        {
+          "kutipan": [
+            {
+              "instansi": "Direktorat Jenderal Dukcapil (data contoh)",
+              "judul": "Akta Kelahiran (contoh)",
+              "kutipanPersis": "Persyaratan akta kelahiran: surat keterangan lahir dari rumah sakit",
+              "perluDicekUlang": false,
+              "refId": "demo-akta-lahir-1",
+              "textFragmentUrl": "https://dukcapil.kemendagri.go.id/layanan#:~:text=Persyaratan%20akta%20kelahiran%3A%20surat%20keterangan%20lahir%20dari%20rumah%20sakit",
+              "url": "https://dukcapil.kemendagri.go.id/layanan",
+              "verifiedAt": "2026-11-01T00:00:00.000Z"
+            }
+          ],
+          "teks": "Menurut sumber resmi, ini hal yang perlu Anda siapkan."
+        }
+      ],
+      "klaimDibuang": 0,
+      "type": "grounded_answer",
+      "seq": 6,
+      "at": "2026-11-08T12:29:47.696Z",
+      "chainHead": "f99ae01f548c0a6ddd5ba506cbf4b7b14debf2116255907303b4f075e5643916"
+    },
+    {
+      "degraded": false,
+      "lanjutkan": false,
+      "status": "selesai",
+      "turnId": "t_9cb2e427-11d0-43b2-a509-03bfcca8defc",
+      "type": "done",
+      "seq": 7,
+      "at": "2026-11-08T12:29:47.697Z",
+      "chainHead": "ac173fc227c973a40009e09e8eff98a779806d68efa4ac866b8ce5bb91047f26"
+    }
+  ]
+}

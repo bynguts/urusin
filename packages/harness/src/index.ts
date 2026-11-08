@@ -1,4 +1,4 @@
-export * from './contracts.js';
+export * from './envelope.js';
 export * from './state.js';
 export * from './errors.js';
 export * from './audit.js';

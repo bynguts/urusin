@@ -1,0 +1,70 @@
+{
+  "skema": "sse",
+  "catatan": "Rekaman DemoProvider: \"Bagaimana cara membuat SKCK untuk melamar kerja?\"",
+  "data": [
+    {
+      "dari": "BARU",
+      "state": "MEMAHAMI",
+      "tier": null,
+      "version": 2,
+      "type": "state",
+      "seq": 1,
+      "at": "2026-11-08T12:29:47.704Z",
+      "chainHead": "9413c1c2bf8db579e37e63e68ebb9b72f58d7b63186c9d0945015ac3d565a5a7"
+    },
+    {
+      "label": "Memahami kebutuhan Anda…",
+      "type": "progress",
+      "seq": 2,
+      "at": "2026-11-08T12:29:47.704Z",
+      "chainHead": "0f50c2e47950c7dd80b865fa8bfc717aacf2163a39fef51ec580d7c89be483b9"
+    },
+    {
+      "label": "Menjalankan rag__cari_pengetahuan…",
+      "toolName": "rag__cari_pengetahuan",
+      "type": "progress",
+      "seq": 3,
+      "at": "2026-11-08T12:29:47.709Z",
+      "chainHead": "b595b8c059991a5fa9465ba4b67d4e7af02d297bccfbfafcaf9fd0ec84d9a23c"
+    },
+    {
+      "label": "Menjalankan urusan__jawab_persyaratan…",
+      "toolName": "urusan__jawab_persyaratan",
+      "type": "progress",
+      "seq": 4,
+      "at": "2026-11-08T12:29:47.712Z",
+      "chainHead": "d90e0a8004d26e8c2e41fc76e43d139fd62cb1cae5f5b5c96b07457c5031b701"
+    },
+    {
+      "label": "Memverifikasi kutipan ke sumber resmi…",
+      "type": "progress",
+      "seq": 5,
+      "at": "2026-11-08T12:29:47.713Z",
+      "chainHead": "4451c3b57835631af4ce9c943ab4fc5763d9b8b42e224d5c17d1e59f13a326dc"
+    },
+    {
+      "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://dukcapil.kemendagri.go.id).",
+      "kanal": [
+        {
+          "nama": "Kementerian Dalam Negeri",
+          "url": "https://dukcapil.kemendagri.go.id"
+        }
+      ],
+      "sebab": "tanpa_sumber",
+      "type": "handoff",
+      "seq": 6,
+      "at": "2026-11-08T12:29:47.714Z",
+      "chainHead": "b1fbed43cf92182e7f98feb8b95ddba6ce96c4db8a48170f790e70820ed8c6ca"
+    },
+    {
+      "degraded": false,
+      "lanjutkan": false,
+      "status": "selesai",
+      "turnId": "t_401666cf-1f98-4460-afb7-26157a74715a",
+      "type": "done",
+      "seq": 7,
+      "at": "2026-11-08T12:29:47.714Z",
+      "chainHead": "6b15ba22945eb6b078b7bacd8dd20e62cbb85f7df90d2dda7e9346c6b790f6c0"
+    }
+  ]
+}
