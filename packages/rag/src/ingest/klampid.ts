@@ -43,7 +43,7 @@ export const KLAMPID_CATEGORIES: ReadonlySet<string> = new Set([
 ]);
 
 /** Baris uji/iseng yang ditemukan di katalog produksi (recon 2026-11-08). */
-const DENYLIST = /\b(test|tester|uji coba|lontong|kolak|dummy|contoh)\b/i;
+const DENYLIST = /\b(test|tes|tester|uji coba|lontong|kolak|dummy|contoh|puntadewa|kalimasada)\b/i;
 
 const clean = (s: string | null | undefined, max: number) =>
   (s ?? '')
@@ -79,6 +79,22 @@ const titleCase = (t: string) =>
   t.toLowerCase().replace(/(^|\s)([a-z])/g, (_m, a: string, b: string) => a + b.toUpperCase());
 
 /** Satu chunk per layanan; teks tampil dan header konteks dibuat oleh pemanggil. */
+const CAT_KEY: Record<string, string> = {
+  'PENDAFTARAN PENDUDUK': 'daftar',
+  'PENCATATAN SIPIL': 'sipil',
+  'PEMUTAKHIRAN DATA PENDUDUK': 'mutakhir',
+  'PELAYANAN UMUM': 'umum',
+};
+
+/** Kunci chunk stabil (tidak bergantung urutan katalog): kategori-nama-layanan. */
+export function klampidKey(s: KlampidService): string {
+  const slug = s.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `${CAT_KEY[s.category] ?? 'lain'}-${slug}`.slice(0, 80);
+}
+
 export function klampidChunkText(s: KlampidService): { heading: string; text: string } {
   const desc =
     s.description && s.description.toLowerCase() !== s.name.toLowerCase() ? ` ${s.description}.` : '';

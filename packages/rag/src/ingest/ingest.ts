@@ -3,7 +3,7 @@ import { embedAndFit } from '../vector/pipeline.js';
 import type { Embedder } from '../vector/store.js';
 import type { TransformMode } from '../vector/transform.js';
 import { upsertChunks } from '../store.js';
-import { klampidChunkText, klampidEndpoint, klampidHash, sanitizeKlampid } from './klampid.js';
+import { klampidChunkText, klampidEndpoint, klampidKey, klampidHash, sanitizeKlampid } from './klampid.js';
 import { contentHash, recordSourceState } from './state.js';
 import { chunkByHeading, dropBoilerplate } from './chunk.js';
 import { buildChunkContextHeader } from './context.js';
@@ -87,10 +87,10 @@ export async function runIngest(opts: IngestOptions): Promise<IngestReport[]> {
       const verifiedAt = nowIso();
       const services = s.adapter === 'klampid' ? sanitizeKlampid(JSON.parse(res.body)) : null;
       const pieces = services
-        ? services.map(klampidChunkText)
+        ? services.map((x) => ({ ...klampidChunkText(x), key: klampidKey(x) }))
         : dropBoilerplate(chunkByHeading(htmlToText(res.body)));
       const chunks = pieces.map((p, i) => ({
-        id: `${s.id}#${i}`,
+        id: `${s.id}#${'key' in p ? p.key : i}`,
         text: p.text,
         sourceRef: {
           url: s.url,

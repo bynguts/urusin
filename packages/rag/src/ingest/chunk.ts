@@ -2,7 +2,7 @@ export type TextChunk = { heading: string; text: string };
 
 /** Baris penanda blok layanan yang berdiri sendiri ("Syarat:", "Prosedur", "Biaya", "Dasar Hukum"). */
 const LABEL_RE =
-  /^(?:[-*#]\s*)?(?:\*\*)?(persyaratan|syarat|prosedur|tata cara|alur|biaya|tarif|jangka waktu|waktu|lama proses|dasar hukum)(?:[^\n|]{0,30}?)(?:\*\*)?\s*:?\s*$/i;
+  /^(?:[-*#]\s*)?(?:\*\*)?(persyaratan|syarat|sistem, mekanisme,? dan prosedur|prosedur|tata cara|alur|biaya|tarif|jangka waktu|waktu|lama proses|dasar hukum|produk pelayanan|pengelolaan pengaduan)(?:[^\n|]{0,30}?)(?:\*\*)?\s*:?\s*$/i;
 
 /**
  * Pecah teks per heading, lalu per blok layanan (syarat / prosedur / biaya / waktu / dasar hukum)
