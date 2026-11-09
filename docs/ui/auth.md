@@ -28,8 +28,8 @@ Keputusan dan model ancaman ada di [ADR 0028](../adr/0028-akun-dan-login.md). Ko
 Data `load`:
 
 - `/masuk`: `{ next, googleAktif, juri, turnstileSiteKey, tautkan, galat }`.
-  - `juri` false → sembunyikan tombol juri (produksi tanpa Turnstile).
-  - `turnstileSiteKey` → render widget Cloudflare Turnstile (skrip `challenges.cloudflare.com`); widget mengisi `cf-turnstile-response` sendiri. Tampilkan widget di tombol juri selalu, dan di formulir masuk setelah galat `TURNSTILE_WAJIB`.
+  - `juri` selalu true: tombol juri selalu tampil. Tanpa kunci Turnstile, batas per IP/global dan kedaluwarsa 24 jam tetap berlaku.
+  - `turnstileSiteKey` → render widget Cloudflare Turnstile (skrip `challenges.cloudflare.com`); widget mengisi `cf-turnstile-response` sendiri. Bila ada site key, tampilkan widget di tombol juri selalu, dan di formulir masuk setelah galat `TURNSTILE_WAJIB`.
   - `galat` dari `?galat=`: `GOOGLE_GAGAL`, `GOOGLE_TIDAK_AKTIF`, `GOOGLE_EMAIL_BELUM_TERVERIFIKASI`, `GOOGLE_PERLU_SANDI`, `GOOGLE_SUDAH_DIPAKAI`.
   - `tautkan` true (setelah `GOOGLE_PERLU_SANDI`): "Email ini sudah punya akun. Masuk dengan kata sandi untuk menautkan Google." Setelah masuk dengan sandi, Google tertaut otomatis.
 - `/daftar`: `{ googleAktif }`. `/verifikasi-email`, `/atur-ulang-sandi`: `{ token, tokenBerlaku }`; membuka tautan tidak memakai token.

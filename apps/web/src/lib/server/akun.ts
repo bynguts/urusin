@@ -200,22 +200,21 @@ export async function turnstileLolos(rt: Runtime, token: string | undefined, ip:
 }
 
 /**
- * "Masuk sebagai juri": Turnstile wajib (mode nonaktif hanya diizinkan di luar produksi; produksi gagal
- * tertutup), lalu salinan demo terisolasi dengan batas per IP + global.
+ * "Masuk sebagai juri": salinan demo terisolasi. Juri harus selalu bisa masuk, jadi tanpa kunci Turnstile
+ * (mode nonaktif, juga di produksi) tombol tetap jalan; batas per IP per hari, batas global salinan aktif,
+ * dan kedaluwarsa 24 jam (di `buatDemo`) selalu berlaku. Bila Turnstile aktif, token juga wajib.
  */
 export async function masukJuri(rt: Runtime, event: EventLike & { cookies: Cookies }, turnstile?: string) {
   const ctx = konteks(event);
-  if (rt.turnstile.mode === 'nonaktif') {
-    if (process.env.NODE_ENV === 'production') throw new AkunError('TURNSTILE_TIDAK_AKTIF');
-  } else if (!(await rt.turnstile.verifikasi(turnstile, ctx.ip))) throw new AkunError('TURNSTILE_WAJIB');
+  if (rt.turnstile.mode !== 'nonaktif' && !(await rt.turnstile.verifikasi(turnstile, ctx.ip)))
+    throw new AkunError('TURNSTILE_WAJIB');
   const { token, akun } = rt.akun.buatDemo(ctx);
   pasangSesi(rt, event.cookies, akun, token);
   return akun;
 }
 
-/** Tombol juri ditampilkan: Turnstile aktif, atau mode dev tanpa Turnstile. */
-export const juriTersedia = (rt: Runtime): boolean =>
-  rt.turnstile.mode !== 'nonaktif' || process.env.NODE_ENV !== 'production';
+/** Tombol juri selalu ditampilkan (dengan atau tanpa kunci Turnstile); field tetap ada demi kontrak UI. */
+export const juriTersedia = (_rt: Runtime): boolean => true;
 
 /** Akun/demo yang sedang masuk, atau respons 401. */
 export function wajibMasuk(

@@ -728,7 +728,7 @@ describe('Masuk sebagai juri (salinan demo terisolasi)', () => {
     expect(hitung("SELECT COUNT(*) n FROM users WHERE jenis = 'demo' AND password_hash IS NOT NULL")).toBe(0);
   });
 
-  it('batas global salinan aktif → 503 DEMO_PENUH; produksi tanpa Turnstile gagal tertutup', async () => {
+  it('batas global salinan aktif → 503 DEMO_PENUH; produksi tanpa kunci Turnstile tetap jalan dengan batas', async () => {
     buatRt({ kuota: { tamuPerIpHari: 20, demoPerIpHari: 3, demoAktifMaks: 1 } });
     const ts = { turnstile: TURNSTILE_TOKEN_FIXTURE };
     expect((await juriApi(ev(post(ts, '/api/akun/juri'), { ip: '10.1.0.1' }))).status).toBe(200);
@@ -739,10 +739,11 @@ describe('Masuk sebagai juri (salinan demo terisolasi)', () => {
     const env = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
     try {
-      const p = await juriApi(ev(post({}, '/api/akun/juri')));
-      expect([p.status, (await p.json()).kode]).toEqual([503, 'TURNSTILE_TIDAK_AKTIF']);
       const l = (await masukLoad(ev(get('/masuk')) as never)) as any;
-      expect(l.juri).toBe(false);
+      expect(l.juri).toBe(true);
+      for (let i = 0; i < 3; i++) expect((await juriApi(ev(post({}, '/api/akun/juri')))).status).toBe(200);
+      const ke4 = await juriApi(ev(post({}, '/api/akun/juri')));
+      expect([ke4.status, (await ke4.json()).kode]).toEqual([429, 'DEMO_BATAS_IP']);
     } finally {
       process.env.NODE_ENV = env;
     }
