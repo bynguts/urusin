@@ -51,6 +51,13 @@
   --ur-indigo-bg: #e6e8f5;
   --ur-indigo-ink: #36438a;
   --ur-dot: #2525221a;
+  /* Browser Pendamping (u5rYk): area siaran, lembar Giliran Anda */
+  --ur-siaran: #f4f5f7;
+  --ur-amber-sheet: #fbf3e4;
+  --ur-amber-line: #e6c98f;
+  --ur-red-bg: #fbe9e7;
+  --ur-skel: #dce3dc;
+  --ur-skel-2: #e4e7e3;
   --sb-shadow-soft:
     0 0 0 1px rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06), 0 2px 4px rgb(0 0 0 / 0.04);
 }
@@ -91,6 +98,12 @@
   --ur-indigo-bg: #262a40;
   --ur-indigo-ink: #b8c0f0;
   --ur-dot: #f7f3ed14;
+  --ur-siaran: #22231f;
+  --ur-amber-sheet: #3b3021;
+  --ur-amber-line: #6b5530;
+  --ur-red-bg: #3f2522;
+  --ur-skel: #3a3d35;
+  --ur-skel-2: #31332d;
 }
 
 /* Kontras tinggi (Pengaturan): teks sekunder memakai warna utama, garis lebih tegas. */
@@ -131,6 +144,12 @@
   --color-kuning-ink: var(--ur-amber-ink);
   --color-nila: var(--ur-indigo-bg);
   --color-nila-ink: var(--ur-indigo-ink);
+  --color-siaran: var(--ur-siaran);
+  --color-kuning-lembar: var(--ur-amber-sheet);
+  --color-kuning-garis: var(--ur-amber-line);
+  --color-merah: var(--ur-red-bg);
+  --color-kerangka: var(--ur-skel);
+  --color-kerangka-2: var(--ur-skel-2);
   --color-mawar: var(--sb-badge-rose-bg);
   --color-mawar-ink: var(--sb-badge-rose-ink);
   --color-daun: var(--sb-badge-green-bg);
