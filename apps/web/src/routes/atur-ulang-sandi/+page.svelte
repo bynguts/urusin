@@ -23,8 +23,10 @@
     ><Icon name="gembok" class="size-6" /></span
   >
   {#if form?.berhasil}
-    <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Kata sandi diganti</h1>
-    <p role="status" class="mt-3 text-base text-body">
+    <h1 class="mt-5 text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">
+      Kata sandi diganti
+    </h1>
+    <p role="status" class="mt-3 text-[1.0625rem] leading-[25px] text-body">
       Kata sandi baru tersimpan. Semua perangkat sudah dikeluarkan. Silakan masuk lagi.
     </p>
     <a
@@ -33,7 +35,7 @@
       >Masuk <Icon name="panah" class="size-4.5" /></a
     >
   {:else if data.tokenBerlaku}
-    <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Kata sandi baru</h1>
+    <h1 class="mt-5 text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Kata sandi baru</h1>
     {#if galat}
       <p
         role="alert"
@@ -75,7 +77,9 @@
       >
     </form>
   {:else}
-    <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Tautan sudah tidak berlaku</h1>
+    <h1 class="mt-5 text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">
+      Tautan sudah tidak berlaku
+    </h1>
     <p
       role="alert"
       data-kode="TOKEN_TIDAK_VALID"
