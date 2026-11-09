@@ -78,6 +78,34 @@ Langkah host (setiap perubahan Caddy = **go-ahead pengguna per kejadian**, prose
    `TARGET=/etc/caddy/urusin/Caddyfile.urusin` (memindahkan snippet, import lama diganti). Backup ke `/var/backups/urusin-caddy/`,
    `caddy validate`, `systemctl reload caddy` (bukan restart), lalu membandingkan kode status
    gutstore.my.id, admin.gutstore.my.id dan pythia.web.id sebelum/sesudah. Berubah => rollback otomatis.
+
+   **Tata letak VPS saat ini (`/opt/urusin`, milik ubuntu, mode 0751; snippet 0644):** skrip menolak menulis ke
+   sana, dan sarannya (`TARGET=/etc/caddy/urusin/...`) mengubah baris import di `/etc/caddy/Caddyfile`, yang
+   berada di luar izin per kejadian biasa. Prosedur manual yang setara (dipakai untuk B1, 2026-11-09), dari
+   sesi `ubuntu` dengan `sudo -n`, TANPA mengedit `/etc/caddy/Caddyfile`:
+
+   ```sh
+   # di laptop, lalu scp ke /tmp di VPS
+   node scripts/gen-caddyfile.mjs --set primary [--fixtures] [--pendamping] \
+     --import /opt/urusin/Caddyfile.urusin --out /tmp/Caddyfile.urusin.baru
+   # di VPS
+   SITES="gutstore.my.id admin.gutstore.my.id pythia.web.id www.pythia.web.id agent-vm.tail25a63e.ts.net urusinai.web.id verify.urusinai.web.id"
+   snap() { for h in $SITES; do echo "$h $(curl -s -o /dev/null -w '%{http_code}' --max-time 10 https://$h/)"; done; }
+   TS=$(date -u +%Y%m%dT%H%M%SZ); BK=/var/backups/urusin-caddy/$TS; LIVE=/opt/urusin/Caddyfile.urusin
+   sudo install -d -m 700 "$BK" && sudo cp -p "$LIVE" /etc/caddy/Caddyfile "$BK/"   # 1. backup bertimestamp
+   before=$(snap)                                                                  # 2. snapshot sebelum
+   cp -p "$LIVE" "$LIVE.prev-$TS"
+   install -m 644 /tmp/Caddyfile.urusin.baru "$LIVE.tmp" && mv "$LIVE.tmp" "$LIVE"  # 3. pasang (atomik)
+   sudo -u caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile \
+     || { cp -p "$LIVE.prev-$TS" "$LIVE"; exit 1; }                               #    gagal: pulihkan, tanpa reload
+   sudo systemctl reload caddy || { cp -p "$LIVE.prev-$TS" "$LIVE"; sudo systemctl reload caddy; exit 1; }
+   sleep 6; [ "$before" = "$(snap)" ] \
+     || { cp -p "$LIVE.prev-$TS" "$LIVE"; sudo systemctl reload caddy; exit 1; }  # 4. berubah: rollback
+   ```
+
+   `validate` dijalankan sebagai user `caddy` (bukan root) agar izin bacanya sama dengan Caddy sendiri. Cek
+   drift setelahnya: `node scripts/gen-caddyfile.mjs --check --set primary ... --file <salinan terpasang>`.
+
 4. Pindah set (mis. fallback -> primary setelah DNS siap): ulangi langkah 2-3 dengan set baru, ubah `DOMAIN`
    di `.env`, lalu `./deploy.sh` ulang. Pairing dan tautan pada host lama tidak ikut pindah.
 5. Uji header (dari mana saja):

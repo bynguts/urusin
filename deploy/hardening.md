@@ -34,6 +34,13 @@ Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat
   setelah go-ahead. Pemeriksaan read-only (`ss -ltn`, `docker ps`, `caddy version`) tidak butuh izin.
 - Riwayat Caddy: snippet fallback dipasang 2026-11-08 (backup `20261108T184610Z`), lalu primary
   `urusinai.web.id` (backup `20261108T185039Z`; izin tetap pengguna mencakup pemasangan primary ini).
+- 2026-11-09 (B1, izin per kejadian pengguna untuk DUA perubahan sebagai satu kejadian): rute
+  `handle /pendamping/ws/*` -> `127.0.0.1:4330` (edge) dan blok `fixtures.urusinai.web.id` -> `127.0.0.1:4320`.
+  Snippet = keluaran `gen-caddyfile.mjs --set primary --fixtures --pendamping --import /opt/urusin/Caddyfile.urusin`
+  dari main 8278852, dipasang dengan prosedur manual di deploy/README.md "Caddy (host)" (skrip menolak
+  `/opt/urusin` yang milik ubuntu; `/etc/caddy/Caddyfile` TIDAK diubah). Backup
+  `/var/backups/urusin-caddy/20261109T085708Z` dan `/opt/urusin/Caddyfile.urusin.prev-20261109T085708Z`;
+  snapshot situs pengguna sama sebelum dan sesudah.
 
 ### Prosedur Caddy per kejadian (`deploy/caddy-install.sh`)
 
@@ -167,4 +174,21 @@ Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan meng
 - UI membaca kemampuan server dari `/api/kemampuan`, yang publik dan berisi subset tidak sensitif: mode `llm`, status
   `ai`/`vision`/`rag`, dan flag fitur pencarian. Endpoint ini tidak memuat sha, versi, nama model, jumlah chunk, biaya,
   atau turn berjalan, sehingga tidak perlu aturan Caddy.
-- Setiap perubahan hanya lewat `deploy/caddy-install.sh` dengan go-ahead pengguna (prosedur di "Model izin").
+- Setiap perubahan hanya dengan go-ahead pengguna, lewat `deploy/caddy-install.sh` atau, untuk tata letak
+  `/opt/urusin` saat ini, prosedur manual setara di deploy/README.md "Caddy (host)" (lihat "Model izin").
+
+## Status produksi B1 (2026-11-09)
+
+- Main 8278852 dari satu run Release: web, `urusin-pendamping` dan `urusin-fixtures` (revisi sama, arm64).
+- `pendamping` hanya di `urusin_pendamping_internal` (0 rute default), sandbox setuid aktif. Diprobe sebelum
+  deploy terhadap digest Release: SUID tunggal `chrome-sandbox` 0:4755, `getcap` kosong, seccomp `68e0e886…`
+  tanpa `io_uring_*`, blok `CAP_SYS_ADMIN` = `clone`/`unshare`, AppArmor `docker-default`, kontrol negatif
+  (NNP, tanpa SYS_ADMIN) menolak start. Tidak ada build image di VPS (keputusan lead); probe memakai image Release.
+- `pendamping-edge` publish `127.0.0.1:4330`; Caddy meneruskan HANYA `/pendamping/ws/*`. Jalur berbahaya
+  (`..`, `%2e%2e`, `..%2f`, `..%5c`, `//`, `..;`, `/pendamping/internal|debug|health`) diuji langsung lewat
+  Caddy: semua 404, polos maupun dengan header upgrade.
+- `fixtures` publish `127.0.0.1:4320`; `fixtures.urusinai.web.id` mengirim `X-Robots-Tag: noindex, nofollow`.
+- `.env`: `PENDAMPING_IMAGE`, `GIT_SHA_PENDAMPING`, `PENDAMPING_INTERNAL_URL`, `URUSIN_PUBLIC_ORIGIN`;
+  `FIXTURES_IMAGE` di `.env.images`. `COMPOSE_PROFILES` TIDAK diset global: `pendamping-up.sh` dan perintah
+  fixtures menyetel profilnya sendiri, jadi `deploy.sh` tidak menyentuh layanan itu.
+- `.env.images.keep`: digest pendamping aktif dan sebelumnya (rollback).
