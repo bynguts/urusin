@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { menuAktif, rutAuth } from './components/shell/navigasi.js';
 import { periksaBerkas, samarkan, ukuranBerkas } from './akun/klien.js';
-import { labelPlaceholder, petakanIsian } from './pendamping/isi-data.js';
-import { keadaanDariSesi } from './pendamping/sesi.svelte.js';
+import { daftarWrite, hashDaftarWrite, labelPlaceholder, petakanIsian } from './pendamping/isi-data.js';
+import { keadaanDariSesi, SesiPendampingUi } from './pendamping/sesi.svelte.js';
 import {
   FASE,
   LABEL_STATE,
@@ -91,6 +91,60 @@ describe('Browser Pendamping', () => {
     expect(r.isian).toEqual({ '{{PEMOHON.NAMA}}': 'Warga Contoh', '{{PEMOHON.HP}}': '0800' });
     expect(r.kurang).toEqual(['Tempat lahir', 'Data lain']);
     expect(labelPlaceholder('{{PEMOHON.NIK}}')).toBe('NIK');
+    expect(labelPlaceholder('{{KENDARAAN.NOPOL_ANGKA}}')).toBe('Angka nomor polisi');
+    expect(labelPlaceholder('{{URUSAN.KITIR}}')).toBe('Nomor kitir');
+    expect(labelPlaceholder('{{X.CONSTRUCTOR}}')).toBe('Data lain');
+  });
+
+  it('daftar write "Izinkan isi": field Data Diri + berkas, unik terurut; hash sha256 hex', async () => {
+    const f = daftarWrite(['{{PEMOHON.NIK}}', '{{ANAK.NIK}}', '{{PEMOHON.HP}}', '{{URUSAN.KITIR}}'], ['KTP']);
+    expect(f).toEqual(['berkas:ktp', 'hp', 'nik']);
+    // Vektor: sha256 dari "hp" + baris baru + "nik".
+    expect(await hashDaftarWrite(['nik', 'hp', 'nik'])).toBe(
+      '87a153264c87d1ad4ecb3b17785ea20c965827265aa36a286fea989392733c28',
+    );
+    expect(await hashDaftarWrite([])).toBe(
+      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    );
+  });
+
+  it('izinkanIsi: hanya hash yang dikirim; yang kurang jadi pesan; galat server diteruskan', async () => {
+    const kiriman: { url: string; body: string }[] = [];
+    let jawab: () => Response = () =>
+      Response.json({ kurang: { placeholder: ['Nomor kitir'], berkas: ['ktp'] } });
+    const s = new SesiPendampingUi(
+      'u_1',
+      async () => null,
+      async (url, init) => {
+        kiriman.push({ url: String(url), body: String(init?.body) });
+        return jawab();
+      },
+    );
+    expect(await s.izinkanIsi()).toBeUndefined();
+    expect(kiriman).toHaveLength(0);
+    s.data = {
+      ...s.data,
+      butuhData: { placeholder: ['{{PEMOHON.NIK}}', '{{URUSAN.KITIR}}'], berkas: ['ktp'] },
+    };
+    expect(await s.izinkanIsi()).toBe('Isi sendiri di layar: Nomor kitir, KTP.');
+    expect(kiriman[0]).toEqual({
+      url: '/api/urusan/u_1/pendamping/izinkan',
+      body: JSON.stringify({ writeListHash: await hashDaftarWrite(['berkas:ktp', 'nik']) }),
+    });
+    expect(s.data.butuhData).not.toBeNull();
+    jawab = () => Response.json({ kurang: { placeholder: [], berkas: [] } });
+    expect(await s.izinkanIsi()).toBeUndefined();
+    expect(s.data.butuhData).toBeNull();
+    s.data = { ...s.data, butuhData: { placeholder: ['{{PEMOHON.NIK}}'], berkas: [] } };
+    jawab = () =>
+      Response.json({ kode: 'ISI_OTOMATIS_TIDAK_TERSEDIA', pesanWarga: 'Belum tersedia.' }, { status: 503 });
+    expect(await s.izinkanIsi()).toBe('Belum tersedia.');
+    jawab = () => new Response('x', { status: 500 });
+    expect(await s.izinkanIsi()).toMatch(/belum bisa dipakai/);
+    jawab = () => {
+      throw new Error('jaringan');
+    };
+    expect(await s.izinkanIsi()).toMatch(/Koneksi terputus/);
   });
 
   it('status sesi menjadi keadaan layar', () => {

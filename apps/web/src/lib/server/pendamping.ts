@@ -1,10 +1,13 @@
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 import {
   AntreanPendampingResponseSchema,
+  ButuhSesiInternalSchema,
   PendampingGalatSchema,
   SesiPendampingSchema,
   TiketPendampingResponseSchema,
   type AntreanPendampingResponse,
+  type BerkasSesiInternal,
+  type IsiSesiInternal,
   type MulaiSesiInternal,
   type PemilikSesiInternal,
   type SesiPendamping,
@@ -162,7 +165,7 @@ export async function panggil<T>(
   cfg: PendampingTarget | null,
   path: string,
   schema: ZodType<T>,
-  body?: MulaiSesiInternal | PemilikSesiInternal,
+  body?: MulaiSesiInternal | PemilikSesiInternal | IsiSesiInternal | BerkasSesiInternal,
   fetcher: EgressFetch = egressFetch,
 ): Promise<Hasil<T>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
@@ -318,10 +321,12 @@ export async function panggilPemilik<T>(
   cfg: PendampingConfig | null,
   path: string,
   schema: ZodType<T>,
-  owner: PemilikSesiInternal,
+  /** Body permintaan; selain pemilik boleh membawa isi (jalur isi) yang HANYA dikirim ke worker pemegang sesi. */
+  owner: PemilikSesiInternal | IsiSesiInternal | BerkasSesiInternal,
   fetcher: EgressFetch = egressFetch,
 ): Promise<Hasil<T>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
+  const pemilik: PemilikSesiInternal = { urusanId: owner.urusanId, sidHash: owner.sidHash };
   const target = (w: PendampingWorker) => ({ url: w.url, token: w.token ?? cfg.token });
   const tercatat = cfg.workers.find((w) => w.id === lokasi.get(owner.urusanId));
   let tidakAda: Hasil<T> | null = null;
@@ -338,7 +343,7 @@ export async function panggilPemilik<T>(
   const temu = await Promise.all(
     hidup.map(async (w) => ({
       w,
-      r: await panggil(target(w), '/internal/sesi/status', skema.sesi, owner, fetcher),
+      r: await panggil(target(w), '/internal/sesi/status', skema.sesi, pemilik, fetcher),
     })),
   );
   const pemegang = temu.find((x) => x.r.ok);
@@ -376,6 +381,8 @@ export async function antreanGabungan(
 
 export const skema = {
   sesi: SesiPendampingSchema,
+  butuh: ButuhSesiInternalSchema,
+  kurang: z.object({ placeholder: z.array(z.string()), berkas: z.array(z.string()) }),
   tiket: TiketPendampingResponseSchema,
   antrean: AntreanPendampingResponseSchema,
 };

@@ -1,6 +1,7 @@
 /**
- * Pemetaan placeholder adapter (`{{PEMOHON.NIK}}`) ke Data Diri akun (GET /api/akun/data-diri, branch
- * feat/auth-akun). Nilai hanya dikirim ke sesi Browser Pendamping setelah warga menekan "Izinkan isi".
+ * Pemetaan placeholder adapter (`{{PEMOHON.NIK}}`) ke field Data Diri akun, dipakai bersama peramban (label
+ * lembar "Izinkan isi" + hash daftar write) dan server (jalur isi A-M1). Nilai TIDAK pernah lewat peramban:
+ * server menyelesaikannya dengan token persetujuan lalu mengirimnya ke sesi lewat kanal internal.
  */
 export type DataDiriRingkas = Partial<
   Record<
@@ -68,16 +69,47 @@ const LABEL: Record<keyof DataDiriRingkas, string> = {
   email: 'Email',
 };
 
-function kolomDari(placeholder: string): keyof DataDiriRingkas | undefined {
+/** Placeholder adapter yang bukan Data Diri (nomor lacak, nomor polisi, NIB): diketik warga di layar. */
+const LABEL_LAIN: Record<string, string> = {
+  KITIR: 'Nomor kitir',
+  KODE_PELAYANAN: 'Kode pelayanan',
+  NOPOL_ANGKA: 'Angka nomor polisi',
+  NOPOL_HURUF: 'Huruf akhir nomor polisi',
+  NIB: 'NIB',
+};
+
+function bagianAkhir(placeholder: string): string | undefined {
   const m = /^\{\{[A-Z][A-Z0-9_]*\.([A-Z0-9_.]+)\}\}$/.exec(placeholder);
-  if (!m) return undefined;
-  const bagian = m[1]!.split('.');
-  return KOLOM[bagian[bagian.length - 1]!];
+  return m ? m[1]!.split('.').at(-1) : undefined;
+}
+
+/** Field Data Diri untuk sebuah placeholder, atau undefined bila bukan Data Diri. */
+export function fieldDataDiri(placeholder: string): keyof DataDiriRingkas | undefined {
+  const akhir = bagianAkhir(placeholder);
+  return akhir && Object.hasOwn(KOLOM, akhir) ? KOLOM[akhir] : undefined;
 }
 
 export function labelPlaceholder(placeholder: string): string {
-  const k = kolomDari(placeholder);
-  return k ? LABEL[k] : 'Data lain';
+  const k = fieldDataDiri(placeholder);
+  if (k) return LABEL[k];
+  const akhir = bagianAkhir(placeholder);
+  return (akhir && Object.hasOwn(LABEL_LAIN, akhir) ? LABEL_LAIN[akhir] : undefined) ?? 'Data lain';
+}
+
+/**
+ * Daftar write persetujuan "Izinkan isi": field Data Diri dari placeholder sesi + `berkas:<nama>` untuk
+ * Dokumen. Unik dan terurut, sehingga peramban dan server menghitung hash yang sama.
+ */
+export function daftarWrite(placeholder: readonly string[], berkas: readonly string[]): string[] {
+  const f = placeholder.map(fieldDataDiri).filter((x): x is keyof DataDiriRingkas => x !== undefined);
+  return [...new Set([...f, ...berkas.map((b) => `berkas:${b.toLowerCase()}`)])].sort();
+}
+
+/** sha256 hex dari nama field unik terurut dipisah baris baru (sama dengan `hashDaftarWrite` @urusin/akun). */
+export async function hashDaftarWrite(fields: readonly string[]): Promise<string> {
+  const teks = [...new Set(fields)].sort().join('\n');
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(teks));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /** Isian yang bisa dipenuhi dari Data Diri + daftar label yang harus warga isi sendiri. */
@@ -88,7 +120,7 @@ export function petakanIsian(
   const isian: Record<string, string> = {};
   const kurang: string[] = [];
   for (const p of placeholder) {
-    const k = kolomDari(p);
+    const k = fieldDataDiri(p);
     const v = k ? data[k] : undefined;
     if (v) isian[p] = v;
     else kurang.push(labelPlaceholder(p));

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
+import { createHash } from 'node:crypto';
 import { DemoProvider } from '@urusin/harness';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,8 +15,11 @@ import {
   POST as mulai,
 } from '../../routes/api/urusan/[id]/pendamping/+server';
 import { POST as serahkan } from '../../routes/api/urusan/[id]/pendamping/serahkan/+server';
+import { POST as izinkan } from '../../routes/api/urusan/[id]/pendamping/izinkan/+server';
 import { POST as tiket } from '../../routes/api/urusan/[id]/pendamping/tiket/+server';
 import { checkOrigin } from './origin';
+import { daftarWrite, hashDaftarWrite } from '../pendamping/isi-data';
+import { pasangJalurIsi, type JalurIsiPendamping } from './pendamping/izinkan';
 import {
   hashSid,
   panggil,
@@ -100,6 +104,7 @@ beforeEach(() => {
   });
 });
 afterEach(() => {
+  pasangJalurIsi(undefined);
   pasangPemeriksaPemilikAkun(undefined);
   setRuntimeForTests(undefined);
   vi.unstubAllEnvs();
@@ -377,6 +382,157 @@ describe('broker Browser Pendamping', () => {
     const r = await mulai(ev(req('POST', { executionId: 'x_palsu' }), u.id));
     expect(r.status).toBe(422);
     expect(calls).toHaveLength(n);
+  });
+
+  describe('Izinkan isi lewat server (A-M1)', () => {
+    const HP = ['0800', '0000', '0001'].join('');
+    const PH = ['{{PEMOHON.NIK}}', '{{PEMOHON.HP}}', '{{URUSAN.KITIR}}'];
+    const BUTUH = { placeholder: PH, berkas: ['KTP'], origin: 'https://telunjuksakti.wonogirikab.go.id' };
+    const sha = (f: string[]) =>
+      createHash('sha256')
+        .update([...new Set(f)].sort().join('\n'))
+        .digest('hex');
+
+    function siapkan(over: Partial<JalurIsiPendamping> = {}) {
+      const u = urusanDenganEksekusi();
+      const log: string[] = [];
+      const jalur: JalurIsiPendamping = {
+        izinkan: (p) => {
+          log.push(`izinkan:${p.peminta.sid === SID}:${p.targetOrigin}`);
+          // Sama dengan hashDaftarWrite @urusin/akun: sha256 dari field unik terurut dipisah baris baru.
+          if (sha([...p.writeList]) !== p.writeListHash)
+            throw Object.assign(new Error('izin'), { kode: 'IZIN_TIDAK_VALID' });
+          return 'token-sekali';
+        },
+        nilai: (p) => {
+          log.push(`nilai:${p.token}:${p.writeList.join(',')}`);
+          return { nik: NIK, hp: HP };
+        },
+        berkas: (p) => {
+          log.push(`berkas:${p.nama.join(',')}`);
+          return [
+            { nama: 'KTP', namaBerkas: 'ktp.jpg', mime: 'image/jpeg', bytes: new Uint8Array([1, 2, 3]) },
+          ];
+        },
+        ...over,
+      };
+      pasangJalurIsi(jalur);
+      // Lokasi sesi belum tercatat: pemegang dicari lewat /status (tanpa isi), baru jalur isi ke pemegang itu.
+      reply = (path) =>
+        path === '/internal/sesi/status'
+          ? { status: 200, body: sesi() }
+          : path === '/internal/sesi/butuh'
+            ? { status: 200, body: BUTUH }
+            : path === '/internal/sesi/isi'
+              ? { status: 200, body: { placeholder: ['{{URUSAN.KITIR}}'], berkas: ['KTP'] } }
+              : { status: 200, body: { placeholder: ['{{URUSAN.KITIR}}'], berkas: [] } };
+      return { u, log };
+    }
+
+    it('hash yang ditampilkan -> nilai diselesaikan di server, dikirim ke sesi; jawaban tanpa nilai', async () => {
+      const { u, log } = siapkan();
+      const writeList = daftarWrite(BUTUH.placeholder, BUTUH.berkas);
+      expect(writeList).toEqual(['berkas:ktp', 'hp', 'nik']);
+      const writeListHash = await hashDaftarWrite(writeList);
+      expect(writeListHash).toBe(sha(writeList));
+      const res = await izinkan(ev(req('POST', { writeListHash }), u.id));
+      expect(res.status).toBe(200);
+      const teks = await res.text();
+      expect(JSON.parse(teks)).toEqual({ kurang: { placeholder: ['Nomor kitir'], berkas: [] } });
+      expect(teks).not.toContain(NIK);
+      expect(log).toEqual([
+        'izinkan:true:https://telunjuksakti.wonogirikab.go.id',
+        'nilai:token-sekali:berkas:ktp,hp,nik',
+        'berkas:KTP',
+      ]);
+      expect(calls.map((c) => new URL(c.url).pathname)).toEqual([
+        '/internal/sesi/status',
+        '/internal/sesi/butuh',
+        '/internal/sesi/isi',
+        '/internal/sesi/berkas',
+      ]);
+      expect(calls[0]!.body).toEqual({ urusanId: u.id, sidHash: hashSid(SID) });
+      calls.shift();
+      expect(calls[1]!.body).toEqual({
+        urusanId: u.id,
+        sidHash: hashSid(SID),
+        isian: { '{{PEMOHON.NIK}}': NIK, '{{PEMOHON.HP}}': HP },
+      });
+      expect(calls[2]!.body).toMatchObject({ nama: 'KTP', namaBerkas: 'ktp.jpg', dataBase64: 'AQID' });
+      // Kanal internal bertanda tangan; nilai tidak pernah ke worker selain pemegang sesi (satu worker di sini).
+      expect(calls[1]!.tanda).toBe(
+        tandaInternal(
+          'token-uji',
+          calls[1]!.waktu!,
+          calls[1]!.nonce!,
+          'POST',
+          '/internal/sesi/isi',
+          calls[1]!.raw,
+        ),
+      );
+      // Event urusan tidak memuat nilai apa pun.
+      expect(JSON.stringify(rt.store.eventsAfter(u.id))).not.toContain(NIK);
+    });
+
+    it('hash berbeda / galat izin -> 403 tanpa mengirim nilai; galat lain -> 500', async () => {
+      const { u } = siapkan();
+      const res = await izinkan(ev(req('POST', { writeListHash: sha(['nik']) }), u.id));
+      expect(res.status).toBe(403);
+      expect(((await res.json()) as any).kode).toBe('IZIN_TIDAK_VALID');
+      expect(calls.map((c) => new URL(c.url).pathname)).toEqual([
+        '/internal/sesi/status',
+        '/internal/sesi/butuh',
+      ]);
+      siapkan({
+        nilai: () => {
+          throw new Error('bug');
+        },
+      });
+      const h = await hashDaftarWrite(daftarWrite(BUTUH.placeholder, BUTUH.berkas));
+      expect((await izinkan(ev(req('POST', { writeListHash: h }), u.id))).status).toBe(500);
+    });
+
+    it('tanpa jalur vault terpasang -> 503 jujur, worker tidak dipanggil; body tidak sah -> 4xx', async () => {
+      const u = urusanDenganEksekusi();
+      const res = await izinkan(ev(req('POST', { writeListHash: 'a'.repeat(64) }), u.id));
+      expect(res.status).toBe(503);
+      expect(((await res.json()) as any).kode).toBe('ISI_OTOMATIS_TIDAK_TERSEDIA');
+      expect(calls).toHaveLength(0);
+      siapkan();
+      for (const body of [{}, { writeListHash: 'xyz' }, { isian: { '{{PEMOHON.NIK}}': NIK } }])
+        expect((await izinkan(ev(req('POST', body), u.id))).status).toBeGreaterThanOrEqual(400);
+      expect(calls).toHaveLength(0);
+      // Tanpa cookie sesi: 401 sebelum apa pun.
+      const tanpa = await izinkan(ev(req('POST', { writeListHash: 'a'.repeat(64) }, null), u.id));
+      expect(tanpa.status).toBe(401);
+    });
+
+    it('hanya data non-Data Diri (nomor polisi): tanpa token dan tanpa kiriman nilai; warga isi sendiri', async () => {
+      const { u, log } = siapkan();
+      const pkb = {
+        placeholder: ['{{KENDARAAN.NOPOL_ANGKA}}', '{{KENDARAAN.NOPOL_HURUF}}'],
+        berkas: [],
+        origin: BUTUH.origin,
+      };
+      reply = (path) =>
+        path === '/internal/sesi/status' ? { status: 200, body: sesi() } : { status: 200, body: pkb };
+      const res = await izinkan(ev(req('POST', { writeListHash: await hashDaftarWrite([]) }), u.id));
+      expect(await res.json()).toEqual({
+        kurang: { placeholder: ['Angka nomor polisi', 'Huruf akhir nomor polisi'], berkas: [] },
+      });
+      expect(log).toEqual([]);
+      expect(calls.map((c) => new URL(c.url).pathname)).not.toContain('/internal/sesi/isi');
+    });
+
+    it('sesi tidak menunggu data (409 dari worker) diteruskan apa adanya', async () => {
+      const { u } = siapkan();
+      reply = (path) =>
+        path === '/internal/sesi/status'
+          ? { status: 200, body: sesi() }
+          : { status: 409, body: { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'x' } };
+      const h = await hashDaftarWrite(daftarWrite(BUTUH.placeholder, BUTUH.berkas));
+      expect((await izinkan(ev(req('POST', { writeListHash: h }), u.id))).status).toBe(409);
+    });
   });
 
   describe('multi-worker (PENDAMPING_WORKERS)', () => {

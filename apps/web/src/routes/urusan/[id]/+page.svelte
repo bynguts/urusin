@@ -20,7 +20,6 @@
   import { bangunLinimasa, labelProgres } from '#lib/components/urusan/linimasa.js';
   import LayarPendamping from '#lib/components/pendamping/LayarPendamping.svelte';
   import LembarIzinkan from '#lib/components/pendamping/LembarIzinkan.svelte';
-  import { petakanIsian, type DataDiriRingkas } from '#lib/pendamping/isi-data.js';
   import { muatPabrikViewer } from '#lib/pendamping/klien.js';
   import { SesiPendampingUi } from '#lib/pendamping/sesi.svelte.js';
   import { judulUrusan, peristiwaDariJenis } from '#lib/peristiwa.js';
@@ -192,39 +191,9 @@
   }
 
   async function izinkanIsi() {
-    const butuh = sesi.data.butuhData;
-    if (!butuh) return;
     izin = { sibuk: true };
-    try {
-      const r = await fetch('/api/akun/data-diri', { headers: { accept: 'application/json' } });
-      if (r.status === 401 || r.status === 404) {
-        izin = {
-          sibuk: false,
-          pesan: 'Masuk dulu supaya Urusin bisa memakai Data Diri Anda. Atau isi sendiri.',
-        };
-        return;
-      }
-      const j = (await r.json()) as { dataDiri: DataDiriRingkas };
-      const { isian, kurang } = petakanIsian(butuh.placeholder, j.dataDiri);
-      for (const nama of butuh.berkas) await kirimBerkasDariDokumen(nama);
-      sesi.kirimVault(isian);
-      izin = {
-        sibuk: false,
-        ...(kurang.length ? { pesan: `Isi sendiri di layar: ${kurang.join(', ')}.` } : {}),
-      };
-    } catch {
-      izin = { sibuk: false, pesan: 'Data Diri belum bisa dibaca. Coba lagi atau isi sendiri.' };
-    }
-  }
-
-  async function kirimBerkasDariDokumen(nama: string) {
-    const r = await fetch('/api/akun/dokumen', { headers: { accept: 'application/json' } });
-    if (!r.ok) return;
-    const { dokumen } = (await r.json()) as { dokumen: { id: string; jenis: string; judul: string }[] };
-    const d = dokumen.find((x) => x.jenis === nama.toLowerCase());
-    if (!d) return;
-    const b = await fetch(`/api/akun/dokumen/${encodeURIComponent(d.id)}`);
-    if (b.ok) await sesi.kirimBerkas(nama, await b.blob(), d.judul);
+    const pesan = await sesi.izinkanIsi();
+    izin = { sibuk: false, ...(pesan ? { pesan } : {}) };
   }
 
   function isiSendiri() {

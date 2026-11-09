@@ -110,8 +110,10 @@ viewer.on('butuh_data', ({ placeholder, berkas }) => …);
 viewer.on('galat', ({ kode, pesanWarga }) => …);
 viewer.on('koneksi', (s) => …);                // menyambung | tersambung | putus | selesai
 
-viewer.kirimVault({ '{{PEMOHON.HP}}': hp });   // nilai dari vault perangkat, hanya untuk sesi ini
-await viewer.kirimBerkas('ktp', fileBlob);     // nama = nama berkas di butuh_data
+// "Izinkan isi" (A-M1): hanya hash daftar write yang ditampilkan; nilai Data Diri/Dokumen diselesaikan dan
+// dikirim ke sesi oleh server lewat kanal internal (POST /api/urusan/:id/pendamping/izinkan).
+await fetch(`/api/urusan/${id}/pendamping/izinkan`, { method: 'POST', body: JSON.stringify({ writeListHash }) });
+await viewer.kirimBerkas('ktp', fileBlob);     // hanya berkas yang warga pilih sendiri di perangkat
 viewer.ambilAlih(); viewer.kembalikan(); viewer.akhiri(); viewer.tutup();
 ```
 
@@ -127,4 +129,4 @@ Catatan untuk komponen:
 ## 5. Privasi yang harus tampak di UI
 
 - Sebelum mulai: jelaskan bahwa peramban berjalan di server Urusin, kata sandi/OTP diketik warga dan **tidak disimpan**, dan semuanya dihapus saat sesi berakhir (tidak ada cookie, riwayat, atau rekaman layar).
-- Data vault dikirim ke sesi hanya setelah warga menyetujui kartu rencana.
+- Nilai Data Diri dan Dokumen tidak pernah lewat peramban: setelah warga menekan "Izinkan isi", server menyelesaikannya dengan token persetujuan sekali pakai (terikat pemilik, daftar field, dan origin tujuan) lalu mengirimnya ke sesi. `viewer.kirimVault` tetap ada di klien (API stabil) tetapi tidak dipakai web app.
