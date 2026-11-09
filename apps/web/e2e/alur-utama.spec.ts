@@ -133,3 +133,37 @@ for (const lebar of [390, 1440]) {
     }
   });
 }
+
+// Regresi 409: pesan lanjutan setelah turn selesai tidak boleh ditolak (versi urusan sampai ke klien lewat done).
+test('pesan lanjutan berturut-turut tidak pernah 409 dan tidak menampilkan "masih memproses"', async ({
+  page,
+}) => {
+  const statusTurn: number[] = [];
+  page.on('response', (r) => {
+    if (/\/api\/urusan\/u_[0-9a-f]+\/turn$/.test(r.url()) && r.request().method() === 'POST')
+      statusTurn.push(r.status());
+  });
+  await page.goto('/peristiwa/kelahiran');
+  await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
+  await expect(page).toHaveURL(/\/urusan\/u_[0-9a-f]{32}$/);
+  const log = page.getByRole('log', { name: 'Percakapan urusan' });
+  await expect(log.locator('[data-pelaku="ai"]').first()).toBeVisible({ timeout: 20_000 });
+  const komposer = page.getByLabel('Tulis jawaban atau pertanyaan');
+  let terkirim = 0;
+  for (const teks of ['Apa saja dokumen yang perlu saya bawa?', 'Berapa biayanya?', 'Terima kasih']) {
+    await komposer.fill(teks);
+    await expect(page.getByRole('button', { name: 'Kirim' })).toBeEnabled({ timeout: 20_000 });
+    await page.getByRole('button', { name: 'Kirim' }).click();
+    await expect(log).toContainText(teks);
+    await expect.poll(() => statusTurn.length).toBe(++terkirim);
+    // tunggu turn selesai sebelum pesan berikutnya (seperti warga membaca jawaban dulu)
+    const idUrusan = page.url().split('/').at(-1);
+    await expect
+      .poll(async () => (await (await page.request.get(`/api/urusan/${idUrusan}`)).json()).berjalan, {
+        timeout: 20_000,
+      })
+      .toBe(false);
+  }
+  await expect(page.getByText('masih memproses langkah sebelumnya')).toHaveCount(0);
+  expect(statusTurn.every((s) => s === 202)).toBe(true);
+});

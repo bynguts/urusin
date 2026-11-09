@@ -355,7 +355,10 @@ describe('timeout, pembatalan, konkurensi', () => {
     const callsAtAbort = provider.calls.length;
     await new Promise((r) => setTimeout(r, 50));
     expect(provider.calls.length).toBe(callsAtAbort);
-    expect(types(out.events)).not.toContain('done');
+    // done tetap dikirim saat batal agar versi terbaru sampai ke klien (tanpa 409 pada pesan berikutnya)
+    const done = out.events.at(-1) as Extract<StreamEnvelope, { type: 'done' }>;
+    expect(done).toMatchObject({ type: 'done', status: 'dibatalkan' });
+    expect(done.version).toBe(env.store.getUrusanOrThrow(u.id).version);
   });
 
   it('turn kedua pada urusan yang sama saat turn pertama berjalan → 409, tanpa event ganda', async () => {

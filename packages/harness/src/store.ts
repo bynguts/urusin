@@ -274,6 +274,15 @@ export class HarnessStore {
     return tx.immediate();
   }
 
+  /** Ada turn berjalan (lease belum lewat) untuk urusan ini. */
+  hasRunningTurn(urusanId: string): boolean {
+    return (
+      this.db
+        .prepare("SELECT 1 FROM turns WHERE urusan_id = ? AND status = 'running' AND lease_until >= ?")
+        .get(urusanId, this.iso()) !== undefined
+    );
+  }
+
   finishTurn(
     turnId: string,
     patch: {

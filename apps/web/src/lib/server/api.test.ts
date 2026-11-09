@@ -11,6 +11,7 @@ import { GET as daftarUrusan, POST as buatUrusan } from '../../routes/api/urusan
 import { POST as eksekusi } from '../../routes/api/urusan/[id]/execution-result/+server';
 import { GET as jejak } from '../../routes/api/urusan/[id]/jejak/+server';
 import { POST as konfirmasi } from '../../routes/api/urusan/[id]/konfirmasi/+server';
+import { GET as statusUrusan } from '../../routes/api/urusan/[id]/+server';
 import { GET as stream } from '../../routes/api/urusan/[id]/stream/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
 import { GET as devSse } from '../../routes/dev/fixtures/sse/+server';
@@ -141,6 +142,32 @@ describe('POST /api/urusan dan /turn', () => {
     expect(j.kode).toBe('TURN_IN_PROGRESS');
     expect(GalatApiSchema.safeParse(j).success).toBe(true);
     expect(rt.store.getUrusanOrThrow(id).turnCount).toBe(1);
+    rt.running.get(id)?.abort();
+  });
+
+  it('pesan lanjutan dengan versi dari done diterima (tanpa 409); status menyebut berjalan atau tidak', async () => {
+    const id = await kosong();
+    let version = rt.store.getUrusanOrThrow(id).version;
+    for (const teks of ['halo', 'Apa syarat akta kelahiran anak saya?', 'terima kasih']) {
+      const res = await kirimTurn(ev(post({ teks, expectedVersion: version }), { id }));
+      expect(res.status).toBe(202);
+      for (let i = 0; i < 200 && rt.running.has(id); i++) await new Promise((r) => setTimeout(r, 10));
+      const st = await (await statusUrusan(ev(get(), { id }))).json();
+      expect(st).toMatchObject({ id, berjalan: false });
+      const events = rt.store.eventsAfter(id, 0);
+      const done = events.filter((e) => e.type === 'done').at(-1)?.payload as
+        { version?: number } | undefined;
+      expect(done?.version).toBe(st.version);
+      version = done!.version!;
+    }
+  }, 20_000);
+
+  it('status urusan: berjalan saat turn hidup; 404 untuk id tak dikenal', async () => {
+    setup(new Slow() as never);
+    const id = await kosong();
+    await kirimTurn(ev(post({ teks: 'halo' }), { id }));
+    expect((await (await statusUrusan(ev(get(), { id }))).json()).berjalan).toBe(true);
+    expect((await statusUrusan(ev(get(), { id: 'u_tidak_ada' }))).status).toBe(404);
     rt.running.get(id)?.abort();
   });
 

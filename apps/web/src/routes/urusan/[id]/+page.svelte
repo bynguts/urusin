@@ -130,7 +130,8 @@
       pesan = lokal.pesanWarga(data.urusan.id);
       teks = '';
     } else if (hasil === 'konflik') {
-      pesanKomposer = 'Urusin masih menjawab. Pesan Anda tetap di sini; kirim lagi sebentar.';
+      pesanKomposer =
+        'Urusin masih memproses langkah sebelumnya, tunggu sebentar. Pesan Anda tetap di sini; kirim lagi sebentar lagi.';
     } else {
       pesanKomposer = 'Pesan belum terkirim. Periksa koneksi, lalu coba lagi.';
     }

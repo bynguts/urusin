@@ -143,23 +143,66 @@ describe('UrusanStore: sambung, resume, kirim', () => {
     vi.useRealTimers();
   });
 
-  it('kirim: 409 → konflik tanpa mengubah state; sukses mengosongkan hasil turn lama', async () => {
-    const ambil = vi
-      .fn()
-      .mockResolvedValueOnce(new Response('{}', { status: 409 }))
-      .mockResolvedValueOnce(new Response('{"turnId":"t","diterima":true}', { status: 202 }));
+  const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status });
+  const siapkan = (ambil: unknown) => {
     SumberPalsu.semua = [];
     const store = new UrusanStore((u) => new SumberPalsu(u), ambil as never);
     store.sambung('u_abc');
     for (const e of skenario('urusan/jawaban-bersumber')) SumberPalsu.semua[0]!.kirim(e);
-    expect(store.keadaan.jawaban).not.toBeNull();
-    expect(await store.kirim('lagi')).toBe('konflik');
+    return store;
+  };
+
+  it('kirim: sukses mengosongkan hasil turn lama dan mengirim versi saat ini', async () => {
+    const ambil = vi.fn().mockResolvedValueOnce(json({ turnId: 't', diterima: true }, 202));
+    const store = siapkan(ambil);
     expect(store.keadaan.jawaban).not.toBeNull();
     expect(await store.kirim('lagi')).toBe('ok');
     expect(store.keadaan.jawaban).toBeNull();
     expect(store.keadaan.sedangBerjalan).toBe(true);
-    const body = JSON.parse((ambil.mock.calls[1]![1] as { body: string }).body);
+    const body = JSON.parse((ambil.mock.calls[0]![1] as { body: string }).body);
     expect(body).toEqual({ teks: 'lagi', expectedVersion: store.keadaan.version });
+  });
+
+  it('409 versi basi: ambil status, tidak ada turn berjalan -> kirim ulang sekali dengan versi segar', async () => {
+    const ambil = vi
+      .fn()
+      .mockResolvedValueOnce(json({ kode: 'CONFLICT' }, 409))
+      .mockResolvedValueOnce(json({ id: 'u_abc', state: 'MEMAHAMI', version: 42, berjalan: false }))
+      .mockResolvedValueOnce(json({ turnId: 't', diterima: true }, 202));
+    const store = siapkan(ambil);
+    expect(await store.kirim('lagi')).toBe('ok');
+    expect(ambil.mock.calls[1]![0]).toBe('/api/urusan/u_abc');
+    const ulang = JSON.parse((ambil.mock.calls[2]![1] as { body: string }).body);
+    expect(ulang).toEqual({ teks: 'lagi', expectedVersion: 42 });
+    expect(store.keadaan.sedangBerjalan).toBe(true);
+    expect(ambil).toHaveBeenCalledTimes(3);
+  });
+
+  it('409 saat turn benar-benar berjalan: konflik tanpa kirim ulang dan tanpa mengubah hasil lama', async () => {
+    const ambil = vi
+      .fn()
+      .mockResolvedValueOnce(json({ kode: 'TURN_IN_PROGRESS' }, 409))
+      .mockResolvedValueOnce(json({ id: 'u_abc', state: 'MEMAHAMI', version: 9, berjalan: true }));
+    const store = siapkan(ambil);
+    expect(await store.kirim('lagi')).toBe('konflik');
+    expect(ambil).toHaveBeenCalledTimes(2);
+    expect(store.keadaan.jawaban).not.toBeNull();
+  });
+
+  it('409 lagi setelah kirim ulang: konflik (hanya satu percobaan ulang); status gagal: galat', async () => {
+    const dua = vi
+      .fn()
+      .mockResolvedValueOnce(json({}, 409))
+      .mockResolvedValueOnce(json({ version: 3, berjalan: false }))
+      .mockResolvedValueOnce(json({}, 409));
+    expect(await siapkan(dua).kirim('lagi')).toBe('konflik');
+    const gagal = vi.fn().mockResolvedValueOnce(json({}, 409)).mockResolvedValueOnce(json({}, 500));
+    expect(await siapkan(gagal).kirim('lagi')).toBe('galat');
+    const rusak = vi
+      .fn()
+      .mockResolvedValueOnce(json({}, 409))
+      .mockResolvedValueOnce(json({ x: 1 }));
+    expect(await siapkan(rusak).kirim('lagi')).toBe('galat');
   });
 
   it('reset mengembalikan keadaan awal', () => {

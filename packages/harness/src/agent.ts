@@ -364,7 +364,7 @@ class TurnRunner {
       degraded: this.degraded,
       errorCode,
     });
-    if (status !== 'dibatalkan') {
+    {
       this.emit({
         type: 'done',
         turnId: this.turn.turnId,

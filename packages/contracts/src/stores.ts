@@ -73,7 +73,10 @@ export interface StoreUrusan {
   putus(): void;
   /** Buat urusan baru (opsional dengan pesan pertama); mengembalikan id atau null bila gagal. */
   buat(opsi?: { kodeKabKota?: string; pesan?: string }): Promise<string | null>;
-  /** Kirim pesan warga. 'konflik' = turn masih berjalan/versi basi (tulisan tidak hilang: kirim ulang). */
+  /**
+   * Kirim pesan warga. Versi basi dipulihkan otomatis (ambil status, kirim ulang sekali). 'konflik' = ada turn yang
+   * benar-benar masih berjalan (tulisan tidak hilang: kirim ulang sebentar lagi).
+   */
   kirim(teks: string): Promise<'ok' | 'konflik' | 'galat'>;
   /** Terapkan satu event; dipakai stream dan pemutar fixture. */
   terapkan(e: UrusinEvent): void;

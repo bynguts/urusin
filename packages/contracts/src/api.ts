@@ -28,6 +28,15 @@ export const BuatUrusanResponseSchema = z.object({
   turnId: z.string().optional(),
 });
 
+// --- GET /api/urusan/[id] ---
+/** Status ringan untuk pemulihan klien: versi terbaru dan apakah ada turn yang benar-benar berjalan. */
+export const StatusUrusanResponseSchema = z.object({
+  id: z.string().min(1),
+  state: UrusanStateSchema,
+  version: z.number().int().nonnegative(),
+  berjalan: z.boolean(),
+});
+
 // --- POST /api/urusan/[id]/turn ---
 export const TurnRequestSchema = z.object({
   teks: z.string().min(1).max(2000),
@@ -227,6 +236,7 @@ export const ENDPOINT = {
     diimplementasi: true,
   },
   konfirmasi: { method: 'POST', path: '/api/urusan/[id]/konfirmasi', sukses: 201, diimplementasi: true },
+  statusUrusan: { method: 'GET', path: '/api/urusan/[id]', sukses: 200, diimplementasi: true },
   daftarUrusan: { method: 'GET', path: '/api/urusan', sukses: 200, diimplementasi: true },
   stream: { method: 'GET', path: '/api/urusan/[id]/stream', sukses: 200, diimplementasi: true },
   jejak: { method: 'GET', path: '/api/urusan/[id]/jejak', sukses: 200, diimplementasi: true },
@@ -277,6 +287,7 @@ export type ExecutionResultResponse = z.infer<typeof ExecutionResultResponseSche
 export type KonfirmasiRequest = z.infer<typeof KonfirmasiRequestSchema>;
 export type KonfirmasiResponse = z.infer<typeof KonfirmasiResponseSchema>;
 export type RingkasanUrusan = z.infer<typeof RingkasanUrusanSchema>;
+export type StatusUrusanResponse = z.infer<typeof StatusUrusanResponseSchema>;
 export type DaftarUrusanResponse = z.infer<typeof DaftarUrusanResponseSchema>;
 export type JejakItem = z.infer<typeof JejakItemSchema>;
 export type JejakResponse = z.infer<typeof JejakResponseSchema>;
