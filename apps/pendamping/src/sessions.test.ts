@@ -1,4 +1,4 @@
-import type net from 'node:net';
+import net from 'node:net';
 import type { MulaiSesiInternal, PendampingServerMessage } from '@urusin/contracts';
 import { ADAPTERS } from '@urusin/adapters';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -745,6 +745,56 @@ describe('server HTTP + WebSocket', () => {
     expect(d.status).toBe(101);
     expect((await buka()).status).toBe(503);
     for (const w of [a.ws, c.ws, d.ws]) w.close();
+  });
+
+  it('M1-b: upgrade cacat (versi 99) x20 tidak menghabiskan slot pra-halo; soket sah tetap tersambung', async () => {
+    const h = harness({
+      allowedOrigins: ['http://app.test'],
+      internalToken: 't'.repeat(40),
+      maksBelumHalo: 2,
+    });
+    server = createServer(h.config, h.manager);
+    await new Promise<void>((r) => server!.listen(0, '127.0.0.1', r));
+    const port = (server!.address() as net.AddressInfo).port;
+    const s = await h.manager.create(input('u1'));
+    const cacat = (versi: string) =>
+      new Promise<string>((r) => {
+        const sock = net.connect(port, '127.0.0.1', () =>
+          sock.write(
+            [
+              `GET /ws/${s.sesiId} HTTP/1.1`,
+              `Host: 127.0.0.1:${port}`,
+              'Upgrade: websocket',
+              'Connection: Upgrade',
+              'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
+              `Sec-WebSocket-Version: ${versi}`,
+              'Origin: http://app.test',
+              `Cookie: ${COOKIE}`,
+              '',
+              '',
+            ].join('\r\n'),
+          ),
+        );
+        let jawab = '';
+        sock.on('data', (d) => (jawab += d.toString()));
+        sock.on('close', () => r(jawab.split('\r\n')[0] ?? ''));
+        sock.on('error', () => undefined);
+      });
+    for (let i = 0; i < 20; i++) expect(await cacat('99')).toMatch(/^HTTP\/1\.1 400/);
+    await new Promise((r) => setTimeout(r, 20));
+    const ok = await new Promise<number>((r) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/${s.sesiId}`, {
+        origin: 'http://app.test',
+        headers: { cookie: COOKIE },
+      });
+      ws.on('unexpected-response', (_req, res) => r(res.statusCode ?? 0));
+      ws.on('open', () => {
+        r(101);
+        ws.close();
+      });
+      ws.on('error', () => undefined);
+    });
+    expect(ok).toBe(101);
   });
 
   it('halaman /debug: mati tanpa token; dengan token: sesi manual, cookie sendiri, tiket, WS dari origin sendiri', async () => {

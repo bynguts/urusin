@@ -282,17 +282,21 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
       return;
     }
     const sesiId = m[1];
+    // Hitungan pra-halo dilepas sekali saja: saat halo sah, saat WS tutup, ATAU saat soket mentah tutup.
+    // ws.handleUpgrade membatalkan upgrade cacat (versi/kunci salah, soket sudah tutup) dengan 400 tanpa
+    // memanggil callback; tanpa pengait 'close' di soket mentah, hitungan itu bocor dan semua warga kena 503.
     belumHalo++;
-    wss.handleUpgrade(req, socket, head, (ws) => onSocket(ws, sesiId, sidHash));
-  });
-
-  function onSocket(ws: WebSocket, sesiId: string, sidHash: string) {
-    let authed = false;
     let dihitung = true;
     const lepasHitung = () => {
       if (dihitung) belumHalo--;
       dihitung = false;
     };
+    socket.once('close', lepasHitung);
+    wss.handleUpgrade(req, socket, head, (ws) => onSocket(ws, sesiId, sidHash, lepasHitung));
+  });
+
+  function onSocket(ws: WebSocket, sesiId: string, sidHash: string, lepasHitung: () => void) {
+    let authed = false;
     let windowStart = Date.now();
     let count = 0;
     const send = (msg: PendampingServerMessage) => {
