@@ -18,6 +18,7 @@ import {
 import { POST as serahkan } from '../../routes/api/urusan/[id]/pendamping/serahkan/+server';
 import { POST as izinkanIsi } from '../../routes/api/urusan/[id]/izinkan-isi/+server';
 import { POST as tiket } from '../../routes/api/urusan/[id]/pendamping/tiket/+server';
+import { AKUN_COOKIE } from './akun';
 import { checkOrigin } from './origin';
 import { daftarWrite } from '../pendamping/isi-data';
 import { pemeriksaPemilikVault } from './pendamping/pemilik';
@@ -560,6 +561,25 @@ describe('broker Browser Pendamping', () => {
     };
     beforeEach(() => vi.stubEnv('PENDAMPING_WORKERS', JSON.stringify([VPS, LAPTOP])));
 
+    /** Akun warga terverifikasi yang masuk dan memiliki urusannya: sesi di portal asli, bukan Mode Uji. */
+    async function urusanAkunNyata() {
+      const mailer = new MemoryMailer();
+      rt = createRuntime({
+        provider: new DemoProvider(),
+        config: { dbPath: ':memory:' },
+        akun: { mailer, google: null, vault: { diskPersen: () => 10 } },
+      });
+      setRuntimeForTests(rt);
+      const ktx = { ip: '127.0.0.1', userAgent: null };
+      const [email, sandi] = ['warga@example.com', 'kuda-lari-cepat-9'];
+      await rt.akun.daftar({ email, sandi }, ktx);
+      const token = new URL(mailer.last(email, 'verifikasi')!.link!).searchParams.get('token')!;
+      const akun = await rt.akun.verifikasiEmail(token, sandi, ktx);
+      const u = urusanDenganEksekusi();
+      rt.akun.catatPemilikUrusan(u.id, { akun });
+      return { u, cookie: `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${rt.akun.buatSesi(akun.id, ktx)}` };
+    }
+
     it('konfigurasi: JSON valid; JSON rusak, id ganda, url berjalur, tanpa token -> null; fallback satu URL', () => {
       expect(pendampingConfig(process.env)?.workers.map((w) => w.id)).toEqual(['vps', 'laptop-a']);
       const env = (w: string) => ({ PENDAMPING_INTERNAL_TOKEN: 't', PENDAMPING_WORKERS: w });
@@ -581,12 +601,13 @@ describe('broker Browser Pendamping', () => {
       });
     });
 
-    it('situs khusus IP Indonesia -> worker region id; panggilan berikutnya (tiket) ke worker yang sama', async () => {
-      const u = urusanDenganEksekusi();
-      expect((await mulai(ev(req('POST', { executionId: 'x_1' }), u.id))).status).toBe(201);
+    it('akun warga, situs khusus IP Indonesia -> worker region id; tiket ke worker yang sama', async () => {
+      const { u, cookie } = await urusanAkunNyata();
+      expect((await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(201);
       expect(calls[0]).toMatchObject({
         host: '100.101.1.2:4330',
         url: 'http://100.101.1.2:4330/internal/sesi',
+        body: { modeUji: false, origin: 'https://telunjuksakti.wonogirikab.go.id' },
       });
       reply = () => ({
         status: 201,
@@ -596,7 +617,7 @@ describe('broker Browser Pendamping', () => {
           kedaluwarsa: '2026-11-09T00:00:30.000Z',
         },
       });
-      const t = await tiket(ev(req('POST'), u.id));
+      const t = await tiket(ev(req('POST', undefined, cookie), u.id));
       expect(t.status).toBe(201);
       expect(calls.at(-1)?.host).toBe('100.101.1.2:4330');
       // Laptop memakai rahasianya sendiri, bukan PENDAMPING_INTERNAL_TOKEN.
@@ -607,10 +628,32 @@ describe('broker Browser Pendamping', () => {
       expect(((await t.json()) as any).wsUrl).toBe(`${WS}/w/laptop-a/ws/${SESI}`);
     });
 
-    it('tanpa worker id yang sehat -> 503 jujur + urusan beralih ke dipandu (bukan "tampilan berubah")', async () => {
+    it('Mode Uji (tamu/juri) tanpa worker id yang sehat -> sesi dibuat di worker umum (replika fixtures)', async () => {
       const u = urusanDenganEksekusi();
       kesehatan = (host) => (host.startsWith('100.101') ? 'mati' : { status: 200, body: SEHAT });
       const r = await mulai(ev(req('POST', { executionId: 'x_1' }), u.id));
+      expect(r.status).toBe(201);
+      // Origin resmi tetap dikirim; worker memetakannya ke replika fixtures (modeUji) atau menolak.
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toMatchObject({
+        host: '127.0.0.1:4330',
+        body: { modeUji: true, origin: 'https://telunjuksakti.wonogirikab.go.id' },
+      });
+      const evs = rt.store.eventsAfter(u.id);
+      expect(JSON.stringify(evs)).not.toContain(PESAN_WILAYAH);
+      expect(evs.some((e) => e.type === 'degraded')).toBe(false);
+      // Mode Uji tak mewajibkan worker id, tapi juga tak menolaknya bila hanya itu yang hidup.
+      resetBrokerPendamping();
+      calls = [];
+      kesehatan = (host) => (host.startsWith('127.0.0.1') ? 'mati' : { status: 200, body: SEHAT });
+      expect((await mulai(ev(req('POST', { executionId: 'x_1' }), u.id))).status).toBe(201);
+      expect(calls[0]?.host).toBe('100.101.1.2:4330');
+    });
+
+    it('akun warga tanpa worker id yang sehat -> 503 jujur + dipandu (bukan "tampilan berubah")', async () => {
+      const { u, cookie } = await urusanAkunNyata();
+      kesehatan = (host) => (host.startsWith('100.101') ? 'mati' : { status: 200, body: SEHAT });
+      const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
       expect(r.status).toBe(503);
       expect(await r.json()).toEqual({
         kode: 'PENDAMPING_WILAYAH_TIDAK_TERSEDIA',
