@@ -10,7 +10,8 @@ import { createRuntime, setRuntimeForTests, type Runtime } from '../runtime';
 import { izinkanIsi, resolusiNilai } from './resolver';
 
 const NIK = ['3201', '0101', '0190', '0002'].join('');
-const SITUS = 'https://contoh-layanan.example.com';
+/** Portal `kirim-asli` di registry (allowlist tujuan isi); tes tidak menghubunginya. */
+const SITUS = 'https://telunjuksakti.wonogirikab.go.id';
 const FIXTURES = 'https://fixtures.urusinai.web.id';
 const KTX = { ip: '127.0.0.1', userAgent: null };
 

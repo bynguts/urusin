@@ -1,4 +1,5 @@
 import { AkunError, hashDaftarWrite } from '@urusin/akun';
+import { SEED_ENTRIES } from '@urusin/registry';
 import { originFixtures } from '#lib/server/hosts.js';
 import type { Runtime } from '#lib/server/runtime.js';
 
@@ -10,7 +11,9 @@ import type { Runtime } from '#lib/server/runtime.js';
  *    (5 menit) yang terikat ke pemilik, hash daftar field yang akan ditulis, dan origin tujuan.
  * 2. Jalur isi memanggil `resolusiNilai` dengan token itu; daftar field + origin harus PERSIS sama.
  * Nilai tidak pernah dicatat, tidak pernah dikembalikan ke model, dan hanya field di daftar write yang keluar.
- * Salinan demo (data sintetis) hanya boleh menuju situs latihan, tidak pernah ke situs pemerintah sungguhan.
+ * Tujuan harus ada di allowlist: portal registry berstatus `kirim-asli` (yang punya adapter Pendamping) atau
+ * situs latihan. Salinan demo (data sintetis) hanya boleh menuju situs latihan, tidak pernah ke situs
+ * pemerintah sungguhan.
  */
 
 const asalTujuan = (targetOrigin: string): string => {
@@ -21,9 +24,15 @@ const asalTujuan = (targetOrigin: string): string => {
   }
 };
 
+/** Origin portal registry yang diisi Pendamping (`kirim-asli`, sama dengan `dukcapil__ajukan_layanan`). */
+const PORTAL_ISI: ReadonlySet<string> = new Set(
+  SEED_ENTRIES.flatMap((e) => (e.validasi === 'kirim-asli' && e.portal ? [e.portal.origin] : [])),
+);
+
 function pastikanTujuanBoleh(rt: Runtime, ownerId: string, origin: string): void {
-  if (rt.akun.akun(ownerId)?.jenis === 'demo' && !originFixtures().has(origin))
-    throw new AkunError('NILAI_SINTETIS_DITOLAK');
+  const latihan = originFixtures().has(origin);
+  if (rt.akun.akun(ownerId)?.jenis === 'demo' && !latihan) throw new AkunError('NILAI_SINTETIS_DITOLAK');
+  if (!latihan && !PORTAL_ISI.has(origin)) throw new AkunError('IZIN_TIDAK_VALID');
 }
 
 /** Terbitkan token persetujuan "Izinkan isi" untuk daftar field `writeList` menuju `targetOrigin`. */

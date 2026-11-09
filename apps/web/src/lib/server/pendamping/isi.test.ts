@@ -7,7 +7,8 @@ import { createRuntime, setRuntimeForTests, type Runtime } from '../runtime';
 import { ambilIsianUntukIsi, izinkanIsiUrusan } from './isi';
 
 const NIK = ['3201', '0101', '0190', '0002'].join('');
-const SITUS = 'https://contoh-layanan.example.com';
+/** Portal `kirim-asli` di registry (allowlist tujuan isi); tes tidak menghubunginya. */
+const SITUS = 'https://telunjuksakti.wonogirikab.go.id';
 const FIXTURES = 'https://fixtures.urusinai.web.id';
 const ORIGIN = 'http://localhost:5173';
 const KTX = { ip: '127.0.0.1', userAgent: null };
@@ -68,6 +69,28 @@ describe('jalur isi Pendamping (A-M1)', () => {
     ).toBe('IZIN_TIDAK_VALID');
     // persetujuan hangus setelah percobaan origin salah
     expect(kode(() => ambilIsianUntukIsi(rt, { urusanId: u1, liveOrigin: SITUS }))).toBe('IZIN_TIDAK_VALID');
+  });
+
+  it('PoC: targetOrigin di luar allowlist registry/situs latihan ditolak server (API 403)', async () => {
+    for (const asing of [
+      'https://evil.example.com',
+      'https://sidnok.semarangkota.go.id',
+      'http://localhost:9',
+    ])
+      expect([asing, kode(() => izin({ targetOrigin: asing }))]).toEqual([asing, 'IZIN_TIDAK_VALID']);
+    izin({ targetOrigin: FIXTURES }); // situs latihan boleh
+    const r = await izinkanApi({
+      request: new Request(`${ORIGIN}/api/urusan/${u1}/izinkan-isi`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: ORIGIN },
+        body: JSON.stringify({ writeList: WRITE, targetOrigin: 'https://evil.example.com' }),
+      }),
+      params: { id: u1 },
+      locals: { sid: SID },
+      cookies: { get: () => undefined },
+      getClientAddress: () => '127.0.0.1',
+    } as never);
+    expect([r.status, (await r.json()).kode]).toEqual([403, 'IZIN_TIDAK_VALID']);
   });
 
   it('bukan pemilik atau urusan tak dikenal → IZIN_TIDAK_VALID; daftar write dibatasi', () => {
