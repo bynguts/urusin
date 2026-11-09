@@ -320,12 +320,17 @@
     .lp section :is(.n-card-row, .n-columns) > :nth-child(3) {
       animation-range: entry 16% entry 71%;
     }
-    /* Ketikan hanya saat kalimat muat satu baris; clip-path memotong per kolom, bukan per baris */
+    /* Ketikan hanya saat kalimat muat satu baris; clip-path memotong per kolom, bukan per baris.
+       Mengikuti kotak prompt: selesai tepat saat kotak sudah masuk penuh, jadi tak pernah setengah
+       terketik selagi kotak terlihat utuh. */
     @media (min-width: 768px) {
+      .lp .n-prompt-box {
+        view-timeline-name: --lp-kotak;
+      }
       .lp .n-prompt-text {
         animation: lp-ketik steps(64) both;
-        animation-timeline: view();
-        animation-range: entry 40% cover 50%;
+        animation-timeline: --lp-kotak;
+        animation-range: entry 0% entry 100%;
       }
     }
   }
