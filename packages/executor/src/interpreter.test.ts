@@ -456,6 +456,33 @@ describe('interpreter: kait eksekutor (pendamping)', () => {
     await interp.citizenDone(); // bukan waiting_citizen: diabaikan
     expect((await cursorOf(kv)).status).toBe('done');
 
+    // Berkas belum ada: giliran warga di langkah unggah; Lanjutkan MENGULANG langkah itu (tidak dilewati).
+    const files = new Map<string, typeof file>();
+    const kvB = memoryKV();
+    const dB = new FakeDriver();
+    dB.handler = (op) => ({ ok: true, value: op.kind !== 'check' });
+    const interpB = new Interpreter(kvB, dB, policy(), () => {}, {
+      preConsented: true,
+      resolveFile: async (n) => files.get(n),
+      citizenFile: (n) => `Dokumen ${n} belum ada`,
+    });
+    await interpB.start(
+      req([nav('/form'), { op: 'upload', target: [css('#b')], file: '{{FILE:ktp}}', effect: 'input' }]),
+    );
+    await loadPage(interpB, dB, `${FX}/form`);
+    expect(await cursorOf(kvB)).toMatchObject({
+      status: 'waiting_citizen',
+      stepIndex: 1,
+      message: 'Dokumen ktp belum ada',
+    });
+    await interpB.citizenDone(); // masih belum ada: menunggu warga lagi di langkah yang sama
+    expect(await cursorOf(kvB)).toMatchObject({ status: 'waiting_citizen', stepIndex: 1 });
+    expect(dB.ops.some((o) => o.kind === 'upload')).toBe(false);
+    files.set('ktp', file);
+    await interpB.citizenDone();
+    expect((await cursorOf(kvB)).status).toBe('done');
+    expect(dB.ops.find((o) => o.kind === 'upload')).toMatchObject({ file });
+
     // Kait menolak (undefined): tetap gagal aman.
     const ditolak = make(async () => '');
     await ditolak.interp.start(req([nav('/form'), fill(css('#x'), '{{URUSAN.NIB}}')]));

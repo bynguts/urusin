@@ -72,6 +72,12 @@ export type InterpreterOptions = {
    * langkah gagal aman PLACEHOLDER_UNRESOLVED.
    */
   citizenInput?: ((value: string) => string | undefined) | undefined;
+  /**
+   * Berkas `{{FILE:<nama>}}` belum tersedia: pesan untuk warga (status `waiting_citizen`). Setelah
+   * `citizenDone` langkah unggah DIULANG (bukan dilewati); masih kosong = menunggu warga lagi. Tanpa kait ini,
+   * gagal aman PLACEHOLDER_UNRESOLVED.
+   */
+  citizenFile?: ((name: string) => string | undefined) | undefined;
 };
 
 /** Semua target `highlight` milik gate.human: elemen khusus warga (mis. tombol Kirim/Selesai). */
@@ -213,12 +219,16 @@ export class Interpreter {
     });
   }
 
-  /** Warga selesai mengetik kolom `waiting_citizen` (menekan Lanjutkan): kolom itu dilewati, AI lanjut. */
+  /**
+   * Warga menekan Lanjutkan pada `waiting_citizen`: kolom isian yang ia ketik sendiri dilewati; langkah unggah
+   * diulang (berkas mungkin sudah ditambahkan).
+   */
   citizenDone(): Promise<void> {
     return this.enqueue(async () => {
       const c = await this.getCursor();
       if (c?.status !== 'waiting_citizen') return;
-      await this.save({ ...c, status: 'running', message: undefined, stepIndex: c.stepIndex + 1 });
+      const lewati = c.steps[c.stepIndex]?.op === 'upload' ? 0 : 1;
+      await this.save({ ...c, status: 'running', message: undefined, stepIndex: c.stepIndex + lewati });
       await this.pump();
     });
   }
@@ -363,7 +373,12 @@ export class Interpreter {
       case 'upload': {
         const ph = parsePlaceholder(step.file);
         const file = ph?.kind === 'file' ? await this.opts.resolveFile?.(ph.name) : undefined;
-        if (!file) return this.fail(c, 'PLACEHOLDER_UNRESOLVED', 'berkas belum tersedia');
+        if (!file) {
+          const pesan = ph?.kind === 'file' ? this.opts.citizenFile?.(ph.name) : undefined;
+          if (pesan === undefined) return this.fail(c, 'PLACEHOLDER_UNRESOLVED', 'berkas belum tersedia');
+          await this.save({ ...c, status: 'waiting_citizen', message: pesan });
+          return 'stop';
+        }
         return this.runAndAdvance(c, { kind: 'upload', target: step.target, file });
       }
       case 'extract':
