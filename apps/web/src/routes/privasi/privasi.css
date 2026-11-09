@@ -1,0 +1,496 @@
+/*
+ * Halaman /privasi = frame F6RSq "Urusin • Web · Privasi" dari pen Rafi (urusin.pen), dikonversi dari ekspor
+ * HTML/CSS apa adanya. Header dan footer memakai komponen landing (kelas lpN di landing-pen.css). Teks abu
+ * memakai #252522a6 seperti landing (kontras ≥ 4,5:1 di semua latar); jarak tepi 200px = var(--lp-gx).
+ */
+
+/* Pil aktif di navigasi (Privasi) */
+.lp .lp8.lp-aktif {
+  background-color: #f7f2ed;
+  border-radius: 100px;
+}
+.lp .lp-aktif .lp9 {
+  color: #252522;
+  font-weight: 600;
+}
+
+/* ---- Page hero ---- */
+.pv1 {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  gap: 48px;
+  padding: 72px var(--lp-gx) 56px var(--lp-gx);
+  width: 100%;
+}
+.pv2 {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 20px;
+  padding: 0px 0px 24px 0px;
+  width: 680px;
+}
+.pv3 {
+  align-items: flex-start;
+  background-color: #f7f2ed;
+  border-radius: 100px;
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  padding: 6px 14px;
+  width: fit-content;
+}
+.pv4 {
+  color: #252522a6;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pv5 {
+  color: #252522;
+  font-size: 56px;
+  font-weight: 500;
+  letter-spacing: -1.9px;
+  line-height: 59px;
+  width: 100%;
+}
+.pv6 {
+  color: #252522a6;
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 29px;
+  width: 100%;
+}
+.pv7 {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  width: fit-content;
+}
+.pv8 {
+  display: block;
+  flex-shrink: 0;
+  height: 250px;
+  object-fit: contain;
+  width: 190px;
+}
+.pv9 {
+  display: block;
+  flex-shrink: 0;
+  height: 220px;
+  object-fit: contain;
+  width: 170px;
+}
+
+/* ---- Safety ---- */
+.pv10 {
+  align-items: flex-start;
+  background-color: #f7f2ed;
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  gap: 40px;
+  padding: 96px var(--lp-gx);
+  width: 100%;
+}
+.pv11 {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 24px;
+  width: 300px;
+}
+.pv12 {
+  color: #252522;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -1.05px;
+  line-height: 36px;
+  width: 100%;
+}
+.pv13 {
+  display: block;
+  flex-shrink: 0;
+  height: 180px;
+  object-fit: contain;
+  width: 180px;
+}
+.pv14 {
+  align-items: flex-start;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 40px;
+}
+.pv15 {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  gap: 40px;
+  width: 100%;
+}
+.pv16 {
+  align-items: flex-start;
+  border-color: #e6dbd1;
+  border-style: solid;
+  border-width: 0px 0px 0px 1px;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0px 0px 0px -0.5px;
+  min-height: 138px;
+  padding: 0px 0px 0px 32px;
+}
+.pv17 {
+  align-items: center;
+  background-color: #ffffff;
+  border-radius: 100px;
+  box-shadow:
+    0px 0px 1px #0000000f,
+    0px 1px 1px #0000000f,
+    0px 2px 4px #0000000a;
+  display: flex;
+  flex-shrink: 0;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+.pv17 > img {
+  display: block;
+  height: 17px;
+  width: 17px;
+}
+.pv18 {
+  color: #252522;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 22px;
+  white-space: nowrap;
+}
+.pv19 {
+  color: #252522a6;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+  width: 100%;
+}
+
+/* ---- Content: tabel data + hak ---- */
+.pv20 {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 96px;
+  padding: 96px var(--lp-gx);
+  width: 100%;
+}
+.pv21 {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 32px;
+  width: 100%;
+}
+.pv22 {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 12px;
+  width: 100%;
+}
+.pv23 {
+  color: #252522;
+  font-size: 40px;
+  font-weight: 500;
+  letter-spacing: -1.2px;
+  line-height: 44px;
+  width: 100%;
+}
+.pv24 {
+  color: #252522a6;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 27px;
+  width: 640px;
+}
+.pv24 a {
+  color: #252522;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pv25 {
+  align-items: flex-start;
+  background-color: #ffffff;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  outline: 1px solid #efe6dc;
+  outline-offset: -0.5px;
+  overflow: hidden;
+  width: 100%;
+}
+.pv26,
+.pv28 {
+  align-items: center;
+  border-color: #efe6dc;
+  border-style: solid;
+  border-width: 0px 0px 1px 0px;
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  gap: 24px;
+  margin: 0px 0px -0.5px 0px;
+  width: 100%;
+}
+.pv26 {
+  background-color: #fcf8f5;
+  min-height: 48px;
+  padding: 14px 28px;
+}
+.pv28 {
+  min-height: 64.5px;
+  padding: 20px 28px;
+}
+.pv28:last-child {
+  border-width: 0px;
+  margin: 0px;
+}
+.pv27 {
+  color: #252522d1;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+.pv29,
+.pv30 {
+  color: #252522a6;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 25px;
+}
+.pv29 {
+  color: #252522;
+  font-weight: 600;
+}
+.pv-c0 {
+  flex-shrink: 0;
+  width: 300px;
+}
+.pv-c1 {
+  flex: 1 1 0;
+}
+.pv-c2 {
+  flex-shrink: 0;
+  width: 230px;
+}
+.pv-c3 {
+  flex-shrink: 0;
+  width: 150px;
+}
+.pv31 {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+.pv31 > img {
+  display: block;
+  flex-shrink: 0;
+  height: 18px;
+  width: 18px;
+}
+.pv32 {
+  color: #405934;
+  font-size: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pv33 {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  gap: 20px;
+  width: 100%;
+}
+.pv34 {
+  align-items: flex-start;
+  background-color: #fcf8f5;
+  border-radius: 20px;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 14px;
+  outline: 1px solid #efe6dc;
+  outline-offset: -0.5px;
+  padding: 28px;
+}
+.pv35 {
+  align-items: center;
+  background-color: #ffffff;
+  border-radius: 12px;
+  display: flex;
+  flex-shrink: 0;
+  height: 44px;
+  justify-content: center;
+  outline: 1px solid #efe6dc;
+  outline-offset: -0.5px;
+  width: 44px;
+}
+.pv35 > img {
+  display: block;
+  height: 20px;
+  width: 20px;
+}
+.pv36 {
+  color: #252522;
+  font-size: 22px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pv37 {
+  color: #252522a6;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+  width: 100%;
+}
+.pv38 {
+  align-items: center;
+  color: #252522;
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 600;
+  gap: 6px;
+  padding: 6px 0px 0px 0px;
+  white-space: nowrap;
+  width: fit-content;
+}
+.pv38 > img {
+  display: block;
+  height: 16px;
+  width: 16px;
+}
+.pv38.pv-bahaya {
+  color: #a92727;
+}
+
+/* ---- Layar < 1440: bagian sama ditumpuk (aturan landing-responsif.css) ---- */
+@media (max-width: 1111px) {
+  .pv2 {
+    flex-shrink: 1;
+    width: auto;
+  }
+  .pv7 {
+    zoom: var(--lp-z);
+  }
+}
+@media (max-width: 1023px) {
+  .pv1,
+  .pv10 {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .pv7 {
+    align-self: center;
+  }
+  .pv11 {
+    width: 100%;
+  }
+  .pv14 {
+    width: 100%;
+  }
+  .pv33 {
+    flex-direction: column;
+  }
+  .pv34 {
+    flex: none;
+    width: 100%;
+  }
+}
+@media (max-width: 767px) {
+  .pv1 {
+    padding-top: 40px;
+  }
+  .pv5 {
+    font-size: 40px;
+    letter-spacing: -1.2px;
+    line-height: 44px;
+  }
+  .pv7 {
+    zoom: 0.7;
+  }
+  .pv10,
+  .pv20 {
+    padding-bottom: 64px;
+    padding-top: 64px;
+  }
+  .pv13 {
+    display: none;
+  }
+  .pv15 {
+    flex-direction: column;
+    gap: 32px;
+  }
+  .pv16 {
+    flex: none;
+    min-height: 0;
+    width: 100%;
+  }
+  .pv20 {
+    gap: 64px;
+  }
+  .pv23 {
+    font-size: 32px;
+    letter-spacing: -0.96px;
+    line-height: 38px;
+  }
+  .pv24 {
+    width: 100%;
+  }
+  .pv18,
+  .pv32,
+  .pv36,
+  .pv38 {
+    white-space: normal;
+  }
+  /* Tabel: setiap baris jadi kartu kecil; label kolom tampil di depan nilai */
+  .pv26 {
+    display: none;
+  }
+  .pv28 {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    padding: 16px 20px;
+  }
+  .pv-c0,
+  .pv-c1,
+  .pv-c2,
+  .pv-c3 {
+    flex: none;
+    width: 100%;
+  }
+  .pv28 .pv-kosong {
+    display: none;
+  }
+  .pv28 [data-label]::before {
+    color: #252522d1;
+    content: attr(data-label) ': ';
+    font-size: 14px;
+    font-weight: 600;
+  }
+}

@@ -100,7 +100,9 @@ tidak bisa dibuka lagi.
 
 ## Keamanan
 
-Data Diri dan dokumen dienkripsi dengan kunci khusus per pemilik. Membuka brankas di perangkat baru meminta Anda
+Data Diri dan dokumen dienkripsi dengan kunci khusus per pemilik. Kunci itu dibungkus kunci server Urusin, jadi
+server (dan operatornya) secara teknis bisa membuka brankas; kebocoran basis data saja tidak cukup untuk
+membacanya, tetapi kebocoran basis data bersama kunci server cukup. Membuka brankas di perangkat baru meminta Anda
 masuk ulang. Kata sandi akun disimpan sebagai hash argon2id dan login dilindungi penguncian bertahap. Laporan
 celah keamanan diterima lewat [`SECURITY.md`](../SECURITY.md).
 
