@@ -171,6 +171,57 @@ export const PemilikSesiInternalSchema = z.object({
 });
 export type PemilikSesiInternal = z.infer<typeof PemilikSesiInternalSchema>;
 
+/** Kunci placeholder vault adapter, mis. `{{PEMOHON.NIK}}`. */
+export const PlaceholderVaultSchema = z.string().regex(/^\{\{[A-Z][A-Z0-9_]*(?:\.[A-Z][A-Z0-9_]*)+\}\}$/);
+/** Nama berkas adapter untuk `{{FILE:<nama>}}`, mis. `KTP`. */
+export const NamaBerkasAdapterSchema = z
+  .string()
+  .max(64)
+  .regex(/^[A-Za-z][A-Za-z0-9_]*$/);
+
+// --- POST /internal/sesi/butuh: data yang masih dibutuhkan sesi sebelum AI mulai (A-M1, jalur isi server) ---
+export const ButuhSesiInternalSchema = z.object({
+  placeholder: z.array(PlaceholderVaultSchema),
+  berkas: z.array(NamaBerkasAdapterSchema),
+  /** Origin yang benar-benar dibuka peramban sesi (tujuan nilai; fixture saat dipetakan di dev/uji). */
+  origin: z.url(),
+});
+export type ButuhSesiInternal = z.infer<typeof ButuhSesiInternalSchema>;
+
+/**
+ * POST /internal/sesi/isi: nilai Data Diri yang sudah diselesaikan server (resolver vault, token persetujuan
+ * sekali pakai) untuk placeholder sesi. Hanya lewat kanal internal; peramban warga tidak pernah mengirimnya.
+ */
+export const IsiSesiInternalSchema = PemilikSesiInternalSchema.extend({
+  isian: z.record(PlaceholderVaultSchema, z.string().max(500)),
+});
+export type IsiSesiInternal = z.infer<typeof IsiSesiInternalSchema>;
+
+/** POST /internal/sesi/berkas: satu berkas dari Dokumen akun (server) untuk `{{FILE:<nama>}}`. */
+export const BerkasSesiInternalSchema = PemilikSesiInternalSchema.extend({
+  nama: NamaBerkasAdapterSchema,
+  namaBerkas: z.string().min(1).max(200),
+  mime: z.string().min(1).max(100),
+  dataBase64: z.string().min(1).max(12_600_000),
+});
+export type BerkasSesiInternal = z.infer<typeof BerkasSesiInternalSchema>;
+
+// --- POST /api/urusan/[id]/pendamping/izinkan (warga menekan "Izinkan isi") ---
+export const IzinkanIsiRequestSchema = z.object({
+  /**
+   * Hash daftar write yang DITAMPILKAN ke warga: sha256 hex dari nama field unik terurut dipisah baris baru
+   * (sama dengan `hashDaftarWrite` @urusin/akun). Server menolak bila tidak sama dengan daftar write sesi.
+   */
+  writeListHash: z.string().regex(/^[0-9a-f]{64}$/),
+});
+export type IzinkanIsiRequest = z.infer<typeof IzinkanIsiRequestSchema>;
+
+export const IzinkanIsiResponseSchema = z.object({
+  /** Yang tidak ada di Data Diri/Dokumen: warga mengisinya sendiri di layar. Tanpa nilai apa pun. */
+  kurang: z.object({ placeholder: z.array(z.string()), berkas: z.array(z.string()) }),
+});
+export type IzinkanIsiResponse = z.infer<typeof IzinkanIsiResponseSchema>;
+
 // --- WebSocket: perangkat warga -> pendamping ---
 const koordinat = z.number().min(-10_000).max(10_000);
 /** Bitmask modifier CDP: Alt=1, Ctrl=2, Meta=4, Shift=8. */
