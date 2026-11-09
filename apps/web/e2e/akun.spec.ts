@@ -5,7 +5,7 @@ import { devices, expect, test, type BrowserContext, type Page } from '@playwrig
 import { DB_PATH, E2E_DIR, ORIGIN, OUTBOX } from '../playwright.config';
 
 /**
- * E2E akun #43–#48b (rencana §3.26, §4 e2e). Kasus berbasis waktu (penyapu 24 jam, kedaluwarsa izin) memakai
+ * E2E akun #43–#49 (rencana §3.26, §4 e2e). Kasus berbasis waktu (penyapu 24 jam, kedaluwarsa izin) memakai
  * jam palsu di vitest (`packages/akun/src/service.test.ts`); di sini waktu "dimajukan" dengan menulis ke DB.
  */
 
@@ -534,4 +534,51 @@ test('#48b pra-akun: belum terverifikasi tidak memblokir; Google mengambil alih;
   await expect(page.getByRole('alert')).toHaveAttribute('data-kode', 'KREDENSIAL_SALAH');
   await masuk(page, email2, SANDI);
   expect((await sesiApi(page)).akun).toMatchObject({ email: email2, sinkron: true });
+});
+
+test('#49 zona bahaya di Pengaturan: keluar dari semua perangkat, lalu hapus akun lewat form tanpa JS', async ({
+  page,
+  context,
+  browser,
+}) => {
+  const ip = await pakaiIp(context);
+  const email = emailBaru('e49');
+  await akunBaru(page, email);
+  await masuk(page, email, SANDI);
+  const hp = await konteksHp(browser);
+  await masuk(hp.page, email, SANDI);
+  expect((await sesiApi(hp.page)).masuk).toBe(true);
+
+  await page.goto('/pengaturan');
+  const zona = page.locator('[data-zona-bahaya]');
+  await expect(zona.getByRole('heading', { name: 'Zona bahaya' })).toBeVisible();
+  await zona.getByRole('button', { name: 'Keluar dari semua perangkat' }).click();
+  await expect(page).toHaveURL(/\/masuk$/);
+  expect((await sesiApi(page)).masuk).toBe(false);
+  expect((await sesiApi(hp.page)).masuk).toBe(false); // perangkat lain ikut dikeluarkan
+  await hp.ctx.close();
+
+  // Progressive enhancement: form action jalan tanpa JavaScript.
+  const tanpaJs = await browser.newContext({
+    baseURL: ORIGIN,
+    locale: 'id-ID',
+    javaScriptEnabled: false,
+    extraHTTPHeaders: { 'x-forwarded-proto': 'http', 'x-forwarded-for': ip },
+  });
+  const p = await tanpaJs.newPage();
+  await masuk(p, email, SANDI);
+  await p.goto('/pengaturan');
+  const hapus = p.locator('form[data-hapus-akun]');
+  await hapus.getByLabel('Ketik HAPUS untuk melanjutkan').fill('HAPUS');
+  await hapus.locator('#sandi-hapus').fill(SANDI2);
+  await hapus.getByRole('button', { name: 'Hapus akun permanen' }).click();
+  await expect(p.locator('form[data-hapus-akun]')).toContainText('Kata sandi saat ini salah.');
+  expect(hitung('SELECT COUNT(*) n FROM users WHERE email = ?', email)).toBe(1);
+
+  await p.locator('form[data-hapus-akun]').getByLabel('Ketik HAPUS untuk melanjutkan').fill('HAPUS');
+  await p.locator('#sandi-hapus').fill(SANDI);
+  await p.locator('form[data-hapus-akun]').getByRole('button', { name: 'Hapus akun permanen' }).click();
+  await expect(p).toHaveURL(`${ORIGIN}/`);
+  expect(hitung('SELECT COUNT(*) n FROM users WHERE email = ?', email)).toBe(0);
+  await tanpaJs.close();
 });
