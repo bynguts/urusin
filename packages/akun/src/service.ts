@@ -1,3 +1,4 @@
+import { isIPv6 } from 'node:net';
 import type { Db } from '@urusin/harness';
 import { dataDiriSintetis } from './demo.js';
 import { maskEmail, normalizeEmail } from './email.js';
@@ -35,7 +36,7 @@ export const DEFAULT_TTL: AkunTtl = Object.freeze({
   verifikasiSec: 24 * 3600,
   aturUlangSec: 30 * 60,
   oauthStateSec: 10 * 60,
-  tamuSec: 24 * 3600,
+  tamuSec: 72 * 3600,
   demoSec: 24 * 3600,
   belumVerifikasiSec: 24 * 3600,
   izinSec: 5 * 60,
@@ -137,7 +138,31 @@ const toAkun = (r: UserRow): Akun => ({
 
 /** Hash cookie urusin_sid (dipakai juga pengendali Pendamping sebagai hash pemilik sesi). */
 export const hashSid = (sid: string): string => sha256Hex(`sid|${sid}`);
-const hashIp = (ip: string): string => sha256Hex(`ip|${ip}`);
+/**
+ * Kunci pembatas per IP: IPv4 apa adanya, IPv6 dipotong ke /64 (satu pelanggan biasanya memegang seluruh /64,
+ * jadi berganti alamat di dalamnya tidak boleh mereset kuota). IPv4-mapped (`::ffff:a.b.c.d`) → IPv4.
+ */
+export function kunciIp(ip: string): string {
+  const v4 = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(ip);
+  if (v4) return v4[1]!;
+  const bersih = ip.split('%')[0]!.toLowerCase();
+  if (!isIPv6(bersih)) return ip;
+  const ekor = /(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(bersih); // IPv4 tertanam = 2 hextet
+  const o = ekor ? ekor.slice(1).map(Number) : [];
+  const teks = ekor
+    ? `${bersih.slice(0, -ekor[0].length)}${((o[0]! << 8) | o[1]!).toString(16)}:${((o[2]! << 8) | o[3]!).toString(16)}`
+    : bersih;
+  const [kiri, kanan] = teks.split('::') as [string, string | undefined];
+  const a = kiri ? kiri.split(':') : [];
+  const b = kanan ? kanan.split(':') : [];
+  const penuh = kanan === undefined ? a : [...a, ...Array<string>(8 - a.length - b.length).fill('0'), ...b];
+  return `${penuh
+    .slice(0, 4)
+    .map((h) => parseInt(h || '0', 16).toString(16))
+    .join(':')}::/64`;
+}
+
+const hashIp = (ip: string): string => sha256Hex(`ip|${kunciIp(ip)}`);
 
 /** Hash kanonik daftar write "Izinkan isi": nama field unik, terurut, dipisah baris baru. */
 export function hashDaftarWrite(fields: readonly string[]): string {
@@ -281,7 +306,7 @@ export class AkunService {
 
   private batasi(aksi: Aksi, ctx: KonteksPermintaan, email?: string): void {
     const l = this.lim[aksi];
-    const hasil = [l.ip.consume(`${aksi}:ip:${ctx.ip}`)];
+    const hasil = [l.ip.consume(`${aksi}:ip:${kunciIp(ctx.ip)}`)];
     if (email && l.email) hasil.push(l.email.consume(`${aksi}:email:${sha256Hex(email)}`));
     const kena = hasil.find((h) => !h.ok);
     if (kena) throw new AkunError('RATE_LIMITED', kena.retryAfterSec);
@@ -404,10 +429,7 @@ export class AkunService {
       const ada = this.db
         .prepare("SELECT id, expires_at FROM users WHERE jenis = 'tamu' AND sid_hash = ?")
         .get(sh) as { id: string; expires_at: string } | undefined;
-      if (ada && ada.expires_at > this.iso()) {
-        this.db.prepare('UPDATE users SET expires_at = ? WHERE id = ?').run(kedaluwarsa, ada.id);
-        return ada.id;
-      }
+      if (ada && ada.expires_at > this.iso()) return ada.id; // umur mutlak: aktivitas tidak memperpanjang
       if (ada) this.hapusPemilikDb(ada.id); // kedaluwarsa tetapi belum disapu
       const ih = hashIp(ctx.ip);
       const n = (

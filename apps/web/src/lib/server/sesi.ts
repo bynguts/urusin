@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { Cookies } from '@sveltejs/kit';
+import { kunciIp } from '@urusin/akun';
 import { apiError } from '#lib/server/http.js';
 import type { Runtime } from '#lib/server/runtime.js';
 
@@ -41,7 +42,7 @@ export function batasi(
   }
   const sid = event.locals.sid ?? 'tanpa-sesi';
   const lim = rt.limits[aksi];
-  const hasil = [lim.ip.consume(`ip:${ip}`), lim.sesi.consume(`sid:${sid}`)];
+  const hasil = [lim.ip.consume(`ip:${kunciIp(ip)}`), lim.sesi.consume(`sid:${sid}`)];
   const kena = hasil.find((h) => !h.ok);
   if (!kena) return undefined;
   const res = apiError(429, 'RATE_LIMITED', 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.');

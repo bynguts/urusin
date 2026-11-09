@@ -16,7 +16,7 @@ Warga memakai HP dan laptop bergantian. HP biasanya dipakai memotret dokumen, la
 
 1. **Tiga jenis pemilik vault** (`users.jenis`):
    - `akun`: email + sandi dan/atau Google;
-   - `tamu`: terikat hash cookie `urusin_sid`, dibuat **malas** (tulis vault pertama atau `/turn` pertama; menjelajah tidak membuat baris), maksimal 20 per IP per hari (`TAMU_PENUH` 429), dihapus 24 jam setelah aktivitas terakhir;
+   - `tamu`: terikat hash cookie `urusin_sid`, dibuat **malas** (tulis vault pertama atau `/turn` pertama; menjelajah tidak membuat baris), maksimal 20 per IP per hari (`TAMU_PENUH` 429; IPv6 dihitung per /64), umur mutlak 72 jam sejak dibuat (aktivitas tidak memperpanjang);
    - `demo`: salinan terisolasi dari "Masuk sebagai juri", berisi Data Diri sintetis, berumur 24 jam.
 
    Akun yang emailnya **belum terverifikasi** boleh masuk tetapi diperlakukan seperti tamu: vault tetap di perangkat (pemilik vault = tamu dari `urusin_sid`), urusan tidak dipindahkan. Hanya akun terverifikasi dan demo yang `sinkron`.
@@ -40,7 +40,7 @@ Warga memakai HP dan laptop bergantian. HP biasanya dipakai memotret dokumen, la
     - Label HKDF terpisah dari `URUSIN_PII_KEY`: `urusin/kek/v1` untuk KEK dan `urusin/placeholder-hmac/v1` untuk kunci HMAC placeholder.
     - Rotasi KEK: `URUSIN_PII_KEY_PREV` membuka DEK lama secara malas (dibungkus ulang saat dipakai) dan `pnpm kek:rotate` membungkus ulang semuanya sekaligus. Prosedur dan escrow kunci di `deploy/README.md`.
     - Hapus akun = crypto-shred: DEK terbungkus ditimpa nol lalu dihapus, baris dan berkas dihapus, `secure_delete` aktif, WAL di-checkpoint.
-11. **Batas penyimpanan (§3.26.4).** Per pemilik 10 berkas × 9 MB (JPG/PNG/WebP/PDF); total vault global (`URUSIN_VAULT_MAX_MB`, default 2048) dan ambang isi volume host (`URUSIN_VAULT_DISK_THRESHOLD`, default 85%). Melewati batas global → 507 "Penyimpanan sedang penuh" + log `[ALERT]`. `BODY_SIZE_LIMIT` 10M. Penyapu tiap jam menghapus tamu, demo, dan akun belum terverifikasi yang lewat 24 jam.
+11. **Batas penyimpanan (§3.26.4).** Per pemilik 10 berkas × 9 MB (JPG/PNG/WebP/PDF); per tamu 3 berkas dan 20 MB, dan semua tamu bersama paling banyak 25% dari batas global (tamu tidak bisa memenuhi host); total vault global (`URUSIN_VAULT_MAX_MB`, default 2048) dan ambang isi volume host (`URUSIN_VAULT_DISK_THRESHOLD`, default 85%). Melewati batas global → 507 "Penyimpanan sedang penuh" + log `[ALERT]`. `BODY_SIZE_LIMIT` 10M. Penyapu tiap jam menghapus tamu, demo, dan akun belum terverifikasi yang lewat 24 jam.
 12. **Akses nilai vault (§3.26.1).**
     - `GET /api/vault*` hanya untuk pemilik, dengan `Sec-Fetch-Site: same-origin`, Origin persis (bila ada), dan `Cache-Control: no-store`; dokumen pemilik lain = 404.
     - Mengunduh dokumen di **perangkat baru** (sesi yang belum pernah mengunduh) butuh bukti kredensial ≤ 15 menit (`PERLU_MASUK_ULANG` 401 → `POST /api/akun/konfirmasi-sandi` atau masuk ulang dengan Google).

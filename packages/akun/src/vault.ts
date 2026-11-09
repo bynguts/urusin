@@ -84,6 +84,12 @@ export type BatasVault = {
    * deploy/disk-alert.sh). 0 = tidak diperiksa.
    */
   diskPersenMaks: number;
+  /** Tamu (tanpa akun): berkas per tamu (default 3). */
+  berkasPerTamu: number;
+  /** Tamu: total byte per tamu (default 20 MB). */
+  bytePerTamu: number;
+  /** Porsi `totalMaks` yang boleh dipakai SEMUA tamu bersama (default 0,25): tamu tidak bisa memenuhi host. */
+  porsiTamu: number;
 };
 
 export const DEFAULT_BATAS_VAULT: BatasVault = Object.freeze({
@@ -91,6 +97,9 @@ export const DEFAULT_BATAS_VAULT: BatasVault = Object.freeze({
   ukuranMaks: 9 * MIB,
   totalMaks: 2048 * MIB,
   diskPersenMaks: 85,
+  berkasPerTamu: 3,
+  bytePerTamu: 20 * MIB,
+  porsiTamu: 0.25,
 });
 
 export type VaultOptions = {
@@ -215,15 +224,36 @@ export class Vault {
       .n;
   }
 
-  /** Lempar galat bila unggahan baru melanggar batas per pemilik atau batas global host. */
+  /**
+   * Lempar galat bila unggahan baru melanggar batas per pemilik, batas tamu (per tamu dan porsi bersama),
+   * atau batas global host.
+   */
   periksaBatas(userId: string, ukuran: number): void {
     if (ukuran > this.batas.ukuranMaks) throw new AkunError('DOKUMEN_TERLALU_BESAR');
-    const n = (
-      this.db.prepare('SELECT COUNT(*) AS n FROM vault_documents WHERE user_id = ?').get(userId) as {
-        n: number;
+    const { n, b } = this.db
+      .prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS b FROM vault_documents WHERE user_id = ?')
+      .get(userId) as { n: number; b: number };
+    const tamu =
+      (this.db.prepare('SELECT jenis FROM users WHERE id = ?').get(userId) as { jenis: string } | undefined)
+        ?.jenis === 'tamu';
+    if (n >= (tamu ? this.batas.berkasPerTamu : this.batas.berkasPerPemilik))
+      throw new AkunError('DOKUMEN_KUOTA_PENUH');
+    if (tamu && b + ukuran > this.batas.bytePerTamu) throw new AkunError('DOKUMEN_KUOTA_PENUH');
+    if (tamu) {
+      const totalTamu = (
+        this.db
+          .prepare(
+            `SELECT COALESCE(SUM(d.size), 0) AS n FROM vault_documents d
+             JOIN users u ON u.id = d.user_id WHERE u.jenis = 'tamu'`,
+          )
+          .get() as { n: number }
+      ).n;
+      const porsi = Math.floor(this.batas.totalMaks * this.batas.porsiTamu);
+      if (totalTamu + ukuran > porsi) {
+        this.opts.alert?.(`vault porsi tamu penuh: ${totalTamu} byte dari ${porsi}`);
+        throw new AkunError('PENYIMPANAN_PENUH');
       }
-    ).n;
-    if (n >= this.batas.berkasPerPemilik) throw new AkunError('DOKUMEN_KUOTA_PENUH');
+    }
     const total = this.totalBytes();
     if (total + ukuran > this.batas.totalMaks) {
       this.opts.alert?.(`vault penuh: ${total} byte terpakai dari batas ${this.batas.totalMaks}`);

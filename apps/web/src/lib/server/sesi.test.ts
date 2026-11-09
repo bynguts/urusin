@@ -105,6 +105,14 @@ describe('kuota per-IP dan per-sesi', () => {
     expect((await buatUrusan(ev(post({}), '10.0.0.2', 's10'))).status).toBe(201);
   });
 
+  it('PoC: IPv6 dibatasi per /64 (berganti alamat di /64 yang sama tidak mereset kuota)', async () => {
+    setup({ buatPerJamIp: 2, buatPerJamSesi: 100 });
+    for (let i = 0; i < 2; i++)
+      expect((await buatUrusan(ev(post({}), `2001:db8:a:b::${i + 1}`, `v${i}`))).status).toBe(201);
+    expect((await buatUrusan(ev(post({}), '2001:db8:a:b:ffff::7', 'v9'))).status).toBe(429);
+    expect((await buatUrusan(ev(post({}), '2001:db8:a:c::1', 'v10'))).status).toBe(201);
+  });
+
   it('urusan baru: sesi yang sama dibatasi walau ganti IP', async () => {
     setup({ buatPerJamIp: 100, buatPerJamSesi: 2 });
     for (let i = 0; i < 2; i++) {

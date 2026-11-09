@@ -234,6 +234,46 @@ describe('Vault per akun', () => {
     expect(aad.dokumen(A, 'dok_1')).toBe(`v1|dokumen|${A}|dok_1`);
   });
 
+  it('PoC DoS batas vault: tamu 3 berkas / 20 MB, dan porsi tamu 25% dari batas global', () => {
+    const alert: string[] = [];
+    const { db, vault, user } = vaultUji({
+      batas: { totalMaks: 100, ukuranMaks: 50, berkasPerTamu: 3, bytePerTamu: 20, porsiTamu: 0.25 },
+      alert: (p) => alert.push(p),
+    });
+    const tamu = (id: string) =>
+      db
+        .prepare("INSERT INTO users (id, jenis, created_at) VALUES (?, 'tamu', '2026-11-09T00:00:00.000Z')")
+        .run(id);
+    const [T1, T2, T3] = ['a', 'b', 'c'].map((c) => `tamu_${c.repeat(32)}`) as [string, string, string];
+    [T1, T2, T3].forEach(tamu);
+    user(A);
+    const doc = (u: string, n: number) =>
+      vault.putDocument(u, { jenis: 'ktp', judul: 'x', mime: 'image/png', bytes: Buffer.alloc(n) });
+    const kode = (f: () => unknown) => {
+      try {
+        f();
+      } catch (e) {
+        return (e as AkunError).kode;
+      }
+      return null;
+    };
+    doc(T1, 10);
+    doc(T1, 10);
+    expect(kode(() => doc(T1, 1))).toBe('DOKUMEN_KUOTA_PENUH'); // 20 byte per tamu
+    doc(T2, 1);
+    doc(T2, 1);
+    doc(T2, 1);
+    expect(kode(() => doc(T2, 1))).toBe('DOKUMEN_KUOTA_PENUH'); // 3 berkas per tamu
+    expect(kode(() => doc(T3, 5))).toBe('PENYIMPANAN_PENUH'); // 23 + 5 > 25% dari 100
+    expect(alert.at(-1)).toMatch(/porsi tamu/);
+    doc(A, 40); // akun tidak terpengaruh porsi tamu
+    expect(new Vault(openHarnessDb(), deriveKek(KEY_B64), '/').batas).toMatchObject({
+      berkasPerTamu: 3,
+      bytePerTamu: 20 * 1024 * 1024,
+      porsiTamu: 0.25,
+    });
+  });
+
   it('batas: berkas per pemilik, ukuran, total global, dan ambang disk (alert)', () => {
     const alert: string[] = [];
     let persen = 10;

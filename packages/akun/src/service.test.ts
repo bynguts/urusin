@@ -12,6 +12,7 @@ import {
   amanNext,
   hashDaftarWrite,
   hashSid,
+  kunciIp,
   LOCKOUT,
   ringkasUserAgent,
   type AkunDeps,
@@ -543,7 +544,7 @@ describe('ubah sandi dan hapus akun', () => {
 });
 
 describe('#47 tamu malas, salinan demo, dan batas per IP', () => {
-  it('tamu dibuat hanya saat diminta, terikat hash sid, umur 24 jam sejak aktivitas terakhir', () => {
+  it('tamu dibuat hanya saat diminta, terikat hash sid, umur MUTLAK 72 jam (aktivitas tidak memperpanjang)', () => {
     expect(akun.tamuDariSid('sid-1')).toBeUndefined();
     expect(akun.tamuDariSid(undefined)).toBeUndefined();
     expect(hitung('SELECT COUNT(*) n FROM users')).toBe(0);
@@ -554,11 +555,10 @@ describe('#47 tamu malas, salinan demo, dan batas per IP', () => {
     const row = db.prepare('SELECT sid_hash, email, jenis FROM users').get();
     expect(row).toEqual({ sid_hash: hashSid('sid-1'), email: null, jenis: 'tamu' });
     expect(JSON.stringify(db.prepare('SELECT * FROM users').all())).not.toContain('sid-1');
-    t += 23 * JAM;
-    akun.pastikanTamu('sid-1', ctx); // aktivitas memperpanjang
-    t += 23 * JAM;
+    t += 70 * JAM;
+    akun.pastikanTamu('sid-1', ctx); // aktivitas TIDAK memperpanjang (PoC DoS: tamu abadi)
     expect(akun.bersihkan().tamu).toBe(0);
-    t += 2 * JAM;
+    t += 2 * JAM + 1;
     expect(akun.tamuDariSid('sid-1')).toBeUndefined();
     expect(akun.bersihkan().tamu).toBe(1);
     expect(hitung('SELECT COUNT(*) n FROM users')).toBe(0);
@@ -567,10 +567,34 @@ describe('#47 tamu malas, salinan demo, dan batas per IP', () => {
   it('tamu kedaluwarsa yang belum disapu diganti tamu baru (data lama hilang)', () => {
     const id = akun.pastikanTamu('sid-2', ctx);
     akun.vault.setDataDiri(id, { namaLengkap: 'Lama' });
-    t += 25 * JAM;
+    t += 73 * JAM;
     const baru = akun.pastikanTamu('sid-2', ctx);
     expect(baru).not.toBe(id);
     expect(akun.vault.getDataDiri(baru)).toBeNull();
+  });
+
+  it('PoC: kunci per IP memakai /64 untuk IPv6 (satu pelanggan tidak bisa berganti alamat)', async () => {
+    expect(kunciIp('2001:db8:1:2:aaaa::1')).toBe('2001:db8:1:2::/64');
+    expect(kunciIp('2001:DB8:1:2:ffff:ffff:ffff:ffff')).toBe('2001:db8:1:2::/64');
+    expect(kunciIp('2001:db8::')).toBe('2001:db8:0:0::/64');
+    expect(kunciIp('::ffff:203.0.113.5')).toBe('203.0.113.5');
+    expect(kunciIp('fe80::1%eth0')).toBe('fe80:0:0:0::/64');
+    expect(kunciIp('203.0.113.5')).toBe('203.0.113.5');
+    expect(kunciIp('tak-dikenal')).toBe('tak-dikenal');
+    for (let i = 0; i < 20; i++)
+      akun.pastikanTamu(`sid6-${i}`, { ip: `2001:db8:5:6::${(i + 1).toString(16)}` });
+    expect((await galat(() => akun.pastikanTamu('sid6-x', { ip: '2001:db8:5:6:dead:beef::9' }))).kode).toBe(
+      'TAMU_PENUH',
+    );
+    akun.pastikanTamu('sid6-y', { ip: '2001:db8:5:7::1' });
+    for (let i = 0; i < 3; i++) akun.buatDemo({ ip: `2001:db8:9:9::${i + 1}` });
+    expect((await galat(() => akun.buatDemo({ ip: '2001:db8:9:9::99' }))).kode).toBe('DEMO_BATAS_IP');
+    // pembatas laju masuk: 20 per IP per 15 menit, kini per /64
+    for (let i = 0; i < 20; i++)
+      await galat(akun.masuk({ email: `x${i}@example.com`, sandi: SANDI }, { ip: `2001:db8:7:7::${i + 1}` }));
+    expect(
+      (await galat(akun.masuk({ email: 'y@example.com', sandi: SANDI }, { ip: '2001:db8:7:7::ff' }))).kode,
+    ).toBe('RATE_LIMITED');
   });
 
   it('paling banyak 20 tamu baru per IP per 24 jam', async () => {
