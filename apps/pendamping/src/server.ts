@@ -40,21 +40,22 @@ const MAX_JSON = 64 * 1024;
 const MAX_JSON_BERKAS = 12_700_000;
 /** Cookie sesi web app (`__Host-`: Secure, Path=/, tanpa Domain; sama dengan apps/web `SID_COOKIE`). */
 const SID_COOKIE = '__Host-urusin_sid';
-/** Nama lama (masa migrasi web) dan cookie halaman /debug pendamping sendiri (http lokal, tanpa Secure). */
+/** Cookie halaman /debug pendamping sendiri (http lokal, tanpa Secure); HANYA diterima untuk sesi debug. */
 const SID_COOKIE_LAMA = 'urusin_sid';
 
 /**
  * sha256(cookie sesi) dari header Cookie upgrade WebSocket (temuan arsitek M-5): koneksi layar hanya untuk
- * perangkat yang memegang cookie sesi pemilik, selain tiket sekali pakai. `__Host-urusin_sid` diutamakan;
- * nama lama hanya bila yang baru tidak ada. null bila tidak ada/rusak.
+ * perangkat yang memegang cookie sesi pemilik, selain tiket sekali pakai. Hanya `__Host-urusin_sid`; nama lama
+ * `urusin_sid` hanya bila `debug` (sesi halaman /debug dari origin pendamping sendiri) dan yang baru tidak ada.
+ * null bila tidak ada/rusak.
  */
-export function sidHashFromCookie(header: string | undefined): string | null {
+export function sidHashFromCookie(header: string | undefined, debug = false): string | null {
   const nilai = new Map<string, string>();
   for (const part of (header ?? '').split(';')) {
     const [k, ...v] = part.trim().split('=');
     if (k && !nilai.has(k)) nilai.set(k, v.join('='));
   }
-  const val = nilai.get(SID_COOKIE) ?? nilai.get(SID_COOKIE_LAMA);
+  const val = nilai.get(SID_COOKIE) ?? (debug ? nilai.get(SID_COOKIE_LAMA) : undefined);
   return val !== undefined && /^[0-9a-f]{32}$/.test(val) ? sidHashOf(val) : null;
 }
 
@@ -283,7 +284,11 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
       config.debugToken !== undefined &&
       origin !== undefined &&
       (origin === `http://${req.headers.host}` || origin === `https://${req.headers.host}`);
-    const sidHash = sidHashFromCookie(req.headers.cookie);
+    // Cookie lama `urusin_sid` hanya untuk sesi debug yang dibuka dari halaman /debug pendamping sendiri.
+    const sidHash = sidHashFromCookie(
+      req.headers.cookie,
+      debugOrigin && m?.[1] !== undefined && manager.debugOwner(m[1]) !== undefined,
+    );
     // Sesi harus ada dan milik cookie ini SEBELUM upgrade: soket asing tidak pernah mendapat buffer WS.
     if (
       !m?.[1] ||

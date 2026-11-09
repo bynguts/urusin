@@ -458,8 +458,8 @@ export class SessionManager {
     if (m.type === 'ping') return s.viewer?.send({ type: 'pong', t: m.t });
     // ack frame otomatis: bukan aktivitas warga (tidak menunda idle).
     if (m.type === 'ack') return s.viewer?.ack(m.seq);
-    s.lastActivity = this.now();
     if (isInputMessage(m)) {
+      // Ketukan di luar giliran warga tidak dihitung aktivitas: tidak bisa menahan sesi tetap hidup.
       if (s.mode !== 'takeover' || !s.run) {
         // Satu kali per periode AI, agar warga tahu kenapa ketukannya tidak berefek.
         if (!s.galatInputTerkirim)
@@ -467,8 +467,10 @@ export class SessionManager {
         s.galatInputTerkirim = true;
         return;
       }
+      s.lastActivity = this.now();
       return s.run.input(m);
     }
+    s.lastActivity = this.now();
     switch (m.type) {
       case 'ambil_alih':
       case 'kembalikan':

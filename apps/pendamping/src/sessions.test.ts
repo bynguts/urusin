@@ -10,7 +10,7 @@ import { headerTanda } from './tanda.js';
 import { SessionManager, sidHashOf, type ActiveRun, type RunInit } from './sessions.js';
 
 const SID = sidHashOf('a'.repeat(32));
-const COOKIE = `urusin_sid=${'a'.repeat(32)}`;
+const COOKIE = `__Host-urusin_sid=${'a'.repeat(32)}`;
 const OTHER = sidHashOf('b'.repeat(32));
 
 function tandaHeader(rahasia: string, metode: string, jalur: string, isi = '') {
@@ -103,6 +103,9 @@ describe('SessionManager', () => {
     h.advance(170_000);
     await h.manager.handleClient(s.sesiId, { type: 'ack', seq: 4 });
     expect(v.acks).toEqual([4]);
+    // Ketukan/teks di luar takeover juga bukan aktivitas (ditolak, tidak menahan sesi tetap hidup).
+    await h.manager.handleClient(s.sesiId, { type: 'text', teks: 'x' });
+    expect(run.calls.some((c) => c.startsWith('input'))).toBe(false);
     h.advance(20_000);
     await h.manager.sweep(); // ack bukan aktivitas: idle 3 menit tetap berlaku
     expect(h.manager.status(owner('u-frame')).status).toBe('kedaluwarsa');
@@ -698,8 +701,12 @@ describe('server HTTP + WebSocket', () => {
     });
     await new Promise((r) => badPath.on('error', r));
 
-    // Tanpa cookie urusin_sid (atau cookie rusak): upgrade ditolak sebelum tiket dipakai.
-    for (const headers of [{}, { cookie: 'urusin_sid=ZZ' }]) {
+    // Tanpa cookie sesi (cookie rusak, atau nama lama urusin_sid di sesi bukan debug): upgrade ditolak.
+    for (const headers of [
+      {},
+      { cookie: '__Host-urusin_sid=ZZ' },
+      { cookie: `urusin_sid=${'a'.repeat(32)}` },
+    ]) {
       const tanpa = new WebSocket(url, { origin: 'http://app.test', headers });
       await new Promise((r) => tanpa.on('error', r));
     }
@@ -711,7 +718,8 @@ describe('server HTTP + WebSocket', () => {
         w.on('open', () => r(101));
         w.on('error', () => undefined);
       });
-    expect(await statusUpgrade(url, `urusin_sid=${'b'.repeat(32)}`)).toBe(403);
+    expect(await statusUpgrade(url, `__Host-urusin_sid=${'b'.repeat(32)}`)).toBe(403);
+    expect(await statusUpgrade(url, `urusin_sid=${'a'.repeat(32)}`)).toBe(403);
     expect(
       await statusUpgrade(`ws://127.0.0.1:${port}/ws/00000000-0000-4000-8000-000000000000`, COOKIE),
     ).toBe(403);
@@ -761,12 +769,14 @@ describe('server HTTP + WebSocket', () => {
     for (const w of [a.ws, c.ws, d.ws]) w.close();
   });
 
-  it('cookie sesi WS: __Host-urusin_sid (web) diutamakan; nama lama hanya bila tidak ada; rusak -> null', () => {
+  it('cookie sesi WS: hanya __Host-urusin_sid; nama lama urusin_sid hanya untuk sesi debug; rusak -> null', () => {
     const [a, b] = ['a'.repeat(32), 'b'.repeat(32)];
     expect(sidHashFromCookie(`x=1; __Host-urusin_sid=${a}`)).toBe(sidHashOf(a));
     expect(sidHashFromCookie(`urusin_sid=${b}; __Host-urusin_sid=${a}`)).toBe(sidHashOf(a));
-    expect(sidHashFromCookie(`urusin_sid=${b}`)).toBe(sidHashOf(b));
-    expect(sidHashFromCookie(`__Host-urusin_sid=ZZ; urusin_sid=${b}`)).toBeNull();
+    expect(sidHashFromCookie(`urusin_sid=${b}`)).toBeNull();
+    expect(sidHashFromCookie(`urusin_sid=${b}`, true)).toBe(sidHashOf(b));
+    expect(sidHashFromCookie(`urusin_sid=${b}; __Host-urusin_sid=${a}`, true)).toBe(sidHashOf(a));
+    expect(sidHashFromCookie(`__Host-urusin_sid=ZZ; urusin_sid=${b}`, true)).toBeNull();
     expect(sidHashFromCookie(undefined)).toBeNull();
   });
 
@@ -880,6 +890,19 @@ describe('server HTTP + WebSocket', () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(msgs[0]).toMatchObject({ type: 'status' });
     ws.close();
+    // Cookie lama dari origin /debug untuk sesi warga (bukan debug) tetap ditolak sebelum upgrade.
+    const sidMentah = cookie.split('=')[1]!;
+    const warga = await h.manager.create(input('u-bukan-debug', { sidHash: sidHashOf(sidMentah) }));
+    const ditolak = await new Promise<number | undefined>((r) => {
+      const w = new WebSocket(`ws://127.0.0.1:${port}/ws/${warga.sesiId}`, {
+        origin: base,
+        headers: { cookie },
+      });
+      w.on('unexpected-response', (_req, res) => r(res.statusCode));
+      w.on('open', () => r(101));
+      w.on('error', () => undefined);
+    });
+    expect(ditolak).toBe(403);
     expect(
       (
         await fetch(`${base}/debug/lain`, {
