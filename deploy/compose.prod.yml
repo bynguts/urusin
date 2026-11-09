@@ -66,12 +66,13 @@ x-web-env: &web-env
 services:
   # Selalu berdasarkan digest, mis. ghcr.io/bynguts/urusin-web@sha256:... (ditulis deploy.sh ke
   # .env.images). Warna yang belum pernah dideploy memakai placeholder dan tidak dijalankan.
+  # GIT_SHA sengaja TIDAK diset di sini: stempel versi dan asersi gitSha deploy.sh harus membuktikan SHA
+  # yang dibakar ke image (ENV di Dockerfile), bukan nilai dari .env.images.
   web-blue:
     <<: *web
     image: ${WEB_IMAGE_BLUE:-ghcr.io/bynguts/urusin-web:unset}
     environment:
       <<: *web-env
-      GIT_SHA: ${GIT_SHA_BLUE:-}
       PORT: '4310'
       URUSIN_COLOR: blue
       RUN_MIGRATIONS: ${RUN_MIGRATIONS_BLUE:-0}
@@ -84,7 +85,6 @@ services:
     image: ${WEB_IMAGE_GREEN:-ghcr.io/bynguts/urusin-web:unset}
     environment:
       <<: *web-env
-      GIT_SHA: ${GIT_SHA_GREEN:-}
       PORT: '4311'
       URUSIN_COLOR: green
       RUN_MIGRATIONS: ${RUN_MIGRATIONS_GREEN:-0}
