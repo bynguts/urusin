@@ -438,7 +438,7 @@ describe('broker Browser Pendamping', () => {
   });
 
   describe('Izinkan isi -> controller isi di server (A-M1) + pemilik akun (m6)', () => {
-    const HP = ['0800', '0000', '0001'].join('');
+    const HP = ['0800', '0000', '001'].join('');
     const SITUS = 'https://telunjuksakti.wonogirikab.go.id';
     const FIXTURES = 'https://fixtures.urusinai.web.id';
     const PH = ['{{PEMOHON.NIK}}', '{{PEMOHON.HP}}', '{{URUSAN.KITIR}}'];
@@ -564,6 +564,26 @@ describe('broker Browser Pendamping', () => {
       const res = await kirim(u.id, { writeList: ['{{PEMOHON.NIK}}'], targetOrigin: SITUS });
       expect(res.status).toBe(409);
       expect(jalur()).not.toContain('/internal/sesi/isi');
+    });
+
+    it('salinan demo juri: HP Data Diri lewat jalur placeholder = persis HP uji replika (08000000001)', async () => {
+      const u = siapkan();
+      const { akun: juri } = rt.akun.buatDemo(KTX);
+      rt.akun.catatPemilikUrusan(u.id, { akun: juri });
+      const writeList = daftarWrite(BUTUH.placeholder, BUTUH.berkas);
+      const res = await izinkanIsi({
+        request: new Request(`${ORIGIN}/api/urusan/${u.id}/izinkan-isi`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', origin: ORIGIN, cookie: `${SID_COOKIE}=${SID}` },
+          body: JSON.stringify({ writeList, targetOrigin: BUTUH.origin }),
+        }),
+        params: { id: u.id },
+        locals: { sid: SID, akun: juri },
+      } as never);
+      expect(res.status).toBe(200);
+      const isi = calls.find((c) => new URL(c.url).pathname === '/internal/sesi/isi');
+      // String yang diketik AI ke kolom HP replika Telunjuk Sakti = apps/fixtures TEST_HP, tanpa normalisasi.
+      expect((isi!.body as { isian: Record<string, string> }).isian['{{PEMOHON.HP}}']).toBe('08000000001');
     });
 
     it('m6: urusan milik orang lain -> 404 di izinkan-isi dan semua endpoint pendamping, tanpa panggil worker', async () => {
