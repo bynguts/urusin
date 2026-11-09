@@ -326,7 +326,9 @@
       <div>
         <h2 id="h-privasi" class="text-[1.375rem] tracking-[-0.02em] text-ink">Privasi & data</h2>
         <p class="mt-1 text-base text-body">
-          Daftar urusan, pesan yang Anda ketik, dan pengaturan ini disimpan di perangkat ini saja.
+          Daftar urusan dan pengaturan ini disimpan di perangkat ini. Data Diri dan dokumen disimpan
+          terenkripsi di server: terhapus 72 jam setelah dibuat bila tanpa akun, atau ikut akun Anda sampai
+          Anda menghapusnya.
         </p>
       </div>
       <div
@@ -345,8 +347,18 @@
           <Icon name="hapus" class="size-4.5" /> Hapus data di perangkat ini
         </button>
       </div>
-      {#if page.data.version}
-        <p class="text-sm text-muted">Versi {page.data.version}</p>
+      {#if page.data.versi}
+        <p class="text-sm text-muted" data-versi>
+          {#if page.data.versi.commit}
+            <a
+              href={page.data.versi.commit}
+              rel="external noopener"
+              class="underline underline-offset-2 hover:text-ink">v{page.data.versi.sha7}</a
+            >
+          {:else}
+            v{page.data.versi.sha7}
+          {/if}
+        </p>
       {/if}
     </section>
   </div>

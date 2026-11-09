@@ -36,15 +36,15 @@ C4Container
   Person(warga, "Warga")
 
   System_Boundary(browser, "Perangkat warga (ponsel atau laptop)") {
-    Container(webui, "Web app", "SvelteKit UI, PWA (rencana)", "Antarmuka, vault PII (rencana), kanvas layar Browser Pendamping.")
+    Container(webui, "Web app", "SvelteKit UI", "Antarmuka, daftar urusan lokal (tamu), kanvas layar Browser Pendamping.")
   }
 
   System_Boundary(vps, "VPS arm64 (Docker Compose, Caddy milik host)") {
     Container(caddy, "Caddy host bersama", "Caddy 2", "Satu-satunya yang memegang 80/443. TLS otomatis, HSTS, kompresi. Tanpa CSP.")
-    Container(web, "web", "SvelteKit adapter-node, Node 26", "Server routes, harness (rencana), CSP nonce. Mendengar di 127.0.0.1:4310.")
+    Container(web, "web", "SvelteKit adapter-node, Node 26", "Server routes, harness agen, akun, vault terenkripsi, CSP nonce. Mendengar di 127.0.0.1:4310.")
     Container(fixtures, "fixtures (opsional)", "Hono", "Situs tiruan jinak untuk demo dan uji. Mendengar di 127.0.0.1:4320.")
     Container(pendamping, "pendamping (opsional)", "Node, Chromium headed di Xvfb", "Satu Chromium per sesi warga, proxy egress per sesi ber-allowlist registry. Mendengar di 127.0.0.1:4330.")
-    ContainerDb(db, "SQLite", "better-sqlite3, mode WAL", "Berkas /data/urusin.db di named volume data. Metadata saja, tanpa PII.")
+    ContainerDb(db, "SQLite", "better-sqlite3, mode WAL", "Berkas /data/urusin.db di named volume data. Urusan dan jejak tanpa PII; akun dan vault (ciphertext AES-256-GCM).")
   }
 
   System_Ext(gov, "Situs layanan pemerintah", "Origin terdaftar di registry")
@@ -71,9 +71,23 @@ Catatan pembacaan:
 - `{$DOMAIN}` dan `verify.{$DOMAIN}` menuju upstream yang sama (`127.0.0.1:4310`). Aplikasi memilih rute `/verify`
   dari header `Host` mentah.
 - Container `web` berjalan `read_only`, `cap_drop: [ALL]`, `no-new-privileges`, `mem_limit: 512m`.
-- **Belum ada (rencana):** harness agen, tujuh server MCP, vault PII, service `worker` pengingat, service `backup`,
-  PWA. Repositori baru memuat fondasi, fixtures, dan paket `core`, `llm`, `registry`, `rag`.
-- Paket pustaka (bukan kontainer): `@urusin/core` (Step DSL, guard placeholder, registry domain),
+- **Belum ada (rencana):** server MCP, service `worker` pengingat, PWA. Input suara dan pengingat masih
+  dimatikan lewat flag.
+- **Dua mode penyimpanan data pribadi ([ADR 0028](adr/0028-akun-dan-login.md)):**
+  - Tanpa akun (tamu): Data Diri dan dokumen disimpan terenkripsi di server, terikat hash cookie
+    `__Host-urusin_sid`, dan dihapus 72 jam sejak dibuat. Daftar urusan dan preferensi ada di penyimpanan
+    peramban.
+  - Dengan akun: vault terenkripsi per akun (DEK per pemilik dibungkus KEK dari `URUSIN_PII_KEY`) ikut lintas
+    perangkat.
+  - Salinan demo juri disimpan 24 jam, akun belum terverifikasi 24 jam. Hapus = crypto-shred.
+- **Pemroses dan lokasi:**
+  - VPS Oracle Cloud Singapura: DB, berkas vault terenkripsi, dan Browser Pendamping.
+  - Resend (Amerika Serikat): hanya menerima alamat email dan tautan. Saat ini mode log, jadi belum ada email
+    yang terkirim.
+  - Google: hanya untuk OIDC, bila warga memilihnya.
+  - Model AI tidak pernah melihat NIK, KK, HP, atau email.
+- Paket pustaka (bukan kontainer): `@urusin/harness` (agen, state machine, policy gate, audit), `@urusin/akun`
+  (akun, sesi, vault), `@urusin/egress` (allowlist HTTP keluar), `@urusin/core` (Step DSL, guard placeholder, registry domain),
   `@urusin/llm` (gateway dan capability probe), `@urusin/registry` (router kab/kota dari prefiks NIK),
   `@urusin/rag` (BM25 FTS5, vektor opsional, fusi RRF).
 
@@ -89,42 +103,49 @@ Catatan pembacaan:
 
 ## 4. Alur data PII
 
-Invarian utama (rencana §3.1): semua yang melintasi garis peramban ke server bebas PII. Model hanya melihat
-**placeholder** seperti `{{PEMOHON.NIK}}`. Nilai asli hanya ada di vault peramban dan baru diganti di sisi
-eksekutor (Browser Pendamping), sesaat sebelum mengisi kolom di situs pemerintah. Guard `noPlaceholder()` menolak parameter
-dari model yang memuat `{{`, `}}`, atau pola NIK, HP, dan email.
+Invarian utama: model dan log tidak pernah menerima PII mentah.
+
+- Model hanya melihat **placeholder** seperti `{{PEMOHON.NIK}}`.
+- Nilai asli ada di vault server yang terenkripsi. Vault hanya dibuka oleh jalur isi Pendamping
+  (`lib/server/vault/resolver.ts`, satu-satunya penyelesai), setelah warga menekan "Izinkan isi" dan sesaat
+  sebelum mengisi kolom di situs tujuan.
+- Peramban tidak pernah menerima nilai vault untuk Pendamping.
+- Guard `noPlaceholder()` menolak parameter dari model yang memuat `{{`, `}}`, atau pola NIK, HP, dan email.
 
 ```mermaid
 sequenceDiagram
   autonumber
   actor W as Warga
   participant UI as Web app (peramban)
-  participant V as Vault PII (peramban)
-  participant S as Server web (harness, rencana)
+  participant S as Server web (harness)
+  participant V as Vault (server, terenkripsi)
   participant L as Penyedia LLM
   participant E as Browser Pendamping (server)
-  participant G as Situs pemerintah
+  participant G as Situs tujuan (portal kirim-asli atau situs latihan)
 
-  W->>UI: Mengisi data diri (intake terstruktur)
-  UI->>V: Simpan nilai asli (NIK, nama, alamat)
-  Note over V: Nilai asli tidak pernah keluar dari peramban ke server atau LLM
-  UI->>S: Permintaan dengan placeholder dan fakta turunan
+  W->>UI: Mengisi Data Diri dan mengunggah dokumen
+  UI->>S: PUT /api/vault/data-diri, POST /api/vault
+  S->>V: Enkripsi AES-256-GCM dengan DEK pemilik
+  W->>UI: Bercerita tentang urusannya
+  UI->>S: Teks warga
   S->>L: Prompt berisi {{PEMOHON.NIK}} dan teks bebas PII
   L-->>S: Pemanggilan tool dengan parameter tanpa PII
-  S->>S: noPlaceholder() dan policy engine memeriksa parameter
-  S-->>UI: Langkah dan permintaan eksekusi, tetap berupa placeholder
-  UI->>V: Resolve placeholder
-  V-->>UI: Nilai asli
-  UI->>E: Kirim lewat sesi WebSocket bertiket (hanya di memori, tidak dicatat)
-  E->>E: Gate kedua: warga menyetujui sebelum kolom diisi
-  E->>G: Isi kolom dengan nilai asli
+  S->>S: noPlaceholder() dan policy gate memeriksa parameter
+  S-->>UI: Rencana dan permintaan isi (placeholder saja)
+  W->>UI: Menekan Izinkan isi
+  UI->>S: POST /api/urusan/[id]/izinkan-isi {writeList, targetOrigin}
+  S->>S: Origin di allowlist, persetujuan sekali pakai disimpan di server
+  E->>S: Halaman hidup di origin yang sama
+  S->>V: Buka nilai sesuai daftar write
+  V-->>E: Nilai lewat kanal internal (tidak dicatat, tidak ke model)
+  E->>G: Isi kolom dan unggah berkas
   W->>E: Warga sendiri menekan tombol kirim akhir (takeover)
   E->>G: Kirim
 ```
 
-Pengecualian yang disetujui di rencana (belum diimplementasikan): dua jalur pass-through `/api/vision` (gambar
-yang sudah di-masking) dan `/api/transcribe` (audio). Keduanya tidak disimpan dan tidak dicatat. Risiko sisa
-(JS dari server yang bisa membaca vault bila server dibobol) diungkap di threat model.
+Risiko sisa yang diungkap di ADR 0028: demi sinkron lintas perangkat, server memegang ciphertext sekaligus
+kuncinya. Karena itu `URUSIN_PII_KEY` adalah rahasia paling kritis, dengan escrow dan rotasi lewat
+`pnpm kek:rotate`. Jalur `/api/vision` dan `/api/transcribe` belum ada.
 
 ## 5. Jejak keputusan
 

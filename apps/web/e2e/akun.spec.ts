@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { devices, expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { DB_PATH, E2E_DIR, ORIGIN, OUTBOX } from '../playwright.config';
+import { DB_PATH, E2E_DIR, E2E_GIT_SHA, ORIGIN, OUTBOX } from '../playwright.config';
 
 /**
  * E2E akun #43–#49 (rencana §3.26, §4 e2e). Kasus berbasis waktu (penyapu 24 jam, kedaluwarsa izin) memakai
@@ -550,6 +550,10 @@ test('#49 zona bahaya di Pengaturan: keluar dari semua perangkat, lalu hapus aku
   expect((await sesiApi(hp.page)).masuk).toBe(true);
 
   await page.goto('/pengaturan');
+  // Stempel versi M11: baris kecil v<sha7> bertaut ke commit di GitHub.
+  const versi = page.locator('[data-versi] a');
+  await expect(versi).toHaveText(`v${E2E_GIT_SHA.slice(0, 7)}`);
+  await expect(versi).toHaveAttribute('href', `https://github.com/bynguts/urusin/commit/${E2E_GIT_SHA}`);
   const zona = page.locator('[data-zona-bahaya]');
   await expect(zona.getByRole('heading', { name: 'Zona bahaya' })).toBeVisible();
   await zona.getByRole('button', { name: 'Keluar dari semua perangkat' }).click();
