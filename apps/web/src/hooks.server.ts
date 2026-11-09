@@ -62,6 +62,6 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
   const response = await resolve(event);
   // Satu baris per respons API gagal (pola rute + status + kode saja), untuk diagnosis operator.
-  if (response.status >= 400) await catatGalatApi(event.request.method, event.route.id, response);
+  if (response.status >= 400) await catatGalatApi(event.request.method, event.route?.id ?? null, response);
   return response;
 };
