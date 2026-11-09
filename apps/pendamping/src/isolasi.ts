@@ -63,45 +63,66 @@ export async function daftarEdge(
   };
 }
 
-export type ProsesInfo = { userns: string; filter: number };
+/**
+ * `userns`: tautan /proc/<pid>/ns/user, undefined bila tidak terbaca (proses sandbox setuid tidak dumpable,
+ * jadi tautan ns-nya EACCES). `pidns`: kedalaman namespace PID dari baris `NSpid` (1 = tidak bersarang).
+ */
+export type ProsesInfo = { userns?: string | undefined; pidns: number; filter: number };
+export type JenisSandbox = 'userns' | 'setuid';
 
 function infoProses(pid: string, proc: string): ProsesInfo | undefined {
+  let st: string;
   try {
-    const st = readFileSync(join(proc, pid, 'status'), 'utf8');
-    return {
-      userns: readlinkSync(join(proc, pid, 'ns', 'user')),
-      filter: Number(/Seccomp_filters:\s*(\d+)/.exec(st)?.[1] ?? 0),
-    };
+    st = readFileSync(join(proc, pid, 'status'), 'utf8');
   } catch {
     return undefined;
   }
+  let userns: string | undefined;
+  try {
+    userns = readlinkSync(join(proc, pid, 'ns', 'user'));
+  } catch {
+    userns = undefined;
+  }
+  return {
+    userns,
+    pidns: (/NSpid:\s*([^\n]*)/.exec(st)?.[1] ?? '').trim().split(/\s+/).filter(Boolean).length,
+    filter: Number(/Seccomp_filters:\s*(\d+)/.exec(st)?.[1] ?? 0),
+  };
 }
 
 /**
- * Renderer tersandbox = berada di user namespace lain DAN punya filter seccomp lebih banyak dari proses ini
- * (filter kontainer + seccomp-bpf Chromium). `Seccomp: 2` saja tidak cukup: filter kontainer sudah membuatnya 2.
+ * Jenis sandbox renderer, atau null bila tidak ada renderer tersandbox. Keduanya WAJIB punya filter seccomp
+ * lebih banyak dari proses ini (filter kontainer + seccomp-bpf Chromium; `Seccomp: 2` saja tidak cukup):
+ * - `userns`: sandbox namespace (renderer di user namespace lain);
+ * - `setuid`: sandbox setuid `chrome-sandbox` (host yang mematikan userns tak berhak, mis. agent-vm): renderer
+ *   di namespace PID baru (NSpid bersarang) dalam user namespace yang sama.
  */
-export function adaRendererTersandbox(
+export function jenisSandboxRenderer(
   pids: readonly number[],
   baca: (pid: string) => ProsesInfo | undefined = (pid) => infoProses(pid, '/proc'),
-): boolean {
+): JenisSandbox | null {
   const aku = baca('self');
-  if (!aku) return false;
-  return pids.some((pid) => {
+  if (!aku?.userns || aku.pidns < 1) return null;
+  let jenis: JenisSandbox | null = null;
+  for (const pid of pids) {
     const p = baca(String(pid));
-    return p !== undefined && p.userns !== aku.userns && p.filter > aku.filter;
-  });
+    if (!p || p.filter <= aku.filter) continue;
+    if (p.userns !== undefined && p.userns !== aku.userns) return 'userns';
+    if (p.pidns > aku.pidns) jenis = 'setuid';
+  }
+  return jenis;
 }
 
 /**
  * Boot gagal-tertutup: luncurkan Chromium persis seperti sesi (sandbox aktif), muat satu halaman lokal, lalu
- * pastikan renderernya tersandbox. Di Ubuntu 24.04 (AppArmor membatasi userns) atau tanpa profil seccomp
- * Playwright + SYS_CHROOT, Chromium gagal start atau renderer tidak tersandbox: pendamping menolak start.
+ * pastikan renderernya tersandbox (userns ATAU setuid `chrome-sandbox`), lalu kembalikan jenisnya. Tanpa
+ * userns dan tanpa helper setuid yang berfungsi (SYS_ADMIN + SYS_CHROOT, tanpa no-new-privileges), Chromium
+ * gagal start atau renderer tidak tersandbox: pendamping menolak start. Tidak pernah --no-sandbox.
  */
 export async function periksaSandbox(
   config: Pick<Config, 'headless' | 'chromiumPath'>,
   pidsOfProfile: (dir: string) => number[],
-): Promise<void> {
+): Promise<JenisSandbox> {
   const dir = await mkdtemp(join(tmpdir(), 'urusin-sandbox-'));
   try {
     const ctx = await chromium.launchPersistentContext(dir, {
@@ -115,14 +136,15 @@ export async function periksaSandbox(
     try {
       const page = ctx.pages()[0] ?? (await ctx.newPage());
       await page.setContent('<p>sandbox</p>');
-      if (!adaRendererTersandbox(pidsOfProfile(dir)))
-        throw new Error('renderer Chromium tidak tersandbox (userns + seccomp-bpf)');
+      const jenis = jenisSandboxRenderer(pidsOfProfile(dir));
+      if (!jenis) throw new Error('renderer Chromium tidak tersandbox (userns/setuid + seccomp-bpf)');
+      return jenis;
     } finally {
       await ctx.close().catch(() => undefined);
     }
   } catch (e) {
     throw new Error(
-      `sandbox Chromium tidak aktif; pendamping menolak start (butuh profil seccomp Playwright + cap SYS_CHROOT): ${e instanceof Error ? e.message.split('\n')[0] : String(e)}`,
+      `sandbox Chromium tidak aktif; pendamping menolak start (butuh profil seccomp Playwright + SYS_CHROOT; sandbox setuid juga SYS_ADMIN tanpa no-new-privileges): ${e instanceof Error ? e.message.split('\n')[0] : String(e)}`,
       { cause: e },
     );
   } finally {

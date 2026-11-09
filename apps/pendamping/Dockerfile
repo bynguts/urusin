@@ -9,8 +9,9 @@
 #
 # Headed, bukan headless: situs ber-Cloudflare menantang Chromium headless (diukur tim). Flag Chromium
 # bawaan Playwright tidak diubah (tanpa stealth, tanpa menyembunyikan otomasi; lihat tanpa-evasi.test.ts).
-# Isolasi: sandbox Chromium AKTIF (userns + seccomp-bpf; butuh profil seccomp Playwright dan SYS_CHROOT dari
-# compose) dan diperiksa saat boot. Kontainer pendamping hanya di jaringan internal compose; satu-satunya jalan
+# Isolasi: sandbox Chromium AKTIF (seccomp-bpf + namespace; profil seccomp Playwright dari compose) dan
+# diperiksa saat boot. Host produksi (agent-vm) mematikan user namespace tak berhak, jadi namespace dibuat
+# oleh sandbox SETUID `chrome-sandbox` (lihat tahap runtime dan ADR 0028). Kontainer pendamping hanya di jaringan internal compose; satu-satunya jalan
 # keluar adalah pendamping-edge (image yang sama, `node dist/edge-main.js`). Lihat deploy/compose.prod.yml.
 
 FROM --platform=$BUILDPLATFORM node:26-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS builder
@@ -32,7 +33,9 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
  && pnpm --filter @urusin/pendamping deploy --prod --legacy --ignore-scripts /out \
  && cp -r apps/pendamping/dist /out/dist
 
-FROM mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d AS runtime
+FROM mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d AS pwbasis
+
+FROM pwbasis AS runtime
 ARG GIT_SHA=dev
 # Bawaan 127.0.0.1; compose produksi memakai HOST=antarmuka (IPv4 jaringan internal, lihat compose.prod.yml).
 # Root filesystem read-only di produksi: Chromium headed menulis ke HOME/XDG (crashpad, cache), jadi semuanya
@@ -44,7 +47,25 @@ ENV NODE_ENV=production \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     HOME=/tmp \
     XDG_CONFIG_HOME=/tmp/.config \
-    XDG_CACHE_HOME=/tmp/.cache
+    XDG_CACHE_HOME=/tmp/.cache \
+    CHROME_DEVEL_SANDBOX=/ms-playwright/chromium-1254/chrome-linux64/chrome-sandbox
+# Sandbox setuid Chromium (ADR 0028). Playwright mengirim helper-nya sebagai `chrome_sandbox` mode 777 (tidak
+# SUID); Chromium mencari `<dir exe>/chrome-sandbox`. CHROME_DEVEL_SANDBOX di atas hanya penanda: Chromium
+# mengabaikannya bila exe tidak dimiliki uid yang menjalankan (exe milik root, kita pwuser; diukur), jadi yang
+# berlaku adalah salinan root 4755 di sebelah exe. Path ber-versi: naik versi Playwright tanpa mengubah ini
+# membuat pemeriksaan sandbox saat boot gagal tertutup. Hanya COPY (tanpa RUN): build silang tetap tanpa QEMU.
+COPY --from=pwbasis --chmod=4755 --chown=root:root \
+     /ms-playwright/chromium-1254/chrome-linux64/chrome_sandbox \
+     /ms-playwright/chromium-1254/chrome-linux64/chrome-sandbox
+# Kontainer pendamping berjalan TANPA no-new-privileges (syarat sandbox setuid) dengan SYS_ADMIN di bounding
+# set, jadi biner SUID/SGID lain dari image dasar akan menjadi jalan ke root ber-SYS_ADMIN. Bit-nya dicabut:
+# chrome-sandbox satu-satunya biner SUID di image (diperiksa smoke rilis).
+COPY --from=pwbasis --chmod=0755 \
+     /usr/bin/chage /usr/bin/chfn /usr/bin/chsh /usr/bin/expiry /usr/bin/gpasswd /usr/bin/mount \
+     /usr/bin/newgrp /usr/bin/passwd /usr/bin/ssh-agent /usr/bin/su /usr/bin/umount /usr/bin/
+COPY --from=pwbasis --chmod=0755 /usr/sbin/pam_extrausers_chkpwd /usr/sbin/unix_chkpwd /usr/sbin/
+COPY --from=pwbasis --chmod=0755 /usr/lib/openssh/ssh-keysign /usr/lib/openssh/
+COPY --from=pwbasis --chmod=0755 /usr/lib/dbus-1.0/dbus-daemon-launch-helper /usr/lib/dbus-1.0/
 LABEL org.opencontainers.image.source="https://github.com/bynguts/urusin" \
       org.opencontainers.image.revision=$GIT_SHA
 WORKDIR /app

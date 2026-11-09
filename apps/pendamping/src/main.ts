@@ -11,7 +11,10 @@ const xvfb = await ensureDisplay(process.env, config.headless);
 // Gagal tertutup sebelum menerima sesi: dengan edge (produksi) kontainer tidak boleh punya rute keluar
 // langsung, dan di Linux sandbox Chromium harus benar-benar aktif.
 if (config.edge && process.platform === 'linux') await periksaTanpaRute();
-if (config.sandbox && process.platform === 'linux') await periksaSandbox(config, pidsOfProfile);
+if (config.sandbox && process.platform === 'linux') {
+  const jenis = await periksaSandbox(config, pidsOfProfile);
+  console.log(`sandbox Chromium aktif (${jenis === 'setuid' ? 'setuid chrome-sandbox' : 'user namespace'})`);
+}
 const manager = new SessionManager(config, createBrowserFactory(config));
 manager.startSweeper();
 const server = createServer(config, manager);

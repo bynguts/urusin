@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  adaRendererTersandbox,
+  jenisSandboxRenderer,
   daftarEdge,
   periksaTanpaRute,
   ruteBawaan,
@@ -54,29 +54,36 @@ describe('kredensial proxy edge per sesi', () => {
 });
 
 describe('pemeriksaan boot gagal-tertutup', () => {
-  it('sandbox: renderer di userns lain DENGAN filter seccomp tambahan; salah satu saja tidak cukup', () => {
+  it('sandbox: renderer userns lain ATAU PID ns baru (setuid), DENGAN filter seccomp tambahan', () => {
     const proses = (m: Record<string, ProsesInfo>) => (pid: string) => m[pid];
-    const aku = { userns: 'user:[1]', filter: 2 };
+    const aku = { userns: 'user:[1]', pidns: 1, filter: 2 };
+    const j = (pids: number[], m: Record<string, ProsesInfo>) =>
+      jenisSandboxRenderer(pids, proses({ self: aku, ...m }));
+    // Sandbox namespace (userns tersedia).
     expect(
-      adaRendererTersandbox(
-        [10, 11],
-        proses({
-          self: aku,
-          '10': { userns: 'user:[1]', filter: 2 },
-          '11': { userns: 'user:[9]', filter: 3 },
-        }),
+      j([10, 11], {
+        '10': { userns: 'user:[1]', pidns: 1, filter: 2 },
+        '11': { userns: 'user:[9]', pidns: 2, filter: 3 },
+      }),
+    ).toBe('userns');
+    // Sandbox setuid (userns dimatikan): tautan ns tak terbaca, NSpid bersarang (diukur: "NSpid: 140 14").
+    expect(j([10], { '10': { userns: undefined, pidns: 2, filter: 3 } })).toBe('setuid');
+    expect(j([10], { '10': { userns: 'user:[1]', pidns: 2, filter: 3 } })).toBe('setuid');
+    // --no-sandbox: userns dan PID ns sama.
+    expect(j([10], { '10': { userns: 'user:[1]', pidns: 1, filter: 3 } })).toBeNull();
+    expect(j([10], { '10': { userns: undefined, pidns: 1, filter: 3 } })).toBeNull();
+    // Zygote di namespace lain tetapi tanpa seccomp-bpf Chromium.
+    expect(j([10], { '10': { userns: 'user:[9]', pidns: 2, filter: 2 } })).toBeNull();
+    expect(j([10], { '10': { userns: undefined, pidns: 2, filter: 2 } })).toBeNull();
+    expect(j([], {})).toBeNull();
+    expect(jenisSandboxRenderer([10], proses({}))).toBeNull();
+    // Tautan userns proses sendiri tak terbaca: tidak bisa dibandingkan -> gagal tertutup.
+    expect(
+      jenisSandboxRenderer(
+        [10],
+        proses({ self: { pidns: 1, filter: 2 }, '10': { userns: 'user:[9]', pidns: 2, filter: 3 } }),
       ),
-    ).toBe(true);
-    // --no-sandbox: semua di userns yang sama.
-    expect(adaRendererTersandbox([10], proses({ self: aku, '10': { userns: 'user:[1]', filter: 3 } }))).toBe(
-      false,
-    );
-    // Zygote di userns lain tetapi tanpa seccomp-bpf Chromium.
-    expect(adaRendererTersandbox([10], proses({ self: aku, '10': { userns: 'user:[9]', filter: 2 } }))).toBe(
-      false,
-    );
-    expect(adaRendererTersandbox([], proses({ self: aku }))).toBe(false);
-    expect(adaRendererTersandbox([10], proses({}))).toBe(false);
+    ).toBeNull();
   });
 
   it('tanpa rute: rute default IPv4/IPv6 atau sambungan langsung ke internet -> menolak start', async () => {
