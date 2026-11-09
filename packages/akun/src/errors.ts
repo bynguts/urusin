@@ -19,6 +19,7 @@ export type KodeGalatAkun =
   | 'GOOGLE_SUDAH_DIPAKAI'
   | 'TURNSTILE_WAJIB'
   | 'TURNSTILE_TIDAK_AKTIF'
+  | 'GOOGLE_SATU_SATUNYA'
   | 'TAMU_PENUH'
   | 'DEMO_BATAS_IP'
   | 'DEMO_PENUH'
@@ -57,6 +58,7 @@ const PESAN: Record<KodeGalatAkun, [number, string]> = {
   GOOGLE_SUDAH_DIPAKAI: [409, 'Akun Google ini sudah tertaut ke akun Urusin lain.'],
   TURNSTILE_WAJIB: [403, 'Selesaikan pemeriksaan keamanan dulu, lalu coba lagi.'],
   TURNSTILE_TIDAK_AKTIF: [503, 'Pemeriksaan keamanan belum tersedia. Coba lagi nanti.'],
+  GOOGLE_SATU_SATUNYA: [409, 'Buat kata sandi dulu sebelum melepas Google, supaya Anda tetap bisa masuk.'],
   TAMU_PENUH: [
     429,
     'Terlalu banyak sesi tamu dari jaringan ini hari ini. Coba lagi besok, atau daftar akun gratis.',

@@ -28,6 +28,7 @@ import { GET as dataDiriGet, PUT as dataDiriPut } from '../../routes/api/vault/d
 import { DELETE as dokumenDel, GET as dokumenGet } from '../../routes/api/vault/[id]/+server';
 import { GET as googleMulai } from '../../routes/auth/google/+server';
 import { GET as googleCallback } from '../../routes/auth/google/callback/+server';
+import { POST as lepasGoogleApi } from '../../routes/api/akun/google/lepas/+server';
 import { GET as oidcGet, POST as oidcPost } from '../../routes/dev/oidc/authorize/+server';
 import { actions as aturUlangPage, load as aturUlangLoad } from '../../routes/atur-ulang-sandi/+page.server';
 import { actions as daftarPage } from '../../routes/daftar/+page.server';
@@ -173,6 +174,11 @@ async function masuk(jar = new Jar(), email = EMAIL, sandi = SANDI, extra: Recor
 }
 
 const akunDari = (jar: Jar): Akun => rt.akun.sesi(jar.get(AKUN_COOKIE))!.akun;
+/** locals seperti dari hooks: akun + sesi (authAt dari login). */
+const localsDari = (jar: Jar) => {
+  const s = rt.akun.sesi(jar.get(AKUN_COOKIE))!;
+  return { akun: s.akun, akunSesi: { tokenHash: s.tokenHash, authAt: s.authAt, pernahUnduh: s.pernahUnduh } };
+};
 
 async function caught(p: Promise<unknown> | unknown): Promise<unknown> {
   try {
@@ -822,6 +828,65 @@ describe('Google OAuth lewat rute', () => {
     expect(akunDari(lagi.jar).id).toBe(akunDari(jar).id);
   });
 
+  it('review keamanan: menautkan hanya untuk akun terverifikasi dengan bukti kredensial <= 15 menit', async () => {
+    // akun belum terverifikasi: /auth/google bukan mode tautan (state tanpa user_id)
+    await daftarApi(ev(post({ email: 'pra@example.com', sandi: SANDI2 })));
+    const pra = await masuk(new Jar(), 'pra@example.com', SANDI2);
+    const sesiPra = rt.akun.sesi(pra.jar.get(AKUN_COOKIE))!;
+    await mulai(pra.jar, '/pengaturan', {
+      akun: sesiPra.akun,
+      akunSesi: { tokenHash: sesiPra.tokenHash, authAt: sesiPra.authAt, pernahUnduh: false },
+    });
+    expect(hitung('SELECT COUNT(*) n FROM oauth_states WHERE user_id IS NOT NULL')).toBe(0);
+    // akun terverifikasi dengan sesi > 15 menit: masuk ulang dulu, lalu kembali ke /auth/google
+    await daftarVerifikasi();
+    const { jar } = await masuk(new Jar());
+    const s = rt.akun.sesi(jar.get(AKUN_COOKIE))!;
+    const basi = new Date(Date.now() - 20 * 60_000).toISOString();
+    const r = await caught(
+      googleMulai(
+        ev(get('/auth/google?next=%2Fpengaturan'), {
+          jar,
+          locals: { akun: s.akun, akunSesi: { tokenHash: s.tokenHash, authAt: basi, pernahUnduh: false } },
+        }),
+      ),
+    );
+    expect(isRedirect(r) && r.location).toBe(
+      `/masuk?ulang=1&lanjut=${encodeURIComponent('/auth/google?next=%2Fpengaturan')}`,
+    );
+    // ?ulang=1 (tombol Google di masuk ulang) = masuk biasa, bukan menautkan
+    await caught(
+      googleMulai(
+        ev(get('/auth/google?next=%2F&ulang=1'), {
+          jar,
+          locals: { akun: s.akun, akunSesi: { tokenHash: s.tokenHash, authAt: basi, pernahUnduh: false } },
+        }),
+      ),
+    );
+    expect(hitung('SELECT COUNT(*) n FROM oauth_states WHERE user_id IS NOT NULL')).toBe(0);
+  });
+
+  it('review keamanan: lepas Google lewat API (akun bersandi saja)', async () => {
+    await daftarVerifikasi();
+    const { jar } = await masuk(new Jar());
+    const s = rt.akun.sesi(jar.get(AKUN_COOKIE))!;
+    const locals = {
+      akun: s.akun,
+      akunSesi: { tokenHash: s.tokenHash, authAt: s.authAt, pernahUnduh: false },
+    };
+    await alurGoogle(
+      { sub: 'g-lepas', email: 'pribadi@example.com', email_verified: true },
+      '/',
+      jar,
+      locals,
+    );
+    expect(rt.akun.terhubungGoogle(s.akun.id)).toBe(true);
+    const r = await lepasGoogleApi(ev(post({}, '/api/akun/google/lepas'), { jar, locals }));
+    expect([r.status, await r.json()]).toEqual([200, { dilepas: 1 }]);
+    expect(rt.akun.terhubungGoogle(s.akun.id)).toBe(false);
+    expect((await lepasGoogleApi(ev(post({}, '/api/akun/google/lepas')))).status).toBe(401);
+  });
+
   it('#48: tiket tautan tidak bisa dipakai akun lain', async () => {
     await daftarVerifikasi();
     await daftarVerifikasi('lain@example.com');
@@ -850,7 +915,7 @@ describe('Google OAuth lewat rute', () => {
   it('sedang masuk: Google DITAUTKAN ke akun itu (bukti = sesi); identitas milik akun lain ditolak', async () => {
     await daftarVerifikasi();
     const a = await masuk();
-    const locals = { akun: akunDari(a.jar) };
+    const locals = localsDari(a.jar);
     const r = await alurGoogle(
       { sub: 'g-tautan', email: 'beda@example.com', email_verified: true },
       '/',
@@ -864,7 +929,7 @@ describe('Google OAuth lewat rute', () => {
     const rb = await caught(
       (async () => {
         const jar = b.jar;
-        const { location, state } = await mulai(jar, '/', { akun: akunDari(jar) });
+        const { location, state } = await mulai(jar, '/', localsDari(jar));
         const { code } = google.consent(location, {
           sub: 'g-lain',
           email: 'g-lain@example.com',

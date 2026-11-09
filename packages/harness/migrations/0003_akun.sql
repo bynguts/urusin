@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS oauth_identities (
   sub TEXT NOT NULL,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created_at TEXT NOT NULL,
+  -- 'daftar' = identitas asal akun (akun dibuat/diambil alih lewat Google); 'tautan' = ditautkan kemudian
+  -- (sesi atau bukti sandi). "Keluar dari semua perangkat" mencabut semua 'tautan'.
+  asal TEXT NOT NULL DEFAULT 'daftar' CHECK (asal IN ('daftar', 'tautan')),
   PRIMARY KEY (provider, sub)
 );
 CREATE INDEX IF NOT EXISTS oauth_identities_user_idx ON oauth_identities(user_id);

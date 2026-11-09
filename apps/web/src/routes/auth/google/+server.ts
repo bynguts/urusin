@@ -6,16 +6,24 @@ import type { RequestHandler } from './$types';
 
 /**
  * Mulai "Masuk dengan Google": simpan state di cookie __Host- (10 menit), verifier PKCE + nonce + tujuan di
- * server, lalu alihkan ke Google. `?next=/path` = tujuan setelah berhasil (hanya path di situs ini). Bila sudah
- * masuk, alur ini MENAUTKAN Google ke akun yang sedang masuk (bukti = sesi).
+ * server, lalu alihkan ke Google. `?next=/path` = tujuan setelah berhasil (hanya path di situs ini).
+ * Bila akun TERVERIFIKASI sedang masuk, alur ini MENAUTKAN Google ke akun itu, dan butuh bukti kredensial
+ * <= 15 menit (selain itu → masuk ulang dulu, lalu kembali ke sini). Akun belum terverifikasi tidak pernah
+ * menautkan (anti pra-pembajakan); `?ulang=1` (tombol Google di masuk ulang) = masuk biasa.
  */
 export const GET: RequestHandler = async ({ url, cookies, locals }) => {
   const rt = await getRuntime();
+  const a = locals.akun;
+  const tautkan = a?.jenis === 'akun' && a.emailVerifiedAt !== null && url.searchParams.get('ulang') !== '1';
   let mulai;
   try {
-    const userId = locals.akun?.jenis === 'akun' ? locals.akun.id : undefined;
-    mulai = rt.akun.googleMulai(url.searchParams.get('next'), { userId });
+    mulai = rt.akun.googleMulai(
+      url.searchParams.get('next'),
+      tautkan ? { userId: a.id, authAt: locals.akunSesi?.authAt } : {},
+    );
   } catch (e) {
+    if (e instanceof AkunError && e.kode === 'PERLU_MASUK_ULANG')
+      redirect(303, `/masuk?ulang=1&lanjut=${encodeURIComponent(url.pathname + url.search)}`);
     if (e instanceof AkunError) redirect(303, `/masuk?galat=${e.kode}`);
     throw e;
   }

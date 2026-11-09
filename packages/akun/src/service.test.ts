@@ -758,9 +758,10 @@ describe('token persetujuan "Izinkan isi"', () => {
 
 async function googleLogin(
   claims: Record<string, unknown>,
-  opts: { next?: string; userId?: string; userIdSaatIni?: string } = {},
+  opts: { next?: string; userId?: string; userIdSaatIni?: string; authAt?: string } = {},
 ) {
-  const { url, state } = akun.googleMulai(opts.next, { userId: opts.userId });
+  const authAt = opts.authAt ?? new Date(t).toISOString();
+  const { url, state } = akun.googleMulai(opts.next, { userId: opts.userId, authAt });
   const { code } = google.consent(url, claims);
   return akun.googleSelesai({ code, state, cookieState: state, userIdSaatIni: opts.userIdSaatIni }, ctx);
 }
@@ -955,6 +956,104 @@ describe('#48 Google OIDC', () => {
     expect((await galat(akun.googleSelesai({ code: 'c', state: 's', cookieState: 's' }, ctx))).kode).toBe(
       'GOOGLE_TIDAK_AKTIF',
     );
+  });
+});
+
+describe('keamanan tautan Google (review keamanan 133322f)', () => {
+  const identitas = (userId: string) =>
+    db.prepare('SELECT sub, asal FROM oauth_identities WHERE user_id = ? ORDER BY sub').all(userId);
+  const tanam = (sub: string, userId: string) =>
+    db
+      .prepare(
+        "INSERT INTO oauth_identities (provider, sub, user_id, created_at, asal) VALUES ('google', ?, ?, 'x', 'tautan')",
+      )
+      .run(sub, userId);
+  const idDari = (email: string) =>
+    (db.prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: string }).id;
+
+  it('PoC pra-akun: akun belum terverifikasi tidak bisa menautkan Google; identitas lama dicabut saat verifikasi', async () => {
+    const ip = { ip: '198.51.100.9' };
+    await akun.daftar({ email: EMAIL, sandi: SANDI }, ip); // penyerang mendaftar email korban
+    const { akun: pra } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ip);
+    expect(
+      (
+        await galat(
+          googleLogin(
+            { sub: 'g-penyerang', email: 'penyerang@example.com', email_verified: true },
+            { userId: pra.id, userIdSaatIni: pra.id },
+          ),
+        )
+      ).kode,
+    ).toBe('EMAIL_BELUM_TERVERIFIKASI');
+    // identitas warisan (sebelum perbaikan) tetap dicabut saat pemilik asli memastikan email
+    tanam('g-lama', pra.id);
+    await akun.daftar({ email: EMAIL, sandi: SANDI2 }, ctx); // korban
+    await akun.verifikasiEmail(tokenDari(mailer.last(EMAIL, 'verifikasi')!.link), SANDI2, ctx);
+    expect(identitas(pra.id)).toEqual([]);
+    const r = await googleLogin({ sub: 'g-lama', email: 'penyerang@example.com', email_verified: true });
+    expect(r.jenis).toBe('masuk');
+    if (r.jenis === 'masuk') expect(r.akun.id).not.toBe(pra.id);
+  });
+
+  it('PoC pra-akun: atur ulang sandi dan pengambilalihan Google mencabut identitas lama', async () => {
+    await akun.daftar({ email: EMAIL, sandi: SANDI }, { ip: '198.51.100.9' });
+    const id = idDari(EMAIL);
+    tanam('g-a', id);
+    await akun.lupaSandi(EMAIL, ctx);
+    await akun.emailSelesai();
+    await akun.aturUlangSandi(tokenDari(mailer.last(EMAIL, 'atur-ulang')!.link), SANDI2, ctx);
+    expect(identitas(id)).toEqual([]);
+
+    await akun.daftar({ email: 'b@example.com', sandi: SANDI }, { ip: '198.51.100.9' });
+    const idB = idDari('b@example.com');
+    tanam('g-b-lama', idB);
+    const r = await googleLogin({ sub: 'g-b-asli', email: 'b@example.com', email_verified: true });
+    expect(r).toMatchObject({ jenis: 'masuk', akun: { id: idB } });
+    expect(identitas(idB)).toEqual([{ sub: 'g-b-asli', asal: 'daftar' }]);
+  });
+
+  it('penyapu menghapus akun belum terverifikasi walau punya identitas Google', async () => {
+    await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
+    tanam('g-s', idDari(EMAIL));
+    t += 25 * JAM;
+    expect(akun.bersihkan().belumVerifikasi).toBe(1);
+  });
+
+  it('mulai menautkan butuh bukti kredensial <= 15 menit; tautan baru mengirim email pemberitahuan', async () => {
+    await daftarTerverifikasi();
+    const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
+    const basi = new Date(t - 16 * 60_000).toISOString();
+    expect((await galat(() => akun.googleMulai('/pengaturan', { userId: a.id, authAt: basi }))).kode).toBe(
+      'PERLU_MASUK_ULANG',
+    );
+    await googleLogin(
+      { sub: 'g-t', email: 'pribadi@example.com', email_verified: true },
+      { userId: a.id, userIdSaatIni: a.id },
+    );
+    await akun.emailSelesai();
+    expect(mailer.last(EMAIL, 'google-ditautkan')).toBeDefined();
+    expect(identitas(a.id)).toEqual([{ sub: 'g-t', asal: 'tautan' }]);
+  });
+
+  it('lepas Google (butuh sandi agar tidak terkunci); keluar semua mencabut tautan, bukan identitas asal', async () => {
+    const g = await googleLogin({ sub: 'g-asal', email: 'asal@example.com', email_verified: true });
+    if (g.jenis !== 'masuk') throw new Error('harus masuk');
+    expect((await galat(() => akun.lepasGoogle(g.akun.id))).kode).toBe('GOOGLE_SATU_SATUNYA');
+    await googleLogin(
+      { sub: 'g-tambahan', email: 'lain@example.com', email_verified: true },
+      { userId: g.akun.id, userIdSaatIni: g.akun.id },
+    );
+    akun.keluarSemua(g.akun.id);
+    expect(identitas(g.akun.id)).toEqual([{ sub: 'g-asal', asal: 'daftar' }]);
+
+    await daftarTerverifikasi();
+    const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
+    await googleLogin(
+      { sub: 'g-x', email: 'x@example.com', email_verified: true },
+      { userId: a.id, userIdSaatIni: a.id },
+    );
+    expect(akun.lepasGoogle(a.id)).toBe(1);
+    expect(akun.terhubungGoogle(a.id)).toBe(false);
   });
 });
 

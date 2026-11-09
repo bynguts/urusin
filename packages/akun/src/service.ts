@@ -5,7 +5,7 @@ import { AkunError } from './errors.js';
 import { GoogleError, type GoogleOidc } from './google.js';
 import type { EmailMessage, Mailer } from './mailer.js';
 import { hashPassword, needsRehash, periksaSandi, verifyPassword } from './password.js';
-import { emailAturUlang, emailSudahTerdaftar, emailVerifikasi } from './templates.js';
+import { emailAturUlang, emailGoogleDitautkan, emailSudahTerdaftar, emailVerifikasi } from './templates.js';
 import { newId, randomToken, safeEqual, sha256Hex, TOKEN_RE } from './token.js';
 import type { RencanaPindah, Vault } from './vault.js';
 
@@ -591,6 +591,7 @@ export class AkunService {
           "UPDATE email_tokens SET used_at = ? WHERE user_id = ? AND purpose = 'verify' AND used_at IS NULL",
         )
         .run(this.iso(), userId);
+      if (!u.email_verified_at) this.cabutIdentitas(userId); // kepemilikan berpindah ke pemilik kotak surat
     });
     this.bukaKunci(u.email!);
     return toAkun(this.userById(userId)!);
@@ -787,6 +788,8 @@ export class AkunService {
 
   /** "Keluar dari semua perangkat". Mengembalikan jumlah sesi yang dihapus. */
   keluarSemua(userId: string): number {
+    // Tautan Google yang ditambahkan kemudian (mungkin dari sesi curian) ikut dicabut; identitas asal tetap.
+    this.db.prepare("DELETE FROM oauth_identities WHERE user_id = ? AND asal = 'tautan'").run(userId);
     return this.db.prepare('DELETE FROM auth_sessions WHERE user_id = ?').run(userId).changes;
   }
 
@@ -847,6 +850,7 @@ export class AkunService {
       this.db
         .prepare('UPDATE email_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL')
         .run(this.iso(), userId);
+      this.cabutIdentitas(userId); // tautan Google (mungkin milik penyerang) dicabut; warga bisa menautkan lagi
     });
     const u = this.userById(userId)!;
     this.bukaKunci(u.email!);
@@ -965,7 +969,6 @@ export class AkunService {
     const demo = sapu("SELECT id FROM users WHERE jenis = 'demo' AND expires_at <= ?", now);
     const belumVerifikasi = sapu(
       `SELECT id FROM users u WHERE jenis = 'akun' AND email_verified_at IS NULL AND created_at <= ?
-       AND NOT EXISTS (SELECT 1 FROM oauth_identities o WHERE o.user_id = u.id)
        AND NOT EXISTS (SELECT 1 FROM email_tokens t WHERE t.user_id = u.id AND t.purpose = 'verify'
                        AND t.used_at IS NULL AND t.expires_at > ?)`,
       this.iso(-this.ttl.belumVerifikasiSec),
@@ -1099,10 +1102,18 @@ export class AkunService {
    */
   googleMulai(
     next?: string | null,
-    opts: { userId?: string | undefined } = {},
+    opts: { userId?: string | undefined; authAt?: string | undefined } = {},
   ): { url: string; state: string } {
     const google = this.deps.google;
     if (!google) throw new AkunError('GOOGLE_TIDAK_AKTIF');
+    if (opts.userId) {
+      // Menautkan hanya untuk akun TERVERIFIKASI dengan bukti kredensial <= 15 menit: akun pra-daftar milik
+      // penyerang tidak bisa menanam identitas, dan sesi curian lama tidak bisa dijadikan pintu belakang.
+      const u = this.userById(opts.userId);
+      if (!u || u.jenis !== 'akun' || !u.email_verified_at) throw new AkunError('EMAIL_BELUM_TERVERIFIKASI');
+      if (!opts.authAt || Date.parse(opts.authAt) + this.ttl.reauthSec * 1000 < this.now().getTime())
+        throw new AkunError('PERLU_MASUK_ULANG');
+    }
     const state = randomToken();
     const nonce = randomToken();
     const codeVerifier = randomToken();
@@ -1121,10 +1132,34 @@ export class AkunService {
     return { url: google.authorizationUrl({ state, nonce, codeVerifier }), state };
   }
 
-  private tautkanIdentitas(userId: string, sub: string): void {
+  private tautkanIdentitas(userId: string, sub: string, asal: 'daftar' | 'tautan'): void {
     this.db
-      .prepare("INSERT INTO oauth_identities (provider, sub, user_id, created_at) VALUES ('google',?,?,?)")
-      .run(sub, userId, this.iso());
+      .prepare(
+        "INSERT INTO oauth_identities (provider, sub, user_id, created_at, asal) VALUES ('google',?,?,?,?)",
+      )
+      .run(sub, userId, this.iso(), asal);
+  }
+
+  /** Pindah kepemilikan (verifikasi, atur ulang, ambil alih Google): semua identitas Google lama dicabut. */
+  private cabutIdentitas(userId: string): void {
+    this.db.prepare('DELETE FROM oauth_identities WHERE user_id = ?').run(userId);
+  }
+
+  /** Email "Google ditautkan" ke pemilik: tautan yang tidak dikenalnya bisa dilepas di Pengaturan. */
+  private beritahuTautan(userId: string): void {
+    const email = this.userById(userId)?.email;
+    if (email) void this.kirim(emailGoogleDitautkan(email, `${this.deps.publicOrigin}/pengaturan`));
+  }
+
+  /**
+   * Lepas semua identitas Google akun. Akun tanpa sandi ditolak (GOOGLE_SATU_SATUNYA) agar tidak terkunci.
+   * Mengembalikan jumlah identitas yang dilepas.
+   */
+  lepasGoogle(userId: string): number {
+    const u = this.userById(userId);
+    if (!u || u.jenis !== 'akun') throw new AkunError('HANYA_AKUN');
+    if (!u.password_hash) throw new AkunError('GOOGLE_SATU_SATUNYA');
+    return this.db.prepare('DELETE FROM oauth_identities WHERE user_id = ?').run(userId).changes;
   }
 
   /**
@@ -1172,13 +1207,19 @@ export class AkunService {
     if (!email) throw new AkunError('GOOGLE_GAGAL');
 
     let baru = false;
+    let tertaut = false;
     const hasil = this.tx((): { userId: string } | { tiket: string } => {
       const ident = this.db
         .prepare("SELECT user_id FROM oauth_identities WHERE provider = 'google' AND sub = ?")
         .get(claims.sub) as { user_id: string } | undefined;
       if (st.user_id) {
+        const pemilik = this.userById(st.user_id);
+        if (!pemilik?.email_verified_at) throw new AkunError('GOOGLE_GAGAL');
         if (ident && ident.user_id !== st.user_id) throw new AkunError('GOOGLE_SUDAH_DIPAKAI');
-        if (!ident) this.tautkanIdentitas(st.user_id, claims.sub);
+        if (!ident) {
+          this.tautkanIdentitas(st.user_id, claims.sub, 'tautan');
+          tertaut = true;
+        }
         return { userId: st.user_id };
       }
       if (ident) return { userId: ident.user_id };
@@ -1204,6 +1245,7 @@ export class AkunService {
         this.db
           .prepare('UPDATE email_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL')
           .run(this.iso(), userId);
+        this.cabutIdentitas(userId);
       } else {
         userId = newId('akun');
         baru = true;
@@ -1213,10 +1255,11 @@ export class AkunService {
           )
           .run(userId, email, this.iso(), this.iso());
       }
-      this.tautkanIdentitas(userId, claims.sub);
+      this.tautkanIdentitas(userId, claims.sub, 'daftar');
       return { userId };
     });
     if ('tiket' in hasil) return { jenis: 'perlu-tautkan', tiket: hasil.tiket, next: st.next };
+    if (tertaut) this.beritahuTautan(hasil.userId);
     if (baru && claims.name)
       this.deps.vault.setDataDiri(hasil.userId, { namaLengkap: claims.name.slice(0, 200) });
     return {
@@ -1234,17 +1277,24 @@ export class AkunService {
    */
   tautkanGoogle(tiket: string | undefined, userId: string): boolean {
     if (!tiket || !TOKEN_RE.test(tiket)) return false;
-    return this.tx(() => {
+    let ok = false;
+    let baru = false;
+    this.tx(() => {
       const r = this.db
         .prepare('DELETE FROM oauth_link_pending WHERE ticket_hash = ? RETURNING user_id, sub, expires_at')
         .get(sha256Hex(tiket)) as { user_id: string; sub: string; expires_at: string } | undefined;
-      if (!r || r.user_id !== userId || r.expires_at <= this.iso()) return false;
+      if (!r || r.user_id !== userId || r.expires_at <= this.iso()) return;
       const ident = this.db
         .prepare("SELECT user_id FROM oauth_identities WHERE provider = 'google' AND sub = ?")
         .get(r.sub) as { user_id: string } | undefined;
-      if (ident) return ident.user_id === userId;
-      this.tautkanIdentitas(userId, r.sub);
-      return true;
+      if (ident) {
+        ok = ident.user_id === userId;
+        return;
+      }
+      this.tautkanIdentitas(userId, r.sub, 'tautan');
+      ok = baru = true;
     });
+    if (baru) this.beritahuTautan(userId);
+    return ok;
   }
 }

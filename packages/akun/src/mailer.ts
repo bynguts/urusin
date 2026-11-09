@@ -8,7 +8,7 @@ import { maskEmail } from './email.js';
  */
 export type HttpFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
-export type JenisEmail = 'verifikasi' | 'atur-ulang' | 'sudah-terdaftar';
+export type JenisEmail = 'verifikasi' | 'atur-ulang' | 'sudah-terdaftar' | 'google-ditautkan';
 
 export type EmailMessage = {
   to: string;

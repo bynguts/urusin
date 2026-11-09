@@ -93,3 +93,18 @@ export function emailSudahTerdaftar(to: string, linkMasuk: string, linkLupa: str
     'Bila bukan Anda, abaikan email ini. Akun Anda tetap aman.',
   );
 }
+
+/** Dikirim setiap kali akun Google ditautkan ke akun (bukan saat mendaftar lewat Google). */
+export function emailGoogleDitautkan(to: string, linkPengaturan: string): EmailMessage {
+  return pesan(
+    to,
+    'google-ditautkan',
+    'Akun Google ditautkan ke Urusin',
+    [
+      'Sebuah akun Google baru saja ditautkan ke akun Urusin Anda dan kini bisa dipakai untuk masuk.',
+      'Bila itu bukan Anda, buka Pengaturan, lepas Google, lalu keluar dari semua perangkat dan ganti kata sandi.',
+    ],
+    { teks: 'Buka Pengaturan', href: linkPengaturan },
+    'Bila Anda sendiri yang menautkannya, abaikan email ini.',
+  );
+}
