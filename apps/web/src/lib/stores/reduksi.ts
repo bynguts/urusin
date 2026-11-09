@@ -84,7 +84,13 @@ export function terapkanEvent(s: KeadaanUrusan, e: UrusinEvent): KeadaanUrusan {
     case 'timeout':
       return { ...next, waktuHabis: true, progres: null };
     case 'done':
-      return { ...next, sedangBerjalan: false, progres: null, perluLanjut: e.lanjutkan };
+      return {
+        ...next,
+        sedangBerjalan: false,
+        progres: null,
+        perluLanjut: e.lanjutkan,
+        ...(e.version !== undefined ? { version: e.version } : {}),
+      };
     case 'policy_gate':
       return next;
   }

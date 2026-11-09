@@ -680,3 +680,27 @@ describe('span OTel GenAI dan query /jejak /transparansi', () => {
     expect(v.totalPermintaan).toBeGreaterThan(0);
   });
 });
+
+describe('versi urusan sampai ke klien (regresi 409 pada pesan lanjutan)', () => {
+  it('event done membawa versi terbaru; expectedVersion dari done diterima turn berikutnya', async () => {
+    const env = makeEnv({ provider: new DemoProvider() });
+    const u = env.store.createUrusan({ kodeKabKota: '3312' });
+    let expected = env.store.getUrusanOrThrow(u.id).version;
+    for (const teks of ['halo', 'Apa syarat akta kelahiran anak saya?', 'terima kasih']) {
+      const out = await runTurn(env.deps, { urusanId: u.id, userText: teks, expectedVersion: expected });
+      const done = out.events.at(-1) as Extract<StreamEnvelope, { type: 'done' }>;
+      expect(done.type).toBe('done');
+      expect(done.version).toBe(env.store.getUrusanOrThrow(u.id).version);
+      expected = done.version!;
+    }
+  });
+  it('tanpa memakai versi dari done, versi klaim turn membuat versi lama basi (409 asli)', async () => {
+    const env = makeEnv({ provider: new DemoProvider() });
+    const u = env.store.createUrusan({ kodeKabKota: '3312' });
+    const v0 = env.store.getUrusanOrThrow(u.id).version;
+    await runTurn(env.deps, { urusanId: u.id, userText: 'halo', expectedVersion: v0 });
+    expect(() => prepareTurn(env.deps, { urusanId: u.id, userText: 'lagi', expectedVersion: v0 })).toThrow(
+      ConflictError,
+    );
+  });
+});

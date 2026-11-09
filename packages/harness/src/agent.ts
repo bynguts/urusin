@@ -371,6 +371,7 @@ class TurnRunner {
         status,
         lanjutkan: this.lanjutkan,
         degraded: this.degraded,
+        version: this.version,
       });
     }
     return {

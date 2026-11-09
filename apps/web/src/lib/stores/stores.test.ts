@@ -21,6 +21,20 @@ describe('reduksi: event SSE → state turunan', () => {
     expect(s.lastSeq).toBe(skenario('urusan/jawaban-bersumber').length);
   });
 
+  it('done membawa versi terbaru sehingga pesan lanjutan memakai expectedVersion yang segar', () => {
+    const s = jalankan('urusan/jawaban-bersumber');
+    const done = {
+      type: 'done',
+      seq: s.lastSeq + 1,
+      chainHead: 'x',
+      turnId: 't1',
+      status: 'selesai',
+      lanjutkan: false,
+      degraded: false,
+      version: s.version + 5,
+    } as unknown as Parameters<typeof terapkanEvent>[1];
+    expect(terapkanEvent(s, done).version).toBe(s.version + 5);
+  });
   it('streaming (belum done): sedangBerjalan dan progres terakhir', () => {
     const s = jalankan('urusan/streaming');
     expect(s.sedangBerjalan).toBe(true);
