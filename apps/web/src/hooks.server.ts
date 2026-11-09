@@ -4,6 +4,8 @@ import { installEgressBackstop } from '@urusin/egress';
 import { AKUN_COOKIE, hapusAkunCookie } from '#lib/server/akun.js';
 import { assertHostEnv } from '#lib/server/hosts.js';
 import { checkOrigin } from '#lib/server/origin.js';
+import { pasangPemeriksaPemilikAkun } from '#lib/server/pendamping.js';
+import { pemeriksaPemilikVault } from '#lib/server/pendamping/pemilik.js';
 import { getRuntime, publicOrigin } from '#lib/server/runtime.js';
 import { ensureSession, migrasiSid } from '#lib/server/sesi.js';
 import { turnstileFromEnv } from '#lib/server/turnstile.js';
@@ -19,6 +21,8 @@ assertHostEnv(process.env);
 // IdP/Turnstile tiruan (ADR 0028).
 assertAkunEnv(process.env);
 turnstileFromEnv(process.env);
+// m6: setiap endpoint Browser Pendamping memeriksa pemilik urusan lewat modul akun (404 bila bukan milik).
+pasangPemeriksaPemilikAkun(pemeriksaPemilikVault);
 
 /**
  * Anti-CSRF (rencana §3.2): request pengubah state wajib membawa `Origin` yang PERSIS sama dengan

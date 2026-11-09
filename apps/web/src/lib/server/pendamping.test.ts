@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
-import { createHash } from 'node:crypto';
+import { MemoryMailer } from '@urusin/akun/testing';
 import { DemoProvider } from '@urusin/harness';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -15,11 +15,11 @@ import {
   POST as mulai,
 } from '../../routes/api/urusan/[id]/pendamping/+server';
 import { POST as serahkan } from '../../routes/api/urusan/[id]/pendamping/serahkan/+server';
-import { POST as izinkan } from '../../routes/api/urusan/[id]/pendamping/izinkan/+server';
+import { POST as izinkanIsi } from '../../routes/api/urusan/[id]/izinkan-isi/+server';
 import { POST as tiket } from '../../routes/api/urusan/[id]/pendamping/tiket/+server';
 import { checkOrigin } from './origin';
-import { daftarWrite, hashDaftarWrite } from '../pendamping/isi-data';
-import { pasangJalurIsi, type JalurIsiPendamping } from './pendamping/izinkan';
+import { daftarWrite } from '../pendamping/isi-data';
+import { pemeriksaPemilikVault } from './pendamping/pemilik';
 import {
   hashSid,
   panggil,
@@ -34,6 +34,7 @@ import {
   type PendampingConfig,
 } from './pendamping';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
+import { SID_COOKIE } from './sesi';
 
 const ORIGIN = 'http://localhost:3000';
 const SID = 'ab'.repeat(16);
@@ -104,7 +105,6 @@ beforeEach(() => {
   });
 });
 afterEach(() => {
-  pasangJalurIsi(undefined);
   pasangPemeriksaPemilikAkun(undefined);
   setRuntimeForTests(undefined);
   vi.unstubAllEnvs();
@@ -126,7 +126,7 @@ function urusanDenganEksekusi() {
   return u;
 }
 
-const req = (method: string, body?: unknown, cookie: string | null = `urusin_sid=${SID}`) =>
+const req = (method: string, body?: unknown, cookie: string | null = `${SID_COOKIE}=${SID}`) =>
   new Request(`${ORIGIN}/x`, {
     method,
     headers: {
@@ -178,7 +178,7 @@ describe('broker Browser Pendamping', () => {
   it('tanpa cookie sesi yang sudah ada -> 401; eksekusi asing -> 404; kota tanpa portal -> 422', async () => {
     const u = urusanDenganEksekusi();
     expect((await mulai(ev(req('POST', { executionId: 'x_1' }, null), u.id))).status).toBe(401);
-    expect((await mulai(ev(req('POST', { executionId: 'x_1' }, 'urusin_sid=pendek'), u.id))).status).toBe(
+    expect((await mulai(ev(req('POST', { executionId: 'x_1' }, `${SID_COOKIE}=pendek`), u.id))).status).toBe(
       401,
     );
     expect((await mulai(ev(req('POST', { executionId: 'x_lain' }), u.id))).status).toBe(404);
@@ -384,154 +384,153 @@ describe('broker Browser Pendamping', () => {
     expect(calls).toHaveLength(n);
   });
 
-  describe('Izinkan isi lewat server (A-M1)', () => {
+  describe('Izinkan isi -> controller isi di server (A-M1) + pemilik akun (m6)', () => {
     const HP = ['0800', '0000', '0001'].join('');
+    const SITUS = 'https://telunjuksakti.wonogirikab.go.id';
+    const FIXTURES = 'https://fixtures.urusinai.web.id';
     const PH = ['{{PEMOHON.NIK}}', '{{PEMOHON.HP}}', '{{URUSAN.KITIR}}'];
-    const BUTUH = { placeholder: PH, berkas: ['KTP'], origin: 'https://telunjuksakti.wonogirikab.go.id' };
-    const sha = (f: string[]) =>
-      createHash('sha256')
-        .update([...new Set(f)].sort().join('\n'))
-        .digest('hex');
+    const BUTUH = { placeholder: PH, berkas: ['ktp'], origin: SITUS };
+    const KTX = { ip: '127.0.0.1', userAgent: null };
+    const SID_LAIN = 'cd'.repeat(16);
 
-    function siapkan(over: Partial<JalurIsiPendamping> = {}) {
+    /** Runtime dengan modul akun nyata: Data Diri + Dokumen tamu (cookie SID), urusan milik tamu itu. */
+    function siapkan(pemilikSid = SID) {
+      rt = createRuntime({
+        provider: new DemoProvider(),
+        config: { dbPath: ':memory:' },
+        akun: { mailer: new MemoryMailer(), google: null, vault: { diskPersen: () => 10 } },
+      });
+      setRuntimeForTests(rt);
+      const tamu = rt.akun.pastikanTamu(SID, KTX);
+      rt.akun.vault.setDataDiri(tamu, { namaLengkap: 'Warga Uji', nik: NIK, hp: HP });
+      rt.akun.vault.putDocument(tamu, {
+        jenis: 'ktp',
+        judul: 'KTP saya',
+        mime: 'image/png',
+        bytes: Buffer.from([1, 2, 3]),
+      });
       const u = urusanDenganEksekusi();
-      const log: string[] = [];
-      const jalur: JalurIsiPendamping = {
-        izinkan: (p) => {
-          log.push(`izinkan:${p.peminta.sid === SID}:${p.targetOrigin}`);
-          // Sama dengan hashDaftarWrite @urusin/akun: sha256 dari field unik terurut dipisah baris baru.
-          if (sha([...p.writeList]) !== p.writeListHash)
-            throw Object.assign(new Error('izin'), { kode: 'IZIN_TIDAK_VALID' });
-          return 'token-sekali';
-        },
-        nilai: (p) => {
-          log.push(`nilai:${p.token}:${p.writeList.join(',')}`);
-          return { nik: NIK, hp: HP };
-        },
-        berkas: (p) => {
-          log.push(`berkas:${p.nama.join(',')}`);
-          return [
-            { nama: 'KTP', namaBerkas: 'ktp.jpg', mime: 'image/jpeg', bytes: new Uint8Array([1, 2, 3]) },
-          ];
-        },
-        ...over,
-      };
-      pasangJalurIsi(jalur);
-      // Lokasi sesi belum tercatat: pemegang dicari lewat /status (tanpa isi), baru jalur isi ke pemegang itu.
+      if (pemilikSid !== SID) rt.akun.pastikanTamu(pemilikSid, KTX);
+      rt.akun.catatPemilikUrusan(u.id, { sid: pemilikSid });
+      // Lokasi sesi belum tercatat: pemegang dicari lewat /status (tanpa isi), lalu jalur isi ke pemegang itu.
       reply = (path) =>
         path === '/internal/sesi/status'
           ? { status: 200, body: sesi() }
           : path === '/internal/sesi/butuh'
             ? { status: 200, body: BUTUH }
             : path === '/internal/sesi/isi'
-              ? { status: 200, body: { placeholder: ['{{URUSAN.KITIR}}'], berkas: ['KTP'] } }
+              ? { status: 200, body: { placeholder: ['{{URUSAN.KITIR}}'], berkas: ['ktp'] } }
               : { status: 200, body: { placeholder: ['{{URUSAN.KITIR}}'], berkas: [] } };
-      return { u, log };
+      return u;
     }
+    const kirim = (id: string, body: unknown, sid = SID) =>
+      izinkanIsi({
+        request: new Request(`${ORIGIN}/api/urusan/${id}/izinkan-isi`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', origin: ORIGIN, cookie: `${SID_COOKIE}=${sid}` },
+          body: JSON.stringify(body),
+        }),
+        params: { id },
+        locals: { sid },
+      } as never);
+    const jalur = () => calls.map((c) => new URL(c.url).pathname);
 
-    it('hash yang ditampilkan -> nilai diselesaikan di server, dikirim ke sesi; jawaban tanpa nilai', async () => {
-      const { u, log } = siapkan();
+    it('daftar write + origin butuh_data -> nilai diselesaikan server, dikirim ke sesi; jawaban tanpa nilai', async () => {
+      const u = siapkan();
       const writeList = daftarWrite(BUTUH.placeholder, BUTUH.berkas);
-      expect(writeList).toEqual(['berkas:ktp', 'hp', 'nik']);
-      const writeListHash = await hashDaftarWrite(writeList);
-      expect(writeListHash).toBe(sha(writeList));
-      const res = await izinkan(ev(req('POST', { writeListHash }), u.id));
+      expect(writeList).toEqual(['{{PEMOHON.NIK}}', '{{PEMOHON.HP}}', 'berkas:KTP']);
+      const res = await kirim(u.id, { writeList, targetOrigin: BUTUH.origin });
       expect(res.status).toBe(200);
       const teks = await res.text();
-      expect(JSON.parse(teks)).toEqual({ kurang: { placeholder: ['Nomor kitir'], berkas: [] } });
+      expect(JSON.parse(teks)).toEqual({ diizinkan: true, kurang: ['Nomor kitir'] });
       expect(teks).not.toContain(NIK);
-      expect(log).toEqual([
-        'izinkan:true:https://telunjuksakti.wonogirikab.go.id',
-        'nilai:token-sekali:berkas:ktp,hp,nik',
-        'berkas:KTP',
-      ]);
-      expect(calls.map((c) => new URL(c.url).pathname)).toEqual([
+      expect(jalur()).toEqual([
         '/internal/sesi/status',
         '/internal/sesi/butuh',
         '/internal/sesi/isi',
         '/internal/sesi/berkas',
       ]);
-      expect(calls[0]!.body).toEqual({ urusanId: u.id, sidHash: hashSid(SID) });
-      calls.shift();
-      expect(calls[1]!.body).toEqual({
-        urusanId: u.id,
-        sidHash: hashSid(SID),
-        isian: { '{{PEMOHON.NIK}}': NIK, '{{PEMOHON.HP}}': HP },
+      const owner = { urusanId: u.id, sidHash: hashSid(SID) };
+      expect(calls[0]!.body).toEqual(owner);
+      expect(calls[1]!.body).toEqual(owner);
+      // Hanya placeholder yang dibutuhkan sesi; nama berkas adapter (huruf kecil) dipertahankan.
+      expect(calls[2]!.body).toEqual({ ...owner, isian: { '{{PEMOHON.NIK}}': NIK, '{{PEMOHON.HP}}': HP } });
+      expect(calls[3]!.body).toEqual({
+        ...owner,
+        nama: 'ktp',
+        namaBerkas: 'KTP saya',
+        mime: 'image/png',
+        dataBase64: 'AQID',
       });
-      expect(calls[2]!.body).toMatchObject({ nama: 'KTP', namaBerkas: 'ktp.jpg', dataBase64: 'AQID' });
-      // Kanal internal bertanda tangan; nilai tidak pernah ke worker selain pemegang sesi (satu worker di sini).
-      expect(calls[1]!.tanda).toBe(
+      // Kanal internal bertanda tangan HMAC.
+      expect(calls[2]!.tanda).toBe(
         tandaInternal(
           'token-uji',
-          calls[1]!.waktu!,
-          calls[1]!.nonce!,
+          calls[2]!.waktu!,
+          calls[2]!.nonce!,
           'POST',
           '/internal/sesi/isi',
-          calls[1]!.raw,
+          calls[2]!.raw,
         ),
       );
-      // Event urusan tidak memuat nilai apa pun.
       expect(JSON.stringify(rt.store.eventsAfter(u.id))).not.toContain(NIK);
+      // Persetujuan sekali pakai: sesi yang meminta lagi butuh "Izinkan isi" baru.
+      calls = [];
+      const lagi = await kirim(u.id, { writeList, targetOrigin: BUTUH.origin });
+      expect(lagi.status).toBe(200);
     });
 
-    it('hash berbeda / galat izin -> 403 tanpa mengirim nilai; galat lain -> 500', async () => {
-      const { u } = siapkan();
-      const res = await izinkan(ev(req('POST', { writeListHash: sha(['nik']) }), u.id));
+    it('origin sesi hidup beda dengan targetOrigin persetujuan -> 403 tanpa nilai ke worker', async () => {
+      const u = siapkan();
+      // Situs latihan ada di allowlist, tetapi sesi sedang membuka portal Wonogiri.
+      const res = await kirim(u.id, {
+        writeList: ['{{PEMOHON.NIK}}'],
+        targetOrigin: FIXTURES,
+      });
       expect(res.status).toBe(403);
       expect(((await res.json()) as any).kode).toBe('IZIN_TIDAK_VALID');
-      expect(calls.map((c) => new URL(c.url).pathname)).toEqual([
-        '/internal/sesi/status',
-        '/internal/sesi/butuh',
-      ]);
-      siapkan({
-        nilai: () => {
-          throw new Error('bug');
-        },
-      });
-      const h = await hashDaftarWrite(daftarWrite(BUTUH.placeholder, BUTUH.berkas));
-      expect((await izinkan(ev(req('POST', { writeListHash: h }), u.id))).status).toBe(500);
+      expect(jalur()).toEqual(['/internal/sesi/status', '/internal/sesi/butuh']);
     });
 
-    it('tanpa jalur vault terpasang -> 503 jujur, worker tidak dipanggil; body tidak sah -> 4xx', async () => {
-      const u = urusanDenganEksekusi();
-      const res = await izinkan(ev(req('POST', { writeListHash: 'a'.repeat(64) }), u.id));
-      expect(res.status).toBe(503);
-      expect(((await res.json()) as any).kode).toBe('ISI_OTOMATIS_TIDAK_TERSEDIA');
+    it('targetOrigin di luar registry kirim-asli/situs latihan -> 403 sebelum worker dipanggil', async () => {
+      const u = siapkan();
+      for (const asing of ['https://evil.example.com', 'https://sidnok.semarangkota.go.id']) {
+        const res = await kirim(u.id, { writeList: ['{{PEMOHON.NIK}}'], targetOrigin: asing });
+        expect([asing, res.status]).toEqual([asing, 403]);
+      }
       expect(calls).toHaveLength(0);
-      siapkan();
-      for (const body of [{}, { writeListHash: 'xyz' }, { isian: { '{{PEMOHON.NIK}}': NIK } }])
-        expect((await izinkan(ev(req('POST', body), u.id))).status).toBeGreaterThanOrEqual(400);
-      expect(calls).toHaveLength(0);
-      // Tanpa cookie sesi: 401 sebelum apa pun.
-      const tanpa = await izinkan(ev(req('POST', { writeListHash: 'a'.repeat(64) }, null), u.id));
-      expect(tanpa.status).toBe(401);
     });
 
-    it('hanya data non-Data Diri (nomor polisi): tanpa token dan tanpa kiriman nilai; warga isi sendiri', async () => {
-      const { u, log } = siapkan();
-      const pkb = {
-        placeholder: ['{{KENDARAAN.NOPOL_ANGKA}}', '{{KENDARAAN.NOPOL_HURUF}}'],
-        berkas: [],
-        origin: BUTUH.origin,
-      };
-      reply = (path) =>
-        path === '/internal/sesi/status' ? { status: 200, body: sesi() } : { status: 200, body: pkb };
-      const res = await izinkan(ev(req('POST', { writeListHash: await hashDaftarWrite([]) }), u.id));
-      expect(await res.json()).toEqual({
-        kurang: { placeholder: ['Angka nomor polisi', 'Huruf akhir nomor polisi'], berkas: [] },
-      });
-      expect(log).toEqual([]);
-      expect(calls.map((c) => new URL(c.url).pathname)).not.toContain('/internal/sesi/isi');
-    });
-
-    it('sesi tidak menunggu data (409 dari worker) diteruskan apa adanya', async () => {
-      const { u } = siapkan();
+    it('sesi tidak menunggu data (409 dari worker) diteruskan apa adanya, tanpa nilai', async () => {
+      const u = siapkan();
       reply = (path) =>
         path === '/internal/sesi/status'
           ? { status: 200, body: sesi() }
           : { status: 409, body: { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'x' } };
-      const h = await hashDaftarWrite(daftarWrite(BUTUH.placeholder, BUTUH.berkas));
-      expect((await izinkan(ev(req('POST', { writeListHash: h }), u.id))).status).toBe(409);
+      const res = await kirim(u.id, { writeList: ['{{PEMOHON.NIK}}'], targetOrigin: SITUS });
+      expect(res.status).toBe(409);
+      expect(jalur()).not.toContain('/internal/sesi/isi');
+    });
+
+    it('m6: urusan milik orang lain -> 404 di izinkan-isi dan semua endpoint pendamping, tanpa panggil worker', async () => {
+      const u = siapkan(SID_LAIN);
+      pasangPemeriksaPemilikAkun(pemeriksaPemilikVault);
+      const isi = await kirim(u.id, { writeList: ['{{PEMOHON.NIK}}'], targetOrigin: SITUS });
+      expect(isi.status).toBe(404);
+      expect((await mulai(ev(req('POST', { executionId: 'x_1' }), u.id))).status).toBe(404);
+      expect((await status(ev(req('GET'), u.id))).status).toBe(404);
+      expect((await tiket(ev(req('POST'), u.id))).status).toBe(404);
+      expect((await serahkan(ev(req('POST'), u.id))).status).toBe(404);
+      expect((await akhiri(ev(req('DELETE'), u.id))).status).toBe(404);
+      expect(calls).toHaveLength(0);
+      // Urusan tanpa catatan pemilik juga bukan milik siapa pun.
+      const yatim = urusanDenganEksekusi();
+      expect((await tiket(ev(req('POST'), yatim.id))).status).toBe(404);
+      // Pemilik sah (cookie yang sama) lolos.
+      const milik = siapkan();
+      pasangPemeriksaPemilikAkun(pemeriksaPemilikVault);
+      reply = () => ({ status: 201, body: sesi() });
+      expect((await mulai(ev(req('POST', { executionId: 'x_1' }), milik.id))).status).toBe(201);
     });
   });
 
@@ -686,9 +685,12 @@ describe('broker Browser Pendamping', () => {
     });
   });
 
-  it('cookie: hanya urusin_sid hex 32 yang sudah ada di request', () => {
-    expect(sidDariRequest(new Request(ORIGIN, { headers: { cookie: `a=1; urusin_sid=${SID}` } }))).toBe(SID);
-    expect(sidDariRequest(new Request(ORIGIN, { headers: { cookie: 'urusin_sid=ZZ' } }))).toBeNull();
+  it('cookie: hanya __Host-urusin_sid hex 32 yang sudah ada di request', () => {
+    expect(sidDariRequest(new Request(ORIGIN, { headers: { cookie: `a=1; ${SID_COOKIE}=${SID}` } }))).toBe(
+      SID,
+    );
+    expect(sidDariRequest(new Request(ORIGIN, { headers: { cookie: `${SID_COOKIE}=ZZ` } }))).toBeNull();
+    expect(sidDariRequest(new Request(ORIGIN, { headers: { cookie: `urusin_sid=${SID}` } }))).toBeNull();
     expect(sidDariRequest(new Request(ORIGIN))).toBeNull();
   });
 

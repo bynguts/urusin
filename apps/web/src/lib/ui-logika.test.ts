@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { menuAktif, rutAuth } from './components/shell/navigasi.js';
 import { periksaBerkas, samarkan, ukuranBerkas } from './akun/klien.js';
-import { daftarWrite, hashDaftarWrite, labelPlaceholder, petakanIsian } from './pendamping/isi-data.js';
+import { daftarWrite, kolomDari, labelPlaceholder, petakanIsian } from './pendamping/isi-data.js';
 import { keadaanDariSesi, SesiPendampingUi } from './pendamping/sesi.svelte.js';
 import {
   FASE,
@@ -97,22 +97,20 @@ describe('Browser Pendamping', () => {
     expect(labelPlaceholder('{{X.CONSTRUCTOR}}')).toBe('Data lain');
   });
 
-  it('daftar write "Izinkan isi": field Data Diri + berkas, unik terurut; hash sha256 hex', async () => {
-    const f = daftarWrite(['{{PEMOHON.NIK}}', '{{ANAK.NIK}}', '{{PEMOHON.HP}}', '{{URUSAN.KITIR}}'], ['KTP']);
-    expect(f).toEqual(['berkas:ktp', 'hp', 'nik']);
-    // Vektor: sha256 dari "hp" + baris baru + "nik".
-    expect(await hashDaftarWrite(['nik', 'hp', 'nik'])).toBe(
-      '87a153264c87d1ad4ecb3b17785ea20c965827265aa36a286fea989392733c28',
+  it('daftar write "Izinkan isi": placeholder Data Diri + berkas:<JENIS>; non-Data Diri tidak ikut', () => {
+    const f = daftarWrite(
+      ['{{PEMOHON.NIK}}', '{{ANAK.NIK}}', '{{PEMOHON.HP}}', '{{URUSAN.KITIR}}', '{{PEMOHON.NIK}}'],
+      ['ktp'],
     );
-    expect(await hashDaftarWrite([])).toBe(
-      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    );
+    expect(f).toEqual(['{{PEMOHON.NIK}}', '{{ANAK.NIK}}', '{{PEMOHON.HP}}', 'berkas:KTP']);
+    expect(daftarWrite(['{{KENDARAAN.NOPOL_ANGKA}}'], [])).toEqual([]);
+    expect(kolomDari('{{PEMOHON.HP}}')).toBe('hp');
+    expect(kolomDari('{{URUSAN.KITIR}}')).toBeUndefined();
   });
 
-  it('izinkanIsi: hanya hash yang dikirim; yang kurang jadi pesan; galat server diteruskan', async () => {
+  it('izinkanIsi: kirim daftar write + origin butuh_data (tanpa nilai); yang kurang jadi pesan; galat diteruskan', async () => {
     const kiriman: { url: string; body: string }[] = [];
-    let jawab: () => Response = () =>
-      Response.json({ kurang: { placeholder: ['Nomor kitir'], berkas: ['ktp'] } });
+    let jawab: () => Response = () => Response.json({ diizinkan: true, kurang: ['Nomor kitir', 'KTP'] });
     const s = new SesiPendampingUi(
       'u_1',
       async () => null,
@@ -121,27 +119,41 @@ describe('Browser Pendamping', () => {
         return jawab();
       },
     );
+    const ORIGIN_SITUS = 'https://telunjuksakti.wonogirikab.go.id';
     expect(await s.izinkanIsi()).toBeUndefined();
     expect(kiriman).toHaveLength(0);
     s.data = {
       ...s.data,
-      butuhData: { placeholder: ['{{PEMOHON.NIK}}', '{{URUSAN.KITIR}}'], berkas: ['ktp'] },
+      butuhData: {
+        placeholder: ['{{PEMOHON.NIK}}', '{{URUSAN.KITIR}}'],
+        berkas: ['ktp'],
+        origin: ORIGIN_SITUS,
+      },
     };
     expect(await s.izinkanIsi()).toBe('Isi sendiri di layar: Nomor kitir, KTP.');
     expect(kiriman[0]).toEqual({
-      url: '/api/urusan/u_1/pendamping/izinkan',
-      body: JSON.stringify({ writeListHash: await hashDaftarWrite(['berkas:ktp', 'nik']) }),
+      url: '/api/urusan/u_1/izinkan-isi',
+      body: JSON.stringify({ writeList: ['{{PEMOHON.NIK}}', 'berkas:KTP'], targetOrigin: ORIGIN_SITUS }),
     });
     expect(s.data.butuhData).not.toBeNull();
-    jawab = () => Response.json({ kurang: { placeholder: [], berkas: [] } });
+    jawab = () => Response.json({ diizinkan: true, kurang: [] });
     expect(await s.izinkanIsi()).toBeUndefined();
     expect(s.data.butuhData).toBeNull();
+    // Hanya data non-Data Diri: tidak ada yang bisa diambil server; tidak ada permintaan.
+    s.data = {
+      ...s.data,
+      butuhData: { placeholder: ['{{KENDARAAN.NOPOL_ANGKA}}'], berkas: [], origin: ORIGIN_SITUS },
+    };
+    expect(await s.izinkanIsi()).toBe('Isi sendiri di layar: Angka nomor polisi.');
+    expect(kiriman).toHaveLength(2);
     s.data = { ...s.data, butuhData: { placeholder: ['{{PEMOHON.NIK}}'], berkas: [] } };
+    expect(await s.izinkanIsi()).toMatch(/Situs tujuan belum diketahui/);
+    s.data = { ...s.data, butuhData: { placeholder: ['{{PEMOHON.NIK}}'], berkas: [], origin: ORIGIN_SITUS } };
     jawab = () =>
-      Response.json({ kode: 'ISI_OTOMATIS_TIDAK_TERSEDIA', pesanWarga: 'Belum tersedia.' }, { status: 503 });
-    expect(await s.izinkanIsi()).toBe('Belum tersedia.');
+      Response.json({ kode: 'IZIN_TIDAK_VALID', pesanWarga: 'Persetujuan tidak cocok.' }, { status: 403 });
+    expect(await s.izinkanIsi()).toBe('Persetujuan tidak cocok.');
     jawab = () => new Response('x', { status: 500 });
-    expect(await s.izinkanIsi()).toMatch(/belum bisa dipakai/);
+    expect(await s.izinkanIsi()).toMatch(/Izin belum tercatat/);
     jawab = () => {
       throw new Error('jaringan');
     };
