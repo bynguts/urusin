@@ -4,12 +4,19 @@
 
   /**
    * Header situs publik dari frame pen Rafi (n2rpg / F6RSq): logo, tautan bagian landing, Privasi, Masuk, Mulai
-   * gratis. Gaya di landing-pen.css (kelas lpN). Di landing tautan bagian berupa jangkar; di halaman lain
-   * menuju jangkar landing. `aktif` menandai halaman Privasi (pil frame F6RSq).
+   * gratis. Gaya di landing-pen.css (kelas lpN). Tautan menuju halaman Web masing-masing; `aktif` menandai
+   * halaman yang sedang dibuka (pil frame F6RSq).
    */
-  let { aktif }: { aktif?: 'privasi' } = $props();
+  type Halaman = 'cara-kerja' | 'urusan' | 'privasi' | 'tanya-jawab';
+  let { aktif }: { aktif?: Halaman } = $props();
   const diLanding = $derived(aktif === undefined);
   const ke = (jangkar: string) => (diLanding ? `#${jangkar}` : `${resolve('/')}#${jangkar}`);
+  const TAUTAN: { id: Halaman; label: string; href: string }[] = $derived([
+    { id: 'cara-kerja', label: 'Cara kerja', href: resolve('/cara-kerja') },
+    { id: 'urusan', label: 'Urusan', href: ke('urusan') },
+    { id: 'privasi', label: 'Privasi', href: resolve('/privasi') },
+    { id: 'tanya-jawab', label: 'Tanya jawab', href: ke('tanya-jawab') },
+  ]);
 </script>
 
 <header class="n-header lp3">
@@ -24,26 +31,19 @@
       <span class="lp6"> Urusin </span>
     </a>
   {/if}
-  <!-- eslint-disable svelte/no-navigation-without-resolve -- `ke()` sudah memakai resolve('/') -->
   <nav class="n-nav-links lp7" aria-label="Navigasi utama">
-    <a class="lp8" href={ke('cara-kerja')}>
-      <span class="lp9"> Cara kerja </span>
-    </a>
-    <a class="lp8" href={ke('urusan')}>
-      <span class="lp9"> Urusan </span>
-    </a>
-    <a
-      class="lp8 {aktif === 'privasi' ? 'lp-aktif' : ''}"
-      href={resolve('/privasi')}
-      aria-current={aktif === 'privasi' ? 'page' : undefined}
-    >
-      <span class="lp9"> Privasi </span>
-    </a>
-    <a class="lp8" href={ke('tanya-jawab')}>
-      <span class="lp9"> Tanya jawab </span>
-    </a>
+    <!-- eslint-disable svelte/no-navigation-without-resolve -- href TAUTAN sudah memakai resolve() -->
+    {#each TAUTAN as t (t.id)}
+      <a
+        class="lp8 {aktif === t.id ? 'lp-aktif' : ''}"
+        href={t.href}
+        aria-current={aktif === t.id ? 'page' : undefined}
+      >
+        <span class="lp9"> {t.label} </span>
+      </a>
+    {/each}
+    <!-- eslint-enable svelte/no-navigation-without-resolve -->
   </nav>
-  <!-- eslint-enable svelte/no-navigation-without-resolve -->
   <div class="lp10">
     <a class="lp8" href={resolve('/masuk')}>
       <span class="lp9"> Masuk </span>
