@@ -279,6 +279,23 @@ export function checkConnect(
   profile: 'browser',
   scope: BrowserScope,
 ): void {
+  const h = checkConnectHost(host, port, profile, scope);
+  if (isBlockedAddress(resolvedIp))
+    throw new EgressBlockedError(`${h} resolve ke alamat terlarang ${resolvedIp}`);
+}
+
+const BROWSER_UNION = browserUnion();
+
+/**
+ * Bagian `checkConnect` yang tidak butuh DNS (profil, port, IP literal, union, set sesi). Dipanggil proxy
+ * SEBELUM me-resolve, agar host di luar izin tidak pernah memicu kueri DNS. Mengembalikan host ternormalisasi.
+ */
+export function checkConnectHost(
+  host: string,
+  port: number,
+  profile: 'browser',
+  scope: BrowserScope,
+): string {
   if (profile !== 'browser') throw new EgressBlockedError(`profil ${String(profile)} bukan untuk CONNECT`);
   const h = unbracket(host).toLowerCase().replace(/\.$/, '');
   if (port !== 443) throw new EgressBlockedError(`${h}:${port} bukan https:443`);
@@ -286,8 +303,5 @@ export function checkConnect(
   if (!(scope.union ?? BROWSER_UNION).has(h))
     throw new EgressBlockedError(`host ${h} di luar union registry`);
   if (!scope.sesi.has(h)) throw new EgressBlockedError(`host ${h} di luar allowlist sesi`);
-  if (isBlockedAddress(resolvedIp))
-    throw new EgressBlockedError(`${h} resolve ke alamat terlarang ${resolvedIp}`);
+  return h;
 }
-
-const BROWSER_UNION = browserUnion();

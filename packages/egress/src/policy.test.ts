@@ -5,6 +5,7 @@ import {
   browserUnion,
   buildAllowlist,
   checkConnect,
+  checkConnectHost,
   EgressBlockedError,
   isBlockedAddress,
   isLlmProxy,
@@ -247,6 +248,20 @@ describe('checkConnect (profil browser)', () => {
     expect(() =>
       checkConnect('oss.go.id', 443, '1.2.3.4', 'runtime' as 'browser', { sesi: new Set(['oss.go.id']) }),
     ).toThrow(/bukan untuk CONNECT/);
+  });
+
+  it('checkConnectHost (sebelum DNS): sama dengan checkConnect tanpa alamat; mengembalikan host ternormalisasi', () => {
+    expect(checkConnectHost('TELUNJUKSAKTI.wonogirikab.go.id.', 443, 'browser', { sesi })).toBe(
+      'telunjuksakti.wonogirikab.go.id',
+    );
+    expect(() => checkConnectHost('telunjuksakti.wonogirikab.go.id', 20128, 'browser', { sesi })).toThrow(
+      /https:443/,
+    );
+    expect(() => checkConnectHost('[::1]', 443, 'browser', { sesi })).toThrow(/IP literal/);
+    expect(() => checkConnectHost('oss.go.id', 443, 'browser', { sesi })).toThrow(/allowlist sesi/);
+    expect(() =>
+      checkConnectHost('evil.example', 443, 'browser', { sesi: new Set(['evil.example']) }),
+    ).toThrow(/union registry/);
   });
 
   it('allowlist profil browser: union registry tanpa sufiks, tanpa proxy LLM, tanpa origin operator', () => {
