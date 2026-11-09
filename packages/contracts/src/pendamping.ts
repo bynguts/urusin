@@ -285,8 +285,18 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
     /**
      * `masuk_akun`: halaman keluar/login terdeteksi probe adapter; `verifikasi_situs`: halaman tantangan situs
      * (mis. Cloudflare) yang hanya boleh diselesaikan warga sendiri. `login` dipertahankan untuk gerbang lama.
+     * `isi_sendiri`: nilai kolom yang disorot tidak ada di daftar write (mis. nomor kitir, NIB); warga
+     * mengetiknya di situs lalu menekan Lanjutkan (`kembalikan`). Nilainya tidak dicatat dan tidak ke AI.
      */
-    alasan: z.enum(['login', 'final', 'diminta_warga', 'periksa', 'masuk_akun', 'verifikasi_situs']),
+    alasan: z.enum([
+      'login',
+      'final',
+      'diminta_warga',
+      'periksa',
+      'masuk_akun',
+      'verifikasi_situs',
+      'isi_sendiri',
+    ]),
     pesan: z.string(),
     sorot: PendampingSorotSchema.optional(),
   }),

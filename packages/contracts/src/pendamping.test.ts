@@ -142,7 +142,7 @@ describe('kontrak pendamping', () => {
     expect(decodePendampingFrame(tanpaJpeg)).toBeNull();
   });
 
-  it('tambahan aditif: siaga, alasan masuk_akun/verifikasi_situs, bukti, ack, fokus', () => {
+  it('tambahan aditif: siaga, alasan masuk_akun/verifikasi_situs/isi_sendiri, bukti, ack, fokus', () => {
     expect(
       SesiPendampingSchema.safeParse({
         sesiId: 's',
@@ -157,7 +157,7 @@ describe('kontrak pendamping', () => {
         bukti: { nomor: 'TS-UJI/0002', status: 'Baru diajukan' },
       }).success,
     ).toBe(true);
-    for (const alasan of ['masuk_akun', 'verifikasi_situs'])
+    for (const alasan of ['masuk_akun', 'verifikasi_situs', 'isi_sendiri'])
       expect(
         PendampingServerMessageSchema.safeParse({
           type: 'event',
