@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
+import { createHash } from 'node:crypto';
 import { MemoryMailer } from '@urusin/akun/testing';
 import { DemoProvider } from '@urusin/harness';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -51,6 +52,7 @@ type Panggilan = {
   waktu: string | null;
   nonce: string | null;
   tanda: string | null;
+  isi: string | null;
 };
 let calls: Panggilan[];
 let reply: (path: string, body: any, host: string) => { status: number; body: unknown };
@@ -99,6 +101,7 @@ beforeEach(() => {
       waktu: headers.get('x-urusin-waktu'),
       nonce: headers.get('x-urusin-nonce'),
       tanda: headers.get('x-urusin-tanda'),
+      isi: headers.get('x-urusin-isi-sha256'),
     });
     const r = reply(u.pathname, raw ? JSON.parse(raw) : undefined, u.host);
     return new Response(JSON.stringify(r.body), { status: r.status });
@@ -162,11 +165,13 @@ describe('broker Browser Pendamping', () => {
     expect(c.waktu).toMatch(/^\d{13}$/);
     expect(c.nonce).toMatch(/^[0-9a-f]{32}$/);
     expect(c.tanda).toBe(tandaInternal('token-uji', c.waktu!, c.nonce!, 'POST', '/internal/sesi', c.raw));
+    // Hash isi dideklarasikan di header (ikut ditandatangani bersama panjang): worker memeriksa sebelum membaca.
+    expect(c.isi).toBe(createHash('sha256').update(c.raw).digest('hex'));
   });
 
   it('tanda tangan HMAC: vektor uji sama dengan apps/pendamping (tanda.test.ts)', () => {
     const N = '0123456789abcdef0123456789abcdef';
-    const VEKTOR = 'cc8335efcf547bb99e33a916b615c9152474c8613649f175e650158ffa14af4e';
+    const VEKTOR = 'b6089c5b1fef03ec01230fdeacd9cd7ed0d145cfd2f78016e435500f904dcde5';
     expect(
       tandaInternal('r'.repeat(40), '1700000000000', N, 'POST', '/internal/sesi/status', '{"a":1}'),
     ).toBe(VEKTOR);

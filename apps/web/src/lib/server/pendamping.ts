@@ -140,12 +140,16 @@ export const PESAN_WILAYAH =
 
 /**
  * Tanda tangan HMAC kanal web -> worker. Salinan identik apps/pendamping/src/tanda.ts; vektor uji yang sama
- * di kedua sisi menjaga keduanya cocok. Rahasia = token worker (atau PENDAMPING_INTERNAL_TOKEN). Nonce acak
- * per permintaan; worker menolak nonce yang sudah terlihat dalam jendela 60 detik (anti putar ulang).
+ * di kedua sisi menjaga keduanya cocok. Rahasia = token worker (atau PENDAMPING_INTERNAL_TOKEN). Yang
+ * ditandatangani: waktu, nonce, metode, jalur, panjang isi (Content-Length) dan sha256 isi yang juga dikirim di
+ * header `x-urusin-isi-sha256`, sehingga worker memeriksa tanda tangan SEBELUM membaca isi. Nonce acak per
+ * permintaan; worker menolak nonce yang sudah terlihat dalam jendela 60 detik (anti putar ulang).
  */
 export const HEADER_WAKTU = 'x-urusin-waktu';
 export const HEADER_NONCE = 'x-urusin-nonce';
 export const HEADER_TANDA = 'x-urusin-tanda';
+export const HEADER_ISI = 'x-urusin-isi-sha256';
+const sha256Hex = (isi: string) => createHash('sha256').update(isi).digest('hex');
 export function tandaInternal(
   rahasia: string,
   waktu: string,
@@ -154,9 +158,9 @@ export function tandaInternal(
   jalur: string,
   isi: string,
 ): string {
-  const hashIsi = createHash('sha256').update(isi).digest('hex');
+  const panjang = Buffer.byteLength(isi);
   return createHmac('sha256', rahasia)
-    .update(`${waktu}\n${nonce}\n${metode.toUpperCase()}\n${jalur}\n${hashIsi}`)
+    .update(`${waktu}\n${nonce}\n${metode.toUpperCase()}\n${jalur}\n${panjang}\n${sha256Hex(isi)}`)
     .digest('hex');
 }
 
@@ -180,6 +184,7 @@ export async function panggil<T>(
       headers: {
         [HEADER_WAKTU]: waktu,
         [HEADER_NONCE]: nonce,
+        [HEADER_ISI]: sha256Hex(isi),
         [HEADER_TANDA]: tandaInternal(cfg.token, waktu, nonce, metode, path, isi),
         'content-type': 'application/json',
       },

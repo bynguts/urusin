@@ -150,7 +150,7 @@ export const AntreanPendampingResponseSchema = z.object({
 });
 export type AntreanPendampingResponse = z.infer<typeof AntreanPendampingResponseSchema>;
 
-// --- API internal web -> layanan pendamping (HMAC: x-urusin-waktu + x-urusin-tanda, rahasia bersama) ---
+// --- API internal web -> layanan pendamping (HMAC atas header termasuk x-urusin-isi-sha256; rahasia bersama) ---
 export const MulaiSesiInternalSchema = z.object({
   urusanId: z.string().min(1),
   /** sha256(urusin_sid) dalam hex: pendamping tidak pernah melihat cookie mentah. */
