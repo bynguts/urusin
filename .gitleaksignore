@@ -5,3 +5,7 @@
 # berawalan "smoke", hanya untuk boot kontainer sekali pakai tanpa jaringan di CI). Bukan kredensial nyata;
 # commit berikutnya membangkitkan token saat runtime.
 e23d9d987a23629526c4734372b7f62a96e36da4:.github/workflows/release.yml:generic-api-key:96
+
+# Contoh Sec-WebSocket-Key dari RFC 6455 ("the sample nonce", dGhl...ZQ==) di tes upgrade WebSocket M1-b
+# pendamping: nonce uji publik, bukan kredensial. Commit berikutnya membangkitkan kunci acak saat runtime.
+8822a352f13ad5527a2d689a340de43d487aaa7b:apps/pendamping/src/sessions.test.ts:generic-api-key:769
