@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import net from 'node:net';
 import type { MulaiSesiInternal, PendampingServerMessage } from '@urusin/contracts';
 import { ADAPTERS } from '@urusin/adapters';
@@ -702,7 +703,7 @@ describe('server HTTP + WebSocket', () => {
               `Host: 127.0.0.1:${port}`,
               'Upgrade: websocket',
               'Connection: Upgrade',
-              'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
+              `Sec-WebSocket-Key: ${randomBytes(16).toString('base64')}`,
               `Sec-WebSocket-Version: ${versi}`,
               'Origin: http://app.test',
               `Cookie: ${COOKIE}`,

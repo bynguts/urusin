@@ -12,7 +12,11 @@
 # Isolasi: sandbox Chromium AKTIF (seccomp-bpf + namespace; profil seccomp Playwright dari compose) dan
 # diperiksa saat boot. Host produksi (agent-vm) mematikan user namespace tak berhak, jadi namespace dibuat
 # oleh sandbox SETUID `chrome-sandbox` (lihat tahap runtime dan ADR 0029). Kontainer pendamping hanya di
-# jaringan internal compose; satu-satunya jalan keluar adalah pendamping-edge (image yang sama, `node dist/edge-main.js`). Lihat deploy/compose.prod.yml.
+# jaringan internal compose; satu-satunya jalan keluar adalah pendamping-edge (image yang sama,
+# `node dist/edge-main.js`). Lihat deploy/compose.prod.yml.
+
+# Arsitektur target (otomatis dari buildx); dipakai `FROM pw-${TARGETARCH}` di bawah.
+ARG TARGETARCH
 
 FROM --platform=$BUILDPLATFORM node:26-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS builder
 ENV PNPM_HOME=/pnpm \
@@ -35,7 +39,15 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 
 FROM mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d AS pwbasis
 
-FROM pwbasis AS runtime
+# Direktori Chromium Playwright berbeda per arsitektur (amd64: chrome-linux64, arm64: chrome-linux-arm64).
+# Dipetakan lewat stage per arsitektur + ENV (diwarisi stage runtime), tanpa RUN, jadi build silang tetap
+# tanpa QEMU. Arsitektur lain tidak punya stage: build gagal, bukan diam-diam tanpa sandbox.
+FROM pwbasis AS pw-amd64
+ENV PENDAMPING_CHROME_DIR=/ms-playwright/chromium-1254/chrome-linux64
+FROM pwbasis AS pw-arm64
+ENV PENDAMPING_CHROME_DIR=/ms-playwright/chromium-1254/chrome-linux-arm64
+
+FROM pw-${TARGETARCH} AS runtime
 ARG GIT_SHA=dev
 # Bawaan 127.0.0.1; compose produksi memakai HOST=antarmuka (IPv4 jaringan internal, lihat compose.prod.yml).
 # Root filesystem read-only di produksi: Chromium headed menulis ke HOME/XDG (crashpad, cache), jadi semuanya
@@ -48,15 +60,15 @@ ENV NODE_ENV=production \
     HOME=/tmp \
     XDG_CONFIG_HOME=/tmp/.config \
     XDG_CACHE_HOME=/tmp/.cache \
-    CHROME_DEVEL_SANDBOX=/ms-playwright/chromium-1254/chrome-linux64/chrome-sandbox
+    CHROME_DEVEL_SANDBOX=${PENDAMPING_CHROME_DIR}/chrome-sandbox
 # Sandbox setuid Chromium (ADR 0029). Playwright mengirim helper-nya sebagai `chrome_sandbox` mode 777 (tidak
 # SUID); Chromium mencari `<dir exe>/chrome-sandbox`. CHROME_DEVEL_SANDBOX di atas hanya penanda: Chromium
 # mengabaikannya bila exe tidak dimiliki uid yang menjalankan (exe milik root, kita pwuser; diukur), jadi yang
 # berlaku adalah salinan root 4755 di sebelah exe. Path ber-versi: naik versi Playwright tanpa mengubah ini
 # membuat pemeriksaan sandbox saat boot gagal tertutup. Hanya COPY (tanpa RUN): build silang tetap tanpa QEMU.
 COPY --from=pwbasis --chmod=4755 --chown=root:root \
-     /ms-playwright/chromium-1254/chrome-linux64/chrome_sandbox \
-     /ms-playwright/chromium-1254/chrome-linux64/chrome-sandbox
+     ${PENDAMPING_CHROME_DIR}/chrome_sandbox \
+     ${PENDAMPING_CHROME_DIR}/chrome-sandbox
 # Kontainer pendamping berjalan TANPA no-new-privileges (syarat sandbox setuid) dengan SYS_ADMIN di bounding
 # set, jadi biner SUID/SGID lain dari image dasar akan menjadi jalan ke root ber-SYS_ADMIN. Bit-nya dicabut:
 # chrome-sandbox satu-satunya biner SUID di image (diperiksa smoke rilis).
