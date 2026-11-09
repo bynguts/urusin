@@ -410,6 +410,10 @@ describe('peramban: utilitas', () => {
     expect(args).toContain('--js-flags=--max-old-space-size=256');
     expect(args.some((a) => a.startsWith('--host-resolver-rules=MAP * ~NOTFOUND'))).toBe(true);
     expect(args).toContain('--force-webrtc-ip-handling-policy=disable_non_proxied_udp');
+    // Tanpa lalu lintas latar (component updater -> redirector.gvt1.com dll.): log edge hanya situs nyata.
+    expect(args).toEqual(
+      expect.arrayContaining(['--disable-component-update', '--disable-background-networking']),
+    );
     expect(args.join(' ')).not.toMatch(/stealth|AutomationControlled|user-agent/i);
   });
 
