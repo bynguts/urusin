@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { isIP } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { finalGateIndex, hostsSesi, type Program } from '@urusin/adapters';
@@ -140,7 +141,13 @@ export function pssMb(pids: number[], proc = '/proc', platform = process.platfor
   return Math.round(kb / 1024);
 }
 
-export function chromiumArgs(config: Pick<Config, 'jsHeapMb'>): string[] {
+/**
+ * `proxyHost` = IP literal proxy yang dipakai Chromium (127.0.0.1 untuk proxy di dalam proses, IP kontainer
+ * edge di produksi). Aturan resolver memetakan SEMUA nama ke NOTFOUND, jadi alamat proxy wajib dikecualikan;
+ * tanpa itu Chromium tidak pernah tersambung ke edge (net::ERR_PROXY_CONNECTION_FAILED di langkah pertama).
+ */
+export function chromiumArgs(config: Pick<Config, 'jsHeapMb'>, proxyHost = '127.0.0.1'): string[] {
+  if (isIP(proxyHost) === 0) throw new Error(`alamat proxy Chromium harus IP literal: ${proxyHost}`);
   return [
     '--disable-dev-shm-usage',
     '--disable-gpu',
@@ -160,7 +167,7 @@ export function chromiumArgs(config: Pick<Config, 'jsHeapMb'>): string[] {
     '--force-webrtc-ip-handling-policy=disable_non_proxied_udp',
     '--webrtc-ip-handling-policy=disable_non_proxied_udp',
     // Chromium tidak me-resolve DNS sendiri: semua nama host hanya di-resolve proxy egress.
-    '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1',
+    `--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE ${proxyHost}`,
   ];
 }
 
@@ -272,7 +279,7 @@ export async function launchIsolated(
       proxy: edge ? proxyEdgeOption(edge) : proxyOption(proxy!.port),
       // Sandbox Chromium (userns + seccomp-bpf) aktif; hanya CI terhadap fixture yang boleh mematikannya.
       chromiumSandbox: config.sandbox,
-      args: chromiumArgs(config),
+      args: chromiumArgs(config, edge ? new URL(edge.server).hostname : '127.0.0.1'),
       env: {
         ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}),
         ...(process.env.XAUTHORITY ? { XAUTHORITY: process.env.XAUTHORITY } : {}),
@@ -561,10 +568,13 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
         const host = new URL(program.origin).host;
         // Halaman galat Chromium (chrome-error://) = navigasi gagal, walau galat jaringannya tak tertangkap.
         const net = navGagal ?? (page.url().startsWith('chrome-error:') ? 'net::ERR_FAILED' : undefined);
-        // Satu baris untuk operator: kode, langkah, host, galat jaringan. Tanpa path, nilai, atau PII.
+        // Satu baris untuk operator: kode, langkah, host, galat jaringan, skema+host halaman yang ter-commit.
+        // Tanpa path, query, nilai, atau PII.
+        const kini = URL.parse(page.url());
         console.log(
           `pendamping: alur berhenti kode=${code} langkah=${c.stepIndex}/${steps.length} ` +
-            `op=${steps[c.stepIndex]?.op ?? '-'} host=${host}${net ? ` net=${net}` : ''}`,
+            `op=${steps[c.stepIndex]?.op ?? '-'} host=${host}${net ? ` net=${net}` : ''} ` +
+            `halaman=${kini ? `${kini.protocol}//${kini.host}` : '-'}`,
         );
         if (code === 'ADAPTER_DRIFT')
           return hooks.ended('dipandu', 'drift', 'Tampilan situs berubah. Kami beralih ke panduan langkah.');
@@ -574,7 +584,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
             'gagal',
             'Urusin menolak menekan tombol kirim. Hanya Anda yang boleh menekannya.',
           );
-        return hooks.ended('gagal', 'gagal', pesanGagal(code, host, net));
+        return hooks.ended('gagal', 'gagal', pesanGagal(code, host, net), { kode: code, net });
       }
     }
   };

@@ -179,6 +179,13 @@ describe('proxy peramban', () => {
     expect(chromiumArgs({ jsHeapMb: 1 })).toContain(
       '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1',
     );
+    // Edge produksi: IP kontainer edge yang dikecualikan, bukan 127.0.0.1 (regresi run 6).
+    const edge = chromiumArgs({ jsHeapMb: 1 }, '172.30.1.3');
+    expect(edge).toContain('--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 172.30.1.3');
+    expect(edge.join(' ')).not.toContain('EXCLUDE 127.0.0.1');
+    // Hanya IP literal: nama host (atau sisipan aturan) ditolak.
+    expect(() => chromiumArgs({ jsHeapMb: 1 }, 'pendamping-edge')).toThrow(/IP literal/);
+    expect(() => chromiumArgs({ jsHeapMb: 1 }, '1.2.3.4 , MAP * 5.6.7.8')).toThrow(/IP literal/);
   });
 });
 
