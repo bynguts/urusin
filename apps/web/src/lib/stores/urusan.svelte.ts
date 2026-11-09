@@ -135,6 +135,36 @@ export class UrusanStore implements StoreUrusan {
     }
   }
 
+  /**
+   * "Setujui rencana": aksi terstruktur (bukan pesan chat yang ditafsirkan model). Hasilnya (state, permintaan
+   * Browser Pendamping, kartu konfirmasi) mengalir lewat stream.
+   */
+  async setujuiRencana(): Promise<'ok' | 'konflik' | 'galat'> {
+    const id = this.keadaan.id;
+    if (!id) return 'galat';
+    const kirim = () =>
+      this.ambil(`/api/urusan/${encodeURIComponent(id)}/rencana/setujui`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ expectedVersion: this.keadaan.version }),
+      });
+    try {
+      let res = await kirim();
+      if (res.status === 409) {
+        const st = await this.statusTerbaru(id);
+        if (!st || st.berjalan) return st ? 'konflik' : 'galat';
+        this.keadaan.version = st.version;
+        res = await kirim();
+        if (res.status === 409) return 'konflik';
+      }
+      if (!res.ok) return 'galat';
+      if (this.keadaan.status === 'diam' || this.keadaan.status === 'terputus') this.sambung(id);
+      return 'ok';
+    } catch {
+      return 'galat';
+    }
+  }
+
   private kirimTurn(id: string, teks: string): Promise<Response> {
     return this.ambil(`/api/urusan/${encodeURIComponent(id)}/turn`, {
       method: 'POST',

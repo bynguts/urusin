@@ -137,6 +137,18 @@
     }
   }
 
+  async function setujuiRencana() {
+    mengirim = true;
+    pesanKomposer = null;
+    const hasil = await store.setujuiRencana();
+    mengirim = false;
+    if (hasil === 'konflik')
+      pesanKomposer =
+        'Urusin masih memproses langkah sebelumnya. Tunggu sebentar, lalu tekan Setujui rencana lagi.';
+    else if (hasil === 'galat')
+      pesanKomposer = 'Persetujuan belum tercatat. Periksa koneksi, lalu coba lagi.';
+  }
+
   function ulangTerakhir() {
     const t = pesan.at(-1)?.teks;
     if (t) void kirim(t);
@@ -357,7 +369,7 @@
                     kelayakan={k.kelayakan}
                     bisaSetujui={it.terakhir && keadaanUrusan === 'RENCANA_DIUSULKAN' && !k.sedangBerjalan}
                     sibuk={mengirim}
-                    onsetujui={() => void kirim('Saya setuju dengan rencana ini.')}
+                    onsetujui={() => void setujuiRencana()}
                     onubah={ubahRencana}
                   />
                 </PesanAgen>
@@ -370,7 +382,10 @@
                     gate={it.gate}
                     permintaan={it.permintaan}
                     {situs}
-                    aktif={it.terakhir && keadaanUrusan === 'MENUNGGU_KONFIRMASI'}
+                    aktif={it.terakhir &&
+                      !k.sedangBerjalan &&
+                      it.permintaan !== null &&
+                      (keadaanUrusan === 'MENUNGGU_KONFIRMASI' || it.permintaan.bacaSaja === true)}
                     status={konfirmasi?.key === it.key ? konfirmasi.status : 'menunggu'}
                     pesanGalat={it.terakhir ? konfirmasiGalat : undefined}
                     onsetujui={() => void setujui(it.key, it.gate, it.permintaan)}
