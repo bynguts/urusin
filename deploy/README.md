@@ -479,6 +479,11 @@ resmi (mis. halaman login Telunjuk Sakti), lalu kemudikan layar dengan mouse/sen
 centang verifikasi situs, klik sendiri; AI tidak pernah mengklik-nya. Tidak ada AI di mode ini. Matikan
 dengan mengosongkan `PENDAMPING_DEBUG_TOKEN`.
 
+**Mode Uji (juri dan tamu):** web menandai setiap sesi; hanya akun warga biasa pemilik urusan yang dibuka ke
+portal resmi asli. Salinan demo juri dan tamu selalu dibuka ke replika di `https://fixtures.$DOMAIN`
+(`PENDAMPING_ORIGIN_OVERRIDES` di `compose.prod.yml`, butuh profil `fixtures`); situs tanpa replika ditolak, tidak
+pernah jatuh ke situs asli. Edge harus bisa tersambung ke `fixtures.$DOMAIN:443` (IP publik host sendiri).
+
 **WebSocket untuk warga:** setelah port disetujui, bangkitkan snippet dengan blok `handle /pendamping/ws/*`
 aktif, misalnya `node scripts/gen-caddyfile.mjs --set primary --fixtures --pendamping
 --import /opt/urusin/Caddyfile.urusin --out /tmp/Caddyfile.urusin` (`--import` hanya mengisi komentar baris
