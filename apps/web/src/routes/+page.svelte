@@ -3,6 +3,26 @@
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
+  import av_rose_melambai_140_avif from '#lib/assets/img/pen-landing/rose-melambai-140.avif';
+  import av_rose_melambai_179_avif from '#lib/assets/img/pen-landing/rose-melambai-179.avif';
+  import av_rose_melambai_230_avif from '#lib/assets/img/pen-landing/rose-melambai-230.avif';
+  import av_rose_melambai_281_avif from '#lib/assets/img/pen-landing/rose-melambai-281.avif';
+  import av_rose_melambai_375_avif from '#lib/assets/img/pen-landing/rose-melambai-375.avif';
+  import av_purple_melambai_140_avif from '#lib/assets/img/pen-landing/purple-melambai-140.avif';
+  import av_purple_melambai_179_avif from '#lib/assets/img/pen-landing/purple-melambai-179.avif';
+  import av_purple_melambai_230_avif from '#lib/assets/img/pen-landing/purple-melambai-230.avif';
+  import av_purple_melambai_281_avif from '#lib/assets/img/pen-landing/purple-melambai-281.avif';
+  import av_purple_melambai_375_avif from '#lib/assets/img/pen-landing/purple-melambai-375.avif';
+  import av_green_melambai_140_avif from '#lib/assets/img/pen-landing/green-melambai-140.avif';
+  import av_green_melambai_179_avif from '#lib/assets/img/pen-landing/green-melambai-179.avif';
+  import av_green_melambai_230_avif from '#lib/assets/img/pen-landing/green-melambai-230.avif';
+  import av_green_melambai_281_avif from '#lib/assets/img/pen-landing/green-melambai-281.avif';
+  import av_green_melambai_375_avif from '#lib/assets/img/pen-landing/green-melambai-375.avif';
+  import av_amber_jempol_140_avif from '#lib/assets/img/pen-landing/amber-jempol-140.avif';
+  import av_amber_jempol_179_avif from '#lib/assets/img/pen-landing/amber-jempol-179.avif';
+  import av_amber_jempol_230_avif from '#lib/assets/img/pen-landing/amber-jempol-230.avif';
+  import av_amber_jempol_281_avif from '#lib/assets/img/pen-landing/amber-jempol-281.avif';
+  import av_amber_jempol_375_avif from '#lib/assets/img/pen-landing/amber-jempol-375.avif';
   import av_purple_laptop_340_avif from '#lib/assets/img/pen-landing/purple-laptop-340.avif';
   import av_purple_laptop_401_avif from '#lib/assets/img/pen-landing/purple-laptop-401.avif';
   import av_purple_laptop_680_avif from '#lib/assets/img/pen-landing/purple-laptop-680.avif';
@@ -236,50 +256,82 @@
       </div>
     </div>
     <div class="n-preview-stage lp22" aria-hidden="true">
-      <img
-        class="lp23"
-        src={gda9322b}
-        srcset="{g7318dfb} 140w, {g53b40cd} 179w, {gda9322b} 230w, {g6c98ad9} 281w, {g348ca12} 375w, {g35b8475} 460w"
-        sizes="(max-width: 479px) 76px, (max-width: 767px) 97px, (max-width: 1023px) 152px, (max-width: 1111px) 202px, 230px"
-        alt=""
-        width="230"
-        height="251"
-        decoding="async"
-        aria-hidden="true"
-      />
-      <img
-        class="lp24"
-        src={ged2300f}
-        srcset="{gc83c329} 140w, {g1a1d7d2} 179w, {ged2300f} 230w, {g7c6689e} 281w, {ge9bb049} 375w, {g6e70f38} 460w"
-        sizes="(max-width: 479px) 76px, (max-width: 767px) 97px, (max-width: 1023px) 152px, (max-width: 1111px) 202px, 230px"
-        alt=""
-        width="230"
-        height="251"
-        decoding="async"
-        aria-hidden="true"
-      />
-      <img
-        class="lp25"
-        src={gbad712d}
-        srcset="{g5942763} 140w, {g9c84e2a} 179w, {gbad712d} 230w, {g8fa0aa2} 281w, {gd1df53c} 375w, {g5ce0fbb} 460w"
-        sizes="(max-width: 479px) 76px, (max-width: 767px) 97px, (max-width: 1023px) 152px, (max-width: 1111px) 202px, 230px"
-        alt=""
-        width="230"
-        height="251"
-        decoding="async"
-        aria-hidden="true"
-      />
-      <img
-        class="lp26"
-        src={g9944d5b}
-        srcset="{gadfb3bd} 140w, {gb41429a} 179w, {g9944d5b} 230w, {g9930c13} 281w, {g9a60797} 375w, {gfe3505c} 460w"
-        sizes="(max-width: 479px) 76px, (max-width: 767px) 97px, (max-width: 1023px) 152px, (max-width: 1111px) 202px, 230px"
-        alt=""
-        width="230"
-        height="251"
-        decoding="async"
-        aria-hidden="true"
-      />
+      <picture class="lp-pic">
+        <source
+          media="(max-width: 767px)"
+          type="image/avif"
+          srcset="{av_rose_melambai_140_avif} 140w, {av_rose_melambai_179_avif} 179w, {av_rose_melambai_230_avif} 230w, {av_rose_melambai_281_avif} 281w, {av_rose_melambai_375_avif} 375w"
+          sizes="(max-width: 479px) 76px, 97px"
+        />
+        <img
+          class="lp23"
+          src={gda9322b}
+          srcset="{g7318dfb} 140w, {g53b40cd} 179w, {gda9322b} 230w, {g6c98ad9} 281w, {g348ca12} 375w, {g35b8475} 460w"
+          sizes="(max-width: 479px) 76px, (max-width: 767px) 97px, (max-width: 1023px) 152px, (max-width: 1111px) 202px, 230px"
+          alt=""
+          width="230"
+          height="251"
+          decoding="async"
+          aria-hidden="true"
+        />
+      </picture>
+      <picture class="lp-pic">
+        <source
+          media="(max-width: 767px)"
+          type="image/avif"
+          srcset="{av_purple_melambai_140_avif} 140w, {av_purple_melambai_179_avif} 179w, {av_purple_melambai_230_avif} 230w, {av_purple_melambai_281_avif} 281w, {av_purple_melambai_375_avif} 375w"
+          sizes="(max-width: 479px) 76px, 97px"
+        />
+        <img
+          class="lp24"
+          src={ged2300f}
+          srcset="{gc83c329} 140w, {g1a1d7d2} 179w, {ged2300f} 230w, {g7c6689e} 281w, {ge9bb049} 375w, {g6e70f38} 460w"
+          sizes="(max-width: 479px) 76px, (max-width: 767px) 97px, (max-width: 1023px) 152px, (max-width: 1111px) 202px, 230px"
+          alt=""
+          width="230"
+          height="251"
+          decoding="async"
+          aria-hidden="true"
+        />
+      </picture>
+      <picture class="lp-pic">
+        <source
+          media="(max-width: 767px)"
+          type="image/avif"
+          srcset="{av_green_melambai_140_avif} 140w, {av_green_melambai_179_avif} 179w, {av_green_melambai_230_avif} 230w, {av_green_melambai_281_avif} 281w, {av_green_melambai_375_avif} 375w"
+          sizes="(max-width: 479px) 76px, 97px"
+        />
+        <img
+          class="lp25"
+          src={gbad712d}
+          srcset="{g5942763} 140w, {g9c84e2a} 179w, {gbad712d} 230w, {g8fa0aa2} 281w, {gd1df53c} 375w, {g5ce0fbb} 460w"
+          sizes="(max-width: 479px) 76px, (max-width: 767px) 97px, (max-width: 1023px) 152px, (max-width: 1111px) 202px, 230px"
+          alt=""
+          width="230"
+          height="251"
+          decoding="async"
+          aria-hidden="true"
+        />
+      </picture>
+      <picture class="lp-pic">
+        <source
+          media="(max-width: 767px)"
+          type="image/avif"
+          srcset="{av_amber_jempol_140_avif} 140w, {av_amber_jempol_179_avif} 179w, {av_amber_jempol_230_avif} 230w, {av_amber_jempol_281_avif} 281w, {av_amber_jempol_375_avif} 375w"
+          sizes="(max-width: 479px) 76px, 97px"
+        />
+        <img
+          class="lp26"
+          src={g9944d5b}
+          srcset="{gadfb3bd} 140w, {gb41429a} 179w, {g9944d5b} 230w, {g9930c13} 281w, {g9a60797} 375w, {gfe3505c} 460w"
+          sizes="(max-width: 479px) 76px, (max-width: 767px) 97px, (max-width: 1023px) 152px, (max-width: 1111px) 202px, 230px"
+          alt=""
+          width="230"
+          height="251"
+          decoding="async"
+          aria-hidden="true"
+        />
+      </picture>
       <div class="lp27">
         <div class="lp28">
           <div class="lp29">
