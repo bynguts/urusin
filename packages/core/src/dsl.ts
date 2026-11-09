@@ -49,6 +49,8 @@ export type Step =
   | {
       op: 'gate.human';
       message: string;
+      /** Pesan pengganti bila `check` benar di halaman saat gerbang dibuka (mis. kolom sandi memang ada). */
+      messageIf?: { check: Check; message: string } | undefined;
       until: Check;
       highlight?: Target | undefined;
       effect: Effect;
@@ -111,6 +113,7 @@ export const StepSchema: z.ZodType<Step> = z.lazy(() =>
     z.object({
       op: z.literal('gate.human'),
       message: nonEmpty,
+      messageIf: z.object({ check: CheckSchema, message: nonEmpty }).optional(),
       until: CheckSchema,
       highlight: TargetSchema.optional(),
       effect: EffectSchema,
@@ -297,14 +300,20 @@ export const forEach = (over: string, steps: Step[]): Step => ({ op: 'forEach', 
 export const branch = (when: Check, then: Step[], otherwise?: Step[]): Step =>
   otherwise === undefined ? { op: 'branch', when, then } : { op: 'branch', when, then, else: otherwise };
 export const gate = {
-  human: (message: string, opts: { until: Check; highlight?: Selector | Target }): Step =>
-    opts.highlight === undefined
-      ? { op: 'gate.human', message, until: opts.until, effect: 'final' }
-      : {
-          op: 'gate.human',
-          message,
-          until: opts.until,
-          highlight: toTarget(opts.highlight),
-          effect: 'final',
-        },
+  human: (
+    message: string,
+    opts: {
+      until: Check;
+      highlight?: Selector | Target;
+      /** Pesan pengganti bila `check` benar saat gerbang dibuka (teks mengikuti kolom yang benar-benar ada). */
+      messageIf?: { check: Check; message: string };
+    },
+  ): Step => ({
+    op: 'gate.human',
+    message,
+    ...(opts.messageIf ? { messageIf: opts.messageIf } : {}),
+    until: opts.until,
+    ...(opts.highlight === undefined ? {} : { highlight: toTarget(opts.highlight) }),
+    effect: 'final',
+  }),
 };

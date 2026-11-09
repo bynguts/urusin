@@ -656,6 +656,8 @@ describe('#47 tamu malas, salinan demo, dan batas per IP', () => {
     const dd = akun.vault.getDataDiri(a.akun.id)!.data;
     expect(dd.namaLengkap).toBe('Juri Contoh Urusin');
     expect(String(dd.nik)).toMatch(/^3312\d{12}$/);
+    // HP = HP uji replika Telunjuk Sakti (apps/fixtures TEST_HP): isian AI diterima di halaman masuk replika.
+    expect(dd.hp).toBe(['0800', '0000', '0001'].join(''));
     akun.vault.setDataDiri(a.akun.id, { ...dd, namaLengkap: 'Diubah juri A' });
     expect(akun.vault.getDataDiri(b.akun.id)!.data.namaLengkap).toBe('Juri Contoh Urusin');
     akun.buatDemo(ctx);

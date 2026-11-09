@@ -156,6 +156,8 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
   const login = await tungguGiliran(page, 'login');
   await expect(page.locator('#mode')).toHaveText('takeover');
   expect(login.sorot).toBeDefined();
+  // Replika publik hanya punya HP + CAPTCHA: teks giliran tidak menyuruh mengetik sandi.
+  expect(login.pesan).toBe('Giliran Anda: ketik kode CAPTCHA, lalu tekan Masuk.');
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { frameTerakhir?: unknown }).frameTerakhir))
     .toBeTruthy();
