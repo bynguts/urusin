@@ -171,6 +171,8 @@ export class SessionManager {
   private readonly active = new Set<string>();
   private readonly tickets = new Map<string, { sesiId: string; exp: number }>();
   private readonly tombstones = new Map<string, { sesi: SesiPendamping; exp: number }>();
+  /** Penutupan peramban yang sedang berjalan (sesi sudah keluar dari peta, Chromium belum tertutup). */
+  private readonly penutupan = new Set<Promise<void>>();
   private sweeper: ReturnType<typeof setInterval> | undefined;
 
   constructor(
@@ -184,11 +186,17 @@ export class SessionManager {
     this.sweeper.unref?.();
   }
 
+  /**
+   * Akhiri semua sesi dan TUNGGU semua Chromium tertutup, termasuk sesi yang sudah berakhir sendiri (gagal,
+   * memori, TTL) tetapi penutupannya masih berjalan: tanpa itu proses (atau tes berikutnya) melihat peramban
+   * yang setengah tertutup.
+   */
   async shutdown(): Promise<void> {
     clearInterval(this.sweeper);
     await Promise.all(
       [...this.sessions.values()].map((s) => this.end(s, 'dibatalkan', 'dibatalkan', PESAN.dibatalkan)),
     );
+    await Promise.allSettled([...this.penutupan]);
   }
 
   // ---- API internal (dipanggil web broker) ---------------------------------
@@ -707,11 +715,19 @@ export class SessionManager {
     this.sessions.delete(s.id);
     const run = s.run;
     s.run = undefined;
+    const tutup = (async () => {
+      try {
+        await run?.destroy();
+      } finally {
+        this.active.delete(s.id);
+        await this.pump();
+      }
+    })();
+    this.penutupan.add(tutup);
     try {
-      await run?.destroy();
+      await tutup;
     } finally {
-      this.active.delete(s.id);
-      await this.pump();
+      this.penutupan.delete(tutup);
     }
   }
 

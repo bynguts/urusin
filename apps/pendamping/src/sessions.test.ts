@@ -86,6 +86,33 @@ function harness(over: Partial<Config> = {}) {
 const owner = (urusanId: string, sidHash = SID) => ({ urusanId, sidHash });
 
 describe('SessionManager', () => {
+  it('shutdown menunggu peramban sesi yang sudah berakhir sendiri tetapi masih menutup', async () => {
+    const h = harness();
+    await h.manager.create(input('u1'));
+    await h.flush();
+    const run = h.runs[0]!;
+    let selesaiTutup!: () => void;
+    run.destroy = () =>
+      new Promise<void>((ok) => {
+        run.calls.push('destroy:mulai');
+        selesaiTutup = () => {
+          run.calls.push('destroy:selesai');
+          ok();
+        };
+      });
+    // Sesi berakhir sendiri (mis. pengawas memori): keluar dari peta, Chromium masih menutup.
+    run.init.hooks.ended('gagal', 'gagal', 'x', { kode: 'MEMORI_SESI' });
+    await h.flush();
+    expect(h.manager.status(owner('u1')).status).toBe('gagal');
+    let beres = false;
+    const shutdown = h.manager.shutdown().then(() => void (beres = true));
+    await h.flush();
+    expect(beres).toBe(false);
+    selesaiTutup();
+    await shutdown;
+    expect(run.calls.slice(-2)).toEqual(['destroy:mulai', 'destroy:selesai']);
+  });
+
   it('frame layar ke penampil aktif; ack diteruskan tanpa menunda idle; fokus dikirim tanpa nilai', async () => {
     const h = harness();
     const s = await h.manager.create(input('u-frame'));
