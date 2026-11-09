@@ -52,3 +52,6 @@ pnpm-debug.log*
 
 # Keluaran eval (dibuat oleh pnpm eval)
 evals/out/
+
+# wxt generated
+.wxt/
