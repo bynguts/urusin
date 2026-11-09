@@ -1044,6 +1044,25 @@ export class AkunService {
     ).map((r) => r.urusan_id);
   }
 
+  /**
+   * Pemilik vault sebuah urusan, HANYA bila `peminta` adalah pemilik itu: akun sinkron yang sama (`user_id`),
+   * atau sid yang sama untuk urusan milik tamu. Selain itu (bukan pemilik, urusan tidak dikenal) → undefined.
+   * Dipakai jalur isi Pendamping sebelum menerbitkan atau memakai token persetujuan.
+   */
+  pemilikVaultUrusan(
+    urusanId: string,
+    peminta: { akun?: Akun | undefined; sid?: string | undefined },
+  ): string | undefined {
+    const r = this.db
+      .prepare('SELECT user_id, guest_sid_hash FROM urusan_owner WHERE urusan_id = ?')
+      .get(urusanId) as { user_id: string | null; guest_sid_hash: string | null } | undefined;
+    if (!r) return undefined;
+    if (r.user_id)
+      return this.sinkron(peminta.akun) && peminta.akun!.id === r.user_id ? r.user_id : undefined;
+    if (!peminta.sid || r.guest_sid_hash !== hashSid(peminta.sid)) return undefined;
+    return this.tamuDariSid(peminta.sid);
+  }
+
   // --- persetujuan "Izinkan isi" ---
 
   /** Terbitkan token persetujuan (pesan `pendamping.izinkan` dari pemilik): sekali pakai, 5 menit. */
