@@ -283,11 +283,19 @@ jobs:
           fetch-tags: true
 
       # Tidak berbuat apa pun selama belum ada tag rc*; setelah ada, langkah di bawah aktif otomatis.
+      # Runner self-hosted (cadangan menit habis): rc-compat butuh Docker langsung, jadi DILEWATI dengan peringatan
+      # (cakupan berkurang selama cadangan; lihat deploy/ci-runner/README.md). Kembali ke runner GitHub = jalan lagi.
       - name: Cari tag rc* terakhir
         id: rc
+        env:
+          RUNNER_ENV: ${{ runner.environment }}
         run: |
           tag="$(git tag -l 'rc*' --sort=-version:refname | head -n1)"
-          if [ -z "$tag" ]; then
+          if [ -n "$tag" ] && [ "$RUNNER_ENV" = self-hosted ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::rc-compat DILEWATI di runner self-hosted (tag ${tag}); cakupan berkurang selama runner cadangan."
+            echo "rc-compat: DILEWATI di runner self-hosted (tag ${tag}); cakupan berkurang." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -z "$tag" ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "::notice::belum ada tag rc*: rc-compat dilewati (tidak ada yang diperiksa)"
             echo "rc-compat: belum ada tag rc*, dilewati." >> "$GITHUB_STEP_SUMMARY"
@@ -296,12 +304,6 @@ jobs:
             echo "tag=${tag}" >> "$GITHUB_OUTPUT"
             echo "rc-compat: memakai tag ${tag}" >> "$GITHUB_STEP_SUMMARY"
           fi
-
-      - name: rc-compat belum didukung di runner self-hosted
-        if: steps.rc.outputs.present == 'true' && runner.environment == 'self-hosted'
-        run: |
-          echo "::error::rc-compat butuh Docker langsung; jalankan di runner GitHub (hapus vars.URUSIN_RUNNER) atau tambah subperintah ci-docker."
-          exit 1
 
       - name: Migrasi sejak tag rc harus aditif (tanpa DROP/RENAME)
         if: steps.rc.outputs.present == 'true'

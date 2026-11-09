@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# ACTIONS_RUNNER_HOOK_JOB_COMPLETED: dijalankan runner (user urusin-ci) setelah setiap job, sukses atau gagal.
+# Runner persisten, jadi kebersihan antar job dijaga di sini (checkout membersihkan workspace di awal job):
+#   - hapus node_modules di workspace (penyumbang disk terbesar),
+#   - hapus kontainer sisa urusin-ci-* dan temp ci-docker (lewat ci-docker cleanup, sudoers sempit),
+#   - cetak df agar tren disk terlihat di log job.
+# Tidak pernah gagal-keras: kebersihan tidak boleh mengubah hasil job.
+set -uo pipefail
+ws="${GITHUB_WORKSPACE:-}"
+case "$ws" in
+  /opt/urusin-ci/runner/_work/*)
+    find "$ws" -name node_modules -type d -prune -exec rm -rf {} + 2>/dev/null
+    ;;
+esac
+sudo -n /opt/urusin-ci/bin/ci-docker cleanup 2>&1 || true
+echo "disk agent-vm setelah job: $(df -h --output=pcent,avail / | tail -n1 | tr -s ' ')"
+exit 0
