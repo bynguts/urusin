@@ -358,6 +358,7 @@ test('pengawas memori: sesi di atas anggaran dihentikan (gagal) dan slot dibebas
   });
   await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('gagal');
   expect(manager.status(o).pesan).toContain('terlalu berat');
-  expect(manager.antrean()).toEqual({ aktif: 0, maks: 2, menunggu: 0 });
+  // Slot dibebaskan setelah Chromium (dengan sandbox: lebih banyak proses) selesai ditutup.
+  await expect.poll(() => manager.antrean(), { timeout: 10_000 }).toEqual({ aktif: 0, maks: 2, menunggu: 0 });
   await manager.shutdown();
 });
