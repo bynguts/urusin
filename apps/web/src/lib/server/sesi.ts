@@ -16,11 +16,21 @@ const SID_TTL_SEC = 60 * 60 * 24 * 30;
 /** __Host-: Secure, Path=/, tanpa Domain (localhost http tetap diterima peramban sebagai konteks aman). */
 const SID_OPSI = { path: '/', httpOnly: true, sameSite: 'lax', secure: true, maxAge: SID_TTL_SEC } as const;
 
-/** Pindahkan cookie `urusin_sid` lama ke `__Host-urusin_sid` sekali (nilai sama), lalu hapus yang lama. */
-export function migrasiSid(cookies: Pick<Cookies, 'get' | 'set' | 'delete'>): void {
+/**
+ * Batas adopsi cookie lama: 30 hari (= umur maksimal `urusin_sid`) sejak rilis __Host-. Setelahnya cookie lama
+ * hanya dihapus, tidak pernah lagi diadopsi (nama tanpa __Host- bisa ditanam subdomain/http).
+ */
+export const MIGRASI_SID_SAMPAI = Date.parse('2026-12-10T00:00:00Z');
+
+/**
+ * Pindahkan cookie `urusin_sid` lama ke `__Host-urusin_sid` sekali (nilai sama) selama masa migrasi, lalu hapus
+ * yang lama.
+ */
+export function migrasiSid(cookies: Pick<Cookies, 'get' | 'set' | 'delete'>, now: number = Date.now()): void {
   const lama = cookies.get(SID_COOKIE_LAMA);
   if (lama === undefined) return;
-  if (!cookies.get(SID_COOKIE) && SID_RE.test(lama)) cookies.set(SID_COOKIE, lama, SID_OPSI);
+  if (now < MIGRASI_SID_SAMPAI && !cookies.get(SID_COOKIE) && SID_RE.test(lama))
+    cookies.set(SID_COOKIE, lama, SID_OPSI);
   cookies.delete(SID_COOKIE_LAMA, { path: '/' });
 }
 

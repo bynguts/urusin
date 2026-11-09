@@ -5,7 +5,7 @@ import { POST as buatUrusan } from '../../routes/api/urusan/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
 import { RateLimiter } from './limiter';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
-import { migrasiSid, SID_COOKIE } from './sesi';
+import { MIGRASI_SID_SAMPAI, migrasiSid, SID_COOKIE } from './sesi';
 
 const ORIGIN = 'http://localhost:3000';
 let rt: Runtime;
@@ -107,6 +107,24 @@ describe('cookie sesi', () => {
     expect([set, hapus]).toEqual([[{ name: SID_COOKIE, value: lama }], ['urusin_sid']]);
     migrasiSid(cookies as never); // sekali saja
     expect(set).toHaveLength(1);
+  });
+
+  it('PoC (review delta 53fff2d b): adopsi urusin_sid lama hanya 30 hari; sesudahnya cookie lama dihapus saja', () => {
+    expect(MIGRASI_SID_SAMPAI - Date.parse('2026-11-10T00:00:00Z')).toBe(30 * 24 * 3600 * 1000);
+    const uji = (now: number) => {
+      const toples = new Map([['urusin_sid', 'd'.repeat(32)]]);
+      migrasiSid(
+        {
+          get: (n: string) => toples.get(n),
+          set: (n: string, v: string) => toples.set(n, v),
+          delete: (n: string) => toples.delete(n),
+        } as never,
+        now,
+      );
+      return Object.fromEntries(toples);
+    };
+    expect(uji(MIGRASI_SID_SAMPAI - 1)).toEqual({ [SID_COOKIE]: 'd'.repeat(32) });
+    expect(uji(MIGRASI_SID_SAMPAI)).toEqual({});
   });
 
   it('cookie sah dipakai ulang; cookie rusak diganti', async () => {
