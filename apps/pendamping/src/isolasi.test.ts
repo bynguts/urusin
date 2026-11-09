@@ -9,7 +9,7 @@ import {
   ruteBawaan,
   type ProsesInfo,
 } from './isolasi.js';
-import { periksaTanda } from './tanda.js';
+import { isiCocok, periksaTanda } from './tanda.js';
 
 const EDGE = { kontrol: new URL('http://pendamping-edge:3129'), proxyPort: 3128, token: 'e'.repeat(40) };
 
@@ -33,9 +33,17 @@ describe('kredensial proxy edge per sesi', () => {
       ttlMs: 60_000,
     });
     const h = put.init.headers as Record<string, string>;
-    const tanda = { waktu: h['x-urusin-waktu'], nonce: h['x-urusin-nonce'], tanda: h['x-urusin-tanda'] };
-    expect(periksaTanda(EDGE.token, tanda, 'PUT', path, String(put.init.body))).toBe(true);
-    expect(periksaTanda('x'.repeat(40), tanda, 'PUT', path, String(put.init.body))).toBe(false);
+    const body = Buffer.from(String(put.init.body));
+    const tanda = {
+      waktu: h['x-urusin-waktu'],
+      nonce: h['x-urusin-nonce'],
+      tanda: h['x-urusin-tanda'],
+      isi: h['x-urusin-isi-sha256'],
+      panjang: String(body.byteLength),
+    };
+    expect(periksaTanda(EDGE.token, tanda, 'PUT', path)).toBe(true);
+    expect(isiCocok(tanda, body)).toBe(true);
+    expect(periksaTanda('x'.repeat(40), tanda, 'PUT', path)).toBe(false);
     await pe.hapus();
     expect(calls[1]).toMatchObject({ url: put.url, init: { method: 'DELETE' } });
 

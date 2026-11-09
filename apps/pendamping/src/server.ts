@@ -25,7 +25,7 @@ import { debugPageHtml } from './debug-page.js';
 import { devPageHtml } from './dev-page.js';
 import { PendampingError, sidHashOf, type SessionManager } from './sessions.js';
 import { createFrameGate } from './stream.js';
-import { createPenjagaUlang, HEADER_NONCE, HEADER_TANDA, HEADER_WAKTU } from './tanda.js';
+import { bacaIsiBertanda, createPenjagaUlang, headerDari } from './tanda.js';
 
 /**
  * HTTP + WebSocket layanan pendamping.
@@ -132,6 +132,8 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
   let belumHalo = 0;
 
   const periksaInternal = createPenjagaUlang(config.internalToken);
+  /** Semafor global: paling banyak satu pembacaan isi besar (> 64 KB) sekaligus. */
+  let bacaBesarAktif = false;
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://pendamping');
     const path = url.pathname;
@@ -208,22 +210,39 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'Tidak ditemukan.' });
       // Kanal web -> worker: tanda tangan HMAC atas waktu + nonce + metode + jalur + isi (bukan token polos);
       // nonce yang sudah dipakai dalam jendela waktu ditolak (anti putar ulang).
-      // Header tanda (ada, format, jendela waktu, nonce belum dipakai) diperiksa SEBELUM isi dibaca: tanpa itu
-      // isi tidak ditampung sama sekali dan koneksi ditutup. Lalu isi dibaca dengan batas, lalu MAC diperiksa.
+      // HMAC atas header (waktu, nonce, metode, jalur, Content-Length, sha256 isi yang dideklarasikan) diperiksa
+      // SEBELUM satu byte isi dibaca; gagal = 401 dan koneksi ditutup tanpa membaca isi. Lalu batas panjang,
+      // lalu (isi > 64 KB) satu pembacaan besar sekaligus di seluruh proses; sisanya 503 + Retry-After. Isi
+      // dibaca dengan batas dan di-hash sambil jalan; tidak cocok dengan deklarasi = 401.
       // Satu berkas Dokumen (<= 9 MB biner, base64) hanya di jalur berkas; selain itu 64 KB.
-      const header = (n: string) => {
-        const v = req.headers[n];
-        return typeof v === 'string' ? v : undefined;
-      };
-      const h = { waktu: header(HEADER_WAKTU), nonce: header(HEADER_NONCE), tanda: header(HEADER_TANDA) };
-      if (!periksaInternal.praIsi(h)) {
+      const tolak = (status: number, g: PendampingGalat, extra: Record<string, string> = {}) => {
         res.setHeader('connection', 'close');
-        return galat(res, 401, { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' });
+        for (const [k, v] of Object.entries(extra)) res.setHeader(k, v);
+        return galat(res, status, g);
+      };
+      const h = headerDari(req);
+      if (!periksaInternal(h, req.method ?? 'GET', path))
+        return tolak(401, { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' });
+      const panjang = Number(h.panjang);
+      if (panjang > (path === '/internal/sesi/berkas' ? MAX_JSON_BERKAS : MAX_JSON))
+        return tolak(413, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan terlalu besar.' });
+      const besar = panjang > MAX_JSON;
+      if (besar && bacaBesarAktif)
+        return tolak(
+          503,
+          { kode: 'LAYANAN_TIDAK_TERSEDIA', pesanWarga: 'Sedang menerima berkas lain. Coba lagi sebentar.' },
+          { 'retry-after': '2' },
+        );
+      if (besar) bacaBesarAktif = true;
+      let raw: Buffer | null | false;
+      try {
+        raw = await bacaIsiBertanda(req, h, panjang);
+      } finally {
+        if (besar) bacaBesarAktif = false;
       }
-      const raw = await readRaw(req, path === '/internal/sesi/berkas' ? MAX_JSON_BERKAS : MAX_JSON);
-      if (!raw) return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan terlalu besar.' });
-      const sah = periksaInternal(h, req.method ?? 'GET', path, raw);
-      if (!sah) return galat(res, 401, { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' });
+      if (raw === null)
+        return tolak(413, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan terlalu besar.' });
+      if (raw === false) return tolak(401, { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' });
 
       if (req.method === 'GET' && path === '/internal/antrean') return json(res, 200, manager.antrean());
       if (req.method !== 'POST')

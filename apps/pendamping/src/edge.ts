@@ -6,7 +6,7 @@ import type { networkInterfaces } from 'node:os';
 import type { Duplex } from 'node:stream';
 import { browserUnion, checkConnect, checkConnectHost, EgressBlockedError } from '@urusin/egress';
 import { dialUpstream, type Resolver } from './egress.js';
-import { createPenjagaUlang, HEADER_NONCE, HEADER_TANDA, HEADER_WAKTU } from './tanda.js';
+import { bacaIsiBertanda, createPenjagaUlang, headerDari } from './tanda.js';
 
 /**
  * pendamping-edge: kontainer kecil di DUA jaringan compose (internal `pendamping_internal` + bridge biasa).
@@ -327,27 +327,19 @@ export function createEdgeKontrol(
     const user = /^\/sesi\/([^/]+)$/.exec(path)?.[1];
     if (!user || !USER_RE.test(user) || (req.method !== 'PUT' && req.method !== 'DELETE'))
       return kirim(404, { ok: false });
-    const chunks: Buffer[] = [];
-    let size = 0;
-    for await (const c of req) {
-      size += (c as Buffer).length;
-      if (size > 16 * 1024) return kirim(413, { ok: false });
-      chunks.push(c as Buffer);
-    }
-    const raw = Buffer.concat(chunks);
-    const h = (n: string) => {
-      const v = req.headers[n];
-      return typeof v === 'string' ? v : undefined;
-    };
-    if (
-      !periksa(
-        { waktu: h(HEADER_WAKTU), nonce: h(HEADER_NONCE), tanda: h(HEADER_TANDA) },
-        req.method,
-        path,
-        raw,
-      )
-    )
+    // Tanda tangan header (termasuk panjang + hash isi yang dideklarasikan) diperiksa sebelum isi dibaca.
+    const h = headerDari(req);
+    if (!periksa(h, req.method, path)) {
+      res.setHeader('connection', 'close');
       return kirim(401, { ok: false });
+    }
+    if (Number(h.panjang) > 16 * 1024) {
+      res.setHeader('connection', 'close');
+      return kirim(413, { ok: false });
+    }
+    const raw = await bacaIsiBertanda(req, h, 16 * 1024);
+    if (raw === null) return kirim(413, { ok: false });
+    if (raw === false) return kirim(401, { ok: false });
     if (req.method === 'DELETE') {
       daftar.hapus(user);
       return kirim(200, { ok: true });

@@ -568,7 +568,8 @@ describe('server HTTP + WebSocket', () => {
     expect((await fetch(`${base}/internal/antrean`, { headers: sekali })).status).toBe(401);
     expect((await call('/internal/sesi', { urusanId: 'u1' })).status).toBe(422);
     expect((await call('/internal/sesi', '{bukan json')).status).toBe(422);
-    expect((await call('/internal/sesi', 'x'.repeat(70_000))).status).toBe(422);
+    // Melebihi batas 64 KB jalur ini: ditolak dari Content-Length yang ditandatangani, sebelum isi dibaca.
+    expect((await call('/internal/sesi', 'x'.repeat(70_000))).status).toBe(413);
     const created = await call('/internal/sesi', input('u1'));
     expect(created.status).toBe(201);
     expect((await call('/internal/sesi/status', owner('u1'))).status).toBe(200);
@@ -596,54 +597,67 @@ describe('server HTTP + WebSocket', () => {
     expect((await fetch(`${base}/dev`)).status).toBe(200);
   });
 
-  it('/internal/sesi/berkas: header tanda hilang/cacat/kedaluwarsa/nonce terpakai -> 401 tanpa membaca isi', async () => {
+  it('/internal/sesi/berkas: MAC atas header diperiksa sebelum isi; hash isi dicocokkan; satu baca besar sekaligus', async () => {
     const { port, base } = await start();
+    const T = 't'.repeat(40);
     const jalur = '/internal/sesi/berkas';
-    /** Kirim header saja (Content-Length 12 MB, isi tidak pernah dikirim); kembalikan respons mentah. */
-    const tanpaIsi = (h: Record<string, string>) =>
-      new Promise<string>((resolve, reject) => {
-        const sock = net.connect(port, '127.0.0.1');
-        let out = '';
-        sock.on('data', (d) => (out += d.toString()));
-        sock.on('close', () => resolve(out));
-        sock.on('error', reject);
-        const baris = Object.entries(h).map(([k, v]) => `${k}: ${v}\r\n`);
-        sock.write(
-          `POST ${jalur} HTTP/1.1\r\nhost: x\r\ncontent-type: application/json\r\n` +
-            `content-length: 12000000\r\n${baris.join('')}\r\n`,
-        );
-      });
-    const sah = headerTanda('t'.repeat(40), 'POST', jalur, '{}');
-    // Nonce sah dipakai sekali (isi kecil, MAC cocok -> lewat ke validasi body = 422), lalu diputar ulang.
-    const pertama = await fetch(`${base}${jalur}`, {
-      method: 'POST',
-      headers: { ...sah, 'content-type': 'application/json' },
-      body: '{}',
-    });
-    expect(pertama.status).toBe(422);
-    const kasus = [
-      {},
-      { ...sah, 'x-urusin-nonce': 'bukan-hex' },
-      headerTanda('t'.repeat(40), 'POST', jalur, '', Date.now() - 120_000),
-      sah,
+    /** Kirim header (dan `awal` isi bila ada) lewat soket mentah; `selesai` mengirim sisa isi. */
+    const mentah = (h: Record<string, string>, panjang: number, awal?: Buffer) => {
+      const sock = net.connect(port, '127.0.0.1');
+      let out = '';
+      sock.on('data', (d) => (out += d.toString()));
+      const tutup = new Promise<string>((r) => sock.on('close', () => r(out)));
+      sock.on('error', () => undefined);
+      const baris = Object.entries(h).map(([k, v]) => `${k}: ${v}\r\n`);
+      sock.write(
+        `POST ${jalur} HTTP/1.1\r\nhost: x\r\nconnection: close\r\ncontent-type: application/json\r\n` +
+          `content-length: ${panjang}\r\n${baris.join('')}\r\n`,
+      );
+      if (awal) sock.write(awal);
+      return { tutup, selesai: (sisa: Buffer) => sock.write(sisa) };
+    };
+    const BESAR = Buffer.alloc(12_000_000, 0x41);
+
+    // 1) MAC palsu / header hilang / kedaluwarsa / Content-Length tidak cocok dengan yang ditandatangani:
+    //    401 dan soket ditutup walau 12 MB isi tidak pernah dikirim (isi tidak ditunggu, tidak dibaca).
+    const sah = headerTanda(T, 'POST', jalur, BESAR);
+    const kasus: [Record<string, string>, number][] = [
+      [{}, 12_000_000],
+      [{ ...sah, 'x-urusin-tanda': 'f'.repeat(64) }, 12_000_000],
+      [headerTanda(T, 'POST', jalur, BESAR, Date.now() - 120_000), 12_000_000],
+      [headerTanda(T, 'POST', jalur, '{}'), 12_000_000],
     ];
-    for (const h of kasus) {
-      const r = await tanpaIsi(h);
-      // Jawaban 401 datang dan soket ditutup walau 12 MB isi belum dikirim: isi tidak ditunggu/dibaca.
+    for (const [h, n] of kasus) {
+      const r = await mentah(h, n).tutup;
       expect(r).toMatch(/^HTTP\/1\.1 401 /);
       expect(r.toLowerCase()).toContain('connection: close');
     }
-    // Header layak + nonce baru, tetapi MAC tidak cocok dengan isi: isi dibaca dengan batas, lalu ditolak.
-    const salahIsi = headerTanda('t'.repeat(40), 'POST', jalur, '{"a":1}');
-    expect(
-      (
-        await fetch(`${base}${jalur}`, {
-          method: 'POST',
-          headers: { ...salahIsi, 'content-type': 'application/json' },
-          body: '{}',
-        })
-      ).status,
-    ).toBe(401);
+
+    // 2) MAC sah atas deklarasi, tetapi isi yang dikirim berbeda (panjang sama): hash tidak cocok -> 401.
+    const deklarasi = headerTanda(T, 'POST', jalur, '{"a":1}');
+    const beda = await fetch(`${base}${jalur}`, {
+      method: 'POST',
+      headers: { ...deklarasi, 'content-type': 'application/json' },
+      body: '{"a":2}',
+    });
+    expect(beda.status).toBe(401);
+    // Nonce sah yang sudah dipakai ditolak sebelum isi.
+    expect(await mentah(deklarasi, 7).tutup).toMatch(/^HTTP\/1\.1 401 /);
+
+    // 3) Satu pembacaan besar (> 64 KB) sekaligus: yang kedua 503 + Retry-After tanpa membaca isinya.
+    const a = mentah(headerTanda(T, 'POST', jalur, BESAR), BESAR.length, BESAR.subarray(0, 1024));
+    await new Promise((r) => setTimeout(r, 100));
+    const b = await mentah(headerTanda(T, 'POST', jalur, BESAR), BESAR.length).tutup;
+    expect(b).toMatch(/^HTTP\/1\.1 503 /);
+    expect(b.toLowerCase()).toContain('retry-after: 2');
+    // Pembacaan kecil tetap jalan selama itu.
+    const kecil = headerTanda(T, 'POST', jalur, '{}');
+    expect((await fetch(`${base}${jalur}`, { method: 'POST', headers: kecil, body: '{}' })).status).toBe(422);
+    a.selesai(BESAR.subarray(1024));
+    // Isi lengkap dan hash cocok: lolos ke validasi skema (bukan JSON berkas = 422); semafor dilepas.
+    expect(await a.tutup).toMatch(/^HTTP\/1\.1 422 /);
+    const c = mentah(headerTanda(T, 'POST', jalur, BESAR), BESAR.length, BESAR);
+    expect(await c.tutup).toMatch(/^HTTP\/1\.1 422 /);
   });
 
   it('jalur isi server (A-M1): butuh -> berkas -> isi lewat kanal bertanda; hanya yang dibutuhkan; lalu AI mulai', async () => {
@@ -670,7 +684,7 @@ describe('server HTTP + WebSocket', () => {
     expect((await berkas('lain')).status).toBe(422);
     // Berkas besar hanya di jalur berkas (batas 64 KB jalur lain tetap).
     const besar = 'A'.repeat(70_000);
-    expect((await call('/internal/sesi/isi', { ...o, isian: { '{{PEMOHON.HP}}': besar } })).status).toBe(422);
+    expect((await call('/internal/sesi/isi', { ...o, isian: { '{{PEMOHON.HP}}': besar } })).status).toBe(413);
     const ok = await berkas('ktp', besar);
     expect(ok.status).toBe(200);
     expect(await ok.json()).toEqual({ placeholder: ['{{PEMOHON.HP}}'], berkas: [] });

@@ -207,6 +207,12 @@ describe('kanal kontrol edge', () => {
       const hr = headerTanda(TOKEN, 'PUT', path, rusak);
       expect((await fetch(`${base}${path}`, { method: 'PUT', headers: hr, body: rusak })).status).toBe(422);
     }
+    // Isi beda dari hash yang ditandatangani -> 401; panjang bertanda > 16 KB -> 413 sebelum isi dibaca.
+    const beda = headerTanda(TOKEN, 'PUT', path, isi.replace('60000', '60001'));
+    expect((await fetch(`${base}${path}`, { method: 'PUT', headers: beda, body: isi })).status).toBe(401);
+    const besar = 'x'.repeat(17 * 1024);
+    const hb = headerTanda(TOKEN, 'PUT', path, besar);
+    expect((await fetch(`${base}${path}`, { method: 'PUT', headers: hb, body: besar })).status).toBe(413);
     expect((await fetch(`${base}/sesi/BAD`, { method: 'PUT', body: isi })).status).toBe(404);
     expect((await fetch(`${base}/lain`)).status).toBe(404);
     const hd = headerTanda(TOKEN, 'DELETE', path);
