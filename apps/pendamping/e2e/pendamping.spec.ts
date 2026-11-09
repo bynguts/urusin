@@ -417,3 +417,37 @@ test('pengawas memori: sesi di atas anggaran dihentikan (gagal) dan slot dibebas
   await expect.poll(() => manager.antrean(), { timeout: 10_000 }).toEqual({ aktif: 0, maks: 2, menunggu: 0 });
   await manager.shutdown();
 });
+
+test('langkah 0 tak bisa membuka situs (CONNECT ditolak) -> gagal dengan alasan jaringan yang jelas', async () => {
+  // Replika https di port tertutup: proxy egress menjawab CONNECT dengan 502, Chromium menampilkan halaman
+  // galat (net::ERR_TUNNEL_CONNECTION_FAILED), persis pola produksi bila edge tidak bisa tersambung.
+  const kosong = http.createServer();
+  await new Promise<void>((ok) => kosong.listen(0, '127.0.0.1', ok));
+  const port = (kosong.address() as net.AddressInfo).port;
+  await new Promise<void>((ok) => kosong.close(() => ok()));
+  const tutup = `https://127.0.0.1:${port}`;
+  const config = loadConfig({
+    PENDAMPING_FIXTURE_ORIGINS: tutup,
+    PENDAMPING_ORIGIN_OVERRIDES: `https://telunjuksakti.wonogirikab.go.id=${tutup}`,
+    PENDAMPING_HEADLESS: '1',
+  });
+  const manager = new SessionManager(config, createBrowserFactory(config));
+  const o = { urusanId: 'u-nav-gagal', sidHash: SID };
+  await manager.create({
+    ...o,
+    executionId: 'x_nav',
+    adapterId: 'telunjuk-sakti-wonogiri',
+    flowId: 'ajukan',
+    origin: 'https://telunjuksakti.wonogirikab.go.id',
+    params: { layanan_id: 1 },
+    modeUji: true,
+  });
+  await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('menunggu_data');
+  await manager.isiData(o, {}); // Data Diri kosong: AI tetap mulai (kolom diisi warga nanti)
+  await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('gagal');
+  const pesan = manager.status(o).pesan ?? '';
+  expect(pesan).toContain(`Halaman 127.0.0.1:${port} tidak bisa dibuka`);
+  expect(pesan).toMatch(/net::ERR_[A-Z_]+/);
+  expect(pesan).not.toContain('berhenti dengan aman');
+  await manager.shutdown();
+});
