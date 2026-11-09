@@ -663,8 +663,11 @@ describe('#47 tamu malas, salinan demo, dan batas per IP', () => {
     expect((await galat(() => akun.buatDemo({ ip: '198.51.100.31' }))).kode).toBe('DEMO_PENUH');
     t += 24 * JAM + 1;
     expect(akun.sesi(a.token)).toBeNull();
-    expect(akun.bersihkan().demo).toBe(4);
-    expect(hitung('SELECT COUNT(*) n FROM user_keys')).toBe(0);
+    // review delta 53fff2d: salinan kedaluwarsa langsung membebaskan slot (juri tidak terkunci menunggu sapu)
+    const baru = akun.buatDemo({ ip: '198.51.100.32' });
+    expect(akun.bersihkan().demo).toBe(4); // penyapu menghapus dan menghitung keempat salinan kedaluwarsa
+    expect(hitung('SELECT COUNT(*) n FROM user_keys')).toBe(1);
+    expect(akun.sesi(baru.token)).not.toBeNull();
   });
 });
 

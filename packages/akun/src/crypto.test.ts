@@ -267,6 +267,17 @@ describe('Vault per akun', () => {
     expect(kode(() => doc(T3, 5))).toBe('PENYIMPANAN_PENUH'); // 23 + 5 > 25% dari 100
     expect(alert.at(-1)).toMatch(/porsi tamu/);
     doc(A, 40); // akun tidak terpengaruh porsi tamu
+    // PoC (review delta 53fff2d): salinan demo juri ikut batas pemilik sementara dan porsi bersama
+    const demo = (id: string) =>
+      db
+        .prepare("INSERT INTO users (id, jenis, created_at) VALUES (?, 'demo', '2026-11-09T00:00:00.000Z')")
+        .run(id);
+    const [D1, D2] = ['d', 'e'].map((c) => `demo_${c.repeat(32)}`) as [string, string];
+    [D1, D2].forEach(demo);
+    doc(D1, 1);
+    doc(D1, 1);
+    expect(kode(() => doc(D1, 1))).toBe('PENYIMPANAN_PENUH'); // 23 + 2 = 25 = porsi; tamu + demo berbagi
+    expect(kode(() => doc(D2, 21))).toBe('DOKUMEN_KUOTA_PENUH'); // 20 byte per demo
     expect(new Vault(openHarnessDb(), deriveKek(KEY_B64), '/').batas).toMatchObject({
       berkasPerTamu: 3,
       bytePerTamu: 20 * 1024 * 1024,

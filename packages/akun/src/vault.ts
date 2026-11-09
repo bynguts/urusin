@@ -84,11 +84,14 @@ export type BatasVault = {
    * deploy/disk-alert.sh). 0 = tidak diperiksa.
    */
   diskPersenMaks: number;
-  /** Tamu (tanpa akun): berkas per tamu (default 3). */
+  /** Pemilik sementara (tamu dan salinan demo juri): berkas per pemilik (default 3). */
   berkasPerTamu: number;
-  /** Tamu: total byte per tamu (default 20 MB). */
+  /** Pemilik sementara: total byte per pemilik (default 20 MB). */
   bytePerTamu: number;
-  /** Porsi `totalMaks` yang boleh dipakai SEMUA tamu bersama (default 0,25): tamu tidak bisa memenuhi host. */
+  /**
+   * Porsi `totalMaks` yang boleh dipakai SEMUA pemilik sementara (tamu + demo) bersama (default 0,25): tanpa
+   * akun, mereka tidak bisa memenuhi host.
+   */
   porsiTamu: number;
 };
 
@@ -225,17 +228,18 @@ export class Vault {
   }
 
   /**
-   * Lempar galat bila unggahan baru melanggar batas per pemilik, batas tamu (per tamu dan porsi bersama),
-   * atau batas global host.
+   * Lempar galat bila unggahan baru melanggar batas per pemilik, batas pemilik sementara (tamu dan demo: per
+   * pemilik dan porsi bersama), atau batas global host.
    */
   periksaBatas(userId: string, ukuran: number): void {
     if (ukuran > this.batas.ukuranMaks) throw new AkunError('DOKUMEN_TERLALU_BESAR');
     const { n, b } = this.db
       .prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS b FROM vault_documents WHERE user_id = ?')
       .get(userId) as { n: number; b: number };
-    const tamu =
-      (this.db.prepare('SELECT jenis FROM users WHERE id = ?').get(userId) as { jenis: string } | undefined)
-        ?.jenis === 'tamu';
+    const jenis = (
+      this.db.prepare('SELECT jenis FROM users WHERE id = ?').get(userId) as { jenis: string } | undefined
+    )?.jenis;
+    const tamu = jenis === 'tamu' || jenis === 'demo';
     if (n >= (tamu ? this.batas.berkasPerTamu : this.batas.berkasPerPemilik))
       throw new AkunError('DOKUMEN_KUOTA_PENUH');
     if (tamu && b + ukuran > this.batas.bytePerTamu) throw new AkunError('DOKUMEN_KUOTA_PENUH');
@@ -244,7 +248,7 @@ export class Vault {
         this.db
           .prepare(
             `SELECT COALESCE(SUM(d.size), 0) AS n FROM vault_documents d
-             JOIN users u ON u.id = d.user_id WHERE u.jenis = 'tamu'`,
+             JOIN users u ON u.id = d.user_id WHERE u.jenis IN ('tamu', 'demo')`,
           )
           .get() as { n: number }
       ).n;
