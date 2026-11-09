@@ -241,7 +241,7 @@
   <meta name="referrer" content="no-referrer" />
 </svelte:head>
 
-<div class="flex min-h-0 flex-1 flex-col lg:h-[calc(100dvh-1.5rem)]">
+<div class="flex min-h-0 flex-1 flex-col lg:h-dvh">
   <HeaderHalaman {judul}>
     {#snippet awal()}<Lencana peristiwa={p} />{/snippet}
   </HeaderHalaman>

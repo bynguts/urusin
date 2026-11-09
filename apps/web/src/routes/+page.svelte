@@ -237,6 +237,8 @@
             alt=""
             width="380"
             height="315"
+            loading="lazy"
+            decoding="async"
             class="absolute -top-[7.5625rem] right-[4rem] z-10 hidden w-[10.625rem] lg:block"
           />
 
@@ -707,12 +709,6 @@
 </div>
 
 <style>
-  .wordmark {
-    font-weight: 700;
-    letter-spacing: -0.05em;
-    line-height: 1;
-    color: var(--sb-text-primary);
-  }
   .mock {
     box-shadow:
       0 30px 80px -20px rgb(37 37 34 / 0.12),

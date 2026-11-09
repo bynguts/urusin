@@ -184,6 +184,14 @@ body {
   scroll-margin-bottom: 6rem;
 }
 
+/* Wordmark teks "urusin." (frame redesign Rafi). */
+.wordmark {
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  color: var(--sb-text-primary);
+}
+
 /* Latar titik-titik Pattern/Hero: grid titik yang memudar. */
 .pola-titik {
   background-image: radial-gradient(var(--ur-dot) 1.4px, transparent 1.6px);
