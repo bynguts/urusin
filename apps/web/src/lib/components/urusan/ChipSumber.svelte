@@ -25,14 +25,14 @@
   href={url}
   target="_blank"
   rel="external noopener noreferrer"
-  class="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border bg-surface px-3 text-[0.8125rem] text-ink hover:bg-card {aktif
-    ? 'border-ink'
-    : 'border-line-2'}"
+  class="inline-flex h-9 max-w-full items-center gap-2 rounded-full bg-surface pr-3 pl-2 text-sm leading-[21px] text-ink hover:bg-card {aktif
+    ? 'border-[1.5px] border-ink'
+    : 'border border-line-2'}"
 >
-  <span class="grid size-5 shrink-0 place-items-center rounded-full bg-bg-2 text-[0.6875rem] font-semibold"
+  <span class="grid size-5 shrink-0 place-items-center rounded-full bg-bg-2 text-xs leading-3 font-semibold"
     >{nomor}</span
   >
-  <span class="truncate font-medium">{domain(url)}</span>
+  <span class="truncate">{domain(url)}</span>
   {#if perluDicekUlang}
     <span class="shrink-0 text-kuning-ink">· cek ulang</span>
   {:else if diperiksa}

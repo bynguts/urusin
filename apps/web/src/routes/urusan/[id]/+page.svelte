@@ -90,7 +90,7 @@
 
   function buka(id: string) {
     pesan = lokal.pesanWarga(id);
-    const tertunda = lokal.ambilTertunda();
+    const tertunda = lokal.ambilTertunda() ?? data.pesanAwal;
     if (tertunda && pesan.length === 0) {
       lokal.catatPesan(id, { teks: tertunda, setelahSeq: 0 });
       pesan = lokal.pesanWarga(id);
@@ -261,7 +261,7 @@
     <!-- Panel konteks: di HP di atas percakapan dan bisa dilipat; di laptop kolom kanan 400 px. -->
     <aside
       aria-label="Rencana, dokumen, dan sumber"
-      class="order-first border-b border-line bg-card lg:order-last lg:w-[25rem] lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-l"
+      class="order-first border-b border-line bg-card lg:order-last lg:w-[399.5px] lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-l"
     >
       <button
         type="button"
@@ -339,7 +339,7 @@
           <div
             role="log"
             aria-label="Percakapan urusan"
-            class="mx-auto flex w-full max-w-[43rem] flex-col gap-6 px-4 py-6 sm:px-6 lg:py-8"
+            class="flex w-full flex-col gap-5 px-4 py-6 sm:px-10 sm:pt-7 sm:pb-6"
           >
             {#if kosong}
               <div class="rounded-2xl bg-card p-5 text-center">
@@ -353,13 +353,15 @@
             {#each linimasa as it (it.key)}
               {#if it.jenis === 'warga'}
                 <p
-                  class="max-w-[85%] self-end rounded-[1.25rem] bg-bg-2 px-4 py-3 text-base whitespace-pre-line text-ink"
+                  class="max-w-[min(85%,460px)] self-end rounded-[18px_18px_4px_18px] bg-bg-2 px-4 py-3 text-base whitespace-pre-line text-ink sm:text-[17px] sm:leading-[26px]"
                 >
                   {it.teks}
                 </p>
               {:else if it.jenis === 'sistem'}
-                <p class="flex items-center justify-center gap-2 text-center text-sm text-muted">
-                  <Icon name="centang-bulat" class="size-4" />{it.teks} · {waktuSingkat(it.at)}
+                <p
+                  class="flex items-center justify-center gap-1.5 text-center text-sm leading-[21px] text-muted"
+                >
+                  <Icon name="centang-bulat" class="size-4 shrink-0" />{it.teks} · {waktuSingkat(it.at)}
                 </p>
               {:else if it.jenis === 'teks'}
                 <PesanAgen avatar={p.avatar}
@@ -432,7 +434,10 @@
             {/each}
 
             {#if k.sedangBerjalan}
-              <p role="status" class="flex items-center gap-2 pl-11 text-[0.9375rem] text-muted">
+              <p
+                role="status"
+                class="flex items-center gap-2 pl-[46px] text-[15px] leading-[23px] text-muted"
+              >
                 <Icon name="memuat" class="size-4 animate-spin" />
                 {labelProgres(k.progres, k.events.findLast((e) => e.type === 'progress')?.toolName)}
               </p>
@@ -441,7 +446,7 @@
               <button
                 type="button"
                 onclick={() => void kirim('lanjut')}
-                class="ml-11 inline-flex min-h-12 items-center gap-2 self-start rounded-full border border-line-2 bg-surface px-5 font-medium text-ink hover:bg-card"
+                class="ml-[46px] inline-flex h-12 items-center gap-2 self-start rounded-full border border-line-2 bg-surface px-5 text-base text-ink shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] hover:bg-card"
               >
                 Lanjutkan <Icon name="panah" class="size-4.5" />
               </button>
@@ -451,9 +456,9 @@
         </div>
 
         <div
-          class="sticky bottom-[4.5rem] z-10 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pt-3 pb-3 sm:px-6 lg:bottom-0 lg:from-surface lg:via-surface lg:pb-5"
+          class="sticky bottom-[4.5rem] z-10 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pt-3 pb-3 sm:px-10 lg:bottom-0 lg:from-surface lg:via-surface lg:pb-6"
         >
-          <div class="mx-auto w-full max-w-[43rem]">
+          <div class="w-full">
             <Komposer
               bind:teks
               bind:elemen={komposer}

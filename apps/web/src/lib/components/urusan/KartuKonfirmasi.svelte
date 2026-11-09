@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { EventOf } from '#lib/contracts.js';
   import Icon from '../Icon.svelte';
-  import Chip from '../ui/Chip.svelte';
   import { domain } from '#lib/urusan-status.js';
   import { labelParam, nilaiParam } from './linimasa.js';
 
@@ -35,40 +34,45 @@
 
 <section
   aria-label="Periksa sebelum AI mengisi"
-  class="overflow-hidden rounded-2xl border border-line bg-surface shadow-lembut"
+  class="overflow-hidden rounded-[18px] border border-line bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]"
 >
-  <header class="flex flex-wrap items-center gap-3 border-b border-line-3 bg-card px-4 py-3.5 sm:px-5">
-    <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-[#2f6b4f] text-white">
-      <Icon name="instansi" class="size-5" />
+  <header class="flex min-h-[64.5px] flex-wrap items-center gap-3 border-b border-line bg-card px-4 py-3">
+    <span class="grid size-9 shrink-0 place-items-center rounded-[9px] bg-[#2f6b4f] text-white">
+      <Icon name="instansi" class="size-[18px]" />
     </span>
     <div class="min-w-0 flex-1">
-      <h3 class="text-base font-semibold text-ink">
+      <h3 class="text-base leading-[22px] font-semibold text-ink">
         {permintaan?.ringkasan || gate.pesan || 'Formulir resmi'}
       </h3>
       {#if situs}
-        <p class="flex items-center gap-1 text-sm text-body">
-          <Icon name="gembok" class="size-3.5" />{domain(situs)}
+        <p class="flex items-center gap-[5px] text-sm leading-[19px] text-card-ink">
+          <Icon name="gembok" class="size-3" />{domain(situs)}
         </p>
       {/if}
     </div>
-    <Chip nada="hijau" ikon="perisai-centang">Situs resmi</Chip>
+    <span
+      class="inline-flex items-center gap-[5px] rounded-full bg-hijau px-2.5 py-1 text-[13px] leading-5 font-semibold text-hijau-ink"
+      ><Icon name="perisai-centang" class="size-[13px]" />Situs resmi</span
+    >
   </header>
 
   {#if baris.length}
     <dl class="grid sm:grid-cols-2">
       {#each baris as [k, v] (k)}
-        <div class="border-b border-line-3 px-4 py-2.5 sm:px-5 sm:odd:border-r">
-          <dt class="text-[0.8125rem] text-muted">{labelParam(k)}</dt>
-          <dd class="text-base text-ink">{nilaiParam(v)}</dd>
+        <div
+          class="flex min-h-[53.5px] flex-col justify-center border-b border-line px-4 py-1.5 sm:odd:border-r"
+        >
+          <dt class="text-[13px] leading-[17px] text-muted">{labelParam(k)}</dt>
+          <dd class="text-base leading-[22px] text-ink">{nilaiParam(v)}</dd>
         </div>
       {/each}
     </dl>
   {:else if gate.pesan && permintaan?.ringkasan}
-    <p class="border-b border-line-3 px-4 py-3 text-[0.9375rem] text-body sm:px-5">{gate.pesan}</p>
+    <p class="border-b border-line px-4 py-3 text-[15px] text-body">{gate.pesan}</p>
   {/if}
 
-  <p class="flex gap-2.5 bg-kuning px-4 py-3.5 text-[0.9375rem] text-kuning-ink sm:px-5">
-    <Icon name="info" class="mt-0.5 size-4.5 shrink-0" />
+  <p class="flex items-center gap-2.5 bg-kuning px-4 py-3 text-sm leading-5 text-kuning-ink">
+    <Icon name="info" class="size-4 shrink-0" />
     <span>
       Anda akan masuk akun di Browser Pendamping. Kata sandi tidak disimpan. AI hanya mengisi kolom dan
       mengunggah berkas; tombol Kirim tetap Anda yang tekan. Persetujuan berlaku 10 menit.
@@ -76,15 +80,15 @@
   </p>
 
   {#if pesanGalat}
-    <p role="alert" class="px-4 pt-3 text-[0.9375rem] font-medium text-galat sm:px-5">{pesanGalat}</p>
+    <p role="alert" class="px-4 pt-3 text-[15px] font-medium text-galat">{pesanGalat}</p>
   {/if}
 
   {#if aktif && status !== 'disetujui'}
-    <footer class="flex flex-wrap gap-3 px-4 py-3.5 sm:px-5">
+    <footer class="flex flex-wrap items-center gap-2.5 px-4 pt-3 pb-3.5">
       <button
         type="button"
         onclick={onbatal}
-        class="inline-flex min-h-12 items-center rounded-full border border-line-2 bg-surface px-5 text-base text-ink hover:bg-card"
+        class="inline-flex h-[46px] items-center rounded-full border border-line-2 bg-surface px-5 text-base leading-6 text-ink hover:bg-card"
         >Batalkan</button
       >
       <button
@@ -92,17 +96,17 @@
         onclick={onsetujui}
         disabled={status === 'mengirim'}
         aria-busy={status === 'mengirim' || undefined}
-        class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-5 text-base font-semibold text-primer-ink hover:opacity-90 disabled:opacity-80"
+        class="inline-flex h-[52px] items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-6 font-semibold text-primer-ink hover:opacity-90 disabled:opacity-80"
       >
         <Icon
           name={status === 'mengirim' ? 'memuat' : 'centang'}
-          class="size-4.5 {status === 'mengirim' ? 'animate-spin' : ''}"
+          class="size-[18px] {status === 'mengirim' ? 'animate-spin' : ''}"
         />
         Setujui dan buka situs
       </button>
     </footer>
   {:else if status === 'disetujui'}
-    <p class="flex items-center gap-2 px-4 py-3.5 text-[0.9375rem] font-medium text-hijau-ink sm:px-5">
+    <p class="flex items-center gap-2 px-4 py-3.5 text-[15px] font-medium text-hijau-ink">
       <Icon name="centang-bulat" class="size-4.5" /> Anda sudah menyetujui. Browser Pendamping dibuka.
     </p>
   {/if}

@@ -25,13 +25,13 @@
 
 <div class="flex flex-col gap-3">
   {#each jawaban.klaim as k, i (i)}
-    <p class="leading-relaxed">
+    <p>
       {k.teks}
       {#each k.kutipan as q (q.refId)}
         <button
           type="button"
           onclick={() => onpilih?.(q.refId)}
-          class="relative ml-1 inline-grid size-5 place-items-center rounded-md bg-primer align-[0.1em] text-[0.6875rem] font-semibold text-primer-ink before:absolute before:-inset-3 before:content-['']"
+          class="relative ml-1.5 inline-grid size-5 place-items-center rounded-md bg-primer align-[0.1em] text-xs leading-3 font-semibold text-primer-ink before:absolute before:-inset-3 before:content-['']"
           aria-label="Lihat sumber {nomorKutipan.get(q.refId) ?? ''}: {q.judul}"
           >{nomorKutipan.get(q.refId) ?? '•'}</button
         >
@@ -51,6 +51,6 @@
     </div>
   {/if}
   {#if jawaban.kalimatTetap}
-    <p class="text-sm text-muted">{jawaban.kalimatTetap}</p>
+    <p class="text-sm leading-[21px] text-muted">{jawaban.kalimatTetap}</p>
   {/if}
 </div>
