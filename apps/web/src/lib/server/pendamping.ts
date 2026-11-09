@@ -267,6 +267,14 @@ export function butuhWilayahId(origin: string): boolean {
 }
 
 /**
+ * Syarat jaringan Indonesia dinilai pada origin EFEKTIF sesi. Mode Uji selalu dibuka di replika fixtures milik
+ * kita (worker memetakan origin resmi ke replika, atau menolak bila replikanya tidak ada), jadi tak butuh IP
+ * Indonesia; sesi akun warga di portal asli tetap butuh.
+ */
+const butuhWilayahSesi = (origin: string, modeUji: boolean | undefined) =>
+  modeUji !== true && butuhWilayahId(origin);
+
+/**
  * Pilih worker untuk sesi baru: worker yang sudah memegang urusan ini bila sehat (sesi siaga), lalu beban
  * terendah. `null` = tak ada worker sehat yang memenuhi syarat wilayah.
  */
@@ -275,8 +283,9 @@ export async function pilihWorker(
   origin: string,
   urusanId: string,
   fetcher: EgressFetch = egressFetch,
+  modeUji?: boolean,
 ): Promise<PendampingWorker | null> {
-  const idSaja = butuhWilayahId(origin);
+  const idSaja = butuhWilayahSesi(origin, modeUji);
   const kandidat = cfg.workers.filter((w) => !idSaja || w.region === REGION_ID);
   const hidup = (await Promise.all(kandidat.map(async (w) => ({ w, s: await sehat(w, fetcher) })))).filter(
     (x): x is { w: PendampingWorker; s: Sehat } => x.s !== null,
@@ -298,9 +307,9 @@ export async function mulaiSesi(
   fetcher: EgressFetch = egressFetch,
 ): Promise<Hasil<SesiPendamping>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
-  const w = await pilihWorker(cfg, body.origin, body.urusanId, fetcher);
+  const w = await pilihWorker(cfg, body.origin, body.urusanId, fetcher, body.modeUji);
   if (!w)
-    return butuhWilayahId(body.origin)
+    return butuhWilayahSesi(body.origin, body.modeUji)
       ? {
           ok: false,
           response: apiError(503, 'PENDAMPING_WILAYAH_TIDAK_TERSEDIA', PESAN_WILAYAH),
