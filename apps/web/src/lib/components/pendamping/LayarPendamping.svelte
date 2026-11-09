@@ -5,9 +5,9 @@
   import { domain } from '#lib/urusan-status.js';
 
   /**
-   * Browser Pendamping (App 06/07 + papan keadaan): bilah atas gembok + domain resmi + instansi + chip mode,
-   * banner giliran/takeover, siaran canvas, dan bilah bawah progres + Ambil alih + Hentikan (≥ 48 px).
-   * Komponen ini hanya tampilan; canvas dan input tersembunyi diikat ke pemanggil yang memegang viewer.
+   * Browser Pendamping, ukuran dan warna persis dari pen Rafi: App 06 (AI mengisi), App 07 (Giliran Anda)
+   * dan papan u5rYk "Browser Pendamping · Keadaan" (antre, menyiapkan, dijeda, selesai, sesi berakhir,
+   * terputus, mode dipandu). Komponen ini hanya tampilan; canvas dan input tersembunyi diikat ke pemanggil.
    */
   let {
     data,
@@ -58,54 +58,81 @@
     final: 'AI dikunci agar tidak bisa menekan Kirim.',
     periksa: 'AI menunggu sampai Anda selesai.',
   };
+  const isiGiliran = $derived(
+    data.giliran ? [data.giliran.pesan, CATATAN_GILIRAN[data.giliran.alasan]].filter(Boolean).join(' ') : '',
+  );
 
   function ketuk() {
     // Keyboard ponsel: fokuskan input tersembunyi saat warga mengetuk siaran dalam mode takeover.
     if (takeover) inputTeks?.focus();
   }
+
+  // Tombol papan u5rYk: tinggi 44, padding 0 16, jarak 7, 15/600.
+  const TOMBOL_GELAP =
+    'inline-flex h-11 items-center gap-[7px] rounded-full bg-primer px-4 text-[15px] font-semibold whitespace-nowrap text-primer-ink hover:opacity-90';
+  const TOMBOL_TERANG =
+    'inline-flex h-11 items-center gap-[7px] rounded-full border border-line-2 bg-surface px-4 text-[15px] font-semibold whitespace-nowrap text-ink hover:bg-card';
+  const LINGKAR = 'grid size-12 shrink-0 place-items-center rounded-full';
+  const JUDUL = 'text-xl leading-normal font-bold text-ink';
+  const TEKS = 'w-full max-w-[280px] text-center text-sm leading-5 text-muted';
 </script>
 
 <section
   aria-label="Browser Pendamping"
-  class="flex h-full min-h-[32rem] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-lembut"
+  class="flex h-full min-h-[32rem] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_16px_#0000000d]"
 >
-  <!-- Bilah atas: domain resmi selalu terlihat -->
-  <div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-3 bg-card px-4 py-3">
-    <Icon name="gembok" class="size-4.5 shrink-0 text-ink" label="Koneksi aman" />
-    <span class="font-semibold text-ink">{domain(situs)}</span>
-    {#if instansi}<span class="hidden text-sm text-body sm:inline">{instansi}</span>{/if}
-    <span class="ml-auto"><ChipMode keadaan={k} /></span>
+  <!-- Bilah atas (Top bar): gembok + domain resmi + instansi, chip mode di kanan -->
+  <div class="flex min-h-[55.5px] shrink-0 items-center gap-2.5 border-b border-line bg-card px-4">
+    <div class="flex min-w-0 flex-1 items-center gap-2">
+      <Icon name="gembok" class="size-4 shrink-0 text-ink" label="Koneksi aman" />
+      <span class="truncate text-[15px] font-semibold text-ink">{domain(situs)}</span>
+      {#if instansi}<span class="hidden truncate text-sm text-card-ink sm:inline">{instansi}</span>{/if}
+    </div>
+    <ChipMode keadaan={k} />
   </div>
 
   {#if k === 'giliran' && data.giliran}
-    <div role="status" class="flex gap-3 border-b border-kuning bg-kuning/60 px-4 py-3.5">
-      <span class="grid size-8 shrink-0 place-items-center rounded-full bg-kuning text-kuning-ink">
-        <Icon name="tangan" class="size-4.5" />
+    <!-- Giliran Anda sheet (App 07) -->
+    <div
+      role="status"
+      class="flex shrink-0 gap-3.5 border-b border-kuning-garis bg-kuning-lembar px-[18px] py-3.5"
+    >
+      <span class="grid size-[34px] shrink-0 place-items-center rounded-full bg-kuning text-kuning-ink">
+        <Icon name="tangan" class="size-[17px]" />
       </span>
-      <div>
-        <p class="font-semibold text-ink">{JUDUL_GILIRAN[data.giliran.alasan] ?? 'Giliran Anda'}</p>
-        <p class="text-[0.9375rem] text-body">{data.giliran.pesan}</p>
-        <p class="text-sm text-muted">{CATATAN_GILIRAN[data.giliran.alasan] ?? ''}</p>
+      <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+        <p class="text-[17px] leading-normal font-bold text-ink">
+          {JUDUL_GILIRAN[data.giliran.alasan] ?? 'Giliran Anda'}
+        </p>
+        {#if isiGiliran}<p class="text-[15px] leading-[23px] text-muted">{isiGiliran}</p>{/if}
       </div>
     </div>
   {:else if k === 'dijeda'}
-    <div role="status" class="flex flex-wrap items-center gap-3 border-b border-line-3 bg-bg-2 px-4 py-3">
-      <Icon name="jeda" class="size-5 shrink-0" />
-      <p class="min-w-0 flex-1 text-[0.9375rem] text-ink">
-        <strong class="font-semibold">AI berhenti.</strong> Yang Anda ketik tidak dicatat dan tidak dilihat AI.
-      </p>
-      <button
-        type="button"
-        onclick={onkembalikan}
-        class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-5 font-semibold text-primer-ink hover:opacity-90"
-      >
-        <Icon name="putar" class="size-4" /> Kembalikan ke AI
-      </button>
+    <!-- Dijeda (papan 06): warga mengambil alih, AI berhenti sampai warga memilih Lanjutkan -->
+    <div
+      role="status"
+      class="flex shrink-0 flex-wrap items-center gap-3.5 border-b border-line bg-bg-2 px-[18px] py-3.5"
+    >
+      <span class="grid size-[34px] shrink-0 place-items-center rounded-full bg-surface text-muted">
+        <Icon name="jeda" class="size-[17px]" />
+      </span>
+      <div class="flex min-w-[min(100%,14rem)] flex-1 basis-56 flex-col gap-1.5">
+        <p class="text-[17px] leading-normal font-bold text-ink">AI berhenti</p>
+        <p class="text-[15px] leading-[23px] text-muted">
+          Yang Anda ketik tidak dicatat dan tidak dilihat AI. Mau lanjut atau batalkan?
+        </p>
+      </div>
+      <div class="flex gap-2">
+        <button type="button" onclick={onkembalikan} class={TOMBOL_GELAP}>
+          <Icon name="putar" class="size-[15px]" />Lanjutkan
+        </button>
+        <button type="button" onclick={onhentikan} class={TOMBOL_TERANG}>Batalkan</button>
+      </div>
     </div>
   {/if}
 
-  <!-- Siaran: canvas selalu ada agar viewer bisa menggambar; keadaan lain menutupinya. -->
-  <div class="relative min-h-0 flex-1 bg-[#f2f2ef]">
+  <!-- Siaran layar: canvas selalu ada agar viewer bisa menggambar; keadaan lain menutupinya. -->
+  <div class="relative min-h-0 flex-1 bg-siaran">
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="absolute inset-0" onpointerup={ketuk}>
       <canvas
@@ -124,120 +151,101 @@
       class="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0"
       tabindex="-1"></textarea>
 
-    {#if !siaran}
-      <div class="absolute inset-0 grid place-items-center overflow-y-auto bg-[#f2f2ef] p-6 text-center">
-        <div class="flex max-w-sm flex-col items-center gap-3">
-          {#if k === 'antre'}
-            <span class="grid size-12 place-items-center rounded-full bg-bg-2"
-              ><Icon name="antre" class="size-6" /></span
-            >
-            <p class="text-2xl font-semibold tracking-tight text-ink">
-              Anda nomor {data.antrean?.posisi ?? 1}
-            </p>
-            <p class="text-[0.9375rem] text-body">
-              Satu sesi paling lama 15 menit. Boleh ditinggal, kami kabari saat siap.
-            </p>
-            <button
-              type="button"
-              onclick={onhentikan}
-              class="mt-1 inline-flex min-h-12 items-center rounded-full border border-line-2 bg-surface px-5 font-semibold text-ink hover:bg-card"
-              >Batalkan antrean</button
-            >
-          {:else if k === 'menyiapkan' || k === 'mati'}
-            <div class="flex w-full flex-col gap-3" aria-hidden="true">
-              <span class="h-7 w-full animate-pulse rounded-lg bg-line"></span>
-              <span class="h-4 w-1/2 animate-pulse rounded bg-line"></span>
-              <div class="grid grid-cols-2 gap-3">
-                <span class="h-9 animate-pulse rounded-lg bg-line"></span>
-                <span class="h-9 animate-pulse rounded-lg bg-line"></span>
-              </div>
-            </div>
-            <p role="status" class="text-[0.9375rem] text-body">Menyiapkan browser khusus urusan ini…</p>
-          {:else if k === 'selesai'}
-            <span class="grid size-14 place-items-center rounded-full bg-hijau text-hijau-ink"
-              ><Icon name="centang" class="size-7" /></span
-            >
-            {#if data.bukti?.nomor}
-              <p class="text-sm text-muted">Nomor permohonan</p>
-              <p class="font-mono text-2xl tracking-wide text-ink">{data.bukti.nomor}</p>
-            {:else}
-              <p class="text-xl font-semibold text-ink">Pengajuan terkirim</p>
-            {/if}
-            <p class="text-[0.9375rem] text-body">Browser ditutup. Login dan cookie ikut dihapus.</p>
-          {:else if k === 'kedaluwarsa'}
-            <span class="grid size-12 place-items-center rounded-full bg-bg-2"
-              ><Icon name="waktu-habis" class="size-6" /></span
-            >
-            <p class="text-xl font-semibold text-ink">Sesi berakhir</p>
-            <p class="text-[0.9375rem] text-body">Terlalu lama tidak aktif. Data urusan Anda aman.</p>
-            <button
-              type="button"
-              onclick={onmulailagi}
-              class="mt-1 inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-5 font-semibold text-primer-ink hover:opacity-90"
-              ><Icon name="ulang" class="size-4.5" />Mulai lagi</button
-            >
-          {:else if k === 'dipandu' || k === 'tidak_tersedia'}
-            <span class="grid size-12 place-items-center rounded-full bg-mawar text-galat"
-              ><Icon name="peta" class="size-6" /></span
-            >
-            <p class="text-xl font-semibold text-ink">
-              {k === 'dipandu' ? 'Situs menolak Browser Pendamping' : 'Browser Pendamping belum tersedia'}
-            </p>
-            <p class="text-[0.9375rem] text-body">
-              {data.pesan ??
-                'Buka situs resmi sendiri. Urusin menunjukkan langkahnya, data yang perlu disalin, dan berkas yang perlu diunggah.'}
-            </p>
-            <button
-              type="button"
-              onclick={onpanduan}
-              class="mt-1 inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-5 font-semibold text-primer-ink hover:opacity-90"
-              ><Icon name="panah" class="size-4.5" />Buka panduan</button
-            >
-          {:else if k === 'galat'}
-            <span class="grid size-12 place-items-center rounded-full bg-mawar text-galat"
-              ><Icon name="peringatan" class="size-6" /></span
-            >
-            <p class="text-xl font-semibold text-ink">AI berhenti dengan aman</p>
-            <p class="text-[0.9375rem] text-body">
-              {data.pesan ?? 'Tidak ada yang dikirim. Coba lagi sebentar lagi.'}
-            </p>
-            <button
-              type="button"
-              onclick={onmulailagi}
-              class="mt-1 inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-5 font-semibold text-primer-ink hover:opacity-90"
-              ><Icon name="ulang" class="size-4.5" />Coba lagi</button
-            >
+    {#if k === 'menyiapkan' || k === 'mati'}
+      <!-- 02 Menyiapkan browser: kerangka, bukan spinner kosong -->
+      <div class="absolute inset-0 flex flex-col items-start gap-3 overflow-hidden bg-siaran p-5">
+        <span class="h-7 w-full shrink-0 animate-pulse rounded-md bg-kerangka" aria-hidden="true"></span>
+        <span class="h-4 w-[220px] max-w-full shrink-0 rounded-md bg-kerangka-2" aria-hidden="true"></span>
+        <span class="h-2.5 w-40 shrink-0 rounded-md bg-kerangka-2 opacity-70" aria-hidden="true"></span>
+        {#each [0, 1] as baris (baris)}
+          <div class="flex w-full shrink-0 gap-3" aria-hidden="true">
+            <span class="h-[34px] flex-1 rounded-[7px] bg-kerangka-2"></span>
+            <span class="h-[34px] flex-1 rounded-[7px] bg-kerangka-2"></span>
+          </div>
+        {/each}
+        <p role="status" class="text-[13px] text-card-ink">Menyiapkan browser khusus urusan ini…</p>
+      </div>
+    {:else if !siaran}
+      <div
+        class="absolute inset-0 flex flex-col items-center justify-center gap-3 overflow-y-auto bg-siaran p-5"
+      >
+        {#if k === 'antre'}
+          <span class="{LINGKAR} bg-bg-2 text-muted"><Icon name="antre" class="size-[21.6px]" /></span>
+          <p class="text-2xl leading-normal font-bold text-ink">Anda nomor {data.antrean?.posisi ?? 1}</p>
+          <p class={TEKS}>Satu sesi paling lama 15 menit. Boleh ditinggal, kami kabari saat siap.</p>
+          <button type="button" onclick={onhentikan} class={TOMBOL_TERANG}>Batalkan antrean</button>
+        {:else if k === 'selesai'}
+          <span class="grid size-14 place-items-center rounded-full bg-hijau text-hijau-ink"
+            ><Icon name="centang" class="size-[25.2px]" /></span
+          >
+          {#if data.bukti?.nomor}
+            <p class="text-[13px] text-muted">Nomor permohonan</p>
+            <p class="font-mono text-xl font-semibold text-ink">{data.bukti.nomor}</p>
+          {:else}
+            <p class={JUDUL}>Pengajuan terkirim</p>
           {/if}
-        </div>
+          <p class="text-center text-[13px] text-card-ink">Browser ditutup. Login dan cookie ikut dihapus.</p>
+        {:else if k === 'kedaluwarsa'}
+          <span class="{LINGKAR} bg-bg-2 text-muted"><Icon name="waktu-habis" class="size-[21.6px]" /></span>
+          <p class={JUDUL}>Sesi berakhir</p>
+          <p class={TEKS}>Terlalu lama tidak aktif. Data urusan Anda aman.</p>
+          <button type="button" onclick={onmulailagi} class={TOMBOL_GELAP}
+            ><Icon name="ulang" class="size-[15px]" />Mulai lagi</button
+          >
+        {:else if k === 'dipandu' || k === 'tidak_tersedia'}
+          <span class="{LINGKAR} bg-merah text-galat"><Icon name="peta" class="size-[21.6px]" /></span>
+          <p class="text-center text-lg leading-normal font-bold text-ink">
+            {k === 'dipandu' ? 'Situs menolak Browser Pendamping' : 'Browser Pendamping belum tersedia'}
+          </p>
+          <p class="{TEKS} max-w-[330px]">
+            {data.pesan ??
+              'Buka situs resmi sendiri. Urusin menunjukkan langkahnya, data yang perlu disalin, dan berkas yang perlu diunggah.'}
+          </p>
+          <button type="button" onclick={onpanduan} class={TOMBOL_GELAP}
+            ><Icon name="panah" class="size-[15px]" />Buka panduan</button
+          >
+        {:else if k === 'galat'}
+          <span class="{LINGKAR} bg-merah text-galat"><Icon name="peringatan" class="size-[21.6px]" /></span>
+          <p class={JUDUL}>AI berhenti</p>
+          <p class={TEKS}>{data.pesan ?? 'Tidak ada yang dikirim. Coba lagi sebentar lagi.'}</p>
+          <button type="button" onclick={onmulailagi} class={TOMBOL_GELAP}
+            ><Icon name="ulang" class="size-[15px]" />Coba lagi</button
+          >
+        {/if}
       </div>
     {:else if k === 'terputus'}
-      <div role="status" class="absolute inset-0 grid place-items-center bg-[#f2f2ef]/90 p-6 text-center">
-        <div class="flex flex-col items-center gap-3">
-          <span class="grid size-12 place-items-center rounded-full bg-bg-2"
-            ><Icon name="terputus" class="size-6" /></span
-          >
-          <p class="text-xl font-semibold text-ink">Menyambung ulang…</p>
-          <p class="text-[0.9375rem] text-body">Otomatis lanjut dari kolom terakhir.</p>
-        </div>
+      <!-- 10 Koneksi putus -->
+      <div
+        role="status"
+        class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-siaran p-5"
+      >
+        <span class="{LINGKAR} bg-bg-2 text-muted"><Icon name="terputus" class="size-[21.6px]" /></span>
+        <p class={JUDUL}>Menyambung ulang…</p>
+        <p class={TEKS}>Otomatis lanjut dari kolom terakhir.</p>
+        <span class="h-1 w-[200px] overflow-hidden rounded-sm bg-kerangka-2" aria-hidden="true">
+          <span class="block h-full w-[90px] rounded-sm bg-card-ink"></span>
+        </span>
       </div>
     {/if}
   </div>
 
-  <!-- Bilah bawah -->
-  {#if siaran || k === 'antre' || k === 'menyiapkan'}
-    <div class="flex flex-wrap items-center gap-3 border-t border-line-3 bg-surface px-4 py-3">
-      <div class="min-w-[10rem] flex-1">
-        <div class="flex items-baseline justify-between gap-2 text-[0.9375rem]">
-          <span class="font-semibold text-ink">
+  <!-- Bilah bawah (Bottom bar): progres + Ambil alih + Hentikan -->
+  {#if k === 'ai' || k === 'giliran'}
+    <div
+      class="flex min-h-[75.5px] shrink-0 flex-wrap items-center gap-x-4 gap-y-3 border-t border-line bg-card px-4 py-3"
+    >
+      <div class="flex min-w-[10rem] flex-1 flex-col gap-2">
+        <div class="flex items-start justify-between gap-2">
+          <span class="truncate text-[15px] font-semibold text-ink">
             {#if k === 'giliran' && data.giliran?.alasan === 'final'}Formulir terisi · AI menunggu Anda{:else if data.langkah}{data
                 .langkah.label}{:else}Mengisi formulir{/if}
           </span>
-          {#if data.langkah}<span class="text-sm text-muted"
+          {#if data.langkah}<span class="shrink-0 text-sm whitespace-nowrap text-card-ink"
               >{data.langkah.indeks + 1} dari {data.langkah.total}</span
             >{/if}
         </div>
         <div
-          class="mt-2 h-1.5 overflow-hidden rounded-full bg-line"
+          class="h-1.5 overflow-hidden rounded-[3px] bg-line"
           role="progressbar"
           aria-label="Kemajuan pengisian"
           aria-valuenow={persen}
@@ -245,7 +253,7 @@
           aria-valuemax="100"
         >
           <div
-            class="h-full rounded-full {k === 'giliran' ? 'bg-[#2f6b4f]' : 'bg-nila-ink'}"
+            class="h-full rounded-[3px] {k === 'giliran' ? 'bg-hijau-ink' : 'bg-nila-ink'}"
             style="width: {persen}%"
           ></div>
         </div>
@@ -254,17 +262,17 @@
         <button
           type="button"
           onclick={onambilalih}
-          class="inline-flex min-h-12 items-center gap-2 rounded-full border border-line-2 bg-surface px-5 font-semibold text-ink hover:bg-card"
+          class="inline-flex h-12 items-center gap-2 rounded-full border border-line-2 bg-surface px-[18px] text-base font-semibold whitespace-nowrap text-ink hover:bg-card"
         >
-          <Icon name="tangan" class="size-4.5" /> Ambil alih
+          <Icon name="tangan" class="size-[17px]" />Ambil alih
         </button>
       {/if}
       <button
         type="button"
         onclick={onhentikan}
-        class="inline-flex min-h-12 items-center gap-2 rounded-full border border-galat-garis/70 bg-surface px-5 font-semibold text-galat hover:bg-mawar"
+        class="inline-flex h-12 items-center gap-2 rounded-full border border-galat bg-surface px-[18px] text-base font-semibold whitespace-nowrap text-galat hover:bg-merah"
       >
-        <Icon name="jeda" class="size-4.5" /> Hentikan
+        <Icon name="jeda" class="size-[17px]" />Hentikan
       </button>
     </div>
   {/if}
