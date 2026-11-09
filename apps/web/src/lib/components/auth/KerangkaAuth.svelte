@@ -76,9 +76,10 @@
 </div>
 
 <style>
-  /* Latar panel desktop = gambar gradasi titik dari ekspor frame (sama di App 15–20) */
+  /* Latar panel desktop = gambar gradasi titik dari ekspor frame (sama di App 15–20). Gambarnya terang,
+     jadi tema gelap tetap memakai latar token agar judul (warna ink tema) terbaca. */
   @media (min-width: 1024px) {
-    .panel-akun {
+    :global(:root:not([data-theme='dark'])) .panel-akun {
       background: var(--panel-akun) center / 100% 100% no-repeat;
     }
   }
