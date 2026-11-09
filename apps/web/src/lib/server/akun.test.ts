@@ -1044,6 +1044,14 @@ describe('form action halaman akun (App 15–20)', () => {
       masukLoad(ev(get('/masuk?next=/lacak'), { locals: { akun: akunDari(jar) } }) as never),
     );
     expect(isRedirect(sudah) && sudah.location).toBe('/lacak');
+    // masuk ulang (unduh di perangkat baru): akun yang sudah masuk tetap melihat formulir, kembali ke `lanjut`
+    const lanjut = encodeURIComponent('/dokumen?unduh=d1');
+    const ulang = (await masukLoad(
+      ev(get(`/masuk?ulang=1&lanjut=${lanjut}`), { locals: { akun: akunDari(jar) } }) as never,
+    )) as any;
+    expect([ulang.next, ulang.ulang]).toEqual(['/dokumen?unduh=d1', { email: EMAIL }]);
+    const luar = (await masukLoad(ev(get('/masuk?ulang=1&lanjut=//evil.example.com')) as never)) as any;
+    expect([luar.next, luar.ulang]).toEqual(['/', null]);
   });
 
   it('lupa → atur ulang lewat halaman; kirim ulang verifikasi lewat halaman', async () => {

@@ -18,6 +18,7 @@
         juri: boolean;
         turnstileSiteKey: string;
         tautkan: boolean;
+        ulang: { email: string } | null;
       }>(),
     );
   const form = $derived(formAuth());
@@ -49,6 +50,13 @@
         >
       {/if}
     </div>
+  {/if}
+
+  {#if data.ulang}
+    <p data-ulang role="status" class="mt-5 rounded-xl bg-bg-2 px-4 py-3 text-[0.9375rem] text-ink">
+      Demi keamanan, masuk sekali lagi sebelum membuka dokumen di perangkat ini. Setelah itu dokumen langsung
+      terbuka.
+    </p>
   {/if}
 
   {#if data.tautkan}
@@ -100,7 +108,7 @@
           inputmode="email"
           autocomplete="email"
           required
-          value={form?.email ?? ''}
+          value={form?.email ?? data.ulang?.email ?? ''}
           class="h-14 w-full rounded-2xl border border-line-2 bg-surface pr-4 pl-12 text-base text-ink"
         />
       </div>

@@ -295,6 +295,24 @@ test('#46 hapus akun: user/sesi/vault/berkas/DEK hilang, nol PII plaintext di DB
   );
   const perlu = await api(laptop.page, 'GET', `/api/vault/${docId}`);
   expect([perlu.status, perlu.json.kode]).toEqual([401, 'PERLU_MASUK_ULANG']);
+  // UI: "Lihat" → masuk ulang (email terisi) → kembali ke /dokumen dan unduhan berlanjut
+  await laptop.page.goto('/dokumen');
+  await laptop.page.locator('[data-lihat]').first().click();
+  await expect(laptop.page).toHaveURL(/\/masuk\?ulang=1&lanjut=%2Fdokumen%3Funduh%3D/);
+  await expect(laptop.page.locator('[data-ulang]')).toBeVisible();
+  await expect(laptop.page.getByLabel('Email')).toHaveValue(email);
+  await laptop.page.getByLabel('Kata sandi').fill(SANDI);
+  const [unduhan] = await Promise.all([
+    laptop.page.waitForEvent('download'),
+    laptop.page.getByRole('button', { name: 'Masuk', exact: true }).click(),
+  ]);
+  expect(unduhan.suggestedFilename()).toMatch(/^KTP/);
+  await expect(laptop.page).toHaveURL(/\/dokumen$/);
+  db((d) =>
+    d
+      .prepare('UPDATE auth_sessions SET auth_at = ?, pernah_unduh = 0 WHERE user_id = ?')
+      .run(new Date(Date.now() - 20 * 60_000).toISOString(), id),
+  );
   expect((await api(laptop.page, 'POST', '/api/akun/konfirmasi-sandi', { sandi: SANDI })).status).toBe(200);
   expect((await api(laptop.page, 'GET', `/api/vault/${docId}`)).status).toBe(200);
   await laptop.ctx.close();

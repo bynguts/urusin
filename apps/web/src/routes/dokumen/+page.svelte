@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { goto, replaceState } from '$app/navigation';
+  import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import Icon from '#lib/components/Icon.svelte';
   import BrankasTertutup from '#lib/components/akun/BrankasTertutup.svelte';
   import TabBrankas from '#lib/components/akun/TabBrankas.svelte';
@@ -11,6 +14,7 @@
     hapusDokumen,
     periksaBerkas,
     ukuranBerkas,
+    unduhDokumen,
     unggahDokumen,
     type DokumenAkun,
     type Hasil,
@@ -24,6 +28,31 @@
 
   async function muat() {
     hasil = await daftarDokumen();
+    // Kembali dari masuk ulang (`/dokumen?unduh=<id>`): lanjutkan unduhan yang tadi diminta.
+    const unduh = page.url.searchParams.get('unduh');
+    if (!unduh || !hasil.ok) return;
+    replaceState(resolve('/dokumen'), {});
+    const d = hasil.data.dokumen.find((x) => x.id === unduh);
+    if (d) await lihat(d);
+  }
+
+  /** Buka dokumen. Perangkat baru → masuk ulang dulu (401 PERLU_MASUK_ULANG), lalu kembali ke sini. */
+  async function lihat(d: DokumenAkun) {
+    const r = await unduhDokumen(d.id);
+    if (!r.ok) {
+      if (r.lanjut) {
+        const masuk = `${resolve('/masuk')}?ulang=1&lanjut=${encodeURIComponent(r.lanjut)}`;
+        // eslint-disable-next-line svelte/no-navigation-without-resolve -- path lewat resolve(), hanya ditambah query
+        return void (await goto(masuk));
+      }
+      return void (pesanStatus = r.pesan);
+    }
+    const url = URL.createObjectURL(r.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = d.judul;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
   $effect(() => {
     void muat();
@@ -166,6 +195,11 @@
                   href="/api/vault/{encodeURIComponent(d.id)}"
                   target="_blank"
                   rel="external noopener"
+                  data-lihat
+                  onclick={(e) => {
+                    e.preventDefault();
+                    void lihat(d);
+                  }}
                   class="inline-flex min-h-12 items-center gap-1.5 rounded-full border border-line-2 px-4 text-[0.9375rem] text-ink hover:bg-card"
                 >
                   <Icon name="mata" class="size-4.5" /> Lihat<span class="sr-only">: {d.judul}</span>

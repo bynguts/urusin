@@ -53,6 +53,26 @@ async function panggil<T>(input: string, init?: RequestInit): Promise<Hasil<T>> 
   return { ok: true, data: (await r.json()) as T };
 }
 
+/**
+ * Unduh berkas dokumen. Perangkat baru tanpa bukti kredensial ≤ 15 menit → 401 PERLU_MASUK_ULANG:
+ * `lanjut` = `/dokumen?unduh=<id>`; UI membuka `/masuk?ulang=1&lanjut=<lanjut>` lalu unduhan dilanjutkan.
+ */
+export async function unduhDokumen(
+  id: string,
+): Promise<{ ok: true; blob: Blob } | { ok: false; lanjut?: string; pesan: string }> {
+  let r: Response;
+  try {
+    r = await fetch(`/api/vault/${encodeURIComponent(id)}`);
+  } catch {
+    return { ok: false, pesan: 'Koneksi terputus. Periksa internet, lalu coba lagi.' };
+  }
+  if (r.ok) return { ok: true, blob: await r.blob() };
+  const j = (await r.json().catch(() => null)) as { kode?: string; pesanWarga?: string } | null;
+  if (r.status === 401 && j?.kode === 'PERLU_MASUK_ULANG')
+    return { ok: false, lanjut: `/dokumen?unduh=${encodeURIComponent(id)}`, pesan: '' };
+  return { ok: false, pesan: j?.pesanWarga ?? 'Dokumen tidak bisa dibuka. Coba lagi sebentar lagi.' };
+}
+
 export const ambilDataDiri = () =>
   panggil<{ dataDiri: DataDiri; diubahPada: string | null }>('/api/vault/data-diri');
 

@@ -27,7 +27,9 @@ Keputusan dan model ancaman ada di [ADR 0028](../adr/0028-akun-dan-login.md). Ko
 
 Data `load`:
 
-- `/masuk`: `{ next, googleAktif, juri, turnstileSiteKey, tautkan, galat }`.
+- `/masuk`: `{ next, ulang, googleAktif, juri, turnstileSiteKey, tautkan, galat }`.
+  - `?ulang=1&lanjut=/path` = masuk ulang untuk akun yang sudah masuk (`ulang = { email }`, formulir tetap tampil, email terisi, penanda `[data-ulang]`); sandi atau Google memberi sesi segar lalu kembali ke `lanjut` (alias `next`, hanya path situs ini).
+  - Unduh dokumen (`unduhDokumen` di `lib/akun/klien.ts`): 401 `PERLU_MASUK_ULANG` → `/masuk?ulang=1&lanjut=/dokumen?unduh=<id>`; `/dokumen?unduh=<id>` melanjutkan unduhan otomatis.
   - `juri` selalu true: tombol juri selalu tampil. Tanpa kunci Turnstile, batas per IP/global dan kedaluwarsa 24 jam tetap berlaku.
   - `turnstileSiteKey` → render widget Cloudflare Turnstile (skrip `challenges.cloudflare.com`); widget mengisi `cf-turnstile-response` sendiri. Bila ada site key, tampilkan widget di tombol juri selalu, dan di formulir masuk setelah galat `TURNSTILE_WAJIB`.
   - `galat` dari `?galat=`: `GOOGLE_GAGAL`, `GOOGLE_TIDAK_AKTIF`, `GOOGLE_EMAIL_BELUM_TERVERIFIKASI`, `GOOGLE_PERLU_SANDI`, `GOOGLE_SUDAH_DIPAKAI`.
