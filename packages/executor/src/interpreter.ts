@@ -389,7 +389,13 @@ export class Interpreter {
         const r = await this.driver.run(c.tabId, { kind: 'check', check: step.until });
         if (r === 'interrupted') return this.interrupted(c);
         if (r.ok && r.value === true) return this.advance(c);
-        await this.save({ ...c, status: 'waiting_gate', message: step.message });
+        let message = step.message;
+        if (step.messageIf) {
+          const m = await this.driver.run(c.tabId, { kind: 'check', check: step.messageIf.check });
+          if (m === 'interrupted') return this.interrupted(c);
+          if (m.ok && m.value === true) message = step.messageIf.message;
+        }
+        await this.save({ ...c, status: 'waiting_gate', message });
         return 'stop';
       }
       default:

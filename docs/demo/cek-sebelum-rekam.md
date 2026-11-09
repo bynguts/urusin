@@ -83,3 +83,17 @@ Pakai akun Google milik perekam sendiri. Untuk uji kesiapan juri, minimal sekali
 **Lulus bila:** semua langkah 0–5 hijau (6 opsional). Langkah 4.1 dengan akun Google di luar tim wajib hijau
 sebelum submission, karena juri bisa memakai Google. Catatan: email verifikasi dan atur ulang sandi masih mode
 log (README "Batasan"), jadi alur daftar dengan email tidak termasuk checklist ini.
+
+## 7. Sebelum repo dibuat Public (wajib, oleh ops-sec/lead)
+
+Repo publik + runner self-hosted = siapa pun bisa menjalankan kode di agent-vm lewat PR dari fork. Langkah ini
+wajib walaupun runner cadangan tidak pernah dipasang (cukup memastikan hasilnya nol).
+
+| #   | Langkah                                                             | Hasil yang diharapkan       | Bila gagal                                                   |
+| --- | ------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------ |
+| 7.1 | `gh api repos/bynguts/urusin/actions/runners --jq .total_count`     | `0`                         | `sudo deploy/ci-runner/uninstall.sh` di agent-vm, ulangi 7.1 |
+| 7.2 | `gh variable list --repo bynguts/urusin`                            | Tidak ada `URUSIN_RUNNER`   | `gh variable delete URUSIN_RUNNER --repo bynguts/urusin`     |
+| 7.3 | `ssh agent-vm 'systemctl is-active urusin-ci-runner; id urusin-ci'` | `inactive` / tidak ada user | Jalankan uninstall; jangan ubah visibilitas sebelum bersih   |
+| 7.4 | Token admin lokal yang membuat registration/remove token runner     | Sudah dirotasi/dicabut      | Rotasi sekarang (tidak pernah ada PAT di box)                |
+
+Detail: [`deploy/ci-runner/README.md`](../../deploy/ci-runner/README.md).

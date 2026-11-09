@@ -7,6 +7,7 @@ import { css, fill, gate, nav, upload, urlIncludes } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
 import {
   chromiumArgs,
+  pesanGagal,
   pidsOfProfile,
   PROFIL_PREFS,
   proxyEdgeOption,
@@ -178,6 +179,13 @@ describe('proxy peramban', () => {
     expect(chromiumArgs({ jsHeapMb: 1 })).toContain(
       '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1',
     );
+    // Edge produksi: IP kontainer edge yang dikecualikan, bukan 127.0.0.1 (regresi run 6).
+    const edge = chromiumArgs({ jsHeapMb: 1 }, '172.30.1.3');
+    expect(edge).toContain('--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 172.30.1.3');
+    expect(edge.join(' ')).not.toContain('EXCLUDE 127.0.0.1');
+    // Hanya IP literal: nama host (atau sisipan aturan) ditolak.
+    expect(() => chromiumArgs({ jsHeapMb: 1 }, 'pendamping-edge')).toThrow(/IP literal/);
+    expect(() => chromiumArgs({ jsHeapMb: 1 }, '1.2.3.4 , MAP * 5.6.7.8')).toThrow(/IP literal/);
   });
 });
 
@@ -354,6 +362,29 @@ describe('skrip runner untuk isolated world', () => {
 });
 
 describe('peramban: utilitas', () => {
+  it('pesan gagal menyebut alasan nyata (jaringan/kode), bukan sekadar "berhenti dengan aman"', () => {
+    const H = 'fixtures.urusinai.web.id';
+    expect(pesanGagal('DOMAIN_NOT_ALLOWED', H, 'net::ERR_TUNNEL_CONNECTION_FAILED')).toBe(
+      `Halaman ${H} tidak bisa dibuka: jalur keluar Browser Pendamping tidak bisa tersambung ke situs itu ` +
+        '(net::ERR_TUNNEL_CONNECTION_FAILED). Lanjutkan lewat panduan.',
+    );
+    expect(pesanGagal('DOMAIN_NOT_ALLOWED', H, 'net::ERR_NAME_NOT_RESOLVED')).toContain('tidak ditemukan');
+    expect(pesanGagal('DOMAIN_NOT_ALLOWED', H, 'net::ERR_CONNECTION_TIMED_OUT')).toContain('tidak menjawab');
+    expect(pesanGagal('DOMAIN_NOT_ALLOWED', H, 'net::ERR_CERT_AUTHORITY_INVALID')).toContain('sertifikat');
+    expect(pesanGagal('DOMAIN_NOT_ALLOWED', H, 'net::ERR_CONNECTION_REFUSED')).toContain('menolak');
+    expect(pesanGagal('DOMAIN_NOT_ALLOWED', H, 'net::ERR_FAILED')).toContain('koneksi ke situs gagal');
+    expect(pesanGagal('DOMAIN_NOT_ALLOWED', H)).toContain(`di luar ${H}`);
+    expect(pesanGagal('TAB_CLOSED', H)).toContain('tertutup');
+    expect(pesanGagal('PLACEHOLDER_UNRESOLVED', H)).toContain('Data Diri atau Dokumen');
+    expect(pesanGagal('CONSENT_DENIED', H)).toContain('Izin mengisi');
+    for (const k of ['VERIFY_FAILED', 'VERIFY_UNREADABLE', 'WRITE_UNVERIFIED', 'WRITE_WITHOUT_VERIFY'])
+      expect(pesanGagal(k, H)).toContain('tidak bisa memastikan');
+    expect(pesanGagal('INJECT_FAILED', H)).toBe(
+      `Langkah otomatis di ${H} tidak bisa dijalankan (kode INJECT_FAILED). Lanjutkan lewat panduan.`,
+    );
+    for (const k of ['DOMAIN_NOT_ALLOWED', 'TAB_CLOSED', 'INJECT_FAILED'])
+      expect(pesanGagal(k, H)).not.toContain('berhenti dengan aman');
+  });
   it('label langkah tanpa nilai isian', () => {
     expect(stepLabel(nav('/x'))).toBe('Membuka halaman');
     expect(stepLabel(fill([{ by: 'label', value: 'Nomor HP' }], '{{PEMOHON.HP}}'))).toBe('Mengisi Nomor HP');
@@ -393,6 +424,52 @@ describe('peramban: utilitas', () => {
       expect(pssMb([10], proc, 'linux')).toBe(100);
       expect(pssMb([10, 11, 12], proc, 'linux')).toBe(150);
       expect(pssMb([10], proc, 'win32')).toBeUndefined();
+      // Renderer sandbox setuid (smaps_rollup EACCES/tidak ada): memori privat RssAnon + RssShmem, BUKAN VmRSS
+      // yang menghitung pustaka bersama (RssFile) di setiap proses. Angka dari pengukuran kontainer produksi.
+      mkdirSync(join(proc, '13'));
+      writeFileSync(
+        join(proc, '13', 'status'),
+        'Name:\tchrome\nVmRSS:\t  133837 kB\nRssAnon:\t   34746 kB\nRssFile:\t   98829 kB\nRssShmem:\t     262 kB\n',
+      );
+      expect(pssMb([13], proc, 'linux')).toBe(34);
+      expect(pssMb([10, 13], proc, 'linux')).toBe(134);
+    } finally {
+      rmSync(proc, { recursive: true, force: true });
+    }
+  });
+
+  it('pssMb: angka pengukuran sandbox setuid (10 proses) tetap di bawah anggaran 450 MB', () => {
+    // Dari `docker run` image produksi dengan userns ditolak: 5 proses PSS terbaca, 5 renderer/zygote EACCES.
+    const proc = mkdtempSync(join(tmpdir(), 'proc-'));
+    const terbaca: [number, number][] = [
+      [21, 111153],
+      [29, 20628],
+      [31, 15755],
+      [56, 30903],
+      [61, 36693],
+    ];
+    const tertutup: [number, number, number, number, number][] = [
+      [30, 1664, 0, 1664, 0],
+      [33, 19500, 15788, 3712, 0],
+      [88, 52212, 16116, 36096, 0],
+      [129, 130700, 33932, 96512, 256],
+      [142, 116228, 22788, 92544, 896],
+    ];
+    try {
+      for (const [pid, pss] of terbaca) {
+        mkdirSync(join(proc, String(pid)));
+        writeFileSync(join(proc, String(pid), 'smaps_rollup'), `Pss:  ${pss} kB\n`);
+      }
+      for (const [pid, rss, anon, file, shmem] of tertutup) {
+        mkdirSync(join(proc, String(pid)));
+        writeFileSync(
+          join(proc, String(pid), 'status'),
+          `VmRSS:\t${rss} kB\nRssAnon:\t${anon} kB\nRssFile:\t${file} kB\nRssShmem:\t${shmem} kB\n`,
+        );
+      }
+      const pids = [...terbaca, ...tertutup].map((x) => x[0]);
+      // Sebelumnya (VmRSS) = 523 MB > 450: sesi dibunuh ~10 detik setelah mulai di halaman kosong.
+      expect(pssMb(pids, proc, 'linux')).toBe(298);
     } finally {
       rmSync(proc, { recursive: true, force: true });
     }
