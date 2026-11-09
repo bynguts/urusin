@@ -2,7 +2,6 @@
   import { resolve } from '$app/paths';
   import type { EventOf } from '#lib/contracts.js';
   import Icon from '../Icon.svelte';
-  import Chip from '../ui/Chip.svelte';
 
   /**
    * Hasil cek berkas (App 04): hijau/kuning/merah selalu dengan ikon + alasan dalam bahasa awam, lalu satu aksi
@@ -20,38 +19,44 @@
 
 <section
   aria-label="Dokumen untuk urusan ini"
-  class="rounded-2xl border p-4 sm:p-5 {kurang.length
-    ? 'border-kuning bg-kuning/40'
+  class="flex flex-col gap-2.5 rounded-[18px] border p-4 shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] sm:p-[18px] {kurang.length
+    ? 'border-[#e6d2b0] bg-[#fffcf6] dark:border-kuning-ink/40 dark:bg-kuning/30'
     : 'border-line bg-surface'}"
 >
   <div class="flex flex-wrap items-center justify-between gap-2">
-    <h3 class="text-base font-semibold text-ink">Dokumen untuk urusan ini</h3>
+    <h3 class="text-[17px] leading-[26px] font-semibold text-ink">Dokumen untuk urusan ini</h3>
     {#if kurang.length}
-      <Chip nada="kuning" ikon="kamera">{kurang.length} perlu dilengkapi</Chip>
+      <span
+        class="inline-flex items-center gap-[5px] rounded-full bg-kuning px-2.5 py-1 text-[12.5px] leading-[15px] text-kuning-ink"
+        ><Icon name="kamera" class="size-3.5" />{kurang.length} perlu dilengkapi</span
+      >
     {:else}
-      <Chip nada="hijau" ikon="centang-bulat">Semua siap</Chip>
+      <span
+        class="inline-flex items-center gap-[5px] rounded-full bg-hijau px-2.5 py-1 text-[12.5px] leading-[15px] text-hijau-ink"
+        ><Icon name="centang-bulat" class="size-3.5" />Semua siap</span
+      >
     {/if}
   </div>
-  <ul class="mt-3 flex flex-col gap-2.5">
+  <ul class="flex flex-col gap-2.5">
     {#each checklist.item as it (it.id)}
       {@const s = STATUS[it.status]}
-      <li class="flex gap-2.5 text-[0.9375rem]">
-        <Icon name={s.ikon} class="mt-0.5 size-5 shrink-0 {s.kelas}" label={s.label} />
-        <span class="text-ink">
-          {it.label}{#if it.alasan}<span class="text-body">: {it.alasan}</span>{/if}
+      <li class="flex gap-2 text-base leading-6">
+        <Icon name={s.ikon} class="mt-1 size-4 shrink-0 {s.kelas}" label={s.label} />
+        <span class="text-card-ink">
+          {it.label}{#if it.alasan}<span>: {it.alasan}</span>{/if}
         </span>
       </li>
     {/each}
   </ul>
   {#if kurang.length}
-    <div class="mt-4 flex flex-wrap items-center gap-3">
+    <div class="flex flex-wrap items-center gap-2.5 pt-1">
       <a
         href={resolve('/dokumen')}
-        class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-5 font-semibold text-primer-ink hover:opacity-90"
+        class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-5 text-base leading-6 font-semibold text-primer-ink hover:opacity-90"
       >
-        <Icon name="kamera" class="size-4.5" /> Lengkapi dokumen
+        <Icon name="kamera" class="size-[18px]" /> Lengkapi dokumen
       </a>
-      <p class="text-sm text-muted">Tips: foto di tempat terang, keempat sudut terlihat.</p>
+      <p class="text-sm leading-[21px] text-muted">Tips: foto di tempat terang, keempat sudut terlihat.</p>
     </div>
   {/if}
 </section>

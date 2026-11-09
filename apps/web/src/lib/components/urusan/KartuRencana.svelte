@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { EventOf } from '#lib/contracts.js';
   import Icon from '../Icon.svelte';
-  import Chip, { type Nada } from '../ui/Chip.svelte';
   import type { NamaIkon } from '../ikon.js';
 
   /**
@@ -24,41 +23,57 @@
     onubah: () => void;
   } = $props();
 
-  const PELAKU: Record<string, { label: string; nada: Nada; ikon: NamaIkon }> = {
-    'online-adapter': { label: 'AI', nada: 'ai', ikon: 'ai' },
-    'online-manual': { label: 'Anda', nada: 'anda', ikon: 'orang' },
-    offline: { label: 'Instansi', nada: 'instansi', ikon: 'instansi' },
+  // Label pelaku App 03: Anda netral (tinta 6%), AI nila, Instansi biru.
+  const PELAKU: Record<string, { label: string; kelas: string; ikon: NamaIkon }> = {
+    'online-adapter': { label: 'AI', kelas: 'bg-nila text-nila-ink', ikon: 'ai' },
+    'online-manual': { label: 'Anda', kelas: 'bg-ink/[0.06] text-ink', ikon: 'orang' },
+    offline: { label: 'Instansi', kelas: 'bg-biru text-biru-ink', ikon: 'instansi' },
   };
 </script>
 
 <section
   aria-label="Rencana {rencana.langkah.length} langkah"
-  class="overflow-hidden rounded-2xl border border-line bg-surface shadow-lembut"
+  class="overflow-hidden rounded-[18px] border border-line bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]"
 >
-  <header class="flex flex-wrap items-center gap-3 border-b border-line-3 bg-card px-4 py-3.5 sm:px-5">
-    <Icon name="rencana" class="size-5" />
-    <h3 class="flex-1 text-base font-semibold text-ink">Rencana · {rencana.langkah.length} langkah</h3>
+  <header
+    class="flex min-h-[56.5px] flex-wrap items-center justify-between gap-2.5 border-b border-line bg-card px-4 py-3.5 sm:px-[18px]"
+  >
+    <span class="flex items-center gap-2.5">
+      <Icon name="rencana" class="size-[18px]" />
+      <h3 class="text-[17px] leading-[26px] font-semibold text-ink">
+        Rencana · {rencana.langkah.length} langkah
+      </h3>
+    </span>
     {#if kelayakan && kelayakan.mungkin.length && !kelayakan.perluKonfirmasi.length}
-      <Chip nada="hijau" ikon="centang-bulat">Kemungkinan memenuhi syarat</Chip>
+      <span
+        class="inline-flex items-center gap-1.5 rounded-full bg-hijau px-2.5 py-1 text-sm leading-[21px] text-hijau-ink"
+        ><Icon name="centang-bulat" class="size-4" />Kemungkinan memenuhi syarat</span
+      >
     {:else if kelayakan && kelayakan.perluKonfirmasi.length}
-      <Chip nada="kuning" ikon="info">Perlu konfirmasi</Chip>
+      <span
+        class="inline-flex items-center gap-1.5 rounded-full bg-kuning px-2.5 py-1 text-sm leading-[21px] text-kuning-ink"
+        ><Icon name="info" class="size-4" />Perlu konfirmasi</span
+      >
     {/if}
   </header>
-  <ol class="flex flex-col gap-1 px-4 py-3 sm:px-5">
+  <ol class="flex flex-col gap-2.5 px-4 py-3.5 sm:px-[18px]">
     {#each rencana.langkah as l, i (l.id)}
       {@const p = PELAKU[l.jenis] ?? PELAKU['online-manual']!}
-      <li class="flex min-h-11 items-center gap-3">
+      <li class="flex items-center gap-3">
         <span
-          class="grid size-6 shrink-0 place-items-center rounded-full border border-line-2 text-[0.75rem] font-semibold"
+          class="grid size-[26px] shrink-0 place-items-center rounded-full border-[1.5px] border-line-2 text-[13px] leading-[13px] font-semibold text-card-ink"
           >{i + 1}</span
         >
-        <span class="min-w-0 flex-1 text-[0.9375rem] text-ink">{l.judul}</span>
-        <Chip nada={p.nada} ikon={p.ikon}>{p.label}</Chip>
+        <span class="min-w-0 flex-1 text-base leading-[22px] text-ink">{l.judul}</span>
+        <span
+          class="inline-flex shrink-0 items-center gap-[5px] rounded-full px-2.5 py-[3px] text-[13px] leading-5 font-semibold {p.kelas}"
+          ><Icon name={p.ikon} class="size-[13px]" />{p.label}</span
+        >
       </li>
     {/each}
   </ol>
   {#if kelayakan?.perluKonfirmasi.length}
-    <div class="border-t border-line-3 px-4 py-3 text-sm text-body sm:px-5">
+    <div class="border-t border-line px-4 py-3 text-sm text-body sm:px-[18px]">
       <p class="font-semibold text-ink">Perlu dipastikan dulu:</p>
       <ul class="mt-1 list-disc pl-5">
         {#each kelayakan.perluKonfirmasi as k (k)}<li>{k}</li>{/each}
@@ -66,24 +81,24 @@
     </div>
   {/if}
   {#if bisaSetujui}
-    <footer class="flex flex-wrap items-center gap-3 border-t border-line-3 px-4 py-3.5 sm:px-5">
+    <footer class="flex flex-wrap items-center gap-2.5 border-t border-line px-4 pt-3 pb-4 sm:px-[18px]">
       <button
         type="button"
         onclick={onsetujui}
         disabled={sibuk}
         aria-busy={sibuk || undefined}
-        class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-5 text-base font-semibold text-primer-ink hover:opacity-90 disabled:opacity-80"
+        class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-6 font-semibold text-primer-ink hover:opacity-90 disabled:opacity-80"
       >
-        <Icon name={sibuk ? 'memuat' : 'centang'} class="size-4.5 {sibuk ? 'animate-spin' : ''}" />
+        <Icon name={sibuk ? 'memuat' : 'centang'} class="size-[18px] {sibuk ? 'animate-spin' : ''}" />
         Setujui rencana
       </button>
       <button
         type="button"
         onclick={onubah}
-        class="inline-flex min-h-12 items-center rounded-full border border-line-2 bg-surface px-5 text-base text-ink hover:bg-card"
+        class="inline-flex h-12 items-center rounded-full border border-line-2 bg-surface px-5 text-base leading-6 text-ink hover:bg-card"
         >Ubah</button
       >
-      <p class="text-sm text-muted">Belum ada data yang dikirim.</p>
+      <p class="text-sm leading-[21px] text-muted">Belum ada data yang dikirim.</p>
     </footer>
   {/if}
 </section>
