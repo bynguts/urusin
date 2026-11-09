@@ -10,6 +10,8 @@ export const ORIGIN = `http://localhost:${PORT}`;
 export const E2E_DIR = join(tmpdir(), 'urusin-web-e2e');
 export const OUTBOX = join(E2E_DIR, 'outbox.jsonl');
 export const DB_PATH = join(E2E_DIR, 'urusin.sqlite');
+/** SHA commit sintetis (40 heks) untuk stempel versi M11 di e2e. */
+export const E2E_GIT_SHA = '0123456789abcdef'.repeat(3).slice(0, 40);
 
 export default defineConfig({
   testDir: 'e2e',
@@ -42,6 +44,8 @@ export default defineConfig({
       BODY_SIZE_LIMIT: '10M',
       // Disk mesin pengembang bisa hampir penuh; ambang volume diuji di vitest.
       URUSIN_VAULT_DISK_THRESHOLD: '100',
+      // Stempel versi (M11) deterministik: sha 40 heks sintetis -> tautan commit di Pengaturan.
+      GIT_SHA: E2E_GIT_SHA,
     },
   },
 });
