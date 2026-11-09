@@ -255,7 +255,7 @@ export class SesiPendampingUi {
     if (!butuh) return undefined;
     const writeList = daftarWrite(butuh.placeholder, butuh.berkas);
     if (writeList.length === 0) {
-      const sendiri = [...new Set(butuh.placeholder.map(labelPlaceholder))];
+      const sendiri = butuh.placeholder.map(labelPlaceholder).filter((l, i, a) => a.indexOf(l) === i);
       return `Isi sendiri di layar: ${sendiri.join(', ')}.`;
     }
     if (!butuh.origin) return 'Situs tujuan belum diketahui. Isi sendiri di layar.';
