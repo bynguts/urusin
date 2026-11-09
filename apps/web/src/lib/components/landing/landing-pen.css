@@ -3058,3 +3058,13 @@
   line-height: 1.5;
   white-space: nowrap;
 }
+
+/* Pil aktif di navigasi halaman Web (frame F6RSq) */
+.lp .lp8.lp-aktif {
+  background-color: #f7f2ed;
+  border-radius: 100px;
+}
+.lp .lp-aktif .lp9 {
+  color: #252522;
+  font-weight: 600;
+}

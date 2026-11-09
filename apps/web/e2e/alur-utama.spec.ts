@@ -33,15 +33,12 @@ for (const lebar of [390, 1440]) {
     await page.goto('/urusanku');
     await expect(page.getByRole('heading', { name: 'Akta kelahiran' }).first()).toBeVisible();
 
-    // Peramban dengan urusan berjalan masuk ke Ringkasan, bukan landing
+    // Peramban dengan urusan berjalan masuk ke Beranda (App 01): urusannya tampil di "Urusan berjalan"
     await page.goto('/');
     await expect(page).toHaveURL(/\/beranda$/);
-    // Ringkasan melanjutkan urusan terakhir: pertanyaan terakhir warga dan fase urusan tampil
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Kita lanjutkan');
-    await expect(page.getByRole('region', { name: 'Percakapan terakhir' })).toContainText(
-      'Apa saja dokumen yang perlu saya bawa?',
-    );
-    await expect(page.getByText(/Langkah \d dari 4/)).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Apa yang ingin Anda urus?');
+    const berjalan = page.getByRole('region', { name: 'Urusan berjalan' });
+    await expect(berjalan.getByRole('heading', { name: 'Akta kelahiran' })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
 
     // Urusan baru tetap bisa dimulai dari kotak cerita

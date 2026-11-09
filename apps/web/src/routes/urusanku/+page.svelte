@@ -39,45 +39,51 @@
 
 <HeaderHalaman judul="Urusanku" />
 
-<div class="mx-auto w-full max-w-[67rem] px-4 py-6 sm:px-8 lg:py-8">
-  <h2 class="text-[1.75rem] tracking-[-0.03em] text-ink sm:text-[2rem]">Urusan keluarga Anda</h2>
-  <p class="mt-1 text-base text-body">Lihat siapa yang sedang ditunggu dan apa langkah berikutnya.</p>
+<div class="flex w-full flex-col gap-5 px-4 py-6 sm:px-10 sm:py-7">
+  <div class="flex flex-col gap-1">
+    <h2 class="text-[26px] leading-8 font-semibold tracking-[-0.7px] text-ink sm:text-[28px]">
+      Urusan keluarga Anda
+    </h2>
+    <p class="text-base text-body sm:text-[17px] sm:leading-[25px]">
+      Lihat siapa yang sedang ditunggu dan apa langkah berikutnya.
+    </p>
+  </div>
 
-  <div role="group" aria-label="Saring urusan" class="mt-6 flex gap-2 overflow-x-auto pb-1">
+  <div role="group" aria-label="Saring urusan" class="-mb-1 flex gap-2 overflow-x-auto pb-1">
     {#each FILTER as f (f.nilai)}
       {@const pilih = filter === f.nilai}
       <button
         type="button"
         aria-pressed={pilih}
         onclick={() => (filter = f.nilai)}
-        class="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full px-4 text-[0.9375rem] {pilih
+        class="inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-[15px] leading-[22px] {pilih
           ? 'bg-primer font-semibold text-primer-ink'
           : 'border border-line-2 bg-surface text-ink hover:bg-card'}"
       >
         {f.label}
         <span
-          class="grid min-w-6 place-items-center rounded-full px-1.5 text-[0.75rem] font-semibold {pilih
+          class="rounded-full px-[7px] py-px text-[13px] leading-[19px] font-semibold {pilih
             ? 'bg-white/20'
-            : 'bg-bg-2'}">{jumlah[f.nilai]}</span
+            : 'bg-bg-2 text-card-ink'}">{jumlah[f.nilai]}</span
         >
       </button>
     {/each}
   </div>
 
   {#if daftar.galat}
-    <p role="alert" class="mt-4 rounded-xl bg-kuning px-4 py-3 text-[0.9375rem] text-kuning-ink">
+    <p role="alert" class="rounded-xl bg-kuning px-4 py-3 text-[0.9375rem] text-kuning-ink">
       Status terbaru belum bisa dimuat. Periksa koneksi, lalu buka lagi halaman ini.
     </p>
   {/if}
 
   {#if tampil.length}
-    <div class="mt-5 grid gap-4 md:grid-cols-2">
+    <div class="grid gap-4 md:grid-cols-2">
       {#each tampil as u (u.id)}
         <KartuUrusanku urusan={u} utama={u.id === utamaId} />
       {/each}
     </div>
   {:else if dimuat || !lokal.data.urusan.length}
-    <div class="mt-8 flex flex-col items-center gap-3 rounded-kartu bg-card px-6 py-10 text-center">
+    <div class="mt-3 flex flex-col items-center gap-3 rounded-kartu bg-card px-6 py-10 text-center">
       <span class="grid size-12 place-items-center rounded-full bg-bg-2"
         ><Icon name="urusanku" class="size-6" /></span
       >
@@ -95,7 +101,7 @@
       </a>
     </div>
   {:else}
-    <div class="mt-5 grid gap-4 md:grid-cols-2" aria-hidden="true">
+    <div class="grid gap-4 md:grid-cols-2" aria-hidden="true">
       {#each [0, 1] as i (i)}<div class="h-56 animate-pulse rounded-kartu bg-card"></div>{/each}
     </div>
   {/if}

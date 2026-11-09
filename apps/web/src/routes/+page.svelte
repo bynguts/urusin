@@ -82,6 +82,18 @@
   import g9d9bb51 from '#lib/assets/img/pen-landing/state-2-ai-mengisi-1318.webp';
   import g776a2c9 from '#lib/assets/img/pen-landing/state-2-ai-mengisi-1760.webp';
   import g4d3be26 from '#lib/assets/img/pen-landing/state-2-ai-mengisi-2160.webp';
+  import s1_659 from '#lib/assets/img/pen-landing/state-1-konfirmasi-659.webp';
+  import s1_842 from '#lib/assets/img/pen-landing/state-1-konfirmasi-842.webp';
+  import s1_1080 from '#lib/assets/img/pen-landing/state-1-konfirmasi-1080.webp';
+  import s1_1318 from '#lib/assets/img/pen-landing/state-1-konfirmasi-1318.webp';
+  import s1_1760 from '#lib/assets/img/pen-landing/state-1-konfirmasi-1760.webp';
+  import s1_2160 from '#lib/assets/img/pen-landing/state-1-konfirmasi-2160.webp';
+  import s3_659 from '#lib/assets/img/pen-landing/state-3-giliran-anda-659.webp';
+  import s3_842 from '#lib/assets/img/pen-landing/state-3-giliran-anda-842.webp';
+  import s3_1080 from '#lib/assets/img/pen-landing/state-3-giliran-anda-1080.webp';
+  import s3_1318 from '#lib/assets/img/pen-landing/state-3-giliran-anda-1318.webp';
+  import s3_1760 from '#lib/assets/img/pen-landing/state-3-giliran-anda-1760.webp';
+  import s3_2160 from '#lib/assets/img/pen-landing/state-3-giliran-anda-2160.webp';
   import g71ee866 from '#lib/assets/img/pen-landing/rose-34.webp';
   import gb2f0431 from '#lib/assets/img/pen-landing/rose-68.webp';
   import gc859988 from '#lib/assets/img/pen-landing/purple-68.webp';
@@ -188,6 +200,17 @@
    * landing-responsif.css. Ajakan masuk ke alur urusan yang sudah ada (/beranda, /?/mulai).
    * Gerak (CSS saja, nol JS) ada di landing-gerak.css.
    */
+
+  /*
+   * Demo jendela hero (frame VAN7K "Hero demo / Animation states"): langkah 1 dan 3 ditumpuk di atas
+   * gambar langkah 2 (LCP). Lebar kandidat dan sizes sama dengan .lp42 supaya peramban memilih berkas
+   * yang sejajar; tanpa gerak lapisan ini display:none sehingga berkasnya tidak diunduh.
+   */
+  const demoSizes =
+    '(max-width: 479px) 356px, (max-width: 767px) 454px, (max-width: 1023px) 713px, (max-width: 1111px) 950px, 1080px';
+  const demo2 = `${g71d3e1c} 659w, ${gd364869} 842w, ${g06f3705} 1080w, ${g9d9bb51} 1318w, ${g776a2c9} 1760w, ${g4d3be26} 2160w`;
+  const demo1 = `${s1_659} 659w, ${s1_842} 842w, ${s1_1080} 1080w, ${s1_1318} 1318w, ${s1_1760} 1760w, ${s1_2160} 2160w`;
+  const demo3 = `${s3_659} 659w, ${s3_842} 842w, ${s3_1080} 1080w, ${s3_1318} 1318w, ${s3_1760} 1760w, ${s3_2160} 2160w`;
 </script>
 
 <svelte:head>
@@ -363,6 +386,79 @@
           decoding="async"
           fetchpriority="high"
         />
+        <span class="n-demo" aria-hidden="true">
+          <span class="n-demo-2">
+            <span class="n-demo-kosong"></span>
+            <span class="n-demo-panel">
+              <img
+                class="n-demo-img"
+                src={g06f3705}
+                srcset={demo2}
+                sizes={demoSizes}
+                alt=""
+                width="1080"
+                height="556"
+                loading="lazy"
+                decoding="async"
+                fetchpriority="low"
+              />
+              <i class="n-demo-kolom n-k1"></i>
+              <i class="n-demo-kolom n-k2"></i>
+              <i class="n-demo-kolom n-k3"></i>
+              <i class="n-demo-kolom n-k4"></i>
+              <i class="n-demo-kolom n-k5"></i>
+              <i class="n-demo-kolom n-k6"></i>
+              <i class="n-demo-sorot"></i>
+              <i class="n-demo-progres"></i>
+            </span>
+          </span>
+          <span class="n-demo-3">
+            <img
+              class="n-demo-img"
+              src={s3_1080}
+              srcset={demo3}
+              sizes={demoSizes}
+              alt=""
+              width="1080"
+              height="556"
+              loading="lazy"
+              decoding="async"
+              fetchpriority="low"
+            />
+            <span class="n-demo-situs">
+              <span class="n-demo-banner"
+                ><img
+                  class="n-demo-img"
+                  src={s3_1080}
+                  srcset={demo3}
+                  sizes={demoSizes}
+                  alt=""
+                  width="1080"
+                  height="556"
+                  loading="lazy"
+                  decoding="async"
+                  fetchpriority="low"
+                /></span
+              >
+              <i class="n-demo-cincin"></i>
+            </span>
+          </span>
+          <span class="n-demo-1">
+            <img
+              class="n-demo-img"
+              src={s1_1080}
+              srcset={demo1}
+              sizes={demoSizes}
+              alt=""
+              width="1080"
+              height="556"
+              loading="lazy"
+              decoding="async"
+              fetchpriority="low"
+            />
+            <i class="n-demo-tekan"></i>
+          </span>
+        </span>
       </div>
     </div>
   </section>

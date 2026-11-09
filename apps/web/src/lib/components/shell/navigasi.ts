@@ -1,30 +1,22 @@
 import type { NamaIkon } from '../ikon.js';
 
 export type ItemNav = {
-  href: '/beranda' | '/urusanku' | '/dokumen' | '/jejak' | '/bantuan' | '/pengaturan';
+  href: '/beranda' | '/urusanku' | '/dokumen' | '/bantuan' | '/pengaturan';
   label: string;
   ikon: NamaIkon;
 };
 
-/**
- * Menu samping (frame uCOBS). `/jejak` = Riwayat bantuan: Sidebar mengarahkannya ke jejak urusan terakhir
- * di perangkat ini, atau ke Urusanku bila belum ada.
- */
+/** Menu samping (App 01–14, Rafi): lima menu. Riwayat bantuan (/jejak) dibuka dari halaman urusan. */
 export const NAV: readonly ItemNav[] = [
-  { href: '/beranda', label: 'Ringkasan', ikon: 'beranda' },
-  { href: '/urusanku', label: 'Urusan saya', ikon: 'rencana' },
-  { href: '/dokumen', label: 'Dokumen saya', ikon: 'berkas-banyak' },
-  { href: '/jejak', label: 'Riwayat bantuan', ikon: 'riwayat' },
-  { href: '/pengaturan', label: 'Privasi & data', ikon: 'perisai' },
+  { href: '/beranda', label: 'Beranda', ikon: 'beranda' },
+  { href: '/urusanku', label: 'Urusanku', ikon: 'urusanku' },
+  { href: '/dokumen', label: 'Dokumen', ikon: 'dokumen' },
+  { href: '/bantuan', label: 'Bantuan', ikon: 'bantuan' },
+  { href: '/pengaturan', label: 'Pengaturan', ikon: 'pengaturan' },
 ];
 
-/** Navigasi bawah HP (frame IzXAR): empat menu, Bantuan selalu di ujung kanan (WCAG 3.2.6). */
-export const NAV_HP: readonly (ItemNav & { href: Exclude<ItemNav['href'], '/jejak' | '/pengaturan'> })[] = [
-  { href: '/beranda', label: 'Ringkasan', ikon: 'beranda' },
-  { href: '/urusanku', label: 'Urusan', ikon: 'rencana' },
-  { href: '/dokumen', label: 'Dokumen', ikon: 'berkas-banyak' },
-  { href: '/bantuan', label: 'Bantuan', ikon: 'obrolan' },
-];
+/** Navigasi bawah HP: empat menu, Bantuan selalu di ujung kanan (WCAG 3.2.6). */
+export const NAV_HP: readonly ItemNav[] = NAV.slice(0, 4);
 
 /** Halaman tanpa kerangka aplikasi (App 15–20: panel brand + formulir). Landing `/` juga polos. */
 export const RUTE_AUTH = [
@@ -40,11 +32,19 @@ export function rutAuth(pathname: string): boolean {
   return RUTE_AUTH.some((r) => pathname === r || pathname.startsWith(`${r}/`));
 }
 
-/** Menu aktif: persis untuk Beranda; awalan untuk lainnya, termasuk halaman turunannya. */
+/** Halaman Web publik berdesain landing (frame Web pen): tanpa kerangka aplikasi. `/urusan/<id>` tetap aplikasi. */
+export const RUTE_WEB = ['/', '/cara-kerja', '/urusan', '/privasi', '/tanya-jawab'] as const;
+
+export function rutWeb(pathname: string): boolean {
+  return (RUTE_WEB as readonly string[]).includes(pathname);
+}
+
+/**
+ * Menu aktif: Beranda juga untuk halaman peristiwa; Dokumen juga untuk Data diri. Halaman satu urusan
+ * (/urusan, /jejak) tidak menyalakan menu: urusannya yang disorot di daftar "Urusan aktif" (App 02–09).
+ */
 export function menuAktif(href: ItemNav['href'], pathname: string): boolean {
   if (href === '/beranda') return pathname === '/beranda' || pathname.startsWith('/peristiwa/');
-  if (href === '/urusanku') return pathname === href || pathname.startsWith('/urusan/');
-  if (href === '/jejak') return pathname.startsWith('/jejak/');
   if (href === '/dokumen') return pathname === href || pathname === '/data-diri';
   return pathname === href || pathname.startsWith(`${href}/`);
 }

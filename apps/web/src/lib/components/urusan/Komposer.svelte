@@ -37,7 +37,9 @@
   {#if pesan}
     <p id="komposer-pesan" role="status" class="px-2 text-sm font-medium text-kuning-ink">{pesan}</p>
   {/if}
-  <div class="flex items-end gap-2 rounded-[1.75rem] border border-line-2 bg-surface p-2 pl-5 shadow-lembut">
+  <div
+    class="flex min-h-14 items-end gap-2 rounded-[28px] border border-line-2 bg-surface py-[6px] pr-[7px] pl-5 shadow-[0_0_0.5px_#0000000f,0_1px_0.5px_#0000000f,0_2px_2px_#0000000a]"
+  >
     <label for="komposer" class="sr-only">Tulis jawaban atau pertanyaan</label>
     <textarea
       id="komposer"
@@ -49,13 +51,13 @@
       disabled={nonaktif}
       aria-describedby={pesan ? 'komposer-pesan' : undefined}
       placeholder="Tulis jawaban atau pertanyaan lain…"
-      class="max-h-40 min-h-12 flex-1 resize-none bg-transparent py-3 text-base text-ink [field-sizing:content] placeholder:text-muted focus:outline-none"
+      class="max-h-40 min-h-[42px] flex-1 resize-none bg-transparent py-2 text-base text-ink [field-sizing:content] placeholder:text-muted focus:outline-none sm:text-[17px] sm:leading-[26px]"
     ></textarea>
     <button
       type="submit"
       disabled={sibuk || nonaktif || !teks.trim()}
       aria-busy={sibuk || undefined}
-      class="grid size-12 shrink-0 place-items-center rounded-full bg-primer text-primer-ink hover:opacity-90 disabled:opacity-50"
+      class="grid size-[42px] shrink-0 place-items-center rounded-full bg-primer text-primer-ink hover:opacity-90 disabled:opacity-50"
     >
       <Icon
         name={sibuk ? 'memuat' : 'panah-atas'}

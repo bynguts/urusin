@@ -22,31 +22,29 @@
   }
 </script>
 
-<section aria-label="Pengajuan terkirim" class="overflow-hidden rounded-2xl border border-line bg-surface">
-  <p
-    class="flex items-center gap-2.5 bg-hijau px-4 py-3.5 text-[1.0625rem] font-semibold text-hijau-ink sm:px-5"
-  >
+<section aria-label="Pengajuan terkirim" class="overflow-hidden rounded-[18px] border border-line bg-surface">
+  <p class="flex items-center gap-2.5 bg-hijau px-4 py-4 text-[17px] font-bold text-hijau-ink sm:px-5">
     <Icon name="centang-bulat" class="size-5" /> Pengajuan terkirim
   </p>
   {#if nomor}
-    <div class="flex flex-wrap items-center gap-3 border-b border-line-3 px-4 py-4 sm:px-5">
-      <div class="min-w-0 flex-1">
-        <p class="text-sm text-muted">Nomor permohonan</p>
-        <p class="font-mono text-xl tracking-wide text-ink sm:text-2xl">{nomor}</p>
+    <div class="flex flex-col gap-1.5 px-4 py-[18px] sm:px-5">
+      <p class="text-sm text-card-ink">Nomor permohonan</p>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <p class="font-mono text-xl font-semibold text-ink sm:text-2xl">{nomor}</p>
+        <button
+          type="button"
+          onclick={salin}
+          class="inline-flex h-11 items-center gap-1.5 rounded-full border border-line-2 bg-surface px-3.5 text-[15px] font-semibold text-ink hover:bg-card"
+        >
+          <Icon name={tersalin ? 'centang' : 'salin'} class="size-4" />
+          {tersalin ? 'Tersalin' : 'Salin'}
+        </button>
       </div>
-      <button
-        type="button"
-        onclick={salin}
-        class="inline-flex min-h-12 items-center gap-2 rounded-full border border-line-2 bg-surface px-4 font-medium text-ink hover:bg-card"
-      >
-        <Icon name={tersalin ? 'centang' : 'salin'} class="size-4.5" />
-        {tersalin ? 'Tersalin' : 'Salin'}
-      </button>
     </div>
   {/if}
-  <div class="px-4 py-4 sm:px-5">
-    <p class="text-sm font-semibold text-ink">Langkah berikutnya</p>
-    <ul class="mt-2 flex flex-col gap-2 text-[0.9375rem] text-ink">
+  <div class="flex flex-col gap-3 border-t border-line px-4 py-4 sm:px-5">
+    <p class="text-sm font-semibold text-card-ink">Langkah berikutnya</p>
+    <ul class="flex flex-col gap-3 text-base leading-[23px] text-ink">
       <li class="flex gap-2.5">
         <Icon name="instansi" class="mt-0.5 size-4.5 shrink-0 text-muted" />Petugas memverifikasi pengajuan
         Anda.
@@ -60,23 +58,23 @@
         hasilnya.
       </li>
     </ul>
-    <div class="mt-4 flex flex-wrap gap-3">
+  </div>
+  <div class="flex flex-wrap gap-2.5 px-4 pt-1 pb-5 sm:px-5">
+    <a
+      href={resolve('/jejak/[id]', { id: urusanId })}
+      class="inline-flex h-[46px] items-center gap-2 rounded-full border border-line-2 bg-surface px-[18px] text-base font-semibold text-ink hover:bg-card"
+    >
+      <Icon name="jejak" class="size-4" /> Lihat jejak
+    </a>
+    {#if situs}
       <a
-        href={resolve('/jejak/[id]', { id: urusanId })}
-        class="inline-flex min-h-12 items-center gap-2 rounded-full border border-line-2 bg-surface px-5 font-semibold text-ink hover:bg-card"
+        href={situs}
+        target="_blank"
+        rel="external noopener noreferrer"
+        class="inline-flex h-[46px] items-center gap-2 rounded-full border border-line-2 bg-surface px-[18px] text-base font-semibold text-ink hover:bg-card"
       >
-        <Icon name="jejak" class="size-4.5" /> Lihat jejak
+        <Icon name="keluar" class="size-4" /> Cek di situs resmi
       </a>
-      {#if situs}
-        <a
-          href={situs}
-          target="_blank"
-          rel="external noopener noreferrer"
-          class="inline-flex min-h-12 items-center gap-2 rounded-full border border-line-2 bg-surface px-5 font-semibold text-ink hover:bg-card"
-        >
-          <Icon name="keluar" class="size-4.5" /> Cek di situs resmi
-        </a>
-      {/if}
-    </div>
+    {/if}
   </div>
 </section>

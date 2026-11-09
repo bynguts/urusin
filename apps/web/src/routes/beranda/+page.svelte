@@ -1,15 +1,28 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { resolve } from '$app/paths';
+  import latarUtama1x from '#lib/assets/img/app/latar-utama-1156.webp';
+  import latarUtama2x from '#lib/assets/img/app/latar-utama-2312.webp';
+  import panggungMawar from '#lib/assets/img/app/panggung-mawar.webp';
+  import panggungDaun from '#lib/assets/img/app/panggung-daun.webp';
+  import panggungUngu from '#lib/assets/img/app/panggung-ungu.webp';
+  import panggungBiru from '#lib/assets/img/app/panggung-biru.webp';
   import Icon from '#lib/components/Icon.svelte';
-  import Ringkasan from '#lib/components/ringkasan/Ringkasan.svelte';
   import KartuBerjalan from '#lib/components/urusan/KartuBerjalan.svelte';
   import { DaftarUrusan } from '#lib/components/urusan/daftar.svelte.js';
-  import { PERISTIWA } from '#lib/peristiwa.js';
+  import { PERISTIWA, type Warna } from '#lib/peristiwa.js';
   import { ambilLokal } from '#lib/stores/app.svelte.js';
   import type { PageProps } from './$types';
 
-  let { data, form }: PageProps = $props();
+  /** Beranda = App 01 (y9I9Jw) dari pen Rafi: kotak cerita, empat peristiwa hidup, urusan berjalan. */
+  let { form }: PageProps = $props();
+
+  const PANGGUNG: Partial<Record<Warna, string>> = {
+    mawar: panggungMawar,
+    daun: panggungDaun,
+    ungu: panggungUngu,
+    biru: panggungBiru,
+  };
 
   const lokal = ambilLokal();
   const daftar = new DaftarUrusan();
@@ -21,10 +34,13 @@
   let hentikanDikte: (() => void) | undefined;
 
   const wilayah = $derived(lokal.data.wilayah);
-  const berjalan = $derived(daftar.isi.slice(0, 3));
-  const utamaId = $derived(
-    berjalan.find((u) => u.ringkasan && /MENUNGGU|RENCANA_DIUSULKAN/.test(u.ringkasan.state))?.id,
+  // Urusan yang menunggu warga tampil paling depan dan jadi kartu utama (App 01: "Tinjau rencana").
+  const menungguWarga = (u: (typeof daftar.isi)[number]) =>
+    !!u.ringkasan && /MENUNGGU|RENCANA_DIUSULKAN/.test(u.ringkasan.state);
+  const berjalan = $derived(
+    [...daftar.isi].sort((a, b) => Number(menungguWarga(b)) - Number(menungguWarga(a))).slice(0, 3),
   );
+  const utamaId = $derived(berjalan.find(menungguWarga)?.id);
 
   $effect(() => {
     // Modul dikte dimuat saat tombol Bicara ditekan supaya JS awal Beranda tetap di bawah anggaran.
@@ -50,183 +66,188 @@
   <title>Urusin: urus layanan publik bersama</title>
 </svelte:head>
 
-{#if data.urusan}
-  <Ringkasan urusan={data.urusan} demo={data.demo} />
-{:else}
-  <div class="relative flex flex-1 flex-col">
-    <div
-      class="pola-titik pointer-events-none absolute inset-x-0 top-0 h-80 [mask-image:linear-gradient(to_bottom,black,transparent)] lg:rounded-t-2xl"
-      aria-hidden="true"
-    ></div>
+<div
+  class="relative isolate flex flex-1 flex-col gap-12 overflow-x-clip px-4 pt-10 pb-10 sm:px-8 lg:px-16 lg:pt-[68px] lg:pb-12"
+>
+  <div
+    class="latar-beranda pointer-events-none absolute top-0 left-1/2 -z-10 hidden h-[300px] w-[1156px] -translate-x-1/2 lg:block dark:hidden"
+    style:--latar-1x="url({latarUtama1x})"
+    style:--latar-2x="url({latarUtama2x})"
+    aria-hidden="true"
+  ></div>
 
-    <section
-      aria-labelledby="judul-beranda"
-      class="relative mx-auto flex w-full max-w-[47.5rem] flex-col items-center px-4 pt-10 text-center sm:pt-14 lg:pt-18"
+  <section aria-labelledby="judul-beranda" class="flex w-full flex-col items-center gap-5 text-center">
+    <h1
+      id="judul-beranda"
+      class="text-[32px] leading-[1.1] font-medium tracking-[-1.3px] text-ink sm:text-[40px] sm:leading-[44px]"
     >
-      <h1
-        id="judul-beranda"
-        class="text-[2rem] leading-[1.1] font-[480] tracking-[-0.04em] text-ink sm:text-[2.5rem] lg:text-[2.75rem]"
-      >
-        Apa yang ingin Anda urus?
-      </h1>
-      <p class="mt-4 max-w-[36rem] text-base text-body sm:text-[1.0625rem]">
-        Ceritakan dengan bahasa sehari-hari. Urusin mencari aturan resmi untuk {wilayah.nama}, lalu menyusun
-        langkahnya.
-      </p>
+      Apa yang ingin Anda urus?
+    </h1>
+    <p class="w-full max-w-[640px] text-base text-body sm:text-[17px] sm:leading-[25px]">
+      Ceritakan dengan bahasa sehari-hari. Urusin mencari aturan resmi untuk {wilayah.nama}, lalu menyusun
+      langkahnya.
+    </p>
 
-      <form
-        method="POST"
-        action="?/mulai"
-        class="mt-8 w-full rounded-[1.25rem] border border-line bg-surface p-4 text-left shadow-lembut sm:p-5"
-        use:enhance={() => {
-          mengirim = true;
-          lokal.simpanTertunda(pesan);
-          return async ({ update }) => {
-            await update({ reset: false });
-            mengirim = false;
-          };
-        }}
-      >
-        <label for="pesan" class="sr-only">Ceritakan urusan Anda</label>
-        <textarea
-          id="pesan"
-          name="pesan"
-          rows="2"
-          maxlength="2000"
-          required
-          bind:value={pesan}
-          aria-describedby={form?.pesanWarga ? 'galat-pesan' : undefined}
-          placeholder="Contoh: Anak saya baru lahir, saya harus mengurus apa?"
-          class="block w-full resize-none bg-transparent px-1 text-[1.0625rem] text-ink placeholder:text-muted focus:outline-none"
-        ></textarea>
-        <input type="hidden" name="kodeKabKota" value={wilayah.kodeKabKota} />
-        {#if form?.pesanWarga}
-          <p id="galat-pesan" role="alert" class="mt-2 px-1 text-sm font-medium text-galat">
-            {form.pesanWarga}
-          </p>
-        {/if}
-        <div class="mt-3 flex flex-wrap items-center gap-2">
+    <form
+      method="POST"
+      action="?/mulai"
+      class="flex w-full max-w-[760px] flex-col gap-3.5 rounded-[22px] border border-line-2 bg-surface pt-[18px] pr-[18px] pb-3.5 pl-[22px] text-left shadow-[0_10px_30px_#2525220d,0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a]"
+      use:enhance={() => {
+        mengirim = true;
+        lokal.simpanTertunda(pesan);
+        return async ({ update }) => {
+          await update({ reset: false });
+          mengirim = false;
+        };
+      }}
+    >
+      <label for="pesan" class="sr-only">Ceritakan urusan Anda</label>
+      <textarea
+        id="pesan"
+        name="pesan"
+        rows="1"
+        maxlength="2000"
+        required
+        bind:value={pesan}
+        aria-describedby={form?.pesanWarga ? 'galat-pesan' : undefined}
+        placeholder="Contoh: Anak saya baru lahir, saya harus mengurus apa?"
+        class="block max-h-60 min-h-[26px] w-full resize-none bg-transparent text-[18px] leading-[26px] text-ink [field-sizing:content] placeholder:text-muted focus:outline-none"
+      ></textarea>
+      <input type="hidden" name="kodeKabKota" value={wilayah.kodeKabKota} />
+      {#if form?.pesanWarga}
+        <p id="galat-pesan" role="alert" class="text-sm font-medium text-galat">{form.pesanWarga}</p>
+      {/if}
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           {#if bisaDikte}
             <button
               type="button"
               onclick={bicara}
               aria-pressed={mendikte}
-              class="inline-flex min-h-12 items-center gap-2 rounded-full bg-bg-2 px-4 text-[0.9375rem] text-ink hover:bg-line-3"
+              class="inline-flex h-10 items-center gap-2 rounded-full bg-bg-2 px-3.5 text-[15px] leading-[22px] text-card-ink hover:bg-line-3"
             >
-              <Icon name="mikrofon" class="size-4.5" />
+              <Icon name="mikrofon" class="size-4 text-ink" />
               {mendikte ? 'Mendengarkan…' : 'Bicara'}
             </button>
           {/if}
           <a
             href="{resolve('/pengaturan')}#wilayah"
-            class="inline-flex min-h-12 items-center gap-2 rounded-full border border-line-2 px-4 text-[0.9375rem] text-ink hover:bg-card"
+            class="inline-flex h-10 items-center gap-2 rounded-full border border-line-2 px-3.5 text-[15px] leading-[22px] text-ink hover:bg-card"
           >
-            <Icon name="lokasi" class="size-4.5 text-brand" />
+            <Icon name="lokasi" class="size-4 text-brand" />
             {wilayah.nama}
             <span class="sr-only">(ubah wilayah)</span>
           </a>
-          <button
-            type="submit"
-            disabled={mengirim}
-            aria-busy={mengirim || undefined}
-            class="ml-auto inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 text-base font-semibold text-primer-ink hover:opacity-90 disabled:opacity-80"
-          >
-            Kirim
-            <Icon name={mengirim ? 'memuat' : 'panah'} class="size-4.5 {mengirim ? 'animate-spin' : ''}" />
-          </button>
         </div>
-      </form>
-    </section>
-
-    <section
-      aria-labelledby="judul-peristiwa"
-      class="relative mx-auto w-full max-w-[64rem] px-4 pt-12 sm:px-8 lg:pt-14"
-    >
-      <div class="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="judul-peristiwa" class="text-lg font-semibold tracking-tight text-ink sm:text-xl">
-          Atau mulai dari peristiwa hidup
-        </h2>
-        <p class="text-[0.9375rem] text-muted">Tersedia panduan untuk {PERISTIWA.length} peristiwa</p>
+        <button
+          type="submit"
+          disabled={mengirim}
+          aria-busy={mengirim || undefined}
+          class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-[23px] font-semibold text-primer-ink hover:opacity-90 disabled:opacity-80"
+        >
+          Kirim
+          <Icon name={mengirim ? 'memuat' : 'panah'} class="size-[17px] {mengirim ? 'animate-spin' : ''}" />
+        </button>
       </div>
-      <ul class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        {#each PERISTIWA as p (p.slug)}
-          <li>
-            <a
-              href={resolve('/peristiwa/[slug]', { slug: p.slug })}
-              class="group flex h-full flex-col overflow-hidden rounded-[1.125rem] border border-line bg-surface shadow-lembut transition-shadow hover:shadow-md"
+    </form>
+  </section>
+
+  <section aria-labelledby="judul-peristiwa" class="flex w-full flex-col gap-4">
+    <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+      <h2 id="judul-peristiwa" class="text-[20px] leading-[29px] font-semibold tracking-[-0.3px] text-ink">
+        Atau mulai dari peristiwa hidup
+      </h2>
+      <p class="text-[15px] leading-[22px] text-muted">Tersedia panduan untuk {PERISTIWA.length} peristiwa</p>
+    </div>
+    <ul class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      {#each PERISTIWA as p (p.slug)}
+        <li class="min-w-0">
+          <a
+            href={resolve('/peristiwa/[slug]', { slug: p.slug })}
+            class="group flex h-full flex-col overflow-hidden rounded-[18px] border border-line bg-surface shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] transition-shadow hover:shadow-md"
+          >
+            <span
+              class="panggung panggung-{p.warna} relative block h-[140px] w-full overflow-hidden"
+              style:--panggung="url({PANGGUNG[p.warna]})"
             >
+              <img
+                src={p.gambar}
+                alt=""
+                width="118"
+                height="128"
+                class="absolute top-3 left-1/2 h-32 w-[118px] -translate-x-1/2 object-contain"
+              />
+            </span>
+            <span class="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-4">
               <span
-                class="kartu-{p.warna} relative flex h-28 items-end justify-center overflow-hidden sm:h-36"
+                class="flex items-center justify-between gap-2 text-[18px] leading-[26px] font-semibold text-ink"
               >
-                <span class="pola-titik absolute inset-0 opacity-60" aria-hidden="true"></span>
-                <img
-                  src={p.gambar}
-                  alt=""
-                  width="176"
-                  height="192"
-                  class="relative h-[92%] w-auto object-contain"
+                {p.judul}
+                <Icon
+                  name="panah"
+                  class="size-[18px] shrink-0 transition-transform group-hover:translate-x-0.5"
                 />
               </span>
-              <span class="flex flex-1 flex-col gap-1 border-t border-line-3 p-4">
-                <span
-                  class="flex items-center justify-between gap-2 text-base font-semibold text-ink sm:text-lg"
-                >
-                  {p.judul}
-                  <Icon
-                    name="panah"
-                    class="size-4.5 shrink-0 transition-transform group-hover:translate-x-0.5"
-                  />
-                </span>
-                <span class="text-sm text-muted sm:text-[0.9375rem]">{p.ringkas}</span>
-              </span>
-            </a>
-          </li>
-        {/each}
-      </ul>
-    </section>
-
-    {#if berjalan.length}
-      <section
-        aria-labelledby="judul-berjalan"
-        class="relative mx-auto w-full max-w-[64rem] px-4 pt-12 pb-10 sm:px-8 lg:pb-12"
-      >
-        <div class="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="judul-berjalan" class="text-lg font-semibold tracking-tight text-ink sm:text-xl">
-            Urusan berjalan
-          </h2>
-          <a
-            href={resolve('/urusanku')}
-            class="inline-flex min-h-12 items-center gap-1.5 text-[0.9375rem] font-semibold text-ink hover:underline"
-          >
-            Lihat semua di Urusanku <Icon name="panah" class="size-4" />
+              <span class="text-[15px] leading-[21px] text-muted">{p.ringkas}</span>
+            </span>
           </a>
-        </div>
-        <div class="mt-3 grid gap-3 md:grid-cols-3">
-          {#each berjalan as u (u.id)}
-            <KartuBerjalan urusan={u} utama={u.id === utamaId} />
-          {/each}
-        </div>
-      </section>
-    {:else}
-      <div class="pb-10"></div>
-    {/if}
-  </div>
-{/if}
+        </li>
+      {/each}
+    </ul>
+  </section>
+
+  {#if berjalan.length}
+    <section aria-labelledby="judul-berjalan" class="flex w-full flex-col gap-3">
+      <div class="flex flex-wrap items-center justify-between gap-x-4">
+        <h2 id="judul-berjalan" class="text-[20px] leading-[29px] font-semibold tracking-[-0.3px] text-ink">
+          Urusan berjalan
+        </h2>
+        <a
+          href={resolve('/urusanku')}
+          class="-my-2 inline-flex items-center gap-1 py-2 text-[15px] font-semibold text-ink hover:underline"
+        >
+          Lihat semua di Urusanku <Icon name="panah" class="size-4" />
+        </a>
+      </div>
+      <div class="flex flex-col gap-3 md:flex-row">
+        {#each berjalan as u (u.id)}
+          <KartuBerjalan urusan={u} utama={u.id === utamaId} />
+        {/each}
+      </div>
+    </section>
+  {/if}
+</div>
 
 <style>
-  .kartu-mawar {
-    background: linear-gradient(180deg, var(--sb-badge-rose-bg), var(--sb-bg-white));
+  /*
+   * Panggung kartu peristiwa: gambar gradasi bertitik dari pen mulai 640 px; di ponsel gradasi CSS dengan
+   * warna yang sama (lebih ringan, dan gambar panggung tidak jadi elemen LCP).
+   */
+  .panggung-mawar {
+    background: linear-gradient(#f3e3e2, #fcf8f5);
   }
-  .kartu-daun {
-    background: linear-gradient(180deg, var(--sb-badge-green-bg), var(--sb-bg-white));
+  .panggung-daun {
+    background: linear-gradient(#eaede5, #fcf8f5);
   }
-  .kartu-ungu {
-    background: linear-gradient(180deg, var(--sb-badge-purple-bg), var(--sb-bg-white));
+  .panggung-ungu {
+    background: linear-gradient(#f1e9f2, #fcf8f5);
   }
-  .kartu-biru {
-    background: linear-gradient(180deg, var(--sb-badge-blue-bg), var(--sb-bg-white));
+  .panggung-biru {
+    background: linear-gradient(#e6eef4, #fcf8f5);
   }
-  .kartu-kuning {
-    background: linear-gradient(180deg, var(--ur-amber-bg), var(--sb-bg-white));
+  @media (min-width: 640px) {
+    .panggung {
+      background: var(--panggung) center / 100% 100% no-repeat;
+    }
+  }
+  :global([data-theme='dark']) .panggung {
+    background: var(--color-bg-2);
+  }
+
+  /* Titik halo di puncak panel (App 01 Main); CSS agar tidak diunduh di ponsel. */
+  @media (min-width: 1024px) {
+    .latar-beranda {
+      background: image-set(var(--latar-1x) 1x, var(--latar-2x) 2x) top center / 1156px 300px no-repeat;
+    }
   }
 </style>
