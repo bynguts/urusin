@@ -129,11 +129,16 @@ export function pssMb(pids: number[], proc = '/proc', platform = process.platfor
         continue;
       }
     } catch {
-      // smaps_rollup tidak ada/terbaca: pakai VmRSS
+      // smaps_rollup tidak terbaca: proses sandbox setuid (renderer, zygote) tidak dumpable -> EACCES
     }
     try {
-      const m = /VmRSS:\s+(\d+)\s+kB/.exec(readFileSync(`${proc}/${pid}/status`, 'utf8'));
-      kb += Number(m?.[1] ?? 0);
+      // Memori privat dari status (selalu terbaca): RssAnon + RssShmem. VmRSS ikut menghitung pustaka bersama
+      // (RssFile) penuh di SETIAP proses; dengan sandbox setuid itu menggelembungkan halaman kosong dari
+      // ~300 MB ke ~520 MB dan pengawas memori membunuh setiap sesi (run 7). VmRSS hanya bila kernel lama.
+      const st = readFileSync(`${proc}/${pid}/status`, 'utf8');
+      const kolom = (k: string) => new RegExp(`^${k}:\\s+(\\d+)\\s+kB`, 'm').exec(st)?.[1];
+      const anon = kolom('RssAnon');
+      kb += anon !== undefined ? Number(anon) + Number(kolom('RssShmem') ?? 0) : Number(kolom('VmRSS') ?? 0);
     } catch {
       // proses sudah keluar
     }
@@ -705,12 +710,18 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   const memTimer = setInterval(async () => {
     try {
       const mb = await sessionMemMb(iso.userDataDir, cdp);
-      if (mb > config.sessionMemMb)
+      if (mb > config.sessionMemMb) {
+        console.log(
+          `pendamping: sesi dihentikan kode=MEMORI_SESI mb=${mb} batas=${config.sessionMemMb} ` +
+            `host=${new URL(program.origin).host}`,
+        );
         hooks.ended(
           'gagal',
           'gagal',
-          'Halaman terlalu berat untuk peramban pendamping. Lanjutkan lewat panduan.',
+          `Halaman ini memakai memori lebih dari batas peramban pendamping (${mb} MB dari ${config.sessionMemMb} MB). Lanjutkan lewat panduan.`,
+          { kode: 'MEMORI_SESI' },
         );
+      }
     } catch {
       // peramban sedang ditutup
     }
