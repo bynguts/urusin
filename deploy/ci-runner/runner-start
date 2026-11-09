@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# ExecStart (user urusin-ci): jalankan SATU runner JIT (otomatis ephemeral: satu job lalu keluar dan
+# terhapus dari GitHub). systemd Restart=always membuat runner baru lewat runner-prestart.
+set -euo pipefail
+CI_ROOT="${URUSIN_CI_ROOT:-/opt/urusin-ci}"
+RUN_DIR="${URUSIN_CI_RUN_DIR:-/run/urusin-ci}"
+jit="$(cat "$RUN_DIR/jit")"
+rm -f "$RUN_DIR/jit"
+cd "$CI_ROOT/runner"
+exec ./run.sh --jitconfig "$jit"

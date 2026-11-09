@@ -1,0 +1,13 @@
+# buildkitd untuk builder buildx `urusin-ci` (docker-container driver) di agent-vm.
+# Cache build dibatasi; dibersihkan HANYA lewat `ci-docker builder-gc` (buildx prune --builder urusin-ci) atau
+# `ci-docker builder-rm`. Tidak pernah prune global, tidak pernah daemon.json.
+[worker.oci]
+  gc = true
+  gckeepstorage = 8000000000 # ~8 GB
+
+  [[worker.oci.gcpolicy]]
+    keepBytes = 8000000000
+    keepDuration = 604800 # 7 hari
+    all = true
+
+# Tidak ada entitlement tambahan: tanpa `security.insecure`, tanpa `network.host`.

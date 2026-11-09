@@ -25,8 +25,8 @@ jobs:
   images:
     name: Image ${{ matrix.name }}
     if: ${{ github.ref_type != 'tag' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: ${{ vars.URUSIN_RUNNER && 90 || 30 }}
     permissions:
       contents: read
       packages: write
@@ -49,12 +49,15 @@ jobs:
 
       # QEMU hanya dipakai untuk smoke test image arm64 di bawah; build image tidak membutuhkannya.
       - name: Setup QEMU (smoke arm64)
+        if: runner.environment == 'github-hosted'
         uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - name: Setup Buildx
+        if: runner.environment == 'github-hosted'
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Login GHCR
+        if: runner.environment == 'github-hosted'
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
@@ -63,6 +66,7 @@ jobs:
 
       - name: Build dan push
         id: build
+        if: runner.environment == 'github-hosted'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -77,8 +81,24 @@ jobs:
           sbom: true
           provenance: mode=max
 
+      # Self-hosted (agent-vm, arm64): build lewat ci-docker dengan builder buildx `urusin-ci` (docker-container,
+      # cache <= 8 GB, dibersihkan hanya lewat builder itu). amd64 memakai binfmt qemu-x86_64 yang SUDAH ada di host
+      # (tidak pernah dipasang oleh CI). Token GHCR lewat stdin. Mencetak "DIGEST: sha256:..." seperti di atas.
+      - name: Build dan push (self-hosted, builder urusin-ci)
+        id: build_self
+        if: runner.environment == 'self-hosted'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NAME: ${{ matrix.name }}
+        run: |
+          printf '%s\n' "$GHCR_TOKEN" | sudo -n /opt/urusin-ci/bin/ci-docker build "$NAME" "$GITHUB_SHA" "$GITHUB_WORKSPACE" | tee "$RUNNER_TEMP/build.log"
+          digest="$(sed -nE 's/^DIGEST: (sha256:[0-9a-f]{64})$/\1/p' "$RUNNER_TEMP/build.log" | tail -n1)"
+          [ -n "$digest" ] || { echo "::error::digest tidak ditemukan"; exit 1; }
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
       # Smoke test image yang baru di-push, per arsitektur: modul native harus termuat dan server harus hidup.
       - name: Smoke test image (amd64 dan arm64)
+        if: runner.environment == 'github-hosted'
         env:
           REF: ${{ matrix.image }}@${{ steps.build.outputs.digest }}
           NAME: ${{ matrix.name }}
@@ -110,11 +130,31 @@ jobs:
             echo "::endgroup::"
           done
 
+      # Self-hosted: smoke arm64 native (boot pendamping penuh dengan pengerasan compose), amd64 lewat binfmt.
+      - name: Smoke test image (self-hosted, arm64 native)
+        if: runner.environment == 'self-hosted'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NAME: ${{ matrix.name }}
+          DIGEST: ${{ steps.build_self.outputs.digest }}
+        run: printf '%s\n' "$GHCR_TOKEN" | sudo -n /opt/urusin-ci/bin/ci-docker smoke "$NAME" "$DIGEST" "$GITHUB_WORKSPACE"
+
       # SBOM disimpan sebagai attestation di registry; ekstrak untuk dilampirkan ke GitHub Release.
       - name: Ekstrak SBOM
+        if: runner.environment == 'github-hosted'
         env:
           REF: ${{ matrix.image }}@${{ steps.build.outputs.digest }}
         run: docker buildx imagetools inspect "$REF" --format '{{ json .SBOM }}' > "sbom-${{ matrix.name }}.json"
+
+      - name: Ekstrak SBOM (self-hosted)
+        if: runner.environment == 'self-hosted'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NAME: ${{ matrix.name }}
+          DIGEST: ${{ steps.build_self.outputs.digest }}
+        run: |
+          # shellcheck disable=SC2024 # berkas SBOM sengaja ditulis sebagai user runner, bukan root
+          printf '%s\n' "$GHCR_TOKEN" | sudo -n /opt/urusin-ci/bin/ci-docker sbom "$NAME" "$DIGEST" > "sbom-${NAME}.json"
 
       - name: Unggah SBOM
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -124,7 +164,8 @@ jobs:
 
       - name: Ringkasan digest
         env:
-          DIGEST: ${{ steps.build.outputs.digest }}
+          RUNNER_ENVIRONMENT: ${{ runner.environment }}
+          DIGEST: ${{ steps.build.outputs.digest || steps.build_self.outputs.digest }}
           IMAGE: ${{ matrix.image }}
           NAME: ${{ matrix.name }}
         run: |
@@ -133,7 +174,7 @@ jobs:
             echo
             echo "- SHA: \`${GITHUB_SHA}\`"
             echo "- Digest: \`${DIGEST}\`"
-            echo "- Platform: linux/amd64, linux/arm64"
+            echo "- Platform: linux/amd64, linux/arm64 (runner: ${RUNNER_ENVIRONMENT})"
             echo
             echo '```sh'
             if [ "$NAME" = "web" ]; then
@@ -149,8 +190,8 @@ jobs:
   promote:
     name: Alias image <sha> menjadi tag rilis (tanpa build ulang)
     if: ${{ github.ref_type == 'tag' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: ${{ vars.URUSIN_RUNNER && 30 || 10 }}
     permissions:
       contents: read
       packages: write
@@ -158,16 +199,33 @@ jobs:
       TAG: ${{ github.ref_name }}
     steps:
       - name: Setup Buildx
+        if: runner.environment == 'github-hosted'
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Login GHCR
+        if: runner.environment == 'github-hosted'
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Alias image web, fixtures, dan pendamping ke tag rilis (self-hosted)
+        if: runner.environment == 'self-hosted'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "### Image rilis ${TAG}"
+            echo
+            echo "Commit bertag: \`${GITHUB_SHA}\` (tidak ada build ulang; digest sama dengan yang diuji di main)"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+          # shellcheck disable=SC2024 # ringkasan sengaja ditulis sebagai user runner, bukan root
+          printf '%s\n' "$GHCR_TOKEN" | sudo -n /opt/urusin-ci/bin/ci-docker alias "$GITHUB_SHA" "$TAG" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Alias image web, fixtures, dan pendamping ke tag rilis
+        if: runner.environment == 'github-hosted'
         run: |
           {
             echo "### Image rilis ${TAG}"
@@ -195,8 +253,8 @@ jobs:
     name: GitHub Release
     if: ${{ github.ref_type == 'tag' }}
     needs: [promote]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: ${{ vars.URUSIN_RUNNER && 30 || 10 }}
     permissions:
       contents: write
       actions: read

@@ -12,6 +12,14 @@ Berkas: `compose.prod.yml`, `Caddyfile.urusin.primary` (+ `.fallback`), `hardeni
 `tests/` (harness tanpa Docker). Layout datar (agent-vm) juga butuh `scripts/db-backup.mjs` dan `scripts/db-restore.mjs`
 (salinan `apps/web/scripts/`), dibaca `backup.sh`/`restore.sh`.
 
+> **Runner CI self-hosted (`ci-runner/`): cadangan bila menit GitHub Actions habis, TIDAK terpasang.**
+> Bila pernah dipasang, **WAJIB dicopot sebelum repo dibuat Public** (submission, tenggat 2026-11-14): di repo
+> publik PR dari fork bisa menjalankan kode di runner self-hosted, yaitu di agent-vm. Repo publik mendapat menit
+> GitHub gratis, jadi runner tidak dibutuhkan lagi. Urutan: `sudo deploy/ci-runner/uninstall.sh` →
+> `gh variable delete URUSIN_RUNNER --repo bynguts/urusin` → `gh api repos/bynguts/urusin/actions/runners --jq .total_count`
+> = 0 → cabut PAT admin → baru ubah visibilitas. Detail, batas sumber daya, dan keputusan sudoers vs grup docker:
+> [`ci-runner/README.md`](ci-runner/README.md).
+
 ## Instalasi pertama
 
 ```sh
@@ -521,6 +529,7 @@ sesi di 450 MB RSS, `cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tm
 bash deploy/tests/deploy.test.sh   # docker/curl/restic/df palsu di tests/shims; juga jalan lewat `pnpm test:scripts`
 bash deploy/tests/image-retention.test.sh
 bash deploy/tests/caddy-install.test.sh
+bash deploy/tests/ci-runner.test.sh       # runner CI self-hosted (docker/df palsu di tests/shims-ci)
 shellcheck -x deploy/*.sh deploy/tests/deploy.test.sh deploy/tests/shims/*
 ```
 
