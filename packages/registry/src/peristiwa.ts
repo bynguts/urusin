@@ -21,6 +21,16 @@ export const LangkahSchema = z.object({
   keterangan: z.string(),
   sourceRef: z.array(SourceRefSchema).min(1),
   verifiedAt: z.iso.datetime().nullable(),
+  /**
+   * Hanya langkah `online-adapter`: alur adapter Browser Pendamping di portal kota (`adapterId` registry) beserta
+   * parameter tetapnya (id layanan portal, jenis Dokumen yang diunggah). Tanpa data pribadi.
+   */
+  pendamping: z
+    .object({
+      flowId: z.string().min(1),
+      params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+    })
+    .optional(),
 });
 export type Langkah = z.infer<typeof LangkahSchema>;
 
@@ -48,6 +58,11 @@ export const BundelSchema = z
       }
       if (l.jenis === 'offline' && !l.lokasi)
         ctx.addIssue({ code: 'custom', message: `langkah offline tanpa lokasi: ${l.id}` });
+      if ((l.jenis === 'online-adapter') !== (l.pendamping !== undefined))
+        ctx.addIssue({
+          code: 'custom',
+          message: `online-adapter wajib (dan hanya dia) punya pendamping: ${l.id}`,
+        });
     }
     // Tanpa siklus: setiap langkah hanya boleh bergantung pada langkah yang muncul lebih dulu.
     const seen = new Set<string>();
@@ -108,16 +123,18 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
     slug: 'kelahiran',
     judul: 'Kelahiran',
     kodeWilayah: '3312',
-    tier: 'dipandu',
+    tier: 'semi',
     keluaran: ['Akta Kelahiran', 'Kartu Keluarga', 'KIA'],
     catatan:
-      'Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Naik ke semi-otomatis hanya bila pemetaan ke layanan Telunjuk Sakti terkonfirmasi (E8).',
+      'Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 "Akta Kelahiran" (recon 2026-11-08): Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.',
     langkah: [
       L({
         id: 'ajukan',
         judul: 'Ajukan akta kelahiran terintegrasi lewat loket online',
-        jenis: 'online-manual',
+        jenis: 'online-adapter',
         lokasi: 'loket-online',
+        // Telunjuk Sakti `pendaftaran/uploadberkas/23` (Akta Kelahiran): KK orang tua, KTP, surat keterangan lahir.
+        pendamping: { flowId: 'ajukan', params: { layanan_id: 23, berkas: 'kk,ktp,surat' } },
         dependsOn: [],
         dokumen: [
           'Surat keterangan kelahiran dari RS/Puskesmas/fasilitas kesehatan/dokter/bidan, atau dari kepala desa/lurah bila lahir di rumah atau tempat lain',

@@ -32,6 +32,19 @@ describe('PERISTIWA_BUNDEL', () => {
     expect(findBundel('kelahiran')!.langkah.some((l) => l.jenis === 'offline')).toBe(true);
     expect(findBundel('kematian')!.langkah.some((l) => l.jenis === 'offline')).toBe(true);
   });
+  it('langkah online-adapter wajib (dan hanya dia) membawa alur Pendamping; akta kelahiran Wonogiri = layanan 23', () => {
+    const b = findBundel('kelahiran')!;
+    const ajukan = b.langkah.find((l) => l.id === 'ajukan')!;
+    expect(ajukan).toMatchObject({
+      jenis: 'online-adapter',
+      pendamping: { flowId: 'ajukan', params: { layanan_id: 23, berkas: 'kk,ktp,surat' } },
+    });
+    const tanpa = { ...ajukan, pendamping: undefined };
+    expect(BundelSchema.safeParse({ ...b, langkah: [tanpa] }).success).toBe(false);
+    const manual = { ...b.langkah[1]!, pendamping: ajukan.pendamping };
+    expect(BundelSchema.safeParse({ ...b, langkah: [ajukan, manual] }).success).toBe(false);
+  });
+
   it('DAG valid: dependsOn dikenal dan tanpa siklus', () => {
     const b = findBundel('kelahiran')!;
     expect(BundelSchema.safeParse({ ...b, langkah: [{ ...b.langkah[0]!, dependsOn: ['x'] }] }).success).toBe(

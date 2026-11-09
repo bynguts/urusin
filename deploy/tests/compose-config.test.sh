@@ -58,6 +58,12 @@ check('pendamping: tanpa port terpublikasi', !pd.ports || pd.ports.length === 0)
 check('pendamping: HOST=antarmuka (bukan wildcard), edge wajib', pd.environment.HOST === 'antarmuka' &&
   pd.environment.PENDAMPING_EDGE_URL === 'http://pendamping-edge:3129' && 'PENDAMPING_EDGE_TOKEN' in pd.environment);
 check('pendamping: tanpa PENDAMPING_UPSTREAM_PROXY (egress hanya lewat edge)', !('PENDAMPING_UPSTREAM_PROXY' in pd.environment));
+// Mode Uji (juri/tamu): setiap portal resmi dipetakan HANYA ke replika di fixtures.$DOMAIN; edge mengizinkan host itu.
+const ovs = String(pd.environment.PENDAMPING_ORIGIN_OVERRIDES ?? '').split(',').filter(Boolean);
+check('pendamping: Mode Uji memetakan 5 portal resmi ke replika https://fixtures.urusin.test saja', ovs.length === 5 &&
+  ovs.every((p) => /^https:\/\/[a-z0-9.-]+\.go\.id=https:\/\/fixtures\.urusin\.test(\/[a-z]+)?$/.test(p)) &&
+  pd.environment.PENDAMPING_FIXTURE_ORIGINS === 'https://fixtures.urusin.test' &&
+  edge.environment.PENDAMPING_FIXTURE_ORIGINS === 'https://fixtures.urusin.test');
 // Sandbox setuid (ADR 0029): tanpa no-new-privileges HANYA di pendamping; tepat SYS_ADMIN + SYS_CHROOT.
 check('pendamping: seccomp Playwright, satu-satunya security_opt (sandbox setuid, tanpa no-new-privileges)',
   pd.security_opt.length === 1 && /^seccomp=.*pendamping-seccomp\.json$/.test(pd.security_opt[0]));

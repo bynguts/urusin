@@ -187,6 +187,27 @@ describe('SessionManager', () => {
     expect(h.runs[0]!.init.program.origin).toBe('http://127.0.0.1:4320');
   });
 
+  it('produksi: Mode Uji (juri/tamu) WAJIB replika; akun warga ke portal resmi walau override ada', async () => {
+    const fx = 'https://fixtures.urusin.test';
+    const ov = new Map([['https://telunjuksakti.wonogirikab.go.id', fx]]);
+    const h = harness({ production: true, fixtureOrigins: [fx], originOverrides: ov, maxSessions: 3 });
+    await h.manager.create(input('u-juri', { modeUji: true }));
+    await h.manager.create(input('u-warga', { modeUji: false }));
+    await h.manager.create(input('u-lama'));
+    await h.flush();
+    expect(h.runs.map((r) => r.init.program.origin)).toEqual([
+      fx,
+      'https://telunjuksakti.wonogirikab.go.id',
+      'https://telunjuksakti.wonogirikab.go.id',
+    ]);
+    // Situs tanpa replika: Mode Uji gagal tertutup, tidak pernah jatuh ke situs asli.
+    const tanpa = harness({ production: true, fixtureOrigins: [fx], originOverrides: new Map() });
+    await expect(tanpa.manager.create(input('u-juri', { modeUji: true }))).rejects.toMatchObject({
+      kode: 'ADAPTER_TIDAK_ADA',
+    });
+    expect(tanpa.runs).toHaveLength(0);
+  });
+
   it('override berawalan jalur: nav dan halaman login probe diberi awalan fixture', async () => {
     const h = harness({
       originOverrides: new Map([['https://telunjuksakti.wonogirikab.go.id', 'http://127.0.0.1:4320/ts']]),

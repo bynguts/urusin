@@ -64,6 +64,8 @@ export type Config = {
   memCheckMs: number;
   /** Batas heap V8 per renderer (MB). */
   jsHeapMb: number;
+  /** NODE_ENV=production: override fixture hanya dipakai sesi Mode Uji (juri/tamu). */
+  production: boolean;
   /** Origin fixture (persis, termasuk port) yang diizinkan selain domain resmi: dev/uji/demo. */
   fixtureOrigins: string[];
   /** Pemetaan origin resmi -> origin fixture (dev/uji/demo), mis. "https://telunjuksakti...=http://127.0.0.1:4320". */
@@ -228,6 +230,7 @@ export function loadConfig(
     sessionMemMb: num(env.PENDAMPING_SESSION_MEM_MB, DEFAULTS.sessionMemMb),
     memCheckMs: Math.max(200, num(env.PENDAMPING_MEM_CHECK_MS, DEFAULTS.memCheckMs)),
     jsHeapMb: num(env.PENDAMPING_JS_HEAP_MB, DEFAULTS.jsHeapMb),
+    production,
     fixtureOrigins,
     originOverrides,
     upstreamProxy: upstream(env.PENDAMPING_UPSTREAM_PROXY),

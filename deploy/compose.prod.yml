@@ -162,6 +162,11 @@ services:
       PENDAMPING_SESSION_MEM_MB: ${PENDAMPING_SESSION_MEM_MB:-450}
       PENDAMPING_FPS: ${PENDAMPING_FPS:-8}
       PENDAMPING_DEBUG_TOKEN: ${PENDAMPING_DEBUG_TOKEN:-}
+      # Mode Uji (juri/tamu, ditentukan web per sesi): portal resmi dipetakan ke replika di fixtures (profil
+      # `fixtures`). Sesi Mode Uji tanpa replika ditolak; akun warga biasa tetap ke portal resmi asli.
+      PENDAMPING_FIXTURE_ORIGINS: https://fixtures.${DOMAIN:?DOMAIN wajib diisi}
+      PENDAMPING_ORIGIN_OVERRIDES: >-
+        https://telunjuksakti.wonogirikab.go.id=https://fixtures.${DOMAIN},https://wargaklampid-dispendukcapil.surabaya.go.id=https://fixtures.${DOMAIN}/sby,https://sidnok.semarangkota.go.id=https://fixtures.${DOMAIN}/smg,https://samsat-pkb2.jakarta.go.id=https://fixtures.${DOMAIN}/samsat,https://oss.go.id=https://fixtures.${DOMAIN}/oss
     read_only: true
     tmpfs:
       # Profil Chromium sementara per sesi + soket/cookie Xvfb; dihapus saat sesi/layanan berakhir.
@@ -222,6 +227,8 @@ services:
       # Hanya penanda: /debug diteruskan bila token ini diisi (diperiksa pendamping, bukan edge).
       PENDAMPING_DEBUG_TOKEN: ${PENDAMPING_DEBUG_TOKEN:-}
       PENDAMPING_UPSTREAM_PROXY: ${PENDAMPING_UPSTREAM_PROXY:-}
+      # Replika Mode Uji ikut union CONNECT (https:443 saja); sama dengan PENDAMPING_FIXTURE_ORIGINS pendamping.
+      PENDAMPING_FIXTURE_ORIGINS: https://fixtures.${DOMAIN:?DOMAIN wajib diisi}
     user: pwuser
     read_only: true
     tmpfs:

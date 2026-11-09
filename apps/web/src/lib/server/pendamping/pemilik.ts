@@ -1,6 +1,7 @@
 import { AKUN_COOKIE } from '#lib/server/akun.js';
 import { sidDariRequest, type PemeriksaPemilikAkun } from '#lib/server/pendamping.js';
 import { getRuntime } from '#lib/server/runtime.js';
+import type { UrusanRow } from '@urusin/harness';
 
 function cookieDari(request: Request, nama: string): string | undefined {
   for (const part of (request.headers.get('cookie') ?? '').split(';')) {
@@ -23,3 +24,15 @@ export const pemeriksaPemilikVault: PemeriksaPemilikAkun = async (request, urusa
     rt.akun.pemilikVaultUrusan(urusan.id, { akun, sid: sidDariRequest(request) ?? undefined }) !== undefined
   );
 };
+
+/**
+ * Mode Uji Browser Pendamping untuk urusan ini: true kecuali pemiliknya akun warga biasa (bukan salinan demo juri,
+ * bukan tamu) yang sedang masuk. Mode Uji membuka replika di fixtures, tidak pernah portal resmi asli.
+ */
+export async function modeUjiPendamping(request: Request, urusan: UrusanRow): Promise<boolean> {
+  const rt = await getRuntime();
+  const token = cookieDari(request, AKUN_COOKIE);
+  const akun = token ? rt.akun.sesi(token)?.akun : undefined;
+  const pemilik = rt.akun.pemilikVaultUrusan(urusan.id, { akun, sid: sidDariRequest(request) ?? undefined });
+  return !(akun && akun.jenis === 'akun' && pemilik === akun.id);
+}

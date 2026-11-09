@@ -221,9 +221,15 @@ export class SessionManager {
     if (!built.ok) throw new PendampingError('ADAPTER_TIDAK_ADA', 422, built.message);
     if (built.program.origin !== new URL(input.origin).origin)
       throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'origin registry tidak cocok dengan adapter');
-    // Produksi tanpa override = origin resmi apa adanya.
     const ov = this.config.originOverrides.get(built.program.origin);
-    return ov ? withOverride(built.program, ov) : built.program;
+    // Mode Uji (juri/tamu): HANYA replika fixture; tanpa pemetaan untuk situs ini sesi ditolak (gagal tertutup).
+    if (input.modeUji === true) {
+      if (!ov)
+        throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'Mode uji: situs ini belum punya replika uji.');
+      return withOverride(built.program, ov);
+    }
+    // Produksi di luar Mode Uji: portal resmi apa adanya. Dev/CI: pemetaan fixture bila dikonfigurasi.
+    return ov && !this.config.production ? withOverride(built.program, ov) : built.program;
   }
 
   private async lanjutkan(s: Sesi, executionId: string, program: Program): Promise<SesiPendamping> {

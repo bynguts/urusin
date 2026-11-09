@@ -5,6 +5,12 @@ export type Service = { id: number; name: string; requirements: string[] };
 export const SERVICES: readonly Service[] = [
   { id: 1, name: 'Layanan Contoh A', requirements: ['Berkas contoh 1', 'Berkas contoh 2'] },
   { id: 2, name: 'Layanan Contoh B', requirements: ['Berkas contoh 3'] },
+  // Id sama dengan portal asli (pendaftaran/uploadberkas/23) agar alur demo juri memakai parameter yang sama.
+  {
+    id: 23,
+    name: 'Akta Kelahiran (replika uji)',
+    requirements: ['Kartu Keluarga (KK) Orang Tua', 'KTP orang tua', 'Surat keterangan kelahiran'],
+  },
 ];
 
 export type Application = { no: number; layanan: string; tanggal: string; status: string };

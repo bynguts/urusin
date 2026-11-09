@@ -1,5 +1,6 @@
 import { MulaiPendampingRequestSchema } from '@urusin/contracts';
 import { matchOfficialOrigin } from '@urusin/core';
+import { mulaiPengajuan } from '@urusin/harness';
 import { routeByKode } from '@urusin/registry';
 import { z } from 'zod';
 import { catatHasilEksekusi } from '#lib/server/eksekusi.js';
@@ -13,6 +14,7 @@ import {
   skema,
   teruskan,
 } from '#lib/server/pendamping.js';
+import { modeUjiPendamping } from '#lib/server/pendamping/pemilik.js';
 import { akses } from './akses';
 import type { RequestHandler } from './$types';
 
@@ -55,9 +57,15 @@ export const POST: RequestHandler = async ({ request, params }) => {
       flowId: offered.data.flowId,
       origin,
       params: offered.data.params,
+      // Juri (salinan demo) dan tamu selalu ke replika uji; situs resmi asli hanya untuk akun warga pemiliknya.
+      modeUji: await modeUjiPendamping(request, a.u),
       ...(body.data.viewport ? { viewport: body.data.viewport } : {}),
     });
-    if (r.ok) a.rt.publish(a.u.id, { type: 'progress', label: 'Browser Pendamping disiapkan.' });
+    if (r.ok) {
+      a.rt.publish(a.u.id, { type: 'progress', label: 'Browser Pendamping disiapkan.' });
+      if (offered.data.bacaSaja !== true)
+        mulaiPengajuan(a.rt.store, a.u.id, (e) => void a.rt.publish(a.u.id, e));
+    }
     // Situs khusus jaringan Indonesia tanpa worker wilayah yang hidup: jujur, lalu beralih ke panduan langkah.
     else if (r.dipandu)
       catatHasilEksekusi(a.rt, a.u, offered.data.executionId, 'drift', 'Browser Pendamping', {

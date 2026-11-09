@@ -25,3 +25,21 @@ export function dataDiriSintetis(): Record<string, string> {
     email: ['juri', 'example.com'].join('@'),
   };
 }
+
+/** PNG 1x1 abu-abu: isi berkas contoh. Bukan foto dokumen apa pun; hanya agar alur unggah demo bisa dicoba. */
+const PNG_CONTOH = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+/**
+ * Dokumen CONTOH untuk salinan demo juri (KK, KTP, surat keterangan lahir) agar alur Browser Pendamping akta
+ * kelahiran di replika uji bisa langsung mengunggah tanpa juri membawa foto dokumen sendiri. Fiktif.
+ */
+export function dokumenContoh(): { jenis: string; judul: string; mime: string; bytes: Buffer }[] {
+  return [
+    { jenis: 'kk', judul: 'Contoh KK (fiktif)', mime: 'image/png', bytes: PNG_CONTOH },
+    { jenis: 'ktp', judul: 'Contoh KTP (fiktif)', mime: 'image/png', bytes: PNG_CONTOH },
+    { jenis: 'surat', judul: 'Contoh surat keterangan lahir (fiktif)', mime: 'image/png', bytes: PNG_CONTOH },
+  ];
+}

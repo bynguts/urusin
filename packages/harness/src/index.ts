@@ -19,5 +19,6 @@ export * from './prompt.js';
 export * from './agent.js';
 export * from './demo.js';
 export * from './runtime.js';
+export * from './rencana.js';
 export * from './pii-fixtures.js';
 export * from './guarded-llm.js';
