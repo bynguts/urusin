@@ -160,6 +160,43 @@ describe('Browser Pendamping', () => {
     expect(await s.izinkanIsi()).toMatch(/Koneksi terputus/);
   });
 
+  it('Lanjutkan pada berkas_kurang: izin baru untuk berkas itu saja, lalu kendali kembali; giliran lain langsung', async () => {
+    const kiriman: string[] = [];
+    let kurang: string[] = [];
+    const s = new SesiPendampingUi(
+      'u_2',
+      async () => null,
+      async (url, init) => {
+        kiriman.push(`${String(url)} ${String(init?.body)}`);
+        return Response.json({ diizinkan: true, kurang });
+      },
+    );
+    const viewer = { kembali: 0, kembalikan: () => void viewer.kembali++ };
+    (s as unknown as { viewer: unknown }).viewer = viewer;
+    const SITUS = 'https://telunjuksakti.wonogirikab.go.id';
+    s.terapkanEvent({
+      jenis: 'giliran_anda',
+      alasan: 'berkas_kurang',
+      pesan: 'Dokumen KK belum ada. Tambahkan di Dokumen, lalu tekan Lanjutkan.',
+      berkas: { nama: 'kk', origin: SITUS },
+    });
+    expect(s.data.keadaan).toBe('giliran');
+    kurang = ['KK'];
+    await s.kembalikan();
+    expect(kiriman).toEqual([
+      `/api/urusan/u_2/izinkan-isi ${JSON.stringify({ writeList: ['berkas:KK'], targetOrigin: SITUS })}`,
+    ]);
+    // Masih belum ada: pesan jujur, kendali tetap dikembalikan (langkah unggah diulang, giliran muncul lagi).
+    expect(s.data.pesan).toBe('Isi sendiri di layar: KK.');
+    expect(s.data.giliran).toBeNull();
+    expect(viewer.kembali).toBe(1);
+    // Giliran isi_sendiri: tidak ada permintaan izin.
+    s.terapkanEvent({ jenis: 'giliran_anda', alasan: 'isi_sendiri', pesan: 'Ketik Nomor kitir' });
+    await s.kembalikan();
+    expect(kiriman).toHaveLength(1);
+    expect(viewer.kembali).toBe(2);
+  });
+
   it('status sesi menjadi keadaan layar', () => {
     expect(keadaanDariSesi({ status: 'antre', mode: 'ai' }, false)).toBe('antre');
     expect(keadaanDariSesi({ status: 'menunggu_data', mode: 'ai' }, false)).toBe('menyiapkan');

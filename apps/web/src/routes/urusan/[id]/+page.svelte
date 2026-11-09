@@ -291,7 +291,7 @@
             bind:canvas
             bind:inputTeks
             onambilalih={() => sesi.ambilAlih()}
-            onkembalikan={() => sesi.kembalikan()}
+            onkembalikan={() => void sesi.kembalikan()}
             onhentikan={() => void sesi.hentikan()}
             onmulailagi={() => {
               const e = k.permintaanEksekusi;

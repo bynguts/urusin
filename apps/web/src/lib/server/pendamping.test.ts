@@ -418,8 +418,8 @@ describe('broker Browser Pendamping', () => {
           ? { status: 200, body: sesi() }
           : path === '/internal/sesi/butuh'
             ? { status: 200, body: BUTUH }
-            : path === '/internal/sesi/isi'
-              ? { status: 200, body: { placeholder: ['{{URUSAN.KITIR}}'], berkas: ['ktp'] } }
+            : path === '/internal/sesi/berkas'
+              ? { status: 200, body: { placeholder: ['{{PEMOHON.NIK}}', '{{URUSAN.KITIR}}'], berkas: [] } }
               : { status: 200, body: { placeholder: ['{{URUSAN.KITIR}}'], berkas: [] } };
       return u;
     }
@@ -444,33 +444,34 @@ describe('broker Browser Pendamping', () => {
       const teks = await res.text();
       expect(JSON.parse(teks)).toEqual({ diizinkan: true, kurang: ['Nomor kitir'] });
       expect(teks).not.toContain(NIK);
+      // Berkas dulu, isian TERAKHIR (worker memulai AI pada panggilan isi).
       expect(jalur()).toEqual([
         '/internal/sesi/status',
         '/internal/sesi/butuh',
-        '/internal/sesi/isi',
         '/internal/sesi/berkas',
+        '/internal/sesi/isi',
       ]);
       const owner = { urusanId: u.id, sidHash: hashSid(SID) };
       expect(calls[0]!.body).toEqual(owner);
       expect(calls[1]!.body).toEqual(owner);
       // Hanya placeholder yang dibutuhkan sesi; nama berkas adapter (huruf kecil) dipertahankan.
-      expect(calls[2]!.body).toEqual({ ...owner, isian: { '{{PEMOHON.NIK}}': NIK, '{{PEMOHON.HP}}': HP } });
-      expect(calls[3]!.body).toEqual({
+      expect(calls[2]!.body).toEqual({
         ...owner,
         nama: 'ktp',
         namaBerkas: 'KTP saya',
         mime: 'image/png',
         dataBase64: 'AQID',
       });
+      expect(calls[3]!.body).toEqual({ ...owner, isian: { '{{PEMOHON.NIK}}': NIK, '{{PEMOHON.HP}}': HP } });
       // Kanal internal bertanda tangan HMAC.
-      expect(calls[2]!.tanda).toBe(
+      expect(calls[3]!.tanda).toBe(
         tandaInternal(
           'token-uji',
-          calls[2]!.waktu!,
-          calls[2]!.nonce!,
+          calls[3]!.waktu!,
+          calls[3]!.nonce!,
           'POST',
           '/internal/sesi/isi',
-          calls[2]!.raw,
+          calls[3]!.raw,
         ),
       );
       expect(JSON.stringify(rt.store.eventsAfter(u.id))).not.toContain(NIK);

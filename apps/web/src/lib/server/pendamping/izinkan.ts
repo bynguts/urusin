@@ -13,8 +13,10 @@ import type { Runtime } from '#lib/server/runtime.js';
  *    dan origin yang benar-benar diisi sesi (`/internal/sesi/butuh`).
  * 2. `ambilIsianUntukIsi(rt, {urusanId, liveOrigin})`: origin itu harus persis `targetOrigin` persetujuan
  *    (portal registry `kirim-asli` atau situs latihan); token dipakai sekali.
- * 3. Nilai + berkas dikirim HANYA ke worker pemegang sesi (`/internal/sesi/isi`, `/internal/sesi/berkas`),
- *    disaring ke placeholder/berkas yang memang dibutuhkan sesi. Tidak pernah ke peramban, model, atau log.
+ * 3. Berkas lalu nilai dikirim HANYA ke worker pemegang sesi (`/internal/sesi/berkas`, lalu `/internal/sesi/isi`
+ *    sebagai panggilan TERAKHIR: worker memulai AI di situ), disaring ke placeholder/berkas yang memang
+ *    dibutuhkan sesi. Tidak pernah ke peramban, model, atau log. Putaran yang sama dipakai ulang untuk satu
+ *    berkas saat langkah unggah menunggu (`berkas_kurang`).
  * Jawaban hanya label yang masih harus warga isi sendiri.
  */
 export async function isiSesiDariVault(
@@ -40,12 +42,9 @@ export async function isiSesiDariVault(
   }
   const butuh = new Set(b.data.placeholder);
   const isian = Object.fromEntries(Object.entries(ambil.isian).filter(([k]) => butuh.has(k)));
-  const r = await panggilPemilik(cfg, '/internal/sesi/isi', skema.kurang, { ...owner, isian });
-  if (!r.ok) return r;
-  let kurang = r.data;
   for (const d of ambil.berkas) {
     // Daftar write memakai `berkas:<JENIS>` huruf besar; nama adapter (`{{FILE:foto}}`) bisa huruf kecil.
-    const nama = kurang.berkas.find((n) => n.toUpperCase() === d.nama.toUpperCase());
+    const nama = b.data.berkas.find((n) => n.toUpperCase() === d.nama.toUpperCase());
     if (!nama) continue;
     const rb = await panggilPemilik(cfg, '/internal/sesi/berkas', skema.kurang, {
       ...owner,
@@ -55,8 +54,10 @@ export async function isiSesiDariVault(
       dataBase64: d.bytes.toString('base64'),
     });
     if (!rb.ok) return rb;
-    kurang = rb.data;
   }
+  const r = await panggilPemilik(cfg, '/internal/sesi/isi', skema.kurang, { ...owner, isian });
+  if (!r.ok) return r;
+  const kurang = r.data;
   return {
     ok: true,
     kurang: [...new Set(kurang.placeholder.map(labelPlaceholder)), ...kurang.berkas],

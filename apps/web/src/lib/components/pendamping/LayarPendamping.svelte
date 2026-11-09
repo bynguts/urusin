@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import Icon from '../Icon.svelte';
   import ChipMode from './ChipMode.svelte';
   import type { DataPendamping } from '#lib/pendamping/sesi.svelte.js';
@@ -51,6 +52,7 @@
     final: 'Periksa isian, lalu tekan Kirim pengajuan',
     periksa: 'Periksa halaman ini',
     isi_sendiri: 'Isi kolom ini sendiri',
+    berkas_kurang: 'Dokumen belum ada',
   };
   const CATATAN_GILIRAN: Record<string, string> = {
     login: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
@@ -59,6 +61,7 @@
     final: 'AI dikunci agar tidak bisa menekan Kirim.',
     periksa: 'AI menunggu sampai Anda selesai.',
     isi_sendiri: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
+    berkas_kurang: 'Lanjutkan meminta izin Anda untuk mengunggah dokumen itu saja.',
   };
   const isiGiliran = $derived(
     data.giliran ? [data.giliran.pesan, CATATAN_GILIRAN[data.giliran.alasan]].filter(Boolean).join(' ') : '',
@@ -107,9 +110,14 @@
           {JUDUL_GILIRAN[data.giliran.alasan] ?? 'Giliran Anda'}
         </p>
         {#if isiGiliran}<p class="text-[15px] leading-[23px] text-muted">{isiGiliran}</p>{/if}
-        {#if data.giliran.alasan === 'isi_sendiri'}
-          <!-- Kolom di luar Data Diri (mis. nomor kitir): warga mengetik, lalu AI lanjut. -->
-          <div class="flex gap-2">
+        {#if data.giliran.alasan === 'isi_sendiri' || data.giliran.alasan === 'berkas_kurang'}
+          <!-- Kolom di luar Data Diri (mis. nomor kitir) atau Dokumen yang belum ada: warga, lalu AI lanjut. -->
+          <div class="flex flex-wrap gap-2">
+            {#if data.giliran.alasan === 'berkas_kurang'}
+              <a href={resolve('/dokumen')} target="_blank" rel="noopener" class={TOMBOL_TERANG}
+                >Buka Dokumen</a
+              >
+            {/if}
             <button type="button" onclick={onkembalikan} class={TOMBOL_GELAP}>
               <Icon name="putar" class="size-[15px]" />Lanjutkan
             </button>
