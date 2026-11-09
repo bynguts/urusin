@@ -5,6 +5,8 @@ import { batasi, catatTerakhir, ensureSession } from '#lib/server/sesi.js';
 const PERISTIWA = ['kelahiran', 'kematian', 'perkawinan', 'pindah', 'lainnya'] as const;
 type Peristiwa = (typeof PERISTIWA)[number];
 
+export const PESAN_AWAL_COOKIE = 'urusin_pesan_awal';
+
 export type GagalMulai = { pesanWarga: string; pesan: string };
 
 /**
@@ -40,5 +42,15 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
   });
   if (pesan) startTurnInBackground(rt, { urusanId: u.id, userText: pesan });
   catatTerakhir(event.cookies, u.id, publicOrigin());
+  // Formulir terkirim sebelum JavaScript siap: pesan pertama tidak sempat dicatat di perangkat. Titipkan
+  // sekali lewat cookie sempit (hanya path urusan ini, 2 menit); halaman urusan membacanya lalu menghapusnya.
+  if (pesan && event.request.headers.get('x-sveltekit-action') !== 'true' && pesan.length <= 1000)
+    event.cookies.set(PESAN_AWAL_COOKIE, pesan, {
+      path: `/urusan/${u.id}`,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: publicOrigin().startsWith('https://'),
+      maxAge: 120,
+    });
   redirect(303, `/urusan/${u.id}`);
 }

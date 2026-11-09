@@ -91,7 +91,7 @@
 
   function buka(id: string) {
     pesan = lokal.pesanWarga(id);
-    const tertunda = lokal.ambilTertunda();
+    const tertunda = lokal.ambilTertunda() ?? data.pesanAwal;
     if (tertunda && pesan.length === 0) {
       lokal.catatPesan(id, { teks: tertunda, setelahSeq: 0 });
       pesan = lokal.pesanWarga(id);
