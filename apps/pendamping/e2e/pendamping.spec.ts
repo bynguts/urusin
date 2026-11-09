@@ -101,6 +101,15 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
   expect(queued.data).toMatchObject({ status: 'antre', antrean: { posisi: 1 } });
   expect((await internal('/internal/antrean')).data).toEqual({ aktif: 1, maks: 1, menunggu: 1 });
 
+  // Semua frame teks WS perangkat (dua arah) direkam: nilai vault tidak boleh pernah lewat sini (A-M1).
+  const frameWs: string[] = [];
+  page.on('websocket', (ws) => {
+    const catat = (f: { payload: string | Buffer }) => {
+      if (typeof f.payload === 'string') frameWs.push(f.payload);
+    };
+    ws.on('framesent', catat);
+    ws.on('framereceived', catat);
+  });
   await bukaPenampil(page, 'u-e2e-1', sesiId);
   await expect(page.locator('#koneksi')).toHaveText('tersambung');
   await expect
@@ -111,8 +120,18 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
       origin: FIXTURE_ORIGIN,
     });
 
-  // Jalur isi server (A-M1): web mengirim nilai + berkas lewat kanal internal bertanda HMAC; perangkat tidak
-  // punya jalur nilai vault (placeholder di-resolve di batas eksekutor, bukan oleh LLM).
+  // "Izinkan isi" -> jalur isi server (A-M1), urutan yang sama dengan controller web (isiSesiDariVault): tanya
+  // pemegang sesi apa yang dibutuhkan + origin yang diisi, lalu kirim nilai + berkas lewat kanal internal
+  // bertanda HMAC. Perangkat tidak punya jalur nilai vault (placeholder di-resolve di batas eksekutor).
+  const butuh = await internal<{ placeholder: string[]; berkas: string[]; origin: string }>(
+    '/internal/sesi/butuh',
+    owner('u-e2e-1'),
+  );
+  expect(butuh.data).toEqual({
+    placeholder: ['{{PEMOHON.HP}}'],
+    berkas: ['ktp', 'kk'],
+    origin: FIXTURE_ORIGIN,
+  });
   expect(
     (await internal('/internal/sesi/isi', { ...owner('u-e2e-1'), isian: { '{{PEMOHON.HP}}': TEST_HP } }))
       .status,
@@ -160,6 +179,13 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
   const langkah = (await peristiwa(page)).filter((e) => e.jenis === 'langkah');
   expect(langkah.map((e) => (e as { label: string }).label)).toContain('Mengunggah berkas');
   expect(JSON.stringify(await peristiwa(page))).not.toContain(TEST_HP);
+  // Nilai HP dan isi berkas tidak pernah ada di frame WS perangkat, ke arah mana pun.
+  expect(frameWs.length).toBeGreaterThan(5);
+  for (const f of frameWs) {
+    expect(f).not.toContain(TEST_HP);
+    expect(f).not.toContain(PNG.toString('base64'));
+    expect(f).not.toMatch(/"type":"(vault|berkas|berkas_potong)"/);
+  }
 
   // Warga mengetuk "Selesai" (sentuh) di area sorotan: satu-satunya jalan pengiriman akhir.
   const f = final.sorot!;
