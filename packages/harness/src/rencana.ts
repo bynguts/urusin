@@ -41,9 +41,7 @@ export function majukan(
  * Langkah rencana yang bisa dikerjakan Browser Pendamping di portal kota ini: langkah `online-adapter` bundel,
  * kota berstatus `kirim-asli` dengan adapter yang punya alur tersebut (bukan baca-saja). Selain itu undefined.
  */
-export function langkahPendamping(
-  u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>,
-):
+export function langkahPendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>):
   | {
       adapterId: string;
       flowId: string;

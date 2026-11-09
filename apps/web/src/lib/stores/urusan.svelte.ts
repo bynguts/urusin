@@ -158,6 +158,11 @@ export class UrusanStore implements StoreUrusan {
         if (res.status === 409) return 'konflik';
       }
       if (!res.ok) return 'galat';
+      // Versi baru langsung dari respons (event `state` di stream membawa versi yang sama), agar pesan
+      // berikutnya tidak memakai versi basi dan memicu 409.
+      const j = (await res.json().catch(() => null)) as { version?: unknown } | null;
+      if (typeof j?.version === 'number' && j.version > this.keadaan.version)
+        this.keadaan.version = j.version;
       if (this.keadaan.status === 'diam' || this.keadaan.status === 'terputus') this.sambung(id);
       return 'ok';
     } catch {

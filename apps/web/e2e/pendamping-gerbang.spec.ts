@@ -19,15 +19,24 @@ test('Setujui rencana menawarkan Browser Pendamping; persetujuan tidak hilang se
   const setujuiRencana = page.getByRole('button', { name: 'Setujui rencana' });
   await expect(setujuiRencana).toBeEnabled({ timeout: 20_000 });
 
-  await setujuiRencana.click();
+  const [jawab] = await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith('/rencana/setujui')),
+    setujuiRencana.click(),
+  ]);
+  const disetujui = (await jawab.json()) as { state: string; version: number; pendamping: boolean };
   const buka = page.getByRole('button', { name: 'Setujui dan buka situs' });
   await expect(buka).toBeEnabled({ timeout: 20_000 });
   await expect(log).toContainText('Telunjuk Sakti');
   await expect(setujuiRencana).toHaveCount(0);
   expect(panggilan.filter((p) => p.url.endsWith('/turn'))).toHaveLength(0); // bukan pesan chat
   expect(panggilan.find((p) => p.url.endsWith('/rencana/setujui'))?.status).toBe(200);
-  const st = (await (await page.request.get(`/api/urusan/${id}`)).json()) as { state: string };
+  const st = (await (await page.request.get(`/api/urusan/${id}`)).json()) as {
+    state: string;
+    version: number;
+  };
   expect(st.state).toBe('MENUNGGU_KONFIRMASI');
+  // Respons persetujuan membawa versi terbaru (dan event `state` di stream membawa versi yang sama).
+  expect(disetujui).toEqual({ state: 'MENUNGGU_KONFIRMASI', version: st.version, pendamping: true });
 
   // Persetujuan ganda (klik kedua / tab lain) ditolak, state tidak mundur.
   const ulang = await page.evaluate(
@@ -52,6 +61,8 @@ test('Setujui rencana menawarkan Browser Pendamping; persetujuan tidak hilang se
     )
     .toBe(false);
   await expect(setujuiRencana).toHaveCount(0);
+  // Versi baru dari persetujuan sudah sampai ke klien: pesan berikutnya diterima tanpa 409 + kirim ulang.
+  expect(panggilan.filter((p) => p.url.endsWith('/turn')).map((p) => p.status)).toEqual([202]);
   await expect(buka).toBeEnabled({ timeout: 20_000 });
   expect(((await (await page.request.get(`/api/urusan/${id}`)).json()) as { state: string }).state).toBe(
     'MENUNGGU_KONFIRMASI',
