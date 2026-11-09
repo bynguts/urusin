@@ -25,7 +25,7 @@ cd /opt/urusin/deploy
 # 2. Konfigurasi. File ini berisi rahasia: jangan di-commit.
 cp ../.env.example .env
 chmod 600 .env      # deploy.sh menolak .env/.restic-password yang bisa diakses group/others
-$EDITOR .env        # isi DOMAIN, SESSION_SECRET, LLM_*, VAPID_*, TURNSTILE_*
+$EDITOR .env        # isi DOMAIN, SESSION_SECRET, URUSIN_PII_KEY, LLM_*, VAPID_*, TURNSTILE_*, GOOGLE_*, RESEND_*
 ```
 
 `.env` di `/opt/urusin/deploy/.env` dibaca compose (`env_file`) dan oleh `deploy.sh`. Izin wajib (diperiksa
@@ -128,12 +128,22 @@ Firewall tidak diubah; sebagai gantinya:
   `X-Forwarded-For: 6.6.6.6` sampai ke upstream hanya dengan IP peer asli. Jangan menambah
   `trusted_proxies` di Caddy kecuali ada CDN di depan (itu mengubah `XFF_DEPTH`).
 
-- Akun warga (ADR 0028), semuanya opsional (app boot tanpa ini): `RESEND_API_KEY` + `URUSIN_EMAIL_FROM`
-  (SPF/DKIM Resend di DNS domain; tanpa kunci email ditahan dan verifikasi tidak memblokir),
-  `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` dengan redirect URI `https://<host app>/auth/google/callback`
-  untuk **kedua** set host di `hosts.json`, dan `TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY` (tanpa
-  Turnstile, tombol "Masuk sebagai juri" mati di produksi). `URUSIN_OIDC_FIXTURE`/`URUSIN_TURNSTILE_FIXTURE`
-  tidak boleh ada: server menolak boot.
+- Akun warga (ADR 0028). Selain `URUSIN_PII_KEY` (wajib, lihat bagian kunci vault di bawah), semuanya opsional:
+  app tetap boot tanpa kunci-kunci ini.
+
+  | Kunci                                        | Isi dan perilaku                                                                                                                                                                                                         |
+  | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | `URUSIN_EMAIL_MODE`                          | `resend` atau `log`. Kosong = `resend` bila `RESEND_API_KEY` terisi, selain itu `log`. `log` di produksi menahan email (tanpa tautan di log) dan verifikasi tidak memblokir. `resend` tanpa kunci = server menolak boot. |
+  | `RESEND_API_KEY`, `URUSIN_EMAIL_FROM`        | Kunci Resend dan pengirim (SPF/DKIM Resend di DNS domain).                                                                                                                                                               |
+  | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`   | Diisi berdua atau dikosongkan berdua (selain itu server menolak boot). Redirect URI `https://<host app>/auth/google/callback` untuk **kedua** set host di `hosts.json`.                                                  |
+  | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile untuk "Masuk sebagai juri" dan login setelah 3 kegagalan. Aktif bila `TURNSTILE_SECRET_KEY` terisi (bukan placeholder `ganti-dengan-…`); site key dipakai widget.                                   |
+  | `URUSIN_PII_KEY_PREV`                        | Hanya selama rotasi kunci vault (lihat di bawah); hapus setelah `kek:rotate`.                                                                                                                                            |
+
+  Tanpa Turnstile, tombol "Masuk sebagai juri" **tetap jalan** di produksi supaya juri tidak pernah terkunci:
+  batas 3 salinan per IP per hari (`URUSIN_DEMO_PER_IP_HARI`), 200 salinan aktif (`URUSIN_DEMO_AKTIF_MAKS`),
+  umur 24 jam, dan batas vault tamu/demo tetap berlaku. Server mencatat `[ALERT] Turnstile nonaktif di produksi`
+  saat start sebagai pengingat. Dengan Turnstile, token wajib.
+  `URUSIN_OIDC_FIXTURE`/`URUSIN_TURNSTILE_FIXTURE` tidak boleh ada di produksi: server menolak boot.
 
 ## Kunci vault (`URUSIN_PII_KEY`): escrow dan rotasi
 
