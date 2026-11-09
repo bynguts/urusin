@@ -73,8 +73,8 @@ Semua fitur di bawah sudah berjalan di <https://urusinai.web.id> dan diuji di CI
   - Nilai diambil server langsung dari vault, tidak pernah lewat peramban atau model.
 - **Akun opsional.** Tanpa akun (mode tamu) semua fitur tetap jalan.
   - Dengan akun (email + kata sandi, atau Google), Data Diri, dokumen, dan daftar urusan ikut ke perangkat lain.
-  - Fitur akun: verifikasi email, lupa sandi, keluar dari semua perangkat, tautkan/lepas Google, dan hapus
-    akun.
+  - Fitur akun: verifikasi email, lupa sandi, tautkan/lepas Google, dan keluar. Keluar dari semua perangkat dan
+    hapus akun sudah tersedia di API; tombolnya di UI belum ada.
 - **Brankas terenkripsi.**
   - Data Diri (NIK, KK, alamat, HP) dan dokumen (foto KTP/KK, PDF) dienkripsi AES-256-GCM dengan kunci per
     pemilik.
@@ -311,7 +311,8 @@ dibagikan.
     pesan jujur.
 - **UU PDP (UU 27/2022).**
   - Persetujuan saat mendaftar.
-  - Hak akses, perbaikan, dan penghapusan lewat UI dan API.
+  - Hak akses, perbaikan, dan penghapusan: Data Diri dan dokumen lewat UI; hapus akun dan keluar dari semua
+    perangkat lewat API (tombolnya belum ada di UI). Kebijakan privasi lengkap: [`docs/privasi.md`](docs/privasi.md).
   - Retensi terbatas: tamu 72 jam, salinan juri 24 jam, akun belum terverifikasi 24 jam.
   - Pengungkapan pemroses dan transfer lintas negara: Resend (AS), Google, Oracle Cloud Singapura. DPIA ada di
     [ADR 0028](docs/adr/0028-akun-dan-login.md).
@@ -382,6 +383,7 @@ dibagikan.
 
 - [Arsitektur (C4 dan alur data PII)](docs/arsitektur.md)
 - [Architecture Decision Records](docs/adr/README.md) (format MADR)
+- [Kebijakan privasi](docs/privasi.md)
 - [Kebijakan keamanan](SECURITY.md) (Indonesia dan English)
 - [Panduan kontribusi](CONTRIBUTING.md)
 - [Deploy di VPS](deploy/README.md)
