@@ -16,7 +16,8 @@ export const ARGON2_PARAMS: Readonly<Argon2Params> = Object.freeze({
 });
 
 const SALT_BYTES = 16;
-export const SANDI_MIN = 8;
+/** Panjang minimum (rencana §3.26): 10 code point, ditambah daftar 10k sandi umum. */
+export const SANDI_MIN = 10;
 /** Batas atas menahan DoS lewat sandi raksasa (argon2 tetap memproses semua byte). */
 export const SANDI_MAX = 128;
 
@@ -106,13 +107,19 @@ export function needsRehash(phc: string): boolean {
 
 export type MasalahSandi = 'SANDI_TERLALU_PENDEK' | 'SANDI_TERLALU_PANJANG' | 'SANDI_TERLALU_UMUM';
 
-/** Kebijakan sandi (NIST 800-63B): panjang minimum, batas atas, dan bukan sandi umum / bukan email sendiri. */
+/**
+ * Kebijakan sandi (NIST 800-63B): minimal 10 karakter, batas atas, bukan sandi umum (daftar 10k + pola
+ * Indonesia, termasuk kata dasarnya ditambah angka/simbol), bukan pengulangan, bukan email sendiri.
+ */
 export function periksaSandi(password: string, email?: string): MasalahSandi | null {
   const len = [...password].length;
   if (len < SANDI_MIN) return 'SANDI_TERLALU_PENDEK';
   if (len > SANDI_MAX) return 'SANDI_TERLALU_PANJANG';
   const lower = password.normalize('NFKC').toLowerCase();
   if (COMMON_PASSWORDS.has(lower)) return 'SANDI_TERLALU_UMUM';
+  // Kata umum + angka/simbol di belakang (`sunshine2026!`, `password123`) sama mudahnya ditebak.
+  const dasar = lower.replace(/[^\p{L}]+$/u, '');
+  if (dasar.length >= 4 && COMMON_PASSWORDS.has(dasar)) return 'SANDI_TERLALU_UMUM';
   if (/^(.)\1+$/.test(lower)) return 'SANDI_TERLALU_UMUM';
   if (email) {
     const e = email.toLowerCase();

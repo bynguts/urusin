@@ -45,15 +45,20 @@ describe('hash sandi argon2id', () => {
 
   it('kebijakan sandi: panjang, batas atas, daftar umum, pengulangan, sama dengan email', () => {
     expect(periksaSandi('pendek1')).toBe('SANDI_TERLALU_PENDEK');
+    expect(periksaSandi('sembilan9')).toBe('SANDI_TERLALU_PENDEK'); // 9 < 10
     expect(periksaSandi('x'.repeat(129) + 'y')).toBe('SANDI_TERLALU_PANJANG');
     expect(periksaSandi('Password123')).toBe('SANDI_TERLALU_UMUM');
-    expect(periksaSandi('bismillah')).toBe('SANDI_TERLALU_UMUM');
+    expect(periksaSandi('bismillah123')).toBe('SANDI_TERLALU_UMUM');
+    // daftar 10k: sama persis, dan kata dasar + angka/simbol di belakang
+    expect(periksaSandi('qwertyuiop')).toBe('SANDI_TERLALU_UMUM');
+    expect(periksaSandi('Sunshine2026!')).toBe('SANDI_TERLALU_UMUM');
+    expect(periksaSandi('password123')).toBe('SANDI_TERLALU_UMUM');
     expect(periksaSandi('aaaaaaaaaa')).toBe('SANDI_TERLALU_UMUM');
-    expect(periksaSandi('wargabaik@example.com', 'wargabaik@example.com')).toBe('SANDI_TERLALU_UMUM');
-    expect(periksaSandi('wargabaik', 'wargabaik@example.com')).toBe('SANDI_TERLALU_UMUM');
-    expect(periksaSandi('kuda-lari-cepat-9', 'wargabaik@example.com')).toBeNull();
-    // 8 karakter emoji (code point, bukan unit UTF-16) dihitung 8
-    expect(periksaSandi('🐱🐶🐭🐹🐰🦊🐻🐼')).toBeNull();
+    expect(periksaSandi('wargabaikku@example.com', 'wargabaikku@example.com')).toBe('SANDI_TERLALU_UMUM');
+    expect(periksaSandi('wargabaikku', 'wargabaikku@example.com')).toBe('SANDI_TERLALU_UMUM');
+    expect(periksaSandi('kuda-lari-cepat-9', 'wargabaikku@example.com')).toBeNull();
+    // 10 karakter emoji (code point, bukan unit UTF-16) dihitung 10
+    expect(periksaSandi('🐱🐶🐭🐹🐰🦊🐻🐼🐨🐯')).toBeNull();
   });
 });
 

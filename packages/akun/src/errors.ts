@@ -33,7 +33,7 @@ export type KodeGalatAkun =
 
 const PESAN: Record<KodeGalatAkun, [number, string]> = {
   EMAIL_TIDAK_VALID: [422, 'Alamat email belum benar. Periksa lagi.'],
-  SANDI_TERLALU_PENDEK: [422, 'Kata sandi minimal 8 karakter.'],
+  SANDI_TERLALU_PENDEK: [422, 'Kata sandi minimal 10 karakter.'],
   SANDI_TERLALU_PANJANG: [422, 'Kata sandi terlalu panjang. Maksimal 128 karakter.'],
   SANDI_TERLALU_UMUM: [422, 'Kata sandi ini terlalu mudah ditebak. Pilih yang lain.'],
   KREDENSIAL_SALAH: [401, 'Email atau kata sandi salah.'],

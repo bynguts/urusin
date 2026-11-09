@@ -111,7 +111,7 @@
           invalid={sandiDitolak}
         />
         <p id="sandi-petunjuk" class="text-sm text-muted">
-          Minimal 8 karakter dan bukan sandi yang umum dipakai.
+          Minimal 10 karakter dan bukan sandi yang umum dipakai.
         </p>
         {#if galat && sandiDitolak}
           <p id="sandi-galat" role="alert" data-kode={galat.kode} class="text-sm font-medium text-galat">

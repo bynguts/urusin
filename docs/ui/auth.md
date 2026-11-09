@@ -37,7 +37,7 @@ Data `load`:
 
 **Masuk dengan Google:** `<form method="GET" action="/auth/google">` + `<input type="hidden" name="next">` (atau tautan `/auth/google?next=…` dengan `data-sveltekit-reload`), hanya bila `googleAktif`. Bila warga sudah masuk, tombol yang sama di Pengaturan akun **menautkan** Google ke akun itu.
 
-Aturan sandi untuk teks bantuan: minimal 8 karakter dan bukan sandi umum.
+Aturan sandi untuk teks bantuan: minimal 10 karakter dan bukan sandi umum.
 
 ## Endpoint JSON
 

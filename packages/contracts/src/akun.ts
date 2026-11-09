@@ -8,7 +8,7 @@ import { IsoWaktuSchema, KodeKabKotaSchema } from './common.js';
  */
 
 export const EmailAkunSchema = z.string().trim().min(3).max(254);
-/** Batas skema saja; kebijakan (≥ 8 karakter, bukan sandi umum) diperiksa server dan dilaporkan lewat kode galat. */
+/** Batas skema saja; kebijakan (≥ 10 karakter, bukan sandi umum 10k) diperiksa server dan dilaporkan lewat kode galat. */
 export const SandiSchema = z.string().min(1).max(1024);
 /** Token dari tautan email (base64url 43 karakter). */
 export const TokenEmailSchema = z.string().min(1).max(200);

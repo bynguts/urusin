@@ -229,11 +229,11 @@ describe('API akun: daftar → verifikasi → masuk → sesi', () => {
     expect([r1.status, (await r1.json()).kode]).toEqual([400, 'BODY_INVALID']);
     const r2 = await daftarApi(ev(post({ email: EMAIL })));
     expect([r2.status, (await r2.json()).kode]).toEqual([422, 'BODY_INVALID']);
-    const r3 = await daftarApi(ev(post({ email: EMAIL, sandi: 'password1' })));
+    const r3 = await daftarApi(ev(post({ email: EMAIL, sandi: 'password123' })));
     const b3 = await r3.json();
     expect([r3.status, b3.kode]).toEqual([422, 'SANDI_TERLALU_UMUM']);
     expect(GalatApiSchema.parse(b3)).toBeTruthy();
-    expect(JSON.stringify(b3)).not.toContain('password1');
+    expect(JSON.stringify(b3)).not.toContain('password123');
     const ok = await daftarApi(ev(post({ email: 'lain@example.com', sandi: SANDI })));
     expect([ok.status, await ok.json()]).toEqual([202, { terkirim: true, tertunda: false }]);
   });

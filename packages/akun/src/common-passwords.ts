@@ -1,9 +1,11 @@
+import { SANDI_10K } from './common-passwords-10k.js';
+
 /**
- * Daftar kecil sandi yang paling sering bocor (≥ 8 karakter; yang lebih pendek sudah ditolak oleh aturan
- * panjang), ditambah pola umum berbahasa Indonesia. Dibandingkan dalam huruf kecil. Bukan daftar lengkap:
- * tujuannya menolak tebakan pertama penyerang, bukan menggantikan pembatas laju dan penguncian.
+ * Daftar 10k sandi paling umum (SecLists) ditambah pola umum berbahasa Indonesia. Dibandingkan dalam huruf
+ * kecil. Tujuannya menolak tebakan pertama penyerang, bukan menggantikan pembatas laju dan penguncian.
  */
 export const COMMON_PASSWORDS: ReadonlySet<string> = new Set([
+  ...SANDI_10K,
   '12345678',
   '123456789',
   '1234567890',
