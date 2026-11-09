@@ -88,13 +88,16 @@ jobs:
             if [ "$NAME" = "web" ]; then
               docker run --rm --platform "linux/${arch}" --entrypoint node "$REF"                 -e "const a=process.arch;const r=require('better-sqlite3')(':memory:').prepare('select 1 as x').get();if(r.x!==1)process.exit(1);console.log(a,'better-sqlite3 ok')"
             elif [ "$NAME" = "pendamping" ]; then
-              # Boot produksi (Xvfb milik proses + server) lalu /health; Chromium headed hanya di amd64 (QEMU lambat).
-              docker run --rm --platform "linux/${arch}" -e PENDAMPING_INTERNAL_TOKEN=smoke-token-bukan-rahasia-0123456789abcdef \
-                -e URUSIN_PUBLIC_ORIGIN=https://smoke.test --entrypoint sh "$REF" -c \
-                'node dist/main.js & sleep 10; node -e "fetch(\"http://127.0.0.1:4330/health\").then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" && echo "pendamping ok"'
               if [ "$arch" = "amd64" ]; then
-                docker run --rm --platform "linux/${arch}" --entrypoint xvfb-run "$REF" -a node -e \
-                  "import('playwright-core').then(async({chromium})=>{const b=await chromium.launch({headless:false});console.log('chromium headed',b.version());await b.close()})"
+                # Boot produksi dengan pengerasan yang sama seperti compose (seccomp Playwright, SYS_CHROOT saja,
+                # read-only, tanpa jaringan): main.js menolak start bila ada rute keluar atau sandbox Chromium
+                # headed tidak aktif, jadi /health 200 = kedua pemeriksaan boot lulus. --init: tanpa init,
+                # xvfb-run/Xvfb sebagai PID 1 bisa menggantung. Edge sendiri: modulnya harus termuat.
+                timeout 300 docker run --rm --init --platform "linux/${arch}" --network none --read-only                   --tmpfs /tmp:size=768m --cap-drop ALL --cap-add SYS_CHROOT                   --security-opt no-new-privileges:true --security-opt seccomp=deploy/pendamping-seccomp.json                   -e PENDAMPING_INTERNAL_TOKEN=smoke-token-bukan-rahasia-0123456789abcdef                   -e PENDAMPING_EDGE_URL=http://pendamping-edge:3129                   -e PENDAMPING_EDGE_TOKEN=smoke-edge-bukan-rahasia-0123456789abcdef                   -e URUSIN_PUBLIC_ORIGIN=https://smoke.test --entrypoint sh "$REF" -c                   'node dist/main.js & for i in $(seq 1 60); do node dist/sehat.js 4330 && echo "pendamping ok (sandbox + tanpa rute)" && exit 0; kill -0 $! 2>/dev/null || exit 1; sleep 2; done; exit 1'
+                timeout 120 docker run --rm --platform "linux/${arch}" --network none --entrypoint node "$REF"                   -e "import('./dist/edge.js').then((m)=>{m.loadEdgeConfig({PENDAMPING_EDGE_TOKEN:'x'.repeat(40)});console.log('edge ok')})"
+              else
+                # arm64 di QEMU: Chromium/userns tidak diemulasikan dengan andal; cukup modul termuat.
+                timeout 600 docker run --rm --platform "linux/${arch}" --network none --entrypoint node "$REF"                   -e "Promise.all([import('./dist/config.js'),import('./dist/edge.js'),import('playwright-core')]).then(()=>console.log(process.arch,'modul ok'))"
               fi
             else
               docker run --rm --platform "linux/${arch}" --entrypoint sh "$REF" -c                 'node dist/server.js & sleep 5; node -e "fetch(\"http://127.0.0.1:4000/health\").then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" && echo "fixtures ok"'
