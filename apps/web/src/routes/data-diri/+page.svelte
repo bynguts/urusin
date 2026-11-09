@@ -7,6 +7,8 @@
   import Field from '#lib/components/ui/Field.svelte';
   import { ambilDataDiri, samarkan, simpanDataDiri, type DataDiri, type Hasil } from '#lib/akun/klien.js';
   import { tanggal } from '#lib/urusan-status.js';
+  import { resolve } from '$app/paths';
+  import { ambilLokal } from '#lib/stores/app.svelte.js';
 
   /** Dokumen · Data diri (App 12): isi sekali, dipakai mengisi formulir yang warga setujui. */
   type Kolom = {
@@ -63,7 +65,11 @@
     },
     { k: 'email', label: 'Email', mode: 'email', tipe: 'email', auto: 'email' },
   ];
-  const RINGKAS: (keyof DataDiri)[] = ['namaLengkap', 'nik', 'noKk', 'tanggalLahir', 'alamat', 'hp', 'email'];
+  const RINGKAS: (keyof DataDiri)[] = ['namaLengkap', 'nik', 'noKk', 'tanggalLahir', 'alamat', 'email'];
+
+  const lokal = ambilLokal();
+  // Jejak pemakaian data: jejak urusan terakhir di perangkat ini.
+  const terakhir = $derived(lokal.data.urusan[0]?.id);
 
   let hasil = $state<Hasil<{ dataDiri: DataDiri; diubahPada: string | null }> | null>(null);
   let ubah = $state(false);
@@ -138,11 +144,13 @@
 
 <HeaderHalaman judul="Dokumen" />
 
-<div class="mx-auto w-full max-w-[67rem] px-4 py-6 sm:px-8 lg:py-8">
-  <div class="flex flex-wrap items-start justify-between gap-4">
-    <div>
-      <h2 class="text-[1.75rem] tracking-[-0.03em] text-ink sm:text-[2rem]">Data diri</h2>
-      <p class="mt-1 text-base text-body">
+<div class="flex w-full flex-col gap-5 px-4 py-6 sm:px-10 sm:py-7">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div class="flex flex-col gap-1">
+      <h2 class="text-[26px] leading-8 font-semibold tracking-[-0.7px] text-ink sm:text-[28px]">
+        Data diri keluarga
+      </h2>
+      <p class="text-base text-body sm:text-[17px] sm:leading-[25px]">
         Isi sekali saja. Urusin memakainya untuk mengisi formulir yang Anda setujui.
       </p>
     </div>
@@ -150,22 +158,22 @@
       <button
         type="button"
         onclick={() => mulaiUbah()}
-        class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90"
+        class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-5 text-base leading-[23px] font-semibold text-primer-ink hover:opacity-90"
       >
-        <Icon name="orang" class="size-4.5" />
+        <Icon name="tambah-orang" class="size-[18px]" />
         {kosong ? 'Isi data diri' : 'Ubah data diri'}
       </button>
     {/if}
   </div>
 
-  <div class="mt-5"><TabBrankas aktif="data-diri" /></div>
+  <div><TabBrankas aktif="data-diri" /></div>
 
   {#if hasil === null}
-    <div class="mt-6 h-96 animate-pulse rounded-kartu bg-card" aria-hidden="true"></div>
+    <div class="h-96 animate-pulse rounded-2xl bg-card" aria-hidden="true"></div>
   {:else if !hasil.ok}
     <BrankasTertutup alasan={hasil.alasan} pesan={hasil.pesan} />
   {:else}
-    <div class="mt-5 grid items-start gap-4 lg:grid-cols-[1fr_21.25rem]">
+    <div class="grid items-start gap-5 lg:grid-cols-[1fr_340px]">
       {#if ubah}
         <form
           onsubmit={simpan}
@@ -222,23 +230,23 @@
           </div>
         </form>
       {:else}
-        <div class="overflow-hidden rounded-kartu border border-line">
+        <div class="overflow-hidden rounded-2xl border border-line bg-surface">
           <table class="w-full border-collapse text-left">
             <caption class="sr-only">Data diri tersimpan</caption>
-            <thead class="bg-card text-sm text-ink">
+            <thead class="border-b border-line bg-card text-[13px] font-semibold text-card-ink">
               <tr>
-                <th scope="col" class="w-[36%] px-4 py-3 font-semibold sm:w-[30%]">Data</th>
-                <th scope="col" class="px-2 py-3 font-semibold">Isi</th>
-                <th scope="col" class="px-4 py-3"><span class="sr-only">Aksi</span></th>
+                <th scope="col" class="w-[36%] py-2.5 pr-2 pl-5 font-semibold sm:w-[206px]">Data</th>
+                <th scope="col" class="px-2 py-2.5 font-semibold">Isi</th>
+                <th scope="col" class="w-[96px] py-2.5 pr-5 pl-2"><span class="sr-only">Aksi</span></th>
               </tr>
             </thead>
             <tbody>
               {#each RINGKAS as k (k)}
                 {@const c = KOLOM.find((x) => x.k === k)!}
                 {@const v = data[k] as string | undefined}
-                <tr class="border-t border-line-3">
-                  <th scope="row" class="px-4 py-3 text-[0.9375rem] font-normal text-body">{c.label}</th>
-                  <td class="px-2 py-3 text-base font-semibold break-words text-ink">
+                <tr class="h-[57.5px] border-t border-line first:border-t-0">
+                  <th scope="row" class="py-2 pr-2 pl-5 text-[15px] font-normal text-card-ink">{c.label}</th>
+                  <td class="px-2 py-2 text-[17px] font-medium break-words text-ink">
                     {#if v}
                       <span class="inline-flex flex-wrap items-center gap-2">
                         {tampilNilai(k, v)}
@@ -247,9 +255,9 @@
                             type="button"
                             onclick={() => (lihat[k] = !lihat[k])}
                             aria-pressed={!!lihat[k]}
-                            class="grid size-12 place-items-center rounded-full font-normal text-muted hover:bg-bg-2"
+                            class="-my-3 grid size-11 place-items-center rounded-full font-normal text-ink hover:bg-bg-2"
                           >
-                            <Icon name={lihat[k] ? 'mata-tutup' : 'mata'} class="size-5" />
+                            <Icon name={lihat[k] ? 'mata-tutup' : 'mata'} class="size-4" />
                             <span class="sr-only">{lihat[k] ? 'Sembunyikan' : 'Tampilkan'} {c.label}</span>
                           </button>
                         {/if}
@@ -258,11 +266,11 @@
                       <span class="font-normal text-muted">Belum diisi</span>
                     {/if}
                   </td>
-                  <td class="px-4 py-1 text-right">
+                  <td class="py-1 pr-5 pl-2 text-right">
                     <button
                       type="button"
                       onclick={() => mulaiUbah(k)}
-                      class="inline-flex min-h-12 items-center rounded-full px-3 text-[0.9375rem] font-semibold text-ink hover:bg-bg-2"
+                      class="-mr-3 inline-flex h-11 items-center rounded-full px-3 text-[15px] font-semibold text-ink hover:bg-bg-2"
                       >Ubah<span class="sr-only"> {c.label}</span></button
                     >
                   </td>
@@ -273,20 +281,28 @@
         </div>
       {/if}
 
-      <aside class="flex flex-col gap-3 rounded-kartu border border-line bg-card p-5">
+      <aside class="flex flex-col items-start gap-3.5 rounded-2xl border border-line bg-card p-6">
         <span class="grid size-11 place-items-center rounded-xl border border-line bg-surface"
           ><Icon name="gembok" class="size-5" /></span
         >
-        <h3 class="text-lg font-semibold text-ink">Disimpan di brankas Urusin</h3>
-        <p class="text-[0.9375rem] text-body">
-          Disimpan terenkripsi dan hanya dipakai untuk formulir yang Anda setujui. AI hanya melihat penanda
-          seperti "NIK pemohon", bukan angkanya.
+        <h3 class="text-[19px] font-semibold text-ink">Disimpan di brankas Urusin</h3>
+        <p class="text-base leading-[25px] text-muted">
+          Disimpan terenkripsi dan hanya dipakai untuk formulir yang Anda setujui. Anda bisa melihat kapan dan
+          di mana data dipakai.
         </p>
+        {#if terakhir}
+          <a
+            href={resolve('/jejak/[id]', { id: terakhir })}
+            class="-my-2 inline-flex items-center gap-1.5 py-2 text-[15px] font-semibold text-ink hover:underline"
+          >
+            Lihat jejak pemakaian <Icon name="panah" class="size-4" />
+          </a>
+        {/if}
         {#if hasil.data.diubahPada}
           <p class="text-sm text-muted">Terakhir diubah {tanggal(hasil.data.diubahPada)}</p>
         {/if}
       </aside>
     </div>
-    <p role="status" class="mt-3 text-[0.9375rem] text-hijau-ink">{pesanStatus}</p>
+    <p role="status" class="text-[15px] text-hijau-ink empty:hidden">{pesanStatus}</p>
   {/if}
 </div>
