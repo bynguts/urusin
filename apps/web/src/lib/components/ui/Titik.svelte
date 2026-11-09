@@ -13,7 +13,7 @@
   } = $props();
 
   const WARNA = {
-    anda: 'bg-[#b07a1f]',
+    anda: 'bg-kuning-ink',
     instansi: 'bg-muted',
     ai: 'bg-nila-ink',
     selesai: 'bg-hijau-ink',
@@ -28,7 +28,7 @@
   } as const;
 </script>
 
-<span class="inline-flex items-center gap-2 text-sm {TINTA[nada]} {tebal ? 'font-semibold' : ''}">
+<span class="inline-flex items-center gap-[7px] text-sm {TINTA[nada]} {tebal ? 'font-semibold' : ''}">
   <span class="size-2 shrink-0 rounded-full {WARNA[nada]}" aria-hidden="true"></span>
   {@render children()}
 </span>

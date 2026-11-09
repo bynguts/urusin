@@ -3,7 +3,6 @@
   import type { JejakItem, UrusanState } from '#lib/contracts.js';
   import Icon from '#lib/components/Icon.svelte';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
-  import Chip, { type Nada } from '#lib/components/ui/Chip.svelte';
   import type { NamaIkon } from '#lib/components/ikon.js';
   import { labelProgres } from '#lib/components/urusan/linimasa.js';
   import { judulUrusan } from '#lib/peristiwa.js';
@@ -22,10 +21,14 @@
   );
   const spans = $derived(j.timeline.filter((t) => t.jenis === 'span'));
 
-  const PELAKU: Record<'anda' | 'ai' | 'urusin', { label: string; nada: Nada; ikon: NamaIkon }> = {
-    anda: { label: 'Anda', nada: 'anda', ikon: 'orang' },
-    ai: { label: 'AI', nada: 'ai', ikon: 'ai' },
-    urusin: { label: 'Urusin', nada: 'urusin', ikon: 'sistem' },
+  // Chip pelaku App 09: Anda (amber), AI (nila), Urusin (netral, ikon tinta).
+  const PELAKU: Record<
+    'anda' | 'ai' | 'urusin',
+    { label: string; kelas: string; ikon: NamaIkon; ikonKelas: string }
+  > = {
+    anda: { label: 'Anda', kelas: 'bg-kuning text-kuning-ink', ikon: 'orang', ikonKelas: '' },
+    ai: { label: 'AI', kelas: 'bg-nila text-nila-ink', ikon: 'ai', ikonKelas: '' },
+    urusin: { label: 'Urusin', kelas: 'bg-bg-2 text-muted', ikon: 'sistem', ikonKelas: 'text-ink' },
   };
 
   function baris(e: ItemEvent): { pelaku: keyof typeof PELAKU; teks: string } {
@@ -81,17 +84,19 @@
   {#snippet awal()}
     <a
       href={resolve('/urusan/[id]', { id: j.urusanId })}
-      class="grid size-12 place-items-center rounded-full hover:bg-bg-2"
+      class="grid size-12 place-items-center rounded-full hover:bg-bg-2 lg:hidden"
       aria-label="Kembali ke urusan"><Icon name="panah-kiri" class="size-5" /></a
     >
   {/snippet}
 </HeaderHalaman>
 
-<div class="mx-auto w-full max-w-[67rem] px-4 py-6 sm:px-8 lg:py-8">
-  <div class="flex flex-wrap items-start justify-between gap-4">
-    <div class="max-w-2xl">
-      <h2 class="text-[1.75rem] tracking-[-0.03em] text-ink sm:text-[2rem]">Jejak urusan</h2>
-      <p class="mt-1 text-base text-body">
+<div class="flex w-full flex-col gap-5 px-4 py-6 sm:px-10 sm:py-7">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div class="flex max-w-[640px] flex-col gap-1.5">
+      <h2 class="text-[26px] leading-[34px] font-semibold tracking-[-0.6px] text-ink sm:text-[28px]">
+        Jejak urusan
+      </h2>
+      <p class="text-base leading-6 text-muted">
         Semua yang dilakukan Anda dan AI di urusan ini, berurutan. Setiap langkah dikunci rantai hash, jadi
         perubahan diam-diam langsung ketahuan.
       </p>
@@ -100,17 +105,17 @@
       href="/api/urusan/{j.urusanId}/jejak"
       rel="external"
       download="jejak-{j.urusanId}.json"
-      class="inline-flex min-h-12 items-center gap-2 rounded-full border border-line-2 bg-surface px-5 font-semibold text-ink hover:bg-card"
+      class="inline-flex h-[46px] items-center gap-2 rounded-full border border-line-2 bg-surface px-[18px] text-base font-semibold text-ink hover:bg-card"
     >
-      <Icon name="unduh" class="size-4.5" /> Unduh jejak
+      <Icon name="unduh" class="size-4" /> Unduh jejak
     </a>
   </div>
 
   {#if j.rantai.valid}
     <p
-      class="mt-5 flex items-center gap-2.5 rounded-xl bg-hijau px-4 py-3 text-[0.9375rem] font-semibold text-hijau-ink"
+      class="flex items-center gap-2.5 rounded-[14px] bg-hijau px-4 py-3 text-[15px] leading-[22px] font-semibold text-hijau-ink"
     >
-      <Icon name="perisai-centang" class="size-5 shrink-0" />
+      <Icon name="perisai-centang" class="size-[18px] shrink-0" />
       Rantai hash utuh · {j.rantai.jumlahEvent} langkah tercatat · diperiksa {waktuSingkat(
         data.diperiksaPada,
       )}
@@ -118,34 +123,42 @@
   {:else}
     <p
       role="alert"
-      class="mt-5 flex items-center gap-2.5 rounded-xl bg-mawar px-4 py-3 text-[0.9375rem] font-semibold text-galat"
+      class="flex items-center gap-2.5 rounded-[14px] bg-mawar px-4 py-3 text-[15px] leading-[22px] font-semibold text-galat"
     >
-      <Icon name="peringatan" class="size-5 shrink-0" />
+      <Icon name="peringatan" class="size-[18px] shrink-0" />
       Rantai hash rusak{j.rantai.rusakDiSeq ? ` di langkah ${j.rantai.rusakDiSeq}` : ''}: ada catatan yang
       berubah. Jangan lanjutkan sebelum menghubungi Urusin.
     </p>
   {/if}
 
-  <div class="mt-5 overflow-hidden rounded-2xl border border-line">
+  <div class="overflow-hidden rounded-2xl border border-line bg-surface">
     <table class="w-full border-collapse text-left">
       <caption class="sr-only">Daftar kegiatan urusan</caption>
-      <thead class="bg-card text-sm text-ink">
+      <thead class="border-b border-line bg-card text-[13px] text-card-ink">
         <tr>
-          <th scope="col" class="px-4 py-3 font-semibold">Waktu</th>
-          <th scope="col" class="px-2 py-3 font-semibold">Pelaku</th>
-          <th scope="col" class="px-2 py-3 font-semibold">Kegiatan</th>
-          <th scope="col" class="hidden px-4 py-3 font-semibold sm:table-cell">Urutan</th>
+          <th scope="col" class="w-[76px] py-2.5 pr-2 pl-4 font-semibold sm:w-[116px] sm:pr-4 sm:pl-5"
+            >Waktu</th
+          >
+          <th scope="col" class="w-[104px] py-2.5 pr-2 font-semibold sm:w-[146px] sm:pr-4">Pelaku</th>
+          <th scope="col" class="py-2.5 pr-4 font-semibold sm:pr-5">Kegiatan</th>
+          <th scope="col" class="hidden w-[150px] py-2.5 pr-5 font-semibold sm:table-cell">Urutan</th>
         </tr>
       </thead>
       <tbody>
         {#each events as e (e.seq)}
           {@const b = baris(e)}
           {@const pl = PELAKU[b.pelaku]}
-          <tr class="border-t border-line-3 align-top">
-            <td class="px-4 py-3.5 font-mono text-sm text-muted">{jam(e.at)}</td>
-            <td class="px-2 py-3"><Chip nada={pl.nada} ikon={pl.ikon}>{pl.label}</Chip></td>
-            <td class="px-2 py-3.5 text-[0.9375rem] text-ink">{b.teks}</td>
-            <td class="hidden px-4 py-3.5 font-mono text-sm text-muted sm:table-cell">#{e.seq}</td>
+          <tr class="h-[51.5px] border-t border-line first:border-t-0">
+            <td class="py-2 pr-2 pl-4 font-mono text-sm text-muted sm:pr-4 sm:pl-5">{jam(e.at)}</td>
+            <td class="py-2 pr-2 sm:pr-4">
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full py-1 pr-2.5 pl-2 text-[13px] leading-4 font-semibold whitespace-nowrap {pl.kelas}"
+              >
+                <Icon name={pl.ikon} class="size-[13px] shrink-0 {pl.ikonKelas}" />{pl.label}
+              </span>
+            </td>
+            <td class="py-2 pr-4 text-[15px] text-ink sm:pr-5 sm:text-base">{b.teks}</td>
+            <td class="hidden py-2 pr-5 font-mono text-[13px] text-card-ink sm:table-cell">#{e.seq}</td>
           </tr>
         {/each}
       </tbody>
@@ -153,11 +166,11 @@
   </div>
 
   {#if spans.length}
-    <details class="mt-5 rounded-2xl border border-line bg-card">
+    <details class="rounded-2xl border border-line bg-card">
       <summary class="flex min-h-14 cursor-pointer items-center gap-2 px-4 font-semibold text-ink">
         <Icon name="sistem" class="size-5" /> Detail teknis: model, durasi, dan biaya
       </summary>
-      <div class="border-t border-line-3 px-4 py-3 text-sm text-body">
+      <div class="border-t border-line px-4 py-3 text-sm text-body">
         <p>
           Token masuk {j.tokenMasuk.toLocaleString('id-ID')} · keluar {j.tokenKeluar.toLocaleString('id-ID')} ·
           biaya Rp{j.biayaIdr.toLocaleString('id-ID')}

@@ -27,7 +27,7 @@
   }
 </script>
 
-<div role="tablist" aria-label={label} class="flex gap-1 rounded-2xl bg-bg-2 p-1">
+<div role="tablist" aria-label={label} class="flex gap-1 rounded-[14px] bg-bg-2 p-1">
   {#each pilihan as p, i (p.nilai)}
     {@const pilih = p.nilai === nilai}
     <button
@@ -40,13 +40,15 @@
       tabindex={pilih ? 0 : -1}
       onclick={() => (nilai = p.nilai)}
       onkeydown={(e) => tekan(e, i)}
-      class="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-[0.9375rem] transition-colors {pilih
-        ? 'bg-surface font-semibold text-ink shadow-lembut'
-        : 'text-body hover:text-ink'}"
+      class="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-[10px] px-3 text-[15px] leading-5 transition-colors {pilih
+        ? 'bg-surface font-semibold text-ink shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
+        : 'text-card-ink hover:text-ink'}"
     >
       {p.label}
       {#if p.jumlah !== undefined}
-        <span class="rounded-md bg-bg-2 px-1.5 text-[0.75rem] font-semibold text-ink">{p.jumlah}</span>
+        <span class="rounded-full bg-bg-2 px-1.5 py-px text-xs leading-4 font-semibold text-card-ink"
+          >{p.jumlah}</span
+        >
       {/if}
     </button>
   {/each}
