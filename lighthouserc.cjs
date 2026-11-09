@@ -1,7 +1,10 @@
 const { ROUTES } = require('./perf-routes.cjs');
 
 const PORT = process.env.PORT ?? '4173';
-const median = { aggregationMethod: 'median-run' };
+// 'median' = median per metrik dari semua run, jadi satu run yang berisik di runner CI tidak
+// menggagalkan job. ('median-run' hanya menilai SATU run, yang skor performanya median, sehingga TBT
+// run itu saja yang dicek dan log menampilkan satu nilai.)
+const median = { aggregationMethod: 'median' };
 
 // Lighthouse bawaan = emulasi mobile (Moto G Power, 4G lambat). Semua pelanggaran berstatus "error".
 module.exports = {
