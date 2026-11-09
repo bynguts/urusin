@@ -10,7 +10,7 @@
 }
 
 /* Elemen tambahan khusus gerak: tersembunyi di desain statis */
-.lp .n-salinan,
+.lp .lp88 i,
 .lp .n-pil-kata,
 .lp .n-hero-gelombang {
   display: none;
@@ -116,7 +116,21 @@
   .lp .n-pil-kata > span > span {
     display: inline-block;
     animation: lp-kata-2 9s infinite both;
-    animation-delay: calc(var(--i) * 22ms);
+  }
+  .lp .n-pil-kata span span:nth-child(2) {
+    animation-delay: 22ms;
+  }
+  .lp .n-pil-kata span span:nth-child(3) {
+    animation-delay: 44ms;
+  }
+  .lp .n-pil-kata span span:nth-child(4) {
+    animation-delay: 66ms;
+  }
+  .lp .n-pil-kata span span:nth-child(5) {
+    animation-delay: 88ms;
+  }
+  .lp .n-pil-kata span span:nth-child(6) {
+    animation-delay: 110ms;
   }
   .lp .n-pil-kata > span:nth-child(1) > span {
     animation-name: lp-kata-0;
@@ -125,11 +139,11 @@
     animation-name: lp-kata-1;
   }
 
-  /* Tiga baris ubin layanan: marquee kiri, kanan, kiri. Salinan di kiri+kanan; posisi awal = desain */
-  .lp .n-salinan {
-    display: contents;
-  }
+  /* Tiga baris ubin layanan: marquee kiri, kanan, kiri. Salinan ubin (<i>, 16 di kiri + 16 di kanan
+     tiap baris) digambar dengan CSS agar HTML tetap ringan; posisi awal = desain. Baris 2 dan 3 memutar
+     urutan ikon 7 dan 14 langkah, sama seperti ubin aslinya. */
   .lp .lp88 {
+    overflow: clip;
     mask-image: linear-gradient(
       90deg,
       transparent calc(50% - 720px),
@@ -137,17 +151,115 @@
       transparent 0
     );
   }
-  .lp :is(.lp89, .lp93) {
+  .lp .lp88 i {
+    display: block;
+    flex-shrink: 0;
+    width: 68px;
+    height: 68px;
+    border-radius: 18px;
+    background: #fff no-repeat center / 30px 30px;
+    background-image: var(--lp-gerbang), var(--lp-u);
+    box-shadow:
+      0px 0px 1px #0000000f,
+      0px 1px 1px #0000000f,
+      0px 2px 4px #0000000a;
+  }
+  .lp .lp89 > i:nth-child(16n + 1),
+  .lp .lp92 > i:nth-child(16n + 10),
+  .lp .lp93 > i:nth-child(16n + 3) {
+    --lp-u: url(/pen/i-95c2220383.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 2),
+  .lp .lp92 > i:nth-child(16n + 11),
+  .lp .lp93 > i:nth-child(16n + 4) {
+    --lp-u: url(/pen/i-864bab7921.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 3),
+  .lp .lp92 > i:nth-child(16n + 12),
+  .lp .lp93 > i:nth-child(16n + 5) {
+    --lp-u: url(/pen/i-a6a3008acd.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 4),
+  .lp .lp92 > i:nth-child(16n + 13),
+  .lp .lp93 > i:nth-child(16n + 6) {
+    --lp-u: url(/pen/i-32c8923562.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 5),
+  .lp .lp92 > i:nth-child(16n + 14),
+  .lp .lp93 > i:nth-child(16n + 7) {
+    --lp-u: url(/pen/i-fa94228208.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 6),
+  .lp .lp92 > i:nth-child(16n + 15),
+  .lp .lp93 > i:nth-child(16n + 8) {
+    --lp-u: url(/pen/i-61026f0797.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 7),
+  .lp .lp92 > i:nth-child(16n + 16),
+  .lp .lp93 > i:nth-child(16n + 9) {
+    --lp-u: url(/pen/i-622991afbb.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 8),
+  .lp .lp92 > i:nth-child(16n + 1),
+  .lp .lp93 > i:nth-child(16n + 10) {
+    --lp-u: url(/pen/i-81414dc20e.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 9),
+  .lp .lp92 > i:nth-child(16n + 2),
+  .lp .lp93 > i:nth-child(16n + 11) {
+    --lp-u: url(/pen/i-e795588273.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 10),
+  .lp .lp92 > i:nth-child(16n + 3),
+  .lp .lp93 > i:nth-child(16n + 12) {
+    --lp-u: url(/pen/i-e87b88ff2b.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 11),
+  .lp .lp92 > i:nth-child(16n + 4),
+  .lp .lp93 > i:nth-child(16n + 13) {
+    --lp-u: url(/pen/i-3da007ab49.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 12),
+  .lp .lp92 > i:nth-child(16n + 5),
+  .lp .lp93 > i:nth-child(16n + 14) {
+    --lp-u: url(/pen/i-941a068b12.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 13),
+  .lp .lp92 > i:nth-child(16n + 6),
+  .lp .lp93 > i:nth-child(16n + 15) {
+    --lp-u: url(/pen/i-2ec80010b1.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 14),
+  .lp .lp92 > i:nth-child(16n + 7),
+  .lp .lp93 > i:nth-child(16n + 16) {
+    --lp-u: url(/pen/i-ec2f9348f0.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 15),
+  .lp .lp92 > i:nth-child(16n + 8),
+  .lp .lp93 > i:nth-child(16n + 1) {
+    --lp-u: url(/pen/i-5212f25c3d.svg);
+  }
+  .lp .lp89 > i:nth-child(16n + 16),
+  .lp .lp92 > i:nth-child(16n + 9),
+  .lp .lp93 > i:nth-child(16n + 2) {
+    --lp-u: url(/pen/i-62fa004883.svg);
+  }
+  .lp :is(.lp89, .lp92, .lp93) {
     --lp-k: 2.667px;
-    animation: lp-geser 48s linear -24s infinite;
+    animation:
+      lp-geser 48s linear -24s infinite,
+      lp-ikon linear;
+    animation-timeline: auto, view();
   }
   .lp .lp93 {
-    animation-duration: 54s;
-    animation-delay: -27s;
+    animation-duration: 54s, auto;
+    animation-delay: -27s, 0s;
   }
   .lp .lp92 {
     --lp-k: -4px;
-    animation: lp-geser 51s linear -25.5s infinite reverse;
+    animation-duration: 51s, auto;
+    animation-delay: -25.5s, 0s;
+    animation-direction: reverse, normal;
   }
 
   /* Kotak prompt: kursor berkedip di akhir kalimat */
@@ -160,6 +272,14 @@
     vertical-align: -0.12em;
     background: #252522;
     animation: lp-kedip 1.1s steps(1) infinite;
+  }
+}
+
+/* Ikon salinan ubin baru sah (dan diunduh) selama barisnya terlihat: animasi view() pada baris mengisi
+   --lp-gerbang, mirip img lazy aslinya. Peramban tanpa view() langsung memasangnya. */
+@supports not (animation-timeline: view()) {
+  .lp .lp88 i {
+    --lp-gerbang: none;
   }
 }
 
@@ -245,10 +365,10 @@
 @keyframes lp-apung {
   0%,
   100% {
-    translate: 0 2px;
+    transform: translateY(2px);
   }
   50% {
-    translate: 0 -6px;
+    transform: translateY(-6px);
   }
 }
 @keyframes lp-mekar {
@@ -280,6 +400,12 @@
   }
   to {
     transform: translateX(calc(-100% / 6 - var(--lp-k)));
+  }
+}
+@keyframes lp-ikon {
+  from,
+  to {
+    --lp-gerbang: none;
   }
 }
 @keyframes lp-kedip {

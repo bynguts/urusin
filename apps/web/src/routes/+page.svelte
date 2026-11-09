@@ -148,29 +148,6 @@
    * landing-responsif.css. Ajakan masuk ke alur urusan yang sudah ada (/beranda, /?/mulai).
    * Gerak (CSS saja, nol JS) ada di landing-gerak.css.
    */
-
-  /* Ikon tiga baris layanan; tiap baris memutar daftar yang sama. Salinan ubin hanya untuk marquee. */
-  const ikonLayanan = [
-    '/pen/i-95c2220383.svg',
-    '/pen/i-864bab7921.svg',
-    '/pen/i-a6a3008acd.svg',
-    '/pen/i-32c8923562.svg',
-    '/pen/i-fa94228208.svg',
-    '/pen/i-61026f0797.svg',
-    '/pen/i-622991afbb.svg',
-    '/pen/i-81414dc20e.svg',
-    '/pen/i-e795588273.svg',
-    '/pen/i-e87b88ff2b.svg',
-    '/pen/i-3da007ab49.svg',
-    '/pen/i-941a068b12.svg',
-    '/pen/i-2ec80010b1.svg',
-    '/pen/i-ec2f9348f0.svg',
-    '/pen/i-5212f25c3d.svg',
-    '/pen/i-62fa004883.svg',
-  ];
-  const putar = (mulai: number) => [...ikonLayanan.slice(mulai), ...ikonLayanan.slice(0, mulai)];
-  /* Kata pada pil judul "Mulai dari [cerita] bukan istilah"; "cerita" terakhir = keadaan diam. */
-  const kataPil = ['kabar', 'kisah', 'cerita'];
 </script>
 
 <svelte:head>
@@ -417,11 +394,10 @@
           <span class="lp54 n-pil">
             <span class="lp55"> cerita </span>
             <span class="lp55 n-pil-kata" aria-hidden="true">
-              {#each kataPil as kata (kata)}
-                <span>
-                  {#each [...kata] as huruf, i (i)}<span style="--i: {i}">{huruf}</span>{/each}
-                </span>
-              {/each}
+              <span><span>k</span><span>a</span><span>b</span><span>a</span><span>r</span></span>
+              <span><span>k</span><span>i</span><span>s</span><span>a</span><span>h</span></span>
+              <span><span>c</span><span>e</span><span>r</span><span>i</span><span>t</span><span>a</span></span
+              >
             </span>
           </span>
         </span>
@@ -549,17 +525,8 @@
       </div>
     </div>
     <div class="lp88" aria-hidden="true">
-      {#snippet salinanUbin(mulai: number)}
-        <span class="n-salinan">
-          {#each putar(mulai) as src (src)}
-            <span class="lp90">
-              <img class="lp91" {src} alt="" width="30" height="30" loading="lazy" decoding="async" />
-            </span>
-          {/each}
-        </span>
-      {/snippet}
       <div class="lp89">
-        {@render salinanUbin(0)}
+        {#each { length: 16 }, i (i)}<i></i>{/each}
         <div class="lp90">
           <img
             class="lp91"
@@ -736,10 +703,10 @@
             decoding="async"
           />
         </div>
-        {@render salinanUbin(0)}
+        {#each { length: 16 }, i (i)}<i></i>{/each}
       </div>
       <div class="lp92">
-        {@render salinanUbin(7)}
+        {#each { length: 16 }, i (i)}<i></i>{/each}
         <div class="lp90">
           <img
             class="lp91"
@@ -916,10 +883,10 @@
             decoding="async"
           />
         </div>
-        {@render salinanUbin(7)}
+        {#each { length: 16 }, i (i)}<i></i>{/each}
       </div>
       <div class="lp93">
-        {@render salinanUbin(14)}
+        {#each { length: 16 }, i (i)}<i></i>{/each}
         <div class="lp90">
           <img
             class="lp91"
@@ -1096,7 +1063,7 @@
             decoding="async"
           />
         </div>
-        {@render salinanUbin(14)}
+        {#each { length: 16 }, i (i)}<i></i>{/each}
       </div>
       <div class="lp94" aria-hidden="true"></div>
       <div class="lp95" aria-hidden="true"></div>
