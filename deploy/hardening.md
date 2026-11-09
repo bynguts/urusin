@@ -89,6 +89,16 @@ Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan meng
 | `/var/log/urusin-backup.log`                                             | cron `backup.sh`                                 | log backup                                                                          |                                                                                                                                                                           |
 | `/etc/cron.d/urusin-backup` (root), crontab user deploy                  | manual (lead)                                    | `backup.sh` (root, cron.d) dan `disk-alert.sh`                                      | lihat README "Backup" dan "Alert disk"                                                                                                                                    |
 
+## Kompresi (Caddy) dan Lighthouse CI
+
+- Kompresi respons hanya di Caddy: `encode zstd gzip` dengan daftar `match` Content-Type eksplisit di
+  `Caddyfile.urusin.{primary,fallback}` (tanpa `text/*`, jadi SSE tidak dikompres). Aplikasi sendiri tidak
+  mengompres SSR.
+- Lighthouse CI mengukur lewat `scripts/lhci-serve.mjs`, proxy yang meniru blok `encode` itu persis (zstd lalu
+  gzip, daftar tipe yang sama, minimum 512 byte, level bawaan Caddy) dan tidak mengubah hal lain. Tujuannya
+  anggaran byte mengukur apa yang diterima warga, bukan melonggarkan gerbang. Bila blok `encode` di
+  Caddyfile berubah, ubah `COMPRESSIBLE` di skrip itu juga.
+
 ## Retensi image
 
 - Hanya `deploy/image-retention.sh`. Default dry-run; `--apply` menghapus.
