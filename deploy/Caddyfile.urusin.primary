@@ -88,8 +88,8 @@ urusinai.web.id, verify.urusinai.web.id {
 }
 
 # Fixture publik (portal palsu untuk demo), profil `public`, 127.0.0.1:4320. Nonaktif secara bawaan:
-# bangkitkan dengan `--fixtures` setelah DNS fixtures.urusinai.web.id ada dan `COMPOSE_PROFILES=fixtures` +
-# FIXTURES_IMAGE diset (lihat deploy/README.md).
+# bangkitkan ulang snippet dengan `node scripts/gen-caddyfile.mjs --set primary --fixtures` setelah
+# DNS fixtures.urusinai.web.id ada dan `COMPOSE_PROFILES=fixtures` + FIXTURES_IMAGE diset (lihat deploy/README.md).
 # fixtures.urusinai.web.id {
 # 	encode zstd gzip
 # 	header {

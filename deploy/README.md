@@ -229,7 +229,8 @@ Urutan `deploy.sh`:
    `rollback manual: ./deploy.sh <sha> <digest lama>`.
 
 `.env.images` memuat `ACTIVE_COLOR`, `WEB_IMAGE_{BLUE,GREEN}`, `GIT_SHA_{BLUE,GREEN}`,
-`RUN_MIGRATIONS_{BLUE,GREEN}`. Idempotent; menjalankan ulang dengan argumen sama aman (warna berganti).
+`RUN_MIGRATIONS_{BLUE,GREEN}`. `GIT_SHA_*` hanya catatan untuk rollback: compose tidak meneruskannya ke
+kontainer, jadi `gitSha` di `/api/health` selalu SHA yang dibakar ke image. Idempotent; menjalankan ulang dengan argumen sama aman (warna berganti).
 Deploy pertama setelah layout lama (satu service `web`, `WEB_IMAGE=`) dikenali otomatis: kontainer lama
 dianggap blue, versi baru naik di green, lalu kontainer lama dihapus.
 
