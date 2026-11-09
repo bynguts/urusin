@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { KeadaanKapabilitas } from '#lib/contracts.js';
+import { versiPublik } from '#lib/server/build-info.js';
 import { runtimeWithin, type Runtime } from '#lib/server/runtime.js';
 import type { RequestHandler } from './$types';
 
@@ -13,6 +14,8 @@ export type Kemampuan = {
   llm: Runtime['mode'] | null;
   kapabilitas: Omit<KeadaanKapabilitas, 'dimuat'>;
   fitur: { pencarianHybrid: boolean; rerank: boolean };
+  /** Stempel versi publik (M11): `v<sha7>` + tautan commit di repo publik. */
+  versi: ReturnType<typeof versiPublik>;
 };
 
 /** Mode AI global: kuota harian (70% = hemat, habis = tanpa AI) dan dukungan tool calling dari probe. */
@@ -26,8 +29,9 @@ function modeAi(rt: Runtime): KeadaanKapabilitas['ai'] {
 }
 
 /**
- * PUBLIK (dibaca UI lewat Caddy): hanya subset tidak sensitif. Tanpa gitSha, versi, nama model, jumlah chunk,
- * angka biaya, atau turn berjalan; itu milik /api/health yang 404 untuk publik.
+ * PUBLIK (dibaca UI lewat Caddy): hanya subset tidak sensitif. `versi` hanya sha 7 karakter + tautan commit
+ * (repo publik, M11). Tanpa nama model, jumlah chunk, angka biaya, atau turn berjalan; itu milik /api/health
+ * yang 404 untuk publik.
  */
 export const GET: RequestHandler = async () => {
   const rt = await runtimeWithin(WAIT_MS);
@@ -38,6 +42,7 @@ export const GET: RequestHandler = async () => {
       llm: null,
       kapabilitas: { ai: 'tanpa_ai', vision: false, rag: 'tidak_siap' },
       fitur: { pencarianHybrid: false, rerank: false },
+      versi: versiPublik(),
     };
     return json(body, { headers });
   }
@@ -50,6 +55,7 @@ export const GET: RequestHandler = async () => {
       rag: rt.rag.status === 'ready' ? 'siap' : 'tidak_siap',
     },
     fitur: { pencarianHybrid: cari?.vektor ?? false, rerank: cari?.rerank ?? false },
+    versi: versiPublik(),
   };
   return json(body, { headers });
 };

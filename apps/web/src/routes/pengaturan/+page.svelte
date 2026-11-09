@@ -347,8 +347,18 @@
           <Icon name="hapus" class="size-4.5" /> Hapus data di perangkat ini
         </button>
       </div>
-      {#if page.data.version}
-        <p class="text-sm text-muted">Versi {page.data.version}</p>
+      {#if page.data.versi}
+        <p class="text-sm text-muted" data-versi>
+          {#if page.data.versi.commit}
+            <a
+              href={page.data.versi.commit}
+              rel="external noopener"
+              class="underline underline-offset-2 hover:text-ink">v{page.data.versi.sha7}</a
+            >
+          {:else}
+            v{page.data.versi.sha7}
+          {/if}
+        </p>
       {/if}
     </section>
   </div>

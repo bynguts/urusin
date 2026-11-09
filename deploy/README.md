@@ -9,7 +9,8 @@ dan `127.0.0.1:4320` (fixtures, opsional). Port terpakai lain di host: 3000, 310
 8765, 20128. VPS dipakai bersama layanan lain: jangan menyentuh kontainer/layanan di luar proyek `urusin`.
 
 Berkas: `compose.prod.yml`, `Caddyfile.urusin.primary` (+ `.fallback`), `hardening.md`, `deploy.sh`, `backup.sh`, `restore.sh`, `disk-alert.sh`,
-`tests/` (harness tanpa Docker).
+`tests/` (harness tanpa Docker). Layout datar (agent-vm) juga butuh `scripts/db-backup.mjs` dan `scripts/db-restore.mjs`
+(salinan `apps/web/scripts/`), dibaca `backup.sh`/`restore.sh`.
 
 ## Instalasi pertama
 
@@ -300,13 +301,20 @@ loop `sleep` di dalam kontainer, dan restore memakai alat yang sama. Skrip memak
 node + `better-sqlite3`: `apps/web/scripts/db-backup.mjs` memakai API backup online `.backup()`, lalu
 `PRAGMA integrity_check` pada salinan, dan exit non-zero bila hasilnya bukan `ok`. Skrip dikirim lewat stdin
 (`docker run --entrypoint node ... --input-type=module -`), jadi `Dockerfile` tidak perlu menyalinnya, tanpa
-jaringan dan rootfs read-only. Tidak ada image pihak ketiga. Konsekuensi: clone repo penuh (skrip dibaca dari
-`../apps/web/scripts`, atau set `SCRIPT_DIR`) dan `better-sqlite3` harus menjadi dependency `@urusin/web`.
+jaringan dan rootfs read-only. Tidak ada image pihak ketiga. Skrip dibaca dari `./scripts` bila ada (layout datar
+`/opt/urusin`), selain itu `../apps/web/scripts` (clone repo penuh), atau set `SCRIPT_DIR`; `better-sqlite3`
+harus menjadi dependency `@urusin/web`.
+
+**Jalankan sebagai root.** `BACKUP_DIR` (`/var/backups/urusin`) milik root, mode 755, berkas 600; wadah
+backup juga butuh akses root ke volume. Sebagai user biasa skrip berhenti dengan pesan "tidak bisa ditulis".
 
 ```sh
-sudo mkdir -p /var/backups/urusin && sudo chown "$USER" /var/backups/urusin
-# Cron tiap 6 jam (crontab -e):
-0 */6 * * *  /opt/urusin/deploy/backup.sh >> /var/log/urusin-backup.log 2>&1
+# Layout datar: salin skrip DB sekali (dan setiap kali apps/web/scripts/db-*.mjs berubah)
+mkdir -p /opt/urusin/scripts
+cp apps/web/scripts/db-backup.mjs apps/web/scripts/db-restore.mjs /opt/urusin/scripts/
+# Cron tiap 6 jam, milik root (berkas 0644 root:root):
+echo '0 */6 * * * root /opt/urusin/backup.sh >> /var/log/urusin-backup.log 2>&1' | sudo tee /etc/cron.d/urusin-backup
+sudo env SCRIPT_DIR=/opt/urusin/scripts /opt/urusin/backup.sh   # uji sekali
 ```
 
 - Retensi lokal: 3 hari (`KEEP_DAYS`, selalu menyisakan yang terbaru). Berkas: `urusin-<UTC>.db.gz`, mode 600.
@@ -328,8 +336,8 @@ sudo mkdir -p /var/backups/urusin && sudo chown "$USER" /var/backups/urusin
 ### Restore dan latihan restore (restore drill)
 
 ```sh
-cd /opt/urusin/deploy
-ls -1t /var/backups/urusin | head -3
+cd /opt/urusin   # layout datar; clone penuh: /opt/urusin/deploy
+sudo ls -1t /var/backups/urusin | head -3
 ./restore.sh /var/backups/urusin/urusin-<UTC>.db.gz          # minta konfirmasi; --yes untuk non-interaktif
 # dari off-site:
 restic restore latest --tag urusin --target /tmp/restore && ./restore.sh /tmp/restore/var/backups/urusin/urusin-<UTC>.db.gz
