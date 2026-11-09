@@ -3,6 +3,7 @@
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
+  import '#lib/components/landing/landing-gerak.css';
   import av_rose_melambai_140_avif from '#lib/assets/img/pen-landing/rose-melambai-140.avif';
   import av_rose_melambai_179_avif from '#lib/assets/img/pen-landing/rose-melambai-179.avif';
   import av_rose_melambai_230_avif from '#lib/assets/img/pen-landing/rose-melambai-230.avif';
@@ -184,6 +185,7 @@
    * Landing = frame n2rpg "Urusin • Landing / Desktop" dari pen Rafi (urusin.pen), dikonversi dari ekspor
    * HTML/CSS apa adanya. Gaya per elemen ada di landing-pen.css (kelas lpN), aturan ponsel di
    * landing-responsif.css. Ajakan masuk ke alur urusan yang sudah ada (/beranda, /?/mulai).
+   * Gerak (CSS saja, nol JS) ada di landing-gerak.css.
    */
 </script>
 
@@ -207,6 +209,7 @@
       decoding="async"
       aria-hidden="true"
     />
+    <span class="n-hero-gelombang" style="--lp-pola: url({g58006f1})" aria-hidden="true"></span>
     <header class="n-header lp3">
       <a class="lp4" href="#atas" aria-label="Urusin, ke atas">
         <img class="lp5" src={g205a519} alt="" width="26" height="26" decoding="async" />
@@ -459,8 +462,14 @@
       <h2 class="lp51">
         <span class="lp52">
           <span class="lp53"> Mulai dari </span>
-          <span class="lp54">
+          <span class="lp54 n-pil">
             <span class="lp55"> cerita </span>
+            <span class="lp55 n-pil-kata" aria-hidden="true">
+              <span><span>k</span><span>a</span><span>b</span><span>a</span><span>r</span></span>
+              <span><span>k</span><span>i</span><span>s</span><span>a</span><span>h</span></span>
+              <span><span>c</span><span>e</span><span>r</span><span>i</span><span>t</span><span>a</span></span
+              >
+            </span>
           </span>
         </span>
         <span class="lp53"> bukan istilah </span>
@@ -612,6 +621,7 @@
     </div>
     <div class="lp88" aria-hidden="true">
       <div class="lp89">
+        {#each { length: 16 }, i (i)}<i></i>{/each}
         <div class="lp90">
           <img
             class="lp91"
@@ -788,8 +798,10 @@
             decoding="async"
           />
         </div>
+        {#each { length: 16 }, i (i)}<i></i>{/each}
       </div>
       <div class="lp92">
+        {#each { length: 16 }, i (i)}<i></i>{/each}
         <div class="lp90">
           <img
             class="lp91"
@@ -966,8 +978,10 @@
             decoding="async"
           />
         </div>
+        {#each { length: 16 }, i (i)}<i></i>{/each}
       </div>
       <div class="lp93">
+        {#each { length: 16 }, i (i)}<i></i>{/each}
         <div class="lp90">
           <img
             class="lp91"
@@ -1144,6 +1158,7 @@
             decoding="async"
           />
         </div>
+        {#each { length: 16 }, i (i)}<i></i>{/each}
       </div>
       <div class="lp94" aria-hidden="true"></div>
       <div class="lp95" aria-hidden="true"></div>
