@@ -7,12 +7,27 @@
 <!-- Badge coverage sengaja tidak ada: angka coverage dihitung CI per paket (job "Coverage") tetapi belum dipublikasikan sebagai badge. -->
 
 Agen AI yang ikut mengurus layanan administrasi kependudukan bersama warga. Urusin membaca syarat dari sumber
-resmi, menyusun langkahnya, lalu mengisi formulir di situs resmi lewat **Browser Pendamping**. Login, OTP,
-CAPTCHA, dan **tombol Kirim terakhir selalu ditekan warga sendiri**.
+resmi dan menyusun langkahnya. Pengisian formulir di situs resmi dikerjakan lewat **Browser Pendamping** (belum
+live, lihat Status di bawah). Login, OTP, CAPTCHA, dan **tombol Kirim terakhir selalu ditekan warga sendiri**.
 
 - **Aplikasi langsung:** <https://urusinai.web.id>
 - **Masuk tanpa akun:** buka aplikasi lalu pilih "Coba tanpa daftar", atau "Masuk sebagai juri" di halaman Masuk
   (lihat [§7](#7-akun-demonstrasi)).
+- **Versi yang berjalan:** baris kecil `v<sha7>` di bawah halaman Pengaturan (bertaut ke commit di GitHub), atau
+  field `versi` di [`/api/kemampuan`](https://urusinai.web.id/api/kemampuan).
+
+**Status (2026-11-09).** README ini hanya mengklaim yang sudah berjalan. Yang belum aktif di produksi ditandai
+**(belum live)**.
+
+| Bagian                                                               | Status                                                         |
+| -------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Percakapan agen, RAG bersumber, router 514 kab/kota, Peristiwa Hidup | Live di <https://urusinai.web.id>                              |
+| Akun (email + sandi, Google), mode tamu, tombol juri, vault, Jejak   | Live                                                           |
+| Browser Pendamping (pengisian formulir di situs resmi)               | Belum live: diintegrasikan di branch `feat/browser-pendamping` |
+| Situs latihan publik `fixtures.urusinai.web.id`                      | Belum live: dipakai lokal untuk e2e dan Mode Uji               |
+
+Sampai Browser Pendamping aktif, Urusin berhenti di rencana bersumber dan daftar berkas, lalu memandu warga
+mengisi sendiri di situs resmi (mode dipandu).
 
 ## 1. Nama tim dan anggota
 
@@ -48,7 +63,7 @@ CAPTCHA, dan **tombol Kirim terakhir selalu ditekan warga sendiri**.
 
 ## 3. Fitur utama
 
-Semua fitur di bawah sudah berjalan di <https://urusinai.web.id> dan diuji di CI.
+Fitur di bawah berjalan di <https://urusinai.web.id> dan diuji di CI, kecuali yang ditandai **(belum live)**.
 
 - **Percakapan agen berbahasa Indonesia.**
   - Empat Peristiwa Hidup (Kelahiran, Kematian, Perkawinan, Pindah) dan "Urusan lain".
@@ -62,13 +77,13 @@ Semua fitur di bawah sudah berjalan di <https://urusinai.web.id> dan diuji di CI
   - Daerah ditentukan dari prefiks NIK atau pilihan warga.
   - Kontak Disdukcapil setiap daerah, dan status dukungan portal yang jujur per daerah: `kirim-asli`, `read-only`,
     `pending-recon`, atau `tidak-ada-portal`.
-- **Browser Pendamping (satu-satunya eksekutor).**
+- **Browser Pendamping (satu-satunya eksekutor)** **(belum live)**.
   - Satu Chromium per sesi di server. Layarnya dialirkan ke HP/laptop warga, jadi bisa dipakai di HP tanpa
     memasang apa pun.
   - AI mengisi kolom dan mengunggah berkas. Login, OTP, CAPTCHA, verifikasi situs, dan tombol Kirim diserahkan
     ke warga (mode _takeover_).
   - Setelah Kirim, nomor registrasi dibaca dari halaman untuk cek status.
-- **"Izinkan isi".** Sebelum mengisi, warga melihat daftar data yang akan ditulis dan situs tujuannya.
+- **"Izinkan isi"** **(belum live)**. Sebelum mengisi, warga melihat daftar data yang akan ditulis dan situs tujuannya.
   - Persetujuan berlaku sekali dan hanya untuk origin itu.
   - Nilai diambil server langsung dari vault, tidak pernah lewat peramban atau model.
 - **Akun opsional.** Tanpa akun (mode tamu) semua fitur tetap jalan.
@@ -79,32 +94,33 @@ Semua fitur di bawah sudah berjalan di <https://urusinai.web.id> dan diuji di CI
   - Data Diri (NIK, KK, alamat, HP) dan dokumen (foto KTP/KK, PDF) dienkripsi AES-256-GCM dengan kunci per
     pemilik.
   - Membuka brankas di perangkat baru meminta masuk ulang. Hapus = _crypto-shred_.
-- **Jejak.** Linimasa setiap urusan dengan rantai hash; rantainya berubah merah bila data dimanipulasi. Layar
-  Browser Pendamping juga punya tampilan "Lihat apa yang dilihat AI".
+- **Jejak.** Linimasa setiap urusan (`/jejak/<id>`) dari log audit berantai hash. Bila kepala rantai yang
+  dipegang perangkat warga tidak cocok dengan rantai di server, Jejak menandainya rusak.
 - **Aksesibilitas.**
   - Teks besar dan target sentuh ≥ 48 px.
   - Tombol "Bacakan" (sintesis suara peramban, tanpa jaringan).
   - Mode terang/gelap.
-- **Situs latihan (fixtures).** Replika jinak portal daerah di <https://fixtures.urusinai.web.id> untuk demo dan
-  e2e, supaya uji coba tidak pernah mengirim apa pun ke situs pemerintah.
+- **Situs latihan (fixtures).** Replika jinak portal daerah (`apps/fixtures`, berbanner "Situs uji — bukan situs
+  pemerintah") untuk e2e dan Mode Uji, supaya uji coba tidak pernah mengirim apa pun ke situs pemerintah. Host
+  publik `fixtures.urusinai.web.id` **(belum live)**.
 
 ## 4. Teknologi
 
-| Lapisan            | Yang dipakai                                                                                                                                             |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bahasa & monorepo  | TypeScript (strict), Node.js 26, pnpm 11, Turborepo                                                                                                      |
-| Web                | SvelteKit 3 + Svelte 5, `@sveltejs/adapter-node`, Vite 8, Tailwind CSS 4                                                                                 |
-| Agen (harness)     | Harness sendiri di atas Chat Completions (`@urusin/harness`): state machine urusan, tool bertipe zod, policy gate, spotlighting, audit berantai          |
-| Browser Pendamping | Chromium headed di Xvfb via Playwright + CDP screencast → WebSocket → `<canvas>`; interpreter DSL langkah (`@urusin/executor`) dan program adapter situs |
-| Basis data         | SQLite (`better-sqlite3`, mode WAL). BM25 lewat FTS5; vektor dengan cosine di JS di atas blob SQLite (bukan `sqlite-vec`)                                |
-| Kriptografi & akun | `node:crypto` (argon2id bawaan Node, AES-256-GCM, HKDF), `jose` (verifikasi ID token Google OIDC)                                                        |
-| Validasi & kontrak | zod 4, `@urusin/contracts` (skema event SSE dan endpoint, dibekukan setelah tag `contracts-take1`)                                                       |
-| Egress             | `undici` dengan allowlist host dan pemeriksaan alamat (`@urusin/egress`): semua HTTP keluar server lewat satu pintu                                      |
-| Situs latihan      | Hono (`apps/fixtures`)                                                                                                                                   |
-| Pengujian          | Vitest, Playwright, `node:test` untuk skrip repositori, Lighthouse CI                                                                                    |
-| Kualitas           | ESLint (flat config), Prettier, commitlint, husky (pre-commit: pemindai PII/secret)                                                                      |
-| CI/CD & hosting    | GitHub Actions, image multi-arch di GHCR ditarik berdasarkan digest, Docker Compose di VPS Oracle Cloud (Singapura, arm64), Caddy milik host             |
-| API & layanan luar | LLM OpenAI-compatible (SDK `openai`), Jina (embedding + rerank), Google OIDC, Resend (email), Cloudflare Turnstile                                       |
+| Lapisan            | Yang dipakai                                                                                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bahasa & monorepo  | TypeScript (strict), Node.js 26, pnpm 11, Turborepo                                                                                                                                                     |
+| Web                | SvelteKit 3 + Svelte 5, `@sveltejs/adapter-node`, Vite 8, Tailwind CSS 4                                                                                                                                |
+| Agen (harness)     | Harness sendiri di atas Chat Completions (`@urusin/harness`): state machine urusan, tool bertipe zod, policy gate, spotlighting, audit berantai                                                         |
+| Browser Pendamping | (belum live, branch `feat/browser-pendamping`) Chromium headed di Xvfb via Playwright + CDP screencast → WebSocket → `<canvas>`; interpreter DSL langkah (`@urusin/executor`) dan program adapter situs |
+| Basis data         | SQLite (`better-sqlite3`, mode WAL). BM25 lewat FTS5; vektor dengan cosine di JS di atas blob SQLite (bukan `sqlite-vec`)                                                                               |
+| Kriptografi & akun | `node:crypto` (argon2id bawaan Node, AES-256-GCM, HKDF), `jose` (verifikasi ID token Google OIDC)                                                                                                       |
+| Validasi & kontrak | zod 4, `@urusin/contracts` (skema event SSE dan endpoint, dibekukan setelah tag `contracts-take1`)                                                                                                      |
+| Egress             | `undici` dengan allowlist host dan pemeriksaan alamat (`@urusin/egress`): semua HTTP keluar server lewat satu pintu                                                                                     |
+| Situs latihan      | Hono (`apps/fixtures`)                                                                                                                                                                                  |
+| Pengujian          | Vitest, Playwright, `node:test` untuk skrip repositori, Lighthouse CI                                                                                                                                   |
+| Kualitas           | ESLint (flat config), Prettier, commitlint, husky (pre-commit: pemindai PII/secret)                                                                                                                     |
+| CI/CD & hosting    | GitHub Actions, image multi-arch di GHCR ditarik berdasarkan digest, Docker Compose di VPS Oracle Cloud (Singapura, arm64), Caddy milik host                                                            |
+| API & layanan luar | LLM OpenAI-compatible (SDK `openai`), Jina (embedding + rerank), Google OIDC, Resend (email), Cloudflare Turnstile                                                                                      |
 
 ## 5. Arsitektur sistem dan alur data
 
@@ -115,9 +131,9 @@ flowchart LR
     C[Caddy host<br/>TLS, HSTS]
     WEB["web (SvelteKit)<br/>UI + API + harness agen<br/>akun + vault terenkripsi"]
     DB[(SQLite WAL<br/>urusan, jejak, akun,<br/>vault ciphertext)]
-    PD["pendamping<br/>Chromium per sesi"]
-    EDGE["pendamping-edge<br/>proxy CONNECT ber-allowlist"]
-    FX[fixtures<br/>situs latihan]
+    PD["pendamping<br/>Chromium per sesi<br/>(belum live)"]
+    EDGE["pendamping-edge<br/>proxy CONNECT ber-allowlist<br/>(belum live)"]
+    FX["fixtures<br/>situs latihan<br/>(belum live)"]
   end
   LLM[[Penyedia LLM<br/>OpenAI-compatible]]
   JINA[[Jina<br/>embedding + rerank]]
@@ -135,7 +151,7 @@ flowchart LR
   EDGE --> FX
 ```
 
-**Alur satu urusan:**
+**Alur satu urusan** (langkah 3–5 berjalan saat Browser Pendamping aktif; sampai itu, mode dipandu):
 
 1. Warga bercerita di web app. Harness menentukan intent dan daerah (router NIK), lalu mencari syarat lewat RAG
    (BM25 + vektor, RRF, rerank, gerbang abstain).
@@ -163,7 +179,7 @@ Detail C4 (konteks, kontainer), pipeline pengiriman, dan diagram urutan PII ada 
 | Bagian                        | Lokasi                                                                                    |
 | ----------------------------- | ----------------------------------------------------------------------------------------- |
 | Web app, API, broker sesi     | `apps/web`                                                                                |
-| Browser Pendamping            | `apps/pendamping`, `packages/executor`, `packages/adapters`, `packages/pendamping-client` |
+| Browser Pendamping (branch)   | `apps/pendamping`, `packages/executor`, `packages/adapters`, `packages/pendamping-client` |
 | Situs latihan                 | `apps/fixtures`                                                                           |
 | Agen, state machine, eval     | `packages/harness`                                                                        |
 | Akun, sesi, vault             | `packages/akun`                                                                           |
@@ -177,8 +193,9 @@ Detail C4 (konteks, kontainer), pipeline pengiriman, dan diagram urutan PII ada 
 
 ## 6. Instalasi, konfigurasi, dan menjalankan
 
-**Prasyarat:** Node.js 26 (lihat `.nvmrc`) dan pnpm 11. Browser Pendamping juga butuh Chromium Playwright
-(`pnpm exec playwright install chromium`) dan, di Linux, Xvfb.
+**Prasyarat:** Node.js 26 (lihat `.nvmrc`) dan pnpm 11. E2E butuh Chromium Playwright
+(`pnpm exec playwright install chromium`); Browser Pendamping (branch `feat/browser-pendamping`) juga butuh Xvfb
+di Linux.
 
 ```bash
 pnpm install                 # memasang dependensi dan hook commit
@@ -206,14 +223,14 @@ Isi variabel di bawah untuk fitur penuh. Daftar lengkap dan penjelasannya ada di
 | Masuk dengan Google     | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, plus redirect URI untuk setiap host di `deploy/hosts.json`       |
 | Turnstile (juri, login) | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`                                                                 |
 | Kuota dan biaya         | `URUSIN_LIMIT_*`, `URUSIN_TAMU_PER_IP_HARI`, `URUSIN_DEMO_*`, `URUSIN_DAILY_USD_CAP`, `URUSIN_DAILY_IDR_CAP` |
-| Browser Pendamping      | `PENDAMPING_*` (URL worker, rahasia HMAC, batas sesi dan memori)                                             |
+| Browser Pendamping      | `PENDAMPING_*` (URL worker, rahasia HMAC, batas sesi dan memori), ikut branch Pendamping                     |
 | Situs latihan           | `FIXTURES_PROFILE`, `FIXTURES_PORT`, `FIXTURES_PUBLIC_ORIGIN`                                                |
 
 Perintah lain:
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test    # sama dengan CI
-pnpm e2e                                    # Playwright (web dan pendamping)
+pnpm e2e                                    # Playwright (web; e2e Pendamping ikut branch-nya)
 pnpm coverage                               # coverage per paket dengan ambang
 pnpm budget                                 # anggaran JS awal per rute (≤ 70 KB gzip)
 pnpm rag:ingest && pnpm rag:eval            # bangun korpus RAG dan ukur retrieval
@@ -233,8 +250,8 @@ Juri **tidak butuh kredensial**:
   - Setiap klik mendapat salinannya sendiri, jadi juri tidak saling menimpa data.
   - Batas 3 salinan per IP per hari dan 200 salinan aktif. Salinan yang kedaluwarsa langsung membebaskan
     tempat.
-  - Data sintetis hanya boleh diisikan ke situs latihan (<https://fixtures.urusinai.web.id>), tidak pernah ke
-    situs pemerintah.
+  - Data sintetis hanya boleh diisikan ke situs latihan, tidak pernah ke situs pemerintah (ditegakkan
+    resolver vault di server).
 - **"Coba tanpa daftar"** (mode tamu) membuka semua fitur tanpa akun.
 
 Tidak ada sandi demo yang dipublikasikan. Situs pemerintah selalu memakai akun pribadi warga dan tidak pernah
@@ -249,7 +266,7 @@ dibagikan.
 | Agen percakapan: intent, rencana, pemanggilan tool | LLM lewat proxy OpenAI-compatible tim, model `pythia` (probe 2026-11-08: dijawab `gpt-6.1-terra`, lihat [`docs/provider-probe.md`](docs/provider-probe.md)) |
 | Embedding RAG                                      | Jina `jina-embeddings-v5-omni-small` (task `retrieval.query` / `retrieval.passage`)                                                                         |
 | Rerank RAG                                         | Jina `jina-reranker-v3`                                                                                                                                     |
-| Pengisian formulir                                 | Tidak memakai model: program adapter deterministik di Browser Pendamping, nilai dari vault                                                                  |
+| Pengisian formulir (belum live)                    | Tidak memakai model: program adapter deterministik di Browser Pendamping, nilai dari vault                                                                  |
 
 - Gateway (`@urusin/llm`) memakai SDK `openai` ke endpoint OpenAI-compatible mana pun.
   - Capability probe saat boot. Bila tool, JSON schema, atau stream tidak didukung, agen turun bertahap ke mode
@@ -325,13 +342,12 @@ dibagikan.
   - AES-256-GCM dengan DEK per pemilik yang dibungkus KEK (`URUSIN_PII_KEY`), plus AAD berversi.
   - Hapus = crypto-shred.
   - Batas penyimpanan per pemilik, per tamu, dan global agar disk tidak bisa dipenuhi.
-- **Browser Pendamping.**
+- **Browser Pendamping** **(belum live)**. Desain yang diuji di branch `feat/browser-pendamping`:
   - Konteks Chromium non-persisten per sesi, dihancurkan setelah selesai, 15 menit, atau 3 menit idle.
   - Ketikan warga saat takeover tidak dicatat.
   - Kontainer di jaringan internal tanpa rute keluar. Satu-satunya jalan keluar adalah proxy edge yang hanya
     mengizinkan https:443 ke host sesi dan menolak alamat privat/metadata.
-  - Sandbox Chromium aktif, kontainer non-root, filesystem read-only
-    ([ADR 0028 Browser Pendamping](docs/adr/README.md)).
+  - Sandbox Chromium aktif, kontainer non-root, filesystem read-only.
 - **Web.**
   - CSP SvelteKit mode `auto` (nonce/hash), `frame-ancestors 'none'`, laporan CSP.
   - Semua HTTP keluar lewat allowlist `@urusin/egress`.
@@ -344,7 +360,8 @@ dibagikan.
 ## Pengujian dan CI
 
 - Lebih dari 1.200 tes unit (Vitest) di 10 paket, ditambah e2e Playwright: alur akun, unduh di perangkat baru,
-  Google lewat IdP tiruan, dan Browser Pendamping terhadap situs latihan.
+  Google lewat IdP tiruan, stempel versi, dan alur utama di 390 px dan 1440 px. E2E Browser Pendamping terhadap
+  situs latihan ada di branch `feat/browser-pendamping`.
 - **CI (`.github/workflows/ci.yml`):**
   - lint, format, typecheck, test, build;
   - anggaran bundle;
@@ -356,12 +373,14 @@ dibagikan.
   - kompatibilitas image rilis kandidat dan pembekuan kontrak.
 - **Release:** setiap push ke `main` membangun image `linux/amd64` + `linux/arm64` ke GHCR. VPS menarik image
   berdasarkan digest dan memeriksa `/api/health` sebelum mengalihkan trafik.
+- **Stempel versi:** `GIT_SHA` dibakar ke image saat build (build-arg dari CI, bawaan `dev`) dan tampil sebagai
+  `v<sha7>` di Pengaturan dan `versi` di `/api/kemampuan`.
 
 ## Efisiensi sumber daya
 
 - JS awal per rute ≤ 70 KB gzip (`pnpm budget`), total transfer per rute ≤ 250 KiB (Lighthouse CI), font sendiri satu berkas
   woff2, ikon SVG inline.
-- Browser Pendamping: sekitar 213 MB idle dan 170–210 MB tambahan per sesi (diukur di kontainer).
+- Browser Pendamping (diukur di kontainer branch-nya): sekitar 213 MB idle dan 170–210 MB tambahan per sesi.
   - Sesi aktif dibatasi (bawaan 2) dengan antrean.
   - Worker tambahan bisa berjalan di laptop anggota lewat Tailscale.
 - Biaya LLM dicatat per urusan dari `usage` dan dibatasi harian. Angka publik latensi dan biaya ada di
@@ -369,6 +388,9 @@ dibagikan.
 
 ## Batasan yang diketahui
 
+- **Browser Pendamping belum aktif di produksi.** Pengisian formulir otomatis menunggu merge
+  `feat/browser-pendamping`; sampai itu, langkah di situs resmi dikerjakan warga dengan panduan Urusin.
+- **Situs latihan publik** `fixtures.urusinai.web.id` belum aktif; situs latihan hanya berjalan lokal.
 - **Situs pemerintah:**
   - Baru satu portal berstatus `kirim-asli` (Telunjuk Sakti Wonogiri) dan dua `read-only` (Surabaya,
     Semarang).
@@ -377,7 +399,10 @@ dibagikan.
 - **Email** saat ini berjalan dalam mode log (Resend belum diaktifkan): email verifikasi dan atur ulang sandi
   belum terkirim ke warga. Masuk dengan Google, mode tamu, dan tombol juri tidak terpengaruh.
 - **Input suara dan pengingat** (`URUSIN_FEATURE_VOICE`, `URUSIN_FEATURE_REMINDERS`) masih nonaktif.
-- **Persetujuan "Izinkan isi"** disimpan di memori proses, jadi restart server berarti warga menekannya lagi.
+- **Persetujuan "Izinkan isi"** (saat Pendamping aktif) disimpan di memori proses, jadi restart server berarti
+  warga menekannya lagi.
+- **Model agen di produksi** saat ini tanpa kemampuan vision (`/api/kemampuan`: `vision: false`); fitur yang
+  butuh vision turun ke mode tanpa vision.
 
 ## Dokumentasi
 
@@ -390,6 +415,7 @@ dibagikan.
 - [RAG: pipeline dan evaluasi](packages/rag/README.md)
 - [Kontrak API/SSE](packages/contracts/README.md)
 - [Panduan UI](docs/ui/README.md), [UI akun](docs/ui/auth.md)
+- [Skrip video demo (3–5 menit)](docs/demo/video-demo.md), [outline pitch final 7 menit](docs/demo/pitch-7-menit.md)
 
 ## Lisensi
 
