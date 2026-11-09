@@ -12,3 +12,5 @@ coverage/
 playwright-report/
 test-results/
 .impeccable/
+# Salinan apa adanya dari Playwright v1.65.0 (utils/docker/seccomp_profile.json); sha256 dicatat di deploy/README.md.
+deploy/pendamping-seccomp.json

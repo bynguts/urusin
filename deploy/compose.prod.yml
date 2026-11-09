@@ -123,27 +123,38 @@ services:
   # Aktifkan dengan `COMPOSE_PROFILES=pendamping`, PENDAMPING_IMAGE@digest, dan di .env:
   #   PENDAMPING_INTERNAL_TOKEN=<acak >= 32 karakter>    (dipakai web DAN pendamping)
   #   PENDAMPING_INTERNAL_URL=http://127.0.0.1:4330      (dibaca web lewat env_file)
+  #   PENDAMPING_EDGE_TOKEN=<acak >= 32 karakter>        (pendamping -> edge; BEDA dari token internal)
   #   PENDAMPING_DEBUG_TOKEN=<acak >= 32 karakter>        (opsional: /debug kemudi manual lewat SSH -L)
-  #   PENDAMPING_UPSTREAM_PROXY=http://host:port          (opsional: egress hulu milik operator)
+  #   PENDAMPING_UPSTREAM_PROXY=http://host:port          (opsional: egress hulu milik operator, dipakai edge)
   #
-  # JARINGAN: host network, ikat HANYA 127.0.0.1:4330 (sama seperti web). BUTUH PERSETUJUAN USER: 4330
-  # adalah port host baru di luar 4310/4311/4320. Caddy meneruskan HANYA /pendamping/ws/* ke sini (lihat
-  # Caddyfile.urusin); /internal/* dan /debug tidak pernah diekspos. Chromium hanya keluar lewat proxy
-  # egress per sesi yang menolak loopback/privat/link-local setelah resolusi DNS (termasuk admin Caddy
-  # 127.0.0.1:2019 dan proxy LLM 127.0.0.1:20128 di host), dengan <-loopback> agar loopback tidak dilewati.
+  # ISOLASI (temuan keamanan B1; TANPA iptables, hanya topologi compose):
+  # - `pendamping` (Node + Chromium) HANYA di jaringan `pendamping_internal`: `internal: true` (tanpa rute
+  #   keluar), gateway IPv4 host `isolated` (host tidak punya alamat di bridge ini, jadi tidak terjangkau),
+  #   IPv6 mati. Tidak ada port yang dipublikasikan. Boot gagal-tertutup bila ada rute default atau sandbox
+  #   Chromium tidak aktif (apps/pendamping/src/isolasi.ts).
+  # - `pendamping-edge` (image sama, `node dist/edge-main.js`) di internal + bridge `pendamping_luar`:
+  #   (1) proxy balik 127.0.0.1:4330 -> pendamping, HANYA /ws/*, /internal/*, /health (dan /debug bila
+  #   PENDAMPING_DEBUG_TOKEN diisi); (2) satu-satunya proxy CONNECT Chromium: kredensial acak per sesi,
+  #   resolusi DNS sendiri, setiap alamat diperiksa `checkConnect` profil browser (loopback, RFC1918, CGNAT,
+  #   link-local, gateway bridge, ::ffff:/NAT64 ditolak; hanya https:443 ke host union registry).
+  # Butuh Docker Engine >= 28 (driver_opts gateway_mode_ipv4). Port host 4330: BUTUH PERSETUJUAN USER.
+  # Caddy meneruskan HANYA /pendamping/ws/* (lihat Caddyfile.urusin; masih dikomentari sampai disetujui).
   pendamping:
     profiles: [pendamping]
     image: ${PENDAMPING_IMAGE:-ghcr.io/bynguts/urusin-pendamping:unset}
     restart: unless-stopped
-    network_mode: host
+    networks: [pendamping_internal]
     # tini: SIGTERM sampai ke Node (yang menutup sesi dan Xvfb) dan proses Chromium yatim dipungut.
     init: true
     environment:
       NODE_ENV: production
-      HOST: 127.0.0.1
+      # Ikat satu-satunya IPv4 kontainer (jaringan internal), bukan wildcard.
+      HOST: antarmuka
       PORT: '4330'
       GIT_SHA: ${GIT_SHA_PENDAMPING:-}
       PENDAMPING_INTERNAL_TOKEN: ${PENDAMPING_INTERNAL_TOKEN:-} # wajib >= 32 karakter; pendamping menolak start tanpanya
+      PENDAMPING_EDGE_URL: http://pendamping-edge:3129
+      PENDAMPING_EDGE_TOKEN: ${PENDAMPING_EDGE_TOKEN:-} # wajib >= 32 karakter
       URUSIN_PUBLIC_ORIGIN: https://${DOMAIN:?DOMAIN wajib diisi}
       PENDAMPING_PUBLIC_WS_URL: wss://${DOMAIN:?DOMAIN wajib diisi}/pendamping/ws
       PENDAMPING_MAX_SESSIONS: ${PENDAMPING_MAX_SESSIONS:-2}
@@ -151,12 +162,11 @@ services:
       PENDAMPING_SESSION_MEM_MB: ${PENDAMPING_SESSION_MEM_MB:-450}
       PENDAMPING_FPS: ${PENDAMPING_FPS:-8}
       PENDAMPING_DEBUG_TOKEN: ${PENDAMPING_DEBUG_TOKEN:-}
-      PENDAMPING_UPSTREAM_PROXY: ${PENDAMPING_UPSTREAM_PROXY:-}
     read_only: true
     tmpfs:
       # Profil Chromium sementara per sesi + soket/cookie Xvfb; dihapus saat sesi/layanan berakhir.
       - /tmp:size=768m
-    # Anggaran: 2 sesi x 512 MB (pengawas menghentikan sesi di 450 MB) + Node, proxy, dan Xvfb (~200 MB).
+    # Anggaran: 2 sesi x 512 MB (pengawas menghentikan sesi di 450 MB) + Node dan Xvfb (~200 MB).
     # Host bersama (agent-vm): jangan dinaikkan tanpa ukur.
     mem_limit: 1300m
     memswap_limit: 1300m
@@ -167,19 +177,62 @@ services:
     # Tanpa core dump: memori renderer bisa memuat ketikan/kredensial warga.
     ulimits:
       core: 0
+    # Sandbox Chromium AKTIF (tanpa --no-sandbox): namespace sandbox butuh unshare/clone(userns) dari profil
+    # seccomp Playwright dan chroot() ke direktori kosong; aturan chroot di profil itu (seperti profil Docker
+    # bawaan) hanya aktif bila kontainer memegang SYS_CHROOT. Proses berjalan sebagai pwuser non-root tanpa
+    # capability efektif; SYS_CHROOT hanya berguna di dalam user namespace sandbox Chromium sendiri.
+    cap_drop: [ALL]
+    cap_add: [SYS_CHROOT]
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./pendamping-seccomp.json
+    healthcheck:
+      test: ['CMD', 'node', 'dist/sehat.js', '4330']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+  pendamping-edge:
+    profiles: [pendamping]
+    image: ${PENDAMPING_IMAGE:-ghcr.io/bynguts/urusin-pendamping:unset}
+    restart: unless-stopped
+    command: ['node', 'dist/edge-main.js']
+    networks: [pendamping_internal, pendamping_luar]
+    ports:
+      - '127.0.0.1:4330:4330'
+    depends_on: [pendamping]
+    init: true
+    environment:
+      NODE_ENV: production
+      EDGE_PENDAMPING_URL: http://pendamping:4330
+      PENDAMPING_EDGE_TOKEN: ${PENDAMPING_EDGE_TOKEN:-}
+      # Hanya penanda: /debug diteruskan bila token ini diisi (diperiksa pendamping, bukan edge).
+      PENDAMPING_DEBUG_TOKEN: ${PENDAMPING_DEBUG_TOKEN:-}
+      PENDAMPING_UPSTREAM_PROXY: ${PENDAMPING_UPSTREAM_PROXY:-}
+    user: pwuser
+    read_only: true
+    tmpfs:
+      - /tmp:size=8m
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.5
+    cpu_shares: 256
+    pids_limit: 64
+    ulimits:
+      core: 0
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
     healthcheck:
-      test:
-        [
-          'CMD',
-          'node',
-          '-e',
-          "fetch('http://127.0.0.1:4330/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
-        ]
+      test: ['CMD', 'node', 'dist/sehat.js', '3129']
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
       start_period: 20s
     logging:
@@ -187,6 +240,19 @@ services:
       options:
         max-size: 10m
         max-file: '3'
+
+networks:
+  # Jaringan Chromium: tanpa rute keluar, host tidak punya alamat di bridge ini, IPv6 mati.
+  pendamping_internal:
+    driver: bridge
+    internal: true
+    enable_ipv6: false
+    driver_opts:
+      com.docker.network.bridge.gateway_mode_ipv4: isolated
+  # Sisi luar edge (port 127.0.0.1:4330 dan egress yang sudah diperiksa).
+  pendamping_luar:
+    driver: bridge
+    enable_ipv6: false
 
 volumes:
   data:

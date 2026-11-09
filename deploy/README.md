@@ -356,19 +356,38 @@ pasang lewat `sudo deploy/caddy-install.sh /tmp/Caddyfile.urusin.fixtures` (izin
 ## Browser Pendamping (opsional, butuh persetujuan port 4330)
 
 Chromium **headed** per sesi warga di Xvfb (lihat [ADR 0028](../docs/adr/0028-browser-pendamping.md)). Image
-berbasis `mcr.microsoft.com/playwright:v1.65.0-noble` (~3,6 GB, sudah ada di cache agent-vm). Host network,
-ikat hanya `127.0.0.1:4330`.
+berbasis `mcr.microsoft.com/playwright:v1.65.0-noble` (~3,6 GB, sudah ada di cache agent-vm). Dua kontainer
+dari image yang sama; isolasi murni dari topologi compose (tanpa iptables):
+
+- `pendamping` (Node + Chromium): HANYA di jaringan `pendamping_internal` (`internal: true`,
+  `gateway_mode_ipv4: isolated` sehingga host tidak punya alamat di bridge itu, IPv6 mati). Tanpa port,
+  tanpa rute default. Sandbox Chromium AKTIF (profil seccomp Playwright `pendamping-seccomp.json` + hanya
+  `SYS_CHROOT`). Boot gagal-tertutup bila ada rute keluar atau sandbox tidak aktif.
+- `pendamping-edge` (`node dist/edge-main.js`, non-root, read-only, `cap_drop: [ALL]`, 128 MB): di internal +
+  bridge `pendamping_luar`, publish `127.0.0.1:4330`. Proxy balik HANYA `/ws/<uuid>`, `/internal/*`,
+  `/health` (dan `/debug*` bila `PENDAMPING_DEBUG_TOKEN` diisi); satu-satunya proxy CONNECT Chromium
+  (kredensial acak per sesi, DNS di-resolve edge, setiap alamat diperiksa `checkConnect` profil browser).
+
+Butuh Docker Engine >= 28 (`gateway_mode_ipv4`). `pendamping-seccomp.json` = salinan apa adanya dari
+Playwright v1.65.0 `utils/docker/seccomp_profile.json` (sha256
+`cc3e61cabda6bbc1e53e54d27ba4d55a9d3be829b6dd1a596f4a7b31b1cc7849`); ikut tersalin bersama `compose.prod.yml`.
 
 ```sh
 # .env (rahasia, chmod 600)
 PENDAMPING_IMAGE=ghcr.io/bynguts/urusin-pendamping@sha256:...
 PENDAMPING_INTERNAL_TOKEN=$(openssl rand -hex 32)      # sama untuk web dan pendamping
-PENDAMPING_INTERNAL_URL=http://127.0.0.1:4330         # dibaca web
+PENDAMPING_INTERNAL_URL=http://127.0.0.1:4330         # dibaca web (dilayani pendamping-edge)
+PENDAMPING_EDGE_TOKEN=$(openssl rand -hex 32)         # pendamping <-> edge; BEDA dari token internal
 PENDAMPING_DEBUG_TOKEN=$(openssl rand -hex 32)        # opsional, untuk uji kemudi manual
 
-COMPOSE_PROFILES=pendamping docker compose -f compose.prod.yml --env-file .env up -d pendamping
+COMPOSE_PROFILES=pendamping docker compose -f compose.prod.yml --env-file .env up -d pendamping pendamping-edge
+docker compose -f compose.prod.yml logs pendamping | tail -1   # "pendamping mendengarkan di 172.x.y.z:4330 ..."
 curl -fsS http://127.0.0.1:4330/health                # {"ok":true,"aktif":0,"maks":2,"menunggu":0}
 ```
+
+Bila `pendamping` terus restart dengan "sandbox Chromium tidak aktif" atau "punya rute keluar langsung",
+itu disengaja (gagal tertutup): jangan menambal dengan `--no-sandbox` atau jaringan lain; laporkan ke lead.
+Uji topologi tanpa image Urusin: `bash deploy/tests/pendamping-isolation.test.sh` (busybox, jaringan asli).
 
 **Uji klik manusia (mode debug, tanpa Caddy):** dari laptop penguji,
 `ssh -L 4330:127.0.0.1:4330 agent-vm`, buka `http://localhost:4330/debug`, isi token debug dan URL domain
@@ -389,13 +408,14 @@ Situs `aksesWilayah: 'id-only'` (Telunjuk Sakti, Si D'nOK) hanya dirutekan ke wo
 semua mati, urusan beralih ke mode dipandu dengan pesan jujur. Rute WS worker tambahan butuh blok Caddy
 sendiri (dikerjakan lead): `handle_path /pendamping/w/<id>/*` -> `reverse_proxy 100.x.y.z:4330`.
 
-**Egress hulu (opsional):** `PENDAMPING_UPSTREAM_PROXY=http://[user:pass@]host:port` mengarahkan semua
-CONNECT/HTTP peramban yang SUDAH lolos allowlist ke proxy milik operator (mis. egress Indonesia untuk situs
-yang menolak IP datacenter). Kebijakan allowlist dan penolakan alamat privat tetap berlaku sebelum hulu.
-Urusin tidak menyediakan proxy hulu.
+**Egress hulu (opsional):** `PENDAMPING_UPSTREAM_PROXY=http://[user:pass@]host:port` (dipakai EDGE)
+mengarahkan CONNECT peramban yang SUDAH lolos kebijakan ke proxy milik operator (mis. egress Indonesia untuk
+situs yang menolak IP datacenter). Proxy hulu harus terjangkau dari bridge `pendamping_luar` (bukan
+127.0.0.1 host). Urusin tidak menyediakan proxy hulu.
 
-Batas: `mem_limit 1300m` (2 sesi x 512 MB + Node/Xvfb), pengawas menghentikan sesi di 450 MB RSS,
-`cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `init: true`.
+Batas `pendamping`: `mem_limit`/`memswap_limit 1300m` (2 sesi x 512 MB + Node/Xvfb), pengawas menghentikan
+sesi di 450 MB RSS, `cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `ulimits core 0`,
+`init: true`. `pendamping-edge`: 128 MB, `cpus: 0.5`, `pids_limit: 64`.
 
 ## Uji skrip (tanpa Docker)
 
