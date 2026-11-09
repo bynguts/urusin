@@ -38,7 +38,7 @@ import { createRagSearcher, openDb, type RagSearchInfo } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { httpKeluar } from './http-keluar.js';
 import { buatOidcFixture, type OidcFixture } from './oidc-fixture.js';
-import { turnstileFromEnv, type Turnstile } from './turnstile.js';
+import { peringatanTurnstile, turnstileFromEnv, type Turnstile } from './turnstile.js';
 import { RateLimiter } from './limiter.js';
 import { setRunningTurnsSource } from './running-turns.js';
 
@@ -257,6 +257,8 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   };
   const { akun, oidcFixture } = createAkun(db, config, (id) => h.store.deleteUrusan(id), init.akun);
   const turnstile = init.akun?.turnstile ?? turnstileFromEnv();
+  const peringatan = peringatanTurnstile(turnstile, init.env ?? process.env);
+  if (peringatan) alertOperator(peringatan);
   const rag = ragInfo(ragDb, Boolean(config.ragDbPath), searcher?.info);
   return {
     ...h,

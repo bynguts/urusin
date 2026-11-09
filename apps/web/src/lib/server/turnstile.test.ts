@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { TURNSTILE_SITEVERIFY, TURNSTILE_TOKEN_FIXTURE, turnstileFromEnv } from './turnstile';
+import {
+  peringatanTurnstile,
+  TURNSTILE_SITEVERIFY,
+  TURNSTILE_TOKEN_FIXTURE,
+  turnstileFromEnv,
+} from './turnstile';
 
 describe('turnstileFromEnv', () => {
   it('placeholder .env.example = nonaktif', () => {
@@ -56,5 +61,18 @@ describe('turnstileFromEnv', () => {
     };
     expect(await t.verifikasi('tok', 'ip')).toBe(false);
     expect(panggilan).toHaveLength(4);
+  });
+});
+
+describe('peringatanTurnstile (review delta 53fff2d)', () => {
+  it('alert operator hanya bila nonaktif di produksi (bukan CI); mode aktif atau dev diam', () => {
+    const nonaktif = turnstileFromEnv({});
+    expect(peringatanTurnstile(nonaktif, { NODE_ENV: 'production' })).toMatch(
+      /Turnstile nonaktif di produksi/,
+    );
+    expect(peringatanTurnstile(nonaktif, { NODE_ENV: 'production', CI: 'true' })).toBeNull();
+    expect(peringatanTurnstile(nonaktif, {})).toBeNull();
+    const aktif = turnstileFromEnv({ TURNSTILE_SECRET_KEY: 'kunci-uji-rahasia' });
+    expect(peringatanTurnstile(aktif, { NODE_ENV: 'production' })).toBeNull();
   });
 });

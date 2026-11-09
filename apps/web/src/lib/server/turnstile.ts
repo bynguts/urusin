@@ -22,7 +22,8 @@ type Env = Record<string, string | undefined>;
  * Turnstile dari env:
  * - `TURNSTILE_SECRET_KEY` terisi → siteverify Cloudflare lewat egress (gagal jaringan = token ditolak);
  * - `URUSIN_TURNSTILE_FIXTURE=1` (hanya di luar produksi) → hanya `TURNSTILE_TOKEN_FIXTURE` diterima (e2e);
- * - selain itu (kosong atau placeholder `ganti-dengan-…`) nonaktif. "Masuk sebagai juri" menolak di produksi bila nonaktif (fail closed).
+ * - selain itu (kosong atau placeholder `ganti-dengan-…`) nonaktif. "Masuk sebagai juri" tetap jalan (batas per
+ *   IP, batas aktif, kedaluwarsa); di produksi operator diberi alert (`peringatanTurnstile`).
  */
 export function turnstileFromEnv(env: Env = process.env, fetch: EgressFetch = egressFetch): Turnstile {
   const secret = nilaiEnv(env.TURNSTILE_SECRET_KEY);
@@ -57,4 +58,13 @@ export function turnstileFromEnv(env: Env = process.env, fetch: EgressFetch = eg
       verifikasi: async (token) => token === TURNSTILE_TOKEN_FIXTURE,
     };
   return { mode: 'nonaktif', siteKey: '', verifikasi: async () => false };
+}
+
+/**
+ * Pesan alert operator bila Turnstile nonaktif di produksi: "Masuk sebagai juri" dan login setelah 3 kegagalan
+ * berjalan tanpa tantangan bot (hanya batas per IP/global). null bila aman.
+ */
+export function peringatanTurnstile(t: Turnstile, env: Env = process.env): string | null {
+  if (t.mode !== 'nonaktif' || env.NODE_ENV !== 'production' || env.CI === 'true') return null;
+  return 'Turnstile nonaktif di produksi (TURNSTILE_SECRET_KEY kosong): juri dan login tanpa tantangan bot';
 }
