@@ -355,7 +355,7 @@ export class Vault {
   siapkanPindah(dari: string, ke: string): RencanaPindah {
     const tulisBaru: string[] = [];
     const lama = this.getDataDiri(dari);
-    const docs = this.listDocuments(dari);
+    const docs = this.muatPindah(ke, this.listDocuments(dari));
     if (!lama && docs.length === 0) {
       return {
         terapkan: () => this.shredDb(dari),
@@ -408,6 +408,31 @@ export class Vault {
       },
       selesai: () => this.hapusBerkas(dari),
     };
+  }
+
+  /**
+   * Berkas tamu yang boleh ikut pindah ke `ke` tanpa melanggar batas pemilik (`periksaBatas`: jumlah berkas,
+   * ukuran per berkas, ambang disk). Sisanya tidak ditulis ulang dan hancur bersama DEK tamu: pindah berulang
+   * tidak bisa menumpuk berkas melewati batas akun. Total global tidak berubah (byte tamu ikut terhapus).
+   */
+  private muatPindah(ke: string, docs: DokumenMeta[]): DokumenMeta[] {
+    if (docs.length === 0) return docs;
+    if (this.batas.diskPersenMaks > 0) {
+      mkdirSync(this.dir, { recursive: true, mode: 0o700 });
+      const persen = this.diskPersen(this.dir);
+      if (persen >= this.batas.diskPersenMaks) {
+        this.opts.alert?.(
+          `disk vault ${persen}% (ambang ${this.batas.diskPersenMaks}%): berkas tamu tidak dipindah`,
+        );
+        return [];
+      }
+    }
+    const ada = (
+      this.db.prepare('SELECT COUNT(*) AS n FROM vault_documents WHERE user_id = ?').get(ke) as { n: number }
+    ).n;
+    return docs
+      .filter((d) => d.size <= this.batas.ukuranMaks)
+      .slice(0, Math.max(0, this.batas.berkasPerPemilik - ada));
   }
 
   /** Bagian DB crypto-shred (boleh di dalam transaksi pemanggil): timpa nol lalu hapus DEK dan baris vault. */

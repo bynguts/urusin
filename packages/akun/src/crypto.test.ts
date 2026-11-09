@@ -274,6 +274,37 @@ describe('Vault per akun', () => {
     });
   });
 
+  it('PoC: pindah vault tamu → akun mematuhi batas pemilik dan ambang disk (tidak bisa ditumpuk)', () => {
+    let persen = 10;
+    const { db, vault, user } = vaultUji({ batas: { berkasPerPemilik: 3 }, diskPersen: () => persen });
+    const tamu = (id: string) =>
+      db
+        .prepare("INSERT INTO users (id, jenis, created_at) VALUES (?, 'tamu', '2026-11-09T00:00:00.000Z')")
+        .run(id);
+    const [T1, T2] = ['c', 'd'].map((c) => `tamu_${c.repeat(32)}`) as [string, string];
+    tamu(T1);
+    tamu(T2);
+    user(A);
+    const doc = (u: string) =>
+      vault.putDocument(u, { jenis: 'ktp', judul: 'x', mime: 'image/png', bytes: Buffer.alloc(4) });
+    doc(A);
+    doc(A);
+    doc(T1);
+    doc(T1);
+    vault.setDataDiri(T1, { namaLengkap: 'Tamu' });
+    const r = vault.siapkanPindah(T1, A);
+    r.terapkan();
+    r.selesai();
+    expect(vault.listDocuments(A)).toHaveLength(3); // bukan 4
+    expect(vault.getDataDiri(A)?.data).toEqual({ namaLengkap: 'Tamu' }); // Data Diri tetap digabung
+    doc(T2);
+    persen = 90; // disk penuh: berkas tidak ditulis ulang
+    user(B);
+    const r2 = vault.siapkanPindah(T2, B);
+    r2.terapkan();
+    expect(vault.listDocuments(B)).toHaveLength(0);
+  });
+
   it('batas: berkas per pemilik, ukuran, total global, dan ambang disk (alert)', () => {
     const alert: string[] = [];
     let persen = 10;
