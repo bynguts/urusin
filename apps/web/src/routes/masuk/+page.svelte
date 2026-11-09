@@ -54,8 +54,8 @@
 
   {#if data.ulang}
     <p data-ulang role="status" class="mt-5 rounded-xl bg-bg-2 px-4 py-3 text-[0.9375rem] text-ink">
-      Demi keamanan, masuk sekali lagi sebelum membuka dokumen di perangkat ini. Setelah itu dokumen langsung
-      terbuka.
+      Demi keamanan, masuk sekali lagi sebelum membuka brankas (Data Diri dan dokumen) di perangkat ini.
+      Setelah itu Anda kembali ke halaman tadi.
     </p>
   {/if}
 

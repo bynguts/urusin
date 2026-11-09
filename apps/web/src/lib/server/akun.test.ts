@@ -594,6 +594,9 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
     jam += 16 * 60 * 1000;
     const perlu = await lewatHook(vget(`/api/vault/${doc.id}`), laptop.jar, dokumenGet, { id: doc.id });
     expect([perlu.status, (await perlu.json()).kode]).toEqual([401, 'PERLU_MASUK_ULANG']);
+    // PoC: Data Diri (GET) di perangkat baru juga butuh bukti kredensial <= 15 menit
+    const dd = await lewatHook(vget('/api/vault/data-diri'), laptop.jar, dataDiriGet);
+    expect([dd.status, (await dd.json()).kode]).toEqual([401, 'PERLU_MASUK_ULANG']);
     // perangkat yang sudah pernah mengunduh tidak diminta lagi
     expect((await lewatHook(vget(`/api/vault/${doc.id}`), a.jar, dokumenGet, { id: doc.id })).status).toBe(
       200,

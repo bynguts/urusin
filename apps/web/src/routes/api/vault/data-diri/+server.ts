@@ -7,7 +7,8 @@ import type { RequestHandler } from './$types';
 /**
  * Data Diri pemilik (akun terverifikasi/demo: ikut akun; selain itu vault satu perangkat), terenkripsi at rest.
  * Nilai hanya untuk pemiliknya sendiri (cek Sec-Fetch-Site + Origin, no-store), tidak pernah dicatat dan
- * tidak pernah masuk prompt model (model hanya melihat placeholder).
+ * tidak pernah masuk prompt model (model hanya melihat placeholder). Akun di sesi yang belum pernah membuka
+ * brankas ("perangkat baru") butuh bukti kredensial <= 15 menit → 401 PERLU_MASUK_ULANG.
  */
 export const GET: RequestHandler = async (event) => {
   const tolak = tolakBacaVault(event.request);
@@ -15,6 +16,8 @@ export const GET: RequestHandler = async (event) => {
   try {
     const rt = await getRuntime();
     const p = pemilikVault(rt, event, { buat: false });
+    const { akun, akunSesi } = event.locals;
+    if (p && akun && akunSesi && p.id === akun.id) rt.akun.izinkanUnduh({ ...akunSesi, akun });
     const d = p ? rt.akun.vault.getDataDiri(p.id) : null;
     return apiJson({
       dataDiri: DataDiriSchema.parse(d?.data ?? {}),

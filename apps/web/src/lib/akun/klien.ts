@@ -27,9 +27,12 @@ export const LABEL_JENIS: Record<JenisDokumen, string> = {
   lainnya: 'Lainnya',
 };
 
-/** Hasil panggilan brankas: `perlu-masuk` (401), `belum-tersedia` (404 sebelum merge), atau galat warga. */
-export type Hasil<T> =
-  { ok: true; data: T } | { ok: false; alasan: 'perlu-masuk' | 'belum-tersedia' | 'galat'; pesan: string };
+/**
+ * Hasil panggilan brankas: `perlu-masuk` (401), `masuk-ulang` (401 PERLU_MASUK_ULANG: perangkat baru, login
+ * > 15 menit), `belum-tersedia` (404 sebelum merge), atau galat warga.
+ */
+export type AlasanBrankas = 'perlu-masuk' | 'masuk-ulang' | 'belum-tersedia' | 'galat';
+export type Hasil<T> = { ok: true; data: T } | { ok: false; alasan: AlasanBrankas; pesan: string };
 
 async function panggil<T>(input: string, init?: RequestInit): Promise<Hasil<T>> {
   let r: Response;
@@ -38,8 +41,16 @@ async function panggil<T>(input: string, init?: RequestInit): Promise<Hasil<T>> 
   } catch {
     return { ok: false, alasan: 'galat', pesan: 'Koneksi terputus. Periksa internet, lalu coba lagi.' };
   }
-  if (r.status === 401)
+  if (r.status === 401) {
+    const j = (await r.json().catch(() => null)) as { kode?: string } | null;
+    if (j?.kode === 'PERLU_MASUK_ULANG')
+      return {
+        ok: false,
+        alasan: 'masuk-ulang',
+        pesan: 'Masuk sekali lagi untuk membuka brankas di perangkat ini.',
+      };
     return { ok: false, alasan: 'perlu-masuk', pesan: 'Masuk dulu untuk membuka brankas Anda.' };
+  }
   if (r.status === 404)
     return { ok: false, alasan: 'belum-tersedia', pesan: 'Brankas belum tersedia di server ini.' };
   if (!r.ok) {
