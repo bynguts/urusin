@@ -103,7 +103,10 @@ const telunjukSakti: Adapter = {
     halaman: `${TS_BASE}/users/login`,
   },
   flows: {
-    /** Login (warga: sandi + CAPTCHA), unggah berkas satu per satu (AI), Selesai (warga). */
+    /**
+     * Login (warga: CAPTCHA, plus sandi bila halaman memintanya; portal asli punya kolom sandi, replika uji
+     * publik tidak), unggah berkas satu per satu (AI), Selesai (warga).
+     */
     ajukan: {
       langkah(params) {
         const id = Number(params.layanan_id);
@@ -113,7 +116,12 @@ const telunjukSakti: Adapter = {
         return [
           nav(`${TS_BASE}/users/login`),
           fill([css('#hp'), byName('hp')], placeholder('PEMOHON', 'HP')),
-          gate.human('Giliran Anda: ketik kata sandi dan kode CAPTCHA, lalu tekan Masuk.', {
+          gate.human('Giliran Anda: ketik kode CAPTCHA, lalu tekan Masuk.', {
+            // Teks mengikuti kolom yang benar-benar ada di halaman masuk.
+            messageIf: {
+              check: elementExists([css('input[type="password"]'), byName('password')]),
+              message: 'Giliran Anda: ketik kata sandi dan kode CAPTCHA, lalu tekan Masuk.',
+            },
             until: urlIncludes(`${TS_BASE}/welcome`),
             highlight: [css('#loginSubmit'), byRole('button', 'Masuk')],
           }),
