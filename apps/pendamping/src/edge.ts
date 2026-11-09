@@ -176,6 +176,8 @@ export function createEdgeProxy(
   cfg: Pick<EdgeConfig, 'union' | 'upstreamProxy' | 'maksTerowongan'>,
   daftar: ReturnType<typeof createDaftarSesi>,
   resolve: Resolver = defaultResolver,
+  /** Satu baris per CONNECT yang ditolak/gagal: host + alasan saja (tanpa path, header, atau isi). */
+  catat: (baris: string) => void = (b) => console.log(b),
 ) {
   const sockets = new Set<Duplex>();
   const track = (s: Duplex) => {
@@ -226,7 +228,10 @@ export function createEdgeProxy(
     const d = target
       ? await decide(sesi, target.host, target.port)
       : ({ ok: false, reason: 'rusak' } as const);
-    if (!target || !d.ok) return tolak(client, '403 Forbidden');
+    if (!target || !d.ok) {
+      catat(`edge: CONNECT ditolak host=${target?.host ?? '?'} alasan=${d.ok ? 'rusak' : d.reason}`);
+      return tolak(client, '403 Forbidden');
+    }
     const sambung = (up: net.Socket) => {
       track(up);
       up.setTimeout(10 * 60_000, () => up.destroy());
@@ -235,13 +240,18 @@ export function createEdgeProxy(
       up.pipe(client);
       client.pipe(up);
     };
-    const gagal = () => tolak(client, '502 Bad Gateway');
+    const gagal = (jalur: string) => (e: unknown) => {
+      const kode = (e as { code?: unknown } | null)?.code;
+      const galat = typeof kode === 'string' ? kode : e instanceof Error ? e.message : 'lain';
+      catat(`edge: CONNECT gagal host=${target.host} jalur=${jalur} galat=${galat}`);
+      tolak(client, '502 Bad Gateway');
+    };
     if (cfg.upstreamProxy) {
-      dialUpstream(cfg.upstreamProxy, target.host, target.port).then(sambung, gagal);
+      dialUpstream(cfg.upstreamProxy, target.host, target.port).then(sambung, gagal('hulu'));
       return;
     }
     const up = net.connect(target.port, d.address, () => sambung(up));
-    up.on('error', gagal);
+    up.on('error', gagal('langsung'));
   });
   return {
     server,
