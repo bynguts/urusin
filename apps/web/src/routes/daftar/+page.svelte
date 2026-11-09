@@ -63,8 +63,8 @@
         <input type="hidden" name="next" value="/" />
         <button
           type="submit"
-          class="flex min-h-14 w-full items-center justify-center rounded-full border border-line-2 bg-surface font-semibold text-ink hover:bg-card"
-          >Daftar dengan Google</button
+          class="flex min-h-14 w-full items-center justify-center gap-3 rounded-full border border-line-2 bg-surface text-[1.0625rem] font-semibold text-ink hover:bg-card"
+          ><img src="/pen/google-g.svg" alt="" width="20" height="20" />Daftar dengan Google</button
         >
       </form>
       <p class="my-5 flex items-center gap-3 text-sm text-muted">
