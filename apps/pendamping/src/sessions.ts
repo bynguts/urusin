@@ -1,6 +1,8 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import type {
   AntreanPendampingResponse,
+  BerkasSesiInternal,
+  ButuhSesiInternal,
   MulaiSesiInternal,
   PendampingBukti,
   PendampingClientMessage,
@@ -364,6 +366,46 @@ export class SessionManager {
     return this.status(owner);
   }
 
+  /**
+   * Jalur isi server (A-M1): data yang masih dibutuhkan sesi sebelum AI mulai, plus origin yang benar-benar
+   * dibuka peramban (tujuan nilai). Web memakai daftar ini sebagai daftar write persetujuan "Izinkan isi".
+   */
+  butuhData(owner: { urusanId: string; sidHash: string }): ButuhSesiInternal {
+    const s = this.requireMenungguData(owner);
+    return { ...this.kurang(s), origin: s.program.origin };
+  }
+
+  /**
+   * Nilai Data Diri yang diselesaikan server (resolver vault + token persetujuan sekali pakai) lewat kanal
+   * internal. Hanya placeholder yang memang dibutuhkan sesi ini yang disimpan (di memori sesi saja).
+   */
+  async isiData(
+    owner: { urusanId: string; sidHash: string },
+    isian: Record<string, string>,
+  ): Promise<{ placeholder: string[]; berkas: string[] }> {
+    const s = this.requireMenungguData(owner);
+    for (const [k, v] of Object.entries(isian)) if (s.butuh.placeholder.includes(k)) s.vault.set(k, v);
+    const kurang = this.kurang(s);
+    await this.maybeStartAi(s);
+    return kurang;
+  }
+
+  /** Satu berkas dari Dokumen akun (server) untuk `{{FILE:<nama>}}`; hanya nama yang dibutuhkan sesi. */
+  async isiBerkas(
+    owner: { urusanId: string; sidHash: string },
+    b: Pick<BerkasSesiInternal, 'nama' | 'namaBerkas' | 'mime' | 'dataBase64'>,
+  ): Promise<{ placeholder: string[]; berkas: string[] }> {
+    const s = this.requireMenungguData(owner);
+    if (!s.butuh.berkas.includes(b.nama) || s.files.size >= MAX_FILES)
+      throw new PendampingError('PESAN_TIDAK_SAH', 422, 'berkas ini tidak dibutuhkan sesi');
+    if (Buffer.byteLength(b.dataBase64, 'base64') > MAX_FILE_BYTES)
+      throw new PendampingError('BERKAS_TERLALU_BESAR', 413, 'Berkas melebihi 9 MB.');
+    s.files.set(b.nama, { name: b.namaBerkas, mime: b.mime, base64: b.dataBase64 });
+    const kurang = this.kurang(s);
+    await this.maybeStartAi(s);
+    return kurang;
+  }
+
   antrean(): AntreanPendampingResponse {
     return { aktif: this.active.size, maks: this.config.maxSessions, menunggu: this.queue.length };
   }
@@ -533,6 +575,14 @@ export class SessionManager {
     const s = this.byUrusan(owner.urusanId);
     if (!s) throw new PendampingError('SESI_TIDAK_ADA', 404, 'tidak ada sesi pendamping');
     this.assertOwner(s, owner.sidHash);
+    return s;
+  }
+
+  /** Sesi milik pemilik ini yang AI-nya belum mulai (antre/menunggu data); selain itu 409. */
+  private requireMenungguData(owner: { urusanId: string; sidHash: string }): Sesi {
+    const s = this.requireOwned(owner);
+    if (s.aiDimulai || s.manualUrl || TERMINAL.has(s.status) || s.status === 'siaga')
+      throw new PendampingError('PESAN_TIDAK_SAH', 409, 'sesi tidak sedang menunggu data');
     return s;
   }
 

@@ -4,6 +4,8 @@ import http from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  BerkasSesiInternalSchema,
+  IsiSesiInternalSchema,
   MulaiSesiInternalSchema,
   PENDAMPING_WS_CLOSE,
   PENDAMPING_WS_MAX_PAYLOAD,
@@ -33,6 +35,8 @@ import { createPenjagaUlang, HEADER_NONCE, HEADER_TANDA, HEADER_WAKTU } from './
  */
 
 const MAX_JSON = 64 * 1024;
+/** Satu berkas 9 MB dalam base64 (~12 MB) + amplop JSON. */
+const MAX_JSON_BERKAS = 12_700_000;
 const SID_COOKIE = 'urusin_sid';
 
 /**
@@ -75,12 +79,12 @@ function tokenOk(header: string | undefined, token: string): boolean {
 }
 
 /** Isi mentah dibatasi MAX_JSON; null bila lebih. */
-async function readRaw(req: http.IncomingMessage): Promise<Buffer | null> {
+async function readRaw(req: http.IncomingMessage, maks = MAX_JSON): Promise<Buffer | null> {
   let size = 0;
   const chunks: Buffer[] = [];
   for await (const c of req) {
     size += (c as Buffer).length;
-    if (size > MAX_JSON) return null;
+    if (size > maks) return null;
     chunks.push(c as Buffer);
   }
   return Buffer.concat(chunks);
@@ -187,7 +191,8 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'Tidak ditemukan.' });
       // Kanal web -> worker: tanda tangan HMAC atas waktu + nonce + metode + jalur + isi (bukan token polos);
       // nonce yang sudah dipakai dalam jendela waktu ditolak (anti putar ulang).
-      const raw = await readRaw(req);
+      // Satu berkas Dokumen (<= 9 MB biner, base64) hanya di jalur berkas; selain itu 64 KB.
+      const raw = await readRaw(req, path === '/internal/sesi/berkas' ? MAX_JSON_BERKAS : MAX_JSON);
       if (!raw) return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan terlalu besar.' });
       const header = (n: string) => {
         const v = req.headers[n];
@@ -211,11 +216,26 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
           return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
         return json(res, 201, await manager.create(body));
       }
+      // Jalur isi server (A-M1): nilai/berkas dari resolver web, hanya lewat kanal bertanda tangan ini.
+      if (path === '/internal/sesi/isi') {
+        const body = parseJson(raw, IsiSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, await manager.isiData(body, body.isian));
+      }
+      if (path === '/internal/sesi/berkas') {
+        const body = parseJson(raw, BerkasSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, await manager.isiBerkas(body, body));
+      }
       const owner = parseJson(raw, PemilikSesiInternalSchema);
       if (!owner) return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
       switch (path) {
         case '/internal/sesi/status':
           return json(res, 200, manager.status(owner));
+        case '/internal/sesi/butuh':
+          return json(res, 200, manager.butuhData(owner));
         case '/internal/sesi/tiket': {
           const t = manager.mintTicket(owner);
           return json(res, 201, {

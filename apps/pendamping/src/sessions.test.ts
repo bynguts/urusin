@@ -598,6 +598,49 @@ describe('server HTTP + WebSocket', () => {
     expect((await fetch(`${base}/dev`)).status).toBe(200);
   });
 
+  it('jalur isi server (A-M1): butuh -> isi/berkas lewat kanal bertanda; hanya yang dibutuhkan; lalu AI mulai', async () => {
+    const { call, h } = await start();
+    const o = owner('u1');
+    expect(
+      (await call('/internal/sesi', input('u1', { params: { layanan_id: 1, berkas: 'ktp' } }))).status,
+    ).toBe(201);
+    await h.flush();
+    const butuh = await call('/internal/sesi/butuh', o);
+    expect(butuh.status).toBe(200);
+    expect(await butuh.json()).toEqual({
+      placeholder: ['{{PEMOHON.HP}}'],
+      berkas: ['ktp'],
+      origin: 'https://telunjuksakti.wonogirikab.go.id',
+    });
+    // Pemilik lain ditolak; body tanpa isian / placeholder tak sah ditolak.
+    expect((await call('/internal/sesi/butuh', owner('u1', OTHER))).status).toBe(403);
+    expect((await call('/internal/sesi/isi', o)).status).toBe(422);
+    expect((await call('/internal/sesi/isi', { ...o, isian: { bukan: 'x' } })).status).toBe(422);
+    const isi = await call('/internal/sesi/isi', {
+      ...o,
+      isian: { '{{PEMOHON.HP}}': '08000000001', '{{X.Y}}': 'abaikan' },
+    });
+    expect(await isi.json()).toEqual({ placeholder: [], berkas: ['ktp'] });
+    const run = h.runs[0]!;
+    expect(run.calls).not.toContain('mulaiAi');
+    const berkas = (nama: string, dataBase64 = 'AAAA') =>
+      call('/internal/sesi/berkas', { ...o, nama, namaBerkas: 'ktp.png', mime: 'image/png', dataBase64 });
+    expect((await berkas('lain')).status).toBe(422);
+    // Berkas besar hanya di jalur berkas (batas 64 KB jalur lain tetap).
+    const besar = 'A'.repeat(70_000);
+    expect((await call('/internal/sesi/isi', { ...o, isian: { '{{PEMOHON.HP}}': besar } })).status).toBe(422);
+    const ok = await berkas('ktp', besar);
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ placeholder: [], berkas: [] });
+    expect(run.calls).toContain('mulaiAi');
+    expect(run.init.data.value('{{PEMOHON.HP}}')).toBe('08000000001');
+    expect(run.init.data.value('{{X.Y}}')).toBeUndefined();
+    expect(run.init.data.file('ktp')).toMatchObject({ name: 'ktp.png', mime: 'image/png' });
+    // AI sudah mulai: jalur isi ditutup (409).
+    expect((await call('/internal/sesi/butuh', o)).status).toBe(409);
+    expect((await call('/internal/sesi/isi', { ...o, isian: {} })).status).toBe(409);
+  });
+
   it('WebSocket: Origin asing ditolak; pesan pertama wajib halo bertiket; tiket sekali pakai', async () => {
     const { call, port } = await start();
     await call('/internal/sesi', input('u1'));
