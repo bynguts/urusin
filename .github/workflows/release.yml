@@ -88,8 +88,9 @@ jobs:
             if [ "$NAME" = "web" ]; then
               docker run --rm --platform "linux/${arch}" --entrypoint node "$REF"                 -e "const a=process.arch;const r=require('better-sqlite3')(':memory:').prepare('select 1 as x').get();if(r.x!==1)process.exit(1);console.log(a,'better-sqlite3 ok')"
             elif [ "$NAME" = "pendamping" ]; then
-              # Kontainer pendamping tanpa no-new-privileges: chrome-sandbox HARUS satu-satunya biner SUID/SGID.
-              docker run --rm --platform "linux/${arch}" --network none --entrypoint sh "$REF" -c                 'f=$(find / -xdev -type f -perm /6000 2>/dev/null); echo "$f"; case "$f" in /ms-playwright/chromium-1254/chrome-linux64/chrome-sandbox|/ms-playwright/chromium-1254/chrome-linux-arm64/chrome-sandbox) ;; *) exit 1 ;; esac; [ "$(stat -c %u:%a "$f")" = 0:4755 ] && [ "$CHROME_DEVEL_SANDBOX" = "$f" ]'
+              # Kontainer pendamping tanpa no-new-privileges: chrome-sandbox HARUS satu-satunya biner SUID/SGID,
+              # dan tidak ada berkas ber-capability (getcap ada di image dan keluarannya kosong).
+              docker run --rm --platform "linux/${arch}" --network none --entrypoint sh "$REF" -c                 'f=$(find / -xdev -type f -perm /6000 2>/dev/null); echo "$f"; case "$f" in /ms-playwright/chromium-1254/chrome-linux64/chrome-sandbox|/ms-playwright/chromium-1254/chrome-linux-arm64/chrome-sandbox) ;; *) exit 1 ;; esac; [ "$(stat -c %u:%a "$f")" = 0:4755 ] && [ "$CHROME_DEVEL_SANDBOX" = "$f" ] && command -v getcap >/dev/null && c=$(getcap -r / 2>/dev/null) && echo "getcap: [$c]" && [ -z "$c" ]'
               if [ "$arch" = "amd64" ]; then
                 # Boot produksi dengan pengerasan yang sama seperti compose (seccomp Playwright, SYS_ADMIN +
                 # SYS_CHROOT untuk sandbox setuid tanpa no-new-privileges, read-only, tanpa jaringan; ADR 0029):
