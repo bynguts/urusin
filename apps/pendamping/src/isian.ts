@@ -63,3 +63,8 @@ export function pesanIsiSendiri(value: string): string {
     .find((l) => l !== undefined);
   return `Ketik ${label ?? 'isian yang diminta'} di kolom yang disorot, lalu tekan Lanjutkan.`;
 }
+
+/** Pesan giliran `berkas_kurang`: Dokumen untuk langkah unggah belum ada di akun warga. */
+export function pesanBerkasKurang(nama: string): string {
+  return `Dokumen ${nama.toUpperCase()} belum ada. Tambahkan di Dokumen, lalu tekan Lanjutkan.`;
+}

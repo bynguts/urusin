@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dariDataDiri, pesanIsiSendiri } from './isian.js';
+import { dariDataDiri, pesanBerkasKurang, pesanIsiSendiri } from './isian.js';
 
 describe('placeholder Data Diri vs diketik warga', () => {
   it('hanya Data Diri yang boleh menahan AI', () => {
@@ -18,5 +18,9 @@ describe('placeholder Data Diri vs diketik warga', () => {
     expect(pesanIsiSendiri('{{URUSAN.LAIN}}')).toBe(
       'Ketik isian yang diminta di kolom yang disorot, lalu tekan Lanjutkan.',
     );
+  });
+
+  it('pesan berkas_kurang menyebut nama Dokumen', () => {
+    expect(pesanBerkasKurang('kk')).toBe('Dokumen KK belum ada. Tambahkan di Dokumen, lalu tekan Lanjutkan.');
   });
 });

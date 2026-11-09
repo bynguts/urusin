@@ -352,8 +352,7 @@ describe('SessionManager', () => {
       berkas: ['ktp'],
       origin: run.init.program.origin,
     });
-    await h.manager.isiData(owner('u1'), { '{{PEMOHON.HP}}': '08000000001', '{{X.Y}}': 'abaikan' });
-    expect(run.calls).not.toContain('mulaiAi');
+    // Urutan putaran "Izinkan isi": berkas dulu, lalu isian (panggilan terakhir = AI mulai).
     const berkas = (nama: string, dataBase64: string) =>
       h.manager.isiBerkas(owner('u1'), { nama, namaBerkas: 'ktp.png', mime: 'image/png', dataBase64 });
     await expect(berkas('tidak_diminta', 'AAAA')).rejects.toMatchObject({ kode: 'PESAN_TIDAK_SAH' });
@@ -361,6 +360,8 @@ describe('SessionManager', () => {
       kode: 'BERKAS_TERLALU_BESAR',
     });
     await berkas('ktp', 'AAAA');
+    expect(run.calls).not.toContain('mulaiAi');
+    await h.manager.isiData(owner('u1'), { '{{PEMOHON.HP}}': '08000000001', '{{X.Y}}': 'abaikan' });
     expect(run.calls).toContain('mulaiAi');
     expect(run.init.data.value('{{PEMOHON.HP}}')).toBe('08000000001');
     expect(run.init.data.value('{{X.Y}}')).toBeUndefined();
@@ -432,11 +433,46 @@ describe('SessionManager', () => {
       placeholder: ['{{PEMOHON.HP}}'],
       berkas: ['berkas1'],
     });
-    expect(run.calls).not.toContain('mulaiAi'); // berkas tetap menahan
-    const dok = { nama: 'berkas1', namaBerkas: 'a.pdf', mime: 'application/pdf', dataBase64: 'AAAA' };
-    expect(await h.manager.isiBerkas(owner('u2'), dok)).toEqual({ placeholder: [], berkas: [] });
+    // Berkas yang belum ada juga tidak menahan: diminta saat AI sampai di langkah unggah (berkas_kurang).
     expect(run.calls).toContain('mulaiAi');
     expect(run.init.data.value('{{PEMOHON.HP}}')).toBeUndefined();
+    const dok = { nama: 'berkas1', namaBerkas: 'a.pdf', mime: 'application/pdf', dataBase64: 'AAAA' };
+    await expect(h.manager.isiBerkas(owner('u2'), dok)).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('berkas_kurang: langkah unggah menunggu -> persetujuan baru hanya untuk berkas itu -> jalur isi tertutup lagi', async () => {
+    const h = harness();
+    await h.manager.create(input('b1', { params: { layanan_id: 1, berkas: 'ktp,kk' } }));
+    await h.flush();
+    const run = h.runs[0]!;
+    const o = owner('b1');
+    const dok = (nama: string) => ({
+      nama,
+      namaBerkas: `${nama}.pdf`,
+      mime: 'application/pdf',
+      dataBase64: 'AAAA',
+    });
+    await h.manager.isiBerkas(o, dok('ktp'));
+    await h.manager.isiData(o, { '{{PEMOHON.HP}}': '08000000001' });
+    expect(run.calls).toContain('mulaiAi');
+    // AI berjalan, belum ada yang ditunggu: jalur isi tertutup.
+    expect(() => h.manager.butuhData(o)).toThrow(/menunggu data/);
+    // Peramban: langkah unggah {{FILE:kk}} tidak menemukan berkas -> giliran berkas_kurang.
+    run.init.hooks.berkasKurang('kk');
+    expect(h.manager.butuhData(o)).toEqual({
+      placeholder: [],
+      berkas: ['kk'],
+      origin: run.init.program.origin,
+    });
+    // Hanya berkas yang ditunggu; isian kosong dari putaran yang sama tidak berbuat apa-apa.
+    await expect(h.manager.isiBerkas(o, dok('ktp'))).rejects.toMatchObject({ kode: 'PESAN_TIDAK_SAH' });
+    expect(await h.manager.isiData(o, {})).toEqual({ placeholder: [], berkas: ['kk'] });
+    expect(await h.manager.isiBerkas(o, dok('kk'))).toEqual({ placeholder: [], berkas: [] });
+    expect(run.init.data.file('kk')).toMatchObject({ name: 'kk.pdf' });
+    expect(run.calls.filter((c) => c === 'mulaiAi')).toHaveLength(1);
+    // Langkah unggah berhasil diulang: tidak menunggu lagi, jalur isi tertutup.
+    run.init.hooks.berkasKurang(undefined);
+    expect(() => h.manager.butuhData(o)).toThrow(/menunggu data/);
   });
 
   it('viewer baru menggantikan yang lama (4409); detach melepas screencast', async () => {
@@ -610,7 +646,7 @@ describe('server HTTP + WebSocket', () => {
     ).toBe(401);
   });
 
-  it('jalur isi server (A-M1): butuh -> isi/berkas lewat kanal bertanda; hanya yang dibutuhkan; lalu AI mulai', async () => {
+  it('jalur isi server (A-M1): butuh -> berkas -> isi lewat kanal bertanda; hanya yang dibutuhkan; lalu AI mulai', async () => {
     const { call, h } = await start();
     const o = owner('u1');
     expect(
@@ -628,13 +664,7 @@ describe('server HTTP + WebSocket', () => {
     expect((await call('/internal/sesi/butuh', owner('u1', OTHER))).status).toBe(403);
     expect((await call('/internal/sesi/isi', o)).status).toBe(422);
     expect((await call('/internal/sesi/isi', { ...o, isian: { bukan: 'x' } })).status).toBe(422);
-    const isi = await call('/internal/sesi/isi', {
-      ...o,
-      isian: { '{{PEMOHON.HP}}': '08000000001', '{{X.Y}}': 'abaikan' },
-    });
-    expect(await isi.json()).toEqual({ placeholder: [], berkas: ['ktp'] });
     const run = h.runs[0]!;
-    expect(run.calls).not.toContain('mulaiAi');
     const berkas = (nama: string, dataBase64 = 'AAAA') =>
       call('/internal/sesi/berkas', { ...o, nama, namaBerkas: 'ktp.png', mime: 'image/png', dataBase64 });
     expect((await berkas('lain')).status).toBe(422);
@@ -643,7 +673,14 @@ describe('server HTTP + WebSocket', () => {
     expect((await call('/internal/sesi/isi', { ...o, isian: { '{{PEMOHON.HP}}': besar } })).status).toBe(422);
     const ok = await berkas('ktp', besar);
     expect(ok.status).toBe(200);
-    expect(await ok.json()).toEqual({ placeholder: [], berkas: [] });
+    expect(await ok.json()).toEqual({ placeholder: ['{{PEMOHON.HP}}'], berkas: [] });
+    expect(run.calls).not.toContain('mulaiAi');
+    // Isian = panggilan terakhir putaran: AI mulai.
+    const isi = await call('/internal/sesi/isi', {
+      ...o,
+      isian: { '{{PEMOHON.HP}}': '08000000001', '{{X.Y}}': 'abaikan' },
+    });
+    expect(await isi.json()).toEqual({ placeholder: [], berkas: [] });
     expect(run.calls).toContain('mulaiAi');
     expect(run.init.data.value('{{PEMOHON.HP}}')).toBe('08000000001');
     expect(run.init.data.value('{{X.Y}}')).toBeUndefined();

@@ -40,6 +40,7 @@ async function mulai(): Promise<{ run: ActiveRun; rekam: Rekam }> {
     activity: () => {},
     ended: (status, _hasil, pesan) => void (rekam.ended ??= `${status}:${pesan}`),
     langkahSelesai: (pesan, bukti) => void rekam.selesai.push({ pesan, bukti }),
+    berkasKurang: () => {},
   };
   const run = await createBrowserFactory(config)({
     sesiId: 'akun-e2e',

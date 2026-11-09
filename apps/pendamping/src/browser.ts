@@ -24,7 +24,7 @@ import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
 import { daftarEdge, type ProxyEdge } from './isolasi.js';
-import { pesanIsiSendiri } from './isian.js';
+import { pesanBerkasKurang, pesanIsiSendiri } from './isian.js';
 import { runnerExpression } from './runner-script.js';
 import type { ActiveRun, Frame, JenisFokus, RunFactory, RunInit } from './sessions.js';
 import { createPantauTantangan, isChallengeFrameUrl, isInterstitialTitle } from './verifikasi.js';
@@ -440,6 +440,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     const prev = status;
     status = c.status;
     if (c.status !== 'waiting_gate') stopGatePoll();
+    if (prev === 'waiting_citizen' && c.status !== 'waiting_citizen') hooks.berkasKurang(undefined);
     switch (c.status) {
       case 'running':
       case 'waiting_load':
@@ -475,17 +476,22 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
       }
       case 'waiting_citizen': {
         // Nilai kolom ini tidak ada di daftar write: warga mengetiknya di situs (tidak dicatat, tidak ke AI).
+        // Langkah unggah tanpa berkas: warga menambah Dokumen, lalu Lanjutkan = persetujuan baru + ulang.
         if (prev === 'waiting_citizen') return;
         const step = steps[c.stepIndex];
         const pesan = c.message ?? 'Isi kolom yang disorot, lalu tekan Lanjutkan.';
+        const nama =
+          step?.op === 'upload' ? /^\{\{FILE:([A-Za-z][A-Za-z0-9_]*)\}\}$/.exec(step.file)?.[1] : undefined;
+        if (nama) hooks.berkasKurang(nama);
         hooks.mode('takeover', pesan);
         void (async () => {
-          const box = step?.op === 'fill' || step?.op === 'select' ? await sorot(step.target) : undefined;
+          const box = step && 'target' in step ? await sorot(step.target) : undefined;
           hooks.event({
             jenis: 'giliran_anda',
-            alasan: 'isi_sendiri',
+            alasan: nama ? 'berkas_kurang' : 'isi_sendiri',
             pesan,
             ...(box ? { sorot: box } : {}),
+            ...(nama ? { berkas: { nama, origin: program.origin } } : {}),
           });
         })();
         return;
@@ -540,6 +546,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
       },
       resolveFile: async (name) => init.data.file(name),
       citizenInput: pesanIsiSendiri,
+      citizenFile: pesanBerkasKurang,
     });
   let interp = buatInterp();
 

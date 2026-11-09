@@ -68,7 +68,7 @@ async function bukaPenampil(page: Page, urusanId: string, sesiId: string) {
 const peristiwa = (page: Page) =>
   page.evaluate(() => (window as unknown as { peristiwa: PendampingEvent[] }).peristiwa);
 
-async function tungguGiliran(page: Page, alasan: 'login' | 'final') {
+async function tungguGiliran(page: Page, alasan: 'login' | 'final' | 'berkas_kurang') {
   await expect
     .poll(
       async () => (await peristiwa(page)).find((e) => e.jenis === 'giliran_anda' && e.alasan === alasan),
@@ -124,8 +124,9 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
     });
 
   // "Izinkan isi" -> jalur isi server (A-M1), urutan yang sama dengan controller web (isiSesiDariVault): tanya
-  // pemegang sesi apa yang dibutuhkan + origin yang diisi, lalu kirim nilai + berkas lewat kanal internal
-  // bertanda HMAC. Perangkat tidak punya jalur nilai vault (placeholder di-resolve di batas eksekutor).
+  // pemegang sesi apa yang dibutuhkan + origin yang diisi, lalu kirim berkas lalu nilai (terakhir) lewat kanal
+  // internal bertanda HMAC. Perangkat tidak punya jalur nilai vault (placeholder di-resolve di batas eksekutor).
+  // Akun warga baru punya KTP: KK diminta nanti di langkah unggahnya (giliran berkas_kurang).
   const butuh = await internal<{ placeholder: string[]; berkas: string[]; origin: string }>(
     '/internal/sesi/butuh',
     owner('u-e2e-1'),
@@ -135,22 +136,21 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
     berkas: ['ktp', 'kk'],
     origin: FIXTURE_ORIGIN,
   });
+  const kirimBerkas = async (nama: string) =>
+    (
+      await internal('/internal/sesi/berkas', {
+        ...owner('u-e2e-1'),
+        nama,
+        namaBerkas: `${nama}.png`,
+        mime: 'image/png',
+        dataBase64: PNG.toString('base64'),
+      })
+    ).status;
+  expect(await kirimBerkas('ktp')).toBe(200);
   expect(
     (await internal('/internal/sesi/isi', { ...owner('u-e2e-1'), isian: { '{{PEMOHON.HP}}': TEST_HP } }))
       .status,
   ).toBe(200);
-  for (const nama of ['ktp', 'kk'])
-    expect(
-      (
-        await internal('/internal/sesi/berkas', {
-          ...owner('u-e2e-1'),
-          nama,
-          namaBerkas: `${nama}.png`,
-          mime: 'image/png',
-          dataBase64: PNG.toString('base64'),
-        })
-      ).status,
-    ).toBe(200);
 
   // AI mengisi HP lalu berhenti di CAPTCHA: wajib takeover.
   const login = await tungguGiliran(page, 'login');
@@ -176,8 +176,30 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
   await page.locator('#layar').click({ position: { x: s.x + s.lebar / 2, y: s.y + s.tinggi / 2 } });
 
   // Login sukses membuktikan HP diisi AI dengan benar (fixture memeriksa HP + CAPTCHA). AI lanjut mengunggah.
+  // KTP terunggah; KK belum ada di akun: giliran berkas_kurang (nama + origin untuk persetujuan baru).
+  const kurang = await tungguGiliran(page, 'berkas_kurang');
+  expect(kurang.pesan).toBe('Dokumen KK belum ada. Tambahkan di Dokumen, lalu tekan Lanjutkan.');
+  expect(kurang.berkas).toEqual({ nama: 'kk', origin: FIXTURE_ORIGIN });
+  await expect(page.locator('#mode')).toHaveText('takeover');
+  // Lanjutkan tanpa menambah berkas: langkah unggah diulang dan giliran yang sama muncul lagi.
+  const jumlahKurang = async () =>
+    (await peristiwa(page)).filter((e) => e.jenis === 'giliran_anda' && e.alasan === 'berkas_kurang').length;
+  await page.locator('#kembali').click();
+  await expect.poll(jumlahKurang, { timeout: 30_000 }).toBe(2);
+  // Warga menambah KK di Dokumen, Lanjutkan = "Izinkan isi" baru untuk KK saja: butuh -> berkas -> isi.
+  const butuhKk = await internal<{ placeholder: string[]; berkas: string[] }>(
+    '/internal/sesi/butuh',
+    owner('u-e2e-1'),
+  );
+  expect(butuhKk.data).toMatchObject({ placeholder: [], berkas: ['kk'] });
+  expect(await kirimBerkas('kk')).toBe(200);
+  expect((await internal('/internal/sesi/isi', { ...owner('u-e2e-1'), isian: {} })).status).toBe(200);
+  await page.locator('#kembali').click();
+
   // Sampai di giliran final = kedua unggahan lolos pascakondisi adapter (jumlah .uploaded-item bertambah).
   const final = await tungguGiliran(page, 'final');
+  // Langkah unggah selesai: jalur isi tertutup lagi.
+  expect((await internal('/internal/sesi/butuh', owner('u-e2e-1'))).status).toBe(409);
   expect((await internal('/internal/sesi/teks', owner('u-e2e-1'))).status).toBe(404);
   const langkah = (await peristiwa(page)).filter((e) => e.jenis === 'langkah');
   expect(langkah.map((e) => (e as { label: string }).label)).toContain('Mengunggah berkas');

@@ -34,6 +34,7 @@ async function mulai(jalur: string): Promise<{ run: ActiveRun; rekam: Rekam }> {
     activity: () => {},
     ended: (status, hasil, pesan) => void (rekam.ended ??= { status, hasil, pesan }),
     langkahSelesai: (pesan) => void (rekam.ended ??= { status: 'siaga', hasil: 'berhasil', pesan }),
+    berkasKurang: () => {},
   };
   const run = await createBrowserFactory(config)({
     sesiId: `verif-${jalur}`,

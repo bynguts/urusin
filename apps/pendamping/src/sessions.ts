@@ -43,6 +43,11 @@ export type Hooks = {
    * berikutnya di urusan yang sama tanpa login ulang) sampai TTL/idle/diakhiri.
    */
   langkahSelesai(pesan: string, bukti?: PendampingBukti): void;
+  /**
+   * Langkah unggah menunggu berkas yang belum ada di akun (giliran `berkas_kurang`); undefined = tidak lagi.
+   * Selama itu web boleh mengirim berkas itu saja lewat jalur isi server (persetujuan baru).
+   */
+  berkasKurang(nama: string | undefined): void;
 };
 
 export type Frame = FrameMasuk;
@@ -106,6 +111,8 @@ type Sesi = {
   viewer?: Viewer | undefined;
   aiDimulai: boolean;
   galatInputTerkirim: boolean;
+  /** Berkas yang ditunggu langkah unggah (giliran `berkas_kurang`), bila ada. */
+  berkasDitunggu?: string | undefined;
 };
 
 export class PendampingError extends Error {
@@ -383,8 +390,13 @@ export class SessionManager {
     const s = this.requireMenungguData(owner);
     for (const [k, v] of Object.entries(isian)) if (s.butuh.placeholder.includes(k)) s.vault.set(k, v);
     const kurang = this.kurang(s);
-    // Persetujuan sekali pakai sudah dipakai: Data Diri yang kosong diketik warga di kolomnya, tidak menahan AI.
-    s.butuh = { ...s.butuh, placeholder: s.butuh.placeholder.filter((p) => s.vault.has(p)) };
+    // Panggilan TERAKHIR putaran "Izinkan isi" (web mengirim berkas dulu, lalu isian). Persetujuan sekali pakai
+    // sudah dipakai: Data Diri kosong diketik warga di kolomnya (isi_sendiri), berkas yang belum ada diminta
+    // saat AI sampai di langkah unggah (berkas_kurang). Keduanya tidak lagi menahan AI.
+    s.butuh = {
+      placeholder: s.butuh.placeholder.filter((p) => s.vault.has(p)),
+      berkas: s.butuh.berkas.filter((b) => s.files.has(b)),
+    };
     await this.maybeStartAi(s);
     return kurang;
   }
@@ -395,14 +407,14 @@ export class SessionManager {
     b: Pick<BerkasSesiInternal, 'nama' | 'namaBerkas' | 'mime' | 'dataBase64'>,
   ): Promise<{ placeholder: string[]; berkas: string[] }> {
     const s = this.requireMenungguData(owner);
-    if (!s.butuh.berkas.includes(b.nama) || s.files.size >= MAX_FILES)
+    const boleh = s.berkasDitunggu !== undefined ? [s.berkasDitunggu] : s.butuh.berkas;
+    if (!boleh.includes(b.nama) || (s.files.size >= MAX_FILES && !s.files.has(b.nama)))
       throw new PendampingError('PESAN_TIDAK_SAH', 422, 'berkas ini tidak dibutuhkan sesi');
     if (Buffer.byteLength(b.dataBase64, 'base64') > MAX_FILE_BYTES)
       throw new PendampingError('BERKAS_TERLALU_BESAR', 413, 'Berkas melebihi 9 MB.');
     s.files.set(b.nama, { name: b.namaBerkas, mime: b.mime, base64: b.dataBase64 });
-    const kurang = this.kurang(s);
-    await this.maybeStartAi(s);
-    return kurang;
+    // AI mulai di `isiData` (panggilan terakhir putaran), bukan di sini.
+    return this.kurang(s);
   }
 
   antrean(): AntreanPendampingResponse {
@@ -513,15 +525,21 @@ export class SessionManager {
     return s;
   }
 
-  /** Sesi milik pemilik ini yang AI-nya belum mulai (antre/menunggu data); selain itu 409. */
+  /**
+   * Sesi milik pemilik ini yang AI-nya belum mulai (antre/menunggu data), atau yang langkah unggahnya menunggu
+   * berkas (`berkas_kurang`); selain itu 409.
+   */
   private requireMenungguData(owner: { urusanId: string; sidHash: string }): Sesi {
     const s = this.requireOwned(owner);
+    if (s.berkasDitunggu !== undefined && !TERMINAL.has(s.status) && s.status !== 'siaga') return s;
     if (s.aiDimulai || s.manualUrl || TERMINAL.has(s.status) || s.status === 'siaga')
       throw new PendampingError('PESAN_TIDAK_SAH', 409, 'sesi tidak sedang menunggu data');
     return s;
   }
 
   private kurang(s: Sesi) {
+    if (s.berkasDitunggu !== undefined)
+      return { placeholder: [], berkas: [s.berkasDitunggu].filter((b) => !s.files.has(b)) };
     return {
       placeholder: s.butuh.placeholder.filter((p) => !s.vault.has(p)),
       berkas: s.butuh.berkas.filter((b) => !s.files.has(b)),
@@ -587,6 +605,7 @@ export class SessionManager {
       activity: () => void (s.lastActivity = this.now()),
       ended: (status, hasil, pesan) => void this.end(s, status, hasil, pesan),
       langkahSelesai: (pesan, bukti) => this.siaga(s, pesan, bukti),
+      berkasKurang: (nama) => void (s.berkasDitunggu = nama),
     };
     try {
       const run = await this.factory({
