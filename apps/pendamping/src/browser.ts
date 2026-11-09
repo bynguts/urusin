@@ -200,7 +200,8 @@ async function sessionMemMb(userDataDir: string, cdp: CDPSession): Promise<numbe
 }
 
 const PESAN_MASUK =
-  'Masuk ke akun Anda di situs ini (sandi/OTP diketik sendiri). AI melanjutkan setelah Anda masuk.';
+  'Masuk ke akun Anda di situs ini. Isi sendiri kolom yang diminta halamannya (CAPTCHA, sandi, atau OTP). ' +
+  'AI melanjutkan setelah Anda masuk.';
 
 const PESAN_VERIFIKASI =
   'Situs meminta verifikasi bahwa Anda manusia. Selesaikan sendiri (ketuk kotak verifikasi); AI menunggu dan tidak akan mengekliknya.';
