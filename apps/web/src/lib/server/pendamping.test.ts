@@ -325,6 +325,60 @@ describe('broker Browser Pendamping', () => {
     expect(JSON.stringify(labels)).not.toContain(NIK);
   });
 
+  it('baca-saja (Samsat): origin dari permintaan, bukan portal kota; hasil dicatat tanpa transisi state', async () => {
+    const u = rt.store.createUrusan({ kodeKabKota: '3312' });
+    let v = u.version;
+    for (const st of [
+      'MEMAHAMI',
+      'RENCANA_DIUSULKAN',
+      'RENCANA_DISETUJUI',
+      'MENYIAPKAN_BERKAS',
+      'BERKAS_SIAP',
+    ] as const)
+      v = rt.store.transition(u.id, v, st).version;
+    const pkb = {
+      type: 'execution_request' as const,
+      executionId: 'x_pkb',
+      adapterId: 'samsat-dki',
+      flowId: 'cek_pkb',
+      ringkasan: 'Cek info PKB',
+      params: {},
+      tool: 'samsat__cek_pkb',
+      paramsHash: 'h',
+      origin: 'https://samsat-pkb2.jakarta.go.id',
+      bacaSaja: true,
+    };
+    rt.publish(u.id, pkb);
+    expect((await mulai(ev(req('POST', { executionId: 'x_pkb' }), u.id))).status).toBe(201);
+    expect(calls[0]!.body).toMatchObject({
+      adapterId: 'samsat-dki',
+      flowId: 'cek_pkb',
+      origin: 'https://samsat-pkb2.jakarta.go.id',
+      params: {},
+    });
+    reply = () => ({
+      status: 200,
+      body: sesi({ executionId: 'x_pkb', status: 'siaga', mode: 'ai', hasil: 'berhasil', antrean: null }),
+    });
+    await status(ev(req('GET'), u.id));
+    await status(ev(req('GET'), u.id));
+    const ev2 = rt.store.eventsAfter(u.id);
+    const labels = ev2
+      .filter((e) => e.type === 'progress')
+      .map((e) => (e.payload as { label: string }).label);
+    expect(
+      labels.filter((l) => l.includes('selesai membuka hasilnya. Tidak ada yang dikirim.')),
+    ).toHaveLength(1);
+    expect(rt.store.getUrusanOrThrow(u.id).state).toBe('BERKAS_SIAP');
+
+    // Origin di permintaan yang bukan domain resmi ditolak sebelum memanggil worker.
+    rt.publish(u.id, { ...pkb, executionId: 'x_palsu', origin: 'https://contoh.example.com' });
+    const n = calls.length;
+    const r = await mulai(ev(req('POST', { executionId: 'x_palsu' }), u.id));
+    expect(r.status).toBe(422);
+    expect(calls).toHaveLength(n);
+  });
+
   describe('multi-worker (PENDAMPING_WORKERS)', () => {
     const WS = 'wss://urusin.test/pendamping';
     const TOKEN_LAPTOP = 'l'.repeat(40);

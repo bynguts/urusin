@@ -17,6 +17,7 @@ const label = (sumber: Sumber, status: Status) =>
 /**
  * Catat hasil sebuah `execution_request` (sekali saja) dan terapkan transisi state: `berhasil` -> TERKIRIM
  * bila state mengizinkan, `drift` -> DIPANDU. Dipakai laporan ekstensi dan sinkron status Browser Pendamping.
+ * Alur baca-saja (cek status, PKB, NIB) tidak mengirim apa pun: hasilnya dicatat tanpa transisi state.
  * Mengembalikan null bila hasil untuk executionId ini sudah pernah dicatat.
  */
 export function catatHasilEksekusi(
@@ -25,12 +26,25 @@ export function catatHasilEksekusi(
   executionId: string,
   status: Status,
   sumber: Sumber = 'Ekstensi',
-  /** Label progres pengganti bila alasan sebenarnya bukan perubahan tampilan (mis. worker wilayah mati). */
-  labelKhusus?: string,
+  opsi: {
+    /** Label progres pengganti bila alasan sebenarnya bukan perubahan tampilan (mis. worker wilayah mati). */
+    labelKhusus?: string;
+    bacaSaja?: boolean;
+  } = {},
 ): UrusanRow | null {
   if (!rt.store.recordExecutionResult(u.id, executionId, status)) return null;
-  const ke: UrusanState | null = status === 'berhasil' ? 'TERKIRIM' : status === 'drift' ? 'DIPANDU' : null;
-  rt.publish(u.id, { type: 'progress', label: labelKhusus ?? label(sumber, status) });
+  const ke: UrusanState | null = opsi.bacaSaja
+    ? null
+    : status === 'berhasil'
+      ? 'TERKIRIM'
+      : status === 'drift'
+        ? 'DIPANDU'
+        : null;
+  const teks =
+    opsi.bacaSaja && status === 'berhasil'
+      ? `${sumber} selesai membuka hasilnya. Tidak ada yang dikirim.`
+      : label(sumber, status);
+  rt.publish(u.id, { type: 'progress', label: opsi.labelKhusus ?? teks });
   if (status === 'drift') rt.publish(u.id, { type: 'degraded', kapabilitas: ['adapter'], mode: null });
   if (!ke || !canTransition(u.state, ke)) return u;
   const current = rt.store.transition(u.id, u.version, ke);

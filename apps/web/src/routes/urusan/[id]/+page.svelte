@@ -70,6 +70,8 @@
   });
   const nomorKutipan = $derived(new Map(kutipan.map((q) => [q.refId, q.nomor])));
   const situs = $derived.by(() => {
+    // Tool baca-saja non-dukcapil (Samsat, OSS) membawa origin situs yang dibuka.
+    if (k.permintaanEksekusi?.origin) return k.permintaanEksekusi.origin;
     const l = k.rencana?.langkah;
     const adapter =
       l?.find((x) => x.jenis === 'online-adapter') ?? l?.find((x) => x.jenis === 'online-manual');
