@@ -35,8 +35,10 @@
   >
 
   {#if form?.terverifikasi}
-    <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Email sudah dipastikan</h1>
-    <p role="status" class="mt-3 text-base text-body">
+    <h1 class="mt-5 text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">
+      Email sudah dipastikan
+    </h1>
+    <p role="status" class="mt-3 text-[1.0625rem] leading-[25px] text-body">
       Email sudah dipastikan. Silakan masuk lagi; akun Anda kini sama di semua perangkat.
     </p>
     <a
@@ -45,8 +47,8 @@
       >Masuk <Icon name="panah" class="size-4.5" /></a
     >
   {:else if form?.terkirim}
-    <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Cek email Anda</h1>
-    <p role="status" class="mt-3 text-base text-body">
+    <h1 class="mt-5 text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Cek email Anda</h1>
+    <p role="status" class="mt-3 text-[1.0625rem] leading-[25px] text-body">
       Cek email Anda: bila <span class="font-semibold text-ink">{form.email}</span> terdaftar dan belum dipastikan,
       tautan baru sudah dikirim. Tautan berlaku 24 jam.
     </p>
@@ -62,8 +64,10 @@
     {/if}
     <p class="mt-3 text-sm text-muted">Cek juga folder Spam atau Promosi.</p>
   {:else if bisaPastikan}
-    <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Pastikan email Anda</h1>
-    <p class="mt-3 text-base text-body">
+    <h1 class="mt-5 text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">
+      Pastikan email Anda
+    </h1>
+    <p class="mt-3 text-[1.0625rem] leading-[25px] text-body">
       Masukkan kata sandi yang Anda buat saat mendaftar, lalu tekan tombol di bawah.
     </p>
     {#if galat}
@@ -91,7 +95,7 @@
       >
     </form>
   {:else}
-    <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">
+    <h1 class="mt-5 text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">
       {token ? 'Tautan sudah tidak berlaku' : 'Kirim tautan pemastian'}
     </h1>
     {#if galat}
@@ -111,7 +115,7 @@
         Tautan sudah tidak berlaku atau sudah dipakai. Minta tautan baru.
       </p>
     {/if}
-    <p class="mt-3 text-base text-body">
+    <p class="mt-3 text-[1.0625rem] leading-[25px] text-body">
       {token
         ? 'Tautan ini sudah dipakai atau kedaluwarsa. Tulis email Anda untuk meminta tautan baru.'
         : 'Belum menerima tautan? Tulis email yang Anda pakai saat mendaftar.'}
@@ -127,7 +131,7 @@
           autocomplete="email"
           required
           defaultValue={form?.email ?? ''}
-          class="h-14 w-full rounded-2xl border border-line-2 bg-surface px-4 text-base text-ink"
+          class="h-14 w-full rounded-[14px] border border-line-2 bg-surface px-4 text-[1.125rem] text-ink"
         />
       </div>
       <button

@@ -17,15 +17,15 @@
 <svelte:head><title>Daftar · Urusin</title></svelte:head>
 
 <KerangkaAuth
-  judul="Satu akun untuk semua urusan keluarga"
+  judul="Satu akun untuk&#10;semua urusan keluarga"
   sub="Gratis. Data keluarga disimpan terenkripsi di brankas Urusin."
 >
   {#if form?.terkirim}
     <span class="grid size-14 place-items-center rounded-2xl bg-bg-2"
       ><Icon name="surel" class="size-6" /></span
     >
-    <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Cek email Anda</h1>
-    <p role="status" class="mt-3 text-base text-body">
+    <h1 class="mt-5 text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Cek email Anda</h1>
+    <p role="status" class="mt-3 text-[1.0625rem] leading-[25px] text-body">
       Cek email Anda: kami mengirim tautan ke <span class="font-semibold text-ink">{form.email}</span>. Tautan
       berlaku 24 jam. Buka tautan itu dan masukkan kata sandi yang baru Anda buat.
     </p>
@@ -46,7 +46,7 @@
       >Ke halaman Masuk</a
     >
   {:else}
-    <h1 class="text-[1.875rem] tracking-[-0.03em] text-ink">Buat akun Urusin</h1>
+    <h1 class="text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Buat akun Urusin</h1>
 
     {#if galat && !sandiDitolak}
       <p
@@ -63,8 +63,8 @@
         <input type="hidden" name="next" value="/" />
         <button
           type="submit"
-          class="flex min-h-14 w-full items-center justify-center rounded-full border border-line-2 bg-surface font-semibold text-ink hover:bg-card"
-          >Daftar dengan Google</button
+          class="flex min-h-14 w-full items-center justify-center gap-3 rounded-full border border-line-2 bg-surface text-[1.0625rem] font-semibold text-ink hover:bg-card"
+          ><img src="/pen/google-g.svg" alt="" width="20" height="20" />Daftar dengan Google</button
         >
       </form>
       <p class="my-5 flex items-center gap-3 text-sm text-muted">
@@ -98,7 +98,7 @@
             autocomplete="email"
             required
             defaultValue={form?.email ?? ''}
-            class="h-14 w-full rounded-2xl border border-line-2 bg-surface pr-4 pl-12 text-base text-ink"
+            class="h-14 w-full rounded-[14px] border border-line-2 bg-surface pr-4 pl-12 text-[1.125rem] text-ink"
           />
         </div>
       </div>

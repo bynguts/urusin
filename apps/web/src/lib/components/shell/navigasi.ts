@@ -32,6 +32,13 @@ export function rutAuth(pathname: string): boolean {
   return RUTE_AUTH.some((r) => pathname === r || pathname.startsWith(`${r}/`));
 }
 
+/** Halaman Web publik berdesain landing (frame Web pen): tanpa kerangka aplikasi. `/urusan/<id>` tetap aplikasi. */
+export const RUTE_WEB = ['/', '/cara-kerja', '/urusan', '/privasi', '/tanya-jawab'] as const;
+
+export function rutWeb(pathname: string): boolean {
+  return (RUTE_WEB as readonly string[]).includes(pathname);
+}
+
 /**
  * Menu aktif: Beranda juga untuk halaman peristiwa; Dokumen juga untuk Data diri. Halaman satu urusan
  * (/urusan, /jejak) tidak menyalakan menu: urusannya yang disorot di daftar "Urusan aktif" (App 02–09).

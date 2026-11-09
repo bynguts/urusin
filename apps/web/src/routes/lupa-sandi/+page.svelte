@@ -21,8 +21,8 @@
     ><Icon name="gembok" class="size-6" /></span
   >
   {#if form?.terkirim}
-    <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Cek email Anda</h1>
-    <p role="status" class="mt-3 text-base text-body">
+    <h1 class="mt-5 text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Cek email Anda</h1>
+    <p role="status" class="mt-3 text-[1.0625rem] leading-[25px] text-body">
       Bila <span class="font-semibold text-ink">{form.email}</span> terdaftar, kami sudah mengirim tautan untuk
       membuat kata sandi baru. Tautan berlaku 30 menit.
     </p>
@@ -38,8 +38,8 @@
     {/if}
     <p class="mt-3 text-sm text-muted">Cek juga folder Spam atau Promosi.</p>
   {:else}
-    <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Lupa kata sandi</h1>
-    <p class="mt-2 text-base text-body">Tulis email akun Anda.</p>
+    <h1 class="mt-5 text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Lupa kata sandi</h1>
+    <p class="mt-2 text-[1.0625rem] leading-[25px] text-body">Tulis email akun Anda.</p>
     {#if galat}
       <p
         role="alert"
@@ -75,7 +75,7 @@
             autocomplete="email"
             required
             defaultValue={form?.email ?? ''}
-            class="h-14 w-full rounded-2xl border border-line-2 bg-surface pr-4 pl-12 text-base text-ink"
+            class="h-14 w-full rounded-[14px] border border-line-2 bg-surface pr-4 pl-12 text-[1.125rem] text-ink"
           />
         </div>
       </div>

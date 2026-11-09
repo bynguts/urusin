@@ -258,7 +258,9 @@
             </span>
             <span class="flex min-w-0 flex-1 flex-col gap-px">
               <span class="text-base leading-[23px] font-semibold">{p.judul}</span>
-              <span class="text-sm leading-5 {p.gelap ? 'text-white/70' : 'text-muted'}">{p.ringkas}</span>
+              <span class="text-sm leading-5 {p.gelap ? 'text-primer-ink/70' : 'text-muted'}"
+                >{p.ringkas}</span
+              >
             </span>
             <Icon name="kanan" class="size-[17px] shrink-0" />
             {#if p.luar}<span class="sr-only">(membuka situs resmi di tab baru)</span>{/if}

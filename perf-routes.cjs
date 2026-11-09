@@ -15,6 +15,9 @@ const ROUTES = [
   '/daftar',
   '/lupa-sandi',
   '/privasi',
+  '/cara-kerja',
+  '/urusan',
+  '/tanya-jawab',
 ];
 
 module.exports = { ROUTES };
