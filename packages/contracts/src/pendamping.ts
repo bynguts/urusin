@@ -162,6 +162,11 @@ export const MulaiSesiInternalSchema = z.object({
   origin: z.url(),
   params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
   viewport: PendampingViewportSchema.optional(),
+  /**
+   * Mode Uji (juri/tamu): origin resmi WAJIB dipetakan ke replika fixture (PENDAMPING_ORIGIN_OVERRIDES); tanpa
+   * pemetaan sesi ditolak. false di produksi = portal resmi asli, override tidak pernah dipakai.
+   */
+  modeUji: z.boolean().optional(),
 });
 export type MulaiSesiInternal = z.infer<typeof MulaiSesiInternalSchema>;
 
