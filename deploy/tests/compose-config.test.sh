@@ -58,10 +58,11 @@ check('pendamping: tanpa port terpublikasi', !pd.ports || pd.ports.length === 0)
 check('pendamping: HOST=antarmuka (bukan wildcard), edge wajib', pd.environment.HOST === 'antarmuka' &&
   pd.environment.PENDAMPING_EDGE_URL === 'http://pendamping-edge:3129' && 'PENDAMPING_EDGE_TOKEN' in pd.environment);
 check('pendamping: tanpa PENDAMPING_UPSTREAM_PROXY (egress hanya lewat edge)', !('PENDAMPING_UPSTREAM_PROXY' in pd.environment));
-check('pendamping: seccomp Playwright + no-new-privileges', pd.security_opt.includes('no-new-privileges:true') &&
-  pd.security_opt.some((o) => /^seccomp=.*pendamping-seccomp\.json$/.test(o)));
-check('pendamping: cap_drop ALL, hanya SYS_CHROOT ditambah', pd.cap_drop.includes('ALL') &&
-  JSON.stringify(pd.cap_add) === JSON.stringify(['SYS_CHROOT']));
+// Sandbox setuid (ADR 0028): tanpa no-new-privileges HANYA di pendamping; tepat SYS_ADMIN + SYS_CHROOT.
+check('pendamping: seccomp Playwright, satu-satunya security_opt (sandbox setuid, tanpa no-new-privileges)',
+  pd.security_opt.length === 1 && /^seccomp=.*pendamping-seccomp\.json$/.test(pd.security_opt[0]));
+check('pendamping: cap_drop ALL, hanya SYS_ADMIN + SYS_CHROOT ditambah', pd.cap_drop.includes('ALL') &&
+  JSON.stringify([...pd.cap_add].sort()) === JSON.stringify(['SYS_ADMIN', 'SYS_CHROOT']));
 check('pendamping: read_only, ulimit core 0, memswap = mem', pd.read_only === true && 'core' in pd.ulimits && (pd.ulimits.core.soft ?? 0) === 0 &&
   (pd.ulimits.core.hard ?? 0) === 0 && Number(pd.memswap_limit) === Number(pd.mem_limit));
 check('edge: internal + luar, publish 127.0.0.1:4330 saja', JSON.stringify(Object.keys(edge.networks).sort()) ===

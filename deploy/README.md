@@ -363,8 +363,11 @@ dari image yang sama; isolasi murni dari topologi compose (tanpa iptables):
 
 - `pendamping` (Node + Chromium): HANYA di jaringan `pendamping_internal` (`internal: true`,
   `gateway_mode_ipv4: isolated` sehingga host tidak punya alamat di bridge itu, IPv6 mati). Tanpa port,
-  tanpa rute default. Sandbox Chromium AKTIF (profil seccomp Playwright `pendamping-seccomp.json` + hanya
-  `SYS_CHROOT`). Boot gagal-tertutup bila ada rute keluar atau sandbox tidak aktif.
+  tanpa rute default. Sandbox Chromium AKTIF (profil seccomp Playwright `pendamping-seccomp.json`). agent-vm
+  mematikan userns tak berhak, jadi dipakai sandbox setuid `chrome-sandbox` (satu-satunya biner SUID di image):
+  `cap_add: [SYS_ADMIN, SYS_CHROOT]` dan TANPA `no-new-privileges`, hanya untuk layanan ini (alasan dan
+  pengukuran: ADR 0028). Boot gagal-tertutup bila ada rute keluar atau sandbox (userns/setuid) tidak aktif;
+  log boot menyebut jenisnya, mis. `sandbox Chromium aktif (setuid chrome-sandbox)`.
 - `pendamping-edge` (`node dist/edge-main.js`, non-root, read-only, `cap_drop: [ALL]`, 128 MB): di internal +
   bridge `pendamping_luar`, publish `127.0.0.1:4330`. Proxy balik HANYA `/ws/<uuid>`, `/internal/*`,
   `/health` (dan `/debug*` bila `PENDAMPING_DEBUG_TOKEN` diisi); satu-satunya proxy CONNECT Chromium

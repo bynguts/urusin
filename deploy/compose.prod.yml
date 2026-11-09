@@ -177,14 +177,20 @@ services:
     # Tanpa core dump: memori renderer bisa memuat ketikan/kredensial warga.
     ulimits:
       core: 0
-    # Sandbox Chromium AKTIF (tanpa --no-sandbox): namespace sandbox butuh unshare/clone(userns) dari profil
-    # seccomp Playwright dan chroot() ke direktori kosong; aturan chroot di profil itu (seperti profil Docker
-    # bawaan) hanya aktif bila kontainer memegang SYS_CHROOT. Proses berjalan sebagai pwuser non-root tanpa
-    # capability efektif; SYS_CHROOT hanya berguna di dalam user namespace sandbox Chromium sendiri.
+    # Sandbox Chromium AKTIF (tanpa --no-sandbox), ADR 0028. agent-vm mematikan user namespace tak berhak
+    # (unprivileged_userns_clone=0, sysctl host tidak kita ubah), jadi namespace renderer dibuat oleh helper
+    # SETUID `chrome-sandbox` (root 4755, satu-satunya biner SUID di image). Set minimal, diukur (userns mati):
+    # - SYS_ADMIN: helper (euid 0) clone(CLONE_NEWPID|CLONE_NEWNET) untuk renderer; kernel mewajibkan
+    #   CAP_SYS_ADMIN untuk namespace non-user. Tanpanya: "No usable sandbox".
+    # - SYS_CHROOT: helper chroot() ke direktori kosong sebelum membuang hak. Tanpanya: gagal.
+    # - TANPA no-new-privileges (HANYA layanan ini; edge tetap memakainya): dengan no-new-privileges exec
+    #   helper SUID tidak menaikkan euid, sandbox gagal. SETUID/SETGID tidak perlu (diukur).
+    # Proses pwuser sendiri tetap tanpa capability efektif/permitted (cap di atas hanya di bounding set dan
+    # hanya dipakai helper SUID yang langsung membuangnya); tidak ada biner SUID lain yang bisa memakainya.
+    # Profil seccomp Playwright tidak diubah.
     cap_drop: [ALL]
-    cap_add: [SYS_CHROOT]
+    cap_add: [SYS_ADMIN, SYS_CHROOT]
     security_opt:
-      - no-new-privileges:true
       - seccomp=./pendamping-seccomp.json
     healthcheck:
       test: ['CMD', 'node', 'dist/sehat.js', '4330']
