@@ -425,6 +425,44 @@ describe('interpreter: kait eksekutor (pendamping)', () => {
     expect((await cursorOf(other.kv)).error?.code).toBe('PLACEHOLDER_UNRESOLVED');
   });
 
+  it('nilai di luar daftar write: giliran warga di kolom itu, tidak diisi AI, lanjut setelah citizenDone', async () => {
+    const kv = memoryKV();
+    const driver = new FakeDriver();
+    driver.handler = (op) => ({ ok: true, value: op.kind !== 'check' });
+    const interp = new Interpreter(kv, driver, policy(), () => {}, {
+      preConsented: true,
+      resolveValue: async (v) => (v.includes('KITIR') ? undefined : v),
+      citizenInput: (v) => (v.includes('KITIR') ? 'Ketik Nomor kitir' : undefined),
+    });
+    await interp.citizenDone(); // tanpa cursor: tidak melempar
+    await interp.start(
+      req([nav('/form'), fill(css('#kitir'), '{{URUSAN.KITIR}}'), click(css('#cari'), { effect: 'read' })]),
+    );
+    await loadPage(interp, driver, `${FX}/form`);
+    const c = await cursorOf(kv);
+    expect(c).toMatchObject({ status: 'waiting_citizen', stepIndex: 1, message: 'Ketik Nomor kitir' });
+    expect(driver.ops.some((o) => o.kind === 'step' && o.step.op === 'fill')).toBe(false);
+    // Sedang menunggu warga = eksekusi aktif (tidak bisa ditimpa).
+    expect(await interp.start(req([nav('/b')]))).toMatchObject({ ok: false, code: 'BUSY' });
+    await interp.recheckGate(); // bukan gerbang: tidak melangkah
+    expect((await cursorOf(kv)).status).toBe('waiting_citizen');
+
+    await interp.citizenDone();
+    const done = await cursorOf(kv);
+    expect(done.status).toBe('done');
+    expect(done.message).toBeUndefined();
+    expect(driver.ops.some((o) => o.kind === 'step' && o.step.op === 'fill')).toBe(false);
+    expect(driver.ops.some((o) => o.kind === 'step' && o.step.op === 'click')).toBe(true);
+    await interp.citizenDone(); // bukan waiting_citizen: diabaikan
+    expect((await cursorOf(kv)).status).toBe('done');
+
+    // Kait menolak (undefined): tetap gagal aman.
+    const ditolak = make(async () => '');
+    await ditolak.interp.start(req([nav('/form'), fill(css('#x'), '{{URUSAN.NIB}}')]));
+    await loadPage(ditolak.interp, ditolak.driver, `${FX}/form`);
+    expect((await cursorOf(ditolak.kv)).error?.code).toBe('PLACEHOLDER_UNRESOLVED');
+  });
+
   it('humanOnlyTargets menelusuri forEach dan branch', () => {
     const g = gate.human('x', { until: urlIncludes('/y'), highlight: css('#a') });
     const g2 = gate.human('x', { until: urlIncludes('/y') });

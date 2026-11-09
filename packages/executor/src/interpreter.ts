@@ -18,7 +18,9 @@ import {
  * atau service worker dimatikan. Satu op dijalankan di halaman lewat step-runner yang di-inject ulang.
  */
 
-export type Status = 'running' | 'waiting_load' | 'waiting_gate' | 'handoff' | 'done' | 'error';
+/** `waiting_citizen`: nilai kolom tidak disediakan (bukan daftar write); warga mengetiknya sendiri lalu lanjut. */
+export type Status =
+  'running' | 'waiting_load' | 'waiting_gate' | 'waiting_citizen' | 'handoff' | 'done' | 'error';
 
 export type Awaiting =
   { kind: 'nav'; url: string; sawLoading: boolean } | { kind: 'reload'; sawLoading: boolean };
@@ -64,6 +66,12 @@ export type InterpreterOptions = {
   resolveFile?: ((name: string) => Promise<UploadFile | undefined>) | undefined;
   /** Persetujuan sudah diberikan di luar halaman (layar konfirmasi web): lewati overlay consent. */
   preConsented?: boolean | undefined;
+  /**
+   * Nilai fill/select yang tidak ter-resolve: pesan untuk warga agar mengetiknya sendiri di kolom itu
+   * (status `waiting_citizen`, lanjut lewat `citizenDone`). Tanpa kait ini, atau bila mengembalikan undefined,
+   * langkah gagal aman PLACEHOLDER_UNRESOLVED.
+   */
+  citizenInput?: ((value: string) => string | undefined) | undefined;
 };
 
 /** Semua target `highlight` milik gate.human: elemen khusus warga (mis. tombol Kirim/Selesai). */
@@ -77,7 +85,7 @@ export function humanOnlyTargets(steps: readonly Step[]): Target[] {
 }
 
 const CURSOR_KEY = 'cursor';
-const ACTIVE: Status[] = ['running', 'waiting_load', 'waiting_gate'];
+const ACTIVE: Status[] = ['running', 'waiting_load', 'waiting_gate', 'waiting_citizen'];
 const UNSUPPORTED = new Set<Step['op']>(['forEach', 'branch']);
 const DEFAULT_WAIT_MS = 10_000;
 const WRITE_VERIFY_MS = 3_000;
@@ -202,6 +210,16 @@ export class Interpreter {
     return this.enqueue(async () => {
       const c = await this.getCursor();
       if (c?.status === 'waiting_gate') await this.checkGate(c);
+    });
+  }
+
+  /** Warga selesai mengetik kolom `waiting_citizen` (menekan Lanjutkan): kolom itu dilewati, AI lanjut. */
+  citizenDone(): Promise<void> {
+    return this.enqueue(async () => {
+      const c = await this.getCursor();
+      if (c?.status !== 'waiting_citizen') return;
+      await this.save({ ...c, status: 'running', message: undefined, stepIndex: c.stepIndex + 1 });
+      await this.pump();
     });
   }
 
@@ -334,7 +352,12 @@ export class Interpreter {
       case 'fill':
       case 'select': {
         const value = await this.resolveValue(step.value);
-        if (value === undefined) return this.fail(c, 'PLACEHOLDER_UNRESOLVED', 'data isian belum tersedia');
+        if (value === undefined) {
+          const pesan = this.opts.citizenInput?.(step.value);
+          if (pesan === undefined) return this.fail(c, 'PLACEHOLDER_UNRESOLVED', 'data isian belum tersedia');
+          await this.save({ ...c, status: 'waiting_citizen', message: pesan });
+          return 'stop';
+        }
         return this.runAndAdvance(c, { kind: 'step', step: { ...step, value } });
       }
       case 'upload': {
