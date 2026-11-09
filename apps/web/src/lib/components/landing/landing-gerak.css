@@ -507,8 +507,9 @@
  * langkah 3 lalu pudar 400 ms ke langkah 1. Putaran dimulai dari serah ke langkah 3 (t=9) setelah
  * jeda 2,5 dtk, jadi bingkai pertama tetap gambar langkah 2 (.lp42, LCP). Koordinat = piksel badan
  * jendela 1080x556 (frame sumber 1440x742 x 0,75). Persen keyframe = ((t - 9) mod 12) / 12.
+ * Hanya >= 768px: di ponsel lapisan tetap display:none (nol unduhan, nol gerak), anggaran LH aman.
  */
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: no-preference) and (min-width: 768px) {
   .lp .n-demo {
     --lp-demo: 12s linear 2.5s infinite;
     display: block;
@@ -552,6 +553,7 @@
     animation: lp-demo-kosong var(--lp-demo);
   }
   .lp .n-demo-panel {
+    will-change: transform;
     top: 75px;
     left: 219px;
     width: 537px;
@@ -635,6 +637,7 @@
 
   /* Langkah 3: chip Giliran Anda, banner turun dari atas, cincin kunyit di tombol Kirim */
   .lp .n-demo-3 {
+    will-change: opacity;
     inset: 0;
     opacity: 0;
     animation: lp-demo-3 var(--lp-demo);
@@ -655,6 +658,7 @@
     background: #fdfdfd;
   }
   .lp .n-demo-banner > .n-demo-img {
+    will-change: transform;
     top: -117px;
     left: -219.5px;
     transform: translateY(-58.5px);
@@ -673,6 +677,7 @@
 
   /* Langkah 1: kartu persetujuan; Setujui ditekan lalu kartu memudar 250 ms */
   .lp .n-demo-1 {
+    will-change: opacity;
     inset: 0;
     opacity: 0;
     animation: lp-demo-1 var(--lp-demo);
