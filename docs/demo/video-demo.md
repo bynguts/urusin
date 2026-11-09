@@ -29,14 +29,15 @@ Pitch final 7 menit ada di [`pitch-7-menit.md`](pitch-7-menit.md).
 - Browser bersih tanpa ekstensi, zoom 100%, notifikasi OS mati, tab lain tertutup.
 - Akun perekam di Urusin sudah terverifikasi; Data Diri dan dokumen perekam **tidak** dibuka di layar.
 - Akun Telunjuk Sakti milik perekam (login HP + password + CAPTCHA gambar, profil selfie sudah lengkap).
-- Tab ketiga siap: halaman commit final di GitHub (hash = hash submission).
+- Cek stempel versi: `https://urusinai.web.id/api/kemampuan` → `versi.sha7` = 7 karakter awal hash submission
+  (atau baris `v<sha7>` di bawah Pengaturan, bertaut ke commit di GitHub).
 - Cek cepat: `https://urusinai.web.id/api/ready` → `{"ready":true}`, lalu satu pertanyaan uji di chat.
 
 ## Shot list (target 4:30)
 
 | #   | Waktu     | Layar                                                                                                       | Aksi di layar                                                                                                                                                                  | Narasi (VO)                                                                                                                                                                                                                                                            | Bukti / rubrik        |
 | --- | --------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| 1   | 0:00–0:15 | Landing `urusinai.web.id`, lalu tab GitHub                                                                  | Landing tampil. Pindah ke tab commit final di GitHub (hash terlihat), kembali ke landing.                                                                                      | "Kami Tim Urusin: Muqorrobin dan Rafi. Ini Urusin, pendamping AI untuk mengurus dokumen kependudukan. Yang Anda lihat berjalan live di urusinai.web.id, dari commit final ini."                                                                                        | Identitas, provenance |
+| 1   | 0:00–0:15 | Landing `urusinai.web.id` → Pengaturan                                                                      | Landing tampil. Buka **Pengaturan**, gulir ke bawah: baris kecil `v<sha7>`; klik → halaman commit di GitHub (hash sama), kembali ke landing.                                   | "Kami Tim Urusin: Muqorrobin dan Rafi. Ini Urusin, pendamping AI untuk mengurus dokumen kependudukan. Yang Anda lihat berjalan live di urusinai.web.id, dari commit final ini."                                                                                        | Identitas, provenance |
 | 2   | 0:15–0:40 | Landing (tetap)                                                                                             | Gulir pelan ke bagian Peristiwa Hidup. Teks layar: tiga angka masalah.                                                                                                         | "Sekitar 4 juta orang pindah domisili dalam lima tahun terakhir (BPS SUPAS 2025), tetapi urusan dokumennya tetap di daerah asal. Hanya 18,52% rumah tangga punya komputer (BPS 2024), padahal layanan online daerah dibuat untuk layar besar."                         | PSF                   |
 | 3   | 0:40–0:55 | Landing → `/masuk`                                                                                          | Klik "Masuk", masuk dengan akun perekam (atau Google).                                                                                                                         | "Contohnya Telunjuk Sakti di Wonogiri: 42 layanan online, login dengan nomor HP, kata sandi, dan CAPTCHA gambar, lalu foto berkas diunggah satu per satu, maksimal 9 MB. Akta Kelahiran saja butuh enam syarat, termasuk formulir F2.01."                              | PSF (recon nyata)     |
 | 4   | 0:55–1:30 | Beranda → urusan baru (chat)                                                                                | Ketik cerita: _"Anak saya lahir minggu lalu di Surabaya, tapi KTP saya Wonogiri. Mau urus akta kelahiran."_ Tunggu jawaban stream.                                             | "Saya cukup bercerita dengan bahasa sehari-hari. Urusin mengenali peristiwanya, kelahiran, dan daerahnya dari KTP saya, Wonogiri, bukan dari tempat saya tinggal."                                                                                                     | Input → proses, AI    |
@@ -90,9 +91,6 @@ belum ada datanya, MCP/Inspector, `/coba`, anti-phishing, atau Mode Presentasi (
 
 ## Butir terbuka (di luar dokumen ini)
 
-- **Hash commit tidak terlihat di aplikasi.** Rencana M11 meminta footer `v<sha7>`, tetapi UI belum
-  menampilkannya dan `/api/health` diblokir publik oleh Caddy. Sementara ini shot 1 memakai halaman commit di
-  GitHub.
-- **Mode Presentasi belum ada** (hanya preferensi `modePresentasi` tanpa pemakai). Nomor HP perekam di halaman
-  login Telunjuk Sakti perlu ditutup kotak teks saat menyunting, atau masking M12 dibangun dulu.
+- **Mode Presentasi tidak dibangun** (keputusan lead; hanya preferensi `modePresentasi` tanpa pemakai). Nomor HP
+  perekam di halaman login Telunjuk Sakti ditutup kotak teks saat menyunting.
 - **Mode Uji untuk juri** saat ini hanya saklar deployment (`PENDAMPING_ORIGIN_OVERRIDES`), belum per akun juri.
