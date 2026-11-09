@@ -166,6 +166,8 @@ export const DoneEventSchema = event('done', {
   /** true di mode degraded "JSON satu aksi": klien boleh mengirim "lanjut" agar agen meneruskan. */
   lanjutkan: z.boolean(),
   degraded: z.boolean(),
+  /** Versi urusan setelah turn (klaim turn dan klasifikasi menaikkan versi tanpa event `state`); klien memakainya sebagai expectedVersion berikutnya. */
+  version: z.number().int().optional(),
 });
 
 export const GateRuleSchema = z.enum([

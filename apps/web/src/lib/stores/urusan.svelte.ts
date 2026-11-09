@@ -117,12 +117,15 @@ export class UrusanStore implements StoreUrusan {
     const id = this.keadaan.id;
     if (!id) return 'galat';
     try {
-      const res = await this.ambil(`/api/urusan/${encodeURIComponent(id)}/turn`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ teks, expectedVersion: this.keadaan.version }),
-      });
-      if (res.status === 409) return 'konflik';
+      let res = await this.kirimTurn(id, teks);
+      if (res.status === 409) {
+        // Versi basi (klaim turn menaikkan versi tanpa event state) atau turn masih berjalan: ambil status terbaru.
+        const st = await this.statusTerbaru(id);
+        if (!st || st.berjalan) return st ? 'konflik' : 'galat';
+        this.keadaan.version = st.version;
+        res = await this.kirimTurn(id, teks);
+        if (res.status === 409) return 'konflik';
+      }
       if (!res.ok) return 'galat';
       this.keadaan = mulaiTurnBaru(this.keadaan);
       if (this.keadaan.status === 'diam' || this.keadaan.status === 'terputus') this.sambung(id);
@@ -130,5 +133,22 @@ export class UrusanStore implements StoreUrusan {
     } catch {
       return 'galat';
     }
+  }
+
+  private kirimTurn(id: string, teks: string): Promise<Response> {
+    return this.ambil(`/api/urusan/${encodeURIComponent(id)}/turn`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ teks, expectedVersion: this.keadaan.version }),
+    });
+  }
+
+  private async statusTerbaru(id: string): Promise<{ version: number; berjalan: boolean } | null> {
+    const res = await this.ambil(`/api/urusan/${encodeURIComponent(id)}`);
+    if (!res.ok) return null;
+    const j = (await res.json()) as { version?: unknown; berjalan?: unknown };
+    return typeof j.version === 'number' && typeof j.berjalan === 'boolean'
+      ? { version: j.version, berjalan: j.berjalan }
+      : null;
   }
 }

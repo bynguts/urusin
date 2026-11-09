@@ -355,7 +355,10 @@ describe('timeout, pembatalan, konkurensi', () => {
     const callsAtAbort = provider.calls.length;
     await new Promise((r) => setTimeout(r, 50));
     expect(provider.calls.length).toBe(callsAtAbort);
-    expect(types(out.events)).not.toContain('done');
+    // done tetap dikirim saat batal agar versi terbaru sampai ke klien (tanpa 409 pada pesan berikutnya)
+    const done = out.events.at(-1) as Extract<StreamEnvelope, { type: 'done' }>;
+    expect(done).toMatchObject({ type: 'done', status: 'dibatalkan' });
+    expect(done.version).toBe(env.store.getUrusanOrThrow(u.id).version);
   });
 
   it('turn kedua pada urusan yang sama saat turn pertama berjalan → 409, tanpa event ganda', async () => {
@@ -678,5 +681,29 @@ describe('span OTel GenAI dan query /jejak /transparansi', () => {
     expect(v.biayaPerHariIdr.length).toBe(1);
     expect(v.persenDegraded).toBe(0);
     expect(v.totalPermintaan).toBeGreaterThan(0);
+  });
+});
+
+describe('versi urusan sampai ke klien (regresi 409 pada pesan lanjutan)', () => {
+  it('event done membawa versi terbaru; expectedVersion dari done diterima turn berikutnya', async () => {
+    const env = makeEnv({ provider: new DemoProvider() });
+    const u = env.store.createUrusan({ kodeKabKota: '3312' });
+    let expected = env.store.getUrusanOrThrow(u.id).version;
+    for (const teks of ['halo', 'Apa syarat akta kelahiran anak saya?', 'terima kasih']) {
+      const out = await runTurn(env.deps, { urusanId: u.id, userText: teks, expectedVersion: expected });
+      const done = out.events.at(-1) as Extract<StreamEnvelope, { type: 'done' }>;
+      expect(done.type).toBe('done');
+      expect(done.version).toBe(env.store.getUrusanOrThrow(u.id).version);
+      expected = done.version!;
+    }
+  });
+  it('tanpa memakai versi dari done, versi klaim turn membuat versi lama basi (409 asli)', async () => {
+    const env = makeEnv({ provider: new DemoProvider() });
+    const u = env.store.createUrusan({ kodeKabKota: '3312' });
+    const v0 = env.store.getUrusanOrThrow(u.id).version;
+    await runTurn(env.deps, { urusanId: u.id, userText: 'halo', expectedVersion: v0 });
+    expect(() => prepareTurn(env.deps, { urusanId: u.id, userText: 'lagi', expectedVersion: v0 })).toThrow(
+      ConflictError,
+    );
   });
 });
