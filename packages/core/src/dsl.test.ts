@@ -8,6 +8,7 @@ import {
   click,
   countIncreased,
   defineAdapter,
+  elementExists,
   extract,
   fill,
   forEach,
@@ -40,6 +41,16 @@ describe('Step DSL: builder', () => {
     expect(gate.human('Klik Selesai sendiri', { until: urlIncludes('permohonan') })).toMatchObject({
       effect: 'final',
     });
+  });
+  it('gate.human messageIf: tervalidasi skema; pesan pengganti kosong ditolak', () => {
+    const g = gate.human('Ketik CAPTCHA', {
+      until: urlIncludes('/welcome'),
+      messageIf: { check: elementExists(byName('password')), message: 'Ketik sandi dan CAPTCHA' },
+    });
+    expect(g).toMatchObject({ messageIf: { message: 'Ketik sandi dan CAPTCHA' } });
+    expect(validateSteps([g]).ok).toBe(true);
+    expect(validateSteps([{ ...g, messageIf: { check: urlIncludes('/x'), message: '' } }]).ok).toBe(false);
+    expect(gate.human('x', { until: urlIncludes('/y') })).not.toHaveProperty('messageIf');
   });
   it('selector tunggal dibungkus menjadi rantai', () => {
     expect(click(byText('Lanjut'), { effect: 'read' })).toMatchObject({
