@@ -382,7 +382,7 @@ PENDAMPING_INTERNAL_URL=http://127.0.0.1:4330         # dibaca web (dilayani pen
 PENDAMPING_EDGE_TOKEN=$(openssl rand -hex 32)         # pendamping <-> edge; BEDA dari token internal
 PENDAMPING_DEBUG_TOKEN=$(openssl rand -hex 32)        # opsional, untuk uji kemudi manual
 
-COMPOSE_PROFILES=pendamping docker compose -f compose.prod.yml --env-file .env up -d pendamping pendamping-edge
+bash deploy/pendamping-up.sh   # menolak Docker Engine < 28, lalu up -d pendamping + pendamping-edge
 docker compose -f compose.prod.yml logs pendamping | tail -1   # "pendamping mendengarkan di 172.x.y.z:4330 ..."
 curl -fsS http://127.0.0.1:4330/health                # {"ok":true,"aktif":0,"maks":2,"menunggu":0}
 ```
@@ -413,7 +413,10 @@ sendiri (dikerjakan lead): `handle_path /pendamping/w/<id>/*` -> `reverse_proxy 
 **Egress hulu (opsional):** `PENDAMPING_UPSTREAM_PROXY=http://[user:pass@]host:port` (dipakai EDGE)
 mengarahkan CONNECT peramban yang SUDAH lolos kebijakan ke proxy milik operator (mis. egress Indonesia untuk
 situs yang menolak IP datacenter). Proxy hulu harus terjangkau dari bridge `pendamping_luar` (bukan
-127.0.0.1 host). Urusin tidak menyediakan proxy hulu.
+127.0.0.1 host). Urusin tidak menyediakan proxy hulu. Catatan: lewat proxy hulu, edge mengirim CONNECT
+dengan NAMA host (setelah nama itu dan semua alamatnya lolos kebijakan di edge); proxy hulu me-resolve
+nama itu lagi di sisi operator, jadi alamat yang akhirnya dihubungi ditentukan DNS proxy hulu. Pakai hanya
+proxy milik sendiri yang resolvernya dipercaya.
 
 Batas `pendamping`: `mem_limit`/`memswap_limit 1300m` (2 sesi x 512 MB + Node/Xvfb), pengawas menghentikan
 sesi di 450 MB RSS, `cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `ulimits core 0`,
