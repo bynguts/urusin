@@ -3,6 +3,7 @@ import type { Handle } from '@sveltejs/kit/hooks';
 import { installEgressBackstop } from '@urusin/egress';
 import { AKUN_COOKIE, hapusAkunCookie } from '#lib/server/akun.js';
 import { assertHostEnv } from '#lib/server/hosts.js';
+import { catatGalatApi } from '#lib/server/log-galat.js';
 import { checkOrigin } from '#lib/server/origin.js';
 import { pasangPemeriksaPemilikAkun } from '#lib/server/pendamping.js';
 import { pemeriksaPemilikVault } from '#lib/server/pendamping/pemilik.js';
@@ -59,5 +60,8 @@ export const handle: Handle = async ({ event, resolve }) => {
       event.locals.akunSesi = { tokenHash: s.tokenHash, authAt: s.authAt, pernahUnduh: s.pernahUnduh };
     } else hapusAkunCookie(event.cookies);
   }
-  return resolve(event);
+  const response = await resolve(event);
+  // Satu baris per respons API gagal (pola rute + status + kode saja), untuk diagnosis operator.
+  if (response.status >= 400) await catatGalatApi(event.request.method, event.route.id, response);
+  return response;
 };
