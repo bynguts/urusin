@@ -34,7 +34,7 @@ export type DataPendamping = {
   pesan: string | null;
   bukti: PendampingBukti | null;
   koneksi: KoneksiViewer | null;
-  butuhData: { placeholder: string[]; berkas: string[] } | null;
+  butuhData: { placeholder: string[]; berkas: string[]; origin?: string | undefined } | null;
 };
 
 export function dataAwal(): DataPendamping {
@@ -241,15 +241,6 @@ export class SesiPendampingUi {
   kembalikan(): void {
     this.data = { ...this.data, giliran: null };
     this.viewer?.kembalikan();
-  }
-
-  kirimVault(isian: Record<string, string>): void {
-    this.viewer?.kirimVault(isian);
-    this.data = { ...this.data, butuhData: null };
-  }
-
-  async kirimBerkas(nama: string, berkas: Blob, namaBerkas?: string): Promise<void> {
-    await this.viewer?.kirimBerkas(nama, berkas, namaBerkas);
   }
 
   /** Hentikan: browser server dihancurkan, tidak ada yang tersimpan. */

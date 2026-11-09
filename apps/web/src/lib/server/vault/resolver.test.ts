@@ -119,6 +119,24 @@ describe('batas impor: penyelesai hanya dipanggil jalur isi Pendamping', () => {
     jelajah(src);
     expect(pelanggar).toEqual([]);
   });
+
+  it('PoC A-M1: kode peramban tidak membaca nilai vault untuk Pendamping (hanya {writeList, targetOrigin})', () => {
+    const src = fileURLToPath(new URL('../../../', import.meta.url));
+    const pelanggar: string[] = [];
+    const jelajah = (dir: string) => {
+      for (const n of readdirSync(dir)) {
+        const p = join(dir, n);
+        if (statSync(p).isDirectory()) {
+          if (relative(src, p) !== join('lib', 'server')) jelajah(p);
+        } else if (/\.(ts|svelte)$/.test(n) && !n.endsWith('.test.ts')) {
+          const isi = readFileSync(p, 'utf8');
+          if (/kirimVault\(|kirimBerkas\(/.test(isi)) pelanggar.push(relative(src, p));
+        }
+      }
+    };
+    jelajah(src);
+    expect(pelanggar).toEqual([]);
+  });
 });
 
 describe('aturan lint no-restricted-imports untuk penyelesai', () => {

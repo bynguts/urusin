@@ -38,15 +38,20 @@ export function izinkanIsi(
   return rt.akun.terbitkanIzin(ownerId, hashDaftarWrite(writeList), origin);
 }
 
+/** Entri daftar write untuk berkas dari dompet dokumen: `berkas:<JENIS>` (mis. `berkas:KTP`). */
+export const AWALAN_BERKAS = 'berkas:';
+
+export type BerkasIsi = { nama: string; judul: string; mime: string; bytes: Buffer };
+
 /**
- * Pakai token persetujuan (sekali) lalu kembalikan nilai Data Diri HANYA untuk field di `writeList`. Field yang
- * tidak ada di Data Diri tidak ikut. Token salah/kedaluwarsa/terpakai, daftar berbeda, atau origin berbeda →
- * AkunError IZIN_TIDAK_VALID.
+ * Pakai token persetujuan (sekali) lalu kembalikan nilai Data Diri HANYA untuk field di `writeList`, plus berkas
+ * terbaru per jenis untuk entri `berkas:<JENIS>`. Field/berkas yang tidak ada tidak ikut. Token salah/
+ * kedaluwarsa/terpakai, daftar berbeda, atau origin berbeda → AkunError IZIN_TIDAK_VALID.
  */
-export function resolusiNilai(
+export function resolusiIsi(
   rt: Runtime,
   p: { ownerId: string; token: string; writeList: readonly string[]; targetOrigin: string },
-): Record<string, string> {
+): { nilai: Record<string, string>; berkas: BerkasIsi[] } {
   const origin = asalTujuan(p.targetOrigin);
   pastikanTujuanBoleh(rt, p.ownerId, origin);
   rt.akun.pakaiIzin(p.token, {
@@ -56,9 +61,26 @@ export function resolusiNilai(
   });
   const data = rt.akun.vault.getDataDiri(p.ownerId)?.data ?? {};
   const nilai: Record<string, string> = {};
+  const berkas: BerkasIsi[] = [];
+  const docs = rt.akun.vault.listDocuments(p.ownerId);
   for (const field of new Set(p.writeList)) {
+    if (field.startsWith(AWALAN_BERKAS)) {
+      const nama = field.slice(AWALAN_BERKAS.length);
+      const meta = docs.find((d) => d.jenis === nama.toLowerCase());
+      const d = meta && rt.akun.vault.getDocument(p.ownerId, meta.id);
+      if (d) berkas.push({ nama, judul: d.meta.judul, mime: d.meta.mime, bytes: d.bytes });
+      continue;
+    }
     const v = data[field];
     if (typeof v === 'string' && v !== '') nilai[field] = v;
   }
-  return nilai;
+  return { nilai, berkas };
+}
+
+/** Seperti `resolusiIsi`, hanya nilai Data Diri. */
+export function resolusiNilai(
+  rt: Runtime,
+  p: { ownerId: string; token: string; writeList: readonly string[]; targetOrigin: string },
+): Record<string, string> {
+  return resolusiIsi(rt, p).nilai;
 }

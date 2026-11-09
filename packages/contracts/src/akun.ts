@@ -158,6 +158,21 @@ export const JuriRequestSchema = z.object({ turnstile: z.string().max(4096).opti
 export const KonfirmasiSandiRequestSchema = z.object({ sandi: SandiSchema });
 export const KonfirmasiSandiResponseSchema = z.object({ berhasil: z.literal(true) });
 
+// --- POST /api/urusan/[id]/izinkan-isi ("Izinkan isi" Browser Pendamping, A-M1) ---
+/**
+ * Peramban hanya mengirim daftar write (placeholder adapter `{{PEMOHON.NIK}}` dan `berkas:<JENIS>`) dan origin
+ * tujuan. Server menyimpan persetujuan; Pendamping mengambil nilai di server. Respons TIDAK memuat nilai.
+ */
+export const IzinkanIsiRequestSchema = z.object({
+  writeList: z.array(z.string().min(1).max(100)).min(1).max(60),
+  targetOrigin: z.string().url().max(2048),
+});
+export const IzinkanIsiResponseSchema = z.object({
+  diizinkan: z.literal(true),
+  /** Label data/berkas yang tidak ada di vault: warga mengisinya sendiri di layar. */
+  kurang: z.array(z.string()),
+});
+
 // --- POST /api/akun/keluar, /api/akun/keluar-semua ---
 export const KeluarResponseSchema = z.object({ keluar: z.literal(true), sesiDihapus: z.number().int() });
 
@@ -289,6 +304,7 @@ export const ENDPOINT_AKUN = {
   keluar: { method: 'POST', path: '/api/akun/keluar', sukses: 200 },
   keluarSemua: { method: 'POST', path: '/api/akun/keluar-semua', sukses: 200 },
   lepasGoogle: { method: 'POST', path: '/api/akun/google/lepas', sukses: 200 },
+  izinkanIsi: { method: 'POST', path: '/api/urusan/[id]/izinkan-isi', sukses: 200 },
   lupaSandi: { method: 'POST', path: '/api/akun/lupa-sandi', sukses: 202 },
   aturUlangSandi: { method: 'POST', path: '/api/akun/atur-ulang-sandi', sukses: 200 },
   ubahSandi: { method: 'POST', path: '/api/akun/ubah-sandi', sukses: 200 },
