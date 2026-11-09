@@ -228,7 +228,10 @@ export const PendampingClientMessageSchema = z.discriminatedUnion('type', [
    */
   z.object({
     type: z.literal('berkas_potong'),
-    nama: z.string().max(64).regex(/^[A-Za-z][A-Za-z0-9_]*$/),
+    nama: z
+      .string()
+      .max(64)
+      .regex(/^[A-Za-z][A-Za-z0-9_]*$/),
     namaBerkas: z.string().min(1).max(200),
     mime: z.string().min(1).max(100),
     ukuran: z
