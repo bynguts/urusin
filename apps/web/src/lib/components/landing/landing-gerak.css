@@ -140,6 +140,45 @@
     animation-name: lp-kata-1;
   }
 
+  /* Ponsel: tidak ada gerak di jendela muat (TBT Lighthouse mobile). Hero langsung tampil tanpa
+     animasi masuk; karakter mengapung dan pil kata baru mulai 4 dtk setelah halaman dimuat. Bagian
+     di bawah lipatan tidak perlu: isinya baru dirender (content-visibility) saat mendekati layar. */
+  @media (max-width: 767px) {
+    .lp :is(.lp14, .n-hero-intro, .lp16, .n-preview-stage) {
+      animation: none;
+    }
+    .lp .lp23 {
+      animation-delay: 4s;
+    }
+    .lp .lp24 {
+      animation-delay: 4.4s;
+    }
+    .lp .lp25 {
+      animation-delay: 4.8s;
+    }
+    .lp .lp26 {
+      animation-delay: 4.2s;
+    }
+    .lp .n-pil-kata > span > span {
+      animation-delay: 4s;
+    }
+    .lp .n-pil-kata span span:nth-child(2) {
+      animation-delay: 4.022s;
+    }
+    .lp .n-pil-kata span span:nth-child(3) {
+      animation-delay: 4.044s;
+    }
+    .lp .n-pil-kata span span:nth-child(4) {
+      animation-delay: 4.066s;
+    }
+    .lp .n-pil-kata span span:nth-child(5) {
+      animation-delay: 4.088s;
+    }
+    .lp .n-pil-kata span span:nth-child(6) {
+      animation-delay: 4.11s;
+    }
+  }
+
   /* Tiga baris ubin layanan: marquee kiri, kanan, kiri. Salinan ubin (<i>, 16 di kiri + 16 di kanan
      tiap baris) digambar dengan CSS agar HTML tetap ringan; posisi awal = desain. Baris 2 dan 3 memutar
      urutan ikon 7 dan 14 langkah, sama seperti ubin aslinya. */

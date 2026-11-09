@@ -30,16 +30,30 @@
 }
 
 /*
- * Ponsel (profil Lighthouse mobile): bagian di bawah lipatan (mulai bagian ke-3; hero + strip
- * rujukan selalu dirender) dilewati saat memuat; gaya, tata letak dan lukis baru dikerjakan saat
- * mendekati layar. Tata letak dingin seluruh halaman adalah tugas panjang terbesar (TBT). Tinggi
- * perkiraan = rata-rata bagian ponsel, diganti tinggi asli begitu bagian pernah dirender (auto).
+ * Ponsel (profil Lighthouse mobile): bagian di bawah lipatan (mulai bagian ke-4) dilewati saat
+ * memuat; gaya, tata letak dan lukis baru dikerjakan saat mendekati layar. Hero, strip rujukan dan
+ * bagian pengantar tepat di bawah lipatan selalu dirender di tata letak pertama: pengantar toh ada
+ * dalam jangkauan render awal, dan membukanya belakangan menambah satu tugas panjang setelah FCP.
+ * Tata letak dingin seluruh halaman adalah tugas panjang terbesar (TBT). Tinggi perkiraan =
+ * rata-rata bagian ponsel, diganti tinggi asli begitu bagian pernah dirender (auto).
  * Desktop tidak memakai ini: penahanan menempelkan asal bagian ke piksel utuh sehingga antialias
  * teks bergeser sub-piksel, dan desktop tidak diukur TBT-nya.
  */
 @media (max-width: 767px) {
-  .lp > :nth-child(n + 3) {
+  /* Tata letak pertama terjadi sebelum huruf utama tiba; dengan cadangan Arial jauh lebih murah
+     daripada mencari huruf UI sistem (TBT). Desktop tetap system-ui, jadi glyph cadangan seperti
+     tanda › di desktop tidak berubah. */
+  .lp {
+    font-family: 'Strawberry Sans', Arial, system-ui, sans-serif;
+  }
+  .lp > :nth-child(n + 4) {
     content-visibility: auto;
     contain-intrinsic-size: auto 1250px;
+  }
+  /* Marquee ubin (3 x 64 ubin) ikut ditunda: bagian layanan masih dalam jangkauan render awal
+     content-visibility (~2,5 layar), barisnya tepat di luarnya. Tinggi = 3 x 68px + 2 x 16px. */
+  .lp .lp88 {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 236px;
   }
 }
