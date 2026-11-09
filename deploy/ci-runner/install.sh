@@ -13,7 +13,7 @@
 #
 # Yang dibuat (hanya milik Urusin CI; tidak ada yang lain disentuh):
 #   user sistem urusin-ci (TANPA grup docker), /opt/urusin-ci, /etc/sudoers.d/urusin-ci (satu skrip),
-#   /etc/systemd/system/urusin-ci-runner.service, builder buildx `urusin-ci` (docker-container, cache <= 3 GB).
+#   /etc/systemd/system/urusin-ci-runner.service, builder buildx `urusin-ci` (docker-container, cache <= 1,5 GB).
 # Yang TIDAK pernah dilakukan: sysctl, daemon.json, binfmt, iptables/ufw, prune global, apt install.
 set -euo pipefail
 

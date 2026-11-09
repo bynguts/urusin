@@ -33,9 +33,9 @@ Setiap pemasangan dan pengaktifan tetap butuh persetujuan per kejadian (aturan d
     `chrome-sandbox` setuid + seccomp Playwright, persis model produksi (ADR 0029); tidak pernah `--no-sandbox`
     untuk pendamping.
   - **Build image Release** memakai builder buildx khusus `urusin-ci` (driver docker-container, cache
-    dibatasi 3 GB di `buildkitd.toml`, dan `ci-docker build` menjalankan `builder-gc` ke 3 GB setelah SETIAP
+    dibatasi 1,5 GB di `buildkitd.toml`, dan `ci-docker build` menjalankan `builder-gc` ke 1,5 GB setelah SETIAP
     build). Membersihkan cache HANYA lewat `ci-docker builder-gc`
-    (`docker buildx prune --builder urusin-ci --keep-storage 3gb`) atau `ci-docker builder-rm`. Tidak pernah prune global, tidak
+    (`docker buildx prune --builder urusin-ci --max-used-space 1500mb`) atau `ci-docker builder-rm`. Tidak pernah prune global, tidak
     pernah `daemon.json`. amd64 dibangun lewat binfmt `qemu-x86_64` yang **sudah** terdaftar di host (paket
     distro); CI tidak pernah memasang binfmt. Smoke test: arm64 native (boot pendamping penuh dengan pengerasan
     compose), amd64 lewat binfmt. Output tetap `DIGEST: sha256:...` di log job, sama dengan runner GitHub.
@@ -48,7 +48,8 @@ Setiap pemasangan dan pengaktifan tetap butuh persetujuan per kejadian (aturan d
   memegang kredensial runner itu sendiri (0600, milik `urusin-ci`); **tidak ada PAT di box**.
   Label: `self-hosted`, `Linux`, `ARM64`, `urusin-self`.
 - **Kebersihan antar job.** `actions/checkout` membersihkan workspace di awal job (`clean: true`, bawaan).
-  Hook `job-completed` setelah setiap job: hapus `node_modules` di workspace, hapus kontainer sisa
+  Hook `job-completed` setelah setiap job: hapus `node_modules` di workspace, `pnpm store prune` di `_home`
+  (batas keras 1 GB: store dihapus bila lebih), hapus kontainer sisa
   `urusin-ci-pw-*` dan temp `ci-docker` (`ci-docker cleanup`), lalu cetak `df` agar tren disk terlihat di log.
 - **Penjaga disk.** Hook `job-started` menggagalkan job bila disk ≥ 88%; `runner-prestart` tidak menyalakan
   runner; `ci-docker` menolak build/pull/run. Tidak ada pembersihan otomatis selain cache builder sendiri.
@@ -86,7 +87,7 @@ Karena itu runner ini hanya untuk repo private dan wajib dicopot sebelum Public.
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Unit `urusin-ci-runner` (runner + langkah host)  | `CPUQuota=150%` (1,5 dari 2 CPU), `CPUWeight=20`, `IOWeight=10`, `Nice=10`, `MemoryHigh=3500M`, `MemoryMax=4G`, tanpa swap, `TasksMax=2048` |
 | Kontainer dari `ci-docker` (di luar cgroup unit) | `--cpus 1.5 --cpu-shares 256 --memory 4g --memory-swap 4g --pids-limit 2048`                                                                |
-| Builder buildkit `urusin-ci`                     | CPU 1,5 (shares 256), memori 4g, cache ≤ 3 GB (gc setelah tiap build, 7 hari)                                                               |
+| Builder buildkit `urusin-ci`                     | CPU 1,5 (shares 256), memori 4g, cache ≤ 1,5 GB (gc setelah tiap build, 7 hari)                                                             |
 | Paralel                                          | 1 runner = 1 job sekaligus (CI penuh berjalan berurutan, lebih lambat)                                                                      |
 
 Layanan pengguna (proxy :20128, Caddy, kontainer lain, Xvfb :99) selalu punya ≥ 0,5 CPU terjamin dan menang ~5:1 saat CPU berebut (bobot 20 vs 100 / shares 256 vs 1024), serta ≥ 4 GB RAM. Batas 1,5 CPU dipilih karena e2e akun.spec flaky di 1 CPU (lulus 17/17 di 4 CPU). `IOWeight`

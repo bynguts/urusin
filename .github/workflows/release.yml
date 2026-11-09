@@ -82,7 +82,7 @@ jobs:
           provenance: mode=max
 
       # Self-hosted (agent-vm, arm64): build lewat ci-docker dengan builder buildx `urusin-ci` (docker-container,
-      # cache <= 3 GB, gc setelah tiap build, hanya builder itu). amd64 memakai binfmt qemu-x86_64 yang SUDAH ada di host
+      # cache <= 1,5 GB, gc setelah tiap build, hanya builder itu). amd64 memakai binfmt qemu-x86_64 yang SUDAH ada di host
       # (tidak pernah dipasang oleh CI). Token GHCR lewat stdin. Mencetak "DIGEST: sha256:..." seperti di atas.
       - name: Build dan push (self-hosted, builder urusin-ci)
         id: build_self

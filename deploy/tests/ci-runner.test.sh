@@ -62,7 +62,7 @@ check "DOCKER_CONFIG temp dihapus setelah selesai" '[ ! -e "$(cat "$SHIM_DIR/log
 check "builder khusus urusin-ci + push + SBOM + provenance max" '[[ "$calls" == *"[--builder] [urusin-ci]"* && "$calls" == *"[--push] [--sbom=true] [--provenance=mode=max]"* ]]'
 check "tag ghcr.io/bynguts/urusin-web:<sha> + GIT_SHA" '[[ "$calls" == *"[--tag] [ghcr.io/bynguts/urusin-web:$SHA]"* && "$calls" == *"[GIT_SHA=$SHA]"* ]]'
 check "tanpa entitlement --allow / network host" '[[ "$calls" != *"--allow"* && "$calls" != *"network=host"* ]]'
-check "cache builder dipangkas ke 3gb setelah build" '[[ "$calls" == *"[buildx] [prune] [--builder] [urusin-ci] [--force] [--keep-storage] [3gb]"* ]]'
+check "cache builder dipangkas ke 1,5 GB setelah build" '[[ "$calls" == *"[buildx] [prune] [--builder] [urusin-ci] [--force] [--max-used-space] [1500mb]"* ]]'
 
 echo "== pw (kontainer Playwright)"
 SHIM_DF_PCT=50 cid pw e2e "$WS" "$SHA"
@@ -87,7 +87,7 @@ echo "== alias / builder"
 cid alias "$SHA" rc1
 check "alias membuat tag dari digest :<sha> (imagetools create, bukan build)" '[ $rc -eq 0 ] && [ "$(grep -c "\[imagetools\] \[create\]" <<<"$calls")" = 3 ] && [[ "$calls" != *"[build]"* ]]'
 cid builder-gc
-check "gc hanya untuk builder urusin-ci, batas 3gb (bukan prune global)" '[[ "$calls" == *"[buildx] [prune] [--builder] [urusin-ci] [--force] [--keep-storage] [3gb]"* ]] && [[ "$calls" != *"[system]"* && "$calls" != *"[builder] [prune]"* ]]'
+check "gc hanya untuk builder urusin-ci, batas 1,5 GB (bukan prune global)" '[[ "$calls" == *"[buildx] [prune] [--builder] [urusin-ci] [--force] [--max-used-space] [1500mb]"* ]] && [[ "$calls" != *"[system]"* && "$calls" != *"[builder] [prune]"* ]]'
 cid cleanup
 check "cleanup hanya kontainer urusin-ci-pw-* (tanpa prune)" '[ $rc -eq 0 ] && [[ "$calls" == *"[name=^urusin-ci-pw-]"* ]] && [[ "$calls" != *"prune"* ]]'
 SHIM_NO_BUILDER=1 cid builder-init
@@ -106,10 +106,18 @@ mkdir -p "$SB/bin" "$WS/node_modules/x" "$WS/apps/web/node_modules/y" "$SB/luar/
 printf '#!/usr/bin/env bash\necho "$*" >> "%s/sudo.log"\n' "$SHIM_DIR" > "$SB/bin/sudo"
 chmod +x "$SB/bin/sudo"
 # Salinan uji dengan akar _work dialihkan ke sandbox (skrip asli memakai path tetap /opt/urusin-ci).
-sed "s#/opt/urusin-ci/runner/_work/#$URUSIN_CI_ROOT/runner/_work/#" "$CI/job-completed" > "$SB/job-completed"
-jc() { out="$(GITHUB_WORKSPACE="$1" PATH="$SB/bin:$HERE/shims-ci:$PATH" SHIM_DF_PCT=84 bash "$SB/job-completed" 2>&1)"; rc=$?; }
+sed "s#/opt/urusin-ci/runner/#$URUSIN_CI_ROOT/runner/#" "$CI/job-completed" > "$SB/job-completed"
+printf '#!/usr/bin/env bash\necho "$*" >> "%s/pnpm.log"\n' "$SHIM_DIR" > "$SB/bin/pnpm"
+chmod +x "$SB/bin/pnpm"
+H="$URUSIN_CI_ROOT/runner/_home"
+mkdir -p "$H/.local/share/pnpm/store/v10"
+head -c 2097152 /dev/zero > "$H/.local/share/pnpm/store/v10/blob"
+jc() { out="$(HOME="$H" GITHUB_WORKSPACE="$1" PATH="$SB/bin:$HERE/shims-ci:$PATH" SHIM_DF_PCT=84 PNPM_STORE_MAX_MB="${MAXMB:-1024}" bash "$SB/job-completed" 2>&1)"; rc=$?; }
 jc "$WS"
 check "job-completed: hapus node_modules workspace, cleanup lewat sudo, cetak df" '[ $rc -eq 0 ] && [ ! -e "$WS/node_modules" ] && [ ! -e "$WS/apps/web/node_modules" ] && grep -q "^-n /opt/urusin-ci/bin/ci-docker cleanup$" "$SHIM_DIR/sudo.log" && [[ "$out" == *"84%"* ]]'
+check "job-completed: pnpm store prune; store di bawah batas tetap ada" 'grep -qx "store prune" "$SHIM_DIR/pnpm.log" && [ -f "$H/.local/share/pnpm/store/v10/blob" ]'
+MAXMB=1 jc "$WS"
+check "job-completed: store di atas batas keras dihapus" '[ $rc -eq 0 ] && [ ! -e "$H/.local/share/pnpm/store" ]'
 jc "$SB/luar/x"
 check "job-completed: tidak menyentuh di luar _work" '[ $rc -eq 0 ] && [ -d "$SB/luar/x/node_modules" ]'
 
@@ -119,7 +127,7 @@ check "unit: runner persisten (run.sh), tanpa runner-start/JIT" 'grep -q "^ExecS
 check "tanpa PAT di box: tanpa jitconfig/--ephemeral; gh-admin-token hanya dihapus" '! grep -nE "generate-jitconfig|--ephemeral|--jitconfig" "$CI"/install.sh "$CI"/uninstall.sh "$CI"/runner-prestart && [ "$(grep -c gh-admin-token "$CI/install.sh")" = 1 ] && grep -q "rm -f.*gh-admin-token" "$CI/install.sh"'
 check "token registrasi/remove lewat env, bukan argumen --token" '! grep -nE -- "--token" "$CI"/install.sh "$CI"/uninstall.sh && grep -q "ACTIONS_RUNNER_INPUT_TOKEN=" "$CI/install.sh" && grep -q "ACTIONS_RUNNER_INPUT_TOKEN=" "$CI/uninstall.sh"'
 check "install: tidak pernah menambah user ke grup docker / sysctl / daemon.json" '! grep -nE "usermod|gpasswd|sysctl -w|daemon.json.*>|binfmt --install|prune -a|system prune" "$CI/install.sh" | grep -v "^[0-9]*:#"'
-check "buildkitd: cache dibatasi 3 GB" 'grep -q "^ *gckeepstorage = 3000000000" "$CI/buildkitd.toml" && grep -q "keepBytes = 3000000000" "$CI/buildkitd.toml"'
+check "buildkitd: cache dibatasi 1,5 GB" '[ "$(grep -c "maxUsedSpace = \"1500MB\"" "$CI/buildkitd.toml")" = 3 ] && ! grep -qE "^ *(keepBytes|gckeepstorage)" "$CI/buildkitd.toml"'
 
 echo
 echo "ci-runner: $pass lulus, $fail gagal"

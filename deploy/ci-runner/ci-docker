@@ -11,7 +11,7 @@
 #   ci-docker smoke <web|fixtures|pendamping> <sha256:digest> <workspace>  token GHCR di stdin
 #   ci-docker sbom <web|fixtures|pendamping> <sha256:digest>        token GHCR di stdin; SBOM JSON ke stdout
 #   ci-docker alias <sha40> <rc*|v*>                   token GHCR di stdin; alias :<sha> -> :<tag> (tanpa build)
-#   ci-docker builder-init | builder-gc | builder-rm  builder buildx `urusin-ci` (cache <= 3 GB)
+#   ci-docker builder-init | builder-gc | builder-rm  builder buildx `urusin-ci` (cache <= 1,5 GB)
 #   ci-docker cleanup                                  hook job-completed: kontainer sisa urusin-ci-pw-*
 #   ci-docker teardown                                 hapus builder + kontainer sisa urusin-ci-* (uninstall)
 #
@@ -26,7 +26,7 @@ fi
 CI_ROOT="${URUSIN_CI_ROOT:-/opt/urusin-ci}"
 WORK_ROOT="$CI_ROOT/runner/_work"
 BUILDER=urusin-ci
-CACHE_MAX=3gb # anggaran disk agent-vm (lihat README); sama dengan gckeepstorage di buildkitd.toml
+CACHE_MAX=1500mb # anggaran disk agent-vm (lihat README); sama dengan maxUsedSpace di buildkitd.toml
 REPO_PREFIX=ghcr.io/bynguts/urusin
 DISK_MAX="${URUSIN_CI_DISK_MAX:-88}"
 CI_USER="${URUSIN_CI_USER:-urusin-ci}"
@@ -256,7 +256,7 @@ cmd_builder_init() {
   if docker buildx inspect "$BUILDER" >/dev/null 2>&1; then
     echo "builder $BUILDER sudah ada"
   else
-    # Cache dibatasi di buildkitd.toml (gckeepstorage). Kontainer buildkit dibatasi CPU/memori.
+    # Cache dibatasi di buildkitd.toml (maxUsedSpace). Kontainer buildkit dibatasi CPU/memori.
     docker buildx create --name "$BUILDER" --driver docker-container \
       --driver-opt "memory=4g,memory-swap=4g,cpu-period=100000,cpu-quota=150000,cpu-shares=256" \
       --buildkitd-config "$CI_ROOT/etc/buildkitd.toml" >/dev/null
@@ -265,7 +265,7 @@ cmd_builder_init() {
 }
 
 # Satu-satunya pembersihan cache yang diizinkan: milik builder urusin-ci (bukan prune global).
-builder_gc() { docker buildx prune --builder "$BUILDER" --force --keep-storage "$CACHE_MAX" | tail -n1; }
+builder_gc() { docker buildx prune --builder "$BUILDER" --force --max-used-space "$CACHE_MAX" | tail -n1; }
 
 case "${1:-}" in
   pw) [ $# -eq 4 ] || die "pemakaian: pw <e2e|perf> <workspace> <sha40>"; cmd_pw "$2" "$3" "$4" ;;
