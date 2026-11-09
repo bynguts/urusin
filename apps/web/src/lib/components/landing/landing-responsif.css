@@ -1,0 +1,203 @@
+/*
+ * Aturan layar < 1440 untuk landing n2rpg. Frame Rafi hanya desktop 1440; di layar lebih sempit bagian
+ * yang sama ditumpuk (DESIGN.md), dan ilustrasi berukuran tetap diperkecil utuh dengan zoom.
+ */
+.lp {
+  --lp-gx: max(16px, calc((100vw - 1040px) / 2));
+  overflow-x: clip;
+}
+
+/* Ilustrasi berukuran tetap: skala utuh */
+@media (max-width: 1111px) {
+  .lp {
+    --lp-z: 0.88;
+  }
+  .lp .n-preview-stage {
+    zoom: var(--lp-z);
+  }
+  .lp .n-card-row,
+  .lp .n-feature-row,
+  .lp .n-columns {
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+}
+@media (max-width: 1023px) {
+  .lp {
+    --lp-z: 0.66;
+  }
+  .lp .n-header .n-nav-links {
+    display: none;
+  }
+  .lp .n-intro-split,
+  .lp .n-safety {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .lp .n-intro-characters {
+    flex: none;
+    width: 560px;
+    height: 540px;
+    align-self: center;
+  }
+  .lp .n-safety-grid {
+    width: 100%;
+  }
+  .lp .n-cta-panel {
+    flex-direction: column;
+    height: auto;
+    padding: 48px 32px 0;
+  }
+  .lp .n-cta-panel > .n-companions {
+    flex: none;
+    width: 536px;
+    height: 432px;
+    align-self: center;
+    margin-top: -40px;
+  }
+  .lp .n-faq-companion {
+    display: none;
+  }
+}
+@media (max-width: 767px) {
+  .lp {
+    --lp-z: 0.42;
+  }
+  /* Pola titik dekoratif tidak dimuat di ponsel (img lazy + display:none) */
+  .lp .n-hero-pattern,
+  .lp .n-intro-characters > img:first-child {
+    display: none;
+  }
+  .lp
+    :where(
+      .n-hero-copy,
+      .n-intro-copy,
+      .n-services-heading,
+      .n-heading,
+      .n-safety,
+      .n-faq,
+      .n-copy,
+      .n-footer,
+      .n-trust-strip,
+      .n-card-body,
+      .n-feature-text,
+      .n-text,
+      .n-list
+    )
+    :where(div, span, p, h1, h2, h3) {
+    white-space: normal;
+    max-width: 100%;
+  }
+  .lp :where(h1, h2) {
+    white-space: normal;
+    max-width: 100%;
+  }
+  .lp .n-services-heading {
+    padding-inline: 16px;
+  }
+  .lp .n-feature-text > *,
+  .lp .n-text > *,
+  .lp .n-card-body > * {
+    width: 100%;
+  }
+  .lp .n-hero-copy,
+  .lp .n-hero-intro,
+  .lp .n-intro-copy,
+  .lp .n-intro-p1,
+  .lp .n-intro-p2,
+  .lp .n-companion-proof,
+  .lp .n-services-heading,
+  .lp .n-services-title,
+  .lp .n-services-intro,
+  .lp .n-prompt-box,
+  .lp .n-prompt-row,
+  .lp .n-heading,
+  .lp .n-heading > *,
+  .lp .n-bubbles,
+  .lp .n-answer,
+  .lp .n-safety-intro,
+  .lp .n-safety-intro .n-title,
+  .lp .n-copy,
+  .lp .n-copy > .n-sub,
+  .lp .n-top,
+  .lp .n-bottom {
+    width: 100%;
+    max-width: 100%;
+  }
+  .lp .n-hero-copy {
+    padding: 48px 16px 24px;
+  }
+  .lp .n-companion-proof {
+    flex-wrap: wrap;
+  }
+  .lp .n-intro-characters {
+    zoom: 0.64;
+  }
+  .lp .n-wordmarks {
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    gap: 16px 28px;
+  }
+  .lp .n-prompt-text {
+    width: 100%;
+  }
+  .lp .n-feature-row > *,
+  .lp .n-columns > * {
+    flex: none;
+    width: 100%;
+    max-width: 510px;
+  }
+  .lp .n-feature-row > * > .n-feature-text,
+  .lp .n-columns > * > .n-text,
+  .lp .n-columns > * > .n-list {
+    width: 100%;
+  }
+  .lp .n-feature-row .n-visual,
+  .lp .n-comparison .n-visual {
+    zoom: 0.7;
+    align-self: center;
+  }
+  .lp .n-get-started .n-visual {
+    width: 100%;
+  }
+  .lp .n-safety-grid .n-row {
+    flex-direction: column;
+  }
+  .lp .n-safety-grid .n-row > * {
+    box-sizing: border-box;
+    flex: none;
+    width: 100%;
+    height: auto;
+  }
+  .lp .n-companions-title,
+  .lp .n-features-title,
+  .lp .n-comparison .n-title {
+    text-align: center;
+  }
+  .lp .n-answer-row {
+    justify-content: flex-start;
+  }
+  .lp .n-cta-panel {
+    padding: 32px 20px 0;
+  }
+  .lp .n-cta-panel > .n-companions {
+    zoom: 0.62;
+    margin-top: 0;
+  }
+  .lp .n-top,
+  .lp .n-footer .n-columns {
+    flex-direction: column;
+    gap: 32px;
+  }
+  .lp .n-bottom {
+    flex-wrap: wrap;
+    gap: 12px 24px;
+  }
+}
+@media (max-width: 479px) {
+  .lp {
+    --lp-z: 0.33;
+  }
+}
