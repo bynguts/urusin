@@ -35,6 +35,7 @@ import { actions as daftarPage } from '../../routes/daftar/+page.server';
 import { actions as profilPage, load as profilLoad } from '../../routes/lengkapi-profil/+page.server';
 import { actions as lupaPage } from '../../routes/lupa-sandi/+page.server';
 import { actions as masukPage, load as masukLoad } from '../../routes/masuk/+page.server';
+import { actions as pengaturanPage, load as pengaturanLoad } from '../../routes/pengaturan/+page.server';
 import { actions as verifPage, load as verifLoad } from '../../routes/verifikasi-email/+page.server';
 import { AKUN_COOKIE, OAUTH_COOKIE, TAUTKAN_COOKIE } from './akun';
 import { createRuntime, googleRedirectUri, setRuntimeForTests, type Runtime } from './runtime';
@@ -512,6 +513,48 @@ describe('keluar, ubah sandi, reset, hapus akun', () => {
     expect(hitung('SELECT COUNT(*) n FROM users')).toBe(0);
     expect(hitung('SELECT COUNT(*) n FROM vault_data_diri')).toBe(0);
   });
+
+  it('zona bahaya (form action): keluar semua → /masuk; hapus akun butuh HAPUS + sandi, lalu ke /', async () => {
+    const tamu = await caught(pengaturanPage.keluarSemua(ev(form({}, '/pengaturan?/keluarSemua'))));
+    expect(isRedirect(tamu) && tamu.location).toBe('/masuk');
+    await daftarVerifikasi();
+    const a = await masuk();
+    const b = await masuk();
+    expect(
+      ((await pengaturanLoad(ev(get('/pengaturan'), { locals: localsDari(b.jar) }) as never)) as any)
+        .zonaBahaya,
+    ).toEqual({
+      punyaSandi: true,
+    });
+    const sidLama = b.jar.get(SID_COOKIE);
+    const kel = await caught(
+      pengaturanPage.keluarSemua(
+        ev(form({}, '/pengaturan?/keluarSemua'), { jar: b.jar, locals: localsDari(b.jar) }),
+      ),
+    );
+    expect(isRedirect(kel) && kel.location).toBe('/masuk');
+    expect(rt.akun.sesi(a.jar.get(AKUN_COOKIE))).toBeNull();
+    expect(b.jar.get(AKUN_COOKIE)).toBeUndefined();
+    expect(b.jar.get(SID_COOKIE)).not.toBe(sidLama);
+
+    const c = await masuk();
+    const aksi = (f: Record<string, string>) =>
+      pengaturanPage.hapusAkun(
+        ev(form(f, '/pengaturan?/hapusAkun'), { jar: c.jar, locals: localsDari(c.jar) }),
+      );
+    expect(await aksi({ konfirmasi: 'hapus', sandi: SANDI })).toMatchObject({
+      status: 422,
+      data: { kode: 'KONFIRMASI_SALAH' },
+    });
+    expect(await aksi({ konfirmasi: 'HAPUS', sandi: SANDI2 })).toMatchObject({
+      status: 401,
+      data: { kode: 'SANDI_LAMA_SALAH' },
+    });
+    const ok = await caught(aksi({ konfirmasi: ' HAPUS ', sandi: SANDI }));
+    expect(isRedirect(ok) && ok.location).toBe('/');
+    expect(c.jar.get(AKUN_COOKIE)).toBeUndefined();
+    expect(hitung('SELECT COUNT(*) n FROM users')).toBe(0);
+  });
 });
 
 describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', () => {
@@ -802,6 +845,36 @@ describe('Google OAuth lewat rute', () => {
     if (!isRedirect(cb)) throw cb;
     return { location: cb.location, jar };
   }
+
+  it('zona bahaya: akun Google saja → masuk ulang bila login > 15 menit, lalu hapus (form action dan API)', async () => {
+    const klaim = { sub: 'g-zona', email: 'g-zona@example.com', email_verified: true, name: 'Warga Google' };
+    const g = await alurGoogle(klaim);
+    expect(
+      ((await pengaturanLoad(ev(get('/pengaturan'), { locals: localsDari(g.jar) }) as never)) as any)
+        .zonaBahaya,
+    ).toEqual({
+      punyaSandi: false,
+    });
+    jam += 16 * 60 * 1000;
+    const api = await lewatHook(post({ konfirmasi: 'HAPUS' }, '/api/akun/hapus'), g.jar, hapusApi);
+    expect([api.status, ((await api.json()) as any).kode]).toEqual([401, 'PERLU_MASUK_ULANG']);
+    const hapus = () =>
+      caught(
+        pengaturanPage.hapusAkun(
+          ev(form({ konfirmasi: 'HAPUS' }, '/pengaturan?/hapusAkun'), {
+            jar: g.jar,
+            locals: localsDari(g.jar),
+          }),
+        ),
+      );
+    const ulang = await hapus();
+    expect(isRedirect(ulang) && ulang.location).toBe('/masuk?ulang=1&lanjut=%2Fpengaturan%23zona-bahaya');
+    await alurGoogle(klaim, '/pengaturan', g.jar);
+    const ok = await hapus();
+    expect(isRedirect(ok) && ok.location).toBe('/');
+    expect(g.jar.get(AKUN_COOKIE)).toBeUndefined();
+    expect(hitung("SELECT COUNT(*) n FROM users WHERE email = 'g-zona@example.com'")).toBe(0);
+  });
 
   it('akun baru dengan nama → langsung ke tujuan; tanpa nama → Lengkapi profil', async () => {
     const a = await alurGoogle({
