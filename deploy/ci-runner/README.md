@@ -6,12 +6,14 @@
 > Repo publik juga mendapat menit runner GitHub **gratis tanpa batas**, jadi runner ini tidak dibutuhkan lagi.
 >
 > ```sh
-> sudo deploy/ci-runner/uninstall.sh                      # di agent-vm
+> gh api -X POST repos/bynguts/urusin/actions/runners/remove-token --jq .token \
+>   | ssh ubuntu@agent-vm 'sudo /tmp/urusin-ci-install/deploy/ci-runner/uninstall.sh'   # token lewat stdin
 > gh variable delete URUSIN_RUNNER --repo bynguts/urusin  # semua job kembali ke ubuntu-latest
 > gh api repos/bynguts/urusin/actions/runners --jq .total_count   # harus 0
 > ```
 >
-> Lalu cabut fine-grained PAT admin yang dipakai runner. Baru setelah itu ubah visibilitas repo ke Public.
+> Tidak ada PAT di box (runner hanya memegang kredensialnya sendiri, ikut terhapus). Tetap rotasi/cabut token
+> lokal yang dipakai untuk membuat registration token. Baru setelah itu ubah visibilitas repo ke Public.
 
 ## Kapan dipakai
 
@@ -31,18 +33,25 @@ Setiap pemasangan dan pengaktifan tetap butuh persetujuan per kejadian (aturan d
     `chrome-sandbox` setuid + seccomp Playwright, persis model produksi (ADR 0029); tidak pernah `--no-sandbox`
     untuk pendamping.
   - **Build image Release** memakai builder buildx khusus `urusin-ci` (driver docker-container, cache
-    dibatasi 8 GB di `buildkitd.toml`). Membersihkan cache HANYA lewat `ci-docker builder-gc`
-    (`docker buildx prune --builder urusin-ci`) atau `ci-docker builder-rm`. Tidak pernah prune global, tidak
+    dibatasi 3 GB di `buildkitd.toml`, dan `ci-docker build` menjalankan `builder-gc` ke 3 GB setelah SETIAP
+    build). Membersihkan cache HANYA lewat `ci-docker builder-gc`
+    (`docker buildx prune --builder urusin-ci --keep-storage 3gb`) atau `ci-docker builder-rm`. Tidak pernah prune global, tidak
     pernah `daemon.json`. amd64 dibangun lewat binfmt `qemu-x86_64` yang **sudah** terdaftar di host (paket
     distro); CI tidak pernah memasang binfmt. Smoke test: arm64 native (boot pendamping penuh dengan pengerasan
     compose), amd64 lewat binfmt. Output tetap `DIGEST: sha256:...` di log job, sama dengan runner GitHub.
-  - **rc-compat** (aktif hanya bila ada tag `rc*`) belum punya varian self-hosted: job gagal dengan pesan jelas.
+  - **rc-compat** (aktif hanya bila ada tag `rc*`) belum punya varian self-hosted: di runner ini langkahnya
+    **dilewati dengan `::warning::`** (bukan gagal); cakupan rc-compat berkurang selama runner cadangan aktif.
+  - Image Playwright (dipin digest) ditarik sekali dan disimpan; tidak ditarik ulang per job.
   - gitleaks dan osv-scanner diunduh sesuai arsitektur runner (checksum dipin) ke `$RUNNER_TEMP`, tanpa sudo.
-- **Runner sekali pakai (JIT).** `runner-prestart` (root) meminta konfigurasi JIT ke GitHub untuk tiap job;
-  runner JIT selalu ephemeral: satu job, lalu keluar dan terhapus. `_work` dikosongkan sebelum runner baru.
+- **Runner persisten, didaftarkan sekali.** `install.sh` menerima **registration token** sekali pakai (berlaku
+  1 jam) lewat stdin dan menjalankan `config.sh --unattended` (tanpa `--ephemeral`, tanpa JIT). Box hanya
+  memegang kredensial runner itu sendiri (0600, milik `urusin-ci`); **tidak ada PAT di box**.
   Label: `self-hosted`, `Linux`, `ARM64`, `urusin-self`.
-- **Penjaga disk.** Hook `job-started` menggagalkan job bila disk ≥ 88%; `runner-prestart` tidak mendaftarkan
-  runner baru; `ci-docker` menolak build/pull/run. Tidak ada pembersihan otomatis selain cache builder sendiri.
+- **Kebersihan antar job.** `actions/checkout` membersihkan workspace di awal job (`clean: true`, bawaan).
+  Hook `job-completed` setelah setiap job: hapus `node_modules` di workspace, hapus kontainer sisa
+  `urusin-ci-pw-*` dan temp `ci-docker` (`ci-docker cleanup`), lalu cetak `df` agar tren disk terlihat di log.
+- **Penjaga disk.** Hook `job-started` menggagalkan job bila disk ≥ 88%; `runner-prestart` tidak menyalakan
+  runner; `ci-docker` menolak build/pull/run. Tidak ada pembersihan otomatis selain cache builder sendiri.
 
 ## Grup docker vs sudoers sempit (keputusan)
 
@@ -54,7 +63,7 @@ Defaults:urusin-ci env_reset, !setenv
 urusin-ci ALL=(root) NOPASSWD: /opt/urusin-ci/bin/ci-docker
 ```
 
-`ci-docker` hanya punya subperintah tetap (`pw`, `build`, `smoke`, `sbom`, `alias`, `builder-*`, `teardown`)
+`ci-docker` hanya punya subperintah tetap (`pw`, `build`, `smoke`, `sbom`, `alias`, `builder-*`, `cleanup`, `teardown`)
 dengan flag Docker yang ditulis di skrip, bukan dari pemanggil: tanpa `--privileged`, tanpa `--network host`,
 tanpa mount host selain workspace runner (divalidasi: direktori nyata di `_work`, milik `urusin-ci`), tanpa
 `--allow security.insecure`, image hanya `ghcr.io/bynguts/urusin-{web,fixtures,pendamping}` dan basis
@@ -77,7 +86,7 @@ Karena itu runner ini hanya untuk repo private dan wajib dicopot sebelum Public.
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Unit `urusin-ci-runner` (runner + langkah host)  | `CPUQuota=150%` (1,5 dari 2 CPU), `CPUWeight=20`, `IOWeight=10`, `Nice=10`, `MemoryHigh=3500M`, `MemoryMax=4G`, tanpa swap, `TasksMax=2048` |
 | Kontainer dari `ci-docker` (di luar cgroup unit) | `--cpus 1.5 --cpu-shares 256 --memory 4g --memory-swap 4g --pids-limit 2048`                                                                |
-| Builder buildkit `urusin-ci`                     | CPU 1,5 (shares 256), memori 4g, cache ≤ 8 GB (gc 7 hari)                                                                                   |
+| Builder buildkit `urusin-ci`                     | CPU 1,5 (shares 256), memori 4g, cache ≤ 3 GB (gc setelah tiap build, 7 hari)                                                               |
 | Paralel                                          | 1 runner = 1 job sekaligus (CI penuh berjalan berurutan, lebih lambat)                                                                      |
 
 Layanan pengguna (proxy :20128, Caddy, kontainer lain, Xvfb :99) selalu punya ≥ 0,5 CPU terjamin dan menang ~5:1 saat CPU berebut (bobot 20 vs 100 / shares 256 vs 1024), serta ≥ 4 GB RAM. Batas 1,5 CPU dipilih karena e2e akun.spec flaky di 1 CPU (lulus 17/17 di 4 CPU). `IOWeight`
@@ -87,15 +96,19 @@ runner GitHub; bila gagal hanya di runner ini, ulangi atau putuskan di lead (amb
 
 ## Pasang (hanya setelah go dari lead/pengguna)
 
-Butuh fine-grained PAT khusus repo `bynguts/urusin` dengan izin **Administration: Read and write** (untuk
-`generate-jitconfig` dan menghapus runner saat uninstall). Token hanya lewat stdin, disimpan root-only 0600.
+Registration token dibuat di mesin lokal (token admin repo tetap di lokal, tidak pernah ke box) dan HANYA
+token itu yang dikirim ke box, lewat stdin. Token tidak disimpan; `config.sh` menukarnya dengan kredensial runner.
 
 ```sh
-# di agent-vm, dari salinan repo (git archive) di /tmp; tidak membangun image apa pun
-sudo deploy/ci-runner/install.sh --dry-run           # rencana saja
-sudo deploy/ci-runner/install.sh < /path/token-admin  # pasang (token lewat stdin; hapus berkasnya setelah)
+# salinan repo (git archive) di /tmp/urusin-ci-install pada agent-vm; tidak membangun image apa pun
+ssh ubuntu@agent-vm 'sudo /tmp/urusin-ci-install/deploy/ci-runner/install.sh --dry-run'   # rencana saja
+gh api -X POST repos/bynguts/urusin/actions/runners/registration-token --jq .token \
+  | ssh ubuntu@agent-vm 'sudo /tmp/urusin-ci-install/deploy/ci-runner/install.sh'          # pasang
 gh variable set URUSIN_RUNNER --repo bynguts/urusin --body urusin-self
 ```
+
+Menjalankan ulang `install.sh` pada runner yang sudah terdaftar tidak membaca token dan tidak mendaftar ulang
+(hanya memperbarui skrip, unit, dan builder).
 
 Yang dibuat: user sistem `urusin-ci` (shell nologin, rumah `/opt/urusin-ci`), `/opt/urusin-ci/{bin,etc,runner,buildx}`,
 `/etc/sudoers.d/urusin-ci`, `/etc/systemd/system/urusin-ci-runner.service`, builder buildx `urusin-ci`.
@@ -107,13 +120,15 @@ Operasi: `systemctl status urusin-ci-runner`, `journalctl -u urusin-ci-runner -f
 
 ## Copot
 
-`sudo deploy/ci-runner/uninstall.sh` (aman diulang): hentikan unit, hapus pendaftaran runner `urusin-self` di
-GitHub, `docker buildx rm urusin-ci` (beserta cache-nya), kontainer sisa `urusin-ci-*`, sudoers, user, dan
-`/opt/urusin-ci`. Lalu `gh variable delete URUSIN_RUNNER` dan cabut PAT admin.
+`uninstall.sh` (aman diulang) menerima **remove-token** sekali pakai lewat stdin (dibuat lokal:
+`gh api -X POST repos/bynguts/urusin/actions/runners/remove-token --jq .token`): hentikan unit, `config.sh remove`
+(hapus pendaftaran di GitHub), `docker buildx rm urusin-ci` (beserta cache-nya), kontainer sisa `urusin-ci-*`,
+sudoers, user, dan `/opt/urusin-ci`. Tanpa token, pendaftaran dihapus manual
+(`gh api -X DELETE repos/bynguts/urusin/actions/runners/<id>`). Lalu `gh variable delete URUSIN_RUNNER`.
 
 ## Uji
 
 ```sh
 bash deploy/tests/ci-runner.test.sh   # docker/df palsu: validasi argumen, flag Docker tetap, token via stdin, disk 88%
-shellcheck -x deploy/ci-runner/ci-docker deploy/ci-runner/*.sh deploy/ci-runner/runner-* deploy/ci-runner/job-started
+shellcheck -x deploy/ci-runner/ci-docker deploy/ci-runner/*.sh deploy/ci-runner/runner-prestart deploy/ci-runner/job-*
 ```

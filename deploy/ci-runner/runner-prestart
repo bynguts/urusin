@@ -1,40 +1,15 @@
 #!/usr/bin/env bash
-# ExecStartPre (root, prefiks `+` di unit): sebelum SETIAP runner sekali-pakai (JIT, ephemeral) hidup.
-#   1. Tolak bila disk >= 88% (unit dicoba lagi tiap RestartSec; tidak ada job yang diambil).
-#   2. Kosongkan _work sisa job sebelumnya (runner ephemeral: tidak ada sisa checkout/secret antar job).
-#   3. Minta konfigurasi JIT ke GitHub memakai token admin repo (root-only, 0600) dan serahkan ke user runner
-#      lewat /run/urusin-ci/jit (0400); runner-start membaca lalu menghapusnya.
+# ExecStartPre (root, prefiks `+` di unit) sebelum runner persisten hidup (juga setiap restart):
+#   1. Tolak bila disk >= 88% (unit dicoba lagi tiap RestartSec; runner tidak mengambil job).
+#   2. Pastikan HOME runner (cache pnpm/npm) ada dan milik urusin-ci.
+# Tidak ada token di sini: runner memakai kredensial runner miliknya sendiri (hasil config.sh sekali).
 set -euo pipefail
 CI_ROOT="${URUSIN_CI_ROOT:-/opt/urusin-ci}"
-REPO="${URUSIN_CI_REPO:-bynguts/urusin}"
-LABEL="${URUSIN_CI_LABEL:-urusin-self}"
 DISK_MAX="${URUSIN_CI_DISK_MAX:-88}"
-RUN_DIR="${URUSIN_CI_RUN_DIR:-/run/urusin-ci}"
 die() { echo "runner-prestart: $*" >&2; exit 1; }
 
 pct="$(df --output=pcent / | tail -n1 | tr -dc '0-9')"
-[ "$pct" -lt "$DISK_MAX" ] || die "disk ${pct}% >= ${DISK_MAX}%: runner tidak didaftarkan"
-
-find "$CI_ROOT/runner/_work" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
-# HOME runner (unit: Environment=HOME): cache pnpm/npm boleh bertahan antar job; dibatasi penjaga disk.
+[ "$pct" -lt "$DISK_MAX" ] || die "disk ${pct}% >= ${DISK_MAX}%: runner tidak dijalankan"
+[ -f "$CI_ROOT/runner/.runner" ] || die "runner belum didaftarkan (jalankan install.sh dengan registration token)"
 install -d -m 0750 -o urusin-ci -g urusin-ci "$CI_ROOT/runner/_home"
-
-token_file="$CI_ROOT/etc/gh-admin-token"
-[ -s "$token_file" ] || die "token admin repo tidak ada: $token_file"
-name="urusin-self-$(hostname -s)-$(date -u +%Y%m%d%H%M%S)"
-body="$(printf '{"name":"%s","runner_group_id":1,"labels":["self-hosted","Linux","ARM64","%s"],"work_folder":"_work"}' "$name" "$LABEL")"
-resp="$(curl -sS --fail-with-body --max-time 30 -X POST \
-  -H @<(printf 'Authorization: Bearer %s\n' "$(<"$token_file")") -H 'Accept: application/vnd.github+json' \
-  -H 'X-GitHub-Api-Version: 2022-11-28' \
-  "https://api.github.com/repos/$REPO/actions/runners/generate-jitconfig" -d "$body")" ||
-  die "generate-jitconfig gagal (token kedaluwarsa/izin Administration kurang?)"
-jit="$(jq -r '.encoded_jit_config // empty' <<<"$resp")"
-[ -n "$jit" ] || die "respons tanpa encoded_jit_config"
-
-# RuntimeDirectory= di unit membuat $RUN_DIR (milik urusin-ci, 0700); fallback bila dijalankan manual.
-[ -d "$RUN_DIR" ] || install -d -m 0700 -o urusin-ci -g urusin-ci "$RUN_DIR"
-umask 0377
-printf '%s' "$jit" > "$RUN_DIR/jit.tmp"
-chown urusin-ci:urusin-ci "$RUN_DIR/jit.tmp"
-mv -f "$RUN_DIR/jit.tmp" "$RUN_DIR/jit"
-echo "runner-prestart: $name siap (label $LABEL), disk ${pct}%"
+echo "runner-prestart: disk ${pct}%"

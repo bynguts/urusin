@@ -11,7 +11,8 @@
 #   ci-docker smoke <web|fixtures|pendamping> <sha256:digest> <workspace>  token GHCR di stdin
 #   ci-docker sbom <web|fixtures|pendamping> <sha256:digest>        token GHCR di stdin; SBOM JSON ke stdout
 #   ci-docker alias <sha40> <rc*|v*>                   token GHCR di stdin; alias :<sha> -> :<tag> (tanpa build)
-#   ci-docker builder-init | builder-gc | builder-rm  builder buildx `urusin-ci` (cache dibatasi)
+#   ci-docker builder-init | builder-gc | builder-rm  builder buildx `urusin-ci` (cache <= 3 GB)
+#   ci-docker cleanup                                  hook job-completed: kontainer sisa urusin-ci-pw-*
 #   ci-docker teardown                                 hapus builder + kontainer sisa urusin-ci-* (uninstall)
 #
 # Env URUSIN_CI_* hanya untuk uji (deploy/tests/ci-runner.test.sh) dan DIABAIKAN bila berjalan sebagai root,
@@ -25,6 +26,7 @@ fi
 CI_ROOT="${URUSIN_CI_ROOT:-/opt/urusin-ci}"
 WORK_ROOT="$CI_ROOT/runner/_work"
 BUILDER=urusin-ci
+CACHE_MAX=3gb # anggaran disk agent-vm (lihat README); sama dengan gckeepstorage di buildkitd.toml
 REPO_PREFIX=ghcr.io/bynguts/urusin
 DISK_MAX="${URUSIN_CI_DISK_MAX:-88}"
 CI_USER="${URUSIN_CI_USER:-urusin-ci}"
@@ -166,6 +168,8 @@ cmd_build() {
   digest="$(sed -nE 's/.*"containerimage\.digest": *"(sha256:[0-9a-f]{64})".*/\1/p' "$meta" | head -n1)"
   valid_digest "$digest"
   echo "DIGEST: $digest"
+  # Anggaran disk agent-vm: cache builder dipangkas ke batasnya setelah SETIAP build (hanya builder urusin-ci).
+  builder_gc >&2
 }
 
 cmd_smoke() {
@@ -260,6 +264,9 @@ cmd_builder_init() {
   docker buildx inspect --bootstrap "$BUILDER" | sed -n '1,8p'
 }
 
+# Satu-satunya pembersihan cache yang diizinkan: milik builder urusin-ci (bukan prune global).
+builder_gc() { docker buildx prune --builder "$BUILDER" --force --keep-storage "$CACHE_MAX" | tail -n1; }
+
 case "${1:-}" in
   pw) [ $# -eq 4 ] || die "pemakaian: pw <e2e|perf> <workspace> <sha40>"; cmd_pw "$2" "$3" "$4" ;;
   build) [ $# -eq 4 ] || die "pemakaian: build <nama> <sha40> <workspace>"; cmd_build "$2" "$3" "$4" ;;
@@ -267,12 +274,18 @@ case "${1:-}" in
   sbom) [ $# -eq 3 ] || die "pemakaian: sbom <nama> <digest>"; cmd_sbom "$2" "$3" ;;
   alias) [ $# -eq 3 ] || die "pemakaian: alias <sha40> <tag>"; cmd_alias "$2" "$3" ;;
   builder-init) cmd_builder_init ;;
-  # Satu-satunya pembersihan cache yang diizinkan: milik builder urusin-ci (bukan prune global).
-  builder-gc) docker buildx prune --builder "$BUILDER" --force --keep-storage 8gb ;;
+  builder-gc) builder_gc ;;
+  # Hook job-completed: kontainer sisa milik runner (urusin-ci-pw-*) dan DOCKER_CONFIG temp lama. Builder
+  # buildkit (buildx_buildkit_urusin-ci0) tidak cocok pola ini dan tidak disentuh.
+  cleanup)
+    docker ps -aq --filter 'name=^urusin-ci-pw-' | xargs -r docker rm -f >/dev/null
+    find /tmp -maxdepth 1 -name 'urusin-ci-docker.*' -type d ! -path "$DOCKER_CONFIG" -mmin +1 -exec rm -rf {} + 2>/dev/null || true
+    echo "ci-docker: cleanup selesai"
+    ;;
   builder-rm) docker buildx rm "$BUILDER" ;;
   teardown)
     docker ps -aq --filter 'name=^urusin-ci-' | xargs -r docker rm -f >/dev/null
     docker buildx rm "$BUILDER" 2>/dev/null || true
     ;;
-  *) die "subperintah: pw|build|smoke|sbom|alias|builder-init|builder-gc|builder-rm|teardown" ;;
+  *) die "subperintah: pw|build|smoke|sbom|alias|builder-init|builder-gc|builder-rm|cleanup|teardown" ;;
 esac

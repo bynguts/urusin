@@ -1,9 +1,11 @@
 # Runner GitHub Actions self-hosted Urusin (CADANGAN bila menit GitHub habis). Lihat deploy/ci-runner/README.md.
 # agent-vm: 2 vCPU, 11 GB RAM, dipakai bersama proxy :20128, situs Caddy, kontainer lain, Xvfb :99.
 # Batas di sini berlaku untuk proses runner + langkah job non-Docker (pnpm build/test). Kontainer yang dibuat
-# lewat ci-docker berada di luar cgroup ini; ci-docker membatasinya sendiri (--cpus 1 --memory 4g ...).
+# lewat ci-docker berada di luar cgroup ini; ci-docker membatasinya sendiri (--cpus 1.5 --cpu-shares 256 ...).
+# Runner persisten (didaftarkan sekali dengan registration token sekali pakai); di box hanya ada kredensial
+# runner itu sendiri (0600). Tidak ada PAT di box.
 [Unit]
-Description=Urusin GitHub Actions runner (ephemeral JIT, label urusin-self)
+Description=Urusin GitHub Actions runner (label urusin-self)
 After=network-online.target docker.service
 Wants=network-online.target
 StartLimitIntervalSec=0
@@ -12,15 +14,18 @@ StartLimitIntervalSec=0
 Type=simple
 User=urusin-ci
 Group=urusin-ci
+UMask=0077
 WorkingDirectory=/opt/urusin-ci/runner
 ExecStartPre=+/opt/urusin-ci/bin/runner-prestart
-ExecStart=/opt/urusin-ci/bin/runner-start
+ExecStart=/opt/urusin-ci/runner/run.sh
 Restart=always
 RestartSec=60
-RuntimeDirectory=urusin-ci
-RuntimeDirectoryMode=0700
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutStopSec=60
 Environment=DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 Environment=ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/urusin-ci/bin/job-started
+Environment=ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/urusin-ci/bin/job-completed
 Environment=RUNNER_TOOL_CACHE=/opt/urusin-ci/runner/_tool
 # Rumah user (/opt/urusin-ci) read-only di bawah ProtectSystem=strict; cache pnpm/npm/setup-pnpm ke sini.
 Environment=HOME=/opt/urusin-ci/runner/_home

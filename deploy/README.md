@@ -15,9 +15,9 @@ Berkas: `compose.prod.yml`, `Caddyfile.urusin.primary` (+ `.fallback`), `hardeni
 > **Runner CI self-hosted (`ci-runner/`): cadangan bila menit GitHub Actions habis, TIDAK terpasang.**
 > Bila pernah dipasang, **WAJIB dicopot sebelum repo dibuat Public** (submission, tenggat 2026-11-14): di repo
 > publik PR dari fork bisa menjalankan kode di runner self-hosted, yaitu di agent-vm. Repo publik mendapat menit
-> GitHub gratis, jadi runner tidak dibutuhkan lagi. Urutan: `sudo deploy/ci-runner/uninstall.sh` →
+> GitHub gratis, jadi runner tidak dibutuhkan lagi. Urutan: `uninstall.sh` (remove-token lewat stdin) →
 > `gh variable delete URUSIN_RUNNER --repo bynguts/urusin` → `gh api repos/bynguts/urusin/actions/runners --jq .total_count`
-> = 0 → cabut PAT admin → baru ubah visibilitas. Detail, batas sumber daya, dan keputusan sudoers vs grup docker:
+> = 0 → rotasi token admin lokal (tidak pernah ada PAT di box) → baru ubah visibilitas. Detail, batas sumber daya, dan keputusan sudoers vs grup docker:
 > [`ci-runner/README.md`](ci-runner/README.md).
 
 ## Instalasi pertama

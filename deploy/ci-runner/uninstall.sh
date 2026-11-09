@@ -2,8 +2,12 @@
 # Copot runner self-hosted Urusin sepenuhnya. WAJIB sebelum repo dibuat Public (lihat README.md): di repo
 # publik, PR dari fork bisa menjalankan kode di runner self-hosted = di agent-vm.
 #
-#   sudo deploy/ci-runner/uninstall.sh            # copot (aman diulang)
-#   sudo deploy/ci-runner/uninstall.sh --dry-run  # cetak rencana
+#   sudo deploy/ci-runner/uninstall.sh < remove-token   # copot (aman diulang)
+#   sudo deploy/ci-runner/uninstall.sh --dry-run        # cetak rencana
+#
+# remove-token sekali pakai dibuat di luar box, hanya lewat stdin:
+#   gh api -X POST repos/bynguts/urusin/actions/runners/remove-token --jq .token
+# Tanpa token, pendaftaran di GitHub dihapus manual: gh api -X DELETE repos/bynguts/urusin/actions/runners/<id>
 #
 # Menghapus HANYA milik Urusin CI: unit, sudoers, builder buildx `urusin-ci`, kontainer urusin-ci-*,
 # user urusin-ci, /opt/urusin-ci, dan pendaftaran runner berlabel urusin-self di GitHub.
@@ -27,20 +31,21 @@ if [ -f "$UNIT" ]; then
   run systemctl daemon-reload
 fi
 
-# 2. Hapus pendaftaran runner berlabel urusin-self di GitHub (runner JIT idle tetap terdaftar sampai dihapus).
-tok="$CI_ROOT/etc/gh-admin-token"
-if [ -s "$tok" ]; then
-  api() {
-    curl -sS --fail-with-body --max-time 30 -X "$1" \
-      -H @<(printf 'Authorization: Bearer %s\n' "$(<"$tok")") -H 'Accept: application/vnd.github+json' \
-      -H 'X-GitHub-Api-Version: 2022-11-28' "https://api.github.com/repos/$REPO/actions/runners$2"
-  }
-  ids="$(api GET '?per_page=100' | jq -r --arg l "$LABEL" '.runners[] | select(any(.labels[]; .name == $l)) | .id')" || ids=""
-  for id in $ids; do
-    if [ "$DRY" = 1 ]; then echo "+ DELETE runner $id"; else api DELETE "/$id" >/dev/null && echo "uninstall: runner $id dihapus dari GitHub"; fi
-  done
-else
-  echo "uninstall: PERINGATAN: token admin tidak ada; cek manual: gh api repos/$REPO/actions/runners"
+# 2. Cabut pendaftaran runner di GitHub (config.sh remove) dengan remove-token dari stdin; token lewat env.
+if [ -f "$CI_ROOT/runner/.runner" ]; then
+  RM_TOKEN=""
+  [ "$DRY" = 1 ] || { IFS= read -r RM_TOKEN || true; }
+  if [ "$DRY" = 1 ]; then
+    echo "+ config.sh remove (remove-token dari stdin)"
+  elif [ -n "$RM_TOKEN" ]; then
+    # shellcheck disable=SC2016 # $0 diekspansi oleh bash -c
+    ACTIONS_RUNNER_INPUT_TOKEN="$RM_TOKEN" HOME="$CI_ROOT/runner/_home" \
+      setpriv --reuid="$CI_USER" --regid="$CI_USER" --init-groups bash -c 'cd "$0" && ./config.sh remove' "$CI_ROOT/runner" ||
+      echo "uninstall: PERINGATAN: config.sh remove gagal; hapus manual: gh api repos/$REPO/actions/runners (label $LABEL)"
+    unset RM_TOKEN
+  else
+    echo "uninstall: PERINGATAN: tanpa remove-token; hapus manual: gh api repos/$REPO/actions/runners (label $LABEL)"
+  fi
 fi
 
 # 3. Builder buildx urusin-ci (beserta cache-nya) dan kontainer sisa urusin-ci-*.
@@ -58,5 +63,5 @@ cat <<EOF
 uninstall: selesai. Lanjutkan di GitHub:
   gh variable delete URUSIN_RUNNER --repo $REPO      # job kembali ke ubuntu-latest
   gh api repos/$REPO/actions/runners --jq '.total_count'   # harus 0
-  Cabut fine-grained PAT admin di github.com/settings/personal-access-tokens.
+  (Tidak ada PAT di box: runner hanya memegang kredensial runner-nya sendiri, ikut terhapus bersama /opt/urusin-ci.)
 EOF

@@ -3,10 +3,10 @@
 # `ci-docker builder-rm`. Tidak pernah prune global, tidak pernah daemon.json.
 [worker.oci]
   gc = true
-  gckeepstorage = 8000000000 # ~8 GB
+  gckeepstorage = 3000000000 # ~3 GB (anggaran disk agent-vm)
 
   [[worker.oci.gcpolicy]]
-    keepBytes = 8000000000
+    keepBytes = 3000000000
     keepDuration = 604800 # 7 hari
     all = true
 
