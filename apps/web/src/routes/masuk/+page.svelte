@@ -109,7 +109,7 @@
           inputmode="email"
           autocomplete="email"
           required
-          value={form?.email ?? data.ulang?.email ?? ''}
+          defaultValue={form?.email ?? data.ulang?.email ?? ''}
           class="h-14 w-full rounded-2xl border border-line-2 bg-surface pr-4 pl-12 text-base text-ink"
         />
       </div>

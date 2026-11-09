@@ -586,3 +586,33 @@ test('#49 zona bahaya di Pengaturan: keluar dari semua perangkat, lalu hapus aku
   expect(hitung('SELECT COUNT(*) n FROM users WHERE email = ?', email)).toBe(0);
   await tanpaJs.close();
 });
+
+test('isian sebelum hidrasi tidak terhapus (HP lambat): email tetap, form tetap terkirim', async ({
+  page,
+  context,
+}) => {
+  await pakaiIp(context);
+  // Tahan potongan JS halaman agar warga (dan Playwright) mengetik SEBELUM hidrasi, lalu lepaskan.
+  const email = emailBaru('hidrasi');
+  for (const path of ['/daftar', '/lupa-sandi', '/masuk'] as const) {
+    let lepas = () => {};
+    const ditahan = new Promise<void>((r) => (lepas = r));
+    await page.route('**/_app/immutable/nodes/**', async (route) => {
+      await ditahan;
+      await route.continue();
+    });
+    try {
+      await page.goto(path);
+      await page.getByLabel('Email').fill(email);
+    } finally {
+      lepas(); // selalu dilepas: permintaan tertahan tidak boleh menggantung penutupan konteks
+    }
+    await page.waitForLoadState('networkidle');
+    await page.unrouteAll();
+    await expect(page.getByLabel('Email')).toHaveValue(email);
+  }
+  // Setelah hidrasi form masuk (use:enhance) terkirim dengan email itu dan menampilkan galat.
+  await page.getByLabel('Kata sandi').fill(SANDI2);
+  await page.getByRole('button', { name: 'Masuk', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveAttribute('data-kode', 'KREDENSIAL_SALAH');
+});

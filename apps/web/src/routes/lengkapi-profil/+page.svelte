@@ -51,7 +51,7 @@
           autocomplete="name"
           required
           maxlength="200"
-          value={data.namaLengkap ?? ''}
+          defaultValue={data.namaLengkap ?? ''}
           aria-describedby="nama-petunjuk"
           class="h-14 w-full rounded-2xl border border-line-2 bg-surface pr-4 pl-12 text-base text-ink"
         />
