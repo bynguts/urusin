@@ -120,7 +120,9 @@
         {/if}
       </div>
       <p class="text-sm text-body">
-        Dengan mendaftar, Anda setuju dengan Syarat layanan dan Kebijakan privasi Urusin.
+        Dengan mendaftar, Anda setuju dengan Syarat layanan dan
+        <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- rute /privasi dibuat agen UI dari frame Rafi (F6RSq); resolve() baru bisa dipakai setelah rute ada -->
+        <a href="/privasi" class="font-semibold text-ink underline">Kebijakan privasi</a> Urusin.
       </p>
       <button
         type="submit"

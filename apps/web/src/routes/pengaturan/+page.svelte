@@ -326,7 +326,9 @@
       <div>
         <h2 id="h-privasi" class="text-[1.375rem] tracking-[-0.02em] text-ink">Privasi & data</h2>
         <p class="mt-1 text-base text-body">
-          Daftar urusan, pesan yang Anda ketik, dan pengaturan ini disimpan di perangkat ini saja.
+          Daftar urusan dan pengaturan ini disimpan di perangkat ini. Data Diri dan dokumen disimpan
+          terenkripsi di server: terhapus 72 jam setelah dibuat bila tanpa akun, atau ikut akun Anda sampai
+          Anda menghapusnya.
         </p>
       </div>
       <div
