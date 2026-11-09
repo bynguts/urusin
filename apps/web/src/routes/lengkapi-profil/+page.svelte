@@ -15,8 +15,8 @@
 <svelte:head><title>Lengkapi profil · Urusin</title></svelte:head>
 
 <KerangkaAuth judul={sapaan} sub="Satu pertanyaan singkat supaya formulir terisi dengan nama yang benar.">
-  <h1 class="text-[1.875rem] tracking-[-0.03em] text-ink">Lengkapi profil</h1>
-  <p class="mt-2 text-base text-body">Bisa diubah kapan saja di Dokumen › Data diri.</p>
+  <h1 class="text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Lengkapi profil</h1>
+  <p class="mt-2 text-[1.0625rem] leading-[25px] text-body">Bisa diubah kapan saja di Dokumen › Data diri.</p>
   {#if galat}
     <p
       role="alert"
@@ -53,7 +53,7 @@
           maxlength="200"
           value={data.namaLengkap ?? ''}
           aria-describedby="nama-petunjuk"
-          class="h-14 w-full rounded-2xl border border-line-2 bg-surface pr-4 pl-12 text-base text-ink"
+          class="h-14 w-full rounded-[14px] border border-line-2 bg-surface pr-4 pl-12 text-[1.125rem] text-ink"
         />
       </div>
       <p id="nama-petunjuk" class="text-sm text-muted">Tulis persis seperti di KTP.</p>
@@ -69,7 +69,7 @@
         inputmode="numeric"
         autocomplete="tel"
         aria-describedby="hp-petunjuk"
-        class="h-14 w-full rounded-2xl border border-line-2 bg-surface px-4 text-base text-ink"
+        class="h-14 w-full rounded-[14px] border border-line-2 bg-surface px-4 text-[1.125rem] text-ink"
       />
       <p id="hp-petunjuk" class="text-sm text-muted">Dipakai untuk mengisi formulir yang meminta nomor HP.</p>
     </div>

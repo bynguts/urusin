@@ -30,11 +30,11 @@
 <svelte:head><title>Masuk · Urusin</title></svelte:head>
 
 <KerangkaAuth
-  judul="Urusan administrasi, kini ada yang menemani"
+  judul="Urusan administrasi,&#10;kini ada yang menemani"
   sub="Lanjutkan urusan keluarga Anda dari HP, laptop, atau komputer mana saja."
 >
-  <h1 class="text-[1.875rem] tracking-[-0.03em] text-ink">Masuk ke Urusin</h1>
-  <p class="mt-2 text-base text-body">Lanjutkan urusan keluarga Anda.</p>
+  <h1 class="text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Masuk ke Urusin</h1>
+  <p class="mt-2 text-[1.0625rem] leading-[25px] text-body">Lanjutkan urusan keluarga Anda.</p>
 
   {#if galat}
     <div
@@ -110,7 +110,7 @@
           autocomplete="email"
           required
           value={form?.email ?? data.ulang?.email ?? ''}
-          class="h-14 w-full rounded-2xl border border-line-2 bg-surface pr-4 pl-12 text-base text-ink"
+          class="h-14 w-full rounded-[14px] border border-line-2 bg-surface pr-4 pl-12 text-[1.125rem] text-ink"
         />
       </div>
     </div>
