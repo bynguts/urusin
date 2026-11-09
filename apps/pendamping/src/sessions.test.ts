@@ -335,6 +335,41 @@ describe('SessionManager', () => {
     expect(run.calls).toContain('destroy');
   });
 
+  it('pengajuan terkirim (tutup): langsung selesai berhasil + bukti, tanpa siaga/takeover; peramban dihancurkan', async () => {
+    const h = harness();
+    const s = await h.manager.create(input('u1'));
+    await h.flush();
+    const run = h.runs[0]!;
+    const v = h.viewer();
+    await h.manager.attach(s.sesiId, v);
+    v.sent.length = 0;
+    run.init.hooks.langkahSelesai('Pengajuan terkirim.', { nomor: 'FX-REG-0002' }, true);
+    await h.flush();
+    expect(h.manager.status(owner('u1'))).toMatchObject({
+      status: 'selesai',
+      hasil: 'berhasil',
+      mode: 'done',
+      bukti: { nomor: 'FX-REG-0002' },
+    });
+    // Urutan ke perangkat: event selesai (dengan nomor) lalu mode done; tidak pernah takeover/siaga.
+    expect(v.sent[0]).toEqual({
+      type: 'event',
+      event: {
+        jenis: 'selesai',
+        hasil: 'berhasil',
+        pesan: 'Pengajuan terkirim.',
+        bukti: { nomor: 'FX-REG-0002' },
+      },
+    });
+    expect(v.sent).toContainEqual({ type: 'mode', mode: 'done', pesan: 'Pengajuan terkirim.' });
+    expect(v.sent).not.toContainEqual(expect.objectContaining({ type: 'mode', mode: 'takeover' }));
+    expect(JSON.stringify(v.sent)).not.toContain('"siaga"');
+    expect(run.calls).toContain('destroy');
+    // Laporan kedua (mis. balapan) diabaikan.
+    run.init.hooks.langkahSelesai('lagi', undefined, true);
+    expect(h.manager.status(owner('u1')).pesan).toBe('Pengajuan terkirim.');
+  });
+
   it('siaga di situs lain: sesi lama ditutup berhasil, sesi baru dibuat; bukan siaga = SESI_SUDAH_ADA', async () => {
     const h = harness();
     await h.manager.create(input('u1', { flowId: 'cek_status', params: {} }));

@@ -44,10 +44,11 @@ export type Hooks = {
     galat?: { kode: string; net?: string | undefined },
   ): void;
   /**
-   * Alur (execution) selesai berhasil: sesi `siaga`, peramban tetap hidup (warga membaca hasil, langkah
-   * berikutnya di urusan yang sama tanpa login ulang) sampai TTL/idle/diakhiri.
+   * Alur (execution) selesai berhasil. Baca-saja: sesi `siaga`, peramban tetap hidup (warga membaca hasil,
+   * langkah berikutnya di urusan yang sama tanpa login ulang) sampai TTL/idle/diakhiri. `tutup` (pengajuan
+   * terkirim): sesi langsung `selesai` berhasil dengan buktinya, peramban dihancurkan.
    */
-  langkahSelesai(pesan: string, bukti?: PendampingBukti): void;
+  langkahSelesai(pesan: string, bukti?: PendampingBukti, tutup?: boolean): void;
   /**
    * Langkah unggah menunggu berkas yang belum ada di akun (giliran `berkas_kurang`); undefined = tidak lagi.
    * Selama itu web boleh mengirim berkas itu saja lewat jalur isi server (persetujuan baru).
@@ -625,7 +626,12 @@ export class SessionManager {
       event: (e) => this.emit(s, e),
       activity: () => void (s.lastActivity = this.now()),
       ended: (status, hasil, pesan, galat) => void this.end(s, status, hasil, pesan, galat),
-      langkahSelesai: (pesan, bukti) => this.siaga(s, pesan, bukti),
+      langkahSelesai: (pesan, bukti, tutup) => {
+        if (!tutup) return this.siaga(s, pesan, bukti);
+        if (TERMINAL.has(s.status)) return;
+        s.bukti = bukti;
+        void this.end(s, 'selesai', 'berhasil', pesan);
+      },
       berkasKurang: (nama) => void (s.berkasDitunggu = nama),
     };
     try {
@@ -697,9 +703,17 @@ export class SessionManager {
     const viewer = s.viewer;
     const kode = galat && /^[A-Z][A-Z0-9_]{1,63}$/.test(galat.kode) ? galat.kode : undefined;
     const net = galat?.net && /^net::ERR_[A-Z0-9_]{1,64}$/.test(galat.net) ? galat.net : undefined;
+    const bukti = hasil === 'berhasil' ? s.bukti : undefined;
     viewer?.send({
       type: 'event',
-      event: { jenis: 'selesai', hasil, pesan, ...(kode ? { kode } : {}), ...(net ? { net } : {}) },
+      event: {
+        jenis: 'selesai',
+        hasil,
+        pesan,
+        ...(bukti ? { bukti } : {}),
+        ...(kode ? { kode } : {}),
+        ...(net ? { net } : {}),
+      },
     });
     viewer?.send({ type: 'mode', mode: 'done', pesan });
     viewer?.send({ type: 'status', sesi: this.view(s) });

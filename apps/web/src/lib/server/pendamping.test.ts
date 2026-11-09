@@ -309,6 +309,44 @@ describe('broker Browser Pendamping', () => {
     expect(pendampingConfig({})).toBeNull();
   });
 
+  it('pengajuan terkirim: TERKIRIM (langkah 5) + nomor permohonan tersimpan di urusan, sekali saja', async () => {
+    const u = urusanDenganEksekusi();
+    let v = u.version;
+    for (const st of [
+      'MEMAHAMI',
+      'RENCANA_DIUSULKAN',
+      'RENCANA_DISETUJUI',
+      'MENYIAPKAN_BERKAS',
+      'BERKAS_SIAP',
+      'MENGISI',
+      'MENUNGGU_KONFIRMASI',
+      'MENGUNGGAH',
+      'MENUNGGU_SUBMIT_WARGA',
+    ] as const)
+      v = rt.store.transition(u.id, v, st).version;
+    reply = () => ({
+      status: 200,
+      body: sesi({
+        status: 'selesai',
+        mode: 'done',
+        hasil: 'berhasil',
+        antrean: null,
+        bukti: { nomor: 'FX-REG-0002', status: 'Baru diajukan (data uji)' },
+      }),
+    });
+    await status(ev(req('GET'), u.id));
+    await status(ev(req('GET'), u.id));
+    expect(rt.store.getUrusanOrThrow(u.id)).toMatchObject({
+      state: 'TERKIRIM',
+      nomorPermohonan: 'FX-REG-0002',
+    });
+    const states = rt.store
+      .eventsAfter(u.id)
+      .filter((e) => e.type === 'state')
+      .map((e) => (e.payload as { state: string }).state);
+    expect(states.filter((x) => x === 'TERKIRIM')).toHaveLength(1);
+  });
+
   it('status siaga: hasil execution dicatat sekali + bukti (nomor/status) sebagai progres yang diredaksi', async () => {
     const u = urusanDenganEksekusi();
     reply = () => ({
@@ -369,7 +407,14 @@ describe('broker Browser Pendamping', () => {
     });
     reply = () => ({
       status: 200,
-      body: sesi({ executionId: 'x_pkb', status: 'siaga', mode: 'ai', hasil: 'berhasil', antrean: null }),
+      body: sesi({
+        executionId: 'x_pkb',
+        status: 'siaga',
+        mode: 'ai',
+        hasil: 'berhasil',
+        antrean: null,
+        bukti: { nomor: 'PKB-1' },
+      }),
     });
     await status(ev(req('GET'), u.id));
     await status(ev(req('GET'), u.id));
@@ -381,6 +426,8 @@ describe('broker Browser Pendamping', () => {
       labels.filter((l) => l.includes('selesai membuka hasilnya. Tidak ada yang dikirim.')),
     ).toHaveLength(1);
     expect(rt.store.getUrusanOrThrow(u.id).state).toBe('BERKAS_SIAP');
+    // Baca-saja tidak mengirim apa pun: tidak ada nomor permohonan.
+    expect(rt.store.getUrusanOrThrow(u.id).nomorPermohonan).toBeNull();
 
     // Origin di permintaan yang bukan domain resmi ditolak sebelum memanggil worker.
     rt.publish(u.id, { ...pkb, executionId: 'x_palsu', origin: 'https://contoh.example.com' });

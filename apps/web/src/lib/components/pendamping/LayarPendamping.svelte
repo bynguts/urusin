@@ -49,7 +49,7 @@
     login: 'Masuk akun di situs resmi',
     masuk_akun: 'Masuk akun di situs resmi',
     verifikasi_situs: 'Selesaikan pemeriksaan keamanan situs',
-    final: 'Periksa isian, lalu tekan Kirim pengajuan',
+    final: 'Periksa isian, lalu kirim sendiri',
     periksa: 'Periksa halaman ini',
     isi_sendiri: 'Isi kolom ini sendiri',
     berkas_kurang: 'Dokumen belum ada',
@@ -58,13 +58,29 @@
     login: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
     masuk_akun: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
     verifikasi_situs: 'Situs memeriksa keamanan. Centang kotaknya sendiri.',
-    final: 'AI dikunci agar tidak bisa menekan Kirim.',
+    final: 'AI dikunci agar tidak bisa mengirim.',
     periksa: 'AI menunggu sampai Anda selesai.',
     isi_sendiri: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
     berkas_kurang: 'Lanjutkan meminta izin Anda untuk mengunggah dokumen itu saja.',
   };
+  // Giliran kirim: nama tombol dibaca dari halaman (mis. "Selesai"), bukan nama karangan Urusin.
+  const tombolKirim = $derived(data.giliran?.alasan === 'final' ? data.giliran.tombol : undefined);
+  const judulGiliran = $derived(
+    tombolKirim
+      ? `Periksa isian, lalu tekan ${tombolKirim}`
+      : ((data.giliran && JUDUL_GILIRAN[data.giliran.alasan]) ?? 'Giliran Anda'),
+  );
   const isiGiliran = $derived(
-    data.giliran ? [data.giliran.pesan, CATATAN_GILIRAN[data.giliran.alasan]].filter(Boolean).join(' ') : '',
+    data.giliran
+      ? [
+          data.giliran.pesan,
+          tombolKirim
+            ? `AI dikunci agar tidak bisa menekan ${tombolKirim}.`
+            : CATATAN_GILIRAN[data.giliran.alasan],
+        ]
+          .filter(Boolean)
+          .join(' ')
+      : '',
   );
 
   function ketuk() {
@@ -113,7 +129,7 @@
       </span>
       <div class="flex min-w-0 flex-1 flex-col gap-1.5">
         <p class="text-[17px] leading-normal font-bold text-ink">
-          {JUDUL_GILIRAN[data.giliran.alasan] ?? 'Giliran Anda'}
+          {judulGiliran}
         </p>
         {#if isiGiliran}<p class="text-[15px] leading-[23px] text-muted">{isiGiliran}</p>{/if}
         {#if data.giliran.alasan === 'isi_sendiri' || data.giliran.alasan === 'berkas_kurang'}

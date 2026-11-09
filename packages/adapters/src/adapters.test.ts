@@ -46,6 +46,20 @@ describe('adapter bawaan', () => {
         message: 'Giliran Anda: ketik kata sandi dan kode CAPTCHA, lalu tekan Masuk.',
       },
     });
+    // Giliran kirim menyebut tombol yang ada di halaman ("Selesai"); tanpa tombol itu teksnya netral.
+    expect(steps[finalGateIndex(steps)]).toMatchObject({
+      message: 'Semua berkas terunggah. Periksa, lalu tekan sendiri tombol kirim yang disorot.',
+      messageIf: {
+        check: {
+          kind: 'elementExists',
+          target: [
+            { by: 'role', value: 'link', name: 'Selesai' },
+            { by: 'role', value: 'button', name: 'Selesai' },
+          ],
+        },
+        message: 'Semua berkas terunggah. Periksa, lalu tekan Selesai sendiri untuk mengirim.',
+      },
+    });
     // Tombol Masuk dan Selesai adalah elemen khusus warga.
     expect(humanOnlyTargets(steps).map((t) => t[0])).toEqual([css('#loginSubmit'), css('#btnSelesai')]);
     expect(JSON.stringify(steps)).not.toMatch(/\d{10,}/);

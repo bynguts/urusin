@@ -44,6 +44,7 @@ describe('migrasi berversi', () => {
         'tombstones',
         'daily_usage',
         'execution_results',
+        'nomor_permohonan',
       ]),
     );
   });

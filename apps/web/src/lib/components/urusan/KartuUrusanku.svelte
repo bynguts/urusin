@@ -27,7 +27,11 @@
     DIPANTAU: 'Petugas instansi sedang memeriksa',
   };
   const keterangan = $derived(
-    urusan.ringkasan ? (KETERANGAN[urusan.ringkasan.state] ?? info.label) : 'Status belum termuat',
+    urusan.ringkasan
+      ? urusan.ringkasan.nomorPermohonan
+        ? `Nomor permohonan ${urusan.ringkasan.nomorPermohonan}`
+        : (KETERANGAN[urusan.ringkasan.state] ?? info.label)
+      : 'Status belum termuat',
   );
   const kiri = $derived(
     selesai

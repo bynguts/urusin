@@ -7,8 +7,10 @@ import { actions as beranda } from '../../routes/+page.server';
 import { load as muatJejak } from '../../routes/jejak/[id]/+page.server';
 import { load as muatPeristiwa } from '../../routes/peristiwa/[slug]/+page.server';
 import { load as muatUrusan } from '../../routes/urusan/[id]/+page.server';
+import LayarPendamping from '../components/pendamping/LayarPendamping.svelte';
 import Chip from '../components/ui/Chip.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
+import { dataAwal, type DataPendamping } from '../pendamping/sesi.svelte';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
 
 let rt: Runtime;
@@ -136,5 +138,70 @@ describe('render server komponen', () => {
     expect(body).toContain('Langkah 4 dari 5');
     expect(body).toContain('Periksa dan kirim');
     expect(body).toContain(`/urusan/${id}`);
+  });
+
+  it('kartu Urusanku: pengajuan terkirim menampilkan nomor permohonan dan langkah 5', () => {
+    const id = `u_${'d'.repeat(32)}`;
+    const { body } = render(KartuUrusanku, {
+      props: {
+        urusan: {
+          id,
+          judul: 'Akta kelahiran',
+          peristiwa: 'kelahiran',
+          dibuatPada: '2026-11-01T00:00:00.000Z',
+          ringkasan: {
+            id,
+            state: 'TERKIRIM',
+            dibuatPada: '2026-11-01T00:00:00.000Z',
+            diubahPada: '2026-11-03T00:00:00.000Z',
+            nomorPermohonan: 'FX-REG-0002',
+          } as never,
+        },
+      },
+    });
+    expect(body).toContain('Nomor permohonan FX-REG-0002');
+    expect(body).toContain('Langkah 5 dari 5');
+  });
+
+  it('giliran kirim menyebut tombol yang dibaca dari halaman; tanpa itu tidak mengarang nama tombol', () => {
+    const giliran = (tombol?: string): DataPendamping => ({
+      ...dataAwal(),
+      keadaan: 'giliran',
+      mode: 'takeover',
+      giliran: {
+        jenis: 'giliran_anda',
+        alasan: 'final',
+        pesan: 'Semua berkas terunggah. Periksa, lalu tekan Selesai sendiri untuk mengirim.',
+        ...(tombol ? { tombol } : {}),
+      },
+    });
+    const props = (data: DataPendamping) => ({
+      data,
+      situs: 'https://telunjuksakti.wonogirikab.go.id',
+      onambilalih: () => {},
+      onkembalikan: () => {},
+      onhentikan: () => {},
+      onmulailagi: () => {},
+      onpanduan: () => {},
+    });
+    const dari = render(LayarPendamping, { props: props(giliran('Selesai')) }).body;
+    expect(dari).toContain('Periksa isian, lalu tekan Selesai');
+    expect(dari).toContain('AI dikunci agar tidak bisa menekan Selesai.');
+    expect(dari).not.toContain('Kirim pengajuan');
+    const tanpa = render(LayarPendamping, { props: props(giliran()) }).body;
+    expect(tanpa).toContain('Periksa isian, lalu kirim sendiri');
+    expect(tanpa).not.toContain('Kirim pengajuan');
+  });
+
+  it('halaman urusan memuat nomor permohonan yang tersimpan (kartu Terkirim setelah sesi ditutup)', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran' });
+    rt.store.catatNomorPermohonan(u.id, 'FX-REG-0002');
+    const d = (await muatUrusan({
+      params: { id: u.id },
+      url: new URL(`http://localhost:3000/urusan/${u.id}`),
+      setHeaders: () => {},
+      cookies: kue(),
+    } as never)) as { urusan: { nomorPermohonan: string | null } };
+    expect(d.urusan.nomorPermohonan).toBe('FX-REG-0002');
   });
 });

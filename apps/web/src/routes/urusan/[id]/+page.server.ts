@@ -19,6 +19,13 @@ export const load: PageServerLoad = async ({ params, setHeaders, cookies }) => {
   if (pesanAwal !== null) cookies.delete(PESAN_AWAL_COOKIE, { path: `/urusan/${u.id}` });
   return {
     pesanAwal,
-    urusan: { id: u.id, jenis: u.jenis, kodeKabKota: u.kodeKabKota, state: u.state, dibuatPada: u.createdAt },
+    urusan: {
+      id: u.id,
+      jenis: u.jenis,
+      kodeKabKota: u.kodeKabKota,
+      state: u.state,
+      dibuatPada: u.createdAt,
+      nomorPermohonan: u.nomorPermohonan,
+    },
   };
 };

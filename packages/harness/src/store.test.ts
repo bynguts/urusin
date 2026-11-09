@@ -80,6 +80,18 @@ describe('urusan: transisi + compare-and-swap', () => {
     expect(u1).toMatchObject({ state: 'MEMAHAMI', version: 1 });
   });
 
+  it('nomor permohonan tersimpan di baris urusan; bentuk lain ditolak; version tetap', () => {
+    const s = new HarnessStore(openHarnessDb());
+    const u = s.createUrusan();
+    expect(u.nomorPermohonan).toBeNull();
+    expect(s.catatNomorPermohonan(u.id, 'FX-REG-0002')).toBe(true);
+    expect(s.getUrusan(u.id)).toMatchObject({ nomorPermohonan: 'FX-REG-0002', version: 0 });
+    for (const buruk of ['', ' FX', 'FX<script>', 'x'.repeat(65)])
+      expect(s.catatNomorPermohonan(u.id, buruk)).toBe(false);
+    expect(s.catatNomorPermohonan('u_tidak_ada', 'FX-1')).toBe(false);
+    expect(s.listUrusan([u.id])[0]?.nomorPermohonan).toBe('FX-REG-0002');
+  });
+
   it('transisi ilegal ditolak dan tidak mengubah baris', () => {
     const s = new HarnessStore(openHarnessDb());
     const u = s.createUrusan();
@@ -245,12 +257,14 @@ describe('audit: rantai hash per urusan', () => {
 
   it('hapus urusan menyisakan tombstone saja', () => {
     const { s, u } = seeded();
+    s.catatNomorPermohonan(u.id, 'FX-REG-0002');
     const head = s.chainHead(u.id);
     const t = s.deleteUrusan(u.id);
     expect(t.headHash).toBe(head);
     expect(s.getUrusan(u.id)).toBeUndefined();
     expect(s.db.prepare('SELECT COUNT(*) n FROM events').get()).toEqual({ n: 0 });
     expect(s.db.prepare('SELECT COUNT(*) n FROM tombstones').get()).toEqual({ n: 1 });
+    expect(s.db.prepare('SELECT COUNT(*) n FROM nomor_permohonan').get()).toEqual({ n: 0 });
   });
 });
 

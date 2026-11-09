@@ -14,7 +14,7 @@
     login: 'Masuk akun di situs resmi',
     captcha: 'Selesaikan pemeriksaan keamanan situs',
     profil: 'Lengkapi data diri',
-    final: 'Periksa isian, lalu tekan Kirim pengajuan',
+    final: 'Periksa isian, lalu kirim sendiri',
   };
 </script>
 
@@ -32,7 +32,7 @@
       {#if gate.jenis === 'login' || gate.jenis === 'captcha'}
         <p class="mt-1 text-sm text-muted">Yang Anda ketik tidak dibaca AI dan tidak dicatat.</p>
       {:else if gate.jenis === 'final'}
-        <p class="mt-1 text-sm text-muted">AI dikunci agar tidak bisa menekan Kirim.</p>
+        <p class="mt-1 text-sm text-muted">AI dikunci agar tidak bisa mengirim.</p>
       {/if}
     </div>
   </div>

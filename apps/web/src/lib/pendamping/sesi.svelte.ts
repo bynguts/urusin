@@ -90,6 +90,9 @@ export class SesiPendampingUi {
   data = $state<DataPendamping>(dataAwal());
   private viewer: ViewerPendamping | null = null;
   private lepas: (() => void)[] = [];
+  /** executionId yang hasilnya sudah disinkronkan ke server (GET status mencatat hasil + nomor permohonan). */
+  private tersinkron: string | null = null;
+  private executionId: string | null = null;
 
   constructor(
     private readonly urusanId: string,
@@ -108,6 +111,7 @@ export class SesiPendampingUi {
     inputTeks: () => HTMLTextAreaElement | null,
   ) {
     this.data = { ...dataAwal(), keadaan: 'menyiapkan' };
+    this.executionId = executionId;
     const pabrik = await this.pabrik();
     let res: Response;
     try {
@@ -198,6 +202,8 @@ export class SesiPendampingUi {
   }
 
   terapkanSesi(s: SesiPendamping): void {
+    this.executionId = s.executionId;
+    if (s.hasil && (s.status === 'selesai' || s.status === 'siaga')) void this.sinkronHasil();
     this.data = {
       ...this.data,
       mode: s.mode,
@@ -233,9 +239,27 @@ export class SesiPendampingUi {
           bukti: e.bukti ?? this.data.bukti,
           giliran: null,
         };
+        void this.sinkronHasil();
         return;
       case 'diblokir':
         return;
+    }
+  }
+
+  /**
+   * Laporkan hasil eksekusi ke harness sekali per execution: GET status membuat server membaca status
+   * tepercaya dari worker lalu mencatat hasilnya (berhasil -> TERKIRIM + nomor permohonan). State baru
+   * datang lewat stream urusan; jawaban GET di sini tidak dipakai.
+   */
+  private async sinkronHasil(): Promise<void> {
+    const id = this.executionId;
+    if (!id || this.tersinkron === id) return;
+    this.tersinkron = id;
+    try {
+      const r = await this.ambil(this.dasar);
+      if (!r.ok) this.tersinkron = null;
+    } catch {
+      this.tersinkron = null;
     }
   }
 

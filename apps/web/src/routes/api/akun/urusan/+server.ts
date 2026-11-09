@@ -20,6 +20,7 @@ export const GET: RequestHandler = async ({ locals }) => {
         menunggu: menungguSiapa(u.state),
         dibuatPada: u.createdAt,
         diubahPada: u.updatedAt,
+        ...(u.nomorPermohonan ? { nomorPermohonan: u.nomorPermohonan } : {}),
       })),
     } satisfies DaftarUrusanResponse);
   } catch (e) {
