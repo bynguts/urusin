@@ -4,7 +4,7 @@
   import mark from '#lib/assets/img/app/urusin-mark-48.webp';
   import NavBawah from '#lib/components/shell/NavBawah.svelte';
   import Sidebar from '#lib/components/shell/Sidebar.svelte';
-  import { NAV, rutAuth } from '#lib/components/shell/navigasi.js';
+  import { NAV, rutAuth, rutWeb } from '#lib/components/shell/navigasi.js';
   import Icon from '#lib/components/Icon.svelte';
   import { ambilLokal, ambilPrefs } from '#lib/stores/app.svelte.js';
   import { page } from '$app/state';
@@ -15,10 +15,8 @@
 
   const prefs = ambilPrefs();
   const lokal = ambilLokal();
-  // Halaman publik berdesain landing (/, /privasi) dan rute auth tampil tanpa kerangka aplikasi.
-  const polos = $derived(
-    page.url.pathname === '/' || page.url.pathname === '/privasi' || rutAuth(page.url.pathname),
-  );
+  // Halaman Web publik berdesain landing dan rute auth tampil tanpa kerangka aplikasi.
+  const polos = $derived(rutWeb(page.url.pathname) || rutAuth(page.url.pathname));
   const akun = $derived(page.data.akun as { email: string } | null | undefined);
   let menuBuka = $state(false);
 

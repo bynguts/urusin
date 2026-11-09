@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { menuAktif, rutAuth } from './components/shell/navigasi.js';
+import { menuAktif, rutAuth, rutWeb } from './components/shell/navigasi.js';
 import { periksaBerkas, samarkan, ukuranBerkas } from './akun/klien.js';
 import { labelPlaceholder, petakanIsian } from './pendamping/isi-data.js';
 import { keadaanDariSesi } from './pendamping/sesi.svelte.js';
@@ -54,6 +54,9 @@ describe('navigasi', () => {
     expect(rutAuth('/masuk')).toBe(true);
     expect(rutAuth('/verifikasi-email')).toBe(true);
     expect(rutAuth('/masukan')).toBe(false);
+    expect(rutWeb('/cara-kerja')).toBe(true);
+    expect(rutWeb('/urusan')).toBe(true);
+    expect(rutWeb(`/urusan/u_${'a'.repeat(32)}`)).toBe(false);
     expect(menuAktif('/beranda', '/peristiwa/kelahiran')).toBe(true);
     expect(menuAktif('/beranda', '/urusanku')).toBe(false);
     // App 02–09: halaman satu urusan menyorot urusannya di "Urusan aktif", bukan menu.
