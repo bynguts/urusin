@@ -1,0 +1,7 @@
+# Temuan gitleaks yang sudah diperiksa manusia dan BUKAN rahasia. Satu baris = satu fingerprint
+# (commit:berkas:rule:baris). Riwayat yang sudah di-push tidak ditulis ulang, jadi temuan lama dikecualikan di sini.
+
+# Token dummy smoke test image pendamping di release.yml (PENDAMPING_EDGE_TOKEN/PENDAMPING_INTERNAL_TOKEN
+# berawalan "smoke", hanya untuk boot kontainer sekali pakai tanpa jaringan di CI). Bukan kredensial nyata;
+# commit berikutnya membangkitkan token saat runtime.
+e23d9d987a23629526c4734372b7f62a96e36da4:.github/workflows/release.yml:generic-api-key:96

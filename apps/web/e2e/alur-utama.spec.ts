@@ -6,11 +6,11 @@ for (const lebar of [390, 1440]) {
   test(`landing → peristiwa → urusan di ${lebar}px`, async ({ page }) => {
     await page.setViewportSize({ width: lebar, height: lebar < 600 ? 844 : 960 });
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Teman AI untuk');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Urusan administrasi');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
 
-    // Kartu cerita → rencana langkah dengan sumber resmi
-    await page.getByRole('link', { name: /Mulai cerita.*Baru punya anak/ }).click();
+    // Kartu urusan Kelahiran "Pelajari" → rencana langkah dengan sumber resmi
+    await page.getByRole('link', { name: 'Pelajari' }).first().click();
     await expect(page).toHaveURL(/\/peristiwa\/kelahiran/);
     await expect(page.getByRole('button', { name: 'Mulai urusan ini' })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
