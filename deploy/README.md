@@ -9,7 +9,8 @@ dan `127.0.0.1:4320` (fixtures, opsional). Port terpakai lain di host: 3000, 310
 8765, 20128. VPS dipakai bersama layanan lain: jangan menyentuh kontainer/layanan di luar proyek `urusin`.
 
 Berkas: `compose.prod.yml`, `Caddyfile.urusin.primary` (+ `.fallback`), `hardening.md`, `deploy.sh`, `backup.sh`, `restore.sh`, `disk-alert.sh`,
-`tests/` (harness tanpa Docker).
+`tests/` (harness tanpa Docker). Layout datar (agent-vm) juga butuh `scripts/db-backup.mjs` dan `scripts/db-restore.mjs`
+(salinan `apps/web/scripts/`), dibaca `backup.sh`/`restore.sh`.
 
 ## Instalasi pertama
 
@@ -25,7 +26,7 @@ cd /opt/urusin/deploy
 # 2. Konfigurasi. File ini berisi rahasia: jangan di-commit.
 cp ../.env.example .env
 chmod 600 .env      # deploy.sh menolak .env/.restic-password yang bisa diakses group/others
-$EDITOR .env        # isi DOMAIN, SESSION_SECRET, LLM_*, VAPID_*, TURNSTILE_*
+$EDITOR .env        # isi DOMAIN, SESSION_SECRET, URUSIN_PII_KEY, LLM_*, VAPID_*, TURNSTILE_*, GOOGLE_*, RESEND_*
 ```
 
 `.env` di `/opt/urusin/deploy/.env` dibaca compose (`env_file`) dan oleh `deploy.sh`. Izin wajib (diperiksa
@@ -127,6 +128,43 @@ Firewall tidak diubah; sebagai gantinya:
   jadi entri terakhir = IP klien asli. Diverifikasi dengan Caddy 2 sungguhan: permintaan dengan
   `X-Forwarded-For: 6.6.6.6` sampai ke upstream hanya dengan IP peer asli. Jangan menambah
   `trusted_proxies` di Caddy kecuali ada CDN di depan (itu mengubah `XFF_DEPTH`).
+
+- Akun warga (ADR 0028). Selain `URUSIN_PII_KEY` (wajib, lihat bagian kunci vault di bawah), semuanya opsional:
+  app tetap boot tanpa kunci-kunci ini.
+
+  | Kunci                                        | Isi dan perilaku                                                                                                                                                                                                         |
+  | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | `URUSIN_EMAIL_MODE`                          | `resend` atau `log`. Kosong = `resend` bila `RESEND_API_KEY` terisi, selain itu `log`. `log` di produksi menahan email (tanpa tautan di log) dan verifikasi tidak memblokir. `resend` tanpa kunci = server menolak boot. |
+  | `RESEND_API_KEY`, `URUSIN_EMAIL_FROM`        | Kunci Resend dan pengirim (SPF/DKIM Resend di DNS domain).                                                                                                                                                               |
+  | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`   | Diisi berdua atau dikosongkan berdua (selain itu server menolak boot). Redirect URI `https://<host app>/auth/google/callback` untuk **kedua** set host di `hosts.json`.                                                  |
+  | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile untuk "Masuk sebagai juri" dan login setelah 3 kegagalan. Aktif bila `TURNSTILE_SECRET_KEY` terisi (bukan placeholder `ganti-dengan-…`); site key dipakai widget.                                   |
+  | `URUSIN_PII_KEY_PREV`                        | Hanya selama rotasi kunci vault (lihat di bawah); hapus setelah `kek:rotate`.                                                                                                                                            |
+
+  Tanpa Turnstile, tombol "Masuk sebagai juri" **tetap jalan** di produksi supaya juri tidak pernah terkunci:
+  batas 3 salinan per IP per hari (`URUSIN_DEMO_PER_IP_HARI`), 200 salinan aktif (`URUSIN_DEMO_AKTIF_MAKS`),
+  umur 24 jam, dan batas vault tamu/demo tetap berlaku. Server mencatat `[ALERT] Turnstile nonaktif di produksi`
+  saat start sebagai pengingat. Dengan Turnstile, token wajib.
+  `URUSIN_OIDC_FIXTURE`/`URUSIN_TURNSTILE_FIXTURE` tidak boleh ada di produksi: server menolak boot.
+
+## Kunci vault (`URUSIN_PII_KEY`): escrow dan rotasi
+
+`URUSIN_PII_KEY` menurunkan KEK vault (HKDF `urusin/kek/v1`) dan kunci HMAC placeholder
+(`urusin/placeholder-hmac/v1`). **Kehilangan kunci = semua Data Diri dan dokumen akun hilang**, jadi:
+
+- **Escrow:** simpan salinan kunci di luar VPS, terpisah dari backup DB (pengelola sandi pemilik proyek,
+  plus satu salinan offline). Jangan pernah di repo, di backup yang sama, atau di chat. Backup DB tanpa kunci
+  hanya ciphertext.
+- **Rotasi** (kunci bocor, atau terjadwal):
+  1. `./backup.sh` (cadangan sebelum rotasi).
+  2. Buat kunci baru: `openssl rand -base64 32`. Escrow kunci baru dulu.
+  3. Di `.env`: `URUSIN_PII_KEY_PREV=<kunci lama>`, `URUSIN_PII_KEY=<kunci baru>`; deploy. Server membuka DEK
+     lama dengan `PREV` dan membungkus ulang secara malas saat dipakai.
+  4. Bungkus ulang semuanya sekaligus:
+     `docker exec <container> node node_modules/@urusin/akun/dist/kek-rotate-cli.js` (lokal:
+     `pnpm kek:rotate`). Keluaran hanya hitungan `{dibungkusUlang, sudahBaru}`.
+  5. Hapus `URUSIN_PII_KEY_PREV` dari `.env` dan deploy ulang.
+  6. Simpan kunci lama di escrow sampai backup terakhir yang memakainya kedaluwarsa (retensi backup), lalu
+     musnahkan.
 
 ## Login GHCR sementara
 
@@ -263,13 +301,20 @@ loop `sleep` di dalam kontainer, dan restore memakai alat yang sama. Skrip memak
 node + `better-sqlite3`: `apps/web/scripts/db-backup.mjs` memakai API backup online `.backup()`, lalu
 `PRAGMA integrity_check` pada salinan, dan exit non-zero bila hasilnya bukan `ok`. Skrip dikirim lewat stdin
 (`docker run --entrypoint node ... --input-type=module -`), jadi `Dockerfile` tidak perlu menyalinnya, tanpa
-jaringan dan rootfs read-only. Tidak ada image pihak ketiga. Konsekuensi: clone repo penuh (skrip dibaca dari
-`../apps/web/scripts`, atau set `SCRIPT_DIR`) dan `better-sqlite3` harus menjadi dependency `@urusin/web`.
+jaringan dan rootfs read-only. Tidak ada image pihak ketiga. Skrip dibaca dari `./scripts` bila ada (layout datar
+`/opt/urusin`), selain itu `../apps/web/scripts` (clone repo penuh), atau set `SCRIPT_DIR`; `better-sqlite3`
+harus menjadi dependency `@urusin/web`.
+
+**Jalankan sebagai root.** `BACKUP_DIR` (`/var/backups/urusin`) milik root, mode 755, berkas 600; wadah
+backup juga butuh akses root ke volume. Sebagai user biasa skrip berhenti dengan pesan "tidak bisa ditulis".
 
 ```sh
-sudo mkdir -p /var/backups/urusin && sudo chown "$USER" /var/backups/urusin
-# Cron tiap 6 jam (crontab -e):
-0 */6 * * *  /opt/urusin/deploy/backup.sh >> /var/log/urusin-backup.log 2>&1
+# Layout datar: salin skrip DB sekali (dan setiap kali apps/web/scripts/db-*.mjs berubah)
+mkdir -p /opt/urusin/scripts
+cp apps/web/scripts/db-backup.mjs apps/web/scripts/db-restore.mjs /opt/urusin/scripts/
+# Cron tiap 6 jam, milik root (berkas 0644 root:root):
+echo '0 */6 * * * root /opt/urusin/backup.sh >> /var/log/urusin-backup.log 2>&1' | sudo tee /etc/cron.d/urusin-backup
+sudo env SCRIPT_DIR=/opt/urusin/scripts /opt/urusin/backup.sh   # uji sekali
 ```
 
 - Retensi lokal: 3 hari (`KEEP_DAYS`, selalu menyisakan yang terbaru). Berkas: `urusin-<UTC>.db.gz`, mode 600.
@@ -291,8 +336,8 @@ sudo mkdir -p /var/backups/urusin && sudo chown "$USER" /var/backups/urusin
 ### Restore dan latihan restore (restore drill)
 
 ```sh
-cd /opt/urusin/deploy
-ls -1t /var/backups/urusin | head -3
+cd /opt/urusin   # layout datar; clone penuh: /opt/urusin/deploy
+sudo ls -1t /var/backups/urusin | head -3
 ./restore.sh /var/backups/urusin/urusin-<UTC>.db.gz          # minta konfirmasi; --yes untuk non-interaktif
 # dari off-site:
 restic restore latest --tag urusin --target /tmp/restore && ./restore.sh /tmp/restore/var/backups/urusin/urusin-<UTC>.db.gz

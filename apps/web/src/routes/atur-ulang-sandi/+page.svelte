@@ -64,7 +64,7 @@
           invalid={!!galat?.kode.startsWith('SANDI_')}
         />
         <p id="sandi-petunjuk" class="text-sm text-muted">
-          Minimal 8 karakter dan bukan sandi yang umum dipakai.
+          Minimal 10 karakter dan bukan sandi yang umum dipakai.
         </p>
       </div>
       <button

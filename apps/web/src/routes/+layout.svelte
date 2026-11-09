@@ -15,7 +15,10 @@
 
   const prefs = ambilPrefs();
   const lokal = ambilLokal();
-  const polos = $derived(page.url.pathname === '/' || rutAuth(page.url.pathname));
+  // Halaman publik berdesain landing (/, /privasi) dan rute auth tampil tanpa kerangka aplikasi.
+  const polos = $derived(
+    page.url.pathname === '/' || page.url.pathname === '/privasi' || rutAuth(page.url.pathname),
+  );
   const akun = $derived(page.data.akun as { email: string } | null | undefined);
   let menuBuka = $state(false);
 

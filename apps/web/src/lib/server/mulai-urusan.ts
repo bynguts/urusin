@@ -27,7 +27,7 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
     return fail(422, { pesanWarga: 'Tulis dulu apa yang ingin Anda urus.', pesan } satisfies GagalMulai);
 
   const rt = await getRuntime();
-  event.locals.sid = ensureSession(event.cookies, publicOrigin());
+  event.locals.sid = ensureSession(event.cookies);
   const ditolak = batasi(rt, event, 'buat');
   if (ditolak)
     return fail(429, {

@@ -20,7 +20,7 @@ services:
       PORT: '3000'
       HOST: 0.0.0.0
       ORIGIN: http://localhost:3000
-      BODY_SIZE_LIMIT: 6M
+      BODY_SIZE_LIMIT: 10M
       DATABASE_URL: file:/data/urusin.db
       # Kunci test Turnstile Cloudflare (selalu lolos); aman untuk lokal.
       TURNSTILE_SITE_KEY: 1x00000000000000000000AA

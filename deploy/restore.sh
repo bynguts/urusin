@@ -13,7 +13,9 @@ cd "$(dirname "$0")"
 
 DATA_VOLUME="${DATA_VOLUME:-urusin_data}"
 DB_FILE="${DB_FILE:-urusin.db}"
-SCRIPT_DIR="${SCRIPT_DIR:-../apps/web/scripts}"
+if [ -z "${SCRIPT_DIR:-}" ]; then
+  if [ -f scripts/db-restore.mjs ]; then SCRIPT_DIR=scripts; else SCRIPT_DIR=../apps/web/scripts; fi
+fi
 HEALTH_WAIT="${HEALTH_WAIT:-60}"
 
 die() { echo "restore: $*" >&2; exit 1; }
@@ -37,7 +39,7 @@ active=""
 active="${active:-blue}"
 image="${BACKUP_IMAGE:-$(sed -n "s/^WEB_IMAGE_$(printf '%s' "$active" | tr '[:lower:]' '[:upper:]')=//p" .env.images 2>/dev/null | head -n1)}"
 [ -n "$image" ] || die "image web tidak diketahui (.env.images kosong dan BACKUP_IMAGE tidak diset)"
-[ -f "$SCRIPT_DIR/db-restore.mjs" ] || die "$SCRIPT_DIR/db-restore.mjs tidak ada (clone repo penuh atau set SCRIPT_DIR)"
+[ -f "$SCRIPT_DIR/db-restore.mjs" ] || die "$SCRIPT_DIR/db-restore.mjs tidak ada (salin apps/web/scripts/db-*.mjs ke ./scripts, clone repo penuh, atau set SCRIPT_DIR)"
 
 # Jalankan db-restore.mjs di wadah image web (skrip lewat stdin). Argumen: env tambahan (-e ...).
 run_restore() {

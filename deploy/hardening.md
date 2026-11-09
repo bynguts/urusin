@@ -21,9 +21,12 @@ Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat
 | Per kejadian                               | Memasang atau mengubah snippet Caddy (`/etc/caddy/urusin/Caddyfile.urusin` dan baris `import` di `/etc/caddy/Caddyfile`), `caddy reload`                                   | Go-ahead pengguna setiap kali, lewat `deploy/caddy-install.sh` (prosedur di bawah).                                         |
 | Tidak pernah                               | Mengedit blok situs lain di Caddy, restart Caddy, iptables/ufw/tailscale, `daemon.json`, `docker system/image prune`, kontainer/volume/network/image non-Urusin, proxy LLM | Tidak ada izin yang mencakup ini.                                                                                           |
 
-- `image-retention.sh --apply` dan `disk-alert.sh` tidak disebut dalam izin tetap. `disk-alert.sh` hanya
-  membaca `df` dan mengirim notifikasi. Untuk `image-retention.sh --apply`, lead meminta go-ahead sampai
-  pengguna menyatakan itu termasuk izin tetap; dry-run boleh kapan saja.
+- **`image-retention.sh --apply`: izin tetap, diberikan 2026-11-09**, dijalankan setelah setiap deploy Urusin.
+  Hanya image `ghcr.io/bynguts/urusin-*` yang lebih lama dari image rollback. Selalu disimpan: image aktif,
+  image rollback, dan setiap digest di `.env.images.keep` (mis. image pendamping yang dipakai di luar
+  `.env.images`). Tidak pernah menyentuh image non-Urusin atau build cache, tidak pernah
+  `docker system/image prune`, tidak pernah `-f`. Dry-run boleh kapan saja.
+- `disk-alert.sh` tidak butuh izin: hanya membaca `df` dan mengirim notifikasi.
 - Bila DNS domain utama sudah resolve tetapi pengguna tidak bisa dihubungi untuk izin Caddy, `DOMAIN` tetap
   di set `fallback` (sslip). Pindah set butuh izin per kejadian (snippet baru + reload).
 - Sejak 2026-11-08 (keputusan lead): satu agen `ops-sec` adalah satu-satunya yang menjalankan `deploy.sh` dan
@@ -75,7 +78,7 @@ Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan meng
 | `/opt/urusin/deploy/.env`                                                | manual (lead)                                    | rahasia produksi                                                                    | `chmod 600`; tidak pernah di-commit                                                                                                                                       |
 | `/opt/urusin/deploy/.env.images`                                         | `deploy.sh` (atomik, `umask 077`)                | digest per warna, warna aktif                                                       | rollback menulis ulang dari nilai sebelumnya                                                                                                                              |
 | `/opt/urusin/deploy/.env.images.history`                                 | `deploy.sh` (append)                             | waktu, warna, SHA, `repo@digest`                                                    | tidak dipangkas; sumber retensi                                                                                                                                           |
-| `/opt/urusin/deploy/.env.images.keep`                                    | manual (lead)                                    | digest yang wajib disimpan (mis. rc1)                                               | dibaca `image-retention.sh`                                                                                                                                               |
+| `/opt/urusin/deploy/.env.images.keep`                                    | manual (lead)                                    | digest yang wajib disimpan (mis. rc1, pendamping)                                   | dibaca `image-retention.sh`                                                                                                                                               |
 | `/etc/caddy/urusin/Caddyfile.urusin`                                     | `caddy-install.sh`, izin per kejadian            | salinan `deploy/Caddyfile.urusin[.fallback]`                                        | satu-satunya file yang di-`import` Caddy; direktori milik root (VPS saat ini masih meng-import `/opt/urusin/Caddyfile.urusin`; dipindah hanya dengan `TARGET=` eksplisit) |
 | `/etc/caddy/Caddyfile`                                                   | `caddy-install.sh`, per kejadian (import sekali) | satu baris `import /etc/caddy/urusin/Caddyfile.urusin`                              | blok situs lain tidak disentuh                                                                                                                                            |
 | `DOCKER_CONFIG` sementara `/tmp/urusin-docker-XXXXXX`                    | `deploy.sh` bila `GHCR_TOKEN` diset              | login GHCR (`read:packages`)                                                        | `chmod 700`, dihapus saat skrip keluar; `~/.docker` pengguna tidak disentuh                                                                                               |
@@ -87,7 +90,17 @@ Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan meng
 | `/var/backups/urusin/` (`BACKUP_DIR`)                                    | `backup.sh` (cron)                               | `urusin-*.db.gz`, `.lock.d`, `.partial.db` sementara                                | retensi `KEEP_DAYS`; restic off-site opsional                                                                                                                             |
 | `/var/backups/urusin-caddy/`                                             | `caddy-install.sh` (izin per kejadian)           | `Caddyfile.<ts>`, `Caddyfile.urusin.<ts>`                                           | milik root, `chmod 700`; tidak pernah ditimpa (`/opt/urusin/caddy-backups/` = lokasi lama)                                                                                |
 | `/var/log/urusin-backup.log`                                             | cron `backup.sh`                                 | log backup                                                                          |                                                                                                                                                                           |
-| crontab user deploy                                                      | manual (lead)                                    | baris `backup.sh` dan `disk-alert.sh`                                               | lihat README "Backup" dan "Alert disk"                                                                                                                                    |
+| `/etc/cron.d/urusin-backup` (root), crontab user deploy                  | manual (lead)                                    | `backup.sh` (root, cron.d) dan `disk-alert.sh`                                      | lihat README "Backup" dan "Alert disk"                                                                                                                                    |
+
+## Kompresi (Caddy) dan Lighthouse CI
+
+- Kompresi respons hanya di Caddy: `encode zstd gzip` dengan daftar `match` Content-Type eksplisit di
+  `Caddyfile.urusin.{primary,fallback}` (tanpa `text/*`, jadi SSE tidak dikompres). Aplikasi sendiri tidak
+  mengompres SSR.
+- Lighthouse CI mengukur lewat `scripts/lhci-serve.mjs`, proxy yang meniru blok `encode` itu persis (zstd lalu
+  gzip, daftar tipe yang sama, minimum 512 byte, level bawaan Caddy) dan tidak mengubah hal lain. Tujuannya
+  anggaran byte mengukur apa yang diterima warga, bukan melonggarkan gerbang. Bila blok `encode` di
+  Caddyfile berubah, ubah `COMPRESSIBLE` di skrip itu juga.
 
 ## Retensi image
 

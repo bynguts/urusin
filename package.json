@@ -30,7 +30,8 @@
     "format:check": "prettier --check .",
     "budget": "turbo run budget",
     "e2e": "turbo run e2e",
-    "eval": "pnpm --filter @urusin/harness eval"
+    "eval": "pnpm --filter @urusin/harness eval",
+    "kek:rotate": "pnpm --filter @urusin/akun kek:rotate"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

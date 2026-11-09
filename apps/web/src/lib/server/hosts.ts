@@ -53,3 +53,21 @@ export function assertHostEnv(env: Record<string, string | undefined>): void {
   }
   if (problems.length > 0) throw new Error(`Konfigurasi host tidak valid: ${problems.join('; ')}`);
 }
+
+/**
+ * Origin situs latihan (fixtures) yang sah sebagai tujuan isian data sintetis: host `fixtures` setiap set di
+ * deploy/hosts.json (https), FIXTURES_PUBLIC_ORIGIN, dan URUSIN_FIXTURES_ORIGINS (dipisah koma; dev/e2e lokal).
+ */
+export function originFixtures(env: Record<string, string | undefined> = process.env): Set<string> {
+  const hasil = new Set(Object.values(SETS).map((s) => `https://${s.fixtures}`));
+  for (const raw of [env.FIXTURES_PUBLIC_ORIGIN, ...(env.URUSIN_FIXTURES_ORIGINS ?? '').split(',')]) {
+    const v = raw?.trim();
+    if (!v) continue;
+    try {
+      hasil.add(new URL(v).origin);
+    } catch {
+      // nilai tidak valid diabaikan: tidak memperluas daftar
+    }
+  }
+  return hasil;
+}

@@ -2,12 +2,13 @@
   import { enhance } from '$app/forms';
   import { resolve } from '$app/paths';
   import Icon from '#lib/components/Icon.svelte';
+  import InputSandi from '#lib/components/auth/InputSandi.svelte';
   import KerangkaAuth from '#lib/components/auth/KerangkaAuth.svelte';
   import { dataAuth, formAuth, galatAuth } from '#lib/components/auth/form.js';
 
   /**
-   * App 17 Verifikasi email. Tautan email membawa `?token=`; token dipakai saat tombol ditekan (`?/pastikan`),
-   * bukan saat halaman dibuka. Tanpa token / token kedaluwarsa: formulir kirim ulang (`?/kirimUlang`).
+   * App 17 Verifikasi email. Tautan email membawa `?token=`; token dipakai saat tombol ditekan (`?/pastikan`,
+   * bersama kata sandi yang dibuat saat mendaftar), bukan saat halaman dibuka. Tanpa token / token kedaluwarsa: formulir kirim ulang (`?/kirimUlang`).
    */
   const data = $derived(dataAuth<{ token: string; tokenBerlaku: boolean }>());
   const form = $derived(formAuth());
@@ -35,7 +36,9 @@
 
   {#if form?.terverifikasi}
     <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Email sudah dipastikan</h1>
-    <p role="status" class="mt-3 text-base text-body">Email sudah dipastikan. Sekarang Anda bisa masuk.</p>
+    <p role="status" class="mt-3 text-base text-body">
+      Email sudah dipastikan. Silakan masuk lagi; akun Anda kini sama di semua perangkat.
+    </p>
     <a
       href={resolve('/masuk')}
       class="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-primer font-semibold text-primer-ink hover:opacity-90"
@@ -47,12 +50,39 @@
       Cek email Anda: bila <span class="font-semibold text-ink">{form.email}</span> terdaftar dan belum dipastikan,
       tautan baru sudah dikirim. Tautan berlaku 24 jam.
     </p>
+    {#if form.tertunda}
+      <p
+        role="alert"
+        data-kode="EMAIL_TERTUNDA"
+        class="mt-3 rounded-xl bg-mawar px-4 py-3 text-[0.9375rem] text-galat"
+      >
+        Pengiriman email sedang tertunda (layanan email kami sedang penuh atau belum aktif). Akun tetap bisa
+        dipakai di perangkat ini; coba kirim ulang tautan nanti.
+      </p>
+    {/if}
     <p class="mt-3 text-sm text-muted">Cek juga folder Spam atau Promosi.</p>
   {:else if bisaPastikan}
     <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Pastikan email Anda</h1>
-    <p class="mt-3 text-base text-body">Tekan tombol di bawah untuk menyelesaikan pendaftaran.</p>
-    <form method="POST" action="?/pastikan" use:enhance={kirimEnhance} class="mt-6">
+    <p class="mt-3 text-base text-body">
+      Masukkan kata sandi yang Anda buat saat mendaftar, lalu tekan tombol di bawah.
+    </p>
+    {#if galat}
+      <p
+        role="alert"
+        data-kode={galat.kode}
+        class="mt-4 rounded-xl bg-mawar px-4 py-3 text-[0.9375rem] text-galat"
+      >
+        {galat.pesanWarga}
+      </p>
+    {/if}
+    <form method="POST" action="?/pastikan" use:enhance={kirimEnhance} class="mt-6 flex flex-col gap-4">
       <input type="hidden" name="token" value={token} />
+      <div class="flex flex-col gap-2">
+        <label for="sandi" class="text-[0.9375rem] font-semibold text-ink"
+          >Kata sandi yang Anda buat saat mendaftar</label
+        >
+        <InputSandi id="sandi" autocomplete="current-password" invalid={galat?.kode === 'KREDENSIAL_SALAH'} />
+      </div>
       <button
         type="submit"
         disabled={sibuk}

@@ -20,7 +20,6 @@
   import { bangunLinimasa, labelProgres } from '#lib/components/urusan/linimasa.js';
   import LayarPendamping from '#lib/components/pendamping/LayarPendamping.svelte';
   import LembarIzinkan from '#lib/components/pendamping/LembarIzinkan.svelte';
-  import { petakanIsian, type DataDiriRingkas } from '#lib/pendamping/isi-data.js';
   import { muatPabrikViewer } from '#lib/pendamping/klien.js';
   import { SesiPendampingUi } from '#lib/pendamping/sesi.svelte.js';
   import { judulUrusan, peristiwaDariJenis } from '#lib/peristiwa.js';
@@ -189,40 +188,41 @@
     }
   }
 
+  /**
+   * "Izinkan isi" (A-M1): peramban hanya mengirim daftar write + origin tujuan. Server menyimpan persetujuan;
+   * Pendamping mengambil nilai Data Diri dan berkas di server. Nilai vault tidak pernah lewat peramban.
+   */
   async function izinkanIsi() {
     const butuh = sesi.data.butuhData;
     if (!butuh) return;
+    if (!butuh.origin) {
+      izin = { sibuk: false, pesan: 'Situs tujuan belum diketahui. Isi sendiri di layar.' };
+      return;
+    }
     izin = { sibuk: true };
     try {
-      const r = await fetch('/api/akun/data-diri', { headers: { accept: 'application/json' } });
-      if (r.status === 401 || r.status === 404) {
-        izin = {
-          sibuk: false,
-          pesan: 'Masuk dulu supaya Urusin bisa memakai Data Diri Anda. Atau isi sendiri.',
-        };
+      const r = await fetch(`/api/urusan/${encodeURIComponent(data.urusan.id)}/izinkan-isi`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({
+          writeList: [...butuh.placeholder, ...butuh.berkas.map((b) => `berkas:${b.toUpperCase()}`)],
+          targetOrigin: butuh.origin,
+        }),
+      });
+      const j = (await r.json().catch(() => null)) as { kurang?: string[]; pesanWarga?: string } | null;
+      if (!r.ok) {
+        izin = { sibuk: false, pesan: j?.pesanWarga ?? 'Izin belum tercatat. Coba lagi atau isi sendiri.' };
         return;
       }
-      const j = (await r.json()) as { dataDiri: DataDiriRingkas };
-      const { isian, kurang } = petakanIsian(butuh.placeholder, j.dataDiri);
-      for (const nama of butuh.berkas) await kirimBerkasDariDokumen(nama);
-      sesi.kirimVault(isian);
+      sesi.data = { ...sesi.data, butuhData: null };
+      const kurang = j?.kurang ?? [];
       izin = {
         sibuk: false,
         ...(kurang.length ? { pesan: `Isi sendiri di layar: ${kurang.join(', ')}.` } : {}),
       };
     } catch {
-      izin = { sibuk: false, pesan: 'Data Diri belum bisa dibaca. Coba lagi atau isi sendiri.' };
+      izin = { sibuk: false, pesan: 'Koneksi terputus. Coba lagi atau isi sendiri.' };
     }
-  }
-
-  async function kirimBerkasDariDokumen(nama: string) {
-    const r = await fetch('/api/akun/dokumen', { headers: { accept: 'application/json' } });
-    if (!r.ok) return;
-    const { dokumen } = (await r.json()) as { dokumen: { id: string; jenis: string; judul: string }[] };
-    const d = dokumen.find((x) => x.jenis === nama.toLowerCase());
-    if (!d) return;
-    const b = await fetch(`/api/akun/dokumen/${encodeURIComponent(d.id)}`);
-    if (b.ok) await sesi.kirimBerkas(nama, await b.blob(), d.judul);
   }
 
   function isiSendiri() {

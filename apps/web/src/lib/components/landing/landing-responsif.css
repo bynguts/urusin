@@ -7,6 +7,11 @@
   overflow-x: clip;
 }
 
+/* <picture> pembungkus varian AVIF ponsel: tanpa kotak sendiri, <img> tetap anak tata letak yang sama */
+.lp .lp-pic {
+  display: contents;
+}
+
 /* Ilustrasi berukuran tetap: skala utuh */
 @media (max-width: 1111px) {
   .lp {

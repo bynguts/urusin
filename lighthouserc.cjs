@@ -7,7 +7,10 @@ const median = { aggregationMethod: 'median-run' };
 module.exports = {
   ci: {
     collect: {
-      startServerCommand: 'node apps/web/build',
+      // Topologi produksi: build di belakang proxy yang meniru PERSIS `encode zstd gzip { match ... }`
+      // di deploy/Caddyfile.urusin (kompresi saja, tanpa cache/header lain). Tanpa ini HTML SSR diukur
+      // tanpa kompresi, padahal warga selalu menerimanya terkompres. Lihat scripts/lhci-serve.mjs.
+      startServerCommand: 'node scripts/lhci-serve.mjs',
       startServerReadyPattern: 'Listening on',
       url: ROUTES.map((r) => `http://127.0.0.1:${PORT}${r}`),
       numberOfRuns: 3,

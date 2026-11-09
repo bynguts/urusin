@@ -1,6 +1,7 @@
 /**
- * Pemetaan placeholder adapter (`{{PEMOHON.NIK}}`) ke Data Diri akun (GET /api/akun/data-diri, branch
- * feat/auth-akun). Nilai hanya dikirim ke sesi Browser Pendamping setelah warga menekan "Izinkan isi".
+ * Pemetaan placeholder adapter (`{{PEMOHON.NIK}}`) ke field Data Diri (ADR 0028). Dipakai SERVER
+ * (`lib/server/pendamping/isi.ts`) untuk menyelesaikan nilai setelah warga menekan "Izinkan isi", dan peramban
+ * untuk label. Peramban tidak pernah membaca nilai vault untuk Pendamping.
  */
 export type DataDiriRingkas = Partial<
   Record<
@@ -68,7 +69,7 @@ const LABEL: Record<keyof DataDiriRingkas, string> = {
   email: 'Email',
 };
 
-function kolomDari(placeholder: string): keyof DataDiriRingkas | undefined {
+export function kolomDari(placeholder: string): keyof DataDiriRingkas | undefined {
   const m = /^\{\{[A-Z][A-Z0-9_]*\.([A-Z0-9_.]+)\}\}$/.exec(placeholder);
   if (!m) return undefined;
   const bagian = m[1]!.split('.');

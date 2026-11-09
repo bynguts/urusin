@@ -12,8 +12,9 @@
    */
   const lokal = ambilLokal();
   const aktif = $derived(lokal.data.urusan.slice(0, 5));
-  const akun = $derived(page.data.akun as { email: string; nama?: string | null } | null | undefined);
-  const namaAkun = $derived(akun ? (akun.nama ?? akun.email.split('@')[0] ?? akun.email) : '');
+  /** Sesi juri (`jenis: 'demo'`) tidak punya email (docs/ui/auth.md). */
+  const akun = $derived(page.data.akun as { email: string | null; nama?: string | null } | null | undefined);
+  const namaAkun = $derived(akun ? (akun.nama ?? akun.email?.split('@')[0] ?? 'Salinan demo juri') : '');
   const inisial = $derived(
     namaAkun
       .split(/[\s._-]+/)

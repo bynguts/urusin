@@ -8,6 +8,8 @@ import { page } from '$app/state';
 export type GalatAuth = { kode: string; pesanWarga: string; email?: string };
 export type FormAuth = Partial<GalatAuth> & {
   terkirim?: true;
+  /** Email tertunda/ditahan: tampilkan pesan jujur (docs/ui/auth.md). */
+  tertunda?: boolean;
   terverifikasi?: true;
   berhasil?: true;
   email?: string;
