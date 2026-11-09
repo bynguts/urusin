@@ -8,6 +8,7 @@ import {
   createEdgeKontrol,
   createEdgeProxy,
   jalurDiizinkan,
+  jalurMentah,
   loadEdgeConfig,
   pilihAntarmuka,
 } from './edge.js';
@@ -292,6 +293,70 @@ describe('proxy balik edge', () => {
 
     const dbg = await dengar(createEdgeBalik({ hulu: new URL(`http://127.0.0.1:${h.port}`), debug: true }));
     expect((await fetch(`http://127.0.0.1:${dbg}/debug`)).status).toBe(200);
+  });
+
+  /** Permintaan mentah (fetch/WebSocket menormalkan `..` di sisi klien): kembalikan baris status. */
+  function mentah(port: number, path: string, upgrade = false): Promise<string> {
+    return new Promise((ok, gagal) => {
+      const s = net.connect(port, '127.0.0.1', () =>
+        s.write(
+          `GET ${path} HTTP/1.1\r\nHost: 127.0.0.1\r\n` +
+            (upgrade
+              ? 'Connection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\n' +
+                'Sec-WebSocket-Key: AAAAAAAAAAAAAAAAAAAAAA==\r\n'
+              : 'Connection: close\r\n') +
+            '\r\n',
+        ),
+      );
+      let buf = '';
+      s.on('data', (d) => {
+        buf += d.toString('latin1');
+        if (buf.includes('\r\n')) {
+          s.destroy();
+          ok(buf.slice(0, buf.indexOf('\r\n')));
+        }
+      });
+      s.on('error', gagal);
+    });
+  }
+
+  it('jalur mentah: traversal/penyandian ke /internal, /debug, /health TIDAK PERNAH diteruskan (404)', async () => {
+    expect(jalurMentah('/internal/sesi?x=1')).toBe('/internal/sesi');
+    expect(jalurMentah(`/ws/${SESI}`)).toBe(`/ws/${SESI}`);
+    const jahat = [
+      '/ws/..%2finternal/sesi',
+      '/ws/..%2Finternal/sesi',
+      '/ws/%2e%2e/internal',
+      '/ws/%2e%2e/internal/sesi',
+      '/ws/%2E%2E/health',
+      '/ws/../internal',
+      '/ws/../internal/sesi',
+      '/ws/../health',
+      '/ws/../debug',
+      '/ws/./../internal/sesi',
+      '//internal',
+      '//internal/sesi',
+      '/ws/..;/debug',
+      '/ws/..;/internal/sesi',
+      '/ws\\..\\internal\\sesi',
+      '/internal/sesi/../../debug',
+      '/./internal/sesi',
+      '/%69nternal/sesi',
+      'http://127.0.0.1/internal/sesi',
+      '*',
+    ];
+    for (const p of jahat) expect(jalurMentah(p), p).toBeUndefined();
+
+    const h = await hulu();
+    for (const debug of [false, true]) {
+      const port = await dengar(createEdgeBalik({ hulu: new URL(`http://127.0.0.1:${h.port}`), debug }));
+      for (const p of jahat) {
+        expect(await mentah(port, p), p).toMatch(/^HTTP\/1\.1 (400|404) /);
+        expect(await mentah(port, p, true), `upgrade ${p}`).toMatch(/^HTTP\/1\.1 (400|404) /);
+      }
+      expect(await mentah(port, '/internal/sesi')).toMatch(/^HTTP\/1\.1 200 /);
+    }
+    expect(h.seen.map((s) => s.path)).toEqual(['/internal/sesi', '/internal/sesi']);
   });
 
   it('pendamping mati -> 502 jujur', async () => {

@@ -14,7 +14,8 @@ import { bacaIsiBertanda, createPenjagaUlang, headerDari } from './tanda.js';
  * terisolasi), jadi tidak punya rute ke host maupun internet; satu-satunya jalan keluarnya edge ini.
  *
  * Tugas 1, proxy balik (bridge, dipublikasikan 127.0.0.1:4330): HANYA `/ws/<uuid>` (upgrade), `/internal/*`,
- * `/health`, dan `/debug*` bila PENDAMPING_DEBUG_TOKEN diisi. Header Host/Origin/Cookie diteruskan apa adanya;
+ * `/health`, dan `/debug*` bila PENDAMPING_DEBUG_TOKEN diisi, dicocokkan pada jalur MENTAH yang kanonik (lihat
+ * `jalurMentah`; `/ws/..%2finternal` dan sejenisnya 404). Header Host/Origin/Cookie diteruskan apa adanya;
  * HMAC kanal internal tetap diperiksa pendamping.
  *
  * Tugas 2, proxy CONNECT (antarmuka internal): SATU-SATUNYA egress Chromium. Kredensial proxy acak per sesi
@@ -253,6 +254,19 @@ export function createEdgeProxy(
 
 const JALUR_WS = /^\/ws\/[0-9a-f-]{36}$/;
 
+/**
+ * Jalur MENTAH (tanpa query) bila sudah kanonik, selain itu undefined. Perutean edge memakai jalur mentah,
+ * tidak pernah hasil normalisasi `new URL()` (yang mengubah `/ws/../internal` dan `/ws/%2e%2e/internal`
+ * menjadi `/internal`). Hanya `[A-Za-z0-9._~-]` per segmen: penyandian persen, `\`, `;` (`..;`), `//`, dan
+ * segmen yang diawali titik (`.`, `..`) ditolak.
+ */
+export function jalurMentah(url: string): string | undefined {
+  const q = url.indexOf('?');
+  const path = q === -1 ? url : url.slice(0, q);
+  if (!/^(\/[A-Za-z0-9_~-][A-Za-z0-9._~-]*)+\/?$|^\/$/.test(path)) return undefined;
+  return path;
+}
+
 /** Jalur yang boleh diteruskan proxy balik. */
 export function jalurDiizinkan(path: string, debug: boolean): boolean {
   if (path === '/health' || path.startsWith('/internal/')) return true;
@@ -264,8 +278,8 @@ export function createEdgeBalik(cfg: Pick<EdgeConfig, 'hulu' | 'debug'>) {
   const huluPort = Number(cfg.hulu.port);
   const huluHost = cfg.hulu.hostname;
   const server = http.createServer((req, res) => {
-    const path = new URL(req.url ?? '/', 'http://x').pathname;
-    if (!jalurDiizinkan(path, cfg.debug) || !(req.url ?? '').startsWith('/')) {
+    const path = jalurMentah(req.url ?? '');
+    if (path === undefined || !jalurDiizinkan(path, cfg.debug)) {
       res.writeHead(404, { 'content-type': 'application/json', 'cache-control': 'no-store' });
       res.end('{"kode":"SESI_TIDAK_ADA","pesanWarga":"Tidak ditemukan."}');
       return;
@@ -293,8 +307,7 @@ export function createEdgeBalik(cfg: Pick<EdgeConfig, 'hulu' | 'debug'>) {
   });
   server.on('upgrade', (req, socket: Duplex, head: Buffer) => {
     socket.on('error', () => socket.destroy());
-    const path = new URL(req.url ?? '/', 'http://x').pathname;
-    if (!JALUR_WS.test(path) || req.url !== path) return tolak(socket, '404 Not Found');
+    if (!JALUR_WS.test(req.url ?? '')) return tolak(socket, '404 Not Found');
     const up = net.connect(huluPort, huluHost, () => {
       const baris = [`${req.method} ${req.url} HTTP/1.1`];
       for (let i = 0; i + 1 < req.rawHeaders.length; i += 2)
