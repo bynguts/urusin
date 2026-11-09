@@ -11,7 +11,14 @@ describe(
   'skrip deploy (blue/green, rollback, provenance, retensi image, pemasangan Caddy)',
   { skip: !hasBash && 'bash tidak tersedia' },
   () => {
-    for (const name of ['deploy.test.sh', 'image-retention.test.sh', 'caddy-install.test.sh']) {
+    // compose-config dan pendamping-isolation memakai docker sungguhan; keduanya lulus (dilewati) tanpa docker.
+    for (const name of [
+      'deploy.test.sh',
+      'image-retention.test.sh',
+      'caddy-install.test.sh',
+      'compose-config.test.sh',
+      'pendamping-isolation.test.sh',
+    ]) {
       it(`${name}: lulus semua kasus harness`, () => {
         const r = spawnSync('bash', [harness(name)], { encoding: 'utf8' });
         assert.equal(r.status, 0, r.stdout + r.stderr);

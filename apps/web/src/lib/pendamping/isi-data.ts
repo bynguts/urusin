@@ -69,16 +69,52 @@ const LABEL: Record<keyof DataDiriRingkas, string> = {
   email: 'Email',
 };
 
-export function kolomDari(placeholder: string): keyof DataDiriRingkas | undefined {
+/** Placeholder adapter yang bukan Data Diri (nomor lacak, nomor polisi, NIB): diketik warga di layar. */
+const LABEL_LAIN: Record<string, string> = {
+  KITIR: 'Nomor kitir',
+  KODE_PELAYANAN: 'Kode pelayanan',
+  NOPOL_ANGKA: 'Angka nomor polisi',
+  NOPOL_HURUF: 'Huruf akhir nomor polisi',
+  NIB: 'NIB',
+};
+
+function bagianAkhir(placeholder: string): string | undefined {
   const m = /^\{\{[A-Z][A-Z0-9_]*\.([A-Z0-9_.]+)\}\}$/.exec(placeholder);
-  if (!m) return undefined;
-  const bagian = m[1]!.split('.');
-  return KOLOM[bagian[bagian.length - 1]!];
+  return m ? m[1]!.split('.').at(-1) : undefined;
+}
+
+/**
+ * Field Data Diri untuk sebuah placeholder, atau undefined bila bukan Data Diri. HANYA `{{PEMOHON.<KUNCI>}}`
+ * (satu segmen): `{{ANAK.NIK}}`, `{{ORANG2.NIK}}`, `{{PEMOHON.AYAH.NAMA}}` bukan data pemohon, jadi diketik
+ * warga sendiri. Cermin `kunciDataDiri` di apps/pendamping/src/isian.ts.
+ */
+export function fieldDataDiri(placeholder: string): keyof DataDiriRingkas | undefined {
+  const kunci = /^\{\{PEMOHON\.([A-Z0-9_]+)\}\}$/.exec(placeholder)?.[1];
+  return kunci !== undefined && Object.hasOwn(KOLOM, kunci) ? KOLOM[kunci] : undefined;
 }
 
 export function labelPlaceholder(placeholder: string): string {
-  const k = kolomDari(placeholder);
-  return k ? LABEL[k] : 'Data lain';
+  const k = fieldDataDiri(placeholder);
+  if (k) return LABEL[k];
+  const akhir = bagianAkhir(placeholder);
+  return (akhir && Object.hasOwn(LABEL_LAIN, akhir) ? LABEL_LAIN[akhir] : undefined) ?? 'Data lain';
+}
+
+/** Nama field Data Diri untuk placeholder (dipakai server `lib/server/pendamping/isi.ts`). */
+export const kolomDari = fieldDataDiri;
+
+/**
+ * Daftar write "Izinkan isi" (POST /api/urusan/[id]/izinkan-isi): placeholder yang bisa dipenuhi Data Diri +
+ * `berkas:<JENIS>` (huruf besar) untuk Dokumen. Placeholder lain (nomor polisi, NIB, kitir) tidak ikut: server
+ * menolak entri tak dikenal, dan warga mengetiknya sendiri di layar.
+ */
+export function daftarWrite(placeholder: readonly string[], berkas: readonly string[]): string[] {
+  return [
+    ...new Set([
+      ...placeholder.filter((p) => fieldDataDiri(p) !== undefined),
+      ...berkas.map((b) => `berkas:${b.toUpperCase()}`),
+    ]),
+  ];
 }
 
 /** Isian yang bisa dipenuhi dari Data Diri + daftar label yang harus warga isi sendiri. */
@@ -89,7 +125,7 @@ export function petakanIsian(
   const isian: Record<string, string> = {};
   const kurang: string[] = [];
   for (const p of placeholder) {
-    const k = kolomDari(p);
+    const k = fieldDataDiri(p);
     const v = k ? data[k] : undefined;
     if (v) isian[p] = v;
     else kurang.push(labelPlaceholder(p));

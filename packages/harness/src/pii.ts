@@ -153,10 +153,22 @@ export function redactLeaves<T>(value: T): T {
   if (typeof value === 'string') return redactForStorage(value) as T;
   if (Array.isArray(value)) return value.map(redactLeaves) as T;
   if (typeof value === 'object' && value !== null) {
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, redactLeaves(v)])) as T;
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, PENGENAL[k]?.test(v as string) ? v : redactLeaves(v)]),
+    ) as T;
   }
   return value;
 }
+
+/**
+ * Pengenal buatan kode (bukan teks warga/model) yang dicocokkan ulang persis: hash sha256 dan id eksekusi.
+ * Deret angka di dalamnya bisa menyerupai nomor HP; bila diredaksi, konfirmasi tidak cocok lagi
+ * dengan `paramsHash` yang dihitung ulang. Hanya bentuk persis ini yang dilewati; selain itu tetap diredaksi.
+ */
+const PENGENAL: Readonly<Record<string, RegExp>> = {
+  paramsHash: /^[0-9a-f]{64}$/,
+  executionId: /^x_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+};
 
 /** Redaksi sekali pakai tanpa pemetaan stabil (untuk penyimpanan: hanya perlu memastikan nol PII). */
 export function redactForStorage(text: string): string {

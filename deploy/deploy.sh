@@ -58,6 +58,9 @@ check_secret_perms
 
 command -v docker >/dev/null || die "docker tidak ditemukan"
 command -v curl >/dev/null || die "curl tidak ditemukan"
+# shellcheck source=docker-versi.sh
+. ./docker-versi.sh
+pastikan_docker_28 || die "$DOCKER_VERSI_PESAN"
 
 expected_sha=""
 digest=""

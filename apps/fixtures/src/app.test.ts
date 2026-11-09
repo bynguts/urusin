@@ -171,5 +171,99 @@ describe('upload dan permohonan', () => {
     const done = await app.request(`${ORIGIN}${BASE}/pendaftaran/selesai/2`, { headers: { cookie } });
     expect(done.status).toBe(303);
     expect(await read()).toContain('Baru diajukan (data uji)');
+    // Nomor registrasi per baris (dibaca adapter pendamping sebagai bukti).
+    expect(await read()).toContain('<td class="no-registrasi">FX-REG-0002</td>');
+  });
+});
+
+describe('tiruan halaman tantangan bot (uji verifikasi situs)', () => {
+  const tekan = (app: ReturnType<typeof make>, kembali: string) =>
+    app.request(`${ORIGIN}/cdn-cgi/challenge-platform/uji/`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ kembali }),
+    });
+
+  it('tanpa cookie: 403 + cf-mitigated + judul interstitial + iframe widget; widget boleh dibingkai sendiri', async () => {
+    const app = make();
+    const res = await app.request(`${ORIGIN}/uji-cf/`);
+    expect(res.status).toBe(403);
+    expect(res.headers.get('cf-mitigated')).toBe('challenge');
+    expect(res.headers.get('content-security-policy')).toContain("frame-ancestors 'none'");
+    const t = await res.text();
+    expect(t).toContain('<title>Just a moment... (fixture)</title>');
+    expect(t).toContain('src="/cdn-cgi/challenge-platform/uji/?kembali=%2Fuji-cf%2F"');
+    const w = await app.request(`${ORIGIN}/cdn-cgi/challenge-platform/uji/?kembali=%2Fuji-cf%2F`);
+    expect(w.status).toBe(200);
+    expect(w.headers.get('content-security-policy')).toContain("frame-ancestors 'self'");
+    expect(await w.text()).toContain('id="saya-manusia"');
+    expect((await app.request(`${ORIGIN}/cdn-cgi/challenge-platform/uji/?kembali=https://x`)).status).toBe(
+      400,
+    );
+  });
+
+  it('ketukan diterima -> cookie lolos -> halaman cek status; varian gagal selalu kembali ke tantangan', async () => {
+    const app = make();
+    const ok = await tekan(app, '/uji-cf/');
+    expect(ok.status).toBe(303);
+    expect(ok.headers.get('location')).toBe('/uji-cf/');
+    const cookie = (ok.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+    const lolos = await app.request(`${ORIGIN}/uji-cf/`, { headers: { cookie } });
+    expect(lolos.status).toBe(200);
+    expect(await lolos.text()).toContain('id="nopol"');
+
+    const gagal = await tekan(app, '/uji-cf/gagal/');
+    expect(gagal.headers.get('set-cookie')).toBeNull();
+    const lagi = await app.request(`${ORIGIN}/uji-cf/gagal/`, { headers: { cookie } });
+    expect(lagi.status).toBe(403);
+    expect((await tekan(app, '//evil.example/')).status).toBe(400);
+  });
+
+  it('varian lintas: widget dari origin pasangan (127.0.0.1 <-> localhost), kembali lewat jalur lolos induk', async () => {
+    const app = make();
+    const INDUK = 'http://127.0.0.1:4320';
+    const induk = { host: '127.0.0.1:4320', origin: INDUK };
+    const res = await app.request(`${INDUK}/uji-cf/lintas/`, { headers: induk });
+    expect(res.status).toBe(403);
+    expect(res.headers.get('content-security-policy')).toContain(`frame-src 'self' ${ORIGIN}`);
+    expect(await res.text()).toContain(
+      `src="${ORIGIN}/cdn-cgi/challenge-platform/uji/?kembali=%2Fuji-cf%2Flintas%2F&amp;asal=http%3A%2F%2F127.0.0.1%3A4320"`,
+    );
+    // Widget di localhost boleh dibingkai induk 127.0.0.1 dan mengirim form ke sana (tanpa X-Frame-Options).
+    const w = await app.request(
+      `${ORIGIN}/cdn-cgi/challenge-platform/uji/?kembali=%2Fuji-cf%2Flintas%2F&asal=${encodeURIComponent(INDUK)}`,
+      { headers },
+    );
+    const csp = w.headers.get('content-security-policy') ?? '';
+    expect(csp).toContain(`frame-ancestors 'self' ${INDUK}`);
+    expect(csp).toContain(`form-action 'self' ${INDUK}`);
+    expect(w.headers.get('x-frame-options')).toBeNull();
+    expect(await w.text()).toContain(`name="asal" value="${INDUK}"`);
+    // asal selain pasangan diabaikan: kembali ke kebijakan same-origin.
+    const asing = await app.request(
+      `${ORIGIN}/cdn-cgi/challenge-platform/uji/?kembali=%2Fuji-cf%2Flintas%2F&asal=https%3A%2F%2Fevil.example`,
+      { headers },
+    );
+    expect(asing.headers.get('content-security-policy')).toMatch(/frame-ancestors 'self'$/);
+    // Ketukan di widget -> 303 ke jalur lolos milik induk -> cookie di induk -> halaman lolos.
+    const post = await app.request(`${ORIGIN}/cdn-cgi/challenge-platform/uji/`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ kembali: '/uji-cf/lintas/', asal: INDUK }),
+    });
+    expect(post.headers.get('location')).toBe(`${INDUK}/uji-cf/lintas/lolos`);
+    const lolos = await app.request(`${INDUK}/uji-cf/lintas/lolos`, { headers: induk });
+    expect(lolos.headers.get('location')).toBe('/uji-cf/lintas/');
+    const cookie = (lolos.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+    const akhir = await app.request(`${INDUK}/uji-cf/lintas/`, { headers: { ...induk, cookie } });
+    expect(akhir.status).toBe(200);
+    expect(await akhir.text()).toContain('id="nopol"');
+    // Host publik (bukan loopback): tidak ada pasangan, widget same-origin.
+    const publik = await app.request('https://fixtures.contoh.id/uji-cf/lintas/', {
+      headers: { host: 'fixtures.contoh.id' },
+    });
+    expect(await publik.text()).toContain(
+      'src="/cdn-cgi/challenge-platform/uji/?kembali=%2Fuji-cf%2Flintas%2F"',
+    );
   });
 });

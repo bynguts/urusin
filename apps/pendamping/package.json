@@ -1,0 +1,35 @@
+{
+  "name": "@urusin/pendamping",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Browser Pendamping: Chromium di server, layar dialirkan ke perangkat warga; AI mengisi, warga login dan menekan Kirim",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@urusin/adapters": "workspace:*",
+    "@urusin/contracts": "workspace:*",
+    "@urusin/core": "workspace:*",
+    "@urusin/egress": "workspace:*",
+    "@urusin/executor": "workspace:*",
+    "@urusin/pendamping-client": "workspace:*",
+    "playwright-core": "1.65.0",
+    "ws": "8.22.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@types/node": "26.6.6",
+    "@types/ws": "8.18.2",
+    "@urusin/fixtures": "workspace:*",
+    "@urusin/harness": "workspace:*",
+    "vitest": "5.1.0"
+  }
+}

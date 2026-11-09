@@ -1,12 +1,14 @@
 import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { secureHeaders } from 'hono/secure-headers';
+import { asalSah, JALUR_LINTAS, JALUR_WIDGET, originLintas, registerUjiCf } from './cf.js';
 import type { Config } from './config.js';
 import { html, page } from './layout.js';
 import { registerPoisoned } from './poisoned.js';
+import { registerSamsatOss } from './samsat-oss.js';
 import { registerSemarang } from './semarang.js';
 import { registerSurabaya } from './surabaya.js';
-import { createStore, SERVICES, type Session } from './store.js';
+import { createStore, nomorRegistrasi, SERVICES, type Session } from './store.js';
 
 /**
  * Fixture mimic struktur DOM Telunjuk Sakti (recon read-only): login + CAPTCHA gambar yang diketik warga,
@@ -32,20 +34,37 @@ export function createApp(config: Config) {
   const secure = config.publicOrigin?.startsWith('https://') === true;
   const cookieName = secure ? '__Host-fx_session' : 'fx_session';
 
-  app.use(
-    '*',
+  const keamanan = (frameAncestors: string[], lintas: string | null = null) =>
     secureHeaders({
+      // Widget lintas-origin: X-Frame-Options SAMEORIGIN akan memblokir induk beda origin (frame-ancestors cukup).
+      xFrameOptions: !(lintas && frameAncestors.includes(lintas)),
       // same-origin (bukan no-referrer): no-referrer membuat Chrome mengirim "Origin: null" pada POST form.
       referrerPolicy: 'same-origin',
       contentSecurityPolicy: {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:'],
-        formAction: ["'self'"],
-        frameAncestors: ["'none'"],
+        formAction: lintas ? ["'self'", lintas] : ["'self'"],
+        frameAncestors,
+        ...(lintas ? { frameSrc: ["'self'", lintas] } : {}),
       },
-    }),
-  );
+    });
+  const ketat = keamanan(["'none'"]);
+  // Widget tantangan tiruan dimuat dalam iframe halaman fixture sendiri (X-Frame-Options bawaan SAMEORIGIN).
+  const widget = keamanan(["'self'"]);
+  app.use('*', (c, next) => {
+    const host = c.req.header('host');
+    if (c.req.path.startsWith(JALUR_WIDGET)) {
+      // Widget yang dibingkai induk lintas-origin (pasangan loopback) boleh dibingkai dan mengirim form ke induk.
+      const asal = asalSah(c.req.query('asal'), host);
+      return asal ? keamanan(["'self'", asal], asal)(c, next) : widget(c, next);
+    }
+    if (c.req.path === JALUR_LINTAS) {
+      const pasangan = originLintas(host);
+      if (pasangan) return keamanan(["'none'"], pasangan)(c, next);
+    }
+    return ketat(c, next);
+  });
   app.use('*', async (c, next) => {
     await next();
     c.header('X-Robots-Tag', 'noindex, nofollow');
@@ -76,6 +95,7 @@ export function createApp(config: Config) {
             <li><a href="${BASE}/welcome/permohonan">Daftar permohonan</a></li>
             <li><a href="/sby/">Replika Klampid Surabaya (publik)</a></li>
             <li><a href="/smg/">Replika Si D'nOK Semarang (publik)</a></li>
+            <li><a href="/uji-cf/">Tiruan halaman tantangan bot (uji verifikasi situs)</a></li>
           </ul>`,
       ),
     ),
@@ -246,6 +266,7 @@ export function createApp(config: Config) {
           <thead>
             <tr>
               <th>No</th>
+              <th>No. Registrasi</th>
               <th>Layanan</th>
               <th>Tanggal</th>
               <th>Status</th>
@@ -256,9 +277,10 @@ export function createApp(config: Config) {
               (a) =>
                 html`<tr>
                   <td>${a.no}</td>
+                  <td class="no-registrasi">${nomorRegistrasi(a.no)}</td>
                   <td>${a.layanan}</td>
                   <td>${a.tanggal}</td>
-                  <td>${a.status}</td>
+                  <td class="status">${a.status}</td>
                 </tr>`,
             )}
           </tbody>
@@ -270,6 +292,8 @@ export function createApp(config: Config) {
   // Replika alur publik read-only (jinak, ada di kedua profil).
   registerSurabaya(app);
   registerSemarang(app, { secure });
+  registerSamsatOss(app);
+  registerUjiCf(app);
 
   // Rute berbahaya: terdaftar HANYA di profil local (placeholder), tidak ada sama sekali di public (404).
   if (config.profile === 'local') {

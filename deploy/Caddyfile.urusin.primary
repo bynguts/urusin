@@ -84,6 +84,15 @@
 
 # Aplikasi memilih rute /verify dari header Host mentah, jadi kedua host ke upstream yang sama.
 urusinai.web.id, verify.urusinai.web.id {
+	# Browser Pendamping (WebSocket layar). Nonaktif sampai disetujui lead: butuh port 127.0.0.1:4330 dan
+	# `COMPOSE_PROFILES=pendamping` (lihat deploy/compose.prod.yml). HANYA /pendamping/ws/* yang
+	# diteruskan; /internal/* dan /debug pendamping tidak pernah diekspos. Pendamping memeriksa Origin
+	# persis, cookie urusin_sid pemilik, dan tiket sekali pakai.
+	#
+	# handle /pendamping/ws/* {
+	# 	uri strip_prefix /pendamping
+	# 	reverse_proxy 127.0.0.1:4330
+	# }
 	import urusin_common
 }
 

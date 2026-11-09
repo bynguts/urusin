@@ -23,13 +23,14 @@ new_sandbox() {
   SB="$(mktemp -d)"
   mkdir -p "$SB/deploy" "$SB/state"
   cp "$DEPLOY/deploy.sh" "$SB/deploy/deploy.sh"
+  cp "$DEPLOY/docker-versi.sh" "$DEPLOY/pendamping-up.sh" "$SB/deploy/"
   : > "$SB/deploy/compose.prod.yml"
   printf 'DOMAIN=urusin.test\n' > "$SB/deploy/.env"
   chmod 751 "$SB/deploy" && chmod 600 "$SB/deploy/.env"
   export SHIM_DIR="$SB/state"
   : > "$SHIM_DIR/calls.log"
   unset SHIM_LABEL SHIM_PROVENANCE SHIM_SERVE_BLUE SHIM_SERVE_GREEN SHIM_DOWN_BLUE SHIM_DOWN_GREEN \
-    SHIM_PUBLIC_FAIL SHIM_TLS_FAIL REQUIRE_PROVENANCE
+    SHIM_PUBLIC_FAIL SHIM_TLS_FAIL REQUIRE_PROVENANCE SHIM_DOCKER_VERSION
   export PATH="$HERE/shims:$PATH_ORIG"
   export WAIT_SECONDS=2 SETTLE_SECONDS=0
 }
@@ -283,6 +284,21 @@ export SHIM_DF_PCT=40
 (bash "$DEPLOY/disk-alert.sh") > "$SB/out.log" 2>&1; RC=$?
 check "40% -> exit 0, tanpa notifikasi" '[ $RC -eq 0 ] && ! calls | grep -q ntfy'
 unset SHIM_DF_PCT NTFY_URL
+
+echo "Docker Engine >= 28 (gateway_mode_ipv4): deploy.sh dan pendamping-up.sh"
+for v in 27.5.1 "" abc; do
+  new_sandbox
+  export SHIM_DOCKER_VERSION="$v"
+  run_deploy "$SHA_A" "$DIG_A"
+  check "deploy.sh, docker '$v' -> ditolak sebelum pull" '[ $RC -ne 0 ] && grep -q "butuh >= 28\|< 28" "$SB/out.log" && ! calls | grep -q "^docker pull"'
+  (cd "$SB/deploy" && bash ./pendamping-up.sh) > "$SB/out.log" 2>&1; RC=$?
+  check "pendamping-up.sh, docker '$v' -> ditolak sebelum compose" '[ $RC -ne 0 ] && ! calls | grep -q "^docker compose"'
+done
+new_sandbox
+export SHIM_DOCKER_VERSION=28.0.0
+(cd "$SB/deploy" && bash ./pendamping-up.sh) > "$SB/out.log" 2>&1; RC=$?
+check "pendamping-up.sh, docker 28 -> compose up pendamping + edge" '[ $RC -eq 0 ] && calls | grep -q "^docker compose .*up -d pendamping pendamping-edge"'
+unset SHIM_DOCKER_VERSION
 
 echo "izin direktori deploy dan rahasia (0751 / 0600)"
 case "$(uname -s)" in

@@ -1,3 +1,4 @@
+import { daftarWrite, labelPlaceholder } from './isi-data.js';
 import type {
   KoneksiViewer,
   PabrikViewer,
@@ -238,9 +239,60 @@ export class SesiPendampingUi {
     this.viewer?.ambilAlih();
   }
 
-  kembalikan(): void {
+  /**
+   * Lanjutkan. Pada giliran `berkas_kurang`: "Izinkan isi" baru untuk berkas itu saja (warga baru menambahkannya
+   * di Dokumen), lalu kendali dikembalikan; langkah unggah diulang, dan bila berkas masih belum ada giliran yang
+   * sama muncul lagi.
+   */
+  async kembalikan(): Promise<void> {
+    const berkas = this.data.giliran?.alasan === 'berkas_kurang' ? this.data.giliran.berkas : undefined;
+    if (berkas) {
+      const pesan = await this.kirimIzin([`berkas:${berkas.nama.toUpperCase()}`], berkas.origin);
+      if (pesan) this.data = { ...this.data, pesan };
+    }
     this.data = { ...this.data, giliran: null };
     this.viewer?.kembalikan();
+  }
+
+  /**
+   * "Izinkan isi" (A-M1): kirim HANYA daftar write yang ditampilkan di lembar + origin tujuan dari
+   * `butuh_data` (POST /api/urusan/[id]/izinkan-isi). Server menyimpan persetujuan, lalu mengambil nilai Data
+   * Diri/Dokumen dan mengirimnya ke sesi lewat kanal internal; peramban tidak pernah memegang nilainya.
+   * Mengembalikan pesan untuk warga (yang harus diisi sendiri, atau galat), atau undefined bila lengkap.
+   */
+  async izinkanIsi(): Promise<string | undefined> {
+    const butuh = this.data.butuhData;
+    if (!butuh) return undefined;
+    const writeList = daftarWrite(butuh.placeholder, butuh.berkas);
+    if (writeList.length === 0) {
+      const sendiri = butuh.placeholder.map(labelPlaceholder).filter((l, i, a) => a.indexOf(l) === i);
+      return `Isi sendiri di layar: ${sendiri.join(', ')}.`;
+    }
+    if (!butuh.origin) return 'Situs tujuan belum diketahui. Isi sendiri di layar.';
+    return this.kirimIzin(writeList, butuh.origin, true);
+  }
+
+  /** POST izinkan-isi (daftar write + origin, tanpa nilai); pesan untuk warga, atau undefined bila lengkap. */
+  private async kirimIzin(
+    writeList: string[],
+    targetOrigin: string,
+    awal = false,
+  ): Promise<string | undefined> {
+    let res: Response;
+    try {
+      res = await this.ambil(`/api/urusan/${encodeURIComponent(this.urusanId)}/izinkan-isi`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ writeList, targetOrigin }),
+      });
+    } catch {
+      return 'Koneksi terputus. Coba lagi atau isi sendiri.';
+    }
+    const j = (await res.json().catch(() => null)) as { pesanWarga?: string; kurang?: string[] } | null;
+    if (!res.ok) return j?.pesanWarga ?? 'Izin belum tercatat. Coba lagi atau isi sendiri.';
+    const kurang = j?.kurang ?? [];
+    if (awal && kurang.length === 0) this.data = { ...this.data, butuhData: null };
+    return kurang.length ? `Isi sendiri di layar: ${kurang.join(', ')}.` : undefined;
   }
 
   /** Hentikan: browser server dihancurkan, tidak ada yang tersimpan. */

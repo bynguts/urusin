@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { ADAPTERS } from '@urusin/adapters';
 import { llmText } from '@urusin/core';
 import { LAYANAN_KORPUS, cariPengetahuanTool } from '@urusin/rag';
 import { routeByKode } from '@urusin/registry';
@@ -221,6 +222,137 @@ export const dukcapilAjukanLayanan = defineTool({
   },
 });
 
+/**
+ * Catatan jujur per adapter baca-saja: apa yang dikerjakan AI, apa yang tetap bagian warga, dan seberapa jauh
+ * alurnya sudah teruji. Ditampilkan di layar konfirmasi dan dikembalikan ke model.
+ */
+const CATATAN_BACA: Readonly<Record<string, string>> = {
+  'telunjuk-sakti-wonogiri':
+    'Perlu masuk akun Telunjuk Sakti: Anda mengetik kata sandi dan CAPTCHA sendiri, lalu daftar permohonan dibaca.',
+  'klampid-surabaya':
+    'AI mengisi nomor kitir; Anda menjawab pertanyaan keamanan dan menekan Cari. Tampilan situs asli belum teramati (diuji pada replika).',
+  'sidnok-semarang':
+    'AI mengisi kode pelayanan; Anda menjawab pertanyaan keamanan dan menekan Cek Status. Diuji pada replika.',
+  'samsat-dki':
+    'Hanya kendaraan terdaftar di Samsat DKI Jakarta. AI mengisi nomor polisi; verifikasi situs (Turnstile) Anda selesaikan sendiri. Struktur halaman hasil belum teramati: hasilnya Anda baca di layar.',
+  'oss-nib':
+    'Pencarian NIB publik di oss.go.id. AI mengisi NIB; verifikasi situs (Turnstile) Anda selesaikan sendiri. Hasilnya Anda baca di layar.',
+};
+
+/** Alur baca-saja adapter bawaan, atau undefined bila adapter/alur tidak ada atau bukan baca-saja. */
+export function alurBaca(
+  adapterId: string | undefined,
+  flowId: string,
+): { adapterId: string; origin: string } | undefined {
+  if (!adapterId || !Object.hasOwn(ADAPTERS, adapterId)) return undefined;
+  const adapter = ADAPTERS[adapterId]!;
+  const flow = Object.hasOwn(adapter.flows, flowId) ? adapter.flows[flowId] : undefined;
+  return flow?.bacaSaja ? { adapterId, origin: adapter.origin } : undefined;
+}
+
+/**
+ * ExecutionRequest baca-saja. Tanpa nilai pribadi: params kosong; nomor kitir/kode/nomor polisi/NIB adalah
+ * placeholder adapter yang diisi lewat "Izinkan isi" (server) atau diketik warga di layar.
+ */
+function permintaanBaca(
+  tool: string,
+  args: unknown,
+  alur: { adapterId: string; origin: string },
+  flowId: string,
+  ringkasan: string,
+): ToolResult {
+  const catatan = CATATAN_BACA[alur.adapterId] ?? '';
+  return {
+    content: `Baca saja, tidak ada yang dikirim. ${catatan} Warga diminta mengizinkan sebelum Browser Pendamping membuka situs.`,
+    endTurn: true,
+    execution: {
+      executionId: `x_${randomUUID()}`,
+      adapterId: alur.adapterId,
+      flowId,
+      ringkasan: `${ringkasan} Baca saja, tidak ada yang dikirim. ${catatan}`,
+      params: {},
+      tool,
+      paramsHash: paramsHash(tool, args),
+      origin: alur.origin,
+      bacaSaja: true,
+    },
+  };
+}
+
+/** Cek status pengajuan kependudukan di portal kota (hanya kota yang adapternya punya alur cek_status). */
+export const dukcapilCekStatus = defineTool({
+  name: 'dukcapil__cek_status',
+  description:
+    "Cek status pengajuan kependudukan di portal resmi kota lewat Browser Pendamping (baca saja). Tersedia untuk Surabaya (Klampid), Semarang (Si D'nOK), dan Wonogiri (Telunjuk Sakti, perlu login warga). Kota lain: arahkan ke kanal resmi.",
+  effect: 'read',
+  input: z.object({ kodeKabKota }),
+  allowedStates: NON_TERMINAL_STATES,
+  origin(args) {
+    return alurBaca(routeByKode(args.kodeKabKota).entry.adapterId, 'cek_status')?.origin;
+  },
+  execute(_ctx, args): ToolResult {
+    const { entry } = routeByKode(args.kodeKabKota);
+    const alur = alurBaca(entry.adapterId, 'cek_status');
+    if (!alur) {
+      const lewat = entry.portal
+        ? ` lewat ${entry.portal.nama} (${entry.portal.origin})`
+        : ' di kantor dinas';
+      return {
+        content: `${entry.nama}: tingkat dipandu untuk cek status. Browser Pendamping belum punya alur cek status di sini; warga mengecek sendiri${lewat}.`,
+      };
+    }
+    return permintaanBaca(
+      'dukcapil__cek_status',
+      args,
+      alur,
+      'cek_status',
+      `Cek status pengajuan di ${entry.portal?.nama ?? entry.nama} (tingkat ${entry.tier}).`,
+    );
+  },
+});
+
+function alurWajib(adapterId: string, flowId: string): { adapterId: string; origin: string } {
+  const alur = alurBaca(adapterId, flowId);
+  if (!alur) throw new Error(`alur baca-saja ${adapterId}/${flowId} tidak ada`);
+  return alur;
+}
+const SAMSAT_DKI = alurWajib('samsat-dki', 'cek_pkb');
+const OSS_NIB = alurWajib('oss-nib', 'cari_nib');
+
+/** Info PKB kendaraan di Samsat DKI Jakarta. */
+export const samsatCekPkb = defineTool({
+  name: 'samsat__cek_pkb',
+  description:
+    'Cek info Pajak Kendaraan Bermotor (PKB) di situs resmi Samsat DKI Jakarta lewat Browser Pendamping (baca saja). Hanya kendaraan terdaftar di DKI Jakarta. Jangan sertakan nomor polisi: warga mengisinya di layar.',
+  effect: 'read',
+  input: z.object({}),
+  allowedStates: NON_TERMINAL_STATES,
+  origin: () => SAMSAT_DKI.origin,
+  execute(_ctx, args): ToolResult {
+    return permintaanBaca(
+      'samsat__cek_pkb',
+      args,
+      SAMSAT_DKI,
+      'cek_pkb',
+      'Cek info PKB di Samsat DKI Jakarta (tingkat semi).',
+    );
+  },
+});
+
+/** Pencarian NIB publik di OSS. */
+export const ossCariNib = defineTool({
+  name: 'oss__cari_nib',
+  description:
+    'Cari data usaha berdasarkan NIB di widget publik "Pencarian NIB" oss.go.id lewat Browser Pendamping (baca saja). Jangan sertakan NIB: warga mengisinya di layar.',
+  effect: 'read',
+  input: z.object({}),
+  allowedStates: NON_TERMINAL_STATES,
+  origin: () => OSS_NIB.origin,
+  execute(_ctx, args): ToolResult {
+    return permintaanBaca('oss__cari_nib', args, OSS_NIB, 'cari_nib', 'Cari NIB di OSS (tingkat semi).');
+  },
+});
+
 /** Terdaftar supaya percobaan memanggilnya ditolak gate dengan aturan yang jelas; tidak pernah ditawarkan ke model. */
 export const dukcapilKlikSelesai = defineTool({
   name: 'dukcapil__klik_selesai',
@@ -241,5 +373,8 @@ export function builtinTools(): ToolDef[] {
     urusanJawabPersyaratan,
     dukcapilAjukanLayanan,
     dukcapilKlikSelesai,
+    dukcapilCekStatus,
+    samsatCekPkb,
+    ossCariNib,
   ] as unknown as ToolDef[];
 }

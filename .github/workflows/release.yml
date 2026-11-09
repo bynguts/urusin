@@ -1,6 +1,6 @@
 name: Release
 
-# Membangun image web + fixtures multi-arch (amd64 + arm64).
+# Membangun image web + fixtures + pendamping multi-arch (amd64 + arm64).
 #   - push ke main : image bertag <sha> (VPS menarik berdasarkan digest, lihat deploy/deploy.sh).
 #   - tag rc* / v* : TIDAK membangun ulang. Image <sha> milik commit bertag di-alias (digest sama) menjadi <tag>,
 #     lalu GitHub Release dibuat dari SBOM hasil run main untuk SHA yang sama. Jadi yang diuji
@@ -40,6 +40,9 @@ jobs:
           - name: fixtures
             dockerfile: apps/fixtures/Dockerfile
             image: ghcr.io/bynguts/urusin-fixtures
+          - name: pendamping
+            dockerfile: apps/pendamping/Dockerfile
+            image: ghcr.io/bynguts/urusin-pendamping
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -84,6 +87,23 @@ jobs:
             echo "::group::${NAME} linux/${arch}"
             if [ "$NAME" = "web" ]; then
               docker run --rm --platform "linux/${arch}" --entrypoint node "$REF"                 -e "const a=process.arch;const r=require('better-sqlite3')(':memory:').prepare('select 1 as x').get();if(r.x!==1)process.exit(1);console.log(a,'better-sqlite3 ok')"
+            elif [ "$NAME" = "pendamping" ]; then
+              # Kontainer pendamping tanpa no-new-privileges: chrome-sandbox HARUS satu-satunya biner SUID/SGID,
+              # dan tidak ada berkas ber-capability (getcap ada di image dan keluarannya kosong).
+              docker run --rm --platform "linux/${arch}" --network none --entrypoint sh "$REF" -c                 'f=$(find / -xdev -type f -perm /6000 2>/dev/null); echo "$f"; case "$f" in /ms-playwright/chromium-1254/chrome-linux64/chrome-sandbox|/ms-playwright/chromium-1254/chrome-linux-arm64/chrome-sandbox) ;; *) exit 1 ;; esac; [ "$(stat -c %u:%a "$f")" = 0:4755 ] && [ "$CHROME_DEVEL_SANDBOX" = "$f" ] && command -v getcap >/dev/null && c=$(getcap -r / 2>/dev/null) && echo "getcap: [$c]" && [ -z "$c" ]'
+              if [ "$arch" = "amd64" ]; then
+                # Boot produksi dengan pengerasan yang sama seperti compose (seccomp Playwright, SYS_ADMIN +
+                # SYS_CHROOT untuk sandbox setuid tanpa no-new-privileges, read-only, tanpa jaringan; ADR 0029):
+                # main.js menolak start bila ada rute keluar atau sandbox Chromium
+                # headed tidak aktif, jadi /health 200 = kedua pemeriksaan boot lulus. --init: tanpa init,
+                # xvfb-run/Xvfb sebagai PID 1 bisa menggantung. Edge sendiri: modulnya harus termuat. Token dibuat
+                # acak di langkah ini (literal berentropi tinggi di repo memicu Gitleaks).
+                timeout 300 docker run --rm --init --platform "linux/${arch}" --network none --read-only                   --tmpfs /tmp:size=768m --cap-drop ALL --cap-add SYS_ADMIN --cap-add SYS_CHROOT                   --security-opt seccomp=deploy/pendamping-seccomp.json                   -e PENDAMPING_INTERNAL_TOKEN="$(openssl rand -hex 32)"                   -e PENDAMPING_EDGE_URL=http://pendamping-edge:3129                   -e PENDAMPING_EDGE_TOKEN="$(openssl rand -hex 32)"                   -e URUSIN_PUBLIC_ORIGIN=https://smoke.test --entrypoint sh "$REF" -c                   'node dist/main.js & for i in $(seq 1 60); do node dist/sehat.js 4330 && echo "pendamping ok (sandbox + tanpa rute)" && exit 0; kill -0 $! 2>/dev/null || exit 1; sleep 2; done; exit 1'
+                timeout 120 docker run --rm --platform "linux/${arch}" --network none --entrypoint node "$REF"                   -e "import('./dist/edge.js').then((m)=>{m.loadEdgeConfig({PENDAMPING_EDGE_TOKEN:'x'.repeat(40)});console.log('edge ok')})"
+              else
+                # arm64 di QEMU: Chromium/userns tidak diemulasikan dengan andal; cukup modul termuat.
+                timeout 600 docker run --rm --platform "linux/${arch}" --network none --entrypoint node "$REF"                   -e "Promise.all([import('./dist/config.js'),import('./dist/edge.js'),import('playwright-core')]).then(()=>console.log(process.arch,'modul ok'))"
+              fi
             else
               docker run --rm --platform "linux/${arch}" --entrypoint sh "$REF" -c                 'node dist/server.js & sleep 5; node -e "fetch(\"http://127.0.0.1:4000/health\").then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" && echo "fixtures ok"'
             fi
@@ -118,6 +138,8 @@ jobs:
             echo '```sh'
             if [ "$NAME" = "web" ]; then
               echo "deploy/deploy.sh ${GITHUB_SHA} ${IMAGE}@${DIGEST}"
+            elif [ "$NAME" = "pendamping" ]; then
+              echo "PENDAMPING_IMAGE=${IMAGE}@${DIGEST}"
             else
               echo "FIXTURES_IMAGE=${IMAGE}@${DIGEST}"
             fi
@@ -145,7 +167,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Alias image web dan fixtures ke tag rilis
+      - name: Alias image web, fixtures, dan pendamping ke tag rilis
         run: |
           {
             echo "### Image rilis ${TAG}"
@@ -153,7 +175,7 @@ jobs:
             echo "Commit bertag: \`${GITHUB_SHA}\` (tidak ada build ulang; digest sama dengan yang diuji di main)"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
-          for image in ghcr.io/bynguts/urusin-web ghcr.io/bynguts/urusin-fixtures; do
+          for image in ghcr.io/bynguts/urusin-web ghcr.io/bynguts/urusin-fixtures ghcr.io/bynguts/urusin-pendamping; do
             if ! digest="$(docker buildx imagetools inspect "${image}:${GITHUB_SHA}" --format '{{.Manifest.Digest}}' 2>/dev/null)" || [ -z "$digest" ]; then
               echo "::error::tidak ada image ${image}:${GITHUB_SHA}. Tag harus menunjuk commit main yang sudah dibangun oleh workflow Release."
               exit 1
@@ -197,7 +219,7 @@ jobs:
       - name: Unduh SBOM dari run tersebut
         run: |
           mkdir -p assets
-          for name in sbom-web sbom-fixtures; do
+          for name in sbom-web sbom-fixtures sbom-pendamping; do
             gh run download "${{ steps.run.outputs.id }}" --dir assets --name "$name"
           done
           ls -l assets

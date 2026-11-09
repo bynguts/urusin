@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   assertTargetAllowed,
   assertUrlAllowed,
+  browserUnion,
   buildAllowlist,
+  checkConnect,
+  checkConnectHost,
   EgressBlockedError,
   isBlockedAddress,
   isLlmProxy,
   AUTH_HOSTS,
   TURNSTILE_HOSTS,
+  isPendampingInternal,
   JINA_HOSTS,
   LLM_PROXY,
 } from './policy.js';
@@ -73,6 +77,42 @@ describe('assertTargetAllowed', () => {
     expect(buildAllowlist('runtime', { LLM_BASE_URL: 'http://127.0.0.1:20129/v1' }).llmProxy).toBe(false);
     expect(buildAllowlist('runtime', { LLM_BASE_URL: 'https://127.0.0.1:20128' }).llmProxy).toBe(true);
     expect(() => assertTargetAllowed('http:', '127.0.0.1', 20128, ingest)).toThrow(EgressBlockedError);
+  });
+
+  it('worker pendamping internal: hanya http IP literal 127.0.0.1/Tailscale + port persis dari env', () => {
+    const env = {
+      PENDAMPING_INTERNAL_URL: 'http://127.0.0.1:4330',
+      PENDAMPING_WORKERS: JSON.stringify([
+        { url: 'http://100.101.1.2:4330' },
+        { url: 'http://10.0.0.5:4330' }, // privat non-Tailscale: diabaikan
+        { url: 'https://127.0.0.1:4331' }, // https: diabaikan
+        { url: 'http://pendamping:4000' }, // nama DNS: diabaikan
+        { url: 'http://127.0.0.1:2019' }, // admin Caddy: tidak pernah
+        { url: 'http://127.0.0.1:20128' }, // proxy LLM: jalurnya sendiri
+        { url: 'http://127.0.0.1' }, // tanpa port eksplisit
+        { bukan: 'url' },
+      ]),
+    };
+    const a = buildAllowlist('runtime', env);
+    expect([...(a.internal ?? [])]).toEqual(['http://127.0.0.1:4330', 'http://100.101.1.2:4330']);
+    expect(assertTargetAllowed('http:', '127.0.0.1', 4330, a)).toBe(true);
+    expect(assertTargetAllowed('http:', '100.101.1.2', 4330, a)).toBe(true);
+    for (const [proto, host, port] of [
+      ['http:', '127.0.0.1', 4331],
+      ['https:', '127.0.0.1', 4330],
+      ['http:', '127.0.0.1', 2019],
+      ['http:', '10.0.0.5', 4330],
+      ['http:', '100.101.1.3', 4330],
+    ] as const)
+      expect(() => assertTargetAllowed(proto, host, port, a), `${host}:${port}`).toThrow(EgressBlockedError);
+    expect(isPendampingInternal(new URL('http://127.0.0.1:4330/internal/sesi'), a)).toBe(true);
+    expect(isPendampingInternal(new URL('http://127.0.0.1:4331/'), a)).toBe(false);
+    // Tanpa env (atau JSON rusak) dan profil ingest: tidak ada pengecualian.
+    expect(buildAllowlist('runtime', { PENDAMPING_WORKERS: '[{' }).internal?.size).toBe(0);
+    expect(() => assertTargetAllowed('http:', '127.0.0.1', 4330, allow)).toThrow(EgressBlockedError);
+    expect(() => assertTargetAllowed('http:', '127.0.0.1', 4330, buildAllowlist('ingest', env))).toThrow(
+      EgressBlockedError,
+    );
   });
 
   it('isLlmProxy: hanya 127.0.0.1:20128', () => {
@@ -165,5 +205,83 @@ describe('assertUrlAllowed', () => {
     'http://2130706433/',
   ])('%s ditolak', (u) => {
     expect(() => assertUrlAllowed(u, allow)).toThrow(EgressBlockedError);
+  });
+});
+
+describe('checkConnect (profil browser)', () => {
+  const sesi = new Set(['telunjuksakti.wonogirikab.go.id', 'challenges.cloudflare.com']);
+  const ok =
+    (host: string, ip = '103.10.20.30', port = 443) =>
+    () =>
+      checkConnect(host, port, ip, 'browser', { sesi });
+
+  it('host sesi + union registry di https:443 dengan IP publik lolos', () => {
+    expect(ok('telunjuksakti.wonogirikab.go.id')).not.toThrow();
+    expect(ok('TELUNJUKSAKTI.wonogirikab.go.id.')).not.toThrow();
+    expect(ok('challenges.cloudflare.com', '2606:4700::6810:1')).not.toThrow();
+  });
+
+  it('DNS host yang diizinkan menunjuk ke alamat terlarang ditolak', () => {
+    for (const ip of [
+      '127.0.0.1',
+      '10.0.0.5',
+      '172.17.0.1', // gateway bridge Docker
+      '192.168.1.1',
+      '100.64.0.1', // CGNAT / Tailscale
+      '169.254.169.254', // metadata cloud
+      '0.0.0.0',
+      '::1',
+      '::127.0.0.1', // IPv4-compatible
+      '::ffff:127.0.0.1',
+      '::ffff:0:a00:5', // IPv4-translated
+      '64:ff9b::a9fe:a9fe',
+      'fd00::1',
+      'bukan-ip',
+    ])
+      expect(ok('telunjuksakti.wonogirikab.go.id', ip), ip).toThrow(EgressBlockedError);
+  });
+
+  it('port selain 443 (termasuk 20128/2019), IP literal, di luar sesi, di luar union: ditolak', () => {
+    expect(ok('telunjuksakti.wonogirikab.go.id', '103.10.20.30', 20128)).toThrow(/https:443/);
+    expect(ok('telunjuksakti.wonogirikab.go.id', '103.10.20.30', 2019)).toThrow(/https:443/);
+    expect(ok('telunjuksakti.wonogirikab.go.id', '103.10.20.30', 80)).toThrow(/https:443/);
+    expect(ok('103.10.20.30')).toThrow(/IP literal/);
+    expect(ok('oss.go.id')).toThrow(/allowlist sesi/);
+    expect(ok('contoh.go.id')).toThrow(/union registry/); // tanpa wildcard *.go.id
+    // Set sesi tidak bisa memperlebar union global (pendamping yang dibobol tetap dibatasi).
+    expect(() =>
+      checkConnect('evil.example', 443, '1.2.3.4', 'browser', { sesi: new Set(['evil.example']) }),
+    ).toThrow(/union registry/);
+    expect(() =>
+      checkConnect('fixtures.contoh.id', 443, '1.2.3.4', 'browser', {
+        sesi: new Set(['fixtures.contoh.id']),
+        union: browserUnion(['fixtures.contoh.id']),
+      }),
+    ).not.toThrow();
+    expect(() =>
+      checkConnect('oss.go.id', 443, '1.2.3.4', 'runtime' as 'browser', { sesi: new Set(['oss.go.id']) }),
+    ).toThrow(/bukan untuk CONNECT/);
+  });
+
+  it('checkConnectHost (sebelum DNS): sama dengan checkConnect tanpa alamat; mengembalikan host ternormalisasi', () => {
+    expect(checkConnectHost('TELUNJUKSAKTI.wonogirikab.go.id.', 443, 'browser', { sesi })).toBe(
+      'telunjuksakti.wonogirikab.go.id',
+    );
+    expect(() => checkConnectHost('telunjuksakti.wonogirikab.go.id', 20128, 'browser', { sesi })).toThrow(
+      /https:443/,
+    );
+    expect(() => checkConnectHost('[::1]', 443, 'browser', { sesi })).toThrow(/IP literal/);
+    expect(() => checkConnectHost('oss.go.id', 443, 'browser', { sesi })).toThrow(/allowlist sesi/);
+    expect(() =>
+      checkConnectHost('evil.example', 443, 'browser', { sesi: new Set(['evil.example']) }),
+    ).toThrow(/union registry/);
+  });
+
+  it('allowlist profil browser: union registry tanpa sufiks, tanpa proxy LLM, tanpa origin operator', () => {
+    const a = buildAllowlist('browser', { LLM_BASE_URL: 'http://127.0.0.1:20128/v1' });
+    expect(a.llmProxy).toBe(false);
+    expect(a.suffixes).toEqual([]);
+    expect(a.hosts.has('challenges.cloudflare.com')).toBe(true);
+    expect(() => assertTargetAllowed('http:', '127.0.0.1', 20128, a)).toThrow(EgressBlockedError);
   });
 });

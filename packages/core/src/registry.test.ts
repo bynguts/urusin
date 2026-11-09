@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { ErrorCode } from './errors.js';
 import {
+  EGRESS_PIHAK_KETIGA,
   OFFICIAL_DOMAINS,
+  egressAllowedHosts,
   getOfficialDomain,
   isOfficialUrl,
   matchOfficialOrigin,
@@ -11,11 +13,16 @@ import {
 const T = 'telunjuksakti.wonogirikab.go.id';
 
 describe('registry domain resmi', () => {
-  it('memuat 11 domain seed tanpa duplikat, semuanya .go.id', () => {
+  it('memuat 14 domain seed tanpa duplikat, semuanya .go.id', () => {
     const hosts = OFFICIAL_DOMAINS.map((d) => d.host);
-    expect(hosts).toHaveLength(11);
+    expect(hosts).toHaveLength(14);
     expect(new Set(hosts).size).toBe(hosts.length);
     for (const h of hosts) expect(h.endsWith('.go.id') || h === 'oss.go.id').toBe(true);
+  });
+
+  it('situs yang menolak IP pusat data ditandai aksesWilayah id-only (diukur dari agent-vm)', () => {
+    const idOnly = OFFICIAL_DOMAINS.filter((d) => d.aksesWilayah === 'id-only').map((d) => d.host);
+    expect(idOnly).toEqual(['telunjuksakti.wonogirikab.go.id', 'sidnok.semarangkota.go.id']);
   });
 
   it.each(OFFICIAL_DOMAINS.map((d) => d.host))('menerima https://%s/', (host) => {
@@ -92,5 +99,19 @@ describe('matchOfficialOrigin', () => {
   });
   it('menolak origin http', () => {
     expect(matchOfficialOrigin(`http://${T}`).ok).toBe(false);
+  });
+});
+
+describe('egress pihak ketiga', () => {
+  it('host persis huruf kecil tanpa wildcard/port/skema, tidak tumpang tindih dengan domain resmi', () => {
+    const resmi = new Set(OFFICIAL_DOMAINS.map((d) => d.host));
+    for (const { host } of EGRESS_PIHAK_KETIGA) {
+      expect(host).toMatch(/^[a-z0-9-]+(\.[a-z0-9-]+)+$/);
+      expect(resmi.has(host)).toBe(false);
+    }
+    const all = egressAllowedHosts();
+    expect(new Set(all).size).toBe(all.length);
+    expect(all).toContain('telunjuksakti.wonogirikab.go.id');
+    expect(all).toContain('challenges.cloudflare.com');
   });
 });

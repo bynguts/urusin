@@ -68,7 +68,56 @@ importers:
         version: 26.6.6
       vitest:
         specifier: 5.1.0
-        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+
+  apps/pendamping:
+    dependencies:
+      '@urusin/adapters':
+        specifier: workspace:*
+        version: link:../../packages/adapters
+      '@urusin/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@urusin/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@urusin/egress':
+        specifier: workspace:*
+        version: link:../../packages/egress
+      '@urusin/executor':
+        specifier: workspace:*
+        version: link:../../packages/executor
+      '@urusin/pendamping-client':
+        specifier: workspace:*
+        version: link:../../packages/pendamping-client
+      playwright-core:
+        specifier: 1.65.0
+        version: 1.65.0
+      ws:
+        specifier: 8.22.1
+        version: 8.22.1
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@playwright/test':
+        specifier: 1.65.0
+        version: 1.65.0
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
+      '@types/ws':
+        specifier: 8.18.2
+        version: 8.18.2
+      '@urusin/fixtures':
+        specifier: workspace:*
+        version: link:../fixtures
+      '@urusin/harness':
+        specifier: workspace:*
+        version: link:../../packages/harness
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
   apps/web:
     dependencies:
@@ -90,6 +139,9 @@ importers:
       '@urusin/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@urusin/pendamping-client':
+        specifier: workspace:*
+        version: link:../../packages/pendamping-client
       '@urusin/rag':
         specifier: workspace:*
         version: link:../../packages/rag
@@ -141,7 +193,26 @@ importers:
         version: 8.3.6(@types/node@26.6.6)(jiti@2.7.0)
       vitest:
         specifier: 5.1.0
-        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+
+  packages/adapters:
+    dependencies:
+      '@urusin/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
+      '@urusin/executor':
+        specifier: workspace:*
+        version: link:../executor
+      '@vitest/coverage-v8':
+        specifier: 5.1.0
+        version: 5.1.0(vitest@5.1.0)
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
   packages/akun:
     dependencies:
@@ -163,7 +234,7 @@ importers:
         version: 5.1.0(vitest@5.1.0)
       vitest:
         specifier: 5.1.0
-        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
   packages/contracts:
     dependencies:
@@ -176,7 +247,7 @@ importers:
         version: 26.6.6
       vitest:
         specifier: 5.1.0
-        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
   packages/core:
     dependencies:
@@ -195,7 +266,7 @@ importers:
         version: 4.10.2
       vitest:
         specifier: 5.1.0
-        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
   packages/egress:
     dependencies:
@@ -217,10 +288,32 @@ importers:
         version: 10.14.0(jiti@2.7.0)
       vitest:
         specifier: 5.1.0
-        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+
+  packages/executor:
+    dependencies:
+      '@urusin/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
+      '@vitest/coverage-v8':
+        specifier: 5.1.0
+        version: 5.1.0(vitest@5.1.0)
+      happy-dom:
+        specifier: 21.0.4
+        version: 21.0.4
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
   packages/harness:
     dependencies:
+      '@urusin/adapters':
+        specifier: workspace:*
+        version: link:../adapters
       '@urusin/contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -254,7 +347,7 @@ importers:
         version: 4.10.2
       vitest:
         specifier: 5.1.0
-        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
   packages/llm:
     dependencies:
@@ -276,7 +369,22 @@ importers:
         version: 5.1.0(vitest@5.1.0)
       vitest:
         specifier: 5.1.0
-        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+
+  packages/pendamping-client:
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
+      '@urusin/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@vitest/coverage-v8':
+        specifier: 5.1.0
+        version: 5.1.0(vitest@5.1.0)
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
   packages/rag:
     dependencies:
@@ -307,7 +415,7 @@ importers:
         version: 5.1.0(vitest@5.1.0)
       vitest:
         specifier: 5.1.0
-        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
   packages/registry:
     dependencies:
@@ -326,7 +434,7 @@ importers:
         version: 4.10.2
       vitest:
         specifier: 5.1.0
-        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
 packages:
 
@@ -1060,6 +1168,12 @@ packages:
   '@types/node@26.6.6':
     resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
 
+  '@types/whatwg-mimetype@3.0.2':
+    resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
+
+  '@types/ws@8.18.2':
+    resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
+
   '@typescript-eslint/eslint-plugin@8.72.1':
     resolution: {integrity: sha512-5CokTWXpmbylfFabsbvHC0CAw3XLaGnoa+nFJX5FR592h/LoZsENUE6p/rg5xvkKrFEXz6pYmgI29AgXc2N3BQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -1276,6 +1390,10 @@ packages:
   brace-expansion@5.0.12:
     resolution: {integrity: sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==}
     engines: {node: 20 || >=22}
+
+  buffer-image-size@0.6.4:
+    resolution: {integrity: sha512-nEh+kZOPY1w+gcCMobZ6ETUp9WfibndnosbpwB1iJk/8Gt5ZF2bhS6+B6bPYz424KtwsR6Rflc3tCz1/ghX2dQ==}
+    engines: {node: '>=4.0'}
 
   buffer@5.7.1:
     resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==}
@@ -1550,6 +1668,10 @@ packages:
     resolution: {integrity: sha512-rRqJg/6gd538VHvR3PSrdRBb/1Vy2YfzHqzvbhGIQpDRKIa4FgV/54b5Q1xYSxOOwKvjXweS26E0Q+nAMwp2pQ==}
     engines: {node: '>=8.6'}
 
+  entities@7.0.1:
+    resolution: {integrity: sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==}
+    engines: {node: '>=0.12'}
+
   env-paths@2.2.1:
     resolution: {integrity: sha512-+h1lkLKhZMTYjog1VEpJNG7NZJWcuc2DDk/qsqSTRRCOXiLjeQ1d1/udrUGhqMxUgAlwKNZ0cf2uqan5GLuS2A==}
     engines: {node: '>=6'}
@@ -1815,6 +1937,10 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
+
+  happy-dom@21.0.4:
+    resolution: {integrity: sha512-tFm+GaLBgo6o0awHnvHaNoraVo27qJ+2tZEtZ+cIa08hXbeitrxAJajLI05hsUy/2/YTKcUjQYzHe5mCcraLBw==}
+    engines: {node: '>=20.0.0'}
 
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
@@ -2969,6 +3095,10 @@ packages:
   whatwg-fetch@3.6.20:
     resolution: {integrity: sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==}
 
+  whatwg-mimetype@3.0.0:
+    resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
+    engines: {node: '>=12'}
+
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
 
@@ -3702,6 +3832,12 @@ snapshots:
     dependencies:
       undici-types: 8.9.0
 
+  '@types/whatwg-mimetype@3.0.2': {}
+
+  '@types/ws@8.18.2':
+    dependencies:
+      '@types/node': 26.6.6
+
   '@typescript-eslint/eslint-plugin@8.72.1(@typescript-eslint/parser@8.72.1(eslint@10.14.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.14.0(jiti@2.7.0))(typescript@6.0.3)':
     dependencies:
       '@eslint-community/regexpp': 4.12.2
@@ -3803,7 +3939,7 @@ snapshots:
       obug: 3.0.0
       std-env: 4.3.0
       tinyrainbow: 3.2.0
-      vitest: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+      vitest: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
 
   '@vitest/istanbul-lib-coverage@2.1.0': {}
 
@@ -3943,6 +4079,10 @@ snapshots:
   brace-expansion@5.0.12:
     dependencies:
       balanced-match: 4.0.4
+
+  buffer-image-size@0.6.4:
+    dependencies:
+      '@types/node': 26.6.6
 
   buffer@5.7.1:
     dependencies:
@@ -4197,6 +4337,8 @@ snapshots:
     dependencies:
       ansi-colors: 4.1.3
       strip-ansi: 6.0.1
+
+  entities@7.0.1: {}
 
   env-paths@2.2.1: {}
 
@@ -4512,6 +4654,19 @@ snapshots:
   gopd@1.2.0: {}
 
   graceful-fs@4.2.11: {}
+
+  happy-dom@21.0.4:
+    dependencies:
+      '@types/node': 26.6.6
+      '@types/whatwg-mimetype': 3.0.2
+      '@types/ws': 8.18.2
+      buffer-image-size: 0.6.4
+      entities: 7.0.1
+      whatwg-mimetype: 3.0.0
+      ws: 8.22.1
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   has-flag@4.0.0: {}
 
@@ -5547,7 +5702,7 @@ snapshots:
     optionalDependencies:
       vite: 8.3.6(@types/node@26.6.6)(jiti@2.7.0)
 
-  vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)):
+  vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/mocker': 5.1.0(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
@@ -5567,6 +5722,7 @@ snapshots:
       '@opentelemetry/api': 1.10.0
       '@types/node': 26.6.6
       '@vitest/coverage-v8': 5.1.0(vitest@5.1.0)
+      happy-dom: 21.0.4
     transitivePeerDependencies:
       - msw
 
@@ -5579,6 +5735,8 @@ snapshots:
   webidl-conversions@3.0.1: {}
 
   whatwg-fetch@3.6.20: {}
+
+  whatwg-mimetype@3.0.0: {}
 
   whatwg-url@5.0.0:
     dependencies:

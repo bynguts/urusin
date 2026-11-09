@@ -10,3 +10,5 @@ coverage/
 playwright-report/
 test-results/
 .impeccable/
+# Profil Playwright v1.65.0 (utils/docker/seccomp_profile.json), blok SYS_ADMIN dipangkas; lihat deploy/README.md.
+deploy/pendamping-seccomp.json

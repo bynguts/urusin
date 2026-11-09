@@ -645,7 +645,19 @@ class TurnRunner {
       });
       if (tool.effect === 'answer') this.progress('Memverifikasi kutipan ke sumber resmi…');
       for (const e of res.events ?? []) this.emit(e);
-      if (res.execution) this.emit({ type: 'execution_request', ...res.execution });
+      if (res.execution) {
+        this.emit({ type: 'execution_request', ...res.execution });
+        // Tool baca: belum ada gate konfirmasi sebelumnya, jadi warga tetap menyetujui sebelum peramban dibuka.
+        // Gate dikirim SESUDAH permintaan agar kartu konfirmasi menemukannya lewat paramsHash.
+        if (tool.effect !== 'write')
+          this.emit({
+            type: 'gate',
+            jenis: 'konfirmasi',
+            pesan: 'Izinkan Browser Pendamping membuka situs resmi untuk membaca saja?',
+            tool: res.execution.tool,
+            paramsHash: res.execution.paramsHash,
+          });
+      }
       if (res.nextState) {
         try {
           this.applyTransition(res.nextState);

@@ -83,6 +83,17 @@ describe('temuan 3: redaksi penyimpanan tidak merusak JSON dan konfirmasi tidak 
     });
   });
 
+  it('redactLeaves: paramsHash/executionId buatan kode tidak diredaksi walau berisi deret mirip HP', () => {
+    const hash = 'd39411bb12cc0830587371b4b0463cfbf212ee90ac813bb5d528818948f9008f';
+    const executionId = `x_00000000-0000-4000-8000-${HP.join('')}`;
+    expect(redactLeaves({ paramsHash: hash, executionId })).toEqual({ paramsHash: hash, executionId });
+    // Bentuk lain di kunci yang sama, dan nilai yang sama di kunci lain, tetap diredaksi.
+    expect(redactLeaves({ paramsHash: `${HP.join('')} x`, catatan: hash })).toEqual({
+      paramsHash: '{{PEMOHON.HP}} x',
+      catatan: 'd39411bb12cc{{PEMOHON.HP}}b4b0463cfbf212ee90ac813bb5d528818948f9008f',
+    });
+  });
+
   it('tool tulis gagal sebelum tindakan sampai ke warga: konfirmasi dikembalikan, bukan hangus', async () => {
     const gagal = defineTool({
       name: 'dukcapil__ajukan_layanan',

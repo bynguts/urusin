@@ -239,6 +239,33 @@ export const ENDPOINT = {
   sambung: { method: 'POST', path: '/api/sambung', sukses: 201, diimplementasi: false },
   sambungKlaim: { method: 'POST', path: '/api/sambung/klaim', sukses: 200, diimplementasi: false },
   hapusData: { method: 'DELETE', path: '/api/data', sukses: 200, diimplementasi: false },
+  // Browser Pendamping (skema di pendamping.ts)
+  pendampingMulai: {
+    method: 'POST',
+    path: '/api/urusan/[id]/pendamping',
+    sukses: 201,
+    diimplementasi: true,
+  },
+  pendampingStatus: { method: 'GET', path: '/api/urusan/[id]/pendamping', sukses: 200, diimplementasi: true },
+  pendampingTiket: {
+    method: 'POST',
+    path: '/api/urusan/[id]/pendamping/tiket',
+    sukses: 201,
+    diimplementasi: true,
+  },
+  pendampingSerahkan: {
+    method: 'POST',
+    path: '/api/urusan/[id]/pendamping/serahkan',
+    sukses: 200,
+    diimplementasi: true,
+  },
+  pendampingAkhiri: {
+    method: 'DELETE',
+    path: '/api/urusan/[id]/pendamping',
+    sukses: 200,
+    diimplementasi: true,
+  },
+  pendampingAntrean: { method: 'GET', path: '/api/pendamping/antrean', sukses: 200, diimplementasi: true },
 } as const;
 
 export type BuatUrusanRequest = z.infer<typeof BuatUrusanRequestSchema>;

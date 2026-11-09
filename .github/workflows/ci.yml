@@ -171,7 +171,19 @@ jobs:
       - name: Pasang Chromium Playwright
         run: pnpm --filter @urusin/web exec playwright install --with-deps chromium
 
-      # turbo membangun web lebih dulu; Playwright menyalakan build node web dengan DB sementara.
+      # Runner ubuntu-24.04 membatasi user namespace tak berhak lewat AppArmor, sehingga Chromium e2e pendamping
+      # (diluncurkan di runner, di luar kontainer, tanpa chrome-sandbox setuid) mati dengan "No usable sandbox".
+      # Pembatasan dilonggarkan HANYA di runner GitHub sekali pakai ini supaya sandbox userns Chromium tetap
+      # AKTIF; jangan pernah --no-sandbox / chromiumSandbox: false. Bukan untuk agent-vm: produksi memakai
+      # sandbox setuid di kontainer (ADR 0029) dan boot pendamping tetap gagal-tertutup tanpa sandbox.
+      - name: Izinkan userns tak berhak untuk sandbox Chromium (runner sekali pakai)
+        run: |
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+
+      # turbo membangun web lebih dulu; Playwright menyalakan build node web dengan DB sementara. E2E pendamping
+      # (fixture saja, headless) ikut berjalan.
       - name: E2E
         run: pnpm e2e
 
@@ -180,7 +192,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-traces
-          path: apps/web/test-results/
+          path: |
+            apps/web/test-results/
+            apps/pendamping/test-results/
           if-no-files-found: ignore
 
   coverage:

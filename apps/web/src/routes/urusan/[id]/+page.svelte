@@ -69,6 +69,8 @@
   });
   const nomorKutipan = $derived(new Map(kutipan.map((q) => [q.refId, q.nomor])));
   const situs = $derived.by(() => {
+    // Tool baca-saja non-dukcapil (Samsat, OSS) membawa origin situs yang dibuka.
+    if (k.permintaanEksekusi?.origin) return k.permintaanEksekusi.origin;
     const l = k.rencana?.langkah;
     const adapter =
       l?.find((x) => x.jenis === 'online-adapter') ?? l?.find((x) => x.jenis === 'online-manual');
@@ -193,36 +195,9 @@
    * Pendamping mengambil nilai Data Diri dan berkas di server. Nilai vault tidak pernah lewat peramban.
    */
   async function izinkanIsi() {
-    const butuh = sesi.data.butuhData;
-    if (!butuh) return;
-    if (!butuh.origin) {
-      izin = { sibuk: false, pesan: 'Situs tujuan belum diketahui. Isi sendiri di layar.' };
-      return;
-    }
     izin = { sibuk: true };
-    try {
-      const r = await fetch(`/api/urusan/${encodeURIComponent(data.urusan.id)}/izinkan-isi`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', accept: 'application/json' },
-        body: JSON.stringify({
-          writeList: [...butuh.placeholder, ...butuh.berkas.map((b) => `berkas:${b.toUpperCase()}`)],
-          targetOrigin: butuh.origin,
-        }),
-      });
-      const j = (await r.json().catch(() => null)) as { kurang?: string[]; pesanWarga?: string } | null;
-      if (!r.ok) {
-        izin = { sibuk: false, pesan: j?.pesanWarga ?? 'Izin belum tercatat. Coba lagi atau isi sendiri.' };
-        return;
-      }
-      sesi.data = { ...sesi.data, butuhData: null };
-      const kurang = j?.kurang ?? [];
-      izin = {
-        sibuk: false,
-        ...(kurang.length ? { pesan: `Isi sendiri di layar: ${kurang.join(', ')}.` } : {}),
-      };
-    } catch {
-      izin = { sibuk: false, pesan: 'Koneksi terputus. Coba lagi atau isi sendiri.' };
-    }
+    const pesan = await sesi.izinkanIsi();
+    izin = { sibuk: false, ...(pesan ? { pesan } : {}) };
   }
 
   function isiSendiri() {
@@ -316,7 +291,7 @@
             bind:canvas
             bind:inputTeks
             onambilalih={() => sesi.ambilAlih()}
-            onkembalikan={() => sesi.kembalikan()}
+            onkembalikan={() => void sesi.kembalikan()}
             onhentikan={() => void sesi.hentikan()}
             onmulailagi={() => {
               const e = k.permintaanEksekusi;

@@ -401,6 +401,87 @@ aktif (sudah mengirim `X-Robots-Tag: noindex, nofollow` dan `X-Site-Notice: Situ
 `node scripts/gen-caddyfile.mjs --set <primary|fallback> --fixtures --out /tmp/Caddyfile.urusin.fixtures`, lalu
 pasang lewat `sudo deploy/caddy-install.sh /tmp/Caddyfile.urusin.fixtures` (izin per kejadian).
 
+## Browser Pendamping (opsional, butuh persetujuan port 4330)
+
+Chromium **headed** per sesi warga di Xvfb (lihat [ADR 0029](../docs/adr/0029-browser-pendamping.md)). Image
+berbasis `mcr.microsoft.com/playwright:v1.65.0-noble` (~3,6 GB, sudah ada di cache agent-vm). Dua kontainer
+dari image yang sama; isolasi murni dari topologi compose (tanpa iptables):
+
+- `pendamping` (Node + Chromium): HANYA di jaringan `pendamping_internal` (`internal: true`,
+  `gateway_mode_ipv4: isolated` sehingga host tidak punya alamat di bridge itu, IPv6 mati). Tanpa port,
+  tanpa rute default. Sandbox Chromium AKTIF (profil seccomp Playwright `pendamping-seccomp.json`). agent-vm
+  mematikan userns tak berhak, jadi dipakai sandbox setuid `chrome-sandbox` (satu-satunya biner SUID di image):
+  `cap_add: [SYS_ADMIN, SYS_CHROOT]` dan TANPA `no-new-privileges`, hanya untuk layanan ini (alasan dan
+  pengukuran: ADR 0029). Boot gagal-tertutup bila ada rute keluar atau sandbox (userns/setuid) tidak aktif;
+  log boot menyebut jenisnya, mis. `sandbox Chromium aktif (setuid chrome-sandbox)`.
+- `pendamping-edge` (`node dist/edge-main.js`, non-root, read-only, `cap_drop: [ALL]`, 128 MB): di internal +
+  bridge `pendamping_luar`, publish `127.0.0.1:4330`. Proxy balik HANYA `/ws/<uuid>`, `/internal/*`,
+  `/health` (dan `/debug*` bila `PENDAMPING_DEBUG_TOKEN` diisi); satu-satunya proxy CONNECT Chromium
+  (kredensial acak per sesi, DNS di-resolve edge, setiap alamat diperiksa `checkConnect` profil browser).
+
+Butuh Docker Engine >= 28 (`gateway_mode_ipv4`). `pendamping-seccomp.json` = profil Playwright v1.65.0
+`utils/docker/seccomp_profile.json` (sha256 asli `cc3e61cabda6bbc1e53e54d27ba4d55a9d3be829b6dd1a596f4a7b31b1cc7849`)
+dengan satu pemangkasan: blok `CAP_SYS_ADMIN` hanya `clone` dan `unshare` (bpf, perf_event_open, mount/umount,
+setns, quotactl, lookup_dcookie, fanotify_init, name_to_handle_at, syslog, sethostname, setdomainname dibuang),
+dan `setns` dibuang dari blok userns; `io_uring_setup`/`io_uring_enter`/`io_uring_register` juga dibuang
+(Chromium tidak memakainya; permukaan kernel besar). Diukur: sandbox setuid (userns mati) dan userns tetap
+aktif. sha256 kini `68e0e88693f1d6bbc30616f3adf713b170da3937fdc43e72e0ac69f7571a0bfc`; ikut tersalin bersama
+`compose.prod.yml`.
+
+```sh
+# .env (rahasia, chmod 600)
+PENDAMPING_IMAGE=ghcr.io/bynguts/urusin-pendamping@sha256:...
+PENDAMPING_INTERNAL_TOKEN=$(openssl rand -hex 32)      # sama untuk web dan pendamping
+PENDAMPING_INTERNAL_URL=http://127.0.0.1:4330         # dibaca web (dilayani pendamping-edge)
+PENDAMPING_EDGE_TOKEN=$(openssl rand -hex 32)         # pendamping <-> edge; BEDA dari token internal
+PENDAMPING_DEBUG_TOKEN=$(openssl rand -hex 32)        # opsional, untuk uji kemudi manual
+
+bash deploy/pendamping-up.sh   # menolak Docker Engine < 28, lalu up -d pendamping + pendamping-edge
+docker compose -f compose.prod.yml logs pendamping | tail -1   # "pendamping mendengarkan di 172.x.y.z:4330 ..."
+curl -fsS http://127.0.0.1:4330/health                # {"ok":true,"aktif":0,"maks":2,"menunggu":0}
+```
+
+Bila `pendamping` terus restart dengan "sandbox Chromium tidak aktif" atau "punya rute keluar langsung",
+itu disengaja (gagal tertutup): jangan menambal dengan `--no-sandbox` atau jaringan lain; laporkan ke lead.
+Uji topologi tanpa image Urusin: `bash deploy/tests/pendamping-isolation.test.sh` (busybox, jaringan asli).
+
+**Uji klik manusia (mode debug, tanpa Caddy):** dari laptop penguji,
+`ssh -L 4330:127.0.0.1:4330 agent-vm`, buka `http://localhost:4330/debug`, isi token debug dan URL domain
+resmi (mis. halaman login Telunjuk Sakti), lalu kemudikan layar dengan mouse/sentuh. Bila muncul kotak
+centang verifikasi situs, klik sendiri; AI tidak pernah mengklik-nya. Tidak ada AI di mode ini. Matikan
+dengan mengosongkan `PENDAMPING_DEBUG_TOKEN`.
+
+**WebSocket untuk warga:** setelah port disetujui, bangkitkan snippet dengan blok `handle /pendamping/ws/*`
+aktif, misalnya `node scripts/gen-caddyfile.mjs --set primary --fixtures --pendamping
+--import /opt/urusin/Caddyfile.urusin --out /tmp/Caddyfile.urusin` (`--import` hanya mengisi komentar baris
+import; path snippet yang dipakai VPS saat ini), lalu pasang lewat `caddy-install.sh` (izin per kejadian).
+Snippet yang terpasang bisa dicek ulang dengan flag yang sama: `... --check --set primary --fixtures
+--pendamping --import ... --file /opt/urusin/Caddyfile.urusin` (exit 1 bila menyimpang). Hanya jalur itu yang
+diteruskan; edge merutekan jalur MENTAH yang kanonik, jadi `/ws/..%2finternal`, `/ws/%2e%2e/internal`,
+`/ws/../internal`, `//internal`, dan `/ws/..;/debug` mendapat 404.
+
+**Worker tambahan (opsional, mis. laptop anggota berjaringan Indonesia):** jalankan image yang sama
+(digest sama) dengan `PENDAMPING_INTERNAL_TOKEN` yang sama, `HOST=<IP Tailscale worker>`,
+`URUSIN_PUBLIC_ORIGIN=https://$DOMAIN`, dan `PENDAMPING_PUBLIC_WS_URL=wss://$DOMAIN/pendamping/w/<id>/ws`.
+Di web, ganti `PENDAMPING_INTERNAL_URL` dengan `PENDAMPING_WORKERS` (lihat `.env.example`), mis.
+`[{"id":"vps","url":"http://127.0.0.1:4330","region":"umum","maxSessions":2},{"id":"laptop-a","url":"http://100.x.y.z:4330","region":"id","maxSessions":1}]`.
+Kanal web -> worker ditandatangani HMAC (bukan bearer polos), dan web memeriksa `GET /health` tiap worker.
+Situs `aksesWilayah: 'id-only'` (Telunjuk Sakti, Si D'nOK) hanya dirutekan ke worker `region: "id"`; bila
+semua mati, urusan beralih ke mode dipandu dengan pesan jujur. Rute WS worker tambahan butuh blok Caddy
+sendiri (dikerjakan lead): `handle_path /pendamping/w/<id>/*` -> `reverse_proxy 100.x.y.z:4330`.
+
+**Egress hulu (opsional):** `PENDAMPING_UPSTREAM_PROXY=http://[user:pass@]host:port` (dipakai EDGE)
+mengarahkan CONNECT peramban yang SUDAH lolos kebijakan ke proxy milik operator (mis. egress Indonesia untuk
+situs yang menolak IP datacenter). Proxy hulu harus terjangkau dari bridge `pendamping_luar` (bukan
+127.0.0.1 host). Urusin tidak menyediakan proxy hulu. Catatan: lewat proxy hulu, edge mengirim CONNECT
+dengan NAMA host (setelah nama itu dan semua alamatnya lolos kebijakan di edge); proxy hulu me-resolve
+nama itu lagi di sisi operator, jadi alamat yang akhirnya dihubungi ditentukan DNS proxy hulu. Pakai hanya
+proxy milik sendiri yang resolvernya dipercaya.
+
+Batas `pendamping`: `mem_limit`/`memswap_limit 1300m` (2 sesi x 512 MB + Node/Xvfb), pengawas menghentikan
+sesi di 450 MB RSS, `cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `ulimits core 0`,
+`init: true`. `pendamping-edge`: 128 MB, `cpus: 0.5`, `pids_limit: 64`.
+
 ## Uji skrip (tanpa Docker)
 
 ```sh

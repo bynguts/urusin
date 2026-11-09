@@ -38,3 +38,4 @@ atau kode; "Diterima" tidak berarti sudah diimplementasikan, dan kolom Status me
 | [0026](0026-csp-sveltekit-mode-auto.md)                          | CSP tunggal dari SvelteKit dalam mode auto, tanpa strict-dynamic                                   | implementasi       |
 | [0027](0027-commit-konvensional-tanpa-co-author.md)              | Commit konvensional, tanpa atribusi AI otomatis, dan riwayat tidak ditulis ulang                   | proses             |
 | [0028](0028-akun-dan-login.md)                                   | Akun opsional: email + sandi dan Google, sesi server, vault terenkripsi per akun                   | keputusan pengguna |
+| [0029](0029-browser-pendamping.md)                               | Browser Pendamping di server sebagai eksekutor                                                     | keputusan tim      |

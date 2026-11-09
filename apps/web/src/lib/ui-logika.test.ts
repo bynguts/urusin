@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { menuAktif, rutAuth, rutWeb } from './components/shell/navigasi.js';
 import { periksaBerkas, samarkan, ukuranBerkas } from './akun/klien.js';
-import { labelPlaceholder, petakanIsian } from './pendamping/isi-data.js';
-import { keadaanDariSesi } from './pendamping/sesi.svelte.js';
+import { daftarWrite, kolomDari, labelPlaceholder, petakanIsian } from './pendamping/isi-data.js';
+import { keadaanDariSesi, SesiPendampingUi } from './pendamping/sesi.svelte.js';
 import {
   FASE,
   LABEL_STATE,
@@ -94,8 +94,119 @@ describe('Browser Pendamping', () => {
       hp: '0800',
     });
     expect(r.isian).toEqual({ '{{PEMOHON.NAMA}}': 'Warga Contoh', '{{PEMOHON.HP}}': '0800' });
-    expect(r.kurang).toEqual(['Tempat lahir', 'Data lain']);
+    expect(r.kurang).toEqual(['Data lain', 'Data lain']);
     expect(labelPlaceholder('{{PEMOHON.NIK}}')).toBe('NIK');
+    expect(labelPlaceholder('{{KENDARAAN.NOPOL_ANGKA}}')).toBe('Angka nomor polisi');
+    expect(labelPlaceholder('{{URUSAN.KITIR}}')).toBe('Nomor kitir');
+    expect(labelPlaceholder('{{X.CONSTRUCTOR}}')).toBe('Data lain');
+  });
+
+  it('daftar write "Izinkan isi": placeholder Data Diri + berkas:<JENIS>; non-Data Diri tidak ikut', () => {
+    const f = daftarWrite(
+      ['{{PEMOHON.NIK}}', '{{ANAK.NIK}}', '{{PEMOHON.HP}}', '{{URUSAN.KITIR}}', '{{PEMOHON.NIK}}'],
+      ['ktp'],
+    );
+    expect(f).toEqual(['{{PEMOHON.NIK}}', '{{PEMOHON.HP}}', 'berkas:KTP']);
+    expect(daftarWrite(['{{KENDARAAN.NOPOL_ANGKA}}'], [])).toEqual([]);
+    expect(kolomDari('{{PEMOHON.HP}}')).toBe('hp');
+    expect(kolomDari('{{URUSAN.KITIR}}')).toBeUndefined();
+    for (const p of [
+      '{{ANAK.NIK}}',
+      '{{ORANG2.NIK}}',
+      '{{PEMOHON.AYAH.NAMA}}',
+      '{{PEMOHON.ALAMAT.RT}}',
+      '{{XPEMOHON.NIK}}',
+    ])
+      expect(kolomDari(p)).toBeUndefined();
+  });
+
+  it('izinkanIsi: kirim daftar write + origin butuh_data (tanpa nilai); yang kurang jadi pesan; galat diteruskan', async () => {
+    const kiriman: { url: string; body: string }[] = [];
+    let jawab: () => Response = () => Response.json({ diizinkan: true, kurang: ['Nomor kitir', 'KTP'] });
+    const s = new SesiPendampingUi(
+      'u_1',
+      async () => null,
+      async (url, init) => {
+        kiriman.push({ url: String(url), body: String(init?.body) });
+        return jawab();
+      },
+    );
+    const ORIGIN_SITUS = 'https://telunjuksakti.wonogirikab.go.id';
+    expect(await s.izinkanIsi()).toBeUndefined();
+    expect(kiriman).toHaveLength(0);
+    s.data = {
+      ...s.data,
+      butuhData: {
+        placeholder: ['{{PEMOHON.NIK}}', '{{URUSAN.KITIR}}'],
+        berkas: ['ktp'],
+        origin: ORIGIN_SITUS,
+      },
+    };
+    expect(await s.izinkanIsi()).toBe('Isi sendiri di layar: Nomor kitir, KTP.');
+    expect(kiriman[0]).toEqual({
+      url: '/api/urusan/u_1/izinkan-isi',
+      body: JSON.stringify({ writeList: ['{{PEMOHON.NIK}}', 'berkas:KTP'], targetOrigin: ORIGIN_SITUS }),
+    });
+    expect(s.data.butuhData).not.toBeNull();
+    jawab = () => Response.json({ diizinkan: true, kurang: [] });
+    expect(await s.izinkanIsi()).toBeUndefined();
+    expect(s.data.butuhData).toBeNull();
+    // Hanya data non-Data Diri: tidak ada yang bisa diambil server; tidak ada permintaan.
+    s.data = {
+      ...s.data,
+      butuhData: { placeholder: ['{{KENDARAAN.NOPOL_ANGKA}}'], berkas: [], origin: ORIGIN_SITUS },
+    };
+    expect(await s.izinkanIsi()).toBe('Isi sendiri di layar: Angka nomor polisi.');
+    expect(kiriman).toHaveLength(2);
+    s.data = { ...s.data, butuhData: { placeholder: ['{{PEMOHON.NIK}}'], berkas: [] } };
+    expect(await s.izinkanIsi()).toMatch(/Situs tujuan belum diketahui/);
+    s.data = { ...s.data, butuhData: { placeholder: ['{{PEMOHON.NIK}}'], berkas: [], origin: ORIGIN_SITUS } };
+    jawab = () =>
+      Response.json({ kode: 'IZIN_TIDAK_VALID', pesanWarga: 'Persetujuan tidak cocok.' }, { status: 403 });
+    expect(await s.izinkanIsi()).toBe('Persetujuan tidak cocok.');
+    jawab = () => new Response('x', { status: 500 });
+    expect(await s.izinkanIsi()).toMatch(/Izin belum tercatat/);
+    jawab = () => {
+      throw new Error('jaringan');
+    };
+    expect(await s.izinkanIsi()).toMatch(/Koneksi terputus/);
+  });
+
+  it('Lanjutkan pada berkas_kurang: izin baru untuk berkas itu saja, lalu kendali kembali; giliran lain langsung', async () => {
+    const kiriman: string[] = [];
+    let kurang: string[] = [];
+    const s = new SesiPendampingUi(
+      'u_2',
+      async () => null,
+      async (url, init) => {
+        kiriman.push(`${String(url)} ${String(init?.body)}`);
+        return Response.json({ diizinkan: true, kurang });
+      },
+    );
+    const viewer = { kembali: 0, kembalikan: () => void viewer.kembali++ };
+    (s as unknown as { viewer: unknown }).viewer = viewer;
+    const SITUS = 'https://telunjuksakti.wonogirikab.go.id';
+    s.terapkanEvent({
+      jenis: 'giliran_anda',
+      alasan: 'berkas_kurang',
+      pesan: 'Dokumen KK belum ada. Tambahkan di Dokumen, lalu tekan Lanjutkan.',
+      berkas: { nama: 'kk', origin: SITUS },
+    });
+    expect(s.data.keadaan).toBe('giliran');
+    kurang = ['KK'];
+    await s.kembalikan();
+    expect(kiriman).toEqual([
+      `/api/urusan/u_2/izinkan-isi ${JSON.stringify({ writeList: ['berkas:KK'], targetOrigin: SITUS })}`,
+    ]);
+    // Masih belum ada: pesan jujur, kendali tetap dikembalikan (langkah unggah diulang, giliran muncul lagi).
+    expect(s.data.pesan).toBe('Isi sendiri di layar: KK.');
+    expect(s.data.giliran).toBeNull();
+    expect(viewer.kembali).toBe(1);
+    // Giliran isi_sendiri: tidak ada permintaan izin.
+    s.terapkanEvent({ jenis: 'giliran_anda', alasan: 'isi_sendiri', pesan: 'Ketik Nomor kitir' });
+    await s.kembalikan();
+    expect(kiriman).toHaveLength(1);
+    expect(viewer.kembali).toBe(2);
   });
 
   it('status sesi menjadi keadaan layar', () => {

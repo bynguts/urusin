@@ -108,6 +108,13 @@ export const ExecutionRequestEventSchema = event('execution_request', {
   /** Nama tool + hash parameter yang disetujui lewat konfirmasi. */
   tool: z.string(),
   paramsHash: z.string(),
+  /**
+   * Origin resmi yang dibuka adapter, bila bukan portal dukcapil kota urusan (mis. Samsat, OSS). Tanpa ini
+   * server memakai origin portal kota dari registry.
+   */
+  origin: z.url().optional(),
+  /** Alur baca-saja (cek status/informasi): tidak ada yang dikirim, jadi hasilnya tidak mengubah state urusan. */
+  bacaSaja: z.boolean().optional(),
 });
 
 /** Menunggu bagian warga. */
