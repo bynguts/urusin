@@ -5,10 +5,11 @@
   import Icon from '#lib/components/Icon.svelte';
   import type { NamaIkon } from '#lib/components/ikon.js';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
+  import ZonaBahaya from '#lib/components/akun/ZonaBahaya.svelte';
   import { ambilLokal, ambilPrefs, ambilTts } from '#lib/stores/app.svelte.js';
   import type { PageProps } from './$types';
 
-  let { data }: PageProps = $props();
+  let { data, form }: PageProps = $props();
   const prefs = ambilPrefs();
   const lokal = ambilLokal();
   const tts = ambilTts();
@@ -316,6 +317,10 @@
         {/if}
       </div>
     </section>
+
+    {#if data.zonaBahaya}
+      <ZonaBahaya punyaSandi={data.zonaBahaya.punyaSandi} galat={form ?? null} />
+    {/if}
 
     <section id="privasi" aria-labelledby="h-privasi" class="flex max-w-[50rem] scroll-mt-24 flex-col gap-4">
       <div>

@@ -973,13 +973,27 @@ export class AkunService {
    * Hapus akun (atau salinan demo): urusan milik pemilik (dengan tombstone), vault (crypto-shred DEK + berkas),
    * sesi, token, identitas Google, dan baris pemilik. Akun bersandi wajib menyebut sandinya.
    */
-  async hapusAkun(userId: string, input: { konfirmasi: string; sandi?: string | undefined }): Promise<void> {
+  /**
+   * Hapus akun atau salinan demo. Warga mengetik HAPUS; akun bersandi juga memasukkan sandinya (ikut
+   * penguncian email, seperti masuk). Akun tanpa sandi (Google saja) butuh bukti kredensial <= 15 menit
+   * (`authAt` sesi), selain itu `PERLU_MASUK_ULANG` → masuk ulang dengan Google. Salinan demo cukup HAPUS.
+   */
+  async hapusAkun(
+    userId: string,
+    input: { konfirmasi: string; sandi?: string | undefined },
+    opts: { authAt?: string | undefined } = {},
+  ): Promise<void> {
     const u = this.userById(userId);
     if (!u) throw new AkunError('BELUM_MASUK');
     if (input.konfirmasi !== 'HAPUS') throw new AkunError('KONFIRMASI_SALAH');
     if (u.password_hash) {
+      this.periksaKunci(u.email!);
+      this.catatPercobaan(u.email!);
       const ok = input.sandi ? await verifyPassword(u.password_hash, input.sandi) : false;
       if (!ok) throw new AkunError('SANDI_LAMA_SALAH');
+    } else if (u.jenis === 'akun') {
+      if (!opts.authAt || Date.parse(opts.authAt) + this.ttl.reauthSec * 1000 < this.now().getTime())
+        throw new AkunError('PERLU_MASUK_ULANG');
     }
     this.hapusPemilik(userId);
     if (u.email) this.bukaKunci(u.email);
