@@ -156,7 +156,8 @@
   {/if}
 
   <!-- Siaran layar: canvas selalu ada agar viewer bisa menggambar; keadaan lain menutupinya. -->
-  <div class="relative min-h-0 flex-1 bg-siaran">
+  <!-- Di HP situs dirender seukuran layar ponsel: area siaran setinggi ~85dvh supaya skalanya ≥0,85 (terbaca). -->
+  <div class="relative min-h-0 flex-1 bg-siaran max-lg:min-h-[85dvh]">
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="absolute inset-0" onpointerup={ketuk}>
       <canvas

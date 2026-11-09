@@ -53,6 +53,17 @@
 
   const k = $derived(store.keadaan);
   const keadaanUrusan = $derived(k.state ?? data.urusan.state);
+  // Panel Rencana selama Browser Pendamping berjalan mengikuti giliran nyata sesi (login, AI mengisi, Kirim),
+  // bukan state urusan yang sudah melompat ke "tekan Kirim" sejak eksekusi disetujui.
+  const keadaanPanel = $derived.by(() => {
+    const d = sesi.data;
+    if (d.keadaan === 'ai') return 'MENGISI' as const;
+    if (d.keadaan === 'giliran' && d.giliran)
+      return d.giliran.alasan === 'final'
+        ? ('MENUNGGU_SUBMIT_WARGA' as const)
+        : ('MENUNGGU_LOGIN_WARGA' as const);
+    return keadaanUrusan;
+  });
   const p = $derived(peristiwaDariJenis(data.urusan.jenis));
   const judul = $derived(
     judulUrusan(data.urusan.jenis) ?? lokal.cari(data.urusan.id)?.judul ?? 'Urusan baru',
@@ -264,7 +275,7 @@
       </button>
       <div id="panel-konteks" class="{panelHpBuka ? '' : 'max-lg:hidden'} lg:h-full">
         <PanelKonteks
-          state={keadaanUrusan}
+          state={keadaanPanel}
           sedangBerjalan={k.sedangBerjalan}
           rencana={k.rencana}
           checklist={k.checklist}
