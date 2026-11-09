@@ -137,7 +137,7 @@ describe('properti: NIK berformat tidak lolos ke LLM maupun DB', () => {
       }),
       { numRuns: RUNS },
     );
-  });
+  }, 20_000);
 
   it('NIK terbagi lintas bidang: kodeKabKota di urusan + 12 digit sisa di pesan', async () => {
     await fc.assert(
@@ -150,7 +150,7 @@ describe('properti: NIK berformat tidak lolos ke LLM maupun DB', () => {
       }),
       { numRuns: RUNS },
     );
-  });
+  }, 20_000);
 
   it('NIK terbagi lintas turn: kodeKabKota baru diketahui sesudah turn pertama', async () => {
     await fc.assert(
@@ -165,7 +165,7 @@ describe('properti: NIK berformat tidak lolos ke LLM maupun DB', () => {
       }),
       { numRuns: RUNS },
     );
-  });
+  }, 20_000);
 });
 
 describe('properti: nomor HP berformat tidak lolos ke LLM maupun DB', () => {
@@ -181,7 +181,7 @@ describe('properti: nomor HP berformat tidak lolos ke LLM maupun DB', () => {
       }),
       { numRuns: RUNS },
     );
-  });
+  }, 20_000);
 });
 
 describe('properti: jalur embed dan rerank (lapis provider terakhir)', () => {

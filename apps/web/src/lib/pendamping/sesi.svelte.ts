@@ -1,4 +1,4 @@
-import { daftarWrite, hashDaftarWrite } from './isi-data.js';
+import { daftarWrite, labelPlaceholder } from './isi-data.js';
 import type {
   KoneksiViewer,
   PabrikViewer,
@@ -35,7 +35,7 @@ export type DataPendamping = {
   pesan: string | null;
   bukti: PendampingBukti | null;
   koneksi: KoneksiViewer | null;
-  butuhData: { placeholder: string[]; berkas: string[] } | null;
+  butuhData: { placeholder: string[]; berkas: string[]; origin?: string | undefined } | null;
 };
 
 export function dataAwal(): DataPendamping {
@@ -245,33 +245,33 @@ export class SesiPendampingUi {
   }
 
   /**
-   * "Izinkan isi" (A-M1): kirim HANYA hash daftar write yang ditampilkan di lembar. Server menyelesaikan nilai
-   * Data Diri/Dokumen dan mengirimnya ke sesi lewat kanal internal; peramban tidak pernah memegang nilainya.
+   * "Izinkan isi" (A-M1): kirim HANYA daftar write yang ditampilkan di lembar + origin tujuan dari
+   * `butuh_data` (POST /api/urusan/[id]/izinkan-isi). Server menyimpan persetujuan, lalu mengambil nilai Data
+   * Diri/Dokumen dan mengirimnya ke sesi lewat kanal internal; peramban tidak pernah memegang nilainya.
    * Mengembalikan pesan untuk warga (yang harus diisi sendiri, atau galat), atau undefined bila lengkap.
    */
   async izinkanIsi(): Promise<string | undefined> {
     const butuh = this.data.butuhData;
     if (!butuh) return undefined;
-    const writeListHash = await hashDaftarWrite(daftarWrite(butuh.placeholder, butuh.berkas));
+    const writeList = daftarWrite(butuh.placeholder, butuh.berkas);
+    if (writeList.length === 0) {
+      const sendiri = [...new Set(butuh.placeholder.map(labelPlaceholder))];
+      return `Isi sendiri di layar: ${sendiri.join(', ')}.`;
+    }
+    if (!butuh.origin) return 'Situs tujuan belum diketahui. Isi sendiri di layar.';
     let res: Response;
     try {
-      res = await this.ambil(`${this.dasar}/izinkan`, {
+      res = await this.ambil(`/api/urusan/${encodeURIComponent(this.urusanId)}/izinkan-isi`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ writeListHash }),
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ writeList, targetOrigin: butuh.origin }),
       });
     } catch {
       return 'Koneksi terputus. Coba lagi atau isi sendiri.';
     }
-    const j = (await res.json().catch(() => null)) as {
-      pesanWarga?: string;
-      kurang?: { placeholder: string[]; berkas: string[] };
-    } | null;
-    if (!res.ok) return j?.pesanWarga ?? 'Data Diri belum bisa dipakai. Coba lagi atau isi sendiri.';
-    const kurang = [
-      ...(j?.kurang?.placeholder ?? []),
-      ...(j?.kurang?.berkas ?? []).map((b) => b.toUpperCase()),
-    ];
+    const j = (await res.json().catch(() => null)) as { pesanWarga?: string; kurang?: string[] } | null;
+    if (!res.ok) return j?.pesanWarga ?? 'Izin belum tercatat. Coba lagi atau isi sendiri.';
+    const kurang = j?.kurang ?? [];
     if (kurang.length === 0) this.data = { ...this.data, butuhData: null };
     return kurang.length ? `Isi sendiri di layar: ${kurang.join(', ')}.` : undefined;
   }

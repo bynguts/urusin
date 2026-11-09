@@ -58,7 +58,7 @@ check('pendamping: tanpa port terpublikasi', !pd.ports || pd.ports.length === 0)
 check('pendamping: HOST=antarmuka (bukan wildcard), edge wajib', pd.environment.HOST === 'antarmuka' &&
   pd.environment.PENDAMPING_EDGE_URL === 'http://pendamping-edge:3129' && 'PENDAMPING_EDGE_TOKEN' in pd.environment);
 check('pendamping: tanpa PENDAMPING_UPSTREAM_PROXY (egress hanya lewat edge)', !('PENDAMPING_UPSTREAM_PROXY' in pd.environment));
-// Sandbox setuid (ADR 0028): tanpa no-new-privileges HANYA di pendamping; tepat SYS_ADMIN + SYS_CHROOT.
+// Sandbox setuid (ADR 0029): tanpa no-new-privileges HANYA di pendamping; tepat SYS_ADMIN + SYS_CHROOT.
 check('pendamping: seccomp Playwright, satu-satunya security_opt (sandbox setuid, tanpa no-new-privileges)',
   pd.security_opt.length === 1 && /^seccomp=.*pendamping-seccomp\.json$/.test(pd.security_opt[0]));
 check('pendamping: cap_drop ALL, hanya SYS_ADMIN + SYS_CHROOT ditambah', pd.cap_drop.includes('ALL') &&

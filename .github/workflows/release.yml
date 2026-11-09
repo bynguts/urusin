@@ -92,7 +92,7 @@ jobs:
               docker run --rm --platform "linux/${arch}" --network none --entrypoint sh "$REF" -c                 'f=$(find / -xdev -type f -perm /6000 2>/dev/null); echo "$f"; [ "$f" = /ms-playwright/chromium-1254/chrome-linux64/chrome-sandbox ] && [ "$(stat -c %u:%a "$f")" = 0:4755 ]'
               if [ "$arch" = "amd64" ]; then
                 # Boot produksi dengan pengerasan yang sama seperti compose (seccomp Playwright, SYS_ADMIN +
-                # SYS_CHROOT untuk sandbox setuid tanpa no-new-privileges, read-only, tanpa jaringan; ADR 0028):
+                # SYS_CHROOT untuk sandbox setuid tanpa no-new-privileges, read-only, tanpa jaringan; ADR 0029):
                 # main.js menolak start bila ada rute keluar atau sandbox Chromium
                 # headed tidak aktif, jadi /health 200 = kedua pemeriksaan boot lulus. --init: tanpa init,
                 # xvfb-run/Xvfb sebagai PID 1 bisa menggantung. Edge sendiri: modulnya harus termuat. Token dibuat

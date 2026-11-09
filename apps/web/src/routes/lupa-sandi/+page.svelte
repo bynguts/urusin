@@ -26,6 +26,16 @@
       Bila <span class="font-semibold text-ink">{form.email}</span> terdaftar, kami sudah mengirim tautan untuk
       membuat kata sandi baru. Tautan berlaku 30 menit.
     </p>
+    {#if form.tertunda}
+      <p
+        role="alert"
+        data-kode="EMAIL_TERTUNDA"
+        class="mt-3 rounded-xl bg-mawar px-4 py-3 text-[0.9375rem] text-galat"
+      >
+        Pengiriman email sedang tertunda (layanan email kami sedang penuh atau belum aktif). Coba kirim ulang
+        tautan nanti.
+      </p>
+    {/if}
     <p class="mt-3 text-sm text-muted">Cek juga folder Spam atau Promosi.</p>
   {:else}
     <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Lupa kata sandi</h1>

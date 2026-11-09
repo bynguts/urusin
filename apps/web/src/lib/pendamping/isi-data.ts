@@ -1,7 +1,7 @@
 /**
- * Pemetaan placeholder adapter (`{{PEMOHON.NIK}}`) ke field Data Diri akun, dipakai bersama peramban (label
- * lembar "Izinkan isi" + hash daftar write) dan server (jalur isi A-M1). Nilai TIDAK pernah lewat peramban:
- * server menyelesaikannya dengan token persetujuan lalu mengirimnya ke sesi lewat kanal internal.
+ * Pemetaan placeholder adapter (`{{PEMOHON.NIK}}`) ke field Data Diri (ADR 0028). Dipakai SERVER
+ * (`lib/server/pendamping/isi.ts`) untuk menyelesaikan nilai setelah warga menekan "Izinkan isi", dan peramban
+ * untuk label. Peramban tidak pernah membaca nilai vault untuk Pendamping.
  */
 export type DataDiriRingkas = Partial<
   Record<
@@ -96,20 +96,21 @@ export function labelPlaceholder(placeholder: string): string {
   return (akhir && Object.hasOwn(LABEL_LAIN, akhir) ? LABEL_LAIN[akhir] : undefined) ?? 'Data lain';
 }
 
+/** Nama field Data Diri untuk placeholder (dipakai server `lib/server/pendamping/isi.ts`). */
+export const kolomDari = fieldDataDiri;
+
 /**
- * Daftar write persetujuan "Izinkan isi": field Data Diri dari placeholder sesi + `berkas:<nama>` untuk
- * Dokumen. Unik dan terurut, sehingga peramban dan server menghitung hash yang sama.
+ * Daftar write "Izinkan isi" (POST /api/urusan/[id]/izinkan-isi): placeholder yang bisa dipenuhi Data Diri +
+ * `berkas:<JENIS>` (huruf besar) untuk Dokumen. Placeholder lain (nomor polisi, NIB, kitir) tidak ikut: server
+ * menolak entri tak dikenal, dan warga mengetiknya sendiri di layar.
  */
 export function daftarWrite(placeholder: readonly string[], berkas: readonly string[]): string[] {
-  const f = placeholder.map(fieldDataDiri).filter((x): x is keyof DataDiriRingkas => x !== undefined);
-  return [...new Set([...f, ...berkas.map((b) => `berkas:${b.toLowerCase()}`)])].sort();
-}
-
-/** sha256 hex dari nama field unik terurut dipisah baris baru (sama dengan `hashDaftarWrite` @urusin/akun). */
-export async function hashDaftarWrite(fields: readonly string[]): Promise<string> {
-  const teks = [...new Set(fields)].sort().join('\n');
-  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(teks));
-  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return [
+    ...new Set([
+      ...placeholder.filter((p) => fieldDataDiri(p) !== undefined),
+      ...berkas.map((b) => `berkas:${b.toUpperCase()}`),
+    ]),
+  ];
 }
 
 /** Isian yang bisa dipenuhi dari Data Diri + daftar label yang harus warga isi sendiri. */

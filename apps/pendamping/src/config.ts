@@ -2,7 +2,7 @@ import { networkInterfaces } from 'node:os';
 
 /**
  * Konfigurasi layanan pendamping: SATU-SATUNYA tempat default (dibaca sekali saat boot dari env).
- * Default aman untuk host bersama (agent-vm). Tabel lengkap juga ada di docs/adr/0028-browser-pendamping.md.
+ * Default aman untuk host bersama (agent-vm). Tabel lengkap juga ada di docs/adr/0029-browser-pendamping.md.
  *
  * | Env                              | Default      | Arti                                                        |
  * | -------------------------------- | ------------ | ----------------------------------------------------------- |

@@ -10,7 +10,8 @@ import { EGRESS_PIHAK_KETIGA, OFFICIAL_DOMAINS } from '@urusin/core';
  *   127.0.0.1 atau Tailscale 100.64.0.0/10 dengan port eksplisit, persis (profil runtime). Nama DNS yang
  *   resolve ke loopback tetap ditolak.
  * - Dua profil terpisah (L2):
- *   - `runtime` (server web): host Jina + origin base URL LLM/embedding/rerank dari env operator.
+ *   - `runtime` (server web): host Jina + host akun (Google, Resend) + origin base URL
+ *     LLM/embedding/rerank dari env operator.
  *   - `ingest` (rag:ingest/verify, CLI kanal/kontak): registry domain resmi + sufiks `.go.id`, https:443.
  *   - `browser` (proxy CONNECT peramban Browser Pendamping, `checkConnect`): HANYA https:443 ke host persis
  *     yang ada di set sesi DAN di union registry (domain resmi + pihak ketiga terdaftar, mis. Turnstile).
@@ -25,6 +26,20 @@ export const LLM_PROXY = Object.freeze({ host: '127.0.0.1', port: 20128 });
 
 /** Host API Jina (embedding, rerank, reader). */
 export const JINA_HOSTS: readonly string[] = Object.freeze(['api.jina.ai', 'r.jina.ai', 's.jina.ai']);
+
+/**
+ * Host akun warga (ADR 0028): Google OAuth/OIDC (otorisasi, token, JWKS) dan API Resend untuk email
+ * verifikasi/atur ulang. Hanya profil runtime.
+ */
+export const AUTH_HOSTS: readonly string[] = Object.freeze([
+  'accounts.google.com',
+  'oauth2.googleapis.com',
+  'www.googleapis.com',
+  'api.resend.com',
+]);
+
+/** Verifikasi token Turnstile (siteverify) untuk "Masuk sebagai juri" dan login setelah 3 kegagalan. */
+export const TURNSTILE_HOSTS: readonly string[] = Object.freeze(['challenges.cloudflare.com']);
 
 /** Sufiks domain pemerintah yang boleh diambil korpus RAG (`rag:ingest` / `rag:verify`). */
 export const OFFICIAL_SUFFIX = '.go.id';
@@ -199,7 +214,7 @@ export function buildAllowlist(
   }
   const llm = parseOrigin(env.LLM_BASE_URL);
   return {
-    hosts: new Set(JINA_HOSTS),
+    hosts: new Set([...JINA_HOSTS, ...AUTH_HOSTS, ...TURNSTILE_HOSTS]),
     suffixes: [],
     configured,
     llmProxy: !!llm && llm.host === LLM_PROXY.host && llm.port === LLM_PROXY.port,

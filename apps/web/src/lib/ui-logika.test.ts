@@ -68,7 +68,8 @@ describe('brankas akun', () => {
   it('memeriksa berkas sebelum unggah', () => {
     const f = (type: string, size: number) => ({ type, size }) as File;
     expect(periksaBerkas(f('image/jpeg', 1000))).toBeNull();
-    expect(periksaBerkas(f('application/pdf', 6 * 1024 * 1024))).toMatch(/Maksimal 5 MB/);
+    expect(periksaBerkas(f('application/pdf', 6 * 1024 * 1024))).toBeNull();
+    expect(periksaBerkas(f('application/pdf', 10 * 1024 * 1024))).toMatch(/Maksimal 9 MB/);
     expect(periksaBerkas(f('image/gif', 10))).toMatch(/JPG/);
   });
 

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * Pagar ADR 0025/0028: peramban pendamping tidak boleh menyamar. Kode produksi apps/pendamping dilarang
+ * Pagar ADR 0025/0029: peramban pendamping tidak boleh menyamar. Kode produksi apps/pendamping dilarang
  * menimpa agen pengguna, membuang flag otomasi bawaan, atau memakai plugin stealth.
  */
 const LARANGAN: [RegExp, string][] = [

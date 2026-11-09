@@ -60,7 +60,7 @@ x-web-env: &web-env
   # terakhir (XFF_DEPTH=1) adalah IP klien asli. Dipakai kuota per-IP.
   ADDRESS_HEADER: X-Forwarded-For
   XFF_DEPTH: '1'
-  BODY_SIZE_LIMIT: 6M
+  BODY_SIZE_LIMIT: 10M
   DATABASE_URL: file:/data/urusin.db
 
 services:
@@ -119,7 +119,7 @@ services:
         max-size: 10m
         max-file: '3'
 
-  # Opsional: Browser Pendamping (Chromium headed per sesi warga di Xvfb; docs/adr/0028-browser-pendamping.md).
+  # Opsional: Browser Pendamping (Chromium headed per sesi warga di Xvfb; docs/adr/0029-browser-pendamping.md).
   # Aktifkan dengan `COMPOSE_PROFILES=pendamping`, PENDAMPING_IMAGE@digest, dan di .env:
   #   PENDAMPING_INTERNAL_TOKEN=<acak >= 32 karakter>    (dipakai web DAN pendamping)
   #   PENDAMPING_INTERNAL_URL=http://127.0.0.1:4330      (dibaca web lewat env_file)
@@ -177,7 +177,7 @@ services:
     # Tanpa core dump: memori renderer bisa memuat ketikan/kredensial warga.
     ulimits:
       core: 0
-    # Sandbox Chromium AKTIF (tanpa --no-sandbox), ADR 0028. agent-vm mematikan user namespace tak berhak
+    # Sandbox Chromium AKTIF (tanpa --no-sandbox), ADR 0029. agent-vm mematikan user namespace tak berhak
     # (unprivileged_userns_clone=0, sysctl host tidak kita ubah), jadi namespace renderer dibuat oleh helper
     # SETUID `chrome-sandbox` (root 4755, satu-satunya biner SUID di image). Set minimal, diukur (userns mati):
     # - SYS_ADMIN: helper (euid 0) clone(CLONE_NEWPID|CLONE_NEWNET) untuk renderer; kernel mewajibkan

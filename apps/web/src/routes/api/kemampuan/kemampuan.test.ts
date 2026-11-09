@@ -21,12 +21,14 @@ const get = async (GET: (e: never) => Promise<Response> | Response) => {
 
 describe('GET /api/kemampuan (publik)', () => {
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.useRealTimers();
     vi.resetModules();
   });
 
   // Batas eksplisit: tes paling lambat di berkas ini (~1-2 dtk sendirian dan di turbo paralel penuh).
   it('mode demo: subset tidak sensitif saja, korpus demo = rag tidak_siap', async () => {
+    vi.stubEnv('GIT_SHA', '');
     const { GET } = await withRuntime();
     const { res, body } = await get(GET);
     expect(res.status).toBe(200);
@@ -35,9 +37,11 @@ describe('GET /api/kemampuan (publik)', () => {
       llm: 'demo',
       kapabilitas: { ai: 'normal', vision: true, rag: 'tidak_siap' },
       fitur: { pencarianHybrid: false, rerank: false },
+      versi: { sha7: 'dev', commit: null },
     });
-    // Tidak ada internal: sha, versi, model, jumlah chunk, biaya, turn berjalan.
-    expect(JSON.stringify(body)).not.toMatch(/sha|version|versi|model|chunk|idr|running/i);
+    // Tidak ada internal: model, jumlah chunk, biaya, turn berjalan (versi hanya stempel publik M11).
+    const { versi: _versi, ...sisa } = body;
+    expect(JSON.stringify(sisa)).not.toMatch(/sha|version|versi|model|chunk|idr|running/i);
   }, 20_000);
 
   it('korpus URUSIN_RAG_DB + env rerank: rag siap, flag rerank aktif, nama model tidak bocor', async () => {
@@ -93,6 +97,7 @@ describe('GET /api/kemampuan (publik)', () => {
   it('runtime gagal dirakit: 200 dengan semua kemampuan mati', async () => {
     const rt = await import('#lib/server/runtime.js');
     rt.setRuntimeForTests(Promise.reject(new Error('URUSIN_PII_KEY wajib')));
+    vi.stubEnv('GIT_SHA', '');
     const { GET } = await import('./+server');
     const { res, body } = await get(GET);
     expect(res.status).toBe(200);
@@ -100,7 +105,20 @@ describe('GET /api/kemampuan (publik)', () => {
       llm: null,
       kapabilitas: { ai: 'tanpa_ai', vision: false, rag: 'tidak_siap' },
       fitur: { pencarianHybrid: false, rerank: false },
+      versi: { sha7: 'dev', commit: null },
     });
+  });
+
+  it('stempel versi M11: sha 40 heks = v<sha7> + tautan commit; nilai lain tanpa tautan', async () => {
+    const sha = 'a1b2c3d'.repeat(5) + 'e4f5a';
+    vi.stubEnv('GIT_SHA', sha);
+    const { GET } = await withRuntime();
+    expect((await get(GET)).body['versi']).toEqual({
+      sha7: 'a1b2c3d',
+      commit: `https://github.com/bynguts/urusin/commit/${sha}`,
+    });
+    vi.stubEnv('GIT_SHA', 'local"><script>');
+    expect((await get(GET)).body['versi']).toEqual({ sha7: 'local">', commit: null });
   });
 
   it('runtime masih dirakit: 503 + retry-after dalam 2 detik (klien mempertahankan default)', async () => {

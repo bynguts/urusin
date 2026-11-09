@@ -2,7 +2,8 @@
 # Backup online SQLite Urusin (cron host tiap 6 jam). Aman saat web berjalan: memakai API backup
 # SQLite (`.backup`), bukan menyalin berkas -wal/-shm. Lihat deploy/README.md bagian "Backup".
 #
-#   0 */6 * * *  /opt/urusin/deploy/backup.sh >> /var/log/urusin-backup.log 2>&1
+#   /etc/cron.d/urusin-backup (root; BACKUP_DIR milik root):
+#   0 */6 * * * root /opt/urusin/backup.sh >> /var/log/urusin-backup.log 2>&1
 #
 # Variabel (semua opsional):
 #   BACKUP_DIR           tujuan lokal (default /var/backups/urusin)
@@ -10,7 +11,8 @@
 #   DATA_VOLUME          volume Docker data (default urusin_data)
 #   DB_FILE              nama berkas DB di volume (default urusin.db)
 #   BACKUP_IMAGE        image web by digest yang dipakai menjalankan skrip (default: image warna aktif di .env.images)
-#   SCRIPT_DIR          folder berisi db-backup.mjs (default ../apps/web/scripts)
+#   SCRIPT_DIR          folder berisi db-backup.mjs (default ./scripts bila ada (layout datar /opt/urusin),
+#                       selain itu ../apps/web/scripts (clone repo penuh))
 #   RESTIC_REPOSITORY    bila diset: kirim backup terbaru ke repo restic (off-site)
 #   RESTIC_PASSWORD_FILE berkas kata sandi restic (dibaca restic; jangan di git)
 #   RESTIC_FORGET=1      jalankan `restic forget --keep-daily 14 --keep-weekly 8 --prune`
@@ -22,7 +24,9 @@ KEEP_DAYS="${KEEP_DAYS:-3}"
 DATA_VOLUME="${DATA_VOLUME:-urusin_data}"
 DB_FILE="${DB_FILE:-urusin.db}"
 cd "$(dirname "$0")"
-SCRIPT_DIR="${SCRIPT_DIR:-../apps/web/scripts}"
+if [ -z "${SCRIPT_DIR:-}" ]; then
+  if [ -f scripts/db-backup.mjs ]; then SCRIPT_DIR=scripts; else SCRIPT_DIR=../apps/web/scripts; fi
+fi
 
 log() { echo "backup: $(date -u +%FT%TZ) $*"; }
 ping_hc() { # suffix
@@ -46,15 +50,21 @@ resolve_image() {
 }
 image="$(resolve_image)"
 [ -n "$image" ] || fail "image web tidak diketahui (.env.images kosong dan BACKUP_IMAGE tidak diset)"
-[ -f "$SCRIPT_DIR/db-backup.mjs" ] || fail "$SCRIPT_DIR/db-backup.mjs tidak ada (clone repo penuh atau set SCRIPT_DIR)"
+[ -f "$SCRIPT_DIR/db-backup.mjs" ] || fail "$SCRIPT_DIR/db-backup.mjs tidak ada (salin apps/web/scripts/db-*.mjs ke ./scripts, clone repo penuh, atau set SCRIPT_DIR)"
 
 umask 077
-mkdir -p "$BACKUP_DIR"
+mkdir -p "$BACKUP_DIR" 2>/dev/null || true
+[ -d "$BACKUP_DIR" ] && [ -w "$BACKUP_DIR" ] ||
+  fail "$BACKUP_DIR tidak bisa ditulis oleh $(id -un); jalankan sebagai root (cron root) atau set BACKUP_DIR"
 
 # Satu proses pada satu waktu (kunci mkdir; kunci basi > 2 jam dianggap sisa crash).
 lock="$BACKUP_DIR/.lock.d"
 find "$lock" -maxdepth 0 -mmin +120 -exec rm -rf {} + 2>/dev/null || true
-mkdir "$lock" 2>/dev/null || { log "backup lain masih berjalan; dilewati"; exit 0; }
+if ! mkdir "$lock" 2>/dev/null; then
+  [ -d "$lock" ] || fail "tidak bisa membuat kunci $lock"
+  log "backup lain masih berjalan; dilewati"
+  exit 0
+fi
 trap 'rmdir "$lock" 2>/dev/null || true' EXIT
 
 partial="$BACKUP_DIR/.partial.db"

@@ -25,7 +25,7 @@
     type={lihat ? 'text' : 'password'}
     {autocomplete}
     required
-    minlength={autocomplete === 'new-password' ? 8 : undefined}
+    minlength={autocomplete === 'new-password' ? 10 : undefined}
     maxlength="128"
     aria-describedby={describedby}
     aria-invalid={invalid}

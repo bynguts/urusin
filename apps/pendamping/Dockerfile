@@ -11,8 +11,8 @@
 # bawaan Playwright tidak diubah (tanpa stealth, tanpa menyembunyikan otomasi; lihat tanpa-evasi.test.ts).
 # Isolasi: sandbox Chromium AKTIF (seccomp-bpf + namespace; profil seccomp Playwright dari compose) dan
 # diperiksa saat boot. Host produksi (agent-vm) mematikan user namespace tak berhak, jadi namespace dibuat
-# oleh sandbox SETUID `chrome-sandbox` (lihat tahap runtime dan ADR 0028). Kontainer pendamping hanya di jaringan internal compose; satu-satunya jalan
-# keluar adalah pendamping-edge (image yang sama, `node dist/edge-main.js`). Lihat deploy/compose.prod.yml.
+# oleh sandbox SETUID `chrome-sandbox` (lihat tahap runtime dan ADR 0029). Kontainer pendamping hanya di
+# jaringan internal compose; satu-satunya jalan keluar adalah pendamping-edge (image yang sama, `node dist/edge-main.js`). Lihat deploy/compose.prod.yml.
 
 FROM --platform=$BUILDPLATFORM node:26-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS builder
 ENV PNPM_HOME=/pnpm \
@@ -49,7 +49,7 @@ ENV NODE_ENV=production \
     XDG_CONFIG_HOME=/tmp/.config \
     XDG_CACHE_HOME=/tmp/.cache \
     CHROME_DEVEL_SANDBOX=/ms-playwright/chromium-1254/chrome-linux64/chrome-sandbox
-# Sandbox setuid Chromium (ADR 0028). Playwright mengirim helper-nya sebagai `chrome_sandbox` mode 777 (tidak
+# Sandbox setuid Chromium (ADR 0029). Playwright mengirim helper-nya sebagai `chrome_sandbox` mode 777 (tidak
 # SUID); Chromium mencari `<dir exe>/chrome-sandbox`. CHROME_DEVEL_SANDBOX di atas hanya penanda: Chromium
 # mengabaikannya bila exe tidak dimiliki uid yang menjalankan (exe milik root, kita pwuser; diukur), jadi yang
 # berlaku adalah salinan root 4755 di sebelah exe. Path ber-versi: naik versi Playwright tanpa mengubah ini

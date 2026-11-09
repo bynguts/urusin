@@ -20,6 +20,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@urusin/akun": "workspace:*",
     "@urusin/contracts": "workspace:*",
     "@urusin/core": "workspace:*",
     "@urusin/egress": "workspace:*",

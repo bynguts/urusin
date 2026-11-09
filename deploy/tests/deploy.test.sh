@@ -155,7 +155,27 @@ unset RESTIC_REPOSITORY
 export SHIM_RUN_FAIL=1
 (BACKUP_IMAGE=ghcr.io/x@sha256:aa bash "$DEPLOY/backup.sh") > "$SB/out.log" 2>&1; RC=$?
 check "kegagalan sqlite -> exit non-zero, tanpa .partial" '[ $RC -ne 0 ] && [ ! -e "$BACKUP_DIR/.partial.db" ]'
-unset SHIM_RUN_FAIL BACKUP_DIR
+unset SHIM_RUN_FAIL
+# Layout datar (/opt/urusin): backup.sh dan scripts/db-backup.mjs berdampingan, tanpa ../apps/web/scripts.
+mkdir -p "$SB/flat/scripts"
+cp "$DEPLOY/backup.sh" "$SB/flat/backup.sh"
+: > "$SB/flat/scripts/db-backup.mjs"
+(BACKUP_IMAGE=ghcr.io/x@sha256:aa bash "$SB/flat/backup.sh") > "$SB/out.log" 2>&1; RC=$?
+check "layout datar: SCRIPT_DIR default ./scripts" '[ $RC -eq 0 ] && grep -q "backup: .* OK " "$SB/out.log"'
+# Kunci yang sedang dipegang proses lain: dilewati dengan exit 0.
+mkdir "$BACKUP_DIR/.lock.d"
+(BACKUP_IMAGE=ghcr.io/x@sha256:aa bash "$DEPLOY/backup.sh") > "$SB/out.log" 2>&1; RC=$?
+check "kunci aktif -> dilewati, exit 0" '[ $RC -eq 0 ] && grep -q "dilewati" "$SB/out.log"'
+rmdir "$BACKUP_DIR/.lock.d"
+# BACKUP_DIR tidak bisa ditulis (mis. milik root, dijalankan user biasa): gagal jelas, bukan "dilewati".
+chmod 555 "$BACKUP_DIR"
+if [ ! -w "$BACKUP_DIR" ]; then # root atau FS tanpa izin POSIX (Windows) tetap bisa menulis: lewati
+  (BACKUP_IMAGE=ghcr.io/x@sha256:aa bash "$DEPLOY/backup.sh") > "$SB/out.log" 2>&1; RC=$?
+  check "BACKUP_DIR read-only -> exit non-zero 'tidak bisa ditulis'" \
+    '[ $RC -ne 0 ] && grep -q "tidak bisa ditulis" "$SB/out.log" && ! grep -q "dilewati" "$SB/out.log"'
+fi
+chmod 755 "$BACKUP_DIR"
+unset BACKUP_DIR
 
 echo "13. host network: bind loopback + cek jangkauan LLM"
 new_sandbox

@@ -5,14 +5,15 @@
   import Icon from '#lib/components/Icon.svelte';
   import type { NamaIkon } from '#lib/components/ikon.js';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
+  import ZonaBahaya from '#lib/components/akun/ZonaBahaya.svelte';
   import { ambilLokal, ambilPrefs, ambilTts } from '#lib/stores/app.svelte.js';
   import type { PageProps } from './$types';
 
-  let { data }: PageProps = $props();
+  let { data, form }: PageProps = $props();
   const prefs = ambilPrefs();
   const lokal = ambilLokal();
   const tts = ambilTts();
-  const akun = $derived(page.data.akun as { email: string } | null | undefined);
+  const akun = $derived(page.data.akun as { email: string | null } | null | undefined);
 
   const BAGIAN: { id: string; label: string; ikon: NamaIkon }[] = [
     { id: 'tampilan', label: 'Tampilan & suara', ikon: 'huruf' },
@@ -46,6 +47,25 @@
     if (!confirm('Hapus daftar urusan, pesan, dan pengaturan dari perangkat ini?')) return;
     lokal.hapusSemua();
     dataDihapus = true;
+  }
+
+  // Google: tautkan (butuh masuk <= 15 menit; server mengarahkan ke masuk ulang) atau lepas.
+  let google = $state<{ aktif: boolean; tertaut: boolean } | null>(null);
+  let pesanGoogle = $state('');
+  $effect(() => {
+    if (!akun?.email) return;
+    void fetch('/api/akun', { headers: { accept: 'application/json' } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s: { metode?: { google: boolean }; akun?: { terhubungGoogle: boolean } } | null) => {
+        if (s?.akun) google = { aktif: s.metode?.google ?? false, tertaut: s.akun.terhubungGoogle };
+      });
+  });
+  async function lepasGoogle() {
+    if (!confirm('Lepas akun Google? Setelah ini masuk memakai email dan kata sandi.')) return;
+    const r = await fetch('/api/akun/google/lepas', { method: 'POST' });
+    const j = (await r.json().catch(() => null)) as { pesanWarga?: string } | null;
+    if (r.ok && google) google = { ...google, tertaut: false };
+    pesanGoogle = r.ok ? 'Google sudah dilepas.' : (j?.pesanWarga ?? 'Gagal melepas Google. Coba lagi.');
   }
 
   let keluarSibuk = $state(false);
@@ -244,7 +264,9 @@
       >
         {#if akun}
           <p class="min-w-0 text-base text-ink">
-            Masuk sebagai <span class="font-semibold break-all">{akun.email}</span>
+            Masuk sebagai <span class="font-semibold break-all"
+              >{akun.email ?? 'salinan demo juri (terhapus dalam 24 jam)'}</span
+            >
           </p>
           <div class="flex flex-wrap gap-2">
             <a
@@ -261,6 +283,28 @@
               <Icon name="log-keluar" class="size-4.5" /> Keluar
             </button>
           </div>
+          {#if google && (google.tertaut || google.aktif)}
+            <div data-google class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+              {#if google.tertaut}
+                <button
+                  type="button"
+                  onclick={lepasGoogle}
+                  class="inline-flex min-h-12 items-center rounded-full border border-line-2 bg-surface px-5 font-semibold text-ink hover:bg-card"
+                  >Lepas Google</button
+                >
+              {:else}
+                <form method="GET" action="/auth/google" data-sveltekit-reload>
+                  <input type="hidden" name="next" value="/pengaturan" />
+                  <button
+                    type="submit"
+                    class="inline-flex min-h-12 items-center rounded-full border border-line-2 bg-surface px-5 font-semibold text-ink hover:bg-card"
+                    >Tautkan Google</button
+                  >
+                </form>
+              {/if}
+              {#if pesanGoogle}<p role="status" class="text-[0.9375rem] text-body">{pesanGoogle}</p>{/if}
+            </div>
+          {/if}
         {:else}
           <p class="text-base text-body">
             Masuk supaya data diri dan dokumen tersimpan aman dan bisa dipakai di urusan berikutnya.
@@ -273,6 +317,10 @@
         {/if}
       </div>
     </section>
+
+    {#if data.zonaBahaya}
+      <ZonaBahaya punyaSandi={data.zonaBahaya.punyaSandi} galat={form ?? null} />
+    {/if}
 
     <section id="privasi" aria-labelledby="h-privasi" class="flex max-w-[50rem] scroll-mt-24 flex-col gap-4">
       <div>
@@ -297,8 +345,18 @@
           <Icon name="hapus" class="size-4.5" /> Hapus data di perangkat ini
         </button>
       </div>
-      {#if page.data.version}
-        <p class="text-sm text-muted">Versi {page.data.version}</p>
+      {#if page.data.versi}
+        <p class="text-sm text-muted" data-versi>
+          {#if page.data.versi.commit}
+            <a
+              href={page.data.versi.commit}
+              rel="external noopener"
+              class="underline underline-offset-2 hover:text-ink">v{page.data.versi.sha7}</a
+            >
+          {:else}
+            v{page.data.versi.sha7}
+          {/if}
+        </p>
       {/if}
     </section>
   </div>
