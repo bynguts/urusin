@@ -118,6 +118,34 @@ describe('SessionManager', () => {
     expect(v2.sent.at(-1)).toEqual({ type: 'fokus', jenis: 'sandi' });
   });
 
+  it('gagal: event selesai membawa kode langkah + galat net yang sah; nilai lain dibuang', async () => {
+    const h = harness({ maxSessions: 2 });
+    const a = await h.manager.create(input('u1'));
+    const b = await h.manager.create(input('u2'));
+    await h.flush();
+    const [va, vb] = [h.viewer(), h.viewer()];
+    await h.manager.attach(a.sesiId, va);
+    await h.manager.attach(b.sesiId, vb);
+    const pesan = 'Halaman x tidak bisa dibuka. Lanjutkan lewat panduan.';
+    h.runs[0]!.init.hooks.ended('gagal', 'gagal', pesan, {
+      kode: 'DOMAIN_NOT_ALLOWED',
+      net: 'net::ERR_PROXY_CONNECTION_FAILED',
+    });
+    h.runs[1]!.init.hooks.ended('gagal', 'gagal', pesan, { kode: 'bukan kode', net: 'ERR <x>' });
+    await h.flush();
+    expect(va.sent).toContainEqual({
+      type: 'event',
+      event: {
+        jenis: 'selesai',
+        hasil: 'gagal',
+        pesan,
+        kode: 'DOMAIN_NOT_ALLOWED',
+        net: 'net::ERR_PROXY_CONNECTION_FAILED',
+      },
+    });
+    expect(vb.sent).toContainEqual({ type: 'event', event: { jenis: 'selesai', hasil: 'gagal', pesan } });
+  });
+
   it('headless (CI) hanya untuk origin fixture: situs nyata ditolak sebelum Chromium dibuat', async () => {
     const fx = 'http://127.0.0.1:4320';
     const h = harness({ headless: true, fixtureOrigins: [fx] });

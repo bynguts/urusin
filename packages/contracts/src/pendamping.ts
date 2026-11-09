@@ -324,6 +324,15 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
     jenis: z.literal('selesai'),
     hasil: PendampingHasilSchema,
     pesan: z.string(),
+    /** Kode galat langkah otomatis (mis. DOMAIN_NOT_ALLOWED) dan galat jaringan navigasi, bila gagal. */
+    kode: z
+      .string()
+      .regex(/^[A-Z][A-Z0-9_]{1,63}$/)
+      .optional(),
+    net: z
+      .string()
+      .regex(/^net::ERR_[A-Z0-9_]{1,64}$/)
+      .optional(),
     bukti: PendampingBuktiSchema.optional(),
   }),
 ]);
