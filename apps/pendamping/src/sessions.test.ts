@@ -4,7 +4,7 @@ import { ADAPTERS } from '@urusin/adapters';
 import { afterEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { loadConfig, type Config } from './config.js';
-import { createServer } from './server.js';
+import { createServer, sidHashFromCookie } from './server.js';
 import { headerTanda } from './tanda.js';
 import { SessionManager, sidHashOf, type ActiveRun, type RunInit } from './sessions.js';
 
@@ -333,107 +333,29 @@ describe('SessionManager', () => {
     expect(h.manager.status({ urusanId: s.urusanId, sidHash: SID }).status).toBe('menunggu_data');
   });
 
-  it('berkas berpotongan: dirakit berurutan; urutan salah/ukuran palsu/terlalu besar ditolak', async () => {
+  it('data vault/berkas (kanal internal saja): AI mulai hanya setelah lengkap; input ditolak di mode AI', async () => {
     const h = harness();
     const s = await h.manager.create(input('u1', { params: { layanan_id: 1, berkas: 'ktp' } }));
     await h.flush();
     const v = h.viewer();
     await h.manager.attach(s.sesiId, v);
-    await h.manager.handleClient(s.sesiId, { type: 'vault', isian: { '{{PEMOHON.HP}}': '08000000001' } });
-    const isi = Buffer.from(Array.from({ length: 10 }, (_, i) => i));
-    const potong = (indeks: number, data: Buffer, over: Record<string, unknown> = {}) =>
-      h.manager.handleClient(s.sesiId, {
-        type: 'berkas_potong',
-        nama: 'ktp',
-        namaBerkas: 'ktp.pdf',
-        mime: 'application/pdf',
-        ukuran: 10,
-        indeks,
-        total: 3,
-        dataBase64: data.toString('base64'),
-        ...over,
-      });
-    const galat = () => v.sent.filter((m) => m.type === 'galat').map((m) => (m as { kode: string }).kode);
     const run = h.runs[0]!;
-
-    // Mulai di tengah: ditolak.
-    await potong(1, isi.subarray(3, 6));
-    // Melompat urutan: ditolak dan unggahan dibuang.
-    await potong(0, isi.subarray(0, 3));
-    await potong(2, isi.subarray(6));
-    // Melebihi ukuran yang diumumkan.
-    await potong(0, isi.subarray(0, 3));
-    await potong(1, Buffer.alloc(8));
-    // Total kurang dari ukuran.
-    await potong(0, isi.subarray(0, 3));
-    await potong(1, isi.subarray(3, 6));
-    await potong(2, isi.subarray(6, 7));
-    // Ukuran > 9 MB ditolak tanpa menampung apa pun.
-    await potong(0, isi.subarray(0, 3), { ukuran: 9 * 1024 * 1024 + 1 });
-    // Nama yang tidak diminta diabaikan.
-    await potong(0, isi, { nama: 'lain', total: 1 });
-    expect(galat()).toEqual([
-      'PESAN_TIDAK_SAH',
-      'PESAN_TIDAK_SAH',
-      'PESAN_TIDAK_SAH',
-      'PESAN_TIDAK_SAH',
-      'BERKAS_TERLALU_BESAR',
-    ]);
-    expect(run.calls).not.toContain('mulaiAi');
-
-    // Unggahan sah; potongan indeks 0 baru menggantikan unggahan setengah jalan.
-    await potong(0, isi.subarray(0, 3));
-    await potong(0, isi.subarray(0, 3));
-    await potong(1, isi.subarray(3, 6));
-    await potong(2, isi.subarray(6));
-    expect(galat()).toHaveLength(5);
-    expect(run.calls).toContain('mulaiAi');
-    expect(run.init.data.file('ktp')).toEqual({
-      name: 'ktp.pdf',
-      mime: 'application/pdf',
-      base64: isi.toString('base64'),
-    });
-  });
-
-  it('data vault/berkas: AI mulai hanya setelah lengkap; input ditolak di mode AI; kendali warga', async () => {
-    const h = harness();
-    const s = await h.manager.create(input('u1', { params: { layanan_id: 1, berkas: 'ktp' } }));
-    await h.flush();
-    const v = h.viewer();
-    await h.manager.attach(s.sesiId, v);
+    // butuh_data ke perangkat: tanpa nilai, plus origin yang akan diisi (untuk "Izinkan isi" di web).
     expect(v.sent.find((m) => m.type === 'butuh_data')).toEqual({
       type: 'butuh_data',
       placeholder: ['{{PEMOHON.HP}}'],
       berkas: ['ktp'],
+      origin: run.init.program.origin,
     });
-    await h.manager.handleClient(s.sesiId, {
-      type: 'vault',
-      isian: { '{{PEMOHON.HP}}': '08000000001', '{{X.Y}}': 'abaikan' },
-    });
-    const run = h.runs[0]!;
+    await h.manager.isiData(owner('u1'), { '{{PEMOHON.HP}}': '08000000001', '{{X.Y}}': 'abaikan' });
     expect(run.calls).not.toContain('mulaiAi');
-    await h.manager.handleClient(s.sesiId, {
-      type: 'berkas',
-      nama: 'tidak_diminta',
-      namaBerkas: 'a.png',
-      mime: 'image/png',
-      dataBase64: 'AAAA',
+    const berkas = (nama: string, dataBase64: string) =>
+      h.manager.isiBerkas(owner('u1'), { nama, namaBerkas: 'ktp.png', mime: 'image/png', dataBase64 });
+    await expect(berkas('tidak_diminta', 'AAAA')).rejects.toMatchObject({ kode: 'PESAN_TIDAK_SAH' });
+    await expect(berkas('ktp', 'A'.repeat(13_000_000))).rejects.toMatchObject({
+      kode: 'BERKAS_TERLALU_BESAR',
     });
-    await h.manager.handleClient(s.sesiId, {
-      type: 'berkas',
-      nama: 'ktp',
-      namaBerkas: 'besar.png',
-      mime: 'image/png',
-      dataBase64: 'A'.repeat(13_000_000),
-    });
-    expect(v.sent.some((m) => m.type === 'galat' && m.kode === 'BERKAS_TERLALU_BESAR')).toBe(true);
-    await h.manager.handleClient(s.sesiId, {
-      type: 'berkas',
-      nama: 'ktp',
-      namaBerkas: 'ktp.png',
-      mime: 'image/png',
-      dataBase64: 'AAAA',
-    });
+    await berkas('ktp', 'AAAA');
     expect(run.calls).toContain('mulaiAi');
     expect(run.init.data.value('{{PEMOHON.HP}}')).toBe('08000000001');
     expect(run.init.data.value('{{X.Y}}')).toBeUndefined();
@@ -667,9 +589,14 @@ describe('server HTTP + WebSocket', () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(msgs[0]).toMatchObject({ type: 'status', sesi: { urusanId: 'u1' } });
     ok.send('bukan json');
+    // A-M1: perangkat tidak punya jalur nilai vault/berkas; pesan bentuk lama ditolak seperti pesan asing.
+    ok.send(JSON.stringify({ type: 'vault', isian: { '{{PEMOHON.HP}}': '1' } }));
+    ok.send(
+      JSON.stringify({ type: 'berkas', nama: 'ktp', namaBerkas: 'a', mime: 'a/b', dataBase64: 'AAAA' }),
+    );
     ok.send(JSON.stringify({ type: 'ping', t: 1 }));
     await new Promise((r) => setTimeout(r, 50));
-    expect(msgs.some((m) => m.type === 'galat' && m.kode === 'PESAN_TIDAK_SAH')).toBe(true);
+    expect(msgs.filter((m) => m.type === 'galat' && m.kode === 'PESAN_TIDAK_SAH')).toHaveLength(3);
     expect(msgs.some((m) => m.type === 'pong')).toBe(true);
 
     const reuse = new WebSocket(url, { origin: 'http://app.test', headers: { cookie: COOKIE } });
@@ -745,6 +672,15 @@ describe('server HTTP + WebSocket', () => {
     expect(d.status).toBe(101);
     expect((await buka()).status).toBe(503);
     for (const w of [a.ws, c.ws, d.ws]) w.close();
+  });
+
+  it('cookie sesi WS: __Host-urusin_sid (web) diutamakan; nama lama hanya bila tidak ada; rusak -> null', () => {
+    const [a, b] = ['a'.repeat(32), 'b'.repeat(32)];
+    expect(sidHashFromCookie(`x=1; __Host-urusin_sid=${a}`)).toBe(sidHashOf(a));
+    expect(sidHashFromCookie(`urusin_sid=${b}; __Host-urusin_sid=${a}`)).toBe(sidHashOf(a));
+    expect(sidHashFromCookie(`urusin_sid=${b}`)).toBe(sidHashOf(b));
+    expect(sidHashFromCookie(`__Host-urusin_sid=ZZ; urusin_sid=${b}`)).toBeNull();
+    expect(sidHashFromCookie(undefined)).toBeNull();
   });
 
   it('M1-b: upgrade cacat (versi 99) x20 tidak menghabiskan slot pra-halo; soket sah tetap tersambung', async () => {
@@ -824,7 +760,17 @@ describe('server HTTP + WebSocket', () => {
     expect((await post('/debug/sesi', { adapterId: 'x', flowId: 'y' })).status).toBe(422);
     const alur = await post('/debug/sesi', { adapterId: 'oss-nib', flowId: 'cari_nib' });
     expect(alur.status).toBe(201);
-    expect(((await alur.json()) as { urusanId: string }).urusanId).toMatch(/^debug-/);
+    const sesiAlur = (await alur.json()) as { urusanId: string; sesiId: string };
+    expect(sesiAlur.urusanId).toMatch(/^debug-/);
+    // Isian sintetis penguji lewat HTTP bertoken debug (bukan WS); hanya sesi debug.
+    await h.flush();
+    const isi = { sesiId: sesiAlur.sesiId, isian: { '{{PEMOHON.HP}}': '1' } };
+    expect((await post('/debug/isi', isi, 'salah'.repeat(8))).status).toBe(401);
+    expect(
+      (await post('/debug/isi', { ...isi, sesiId: '00000000-0000-4000-8000-000000000000' })).status,
+    ).toBe(404);
+    expect((await post('/debug/isi', { ...isi, isian: { NIK: '1' } })).status).toBe(404);
+    expect((await post('/debug/isi', isi)).status).toBe(200);
     const res = await post('/debug/sesi', { url: 'https://oss.go.id/' });
     expect(res.status).toBe(201);
     const cookie = res.headers.get('set-cookie')!.split(';')[0]!;

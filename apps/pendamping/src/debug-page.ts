@@ -31,7 +31,7 @@ export function debugPageHtml(alur: string[] = []): string {
 </form>
 <p>Status: <output id="status">-</output> | Mode: <output id="mode">-</output> | Koneksi: <output id="koneksi">-</output></p>
 <p id="pesan"></p>
-<form id="vault" hidden><p>Isian untuk alur (hanya di memori sesi):</p><div id="isian"></div><button>Kirim isian</button></form>
+<form id="vault" hidden><p>Isian SINTETIS untuk alur (lewat /debug/isi, hanya di memori sesi):</p><div id="isian"></div><button>Kirim isian</button></form>
 <canvas id="layar" tabindex="0" style="width:390px;height:844px;border:1px solid #000;touch-action:none"></canvas>
 <textarea id="ketik" aria-label="Ketik" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
 <p><button id="akhiri" type="button">Akhiri sesi</button></p>
@@ -41,6 +41,7 @@ export function debugPageHtml(alur: string[] = []): string {
   const $ = (id) => document.getElementById(id);
   const log = (s) => ($('log').textContent += new Date().toISOString().slice(11, 19) + ' ' + s + '\\n');
   let viewer;
+  let aktif; // { sesiId, auth } sesi debug terakhir, untuk /debug/isi
   $('mulai').onsubmit = async (ev) => {
     ev.preventDefault();
     const token = $('token').value;
@@ -55,6 +56,7 @@ export function debugPageHtml(alur: string[] = []): string {
     });
     const sesi = await r.json();
     if (!r.ok) return log('galat ' + (sesi.kode || r.status) + ' ' + (sesi.pesanWarga || ''));
+    aktif = { sesiId: sesi.sesiId, auth };
     $('layar').style.width = lebar + 'px';
     $('layar').style.height = tinggi + 'px';
     const ws = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/' + sesi.sesiId;
@@ -86,12 +88,14 @@ export function debugPageHtml(alur: string[] = []): string {
     });
   };
   $('akhiri').onclick = () => viewer?.akhiri();
-  $('vault').onsubmit = (ev) => {
+  $('vault').onsubmit = async (ev) => {
     ev.preventDefault();
     const isian = {};
     for (const i of $('isian').querySelectorAll('input')) isian[i.name] = i.value;
-    viewer?.kirimVault(isian);
-    $('vault').hidden = true;
+    if (!aktif) return;
+    const r = await fetch('/debug/isi', { method: 'POST', headers: aktif.auth, body: JSON.stringify({ sesiId: aktif.sesiId, isian }) });
+    log('isi ' + r.status);
+    if (r.ok) $('vault').hidden = true;
   };
 </script>
 </body>

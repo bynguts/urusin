@@ -206,30 +206,11 @@ export const BerkasSesiInternalSchema = PemilikSesiInternalSchema.extend({
 });
 export type BerkasSesiInternal = z.infer<typeof BerkasSesiInternalSchema>;
 
-// --- POST /api/urusan/[id]/pendamping/izinkan (warga menekan "Izinkan isi") ---
-export const IzinkanIsiRequestSchema = z.object({
-  /**
-   * Hash daftar write yang DITAMPILKAN ke warga: sha256 hex dari nama field unik terurut dipisah baris baru
-   * (sama dengan `hashDaftarWrite` @urusin/akun). Server menolak bila tidak sama dengan daftar write sesi.
-   */
-  writeListHash: z.string().regex(/^[0-9a-f]{64}$/),
-});
-export type IzinkanIsiRequest = z.infer<typeof IzinkanIsiRequestSchema>;
-
-export const IzinkanIsiResponseSchema = z.object({
-  /** Yang tidak ada di Data Diri/Dokumen: warga mengisinya sendiri di layar. Tanpa nilai apa pun. */
-  kurang: z.object({ placeholder: z.array(z.string()), berkas: z.array(z.string()) }),
-});
-export type IzinkanIsiResponse = z.infer<typeof IzinkanIsiResponseSchema>;
-
 // --- WebSocket: perangkat warga -> pendamping ---
 const koordinat = z.number().min(-10_000).max(10_000);
 /** Bitmask modifier CDP: Alt=1, Ctrl=2, Meta=4, Shift=8. */
 const modifier = z.number().int().min(0).max(15);
 
-/** Ukuran potongan berkas (biner) per pesan WS; base64-nya + JSON muat di batas pesan 64 KB. */
-export const BERKAS_POTONG_BYTE = 36 * 1024;
-const BERKAS_POTONG_BASE64 = Math.ceil(BERKAS_POTONG_BYTE / 3) * 4;
 /** Batas satu pesan WebSocket perangkat -> pendamping (berlaku juga sebelum `halo`). */
 export const PENDAMPING_WS_MAX_PAYLOAD = 64 * 1024;
 
@@ -267,41 +248,10 @@ export const PendampingClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ambil_alih') }),
   /** Warga mengembalikan kendali ke AI. */
   z.object({ type: z.literal('kembalikan') }),
-  /** Nilai placeholder dari vault perangkat, mis. {"{{PEMOHON.HP}}": "..."}; hanya di memori sesi. */
-  z.object({
-    type: z.literal('vault'),
-    isian: z.record(z.string().regex(/^\{\{[A-Z][A-Z0-9_]*(?:\.[A-Z][A-Z0-9_]*)+\}\}$/), z.string().max(500)),
-  }),
-  /**
-   * Berkas untuk `{{FILE:<nama>}}` dalam potongan berurutan (pesan WS dibatasi 64 KB sebelum dan sesudah
-   * autentikasi): `indeks` 0..total-1, setiap potongan <= BERKAS_POTONG_BYTE biner (kelipatan 3 kecuali
-   * yang terakhir), `ukuran` total biner <= 9 MB. Hanya di memori sesi.
+  /*
+   * Tidak ada pesan nilai vault atau berkas dari perangkat (A-M1): nilai Data Diri dan Dokumen hanya masuk
+   * lewat kanal internal web -> worker (`/internal/sesi/isi`, `/internal/sesi/berkas`) setelah "Izinkan isi".
    */
-  z.object({
-    type: z.literal('berkas_potong'),
-    nama: z
-      .string()
-      .max(64)
-      .regex(/^[A-Za-z][A-Za-z0-9_]*$/),
-    namaBerkas: z.string().min(1).max(200),
-    mime: z.string().min(1).max(100),
-    ukuran: z
-      .number()
-      .int()
-      .positive()
-      .max(9 * 1024 * 1024),
-    indeks: z.number().int().nonnegative(),
-    total: z.number().int().positive().max(512),
-    dataBase64: z.string().min(1).max(BERKAS_POTONG_BASE64),
-  }),
-  /** Bentuk lama satu pesan (hanya berkas kecil yang muat dalam batas pesan WS 64 KB). */
-  z.object({
-    type: z.literal('berkas'),
-    nama: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
-    namaBerkas: z.string().min(1).max(200),
-    mime: z.string().min(1).max(100),
-    dataBase64: z.string().min(1).max(12_600_000),
-  }),
   z.object({ type: z.literal('akhiri') }),
   z.object({ type: z.literal('ping'), t: z.number() }),
   /** Frame `seq` sudah digambar: pendamping mengirim paling banyak 2 frame yang belum di-ack. */
@@ -368,11 +318,15 @@ export const PendampingServerMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('event'), event: PendampingEventSchema }),
   z.object({ type: z.literal('status'), sesi: SesiPendampingSchema }),
-  /** Placeholder vault dan nama berkas yang harus dikirim perangkat sebelum AI mulai. */
+  /**
+   * Data yang masih dibutuhkan sebelum AI mulai (tanpa nilai) + `origin` situs yang akan diisi. Perangkat
+   * menampilkan lembar "Izinkan isi" lalu mengirim daftar write + origin ini ke web (bukan ke pendamping).
+   */
   z.object({
     type: z.literal('butuh_data'),
     placeholder: z.array(z.string()),
     berkas: z.array(z.string()),
+    origin: z.url(),
   }),
   z.object({ type: z.literal('galat'), kode: PendampingKodeGalatSchema, pesanWarga: z.string() }),
   z.object({ type: z.literal('pong'), t: z.number() }),

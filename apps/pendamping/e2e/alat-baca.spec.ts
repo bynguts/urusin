@@ -67,7 +67,8 @@ async function jalankan(
   const v = penampil();
   await m.attach(s.sesiId, v);
   await expect.poll(() => m.status(owner).status, { timeout: 30_000 }).toBe('menunggu_data');
-  await m.handleClient(s.sesiId, { type: 'vault', isian: vault });
+  // Nilai lewat jalur isi server (kanal internal), tidak pernah lewat WS perangkat.
+  await m.isiData(owner, vault);
   if (giliran) await giliran(s.sesiId, v.events);
   await expect.poll(() => m.status(owner).status, { timeout: 30_000 }).toBe('siaga');
   return m.status(owner);

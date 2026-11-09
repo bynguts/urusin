@@ -1,13 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BERKAS_POTONG_BYTE,
   decodePendampingFrame,
   encodePendampingFrame,
   ENDPOINT,
   MulaiPendampingRequestSchema,
   MulaiSesiInternalSchema,
   PENDAMPING_WS_CLOSE,
-  PENDAMPING_WS_MAX_PAYLOAD,
   PendampingClientMessageSchema,
   PendampingServerMessageSchema,
   SesiPendampingSchema,
@@ -15,19 +13,8 @@ import {
 
 const SID_HASH = 'a'.repeat(64);
 
-const POTONG = {
-  type: 'berkas_potong',
-  nama: 'ktp',
-  namaBerkas: 'ktp.pdf',
-  mime: 'application/pdf',
-  ukuran: 100_000,
-  indeks: 0,
-  total: 3,
-  dataBase64: 'AAAA',
-};
-
 describe('kontrak pendamping', () => {
-  it('pesan klien: input, kendali, vault, berkas', () => {
+  it('pesan klien: input dan kendali', () => {
     const ok = [
       { type: 'halo', tiket: 't'.repeat(32) },
       { type: 'pointer', aksi: 'down', x: 10, y: 20, jenis: 'touch', tombol: 'left', klik: 1 },
@@ -36,45 +23,31 @@ describe('kontrak pendamping', () => {
       { type: 'text', teks: 'DEV123' },
       { type: 'ambil_alih' },
       { type: 'kembalikan' },
-      { type: 'vault', isian: { '{{PEMOHON.HP}}': '08000000001' } },
-      { type: 'berkas', nama: 'berkas1', namaBerkas: 'ktp.png', mime: 'image/png', dataBase64: 'AAAA' },
-      { ...POTONG, dataBase64: 'A'.repeat((BERKAS_POTONG_BYTE / 3) * 4) },
       { type: 'akhiri' },
       { type: 'ping', t: 1 },
     ];
     for (const m of ok) expect(PendampingClientMessageSchema.safeParse(m).success, m.type).toBe(true);
   });
 
-  it('potongan berkas terbesar (nama/mime maksimal) muat dalam batas pesan WS', () => {
-    const terbesar = {
-      ...POTONG,
-      nama: 'a'.repeat(64),
-      namaBerkas: 'n'.repeat(200),
-      mime: 'm'.repeat(100),
-      ukuran: 9 * 1024 * 1024,
-      indeks: 511,
-      total: 512,
-      dataBase64: 'A'.repeat((BERKAS_POTONG_BYTE / 3) * 4),
-    };
-    expect(PendampingClientMessageSchema.safeParse(terbesar).success).toBe(true);
-    expect(Buffer.byteLength(JSON.stringify(terbesar))).toBeLessThan(PENDAMPING_WS_MAX_PAYLOAD);
-  });
-
-  it('pesan klien rusak ditolak (kunci vault bukan placeholder, teks kosong, tipe asing)', () => {
+  it('A-M1: perangkat tidak bisa mengirim nilai vault atau berkas lewat WS; pesan rusak ditolak', () => {
     const bad = [
-      { type: 'vault', isian: { NIK: '1' } },
+      { type: 'vault', isian: { '{{PEMOHON.HP}}': '1' } },
+      { type: 'berkas', nama: 'ktp', namaBerkas: 'a.png', mime: 'image/png', dataBase64: 'AAAA' },
+      {
+        type: 'berkas_potong',
+        nama: 'ktp',
+        namaBerkas: 'a.png',
+        mime: 'image/png',
+        ukuran: 3,
+        indeks: 0,
+        total: 1,
+        dataBase64: 'AAAA',
+      },
       { type: 'text', teks: '' },
       { type: 'pointer', aksi: 'tap', x: 0, y: 0, jenis: 'mouse', tombol: 'left' },
-      { type: 'berkas', nama: '../x', namaBerkas: 'a', mime: 'image/png', dataBase64: 'A' },
-      // Potongan lebih besar dari BERKAS_POTONG_BYTE, ukuran > 9 MB, atau > 512 potongan.
-      { ...POTONG, dataBase64: 'A'.repeat((BERKAS_POTONG_BYTE / 3) * 4 + 4) },
-      { ...POTONG, ukuran: 9 * 1024 * 1024 + 1 },
-      { ...POTONG, total: 513 },
-      { ...POTONG, indeks: -1 },
-      { ...POTONG, nama: 'a'.repeat(65) },
       { type: 'eval', kode: 'x' },
     ];
-    for (const m of bad) expect(PendampingClientMessageSchema.safeParse(m).success).toBe(false);
+    for (const m of bad) expect(PendampingClientMessageSchema.safeParse(m).success, m.type).toBe(false);
   });
 
   it('pesan server: frame, mode, event, status, butuh_data, galat', () => {
@@ -100,7 +73,12 @@ describe('kontrak pendamping', () => {
       { type: 'event', event: { jenis: 'giliran_anda', alasan: 'final', pesan: 'Tekan Kirim' } },
       { type: 'event', event: { jenis: 'selesai', hasil: 'berhasil', pesan: 'ok' } },
       { type: 'status', sesi },
-      { type: 'butuh_data', placeholder: ['{{PEMOHON.HP}}'], berkas: ['berkas1'] },
+      {
+        type: 'butuh_data',
+        placeholder: ['{{PEMOHON.HP}}'],
+        berkas: ['berkas1'],
+        origin: 'https://fixtures.urusinai.web.id',
+      },
       { type: 'galat', kode: 'INPUT_DITOLAK_MODE_AI', pesanWarga: 'x' },
     ];
     for (const m of ok) expect(PendampingServerMessageSchema.safeParse(m).success, m.type).toBe(true);

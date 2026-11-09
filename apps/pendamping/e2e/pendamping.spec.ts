@@ -108,23 +108,27 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
     .toEqual({
       placeholder: ['{{PEMOHON.HP}}'],
       berkas: ['ktp', 'kk'],
+      origin: FIXTURE_ORIGIN,
     });
 
-  // Vault perangkat -> memori sesi (placeholder di-resolve di batas eksekutor, bukan oleh LLM).
-  await page.evaluate(
-    async ([hp, png]) => {
-      const v = (
-        window as unknown as {
-          viewer: { kirimVault(x: object): void; kirimBerkas(n: string, b: Blob, f: string): Promise<void> };
-        }
-      ).viewer;
-      v.kirimVault({ '{{PEMOHON.HP}}': hp });
-      const blob = new Blob([Uint8Array.from(atob(png), (c) => c.charCodeAt(0))], { type: 'image/png' });
-      await v.kirimBerkas('ktp', blob, 'ktp.png');
-      await v.kirimBerkas('kk', blob, 'kk.png');
-    },
-    [TEST_HP, PNG.toString('base64')] as const,
-  );
+  // Jalur isi server (A-M1): web mengirim nilai + berkas lewat kanal internal bertanda HMAC; perangkat tidak
+  // punya jalur nilai vault (placeholder di-resolve di batas eksekutor, bukan oleh LLM).
+  expect(
+    (await internal('/internal/sesi/isi', { ...owner('u-e2e-1'), isian: { '{{PEMOHON.HP}}': TEST_HP } }))
+      .status,
+  ).toBe(200);
+  for (const nama of ['ktp', 'kk'])
+    expect(
+      (
+        await internal('/internal/sesi/berkas', {
+          ...owner('u-e2e-1'),
+          nama,
+          namaBerkas: `${nama}.png`,
+          mime: 'image/png',
+          dataBase64: PNG.toString('base64'),
+        })
+      ).status,
+    ).toBe(200);
 
   // AI mengisi HP lalu berhenti di CAPTCHA: wajib takeover.
   const login = await tungguGiliran(page, 'login');

@@ -1,11 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { encodePendampingFrame } from '@urusin/contracts';
 import {
-  BERKAS_POTONG_BYTE as KONTRAK_POTONG,
-  encodePendampingFrame,
-  PendampingClientMessageSchema,
-} from '@urusin/contracts';
-import {
-  BERKAS_POTONG_BYTE,
   createPendampingViewer,
   dekodeFrameBiner,
   modifier,
@@ -167,7 +162,6 @@ function setup(extra: Partial<ViewerOptions> = {}) {
     dpr: () => 2,
     backoffMs: 10,
     jedaGerakMs: 0,
-    jedaPotongMs: 0,
     ...extra,
   });
   return { canvas, input, viewer };
@@ -199,7 +193,7 @@ describe('createPendampingViewer', () => {
     expect(frames).toEqual([400]);
     ws.push({ type: 'event', event: { jenis: 'langkah', indeks: 0, total: 3, label: 'x' } });
     ws.push({ type: 'status', sesi: { status: 'antre' } });
-    ws.push({ type: 'butuh_data', placeholder: [], berkas: ['ktp'] });
+    ws.push({ type: 'butuh_data', placeholder: [], berkas: ['ktp'], origin: 'https://a.example' });
     ws.push({ type: 'galat', kode: 'INTERNAL', pesanWarga: 'x' });
     ws.push({ type: 'pong', t: 1 });
     ws.onmessage?.({ data: 'bukan json' });
@@ -209,24 +203,9 @@ describe('createPendampingViewer', () => {
     viewer.ambilAlih();
     viewer.kembalikan();
     viewer.akhiri();
-    viewer.kirimVault({ '{{PEMOHON.HP}}': '1' });
-    await viewer.kirimBerkas('ktp', new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }), 'ktp.png');
-    expect(ws.sent.slice(1).map((m) => m.type)).toEqual([
-      'ambil_alih',
-      'kembalikan',
-      'akhiri',
-      'vault',
-      'berkas_potong',
-    ]);
-    expect(ws.sent.at(-1)).toMatchObject({
-      indeks: 0,
-      total: 1,
-      ukuran: 3,
-      nama: 'ktp',
-      namaBerkas: 'ktp.png',
-      mime: 'image/png',
-      dataBase64: 'AQID',
-    });
+    expect(ws.sent.slice(1).map((m) => m.type)).toEqual(['ambil_alih', 'kembalikan', 'akhiri']);
+    // A-M1: viewer tidak punya jalur kirim nilai vault atau berkas.
+    expect('kirimVault' in viewer || 'kirimBerkas' in viewer).toBe(false);
   });
 
   it('input hanya dikirim saat takeover; koordinat dipetakan; teks/IME/tombol khusus', async () => {
@@ -339,33 +318,7 @@ describe('createPendampingViewer', () => {
     expect(viewer.koneksi).toBe('selesai');
   });
 
-  it('berkas besar dikirim berpotongan berurutan, tiap pesan sah menurut kontrak dan < 64 KB; kosong ditolak', async () => {
-    expect(BERKAS_POTONG_BYTE).toBe(KONTRAK_POTONG);
-    const { viewer } = setup();
-    await tick();
-    const ws = FakeWs.all[0]!;
-    ws.open();
-    const ukuran = BERKAS_POTONG_BYTE * 2 + 5;
-    const isi = new Uint8Array(ukuran).map((_, i) => i % 251);
-    await viewer.kirimBerkas('ktp', new Blob([isi], { type: 'image/jpeg' }), 'ktp.jpg');
-    const potong = ws.raw.slice(1);
-    expect(potong).toHaveLength(3);
-    const pesan = potong.map((r) => PendampingClientMessageSchema.parse(JSON.parse(r)));
-    expect(pesan.map((p) => p.type === 'berkas_potong' && [p.indeks, p.total, p.ukuran])).toEqual([
-      [0, 3, ukuran],
-      [1, 3, ukuran],
-      [2, 3, ukuran],
-    ]);
-    for (const r of potong) expect(r.length).toBeLessThan(64 * 1024);
-    const gabung = Buffer.concat(
-      pesan.map((p) => Buffer.from(p.type === 'berkas_potong' ? p.dataBase64 : '', 'base64')),
-    );
-    expect(gabung.equals(Buffer.from(isi))).toBe(true);
-    await expect(viewer.kirimBerkas('kk', new Blob([]))).rejects.toThrow(/kosong/);
-    viewer.tutup();
-  });
-
-  it('kasus tepi: tanpa frame tidak ada input; pena tombol kanan; berkas tanpa nama/tipe; frame bertumpuk', async () => {
+  it('kasus tepi: tanpa frame tidak ada input; pena tombol kanan; frame bertumpuk', async () => {
     const { canvas, viewer } = setup();
     await tick();
     const ws = FakeWs.all[0]!;
@@ -387,19 +340,10 @@ describe('createPendampingViewer', () => {
     canvas.fire('keyup', key('a'));
     canvas.fire('keydown', key('F5'));
     canvas.fire('contextmenu', {});
-    await viewer.kirimBerkas('kk', new Blob([new Uint8Array([0])]));
     const sent = ws.sent.slice(1);
     expect(sent[0]).toMatchObject({ jenis: 'pen', tombol: 'right' });
     expect(sent[1]).toMatchObject({ aksi: 'cancel', tombol: 'left' });
-    expect(sent.at(-1)).toMatchObject({
-      type: 'berkas_potong',
-      namaBerkas: 'kk',
-      mime: 'application/octet-stream',
-      ukuran: 1,
-      indeks: 0,
-      total: 1,
-    });
-    expect(sent).toHaveLength(3);
+    expect(sent).toHaveLength(2);
     viewer.tutup();
     viewer.tutup();
   });

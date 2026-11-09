@@ -81,7 +81,8 @@ export type ViewerEvents = {
   fokus: JenisFokus;
   event: PendampingEvent;
   status: SesiPendamping;
-  butuh_data: { placeholder: string[]; berkas: string[] };
+  /** Data yang masih dibutuhkan (tanpa nilai) + `origin` situs yang akan diisi, untuk "Izinkan isi" di web. */
+  butuh_data: { placeholder: string[]; berkas: string[]; origin: string };
   galat: { kode: PendampingKodeGalat; pesanWarga: string };
   koneksi: ViewerStatus;
   frame: PendampingFrameMeta;
@@ -100,8 +101,6 @@ export type ViewerOptions = {
   backoffMs?: number;
   /** Jeda minimum antar pesan pointer `move` (ms). */
   jedaGerakMs?: number;
-  /** Jeda antar potongan berkas (ms), menjaga laju di bawah batas pesan per detik pendamping. */
-  jedaPotongMs?: number;
 };
 
 export type PendampingViewer = {
@@ -111,8 +110,7 @@ export type PendampingViewer = {
   ambilAlih(): void;
   kembalikan(): void;
   akhiri(): void;
-  kirimVault(isian: Record<string, string>): void;
-  kirimBerkas(nama: string, berkas: Blob, namaBerkas?: string): Promise<void>;
+  /* Tidak ada kirim nilai vault/berkas (A-M1): nilai hanya lewat server web setelah "Izinkan isi". */
   tutup(): void;
 };
 
@@ -181,17 +179,6 @@ export function aturInputTeks(el: HTMLInputElement | HTMLTextAreaElement, jenis:
   el.value = '';
 }
 
-/** Ukuran potongan berkas biner; sama dengan BERKAS_POTONG_BYTE di @urusin/contracts (diuji). */
-export const BERKAS_POTONG_BYTE = 36 * 1024;
-const jeda = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-
-function base64Dari(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let bin = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(bin);
-}
-
 export function createPendampingViewer(
   canvas: HTMLCanvasElement,
   wsUrl: string,
@@ -203,7 +190,6 @@ export function createPendampingViewer(
   const maxUlang = opts.maxSambungUlang ?? 6;
   const backoff = opts.backoffMs ?? 500;
   const jedaGerak = opts.jedaGerakMs ?? 16;
-  const jedaPotongMs = opts.jedaPotongMs ?? 8;
 
   const listeners = new Map<keyof ViewerEvents, Set<(v: never) => void>>();
   const emit = <K extends keyof ViewerEvents>(type: K, v: ViewerEvents[K]) => {
@@ -312,7 +298,7 @@ export function createPendampingViewer(
         emit('status', msg.sesi);
         break;
       case 'butuh_data':
-        emit('butuh_data', { placeholder: msg.placeholder, berkas: msg.berkas });
+        emit('butuh_data', { placeholder: msg.placeholder, berkas: msg.berkas, origin: msg.origin });
         break;
       case 'galat':
         emit('galat', { kode: msg.kode, pesanWarga: msg.pesanWarga });
@@ -484,26 +470,6 @@ export function createPendampingViewer(
     ambilAlih: () => kirim({ type: 'ambil_alih' }),
     kembalikan: () => kirim({ type: 'kembalikan' }),
     akhiri: () => kirim({ type: 'akhiri' }),
-    kirimVault: (isian) => kirim({ type: 'vault', isian }),
-    async kirimBerkas(nama, berkas, namaBerkas) {
-      // Potongan berurutan (batas pesan WS 64 KB), diberi jeda kecil agar tidak menabrak batas laju pesan.
-      const buf = await berkas.arrayBuffer();
-      if (buf.byteLength === 0) throw new Error('berkas kosong');
-      const total = Math.max(1, Math.ceil(buf.byteLength / BERKAS_POTONG_BYTE));
-      const dasar = {
-        type: 'berkas_potong' as const,
-        nama,
-        namaBerkas: namaBerkas ?? (berkas as Blob & { name?: string }).name ?? nama,
-        mime: berkas.type || 'application/octet-stream',
-        ukuran: buf.byteLength,
-        total,
-      };
-      for (let indeks = 0; indeks < total; indeks++) {
-        const potong = buf.slice(indeks * BERKAS_POTONG_BYTE, (indeks + 1) * BERKAS_POTONG_BYTE);
-        kirim({ ...dasar, indeks, dataBase64: base64Dari(potong) });
-        if (indeks + 1 < total) await jeda(jedaPotongMs);
-      }
-    },
     tutup() {
       ditutup = true;
       clearTimeout(timerUlang);

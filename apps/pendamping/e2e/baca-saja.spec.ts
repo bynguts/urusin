@@ -86,7 +86,7 @@ for (const k of kasus) {
       const v = penampil();
       await m.attach(s.sesiId, v);
       await expect.poll(() => m.status(owner).status, { timeout: 30_000 }).toBe('menunggu_data');
-      await m.handleClient(s.sesiId, { type: 'vault', isian: k.vault });
+      await m.isiData(owner, k.vault); // jalur isi server, bukan WS perangkat
 
       // Gerbang captcha: tombol cek disorot, khusus warga. Warga: Tab ke kolom jawaban, ketik, ketuk tombol.
       const sorot = await sorotGiliran(v.events);

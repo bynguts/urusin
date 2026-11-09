@@ -1,6 +1,6 @@
 # Browser Pendamping: panduan UI (untuk Rafi)
 
-Browser Pendamping adalah peramban Chromium di server Urusin. Layarnya dialirkan ke ponsel warga lewat `<canvas>`. AI mengisi formulir dan mengunggah berkas. Warga sendiri yang login, mengetik OTP/CAPTCHA, dan menekan tombol kirim akhir. Latar keputusan ada di [ADR 0028](../adr/0028-browser-pendamping.md).
+Browser Pendamping adalah peramban Chromium di server Urusin. Layarnya dialirkan ke ponsel warga lewat `<canvas>`. AI mengisi formulir dan mengunggah berkas. Warga sendiri yang login, mengetik OTP/CAPTCHA, dan menekan tombol kirim akhir. Latar keputusan ada di [ADR 0029](../adr/0029-browser-pendamping.md).
 
 Agen tidak menulis UI. Yang tersedia untukmu:
 
@@ -106,14 +106,16 @@ const viewer = createPendampingViewer(canvas, tiket.wsUrl, {
 viewer.on('mode', ({ mode }) => …);            // 'ai' | 'takeover' | 'done'
 viewer.on('event', (e) => …);                  // langkah | giliran_anda | dipandu | diblokir | selesai
 viewer.on('status', (sesi) => …);              // SesiPendamping
-viewer.on('butuh_data', ({ placeholder, berkas }) => …);
+viewer.on('butuh_data', ({ placeholder, berkas, origin }) => …); // tanpa nilai; origin = situs yang diisi
 viewer.on('galat', ({ kode, pesanWarga }) => …);
 viewer.on('koneksi', (s) => …);                // menyambung | tersambung | putus | selesai
 
-// "Izinkan isi" (A-M1): hanya hash daftar write yang ditampilkan; nilai Data Diri/Dokumen diselesaikan dan
-// dikirim ke sesi oleh server lewat kanal internal (POST /api/urusan/:id/pendamping/izinkan).
-await fetch(`/api/urusan/${id}/pendamping/izinkan`, { method: 'POST', body: JSON.stringify({ writeListHash }) });
-await viewer.kirimBerkas('ktp', fileBlob);     // hanya berkas yang warga pilih sendiri di perangkat
+// "Izinkan isi" (A-M1): hanya daftar write + origin dari butuh_data (sesi.izinkanIsi() di sesi.svelte.ts);
+// server menyimpan persetujuan, mengambil nilai Data Diri/Dokumen, dan mengirimnya ke sesi lewat kanal internal.
+await fetch(`/api/urusan/${id}/izinkan-isi`, {
+  method: 'POST',
+  body: JSON.stringify({ writeList: daftarWrite(placeholder, berkas), targetOrigin: origin }),
+}); // -> { diizinkan: true, kurang: ['Nomor kitir', …] } (label, tanpa nilai)
 viewer.ambilAlih(); viewer.kembalikan(); viewer.akhiri(); viewer.tutup();
 ```
 
@@ -129,4 +131,4 @@ Catatan untuk komponen:
 ## 5. Privasi yang harus tampak di UI
 
 - Sebelum mulai: jelaskan bahwa peramban berjalan di server Urusin, kata sandi/OTP diketik warga dan **tidak disimpan**, dan semuanya dihapus saat sesi berakhir (tidak ada cookie, riwayat, atau rekaman layar).
-- Nilai Data Diri dan Dokumen tidak pernah lewat peramban: setelah warga menekan "Izinkan isi", server menyelesaikannya dengan token persetujuan sekali pakai (terikat pemilik, daftar field, dan origin tujuan) lalu mengirimnya ke sesi. `viewer.kirimVault` tetap ada di klien (API stabil) tetapi tidak dipakai web app.
+- Nilai Data Diri dan Dokumen tidak pernah lewat peramban: setelah warga menekan "Izinkan isi", server menyelesaikannya dengan token persetujuan sekali pakai (terikat pemilik, daftar field, dan origin tujuan) lalu mengirimnya ke sesi. Klien WS tidak punya jalur nilai vault/berkas sama sekali (pesan bentuk lama ditolak pendamping).

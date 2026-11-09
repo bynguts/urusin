@@ -12,6 +12,7 @@ import {
   PemilikSesiInternalSchema,
   PendampingClientMessageSchema,
   PendampingViewportSchema,
+  PlaceholderVaultSchema,
   type PendampingGalat,
   type PendampingServerMessage,
   type TiketPendampingResponse,
@@ -37,21 +38,24 @@ import { createPenjagaUlang, HEADER_NONCE, HEADER_TANDA, HEADER_WAKTU } from './
 const MAX_JSON = 64 * 1024;
 /** Satu berkas 9 MB dalam base64 (~12 MB) + amplop JSON. */
 const MAX_JSON_BERKAS = 12_700_000;
-const SID_COOKIE = 'urusin_sid';
+/** Cookie sesi web app (`__Host-`: Secure, Path=/, tanpa Domain; sama dengan apps/web `SID_COOKIE`). */
+const SID_COOKIE = '__Host-urusin_sid';
+/** Nama lama (masa migrasi web) dan cookie halaman /debug pendamping sendiri (http lokal, tanpa Secure). */
+const SID_COOKIE_LAMA = 'urusin_sid';
 
 /**
- * sha256(urusin_sid) dari header Cookie upgrade WebSocket (temuan arsitek M-5): koneksi layar hanya untuk
- * perangkat yang memegang cookie sesi pemilik, selain tiket sekali pakai. null bila tidak ada/rusak.
+ * sha256(cookie sesi) dari header Cookie upgrade WebSocket (temuan arsitek M-5): koneksi layar hanya untuk
+ * perangkat yang memegang cookie sesi pemilik, selain tiket sekali pakai. `__Host-urusin_sid` diutamakan;
+ * nama lama hanya bila yang baru tidak ada. null bila tidak ada/rusak.
  */
 export function sidHashFromCookie(header: string | undefined): string | null {
+  const nilai = new Map<string, string>();
   for (const part of (header ?? '').split(';')) {
     const [k, ...v] = part.trim().split('=');
-    if (k === SID_COOKIE) {
-      const val = v.join('=');
-      return /^[0-9a-f]{32}$/.test(val) ? sidHashOf(val) : null;
-    }
+    if (k && !nilai.has(k)) nilai.set(k, v.join('='));
   }
-  return null;
+  const val = nilai.get(SID_COOKIE) ?? nilai.get(SID_COOKIE_LAMA);
+  return val !== undefined && /^[0-9a-f]{32}$/.test(val) ? sidHashOf(val) : null;
 }
 
 const DebugSesiSchema = z.union([
@@ -64,6 +68,11 @@ const DebugSesiSchema = z.union([
   }),
 ]);
 const DebugTiketSchema = z.object({ sesiId: z.uuid() });
+/** Isian SINTETIS dari penguji untuk sesi debug alur adapter (bukan vault warga; token debug wajib). */
+const DebugIsiSchema = z.object({
+  sesiId: z.uuid(),
+  isian: z.record(PlaceholderVaultSchema, z.string().max(500)),
+});
 
 const json = (res: http.ServerResponse, status: number, body: unknown) => {
   res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
@@ -113,7 +122,7 @@ function clientDist(): string | undefined {
 }
 
 export function createServer(config: Config, manager: SessionManager): http.Server {
-  // Batas pesan 64 KB berlaku sejak byte pertama (berkas dikirim berpotongan, lihat `berkas_potong`).
+  // Batas pesan 64 KB berlaku sejak byte pertama (perangkat hanya mengirim input dan kendali).
   const wss = new WebSocketServer({
     noServer: true,
     maxPayload: PENDAMPING_WS_MAX_PAYLOAD,
@@ -174,7 +183,7 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
             'url' in body
               ? await manager.createManual({ ...body, sidHash: sidHashOf(sid) })
               : await manager.createDebugAlur({ ...body, sidHash: sidHashOf(sid) });
-          res.setHeader('set-cookie', `${SID_COOKIE}=${sid}; Path=/; HttpOnly; SameSite=Strict`);
+          res.setHeader('set-cookie', `${SID_COOKIE_LAMA}=${sid}; Path=/; HttpOnly; SameSite=Strict`);
           return json(res, 201, sesi);
         }
         if (path === '/debug/tiket') {
@@ -183,6 +192,13 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
           if (!owner) return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'Sesi debug tidak ada.' });
           const t = manager.mintTicket(owner);
           return json(res, 201, { tiket: t.tiket, kedaluwarsa: new Date(t.exp).toISOString() });
+        }
+        if (path === '/debug/isi') {
+          const body = await readJson(req, DebugIsiSchema);
+          const owner = body ? manager.debugOwner(body.sesiId) : undefined;
+          if (!body || !owner)
+            return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'Sesi debug tidak ada.' });
+          return json(res, 200, { kurang: await manager.isiData(owner, body.isian) });
         }
         return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'Tidak ditemukan.' });
       }
