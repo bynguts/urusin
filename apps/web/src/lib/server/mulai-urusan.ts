@@ -1,4 +1,5 @@
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
+import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
 import { getRuntime, publicOrigin, startTurnInBackground } from '#lib/server/runtime.js';
 import { batasi, catatTerakhir, ensureSession } from '#lib/server/sesi.js';
 
@@ -35,11 +36,24 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
       pesan,
     } satisfies GagalMulai);
 
+  if (pesan) {
+    const tamu = pastikanTamuUntukTurn(rt, event);
+    if (tamu) {
+      const isi = (await tamu.json().catch(() => ({}))) as { pesanWarga?: string };
+      return fail(tamu.status, {
+        pesanWarga: isi.pesanWarga ?? 'Urusan belum bisa dimulai. Coba lagi sebentar lagi.',
+        pesan,
+      } satisfies GagalMulai);
+    }
+  }
+
   const jenis = peristiwa && peristiwa !== 'lainnya' ? peristiwa : undefined;
   const u = rt.store.createUrusan({
     ...(/^\d{4}$/.test(kode) ? { kodeKabKota: kode } : {}),
     ...(jenis ? { jenis } : {}),
   });
+  // Pemilik: sama dengan POST /api/urusan. Tanpa ini endpoint Browser Pendamping (cek pemilik) menjawab 404.
+  rt.akun.catatPemilikUrusan(u.id, { akun: event.locals.akun, sid: event.locals.sid });
   if (pesan) startTurnInBackground(rt, { urusanId: u.id, userText: pesan });
   catatTerakhir(event.cookies, u.id, publicOrigin());
   // Formulir terkirim sebelum JavaScript siap: pesan pertama tidak sempat dicatat di perangkat. Titipkan
