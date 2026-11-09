@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { isIP } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { finalGateIndex, hostsSesi, type Program } from '@urusin/adapters';
@@ -48,6 +49,44 @@ const memoryKV = (): KV => {
 const INTERRUPTED_RE =
   /Execution context was destroyed|Cannot find context|Inspected target navigated|Target closed|Frame .* detached|No frame/i;
 const MUTATING: ReadonlySet<RunnerOp['kind']> = new Set(['step', 'upload', 'consent']);
+
+/** Kode galat jaringan Chromium (`net::ERR_*`) -> alasan dalam kata sederhana. */
+function alasanJaringan(net: string): string {
+  if (/TUNNEL_CONNECTION_FAILED|PROXY_CONNECTION_FAILED/.test(net))
+    return 'jalur keluar Browser Pendamping tidak bisa tersambung ke situs itu';
+  if (/NAME_NOT_RESOLVED|NAME_RESOLUTION_FAILED/.test(net)) return 'alamat situs tidak ditemukan';
+  if (/TIMED_OUT/.test(net)) return 'situs tidak menjawab tepat waktu';
+  if (/CERT_|SSL_/.test(net)) return 'sertifikat keamanan situs tidak sah';
+  if (/CONNECTION_(REFUSED|RESET|CLOSED)|EMPTY_RESPONSE/.test(net))
+    return 'situs menolak atau memutus koneksi';
+  return 'koneksi ke situs gagal';
+}
+
+/**
+ * Pesan akhir untuk warga saat alur otomatis berhenti: alasan nyata dalam kata sederhana (bukan sekadar
+ * "berhenti dengan aman"). `net` = galat navigasi halaman utama terakhir (bila ada). Tanpa path, nilai, atau PII.
+ */
+export function pesanGagal(code: string, host: string, net?: string): string {
+  const lanjut = ' Lanjutkan lewat panduan.';
+  if (net) return `Halaman ${host} tidak bisa dibuka: ${alasanJaringan(net)} (${net}).${lanjut}`;
+  switch (code) {
+    case 'DOMAIN_NOT_ALLOWED':
+      return `Halaman berpindah ke alamat di luar ${host}, jadi Urusin berhenti demi keamanan.${lanjut}`;
+    case 'TAB_CLOSED':
+      return `Halaman ${host} tertutup sebelum langkah selesai.${lanjut}`;
+    case 'PLACEHOLDER_UNRESOLVED':
+      return `Data yang dibutuhkan formulir belum ada di Data Diri atau Dokumen Anda.${lanjut}`;
+    case 'CONSENT_DENIED':
+      return `Izin mengisi belum diberikan, jadi Urusin tidak mengisi apa pun.${lanjut}`;
+    case 'VERIFY_FAILED':
+    case 'VERIFY_UNREADABLE':
+    case 'WRITE_UNVERIFIED':
+    case 'WRITE_WITHOUT_VERIFY':
+      return `Urusin tidak bisa memastikan isian tersimpan di ${host}, jadi berhenti agar tidak mengirim dua kali.${lanjut}`;
+    default:
+      return `Langkah otomatis di ${host} tidak bisa dijalankan (kode ${code}).${lanjut}`;
+  }
+}
 
 export function stepLabel(step: Step | undefined): string {
   if (!step) return 'Selesai';
@@ -102,7 +141,13 @@ export function pssMb(pids: number[], proc = '/proc', platform = process.platfor
   return Math.round(kb / 1024);
 }
 
-export function chromiumArgs(config: Pick<Config, 'jsHeapMb'>): string[] {
+/**
+ * `proxyHost` = IP literal proxy yang dipakai Chromium (127.0.0.1 untuk proxy di dalam proses, IP kontainer
+ * edge di produksi). Aturan resolver memetakan SEMUA nama ke NOTFOUND, jadi alamat proxy wajib dikecualikan;
+ * tanpa itu Chromium tidak pernah tersambung ke edge (net::ERR_PROXY_CONNECTION_FAILED di langkah pertama).
+ */
+export function chromiumArgs(config: Pick<Config, 'jsHeapMb'>, proxyHost = '127.0.0.1'): string[] {
+  if (isIP(proxyHost) === 0) throw new Error(`alamat proxy Chromium harus IP literal: ${proxyHost}`);
   return [
     '--disable-dev-shm-usage',
     '--disable-gpu',
@@ -122,7 +167,7 @@ export function chromiumArgs(config: Pick<Config, 'jsHeapMb'>): string[] {
     '--force-webrtc-ip-handling-policy=disable_non_proxied_udp',
     '--webrtc-ip-handling-policy=disable_non_proxied_udp',
     // Chromium tidak me-resolve DNS sendiri: semua nama host hanya di-resolve proxy egress.
-    '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1',
+    `--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE ${proxyHost}`,
   ];
 }
 
@@ -234,7 +279,7 @@ export async function launchIsolated(
       proxy: edge ? proxyEdgeOption(edge) : proxyOption(proxy!.port),
       // Sandbox Chromium (userns + seccomp-bpf) aktif; hanya CI terhadap fixture yang boleh mematikannya.
       chromiumSandbox: config.sandbox,
-      args: chromiumArgs(config),
+      args: chromiumArgs(config, edge ? new URL(edge.server).hostname : '127.0.0.1'),
       env: {
         ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}),
         ...(process.env.XAUTHORITY ? { XAUTHORITY: process.env.XAUTHORITY } : {}),
@@ -365,6 +410,8 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   let masukAktif = false;
   let masukPoll: ReturnType<typeof setInterval> | undefined;
   let navTerakhir: string | undefined;
+  /** Galat jaringan navigasi halaman utama terakhir (`net::ERR_*`), dikosongkan setiap navigasi baru. */
+  let navGagal: string | undefined;
   let kembaliKe: string | undefined;
   /** AI diam selama warga memegang kendali, tantangan situs aktif, atau warga perlu masuk akun. */
   const ditahan = () => manual || pantau.aktif || masukAktif;
@@ -406,8 +453,11 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     async navigate(_tab, url) {
       await waitResume();
       navTerakhir = url;
+      navGagal = undefined;
       loading = true;
-      await cdp.send('Page.navigate', { url }).catch(() => undefined);
+      const r = (await cdp.send('Page.navigate', { url }).catch(() => undefined)) as
+        { errorText?: string } | undefined;
+      if (r?.errorText) navGagal = r.errorText;
     },
     async run(_tab, op) {
       // Saat warga memegang kendali, op yang mengubah halaman menunggu; pemeriksaan (check) tetap jalan.
@@ -515,6 +565,17 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
       case 'error': {
         const code = c.error?.code ?? 'INTERNAL';
         if (code === 'CANCELLED') return;
+        const host = new URL(program.origin).host;
+        // Halaman galat Chromium (chrome-error://) = navigasi gagal, walau galat jaringannya tak tertangkap.
+        const net = navGagal ?? (page.url().startsWith('chrome-error:') ? 'net::ERR_FAILED' : undefined);
+        // Satu baris untuk operator: kode, langkah, host, galat jaringan, skema+host halaman yang ter-commit.
+        // Tanpa path, query, nilai, atau PII.
+        const kini = URL.parse(page.url());
+        console.log(
+          `pendamping: alur berhenti kode=${code} langkah=${c.stepIndex}/${steps.length} ` +
+            `op=${steps[c.stepIndex]?.op ?? '-'} host=${host}${net ? ` net=${net}` : ''} ` +
+            `halaman=${kini ? `${kini.protocol}//${kini.host}` : '-'}`,
+        );
         if (code === 'ADAPTER_DRIFT')
           return hooks.ended('dipandu', 'drift', 'Tampilan situs berubah. Kami beralih ke panduan langkah.');
         if (code === 'FINAL_NOT_AUTOMATABLE')
@@ -523,11 +584,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
             'gagal',
             'Urusin menolak menekan tombol kirim. Hanya Anda yang boleh menekannya.',
           );
-        return hooks.ended(
-          'gagal',
-          'gagal',
-          'Langkah otomatis berhenti dengan aman. Lanjutkan lewat panduan.',
-        );
+        return hooks.ended('gagal', 'gagal', pesanGagal(code, host, net), { kode: code, net });
       }
     }
   };
@@ -577,6 +634,10 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   // Peristiwa muat halaman utama -> interpreter (pengganti chrome.tabs.onUpdated di ekstensi).
   page.on('request', (r) => {
     if (r.isNavigationRequest() && r.frame() === page.mainFrame()) loading = true;
+  });
+  page.on('requestfailed', (r) => {
+    if (r.isNavigationRequest() && r.frame() === page.mainFrame())
+      navGagal = r.failure()?.errorText ?? 'net::ERR_FAILED';
   });
   page.on('framenavigated', (f) => {
     if (f !== page.mainFrame()) return;
