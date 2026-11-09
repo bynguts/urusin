@@ -7,7 +7,7 @@
 </script>
 
 <img src={lockup} alt="Urusin" width="183" height="61" class="lockup-terang {kelas}" />
-<img src={lockupGelap} alt="" width="183" height="61" class="lockup-gelap {kelas}" aria-hidden="true" />
+<img src={lockupGelap} alt="Urusin" width="183" height="61" class="lockup-gelap {kelas}" />
 
 <style>
   .lockup-gelap {

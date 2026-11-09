@@ -10,13 +10,12 @@
   type Halaman = 'cara-kerja' | 'urusan' | 'privasi' | 'tanya-jawab';
   let { aktif }: { aktif?: Halaman } = $props();
   const diLanding = $derived(aktif === undefined);
-  const ke = (jangkar: string) => (diLanding ? `#${jangkar}` : `${resolve('/')}#${jangkar}`);
-  const TAUTAN: { id: Halaman; label: string; href: string }[] = $derived([
+  const TAUTAN: { id: Halaman; label: string; href: string }[] = [
     { id: 'cara-kerja', label: 'Cara kerja', href: resolve('/cara-kerja') },
-    { id: 'urusan', label: 'Urusan', href: ke('urusan') },
+    { id: 'urusan', label: 'Urusan', href: resolve('/urusan') },
     { id: 'privasi', label: 'Privasi', href: resolve('/privasi') },
-    { id: 'tanya-jawab', label: 'Tanya jawab', href: ke('tanya-jawab') },
-  ]);
+    { id: 'tanya-jawab', label: 'Tanya jawab', href: resolve('/tanya-jawab') },
+  ];
 </script>
 
 <header class="n-header lp3">

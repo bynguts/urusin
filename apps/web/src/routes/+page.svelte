@@ -6,6 +6,7 @@
   import '#lib/components/landing/landing-gerak.css';
   import LandingFooter from '#lib/components/landing/LandingFooter.svelte';
   import LandingNav from '#lib/components/landing/LandingNav.svelte';
+  import fontStrawberry from '#lib/assets/fonts/strawberry-sans.woff2';
   import av_rose_melambai_140_avif from '#lib/assets/img/pen-landing/rose-melambai-140.avif';
   import av_rose_melambai_179_avif from '#lib/assets/img/pen-landing/rose-melambai-179.avif';
   import av_rose_melambai_230_avif from '#lib/assets/img/pen-landing/rose-melambai-230.avif';
@@ -219,6 +220,8 @@
     name="description"
     content="Urusin adalah pendamping yang mengubah ceritamu jadi langkah yang jelas, dari dokumen sampai situs resmi."
   />
+  <!-- Huruf utama sudah tersedia saat tata letak pertama: tanpa tata letak ulang saat swap (TBT) -->
+  <link rel="preload" as="font" type="font/woff2" href={fontStrawberry} crossorigin="anonymous" />
 </svelte:head>
 
 <main class="lp0 lp" id="konten">

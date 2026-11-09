@@ -3,8 +3,8 @@
   import mark from '#lib/assets/img/pen-landing/urusin-mark-52.webp';
 
   /**
-   * Footer situs publik dari frame pen Rafi (n2rpg / F6RSq). Gaya di landing-pen.css (kelas lpN). `diLanding`
-   * = tautan bagian berupa jangkar halaman ini; di halaman lain menuju jangkar landing.
+   * Footer situs publik dari frame pen Rafi (n2rpg / F6RSq). Gaya di landing-pen.css (kelas lpN). Tautan Produk
+   * dan Bantuan menuju halaman Web; `diLanding` = "Sumber rujukan" berupa jangkar halaman ini.
    */
   let { diLanding = false }: { diLanding?: boolean } = $props();
   const ke = (jangkar: string) => (diLanding ? `#${jangkar}` : `${resolve('/')}#${jangkar}`);
@@ -27,15 +27,15 @@
       <div class="lp301">
         <div class="lp299">Produk</div>
         <!-- eslint-disable svelte/no-navigation-without-resolve -- `ke()` sudah memakai resolve('/') -->
-        <a class="lp302" href={ke('cara-kerja')}> Cara kerja </a>
-        <a class="lp302" href={ke('urusan')}> Urusan </a>
-        <a class="lp302" href={ke('cara-kerja')}> Browser Pendamping </a>
+        <a class="lp302" href={resolve('/cara-kerja')}> Cara kerja </a>
+        <a class="lp302" href={resolve('/urusan')}> Urusan </a>
+        <a class="lp302" href={resolve('/cara-kerja')}> Browser Pendamping </a>
       </div>
       <div class="lp301">
         <div class="lp299">Bantuan</div>
-        <a class="lp302" href={ke('tanya-jawab')}> Tanya jawab </a>
+        <a class="lp302" href={resolve('/tanya-jawab')}> Tanya jawab </a>
         <a class="lp302" href={resolve('/bantuan')}> Hubungi kami </a>
-        <a class="lp302" href={ke('urusan')}> Untuk keluarga </a>
+        <a class="lp302" href={resolve('/urusan')}> Untuk keluarga </a>
       </div>
       <div class="lp301">
         <div class="lp299">Tentang</div>

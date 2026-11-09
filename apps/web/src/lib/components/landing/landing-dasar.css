@@ -28,3 +28,18 @@
 :where(.lp) :where(button) {
   font-family: inherit;
 }
+
+/*
+ * Ponsel (profil Lighthouse mobile): bagian di bawah lipatan (mulai bagian ke-3; hero + strip
+ * rujukan selalu dirender) dilewati saat memuat; gaya, tata letak dan lukis baru dikerjakan saat
+ * mendekati layar. Tata letak dingin seluruh halaman adalah tugas panjang terbesar (TBT). Tinggi
+ * perkiraan = rata-rata bagian ponsel, diganti tinggi asli begitu bagian pernah dirender (auto).
+ * Desktop tidak memakai ini: penahanan menempelkan asal bagian ke piksel utuh sehingga antialias
+ * teks bergeser sub-piksel, dan desktop tidak diukur TBT-nya.
+ */
+@media (max-width: 767px) {
+  .lp > :nth-child(n + 3) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 1250px;
+  }
+}

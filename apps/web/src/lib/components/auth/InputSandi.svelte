@@ -29,7 +29,7 @@
     maxlength="128"
     aria-describedby={describedby}
     aria-invalid={invalid}
-    class="h-14 w-full rounded-2xl border bg-surface pr-14 pl-4 text-base text-ink {invalid
+    class="h-14 w-full rounded-[14px] border bg-surface pr-14 pl-4 text-[1.125rem] text-ink {invalid
       ? 'border-galat-garis'
       : 'border-line-2'}"
   />

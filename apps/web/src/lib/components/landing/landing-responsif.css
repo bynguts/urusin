@@ -27,6 +27,16 @@
     justify-content: center;
     width: 100%;
   }
+  /* Label kartu layanan: di frame 1440 jaraknya 16px dari tepi kanan; kartu lebih sempit memotongnya */
+  .lp .lp109 > div {
+    left: auto;
+    right: 16px;
+  }
+  /* Visual perbandingan berisi posisi absolut selebar frame 510px: diperkecil utuh, tidak terpotong */
+  .lp .n-comparison .n-visual {
+    width: 510px;
+    zoom: 0.95;
+  }
 }
 @media (max-width: 1023px) {
   .lp {
@@ -63,6 +73,9 @@
   }
   .lp .n-faq-companion {
     display: none;
+  }
+  .lp .n-comparison .n-visual {
+    zoom: 0.7;
   }
 }
 @media (max-width: 767px) {
