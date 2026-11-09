@@ -50,6 +50,7 @@
     verifikasi_situs: 'Selesaikan pemeriksaan keamanan situs',
     final: 'Periksa isian, lalu tekan Kirim pengajuan',
     periksa: 'Periksa halaman ini',
+    isi_sendiri: 'Isi kolom ini sendiri',
   };
   const CATATAN_GILIRAN: Record<string, string> = {
     login: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
@@ -57,6 +58,7 @@
     verifikasi_situs: 'Situs memeriksa keamanan. Centang kotaknya sendiri.',
     final: 'AI dikunci agar tidak bisa menekan Kirim.',
     periksa: 'AI menunggu sampai Anda selesai.',
+    isi_sendiri: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
   };
   const isiGiliran = $derived(
     data.giliran ? [data.giliran.pesan, CATATAN_GILIRAN[data.giliran.alasan]].filter(Boolean).join(' ') : '',
@@ -105,6 +107,14 @@
           {JUDUL_GILIRAN[data.giliran.alasan] ?? 'Giliran Anda'}
         </p>
         {#if isiGiliran}<p class="text-[15px] leading-[23px] text-muted">{isiGiliran}</p>{/if}
+        {#if data.giliran.alasan === 'isi_sendiri'}
+          <!-- Kolom di luar Data Diri (mis. nomor kitir): warga mengetik, lalu AI lanjut. -->
+          <div class="flex gap-2">
+            <button type="button" onclick={onkembalikan} class={TOMBOL_GELAP}>
+              <Icon name="putar" class="size-[15px]" />Lanjutkan
+            </button>
+          </div>
+        {/if}
       </div>
     </div>
   {:else if k === 'dijeda'}
