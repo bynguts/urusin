@@ -27,8 +27,18 @@
     <h1 class="mt-5 text-[1.875rem] tracking-[-0.03em] text-ink">Cek email Anda</h1>
     <p role="status" class="mt-3 text-base text-body">
       Cek email Anda: kami mengirim tautan ke <span class="font-semibold text-ink">{form.email}</span>. Tautan
-      berlaku 24 jam. Buka tautan itu untuk memastikan email.
+      berlaku 24 jam. Buka tautan itu dan masukkan kata sandi yang baru Anda buat.
     </p>
+    {#if form.tertunda}
+      <p
+        role="alert"
+        data-kode="EMAIL_TERTUNDA"
+        class="mt-3 rounded-xl bg-mawar px-4 py-3 text-[0.9375rem] text-galat"
+      >
+        Pengiriman email sedang tertunda (layanan email kami sedang penuh atau belum aktif). Akun tetap bisa
+        dipakai di perangkat ini; coba kirim ulang tautan nanti.
+      </p>
+    {/if}
     <p class="mt-3 text-sm text-muted">Cek juga folder Spam atau Promosi.</p>
     <a
       href={resolve('/masuk')}
@@ -101,7 +111,7 @@
           invalid={sandiDitolak}
         />
         <p id="sandi-petunjuk" class="text-sm text-muted">
-          Minimal 8 karakter dan bukan sandi yang umum dipakai.
+          Minimal 10 karakter dan bukan sandi yang umum dipakai.
         </p>
         {#if galat && sandiDitolak}
           <p id="sandi-galat" role="alert" data-kode={galat.kode} class="text-sm font-medium text-galat">

@@ -8,8 +8,9 @@
   /** Menu samping (frame uCOBS/aK2Ex): 200 px, latar sekunder, akun di bawah. */
   const lokal = ambilLokal();
   const terakhir = $derived(lokal.data.urusan[0]?.id);
-  const akun = $derived(page.data.akun as { email: string; nama?: string | null } | null | undefined);
-  const namaAkun = $derived(akun ? (akun.nama ?? akun.email.split('@')[0] ?? akun.email) : '');
+  /** Sesi juri (`jenis: 'demo'`) tidak punya email (docs/ui/auth.md). */
+  const akun = $derived(page.data.akun as { email: string | null; nama?: string | null } | null | undefined);
+  const namaAkun = $derived(akun ? (akun.nama ?? akun.email?.split('@')[0] ?? 'Salinan demo juri') : '');
 </script>
 
 <aside

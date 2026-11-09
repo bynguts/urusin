@@ -43,7 +43,7 @@ ENV NODE_ENV=production \
     GIT_SHA=$GIT_SHA \
     PORT=3000 \
     HOST=0.0.0.0 \
-    BODY_SIZE_LIMIT=6M \
+    BODY_SIZE_LIMIT=10M \
     DATABASE_URL=file:/data/urusin.db
 # ORIGIN wajib diberikan saat run (mis. https://urusin.example.com); tidak ada default.
 LABEL org.opencontainers.image.source="https://github.com/bynguts/urusin" \

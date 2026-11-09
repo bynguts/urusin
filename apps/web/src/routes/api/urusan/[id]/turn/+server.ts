@@ -1,4 +1,5 @@
 import { TurnRequestSchema, type TurnResponse } from '@urusin/contracts';
+import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
 import { batasi } from '#lib/server/sesi.js';
@@ -15,6 +16,8 @@ export const POST: RequestHandler = async (event) => {
   }
   const ditolak = batasi(rt, event, 'turn');
   if (ditolak) return ditolak;
+  const tamu = pastikanTamuUntukTurn(rt, event);
+  if (tamu) return tamu;
   const body = await readBody(request, TurnRequestSchema, {
     kodeKabKota: rt.store.getUrusan(params.id)?.kodeKabKota ?? null,
   });

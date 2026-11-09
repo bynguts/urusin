@@ -59,13 +59,18 @@ export type ViewerEvents = {
   fokus: JenisFokus;
   event: PendampingEvent;
   status: SesiPendamping;
-  butuh_data: { placeholder: string[]; berkas: string[] };
+  /** `origin` = situs tujuan yang akan diisi (dikirim balik di "Izinkan isi"). */
+  butuh_data: { placeholder: string[]; berkas: string[]; origin?: string | undefined };
   galat: { kode: string; pesanWarga: string };
   koneksi: KoneksiViewer;
   frame: { lebar: number; tinggi: number };
 };
 
 /** Bagian `PendampingViewer` yang dipakai UI. */
+/**
+ * Tidak ada jalur kirim nilai vault dari peramban (A-M1): "Izinkan isi" hanya mengirim `{writeList, targetOrigin}`
+ * ke server (POST /api/urusan/[id]/izinkan-isi); Pendamping mengambil nilai di server.
+ */
 export type ViewerPendamping = {
   readonly mode: PendampingMode | null;
   readonly koneksi: KoneksiViewer;
@@ -73,8 +78,6 @@ export type ViewerPendamping = {
   ambilAlih(): void;
   kembalikan(): void;
   akhiri(): void;
-  kirimVault(isian: Record<string, string>): void;
-  kirimBerkas(nama: string, berkas: Blob, namaBerkas?: string): Promise<void>;
   tutup(): void;
 };
 

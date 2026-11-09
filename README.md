@@ -99,8 +99,15 @@ Pendamping, dan pemasangan PWA: **akan dilengkapi**.
 
 ## 7. Akun demonstrasi
 
-Saat ini aplikasi tidak memerlukan login. Akun demonstrasi untuk situs tiruan (fixture): **akan
-dilengkapi**. Situs pemerintah selalu memakai akun pribadi warga dan tidak pernah dibagikan.
+Login tidak wajib: **"Coba tanpa daftar"** (mode tamu) membuka semua fitur tanpa akun. Akun dibutuhkan
+hanya agar Data Diri, dokumen, dan urusan ikut ke perangkat lain (HP dan laptop). Masuk bisa dengan
+email + kata sandi atau Google (ADR 0028).
+
+Juri tidak butuh kredensial apa pun: tombol **"Masuk sebagai juri"** di halaman Masuk membuat salinan demo
+terisolasi berisi Data Diri sintetis (bukan data orang sungguhan), berlaku 24 jam. Setiap klik mendapat
+salinannya sendiri, jadi juri tidak saling menimpa data. Tombol ini dilindungi Cloudflare Turnstile dan
+dibatasi 3 salinan per IP per hari. Data sintetis hanya boleh diisikan ke situs latihan (fixture), tidak
+pernah ke situs pemerintah. Situs pemerintah selalu memakai akun pribadi warga dan tidak pernah dibagikan.
 
 ## 8. Dokumentasi AI
 
@@ -152,7 +159,7 @@ capability probe, endpoint health, serta pemindai PII dan audit riwayat commit.
 ## Dokumentasi
 
 - [Arsitektur (C4 dan alur data PII)](docs/arsitektur.md)
-- [Architecture Decision Records](docs/adr/README.md) (27 keputusan, format MADR)
+- [Architecture Decision Records](docs/adr/README.md) (28 keputusan, format MADR)
 - [Kebijakan keamanan](SECURITY.md) (Indonesia dan English)
 - [Panduan kontribusi](CONTRIBUTING.md)
 - [Deploy di VPS](deploy/README.md)

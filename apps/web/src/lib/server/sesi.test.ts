@@ -5,7 +5,7 @@ import { POST as buatUrusan } from '../../routes/api/urusan/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
 import { RateLimiter } from './limiter';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
-import { SID_COOKIE } from './sesi';
+import { MIGRASI_SID_SAMPAI, migrasiSid, SID_COOKIE } from './sesi';
 
 const ORIGIN = 'http://localhost:3000';
 let rt: Runtime;
@@ -83,6 +83,50 @@ describe('cookie sesi', () => {
     expect(r.sid).toBe(r.set[0]!.value);
   });
 
+  it('PoC: nama cookie __Host-urusin_sid (Secure, Path=/), migrasi sekali dari urusin_sid lama', async () => {
+    expect(SID_COOKIE).toBe('__Host-urusin_sid');
+    const r = await jalankan(null);
+    expect(r.set[0]!.opts).toMatchObject({ secure: true, path: '/' });
+    expect(r.set[0]!.opts).not.toHaveProperty('domain');
+    const lama = 'c'.repeat(32);
+    const set: { name: string; value: string }[] = [];
+    const hapus: string[] = [];
+    const toples = new Map([['urusin_sid', lama]]);
+    const cookies = {
+      get: (n: string) => toples.get(n),
+      set: (name: string, value: string) => {
+        toples.set(name, value);
+        set.push({ name, value });
+      },
+      delete: (name: string) => {
+        toples.delete(name);
+        hapus.push(name);
+      },
+    };
+    migrasiSid(cookies as never);
+    expect([set, hapus]).toEqual([[{ name: SID_COOKIE, value: lama }], ['urusin_sid']]);
+    migrasiSid(cookies as never); // sekali saja
+    expect(set).toHaveLength(1);
+  });
+
+  it('PoC (review delta 53fff2d b): adopsi urusin_sid lama hanya 30 hari; sesudahnya cookie lama dihapus saja', () => {
+    expect(MIGRASI_SID_SAMPAI - Date.parse('2026-11-10T00:00:00Z')).toBe(30 * 24 * 3600 * 1000);
+    const uji = (now: number) => {
+      const toples = new Map([['urusin_sid', 'd'.repeat(32)]]);
+      migrasiSid(
+        {
+          get: (n: string) => toples.get(n),
+          set: (n: string, v: string) => toples.set(n, v),
+          delete: (n: string) => toples.delete(n),
+        } as never,
+        now,
+      );
+      return Object.fromEntries(toples);
+    };
+    expect(uji(MIGRASI_SID_SAMPAI - 1)).toEqual({ [SID_COOKIE]: 'd'.repeat(32) });
+    expect(uji(MIGRASI_SID_SAMPAI)).toEqual({});
+  });
+
   it('cookie sah dipakai ulang; cookie rusak diganti', async () => {
     const sah = 'a'.repeat(32);
     expect(await jalankan(sah)).toMatchObject({ set: [], sid: sah });
@@ -103,6 +147,14 @@ describe('kuota per-IP dan per-sesi', () => {
     expect(Number(res.headers.get('retry-after'))).toBeGreaterThanOrEqual(1);
     expect(await res.json()).toEqual({ kode: 'RATE_LIMITED', pesanWarga: expect.any(String) });
     expect((await buatUrusan(ev(post({}), '10.0.0.2', 's10'))).status).toBe(201);
+  });
+
+  it('PoC: IPv6 dibatasi per /64 (berganti alamat di /64 yang sama tidak mereset kuota)', async () => {
+    setup({ buatPerJamIp: 2, buatPerJamSesi: 100 });
+    for (let i = 0; i < 2; i++)
+      expect((await buatUrusan(ev(post({}), `2001:db8:a:b::${i + 1}`, `v${i}`))).status).toBe(201);
+    expect((await buatUrusan(ev(post({}), '2001:db8:a:b:ffff::7', 'v9'))).status).toBe(429);
+    expect((await buatUrusan(ev(post({}), '2001:db8:a:c::1', 'v10'))).status).toBe(201);
   });
 
   it('urusan baru: sesi yang sama dibatasi walau ganti IP', async () => {

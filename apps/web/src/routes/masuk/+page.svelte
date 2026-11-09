@@ -6,8 +6,21 @@
   import KerangkaAuth from '#lib/components/auth/KerangkaAuth.svelte';
   import { dataAuth, formAuth, galatAuth } from '#lib/components/auth/form.js';
 
-  /** App 15 Masuk. Form action `/masuk` (default) di branch feat/auth-akun; jalan tanpa JS. */
-  const data = $derived(dataAuth<{ next: string; googleAktif: boolean }>());
+  /**
+   * App 15 Masuk. Aksi `?/masuk` (email + sandi; `turnstile` diisi widget setelah 3 gagal) dan `?/juri`
+   * (salinan demo terisolasi, Turnstile). `tautkan` = Google menunggu bukti sandi. Jalan tanpa JS.
+   */
+  const data =
+    $derived(
+      dataAuth<{
+        next: string;
+        googleAktif: boolean;
+        juri: boolean;
+        turnstileSiteKey: string;
+        tautkan: boolean;
+        ulang: { email: string } | null;
+      }>(),
+    );
   const form = $derived(formAuth());
   const galat = $derived(galatAuth());
   const next = $derived(data.next ?? '/');
@@ -39,9 +52,23 @@
     </div>
   {/if}
 
+  {#if data.ulang}
+    <p data-ulang role="status" class="mt-5 rounded-xl bg-bg-2 px-4 py-3 text-[0.9375rem] text-ink">
+      Demi keamanan, masuk sekali lagi sebelum membuka brankas (Data Diri dan dokumen) di perangkat ini.
+      Setelah itu Anda kembali ke halaman tadi.
+    </p>
+  {/if}
+
+  {#if data.tautkan}
+    <p data-tautkan role="status" class="mt-5 rounded-xl bg-bg-2 px-4 py-3 text-[0.9375rem] text-ink">
+      Email ini sudah punya akun Urusin. Masuk dengan kata sandi untuk menautkan akun Google Anda.
+    </p>
+  {/if}
+
   {#if data.googleAktif}
     <form method="GET" action="/auth/google" data-sveltekit-reload class="mt-6">
       <input type="hidden" name="next" value={next} />
+      {#if data.ulang}<input type="hidden" name="ulang" value="1" />{/if}
       <button
         type="submit"
         class="flex min-h-14 w-full items-center justify-center rounded-full border border-line-2 bg-surface font-semibold text-ink hover:bg-card"
@@ -55,6 +82,7 @@
 
   <form
     method="POST"
+    action="?/masuk"
     class="flex flex-col gap-4 {data.googleAktif ? '' : 'mt-6'}"
     use:enhance={() => {
       sibuk = true;
@@ -65,6 +93,8 @@
     }}
   >
     <input type="hidden" name="next" value={next} />
+    <!-- Widget Turnstile (site key data.turnstileSiteKey) mengisi cf-turnstile-response; field ini untuk uji. -->
+    <input type="hidden" name="turnstile" value="" />
     <div class="flex flex-col gap-2">
       <label for="email" class="text-[0.9375rem] font-semibold text-ink">Email</label>
       <div class="relative">
@@ -79,7 +109,7 @@
           inputmode="email"
           autocomplete="email"
           required
-          value={form?.email ?? ''}
+          value={form?.email ?? data.ulang?.email ?? ''}
           class="h-14 w-full rounded-2xl border border-line-2 bg-surface pr-4 pl-12 text-base text-ink"
         />
       </div>
@@ -116,16 +146,21 @@
     >
   </div>
 
-  <details class="mt-4 rounded-2xl border border-line bg-card">
-    <summary class="flex min-h-14 cursor-pointer items-center gap-2 px-4 font-semibold text-ink">
-      <Icon name="perisai-centang" class="size-5" /> Masuk sebagai juri
-    </summary>
-    <div class="px-4 pb-4 text-[0.9375rem] text-body">
-      <p>
-        Juri lomba memakai akun demo berisi data contoh. Email dan kata sandinya ada di halaman pengumpulan
-        lomba; isikan di formulir di atas.
+  {#if data.juri}
+    <section class="mt-4 rounded-2xl border border-line bg-card px-4 py-4">
+      <p class="text-[0.9375rem] text-body">
+        Juri lomba tidak perlu akun: satu klik membuat salinan demo berisi data contoh, khusus untuk Anda,
+        terhapus otomatis dalam 24 jam. Data contoh tidak pernah dikirim ke situs pemerintah.
       </p>
-      <p class="mt-2">Data contoh tidak pernah dikirim ke situs pemerintah.</p>
-    </div>
-  </details>
+      <form method="POST" action="?/juri" data-juri class="mt-3">
+        <input type="hidden" name="turnstile" value="" />
+        <button
+          type="submit"
+          class="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border border-line-2 bg-surface font-semibold text-ink hover:bg-bg-2"
+        >
+          <Icon name="perisai-centang" class="size-5" /> Masuk sebagai juri
+        </button>
+      </form>
+    </section>
+  {/if}
 </KerangkaAuth>
