@@ -91,11 +91,12 @@ tidak bisa dibuka lagi.
 
 - **Melihat dan mengunduh** Data Diri dan dokumen Anda: halaman Data Diri dan Dokumen.
 - **Memperbaiki** Data Diri: halaman Data Diri.
-- **Menghapus** dokumen satu per satu: halaman Dokumen. Menghapus seluruh akun beserta isinya, atau keluar dari
-  semua perangkat: kirim permintaan lewat kontak di [`SECURITY.md`](../SECURITY.md); kami memprosesnya lewat
-  fungsi hapus akun yang sudah ada di server (tombolnya di aplikasi sedang disiapkan).
-- **Menarik persetujuan:** minta hapus akun, lepas tautan Google di Pengaturan, atau berhenti memakai cara tanpa
-  akun (data terhapus sendiri dalam 72 jam).
+- **Menghapus** dokumen satu per satu: halaman Dokumen. Menghapus seluruh akun beserta isinya: Pengaturan →
+  Zona bahaya → Hapus akun (ketik HAPUS dan kata sandi; akun Google diminta masuk ulang bila login terakhir
+  lebih dari 15 menit lalu).
+- **Keluar dari semua perangkat:** Pengaturan → Zona bahaya.
+- **Menarik persetujuan:** hapus akun, lepas tautan Google di Pengaturan, atau berhenti memakai cara tanpa akun
+  (data terhapus sendiri dalam 72 jam).
 
 ## Keamanan
 
