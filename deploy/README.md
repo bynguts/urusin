@@ -451,8 +451,14 @@ resmi (mis. halaman login Telunjuk Sakti), lalu kemudikan layar dengan mouse/sen
 centang verifikasi situs, klik sendiri; AI tidak pernah mengklik-nya. Tidak ada AI di mode ini. Matikan
 dengan mengosongkan `PENDAMPING_DEBUG_TOKEN`.
 
-**WebSocket untuk warga:** setelah port disetujui, buka komentar blok `handle /pendamping/ws/*` di
-`Caddyfile.urusin` (`caddy validate`, `systemctl reload caddy`). Hanya jalur itu yang diteruskan.
+**WebSocket untuk warga:** setelah port disetujui, bangkitkan snippet dengan blok `handle /pendamping/ws/*`
+aktif, misalnya `node scripts/gen-caddyfile.mjs --set primary --fixtures --pendamping
+--import /opt/urusin/Caddyfile.urusin --out /tmp/Caddyfile.urusin` (`--import` hanya mengisi komentar baris
+import; path snippet yang dipakai VPS saat ini), lalu pasang lewat `caddy-install.sh` (izin per kejadian).
+Snippet yang terpasang bisa dicek ulang dengan flag yang sama: `... --check --set primary --fixtures
+--pendamping --import ... --file /opt/urusin/Caddyfile.urusin` (exit 1 bila menyimpang). Hanya jalur itu yang
+diteruskan; edge merutekan jalur MENTAH yang kanonik, jadi `/ws/..%2finternal`, `/ws/%2e%2e/internal`,
+`/ws/../internal`, `//internal`, dan `/ws/..;/debug` mendapat 404.
 
 **Worker tambahan (opsional, mis. laptop anggota berjaringan Indonesia):** jalankan image yang sama
 (digest sama) dengan `PENDAMPING_INTERNAL_TOKEN` yang sama, `HOST=<IP Tailscale worker>`,
