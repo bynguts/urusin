@@ -424,6 +424,52 @@ describe('peramban: utilitas', () => {
       expect(pssMb([10], proc, 'linux')).toBe(100);
       expect(pssMb([10, 11, 12], proc, 'linux')).toBe(150);
       expect(pssMb([10], proc, 'win32')).toBeUndefined();
+      // Renderer sandbox setuid (smaps_rollup EACCES/tidak ada): memori privat RssAnon + RssShmem, BUKAN VmRSS
+      // yang menghitung pustaka bersama (RssFile) di setiap proses. Angka dari pengukuran kontainer produksi.
+      mkdirSync(join(proc, '13'));
+      writeFileSync(
+        join(proc, '13', 'status'),
+        'Name:\tchrome\nVmRSS:\t  133837 kB\nRssAnon:\t   34746 kB\nRssFile:\t   98829 kB\nRssShmem:\t     262 kB\n',
+      );
+      expect(pssMb([13], proc, 'linux')).toBe(34);
+      expect(pssMb([10, 13], proc, 'linux')).toBe(134);
+    } finally {
+      rmSync(proc, { recursive: true, force: true });
+    }
+  });
+
+  it('pssMb: angka pengukuran sandbox setuid (10 proses) tetap di bawah anggaran 450 MB', () => {
+    // Dari `docker run` image produksi dengan userns ditolak: 5 proses PSS terbaca, 5 renderer/zygote EACCES.
+    const proc = mkdtempSync(join(tmpdir(), 'proc-'));
+    const terbaca: [number, number][] = [
+      [21, 111153],
+      [29, 20628],
+      [31, 15755],
+      [56, 30903],
+      [61, 36693],
+    ];
+    const tertutup: [number, number, number, number, number][] = [
+      [30, 1664, 0, 1664, 0],
+      [33, 19500, 15788, 3712, 0],
+      [88, 52212, 16116, 36096, 0],
+      [129, 130700, 33932, 96512, 256],
+      [142, 116228, 22788, 92544, 896],
+    ];
+    try {
+      for (const [pid, pss] of terbaca) {
+        mkdirSync(join(proc, String(pid)));
+        writeFileSync(join(proc, String(pid), 'smaps_rollup'), `Pss:  ${pss} kB\n`);
+      }
+      for (const [pid, rss, anon, file, shmem] of tertutup) {
+        mkdirSync(join(proc, String(pid)));
+        writeFileSync(
+          join(proc, String(pid), 'status'),
+          `VmRSS:\t${rss} kB\nRssAnon:\t${anon} kB\nRssFile:\t${file} kB\nRssShmem:\t${shmem} kB\n`,
+        );
+      }
+      const pids = [...terbaca, ...tertutup].map((x) => x[0]);
+      // Sebelumnya (VmRSS) = 523 MB > 450: sesi dibunuh ~10 detik setelah mulai di halaman kosong.
+      expect(pssMb(pids, proc, 'linux')).toBe(298);
     } finally {
       rmSync(proc, { recursive: true, force: true });
     }
