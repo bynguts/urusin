@@ -191,10 +191,13 @@ describe('SessionManager', () => {
     const fx = 'https://fixtures.urusin.test';
     const ov = new Map([['https://telunjuksakti.wonogirikab.go.id', fx]]);
     const h = harness({ production: true, fixtureOrigins: [fx], originOverrides: ov, maxSessions: 3 });
-    await h.manager.create(input('u-juri', { modeUji: true }));
-    await h.manager.create(input('u-warga', { modeUji: false }));
+    const juri = await h.manager.create(input('u-juri', { modeUji: true }));
+    const warga = await h.manager.create(input('u-warga', { modeUji: false }));
     await h.manager.create(input('u-lama'));
     await h.flush();
+    // Status memberi tahu UI situs yang benar-benar dibuka (header: replika + label Mode uji).
+    expect(juri).toMatchObject({ situs: fx, replika: true });
+    expect(warga).toMatchObject({ situs: 'https://telunjuksakti.wonogirikab.go.id', replika: false });
     expect(h.runs.map((r) => r.init.program.origin)).toEqual([
       fx,
       'https://telunjuksakti.wonogirikab.go.id',

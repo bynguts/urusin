@@ -566,6 +566,8 @@ export class SessionManager {
       ...(s.pesan ? { pesan: s.pesan } : {}),
       ...(s.hasil ? { hasil: s.hasil } : {}),
       ...(s.bukti ? { bukti: s.bukti } : {}),
+      situs: s.program.origin,
+      replika: this.config.fixtureOrigins.includes(s.program.origin),
     };
   }
 

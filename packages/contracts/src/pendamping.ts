@@ -122,6 +122,10 @@ export const SesiPendampingSchema = z.object({
   hasil: PendampingHasilSchema.optional(),
   /** Bukti dari halaman konfirmasi untuk `executionId` ini (bila adapter mendeklarasikannya). */
   bukti: PendampingBuktiSchema.optional(),
+  /** Origin yang BENAR-BENAR dibuka peramban (Mode Uji: replika fixture, bukan portal resmi). */
+  situs: z.url().max(2048).optional(),
+  /** true bila `situs` adalah replika uji (fixture), bukan situs pemerintah asli. */
+  replika: z.boolean().optional(),
 });
 export type SesiPendamping = z.infer<typeof SesiPendampingSchema>;
 
