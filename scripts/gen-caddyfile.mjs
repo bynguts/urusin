@@ -152,8 +152,8 @@ ${app}, ${verify} {
 }
 
 # Fixture publik (portal palsu untuk demo), profil \`public\`, 127.0.0.1:4320. Nonaktif secara bawaan:
-# bangkitkan dengan \`--fixtures\` setelah DNS ${fx} ada dan \`COMPOSE_PROFILES=fixtures\` +
-# FIXTURES_IMAGE diset (lihat deploy/README.md).
+# bangkitkan ulang snippet dengan \`node scripts/gen-caddyfile.mjs --set ${setName} --fixtures\` setelah
+# DNS ${fx} ada dan \`COMPOSE_PROFILES=fixtures\` + FIXTURES_IMAGE diset (lihat deploy/README.md).
 ${fxBlock}
 `;
 }
