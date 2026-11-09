@@ -1,0 +1,367 @@
+/*
+ * Gerak landing n2rpg. CSS saja (halaman csr=false, nol JS). Semua gerak hanya aktif bila
+ * prefers-reduced-motion: no-preference; tanpa itu yang tampil adalah desain statis Rafi apa adanya.
+ * Hanya transform/opacity (plus mask satu kali saat pola hero dimuat), tanpa perubahan tata letak.
+ */
+@property --lp-r {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 100%;
+}
+
+/* Elemen tambahan khusus gerak: tersembunyi di desain statis */
+.lp .n-salinan,
+.lp .n-pil-kata,
+.lp .n-hero-gelombang {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lp {
+    --lp-e: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Hero masuk berurutan; pratinjau (elemen LCP di ponsel) hanya bergeser, tidak memudar */
+  .lp .lp14 {
+    --lp-y: 8px;
+    animation: lp-naik 0.5s var(--lp-e) 0.05s both;
+  }
+  .lp .n-hero-intro {
+    --lp-y: 12px;
+    animation: lp-naik 0.55s var(--lp-e) 0.12s both;
+  }
+  .lp .lp16 {
+    --lp-y: 10px;
+    animation: lp-naik 0.55s var(--lp-e) 0.18s both;
+  }
+  .lp .n-preview-stage {
+    animation: lp-angkat 0.7s var(--lp-e) 0.24s both;
+  }
+  .lp :is(.lp23, .lp24, .lp25, .lp26, .lp76, .lp79, .lp81, .lp294) {
+    animation: lp-apung 4.2s ease-in-out infinite;
+  }
+  .lp :is(.lp24, .lp79) {
+    animation-duration: 4.65s;
+    animation-delay: -1.3s;
+  }
+  .lp :is(.lp25, .lp81) {
+    animation-duration: 5.1s;
+    animation-delay: -2.4s;
+  }
+  .lp :is(.lp26, .lp294) {
+    animation-duration: 4.8s;
+    animation-delay: -0.7s;
+  }
+
+  /* Pola titik hero: mekar dari tengah bawah, lalu riak gelap menyapu bentuk-bentuknya */
+  .lp .n-hero-pattern {
+    mask-image: radial-gradient(
+      circle farthest-corner at 50% 100%,
+      #000 var(--lp-r),
+      transparent calc(var(--lp-r) + 25%)
+    );
+    animation: lp-mekar 2.4s var(--lp-e) 0.1s backwards;
+  }
+  .lp .n-hero-gelombang {
+    position: absolute;
+    top: 0;
+    left: calc(50% - 720px);
+    width: 100%;
+    height: 660px;
+    overflow: hidden;
+    pointer-events: none;
+    mask: var(--lp-pola) 0 0 / 100% 100% no-repeat;
+  }
+  @media (min-width: 768px) {
+    .lp .n-hero-gelombang {
+      display: block;
+    }
+  }
+  .lp .n-hero-gelombang::before,
+  .lp .n-hero-gelombang::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 2200px;
+    height: 2200px;
+    margin: -1100px 0 0 -1100px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, #25252200 58%, #252522 80%, #25252200);
+    opacity: 0;
+    animation: lp-riak 7s cubic-bezier(0.25, 0.1, 0.5, 1) 1.2s infinite;
+  }
+  .lp .n-hero-gelombang::after {
+    animation-delay: 4.7s;
+  }
+
+  /* Pil "cerita": huruf naik bergiliran seperti kata yang berganti; "cerita" diam paling lama */
+  .lp .n-pil {
+    position: relative;
+    overflow: hidden;
+  }
+  .lp .n-pil > .lp55:first-child {
+    opacity: 0;
+  }
+  .lp .n-pil-kata {
+    display: grid;
+    position: absolute;
+    inset: 0 16px 4px;
+    justify-items: center;
+  }
+  .lp .n-pil-kata > span {
+    grid-area: 1 / 1;
+    white-space: nowrap;
+  }
+  .lp .n-pil-kata > span > span {
+    display: inline-block;
+    animation: lp-kata-2 9s infinite both;
+    animation-delay: calc(var(--i) * 22ms);
+  }
+  .lp .n-pil-kata > span:nth-child(1) > span {
+    animation-name: lp-kata-0;
+  }
+  .lp .n-pil-kata > span:nth-child(2) > span {
+    animation-name: lp-kata-1;
+  }
+
+  /* Tiga baris ubin layanan: marquee kiri, kanan, kiri. Salinan di kiri+kanan; posisi awal = desain */
+  .lp .n-salinan {
+    display: contents;
+  }
+  .lp .lp88 {
+    mask-image: linear-gradient(
+      90deg,
+      transparent calc(50% - 720px),
+      #000 0 calc(50% + 720px),
+      transparent 0
+    );
+  }
+  .lp :is(.lp89, .lp93) {
+    --lp-k: 2.667px;
+    animation: lp-geser 48s linear -24s infinite;
+  }
+  .lp .lp93 {
+    animation-duration: 54s;
+    animation-delay: -27s;
+  }
+  .lp .lp92 {
+    --lp-k: -4px;
+    animation: lp-geser 51s linear -25.5s infinite reverse;
+  }
+
+  /* Kotak prompt: kursor berkedip di akhir kalimat */
+  .lp .n-prompt-text::after {
+    content: '';
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    margin: 0 -4px 0 2px;
+    vertical-align: -0.12em;
+    background: #252522;
+    animation: lp-kedip 1.1s steps(1) infinite;
+  }
+}
+
+/* Bagian lain masuk saat digulir (scroll-driven); peramban tanpa dukungan menampilkan desain statis */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    /* overflow:hidden pada <main> menjadikannya scroller untuk view(); clip memotong sama tanpa menjadi scroller */
+    .lp.lp0 {
+      overflow: clip;
+    }
+    .lp
+      section
+      :is(
+        .n-intro-copy,
+        .n-intro-characters,
+        .n-services-heading,
+        .n-prompt-box,
+        .n-companions-title,
+        .n-features-title,
+        .n-card-row > *,
+        .n-feature-row > *,
+        .n-heading,
+        .n-columns > *,
+        .lp221,
+        .n-safety-intro,
+        .n-safety-grid .n-row,
+        .n-bubbles,
+        .n-answer-row,
+        .n-cta-panel
+      ) {
+      animation: lp-muncul linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+    .lp section :is(.n-card-row, .n-feature-row, .n-columns, .n-safety-grid .n-row) > :nth-child(2) {
+      animation-range: entry 8% entry 63%;
+    }
+    .lp section :is(.n-card-row, .n-columns) > :nth-child(3) {
+      animation-range: entry 16% entry 71%;
+    }
+    .lp .n-prompt-text {
+      animation: lp-ketik steps(64) both;
+      animation-timeline: view();
+      animation-range: entry 40% cover 50%;
+    }
+  }
+}
+
+/* Interaksi: tombol terangkat, panah "Pelajari" bergeser, karakter kartu menyembul */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116),
+  .lp .lp117 > img,
+  .lp .lp110 {
+    transition:
+      transform 0.25s var(--lp-e),
+      translate 0.35s var(--lp-e);
+  }
+  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116):hover {
+    transform: translateY(-1px);
+  }
+  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116):active {
+    transform: scale(0.98);
+  }
+  .lp .lp117:hover > img {
+    translate: 3px 0;
+  }
+  .lp .lp108:hover .lp110 {
+    translate: 0 -6px;
+  }
+}
+
+@keyframes lp-naik {
+  from {
+    opacity: 0;
+    transform: translateY(var(--lp-y));
+  }
+}
+@keyframes lp-angkat {
+  from {
+    transform: translateY(18px) scale(0.99);
+  }
+}
+@keyframes lp-apung {
+  0%,
+  100% {
+    translate: 0 2px;
+  }
+  50% {
+    translate: 0 -6px;
+  }
+}
+@keyframes lp-mekar {
+  from {
+    opacity: 0;
+    --lp-r: 0%;
+  }
+}
+@keyframes lp-riak {
+  0% {
+    opacity: 0;
+    transform: scale(0.05);
+  }
+  10% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.9;
+  }
+  90%,
+  100% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+@keyframes lp-geser {
+  from {
+    transform: translateX(calc(100% / 6 + var(--lp-k)));
+  }
+  to {
+    transform: translateX(calc(-100% / 6 - var(--lp-k)));
+  }
+}
+@keyframes lp-kedip {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes lp-muncul {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+@keyframes lp-ketik {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+/* Kata pil (periode 9 s): cerita diam 0-56%, kabar 59-76%, kisah 79-92%, cerita naik lagi 94.7-100%.
+   Kata lama keluar ke atas 200 ms, kata baru naik 480 ms dengan lonjakan; pil memotong keduanya. */
+@keyframes lp-kata-0 {
+  0%,
+  59% {
+    transform: translateY(110%);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  62.2% {
+    transform: translateY(-12%);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  64.3%,
+  76% {
+    transform: none;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0);
+  }
+  78.2%,
+  100% {
+    transform: translateY(-110%);
+  }
+}
+@keyframes lp-kata-1 {
+  0%,
+  79% {
+    transform: translateY(110%);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  82.2% {
+    transform: translateY(-12%);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  84.3%,
+  92% {
+    transform: none;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0);
+  }
+  94.2%,
+  100% {
+    transform: translateY(-110%);
+  }
+}
+@keyframes lp-kata-2 {
+  0%,
+  56% {
+    transform: none;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0);
+  }
+  58.2% {
+    transform: translateY(-110%);
+    animation-timing-function: step-end;
+  }
+  94.7% {
+    transform: translateY(110%);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  97.9% {
+    transform: translateY(-12%);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  100% {
+    transform: none;
+  }
+}

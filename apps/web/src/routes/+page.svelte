@@ -3,6 +3,7 @@
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
+  import '#lib/components/landing/landing-gerak.css';
   import g58006f1 from '#lib/assets/img/pen-landing/hero-pattern-fcb3-1440.webp';
   import g205a519 from '#lib/assets/img/pen-landing/urusin-mark-52.webp';
   import g7318dfb from '#lib/assets/img/pen-landing/rose-melambai-140.webp';
@@ -145,7 +146,31 @@
    * Landing = frame n2rpg "Urusin • Landing / Desktop" dari pen Rafi (urusin.pen), dikonversi dari ekspor
    * HTML/CSS apa adanya. Gaya per elemen ada di landing-pen.css (kelas lpN), aturan ponsel di
    * landing-responsif.css. Ajakan masuk ke alur urusan yang sudah ada (/beranda, /?/mulai).
+   * Gerak (CSS saja, nol JS) ada di landing-gerak.css.
    */
+
+  /* Ikon tiga baris layanan; tiap baris memutar daftar yang sama. Salinan ubin hanya untuk marquee. */
+  const ikonLayanan = [
+    '/pen/i-95c2220383.svg',
+    '/pen/i-864bab7921.svg',
+    '/pen/i-a6a3008acd.svg',
+    '/pen/i-32c8923562.svg',
+    '/pen/i-fa94228208.svg',
+    '/pen/i-61026f0797.svg',
+    '/pen/i-622991afbb.svg',
+    '/pen/i-81414dc20e.svg',
+    '/pen/i-e795588273.svg',
+    '/pen/i-e87b88ff2b.svg',
+    '/pen/i-3da007ab49.svg',
+    '/pen/i-941a068b12.svg',
+    '/pen/i-2ec80010b1.svg',
+    '/pen/i-ec2f9348f0.svg',
+    '/pen/i-5212f25c3d.svg',
+    '/pen/i-62fa004883.svg',
+  ];
+  const putar = (mulai: number) => [...ikonLayanan.slice(mulai), ...ikonLayanan.slice(0, mulai)];
+  /* Kata pada pil judul "Mulai dari [cerita] bukan istilah"; "cerita" terakhir = keadaan diam. */
+  const kataPil = ['kabar', 'kisah', 'cerita'];
 </script>
 
 <svelte:head>
@@ -168,6 +193,7 @@
       decoding="async"
       aria-hidden="true"
     />
+    <span class="n-hero-gelombang" style="--lp-pola: url({g58006f1})" aria-hidden="true"></span>
     <header class="n-header lp3">
       <a class="lp4" href="#atas" aria-label="Urusin, ke atas">
         <img class="lp5" src={g205a519} alt="" width="26" height="26" decoding="async" />
@@ -388,8 +414,15 @@
       <h2 class="lp51">
         <span class="lp52">
           <span class="lp53"> Mulai dari </span>
-          <span class="lp54">
+          <span class="lp54 n-pil">
             <span class="lp55"> cerita </span>
+            <span class="lp55 n-pil-kata" aria-hidden="true">
+              {#each kataPil as kata (kata)}
+                <span>
+                  {#each [...kata] as huruf, i (i)}<span style="--i: {i}">{huruf}</span>{/each}
+                </span>
+              {/each}
+            </span>
           </span>
         </span>
         <span class="lp53"> bukan istilah </span>
@@ -516,7 +549,17 @@
       </div>
     </div>
     <div class="lp88" aria-hidden="true">
+      {#snippet salinanUbin(mulai: number)}
+        <span class="n-salinan">
+          {#each putar(mulai) as src (src)}
+            <span class="lp90">
+              <img class="lp91" {src} alt="" width="30" height="30" loading="lazy" decoding="async" />
+            </span>
+          {/each}
+        </span>
+      {/snippet}
       <div class="lp89">
+        {@render salinanUbin(0)}
         <div class="lp90">
           <img
             class="lp91"
@@ -693,8 +736,10 @@
             decoding="async"
           />
         </div>
+        {@render salinanUbin(0)}
       </div>
       <div class="lp92">
+        {@render salinanUbin(7)}
         <div class="lp90">
           <img
             class="lp91"
@@ -871,8 +916,10 @@
             decoding="async"
           />
         </div>
+        {@render salinanUbin(7)}
       </div>
       <div class="lp93">
+        {@render salinanUbin(14)}
         <div class="lp90">
           <img
             class="lp91"
@@ -1049,6 +1096,7 @@
             decoding="async"
           />
         </div>
+        {@render salinanUbin(14)}
       </div>
       <div class="lp94" aria-hidden="true"></div>
       <div class="lp95" aria-hidden="true"></div>
