@@ -100,7 +100,7 @@ const proxyAuth = (u: URL) =>
  * IP hasil resolusi lokal) dikirim agar CDN memilih lokasi sesuai egress hulu; kebijakan allowlist dan
  * penolakan alamat privat SUDAH diterapkan sebelum titik ini.
  */
-function dialUpstream(upstream: URL, host: string, port: number): Promise<net.Socket> {
+export function dialUpstream(upstream: URL, host: string, port: number): Promise<net.Socket> {
   return new Promise((resolve, reject) => {
     const s = net.connect(Number(upstream.port || 80), upstream.hostname);
     const auth = proxyAuth(upstream);
