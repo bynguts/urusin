@@ -189,10 +189,12 @@ describe('proxy CONNECT edge', () => {
     expect(await connect(port, `rusak`, `${'u'.repeat(16)}:${SANDI}`)).toMatch(/^HTTP\/1\.1 403/);
     const biasa = await fetch(`http://127.0.0.1:${port}/`);
     expect(biasa.status).toBe(403);
-    // Setiap penolakan tercatat satu baris: host + alasan, tanpa kredensial.
-    expect(log).toHaveLength(3);
-    expect(log[0]).toMatch(new RegExp(`^edge: CONNECT ditolak host=${HOST} alasan=.*127.0.0.1`));
-    expect(log[2]).toBe('edge: CONNECT ditolak host=? alasan=rusak');
+    // Setiap penolakan tercatat satu baris: host + alasan (407: ada/tidaknya kredensial), tanpa kredensial.
+    expect(log).toHaveLength(5);
+    expect(log[0]).toBe(`edge: CONNECT 407 host=${HOST} kredensial=tidak_ada`);
+    expect(log[1]).toBe(`edge: CONNECT 407 host=${HOST} kredensial=tidak_sah`);
+    expect(log[2]).toMatch(new RegExp(`^edge: CONNECT ditolak host=${HOST} alasan=.*127.0.0.1`));
+    expect(log[4]).toBe('edge: CONNECT ditolak host=? alasan=rusak');
     expect(log.join()).not.toContain(SANDI);
     p.tutup();
   });

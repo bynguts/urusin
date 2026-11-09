@@ -217,13 +217,21 @@ export function createEdgeProxy(
   server.on('connect', async (req, client: Duplex, head: Buffer) => {
     track(client);
     const sesi = daftar.periksa(req.headers['proxy-authorization']);
-    if (!sesi)
+    if (!sesi) {
+      // 407 tanpa kredensial itu normal (Chromium lalu mengulang dengan kredensial sesi); kredensial yang
+      // tidak sah/kedaluwarsa = sesi tidak terdaftar di edge.
+      const kredensial = req.headers['proxy-authorization'] === undefined ? 'tidak_ada' : 'tidak_sah';
+      catat(`edge: CONNECT 407 host=${parseAuthority(req.url ?? '')?.host ?? '?'} kredensial=${kredensial}`);
       return tolak(
         client,
         '407 Proxy Authentication Required',
         'Proxy-Authenticate: Basic realm="urusin"\r\n',
       );
-    if (sockets.size > cfg.maksTerowongan * 2) return tolak(client, '503 Service Unavailable');
+    }
+    if (sockets.size > cfg.maksTerowongan * 2) {
+      catat('edge: CONNECT 503 terowongan penuh');
+      return tolak(client, '503 Service Unavailable');
+    }
     const target = parseAuthority(req.url ?? '');
     const d = target
       ? await decide(sesi, target.host, target.port)
