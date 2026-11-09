@@ -88,13 +88,16 @@ jobs:
             if [ "$NAME" = "web" ]; then
               docker run --rm --platform "linux/${arch}" --entrypoint node "$REF"                 -e "const a=process.arch;const r=require('better-sqlite3')(':memory:').prepare('select 1 as x').get();if(r.x!==1)process.exit(1);console.log(a,'better-sqlite3 ok')"
             elif [ "$NAME" = "pendamping" ]; then
+              # Kontainer pendamping tanpa no-new-privileges: chrome-sandbox HARUS satu-satunya biner SUID/SGID.
+              docker run --rm --platform "linux/${arch}" --network none --entrypoint sh "$REF" -c                 'f=$(find / -xdev -type f -perm /6000 2>/dev/null); echo "$f"; [ "$f" = /ms-playwright/chromium-1254/chrome-linux64/chrome-sandbox ] && [ "$(stat -c %u:%a "$f")" = 0:4755 ]'
               if [ "$arch" = "amd64" ]; then
-                # Boot produksi dengan pengerasan yang sama seperti compose (seccomp Playwright, SYS_CHROOT saja,
-                # read-only, tanpa jaringan): main.js menolak start bila ada rute keluar atau sandbox Chromium
+                # Boot produksi dengan pengerasan yang sama seperti compose (seccomp Playwright, SYS_ADMIN +
+                # SYS_CHROOT untuk sandbox setuid tanpa no-new-privileges, read-only, tanpa jaringan; ADR 0028):
+                # main.js menolak start bila ada rute keluar atau sandbox Chromium
                 # headed tidak aktif, jadi /health 200 = kedua pemeriksaan boot lulus. --init: tanpa init,
                 # xvfb-run/Xvfb sebagai PID 1 bisa menggantung. Edge sendiri: modulnya harus termuat. Token dibuat
                 # acak di langkah ini (literal berentropi tinggi di repo memicu Gitleaks).
-                timeout 300 docker run --rm --init --platform "linux/${arch}" --network none --read-only                   --tmpfs /tmp:size=768m --cap-drop ALL --cap-add SYS_CHROOT                   --security-opt no-new-privileges:true --security-opt seccomp=deploy/pendamping-seccomp.json                   -e PENDAMPING_INTERNAL_TOKEN="$(openssl rand -hex 32)"                   -e PENDAMPING_EDGE_URL=http://pendamping-edge:3129                   -e PENDAMPING_EDGE_TOKEN="$(openssl rand -hex 32)"                   -e URUSIN_PUBLIC_ORIGIN=https://smoke.test --entrypoint sh "$REF" -c                   'node dist/main.js & for i in $(seq 1 60); do node dist/sehat.js 4330 && echo "pendamping ok (sandbox + tanpa rute)" && exit 0; kill -0 $! 2>/dev/null || exit 1; sleep 2; done; exit 1'
+                timeout 300 docker run --rm --init --platform "linux/${arch}" --network none --read-only                   --tmpfs /tmp:size=768m --cap-drop ALL --cap-add SYS_ADMIN --cap-add SYS_CHROOT                   --security-opt seccomp=deploy/pendamping-seccomp.json                   -e PENDAMPING_INTERNAL_TOKEN="$(openssl rand -hex 32)"                   -e PENDAMPING_EDGE_URL=http://pendamping-edge:3129                   -e PENDAMPING_EDGE_TOKEN="$(openssl rand -hex 32)"                   -e URUSIN_PUBLIC_ORIGIN=https://smoke.test --entrypoint sh "$REF" -c                   'node dist/main.js & for i in $(seq 1 60); do node dist/sehat.js 4330 && echo "pendamping ok (sandbox + tanpa rute)" && exit 0; kill -0 $! 2>/dev/null || exit 1; sleep 2; done; exit 1'
                 timeout 120 docker run --rm --platform "linux/${arch}" --network none --entrypoint node "$REF"                   -e "import('./dist/edge.js').then((m)=>{m.loadEdgeConfig({PENDAMPING_EDGE_TOKEN:'x'.repeat(40)});console.log('edge ok')})"
               else
                 # arm64 di QEMU: Chromium/userns tidak diemulasikan dengan andal; cukup modul termuat.
