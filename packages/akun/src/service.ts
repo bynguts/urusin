@@ -1,5 +1,5 @@
 import type { Db } from '@urusin/harness';
-import { dataDiriSintetis } from './demo.js';
+import { dataDiriSintetis, dokumenContoh } from './demo.js';
 import { maskEmail, normalizeEmail } from './email.js';
 import { AkunError } from './errors.js';
 import { GoogleError, type GoogleOidc } from './google.js';
@@ -491,6 +491,15 @@ export class AkunService {
       return baru;
     });
     this.deps.vault.setDataDiri(id, dataDiriSintetis());
+    // Dokumen contoh: upaya terbaik (kuota/penyimpanan penuh tidak boleh menggagalkan masuk juri).
+    for (const d of dokumenContoh()) {
+      try {
+        this.deps.vault.putDocument(id, d);
+      } catch (e) {
+        if (!(e instanceof AkunError)) throw e;
+        break;
+      }
+    }
     return { token: this.buatSesi(id, ctx), akun: toAkun(this.userById(id)!) };
   }
 
