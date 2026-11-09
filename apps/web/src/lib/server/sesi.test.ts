@@ -5,7 +5,7 @@ import { POST as buatUrusan } from '../../routes/api/urusan/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
 import { RateLimiter } from './limiter';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
-import { SID_COOKIE } from './sesi';
+import { migrasiSid, SID_COOKIE } from './sesi';
 
 const ORIGIN = 'http://localhost:3000';
 let rt: Runtime;
@@ -81,6 +81,32 @@ describe('cookie sesi', () => {
     expect(r.set[0]!.value).toMatch(/^[0-9a-f]{32}$/);
     expect(r.set[0]!.opts).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/' });
     expect(r.sid).toBe(r.set[0]!.value);
+  });
+
+  it('PoC: nama cookie __Host-urusin_sid (Secure, Path=/), migrasi sekali dari urusin_sid lama', async () => {
+    expect(SID_COOKIE).toBe('__Host-urusin_sid');
+    const r = await jalankan(null);
+    expect(r.set[0]!.opts).toMatchObject({ secure: true, path: '/' });
+    expect(r.set[0]!.opts).not.toHaveProperty('domain');
+    const lama = 'c'.repeat(32);
+    const set: { name: string; value: string }[] = [];
+    const hapus: string[] = [];
+    const toples = new Map([['urusin_sid', lama]]);
+    const cookies = {
+      get: (n: string) => toples.get(n),
+      set: (name: string, value: string) => {
+        toples.set(name, value);
+        set.push({ name, value });
+      },
+      delete: (name: string) => {
+        toples.delete(name);
+        hapus.push(name);
+      },
+    };
+    migrasiSid(cookies as never);
+    expect([set, hapus]).toEqual([[{ name: SID_COOKIE, value: lama }], ['urusin_sid']]);
+    migrasiSid(cookies as never); // sekali saja
+    expect(set).toHaveLength(1);
   });
 
   it('cookie sah dipakai ulang; cookie rusak diganti', async () => {

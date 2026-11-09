@@ -16,7 +16,7 @@ Warga memakai HP dan laptop bergantian. HP biasanya dipakai memotret dokumen, la
 
 1. **Tiga jenis pemilik vault** (`users.jenis`):
    - `akun`: email + sandi dan/atau Google;
-   - `tamu`: terikat hash cookie `urusin_sid`, dibuat **malas** (tulis vault pertama atau `/turn` pertama; menjelajah tidak membuat baris), maksimal 20 per IP per hari (`TAMU_PENUH` 429; IPv6 dihitung per /64), umur mutlak 72 jam sejak dibuat (aktivitas tidak memperpanjang);
+   - `tamu`: terikat hash cookie `__Host-urusin_sid` (nama lama `urusin_sid` dimigrasikan sekali), dibuat **malas** (tulis vault pertama atau `/turn` pertama; menjelajah tidak membuat baris), maksimal 20 per IP per hari (`TAMU_PENUH` 429; IPv6 dihitung per /64), umur mutlak 72 jam sejak dibuat (aktivitas tidak memperpanjang);
    - `demo`: salinan terisolasi dari "Masuk sebagai juri", berisi Data Diri sintetis, berumur 24 jam.
 
    Akun yang emailnya **belum terverifikasi** boleh masuk tetapi diperlakukan seperti tamu: vault tetap di perangkat (pemilik vault = tamu dari `urusin_sid`), urusan tidak dipindahkan. Hanya akun terverifikasi dan demo yang `sinkron`.
@@ -66,7 +66,7 @@ Warga memakai HP dan laptop bergantian. HP biasanya dipakai memotret dokumen, la
 | Pencurian DB + `URUSIN_PII_KEY` (host bobol)  | Vault terbuka. Risiko sisa **tinggi**: server memegang kunci. Mitigasi: kunci hanya di env, escrow terpisah, rotasi `kek:rotate`, label HKDF terpisah         |
 | Credential stuffing / brute force             | Batas laju per IP dan email, Turnstile setelah 3 gagal, kunci 30 detik berlipat sampai 1 jam mulai kegagalan ke-5, daftar sandi umum, argon2id dengan semafor |
 | Enumerasi akun                                | Respons dan waktu seragam (poin 7); e2e #45                                                                                                                   |
-| Fiksasi sesi / sid                            | Token hanya dari server, rotasi token dan `urusin_sid` saat login, prefiks `__Host-`                                                                          |
+| Fiksasi sesi / sid                            | Token hanya dari server, rotasi token dan `__Host-urusin_sid` saat masuk dan keluar, prefiks `__Host-`                                                        |
 | CSRF / CSRF login                             | Origin persis untuk semua penulisan, SameSite=Lax, state OAuth cookie vs query                                                                                |
 | Pencurian nilai vault lintas situs            | `Sec-Fetch-Site: same-origin` + Origin persis + `no-store` untuk GET vault; dokumen pemilik lain 404                                                          |
 | Sesi curian mengunduh dokumen                 | Perangkat baru butuh bukti kredensial ≤ 15 menit                                                                                                              |

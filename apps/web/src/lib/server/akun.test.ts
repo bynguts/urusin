@@ -449,12 +449,19 @@ describe('keluar, ubah sandi, reset, hapus akun', () => {
     await daftarVerifikasi();
     const a = await masuk();
     const b = await masuk();
+    const sidSebelum = a.jar.get(SID_COOKIE);
+    expect(sidSebelum).toMatch(/^[0-9a-f]{32}$/);
     const r = await lewatHook(post({}, '/api/akun/keluar'), a.jar, keluarApi);
     expect((await r.json()).sesiDihapus).toBe(1);
     expect(a.jar.get(AKUN_COOKIE)).toBeUndefined();
+    // PoC: keluar memutar urusin_sid (pemakai berikutnya di perangkat bersama tidak mewarisi data tamu)
+    expect(a.jar.get(SID_COOKIE)).toMatch(/^[0-9a-f]{32}$/);
+    expect(a.jar.get(SID_COOKIE)).not.toBe(sidSebelum);
     const c = await masuk();
+    const sidC = c.jar.get(SID_COOKIE);
     const semua = await lewatHook(post({}, '/api/akun/keluar-semua'), c.jar, keluarSemuaApi);
     expect((await semua.json()).sesiDihapus).toBe(2);
+    expect(c.jar.get(SID_COOKIE)).not.toBe(sidC);
     expect(rt.akun.sesi(b.jar.get(AKUN_COOKIE))).toBeNull();
     expect((await keluarApi(ev(post({})))).status).toBe(200);
     expect((await keluarSemuaApi(ev(post({})))).status).toBe(401);

@@ -5,7 +5,7 @@ import { AKUN_COOKIE, hapusAkunCookie } from '#lib/server/akun.js';
 import { assertHostEnv } from '#lib/server/hosts.js';
 import { checkOrigin } from '#lib/server/origin.js';
 import { getRuntime, publicOrigin } from '#lib/server/runtime.js';
-import { ensureSession } from '#lib/server/sesi.js';
+import { ensureSession, migrasiSid } from '#lib/server/sesi.js';
 import { turnstileFromEnv } from '#lib/server/turnstile.js';
 
 // Backstop egress (review v11 M2): web berjalan di network host. Jadikan Agent egress runtime (LLM + Jina,
@@ -41,8 +41,9 @@ export const handle: Handle = async ({ event, resolve }) => {
       { status: 403, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } },
     );
   }
+  migrasiSid(event.cookies);
   // Cookie sesi anonim hanya untuk API (identitas kuota); halaman statis tetap bebas cookie agar bisa di-cache.
-  if (event.url.pathname.startsWith('/api/')) event.locals.sid = ensureSession(event.cookies, publicOrigin());
+  if (event.url.pathname.startsWith('/api/')) event.locals.sid = ensureSession(event.cookies);
   // Sesi login: hanya bila cookie ada (tamu tidak menyentuh DB). Token tidak sah/kedaluwarsa → cookie dihapus.
   const token = event.cookies.get(AKUN_COOKIE);
   if (token) {

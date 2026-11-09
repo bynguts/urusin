@@ -1,5 +1,5 @@
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
-import { getRuntime, publicOrigin, startTurnInBackground } from '#lib/server/runtime.js';
+import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
 import { batasi, ensureSession } from '#lib/server/sesi.js';
 
 const PERISTIWA = ['kelahiran', 'kematian', 'perkawinan', 'pindah', 'lainnya'] as const;
@@ -25,7 +25,7 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
     return fail(422, { pesanWarga: 'Tulis dulu apa yang ingin Anda urus.', pesan } satisfies GagalMulai);
 
   const rt = await getRuntime();
-  event.locals.sid = ensureSession(event.cookies, publicOrigin());
+  event.locals.sid = ensureSession(event.cookies);
   const ditolak = batasi(rt, event, 'buat');
   if (ditolak)
     return fail(429, {

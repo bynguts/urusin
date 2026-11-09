@@ -135,7 +135,7 @@ export function pasangSesi(
   const maxAge = s ? Math.max(60, Math.floor((Date.parse(s.kedaluwarsa) - Date.now()) / 1000)) : 60;
   setAkunCookie(cookies, token, maxAge);
   const sidLama = cookies.get(SID_COOKIE);
-  const sidBaru = rotasiSid(cookies, publicOrigin());
+  const sidBaru = rotasiSid(cookies);
   const terverifikasi = akun.jenis === 'akun' && akun.emailVerifiedAt !== null;
   const r = rt.akun.rotasiPemilik({ sidLama, sidBaru, userId: terverifikasi ? akun.id : null });
   let googleTertaut = false;
@@ -165,7 +165,7 @@ export function pemilikVault(rt: Runtime, event: VaultEvent, opts: { buat: boole
   const a = event.locals.akun;
   if (a && rt.akun.sinkron(a)) return { id: a.id, jenis: a.jenis, sinkron: true };
   let sid = event.locals.sid ?? event.cookies.get(SID_COOKIE);
-  if (!sid && opts.buat) sid = ensureSession(event.cookies, publicOrigin());
+  if (!sid && opts.buat) sid = ensureSession(event.cookies);
   if (!sid) return null;
   const id = opts.buat ? rt.akun.pastikanTamu(sid, konteks(event)) : rt.akun.tamuDariSid(sid);
   return id ? { id, jenis: 'tamu', sinkron: false } : null;

@@ -8,21 +8,27 @@ import type { Runtime } from '#lib/server/runtime.js';
  * Sesi anonim: cookie acak (HttpOnly, SameSite=Lax) sebagai identitas kuota, BUKAN autentikasi. Urusan tetap
  * dilindungi id kapabilitas yang tak bisa ditebak, jadi hilangnya cookie tidak mengunci warga dari urusannya.
  */
-export const SID_COOKIE = 'urusin_sid';
+export const SID_COOKIE = '__Host-urusin_sid';
+/** Nama lama (sebelum __Host-): dibaca sekali oleh `migrasiSid`, lalu dihapus. */
+const SID_COOKIE_LAMA = 'urusin_sid';
 const SID_RE = /^[0-9a-f]{32}$/;
 const SID_TTL_SEC = 60 * 60 * 24 * 30;
+/** __Host-: Secure, Path=/, tanpa Domain (localhost http tetap diterima peramban sebagai konteks aman). */
+const SID_OPSI = { path: '/', httpOnly: true, sameSite: 'lax', secure: true, maxAge: SID_TTL_SEC } as const;
 
-export function ensureSession(cookies: Cookies, publicOrigin: string): string {
+/** Pindahkan cookie `urusin_sid` lama ke `__Host-urusin_sid` sekali (nilai sama), lalu hapus yang lama. */
+export function migrasiSid(cookies: Pick<Cookies, 'get' | 'set' | 'delete'>): void {
+  const lama = cookies.get(SID_COOKIE_LAMA);
+  if (lama === undefined) return;
+  if (!cookies.get(SID_COOKIE) && SID_RE.test(lama)) cookies.set(SID_COOKIE, lama, SID_OPSI);
+  cookies.delete(SID_COOKIE_LAMA, { path: '/' });
+}
+
+export function ensureSession(cookies: Cookies): string {
   const ada = cookies.get(SID_COOKIE);
   if (ada && SID_RE.test(ada)) return ada;
   const sid = randomBytes(16).toString('hex');
-  cookies.set(SID_COOKIE, sid, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: publicOrigin.startsWith('https://'),
-    maxAge: SID_TTL_SEC,
-  });
+  cookies.set(SID_COOKIE, sid, SID_OPSI);
   return sid;
 }
 
@@ -54,14 +60,8 @@ export function batasi(
  * Putar cookie urusin_sid (anti fiksasi saat naik hak tamu → akun, §3.26.6). Pemanggil wajib mengikat ulang
  * semua yang terikat hash sid lama dalam satu transaksi (`AkunService.rotasiPemilik`).
  */
-export function rotasiSid(cookies: Cookies, publicOrigin: string): string {
+export function rotasiSid(cookies: Cookies): string {
   const sid = randomBytes(16).toString('hex');
-  cookies.set(SID_COOKIE, sid, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: publicOrigin.startsWith('https://'),
-    maxAge: SID_TTL_SEC,
-  });
+  cookies.set(SID_COOKIE, sid, SID_OPSI);
   return sid;
 }
