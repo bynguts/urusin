@@ -24,6 +24,7 @@ import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
 import { daftarEdge, type ProxyEdge } from './isolasi.js';
+import { pesanIsiSendiri } from './isian.js';
 import { runnerExpression } from './runner-script.js';
 import type { ActiveRun, Frame, JenisFokus, RunFactory, RunInit } from './sessions.js';
 import { createPantauTantangan, isChallengeFrameUrl, isInterstitialTitle } from './verifikasi.js';
@@ -472,6 +473,23 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
         gatePoll ??= setInterval(() => void (pantau.aktif || interp.recheckGate()), 1000);
         return;
       }
+      case 'waiting_citizen': {
+        // Nilai kolom ini tidak ada di daftar write: warga mengetiknya di situs (tidak dicatat, tidak ke AI).
+        if (prev === 'waiting_citizen') return;
+        const step = steps[c.stepIndex];
+        const pesan = c.message ?? 'Isi kolom yang disorot, lalu tekan Lanjutkan.';
+        hooks.mode('takeover', pesan);
+        void (async () => {
+          const box = step?.op === 'fill' || step?.op === 'select' ? await sorot(step.target) : undefined;
+          hooks.event({
+            jenis: 'giliran_anda',
+            alasan: 'isi_sendiri',
+            pesan,
+            ...(box ? { sorot: box } : {}),
+          });
+        })();
+        return;
+      }
       case 'handoff':
         hooks.mode('takeover', c.message ?? 'Lanjutkan sendiri.');
         hooks.event({ jenis: 'giliran_anda', alasan: 'periksa', pesan: c.message ?? 'Lanjutkan sendiri.' });
@@ -521,6 +539,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
         return missing ? undefined : out;
       },
       resolveFile: async (name) => init.data.file(name),
+      citizenInput: pesanIsiSendiri,
     });
   let interp = buatInterp();
 
@@ -764,7 +783,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
       clearInterval(tantanganPoll);
       tantanganPoll = undefined;
       hooks.activity();
-      if (manual || status === 'waiting_gate' || status === 'handoff')
+      if (manual || status === 'waiting_gate' || status === 'waiting_citizen' || status === 'handoff')
         hooks.mode('takeover', 'Verifikasi selesai. Lanjutkan sendiri.');
       else hooks.mode('ai', 'Verifikasi selesai. AI melanjutkan pengisian.');
       resume();
@@ -837,6 +856,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
       if (masukAktif) return hooks.mode('takeover', PESAN_MASUK);
       // Gerbang warga belum terpenuhi: tetap giliran warga; selain itu AI lanjut.
       if (status === 'waiting_gate') void interp.recheckGate();
+      else if (status === 'waiting_citizen') void interp.citizenDone();
       else if (status !== 'handoff') hooks.mode('ai', 'AI melanjutkan pengisian.');
     },
     async setViewer(send) {

@@ -331,7 +331,8 @@ describe('SessionManager', () => {
     expect(h.runs[0]!.init.program.hosts).toContain('challenges.cloudflare.com');
     expect(h.runs[0]!.init.manualUrl).toBeUndefined();
     expect(h.manager.debugOwner(s.sesiId)).toEqual({ urusanId: s.urusanId, sidHash: SID });
-    expect(h.manager.status({ urusanId: s.urusanId, sidHash: SID }).status).toBe('menunggu_data');
+    // Nomor polisi bukan Data Diri: AI langsung jalan, penguji mengetiknya di kolomnya.
+    expect(h.manager.status({ urusanId: s.urusanId, sidHash: SID }).status).toBe('berjalan');
   });
 
   it('data vault/berkas (kanal internal saja): AI mulai hanya setelah lengkap; input ditolak di mode AI', async () => {
@@ -398,6 +399,41 @@ describe('SessionManager', () => {
     expect(run.calls).toContain('destroy');
     expect(h.manager.status(owner('u1'))).toMatchObject({ status: 'selesai', hasil: 'berhasil' });
     await h.manager.handleClient(s.sesiId, { type: 'akhiri' }); // sudah berakhir: diabaikan
+  });
+
+  it('placeholder di luar Data Diri (kitir) tidak menahan AI; Data Diri kosong tidak menahan setelah isi', async () => {
+    const h = harness();
+    const s = await h.manager.create(
+      input('k1', {
+        adapterId: 'klampid-surabaya',
+        flowId: 'cek_status',
+        origin: 'https://wargaklampid-dispendukcapil.surabaya.go.id',
+        params: {},
+      }),
+    );
+    await h.flush();
+    const v = h.viewer();
+    await h.manager.attach(s.sesiId, v);
+    // Navigasi mulai tanpa menunggu data: kitir diketik warga di kolomnya (takeover isi_sendiri).
+    expect(h.runs[0]!.calls).toContain('mulaiAi');
+    expect(v.sent.some((m) => m.type === 'butuh_data')).toBe(false);
+    expect(h.manager.status(owner('k1'))).toMatchObject({ status: 'berjalan', mode: 'ai' });
+    expect(() => h.manager.butuhData(owner('k1'))).toThrow(/menunggu data/);
+
+    // Data Diri yang tidak ada di vault warga: setelah persetujuan dipakai, AI tetap mulai (warga mengetiknya).
+    await h.manager.create(input('u2'));
+    await h.flush();
+    const run = h.runs[1]!;
+    expect(h.manager.butuhData(owner('u2')).placeholder).toEqual(['{{PEMOHON.HP}}']);
+    expect(await h.manager.isiData(owner('u2'), {})).toEqual({
+      placeholder: ['{{PEMOHON.HP}}'],
+      berkas: ['berkas1'],
+    });
+    expect(run.calls).not.toContain('mulaiAi'); // berkas tetap menahan
+    const dok = { nama: 'berkas1', namaBerkas: 'a.pdf', mime: 'application/pdf', dataBase64: 'AAAA' };
+    expect(await h.manager.isiBerkas(owner('u2'), dok)).toEqual({ placeholder: [], berkas: [] });
+    expect(run.calls).toContain('mulaiAi');
+    expect(run.init.data.value('{{PEMOHON.HP}}')).toBeUndefined();
   });
 
   it('viewer baru menggantikan yang lama (4409); detach melepas screencast', async () => {
@@ -809,7 +845,11 @@ describe('server HTTP + WebSocket', () => {
     expect((await post('/debug/sesi', { url: 'bukan url' })).status).toBe(422);
     expect((await post('/debug/sesi', { url: 'https://evil.example/' })).status).toBe(422);
     expect((await post('/debug/sesi', { adapterId: 'x', flowId: 'y' })).status).toBe(422);
-    const alur = await post('/debug/sesi', { adapterId: 'oss-nib', flowId: 'cari_nib' });
+    const alur = await post('/debug/sesi', {
+      adapterId: 'telunjuk-sakti-wonogiri',
+      flowId: 'ajukan',
+      params: { layanan_id: 1 },
+    });
     expect(alur.status).toBe(201);
     const sesiAlur = (await alur.json()) as { urusanId: string; sesiId: string };
     expect(sesiAlur.urusanId).toMatch(/^debug-/);

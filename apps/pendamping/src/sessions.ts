@@ -20,6 +20,7 @@ import type { Step } from '@urusin/core';
 import { checkUrl, type UploadFile } from '@urusin/executor';
 import type { Config } from './config.js';
 import { isInputMessage } from './input.js';
+import { dariDataDiri } from './isian.js';
 import type { FrameMasuk } from './stream.js';
 
 /**
@@ -137,6 +138,15 @@ const PESAN = {
 
 export const sidHashOf = (sid: string) => createHash('sha256').update(sid).digest('hex');
 
+/**
+ * Data yang menahan AI di `menunggu_data`: placeholder Data Diri (daftar write "Izinkan isi") dan berkas.
+ * Placeholder lain (kitir, NIB, nomor polisi) tidak pernah menahan: warga mengetiknya di kolomnya (isian.ts).
+ */
+function butuhDari(steps: readonly Step[]): { placeholder: string[]; berkas: string[] } {
+  const r = requiredData(steps);
+  return { placeholder: r.placeholder.filter(dariDataDiri), berkas: r.berkas };
+}
+
 function sameHash(a: string, b: string): boolean {
   const x = Buffer.from(a);
   const y = Buffer.from(b);
@@ -212,7 +222,7 @@ export class SessionManager {
   private async lanjutkan(s: Sesi, executionId: string, program: Program): Promise<SesiPendamping> {
     s.executionId = executionId;
     s.program = program;
-    s.butuh = requiredData(program.steps);
+    s.butuh = butuhDari(program.steps);
     s.hasil = undefined;
     s.bukti = undefined;
     s.pesan = undefined;
@@ -311,7 +321,7 @@ export class SessionManager {
       lastActivity: t,
       vault: new Map(),
       files: new Map(),
-      butuh: requiredData(base.program.steps),
+      butuh: butuhDari(base.program.steps),
       aiDimulai: false,
       galatInputTerkirim: false,
     };
@@ -373,6 +383,8 @@ export class SessionManager {
     const s = this.requireMenungguData(owner);
     for (const [k, v] of Object.entries(isian)) if (s.butuh.placeholder.includes(k)) s.vault.set(k, v);
     const kurang = this.kurang(s);
+    // Persetujuan sekali pakai sudah dipakai: Data Diri yang kosong diketik warga di kolomnya, tidak menahan AI.
+    s.butuh = { ...s.butuh, placeholder: s.butuh.placeholder.filter((p) => s.vault.has(p)) };
     await this.maybeStartAi(s);
     return kurang;
   }
