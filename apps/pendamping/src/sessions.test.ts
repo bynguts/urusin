@@ -521,6 +521,56 @@ describe('server HTTP + WebSocket', () => {
     expect((await fetch(`${base}/dev`)).status).toBe(200);
   });
 
+  it('/internal/sesi/berkas: header tanda hilang/cacat/kedaluwarsa/nonce terpakai -> 401 tanpa membaca isi', async () => {
+    const { port, base } = await start();
+    const jalur = '/internal/sesi/berkas';
+    /** Kirim header saja (Content-Length 12 MB, isi tidak pernah dikirim); kembalikan respons mentah. */
+    const tanpaIsi = (h: Record<string, string>) =>
+      new Promise<string>((resolve, reject) => {
+        const sock = net.connect(port, '127.0.0.1');
+        let out = '';
+        sock.on('data', (d) => (out += d.toString()));
+        sock.on('close', () => resolve(out));
+        sock.on('error', reject);
+        const baris = Object.entries(h).map(([k, v]) => `${k}: ${v}\r\n`);
+        sock.write(
+          `POST ${jalur} HTTP/1.1\r\nhost: x\r\ncontent-type: application/json\r\n` +
+            `content-length: 12000000\r\n${baris.join('')}\r\n`,
+        );
+      });
+    const sah = headerTanda('t'.repeat(40), 'POST', jalur, '{}');
+    // Nonce sah dipakai sekali (isi kecil, MAC cocok -> lewat ke validasi body = 422), lalu diputar ulang.
+    const pertama = await fetch(`${base}${jalur}`, {
+      method: 'POST',
+      headers: { ...sah, 'content-type': 'application/json' },
+      body: '{}',
+    });
+    expect(pertama.status).toBe(422);
+    const kasus = [
+      {},
+      { ...sah, 'x-urusin-nonce': 'bukan-hex' },
+      headerTanda('t'.repeat(40), 'POST', jalur, '', Date.now() - 120_000),
+      sah,
+    ];
+    for (const h of kasus) {
+      const r = await tanpaIsi(h);
+      // Jawaban 401 datang dan soket ditutup walau 12 MB isi belum dikirim: isi tidak ditunggu/dibaca.
+      expect(r).toMatch(/^HTTP\/1\.1 401 /);
+      expect(r.toLowerCase()).toContain('connection: close');
+    }
+    // Header layak + nonce baru, tetapi MAC tidak cocok dengan isi: isi dibaca dengan batas, lalu ditolak.
+    const salahIsi = headerTanda('t'.repeat(40), 'POST', jalur, '{"a":1}');
+    expect(
+      (
+        await fetch(`${base}${jalur}`, {
+          method: 'POST',
+          headers: { ...salahIsi, 'content-type': 'application/json' },
+          body: '{}',
+        })
+      ).status,
+    ).toBe(401);
+  });
+
   it('jalur isi server (A-M1): butuh -> isi/berkas lewat kanal bertanda; hanya yang dibutuhkan; lalu AI mulai', async () => {
     const { call, h } = await start();
     const o = owner('u1');

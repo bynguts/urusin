@@ -207,19 +207,21 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         return galat(res, 404, { kode: 'SESI_TIDAK_ADA', pesanWarga: 'Tidak ditemukan.' });
       // Kanal web -> worker: tanda tangan HMAC atas waktu + nonce + metode + jalur + isi (bukan token polos);
       // nonce yang sudah dipakai dalam jendela waktu ditolak (anti putar ulang).
+      // Header tanda (ada, format, jendela waktu, nonce belum dipakai) diperiksa SEBELUM isi dibaca: tanpa itu
+      // isi tidak ditampung sama sekali dan koneksi ditutup. Lalu isi dibaca dengan batas, lalu MAC diperiksa.
       // Satu berkas Dokumen (<= 9 MB biner, base64) hanya di jalur berkas; selain itu 64 KB.
-      const raw = await readRaw(req, path === '/internal/sesi/berkas' ? MAX_JSON_BERKAS : MAX_JSON);
-      if (!raw) return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan terlalu besar.' });
       const header = (n: string) => {
         const v = req.headers[n];
         return typeof v === 'string' ? v : undefined;
       };
-      const sah = periksaInternal(
-        { waktu: header(HEADER_WAKTU), nonce: header(HEADER_NONCE), tanda: header(HEADER_TANDA) },
-        req.method ?? 'GET',
-        path,
-        raw,
-      );
+      const h = { waktu: header(HEADER_WAKTU), nonce: header(HEADER_NONCE), tanda: header(HEADER_TANDA) };
+      if (!periksaInternal.praIsi(h)) {
+        res.setHeader('connection', 'close');
+        return galat(res, 401, { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' });
+      }
+      const raw = await readRaw(req, path === '/internal/sesi/berkas' ? MAX_JSON_BERKAS : MAX_JSON);
+      if (!raw) return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan terlalu besar.' });
+      const sah = periksaInternal(h, req.method ?? 'GET', path, raw);
       if (!sah) return galat(res, 401, { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' });
 
       if (req.method === 'GET' && path === '/internal/antrean') return json(res, 200, manager.antrean());

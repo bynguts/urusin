@@ -77,4 +77,23 @@ describe('tanda tangan HMAC kanal web -> worker', () => {
     expect(jaga(hdr(nanti), 'POST', '/internal/sesi', '{}', nanti)).toBe(true);
     expect(jaga({ ...a, tanda: 'f'.repeat(64) }, 'POST', '/internal/sesi', '{}', t)).toBe(false);
   });
+
+  it('praIsi (sebelum isi dibaca): header layak + nonce belum dipakai; tidak mencatat nonce', () => {
+    const t = Date.now();
+    const jaga = createPenjagaUlang(R);
+    const h = headerTanda(R, 'POST', '/internal/sesi/berkas', '{}', t);
+    const a: HeaderTanda = {
+      waktu: h['x-urusin-waktu'],
+      nonce: h['x-urusin-nonce'],
+      tanda: h['x-urusin-tanda'],
+    };
+    expect(jaga.praIsi({ waktu: undefined, nonce: undefined, tanda: undefined }, t)).toBe(false);
+    expect(jaga.praIsi({ ...a, nonce: 'xyz' }, t)).toBe(false);
+    expect(jaga.praIsi(a, t + TOLERANSI_MS + 1)).toBe(false);
+    // Tanda palsu berformat benar lolos praIsi (MAC diperiksa setelah isi) tetapi tidak menghabiskan nonce.
+    expect(jaga.praIsi({ ...a, tanda: 'f'.repeat(64) }, t)).toBe(true);
+    expect(jaga.praIsi(a, t)).toBe(true);
+    expect(jaga(a, 'POST', '/internal/sesi/berkas', '{}', t)).toBe(true);
+    expect(jaga.praIsi(a, t)).toBe(false);
+  });
 });
