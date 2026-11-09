@@ -16,3 +16,6 @@ export const actions: Actions = {
   /** Mulai urusan dari kotak cerita Beranda atau tombol di halaman peristiwa (jalan tanpa JavaScript). */
   mulai: (event) => mulaiUrusanDariForm(event),
 };
+
+/** Landing statis (frame n2rpg): tanpa hidrasi, nol JS di halaman ini; formulir tetap jalan lewat POST. */
+export const csr = false;
