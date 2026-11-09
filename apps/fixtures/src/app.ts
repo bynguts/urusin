@@ -5,6 +5,7 @@ import { asalSah, JALUR_LINTAS, JALUR_WIDGET, originLintas, registerUjiCf } from
 import type { Config } from './config.js';
 import { html, page } from './layout.js';
 import { registerPoisoned } from './poisoned.js';
+import { registerSamsatOss } from './samsat-oss.js';
 import { registerSemarang } from './semarang.js';
 import { registerSurabaya } from './surabaya.js';
 import { createStore, nomorRegistrasi, SERVICES, type Session } from './store.js';
@@ -291,6 +292,7 @@ export function createApp(config: Config) {
   // Replika alur publik read-only (jinak, ada di kedua profil).
   registerSurabaya(app);
   registerSemarang(app, { secure });
+  registerSamsatOss(app);
   registerUjiCf(app);
 
   // Rute berbahaya: terdaftar HANYA di profil local (placeholder), tidak ada sama sekali di public (404).
