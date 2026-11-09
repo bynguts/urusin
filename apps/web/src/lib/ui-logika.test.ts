@@ -106,7 +106,13 @@ describe('Browser Pendamping', () => {
     expect(daftarWrite(['{{KENDARAAN.NOPOL_ANGKA}}'], [])).toEqual([]);
     expect(kolomDari('{{PEMOHON.HP}}')).toBe('hp');
     expect(kolomDari('{{URUSAN.KITIR}}')).toBeUndefined();
-    for (const p of ['{{ANAK.NIK}}', '{{ORANG2.NIK}}', '{{PEMOHON.AYAH.NAMA}}', '{{PEMOHON.ALAMAT.RT}}', '{{XPEMOHON.NIK}}'])
+    for (const p of [
+      '{{ANAK.NIK}}',
+      '{{ORANG2.NIK}}',
+      '{{PEMOHON.AYAH.NAMA}}',
+      '{{PEMOHON.ALAMAT.RT}}',
+      '{{XPEMOHON.NIK}}',
+    ])
       expect(kolomDari(p)).toBeUndefined();
   });
 
