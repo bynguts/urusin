@@ -293,7 +293,7 @@ dibagikan.
   - Glosarium istilah: `data/glossary/`, merujuk sumber di `data/sources.json`.
 - **Aset desain:**
   - Desain UI, token, ilustrasi maskot, dan logo dibuat oleh Rafi Cahya Mahardika di pen.dev.
-  - Font **Strawberry Sans** (`apps/web/src/lib/assets/fonts/`).
+  - Font Strawberry Sans (aset desain tim, design system Rafi).
 - **Pustaka sumber terbuka utama:** SvelteKit, Svelte, Vite, Tailwind CSS, Playwright, Hono, better-sqlite3,
   zod, `openai` (SDK resmi), jose, undici, Turborepo, Vitest, ESLint, Prettier, commitlint, husky. Versi
   lengkap ada di `pnpm-lock.yaml`.
