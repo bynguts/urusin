@@ -632,8 +632,16 @@ describe('#47 rotasi tamu → akun (§3.26.6)', () => {
     const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
     akun.vault.setDataDiri(a.id, { namaLengkap: 'Nama Akun' });
     const tamu = await siapkanTamu('sid-lama');
+    // pemilik vault urusan (jalur isi Pendamping): hanya pemiliknya sendiri
+    expect(akun.pemilikVaultUrusan('u_t1', { sid: 'sid-lama' })).toBe(tamu);
+    expect(akun.pemilikVaultUrusan('u_t1', { sid: 'sid-orang-lain' })).toBeUndefined();
+    expect(akun.pemilikVaultUrusan('u_t1', {})).toBeUndefined();
+    expect(akun.pemilikVaultUrusan('u_tidak_ada', { sid: 'sid-lama' })).toBeUndefined();
 
     const r = akun.rotasiPemilik({ sidLama: 'sid-lama', sidBaru: 'sid-baru', userId: a.id });
+    expect(akun.pemilikVaultUrusan('u_t1', { akun: a })).toBe(a.id);
+    expect(akun.pemilikVaultUrusan('u_t1', { sid: 'sid-baru' })).toBeUndefined();
+    expect(akun.pemilikVaultUrusan('u_t1', { sid: 'sid-lama' })).toBeUndefined();
     expect(r).toEqual({ urusanDipindahkan: 2, vaultDipindahkan: true });
     expect(akun.urusanMilik(a.id).sort()).toEqual(['u_t1', 'u_t2']);
     expect(akun.vault.getDataDiri(a.id)!.data).toEqual({ namaLengkap: 'Nama Akun', kecamatan: 'Wonogiri' });
