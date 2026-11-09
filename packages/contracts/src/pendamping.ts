@@ -287,6 +287,8 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
      * (mis. Cloudflare) yang hanya boleh diselesaikan warga sendiri. `login` dipertahankan untuk gerbang lama.
      * `isi_sendiri`: nilai kolom yang disorot tidak ada di daftar write (mis. nomor kitir, NIB); warga
      * mengetiknya di situs lalu menekan Lanjutkan (`kembalikan`). Nilainya tidak dicatat dan tidak ke AI.
+     * `berkas_kurang`: Dokumen untuk langkah unggah belum ada di akun (`berkas`); warga menambahkannya di
+     * /dokumen, lalu Lanjutkan = "Izinkan isi" baru untuk berkas itu saja, dan langkah unggah diulang.
      */
     alasan: z.enum([
       'login',
@@ -296,9 +298,14 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
       'masuk_akun',
       'verifikasi_situs',
       'isi_sendiri',
+      'berkas_kurang',
     ]),
     pesan: z.string(),
     sorot: PendampingSorotSchema.optional(),
+    /** Hanya `berkas_kurang`: nama berkas adapter dan origin situs tujuan (untuk persetujuan ulang). */
+    berkas: z
+      .object({ nama: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/), origin: z.url().max(2048) })
+      .optional(),
   }),
   /** Situs memblokir peramban server (WAF/bot wall): urusan beralih ke mode dipandu. */
   z.object({ jenis: z.literal('dipandu'), pesan: z.string() }),

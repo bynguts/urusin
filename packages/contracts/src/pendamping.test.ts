@@ -157,13 +157,21 @@ describe('kontrak pendamping', () => {
         bukti: { nomor: 'TS-UJI/0002', status: 'Baru diajukan' },
       }).success,
     ).toBe(true);
-    for (const alasan of ['masuk_akun', 'verifikasi_situs', 'isi_sendiri'])
+    for (const alasan of ['masuk_akun', 'verifikasi_situs', 'isi_sendiri', 'berkas_kurang'])
       expect(
         PendampingServerMessageSchema.safeParse({
           type: 'event',
           event: { jenis: 'giliran_anda', alasan, pesan: 'p' },
         }).success,
       ).toBe(true);
+    const kurang = (berkas: unknown) =>
+      PendampingServerMessageSchema.safeParse({
+        type: 'event',
+        event: { jenis: 'giliran_anda', alasan: 'berkas_kurang', pesan: 'p', berkas },
+      }).success;
+    expect(kurang({ nama: 'ktp', origin: 'https://telunjuksakti.wonogirikab.go.id' })).toBe(true);
+    expect(kurang({ nama: '../x', origin: 'https://a.go.id' })).toBe(false);
+    expect(kurang({ nama: 'ktp', origin: 'bukan url' })).toBe(false);
     expect(PendampingClientMessageSchema.safeParse({ type: 'ack', seq: 3 }).success).toBe(true);
     expect(PendampingServerMessageSchema.safeParse({ type: 'fokus', jenis: 'sandi' }).success).toBe(true);
     // Nomor bukti hanya karakter aman (tidak bisa membawa markup/instruksi panjang).
