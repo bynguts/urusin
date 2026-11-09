@@ -617,6 +617,9 @@ describe('#47 tamu malas, salinan demo, dan batas per IP', () => {
     expect(kunciIp('fe80::1%eth0')).toBe('fe80:0:0:0::/64');
     expect(kunciIp('203.0.113.5')).toBe('203.0.113.5');
     expect(kunciIp('tak-dikenal')).toBe('tak-dikenal');
+    expect(kunciIp('1::2::3')).toBe('1::2::3');
+    expect(kunciIp('zz::1')).toBe('zz::1');
+    expect(kunciIp('2001:db8::300.1.1.1')).toBe('2001:db8::300.1.1.1');
     for (let i = 0; i < 20; i++)
       akun.pastikanTamu(`sid6-${i}`, { ip: `2001:db8:5:6::${(i + 1).toString(16)}` });
     expect((await galat(() => akun.pastikanTamu('sid6-x', { ip: '2001:db8:5:6:dead:beef::9' }))).kode).toBe(

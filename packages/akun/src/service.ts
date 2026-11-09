@@ -1,4 +1,3 @@
-import { isIPv6 } from 'node:net';
 import type { Db } from '@urusin/harness';
 import { dataDiriSintetis } from './demo.js';
 import { maskEmail, normalizeEmail } from './email.js';
@@ -151,15 +150,21 @@ export function kunciIp(ip: string): string {
   const v4 = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(ip);
   if (v4) return v4[1]!;
   const bersih = ip.split('%')[0]!.toLowerCase();
-  if (!isIPv6(bersih)) return ip;
+  if (!bersih.includes(':')) return ip;
   const ekor = /(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(bersih); // IPv4 tertanam = 2 hextet
   const o = ekor ? ekor.slice(1).map(Number) : [];
+  if (o.some((n) => n > 255)) return ip;
   const teks = ekor
     ? `${bersih.slice(0, -ekor[0].length)}${((o[0]! << 8) | o[1]!).toString(16)}:${((o[2]! << 8) | o[3]!).toString(16)}`
     : bersih;
-  const [kiri, kanan] = teks.split('::') as [string, string | undefined];
+  const bagian = teks.split('::');
+  if (bagian.length > 2) return ip;
+  const [kiri, kanan] = bagian as [string, string | undefined];
   const a = kiri ? kiri.split(':') : [];
   const b = kanan ? kanan.split(':') : [];
+  // Validasi tanpa node:net (dilarang lint di paket ini): 1-4 digit hex per hextet, total 8.
+  if (![...a, ...b].every((h) => /^[0-9a-f]{1,4}$/.test(h))) return ip;
+  if (kanan === undefined ? a.length !== 8 : a.length + b.length > 7) return ip;
   const penuh = kanan === undefined ? a : [...a, ...Array<string>(8 - a.length - b.length).fill('0'), ...b];
   return `${penuh
     .slice(0, 4)
