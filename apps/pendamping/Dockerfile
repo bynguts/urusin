@@ -42,10 +42,16 @@ FROM mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e
 # Direktori Chromium Playwright berbeda per arsitektur (amd64: chrome-linux64, arm64: chrome-linux-arm64).
 # Dipetakan lewat stage per arsitektur + ENV (diwarisi stage runtime), tanpa RUN, jadi build silang tetap
 # tanpa QEMU. Arsitektur lain tidak punya stage: build gagal, bukan diam-diam tanpa sandbox.
+# gst-ptp-helper dari image dasar membawa capability berkas (xattr security.capability, =ep). COPY membawa xattr
+# apa adanya, jadi berkasnya disalin ulang di platform build (cp biasa tanpa xattr, tanpa QEMU).
+FROM --platform=$BUILDPLATFORM node:26-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS tanpacap
+COPY --from=pwbasis /usr/lib/*-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-ptp-helper /tmp/
+RUN cp /tmp/gst-ptp-helper /gst-ptp-helper
+
 FROM pwbasis AS pw-amd64
-ENV PENDAMPING_CHROME_DIR=/ms-playwright/chromium-1254/chrome-linux64
+ENV PENDAMPING_CHROME_DIR=/ms-playwright/chromium-1254/chrome-linux64     PENDAMPING_GST_DIR=/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0
 FROM pwbasis AS pw-arm64
-ENV PENDAMPING_CHROME_DIR=/ms-playwright/chromium-1254/chrome-linux-arm64
+ENV PENDAMPING_CHROME_DIR=/ms-playwright/chromium-1254/chrome-linux-arm64     PENDAMPING_GST_DIR=/usr/lib/aarch64-linux-gnu/gstreamer1.0/gstreamer-1.0
 
 FROM pw-${TARGETARCH} AS runtime
 ARG GIT_SHA=dev
@@ -78,6 +84,9 @@ COPY --from=pwbasis --chmod=0755 \
 COPY --from=pwbasis --chmod=0755 /usr/sbin/pam_extrausers_chkpwd /usr/sbin/unix_chkpwd /usr/sbin/
 COPY --from=pwbasis --chmod=0755 /usr/lib/openssh/ssh-keysign /usr/lib/openssh/
 COPY --from=pwbasis --chmod=0755 /usr/lib/dbus-1.0/dbus-daemon-launch-helper /usr/lib/dbus-1.0/
+# Capability berkas juga dicabut: gst-ptp-helper (cap_net_bind_service,cap_net_admin,cap_sys_nice=ep) diganti
+# salinan tanpa xattr dari tahap `tanpacap`. Smoke rilis memeriksa `getcap -r /` kosong.
+COPY --from=tanpacap --chmod=0755 /gst-ptp-helper ${PENDAMPING_GST_DIR}/gst-ptp-helper
 LABEL org.opencontainers.image.source="https://github.com/bynguts/urusin" \
       org.opencontainers.image.revision=$GIT_SHA
 WORKDIR /app
