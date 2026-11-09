@@ -3,6 +3,8 @@
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
+  import LandingFooter from '#lib/components/landing/LandingFooter.svelte';
+  import LandingNav from '#lib/components/landing/LandingNav.svelte';
   import av_rose_melambai_140_avif from '#lib/assets/img/pen-landing/rose-melambai-140.avif';
   import av_rose_melambai_179_avif from '#lib/assets/img/pen-landing/rose-melambai-179.avif';
   import av_rose_melambai_230_avif from '#lib/assets/img/pen-landing/rose-melambai-230.avif';
@@ -43,7 +45,6 @@
   import av_amber_berdiri_455_avif from '#lib/assets/img/pen-landing/amber-berdiri-455.avif';
   import av_amber_berdiri_520_avif from '#lib/assets/img/pen-landing/amber-berdiri-520.avif';
   import g58006f1 from '#lib/assets/img/pen-landing/hero-pattern-fcb3-1440.webp';
-  import g205a519 from '#lib/assets/img/pen-landing/urusin-mark-52.webp';
   import g7318dfb from '#lib/assets/img/pen-landing/rose-melambai-140.webp';
   import g53b40cd from '#lib/assets/img/pen-landing/rose-melambai-179.webp';
   import gda9322b from '#lib/assets/img/pen-landing/rose-melambai-230.webp';
@@ -207,34 +208,7 @@
       decoding="async"
       aria-hidden="true"
     />
-    <header class="n-header lp3">
-      <a class="lp4" href="#atas" aria-label="Urusin, ke atas">
-        <img class="lp5" src={g205a519} alt="" width="26" height="26" decoding="async" />
-        <span class="lp6"> Urusin </span>
-      </a>
-      <nav class="n-nav-links lp7" aria-label="Navigasi utama">
-        <a class="lp8" href="#cara-kerja">
-          <span class="lp9"> Cara kerja </span>
-        </a>
-        <a class="lp8" href="#urusan">
-          <span class="lp9"> Urusan </span>
-        </a>
-        <a class="lp8" href="#privasi">
-          <span class="lp9"> Privasi </span>
-        </a>
-        <a class="lp8" href="#tanya-jawab">
-          <span class="lp9"> Tanya jawab </span>
-        </a>
-      </nav>
-      <div class="lp10">
-        <a class="lp8" href={resolve('/masuk')}>
-          <span class="lp9"> Masuk </span>
-        </a>
-        <a class="lp11" href="{resolve('/beranda')}?baru">
-          <span class="lp12"> Mulai gratis </span>
-        </a>
-      </div>
-    </header>
+    <LandingNav />
     <div class="n-hero-copy lp13">
       <h1 class="lp14">
         Urusan administrasi,
@@ -2660,44 +2634,5 @@
       </div>
     </div>
   </section>
-  <footer class="n-footer lp295">
-    <div class="n-top lp296">
-      <div class="lp297">
-        <div class="lp4">
-          <img class="lp5" src={g205a519} alt="" width="26" height="26" loading="lazy" decoding="async" />
-          <div class="lp298">Urusin</div>
-        </div>
-        <div class="lp299">
-          © 2026 Urusin.
-          <br />
-          Bukan situs pemerintah.
-        </div>
-      </div>
-      <div class="n-columns lp300">
-        <div class="lp301">
-          <div class="lp299">Produk</div>
-          <a class="lp302" href="#cara-kerja"> Cara kerja </a>
-          <a class="lp302" href="#urusan"> Urusan </a>
-          <a class="lp302" href="#cara-kerja"> Browser Pendamping </a>
-        </div>
-        <div class="lp301">
-          <div class="lp299">Bantuan</div>
-          <a class="lp302" href="#tanya-jawab"> Tanya jawab </a>
-          <a class="lp302" href={resolve('/bantuan')}> Hubungi kami </a>
-          <a class="lp302" href="#urusan"> Untuk keluarga </a>
-        </div>
-        <div class="lp301">
-          <div class="lp299">Tentang</div>
-          <div class="lp302">Tentang kami</div>
-          <a class="lp302" href="#privasi"> Privasi </a>
-          <a class="lp302" href="#privasi"> Sumber rujukan </a>
-        </div>
-      </div>
-    </div>
-    <div class="n-bottom lp303">
-      <a class="lp304" href="#privasi"> Kebijakan privasi </a>
-      <div class="lp304">Syarat layanan</div>
-      <a class="lp304" href={resolve('/pengaturan')}> Hapus data saya </a>
-    </div>
-  </footer>
+  <LandingFooter diLanding />
 </main>

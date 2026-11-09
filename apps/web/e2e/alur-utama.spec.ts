@@ -49,3 +49,32 @@ for (const lebar of [390, 1440]) {
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Apa yang ingin Anda urus?');
   });
 }
+
+// /privasi (frame F6RSq): statis tanpa JS, dicapai dari tautan persetujuan /daftar dan navigasi landing.
+for (const lebar of [390, 1440]) {
+  test(`privasi dari /daftar dan landing di ${lebar}px`, async ({ page }) => {
+    await page.setViewportSize({ width: lebar, height: lebar < 600 ? 844 : 960 });
+    await page.goto('/daftar');
+    await page.getByRole('link', { name: 'Kebijakan privasi' }).first().click();
+    await expect(page).toHaveURL(/\/privasi$/);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Data keluargamu tetap milikmu');
+    await expect(page.getByRole('table', { name: 'Data yang disimpan Urusin' })).toBeVisible();
+    expect(await page.locator('script').count()).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
+    await expect(page.getByRole('link', { name: 'Hapus data saya' }).first()).toHaveAttribute(
+      'href',
+      /pengaturan#zona-bahaya$/,
+    );
+    if (lebar >= 1024) {
+      await page.goto('/');
+      await page
+        .getByRole('navigation', { name: 'Navigasi utama' })
+        .getByRole('link', { name: 'Privasi' })
+        .click();
+      await expect(page).toHaveURL(/\/privasi$/);
+      await expect(
+        page.getByRole('navigation', { name: 'Navigasi utama' }).getByRole('link', { name: 'Privasi' }),
+      ).toHaveAttribute('aria-current', 'page');
+    }
+  });
+}
