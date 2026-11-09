@@ -130,7 +130,7 @@
           inputmode="email"
           autocomplete="email"
           required
-          value={form?.email ?? ''}
+          defaultValue={form?.email ?? ''}
           class="h-14 w-full rounded-[14px] border border-line-2 bg-surface px-4 text-[1.125rem] text-ink"
         />
       </div>

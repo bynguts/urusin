@@ -1,15 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { devices, expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { DB_PATH, E2E_DIR, E2E_GIT_SHA, ORIGIN, OUTBOX } from '../playwright.config';
+import { DB_PATH, E2E_GIT_SHA, ORIGIN, OUTBOX } from '../playwright.config';
 
 /**
  * E2E akun #43–#49 (rencana §3.26, §4 e2e). Kasus berbasis waktu (penyapu 24 jam, kedaluwarsa izin) memakai
  * jam palsu di vitest (`packages/akun/src/service.test.ts`); di sini waktu "dimajukan" dengan menulis ke DB.
  */
-
-mkdirSync(E2E_DIR, { recursive: true });
 
 const TURNSTILE = 'XXXX.DUMMY.TOKEN.XXXX';
 const SANDI = 'kuda-lari-cepat-9';
@@ -585,4 +583,34 @@ test('#49 zona bahaya di Pengaturan: keluar dari semua perangkat, lalu hapus aku
   await expect(p).toHaveURL(`${ORIGIN}/`);
   expect(hitung('SELECT COUNT(*) n FROM users WHERE email = ?', email)).toBe(0);
   await tanpaJs.close();
+});
+
+test('isian sebelum hidrasi tidak terhapus (HP lambat): email tetap, form tetap terkirim', async ({
+  page,
+  context,
+}) => {
+  await pakaiIp(context);
+  // Tahan potongan JS halaman agar warga (dan Playwright) mengetik SEBELUM hidrasi, lalu lepaskan.
+  const email = emailBaru('hidrasi');
+  for (const path of ['/daftar', '/lupa-sandi', '/masuk'] as const) {
+    let lepas = () => {};
+    const ditahan = new Promise<void>((r) => (lepas = r));
+    await page.route('**/_app/immutable/nodes/**', async (route) => {
+      await ditahan;
+      await route.continue();
+    });
+    try {
+      await page.goto(path);
+      await page.getByLabel('Email').fill(email);
+    } finally {
+      lepas(); // selalu dilepas: permintaan tertahan tidak boleh menggantung penutupan konteks
+    }
+    await page.waitForLoadState('networkidle');
+    await page.unrouteAll();
+    await expect(page.getByLabel('Email')).toHaveValue(email);
+  }
+  // Setelah hidrasi form masuk (use:enhance) terkirim dengan email itu dan menampilkan galat.
+  await page.getByLabel('Kata sandi').fill(SANDI2);
+  await page.getByRole('button', { name: 'Masuk', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveAttribute('data-kode', 'KREDENSIAL_SALAH');
 });
