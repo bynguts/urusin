@@ -3,6 +3,25 @@
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
+  import av_purple_laptop_340_avif from '#lib/assets/img/pen-landing/purple-laptop-340.avif';
+  import av_purple_laptop_401_avif from '#lib/assets/img/pen-landing/purple-laptop-401.avif';
+  import av_purple_laptop_680_avif from '#lib/assets/img/pen-landing/purple-laptop-680.avif';
+  import av_rose_berdiri_350_avif from '#lib/assets/img/pen-landing/rose-berdiri-350.avif';
+  import av_rose_berdiri_413_avif from '#lib/assets/img/pen-landing/rose-berdiri-413.avif';
+  import av_rose_berdiri_700_avif from '#lib/assets/img/pen-landing/rose-berdiri-700.avif';
+  import av_blue_melambai_350_avif from '#lib/assets/img/pen-landing/blue-melambai-350.avif';
+  import av_blue_melambai_413_avif from '#lib/assets/img/pen-landing/blue-melambai-413.avif';
+  import av_blue_melambai_700_avif from '#lib/assets/img/pen-landing/blue-melambai-700.avif';
+  import av_rose_berdiri_455_avif from '#lib/assets/img/pen-landing/rose-berdiri-455.avif';
+  import av_rose_berdiri_520_avif from '#lib/assets/img/pen-landing/rose-berdiri-520.avif';
+  import av_purple_berdiri_455_avif from '#lib/assets/img/pen-landing/purple-berdiri-455.avif';
+  import av_purple_berdiri_520_avif from '#lib/assets/img/pen-landing/purple-berdiri-520.avif';
+  import av_blue_berdiri_455_avif from '#lib/assets/img/pen-landing/blue-berdiri-455.avif';
+  import av_blue_berdiri_520_avif from '#lib/assets/img/pen-landing/blue-berdiri-520.avif';
+  import av_green_membaca_455_avif from '#lib/assets/img/pen-landing/green-membaca-455.avif';
+  import av_green_membaca_520_avif from '#lib/assets/img/pen-landing/green-membaca-520.avif';
+  import av_amber_berdiri_455_avif from '#lib/assets/img/pen-landing/amber-berdiri-455.avif';
+  import av_amber_berdiri_520_avif from '#lib/assets/img/pen-landing/amber-berdiri-520.avif';
   import g58006f1 from '#lib/assets/img/pen-landing/hero-pattern-fcb3-1440.webp';
   import g205a519 from '#lib/assets/img/pen-landing/urusin-mark-52.webp';
   import g7318dfb from '#lib/assets/img/pen-landing/rose-melambai-140.webp';
@@ -425,39 +444,63 @@
       <div class="lp70"></div>
       <div class="lp71"></div>
       <div class="lp72"></div>
-      <img
-        class="lp73"
-        src={g5b02458}
-        srcset="{g5b02458} 340w, {g2148074} 401w, {g5030df1} 680w"
-        sizes="(max-width: 767px) 218px, 340px"
-        alt=""
-        width="340"
-        height="371"
-        loading="lazy"
-        decoding="async"
-      />
-      <img
-        class="lp74"
-        src={ge2ac5d7}
-        srcset="{ge2ac5d7} 350w, {ga87fdfd} 413w, {g7c2ee55} 700w"
-        sizes="(max-width: 767px) 224px, 350px"
-        alt=""
-        width="350"
-        height="382"
-        loading="lazy"
-        decoding="async"
-      />
-      <img
-        class="lp75"
-        src={gd9fb205}
-        srcset="{gd9fb205} 350w, {gaf896aa} 413w, {gd5b045e} 700w"
-        sizes="(max-width: 767px) 224px, 350px"
-        alt=""
-        width="350"
-        height="382"
-        loading="lazy"
-        decoding="async"
-      />
+      <picture class="lp-pic">
+        <source
+          media="(max-width: 767px)"
+          type="image/avif"
+          srcset="{av_purple_laptop_340_avif} 340w, {av_purple_laptop_401_avif} 401w, {av_purple_laptop_680_avif} 680w"
+          sizes="218px"
+        />
+        <img
+          class="lp73"
+          src={g5b02458}
+          srcset="{g5b02458} 340w, {g2148074} 401w, {g5030df1} 680w"
+          sizes="(max-width: 767px) 218px, 340px"
+          alt=""
+          width="340"
+          height="371"
+          loading="lazy"
+          decoding="async"
+        />
+      </picture>
+      <picture class="lp-pic">
+        <source
+          media="(max-width: 767px)"
+          type="image/avif"
+          srcset="{av_rose_berdiri_350_avif} 350w, {av_rose_berdiri_413_avif} 413w, {av_rose_berdiri_700_avif} 700w"
+          sizes="224px"
+        />
+        <img
+          class="lp74"
+          src={ge2ac5d7}
+          srcset="{ge2ac5d7} 350w, {ga87fdfd} 413w, {g7c2ee55} 700w"
+          sizes="(max-width: 767px) 224px, 350px"
+          alt=""
+          width="350"
+          height="382"
+          loading="lazy"
+          decoding="async"
+        />
+      </picture>
+      <picture class="lp-pic">
+        <source
+          media="(max-width: 767px)"
+          type="image/avif"
+          srcset="{av_blue_melambai_350_avif} 350w, {av_blue_melambai_413_avif} 413w, {av_blue_melambai_700_avif} 700w"
+          sizes="224px"
+        />
+        <img
+          class="lp75"
+          src={gd9fb205}
+          srcset="{gd9fb205} 350w, {gaf896aa} 413w, {gd5b045e} 700w"
+          sizes="(max-width: 767px) 224px, 350px"
+          alt=""
+          width="350"
+          height="382"
+          loading="lazy"
+          decoding="async"
+        />
+      </picture>
       <div class="lp76">
         <img
           class="lp77"
@@ -1091,7 +1134,23 @@
       <div class="lp108">
         <div class="lp109" aria-hidden="true">
           <img class="lp68" src={g5c7b0aa} alt="" width="333" height="196" loading="lazy" decoding="async" />
-          <img class="lp110" src={gbd4cf91} alt="" width="260" height="284" loading="lazy" decoding="async" />
+          <picture class="lp-pic">
+            <source
+              media="(max-width: 767px)"
+              type="image/avif"
+              srcset="{av_rose_berdiri_455_avif} 455w, {av_rose_berdiri_520_avif} 520w"
+              sizes="260px"
+            />
+            <img
+              class="lp110"
+              src={gbd4cf91}
+              alt=""
+              width="260"
+              height="284"
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
           <div class="lp111">
             <img
               class="lp112"
@@ -1130,7 +1189,23 @@
       <div class="lp108">
         <div class="lp109" aria-hidden="true">
           <img class="lp68" src={g870d35b} alt="" width="333" height="196" loading="lazy" decoding="async" />
-          <img class="lp110" src={g4dc73ea} alt="" width="260" height="284" loading="lazy" decoding="async" />
+          <picture class="lp-pic">
+            <source
+              media="(max-width: 767px)"
+              type="image/avif"
+              srcset="{av_purple_berdiri_455_avif} 455w, {av_purple_berdiri_520_avif} 520w"
+              sizes="260px"
+            />
+            <img
+              class="lp110"
+              src={g4dc73ea}
+              alt=""
+              width="260"
+              height="284"
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
           <div class="lp119">
             <img
               class="lp112"
@@ -1169,7 +1244,23 @@
       <div class="lp108">
         <div class="lp109" aria-hidden="true">
           <img class="lp68" src={g8836483} alt="" width="333" height="196" loading="lazy" decoding="async" />
-          <img class="lp110" src={g6518f7f} alt="" width="260" height="284" loading="lazy" decoding="async" />
+          <picture class="lp-pic">
+            <source
+              media="(max-width: 767px)"
+              type="image/avif"
+              srcset="{av_blue_berdiri_455_avif} 455w, {av_blue_berdiri_520_avif} 520w"
+              sizes="260px"
+            />
+            <img
+              class="lp110"
+              src={g6518f7f}
+              alt=""
+              width="260"
+              height="284"
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
           <div class="lp121">
             <img
               class="lp112"
@@ -1210,7 +1301,23 @@
       <div class="lp108">
         <div class="lp109" aria-hidden="true">
           <img class="lp68" src={g30dc911} alt="" width="333" height="196" loading="lazy" decoding="async" />
-          <img class="lp110" src={g160b36a} alt="" width="260" height="284" loading="lazy" decoding="async" />
+          <picture class="lp-pic">
+            <source
+              media="(max-width: 767px)"
+              type="image/avif"
+              srcset="{av_green_membaca_455_avif} 455w, {av_green_membaca_520_avif} 520w"
+              sizes="260px"
+            />
+            <img
+              class="lp110"
+              src={g160b36a}
+              alt=""
+              width="260"
+              height="284"
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
           <div class="lp123">
             <img
               class="lp112"
@@ -1249,7 +1356,23 @@
       <div class="lp108">
         <div class="lp109" aria-hidden="true">
           <img class="lp68" src={g6714886} alt="" width="333" height="196" loading="lazy" decoding="async" />
-          <img class="lp110" src={g60d4976} alt="" width="260" height="284" loading="lazy" decoding="async" />
+          <picture class="lp-pic">
+            <source
+              media="(max-width: 767px)"
+              type="image/avif"
+              srcset="{av_amber_berdiri_455_avif} 455w, {av_amber_berdiri_520_avif} 520w"
+              sizes="260px"
+            />
+            <img
+              class="lp110"
+              src={g60d4976}
+              alt=""
+              width="260"
+              height="284"
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
           <div class="lp125">
             <img
               class="lp112"
