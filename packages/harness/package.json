@@ -25,6 +25,7 @@
     "migrate": "tsc -p tsconfig.build.json && node dist/migrate-cli.js"
   },
   "dependencies": {
+    "@urusin/adapters": "workspace:*",
     "@urusin/contracts": "workspace:*",
     "@urusin/core": "workspace:*",
     "@urusin/llm": "workspace:*",
