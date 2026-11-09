@@ -88,8 +88,8 @@
   ];
   const PRIVASI = [
     {
-      judul: 'Data Anda terenkripsi',
-      ket: 'Data Diri dan dokumen disimpan terenkripsi. AI hanya melihat penanda, tidak pernah NIK, KK, atau nomor HP Anda.',
+      judul: 'Dokumen di perangkat Anda',
+      ket: 'Dirancang agar berkas sensitif dikelola di perangkat, dengan informasi minimum untuk AI.',
     },
     {
       judul: 'Izin yang bisa dipahami',
@@ -97,7 +97,7 @@
     },
     {
       judul: 'Bisa ditinjau dan dihapus',
-      ket: 'Jejak mencatat setiap langkah. Data tanpa akun terhapus sendiri dalam 72 jam; akun bisa dihapus kapan saja.',
+      ket: 'Rancangan menyediakan riwayat bantuan serta pilihan menghapus data Anda.',
     },
   ];
   const FAQ = [
