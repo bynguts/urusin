@@ -59,6 +59,8 @@ for (const lebar of [390, 1440]) {
     await expect(page).toHaveURL(/\/privasi$/);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Data keluargamu tetap milikmu');
     await expect(page.getByRole('table', { name: 'Data yang disimpan Urusin' })).toBeVisible();
+    // Muat langsung: halaman statis tanpa satu pun <script> (navigasi dari /daftar dirender router klien).
+    await page.goto('/privasi');
     expect(await page.locator('script').count()).toBe(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
     await expect(page.getByRole('link', { name: 'Hapus data saya' }).first()).toHaveAttribute(
