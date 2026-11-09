@@ -6,7 +6,9 @@
 //
 //   node scripts/gen-caddyfile.mjs            # tulis ulang semua snippet yang di-commit
 //   node scripts/gen-caddyfile.mjs --check    # gagal (exit 1) bila snippet yang di-commit menyimpang
-//   node scripts/gen-caddyfile.mjs --set fallback [--fixtures] [--out <berkas>]   # satu set, ke stdout/berkas
+//   node scripts/gen-caddyfile.mjs --set fallback [--fixtures] [--pendamping] [--import <path>] [--out <berkas>]
+//   node scripts/gen-caddyfile.mjs --check --set primary [--fixtures] [--pendamping] [--import <path>] --file <berkas>
+//                                             # gagal (exit 1) bila <berkas> (mis. snippet terpasang) menyimpang
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -18,6 +20,9 @@ export const COMMITTED = {
   primary: 'deploy/Caddyfile.urusin.primary',
   fallback: 'deploy/Caddyfile.urusin.fallback',
 };
+/** Path import bawaan (DEFAULT_TARGET deploy/caddy-install.sh). */
+const DEFAULT_IMPORT = '/etc/caddy/urusin/Caddyfile.urusin';
+const IMPORT_RE = /^(\/[A-Za-z0-9._-]+)+\/Caddyfile\.urusin$/;
 const HOST_RE = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 
 /** Validasi satu set host: harus hostname DNS polos huruf kecil (tanpa skema, port, wildcard, `{`). */
@@ -57,9 +62,19 @@ const ENCODE_TYPES = [
   'image/x-icon*',
 ];
 
-/** Render snippet untuk satu set. `fixtures` true = blok fixtures aktif (default: dikomentari). */
-export function render(setName, set, { fixtures = false } = {}) {
+/**
+ * Render snippet untuk satu set. `fixtures` true = blok fixtures aktif; `pendamping` true = blok
+ * `handle /pendamping/ws/*` aktif (keduanya default: dikomentari). `importPath` = path snippet yang disebut
+ * komentar baris import (VPS saat ini: /opt/urusin/Caddyfile.urusin; lihat deploy/README.md "Caddy").
+ */
+export function render(
+  setName,
+  set,
+  { fixtures = false, pendamping = false, importPath = DEFAULT_IMPORT } = {},
+) {
   const { app, verify, fixtures: fx } = validateSet(setName, set);
+  if (!IMPORT_RE.test(importPath))
+    throw new Error(`--import bukan path absolut .../Caddyfile.urusin: ${importPath}`);
   const fxLines = [
     `${fx} {`,
     `\tencode zstd gzip`,
@@ -75,12 +90,19 @@ export function render(setName, set, { fixtures = false } = {}) {
     `}`,
   ];
   const fxBlock = fixtures ? fxLines.join('\n') : fxLines.map((l) => (l ? `# ${l}` : '#')).join('\n');
+  const pdLines = [
+    'handle /pendamping/ws/* {',
+    '\turi strip_prefix /pendamping',
+    '\treverse_proxy 127.0.0.1:4330',
+    '}',
+  ];
+  const pdBlock = pdLines.map((l) => (pendamping ? `\t${l}` : `\t# ${l}`)).join('\n');
   return `# DIBANGKITKAN dari deploy/hosts.json (set "${setName}") oleh scripts/gen-caddyfile.mjs. JANGAN DIEDIT
 # MANUAL: ubah hosts.json lalu jalankan \`node scripts/gen-caddyfile.mjs\`. CI menolak snippet yang menyimpang.
 #
 # Dipasang ke Caddy sistem (yang sudah memegang 80/443 dan situs lain) lewat SATU baris di Caddyfile host:
 #
-#   import /etc/caddy/urusin/Caddyfile.urusin
+#   import ${importPath}
 #
 # Berkas itu salinan snippet set yang aktif (lihat deploy/README.md "Caddy"). Pasang tepat satu set:
 # nama snippet (urusin_common) sama di kedua set. Hostname ditulis literal; snippet ini tidak memakai
@@ -144,10 +166,7 @@ ${app}, ${verify} {
 \t# diteruskan; /internal/* dan /debug pendamping tidak pernah diekspos. Pendamping memeriksa Origin
 \t# persis, cookie urusin_sid pemilik, dan tiket sekali pakai.
 \t#
-\t# handle /pendamping/ws/* {
-\t# \turi strip_prefix /pendamping
-\t# \treverse_proxy 127.0.0.1:4330
-\t# }
+${pdBlock}
 \timport urusin_common
 }
 
@@ -183,6 +202,35 @@ function main(argv) {
     return i === -1 ? undefined : argv[i + 1];
   };
   const hosts = loadHosts();
+  const set = arg('--set');
+  const opsi = {
+    fixtures: argv.includes('--fixtures'),
+    pendamping: argv.includes('--pendamping'),
+    importPath: arg('--import') ?? DEFAULT_IMPORT,
+  };
+  if (set && !Object.hasOwn(COMMITTED, set)) {
+    console.error('gen-caddyfile: --set harus primary atau fallback');
+    return 2;
+  }
+  if (argv.includes('--check') && set) {
+    const file = arg('--file');
+    if (!file) {
+      console.error('gen-caddyfile: --check --set butuh --file <berkas>');
+      return 2;
+    }
+    let cur = '';
+    try {
+      cur = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+    } catch {
+      /* berkas tidak ada = menyimpang */
+    }
+    if (cur !== render(set, hosts[set], opsi)) {
+      console.error(`gen-caddyfile: ${file} menyimpang dari keluaran --set ${set}`);
+      return 1;
+    }
+    console.log(`gen-caddyfile: ${file} cocok dengan keluaran --set ${set}`);
+    return 0;
+  }
   if (argv.includes('--check')) {
     const bad = drift(ROOT, hosts);
     if (bad.length) {
@@ -193,13 +241,8 @@ function main(argv) {
     console.log('gen-caddyfile: snippet cocok dengan deploy/hosts.json');
     return 0;
   }
-  const set = arg('--set');
   if (set) {
-    if (!Object.hasOwn(COMMITTED, set)) {
-      console.error('gen-caddyfile: --set harus primary atau fallback');
-      return 2;
-    }
-    const text = render(set, hosts[set], { fixtures: argv.includes('--fixtures') });
+    const text = render(set, hosts[set], opsi);
     const out = arg('--out');
     if (out) writeFileSync(out, text);
     else process.stdout.write(text);
