@@ -19,15 +19,15 @@ live, lihat Status di bawah). Login, OTP, CAPTCHA, dan **tombol Kirim terakhir s
 **Status (2026-11-09).** README ini hanya mengklaim yang sudah berjalan. Yang belum aktif di produksi ditandai
 **(belum live)**.
 
-| Bagian                                                               | Status                                                         |
-| -------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Percakapan agen, RAG bersumber, router 514 kab/kota, Peristiwa Hidup | Live di <https://urusinai.web.id>                              |
-| Akun (email + sandi, Google), mode tamu, tombol juri, vault, Jejak   | Live                                                           |
-| Browser Pendamping (pengisian formulir di situs resmi)               | Belum live: diintegrasikan di branch `feat/browser-pendamping` |
-| Situs latihan publik `fixtures.urusinai.web.id`                      | Belum live: dipakai lokal untuk e2e dan Mode Uji               |
+| Bagian                                                               | Status                                           |
+| -------------------------------------------------------------------- | ------------------------------------------------ |
+| Percakapan agen, RAG bersumber, router 514 kab/kota, Peristiwa Hidup | Live di <https://urusinai.web.id>                |
+| Akun (email + sandi, Google), mode tamu, tombol juri, vault, Jejak   | Live                                             |
+| Browser Pendamping (pengisian formulir di situs resmi)               | Live (portal `kirim-asli` + situs latihan)       |
+| Situs latihan publik `fixtures.urusinai.web.id`                      | Belum live: dipakai lokal untuk e2e dan Mode Uji |
 
-Sampai Browser Pendamping aktif, Urusin berhenti di rencana bersumber dan daftar berkas, lalu memandu warga
-mengisi sendiri di situs resmi (mode dipandu).
+Untuk daerah tanpa portal yang didukung adapter, Urusin berhenti di rencana bersumber dan daftar berkas, lalu
+memandu warga mengisi sendiri di situs resmi (mode dipandu).
 
 ## 1. Nama tim dan anggota
 
@@ -77,13 +77,13 @@ Fitur di bawah berjalan di <https://urusinai.web.id> dan diuji di CI, kecuali ya
   - Daerah ditentukan dari prefiks NIK atau pilihan warga.
   - Kontak Disdukcapil setiap daerah, dan status dukungan portal yang jujur per daerah: `kirim-asli`, `read-only`,
     `pending-recon`, atau `tidak-ada-portal`.
-- **Browser Pendamping (satu-satunya eksekutor)** **(belum live)**.
+- **Browser Pendamping (satu-satunya eksekutor).**
   - Satu Chromium per sesi di server. Layarnya dialirkan ke HP/laptop warga, jadi bisa dipakai di HP tanpa
     memasang apa pun.
   - AI mengisi kolom dan mengunggah berkas. Login, OTP, CAPTCHA, verifikasi situs, dan tombol Kirim diserahkan
     ke warga (mode _takeover_).
   - Setelah Kirim, nomor registrasi dibaca dari halaman untuk cek status.
-- **"Izinkan isi"** **(belum live)**. Sebelum mengisi, warga melihat daftar data yang akan ditulis dan situs tujuannya.
+- **"Izinkan isi".** Sebelum mengisi, warga melihat daftar data yang akan ditulis dan situs tujuannya.
   - Persetujuan berlaku sekali dan hanya untuk origin itu.
   - Nilai diambil server langsung dari vault, tidak pernah lewat peramban atau model.
 - **Akun opsional.** Tanpa akun (mode tamu) semua fitur tetap jalan.
@@ -106,21 +106,21 @@ Fitur di bawah berjalan di <https://urusinai.web.id> dan diuji di CI, kecuali ya
 
 ## 4. Teknologi
 
-| Lapisan            | Yang dipakai                                                                                                                                                                                            |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bahasa & monorepo  | TypeScript (strict), Node.js 26, pnpm 11, Turborepo                                                                                                                                                     |
-| Web                | SvelteKit 3 + Svelte 5, `@sveltejs/adapter-node`, Vite 8, Tailwind CSS 4                                                                                                                                |
-| Agen (harness)     | Harness sendiri di atas Chat Completions (`@urusin/harness`): state machine urusan, tool bertipe zod, policy gate, spotlighting, audit berantai                                                         |
-| Browser Pendamping | (belum live, branch `feat/browser-pendamping`) Chromium headed di Xvfb via Playwright + CDP screencast → WebSocket → `<canvas>`; interpreter DSL langkah (`@urusin/executor`) dan program adapter situs |
-| Basis data         | SQLite (`better-sqlite3`, mode WAL). BM25 lewat FTS5; vektor dengan cosine di JS di atas blob SQLite (bukan `sqlite-vec`)                                                                               |
-| Kriptografi & akun | `node:crypto` (argon2id bawaan Node, AES-256-GCM, HKDF), `jose` (verifikasi ID token Google OIDC)                                                                                                       |
-| Validasi & kontrak | zod 4, `@urusin/contracts` (skema event SSE dan endpoint, dibekukan setelah tag `contracts-take1`)                                                                                                      |
-| Egress             | `undici` dengan allowlist host dan pemeriksaan alamat (`@urusin/egress`): semua HTTP keluar server lewat satu pintu                                                                                     |
-| Situs latihan      | Hono (`apps/fixtures`)                                                                                                                                                                                  |
-| Pengujian          | Vitest, Playwright, `node:test` untuk skrip repositori, Lighthouse CI                                                                                                                                   |
-| Kualitas           | ESLint (flat config), Prettier, commitlint, husky (pre-commit: pemindai PII/secret)                                                                                                                     |
-| CI/CD & hosting    | GitHub Actions, image multi-arch di GHCR ditarik berdasarkan digest, Docker Compose di VPS Oracle Cloud (Singapura, arm64), Caddy milik host                                                            |
-| API & layanan luar | LLM OpenAI-compatible (SDK `openai`), Jina (embedding + rerank), Google OIDC, Resend (email), Cloudflare Turnstile                                                                                      |
+| Lapisan            | Yang dipakai                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bahasa & monorepo  | TypeScript (strict), Node.js 26, pnpm 11, Turborepo                                                                                                      |
+| Web                | SvelteKit 3 + Svelte 5, `@sveltejs/adapter-node`, Vite 8, Tailwind CSS 4                                                                                 |
+| Agen (harness)     | Harness sendiri di atas Chat Completions (`@urusin/harness`): state machine urusan, tool bertipe zod, policy gate, spotlighting, audit berantai          |
+| Browser Pendamping | Chromium headed di Xvfb via Playwright + CDP screencast → WebSocket → `<canvas>`; interpreter DSL langkah (`@urusin/executor`) dan program adapter situs |
+| Basis data         | SQLite (`better-sqlite3`, mode WAL). BM25 lewat FTS5; vektor dengan cosine di JS di atas blob SQLite (bukan `sqlite-vec`)                                |
+| Kriptografi & akun | `node:crypto` (argon2id bawaan Node, AES-256-GCM, HKDF), `jose` (verifikasi ID token Google OIDC)                                                        |
+| Validasi & kontrak | zod 4, `@urusin/contracts` (skema event SSE dan endpoint, dibekukan setelah tag `contracts-take1`)                                                       |
+| Egress             | `undici` dengan allowlist host dan pemeriksaan alamat (`@urusin/egress`): semua HTTP keluar server lewat satu pintu                                      |
+| Situs latihan      | Hono (`apps/fixtures`)                                                                                                                                   |
+| Pengujian          | Vitest, Playwright, `node:test` untuk skrip repositori, Lighthouse CI                                                                                    |
+| Kualitas           | ESLint (flat config), Prettier, commitlint, husky (pre-commit: pemindai PII/secret)                                                                      |
+| CI/CD & hosting    | GitHub Actions, image multi-arch di GHCR ditarik berdasarkan digest, Docker Compose di VPS Oracle Cloud (Singapura, arm64), Caddy milik host             |
+| API & layanan luar | LLM OpenAI-compatible (SDK `openai`), Jina (embedding + rerank), Google OIDC, Resend (email), Cloudflare Turnstile                                       |
 
 ## 5. Arsitektur sistem dan alur data
 
@@ -131,8 +131,8 @@ flowchart LR
     C[Caddy host<br/>TLS, HSTS]
     WEB["web (SvelteKit)<br/>UI + API + harness agen<br/>akun + vault terenkripsi"]
     DB[(SQLite WAL<br/>urusan, jejak, akun,<br/>vault ciphertext)]
-    PD["pendamping<br/>Chromium per sesi<br/>(belum live)"]
-    EDGE["pendamping-edge<br/>proxy CONNECT ber-allowlist<br/>(belum live)"]
+    PD["pendamping<br/>Chromium per sesi"]
+    EDGE["pendamping-edge<br/>proxy CONNECT ber-allowlist"]
     FX["fixtures<br/>situs latihan<br/>(belum live)"]
   end
   LLM[[Penyedia LLM<br/>OpenAI-compatible]]
@@ -266,7 +266,7 @@ dibagikan.
 | Agen percakapan: intent, rencana, pemanggilan tool | LLM lewat proxy OpenAI-compatible tim, model `pythia` (probe 2026-11-08: dijawab `gpt-6.1-terra`, lihat [`docs/provider-probe.md`](docs/provider-probe.md)) |
 | Embedding RAG                                      | Jina `jina-embeddings-v5-omni-small` (task `retrieval.query` / `retrieval.passage`)                                                                         |
 | Rerank RAG                                         | Jina `jina-reranker-v3`                                                                                                                                     |
-| Pengisian formulir (belum live)                    | Tidak memakai model: program adapter deterministik di Browser Pendamping, nilai dari vault                                                                  |
+| Pengisian formulir                                 | Tidak memakai model: program adapter deterministik di Browser Pendamping, nilai dari vault                                                                  |
 
 - Gateway (`@urusin/llm`) memakai SDK `openai` ke endpoint OpenAI-compatible mana pun.
   - Capability probe saat boot. Bila tool, JSON schema, atau stream tidak didukung, agen turun bertahap ke mode
@@ -342,12 +342,14 @@ dibagikan.
   - AES-256-GCM dengan DEK per pemilik yang dibungkus KEK (`URUSIN_PII_KEY`), plus AAD berversi.
   - Hapus = crypto-shred.
   - Batas penyimpanan per pemilik, per tamu, dan global agar disk tidak bisa dipenuhi.
-- **Browser Pendamping** **(belum live)**. Desain yang diuji di branch `feat/browser-pendamping`:
+- **Browser Pendamping.**
   - Konteks Chromium non-persisten per sesi, dihancurkan setelah selesai, 15 menit, atau 3 menit idle.
   - Ketikan warga saat takeover tidak dicatat.
   - Kontainer di jaringan internal tanpa rute keluar. Satu-satunya jalan keluar adalah proxy edge yang hanya
     mengizinkan https:443 ke host sesi dan menolak alamat privat/metadata.
-  - Sandbox Chromium aktif, kontainer non-root, filesystem read-only.
+  - Sandbox Chromium aktif (sandbox setuid `chrome-sandbox` karena host mematikan user namespace tak berhak;
+    tidak pernah `--no-sandbox`), kontainer non-root, filesystem read-only. Lihat
+    [ADR 0029](docs/adr/0029-browser-pendamping.md).
 - **Web.**
   - CSP SvelteKit mode `auto` (nonce/hash), `frame-ancestors 'none'`, laporan CSP.
   - Semua HTTP keluar lewat allowlist `@urusin/egress`.
