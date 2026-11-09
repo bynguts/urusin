@@ -460,7 +460,12 @@ export class HarnessStore {
     hash: string,
     ttlMs = 10 * 60_000,
   ): { id: string; expiresAt: string } {
-    const id = `c_${randomBytes(16).toString('hex')}`;
+    // Id ini ditulis ulang oleh model sebagai parameter tool, dan gerbang PII memindai parameter. Hex acak
+    // kadang memuat deret digit mirip HP/NIK (mis. 0812...), sehingga konfirmasi sah ditolak. Digit hex
+    // dipetakan ke huruf g-p: tetap 128 bit acak, tanpa satu digit pun.
+    const id = `c_${randomBytes(16)
+      .toString('hex')
+      .replace(/\d/g, (d) => 'ghijklmnop'.charAt(Number(d)))}`;
     const expiresAt = new Date(this.now().getTime() + ttlMs).toISOString();
     this.db
       .prepare('INSERT INTO confirmations (id, urusan_id, tool, params_hash, expires_at) VALUES (?,?,?,?,?)')

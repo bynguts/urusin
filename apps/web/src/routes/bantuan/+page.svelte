@@ -116,7 +116,7 @@
       ikon: 'obrolan',
       judul: 'Tanya Rose',
       ringkas: 'Jawaban disertai sumber resmi',
-      href: resolve('/'),
+      href: resolve('/beranda'),
       gelap: true,
     },
     ...(kota?.situs

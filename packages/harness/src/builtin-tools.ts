@@ -195,7 +195,7 @@ export const urusanJawabPersyaratan = defineTool({
 export const dukcapilAjukanLayanan = defineTool({
   name: 'dukcapil__ajukan_layanan',
   description:
-    'Ajukan layanan di portal resmi kota lewat ekstensi (butuh confirmationId dari warga). Hanya kota berstatus kirim-asli.',
+    'Ajukan layanan di portal resmi kota lewat Browser Pendamping (butuh confirmationId dari warga). Hanya kota berstatus kirim-asli.',
   effect: 'write',
   input: z.object({ kodeKabKota, layananId: z.number().int().positive() }),
   allowedStates: ['BERKAS_SIAP', 'MENGISI', 'MENUNGGU_KONFIRMASI', 'MENGUNGGAH'],
@@ -206,7 +206,8 @@ export const dukcapilAjukanLayanan = defineTool({
   execute(_ctx, args): ToolResult {
     const { entry } = routeByKode(args.kodeKabKota);
     return {
-      content: 'Permintaan eksekusi dikirim ke ekstensi; warga akan diminta mengizinkan di overlay ekstensi.',
+      content:
+        'Permintaan eksekusi dikirim ke Browser Pendamping; warga akan diminta mengizinkan sebelum diisi.',
       execution: {
         executionId: `x_${randomUUID()}`,
         adapterId: entry.adapterId ?? `dukcapil.${entry.kodeKabKota}`,

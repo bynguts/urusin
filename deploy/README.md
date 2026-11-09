@@ -48,7 +48,7 @@ diperiksa CI (`node scripts/gen-caddyfile.mjs --check`, juga `scripts/tests/gen-
 | `fallback` | `Caddyfile.urusin.fallback` | sslip (`fallback.*`), tanpa DNS sendiri      |
 
 Pemilihan host hanya terjadi di VPS: `.env` (`DOMAIN`) dan salinan snippet set yang sama di
-`/etc/caddy/urusin/Caddyfile.urusin`. Image dan ekstensi identik untuk kedua set. Isi snippet:
+`/etc/caddy/urusin/Caddyfile.urusin`. Image identik untuk kedua set. Isi snippet:
 
 - `reverse_proxy 127.0.0.1:4310 127.0.0.1:4311` dengan `lb_policy first`, health check aktif
   **`/api/ready`** tiap 2 detik (200 hanya pada warna yang dipromosikan `deploy.sh`; `/api/health` tetap liveness, tetapi **publik dijawab 404** oleh `respond /api/health* 404` karena memuat gitSha/versi/runningTurns; hanya `deploy.sh` yang membacanya lewat `127.0.0.1`), dan `lb_try_duration 5s` (permintaan yang gagal tersambung diulang ke
@@ -71,8 +71,10 @@ Langkah host (setiap perubahan Caddy = **go-ahead pengguna per kejadian**, prose
 2. Rencana read-only (boleh kapan saja): `deploy/caddy-install.sh fallback --dry-run` (atau `primary`).
    Snapshot status situs pengguna, validasi snippet dan Caddyfile host, tanpa mengubah apa pun.
 3. Setelah go-ahead: `sudo deploy/caddy-install.sh fallback`. Skrip mem-backup Caddyfile (bertimestamp),
-   memasang `/etc/caddy/urusin/Caddyfile.urusin`, menambah tepat satu `import /etc/caddy/urusin/Caddyfile.urusin`
-   (baris lama `import /opt/urusin/Caddyfile.urusin` dihapus), backup ke `/var/backups/urusin-caddy/`,
+   memasang snippet ke path import yang SUDAH ada di Caddyfile (tanpa import: `/etc/caddy/urusin/Caddyfile.urusin`),
+   jadi selalu tepat satu baris import snippet Urusin. VPS saat ini meng-import `/opt/urusin/Caddyfile.urusin` (milik
+   ubuntu); skrip menolak menulis ke sana sebagai root dan menyarankan
+   `TARGET=/etc/caddy/urusin/Caddyfile.urusin` (memindahkan snippet, import lama diganti). Backup ke `/var/backups/urusin-caddy/`,
    `caddy validate`, `systemctl reload caddy` (bukan restart), lalu membandingkan kode status
    gutstore.my.id, admin.gutstore.my.id dan pythia.web.id sebelum/sesudah. Berubah => rollback otomatis.
 4. Pindah set (mis. fallback -> primary setelah DNS siap): ulangi langkah 2-3 dengan set baru, ubah `DOMAIN`

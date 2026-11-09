@@ -3,9 +3,29 @@ import { menuAktif, rutAuth } from './components/shell/navigasi.js';
 import { periksaBerkas, samarkan, ukuranBerkas } from './akun/klien.js';
 import { labelPlaceholder, petakanIsian } from './pendamping/isi-data.js';
 import { keadaanDariSesi } from './pendamping/sesi.svelte.js';
-import { LABEL_STATE, LANGKAH_RENCANA, domain, infoStatus, tanggal, waktuSingkat } from './urusan-status.js';
+import {
+  FASE,
+  LABEL_STATE,
+  LANGKAH_RENCANA,
+  domain,
+  faseUrusan,
+  infoStatus,
+  tanggal,
+  waktuSingkat,
+} from './urusan-status.js';
 
 describe('status urusan', () => {
+  it('fase Ringkasan: empat fase berurutan mengikuti state', () => {
+    expect(FASE).toHaveLength(4);
+    expect(faseUrusan(null)).toBe(1);
+    expect(faseUrusan('RENCANA_DIUSULKAN')).toBe(1);
+    expect(faseUrusan('MENYIAPKAN_BERKAS')).toBe(2);
+    expect(faseUrusan('MENUNGGU_SUBMIT_WARGA')).toBe(3);
+    expect(faseUrusan('DIPANDU')).toBe(3);
+    expect(faseUrusan('SELESAI')).toBe(4);
+    expect(faseUrusan('GAGAL_AMAN')).toBe(1);
+  });
+
   it('setiap state punya label, langkah, dan kelompok', () => {
     for (const s of Object.keys(LABEL_STATE) as (keyof typeof LABEL_STATE)[]) {
       const i = infoStatus(s);
@@ -34,10 +54,11 @@ describe('navigasi', () => {
     expect(rutAuth('/masuk')).toBe(true);
     expect(rutAuth('/verifikasi-email')).toBe(true);
     expect(rutAuth('/masukan')).toBe(false);
-    expect(menuAktif('/', '/peristiwa/kelahiran')).toBe(true);
-    expect(menuAktif('/', '/urusanku')).toBe(false);
+    expect(menuAktif('/beranda', '/peristiwa/kelahiran')).toBe(true);
+    expect(menuAktif('/beranda', '/urusanku')).toBe(false);
     expect(menuAktif('/urusanku', `/urusan/u_${'a'.repeat(32)}`)).toBe(true);
-    expect(menuAktif('/urusanku', `/jejak/u_${'a'.repeat(32)}`)).toBe(true);
+    expect(menuAktif('/jejak', `/jejak/u_${'a'.repeat(32)}`)).toBe(true);
+    expect(menuAktif('/urusanku', `/jejak/u_${'a'.repeat(32)}`)).toBe(false);
     expect(menuAktif('/dokumen', '/data-diri')).toBe(true);
     expect(menuAktif('/bantuan', '/bantuan')).toBe(true);
   });

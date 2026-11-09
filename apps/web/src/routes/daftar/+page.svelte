@@ -128,7 +128,7 @@
           class="inline-flex min-h-12 items-center font-semibold text-ink">Masuk</a
         >
       </p>
-      <a href={resolve('/')} class="inline-flex min-h-12 items-center font-semibold text-ink underline"
+      <a href={resolve('/beranda')} class="inline-flex min-h-12 items-center font-semibold text-ink underline"
         >Coba tanpa daftar</a
       >
     </div>

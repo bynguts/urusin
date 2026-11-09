@@ -63,7 +63,6 @@ Bangun layar langsung dengan import tipe dari `@urusin/contracts` dan data dari 
 | ★7    | Bagian Anda                 | —                                    | Login/CAPTCHA/"Selesai" dilakukan warga sendiri. "Lanjutkan dari langkah X"                                                                                                        |
 | ★8    | Lacak                       | `/lacak`                             | Status semua urusan: menunggu siapa, langkah berikutnya, tenggat                                                                                                                   |
 | ★9    | Sambung                     | `/sambung` (laptop) + `/pindai` (HP) | **Laptop menampilkan QR**, HP memindai, ada kode 6 digit cadangan, hitung mundur 10 menit                                                                                          |
-| ★10   | Pair ekstensi               | `/pair`                              | Panduan 3 langkah. State hubungkan / berhasil / gagal. Bila dibuka di HP, jelaskan bahwa ekstensi butuh laptop                                                                     |
 | 11    | Dompet                      | `/dompet`                            | Daftar dokumen, masa simpan, hapus                                                                                                                                                 |
 | 12    | Jejak                       | `/jejak/[id]`                        | Timeline, rantai hijau/merah, "Lihat apa yang dilihat AI"                                                                                                                          |
 | 13    | Transparansi                | `/transparansi`                      | Pemroses data, retensi, latensi, biaya per hari, umur sumber tertua                                                                                                                |
@@ -72,7 +71,7 @@ Bangun layar langsung dengan import tipe dari `@urusin/contracts` dan data dari 
 | 16–18 | Privasi, Aksesibilitas, MCP | `/privasi`, `/aksesibilitas`, `/mcp` | —                                                                                                                                                                                  |
 | 19–20 | Offline, error              | `/offline`, 404/500                  | —                                                                                                                                                                                  |
 
-Ekstensi: popup (pairing, Mode Uji, status), overlay persetujuan (18 px, tanpa kata "write"), banner Mode Uji.
+Ekstensi dihapus (2026-11-09) dan diganti Browser Pendamping; layar dan state-nya dirinci di `docs/ui/pendamping.md` (menyusul dari cabang pendamping).
 
 ## 5. State yang wajib didesain di setiap layar yang relevan
 
@@ -85,8 +84,7 @@ Ekstensi: popup (pairing, Mode Uji, status), overlay persetujuan (18 px, tanpa k
   - Offline.
   - Sesi habis, tanpa input hilang.
   - Situs pemerintah berubah → mode dipandu.
-- **Kemampuan terbatas:** AI hemat / AI berhenti, tanpa vision (checklist manual), izin kamera/mikrofon ditolak, HP tanpa ekstensi, iOS belum dipasang ke layar utama.
-- **Ekstensi:** belum dipasang, belum dipasangkan, menunggu warga, sedang mengisi, selesai.
+- **Kemampuan terbatas:** AI hemat / AI berhenti, tanpa vision (checklist manual), izin kamera/mikrofon ditolak, iOS belum dipasang ke layar utama.
 - **Mode:** Mode Uji (banner permanen), Mode Presentasi (area sensitif disamarkan).
 
 ## 6. Aturan desain untuk lansia dan HP murah

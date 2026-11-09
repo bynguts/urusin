@@ -44,7 +44,7 @@ describe('anti-CSRF: Origin persis di request pengubah state', () => {
     ['port beda', 'http://localhost:5173'],
     ['slash akhir', 'http://localhost:3000/'],
     ['sufiks jebakan', 'http://localhost:3000.jahat.example'],
-    ['origin ekstensi', 'chrome-extension://abcdefghijklmnopabcdefghijklmnop'],
+    ['origin chrome-extension', 'chrome-extension://abcdefghijklmnopabcdefghijklmnop'],
     ['null', 'null'],
   ])('%s → 403 dan tidak sampai ke handler', async (_n, origin) => {
     const r = await run(req('/api/urusan', origin));
@@ -66,11 +66,10 @@ describe('anti-CSRF: Origin persis di request pengubah state', () => {
 });
 
 describe('pengecualian Origin terdaftar (satu tempat: lib/server/origin.ts)', () => {
-  it('daftar pengecualian persis tiga entri', () => {
+  it('daftar pengecualian persis dua entri', () => {
     expect(ORIGIN_EXCEPTIONS.map((e) => `${e.path}:${e.kebijakan}`)).toEqual([
       '/api/mcp:jika-ada',
       '/api/csp-report:bebas',
-      '/api/sync/status:bebas',
     ]);
   });
 
@@ -119,16 +118,10 @@ describe('pengecualian Origin terdaftar (satu tempat: lib/server/origin.ts)', ()
     });
   });
 
-  describe('/api/sync/status: dilewatkan (dipanggil ekstensi)', () => {
-    it('tanpa Origin dan dengan origin ekstensi lolos', async () => {
-      expect((await run(req('/api/sync/status', null))).status).toBe(200);
-      expect(
-        (await run(req('/api/sync/status', 'chrome-extension://abcdefghijklmnopabcdefghijklmnop'))).status,
-      ).toBe(200);
-    });
-    it('hanya path persis: /api/sync/lain tetap 403', async () => {
-      expect((await run(req('/api/sync/lain', null))).status).toBe(403);
-    });
+  it('pengecualian tanpa awalan hanya path persis: /api/csp-report/lain dan /api/sync/status tetap 403', async () => {
+    expect((await run(req('/api/csp-report/lain', null))).status).toBe(403);
+    // Kanal sinkron ekstensi sudah dihapus bersama ekstensinya (diganti Browser Pendamping).
+    expect((await run(req('/api/sync/status', null))).status).toBe(403);
   });
 
   it('checkOrigin murni: metode aman selalu lolos', () => {

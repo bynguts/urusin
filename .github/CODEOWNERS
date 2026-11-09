@@ -1,5 +1,5 @@
 # Pemilik kode. Pola terakhir yang cocok menang. Area bersama ditinjau kedua anggota.
-# @rafilajhh: seluruh UI/UX (halaman, layout, komponen web; popup dan overlay ekstensi)
+# @rafilajhh: seluruh UI/UX (halaman, layout, komponen web)
 # @bynguts: sisanya (server/API web, harness, llm, rag, fixtures, adapter, registry, data, deploy)
 
 *                                  @bynguts @rafilajhh
@@ -9,7 +9,6 @@
 /packages/harness/                 @bynguts
 /deploy/                           @bynguts
 
-/apps/extension/                   @rafilajhh
 /apps/fixtures/                    @bynguts
 /packages/registry/                @bynguts
 /packages/adapters/                @bynguts
@@ -22,10 +21,6 @@
 /apps/web/src/routes/**/+layout.svelte  @rafilajhh
 /apps/web/src/routes/**/+error.svelte   @rafilajhh
 /apps/web/src/lib/components/           @rafilajhh
-/apps/extension/src/entrypoints/popup/  @rafilajhh
-/apps/extension/src/lib/overlay.ts      @rafilajhh
-/apps/extension/src/lib/overlay.test.ts @rafilajhh
-/apps/extension/src/**/presentasi/      @rafilajhh
 
 # Sisi server web tetap @bynguts walau berada di dalam folder routes (menang atas pola UI di atas)
 /apps/web/src/routes/api/               @bynguts

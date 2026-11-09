@@ -1,18 +1,16 @@
 import { expect, test } from '@playwright/test';
 
-// Alur utama warga: Beranda → Rencana peristiwa → layar urusan (percakapan) di HP 390px dan laptop 1440px.
+// Alur utama warga: Landing → Rencana peristiwa → layar urusan (percakapan) di HP 390px dan laptop 1440px.
 // Server memakai DemoProvider (tanpa kunci LLM), jadi tidak ada yang dikirim ke situs pemerintah.
 for (const lebar of [390, 1440]) {
-  test(`beranda → peristiwa → urusan di ${lebar}px`, async ({ page }) => {
+  test(`landing → peristiwa → urusan di ${lebar}px`, async ({ page }) => {
     await page.setViewportSize({ width: lebar, height: lebar < 600 ? 844 : 960 });
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Apa yang ingin Anda urus?');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Teman AI untuk');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
 
-    // Kartu peristiwa → rencana langkah dengan sumber resmi
-    await page
-      .getByRole('link', { name: /Kelahiran/ })
-      .first()
-      .click();
+    // Kartu cerita → rencana langkah dengan sumber resmi
+    await page.getByRole('link', { name: /Mulai cerita.*Baru punya anak/ }).click();
     await expect(page).toHaveURL(/\/peristiwa\/kelahiran/);
     await expect(page.getByRole('button', { name: 'Mulai urusan ini' })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
@@ -34,5 +32,20 @@ for (const lebar of [390, 1440]) {
     // Urusan tercatat di Urusanku perangkat ini
     await page.goto('/urusanku');
     await expect(page.getByRole('heading', { name: 'Akta kelahiran' }).first()).toBeVisible();
+
+    // Peramban dengan urusan berjalan masuk ke Ringkasan, bukan landing
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/beranda$/);
+    // Ringkasan melanjutkan urusan terakhir: pertanyaan terakhir warga dan fase urusan tampil
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Kita lanjutkan');
+    await expect(page.getByRole('region', { name: 'Percakapan terakhir' })).toContainText(
+      'Apa saja dokumen yang perlu saya bawa?',
+    );
+    await expect(page.getByText(/Langkah \d dari 4/)).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
+
+    // Urusan baru tetap bisa dimulai dari kotak cerita
+    await page.goto('/beranda?baru');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Apa yang ingin Anda urus?');
   });
 }

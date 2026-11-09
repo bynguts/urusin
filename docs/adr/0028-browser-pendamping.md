@@ -1,4 +1,4 @@
-# 0028. Browser Pendamping di server sebagai eksekutor utama; ekstensi menjadi Mode Privasi
+# 0028. Browser Pendamping di server sebagai eksekutor
 
 - **Status:** Diterima. Terimplementasi di `apps/pendamping`, `packages/executor`, `packages/adapters`, `packages/pendamping-client`, dan broker `apps/web/src/routes/api/urusan/[id]/pendamping`.
 - **Dicatat:** 2026-11-09
@@ -10,13 +10,12 @@ Mayoritas warga memakai ponsel. Ekstensi peramban ([ADR 0025](0025-executor-tanp
 
 ## Keputusan
 
-Eksekutor utama adalah **Browser Pendamping**: satu Chromium **headed** per sesi di server Urusin (di dalam Xvfb; headless hanya untuk CI terhadap fixture, karena situs ber-Cloudflare menantang Chromium headless). Layarnya dialirkan ke perangkat warga (CDP `Page.startScreencast` → WebSocket → `<canvas>`), dan input sentuh/keyboard/IME warga diteruskan lewat `Input.dispatch*`. Ekstensi tetap ada sebagai **Mode Privasi** untuk laptop: peramban warga sendiri, tanpa data lewat server.
+Eksekutor utama adalah **Browser Pendamping**: satu Chromium **headed** per sesi di server Urusin (di dalam Xvfb; headless hanya untuk CI terhadap fixture, karena situs ber-Cloudflare menantang Chromium headless). Layarnya dialirkan ke perangkat warga (CDP `Page.startScreencast` → WebSocket → `<canvas>`), dan input sentuh/keyboard/IME warga diteruskan lewat `Input.dispatch*`. Ekstensi peramban dihapus dari repositori (2026-11-09); Browser Pendamping adalah satu-satunya eksekutor.
 
 Aturan ADR 0025 tetap berlaku dan ditegakkan di kode yang sama:
 
-- DSL langkah dan interpreter diekstrak ke `@urusin/executor` dan dipakai bersama ekstensi dan pendamping, bukan disalin.
-- Program adapter situs (alur, probe sesi, bukti) ada di `@urusin/adapters`, terpisah dari interpreter: ekstensi
-  dihentikan (pendamping saja), `apps/extension` tetap ada dan tetap memakai `@urusin/executor`.
+- DSL langkah dan interpreter ada di `@urusin/executor` (diekstrak dari ekstensi sebelum dihapus).
+- Program adapter situs (alur, probe sesi, bukti) ada di `@urusin/adapters`, terpisah dari interpreter.
 - AI mengisi kolom dan mengunggah berkas. Login, OTP, CAPTCHA, dan **tombol kirim akhir** dikerjakan warga dalam mode _takeover_. Runner menolak klik pada target `gate.human` (`FINAL_NOT_AUTOMATABLE`) dan ini diuji di unit dan e2e.
 - Tanpa plugin stealth, tanpa penyelesai CAPTCHA, agen pengguna jujur. **Tantangan verifikasi situs** (interstitial Cloudflare: header `cf-mitigated: challenge`, judul halaman tantangan, atau frame `challenges.cloudflare.com`/`/cdn-cgi/challenge-platform/` tanpa token Turnstile) diserahkan ke warga sebagai `giliran_anda` dengan `alasan: 'verifikasi_situs'` dan sorotan kotak centangnya. Klik warga diteruskan apa adanya lewat CDP (koordinat diskalakan DPR, sentuh dipetakan ke mouse); AI tidak pernah mengklik-nya. Gagal atau berulang dua kali, atau blokir yang tidak bisa diverifikasi (403/429 WAF, `cf-mitigated: block`), sesi berakhir `dipandu` dengan pesan jujur.
 - **Status sesi.** Adapter mendeklarasikan probe masuk (`masuk.keluar`, mis. formulir login ada). Saat mulai dan setiap navigasi, halaman keluar/login memicu takeover `alasan: 'masuk_akun'`; warga masuk sendiri, AI lanjut. Konteks hidup lintas execution dalam satu urusan (status `siaga`) sampai TTL atau idle, jadi warga cukup masuk sekali; tidak ada impor/ekspor cookie dan profil dihapus saat sesi dihancurkan. Setelah kirim, nomor registrasi/status dibaca dari halaman (`bukti`) untuk `cek_status`.

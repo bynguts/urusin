@@ -18,6 +18,7 @@ describe('GET /api/health', () => {
     vi.resetModules();
   });
 
+  // Batas eksplisit: tes paling lambat di berkas ini (~1-2 dtk sendirian dan di turbo paralel penuh).
   it('mengembalikan status ok dan gitSha "dev" bila GIT_SHA kosong', async () => {
     vi.stubEnv('GIT_SHA', '');
     const { GET } = await withRuntime();
@@ -34,7 +35,7 @@ describe('GET /api/health', () => {
       csp: { violations: {} },
     });
     expect(body.rag.chunks).toBeGreaterThan(0);
-  });
+  }, 20_000);
 
   it('mengembalikan GIT_SHA dari environment', async () => {
     vi.stubEnv('GIT_SHA', 'abcdef1234567890');

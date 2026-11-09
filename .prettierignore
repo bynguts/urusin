@@ -7,8 +7,6 @@ build/
 coverage/
 .husky/
 .lighthouseci
-.wxt/
-.output/
 playwright-report/
 test-results/
 .impeccable/

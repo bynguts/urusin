@@ -38,7 +38,7 @@ kartu rencana (confirm) ──► [Isi dengan Browser Pendamping]
 
 Muncul saat `status === 'antre'`. Data dari `sesi.antrean = { posisi, panjang }` (event `status` di viewer, atau `GET /api/urusan/[id]/pendamping`). Ringkasan global ada di `GET /api/pendamping/antrean` → `{ aktif, maks, menunggu }`.
 
-Isi minimal: posisi warga, perkiraan bahwa satu sesi paling lama 15 menit, tombol **Batal** (`DELETE /api/urusan/[id]/pendamping`). Bila `POST` dijawab `429 ANTREAN_PENUH`, tampilkan `pesanWarga` dan tawarkan mode dipandu atau ekstensi Mode Privasi.
+Isi minimal: posisi warga, perkiraan bahwa satu sesi paling lama 15 menit, tombol **Batal** (`DELETE /api/urusan/[id]/pendamping`). Bila `POST` dijawab `429 ANTREAN_PENUH`, tampilkan `pesanWarga` dan tawarkan mode dipandu.
 
 ### b. Banner takeover (mode `takeover`)
 

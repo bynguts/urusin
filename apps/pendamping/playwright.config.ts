@@ -1,8 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
 /**
- * E2E Browser Pendamping: layanan pendamping (hasil build) + fixtures lokal. Port sengaja berbeda dari e2e
- * ekstensi (3000/4320) agar keduanya bisa berjalan paralel di turbo. Tidak pernah menyentuh situs asli.
+ * E2E Browser Pendamping: layanan pendamping (hasil build) + fixtures lokal. Port sengaja berbeda dari
+ * port dev web/fixtures (3000/4320) agar bisa berjalan paralel di turbo. Tidak pernah menyentuh situs asli.
  */
 export const FIXTURES_PORT = Number(process.env.PENDAMPING_E2E_FIXTURES_PORT ?? 4331);
 export const PENDAMPING_PORT = Number(process.env.PENDAMPING_E2E_PORT ?? 4332);

@@ -37,4 +37,4 @@ atau kode; "Diterima" tidak berarti sudah diimplementasikan, dan kolom Status me
 | [0025](0025-executor-tanpa-bypass-captcha.md)                    | Eksekusi di peramban warga tanpa bypass CAPTCHA atau teknik anti-deteksi                           | prinsip       |
 | [0026](0026-csp-sveltekit-mode-auto.md)                          | CSP tunggal dari SvelteKit dalam mode auto, tanpa strict-dynamic                                   | implementasi  |
 | [0027](0027-commit-konvensional-tanpa-co-author.md)              | Commit konvensional, tanpa atribusi AI otomatis, dan riwayat tidak ditulis ulang                   | proses        |
-| [0028](0028-browser-pendamping.md)                               | Browser Pendamping di server sebagai eksekutor utama; ekstensi menjadi Mode Privasi                | keputusan tim |
+| [0028](0028-browser-pendamping.md)                               | Browser Pendamping di server sebagai eksekutor                                                     | keputusan tim |

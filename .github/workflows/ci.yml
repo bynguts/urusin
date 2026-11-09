@@ -38,7 +38,7 @@ jobs:
           cache: pnpm
 
       # --ignore-scripts: tidak ada skrip lifecycle dependensi di CI (prepare milik workspace dijalankan
-      # oleh turbo/wxt saat dibutuhkan, setelah paket workspace dibangun).
+      # oleh turbo saat dibutuhkan, setelah paket workspace dibangun).
       - name: Install
         run: pnpm install --frozen-lockfile --ignore-scripts
 
@@ -146,7 +146,7 @@ jobs:
           if-no-files-found: ignore
 
   e2e:
-    name: E2E ekstensi (Playwright Chromium)
+    name: E2E web (Playwright Chromium)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -168,13 +168,11 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      # Chromium bawaan Playwright, bukan Chrome bermerek: Chrome >= 137 mengabaikan --load-extension.
-      # Tes memakai channel 'chromium' (headless baru, mendukung ekstensi), jadi xvfb tidak diperlukan.
       - name: Pasang Chromium Playwright
-        run: pnpm --filter @urusin/extension exec playwright install --with-deps chromium
+        run: pnpm --filter @urusin/web exec playwright install --with-deps chromium
 
-      # turbo membangun web, fixtures, dan ekstensi lebih dulu. Tes memuat ekstensi lewat
-      # launchPersistentContext, menegaskan ID ekstensi == PUBLIC_EXTENSION_ID, dan menyalakan fixtures + web.
+      # turbo membangun web lebih dulu; Playwright menyalakan build node web dengan DB sementara. E2E pendamping
+      # (fixture saja, headless, PENDAMPING_SANDBOX=0 di runner Linux) ikut berjalan.
       - name: E2E
         run: pnpm e2e
 
@@ -183,7 +181,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-traces
-          path: apps/extension/test-results/
+          path: |
+            apps/web/test-results/
+            apps/pendamping/test-results/
           if-no-files-found: ignore
 
   coverage:

@@ -21,8 +21,8 @@ C4Context
   System_Ext(llm, "Penyedia LLM", "Endpoint OpenAI-compatible (Chat Completions). Hanya menerima placeholder, bukan data pribadi.")
   System_Ext(gh, "GitHub", "Repositori, GitHub Actions (CI dan release), GHCR (registry image).")
 
-  Rel(warga, urusin, "Memakai", "HTTPS, peramban Chromium untuk eksekusi semi-otomatis")
-  Rel(urusin, gov, "Membuka dan mengisi formulir di peramban warga", "Ekstensi MV3, sesi login milik warga")
+  Rel(warga, urusin, "Memakai", "HTTPS dari ponsel atau laptop; layar Browser Pendamping dialirkan ke perangkat")
+  Rel(urusin, gov, "Membuka dan mengisi formulir lewat Browser Pendamping", "Chromium di server per sesi, login dan kirim akhir oleh warga")
   Rel(urusin, llm, "Meminta penalaran dan ekstraksi", "HTTPS, placeholder saja")
   Rel(gh, urusin, "Membangun dan menyimpan image, VPS menariknya berdasarkan digest", "Docker pull")
 ```
@@ -31,20 +31,19 @@ C4Context
 
 ```mermaid
 C4Container
-  title Kontainer Urusin: peramban warga dan VPS
+  title Kontainer Urusin: perangkat warga dan VPS
 
   Person(warga, "Warga")
 
-  System_Boundary(browser, "Peramban warga (Chromium)") {
-    Container(webui, "Web app", "SvelteKit UI, PWA (rencana)", "Antarmuka, vault PII (rencana), halaman pairing ekstensi.")
-    Container(ext, "Ekstensi Urusin", "WXT, Manifest V3", "Interpreter langkah di service worker, step-runner, gate kedua. Host permissions dari registry.")
-    Container(govtab, "Tab situs pemerintah", "Halaman pihak ketiga", "Dibuka dan diisi oleh ekstensi atas nama warga.")
+  System_Boundary(browser, "Perangkat warga (ponsel atau laptop)") {
+    Container(webui, "Web app", "SvelteKit UI, PWA (rencana)", "Antarmuka, vault PII (rencana), kanvas layar Browser Pendamping.")
   }
 
   System_Boundary(vps, "VPS arm64 (Docker Compose, Caddy milik host)") {
     Container(caddy, "Caddy host bersama", "Caddy 2", "Satu-satunya yang memegang 80/443. TLS otomatis, HSTS, kompresi. Tanpa CSP.")
     Container(web, "web", "SvelteKit adapter-node, Node 26", "Server routes, harness (rencana), CSP nonce. Mendengar di 127.0.0.1:4310.")
     Container(fixtures, "fixtures (opsional)", "Hono", "Situs tiruan jinak untuk demo dan uji. Mendengar di 127.0.0.1:4320.")
+    Container(pendamping, "pendamping (opsional)", "Node, Chromium headed di Xvfb", "Satu Chromium per sesi warga, proxy egress per sesi ber-allowlist registry. Mendengar di 127.0.0.1:4330.")
     ContainerDb(db, "SQLite", "better-sqlite3, mode WAL", "Berkas /data/urusin.db di named volume data. Metadata saja, tanpa PII.")
   }
 
@@ -54,9 +53,9 @@ C4Container
 
   Rel(warga, webui, "Memakai")
   Rel(webui, caddy, "HTTPS, SSE", "placeholder dan fakta turunan, bebas PII")
-  Rel(webui, ext, "Port dan pairing nonce", "externally_connectable")
-  Rel(ext, govtab, "Menyuntik step-runner", "scripting.executeScript")
-  Rel(govtab, gov, "Menjelajah dan mengirim", "HTTPS, sesi warga")
+  Rel(webui, caddy, "Layar dan input Browser Pendamping", "WebSocket /pendamping/ws, tiket sekali pakai")
+  Rel(web, pendamping, "API internal bertanda HMAC", "127.0.0.1:4330")
+  Rel(pendamping, gov, "Menjelajah dan mengisi; kirim akhir oleh warga", "HTTPS lewat proxy egress")
   Rel(caddy, web, "reverse_proxy, flush_interval -1", "127.0.0.1:4310")
   Rel(caddy, fixtures, "reverse_proxy (bila diaktifkan)", "127.0.0.1:4320")
   Rel(web, db, "Membaca dan menulis", "file SQLite")
@@ -73,7 +72,7 @@ Catatan pembacaan:
   dari header `Host` mentah.
 - Container `web` berjalan `read_only`, `cap_drop: [ALL]`, `no-new-privileges`, `mem_limit: 512m`.
 - **Belum ada (rencana):** harness agen, tujuh server MCP, vault PII, service `worker` pengingat, service `backup`,
-  PWA. Repositori baru memuat fondasi, ekstensi kerangka, fixtures, dan paket `core`, `llm`, `registry`, `rag`.
+  PWA. Repositori baru memuat fondasi, fixtures, dan paket `core`, `llm`, `registry`, `rag`.
 - Paket pustaka (bukan kontainer): `@urusin/core` (Step DSL, guard placeholder, registry domain),
   `@urusin/llm` (gateway dan capability probe), `@urusin/registry` (router kab/kota dari prefiks NIK),
   `@urusin/rag` (BM25 FTS5, vektor opsional, fusi RRF).
@@ -92,7 +91,7 @@ Catatan pembacaan:
 
 Invarian utama (rencana §3.1): semua yang melintasi garis peramban ke server bebas PII. Model hanya melihat
 **placeholder** seperti `{{PEMOHON.NIK}}`. Nilai asli hanya ada di vault peramban dan baru diganti di sisi
-eksekutor (ekstensi), sesaat sebelum mengisi kolom di situs pemerintah. Guard `noPlaceholder()` menolak parameter
+eksekutor (Browser Pendamping), sesaat sebelum mengisi kolom di situs pemerintah. Guard `noPlaceholder()` menolak parameter
 dari model yang memuat `{{`, `}}`, atau pola NIK, HP, dan email.
 
 ```mermaid
@@ -103,7 +102,7 @@ sequenceDiagram
   participant V as Vault PII (peramban)
   participant S as Server web (harness, rencana)
   participant L as Penyedia LLM
-  participant E as Ekstensi MV3
+  participant E as Browser Pendamping (server)
   participant G as Situs pemerintah
 
   W->>UI: Mengisi data diri (intake terstruktur)
@@ -116,10 +115,11 @@ sequenceDiagram
   S-->>UI: Langkah dan permintaan eksekusi, tetap berupa placeholder
   UI->>V: Resolve placeholder
   V-->>UI: Nilai asli
-  UI->>E: Kirim lewat port ter-pairing
-  E->>E: Gate kedua: warga menyetujui di overlay ekstensi
+  UI->>E: Kirim lewat sesi WebSocket bertiket (hanya di memori, tidak dicatat)
+  E->>E: Gate kedua: warga menyetujui sebelum kolom diisi
   E->>G: Isi kolom dengan nilai asli
-  W->>G: Warga sendiri menekan tombol kirim akhir
+  W->>E: Warga sendiri menekan tombol kirim akhir (takeover)
+  E->>G: Kirim
 ```
 
 Pengecualian yang disetujui di rencana (belum diimplementasikan): dua jalur pass-through `/api/vision` (gambar

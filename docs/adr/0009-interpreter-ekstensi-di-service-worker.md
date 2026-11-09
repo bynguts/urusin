@@ -1,6 +1,6 @@
 # 0009. Interpreter ekstensi di service worker dengan cursor persisten dan step-runner yang disuntik ulang
 
-- **Status:** Diterima. Kerangka interpreter dan step-runner sudah ada di `apps/extension`.
+- **Status:** Digantikan (2026-11-09). Ekstensi dihapus dari repositori; eksekutor kini Browser Pendamping (Chromium di server per sesi warga). Isi di bawah dipertahankan sebagai catatan keputusan.
 - **Dicatat:** 2026-11-08
 - **Sumber keputusan:** rencana D9 (§1.3, §10)
 
