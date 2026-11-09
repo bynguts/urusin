@@ -5,11 +5,24 @@ import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { css, fill, gate, nav, upload, urlIncludes } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
-import { chromiumArgs, pidsOfProfile, PROFIL_PREFS, proxyOption, pssMb, stepLabel } from './browser.js';
+import {
+  chromiumArgs,
+  pidsOfProfile,
+  PROFIL_PREFS,
+  proxyEdgeOption,
+  proxyOption,
+  pssMb,
+  stepLabel,
+} from './browser.js';
 import { loadConfig } from './config.js';
 import { createTouchMapper, toCdp } from './input.js';
 import { runnerExpression, runnerScript, toInjectable } from './runner-script.js';
 import { detectBotWall, suspicious } from './waf.js';
+
+const EDGE_ENV = {
+  PENDAMPING_EDGE_URL: 'http://pendamping-edge:3129',
+  PENDAMPING_EDGE_TOKEN: 'e'.repeat(40),
+};
 
 describe('config', () => {
   it('default aman: 127.0.0.1:4330, 2 sesi, TTL 15 menit, idle 3 menit, headed, dev/debug mati', () => {
@@ -48,6 +61,7 @@ describe('config', () => {
         PENDAMPING_INTERNAL_TOKEN: 'x'.repeat(40),
         URUSIN_PUBLIC_ORIGIN: 'https://urusinai.web.id',
         PENDAMPING_FIXTURE_ORIGINS: 'https://fixtures.urusinai.web.id',
+        ...EDGE_ENV,
         PENDAMPING_HEADLESS: '1',
       }),
     ).toThrow(/HEADLESS/);
@@ -72,15 +86,29 @@ describe('config', () => {
     expect(() => loadConfig({ NODE_ENV: 'production', PENDAMPING_INTERNAL_TOKEN: 'x'.repeat(40) })).toThrow(
       /ORIGINS/,
     );
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'production',
+        PENDAMPING_INTERNAL_TOKEN: 'x'.repeat(40),
+        URUSIN_PUBLIC_ORIGIN: 'https://urusinai.web.id',
+      }),
+    ).toThrow(/EDGE_URL wajib/);
     const c = loadConfig({
       NODE_ENV: 'production',
       PENDAMPING_INTERNAL_TOKEN: 'x'.repeat(40),
       URUSIN_PUBLIC_ORIGIN: 'https://urusinai.web.id',
+      ...EDGE_ENV,
       PENDAMPING_DEV_PAGE: '1',
       PENDAMPING_FIXTURE_ORIGINS: 'https://fixtures.urusinai.web.id',
       PENDAMPING_ORIGIN_OVERRIDES: 'https://telunjuksakti.wonogirikab.go.id=https://fixtures.urusinai.web.id',
     });
     expect(c.devPage).toBe(false);
+    expect(c.sandbox).toBe(true);
+    expect(c.edge).toEqual({
+      kontrol: new URL('http://pendamping-edge:3129'),
+      proxyPort: 3128,
+      token: 'e'.repeat(40),
+    });
     expect(c.allowedOrigins).toEqual(['https://urusinai.web.id']);
     expect(c.originOverrides.get('https://telunjuksakti.wonogirikab.go.id')).toBe(
       'https://fixtures.urusinai.web.id',
@@ -94,9 +122,58 @@ describe('config', () => {
   });
 });
 
+describe('isolasi: edge, sandbox, HOST=antarmuka', () => {
+  it('edge: URL http://host:port + token >= 32; sandbox mati hanya non-produksi dengan fixture', () => {
+    expect(() => loadConfig({ PENDAMPING_EDGE_URL: 'http://edge:3129' })).toThrow(/EDGE_TOKEN/);
+    for (const u of ['https://edge:3129', 'http://edge', 'http://edge:3129/x', 'http://u:p@edge:3129'])
+      expect(() => loadConfig({ ...EDGE_ENV, PENDAMPING_EDGE_URL: u }), u).toThrow(/EDGE_URL/);
+    expect(loadConfig({ ...EDGE_ENV, PENDAMPING_EDGE_PROXY_PORT: '3999' }).edge?.proxyPort).toBe(3999);
+    expect(loadConfig({}).edge).toBeUndefined();
+    expect(loadConfig({}).sandbox).toBe(true);
+    expect(() => loadConfig({ PENDAMPING_SANDBOX: '0' })).toThrow(/SANDBOX/);
+    expect(
+      loadConfig({ PENDAMPING_SANDBOX: '0', PENDAMPING_FIXTURE_ORIGINS: 'http://127.0.0.1:4320' }).sandbox,
+    ).toBe(false);
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'production',
+        PENDAMPING_INTERNAL_TOKEN: 'x'.repeat(40),
+        URUSIN_PUBLIC_ORIGIN: 'https://urusinai.web.id',
+        PENDAMPING_FIXTURE_ORIGINS: 'https://fixtures.urusinai.web.id',
+        ...EDGE_ENV,
+        PENDAMPING_SANDBOX: '0',
+      }),
+    ).toThrow(/SANDBOX/);
+  });
+
+  it('HOST=antarmuka: tepat satu IPv4 non-loopback; selain itu galat (tidak pernah wildcard)', () => {
+    const a = (address: string, internal = false) => ({
+      address,
+      internal,
+      family: 'IPv4' as const,
+      netmask: '255.255.255.0',
+      mac: '',
+      cidr: `${address}/24`,
+    });
+    expect(
+      loadConfig({ HOST: 'antarmuka' }, { lo: [a('127.0.0.1', true)], eth0: [a('172.30.1.3')] }).host,
+    ).toBe('172.30.1.3');
+    expect(() => loadConfig({ HOST: 'antarmuka' }, { lo: [a('127.0.0.1', true)] })).toThrow(/ditemukan 0/);
+    expect(() =>
+      loadConfig({ HOST: 'antarmuka' }, { eth0: [a('172.30.1.3')], eth1: [a('172.31.0.2')] }),
+    ).toThrow(/ditemukan 2/);
+  });
+});
+
 describe('proxy peramban', () => {
   it('loopback tidak dikecualikan dari proxy (<-loopback>) dan env pemati Playwright dihapus', () => {
     expect(proxyOption(5555)).toEqual({ server: 'http://127.0.0.1:5555', bypass: '<-loopback>' });
+    expect(proxyEdgeOption({ server: 'http://172.30.1.3:3128', username: 'u', password: 'p' })).toEqual({
+      server: 'http://172.30.1.3:3128',
+      username: 'u',
+      password: 'p',
+      bypass: '<-loopback>',
+    });
     expect(process.env.PLAYWRIGHT_DISABLE_FORCED_CHROMIUM_PROXIED_LOOPBACK).toBeUndefined();
     expect(chromiumArgs({ jsHeapMb: 1 })).toContain(
       '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1',

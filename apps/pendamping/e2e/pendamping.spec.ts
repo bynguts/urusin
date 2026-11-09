@@ -292,14 +292,14 @@ test('SSRF: dari dalam peramban pendamping, 127.0.0.1:2019 dan 169.254.169.254 t
     // Lapis proxy sendiri (tanpa lapis route): CONNECT/GET langsung ke proxy sesi juga ditolak.
     const viaProxy = await new Promise<number>((resolve) => {
       const req = http.request(
-        { host: '127.0.0.1', port: iso.proxy.port, path: 'http://169.254.169.254/latest/meta-data/' },
+        { host: '127.0.0.1', port: iso.proxy!.port, path: 'http://169.254.169.254/latest/meta-data/' },
         (res) => resolve(res.statusCode ?? 0),
       );
       req.on('error', () => resolve(0));
       req.end();
     });
     expect(viaProxy).toBe(403);
-    expect(await iso.proxy.decide('127.0.0.1', 2019)).toMatchObject({ ok: false });
+    expect(await iso.proxy!.decide('127.0.0.1', 2019)).toMatchObject({ ok: false });
     if (listening) expect(hits).toBe(0);
   } finally {
     await iso.close();

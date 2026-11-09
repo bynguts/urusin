@@ -1,10 +1,13 @@
+import { networkInterfaces } from 'node:os';
+
 /**
  * Konfigurasi layanan pendamping: SATU-SATUNYA tempat default (dibaca sekali saat boot dari env).
  * Default aman untuk host bersama (agent-vm). Tabel lengkap juga ada di docs/adr/0028-browser-pendamping.md.
  *
  * | Env                              | Default      | Arti                                                        |
  * | -------------------------------- | ------------ | ----------------------------------------------------------- |
- * | HOST                             | 127.0.0.1    | Alamat ikat; wildcard (0.0.0.0, ::) DITOLAK                 |
+ * | HOST                             | 127.0.0.1    | Alamat ikat; wildcard DITOLAK; `antarmuka` = satu-satunya IPv4 |
+ * |                                  |              | non-loopback kontainer (jaringan internal compose)          |
  * | PORT                             | 4330         | Port HTTP + WebSocket                                       |
  * | PENDAMPING_INTERNAL_TOKEN        | (dev saja)   | Rahasia HMAC web -> pendamping; >= 32 karakter di produksi  |
  * | PENDAMPING_ALLOWED_ORIGINS       | URUSIN_PUBLIC_ORIGIN | Origin persis yang boleh membuka WebSocket          |
@@ -26,6 +29,11 @@
  * | PENDAMPING_FIXTURE_ORIGINS       | (kosong)     | Origin fixture yang diizinkan egress (dev/uji/Mode Uji)     |
  * | PENDAMPING_ORIGIN_OVERRIDES      | (kosong)     | `resmi=fixture[/awalan]`, fixture wajib di FIXTURE_ORIGINS  |
  * | PENDAMPING_UPSTREAM_PROXY        | (tidak ada)  | Proxy HTTP hulu milik operator (mis. egress Indonesia)      |
+ * | PENDAMPING_EDGE_URL              | (tidak ada)  | Kontrol edge (http://pendamping-edge:3129); WAJIB produksi  |
+ * | PENDAMPING_EDGE_PROXY_PORT       | 3128         | Port proxy CONNECT edge (alamat = IP host edge)             |
+ * | PENDAMPING_EDGE_TOKEN            | (tidak ada)  | Rahasia HMAC pendamping -> edge (>= 32); WAJIB produksi     |
+ * | PENDAMPING_SANDBOX               | 1            | 0 = Chromium tanpa sandbox; HANYA non-produksi + fixture (CI) |
+ * | PENDAMPING_MAKS_BELUM_HALO       | 16           | Soket WS terbuka yang belum `halo` sah                      |
  * | PENDAMPING_DEBUG_TOKEN           | (mati)       | >= 32 karakter: aktifkan /debug (kemudi manual via stream)  |
  * | PENDAMPING_DEV_PAGE              | (mati)       | 1 = halaman /dev untuk e2e; tidak pernah di produksi        |
  * | PENDAMPING_CHROMIUM_PATH         | (Playwright) | Lokasi Chromium alternatif                                  |
@@ -62,6 +70,14 @@ export type Config = {
   originOverrides: Map<string, string>;
   /** Proxy HTTP hulu (CONNECT) yang dipakai proxy egress setelah lolos kebijakan; undefined = langsung. */
   upstreamProxy: URL | undefined;
+  /**
+   * Edge (kontainer pendamping-edge): satu-satunya jalan keluar Chromium di produksi. `kontrol` = URL kontrol
+   * (daftar kredensial proxy per sesi, bertanda HMAC `token`), `proxyPort` = port proxy CONNECT di host yang
+   * sama. undefined = proxy egress di dalam proses (dev/e2e saja; produksi menolak start tanpa edge).
+   */
+  edge: { kontrol: URL; proxyPort: number; token: string } | undefined;
+  /** Sandbox Chromium (namespace + seccomp-bpf). Mati hanya untuk CI/dev terhadap fixture. */
+  sandbox: boolean;
   /** Token halaman /debug (kemudi manual oleh penguji manusia); undefined = mati. */
   debugToken: string | undefined;
   /** Halaman /dev (penampil tanpa gaya untuk e2e). Tidak pernah aktif bila NODE_ENV=production. */
@@ -126,7 +142,37 @@ function upstream(raw: string | undefined): URL | undefined {
   return u;
 }
 
-export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
+/**
+ * `HOST=antarmuka`: ikat ke SATU-SATUNYA alamat IPv4 non-loopback kontainer (kontainer pendamping hanya ada
+ * di jaringan internal compose; alamatnya dibagikan Docker saat start). Lebih dari satu atau tidak ada =
+ * galat, supaya tidak pernah diam-diam mengikat antarmuka yang salah.
+ */
+export function alamatAntarmuka(ifaces: ReturnType<typeof networkInterfaces> = networkInterfaces()): string {
+  const v4 = Object.values(ifaces)
+    .flat()
+    .filter((a) => a !== undefined && a.family === 'IPv4' && !a.internal)
+    .map((a) => a!.address);
+  if (v4.length !== 1)
+    throw new Error(`HOST=antarmuka butuh tepat satu IPv4 non-loopback, ditemukan ${v4.length}`);
+  return v4[0]!;
+}
+
+function edgeDari(env: Record<string, string | undefined>): Config['edge'] {
+  const raw = env.PENDAMPING_EDGE_URL?.trim();
+  if (!raw) return undefined;
+  const u = new URL(raw);
+  if (u.protocol !== 'http:' || u.pathname !== '/' || u.search || u.hash || u.username || !u.port)
+    throw new Error('PENDAMPING_EDGE_URL harus http://host:port');
+  const token = env.PENDAMPING_EDGE_TOKEN ?? '';
+  if (token.length < 32) throw new Error('PENDAMPING_EDGE_TOKEN wajib (>= 32 karakter) bila edge dipakai');
+  const proxyPort = num(env.PENDAMPING_EDGE_PROXY_PORT, 3128);
+  return { kontrol: u, proxyPort, token };
+}
+
+export function loadConfig(
+  env: Record<string, string | undefined> = process.env,
+  ifaces?: ReturnType<typeof networkInterfaces>,
+): Config {
   const production = env.NODE_ENV === 'production';
   const internalToken = env.PENDAMPING_INTERNAL_TOKEN ?? '';
   if (production && internalToken.length < 32)
@@ -134,9 +180,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const allowedOrigins = list(env.PENDAMPING_ALLOWED_ORIGINS ?? env.URUSIN_PUBLIC_ORIGIN).map(exactOrigin);
   if (production && allowedOrigins.length === 0)
     throw new Error('PENDAMPING_ALLOWED_ORIGINS wajib di produksi');
-  const host = (env.HOST ?? DEFAULTS.host).trim();
-  if (WILDCARD.has(host))
-    throw new Error(`HOST=${host || '(kosong)'} ditolak: ikat ke alamat tertentu (bawaan 127.0.0.1)`);
+  const hostEnv = (env.HOST ?? DEFAULTS.host).trim();
+  if (WILDCARD.has(hostEnv))
+    throw new Error(`HOST=${hostEnv || '(kosong)'} ditolak: ikat ke alamat tertentu (bawaan 127.0.0.1)`);
+  const host = hostEnv === 'antarmuka' ? alamatAntarmuka(ifaces) : hostEnv;
   const port = num(env.PORT, DEFAULTS.port);
   const originOverrides = new Map<string, string>();
   for (const pair of list(env.PENDAMPING_ORIGIN_OVERRIDES)) {
@@ -151,6 +198,14 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const headless = env.PENDAMPING_HEADLESS === '1';
   if (headless && (production || fixtureOrigins.length === 0))
     throw new Error('PENDAMPING_HEADLESS=1 hanya untuk CI/dev terhadap fixture (bukan produksi)');
+  const edge = edgeDari(env);
+  if (production && !edge)
+    throw new Error(
+      'PENDAMPING_EDGE_URL wajib di produksi: Chromium hanya boleh keluar lewat pendamping-edge',
+    );
+  const sandbox = env.PENDAMPING_SANDBOX !== '0';
+  if (!sandbox && (production || fixtureOrigins.length === 0))
+    throw new Error('PENDAMPING_SANDBOX=0 hanya untuk CI/dev terhadap fixture (bukan produksi)');
   const debugToken = env.PENDAMPING_DEBUG_TOKEN?.trim() || undefined;
   if (debugToken && debugToken.length < 32) throw new Error('PENDAMPING_DEBUG_TOKEN harus >= 32 karakter');
   return {
@@ -176,6 +231,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     fixtureOrigins,
     originOverrides,
     upstreamProxy: upstream(env.PENDAMPING_UPSTREAM_PROXY),
+    edge,
+    sandbox,
     debugToken,
     devPage: !production && env.PENDAMPING_DEV_PAGE === '1',
     chromiumPath: env.PENDAMPING_CHROMIUM_PATH || undefined,

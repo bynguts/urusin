@@ -23,6 +23,7 @@ import { chromium, type BrowserContext, type CDPSession, type Page } from 'playw
 import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
+import { daftarEdge, type ProxyEdge } from './isolasi.js';
 import { runnerExpression } from './runner-script.js';
 import type { ActiveRun, Frame, JenisFokus, RunFactory, RunInit } from './sessions.js';
 import { createPantauTantangan, isChallengeFrameUrl, isInterstitialTitle } from './verifikasi.js';
@@ -133,6 +134,11 @@ export function chromiumArgs(config: Pick<Config, 'jsHeapMb'>): string[] {
 export function proxyOption(port: number): { server: string; bypass: string } {
   return { server: `http://127.0.0.1:${port}`, bypass: '<-loopback>' };
 }
+
+/** Proxy edge (produksi): IP edge + kredensial acak per sesi; loopback tetap lewat proxy (dan ditolak). */
+export function proxyEdgeOption(pe: Pick<ProxyEdge, 'server' | 'username' | 'password'>) {
+  return { server: pe.server, username: pe.username, password: pe.password, bypass: '<-loopback>' };
+}
 delete process.env.PLAYWRIGHT_DISABLE_FORCED_CHROMIUM_PROXIED_LOOPBACK;
 
 async function sessionMemMb(userDataDir: string, cdp: CDPSession): Promise<number> {
@@ -157,7 +163,8 @@ export function createBrowserFactory(config: Config): RunFactory {
 
 export type Isolated = {
   context: BrowserContext;
-  proxy: EgressProxy;
+  /** Proxy egress di dalam proses (dev/e2e); undefined bila lewat pendamping-edge (produksi). */
+  proxy: EgressProxy | undefined;
   /** Profil sementara sesi (tmpfs di kontainer); dihapus total oleh `close()`. */
   userDataDir: string;
   close(): Promise<void>;
@@ -199,8 +206,21 @@ export async function launchIsolated(
 ): Promise<Isolated> {
   const rules = egressRules(hosts, config.fixtureOrigins);
   const allowedHosts = new Set(rules.map((r) => `${r.host}:${r.port}`));
-  const proxy = await startEgressProxy(rules, { upstream: config.upstreamProxy });
-  proxy.onBlocked(onBlocked);
+  // Produksi: satu-satunya jalan keluar = pendamping-edge (kontainer ini tidak punya rute lain). Dev/e2e:
+  // proxy egress di dalam proses dengan kebijakan yang sama.
+  const edge = config.edge
+    ? await daftarEdge(
+        config.edge,
+        rules.filter((r) => r.port === 443).map((r) => r.host),
+        config.ttlMs + 5 * 60_000,
+      )
+    : undefined;
+  const proxy = edge ? undefined : await startEgressProxy(rules, { upstream: config.upstreamProxy });
+  proxy?.onBlocked(onBlocked);
+  const tutupProxy = async () => {
+    await proxy?.close();
+    await edge?.hapus();
+  };
   const userDataDir = await mkdtemp(join(tmpdir(), 'urusin-pendamping-'));
   const hapus = () => rm(userDataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   let context: BrowserContext | undefined;
@@ -210,7 +230,9 @@ export async function launchIsolated(
     context = await chromium.launchPersistentContext(userDataDir, {
       headless: config.headless,
       ...(config.chromiumPath ? { executablePath: config.chromiumPath } : {}),
-      proxy: proxyOption(proxy.port),
+      proxy: edge ? proxyEdgeOption(edge) : proxyOption(proxy!.port),
+      // Sandbox Chromium (userns + seccomp-bpf) aktif; hanya CI terhadap fixture yang boleh mematikannya.
+      chromiumSandbox: config.sandbox,
       args: chromiumArgs(config),
       env: {
         ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}),
@@ -234,6 +256,7 @@ export async function launchIsolated(
       const port = Number(u?.port || (u?.protocol === 'https:' ? 443 : 80));
       const ok =
         (u?.protocol === 'https:' || u?.protocol === 'http:') && allowedHosts.has(`${u.hostname}:${port}`);
+      if (!ok && u?.hostname) onBlocked(u.hostname);
       return ok ? route.continue() : route.abort('blockedbyclient');
     });
     const ctx = context;
@@ -243,14 +266,14 @@ export async function launchIsolated(
       userDataDir,
       async close() {
         await ctx.close().catch(() => {});
-        await proxy.close();
+        await tutupProxy();
         // Profil (cookie, storage, cache, Login Data) dihapus seluruhnya: tidak ada yang tersisa.
         await hapus();
       },
     };
   } catch (e) {
     await context?.close().catch(() => {});
-    await proxy.close();
+    await tutupProxy();
     await hapus();
     throw e;
   }

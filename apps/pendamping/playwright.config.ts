@@ -38,6 +38,9 @@ export default defineConfig({
         PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN,
         PENDAMPING_ORIGIN_OVERRIDES: `https://telunjuksakti.wonogirikab.go.id=${FIXTURE_ORIGIN}`,
         PENDAMPING_MAX_SESSIONS: '1',
+        // Sandbox Chromium aktif seperti produksi; runner CI Linux (Ubuntu 24.04, AppArmor membatasi userns
+        // tanpa profil seccomp kontainer) mematikannya. Produksi memeriksa sandbox saat boot (isolasi.ts).
+        ...(process.env.CI && process.platform === 'linux' ? { PENDAMPING_SANDBOX: '0' } : {}),
         // CI terhadap fixture saja; situs nyata selalu headed (PENDAMPING_E2E_HEADED=1 untuk uji lokal).
         ...(process.env.PENDAMPING_E2E_HEADED === '1' ? {} : { PENDAMPING_HEADLESS: '1' }),
       },

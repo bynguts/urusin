@@ -9,8 +9,9 @@
 #
 # Headed, bukan headless: situs ber-Cloudflare menantang Chromium headless (diukur tim). Flag Chromium
 # bawaan Playwright tidak diubah (tanpa stealth, tanpa menyembunyikan otomasi; lihat tanpa-evasi.test.ts).
-# Isolasi: Chromium berjalan dengan --no-sandbox (bawaan chromiumSandbox: false) karena kontainer tanpa
-# capability (cap_drop ALL, no-new-privileges); batas keamanannya kontainer + proxy egress per sesi.
+# Isolasi: sandbox Chromium AKTIF (userns + seccomp-bpf; butuh profil seccomp Playwright dan SYS_CHROOT dari
+# compose) dan diperiksa saat boot. Kontainer pendamping hanya di jaringan internal compose; satu-satunya jalan
+# keluar adalah pendamping-edge (image yang sama, `node dist/edge-main.js`). Lihat deploy/compose.prod.yml.
 
 FROM --platform=$BUILDPLATFORM node:26-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS builder
 ENV PNPM_HOME=/pnpm \
@@ -33,12 +34,17 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 
 FROM mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d AS runtime
 ARG GIT_SHA=dev
-# Host network di produksi: ikat 127.0.0.1:4330 saja (lihat deploy/compose.prod.yml).
+# Bawaan 127.0.0.1; compose produksi memakai HOST=antarmuka (IPv4 jaringan internal, lihat compose.prod.yml).
+# Root filesystem read-only di produksi: Chromium headed menulis ke HOME/XDG (crashpad, cache), jadi semuanya
+# diarahkan ke /tmp (tmpfs, hilang saat kontainer berhenti). Tanpa ini Chromium headed gagal start.
 ENV NODE_ENV=production \
     GIT_SHA=$GIT_SHA \
     HOST=127.0.0.1 \
     PORT=4330 \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    HOME=/tmp \
+    XDG_CONFIG_HOME=/tmp/.config \
+    XDG_CACHE_HOME=/tmp/.cache
 LABEL org.opencontainers.image.source="https://github.com/bynguts/urusin" \
       org.opencontainers.image.revision=$GIT_SHA
 WORKDIR /app
@@ -48,7 +54,7 @@ COPY --from=builder --chown=pwuser:pwuser /out/dist ./dist
 USER pwuser
 EXPOSE 4330
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4330)+'/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+  CMD ["node", "dist/sehat.js"]
 # Satu Xvfb (dengan cookie X acak, tanpa TCP) dijalankan dan dihentikan oleh proses Node sendiri (src/xvfb.ts);
 # compose memakai `init: true` agar SIGTERM sampai ke Node dan proses Chromium yatim dipungut.
 CMD ["node", "dist/main.js"]
