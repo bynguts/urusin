@@ -21,7 +21,9 @@ export function dataDiriSintetis(): Record<string, string> {
     kecamatan: 'Wonogiri',
     kodeKabKota: '3312',
     kodePos: '57612',
-    hp: ['0812', '0000', '0000'].join(''),
+    // = HP uji yang tercetak di replika Telunjuk Sakti (apps/fixtures TEST_HP): isian AI langsung diterima di
+    // halaman masuk replika, juri cukup mengetik kode CAPTCHA. Juri tidak pernah ke portal asli (Mode Uji).
+    hp: ['0800', '0000', '0001'].join(''),
     email: ['juri', 'example.com'].join('@'),
   };
 }
