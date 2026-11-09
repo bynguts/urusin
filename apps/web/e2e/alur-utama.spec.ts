@@ -1,5 +1,15 @@
 import { expect, test } from '@playwright/test';
 
+// IP klien sendiri per tes (lewat X-Forwarded-For, seperti di belakang Caddy): kuota tamu/urusan baru per IP
+// tidak terbagi antartes atau antarulangan (--repeat-each).
+test.beforeEach(async ({ context }) => {
+  const oktet = () => Math.floor(Math.random() * 250) + 1;
+  await context.setExtraHTTPHeaders({
+    'x-forwarded-proto': 'http',
+    'x-forwarded-for': `10.${oktet()}.${oktet()}.${oktet()}`,
+  });
+});
+
 // Alur utama warga: Landing → Rencana peristiwa → layar urusan (percakapan) di HP 390px dan laptop 1440px.
 // Server memakai DemoProvider (tanpa kunci LLM), jadi tidak ada yang dikirim ke situs pemerintah.
 for (const lebar of [390, 1440]) {

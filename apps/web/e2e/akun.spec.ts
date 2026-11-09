@@ -1,15 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { devices, expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { DB_PATH, E2E_DIR, E2E_GIT_SHA, ORIGIN, OUTBOX } from '../playwright.config';
+import { DB_PATH, E2E_GIT_SHA, ORIGIN, OUTBOX } from '../playwright.config';
 
 /**
  * E2E akun #43–#49 (rencana §3.26, §4 e2e). Kasus berbasis waktu (penyapu 24 jam, kedaluwarsa izin) memakai
  * jam palsu di vitest (`packages/akun/src/service.test.ts`); di sini waktu "dimajukan" dengan menulis ke DB.
  */
-
-mkdirSync(E2E_DIR, { recursive: true });
 
 const TURNSTILE = 'XXXX.DUMMY.TOKEN.XXXX';
 const SANDI = 'kuda-lari-cepat-9';
