@@ -36,6 +36,8 @@ export type DataPendamping = {
   bukti: PendampingBukti | null;
   koneksi: KoneksiViewer | null;
   butuhData: { placeholder: string[]; berkas: string[]; origin?: string | undefined } | null;
+  /** Situs yang benar-benar dibuka peramban + apakah itu replika uji (Mode Uji), dari status server. */
+  situs: { origin: string; replika: boolean } | null;
 };
 
 export function dataAwal(): DataPendamping {
@@ -49,6 +51,7 @@ export function dataAwal(): DataPendamping {
     bukti: null,
     koneksi: null,
     butuhData: null,
+    situs: null,
   };
 }
 
@@ -202,6 +205,7 @@ export class SesiPendampingUi {
       keadaan: keadaanDariSesi(s, this.data.giliran !== null),
       pesan: s.pesan ?? this.data.pesan,
       bukti: s.bukti ?? this.data.bukti,
+      situs: s.situs ? { origin: s.situs, replika: s.replika === true } : this.data.situs,
     };
   }
 

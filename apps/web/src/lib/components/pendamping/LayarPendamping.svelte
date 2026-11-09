@@ -90,8 +90,14 @@
   <div class="flex min-h-[55.5px] shrink-0 items-center gap-2.5 border-b border-line bg-card px-4">
     <div class="flex min-w-0 flex-1 items-center gap-2">
       <Icon name="gembok" class="size-4 shrink-0 text-ink" label="Koneksi aman" />
-      <span class="truncate text-[15px] font-semibold text-ink">{domain(situs)}</span>
-      {#if instansi}<span class="hidden truncate text-sm text-card-ink sm:inline">{instansi}</span>{/if}
+      <span class="truncate text-[15px] font-semibold text-ink">{domain(data.situs?.origin ?? situs)}</span>
+      {#if data.situs?.replika}
+        <!-- Mode Uji: yang terbuka replika uji milik Urusin, bukan situs pemerintah asli. -->
+        <span
+          class="shrink-0 rounded-full border border-kuning-garis bg-kuning-lembar px-2 py-0.5 text-xs font-semibold text-ink"
+          title="Replika uji, bukan situs pemerintah asli">Mode uji</span
+        >
+      {:else if instansi}<span class="hidden truncate text-sm text-card-ink sm:inline">{instansi}</span>{/if}
     </div>
     <ChipMode keadaan={k} />
   </div>
