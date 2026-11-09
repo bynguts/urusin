@@ -18,6 +18,7 @@ describe(
       'caddy-install.test.sh',
       'compose-config.test.sh',
       'pendamping-isolation.test.sh',
+      'ci-runner.test.sh',
     ]) {
       it(`${name}: lulus semua kasus harness`, () => {
         const r = spawnSync('bash', [harness(name)], { encoding: 'utf8' });
