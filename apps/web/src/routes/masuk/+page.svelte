@@ -68,6 +68,7 @@
   {#if data.googleAktif}
     <form method="GET" action="/auth/google" data-sveltekit-reload class="mt-6">
       <input type="hidden" name="next" value={next} />
+      {#if data.ulang}<input type="hidden" name="ulang" value="1" />{/if}
       <button
         type="submit"
         class="flex min-h-14 w-full items-center justify-center rounded-full border border-line-2 bg-surface font-semibold text-ink hover:bg-card"
