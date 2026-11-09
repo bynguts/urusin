@@ -77,3 +77,49 @@ for (const lebar of [390, 1440]) {
     }
   });
 }
+
+// Halaman Web publik dari frame pen (Cara kerja, Urusan, Tanya jawab): statis tanpa JS, tanpa geser samping,
+// dicapai dari navigasi landing; tanya jawab memakai <details> yang tetap jalan tanpa JavaScript.
+const HALAMAN_WEB = [
+  { path: '/cara-kerja', nav: 'Cara kerja', h1: 'Dari cerita sampai pengajuan, langkah demi langkah' },
+  { path: '/urusan', nav: 'Urusan', h1: 'Urusan yang bisa dibantu Urusin' },
+  { path: '/tanya-jawab', nav: 'Tanya jawab', h1: 'Pertanyaan yang sering diajukan' },
+];
+for (const lebar of [390, 1440]) {
+  test(`halaman web cara kerja, urusan, tanya jawab di ${lebar}px`, async ({ page }) => {
+    await page.setViewportSize({ width: lebar, height: lebar < 600 ? 844 : 960 });
+    for (const h of HALAMAN_WEB) {
+      await page.goto(h.path);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(h.h1);
+      expect(await page.locator('script').count()).toBe(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
+    }
+    // Kartu peristiwa: judul menuju halaman peristiwa, tombol mulai = formulir POST ke aksi landing
+    await page.goto('/urusan');
+    await expect(page.getByRole('link', { name: 'Kelahiran' })).toHaveAttribute(
+      'href',
+      /\/peristiwa\/kelahiran$/,
+    );
+    await expect(page.locator('form[action="/?/mulai"] input[name="peristiwa"]')).toHaveCount(5);
+    // Akordeon: pertanyaan tertutup terbuka saat diklik
+    await page.goto('/tanya-jawab');
+    const tanya = page.locator('details', { hasText: 'Apakah password saya aman?' });
+    await expect(tanya).not.toHaveAttribute('open');
+    await tanya.getByRole('heading', { name: 'Apakah password saya aman?' }).click();
+    await expect(tanya).toHaveAttribute('open');
+    await expect(tanya.getByText('tidak dikirim ke AI')).toBeVisible();
+    if (lebar >= 1024) {
+      for (const h of HALAMAN_WEB) {
+        await page.goto('/');
+        const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
+        await nav.getByRole('link', { name: h.nav, exact: true }).click();
+        await expect(page).toHaveURL(new RegExp(`${h.path}$`));
+        await expect(
+          page
+            .getByRole('navigation', { name: 'Navigasi utama' })
+            .getByRole('link', { name: h.nav, exact: true }),
+        ).toHaveAttribute('aria-current', 'page');
+      }
+    }
+  });
+}
