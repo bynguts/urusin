@@ -56,9 +56,10 @@ describe('navigasi', () => {
     expect(rutAuth('/masukan')).toBe(false);
     expect(menuAktif('/beranda', '/peristiwa/kelahiran')).toBe(true);
     expect(menuAktif('/beranda', '/urusanku')).toBe(false);
-    expect(menuAktif('/urusanku', `/urusan/u_${'a'.repeat(32)}`)).toBe(true);
-    expect(menuAktif('/jejak', `/jejak/u_${'a'.repeat(32)}`)).toBe(true);
+    // App 02–09: halaman satu urusan menyorot urusannya di "Urusan aktif", bukan menu.
+    expect(menuAktif('/urusanku', `/urusan/u_${'a'.repeat(32)}`)).toBe(false);
     expect(menuAktif('/urusanku', `/jejak/u_${'a'.repeat(32)}`)).toBe(false);
+    expect(menuAktif('/pengaturan', '/pengaturan')).toBe(true);
     expect(menuAktif('/dokumen', '/data-diri')).toBe(true);
     expect(menuAktif('/bantuan', '/bantuan')).toBe(true);
   });

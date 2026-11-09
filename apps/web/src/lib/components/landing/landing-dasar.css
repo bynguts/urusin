@@ -1,12 +1,4 @@
 /* Dasar landing hasil konversi frame n2rpg (pen Rafi). Kelas lpN di landing-pen.css adalah gaya ekspor apa adanya. */
-@font-face {
-  font-family: 'Lora Urusin';
-  src: url('../../assets/fonts/lora-urusin-500.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
 .lp {
   --lp-serif: 'Lora Urusin', Georgia, serif;
   font-family: 'Strawberry Sans', system-ui, sans-serif;
