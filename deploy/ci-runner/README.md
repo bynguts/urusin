@@ -40,7 +40,8 @@ Setiap pemasangan dan pengaktifan tetap butuh persetujuan per kejadian (aturan d
     distro); CI tidak pernah memasang binfmt. Smoke test: arm64 native (boot pendamping penuh dengan pengerasan
     compose), amd64 lewat binfmt. Output tetap `DIGEST: sha256:...` di log job, sama dengan runner GitHub.
   - **rc-compat** (aktif hanya bila ada tag `rc*`) belum punya varian self-hosted: di runner ini langkahnya
-    **dilewati dengan `::warning::`** (bukan gagal); cakupan rc-compat berkurang selama runner cadangan aktif.
+    **dilewati dengan `::warning::`** (bukan gagal); cakupan rc-compat berkurang selama runner cadangan aktif. Cek migrasi aditif
+    (`scripts/check-additive-migrations.mjs`, statis: git diff + node) **tetap jalan** di runner ini.
   - Image Playwright (dipin digest) ditarik sekali dan disimpan; tidak ditarik ulang per job.
   - gitleaks dan osv-scanner diunduh sesuai arsitektur runner (checksum dipin) ke `$RUNNER_TEMP`, tanpa sudo.
 - **Runner persisten, didaftarkan sekali.** `install.sh` menerima **registration token** sekali pakai (berlaku

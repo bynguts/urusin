@@ -285,6 +285,8 @@ jobs:
       # Tidak berbuat apa pun selama belum ada tag rc*; setelah ada, langkah di bawah aktif otomatis.
       # Runner self-hosted (cadangan menit habis): rc-compat butuh Docker langsung, jadi DILEWATI dengan peringatan
       # (cakupan berkurang selama cadangan; lihat deploy/ci-runner/README.md). Kembali ke runner GitHub = jalan lagi.
+      # Cek migrasi aditif statis (git diff + node, tanpa Docker): SELALU jalan bila ada tag rc* (output `tag`),
+      # termasuk di runner self-hosted. `present` hanya menggerbang langkah rc-compat yang butuh Docker.
       - name: Cari tag rc* terakhir
         id: rc
         env:
@@ -293,8 +295,9 @@ jobs:
           tag="$(git tag -l 'rc*' --sort=-version:refname | head -n1)"
           if [ -n "$tag" ] && [ "$RUNNER_ENV" = self-hosted ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "tag=${tag}" >> "$GITHUB_OUTPUT"
             echo "::warning::rc-compat DILEWATI di runner self-hosted (tag ${tag}); cakupan berkurang selama runner cadangan."
-            echo "rc-compat: DILEWATI di runner self-hosted (tag ${tag}); cakupan berkurang." >> "$GITHUB_STEP_SUMMARY"
+            echo "rc-compat: DILEWATI di runner self-hosted (tag ${tag}); cakupan berkurang (cek migrasi aditif tetap jalan)." >> "$GITHUB_STEP_SUMMARY"
           elif [ -z "$tag" ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "::notice::belum ada tag rc*: rc-compat dilewati (tidak ada yang diperiksa)"
@@ -305,20 +308,22 @@ jobs:
             echo "rc-compat: memakai tag ${tag}" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Migrasi sejak tag rc harus aditif (tanpa DROP/RENAME)
-        if: steps.rc.outputs.present == 'true'
-        run: node scripts/check-additive-migrations.mjs "${{ steps.rc.outputs.tag }}"
-
       - name: Setup pnpm
-        if: steps.rc.outputs.present == 'true'
+        if: steps.rc.outputs.tag != ''
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
       - name: Setup Node
-        if: steps.rc.outputs.present == 'true'
+        if: steps.rc.outputs.tag != ''
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
+
+      - name: Migrasi sejak tag rc harus aditif (tanpa DROP/RENAME)
+        if: steps.rc.outputs.tag != ''
+        env:
+          RC_TAG: ${{ steps.rc.outputs.tag }}
+        run: node scripts/check-additive-migrations.mjs "$RC_TAG"
 
       - name: Install
         if: steps.rc.outputs.present == 'true'
