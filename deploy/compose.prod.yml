@@ -187,7 +187,8 @@ services:
     #   helper SUID tidak menaikkan euid, sandbox gagal. SETUID/SETGID tidak perlu (diukur).
     # Proses pwuser sendiri tetap tanpa capability efektif/permitted (cap di atas hanya di bounding set dan
     # hanya dipakai helper SUID yang langsung membuangnya); tidak ada biner SUID lain yang bisa memakainya.
-    # Profil seccomp Playwright tidak diubah.
+    # Profil seccomp Playwright dipangkas: CAP_SYS_ADMIN hanya membuka clone/unshare (bukan mount, bpf, setns,
+    # perf_event_open, dst.); chroot tetap di bawah CAP_SYS_CHROOT. Diukur di deploy/README.md.
     cap_drop: [ALL]
     cap_add: [SYS_ADMIN, SYS_CHROOT]
     security_opt:

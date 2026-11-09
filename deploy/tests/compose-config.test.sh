@@ -20,7 +20,7 @@ printf 'WEB_IMAGE_BLUE=ghcr.io/x/web@sha256:aa\nWEB_IMAGE_GREEN=ghcr.io/x/web@sh
 (cd "$SB" && docker compose -f compose.prod.yml --env-file .env --env-file .env.images --profile fixtures --profile pendamping config --format json) > "$SB/config.json" \
   || { echo "compose-config: docker compose config gagal"; exit 1; }
 
-node - "$SB/config.json" <<'EOF'
+node - "$SB/config.json" "$DEPLOY/pendamping-seccomp.json" <<'EOF'
 const cfg = JSON.parse(require('node:fs').readFileSync(process.argv[2], 'utf8'));
 let bad = 0;
 const check = (name, ok) => { console.log((ok ? '  ok   ' : '  FAIL ') + name); if (!ok) bad++; };
@@ -61,6 +61,13 @@ check('pendamping: tanpa PENDAMPING_UPSTREAM_PROXY (egress hanya lewat edge)', !
 // Sandbox setuid (ADR 0029): tanpa no-new-privileges HANYA di pendamping; tepat SYS_ADMIN + SYS_CHROOT.
 check('pendamping: seccomp Playwright, satu-satunya security_opt (sandbox setuid, tanpa no-new-privileges)',
   pd.security_opt.length === 1 && /^seccomp=.*pendamping-seccomp\.json$/.test(pd.security_opt[0]));
+// Profil seccomp dipangkas: CAP_SYS_ADMIN hanya membuka clone/unshare; setns/mount/bpf tidak pernah diizinkan.
+const sec = JSON.parse(require('node:fs').readFileSync(process.argv[3], 'utf8'));
+const izin = sec.syscalls.filter((x) => x.action === 'SCMP_ACT_ALLOW');
+const sysAdmin = izin.filter((x) => x.includes?.caps?.includes('CAP_SYS_ADMIN')).flatMap((x) => x.names);
+check('seccomp: blok CAP_SYS_ADMIN tepat clone + unshare', JSON.stringify([...sysAdmin].sort()) === '["clone","unshare"]');
+check('seccomp: setns/mount/umount2/bpf/perf_event_open tidak diizinkan di aturan mana pun',
+  !izin.some((x) => x.names.some((n) => ['setns', 'mount', 'umount', 'umount2', 'bpf', 'perf_event_open'].includes(n))));
 check('pendamping: cap_drop ALL, hanya SYS_ADMIN + SYS_CHROOT ditambah', pd.cap_drop.includes('ALL') &&
   JSON.stringify([...pd.cap_add].sort()) === JSON.stringify(['SYS_ADMIN', 'SYS_CHROOT']));
 check('pendamping: read_only, ulimit core 0, memswap = mem', pd.read_only === true && 'core' in pd.ulimits && (pd.ulimits.core.soft ?? 0) === 0 &&

@@ -51,10 +51,9 @@
 	],
 	"syscalls": [
 		{
-			"comment": "Allow create user namespaces",
+			"comment": "Allow create user namespaces (Urusin: setns removed, not used by either Chromium sandbox)",
 			"names": [
 				"clone",
-				"setns",
 				"unshare"
 			],
 			"action": "SCMP_ACT_ALLOW",
@@ -600,25 +599,12 @@
 		},
 		{
 			"names": [
-				"bpf",
 				"clone",
-				"fanotify_init",
-				"lookup_dcookie",
-				"mount",
-				"name_to_handle_at",
-				"perf_event_open",
-				"quotactl",
-				"setdomainname",
-				"sethostname",
-				"setns",
-				"syslog",
-				"umount",
-				"umount2",
 				"unshare"
 			],
 			"action": "SCMP_ACT_ALLOW",
 			"args": [],
-			"comment": "",
+			"comment": "Urusin: CAP_SYS_ADMIN only for the setuid chrome-sandbox namespaces (clone/unshare)",
 			"includes": {
 				"caps": [
 					"CAP_SYS_ADMIN"

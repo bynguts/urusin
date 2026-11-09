@@ -418,9 +418,12 @@ dari image yang sama; isolasi murni dari topologi compose (tanpa iptables):
   `/health` (dan `/debug*` bila `PENDAMPING_DEBUG_TOKEN` diisi); satu-satunya proxy CONNECT Chromium
   (kredensial acak per sesi, DNS di-resolve edge, setiap alamat diperiksa `checkConnect` profil browser).
 
-Butuh Docker Engine >= 28 (`gateway_mode_ipv4`). `pendamping-seccomp.json` = salinan apa adanya dari
-Playwright v1.65.0 `utils/docker/seccomp_profile.json` (sha256
-`cc3e61cabda6bbc1e53e54d27ba4d55a9d3be829b6dd1a596f4a7b31b1cc7849`); ikut tersalin bersama `compose.prod.yml`.
+Butuh Docker Engine >= 28 (`gateway_mode_ipv4`). `pendamping-seccomp.json` = profil Playwright v1.65.0
+`utils/docker/seccomp_profile.json` (sha256 asli `cc3e61cabda6bbc1e53e54d27ba4d55a9d3be829b6dd1a596f4a7b31b1cc7849`)
+dengan satu pemangkasan: blok `CAP_SYS_ADMIN` hanya `clone` dan `unshare` (bpf, perf_event_open, mount/umount,
+setns, quotactl, lookup_dcookie, fanotify_init, name_to_handle_at, syslog, sethostname, setdomainname dibuang),
+dan `setns` dibuang dari blok userns. Diukur: sandbox setuid (userns mati) dan userns tetap aktif. sha256 kini
+`861ed9091c05215e9a6ad0e3fedda69331191f4d9aeaa01bc8c00b8021e4e76c`; ikut tersalin bersama `compose.prod.yml`.
 
 ```sh
 # .env (rahasia, chmod 600)
