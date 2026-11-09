@@ -41,60 +41,53 @@
     e.preventDefault();
     ontolak();
   }}
-  class="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-3xl bg-surface p-0 text-ink shadow-lembut backdrop:bg-black/40 max-sm:mb-0 max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none"
+  class="m-auto w-[min(27rem,calc(100vw-2rem))] rounded-[1.25rem] bg-bg-2 p-0 text-ink shadow-lembut backdrop:bg-black/40 max-sm:mb-0 max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none"
 >
-  <div class="flex flex-col gap-4 p-5 sm:p-6">
-    <div class="flex items-center gap-3">
-      <span class="grid size-10 place-items-center rounded-full bg-nila text-nila-ink"
-        ><Icon name="ai" class="size-5" /></span
-      >
-      <h2 id="judul-izinkan" class="text-xl font-semibold tracking-tight">Izinkan AI mengisi?</h2>
-    </div>
-    <p class="text-[0.9375rem] text-body">
-      Data berikut diambil dari Data Diri dan Dokumen Anda, hanya untuk sesi ini. Semuanya dihapus saat
-      browser ditutup.
-    </p>
-    {#if label.length}
-      <div>
-        <p class="text-sm font-semibold">Data diri</p>
-        <ul class="mt-2 flex flex-wrap gap-2">
+  <div class="flex flex-col p-6">
+    <Icon name="perisai-centang" class="size-6 text-hijau-ink" />
+    <h2 id="judul-izinkan" class="mt-8 text-[1.625rem] leading-[1.15] font-normal tracking-[-0.035em]">
+      Periksa sebelum<br />memberi izin.
+    </h2>
+    <p class="mt-5 text-[0.9375rem] text-muted">Tujuan: formulir pada situs resmi yang didukung.</p>
+    {#if label.length || berkas.length}
+      <div class="mt-6 rounded-xl bg-surface p-5">
+        <p class="text-base font-semibold">Data yang akan dipakai</p>
+        <dl class="mt-4 grid grid-cols-[auto_1fr] gap-x-8 gap-y-3 text-[0.875rem]">
           {#each label as l (l)}
-            <li class="rounded-full bg-bg-2 px-3 py-1.5 text-sm">{l}</li>
+            <dt class="text-muted">{l}</dt>
+            <dd class="font-semibold">Dari Data Diri</dd>
           {/each}
-        </ul>
-      </div>
-    {/if}
-    {#if berkas.length}
-      <div>
-        <p class="text-sm font-semibold">Berkas</p>
-        <ul class="mt-2 flex flex-wrap gap-2">
           {#each berkas as b (b)}
-            <li class="inline-flex items-center gap-1.5 rounded-full bg-bg-2 px-3 py-1.5 text-sm">
-              <Icon name="berkas" class="size-4" />{b.toUpperCase()}
-            </li>
+            <dt class="text-muted">Berkas</dt>
+            <dd class="font-semibold">{b.toUpperCase()}</dd>
           {/each}
-        </ul>
+        </dl>
       </div>
     {/if}
+    <p class="mt-6 text-[0.9375rem] leading-[1.6] text-muted">
+      {berkas.length
+        ? 'Hanya mengisi kolom dan mengunggah berkas yang tercantum. Tidak mengirim formulir.'
+        : 'Hanya mengisi kolom yang tercantum. Tidak mengirim formulir. Unggah berkas memerlukan izin terpisah.'}
+    </p>
     {#if pesan}
-      <p role="alert" class="rounded-xl bg-kuning px-4 py-3 text-[0.9375rem] text-kuning-ink">{pesan}</p>
+      <p role="alert" class="mt-4 rounded-xl bg-kuning px-4 py-3 text-[0.9375rem] text-kuning-ink">{pesan}</p>
     {/if}
-    <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-      <button
-        type="button"
-        onclick={ontolak}
-        class="inline-flex min-h-12 items-center justify-center rounded-full border border-line-2 bg-surface px-5 font-medium hover:bg-card"
-        >Saya isi sendiri</button
-      >
-      <button
-        type="button"
-        onclick={onizinkan}
-        disabled={sibuk}
-        aria-busy={sibuk || undefined}
-        class="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90 disabled:opacity-80"
-      >
-        <Icon name={sibuk ? 'memuat' : 'centang'} class="size-4.5 {sibuk ? 'animate-spin' : ''}" /> Izinkan isi
-      </button>
-    </div>
+    <button
+      type="button"
+      onclick={onizinkan}
+      disabled={sibuk}
+      aria-busy={sibuk || undefined}
+      class="mt-6 inline-flex h-[3.25rem] items-center justify-center gap-3 rounded-full bg-primer px-6 text-base font-semibold text-primer-ink hover:opacity-90 disabled:opacity-80"
+    >
+      <Icon name={sibuk ? 'memuat' : 'panah'} class="size-[1.125rem] {sibuk ? 'animate-spin' : ''}" /> Izinkan pengisian
+      ini
+    </button>
+    <button
+      type="button"
+      onclick={ontolak}
+      class="mt-5 inline-flex h-[3.25rem] items-center rounded-full bg-surface px-6 text-base font-semibold shadow-lembut hover:opacity-90"
+      >Batal</button
+    >
+    <p class="mt-6 text-[0.8125rem] text-muted">Izin berlaku untuk langkah ini saja.</p>
   </div>
 </dialog>

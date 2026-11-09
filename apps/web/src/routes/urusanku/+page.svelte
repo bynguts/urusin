@@ -77,21 +77,20 @@
       {/each}
     </div>
   {:else if dimuat || !lokal.data.urusan.length}
-    <div class="mt-8 flex flex-col items-center gap-3 rounded-kartu bg-card px-6 py-10 text-center">
-      <span class="grid size-12 place-items-center rounded-full bg-bg-2"
-        ><Icon name="urusanku" class="size-6" /></span
-      >
-      <p class="text-lg font-semibold text-ink">
-        {filter === 'semua' ? 'Belum ada urusan di perangkat ini' : 'Tidak ada urusan di kelompok ini'}
+    <!-- Frame rFa2b: "Belum ada urusan" -->
+    <div class="mt-8 max-w-[27rem] rounded-[1.25rem] border border-line bg-bg p-6">
+      <Icon name="obrolan" class="size-6 text-hijau-ink" />
+      <p class="mt-4 text-[1.3125rem] leading-[1.25] font-normal tracking-[-0.02em] text-ink">
+        {filter === 'semua' ? 'Belum ada urusan' : 'Tidak ada urusan di kelompok ini'}
       </p>
-      <p class="max-w-md text-[0.9375rem] text-body">
-        Urusan yang Anda mulai akan muncul di sini beserta statusnya.
+      <p class="mt-3 text-[0.9375rem] leading-[1.6] text-muted">
+        Mulai dengan cerita singkat. Anda belum perlu menyiapkan dokumen.
       </p>
       <a
         href={resolve('/beranda')}
-        class="mt-2 inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90"
+        class="mt-4 inline-flex min-h-12 items-center gap-3 font-semibold text-ink hover:opacity-70"
       >
-        <Icon name="tambah" class="size-4.5" /> Mulai urusan
+        <Icon name="panah" class="size-[1.125rem]" /> Ceritakan kebutuhan
       </a>
     </div>
   {:else}

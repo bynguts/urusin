@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import Icon from '../Icon.svelte';
   import ChipMode from './ChipMode.svelte';
   import type { DataPendamping } from '#lib/pendamping/sesi.svelte.js';
@@ -20,6 +21,7 @@
     onhentikan,
     onmulailagi,
     onpanduan,
+    urusanId,
   }: {
     data: DataPendamping;
     situs: string;
@@ -31,6 +33,8 @@
     onhentikan: () => void;
     onmulailagi: () => void;
     onpanduan: () => void;
+    /** Id urusan untuk tautan Jejak "Tinjau riwayat tindakan" di keadaan dipandu. */
+    urusanId?: string | undefined;
   } = $props();
 
   const k = $derived(data.keadaan);
@@ -44,20 +48,15 @@
         : 0,
   );
 
-  const JUDUL_GILIRAN: Record<string, string> = {
-    login: 'Masuk akun di situs resmi',
-    masuk_akun: 'Masuk akun di situs resmi',
-    verifikasi_situs: 'Selesaikan pemeriksaan keamanan situs',
-    final: 'Periksa isian, lalu tekan Kirim pengajuan',
-    periksa: 'Periksa halaman ini',
-  };
   const CATATAN_GILIRAN: Record<string, string> = {
-    login: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
-    masuk_akun: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
+    login: 'Jangan kirim OTP atau sandi ke percakapan Urusin. Agen menunggu sampai Anda selesai.',
+    masuk_akun: 'Jangan kirim OTP atau sandi ke percakapan Urusin. Agen menunggu sampai Anda selesai.',
     verifikasi_situs: 'Situs memeriksa keamanan. Centang kotaknya sendiri.',
     final: 'AI dikunci agar tidak bisa menekan Kirim.',
     periksa: 'AI menunggu sampai Anda selesai.',
   };
+  const CATATAN_UMUM =
+    'Jangan kirim kode atau sandi ke percakapan Urusin. Agen menunggu sampai Anda selesai.';
 
   function ketuk() {
     // Keyboard ponsel: fokuskan input tersembunyi saat warga mengetuk siaran dalam mode takeover.
@@ -78,15 +77,37 @@
   </div>
 
   {#if k === 'giliran' && data.giliran}
-    <div role="status" class="flex gap-3 border-b border-kuning bg-kuning/60 px-4 py-3.5">
-      <span class="grid size-8 shrink-0 place-items-center rounded-full bg-kuning text-kuning-ink">
-        <Icon name="tangan" class="size-4.5" />
-      </span>
-      <div>
-        <p class="font-semibold text-ink">{JUDUL_GILIRAN[data.giliran.alasan] ?? 'Giliran Anda'}</p>
-        <p class="text-[0.9375rem] text-body">{data.giliran.pesan}</p>
-        <p class="text-sm text-muted">{CATATAN_GILIRAN[data.giliran.alasan] ?? ''}</p>
+    <!-- Frame rFa2b: "Bantuan dijeda · Sekarang, giliran Anda." -->
+    <div role="status" class="border-b border-line bg-bg-2 px-6 py-6">
+      <Icon name="tangan" class="size-7 text-kuning-ink" />
+      <span
+        class="mt-5 inline-flex h-8 w-fit items-center rounded-full bg-kuning px-3 text-[0.8125rem] font-semibold text-kuning-ink"
+        >Bantuan dijeda</span
+      >
+      <p class="mt-4 text-[1.625rem] leading-[1.15] font-normal tracking-[-0.035em] text-ink">
+        Sekarang,<br />giliran Anda.
+      </p>
+      <p class="mt-5 text-[1.0625rem] leading-[1.6] text-ink">{data.giliran.pesan}</p>
+      <div class="mt-4 rounded-xl bg-surface px-5 py-5 text-[0.9375rem] leading-[1.6] text-muted">
+        <Icon name="gembok" class="size-5 text-ink" />
+        <p class="mt-3">{CATATAN_GILIRAN[data.giliran.alasan] ?? CATATAN_UMUM}</p>
       </div>
+      <button
+        type="button"
+        onclick={onkembalikan}
+        class="mt-5 inline-flex h-[3.25rem] w-full items-center justify-center gap-3 rounded-full bg-primer px-6 text-base font-semibold text-primer-ink hover:opacity-90"
+      >
+        <Icon name="panah" class="size-[1.125rem]" /> Saya sudah selesai
+      </button>
+      <button
+        type="button"
+        onclick={onhentikan}
+        class="mt-5 inline-flex min-h-12 items-center text-base font-semibold text-ink hover:opacity-70"
+        >Hentikan bantuan</button
+      >
+      <p class="mt-4 text-[0.8125rem] leading-[1.6] text-muted">
+        Login, CAPTCHA, OTP, dan pengiriman akhir selalu dilakukan oleh Anda.
+      </p>
     </div>
   {:else if k === 'dijeda'}
     <div role="status" class="flex flex-wrap items-center gap-3 border-b border-line-3 bg-bg-2 px-4 py-3">
@@ -125,10 +146,10 @@
       tabindex="-1"></textarea>
 
     {#if !siaran}
-      <div class="absolute inset-0 grid place-items-center overflow-y-auto bg-[#f2f2ef] p-6 text-center">
+      <div class="absolute inset-0 grid place-items-center overflow-y-auto bg-bg-2 p-6 text-center">
         <div class="flex max-w-sm flex-col items-center gap-3">
           {#if k === 'antre'}
-            <span class="grid size-12 place-items-center rounded-full bg-bg-2"
+            <span class="grid size-12 place-items-center rounded-full bg-surface"
               ><Icon name="antre" class="size-6" /></span
             >
             <p class="text-2xl font-semibold tracking-tight text-ink">
@@ -165,7 +186,7 @@
             {/if}
             <p class="text-[0.9375rem] text-body">Browser ditutup. Login dan cookie ikut dihapus.</p>
           {:else if k === 'kedaluwarsa'}
-            <span class="grid size-12 place-items-center rounded-full bg-bg-2"
+            <span class="grid size-12 place-items-center rounded-full bg-surface"
               ><Icon name="waktu-habis" class="size-6" /></span
             >
             <p class="text-xl font-semibold text-ink">Sesi berakhir</p>
@@ -177,22 +198,41 @@
               ><Icon name="ulang" class="size-4.5" />Mulai lagi</button
             >
           {:else if k === 'dipandu' || k === 'tidak_tersedia'}
-            <span class="grid size-12 place-items-center rounded-full bg-mawar text-galat"
-              ><Icon name="peta" class="size-6" /></span
-            >
-            <p class="text-xl font-semibold text-ink">
-              {k === 'dipandu' ? 'Situs menolak Browser Pendamping' : 'Browser Pendamping belum tersedia'}
-            </p>
-            <p class="text-[0.9375rem] text-body">
-              {data.pesan ??
-                'Buka situs resmi sendiri. Urusin menunjukkan langkahnya, data yang perlu disalin, dan berkas yang perlu diunggah.'}
-            </p>
-            <button
-              type="button"
-              onclick={onpanduan}
-              class="mt-1 inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-5 font-semibold text-primer-ink hover:opacity-90"
-              ><Icon name="panah" class="size-4.5" />Buka panduan</button
-            >
+            <!-- Frame rFa2b: "Perlu cara manual · Kita lanjut dengan panduan." -->
+            <div class="flex w-full flex-col text-left">
+              <Icon name="rute" class="size-7 text-hijau-ink" />
+              <span
+                class="mt-6 inline-flex h-8 w-fit items-center rounded-full bg-bg-2 px-3 text-[0.8125rem] font-semibold text-muted"
+                >Perlu cara manual</span
+              >
+              <p class="mt-4 text-[1.625rem] leading-[1.15] font-normal tracking-[-0.035em] text-ink">
+                Kita lanjut<br />dengan panduan.
+              </p>
+              <p class="mt-5 text-[1.0625rem] leading-[1.6] text-ink">
+                {data.pesan ??
+                  'Tampilan situs berubah atau layanan ini belum didukung. Pengisian otomatis dihentikan.'}
+              </p>
+              <p class="mt-4 text-[0.9375rem] leading-[1.6] text-muted">
+                Rencana dan berkas yang sudah Anda siapkan tetap bisa digunakan. Urusin membantu menjelaskan
+                langkah di situs resmi.
+              </p>
+              <button
+                type="button"
+                onclick={onpanduan}
+                class="mt-6 inline-flex h-[3.25rem] items-center justify-center gap-3 rounded-full bg-primer px-6 text-base font-semibold text-primer-ink hover:opacity-90"
+                ><Icon name="panah" class="size-[1.125rem]" />Lihat langkah manual</button
+              >
+              {#if urusanId}
+                <a
+                  href={resolve('/jejak/[id]', { id: urusanId })}
+                  class="mt-5 inline-flex h-[3.25rem] items-center rounded-full bg-surface px-4 text-base font-semibold text-ink shadow-lembut hover:opacity-90"
+                  >Tinjau riwayat tindakan</a
+                >
+              {/if}
+              <p class="mt-6 text-[0.8125rem] leading-[1.6] text-muted">
+                Tidak ada percobaan ulang otomatis tanpa Anda mengetahuinya.
+              </p>
+            </div>
           {:else if k === 'galat'}
             <span class="grid size-12 place-items-center rounded-full bg-mawar text-galat"
               ><Icon name="peringatan" class="size-6" /></span
@@ -211,9 +251,9 @@
         </div>
       </div>
     {:else if k === 'terputus'}
-      <div role="status" class="absolute inset-0 grid place-items-center bg-[#f2f2ef]/90 p-6 text-center">
+      <div role="status" class="absolute inset-0 grid place-items-center bg-bg-2/90 p-6 text-center">
         <div class="flex flex-col items-center gap-3">
-          <span class="grid size-12 place-items-center rounded-full bg-bg-2"
+          <span class="grid size-12 place-items-center rounded-full bg-surface"
             ><Icon name="terputus" class="size-6" /></span
           >
           <p class="text-xl font-semibold text-ink">Menyambung ulang…</p>
@@ -259,13 +299,13 @@
           <Icon name="tangan" class="size-4.5" /> Ambil alih
         </button>
       {/if}
-      <button
-        type="button"
-        onclick={onhentikan}
-        class="inline-flex min-h-12 items-center gap-2 rounded-full border border-galat-garis/70 bg-surface px-5 font-semibold text-galat hover:bg-mawar"
-      >
-        <Icon name="jeda" class="size-4.5" /> Hentikan
-      </button>
+      {#if k !== 'giliran'}<button
+          type="button"
+          onclick={onhentikan}
+          class="inline-flex min-h-12 items-center gap-2 rounded-full border border-galat-garis/70 bg-surface px-5 font-semibold text-galat hover:bg-mawar"
+        >
+          <Icon name="jeda" class="size-4.5" /> Hentikan
+        </button>{/if}
     </div>
   {/if}
 </section>

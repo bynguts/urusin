@@ -313,6 +313,7 @@
             data={sesi.data}
             situs={situs ?? 'https://situs-resmi.go.id'}
             {instansi}
+            urusanId={data.urusan.id}
             bind:canvas
             bind:inputTeks
             onambilalih={() => sesi.ambilAlih()}
