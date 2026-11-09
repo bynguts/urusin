@@ -25,6 +25,7 @@ const ORIGIN = 'https://urusin.example.com';
 const EMAIL = 'warga@example.com';
 const SANDI = 'kuda-lari-cepat-9';
 const SANDI2 = 'gajah-terbang-tinggi-7';
+const EMAIL_LAIN = 'warga-google@example.com';
 const ctx = { ip: '203.0.113.5', userAgent: 'Mozilla/5.0 (Linux; Android 14) Chrome/130.0 Mobile' };
 const JAM = 3_600_000;
 
@@ -819,6 +820,33 @@ describe('token persetujuan "Izinkan isi"', () => {
       (await galat(() => akun.pakaiIzin('pendek', { userId: tamu, writeListHash: h, targetOrigin: origin })))
         .kode,
     ).toBe('IZIN_TIDAK_VALID');
+  });
+});
+
+describe('hapus akun: bukti kredensial (zona bahaya)', () => {
+  it('PoC: sandi salah ikut penguncian; akun Google saja butuh masuk <= 15 menit; demo cukup HAPUS', async () => {
+    await daftarTerverifikasi();
+    const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
+    for (let i = 0; i < 5; i++)
+      expect((await galat(akun.hapusAkun(a.id, { konfirmasi: 'HAPUS', sandi: SANDI2 }))).kode).toBe(
+        'SANDI_LAMA_SALAH',
+      );
+    expect((await galat(akun.hapusAkun(a.id, { konfirmasi: 'HAPUS', sandi: SANDI }))).kode).toBe('TERKUNCI');
+
+    const g = await googleLogin({ sub: 'g-hapus', email: EMAIL_LAIN, email_verified: true });
+    if (g.jenis !== 'masuk') throw new Error('harus masuk');
+    const lama = new Date(t).toISOString();
+    t += 16 * 60 * 1000;
+    expect((await galat(akun.hapusAkun(g.akun.id, { konfirmasi: 'HAPUS' }, { authAt: lama }))).kode).toBe(
+      'PERLU_MASUK_ULANG',
+    );
+    expect((await galat(akun.hapusAkun(g.akun.id, { konfirmasi: 'HAPUS' }))).kode).toBe('PERLU_MASUK_ULANG');
+    await akun.hapusAkun(g.akun.id, { konfirmasi: 'HAPUS' }, { authAt: new Date(t).toISOString() });
+    expect(akun.akun(g.akun.id)).toBeUndefined();
+
+    const demo = akun.buatDemo(ctx).akun;
+    await akun.hapusAkun(demo.id, { konfirmasi: 'HAPUS' });
+    expect(akun.akun(demo.id)).toBeUndefined();
   });
 });
 
