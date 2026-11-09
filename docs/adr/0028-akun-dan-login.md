@@ -33,7 +33,7 @@ Warga memakai HP dan laptop bergantian. HP biasanya dipakai memotret dokumen, la
    - **Pindah kepemilikan mencabut semua identitas Google**: verifikasi email akun yang belum terverifikasi, atur ulang sandi, dan pengambilalihan oleh Google. "Keluar dari semua perangkat" mencabut identitas yang ditautkan kemudian (`asal = 'tautan'`), bukan identitas asal akun Google.
    - Akun belum terverifikasi dihapus setelah 24 jam, termasuk yang punya identitas Google.
 7. **Anti-enumerasi.** Daftar, lupa sandi, kirim ulang: 202 dengan body sama. Masuk gagal: 401 sama dengan argon2 dummy. Daftar dengan email terverifikasi mengirim "akun sudah ada" ke pemiliknya.
-8. **Batas laju dan penguncian.** Per IP dan per email (hash). Turnstile wajib setelah 3 kegagalan; kunci 15 menit setelah 5 kegagalan dalam 15 menit. Berlaku juga untuk email tak terdaftar (pesan identik).
+8. **Batas laju dan penguncian.** Per IP dan per email (hash). Turnstile wajib setelah 3 kegagalan; mulai kegagalan ke-5 kunci 30 detik, berlipat tiap kegagalan berikutnya, paling lama 1 jam; hitungan mulai dari nol 15 menit setelah kegagalan/kunci terakhir. Setiap percobaan dicatat secara atomik SEBELUM verifikasi sandi, jadi percobaan paralel tidak bisa melewati ambang. Berlaku juga untuk email tak terdaftar (pesan identik).
 9. **Google.** Authorization Code + PKCE S256 + state + nonce, scope `openid email profile`. State di cookie `__Host-urusin_oauth`, dibandingkan dengan query, baris server dipakai sekali. ID token diverifikasi `jose` (JWKS, iss, aud, exp, iat, nonce). Callback persis `/auth/google/callback`; redirect URI dibangun dari `DOMAIN` runtime (`https://${DOMAIN}/auth/google/callback`) sehingga setiap set host di `deploy/hosts.json` memakai callback-nya sendiri. e2e memakai IdP OIDC tiruan (`URUSIN_OIDC_FIXTURE=1`, ditolak di produksi) dengan klien OIDC yang sama.
 10. **Vault dengan envelope encryption.**
     - DEK acak 256-bit per pemilik (AES-256-GCM), dibungkus KEK. Data Diri, judul, dan isi berkas dienkripsi dengan DEK; AAD berversi (`v1|…`) mengikat ciphertext ke pemilik dan objeknya.
@@ -60,26 +60,26 @@ Warga memakai HP dan laptop bergantian. HP biasanya dipakai memotret dokumen, la
 
 ## Model ancaman
 
-| Ancaman                                       | Mitigasi                                                                                                                                              |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pencurian DB (salinan `urusin.db`)            | Token sesi/email hanya hash, sandi argon2id, vault terenkripsi dan DEK terbungkus KEK yang tidak ada di DB. **Email polos tetap terbaca**             |
-| Pencurian DB + `URUSIN_PII_KEY` (host bobol)  | Vault terbuka. Risiko sisa **tinggi**: server memegang kunci. Mitigasi: kunci hanya di env, escrow terpisah, rotasi `kek:rotate`, label HKDF terpisah |
-| Credential stuffing / brute force             | Batas laju per IP dan email, Turnstile setelah 3 gagal, kunci 15 menit setelah 5, daftar sandi umum, argon2id dengan semafor                          |
-| Enumerasi akun                                | Respons dan waktu seragam (poin 7); e2e #45                                                                                                           |
-| Fiksasi sesi / sid                            | Token hanya dari server, rotasi token dan `urusin_sid` saat login, prefiks `__Host-`                                                                  |
-| CSRF / CSRF login                             | Origin persis untuk semua penulisan, SameSite=Lax, state OAuth cookie vs query                                                                        |
-| Pencurian nilai vault lintas situs            | `Sec-Fetch-Site: same-origin` + Origin persis + `no-store` untuk GET vault; dokumen pemilik lain 404                                                  |
-| Sesi curian mengunduh dokumen                 | Perangkat baru butuh bukti kredensial ≤ 15 menit                                                                                                      |
-| Kode server membaca PII di luar alur isi      | Penyelesai tunggal + token persetujuan terikat hash daftar write dan origin + tes impor                                                               |
-| Data sintetis terkirim ke situs pemerintah    | Pemilik demo hanya boleh menuju origin situs latihan (`NILAI_SINTETIS_DITOLAK`)                                                                       |
-| Open redirect (`next=`)                       | `amanNext()`; redirect eksternal hanya ke origin otorisasi Google                                                                                     |
-| Token di tautan bocor                         | Sekali pakai, umur pendek, `Referrer-Policy: same-origin` + `no-store`; verifikasi juga butuh sandi pendaftaran                                       |
-| Pra-pembajakan akun                           | Poin 6; e2e #48b                                                                                                                                      |
-| Penautan Google ke akun korban                | Tidak ada penautan otomatis ke akun terverifikasi; tiket + bukti sandi, terikat akun yang sama; e2e #48                                               |
-| ID token palsu / replay / intersepsi kode     | JWKS, iss, aud, exp, nonce sekali pakai, PKCE S256, state sekali pakai; e2e #48 (state/nonce salah, replay, PKCE tidak cocok)                         |
-| Penguncian sebagai DoS terhadap korban        | Diterima: maksimal 15 menit per gelombang; atur ulang sandi tetap tersedia. Risiko sisa **rendah**                                                    |
-| Pengisian disk / penyalahgunaan juri dan tamu | Tamu malas + 20/IP/hari, juri 3/IP/hari + batas global + Turnstile, 10 × 9 MB per pemilik, batas total dan ambang disk (507 jujur), penyapu 24 jam    |
-| Penyedia email membaca tautan                 | Tautan tidak membuka vault; verifikasi butuh sandi                                                                                                    |
+| Ancaman                                       | Mitigasi                                                                                                                                                      |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pencurian DB (salinan `urusin.db`)            | Token sesi/email hanya hash, sandi argon2id, vault terenkripsi dan DEK terbungkus KEK yang tidak ada di DB. **Email polos tetap terbaca**                     |
+| Pencurian DB + `URUSIN_PII_KEY` (host bobol)  | Vault terbuka. Risiko sisa **tinggi**: server memegang kunci. Mitigasi: kunci hanya di env, escrow terpisah, rotasi `kek:rotate`, label HKDF terpisah         |
+| Credential stuffing / brute force             | Batas laju per IP dan email, Turnstile setelah 3 gagal, kunci 30 detik berlipat sampai 1 jam mulai kegagalan ke-5, daftar sandi umum, argon2id dengan semafor |
+| Enumerasi akun                                | Respons dan waktu seragam (poin 7); e2e #45                                                                                                                   |
+| Fiksasi sesi / sid                            | Token hanya dari server, rotasi token dan `urusin_sid` saat login, prefiks `__Host-`                                                                          |
+| CSRF / CSRF login                             | Origin persis untuk semua penulisan, SameSite=Lax, state OAuth cookie vs query                                                                                |
+| Pencurian nilai vault lintas situs            | `Sec-Fetch-Site: same-origin` + Origin persis + `no-store` untuk GET vault; dokumen pemilik lain 404                                                          |
+| Sesi curian mengunduh dokumen                 | Perangkat baru butuh bukti kredensial ≤ 15 menit                                                                                                              |
+| Kode server membaca PII di luar alur isi      | Penyelesai tunggal + token persetujuan terikat hash daftar write dan origin + tes impor                                                                       |
+| Data sintetis terkirim ke situs pemerintah    | Pemilik demo hanya boleh menuju origin situs latihan (`NILAI_SINTETIS_DITOLAK`)                                                                               |
+| Open redirect (`next=`)                       | `amanNext()`; redirect eksternal hanya ke origin otorisasi Google                                                                                             |
+| Token di tautan bocor                         | Sekali pakai, umur pendek, `Referrer-Policy: same-origin` + `no-store`; verifikasi juga butuh sandi pendaftaran                                               |
+| Pra-pembajakan akun                           | Poin 6; e2e #48b                                                                                                                                              |
+| Penautan Google ke akun korban                | Tidak ada penautan otomatis ke akun terverifikasi; tiket + bukti sandi, terikat akun yang sama; e2e #48                                                       |
+| ID token palsu / replay / intersepsi kode     | JWKS, iss, aud, exp, nonce sekali pakai, PKCE S256, state sekali pakai; e2e #48 (state/nonce salah, replay, PKCE tidak cocok)                                 |
+| Penguncian sebagai DoS terhadap korban        | Diterima: kunci paling lama 1 jam; atur ulang sandi tetap tersedia. Risiko sisa **rendah**                                                                    |
+| Pengisian disk / penyalahgunaan juri dan tamu | Tamu malas + 20/IP/hari, juri 3/IP/hari + batas global + Turnstile, 10 × 9 MB per pemilik, batas total dan ambang disk (507 jujur), penyapu 24 jam            |
+| Penyedia email membaca tautan                 | Tautan tidak membuka vault; verifikasi butuh sandi                                                                                                            |
 
 ## DPIA: perubahan (delta)
 

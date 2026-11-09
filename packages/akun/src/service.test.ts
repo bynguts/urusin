@@ -428,12 +428,12 @@ describe('#45 pembatas laju, Turnstile, dan penguncian', () => {
     for (let i = LOCKOUT.turnstileSetelah; i < LOCKOUT.kunciSetelah; i++)
       expect((await galat(akun.masuk({ email: EMAIL, sandi: SANDI2 }, tk))).kode).toBe('KREDENSIAL_SALAH');
     const kunci = await galat(akun.masuk({ email: EMAIL, sandi: SANDI }, tk)); // sandi benar pun ditolak
-    expect([kunci.kode, kunci.status, kunci.retryAfterSec]).toEqual(['TERKUNCI', 429, 900]);
-    t += 14 * 60_000;
+    expect([kunci.kode, kunci.status, kunci.retryAfterSec]).toEqual(['TERKUNCI', 429, 30]);
+    t += 29_000;
     expect((await galat(akun.masuk({ email: EMAIL, sandi: SANDI }, tk))).kode).toBe('TERKUNCI');
-    t += 61_000;
-    expect(akun.perluTurnstile(EMAIL)).toBe(false); // kunci habis: hitungan mulai dari nol
-    await expect(akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).resolves.toBeDefined();
+    t += 2_000;
+    expect(akun.perluTurnstile(EMAIL)).toBe(true); // kunci habis, hitungan masih berjalan
+    await expect(akun.masuk({ email: EMAIL, sandi: SANDI }, tk)).resolves.toBeDefined();
     expect(hitung('SELECT COUNT(*) n FROM auth_lockout')).toBe(0);
 
     for (let i = 0; i < LOCKOUT.kunciSetelah; i++)
@@ -441,6 +441,42 @@ describe('#45 pembatas laju, Turnstile, dan penguncian', () => {
     const h = await galat(akun.masuk({ email: 'hantu@example.com', sandi: SANDI }, tk));
     expect(h.kode).toBe('TERKUNCI');
     expect(akun.perluTurnstile('bukan email')).toBe(false);
+  });
+
+  it('PoC balapan penguncian: percobaan paralel dihitung SEBELUM verifikasi sandi', async () => {
+    akun = buat({
+      limits: { masuk: { ip: { limit: 1000, windowMs: 60_000 }, email: { limit: 1000, windowMs: 60_000 } } },
+    });
+    await daftarTerverifikasi();
+    const tk = { ...ctx, turnstileOk: true };
+    const hasil = await Promise.all(
+      Array.from({ length: 12 }, () => galat(akun.masuk({ email: EMAIL, sandi: SANDI2 }, tk))),
+    );
+    const kode = hasil.map((e) => e.kode).sort();
+    expect(kode.filter((k) => k === 'KREDENSIAL_SALAH')).toHaveLength(LOCKOUT.kunciSetelah);
+    expect(kode.filter((k) => k === 'TERKUNCI')).toHaveLength(12 - LOCKOUT.kunciSetelah);
+  });
+
+  it('backoff penguncian: 30 detik, berlipat tiap kegagalan berikutnya, paling lama 1 jam', async () => {
+    akun = buat({
+      limits: { masuk: { ip: { limit: 1000, windowMs: 60_000 }, email: { limit: 1000, windowMs: 60_000 } } },
+    });
+    await daftarTerverifikasi();
+    const tk = { ...ctx, turnstileOk: true };
+    for (let i = 0; i < LOCKOUT.kunciSetelah; i++)
+      await galat(akun.masuk({ email: EMAIL, sandi: SANDI2 }, tk));
+    const urutan: number[] = [];
+    for (let i = 0; i < 9; i++) {
+      const e = await galat(akun.masuk({ email: EMAIL, sandi: SANDI }, tk));
+      expect(e.kode).toBe('TERKUNCI');
+      urutan.push(e.retryAfterSec!);
+      t += e.retryAfterSec! * 1000 + 1;
+      await galat(akun.masuk({ email: EMAIL, sandi: SANDI2 }, tk)); // gagal lagi tepat setelah kunci habis
+    }
+    expect(urutan).toEqual([30, 60, 120, 240, 480, 960, 1920, 3600, 3600]);
+    // 15 menit setelah kunci terakhir habis tanpa percobaan: hitungan mulai dari nol
+    t += 3600_000 + 15 * 60_000 + 1;
+    await expect(akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).resolves.toBeDefined();
   });
 
   it('jendela 15 menit: kegagalan lama tidak dihitung', async () => {

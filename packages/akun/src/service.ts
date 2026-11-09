@@ -62,11 +62,16 @@ export const DEFAULT_LIMITS: Record<Aksi, { ip: LimitRule; email?: LimitRule }> 
  * Penguncian login per email dalam jendela 15 menit: Turnstile wajib setelah 3 kegagalan, sandi dikunci
  * 15 menit setelah 5 kegagalan (sementara, agar tidak bisa dipakai mengunci akun orang lain selamanya).
  */
+/**
+ * Penguncian per email: Turnstile setelah 3 kegagalan; mulai kegagalan ke-5 kunci 30 detik, berlipat tiap
+ * kegagalan berikutnya, paling lama 1 jam. Hitungan mulai dari nol 15 menit setelah kegagalan/kunci terakhir.
+ */
 export const LOCKOUT = Object.freeze({
   jendelaSec: 900,
   turnstileSetelah: 3,
   kunciSetelah: 5,
-  kunciSec: 900,
+  kunciAwalSec: 30,
+  kunciMaksSec: 3600,
 });
 
 /** Batas pembuatan pemilik sementara (host bersama, do-no-harm). */
@@ -595,11 +600,10 @@ export class AkunService {
     if (!t) throw new AkunError('TOKEN_TIDAK_VALID');
     const u = this.userById(t.user_id)!;
     this.periksaKunci(u.email!);
+    this.catatPercobaan(u.email!);
     const hash = t.password_hash ?? u.password_hash;
-    if (!hash || sandi.length === 0 || sandi.length > 1024 || !(await verifyPassword(hash, sandi))) {
-      this.catatGagal(u.email!);
+    if (!hash || sandi.length === 0 || sandi.length > 1024 || !(await verifyPassword(hash, sandi)))
       throw new AkunError('KREDENSIAL_SALAH');
-    }
     const userId = this.pakaiToken(token, 'verify');
     this.tx(() => {
       this.db
@@ -641,13 +645,13 @@ export class AkunService {
     email: string,
   ): { failures: number; window_start: string; locked_until: string | null } | undefined {
     const r = this.db
-      .prepare('SELECT failures, window_start, locked_until FROM auth_lockout WHERE key = ?')
+      .prepare('SELECT failures, window_start, locked_until, updated_at FROM auth_lockout WHERE key = ?')
       .get(this.lockKey(email)) as
-      { failures: number; window_start: string; locked_until: string | null } | undefined;
+      { failures: number; window_start: string; locked_until: string | null; updated_at: string } | undefined;
     if (!r) return undefined;
-    // Jendela 15 menit lewat dan tidak sedang terkunci: hitungan mulai dari nol.
-    if (r.window_start <= this.iso(-LOCKOUT.jendelaSec) && !(r.locked_until && r.locked_until > this.iso()))
-      return undefined;
+    // 15 menit setelah kegagalan terakhir dan setelah kunci habis: hitungan mulai dari nol.
+    const terakhir = r.locked_until && r.locked_until > r.updated_at ? r.locked_until : r.updated_at;
+    if (terakhir <= this.iso(-LOCKOUT.jendelaSec)) return undefined;
     return r;
   }
 
@@ -666,17 +670,38 @@ export class AkunService {
     return (this.bacaKunci(email)?.failures ?? 0) >= LOCKOUT.turnstileSetelah;
   }
 
-  private catatGagal(email: string): void {
-    const r = this.bacaKunci(email);
-    const failures = (r?.failures ?? 0) + 1;
-    const lockedUntil = failures >= LOCKOUT.kunciSetelah ? this.iso(LOCKOUT.kunciSec) : null;
-    this.db
+  /**
+   * Catat percobaan sandi SEBELUM verifikasi (atomik: `UPDATE ... RETURNING`), lalu pasang kunci bila perlu.
+   * Percobaan paralel tidak bisa lolos sebelum kegagalan sebelumnya tercatat: percobaan di atas ambang langsung
+   * TERKUNCI tanpa verifikasi. Berhasil → `bukaKunci` menghapus hitungan.
+   */
+  private catatPercobaan(email: string): number {
+    const key = this.lockKey(email);
+    const now = this.iso();
+    if (!this.bacaKunci(email)) this.db.prepare('DELETE FROM auth_lockout WHERE key = ?').run(key);
+    const { failures } = this.db
       .prepare(
-        `INSERT INTO auth_lockout (key, failures, window_start, locked_until, updated_at) VALUES (?,?,?,?,?)
-         ON CONFLICT(key) DO UPDATE SET failures = excluded.failures, window_start = excluded.window_start,
-           locked_until = excluded.locked_until, updated_at = excluded.updated_at`,
+        `INSERT INTO auth_lockout (key, failures, window_start, locked_until, updated_at) VALUES (?, 1, ?, NULL, ?)
+         ON CONFLICT(key) DO UPDATE SET failures = failures + 1, updated_at = excluded.updated_at
+         RETURNING failures`,
       )
-      .run(this.lockKey(email), failures, r?.window_start ?? this.iso(), lockedUntil, this.iso());
+      .get(key, now, now) as { failures: number };
+    if (failures > LOCKOUT.kunciSetelah) {
+      const r = this.bacaKunci(email);
+      if (r?.locked_until && r.locked_until > now) {
+        this.db.prepare('UPDATE auth_lockout SET failures = failures - 1 WHERE key = ?').run(key);
+        const sisa = Math.ceil((Date.parse(r.locked_until) - this.now().getTime()) / 1000);
+        throw new AkunError('TERKUNCI', Math.max(1, sisa));
+      }
+    }
+    if (failures >= LOCKOUT.kunciSetelah) {
+      const detik = Math.min(
+        LOCKOUT.kunciMaksSec,
+        LOCKOUT.kunciAwalSec * 2 ** (failures - LOCKOUT.kunciSetelah),
+      );
+      this.db.prepare('UPDATE auth_lockout SET locked_until = ? WHERE key = ?').run(this.iso(detik), key);
+    }
+    return failures;
   }
 
   private bukaKunci(email: string): void {
@@ -700,14 +725,12 @@ export class AkunService {
     this.batasi('masuk', ctx, email);
     this.periksaKunci(email);
     if (this.perluTurnstile(email) && !ctx.turnstileOk) throw new AkunError('TURNSTILE_WAJIB');
+    this.catatPercobaan(email);
     const u = this.userByEmail(email);
     const cocok = u?.password_hash
       ? await verifyPassword(u.password_hash, input.sandi)
       : (await this.samarkanWaktu(input.sandi), false);
-    if (!u || !cocok) {
-      this.catatGagal(email);
-      throw new AkunError('KREDENSIAL_SALAH');
-    }
+    if (!u || !cocok) throw new AkunError('KREDENSIAL_SALAH');
     this.bukaKunci(email);
     if (needsRehash(u.password_hash!)) {
       this.db
@@ -782,10 +805,9 @@ export class AkunService {
     if (!u || u.jenis !== 'akun') throw new AkunError('HANYA_AKUN');
     if (!u.password_hash) throw new AkunError('PERLU_MASUK_ULANG');
     this.periksaKunci(u.email!);
-    if (sandi.length === 0 || sandi.length > 1024 || !(await verifyPassword(u.password_hash, sandi))) {
-      this.catatGagal(u.email!);
+    this.catatPercobaan(u.email!);
+    if (sandi.length === 0 || sandi.length > 1024 || !(await verifyPassword(u.password_hash, sandi)))
       throw new AkunError('KREDENSIAL_SALAH');
-    }
     this.bukaKunci(u.email!);
     this.db
       .prepare('UPDATE auth_sessions SET auth_at = ? WHERE token_hash = ? AND user_id = ?')

@@ -75,7 +75,7 @@ Galat berbentuk `{ kode, pesanWarga }`; 429 membawa `Retry-After`. POST/PUT/DELE
 
 ## Keadaan yang perlu didesain
 
-- **Masuk:** galat kredensial; Turnstile muncul setelah 3 gagal; terkunci 15 menit; kembali dari Google gagal; Google perlu sandi (tautkan); tombol juri (dengan widget Turnstile) dan galat batasnya.
+- **Masuk:** galat kredensial; Turnstile muncul setelah 3 gagal; terkunci (30 detik, berlipat sampai 1 jam; pakai `Retry-After`); kembali dari Google gagal; Google perlu sandi (tautkan); tombol juri (dengan widget Turnstile) dan galat batasnya.
 - **Daftar:** sandi ditolak; "Cek email Anda" + "buka tautannya dan masukkan kata sandi yang baru dibuat"; email tertunda.
 - **Verifikasi email:** kolom sandi + "Pastikan email saya"; berhasil ("silakan masuk lagi"); tautan kedaluwarsa (formulir kirim ulang); sandi salah.
 - **Lupa / atur ulang:** terkirim; tertunda; tautan kedaluwarsa; sandi ditolak; berhasil.
