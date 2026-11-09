@@ -422,8 +422,10 @@ Butuh Docker Engine >= 28 (`gateway_mode_ipv4`). `pendamping-seccomp.json` = pro
 `utils/docker/seccomp_profile.json` (sha256 asli `cc3e61cabda6bbc1e53e54d27ba4d55a9d3be829b6dd1a596f4a7b31b1cc7849`)
 dengan satu pemangkasan: blok `CAP_SYS_ADMIN` hanya `clone` dan `unshare` (bpf, perf_event_open, mount/umount,
 setns, quotactl, lookup_dcookie, fanotify_init, name_to_handle_at, syslog, sethostname, setdomainname dibuang),
-dan `setns` dibuang dari blok userns. Diukur: sandbox setuid (userns mati) dan userns tetap aktif. sha256 kini
-`861ed9091c05215e9a6ad0e3fedda69331191f4d9aeaa01bc8c00b8021e4e76c`; ikut tersalin bersama `compose.prod.yml`.
+dan `setns` dibuang dari blok userns; `io_uring_setup`/`io_uring_enter`/`io_uring_register` juga dibuang
+(Chromium tidak memakainya; permukaan kernel besar). Diukur: sandbox setuid (userns mati) dan userns tetap
+aktif. sha256 kini `68e0e88693f1d6bbc30616f3adf713b170da3937fdc43e72e0ac69f7571a0bfc`; ikut tersalin bersama
+`compose.prod.yml`.
 
 ```sh
 # .env (rahasia, chmod 600)

@@ -68,6 +68,8 @@ const sysAdmin = izin.filter((x) => x.includes?.caps?.includes('CAP_SYS_ADMIN'))
 check('seccomp: blok CAP_SYS_ADMIN tepat clone + unshare', JSON.stringify([...sysAdmin].sort()) === '["clone","unshare"]');
 check('seccomp: setns/mount/umount2/bpf/perf_event_open tidak diizinkan di aturan mana pun',
   !izin.some((x) => x.names.some((n) => ['setns', 'mount', 'umount', 'umount2', 'bpf', 'perf_event_open'].includes(n))));
+check('seccomp: io_uring_setup/io_uring_enter/io_uring_register tidak diizinkan di aturan mana pun',
+  !izin.some((x) => x.names.some((n) => n.startsWith('io_uring'))));
 check('pendamping: cap_drop ALL, hanya SYS_ADMIN + SYS_CHROOT ditambah', pd.cap_drop.includes('ALL') &&
   JSON.stringify([...pd.cap_add].sort()) === JSON.stringify(['SYS_ADMIN', 'SYS_CHROOT']));
 check('pendamping: read_only, ulimit core 0, memswap = mem', pd.read_only === true && 'core' in pd.ulimits && (pd.ulimits.core.soft ?? 0) === 0 &&

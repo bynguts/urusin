@@ -43,22 +43,27 @@ function akhiran(placeholder: string): string | undefined {
   return m?.[1]?.split('.').at(-1);
 }
 
+/**
+ * Kunci Data Diri: HANYA `{{PEMOHON.<KUNCI>}}` (satu segmen). `{{ANAK.NIK}}`, `{{ORANG2.NIK}}`, atau
+ * `{{PEMOHON.AYAH.NAMA}}` bukan data pemohon, jadi diketik warga sendiri (`isi_sendiri`).
+ */
+function kunciDataDiri(placeholder: string): string | undefined {
+  const a = /^\{\{PEMOHON\.([A-Z0-9_]+)\}\}$/.exec(placeholder)?.[1];
+  return a !== undefined && Object.hasOwn(DATA_DIRI, a) ? a : undefined;
+}
+
 /** Placeholder yang dipenuhi Data Diri (boleh menahan AI sampai "Izinkan isi"). */
 export function dariDataDiri(placeholder: string): boolean {
-  const a = akhiran(placeholder);
-  return a !== undefined && Object.hasOwn(DATA_DIRI, a);
+  return kunciDataDiri(placeholder) !== undefined;
 }
 
 /** Pesan giliran warga untuk nilai isian (bisa memuat beberapa placeholder); tanpa nilai apa pun. */
 export function pesanIsiSendiri(value: string): string {
   const label = [...value.matchAll(/\{\{[^{}]+\}\}/g)]
     .map((m) => {
+      const d = kunciDataDiri(m[0]);
       const a = akhiran(m[0]);
-      return a && Object.hasOwn(DATA_DIRI, a)
-        ? DATA_DIRI[a]
-        : a && Object.hasOwn(LAIN, a)
-          ? LAIN[a]
-          : undefined;
+      return d !== undefined ? DATA_DIRI[d] : a && Object.hasOwn(LAIN, a) ? LAIN[a] : undefined;
     })
     .find((l) => l !== undefined);
   return `Ketik ${label ?? 'isian yang diminta'} di kolom yang disorot, lalu tekan Lanjutkan.`;

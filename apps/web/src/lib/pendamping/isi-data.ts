@@ -83,10 +83,14 @@ function bagianAkhir(placeholder: string): string | undefined {
   return m ? m[1]!.split('.').at(-1) : undefined;
 }
 
-/** Field Data Diri untuk sebuah placeholder, atau undefined bila bukan Data Diri. */
+/**
+ * Field Data Diri untuk sebuah placeholder, atau undefined bila bukan Data Diri. HANYA `{{PEMOHON.<KUNCI>}}`
+ * (satu segmen): `{{ANAK.NIK}}`, `{{ORANG2.NIK}}`, `{{PEMOHON.AYAH.NAMA}}` bukan data pemohon, jadi diketik
+ * warga sendiri. Cermin `kunciDataDiri` di apps/pendamping/src/isian.ts.
+ */
 export function fieldDataDiri(placeholder: string): keyof DataDiriRingkas | undefined {
-  const akhir = bagianAkhir(placeholder);
-  return akhir && Object.hasOwn(KOLOM, akhir) ? KOLOM[akhir] : undefined;
+  const kunci = /^\{\{PEMOHON\.([A-Z0-9_]+)\}\}$/.exec(placeholder)?.[1];
+  return kunci !== undefined && Object.hasOwn(KOLOM, kunci) ? KOLOM[kunci] : undefined;
 }
 
 export function labelPlaceholder(placeholder: string): string {
