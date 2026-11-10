@@ -168,7 +168,7 @@
     mengirim = false;
     if (hasil === 'konflik')
       pesanKomposer =
-        'Urusin masih memproses langkah sebelumnya. Tunggu sebentar, lalu tekan Ya, betul lagi.';
+        'Wilayah belum bisa dicatat lewat kartu ini: mungkin sudah dipastikan di obrolan atau perangkat lain, atau Urusin masih bekerja. Muat ulang halaman untuk melihat yang terbaru.';
     else if (hasil === 'galat') pesanKomposer = 'Wilayah belum tercatat. Periksa koneksi, lalu coba lagi.';
   }
 

@@ -4,7 +4,8 @@ import type { CityEntry } from './schema.js';
  * Seed dari recon read-only 2026-11-08 (recon/dukcapil-kota-*.md, rea-dukcapil-sby-smg.md).
  * `verifiedAt` null untuk semuanya: pengamatan recon belum diverifikasi tangan oleh pemilik data.
  * Hanya Wonogiri berstatus `kirim-asli` (akun warga ada di tim); kota lain tidak diuji kirim asli.
- * Tier jujur: `semi` HANYA bila ada adapter Browser Pendamping (`adapterId`); portal tanpa adapter = `dipandu`.
+ * Tier jujur: `semi` HANYA bila Browser Pendamping bisa MENGISI di portal ini (adapter tulis, validasi kirim-asli).
+ * Adapter baca-saja (cek status) dan portal tanpa adapter = `dipandu`.
  */
 type Seed = {
   kode: string;
@@ -49,7 +50,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3578',
     nama: 'Kota Surabaya',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'read-only',
     origin: 'https://wargaklampid-dispendukcapil.surabaya.go.id',
     portal: 'Klampid New Generation',
@@ -61,7 +62,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3374',
     nama: 'Kota Semarang',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'read-only',
     origin: 'https://sidnok.semarangkota.go.id',
     portal: "Si D'nOK",

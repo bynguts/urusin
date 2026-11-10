@@ -2,7 +2,7 @@ import type { UrusanState } from '@urusin/contracts';
 import { FAKTA_HUKUM } from '@urusin/registry';
 import { spotlightPolicyText } from './spotlight.js';
 import type { ToolDef } from './tools.js';
-import { kalimatKanal, wilayahBelumSiap, type WilayahUrusan } from './wilayah.js';
+import { TEKS_WILAYAH, kalimatKanal, wilayahBelumSiap, type WilayahUrusan } from './wilayah.js';
 
 /** Sistem prompt statis (prefix stabil agar prefix caching provider bisa bekerja). */
 export function buildSystemPrompt(): string {
@@ -45,22 +45,21 @@ const PANDUAN_STATE: Partial<Record<UrusanState, string>> = {
     'Browser Pendamping sedang berjalan. Warga memeriksa isian di layar lalu menekan Selesai sendiri.',
 };
 
-/** Catatan state dinamis (dikirim sebagai pesan system tepat sebelum pesan terakhir). */
 /** Baris wilayah di catatan state: yang sudah dipastikan, usulan yang belum, dan apa yang masih harus ditanyakan. */
 function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: string | null): string[] {
   if (!w) return [`Kode kab/kota: ${kode ?? 'belum diketahui'}.`];
   const out: string[] = [];
   if (w.ktp) {
     out.push(
-      `WILAYAH KTP: ${w.ktp.nama} (${w.ktp.kodeKabKota}), sudah dipastikan warga. ${kalimatKanal(w.ktp.kodeKabKota)}`,
+      `${TEKS_WILAYAH.baris} ${w.ktp.nama} (${w.ktp.kodeKabKota}), ${TEKS_WILAYAH.sudah} ${kalimatKanal(w.ktp.kodeKabKota)}`,
     );
     if (w.domisili) out.push(`Domisili: ${w.domisili.nama} (berbeda dari KTP).`);
     if (w.tujuan) out.push(`Tujuan pindah: ${w.tujuan.nama}.`);
   } else {
-    out.push('WILAYAH KTP: belum ditetapkan.');
+    out.push(TEKS_WILAYAH.belum);
     if (w.usulan)
       out.push(
-        `Usulan (${w.usulan.sumber === 'data_diri' ? 'Data Diri akun' : 'pilihan di perangkat'}): ${w.usulan.ktp.nama}. Tanyakan: "KTP Anda terdaftar di ${w.usulan.ktp.nama}, betul?"`,
+        `${TEKS_WILAYAH.usulan} (${w.usulan.sumber === 'data_diri' ? 'Data Diri akun' : 'pilihan di perangkat'}): ${w.usulan.ktp.nama}. Tanyakan: "KTP Anda terdaftar di ${w.usulan.ktp.nama}, betul?"`,
       );
   }
   const belum = wilayahBelumSiap(jenis, w);
@@ -68,6 +67,7 @@ function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: 
   return out;
 }
 
+/** Catatan state dinamis (dikirim sebagai pesan system tepat sebelum pesan terakhir). */
 export function buildStateNote(input: {
   state: UrusanState;
   jenis: string | null;

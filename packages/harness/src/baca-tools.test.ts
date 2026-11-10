@@ -87,7 +87,9 @@ describe('tool baca-saja Browser Pendamping', () => {
       });
       expect(exec.executionId).toMatch(/^x_[0-9a-f-]{36}$/);
       expect(exec.ringkasan).toMatch(/Baca saja, tidak ada yang dikirim\./);
-      expect(exec.ringkasan).toMatch(/\(tingkat semi\)/);
+      // Baca saja bukan tingkat semi (semi = Browser Pendamping bisa mengisi/mengirim).
+      expect(exec.ringkasan).toMatch(/lewat Browser Pendamping\./);
+      expect(exec.ringkasan).not.toMatch(/tingkat semi/);
       expect(exec.ringkasan).toMatch(k.jujur);
       // Gate SESUDAH permintaan, dengan pasangan tool + paramsHash yang sama (kartu konfirmasi + POST /konfirmasi).
       const gate = out.events.slice(iExec + 1).find((e) => e.type === 'gate') as Gate | undefined;
