@@ -307,6 +307,20 @@ describe('GenerikRun: kolom dari validator web', () => {
   });
 });
 
+describe('GenerikRun: amati pantau', () => {
+  it('pantau: tanpa jejak, peta ref tetap milik pengamatan terakhir (ref pantau = REF_BASI)', async () => {
+    const h = harness();
+    const p1 = await h.run.amati();
+    const p2 = await h.run.amati(true);
+    expect(p2!.seq).toBeGreaterThan(p1!.seq);
+    expect(h.jejak.filter((c) => c.jenis === 'amati')).toHaveLength(1);
+    const basi = await h.run.aksi({ rencanaHash: H1, seq: p2!.seq, aksi: [{ jenis: 'klik', ref: 'e3' }] });
+    expect(basi).toEqual([{ indeks: 0, kode: 'REF_BASI' }]);
+    const r = await h.run.aksi({ rencanaHash: H1, seq: p1!.seq, aksi: [{ jenis: 'klik', ref: 'e3' }] });
+    expect(r[0]?.kode).not.toBe('REF_BASI');
+  });
+});
+
 describe('GenerikRun: host di luar allowlist', () => {
   it('redirect navigasi AI ke host lain: GERBANG_MEMBLOKIR, host_kandidat, serah ke warga', async () => {
     const h = harness({

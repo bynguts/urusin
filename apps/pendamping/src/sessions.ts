@@ -25,10 +25,10 @@ import type {
 } from '@urusin/contracts';
 import { ADAPTERS, buildProgram, requiredData, type Params, type Program } from '@urusin/adapters';
 import {
-  EGRESS_PIHAK_KETIGA_WILAYAH,
   PLATFORM_WILAYAH,
   PORTAL_WILAYAH,
   egressAllowedHosts,
+  hostsTantanganWilayah,
   hostsWilayah,
   matchOfficialOrigin,
   nav,
@@ -78,8 +78,10 @@ export type JenisFokus = Extract<PendampingServerMessage, { type: 'fokus' }>['je
 
 /** Port Navigator generik di peramban (GenerikRun di browser.ts); undefined untuk sesi adapter. */
 export type PortGenerik = {
-  /** null = halaman sedang berpindah; coba lagi. */
-  amati(): Promise<Pengamatan | null>;
+  /**
+   * null = halaman sedang berpindah; coba lagi. `pantau` = baca-saja tanpa jejak dan tanpa mengganti peta ref.
+   */
+  amati(pantau?: boolean): Promise<Pengamatan | null>;
   aksi(req: Pick<AksiSesiInternal, 'rencanaHash' | 'aksi' | 'seq' | 'kolom'>): Promise<HasilAksi[]>;
 };
 
@@ -194,14 +196,6 @@ const STATUS_TUNGGU: ReadonlySet<PendampingStatus> = new Set(['antre', 'memulai'
 
 const kunciPasangan = (sidik: string, placeholder: string) => JSON.stringify([sidik, placeholder]);
 
-/** Host pihak ketiga tantangan menurut proteksi portal (registry wilayah), dipakai hanya bersama host wilayah. */
-const HOST_TANTANGAN: Readonly<Record<string, readonly string[]>> = {
-  cloudflare: ['challenges.cloudflare.com'],
-  turnstile: ['challenges.cloudflare.com'],
-  recaptcha: ['www.google.com', 'www.gstatic.com', 'www.recaptcha.net'],
-  hcaptcha: ['js.hcaptcha.com', 'api.hcaptcha.com', 'newassets.hcaptcha.com'],
-};
-
 /**
  * Host sesi wilayah `kode`: `boleh` = semua yang BOLEH diminta web (host wilayah termasuk host info, ditambah
  * tantangan pihak ketiga yang relevan dengan proteksi portal); `bawaan` = bila web tidak meminta apa pun: host
@@ -210,7 +204,7 @@ const HOST_TANTANGAN: Readonly<Record<string, readonly string[]>> = {
 function hostsSesiWilayah(kode: string): { boleh: Set<string>; bawaan: string[] } | undefined {
   const p = Object.hasOwn(PORTAL_WILAYAH, kode) ? PORTAL_WILAYAH[kode] : undefined;
   if (!p) return undefined;
-  const tantangan = [...EGRESS_PIHAK_KETIGA_WILAYAH, ...p.proteksi.flatMap((x) => HOST_TANTANGAN[x] ?? [])];
+  const tantangan = hostsTantanganWilayah(kode);
   const platform =
     p.platform && Object.hasOwn(PLATFORM_WILAYAH, p.platform) ? PLATFORM_WILAYAH[p.platform]!.hosts : [];
   return {
@@ -656,8 +650,9 @@ export class SessionManager {
     const s = this.requireOwned(owner);
     if (!s.generik)
       throw new PendampingError('PESAN_TIDAK_SAH', 409, 'sesi ini bukan sesi Navigator generik');
-    if (!s.run?.generik || TERMINAL.has(s.status))
-      throw new PendampingError('LAYANAN_TIDAK_TERSEDIA', 409, 'peramban sesi belum siap');
+    // Sesi berakhir = 404 (jangan diulang); peramban belum siap (antre/memulai) = 409 LAYANAN_TIDAK_TERSEDIA.
+    if (TERMINAL.has(s.status)) throw new PendampingError('SESI_TIDAK_ADA', 404, 'sesi sudah berakhir');
+    if (!s.run?.generik) throw new PendampingError('LAYANAN_TIDAK_TERSEDIA', 409, 'peramban sesi belum siap');
     return s as Sesi & { run: ActiveRun };
   }
 
@@ -667,13 +662,14 @@ export class SessionManager {
   }
 
   /** Pengamatan halaman saat ini (sudah diredaksi worker). Boleh saat warga memegang kendali (baca saja). */
-  async amati(owner: { urusanId: string; sidHash: string }): Promise<AmatiSesiResponse> {
+  async amati(owner: { urusanId: string; sidHash: string }, pantau = false): Promise<AmatiSesiResponse> {
     const s = this.requireGenerik(owner);
-    const pengamatan = await s.run.generik!.amati();
+    const pengamatan = await s.run.generik!.amati(pantau);
     if (!pengamatan)
       throw new PendampingError('LAYANAN_TIDAK_TERSEDIA', 503, 'halaman sedang berpindah; amati lagi');
-    s.lastActivity = this.now();
-    return { mode: this.modeNavigator(s), pengamatan };
+    // Pantau berkala saat warga memegang kendali tidak dihitung aktivitas (tidak menahan sesi tetap hidup).
+    if (!pantau) s.lastActivity = this.now();
+    return { mode: this.modeNavigator(s), pengamatan, executionId: s.executionId };
   }
 
   /**
@@ -735,11 +731,14 @@ export class SessionManager {
   async selesai(
     owner: { urusanId: string; sidHash: string },
     bukti?: PendampingBukti,
+    executionId?: string,
   ): Promise<SesiPendamping> {
     const s0 = this.requireOwned(owner);
+    if (executionId !== undefined && executionId !== s0.executionId)
+      throw new PendampingError('PESAN_TIDAK_SAH', 409, 'eksekusi bukan milik sesi ini');
     if (s0.generik && s0.status === 'siaga') return this.view(s0);
     const s = this.requireGenerik(owner);
-    const p = await s.run.generik!.amati();
+    const p = await s.run.generik!.amati(true);
     if (!p) throw new PendampingError('LAYANAN_TIDAK_TERSEDIA', 503, 'halaman sedang berpindah; coba lagi');
     if (!p.sinyal.sukses)
       throw new PendampingError('PESAN_TIDAK_SAH', 409, 'halaman belum menunjukkan permohonan terkirim');

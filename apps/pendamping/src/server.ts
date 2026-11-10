@@ -271,7 +271,7 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         const body = parseJson(raw, AmatiSesiInternalSchema);
         if (!body)
           return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
-        return json(res, 200, await manager.amati(body));
+        return json(res, 200, await manager.amati(body, body.pantau === true));
       }
       if (path === '/internal/sesi/aksi') {
         const body = parseJson(raw, AksiSesiInternalSchema);
@@ -289,7 +289,7 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         const body = parseJson(raw, SelesaiSesiInternalSchema);
         if (!body)
           return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
-        return json(res, 200, await manager.selesai(body, body.bukti));
+        return json(res, 200, await manager.selesai(body, body.bukti, body.executionId));
       }
       if (path === '/internal/sesi/jejak') {
         const body = parseJson(raw, JejakSesiInternalSchema);

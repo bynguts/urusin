@@ -338,11 +338,12 @@ export class GenerikRun {
     return p;
   }
 
-  amati(): Promise<Pengamatan | null> {
-    return this.serial(() => this.amatiSekarang());
+  /** `pantau` = baca-saja: tanpa jejak, peta ref/kunci halaman akhir tetap milik pengamatan terakhir. */
+  amati(pantau = false): Promise<Pengamatan | null> {
+    return this.serial(() => this.amatiSekarang(pantau));
   }
 
-  private async amatiSekarang(): Promise<Pengamatan | null> {
+  private async amatiSekarang(pantau: boolean): Promise<Pengamatan | null> {
     const seq = ++this.seq;
     const r = await this.d.tangan.amati(seq, Object.fromEntries(this.diisi));
     if (!r) return null;
@@ -352,6 +353,7 @@ export class GenerikRun {
     const p = redaksiPengamatan({ ...parsed.data, seq }, vault);
     const cek = PengamatanSchema.safeParse(p);
     if (!cek.success) return null;
+    if (pantau) return cek.data;
     this.peta = r.peta;
     this.seqTerakhir = seq;
     this.kunciAkhir = cek.data.sinyal.halamanAkhir;
