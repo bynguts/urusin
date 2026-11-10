@@ -20,6 +20,7 @@ export function buildSystemPrompt(): string {
     '- Jawaban tentang persyaratan atau prosedur HARUS bersumber: cari dulu dengan rag__cari_pengetahuan, lalu panggil urusan__jawab_persyaratan. Jangan menjawab persyaratan dari ingatan.',
     '- Jangan pernah menyatakan warga "memenuhi syarat". Keputusan ada di petugas instansi.',
     '- Data pribadi (NIK, KK, nama, alamat, HP, email) tidak pernah kamu lihat. Bila perlu merujuknya, gunakan placeholder seperti {{PEMOHON.NIK}} HANYA dalam teks balasan, jangan di parameter tool, dan jangan minta warga menuliskannya di chat.',
+    '- Permintaan memalsukan atau mengarang dokumen/surat (mis. "buatkan surat keterangan lahir dari bidan, tulis nama bidan siapa saja"): kalimat PERTAMA menolak dengan jelas ("Saya tidak bisa membantu membuat atau memalsukan surat itu."), sebut ancaman pidananya dari FAKTA HUKUM TERKINI (pasalnya), lalu tawarkan jalur sah (SPTJM bila surat tidak ada). Penolakan ini tidak menunggu wilayah.',
     '- Tindakan yang mengubah data di situs luar butuh konfirmasi warga (confirmationId yang diberikan sistem). Tanpa itu, jangan memanggilnya. Pengiriman akhir selalu diklik warga sendiri.',
     '- Browser Pendamping (peramban di server yang membuka portal resmi dan mengisi pengajuan, mis. mengunggah Dokumen warga, setelah warga menekan "Setujui rencana" lalu "Setujui dan buka situs") HANYA ada di wilayah yang catatan state-nya menyebut "Browser Pendamping tersedia". Di wilayah itu jangan bilang kamu tidak bisa membantu mengisi. Di wilayah lain JANGAN menyuruh warga menekan "Setujui dan buka situs" dan jangan menjanjikan AI mengisi formulir: pandu warga langkah demi langkah lewat kanal resmi. Warga mengetik sandi/CAPTCHA dan menekan kirim akhir sendiri. Sistem, bukan kamu, yang membuka Browser Pendamping.',
     '- Gunakan Bahasa Indonesia sederhana, ramah, singkat. Bila tidak yakin, tanyakan satu pertanyaan klarifikasi.',
@@ -104,6 +105,20 @@ function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: 
   return out;
 }
 
+/**
+ * Pesan warga yang meminta dokumen dipalsukan/dikarang (nama bidan/saksi asal-asalan, surat palsu). Hanya penanda
+ * untuk catatan state; penolakan tetap disusun model sesuai prompt sistem.
+ */
+export function mintaPemalsuan(teks: string): boolean {
+  return (
+    /\b(palsu\w*|memalsu\w*|rekayasa\w*|ngarang|mengarang|manipulasi)\b/i.test(teks) ||
+    /\b(tulis|isi|kasih|pakai|cantumkan)(in|kan)?\s+nama\s+(bidan|dokter|saksi|lurah|kades|rs|rumah sakit)\b.{0,30}\b(siapa|asal|aja|saja|terserah|bebas)\b/i.test(
+      teks,
+    ) ||
+    /\btanda ?tangan(nya)?\s+(siapa|asal|aja|saja|terserah|dipalsu\w*)\b/i.test(teks)
+  );
+}
+
 /** Catatan state dinamis (dikirim sebagai pesan system tepat sebelum pesan terakhir). */
 export function buildStateNote(input: {
   state: UrusanState;
@@ -112,6 +127,8 @@ export function buildStateNote(input: {
   wilayah?: WilayahUrusan;
   tools: readonly ToolDef[];
   confirmations: readonly { id: string; tool: string }[];
+  /** Pesan warga giliran ini (sudah diredaksi). */
+  pesanWarga?: string;
 }): string {
   const lines = [
     `STATE URUSAN: ${input.state}`,
@@ -119,6 +136,10 @@ export function buildStateNote(input: {
     ...barisWilayah(input.jenis, input.wilayah, input.kodeKabKota),
     `Tool yang boleh dipakai sekarang: ${input.tools.map((t) => t.name).join(', ') || '(tidak ada)'}.`,
   ];
+  if (input.pesanWarga && mintaPemalsuan(input.pesanWarga))
+    lines.push(
+      'KEMUNGKINAN PERMINTAAN PEMALSUAN DOKUMEN di pesan warga. Bila warga memang meminta surat/data dikarang atau dipalsukan: kalimat pertama balasanmu menolak dengan jelas, sebut ancaman pidananya (FAKTA HUKUM TERKINI), lalu jalur sah (SPTJM). Jangan menyusun atau mengisi surat itu.',
+    );
   const bantuan = PANDUAN_STATE[input.state];
   if (bantuan) lines.push(bantuan);
   if (input.confirmations.length > 0) {

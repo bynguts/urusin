@@ -75,8 +75,11 @@ export type ToolDef<S extends z.ZodType = z.ZodType> = {
   allowedStates: readonly UrusanState[];
   /** Origin situs luar yang disentuh (wajib terdaftar di registry domain resmi untuk tool write). */
   origin?: (args: z.infer<S>, ctx: { urusan: UrusanRow }) => string | undefined;
-  /** Gerbang wilayah: tool ditolak (WILAYAH_BELUM_DITETAPKAN) sampai wilayah KTP (dan tujuan pindah) ditetapkan. */
-  butuhWilayah?: boolean;
+  /**
+   * Gerbang wilayah: tool ditolak (WILAYAH_BELUM_DITETAPKAN) sampai wilayah KTP (dan tujuan pindah) ditetapkan.
+   * 'adminduk' = hanya urusan kependudukan, dan cukup wilayah KTP (jawaban persyaratan tidak menunggu tujuan pindah).
+   */
+  butuhWilayah?: boolean | 'adminduk';
   /** Operasi span OTel; default `execute_tool`. */
   spanOperation?: 'execute_tool' | 'retrieval';
   execute(ctx: ToolContext, args: z.infer<S>): Promise<ToolResult> | ToolResult;

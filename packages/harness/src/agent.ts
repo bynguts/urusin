@@ -307,6 +307,7 @@ class TurnRunner {
       wilayah: wilayahUrusan(this.store, this.urusan),
       tools: this.deps.registry.forState(this.urusan.state),
       confirmations: this.store.activeConfirmations(this.turn.urusanId),
+      pesanWarga: this.turn.pii.redact(this.turn.userText).text,
     });
   }
 

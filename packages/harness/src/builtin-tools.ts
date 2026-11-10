@@ -304,6 +304,7 @@ export const urusanJawabPersyaratan = defineTool({
   description:
     'Susun jawaban bersumber atas pertanyaan persyaratan/prosedur dari potongan yang sudah dicari. Panggil setelah rag__cari_pengetahuan. Dokumen persyaratan rencana wilayah urusan (registry) selalu ikut sebagai sumber.',
   effect: 'answer',
+  butuhWilayah: 'adminduk',
   input: z.object({ pertanyaan: llmText().max(500) }),
   allowedStates: NON_TERMINAL_STATES,
   async execute(ctx, args): Promise<ToolResult> {
