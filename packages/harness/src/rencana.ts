@@ -3,7 +3,7 @@ import { ADAPTERS } from '@urusin/adapters';
 import type { EventPayload, UrusanState } from '@urusin/contracts';
 import { findBundel, namaPendekWilayah, routeByKode, wilayahByKode } from '@urusin/registry';
 import { ConflictError } from './errors.js';
-import { ADAPTER_GENERIK, alasanDipandu, hostsSesiWilayah, portalWebWilayah } from './generik.js';
+import { ADAPTER_GENERIK, alasanDipandu, portalWebWilayah } from './generik.js';
 import { canTransition } from './state.js';
 import { paramsHash, type HarnessStore, type UrusanRow } from './store.js';
 
@@ -95,14 +95,9 @@ export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): Rut
       jalur: 'generik',
       adapterId: ADAPTER_GENERIK,
       flowId: bundel.slug,
-      // Jalur masuk portal (mis. `/Siap_Om`, `/login`) dan host sesi = host portal wilayah (+ tantangan
-      // pihak ketiga bila portalnya memakai), sama dengan host yang boleh dikerjakan AI di web.
-      params: {
-        jenis: bundel.slug,
-        kode,
-        jalur: new URL(portal.url).pathname,
-        hosts: hostsSesiWilayah(kode).join(','),
-      },
+      // Jalur masuk portal (mis. `/Siap_Om`, `/login`). Host sesi tidak dikirim: worker memakai bawaan wilayah
+      // `kode` (host portal + platform + host tantangan sesuai proteksi portal), satu sumber dengan registry.
+      params: { jenis: bundel.slug, kode, jalur: new URL(portal.url).pathname },
       origin: portal.origin,
       nama: `Ajukan ${bundel.judul.toLowerCase()} di portal resmi Disdukcapil ${nama ?? portal.nama}`,
     };

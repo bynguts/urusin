@@ -9,6 +9,7 @@ import {
   alasanDipandu,
   hostsAiWilayah,
   hostsPortalWilayah,
+  jalurModeUji,
   portalWebWilayah,
 } from './generik.js';
 import { rutePendamping, setujuiRencana } from './rencana.js';
@@ -37,21 +38,26 @@ describe('registry wilayah untuk Navigator', () => {
     expect(PORTAL_WILAYAH[JAKPUS]?.jenis).toBe('aplikasi');
   });
 
-  it('params sesi generik: jalur masuk portal dan host sesi = host portal (+ Cloudflare hanya bila dipakai)', () => {
-    // Kota Surabaya: portal di jalur /app, tanpa proteksi Cloudflare.
-    const sby = rutePendamping({ jenis: 'kelahiran', kodeKabKota: '3578' });
-    expect(sby).toMatchObject({ jalur: 'generik', params: { jalur: '/app' } });
-    if (sby.jalur !== 'generik') return;
-    expect(String(sby.params.hosts).split(',')).toEqual(hostsPortalWilayah('3578'));
-    // Kota Bandar Lampung: jalur /pendaftaran dan portal ber-Cloudflare.
+  it('params sesi generik: kode + jalur masuk portal; host sesi dari bawaan wilayah di worker', () => {
+    // Kota Surabaya: portal di jalur /app; Kota Bandar Lampung: /pendaftaran.
+    expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: '3578' })).toMatchObject({
+      jalur: 'generik',
+      params: { kode: '3578', jalur: '/app' },
+    });
     const bdl = rutePendamping({ jenis: 'kelahiran', kodeKabKota: '1871' });
-    expect(bdl).toMatchObject({ params: { jalur: '/pendaftaran' } });
-    if (bdl.jalur !== 'generik') return;
-    const hosts = String(bdl.params.hosts).split(',');
-    expect(hosts).toEqual([...hostsPortalWilayah('1871'), 'challenges.cloudflare.com']);
-    // Host info Disdukcapil tidak pernah ikut sesi.
-    for (const h of PORTAL_WILAYAH['1871']!.hostInfo)
-      if (!hostsPortalWilayah('1871').includes(h)) expect(hosts).not.toContain(h);
+    expect(bdl).toMatchObject({ params: { kode: '1871', jalur: '/pendaftaran' } });
+    if (bdl.jalur === 'generik') expect(bdl.params).not.toHaveProperty('hosts');
+  });
+
+  it('Mode Uji: jalur portal hanya dibawa bila replika mendeklarasikannya, selain itu akar replika', () => {
+    const SBY = 'https://wargaklampid-dispendukcapil.surabaya.go.id';
+    expect(jalurModeUji(SBY, '/app')).toBe('/');
+    expect(jalurModeUji(SBY, undefined)).toBe('/');
+    expect(jalurModeUji('bukan url', '/app')).toBe('/');
+    const deklarasi = { 'wargaklampid-dispendukcapil.surabaya.go.id': ['/app'] };
+    expect(jalurModeUji(SBY, '/app', deklarasi)).toBe('/app');
+    expect(jalurModeUji(SBY, '/lain', deklarasi)).toBe('/');
+    expect(jalurModeUji('https://sidnok.semarangkota.go.id', '/app', deklarasi)).toBe('/');
   });
 
   it('portal yang hanya bisa dimasuki lewat akun Google (OAuth diblokir egress) = dipandu', () => {

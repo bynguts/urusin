@@ -32,16 +32,26 @@ export function hostsPortalWilayah(kode: string | null | undefined): string[] {
 }
 
 /**
- * Host sesi peramban generik wilayah ini (`params.hosts` ke worker): host portal + platform, ditambah host
- * tantangan pihak ketiga (Cloudflare) HANYA bila portal tercatat memakai proteksi itu. Tanpa host info
- * Disdukcapil: sesi Navigator hanya untuk portal.
+ * Jalur portal yang benar-benar ada di replika Mode Uji, per host resmi. Replika dipasang di awalan override
+ * worker (`resmi=fixture/awalan`); jalur portal asli yang tidak dideklarasikan di sini akan 404 di replika,
+ * jadi Mode Uji membuka akar replika (`/`). Tambah baris hanya bila replikanya memang melayani jalur itu.
  */
-export function hostsSesiWilayah(kode: string | null | undefined): string[] {
-  const p = portalWilayah(kode);
-  const portal = hostsPortalWilayah(kode);
-  if (!p || portal.length === 0) return [];
-  const tantangan = p.proteksi.some((x) => x === 'cloudflare' || x === 'turnstile');
-  return [...new Set([...portal, ...(tantangan ? EGRESS_PIHAK_KETIGA_WILAYAH : [])])];
+export const JALUR_REPLIKA: Readonly<Record<string, readonly string[]>> = Object.freeze({});
+
+/** Jalur awal sesi Mode Uji: jalur portal bila replika host itu mendeklarasikannya, selain itu `/`. */
+export function jalurModeUji(
+  origin: string,
+  jalur: unknown,
+  deklarasi: Readonly<Record<string, readonly string[]>> = JALUR_REPLIKA,
+): string {
+  if (typeof jalur !== 'string') return '/';
+  let host: string;
+  try {
+    host = new URL(origin).hostname;
+  } catch {
+    return '/';
+  }
+  return Object.hasOwn(deklarasi, host) && deklarasi[host]!.includes(jalur) ? jalur : '/';
 }
 
 /** Login hanya lewat akun pihak ketiga (OAuth Google): egress sesi tidak bisa menjangkaunya. */
