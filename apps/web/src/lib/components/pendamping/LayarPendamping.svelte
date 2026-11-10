@@ -65,7 +65,7 @@
     masuk_akun: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
     verifikasi_situs: 'Situs memeriksa keamanan. Centang kotaknya sendiri.',
     final: 'AI dikunci agar tidak bisa mengirim.',
-    periksa: 'AI menunggu sampai Anda selesai.',
+    periksa: 'AI tidak menjalankan apa pun selama giliran Anda.',
     isi_sendiri: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
     berkas_kurang: 'Lanjutkan meminta izin Anda untuk mengunggah dokumen itu saja.',
     ketuk_tautan: 'AI tidak mengetuk tautan ini; Anda yang membukanya.',

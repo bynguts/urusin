@@ -98,6 +98,9 @@ export function keadaanDariSesi(s: Pick<SesiPendamping, 'status' | 'mode'>, gili
 
 type Ambil = typeof fetch;
 
+/** Jeda periksa ulang status server selama AI memegang kendali (lihat `jadwalPantauAi`). */
+export const PANTAU_AI_MS = 15_000;
+
 /**
  * Pengendali sesi Browser Pendamping untuk satu urusan: memulai sesi (POST /pendamping), menyambungkan viewer
  * lewat tiket sekali pakai, dan menerjemahkan pesan viewer menjadi `data` reaktif untuk layar.
@@ -109,6 +112,7 @@ export class SesiPendampingUi {
   /** executionId yang hasilnya sudah disinkronkan ke server (GET status mencatat hasil + nomor permohonan). */
   private tersinkron: string | null = null;
   private executionId: string | null = null;
+  private pantauAi: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly urusanId: string,
@@ -208,6 +212,7 @@ export class SesiPendampingUi {
                   : 'ai',
           pesan: pesan ?? this.data.pesan,
         };
+        this.jadwalPantauAi();
       }),
       v.on('event', (e) => this.terapkanEvent(e)),
       v.on('butuh_data', (b) => (this.data = { ...this.data, butuhData: b })),
@@ -232,6 +237,23 @@ export class SesiPendampingUi {
       bukti: s.bukti ?? this.data.bukti,
       situs: s.situs ? { origin: s.situs, replika: s.replika === true } : this.data.situs,
     };
+    this.jadwalPantauAi();
+  }
+
+  /**
+   * Selama mode `ai`, GET status berkala: server memulihkan loop Navigator yang hilang (web restart, atau loop
+   * sudah berhenti lalu warga menekan Lanjutkan) atau mengembalikan kendali ke warga, sehingga layar tidak
+   * tertahan "AI sedang mengisi" tanpa pengemudi. Jawabannya tidak dipakai; keadaan baru datang lewat viewer.
+   */
+  private jadwalPantauAi(): void {
+    if (this.pantauAi || this.data.mode !== 'ai' || !this.viewer) return;
+    this.pantauAi = setTimeout(() => {
+      this.pantauAi = null;
+      if (this.data.mode !== 'ai' || !this.viewer) return;
+      void this.ambil(this.dasar)
+        .catch(() => undefined)
+        .finally(() => this.jadwalPantauAi());
+    }, PANTAU_AI_MS);
   }
 
   terapkanEvent(e: PendampingEvent): void {
@@ -380,6 +402,8 @@ export class SesiPendampingUi {
   }
 
   tutup(): void {
+    if (this.pantauAi) clearTimeout(this.pantauAi);
+    this.pantauAi = null;
     for (const f of this.lepas) f();
     this.lepas = [];
     this.viewer?.tutup();
