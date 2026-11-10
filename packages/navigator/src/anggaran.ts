@@ -32,7 +32,9 @@ export type AlasanAmbilAlih =
   | 'host_luar'
   | 'diblokir_situs'
   /** Kuota AI runtime (per urusan / harian) habis: sama dengan kuota agen percakapan. */
-  | 'kuota';
+  | 'kuota'
+  /** Penyedia LLM gagal dua kali berturut-turut (429, timeout): bukan galat Browser Pendamping. */
+  | 'layanan_ai';
 
 /** Pesan untuk warga per alasan: templat tetap, tanpa teks dari model atau halaman. */
 export const PESAN_AMBIL_ALIH: Readonly<Record<AlasanAmbilAlih, string>> = {
@@ -57,6 +59,8 @@ export const PESAN_AMBIL_ALIH: Readonly<Record<AlasanAmbilAlih, string>> = {
   diblokir_situs: 'Situs menahan langkah otomatis. Silakan periksa layar dan lanjutkan sendiri.',
   kuota:
     'Batas bantuan AI untuk urusan ini sudah tercapai. Silakan lanjutkan sendiri dari layar ini; data yang sudah terisi tetap ada.',
+  layanan_ai:
+    'Layanan AI sedang tidak bisa dihubungi. Silakan lanjutkan sendiri dari layar ini; data yang sudah terisi tetap ada.',
 };
 
 export type SisaAnggaran = {
@@ -104,14 +108,18 @@ export class Anggaran {
     this.aksiN += n;
   }
 
-  /** Satu pengamatan perencanaan. Sidik baru = kemajuan; sidik yang sama berturut-turut = calon putaran. */
-  catatHalaman(sidik: string): void {
+  /**
+   * Satu pengamatan perencanaan. Sidik baru = kemajuan; sidik yang sama berturut-turut = calon putaran.
+   * `halaman` = identitas halaman fisik (struktur tanpa isian/galat) untuk batas halaman: satu halaman yang
+   * berganti keadaan (sesudah isi, galat validasi, warga mengisi) tetap dihitung satu.
+   */
+  catatHalaman(sidik: string, halaman: string = sidik): void {
     if (sidik === this.sidikTerakhir) this.samaBeruntun++;
     else {
       this.sidikTerakhir = sidik;
       this.samaBeruntun = 1;
     }
-    this.halamanTerlihat.add(sidik);
+    this.halamanTerlihat.add(halaman);
   }
 
   gagal(): void {
@@ -128,8 +136,10 @@ export class Anggaran {
     if (this.aksiN >= this.batas.aksi) return 'anggaran_aksi';
     if (this.halamanTerlihat.size > this.batas.halaman) return 'anggaran_halaman';
     if (this.waktuAiMs() >= this.batas.waktuAiMs) return 'anggaran_waktu';
-    if (this.samaBeruntun >= this.batas.sidikSama) return 'putaran';
+    // Gagal beruntun lebih dulu: rencana yang terus ditolak di halaman yang sama adalah kegagalan model,
+    // bukan halaman yang tidak berubah.
     if (this.gagalN >= this.batas.gagalBeruntun) return 'gagal_beruntun';
+    if (this.samaBeruntun >= this.batas.sidikSama) return 'putaran';
     return null;
   }
 

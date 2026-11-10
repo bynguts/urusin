@@ -25,10 +25,13 @@ import { hashRencana, normalLabel, validasiRencana, type IdAturan, type OpsiVali
 
 /**
  * Klien endpoint worker (`/internal/sesi/{amati,aksi,tunggu,jejak}`), sesuai kontrak; galat dilempar (kecuali
- * `kuras`, yang tidak pernah menghentikan loop).
+ * `kuras`, yang tidak pernah menghentikan loop). Galat dengan properti `sementara` (lihat `galatSementara`)
+ * boleh dicoba ulang: `belum_siap` = peramban sesi masih dimulai (409), `sesaat` = halaman sedang berpindah atau
+ * worker sesaat tidak terjangkau (503). Galat lain menghentikan loop.
  */
 export interface TanganPendamping {
-  amati(): Promise<AmatiSesiResponse>;
+  /** `pantau`: amati baca-saja saat warga memegang kendali (deteksi halaman sukses). */
+  amati(opsi?: { pantau?: boolean }): Promise<AmatiSesiResponse>;
   aksi(r: {
     rencanaHash: string;
     aksi: Aksi[];
@@ -42,8 +45,19 @@ export interface TanganPendamping {
    * Kuras catatan audit yang dikumpulkan worker (persetujuan, ambil alih, kelas klik, blokir gerbang tulis,
    * host kandidat). Dipanggil sesudah setiap amati/aksi/tunggu agar urutan jejak mengikuti kejadian.
    */
-  kuras?(): Promise<{ catatan: CatatanPendamping[]; terbuang: number }>;
+  kuras?(): Promise<{ catatan: CatatanPendamping[]; terbuang: number; executionId?: string }>;
 }
+
+export type GalatSementara = 'belum_siap' | 'sesaat';
+
+/** Jenis galat tangan yang boleh dicoba ulang, atau null. */
+export function galatSementara(e: unknown): GalatSementara | null {
+  const s = e !== null && typeof e === 'object' && 'sementara' in e ? e.sementara : null;
+  return s === 'belum_siap' || s === 'sesaat' ? s : null;
+}
+
+/** Sesi worker sudah milik eksekusi lain (sesi baru dibuat sementara loop ini masih berjalan). */
+class SesiLain extends Error {}
 
 /** Baris lembar yang disetujui warga untuk satu `rencanaHash` (dicatat web saat izinkan-isi). */
 export type PersetujuanHalaman = { placeholder: ReadonlySet<string>; berkas: ReadonlySet<string> };
@@ -76,6 +90,10 @@ export type OpsiLoop = {
   jam?: () => number;
   /** Batas total menunggu warga (login, persetujuan, ambil alih) sebelum Navigator berhenti. */
   tungguTotalMs?: number;
+  /** Selang amati baca-saja saat warga memegang kendali (deteksi halaman sukses). Bawaan 5 detik. */
+  pantauMs?: number;
+  /** Jeda sebelum mencoba ulang galat sementara (bisa diganti di uji). */
+  tidur?: (ms: number) => Promise<void>;
   signal?: AbortSignal;
 };
 
@@ -168,6 +186,8 @@ const ringkasAksi = (aksi: readonly Aksi[]) =>
 type HasilJalan =
   | { kode: 'ok' }
   | { kode: 'ulang' }
+  /** Amati ulang tanpa menghitung gagal (warga sempat memegang kendali; kolom mungkin sudah ia isi). */
+  | { kode: 'amati_ulang' }
   | { kode: 'berakhir' }
   | { kode: 'tunggu' }
   | { kode: 'serahkan'; alasan: AlasanAmbilAlih; ref?: string | undefined; seq?: number };
@@ -188,6 +208,28 @@ function kolomUntuk(kolom: readonly KolomButuh[], aksi: readonly Aksi[]): KolomB
 
 const TANPA_IZIN: PersetujuanHalaman = { placeholder: new Set(), berkas: new Set() };
 
+/** Placeholder vault aksi isi/pilih. */
+/** Kunci baris lembar izin sebuah aksi: placeholder vault, atau `berkas:<NAMA>` untuk unggahan. */
+const barisLembar = (a: Aksi): string | undefined =>
+  (a.jenis === 'isi' || a.jenis === 'pilih') && typeof a.nilai === 'string'
+    ? a.nilai
+    : a.jenis === 'unggah'
+      ? `berkas:${a.berkas.toUpperCase()}`
+      : undefined;
+
+/**
+ * Identitas halaman fisik untuk batas halaman dan baris yang ditolak warga: host + jalur + judul + kerangka
+ * elemen (peran + label), tanpa isian dan galat.
+ */
+export function halamanStruktur(p: Pengamatan): string {
+  return hashRencana({
+    host: p.host,
+    jalur: p.jalur,
+    judul: normalLabel(p.judul),
+    elemen: p.elemen.map((e) => `${e.peran}:${normalLabel(e.nama)}`),
+  });
+}
+
 /** Aksi isian/unggah yang disetujui warga (aksi lain tidak butuh persetujuan). */
 function aksiDisetujui(a: Aksi, izin: PersetujuanHalaman): boolean {
   if ((a.jenis === 'isi' || a.jenis === 'pilih') && typeof a.nilai === 'string')
@@ -207,6 +249,15 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
   const dijalankan: string[] = [];
   let hostTerakhir = '';
   let buktiAkhir: PendampingBukti | undefined;
+  const tidur = o.tidur ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const pantauMs = o.pantauMs ?? 5_000;
+  let sesiLain = false;
+  /** Halaman sukses yang terlihat saat warga memegang kendali (warga sendiri yang menekan Kirim). */
+  let suksesWarga: Pengamatan | null = null;
+  /** Warga sempat memegang kendali di penantian terakhir. */
+  let wargaPegang = false;
+  /** Placeholder yang ditolak warga per halaman fisik: diisi warga sendiri, tidak diminta izin lagi. */
+  const ditolakHalaman = new Map<string, Set<string>>();
 
   const resi = (akhir: string) =>
     buatResi({
@@ -231,6 +282,13 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
     if (!o.tangan.kuras) return;
     try {
       const j = await o.tangan.kuras();
+      if (j.executionId !== undefined && j.executionId !== o.executionId) {
+        // Sesi sudah milik eksekusi lain: catatannya bukan milik loop ini; celahnya dicatat sebagai angka.
+        sesiLain = true;
+        const n = j.catatan.length + j.terbuang;
+        if (n > 0) o.jejak({ jenis: 'jejak_terbuang', n: Math.min(n, 1_000_000) });
+        return;
+      }
       for (const c of j.catatan) o.jejak(c);
       // Buffer worker sempat penuh: catat jumlahnya agar celah di rantai audit terlihat.
       if (j.terbuang > 0) o.jejak({ jenis: 'jejak_terbuang', n: Math.min(j.terbuang, 1_000_000) });
@@ -238,74 +296,143 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       // Jejak tetap di buffer worker dan ikut terkuras pada panggilan berikutnya.
     }
   }
+  /**
+   * Coba ulang galat sementara: 409 belum siap selama masih dalam batas menunggu total, 503 sesaat paling
+   * banyak 3 kali; jeda 1 detik dihitung ke waktu menunggu.
+   */
+  async function cobaUlang<T>(f: () => Promise<T>): Promise<T> {
+    let sesaat = 0;
+    for (;;) {
+      try {
+        return await f();
+      } catch (e) {
+        const j = galatSementara(e);
+        if (!j || batal() || (j === 'sesaat' && ++sesaat > 3) || ditunggu >= tungguTotal) throw e;
+        await tidur(1_000);
+        ditunggu += 1_000;
+      }
+    }
+  }
+  const sesudah = async <T>(r: T): Promise<T> => {
+    await kuras();
+    if (sesiLain) throw new SesiLain();
+    return r;
+  };
+  type PermintaanAksi = Parameters<TanganPendamping['aksi']>[0];
   const tangan = {
-    amati: async () => {
-      const r = await o.tangan.amati();
-      await kuras();
-      return r;
-    },
-    aksi: async (r: Parameters<TanganPendamping['aksi']>[0]) => {
-      const h = await o.tangan.aksi(r);
-      await kuras();
-      return h;
-    },
-    tunggu: async (maksMs: number) => {
-      const t = await o.tangan.tunggu(maksMs);
-      await kuras();
-      return t;
-    },
+    amati: async (opsi?: { pantau?: boolean }) =>
+      sesudah(await cobaUlang(() => (opsi ? o.tangan.amati(opsi) : o.tangan.amati()))),
+    /** Aksi rencana (isi/klik): TIDAK diulang otomatis; galat sementara = amati ulang (lihat jalankanAksi). */
+    aksi: async (r: PermintaanAksi) => sesudah(await o.tangan.aksi(r)),
+    /** Aksi tanpa nilai dan tanpa klik (serahkan/tidak_bisa): aman diulang. */
+    aksiAman: async (r: PermintaanAksi) => sesudah(await cobaUlang(() => o.tangan.aksi(r))),
+    tunggu: async (maksMs: number) => sesudah(await cobaUlang(() => o.tangan.tunggu(maksMs))),
   };
 
-  /** Long-poll selama warga memegang kendali / persetujuan tertunda. AI time dijeda. */
-  async function tungguKendali(): Promise<'ai' | 'berakhir' | 'habis'> {
+  /** Host sah untuk dikerjakan/diakui: host wilayah, dan di Mode Uji hanya replika. */
+  const hostSah = (host: string) =>
+    (!o.modeUji || o.modeUji.hostsFixture.has(host)) && o.hostsBoleh.has(host);
+
+  /** Amati baca-saja saat warga memegang kendali: halaman sukses di host sah, atau null. Galat diabaikan. */
+  async function pantau(): Promise<Pengamatan | null> {
+    try {
+      const a = await tangan.amati({ pantau: true });
+      return a.pengamatan.sinyal.sukses && hostSah(a.pengamatan.host) ? a.pengamatan : null;
+    } catch (e) {
+      if (e instanceof SesiLain) throw e;
+      return null;
+    }
+  }
+
+  type HasilTunggu = 'ai' | 'berakhir' | 'habis' | 'sukses';
+
+  /**
+   * Long-poll selama warga memegang kendali / persetujuan tertunda. AI time dijeda. Saat warga memegang
+   * kendali, long-poll dipendekkan dan halaman diamati baca-saja: warga yang menekan Kirim sendiri lalu
+   * melihat halaman sukses = `sukses` (dicatat berhasil, bukan dibatalkan).
+   */
+  async function tungguKendali(wargaMulai = false): Promise<HasilTunggu> {
     ang.jedaAi();
+    wargaPegang = wargaMulai;
     try {
       for (;;) {
         if (batal()) return 'berakhir';
         if (ditunggu >= tungguTotal) return 'habis';
         const mulai = jam();
-        const maks = Math.min(TUNGGU_MAKS_MS, tungguTotal - ditunggu);
+        const maks = Math.min(wargaPegang ? pantauMs : TUNGGU_MAKS_MS, tungguTotal - ditunggu);
         const t = await tangan.tunggu(maks);
         // Paling sedikit 1 detik per putaran: worker yang menjawab seketika tanpa perubahan tidak membuat loop panas.
         ditunggu += Math.max(jam() - mulai, t.habisWaktu ? maks : 0, 1_000);
         if (t.mode === 'done' || STATUS_AKHIR.includes(t.status)) return 'berakhir';
         if (t.mode === 'ai' && t.status !== 'menunggu_data') return 'ai';
+        if (t.mode === 'takeover') {
+          wargaPegang = true;
+          const sukses = await pantau();
+          if (sukses) {
+            suksesWarga = sukses;
+            return 'sukses';
+          }
+        }
       }
     } finally {
       ang.mulaiAi();
     }
   }
 
+  /** Halaman sukses: bukti deterministik (tanpa LLM), hasil `selesai`. */
+  function selesaiDari(p: Pengamatan): HasilNavigator {
+    hostTerakhir = p.host;
+    buktiAkhir = buktiDariPengamatan(p);
+    if (buktiAkhir) o.jejak({ jenis: 'bukti', bukti: buktiAkhir });
+    ang.jedaAi();
+    return { akhir: 'selesai', bukti: buktiAkhir, pesan: ringkasBukti(buktiAkhir), resi: resi('selesai') };
+  }
+
   /** Serahkan kendali ke warga (templat) lalu tunggu kendali kembali. */
-  async function serahkanTunggu(
-    alasan: AlasanAmbilAlih,
-    seq: number,
-    ref?: string,
-  ): Promise<'ai' | 'berakhir' | 'habis'> {
+  async function serahkanTunggu(alasan: AlasanAmbilAlih, seq: number, ref?: string): Promise<HasilTunggu> {
     const aksi: Aksi[] = [
       { jenis: 'serahkan', alasan: alasanKontrak(alasan), ...(ref !== undefined ? { ref } : {}) },
     ];
     // Jejak ambil alih (mulai/selesai) dicatat worker saat serahkan benar-benar dijalankan / kendali kembali.
-    const r = await tangan.aksi({ rencanaHash: hashRencana({ aksi }), aksi, seq, kolom: [], berkas: [] });
+    const r = await tangan.aksiAman({
+      rencanaHash: hashRencana({ aksi, host: hostTerakhir, seq }),
+      aksi,
+      seq,
+      kolom: [],
+      berkas: [],
+    });
     if (r.mode === 'done') return 'berakhir';
-    return await tungguKendali();
+    return await tungguKendali(true);
   }
 
   /** Serahkan akhir: Navigator berhenti, warga melanjutkan sendiri (pesan templat). */
   async function serahkanAkhir(alasan: AlasanAmbilAlih, seq: number): Promise<HasilNavigator> {
     const aksi: Aksi[] = [{ jenis: 'serahkan', alasan: alasanKontrak(alasan) }];
     ang.jedaAi();
-    await tangan.aksi({ rencanaHash: hashRencana({ aksi }), aksi, seq, kolom: [], berkas: [] });
+    await tangan.aksiAman({
+      rencanaHash: hashRencana({ aksi, host: hostTerakhir, seq }),
+      aksi,
+      seq,
+      kolom: [],
+      berkas: [],
+    });
     return { akhir: 'ambil_alih', alasan, pesan: PESAN_AMBIL_ALIH[alasan], resi: resi(alasan) };
   }
 
-  const setelahTunggu = (t: 'ai' | 'berakhir' | 'habis'): HasilNavigator | null =>
-    t === 'ai' ? null : berhenti(t === 'habis' ? 'tunggu_habis' : batal() ? 'dibatalkan' : 'sesi_berakhir');
+  const setelahTunggu = (t: HasilTunggu): HasilNavigator | null =>
+    t === 'ai'
+      ? null
+      : t === 'sukses' && suksesWarga
+        ? selesaiDari(suksesWarga)
+        : berhenti(t === 'habis' ? 'tunggu_habis' : batal() ? 'dibatalkan' : 'sesi_berakhir');
 
-  /** Sesudah serahkan: sesi berakhir di tangan warga = ambil alih (bukan galat). */
-  const setelahSerahkan = (alasan: AlasanAmbilAlih, t: 'ai' | 'berakhir' | 'habis'): HasilNavigator | null =>
+  /**
+   * Sesudah serahkan: sesi berakhir di tangan warga = ambil alih (bukan galat). Pesannya "sesi sudah
+   * berakhir", bukan giliran warga yang sudah basi.
+   */
+  const setelahSerahkan = (alasan: AlasanAmbilAlih, t: HasilTunggu): HasilNavigator | null =>
     t === 'berakhir' && !batal()
-      ? { akhir: 'ambil_alih', alasan, pesan: PESAN_AMBIL_ALIH[alasan], resi: resi(alasan) }
+      ? { akhir: 'ambil_alih', alasan, pesan: PESAN_BERHENTI.sesi_berakhir, resi: resi(alasan) }
       : setelahTunggu(t);
 
   /** Pengamatan dengan kendali di tangan AI; null = sesi berakhir. Setiap pengamatan diperiksa host-nya. */
@@ -335,26 +462,45 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
     kolom: KolomButuh[],
     berkas: string[],
     badan: Aksi[],
+    serahAwal: { ref?: string | undefined } | null = null,
   ): Promise<HasilJalan | HasilNavigator> {
     let obs = p;
     let sisa = badan;
     let sudahDiminta = false;
     let ikat = 0;
     /** Baris ditolak warga: setelah baris yang disetujui terisi, kendali diserahkan (isi sendiri). */
-    let serahIsi: { ref?: string | undefined } | null = null;
+    let serahIsi: { ref?: string | undefined } | null = serahAwal;
+    const halaman = halamanStruktur(p);
+    const catatTolak = (aksi: readonly Aksi[]) => {
+      const s = ditolakHalaman.get(halaman) ?? new Set<string>();
+      for (const a of aksi) {
+        const k = barisLembar(a);
+        if (k) s.add(k);
+      }
+      ditolakHalaman.set(halaman, s);
+    };
     const selesai = (): HasilJalan =>
       serahIsi
         ? { kode: 'serahkan', alasan: 'isi_sendiri', ref: serahIsi.ref, seq: obs.seq }
         : { kode: 'ok' };
     for (;;) {
       if (sisa.length === 0) return selesai();
-      const r = await tangan.aksi({
-        rencanaHash,
-        aksi: sisa,
-        seq: obs.seq,
-        kolom: kolomUntuk(kolom, sisa),
-        berkas,
-      });
+      let r: AksiSesiResponse;
+      try {
+        r = await tangan.aksi({
+          rencanaHash,
+          aksi: sisa,
+          seq: obs.seq,
+          kolom: kolomUntuk(kolom, sisa),
+          berkas,
+        });
+      } catch (e) {
+        // Klik/isi tidak dikirim ulang buta (worker mungkin masih menjalankannya): jeda lalu amati ulang.
+        if (!galatSementara(e) || batal()) throw e;
+        await tidur(1_000);
+        ditunggu += 1_000;
+        return { kode: 'ulang' };
+      }
       ang.catatAksi(r.hasil.filter((h) => h.kode === 'ok').length);
       if (r.mode === 'done') return { kode: 'berakhir' };
       // Satu entri per aksi (kontrak worker); entri hilang dianggap tidak dijalankan.
@@ -372,9 +518,17 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         // Tanpa catatan persetujuan web setelah lembar ditutup (warga mengambil alih / mengembalikan kendali saat
         // lembar terbuka) = tolak semua: worker sudah mengikat rencana ini tanpa baris, jadi mengirim ulang baris
         // vault dengan hash yang sama hanya membuka lembar lagi. Baris itu diisi warga sendiri.
-        const izin = o.persetujuan ? (o.persetujuan(rencanaHash) ?? TANPA_IZIN) : undefined;
+        const catatan = o.persetujuan?.(rencanaHash);
+        if (o.persetujuan && !catatan && wargaPegang) {
+          // Warga sempat memegang kendali dan mungkin sudah mengisi kolomnya: amati ulang dulu. Baris ini tidak
+          // diminta izin lagi di halaman ini (diisi warga sendiri).
+          catatTolak(sisa);
+          return { kode: 'amati_ulang' };
+        }
+        const izin = o.persetujuan ? (catatan ?? TANPA_IZIN) : undefined;
         if (izin) {
           const ditolak = sisa.filter((a) => !aksiDisetujui(a, izin));
+          catatTolak(ditolak);
           if (ditolak.length > 0) {
             serahIsi = { ref: refAksi(ditolak[0]) };
             const tetap = sisa.filter((a) => aksiDisetujui(a, izin));
@@ -409,13 +563,15 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
             baru,
           );
           if (!terikat) return { kode: 'ulang' };
-          // Validasi ulang terhadap pengamatan baru (tanpa LLM); hash persetujuan tetap milik rencana asal.
+          // Validasi ulang terhadap pengamatan baru (tanpa LLM). Aksi yang dikirim kini = rencana hasil ikat
+          // ulang (dicatat dengan hash-nya sendiri), persetujuan tetap milik rencana asal (`asal`).
           const v = validasiRencana({ aksi: terikat }, baru, o.validasi);
           o.jejak({
             jenis: 'validasi',
-            rencanaHash,
+            rencanaHash: v.rencanaHash,
             putusan: v.ok ? 'terima' : 'tolak',
             aturan: v.ok ? [] : v.aturan,
+            asal: rencanaHash,
           });
           if (!v.ok) return { kode: 'ulang' };
           obs = baru;
@@ -442,7 +598,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       if (batal()) return berhenti('dibatalkan');
       const p = await amati();
       if ('akhir' in p) return p;
-      o.jejak({ jenis: 'amati', host: p.host, sidik: p.sidik, elemen: p.elemen.length });
+      // Jejak `amati` dicatat worker (satu sumber).
       const cek = periksaHost(p);
       // Mode Uji: host non-replika = berhenti seketika, tanpa aksi apa pun.
       if (cek === 'mode_uji') return berhenti('mode_uji_host');
@@ -450,18 +606,8 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         o.jejak({ jenis: 'host_kandidat', host: p.host });
         return await serahkanAkhir('host_luar', p.seq);
       }
-      if (p.sinyal.sukses) {
-        buktiAkhir = buktiDariPengamatan(p);
-        if (buktiAkhir) o.jejak({ jenis: 'bukti', bukti: buktiAkhir });
-        ang.jedaAi();
-        return {
-          akhir: 'selesai',
-          bukti: buktiAkhir,
-          pesan: ringkasBukti(buktiAkhir),
-          resi: resi('selesai'),
-        };
-      }
-      ang.catatHalaman(p.sidik);
+      if (p.sinyal.sukses) return selesaiDari(p);
+      ang.catatHalaman(p.sidik, halamanStruktur(p));
       const habis = ang.habis();
       if (habis) return await serahkanAkhir(habis, p.seq);
 
@@ -481,18 +627,27 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       }
 
       if (o.kuotaHabis?.()) return await serahkanAkhir('kuota', p.seq);
-      const minta = await mintaRencana(
-        o.llm,
-        {
-          pengamatan: p,
-          tujuan: o.tujuan,
-          ...(o.validasi?.katalog ? { katalog: [...o.validasi.katalog] } : {}),
-          ...(o.validasi?.berkas ? { berkas: [...o.validasi.berkas] } : {}),
-          kodeKabKota: o.kodeKabKota,
-          ...(umpanBalik?.sidik === p.sidik ? { umpanBalik: umpanBalik.aturan } : {}),
-        },
-        o.signal,
-      );
+      const masukan = {
+        pengamatan: p,
+        tujuan: o.tujuan,
+        ...(o.validasi?.katalog ? { katalog: [...o.validasi.katalog] } : {}),
+        ...(o.validasi?.berkas ? { berkas: [...o.validasi.berkas] } : {}),
+        kodeKabKota: o.kodeKabKota,
+        ...(umpanBalik?.sidik === p.sidik ? { umpanBalik: umpanBalik.aturan } : {}),
+      };
+      let minta: Awaited<ReturnType<typeof mintaRencana>>;
+      try {
+        minta = await mintaRencana(o.llm, masukan, o.signal);
+      } catch (e) {
+        if (batal()) throw e;
+        // Galat penyedia LLM (429, timeout): coba sekali lagi, lalu serahkan dengan alasan yang jujur.
+        try {
+          minta = await mintaRencana(o.llm, masukan, o.signal);
+        } catch (e2) {
+          if (batal()) throw e2;
+          return await serahkanAkhir('layanan_ai', p.seq);
+        }
+      }
       ang.catatLlm(minta.panggilan);
       const v = minta.ok
         ? validasiRencana(minta.rencana, p, o.validasi)
@@ -523,11 +678,25 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       const aksi = v.rencana.aksi;
       const akhir = aksi.at(-1)!;
       const terminal = AKSI_TERMINAL.includes(akhir.jenis) ? akhir : undefined;
-      const badan = terminal ? aksi.slice(0, -1) : aksi;
-      if (badan.length > 0) {
-        const r = await jalankanAksi(p, v.rencanaHash, v.kolom, v.berkas, badan);
+      let badan = terminal ? aksi.slice(0, -1) : aksi;
+      // Baris yang sudah ditolak warga di halaman ini tidak diminta izin lagi: dibuang, Lanjut tidak ditekan,
+      // dan sesudah sisanya kendali ke warga untuk mengisinya sendiri.
+      const tolakDulu = ditolakHalaman.get(halamanStruktur(p));
+      let serahAwal: { ref?: string | undefined } | null = null;
+      if (tolakDulu) {
+        const dibuang = badan.filter((a) => tolakDulu.has(barisLembar(a) ?? ''));
+        if (dibuang.length > 0) {
+          serahAwal = { ref: refAksi(dibuang[0]) };
+          const tetap = badan.filter((a) => !dibuang.includes(a));
+          const klik = tetap.findIndex((a) => a.jenis === 'klik');
+          badan = klik >= 0 ? tetap.slice(0, klik) : tetap;
+        }
+      }
+      if (badan.length > 0 || serahAwal) {
+        const r = await jalankanAksi(p, v.rencanaHash, v.kolom, v.berkas, badan, serahAwal);
         if ('akhir' in r) return r;
         if (r.kode === 'berakhir') return berhenti('sesi_berakhir');
+        if (r.kode === 'amati_ulang') continue;
         if (r.kode === 'ulang') {
           ang.gagal();
           continue;
@@ -546,7 +715,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       }
       ang.berhasil();
       if (terminal?.jenis === 'tidak_bisa') {
-        await tangan.aksi({
+        await tangan.aksiAman({
           rencanaHash: v.rencanaHash,
           aksi: [terminal],
           seq: p.seq,
@@ -562,8 +731,10 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         if (h) return h;
       }
     }
-  } catch {
+  } catch (e) {
     if (batal()) return berhenti('dibatalkan');
+    // Sesi sudah dipakai eksekusi lain: loop ini selesai tanpa menyentuhnya lagi.
+    if (e instanceof SesiLain) return berhenti('sesi_berakhir');
     return berhenti('galat_worker');
   }
 }

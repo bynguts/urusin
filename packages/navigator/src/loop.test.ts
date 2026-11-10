@@ -1,7 +1,7 @@
 import { CatatanPendampingSchema, type CatatanPendamping, type Pengamatan } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
 import { Anggaran, BATAS_ANGGARAN, PESAN_AMBIL_ALIH } from './anggaran.js';
-import { PESAN_DIPANDU, jalankanNavigator, type OpsiLoop } from './loop.js';
+import { PESAN_BERHENTI, PESAN_DIPANDU, halamanStruktur, jalankanNavigator, type OpsiLoop } from './loop.js';
 import { HOST_UJI, ProviderSkrip, WorkerPalsu, halaman, halamanForm, halamanTinjau } from './testing.js';
 
 const CAPS = { json_schema_strict: true, tools: false };
@@ -41,7 +41,8 @@ describe('loop Navigator: alur bahagia di replika', () => {
     const { hasil, jejak } = jalankan(worker, provider);
     const h = await hasil;
 
-    expect(h).toMatchObject({ akhir: 'ambil_alih', alasan: 'final', pesan: PESAN_AMBIL_ALIH.final });
+    expect(h).toMatchObject({ akhir: 'ambil_alih', alasan: 'final', pesan: PESAN_BERHENTI.sesi_berakhir });
+    // Sesi diakhiri warga sesudah serah final: pesannya "sesi berakhir", bukan giliran warga yang basi.
     // Aksi pertama tertahan sampai warga menyetujui baris (placeholder, label portal) halaman ini.
     expect(worker.diterima[0]).toMatchObject({
       kolom: [
@@ -90,6 +91,160 @@ describe('loop Navigator: alur bahagia di replika', () => {
     expect(await hasil).toMatchObject({ akhir: 'selesai', bukti: { nomor: 'REG-2026-00123' } });
     expect(provider.calls).toHaveLength(0);
     expect(jejak.at(-1)).toMatchObject({ jenis: 'bukti', bukti: { nomor: 'REG-2026-00123' } });
+  });
+});
+
+/** Galat tangan seperti klien worker web: `sementara` = boleh dicoba ulang. */
+const galat = (sementara?: 'belum_siap' | 'sesaat') =>
+  Object.assign(new Error('worker'), sementara ? { sementara } : {});
+const tanpaJeda = { tidur: async () => undefined };
+const SUKSES = halaman({
+  elemen: [],
+  sidik: 'sukses',
+  jalur: '/selesai',
+  sinyal: { ...halamanForm().sinyal, sukses: true },
+  teks: 'Permohonan berhasil. Nomor registrasi: REG-2026-00777.',
+});
+
+describe('anggaran halaman fisik dan urutan alasan', () => {
+  it('satu halaman fisik yang berganti keadaan (isian, galat) dihitung satu halaman', () => {
+    const a = new Anggaran();
+    for (const s of ['awal', 'sesudah-isi', 'galat']) a.catatHalaman(s, 'hal-1');
+    expect(a.ringkas().halaman).toBe(1);
+    const p = halamanForm();
+    const q = {
+      ...p,
+      sidik: 'lain',
+      elemen: p.elemen.map((e) => ({ ...e, isian: 'terisi_warga' as const, galat: 'Wajib diisi' })),
+    };
+    expect(halamanStruktur(q)).toBe(halamanStruktur(p));
+    expect(halamanStruktur({ ...p, jalur: '/langkah-2' })).not.toBe(halamanStruktur(p));
+  });
+
+  it('rencana yang terus ditolak di halaman yang sama = gagal_beruntun, bukan putaran', () => {
+    const a = new Anggaran();
+    for (let i = 0; i < 3; i++) {
+      a.catatHalaman('s', 'h');
+      a.gagal();
+    }
+    expect(a.habis()).toBe('gagal_beruntun');
+  });
+});
+
+describe('ketahanan: worker belum siap, galat sesaat, dan LLM gagal', () => {
+  it('409 belum siap di awal sesi (peramban masih dimulai): tunggu lalu ulang, bukan galat_worker', async () => {
+    const worker = new WorkerPalsu([halamanTinjau()]);
+    worker.galatAmati = [galat('belum_siap'), galat('belum_siap'), galat('belum_siap')];
+    const provider = new ProviderSkrip(() => SERAHKAN_FINAL);
+    const { hasil } = jalankan(worker, provider, tanpaJeda);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
+    expect(worker.amatiN).toBeGreaterThanOrEqual(4);
+  });
+
+  it('503 sesaat (halaman berpindah) diulang; 4 kali beruntun = galat_worker', async () => {
+    const pulih = new WorkerPalsu([halamanTinjau()]);
+    pulih.galatAmati = [galat('sesaat'), galat('sesaat')];
+    expect(await jalankan(pulih, new ProviderSkrip(() => SERAHKAN_FINAL), tanpaJeda).hasil).toMatchObject({
+      akhir: 'ambil_alih',
+      alasan: 'final',
+    });
+    const mati = new WorkerPalsu([halamanTinjau()]);
+    mati.galatAmati = [galat('sesaat'), galat('sesaat'), galat('sesaat'), galat('sesaat')];
+    expect(await jalankan(mati, new ProviderSkrip(() => SERAHKAN_FINAL), tanpaJeda).hasil).toMatchObject({
+      akhir: 'berhenti',
+      alasan: 'galat_worker',
+    });
+    // Galat yang bukan sementara (mis. 404 sesi hilang) tidak diulang.
+    const hilang = new WorkerPalsu([halamanTinjau()]);
+    hilang.galatAmati = [galat()];
+    expect(await jalankan(hilang, new ProviderSkrip(() => SERAHKAN_FINAL), tanpaJeda).hasil).toMatchObject({
+      akhir: 'berhenti',
+      alasan: 'galat_worker',
+    });
+    expect(hilang.amatiN).toBe(1);
+  });
+
+  it('409 belum siap melewati batas menunggu total: berhenti tunggu habis tanpa aksi', async () => {
+    const worker = new WorkerPalsu([halamanTinjau()]);
+    worker.galatAmati = Array.from({ length: 10 }, () => galat('belum_siap'));
+    const { hasil } = jalankan(worker, new ProviderSkrip(() => SERAHKAN_FINAL), {
+      ...tanpaJeda,
+      tungguTotalMs: 3_000,
+    });
+    expect(await hasil).toMatchObject({ akhir: 'berhenti', alasan: 'galat_worker' });
+    expect(worker.diterima).toHaveLength(0);
+  });
+
+  it('aksi rencana kena galat sesaat: tidak dikirim ulang buta, halaman diamati ulang', async () => {
+    const worker = new WorkerPalsu([halamanForm(), halamanTinjau()]);
+    worker.setujuiSemua = true;
+    let sekali = true;
+    const asli = worker.aksi.bind(worker);
+    worker.aksi = async (r) => {
+      if (sekali && r.aksi.some((a) => a.jenis === 'klik')) {
+        sekali = false;
+        throw galat('sesaat');
+      }
+      return asli(r);
+    };
+    const provider = new ProviderSkrip((n) => (n <= 1 ? RENCANA_FORM : SERAHKAN_FINAL));
+    const { hasil } = jalankan(worker, provider, tanpaJeda);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
+    // Sesudah galat: amati + rencana baru (LLM dipanggil lagi), bukan aksi yang sama dikirim ulang seketika.
+    expect(provider.calls.length).toBe(3);
+  });
+
+  it('galat penyedia LLM sekali: dicoba ulang; dua kali: serahkan dengan alasan layanan_ai (bukan galat_worker)', async () => {
+    let n = 0;
+    const sekali = new ProviderSkrip(() => {
+      if (n++ === 0) throw new Error('429');
+      return SERAHKAN_FINAL;
+    });
+    expect(await jalankan(new WorkerPalsu([halamanTinjau()]), sekali).hasil).toMatchObject({
+      akhir: 'ambil_alih',
+      alasan: 'final',
+    });
+    const worker = new WorkerPalsu([halamanTinjau()]);
+    const mati = new ProviderSkrip(() => {
+      throw new Error('timeout');
+    });
+    expect(await jalankan(worker, mati).hasil).toMatchObject({
+      akhir: 'ambil_alih',
+      alasan: 'layanan_ai',
+      pesan: PESAN_AMBIL_ALIH.layanan_ai,
+    });
+    expect(worker.semuaAksi).toEqual([{ jenis: 'serahkan', alasan: 'tidak_yakin' }]);
+  });
+
+  it('warga menekan Kirim sendiri sesudah serah final: halaman sukses terdeteksi saat warga memegang kendali', async () => {
+    const worker = new WorkerPalsu([halamanTinjau(), SUKSES]);
+    worker.saatSerahkan = (alasan) => (alasan === 'final' ? { aksi: 'pegang', ke: 1 } : { aksi: 'selesai' });
+    const { hasil, jejak } = jalankan(worker, new ProviderSkrip(() => SERAHKAN_FINAL), { pantauMs: 10 });
+    expect(await hasil).toMatchObject({ akhir: 'selesai', bukti: { nomor: 'REG-2026-00777' } });
+    expect(worker.pantauN).toBeGreaterThan(0);
+    // Tidak ada aksi AI sesudah serah final: deteksi hanya baca-saja.
+    expect(worker.semuaAksi).toEqual([{ jenis: 'serahkan', alasan: 'final' }]);
+    expect(jejak.find((c) => c.jenis === 'bukti')).toMatchObject({ bukti: { nomor: 'REG-2026-00777' } });
+  });
+
+  it('halaman sukses di host di luar wilayah saat warga memegang kendali TIDAK diakui', async () => {
+    const worker = new WorkerPalsu([halamanTinjau(), { ...SUKSES, host: 'palsu.contoh' }]);
+    let n = 0;
+    worker.saatSerahkan = () => (n++ < 3 ? { aksi: 'pegang', ke: 1 } : { aksi: 'selesai' });
+    const { hasil } = jalankan(worker, new ProviderSkrip(() => SERAHKAN_FINAL), { pantauMs: 10 });
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
+  });
+
+  it('sesi worker sudah milik eksekusi lain: loop lama berhenti tanpa aksi', async () => {
+    const worker = new WorkerPalsu([halamanForm()]);
+    worker.executionId = 'x_baru';
+    const provider = new ProviderSkrip(() => RENCANA_FORM);
+    const { hasil, jejak } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'berhenti', alasan: 'sesi_berakhir' });
+    expect(worker.diterima).toHaveLength(0);
+    expect(provider.calls).toHaveLength(0);
+    // Catatan milik eksekusi lain tidak ikut, celahnya dicatat sebagai angka.
+    expect(jejak).toEqual([{ jenis: 'jejak_terbuang', n: 1 }]);
   });
 });
 
@@ -147,6 +302,7 @@ describe('anggaran: habis berakhir dengan ambil alih bertemplat', () => {
       halaman({
         seq: i,
         sidik: `hal-${i}`,
+        jalur: `/hal/${i}`,
         elemen: [{ ref: 'e1', peran: 'tautan', nama: 'Halaman berikutnya', kelas: 'navigasi' }],
       }),
     );
@@ -320,9 +476,14 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
           }
         : SERAHKAN_FINAL,
     );
-    const { hasil } = jalankan(worker, provider);
+    const { hasil, jejak } = jalankan(worker, provider);
     expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
     expect(provider.calls).toHaveLength(2);
+    // Rencana hasil ikat ulang dicatat dengan hash-nya sendiri, merujuk hash asal persetujuan.
+    const asal = worker.diterima[0]!.rencanaHash;
+    const ulang = jejak.find((c) => c.jenis === 'validasi' && c.asal === asal);
+    expect(ulang).toMatchObject({ putusan: 'terima' });
+    expect(ulang && 'rencanaHash' in ulang && ulang.rencanaHash).not.toBe(asal);
     expect(worker.diterima[1]).toMatchObject({
       seq: 5,
       aksi: [
@@ -393,9 +554,14 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
       else worker.tolakPersetujuan = true;
       worker.saatSerahkan = (alasan) =>
         alasan === 'isi_sendiri' ? { aksi: 'kembalikan', ke: 1 } : { aksi: 'selesai' };
-      const provider = new ProviderSkrip((n) => (n === 0 ? RENCANA_NAMA_LANJUT : SERAHKAN_FINAL));
+      // Lewat ambil alih: warga sempat memegang kendali, jadi halaman diamati dan direncanakan ulang sekali
+      // (kolomnya mungkin sudah ia isi); baris yang ditolak tidak diminta izin lagi.
+      const rencanaAwal = lewatAmbilAlih ? 2 : 1;
+      const provider = new ProviderSkrip((n) => (n < rencanaAwal ? RENCANA_NAMA_LANJUT : SERAHKAN_FINAL));
       const { hasil, jejak } = jalankan(worker, provider, { persetujuan: (h) => worker.persetujuan(h) });
       expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
+      expect(provider.calls).toHaveLength(rencanaAwal + 1);
+      if (lewatAmbilAlih) expect(worker.pantauN).toBeGreaterThan(0);
       // Satu putaran izin saja: setelah ditolak, Lanjut tidak ditekan dan kendali ke warga untuk baris itu.
       expect(worker.diterima.map((d) => d.aksi)).toEqual([
         RENCANA_NAMA_LANJUT.aksi,
@@ -408,6 +574,34 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
       expect(jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'isi_sendiri' });
     },
   );
+
+  it('tolak semua lewat ambil alih: unggahan ikut ditolak, rencana ulang tidak membuka lembar kedua', async () => {
+    const form = halamanForm();
+    const p = {
+      ...form,
+      elemen: [...form.elemen, { ref: 'e12', peran: 'berkas' as const, nama: 'Unggah KTP', form: 'f0' }],
+    };
+    const worker = new WorkerPalsu([p, halamanTinjau()]);
+    worker.tolakLewatAmbilAlih = true;
+    worker.saatSerahkan = (alasan) =>
+      alasan === 'isi_sendiri' ? { aksi: 'kembalikan', ke: 1 } : { aksi: 'selesai' };
+    const rencana = {
+      aksi: [
+        { jenis: 'isi', ref: 'e2', nilai: '{{PEMOHON.NAMA}}' },
+        { jenis: 'unggah', ref: 'e12', berkas: 'KTP' },
+        { jenis: 'klik', ref: 'e11' },
+      ],
+    };
+    const provider = new ProviderSkrip((n) => (n < 2 ? rencana : SERAHKAN_FINAL));
+    const { hasil } = jalankan(worker, provider, { persetujuan: (h) => worker.persetujuan(h) });
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
+    // Rencana kedua (isi + unggah yang sama) tidak dikirim: keduanya sudah ditolak di halaman ini.
+    expect(worker.diterima.map((d) => d.aksi)).toEqual([
+      rencana.aksi,
+      [{ jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e2' }],
+      [{ jenis: 'serahkan', alasan: 'final' }],
+    ]);
+  });
 
   it('warga menolak satu baris: baris lain diisi, Lanjut tidak ditekan, kendali ke warga untuk baris itu', async () => {
     const worker = new WorkerPalsu([halamanForm(), halamanTinjau()]);
@@ -465,7 +659,7 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
     expect(await hasil).toMatchObject({
       akhir: 'ambil_alih',
       alasan: 'final',
-      pesan: PESAN_AMBIL_ALIH.final,
+      pesan: PESAN_BERHENTI.sesi_berakhir,
     });
     // Pesan ke warga dikirim worker (templat hostLain); loop tidak menambah serahkan sendiri dan tidak mengulang klik.
     expect(worker.semuaAksi.filter((a) => a.jenis === 'serahkan')).toEqual([

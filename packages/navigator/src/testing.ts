@@ -94,6 +94,8 @@ const butuhIzin = (a: Aksi): string | undefined =>
       ? `berkas:${a.berkas}`
       : undefined;
 
+const TOLAK_LEWAT_AMBIL_ALIH = '__tolak_lewat_ambil_alih';
+
 /**
  * Worker palsu yang berbicara sesuai protokol worker `/internal/sesi/{amati,aksi,tunggu,jejak}`:
  * - aksi hanya jalan saat mode `ai` dan status `berjalan`/`menunggu_data`; selain itu semua DILEWATI;
@@ -115,9 +117,13 @@ export class WorkerPalsu implements TanganPendamping {
   private seqAmati: number | undefined;
   private k: Kendali = { mode: 'ai', status: 'berjalan' };
   /** Apa yang dilakukan "warga" setelah serahkan: kembalikan kendali (opsional pindah halaman) atau selesai. */
-  saatSerahkan: (alasan: string) => { aksi: 'kembalikan'; ke?: number } | { aksi: 'selesai' } = () => ({
+  saatSerahkan: (
+    alasan: string,
+  ) => { aksi: 'kembalikan'; ke?: number } | { aksi: 'selesai' } | { aksi: 'pegang'; ke?: number } = () => ({
     aksi: 'selesai',
   });
+  /** executionId yang dilaporkan `kuras` (sesi milik eksekusi lain bila beda dari loop). */
+  executionId: string | undefined = undefined;
   /** Hasil paksa per panggilan aksi (mis. REF_BASI sekali). */
   paksa: ((aksi: Aksi[]) => HasilAksi[] | undefined)[] = [];
   /** Persetujuan dianggap sudah ada untuk setiap rencana. */
@@ -156,9 +162,27 @@ export class WorkerPalsu implements TanganPendamping {
     };
   }
 
-  async amati(): Promise<AmatiSesiResponse> {
+  /** Amati baca-saja (pantau) saat warga memegang kendali. */
+  pantauN = 0;
+  /** Galat paksa per panggilan amati (mis. 409 belum siap, 503 sesaat); undefined = jawab normal. */
+  galatAmati: (Error | undefined)[] = [];
+
+  async amati(opsi?: { pantau?: boolean }): Promise<AmatiSesiResponse> {
     this.amatiN++;
+    const g = this.galatAmati.shift();
+    if (g) throw g;
+    if (opsi?.pantau) {
+      this.pantauN++;
+      return { mode: this.k.mode, pengamatan: this.kini };
+    }
     if (this.k.mode === 'ai') this.seqAmati = this.kini.seq;
+    // Seperti worker: jejak amati dicatat di sisi worker (satu sumber).
+    this.jejak.push({
+      jenis: 'amati',
+      host: this.kini.host,
+      sidik: this.kini.sidik,
+      elemen: this.kini.elemen.length,
+    });
     return { mode: this.k.mode, pengamatan: this.kini };
   }
 
@@ -265,9 +289,14 @@ export class WorkerPalsu implements TanganPendamping {
     if (this.k.status === 'menunggu_data') {
       const m = this.izinMenunggu;
       if (m && this.tolakLewatAmbilAlih) {
+        // Warga menekan "Saya isi sendiri": lembar ditutup tanpa baris, kendali di tangan warga (putaran
+        // tunggu berikutnya ia mengembalikannya).
         this.jejak.push({ jenis: 'ambil_alih', fase: 'mulai' });
         this.jejak.push({ jenis: 'persetujuan', rencanaHash: m.rencanaHash, n: 0 });
-        this.jejak.push({ jenis: 'ambil_alih', fase: 'selesai' });
+        this.izinMenunggu = null;
+        this.menunggu = TOLAK_LEWAT_AMBIL_ALIH;
+        this.k = { mode: 'takeover', status: 'berjalan' };
+        return { mode: this.k.mode, status: this.k.status, habisWaktu: false };
       } else if (m) {
         const baris = this.tolakPersetujuan ? [] : m.baris.filter((b) => !this.tolakBaris.has(b));
         this.disetujui.set(m.rencanaHash, new Set(baris));
@@ -275,10 +304,17 @@ export class WorkerPalsu implements TanganPendamping {
       }
       this.izinMenunggu = null;
       this.k = { ...this.k, status: 'berjalan' };
+    } else if (this.k.mode === 'takeover' && this.menunggu === TOLAK_LEWAT_AMBIL_ALIH) {
+      this.menunggu = null;
+      this.k = { mode: 'ai', status: 'berjalan' };
+      this.jejak.push({ jenis: 'ambil_alih', fase: 'selesai' });
     } else if (this.k.mode === 'takeover') {
       const s = this.saatSerahkan(this.menunggu ?? '');
       if (s.aksi === 'selesai') this.k = { mode: 'done', status: 'selesai' };
-      else {
+      else if (s.aksi === 'pegang') {
+        // Warga tetap memegang kendali dan berpindah halaman (mis. menekan Kirim sendiri).
+        if (s.ke !== undefined) this.i = s.ke;
+      } else {
         if (s.ke !== undefined) this.i = s.ke;
         this.k = { mode: 'ai', status: 'berjalan' };
         this.jejak.push({ jenis: 'ambil_alih', fase: 'selesai' });
@@ -290,10 +326,14 @@ export class WorkerPalsu implements TanganPendamping {
   /** Jumlah catatan yang dibuang worker (buffer penuh) sejak kuras terakhir. */
   terbuang = 0;
 
-  async kuras(): Promise<{ catatan: CatatanPendamping[]; terbuang: number }> {
+  async kuras(): Promise<{ catatan: CatatanPendamping[]; terbuang: number; executionId?: string }> {
     const terbuang = this.terbuang;
     this.terbuang = 0;
-    return { catatan: this.jejak.splice(0), terbuang };
+    return {
+      catatan: this.jejak.splice(0),
+      terbuang,
+      ...(this.executionId ? { executionId: this.executionId } : {}),
+    };
   }
 
   /** Semua aksi yang pernah dikirim ke worker, rata. */
