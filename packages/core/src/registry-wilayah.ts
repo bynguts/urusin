@@ -2232,9 +2232,11 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     proteksi: ['recaptcha', 'cloudflare'],
     domisili: 'tidak_diketahui',
     jamLayanan: 'Jumat sampai pukul 10.00',
+    aksesWilayah: 'id-utama',
     bukti: 'OBS',
     verifiedAt: '2026-11-10',
-    catatan: 'SILAO.',
+    catatan:
+      'SILAO. OBS 2026-11-10: dari IP Singapura muncul interstitial Turnstile (kotak centang) sebelum portal; dari jaringan Indonesia langsung terbuka.',
   },
   '3513': {
     kode: '3513',
@@ -2755,9 +2757,11 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     login: ['email_sandi', 'google'],
     proteksi: ['recaptcha', 'cloudflare'],
     domisili: 'tidak_diketahui',
+    aksesWilayah: 'id-utama',
     bukti: 'OBS',
     verifiedAt: '2026-11-10',
-    catatan: 'Akta lahir/kawin/cerai/mati, perubahan data anak; lacak lewat email.',
+    catatan:
+      'Akta lahir/kawin/cerai/mati, perubahan data anak; lacak lewat email. OBS 2026-11-10: dari IP Singapura muncul interstitial Turnstile (kotak centang) sebelum portal; dari jaringan Indonesia langsung terbuka.',
   },
   '7471': {
     kode: '7471',
@@ -4008,6 +4012,7 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '3512',
     verifiedAt: '2026-11-10',
+    aksesWilayah: 'id-utama',
   },
   {
     host: 'disdukcapil.probolinggokab.go.id',
@@ -4129,6 +4134,7 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '7371',
     verifiedAt: '2026-11-10',
+    aksesWilayah: 'id-utama',
   },
   {
     host: 'dukcapil.jayapurakota.go.id',

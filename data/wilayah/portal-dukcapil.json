@@ -1173,7 +1173,8 @@
       "jamLayanan": "Jumat sampai pukul 10.00",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "SILAO."
+      "catatan": "SILAO. OBS 2026-11-10: dari IP Singapura muncul interstitial Turnstile (kotak centang) sebelum portal; dari jaringan Indonesia langsung terbuka.",
+      "aksesWilayah": "id-utama"
     },
     "3514": {
       "kelas": "D",
@@ -1548,7 +1549,8 @@
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Akta lahir/kawin/cerai/mati, perubahan data anak; lacak lewat email."
+      "catatan": "Akta lahir/kawin/cerai/mati, perubahan data anak; lacak lewat email. OBS 2026-11-10: dari IP Singapura muncul interstitial Turnstile (kotak centang) sebelum portal; dari jaringan Indonesia langsung terbuka.",
+      "aksesWilayah": "id-utama"
     },
     "7471": {
       "kelas": "F",

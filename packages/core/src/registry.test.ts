@@ -32,7 +32,13 @@ describe('registry domain resmi', () => {
       (k) => PORTAL_WILAYAH[k]!.hosts,
     );
     expect(akses('id-only').sort()).toEqual(['sidnok.semarangkota.go.id', ...probe].sort());
-    expect(akses('id-utama')).toEqual(['telunjuksakti.wonogirikab.go.id']);
+    // id-utama: Telunjuk Sakti (seed) + portal dengan interstitial Turnstile dari IP Singapura (Situbondo, Makassar).
+    expect(akses('id-utama').sort()).toEqual(
+      [
+        'telunjuksakti.wonogirikab.go.id',
+        ...['3512', '7371'].flatMap((k) => PORTAL_WILAYAH[k]!.hosts),
+      ].sort(),
+    );
   });
 
   it.each(OFFICIAL_DOMAINS.map((d) => d.host))('menerima https://%s/', (host) => {
