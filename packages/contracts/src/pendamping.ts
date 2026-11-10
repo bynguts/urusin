@@ -255,7 +255,7 @@ export const ElemenAmatanSchema = z.object({
    * bersih. Kemungkinan pembuka formulir, tetapi tetap TIDAK boleh diklik AI: serahkan ke warga untuk diketuk
    * sendiri, lalu AI melanjutkan.
    */
-  tautanPembuka: z.literal(true).optional(),
+  sebabKelas: z.enum(['nama_tautan']).optional(),
   /** Formulir pemilik elemen (`f0`..`f99`). */
   form: z
     .string()
@@ -303,7 +303,7 @@ export const PengamatanSchema = z.object({
 export type Pengamatan = z.infer<typeof PengamatanSchema>;
 
 /**
- * `ketuk_tautan` (aditif): warga mengetuk sendiri tautan pembuka (`ElemenAmatan.tautanPembuka`) yang disorot,
+ * `ketuk_tautan` (aditif): warga mengetuk sendiri tautan pembuka (`ElemenAmatan.sebabKelas: 'nama_tautan'`) yang disorot,
  * lalu AI melanjutkan. Bukan serah final.
  */
 export const AlasanSerahkanSchema = z.enum([
@@ -600,6 +600,7 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
      * mengetiknya di situs lalu menekan Lanjutkan (`kembalikan`). Nilainya tidak dicatat dan tidak ke AI.
      * `berkas_kurang`: Dokumen untuk langkah unggah belum ada di akun (`berkas`); warga menambahkannya di
      * /dokumen, lalu Lanjutkan = "Izinkan isi" baru untuk berkas itu saja, dan langkah unggah diulang.
+     * `ketuk_tautan` (aditif): warga mengetuk tautan pembuka yang disorot (navigasi GET), lalu Lanjutkan.
      */
     alasan: z.enum([
       'login',
@@ -610,6 +611,7 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
       'verifikasi_situs',
       'isi_sendiri',
       'berkas_kurang',
+      'ketuk_tautan',
     ]),
     pesan: z.string(),
     sorot: PendampingSorotSchema.optional(),
