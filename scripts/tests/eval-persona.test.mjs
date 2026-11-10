@@ -480,3 +480,59 @@ describe('SesiWarga.aksi menunggu turn yang dipicu aksi', async () => {
     assert.deepEqual(s.ditunggu, []);
   });
 });
+
+describe('korpus pasal (ingest sumber *-pasal ke salinan DB eval)', async () => {
+  const { sumberPasal, hitungChunkPasal, barisKorpusPasal } = await import('../eval-persona/lib/korpus.mjs');
+  const { DatabaseSync } = await import('node:sqlite');
+
+  it('memilih sumber berakhiran -pasal yang di-ingest', () => {
+    const sources = {
+      sources: [
+        { id: 'wonogiri-ktp-el', ingest: true },
+        { id: 'perpres-96-2018-pasal', ingest: true },
+        { id: 'perpol-1-2026-pasal', ingest: true },
+        { id: 'uu-lama-pasal', ingest: false },
+      ],
+    };
+    assert.deepEqual(sumberPasal(sources), ['perpres-96-2018-pasal', 'perpol-1-2026-pasal']);
+  });
+
+  it('repo tanpa sumber pasal (main) menghasilkan daftar kosong', () => {
+    assert.deepEqual(sumberPasal({ sources: [{ id: 'semarang-data-dukung', ingest: true }] }), []);
+  });
+
+  it('menghitung chunk pasal per sumber dari tabel chunks', () => {
+    const db = new DatabaseSync(':memory:');
+    db.exec('CREATE TABLE chunks (id TEXT PRIMARY KEY)');
+    for (const id of [
+      'perpres-96-2018-pasal#pasal-33',
+      'perpres-96-2018-pasal#pasal-34',
+      'perpol-1-2026-pasal#pasal-2',
+      'wonogiri-ktp-el#1',
+    ])
+      db.prepare('INSERT INTO chunks (id) VALUES (?)').run(id);
+    assert.deepEqual(hitungChunkPasal(db), {
+      total: 3,
+      perSumber: { 'perpres-96-2018-pasal': 2, 'perpol-1-2026-pasal': 1 },
+    });
+  });
+
+  it('baris skor.md menyebut jumlah chunk pasal, atau alasan bila tidak di-ingest', () => {
+    assert.equal(
+      barisKorpusPasal({ status: 'diingest', sumber: 2, total: 3, galat: [] }),
+      '- korpus pasal: 3 chunk dari 2 sumber `*-pasal` di-ingest dari repo yang diuji',
+    );
+    assert.equal(
+      barisKorpusPasal({ status: 'tanpa_sumber', sumber: 0, total: 0, galat: [] }),
+      '- korpus pasal: repo yang diuji tidak punya sumber `*-pasal` (0 chunk)',
+    );
+    assert.equal(
+      barisKorpusPasal({ status: 'dimatikan', sumber: 0, total: 0, galat: [] }),
+      '- korpus pasal: dimatikan (--tanpa-pasal); 0 chunk',
+    );
+    assert.match(
+      barisKorpusPasal({ status: 'diingest', sumber: 2, total: 1, galat: ['perpol-1-2026-pasal'] }),
+      /galat: perpol-1-2026-pasal/,
+    );
+  });
+});

@@ -11,7 +11,9 @@
 //   pnpm eval:persona --label coba --paralel 3 --maks-giliran 12 --tanpa-juri --build
 //
 // Rahasia LLM dibaca dari ~/.urusin-secrets/llm.env (atau URUSIN_EVAL_SECRETS / process.env), tidak pernah dicetak.
-// Korpus RAG: --rag-db (bawaan scripts/eval-persona/.cache/rag.prod.db, salinan /data/rag.db produksi).
+// Korpus RAG: --rag-db (bawaan scripts/eval-persona/.cache/rag.prod.db, salinan /data/rag.db produksi). Sumber
+// `*-pasal` dari data/sources.json repo yang diuji di-ingest dulu ke SALINAN sementara DB itu (`pnpm rag:ingest --only`,
+// lihat deploy/README.md) agar kriteria c diukur di korpus cabang itu; --tanpa-pasal mematikannya.
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { dirname, join, resolve } from 'node:path';
@@ -22,6 +24,7 @@ import { muatRahasia, sensor } from './lib/env.mjs';
 import { KlienLlm } from './lib/llm.mjs';
 import { KRITERIA, gabung, nilaiJuri } from './lib/juri.mjs';
 import { opsiAksiWilayah } from './lib/klien.mjs';
+import { barisKorpusPasal, siapkanKorpusPasal } from './lib/korpus.mjs';
 import { jalankanPercakapan } from './lib/percakapan.mjs';
 import { renderLangkahAgen } from './lib/layar.mjs';
 import {
@@ -55,6 +58,7 @@ const { values: opsi } = parseArgs({
     label: { type: 'string' },
     keluar: { type: 'string' },
     'tanpa-juri': { type: 'boolean', default: false },
+    'tanpa-pasal': { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
 });
@@ -172,6 +176,9 @@ function transkripTeks(h) {
 
 const simbol = (v) => (v === true ? 'LULUS' : v === false ? 'GAGAL' : 'n/a');
 
+/** Salinan korpus sementara (dihapus di akhir run, juga saat run gagal). */
+let korpus = null;
+
 async function main() {
   const rahasia = muatRahasia();
   const persona = cariPersona(
@@ -204,12 +211,20 @@ async function main() {
       throw new Error(
         `korpus RAG tidak ada: ${opsi['rag-db']}. Salin /data/rag.db produksi (lihat LAPORAN) atau beri --rag-db.`,
       );
+    korpus = siapkanKorpusPasal({
+      akar,
+      ragDb: resolve(opsi['rag-db']),
+      rahasia,
+      aktif: !opsi['tanpa-pasal'],
+      log,
+    });
+    log(barisKorpusPasal(korpus).slice(2));
     relay = await relayLlm(rahasia.LLM_BASE_URL);
     server = await mulaiServer({
       akar,
       rahasia,
       llmBaseUrl: relay.baseUrl,
-      ragDb: resolve(opsi['rag-db']),
+      ragDb: korpus.ragDb,
       logBerkas: join(keluar, 'server.log'),
     });
     origin = server.origin;
@@ -340,6 +355,15 @@ async function main() {
     aksiWilayah,
     maksGiliran,
     rag: server?.info.rag ?? null,
+    korpusPasal: korpus
+      ? {
+          status: korpus.status,
+          sumber: korpus.sumber,
+          total: korpus.total,
+          perSumber: korpus.perSumber,
+          galat: korpus.galat,
+        }
+      : null,
     durasiMs: Date.now() - mulai,
     hasil,
   };
@@ -348,6 +372,7 @@ async function main() {
   log(`hasil di ${keluar}`);
   await server?.berhenti();
   await relay?.tutup();
+  korpus?.hapus?.();
 }
 
 function tabelSkor(r) {
@@ -378,6 +403,7 @@ function tabelSkor(r) {
     '',
     `- git: ${r.gitSha ?? '?'} (${r.akar}); wilayah perangkat: ${r.wilayahAwal} (bawaan ${r.wilayahBawaanPerangkat || 'kosong'})`,
     `- korpus: ${r.rag ? `${r.rag.status}, ${r.rag.chunks} chunk, ${r.rag.vectors ?? 0} vektor` : '?'}; durasi ${(r.durasiMs / 60000).toFixed(1)} menit`,
+    ...(r.korpusPasal ? [barisKorpusPasal(r.korpusPasal)] : []),
     `- token agen ${tok.agenIn} in / ${tok.agenOut} out; token simulator+juri ${tok.evalIn} in / ${tok.evalOut} out`,
     '',
     `| persona | kode urusan | ${k.join(' | ')} | giliran | akhir |`,
@@ -410,5 +436,6 @@ function tabelSkor(r) {
 
 main().catch((e) => {
   console.error(`eval gagal: ${e?.message ?? e}`);
+  korpus?.hapus?.();
   process.exit(1);
 });
