@@ -433,3 +433,21 @@ describe('pendekkanHash (transkrip lolos pii-scan)', async () => {
     });
   });
 });
+
+describe('opsiAksiWilayah (meniru UrusanStore cabang yang diuji)', async () => {
+  const { opsiAksiWilayah } = await import('../eval-persona/lib/klien.mjs');
+
+  it('c869666: aksi wilayah memakai versi dan kirim ulang setelah 409', () => {
+    const sumber = "    return this.aksi('wilayah', { kodeKabKota });";
+    assert.deepEqual(opsiAksiWilayah(sumber), { versi: true, ulang: true });
+  });
+
+  it('kepala cabang terbaru: tanpa versi dan tanpa kirim ulang', () => {
+    const sumber = "    return this.aksi('wilayah', { kodeKabKota }, { versi: false, ulang: false });";
+    assert.deepEqual(opsiAksiWilayah(sumber), { versi: false, ulang: false });
+  });
+
+  it('bawaan (berkas tidak ada / main): versi dan kirim ulang seperti aksi lain', () => {
+    assert.deepEqual(opsiAksiWilayah(''), { versi: true, ulang: true });
+  });
+});

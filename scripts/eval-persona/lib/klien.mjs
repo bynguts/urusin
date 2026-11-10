@@ -197,9 +197,12 @@ export class SesiWarga {
     return this.aksi('rencana/setujui', {});
   }
 
-  /** Klik "Ya, betul" di kartu wilayah (feat/wilayah-dulu): POST /api/urusan/[id]/wilayah {kodeKabKota}. */
-  tetapkanWilayah(kodeKabKota) {
-    return this.aksi('wilayah', { kodeKabKota });
+  /**
+   * Klik "Ya, betul" di kartu wilayah (feat/wilayah-dulu): POST /api/urusan/[id]/wilayah {kodeKabKota}. Opsi versi /
+   * kirim ulang mengikuti UrusanStore cabang yang diuji (lihat `opsiAksiWilayah`).
+   */
+  tetapkanWilayah(kodeKabKota, opsi = { versi: true, ulang: true }) {
+    return this.aksi('wilayah', { kodeKabKota }, opsi);
   }
 
   /** "Masuk sebagai juri" (akun demo berisi Data Diri sintetis), seperti juri di final. Turnstile mode fixture. */
@@ -213,16 +216,16 @@ export class SesiWarga {
   }
 
   /** Aksi terstruktur seperti UrusanStore.aksi: versi terbaru, 409 → ambil status lalu coba sekali lagi. */
-  async aksi(jalur, isi) {
+  async aksi(jalur, isi, { versi = true, ulang = true } = {}) {
     const seqAwal = this.lastSeq;
     const kirim = () =>
       this.http(`/api/urusan/${this.id}/${jalur}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...isi, expectedVersion: this.version }),
+        body: JSON.stringify(versi ? { ...isi, expectedVersion: this.version } : isi),
       });
     let res = await kirim();
-    if (res.status === 409) {
+    if (res.status === 409 && ulang) {
       const st = await this.status();
       if (st && !st.berjalan) {
         this.version = st.version;
@@ -246,4 +249,14 @@ export class SesiWarga {
   tutup() {
     this.aliran?.abort();
   }
+}
+
+/**
+ * Cara UI cabang yang diuji mengirim "Ya, betul": c869666 memakai aksi biasa (versi + kirim ulang setelah 409);
+ * kepala feat/wilayah-dulu sesudahnya `aksi('wilayah', ..., { versi: false, ulang: false })` agar kartu basi tidak
+ * menimpa wilayah. Dibaca dari apps/web/src/lib/stores/urusan.svelte.ts worktree yang diuji.
+ */
+export function opsiAksiWilayah(sumberStore) {
+  const baris = sumberStore.split('\n').find((b) => b.includes("aksi('wilayah'")) ?? '';
+  return { versi: !/versi:\s*false/.test(baris), ulang: !/ulang:\s*false/.test(baris) };
 }

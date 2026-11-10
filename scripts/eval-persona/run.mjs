@@ -21,6 +21,7 @@ import { execFileSync } from 'node:child_process';
 import { muatRahasia, sensor } from './lib/env.mjs';
 import { KlienLlm } from './lib/llm.mjs';
 import { KRITERIA, gabung, nilaiJuri } from './lib/juri.mjs';
+import { opsiAksiWilayah } from './lib/klien.mjs';
 import { jalankanPercakapan } from './lib/percakapan.mjs';
 import { renderLangkahAgen } from './lib/layar.mjs';
 import {
@@ -74,6 +75,14 @@ function wilayahAwalPerangkat(akar) {
     const src = readFileSync(join(akar, 'apps', 'web', 'src', 'lib', 'stores', 'lokal.svelte.ts'), 'utf8');
     const m = src.match(/WILAYAH_AWAL[^=]*=\s*\{\s*kodeKabKota:\s*'(\d{4})'/);
     return m ? m[1] : '';
+  } catch {
+    return '';
+  }
+}
+
+function bacaAtauKosong(berkas) {
+  try {
+    return readFileSync(berkas, 'utf8');
   } catch {
     return '';
   }
@@ -213,6 +222,9 @@ async function main() {
     // bukan repo git
   }
   const wilayahBawaan = wilayahAwalPerangkat(akar);
+  const aksiWilayah = opsiAksiWilayah(
+    bacaAtauKosong(join(akar, 'apps', 'web', 'src', 'lib', 'stores', 'urusan.svelte.ts')),
+  );
   let gt = {};
   try {
     gt = JSON.parse(readFileSync(join(DIR, 'ground-truth.json'), 'utf8')).persona ?? {};
@@ -239,6 +251,7 @@ async function main() {
       persona: p,
       llmWarga,
       wilayahPerangkat,
+      aksiWilayah,
       maksGiliran,
       log,
     });
@@ -324,6 +337,7 @@ async function main() {
     origin: server ? 'lokal (node build)' : origin,
     wilayahAwal: opsi['wilayah-awal'],
     wilayahBawaanPerangkat: wilayahBawaan,
+    aksiWilayah,
     maksGiliran,
     rag: server?.info.rag ?? null,
     durasiMs: Date.now() - mulai,

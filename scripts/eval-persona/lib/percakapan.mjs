@@ -5,7 +5,8 @@ import { aksiWarga } from './warga.mjs';
 
 /**
  * @param {{origin: string, ip: string, persona: object, llmWarga: import('./llm.mjs').KlienLlm,
- *          wilayahPerangkat: string, maksGiliran: number, log?: (s: string) => void}} o
+ *          wilayahPerangkat: string, aksiWilayah?: {versi: boolean, ulang: boolean}, maksGiliran: number,
+ *          log?: (s: string) => void}} o
  */
 export async function jalankanPercakapan({
   origin,
@@ -13,6 +14,7 @@ export async function jalankanPercakapan({
   persona,
   llmWarga,
   wilayahPerangkat,
+  aksiWilayah,
   maksGiliran,
   log,
 }) {
@@ -87,7 +89,7 @@ export async function jalankanPercakapan({
         const usulan = usulanWilayahAktif(sesi.events);
         const s =
           a.tombol === 'Ya, betul' && usulan
-            ? await sesi.tetapkanWilayah(usulan.ktp.kodeKabKota)
+            ? await sesi.tetapkanWilayah(usulan.ktp.kodeKabKota, aksiWilayah)
             : await sesi.setujuiRencana();
         langkah.push({ peran: 'warga', jenis: 'klik', teks: a.tombol, http: s.http, alasan: a.alasan });
         layar.push(`Warga menekan [${a.tombol}]`);
