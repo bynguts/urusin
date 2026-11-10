@@ -465,6 +465,8 @@ type KendaliGerbang = {
   wargaTunggu: () => boolean;
   blokir: Parameters<typeof createGerbangTulis>[0]['onBlokir'];
   hostDiblokir: (host: string, dokumen: boolean | undefined) => void;
+  /** Tulis non-GET warga lolos (jendela `warga`). */
+  tulisWarga: () => void;
 };
 
 export async function startBrowserRun(config: Config, init: RunInit): Promise<ActiveRun> {
@@ -474,12 +476,14 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
     wargaTunggu: () => false,
     blokir: () => {},
     hostDiblokir: () => {},
+    tulisWarga: () => {},
   };
   const gerbang = init.generik
     ? createGerbangTulis({
         wargaPegang: () => kendali.wargaPegang(),
         wargaTunggu: () => kendali.wargaTunggu(),
         onBlokir: (c, j) => kendali.blokir(c, j),
+        onTulisWarga: () => kendali.tulisWarga(),
       })
     : undefined;
   const hosts = hostsSesi(init.program);
@@ -1156,11 +1160,38 @@ export async function wire(
     gen.kendali.wargaPegang = () => ditahan() && Date.now() - inputWargaTerakhir <= JENDELA_WARGA_MS;
     gen.kendali.blokir = (c, j) => run.blokir(c, j);
     gen.kendali.hostDiblokir = (host, dokumen) => run.hostDiblokir(host, dokumen);
+    // Review kode N1: warga mengirim sendiri (mis. setelah AI menyerah, loop di web sudah berhenti). Halaman sukses
+    // sesudah tulis warga = sesi siaga berhasil tanpa menunggu /selesai. Diperiksa saat dokumen utama dimuat dan
+    // sebentar sesudah tulis warga (SPA: hasil lewat XHR tanpa muat ulang).
+    let memeriksaSukses = false;
+    const periksaSuksesWarga = async () => {
+      if (!manual || destroyed || memeriksaSukses || !run.adaTulisWargaSejakAksiAi()) return;
+      memeriksaSukses = true;
+      try {
+        const p = await run.amati(true).catch(() => null);
+        if (p?.sinyal.sukses && run.adaTulisWargaSejakAksiAi()) hooks.suksesWarga?.(p);
+      } finally {
+        memeriksaSukses = false;
+      }
+    };
+    page.on('load', () => void periksaSuksesWarga());
+    gen.kendali.tulisWarga = () => {
+      run.tulisWarga();
+      for (const ms of [1_500, 5_000]) setTimeout(() => void periksaSuksesWarga(), ms).unref?.();
+    };
   }
 
   const g = generik;
   return {
-    ...(g ? { generik: { amati: (pantau) => g.amati(pantau), aksi: (req) => g.aksi(req) } } : {}),
+    ...(g
+      ? {
+          generik: {
+            amati: (pantau) => g.amati(pantau),
+            aksi: (req) => g.aksi(req),
+            adaTulisWargaSejakAksiAi: () => g.adaTulisWargaSejakAksiAi(),
+          },
+        }
+      : {}),
     async mulaiAi() {
       if (g) {
         // Generik: AI hanya membuka halaman awal; selanjutnya otak di web memanggil amati/aksi.

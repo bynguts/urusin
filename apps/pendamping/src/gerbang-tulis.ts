@@ -74,7 +74,7 @@ export function urlTantangan(url: string): boolean {
 }
 
 /** Metode yang tidak mengubah keadaan server (preflight CORS ikut di sini). */
-const AMAN: ReadonlySet<string> = new Set(['GET', 'HEAD', 'OPTIONS']);
+export const AMAN: ReadonlySet<string> = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /** URL tanpa fragmen (fragmen tidak pernah dikirim ke server). */
 function tanpaFragmen(u: string): string | undefined {
@@ -173,6 +173,8 @@ export function createGerbangTulis(opts: {
   wargaPegang: () => boolean;
   wargaTunggu?: () => boolean;
   onBlokir: (c: CatatanBlokir, j: Exclude<Jendela, { jenis: 'warga' }>) => void;
+  /** Tulis non-GET yang lolos di jendela `warga` (warga mengirim sendiri); tanpa catatan apa pun. */
+  onTulisWarga?: () => void;
   now?: () => number;
 }): GerbangTulis {
   const now = opts.now ?? Date.now;
@@ -192,6 +194,7 @@ export function createGerbangTulis(opts: {
       const j = jendela();
       const p = putuskan(j, r, now());
       if (p === 'blokir' && j.jenis !== 'warga') opts.onBlokir(catatanBlokir(j, r), j);
+      if (p === 'lanjut' && j.jenis === 'warga' && !AMAN.has(r.metode.toUpperCase())) opts.onTulisWarga?.();
       return p;
     },
     tolak(r) {

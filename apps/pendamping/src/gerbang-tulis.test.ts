@@ -265,6 +265,25 @@ describe('catatanBlokir', () => {
 });
 
 describe('createGerbangTulis', () => {
+  it('tulis non-GET yang lolos di jendela warga dilaporkan (onTulisWarga); GET dan jendela AI tidak', () => {
+    let pegang = false;
+    let tulis = 0;
+    const g = createGerbangTulis({
+      wargaPegang: () => pegang,
+      onBlokir: () => {},
+      onTulisWarga: () => void tulis++,
+      now: () => T,
+    });
+    g.setAi({ jenis: 'ai_isi', sampai: T + 3000 });
+    expect(g.periksa(req('POST', false))).toBe('lanjut');
+    expect(tulis).toBe(0);
+    pegang = true;
+    expect(g.periksa(req('GET', true))).toBe('lanjut');
+    expect(tulis).toBe(0);
+    expect(g.periksa(req('post', true))).toBe('lanjut');
+    expect(tulis).toBe(1);
+  });
+
   it('warga memegang kendali = lolos; AI = jendela terakhir; blokir dilaporkan sekali per permintaan', () => {
     let pegang = false;
     let now = T;

@@ -231,6 +231,12 @@ describe('bangunPengamatan', () => {
       '<nav><a href="/bukti">Cetak Bukti Pendaftaran</a></nav><h2>Bukti Pendaftaran tidak ditemukan</h2>',
       '<footer><h4>Permohonan Anda telah berhasil</h4></footer>',
       '<h2>Lacak Bukti Pendaftaran</h2>',
+      // Review N3 (PoC F): dasbor, label kolom, draf wizard.
+      '<nav><a href="/bukti">Cetak Bukti Pendaftaran</a> <a href="/layanan">Layanan</a></nav><h1>Selamat datang</h1>',
+      '<h1>Bukti Pendaftaran</h1>',
+      '<form><label>Nomor Antrian Online <input name="antri"></label><label>Nama <input name="nama"></label></form>',
+      '<div class="alert alert-success">Data berhasil disimpan. Silakan lanjut ke tahap 2 dari 4.</div><label>Nama Ayah <input name="ayah"></label>',
+      '<div class="alert alert-success">Data berhasil disimpan</div>',
     ]) {
       document.body.innerHTML = html;
       expect(amati().pengamatan.sinyal.sukses, html).toBe(false);

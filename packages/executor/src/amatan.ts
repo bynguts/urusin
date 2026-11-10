@@ -89,9 +89,9 @@ const SEL_GALAT =
 const RE_SUKSES = [
   // Token nomor wajib memuat digit ("nomor registrasi disini" / "nomor resi anda" bukan bukti).
   /(nomor|no\.?) ?(registrasi|pendaftaran|permohonan|antrian|antrean|tiket|pengajuan|resi|tanda terima|bukti)( anda)?\s*[:#]?\s*(?=[a-z0-9/-]*\d)[a-z0-9][a-z0-9/-]{3,}/,
-  /(berhasil|sukses) (dikirim|diajukan|disimpan|terkirim|didaftarkan|terdaftar|mendaftar)/,
+  // "berhasil disimpan" = draf/tahap wizard, dan "bukti pendaftaran" tunggal = menu/judul (review N3): bukan sukses.
+  /(berhasil|sukses) (dikirim|diajukan|terkirim|didaftarkan|terdaftar|mendaftar)/,
   /(permohonan|pengajuan|pendaftaran) (anda )?(telah |sudah )?(berhasil|diterima|terkirim)/,
-  /bukti (pendaftaran|pengajuan|permohonan)/,
 ];
 /**
  * Wadah hasil: judul, peringatan/status, popup SweetAlert/toast, dialog terbuka. Teks badan halaman (FAQ, tahapan

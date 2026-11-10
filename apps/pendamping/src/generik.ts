@@ -19,7 +19,13 @@ import type {
   RefTersimpan,
   UploadFile,
 } from '@urusin/executor';
-import { JENDELA_ISI_MS, type CatatanBlokir, type GerbangTulis, type Jendela } from './gerbang-tulis.js';
+import {
+  AMAN,
+  JENDELA_ISI_MS,
+  type CatatanBlokir,
+  type GerbangTulis,
+  type Jendela,
+} from './gerbang-tulis.js';
 
 /**
  * GenerikRun: "tangan" Navigator generik di worker (ADR 0030). Otak (LLM + validator) ada di web; worker
@@ -140,9 +146,6 @@ export const PESAN_GENERIK = {
   kotor:
     'Halaman ini mencoba mengirim data sendiri, jadi AI berhenti dan halaman dimuat ulang. Periksa halaman, lalu lanjutkan sendiri.',
 } as const;
-
-/** Metode yang tidak menulis (sama dengan gerbang tulis). */
-const BACA: ReadonlySet<string> = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 const PESAN_TIDAK_BISA: Record<Extract<Aksi, { jenis: 'tidak_bisa' }>['sebab'], string> = {
   layanan_tidak_ada:
@@ -287,6 +290,11 @@ export class GenerikRun {
   private muatUlangTerakhir: string | undefined;
   /** Jalur CSS elemen yang disorot pada serah terakhir (kotak sorot untuk ketukan warga saat kotor). */
   private sorotJalur: string | undefined;
+  /**
+   * Ada tulis non-GET oleh warga (lolos di jendela `warga`) sejak aksi AI terakhir di halaman (review N3): syarat
+   * halaman sukses diterima sebagai "terkirim".
+   */
+  private tulisWargaSejakAi = false;
 
   constructor(private readonly d: GenerikDeps) {
     this.now = d.now ?? Date.now;
@@ -297,6 +305,15 @@ export class GenerikRun {
     this.kotorDok = false;
     this.kotorDiserahkan = false;
     this.aiBertindakDok = false;
+  }
+
+  /** Gerbang tulis meloloskan tulis non-GET warga. */
+  tulisWarga(): void {
+    this.tulisWargaSejakAi = true;
+  }
+
+  adaTulisWargaSejakAksiAi(): boolean {
+    return this.tulisWargaSejakAi;
   }
 
   get kotor(): boolean {
@@ -318,7 +335,7 @@ export class GenerikRun {
       jendela: c.jendela,
     });
     // WebSocket ditolak di semua sesi generik (bukan tanda tulis tertunda); selain itu non-GET = kotor.
-    if (!BACA.has(c.metode) && c.metode !== 'WSOCKET') this.kotorDok = true;
+    if (!AMAN.has(c.metode) && c.metode !== 'WSOCKET') this.kotorDok = true;
     // Isi: navigasi (bingkai mana pun, mis. form POST ke iframe) dan tulis non-XHR (beacon) = eskalasi; XHR yang
     // lewat batas jendela cukup dicatat. Klik: setiap blokir = eskalasi.
     const tulisLain = c.dokumen || !c.xhr;
@@ -350,6 +367,7 @@ export class GenerikRun {
       const url = this.d.tangan.urlKini();
       if (this.d.urlBoleh(url) && this.muatUlangTerakhir !== url) {
         this.muatUlangTerakhir = url;
+        this.tulisWargaSejakAi = false;
         this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: url });
         try {
           await this.d.tangan.navigasi(url);
@@ -574,6 +592,7 @@ export class GenerikRun {
     this.aksiBerjalan = { blokir: [], hostLain: false };
     this.hostDitolakTerakhir = undefined;
     this.aiBertindakDok = true;
+    this.tulisWargaSejakAi = false;
     const urlSebelum = this.d.tangan.urlKini();
     try {
       const r = await this.d.tangan.aksi(op, this.peta);
@@ -645,6 +664,7 @@ export class GenerikRun {
     await this.serial(async () => {
       this.aksiBerjalan = { blokir: [], hostLain: false };
       this.hostDitolakTerakhir = undefined;
+      this.tulisWargaSejakAi = false;
       try {
         this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: url });
         await this.d.tangan.navigasi(url);

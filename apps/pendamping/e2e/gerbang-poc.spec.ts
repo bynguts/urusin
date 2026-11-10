@@ -89,6 +89,18 @@ const HALAMAN: Record<string, string> = {
   '/sukses': kerangka(
     '<h1>Permohonan berhasil dikirim</h1><div class="alert alert-success">Nomor registrasi: REG-2026-0001</div>',
   ),
+  // N3/kode N1: warga mengirim sendiri (form POST ke /sukses); dan PoC F: dasbor, label, draf (bukan sukses).
+  '/kirim-warga': kerangka(`<form method="post" action="/sukses"><label>Nama <input name="nama"></label>
+<button type="submit" style="position:fixed;left:0;top:300px;width:300px;height:80px">Kirim Permohonan</button></form>`),
+  '/dasbor': kerangka(
+    '<nav><a href="/bukti">Cetak Bukti Pendaftaran</a> <a href="/layanan">Layanan</a></nav><h1>Selamat datang</h1>',
+  ),
+  '/label': kerangka(
+    '<form><label>Nomor Antrian Online <input name="antri"></label><label>Nama <input name="nama"></label></form>',
+  ),
+  '/draf': kerangka(
+    '<div class="alert alert-success">Data berhasil disimpan. Silakan lanjut ke tahap 2 dari 4.</div><label>Nama Ayah <input name="ayah"></label>',
+  ),
   // F6: halaman membuka WebSocket (mis. socket.io) dan mengirim lewat situ.
   '/ws': kerangka(`<h1>Formulir</h1><script>
   const ws = new WebSocket('ws://' + location.host + '/ws');
@@ -158,6 +170,19 @@ function satu(p: Pengamatan, nama: string) {
   const e = semua(p, nama)[0];
   if (!e) throw new Error(`elemen "${nama}" tidak teramati: ${JSON.stringify(p.elemen)}`);
   return e;
+}
+
+async function ketuk(manager: SessionManager, sesiId: string, x: number, y: number) {
+  for (const aksi of ['down', 'up'] as const)
+    await manager.handleClient(sesiId, {
+      type: 'pointer',
+      aksi,
+      x,
+      y,
+      jenis: 'touch',
+      tombol: 'left',
+      klik: 1,
+    });
 }
 
 let situs: Situs;
@@ -392,11 +417,16 @@ test('probe 3674: redirect JS halaman sesudah navigasi lolos bila jalur bersih, 
   }
 });
 
-test('H3: halaman sukses saat warga memegang kendali -> selesai = siaga berhasil + bukti di jejak', async () => {
-  const { manager, o, sesiId, p } = await sesi(situs, '/sukses', 'sukses');
+test('H3/N3: warga mengirim sendiri -> sukses diterima worker (siaga berhasil); bukti Navigator menyusul', async () => {
+  const { manager, o, sesiId } = await sesi(situs, '/kirim-warga', 'sukses');
   try {
-    expect(p.sinyal.sukses).toBe(true);
     await manager.handleClient(sesiId, { type: 'ambil_alih' });
+    // Sebelum warga mengirim: halaman sukses belum ada, /selesai = 409.
+    await expect(manager.selesai(o, { nomor: 'REG-2026-0001' })).rejects.toMatchObject({ status: 409 });
+    await ketuk(manager, sesiId, 150, 340);
+    await expect.poll(() => situs.hitung('/sukses'), { timeout: 10_000 }).toBe(1);
+    await expect.poll(() => manager.status(o).status, { timeout: 10_000 }).toBe('siaga');
+    expect(manager.status(o).hasil).toBe('berhasil');
     // Nomor karangan tidak pernah tercatat; nomor yang tertulis di halaman tercatat.
     const v = await manager.selesai(o, { nomor: 'REG-2026-0001', status: 'Terkirim' });
     expect(v).toMatchObject({ status: 'siaga', hasil: 'berhasil', bukti: { nomor: 'REG-2026-0001' } });
@@ -408,6 +438,39 @@ test('H3: halaman sukses saat warga memegang kendali -> selesai = siaga berhasil
     await manager.shutdown();
   }
 });
+
+test('kode N1: AI menyerah, warga mengisi dan mengirim sendiri -> berhasil tanpa /selesai dari web', async () => {
+  const { manager, o, sesiId, p } = await sesi(situs, '/kirim-warga', 'menyerah');
+  try {
+    await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'serahkan', alasan: 'tidak_yakin' }],
+    });
+    await expect.poll(() => manager.status(o).mode, { timeout: 10_000 }).toBe('takeover');
+    const sebelum = situs.hitung('/sukses');
+    await ketuk(manager, sesiId, 150, 340);
+    await expect.poll(() => situs.hitung('/sukses'), { timeout: 10_000 }).toBe(sebelum + 1);
+    await expect.poll(() => manager.status(o).status, { timeout: 10_000 }).toBe('siaga');
+    expect(manager.status(o).hasil).toBe('berhasil');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+for (const jalur of ['/dasbor', '/label', '/draf'])
+  test(`N3 (PoC F ${jalur}): bukan sukses; /selesai = 409 tanpa pengiriman warga`, async () => {
+    const { manager, o, sesiId, p } = await sesi(situs, jalur, `f${jalur.slice(1)}`);
+    try {
+      expect(p.sinyal.sukses).toBe(false);
+      await manager.handleClient(sesiId, { type: 'ambil_alih' });
+      await expect(manager.selesai(o)).rejects.toMatchObject({ status: 409 });
+      expect(manager.status(o).status).toBe('berjalan');
+    } finally {
+      await manager.shutdown();
+    }
+  });
 
 test('M5: tidak_bisa = dipandu (drift), bukan gagal', async () => {
   const { manager, o, p } = await sesi(situs, '/s4', 'tidak-bisa');
@@ -424,19 +487,6 @@ test('M5: tidak_bisa = dipandu (drift), bukan gagal', async () => {
     await manager.shutdown();
   }
 });
-
-async function ketuk(manager: SessionManager, sesiId: string, x: number, y: number) {
-  for (const aksi of ['down', 'up'] as const)
-    await manager.handleClient(sesiId, {
-      type: 'pointer',
-      aksi,
-      x,
-      y,
-      jenis: 'touch',
-      tombol: 'left',
-      klik: 1,
-    });
-}
 
 test('N2: POST tertunda dari klik AI tidak lolos; halaman kotor dimuat ulang dan diserahkan ke warga', async () => {
   const { manager, o, sesiId, p } = await sesi(situs, '/tertunda', 'tertunda');

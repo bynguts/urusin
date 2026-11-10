@@ -541,6 +541,19 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     expect(postTertunda(h)).toBe('blokir');
   });
 
+  it('N3: tulis warga tercatat sampai aksi AI berikutnya di halaman', async () => {
+    const h = harness();
+    await h.run.amati();
+    expect(h.run.adaTulisWargaSejakAksiAi()).toBe(false);
+    h.run.tulisWarga();
+    expect(h.run.adaTulisWargaSejakAksiAi()).toBe(true);
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'pilih', ref: 'e1', nilai: { opsi: 1 } }] });
+    expect(h.run.adaTulisWargaSejakAksiAi()).toBe(false);
+    h.run.tulisWarga();
+    await h.run.mulai('https://portal.contoh.go.id/form');
+    expect(h.run.adaTulisWargaSejakAksiAi()).toBe(false);
+  });
+
   it('heartbeat POST di dokumen yang belum disentuh AI: kotor, tetapi tanpa muat ulang/serah', async () => {
     const h = harness();
     await h.run.amati();
