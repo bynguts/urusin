@@ -193,6 +193,12 @@ describe('validator rencana: rencana sah', () => {
     ]);
   });
 
+  it('F8: data non-sensitif ke kolom yang labelnya tidak cocok = samar (baris ditandai tidakLazim)', () => {
+    expect(kelaziman('{{PEMOHON.HP}}', { peran: 'teks', nama: 'Nomor HP' })).toBe('lazim');
+    expect(kelaziman('{{PEMOHON.HP}}', { peran: 'teks', nama: 'Nomor Rekening' })).toBe('samar');
+    expect(kelaziman('{{PEMOHON.NAMA}}', { peran: 'teks', nama: 'Kata kunci pencarian' })).toBe('samar');
+  });
+
   it('homoglif pada label NIK tidak pernah dianggap lazim (default tolak)', () => {
     const e = { peran: 'teks' as const, nama: 'NІK' /* І Kiril */ };
     expect(kelaziman('{{PEMOHON.NIK}}', e)).toBe('asing');
@@ -240,6 +246,39 @@ describe('tautan pembuka (kirim karena nama saja): serah ketuk_tautan, bukan kli
     expect(tolak(rencana({ jenis: 'klik', ref: 'e1' }), akhir)).toEqual(
       expect.arrayContaining(['KELAS_KLIK_DITOLAK', 'HALAMAN_AKHIR_TERKUNCI']),
     );
+  });
+
+  it('N1: model tidak bisa memilih ketuk_tautan sendiri (mis. menyorot tombol Kirim sebagai "tautan")', () => {
+    // PoC D review keamanan: serahkan ketuk_tautan ke tombol kirim di halaman tinjauan.
+    const tinjau = beranda({
+      elemen: [{ ref: 'e9', peran: 'tombol', nama: 'Kirim Permohonan', kelas: 'kirim' }],
+      sinyal: { ...halamanForm().sinyal, halamanAkhir: true },
+    });
+    for (const p of [tinjau, beranda()])
+      for (const ref of ['e9', 'e1'])
+        expect(tolak(rencana({ jenis: 'serahkan', alasan: 'ketuk_tautan', ref }), p)).toEqual([
+          'SKEMA_TIDAK_SAH',
+        ]);
+  });
+
+  it('N1: ref serah harus diamati dan cocok dengan alasannya (isi_sendiri hanya ke kolom)', () => {
+    const p = beranda({
+      elemen: [
+        ...beranda().elemen,
+        { ref: 'e4', peran: 'teks', nama: 'Nomor Kitir', kelas: 'ui_lokal' },
+        { ref: 'e5', peran: 'tombol', nama: 'Kirim', kelas: 'kirim' },
+      ],
+    });
+    expect(tolak(rencana({ jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e5' }), p)).toEqual([
+      'PERAN_TIDAK_COCOK',
+    ]);
+    expect(tolak(rencana({ jenis: 'serahkan', alasan: 'final', ref: 'e77' }), p)).toEqual([
+      'REF_TIDAK_DIAMATI',
+    ]);
+    expect(validasiRencana(rencana({ jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e4' }), p).ok).toBe(
+      true,
+    );
+    expect(validasiRencana(rencana({ jenis: 'serahkan', alasan: 'final', ref: 'e5' }), p).ok).toBe(true);
   });
 });
 

@@ -58,7 +58,9 @@ const AksiKetatSchema = z.discriminatedUnion('jenis', [
   z.strictObject({ jenis: z.literal('klik'), ref: RefSchema }),
   z.strictObject({
     jenis: z.literal('serahkan'),
-    alasan: AlasanSerahkanSchema,
+    // `ketuk_tautan` hanya dibuat validator dari klik ke tautan pembuka (`tautanWarga`), tidak pernah oleh model:
+    // model yang menyorot tombol Kirim sebagai "tautan" akan menyesatkan warga (review keamanan N1).
+    alasan: AlasanSerahkanSchema.exclude(['ketuk_tautan']),
     ref: RefSchema.optional(),
   }),
   z.strictObject({ jenis: z.literal('tidak_bisa'), sebab: SebabTidakBisaSchema }),
@@ -126,6 +128,8 @@ export function normalLabel(s: string): string {
 const PERAN_ISI: readonly PeranElemen[] = ['teks', 'angka', 'tanggal', 'area'];
 const PERAN_PILIH: readonly PeranElemen[] = ['pilihan', 'radio'];
 const PERAN_KLIK: readonly PeranElemen[] = ['tombol', 'tautan', 'tab'];
+/** Kolom isian (serah `isi_sendiri` hanya boleh menyorot salah satunya). */
+const PERAN_KOLOM: readonly PeranElemen[] = [...PERAN_ISI, ...PERAN_PILIH, 'centang', 'berkas'];
 
 /**
  * Tautan pembuka formulir yang dikelaskan `kirim` HANYA karena namanya ("Mulai Pendaftaran", "Ajukan
@@ -187,7 +191,8 @@ export function kelaziman(
   const label = normalLabel(`${e.nama} ${e.petunjuk ?? ''}`);
   if (entri.pola.test(label)) return 'lazim';
   if (entri.sensitif && e.peran !== 'area' && IDENTITAS_SAMAR.test(label)) return 'samar';
-  return entri.sensitif ? 'asing' : 'lazim';
+  // Data non-sensitif ke kolom yang labelnya tidak cocok: tetap boleh, tetapi ditandai di lembar (F8).
+  return entri.sensitif ? 'asing' : 'samar';
 }
 
 /**
@@ -230,7 +235,12 @@ export function validasiRencana(mentah: unknown, p: Pengamatan, opsi: OpsiValida
   aksi.forEach((a, i) => {
     if (a.jenis === 'tidak_bisa') return;
     if (a.jenis === 'serahkan') {
-      if (a.ref !== undefined && !elemen.has(a.ref)) langgar.add('REF_TIDAK_DIAMATI');
+      // Ref yang disorot harus diamati dan cocok dengan alasannya (sorotan = apa yang diminta dari warga).
+      const e = a.ref !== undefined ? elemen.get(a.ref) : undefined;
+      if (a.ref !== undefined && !e) langgar.add('REF_TIDAK_DIAMATI');
+      if (a.alasan === 'ketuk_tautan' && (!tautanWarga(e) || p.sinyal.halamanAkhir))
+        langgar.add('KELAS_KLIK_DITOLAK');
+      if (a.alasan === 'isi_sendiri' && e && !PERAN_KOLOM.includes(e.peran)) langgar.add('PERAN_TIDAK_COCOK');
       return;
     }
     const e = elemen.get(a.ref);
