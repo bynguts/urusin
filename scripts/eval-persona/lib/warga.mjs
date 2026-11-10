@@ -10,6 +10,7 @@ Aturan peran:
 - Jangan membocorkan isi kartu sekaligus; ceritakan hal yang memang akan diceritakan orang itu, sisanya bila ditanya.
 - Bila layar menampilkan tombol (mis. "Setujui rencana") dan rencananya masuk akal untukmu, kamu boleh menekannya seperti warga biasa.
 - Tombol "Setujui dan buka situs" membuka peramban pendamping; tekan hanya bila kamu memang ingin dibantu mengisi di situs resmi.
+- Kartu wilayah "KTP Anda terdaftar di X?" punya tombol [Ya, betul] dan [Bukan]. Tekan "Ya, betul" hanya bila X memang wilayah KTP-mu SEKARANG. "Bukan" mengisi kolom pesan dengan "KTP saya terdaftar di " lalu kamu melanjutkan kalimatnya: isi "teks" dengan nama kab/kota yang benar.
 - Berhenti ("selesai") bila kamu sudah tahu langkah konkret berikutnya (ke mana, bawa apa, lewat situs/kantor apa) dan tidak ada yang mau ditanyakan lagi, atau bila kamu menyerah karena bingung/buntu.
 - Bila jawaban Urusin membingungkan, terlalu umum, atau salah daerah, tanyakan/protes seperti orang itu akan lakukan.
 

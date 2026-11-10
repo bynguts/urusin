@@ -193,13 +193,33 @@ export class SesiWarga {
   }
 
   /** Klik "Setujui rencana". Event hasilnya diterbitkan sinkron; tunggu heartbeat agar semua sudah diterima. */
-  async setujuiRencana() {
+  setujuiRencana() {
+    return this.aksi('rencana/setujui', {});
+  }
+
+  /** Klik "Ya, betul" di kartu wilayah (feat/wilayah-dulu): POST /api/urusan/[id]/wilayah {kodeKabKota}. */
+  tetapkanWilayah(kodeKabKota) {
+    return this.aksi('wilayah', { kodeKabKota });
+  }
+
+  /** "Masuk sebagai juri" (akun demo berisi Data Diri sintetis), seperti juri di final. Turnstile mode fixture. */
+  async masukJuri() {
+    const res = await this.http('/api/akun/juri', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ turnstile: 'XXXX.DUMMY.TOKEN.XXXX' }),
+    });
+    return { status: res.status, kode: (await res.json().catch(() => ({}))).kode };
+  }
+
+  /** Aksi terstruktur seperti UrusanStore.aksi: versi terbaru, 409 → ambil status lalu coba sekali lagi. */
+  async aksi(jalur, isi) {
     const seqAwal = this.lastSeq;
     const kirim = () =>
-      this.http(`/api/urusan/${this.id}/rencana/setujui`, {
+      this.http(`/api/urusan/${this.id}/${jalur}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ expectedVersion: this.version }),
+        body: JSON.stringify({ ...isi, expectedVersion: this.version }),
       });
     let res = await kirim();
     if (res.status === 409) {

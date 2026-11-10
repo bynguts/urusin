@@ -151,7 +151,7 @@ function transkripTeks(h) {
       baris.push(l.jenis === 'klik' ? `Warga menekan [${l.teks}]` : `Warga: ${l.teks}`);
       if (l.http?.status >= 400) baris.push(`[GALAT HTTP ${l.http.status} ${l.http.kode ?? ''}]`);
     } else {
-      const t = renderLangkahAgen(l.events, { denganProgres: l.aksi === 'setujui' });
+      const t = renderLangkahAgen(l.events, { denganProgres: Boolean(l.aksi) });
       baris.push(t || '(Urusin tidak menampilkan apa-apa)');
       if (l.status && l.status !== 'selesai') baris.push(`[turn ${l.status}]`);
     }

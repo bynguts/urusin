@@ -1,6 +1,6 @@
 // Satu percakapan persona dari Beranda sampai warga berhenti (atau batas giliran).
 import { SesiWarga } from './klien.mjs';
-import { renderLangkahAgen, tombolTersedia } from './layar.mjs';
+import { renderLangkahAgen, tombolTersedia, usulanWilayahAktif } from './layar.mjs';
 import { aksiWarga } from './warga.mjs';
 
 /**
@@ -27,11 +27,23 @@ export async function jalankanPercakapan({
   const tambahAgen = (events, extra = {}) => {
     const l = { peran: 'urusin', events, ...extra };
     langkah.push(l);
-    const t = renderLangkahAgen(events, { denganProgres: extra.aksi === 'setujui' });
+    const t = renderLangkahAgen(events, { denganProgres: Boolean(extra.aksi) });
     layar.push(t || '(Urusin tidak menampilkan apa-apa)');
   };
 
   try {
+    if (persona.masuk === 'juri') {
+      const m = await sesi.masukJuri();
+      catat(`masuk sebagai juri: HTTP ${m.status}`);
+      if (m.status !== 200) {
+        akhir = {
+          alasan: 'gagal_mulai',
+          puas: false,
+          catatan: `masuk juri HTTP ${m.status} ${m.kode ?? ''}`,
+        };
+        return selesai();
+      }
+    }
     const pesan1 =
       typeof persona.pesanPertama === 'function' ? persona.pesanPertama(rahasia) : persona.pesanPertama;
     const t0 = Date.now();
@@ -70,16 +82,29 @@ export async function jalankanPercakapan({
         };
         break;
       }
-      if (a.aksi === 'klik') {
+      if (a.aksi === 'klik' && a.tombol !== 'Bukan') {
         const t1 = Date.now();
-        const s = await sesi.setujuiRencana();
+        const usulan = usulanWilayahAktif(sesi.events);
+        const s =
+          a.tombol === 'Ya, betul' && usulan
+            ? await sesi.tetapkanWilayah(usulan.ktp.kodeKabKota)
+            : await sesi.setujuiRencana();
         langkah.push({ peran: 'warga', jenis: 'klik', teks: a.tombol, http: s.http, alasan: a.alasan });
         layar.push(`Warga menekan [${a.tombol}]`);
         if (s.http.status >= 400) layar.push(`[GALAT] ${s.http.pesanWarga ?? `HTTP ${s.http.status}`}`);
-        tambahAgen(sesi.sejak(s.seqAwal), { status: 'selesai', aksi: 'setujui', ms: Date.now() - t1 });
+        tambahAgen(sesi.sejak(s.seqAwal), { status: 'selesai', aksi: a.tombol, ms: Date.now() - t1 });
         catat(`giliran ${giliran}: klik ${a.tombol} -> ${s.body?.state ?? s.http.status}`);
         continue;
       }
+      // "Bukan" di kartu wilayah mengisi kolom pesan dengan "KTP saya terdaftar di " (wilayahBukan di halaman urusan).
+      const teks =
+        a.aksi === 'klik'
+          ? `KTP saya terdaftar di ${String(a.teks ?? '')
+              .replace(/^KTP saya terdaftar di\s*/i, '')
+              .trim()}`
+          : a.teks;
+      a.teks = teks;
+      if (a.aksi === 'klik') layar.push('Warga menekan [Bukan]');
       const t1 = Date.now();
       const k = await sesi.kirim(a.teks);
       langkah.push({ peran: 'warga', jenis: 'ketik', teks: a.teks, http: k.http, alasan: a.alasan });

@@ -120,6 +120,10 @@ export async function mulaiServer({ akar, rahasia, llmBaseUrl, ragDb, logBerkas 
     URUSIN_LIMIT_BUAT_IP_PER_JAM: '1000',
     URUSIN_LIMIT_TURN_IP_PER_MENIT: '1000',
     URUSIN_TAMU_PER_IP_HARI: '1000',
+    URUSIN_DEMO_PER_IP_HARI: '1000',
+    URUSIN_DEMO_AKTIF_MAKS: '1000',
+    // "Masuk sebagai juri" butuh Turnstile; mode fixture (hanya di luar produksi) menerima token uji Cloudflare.
+    URUSIN_TURNSTILE_FIXTURE: '1',
     LLM_BASE_URL: llmBaseUrl,
     LLM_API_KEY: rahasia.LLM_API_KEY,
     LLM_AGENT_MODEL: rahasia.LLM_AGENT_MODEL,
