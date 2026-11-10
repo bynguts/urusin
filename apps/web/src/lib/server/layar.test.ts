@@ -218,6 +218,40 @@ describe('render server komponen', () => {
     expect(tanpa).not.toContain('Kirim pengajuan');
   });
 
+  it('giliran ketuk_tautan: judul "Buka formulir di situs" dan tombol Lanjutkan, bukan jalan buntu', () => {
+    const noop = () => {};
+    const layar = (alasan: 'ketuk_tautan' | 'final') => {
+      const data: DataPendamping = {
+        ...dataAwal(),
+        keadaan: 'giliran',
+        mode: 'takeover',
+        giliran: {
+          jenis: 'giliran_anda',
+          alasan,
+          pesan: 'Ketuk tautan yang disorot untuk membuka formulir, lalu tekan Lanjutkan.',
+        },
+      };
+      return render(LayarPendamping, {
+        props: {
+          data,
+          situs: 'https://contoh-layanan.go.id',
+          onambilalih: noop,
+          onkembalikan: noop,
+          onhentikan: noop,
+          ontutup: noop,
+          onmulailagi: noop,
+          onpanduan: noop,
+        },
+      }).body;
+    };
+    const body = layar('ketuk_tautan');
+    expect(body).toContain('Buka formulir di situs');
+    expect(body).toContain('AI tidak mengetuk tautan ini; Anda yang membukanya.');
+    expect(body).toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
+    // Pembanding: giliran kirim akhir tetap tanpa Lanjutkan (tombol Kirim di situs milik warga).
+    expect(layar('final')).not.toContain('Buka formulir di situs');
+  });
+
   it('halaman urusan memuat nomor permohonan yang tersimpan (kartu Terkirim setelah sesi ditutup)', async () => {
     const u = rt.store.createUrusan({ jenis: 'kelahiran' });
     rt.store.catatNomorPermohonan(u.id, 'FX-REG-0002');

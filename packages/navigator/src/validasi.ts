@@ -129,10 +129,10 @@ const PERAN_KLIK: readonly PeranElemen[] = ['tombol', 'tautan', 'tab'];
 
 /**
  * Tautan pembuka formulir yang dikelaskan `kirim` HANYA karena namanya ("Mulai Pendaftaran", "Ajukan
- * Permohonan"; worker menandai `sebabKelas: 'nama_tautan'`). AI tidak mengekliknya; warga yang mengetuk.
+ * Permohonan"; worker menandai `tautanPembuka`). AI tidak mengekliknya; warga yang mengetuk.
  */
 export function tautanWarga(e: ElemenAmatan | undefined): boolean {
-  return e?.peran === 'tautan' && e.kelas === 'kirim' && e.sebabKelas === 'nama_tautan';
+  return e?.peran === 'tautan' && e.kelas === 'kirim' && e.tautanPembuka === true;
 }
 
 export type OpsiValidasi = {

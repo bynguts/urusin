@@ -215,8 +215,8 @@ describe('tautan pembuka (kirim karena nama saja): serah ketuk_tautan, bukan kli
   const beranda = (over: Partial<Pengamatan> = {}): Pengamatan => ({
     ...halamanForm(),
     elemen: [
-      { ref: 'e1', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', sebabKelas: 'nama_tautan' },
-      { ref: 'e2', peran: 'tombol', nama: 'Ajukan', kelas: 'kirim', sebabKelas: 'nama_tautan' },
+      { ref: 'e1', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', tautanPembuka: true },
+      { ref: 'e2', peran: 'tombol', nama: 'Ajukan', kelas: 'kirim', tautanPembuka: true },
       { ref: 'e3', peran: 'tautan', nama: 'Kirim Data', kelas: 'kirim' },
     ],
     ...over,

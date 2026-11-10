@@ -90,7 +90,7 @@ describe('prompt Navigator', () => {
   it('tautan pembuka tampil sebagai kelas tautan_warga, tautan kirim biasa tetap kirim', () => {
     const p = halaman({
       elemen: [
-        { ref: 'e1', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', sebabKelas: 'nama_tautan' },
+        { ref: 'e1', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', tautanPembuka: true },
         { ref: 'e2', peran: 'tautan', nama: 'Kirim Data', kelas: 'kirim' },
       ],
     });
