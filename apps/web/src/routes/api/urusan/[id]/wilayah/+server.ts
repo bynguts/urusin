@@ -7,8 +7,9 @@ import {
   usulkanRencanaOtomatis,
   wilayahUrusan,
 } from '@urusin/harness';
+import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
-import { getRuntime } from '#lib/server/runtime.js';
+import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
 import { batasi } from '#lib/server/sesi.js';
 import type { RequestHandler } from './$types';
 
@@ -20,6 +21,9 @@ import type { RequestHandler } from './$types';
  * Kartu bisa basi (perangkat lain, atau warga sudah menyebut wilayahnya di obrolan), jadi endpoint ini hanya
  * MENETAPKAN, tidak pernah mengganti: wilayah KTP yang sama → 200 tanpa perubahan; wilayah lain yang sudah
  * dipastikan → 409 WILAYAH_SUDAH_DITETAPKAN (ganti lewat obrolan); hanya di BARU/MEMAHAMI.
+ *
+ * Urusan tanpa rencana Peristiwa Hidup (KTP rusak, KK, SKCK, ...) yang sudah punya percakapan: agen langsung
+ * melanjutkan pertanyaan warga untuk wilayah ini, agar menekan "Ya, betul" tidak berakhir buntu.
  */
 export const POST: RequestHandler = async (event) => {
   const { request, params } = event;
@@ -58,10 +62,21 @@ export const POST: RequestHandler = async (event) => {
     if (cur.state === 'BARU') cur = majukan(rt.store, cur, ['MEMAHAMI'], publish);
     const sebelum = cur.state;
     cur = usulkanRencanaOtomatis(rt.store, cur, publish, rt.deps.ragDb);
+    const rencana = sebelum !== 'RENCANA_DIUSULKAN' && cur.state === 'RENCANA_DIUSULKAN';
+    const nama = wilayahUrusan(rt.store, cur).ktp?.nama;
+    const lanjut =
+      !rencana && nama && rt.store.loadHistory(cur.id).length > 0 && !pastikanTamuUntukTurn(rt, event)
+        ? startTurnInBackground(rt, {
+            urusanId: cur.id,
+            userText: `Ya, KTP saya terdaftar di ${nama}.`,
+            expectedVersion: cur.version,
+          })
+        : undefined;
     return apiJson({
       state: cur.state,
       version: cur.version,
-      rencana: sebelum !== 'RENCANA_DIUSULKAN' && cur.state === 'RENCANA_DIUSULKAN',
+      rencana,
+      ...(lanjut ? { turnId: lanjut.turnId } : {}),
     } satisfies TetapkanWilayahResponse);
   } catch (e) {
     return errorResponse(e);

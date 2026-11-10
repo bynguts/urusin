@@ -85,6 +85,8 @@ export const TetapkanWilayahResponseSchema = z.object({
   version: z.number().int().nonnegative(),
   /** true bila rencana langsung diusulkan (jenis urusan sudah diketahui). */
   rencana: z.boolean(),
+  /** Tanpa rencana tetapi sudah ada percakapan: giliran agen dilanjutkan untuk wilayah ini (ikuti lewat stream). */
+  turnId: z.string().optional(),
 });
 
 // --- GET /api/urusan?ids=a,b ---

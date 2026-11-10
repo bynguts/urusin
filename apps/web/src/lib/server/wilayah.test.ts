@@ -172,6 +172,23 @@ describe('POST /api/urusan/[id]/wilayah (tombol "Ya, betul")', () => {
     expect(payloads(id, 'wilayah')).toHaveLength(jumlah);
   });
 
+  it('urusan tanpa rencana yang sudah bercakap: "Ya, betul" melanjutkan giliran agen, tidak buntu', async () => {
+    const res = await buatUrusan(
+      ev(post({ kodeKabKota: '3578', pesan: 'KTP saya rusak kena air, bikin baru gimana?' })),
+    );
+    const { id } = (await res.json()) as { id: string };
+    await selesai(id);
+    const r = await tetapkan(ev(post({ kodeKabKota: '3578' }), { id }));
+    const j = await r.json();
+    expect(j).toMatchObject({ rencana: false, turnId: expect.any(String) });
+    await selesai(id);
+    const ditetapkan = rt.store
+      .eventsOfType(id, 'wilayah', 20)
+      .find((e) => (e.payload as any).status === 'ditetapkan')!.seq;
+    const sesudah = rt.store.eventsAfter(id, ditetapkan).map((e) => e.type);
+    expect(sesudah.some((t) => ['assistant_text', 'grounded_answer', 'handoff'].includes(t))).toBe(true);
+  });
+
   it('kode tidak dikenal 422; format salah 422; urusan tidak ada 404', async () => {
     const id = await urusanBaru();
     const tak = await tetapkan(ev(post({ kodeKabKota: '9999' }), { id }));

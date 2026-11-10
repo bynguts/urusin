@@ -190,9 +190,15 @@ export class UrusanStore implements StoreUrusan {
       if (!res.ok) return 'galat';
       // Versi baru langsung dari respons (event `state` di stream membawa versi yang sama), agar pesan
       // berikutnya tidak memakai versi basi dan memicu 409.
-      const j = (await res.json().catch(() => null)) as { version?: unknown } | null;
+      const j = (await res.json().catch(() => null)) as { version?: unknown; turnId?: unknown } | null;
       if (typeof j?.version === 'number' && j.version > this.keadaan.version)
         this.keadaan.version = j.version;
+      // Aksi yang melanjutkan giliran agen (mis. "Ya, betul" tanpa rencana): tandai berjalan kecuali sudah selesai.
+      if (
+        typeof j?.turnId === 'string' &&
+        !this.keadaan.events.some((e) => e.type === 'done' && e.turnId === j.turnId)
+      )
+        this.keadaan = mulaiTurnBaru(this.keadaan);
       if (this.keadaan.status === 'diam' || this.keadaan.status === 'terputus') this.sambung(id);
       return 'ok';
     } catch {
