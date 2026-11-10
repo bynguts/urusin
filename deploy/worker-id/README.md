@@ -3,7 +3,8 @@
 Worker ini OPSIONAL: Urusin berjalan 24/7 dari server tanpa laptop. Telunjuk Sakti (Disdukcapil Wonogiri)
 berstatus `aksesWilayah: 'id-utama'`: dari IP datacenter (agent-vm, Singapura) Cloudflare memberi tantangan
 kotak centang (`403 cf-mitigated: challenge`, "Performing security verification") yang diketuk warga sendiri
-lewat Browser Pendamping, lalu AI melanjutkan; bila laptop ini hidup, web mendahulukannya (dari koneksi
+lewat Browser Pendamping, lalu AI melanjutkan; bila laptop ini hidup dan masih punya slot, web mendahulukannya
+(laptop penuh atau start gagal di laptop = langsung server). Dari koneksi
 rumah/seluler Indonesia Chromium headed biasa lolos tanpa tantangan). Hanya Si D'nOK (`aksesWilayah: 'id-only'`,
 blokir keras "Akses Terbatas - Khusus Indonesia") yang benar-benar butuh worker ini; tanpanya situs itu
 dipandu. Folder ini menjalankan worker Pendamping region `id`
@@ -75,6 +76,19 @@ docker compose -p urusin-worker-id logs --tail 50 pendamping pendamping-edge
 
 Dari agent-vm (baca saja): `curl -fsS http://<IP Tailscale laptop>:4330/health`.
 
+Setelah laptop reboot: masuk (login) ke Windows dulu, tunggu Tailscale tersambung, lalu jalankan
+`bash deploy/worker-id/worker.sh up` (dan `sehat`). Docker Desktop bisa mulai sebelum IP Tailscale terpasang;
+kontainer edge yang port-nya diikat ke IP itu lalu gagal start, dan `restart: unless-stopped` saja tidak cukup.
+
+Docker di Linux (bukan Docker Desktop): ikatan `100.x.y.z:4330` dibuat lewat DNAT iptables, sehingga host LAN
+yang merutekan paket ke `100.x.y.z` lewat laptop ini masih bisa menjangkau port itu. Contoh pembatasan
+(dokumentasi saja; `worker.sh` tidak menjalankannya, sesuaikan IP dan simpan sendiri agar tahan reboot):
+
+```sh
+sudo iptables -I DOCKER-USER ! -i tailscale0 -p tcp -m conntrack --ctdir ORIGINAL \
+  --ctorigdst 100.x.y.z --ctorigdstport 4330 -j DROP
+```
+
 ## Token
 
 `worker.sh init` mengisi `WORKER_TOKEN` (HMAC web -> worker ini) dan `WORKER_EDGE_TOKEN` (pendamping -> edge,
@@ -85,14 +99,25 @@ tidak pernah keluar laptop) dengan 32 byte acak, ditulis lewat env (bukan argume
   `PENDAMPING_WORKERS=[vps, <id>]` lengkap dengan token worker ini. Salin berkas itu ke agent-vm lewat `scp`
   (bukan tempel di chat), lalu gabungkan ke `/opt/urusin/.env` (lead, dengan izin).
 - Rotasi: hapus `.env`, `init`, `up`, lalu ganti `token` worker ini di `PENDAMPING_WORKERS` web. Selama belum
-  diganti, web melihat 401 dari worker ini dan situs id-only beralih ke mode dipandu.
+  diganti, worker menjawab 401 ke web (`/health` tetap sehat karena tidak bertanda tangan): situs `id-utama`
+  langsung dicoba di server dan tetap jalan, sedangkan situs `id-only` mendapat 503 umum "sedang tidak tersedia"
+  (bukan mode dipandu, karena worker terlihat sehat) sampai token di web diganti. Warga tidak pernah melihat 401.
+- Windows: `chmod 600` dari Git Bash TIDAK mengubah ACL NTFS. Simpan checkout di profil sendiri
+  (`C:\Users\<nama>\...`, yang tidak terbaca akun lain), atau batasi berkasnya:
+  `icacls deploy\worker-id\.env /inheritance:r /grant:r "%USERNAME%:F"` (ulangi untuk `.env.web-*`).
 
 ## Produksi (agent-vm, dikerjakan lead dengan izin)
 
 1. Rute Caddy, dibangkitkan (bukan diedit manual):
    `node scripts/gen-caddyfile.mjs --set primary --fixtures --pendamping --worker laptop-a=<IP Tailscale>:4330 --import /opt/urusin/Caddyfile.urusin --out /tmp/Caddyfile.urusin`
-   Hanya `/pendamping/w/<id>/ws/*` yang diteruskan (prefiks dibuang, edge menerima `/ws/<uuid>`);
-   `/internal/*`, `/health`, `/debug` worker tidak pernah publik.
+   Hanya upgrade WebSocket `GET /pendamping/w/<id>/ws/*` yang membawa cookie `__Host-urusin_sid` yang diteruskan
+   (prefiks dibuang, edge menerima `/ws/<uuid>`); Cookie ditimpa jadi sid saja dan `Authorization` dibuang, jadi
+   cookie akun warga tidak pernah sampai ke laptop (edge juga menyaringnya). Jalur lain di bawah
+   `/pendamping/w/<id>/` (`/internal/*`, `/health`, `/debug`, GET biasa) dijawab 404 oleh Caddy.
+   Saran ACL Tailscale (admin tailnet): hanya agent-vm yang boleh ke `laptop-a:4330`, mis.
+   `"hosts": {"agent-vm": "100.a.b.c", "laptop-a": "100.x.y.z"}` dan
+   `"acls": [{"action": "accept", "src": ["agent-vm"], "dst": ["laptop-a:4330"]}, ...]` (aturan lain tim tetap
+   ditulis eksplisit; aturan "semua ke semua" bawaan membatalkan pembatasan ini).
 2. Web: `PENDAMPING_INTERNAL_URL` diganti `PENDAMPING_WORKERS` (dari `.env.web-publik`). Skema web WAJIB punya
    `wsUrl` di setiap worker dan `token` untuk worker selain 127.0.0.1; JSON yang tidak sah membuat Pendamping
    mati seluruhnya (tidak tersedia), jadi cek `GET /api/pendamping/antrean` sesudahnya (`maks` = 2 + 1).

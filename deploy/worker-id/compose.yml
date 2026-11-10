@@ -1,6 +1,7 @@
 # Worker Browser Pendamping berjaringan Indonesia (region `id`) di laptop anggota tim, lewat Tailscale.
-# Situs registry `aksesWilayah: 'id-only'` (Telunjuk Sakti, Si D'nOK) menantang/menolak IP datacenter; laptop
-# ini koneksi biasa milik tim. Topologi SAMA dengan compose.prod.yml (pendamping hanya di jaringan internal,
+# Situs registry `aksesWilayah: 'id-only'` (Si D'nOK) menolak IP datacenter dan hanya bisa dilayani dari sini;
+# `id-utama` (Telunjuk Sakti) memberi server kotak centang yang diketuk warga, laptop ini hanya didahulukan
+# bila lowong. Laptop ini koneksi biasa milik tim. Topologi SAMA dengan compose.prod.yml (pendamping hanya di jaringan internal,
 # edge satu-satunya jalan keluar dan satu-satunya port), bedanya:
 # - port edge diikat HANYA ke IP Tailscale laptop (WORKER_TAILSCALE_IP, 100.64.0.0/10), bukan 0.0.0.0/LAN;
 #   worker.sh menolak start bila IP itu bukan Tailscale atau tidak ada di laptop ini;

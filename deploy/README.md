@@ -510,14 +510,19 @@ bukan `PENDAMPING_INTERNAL_TOKEN`), dan URL WS `wss://$DOMAIN/pendamping/w/<id>/
 Setiap worker WAJIB punya `wsUrl`, dan `token` bila bukan 127.0.0.1; JSON tidak sah = Pendamping tidak tersedia
 sama sekali. Kanal web -> worker ditandatangani HMAC (bukan bearer polos), dan web memeriksa `GET /health` tiap
 worker. Server adalah jalur utama, laptop opsional: situs `aksesWilayah: 'id-utama'` (Telunjuk Sakti:
-tantangan kotak centang yang diketuk warga sendiri) mendahulukan worker `region: "id"` yang sehat, lalu worker
-sehat mana pun (VPS); hanya bila TIDAK ADA worker sehat sama sekali muncul 503 umum. Situs
-`aksesWilayah: 'id-only'` (Si D'nOK: blokir keras IP non-Indonesia) hanya ke worker `region: "id"`; bila semua
-mati, urusan beralih ke mode dipandu dengan pesan jujur. Rute WS worker tambahan dibangkitkan
-(dikerjakan lead, izin per kejadian): tambahkan `--worker laptop-a=100.x.y.z:4330` ke perintah
-`gen-caddyfile.mjs` di atas. Blok yang dihasilkan HANYA `handle /pendamping/w/<id>/ws/*` (prefiks dibuang,
-edge menerima `/ws/<uuid>`); jangan memakai `handle_path /pendamping/w/<id>/*`, yang ikut membuka
-`/internal/*`, `/health`, dan `/debug` edge worker ke internet.
+tantangan kotak centang yang diketuk warga sendiri) mendahulukan worker `region: "id"` yang sehat DAN masih punya
+slot, selain itu beban terendah (VPS); start yang gagal di worker (jaringan/timeout, 401/403, 5xx) langsung
+dicoba di kandidat sehat berikutnya, dan urusan yang sudah lekat di satu worker tetap di sana. Hanya bila TIDAK
+ADA worker sehat sama sekali muncul 503 umum. Situs `aksesWilayah: 'id-only'` (Si D'nOK: blokir keras IP
+non-Indonesia) hanya ke worker `region: "id"`, tanpa jatuh ke VPS; bila semua mati, urusan beralih ke mode
+dipandu dengan pesan jujur. 401/403 kanal internal dari worker tidak pernah diteruskan ke warga (jadi 503
+umum). Rute WS worker tambahan dibangkitkan (dikerjakan lead, izin per kejadian): tambahkan
+`--worker laptop-a=100.x.y.z:4330` ke perintah `gen-caddyfile.mjs` di atas. Blok yang dihasilkan: matcher
+`@w_<id>` (HANYA `GET` upgrade WebSocket ke `/pendamping/w/<id>/ws/*` yang membawa cookie `__Host-urusin_sid`
+berbentuk sah), prefiks dibuang (edge menerima `/ws/<uuid>`), Cookie ditimpa jadi sid saja dan `Authorization`
+dibuang (cookie akun tidak pernah sampai ke laptop), dan `respond 404` untuk jalur lain di bawah
+`/pendamping/w/<id>/`. Jangan memakai `handle_path /pendamping/w/<id>/*`, yang ikut membuka `/internal/*`,
+`/health`, dan `/debug` edge worker ke internet.
 
 **Egress hulu (opsional):** `PENDAMPING_UPSTREAM_PROXY=http://[user:pass@]host:port` (dipakai EDGE)
 mengarahkan CONNECT peramban yang SUDAH lolos kebijakan ke proxy milik operator (mis. egress Indonesia untuk
