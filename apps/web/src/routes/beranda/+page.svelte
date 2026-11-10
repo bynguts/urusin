@@ -153,18 +153,17 @@
   </section>
 
   <section aria-labelledby="judul-peristiwa" class="flex w-full flex-col gap-4">
-    <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+    <div class="flex items-center justify-between">
       <h2 id="judul-peristiwa" class="text-[20px] leading-[29px] font-semibold tracking-[-0.3px] text-ink">
         Atau mulai dari peristiwa hidup
       </h2>
-      <p class="text-[15px] leading-[22px] text-muted">Tersedia panduan untuk {PERISTIWA.length} peristiwa</p>
     </div>
     <ul class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
       {#each PERISTIWA as p (p.slug)}
         <li class="min-w-0">
           <a
             href={resolve('/peristiwa/[slug]', { slug: p.slug })}
-            class="group flex h-full flex-col overflow-hidden rounded-[18px] border border-line bg-surface shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] transition-shadow hover:shadow-md"
+            class="group flex h-full flex-col overflow-hidden rounded-[18px] border border-line bg-surface shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] transition-all duration-200 hover:-translate-y-1 hover:shadow-md active:translate-y-0"
           >
             <span
               class="panggung panggung-{p.warna} relative block h-[140px] w-full overflow-hidden"
@@ -175,7 +174,7 @@
                 alt=""
                 width="118"
                 height="128"
-                class="absolute top-3 left-1/2 h-32 w-[118px] -translate-x-1/2 object-contain"
+                class="absolute top-3 left-1/2 h-32 w-[118px] -translate-x-1/2 object-contain transition-transform duration-250 ease-out group-hover:scale-105"
               />
             </span>
             <span class="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-4">

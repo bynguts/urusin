@@ -14,7 +14,7 @@
     <a
       href={t.id === 'berkas' ? resolve('/dokumen') : resolve('/data-diri')}
       aria-current={aktif === t.id ? 'page' : undefined}
-      class="inline-flex h-10 items-center rounded-[10px] px-5 text-[15px] {aktif === t.id
+      class="inline-flex h-10 items-center rounded-[10px] px-5 text-[15px] transition-all duration-150 {aktif === t.id
         ? 'bg-surface font-semibold text-ink shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
         : 'text-card-ink hover:bg-card'}">{t.label}</a
     >

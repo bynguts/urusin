@@ -98,7 +98,7 @@
             href="#{b.id}"
             onclick={() => (aktif = b.id)}
             aria-current={aktif === b.id ? 'true' : undefined}
-            class="flex h-12 items-center gap-2.5 rounded-xl px-3 text-base leading-[23px] {aktif === b.id
+            class="flex h-12 items-center gap-2.5 rounded-xl px-3 text-base leading-[23px] transition-all duration-150 {aktif === b.id
               ? 'bg-surface font-semibold text-ink shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
               : 'text-card-ink hover:bg-surface/60'}"
           >

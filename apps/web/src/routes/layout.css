@@ -292,6 +292,23 @@ body {
   background-size: 14px 14px;
 }
 
+/* Animasi perhatian lembut untuk status yang menunggu tindakan warga (Giliran Anda) */
+@keyframes pulsa-status {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.7;
+  }
+}
+
+.animasi-pulsa {
+  animation: pulsa-status 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

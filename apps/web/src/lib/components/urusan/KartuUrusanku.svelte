@@ -56,7 +56,7 @@
 </script>
 
 <article
-  class="flex min-w-0 flex-col gap-3.5 rounded-[18px] p-5 shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] {utama
+  class="flex min-w-0 flex-col gap-3.5 rounded-[18px] p-5 shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md {utama
     ? 'border-[1.5px] border-ink bg-surface'
     : 'border border-line bg-card'}"
 >

@@ -22,7 +22,7 @@
 </script>
 
 <article
-  class="flex min-w-0 flex-1 flex-col gap-3.5 rounded-2xl border p-4 {utama
+  class="flex min-w-0 flex-1 flex-col gap-3.5 rounded-2xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm {utama
     ? 'border-ink bg-surface'
     : 'border-line bg-card'}"
 >
@@ -39,7 +39,10 @@
     <div class="flex min-w-0 flex-1 flex-col gap-0.5">
       <h3 class="truncate text-[17px] leading-6 font-semibold text-ink">{urusan.judul}</h3>
       <span class="inline-flex items-center gap-1.5 text-[15px] leading-[21px] text-card-ink">
-        <span class="size-2 shrink-0 rounded-full {TITIK[info.nada]}" aria-hidden="true"></span>
+        <span
+          class="size-2 shrink-0 rounded-full {TITIK[info.nada]} {info.nada === 'anda' ? 'animasi-pulsa' : ''}"
+          aria-hidden="true"
+        ></span>
         {urusan.ringkasan ? info.label : 'Memuat status…'}
       </span>
     </div>

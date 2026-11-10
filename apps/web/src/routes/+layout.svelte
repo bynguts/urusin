@@ -54,9 +54,9 @@
     >
       <!-- Bilah atas HP (frame IzXAR) -->
       <div
-        class="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-line bg-bg/95 pr-6 pl-6 backdrop-blur lg:hidden"
+        class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-line bg-bg/95 pr-5 pl-5 backdrop-blur lg:hidden"
       >
-        <a href={resolve('/beranda')} class="flex h-12 items-center gap-2" aria-label="Urusin, ke Beranda">
+        <a href={resolve('/beranda')} class="flex h-11 items-center gap-2" aria-label="Urusin, ke Beranda">
           <img src={mark} alt="" width="24" height="24" class="size-6" />
           <span class="font-lora text-[22px] leading-6 font-medium tracking-[-0.6px] text-ink">Urusin</span>
         </a>

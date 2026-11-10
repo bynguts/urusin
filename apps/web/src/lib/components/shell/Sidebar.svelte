@@ -28,7 +28,7 @@
 </script>
 
 <aside
-  class="hidden h-full shrink-0 flex-col gap-5 overflow-y-auto px-2 pt-2.5 pb-2 lg:flex {ciut
+  class="hidden h-full shrink-0 flex-col gap-5 overflow-y-auto px-2 pt-2.5 pb-2 transition-[width] duration-200 ease-out lg:flex {ciut
     ? 'w-16'
     : 'w-[248px]'}"
   aria-label="Menu samping"
