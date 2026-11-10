@@ -1,6 +1,6 @@
 // BERKAS HASIL GENERATOR (scripts/gen-registry-wilayah.mjs). Jangan diubah tangan.
 // Sumber: data/wilayah/kontak-dukcapil.json (situs info terverifikasi) dan data/wilayah/portal-dukcapil.json
-// (kanal daring hasil recon). 182 wilayah, 56 berjenis web, 175 host persis.
+// (kanal daring hasil recon). 183 wilayah, 56 berjenis web, 176 host persis.
 import type { OfficialDomain } from './registry.js';
 
 /** A portal akun, B formulir web tanpa akun, C aplikasi saja, D WhatsApp/chatbot, E kanal nasional/kantor, F tidak diketahui. */
@@ -2857,6 +2857,21 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     verifiedAt: '2026-11-10',
     catatan: 'PaceMace Gen V: 16 formulir tanpa akun, cek status.',
   },
+  '9304': {
+    kode: '9304',
+    nama: 'Kabupaten Asmat',
+    kelas: 'F',
+    jenis: 'tidak_diketahui',
+    hosts: [],
+    hostInfo: ['dukcapil.asmatkab.go.id'],
+    sumber: 'https://dukcapil.asmatkab.go.id/index.html',
+    login: [],
+    proteksi: [],
+    domisili: 'tidak_diketahui',
+    bukti: 'OBS',
+    verifiedAt: '2026-11-10',
+    catatan: 'Kanal daring belum di-recon; hanya situs informasi terverifikasi.',
+  },
   '9404': {
     kode: '9404',
     nama: 'Kabupaten Mimika',
@@ -4162,6 +4177,13 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Jayapura',
     layanan: 'Portal layanan adminduk daring (kelas B)',
     wilayah: '9171',
+    verifiedAt: '2026-11-10',
+  },
+  {
+    host: 'dukcapil.asmatkab.go.id',
+    instansi: 'Disdukcapil Kabupaten Asmat',
+    layanan: 'Situs informasi Disdukcapil',
+    wilayah: '9304',
     verifiedAt: '2026-11-10',
   },
 ];
