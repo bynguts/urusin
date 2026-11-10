@@ -892,7 +892,7 @@ describe('Masuk sebagai juri (salinan demo terisolasi)', () => {
   });
 
   it('aula lomba (satu NAT): batas bawaan tidak mengunci juri ke-4 dst. maupun pengunjung tamu ke-21 dst.', async () => {
-    expect(DEFAULT_KUOTA).toEqual({ tamuPerIpHari: 200, demoPerIpHari: 50, demoAktifMaks: 200 });
+    expect(DEFAULT_KUOTA).toEqual({ tamuPerIpHari: 200, demoPerIpHari: 50, demoAktifMaks: 2000 });
     const ts = { turnstile: TURNSTILE_TOKEN_FIXTURE };
     for (let i = 0; i < 12; i++)
       expect(

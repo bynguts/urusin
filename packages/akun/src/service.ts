@@ -1,5 +1,5 @@
 import type { Db } from '@urusin/harness';
-import { dataDiriSintetis, dokumenContoh } from './demo.js';
+import { dataDiriSintetis } from './demo.js';
 import { maskEmail, normalizeEmail } from './email.js';
 import { AkunError } from './errors.js';
 import { GoogleError, type GoogleOidc } from './google.js';
@@ -76,14 +76,17 @@ export const LOCKOUT = Object.freeze({
 /**
  * Batas pembuatan pemilik sementara (host bersama, do-no-harm). Batas per IP harus tahan satu NAT bersama
  * (aula lomba, kampus, warnet): semua juri/pengunjung di satu tempat tampak sebagai satu IP. Pengaman utamanya
- * batas global salinan aktif + kedaluwarsa + Turnstile (wajib bila kuncinya dikonfigurasi). Semua bisa diatur
- * lewat env (`URUSIN_TAMU_PER_IP_HARI`, `URUSIN_DEMO_PER_IP_HARI`, `URUSIN_DEMO_AKTIF_MAKS`).
+ * batas global salinan aktif + kedaluwarsa + Turnstile (wajib bila kuncinya dikonfigurasi). Batas global dibuat
+ * jauh di atas per IP × beberapa IP: tanpa Turnstile, segelintir IP tidak boleh bisa menghabiskannya dan mengunci
+ * semua juri. Salinan demo murah (Data Diri sintetis saja; dokumen contoh dirujuk bersama, tidak disalin) dan
+ * kedaluwarsa 24 jam. Semua bisa diatur lewat env (`URUSIN_TAMU_PER_IP_HARI`, `URUSIN_DEMO_PER_IP_HARI`,
+ * `URUSIN_DEMO_AKTIF_MAKS`).
  */
 export type Kuota = { tamuPerIpHari: number; demoPerIpHari: number; demoAktifMaks: number };
 export const DEFAULT_KUOTA: Kuota = Object.freeze({
   tamuPerIpHari: 200,
   demoPerIpHari: 50,
-  demoAktifMaks: 200,
+  demoAktifMaks: 2000,
 });
 
 /** Email dianggap tertunda selama ini setelah satu kegagalan kirim (kuota habis, DNS belum siap). */
@@ -254,7 +257,7 @@ export function amanNext(next: string | null | undefined, fallback = '/'): strin
 export class AkunService {
   private readonly db: Db;
   private readonly ttl: AkunTtl;
-  private readonly kuota: Kuota;
+  readonly kuota: Kuota;
   private readonly now: () => Date;
   private readonly log: (line: string) => void;
   private readonly alert: (pesan: string) => void;
@@ -496,15 +499,7 @@ export class AkunService {
       return baru;
     });
     this.deps.vault.setDataDiri(id, dataDiriSintetis());
-    // Dokumen contoh: upaya terbaik (kuota/penyimpanan penuh tidak boleh menggagalkan masuk juri).
-    for (const d of dokumenContoh()) {
-      try {
-        this.deps.vault.putDocument(id, d);
-      } catch (e) {
-        if (!(e instanceof AkunError)) throw e;
-        break;
-      }
-    }
+    // Dokumen contoh TIDAK disalin: vault menyajikannya sebagai rujukan bersama baca-saja untuk setiap salinan demo.
     return { token: this.buatSesi(id, ctx), akun: toAkun(this.userById(id)!) };
   }
 
@@ -618,19 +613,19 @@ export class AkunService {
     const t = this.tokenAktif(token, 'verify');
     if (!t) throw new AkunError('TOKEN_TIDAK_VALID');
     const u = this.userById(t.user_id)!;
+    this.periksaKunci(u.email!);
+    this.catatPercobaan(u.email!);
+    const hash = t.password_hash ?? u.password_hash;
+    if (!hash || sandi.length === 0 || sandi.length > 1024 || !(await verifyPassword(hash, sandi)))
+      throw new AkunError('KREDENSIAL_SALAH');
     // Kotak surat memverifikasi akun yang dibuat/dipakai orang lain (sandi lama tidak diketahuinya): urusan yang
     // dibuat selama belum terverifikasi milik pemegang lama, jadi tidak ikut diwariskan (anti tanam urusan).
     const gantiPemegang =
       !u.email_verified_at &&
       !(u.password_hash && (hash === u.password_hash || (await verifyPassword(u.password_hash, sandi))));
-    this.periksaKunci(u.email!);
-    this.catatPercobaan(u.email!);
-      if (gantiPemegang) this.hapusUrusanSemua(this.urusanMilik(userId));
-    const hash = t.password_hash ?? u.password_hash;
-    if (!hash || sandi.length === 0 || sandi.length > 1024 || !(await verifyPassword(hash, sandi)))
-      throw new AkunError('KREDENSIAL_SALAH');
     const userId = this.pakaiToken(token, 'verify');
     this.tx(() => {
+      if (gantiPemegang) this.hapusUrusanSemua(this.urusanMilik(userId));
       this.db
         .prepare(
           'UPDATE users SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?',

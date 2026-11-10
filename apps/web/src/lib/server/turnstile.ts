@@ -73,3 +73,17 @@ export function peringatanTurnstile(t: Turnstile, env: Env = process.env): strin
   if (t.mode !== 'nonaktif' || env.NODE_ENV !== 'production' || env.CI === 'true') return null;
   return 'Turnstile nonaktif di produksi (TURNSTILE_SECRET_KEY kosong): juri dan login tanpa tantangan bot';
 }
+
+/**
+ * Tanpa Turnstile, batas global salinan juri hanya aman bila jauh di atas batas per IP: bila 4 IP saja bisa
+ * menghabiskannya (per IP × 4 ≥ global), semua juri terkunci DEMO_PENUH sampai salinan kedaluwarsa (24 jam).
+ */
+export function peringatanKuotaJuri(
+  t: Turnstile,
+  kuota: { demoPerIpHari: number; demoAktifMaks: number },
+  env: Env = process.env,
+): string | null {
+  if (t.mode !== 'nonaktif' || env.NODE_ENV !== 'production' || env.CI === 'true') return null;
+  if (kuota.demoPerIpHari * 4 < kuota.demoAktifMaks) return null;
+  return `batas juri rapuh tanpa Turnstile: URUSIN_DEMO_PER_IP_HARI=${kuota.demoPerIpHari} × 4 IP ≥ URUSIN_DEMO_AKTIF_MAKS=${kuota.demoAktifMaks}; naikkan batas global atau pasang Turnstile`;
+}

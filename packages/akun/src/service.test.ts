@@ -10,6 +10,7 @@ import { MailerError, MemoryMailer } from './mailer.js';
 import {
   AkunService,
   amanNext,
+  DEFAULT_KUOTA,
   hashDaftarWrite,
   hashSid,
   kunciIp,
@@ -676,6 +677,43 @@ describe('#47 tamu malas, salinan demo, dan batas per IP', () => {
   });
 });
 
+describe('salinan demo murah: dokumen contoh dirujuk bersama, tidak disalin', () => {
+  it('dokumen contoh terbaca dan bisa diunduh, tanpa berkas/baris vault per salinan; tidak bisa dihapus', () => {
+    const ids = [0, 1, 2].map((i) => akun.buatDemo({ ip: `198.51.100.${50 + i}` }).akun.id);
+    expect(hitung('SELECT COUNT(*) n FROM vault_documents')).toBe(0);
+    expect(readdirSync(vaultDir)).toEqual([]); // tidak ada berkas per salinan
+    const docs = akun.vault.listDocuments(ids[0]!);
+    expect(docs.map((d) => d.jenis)).toEqual(['kk', 'ktp', 'surat']);
+    expect(akun.vault.listDocuments(ids[1]!).map((d) => d.id)).toEqual(docs.map((d) => d.id));
+    const kk = akun.vault.getDocument(ids[0]!, docs[0]!.id)!;
+    expect(kk.meta.mime).toBe('image/png');
+    expect(kk.bytes.subarray(1, 4).toString()).toBe('PNG');
+    expect(akun.vault.deleteDocument(ids[0]!, docs[0]!.id)).toBe(false);
+    expect(akun.vault.listDocuments(ids[0]!)).toHaveLength(3);
+    // Unggahan juri sendiri tetap per salinan (dan tampil di depan contoh).
+    akun.vault.putDocument(ids[0]!, {
+      jenis: 'foto',
+      judul: 'Foto',
+      mime: 'image/png',
+      bytes: Buffer.from('x'),
+    });
+    expect(akun.vault.listDocuments(ids[0]!).map((d) => d.jenis)).toEqual(['foto', 'kk', 'ktp', 'surat']);
+    expect(akun.vault.listDocuments(ids[1]!)).toHaveLength(3);
+    // Tamu dan akun tidak melihat dokumen contoh.
+    const tamu = akun.pastikanTamu('sid-c', ctx);
+    expect(akun.vault.listDocuments(tamu)).toEqual([]);
+    expect(akun.vault.getDocument(tamu, docs[0]!.id)).toBeNull();
+  });
+
+  it('batas global bawaan jauh di atas per IP × 4 (tanpa Turnstile, 4 IP tidak bisa mengunci semua juri)', () => {
+    expect(DEFAULT_KUOTA.demoAktifMaks).toBeGreaterThan(DEFAULT_KUOTA.demoPerIpHari * 4);
+    akun = buat();
+    for (let ip = 0; ip < 4; ip++)
+      for (let i = 0; i < DEFAULT_KUOTA.demoPerIpHari; i++) akun.buatDemo({ ip: `198.51.100.${100 + ip}` });
+    expect(() => akun.buatDemo({ ip: '198.51.100.200' })).not.toThrow();
+  });
+});
+
 describe('#47 rotasi tamu → akun (§3.26.6)', () => {
   async function siapkanTamu(sid: string) {
     const tamu = akun.pastikanTamu(sid, ctx);
@@ -789,44 +827,6 @@ describe('#47 rotasi tamu → akun (§3.26.6)', () => {
       { urusan_id: 'u_x', user_id: a.id, guest_sid_hash: null },
     ]);
   });
-});
-
-describe('token persetujuan "Izinkan isi"', () => {
-  it('sekali pakai, terikat pemilik + hash daftar write + origin, 5 menit', async () => {
-    const h = hashDaftarWrite(['nik', 'namaLengkap', 'nik']);
-    expect(h).toBe(hashDaftarWrite(['namaLengkap', 'nik']));
-    const tamu = akun.pastikanTamu('sid-i', ctx);
-    const lain = akun.pastikanTamu('sid-j', ctx);
-    const origin = 'https://fixtures.urusinai.web.id';
-    const tok = akun.terbitkanIzin(tamu, h, origin);
-    expect(
-      (await galat(() => akun.pakaiIzin(tok, { userId: lain, writeListHash: h, targetOrigin: origin }))).kode,
-    ).toBe('IZIN_TIDAK_VALID');
-    expect(
-      (
-        await galat(() =>
-          akun.pakaiIzin(tok, {
-            userId: tamu,
-            writeListHash: hashDaftarWrite(['nik']),
-            targetOrigin: origin,
-          }),
-        )
-      ).kode,
-    ).toBe('IZIN_TIDAK_VALID');
-    expect(
-      (
-        await galat(() =>
-          akun.pakaiIzin(tok, { userId: tamu, writeListHash: h, targetOrigin: 'https://evil.example.com' }),
-        )
-      ).kode,
-    ).toBe('IZIN_TIDAK_VALID');
-    akun.pakaiIzin(tok, { userId: tamu, writeListHash: h, targetOrigin: origin });
-    expect(
-      (await galat(() => akun.pakaiIzin(tok, { userId: tamu, writeListHash: h, targetOrigin: origin }))).kode,
-    ).toBe('IZIN_TIDAK_VALID');
-    const tok2 = akun.terbitkanIzin(tamu, h, origin);
-    t += 5 * 60_000 + 1;
-    expect(
 
   it('akun belum terverifikasi: buat urusan → keluar (sid diputar) → masuk lagi → urusan tetap terbuka; orang lain 404', async () => {
     await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
@@ -893,6 +893,44 @@ describe('token persetujuan "Izinkan isi"', () => {
     await akun.verifikasiEmail(tokenDari(mailer.last(EMAIL_LAIN, 'verifikasi')!.link), SANDI, ctx);
     expect(akun.urusanMilik(sendiri.id)).toEqual(['u_milik']);
   });
+});
+
+describe('token persetujuan "Izinkan isi"', () => {
+  it('sekali pakai, terikat pemilik + hash daftar write + origin, 5 menit', async () => {
+    const h = hashDaftarWrite(['nik', 'namaLengkap', 'nik']);
+    expect(h).toBe(hashDaftarWrite(['namaLengkap', 'nik']));
+    const tamu = akun.pastikanTamu('sid-i', ctx);
+    const lain = akun.pastikanTamu('sid-j', ctx);
+    const origin = 'https://fixtures.urusinai.web.id';
+    const tok = akun.terbitkanIzin(tamu, h, origin);
+    expect(
+      (await galat(() => akun.pakaiIzin(tok, { userId: lain, writeListHash: h, targetOrigin: origin }))).kode,
+    ).toBe('IZIN_TIDAK_VALID');
+    expect(
+      (
+        await galat(() =>
+          akun.pakaiIzin(tok, {
+            userId: tamu,
+            writeListHash: hashDaftarWrite(['nik']),
+            targetOrigin: origin,
+          }),
+        )
+      ).kode,
+    ).toBe('IZIN_TIDAK_VALID');
+    expect(
+      (
+        await galat(() =>
+          akun.pakaiIzin(tok, { userId: tamu, writeListHash: h, targetOrigin: 'https://evil.example.com' }),
+        )
+      ).kode,
+    ).toBe('IZIN_TIDAK_VALID');
+    akun.pakaiIzin(tok, { userId: tamu, writeListHash: h, targetOrigin: origin });
+    expect(
+      (await galat(() => akun.pakaiIzin(tok, { userId: tamu, writeListHash: h, targetOrigin: origin }))).kode,
+    ).toBe('IZIN_TIDAK_VALID');
+    const tok2 = akun.terbitkanIzin(tamu, h, origin);
+    t += 5 * 60_000 + 1;
+    expect(
       (await galat(() => akun.pakaiIzin(tok2, { userId: tamu, writeListHash: h, targetOrigin: origin })))
         .kode,
     ).toBe('IZIN_TIDAK_VALID');
