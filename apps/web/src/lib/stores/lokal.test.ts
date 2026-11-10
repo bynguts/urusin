@@ -31,6 +31,19 @@ describe('bersihkanLokal', () => {
     expect(d.kontrasTinggi).toBe(false);
   });
 
+  it('default Wonogiri lama di localStorage (tanpa versiWilayah) diabaikan; pilihan baru dipertahankan', () => {
+    const lama = { wilayah: { kodeKabKota: '3312', nama: 'Kab. Wonogiri' }, urusan: [] };
+    expect(bersihkanLokal(lama).wilayah).toBeNull();
+    const baru = { versiWilayah: 2, wilayah: { kodeKabKota: '3312', nama: 'Kab. Wonogiri' } };
+    expect(bersihkanLokal(baru).wilayah).toEqual({ kodeKabKota: '3312', nama: 'Kab. Wonogiri' });
+    const g = gudang();
+    g.setItem('urusin.lokal.v1', JSON.stringify(lama));
+    const s = new LokalStore(g);
+    expect(s.data.wilayah).toBeNull();
+    s.aturWilayah({ kodeKabKota: '3372', nama: 'Kota Surakarta' });
+    expect(new LokalStore(g).data.wilayah?.kodeKabKota).toBe('3372');
+  });
+
   it('namaPendek menyingkat nama resmi', () => {
     expect(namaPendek('Kabupaten Wonogiri')).toBe('Kab. Wonogiri');
     expect(namaPendek('Kota Administrasi Jakarta Timur')).toBe('Kota Jakarta Timur');
