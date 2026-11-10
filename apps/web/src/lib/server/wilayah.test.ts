@@ -165,16 +165,18 @@ describe('POST /api/urusan/[id]/wilayah (tombol "Ya, betul")', () => {
 describe('alur juri Wonogiri (Data Diri 3312): satu konfirmasi tambahan, lalu Browser Pendamping layanan 23', () => {
   it('peristiwa Kelahiran → tanya wilayah → "Ya, betul" → rencana semi → Setujui → pendamping', async () => {
     const akun = akunJuri();
-    const r = await beranda
-      .mulai(
-        ev(
-          form({
-            peristiwa: 'kelahiran',
-            kodeKabKota: '3312',
-            pesan: 'Saya ingin mengurus kelahiran. Apa saja yang perlu saya siapkan?',
-          }),
-          {},
-          { akun },
+    const r = await Promise.resolve()
+      .then(() =>
+        beranda.mulai(
+          ev(
+            form({
+              peristiwa: 'kelahiran',
+              kodeKabKota: '3312',
+              pesan: 'Saya ingin mengurus kelahiran. Apa saja yang perlu saya siapkan?',
+            }),
+            {},
+            { akun },
+          ),
         ),
       )
       .catch((e: unknown) => e);
