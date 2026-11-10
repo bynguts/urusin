@@ -472,66 +472,94 @@
   </section>
   <section class="n-trust-strip lp43">
     <div class="lp44">Merujuk informasi resmi dari</div>
-    <div class="n-wordmarks lp45">
-      <div class="lp46">
-        <img
-          class="lp47"
-          src="/pen/i-3438e81725.svg"
-          alt=""
-          width="22"
-          height="22"
-          loading="lazy"
-          decoding="async"
-        />
-        <div class="lp48">Dukcapil</div>
-      </div>
-      <div class="lp46">
-        <img
-          class="lp47"
-          src="/pen/i-533e38ff50.svg"
-          alt=""
-          width="22"
-          height="22"
-          loading="lazy"
-          decoding="async"
-        />
-        <div class="lp48">BPJS Kesehatan</div>
-      </div>
-      <div class="lp46">
-        <img
-          class="lp47"
-          src="/pen/i-63d80529c0.svg"
-          alt=""
-          width="22"
-          height="22"
-          loading="lazy"
-          decoding="async"
-        />
-        <div class="lp48">Kemenag</div>
-      </div>
-      <div class="lp46">
-        <img
-          class="lp47"
-          src="/pen/i-53c23c4d87.svg"
-          alt=""
-          width="22"
-          height="22"
-          loading="lazy"
-          decoding="async"
-        />
-        <div class="lp48">Imigrasi</div>
-      </div>
-      <div class="lp46">
-        <img
-          class="lp47"
-          src="/pen/i-c49f4545a4.svg"
-          alt=""
-          width="22"
-          height="22"
-          loading="lazy"
-          decoding="async"
-        />
-        <div class="lp48">Samsat</div>
+    <div class="n-marquee-wrapper lp45-marquee" aria-label="Instansi resmi yang dirujuk">
+      <div class="n-marquee-track">
+        <!-- Set 1 (Unit utama) -->
+        <div class="n-wordmarks lp45">
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-3438e81725.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Dukcapil</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-533e38ff50.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">BPJS Kesehatan</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-63d80529c0.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Kemenag</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-53c23c4d87.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Imigrasi</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-c49f4545a4.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Samsat</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-3438e81725.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Dukcapil</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-533e38ff50.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">BPJS Kesehatan</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-63d80529c0.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Kemenag</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-53c23c4d87.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Imigrasi</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-c49f4545a4.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Samsat</div>
+          </div>
+        </div>
+        <!-- Set 2 (Duplikat untuk infinite loop) -->
+        <div class="n-wordmarks lp45" aria-hidden="true">
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-3438e81725.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Dukcapil</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-533e38ff50.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">BPJS Kesehatan</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-63d80529c0.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Kemenag</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-53c23c4d87.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Imigrasi</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-c49f4545a4.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Samsat</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-3438e81725.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Dukcapil</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-533e38ff50.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">BPJS Kesehatan</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-63d80529c0.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Kemenag</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-53c23c4d87.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Imigrasi</div>
+          </div>
+          <div class="lp46">
+            <img class="lp47" src="/pen/i-c49f4545a4.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <div class="lp48">Samsat</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>

@@ -41,6 +41,12 @@
   .lp :is(.lp23, .lp24, .lp25, .lp26, .lp76, .lp79, .lp81, .lp294) {
     animation: lp-apung 4.2s ease-in-out infinite;
   }
+  .lp :is(.ck8, .ur8, .tj8, .pv8) {
+    animation: lp-apung 4.5s ease-in-out -1.2s infinite;
+  }
+  .lp :is(.ck9, .ur9, .tj9, .pv9) {
+    animation: lp-apung 5.2s ease-in-out -2.5s infinite;
+  }
   .lp :is(.lp24, .lp79) {
     animation-duration: 4.65s;
     animation-delay: -1.3s;
@@ -185,6 +191,28 @@
   }
   .lp .lp96 .lp104 {
     animation: lp-send-pulse 8s ease-in-out infinite;
+  }
+
+  /* Marquee logo instansi resmi (.lp43 / .lp45-marquee) */
+  .lp .lp45-marquee {
+    mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+  }
+  .lp .n-marquee-track {
+    will-change: transform;
+    animation: lp-marquee-slide 32s linear infinite;
+  }
+  .lp .lp45-marquee:hover .n-marquee-track {
+    animation-play-state: paused;
+  }
+  .lp .lp46 {
+    transition:
+      opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .lp .lp46:hover {
+    opacity: 0.95;
+    transform: translateY(-1px);
   }
 
   /* Ponsel: tidak ada gerak di jendela muat (TBT Lighthouse mobile). Hero langsung tampil tanpa
@@ -423,19 +451,23 @@
   }
 }
 
-/* Interaksi: tombol terangkat, panah "Pelajari" bergeser, karakter kartu menyembul */
+/* Interaksi: tombol terangkat, panah "Pelajari" bergeser, karakter kartu menyembul, kartu subpage */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116, .lp130),
+  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116, .lp130, .ur-tombol, .pv38, .tj13, .tj15, .tj17, .tj19),
   .lp .lp117 > img,
   .lp :is(.lp110, .lp127) {
     transition:
       transform 0.25s var(--lp-e),
-      translate 0.35s var(--lp-e);
+      translate 0.35s var(--lp-e),
+      opacity 0.15s ease,
+      box-shadow 0.2s ease,
+      background-color 0.2s ease;
   }
-  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116, .lp130):hover {
+  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116, .lp130, .ur-tombol, .pv38):hover {
     transform: translateY(-1px);
+    opacity: 0.92;
   }
-  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116, .lp130):active {
+  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116, .lp130, .ur-tombol):active {
     transform: scale(0.98);
   }
   .lp .lp117:hover > img {
@@ -443,6 +475,47 @@
   }
   .lp .lp108:hover :is(.lp110, .lp127) {
     translate: 0 -6px;
+  }
+
+  /* Kartu peristiwa di /urusan, langkah di /cara-kerja, dan hak data di /privasi */
+  .lp :is(.ck16, .ck23, .ck30, .ck38, .ck46, .ck54, .ck64, .ck71, .ck80, .ck86, .ck92, .ur16, .ur33, .ur48, .ur63, .ur78, .pv16, .pv27, .pv34) {
+    transition:
+      transform 0.25s var(--lp-e),
+      box-shadow 0.25s var(--lp-e),
+      border-color 0.2s ease;
+  }
+  .lp :is(.ck16, .ck23, .ck30, .ck38, .ck46, .ck54, .ck64, .ck71, .ck80, .ck86, .ck92, .ur16, .ur33, .ur48, .ur63, .ur78, .pv16, .pv27, .pv34):hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(37, 37, 34, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Tautan footer dan subpage */
+  .lp .lp302,
+  .lp .ur21 a,
+  .lp .ur36 a,
+  .lp .ur51 a,
+  .lp .ur66 a,
+  .lp .ur81 a,
+  .lp .tj-q summary {
+    transition: color 0.15s ease, opacity 0.15s ease;
+  }
+  .lp a.lp302:hover,
+  .lp .ur21 a:hover,
+  .lp .ur36 a:hover,
+  .lp .ur51 a:hover,
+  .lp .ur66 a:hover,
+  .lp .ur81 a:hover {
+    color: #ed5a31;
+  }
+  .lp .tj13:hover,
+  .lp .tj15:hover,
+  .lp .tj17:hover,
+  .lp .tj19:hover {
+    background-color: #efe6dc !important;
+    transform: translateY(-1px);
+  }
+  .lp .tj-q summary:hover {
+    color: #ed5a31;
   }
 }
 
@@ -608,6 +681,14 @@
   }
   92%, 100% {
     box-shadow: 0px 8px 28px #2525220f, 0px 0px 1px #0000000f, 0px 1px 1px #0000000f, 0px 2px 4px #0000000a;
+  }
+}
+@keyframes lp-marquee-slide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
   }
 }
 

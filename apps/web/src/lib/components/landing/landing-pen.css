@@ -202,25 +202,39 @@
   display: block;
 }
 .lp20 {
-  align-items: flex-start;
+  align-items: center;
   background-color: #ffffff;
   border-radius: 100px;
+  border: 1px solid #efe6dc;
   box-shadow:
     0px 0px 1px #0000000f,
     0px 1px 1px #0000000f,
     0px 2px 4px #0000000a;
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
+  flex-direction: row;
   flex-shrink: 0;
   justify-content: center;
-  padding: 12px 20px;
+  min-height: 44px;
+  padding: 10px 24px;
   width: fit-content;
+  transition:
+    background-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.15s ease;
+}
+.lp20:hover {
+  background-color: #f7f2ed;
+  border-color: #e6dbd1;
+  transform: translateY(-1px);
+}
+.lp20:active {
+  transform: translateY(0);
 }
 .lp21 {
   color: #252522;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
-  line-height: 1.533;
+  line-height: 1.5;
   text-align: center;
   white-space: nowrap;
   display: block;
@@ -430,16 +444,37 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  gap: 24px;
-  padding: 8px var(--lp-gx) 96px var(--lp-gx);
+  gap: 20px;
+  padding: 8px var(--lp-gx) 88px var(--lp-gx);
   width: 100%;
+  overflow: hidden;
 }
 .lp44 {
   color: #252522a6;
-  font-size: 15px;
-  font-weight: 400;
-  line-height: 1.533;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.5;
   white-space: nowrap;
+}
+.lp45-marquee {
+  width: 100%;
+  max-width: 1080px;
+  overflow: hidden;
+  position: relative;
+  padding: 8px 0;
+}
+.n-marquee-track {
+  display: flex;
+  width: max-content;
+}
+.n-marquee-track > .lp45 {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 56px;
+  padding-right: 56px;
 }
 .lp45 {
   align-items: center;
@@ -544,25 +579,37 @@
   width: 100%;
 }
 .lp57 {
-  align-items: flex-start;
+  align-items: center;
   display: flex;
   flex-direction: row;
   flex-shrink: 0;
-  gap: 10px;
-  padding: 8px 0px 0px 0px;
+  gap: 12px;
+  padding: 12px 0px 0px 0px;
   width: fit-content;
+  flex-wrap: wrap;
 }
 .lp58 {
   align-items: center;
   background-color: #252522;
   border-radius: 100px;
-  display: flex;
+  display: inline-flex;
   flex-direction: row;
   flex-shrink: 0;
   gap: 6px;
   justify-content: center;
+  min-height: 44px;
   padding: 10px 24px;
   width: fit-content;
+  transition:
+    opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lp58:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+.lp58:active {
+  transform: translateY(0);
 }
 .lp59 {
   color: #fffcfa;

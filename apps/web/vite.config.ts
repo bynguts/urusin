@@ -12,6 +12,12 @@ const VERIFY_HOSTS = Object.values(
   >,
 ).map((h): `https://${string}.${string}` => `https://${h.verify}` as `https://${string}.${string}`);
 
+// Di dev server lokal (Vite port 5173), set origin publik default agar form action SvelteKit
+// tidak ditolak oleh validasi CSRF Origin ketika pengguna membuka lewat browser lokal.
+if (!process.env.VITEST && !process.env.URUSIN_PUBLIC_ORIGIN) {
+  process.env.URUSIN_PUBLIC_ORIGIN = 'http://localhost:5173';
+}
+
 export default defineConfig({
   // Gambar kecil (avatar, ikon objek) tetap berkas terpisah, bukan base64 di JS: JS awal tiap rute punya
   // anggaran 70 KB gzip, sedangkan gambar bisa di-cache dan dimuat tanpa memblokir.

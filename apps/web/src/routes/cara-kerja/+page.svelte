@@ -4,6 +4,7 @@
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
+  import '#lib/components/landing/landing-gerak.css';
   import './cara-kerja.css';
   import LandingFooter from '#lib/components/landing/LandingFooter.svelte';
   import LandingNav from '#lib/components/landing/LandingNav.svelte';

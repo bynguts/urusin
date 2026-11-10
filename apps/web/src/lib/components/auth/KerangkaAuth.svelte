@@ -35,7 +35,7 @@
     <p class="auth-description mt-2 max-w-[34rem] text-[0.9375rem] text-body lg:mt-3.5 lg:text-[1.0625rem]">
       {sub}
     </p>
-    <div class="relative mt-auto hidden h-[264px] w-[516px] self-center lg:block" aria-hidden="true">
+    <div class="panel-karakter relative mt-auto hidden h-[264px] w-[516px] self-center lg:block" aria-hidden="true">
       <img
         src={ungu1}
         srcset="{ungu1} 192w, {ungu2} 384w"
@@ -43,7 +43,7 @@
         alt=""
         width="192"
         height="209"
-        class="absolute bottom-6 left-0 z-[2] h-[210px] w-[192px] object-contain"
+        class="auth-karakter-1 absolute bottom-6 left-0 z-[2] h-[210px] w-[192px] object-contain"
       />
       <img
         src={mawar1}
@@ -52,7 +52,7 @@
         alt=""
         width="220"
         height="240"
-        class="absolute bottom-6 left-[140px] z-[3] h-[240px] w-[220px] object-contain"
+        class="auth-karakter-2 absolute bottom-6 left-[140px] z-[3] h-[240px] w-[220px] object-contain"
       />
       <img
         src={amber1}
@@ -61,7 +61,7 @@
         alt=""
         width="206"
         height="225"
-        class="absolute bottom-6 left-[310px] z-[4] h-[226px] w-[206px] object-contain"
+        class="auth-karakter-3 absolute bottom-6 left-[310px] z-[4] h-[226px] w-[206px] object-contain"
       />
     </div>
   </aside>
@@ -109,6 +109,28 @@
   @media (min-width: 1024px) {
     :global(:root:not([data-theme='dark'])) .panel-akun {
       background: var(--panel-akun) center / 100% 100% no-repeat;
+    }
+  }
+
+  @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+    .auth-karakter-1 {
+      animation: auth-apung 4.4s ease-in-out infinite;
+    }
+    .auth-karakter-2 {
+      animation: auth-apung 5.1s ease-in-out -1.5s infinite;
+    }
+    .auth-karakter-3 {
+      animation: auth-apung 4.7s ease-in-out -2.8s infinite;
+    }
+  }
+
+  @keyframes auth-apung {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
     }
   }
 </style>
