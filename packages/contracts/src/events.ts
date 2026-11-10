@@ -11,6 +11,7 @@ import {
   AlasanSerahkanSchema,
   JenisAksiSchema,
   KelasKendaliSchema,
+  PemilikSesiInternalSchema,
   PendampingBuktiSchema,
   RefSchema,
 } from './pendamping.js';
@@ -311,6 +312,20 @@ export const JejakPendampingEventSchema = event('jejak_pendamping', {
   executionId: z.string().min(1),
   catatan: CatatanPendampingSchema,
 });
+
+/**
+ * POST /internal/sesi/jejak (web -> worker): kuras catatan audit Navigator yang dikumpulkan worker (blokir
+ * gerbang tulis, kelas klik, ambil alih, persetujuan). Web menambahkannya sebagai `jejak_pendamping`.
+ */
+export const JejakSesiInternalSchema = PemilikSesiInternalSchema;
+export type JejakSesiInternal = z.infer<typeof JejakSesiInternalSchema>;
+export const JejakSesiResponseSchema = z.object({
+  executionId: z.string().min(1),
+  catatan: z.array(CatatanPendampingSchema).max(500),
+  /** Catatan terlama yang terbuang karena buffer worker penuh sejak pengurasan terakhir. */
+  terbuang: z.number().int().nonnegative(),
+});
+export type JejakSesiResponse = z.infer<typeof JejakSesiResponseSchema>;
 
 export const UrusinEventSchema = z.discriminatedUnion('type', [
   ProgressEventSchema,
