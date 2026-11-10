@@ -267,6 +267,22 @@ describe('ketahanan: worker belum siap, galat sesaat, dan LLM gagal', () => {
     expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
   });
 
+  it('executionId di respons amati milik eksekusi lain (tanpa kuras): loop lama berhenti tanpa aksi', async () => {
+    const worker = new WorkerPalsu([halamanForm()]);
+    worker.executionId = 'x_baru';
+    const provider = new ProviderSkrip(() => RENCANA_FORM);
+    // Tangan tanpa `kuras`: satu-satunya tanda adalah executionId pada amati.
+    const tangan = {
+      amati: (o?: { pantau?: boolean }) => worker.amati(o),
+      aksi: (r: Parameters<WorkerPalsu['aksi']>[0]) => worker.aksi(r),
+      tunggu: () => worker.tunggu(),
+    };
+    const { hasil } = jalankan(worker, provider, { tangan });
+    expect(await hasil).toMatchObject({ akhir: 'berhenti', alasan: 'sesi_berakhir' });
+    expect(worker.diterima).toHaveLength(0);
+    expect(provider.calls).toHaveLength(0);
+  });
+
   it('sesi worker sudah milik eksekusi lain: loop lama berhenti tanpa aksi', async () => {
     const worker = new WorkerPalsu([halamanForm()]);
     worker.executionId = 'x_baru';

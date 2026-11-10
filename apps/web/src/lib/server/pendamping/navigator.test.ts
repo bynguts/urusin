@@ -344,6 +344,7 @@ describe('broker Navigator web', () => {
     expect(h).toMatchObject({ akhir: 'selesai', bukti: { nomor: 'REG-2026-00555' } });
     // Worker mengonfirmasi halaman lewat /internal/sesi/selesai (bukti ikut); tidak ada serahkan sesudahnya.
     expect(w.panggilan.find((p) => p.path === '/internal/sesi/selesai')?.body).toMatchObject({
+      executionId: 'x_uji',
       bukti: { nomor: 'REG-2026-00555' },
     });
     expect(w.panggilan.filter((p) => p.path === '/internal/sesi/aksi')).toEqual([]);

@@ -174,9 +174,10 @@ export class WorkerPalsu implements TanganPendamping {
     this.amatiN++;
     const g = this.galatAmati.shift();
     if (g) throw g;
+    const eid = this.executionId !== undefined ? { executionId: this.executionId } : {};
     if (opsi?.pantau) {
       this.pantauN++;
-      return { mode: this.k.mode, pengamatan: this.kini };
+      return { mode: this.k.mode, pengamatan: this.kini, ...eid };
     }
     if (this.k.mode === 'ai') this.seqAmati = this.kini.seq;
     // Seperti worker: jejak amati dicatat di sisi worker (satu sumber).
@@ -186,7 +187,7 @@ export class WorkerPalsu implements TanganPendamping {
       sidik: this.kini.sidik,
       elemen: this.kini.elemen.length,
     });
-    return { mode: this.k.mode, pengamatan: this.kini };
+    return { mode: this.k.mode, pengamatan: this.kini, ...eid };
   }
 
   private izin(h: string, a: Aksi): boolean {

@@ -87,6 +87,7 @@ export function tanganWorker(
   cfg: PendampingConfig | null,
   owner: PemilikSesiInternal,
   fetcher?: EgressFetch,
+  executionId?: string,
 ): TanganPendamping {
   const minta = async <T>(path: string, schema: ZodType<T>, body: BodyPemilik, batasMs?: number) => {
     const r = await panggilPemilik(cfg, path, schema, body, fetcher, batasMs);
@@ -95,7 +96,13 @@ export function tanganWorker(
   };
   const pemilik = { urusanId: owner.urusanId, sidHash: owner.sidHash };
   return {
-    amati: () => minta('/internal/sesi/amati', AmatiSesiResponseSchema, pemilik),
+    // `pantau`: baca-saja saat warga memegang kendali (tanpa jejak amati, peta ref worker tidak diganti).
+    amati: (opsi) =>
+      minta(
+        '/internal/sesi/amati',
+        AmatiSesiResponseSchema,
+        opsi?.pantau ? { ...pemilik, pantau: true } : pemilik,
+      ),
     aksi: (r) =>
       minta(
         '/internal/sesi/aksi',
@@ -114,8 +121,13 @@ export function tanganWorker(
     tunggu: (maksMs) =>
       minta('/internal/sesi/tunggu', TungguSesiResponseSchema, { ...pemilik, maksMs }, maksMs + 5_000),
     kuras: () => minta('/internal/sesi/jejak', JejakSesiResponseSchema, pemilik),
+    // Terikat eksekusi: worker menolak (409) bila sesi sudah memegang eksekusi lain.
     selesai: (bukti) =>
-      minta('/internal/sesi/selesai', SelesaiSesiResponseSchema, { ...pemilik, ...(bukti ? { bukti } : {}) }),
+      minta('/internal/sesi/selesai', SelesaiSesiResponseSchema, {
+        ...pemilik,
+        ...(executionId ? { executionId } : {}),
+        ...(bukti ? { bukti } : {}),
+      }),
   };
 }
 
@@ -187,8 +199,10 @@ async function serahkanKeWarga(
   jejak: (c: CatatanPendamping) => void,
 ): Promise<void> {
   try {
-    const a = await t.amati({ pantau: true });
+    // Amati biasa (bukan pantau): seq serahkan harus seq pengamatan terakhir worker.
+    const a = await t.amati();
     if (a.mode !== 'ai') return;
+    if (a.executionId !== undefined && a.executionId !== executionId) return;
     const seq = a.pengamatan.seq;
     const aksi = [{ jenis: 'serahkan' as const, alasan: 'tidak_yakin' as const }];
     await t.aksi({ rencanaHash: hashRencana({ aksi, seq }), aksi, seq, kolom: [], berkas: [] });
@@ -219,7 +233,7 @@ export async function jalankanNavigatorUrusan(
       costIdr: rt.quota.costIdr(u),
       degraded: false,
     });
-  const tangan = deps.tangan ?? tanganWorker(deps.cfg, m.owner, deps.fetcher);
+  const tangan = deps.tangan ?? tanganWorker(deps.cfg, m.owner, deps.fetcher, m.executionId);
   pernahJalan.add(m.executionId);
   let hasil: HasilNavigator | undefined;
   try {
@@ -308,7 +322,11 @@ export async function pulihkanNavigator(
   if (!pernahJalan.has(m.executionId)) return mulaiNavigator(rt, m, deps);
   const jejak = (catatan: CatatanPendamping) =>
     void rt.publish(m.urusan.id, { type: 'jejak_pendamping', executionId: m.executionId, catatan });
-  await serahkanKeWarga(deps.tangan ?? tanganWorker(deps.cfg, m.owner, deps.fetcher), m.executionId, jejak);
+  await serahkanKeWarga(
+    deps.tangan ?? tanganWorker(deps.cfg, m.owner, deps.fetcher, m.executionId),
+    m.executionId,
+    jejak,
+  );
   return false;
 }
 

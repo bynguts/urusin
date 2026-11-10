@@ -6,6 +6,7 @@ import {
   SesiPendampingSchema,
   TiketPendampingResponseSchema,
   type AksiSesiInternal,
+  type AmatiSesiInternal,
   type AntreanPendampingResponse,
   type BerkasSesiInternal,
   type IsiSesiInternal,
@@ -173,6 +174,7 @@ export type BodyPemilik =
   | IsiSesiInternal
   | BerkasSesiInternal
   | AksiSesiInternal
+  | AmatiSesiInternal
   | TungguSesiInternal
   | SelesaiSesiInternal;
 

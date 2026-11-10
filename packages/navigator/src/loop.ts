@@ -325,8 +325,12 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
   };
   type PermintaanAksi = Parameters<TanganPendamping['aksi']>[0];
   const tangan = {
-    amati: async (opsi?: { pantau?: boolean }) =>
-      sesudah(await cobaUlang(() => (opsi ? o.tangan.amati(opsi) : o.tangan.amati()))),
+    amati: async (opsi?: { pantau?: boolean }) => {
+      const a = await sesudah(await cobaUlang(() => (opsi ? o.tangan.amati(opsi) : o.tangan.amati())));
+      // Sesi sudah memegang eksekusi lain (sesi baru dibuat): pengamatan ini bukan milik loop ini.
+      if (a.executionId !== undefined && a.executionId !== o.executionId) throw new SesiLain();
+      return a;
+    },
     /** Aksi rencana (isi/klik): TIDAK diulang otomatis; galat sementara = amati ulang (lihat jalankanAksi). */
     aksi: async (r: PermintaanAksi) => sesudah(await o.tangan.aksi(r)),
     /** Aksi tanpa nilai dan tanpa klik (serahkan/tidak_bisa): aman diulang. */
