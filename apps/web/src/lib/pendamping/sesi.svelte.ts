@@ -309,6 +309,15 @@ export class SesiPendampingUi {
   }
 
   /**
+   * Giliran `ketuk_tautan`: tombol Urusin "Buka …" meminta worker membuka tautan pembuka yang disorot (ref dari
+   * event giliran; perangkat tidak pernah mengirim URL). Warga lalu menekan Lanjutkan.
+   */
+  bukaTautan(): void {
+    const t = this.data.giliran?.alasan === 'ketuk_tautan' ? this.data.giliran.tautan : undefined;
+    if (t) this.viewer?.bukaTautan(t.ref);
+  }
+
+  /**
    * Lanjutkan. Pada giliran `berkas_kurang`: "Izinkan isi" baru untuk berkas itu saja (warga baru menambahkannya
    * di Dokumen), lalu kendali dikembalikan; langkah unggah diulang, dan bila berkas masih belum ada giliran yang
    * sama muncul lagi.

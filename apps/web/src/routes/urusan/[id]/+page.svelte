@@ -333,6 +333,7 @@
             bind:inputTeks
             onambilalih={() => sesi.ambilAlih()}
             onkembalikan={() => void sesi.kembalikan()}
+            onbukatautan={() => sesi.bukaTautan()}
             onhentikan={() => void sesi.hentikan()}
             ontutup={() => void sesi.tutupSekarang()}
             onmulailagi={() => {

@@ -218,9 +218,15 @@ describe('render server komponen', () => {
     expect(tanpa).not.toContain('Kirim pengajuan');
   });
 
-  it('giliran ketuk_tautan: judul "Buka formulir di situs" dan tombol Lanjutkan, bukan jalan buntu', () => {
+  it('giliran ketuk_tautan: judul netral, tombol Buka ber-host+jalur dan Lanjutkan; berhenti tanpa Lanjutkan', () => {
     const noop = () => {};
-    const layar = (alasan: 'ketuk_tautan' | 'final') => {
+    const tautan = {
+      ref: 'e4',
+      nama: 'Daftar <b>Akta</b>',
+      host: 'contoh-layanan.go.id',
+      jalur: '/akta/baru',
+    };
+    const layar = (alasan: 'ketuk_tautan' | 'final' | 'berhenti', denganTautan = true) => {
       const data: DataPendamping = {
         ...dataAwal(),
         keadaan: 'giliran',
@@ -228,7 +234,11 @@ describe('render server komponen', () => {
         giliran: {
           jenis: 'giliran_anda',
           alasan,
-          pesan: 'Ketuk tautan yang disorot untuk membuka formulir, lalu tekan Lanjutkan.',
+          pesan:
+            alasan === 'berhenti'
+              ? 'AI berhenti di sini. Lanjutkan sendiri dari layar ini.'
+              : 'Ketuk tautan yang disorot, lalu tekan Lanjutkan.',
+          ...(alasan === 'ketuk_tautan' && denganTautan ? { tautan } : {}),
         },
       };
       return render(LayarPendamping, {
@@ -245,11 +255,25 @@ describe('render server komponen', () => {
       }).body;
     };
     const body = layar('ketuk_tautan');
-    expect(body).toContain('Buka formulir di situs');
+    // Judul netral: tautan pembuka belum tentu formulir.
+    expect(body).toContain('Buka tautan di situs');
+    expect(body).not.toContain('Buka formulir');
     expect(body).toContain('AI tidak mengetuk tautan ini; Anda yang membukanya.');
     expect(body).toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
+    // Tombol Buka: nama tautan dari situs sebagai teks (di-escape), plus host + jalur tujuan.
+    expect(body).toMatch(/data-buka-tautan[^>]*>[\s\S]*?Buka “Daftar &lt;b>Akta&lt;\/b>”/);
+    expect(body).toContain('(contoh-layanan.go.id/akta/baru)');
+    expect(body).not.toContain('<b>Akta</b>');
+    // Worker lama tanpa `tautan`: tanpa tombol Buka, Lanjutkan tetap ada.
+    expect(layar('ketuk_tautan', false)).not.toContain('data-buka-tautan');
     // Pembanding: giliran kirim akhir tetap tanpa Lanjutkan (tombol Kirim di situs milik warga).
-    expect(layar('final')).not.toContain('Buka formulir di situs');
+    expect(layar('final')).not.toContain('Buka tautan di situs');
+    expect(layar('final')).not.toContain('data-buka-tautan');
+    // N2: serah akhir: "AI berhenti", tanpa janji coba lagi dan tanpa Lanjutkan.
+    const henti = layar('berhenti');
+    expect(henti).toContain('AI berhenti');
+    expect(henti).not.toMatch(/mencoba lagi/);
+    expect(henti).not.toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
   });
 
   it('halaman urusan memuat nomor permohonan yang tersimpan (kartu Terkirim setelah sesi ditutup)', async () => {
