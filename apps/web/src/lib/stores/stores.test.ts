@@ -21,6 +21,13 @@ describe('reduksi: event SSE → state turunan', () => {
     expect(s.lastSeq).toBe(skenario('urusan/jawaban-bersumber').length);
   });
 
+  it('wilayah: usulan lalu ditetapkan; rencana membawa wilayah KTP dan tier', () => {
+    const s = jalankan('urusan/wilayah-usulan');
+    expect(s.wilayah).toMatchObject({ status: 'ditetapkan', ktp: { kodeKabKota: '3578' } });
+    expect(s.rencana?.wilayah?.ktp.kodeKabKota).toBe('3578');
+    expect(s.rencana?.tier).toBe('dipandu');
+  });
+
   it('done membawa versi terbaru sehingga pesan lanjutan memakai expectedVersion yang segar', () => {
     const s = jalankan('urusan/jawaban-bersumber');
     const done = {

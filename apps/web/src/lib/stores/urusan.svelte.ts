@@ -8,6 +8,7 @@ const TIPE = [
   'grounded_answer',
   'handoff',
   'plan_card',
+  'wilayah',
   'checklist',
   'eligibility',
   'execution_request',
@@ -139,14 +140,27 @@ export class UrusanStore implements StoreUrusan {
    * "Setujui rencana": aksi terstruktur (bukan pesan chat yang ditafsirkan model). Hasilnya (state, permintaan
    * Browser Pendamping, kartu konfirmasi) mengalir lewat stream.
    */
-  async setujuiRencana(): Promise<'ok' | 'konflik' | 'galat'> {
+  setujuiRencana(): Promise<'ok' | 'konflik' | 'galat'> {
+    return this.aksi('rencana/setujui', {});
+  }
+
+  /**
+   * "Ya, betul" di kartu wilayah: warga memastikan kab/kota KTP (aksi terstruktur). Bila jenis urusan sudah
+   * diketahui, rencana untuk wilayah itu menyusul lewat stream.
+   */
+  tetapkanWilayah(kodeKabKota: string): Promise<'ok' | 'konflik' | 'galat'> {
+    return this.aksi('wilayah', { kodeKabKota });
+  }
+
+  /** Aksi terstruktur POST /api/urusan/[id]/<jalur> dengan versi terbaru; 409 → ambil status lalu coba sekali lagi. */
+  private async aksi(jalur: string, isi: Record<string, unknown>): Promise<'ok' | 'konflik' | 'galat'> {
     const id = this.keadaan.id;
     if (!id) return 'galat';
     const kirim = () =>
-      this.ambil(`/api/urusan/${encodeURIComponent(id)}/rencana/setujui`, {
+      this.ambil(`/api/urusan/${encodeURIComponent(id)}/${jalur}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ expectedVersion: this.keadaan.version }),
+        body: JSON.stringify({ ...isi, expectedVersion: this.keadaan.version }),
       });
     try {
       let res = await kirim();

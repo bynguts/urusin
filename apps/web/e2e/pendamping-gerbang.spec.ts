@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
 
-// Jalur demo Browser Pendamping (DemoProvider, tanpa layanan pendamping di e2e web): rencana akta kelahiran
-// Wonogiri → "Setujui rencana" (aksi terstruktur, bukan chat) → kartu "Setujui dan buka situs" → persetujuan
-// tercatat. Tidak ada yang dibuka atau dikirim ke situs pemerintah.
+// Jalur demo Browser Pendamping (DemoProvider, tanpa layanan pendamping di e2e web): pilih Kab. Wonogiri →
+// "Ya, betul" (wilayah KTP dipastikan) → rencana akta kelahiran Wonogiri → "Setujui rencana" (aksi terstruktur,
+// bukan chat) → kartu "Setujui dan buka situs" → persetujuan tercatat. Tidak ada yang dibuka atau dikirim ke
+// situs pemerintah.
 test('Setujui rencana menawarkan Browser Pendamping; persetujuan tidak hilang setelah turn berikutnya', async ({
   page,
 }) => {
@@ -12,10 +13,17 @@ test('Setujui rencana menawarkan Browser Pendamping; persetujuan tidak hilang se
       panggilan.push({ url: new URL(r.url()).pathname, status: r.status() });
   });
   await page.goto('/peristiwa/kelahiran');
+  await page.getByLabel('Kabupaten/kota sesuai KTP Anda').selectOption('3312');
+  await expect(page).toHaveURL(/kodeKabKota=3312/);
   await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
   await expect(page).toHaveURL(/\/urusan\/u_[0-9a-f]{32}$/);
   const id = page.url().split('/').at(-1)!;
   const log = page.getByRole('log', { name: 'Percakapan urusan' });
+  // Wilayah dulu: pilihan di perangkat hanya usulan; satu klik memastikan KTP Kab. Wonogiri.
+  const benar = page.getByRole('button', { name: 'Ya, betul' });
+  await expect(benar).toBeEnabled({ timeout: 20_000 });
+  await benar.click();
+  await expect(log).toContainText('Wilayah KTP: Kabupaten Wonogiri');
   const setujuiRencana = page.getByRole('button', { name: 'Setujui rencana' });
   await expect(setujuiRencana).toBeEnabled({ timeout: 20_000 });
 
@@ -29,6 +37,7 @@ test('Setujui rencana menawarkan Browser Pendamping; persetujuan tidak hilang se
   await expect(log).toContainText('Telunjuk Sakti');
   await expect(setujuiRencana).toHaveCount(0);
   expect(panggilan.filter((p) => p.url.endsWith('/turn'))).toHaveLength(0); // bukan pesan chat
+  expect(panggilan.find((p) => p.url.endsWith('/wilayah'))?.status).toBe(200);
   expect(panggilan.find((p) => p.url.endsWith('/rencana/setujui'))?.status).toBe(200);
   const st = (await (await page.request.get(`/api/urusan/${id}`)).json()) as {
     state: string;

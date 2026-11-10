@@ -56,6 +56,20 @@
       >
     {/if}
   </header>
+  {#if rencana.wilayah}
+    <div class="flex flex-col gap-1 border-b border-line px-4 py-3 text-sm leading-[21px] sm:px-[18px]">
+      <p class="flex items-center gap-1.5 font-semibold text-ink">
+        <Icon name="lokasi" class="size-4 shrink-0 text-brand" />
+        {rencana.wilayah.ktp.nama}{rencana.wilayah.tujuan ? ` → ${rencana.wilayah.tujuan.nama}` : ''}
+        <span class="font-normal text-muted"
+          >· {rencana.tier === 'semi'
+            ? 'AI bisa bantu mengisi di situs resmi'
+            : 'Dipandu langkah demi langkah'}</span
+        >
+      </p>
+      {#if rencana.catatan}<p class="text-body">{rencana.catatan}</p>{/if}
+    </div>
+  {/if}
   <ol class="flex flex-col gap-2.5 px-4 py-3.5 sm:px-[18px]">
     {#each rencana.langkah as l, i (l.id)}
       {@const p = PELAKU[l.jenis] ?? PELAKU['online-manual']!}

@@ -20,6 +20,33 @@ describe('bangunLinimasa', () => {
     expect(out[1]).toMatchObject({ teks: 'Halo Bu.' });
   });
 
+  it('usulan wilayah jadi kartu konfirmasi; setelah ditetapkan kartu nonaktif dan muncul kalimat sistem', () => {
+    const wonogiri = { kodeKabKota: '3312', nama: 'Kabupaten Wonogiri' };
+    const usulan = ev(1, 'wilayah', { status: 'usulan', ktp: wonogiri, sumber: 'data_diri' });
+    expect(bangunLinimasa([usulan], [])).toEqual([
+      { jenis: 'wilayah', key: 'e1', e: usulan, terakhir: true },
+    ]);
+    const out = bangunLinimasa(
+      [
+        usulan,
+        ev(2, 'wilayah', {
+          status: 'ditetapkan',
+          ktp: wonogiri,
+          sumber: 'warga',
+          tujuan: { kodeKabKota: '3578', nama: 'Kota Surabaya' },
+        }),
+      ],
+      [],
+    );
+    expect(out[0]).toMatchObject({ jenis: 'wilayah', terakhir: false });
+    expect(out[1]).toEqual({
+      jenis: 'sistem',
+      key: 'e2',
+      teks: 'Wilayah KTP: Kabupaten Wonogiri · pindah ke Kota Surabaya',
+      at,
+    });
+  });
+
   it('heartbeat diabaikan; state penting menjadi kalimat sistem; TERKIRIM menjadi kartu', () => {
     const out = bangunLinimasa(
       [
