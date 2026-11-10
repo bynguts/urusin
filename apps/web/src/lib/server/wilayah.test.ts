@@ -239,7 +239,10 @@ describe('alur juri Wonogiri (Data Diri 3312): satu konfirmasi tambahan, lalu Br
 
     // Satu-satunya klik tambahan: "Ya, betul".
     const v = rt.store.getUrusanOrThrow(id).version;
-    const j = await (await tetapkan(ev(post({ kodeKabKota: '3312', expectedVersion: v }), { id }))).json();
+    // Pemilik urusan = akun juri yang sama (keamanan-pemilik): semua aksi dari sesi akun itu.
+    const j = await (
+      await tetapkan(ev(post({ kodeKabKota: '3312', expectedVersion: v }), { id }, { akun }))
+    ).json();
     expect(j).toMatchObject({ state: 'RENCANA_DIUSULKAN', rencana: true });
     const [kartu] = payloads(id, 'plan_card');
     expect(kartu).toMatchObject({ ringkasan: 'Kelahiran · Kab. Wonogiri', tier: 'semi' });
@@ -247,7 +250,7 @@ describe('alur juri Wonogiri (Data Diri 3312): satu konfirmasi tambahan, lalu Br
 
     // Setujui rencana → permintaan Browser Pendamping (layanan 23 Telunjuk Sakti) seperti sebelumnya.
     const s = await (
-      await setujui(ev(post({ expectedVersion: rt.store.getUrusanOrThrow(id).version }), { id }))
+      await setujui(ev(post({ expectedVersion: rt.store.getUrusanOrThrow(id).version }), { id }, { akun }))
     ).json();
     expect(s).toMatchObject({ pendamping: true });
     const [req] = payloads(id, 'execution_request');
@@ -257,7 +260,7 @@ describe('alur juri Wonogiri (Data Diri 3312): satu konfirmasi tambahan, lalu Br
     });
     expect(JSON.stringify(req.params)).toContain('23');
     // Setelah disetujui, wilayah terkunci.
-    expect((await tetapkan(ev(post({ kodeKabKota: '3578' }), { id }))).status).toBe(409);
+    expect((await tetapkan(ev(post({ kodeKabKota: '3578' }), { id }, { akun }))).status).toBe(409);
   });
 });
 
