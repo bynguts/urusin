@@ -224,6 +224,20 @@ describe('broker Navigator web', () => {
       berkas: [],
     });
     expect(w.panggilan.at(-1)).toMatchObject({ path: '/internal/sesi/aksi', body: { kolom } });
+    // Terikat eksekusi: amati (termasuk pantau) dan aksi membawa executionId loop.
+    const terikat = tanganWorker(CFG, OWNER, w.fetcher, 'x_uji');
+    await terikat.amati({ pantau: true });
+    await terikat.aksi({
+      rencanaHash: 'f'.repeat(64),
+      aksi: [{ jenis: 'serahkan', alasan: 'berhenti' }],
+      seq: 1,
+      kolom: [],
+      berkas: [],
+    });
+    expect(w.panggilan.slice(-2).map((p) => [p.path, p.body.executionId])).toEqual([
+      ['/internal/sesi/amati', 'x_uji'],
+      ['/internal/sesi/aksi', 'x_uji'],
+    ]);
   });
 
   it('Mode Uji di replika: loop berjalan, jejak tersimpan di rantai audit tanpa nilai, pesan templat', async () => {
@@ -393,6 +407,9 @@ describe('broker Navigator web', () => {
     // N6: 404 sesi tidak ada = sesi sudah diakhiri (loop berhenti sesi_berakhir), bukan galat worker.
     expect(new GalatTangan(404, 'SESI_TIDAK_ADA').berakhir).toBe(true);
     expect(new GalatTangan(404).berakhir).toBe(false);
+    // Sesi memegang eksekusi lain (amati/aksi ber-executionId): loop ini selesai, bukan galat worker.
+    expect(new GalatTangan(409, 'PESAN_TIDAK_SAH').berakhir).toBe(true);
+    expect(new GalatTangan(409, 'LAYANAN_TIDAK_TERSEDIA').berakhir).toBe(false);
     expect(new GalatTangan(503).berakhir).toBe(false);
   });
 

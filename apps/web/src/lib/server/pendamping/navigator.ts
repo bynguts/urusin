@@ -51,7 +51,8 @@ import type { Runtime } from '#lib/server/runtime.js';
  * Galat kanal internal: status HTTP + kode dari worker (404 = sesi tidak ada). `sementara` (dibaca loop
  * Navigator): 409 LAYANAN_TIDAK_TERSEDIA = peramban sesi belum siap; 503 = halaman sedang berpindah atau
  * worker sesaat tidak terjangkau (termasuk batas waktu panggilan). `berakhir`: 404 SESI_TIDAK_ADA = sesi sudah
- * diakhiri (loop berhenti `sesi_berakhir`, bukan "tidak bisa dihubungi").
+ * diakhiri (loop berhenti `sesi_berakhir`, bukan "tidak bisa dihubungi"); 409 PESAN_TIDAK_SAH di amati/aksi =
+ * sesi sudah memegang eksekusi lain (sama: loop ini selesai).
  */
 export class GalatTangan extends Error {
   readonly sementara: 'belum_siap' | 'sesaat' | undefined;
@@ -68,7 +69,8 @@ export class GalatTangan extends Error {
         : status === 409 && kode === 'LAYANAN_TIDAK_TERSEDIA'
           ? 'belum_siap'
           : undefined;
-    this.berakhir = status === 404 && kode === 'SESI_TIDAK_ADA';
+    this.berakhir =
+      (status === 404 && kode === 'SESI_TIDAK_ADA') || (status === 409 && kode === 'PESAN_TIDAK_SAH');
   }
 }
 
@@ -98,20 +100,22 @@ export function tanganWorker(
     return r.data;
   };
   const pemilik = { urusanId: owner.urusanId, sidHash: owner.sidHash };
+  // amati/aksi terikat eksekusi: worker menolak (409) loop lama yang sesinya sudah memegang eksekusi lain.
+  const terikat = executionId ? { ...pemilik, executionId } : pemilik;
   return {
     // `pantau`: baca-saja saat warga memegang kendali (tanpa jejak amati, peta ref worker tidak diganti).
     amati: (opsi) =>
       minta(
         '/internal/sesi/amati',
         AmatiSesiResponseSchema,
-        opsi?.pantau ? { ...pemilik, pantau: true } : pemilik,
+        opsi?.pantau ? { ...terikat, pantau: true } : terikat,
       ),
     aksi: (r) =>
       minta(
         '/internal/sesi/aksi',
         AksiSesiResponseSchema,
         {
-          ...pemilik,
+          ...terikat,
           rencanaHash: r.rencanaHash,
           aksi: r.aksi,
           seq: r.seq,
