@@ -5,7 +5,12 @@ import { AKUN_COOKIE, hapusAkunCookie } from '#lib/server/akun.js';
 import { assertHostEnv } from '#lib/server/hosts.js';
 import { catatGalatApi } from '#lib/server/log-galat.js';
 import { checkOrigin } from '#lib/server/origin.js';
-import { pasangPemeriksaPemilikAkun } from '#lib/server/pendamping.js';
+import {
+  asalWsLain,
+  pasangPemeriksaPemilikAkun,
+  pendampingConfig,
+  tambahConnectSrc,
+} from '#lib/server/pendamping.js';
 import { pemeriksaPemilikVault } from '#lib/server/pendamping/pemilik.js';
 import { getRuntime, publicOrigin } from '#lib/server/runtime.js';
 import { ensureSession, migrasiSid } from '#lib/server/sesi.js';
@@ -61,6 +66,13 @@ export const handle: Handle = async ({ event, resolve }) => {
     } else hapusAkunCookie(event.cookies);
   }
   const response = await resolve(event);
+  // WS worker Pendamping di origin lain (demo final lokal: ws://localhost:4330) harus diizinkan connect-src;
+  // tanpa ini peramban memblokirnya. Kosong di produksi (wsUrl lewat domain web sendiri = 'self').
+  const csp = response.headers.get('content-security-policy');
+  if (csp) {
+    const asal = asalWsLain(pendampingConfig(), publicOrigin());
+    if (asal.length > 0) response.headers.set('content-security-policy', tambahConnectSrc(csp, asal));
+  }
   // Satu baris per respons API gagal (pola rute + status + kode saja), untuk diagnosis operator.
   if (response.status >= 400) await catatGalatApi(event.request.method, event.route?.id ?? null, response);
   return response;

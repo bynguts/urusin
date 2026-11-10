@@ -103,6 +103,33 @@ export function pendampingConfig(
   };
 }
 
+/**
+ * Origin WS worker yang TIDAK tercakup `connect-src 'self'` (host:port beda dari origin web), mis.
+ * `ws://localhost:4330` saat demo final lokal (web http://localhost:3000). Di produksi semua `wsUrl` lewat domain
+ * web sendiri (`wss://<domain>/pendamping/...`), jadi daftar ini kosong dan CSP tidak berubah.
+ */
+export function asalWsLain(cfg: PendampingConfig | null, originWeb: string): string[] {
+  const host = new URL(originWeb).host;
+  const out = new Set<string>();
+  for (const w of cfg?.workers ?? []) {
+    if (!w.wsUrl) continue;
+    const u = new URL(w.wsUrl);
+    if (u.host !== host) out.add(`${u.protocol}//${u.host}`);
+  }
+  return [...out];
+}
+
+/** Tambahkan origin ke direktif `connect-src` header CSP (direktif lain tidak disentuh). */
+export function tambahConnectSrc(csp: string, asal: readonly string[]): string {
+  if (asal.length === 0) return csp;
+  return csp
+    .split(';')
+    .map((d) => d.trim())
+    .filter(Boolean)
+    .map((d) => (/^connect-src(\s|$)/.test(d) ? `${d} ${asal.join(' ')}` : d))
+    .join('; ');
+}
+
 const SID_RE = /^[0-9a-f]{32}$/;
 
 /**

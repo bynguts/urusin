@@ -23,6 +23,7 @@ import { checkOrigin } from './origin';
 import { daftarWrite } from '../pendamping/isi-data';
 import { pemeriksaPemilikVault } from './pendamping/pemilik';
 import {
+  asalWsLain,
   hashSid,
   panggil,
   pasangPemeriksaPemilikAkun,
@@ -32,6 +33,7 @@ import {
   resetBrokerPendamping,
   sidDariRequest,
   skema,
+  tambahConnectSrc,
   tandaInternal,
   type PendampingConfig,
 } from './pendamping';
@@ -579,6 +581,29 @@ describe('broker Browser Pendamping', () => {
       rt.akun.catatPemilikUrusan(u.id, { akun });
       return { u, cookie: `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${rt.akun.buatSesi(akun.id, ktx)}` };
     }
+
+    it('CSP connect-src: hanya origin WS worker di luar origin web (final lokal), produksi tidak berubah', () => {
+      const cfg = pendampingConfig(process.env);
+      // Produksi: semua wsUrl lewat domain web sendiri -> tercakup 'self', CSP tidak disentuh.
+      expect(asalWsLain(cfg, 'https://urusin.test')).toEqual([]);
+      const csp = "default-src 'self'; connect-src 'self'; frame-ancestors 'none'";
+      expect(tambahConnectSrc(csp, [])).toBe(csp);
+      // Final lokal: web http://localhost:3000, WS ke ws://localhost:4330 (port beda = bukan 'self').
+      const lokal = pendampingConfig({
+        PENDAMPING_INTERNAL_TOKEN: 't',
+        PENDAMPING_WORKERS: JSON.stringify([
+          { ...LAPTOP, wsUrl: 'ws://localhost:4330/ws' },
+          { ...VPS, id: 'b', wsUrl: 'ws://localhost:4330/ws' },
+          { ...VPS, id: 'c', wsUrl: 'ws://localhost:3000/pendamping/ws' },
+        ]),
+      });
+      const asal = asalWsLain(lokal, 'http://localhost:3000');
+      expect(asal).toEqual(['ws://localhost:4330']);
+      expect(tambahConnectSrc(csp, asal)).toBe(
+        "default-src 'self'; connect-src 'self' ws://localhost:4330; frame-ancestors 'none'",
+      );
+      expect(asalWsLain(null, 'http://localhost:3000')).toEqual([]);
+    });
 
     it('konfigurasi: JSON valid; JSON rusak, id ganda, url berjalur, tanpa token -> null; fallback satu URL', () => {
       expect(pendampingConfig(process.env)?.workers.map((w) => w.id)).toEqual(['vps', 'laptop-a']);
