@@ -195,7 +195,7 @@ export const PERSONA = [
     wilayahTerkait: ['depok'],
     adapterBoleh: [],
     harapan:
-      'Jujur bahwa SKCK layanan Polri (Perpol 1/2026): diajukan lewat aplikasi layanan digital Polri, wajib peserta aktif JKN, pasfoto latar merah, berlaku 6 bulan untuk 1 keperluan; loket manual hanya bila aplikasi dinyatakan tidak berfungsi; tidak mewajibkan angka tarif atau surat pengantar kelurahan; tidak mengarahkan ke Disdukcapil/Wonogiri; tidak menjanjikan Browser Pendamping.',
+      'Jujur bahwa SKCK layanan Polri (Perpol 1/2026): diajukan lewat Super App Polri Presisi (aplikasi layanan digital Polri; tanpa mewajibkan URL web tertentu), wajib peserta aktif JKN, pasfoto latar merah, berlaku 6 bulan untuk 1 keperluan; loket manual hanya bila aplikasi dinyatakan tidak berfungsi; tidak mewajibkan angka tarif atau surat pengantar kelurahan; tidak mengarahkan ke Disdukcapil/Wonogiri; tidak menjanjikan Browser Pendamping.',
   },
   {
     id: 'p14-surabaya-akta-lahir',

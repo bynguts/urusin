@@ -1233,14 +1233,18 @@
         "tersedia": true,
         "kanal": [
           {
-            "nama": "Fitur SKCK pada aplikasi layanan digital Polri (perlu akun; memuat informasi biaya, syarat dokumen, waktu dan lokasi pengambilan; SKCK bisa dicetak lewat fitur cetak)",
-            "url": "https://peraturan.go.id/id/peraturan-polri-no-1-tahun-2026",
-            "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
-            "pasal": "Pasal 4, Pasal 5 ayat (1)-(2), Pasal 10 ayat (1)",
+            "nama": "Super App Polri Presisi (aplikasi layanan digital Polri), fitur SKCK: perlu akun; memuat informasi biaya, syarat dokumen, waktu dan lokasi pengambilan; SKCK bisa dicetak lewat fitur cetak",
+            "url": null,
+            "sumber": [
+              "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+              "https://humas.polri.go.id/news/detail/2157823",
+              "https://humas.polri.go.id/news/detail/2157109"
+            ],
+            "pasal": "Perpol 1/2026 Pasal 4, Pasal 5 ayat (1)-(2), Pasal 10 ayat (1)",
             "terverifikasi": true
           }
         ],
-        "catatan": "Perpol tidak menyebut nama/URL aplikasi. Jalur manual di loket hanya bila aplikasi dinyatakan tidak berfungsi lewat pemberitahuan resmi Kabid Yanmas Baintelkam (Pasal 12)."
+        "catatan": "Perpol 1/2026 menyebut \"aplikasi layanan digital Polri\" tanpa nama/URL; nama \"Super App Polri Presisi\" dari judul berita resmi Divisi Humas Polri (humas.polri.go.id 2157823, 2157109). Tidak ada URL web yang wajib: domain skck.polri.go.id tidak hidup (TLS putus, verifikasi agen grounding). Jalur manual di loket SKCK kantor kepolisian setempat hanya bila aplikasi dinyatakan tidak berfungsi lewat pemberitahuan resmi Kabid Yanmas Baintelkam (Pasal 12-13)."
       },
       "persyaratan": [
         {
@@ -1250,7 +1254,7 @@
           "terverifikasi": true
         },
         {
-          "teks": "Memiliki akun aplikasi layanan digital Polri dan mengajukan lewat fitur SKCK",
+          "teks": "Memiliki akun di Super App Polri Presisi (aplikasi layanan digital Polri) dan mengajukan lewat fitur SKCK",
           "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
           "pasal": "Pasal 4 ayat (2), Pasal 5 ayat (1)",
           "terverifikasi": true
@@ -1317,19 +1321,20 @@
           "terverifikasi": true
         }
       ],
-      "kataKunciWajib": ["polri", "aplikasi", "jaminan kesehatan", "pasfoto", "merah", "6 bulan"],
+      "kataKunciWajib": ["polri", "presisi", "jaminan kesehatan", "pasfoto", "merah", "6 bulan"],
       "klaimSalah": [
         "SKCK diurus di Disdukcapil",
         "wajib surat pengantar kelurahan/RT-RW (tidak ada di Perpol 1/2026)",
         "SKCK berlaku 1 tahun",
         "biaya SKCK pasti Rp30.000 / angka tarif tertentu sebagai syarat (Perpol tidak mengatur besaran)",
         "datang ke loket Polsek/Polres sebagai jalur utama (manual hanya bila aplikasi dinyatakan tidak berfungsi)",
-        "masih mengacu Perpol 6/2023 (sudah dicabut)"
+        "masih mengacu Perpol 6/2023 (sudah dicabut)",
+        "wajib mendaftar lewat situs skck.polri.go.id (domain tidak hidup; Perpol tidak menyebut URL)"
       ],
       "tidakTerverifikasi": [
         {
-          "teks": "Nama dan alamat aplikasi layanan digital Polri (mis. Presisi / skck.polri.go.id)",
-          "alasan": "Perpol 1/2026 tidak menyebut nama atau URL aplikasi."
+          "teks": "URL web resmi untuk mengajukan SKCK",
+          "alasan": "Perpol 1/2026 tidak menyebut URL; skck.polri.go.id tidak hidup. Jangan wajibkan URL tertentu."
         },
         {
           "teks": "Besaran tarif PNBP SKCK yang berlaku",
