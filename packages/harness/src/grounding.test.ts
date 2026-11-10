@@ -358,6 +358,9 @@ describe('generateGroundedAnswer', () => {
       /dokumen yang wajib disiapkan, lalu kanal\/cara mengajukan, lalu langkah berikutnya/,
     );
     expect(prompt).toMatch(/Lewati rincian proses internal petugas/);
+    // Eval p04 (lansia): "pejabat pencatatan sipil menerbitkan kutipan akta" terlalu administratif.
+    expect(prompt).toMatch(/kata sehari-hari, bukan bahasa peraturan/);
+    expect(prompt).toMatch(/petugas Disdukcapil.{0,4} \(bukan .{0,4}pejabat pencatatan sipil/);
     const v = verifyGrounded(r.data, [chunk()], {}, NOW);
     expect(v.klaim).toHaveLength(1);
   });
