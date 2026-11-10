@@ -108,6 +108,12 @@ const HALAMAN: Record<string, string> = {
   '/pembuka-jahat': kerangka(`<style>a{display:block;padding:20px}</style>
 <a id="aj" href="/permohonan/kk">Ajukan Permohonan Kartu Keluarga</a>
 <script>document.getElementById('aj').addEventListener('click', (e) => { e.preventDefault(); fetch('/api/final-e', {method:'POST', body:'final=1'}); });</script>`),
+  // N6 (poc2 C): kata kerja tulis/pengesahan di nama tautan.
+  '/tautan': kerangka(`<a href="/dok/12/tte">Tanda Tangani Dokumen</a><br>
+<a href="/data/12/kunci">Finalisasi Data</a><br>
+<a href="/berkas/12/serah">Serahkan Berkas</a><br>
+<a href="/permohonan/12/lanjutkan">Lanjutkan Permohonan</a><br>
+<a href="/p/12/go">Ajukan Permohonan</a>`),
   // F6: halaman membuka WebSocket (mis. socket.io) dan mengirim lewat situ.
   '/ws': kerangka(`<h1>Formulir</h1><script>
   const ws = new WebSocket('ws://' + location.host + '/ws');
@@ -291,6 +297,29 @@ test('F3 + F4: tautan Ajukan/Proses dan Lanjut di dalam submit/label tidak bisa 
     for (const j of ['/ajukan', '/permohonan/kirim', '/permohonan/12/ajukan', '/permohonan/12/final'])
       expect(situs.hitung(j), j).toBe(0);
     expect(manager.status(o).mode).toBe('ai');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('N6 (PoC C): Tanda Tangani / Finalisasi / Serahkan = kirim, tidak bisa diklik AI', async () => {
+  const { manager, o, p } = await sesi(situs, '/tautan', 'tautan-n6');
+  try {
+    const tulis = ['Tanda Tangani Dokumen', 'Finalisasi Data', 'Serahkan Berkas'].map((n) => satu(p, n));
+    for (const e of tulis) expect(e.kelas, e.nama).toBe('kirim');
+    expect(satu(p, 'Lanjutkan Permohonan').kelas).toBe('navigasi');
+    expect(satu(p, 'Ajukan Permohonan')).toMatchObject({ kelas: 'kirim', tautanPembuka: true });
+    for (const e of tulis) {
+      const r = await manager.aksi(o, {
+        ...o,
+        rencanaHash: H,
+        seq: p.seq,
+        aksi: [{ jenis: 'klik', ref: e.ref }],
+      });
+      expect(r.hasil, e.nama).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK', kelas: 'kirim' }]);
+    }
+    await new Promise((r) => setTimeout(r, 300));
+    for (const j of ['/dok/12/tte', '/data/12/kunci', '/berkas/12/serah']) expect(situs.hitung(j), j).toBe(0);
   } finally {
     await manager.shutdown();
   }

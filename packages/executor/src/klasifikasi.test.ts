@@ -256,6 +256,25 @@ const TABEL: [string, string, KelasKendali][] = [
   ['tautan netral ke jalur terima', '<a href="/surat/terima?id=1" data-uji>Lihat</a>', 'kirim'],
   ['tautan netral ke jalur send', '<a href="/api/send/1" data-uji>Lihat</a>', 'kirim'],
 
+  // --- N6 (PoC C): kata kerja tulis/pengesahan lain ---
+  ['tautan Tanda Tangani Dokumen', '<a href="/dok/12/tte" data-uji>Tanda Tangani Dokumen</a>', 'kirim'],
+  ['tautan Finalisasi Data', '<a href="/data/12/kunci" data-uji>Finalisasi Data</a>', 'kirim'],
+  ['tautan Serahkan Berkas', '<a href="/berkas/12/serah" data-uji>Serahkan Berkas</a>', 'kirim'],
+  ['tautan TTE', '<a href="/dok/12" data-uji>TTE</a>', 'kirim'],
+  ['tautan Setor Berkas', '<a href="/berkas/12" data-uji>Setor Berkas</a>', 'kirim'],
+  ['tautan Sahkan', '<a href="/dok/12" data-uji>Sahkan Dokumen</a>', 'kirim'],
+  ['tautan Terbitkan', '<a href="/dok/12" data-uji>Terbitkan Akta</a>', 'kirim'],
+  ['tautan Laporkan', '<a href="/dok/12" data-uji>Laporkan Kelahiran</a>', 'kirim'],
+  ['tautan Kunci Data', '<a href="/dok/12" data-uji>Kunci Data</a>', 'kirim'],
+  ['tautan netral ke jalur tanda-tangan', '<a href="/dok/12/tanda-tangan" data-uji>Buka</a>', 'kirim'],
+  ['tautan netral ke jalur tte', '<a href="/dok/12/tte" data-uji>Buka</a>', 'kirim'],
+  ['tombol Tanda Tangan', '<button type="button" data-uji>Tanda Tangan</button>', 'kirim'],
+  [
+    'tautan Lanjutkan Permohonan tetap navigasi',
+    '<a href="/permohonan/12/lanjutkan" data-uji>Lanjutkan Permohonan</a>',
+    'navigasi',
+  ],
+
   // --- F4: aktivator leluhur dan kontrol label; kelas paling ketat menang ---
   [
     'span role=button Lanjut di dalam button submit',

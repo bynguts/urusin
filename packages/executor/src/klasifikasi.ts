@@ -140,6 +140,15 @@ const NEG_AKAR = [
   'register',
   'finish',
   'payment',
+  // Review N6: kata kerja tulis/pengesahan di luar daftar awal ("Tanda Tangani", "Finalisasi", "Serahkan").
+  'tandatangan',
+  'final',
+  'serahkan',
+  'setor',
+  'kunci',
+  'sahkan',
+  'terbitkan',
+  'lapor',
 ];
 /** Kata NEG pendek: hanya cocok sebagai token utuh (supaya "ya" tidak mengenai "layanan"). */
 const NEG_TOKEN = [
@@ -155,6 +164,7 @@ const NEG_TOKEN = [
   'apply',
   'agree',
   'accept',
+  'tte',
 ];
 /**
  * Tautan memakai NEG yang sama dengan tombol ("Ajukan Permohonan", "Proses Permohonan" = kirim). Pengecualian
@@ -210,7 +220,17 @@ const NEG_JALUR = [
   'apply',
   'terima',
   'tolak',
+  'tandatangan',
+  'tte',
+  'serah',
+  'setor',
+  'kunci',
+  'sahkan',
+  'terbit',
+  'lapor',
 ];
+/** Frasa NEG dua kata ("tanda tangan", "tanda-tangan") untuk nama dan jalur. */
+const RE_FRASA_NEG = /tanda[^a-z0-9]{0,3}tangan/;
 /** Token ikon yang berarti kirim/simpan/hapus/keluar (fa-paper-plane, bi-send, material "send", ...). */
 const NEG_IKON = [
   'paper',
@@ -558,7 +578,8 @@ function tokenNeg(t: string, akar: readonly string[]): boolean {
 }
 
 function cocokNeg(teks: string, akar: readonly string[]): boolean {
-  return tokenKata(lipatNeg(teks)).some((t) => tokenNeg(t, akar));
+  const t = lipatNeg(teks);
+  return RE_FRASA_NEG.test(t) || tokenKata(t).some((k) => tokenNeg(k, akar));
 }
 
 function bersihkanPanah(s: string): string {
@@ -581,7 +602,10 @@ function tautanGetBiasa(f: FiturKendali): boolean {
 
 /** Jalur+kueri (sudah dinormalkan) memuat token tulis NEG_JALUR (ajukan, kirim, simpan, hapus, ...). */
 function jalurNeg(jalur: string): boolean {
-  return tokenKata(jalur).some((t) => !BUKAN_NEG.test(t) && NEG_JALUR.some((k) => t.includes(k)));
+  return (
+    RE_FRASA_NEG.test(jalur) ||
+    tokenKata(jalur).some((t) => !BUKAN_NEG.test(t) && NEG_JALUR.some((k) => t.includes(k)))
+  );
 }
 
 /**
