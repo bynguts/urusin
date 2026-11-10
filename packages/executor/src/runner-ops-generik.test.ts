@@ -201,14 +201,33 @@ describe('op aksi: tulis', () => {
     expect(submit).toHaveBeenCalled();
   });
 
-  it('pilih radio dan centang biasa', () => {
+  it('pilih radio dan centang opsi data', () => {
     const h = pasang(`<fieldset><legend>Jenis Kelamin</legend>
       <label><input type="radio" name="jk" value="L"> Laki-laki</label><label><input type="radio" name="jk" value="P"> Perempuan</label></fieldset>
-      <label><input type="checkbox" name="kabar"> Kirimi saya kabar</label>`);
+      <label><input type="checkbox" name="sama"> Alamat domisili sama dengan KTP</label>`);
     expect(aksi(h.peta, { jenis: 'pilih', ref: 'e1', opsi: 1 })[0]!.status).toBe('ok');
     expect((document.querySelector('input[value=P]') as HTMLInputElement).checked).toBe(true);
     expect(aksi(h.peta, { jenis: 'centang', ref: 'e2', nilai: true })[0]!.status).toBe('ok');
-    expect((document.querySelector('input[name=kabar]') as HTMLInputElement).checked).toBe(true);
+    expect((document.querySelector('input[name=sama]') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('centang default tolak: di luar allowlist opsi data dan pernyataan diperluas = TERLARANG', () => {
+    const h = pasang(`<label><input type="checkbox" name="kabar"> Kirimi saya kabar</label>
+      <label><input type="checkbox" name="ok"> Data di atas sudah benar dan saya pahami konsekuensinya</label>
+      <label><input type="checkbox" name="robot"> Saya bukan robot</label>
+      <label><input type="checkbox" name="ktp"> Punya KTP, dan saya menjamin keasliannya</label>`);
+    expect(h.pengamatan.elemen.map((e) => e.terlarang)).toEqual([
+      'pernyataan',
+      'pernyataan',
+      'pernyataan',
+      'pernyataan',
+    ]);
+    for (const ref of ['e1', 'e2', 'e3', 'e4'])
+      expect(aksi(h.peta, { jenis: 'centang', ref, nilai: true })[0]).toMatchObject({
+        status: 'ditolak',
+        kode: 'TERLARANG',
+      });
+    expect([...document.querySelectorAll('input')].some((i) => i.checked)).toBe(false);
   });
 
   it('unggah ke field berkas', () => {
