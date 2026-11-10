@@ -6,6 +6,7 @@ import {
   cariWilayah,
   kontakDukcapil,
   menyebutWilayah,
+  temukanWilayah,
   namaPendekWilayah,
   routeByKode,
   wilayahByKode,
@@ -96,5 +97,40 @@ describe('nama dan penanda', () => {
     expect(menyebutWilayah('ya, bekasi', bks)).toBe(true);
     expect(menyebutWilayah('saya di Cikarang', bks)).toBe(false);
     expect(menyebutWilayah('bekasiraya', bks)).toBe(false);
+  });
+
+  it('nama terpanjang menang: Luwu Utara bukan Luwu, Bone Bolango bukan Bone, Padang Pariaman bukan Kota Padang', () => {
+    const kode = (t: string) => temukanWilayah(t).map((x) => x.wilayah.kodeKabKota);
+    const luwu = SEMUA_WILAYAH.find((w) => w.nama === 'Kabupaten Luwu')!;
+    const luwuUtara = SEMUA_WILAYAH.find((w) => w.nama === 'Kabupaten Luwu Utara')!;
+    expect(kode('KTP saya Luwu Utara')).toEqual([luwuUtara.kodeKabKota]);
+    expect(menyebutWilayah('KTP saya Luwu Utara', luwu)).toBe(false);
+    expect(menyebutWilayah('KTP saya Luwu', luwu)).toBe(true);
+    const bone = SEMUA_WILAYAH.find((w) => w.nama === 'Kabupaten Bone')!;
+    expect(menyebutWilayah('saya di Bone Bolango', bone)).toBe(false);
+    const padang = SEMUA_WILAYAH.find((w) => w.nama === 'Kota Padang')!;
+    expect(menyebutWilayah('Kabupaten Padang Pariaman', padang)).toBe(false);
+    expect(menyebutWilayah('Kota Padang', padang)).toBe(true);
+  });
+
+  it('jenis yang disebut menyaring nama ganda; "ke" ditandai untuk tujuan', () => {
+    expect(temukanWilayah('KTP Kota Bekasi').map((x) => x.wilayah.kodeKabKota)).toEqual(['3275']);
+    expect(
+      temukanWilayah('KTP Bekasi')
+        .map((x) => x.wilayah.kodeKabKota)
+        .sort(),
+    ).toEqual(['3216', '3275']);
+    const [asal, tujuan] = temukanWilayah('dari Wonogiri pindah ke Kota Surabaya');
+    expect(asal).toMatchObject({ teks: 'wonogiri', sebelum: 'dari', jenisDisebut: null });
+    expect(tujuan).toMatchObject({ teks: 'surabaya', sebelum: 'ke', jenisDisebut: 'kota' });
+  });
+
+  it('kode hanya berdiri sendiri atau setelah "kode": "tahun 1971" bukan kode wilayah', () => {
+    const w1971 = wilayahByKode('1971');
+    expect(w1971).toBeDefined();
+    expect(menyebutWilayah('anak saya lahir tahun 1971', w1971!)).toBe(false);
+    expect(menyebutWilayah('1971', w1971!)).toBe(true);
+    expect(menyebutWilayah('kode 1971', w1971!)).toBe(true);
+    expect(menyebutWilayah('33.12', wilayahByKode('3312')!)).toBe(true);
   });
 });

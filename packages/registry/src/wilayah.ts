@@ -106,10 +106,76 @@ export function penandaWilayah(w: Wilayah): string[] {
   return [inti(normal(w.nama)), w.kodeKabKota];
 }
 
-/** Apakah teks (huruf kecil dinormalkan) menyebut wilayah ini. */
+const INDEKS_KATA = INDEKS.map((x) => ({ w: x.w, kata: x.inti.split(' ') }));
+
+/** Satu sebutan wilayah di teks warga. */
+export type SebutanWilayah = {
+  wilayah: Wilayah;
+  /** Teks nama inti yang disebut (huruf kecil), mis. "bekasi". Sama untuk Kota dan Kabupaten bernama ganda. */
+  teks: string;
+  /** Posisi kata pertama nama inti pada teks yang dinormalkan (urutan sebutan). */
+  mulai: number;
+  /** Jenis yang disebut tepat sebelum nama ("kota"/"kabupaten"), bila ada. */
+  jenisDisebut: Wilayah['jenis'] | null;
+  /** Kata sebelum nama (melewati "kota"/"kabupaten"/"administrasi"), mis. "ke" untuk tujuan pindah. */
+  sebelum: string | null;
+};
+
+/**
+ * Semua kab/kota yang disebut di teks. Nama terpanjang menang: "Luwu Utara" tidak juga dihitung sebagai "Luwu",
+ * "Padang Pariaman" bukan "Kota Padang". Jenis yang disebut ("Kota Bekasi") menyaring nama ganda. Kode 4 digit
+ * hanya dihitung bila berdiri sendiri ("3312", "33.12") atau didahului kata "kode" ("tahun 1971" bukan kode).
+ */
+export function temukanWilayah(teksAsli: string): SebutanWilayah[] {
+  const kodeSaja = /^\s*(\d{2})\.?(\d{2})\s*$/.exec(teksAsli);
+  const kata = normal(teksAsli).split(' ').filter(Boolean);
+  const out: SebutanWilayah[] = [];
+  const tambahKode = (kode: string, mulai: number) => {
+    const w = BY_KODE.get(kode);
+    if (w) out.push({ wilayah: w, teks: kode, mulai, jenisDisebut: null, sebelum: null });
+  };
+  if (kodeSaja) tambahKode(`${kodeSaja[1]}${kodeSaja[2]}`, 0);
+  kata.forEach((k, i) => {
+    if (k === 'kode' && /^\d{4}$/.test(kata[i + 1] ?? '')) tambahKode(kata[i + 1]!, i + 1);
+  });
+
+  type Calon = { w: Wilayah; mulai: number; panjang: number };
+  const calon: Calon[] = [];
+  for (const x of INDEKS_KATA)
+    for (let i = 0; i + x.kata.length <= kata.length; i++)
+      if (x.kata.every((t, j) => kata[i + j] === t)) calon.push({ w: x.w, mulai: i, panjang: x.kata.length });
+  // Nama terpanjang dulu; nama yang tumpang tindih dengan nama yang LEBIH panjang dibuang.
+  calon.sort((a, b) => b.panjang - a.panjang);
+  const diterima: Calon[] = [];
+  for (const c of calon) {
+    const kalah = diterima.some(
+      (d) => d.panjang > c.panjang && c.mulai < d.mulai + d.panjang && d.mulai < c.mulai + c.panjang,
+    );
+    if (!kalah) diterima.push(c);
+  }
+  const perPosisi = new Map<number, Calon[]>();
+  for (const c of diterima) perPosisi.set(c.mulai, [...(perPosisi.get(c.mulai) ?? []), c]);
+  for (const [mulai, daftar] of perPosisi) {
+    let j = mulai - 1;
+    if (kata[j] === 'administrasi') j--;
+    const jenisDisebut = kata[j] === 'kota' ? 'kota' : kata[j] === 'kabupaten' ? 'kabupaten' : null;
+    if (jenisDisebut) j--;
+    const sesuaiJenis = daftar.filter((c) => c.w.jenis === jenisDisebut);
+    for (const c of sesuaiJenis.length ? sesuaiJenis : daftar)
+      out.push({
+        wilayah: c.w,
+        teks: kata.slice(mulai, mulai + c.panjang).join(' '),
+        mulai,
+        jenisDisebut,
+        sebelum: kata[j] ?? null,
+      });
+  }
+  return out.sort((a, b) => a.mulai - b.mulai);
+}
+
+/** Apakah teks menyebut wilayah ini (lihat `temukanWilayah`: nama terpanjang menang, kode hanya berdiri sendiri). */
 export function menyebutWilayah(teks: string, w: Wilayah): boolean {
-  const n = ` ${normal(teks)} `;
-  return penandaWilayah(w).some((p) => n.includes(` ${p} `));
+  return temukanWilayah(teks).some((x) => x.wilayah.kodeKabKota === w.kodeKabKota);
 }
 
 /** Situs Disdukcapil kab/kota yang terverifikasi otomatis; undefined bila belum ada (jangan mengarang). */
