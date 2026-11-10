@@ -2,7 +2,7 @@
 .lp {
   --lp-serif: 'Lora Urusin', Georgia, serif;
   font-family: 'Strawberry Sans', system-ui, sans-serif;
-  color: #252522;
+  color: var(--sb-text-primary, #252522);
   min-height: 100dvh;
 }
 .lp *,
@@ -62,4 +62,218 @@
     content-visibility: auto;
     contain-intrinsic-size: auto 236px;
   }
+}
+
+/* Tombol pengalih tema (Dark / Light) di header landing */
+.lp-tombol-tema {
+  align-items: center;
+  background-color: transparent;
+  border: 1px solid var(--sb-stroke, #efe6dc);
+  border-radius: 100px;
+  color: var(--sb-text-primary, #252522);
+  cursor: pointer;
+  display: inline-flex;
+  height: 38px;
+  width: 38px;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lp-tombol-tema:hover {
+  background-color: var(--sb-bg-secondary, #f7f2ed);
+  border-color: var(--sb-stroke-secondary, #e6dbd1);
+  transform: translateY(-1px);
+}
+
+.lp-tombol-tema:active {
+  transform: translateY(0);
+}
+
+.lp-tombol-tema:focus-visible {
+  outline: 2px solid var(--sb-text-primary, #252522);
+  outline-offset: 2px;
+}
+
+/* Status ikon tema: bulan di mode terang, matahari di mode gelap */
+:root:not([data-theme='dark']) .lp-tombol-tema .lp-ikon-matahari {
+  display: none;
+}
+:root:not([data-theme='dark']) .lp-tombol-tema .lp-ikon-bulan {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+[data-theme='dark'] .lp-tombol-tema .lp-ikon-matahari {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+[data-theme='dark'] .lp-tombol-tema .lp-ikon-bulan {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .lp-tombol-tema {
+    height: 32px;
+    width: 32px;
+  }
+}
+
+/* 
+ * ==========================================================================
+ * Tema Gelap (Dark Mode) Landing & Subpage Publik (DESIGN.md - NVcu7)
+ * ==========================================================================
+ */
+[data-theme='dark'] .lp {
+  color: var(--sb-text-primary, #f7f3ed);
+}
+
+[data-theme='dark'] :is(.lp0, .lp1) {
+  background-color: var(--sb-bg-primary, #191a18) !important;
+}
+
+/* Header landing */
+[data-theme='dark'] .n-header {
+  background-color: rgba(25, 26, 24, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+[data-theme='dark'] .lp6 {
+  color: var(--sb-text-primary, #f7f3ed);
+}
+[data-theme='dark'] .lp9 {
+  color: var(--sb-text-body, #cdcac2);
+}
+[data-theme='dark'] .lp8:hover .lp9,
+[data-theme='dark'] .lp8.lp-aktif .lp9 {
+  color: var(--sb-text-primary, #f7f3ed);
+}
+[data-theme='dark'] .lp8.lp-aktif {
+  background-color: var(--sb-bg-secondary, #22231f);
+}
+[data-theme='dark'] .lp-tombol-tema {
+  border-color: var(--sb-stroke, #3a3c34);
+  color: var(--sb-text-primary, #f7f3ed);
+}
+[data-theme='dark'] .lp-tombol-tema:hover {
+  background-color: var(--sb-bg-secondary, #22231f);
+  border-color: var(--sb-stroke-secondary, #54564b);
+}
+
+/* Tombol aksi utama (Mulai gratis): di mode gelap memakai cream background & dark label sesuai DESIGN.md */
+[data-theme='dark'] .lp11 {
+  background-color: var(--sb-primary-bg, #f7f3ed);
+}
+[data-theme='dark'] .lp11 .lp12 {
+  color: var(--sb-primary-ink, #191a18);
+}
+
+/* Hero pattern */
+[data-theme='dark'] .lp2 {
+  opacity: 0.15;
+  filter: invert(1);
+}
+
+/* Kartu urusan & peristiwa */
+[data-theme='dark'] :is(.lp27, .lp35, .lp43, .lp51, .lp59, .lp67) {
+  background-color: var(--sb-bg-card, #24251f);
+  outline-color: var(--sb-stroke, #3a3c34);
+}
+[data-theme='dark'] :is(.lp29, .lp37, .lp45, .lp53, .lp61, .lp69) {
+  color: var(--sb-text-primary, #f7f3ed);
+}
+[data-theme='dark'] :is(.lp30, .lp38, .lp46, .lp54, .lp62, .lp70) {
+  color: var(--sb-text-body, #cdcac2);
+}
+[data-theme='dark'] :is(.lp32, .lp40, .lp48, .lp56, .lp64, .lp72) {
+  color: var(--sb-accent-orange, #ffa184);
+}
+
+/* Bagian sekunder hangat (Mengapa Urusin, dsb) */
+[data-theme='dark'] :is(.lp75, .lp104, .tj3, .ck3, .ur3, .pv3) {
+  background-color: var(--sb-bg-secondary, #22231f);
+}
+[data-theme='dark'] .lp78 {
+  color: var(--sb-text-primary, #f7f3ed);
+}
+[data-theme='dark'] .lp79 {
+  color: var(--sb-text-body, #cdcac2);
+}
+
+/* Ubin layanan berputar (marquee) */
+[data-theme='dark'] .lp88 i {
+  background-color: var(--sb-bg-card, #24251f);
+  box-shadow: 0 0 1px #ffffff1f, 0 1px 2px #00000040;
+}
+
+/* Kartu langkah (tiga pilar) */
+[data-theme='dark'] :is(.lp110, .lp127, .lp144) {
+  background-color: var(--sb-bg-card, #24251f);
+  outline-color: var(--sb-stroke, #3a3c34);
+}
+[data-theme='dark'] :is(.lp114, .lp131, .lp148) {
+  color: var(--sb-text-primary, #f7f3ed);
+}
+[data-theme='dark'] :is(.lp115, .lp132, .lp149) {
+  color: var(--sb-text-body, #cdcac2);
+}
+
+/* Panggung demo & karakter */
+[data-theme='dark'] :is(.lp152, .lp197, .lp206) {
+  background-color: var(--sb-bg-card, #24251f);
+  outline-color: var(--sb-stroke, #3a3c34);
+}
+[data-theme='dark'] :is(.lp155, .lp198, .lp208) {
+  color: var(--sb-text-primary, #f7f3ed);
+}
+[data-theme='dark'] :is(.lp156, .lp199, .lp209) {
+  color: var(--sb-text-body, #cdcac2);
+}
+
+/* FAQ landing & subpage */
+[data-theme='dark'] :is(.lp263, .lp267, .lp272, .lp277, .lp282, .tj24, .tj25, .tj30, .tj34, .tj38, .tj44, .tj45, .tj49, .tj54, .tj60, .tj61, .tj66, .tj71, .tj77, .tj78, .tj83) {
+  border-color: var(--sb-stroke, #3a3c34);
+}
+[data-theme='dark'] :is(.lp264, .lp269, .lp274, .lp279, .tj23, .tj27, .tj32, .tj36, .tj40, .tj43, .tj47, .tj51, .tj56, .tj59, .tj63, .tj68, .tj73, .tj76, .tj80, .tj85, .tj89) {
+  color: var(--sb-text-primary, #f7f3ed);
+}
+[data-theme='dark'] :is(.lp265, .lp270, .lp275, .lp280, .tj6, .tj29, .tj53, .tj65, .tj70, .tj82, .tj90) {
+  color: var(--sb-text-body, #cdcac2);
+}
+
+/* CTA panel bawah */
+[data-theme='dark'] :is(.lp284, .tj87) {
+  background-color: var(--sb-bg-card, #24251f);
+  outline-color: var(--sb-stroke, #3a3c34);
+}
+[data-theme='dark'] :is(.lp287, .tj89) {
+  color: var(--sb-text-primary, #f7f3ed);
+}
+[data-theme='dark'] :is(.lp288, .tj90) {
+  color: var(--sb-text-body, #cdcac2);
+}
+[data-theme='dark'] :is(.lp291, .tj95) {
+  background-color: var(--sb-bg-secondary, #22231f);
+  outline-color: var(--sb-stroke, #3a3c34);
+  color: var(--sb-text-primary, #f7f3ed);
+}
+[data-theme='dark'] :is(.lp292, .tj96) {
+  color: var(--sb-text-primary, #f7f3ed);
+}
+
+/* Footer landing */
+[data-theme='dark'] .lp298 {
+  background-color: var(--sb-bg-primary, #191a18);
+  border-top: 1px solid var(--sb-stroke, #3a3c34);
+}
+[data-theme='dark'] :is(.lp300, .lp303, .lp305, .lp307) {
+  color: var(--sb-text-body, #cdcac2);
+}
+[data-theme='dark'] .lp302 {
+  color: var(--sb-text-body, #cdcac2);
+}
+[data-theme='dark'] .lp302:hover {
+  color: var(--sb-text-primary, #f7f3ed);
 }
