@@ -28,10 +28,6 @@
     { nilai: 1.25, label: 'Besar', aa: 'text-xl leading-5' },
     { nilai: 1.5, label: 'Sangat besar', aa: 'text-2xl leading-6' },
   ];
-  const TEMA: { nilai: Prefs['tema']; label: string }[] = [
-    { nilai: 'terang', label: 'Terang' },
-    { nilai: 'gelap', label: 'Gelap' },
-  ];
 
   let kodeWilayah = $state(lokal.data.wilayah?.kodeKabKota ?? '');
   let wilayahTersimpan = $state(false);
@@ -81,25 +77,61 @@
 
   const coba = () =>
     tts.baca('Untuk akta kelahiran, siapkan surat keterangan lahir dari bidan atau rumah sakit.');
+
+  function scrollKeBagian(id: string, e: MouseEvent) {
+    e.preventDefault();
+    aktif = id;
+    const el = document.getElementById(id);
+    const panel = document.getElementById('panel-utama');
+    if (el && panel && window.innerWidth >= 1024) {
+      const panelRect = panel.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const targetScrollTop = panel.scrollTop + (elRect.top - panelRect.top) - 67.5 - 12;
+      panel.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+      history.replaceState(null, '', `#${id}`);
+    } else if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', `#${id}`);
+    }
+  }
+
+  $effect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            aktif = entry.target.id;
+          }
+        }
+      },
+      { rootMargin: '-80px 0px -60% 0px', threshold: 0.1 },
+    );
+    for (const b of BAGIAN) {
+      const el = document.getElementById(b.id);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  });
 </script>
 
 <svelte:head><title>Pengaturan · Urusin</title></svelte:head>
 
 <HeaderHalaman judul="Pengaturan" />
 
-<div class="flex min-h-0 flex-1">
+<div class="flex flex-1 items-start">
   <nav
     aria-label="Bagian pengaturan"
-    class="hidden w-[259.5px] shrink-0 border-r border-line bg-card px-4 py-5 lg:block"
+    class="hidden w-[259.5px] shrink-0 border-r border-line bg-card px-4 py-5 lg:sticky lg:top-[67.5px] lg:self-start lg:h-[calc(100dvh-67.5px-24px)] lg:overflow-y-auto lg:block"
   >
     <ul class="flex flex-col gap-1">
       {#each BAGIAN as b (b.id)}
         <li>
           <a
             href="#{b.id}"
-            onclick={() => (aktif = b.id)}
+            onclick={(e) => scrollKeBagian(b.id, e)}
             aria-current={aktif === b.id ? 'true' : undefined}
-            class="flex h-12 items-center gap-2.5 rounded-xl px-3 text-base leading-[23px] {aktif === b.id
+            class="flex h-12 items-center gap-2.5 rounded-xl px-3 text-base leading-[23px] transition-all duration-150 {aktif ===
+            b.id
               ? 'bg-surface font-semibold text-ink shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
               : 'text-card-ink hover:bg-surface/60'}"
           >
@@ -135,7 +167,7 @@
           {#each UKURAN as u (u.nilai)}
             {@const pilih = prefs.nilai.ukuranHuruf === u.nilai}
             <label
-              class="flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 text-center has-focus-visible:outline-2 has-focus-visible:outline-ink sm:flex-row sm:gap-2.5 {pilih
+              class="relative flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 text-center transition-all duration-150 ease-out has-focus-visible:outline-2 has-focus-visible:outline-ink active:scale-[0.98] sm:flex-row sm:gap-2.5 {pilih
                 ? 'bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
                 : 'hover:bg-surface/60'}"
             >
@@ -205,30 +237,6 @@
           </li>
         {/if}
       </ul>
-
-      <fieldset class="flex flex-col gap-4 rounded-[18px] border border-line p-4 sm:p-[22px]">
-        <legend class="sr-only">Tema</legend>
-        <p aria-hidden="true" class="text-lg leading-[26px] font-semibold text-ink">Tema</p>
-        <div class="grid max-w-sm grid-cols-2 gap-1.5 rounded-2xl bg-bg-2 p-[5px]">
-          {#each TEMA as t (t.nilai)}
-            {@const pilih = (prefs.nilai.tema === 'gelap' ? 'gelap' : 'terang') === t.nilai}
-            <label
-              class="flex min-h-12 cursor-pointer items-center justify-center rounded-xl text-[15px] leading-[22px] has-focus-visible:outline-2 has-focus-visible:outline-ink {pilih
-                ? 'bg-surface font-semibold text-ink shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
-                : 'text-card-ink hover:bg-surface/60'}"
-            >
-              <input
-                type="radio"
-                name="tema"
-                class="sr-only"
-                checked={pilih}
-                onchange={() => prefs.atur('tema', t.nilai)}
-              />
-              {t.label}
-            </label>
-          {/each}
-        </div>
-      </fieldset>
     </section>
 
     <section id="wilayah" aria-labelledby="h-wilayah" class="flex max-w-[50rem] scroll-mt-24 flex-col gap-4">
@@ -250,17 +258,24 @@
       >
         <div class="flex flex-1 flex-col gap-1.5">
           <label for="pilih-wilayah" class="text-[0.9375rem] font-semibold text-ink">Kab/kota</label>
-          <select
-            id="pilih-wilayah"
-            bind:value={kodeWilayah}
-            onchange={() => (wilayahTersimpan = false)}
-            aria-describedby="d-wilayah"
-            autocomplete="address-level2"
-            class="h-12 rounded-xl border border-line-2 bg-surface px-3 text-base text-ink"
-          >
-            <option value="">Belum dipilih</option>
-            {#each data.kota as k (k.kodeKabKota)}<option value={k.kodeKabKota}>{k.nama}</option>{/each}
-          </select>
+          <div class="relative">
+            <select
+              id="pilih-wilayah"
+              bind:value={kodeWilayah}
+              onchange={() => (wilayahTersimpan = false)}
+              aria-describedby="d-wilayah"
+              autocomplete="address-level2"
+              class="h-12 w-full appearance-none rounded-xl border border-line-2 bg-surface pr-10 pl-4 text-base text-ink transition-colors hover:border-line cursor-pointer"
+            >
+              <option value="" class="bg-surface text-ink">Belum dipilih</option>
+              {#each data.kota as k (k.kodeKabKota)}
+                <option value={k.kodeKabKota} class="bg-surface text-ink">{k.nama}</option>
+              {/each}
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-muted">
+              <Icon name="bawah" class="size-4" />
+            </div>
+          </div>
         </div>
         <button
           type="submit"
@@ -370,7 +385,7 @@
         </button>
       </div>
       {#if page.data.versi}
-        <p class="text-sm text-muted" data-versi>
+        <p class="sr-only" data-versi>
           {#if page.data.versi.commit}
             <a
               href={page.data.versi.commit}
@@ -419,11 +434,15 @@
       aria-labelledby="s-{id}"
       aria-describedby="k-{id}"
       onclick={() => ubah(!nyala)}
-      class="relative -my-2 grid h-12 w-14 shrink-0 place-items-center"
+      class="relative -my-2 grid h-12 w-14 shrink-0 place-items-center transition-transform duration-150 active:scale-95"
     >
-      <span class="h-8 w-14 rounded-full transition-colors {nyala ? 'bg-primer' : 'bg-line-2'}"></span>
       <span
-        class="absolute top-1/2 left-1/2 -ml-[13px] size-[26px] -translate-y-1/2 rounded-full bg-surface transition-transform {nyala
+        class="h-8 w-14 rounded-full transition-colors duration-200 ease-out {nyala
+          ? 'bg-primer'
+          : 'bg-line-2'}"
+      ></span>
+      <span
+        class="absolute top-1/2 left-1/2 -ml-[13px] size-[26px] -translate-y-1/2 rounded-full bg-surface transition-transform duration-200 ease-out {nyala
           ? 'translate-x-3'
           : '-translate-x-3'}"
       ></span>

@@ -133,28 +133,19 @@
 
 <HeaderHalaman judul="Dokumen" />
 
-<div class="flex w-full flex-col gap-5 px-4 py-6 sm:px-10 sm:py-7">
-  <div class="flex flex-wrap items-end justify-between gap-4">
-    <div class="flex flex-col gap-1">
-      <h2 class="text-[26px] leading-8 font-semibold tracking-[-0.7px] text-ink sm:text-[28px]">
-        Dokumen keluarga
-      </h2>
-      <p class="text-base text-body sm:text-[17px] sm:leading-[25px]">
-        Disimpan terenkripsi di brankas Urusin dan dipakai ulang untuk urusan berikutnya.
-      </p>
-    </div>
+<div class="flex w-full flex-col gap-6 px-4 py-5 sm:px-10 sm:py-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <TabBrankas aktif="berkas" />
     {#if hasil?.ok}
       <button
         type="button"
         onclick={bukaTambah}
-        class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-5 text-base leading-[23px] font-semibold text-primer-ink hover:opacity-90"
+        class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-primer px-5 text-sm font-semibold text-primer-ink transition-transform duration-150 hover:opacity-90 active:scale-95"
       >
-        <Icon name="tambah" class="size-[18px]" /> Tambah dokumen
+        <Icon name="tambah" class="size-4" /> Tambah dokumen
       </button>
     {/if}
   </div>
-
-  <div><TabBrankas aktif="berkas" /></div>
 
   {#if hasil === null}
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
@@ -171,9 +162,9 @@
             type="button"
             aria-pressed={pilih}
             onclick={() => (filter = j as typeof filter)}
-            class="inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-3.5 text-[15px] leading-[22px] {pilih
-              ? 'bg-primer font-semibold text-primer-ink'
-              : 'border border-line-2 bg-surface text-ink hover:bg-card'}"
+            class="inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-3.5 text-[15px] leading-[22px] transition-all duration-150 active:scale-95 {pilih
+              ? 'bg-primer font-semibold text-primer-ink shadow-xs'
+              : 'border border-line-2 bg-surface text-ink hover:bg-card hover:border-line'}"
           >
             {j === 'semua' ? 'Semua' : LABEL_JENIS[j as JenisDokumen]}
             <span class="text-sm leading-5 {pilih ? 'text-primer-ink/70' : 'text-muted'}">
@@ -188,7 +179,7 @@
       <ul class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {#each tampil as d (d.id)}
           <li
-            class="relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] focus-within:outline-2 focus-within:outline-ink hover:shadow-md"
+            class="relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 focus-within:outline-2 focus-within:outline-ink"
           >
             <div class="flex h-[104px] items-center justify-center {LATAR[d.jenis]}" aria-hidden="true">
               {#if d.jenis === 'ktp'}

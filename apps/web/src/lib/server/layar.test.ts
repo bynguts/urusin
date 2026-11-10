@@ -2,8 +2,8 @@ import { isHttpError, isRedirect } from '@sveltejs/kit';
 import { DemoProvider, wilayahUrusan } from '@urusin/harness';
 import { createRawSnippet } from 'svelte';
 import { render } from 'svelte/server';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { actions as beranda } from '../../routes/+page.server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { actions as beranda, load as muatLanding } from '../../routes/+page.server';
 import { load as muatJejak } from '../../routes/jejak/[id]/+page.server';
 import { load as muatPeristiwa } from '../../routes/peristiwa/[slug]/+page.server';
 import { load as muatUrusan } from '../../routes/urusan/[id]/+page.server';
@@ -13,7 +13,7 @@ import KartuRencana from '../components/urusan/KartuRencana.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
 import { dataAwal, type DataPendamping } from '../pendamping/sesi.svelte';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
-import { SID_COOKIE } from './sesi';
+import { SID_COOKIE, TERAKHIR_COOKIE } from './sesi';
 
 const SID = 'a'.repeat(32);
 
@@ -91,6 +91,40 @@ describe('load layar', () => {
     cookies.set(SID_COOKIE, sid);
     return { params, url: new URL(url), setHeaders: () => {}, cookies, locals: {} } as never;
   };
+
+  it('tamu dengan riwayat urusan tetap melihat landing, lalu dapat membuka aplikasi secara eksplisit', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran' });
+    rt.akun.catatPemilikUrusan(u.id, { sid: SID });
+    const cookies = kue();
+    cookies.set(SID_COOKIE, SID);
+    cookies.set(TERAKHIR_COOKIE, u.id);
+    expect(await muatLanding({ cookies, locals: {} } as never)).toBeUndefined();
+    expect(cookies.get(TERAKHIR_COOKIE)).toBe(u.id);
+    expect(rt.store.getUrusan(u.id)).not.toBeNull();
+  });
+
+  it('akun yang masuk dengan urusan miliknya dilanjutkan ke beranda', async () => {
+    const { akun } = rt.akun.buatDemo({ ip: '127.0.0.1' });
+    const u = rt.store.createUrusan({ jenis: 'kelahiran' });
+    rt.akun.catatPemilikUrusan(u.id, { akun });
+    const cookies = kue();
+    cookies.set(TERAKHIR_COOKIE, u.id);
+    const result = await tangkap(muatLanding({ cookies, locals: { akun } } as never));
+    expect(isRedirect(result)).toBe(true);
+    expect(result).toMatchObject({ status: 303, location: '/beranda' });
+  });
+
+  it('akun dengan cookie urusan milik orang lain atau yang sudah tidak ada tetap mendapat landing', async () => {
+    const { akun } = rt.akun.buatDemo({ ip: '127.0.0.1' });
+    const asing = rt.store.createUrusan({ jenis: 'kelahiran' });
+    rt.akun.catatPemilikUrusan(asing.id, { sid: SID });
+    for (const id of [asing.id, `u_${'0'.repeat(32)}`]) {
+      const cookies = kue();
+      cookies.set(SID_COOKIE, 'b'.repeat(32));
+      cookies.set(TERAKHIR_COOKIE, id);
+      expect(await muatLanding({ cookies, locals: { akun } } as never)).toBeUndefined();
+    }
+  });
 
   it('urusan dan jejak: id tidak valid atau tidak ada → 404', async () => {
     for (const load of [muatUrusan, muatJejak]) {
@@ -325,7 +359,10 @@ describe('render server komponen', () => {
 
 describe('/privasi', () => {
   it('menyebut setiap pemroses data pihak lain, lokasi pendamping Indonesia, dan retensi cadangan', async () => {
+    // LandingNav membaca `page.data.akun` (CTA tamu vs akun); di luar SvelteKit konteks `page` tidak ada.
+    vi.doMock('$app/state', () => ({ page: { data: { akun: null } } }));
     const { default: Privasi } = await import('../../routes/privasi/+page.svelte');
+    vi.doUnmock('$app/state');
     const { body } = render(Privasi);
     for (const pihak of [
       'Oracle Cloud',

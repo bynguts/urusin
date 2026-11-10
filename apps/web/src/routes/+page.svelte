@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
@@ -213,6 +214,7 @@
   const demo2 = `${g71d3e1c} 659w, ${gd364869} 842w, ${g06f3705} 1080w, ${g9d9bb51} 1318w, ${g776a2c9} 1760w, ${g4d3be26} 2160w`;
   const demo1 = `${s1_659} 659w, ${s1_842} 842w, ${s1_1080} 1080w, ${s1_1318} 1318w, ${s1_1760} 1760w, ${s1_2160} 2160w`;
   const demo3 = `${s3_659} 659w, ${s3_842} 842w, ${s3_1080} 1080w, ${s3_1318} 1318w, ${s3_1760} 1760w, ${s3_2160} 2160w`;
+  const targetMulai = $derived(page.data.akun ? resolve('/beranda') : resolve('/daftar'));
 </script>
 
 <svelte:head>
@@ -251,7 +253,8 @@
         resmi.
       </div>
       <div class="lp16">
-        <a class="lp17" href="{resolve('/beranda')}?baru">
+        <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+        <a class="lp17" href={targetMulai}>
           <img class="lp18" src="/pen/i-25435a991f.svg" alt="" width="16" height="16" decoding="async" />
           <span class="lp19"> Mulai urusan </span>
         </a>
@@ -469,66 +472,254 @@
   </section>
   <section class="n-trust-strip lp43">
     <div class="lp44">Merujuk informasi resmi dari</div>
-    <div class="n-wordmarks lp45">
-      <div class="lp46">
-        <img
-          class="lp47"
-          src="/pen/i-3438e81725.svg"
-          alt=""
-          width="22"
-          height="22"
-          loading="lazy"
-          decoding="async"
-        />
-        <div class="lp48">Dukcapil</div>
-      </div>
-      <div class="lp46">
-        <img
-          class="lp47"
-          src="/pen/i-533e38ff50.svg"
-          alt=""
-          width="22"
-          height="22"
-          loading="lazy"
-          decoding="async"
-        />
-        <div class="lp48">BPJS Kesehatan</div>
-      </div>
-      <div class="lp46">
-        <img
-          class="lp47"
-          src="/pen/i-63d80529c0.svg"
-          alt=""
-          width="22"
-          height="22"
-          loading="lazy"
-          decoding="async"
-        />
-        <div class="lp48">Kemenag</div>
-      </div>
-      <div class="lp46">
-        <img
-          class="lp47"
-          src="/pen/i-53c23c4d87.svg"
-          alt=""
-          width="22"
-          height="22"
-          loading="lazy"
-          decoding="async"
-        />
-        <div class="lp48">Imigrasi</div>
-      </div>
-      <div class="lp46">
-        <img
-          class="lp47"
-          src="/pen/i-c49f4545a4.svg"
-          alt=""
-          width="22"
-          height="22"
-          loading="lazy"
-          decoding="async"
-        />
-        <div class="lp48">Samsat</div>
+    <div class="n-marquee-wrapper lp45-marquee" aria-label="Instansi resmi yang dirujuk">
+      <div class="n-marquee-track">
+        <!-- Set 1 (Unit utama) -->
+        <div class="n-wordmarks lp45">
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-3438e81725.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Dukcapil</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-533e38ff50.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">BPJS Kesehatan</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-63d80529c0.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Kemenag</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-53c23c4d87.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Imigrasi</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-c49f4545a4.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Samsat</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-3438e81725.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Dukcapil</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-533e38ff50.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">BPJS Kesehatan</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-63d80529c0.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Kemenag</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-53c23c4d87.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Imigrasi</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-c49f4545a4.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Samsat</div>
+          </div>
+        </div>
+        <!-- Set 2 (Duplikat untuk infinite loop) -->
+        <div class="n-wordmarks lp45" aria-hidden="true">
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-3438e81725.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Dukcapil</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-533e38ff50.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">BPJS Kesehatan</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-63d80529c0.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Kemenag</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-53c23c4d87.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Imigrasi</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-c49f4545a4.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Samsat</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-3438e81725.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Dukcapil</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-533e38ff50.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">BPJS Kesehatan</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-63d80529c0.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Kemenag</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-53c23c4d87.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Imigrasi</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-c49f4545a4.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Samsat</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -557,7 +748,8 @@
         selesai.
       </div>
       <div class="lp57">
-        <a class="lp58" href="{resolve('/beranda')}?baru">
+        <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+        <a class="lp58" href={targetMulai}>
           <span class="lp59"> Mulai urusan </span>
         </a>
         <a class="lp20" href="#cara-kerja">
@@ -1240,11 +1432,13 @@
     </div>
     <div class="n-prompt-box lp96" aria-hidden="true">
       <p class="n-prompt-text lp97">
-        <span class="lp98"> Urus </span>
-        <span class="lp99"> akta kelahiran </span>
-        <span class="lp98"> di </span>
-        <span class="lp100"> Dukcapil</span><span class="lp98">, lalu daftarkan ke </span>
-        <span class="lp101"> BPJS Kesehatan </span>
+        <span class="n-prompt-typewriter">
+          <span class="lp98"> Urus </span>
+          <span class="lp99"> akta kelahiran </span>
+          <span class="lp98"> di </span>
+          <span class="lp100"> Dukcapil</span><span class="lp98">, lalu daftarkan ke </span>
+          <span class="lp101"> BPJS Kesehatan </span>
+        </span>
       </p>
       <div class="n-prompt-row lp102">
         <img
@@ -1579,7 +1773,8 @@
         <div class="n-card-body lp114">
           <div class="lp115">Ceritakan kebutuhanmu, Urusin cari layanan yang sesuai.</div>
           <div class="lp52">
-            <a class="lp130" href="{resolve('/beranda')}?baru">
+            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+            <a class="lp130" href={targetMulai}>
               <span class="lp59"> Ceritakan </span>
             </a>
             <a class="lp117" href={resolve('/peristiwa/[slug]', { slug: 'lainnya' })}>
@@ -1598,7 +1793,7 @@
         </div>
       </div>
     </div>
-    <a class="lp20" href="{resolve('/beranda')}?baru">
+    <a class="lp20" href={resolve('/urusan')}>
       <span class="lp21"> Lihat semua urusan › </span>
     </a>
   </section>
@@ -2496,98 +2691,152 @@
       </div>
     </div>
     <div class="n-bubbles lp264">
-      <div class="lp265">
-        <div class="lp266">
-          <div class="lp267">Apakah Urusin bagian dari pemerintah?</div>
-        </div>
-        <img
-          class="lp268"
-          src="/pen/i-6c52db901b.svg"
-          alt=""
-          width="18"
-          height="14"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
-      <div class="n-answer-row lp269">
-        <div class="n-answer lp270">
-          <div class="lp271">
-            Bukan. Urusin membantumu memahami dan menyiapkan urusan. Keputusan layanan tetap di instansi
-            terkait.
+      <details class="n-faq-item" name="faq" open>
+        <summary class="lp265">
+          <div class="lp266">
+            <span class="lp267">Apakah Urusin bagian dari pemerintah?</span>
+          </div>
+          <img
+            class="lp268"
+            src="/pen/i-6c52db901b.svg"
+            alt=""
+            width="18"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+        </summary>
+        <div class="n-answer-row lp269">
+          <div class="n-answer lp270">
+            <div class="lp271">
+              Bukan. Urusin membantumu memahami dan menyiapkan urusan. Keputusan layanan tetap di instansi
+              terkait.
+            </div>
           </div>
         </div>
-      </div>
-      <div class="lp265">
-        <div class="lp266">
-          <div class="lp267">Apakah data saya aman?</div>
+      </details>
+      <details class="n-faq-item" name="faq">
+        <summary class="lp265">
+          <div class="lp266">
+            <span class="lp267">Apakah data saya aman?</span>
+          </div>
+          <img
+            class="lp268"
+            src="/pen/i-6c52db901b.svg"
+            alt=""
+            width="18"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+        </summary>
+        <div class="n-answer-row lp269">
+          <div class="n-answer lp270">
+            <div class="lp271">
+              Aman. Data dan berkasmu disimpan terenkripsi di server per akun. Model AI tidak pernah menerima
+              data identitas asli (NIK, KK, nama), dan data tamu terhapus otomatis setelah 72 jam.
+            </div>
+          </div>
         </div>
-        <img
-          class="lp268"
-          src="/pen/i-6c52db901b.svg"
-          alt=""
-          width="18"
-          height="14"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
-      <div class="lp265">
-        <div class="lp266">
-          <div class="lp267">Bisa dipakai untuk mengurus orang tua saya?</div>
+      </details>
+      <details class="n-faq-item" name="faq">
+        <summary class="lp265">
+          <div class="lp266">
+            <span class="lp267">Bisa dipakai untuk mengurus orang tua saya?</span>
+          </div>
+          <img
+            class="lp268"
+            src="/pen/i-6c52db901b.svg"
+            alt=""
+            width="18"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+        </summary>
+        <div class="n-answer-row lp269">
+          <div class="n-answer lp270">
+            <div class="lp271">
+              Bisa. Kamu bisa mendampingi orang tua atau anggota keluarga lain untuk menyiapkan syarat,
+              mengunggah berkas, dan memandu pengisian di situs resmi.
+            </div>
+          </div>
         </div>
-        <img
-          class="lp268"
-          src="/pen/i-6c52db901b.svg"
-          alt=""
-          width="18"
-          height="14"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
-      <div class="lp265">
-        <div class="lp266">
-          <div class="lp267">Apakah AI bisa mengirim formulir sendiri?</div>
+      </details>
+      <details class="n-faq-item" name="faq">
+        <summary class="lp265">
+          <div class="lp266">
+            <span class="lp267">Apakah AI bisa mengirim formulir sendiri?</span>
+          </div>
+          <img
+            class="lp268"
+            src="/pen/i-6c52db901b.svg"
+            alt=""
+            width="18"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+        </summary>
+        <div class="n-answer-row lp269">
+          <div class="n-answer lp270">
+            <div class="lp271">
+              Tidak. AI hanya mengisi kolom yang sudah kamu setujui di Browser Pendamping. Login, CAPTCHA,
+              OTP, dan tombol Kirim akhir selalu dikerjakan oleh kamu sendiri.
+            </div>
+          </div>
         </div>
-        <img
-          class="lp268"
-          src="/pen/i-6c52db901b.svg"
-          alt=""
-          width="18"
-          height="14"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
-      <div class="lp265">
-        <div class="lp266">
-          <div class="lp267">Bagaimana kalau informasinya sudah berubah?</div>
+      </details>
+      <details class="n-faq-item" name="faq">
+        <summary class="lp265">
+          <div class="lp266">
+            <span class="lp267">Bagaimana kalau informasinya sudah berubah?</span>
+          </div>
+          <img
+            class="lp268"
+            src="/pen/i-6c52db901b.svg"
+            alt=""
+            width="18"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+        </summary>
+        <div class="n-answer-row lp269">
+          <div class="n-answer lp270">
+            <div class="lp271">
+              Urusin membaca syarat langsung dari regulasi dan portal resmi daerah yang dilengkapi tanggal
+              verifikasi. Bila ada perubahan atau situs belum didukung, Urusin akan memberi tahu dan beralih
+              ke mode dipandu.
+            </div>
+          </div>
         </div>
-        <img
-          class="lp268"
-          src="/pen/i-6c52db901b.svg"
-          alt=""
-          width="18"
-          height="14"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
-      <div class="lp265">
-        <div class="lp266">
-          <div class="lp267">Berapa biayanya?</div>
+      </details>
+      <details class="n-faq-item" name="faq">
+        <summary class="lp265">
+          <div class="lp266">
+            <span class="lp267">Berapa biayanya?</span>
+          </div>
+          <img
+            class="lp268"
+            src="/pen/i-6c52db901b.svg"
+            alt=""
+            width="18"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+        </summary>
+        <div class="n-answer-row lp269">
+          <div class="n-answer lp270">
+            <div class="lp271">
+              Gratis. Seluruh layanan Urusin tidak dipungut biaya. Layanan adminduk di Disdukcapil menurut
+              Undang-Undang juga gratis; jika ada biaya resmi (mis. leges/materai), dibayarkan langsung ke
+              instansi.
+            </div>
+          </div>
         </div>
-        <img
-          class="lp268"
-          src="/pen/i-6c52db901b.svg"
-          alt=""
-          width="18"
-          height="14"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
+      </details>
     </div>
     <img
       class="n-faq-companion lp272"
@@ -2633,7 +2882,8 @@
           Gratis dan langsung dari browser. Ceritakan apa yang terjadi, Urusin yang menyusun langkahnya.
         </div>
         <div class="lp52">
-          <a class="lp17" href="{resolve('/beranda')}?baru">
+          <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+          <a class="lp17" href={targetMulai}>
             <img
               class="lp18"
               src="/pen/i-25435a991f.svg"

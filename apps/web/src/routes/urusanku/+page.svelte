@@ -39,31 +39,22 @@
 
 <HeaderHalaman judul="Urusanku" />
 
-<div class="flex w-full flex-col gap-5 px-4 py-6 sm:px-10 sm:py-7">
-  <div class="flex flex-col gap-1">
-    <h2 class="text-[26px] leading-8 font-semibold tracking-[-0.7px] text-ink sm:text-[28px]">
-      Urusan keluarga Anda
-    </h2>
-    <p class="text-base text-body sm:text-[17px] sm:leading-[25px]">
-      Lihat siapa yang sedang ditunggu dan apa langkah berikutnya.
-    </p>
-  </div>
-
-  <div role="group" aria-label="Saring urusan" class="-mb-1 flex gap-2 overflow-x-auto pb-1">
+<div class="flex w-full flex-col gap-6 px-4 py-5 sm:px-10 sm:py-6">
+  <div role="group" aria-label="Saring urusan" class="flex flex-wrap items-center gap-2">
     {#each FILTER as f (f.nilai)}
       {@const pilih = filter === f.nilai}
       <button
         type="button"
         aria-pressed={pilih}
         onclick={() => (filter = f.nilai)}
-        class="inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-[15px] leading-[22px] {pilih
-          ? 'bg-primer font-semibold text-primer-ink'
-          : 'border border-line-2 bg-surface text-ink hover:bg-card'}"
+        class="inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-medium transition-all duration-150 active:scale-95 {pilih
+          ? 'bg-primer font-semibold text-primer-ink shadow-xs'
+          : 'border border-line-2 bg-surface text-ink hover:bg-card hover:border-line'}"
       >
         {f.label}
         <span
-          class="rounded-full px-[7px] py-px text-[13px] leading-[19px] font-semibold {pilih
-            ? 'bg-white/20'
+          class="rounded-full px-2 py-0.5 text-xs font-semibold {pilih
+            ? 'bg-white/20 text-primer-ink'
             : 'bg-bg-2 text-card-ink'}">{jumlah[f.nilai]}</span
         >
       </button>

@@ -39,6 +39,7 @@
   --sb-stroke-secondary: #e6dbd1;
   --sb-stroke-tertiary: #efebe7;
   --sb-brand-orange: #ed5a31;
+  --sb-brand-orange-ink: #c8441f;
   --sb-brand-leaf: #d6c530;
   --sb-accent-orange: #f2805d;
   --sb-error: #ef4343;
@@ -51,7 +52,7 @@
   --sb-badge-rose-bg: #f1e8e5;
   --sb-badge-rose-ink: #8e544f;
   --sb-badge-green-bg: #ebf0e7;
-  --sb-badge-green-ink: #567c4d;
+  --sb-badge-green-ink: #44683a;
   --sb-badge-blue-bg: #eaf0f5;
   --sb-badge-blue-ink: #4b6889;
   --sb-badge-purple-bg: #f3eaf4;
@@ -88,6 +89,7 @@
   --sb-stroke-secondary: #54564b;
   --sb-stroke-tertiary: #30322b;
   --sb-accent-orange: #ffa184;
+  --sb-brand-orange-ink: #ffa184;
   --sb-error: #ff8d8d;
   --sb-a11y-error-text: #ffb0aa;
   --sb-valid: #a8d881;
@@ -116,6 +118,8 @@
   --ur-red-bg: #3f2522;
   --ur-skel: #3a3d35;
   --ur-skel-2: #31332d;
+  --sb-shadow-soft:
+    0 0 0 1px rgb(255 255 255 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.5), 0 2px 4px rgb(0 0 0 / 0.4);
 }
 
 /* Kontras tinggi (Pengaturan): teks sekunder memakai warna utama, garis lebih tegas. */
@@ -144,7 +148,7 @@
   --color-line: var(--sb-stroke);
   --color-line-2: var(--sb-stroke-secondary);
   --color-line-3: var(--sb-stroke-tertiary);
-  --color-brand: var(--sb-brand-orange);
+  --color-brand: var(--sb-brand-orange-ink, #c8441f);
   --color-leaf: var(--sb-brand-leaf);
   --color-accent: var(--sb-accent-orange);
   --color-galat: var(--sb-a11y-error-text);
@@ -183,6 +187,60 @@ html {
   /* Ukuran huruf dari Pengaturan: 1 = 16px dasar peramban; semua ukuran memakai rem. */
   font-size: calc(100% * var(--skala-huruf, 1));
   background: var(--sb-bg-secondary);
+  scrollbar-width: thin;
+  scrollbar-color: #25252233 transparent;
+}
+
+[data-theme='dark'] html {
+  scrollbar-color: #f7f3ed33 transparent;
+}
+
+/* Scrollbar kustom bernuansa hangat selaras dengan token DESIGN.md (ink, stroke-strong, neutral-bg) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #2525222e;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #25252259;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: #2525228c;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background-color: #f7f3ed2e;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background-color: #f7f3ed59;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:active {
+  background-color: #f7f3ed8c;
+}
+
+/* Sorotan teks bertema hangat selaras dengan brand orange Urusin */
+::selection {
+  background-color: #ed5a3126;
+  color: var(--sb-text-primary);
 }
 
 body {
@@ -197,16 +255,91 @@ body {
 @layer base {
   h1,
   h2,
-  h3 {
+  h3,
+  h4,
+  h5,
+  h6 {
     font-weight: 480;
     letter-spacing: -0.03em;
     line-height: 1.15;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
 }
 
 :focus-visible {
   outline: 2px solid var(--sb-text-primary);
   outline-offset: 2px;
+}
+
+/* Kursor jari telunjuk (pointer) untuk semua elemen interaktif yang dapat diklik */
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+[role='switch']:not([aria-disabled='true']),
+[type='button']:not(:disabled),
+[type='submit']:not(:disabled),
+[type='reset']:not(:disabled),
+summary,
+select {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+/* Hapus outline bug di dalam input box, search pill, dan textarea (outline dikendalikan kontainer/border) */
+input,
+textarea,
+select {
+  outline: none;
+}
+
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none;
+}
+
+/* Input/textarea transparan di dalam search pill atau komposer tidak boleh memiliki border, outline, atau shadow */
+input.bg-transparent,
+textarea.bg-transparent,
+input[type='search'] {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+input.bg-transparent:focus,
+input.bg-transparent:focus-visible,
+textarea.bg-transparent:focus,
+textarea.bg-transparent:focus-visible,
+input[type='search']:focus,
+input[type='search']:focus-visible {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Fokus border untuk input mandiri bergaris (bukan transparan/tanpa garis) */
+input:not([type='radio']):not([type='checkbox']):not([type='submit']):not([type='button']):not(
+    [type='hidden']
+  ):not(.bg-transparent):not(.border-0):not(.border-none):focus,
+select:not(.bg-transparent):focus {
+  border-color: var(--sb-text-primary);
+}
+
+/* Di desktop, jendela luar tidak bergulir bila kerangka aplikasi aktif */
+@media (min-width: 1024px) {
+  body:has(.bingkai-app) {
+    overflow: hidden;
+  }
 }
 
 /* Fokus tidak tertutup header/nav bawah (WCAG 2.4.11). */
@@ -230,6 +363,39 @@ body {
   background-size: 14px 14px;
 }
 
+/* Animasi perhatian lembut untuk status yang menunggu tindakan warga (Giliran Anda) */
+@keyframes pulsa-status {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.7;
+  }
+}
+
+.animasi-pulsa {
+  animation: pulsa-status 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Transisi halus masuk halaman dashboard (App 01–14) selaras token PenDev (200ms, cubic-bezier(0.16, 1, 0.3, 1)) */
+@keyframes dasbor-masuk {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animasi-dasbor-masuk {
+  animation: dasbor-masuk 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -241,11 +407,14 @@ body {
   }
 }
 
+[data-gerak='kurang'],
 [data-gerak='kurang'] *,
 [data-gerak='kurang'] *::before,
 [data-gerak='kurang'] *::after {
   animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 /* Bingkai aplikasi desktop (App 01–14): latar krem bertitik di belakang menu samping dan panel utama. */
