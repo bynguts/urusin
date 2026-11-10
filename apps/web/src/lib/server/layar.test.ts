@@ -12,7 +12,6 @@ import Chip from '../components/ui/Chip.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
 import { dataAwal, type DataPendamping } from '../pendamping/sesi.svelte';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
-import { dataAwal, type DataPendamping } from '../pendamping/sesi.svelte.js';
 import { SID_COOKIE } from './sesi';
 
 const SID = 'a'.repeat(32);
@@ -202,6 +201,7 @@ describe('render server komponen', () => {
       onhentikan: () => {},
       onmulailagi: () => {},
       onpanduan: () => {},
+      ontutup: () => {},
     });
     const dari = render(LayarPendamping, { props: props(giliran('Selesai')) }).body;
     expect(dari).toContain('Periksa isian, lalu tekan Selesai');
@@ -215,11 +215,15 @@ describe('render server komponen', () => {
   it('halaman urusan memuat nomor permohonan yang tersimpan (kartu Terkirim setelah sesi ditutup)', async () => {
     const u = rt.store.createUrusan({ jenis: 'kelahiran' });
     rt.store.catatNomorPermohonan(u.id, 'FX-REG-0002');
+    rt.akun.catatPemilikUrusan(u.id, { sid: SID });
+    const cookies = kue();
+    cookies.set(SID_COOKIE, SID);
     const d = (await muatUrusan({
       params: { id: u.id },
       url: new URL(`http://localhost:3000/urusan/${u.id}`),
       setHeaders: () => {},
-      cookies: kue(),
+      cookies,
+      locals: {},
     } as never)) as { urusan: { nomorPermohonan: string | null } };
     expect(d.urusan.nomorPermohonan).toBe('FX-REG-0002');
   });
