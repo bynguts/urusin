@@ -70,7 +70,7 @@ SHIM_DF_PCT=50 cid pw e2e "$WS" "$SHA"
 run_line="$(grep '^docker \[run\]' <<<"$calls")"
 check "e2e menjalankan satu docker run" '[ $rc -eq 0 ] && [ "$(grep -c "^docker \[run\]" <<<"$calls")" = 1 ]'
 check "image = basis Playwright dipin digest dari Dockerfile pendamping" '[[ "$run_line" == *"[$PIN]"* ]]'
-check "batas sumber daya (--cpus 1.5 bobot rendah, memori 4g, pids)" '[[ "$run_line" == *"[--cpus] [1.5]"* && "$run_line" == *"[--cpu-shares] [256]"* && "$run_line" == *"[--memory] [4g]"* && "$run_line" == *"[--pids-limit] [2048]"* ]]'
+check "batas sumber daya (--cpus 1.5 bobot rendah, memori 4g, pids)" '[[ "$run_line" == *"[--cpus] [1.5]"* && "$run_line" != *"[--cpu-period]"* && "$run_line" == *"[--cpu-shares] [256]"* && "$run_line" == *"[--memory] [4g]"* && "$run_line" == *"[--pids-limit] [2048]"* ]]'
 check "tanpa --privileged / --network host / --pid host" '[[ "$run_line" != *"privileged"* && "$run_line" != *"[--network] [host]"* && "$run_line" != *"[--pid]"* ]]'
 check "cap-drop ALL, seccomp dari salinan terpasang" '[[ "$run_line" == *"[--cap-drop] [ALL]"* && "$run_line" == *"[seccomp=$URUSIN_CI_ROOT/etc/pendamping-seccomp.json]"* ]]'
 check "satu-satunya mount host = workspace" '[ "$(grep -o "\[-v\]" <<<"$run_line" | wc -l)" = 1 ] && [[ "$run_line" == *"[-v] [$WS:/work]"* ]]'
@@ -80,6 +80,8 @@ check "pw tidak login GHCR" '[[ "$calls" != *"[login]"* ]]'
 check "versi pnpm dibaca di host lalu dioper lewat env (root kontainer tanpa capability tak bisa membaca workspace 0750)" '[[ "$run_line" == *"[PNPM_VERSION=10.20.0]"* && "$run_line" != *"/work/package.json"* ]]'
 SHIM_DF_PCT=50 cid pw perf "$WS" "$SHA"
 check "perf menjalankan lhci autorun" '[ $rc -eq 0 ] && [[ "$calls" == *"lhci autorun"* ]]'
+run_line="$(grep '^docker \[run\]' <<<"$calls")"
+check "perf: kuota CPU sama 1,5 dengan periode CFS 10 ms (tanpa --cpus), batas lain tetap" '[[ "$run_line" == *"[--cpu-period] [10000] [--cpu-quota] [15000]"* && "$run_line" != *"[--cpus]"* && "$run_line" == *"[--cpu-shares] [256]"* && "$run_line" == *"[--memory] [4g]"* && "$run_line" == *"[--pids-limit] [2048]"* ]]'
 printf 'FROM mcr.microsoft.com/playwright:v1.65.0-noble AS pwbasis\n' > "$WS/apps/pendamping/Dockerfile"
 SHIM_DF_PCT=50 cid pw e2e "$WS" "$SHA"
 check "basis Playwright tanpa pin digest ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
