@@ -20,7 +20,7 @@ import type { EventBus } from './bus.js';
 import type { Db } from './db.js';
 import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/contracts';
 import { HarnessError, TurnInProgressError } from './errors.js';
-import { findBundel, routeByKode } from '@urusin/registry';
+import { routeByKode } from '@urusin/registry';
 import { toEvent } from './envelope.js';
 import { buildHandoff } from './grounding.js';
 import { classifyIntent } from './intent.js';
@@ -32,6 +32,13 @@ import { newNonce } from './spotlight.js';
 import type { HarnessStore, TurnStatus, UrusanRow } from './store.js';
 import { clip, type ToolContext, type ToolRegistry } from './tools.js';
 import { OTEL, type Tracer } from './trace.js';
+import {
+  kodeUntukPii,
+  selaraskanUsulan,
+  tetapkanWilayah,
+  usulkanRencanaOtomatis,
+  wilayahUrusan,
+} from './wilayah.js';
 
 export type AgentConfig = {
   /** Batas waktu satu turn (rencana: 120 detik). */
@@ -111,7 +118,7 @@ export function prepareTurn(
   let claim: ReturnType<HarnessStore['claimTurn']>;
   const pii = new PiiInterceptor(
     undefined,
-    { kodeKabKota: deps.store.getUrusan(args.urusanId)?.kodeKabKota },
+    { kodeKabKota: kodeUntukPii(deps.store, deps.store.getUrusan(args.urusanId)) },
     deps.store.placeholderPersistence(args.urusanId),
   );
   const userText = pii.redact(args.userText).text;
@@ -297,6 +304,7 @@ class TurnRunner {
       state: this.urusan.state,
       jenis: this.urusan.jenis,
       kodeKabKota: this.urusan.kodeKabKota,
+      wilayah: wilayahUrusan(this.store, this.urusan),
       tools: this.deps.registry.forState(this.urusan.state),
       confirmations: this.store.activeConfirmations(this.turn.urusanId),
     });
@@ -332,6 +340,7 @@ class TurnRunner {
     try {
       await this.body();
       this.proposeRencana();
+      this.selaraskanKartuWilayah();
     } catch (err) {
       const reason = this.ctrl.signal.aborted ? (this.ctrl.signal.reason as unknown) : undefined;
       if (reason instanceof TurnAbort && reason.kind === 'timeout') {
@@ -385,30 +394,24 @@ class TurnRunner {
     };
   }
 
-  /**
-   * Harness sendiri yang memajukan MEMAHAMI → RENCANA_DIUSULKAN (tidak bergantung pada model memanggil tool):
-   * begitu jenis peristiwa dan kota diketahui, rencana dibangun deterministik dari bundel registry beserta sumber
-   * resminya. Berlaku juga saat AI mati/kuota habis (jalur dipandu). Rencana tetap hanya usulan sampai warga setuju.
-   */
+  /** Rencana deterministik dari wilayah KTP (lihat `usulkanRencanaOtomatis`); juga saat AI mati/kuota habis. */
   private proposeRencana(): void {
-    const u = this.urusan;
-    if (u.state !== 'MEMAHAMI' || !u.kodeKabKota || !u.jenis) return;
-    const bundel = findBundel(u.jenis);
-    if (!bundel) return;
-    const dipandu = routeByKode(u.kodeKabKota).entry.tier === 'dipandu';
-    this.emit({
-      type: 'plan_card',
-      ringkasan: bundel.judul,
-      langkah: bundel.langkah.map((l) => ({
-        id: l.id,
-        judul: l.judul,
-        jenis: dipandu && l.jenis === 'online-adapter' ? ('online-manual' as const) : l.jenis,
-        ...(l.lokasi ? { lokasi: l.lokasi } : {}),
-        bawa: l.bawa,
-        sumber: l.sourceRef,
-      })),
-    });
-    this.applyTransition('RENCANA_DIUSULKAN');
+    this.urusan = usulkanRencanaOtomatis(
+      this.store,
+      { ...this.urusan, version: this.version },
+      (e) => void this.emit(e),
+      this.deps.ragDb,
+    );
+    this.version = this.urusan.version;
+  }
+
+  /** Kartu usulan wilayah mengikuti kab/kota yang terakhir ditanyakan agen (lihat `selaraskanUsulan`). */
+  private selaraskanKartuWilayah(): void {
+    const teks = [...this.turnMessages]
+      .reverse()
+      .find((m) => m.role === 'assistant' && typeof m.content === 'string' && m.content);
+    if (teks?.role !== 'assistant' || typeof teks.content !== 'string') return;
+    selaraskanUsulan(this.store, this.urusan, teks.content, (e) => void this.emit(e));
   }
 
   private async body(): Promise<void> {
@@ -634,6 +637,7 @@ class TurnRunner {
         now: this.now,
       },
       nonce: this.nonce,
+      pesanWarga: this.turn.userText,
       signal: this.llmSignal(),
     };
     try {
@@ -658,6 +662,20 @@ class TurnRunner {
             tool: res.execution.tool,
             paramsHash: res.execution.paramsHash,
           });
+      }
+      if (res.wilayah) {
+        try {
+          this.urusan = tetapkanWilayah(
+            this.store,
+            { ...this.urusan, version: this.version },
+            res.wilayah,
+            (e) => void this.emit(e),
+          );
+          this.version = this.urusan.version;
+        } catch (e) {
+          if (!(e instanceof HarnessError)) throw e;
+          return { content: JSON.stringify({ is_error: true, pesan: e.message }), end: false };
+        }
       }
       if (res.nextState) {
         try {

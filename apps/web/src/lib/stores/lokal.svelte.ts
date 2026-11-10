@@ -13,15 +13,20 @@ export type CatatanUrusan = {
 export type Wilayah = { kodeKabKota: string; nama: string };
 
 export type DataLokal = {
+  /**
+   * 2 = `wilayah` dipilih warga sendiri. Data lama (tanpa penanda ini) masih menyimpan default Wonogiri yang dulu
+   * diisi diam-diam, jadi wilayahnya diabaikan.
+   */
+  versiWilayah: 2;
   urusan: CatatanUrusan[];
-  wilayah: Wilayah;
+  /** Pilihan wilayah di perangkat ini: hanya usulan, selalu dikonfirmasi warga di urusan. null = belum dipilih. */
+  wilayah: Wilayah | null;
   kontrasTinggi: boolean;
   kurangiGerak: boolean;
 };
 
 const KUNCI = 'urusin.lokal.v1';
 const ID_RE = /^u_[0-9a-f]{32}$/;
-export const WILAYAH_AWAL: Wilayah = { kodeKabKota: '3312', nama: 'Kab. Wonogiri' };
 const MAKS_URUSAN = 50;
 
 /** Ambil hanya bentuk yang valid dari data tersimpan. */
@@ -46,12 +51,13 @@ export function bersihkanLokal(raw: unknown): DataLokal {
         }))
         .slice(0, MAKS_URUSAN)
     : [];
-  const w = o.wilayah as Partial<Wilayah> | undefined;
+  const w = o.versiWilayah === 2 ? (o.wilayah as Partial<Wilayah> | null | undefined) : undefined;
   const wilayah =
     w && typeof w.kodeKabKota === 'string' && /^\d{4}$/.test(w.kodeKabKota) && typeof w.nama === 'string'
       ? { kodeKabKota: w.kodeKabKota, nama: w.nama.slice(0, 80) }
-      : WILAYAH_AWAL;
+      : null;
   return {
+    versiWilayah: 2,
     urusan,
     wilayah,
     kontrasTinggi: o.kontrasTinggi === true,
@@ -100,8 +106,8 @@ export class LokalStore {
     return this.data.urusan.find((u) => u.id === id);
   }
 
-  aturWilayah(w: Wilayah): void {
-    this.data = { ...this.data, wilayah: bersihkanLokal({ wilayah: w }).wilayah };
+  aturWilayah(w: Wilayah | null): void {
+    this.data = { ...this.data, wilayah: bersihkanLokal({ versiWilayah: 2, wilayah: w }).wilayah };
     this.simpan();
   }
 

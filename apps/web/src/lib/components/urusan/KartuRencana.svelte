@@ -56,15 +56,38 @@
       >
     {/if}
   </header>
+  {#if rencana.wilayah}
+    <div class="flex flex-col gap-1 border-b border-line px-4 py-3 text-sm leading-[21px] sm:px-[18px]">
+      <p class="flex items-center gap-1.5 font-semibold text-ink">
+        <Icon name="lokasi" class="size-4 shrink-0 text-brand" />
+        {rencana.wilayah.ktp.nama}{rencana.wilayah.tujuan ? ` → ${rencana.wilayah.tujuan.nama}` : ''}
+        <span class="font-normal text-muted"
+          >· {rencana.tier === 'semi'
+            ? 'AI bisa bantu mengisi di situs resmi'
+            : 'Dipandu langkah demi langkah'}</span
+        >
+      </p>
+      {#if rencana.catatan}<p class="text-body">{rencana.catatan}</p>{/if}
+    </div>
+  {/if}
   <ol class="flex flex-col gap-2.5 px-4 py-3.5 sm:px-[18px]">
     {#each rencana.langkah as l, i (l.id)}
       {@const p = PELAKU[l.jenis] ?? PELAKU['online-manual']!}
-      <li class="flex items-center gap-3">
+      <li class="flex items-start gap-3">
         <span
           class="grid size-[26px] shrink-0 place-items-center rounded-full border-[1.5px] border-line-2 text-[13px] leading-[13px] font-semibold text-card-ink"
           >{i + 1}</span
         >
-        <span class="min-w-0 flex-1 text-base leading-[22px] text-ink">{l.judul}</span>
+        <div class="min-w-0 flex-1">
+          <span class="block text-base leading-[22px] text-ink">{l.judul}</span>
+          {#if l.dokumen?.length}
+            <p class="mt-1 text-sm leading-[21px] font-semibold text-ink">Dokumen yang disiapkan:</p>
+            <ul class="list-disc pl-5 text-sm leading-[21px] text-body">
+              {#each l.dokumen as d (d)}<li>{d}</li>{/each}
+            </ul>
+          {/if}
+          {#if l.keterangan}<p class="mt-1 text-sm leading-[21px] text-muted">{l.keterangan}</p>{/if}
+        </div>
         <span
           class="inline-flex shrink-0 items-center gap-[5px] rounded-full px-2.5 py-[3px] text-[13px] leading-5 font-semibold {p.kelas}"
           ><Icon name={p.ikon} class="size-[13px]" />{p.label}</span

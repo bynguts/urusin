@@ -9,6 +9,7 @@ export type ItemLinimasa =
   | { jenis: 'jawaban'; key: string; e: EventOf<'grounded_answer'> }
   | { jenis: 'handoff'; key: string; e: EventOf<'handoff'> }
   | { jenis: 'rencana'; key: string; e: EventOf<'plan_card'>; terakhir: boolean }
+  | { jenis: 'wilayah'; key: string; e: EventOf<'wilayah'>; terakhir: boolean }
   | { jenis: 'checklist'; key: string; e: EventOf<'checklist'> }
   | {
       jenis: 'konfirmasi';
@@ -41,6 +42,7 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
   const st: { teks: { jenis: 'teks'; key: string; teks: string } | null } = { teks: null };
   const permintaan = new Map<string, EventOf<'execution_request'>>();
   let permintaanTerakhir: EventOf<'execution_request'> | null = null;
+  let wilayahDitetapkanSeq = 0;
 
   const sisipkanWarga = (sampaiSeq: number) => {
     while (iw < warga.length && warga[iw]!.setelahSeq < sampaiSeq) {
@@ -77,6 +79,13 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
         break;
       case 'checklist':
         out.push({ jenis: 'checklist', key, e });
+        break;
+      case 'wilayah':
+        if (e.status === 'usulan') out.push({ jenis: 'wilayah', key, e, terakhir: false });
+        else {
+          wilayahDitetapkanSeq = e.seq;
+          out.push({ jenis: 'sistem', key, teks: kalimatWilayah(e), at: e.at });
+        }
         break;
       case 'execution_request':
         permintaan.set(e.paramsHash, e);
@@ -115,7 +124,7 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
   sisipkanWarga(Number.POSITIVE_INFINITY);
 
   // Hanya kartu terakhir dari tiap jenis yang masih bisa ditindaklanjuti.
-  for (const jenis of ['rencana', 'konfirmasi', 'giliran', 'galat', 'waktu-habis'] as const) {
+  for (const jenis of ['rencana', 'wilayah', 'konfirmasi', 'giliran', 'galat', 'waktu-habis'] as const) {
     for (let i = out.length - 1; i >= 0; i--) {
       const it = out[i]!;
       if (it.jenis === jenis) {
@@ -129,8 +138,18 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
   for (let i = 0; i < out.length; i++) {
     const it = out[i]!;
     if ((it.jenis === 'galat' || it.jenis === 'waktu-habis') && i < idxTerakhirWarga) it.terakhir = false;
+    // Usulan wilayah yang sudah dijawab (wilayah ditetapkan sesudahnya) tidak bisa dikonfirmasi lagi.
+    if (it.jenis === 'wilayah' && it.e.seq < wilayahDitetapkanSeq) it.terakhir = false;
   }
   return out;
+}
+
+/** "Wilayah KTP: Kabupaten Wonogiri" + tujuan pindah/domisili bila ada. */
+export function kalimatWilayah(e: EventOf<'wilayah'>): string {
+  let t = `Wilayah KTP: ${e.ktp.nama}`;
+  if (e.tujuan) t += ` · pindah ke ${e.tujuan.nama}`;
+  if (e.domisili) t += ` · tinggal di ${e.domisili.nama}`;
+  return t;
 }
 
 const LABEL_ALAT: Record<string, string> = {

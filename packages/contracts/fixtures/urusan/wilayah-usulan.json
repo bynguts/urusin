@@ -1,0 +1,80 @@
+{
+  "skema": "sse",
+  "catatan": "Wilayah dulu: usulan dari Data Diri menunggu konfirmasi warga; setelah ditetapkan, rencana memakai kanal resmi wilayah KTP.",
+  "data": [
+    {
+      "type": "wilayah",
+      "status": "usulan",
+      "ktp": { "kodeKabKota": "3578", "nama": "Kota Surabaya" },
+      "sumber": "data_diri",
+      "seq": 1,
+      "at": "2026-11-09T03:00:00.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf1"
+    },
+    {
+      "type": "assistant_text",
+      "delta": "Aturan dan situs resmi berbeda di tiap kab/kota. KTP Anda terdaftar di Kota Surabaya, betul?",
+      "seq": 2,
+      "at": "2026-11-09T03:00:00.700Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf2"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0002",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 3,
+      "at": "2026-11-09T03:00:01.400Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf3"
+    },
+    {
+      "type": "wilayah",
+      "status": "ditetapkan",
+      "ktp": { "kodeKabKota": "3578", "nama": "Kota Surabaya" },
+      "sumber": "warga",
+      "domisili": { "kodeKabKota": "3216", "nama": "Kabupaten Bekasi" },
+      "seq": 4,
+      "at": "2026-11-09T03:00:09.000Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf4"
+    },
+    {
+      "type": "plan_card",
+      "ringkasan": "Kelahiran · Kota Surabaya",
+      "wilayah": {
+        "ktp": { "kodeKabKota": "3578", "nama": "Kota Surabaya" },
+        "domisili": { "kodeKabKota": "3216", "nama": "Kabupaten Bekasi" }
+      },
+      "tier": "dipandu",
+      "catatan": "Anda tinggal di Kabupaten Bekasi, tetapi urusan kependudukan ditangani Disdukcapil sesuai alamat KTP: Kota Surabaya. Langkah online lewat Klampid New Generation bisa dikerjakan dari mana saja; langkah tatap muka di kantor Kota Surabaya.",
+      "langkah": [
+        {
+          "id": "ajukan",
+          "jenis": "online-manual",
+          "judul": "Ajukan akta kelahiran ke Disdukcapil Kota Surabaya",
+          "bawa": [],
+          "sumber": [
+            {
+              "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+              "judul": "Klampid New Generation",
+              "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya"
+            }
+          ]
+        }
+      ],
+      "seq": 5,
+      "at": "2026-11-09T03:00:09.100Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf5"
+    },
+    {
+      "type": "state",
+      "state": "RENCANA_DIUSULKAN",
+      "tier": "dipandu",
+      "version": 4,
+      "dari": "MEMAHAMI",
+      "seq": 6,
+      "at": "2026-11-09T03:00:09.200Z",
+      "chainHead": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccf6"
+    }
+  ]
+}

@@ -42,7 +42,8 @@ check(
 const jejak = await get(`/api/urusan/${ids.normal}/jejak`);
 check(jejak.status === 200, `GET jejak urusan normal 200 (status ${jejak.status})`);
 check(jejak.body?.rantai?.valid === true, 'rantai hash audit valid');
-check(jejak.body?.rantai?.jumlahEvent === 3, `jumlah event 3 (dapat ${jejak.body?.rantai?.jumlahEvent})`);
+// 1 event wilayah ditetapkan + 3 event state (lihat apps/web/scripts/db-seed.mjs)
+check(jejak.body?.rantai?.jumlahEvent === 4, `jumlah event 4 (dapat ${jejak.body?.rantai?.jumlahEvent})`);
 
 const future = await get(`/api/urusan/${ids.future}/jejak`);
 check(future.status < 500, `jejak urusan ber-state masa depan tidak 5xx (status ${future.status})`);

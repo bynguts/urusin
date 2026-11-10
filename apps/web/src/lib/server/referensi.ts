@@ -1,5 +1,6 @@
 import type { Kota, PeristiwaResponse } from '@urusin/contracts';
-import { SEED_ENTRIES, findBundel, routeByKode, type CityEntry } from '@urusin/registry';
+import { rencanaPeristiwa } from '@urusin/harness';
+import { SEMUA_WILAYAH, kanalWilayah, routeByKode, type CityEntry } from '@urusin/registry';
 
 export const STALE_HARI = 30;
 
@@ -21,23 +22,26 @@ export function perluDicekUlang(verifiedAt: string | null, now: Date = new Date(
 }
 
 /**
- * Langkah sebuah Peristiwa Hidup beserta sumber resmi; `kodeKabKota` (sudah divalidasi) memilih tier kota.
- * Dipakai GET /api/peristiwa/[slug] dan halaman /peristiwa/[slug]. null bila slug tidak dikenal.
+ * Langkah sebuah Peristiwa Hidup untuk wilayah KTP `kodeKabKota` (sudah divalidasi formatnya). Bundel khusus
+ * kab/kota hanya dipakai untuk kab/kota itu sendiri; wilayah lain mendapat persyaratan nasional dengan kanal
+ * resminya sendiri, dan tier `semi` hanya bila Browser Pendamping benar-benar tersedia. Tanpa kode: persyaratan
+ * nasional tanpa kanal kab/kota. Dipakai GET /api/peristiwa/[slug] dan halaman /peristiwa/[slug]. null bila slug
+ * tidak dikenal.
  */
 export function peristiwaView(slug: string, kodeKabKota: string | null): PeristiwaResponse | null {
-  const bundel = findBundel(slug);
-  if (!bundel) return null;
-  const kota = kodeKabKota !== null ? kotaView(routeByKode(kodeKabKota).entry) : null;
+  const r = rencanaPeristiwa(slug, { ktp: kodeKabKota });
+  if (!r) return null;
+  const kota = r.ktp ? kotaView(routeByKode(r.ktp.kodeKabKota).entry) : null;
   return {
-    slug: bundel.slug,
-    judul: bundel.judul,
-    tier: kota?.tier ?? bundel.tier,
+    slug: r.slug,
+    judul: r.judul,
+    tier: r.tier,
     kodeKabKota: kota?.kodeKabKota ?? null,
     kota,
-    keluaran: bundel.keluaran,
-    ...(bundel.peringatan ? { peringatan: bundel.peringatan } : {}),
-    catatan: bundel.catatan,
-    langkah: bundel.langkah.map((l) => ({
+    keluaran: r.keluaran,
+    ...(r.peringatan ? { peringatan: r.peringatan } : {}),
+    catatan: r.catatan,
+    langkah: r.langkah.map((l) => ({
       id: l.id,
       judul: l.judul,
       jenis: l.jenis,
@@ -54,15 +58,17 @@ export function peristiwaView(slug: string, kodeKabKota: string | null): Peristi
 
 export type KotaPilihan = { kodeKabKota: string; nama: string; situs: { url: string; nama: string } | null };
 
-/** Daftar kab/kota untuk pemilih wilayah (urut nama) + situs resmi Disdukcapil bila tercatat. */
+/**
+ * Semua 514 kab/kota untuk pemilih wilayah (urut nama) + kanal resmi kab/kota itu sendiri bila tercatat
+ * (portal layanan di registry atau situs Disdukcapil terverifikasi); null bila hanya ada situs nasional.
+ */
 export function daftarKota(): KotaPilihan[] {
-  return SEED_ENTRIES.map((e) => ({
-    kodeKabKota: e.kodeKabKota,
-    nama: e.nama,
-    situs: e.portal
-      ? { url: e.portal.origin, nama: e.portal.nama }
-      : e.sourceRef[0]
-        ? { url: e.sourceRef[0].url, nama: e.sourceRef[0].instansi }
-        : null,
-  })).sort((a, b) => a.nama.localeCompare(b.nama));
+  return SEMUA_WILAYAH.map((w) => {
+    const k = kanalWilayah(w.kodeKabKota);
+    return {
+      kodeKabKota: w.kodeKabKota,
+      nama: w.nama,
+      situs: k.jenis === 'nasional' ? null : { url: k.url, nama: k.judul },
+    };
+  }).sort((a, b) => a.nama.localeCompare(b.nama));
 }

@@ -21,10 +21,11 @@
   const pesan = $derived(`Saya ingin mengurus ${p.judul.toLowerCase()}. Apa saja yang perlu saya siapkan?`);
   let mengirim = $state(false);
 
-  // Dengan JS: bila belum memilih kota, pakai wilayah layanan perangkat ini.
+  // Dengan JS: bila belum memilih kota dan perangkat ini punya pilihan wilayah, pakai itu (usulan saja).
   $effect(() => {
     if (data.kodeDipilih || page.url.searchParams.has('kodeKabKota')) return;
-    const kode = lokal.data.wilayah.kodeKabKota;
+    const kode = lokal.data.wilayah?.kodeKabKota;
+    if (!kode) return;
     // eslint-disable-next-line svelte/no-navigation-without-resolve -- path lewat resolve(), hanya ditambah query
     void goto(`${resolve('/peristiwa/[slug]', { slug: p.slug })}?kodeKabKota=${kode}`, {
       replaceState: true,
@@ -57,8 +58,7 @@
   <p class="text-base text-body sm:text-[1.0625rem]">{p.ringkas}.</p>
 
   <form method="GET" class="mt-6 flex flex-col gap-2" data-sveltekit-keepfocus data-sveltekit-noscroll>
-    <label for="kota" class="text-[0.9375rem] font-medium text-ink">Kabupaten/kota tempat Anda mengurus</label
-    >
+    <label for="kota" class="text-[0.9375rem] font-medium text-ink">Kabupaten/kota sesuai KTP Anda</label>
     <div class="flex flex-wrap gap-2">
       <select
         id="kota"
@@ -80,7 +80,10 @@
         >
       </noscript>
     </div>
-    <p id="kota-petunjuk" class="text-sm text-muted">Syarat dan situs resmi mengikuti wilayah ini.</p>
+    <p id="kota-petunjuk" class="text-sm text-muted">
+      {data.dariDataDiri ? 'Diisi dari Data Diri akun Anda. ' : ''}Syarat dan situs resmi mengikuti wilayah
+      KTP; Urusin memastikannya lagi saat urusan dimulai.
+    </p>
   </form>
 
   {#if r}

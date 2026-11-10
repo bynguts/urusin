@@ -1,5 +1,5 @@
 import { isHttpError, isRedirect } from '@sveltejs/kit';
-import { DemoProvider } from '@urusin/harness';
+import { DemoProvider, wilayahUrusan } from '@urusin/harness';
 import { createRawSnippet } from 'svelte';
 import { render } from 'svelte/server';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import { load as muatPeristiwa } from '../../routes/peristiwa/[slug]/+page.serve
 import { load as muatUrusan } from '../../routes/urusan/[id]/+page.server';
 import LayarPendamping from '../components/pendamping/LayarPendamping.svelte';
 import Chip from '../components/ui/Chip.svelte';
+import KartuRencana from '../components/urusan/KartuRencana.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
 import { dataAwal, type DataPendamping } from '../pendamping/sesi.svelte';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
@@ -69,13 +70,18 @@ describe('form action mulai urusan (tanpa JS)', () => {
     expect(r.data.pesanWarga).toMatch(/Tulis dulu/);
   });
 
-  it('dari kartu peristiwa → urusan dibuat dengan jenis + kab/kota, lalu 303 ke layar urusan', async () => {
+  it('dari kartu peristiwa → urusan dibuat dengan jenis + usulan kab/kota, lalu 303 ke layar urusan', async () => {
     const r = await tangkap(beranda.mulai(kirimForm({ peristiwa: 'kelahiran', kodeKabKota: '3312' })));
     expect(isRedirect(r)).toBe(true);
     const lokasi = (r as { location: string }).location;
     expect(lokasi).toMatch(/^\/urusan\/u_[0-9a-f]{32}$/);
     const u = rt.store.getUrusan(lokasi.split('/').at(-1)!);
-    expect(u).toMatchObject({ jenis: 'kelahiran', kodeKabKota: '3312' });
+    // Pilihan di perangkat hanya usulan: wilayah KTP urusan belum ditetapkan sampai warga mengonfirmasi.
+    expect(u).toMatchObject({ jenis: 'kelahiran', kodeKabKota: null });
+    expect(wilayahUrusan(rt.store, u!)).toMatchObject({
+      ktp: null,
+      usulan: { ktp: { kodeKabKota: '3312' }, sumber: 'pilihan' },
+    });
   });
 });
 
@@ -226,6 +232,34 @@ describe('render server komponen', () => {
       locals: {},
     } as never)) as { urusan: { nomorPermohonan: string | null } };
     expect(d.urusan.nomorPermohonan).toBe('FX-REG-0002');
+  });
+
+  it('kartu rencana menampilkan dokumen persyaratan dan keterangan tiap langkah', () => {
+    const { body } = render(KartuRencana, {
+      props: {
+        rencana: {
+          type: 'plan_card',
+          ringkasan: 'Akta kelahiran · Banyumas',
+          langkah: [
+            {
+              id: 'ajukan',
+              jenis: 'online-manual',
+              judul: 'Ajukan akta kelahiran',
+              bawa: [],
+              dokumen: ['Kartu Keluarga', 'KTP-el orang tua'],
+              keterangan: 'Persyaratan nasional (Perpres 96/2018).',
+              sumber: [],
+            },
+          ],
+        } as never,
+        kelayakan: null,
+        bisaSetujui: false,
+        onsetujui: () => {},
+        onubah: () => {},
+      },
+    });
+    expect(body).toContain('KTP-el orang tua');
+    expect(body).toContain('Persyaratan nasional (Perpres 96/2018).');
   });
 });
 

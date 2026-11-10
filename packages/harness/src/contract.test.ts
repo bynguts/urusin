@@ -5,17 +5,19 @@ import { createDemoRagDb, DemoProvider } from './demo.js';
 import { toEvent } from './envelope.js';
 import { INTENT_TASKS } from './eval/tasks.js';
 import { makeEnv } from './testing.js';
+import { buatUrusanTerwilayah } from './wilayah.js';
 
 /** Setiap event yang dipancarkan harness harus lolos skema zod di @urusin/contracts. */
 describe('kontrak SSE: event harness lolos skema', () => {
   it.each(INTENT_TASKS.map((t) => [t.id, t] as const))('tugas eval %s', async (_id, task) => {
     const env = makeEnv({ provider: new DemoProvider(), ragDb: createDemoRagDb() });
-    const u = env.store.createUrusan(task.kodeKabKota ? { kodeKabKota: task.kodeKabKota } : {});
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: task.kodeKabKota });
+    const awal = env.store.eventsAfter(u.id, 0).length; // event penetapan wilayah sebelum turn
     const out = await runTurn(env.deps, { urusanId: u.id, userText: task.teks });
     expect(out.events.length).toBeGreaterThan(1);
     for (const e of out.events) expect(UrusinEventSchema.safeParse(e).success, JSON.stringify(e)).toBe(true);
     // jalur replay (tabel events) menghasilkan event yang sama persis dengan yang disiarkan
-    const replay = env.store.eventsAfter(u.id, 0).map(toEvent);
+    const replay = env.store.eventsAfter(u.id, awal).map(toEvent);
     expect(replay).toEqual(out.events);
     for (const e of replay) expect(UrusinEventSchema.parse(e)).toBeTruthy();
   });

@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { IsoWaktuSchema, JenisLangkahSchema, SumberSchema, TierSchema, UrusanStateSchema } from './common.js';
+import {
+  IsoWaktuSchema,
+  JenisLangkahSchema,
+  KodeKabKotaSchema,
+  SumberSchema,
+  TierSchema,
+  UrusanStateSchema,
+} from './common.js';
 
 /**
  * Event SSE: satu union bertanda `type`. Setiap frame: `id: <seq>`, `event: <type>`, `data: <JSON event>`.
@@ -74,13 +81,51 @@ export const LangkahKartuSchema = z.object({
   judul: z.string().min(1),
   lokasi: z.string().optional(),
   bawa: z.array(z.string()),
+  /** Dokumen persyaratan langkah ini (registry: persyaratan nasional atau bundel kab/kota). */
+  dokumen: z.array(z.string()).optional(),
+  /** Keterangan langkah untuk warga: dasar persyaratan dan cara mengajukan di kanal resmi. */
+  keterangan: z.string().optional(),
   sumber: z.array(SumberSchema),
 });
 export type LangkahKartu = z.infer<typeof LangkahKartuSchema>;
 
+/** Satu kab/kota: kode empat digit + nama resmi Kepmendagri. */
+export const WilayahRefSchema = z.object({
+  kodeKabKota: KodeKabKotaSchema,
+  nama: z.string().min(1),
+});
+export type WilayahRef = z.infer<typeof WilayahRefSchema>;
+
+/** Wilayah yang dipakai rencana: KTP (yurisdiksi adminduk), domisili bila berbeda, tujuan (hanya pindah). */
+export const WilayahRencanaSchema = z.object({
+  ktp: WilayahRefSchema,
+  domisili: WilayahRefSchema.optional(),
+  tujuan: WilayahRefSchema.optional(),
+});
+
 export const PlanCardEventSchema = event('plan_card', {
   ringkasan: z.string(),
   langkah: z.array(LangkahKartuSchema).min(1),
+  /** Wilayah yang menjadi dasar rencana (selalu ada pada rencana dari harness sejak gerbang wilayah). */
+  wilayah: WilayahRencanaSchema.optional(),
+  /** Tier rencana ini: `semi` hanya bila Browser Pendamping sanggup mengerjakan langkahnya di wilayah ini. */
+  tier: TierSchema.optional(),
+  /** Catatan untuk warga: kantor/situs yang berwenang, domisili beda, atau pindah dua Disdukcapil. */
+  catatan: z.string().optional(),
+});
+
+/**
+ * Wilayah urusan. `usulan` = kandidat (Data Diri KTP atau pilihan di perangkat) yang WAJIB dikonfirmasi warga;
+ * `ditetapkan` = wilayah KTP yang sudah dipastikan warga (rencana diblokir sampai ada). Setiap penetapan
+ * membawa keadaan lengkap (ktp + domisili + tujuan), jadi event terakhir = keadaan terkini.
+ */
+export const WilayahEventSchema = event('wilayah', {
+  status: z.enum(['usulan', 'ditetapkan']),
+  ktp: WilayahRefSchema,
+  /** data_diri = Data Diri akun; pilihan = pemilih wilayah di perangkat; warga = disebut/dikonfirmasi warga. */
+  sumber: z.enum(['data_diri', 'pilihan', 'warga']),
+  domisili: WilayahRefSchema.optional(),
+  tujuan: WilayahRefSchema.optional(),
 });
 
 export const ItemChecklistSchema = z.object({
@@ -181,6 +226,7 @@ export const GateRuleSchema = z.enum([
   'CONFIRMATION_EXPIRED',
   'ORIGIN_NOT_OFFICIAL',
   'QUOTA_EXCEEDED',
+  'WILAYAH_BELUM_DITETAPKAN',
 ]);
 export type GateRule = z.infer<typeof GateRuleSchema>;
 
@@ -209,6 +255,7 @@ export const UrusinEventSchema = z.discriminatedUnion('type', [
   HeartbeatEventSchema,
   DoneEventSchema,
   PolicyGateEventSchema,
+  WilayahEventSchema,
 ]);
 
 export type UrusinEvent = z.infer<typeof UrusinEventSchema>;

@@ -8,6 +8,7 @@ import { jejakView, transparansiView } from './trace.js';
 import { paramsHash } from './store.js';
 import { FAKE_HP, FAKE_NIK, SIXTEEN_DIGIT_RUN, dumpDb, makeEnv } from './testing.js';
 import type { UrusanState } from '@urusin/contracts';
+import { buatUrusanTerwilayah } from './wilayah.js';
 
 const types = (events: readonly StreamEnvelope[]) => events.map((e) => e.type);
 const callNames = (p: FakeProvider) =>
@@ -23,7 +24,7 @@ function advance(env: ReturnType<typeof makeEnv>, id: string, path: UrusanState[
 describe('alur normal dengan DemoProvider', () => {
   it('pertanyaan persyaratan: progress lalu grounded_answer; TANPA assistant_text mentah', async () => {
     const env = makeEnv({ provider: new DemoProvider() });
-    const u = env.store.createUrusan({ kodeKabKota: '3312' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312' });
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Apa syarat akta kelahiran anak saya?' });
 
     expect(out.status).toBe('selesai');
@@ -98,7 +99,7 @@ describe('policy gate (tool tulis)', () => {
   function setup(replies: ReturnType<typeof fakeCompletion>[], now?: () => Date) {
     const provider = new FakeProvider({ replies });
     const env = makeEnv({ provider, ...(now ? { now } : {}) });
-    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
     advance(env, u.id, [
       'MEMAHAMI',
       'RENCANA_DIUSULKAN',
@@ -194,7 +195,7 @@ describe('policy gate (tool tulis)', () => {
 
   it('konfirmasi urusan lain tidak berlaku', async () => {
     const { env, u, provider } = setup([]);
-    const other = env.store.createUrusan({ kodeKabKota: '3312' });
+    const other = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312' });
     const conf = env.store.createConfirmation(other.id, 'dukcapil__ajukan_layanan', {
       kodeKabKota: '3312',
       layananId: 9,
@@ -284,7 +285,7 @@ describe('degraded: JSON satu aksi (tanpa tools)', () => {
     });
     // json_schema strict hidup; tools mati.
     const env = makeEnv({ provider, caps: { tools: false } });
-    const u = env.store.createUrusan({ kodeKabKota: '3312' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312' });
     advance(env, u.id, [
       'MEMAHAMI',
       'RENCANA_DIUSULKAN',
@@ -308,7 +309,7 @@ describe('degraded: JSON satu aksi (tanpa tools)', () => {
   it('DemoProvider tanpa tools: alur tetap jalan dalam beberapa turn ("lanjutkan")', async () => {
     const provider = new DemoProvider({ without: ['tools'] });
     const env = makeEnv({ provider, caps: { tools: false } });
-    const u = env.store.createUrusan();
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312' });
     const t1 = await runTurn(env.deps, { urusanId: u.id, userText: 'Apa syarat akta kelahiran?' });
     expect(t1.events.at(-1)!).toMatchObject({ degraded: true, lanjutkan: true });
     const t2 = await runTurn(env.deps, { urusanId: u.id, userText: 'lanjut' });
@@ -397,7 +398,7 @@ describe('timeout, pembatalan, konkurensi', () => {
       ],
     });
     const env = makeEnv({ provider });
-    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
     advance(env, u.id, ['MEMAHAMI']);
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
     expect(types(out.events)).not.toContain('error');
@@ -419,7 +420,7 @@ describe('timeout, pembatalan, konkurensi', () => {
       ],
     });
     const env = makeEnv({ provider });
-    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
     advance(env, u.id, ['MEMAHAMI']);
     await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
     const sent = provider.calls.flatMap((c) => (c.kind === 'create' ? [c.params.messages] : []));
@@ -452,7 +453,7 @@ describe('timeout, pembatalan, konkurensi', () => {
       ],
     });
     const env = makeEnv({ provider });
-    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
     advance(env, u.id, ['MEMAHAMI']);
     await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
     expect(env.store.getChunks(u.id).length).toBeGreaterThan(0);
@@ -487,7 +488,7 @@ describe('timeout, pembatalan, konkurensi', () => {
       };
     };
     const env = makeEnv({ provider, ragSearch });
-    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
     advance(env, u.id, ['MEMAHAMI']);
     await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
     expect(inputs).toEqual([{ query: 'syarat akta', kodeKabKota: '3312', k: 4 }]);
@@ -568,7 +569,7 @@ describe('kuota dan biaya (jam palsu)', () => {
   it('batas turn per sesi: turn ke-3 ditolak ramah (QUOTA + handoff) pada cap 2', async () => {
     const provider = new DemoProvider();
     const env = makeEnv({ provider, quota: { sessionTurnCap: 2 } });
-    const u = env.store.createUrusan({ kodeKabKota: '3312' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312' });
     await runTurn(env.deps, { urusanId: u.id, userText: 'Halo' });
     await runTurn(env.deps, { urusanId: u.id, userText: 'Halo' });
     const third = await runTurn(env.deps, { urusanId: u.id, userText: 'Halo' });
@@ -632,7 +633,7 @@ describe('span OTel GenAI dan query /jejak /transparansi', () => {
   it('setiap LLM call, tool call, retrieval, dan gate mendapat span; tanpa isi prompt/respons', async () => {
     const provider = new DemoProvider();
     const env = makeEnv({ provider, prices: { inputPerMTok: 1, outputPerMTok: 2, audioPerMin: 0 } });
-    const u = env.store.createUrusan({ kodeKabKota: '3312' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312' });
     await runTurn(env.deps, { urusanId: u.id, userText: 'Apa syarat akta kelahiran?' });
     const ops = new Set(
       (env.store.db.prepare('SELECT DISTINCT operation FROM spans').all() as { operation: string }[]).map(
@@ -687,7 +688,7 @@ describe('span OTel GenAI dan query /jejak /transparansi', () => {
 describe('versi urusan sampai ke klien (regresi 409 pada pesan lanjutan)', () => {
   it('event done membawa versi terbaru; expectedVersion dari done diterima turn berikutnya', async () => {
     const env = makeEnv({ provider: new DemoProvider() });
-    const u = env.store.createUrusan({ kodeKabKota: '3312' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312' });
     let expected = env.store.getUrusanOrThrow(u.id).version;
     for (const teks of ['halo', 'Apa syarat akta kelahiran anak saya?', 'terima kasih']) {
       const out = await runTurn(env.deps, { urusanId: u.id, userText: teks, expectedVersion: expected });
@@ -699,7 +700,7 @@ describe('versi urusan sampai ke klien (regresi 409 pada pesan lanjutan)', () =>
   });
   it('tanpa memakai versi dari done, versi klaim turn membuat versi lama basi (409 asli)', async () => {
     const env = makeEnv({ provider: new DemoProvider() });
-    const u = env.store.createUrusan({ kodeKabKota: '3312' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312' });
     const v0 = env.store.getUrusanOrThrow(u.id).version;
     await runTurn(env.deps, { urusanId: u.id, userText: 'halo', expectedVersion: v0 });
     expect(() => prepareTurn(env.deps, { urusanId: u.id, userText: 'lagi', expectedVersion: v0 })).toThrow(

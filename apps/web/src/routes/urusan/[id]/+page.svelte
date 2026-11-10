@@ -12,6 +12,7 @@
   import KartuJawaban from '#lib/components/urusan/KartuJawaban.svelte';
   import KartuKonfirmasi from '#lib/components/urusan/KartuKonfirmasi.svelte';
   import KartuRencana from '#lib/components/urusan/KartuRencana.svelte';
+  import KartuWilayah from '#lib/components/urusan/KartuWilayah.svelte';
   import KartuTerkirim from '#lib/components/urusan/KartuTerkirim.svelte';
   import Komposer from '#lib/components/urusan/Komposer.svelte';
   import Lencana from '#lib/components/urusan/Lencana.svelte';
@@ -158,6 +159,22 @@
         'Urusin masih memproses langkah sebelumnya. Tunggu sebentar, lalu tekan Setujui rencana lagi.';
     else if (hasil === 'galat')
       pesanKomposer = 'Persetujuan belum tercatat. Periksa koneksi, lalu coba lagi.';
+  }
+
+  async function wilayahBenar(kodeKabKota: string) {
+    mengirim = true;
+    pesanKomposer = null;
+    const hasil = await store.tetapkanWilayah(kodeKabKota);
+    mengirim = false;
+    if (hasil === 'konflik')
+      pesanKomposer =
+        'Wilayah belum bisa dicatat lewat kartu ini: mungkin sudah dipastikan di obrolan atau perangkat lain, atau Urusin masih bekerja. Muat ulang halaman untuk melihat yang terbaru.';
+    else if (hasil === 'galat') pesanKomposer = 'Wilayah belum tercatat. Periksa koneksi, lalu coba lagi.';
+  }
+
+  function wilayahBukan() {
+    teks = 'KTP saya terdaftar di ';
+    komposer?.focus();
   }
 
   function ulangTerakhir() {
@@ -383,6 +400,18 @@
                     sibuk={mengirim}
                     onsetujui={() => void setujuiRencana()}
                     onubah={ubahRencana}
+                  />
+                </PesanAgen>
+              {:else if it.jenis === 'wilayah'}
+                <PesanAgen avatar={p.avatar}>
+                  <KartuWilayah
+                    usulan={it.e}
+                    aktif={it.terakhir &&
+                      (keadaanUrusan === 'BARU' || keadaanUrusan === 'MEMAHAMI') &&
+                      !k.sedangBerjalan}
+                    sibuk={mengirim}
+                    onbenar={() => void wilayahBenar(it.e.ktp.kodeKabKota)}
+                    onbukan={wilayahBukan}
                   />
                 </PesanAgen>
               {:else if it.jenis === 'checklist'}

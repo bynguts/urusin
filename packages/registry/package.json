@@ -19,7 +19,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "gen:wilayah": "node scripts/gen-wilayah.mjs && pnpm -w exec prettier --write packages/registry/src/wilayah-data.ts"
   },
   "dependencies": {
     "zod": "4.6.7"

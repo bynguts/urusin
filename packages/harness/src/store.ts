@@ -225,6 +225,17 @@ export class HarnessStore {
     return this.getUrusanOrThrow(id);
   }
 
+  /** Tetapkan wilayah KTP urusan (CAS). Hanya lewat `tetapkanWilayah` (validasi + event audit). */
+  setKodeKabKota(id: string, expectedVersion: number, kode: string): UrusanRow {
+    const res = this.db
+      .prepare(
+        'UPDATE urusan SET kode_kabkota = ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ?',
+      )
+      .run(kode, this.iso(), id, expectedVersion);
+    if (res.changes !== 1) throw new ConflictError();
+    return this.getUrusanOrThrow(id);
+  }
+
   // --- turns ---
 
   /**
@@ -388,6 +399,22 @@ export class HarnessStore {
         'SELECT seq, type, payload, at, hash FROM events WHERE urusan_id = ? AND seq > ? ORDER BY seq LIMIT ?',
       )
       .all(urusanId, afterSeq, limit) as {
+      seq: number;
+      type: string;
+      payload: string;
+      at: string;
+      hash: string;
+    }[];
+    return rows.map((r) => ({ urusanId, ...r, payload: JSON.parse(r.payload) as unknown }));
+  }
+
+  /** Event satu tipe, terbaru dulu. */
+  eventsOfType(urusanId: string, type: string, limit = 20): StoredEvent[] {
+    const rows = this.db
+      .prepare(
+        'SELECT seq, type, payload, at, hash FROM events WHERE urusan_id = ? AND type = ? ORDER BY seq DESC LIMIT ?',
+      )
+      .all(urusanId, type, limit) as {
       seq: number;
       type: string;
       payload: string;
@@ -621,6 +648,11 @@ export class HarnessStore {
         for (const c of chunks) ins.run(urusanId, c.refId, c.text, c.url, c.judul, c.instansi, c.verifiedAt);
       })
       .immediate();
+  }
+
+  /** Buang semua potongan urusan ini (wilayah KTP berganti: potongan wilayah lama tidak boleh dikutip lagi). */
+  clearChunks(urusanId: string): void {
+    this.db.prepare('DELETE FROM retrieved_chunks WHERE urusan_id = ?').run(urusanId);
   }
 
   getChunks(urusanId: string): ChunkRecord[] {

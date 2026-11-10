@@ -4,6 +4,8 @@ import type { CityEntry } from './schema.js';
  * Seed dari recon read-only 2026-11-08 (recon/dukcapil-kota-*.md, rea-dukcapil-sby-smg.md).
  * `verifiedAt` null untuk semuanya: pengamatan recon belum diverifikasi tangan oleh pemilik data.
  * Hanya Wonogiri berstatus `kirim-asli` (akun warga ada di tim); kota lain tidak diuji kirim asli.
+ * Tier jujur: `semi` HANYA bila Browser Pendamping bisa MENGISI di portal ini (adapter tulis, validasi kirim-asli).
+ * Adapter baca-saja (cek status) dan portal tanpa adapter = `dipandu`.
  */
 type Seed = {
   kode: string;
@@ -48,7 +50,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3578',
     nama: 'Kota Surabaya',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'read-only',
     origin: 'https://wargaklampid-dispendukcapil.surabaya.go.id',
     portal: 'Klampid New Generation',
@@ -60,7 +62,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3374',
     nama: 'Kota Semarang',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'read-only',
     origin: 'https://sidnok.semarangkota.go.id',
     portal: "Si D'nOK",
@@ -72,7 +74,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3573',
     nama: 'Kota Malang',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://siapel.malangkota.go.id',
     portal: 'SIAPEL',
@@ -83,7 +85,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3404',
     nama: 'Kabupaten Sleman',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://dukcapilonline.slemankab.go.id',
     portal: 'Dukcapil Online',
@@ -93,7 +95,7 @@ const SEEDS: Seed[] = [
   {
     kode: '1271',
     nama: 'Kota Medan',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://sibisa.medan.go.id',
     portal: 'SIBISA',
@@ -103,7 +105,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3671',
     nama: 'Kota Tangerang',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://sobatdukcapil.tangerangkota.go.id',
     portal: 'Sobat Dukcapil',
@@ -113,7 +115,7 @@ const SEEDS: Seed[] = [
   {
     kode: '7371',
     nama: 'Kota Makassar',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://dukcapil.makassarkota.go.id',
     portal: 'Layanan Dukcapil Makassar',
@@ -124,7 +126,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3276',
     nama: 'Kota Depok',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://silondomaju.depok.go.id',
     portal: 'Silondo Maju',
@@ -135,7 +137,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3275',
     nama: 'Kota Bekasi',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://www.e-open.id',
     portal: 'e-Open',
@@ -215,9 +217,10 @@ const SEEDS: Seed[] = [
     tier: 'dipandu',
     validasi: 'tidak-ada-portal',
     origin: 'https://dispendukcapil.sukoharjokab.go.id',
-    portal: 'MELODI (WhatsApp)',
+    portal: 'Dispendukcapil Sukoharjo',
     instansi: dinas('Kabupaten Sukoharjo'),
-    catatan: 'Layanan online hanya lewat WhatsApp per jenis layanan.',
+    catatan:
+      'Layanan online hanya lewat WhatsApp per jenis layanan (MELODI); situs ini situs dinas, bukan WhatsApp.',
   },
   {
     kode: '3310',

@@ -21,6 +21,13 @@ describe('reduksi: event SSE → state turunan', () => {
     expect(s.lastSeq).toBe(skenario('urusan/jawaban-bersumber').length);
   });
 
+  it('wilayah: usulan lalu ditetapkan; rencana membawa wilayah KTP dan tier', () => {
+    const s = jalankan('urusan/wilayah-usulan');
+    expect(s.wilayah).toMatchObject({ status: 'ditetapkan', ktp: { kodeKabKota: '3578' } });
+    expect(s.rencana?.wilayah?.ktp.kodeKabKota).toBe('3578');
+    expect(s.rencana?.tier).toBe('dipandu');
+  });
+
   it('done membawa versi terbaru sehingga pesan lanjutan memakai expectedVersion yang segar', () => {
     const s = jalankan('urusan/jawaban-bersumber');
     const done = {
@@ -161,6 +168,38 @@ describe('UrusanStore: sambung, resume, kirim', () => {
     expect(store.keadaan.sedangBerjalan).toBe(true);
     const body = JSON.parse((ambil.mock.calls[0]![1] as { body: string }).body);
     expect(body).toEqual({ teks: 'lagi', expectedVersion: store.keadaan.version });
+  });
+
+  it('kirim: done turn ini sudah tiba sebelum respons 202 → tidak ditandai berjalan lagi', async () => {
+    let lepas: (r: Response) => void = () => {};
+    const ambil = vi.fn().mockReturnValueOnce(new Promise<Response>((r) => (lepas = r)));
+    const store = siapkan(ambil);
+    const janji = store.kirim('lagi');
+    const a = SumberPalsu.semua[0]!;
+    const seq = store.keadaan.lastSeq;
+    a.kirim({ type: 'progress', seq: seq + 1, at: 'x', chainHead: 'h', label: 'x' } as never);
+    a.kirim({
+      type: 'done',
+      seq: seq + 2,
+      at: 'x',
+      chainHead: 'h',
+      turnId: 't-cepat',
+      status: 'selesai',
+      lanjutkan: false,
+      degraded: false,
+    } as never);
+    lepas(json({ turnId: 't-cepat', diterima: true }, 202));
+    expect(await janji).toBe('ok');
+    expect(store.keadaan.sedangBerjalan).toBe(false);
+  });
+
+  it('tetapkanWilayah: tanpa versi dan tanpa kirim ulang otomatis saat 409 (kartu basi tidak menimpa)', async () => {
+    const ambil = vi.fn().mockResolvedValueOnce(json({ kode: 'WILAYAH_SUDAH_DITETAPKAN' }, 409));
+    const store = siapkan(ambil);
+    expect(await store.tetapkanWilayah('3312')).toBe('konflik');
+    expect(ambil).toHaveBeenCalledTimes(1);
+    expect(ambil.mock.calls[0]![0]).toBe('/api/urusan/u_abc/wilayah');
+    expect(JSON.parse((ambil.mock.calls[0]![1] as { body: string }).body)).toEqual({ kodeKabKota: '3312' });
   });
 
   it('409 versi basi: ambil status, tidak ada turn berjalan -> kirim ulang sekali dengan versi segar', async () => {

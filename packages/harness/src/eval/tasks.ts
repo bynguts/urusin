@@ -42,7 +42,7 @@ export const INTENT_TASKS: readonly EvalTask[] = [
     jenis: 'pindah',
     ekspektasi: 'jawaban',
     kodeKabKota: '3312',
-    teks: 'Saya mau pindah domisili ke kota lain, apa yang harus disiapkan?',
+    teks: 'Saya mau pindah domisili ke Kota Surabaya, apa yang harus disiapkan?',
   },
   {
     id: 'T05',
