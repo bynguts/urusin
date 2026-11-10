@@ -168,18 +168,11 @@
     overflow: hidden;
     white-space: nowrap;
     vertical-align: bottom;
-    animation: lp-typewriter-text 8s steps(48, end) infinite;
-  }
-  .lp .n-prompt-typewriter::after {
-    content: '';
-    display: inline-block;
-    width: 2px;
-    height: 1.15em;
-    background-color: #252522;
-    margin-left: 3px;
-    vertical-align: -2px;
-    border-radius: 1px;
-    animation: lp-kedip-kursor 0.75s infinite;
+    border-right: 2px solid #252522;
+    padding-right: 2px;
+    animation:
+      lp-typewriter-text 8s steps(48, end) infinite,
+      lp-kedip-kursor 0.75s step-end infinite;
   }
   .lp .lp96 .lp104 {
     animation: lp-send-pulse 8s ease-in-out infinite;
@@ -599,10 +592,10 @@
 }
 @keyframes lp-kedip-kursor {
   0%, 100% {
-    opacity: 1;
+    border-right-color: #252522;
   }
   50% {
-    opacity: 0;
+    border-right-color: transparent;
   }
 }
 @keyframes lp-typewriter-text {

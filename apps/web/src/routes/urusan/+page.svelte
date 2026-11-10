@@ -55,9 +55,6 @@
   <!-- Page hero -->
   <section class="ur1">
     <div class="ur2">
-      <div class="ur3">
-        <p class="ur4">Urusan</p>
-      </div>
       <h1 class="ur5">Urusan yang bisa dibantu Urusin</h1>
       <p class="ur6">
         Mulai dari peristiwa hidup yang sedang kamu alami. Urusin tahu dokumen dan instansi mana yang

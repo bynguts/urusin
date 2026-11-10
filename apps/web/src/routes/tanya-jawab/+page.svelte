@@ -37,9 +37,6 @@
   <!-- Page hero -->
   <section class="tj1">
     <div class="tj2">
-      <div class="tj3">
-        <p class="tj4">Tanya jawab</p>
-      </div>
       <h1 class="tj5">Pertanyaan yang sering diajukan</h1>
       <p class="tj6">
         Jawaban singkat soal cara kerja, keamanan, Browser Pendamping, dan biaya. Belum ketemu? Tanyakan

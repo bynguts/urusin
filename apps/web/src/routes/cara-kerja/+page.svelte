@@ -63,9 +63,6 @@
   <!-- Page hero -->
   <section class="ck1">
     <div class="ck2">
-      <div class="ck3">
-        <p class="ck4">Cara kerja</p>
-      </div>
       <h1 class="ck5">Dari cerita sampai pengajuan, langkah demi langkah</h1>
       <p class="ck6">
         Urusin memahami kebutuhanmu, menyusun rencana dari aturan resmi, lalu membantu mengisi formulir.
