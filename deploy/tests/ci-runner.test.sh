@@ -112,12 +112,17 @@ chmod +x "$SB/bin/pnpm"
 H="$URUSIN_CI_ROOT/runner/_home"
 mkdir -p "$H/.local/share/pnpm/store/v10"
 head -c 2097152 /dev/zero > "$H/.local/share/pnpm/store/v10/blob"
-jc() { out="$(HOME="$H" GITHUB_WORKSPACE="$1" PATH="$SB/bin:$HERE/shims-ci:$PATH" SHIM_DF_PCT=84 PNPM_STORE_MAX_MB="${MAXMB:-1024}" bash "$SB/job-completed" 2>&1)"; rc=$?; }
+jc() { out="$(HOME="$H" GITHUB_WORKSPACE="$1" PATH="$SB/bin:$HERE/shims-ci:$PATH" SHIM_DF_PCT=84 PNPM_STORE_MAX_MB="${MAXMB:-1024}" bash -e -o pipefail "$SB/job-completed" 2>&1)"; rc=$?; }  # seperti runner: bash -e -o pipefail
 jc "$WS"
 check "job-completed: hapus node_modules workspace, cleanup lewat sudo, cetak df" '[ $rc -eq 0 ] && [ ! -e "$WS/node_modules" ] && [ ! -e "$WS/apps/web/node_modules" ] && grep -q "^-n /opt/urusin-ci/bin/ci-docker cleanup$" "$SHIM_DIR/sudo.log" && [[ "$out" == *"84%"* ]]'
 check "job-completed: pnpm store prune; store di bawah batas tetap ada" 'grep -qx "store prune" "$SHIM_DIR/pnpm.log" && [ -f "$H/.local/share/pnpm/store/v10/blob" ]'
 MAXMB=1 jc "$WS"
 check "job-completed: store di atas batas keras dihapus" '[ $rc -eq 0 ] && [ ! -e "$H/.local/share/pnpm/store" ]'
+# Job tanpa pnpm (mis. Gitleaks): tidak ada pnpm di PATH dan tidak ada $HOME/setup-pnpm. Di bawah bash -e hook
+# tetap harus keluar 0 (dulu: substitusi `command -v pnpm || find` gagal -> hook exit 1 -> job ditandai gagal).
+mkdir -p "$SB/binsudo" && cp "$SB/bin/sudo" "$SB/binsudo/sudo"
+out="$(HOME="$H" GITHUB_WORKSPACE="$WS" PATH="$SB/binsudo:$HERE/shims-ci:/usr/bin:/bin" SHIM_DF_PCT=84 bash -e -o pipefail "$SB/job-completed" 2>&1)"; rc=$?
+check "job-completed: tanpa pnpm dan tanpa setup-pnpm tetap exit 0 di bawah bash -e" '[ $rc -eq 0 ] && [[ "$out" == *"84%"* ]]'
 jc "$SB/luar/x"
 check "job-completed: tidak menyentuh di luar _work" '[ $rc -eq 0 ] && [ -d "$SB/luar/x/node_modules" ]'
 

@@ -9,6 +9,9 @@
 #   - cetak df agar tren disk terlihat di log job.
 # Tidak pernah gagal-keras: kebersihan tidak boleh mengubah hasil job.
 set -uo pipefail
+# Runner memanggil hook dengan `bash -e -o pipefail`; matikan -e agar langkah kebersihan yang gagal (mis. tidak ada
+# pnpm/setup-pnpm di job Gitleaks) tidak membuat hook exit 1 dan menandai job gagal.
+set +e
 ws="${GITHUB_WORKSPACE:-}"
 case "$ws" in
   /opt/urusin-ci/runner/_work/*)
