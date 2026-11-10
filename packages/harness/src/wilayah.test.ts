@@ -10,6 +10,7 @@ import { makeEnv } from './testing.js';
 import {
   AFIRMASI,
   buatUrusanTerwilayah,
+  kodeYurisdiksi,
   refWilayah,
   tetapkanWilayah,
   usulkanRencanaOtomatis,
@@ -760,5 +761,44 @@ describe('temuan eval persona p17: balasan ringkas tanpa kehilangan isi wajib', 
     expect(p).toMatch(/Ikuti gaya warga/);
     expect(p).toMatch(/Jangan mengulang isi kartu rencana atau jawaban bersumber/);
     expect(p).toMatch(/dokumen yang perlu disiapkan, kanal\/kantor yang dituju, dan langkah berikutnya/);
+  });
+});
+
+describe('temuan eval persona p02: hand-off pindah ke Disdukcapil yang ditanyakan', () => {
+  const pindah = (env: Env) => {
+    const u = buatUrusanTerwilayah(env.store, { jenis: 'pindah', kodeKabKota: '3312' });
+    return tetapkanWilayah(env.store, u, { ktp: '3312', tujuan: '3216' }, publisher(env, u.id));
+  };
+
+  it('kodeYurisdiksi: tujuan bila tujuan yang ditanyakan, asal untuk SKPWNI', () => {
+    const env = makeEnv({ provider: new FakeProvider() });
+    const u = pindah(env);
+    const k = (t: string) => kodeYurisdiksi(env.store, u, t);
+    expect(k('Kantor Disdukcapil Bekasi di mana, buat minta bantuan surat pindah bawa apa?')).toBe('3216');
+    expect(k('Lapor datang di daerah tujuan bawa apa?')).toBe('3216');
+    expect(k('SKPWNI diurus online lewat mana?')).toBe('3312');
+    expect(k('Kalau urus di Wonogiri bisa online?')).toBe('3312');
+    expect(k('Formulir F-1.03 dapat di mana?')).toBe('3312');
+    // Bukan pindah: selalu wilayah KTP.
+    const kk = buatUrusanTerwilayah(env.store, { jenis: 'kk', kodeKabKota: '3312' });
+    expect(kodeYurisdiksi(env.store, kk, 'Disdukcapil Bekasi di mana?')).toBe('3312');
+  });
+
+  it('pertanyaan tentang Disdukcapil tujuan tanpa sumber: hand-off ke Kab. Bekasi, bukan Wonogiri', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'alamat kantor Disdukcapil Bekasi' }),
+        fakeCompletion({ content: JSON.stringify({ klaim: [], handoff: null }) }),
+      ],
+    });
+    const env = makeEnv({ provider });
+    const u = pindah(env);
+    const out = await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'Kantor Disdukcapil Bekasi yang harus saya datangi di mana?',
+    });
+    const h = of(out.events, 'handoff')[0]!;
+    expect(h.kanal[0]!.url).toMatch(/bekasikab/);
+    expect(JSON.stringify(h)).not.toMatch(/wonogiri/i);
   });
 });

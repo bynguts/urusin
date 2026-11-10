@@ -80,6 +80,32 @@ export function wilayahUrusan(store: HarnessStore, u: UrusanRow): WilayahUrusan 
   };
 }
 
+/** Nama kab/kota tanpa "Kabupaten"/"Kota", mis. "Bekasi": warga jarang menyebut jenisnya. */
+const intiNama = (nama: string) => nama.replace(/^(Kabupaten|Kota)\s+/i, '').toLowerCase();
+
+const sebutInti = (teks: string, w: WilayahRef) =>
+  new RegExp(`\\b${intiNama(w.nama).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(teks);
+
+/** Kata yang jelas merujuk sisi tujuan pindah (lapor datang, KK/KTP-el alamat baru). */
+const SISI_TUJUAN =
+  /\b(tujuan|lapor datang|daerah baru|alamat baru|tempat baru|skdwni|surat (keterangan )?datang)\b/i;
+
+/**
+ * Yurisdiksi untuk hand-off: wilayah KTP, kecuali urusan pindah yang ditanyakan tentang sisi TUJUAN: nama tujuan
+ * disebut (nama asal tidak), atau kata "tujuan/lapor datang/alamat baru" tanpa menyebut SKPWNI. SKPWNI ke asal.
+ */
+export function kodeYurisdiksi(store: HarnessStore, u: UrusanRow, teks: string): string | null {
+  const w = wilayahUrusan(store, u);
+  const asal = w.ktp?.kodeKabKota ?? u.kodeKabKota;
+  if (u.jenis !== 'pindah' || !w.ktp || !w.tujuan || w.tujuan.kodeKabKota === w.ktp.kodeKabKota) return asal;
+  const kode = temukanWilayah(teks).map((s) => s.wilayah.kodeKabKota);
+  if (kode.includes(w.ktp.kodeKabKota) || sebutInti(teks, w.ktp)) return asal;
+  // Nama tujuan menang, juga untuk minta bantuan SKPWNI di tujuan (Permendagri 108/2019 Ps. 31).
+  if (kode.includes(w.tujuan.kodeKabKota) || sebutInti(teks, w.tujuan)) return w.tujuan.kodeKabKota;
+  if (/\bskpwni\b|surat pindah/i.test(teks)) return asal;
+  return SISI_TUJUAN.test(teks) ? w.tujuan.kodeKabKota : asal;
+}
+
 /** Kode wilayah KTP yang sudah dipastikan warga, atau null. */
 export function kodeKtp(store: HarnessStore, u: UrusanRow): string | null {
   return wilayahUrusan(store, u).ktp?.kodeKabKota ?? null;
