@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
-import { DevMailer, GoogleOidc, sha256Hex, type Akun } from '@urusin/akun';
+import { DEFAULT_KUOTA, DevMailer, GoogleOidc, sha256Hex, type Akun } from '@urusin/akun';
 import { FakeGoogle, MemoryMailer } from '@urusin/akun/testing';
 import { GalatApiSchema, SesiAkunResponseSchema, VaultResponseSchema } from '@urusin/contracts';
 import { DemoProvider } from '@urusin/harness';
@@ -805,7 +805,8 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
 });
 
 describe('Masuk sebagai juri (salinan demo terisolasi)', () => {
-  it('Turnstile wajib; salinan berisi data sintetis, terisolasi per klik; maksimal 3 per IP per hari', async () => {
+  it('Turnstile wajib; salinan berisi data sintetis, terisolasi per klik; batas per IP (di sini 3)', async () => {
+    buatRt({ kuota: { tamuPerIpHari: 20, demoPerIpHari: 3, demoAktifMaks: 200 } });
     const tanpa = await juriApi(ev(post({}, '/api/akun/juri')));
     expect([tanpa.status, (await tanpa.json()).kode]).toEqual([403, 'TURNSTILE_WAJIB']);
     const jars: Jar[] = [];
@@ -840,7 +841,10 @@ describe('Masuk sebagai juri (salinan demo terisolasi)', () => {
     const r = await juriApi(ev(post(ts, '/api/akun/juri'), { ip: '10.1.0.2' }));
     expect([r.status, (await r.json()).kode]).toEqual([503, 'DEMO_PENUH']);
 
-    buatRt({ turnstile: turnstileFromEnv({}) });
+    buatRt({
+      turnstile: turnstileFromEnv({}),
+      kuota: { tamuPerIpHari: 20, demoPerIpHari: 3, demoAktifMaks: 200 },
+    });
     const env = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
     try {
@@ -852,6 +856,28 @@ describe('Masuk sebagai juri (salinan demo terisolasi)', () => {
     } finally {
       process.env.NODE_ENV = env;
     }
+  });
+
+  it('aula lomba (satu NAT): batas bawaan tidak mengunci juri ke-4 dst. maupun pengunjung tamu ke-21 dst.', async () => {
+    expect(DEFAULT_KUOTA).toEqual({ tamuPerIpHari: 200, demoPerIpHari: 50, demoAktifMaks: 200 });
+    const ts = { turnstile: TURNSTILE_TOKEN_FIXTURE };
+    for (let i = 0; i < 12; i++)
+      expect(
+        (await juriApi(ev(post(ts, '/api/akun/juri'), { ip: '203.0.113.7' }))).status,
+        `juri ${i + 1}`,
+      ).toBe(200);
+    for (let i = 0; i < 30; i++)
+      expect(() =>
+        rt.akun.pastikanTamu(i.toString(16).padStart(32, '0'), { ip: '203.0.113.7' }),
+      ).not.toThrow();
+  });
+
+  it('halaman masuk: widget Turnstile hanya untuk Cloudflare sungguhan; tanpa token juri ditolak', async () => {
+    expect(((await masukLoad(ev(get('/masuk')) as never)) as any).turnstileSiteKey).toBe(''); // tiruan e2e
+    buatRt({ turnstile: turnstileFromEnv({ TURNSTILE_SECRET_KEY: 'rahasia', TURNSTILE_SITE_KEY: 'situs' }) });
+    expect(((await masukLoad(ev(get('/masuk')) as never)) as any).turnstileSiteKey).toBe('situs');
+    const r = await juriApi(ev(post({}, '/api/akun/juri')));
+    expect([r.status, (await r.json()).kode]).toEqual([403, 'TURNSTILE_WAJIB']);
   });
 
   it('halaman masuk: aksi juri mengalihkan ke beranda dengan sesi demo', async () => {

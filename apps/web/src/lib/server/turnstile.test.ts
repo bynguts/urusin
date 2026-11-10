@@ -62,6 +62,18 @@ describe('turnstileFromEnv', () => {
     expect(await t.verifikasi('tok', 'ip')).toBe(false);
     expect(panggilan).toHaveLength(4);
   });
+
+  it('produksi: kunci rahasia tanpa site key ditolak saat start (widget juri tidak bisa dirender)', () => {
+    expect(() => turnstileFromEnv({ TURNSTILE_SECRET_KEY: 'rahasia', NODE_ENV: 'production' })).toThrow(
+      /TURNSTILE_SITE_KEY/,
+    );
+    const t = turnstileFromEnv({
+      TURNSTILE_SECRET_KEY: 'rahasia',
+      TURNSTILE_SITE_KEY: 'situs',
+      NODE_ENV: 'production',
+    });
+    expect([t.mode, t.siteKey]).toEqual(['cloudflare', 'situs']);
+  });
 });
 
 describe('peringatanTurnstile (review delta 53fff2d)', () => {

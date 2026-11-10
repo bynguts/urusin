@@ -11,6 +11,8 @@ const VERIFY_HOSTS = Object.values(
     { verify: string }
   >,
 ).map((h): `https://${string}.${string}` => `https://${h.verify}` as `https://${string}.${string}`);
+// Widget Cloudflare Turnstile di /masuk (juri, masuk setelah 3 gagal); dimuat hanya bila kuncinya dikonfigurasi.
+const TURNSTILE = 'https://challenges.cloudflare.com';
 
 export default defineConfig({
   // Gambar kecil (avatar, ikon objek) tetap berkas terpisah, bukan base64 di JS: JS awal tiap rute punya
@@ -30,7 +32,7 @@ export default defineConfig({
         mode: 'auto',
         directives: {
           'default-src': ['self'],
-          'script-src': ['self'],
+          'script-src': ['self', TURNSTILE],
           // Transisi Svelte menyisipkan <style>; dengan 'unsafe-inline' SvelteKit tidak menambah nonce gaya.
           'style-src': ['self', 'unsafe-inline'],
           'img-src': ['self', 'data:', 'blob:'],
@@ -41,7 +43,7 @@ export default defineConfig({
           'object-src': ['none'],
           'base-uri': ['self'],
           'form-action': ['self'],
-          'frame-src': ['self', ...VERIFY_HOSTS],
+          'frame-src': ['self', TURNSTILE, ...VERIFY_HOSTS],
           'frame-ancestors': ['none'],
           // Pelaporan pelanggaran: report-uri untuk browser lama, report-to merujuk endpoint
           // `csp-endpoint` dari header Reporting-Endpoints (dikirim Caddy, lihat deploy/Caddyfile.urusin).

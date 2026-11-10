@@ -6,7 +6,7 @@ import type { RequestHandler } from './$types';
 
 /**
  * "Masuk sebagai juri": salinan demo terisolasi berisi Data Diri sintetis (24 jam), tanpa sandi yang bisa
- * dikunci orang lain. Turnstile + maksimal 3 per IP per hari + batas global.
+ * dikunci orang lain. Turnstile (bila dikonfigurasi) + batas per IP per hari (tahan NAT aula) + batas global.
  */
 export const POST: RequestHandler = async (event) => {
   const body = await readAkunBody(event.request, JuriRequestSchema);

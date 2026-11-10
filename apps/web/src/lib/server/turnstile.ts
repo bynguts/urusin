@@ -20,7 +20,8 @@ type Env = Record<string, string | undefined>;
 
 /**
  * Turnstile dari env:
- * - `TURNSTILE_SECRET_KEY` terisi → siteverify Cloudflare lewat egress (gagal jaringan = token ditolak);
+ * - `TURNSTILE_SECRET_KEY` terisi → siteverify Cloudflare lewat egress (gagal jaringan = token ditolak); di
+ *   produksi wajib bersama `TURNSTILE_SITE_KEY` (widget di /masuk) dan token wajib di tombol juri;
  * - `URUSIN_TURNSTILE_FIXTURE=1` (hanya di luar produksi) → hanya `TURNSTILE_TOKEN_FIXTURE` diterima (e2e);
  * - selain itu (kosong atau placeholder `ganti-dengan-…`) nonaktif. "Masuk sebagai juri" tetap jalan (batas per
  *   IP, batas aktif, kedaluwarsa); di produksi operator diberi alert (`peringatanTurnstile`).
@@ -31,9 +32,13 @@ export function turnstileFromEnv(env: Env = process.env, fetch: EgressFetch = eg
   if (fixture && env.NODE_ENV === 'production')
     throw new Error('URUSIN_TURNSTILE_FIXTURE hanya untuk e2e; tidak boleh di produksi');
   if (secret) {
+    const siteKey = nilaiEnv(env.TURNSTILE_SITE_KEY) ?? '';
+    // Token wajib tetapi widget tidak bisa dirender: semua juri terkunci. Tolak start di produksi.
+    if (!siteKey && env.NODE_ENV === 'production')
+      throw new Error('TURNSTILE_SITE_KEY wajib bila TURNSTILE_SECRET_KEY diisi (widget di /masuk)');
     return {
       mode: 'cloudflare',
-      siteKey: nilaiEnv(env.TURNSTILE_SITE_KEY) ?? '',
+      siteKey,
       async verifikasi(token, ip) {
         if (!token || token.length > 4096) return false;
         try {

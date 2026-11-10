@@ -73,11 +73,16 @@ export const LOCKOUT = Object.freeze({
   kunciMaksSec: 3600,
 });
 
-/** Batas pembuatan pemilik sementara (host bersama, do-no-harm). */
+/**
+ * Batas pembuatan pemilik sementara (host bersama, do-no-harm). Batas per IP harus tahan satu NAT bersama
+ * (aula lomba, kampus, warnet): semua juri/pengunjung di satu tempat tampak sebagai satu IP. Pengaman utamanya
+ * batas global salinan aktif + kedaluwarsa + Turnstile (wajib bila kuncinya dikonfigurasi). Semua bisa diatur
+ * lewat env (`URUSIN_TAMU_PER_IP_HARI`, `URUSIN_DEMO_PER_IP_HARI`, `URUSIN_DEMO_AKTIF_MAKS`).
+ */
 export type Kuota = { tamuPerIpHari: number; demoPerIpHari: number; demoAktifMaks: number };
 export const DEFAULT_KUOTA: Kuota = Object.freeze({
-  tamuPerIpHari: 20,
-  demoPerIpHari: 3,
+  tamuPerIpHari: 200,
+  demoPerIpHari: 50,
   demoAktifMaks: 200,
 });
 
