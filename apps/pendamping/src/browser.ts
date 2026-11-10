@@ -543,9 +543,9 @@ export async function wire(
   let executionId = init.executionId;
 
   const page: Page = context.pages()[0] ?? (await context.newPage());
-  // Pop-up / tab baru tidak terlihat di layar warga: tutup.
+  // Pop-up / tab baru tidak terlihat di layar warga: tutup (sesi generik: lihat penanganan pop-up warga di bawah).
   context.on('page', (p) => {
-    if (p !== page) void p.close();
+    if (p !== page && !gen) void p.close();
   });
   const cdp: CDPSession = await context.newCDPSession(page);
 
@@ -1106,6 +1106,31 @@ export async function wire(
   let generikDimulai = false;
   if (gen && init.generik) {
     const izinHost = new Set(egressRules(gen.hosts, config.fixtureOrigins).map((r) => `${r.host}:${r.port}`));
+    const urlBoleh = (url: string) =>
+      urlDiAllowlist(izinHost, url) &&
+      checkUrl(url, { testMode: fixtureOrigins.length > 0, fixtureOrigins }).ok;
+    // Review kode N4: tautan target=_blank yang diketuk warga membuka pop-up yang tidak terlihat di layar. Pop-up
+    // selalu ditutup; navigasi GET-nya (hanya dari ketukan warga, lolos allowlist) dibuka di halaman utama.
+    // Metode navigasi terakhir per URL (pop-up baru tersedia setelah navigasinya dimulai; bingkainya belum
+    // terhubung ke halaman saat permintaan terlihat). Pop-up hasil form POST tidak pernah diulang sebagai GET.
+    const metodeNav = new Map<string, string>();
+    context.on('request', (r) => {
+      if (!r.isNavigationRequest()) return;
+      metodeNav.delete(r.url());
+      metodeNav.set(r.url(), r.method());
+      if (metodeNav.size > 32) metodeNav.delete(metodeNav.keys().next().value!);
+    });
+    context.on('page', (p) => {
+      if (p === page) return;
+      const dariWarga = manual && Date.now() - inputWargaTerakhir <= JENDELA_WARGA_MS;
+      void (async () => {
+        if (dariWarga) await p.waitForLoadState('domcontentloaded', { timeout: 3_000 }).catch(() => {});
+        const url = p.url();
+        await p.close().catch(() => {});
+        if (!dariWarga || metodeNav.get(url) !== 'GET' || destroyed || !manual || !urlBoleh(url)) return;
+        await cdp.send('Page.navigate', { url }).catch(() => undefined);
+      })();
+    });
     const { izin, jejak } = init.generik;
     const tenang = async () => {
       // Jeda singkat agar handler klik sempat memicu permintaan; bila navigasi dimulai, tunggu muat (<= 10 detik).
@@ -1154,9 +1179,7 @@ export async function wire(
       }),
       gerbang: gen.gerbang,
       izin,
-      urlBoleh: (url) =>
-        urlDiAllowlist(izinHost, url) &&
-        checkUrl(url, { testMode: fixtureOrigins.length > 0, fixtureOrigins }).ok,
+      urlBoleh,
       jejak,
       serahkan(alasan, pesan, box, tautan) {
         manual = true;

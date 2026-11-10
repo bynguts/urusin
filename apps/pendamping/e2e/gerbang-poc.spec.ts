@@ -123,6 +123,9 @@ const HALAMAN: Record<string, string> = {
   '/s4-data': kerangka(`<form><label><input type="checkbox" name="kabar"> Kirimi saya kabar</label>
 <label><input type="checkbox" name="sama"> Alamat domisili sama dengan KTP</label>
 <label>Nama <input name="nama"></label></form>`),
+  // Review kode N4: tautan target=_blank yang diketuk warga.
+  '/popup': kerangka(`<a href="/permohonan/kk?dari=popup" target="_blank"
+  style="position:fixed;left:0;top:300px;width:300px;height:80px;display:block">Formulir KK</a>`),
   // F6: halaman membuka WebSocket (mis. socket.io) dan mengirim lewat situ.
   '/ws': kerangka(`<h1>Formulir</h1><script>
   const ws = new WebSocket('ws://' + location.host + '/ws');
@@ -509,6 +512,19 @@ test('N5 (PoC E): buka_tautan = navigasi GET dari worker; listener halaman (prev
     await new Promise((r) => setTimeout(r, 500));
     expect(situs.hitung('/api/final-e')).toBe(0);
     expect(manager.kurasJejak(o).catatan).toContainEqual({ jenis: 'ambil_alih', fase: 'selesai' });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('kode N4: tautan target=_blank yang diketuk warga dibuka di halaman utama (pop-up ditutup)', async () => {
+  const { manager, o, sesiId } = await sesi(situs, '/popup', 'popup');
+  try {
+    await manager.handleClient(sesiId, { type: 'ambil_alih' });
+    await ketuk(manager, sesiId, 150, 340);
+    await expect
+      .poll(async () => (await manager.amati(o, true)).pengamatan.jalur, { timeout: 10_000 })
+      .toBe('/permohonan/kk');
   } finally {
     await manager.shutdown();
   }
