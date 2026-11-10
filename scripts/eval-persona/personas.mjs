@@ -12,6 +12,9 @@
 //   harapan              ringkasan hasil yang benar untuk juri
 //   rahasia()            PII sintetis yang dipakai persona (cek f)
 //   izinkanKode          kode galat HTTP yang memang diharapkan (mis. PII_IN_PAYLOAD)
+//   masuk                'juri' = "Masuk sebagai juri" dulu (akun demo, Data Diri sintetis berwilayah Wonogiri)
+//   kodeBolehRencana     kode tambahan yang sah untuk rencana awal (warga mengganti wilayah di tengah jalan);
+//                        rencana TERAKHIR tetap wajib untuk kodeBenar
 import { nikSintetis } from './lib/periksa.mjs';
 
 export const PERSONA = [
@@ -220,6 +223,37 @@ export const PERSONA = [
     adapterBoleh: ['sidnok-semarang'],
     harapan:
       "Wilayah Kota Semarang; cara cek status lewat Si D'nOK (sidnok.semarangkota.go.id) dengan kode pelayanan; boleh menawarkan Browser Pendamping cek status (baca saja), warga mengisi kode/menjawab pertanyaan keamanan sendiri. Tidak ada Wonogiri.",
+  },
+  {
+    id: 'p16-datadiri-wonogiri-ktp-semarang',
+    judul: 'Akun juri (Data Diri Wonogiri), KTP sekarang sudah Kota Semarang',
+    masuk: 'juri',
+    pesanPertama:
+      'Halo, saya mau bikin akta kelahiran untuk anak saya yang lahir 10 hari lalu. Oh iya, KTP saya sekarang sudah Kota Semarang ya, bukan Wonogiri lagi.',
+    kartu:
+      'Kamu Wulan (30). Dulu ber-KTP Kabupaten Wonogiri (itu yang masih tercatat di Data Diri akunmu), tetapi tahun lalu sudah pindah dan KTP-el serta KK kamu sekarang Kota Semarang (Kecamatan Pedurungan). Anakmu lahir 10 hari lalu di RS di Semarang, surat lahir dan buku nikah ada. Kamu masuk lewat akun. Bila Urusin mengusulkan Wonogiri, kamu menolak dan menegaskan Kota Semarang. Bahasa sopan, ringkas.',
+    kodeBenar: ['3374'],
+    kataWilayah: ['kota semarang', 'semarang', 'pedurungan'],
+    wilayahTerkait: ['semarang'],
+    adapterBoleh: ['sidnok-semarang'],
+    harapan:
+      'Usulan Data Diri (Wonogiri) TIDAK dipakai karena warga menyebut KTP Kota Semarang; wilayah ditetapkan Kota Semarang sebelum rencana; rencana/syarat akta kelahiran untuk Kota Semarang (aturan nasional Perpres 96/2018, kanal Dispendukcapil Kota Semarang); tanpa kartu/tautan/Browser Pendamping Wonogiri (Telunjuk Sakti).',
+  },
+  {
+    id: 'p17-ganti-wilayah',
+    judul: 'Warga mengganti wilayah di tengah percakapan (Wonogiri lalu Sukoharjo)',
+    pesanPertama: 'Mas, saya dari Wonogiri. Anak saya baru lahir, mau urus akta kelahiran.',
+    kartu:
+      'Kamu Rizky (29). Lahir dan besar di Wonogiri, jadi refleks bilang "dari Wonogiri". Padahal sejak menikah KTP dan KK kamu sudah pindah ke Kecamatan Kartasura, Kabupaten Sukoharjo. Anak lahir 4 hari lalu di bidan, surat lahir dan buku nikah ada. Bahasa santai.',
+    skenario: () =>
+      'Di awal kamu mengaku dari Wonogiri (bila ada kartu wilayah Wonogiri, kamu boleh menekan "Ya, betul"). Setelah Urusin memberi rencana atau persyaratan pertama, kamu sadar dan menulis: "Eh maaf mas, saya salah. KTP sama KK saya sekarang sudah Sukoharjo, Kartasura. Jadi gimana?" Lalu lanjutkan sesuai kartu tokoh.',
+    kodeBenar: ['3311'],
+    kodeBolehRencana: ['3312'],
+    kataWilayah: ['wonogiri', 'sukoharjo', 'kartasura'],
+    wilayahTerkait: ['wonogiri', 'sukoharjo'],
+    adapterBoleh: ['telunjuk-sakti-wonogiri'],
+    harapan:
+      'Setelah warga mengoreksi wilayah, Urusin menetapkan ulang wilayah ke Kabupaten Sukoharjo (konfirmasi), membuang rencana Wonogiri, dan memberi rencana/syarat akta kelahiran untuk Sukoharjo (aturan nasional, kanal Dispendukcapil Sukoharjo). Setelah koreksi tidak boleh ada lagi tautan/kartu/Browser Pendamping Wonogiri.',
   },
 ];
 

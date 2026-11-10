@@ -839,7 +839,11 @@
           "terverifikasi": true
         }
       ],
-      "online": { "tersedia": null, "kanal": [], "catatan": "Bergantung daerah." },
+      "online": {
+        "tersedia": null,
+        "kanal": [],
+        "catatan": "Bergantung daerah."
+      },
       "persyaratan": [
         {
           "teks": "Jalur sah bila tidak punya surat keterangan kelahiran: Surat Pernyataan Tanggung Jawab Mutlak (SPTJM) kebenaran data kelahiran diketahui 2 orang saksi (formulir F-2.03)",
@@ -1453,6 +1457,227 @@
         "harus datang ke kantor untuk tahu status"
       ],
       "tidakTerverifikasi": []
+    },
+    "p16-datadiri-wonogiri-ktp-semarang": {
+      "layanan": "Akta kelahiran bayi baru lahir di Kota Semarang; Data Diri akun masih Kabupaten Wonogiri (usang)",
+      "yurisdiksi": [
+        {
+          "peran": "ktp",
+          "kodeKabKota": "3374",
+          "nama": "Kota Semarang",
+          "alasan": "KTP-el dan KK orang tua sudah Kota Semarang; kelahiran dilaporkan ke Instansi Pelaksana setempat. Data Diri akun (Wonogiri) usang dan harus kalah oleh pernyataan warga.",
+          "sumber": "https://peraturan.go.id/files/uu24-2013bt.pdf"
+        }
+      ],
+      "kantor": [
+        {
+          "nama": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, Jl. Kanguru Raya No. 3, Semarang",
+          "url": "https://dispendukcapil.semarangkota.go.id/",
+          "sumber": "repo:data/wilayah/kontak-dukcapil.json (verifiedAt 2026-11-08)",
+          "terverifikasi": true
+        }
+      ],
+      "online": {
+        "tersedia": true,
+        "kanal": [
+          {
+            "nama": "Si D'nOK (layanan online Dispendukcapil Kota Semarang; daftar syarat publik di menu Data Dukung)",
+            "url": "https://sidnok.semarangkota.go.id/",
+            "sumber": "https://sidnok.semarangkota.go.id/data-dukung",
+            "terverifikasi": true
+          }
+        ],
+        "catatan": "Si D'nOK memerlukan login pelapor. Kanal Wonogiri (Telunjuk Sakti) TIDAK berlaku untuk persona ini."
+      },
+      "persyaratan": [
+        {
+          "teks": "Surat keterangan kelahiran (dari RS/Puskesmas/fasilitas kesehatan/dokter/bidan, nakhoda/kapten pesawat, atau kepala desa/lurah bila lahir di rumah/tempat lain)",
+          "sumber": "https://peraturan.go.id/files/ps96-2018.pdf",
+          "pasal": "Perpres 96/2018 Pasal 33 ayat (1) huruf a; Permendagri 108/2019 Pasal 43 ayat (1)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Buku nikah/kutipan akta perkawinan atau bukti lain yang sah",
+          "sumber": "https://peraturan.go.id/files/ps96-2018.pdf",
+          "pasal": "Perpres 96/2018 Pasal 33 ayat (1) huruf b",
+          "terverifikasi": true
+        },
+        {
+          "teks": "KK tempat penduduk terdaftar atau akan didaftarkan sebagai anggota keluarga",
+          "sumber": "https://peraturan.bpk.go.id/Download/129847/Permendagri%20108%20Tahun%202019.pdf",
+          "pasal": "Perpres 96/2018 Pasal 33 ayat (1) huruf c; Permendagri 108/2019 Pasal 43 ayat (2)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "KTP-el (tidak dipersyaratkan bagi ibu kandung belum 17 tahun yang belum kawin)",
+          "sumber": "https://peraturan.bpk.go.id/Download/129847/Permendagri%20108%20Tahun%202019.pdf",
+          "pasal": "Perpres 96/2018 Pasal 33 ayat (1) huruf d; Permendagri 108/2019 Pasal 43 ayat (3)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "KIA untuk anak < 5 tahun yang terbit bersamaan dengan akta kelahiran: cukup melampirkan fotokopi KK (atau wali)",
+          "sumber": "https://peraturan.bpk.go.id/Download/423299/permendagri-no-7-tahun-2026.pdf",
+          "pasal": "Permendagri 7/2026 Pasal 4 huruf a, Pasal 6 ayat (1)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Mengisi formulir pelaporan pencatatan sipil (F-2.01)",
+          "sumber": "https://peraturan.bpk.go.id/Download/129847/Permendagri%20108%20Tahun%202019.pdf",
+          "pasal": "Permendagri 108/2019 (lampiran formulir F-2.01)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Bila tidak punya surat keterangan kelahiran atau buku nikah: SPTJM kebenaran data kelahiran / SPTJM kebenaran pasangan suami istri",
+          "sumber": "https://peraturan.go.id/files/ps96-2018.pdf",
+          "pasal": "Perpres 96/2018 Pasal 34",
+          "terverifikasi": true
+        }
+      ],
+      "faktaLain": [
+        {
+          "teks": "Setiap kelahiran wajib dilaporkan ke Instansi Pelaksana setempat paling lambat 60 hari sejak kelahiran",
+          "sumber": "https://peraturan.go.id/files/uu24-2013bt.pdf",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Pelaporan yang melewati 60 hari: pencatatan dilakukan setelah keputusan Kepala Instansi Pelaksana setempat (Kepala Disdukcapil), bukan penetapan pengadilan (UU 24/2013 Pasal 32 ayat (1); ayat (2) lama dihapus)",
+          "sumber": "https://peraturan.go.id/files/uu24-2013bt.pdf",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Pengurusan dan penerbitan dokumen kependudukan tidak dipungut biaya",
+          "sumber": "https://peraturan.go.id/files/uu24-2013bt.pdf",
+          "terverifikasi": true
+        },
+        {
+          "teks": "KIA anak < 5 tahun berlaku sampai anak berusia 5 tahun",
+          "sumber": "https://peraturan.bpk.go.id/Download/423299/permendagri-no-7-tahun-2026.pdf",
+          "terverifikasi": true
+        }
+      ],
+      "kataKunciWajib": [
+        "surat keterangan kelahiran",
+        "buku nikah",
+        "kk",
+        "ktp",
+        "kota semarang",
+        "si d'nok"
+      ],
+      "klaimSalah": [
+        "mengurus di Disdukcapil Wonogiri / Telunjuk Sakti karena Data Diri akun Wonogiri",
+        "batas pelaporan kelahiran 30 hari",
+        "ada biaya/tarif untuk akta kelahiran",
+        "Kota Semarang disamakan dengan Kabupaten Semarang (Ungaran)"
+      ],
+      "tidakTerverifikasi": [
+        {
+          "teks": "Apakah akta kelahiran Kota Semarang bisa diselesaikan penuh lewat Si D'nOK tanpa datang",
+          "alasan": "Halaman Data Dukung mendaftar syarat; alur penyelesaian akhir (cetak mandiri/ambil) tidak diverifikasi pada eval ini."
+        }
+      ]
+    },
+    "p17-ganti-wilayah": {
+      "layanan": "Akta kelahiran bayi baru lahir; warga awalnya menyebut Wonogiri lalu mengoreksi: KTP/KK Kabupaten Sukoharjo (Kartasura)",
+      "yurisdiksi": [
+        {
+          "peran": "ktp",
+          "kodeKabKota": "3311",
+          "nama": "Kabupaten Sukoharjo",
+          "alasan": "Setelah koreksi, KTP-el dan KK orang tua Kabupaten Sukoharjo; \"dari Wonogiri\" adalah daerah asal, bukan wilayah KTP.",
+          "sumber": "https://peraturan.go.id/files/uu24-2013bt.pdf"
+        }
+      ],
+      "kantor": [
+        {
+          "nama": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo, Jalan Kyai Mawardi No. 1 Sukoharjo",
+          "url": "https://dispendukcapil.sukoharjokab.go.id/",
+          "sumber": "repo:data/wilayah/kontak-dukcapil.json (verifiedAt 2026-11-08)",
+          "terverifikasi": true
+        }
+      ],
+      "online": {
+        "tersedia": null,
+        "kanal": [],
+        "catatan": "Ketersediaan layanan akta kelahiran online Sukoharjo tidak diverifikasi; korpus RAG tidak memuat sumber Sukoharjo, jadi jawaban yang benar adalah aturan nasional + arahkan ke Dispendukcapil Sukoharjo."
+      },
+      "persyaratan": [
+        {
+          "teks": "Surat keterangan kelahiran (dari RS/Puskesmas/fasilitas kesehatan/dokter/bidan, nakhoda/kapten pesawat, atau kepala desa/lurah bila lahir di rumah/tempat lain)",
+          "sumber": "https://peraturan.go.id/files/ps96-2018.pdf",
+          "pasal": "Perpres 96/2018 Pasal 33 ayat (1) huruf a; Permendagri 108/2019 Pasal 43 ayat (1)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Buku nikah/kutipan akta perkawinan atau bukti lain yang sah",
+          "sumber": "https://peraturan.go.id/files/ps96-2018.pdf",
+          "pasal": "Perpres 96/2018 Pasal 33 ayat (1) huruf b",
+          "terverifikasi": true
+        },
+        {
+          "teks": "KK tempat penduduk terdaftar atau akan didaftarkan sebagai anggota keluarga",
+          "sumber": "https://peraturan.bpk.go.id/Download/129847/Permendagri%20108%20Tahun%202019.pdf",
+          "pasal": "Perpres 96/2018 Pasal 33 ayat (1) huruf c; Permendagri 108/2019 Pasal 43 ayat (2)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "KTP-el (tidak dipersyaratkan bagi ibu kandung belum 17 tahun yang belum kawin)",
+          "sumber": "https://peraturan.bpk.go.id/Download/129847/Permendagri%20108%20Tahun%202019.pdf",
+          "pasal": "Perpres 96/2018 Pasal 33 ayat (1) huruf d; Permendagri 108/2019 Pasal 43 ayat (3)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "KIA untuk anak < 5 tahun yang terbit bersamaan dengan akta kelahiran: cukup melampirkan fotokopi KK (atau wali)",
+          "sumber": "https://peraturan.bpk.go.id/Download/423299/permendagri-no-7-tahun-2026.pdf",
+          "pasal": "Permendagri 7/2026 Pasal 4 huruf a, Pasal 6 ayat (1)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Mengisi formulir pelaporan pencatatan sipil (F-2.01)",
+          "sumber": "https://peraturan.bpk.go.id/Download/129847/Permendagri%20108%20Tahun%202019.pdf",
+          "pasal": "Permendagri 108/2019 (lampiran formulir F-2.01)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Bila tidak punya surat keterangan kelahiran atau buku nikah: SPTJM kebenaran data kelahiran / SPTJM kebenaran pasangan suami istri",
+          "sumber": "https://peraturan.go.id/files/ps96-2018.pdf",
+          "pasal": "Perpres 96/2018 Pasal 34",
+          "terverifikasi": true
+        }
+      ],
+      "faktaLain": [
+        {
+          "teks": "Setiap kelahiran wajib dilaporkan ke Instansi Pelaksana setempat paling lambat 60 hari sejak kelahiran",
+          "sumber": "https://peraturan.go.id/files/uu24-2013bt.pdf",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Pelaporan yang melewati 60 hari: pencatatan dilakukan setelah keputusan Kepala Instansi Pelaksana setempat (Kepala Disdukcapil), bukan penetapan pengadilan (UU 24/2013 Pasal 32 ayat (1); ayat (2) lama dihapus)",
+          "sumber": "https://peraturan.go.id/files/uu24-2013bt.pdf",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Pengurusan dan penerbitan dokumen kependudukan tidak dipungut biaya",
+          "sumber": "https://peraturan.go.id/files/uu24-2013bt.pdf",
+          "terverifikasi": true
+        },
+        {
+          "teks": "KIA anak < 5 tahun berlaku sampai anak berusia 5 tahun",
+          "sumber": "https://peraturan.bpk.go.id/Download/423299/permendagri-no-7-tahun-2026.pdf",
+          "terverifikasi": true
+        }
+      ],
+      "kataKunciWajib": ["surat keterangan kelahiran", "buku nikah", "kk", "sukoharjo"],
+      "klaimSalah": [
+        "tetap mengarahkan ke Disdukcapil Wonogiri / Telunjuk Sakti setelah warga mengoreksi ke Sukoharjo",
+        "batas pelaporan kelahiran 30 hari",
+        "ada biaya/tarif untuk akta kelahiran"
+      ],
+      "tidakTerverifikasi": [
+        {
+          "teks": "Kanal online Dispendukcapil Sukoharjo untuk akta kelahiran",
+          "alasan": "Tidak ada sumber resmi Sukoharjo di korpus/registry; tidak diperiksa langsung."
+        }
+      ]
     }
   }
 }
