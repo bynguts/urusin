@@ -1,8 +1,14 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import type {
+  AksiSesiInternal,
+  AksiSesiResponse,
+  AmatiSesiResponse,
   AntreanPendampingResponse,
   BerkasSesiInternal,
   ButuhSesiInternal,
+  CatatanPendamping,
+  HasilAksi,
+  JejakSesiResponse,
   MulaiSesiInternal,
   PendampingBukti,
   PendampingClientMessage,
@@ -13,12 +19,15 @@ import type {
   PendampingServerMessage,
   PendampingStatus,
   PendampingViewport,
+  Pengamatan,
   SesiPendamping,
+  TungguSesiResponse,
 } from '@urusin/contracts';
 import { ADAPTERS, buildProgram, requiredData, type Params, type Program } from '@urusin/adapters';
-import type { Step } from '@urusin/core';
+import { egressAllowedHosts, matchOfficialOrigin, nav, type Step } from '@urusin/core';
 import { checkUrl, type UploadFile } from '@urusin/executor';
 import type { Config } from './config.js';
+import type { IzinGenerik, KolomIzin } from './generik.js';
 import { isInputMessage } from './input.js';
 import { dariDataDiri } from './isian.js';
 import type { FrameMasuk } from './stream.js';
@@ -58,6 +67,13 @@ export type Hooks = {
 export type Frame = FrameMasuk;
 export type JenisFokus = Extract<PendampingServerMessage, { type: 'fokus' }>['jenis'];
 
+/** Port Navigator generik di peramban (GenerikRun di browser.ts); undefined untuk sesi adapter. */
+export type PortGenerik = {
+  /** null = halaman sedang berpindah; coba lagi. */
+  amati(): Promise<Pengamatan | null>;
+  aksi(req: Pick<AksiSesiInternal, 'rencanaHash' | 'aksi' | 'seq'>): Promise<HasilAksi[]>;
+};
+
 export type ActiveRun = {
   /** Mulai AI (dipanggil setelah semua data vault/berkas tersedia). */
   mulaiAi(): Promise<void>;
@@ -68,6 +84,7 @@ export type ActiveRun = {
   gantiProgram(program: Program, executionId: string): Promise<void>;
   setViewer(send: ((f: Frame) => void) | null): Promise<void>;
   destroy(): Promise<void>;
+  generik?: PortGenerik | undefined;
 };
 
 export type RunInit = {
@@ -79,6 +96,8 @@ export type RunInit = {
   viewport: PendampingViewport;
   hooks: Hooks;
   data: { value(token: string): string | undefined; file(name: string): UploadFile | undefined };
+  /** Navigator generik (ADR 0030): persetujuan per rencana + catatan audit. undefined = sesi adapter. */
+  generik?: { izin: IzinGenerik; jejak(c: CatatanPendamping): void } | undefined;
 };
 
 export type RunFactory = (init: RunInit) => Promise<ActiveRun>;
@@ -118,6 +137,17 @@ type Sesi = {
   galatInputTerkirim: boolean;
   /** Berkas yang ditunggu langkah unggah (giliran `berkas_kurang`), bila ada. */
   berkasDitunggu?: string | undefined;
+  /** Sesi Navigator generik (adapterId `generik`). */
+  generik: boolean;
+  /** Rencana halaman yang menunggu lembar "Izinkan AI mengisi?" (sidik hanya di worker). */
+  izinMenunggu?: { rencanaHash: string; kolom: KolomIzin[]; berkas: string[] } | undefined;
+  /** Persetujuan terakhir: pasangan (sidik, placeholder) dan berkas, terikat ke satu `rencanaHash`. */
+  persetujuan?: { rencanaHash: string; pasangan: Set<string>; berkas: Set<string> } | undefined;
+  /** Catatan audit `jejak_pendamping` yang belum dikuras web (tanpa nilai). */
+  jejak: CatatanPendamping[];
+  jejakTerbuang: number;
+  /** Long-poll `/internal/sesi/tunggu` yang menunggu perubahan kendali/status. */
+  penunggu: Set<() => void>;
 };
 
 export class PendampingError extends Error {
@@ -141,6 +171,38 @@ const DEFAULT_VIEWPORT: PendampingViewport = { lebar: 390, tinggi: 844, dpr: 2, 
 const MAX_FILE_BYTES = 9 * 1024 * 1024;
 const MAX_FILES = 10;
 const TOMBSTONE_MS = 10 * 60_000;
+/** Buffer catatan audit per sesi; yang terlama dibuang (dan dihitung) bila web tidak menguras. */
+const MAKS_JEJAK = 500;
+/** Id adapter Navigator generik (tanpa adapter tulisan tangan). */
+export const ADAPTER_GENERIK = 'generik';
+/** Status yang membuat Navigator menunggu (AI belum/tidak boleh bergerak). */
+const STATUS_TUNGGU: ReadonlySet<PendampingStatus> = new Set(['antre', 'memulai', 'menunggu_data', 'siaga']);
+
+const kunciPasangan = (sidik: string, placeholder: string) => JSON.stringify([sidik, placeholder]);
+
+/**
+ * Program Navigator generik: tanpa langkah adapter, hanya halaman awal (`nav`, agar awalan jalur Mode Uji ikut
+ * dipetakan). Host sesi = host origin + host terdaftar yang diminta web (persis, harus di registry egress).
+ */
+function programGenerik(input: MulaiSesiInternal): Program {
+  const origin = new URL(input.origin).origin;
+  if (!matchOfficialOrigin(origin).ok)
+    throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'origin di luar daftar situs resmi');
+  const jalur = typeof input.params.jalur === 'string' ? input.params.jalur : '/';
+  if (!/^\/(?![/\\])[^?#\s\\]{0,200}$/.test(jalur))
+    throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'jalur awal tidak sah');
+  const diminta =
+    typeof input.params.hosts === 'string'
+      ? input.params.hosts
+          .split(',')
+          .map((h) => h.trim().toLowerCase())
+          .filter(Boolean)
+      : [];
+  const terdaftar = new Set(egressAllowedHosts());
+  if (diminta.length > 20 || !diminta.every((h) => terdaftar.has(h)))
+    throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'host sesi di luar registry');
+  return { origin, hosts: diminta, steps: [nav(jalur)] };
+}
 
 const PESAN = {
   kedaluwarsa: 'Sesi peramban ditutup karena terlalu lama tidak ada aktivitas. Mulai lagi bila perlu.',
@@ -170,7 +232,10 @@ export class SessionManager {
   private readonly queue: string[] = [];
   private readonly active = new Set<string>();
   private readonly tickets = new Map<string, { sesiId: string; exp: number }>();
-  private readonly tombstones = new Map<string, { sesi: SesiPendamping; exp: number }>();
+  private readonly tombstones = new Map<
+    string,
+    { sesi: SesiPendamping; exp: number; jejak: CatatanPendamping[]; terbuang: number }
+  >();
   /** Penutupan peramban yang sedang berjalan (sesi sudah keluar dari peta, Chromium belum tertutup). */
   private readonly penutupan = new Set<Promise<void>>();
   private sweeper: ReturnType<typeof setInterval> | undefined;
@@ -210,7 +275,12 @@ export class SessionManager {
       if (existing.status !== 'siaga' || !existing.run)
         throw new PendampingError('SESI_SUDAH_ADA', 409, 'urusan ini sudah punya sesi pendamping aktif');
       // Sesi siaga di situs yang sama: peramban (dan login warga) dipakai lagi untuk execution baru.
-      if (existing.program.origin === program.origin)
+      // Navigator generik tidak pernah memakai ulang peramban sesi adapter (dan sebaliknya).
+      if (
+        existing.program.origin === program.origin &&
+        !existing.generik &&
+        input.adapterId !== ADAPTER_GENERIK
+      )
         return this.lanjutkan(existing, input.executionId, program);
       await this.end(
         existing,
@@ -225,11 +295,24 @@ export class SessionManager {
       executionId: input.executionId,
       program,
       viewport: input.viewport ?? DEFAULT_VIEWPORT,
+      generik: input.adapterId === ADAPTER_GENERIK,
     });
   }
 
   /** Program tervalidasi dari adapter; origin resmi bisa dipetakan ke fixture (dev/uji) beserta awalan jalur. */
   private programDari(input: MulaiSesiInternal): Program {
+    if (input.adapterId === ADAPTER_GENERIK) {
+      const program = programGenerik(input);
+      const ov = this.config.originOverrides.get(program.origin);
+      // Mode Uji: HANYA replika; tanpa pemetaan = 422 sebelum peramban/edge apa pun dibuat. Host lain (termasuk
+      // pihak ketiga) tidak dibawa: sesi uji hanya ke origin fixture.
+      if (input.modeUji === true) {
+        if (!ov)
+          throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'Mode uji: situs ini belum punya replika uji.');
+        return withOverride({ ...program, hosts: [] }, ov);
+      }
+      return ov && !this.config.production ? withOverride({ ...program, hosts: [] }, ov) : program;
+    }
     const built = buildProgram(input.adapterId, input.flowId, input.params);
     if (!built.ok) throw new PendampingError('ADAPTER_TIDAK_ADA', 422, built.message);
     if (built.program.origin !== new URL(input.origin).origin)
@@ -329,7 +412,7 @@ export class SessionManager {
 
   private async enqueue(
     base: Pick<Sesi, 'urusanId' | 'sidHash' | 'executionId' | 'program' | 'manualUrl' | 'viewport'> &
-      Partial<Pick<Sesi, 'debug'>>,
+      Partial<Pick<Sesi, 'debug' | 'generik'>>,
   ): Promise<SesiPendamping> {
     if (this.active.size >= this.config.maxSessions && this.queue.length >= this.config.maxQueue)
       throw new PendampingError('ANTREAN_PENUH', 429, 'antrean pendamping penuh');
@@ -350,6 +433,10 @@ export class SessionManager {
       butuh: butuhDari(base.program.steps),
       aiDimulai: false,
       galatInputTerkirim: false,
+      generik: base.generik ?? false,
+      jejak: [],
+      jejakTerbuang: 0,
+      penunggu: new Set(),
     };
     this.sessions.set(s.id, s);
     this.queue.push(s.id);
@@ -395,7 +482,17 @@ export class SessionManager {
    */
   butuhData(owner: { urusanId: string; sidHash: string }): ButuhSesiInternal {
     const s = this.requireMenungguData(owner);
-    return { ...this.kurang(s), origin: s.program.origin };
+    return { ...this.kurang(s), origin: s.program.origin, ...this.kolomIzin(s) };
+  }
+
+  /** Baris lembar persetujuan Navigator generik (tanpa sidik) + hash rencana, bila ada yang menunggu. */
+  private kolomIzin(s: Sesi): Pick<ButuhSesiInternal, 'kolom' | 'rencanaHash'> {
+    const m = s.izinMenunggu;
+    if (!m) return {};
+    return {
+      kolom: m.kolom.map(({ sidik: _sidik, ...k }) => k),
+      rencanaHash: m.rencanaHash,
+    };
   }
 
   /**
@@ -405,8 +502,10 @@ export class SessionManager {
   async isiData(
     owner: { urusanId: string; sidHash: string },
     isian: Record<string, string>,
+    rencanaHash?: string,
   ): Promise<{ placeholder: string[]; berkas: string[] }> {
     const s = this.requireMenungguData(owner);
+    if (s.generik) return this.isiGenerik(s, isian, rencanaHash);
     for (const [k, v] of Object.entries(isian)) if (s.butuh.placeholder.includes(k)) s.vault.set(k, v);
     const kurang = this.kurang(s);
     // Panggilan TERAKHIR putaran "Izinkan isi" (web mengirim berkas dulu, lalu isian). Persetujuan sekali pakai
@@ -416,6 +515,43 @@ export class SessionManager {
       placeholder: s.butuh.placeholder.filter((p) => s.vault.has(p)),
       berkas: s.butuh.berkas.filter((b) => s.files.has(b)),
     };
+    await this.maybeStartAi(s);
+    return kurang;
+  }
+
+  /**
+   * Navigator generik: persetujuan warga untuk rencana yang menunggu. Hanya pasangan (sidik ref, placeholder)
+   * dari baris lembar yang nilainya dikirim web (= ada di daftar write yang disetujui) yang boleh diisi worker,
+   * dan hanya untuk `rencanaHash` itu. Tidak ada rencana menunggu / rencana lain = 409.
+   */
+  private async isiGenerik(
+    s: Sesi,
+    isian: Record<string, string>,
+    rencanaHash: string | undefined,
+  ): Promise<{ placeholder: string[]; berkas: string[] }> {
+    const m = s.izinMenunggu;
+    if (!m || rencanaHash !== m.rencanaHash)
+      throw new PendampingError(
+        'PESAN_TIDAK_SAH',
+        409,
+        'persetujuan bukan untuk rencana yang sedang menunggu',
+      );
+    const diminta = new Set(m.kolom.map((k) => k.placeholder));
+    for (const [k, v] of Object.entries(isian)) if (diminta.has(k)) s.vault.set(k, v);
+    const pasangan = new Set(
+      m.kolom
+        .filter((k) => Object.hasOwn(isian, k.placeholder))
+        .map((k) => kunciPasangan(k.sidik, k.placeholder)),
+    );
+    const berkas = new Set(m.berkas.filter((b) => s.files.has(b)));
+    s.persetujuan = { rencanaHash, pasangan, berkas };
+    s.izinMenunggu = undefined;
+    this.catat(s, { jenis: 'persetujuan', rencanaHash, n: pasangan.size + berkas.size });
+    const kurang = {
+      placeholder: [...diminta].filter((p) => !Object.hasOwn(isian, p)),
+      berkas: m.berkas.filter((b) => !berkas.has(b)),
+    };
+    s.butuh = { placeholder: [], berkas: [] };
     await this.maybeStartAi(s);
     return kurang;
   }
@@ -438,6 +574,131 @@ export class SessionManager {
 
   antrean(): AntreanPendampingResponse {
     return { aktif: this.active.size, maks: this.config.maxSessions, menunggu: this.queue.length };
+  }
+
+  // ---- Navigator generik (web broker, HMAC) ---------------------------------
+
+  private requireGenerik(owner: { urusanId: string; sidHash: string }): Sesi & { run: ActiveRun } {
+    const s = this.requireOwned(owner);
+    if (!s.generik)
+      throw new PendampingError('PESAN_TIDAK_SAH', 409, 'sesi ini bukan sesi Navigator generik');
+    if (!s.run?.generik || TERMINAL.has(s.status))
+      throw new PendampingError('LAYANAN_TIDAK_TERSEDIA', 409, 'peramban sesi belum siap');
+    return s as Sesi & { run: ActiveRun };
+  }
+
+  /** Mode kendali untuk Navigator: null (AI belum mulai) dihitung sebagai giliran warga. */
+  private modeNavigator(s: Sesi): PendampingMode {
+    return TERMINAL.has(s.status) ? 'done' : (s.mode ?? 'takeover');
+  }
+
+  /** Pengamatan halaman saat ini (sudah diredaksi worker). Boleh saat warga memegang kendali (baca saja). */
+  async amati(owner: { urusanId: string; sidHash: string }): Promise<AmatiSesiResponse> {
+    const s = this.requireGenerik(owner);
+    const pengamatan = await s.run.generik!.amati();
+    if (!pengamatan)
+      throw new PendampingError('LAYANAN_TIDAK_TERSEDIA', 503, 'halaman sedang berpindah; amati lagi');
+    s.lastActivity = this.now();
+    return { mode: this.modeNavigator(s), pengamatan };
+  }
+
+  /**
+   * Aksi rencana yang sudah divalidasi web. Saat warga memegang kendali tidak ada yang dijalankan (DILEWATI).
+   * Saat menunggu persetujuan, rencana yang sama dikirim ulang = BELUM_DISETUJUI lagi (idempoten).
+   */
+  async aksi(owner: { urusanId: string; sidHash: string }, req: AksiSesiInternal): Promise<AksiSesiResponse> {
+    const s = this.requireGenerik(owner);
+    const mode = this.modeNavigator(s);
+    if (mode !== 'ai' || (s.status !== 'berjalan' && s.status !== 'menunggu_data'))
+      return { mode, hasil: req.aksi.map((_, indeks) => ({ indeks, kode: 'DILEWATI' as const })) };
+    const hasil = await s.run.generik!.aksi(req);
+    s.lastActivity = this.now();
+    return { mode: this.modeNavigator(s), hasil };
+  }
+
+  /** Long-poll selama warga memegang kendali / sesi menunggu (paling lama `maksMs`). */
+  async tunggu(owner: { urusanId: string; sidHash: string }, maksMs: number): Promise<TungguSesiResponse> {
+    const s = this.byUrusan(owner.urusanId);
+    if (!s) {
+      const tomb = this.status(owner);
+      return { mode: tomb.mode ?? 'done', status: tomb.status, habisWaktu: false };
+    }
+    this.assertOwner(s, owner.sidHash);
+    const menunggu = () => !TERMINAL.has(s.status) && (s.mode !== 'ai' || STATUS_TUNGGU.has(s.status));
+    let habisWaktu = false;
+    if (menunggu() && maksMs > 0) {
+      await new Promise<void>((selesai) => {
+        const bangun = () => {
+          if (menunggu()) return;
+          clearTimeout(t);
+          s.penunggu.delete(bangun);
+          selesai();
+        };
+        const t = setTimeout(() => {
+          s.penunggu.delete(bangun);
+          habisWaktu = true;
+          selesai();
+        }, maksMs);
+        t.unref?.();
+        s.penunggu.add(bangun);
+      });
+    } else habisWaktu = menunggu();
+    return { mode: this.modeNavigator(s), status: s.status, habisWaktu };
+  }
+
+  /** Kuras catatan audit Navigator (untuk event `jejak_pendamping`); juga setelah sesi berakhir (nisan). */
+  kurasJejak(owner: { urusanId: string; sidHash: string }): JejakSesiResponse {
+    const s = this.byUrusan(owner.urusanId);
+    if (s) {
+      this.assertOwner(s, owner.sidHash);
+      const r = { executionId: s.executionId, catatan: s.jejak, terbuang: s.jejakTerbuang };
+      s.jejak = [];
+      s.jejakTerbuang = 0;
+      return r;
+    }
+    const tomb = this.tombstones.get(`${owner.urusanId}:${owner.sidHash}`);
+    if (!tomb) throw new PendampingError('SESI_TIDAK_ADA', 404, 'tidak ada sesi pendamping');
+    const r = { executionId: tomb.sesi.executionId, catatan: tomb.jejak, terbuang: tomb.terbuang };
+    tomb.jejak = [];
+    tomb.terbuang = 0;
+    return r;
+  }
+
+  private catat(s: Sesi, c: CatatanPendamping): void {
+    if (!s.generik) return;
+    s.jejak.push(c);
+    if (s.jejak.length > MAKS_JEJAK) {
+      s.jejak.shift();
+      s.jejakTerbuang++;
+    }
+  }
+
+  private bangunkan(s: Sesi): void {
+    for (const f of [...s.penunggu]) f();
+  }
+
+  /** Rencana butuh persetujuan: AI berhenti, perangkat menerima lembar per kolom terikat `rencanaHash`. */
+  private mintaIzin(s: Sesi, p: { rencanaHash: string; kolom: KolomIzin[]; berkas: string[] }): void {
+    if (TERMINAL.has(s.status)) return;
+    s.izinMenunggu = p;
+    s.persetujuan = undefined;
+    s.aiDimulai = false;
+    s.status = 'menunggu_data';
+    s.butuh = { placeholder: [...new Set(p.kolom.map((k) => k.placeholder))], berkas: [...p.berkas] };
+    this.broadcastStatus(s);
+    s.viewer?.send({ type: 'butuh_data', ...this.kurang(s), origin: s.program.origin, ...this.kolomIzin(s) });
+  }
+
+  private izinGenerik(s: Sesi): IzinGenerik {
+    return {
+      disetujui: (h, sidik, ph) =>
+        s.persetujuan?.rencanaHash === h && s.persetujuan.pasangan.has(kunciPasangan(sidik, ph)),
+      berkasDisetujui: (h, nama) => s.persetujuan?.rencanaHash === h && s.persetujuan.berkas.has(nama),
+      minta: (p) => this.mintaIzin(s, p),
+      nilai: (ph) => s.vault.get(ph),
+      berkas: (n) => s.files.get(n),
+      vault: () => s.vault.entries(),
+    };
   }
 
   // ---- WebSocket -----------------------------------------------------------
@@ -472,7 +733,7 @@ export class SessionManager {
     viewer.send({ type: 'status', sesi: this.view(s) });
     if (s.mode) viewer.send({ type: 'mode', mode: s.mode, ...(s.pesan ? { pesan: s.pesan } : {}) });
     if (s.status === 'menunggu_data')
-      viewer.send({ type: 'butuh_data', ...this.kurang(s), origin: s.program.origin });
+      viewer.send({ type: 'butuh_data', ...this.kurang(s), origin: s.program.origin, ...this.kolomIzin(s) });
     await s.run?.setViewer((f) => s.viewer === viewer && viewer.frame(f));
   }
 
@@ -518,6 +779,7 @@ export class SessionManager {
   private handleControl(s: Sesi, aksi: 'ambil_alih' | 'kembalikan'): void {
     // Sesi debug tidak punya AI: kendali selalu di tangan penguji.
     if (!s.run || TERMINAL.has(s.status) || s.manualUrl || s.status === 'siaga') return;
+    this.catat(s, { jenis: 'ambil_alih', fase: aksi === 'ambil_alih' ? 'mulai' : 'selesai' });
     if (aksi === 'ambil_alih') {
       s.run.ambilAlih();
       this.setMode(s, 'takeover', 'Anda memegang kendali. AI berhenti sampai Anda mengembalikannya.');
@@ -557,6 +819,8 @@ export class SessionManager {
   }
 
   private kurang(s: Sesi) {
+    // Generik: setiap baris rencana yang menunggu wajib disetujui ulang, walau nilainya sudah di memori.
+    if (s.izinMenunggu) return { placeholder: [...s.butuh.placeholder], berkas: [...s.butuh.berkas] };
     if (s.berkasDitunggu !== undefined)
       return { placeholder: [], berkas: [s.berkasDitunggu].filter((b) => !s.files.has(b)) };
     return {
@@ -586,6 +850,7 @@ export class SessionManager {
 
   private broadcastStatus(s: Sesi): void {
     s.viewer?.send({ type: 'status', sesi: this.view(s) });
+    this.bangunkan(s);
   }
 
   private setMode(s: Sesi, mode: Exclude<PendampingMode, 'done'>, pesan?: string): void {
@@ -595,6 +860,7 @@ export class SessionManager {
     s.pesan = pesan;
     if (mode === 'ai') s.galatInputTerkirim = false;
     s.viewer?.send({ type: 'mode', mode, ...(pesan ? { pesan } : {}) });
+    this.bangunkan(s);
   }
 
   private emit(s: Sesi, e: PendampingEvent): void {
@@ -637,6 +903,7 @@ export class SessionManager {
         viewport: s.viewport,
         hooks,
         data: { value: (t) => s.vault.get(t), file: (n) => s.files.get(n) },
+        generik: s.generik ? { izin: this.izinGenerik(s), jejak: (c) => this.catat(s, c) } : undefined,
       });
       if (TERMINAL.has(s.status)) return void (await run.destroy()); // diakhiri saat memulai
       s.run = run;
@@ -653,7 +920,7 @@ export class SessionManager {
     if (!s.run || s.aiDimulai || s.status !== 'menunggu_data') return;
     const k = this.kurang(s);
     if (k.placeholder.length > 0 || k.berkas.length > 0) {
-      s.viewer?.send({ type: 'butuh_data', ...k, origin: s.program.origin });
+      s.viewer?.send({ type: 'butuh_data', ...k, origin: s.program.origin, ...this.kolomIzin(s) });
       return;
     }
     s.aiDimulai = true;
@@ -711,7 +978,15 @@ export class SessionManager {
     for (const [k, t] of this.tickets) if (t.sesiId === s.id) this.tickets.delete(k);
     const qi = this.queue.indexOf(s.id);
     if (qi >= 0) this.queue.splice(qi, 1);
-    this.tombstones.set(`${s.urusanId}:${s.sidHash}`, { sesi: this.view(s), exp: this.now() + TOMBSTONE_MS });
+    this.tombstones.set(`${s.urusanId}:${s.sidHash}`, {
+      sesi: this.view(s),
+      exp: this.now() + TOMBSTONE_MS,
+      jejak: s.jejak,
+      terbuang: s.jejakTerbuang,
+    });
+    s.izinMenunggu = undefined;
+    s.persetujuan = undefined;
+    this.bangunkan(s);
     this.sessions.delete(s.id);
     const run = s.run;
     s.run = undefined;

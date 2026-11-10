@@ -23,6 +23,8 @@ import {
 import { chromium, type BrowserContext, type CDPSession, type Page } from 'playwright-core';
 import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
+import { createGerbangTulis, type GerbangTulis, type PermintaanGerbang } from './gerbang-tulis.js';
+import { GenerikRun, tanganRunner } from './generik.js';
 import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
 import { daftarEdge, type ProxyEdge } from './isolasi.js';
 import { pesanBerkasKurang, pesanIsiSendiri } from './isian.js';
@@ -48,7 +50,7 @@ const memoryKV = (): KV => {
 
 const INTERRUPTED_RE =
   /Execution context was destroyed|Cannot find context|Inspected target navigated|Target closed|Frame .* detached|No frame/i;
-const MUTATING: ReadonlySet<RunnerOp['kind']> = new Set(['step', 'upload', 'consent']);
+const MUTATING: ReadonlySet<RunnerOp['kind']> = new Set(['step', 'upload', 'consent', 'aksi']);
 
 /** Kode galat jaringan Chromium (`net::ERR_*`) -> alasan dalam kata sederhana. */
 function alasanJaringan(net: string): string {
@@ -245,6 +247,36 @@ export const PROFIL_PREFS = Object.freeze({
   translate: { enabled: false },
 });
 
+/** URL lolos allowlist host:port sesi (lapis `context.route`; sama dengan proxy egress). */
+export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): boolean {
+  const u = URL.parse(url);
+  const port = Number(u?.port || (u?.protocol === 'https:' ? 443 : 80));
+  return (u?.protocol === 'https:' || u?.protocol === 'http:') && allowedHosts.has(`${u.hostname}:${port}`);
+}
+
+/**
+ * Bentuk permintaan untuk gerbang tulis: metode, navigasi dokumen bingkai UTAMA halaman (iframe = subresource),
+ * dan URL awal rantai redirect. Permintaan tanpa bingkai (service worker) dianggap bukan dokumen.
+ */
+export function permintaanGerbang(r: {
+  method(): string;
+  url(): string;
+  isNavigationRequest(): boolean;
+  frame(): { page(): { mainFrame(): unknown } };
+  redirectedFrom(): { url(): string; redirectedFrom(): unknown } | null;
+}): PermintaanGerbang {
+  let dokumen: boolean;
+  try {
+    const f = r.frame();
+    dokumen = r.isNavigationRequest() && f === f.page().mainFrame();
+  } catch {
+    dokumen = false;
+  }
+  let asal: string | undefined;
+  for (let x = r.redirectedFrom(); x; x = x.redirectedFrom() as typeof x) asal = x.url();
+  return { metode: r.method(), dokumen, url: r.url(), ...(asal !== undefined ? { asal } : {}) };
+}
+
 /**
  * Chromium + profil sementara (persistent context di direktori acak, dihapus saat tutup) di belakang proxy
  * egress sendiri, dengan lapis kedua `context.route`. Dipakai setiap sesi dan oleh e2e SSRF/residu.
@@ -255,6 +287,11 @@ export async function launchIsolated(
   /** Host https sesi ini (host origin + host yang dideklarasikan adapter), bukan seluruh registry. */
   hosts: readonly string[],
   onBlocked: (host: string) => void = () => {},
+  /**
+   * Gerbang tulis Navigator generik (lapis SETELAH allowlist; tidak pernah melonggarkannya). undefined = sesi
+   * adapter (tanpa gerbang).
+   */
+  gerbang?: GerbangTulis,
 ): Promise<Isolated> {
   const rules = egressRules(hosts, config.fixtureOrigins);
   const allowedHosts = new Set(rules.map((r) => `${r.host}:${r.port}`));
@@ -303,13 +340,19 @@ export async function launchIsolated(
       // Agen pengguna = bawaan Chromium apa adanya (tidak ditimpa); lihat tanpa-evasi.test.ts.
     });
     // Lapis kedua (selain proxy): permintaan ke host:port di luar allowlist dibatalkan di peramban.
+    // Gerbang tulis (generik) di rute yang SAMA, setelah allowlist: permintaan yang dibatalkan tidak pernah terkirim.
     await context.route('**/*', (route) => {
-      const u = URL.parse(route.request().url());
-      const port = Number(u?.port || (u?.protocol === 'https:' ? 443 : 80));
-      const ok =
-        (u?.protocol === 'https:' || u?.protocol === 'http:') && allowedHosts.has(`${u.hostname}:${port}`);
-      if (!ok && u?.hostname) onBlocked(u.hostname);
-      return ok ? route.continue() : route.abort('blockedbyclient');
+      const req = route.request();
+      const ok = urlDiAllowlist(allowedHosts, req.url());
+      if (!ok) {
+        const host = URL.parse(req.url())?.hostname;
+        if (host) onBlocked(host);
+        return route.abort('blockedbyclient');
+      }
+      // `aborted` (net::ERR_ABORTED): navigasi dokumen yang dibatalkan tidak meng-commit halaman galat, jadi
+      // warga tetap melihat formulir yang sama (dengan isiannya) untuk ditekan sendiri.
+      if (gerbang && gerbang.periksa(permintaanGerbang(req)) === 'blokir') return route.abort('aborted');
+      return route.continue();
     });
     const ctx = context;
     return {
@@ -364,23 +407,51 @@ export function pidsOfProfile(userDataDir: string, proc = '/proc'): number[] {
   return [...out];
 }
 
+/**
+ * Sambungan gerbang tulis -> wire: gerbang dibuat SEBELUM peramban (rute terpasang sejak permintaan pertama),
+ * wire mengisi pemegang kendali dan penerima blokir. Sebelum diisi: jendela AI diam (gagal tertutup).
+ */
+type KendaliGerbang = {
+  wargaPegang: () => boolean;
+  blokir: Parameters<typeof createGerbangTulis>[0]['onBlokir'];
+};
+
 export async function startBrowserRun(config: Config, init: RunInit): Promise<ActiveRun> {
   const reported = new Set<string>();
-  const iso = await launchIsolated(config, init.viewport, hostsSesi(init.program), (host) => {
-    if (reported.size < 20 && !reported.has(host)) {
-      reported.add(host);
-      init.hooks.event({ jenis: 'diblokir', host });
-    }
-  });
+  const kendali: KendaliGerbang = { wargaPegang: () => false, blokir: () => {} };
+  const gerbang = init.generik
+    ? createGerbangTulis({
+        wargaPegang: () => kendali.wargaPegang(),
+        onBlokir: (c, j) => kendali.blokir(c, j),
+      })
+    : undefined;
+  const hosts = hostsSesi(init.program);
+  const iso = await launchIsolated(
+    config,
+    init.viewport,
+    hosts,
+    (host) => {
+      if (reported.size < 20 && !reported.has(host)) {
+        reported.add(host);
+        init.hooks.event({ jenis: 'diblokir', host });
+      }
+    },
+    gerbang,
+  );
   try {
-    return await wire(config, init, iso);
+    return await wire(config, init, iso, gerbang ? { gerbang, kendali, hosts } : undefined);
   } catch (e) {
     await iso.close();
     throw e;
   }
 }
 
-async function wire(config: Config, init: RunInit, iso: Isolated): Promise<ActiveRun> {
+async function wire(
+  config: Config,
+  init: RunInit,
+  iso: Isolated,
+  gen?: { gerbang: GerbangTulis; kendali: KendaliGerbang; hosts: readonly string[] },
+): Promise<ActiveRun> {
   const { context } = iso;
   const { hooks } = init;
   // Berubah per execution (sesi siaga dipakai lagi untuk langkah berikutnya di urusan yang sama).
@@ -642,8 +713,10 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     if (r.isNavigationRequest() && r.frame() === page.mainFrame()) loading = true;
   });
   page.on('requestfailed', (r) => {
-    if (r.isNavigationRequest() && r.frame() === page.mainFrame())
-      navGagal = r.failure()?.errorText ?? 'net::ERR_FAILED';
+    if (!r.isNavigationRequest() || r.frame() !== page.mainFrame()) return;
+    navGagal = r.failure()?.errorText ?? 'net::ERR_FAILED';
+    // Navigasi yang dibatalkan (gerbang tulis) tidak memuat halaman apa pun: tidak ada `load` yang menyusul.
+    if (navGagal === 'net::ERR_ABORTED') loading = false;
   });
   page.on('framenavigated', (f) => {
     if (f !== page.mainFrame()) return;
@@ -889,8 +962,73 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     });
   }
 
+  /** Navigator generik: tangan (runner op amati/aksi) + gerbang tulis + persetujuan dari sesi. */
+  let generik: GenerikRun | undefined;
+  let generikDimulai = false;
+  if (gen && init.generik) {
+    const izinHost = new Set(egressRules(gen.hosts, config.fixtureOrigins).map((r) => `${r.host}:${r.port}`));
+    const { izin, jejak } = init.generik;
+    const tenang = async () => {
+      // Jeda singkat agar handler klik sempat memicu permintaan; bila navigasi dimulai, tunggu muat (<= 10 detik).
+      await new Promise((r) => setTimeout(r, 400));
+      const batas = Date.now() + 10_000;
+      while (loading && !destroyed && Date.now() < batas) await new Promise((r) => setTimeout(r, 100));
+    };
+    generik = new GenerikRun({
+      tangan: tanganRunner({
+        // Aksi generik = op yang mengubah halaman: periksa tantangan dulu; selama tantangan/takeover AI tidak
+        // menyentuh halaman sama sekali (aksi gagal, Navigator menunggu lewat `tunggu`).
+        evaluate: async (op) => {
+          const o = op as RunnerOp;
+          if (MUTATING.has(o.kind)) {
+            await periksaTantangan();
+            if (ditahan() || destroyed) return { ok: false, code: 'DITAHAN', message: 'giliran warga' };
+          }
+          return evaluate(o);
+        },
+        async navigasi(url) {
+          navTerakhir = url;
+          navGagal = undefined;
+          loading = true;
+          const r = (await cdp.send('Page.navigate', { url }).catch(() => undefined)) as
+            { errorText?: string } | undefined;
+          if (r?.errorText) {
+            navGagal = r.errorText;
+            loading = false;
+          }
+        },
+        tenang,
+      }),
+      gerbang: gen.gerbang,
+      izin,
+      urlBoleh: (url) =>
+        urlDiAllowlist(izinHost, url) &&
+        checkUrl(url, { testMode: fixtureOrigins.length > 0, fixtureOrigins }).ok,
+      jejak,
+      serahkan(alasan, pesan, box) {
+        manual = true;
+        hooks.mode('takeover', pesan);
+        hooks.event({ jenis: 'giliran_anda', alasan, pesan, ...(box ? { sorot: box } : {}) });
+      },
+      tidakBisa: (pesan) => hooks.ended('dipandu', 'gagal', pesan),
+    });
+    const run = generik;
+    gen.kendali.wargaPegang = ditahan;
+    gen.kendali.blokir = (c, j) => run.blokir(c, j);
+  }
+
+  const g = generik;
   return {
+    ...(g ? { generik: { amati: () => g.amati(), aksi: (req) => g.aksi(req) } } : {}),
     async mulaiAi() {
+      if (g) {
+        // Generik: AI hanya membuka halaman awal; selanjutnya otak di web memanggil amati/aksi.
+        if (generikDimulai) return;
+        generikDimulai = true;
+        const awal = steps[0];
+        await g.mulai(`${program.origin}${awal?.op === 'nav' ? awal.path : '/'}`);
+        return;
+      }
       if (init.manualUrl) {
         // Mode debug: tidak ada AI; penguji manusia memegang kendali sejak awal.
         manual = true;

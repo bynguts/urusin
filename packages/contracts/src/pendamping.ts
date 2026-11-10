@@ -454,6 +454,11 @@ export type ButuhSesiInternal = z.infer<typeof ButuhSesiInternalSchema>;
  */
 export const IsiSesiInternalSchema = PemilikSesiInternalSchema.extend({
   isian: z.record(PlaceholderVaultSchema, z.string().max(500)),
+  /**
+   * Navigator generik: rencana yang disetujui warga (dari `butuh.rencanaHash`). Worker menolak isi untuk
+   * rencana lain; pasangan (sidik ref, placeholder) yang disetujui terikat ke hash ini.
+   */
+  rencanaHash: RencanaHashSchema.optional(),
 });
 export type IsiSesiInternal = z.infer<typeof IsiSesiInternalSchema>;
 
