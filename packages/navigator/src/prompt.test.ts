@@ -85,7 +85,9 @@ describe('prompt Navigator', () => {
   it('properti: NIK dalam segala bentuk di teks/label/opsi/galat halaman tidak pernah sampai ke model', async () => {
     await fc.assert(
       fc.asyncProperty(nik, gaya, fc.integer({ min: 0, max: 5 }), async (n, g, tempat) => {
-        const t = tulis(n.full, g).slice(0, 80);
+        const t = tulis(n.full, g);
+        // Potongan NIK (terpotong batas panjang) juga tidak boleh lolos sebagai deret 12+ angka.
+        const potong = tulis(n.full.slice(0, 13), g);
         const p = halaman({
           judul: tempat === 0 ? `Data ${t}` : 'Formulir',
           teks: tempat === 1 ? `Pemohon ${t} sudah terdaftar.` : 'Formulir.',
@@ -95,7 +97,7 @@ describe('prompt Navigator', () => {
               peran: 'pilihan',
               nama: tempat === 2 ? t : 'Pilih pemohon',
               petunjuk: tempat === 3 ? `contoh ${t}` : 'pilih satu',
-              galat: tempat === 4 ? `${t} tidak cocok` : undefined,
+              galat: tempat === 4 ? `${t} tidak cocok` : `${potong} terpotong`,
               opsi: ['-- Pilih --', tempat === 5 ? t : 'Anak'],
             },
           ],
@@ -107,6 +109,7 @@ describe('prompt Navigator', () => {
         );
         expect(r.ok).toBe(true);
         expect(proyeksiDigit(provider.semuaPrompt)).not.toContain(n.full);
+        expect(proyeksiDigit(provider.semuaPrompt)).not.toContain(n.full.slice(0, 13));
       }),
       { numRuns: 150 },
     );

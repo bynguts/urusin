@@ -38,6 +38,13 @@ export type MasukanPrompt = {
 
 export const NAMA_SKEMA = 'rencana_halaman';
 
+/**
+ * Deret 12+ angka (angka Unicode apa pun, boleh dipisah spasi/titik/garis/karakter tak terlihat) di teks
+ * halaman: potongan NIK/KK yang terpotong batas panjang worker tidak dikenali pemindai NIK, jadi ikut diganti.
+ * Model tidak butuh angka panjang untuk memilih ref.
+ */
+const DERET_ANGKA = /\p{Nd}(?:[\s.\-/\p{Cf}]*\p{Nd}){11,}/gu;
+
 function aturanSistem(tujuan: string): string {
   return [
     `Kamu adalah Navigator Urusin. Warga sudah menyetujui urusan "${tujuan}" dan Browser Pendamping sedang membuka satu halaman portal resmi. Susun SATU rencana aksi untuk halaman ini.`,
@@ -65,7 +72,7 @@ export function pesanRencana(m: MasukanPrompt): ChatMessage[] {
   const nonce = m.nonce ?? newNonce();
   const pii = new PiiInterceptor(undefined, { kodeKabKota: m.kodeKabKota ?? null });
   const data = (teks: string, id?: string, maxChars?: number) =>
-    spotlight('dom', pii.redact(teks).text, {
+    spotlight('dom', pii.redact(teks).text.replace(DERET_ANGKA, '{{DATA.ANGKA}}'), {
       nonce,
       ...(id ? { id } : {}),
       ...(maxChars ? { maxChars } : {}),

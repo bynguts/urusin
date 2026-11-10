@@ -187,7 +187,8 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         const mulai = jam();
         const maks = Math.min(TUNGGU_MAKS_MS, tungguTotal - ditunggu);
         const t = await o.tangan.tunggu(maks);
-        ditunggu += Math.max(jam() - mulai, t.habisWaktu ? maks : 0);
+        // Paling sedikit 1 detik per putaran: worker yang menjawab seketika tanpa perubahan tidak membuat loop panas.
+        ditunggu += Math.max(jam() - mulai, t.habisWaktu ? maks : 0, 1_000);
         if (t.mode === 'done' || STATUS_AKHIR.includes(t.status)) return 'berakhir';
         if (t.mode === 'ai' && t.status !== 'menunggu_data') return 'ai';
       }
