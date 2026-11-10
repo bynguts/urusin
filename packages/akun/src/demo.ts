@@ -23,7 +23,7 @@ export function dataDiriSintetis(): Record<string, string> {
     kodePos: '57612',
     // = HP uji yang tercetak di replika Telunjuk Sakti (apps/fixtures TEST_HP): isian AI langsung diterima di
     // halaman masuk replika, juri cukup mengetik kode CAPTCHA. Juri tidak pernah ke portal asli (Mode Uji).
-    hp: ['0800', '0000', '0001'].join(''),
+    hp: ['0800', '0000', '001'].join(''),
     email: ['juri', 'example.com'].join('@'),
   };
 }

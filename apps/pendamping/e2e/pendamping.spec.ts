@@ -200,6 +200,9 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
 
   // Sampai di giliran final = kedua unggahan lolos pascakondisi adapter (jumlah .uploaded-item bertambah).
   const final = await tungguGiliran(page, 'final');
+  // Teks giliran menyebut tombol yang benar-benar ada di halaman (tautan "Selesai"), dari adapter dan halaman.
+  expect(final.pesan).toBe('Semua berkas terunggah. Periksa, lalu tekan Selesai sendiri untuk mengirim.');
+  expect(final.tombol).toBe('Selesai');
   // Langkah unggah selesai: jalur isi tertutup lagi.
   expect((await internal('/internal/sesi/butuh', owner('u-e2e-1'))).status).toBe(409);
   expect((await internal('/internal/sesi/teks', owner('u-e2e-1'))).status).toBe(404);
@@ -215,13 +218,15 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
   }
 
   // Warga mengetuk "Selesai" (sentuh) di area sorotan: satu-satunya jalan pengiriman akhir.
+  const sebelumKirim = frameWs.length;
   const f = final.sorot!;
   await page.touchscreen.tap(
     (await page.locator('#layar').boundingBox())!.x + f.x + f.lebar / 2,
     (await page.locator('#layar').boundingBox())!.y + f.y + f.tinggi / 2,
   );
 
-  // Execution selesai: sesi siaga (peramban tetap hidup, warga membaca halaman), bukti dari tabel permohonan.
+  // Pengajuan terkirim: sesi langsung selesai berhasil dengan bukti dari tabel permohonan; peramban dan data
+  // dihancurkan saat itu juga (tanpa siaga, tanpa jeda, tanpa kembali ke "AI mengisi").
   await expect
     .poll(
       async () => (await internal<SesiPendamping>('/internal/sesi/status', owner('u-e2e-1'))).data.status,
@@ -229,23 +234,26 @@ test('alur penuh: AI mengisi, CAPTCHA oleh warga, final oleh warga, sesi dihancu
         timeout: 30_000,
       },
     )
-    .toBe('siaga');
+    .toBe('selesai');
+  const akhir = await internal<SesiPendamping>('/internal/sesi/status', owner('u-e2e-1'));
+  expect(akhir.data).toMatchObject({
+    status: 'selesai',
+    hasil: 'berhasil',
+    mode: 'done',
+    bukti: { nomor: 'FX-REG-0002', status: 'Baru diajukan (data uji)' },
+  });
+  await expect(page.locator('#mode')).toHaveText('done', { timeout: 30_000 });
+  await expect(page.locator('#koneksi')).toHaveText('selesai');
   const selesai = (await peristiwa(page)).find((e) => e.jenis === 'selesai');
   expect(selesai).toMatchObject({
     hasil: 'berhasil',
     bukti: { nomor: 'FX-REG-0002', status: 'Baru diajukan (data uji)' },
   });
-  const siaga = await internal<SesiPendamping>('/internal/sesi/status', owner('u-e2e-1'));
-  expect(siaga.data).toMatchObject({ status: 'siaga', hasil: 'berhasil', mode: 'takeover' });
-  await expect(page.locator('#mode')).toHaveText('takeover');
-  await expect(page.locator('#koneksi')).toHaveText('tersambung');
-
-  // Warga menutup sesi: execution tetap berhasil; peramban dan data dihancurkan.
-  await internal('/internal/sesi/akhiri', owner('u-e2e-1'));
-  await expect(page.locator('#mode')).toHaveText('done', { timeout: 30_000 });
-  await expect(page.locator('#koneksi')).toHaveText('selesai');
-  const akhir = await internal<SesiPendamping>('/internal/sesi/status', owner('u-e2e-1'));
-  expect(akhir.data).toMatchObject({ status: 'selesai', hasil: 'berhasil', mode: 'done' });
+  const modeSesudahKirim = frameWs
+    .slice(sebelumKirim)
+    .map((x) => /"type":"mode","mode":"([a-z]+)"/.exec(x)?.[1])
+    .filter(Boolean);
+  expect(modeSesudahKirim).toEqual(['done']);
 
   // Sesi dihancurkan: slot dipakai sesi antrean berikutnya; tiket untuk sesi lama tidak bisa dibuat.
   await expect

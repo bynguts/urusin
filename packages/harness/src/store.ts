@@ -32,6 +32,8 @@ export type UrusanRow = {
   tokensIn: number;
   tokensOut: number;
   costIdr: number;
+  /** Nomor permohonan dari situs resmi setelah pengajuan terkirim (bukti Browser Pendamping). */
+  nomorPermohonan: string | null;
 };
 
 export type StoredEvent = {
@@ -87,7 +89,15 @@ type UrusanDbRow = {
   tokens_in: number;
   tokens_out: number;
   cost_idr: number;
+  nomor_permohonan: string | null;
 };
+
+/** Baris urusan + nomor permohonan (tabel anak, migrasi 0004). */
+const SELECT_URUSAN =
+  'SELECT u.*, n.nomor AS nomor_permohonan FROM urusan u LEFT JOIN nomor_permohonan n ON n.urusan_id = u.id';
+
+/** Sama dengan skema `bukti.nomor` Browser Pendamping (@urusin/contracts). */
+const NOMOR_PERMOHONAN_RE = /^[A-Za-z0-9][A-Za-z0-9 ./_-]{0,63}$/;
 
 const toUrusan = (r: UrusanDbRow): UrusanRow => ({
   id: r.id,
@@ -101,6 +111,7 @@ const toUrusan = (r: UrusanDbRow): UrusanRow => ({
   tokensIn: r.tokens_in,
   tokensOut: r.tokens_out,
   costIdr: r.cost_idr,
+  nomorPermohonan: r.nomor_permohonan ?? null,
 });
 
 export type StoreOptions = {
@@ -174,7 +185,7 @@ export class HarnessStore {
   }
 
   getUrusan(id: string): UrusanRow | undefined {
-    const r = this.db.prepare('SELECT * FROM urusan WHERE id = ?').get(id) as UrusanDbRow | undefined;
+    const r = this.db.prepare(`${SELECT_URUSAN} WHERE u.id = ?`).get(id) as UrusanDbRow | undefined;
     return r ? toUrusan(r) : undefined;
   }
 
@@ -519,10 +530,26 @@ export class HarnessStore {
     );
   }
 
+  /**
+   * Simpan nomor permohonan dari situs resmi. Hanya bentuk nomor registrasi (skema bukti pendamping) yang
+   * diterima; selain itu diabaikan (false). Tidak menaikkan version: bukan transisi state.
+   */
+  catatNomorPermohonan(urusanId: string, nomor: string): boolean {
+    if (!NOMOR_PERMOHONAN_RE.test(nomor)) return false;
+    return (
+      this.db
+        .prepare(
+          `INSERT INTO nomor_permohonan (urusan_id, nomor, at) SELECT id, ?, ? FROM urusan WHERE id = ?
+           ON CONFLICT(urusan_id) DO UPDATE SET nomor = excluded.nomor, at = excluded.at`,
+        )
+        .run(nomor, this.iso(), urusanId).changes === 1
+    );
+  }
+
   listUrusan(ids: readonly string[]): UrusanRow[] {
     if (ids.length === 0) return [];
     const rows = this.db
-      .prepare(`SELECT * FROM urusan WHERE id IN (${ids.map(() => '?').join(',')}) ORDER BY updated_at DESC`)
+      .prepare(`${SELECT_URUSAN} WHERE u.id IN (${ids.map(() => '?').join(',')}) ORDER BY u.updated_at DESC`)
       .all(...ids) as UrusanDbRow[];
     return rows.map(toUrusan);
   }

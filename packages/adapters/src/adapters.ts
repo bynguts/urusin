@@ -134,7 +134,12 @@ const telunjukSakti: Adapter = {
               expectReload: true,
             }),
           ]),
-          gate.human('Semua berkas terunggah. Periksa, lalu tekan Selesai sendiri untuk mengirim.', {
+          gate.human('Semua berkas terunggah. Periksa, lalu tekan sendiri tombol kirim yang disorot.', {
+            // Nama tombol mengikuti halaman: portal (dan replikanya) memakai tautan "Selesai".
+            messageIf: {
+              check: elementExists([byRole('link', 'Selesai'), byRole('button', 'Selesai')]),
+              message: 'Semua berkas terunggah. Periksa, lalu tekan Selesai sendiri untuk mengirim.',
+            },
             until: urlIncludes(`${TS_BASE}/welcome/permohonan`),
             highlight: [css('#btnSelesai'), byRole('link', 'Selesai')],
           }),

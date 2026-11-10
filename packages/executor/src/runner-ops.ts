@@ -222,7 +222,21 @@ function rectOf(doc: Document, target: Target): RunnerResult {
   if (!el) return fail(RunnerCode.ADAPTER_DRIFT, 'target sorotan tidak ditemukan');
   el.scrollIntoView?.({ block: 'center', inline: 'nearest' });
   const r = el.getBoundingClientRect();
-  return { ok: true, value: { x: r.x, y: r.y, lebar: r.width, tinggi: r.height } };
+  const teks = labelTombol(el);
+  return { ok: true, value: { x: r.x, y: r.y, lebar: r.width, tinggi: r.height, ...(teks ? { teks } : {}) } };
+}
+
+/**
+ * Nama tombol/tautan yang terlihat warga (teks, `value` input tombol, atau aria-label), agar teks giliran
+ * menyebut tombol yang benar-benar ada di halaman. Lebih dari 40 karakter = bukan nama tombol, dilewati.
+ */
+function labelTombol(el: Element): string | undefined {
+  const rapikan = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim();
+  const teks =
+    rapikan(el.textContent) ||
+    (el.tagName === 'INPUT' ? rapikan((el as HTMLInputElement).value) : '') ||
+    rapikan(el.getAttribute('aria-label'));
+  return teks && teks.length <= 40 ? teks : undefined;
 }
 
 function runStep(doc: Document, step: Step, finalTargets?: Target[]): RunnerResult {

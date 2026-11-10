@@ -431,7 +431,11 @@
               {:else if it.jenis === 'terkirim'}
                 <PesanAgen avatar={p.avatar}>
                   <p>Pengajuan Anda sudah masuk. Nomor permohonannya saya catat supaya mudah dilacak.</p>
-                  <KartuTerkirim urusanId={data.urusan.id} nomor={sesi.data.bukti?.nomor} {situs} />
+                  <KartuTerkirim
+                    urusanId={data.urusan.id}
+                    nomor={sesi.data.bukti?.nomor ?? data.urusan.nomorPermohonan ?? undefined}
+                    {situs}
+                  />
                 </PesanAgen>
               {/if}
             {/each}

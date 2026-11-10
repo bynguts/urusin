@@ -80,6 +80,8 @@ export const RingkasanUrusanSchema = z.object({
   menunggu: z.enum(['warga', 'instansi', 'sistem']).nullable(),
   dibuatPada: IsoWaktuSchema,
   diubahPada: IsoWaktuSchema,
+  /** Nomor permohonan dari situs resmi setelah pengajuan terkirim (bukti Browser Pendamping). */
+  nomorPermohonan: z.string().min(1).max(64).optional(),
 });
 export const DaftarUrusanResponseSchema = z.object({ urusan: z.array(RingkasanUrusanSchema) });
 

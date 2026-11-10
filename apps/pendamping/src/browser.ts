@@ -203,6 +203,9 @@ const PESAN_MASUK =
   'Masuk ke akun Anda di situs ini. Isi sendiri kolom yang diminta halamannya (CAPTCHA, sandi, atau OTP). ' +
   'AI melanjutkan setelah Anda masuk.';
 
+/** Pengajuan terkirim: sesi ditutup, peramban beserta login dan cookie dihapus. */
+export const PESAN_TERKIRIM = 'Pengajuan terkirim. Browser ditutup; login dan cookie ikut dihapus.';
+
 const PESAN_VERIFIKASI =
   'Situs meminta verifikasi bahwa Anda manusia. Selesaikan sendiri (ketuk kotak verifikasi); AI menunggu dan tidak akan mengekliknya.';
 
@@ -480,11 +483,19 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   const policy = async (url: string) =>
     checkUrl(url, { testMode: fixtureOrigins.length > 0, fixtureOrigins });
 
-  const sorot = async (target: Extract<Step, { op: 'gate.human' }>['highlight']) => {
+  /** Kotak sorotan + nama tombol yang terlihat di halaman (teks giliran kirim menyebut tombol yang benar). */
+  const sorot = async (
+    target: Extract<Step, { op: 'gate.human' }>['highlight'],
+  ): Promise<{ box: PendampingSorot; teks?: string | undefined } | undefined> => {
     if (!target) return undefined;
     const r = await evaluate({ kind: 'rect', target });
-    return r !== 'interrupted' && r.ok ? (r.value as PendampingSorot) : undefined;
+    if (r === 'interrupted' || !r.ok) return undefined;
+    const { teks, ...box } = r.value as PendampingSorot & { teks?: string };
+    return { box, teks };
   };
+
+  /** Langkah sesudah gerbang kirim (warga sudah menekan tombol kirim) pada alur pengajuan. */
+  const lewatKirim = (i: number) => !program.bacaSaja && finalIdx >= 0 && i > finalIdx;
 
   const stopGatePoll = () => {
     clearInterval(gatePoll);
@@ -500,6 +511,8 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
     switch (c.status) {
       case 'running':
       case 'waiting_load':
+        // Setelah warga menekan tombol kirim, AI tidak mengisi apa pun lagi: jangan kembali ke "AI mengisi".
+        if (lewatKirim(c.stepIndex)) return;
         if (!ditahan()) hooks.mode('ai', 'AI sedang mengisi formulir.');
         if (c.stepIndex !== lastLangkah && c.stepIndex < steps.length) {
           lastLangkah = c.stepIndex;
@@ -518,13 +531,15 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
         const pesan = c.message ?? 'Giliran Anda.';
         hooks.mode('takeover', pesan);
         void (async () => {
-          const box = step?.op === 'gate.human' ? await sorot(step.highlight) : undefined;
+          const s = step?.op === 'gate.human' ? await sorot(step.highlight) : undefined;
+          // Alur baca-saja tidak punya pengiriman akhir: gerbangnya CAPTCHA/login.
+          const kirim = final && !program.bacaSaja;
           hooks.event({
             jenis: 'giliran_anda',
-            // Alur baca-saja tidak punya pengiriman akhir: gerbangnya CAPTCHA/login.
-            alasan: final && !program.bacaSaja ? 'final' : 'login',
+            alasan: kirim ? 'final' : 'login',
             pesan,
-            ...(box ? { sorot: box } : {}),
+            ...(s ? { sorot: s.box } : {}),
+            ...(kirim && s?.teks ? { tombol: s.teks } : {}),
           });
         })();
         gatePoll ??= setInterval(() => void (pantau.aktif || interp.recheckGate()), 1000);
@@ -541,12 +556,12 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
         if (nama) hooks.berkasKurang(nama);
         hooks.mode('takeover', pesan);
         void (async () => {
-          const box = step && 'target' in step ? await sorot(step.target) : undefined;
+          const s = step && 'target' in step ? await sorot(step.target) : undefined;
           hooks.event({
             jenis: 'giliran_anda',
             alasan: nama ? 'berkas_kurang' : 'isi_sendiri',
             pesan,
-            ...(box ? { sorot: box } : {}),
+            ...(s ? { sorot: s.box } : {}),
             ...(nama ? { berkas: { nama, origin: program.origin } } : {}),
           });
         })();
@@ -557,15 +572,13 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
         hooks.event({ jenis: 'giliran_anda', alasan: 'periksa', pesan: c.message ?? 'Lanjutkan sendiri.' });
         return;
       case 'done':
-        // Warga memegang layar (membaca hasil); AI baru bergerak lagi bila ada execution berikutnya.
+        // Baca-saja: warga memegang layar (membaca hasil); AI baru bergerak lagi bila ada execution berikutnya.
+        // Pengajuan terkirim: bukti dibaca, lalu sesi langsung ditutup (layar sukses + nomor, tanpa jeda).
         manual = true;
         void bacaBukti().then((bukti) =>
-          hooks.langkahSelesai(
-            program.bacaSaja
-              ? 'Hasil ada di layar. Baca dulu; tutup sesi bila sudah selesai.'
-              : 'Anda sudah menekan Kirim. Peramban tetap terbuka untuk langkah berikutnya; tidak ada yang disimpan setelah ditutup.',
-            bukti,
-          ),
+          program.bacaSaja
+            ? hooks.langkahSelesai('Hasil ada di layar. Baca dulu; tutup sesi bila sudah selesai.', bukti)
+            : hooks.langkahSelesai(PESAN_TERKIRIM, bukti, true),
         );
         return;
       case 'error': {

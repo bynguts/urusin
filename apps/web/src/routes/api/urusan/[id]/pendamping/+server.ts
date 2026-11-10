@@ -97,15 +97,17 @@ export const GET: RequestHandler = async ({ request, params }) => {
           a.rt.store.findOffered(a.u.id, 'execution_request', { executionId: r.data.executionId }),
         )
       : undefined;
+    const bacaSaja = offered?.success === true && offered.data.bacaSaja === true;
     if (
       hasil &&
       offered?.success &&
-      catatHasilEksekusi(a.rt, a.u, r.data.executionId, hasil, 'Browser Pendamping', {
-        bacaSaja: offered.data.bacaSaja === true,
-      })
+      catatHasilEksekusi(a.rt, a.u, r.data.executionId, hasil, 'Browser Pendamping', { bacaSaja })
     ) {
       const bukti = labelBukti(r.data);
       if (bukti) a.rt.publish(a.u.id, { type: 'progress', label: bukti });
+      // Pengajuan terkirim: nomor permohonan disimpan di urusan (Urusanku, halaman urusan) setelah sesi tutup.
+      const nomor = r.data.bukti?.nomor;
+      if (hasil === 'berhasil' && !bacaSaja && nomor) a.rt.store.catatNomorPermohonan(a.u.id, nomor);
     }
     return apiJson(r.data);
   } catch (e) {

@@ -225,6 +225,21 @@ describe('ekstensi eksekutor: select, upload, rect, text, elemen khusus warga', 
     expect(await runOp({ kind: 'rect', target: [css('#none')] })).toMatchObject({ code: 'ADAPTER_DRIFT' });
   });
 
+  it('rect membawa nama tombol yang terlihat di halaman (teks, value, aria-label); teks panjang dilewati', async () => {
+    body(
+      '<a id="a" href="#"> Kirim\n pengajuan </a><input id="i" type="submit" value="Selesai">' +
+        '<button id="ikon" aria-label="Kirim"><svg></svg></button><p id="p">' +
+        'x'.repeat(41) +
+        '</p>',
+    );
+    const teks = async (id: string) =>
+      ((await runOp({ kind: 'rect', target: [css(id)] })) as { value: { teks?: string } }).value.teks;
+    expect(await teks('#a')).toBe('Kirim pengajuan');
+    expect(await teks('#i')).toBe('Selesai');
+    expect(await teks('#ikon')).toBe('Kirim');
+    expect(await teks('#p')).toBeUndefined();
+  });
+
   it('klik ke elemen khusus warga (highlight gate.human) ditolak walau effect read', async () => {
     let clicked = 0;
     body(

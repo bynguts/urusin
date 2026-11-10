@@ -309,6 +309,44 @@ describe('broker Browser Pendamping', () => {
     expect(pendampingConfig({})).toBeNull();
   });
 
+  it('pengajuan terkirim: TERKIRIM (langkah 5) + nomor permohonan tersimpan di urusan, sekali saja', async () => {
+    const u = urusanDenganEksekusi();
+    let v = u.version;
+    for (const st of [
+      'MEMAHAMI',
+      'RENCANA_DIUSULKAN',
+      'RENCANA_DISETUJUI',
+      'MENYIAPKAN_BERKAS',
+      'BERKAS_SIAP',
+      'MENGISI',
+      'MENUNGGU_KONFIRMASI',
+      'MENGUNGGAH',
+      'MENUNGGU_SUBMIT_WARGA',
+    ] as const)
+      v = rt.store.transition(u.id, v, st).version;
+    reply = () => ({
+      status: 200,
+      body: sesi({
+        status: 'selesai',
+        mode: 'done',
+        hasil: 'berhasil',
+        antrean: null,
+        bukti: { nomor: 'FX-REG-0002', status: 'Baru diajukan (data uji)' },
+      }),
+    });
+    await status(ev(req('GET'), u.id));
+    await status(ev(req('GET'), u.id));
+    expect(rt.store.getUrusanOrThrow(u.id)).toMatchObject({
+      state: 'TERKIRIM',
+      nomorPermohonan: 'FX-REG-0002',
+    });
+    const states = rt.store
+      .eventsAfter(u.id)
+      .filter((e) => e.type === 'state')
+      .map((e) => (e.payload as { state: string }).state);
+    expect(states.filter((x) => x === 'TERKIRIM')).toHaveLength(1);
+  });
+
   it('status siaga: hasil execution dicatat sekali + bukti (nomor/status) sebagai progres yang diredaksi', async () => {
     const u = urusanDenganEksekusi();
     reply = () => ({
@@ -369,7 +407,14 @@ describe('broker Browser Pendamping', () => {
     });
     reply = () => ({
       status: 200,
-      body: sesi({ executionId: 'x_pkb', status: 'siaga', mode: 'ai', hasil: 'berhasil', antrean: null }),
+      body: sesi({
+        executionId: 'x_pkb',
+        status: 'siaga',
+        mode: 'ai',
+        hasil: 'berhasil',
+        antrean: null,
+        bukti: { nomor: 'PKB-1' },
+      }),
     });
     await status(ev(req('GET'), u.id));
     await status(ev(req('GET'), u.id));
@@ -381,6 +426,8 @@ describe('broker Browser Pendamping', () => {
       labels.filter((l) => l.includes('selesai membuka hasilnya. Tidak ada yang dikirim.')),
     ).toHaveLength(1);
     expect(rt.store.getUrusanOrThrow(u.id).state).toBe('BERKAS_SIAP');
+    // Baca-saja tidak mengirim apa pun: tidak ada nomor permohonan.
+    expect(rt.store.getUrusanOrThrow(u.id).nomorPermohonan).toBeNull();
 
     // Origin di permintaan yang bukan domain resmi ditolak sebelum memanggil worker.
     rt.publish(u.id, { ...pkb, executionId: 'x_palsu', origin: 'https://contoh.example.com' });
@@ -391,7 +438,7 @@ describe('broker Browser Pendamping', () => {
   });
 
   describe('Izinkan isi -> controller isi di server (A-M1) + pemilik akun (m6)', () => {
-    const HP = ['0800', '0000', '0001'].join('');
+    const HP = ['0800', '0000', '001'].join('');
     const SITUS = 'https://telunjuksakti.wonogirikab.go.id';
     const FIXTURES = 'https://fixtures.urusinai.web.id';
     const PH = ['{{PEMOHON.NIK}}', '{{PEMOHON.HP}}', '{{URUSAN.KITIR}}'];
@@ -517,6 +564,26 @@ describe('broker Browser Pendamping', () => {
       const res = await kirim(u.id, { writeList: ['{{PEMOHON.NIK}}'], targetOrigin: SITUS });
       expect(res.status).toBe(409);
       expect(jalur()).not.toContain('/internal/sesi/isi');
+    });
+
+    it('salinan demo juri: HP Data Diri lewat jalur placeholder = persis HP uji replika (08000000001)', async () => {
+      const u = siapkan();
+      const { akun: juri } = rt.akun.buatDemo(KTX);
+      rt.akun.catatPemilikUrusan(u.id, { akun: juri });
+      const writeList = daftarWrite(BUTUH.placeholder, BUTUH.berkas);
+      const res = await izinkanIsi({
+        request: new Request(`${ORIGIN}/api/urusan/${u.id}/izinkan-isi`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', origin: ORIGIN, cookie: `${SID_COOKIE}=${SID}` },
+          body: JSON.stringify({ writeList, targetOrigin: BUTUH.origin }),
+        }),
+        params: { id: u.id },
+        locals: { sid: SID, akun: juri },
+      } as never);
+      expect(res.status).toBe(200);
+      const isi = calls.find((c) => new URL(c.url).pathname === '/internal/sesi/isi');
+      // String yang diketik AI ke kolom HP replika Telunjuk Sakti = apps/fixtures TEST_HP, tanpa normalisasi.
+      expect((isi!.body as { isian: Record<string, string> }).isian['{{PEMOHON.HP}}']).toBe('08000000001');
     });
 
     it('m6: urusan milik orang lain -> 404 di izinkan-isi dan semua endpoint pendamping, tanpa panggil worker', async () => {
