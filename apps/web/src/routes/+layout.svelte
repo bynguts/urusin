@@ -45,11 +45,11 @@
   {@render children()}
 {:else}
   <!-- App 01–14: bingkai krem bertitik, menu samping 248 px, panel utama putih membulat (desktop). -->
-  <div class="bingkai-app flex min-h-dvh bg-bg-2 lg:h-dvh lg:gap-3 lg:p-3">
+  <div class="bingkai-app flex min-h-dvh bg-bg-2 lg:h-dvh lg:overflow-hidden lg:gap-3 lg:p-3">
     <Sidebar />
 
     <div
-      class="flex min-w-0 flex-1 flex-col bg-bg lg:overflow-y-auto lg:rounded-2xl lg:bg-surface lg:shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] lg:outline lg:outline-1 lg:-outline-offset-1 lg:outline-line"
+      class="relative flex min-w-0 flex-1 flex-col bg-bg lg:overflow-y-auto lg:overscroll-contain lg:rounded-2xl lg:bg-surface lg:shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] lg:outline lg:outline-1 lg:-outline-offset-1 lg:outline-line"
       id="panel-utama"
     >
       <!-- Bilah atas HP (frame IzXAR) -->

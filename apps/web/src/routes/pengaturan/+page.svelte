@@ -85,7 +85,14 @@
     e.preventDefault();
     aktif = id;
     const el = document.getElementById(id);
-    if (el) {
+    const panel = document.getElementById('panel-utama');
+    if (el && panel && window.innerWidth >= 1024) {
+      const panelRect = panel.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const targetScrollTop = panel.scrollTop + (elRect.top - panelRect.top) - 67.5 - 12;
+      panel.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+      history.replaceState(null, '', `#${id}`);
+    } else if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       history.replaceState(null, '', `#${id}`);
     }
@@ -162,7 +169,7 @@
           {#each UKURAN as u (u.nilai)}
             {@const pilih = prefs.nilai.ukuranHuruf === u.nilai}
             <label
-              class="flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 text-center has-focus-visible:outline-2 has-focus-visible:outline-ink sm:flex-row sm:gap-2.5 {pilih
+              class="relative flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 text-center has-focus-visible:outline-2 has-focus-visible:outline-ink sm:flex-row sm:gap-2.5 {pilih
                 ? 'bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
                 : 'hover:bg-surface/60'}"
             >
@@ -240,7 +247,7 @@
           {#each TEMA as t (t.nilai)}
             {@const pilih = (prefs.nilai.tema === 'gelap' ? 'gelap' : 'terang') === t.nilai}
             <label
-              class="flex min-h-12 cursor-pointer items-center justify-center rounded-xl text-[15px] leading-[22px] has-focus-visible:outline-2 has-focus-visible:outline-ink {pilih
+              class="relative flex min-h-12 cursor-pointer items-center justify-center rounded-xl text-[15px] leading-[22px] has-focus-visible:outline-2 has-focus-visible:outline-ink {pilih
                 ? 'bg-surface font-semibold text-ink shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
                 : 'text-card-ink hover:bg-surface/60'}"
             >
