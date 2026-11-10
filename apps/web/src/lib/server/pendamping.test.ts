@@ -23,6 +23,8 @@ import { checkOrigin } from './origin';
 import { daftarWrite } from '../pendamping/isi-data';
 import { pemeriksaPemilikVault } from './pendamping/pemilik';
 import {
+  asalWsLain,
+  asalWsUntukCsp,
   hashSid,
   panggil,
   pasangPemeriksaPemilikAkun,
@@ -32,6 +34,7 @@ import {
   resetBrokerPendamping,
   sidDariRequest,
   skema,
+  tambahConnectSrc,
   tandaInternal,
   type PendampingConfig,
 } from './pendamping';
@@ -115,13 +118,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function urusanDenganEksekusi() {
-  const u = rt.store.createUrusan({ kodeKabKota: '3312' });
+/** Bawaan Wonogiri (Telunjuk Sakti, `id-utama`); Semarang (Si D'nOK, `id-only`) untuk blokir keras. */
+function urusanDenganEksekusi(kota: 'wonogiri' | 'semarang' = 'wonogiri') {
+  const u = rt.store.createUrusan({ kodeKabKota: kota === 'semarang' ? '3374' : '3312' });
   rt.publish(u.id, {
     type: 'execution_request',
     executionId: 'x_1',
-    adapterId: 'telunjuk-sakti-wonogiri',
-    flowId: 'ajukan',
+    adapterId: kota === 'semarang' ? 'sidnok-semarang' : 'telunjuk-sakti-wonogiri',
+    flowId: kota === 'semarang' ? 'cek_status' : 'ajukan',
     ringkasan: 'Ajukan layanan 1',
     params: { layanan_id: 1 },
     tool: 'dukcapil__ajukan_layanan',
@@ -639,7 +643,7 @@ describe('broker Browser Pendamping', () => {
     beforeEach(() => vi.stubEnv('PENDAMPING_WORKERS', JSON.stringify([VPS, LAPTOP])));
 
     /** Akun warga terverifikasi yang masuk dan memiliki urusannya: sesi di portal asli, bukan Mode Uji. */
-    async function urusanAkunNyata() {
+    async function urusanAkunNyata(kota: 'wonogiri' | 'semarang' = 'wonogiri') {
       const mailer = new MemoryMailer();
       rt = createRuntime({
         provider: new DemoProvider(),
@@ -652,10 +656,68 @@ describe('broker Browser Pendamping', () => {
       await rt.akun.daftar({ email, sandi }, ktx);
       const token = new URL(mailer.last(email, 'verifikasi')!.link!).searchParams.get('token')!;
       const akun = await rt.akun.verifikasiEmail(token, sandi, ktx);
-      const u = urusanDenganEksekusi();
+      const u = urusanDenganEksekusi(kota);
       rt.akun.catatPemilikUrusan(u.id, { akun });
       return { u, cookie: `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${rt.akun.buatSesi(akun.id, ktx)}` };
     }
+
+    it('CSP connect-src: hanya origin WS worker di luar origin web (final lokal), produksi tidak berubah', () => {
+      const cfg = pendampingConfig(process.env);
+      // Produksi: semua wsUrl lewat domain web sendiri -> tercakup 'self', CSP tidak disentuh.
+      expect(asalWsLain(cfg, 'https://urusin.test')).toEqual([]);
+      const csp = "default-src 'self'; connect-src 'self'; frame-ancestors 'none'";
+      expect(tambahConnectSrc(csp, [])).toBe(csp);
+      // Final lokal: web http://localhost:3000, WS ke ws://localhost:4330 (port beda = bukan 'self').
+      const lokal = pendampingConfig({
+        PENDAMPING_INTERNAL_TOKEN: 't',
+        PENDAMPING_WORKERS: JSON.stringify([
+          { ...LAPTOP, wsUrl: 'ws://localhost:4330/ws' },
+          { ...VPS, id: 'b', wsUrl: 'ws://localhost:4330/ws' },
+          { ...VPS, id: 'c', wsUrl: 'ws://localhost:3000/pendamping/ws' },
+        ]),
+      });
+      const asal = asalWsLain(lokal, 'http://localhost:3000');
+      expect(asal).toEqual(['ws://localhost:4330']);
+      expect(tambahConnectSrc(csp, asal)).toBe(
+        "default-src 'self'; connect-src 'self' ws://localhost:4330; frame-ancestors 'none'",
+      );
+      expect(asalWsLain(null, 'http://localhost:3000')).toEqual([]);
+    });
+
+    it('CSP hook: PENDAMPING_PUBLIC_WS_URL rusak -> konfigurasi null; galat -> CSP lama; dihitung sekali', () => {
+      const satu = (ws: string) => ({
+        PENDAMPING_INTERNAL_TOKEN: 't',
+        PENDAMPING_INTERNAL_URL: 'http://127.0.0.1:4330',
+        PENDAMPING_PUBLIC_WS_URL: ws,
+      });
+      // Dulu diteruskan mentah dan `new URL()` di hooks melempar pada SETIAP permintaan halaman.
+      for (const rusak of ['bukan url', 'https://urusin.test/pendamping/ws', 'ws://x/ws?a=1', 'ws://x/ws#h'])
+        expect(pendampingConfig(satu(rusak)), rusak).toBeNull();
+      expect(pendampingConfig(satu('ws://localhost:4330/ws/'))?.workers[0]?.wsUrl).toBe(
+        'ws://localhost:4330/ws',
+      );
+      // PENDAMPING_WORKERS dengan URL yang tidak bisa diurai: null, bukan melempar (refine zod tetap jalan).
+      const env = (w: object) => ({
+        PENDAMPING_INTERNAL_TOKEN: 't',
+        PENDAMPING_WORKERS: JSON.stringify([w]),
+      });
+      expect(pendampingConfig(env({ ...VPS, wsUrl: 'bukan url' }))).toBeNull();
+      expect(pendampingConfig(env({ ...VPS, url: 'bukan url' }))).toBeNull();
+      expect(pendampingConfig(env({ ...LAPTOP, url: 'bukan url', token: undefined }))).toBeNull();
+      // Origin web rusak (melempar) -> daftar kosong: CSP aplikasi dikirim apa adanya.
+      expect(
+        asalWsUntukCsp(() => {
+          throw new Error('URUSIN_PUBLIC_ORIGIN rusak');
+        }, satu('ws://localhost:4330/ws')),
+      ).toEqual([]);
+      // Memo per proses: hasil pertama dipakai terus, konfigurasi tidak dibaca ulang per permintaan.
+      resetBrokerPendamping();
+      let dibaca = 0;
+      const origin = () => (dibaca++, 'http://localhost:3000');
+      expect(asalWsUntukCsp(origin, satu('ws://localhost:4330/ws'))).toEqual(['ws://localhost:4330']);
+      expect(asalWsUntukCsp(origin, satu('ws://localhost:9999/ws'))).toEqual(['ws://localhost:4330']);
+      expect(dibaca).toBe(1);
+    });
 
     it('konfigurasi: JSON valid; JSON rusak, id ganda, url berjalur, tanpa token -> null; fallback satu URL', () => {
       expect(pendampingConfig(process.env)?.workers.map((w) => w.id)).toEqual(['vps', 'laptop-a']);
@@ -678,7 +740,7 @@ describe('broker Browser Pendamping', () => {
       });
     });
 
-    it('akun warga, situs khusus IP Indonesia -> worker region id; tiket ke worker yang sama', async () => {
+    it('akun warga, situs id-utama, worker id sehat -> worker id didahulukan; tiket ke worker yang sama', async () => {
       const { u, cookie } = await urusanAkunNyata();
       expect((await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(201);
       expect(calls[0]).toMatchObject({
@@ -727,8 +789,197 @@ describe('broker Browser Pendamping', () => {
       expect(calls[0]?.host).toBe('100.101.1.2:4330');
     });
 
-    it('akun warga tanpa worker id yang sehat -> 503 jujur + dipandu (bukan "tampilan berubah")', async () => {
+    it('akun warga, situs id-utama, laptop mati -> server melayani (tanpa pesan wilayah, tanpa dipandu)', async () => {
       const { u, cookie } = await urusanAkunNyata();
+      kesehatan = (host) => (host.startsWith('100.101') ? 'mati' : { status: 200, body: SEHAT });
+      const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
+      expect(r.status).toBe(201);
+      expect(calls[0]).toMatchObject({
+        host: '127.0.0.1:4330',
+        body: { modeUji: false, origin: 'https://telunjuksakti.wonogirikab.go.id' },
+      });
+      const evs = rt.store.eventsAfter(u.id);
+      expect(JSON.stringify(evs)).not.toContain(PESAN_WILAYAH);
+      expect(evs.some((e) => e.type === 'degraded')).toBe(false);
+    });
+
+    it('id-utama, laptop penuh (aktif 1 / maks 1) -> server; urusan itu tetap lekat di server walau laptop lowong', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      try {
+        const { u, cookie } = await urusanAkunNyata();
+        kesehatan = (host) => ({
+          status: 200,
+          body: host.startsWith('100.101') ? { ...SEHAT, aktif: 1, maks: 1 } : SEHAT,
+        });
+        expect((await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(201);
+        expect(calls.map((c) => c.host)).toEqual(['127.0.0.1:4330']);
+        // Laptop lowong lagi (cache kesehatan kedaluwarsa), urusan yang sama memulai langkah berikutnya: tetap di
+        // server yang memegang sesinya (sesi siaga), tidak pindah ke laptop.
+        vi.setSystemTime(Date.now() + 10_000);
+        kesehatan = () => ({ status: 200, body: SEHAT });
+        calls = [];
+        expect((await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(201);
+        expect(calls.map((c) => c.host)).toEqual(['127.0.0.1:4330']);
+        // Urusan lain tetap mendahulukan laptop yang lowong.
+        const cfg = pendampingConfig(process.env) as PendampingConfig;
+        expect(
+          (await pilihWorker(cfg, 'https://telunjuksakti.wonogirikab.go.id', 'lain', undefined, false))?.id,
+        ).toBe('laptop-a');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('id-utama, laptop sehat tapi start ditolak (401/403/5xx/jaringan) -> server; 401/403 tidak sampai ke warga', async () => {
+      for (const gagal of [
+        { status: 401, body: { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' } },
+        { status: 403, body: { kode: 'DILARANG', pesanWarga: 'x' } },
+        { status: 502, body: {} },
+        'putus' as const,
+      ]) {
+        resetBrokerPendamping();
+        const { u, cookie } = await urusanAkunNyata();
+        calls = [];
+        reply = (_p, _b, host) => {
+          if (!host.startsWith('100.101')) return { status: 201, body: sesi() };
+          if (gagal === 'putus') throw new Error('ECONNRESET');
+          return gagal;
+        };
+        const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
+        expect(r.status, JSON.stringify(gagal)).toBe(201);
+        // Hanya start (penutupan best-effort sesi yatim untuk kasus putus diuji tersendiri).
+        expect(calls.filter((c) => c.url.endsWith('/internal/sesi')).map((c) => c.host)).toEqual([
+          '100.101.1.2:4330',
+          '127.0.0.1:4330',
+        ]);
+        // Langkah berikutnya urusan itu lekat di server yang benar-benar memegang sesinya.
+        await new Promise((ok) => setTimeout(ok, 20));
+        calls = [];
+        reply = () => ({ status: 200, body: sesi({ mode: 'ai', status: 'berjalan' }) });
+        expect((await status(ev(req('GET', undefined, cookie), u.id))).status).toBe(200);
+        expect(calls[0]?.host).toBe('127.0.0.1:4330');
+      }
+    });
+
+    it('start putus (jaringan/timeout) di laptop lalu dialihkan ke server: sesi laptop ditutup best-effort', async () => {
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        const { u, cookie } = await urusanAkunNyata();
+        reply = (p, _b, host) => {
+          if (host.startsWith('100.101') && p === '/internal/sesi') throw new Error('ETIMEDOUT');
+          return { status: 200, body: sesi({ status: 'dibatalkan' }) };
+        };
+        expect((await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(200);
+        await vi.waitFor(() =>
+          expect(calls.map((c) => `${c.host}${new URL(c.url).pathname}`)).toContain(
+            '100.101.1.2:4330/internal/sesi/akhiri',
+          ),
+        );
+        const akhiri = calls.find((c) => c.url.endsWith('/internal/sesi/akhiri'))!;
+        expect(akhiri.body).toEqual({ urusanId: u.id, sidHash: hashSid(SID) });
+        // Bertanda tangan dengan token laptop sendiri.
+        expect(akhiri.tanda).toBe(
+          tandaInternal(
+            TOKEN_LAPTOP,
+            akhiri.waktu!,
+            akhiri.nonce!,
+            'POST',
+            '/internal/sesi/akhiri',
+            akhiri.raw,
+          ),
+        );
+        expect(
+          calls.filter((c) => c.host === '100.101.1.2:4330').map((c) => new URL(c.url).pathname),
+        ).toEqual(['/internal/sesi', '/internal/sesi/akhiri']);
+
+        // Penutupan yang gagal ditelan: start tetap berhasil, satu baris log tanpa PII (id worker + status).
+        resetBrokerPendamping();
+        const b = await urusanAkunNyata();
+        calls = [];
+        reply = (p, _b, host) => {
+          if (host.startsWith('100.101')) {
+            if (p === '/internal/sesi') throw new Error('ECONNRESET');
+            return { status: 500, body: {} };
+          }
+          return { status: 201, body: sesi() };
+        };
+        expect((await mulai(ev(req('POST', { executionId: 'x_1' }, b.cookie), b.u.id))).status).toBe(201);
+        await vi.waitFor(() =>
+          expect(log).toHaveBeenCalledWith(
+            'pendamping: penutupan sesi yatim gagal worker=laptop-a status=503',
+          ),
+        );
+        expect(JSON.stringify(log.mock.calls)).not.toContain(b.u.id);
+      } finally {
+        log.mockRestore();
+      }
+    });
+
+    it('start ditolak (401/5xx, ada jawaban) -> tidak ada penutupan ke worker itu', async () => {
+      const { u, cookie } = await urusanAkunNyata();
+      reply = (_p, _b, host) =>
+        host.startsWith('100.101') ? { status: 401, body: {} } : { status: 201, body: sesi() };
+      expect((await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(201);
+      await new Promise((r) => setTimeout(r, 20));
+      expect(calls.map((c) => new URL(c.url).pathname)).not.toContain('/internal/sesi/akhiri');
+    });
+
+    it('id-utama: galat sah untuk warga (403 SESI_BUKAN_MILIK) diteruskan, tanpa mencoba worker lain', async () => {
+      const { u, cookie } = await urusanAkunNyata();
+      reply = () => ({
+        status: 403,
+        body: { kode: 'SESI_BUKAN_MILIK', pesanWarga: 'sesi milik perangkat lain' },
+      });
+      const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
+      expect(r.status).toBe(403);
+      expect(((await r.json()) as { kode: string }).kode).toBe('SESI_BUKAN_MILIK');
+      expect(calls.map((c) => c.host)).toEqual(['100.101.1.2:4330']);
+    });
+
+    it('id-only: start di laptop gagal (401/5xx) -> 503 umum, TIDAK jatuh ke server', async () => {
+      for (const gagal of [
+        { status: 401, body: { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' } },
+        { status: 500, body: {} },
+      ]) {
+        resetBrokerPendamping();
+        const { u, cookie } = await urusanAkunNyata('semarang');
+        calls = [];
+        reply = (_p, _b, host) => (host.startsWith('100.101') ? gagal : { status: 201, body: sesi() });
+        const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
+        expect(r.status).toBe(503);
+        expect(((await r.json()) as { kode: string }).kode).toBe('LAYANAN_TIDAK_TERSEDIA');
+        expect(calls.map((c) => c.host)).toEqual(['100.101.1.2:4330']);
+      }
+    });
+
+    it('situs id-utama tanpa worker sehat sama sekali -> 503 umum, bukan pesan wilayah/dipandu', async () => {
+      const { u, cookie } = await urusanAkunNyata();
+      kesehatan = () => 'mati';
+      const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
+      expect(r.status).toBe(503);
+      expect(((await r.json()) as { kode: string }).kode).toBe('LAYANAN_TIDAK_TERSEDIA');
+      const evs = rt.store.eventsAfter(u.id);
+      expect(JSON.stringify(evs)).not.toContain(PESAN_WILAYAH);
+      expect(evs.some((e) => e.type === 'degraded')).toBe(false);
+    });
+
+    it('pilihWorker: id-utama mendahulukan id, id-only hanya id, situs umum mendahulukan non-id', async () => {
+      const cfg = pendampingConfig(process.env) as PendampingConfig;
+      const TS = 'https://telunjuksakti.wonogirikab.go.id';
+      const SMG = 'https://sidnok.semarangkota.go.id';
+      expect((await pilihWorker(cfg, TS, 'a1', undefined, false))?.id).toBe('laptop-a');
+      expect((await pilihWorker(cfg, SMG, 'a2', undefined, false))?.id).toBe('laptop-a');
+      expect((await pilihWorker(cfg, 'https://oss.go.id', 'a3', undefined, false))?.id).toBe('vps');
+      // Mode Uji: tanpa syarat wilayah, laptop dihemat.
+      expect((await pilihWorker(cfg, TS, 'a4', undefined, true))?.id).toBe('vps');
+      resetBrokerPendamping();
+      kesehatan = (host) => (host.startsWith('100.101') ? 'mati' : { status: 200, body: SEHAT });
+      expect((await pilihWorker(cfg, TS, 'b1', undefined, false))?.id).toBe('vps');
+      expect(await pilihWorker(cfg, SMG, 'b2', undefined, false)).toBeNull();
+    });
+
+    it('akun warga, situs id-only (blokir keras) tanpa worker id sehat -> 503 jujur + dipandu', async () => {
+      const { u, cookie } = await urusanAkunNyata('semarang');
       kesehatan = (host) => (host.startsWith('100.101') ? 'mati' : { status: 200, body: SEHAT });
       const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
       expect(r.status).toBe(503);
@@ -776,6 +1027,52 @@ describe('broker Browser Pendamping', () => {
       kesehatan = () => 'mati';
       expect(await pilihWorker(dua, OSS, 'u2')).toBeNull();
       expect(await pilihWorker(dua, 'bukan url', 'u2')).toBeNull();
+    });
+
+    it('setelah web restart, DUA worker memegang sesi urusan ini: pakai yang hidup dan terbaru, tutup sisanya', async () => {
+      const u = urusanDenganEksekusi();
+      const lama = sesi({
+        sesiId: 'lama',
+        status: 'berjalan',
+        mode: 'ai',
+        dibuatPada: '2026-11-09T00:00:00.000Z',
+      });
+      const baru = sesi({
+        sesiId: 'baru',
+        status: 'berjalan',
+        mode: 'ai',
+        dibuatPada: '2026-11-09T00:05:00.000Z',
+      });
+      // Laptop (urutan pertama di konfigurasi) memegang sesi LAMA, server sesi BARU.
+      reply = (p, _b, host) =>
+        p === '/internal/sesi/akhiri'
+          ? { status: 200, body: { ...lama, status: 'dibatalkan' } }
+          : { status: 200, body: host.startsWith('100.101') ? lama : baru };
+      const r = await status(ev(req('GET'), u.id));
+      expect(r.status).toBe(200);
+      expect(((await r.json()) as any).sesiId).toBe('baru');
+      await vi.waitFor(() =>
+        expect(calls.map((c) => `${c.host}${new URL(c.url).pathname}`)).toContain(
+          '100.101.1.2:4330/internal/sesi/akhiri',
+        ),
+      );
+      expect(calls.filter((c) => c.url.endsWith('/akhiri')).map((c) => c.host)).toEqual(['100.101.1.2:4330']);
+      // Langkah berikutnya ke worker terpilih saja.
+      calls = [];
+      expect((await serahkan(ev(req('POST'), u.id))).status).toBe(200);
+      expect(calls.map((c) => c.host)).toEqual(['127.0.0.1:4330']);
+
+      // Sesi yang sudah berakhir kalah dari sesi hidup walau lebih baru, dan tidak perlu ditutup.
+      resetBrokerPendamping();
+      calls = [];
+      reply = (_p, _b, host) => ({
+        status: 200,
+        body: host.startsWith('100.101') ? { ...baru, status: 'selesai', mode: 'done' } : lama,
+      });
+      const r2 = await status(ev(req('GET'), u.id));
+      expect(((await r2.json()) as any).sesiId).toBe('lama');
+      await new Promise((ok) => setTimeout(ok, 20));
+      expect(calls.map((c) => new URL(c.url).pathname)).not.toContain('/internal/sesi/akhiri');
     });
 
     it('setelah web restart: pemegang sesi ditemukan lewat status; 404 di semua worker diteruskan', async () => {

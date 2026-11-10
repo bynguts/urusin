@@ -15,8 +15,9 @@ import { bacaIsiBertanda, createPenjagaUlang, headerDari } from './tanda.js';
  *
  * Tugas 1, proxy balik (bridge, dipublikasikan 127.0.0.1:4330): HANYA `/ws/<uuid>` (upgrade), `/internal/*`,
  * `/health`, dan `/debug*` bila PENDAMPING_DEBUG_TOKEN diisi, dicocokkan pada jalur MENTAH yang kanonik (lihat
- * `jalurMentah`; `/ws/..%2finternal` dan sejenisnya 404). Header Host/Origin/Cookie diteruskan apa adanya;
- * HMAC kanal internal tetap diperiksa pendamping.
+ * `jalurMentah`; `/ws/..%2finternal` dan sejenisnya 404). Header Host/Origin diteruskan apa adanya; pada upgrade
+ * `/ws/<uuid>` Cookie hanya `__Host-urusin_sid` (lihat `cookieWs`) dan Authorization dibuang. HMAC kanal internal
+ * tetap diperiksa pendamping.
  *
  * Tugas 2, proxy CONNECT (antarmuka internal): SATU-SATUNYA egress Chromium. Kredensial proxy acak per sesi
  * (didaftarkan pendamping lewat kanal kontrol bertanda HMAC). Edge me-resolve DNS sendiri, memeriksa SETIAP
@@ -285,6 +286,28 @@ export function jalurMentah(url: string): string | undefined {
   return path;
 }
 
+/**
+ * Header Cookie untuk upgrade `/ws/<uuid>` ke pendamping: HANYA cookie sesi `__Host-urusin_sid` (dipakai
+ * pendamping untuk mencocokkan pemilik), plus `urusin_sid` milik halaman /debug pendamping sendiri bila debug
+ * aktif. Cookie lain (sesi akun web, dll.) tidak pernah sampai ke pendamping, juga di laptop anggota.
+ * undefined = tidak ada cookie yang diteruskan.
+ */
+export function cookieWs(rawHeaders: readonly string[], debug: boolean): string | undefined {
+  const izin = new Set(debug ? ['__Host-urusin_sid', 'urusin_sid'] : ['__Host-urusin_sid']);
+  const out: string[] = [];
+  for (let i = 0; i + 1 < rawHeaders.length; i += 2) {
+    if (rawHeaders[i]!.toLowerCase() !== 'cookie') continue;
+    for (const part of rawHeaders[i + 1]!.split(';')) {
+      const p = part.trim();
+      if (izin.has(p.slice(0, p.indexOf('=')))) out.push(p);
+    }
+  }
+  return out.length > 0 ? out.join('; ') : undefined;
+}
+
+/** Header upgrade yang tidak pernah diteruskan ke pendamping (Cookie disusun ulang lewat `cookieWs`). */
+const HEADER_WS_DIBUANG = new Set(['cookie', 'authorization', 'proxy-authorization']);
+
 /** Jalur yang boleh diteruskan proxy balik. */
 export function jalurDiizinkan(path: string, debug: boolean): boolean {
   if (path === '/health' || path.startsWith('/internal/')) return true;
@@ -329,7 +352,10 @@ export function createEdgeBalik(cfg: Pick<EdgeConfig, 'hulu' | 'debug'>) {
     const up = net.connect(huluPort, huluHost, () => {
       const baris = [`${req.method} ${req.url} HTTP/1.1`];
       for (let i = 0; i + 1 < req.rawHeaders.length; i += 2)
-        baris.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
+        if (!HEADER_WS_DIBUANG.has(req.rawHeaders[i]!.toLowerCase()))
+          baris.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
+      const cookie = cookieWs(req.rawHeaders, cfg.debug);
+      if (cookie !== undefined) baris.push(`Cookie: ${cookie}`);
       up.write(`${baris.join('\r\n')}\r\n\r\n`);
       if (head.length > 0) up.write(head);
       up.pipe(socket);

@@ -207,7 +207,7 @@ const PESAN_MASUK =
 export const PESAN_TERKIRIM = 'Pengajuan terkirim. Browser ditutup; login dan cookie ikut dihapus.';
 
 const PESAN_VERIFIKASI =
-  'Situs meminta verifikasi bahwa Anda manusia. Selesaikan sendiri (ketuk kotak verifikasi); AI menunggu dan tidak akan mengekliknya.';
+  "Situs meminta verifikasi keamanan. Ketuk kotak 'Verify you are human', lalu tunggu sebentar. AI menunggu dan tidak akan mengekliknya.";
 
 /** Widget Turnstile sudah menghasilkan token? (hanya ada/tidaknya; nilai token tidak pernah dibaca keluar). */
 const TOKEN_TURNSTILE_ADA = `Array.from(document.querySelectorAll('input[name="cf-turnstile-response"]')).some((e) => e.value.length > 0)`;
@@ -383,7 +383,11 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
   }
 }
 
-async function wire(config: Config, init: RunInit, iso: Isolated): Promise<ActiveRun> {
+/**
+ * Sambungkan Chromium yang sudah diluncurkan ke sesi (dipakai `startBrowserRun`; e2e memakainya langsung agar
+ * bisa mengamati halaman).
+ */
+export async function wire(config: Config, init: RunInit, iso: Isolated): Promise<ActiveRun> {
   const { context } = iso;
   const { hooks } = init;
   // Berubah per execution (sesi siaga dipakai lagi untuk langkah berikutnya di urusan yang sama).
@@ -473,7 +477,13 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
       // Selama tantangan situs aktif SEMUA op menunggu: AI tidak menyentuh halaman tantangan sama sekali.
       // Sebelum op yang mengubah halaman, pastikan widget tantangan yang baru muncul sudah diperiksa.
       if (MUTATING.has(op.kind)) await periksaTantangan();
-      if (MUTATING.has(op.kind) || pantau.aktif || masukAktif) await waitResume();
+      if (MUTATING.has(op.kind) || pantau.aktif || masukAktif) {
+        await waitResume();
+        // Interpreter memeriksa domain tab SEBELUM op ini menunggu; selama ditahan warga (atau situs) bisa
+        // memindahkan halaman. Periksa ULANG setelah dilepas: AI tidak pernah menyentuh halaman di luar allowlist.
+        const izin = destroyed ? undefined : await policy(page.url());
+        if (izin && !izin.ok) return { ok: false, code: izin.code, message: izin.message };
+      }
       if (destroyed) return { ok: false, code: 'CANCELLED', message: 'sesi berakhir' };
       return evaluate(op);
     },
@@ -861,7 +871,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   }
   async function langkahTantangan(ada: boolean): Promise<void> {
     if (destroyed) return;
-    const hasil = pantau.amati(ada, navKe);
+    const hasil = pantau.amati(ada, navKe, page.url());
     if (hasil === 'tidak_ada') return;
     if (hasil === 'gagal') {
       clearInterval(tantanganPoll);

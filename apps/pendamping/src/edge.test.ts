@@ -3,6 +3,7 @@ import net from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import WebSocket, { WebSocketServer } from 'ws';
 import {
+  cookieWs,
   createDaftarSesi,
   createEdgeBalik,
   createEdgeKontrol,
@@ -265,7 +266,14 @@ describe('proxy balik edge', () => {
     const wss = new WebSocketServer({ noServer: true });
     s.on('upgrade', (req, socket, head) =>
       wss.handleUpgrade(req, socket, head, (ws) => {
-        ws.send(JSON.stringify({ origin: req.headers.origin, cookie: req.headers.cookie, url: req.url }));
+        ws.send(
+          JSON.stringify({
+            origin: req.headers.origin,
+            cookie: req.headers.cookie,
+            url: req.url,
+            ...(req.headers.authorization ? { auth: req.headers.authorization } : {}),
+          }),
+        );
         ws.on('message', (m) => ws.send(m.toString()));
       }),
     );
@@ -274,7 +282,46 @@ describe('proxy balik edge', () => {
     return { port, seen };
   }
 
-  it('hanya /health, /internal/*, /ws/<uuid> (dan /debug bila aktif); Host/Origin/Cookie utuh', async () => {
+  it('cookieWs: hanya __Host-urusin_sid (+ urusin_sid bila debug), dari semua header Cookie', () => {
+    const SID = 'ab'.repeat(16);
+    const raw = [
+      'Host',
+      'x',
+      'Cookie',
+      `urusin_akun=rahasia-akun; __Host-urusin_sid=${SID}; lain=1`,
+      'cookie',
+      'urusin_sid=lama; __Host-urusin_sidx=palsu; x__Host-urusin_sid=palsu',
+    ];
+    expect(cookieWs(raw, false)).toBe(`__Host-urusin_sid=${SID}`);
+    expect(cookieWs(raw, true)).toBe(`__Host-urusin_sid=${SID}; urusin_sid=lama`);
+    expect(cookieWs(['Cookie', 'urusin_akun=x; a=b'], false)).toBeUndefined();
+    expect(cookieWs(['Host', 'x'], false)).toBeUndefined();
+  });
+
+  it('upgrade /ws/<uuid>: cookie akun dan Authorization dibuang; hanya sid sampai ke pendamping', async () => {
+    const h = await hulu();
+    const SID = 'cd'.repeat(16);
+    for (const debug of [false, true]) {
+      const port = await dengar(createEdgeBalik({ hulu: new URL(`http://127.0.0.1:${h.port}`), debug }));
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/${SESI}`, {
+        origin: 'https://urusin.test',
+        headers: {
+          cookie: `urusin_akun=rahasia-akun; __Host-urusin_sid=${SID}; urusin_sid=lama`,
+          authorization: 'Bearer rahasia',
+        },
+      });
+      const pertama = new Promise<string>((ok) => ws.once('message', (m) => ok(m.toString())));
+      await new Promise((ok) => ws.on('open', ok));
+      const dilihat = JSON.parse(await pertama) as { cookie?: string; auth?: string };
+      expect(dilihat.cookie).toBe(
+        debug ? `__Host-urusin_sid=${SID}; urusin_sid=lama` : `__Host-urusin_sid=${SID}`,
+      );
+      expect(dilihat.auth).toBeUndefined();
+      ws.close();
+    }
+  });
+
+  it('hanya /health, /internal/*, /ws/<uuid> (dan /debug bila aktif); Host/Origin/Cookie sid utuh', async () => {
     expect(jalurDiizinkan('/health', false)).toBe(true);
     expect(jalurDiizinkan('/internal/sesi', false)).toBe(true);
     expect(jalurDiizinkan('/debug', false)).toBe(false);
@@ -302,7 +349,7 @@ describe('proxy balik edge', () => {
 
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/${SESI}`, {
       origin: 'https://urusin.test',
-      headers: { cookie: 'urusin_sid=abc' },
+      headers: { cookie: '__Host-urusin_sid=abc' },
     });
     const pesan: string[] = [];
     ws.on('message', (m) => pesan.push(m.toString()));
@@ -311,7 +358,7 @@ describe('proxy balik edge', () => {
     await new Promise((ok) => setTimeout(ok, 50));
     expect(JSON.parse(pesan[0]!)).toEqual({
       origin: 'https://urusin.test',
-      cookie: 'urusin_sid=abc',
+      cookie: '__Host-urusin_sid=abc',
       url: `/ws/${SESI}`,
     });
     expect(pesan[1]).toBe('halo');

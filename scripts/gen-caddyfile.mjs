@@ -6,9 +6,15 @@
 //
 //   node scripts/gen-caddyfile.mjs            # tulis ulang semua snippet yang di-commit
 //   node scripts/gen-caddyfile.mjs --check    # gagal (exit 1) bila snippet yang di-commit menyimpang
-//   node scripts/gen-caddyfile.mjs --set fallback [--fixtures] [--pendamping] [--import <path>] [--out <berkas>]
-//   node scripts/gen-caddyfile.mjs --check --set primary [--fixtures] [--pendamping] [--import <path>] --file <berkas>
+//   node scripts/gen-caddyfile.mjs --set fallback [--fixtures] [--pendamping [--worker <id>=<ip>:<port>]...]
+//                                  [--import <path>] [--out <berkas>]
+//   node scripts/gen-caddyfile.mjs --check --set primary [flag yang sama] --file <berkas>
 //                                             # gagal (exit 1) bila <berkas> (mis. snippet terpasang) menyimpang
+//
+// `--worker laptop-a=100.100.223.10:4330` (boleh berulang, butuh --pendamping): rute WebSocket worker Pendamping
+// tambahan lewat Tailscale, `wss://<app>/pendamping/w/<id>/ws/<uuid>` (HANYA upgrade WebSocket GET; cookie hanya
+// `__Host-urusin_sid`) -> edge worker `/ws/<uuid>`; jalur lain di bawah /pendamping/w/<id>/ 404. Sama dengan
+// `wsUrl` worker itu di PENDAMPING_WORKERS (web).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -24,6 +30,31 @@ export const COMMITTED = {
 const DEFAULT_IMPORT = '/etc/caddy/urusin/Caddyfile.urusin';
 const IMPORT_RE = /^(\/[A-Za-z0-9._-]+)+\/Caddyfile\.urusin$/;
 const HOST_RE = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+/** Id worker sama dengan skema `PENDAMPING_WORKERS` di web (apps/web/src/lib/server/pendamping.ts). */
+/** Oktet IPv4 desimal 0-255 TANPA nol di depan (`064` ditolak: sebagian parser membacanya sebagai oktal). */
+const OKTET = '(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
+const WORKER_RE = new RegExp(`^([a-z0-9][a-z0-9-]{0,31})=(${OKTET}(?:\\.${OKTET}){3}):(\\d{1,5})$`);
+
+/**
+ * `<id>=<ip>:<port>` -> worker. IP WAJIB IPv4 literal Tailscale (100.64.0.0/10), sama dengan pengecualian egress
+ * web (@urusin/egress `pendampingInternalOrigins`): Caddy tidak pernah meneruskan ke LAN, internet, atau nama DNS.
+ */
+export function parseWorker(spec) {
+  const m = WORKER_RE.exec(spec ?? '');
+  const okt = m ? m[2].split('.').map(Number) : [];
+  const port = m ? Number(m[3]) : 0;
+  if (
+    !m ||
+    okt.some((o) => o > 255) ||
+    okt[0] !== 100 ||
+    okt[1] < 64 ||
+    okt[1] > 127 ||
+    port < 1 ||
+    port > 65535
+  )
+    throw new Error(`--worker harus <id>=<IP Tailscale 100.64.0.0/10>:<port>: ${JSON.stringify(spec)}`);
+  return { id: m[1], ip: m[2], port };
+}
 
 /** Validasi satu set host: harus hostname DNS polos huruf kecil (tanpa skema, port, wildcard, `{`). */
 export function validateSet(name, set) {
@@ -64,17 +95,21 @@ const ENCODE_TYPES = [
 
 /**
  * Render snippet untuk satu set. `fixtures` true = blok fixtures aktif; `pendamping` true = blok
- * `handle /pendamping/ws/*` aktif (keduanya default: dikomentari). `importPath` = path snippet yang disebut
- * komentar baris import (VPS saat ini: /opt/urusin/Caddyfile.urusin; lihat deploy/README.md "Caddy").
+ * `handle /pendamping/ws/*` aktif (keduanya default: dikomentari). `workers` = spesifikasi `--worker` (butuh
+ * `pendamping`). `importPath` = path snippet yang disebut komentar baris import (VPS saat ini:
+ * /opt/urusin/Caddyfile.urusin; lihat deploy/README.md "Caddy").
  */
 export function render(
   setName,
   set,
-  { fixtures = false, pendamping = false, importPath = DEFAULT_IMPORT } = {},
+  { fixtures = false, pendamping = false, workers = [], importPath = DEFAULT_IMPORT } = {},
 ) {
   const { app, verify, fixtures: fx } = validateSet(setName, set);
   if (!IMPORT_RE.test(importPath))
     throw new Error(`--import bukan path absolut .../Caddyfile.urusin: ${importPath}`);
+  const ws = workers.map(parseWorker);
+  if (ws.length > 0 && !pendamping) throw new Error('--worker butuh --pendamping');
+  if (new Set(ws.map((w) => w.id)).size !== ws.length) throw new Error('--worker: id ganda');
   const fxLines = [
     `${fx} {`,
     `\tencode zstd gzip`,
@@ -96,6 +131,35 @@ export function render(
     '\treverse_proxy 127.0.0.1:4330',
     '}',
   ];
+  // Worker tambahan: HANYA upgrade WebSocket GET ke /pendamping/w/<id>/ws/* yang diteruskan; jalur lain di bawah
+  // /pendamping/w/<id>/ (termasuk /internal/*, /health, /debug edge worker, dan GET biasa ke /ws/*) dijawab 404.
+  // Laptop anggota bukan host tepercaya penuh: ke sana hanya cookie `__Host-urusin_sid` (pendamping memakainya
+  // untuk mencocokkan pemilik sesi); cookie lain (sesi akun, dll.) dan Authorization tidak pernah dikirim.
+  // Tanpa cookie sid yang berbentuk sah, permintaan berhenti di 404 (placeholder cookie yang tidak ada dibiarkan
+  // Caddy apa adanya, jadi tanpa syarat ini teks `{http.request.cookie...}` yang akan sampai ke laptop).
+  // `method GET` + Connection/Upgrade cukup: Caddy 2.11 tidak mengiklankan WebSocket HTTP/2 (RFC 8441,
+  // SETTINGS_ENABLE_CONNECT_PROTOCOL=0), jadi peramban selalu memakai upgrade HTTP/1.1.
+  for (const w of ws)
+    pdLines.push(
+      `# Worker Pendamping "${w.id}" lewat Tailscale (wsUrl wss://${app}/pendamping/w/${w.id}/ws).`,
+      `@w_${w.id} {`,
+      `\tpath /pendamping/w/${w.id}/ws/*`,
+      '\theader Connection *Upgrade*',
+      '\theader Upgrade websocket',
+      '\theader_regexp Cookie `(?:^|; *)__Host-urusin_sid=[0-9a-f]{32}(?:;|$)`',
+      '\tmethod GET',
+      '}',
+      `handle @w_${w.id} {`,
+      `\turi strip_prefix /pendamping/w/${w.id}`,
+      `\treverse_proxy ${w.ip}:${w.port} {`,
+      '\t\theader_up Cookie "__Host-urusin_sid={http.request.cookie.__Host-urusin_sid}"',
+      '\t\theader_up -Authorization',
+      '\t}',
+      '}',
+      `handle /pendamping/w/${w.id}/* {`,
+      '\trespond 404',
+      '}',
+    );
   const pdBlock = pdLines.map((l) => (pendamping ? `\t${l}` : `\t# ${l}`)).join('\n');
   return `# DIBANGKITKAN dari deploy/hosts.json (set "${setName}") oleh scripts/gen-caddyfile.mjs. JANGAN DIEDIT
 # MANUAL: ubah hosts.json lalu jalankan \`node scripts/gen-caddyfile.mjs\`. CI menolak snippet yang menyimpang.
@@ -206,6 +270,7 @@ function main(argv) {
   const opsi = {
     fixtures: argv.includes('--fixtures'),
     pendamping: argv.includes('--pendamping'),
+    workers: argv.flatMap((k, i) => (k === '--worker' ? [argv[i + 1]] : [])),
     importPath: arg('--import') ?? DEFAULT_IMPORT,
   };
   if (set && !Object.hasOwn(COMMITTED, set)) {

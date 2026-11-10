@@ -397,7 +397,8 @@ dibagikan.
   - Baru satu portal berstatus `kirim-asli` (Telunjuk Sakti Wonogiri) dan dua `read-only` (Surabaya,
     Semarang).
   - 20 daerah lain masih `pending-recon` dan memakai mode dipandu.
-  - Situs `id-only` hanya bisa diisi dari worker berlokasi Indonesia.
+  - Situs `id-only` (Si D'nOK) hanya bisa diisi dari worker berlokasi Indonesia; Telunjuk Sakti (`id-utama`)
+    dilayani server, warga sendiri mengetuk kotak verifikasi keamanan bila muncul.
 - **Email** saat ini berjalan dalam mode log (Resend belum diaktifkan): email verifikasi dan atur ulang sandi
   belum terkirim ke warga. Masuk dengan Google, mode tamu, dan tombol juri tidak terpengaruh.
 - **Input suara dan pengingat** (`URUSIN_FEATURE_VOICE`, `URUSIN_FEATURE_REMINDERS`) masih nonaktif.

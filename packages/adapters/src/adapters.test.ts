@@ -177,6 +177,12 @@ describe('adapter bawaan', () => {
       expect(r.ok, id).toBe(true);
       if (r.ok) expect(hostsSesi(r.program)).toEqual([new URL(a.origin).hostname, ...a.hosts]);
     }
+    // Iframe Turnstile (challenges.cloudflare.com) hanya untuk situs yang memang memakainya (diamati dari
+    // agent-vm 2026-11-10: interstitial Telunjuk Sakti, widget di halaman Samsat); Si D'nOK/Klampid tidak.
+    const pakaiTurnstile = Object.entries(ADAPTERS)
+      .filter(([, a]) => a.hosts.includes('challenges.cloudflare.com'))
+      .map(([id]) => id);
+    expect(pakaiTurnstile).toEqual(['telunjuk-sakti-wonogiri', 'samsat-dki', 'oss-nib']);
     // CDN umum tidak ikut ke sesi yang tidak memakainya.
     const smg = buildProgram('sidnok-semarang', 'cek_status', {});
     expect(smg.ok && hostsSesi(smg.program)).toEqual(['sidnok.semarangkota.go.id']);

@@ -15,6 +15,10 @@ services:
     env_file:
       - path: .env
         required: false
+      # Demo final: worker Pendamping region `id` di laptop ini (deploy/worker-id/README.md). Berkas ini ditulis
+      # `worker.sh web-env final` (PENDAMPING_INTERNAL_TOKEN + PENDAMPING_WORKERS); tanpa berkas, tanpa Pendamping.
+      - path: worker-id/.env.web-final
+        required: false
     environment:
       NODE_ENV: production
       PORT: '3000'

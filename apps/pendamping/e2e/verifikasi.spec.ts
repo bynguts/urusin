@@ -1,10 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { hostsSesi, type Program } from '@urusin/adapters';
 import { css, fill, nav } from '@urusin/core';
 import type { PendampingEvent, PendampingHasil, PendampingSorot, PendampingStatus } from '@urusin/contracts';
-import { createBrowserFactory } from '../src/browser.js';
+import { launchIsolated, wire } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
 import type { ActiveRun, Hooks } from '../src/sessions.js';
-import { FIXTURE_ORIGIN, FIXTURES_PORT } from '../playwright.config.js';
+import { FIXTURE_LOCAL_ORIGIN, FIXTURE_ORIGIN, FIXTURES_PORT } from '../playwright.config.js';
 
 /**
  * Verifikasi situs (B-b) terhadap tiruan halaman tantangan di apps/fixtures (bukan Cloudflare asli):
@@ -21,9 +22,18 @@ type Rekam = {
 /** Origin pasangan lintas-situs fixture (widget tantangan dalam iframe lintas-proses). */
 const FIXTURE_LINTAS = `http://localhost:${FIXTURES_PORT}`;
 
-async function mulai(jalur: string): Promise<{ run: ActiveRun; rekam: Rekam }> {
+const VIEWPORT = { lebar: 390, tinggi: 844, dpr: 2, seluler: true };
+
+/**
+ * Sama dengan `createBrowserFactory` (launchIsolated + wire), tetapi halaman Chromium ikut dikembalikan agar uji
+ * bisa MENGAMATI (tidak menyentuh) kotak tantangan dan kolom formulir.
+ */
+async function mulai(
+  jalur: string,
+  origin = FIXTURE_ORIGIN,
+): Promise<{ run: ActiveRun; rekam: Rekam; halaman: Page }> {
   const config = loadConfig({
-    PENDAMPING_FIXTURE_ORIGINS: `${FIXTURE_ORIGIN},${FIXTURE_LINTAS}`,
+    PENDAMPING_FIXTURE_ORIGINS: `${FIXTURE_ORIGIN},${FIXTURE_LINTAS},${FIXTURE_LOCAL_ORIGIN}`,
     PENDAMPING_HEADLESS: '1',
   });
   const rekam: Rekam = { events: [], modes: [] };
@@ -36,17 +46,35 @@ async function mulai(jalur: string): Promise<{ run: ActiveRun; rekam: Rekam }> {
     langkahSelesai: (pesan) => void (rekam.ended ??= { status: 'siaga', hasil: 'berhasil', pesan }),
     berkasKurang: () => {},
   };
-  const run = await createBrowserFactory(config)({
-    sesiId: `verif-${jalur}`,
-    program: { origin: FIXTURE_ORIGIN, steps: [nav(jalur), fill(css('#nopol'), 'B 1234 UJI')] },
-    executionId: 'x_verif',
-    viewport: { lebar: 390, tinggi: 844, dpr: 2, seluler: true },
-    hooks,
-    data: { value: () => undefined, file: () => undefined },
-  });
+  const program: Program = { origin, steps: [nav(jalur), fill(css('#nopol'), 'B 1234 UJI')] };
+  const iso = await launchIsolated(config, VIEWPORT, hostsSesi(program));
+  const run = await wire(
+    config,
+    {
+      sesiId: `verif-${jalur}`,
+      program,
+      executionId: 'x_verif',
+      viewport: VIEWPORT,
+      hooks,
+      data: { value: () => undefined, file: () => undefined },
+    },
+    iso,
+  );
+  const halaman = iso.context.pages()[0]!;
   await run.mulaiAi();
-  return { run, rekam };
+  return { run, rekam, halaman };
 }
+
+/** Kotak centang di frame tantangan, DIBACA saja (`isChecked` tidak mengeklik). */
+async function kotakTercentang(halaman: Page): Promise<boolean> {
+  const frame = halaman.frames().find((f) => f.url().includes('/cdn-cgi/challenge-platform/'));
+  if (!frame) throw new Error('frame tantangan tidak ada');
+  return frame.locator('#kotak-manusia').isChecked();
+}
+
+/** Nilai #nopol di halaman utama; null bila kolomnya belum ada (masih di halaman tantangan). */
+const nilaiNopol = (halaman: Page) =>
+  halaman.evaluate(() => document.querySelector<HTMLInputElement>('#nopol')?.value ?? null);
 
 const verifikasi = (r: Rekam) =>
   r.events.filter(
@@ -100,6 +128,50 @@ test('widget tantangan di iframe LINTAS-origin: ketukan warga diteruskan CDP sam
       .poll(() => rekam.ended, { timeout: 30_000 })
       .toMatchObject({ status: 'siaga', hasil: 'berhasil' });
     expect(rekam.modes).toContain('ai:Verifikasi selesai. AI melanjutkan pengisian.');
+  } finally {
+    await run.destroy();
+  }
+});
+
+test('kotak centang "Performing security verification" (200, tanpa cf-mitigated): serah ke warga, lanjut otomatis', async () => {
+  const { run, rekam, halaman } = await mulai('/uji-cf/kotak/', FIXTURE_LOCAL_ORIGIN);
+  try {
+    const sorot = await tungguSorot(rekam, 'Situs meminta verifikasi keamanan');
+    expect(sorot.lebar).toBeGreaterThan(200);
+    expect(rekam.modes.at(-1)).toMatch(
+      /^takeover:Situs meminta verifikasi keamanan\. Ketuk kotak 'Verify you are human'/,
+    );
+    // AI menunggu: tidak mencentang, tidak mengisi. Diamati langsung di Chromium, sebelum DAN sesudah jeda.
+    expect(await kotakTercentang(halaman)).toBe(false);
+    expect(await nilaiNopol(halaman)).toBeNull();
+    await new Promise((r) => setTimeout(r, 2_500));
+    expect(rekam.ended).toBeUndefined();
+    expect(await kotakTercentang(halaman)).toBe(false);
+    expect(await nilaiNopol(halaman)).toBeNull();
+
+    await ketuk(run, sorot);
+    await expect
+      .poll(() => rekam.ended, { timeout: 30_000 })
+      .toMatchObject({ status: 'siaga', hasil: 'berhasil' });
+    expect(rekam.modes).toContain('ai:Verifikasi selesai. AI melanjutkan pengisian.');
+    // Baru setelah ketukan warga AI mengisi formulir di halaman tujuan.
+    expect(await nilaiNopol(halaman)).toBe('B 1234 UJI');
+  } finally {
+    await run.destroy();
+  }
+});
+
+test('selama tantangan halaman pindah ke luar allowlist: AI tidak mengisi di sana (cek ulang setelah dilepas)', async () => {
+  const { run, rekam, halaman } = await mulai('/uji-cf/kotak/', FIXTURE_LOCAL_ORIGIN);
+  try {
+    await tungguSorot(rekam, 'Situs meminta verifikasi keamanan');
+    // Halaman berpindah (bukan oleh AI) ke dokumen di luar domain resmi/fixture yang juga punya kolom #nopol.
+    // Interpreter sudah memeriksa domain sebelum op isi mulai menunggu; tanpa cek ulang, AI mengisi di sini.
+    await halaman.goto('data:text/html,<title>lain</title><input id="nopol">');
+    await expect
+      .poll(() => rekam.ended, { timeout: 30_000 })
+      .toMatchObject({ status: 'gagal', hasil: 'gagal' });
+    expect(await nilaiNopol(halaman)).toBe('');
   } finally {
     await run.destroy();
   }

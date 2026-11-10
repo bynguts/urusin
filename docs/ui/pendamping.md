@@ -71,7 +71,7 @@ Runner menolak menekan tombol final di kode (`FINAL_NOT_AUTOMATABLE`); AI tidak 
 ### e. Akhir dan galat
 
 - `dipandu` (event atau status): situs memblokir peramban server, atau verifikasi situs gagal/berulang dua kali. Tampilkan `pesan`, lalu alihkan ke mode dipandu (langkah manual) di kartu urusan.
-- `POST` dijawab `503 PENDAMPING_WILAYAH_TIDAK_TERSEDIA`: situs hanya bisa dibuka dari jaringan Indonesia dan worker berjaringan Indonesia sedang mati. Urusan sudah dialihkan ke dipandu; tampilkan `pesanWarga` apa adanya.
+- `POST` dijawab `503 PENDAMPING_WILAYAH_TIDAK_TERSEDIA`: HANYA untuk situs `id-only` (blokir keras IP non-Indonesia, mis. Si D'nOK) saat worker berjaringan Indonesia sedang mati. Situs `id-utama` (Telunjuk Sakti) tetap dilayani server bila laptop mati. Urusan sudah dialihkan ke dipandu; tampilkan `pesanWarga` apa adanya.
 - `kedaluwarsa`: sesi melewati 15 menit atau 3 menit tanpa aktivitas. Tawarkan mulai ulang.
 - `galat` (`{ kode, pesanWarga }`): tampilkan `pesanWarga` apa adanya. Daftar `kode` ada di `PendampingKodeGalatSchema`.
 - `diblokir` (`{ host }`): permintaan ke host di luar allowlist ditolak. Cukup log ringan; tidak perlu ditampilkan ke warga kecuali berulang.

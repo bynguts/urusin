@@ -107,6 +107,112 @@ describe('gen-caddyfile', () => {
       assert.throws(() => render('primary', hosts.primary, { importPath: bad }), bad);
   });
 
+  it('--worker: HANYA upgrade WS GET /pendamping/w/<id>/ws/* ke IP Tailscale; sisanya 404; cookie hanya sid', () => {
+    const text = render('primary', hosts.primary, {
+      pendamping: true,
+      workers: ['laptop-a=100.100.223.10:4330', 'laptop-b=100.64.0.7:4331'],
+    });
+    const code = text.replace(/^\s*#.*$/gm, '');
+    assert.ok(
+      text.includes(
+        [
+          '\t@w_laptop-a {',
+          '\t\tpath /pendamping/w/laptop-a/ws/*',
+          '\t\theader Connection *Upgrade*',
+          '\t\theader Upgrade websocket',
+          '\t\theader_regexp Cookie `(?:^|; *)__Host-urusin_sid=[0-9a-f]{32}(?:;|$)`',
+          '\t\tmethod GET',
+          '\t}',
+          '\thandle @w_laptop-a {',
+          '\t\turi strip_prefix /pendamping/w/laptop-a',
+          '\t\treverse_proxy 100.100.223.10:4330 {',
+          '\t\t\theader_up Cookie "__Host-urusin_sid={http.request.cookie.__Host-urusin_sid}"',
+          '\t\t\theader_up -Authorization',
+          '\t\t}',
+          '\t}',
+          '\thandle /pendamping/w/laptop-a/* {',
+          '\t\trespond 404',
+          '\t}',
+        ].join('\n'),
+      ),
+    );
+    assert.deepEqual(code.match(/^[ \t]*handle .*$/gm), [
+      '\thandle /pendamping/ws/* {',
+      '\thandle @w_laptop-a {',
+      '\thandle /pendamping/w/laptop-a/* {',
+      '\thandle @w_laptop-b {',
+      '\thandle /pendamping/w/laptop-b/* {',
+    ]);
+    // Cookie lain (sesi akun) dan Authorization tidak pernah sampai ke laptop: SETIAP reverse_proxy worker
+    // menimpa Cookie dengan sid saja dan membuang Authorization.
+    const proxyWorker = code.match(/reverse_proxy 100\.[^\n]* \{\n(?:\t\t\t[^\n]*\n)*\t\t\}/g) ?? [];
+    assert.equal(proxyWorker.length, 2);
+    for (const b of proxyWorker) {
+      assert.match(
+        b,
+        /\n\t+header_up Cookie "__Host-urusin_sid=\{http\.request\.cookie\.__Host-urusin_sid\}"\n/,
+      );
+      assert.match(b, /\n\t+header_up -Authorization\n/);
+    }
+    // Setiap matcher worker mensyaratkan path ws + upgrade websocket + cookie sid berbentuk sah + GET.
+    for (const id of ['laptop-a', 'laptop-b'])
+      assert.ok(
+        code.includes(
+          [
+            `\t@w_${id} {`,
+            `\t\tpath /pendamping/w/${id}/ws/*`,
+            '\t\theader Connection *Upgrade*',
+            '\t\theader Upgrade websocket',
+            '\t\theader_regexp Cookie `(?:^|; *)__Host-urusin_sid=[0-9a-f]{32}(?:;|$)`',
+            '\t\tmethod GET',
+            '\t}',
+          ].join('\n'),
+        ),
+        id,
+      );
+    // Bukan handle_path seluruh /pendamping/w/<id>/*: /internal, /health, /debug edge worker tidak publik.
+    assert.doesNotMatch(code, /handle_path|\/internal|\/debug|[^i]\/health/);
+    assert.ok(code.indexOf('reverse_proxy 100.64.0.7:4331') < code.indexOf('import urusin_common'));
+    assert.deepEqual(siteLines(text), [`${hosts.primary.app}, ${hosts.primary.verify}`]);
+    // Tanpa --worker keluaran tetap sama persis (snippet terpasang tidak berubah).
+    assert.equal(
+      render('primary', hosts.primary, { pendamping: true, workers: [] }),
+      render('primary', hosts.primary, { pendamping: true }),
+    );
+  });
+
+  it('--worker ditolak: bukan IP Tailscale, id/port tidak sah, ganda, atau tanpa --pendamping', () => {
+    const r =
+      (workers, pendamping = true) =>
+      () =>
+        render('primary', hosts.primary, { pendamping, workers });
+    for (const bad of [
+      'laptop-a=192.168.1.5:4330',
+      'laptop-a=10.0.0.1:4330',
+      'laptop-a=100.63.255.255:4330',
+      'laptop-a=100.128.0.1:4330',
+      'laptop-a=127.0.0.1:4330',
+      'laptop-a=0.0.0.0:4330',
+      'laptop-a=100.300.0.1:4330',
+      // Nol di depan oktet ditolak (sebagian parser membacanya oktal: 100.064 = 100.52).
+      'laptop-a=100.064.0.1:4330',
+      'laptop-a=100.64.00.1:4330',
+      'laptop-a=100.100.223.010:4330',
+      'laptop-a=laptop.tailnet.ts.net:4330',
+      'laptop-a=100.100.223.10',
+      'laptop-a=100.100.223.10:0',
+      'laptop-a=100.100.223.10:70000',
+      'Laptop=100.100.223.10:4330',
+      '-a=100.100.223.10:4330',
+      'a/b=100.100.223.10:4330',
+      'a=100.100.223.10:4330\n}',
+      undefined,
+    ])
+      assert.throws(r([bad]), String(bad));
+    assert.throws(r(['a=100.64.0.1:4330', 'a=100.64.0.2:4330']), /ganda/);
+    assert.throws(r(['a=100.64.0.1:4330'], false), /--pendamping/);
+  });
+
   it('--check --set ... --file: 0 bila cocok, 1 bila menyimpang (flag beda/berkas hilang), 2 tanpa --file', () => {
     const dir = mkdtempSync(join(tmpdir(), 'caddy-'));
     const file = join(dir, 'Caddyfile.urusin');
@@ -128,5 +234,11 @@ describe('gen-caddyfile', () => {
     assert.equal(jalan('--check', ...args, '--file', join(dir, 'tidak-ada')), 1);
     assert.equal(jalan('--check', ...args), 2);
     assert.equal(jalan('--check'), 0, 'cek snippet ter-commit tetap');
+    // --worker ikut flag: snippet dengan worker hanya cocok bila flag --worker yang sama diberikan.
+    const w = ['--worker', 'laptop-a=100.100.223.10:4330'];
+    assert.equal(jalan(...args, ...w, '--out', file), 0);
+    assert.equal(jalan('--check', ...args, ...w, '--file', file), 0);
+    assert.equal(jalan('--check', ...args, '--file', file), 1);
+    assert.equal(jalan(...args, '--worker', 'laptop-a=192.168.1.5:4330', '--out', file), 1);
   });
 });

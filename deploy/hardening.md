@@ -47,6 +47,21 @@ Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat
   volume, network, tanpa `system prune`. df `/`: 85% (avail 15,6 GB) -> 82% (avail 18,1 GB). Sisa 2,7 GB cache
   default masih dipakai image dan tidak disentuh. Bukan izin tetap; prune berikutnya butuh izin baru. Cache
   builder `urusin-ci` tetap dibatasi 1,5 GB (deploy/ci-runner).
+- 2026-11-10 (WIB; host 2026-11-10T06:57Z), **izin per kejadian pengguna**: rute
+  `handle /pendamping/w/laptop-a/ws/*` -> `100.100.223.10:4330` (worker Pendamping region `id` di laptop tim
+  lewat Tailscale). Snippet = keluaran `gen-caddyfile.mjs --set primary --fixtures --pendamping --worker
+laptop-a=100.100.223.10:4330 --import /opt/urusin/Caddyfile.urusin` (diff: +5 baris, rute lain identik),
+  dipasang dengan prosedur manual deploy/README.md "Caddy (host)". Backup `/var/backups/urusin-caddy/20261110T065739Z`
+  dan `/opt/urusin/Caddyfile.urusin.prev-20261110T065739Z`; status 7 situs sama sebelum/sesudah. Lalu `.env`
+  (backup `.env.bak-20261110T065815Z`) + `PENDAMPING_WORKERS` dan `deploy.sh` ulang image yang sama (0f9a8e2):
+  `/api/pendamping/antrean` maks 3; `/pendamping/w/laptop-a/health` publik 404.
+- 2026-11-10 (host 2026-11-10T08:26Z), **izin per kejadian pengguna**: rute laptop-a diperketat (temuan review:
+  cookie akun warga ikut terkirim ke laptop). Matcher `@w_laptop-a` = path `/ws/*` + upgrade WebSocket + `GET` +
+  cookie `__Host-urusin_sid` 32 hex; `header_up Cookie` hanya sid, `header_up -Authorization`; selain itu di bawah
+  `/pendamping/w/laptop-a/*` = 404. Snippet = keluaran `gen-caddyfile.mjs` yang sama (diff hanya blok laptop-a).
+  Backup `/var/backups/urusin-caddy/20261110T082638Z` dan `/opt/urusin/Caddyfile.urusin.prev-20261110T082638Z`;
+  `caddy validate` sebagai user caddy lolos (Caddy v2.11.7); status 7 situs sama sebelum/sesudah. Cek: GET biasa,
+  `/health`, `/internal/sesi` lewat rute = 404; upgrade WS + sid palsu sampai ke worker (403 tiket ditolak worker).
 
 ### Prosedur Caddy per kejadian (`deploy/caddy-install.sh`)
 

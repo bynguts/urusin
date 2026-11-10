@@ -20,9 +20,10 @@ describe('registry domain resmi', () => {
     for (const h of hosts) expect(h.endsWith('.go.id') || h === 'oss.go.id').toBe(true);
   });
 
-  it('situs yang menolak IP pusat data ditandai aksesWilayah id-only (diukur dari agent-vm)', () => {
-    const idOnly = OFFICIAL_DOMAINS.filter((d) => d.aksesWilayah === 'id-only').map((d) => d.host);
-    expect(idOnly).toEqual(['telunjuksakti.wonogirikab.go.id', 'sidnok.semarangkota.go.id']);
+  it('aksesWilayah dari probe agent-vm: blokir keras = id-only, tantangan interaktif = id-utama', () => {
+    const akses = (a: string) => OFFICIAL_DOMAINS.filter((d) => d.aksesWilayah === a).map((d) => d.host);
+    expect(akses('id-only')).toEqual(['sidnok.semarangkota.go.id']);
+    expect(akses('id-utama')).toEqual(['telunjuksakti.wonogirikab.go.id']);
   });
 
   it.each(OFFICIAL_DOMAINS.map((d) => d.host))('menerima https://%s/', (host) => {
