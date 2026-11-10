@@ -5,6 +5,7 @@ const JENIS_LANGKAH = {
   'online-adapter': 'online (dibantu)',
   'online-manual': 'online',
   offline: 'datang langsung',
+  'cek-kanal': 'cek kanal di Disdukcapil setempat',
 };
 
 export function renderEvent(e) {

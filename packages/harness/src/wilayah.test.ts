@@ -117,6 +117,31 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
     expect(events.some((e) => e.type === 'execution_request')).toBe(false);
   });
 
+  it.each([
+    ['3216', 'cek-kanal'],
+    ['3578', 'online-manual'],
+  ])('rencana karangan model di %s: "online" hanya bila terverifikasi (%s)', async (kode, jenisOnline) => {
+    const { env, u } = setup(
+      [
+        tool('urusan__usulkan_rencana', {
+          ringkasan: 'Urus dokumen',
+          langkah: [
+            { judul: 'Isi formulir online', jenis: 'online-adapter' },
+            { judul: 'Ajukan lewat situs', jenis: 'online-manual' },
+            { judul: 'Datang ke kantor', jenis: 'offline' },
+          ],
+        }),
+      ],
+      { kodeKabKota: kode, jenis: 'kk' },
+    );
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus dokumen' });
+    expect(of(out.events, 'plan_card')[0]!.langkah.map((l) => l.jenis)).toEqual([
+      jenisOnline,
+      jenisOnline,
+      'offline',
+    ]);
+  });
+
   it('jawaban tanpa sumber menyebut kanal wilayah itu sendiri (situs Disdukcapil terverifikasi)', async () => {
     const { env, u, provider } = setup(
       [tool('rag__cari_pengetahuan', { query: 'zzz qqq' }), balas('Silakan cek kanal resmi.')],

@@ -43,6 +43,7 @@
     'online-adapter': { label: 'Online · AI bisa bantu mengisi', nada: 'ai' },
     'online-manual': { label: 'Online · Anda isi sendiri', nada: 'anda' },
     offline: { label: 'Datang ke kantor', nada: 'instansi' },
+    'cek-kanal': { label: 'Cek cara di Disdukcapil setempat', nada: 'anda' },
   };
 </script>
 

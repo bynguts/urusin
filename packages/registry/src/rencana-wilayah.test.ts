@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kanalWilayah, rencanaWilayah } from './index.js';
+import { kanalWilayah, onlineTerverifikasi, rencanaWilayah, wilayahByKode } from './index.js';
 
 const semua = () => true;
 
@@ -43,6 +43,32 @@ describe('rencanaWilayah: tidak ada isi Wonogiri untuk warga daerah lain', () =>
       expect(r.langkah[0]!.sourceRef[0]!.url).toBe(url);
       expect(r.peringatan).toBeUndefined();
     }
+  });
+  it('label jujur: "online" hanya bila pengajuan online wilayah itu terverifikasi, selain itu cek kanal', () => {
+    const w = (k: string) => wilayahByKode(k)!;
+    expect(onlineTerverifikasi(w('3578'))).toBe(true); // Surabaya: portal, read-only terverifikasi
+    expect(onlineTerverifikasi(w('3216'))).toBe(false); // Kab. Bekasi: portal pending-recon
+    expect(onlineTerverifikasi(w('1101'))).toBe(false); // Aceh Selatan: tanpa entri
+    expect(onlineTerverifikasi(null)).toBe(false);
+    for (const slug of ['kelahiran', 'kematian', 'perkawinan']) {
+      for (const kode of ['3216', '1101']) {
+        const r = rencanaWilayah(slug, { ktp: kode })!;
+        expect(
+          r.langkah.map((l) => l.jenis).every((j) => j === 'cek-kanal'),
+          `${slug} ${kode}`,
+        ).toBe(true);
+      }
+      const sby = rencanaWilayah(slug, { ktp: '3578' })!;
+      expect(sby.langkah[0]!.jenis, slug).toBe('online-manual');
+      // Penyerahan dokumen beda-beda per daerah (cetak mandiri/ambil): tidak pernah dilabeli "datang langsung".
+      expect(
+        sby.langkah.some((l) => l.jenis === 'offline'),
+        slug,
+      ).toBe(false);
+    }
+    const pindah = rencanaWilayah('pindah', { ktp: '3578', tujuan: '3216' })!;
+    expect(pindah.langkah.map((l) => l.jenis)).toEqual(['online-manual', 'cek-kanal']);
+    expect(rencanaWilayah('kelahiran', { ktp: null })!.langkah[0]!.jenis).toBe('cek-kanal');
   });
   it('wilayah tanpa situs terverifikasi mengatakannya terus terang', () => {
     const r = rencanaWilayah('kelahiran', { ktp: '1101' })!;

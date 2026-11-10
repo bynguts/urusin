@@ -9,6 +9,7 @@ import {
   cariWilayah,
   kanalWilayah,
   menyebutWilayah,
+  onlineTerverifikasi,
   routeByKode,
   type HasilCariWilayah,
   type Wilayah,
@@ -159,6 +160,7 @@ export const urusanUsulkanRencana = defineTool({
     // Peristiwa Hidup: rencana deterministik untuk wilayah ini menang atas langkah karangan model.
     const kartu = ctx.urusan.jenis ? kartuRencana(ctx.urusan.jenis, w, ctx.deps.ragDb) : undefined;
     const k = kanalWilayah(ktp.kodeKabKota);
+    const online = onlineTerverifikasi(ktp);
     return {
       content: 'Rencana ditampilkan kepada warga untuk disetujui.',
       nextState: 'RENCANA_DIUSULKAN',
@@ -169,12 +171,18 @@ export const urusanUsulkanRencana = defineTool({
           : {
               type: 'plan_card',
               ringkasan: args.ringkasan,
-              // Model tidak boleh menjanjikan Browser Pendamping: tanpa alur adapter, semua langkah online = manual.
+              // Model tidak boleh menjanjikan Browser Pendamping: tanpa alur adapter, semua langkah online = manual,
+              // dan "online" hanya bila pengajuan online wilayah ini terverifikasi; selain itu cek kanal setempat.
               // Langkah karangan model tidak diberi sumber: kanal resmi bukan bukti isi langkahnya (cukup di catatan).
               langkah: args.langkah.map((l, i) => ({
                 id: `l${i + 1}`,
                 judul: l.judul,
-                jenis: l.jenis === 'online-adapter' ? ('online-manual' as const) : l.jenis,
+                jenis:
+                  l.jenis === 'offline'
+                    ? l.jenis
+                    : online
+                      ? ('online-manual' as const)
+                      : ('cek-kanal' as const),
                 bawa: l.bawa ?? [],
                 sumber: [],
               })),

@@ -19,7 +19,7 @@ import { SourceRefSchema, type SourceRef } from './schema.js';
 export const LangkahSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   judul: z.string().min(1),
-  jenis: z.enum(['online-adapter', 'online-manual', 'offline']),
+  jenis: z.enum(['online-adapter', 'online-manual', 'offline', 'cek-kanal']),
   /** Hanya langkah offline yang wajib punya lokasi. */
   lokasi: z
     .enum(['loket-online', 'kecamatan', 'disdukcapil', 'kelurahan-desa', 'pt-pos', 'kepolisian'])

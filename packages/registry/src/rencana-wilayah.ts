@@ -96,18 +96,34 @@ const lewatKanal = (k: KanalWilayah, w: Wilayah | null) =>
       : 'Pilih kab/kota sesuai KTP agar Urusin menunjukkan situs resmi yang tepat.'
     : `Cara mengajukan (online atau loket) dan formulir mengikuti ${k.judul}; periksa di sana sebelum berangkat.`;
 
+/**
+ * Pengajuan online di kab/kota ini sudah terverifikasi di registry: portal layanan yang alurnya sudah dicek
+ * (validasi kirim-asli atau read-only). Selain itu (pending-recon, tanpa portal, atau tanpa entri) Urusin tidak
+ * boleh melabeli langkah "online" atau "datang langsung".
+ */
+export function onlineTerverifikasi(w: Wilayah | null): boolean {
+  if (!w) return false;
+  const { entry } = routeByKode(w.kodeKabKota);
+  return Boolean(entry.portal) && (entry.validasi === 'kirim-asli' || entry.validasi === 'read-only');
+}
+
+/** Jenis langkah pengajuan yang jujur: online hanya bila terverifikasi, selain itu cek kanal setempat. */
+const caraAjukan = (w: Wilayah | null): Langkah['jenis'] =>
+  onlineTerverifikasi(w) ? 'online-manual' : 'cek-kanal';
+
 /** Langkah dari persyaratan nasional (Perpres 96/2018) + kanal resmi wilayah KTP. Tanpa isi kota lain. */
 function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: KanalWilayah): Langkah[] {
   const ref = [sumber(kanal), REF_PERPRES];
   const dinasKtp = disebut(ktp, 'Disdukcapil kab/kota sesuai KTP Anda');
   const cara = lewatKanal(kanal, ktp);
+  const ajukan = caraAjukan(ktp);
   switch (slug) {
     case 'kelahiran':
       return [
         L({
           id: 'ajukan',
           judul: `Ajukan akta kelahiran ke ${dinasKtp}`,
-          jenis: 'online-manual',
+          jenis: ajukan,
           dependsOn: [],
           dokumen: [
             'Surat keterangan kelahiran dari rumah sakit/puskesmas/dokter/bidan, atau dari kepala desa/lurah',
@@ -122,7 +138,7 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
         L({
           id: 'siapkan-sptjm',
           judul: 'Bila surat kurang: siapkan SPTJM bersama dua saksi',
-          jenis: 'online-manual',
+          jenis: ajukan,
           dependsOn: [],
           dokumen: [
             'SPTJM kebenaran data kelahiran, bila surat keterangan kelahiran tidak ada',
@@ -136,7 +152,7 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
         L({
           id: 'ambil',
           judul: `Terima akta kelahiran dan KK baru dari ${dinasKtp}`,
-          jenis: 'offline',
+          jenis: 'cek-kanal',
           lokasi: 'disdukcapil',
           dependsOn: ['ajukan'],
           dokumen: [],
@@ -150,7 +166,7 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
         L({
           id: 'ajukan',
           judul: `Laporkan kematian dan ajukan akta kematian ke ${dinasKtp}`,
-          jenis: 'online-manual',
+          jenis: ajukan,
           dependsOn: [],
           dokumen: [
             'Surat kematian dari dokter atau kepala desa/lurah',
@@ -164,7 +180,7 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
         L({
           id: 'ambil',
           judul: `Terima akta kematian dan KK yang diperbarui dari ${dinasKtp}`,
-          jenis: 'offline',
+          jenis: 'cek-kanal',
           lokasi: 'disdukcapil',
           dependsOn: ['ajukan'],
           dokumen: [],
@@ -178,7 +194,7 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
         L({
           id: 'ajukan',
           judul: `Ajukan pencatatan perkawinan ke ${dinasKtp}`,
-          jenis: 'online-manual',
+          jenis: ajukan,
           dependsOn: [],
           dokumen: [
             'Surat keterangan telah terjadinya perkawinan dari pemuka agama atau penghayat kepercayaan',
@@ -192,7 +208,7 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
         L({
           id: 'pencatatan',
           judul: `Pencatatan perkawinan dan terima kutipan akta di ${dinasKtp}`,
-          jenis: 'offline',
+          jenis: 'cek-kanal',
           lokasi: 'disdukcapil',
           dependsOn: ['ajukan'],
           dokumen: [],
@@ -227,7 +243,7 @@ function langkahPindah(asal: Wilayah | null, tujuan: Wilayah | null): Langkah[] 
       L({
         id: 'pindah-alamat',
         judul: `Laporkan pindah alamat di ${dAsal}: terima KK dan KTP-el alamat baru`,
-        jenis: 'online-manual',
+        jenis: caraAjukan(asal),
         lokasi: 'disdukcapil',
         dependsOn: [],
         dokumen: ['Kartu Keluarga', 'KK yang akan ditumpangi, bila menumpang KK', pemilikRumah],
@@ -240,7 +256,7 @@ function langkahPindah(asal: Wilayah | null, tujuan: Wilayah | null): Langkah[] 
     L({
       id: 'skpwni',
       judul: `Urus surat pindah (SKPWNI) di ${dAsal}`,
-      jenis: 'online-manual',
+      jenis: caraAjukan(asal),
       lokasi: 'disdukcapil',
       dependsOn: [],
       dokumen: ['Kartu Keluarga', 'Formulir F-1.03 (pendaftaran perpindahan penduduk)', pemilikRumah],
@@ -251,7 +267,7 @@ function langkahPindah(asal: Wilayah | null, tujuan: Wilayah | null): Langkah[] 
     L({
       id: 'kk-ktp-el',
       judul: `Lapor datang di ${dTujuan}: terima KK dan KTP-el alamat baru`,
-      jenis: 'online-manual',
+      jenis: caraAjukan(tujuan),
       lokasi: 'disdukcapil',
       dependsOn: ['skpwni'],
       dokumen: ['SKPWNI dari daerah asal', 'KTP-el dan/atau KIA alamat lama', pemilikRumah],
