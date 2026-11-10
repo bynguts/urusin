@@ -576,7 +576,6 @@
               <span><span>c</span><span>e</span><span>r</span><span>i</span><span>t</span><span>a</span></span
               >
             </span>
-            <span class="n-pil-caret" aria-hidden="true"></span>
           </span>
         </span>
         <span class="lp53"> bukan istilah </span>

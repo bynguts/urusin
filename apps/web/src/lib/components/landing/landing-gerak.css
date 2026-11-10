@@ -150,15 +150,6 @@
   .lp .n-pil-kata > span:nth-child(2) > span {
     animation-name: lp-ketik-1;
   }
-  .lp .n-pil-caret {
-    display: inline-block;
-    width: 2.5px;
-    height: 0.8em;
-    background-color: #4f7347;
-    margin-left: 2px;
-    border-radius: 1px;
-    animation: lp-kedip-kursor 0.75s infinite;
-  }
 
   /* Animasi mengetik pada prompt box AI (lp96) */
   .lp .lp96 {
