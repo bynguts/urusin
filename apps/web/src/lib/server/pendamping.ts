@@ -281,8 +281,11 @@ export function butuhWilayahId(origin: string): boolean {
  * kita (worker memetakan origin resmi ke replika, atau menolak bila replikanya tidak ada), jadi tak butuh IP
  * Indonesia; sesi akun warga di portal asli tetap butuh.
  */
-const butuhWilayahSesi = (origin: string, modeUji: boolean | undefined) =>
-  modeUji !== true && butuhWilayahId(origin);
+const butuhWilayahSesi = (origin: string, modeUji: boolean | undefined, adapterId?: string) =>
+  // Portal wilayah Navigator generik (.go.id kab/kota) belum diukur satu per satu; banyak yang menolak IP pusat
+  // data, jadi sesi aslinya selalu ke worker berjaringan Indonesia (tanpa itu: dipandu, jujur).
+  modeUji !== true && (adapterId === ADAPTER_GENERIK_SESI || butuhWilayahId(origin));
+const ADAPTER_GENERIK_SESI = 'generik';
 
 /**
  * Pilih worker untuk sesi baru: worker yang sudah memegang urusan ini bila sehat (sesi siaga), lalu beban
@@ -294,8 +297,9 @@ export async function pilihWorker(
   urusanId: string,
   fetcher: EgressFetch = egressFetch,
   modeUji?: boolean,
+  adapterId?: string,
 ): Promise<PendampingWorker | null> {
-  const idSaja = butuhWilayahSesi(origin, modeUji);
+  const idSaja = butuhWilayahSesi(origin, modeUji, adapterId);
   const kandidat = cfg.workers.filter((w) => !idSaja || w.region === REGION_ID);
   const hidup = (await Promise.all(kandidat.map(async (w) => ({ w, s: await sehat(w, fetcher) })))).filter(
     (x): x is { w: PendampingWorker; s: Sehat } => x.s !== null,
@@ -317,9 +321,9 @@ export async function mulaiSesi(
   fetcher: EgressFetch = egressFetch,
 ): Promise<Hasil<SesiPendamping>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
-  const w = await pilihWorker(cfg, body.origin, body.urusanId, fetcher, body.modeUji);
+  const w = await pilihWorker(cfg, body.origin, body.urusanId, fetcher, body.modeUji, body.adapterId);
   if (!w)
-    return butuhWilayahSesi(body.origin, body.modeUji)
+    return butuhWilayahSesi(body.origin, body.modeUji, body.adapterId)
       ? {
           ok: false,
           response: apiError(503, 'PENDAMPING_WILAYAH_TIDAK_TERSEDIA', PESAN_WILAYAH),

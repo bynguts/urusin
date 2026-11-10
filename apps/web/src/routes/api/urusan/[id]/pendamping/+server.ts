@@ -14,7 +14,12 @@ import {
   skema,
   teruskan,
 } from '#lib/server/pendamping.js';
-import { hentikanNavigator, mulaiNavigator } from '#lib/server/pendamping/navigator.js';
+import {
+  PESAN_MODE_UJI_TANPA_REPLIKA,
+  hentikanNavigator,
+  mulaiNavigator,
+  pulihkanNavigator,
+} from '#lib/server/pendamping/navigator.js';
 import { modeUjiPendamping } from '#lib/server/pendamping/pemilik.js';
 import { akses } from './akses';
 import type { RequestHandler } from './$types';
@@ -81,6 +86,22 @@ export const POST: RequestHandler = async ({ request, params }) => {
           { cfg },
         );
     }
+    // Mode Uji generik tanpa replika (worker menolak 422): panduan langkah dengan pesan templat.
+    else if (
+      modeUji &&
+      offered.data.adapterId === ADAPTER_GENERIK &&
+      r.response.status === 422 &&
+      (await r.response
+        .clone()
+        .json()
+        .then((b: { kode?: unknown }) => b?.kode === 'ADAPTER_TIDAK_ADA')
+        .catch(() => false))
+    ) {
+      catatHasilEksekusi(a.rt, a.u, offered.data.executionId, 'drift', 'Browser Pendamping', {
+        labelKhusus: PESAN_MODE_UJI_TANPA_REPLIKA,
+      });
+      return apiError(422, 'PENDAMPING_TANPA_REPLIKA', PESAN_MODE_UJI_TANPA_REPLIKA);
+    }
     // Situs khusus jaringan Indonesia tanpa worker wilayah yang hidup: jujur, lalu beralih ke panduan langkah.
     else if (r.dipandu)
       catatHasilEksekusi(a.rt, a.u, offered.data.executionId, 'drift', 'Browser Pendamping', {
@@ -107,14 +128,30 @@ export const GET: RequestHandler = async ({ request, params }) => {
     });
     if (!r.ok) return r.response;
     const hasil = hasilAkhir(r.data);
-    const offered = hasil
-      ? ExecutionPayload.safeParse(
-          a.rt.store.findOffered(a.u.id, 'execution_request', { executionId: r.data.executionId }),
-        )
-      : undefined;
+    const offered = ExecutionPayload.safeParse(
+      a.rt.store.findOffered(a.u.id, 'execution_request', { executionId: r.data.executionId }),
+    );
+    // Sesi generik bermode AI tanpa loop Navigator (web restart / loop sudah berhenti): pulihkan atau
+    // kembalikan kendali ke warga, supaya layar tidak tertahan "AI sedang mengisi".
+    if (
+      offered.success &&
+      offered.data.adapterId === ADAPTER_GENERIK &&
+      r.data.mode === 'ai' &&
+      (r.data.status === 'berjalan' || r.data.status === 'menunggu_data')
+    )
+      await pulihkanNavigator(
+        a.rt,
+        {
+          urusan: a.u,
+          executionId: r.data.executionId,
+          owner: { urusanId: a.u.id, sidHash: a.sidHash },
+          modeUji: await modeUjiPendamping(request, a.u),
+        },
+        { cfg: pendampingConfig() },
+      );
     if (
       hasil &&
-      offered?.success &&
+      offered.success &&
       catatHasilEksekusi(a.rt, a.u, r.data.executionId, hasil, 'Browser Pendamping', {
         bacaSaja: offered.data.bacaSaja === true,
       })

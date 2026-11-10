@@ -21,7 +21,7 @@ import {
   type PendampingConfig,
 } from '../pendamping';
 import { createRuntime, setRuntimeForTests, type Runtime } from '../runtime';
-import { hostsFixture, jalankanNavigatorUrusan, tanganWorker } from './navigator';
+import { GalatTangan, hostsFixture, jalankanNavigatorUrusan, tanganWorker } from './navigator';
 
 const TOKEN = 't'.repeat(40);
 const CFG: PendampingConfig = {
@@ -55,7 +55,8 @@ const pengamatan = (host: string): Pengamatan => ({
  * Worker palsu di balik `fetcher`: memeriksa tanda tangan HMAC dan skema badan setiap panggilan internal, lalu
  * menjawab sesuai kontrak. Setelah `serahkan`, warga dianggap menyelesaikan sendiri (mode done).
  */
-function workerPalsu(host: string) {
+function workerPalsu(host: string, opsi: { belumSiap?: number; sukses?: boolean } = {}) {
+  let belumSiap = opsi.belumSiap ?? 0;
   const panggilan: { path: string; body: Record<string, unknown> }[] = [];
   let mode: 'ai' | 'takeover' | 'done' = 'ai';
   /** Buffer jejak worker (dikuras lewat /internal/sesi/jejak). */
@@ -85,7 +86,21 @@ function workerPalsu(host: string) {
           kedaluwarsaPada: '2026-11-10T01:00:00.000Z',
         });
       case '/internal/sesi/amati':
-        return json({ mode, pengamatan: pengamatan(host) });
+        // Peramban sesi masih dimulai (Chromium belum siap): 409 LAYANAN_TIDAK_TERSEDIA.
+        if (belumSiap-- > 0)
+          return json({ kode: 'LAYANAN_TIDAK_TERSEDIA', pesanWarga: 'peramban sesi belum siap' }, 409);
+        return json({
+          mode,
+          pengamatan: opsi.sukses
+            ? {
+                ...pengamatan(host),
+                sidik: 'sukses',
+                elemen: [],
+                teks: 'Permohonan berhasil. Nomor registrasi: REG-2026-00555.',
+                sinyal: { ...pengamatan(host).sinyal, halamanAkhir: false, sukses: true },
+              }
+            : pengamatan(host),
+        });
       case '/internal/sesi/aksi': {
         const a = AksiSesiInternalSchema.parse(body);
         for (const x of a.aksi as Aksi[])
@@ -195,7 +210,8 @@ describe('broker Navigator web', () => {
     const progress = rt.store
       .eventsOfType(u.id, 'progress', 5)
       .map((e) => (e.payload as { label: string }).label);
-    expect(progress).toContain(PESAN_AMBIL_ALIH.final);
+    // Warga mengakhiri sesi sesudah serah final: pesan "sesi berakhir", bukan giliran warga yang basi.
+    expect(progress).toContain(PESAN_BERHENTI.sesi_berakhir);
     // Jejak worker dikuras sesudah setiap panggilan dan masuk rantai audit urusan.
     expect(jejak.map((j) => j.catatan)).toContainEqual({
       jenis: 'ambil_alih',
@@ -221,7 +237,10 @@ describe('broker Navigator web', () => {
       alasan: 'mode_uji_host',
       pesan: PESAN_BERHENTI.mode_uji_host,
     });
-    expect(w.panggilan.filter((p) => p.path === '/internal/sesi/aksi')).toHaveLength(0);
+    // Tidak ada aksi halaman: satu-satunya panggilan aksi = mengembalikan kendali ke warga (tanpa ref/nilai).
+    expect(w.panggilan.filter((p) => p.path === '/internal/sesi/aksi').map((p) => p.body.aksi)).toEqual([
+      [{ jenis: 'serahkan', alasan: 'tidak_yakin' }],
+    ]);
     expect(llm.provider.calls).toHaveLength(0);
   });
 
@@ -273,6 +292,47 @@ describe('broker Navigator web', () => {
       .eventsOfType(u.id, 'progress', 5)
       .map((e) => (e.payload as { label: string }).label);
     expect(progress).toContain(PESAN_AMBIL_ALIH.kuota);
+  });
+
+  it('galat worker dipetakan: 409 belum siap & 503 = sementara (diulang loop), 404/422 = bukan', () => {
+    expect(new GalatTangan(409, 'LAYANAN_TIDAK_TERSEDIA').sementara).toBe('belum_siap');
+    expect(new GalatTangan(503).sementara).toBe('sesaat');
+    expect(new GalatTangan(409, 'SESI_SUDAH_ADA').sementara).toBeUndefined();
+    expect(new GalatTangan(404, 'SESI_TIDAK_ADA').sementara).toBeUndefined();
+    expect(new GalatTangan(422, 'PESAN_TIDAK_SAH').sementara).toBeUndefined();
+  });
+
+  it('sesi baru: worker menjawab 409 "belum siap" di awal, loop menunggu lalu jalan (bukan galat_worker)', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran', kodeKabKota: '3374' });
+    const w = workerPalsu(HOST_REPLIKA, { belumSiap: 2 });
+    const h = await jalankanNavigatorUrusan(
+      rt,
+      { urusan: u, executionId: 'x_uji', owner: { urusanId: u.id, sidHash: OWNER.sidHash }, modeUji: true },
+      { cfg: CFG, fetcher: w.fetcher, llm: llmFinal() },
+    );
+    expect(h).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
+    expect(w.panggilan.filter((p) => p.path === '/internal/sesi/amati').length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('halaman sukses: hasil berhasil dicatat ke urusan saat itu juga, resi masuk jejak', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran', kodeKabKota: '3374' });
+    const w = workerPalsu(HOST_REPLIKA, { sukses: true });
+    const h = await jalankanNavigatorUrusan(
+      rt,
+      { urusan: u, executionId: 'x_uji', owner: { urusanId: u.id, sidHash: OWNER.sidHash }, modeUji: true },
+      { cfg: CFG, fetcher: w.fetcher, llm: llmFinal() },
+    );
+    expect(h).toMatchObject({ akhir: 'selesai', bukti: { nomor: 'REG-2026-00555' } });
+    const progress = rt.store
+      .eventsOfType(u.id, 'progress', 10)
+      .map((e) => (e.payload as { label: string }).label);
+    expect(progress).toContain('Browser Pendamping melaporkan langkah berhasil.');
+    // Laporan "dibatalkan" yang datang kemudian (warga menutup sesi) tidak menimpa: hasil eksekusi sudah ada.
+    expect(rt.store.recordExecutionResult(u.id, 'x_uji', 'dibatalkan')).toBe(false);
+    const jejak = rt.store
+      .eventsOfType(u.id, 'jejak_pendamping', 50)
+      .map((e) => (e.payload as { catatan: { jenis: string } }).catatan);
+    expect(jejak.find((c) => c.jenis === 'resi')).toMatchObject({ akhir: 'selesai', hash: h.resi.hash });
   });
 
   it('katalog placeholder Navigator = field Data Diri yang bisa diselesaikan server', () => {
