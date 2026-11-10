@@ -51,6 +51,10 @@ jobs:
       - name: Snippet Caddy cocok dengan deploy/hosts.json (hostname literal)
         run: node scripts/gen-caddyfile.mjs --check
 
+      # pii-scan melewati wilayah-data.ts karena ia hasil generator dari JSON yang dipindai; pastikan memang begitu.
+      - name: wilayah-data.ts identik dengan keluaran generator dari data/wilayah
+        run: node packages/registry/scripts/gen-wilayah.mjs --check
+
       - name: Lint
         run: pnpm lint && pnpm format:check
 

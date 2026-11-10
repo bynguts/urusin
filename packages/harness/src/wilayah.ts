@@ -3,8 +3,10 @@ import type { EventPayload, PayloadOf, WilayahRef } from '@urusin/contracts';
 import { cariPengetahuanTool } from '@urusin/rag';
 import {
   kanalWilayah,
+  kontakLayanan,
   namaPendekWilayah,
   rencanaWilayah,
+  ringkasKontak,
   temukanWilayah,
   wilayahByKode,
   type CityEntry,
@@ -363,13 +365,20 @@ export function kartuRencana(
   };
 }
 
-/** Kalimat kanal resmi wilayah untuk model/warga (tanpa kanal kota lain). */
+/** Kalimat kanal resmi wilayah untuk model/warga (tanpa kanal kota lain), beserta kontak layanan resmi bila tercatat. */
 export function kalimatKanal(kode: string): string {
   const k = kanalWilayah(kode);
   const nama = wilayahByKode(kode)?.nama ?? kode;
-  return k.jenis === 'nasional'
-    ? `${nama}: situs Disdukcapil belum terverifikasi; kanal nasional ${k.url}.`
-    : `${nama}: kanal resmi ${k.judul} (${k.url}).`;
+  const baris =
+    k.jenis === 'nasional'
+      ? `${nama}: situs Disdukcapil belum terverifikasi; kanal nasional ${k.url}.`
+      : `${nama}: kanal resmi ${k.judul} (${k.url}).`;
+  const kontak = kontakLayanan(kode, 'adminduk');
+  const ringkas = kontak ? ringkasKontak(kontak) : '';
+  const sumber = kontak?.sumber[0];
+  return ringkas && sumber
+    ? `${baris} Kontak resmi ${kontak.instansi}: ${ringkas} (sumber ${sumber.url}, dicek ${sumber.dicekPada}).`
+    : baris;
 }
 
 /**
