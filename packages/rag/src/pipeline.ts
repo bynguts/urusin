@@ -6,7 +6,15 @@ import { safeRewrite, type QueryRewriter } from './llm-stage.js';
 import { rerankHits, type RerankDeps, type RerankStatus } from './rerank.js';
 import type { RetrievalDebug } from './schema.js';
 import { outOfScopeNoun } from './out-of-scope.js';
-import { toHit, type Hit, type Row, type SearchOptions } from './search.js';
+import {
+  isPasalChunk,
+  PASAL_PRIOR,
+  pasalPriorSql,
+  toHit,
+  type Hit,
+  type Row,
+  type SearchOptions,
+} from './search.js';
 import { isStopword, rawTokens, stemToken, stemTokens } from './stem/stem.js';
 import { GENERIC_QUERY_WORDS } from './stem/stopwords.js';
 
@@ -65,7 +73,7 @@ function leg(db: Db, table: Table, terms: readonly string[], opts: SearchOptions
   const marks = wilayah.map(() => '?').join(',');
   const sql = `
     SELECT c.id, c.text, c.judul, c.instansi, c.url, c.verified_at, c.kode_wilayah, c.layanan,
-           bm25(${table}, 5.0, 1.0, 0.5, 0.7) AS skor
+           bm25(${table}, 5.0, 1.0, 0.5, 0.7) * ${pasalPriorSql(opts)} AS skor
     FROM ${table} JOIN chunks c ON c.rowid = ${table}.rowid
     WHERE ${table} MATCH ?
       AND (c.kode_wilayah IS NULL${wilayah.length ? ` OR c.kode_wilayah IN (${marks})` : ''})
@@ -150,7 +158,8 @@ function tokenSet(text: string): Set<string> {
  * Cakupan: jumlah bobot IDF token kueri (ter-stem, tanpa stopword, di luar yang dijelaskan glosarium)
  * yang muncul pada satu hasil teratas, dibagi bobot semua token; diambil maksimum atas hasil.
  * Token yang tak ada di korpus mana pun bobotnya paling besar, sehingga kueri seperti "cara daftar CPNS"
- * (hanya kata umum yang cocok) berskor rendah. Tanpa token bermakna -> 1.
+ * (hanya kata umum yang cocok) berskor rendah. Cakupan dari chunk pasal dikali PASAL_PRIOR. Tanpa token
+ * bermakna -> 1.
  */
 function coverageOf(
   db: Db,
@@ -189,7 +198,8 @@ function coverageOf(
       (acc, t, i) => acc + (set.has(t) || (viaGlossary && explainedSet.has(t)) ? (idf[i] as number) : 0),
       0,
     );
-    best = Math.max(best, got / total);
+    // Kata umum yang kebetulan ada di teks pasal bukan bukti kuat bahwa kueri dalam cakupan.
+    best = Math.max(best, (got / total) * (isPasalChunk(h.id) ? PASAL_PRIOR : 1));
   }
   return best;
 }

@@ -178,6 +178,50 @@ describe('perluasan berbobot rendah', () => {
   });
 });
 
+describe('teks pasal nasional: wilayah dulu', () => {
+  const PASAL = mk(
+    'perpres#pasal-33',
+    'Syarat akta kelahiran - Pasal 33',
+    'Syarat akta kelahiran: surat keterangan lahir.',
+  );
+  const DAERAH = mk(
+    'sby-akta',
+    'Layanan Klampid Surabaya',
+    'Syarat akta kelahiran di Klampid Surabaya: surat keterangan lahir, KK orang tua, dan KTP-el kedua orang tua.',
+    { kodeWilayah: '3578' },
+  );
+  const q = { query: 'syarat akta kelahiran surat keterangan lahir', kodeKabKota: '3578' };
+  beforeEach(() => {
+    db = openDb(':memory:');
+    upsertChunks(db, [PASAL, DAERAH]);
+  });
+  it('dengan kode wilayah, chunk daerah mendahului pasal yang cocok lebih rapat; pasal tetap ikut', async () => {
+    for (const p of [BASELINE, { bm25: { stemmed: true }, expand: true }] as RetrievalPipeline[]) {
+      expect(ids((await retrieve(db, q, p)).hits)).toEqual(['sby-akta', 'perpres#pasal-33']);
+    }
+    expect(ids(searchBm25(db, q))).toEqual(['sby-akta', 'perpres#pasal-33']);
+  });
+  it('tanpa kode wilayah, pasal tidak didiskon', async () => {
+    expect(ids(searchBm25(db, { query: q.query }))).toEqual(['perpres#pasal-33']);
+  });
+  it('cakupan abstain dari chunk pasal didiskon separuh', async () => {
+    const teks = 'Setiap kelahiran wajib dilaporkan paling lambat 60 hari.';
+    const cov = async (id: string) => {
+      db = openDb(':memory:');
+      upsertChunks(db, [mk(id, 'UU 24/2013', teks), mk('lain', 'KK', 'Kartu keluarga baru.')]);
+      const r = await retrieve(
+        db,
+        { query: 'harga emas hari ini' },
+        { bm25: { stemmed: true }, expand: true },
+      );
+      return r.debug.coverage!;
+    };
+    const biasa = await cov('uu#0');
+    expect(biasa).toBeGreaterThan(0);
+    expect(await cov('uu#pasal-27')).toBeCloseTo(biasa / 2, 6);
+  });
+});
+
 describe('header konteks: diindeks, tidak ditampilkan', () => {
   it('kueri yang hanya cocok dengan header menemukan chunk; teks tampil tanpa header', async () => {
     db = openDb(':memory:');

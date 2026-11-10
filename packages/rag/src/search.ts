@@ -1,4 +1,5 @@
 import type { Db } from './db.js';
+import { PASAL_KEY_PREFIX } from './ingest/pasal.js';
 import { reciprocalRankFusion } from './rrf.js';
 import type { SourceRef } from './schema.js';
 import { isStopword } from './stem/stem.js';
@@ -68,6 +69,25 @@ export type Row = {
   skor: number;
 };
 
+/**
+ * Teks pasal regulasi nasional (chunk ber-adapter `pasal`, id `<sumber>#pasal-N`) memakai bahasa hukum umum
+ * yang cocok dengan banyak kueri. Bila wilayah warga diketahui, skor BM25-nya dikali faktor ini agar chunk
+ * daerah didahulukan (wilayah dulu); pasal tetap muncul bila cocoknya jauh lebih kuat. Faktor yang sama
+ * mendiskon cakupan abstain dari chunk pasal (pipeline.ts). Dikalibrasi pada data/gold/tuning.json.
+ */
+export const PASAL_PRIOR = 0.5;
+
+export function isPasalChunk(id: string): boolean {
+  return id.includes(`#${PASAL_KEY_PREFIX}`);
+}
+
+/** Pengali skor bm25() di SQL: PASAL_PRIOR untuk chunk pasal bila ada kode wilayah, selain itu 1. */
+export function pasalPriorSql(opts: SearchOptions): string {
+  return opts.kodeKabKota
+    ? `(CASE WHEN instr(c.id, '#${PASAL_KEY_PREFIX}') > 0 THEN ${PASAL_PRIOR} ELSE 1 END)`
+    : '1';
+}
+
 export function toHit(r: Row): Hit {
   return {
     id: r.id,
@@ -81,7 +101,7 @@ export function toHit(r: Row): Hit {
   };
 }
 
-/** Filter wilayah dulu, lalu BM25 (bobot kolom: judul 5, teks 1, instansi 0.5, ctx 0.7). */
+/** Filter wilayah dulu, lalu BM25 (bobot kolom: judul 5, teks 1, instansi 0.5, ctx 0.7) dengan prior pasal. */
 export function searchBm25(db: Db, opts: SearchOptions, limit = opts.k ?? 6): Hit[] {
   const match = buildMatch(opts.query);
   if (!match) return [];
@@ -89,7 +109,7 @@ export function searchBm25(db: Db, opts: SearchOptions, limit = opts.k ?? 6): Hi
   const marks = wilayah.map(() => '?').join(',');
   const sql = `
     SELECT c.id, c.text, c.judul, c.instansi, c.url, c.verified_at, c.kode_wilayah, c.layanan,
-           bm25(chunks_fts, 5.0, 1.0, 0.5, 0.7) AS skor
+           bm25(chunks_fts, 5.0, 1.0, 0.5, 0.7) * ${pasalPriorSql(opts)} AS skor
     FROM chunks_fts JOIN chunks c ON c.rowid = chunks_fts.rowid
     WHERE chunks_fts MATCH ?
       AND (c.kode_wilayah IS NULL${wilayah.length ? ` OR c.kode_wilayah IN (${marks})` : ''})

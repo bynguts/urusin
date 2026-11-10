@@ -9,6 +9,7 @@ import { contentHash, recordSourceState } from './state.js';
 import { chunkByHeading, dropBoilerplate } from './chunk.js';
 import { buildChunkContextHeader } from './context.js';
 import { htmlToText } from './extract.js';
+import { loadPasal, pasalPieces, type PasalMap } from './pasal.js';
 import { PoliteFetcher, RobotsBlockedError, type Deps } from './fetcher.js';
 import type { SourceEntry } from './sources.js';
 
@@ -35,12 +36,14 @@ export type IngestOptions = {
   /** Mode transformasi vektor; default 'none'. Dipilih berdasarkan hasil rag:eval. */
   vectorMode?: TransformMode | undefined;
   vectorK?: number | undefined;
+  /** Teks pasal untuk sumber ber-adapter `pasal`; bawaan data/regulasi/pasal.json. */
+  pasal?: PasalMap | undefined;
 };
 
 function skipReason(s: SourceEntry): string | null {
   if (s.status !== 'confirmed') return 'unverified';
   if (!s.ingest) return 'bukan-sumber-korpus';
-  if (s.jenis === 'pdf') return 'pdf-belum-didukung';
+  if (s.jenis === 'pdf' && s.adapter !== 'pasal') return 'pdf-belum-didukung';
   return null;
 }
 
@@ -60,6 +63,7 @@ export async function runIngest(opts: IngestOptions): Promise<IngestReport[]> {
     fetcher = new PoliteFetcher(deps, opts.minIntervalMs);
   }
   const nowIso = () => new Date((opts.deps?.now ?? Date.now)()).toISOString();
+  let pasal = opts.pasal;
 
   for (const s of selected) {
     const reason = skipReason(s);
@@ -80,18 +84,28 @@ export async function runIngest(opts: IngestOptions): Promise<IngestReport[]> {
       const okType =
         s.adapter === 'klampid'
           ? /json/i.test(res.contentType)
-          : /text\/(html|plain)|application\/xhtml/i.test(res.contentType);
+          : s.adapter === 'pasal'
+            ? /application\/(pdf|octet-stream)/i.test(res.contentType)
+            : /text\/(html|plain)|application\/xhtml/i.test(res.contentType);
       if (!okType) {
         reports.push({ id: s.id, url: s.url, action: 'skipped', reason: 'tipe-konten-tidak-didukung' });
         continue;
       }
       const verifiedAt = nowIso();
       const services = s.adapter === 'klampid' ? sanitizeKlampid(JSON.parse(res.body)) : null;
-      const pieces = services
-        ? services.map((x) => ({ ...klampidChunkText(x), key: klampidKey(x) }))
-        : dropBoilerplate(chunkByHeading(htmlToText(res.body)));
+      let pieces: { text: string; heading?: string | undefined; key?: string }[];
+      if (services) pieces = services.map((x) => ({ ...klampidChunkText(x), key: klampidKey(x) }));
+      else if (s.adapter === 'pasal') {
+        pasal ??= loadPasal();
+        const list = pasal[s.id];
+        if (!list) {
+          reports.push({ id: s.id, url: s.url, action: 'error', reason: 'pasal-tidak-ada' });
+          continue;
+        }
+        pieces = pasalPieces(list);
+      } else pieces = dropBoilerplate(chunkByHeading(htmlToText(res.body)));
       const chunks = pieces.map((p, i) => ({
-        id: `${s.id}#${'key' in p ? p.key : i}`,
+        id: `${s.id}#${p.key ?? i}`,
         text: p.text,
         sourceRef: {
           url: s.url,
