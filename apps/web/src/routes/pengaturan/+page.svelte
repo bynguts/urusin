@@ -408,7 +408,7 @@
         </button>
       </div>
       {#if page.data.versi}
-        <p class="text-sm text-muted" data-versi>
+        <p class="sr-only" data-versi>
           {#if page.data.versi.commit}
             <a
               href={page.data.versi.commit}

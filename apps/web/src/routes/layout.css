@@ -274,6 +274,23 @@ body {
   outline-offset: 2px;
 }
 
+/* Kursor jari telunjuk (pointer) untuk semua elemen interaktif yang dapat diklik */
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+[role='switch']:not([aria-disabled='true']),
+[type='button']:not(:disabled),
+[type='submit']:not(:disabled),
+[type='reset']:not(:disabled),
+summary,
+select {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
 /* Hapus outline bug di dalam input box, search pill, dan textarea (outline dikendalikan kontainer/border) */
 input,
 textarea,
