@@ -183,6 +183,38 @@ describe('bangunPengamatan', () => {
     expect(amati().pengamatan.sinyal).toMatchObject({ sukses: true, tantangan: false, login: false });
   });
 
+  it('sukses positif: judul hasil, alert, popup SweetAlert, nomor berdigit', () => {
+    for (const html of [
+      '<h1>Pendaftaran Berhasil</h1><p>Simpan nomor Anda.</p>',
+      '<div class="alert alert-success">Nomor registrasi Anda: 3374-2026-0001</div>',
+      '<div class="swal2-popup"><h2 class="swal2-title">Sukses!</h2><div>Permohonan berhasil dikirim.</div></div>',
+      '<div role="status">No. Antrean: A-0123</div>',
+    ]) {
+      document.body.innerHTML = html;
+      expect(amati().pengamatan.sinyal.sukses, html).toBe(true);
+    }
+  });
+
+  it('sukses: probe portal nyata (beranda/FAQ/tahapan/petunjuk) bukan positif palsu', () => {
+    for (const html of [
+      // 6402 Kukar: petunjuk di beranda login, token tanpa digit.
+      '<h3>LOGIN</h3><div class="alert alert-info">Cek nomor registrasi disini</div>',
+      '<div class="alert alert-info">Masukkan nomor resi anda untuk melacak</div>',
+      // 3276 Depok: tahapan layanan.
+      '<h3>Tahapan Layanan</h3><h6>Setelah pendaftaran berhasil diverifikasi dan dinyatakan lengkap anda akan mendapat jadwal</h6>',
+      '<ol><li><h6>Pendaftaran berhasil diverifikasi</h6></li></ol>',
+      // Badan halaman / FAQ / menu: tidak pernah dibaca.
+      '<p>Pendaftaran berhasil dikirim bila semua berkas lengkap.</p><p>Nomor registrasi: REG-2026-0001</p>',
+      '<div class="accordion"><h5>Bagaimana jika permohonan berhasil diajukan?</h5></div>',
+      '<nav><a href="/bukti">Cetak Bukti Pendaftaran</a></nav><h2>Bukti Pendaftaran tidak ditemukan</h2>',
+      '<footer><h4>Permohonan Anda telah berhasil</h4></footer>',
+      '<h2>Lacak Bukti Pendaftaran</h2>',
+    ]) {
+      document.body.innerHTML = html;
+      expect(amati().pengamatan.sinyal.sukses, html).toBe(false);
+    }
+  });
+
   it('batas keras: 150 elemen (kendali formulir didahulukan), opsi ≤40, panjang teks', () => {
     const menu = Array.from({ length: 200 }, (_, i) => `<a href="/m/${i}">Menu ${i}</a>`).join('');
     const opsi = Array.from({ length: 60 }, (_, i) => `<option>${'Opsi '.repeat(30)}${i}</option>`).join('');
