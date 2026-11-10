@@ -302,7 +302,7 @@ describe('tautan pembuka formulir: warga mengetuk, AI melanjutkan', () => {
       sidik: 'beranda',
       jalur: '/generik/tanpa-akun/',
       elemen: [
-        { ref: 'e1', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', tautanPembuka: true },
+        { ref: 'e1', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', sebabKelas: 'nama_tautan' },
       ],
     });
     const worker = new WorkerPalsu([beranda, halamanForm(), halamanTinjau()]);
