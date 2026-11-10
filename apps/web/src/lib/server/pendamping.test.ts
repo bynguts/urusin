@@ -117,13 +117,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function urusanDenganEksekusi() {
-  const u = rt.store.createUrusan({ kodeKabKota: '3312' });
+/** Bawaan Wonogiri (Telunjuk Sakti, `id-utama`); Semarang (Si D'nOK, `id-only`) untuk blokir keras. */
+function urusanDenganEksekusi(kota: 'wonogiri' | 'semarang' = 'wonogiri') {
+  const u = rt.store.createUrusan({ kodeKabKota: kota === 'semarang' ? '3374' : '3312' });
   rt.publish(u.id, {
     type: 'execution_request',
     executionId: 'x_1',
-    adapterId: 'telunjuk-sakti-wonogiri',
-    flowId: 'ajukan',
+    adapterId: kota === 'semarang' ? 'sidnok-semarang' : 'telunjuk-sakti-wonogiri',
+    flowId: kota === 'semarang' ? 'cek_status' : 'ajukan',
     ringkasan: 'Ajukan layanan 1',
     params: { layanan_id: 1 },
     tool: 'dukcapil__ajukan_layanan',
@@ -564,7 +565,7 @@ describe('broker Browser Pendamping', () => {
     beforeEach(() => vi.stubEnv('PENDAMPING_WORKERS', JSON.stringify([VPS, LAPTOP])));
 
     /** Akun warga terverifikasi yang masuk dan memiliki urusannya: sesi di portal asli, bukan Mode Uji. */
-    async function urusanAkunNyata() {
+    async function urusanAkunNyata(kota: 'wonogiri' | 'semarang' = 'wonogiri') {
       const mailer = new MemoryMailer();
       rt = createRuntime({
         provider: new DemoProvider(),
@@ -577,7 +578,7 @@ describe('broker Browser Pendamping', () => {
       await rt.akun.daftar({ email, sandi }, ktx);
       const token = new URL(mailer.last(email, 'verifikasi')!.link!).searchParams.get('token')!;
       const akun = await rt.akun.verifikasiEmail(token, sandi, ktx);
-      const u = urusanDenganEksekusi();
+      const u = urusanDenganEksekusi(kota);
       rt.akun.catatPemilikUrusan(u.id, { akun });
       return { u, cookie: `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${rt.akun.buatSesi(akun.id, ktx)}` };
     }
@@ -626,7 +627,7 @@ describe('broker Browser Pendamping', () => {
       });
     });
 
-    it('akun warga, situs khusus IP Indonesia -> worker region id; tiket ke worker yang sama', async () => {
+    it('akun warga, situs id-utama, worker id sehat -> worker id didahulukan; tiket ke worker yang sama', async () => {
       const { u, cookie } = await urusanAkunNyata();
       expect((await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(201);
       expect(calls[0]).toMatchObject({
@@ -675,8 +676,48 @@ describe('broker Browser Pendamping', () => {
       expect(calls[0]?.host).toBe('100.101.1.2:4330');
     });
 
-    it('akun warga tanpa worker id yang sehat -> 503 jujur + dipandu (bukan "tampilan berubah")', async () => {
+    it('akun warga, situs id-utama, laptop mati -> server melayani (tanpa pesan wilayah, tanpa dipandu)', async () => {
       const { u, cookie } = await urusanAkunNyata();
+      kesehatan = (host) => (host.startsWith('100.101') ? 'mati' : { status: 200, body: SEHAT });
+      const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
+      expect(r.status).toBe(201);
+      expect(calls[0]).toMatchObject({
+        host: '127.0.0.1:4330',
+        body: { modeUji: false, origin: 'https://telunjuksakti.wonogirikab.go.id' },
+      });
+      const evs = rt.store.eventsAfter(u.id);
+      expect(JSON.stringify(evs)).not.toContain(PESAN_WILAYAH);
+      expect(evs.some((e) => e.type === 'degraded')).toBe(false);
+    });
+
+    it('situs id-utama tanpa worker sehat sama sekali -> 503 umum, bukan pesan wilayah/dipandu', async () => {
+      const { u, cookie } = await urusanAkunNyata();
+      kesehatan = () => 'mati';
+      const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
+      expect(r.status).toBe(503);
+      expect(((await r.json()) as { kode: string }).kode).toBe('LAYANAN_TIDAK_TERSEDIA');
+      const evs = rt.store.eventsAfter(u.id);
+      expect(JSON.stringify(evs)).not.toContain(PESAN_WILAYAH);
+      expect(evs.some((e) => e.type === 'degraded')).toBe(false);
+    });
+
+    it('pilihWorker: id-utama mendahulukan id, id-only hanya id, situs umum mendahulukan non-id', async () => {
+      const cfg = pendampingConfig(process.env) as PendampingConfig;
+      const TS = 'https://telunjuksakti.wonogirikab.go.id';
+      const SMG = 'https://sidnok.semarangkota.go.id';
+      expect((await pilihWorker(cfg, TS, 'a1', undefined, false))?.id).toBe('laptop-a');
+      expect((await pilihWorker(cfg, SMG, 'a2', undefined, false))?.id).toBe('laptop-a');
+      expect((await pilihWorker(cfg, 'https://oss.go.id', 'a3', undefined, false))?.id).toBe('vps');
+      // Mode Uji: tanpa syarat wilayah, laptop dihemat.
+      expect((await pilihWorker(cfg, TS, 'a4', undefined, true))?.id).toBe('vps');
+      resetBrokerPendamping();
+      kesehatan = (host) => (host.startsWith('100.101') ? 'mati' : { status: 200, body: SEHAT });
+      expect((await pilihWorker(cfg, TS, 'b1', undefined, false))?.id).toBe('vps');
+      expect(await pilihWorker(cfg, SMG, 'b2', undefined, false)).toBeNull();
+    });
+
+    it('akun warga, situs id-only (blokir keras) tanpa worker id sehat -> 503 jujur + dipandu', async () => {
+      const { u, cookie } = await urusanAkunNyata('semarang');
       kesehatan = (host) => (host.startsWith('100.101') ? 'mati' : { status: 200, body: SEHAT });
       const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
       expect(r.status).toBe(503);

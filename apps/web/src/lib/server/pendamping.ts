@@ -25,9 +25,13 @@ import { SID_COOKIE } from '#lib/server/sesi.js';
  * tidak pernah melihat cookie mentah, hanya sha256-nya, dan sesi terikat ke urusan + hash itu.
  *
  * MULTI-WORKER: `PENDAMPING_WORKERS` = JSON `[{id, url, region, maxSessions, wsUrl, token?}]` (container identik di tiap
- * host; mis. VPS + laptop anggota lewat Tailscale). Situs registry `aksesWilayah: 'id-only'` hanya dirutekan
- * ke worker `region: 'id'` (IP Indonesia); bila tak ada yang sehat, urusan beralih ke mode dipandu dengan
- * pesan jujur. Situs lain memakai worker non-`id` lebih dulu (laptop dihemat), lalu beban terendah.
+ * host; mis. VPS + laptop anggota lewat Tailscale). Rute per `aksesWilayah` registry (sesi akun warga di
+ * portal asli; Mode Uji selalu tanpa syarat wilayah):
+ * - `id-only` (blokir keras IP luar negeri): HANYA worker `region: 'id'`; tak ada yang sehat -> mode dipandu
+ *   dengan pesan jujur;
+ * - `id-utama` (dari server muncul kotak centang yang diselesaikan warga): worker `id` yang sehat didahulukan,
+ *   selain itu worker mana pun (server tetap melayani; laptop hanya bonus);
+ * - lainnya: worker non-`id` lebih dulu (laptop dihemat), lalu beban terendah.
  * Tanpa `PENDAMPING_WORKERS`: satu worker dari `PENDAMPING_INTERNAL_URL` (region
  * `PENDAMPING_INTERNAL_REGION`, bawaan `umum`; URL WS `PENDAMPING_PUBLIC_WS_URL` bila diisi).
  *
@@ -284,13 +288,18 @@ async function sehat(w: PendampingWorker, fetcher: EgressFetch, now = Date.now()
 
 const beban = (w: PendampingWorker, s: Sehat) => (s.aktif + s.menunggu) / Math.min(w.maxSessions, s.maks);
 
+/** Syarat jaringan situs dari registry (`aksesWilayah`); undefined = worker mana pun. */
+export function aksesWilayah(origin: string): 'id-only' | 'id-utama' | undefined {
+  try {
+    return getOfficialDomain(new URL(origin).hostname)?.aksesWilayah;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Situs yang hanya menerima IP Indonesia (registry `aksesWilayah: 'id-only'`). */
 export function butuhWilayahId(origin: string): boolean {
-  try {
-    return getOfficialDomain(new URL(origin).hostname)?.aksesWilayah === 'id-only';
-  } catch {
-    return false;
-  }
+  return aksesWilayah(origin) === 'id-only';
 }
 
 /**
@@ -298,8 +307,10 @@ export function butuhWilayahId(origin: string): boolean {
  * kita (worker memetakan origin resmi ke replika, atau menolak bila replikanya tidak ada), jadi tak butuh IP
  * Indonesia; sesi akun warga di portal asli tetap butuh.
  */
+const aksesSesi = (origin: string, modeUji: boolean | undefined) =>
+  modeUji === true ? undefined : aksesWilayah(origin);
 const butuhWilayahSesi = (origin: string, modeUji: boolean | undefined) =>
-  modeUji !== true && butuhWilayahId(origin);
+  aksesSesi(origin, modeUji) === 'id-only';
 
 /**
  * Pilih worker untuk sesi baru: worker yang sudah memegang urusan ini bila sehat (sesi siaga), lalu beban
@@ -312,22 +323,24 @@ export async function pilihWorker(
   fetcher: EgressFetch = egressFetch,
   modeUji?: boolean,
 ): Promise<PendampingWorker | null> {
-  const idSaja = butuhWilayahSesi(origin, modeUji);
-  const kandidat = cfg.workers.filter((w) => !idSaja || w.region === REGION_ID);
+  const akses = aksesSesi(origin, modeUji);
+  const kandidat = cfg.workers.filter((w) => akses !== 'id-only' || w.region === REGION_ID);
   const hidup = (await Promise.all(kandidat.map(async (w) => ({ w, s: await sehat(w, fetcher) })))).filter(
     (x): x is { w: PendampingWorker; s: Sehat } => x.s !== null,
   );
   const lekat = hidup.find((x) => x.w.id === lokasi.get(urusanId));
   if (lekat) return lekat.w;
-  hidup.sort(
-    (a, b) =>
-      Number(a.w.region === REGION_ID) - Number(b.w.region === REGION_ID) ||
-      beban(a.w, a.s) - beban(b.w, b.s),
-  );
+  // `id-utama`: worker `id` lebih dulu; lainnya worker non-`id` lebih dulu (laptop dihemat).
+  const urutan = (w: PendampingWorker) =>
+    akses === 'id-utama' ? Number(w.region !== REGION_ID) : Number(w.region === REGION_ID);
+  hidup.sort((a, b) => urutan(a.w) - urutan(b.w) || beban(a.w, a.s) - beban(b.w, b.s));
   return hidup[0]?.w ?? null;
 }
 
-/** POST /internal/sesi ke worker yang tepat; tanpa worker wilayah Indonesia -> `dipandu`. */
+/**
+ * POST /internal/sesi ke worker yang tepat. `dipandu` HANYA untuk situs `id-only` tanpa worker `id` yang sehat;
+ * situs lain (termasuk `id-utama`) hanya gagal bila tidak ada worker sehat sama sekali.
+ */
 export async function mulaiSesi(
   cfg: PendampingConfig | null,
   body: MulaiSesiInternal,
