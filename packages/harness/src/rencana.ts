@@ -98,7 +98,7 @@ export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): Rut
       flowId: bundel.slug,
       params: { jenis: bundel.slug, kode },
       origin: portal.origin,
-      nama: `Ajukan ${bundel.judul.toLowerCase()} di ${portal.nama ?? `portal resmi ${nama ?? 'wilayah Anda'}`}`,
+      nama: `Ajukan ${bundel.judul.toLowerCase()} di portal resmi Disdukcapil ${nama ?? portal.nama}`,
     };
   return { jalur: 'dipandu', alasan: alasanDipandu(kode, nama) };
 }

@@ -2,6 +2,7 @@ import { FakeProvider, fakeCompletion } from '@urusin/llm';
 import type { EventOf, EventPayload, UrusinEvent } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
+import { portalWebWilayah } from './generik.js';
 import { setujuiRencana } from './rencana.js';
 import { jejakView } from './trace.js';
 import { makeEnv } from './testing.js';
@@ -86,26 +87,37 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
     ['3578', 'Kota Surabaya', 'https://wargaklampid-dispendukcapil.surabaya.go.id/'],
     ['3216', 'Kabupaten Bekasi', 'https://sitepak.bekasikab.go.id/'],
     ['1101', 'Kabupaten Aceh Selatan', 'https://dukcapil.kemendagri.go.id/'],
-  ])('%s %s: kanal resmi sendiri, tier dipandu jujur, tanpa Browser Pendamping', async (kode, nama, url) => {
-    const { env, u } = setup([balas('Rencana sudah saya siapkan.')], {
-      jenis: 'kelahiran',
-      kodeKabKota: kode,
-    });
-    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
-    const kartu = of(out.events, 'plan_card')[0]!;
-    expect(kartu).toBeDefined();
-    expect(JSON.stringify(kartu)).not.toMatch(/wonogiri/i);
-    expect(kartu.wilayah?.ktp).toEqual({ kodeKabKota: kode, nama });
-    expect(kartu.tier).toBe('dipandu');
-    expect(kartu.langkah.some((l) => l.jenis === 'online-adapter')).toBe(false);
-    expect(kartu.langkah[0]!.sumber[0]!.url).toBe(url);
-    expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
-    // Setujui rencana: tidak ada Browser Pendamping yang ditawarkan di wilayah tanpa adapter tulis.
-    const events: EventPayload[] = [];
-    const r = setujuiRencana(env.store, u.id, (e) => void events.push(e));
-    expect(r.executionId).toBeNull();
-    expect(events.some((e) => e.type === 'execution_request')).toBe(false);
-  });
+  ])(
+    '%s %s: kanal resmi sendiri, tanpa adapter Wonogiri; Pendamping hanya generik ke portal sendiri',
+    async (kode, nama, url) => {
+      const { env, u } = setup([balas('Rencana sudah saya siapkan.')], {
+        jenis: 'kelahiran',
+        kodeKabKota: kode,
+      });
+      const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+      const kartu = of(out.events, 'plan_card')[0]!;
+      expect(kartu).toBeDefined();
+      expect(JSON.stringify(kartu)).not.toMatch(/wonogiri/i);
+      expect(kartu.wilayah?.ktp).toEqual({ kodeKabKota: kode, nama });
+      expect(kartu.tier).toBe('dipandu');
+      expect(kartu.langkah.some((l) => l.jenis === 'online-adapter')).toBe(false);
+      expect(kartu.langkah[0]!.sumber[0]!.url).toBe(url);
+      expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
+      // Setujui rencana: tanpa adapter tulis. Portal `web` di registry -> Navigator generik ke portal wilayah itu
+      // sendiri (ADR 0030); selain itu tidak ada Browser Pendamping.
+      const events: EventPayload[] = [];
+      const r = setujuiRencana(env.store, u.id, (e) => void events.push(e));
+      const req = events.find((e): e is EventOf<'execution_request'> => e.type === 'execution_request');
+      const portal = portalWebWilayah(kode);
+      if (portal) {
+        expect(r.executionId).not.toBeNull();
+        expect(req).toMatchObject({ adapterId: 'generik', origin: portal.origin, params: { kode } });
+      } else {
+        expect(r.executionId).toBeNull();
+        expect(req).toBeUndefined();
+      }
+    },
+  );
 
   it('jawaban tanpa sumber menyebut kanal wilayah itu sendiri (situs Disdukcapil terverifikasi)', async () => {
     const { env, u, provider } = setup(

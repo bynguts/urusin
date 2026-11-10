@@ -1,67 +1,62 @@
+import {
+  EGRESS_PIHAK_KETIGA_WILAYAH,
+  PLATFORM_WILAYAH,
+  PORTAL_WILAYAH,
+  hostsWilayah,
+  type PortalWilayah,
+} from '@urusin/core';
+
 /**
- * Antarmuka kecil ke registry wilayah (ADR 0030) untuk routing Navigator generik dan allowlist isi vault.
- * Sumber datanya adalah `PORTAL_WILAYAH`/`hostsWilayah` di @urusin/core (dibangkitkan dari data survei wilayah);
- * modul ini TIDAK menyimpan daftar host sendiri. Sampai sumber dipasang, tidak ada wilayah yang punya portal web,
- * sehingga semua urusan tanpa adapter tetap dipandu (gagal tertutup).
+ * Routing Navigator generik dan allowlist isi vault di atas registry wilayah (`PORTAL_WILAYAH`, hasil
+ * generator di @urusin/core; ADR 0030). Modul ini tidak menyimpan daftar host sendiri.
  */
 
 /** Adapter yang dikerjakan Navigator generik (bukan adapter tulisan tangan). */
 export const ADAPTER_GENERIK = 'generik';
 
+export function portalWilayah(kode: string | null | undefined): PortalWilayah | undefined {
+  if (!kode || !/^\d{4}$/.test(kode) || !Object.hasOwn(PORTAL_WILAYAH, kode)) return undefined;
+  return PORTAL_WILAYAH[kode];
+}
+
 /**
- * Kanal layanan satu kab/kota. Hanya `web` yang dikerjakan Browser Pendamping generik; kanal lain (aplikasi
- * IKD, WhatsApp, kantor) jatuh ke mode dipandu dengan alasan jujur.
+ * Host PORTAL persis milik wilayah (host portal + host platform bersamanya). Tidak termasuk host info
+ * Disdukcapil dan host pihak ketiga (tantangan Cloudflare): nilai vault dan aksi AI hanya ke portal.
  */
-export type PortalWilayahRingkas = {
-  jenis: string;
-  /** Origin https portal (wajib untuk `web`). */
-  origin?: string | undefined;
-  nama?: string | undefined;
-  /** Host persis milik wilayah ini (tanpa wildcard). */
-  hosts: readonly string[];
-};
-
-export type SumberPortalWilayah = (kode: string) => PortalWilayahRingkas | undefined;
-
-const tanpaSumber: SumberPortalWilayah = () => undefined;
-let sumber: SumberPortalWilayah = tanpaSumber;
-
-/** Pasang sumber registry wilayah (tanpa argumen = lepas; dipakai tes). */
-export function pasangSumberPortalWilayah(f?: SumberPortalWilayah): void {
-  sumber = f ?? tanpaSumber;
+export function hostsPortalWilayah(kode: string | null | undefined): string[] {
+  const p = portalWilayah(kode);
+  if (!p || p.jenis !== 'web') return [];
+  const platform =
+    p.platform && Object.hasOwn(PLATFORM_WILAYAH, p.platform) ? PLATFORM_WILAYAH[p.platform]!.hosts : [];
+  return [...new Set([...p.hosts, ...platform])];
 }
 
-export function portalWilayah(kode: string | null | undefined): PortalWilayahRingkas | undefined {
-  if (!kode || !/^\d{4}$/.test(kode)) return undefined;
-  return sumber(kode);
+/** Host yang boleh dikerjakan AI di sesi wilayah ini: host wilayah tanpa host pihak ketiga. */
+export function hostsAiWilayah(kode: string | null | undefined): string[] {
+  if (!portalWilayah(kode)) return [];
+  return hostsWilayah(kode!).filter((h) => !EGRESS_PIHAK_KETIGA_WILAYAH.includes(h));
 }
 
-/** Host persis milik wilayah `kode` (kosong bila wilayah tidak dikenal). */
-export function hostsWilayah(kode: string | null | undefined): readonly string[] {
-  return portalWilayah(kode)?.hosts ?? [];
-}
-
-/** Portal web yang bisa dikerjakan Navigator generik: jenis `web`, origin https, host origin ada di daftar host. */
+/** Portal web yang bisa dikerjakan Navigator generik: jenis `web`, URL https, host URL ada di host portal. */
 export function portalWebWilayah(
   kode: string | null | undefined,
-): (PortalWilayahRingkas & { origin: string }) | undefined {
+): { origin: string; url: string; nama: string } | undefined {
   const p = portalWilayah(kode);
-  if (!p || p.jenis !== 'web' || !p.origin) return undefined;
+  if (!p || p.jenis !== 'web' || !p.url) return undefined;
   let url: URL;
   try {
-    url = new URL(p.origin);
+    url = new URL(p.url);
   } catch {
     return undefined;
   }
-  if (url.protocol !== 'https:' || !p.hosts.includes(url.host)) return undefined;
-  return { ...p, origin: url.origin };
+  if (url.protocol !== 'https:' || !hostsPortalWilayah(kode).includes(url.host)) return undefined;
+  return { origin: url.origin, url: url.href, nama: p.nama };
 }
 
-const KANAL_DIPANDU: Readonly<Record<string, string>> = {
-  ikd: 'aplikasi Identitas Kependudukan Digital (IKD)',
+const KANAL_DIPANDU: Readonly<Partial<Record<PortalWilayah['jenis'], string>>> = {
   aplikasi: 'aplikasi ponsel resmi',
   whatsapp: 'WhatsApp',
-  kantor: 'loket di kantor',
+  nasional: 'kanal nasional (aplikasi IKD) atau loket kantor',
 };
 
 /**
@@ -71,7 +66,7 @@ const KANAL_DIPANDU: Readonly<Record<string, string>> = {
 export function alasanDipandu(kode: string | null | undefined, wilayah?: string): string {
   const p = portalWilayah(kode);
   const di = wilayah ? ` ${wilayah}` : '';
-  const kanal = p && Object.hasOwn(KANAL_DIPANDU, p.jenis) ? KANAL_DIPANDU[p.jenis] : undefined;
+  const kanal = p ? KANAL_DIPANDU[p.jenis] : undefined;
   if (kanal)
     return `Rencana disetujui. Disdukcapil${di} melayani pengajuan lewat ${kanal}, bukan formulir web, jadi Browser Pendamping tidak bisa mengisinya. Ikuti langkahnya bersama saya.`;
   return 'Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.';
