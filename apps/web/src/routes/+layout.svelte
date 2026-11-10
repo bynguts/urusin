@@ -60,10 +60,19 @@
           <img src={mark} alt="" width="24" height="24" class="size-6" />
           <span class="font-lora text-[22px] leading-6 font-medium tracking-[-0.6px] text-ink">Urusin</span>
         </a>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
           <button
             type="button"
-            class="grid size-11 place-items-center rounded-full bg-bg-2 text-ink"
+            class="grid size-11 place-items-center rounded-full bg-bg-2 text-ink transition-colors hover:bg-card"
+            aria-label={prefs.nilai.tema === 'gelap' ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'}
+            title={prefs.nilai.tema === 'gelap' ? 'Tema terang' : 'Tema gelap'}
+            onclick={() => prefs.atur('tema', prefs.nilai.tema === 'gelap' ? 'terang' : 'gelap')}
+          >
+            <Icon name={prefs.nilai.tema === 'gelap' ? 'matahari' : 'bulan'} class="size-5" />
+          </button>
+          <button
+            type="button"
+            class="grid size-11 place-items-center rounded-full bg-bg-2 text-ink transition-colors hover:bg-card"
             aria-label="Bantuan suara"
             aria-pressed={prefs.nilai.bacakanOtomatis}
             onclick={() => prefs.atur('bacakanOtomatis', !prefs.nilai.bacakanOtomatis)}
@@ -72,7 +81,7 @@
           </button>
           <button
             type="button"
-            class="grid size-11 place-items-center rounded-full bg-bg-2 text-ink"
+            class="grid size-11 place-items-center rounded-full bg-bg-2 text-ink transition-colors hover:bg-card"
             aria-label={menuBuka ? 'Tutup menu' : 'Buka menu'}
             aria-expanded={menuBuka}
             aria-controls="menu-app-hp"

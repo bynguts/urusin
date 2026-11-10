@@ -250,6 +250,18 @@ export const IKON = {
     'm15 15-3-3-3 3',
   ],
   hapus: ['M3 6h18', 'M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6', 'M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'],
+  matahari: [
+    o(12, 12, 4),
+    'M12 2v2',
+    'M12 20v2',
+    'm4.93 4.93 1.41 1.41',
+    'm17.66 17.66 1.41 1.41',
+    'M2 12h2',
+    'M20 12h2',
+    'm6.34 17.66-1.41 1.41',
+    'm19.07 4.93-1.41 1.41',
+  ],
+  bulan: ['M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type NamaIkon = keyof typeof IKON;
