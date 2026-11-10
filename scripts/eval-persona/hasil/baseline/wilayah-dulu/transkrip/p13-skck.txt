@@ -1,0 +1,57 @@
+SKCK untuk melamar kerja (di luar Dukcapil)
+===========================================
+
+Warga: Saya butuh SKCK buat lamar kerja. Bisa dibantu?
+
+Urusin: Bisa, saya bantu urus SKCK untuk melamar kerja.
+
+KTP Anda terdaftar di kabupaten/kota mana? Cukup sebutkan nama kabupaten atau kotanya, tidak perlu menulis NIK.
+
+Warga: KTP saya terdaftar di Kota Depok.
+
+(sistem) Wilayah KTP: Kota Depok
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/
+  - Kota Depok https://silondomaju.depok.go.id
+
+Warga: Bukannya SKCK diurus di kepolisian ya? Saya perlu untuk melamar kerja di BUMN. Harus ke mana dan membawa apa saja?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/
+  - Kota Depok https://silondomaju.depok.go.id
+
+Warga: Maaf, jawabannya masih mengarah ke Disdukcapil. Bukannya SKCK diterbitkan kepolisian? Untuk melamar kerja di BUMN, saya harus ke kantor polisi yang mana dan membawa apa saja?
+
+Urusin: Betul, maaf—jawaban saya sebelumnya keliru mengarahkan ke Disdukcapil. **SKCK diterbitkan oleh kepolisian**, bukan Disdukcapil.
+
+Untuk keperluan melamar kerja di BUMN, saya belum menemukan sumber resmi yang cukup untuk memastikan **tingkat kantor polisi yang berwenang** maupun **daftar dokumen yang harus dibawa**. Saya tidak ingin menebaknya karena ketentuannya bisa berbeda menurut keperluan dan kewenangan penerbitan.
+
+Silakan konfirmasi kepada **layanan SKCK Polres Metro Depok** dengan menyebutkan bahwa SKCK diperlukan untuk melamar kerja di BUMN. Tanyakan apakah harus diterbitkan di Polres atau Polda, serta dokumen dan biaya yang berlaku. Tidak perlu membagikan NIK atau dokumen pribadi di chat ini.
+
+Warga: Baik, terima kasih. Saya bisa menghubungi layanan SKCK Polres Metro Depok lewat apa, ya?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/
+  - Kota Depok https://silondomaju.depok.go.id
+
+Warga: Maaf, ini kembali mengarah ke Disdukcapil. Apakah ada nomor telepon atau situs resmi layanan SKCK Polres Metro Depok yang bisa saya hubungi?
+
+Urusin: Maaf, Anda benar. Saya keliru kembali mengarahkan Anda ke layanan Disdukcapil.
+
+Saya **belum menemukan nomor telepon atau situs resmi layanan SKCK Polres Metro Depok yang bisa saya pastikan**, jadi saya tidak ingin memberikan kontak yang mungkin salah.
+
+Sebagai alternatif, Anda bisa datang langsung ke **Polres Metro Depok** dan menanyakan layanan SKCK untuk melamar kerja di BUMN. Pastikan alamat dan jam layanannya melalui kanal resmi kepolisian sebelum berangkat.
+
+Warga: Baik, terima kasih. Kalau begitu, kanal resmi kepolisian apa yang bisa saya pakai untuk memastikan alamat dan jam layanan Polres Metro Depok?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/
+  - Kota Depok https://silondomaju.depok.go.id
+
+Warga: Maaf, ini kembali mengarah ke Disdukcapil. Saya harus memastikan alamat dan jam layanan Polres Metro Depok lewat kanal resmi kepolisian yang mana, ya?
+
+Urusin: Maaf, Anda benar. **Silondo Maju adalah kanal Disdukcapil, bukan kanal untuk memastikan layanan SKCK.**
+
+Anda bisa mencoba menghubungi **layanan kepolisian 110** dan meminta informasi alamat serta jam layanan SKCK Polres Metro Depok. Saya belum dapat memastikan apakah petugas 110 memiliki informasi jam layanan terbaru, jadi mohon konfirmasi kembali sebelum berangkat.
+
+[AKHIR: warga_selesai — Sudah ada langkah konkret untuk menghubungi layanan kepolisian 110 dan menanyakan alamat serta jam layanan.]

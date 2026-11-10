@@ -1,0 +1,542 @@
+{
+  "label": "bawaan-tambahan",
+  "dibuat": "2026-11-10T07:30:52.294Z",
+  "gitSha": "9bfd4f866f3269ea0793cbb7909000de64ab8d47",
+  "akar": ".",
+  "origin": "lokal (node build)",
+  "wilayahAwal": "bawaan",
+  "wilayahBawaanPerangkat": "3312",
+  "maksGiliran": 12,
+  "rag": {
+    "status": "ready",
+    "chunks": 267,
+    "vectors": 267,
+    "vectorModel": "jina-embeddings-v5-omni-small",
+    "pencarian": {
+      "vektor": true,
+      "rerank": true,
+      "embedModel": "jina-embeddings-v5-omni-small",
+      "rerankModel": "jina-reranker-v3"
+    }
+  },
+  "durasiMs": 139437,
+  "hasil": [
+    {
+      "persona": "p16-datadiri-wonogiri-ktp-semarang",
+      "judul": "Akun juri (Data Diri Wonogiri), KTP sekarang sudah Kota Semarang",
+      "urusanId": "u_53c3cafbbe205962ae64191daf0a80ce",
+      "wilayahPerangkat": "3312",
+      "kodeUrusan": "3312",
+      "akhir": {
+        "alasan": "warga_selesai",
+        "puas": true,
+        "catatan": "Sudah tahu mengajukan akta melalui Si D’nOK serta dokumen yang perlu disiapkan, dan tidak akan menyetujui rencana Wonogiri."
+      },
+      "giliranWarga": 4,
+      "ms": 103904,
+      "url": [
+        "https://sidnok.semarangkota.go.id/data-dukung",
+        "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+        "https://sidnok.semarangkota.go.id/get-berkas/1720769569"
+      ],
+      "deterministik": {
+        "a": {
+          "lulus": false,
+          "bukti": "rencana dibuat untuk kode 3312, seharusnya 3374"
+        },
+        "d": {
+          "lulus": false,
+          "bukti": "bocor wilayah wonogiri: \"Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelah\"; wonogiri: \"an Pencatatan Sipil Kabupaten Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/terin\""
+        },
+        "e": {
+          "lulus": true,
+          "bukti": "ditawarkan: (tidak ada)",
+          "ditawarkan": []
+        },
+        "f": {
+          "lulus": true,
+          "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+        },
+        "i": {
+          "lulus": true,
+          "bukti": "tanpa galat"
+        }
+      },
+      "juri": {
+        "a": {
+          "lulus": false,
+          "bukti": "Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)"
+        },
+        "b": {
+          "lulus": false,
+          "bukti": "1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]"
+        },
+        "c": {
+          "lulus": false,
+          "bukti": "(tidak ada KTP-el dalam daftar persyaratan akta kelahiran)"
+        },
+        "d": {
+          "lulus": false,
+          "bukti": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+        },
+        "e": {
+          "lulus": true,
+          "bukti": "Untuk bantuan pengisian melalui Browser Pendamping, rencananya perlu menunjukkan **Kota Semarang** terlebih dahulu."
+        },
+        "f": {
+          "lulus": true,
+          "bukti": "(tidak ada permintaan data pribadi diketik di chat atau pengiriman tanpa persetujuan warga)"
+        },
+        "g": {
+          "lulus": true,
+          "bukti": "Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya."
+        },
+        "h": {
+          "lulus": true,
+          "bukti": "Untuk Semarang, Anda bisa mengajukan melalui **Si D’nOK**, portal layanan Dukcapil Kota Semarang."
+        },
+        "i": {
+          "lulus": true,
+          "bukti": "Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya."
+        },
+        "ringkasan": "Urusin sempat membuat rencana dan memberi tautan Wonogiri meskipun warga sudah menyebut Kota Semarang, serta tidak mencantumkan KTP-el dalam persyaratan. Pada akhir percakapan, Urusin memperingatkan agar rencana salah tidak disetujui dan memberi langkah pengajuan melalui Si D'nOK.",
+        "cacat": [
+          {
+            "judul": "Rencana untuk wilayah yang salah",
+            "kriteria": "a",
+            "keparahan": "tinggi",
+            "bukti": "Maaf, rencana yang tampil masih **Wonogiri**, padahal KTP dan KK Anda sudah Kota Semarang."
+          },
+          {
+            "judul": "Pengajuan diarahkan ke yurisdiksi lain",
+            "kriteria": "b",
+            "keparahan": "tinggi",
+            "bukti": "1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]"
+          },
+          {
+            "judul": "KTP-el tidak dicantumkan sebagai persyaratan",
+            "kriteria": "c",
+            "keparahan": "sedang",
+            "bukti": "(tidak ada KTP-el dalam daftar persyaratan akta kelahiran)"
+          },
+          {
+            "judul": "Tautan layanan Wonogiri untuk warga Semarang",
+            "kriteria": "d",
+            "keparahan": "tinggi",
+            "bukti": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+          }
+        ]
+      },
+      "nilai": {
+        "a": {
+          "lulus": false,
+          "bukti": "otomatis: rencana dibuat untuk kode 3312, seharusnya 3374 | juri: Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": false,
+              "bukti": "rencana dibuat untuk kode 3312, seharusnya 3374"
+            },
+            {
+              "sumber": "juri",
+              "lulus": false,
+              "bukti": "Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)"
+            }
+          ]
+        },
+        "b": {
+          "lulus": false,
+          "bukti": "juri: 1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]",
+          "komponen": [
+            {
+              "sumber": "juri",
+              "lulus": false,
+              "bukti": "1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]"
+            }
+          ]
+        },
+        "c": {
+          "lulus": false,
+          "bukti": "juri: (tidak ada KTP-el dalam daftar persyaratan akta kelahiran)",
+          "komponen": [
+            {
+              "sumber": "juri",
+              "lulus": false,
+              "bukti": "(tidak ada KTP-el dalam daftar persyaratan akta kelahiran)"
+            }
+          ]
+        },
+        "d": {
+          "lulus": false,
+          "bukti": "otomatis: bocor wilayah wonogiri: \"Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelah\"; wonogiri: \"an Pencatatan Sipil Kabupaten Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/terin\" | juri: https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": false,
+              "bukti": "bocor wilayah wonogiri: \"Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelah\"; wonogiri: \"an Pencatatan Sipil Kabupaten Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/terin\""
+            },
+            {
+              "sumber": "juri",
+              "lulus": false,
+              "bukti": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+            }
+          ]
+        },
+        "e": {
+          "lulus": true,
+          "bukti": "otomatis: ditawarkan: (tidak ada) | juri: Untuk bantuan pengisian melalui Browser Pendamping, rencananya perlu menunjukkan **Kota Semarang** terlebih dahulu.",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": true,
+              "bukti": "ditawarkan: (tidak ada)",
+              "ditawarkan": []
+            },
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Untuk bantuan pengisian melalui Browser Pendamping, rencananya perlu menunjukkan **Kota Semarang** terlebih dahulu."
+            }
+          ]
+        },
+        "f": {
+          "lulus": true,
+          "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: (tidak ada permintaan data pribadi diketik di chat atau pengiriman tanpa persetujuan warga)",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": true,
+              "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+            },
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "(tidak ada permintaan data pribadi diketik di chat atau pengiriman tanpa persetujuan warga)"
+            }
+          ]
+        },
+        "g": {
+          "lulus": true,
+          "bukti": "juri: Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya.",
+          "komponen": [
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya."
+            }
+          ]
+        },
+        "h": {
+          "lulus": true,
+          "bukti": "juri: Untuk Semarang, Anda bisa mengajukan melalui **Si D’nOK**, portal layanan Dukcapil Kota Semarang.",
+          "komponen": [
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Untuk Semarang, Anda bisa mengajukan melalui **Si D’nOK**, portal layanan Dukcapil Kota Semarang."
+            }
+          ]
+        },
+        "i": {
+          "lulus": true,
+          "bukti": "otomatis: tanpa galat | juri: Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya.",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": true,
+              "bukti": "tanpa galat"
+            },
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya."
+            }
+          ]
+        }
+      },
+      "pemakaian": {
+        "agen": {
+          "tokensIn": 71911,
+          "tokensOut": 2573,
+          "costIdr": 0,
+          "panggilanLlm": 8
+        },
+        "simulator": {
+          "panggilan": 4,
+          "tokensIn": 16338,
+          "tokensOut": 338
+        },
+        "juri": {
+          "panggilan": 1,
+          "tokensIn": 6690,
+          "tokensOut": 893
+        }
+      }
+    },
+    {
+      "persona": "p17-ganti-wilayah",
+      "judul": "Warga mengganti wilayah di tengah percakapan (Wonogiri lalu Sukoharjo)",
+      "urusanId": "u_78a7fb67eb63a955461911fb678fba5b",
+      "wilayahPerangkat": "3312",
+      "kodeUrusan": "3312",
+      "akhir": {
+        "alasan": "warga_selesai",
+        "puas": false,
+        "catatan": "Saya sudah tahu bisa menanyakan kontak Disdukcapil Sukoharjo ke kantor Kecamatan Kartasura, meski nomor dan alamatnya belum didapat."
+      },
+      "giliranWarga": 4,
+      "ms": 110379,
+      "url": [
+        "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran",
+        "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+        "https://telunjuksakti.wonogirikab.go.id/",
+        "https://telunjuksakti.wonogirikab.go.id"
+      ],
+      "deterministik": {
+        "a": {
+          "lulus": false,
+          "bukti": "tidak ada rencana untuk wilayah akhir 3311 setelah warga mengganti wilayah"
+        },
+        "d": {
+          "lulus": true,
+          "bukti": "tidak ada tautan/nama wilayah lain"
+        },
+        "e": {
+          "lulus": true,
+          "bukti": "ditawarkan: (tidak ada)",
+          "ditawarkan": []
+        },
+        "f": {
+          "lulus": true,
+          "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+        },
+        "i": {
+          "lulus": true,
+          "bukti": "tanpa galat"
+        }
+      },
+      "juri": {
+        "a": {
+          "lulus": false,
+          "bukti": "(tidak ada pertanyaan wilayah KTP/KK sebelum jawaban persyaratan pertama)"
+        },
+        "b": {
+          "lulus": false,
+          "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri"
+        },
+        "c": {
+          "lulus": false,
+          "bukti": "(tidak ada persyaratan bersumber untuk Sukoharjo setelah koreksi wilayah)"
+        },
+        "d": {
+          "lulus": false,
+          "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/"
+        },
+        "e": {
+          "lulus": true,
+          "bukti": "(tidak ada tawaran Browser Pendamping setelah koreksi wilayah)"
+        },
+        "f": {
+          "lulus": true,
+          "bukti": "Tidak perlu mengirim NIK, nomor KK, atau dokumen pribadi ke chat ini, ya."
+        },
+        "g": {
+          "lulus": true,
+          "bukti": "Maaf, Mas. Arahan ke Wonogiri tadi keliru"
+        },
+        "h": {
+          "lulus": true,
+          "bukti": "Mas bisa meminta kontak dan alamat terbarunya kepada **kantor Kecamatan Kartasura**"
+        },
+        "i": {
+          "lulus": false,
+          "bukti": "saya belum menemukan **nomor WhatsApp MELODI atau alamat kantor Disdukcapil Sukoharjo yang bisa saya pastikan dari sumber resmi**"
+        },
+        "ringkasan": "Urusin tetap mengarahkan warga ke Wonogiri setelah koreksi, lalu mengakui kesalahan dan menyebut Disdukcapil Sukoharjo. Namun, Urusin tidak memberikan persyaratan bersumber atau alamat resmi Sukoharjo dan meninggalkan rencana Wonogiri tetap tampil.",
+        "cacat": [
+          {
+            "judul": "Wilayah KTP/KK tidak dipastikan sebelum jawaban",
+            "kriteria": "a",
+            "keparahan": "tinggi",
+            "bukti": "(tidak ada pertanyaan wilayah KTP/KK sebelum jawaban persyaratan pertama)"
+          },
+          {
+            "judul": "Yurisdiksi tidak diperbarui setelah koreksi",
+            "kriteria": "b",
+            "keparahan": "tinggi",
+            "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri"
+          },
+          {
+            "judul": "Persyaratan bersumber untuk Sukoharjo tidak diberikan",
+            "kriteria": "c",
+            "keparahan": "tinggi",
+            "bukti": "(tidak ada persyaratan bersumber untuk Sukoharjo setelah koreksi wilayah)"
+          },
+          {
+            "judul": "Kanal Wonogiri diberikan untuk warga Sukoharjo",
+            "kriteria": "d",
+            "keparahan": "tinggi",
+            "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/"
+          },
+          {
+            "judul": "Alamat resmi dan rencana yang benar tidak diberikan",
+            "kriteria": "i",
+            "keparahan": "sedang",
+            "bukti": "saya belum menemukan **nomor WhatsApp MELODI atau alamat kantor Disdukcapil Sukoharjo yang bisa saya pastikan dari sumber resmi**"
+          },
+          {
+            "judul": "Rencana wilayah lama masih tampil",
+            "kriteria": "i",
+            "keparahan": "sedang",
+            "bukti": "Rencana Wonogiri yang masih tampil jangan disetujui, ya, karena tidak sesuai dengan KK Mas sekarang."
+          }
+        ]
+      },
+      "nilai": {
+        "a": {
+          "lulus": false,
+          "bukti": "otomatis: tidak ada rencana untuk wilayah akhir 3311 setelah warga mengganti wilayah | juri: (tidak ada pertanyaan wilayah KTP/KK sebelum jawaban persyaratan pertama)",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": false,
+              "bukti": "tidak ada rencana untuk wilayah akhir 3311 setelah warga mengganti wilayah"
+            },
+            {
+              "sumber": "juri",
+              "lulus": false,
+              "bukti": "(tidak ada pertanyaan wilayah KTP/KK sebelum jawaban persyaratan pertama)"
+            }
+          ]
+        },
+        "b": {
+          "lulus": false,
+          "bukti": "juri: Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+          "komponen": [
+            {
+              "sumber": "juri",
+              "lulus": false,
+              "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri"
+            }
+          ]
+        },
+        "c": {
+          "lulus": false,
+          "bukti": "juri: (tidak ada persyaratan bersumber untuk Sukoharjo setelah koreksi wilayah)",
+          "komponen": [
+            {
+              "sumber": "juri",
+              "lulus": false,
+              "bukti": "(tidak ada persyaratan bersumber untuk Sukoharjo setelah koreksi wilayah)"
+            }
+          ]
+        },
+        "d": {
+          "lulus": false,
+          "bukti": "juri: Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": true,
+              "bukti": "tidak ada tautan/nama wilayah lain"
+            },
+            {
+              "sumber": "juri",
+              "lulus": false,
+              "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/"
+            }
+          ]
+        },
+        "e": {
+          "lulus": true,
+          "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada tawaran Browser Pendamping setelah koreksi wilayah)",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": true,
+              "bukti": "ditawarkan: (tidak ada)",
+              "ditawarkan": []
+            },
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "(tidak ada tawaran Browser Pendamping setelah koreksi wilayah)"
+            }
+          ]
+        },
+        "f": {
+          "lulus": true,
+          "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: Tidak perlu mengirim NIK, nomor KK, atau dokumen pribadi ke chat ini, ya.",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": true,
+              "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+            },
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Tidak perlu mengirim NIK, nomor KK, atau dokumen pribadi ke chat ini, ya."
+            }
+          ]
+        },
+        "g": {
+          "lulus": true,
+          "bukti": "juri: Maaf, Mas. Arahan ke Wonogiri tadi keliru",
+          "komponen": [
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Maaf, Mas. Arahan ke Wonogiri tadi keliru"
+            }
+          ]
+        },
+        "h": {
+          "lulus": true,
+          "bukti": "juri: Mas bisa meminta kontak dan alamat terbarunya kepada **kantor Kecamatan Kartasura**",
+          "komponen": [
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Mas bisa meminta kontak dan alamat terbarunya kepada **kantor Kecamatan Kartasura**"
+            }
+          ]
+        },
+        "i": {
+          "lulus": false,
+          "bukti": "juri: saya belum menemukan **nomor WhatsApp MELODI atau alamat kantor Disdukcapil Sukoharjo yang bisa saya pastikan dari sumber resmi**",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": true,
+              "bukti": "tanpa galat"
+            },
+            {
+              "sumber": "juri",
+              "lulus": false,
+              "bukti": "saya belum menemukan **nomor WhatsApp MELODI atau alamat kantor Disdukcapil Sukoharjo yang bisa saya pastikan dari sumber resmi**"
+            }
+          ]
+        }
+      },
+      "pemakaian": {
+        "agen": {
+          "tokensIn": 64895,
+          "tokensOut": 2111,
+          "costIdr": 0,
+          "panggilanLlm": 8
+        },
+        "simulator": {
+          "panggilan": 4,
+          "tokensIn": 17216,
+          "tokensOut": 316
+        },
+        "juri": {
+          "panggilan": 1,
+          "tokensIn": 6449,
+          "tokensOut": 936
+        }
+      }
+    }
+  ]
+}
