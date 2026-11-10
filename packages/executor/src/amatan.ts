@@ -1,5 +1,6 @@
 import {
   aktifEl,
+  centangDataAman,
   checkboxPernyataan,
   halamanAkhir,
   klasifikasi,
@@ -315,7 +316,9 @@ function terlarangDari(el: Element, nama: string, petunjuk: string): TerlarangEl
   const t = tipeInput(el);
   if (t === 'password') return 'sandi';
   const peran = peranDari(el);
-  if (peran === 'centang') return checkboxPernyataan(el, nama) ? 'pernyataan' : undefined;
+  // Centang default tolak: hanya opsi data yang dikenal (bukan pernyataan/persetujuan) yang boleh disentuh AI.
+  if (peran === 'centang')
+    return checkboxPernyataan(el, nama) || !centangDataAman(nama) ? 'pernyataan' : undefined;
   if (peran !== 'teks' && peran !== 'angka' && peran !== 'area' && peran !== 'pilihan') return undefined;
   const cari = normalTeks(
     [nama, petunjuk, el.id, el.getAttribute('name') ?? '', el.getAttribute('class') ?? ''].join(' '),

@@ -97,7 +97,8 @@ export type IzinGenerik = {
   disetujui(rencanaHash: string, sidik: string, placeholder: string): boolean;
   berkasDisetujui(rencanaHash: string, nama: string): boolean;
   /** Minta persetujuan: sesi -> menunggu_data, perangkat menerima butuh_data{kolom, rencanaHash}. */
-  minta(p: { rencanaHash: string; kolom: KolomIzin[]; berkas: string[] }): void;
+  /** `origin` = origin halaman tempat nilai akan diisi (tujuan persetujuan), bila lolos allowlist sesi. */
+  minta(p: { rencanaHash: string; kolom: KolomIzin[]; berkas: string[]; origin?: string | undefined }): void;
   nilai(placeholder: string): string | undefined;
   berkas(nama: string): UploadFile | undefined;
   /** Semua nilai vault yang dipegang sesi (untuk redaksi). */
@@ -280,13 +281,15 @@ export class GenerikRun {
       jalurSha256: c.jalurSha256,
       jendela: c.jendela,
     });
+    // Isi: navigasi (bingkai mana pun, mis. form POST ke iframe) dan tulis non-XHR (beacon) = eskalasi; XHR yang
+    // lewat batas jendela cukup dicatat. Klik: setiap blokir = eskalasi.
+    const tulisLain = c.dokumen || !c.xhr;
     if (this.aksiBerjalan) {
-      // Klik: setiap blokir = eskalasi. Isi: hanya navigasi dokumen (XHR lewat batas cukup dicatat).
-      if (j.jenis === 'ai_klik' || c.dokumen) this.aksiBerjalan.blokir.push(c);
+      if (j.jenis === 'ai_klik' || tulisLain) this.aksiBerjalan.blokir.push(c);
       return;
     }
-    // Di luar aksi: navigasi dokumen yang diblokir tepat setelah isi (mis. onchange form.submit()) = warga.
-    if (j.jenis === 'ai_isi' && c.dokumen && this.now() <= j.sampai + JENDELA_ISI_MS)
+    // Di luar aksi: tulis yang diblokir tepat setelah isi (onchange form.submit(), sendBeacon) = warga.
+    if (j.jenis === 'ai_isi' && tulisLain && this.now() <= j.sampai + JENDELA_ISI_MS)
       this.d.serahkan('periksa', PESAN_GENERIK.periksa);
   }
 
@@ -407,7 +410,9 @@ export class GenerikRun {
     });
     if (perluIzin.size > 0) {
       // Tidak ada aksi yang dijalankan sebelum seluruh rencana disetujui.
-      this.d.izin.minta({ rencanaHash, kolom, berkas });
+      const halaman = URL.parse(this.d.tangan.urlKini());
+      const origin = halaman && this.d.urlBoleh(halaman.href) ? halaman.origin : undefined;
+      this.d.izin.minta({ rencanaHash, kolom, berkas, origin });
       return aksi.map((_, indeks) => ({
         indeks,
         kode: perluIzin.has(indeks) ? 'BELUM_DISETUJUI' : 'DILEWATI',

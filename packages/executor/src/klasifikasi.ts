@@ -151,12 +151,19 @@ const NEG_TOKEN = [
   'accept',
 ];
 /**
- * NEG_TAUTAN: tanpa kata yang lazim di menu navigasi (Daftar Layanan, Status Pengajuan, Alur Proses).
- * Tautan GET yang menulis tetap ditangkap token jalur di bawah.
+ * Tautan memakai NEG yang sama dengan tombol ("Ajukan Permohonan", "Proses Permohonan" = kirim). Pengecualian
+ * HANYA untuk frasa menu yang persis sama (setelah panah tepi dibuang); jalur/kueri tautan itu tetap diperiksa.
  */
-const NEG_AKAR_TAUTAN = NEG_AKAR.filter(
-  (k) => !['daftar', 'register', 'ajukan', 'ajuan', 'proses'].includes(k),
-);
+const MENU_AMAN: ReadonlySet<string> = new Set([
+  'daftar layanan',
+  'status pengajuan',
+  'cek status pengajuan',
+  'riwayat pengajuan',
+  'alur proses',
+  'alur pengajuan',
+  'syarat pengajuan',
+  'persyaratan pengajuan',
+]);
 /** Kata biasa yang kebetulan memuat akar NEG ("keluarga" memuat "keluar"). */
 const BUKAN_NEG = /^(ke)?keluarga/;
 /** Token jalur/kueri tautan yang menandakan aksi tulis (§3 aturan 7). */
@@ -188,6 +195,15 @@ const NEG_JALUR = [
   'download',
   'cetak',
   'print',
+  'ajukan',
+  'ajuan',
+  'proses',
+  'final',
+  'finish',
+  'send',
+  'apply',
+  'terima',
+  'tolak',
 ];
 /** Token ikon yang berarti kirim/simpan/hapus/keluar (fa-paper-plane, bi-send, material "send", ...). */
 const NEG_IKON = [
@@ -233,7 +249,14 @@ const RE_HALAMAN_AKHIR = [
   /konfirmasi (data|pengajuan|permohonan|pendaftaran)/,
 ];
 const RE_PERNYATAAN =
-  /menyatakan|pernyataan|menyetujui|setuju|bertanggung ?jawab|benar dan dapat|syarat dan ketentuan|i agree|i declare|i certify/;
+  /menyatakan|pernyataan|menyetujui|setuju|bertanggung ?jawab|benar dan dapat|syarat dan ketentuan|i agree|i declare|i certify|\b(benar|akurat|paham|memahami|dipahami|mengerti|bersedia|menjamin|konsekuensi|sanksi)\b|sesuai dengan (data|dokumen|aslinya|yang sebenarnya|keadaan)/;
+/**
+ * Allowlist checkbox DATA yang boleh dicentang AI (desain §3, F5): pilihan isian seperti "Alamat domisili sama
+ * dengan KTP", "Punya NPWP", jenis layanan/dokumen. Selain itu (persetujuan, langganan kabar, "saya bukan robot")
+ * default tolak. Pernyataan selalu kalah walau memuat kata data.
+ */
+const RE_CENTANG_DATA =
+  /\b(sama dengan|alamat|domisili|punya|memiliki|mempunyai|npwp|bpjs|kk|ktp|kia|akta|ijazah|paspor|sim|layanan|jenis|kategori|keperluan|disabilitas|difabel|penyandang|anak|istri|suami|ayah|ibu|wali|kepala keluarga|anggota keluarga|pindah|baru|hilang|rusak|perubahan|perbaikan|laki|perempuan|wni|wna)\b/;
 
 function atribut(el: Element, nama: string): string {
   return el.getAttribute(nama) ?? '';
@@ -362,6 +385,15 @@ export function checkboxPernyataan(el: Element, label: string): boolean {
     if (atribut(el, 'role') !== 'checkbox') return false;
   }
   return RE_PERNYATAAN.test(normalTeks(label));
+}
+
+/**
+ * Checkbox yang boleh dicentang AI: label cocok allowlist opsi data dan BUKAN pernyataan. Default tolak (label
+ * kosong, persetujuan, langganan, verifikasi manusia).
+ */
+export function centangDataAman(label: string): boolean {
+  const t = normalTeks(lipatNeg(label));
+  return !RE_PERNYATAAN.test(t) && RE_CENTANG_DATA.test(t);
 }
 
 /** Label sederhana untuk field (label[for], label pembungkus, aria-label). Dipakai deteksi pernyataan. */
@@ -508,11 +540,12 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
   if (f.atributBerbahaya) return { kelas: 'kirim', aturan: 'K5_ATRIBUT' };
   if (f.halamanAkhir || f.dalamDialogKonfirmasi) return { kelas: 'kirim', aturan: 'K6_AKHIR_DIALOG' };
 
-  const akar = tautan ? NEG_AKAR_TAUTAN : NEG_AKAR;
+  // Frasa menu persis (Daftar Layanan, Status Pengajuan) melewati cek NAMA saja; id/kelas/ikon/jalur tetap.
+  const menuAman = tautan && nama.length > 0 && nama.every((n) => MENU_AMAN.has(bersihkanPanah(lipatNeg(n))));
   const idKelas = f.idKelas.join(' ');
   if (
-    nama.some((n) => cocokNeg(n, akar)) ||
-    cocokNeg(idKelas, akar) ||
+    (!menuAman && nama.some((n) => cocokNeg(n, NEG_AKAR))) ||
+    cocokNeg(idKelas, NEG_AKAR) ||
     f.idKelas.some((t) => NEG_IKON.some((k) => t.includes(k))) ||
     (tautan &&
       tokenKata(f.href.jalur).some((t) => !BUKAN_NEG.test(t) && NEG_JALUR.some((k) => t.includes(k)))) ||
@@ -542,8 +575,35 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
   return { kelas: 'tidak_pasti', aturan: 'K11_DEFAULT' };
 }
 
-/** Klasifikasi lengkap satu elemen. Panggil ulang tepat sebelum klik (tugas JS yang sama). */
+/** Aktivator yang ikut terpicu bila turunannya diklik (klik menggelembung / aktivasi label). */
+const SEL_AKTIVATOR =
+  'button, a[href], area[href], summary, label, input[type="submit"], input[type="image"], input[type="button"], [role="button"], [role="link"]';
+
+/**
+ * Elemen lain yang ikut teraktivasi oleh `el.click()`: leluhur aktivator (span di dalam button submit, tautan)
+ * dan kontrol label (`<label for>` menunjuk tombol submit, label pembungkus).
+ */
+function aktivatorTerkait(el: Element): Element[] {
+  const hasil: Element[] = [];
+  for (let x = el.parentElement?.closest(SEL_AKTIVATOR); x; x = x.parentElement?.closest(SEL_AKTIVATOR))
+    hasil.push(x);
+  const label = el.tagName === 'LABEL' ? el : el.closest('label');
+  const kontrol = (label as HTMLLabelElement | null)?.control;
+  if (kontrol && kontrol !== el && !hasil.includes(kontrol)) hasil.push(kontrol);
+  return hasil;
+}
+
+/**
+ * Klasifikasi lengkap satu elemen. Panggil ulang tepat sebelum klik (tugas JS yang sama). Elemen yang boleh
+ * diklik tetap ditolak bila aktivator leluhur atau kontrol labelnya tidak boleh (kelas paling ketat menang).
+ */
 export function klasifikasi(el: Element, akhir?: boolean): HasilKlasifikasi {
   const fitur = fiturKendali(el, akhir);
-  return { ...putuskanKelas(fitur), fitur };
+  const utama = { ...putuskanKelas(fitur), fitur };
+  if (!bolehDiklikAi(utama.kelas)) return utama;
+  for (const x of aktivatorTerkait(el)) {
+    const k = putuskanKelas(fiturKendali(x, fitur.halamanAkhir));
+    if (!bolehDiklikAi(k.kelas)) return { ...k, fitur };
+  }
+  return utama;
 }

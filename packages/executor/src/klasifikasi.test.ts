@@ -216,6 +216,45 @@ const TABEL: [string, string, KelasKendali][] = [
   ['tombol biasa lain', '<button type="button" data-uji>Lihat Detail</button>', 'tidak_pasti'],
   ['div tanpa peran', '<div data-uji>Lanjut</div>', 'tidak_pasti'],
   ['input teks', '<input type="text" name="nama" data-uji>', 'tidak_pasti'],
+
+  // --- F3: kata kerja tulis di nama tautan; frasa menu persis saja yang dikecualikan ---
+  ['tautan Ajukan Permohonan', '<a href="/permohonan/12/ajukan" data-uji>Ajukan Permohonan</a>', 'kirim'],
+  ['tautan Daftar Sekarang', '<a href="/pendaftaran/proses?id=12" data-uji>Daftar Sekarang</a>', 'kirim'],
+  ['tautan Proses Permohonan', '<a href="/permohonan/12/final" data-uji>Proses Permohonan</a>', 'kirim'],
+  ['tautan Register', '<a href="/akta/register/12" data-uji>Register</a>', 'kirim'],
+  ['tautan menu Status Pengajuan', '<a href="/cek/status" data-uji>Status Pengajuan</a>', 'navigasi'],
+  ['tautan menu Alur Proses ›', '<a href="/informasi/alur" data-uji>Alur Proses ›</a>', 'navigasi'],
+  ['menu aman tetapi jalur ajuan', '<a href="/pengajuan/12" data-uji>Status Pengajuan</a>', 'kirim'],
+  ['tautan netral ke jalur final', '<a href="/permohonan/12/final" data-uji>Buka</a>', 'kirim'],
+  ['tautan netral ke jalur terima', '<a href="/surat/terima?id=1" data-uji>Lihat</a>', 'kirim'],
+  ['tautan netral ke jalur send', '<a href="/api/send/1" data-uji>Lihat</a>', 'kirim'],
+
+  // --- F4: aktivator leluhur dan kontrol label; kelas paling ketat menang ---
+  [
+    'span role=button Lanjut di dalam button submit',
+    '<form method="post" action="/ajukan"><button type="submit"><span role="button" data-uji>Lanjut</span></button></form>',
+    'kirim',
+  ],
+  [
+    'label role=button Lanjut untuk submit di luar layar',
+    '<form method="post" action="/ajukan"><label for="k" role="button" data-uji>Lanjut</label><button id="k" type="submit">x</button></form>',
+    'kirim',
+  ],
+  [
+    'span role=button Lanjut di dalam button tanpa type (GET ke iframe)',
+    '<form method="get" action="/permohonan/kirim" target="sink"><button><span role="button" data-uji>Lanjut</span></button></form>',
+    'kirim',
+  ],
+  [
+    'span role=button Lanjut di dalam tautan jalur kirim',
+    '<a href="/permohonan/kirim"><span role="button" data-uji>Lanjut</span></a>',
+    'kirim',
+  ],
+  [
+    'span role=button Lanjut di dalam button type=button',
+    '<button type="button"><span role="button" data-uji>Lanjut</span></button>',
+    'lanjut',
+  ],
 ];
 
 describe('klasifikator klik final (tabel §3)', () => {
@@ -293,6 +332,14 @@ describe('halamanAkhir', () => {
         '<label style="display:none"><input type="checkbox"> Saya setuju dengan syarat dan ketentuan</label>',
       ),
     ).toBe(false);
+  });
+
+  it('pernyataan diperluas (benar, paham, konsekuensi, bersedia, sanksi) menandai halaman akhir', () => {
+    expect(
+      akhir('<label><input type="checkbox"> Data di atas sudah benar dan saya pahami konsekuensinya</label>'),
+    ).toBe(true);
+    expect(akhir('<label><input type="checkbox"> Saya bersedia menerima sanksi</label>')).toBe(true);
+    expect(akhir('<label><input type="checkbox"> Alamat domisili sama dengan KTP</label>')).toBe(false);
   });
 
   it('halaman formulir biasa bukan halaman akhir; frasa di dalam textarea/skrip diabaikan', () => {

@@ -23,7 +23,12 @@ import {
 import { chromium, type BrowserContext, type CDPSession, type Page } from 'playwright-core';
 import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
-import { createGerbangTulis, type GerbangTulis, type PermintaanGerbang } from './gerbang-tulis.js';
+import {
+  createGerbangTulis,
+  JENDELA_WARGA_MS,
+  type GerbangTulis,
+  type PermintaanGerbang,
+} from './gerbang-tulis.js';
 import { GenerikRun, tanganRunner } from './generik.js';
 import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
 import { daftarEdge, type ProxyEdge } from './isolasi.js';
@@ -255,26 +260,39 @@ export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): 
 }
 
 /**
- * Bentuk permintaan untuk gerbang tulis: metode, navigasi dokumen bingkai UTAMA halaman (iframe = subresource),
- * dan URL awal rantai redirect. Permintaan tanpa bingkai (service worker) dianggap bukan dokumen.
+ * Bentuk permintaan untuk gerbang tulis: metode, navigasi dokumen di bingkai mana pun (`dokumen`) dan di bingkai
+ * utama (`utama`), XHR/fetch, dan URL awal rantai redirect. Navigasi tanpa bingkai yang bisa ditelusuri
+ * dianggap navigasi bingkai utama (gagal tertutup).
  */
 export function permintaanGerbang(r: {
   method(): string;
   url(): string;
+  resourceType(): string;
   isNavigationRequest(): boolean;
   frame(): { page(): { mainFrame(): unknown } };
   redirectedFrom(): { url(): string; redirectedFrom(): unknown } | null;
 }): PermintaanGerbang {
-  let dokumen: boolean;
-  try {
-    const f = r.frame();
-    dokumen = r.isNavigationRequest() && f === f.page().mainFrame();
-  } catch {
-    dokumen = false;
+  const dokumen = r.isNavigationRequest();
+  let utama = dokumen;
+  if (dokumen) {
+    try {
+      const f = r.frame();
+      utama = f === f.page().mainFrame();
+    } catch {
+      utama = true;
+    }
   }
+  const tipe = r.resourceType();
   let asal: string | undefined;
   for (let x = r.redirectedFrom(); x; x = x.redirectedFrom() as typeof x) asal = x.url();
-  return { metode: r.method(), dokumen, url: r.url(), ...(asal !== undefined ? { asal } : {}) };
+  return {
+    metode: r.method(),
+    dokumen,
+    utama,
+    xhr: !dokumen && (tipe === 'xhr' || tipe === 'fetch'),
+    url: r.url(),
+    ...(asal !== undefined ? { asal } : {}),
+  };
 }
 
 /**
@@ -347,7 +365,7 @@ export async function launchIsolated(
       const ok = urlDiAllowlist(allowedHosts, req.url());
       if (!ok) {
         const host = URL.parse(req.url())?.hostname;
-        const dokumen = gerbang ? permintaanGerbang(req).dokumen : false;
+        const dokumen = gerbang ? permintaanGerbang(req).utama : false;
         if (host) onBlocked(host, dokumen);
         // Generik: navigasi dokumen ke host lain (mis. redirect 302) tidak meng-commit halaman galat; warga
         // tetap di halaman sebelumnya dan diberi giliran.
@@ -358,6 +376,16 @@ export async function launchIsolated(
       if (gerbang && gerbang.periksa(permintaanGerbang(req)) === 'blokir') return route.abort('aborted');
       return route.continue();
     });
+    // Gerbang tulis tidak melihat frame WebSocket (proxy hanya memeriksa host): sesi generik menolak setiap
+    // koneksi WebSocket sebelum tersambung ke server (gagal tertutup), dicatat sebagai blokir `WSOCKET`.
+    if (gerbang)
+      await context.routeWebSocket(
+        () => true,
+        (ws) => {
+          gerbang.tolak({ metode: 'WSOCKET', dokumen: false, utama: false, xhr: false, url: ws.url() });
+          return ws.close({ code: 1008, reason: 'websocket tidak diizinkan di sesi pendamping' });
+        },
+      );
     const ctx = context;
     return {
       context: ctx,
@@ -416,17 +444,26 @@ export function pidsOfProfile(userDataDir: string, proc = '/proc'): number[] {
  * wire mengisi pemegang kendali dan penerima blokir. Sebelum diisi: jendela AI diam (gagal tertutup).
  */
 type KendaliGerbang = {
+  /** Warga memegang kendali DAN baru saja memberi input nyata (jendela `warga`). */
   wargaPegang: () => boolean;
+  /** Warga memegang kendali (dengan atau tanpa input). */
+  wargaTunggu: () => boolean;
   blokir: Parameters<typeof createGerbangTulis>[0]['onBlokir'];
   hostDiblokir: (host: string, dokumen: boolean | undefined) => void;
 };
 
 export async function startBrowserRun(config: Config, init: RunInit): Promise<ActiveRun> {
   const reported = new Set<string>();
-  const kendali: KendaliGerbang = { wargaPegang: () => false, blokir: () => {}, hostDiblokir: () => {} };
+  const kendali: KendaliGerbang = {
+    wargaPegang: () => false,
+    wargaTunggu: () => false,
+    blokir: () => {},
+    hostDiblokir: () => {},
+  };
   const gerbang = init.generik
     ? createGerbangTulis({
         wargaPegang: () => kendali.wargaPegang(),
+        wargaTunggu: () => kendali.wargaTunggu(),
         onBlokir: (c, j) => kendali.blokir(c, j),
       })
     : undefined;
@@ -436,7 +473,7 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
     init.viewport,
     hosts,
     (host, dokumen) => {
-      if (gerbang && !kendali.wargaPegang()) kendali.hostDiblokir(host, dokumen);
+      if (gerbang && !kendali.wargaTunggu()) kendali.hostDiblokir(host, dokumen);
       if (reported.size < 20 && !reported.has(host)) {
         reported.add(host);
         init.hooks.event({ jenis: 'diblokir', host });
@@ -498,6 +535,11 @@ async function wire(
   let kembaliKe: string | undefined;
   /** AI diam selama warga memegang kendali, tantangan situs aktif, atau warga perlu masuk akun. */
   const ditahan = () => manual || pantau.aktif || masukAktif;
+  /**
+   * Input warga nyata terakhir (CDP Input dari ponsel). Ketukan saat verifikasi situs aktif tidak dihitung: itu
+   * menyelesaikan tantangan, bukan menyetujui tulis di halaman portal.
+   */
+  let inputWargaTerakhir = Number.NEGATIVE_INFINITY;
 
   const mainFrameId = async () =>
     ((await cdp.send('Page.getFrameTree')) as { frameTree: { frame: { id: string } } }).frameTree.frame.id;
@@ -1017,10 +1059,12 @@ async function wire(
         hooks.mode('takeover', pesan);
         hooks.event({ jenis: 'giliran_anda', alasan, pesan, ...(box ? { sorot: box } : {}) });
       },
-      tidakBisa: (pesan) => hooks.ended('dipandu', 'gagal', pesan),
+      // Situs tidak bisa dikerjakan AI (mis. hanya lewat WhatsApp): dipandu, bukan gagal (sama dengan drift adapter).
+      tidakBisa: (pesan) => hooks.ended('dipandu', 'drift', pesan),
     });
     const run = generik;
-    gen.kendali.wargaPegang = ditahan;
+    gen.kendali.wargaTunggu = ditahan;
+    gen.kendali.wargaPegang = () => ditahan() && Date.now() - inputWargaTerakhir <= JENDELA_WARGA_MS;
     gen.kendali.blokir = (c, j) => run.blokir(c, j);
     gen.kendali.hostDiblokir = (host, dokumen) => run.hostDiblokir(host, dokumen);
   }
@@ -1049,6 +1093,11 @@ async function wire(
       if ('ok' in started) hooks.ended('gagal', 'gagal', 'Langkah otomatis tidak bisa dimulai.');
     },
     async input(m) {
+      // Jendela tulis warga dibuka SEBELUM input diteruskan (handler klik halaman berjalan saat dispatch).
+      const nyata =
+        m.type === 'text' ||
+        ((m.type === 'pointer' || m.type === 'key') && (m.aksi === 'down' || m.aksi === 'up'));
+      if (nyata && !pantau.aktif) inputWargaTerakhir = Date.now();
       for (const cmd of toCdp(m, touch)) {
         await cdp.send(cmd.method as 'Input.insertText', cmd.params as never).catch(() => undefined);
       }
