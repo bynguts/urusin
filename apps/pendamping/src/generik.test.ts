@@ -613,7 +613,7 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     expect(h.tidakBisa).toHaveLength(1);
   });
 
-  it('serahkan ketuk_tautan = lembar isi_sendiri (ada Lanjutkan), bukan final', async () => {
+  it('serahkan ketuk_tautan = giliran ketuk_tautan dengan sorot, bukan final', async () => {
     const h = harness();
     await h.run.amati();
     const r = await h.run.aksi({
@@ -623,7 +623,7 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     expect(r).toEqual([{ indeks: 0, kode: 'ok' }]);
     expect(h.serah).toEqual([
       {
-        alasan: 'isi_sendiri',
+        alasan: 'ketuk_tautan',
         pesan: PESAN_GENERIK.ketuk_tautan,
         sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 },
       },

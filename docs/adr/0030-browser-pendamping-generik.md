@@ -36,7 +36,7 @@ Adapter tulisan tangan hanya ada untuk Telunjuk Sakti dan beberapa alur baca. Wa
   klik AI lalu memanggil callback pengiriman bisa lolos bila callback itu jalan paling lama 3 detik
   (`JENDELA_WARGA_MS`) setelah warga mengetuk di dalam iframe tantangan. Selama ambil alih, ketukan di iframe
   tantangan belum dibedakan dari ketukan di halaman, kecuali saat verifikasi situs (`pantau`) aktif. Penanda
-  tautan pembuka (`tautanPembuka`, aturan `K7_NEG_NAMA_TAUTAN`) tidak mengubah ini: tautan itu tetap diketuk
+  tautan pembuka (`sebabKelas: 'nama_tautan'`, aturan `K7_NEG_NAMA_TAUTAN`) tidak mengubah ini: tautan itu tetap diketuk
   warga, bukan AI. Tinjau ulang bila ada portal nyata yang memakai CAPTCHA tak terlihat pada tombol non-final.
 
 ## Rujukan berkas utama

@@ -69,6 +69,17 @@ const kasus = [
 ] as const;
 
 describe('tool baca-saja Browser Pendamping', () => {
+  it('dukcapil__cek_status tanpa konteks urusan (dipanggil langsung oleh e2e pendamping): pakai argumen', () => {
+    const ctx = {} as ToolContext;
+    const out = dukcapilCekStatus.execute(ctx, { kodeKabKota: '3374' }) as Awaited<
+      ReturnType<typeof dukcapilCekStatus.execute>
+    >;
+    expect(out.execution).toMatchObject({ adapterId: 'sidnok-semarang', flowId: 'cek_status' });
+    expect(dukcapilCekStatus.origin?.({ kodeKabKota: '3374' }, undefined as never)).toBe(
+      ADAPTERS['sidnok-semarang']!.origin,
+    );
+  });
+
   for (const k of kasus) {
     it(`${k.tool} ${JSON.stringify(k.args)} -> execution_request ${k.adapterId}/${k.flowId} lalu gate konfirmasi`, async () => {
       const { out } = await panggil(k.tool, k.args);

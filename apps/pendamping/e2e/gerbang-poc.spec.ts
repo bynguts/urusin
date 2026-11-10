@@ -1,7 +1,7 @@
 import http from 'node:http';
 import type net from 'node:net';
 import { expect, test } from '@playwright/test';
-import type { Pengamatan } from '@urusin/contracts';
+import type { Pengamatan, PendampingEvent, PendampingServerMessage } from '@urusin/contracts';
 import { createBrowserFactory } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
 import { ADAPTER_GENERIK, SessionManager, sidHashOf } from '../src/sessions.js';
@@ -50,6 +50,10 @@ const HALAMAN: Record<string, string> = {
 <form method="get" action="/permohonan/kirim" target="sink"><label>Telepon <input name="tel"></label>
   <button><span role="button">Lanjut</span></button></form>
 <iframe name="sink" style="width:1px;height:1px"></iframe>`),
+  // Tautan pembuka: kirim hanya karena nama -> serah ketuk_tautan, warga mengetuk, AI lanjut.
+  '/beranda': kerangka(`<style>a{display:block;padding:20px}</style><h1>Layanan Online</h1>
+<a href="/permohonan/kk">Ajukan Permohonan Kartu Keluarga</a>
+<a href="/permohonan/12/ajukan">Ajukan Sekarang</a>`),
   // F5 (poc /s4): pernyataan terselubung + checkbox non-data.
   // H3: halaman sukses setelah warga menekan Kirim sendiri.
   '/sukses': kerangka(
@@ -257,6 +261,72 @@ test('F5: centang pernyataan terselubung dan non-data ditolak; opsi data boleh',
       aksi: [{ jenis: 'centang', ref: sama.ref, nilai: true }],
     });
     expect(r.hasil).toEqual([{ indeks: 0, kode: 'ok' }]);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka formulir, Lanjutkan = ai', async () => {
+  const { manager, o, sesiId, p } = await sesi(situs, '/beranda', 'beranda');
+  const events: PendampingEvent[] = [];
+  await manager.attach(sesiId, {
+    send: (m: PendampingServerMessage) => void (m.type === 'event' && events.push(m.event)),
+    frame: () => {},
+    ack: () => {},
+    close: () => {},
+  });
+  try {
+    const pembuka = satu(p, 'Ajukan Permohonan Kartu Keluarga');
+    expect(pembuka).toMatchObject({ peran: 'tautan', kelas: 'kirim', sebabKelas: 'nama_tautan' });
+    expect(satu(p, 'Ajukan Sekarang')).not.toHaveProperty('sebabKelas');
+    const klik = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'klik', ref: pembuka.ref }],
+    });
+    expect(klik.hasil).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK', kelas: 'kirim' }]);
+    expect(situs.hitung('/permohonan/kk')).toBe(0);
+
+    await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: pembuka.ref }],
+    });
+    const giliran = () =>
+      events.find(
+        (e): e is Extract<PendampingEvent, { jenis: 'giliran_anda' }> =>
+          e.jenis === 'giliran_anda' && e.alasan === 'ketuk_tautan',
+      );
+    await expect.poll(() => giliran()?.sorot, { timeout: 10_000 }).toBeTruthy();
+    expect(giliran()!.pesan).toBe('Ketuk tautan yang disorot untuk membuka formulir, lalu tekan Lanjutkan.');
+    expect(manager.status(o).mode).toBe('takeover');
+    await new Promise((r) => setTimeout(r, 300));
+    expect(situs.hitung('/permohonan/kk')).toBe(0);
+
+    const sorot = giliran()!.sorot!;
+    for (const aksi of ['down', 'up'] as const)
+      await manager.handleClient(sesiId, {
+        type: 'pointer',
+        aksi,
+        x: sorot.x + sorot.lebar / 2,
+        y: sorot.y + sorot.tinggi / 2,
+        jenis: 'touch',
+        tombol: 'left',
+        klik: 1,
+      });
+    await expect.poll(() => situs.hitung('/permohonan/kk'), { timeout: 10_000 }).toBe(1);
+    expect(situs.hitung('/permohonan/12/ajukan')).toBe(0);
+
+    await manager.handleClient(sesiId, { type: 'kembalikan' });
+    await expect.poll(() => manager.status(o).mode, { timeout: 10_000 }).toBe('ai');
+    expect((await manager.amati(o)).pengamatan.jalur).toBe('/permohonan/kk');
+    expect(manager.kurasJejak(o).catatan).toContainEqual({
+      jenis: 'ambil_alih',
+      fase: 'mulai',
+      alasan: 'ketuk_tautan',
+    });
   } finally {
     await manager.shutdown();
   }
