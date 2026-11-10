@@ -54,11 +54,29 @@ describe('PERISTIWA_BUNDEL', () => {
       BundelSchema.safeParse({ ...b, langkah: [{ ...b.langkah[0]!, id: 'a', dependsOn: ['a'] }] }).success,
     ).toBe(false);
   });
-  it('Pindah berurutan SKPWNI -> SKDWNI -> KK -> KTP-el dan diberi peringatan risiko', () => {
+  it('Pindah antar kab/kota: SKPWNI di asal lalu KK/KTP-el di tujuan; SKDWNI bukan dokumen nasional', () => {
     const p = findBundel('pindah')!;
-    expect(p.langkah.map((l) => l.id)).toEqual(['skpwni', 'skdwni', 'kk', 'ktp-el']);
+    expect(p.langkah.map((l) => l.id)).toEqual(['skpwni', 'kk-ktp-el']);
     expect(p.langkah[1]!.dependsOn).toEqual(['skpwni']);
+    expect(p.keluaran).toEqual(['SKPWNI', 'Kartu Keluarga', 'KTP-el']);
+    expect(p.langkah[1]!.keterangan).toMatch(/KTP-el lama ditarik di tujuan/);
+    expect(p.catatan).toMatch(/100 hari kerja/);
     expect(p.peringatan).toMatch(/dua sistem/);
+  });
+  it('fakta bersumber: 60 hari kelahiran, 30 hari kematian, KUA, KIA bersama akta', () => {
+    const teks = (slug: string) => JSON.stringify(findBundel(slug)!.langkah);
+    expect(teks('kelahiran')).toMatch(/paling lambat 60 hari/);
+    expect(teks('kelahiran')).toMatch(/tanpa penetapan pengadilan/);
+    expect(teks('kelahiran')).toMatch(/fotokopi KK \(Permendagri 7\/2026/);
+    expect(teks('kematian')).toMatch(/paling lambat 30 hari/);
+    expect(teks('perkawinan')).toMatch(/Dukcapil tidak menerbitkan kutipan akta perkawinannya/);
+    const urls = (slug: string) => findBundel(slug)!.langkah.flatMap((l) => l.sourceRef.map((r) => r.url));
+    expect(urls('kelahiran')).toContain('https://peraturan.go.id/files/uu24-2013bt.pdf');
+    expect(urls('kelahiran')).toContain(
+      'https://peraturan.bpk.go.id/Download/423299/permendagri-no-7-tahun-2026.pdf',
+    );
+    expect(urls('kematian')).toContain('https://peraturan.go.id/files/uu24-2013bt.pdf');
+    expect(urls('perkawinan')).toContain('https://peraturan.go.id/files/uu23-2006.pdf');
   });
   it('Perkawinan menampilkan langkah PT POS dan tatap muka secara eksplisit', () => {
     const lok = findBundel('perkawinan')!.langkah.map((l) => l.lokasi);
