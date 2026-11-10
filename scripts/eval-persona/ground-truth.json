@@ -1201,20 +1201,31 @@
     },
     "p13-skck": {
       "layanan": "SKCK untuk melamar kerja (di luar cakupan Dukcapil; layanan Polri)",
+      "dasarHukum": {
+        "nama": "Peraturan Kepolisian Negara Republik Indonesia Nomor 1 Tahun 2026 tentang Penerbitan Surat Keterangan Catatan Kepolisian",
+        "pengundangan": "Berita Negara RI Tahun 2026 Nomor 326; ditetapkan 19 Mei 2026, diundangkan dan berlaku 20 Mei 2026",
+        "mencabut": "Perpol 6/2023 tentang Penerbitan SKCK (BN 2023 No. 802) — Pasal 20",
+        "sumber": [
+          "https://peraturan.go.id/id/peraturan-polri-no-1-tahun-2026",
+          "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf"
+        ],
+        "terverifikasi": true
+      },
       "yurisdiksi": [
         {
           "peran": "layanan",
           "kodeKabKota": null,
-          "nama": "Polri (Polsek/Polres sesuai alamat KTP/SIM pemohon)",
-          "alasan": "SKCK diterbitkan Polri melalui fungsi Intelkam; Polsek/Polres penerbit harus sesuai alamat KTP/SIM",
-          "sumber": "https://www.polri.go.id/layanan/skck"
+          "nama": "Polri (Badan Intelijen Keamanan Polri) lewat aplikasi layanan digital Polri; bukan Disdukcapil",
+          "alasan": "Penerbitan SKCK dilaksanakan Baintelkam Polri (Pasal 2 ayat 1) secara elektronik lewat aplikasi layanan digital Polri (Pasal 4 ayat 1); pemohon mengisi lokasi domisili dan memilih lokasi serta tanggal penerbitan (Pasal 5 ayat 3).",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf"
         }
       ],
       "kantor": [
         {
-          "nama": "Polsek/Polres sesuai alamat KTP/SIM (Polsek tidak menerbitkan SKCK untuk CPNS/PNS dan keperluan antarnegara)",
-          "url": "https://www.polri.go.id/layanan/skck",
-          "sumber": "https://www.polri.go.id/layanan/skck",
+          "nama": "Kantor kepolisian terdekat (pengambilan SKCK cetak, boleh diwakilkan dengan surat kuasa); loket SKCK kantor kepolisian setempat hanya untuk jalur manual",
+          "url": "https://peraturan.go.id/id/peraturan-polri-no-1-tahun-2026",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+          "pasal": "Pasal 10 ayat (2)-(3); Pasal 13 ayat (2)",
           "terverifikasi": true
         }
       ],
@@ -1222,55 +1233,82 @@
         "tersedia": true,
         "kanal": [
           {
-            "nama": "SKCK Online Polri (pendaftaran & unggah dokumen)",
-            "url": "https://skck.polri.go.id/",
-            "sumber": "https://www.polri.go.id/layanan/skck",
+            "nama": "Fitur SKCK pada aplikasi layanan digital Polri (perlu akun; memuat informasi biaya, syarat dokumen, waktu dan lokasi pengambilan; SKCK bisa dicetak lewat fitur cetak)",
+            "url": "https://peraturan.go.id/id/peraturan-polri-no-1-tahun-2026",
+            "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+            "pasal": "Pasal 4, Pasal 5 ayat (1)-(2), Pasal 10 ayat (1)",
             "terverifikasi": true
           }
         ],
-        "catatan": "Tautan skck.polri.go.id tercantum di polri.go.id; situs skck.polri.go.id sendiri tidak terjangkau dari lingkungan riset (timeout), sama dengan catatan repo data/kanal-resmi.json. Pengambilan sidik jari tetap oleh petugas."
+        "catatan": "Perpol tidak menyebut nama/URL aplikasi. Jalur manual di loket hanya bila aplikasi dinyatakan tidak berfungsi lewat pemberitahuan resmi Kabid Yanmas Baintelkam (Pasal 12)."
       },
       "persyaratan": [
         {
-          "teks": "Surat pengantar dari kantor kelurahan tempat domisili",
-          "sumber": "https://www.polri.go.id/layanan/skck",
-          "pasal": null,
+          "teks": "Pemohon terdaftar sebagai peserta aktif Jaminan Kesehatan (JKN); dicek lewat interoperabilitas data BPJS Kesehatan",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+          "pasal": "Pasal 2 ayat (4) dan (6)",
           "terverifikasi": true
         },
         {
-          "teks": "Fotokopi KTP/SIM sesuai domisili di surat pengantar",
-          "sumber": "https://www.polri.go.id/layanan/skck",
-          "pasal": null,
+          "teks": "Memiliki akun aplikasi layanan digital Polri dan mengajukan lewat fitur SKCK",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+          "pasal": "Pasal 4 ayat (2), Pasal 5 ayat (1)",
           "terverifikasi": true
         },
         {
-          "teks": "Fotokopi KK",
-          "sumber": "https://www.polri.go.id/layanan/skck",
-          "pasal": null,
+          "teks": "Mengisi lokasi domisili, data diri, pasfoto, keperluan, serta memilih lokasi dan tanggal penerbitan",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+          "pasal": "Pasal 5 ayat (3)",
           "terverifikasi": true
         },
         {
-          "teks": "Fotokopi akta kelahiran/kenal lahir",
-          "sumber": "https://www.polri.go.id/layanan/skck",
-          "pasal": null,
+          "teks": "Pasfoto latar belakang merah bagi WNI (kuning bagi WNA)",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+          "pasal": "Pasal 5 ayat (4)",
           "terverifikasi": true
         },
         {
-          "teks": "Pas foto berwarna 4x6 sebanyak 6 lembar; mengisi formulir daftar riwayat hidup; pengambilan sidik jari",
-          "sumber": "https://www.polri.go.id/layanan/skck",
-          "pasal": null,
+          "teks": "Memeriksa pratinjau lalu mengisi pernyataan kebenaran data, kemudian membayar lewat metode yang disediakan",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+          "pasal": "Pasal 7, Pasal 8, Pasal 9 ayat (1)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Jalur manual (hanya bila aplikasi dinyatakan tidak berfungsi): formulir permohonan + KTP, KK, akta kelahiran, ijazah terakhir, pasfoto, bukti peserta aktif Jaminan Kesehatan (paspor bila untuk ke luar negeri)",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+          "pasal": "Pasal 12, Pasal 14 ayat (3)",
           "terverifikasi": true
         }
       ],
       "faktaLain": [
         {
-          "teks": "SKCK berlaku sampai 6 bulan sejak diterbitkan; perpanjangan dengan SKCK lama (maksimal habis 1 tahun)",
-          "sumber": "https://www.polri.go.id/layanan/skck",
+          "teks": "SKCK diterbitkan untuk 1 jenis keperluan dan 1 tujuan negara, berlaku 6 bulan",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+          "pasal": "Pasal 3 ayat (1)-(2)",
           "terverifikasi": true
         },
         {
-          "teks": "Biaya SKCK Rp30.000 (halaman Polri menulis 'Rp. 30.000 (sepuluh ribu rupiah)' - inkonsisten; angka Rp30.000)",
-          "sumber": "https://www.polri.go.id/layanan/skck",
+          "teks": "Melamar pekerjaan termasuk keperluan SKCK",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+          "pasal": "Pasal 3 ayat (3) huruf a",
+          "terverifikasi": true
+        },
+        {
+          "teks": "SKCK dibuat dalam bahasa Indonesia dan bahasa Inggris, ditandatangani secara elektronik",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+          "pasal": "Pasal 3 ayat (4), Pasal 11 ayat (1)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Besaran tarif tidak diatur Perpol ini: \"sesuai dengan ketentuan peraturan perundang-undangan\"; jangan mewajibkan angka tertentu",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+          "pasal": "Pasal 9 ayat (2), Pasal 16 ayat (2)",
+          "terverifikasi": true
+        },
+        {
+          "teks": "Bila permohonan mengalami kendala, pemohon menghubungi layanan bantuan lewat fitur SKCK",
+          "sumber": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+          "pasal": "Pasal 6",
           "terverifikasi": true
         },
         {
@@ -1279,24 +1317,23 @@
           "terverifikasi": true
         }
       ],
-      "kataKunciWajib": [
-        "polri",
-        "polres",
-        "polsek",
-        "skck.polri.go.id",
-        "pengantar kelurahan",
-        "sidik jari"
-      ],
+      "kataKunciWajib": ["polri", "aplikasi", "jaminan kesehatan", "pasfoto", "merah", "6 bulan"],
       "klaimSalah": [
         "SKCK diurus di Disdukcapil",
-        "SKCK gratis",
+        "wajib surat pengantar kelurahan/RT-RW (tidak ada di Perpol 1/2026)",
         "SKCK berlaku 1 tahun",
-        "SKCK untuk CPNS bisa di Polsek"
+        "biaya SKCK pasti Rp30.000 / angka tarif tertentu sebagai syarat (Perpol tidak mengatur besaran)",
+        "datang ke loket Polsek/Polres sebagai jalur utama (manual hanya bila aplikasi dinyatakan tidak berfungsi)",
+        "masih mengacu Perpol 6/2023 (sudah dicabut)"
       ],
       "tidakTerverifikasi": [
         {
-          "teks": "Alur pengisian skck.polri.go.id saat ini",
-          "alasan": "Situs tidak terjangkau dari lingkungan riset."
+          "teks": "Nama dan alamat aplikasi layanan digital Polri (mis. Presisi / skck.polri.go.id)",
+          "alasan": "Perpol 1/2026 tidak menyebut nama atau URL aplikasi."
+        },
+        {
+          "teks": "Besaran tarif PNBP SKCK yang berlaku",
+          "alasan": "Diatur peraturan lain (PNBP Polri), tidak diperiksa pada eval ini."
         }
       ]
     },

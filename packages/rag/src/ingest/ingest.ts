@@ -10,7 +10,7 @@ import { chunkByHeading, dropBoilerplate } from './chunk.js';
 import { buildChunkContextHeader } from './context.js';
 import { htmlToText } from './extract.js';
 import { loadPasal, pasalPieces, type PasalMap } from './pasal.js';
-import { PoliteFetcher, RobotsBlockedError, type Deps } from './fetcher.js';
+import { PoliteFetcher, RobotsBlockedError, batasWaktu, type Deps } from './fetcher.js';
 import type { SourceEntry } from './sources.js';
 
 export type IngestAction = 'planned' | 'ingested' | 'skipped' | 'blocked' | 'error';
@@ -76,7 +76,11 @@ export async function runIngest(opts: IngestOptions): Promise<IngestReport[]> {
       continue;
     }
     try {
-      const res = await fetcher.get(s.adapter === 'klampid' ? klampidEndpoint(s.url) : s.url);
+      const res = await fetcher.get(
+        s.adapter === 'klampid' ? klampidEndpoint(s.url) : s.url,
+        undefined,
+        batasWaktu(s),
+      );
       if (res.status !== 200) {
         reports.push({ id: s.id, url: s.url, action: 'error', reason: `HTTP ${res.status}` });
         continue;

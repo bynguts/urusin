@@ -12,7 +12,7 @@ type Peristiwa = (typeof PERISTIWA)[number];
 
 export const PESAN_AWAL_COOKIE = 'urusin_pesan_awal';
 
-export type GagalMulai = { pesanWarga: string; pesan: string };
+export type GagalMulai = { pesanWarga: string; pesan: string; kode?: string };
 
 /**
  * Wilayah dulu: kab/kota yang dipilih di halaman (bila ada) atau dari Data Diri akun dicatat sebagai USULAN saja,
@@ -57,7 +57,7 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
     return fail(422, { pesanWarga: 'Tulis dulu apa yang ingin Anda urus.', pesan } satisfies GagalMulai);
   // Sama dengan readBody di POST /api/urusan: NIK/KK/HP/email tidak boleh menuju model. Pesan tidak digemakan.
   if (pesan && detectPii(pesan, /^\d{4}$/.test(kode) ? { kodeKabKota: kode } : {}).length > 0)
-    return fail(422, { pesanWarga: PESAN_PII, pesan: '' } satisfies GagalMulai);
+    return fail(422, { pesanWarga: PESAN_PII, pesan: '', kode: 'PII_IN_PAYLOAD' } satisfies GagalMulai);
 
   const rt = await getRuntime();
   event.locals.sid = ensureSession(event.cookies);

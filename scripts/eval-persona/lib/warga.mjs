@@ -13,6 +13,7 @@ Aturan peran:
 - Kartu wilayah "KTP Anda terdaftar di X?" punya tombol [Ya, betul] dan [Bukan]. Tekan "Ya, betul" hanya bila X memang wilayah KTP-mu SEKARANG. "Bukan" mengisi kolom pesan dengan "KTP saya terdaftar di " lalu kamu melanjutkan kalimatnya: isi "teks" dengan nama kab/kota yang benar.
 - Berhenti ("selesai") bila kamu sudah tahu langkah konkret berikutnya (ke mana, bawa apa, lewat situs/kantor apa) dan tidak ada yang mau ditanyakan lagi, atau bila kamu menyerah karena bingung/buntu.
 - Bila jawaban Urusin membingungkan, terlalu umum, atau salah daerah, tanyakan/protes seperti orang itu akan lakukan.
+- Bila layar menampilkan [GALAT] karena pesanmu ditolak (mis. berisi NIK/data pribadi), ketik ulang ceritamu tanpa data yang ditolak itu, seperti warga yang membaca peringatannya.
 
 Balas HANYA JSON:
 {"aksi":"ketik"|"klik"|"selesai","teks":"<pesan bila ketik>","tombol":"<nama tombol bila klik>","puas":true|false,"alasan":"<1 kalimat, kenapa aksi ini (tidak terlihat Urusin)>"}`;

@@ -19,7 +19,7 @@ import { SourceRefSchema, type SourceRef } from './schema.js';
 export const LangkahSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   judul: z.string().min(1),
-  jenis: z.enum(['online-adapter', 'online-manual', 'offline']),
+  jenis: z.enum(['online-adapter', 'online-manual', 'offline', 'cek-kanal']),
   /** Hanya langkah offline yang wajib punya lokasi. */
   lokasi: z
     .enum(['loket-online', 'kecamatan', 'disdukcapil', 'kelurahan-desa', 'pt-pos', 'kepolisian'])
@@ -130,7 +130,7 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
     tier: 'semi',
     keluaran: ['Akta Kelahiran', 'Kartu Keluarga', 'KIA'],
     catatan:
-      'Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 "Akta Kelahiran" (recon 2026-11-08): Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.',
+      'Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 "Akta Kelahiran": Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.',
     langkah: [
       L({
         id: 'ajukan',
@@ -144,12 +144,13 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
           'Surat keterangan kelahiran dari RS/Puskesmas/fasilitas kesehatan/dokter/bidan, atau dari kepala desa/lurah bila lahir di rumah atau tempat lain',
           'Buku nikah/kutipan akta perkawinan/bukti lain yang sah',
           'KK tempat penduduk terdaftar atau akan didaftarkan sebagai anggota keluarga',
-          'Formulir F-2.01 (Pelaporan Pencatatan Sipil)',
+          'KTP-el orang tua',
+          'Formulir pelaporan yang disediakan petugas (F-2.01)',
         ],
         bawa: [],
         keterangan:
-          'Untuk cetak mandiri akta dan KK, alamat email wajib diisi. Berkas yang tidak sesuai dibatalkan dan pemohon menerima SMS pembatalan. Kelahiran dilaporkan paling lambat 60 hari (UU 24/2013 Ps. 27); lewat dari itu akta tetap terbit setelah keputusan Kepala Disdukcapil, tanpa penetapan pengadilan (Ps. 32 ayat 1).',
-        sourceRef: [REF_LAHIR, REF_UU24],
+          'Untuk cetak mandiri akta dan KK, alamat email wajib diisi. Berkas yang tidak sesuai dibatalkan dan pemohon menerima SMS pembatalan. KTP-el tidak disyaratkan bagi ibu kandung di bawah 17 tahun yang belum kawin (Permendagri 108/2019 Ps. 43 ayat 3). Kelahiran dilaporkan paling lambat 60 hari (UU 24/2013 Ps. 27); lewat dari itu akta tetap terbit setelah keputusan Kepala Disdukcapil, tanpa penetapan pengadilan (Ps. 32 ayat 1).',
+        sourceRef: [REF_LAHIR, REF_PERPRES_TEKS, REF_PMD108, REF_UU24],
       }),
       L({
         id: 'siapkan-sptjm',
@@ -157,8 +158,8 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
         jenis: 'online-manual',
         dependsOn: [],
         dokumen: [
-          'SPTJM kebenaran data kelahiran (F-2.03) dan dua orang saksi, bila surat keterangan kelahiran tidak ada',
-          'SPTJM kebenaran sebagai pasangan suami istri (F-2.04) dan dua orang saksi, bila tidak punya buku nikah/akta perkawinan',
+          'SPTJM kebenaran data kelahiran (F-2.03) diketahui dua orang saksi, bila surat keterangan kelahiran tidak ada',
+          'SPTJM kebenaran sebagai pasangan suami istri (F-2.04) diketahui dua orang saksi, bila tidak punya buku nikah/akta perkawinan tetapi KK menunjukkan orang tua suami istri',
         ],
         bawa: [],
         keterangan:
@@ -198,7 +199,7 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
           'Surat kematian dari dokter atau kepala desa/lurah (keterangan kepolisian bila identitas jenazah tidak jelas; salinan penetapan pengadilan hanya bila jenazah tidak ditemukan)',
           'Fotokopi KK/KTP orang yang meninggal',
           'Dokumen perjalanan bagi WNI bukan penduduk atau orang asing',
-          'Formulir F-2.01 (Pelaporan Pencatatan Sipil)',
+          'Formulir pelaporan yang disediakan petugas (F-2.01)',
         ],
         bawa: [],
         keterangan:
@@ -241,7 +242,7 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
           'KTP-el asli',
           'Kartu Keluarga asli',
           'Janda/duda cerai mati: fotokopi akta kematian pasangan; cerai hidup: fotokopi akta perceraian',
-          'Formulir F-2.01 (Pelaporan Pencatatan Sipil)',
+          'Formulir pelaporan yang disediakan petugas (F-2.01)',
         ],
         bawa: [],
         keterangan:
@@ -291,7 +292,7 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
         lokasi: 'disdukcapil',
         dependsOn: [],
         dokumen: [
-          'Formulir F-1.03',
+          'Formulir permohonan pindah yang disediakan petugas (F-1.03)',
           'Fotokopi KK',
           'Surat pernyataan tidak keberatan dari pemilik rumah, bila menumpang KK, sewa, kontrak, atau kos',
         ],

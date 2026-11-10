@@ -5,6 +5,21 @@
 //   - "Setujui rencana" lewat POST /api/urusan/[id]/rencana/setujui;
 //   - satu koneksi SSE /api/urusan/[id]/stream selama percakapan (Last-Event-ID saat sambung ulang).
 
+/**
+ * Data `fail()` form action SvelteKit (diserialisasi devalue: array datar, elemen 0 memetakan kunci ke indeks).
+ * Hanya nilai primitif tingkat atas yang dibaca; bentuk lain menghasilkan objek kosong.
+ */
+export function dataAksi(data) {
+  try {
+    const arr = typeof data === 'string' ? JSON.parse(data) : null;
+    const akar = Array.isArray(arr) ? arr[0] : null;
+    if (!akar || typeof akar !== 'object') return {};
+    return Object.fromEntries(Object.entries(akar).map(([k, i]) => [k, arr[i]]));
+  } catch {
+    return {};
+  }
+}
+
 export class SesiWarga {
   /** @param {{origin: string, ip: string}} o */
   constructor({ origin, ip }) {
@@ -69,8 +84,12 @@ export class SesiWarga {
       this.sambung();
       return { status: 303 };
     }
-    const pesanWarga = String(j.data ?? teks).match(/pesanWarga[^A-Za-z]+([^"\\]+)/)?.[1];
-    return { status: j.status ?? res.status, kode: j.type ?? 'GAGAL_MULAI', pesanWarga };
+    const data = dataAksi(j.data);
+    const pesanWarga =
+      typeof data.pesanWarga === 'string'
+        ? data.pesanWarga
+        : String(j.data ?? teks).match(/pesanWarga[^A-Za-z]+([^"\\]+)/)?.[1];
+    return { status: j.status ?? res.status, kode: data.kode ?? j.type ?? 'GAGAL_MULAI', pesanWarga };
   }
 
   /** Buka SSE (sekali); event ditimbun di `this.events`. Sambung ulang otomatis dengan Last-Event-ID. */

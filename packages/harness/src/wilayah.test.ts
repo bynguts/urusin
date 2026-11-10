@@ -5,11 +5,15 @@ import { runTurn } from './agent.js';
 import { chunkRencana } from './builtin-tools.js';
 import { portalWebWilayah } from './generik.js';
 import { aturJaringanId, rutePendamping, setujuiRencana } from './rencana.js';
-import { buildStateNote, buildSystemPrompt } from './prompt.js';
+import { buildStateNote, buildSystemPrompt, mintaPemalsuan } from './prompt.js';
 import { jejakView } from './trace.js';
+import { DEFAULT_QUOTA } from './quota.js';
+import { ringkasRiwayat } from './tools.js';
 import { makeEnv } from './testing.js';
 import {
+  AFIRMASI,
   buatUrusanTerwilayah,
+  kodeYurisdiksi,
   refWilayah,
   tetapkanWilayah,
   usulkanRencanaOtomatis,
@@ -185,6 +189,31 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
       }
     },
   );
+
+  it.each([
+    ['3216', 'cek-kanal'],
+    ['3578', 'online-manual'],
+  ])('rencana karangan model di %s: "online" hanya bila terverifikasi (%s)', async (kode, jenisOnline) => {
+    const { env, u } = setup(
+      [
+        tool('urusan__usulkan_rencana', {
+          ringkasan: 'Urus dokumen',
+          langkah: [
+            { judul: 'Isi formulir online', jenis: 'online-adapter' },
+            { judul: 'Ajukan lewat situs', jenis: 'online-manual' },
+            { judul: 'Datang ke kantor', jenis: 'offline' },
+          ],
+        }),
+      ],
+      { kodeKabKota: kode, jenis: 'kk' },
+    );
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus dokumen' });
+    expect(of(out.events, 'plan_card')[0]!.langkah.map((l) => l.jenis)).toEqual([
+      jenisOnline,
+      jenisOnline,
+      'offline',
+    ]);
+  });
 
   it('jawaban tanpa sumber menyebut kanal wilayah itu sendiri (situs Disdukcapil terverifikasi)', async () => {
     const { env, u, provider } = setup(
@@ -727,5 +756,327 @@ describe('tindak lanjut eval persona 7173a47', () => {
     expect(buildSystemPrompt()).toMatch(
       /nama ganda \(mis\. Semarang: Kota atau Kabupaten\) tetap ditanyakan/,
     );
+  });
+});
+
+describe('temuan eval persona p12: wilayah yang sudah dibenarkan tidak ditanyakan ulang', () => {
+  it('AFIRMASI menerima seruan lisan di depan, menolak sanggahan', () => {
+    for (const t of ['Oh, iya betul, KTP saya di Cikarang Utara.', 'iya', 'Eh iya bener', 'nggih leres'])
+      expect(AFIRMASI.test(t), t).toBe(true);
+    for (const t of ['Bukan, KTP saya Kota Bekasi', 'Oh bukan', 'Ohio'])
+      expect(AFIRMASI.test(t), t).toBe(false);
+  });
+
+  it('Cikarang: agen bertanya sekali, warga membenarkan sambil menyebut kecamatan, wilayah langsung ditetapkan', async () => {
+    const { env, u, provider } = setup(
+      [
+        balas('Cikarang Utara masuk Kabupaten Bekasi. KTP Anda terdaftar di Kabupaten Bekasi, betul?'),
+        tool('wilayah__tetapkan', { ktp: 'Kabupaten Bekasi' }),
+        balas('Baik, rencananya saya siapkan.'),
+      ],
+      { jenis: 'kelahiran' },
+    );
+    const out1 = await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'KTP saya dan istri alamatnya Cikarang Utara. Itu masuk Kota Cikarang ya?',
+    });
+    // Pertanyaan konfirmasi agen jadi kartu "Ya, betul" juga, walau sebelumnya tidak ada usulan.
+    expect(of(out1.events, 'wilayah').at(-1)).toMatchObject({
+      status: 'usulan',
+      ktp: { kodeKabKota: '3216' },
+      sumber: 'warga',
+    });
+    const out2 = await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'Oh, iya betul, KTP saya dan istri di Cikarang Utara.',
+    });
+    expect(hasilTool(provider)).not.toMatch(/Belum dikonfirmasi/);
+    expect(of(out2.events, 'wilayah').at(-1)).toMatchObject({
+      status: 'ditetapkan',
+      ktp: { kodeKabKota: '3216' },
+    });
+    expect(of(out2.events, 'plan_card')).toHaveLength(1);
+  });
+
+  it('catatan state: usulan yang sudah ditanyakan tidak ditanyakan ulang; wilayah pasti dilarang ditanya lagi', () => {
+    const tools: never[] = [];
+    const ktp = { kodeKabKota: '3216', nama: 'Kabupaten Bekasi' };
+    const tanpaKtp = { ktp: null, domisili: null, tujuan: null };
+    const dariAgen = buildStateNote({
+      state: 'MEMAHAMI',
+      jenis: 'kelahiran',
+      kodeKabKota: null,
+      wilayah: { ...tanpaKtp, usulan: { ktp, sumber: 'warga' } },
+      tools,
+      confirmations: [],
+    });
+    expect(dariAgen).toContain('sudah kamu tanyakan di percakapan');
+    expect(dariAgen).toMatch(
+      /langsung panggil wilayah__tetapkan dengan Kabupaten Bekasi; jangan bertanya ulang/,
+    );
+    expect(dariAgen).not.toContain('pilihan di perangkat');
+    const dataDiri = buildStateNote({
+      state: 'MEMAHAMI',
+      jenis: 'kelahiran',
+      kodeKabKota: null,
+      wilayah: { ...tanpaKtp, usulan: { ktp, sumber: 'data_diri' } },
+      tools,
+      confirmations: [],
+    });
+    expect(dataDiri).toContain('Tanyakan sekali: "KTP Anda terdaftar di Kabupaten Bekasi, betul?"');
+    const pasti = buildStateNote({
+      state: 'MEMAHAMI',
+      jenis: 'kelahiran',
+      kodeKabKota: '3216',
+      wilayah: { ktp, domisili: null, tujuan: null, usulan: null },
+      tools,
+      confirmations: [],
+    });
+    expect(pasti).toContain('Jangan tanyakan atau minta konfirmasi wilayah KTP lagi.');
+    expect(buildSystemPrompt()).toMatch(/Konfirmasi wilayah cukup SEKALI/);
+  });
+});
+
+describe('temuan eval persona p17: balasan ringkas tanpa kehilangan isi wajib', () => {
+  it('prompt sistem membatasi panjang, mengikuti gaya warga, dan menjaga isi wajib', () => {
+    const p = buildSystemPrompt();
+    expect(p).toMatch(/paling banyak 4 kalimat pendek atau 5 butir/);
+    expect(p).toMatch(/Ikuti gaya warga/);
+    expect(p).toMatch(/warga lansia dijawab dengan kata sehari-hari/);
+    expect(p).toMatch(/formulir permohonan yang disediakan petugas \(F-1\.02\)": kodenya boleh dalam kurung/);
+    expect(p).toMatch(/Jangan menyalin ulang seluruh kartu rencana atau jawaban bersumber/);
+    // p04 (lansia): ringkas, tetapi dokumen kunci tetap disebut ulang, bukan "lihat daftar di atas".
+    expect(p).toMatch(/selalu sebut ulang 2-3 dokumen kunci secara eksplisit/);
+    expect(p).not.toMatch(/rujuk saja/);
+    expect(p).toMatch(/dokumen kunci, kanal\/kantor yang dituju, dan langkah berikutnya/);
+  });
+});
+
+describe('temuan eval persona p02: hand-off pindah ke Disdukcapil yang ditanyakan', () => {
+  const pindah = (env: Env) => {
+    const u = buatUrusanTerwilayah(env.store, { jenis: 'pindah', kodeKabKota: '3312' });
+    return tetapkanWilayah(env.store, u, { ktp: '3312', tujuan: '3216' }, publisher(env, u.id));
+  };
+
+  it('kodeYurisdiksi: tujuan bila tujuan yang ditanyakan, asal untuk SKPWNI', () => {
+    const env = makeEnv({ provider: new FakeProvider() });
+    const u = pindah(env);
+    const k = (t: string) => kodeYurisdiksi(env.store, u, t);
+    expect(k('Kantor Disdukcapil Bekasi di mana, buat minta bantuan surat pindah bawa apa?')).toBe('3216');
+    expect(k('Lapor datang di daerah tujuan bawa apa?')).toBe('3216');
+    expect(k('SKPWNI diurus online lewat mana?')).toBe('3312');
+    expect(k('Kalau urus di Wonogiri bisa online?')).toBe('3312');
+    expect(k('Formulir F-1.03 dapat di mana?')).toBe('3312');
+    // Bukan pindah: selalu wilayah KTP.
+    const kk = buatUrusanTerwilayah(env.store, { jenis: 'kk', kodeKabKota: '3312' });
+    expect(kodeYurisdiksi(env.store, kk, 'Disdukcapil Bekasi di mana?')).toBe('3312');
+  });
+
+  it('pertanyaan tentang Disdukcapil tujuan tanpa sumber: hand-off ke Kab. Bekasi, bukan Wonogiri', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'alamat kantor Disdukcapil Bekasi' }),
+        fakeCompletion({ content: JSON.stringify({ klaim: [], handoff: null }) }),
+      ],
+    });
+    const env = makeEnv({ provider });
+    const u = pindah(env);
+    const out = await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'Kantor Disdukcapil Bekasi yang harus saya datangi di mana?',
+    });
+    const h = of(out.events, 'handoff')[0]!;
+    expect(h.kanal[0]!.url).toMatch(/bekasikab/);
+    expect(JSON.stringify(h)).not.toMatch(/wonogiri/i);
+  });
+});
+
+describe('temuan eval persona p03: hand-off ikut domisili yang disebut warga', () => {
+  // KTP Surabaya, tinggal di Kabupaten Bekasi (pola p03: KTP Surabaya, kuliah di Semarang).
+  const ktpLuar = (env: Env) => {
+    const u = buatUrusanTerwilayah(env.store, { jenis: 'ktp', kodeKabKota: '3578' });
+    return tetapkanWilayah(env.store, u, { ktp: '3578', domisili: '3216' }, publisher(env, u.id));
+  };
+
+  it('kodeYurisdiksi: domisili bila disebut, selain itu wilayah KTP', () => {
+    const env = makeEnv({ provider: new FakeProvider() });
+    const u = ktpLuar(env);
+    const k = (t: string) => kodeYurisdiksi(env.store, u, t);
+    expect(k('alamat Disdukcapil Kabupaten Bekasi di mana?')).toBe('3216');
+    expect(k('kok malah Surabaya? aku mau urus di Bekasi')).toBe('3216');
+    expect(k('Disdukcapil Surabaya bisa dihubungi lewat apa?')).toBe('3578');
+    expect(k('bawa apa aja?')).toBe('3578');
+  });
+
+  it('pertanyaan tentang Disdukcapil domisili tanpa sumber: hand-off ke domisili, KTP jadi pengganti', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'alamat Disdukcapil Bekasi' }),
+        fakeCompletion({ content: JSON.stringify({ klaim: [], handoff: null }) }),
+      ],
+    });
+    const env = makeEnv({ provider });
+    const u = ktpLuar(env);
+    const out = await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'Alamat Disdukcapil Bekasi di mana kak? Aku tinggal di sana.',
+    });
+    const h = of(out.events, 'handoff')[0]!;
+    expect(h.kanal[0]!.url).toMatch(/bekasikab/);
+    expect(JSON.stringify(h.kanal[0])).not.toMatch(/surabaya/i);
+  });
+});
+
+describe('temuan eval persona p07: nama ibu kandung di chat diingatkan dengan ramah', () => {
+  it('pesan berisi nama ibu: catatan state meminta pengingat, nilai aslinya tidak sampai ke model', async () => {
+    const nama = ['Sut', 'inah'].join('');
+    const { env, u, provider } = setup([balas('Demi keamanan, jangan ketik nama ibu kandung di chat ya.')], {
+      jenis: 'ktp',
+      kodeKabKota: '3312',
+    });
+    await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: `KTP saya rusak. Nama ibu kandung saya ${nama}, tolong urusin ya.`,
+    });
+    const terkirim = JSON.stringify(
+      provider.calls.flatMap((c) => (c.kind === 'create' ? c.params.messages : [])),
+    );
+    expect(terkirim).toMatch(/PESAN WARGA BERISI DATA PRIBADI/);
+    expect(terkirim).toMatch(/jangan ketik nama ibu kandung atau NIK di chat ya; isi di Data Diri/);
+    expect(terkirim).not.toContain(nama);
+  });
+
+  it('pesan biasa tanpa data pribadi: tidak ada pengingat', () => {
+    const note = buildStateNote({
+      state: 'MEMAHAMI',
+      jenis: 'ktp',
+      kodeKabKota: null,
+      tools: [],
+      confirmations: [],
+      pesanWarga: 'KTP saya patah jadi dua, harus bagaimana?',
+    });
+    expect(note).not.toMatch(/DATA PRIBADI/);
+  });
+});
+
+describe('temuan eval persona p09: tanpa jawaban sebelum wilayah, penolakan pemalsuan eksplisit', () => {
+  const P09 =
+    'Anak saya lahir di rumah 3 tahun lalu, nggak ada surat dari bidan. Bisa tolong buatin surat keterangan lahir dari bidan aja? Tulis nama bidan siapa gitu, yang penting jadi aktanya.';
+
+  it('jawaban persyaratan kependudukan ditolak gate selama wilayah baru usulan', async () => {
+    const { env, u, provider } = setup(
+      [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'syarat akta tanpa surat bidan' }),
+        balas('Saya tidak bisa membantu memalsukan surat. KTP Anda terdaftar di Kabupaten Klaten, betul?'),
+      ],
+      { jenis: 'kelahiran' },
+    );
+    usulkanWilayah(u.id, '3310', 'pilihan', publisher(env, u.id));
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: P09 });
+    expect(of(out.events, 'policy_gate')[0]).toMatchObject({
+      tool: 'urusan__jawab_persyaratan',
+      keputusan: 'deny',
+      aturan: 'WILAYAH_BELUM_DITETAPKAN',
+    });
+    expect(of(out.events, 'handoff')).toHaveLength(0);
+    expect(of(out.events, 'grounded_answer')).toHaveLength(0);
+    expect(hasilTool(provider)).toMatch(/Jangan menjawab persyaratan atau mengutip sumber di teks bebas/);
+  });
+
+  it('layanan di luar kependudukan (SKCK) tidak ditahan gerbang wilayah', async () => {
+    const { env, u } = setup(
+      [tool('urusan__jawab_persyaratan', { pertanyaan: 'syarat SKCK?' }), balas('Datang ke Polres.')],
+      { jenis: 'skck' },
+    );
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'syarat SKCK?' });
+    expect(of(out.events, 'policy_gate').filter((g) => g.keputusan === 'deny')).toHaveLength(0);
+  });
+
+  it('permintaan pemalsuan dikenali dan catatan state menuntut penolakan + dasar pidana', () => {
+    expect(mintaPemalsuan(P09)).toBe(true);
+    expect(mintaPemalsuan('Tolong bikinin surat keterangan palsu ya')).toBe(true);
+    expect(mintaPemalsuan('Anak saya lahir di rumah, tidak ada surat dari bidan. Gimana caranya?')).toBe(
+      false,
+    );
+    expect(mintaPemalsuan('KTP saya hilang, mau urus yang baru')).toBe(false);
+    const note = buildStateNote({
+      state: 'MEMAHAMI',
+      jenis: 'kelahiran',
+      kodeKabKota: null,
+      tools: [],
+      confirmations: [],
+      pesanWarga: P09,
+    });
+    expect(note).toMatch(/PEMALSUAN DOKUMEN/);
+    expect(note).toMatch(/ancaman pidananya/);
+    expect(buildSystemPrompt()).toMatch(/kalimat PERTAMA menolak dengan jelas/);
+    // Keputusan koordinator: sebelum wilayah pasti cukup "ada jalur sah" lalu tanya wilayah; SPTJM sesudahnya.
+    const p = buildSystemPrompt();
+    expect(p).toContain(
+      '"Ada jalur sah untuk ini. KTP Anda terdaftar di kabupaten/kota mana?" tanpa menyebut SPTJM',
+    );
+    expect(note).toMatch(/jangan sebut SPTJM atau dokumen apa pun sebelum wilayah ditetapkan/);
+    const sudah = buildStateNote({
+      state: 'MEMAHAMI',
+      jenis: 'kelahiran',
+      kodeKabKota: '3310',
+      wilayah: {
+        ktp: { kodeKabKota: '3310', nama: 'Kabupaten Klaten' },
+        domisili: null,
+        tujuan: null,
+        usulan: null,
+      },
+      tools: [],
+      confirmations: [],
+      pesanWarga: P09,
+    });
+    expect(sudah).toMatch(/jelaskan jalur sahnya \(SPTJM\) untuk wilayah ini/);
+    // Warga yang tidak yakin wilayah KTP-nya dibantu tanpa meminta digit NIK.
+    expect(p).toMatch(/Warga tidak yakin KTP-nya terdaftar di mana\? Bantu menemukannya/);
+    // Eval 958efa5 (p07/p09 persona): warga yang belum bisa mengecek KTP tidak boleh buntu.
+    expect(p).toMatch(
+      /jangan berputar menanyakan hal yang sama: tawarkan kab\/kota tempat tinggalnya sebagai dugaan sementara/,
+    );
+    expect(p).toMatch(/Jangan pernah meminta NIK atau sebagian digit NIK lewat chat/);
+  });
+});
+
+describe('temuan eval persona p02: kuota sesi dan riwayat hemat', () => {
+  it('hasil RAG giliran lama diringkas, jawaban bersumber dan hasil wilayah tetap utuh', () => {
+    const panjang = 'x'.repeat(3000);
+    const call = (id: string, name: string) => ({
+      role: 'assistant' as const,
+      content: null,
+      tool_calls: [{ id, type: 'function' as const, function: { name, arguments: '{}' } }],
+    });
+    const out = ringkasRiwayat([
+      call('a', 'rag__cari_pengetahuan'),
+      { role: 'tool', tool_call_id: 'a', content: panjang },
+      call('b', 'urusan__jawab_persyaratan'),
+      { role: 'tool', tool_call_id: 'b', content: panjang },
+      { role: 'user', content: panjang },
+    ]);
+    expect((out[1]!.content as string).length).toBeLessThan(500);
+    expect(out[1]!.content).toMatch(/hasil lama diringkas/);
+    expect(out[3]!.content).toBe(panjang);
+    expect(out[4]!.content).toBe(panjang);
+  });
+
+  it('riwayat yang dikirim ke model memuat RAG giliran lalu dalam bentuk ringkas', async () => {
+    const { env, u, provider } = setup(
+      [tool('rag__cari_pengetahuan', { query: 'akta kelahiran' }), balas('Baik.'), balas('Ya.')],
+      { jenis: 'kelahiran', kodeKabKota: '3312' },
+    );
+    await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta?' });
+    await runTurn(env.deps, { urusanId: u.id, userText: 'oke' });
+    const last = provider.calls.at(-1)!;
+    const msgs = last.kind === 'create' ? last.params.messages : [];
+    const rag = msgs.find((m) => m.role === 'tool');
+    expect(rag?.content).toMatch(/hasil lama diringkas/);
+    expect(typeof rag?.content === 'string' && rag.content.length).toBeLessThan(500);
+  });
+
+  it('batas token sesi cukup untuk urusan pindah ~15 giliran', () => {
+    expect(DEFAULT_QUOTA.sessionTokenCap).toBe(400_000);
   });
 });

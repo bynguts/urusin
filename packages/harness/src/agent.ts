@@ -30,7 +30,7 @@ import { buildStateNote, buildSystemPrompt } from './prompt.js';
 import type { QuotaMeter, QuotaStatus } from './quota.js';
 import { newNonce } from './spotlight.js';
 import type { HarnessStore, TurnStatus, UrusanRow } from './store.js';
-import { clip, type ToolContext, type ToolRegistry } from './tools.js';
+import { clip, ringkasRiwayat, type ToolContext, type ToolRegistry } from './tools.js';
 import { OTEL, type Tracer } from './trace.js';
 import {
   kodeUntukPii,
@@ -182,6 +182,9 @@ function toErrorEvent(err: unknown): EventPayload & { type: 'error' } {
   return mk('LLM_FAILED', 'Layanan AI sedang bermasalah. Silakan coba lagi.', true);
 }
 
+const ULANG_RINGKAS =
+  'Balasanmu tadi terpotong karena terlalu panjang. Sekarang panggil tool yang tepat, atau balas SANGAT singkat (paling banyak 3 kalimat pendek).';
+
 /** Sisipkan instruksi sebelum pesan terakhir (pesan pengguna tetap terakhir). */
 function withInstruction(messages: ChatMessage[], instruction: ChatMessage): ChatMessage[] {
   return [...messages.slice(0, -1), instruction, ...messages.slice(-1)];
@@ -196,6 +199,8 @@ class TurnRunner {
   private readonly ctrl = new AbortController();
   private readonly events: UrusinEvent[] = [];
   private readonly turnMessages: ChatMessage[] = [];
+  /** Balasan model terpotong (finish_reason=length) sekali di turn ini: diulang sekali dengan instruksi ringkas. */
+  private terpotong = false;
   private urusan: UrusanRow;
   private version: number;
   private tokensIn = 0;
@@ -283,7 +288,7 @@ class TurnRunner {
   /** Semua pesan diredaksi (lapis 1) tepat sebelum dikirim; catatan state disisipkan sebelum pesan terakhir. */
   private buildMessages(note: string, extra: ChatMessage[] = []): ChatMessage[] {
     const turnMsgs = [...this.turnMessages, ...extra];
-    const history = this.store.loadHistory(this.turn.urusanId);
+    const history = ringkasRiwayat(this.store.loadHistory(this.turn.urusanId));
     // Catatan tidak boleh memisahkan assistant(tool_calls) dari hasil tool-nya: penyedia menolak urutan itu
     // (400). Bila pesan terakhir hasil tool, sisipkan sebelum assistant pemilik grup tool terakhir.
     let cut = turnMsgs.length - 1;
@@ -306,6 +311,7 @@ class TurnRunner {
       wilayah: wilayahUrusan(this.store, this.urusan),
       tools: this.deps.registry.forState(this.urusan.state),
       confirmations: this.store.activeConfirmations(this.turn.urusanId),
+      pesanWarga: this.turn.pii.redact(this.turn.userText).text,
     });
   }
 
@@ -481,11 +487,17 @@ class TurnRunner {
       const tools = this.deps.registry.openaiTools(this.urusan.state);
       const span = this.deps.tracer.start(this.scope, `chat ${this.deps.model}`, 'chat');
       let completion: ChatCompletion;
+      // Setelah terpotong: ruang token dua kali lipat dan instruksi balasan singkat (eval p06: satu balasan
+      // pembuka melewati batas, padahal rata-rata balasan < 100 token).
+      const maxTokens = this.terpotong ? q.maxTokens * 2 : q.maxTokens;
+      const messages = this.buildMessages(this.stateNote());
       try {
         completion = await this.callLlm({
           model: this.deps.model,
-          max_tokens: q.maxTokens,
-          messages: this.buildMessages(this.stateNote()),
+          max_tokens: maxTokens,
+          messages: this.terpotong
+            ? withInstruction(messages, { role: 'system', content: ULANG_RINGKAS })
+            : messages,
           ...(tools.length > 0 ? { tools, tool_choice: 'auto' as const } : {}),
         });
         const acc = this.account(completion.usage ? [completion.usage] : []);
@@ -495,9 +507,13 @@ class TurnRunner {
           degraded: false,
           attrs: { [OTEL.operationName]: 'chat' },
         });
-        assertCompletionUsable(completion, q.maxTokens);
+        assertCompletionUsable(completion, maxTokens);
       } catch (e) {
         span.end({ status: 'error', errorCode: (e as Error).name, model: this.deps.model });
+        if (e instanceof LlmLengthError && !this.terpotong) {
+          this.terpotong = true;
+          continue;
+        }
         throw e;
       }
 

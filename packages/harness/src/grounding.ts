@@ -32,6 +32,8 @@ export const KALIMAT_TETAP = 'Keputusan ada di petugas instansi terkait.';
 const STALE_DAYS = 30;
 const MIN_QUOTE_CHARS = 12;
 export const MAX_KLAIM = 8;
+/** Batas klaim yang diminta dari model (MAX_KLAIM tetap jaring pengaman): jawaban panjang menenggelamkan warga. */
+export const KLAIM_RINGKAS = 6;
 export const MAX_KLAIM_CHARS = 400;
 
 /** Token faktual yang harus terbukti di kutipan: angka (termasuk Rp/titik/koma), URL, dan nomor telepon. */
@@ -157,11 +159,18 @@ function kanalNasional(id: string, cadangan: string): KanalHandoff {
 }
 
 /** Disdukcapil wilayah KTP (kanal registry, lalu situs terverifikasi beserta alamatnya); tanpa wilayah: Ditjen Dukcapil. */
+const DUKCAPIL_DKI: KanalHandoff = {
+  nama: 'Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta',
+  url: 'https://kependudukancapil.jakarta.go.id/',
+};
+
 function kanalAdminduk(kode: string | null): KanalHandoff[] {
   const nasional = `${KANAL_NASIONAL.judul}, ${KANAL_NASIONAL.instansi}`;
   if (!kode) return [{ nama: nasional, url: KANAL_NASIONAL.url }];
   const k = kanalWilayah(kode);
   const out: KanalHandoff[] = [{ nama: k.jenis === 'nasional' ? nasional : k.instansi, url: k.url }];
+  // DKI: Suku Dinas kota administrasi (portal Alpukat) lebih dulu, lalu situs Dinas Dukcapil Provinsi.
+  if (kode.startsWith('31')) out.push(DUKCAPIL_DKI);
   const kontak = kontakDukcapil(kode);
   const w = wilayahByKode(kode);
   if (kontak && w)
@@ -332,7 +341,10 @@ export async function generateGroundedAnswer(opts: GroundedGenerationOptions) {
         'Kamu menyusun jawaban persyaratan/prosedur layanan publik Indonesia HANYA dari sumber resmi di bawah.',
         spotlightPolicyText(),
         'Keluaran: objek JSON {klaim:[{teks, kutipan:[{refId, kutipanPersis}]}], handoff}.',
-        '- Setiap klaim = satu pernyataan faktual singkat untuk warga, dengan Bahasa Indonesia sederhana.',
+        '- Setiap klaim = satu kalimat pendek (paling banyak ±25 kata) untuk warga, dengan Bahasa Indonesia sederhana.',
+        `- Jawab HANYA yang ditanyakan warga, paling banyak ${KLAIM_RINGKAS} klaim, urut dari yang terpenting: dokumen yang wajib disiapkan, lalu kanal/cara mengajukan, lalu langkah berikutnya. Gabungkan dokumen sejenis dalam satu klaim.`,
+        '- Teks klaim memakai kata sehari-hari, bukan bahasa peraturan: "petugas Disdukcapil" (bukan "pejabat pencatatan sipil"), "akta dibuatkan" (bukan "menerbitkan kutipan akta"), "lapor" (bukan "pelaporan"). Bahasa peraturan hanya di kutipanPersis.',
+        '- Lewati rincian proses internal petugas (pemeriksaan berkas, SMS pemberitahuan, tanda tangan elektronik) dan kasus khusus yang tidak menyangkut warga ini, kecuali ditanyakan.',
         '- kutipanPersis HARUS salinan kata per kata dari sumber (boleh tanpa tanda "' +
           DATAMARK +
           '", kembalikan jadi spasi biasa). refId HARUS salah satu ID di dalam kurung siku pada sumber.',

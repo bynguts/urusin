@@ -22,7 +22,10 @@ export type QuotaConfig = {
 
 export const DEFAULT_QUOTA: QuotaConfig = {
   sessionTurnCap: 40,
-  sessionTokenCap: 200_000,
+  // Eval persona p02 (pindah, 8 giliran): 202 rb token; tiap panggilan agen ~6 rb tetap (prompt + tool) ditambah
+  // riwayat yang tumbuh sampai ~12 rb, jawaban bersumber 5-10 rb. Riwayat hasil tool kini diringkas (~-20%), tetapi
+  // urusan pindah realistis ~15 giliran tetap butuh ~350-400 rb; 200 rb memutus warga di giliran 9.
+  sessionTokenCap: 400_000,
   dailyIdrCap: 0,
   hematAtFraction: 0.7,
   idrPerUsd: 16_500,

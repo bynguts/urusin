@@ -9,6 +9,7 @@ import {
   cariWilayah,
   kanalWilayah,
   menyebutWilayah,
+  onlineTerverifikasi,
   routeByKode,
   type HasilCariWilayah,
   type Wilayah,
@@ -34,6 +35,7 @@ import {
   kalimatKanal,
   kartuRencana,
   kodeKtp,
+  kodeYurisdiksi,
   rencanaPeristiwa,
   wilayahUrusan,
 } from './wilayah.js';
@@ -161,6 +163,7 @@ export const urusanUsulkanRencana = defineTool({
     // Peristiwa Hidup: rencana deterministik untuk wilayah ini menang atas langkah karangan model.
     const kartu = ctx.urusan.jenis ? kartuRencana(ctx.urusan.jenis, w, ctx.deps.ragDb) : undefined;
     const k = kanalWilayah(ktp.kodeKabKota);
+    const online = onlineTerverifikasi(ktp);
     return {
       content: 'Rencana ditampilkan kepada warga untuk disetujui.',
       nextState: 'RENCANA_DIUSULKAN',
@@ -171,12 +174,18 @@ export const urusanUsulkanRencana = defineTool({
           : {
               type: 'plan_card',
               ringkasan: args.ringkasan,
-              // Model tidak boleh menjanjikan Browser Pendamping: tanpa alur adapter, semua langkah online = manual.
+              // Model tidak boleh menjanjikan Browser Pendamping: tanpa alur adapter, semua langkah online = manual,
+              // dan "online" hanya bila pengajuan online wilayah ini terverifikasi; selain itu cek kanal setempat.
               // Langkah karangan model tidak diberi sumber: kanal resmi bukan bukti isi langkahnya (cukup di catatan).
               langkah: args.langkah.map((l, i) => ({
                 id: `l${i + 1}`,
                 judul: l.judul,
-                jenis: l.jenis === 'online-adapter' ? ('online-manual' as const) : l.jenis,
+                jenis:
+                  l.jenis === 'offline'
+                    ? l.jenis
+                    : online
+                      ? ('online-manual' as const)
+                      : ('cek-kanal' as const),
                 bawa: l.bawa ?? [],
                 sumber: [],
               })),
@@ -231,7 +240,7 @@ export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkR
  * Bila semuanya sudah diberikan, atau layanan lain (SKCK, Samsat, ...), tidak ada hand-off baru: model diminta
  * memberi langkah lain (isi kartu rencana atau datang ke kantor) tanpa mengulang kanal.
  */
-function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>): ToolResult {
+function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?: string | null): ToolResult {
   const kunci = (k: { url?: string | undefined; nama: string }) => (k.url ? kunciUrl(k.url) : k.nama);
   const sudah = new Set(
     ctx.store
@@ -247,11 +256,21 @@ function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>): ToolResul
   // Pengganti hanya untuk urusan kependudukan (kanal Disdukcapil wilayah, lalu Ditjen Dukcapil); layanan lain
   // (SKCK, Samsat, ...) tidak pernah dialihkan ke Disdukcapil.
   const jenis = ctx.urusan.jenis;
-  const kode = kodeKtp(ctx.store, ctx.urusan) ?? ctx.urusan.kodeKabKota;
+  const w = wilayahUrusan(ctx.store, ctx.urusan);
+  const kode = kodeUtama ?? kodeKtp(ctx.store, ctx.urusan) ?? ctx.urusan.kodeKabKota;
+  // Pindah: dua Disdukcapil berwenang (asal dan tujuan); yang tidak sedang ditanyakan jadi kanal pengganti.
+  // Domisili (KTP luar daerah) dan wilayah KTP saling jadi pengganti.
+  const kodeLain = [
+    w.ktp?.kodeKabKota,
+    w.domisili?.kodeKabKota,
+    ...(jenis === 'pindah' ? [w.tujuan?.kodeKabKota] : []),
+  ];
   const calon: PayloadOf<'handoff'>['kanal'] =
     jenis === null || ADMINDUK.has(jenis)
       ? [
-          ...handoffChannels({ kodeKabKota: kode, jenis }),
+          ...[kode, ...kodeLain]
+            .filter((k, i, a): k is string => Boolean(k) && a.indexOf(k) === i)
+            .flatMap((k) => handoffChannels({ kodeKabKota: k, jenis })),
           { nama: KANAL_NASIONAL.instansi, url: KANAL_NASIONAL.url },
         ]
       : [];
@@ -292,13 +311,16 @@ export const urusanJawabPersyaratan = defineTool({
   description:
     'Susun jawaban bersumber atas pertanyaan persyaratan/prosedur dari potongan yang sudah dicari. Panggil setelah rag__cari_pengetahuan. Dokumen persyaratan rencana wilayah urusan (registry) selalu ikut sebagai sumber.',
   effect: 'answer',
+  butuhWilayah: 'adminduk',
   input: z.object({ pertanyaan: llmText().max(500) }),
   allowedStates: NON_TERMINAL_STATES,
   async execute(ctx, args): Promise<ToolResult> {
     const chunks = [...ctx.store.getChunks(ctx.urusan.id), ...chunkRencana(ctx)];
-    const ctxHandoff = { kodeKabKota: ctx.urusan.kodeKabKota, jenis: ctx.urusan.jenis };
+    // Pindah: pertanyaan tentang Disdukcapil tujuan diarahkan ke tujuan, selain itu (SKPWNI) ke asal.
+    const kode = kodeYurisdiksi(ctx.store, ctx.urusan, `${args.pertanyaan}\n${ctx.pesanWarga}`);
+    const ctxHandoff = { kodeKabKota: kode, jenis: ctx.urusan.jenis };
     if (chunks.length === 0)
-      return handoffTanpaUlang(ctx, buildHandoff({ ...ctxHandoff, chunks }, 'tanpa_sumber'));
+      return handoffTanpaUlang(ctx, buildHandoff({ ...ctxHandoff, chunks }, 'tanpa_sumber'), kode);
 
     const gen = await generateGroundedAnswer({
       provider: ctx.deps.provider,
@@ -310,7 +332,7 @@ export const urusanJawabPersyaratan = defineTool({
     });
     const verified = verifyGrounded(gen.data, chunks, ctxHandoff, ctx.deps.now());
     const usage = { usage: gen.usage, structuredMode: gen.method };
-    if (verified.handoff) return { ...handoffTanpaUlang(ctx, verified.handoff), ...usage };
+    if (verified.handoff) return { ...handoffTanpaUlang(ctx, verified.handoff, kode), ...usage };
     const data: PayloadOf<'grounded_answer'> = {
       klaim: verified.klaim,
       klaimDibuang: verified.klaimDibuang,

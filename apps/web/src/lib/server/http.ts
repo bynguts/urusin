@@ -6,9 +6,12 @@ import type { GalatApi } from '#lib/contracts.js';
 
 const NO_STORE = { 'cache-control': 'no-store' } as const;
 
-/** Pesan warga untuk teks berisi NIK/KK/HP/email (API JSON dan form tanpa JS memakai kalimat yang sama). */
+/**
+ * Pesan warga untuk teks berisi NIK/KK/HP/email (API JSON dan form tanpa JS memakai kalimat yang sama). Ikut
+ * menyebut nama ibu kandung: warga yang menempel NIK biasanya menempel nama ibu juga (p07).
+ */
 export const PESAN_PII =
-  'Pesan berisi nomor pribadi. Hapus nomornya, kami mengisinya langsung di perangkat Anda.';
+  'Pesan berisi nomor pribadi. Demi keamanan, jangan ketik NIK, nomor KK/HP, atau nama ibu kandung di chat: hapus datanya, lalu isi di Data Diri. Kami mengisikannya langsung dari perangkat Anda.';
 
 /** Semua galat JSON memakai bentuk seragam `{kode, pesanWarga}`. */
 export function apiError(status: number, kode: string, pesanWarga: string): Response {

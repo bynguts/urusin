@@ -28,6 +28,8 @@
     'online-adapter': { label: 'AI', kelas: 'bg-nila text-nila-ink', ikon: 'ai' },
     'online-manual': { label: 'Anda', kelas: 'bg-ink/[0.06] text-ink', ikon: 'orang' },
     offline: { label: 'Instansi', kelas: 'bg-biru text-biru-ink', ikon: 'instansi' },
+    // Cara (online/loket) belum terverifikasi: warga memastikannya di kanal Disdukcapil setempat.
+    'cek-kanal': { label: 'Cek kanal setempat', kelas: 'bg-ink/[0.06] text-ink', ikon: 'orang' },
   };
 </script>
 

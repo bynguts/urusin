@@ -47,5 +47,10 @@ export const GalatApiSchema = z.object({
 });
 export type GalatApi = z.infer<typeof GalatApiSchema>;
 
-export const JenisLangkahSchema = z.enum(['online-adapter', 'online-manual', 'offline']);
+/**
+ * online-adapter = Browser Pendamping mengisi; online-manual = warga mengisi online di kanal terverifikasi;
+ * offline = datang ke kantor; cek-kanal = cara (online/loket) belum terverifikasi: warga memastikannya di kanal
+ * Disdukcapil setempat.
+ */
+export const JenisLangkahSchema = z.enum(['online-adapter', 'online-manual', 'offline', 'cek-kanal']);
 export type JenisLangkah = z.infer<typeof JenisLangkahSchema>;

@@ -12,6 +12,7 @@ import {
   REF_PERPRES,
   REF_PERPRES_TEKS,
   REF_PMD108,
+  REF_PMD109,
   REF_PMD7_2026,
   REF_UU23,
   REF_UU24,
@@ -96,47 +97,64 @@ const lewatKanal = (k: KanalWilayah, w: Wilayah | null) =>
       : 'Pilih kab/kota sesuai KTP agar Urusin menunjukkan situs resmi yang tepat.'
     : `Cara mengajukan (online atau loket) dan formulir mengikuti ${k.judul}; periksa di sana sebelum berangkat.`;
 
+/**
+ * Pengajuan online di kab/kota ini sudah terverifikasi di registry: portal layanan yang alurnya sudah dicek
+ * (validasi kirim-asli atau read-only). Selain itu (pending-recon, tanpa portal, atau tanpa entri) Urusin tidak
+ * boleh melabeli langkah "online" atau "datang langsung".
+ */
+export function onlineTerverifikasi(w: Pick<Wilayah, 'kodeKabKota'> | null): boolean {
+  if (!w) return false;
+  const { entry } = routeByKode(w.kodeKabKota);
+  return Boolean(entry.portal) && (entry.validasi === 'kirim-asli' || entry.validasi === 'read-only');
+}
+
+/** Jenis langkah pengajuan yang jujur: online hanya bila terverifikasi, selain itu cek kanal setempat. */
+const caraAjukan = (w: Wilayah | null): Langkah['jenis'] =>
+  onlineTerverifikasi(w) ? 'online-manual' : 'cek-kanal';
+
 /** Langkah dari persyaratan nasional (Perpres 96/2018) + kanal resmi wilayah KTP. Tanpa isi kota lain. */
 function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: KanalWilayah): Langkah[] {
   const ref = [sumber(kanal), REF_PERPRES];
   const dinasKtp = disebut(ktp, 'Disdukcapil kab/kota sesuai KTP Anda');
   const cara = lewatKanal(kanal, ktp);
+  const ajukan = caraAjukan(ktp);
   switch (slug) {
     case 'kelahiran':
       return [
         L({
           id: 'ajukan',
           judul: `Ajukan akta kelahiran ke ${dinasKtp}`,
-          jenis: 'online-manual',
+          jenis: ajukan,
           dependsOn: [],
           dokumen: [
             'Surat keterangan kelahiran dari rumah sakit/puskesmas/dokter/bidan, atau dari kepala desa/lurah',
             'Buku nikah/kutipan akta perkawinan atau bukti lain yang sah',
             'Kartu Keluarga',
             'KTP-el orang tua',
+            'Formulir pelaporan yang disediakan petugas (F-2.01)',
           ],
           bawa: [],
-          keterangan: `Persyaratan nasional (Perpres 96/2018). Laporkan paling lambat 60 hari sejak kelahiran (UU 24/2013 Ps. 27); lewat dari itu akta tetap terbit setelah keputusan Kepala Disdukcapil, tanpa penetapan pengadilan (Ps. 32 ayat 1). ${cara}`,
-          sourceRef: [...ref, REF_UU24],
+          keterangan: `Persyaratan nasional (Perpres 96/2018 Ps. 33). KTP-el tidak disyaratkan bagi ibu kandung di bawah 17 tahun yang belum kawin (Permendagri 108/2019 Ps. 43 ayat 3). Laporkan paling lambat 60 hari sejak kelahiran (UU 24/2013 Ps. 27); lewat dari itu akta tetap terbit setelah keputusan Kepala Disdukcapil, tanpa penetapan pengadilan (Ps. 32 ayat 1). ${cara}`,
+          sourceRef: [...ref, REF_PMD108, REF_PMD109, REF_UU24],
         }),
         L({
           id: 'siapkan-sptjm',
           judul: 'Bila surat kurang: siapkan SPTJM bersama dua saksi',
-          jenis: 'online-manual',
+          jenis: ajukan,
           dependsOn: [],
           dokumen: [
-            'SPTJM kebenaran data kelahiran, bila surat keterangan kelahiran tidak ada',
-            'SPTJM kebenaran sebagai pasangan suami istri, bila tidak punya buku nikah/akta perkawinan',
+            'SPTJM kebenaran data kelahiran (F-2.03) diketahui dua orang saksi, bila surat keterangan kelahiran tidak ada',
+            'SPTJM kebenaran sebagai pasangan suami istri (F-2.04) diketahui dua orang saksi, bila tidak punya buku nikah/akta perkawinan tetapi KK menunjukkan orang tua suami istri',
           ],
           bawa: [],
           keterangan:
-            'Pengganti dokumen yang tidak dimiliki (Perpres 96/2018 Ps. 34), bukan langkah wajib bagi semua.',
-          sourceRef: [REF_PERPRES_TEKS],
+            'Pengganti dokumen yang tidak dimiliki (Perpres 96/2018 Ps. 34; kode formulir Permendagri 109/2019 Ps. 4), bukan langkah wajib bagi semua.',
+          sourceRef: [REF_PERPRES_TEKS, REF_PMD109],
         }),
         L({
           id: 'ambil',
           judul: `Terima akta kelahiran dan KK baru dari ${dinasKtp}`,
-          jenis: 'offline',
+          jenis: 'cek-kanal',
           lokasi: 'disdukcapil',
           dependsOn: ['ajukan'],
           dokumen: [],
@@ -150,12 +168,13 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
         L({
           id: 'ajukan',
           judul: `Laporkan kematian dan ajukan akta kematian ke ${dinasKtp}`,
-          jenis: 'online-manual',
+          jenis: ajukan,
           dependsOn: [],
           dokumen: [
             'Surat kematian dari dokter atau kepala desa/lurah',
             'Kartu Keluarga dan KTP-el almarhum',
             'KTP-el pelapor',
+            'Formulir pelaporan yang disediakan petugas (F-2.01)',
           ],
           bawa: [],
           keterangan: `Persyaratan nasional (Perpres 96/2018). Kematian dilaporkan paling lambat 30 hari sejak tanggal kematian; kewajiban lapor ada pada ketua RT atau sebutan lain (UU 24/2013 Ps. 44). ${cara}`,
@@ -164,7 +183,7 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
         L({
           id: 'ambil',
           judul: `Terima akta kematian dan KK yang diperbarui dari ${dinasKtp}`,
-          jenis: 'offline',
+          jenis: 'cek-kanal',
           lokasi: 'disdukcapil',
           dependsOn: ['ajukan'],
           dokumen: [],
@@ -178,12 +197,13 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
         L({
           id: 'ajukan',
           judul: `Ajukan pencatatan perkawinan ke ${dinasKtp}`,
-          jenis: 'online-manual',
+          jenis: ajukan,
           dependsOn: [],
           dokumen: [
             'Surat keterangan telah terjadinya perkawinan dari pemuka agama atau penghayat kepercayaan',
             'Pas foto berwarna suami dan istri',
             'KTP-el dan Kartu Keluarga',
+            'Formulir pelaporan yang disediakan petugas (F-2.01)',
           ],
           bawa: [],
           keterangan: `Perkawinan beragama Islam dicatat di KUA kecamatan dan Dukcapil tidak menerbitkan kutipan akta perkawinannya; buktinya buku nikah. Perkawinan lainnya dilaporkan ke Disdukcapil paling lambat 60 hari (UU 23/2006 Ps. 34). Persyaratan nasional (Perpres 96/2018). ${cara}`,
@@ -192,7 +212,7 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
         L({
           id: 'pencatatan',
           judul: `Pencatatan perkawinan dan terima kutipan akta di ${dinasKtp}`,
-          jenis: 'offline',
+          jenis: 'cek-kanal',
           lokasi: 'disdukcapil',
           dependsOn: ['ajukan'],
           dokumen: [],
@@ -227,7 +247,7 @@ function langkahPindah(asal: Wilayah | null, tujuan: Wilayah | null): Langkah[] 
       L({
         id: 'pindah-alamat',
         judul: `Laporkan pindah alamat di ${dAsal}: terima KK dan KTP-el alamat baru`,
-        jenis: 'online-manual',
+        jenis: caraAjukan(asal),
         lokasi: 'disdukcapil',
         dependsOn: [],
         dokumen: ['Kartu Keluarga', 'KK yang akan ditumpangi, bila menumpang KK', pemilikRumah],
@@ -240,10 +260,14 @@ function langkahPindah(asal: Wilayah | null, tujuan: Wilayah | null): Langkah[] 
     L({
       id: 'skpwni',
       judul: `Urus surat pindah (SKPWNI) di ${dAsal}`,
-      jenis: 'online-manual',
+      jenis: caraAjukan(asal),
       lokasi: 'disdukcapil',
       dependsOn: [],
-      dokumen: ['Kartu Keluarga', 'Formulir F-1.03 (pendaftaran perpindahan penduduk)', pemilikRumah],
+      dokumen: [
+        'Kartu Keluarga',
+        'Formulir permohonan pindah yang disediakan petugas (F-1.03)',
+        pemilikRumah,
+      ],
       bawa: [],
       keterangan: `Diurus di daerah asal, sesuai alamat KTP sekarang. SKPWNI berlaku 100 hari kerja (Permendagri 108/2019 Ps. 30 ayat 2). Sudah tinggal di tujuan? Disdukcapil tujuan bisa membantu memintakan SKPWNI ke asal secara elektronik (Ps. 31). ${lewatKanal(kAsal, asal)}`,
       sourceRef: [sumber(kAsal), ...wng(asal, REF_SKPWNI), REF_PERPRES, REF_PMD108],
@@ -251,7 +275,7 @@ function langkahPindah(asal: Wilayah | null, tujuan: Wilayah | null): Langkah[] 
     L({
       id: 'kk-ktp-el',
       judul: `Lapor datang di ${dTujuan}: terima KK dan KTP-el alamat baru`,
-      jenis: 'online-manual',
+      jenis: caraAjukan(tujuan),
       lokasi: 'disdukcapil',
       dependsOn: ['skpwni'],
       dokumen: ['SKPWNI dari daerah asal', 'KTP-el dan/atau KIA alamat lama', pemilikRumah],
@@ -314,7 +338,7 @@ export function rencanaWilayah(slug: string, opsi: OpsiRencana): RencanaWilayah 
   } else {
     langkah = langkahNasional(bundel.slug, ktp, kanalKtp);
     catatan = ktp
-      ? `Persyaratan nasional untuk ${ktp.nama}; detail dan cara pengajuan mengikuti ${kanalKtp.judul}.`
+      ? `Syarat ini berlaku di seluruh Indonesia. Cara mengajukan di ${ktp.nama}: lihat ${kanalKtp.judul}.`
       : 'Persyaratan nasional. Pilih kab/kota sesuai KTP agar kanal resmi wilayah Anda ditampilkan.';
     if (ktp && bundel.slug === 'kematian')
       catatan = `Kematian dilaporkan ke Disdukcapil tempat tinggal almarhum (UU 24/2013): ${ktp.nama}. ${catatan}`;

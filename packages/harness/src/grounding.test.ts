@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   GroundedAnswerSchema,
   buildHandoff,
+  KLAIM_RINGKAS,
   generateGroundedAnswer,
   handoffChannels,
   kunciUrl,
@@ -232,6 +233,19 @@ describe('hand-off menurut layanan (W3), kontak (W6), dan dedup URL (W9)', () =>
     expect(wng).toEqual([{ nama: 'Samsat atau Bapenda Provinsi Jawa Tengah' }]);
   });
 
+  it('adminduk DKI (p05): Suku Dinas kota administrasi lebih dulu, situs Dinas provinsi sebagai pengganti', () => {
+    const h = buildHandoff({ kodeKabKota: '3175', jenis: 'kk', chunks: [] }, 'tanpa_sumber');
+    expect(h.kanal[0]).toEqual({
+      nama: 'Suku Dinas Kependudukan dan Pencatatan Sipil Kota Administrasi Jakarta Timur',
+      url: 'https://alpukat-dukcapil.jakarta.go.id/',
+    });
+    expect(h.alasan).toContain(
+      'Suku Dinas Kependudukan dan Pencatatan Sipil Kota Administrasi Jakarta Timur',
+    );
+    expect(h.alasan).not.toMatch(/Provinsi DKI/);
+    expect(host(h.kanal[1]?.url)).toBe('kependudukancapil.jakarta.go.id');
+  });
+
   it('bansos: Kemensos (cekbansos) lalu dinas sosial wilayah, bukan Disdukcapil', () => {
     const k = handoffChannels({ kodeKabKota: '3312', jenis: 'bansos', chunks: [] });
     expect(host(k[0]?.url)).toBe('cekbansos.kemensos.go.id');
@@ -338,6 +352,15 @@ describe('generateGroundedAnswer', () => {
     const prompt = call?.kind === 'create' ? JSON.stringify(call.params.messages) : '';
     expect(prompt).toContain('DATA_TAK_TEPERCAYA');
     expect(prompt).toContain(DATAMARK);
+    // Temuan eval persona p17: jawaban terlalu panjang. Ringkas, tetapi isi wajib didahulukan.
+    expect(prompt).toContain(`paling banyak ${KLAIM_RINGKAS} klaim`);
+    expect(prompt).toMatch(
+      /dokumen yang wajib disiapkan, lalu kanal\/cara mengajukan, lalu langkah berikutnya/,
+    );
+    expect(prompt).toMatch(/Lewati rincian proses internal petugas/);
+    // Eval p04 (lansia): "pejabat pencatatan sipil menerbitkan kutipan akta" terlalu administratif.
+    expect(prompt).toMatch(/kata sehari-hari, bukan bahasa peraturan/);
+    expect(prompt).toMatch(/petugas Disdukcapil.{0,4} \(bukan .{0,4}pejabat pencatatan sipil/);
     const v = verifyGrounded(r.data, [chunk()], {}, NOW);
     expect(v.klaim).toHaveLength(1);
   });

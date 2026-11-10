@@ -13,6 +13,8 @@ import {
   samarkan,
   urlTampil,
 } from '../eval-persona/lib/periksa.mjs';
+import { dataAksi } from '../eval-persona/lib/klien.mjs';
+import { jalankanPercakapan } from '../eval-persona/lib/percakapan.mjs';
 
 const ev = (type, isi = {}) => ({ type, seq: 1, at: '2026-11-10T00:00:00.000Z', chainHead: 'x', ...isi });
 const warga = (teks) => ({ peran: 'warga', jenis: 'ketik', teks, http: { status: 202 } });
@@ -478,5 +480,165 @@ describe('SesiWarga.aksi menunggu turn yang dipicu aksi', async () => {
     const s = sesiPalsu({ state: 'RENCANA_DISETUJUI', version: 4 });
     await s.aksi('rencana/setujui', {});
     assert.deepEqual(s.ditunggu, []);
+  });
+});
+
+describe('mulai ditolak karena PII (p07)', () => {
+  it('dataAksi membaca data fail() form action (devalue)', () => {
+    const data = JSON.stringify([
+      { pesanWarga: 1, pesan: 2, kode: 3 },
+      'Pesan berisi nomor pribadi.',
+      '',
+      'PII_IN_PAYLOAD',
+    ]);
+    assert.deepEqual(dataAksi(data), {
+      pesanWarga: 'Pesan berisi nomor pribadi.',
+      pesan: '',
+      kode: 'PII_IN_PAYLOAD',
+    });
+    assert.deepEqual(dataAksi('bukan json'), {});
+  });
+
+  it('warga simulasi mengetik ulang tanpa NIK lalu percakapan berlanjut', async () => {
+    const dikirim = [];
+    const sesi = {
+      id: null,
+      events: [],
+      async mulai(pesan) {
+        dikirim.push(pesan);
+        if (/\d{16}/.test(pesan))
+          return { status: 422, kode: 'PII_IN_PAYLOAD', pesanWarga: 'Pesan berisi nomor pribadi.' };
+        this.id = 'u_1';
+        this.events = [
+          ev('assistant_text', { delta: 'Baik, KTP rusak di Wonogiri.' }),
+          ev('done', { status: 'selesai' }),
+        ];
+        return { status: 303 };
+      },
+      async tungguDone() {
+        return { status: 'selesai' };
+      },
+      sejak() {
+        return this.events;
+      },
+      async kodeUrusan() {
+        return '3312';
+      },
+      tutup() {},
+    };
+    const nik = ['3312', '0101', '0101', '0001'].join('');
+    const llmWarga = {
+      async json() {
+        return { aksi: 'ketik', teks: 'KTP saya patah, saya di Wonogiri.', alasan: 'pesan ditolak' };
+      },
+    };
+    const h = await jalankanPercakapan({
+      persona: { id: 'p07', kartu: 'x', pesanPertama: `NIK ${nik}, KTP rusak` },
+      llmWarga,
+      wilayahPerangkat: '',
+      maksGiliran: 1,
+      sesi,
+    });
+    assert.equal(dikirim.length, 2);
+    assert.doesNotMatch(dikirim[1], /\d{16}/);
+    assert.equal(h.akhir.alasan, 'batas_giliran');
+    assert.deepEqual(
+      h.langkah.filter((l) => l.peran === 'warga').map((l) => l.http.status),
+      [422, 303],
+    );
+    // Peringatan yang tampil ke warga ikut tercatat agar juri melihatnya.
+    assert.equal(h.langkah[0].http.pesanWarga, 'Pesan berisi nomor pribadi.');
+    assert.equal(cekGalat(h.langkah, { izinkanKode: ['PII_IN_PAYLOAD'] }).lulus, true);
+  });
+
+  it('galat mulai selain PII tetap berakhir gagal_mulai tanpa diulang', async () => {
+    let n = 0;
+    const sesi = {
+      id: null,
+      async mulai() {
+        n++;
+        return { status: 429, kode: 'failure' };
+      },
+      tutup() {},
+    };
+    const h = await jalankanPercakapan({
+      persona: { id: 'x', kartu: 'x', pesanPertama: 'halo' },
+      llmWarga: { json: async () => assert.fail('tidak boleh dipanggil') },
+      wilayahPerangkat: '',
+      maksGiliran: 3,
+      sesi,
+    });
+    assert.equal(n, 1);
+    assert.equal(h.akhir.alasan, 'gagal_mulai');
+  });
+});
+
+describe('layar kartu wilayah', () => {
+  it('usulan dari percakapan diberi label sama dengan UI', async () => {
+    const { renderLangkahAgen } = await import('../eval-persona/lib/layar.mjs');
+    const t = renderLangkahAgen([
+      ev('wilayah', {
+        status: 'usulan',
+        ktp: { kodeKabKota: '3216', nama: 'Kabupaten Bekasi' },
+        sumber: 'warga',
+      }),
+    ]);
+    assert.match(t, /usulan dari percakapan ini/);
+  });
+});
+
+describe('korpus pasal (ingest sumber *-pasal ke salinan DB eval)', async () => {
+  const { sumberPasal, hitungChunkPasal, barisKorpusPasal } = await import('../eval-persona/lib/korpus.mjs');
+  const { DatabaseSync } = await import('node:sqlite');
+
+  it('memilih sumber berakhiran -pasal yang di-ingest', () => {
+    const sources = {
+      sources: [
+        { id: 'wonogiri-ktp-el', ingest: true },
+        { id: 'perpres-96-2018-pasal', ingest: true },
+        { id: 'perpol-1-2026-pasal', ingest: true },
+        { id: 'uu-lama-pasal', ingest: false },
+      ],
+    };
+    assert.deepEqual(sumberPasal(sources), ['perpres-96-2018-pasal', 'perpol-1-2026-pasal']);
+  });
+
+  it('repo tanpa sumber pasal (main) menghasilkan daftar kosong', () => {
+    assert.deepEqual(sumberPasal({ sources: [{ id: 'semarang-data-dukung', ingest: true }] }), []);
+  });
+
+  it('menghitung chunk pasal per sumber dari tabel chunks', () => {
+    const db = new DatabaseSync(':memory:');
+    db.exec('CREATE TABLE chunks (id TEXT PRIMARY KEY)');
+    for (const id of [
+      'perpres-96-2018-pasal#pasal-33',
+      'perpres-96-2018-pasal#pasal-34',
+      'perpol-1-2026-pasal#pasal-2',
+      'wonogiri-ktp-el#1',
+    ])
+      db.prepare('INSERT INTO chunks (id) VALUES (?)').run(id);
+    assert.deepEqual(hitungChunkPasal(db), {
+      total: 3,
+      perSumber: { 'perpres-96-2018-pasal': 2, 'perpol-1-2026-pasal': 1 },
+    });
+  });
+
+  it('baris skor.md menyebut jumlah chunk pasal, atau alasan bila tidak di-ingest', () => {
+    assert.equal(
+      barisKorpusPasal({ status: 'diingest', sumber: 2, total: 3, galat: [] }),
+      '- korpus pasal: 3 chunk dari 2 sumber `*-pasal` di-ingest dari repo yang diuji',
+    );
+    assert.equal(
+      barisKorpusPasal({ status: 'tanpa_sumber', sumber: 0, total: 0, galat: [] }),
+      '- korpus pasal: repo yang diuji tidak punya sumber `*-pasal` (0 chunk)',
+    );
+    assert.equal(
+      barisKorpusPasal({ status: 'dimatikan', sumber: 0, total: 0, galat: [] }),
+      '- korpus pasal: dimatikan (--tanpa-pasal); 0 chunk',
+    );
+    assert.match(
+      barisKorpusPasal({ status: 'diingest', sumber: 2, total: 1, galat: ['perpol-1-2026-pasal'] }),
+      /galat: perpol-1-2026-pasal/,
+    );
   });
 });
