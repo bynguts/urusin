@@ -156,3 +156,23 @@ describe('render server komponen', () => {
     expect(body).toContain(`/urusan/${id}`);
   });
 });
+
+describe('/privasi', () => {
+  it('menyebut setiap pemroses data pihak lain, lokasi pendamping Indonesia, dan retensi cadangan', async () => {
+    const { default: Privasi } = await import('../../routes/privasi/+page.svelte');
+    const { body } = render(Privasi);
+    for (const pihak of [
+      'Oracle Cloud',
+      'Singapura',
+      'Laptop tim Urusin',
+      'Tailscale',
+      'OpenAI',
+      'Google',
+      'Resend',
+      'Cloudflare Turnstile',
+      'Jina AI',
+      'disimpan 3 hari',
+    ])
+      expect(body, pihak).toContain(pihak);
+  });
+});

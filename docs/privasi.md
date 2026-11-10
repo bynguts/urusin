@@ -40,7 +40,9 @@ permintaan soal data pribadi bisa dikirim lewat kontak di [`SECURITY.md`](../SEC
 ## Browser Pendamping
 
 Saat Urusin mengisi formulir di situs pemerintah, situs itu dibuka di peramban Chromium di server Urusin dan
-layarnya ditampilkan di perangkat Anda.
+layarnya ditampilkan di perangkat Anda. Situs yang hanya menerima jaringan Indonesia (mis. Telunjuk Sakti
+Wonogiri) dibuka di laptop tim Urusin di Indonesia yang tersambung ke server lewat Tailscale; aturan di bawah
+berlaku sama.
 
 - Apa yang Anda ketik saat mengambil alih (kata sandi situs pemerintah, OTP, CAPTCHA) melewati server Urusin,
   tetapi **tidak dicatat, tidak disimpan, dan tidak dikirim ke AI**.
@@ -51,16 +53,17 @@ layarnya ditampilkan di perangkat Anda.
 
 ## Pihak lain yang memproses data
 
-| Pihak                            | Lokasi            | Data yang diterima                                                                                                   |
-| -------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Oracle Cloud (hosting)           | Singapura         | Semua data di atas, dalam bentuk terenkripsi untuk Data Diri dan dokumen                                             |
-| Resend (pengiriman email)        | Amerika Serikat   | Alamat email Anda dan isi email verifikasi atau atur ulang sandi. Saat ini belum aktif: belum ada email yang dikirim |
-| Google (bila Anda memilihnya)    | Global            | Proses masuk dengan akun Google Anda                                                                                 |
-| Penyedia model AI                | Di luar Indonesia | Teks percakapan yang sudah tanpa NIK, KK, HP, atau email                                                             |
-| Jina AI (pencarian sumber resmi) | Di luar Indonesia | Kalimat pertanyaan yang sudah tanpa data pribadi                                                                     |
-| Cloudflare Turnstile             | Global            | Data teknis peramban untuk membedakan manusia dan bot, hanya di tombol juri dan setelah beberapa kali gagal masuk    |
+| Pihak                                                     | Lokasi            | Data yang diterima                                                                                                                                                                                                                           |
+| --------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Oracle Cloud (hosting)                                    | Singapura         | Semua data di atas, dalam bentuk terenkripsi untuk Data Diri dan dokumen                                                                                                                                                                     |
+| Resend (pengiriman email)                                 | Amerika Serikat   | Alamat email Anda dan isi email verifikasi atau atur ulang sandi. Saat ini belum aktif: belum ada email yang dikirim                                                                                                                         |
+| Google (bila Anda memilihnya)                             | Global            | Proses masuk dengan akun Google Anda                                                                                                                                                                                                         |
+| Laptop tim Urusin (Browser Pendamping jaringan Indonesia) | Indonesia         | Login dan isian yang Anda ketik di sesi situs yang hanya menerima jaringan Indonesia (mis. Telunjuk Sakti Wonogiri). Hanya di memori laptop selama sesi aktif, dihapus saat sesi ditutup. Tersambung ke server lewat Tailscale (terenkripsi) |
+| OpenAI (model GPT, lewat proxy model milik tim)           | Di luar Indonesia | Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti penanda sebelum dikirim                                                                                                                        |
+| Jina AI (pencarian sumber resmi)                          | Di luar Indonesia | Kalimat pertanyaan yang sudah tanpa data pribadi, hanya bila pencarian berbasis vektor diaktifkan                                                                                                                                            |
+| Cloudflare Turnstile                                      | Global            | Data teknis peramban untuk membedakan manusia dan bot, hanya di tombol juri dan setelah beberapa kali gagal masuk                                                                                                                            |
 
-Pengiriman ke Resend, Google, penyedia AI, Jina, dan Cloudflare adalah transfer data ke luar Indonesia (UU PDP
+Pengiriman ke Resend, Google, OpenAI, Jina, dan Cloudflare adalah transfer data ke luar Indonesia (UU PDP
 Pasal 56). Dasarnya persetujuan Anda. Bila tidak ingin email Anda melintas batas, pakai masuk dengan Google atau
 cara tanpa akun.
 
@@ -75,17 +78,18 @@ Urusin hanya memakai cookie yang dibutuhkan agar aplikasi berjalan:
 
 ## Berapa lama data disimpan
 
-| Data                                   | Lama disimpan                                                              |
-| -------------------------------------- | -------------------------------------------------------------------------- |
-| Data tanpa akun (tamu)                 | 72 jam sejak dibuat, aktivitas tidak memperpanjang                         |
-| Salinan juri                           | 24 jam sejak dibuat                                                        |
-| Akun yang emailnya belum dipastikan    | 24 jam sejak dibuat, bila tidak ada tautan verifikasi yang masih berlaku   |
-| Akun dan isinya                        | Sampai Anda menghapusnya                                                   |
-| Sesi, token email, dan tiket sementara | Dibersihkan setiap jam setelah kedaluwarsa                                 |
-| Cadangan basis data                    | Berisi data terenkripsi; tidak bisa dibuka lagi setelah kunci Anda dihapus |
+| Data                                   | Lama disimpan                                                                                                                                                                                                                                                                                                             |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Data tanpa akun (tamu)                 | 72 jam sejak dibuat, aktivitas tidak memperpanjang                                                                                                                                                                                                                                                                        |
+| Salinan juri                           | 24 jam sejak dibuat                                                                                                                                                                                                                                                                                                       |
+| Akun yang emailnya belum dipastikan    | 24 jam sejak dibuat, bila tidak ada tautan verifikasi yang masih berlaku                                                                                                                                                                                                                                                  |
+| Akun dan isinya                        | Sampai Anda menghapusnya                                                                                                                                                                                                                                                                                                  |
+| Sesi, token email, dan tiket sementara | Dibersihkan setiap jam setelah kedaluwarsa                                                                                                                                                                                                                                                                                |
+| Cadangan basis data                    | Dibuat tiap 6 jam dan disimpan 3 hari di server yang sama (`deploy/backup.sh`). Bila salinan di luar server (restic) diaktifkan operator: 14 cadangan harian dan 8 mingguan. Data Diri dan dokumen di dalamnya terenkripsi; percakapan dan Jejak (tanpa NIK, KK, HP, email) ikut tersimpan sampai cadangannya kedaluwarsa |
 
-Menghapus data atau akun menghancurkan kunci enkripsinya (_crypto-shred_), sehingga salinan di cadangan pun
-tidak bisa dibuka lagi.
+Menghapus data atau akun menghancurkan kunci enkripsinya (_crypto-shred_), sehingga Data Diri dan dokumen di
+cadangan pun tidak bisa dibuka lagi. Percakapan dan Jejak urusan yang dihapus masih ada di cadangan sampai
+cadangan itu kedaluwarsa (3 hari, atau sampai 8 minggu bila salinan di luar server aktif).
 
 ## Hak Anda (UU No. 27 Tahun 2022)
 
