@@ -501,15 +501,20 @@ Snippet yang terpasang bisa dicek ulang dengan flag yang sama: `... --check --se
 diteruskan; edge merutekan jalur MENTAH yang kanonik, jadi `/ws/..%2finternal`, `/ws/%2e%2e/internal`,
 `/ws/../internal`, `//internal`, dan `/ws/..;/debug` mendapat 404.
 
-**Worker tambahan (opsional, mis. laptop anggota berjaringan Indonesia):** jalankan image yang sama
-(digest sama) dengan `PENDAMPING_INTERNAL_TOKEN` yang sama, `HOST=<IP Tailscale worker>`,
-`URUSIN_PUBLIC_ORIGIN=https://$DOMAIN`, dan `PENDAMPING_PUBLIC_WS_URL=wss://$DOMAIN/pendamping/w/<id>/ws`.
-Di web, ganti `PENDAMPING_INTERNAL_URL` dengan `PENDAMPING_WORKERS` (lihat `.env.example`), mis.
-`[{"id":"vps","url":"http://127.0.0.1:4330","region":"umum","maxSessions":2},{"id":"laptop-a","url":"http://100.x.y.z:4330","region":"id","maxSessions":1}]`.
-Kanal web -> worker ditandatangani HMAC (bukan bearer polos), dan web memeriksa `GET /health` tiap worker.
-Situs `aksesWilayah: 'id-only'` (Telunjuk Sakti, Si D'nOK) hanya dirutekan ke worker `region: "id"`; bila
-semua mati, urusan beralih ke mode dipandu dengan pesan jujur. Rute WS worker tambahan butuh blok Caddy
-sendiri (dikerjakan lead): `handle_path /pendamping/w/<id>/*` -> `reverse_proxy 100.x.y.z:4330`.
+**Worker tambahan (laptop anggota berjaringan Indonesia):** paket siap pakai di
+[`worker-id/`](worker-id/README.md) (`worker.sh init|build|up|sehat|down|web-env`): topologi sama dengan di atas,
+edge diikat HANYA ke IP Tailscale laptop, token HMAC milik worker itu sendiri (`token` di `PENDAMPING_WORKERS`,
+bukan `PENDAMPING_INTERNAL_TOKEN`), dan URL WS `wss://$DOMAIN/pendamping/w/<id>/ws`. Di web, ganti
+`PENDAMPING_INTERNAL_URL` dengan `PENDAMPING_WORKERS` (`worker.sh web-env publik` menulisnya), mis.
+`[{"id":"vps","url":"http://127.0.0.1:4330","region":"umum","maxSessions":2,"wsUrl":"wss://$DOMAIN/pendamping/ws"},{"id":"laptop-a","url":"http://100.x.y.z:4330","region":"id","maxSessions":1,"wsUrl":"wss://$DOMAIN/pendamping/w/laptop-a/ws","token":"<acak >= 32>"}]`.
+Setiap worker WAJIB punya `wsUrl`, dan `token` bila bukan 127.0.0.1; JSON tidak sah = Pendamping tidak tersedia
+sama sekali. Kanal web -> worker ditandatangani HMAC (bukan bearer polos), dan web memeriksa `GET /health` tiap
+worker. Situs `aksesWilayah: 'id-only'` (Telunjuk Sakti, Si D'nOK) hanya dirutekan ke worker `region: "id"`;
+bila semua mati, urusan beralih ke mode dipandu dengan pesan jujur. Rute WS worker tambahan dibangkitkan
+(dikerjakan lead, izin per kejadian): tambahkan `--worker laptop-a=100.x.y.z:4330` ke perintah
+`gen-caddyfile.mjs` di atas. Blok yang dihasilkan HANYA `handle /pendamping/w/<id>/ws/*` (prefiks dibuang,
+edge menerima `/ws/<uuid>`); jangan memakai `handle_path /pendamping/w/<id>/*`, yang ikut membuka
+`/internal/*`, `/health`, dan `/debug` edge worker ke internet.
 
 **Egress hulu (opsional):** `PENDAMPING_UPSTREAM_PROXY=http://[user:pass@]host:port` (dipakai EDGE)
 mengarahkan CONNECT peramban yang SUDAH lolos kebijakan ke proxy milik operator (mis. egress Indonesia untuk

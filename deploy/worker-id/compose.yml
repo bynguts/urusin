@@ -1,0 +1,115 @@
+# Worker Browser Pendamping berjaringan Indonesia (region `id`) di laptop anggota tim, lewat Tailscale.
+# Situs registry `aksesWilayah: 'id-only'` (Telunjuk Sakti, Si D'nOK) menantang/menolak IP datacenter; laptop
+# ini koneksi biasa milik tim. Topologi SAMA dengan compose.prod.yml (pendamping hanya di jaringan internal,
+# edge satu-satunya jalan keluar dan satu-satunya port), bedanya:
+# - port edge diikat HANYA ke IP Tailscale laptop (WORKER_TAILSCALE_IP, 100.64.0.0/10), bukan 0.0.0.0/LAN;
+#   worker.sh menolak start bila IP itu bukan Tailscale atau tidak ada di laptop ini;
+# - token HMAC milik worker ini sendiri (WORKER_TOKEN), bukan PENDAMPING_INTERNAL_TOKEN produksi;
+# - URL WS publiknya wss://$DOMAIN/pendamping/w/$WORKER_ID/ws (Caddy agent-vm -> Tailscale -> edge ini).
+# Jalankan lewat `bash deploy/worker-id/worker.sh up` (memvalidasi .env dulu); lihat README.md di folder ini.
+name: urusin-worker-id
+
+x-batas-log: &log
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+
+services:
+  pendamping:
+    image: ${PENDAMPING_IMAGE:-urusin-pendamping:worker-id}
+    restart: unless-stopped
+    networks: [pendamping_internal]
+    init: true
+    environment:
+      NODE_ENV: production
+      HOST: antarmuka
+      PORT: '4330'
+      PENDAMPING_INTERNAL_TOKEN: ${WORKER_TOKEN:?WORKER_TOKEN wajib (jalankan worker.sh init)}
+      PENDAMPING_EDGE_URL: http://pendamping-edge:3129
+      PENDAMPING_EDGE_TOKEN: ${WORKER_EDGE_TOKEN:?WORKER_EDGE_TOKEN wajib (jalankan worker.sh init)}
+      URUSIN_PUBLIC_ORIGIN: https://${DOMAIN:?DOMAIN wajib diisi}
+      # Origin web yang boleh membuka WebSocket; compose.final.yml menambah http://localhost:3000 (final lokal).
+      PENDAMPING_ALLOWED_ORIGINS: ${WORKER_ALLOWED_ORIGINS:-https://${DOMAIN}}
+      # Hanya cadangan: web memaku URL WS ke `wsUrl` worker ini di PENDAMPING_WORKERS.
+      PENDAMPING_PUBLIC_WS_URL: wss://${DOMAIN}/pendamping/w/${WORKER_ID:?WORKER_ID wajib diisi}/ws
+      PENDAMPING_MAX_SESSIONS: ${PENDAMPING_MAX_SESSIONS:-1}
+      PENDAMPING_MAX_QUEUE: ${PENDAMPING_MAX_QUEUE:-10}
+      PENDAMPING_SESSION_MEM_MB: ${PENDAMPING_SESSION_MEM_MB:-450}
+      PENDAMPING_FPS: ${PENDAMPING_FPS:-8}
+      PENDAMPING_DEBUG_TOKEN: ${PENDAMPING_DEBUG_TOKEN:-}
+      # Mode Uji (juri/tamu) sama dengan produksi: portal resmi dipetakan ke replika di fixtures.$DOMAIN.
+      PENDAMPING_FIXTURE_ORIGINS: https://fixtures.${DOMAIN}
+      PENDAMPING_ORIGIN_OVERRIDES: >-
+        https://telunjuksakti.wonogirikab.go.id=https://fixtures.${DOMAIN},https://wargaklampid-dispendukcapil.surabaya.go.id=https://fixtures.${DOMAIN}/sby,https://sidnok.semarangkota.go.id=https://fixtures.${DOMAIN}/smg,https://samsat-pkb2.jakarta.go.id=https://fixtures.${DOMAIN}/samsat,https://oss.go.id=https://fixtures.${DOMAIN}/oss
+    read_only: true
+    tmpfs:
+      - /tmp:size=768m
+    # Satu sesi (laptop) x 512 MB + Node/Xvfb; batas sama dengan produksi supaya perilaku pengawas sama.
+    mem_limit: 1300m
+    memswap_limit: 1300m
+    cpus: 2.0
+    pids_limit: 512
+    ulimits:
+      core: 0
+    # Sandbox Chromium AKTIF, sama dengan produksi (ADR 0029): helper SUID chrome-sandbox butuh SYS_ADMIN +
+    # SYS_CHROOT dan TANPA no-new-privileges; profil seccomp Playwright yang dipangkas.
+    cap_drop: [ALL]
+    cap_add: [SYS_ADMIN, SYS_CHROOT]
+    security_opt:
+      - seccomp=../pendamping-seccomp.json
+    healthcheck:
+      test: ['CMD', 'node', 'dist/sehat.js', '4330']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging: *log
+
+  pendamping-edge:
+    image: ${PENDAMPING_IMAGE:-urusin-pendamping:worker-id}
+    restart: unless-stopped
+    command: ['node', 'dist/edge-main.js']
+    networks: [pendamping_internal, pendamping_luar]
+    ports:
+      # HANYA IP Tailscale laptop. Docker Desktop mendengarkan di IP itu saja (bukan LAN, bukan loopback).
+      - '${WORKER_TAILSCALE_IP:?WORKER_TAILSCALE_IP wajib diisi}:${WORKER_PORT:-4330}:4330'
+    depends_on: [pendamping]
+    init: true
+    environment:
+      NODE_ENV: production
+      EDGE_PENDAMPING_URL: http://pendamping:4330
+      PENDAMPING_EDGE_TOKEN: ${WORKER_EDGE_TOKEN:?WORKER_EDGE_TOKEN wajib}
+      PENDAMPING_DEBUG_TOKEN: ${PENDAMPING_DEBUG_TOKEN:-}
+      PENDAMPING_FIXTURE_ORIGINS: https://fixtures.${DOMAIN}
+    user: pwuser
+    read_only: true
+    tmpfs:
+      - /tmp:size=8m
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    ulimits:
+      core: 0
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ['CMD', 'node', 'dist/sehat.js', '3129']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    logging: *log
+
+networks:
+  pendamping_internal:
+    driver: bridge
+    internal: true
+    enable_ipv6: false
+    driver_opts:
+      com.docker.network.bridge.gateway_mode_ipv4: isolated
+  pendamping_luar:
+    driver: bridge
+    enable_ipv6: false
