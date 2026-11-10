@@ -45,11 +45,14 @@ ip_tailscale() {
 }
 
 # 0 bila IP $1 terpasang di antarmuka host ini (Linux `ip`, Windows `ipconfig`, macOS `ifconfig`).
+# Keluaran ditampung dulu: `cmd | grep -q` di bawah pipefail bisa gagal acak karena grep keluar lebih awal
+# dan penulis kena SIGPIPE (141), sehingga IP yang ada dianggap tidak ada.
 ip_ada() {
-  local pola="(^|[^0-9.])${1//./\\.}([^0-9.]|\$)"
-  if command -v ip >/dev/null 2>&1; then ip -4 -o addr show | grep -qE "$pola"
-  elif command -v ipconfig >/dev/null 2>&1; then ipconfig | tr -d '\r' | grep -qE "$pola"
-  else ifconfig 2>/dev/null | grep -qE "$pola"; fi
+  local pola="(^|[^0-9.])${1//./\\.}([^0-9.]|\$)" daftar=""
+  if command -v ip >/dev/null 2>&1; then daftar="$(ip -4 -o addr show 2>/dev/null || true)"
+  elif command -v ipconfig >/dev/null 2>&1; then daftar="$(ipconfig 2>/dev/null | tr -d '\r' || true)"
+  else daftar="$(ifconfig 2>/dev/null || true)"; fi
+  grep -qE "$pola" <<<"$daftar"
 }
 
 periksa_env() {
