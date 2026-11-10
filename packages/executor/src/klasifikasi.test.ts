@@ -109,8 +109,35 @@ const TABEL: [string, string, KelasKendali][] = [
 
   // --- aturan 4: submitter asli, apa pun teksnya ---
   ['input submit Berikutnya', '<form><input type="submit" value="Berikutnya" data-uji></form>', 'kirim'],
-  ['button type tak dikenal = submit', '<button type="lanjut" data-uji>Lanjut</button>', 'kirim'],
-  ['button tanpa type di luar form', '<button data-uji>Selanjutnya</button>', 'kirim'],
+  [
+    'button type tak dikenal di form = submit',
+    '<form><button type="lanjut" data-uji>Lanjut</button></form>',
+    'kirim',
+  ],
+  ['button tanpa type di form = submit', '<form><button data-uji>Selanjutnya</button></form>', 'kirim'],
+  [
+    'button tanpa type dengan atribut form= = submit',
+    '<form id="f1"></form><button form="f1" data-uji>Selanjutnya</button>',
+    'kirim',
+  ],
+  [
+    'button type=submit eksplisit di luar form = submit',
+    '<button type="submit" data-uji>Lanjut</button>',
+    'kirim',
+  ],
+  // Probe: tombol tanpa type di luar form tidak mengirim apa pun (menu seluler, wizard JS) = tombol biasa.
+  ['button tanpa type di luar form = tombol biasa', '<button data-uji>Selanjutnya</button>', 'lanjut'],
+  [
+    'button type tak dikenal di luar form = tombol biasa',
+    '<button type="lanjut" data-uji>Lanjut</button>',
+    'lanjut',
+  ],
+  [
+    'toggler menu seluler tanpa type di luar form',
+    '<button class="navbar-toggler" aria-expanded="false" data-uji>Menu</button>',
+    'ui_lokal',
+  ],
+  ['tombol tanpa type bernama Kirim di luar form tetap NEG', '<button data-uji>Kirim</button>', 'kirim'],
 
   // --- aturan 5: atribut berbahaya ---
   ['formaction', '<button type="button" formaction="/simpan" data-uji>Lanjut</button>', 'kirim'],
@@ -229,6 +256,25 @@ const TABEL: [string, string, KelasKendali][] = [
   ['tautan netral ke jalur terima', '<a href="/surat/terima?id=1" data-uji>Lihat</a>', 'kirim'],
   ['tautan netral ke jalur send', '<a href="/api/send/1" data-uji>Lihat</a>', 'kirim'],
 
+  // --- N6 (PoC C): kata kerja tulis/pengesahan lain ---
+  ['tautan Tanda Tangani Dokumen', '<a href="/dok/12/tte" data-uji>Tanda Tangani Dokumen</a>', 'kirim'],
+  ['tautan Finalisasi Data', '<a href="/data/12/kunci" data-uji>Finalisasi Data</a>', 'kirim'],
+  ['tautan Serahkan Berkas', '<a href="/berkas/12/serah" data-uji>Serahkan Berkas</a>', 'kirim'],
+  ['tautan TTE', '<a href="/dok/12" data-uji>TTE</a>', 'kirim'],
+  ['tautan Setor Berkas', '<a href="/berkas/12" data-uji>Setor Berkas</a>', 'kirim'],
+  ['tautan Sahkan', '<a href="/dok/12" data-uji>Sahkan Dokumen</a>', 'kirim'],
+  ['tautan Terbitkan', '<a href="/dok/12" data-uji>Terbitkan Akta</a>', 'kirim'],
+  ['tautan Laporkan', '<a href="/dok/12" data-uji>Laporkan Kelahiran</a>', 'kirim'],
+  ['tautan Kunci Data', '<a href="/dok/12" data-uji>Kunci Data</a>', 'kirim'],
+  ['tautan netral ke jalur tanda-tangan', '<a href="/dok/12/tanda-tangan" data-uji>Buka</a>', 'kirim'],
+  ['tautan netral ke jalur tte', '<a href="/dok/12/tte" data-uji>Buka</a>', 'kirim'],
+  ['tombol Tanda Tangan', '<button type="button" data-uji>Tanda Tangan</button>', 'kirim'],
+  [
+    'tautan Lanjutkan Permohonan tetap navigasi',
+    '<a href="/permohonan/12/lanjutkan" data-uji>Lanjutkan Permohonan</a>',
+    'navigasi',
+  ],
+
   // --- F4: aktivator leluhur dan kontrol label; kelas paling ketat menang ---
   [
     'span role=button Lanjut di dalam button submit',
@@ -321,6 +367,8 @@ describe('K7_NEG_NAMA_TAUTAN: tautan yang kena NEG hanya lewat nama', () => {
       '<a href="/permohonan/kk" data-uji>Ajukan Permohonan Kartu Keluarga</a>',
       '<a href="/formulir" data-uji>Mulai Pendaftaran</a>',
       '<a href="/layanan/akta" data-uji>Proses Akta Kelahiran</a>',
+      // Ikon NEG tidak menambah apa pun pada tautan GET bersih: nama yang menentukan.
+      '<a href="/permohonan/kk" data-uji><i class="fa fa-paper-plane"></i> Ajukan</a>',
     ])
       expect(aturan(html)).toMatchObject({ kelas: 'kirim', aturan: 'K7_NEG_NAMA_TAUTAN' });
   });
@@ -329,13 +377,69 @@ describe('K7_NEG_NAMA_TAUTAN: tautan yang kena NEG hanya lewat nama', () => {
     for (const html of [
       '<a href="/permohonan/12/ajukan" data-uji>Ajukan Permohonan</a>',
       '<a href="/permohonan/kk" class="btn-submit" data-uji>Ajukan Permohonan</a>',
-      '<a href="/permohonan/kk" data-uji><i class="fa fa-paper-plane"></i> Ajukan</a>',
+      '<a href="/permohonan/kk" class="fa fa-paper-plane" data-uji>Ajukan</a>',
       '<a href="/permohonan/kk" download data-uji>Ajukan Permohonan</a>',
       '<a href="#" data-uji>Ajukan Permohonan</a>',
       '<a href="javascript:void(0)" data-uji>Ajukan Permohonan</a>',
       '<button type="button" data-uji>Ajukan Permohonan</button>',
     ])
       expect(aturan(html), html).toMatchObject({ kelas: 'kirim', aturan: expect.not.stringMatching(/NAMA/) });
+  });
+
+  it('probe SIDAK: ikon feather credit-card pada tautan layanan GET = pembuka (K7_NEG_IKON_TAUTAN)', () => {
+    const sidak = (nama: string, jalur: string) =>
+      `<a class="nav-link" href="${jalur}" data-uji><svg class="feather feather-credit-card"></svg><span>${nama}</span></a>`;
+    for (const [nama, jalur] of [
+      ['KIA', '/layanan/kia'],
+      ['KK', '/layanan/kk'],
+      ['KTP-el', '/layanan/ktp-el'],
+    ] as const)
+      expect(aturan(sidak(nama, jalur)), nama).toMatchObject({
+        kelas: 'kirim',
+        aturan: 'K7_NEG_IKON_TAUTAN',
+      });
+    // Ikon NEG pada tombol / tautan tidak bersih tetap K7_NEG.
+    expect(aturan('<button type="button" data-uji><i class="fa fa-trash"></i> Data</button>')).toMatchObject({
+      kelas: 'kirim',
+      aturan: 'K7_NEG',
+    });
+    expect(aturan('<a href="/x/12/hapus" data-uji><i class="fa fa-trash"></i> Data</a>')).toMatchObject({
+      kelas: 'kirim',
+      aturan: 'K7_NEG',
+    });
+    expect(aturan('<a href="#" data-uji><i class="fa fa-print"></i> Data</a>')).toMatchObject({
+      kelas: 'kirim',
+      aturan: 'K7_NEG',
+    });
+  });
+
+  it('probe 1901: tautan di dalam <button type=button> tanpa sinyal tetap navigasi', () => {
+    expect(
+      aturan(
+        '<button type="button" class="btn btn-info"><a class="button active" href="/jenis-layanan" data-uji>Jenis Layanan</a></button>',
+      ),
+    ).toMatchObject({ kelas: 'navigasi', aturan: 'K8_NAVIGASI' });
+    // Pembungkus yang mengirim / berbahaya / bernama NEG tetap mengunci.
+    for (const html of [
+      '<form><button><a href="/jenis-layanan" data-uji>Jenis Layanan</a></button></form>',
+      '<button type="button" onclick="fetch(\'/x\',{method:\'POST\'})"><a href="/l" data-uji>Lihat</a></button>',
+      '<button type="button" aria-label="Kirim"><a href="/l" data-uji>Lihat</a></button>',
+    ])
+      expect(bolehDiklikAi(aturan(html).kelas), html).toBe(false);
+  });
+
+  it('<base href>: host/jalur tautan dihitung dari baseURI (URL yang benar-benar dibuka)', () => {
+    const base = document.createElement('base');
+    base.href = 'https://contoh.go.id/permohonan/12/';
+    document.head.appendChild(base);
+    try {
+      document.body.innerHTML = '<a href="ajukan" data-uji>Detail</a>';
+      const k = klasifikasi(document.querySelector('[data-uji]')!);
+      expect(k.fitur.href).toMatchObject({ host: 'contoh.go.id', jalur: '/permohonan/12/ajukan' });
+      expect(k).toMatchObject({ kelas: 'kirim', aturan: 'K7_NEG' });
+    } finally {
+      base.remove();
+    }
   });
 
   it('data-method non-GET tetap K5_ATRIBUT', () => {
@@ -352,11 +456,33 @@ describe('halamanAkhir', () => {
     return halamanAkhir(document);
   };
 
-  it('frasa pernyataan / tinjauan menandai halaman akhir', () => {
-    expect(akhir('<p>Dengan ini saya menyatakan bahwa data yang saya isi adalah benar.</p>')).toBe(true);
-    expect(akhir('<h2>Periksa kembali data Anda</h2>')).toBe(true);
-    expect(akhir('<h2>Ringkasan Permohonan</h2>')).toBe(true);
-    expect(akhir('<h3>Konfirmasi Pengajuan</h3>')).toBe(true);
+  it('frasa pernyataan / tinjauan menandai halaman akhir (halaman berformulir/bertombol)', () => {
+    const b = '<button type="button">Kirim</button>';
+    expect(akhir(`<p>Dengan ini saya menyatakan bahwa data yang saya isi adalah benar.</p>${b}`)).toBe(true);
+    expect(akhir(`<h2>Periksa kembali data Anda</h2>${b}`)).toBe(true);
+    expect(akhir('<h2>Ringkasan Permohonan</h2><form><input name="catatan"></form>')).toBe(true);
+    expect(akhir(`<h3>Konfirmasi Pengajuan</h3>${b}`)).toBe(true);
+    // Tanpa kolom/tombol sama sekali: tidak ada yang bisa dikirim, bukan halaman akhir.
+    expect(akhir('<h3>Konfirmasi Pengajuan</h3><p>Teks saja.</p>')).toBe(false);
+  });
+
+  it('probe 1971: "konfirmasi pendaftaran" di FAQ akordeon beranda bukan halaman akhir', () => {
+    // Meniru beranda SIPELANGI: hero + pencarian + FAQ akordeon (jawaban terlipat) + kaki.
+    const html = `<nav class="navbar"><a class="navbar-brand" href="/">Si Pelangi</a>
+      <button class="navbar-toggler" type="button">Toggle navigation</button></nav>
+      <section><h1>Sistem Informasi Pengajuan</h1><a class="btn btn-primary" href="/permohonan/buat">Buat Permohonan</a>
+      <form action="/cari"><input name="keyword"><button class="btn">Cari</button></form></section>
+      <section><h2>Temukan Jawaban untuk Pertanyaan Kamu</h2>
+      <div class="accordion" id="faq"><div class="accordion-item">
+        <div class="accordion-header collapsed" role="button">Bagaimana proses registrasi sebagai Agen?</div>
+        <div class="accordion-collapse collapse"><div class="accordion-body">Isi formulir lalu tunggu email
+          konfirmasi pendaftaran dari admin. Periksa kembali data Anda sebelum mengirim.</div></div></div></div></section>
+      <footer><p>Dengan ini kami menyatakan layanan gratis.</p></footer>`;
+    expect(akhir(html)).toBe(false);
+    // Kontrol: frasa yang sama di isi halaman (bukan FAQ) tetap mengunci.
+    expect(
+      akhir(html.replace('<h1>Sistem Informasi Pengajuan</h1>', '<h1>Konfirmasi Pendaftaran</h1>')),
+    ).toBe(true);
   });
 
   it('checkbox pernyataan yang terlihat menandai halaman akhir; tersembunyi tidak', () => {

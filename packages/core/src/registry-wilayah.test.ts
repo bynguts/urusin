@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  EGRESS_ASET_UMUM,
   EGRESS_PIHAK_KETIGA,
   OFFICIAL_DOMAINS,
   egressAllowedHosts,
@@ -103,7 +104,10 @@ describe('lint registry wilayah (ADR 0030)', () => {
   });
 
   it('hostsTantanganWilayah: Cloudflare + host sesuai proteksi portal; semua terdaftar di egress', () => {
-    expect(hostsTantanganWilayah('3312')).toEqual(['challenges.cloudflare.com']);
+    expect(hostsTantanganWilayah('3312')).toEqual([
+      'challenges.cloudflare.com',
+      'brunhild.challenges.cloudflare.com',
+    ]);
     expect(hostsTantanganWilayah('1306')).toEqual(
       expect.arrayContaining(['challenges.cloudflare.com', 'www.google.com', 'www.recaptcha.net']),
     );
@@ -143,6 +147,15 @@ describe('lint registry wilayah (ADR 0030)', () => {
     expect(getOfficialDomain('cecah.benermeriahkab.go.id')).toBeUndefined();
     // 1102: host tetap tercatat sebagai situs informasi Disdukcapil, bukan portal layanan.
     expect(PORTAL_WILAYAH['1102']!.hostInfo).toContain('disdukcapil.acehtenggarakab.go.id');
+  });
+
+  it('EGRESS_ASET_UMUM: CDN/fon bawaan sesi, semuanya terdaftar di egress dan bukan domain resmi', () => {
+    const egress = new Set(EGRESS_PIHAK_KETIGA.map((e) => e.host));
+    for (const h of EGRESS_ASET_UMUM) expect(egress.has(h), h).toBe(true);
+    for (const h of ['unpkg.com', 'cdn.tailwindcss.com', 'code.jquery.com', 'fonts.googleapis.com'])
+      expect(EGRESS_ASET_UMUM).toContain(h);
+    // Tantangan tidak ikut aset umum (punya jalurnya sendiri lewat proteksi/tantangan wilayah).
+    expect(EGRESS_ASET_UMUM.some((h) => h.includes('challenges') || h.includes('recaptcha'))).toBe(false);
   });
 
   it('urutan kanal routing multi-kanal', () => {

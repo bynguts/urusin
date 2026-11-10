@@ -1,5 +1,6 @@
 import type net from 'node:net';
 import { hostsSesi } from '@urusin/adapters';
+import { EGRESS_ASET_UMUM } from '@urusin/core';
 import type {
   AksiSesiInternal,
   HasilAksi,
@@ -62,7 +63,7 @@ type FakeRun = ActiveRun & { init: RunInit; calls: string[]; aksiMasuk: AksiSesi
 function harness(over: Partial<Config> = {}) {
   const runs: FakeRun[] = [];
   /** Pengamatan yang dikembalikan run palsu (diganti tes, mis. halaman sukses). */
-  const ctl = { amatan: PENGAMATAN };
+  const ctl = { amatan: PENGAMATAN, tulisWarga: false };
   const config = { ...loadConfig({}), ...over };
   const factory = async (init: RunInit): Promise<FakeRun> => {
     const calls: string[] = [];
@@ -83,6 +84,7 @@ function harness(over: Partial<Config> = {}) {
       destroy: async () => void calls.push('destroy'),
       generik: {
         amati: async () => ctl.amatan,
+        adaTulisWargaSejakAksiAi: () => ctl.tulisWarga,
         aksi: async (req): Promise<HasilAksi[]> => {
           aksiMasuk.push(req.aksi);
           return req.aksi.map((_, indeks) => ({ indeks, kode: 'ok' }));
@@ -145,11 +147,18 @@ describe('programDari(generik)', () => {
       await h.flush();
       return hostsSesi(h.runs.at(-1)!.init.program);
     };
-    // Bawaan dari registry wilayah: host portal + tantangan sesuai proteksi (cloudflare), tanpa host info.
+    // Bawaan dari registry wilayah: host portal + tantangan Cloudflare (termasuk flow brunhild) + aset umum
+    // CDN/fon, tanpa host info.
     expect(await hostsDari('u1', { kode: '3312', jalur: '/' })).toEqual([
       'telunjuksakti.wonogirikab.go.id',
       'challenges.cloudflare.com',
+      'brunhild.challenges.cloudflare.com',
+      ...EGRESS_ASET_UMUM,
     ]);
+    // CDN boleh diminta eksplisit oleh web.
+    expect(
+      await hostsDari('u4', { kode: '3312', hosts: 'telunjuksakti.wonogirikab.go.id,unpkg.com' }),
+    ).toEqual(['telunjuksakti.wonogirikab.go.id', 'unpkg.com']);
     // Diminta web: semuanya harus milik wilayah itu (host info boleh diminta eksplisit).
     expect(await hostsDari('u2', { kode: '3312', hosts: 'disdukcapil.wonogirikab.go.id' })).toEqual([
       'telunjuksakti.wonogirikab.go.id',
@@ -465,6 +474,7 @@ describe('server: endpoint internal generik (HMAC)', () => {
     ).toBe(422);
     expect((await call('/internal/sesi/selesai', owner('u1'))).status).toBe(409);
     h.ctl.amatan = { ...PENGAMATAN, sinyal: { ...PENGAMATAN.sinyal, sukses: true }, teks: 'Nomor REG-1' };
+    h.ctl.tulisWarga = true;
     const selesai = await call('/internal/sesi/selesai', { ...owner('u1'), bukti: { nomor: 'REG-1' } });
     expect(selesai.status).toBe(200);
     expect(selesai.status === 200 && (await selesai.clone().json()).executionId).toBe('x_u1');
@@ -492,6 +502,12 @@ describe('selesai (H3): halaman sukses -> siaga berhasil + bukti di jejak', () =
     // Warga menekan Kirim sendiri (takeover), lalu halaman sukses muncul.
     await h.manager.handleClient(s.sesiId, { type: 'ambil_alih' });
     h.ctl.amatan = SUKSES;
+    // Halaman sukses tanpa tulis warga sejak aksi AI terakhir (dasbor/label/draf, review N3) = 409.
+    await expect(h.manager.selesai(owner('u1'), { nomor: 'REG-2026-0001' })).rejects.toMatchObject({
+      status: 409,
+      message: 'belum ada pengiriman oleh warga',
+    });
+    h.ctl.tulisWarga = true;
     await expect(h.manager.selesai(owner('u1', OTHER))).rejects.toMatchObject({ status: 403 });
     const v = await h.manager.selesai(owner('u1'), { nomor: 'REG-2026-0001', status: 'Terkirim' });
     expect(v).toMatchObject({ status: 'siaga', hasil: 'berhasil' });
@@ -522,10 +538,66 @@ describe('selesai (H3): halaman sukses -> siaga berhasil + bukti di jejak', () =
     const h = harness();
     await sesiBerjalan(h);
     h.ctl.amatan = SUKSES;
+    h.ctl.tulisWarga = true;
     await h.manager.selesai(owner('u1'), { nomor: 'KARANGAN-999', status: 'Terkirim' });
     expect(h.manager.kurasJejak(owner('u1')).catatan).toEqual([
       { jenis: 'bukti', bukti: { status: 'Terkirim' } },
     ]);
+  });
+
+  it('N7: sesi diakhiri saat amati berjalan = 409, bukan berhasil', async () => {
+    const h = harness();
+    await sesiBerjalan(h);
+    h.ctl.tulisWarga = true;
+    h.runs[0]!.generik!.amati = async () => {
+      await h.manager.akhiri(owner('u1'));
+      return SUKSES;
+    };
+    await expect(h.manager.selesai(owner('u1'))).rejects.toMatchObject({
+      status: 409,
+      message: 'sesi pendamping sudah berakhir',
+    });
+  });
+
+  it('kode N1: sukses sesudah tulis warga dari worker (loop web sudah berhenti) = siaga berhasil', async () => {
+    const h = harness();
+    await sesiBerjalan(h);
+    const hooks = h.runs[0]!.init.hooks;
+    hooks.suksesWarga!(PENGAMATAN);
+    expect(h.manager.status(owner('u1')).status).toBe('berjalan');
+    hooks.suksesWarga!(SUKSES);
+    expect(h.manager.status(owner('u1'))).toMatchObject({ status: 'siaga', hasil: 'berhasil' });
+    // /selesai sesudahnya idempoten; bukti dari Navigator boleh menyusul sekali (nomor tertulis di halaman).
+    expect(await h.manager.selesai(owner('u1'))).toMatchObject({ status: 'siaga' });
+    h.ctl.tulisWarga = true;
+    h.ctl.amatan = SUKSES;
+    expect(await h.manager.selesai(owner('u1'), { nomor: 'REG-2026-0001' })).toMatchObject({
+      status: 'siaga',
+      hasil: 'berhasil',
+      bukti: { nomor: 'REG-2026-0001' },
+    });
+    expect(h.manager.kurasJejak(owner('u1')).catatan).toContainEqual({
+      jenis: 'bukti',
+      bukti: { nomor: 'REG-2026-0001' },
+    });
+  });
+
+  it('L4: amati/aksi dengan executionId lain = 409; tanpa executionId atau sama = jalan', async () => {
+    const h = harness();
+    const { s } = await sesiBerjalan(h);
+    await expect(h.manager.amati(owner('u1'), false, 'x_lain')).rejects.toMatchObject({ status: 409 });
+    await expect(
+      h.manager.aksi(owner('u1'), {
+        ...owner('u1'),
+        rencanaHash: H1,
+        aksi: [{ jenis: 'serahkan', alasan: 'tidak_yakin' }],
+        executionId: 'x_lain',
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(h.runs[0]!.aksiMasuk).toEqual([]);
+    await expect(h.manager.amati(owner('u1'), false, s.executionId)).resolves.toMatchObject({
+      executionId: s.executionId,
+    });
   });
 
   it('sesi adapter = 409', async () => {

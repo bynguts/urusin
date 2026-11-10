@@ -309,12 +309,14 @@ export class SesiPendampingUi {
   }
 
   /**
-   * Giliran `ketuk_tautan`: tombol Urusin "Buka …" meminta worker membuka tautan pembuka yang disorot (ref dari
-   * event giliran; perangkat tidak pernah mengirim URL). Warga lalu menekan Lanjutkan.
+   * Giliran `ketuk_tautan`: tombol Urusin "Buka …" meminta worker membuka tautan pembuka yang disorot
+   * (perangkat tidak pernah mengirim URL); worker membaca ulang href-nya dan mengembalikan kendali ke AI.
    */
   bukaTautan(): void {
-    const t = this.data.giliran?.alasan === 'ketuk_tautan' ? this.data.giliran.tautan : undefined;
-    if (t) this.viewer?.bukaTautan(t.ref);
+    if (this.data.giliran?.alasan === 'ketuk_tautan' && this.data.giliran.tautan) {
+      this.data = { ...this.data, giliran: null };
+      this.viewer?.bukaTautan();
+    }
   }
 
   /**

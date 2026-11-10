@@ -221,7 +221,6 @@ describe('render server komponen', () => {
   it('giliran ketuk_tautan: judul netral, tombol Buka ber-host+jalur dan Lanjutkan; berhenti tanpa Lanjutkan', () => {
     const noop = () => {};
     const tautan = {
-      ref: 'e4',
       nama: 'Daftar <b>Akta</b>',
       host: 'contoh-layanan.go.id',
       jalur: '/akta/baru',
@@ -259,13 +258,15 @@ describe('render server komponen', () => {
     expect(body).toContain('Buka tautan di situs');
     expect(body).not.toContain('Buka formulir');
     expect(body).toContain('AI tidak mengetuk tautan ini; Anda yang membukanya.');
-    expect(body).toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
+    // Worker membuka tautan lalu AI lanjut: hanya tombol Buka, tanpa Lanjutkan.
+    expect(body).not.toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
     // Tombol Buka: nama tautan dari situs sebagai teks (di-escape), plus host + jalur tujuan.
     expect(body).toMatch(/data-buka-tautan[^>]*>[\s\S]*?Buka “Daftar &lt;b>Akta&lt;\/b>”/);
     expect(body).toContain('(contoh-layanan.go.id/akta/baru)');
     expect(body).not.toContain('<b>Akta</b>');
     // Worker lama tanpa `tautan`: tanpa tombol Buka, Lanjutkan tetap ada.
     expect(layar('ketuk_tautan', false)).not.toContain('data-buka-tautan');
+    expect(layar('ketuk_tautan', false)).toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
     // Pembanding: giliran kirim akhir tetap tanpa Lanjutkan (tombol Kirim di situs milik warga).
     expect(layar('final')).not.toContain('Buka tautan di situs');
     expect(layar('final')).not.toContain('data-buka-tautan');

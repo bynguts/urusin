@@ -223,7 +223,7 @@ describe('createPendampingViewer', () => {
     ]);
     viewer.ambilAlih();
     viewer.kembalikan();
-    viewer.bukaTautan('e7');
+    viewer.bukaTautan();
     viewer.akhiri();
     expect(ws.sent.slice(1).map((m) => m.type)).toEqual([
       'ambil_alih',
@@ -231,7 +231,7 @@ describe('createPendampingViewer', () => {
       'buka_tautan',
       'akhiri',
     ]);
-    expect(ws.sent.find((m) => m.type === 'buka_tautan')).toEqual({ type: 'buka_tautan', ref: 'e7' });
+    expect(ws.sent.find((m) => m.type === 'buka_tautan')).toEqual({ type: 'buka_tautan' });
     // A-M1: viewer tidak punya jalur kirim nilai vault atau berkas.
     expect('kirimVault' in viewer || 'kirimBerkas' in viewer).toBe(false);
   });

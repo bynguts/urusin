@@ -87,11 +87,41 @@ const RE_JUDUL_TANTANGAN = /^(just a moment|sebentar|attention required|checking
 const SEL_GALAT =
   '.invalid-feedback, .error, .errors, .text-danger, .field-error, .form-error, .error-message, .help-block, [role="alert"], .alert-danger, .has-error, .is-invalid';
 const RE_SUKSES = [
-  /(nomor|no\.?) ?(registrasi|pendaftaran|permohonan|antrian|antrean|tiket|pengajuan|resi|tanda terima|bukti)\s*[:#]?\s*[a-z0-9][a-z0-9/-]{3,}/,
-  /(berhasil|sukses) (dikirim|diajukan|disimpan|terkirim|didaftarkan|terdaftar|mendaftar)/,
+  // Token nomor wajib memuat digit ("nomor registrasi disini" / "nomor resi anda" bukan bukti).
+  /(nomor|no\.?) ?(registrasi|pendaftaran|permohonan|antrian|antrean|tiket|pengajuan|resi|tanda terima|bukti)( anda)?\s*[:#]?\s*(?=[a-z0-9/-]*\d)[a-z0-9][a-z0-9/-]{3,}/,
+  // "berhasil disimpan" = draf/tahap wizard, dan "bukti pendaftaran" tunggal = menu/judul (review N3): bukan sukses.
+  /(berhasil|sukses) (dikirim|diajukan|terkirim|didaftarkan|terdaftar|mendaftar)/,
   /(permohonan|pengajuan|pendaftaran) (anda )?(telah |sudah )?(berhasil|diterima|terkirim)/,
-  /bukti (pendaftaran|pengajuan|permohonan)/,
 ];
+/**
+ * Wadah hasil: judul, peringatan/status, popup SweetAlert/toast, dialog terbuka. Teks badan halaman (FAQ, tahapan
+ * layanan, petunjuk) tidak pernah dipakai untuk sinyal sukses (probe portal nyata: positif palsu di beranda).
+ */
+const SEL_WADAH_HASIL =
+  'h1, h2, h3, h4, h5, h6, [role="heading"], [role="alert"], [role="status"], .alert, .swal2-popup, .swal-modal, .sweet-alert, .toast, dialog[open], .modal.show';
+/** Wilayah yang bukan hasil: navigasi, kaki, FAQ/akordeon, daftar tahapan/menu. */
+const SEL_BUKAN_HASIL =
+  'nav, footer, .navbar, .dropdown-menu, .breadcrumb, .accordion, .faq, [class*="faq" i], [id*="faq" i], details, li, .timeline, .steps, .stepper, marquee';
+/** Kalimat petunjuk/bersyarat/negatif: "setelah pendaftaran berhasil ...", "cek nomor registrasi", "?". */
+const RE_KALIMAT_PETUNJUK =
+  /\b(setelah|sesudah|jika|apabila|bila|kalau|bagaimana|cara|agar|supaya|silakan|silahkan|lacak|cek|cari|masukkan|masukan|isikan|ketik|lupa|belum|tidak|gagal|cetak|unduh|download)\b|\?/;
+
+function kalimatDari(t: string): string[] {
+  return t.split(/[!\n]+|(?<!\bno)\.(?=\s|$)/).map((k) => k.trim());
+}
+
+/** Sinyal sukses: kalimat pasti (bukan petunjuk) di judul dokumen atau wadah hasil yang terlihat. */
+function suksesTerlihat(doc: Document): boolean {
+  const sumber = [normalTeks(doc.title)];
+  for (const el of doc.querySelectorAll(SEL_WADAH_HASIL)) {
+    if (el.parentElement?.closest(SEL_BUKAN_HASIL) || el.matches(SEL_BUKAN_HASIL) || !terlihatEl(el))
+      continue;
+    sumber.push(normalTeks(teksTampakDari(el)));
+  }
+  return sumber.some((t) =>
+    kalimatDari(t).some((k) => !RE_KALIMAT_PETUNJUK.test(k) && RE_SUKSES.some((re) => re.test(k))),
+  );
+}
 
 /** Hash struktural cyrb53 (heksadesimal, 14 digit). Bukan kriptografis: hanya sidik perubahan struktur. */
 export function hashTeks(s: string): string {
@@ -112,6 +142,14 @@ export function jalurCss(el: Element): string {
   const bagian: string[] = [];
   for (let e: Element | null = el; e && e.parentElement; e = e.parentElement) {
     const tag = e.tagName.toLowerCase();
+    // Tag ber-namespace (<cms:render>, probe 1102) bukan selektor tipe yang valid di semua mesin: pakai
+    // `*:nth-child` (posisi di antara semua saudara elemen) untuk langkah itu saja.
+    if (!/^[a-z][a-z0-9-]*$/.test(tag)) {
+      let ke = 1;
+      for (let s = e.previousElementSibling; s; s = s.previousElementSibling) ke++;
+      bagian.unshift(`*:nth-child(${ke})`);
+      continue;
+    }
     let ke = 1;
     for (let s = e.previousElementSibling; s; s = s.previousElementSibling) if (s.tagName === e.tagName) ke++;
     bagian.unshift(`${tag}:nth-of-type(${ke})`);
@@ -533,7 +571,8 @@ export function bangunPengamatan(doc: Document, opsi: OpsiAmati): HasilAmati {
     if (peran === 'tombol' || peran === 'tautan' || peran === 'tab') {
       const k = klasifikasi(el, akhir);
       e.kelas = k.kelas;
-      if (peran === 'tautan' && k.aturan === 'K7_NEG_NAMA_TAUTAN') e.tautanPembuka = true;
+      if (peran === 'tautan' && (k.aturan === 'K7_NEG_NAMA_TAUTAN' || k.aturan === 'K7_NEG_IKON_TAUTAN'))
+        e.tautanPembuka = true;
     } else {
       if (c.grup ? c.grup.some((r) => wajibDari(r)) : wajibDari(el)) e.wajib = true;
       const terlarang = terlarangDari(el, nama, petunjuk);
@@ -569,7 +608,6 @@ export function bangunPengamatan(doc: Document, opsi: OpsiAmati): HasilAmati {
   const win = doc.defaultView;
   const teksDaftar = teksPenting(doc);
   const teks = bersih(teksDaftar.join('\n'), BATAS_AMATAN.teks);
-  const teksNormal = normalTeks(teksDaftar.join(' ') + ' ' + (doc.body ? teksTampakDari(doc.body) : ''));
   const login = [...doc.querySelectorAll('input[type="password"]')].some((p) => terlihatEl(p));
   const sinyal: SinyalAmatan = {
     login,
@@ -577,7 +615,7 @@ export function bangunPengamatan(doc: Document, opsi: OpsiAmati): HasilAmati {
     captcha: adaCaptcha || [...doc.querySelectorAll(SEL_CAPTCHA)].some((c) => terlihatEl(c)),
     tantangan: deteksiTantangan(doc),
     halamanAkhir: akhir,
-    sukses: RE_SUKSES.some((re) => re.test(teksNormal)),
+    sukses: suksesTerlihat(doc),
     galatForm:
       adaGalat ||
       [...doc.querySelectorAll('[aria-invalid="true"], .alert-danger, .is-invalid, .has-error')].some((g) =>

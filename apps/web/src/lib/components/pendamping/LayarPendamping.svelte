@@ -160,17 +160,20 @@
                 type="button"
                 onclick={onbukatautan}
                 data-buka-tautan
-                class="inline-flex min-h-11 max-w-full items-center gap-[7px] rounded-full border border-line-2 bg-surface px-4 py-2 text-left text-[15px] font-semibold text-ink hover:bg-card"
+                class="inline-flex min-h-11 max-w-full items-center gap-[7px] rounded-full bg-primer px-4 py-2 text-left text-[15px] font-semibold text-primer-ink hover:opacity-90"
               >
                 <span class="min-w-0 break-words"
                   >Buka “{tautan.nama || 'tautan'}”
-                  <span class="font-normal text-muted">({tautan.host}{tautan.jalur})</span></span
+                  <span class="font-normal opacity-80">({tautan.host}{tautan.jalur})</span></span
                 >
               </button>
             {/if}
-            <button type="button" onclick={onkembalikan} class={TOMBOL_GELAP}>
-              <Icon name="putar" class="size-[15px]" />Lanjutkan
-            </button>
+            {#if !tautan}
+              <!-- Tautan pembuka dengan tujuan dari worker: Buka (worker yang membuka, lalu AI lanjut). -->
+              <button type="button" onclick={onkembalikan} class={TOMBOL_GELAP}>
+                <Icon name="putar" class="size-[15px]" />Lanjutkan
+              </button>
+            {/if}
           </div>
         {/if}
       </div>
