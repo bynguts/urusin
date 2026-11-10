@@ -612,6 +612,24 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'tidak_bisa', sebab: 'hanya_aplikasi' }] });
     expect(h.tidakBisa).toHaveLength(1);
   });
+
+  it('serahkan ketuk_tautan = lembar isi_sendiri (ada Lanjutkan), bukan final', async () => {
+    const h = harness();
+    await h.run.amati();
+    const r = await h.run.aksi({
+      rencanaHash: H1,
+      aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e5' }],
+    });
+    expect(r).toEqual([{ indeks: 0, kode: 'ok' }]);
+    expect(h.serah).toEqual([
+      {
+        alasan: 'isi_sendiri',
+        pesan: PESAN_GENERIK.ketuk_tautan,
+        sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 },
+      },
+    ]);
+    expect(h.jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'ketuk_tautan' });
+  });
 });
 
 describe('redaksi', () => {

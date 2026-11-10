@@ -28,6 +28,7 @@ export type AlasanAmbilAlih =
   | 'captcha'
   | 'final'
   | 'isi_sendiri'
+  | 'ketuk_tautan'
   | 'tidak_yakin'
   | 'host_luar'
   | 'diblokir_situs'
@@ -53,6 +54,7 @@ export const PESAN_AMBIL_ALIH: Readonly<Record<AlasanAmbilAlih, string>> = {
   captcha: 'Giliran Anda: selesaikan verifikasi situs (CAPTCHA), lalu tekan Lanjutkan.',
   final: 'Giliran Anda: periksa isian di layar. Tombol kirim/simpan selalu Anda yang menekan, bukan AI.',
   isi_sendiri: 'Giliran Anda: isi kolom yang disorot sendiri, lalu tekan Lanjutkan.',
+  ketuk_tautan: 'Giliran Anda: ketuk tautan yang disorot untuk membuka formulir, lalu tekan Lanjutkan.',
   tidak_yakin: 'AI tidak yakin dengan langkah berikutnya. Silakan lanjutkan sendiri dari layar ini.',
   host_luar:
     'Situs membuka alamat di luar daftar resmi wilayah Anda. AI berhenti; periksa alamatnya sebelum melanjutkan sendiri.',

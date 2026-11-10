@@ -133,6 +133,7 @@ export const PESAN_GENERIK = {
   otp: 'Situs meminta kode OTP. Ketik sendiri kodenya; AI tidak pernah membacanya.',
   captcha: 'Situs meminta kode keamanan (CAPTCHA). Selesaikan sendiri; AI menunggu.',
   isi_sendiri: 'Isi sendiri kolom yang disorot, lalu tekan Lanjutkan.',
+  ketuk_tautan: 'Ketuk tautan yang disorot untuk membuka formulir, lalu tekan Lanjutkan.',
   final: 'Periksa semua isian. Hanya Anda yang boleh menekan tombol kirim.',
   tidak_yakin:
     'AI tidak yakin langkah berikutnya. Lanjutkan sendiri, atau tekan Lanjutkan untuk mencoba lagi.',
@@ -155,6 +156,8 @@ const ALASAN_GILIRAN: Record<Extract<Aksi, { jenis: 'serahkan' }>['alasan'], Ala
   isi_sendiri: 'isi_sendiri',
   final: 'final',
   tidak_yakin: 'periksa',
+  // Warga mengetuk tautan lalu Lanjutkan: sama dengan lembar isi_sendiri (ada tombol Lanjutkan).
+  ketuk_tautan: 'isi_sendiri',
 };
 
 // --- Redaksi ------------------------------------------------------------------------------------------
