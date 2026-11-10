@@ -308,7 +308,7 @@ describe('degraded: JSON satu aksi (tanpa tools)', () => {
   it('DemoProvider tanpa tools: alur tetap jalan dalam beberapa turn ("lanjutkan")', async () => {
     const provider = new DemoProvider({ without: ['tools'] });
     const env = makeEnv({ provider, caps: { tools: false } });
-    const u = env.store.createUrusan();
+    const u = env.store.createUrusan({ kodeKabKota: '3312' });
     const t1 = await runTurn(env.deps, { urusanId: u.id, userText: 'Apa syarat akta kelahiran?' });
     expect(t1.events.at(-1)!).toMatchObject({ degraded: true, lanjutkan: true });
     const t2 = await runTurn(env.deps, { urusanId: u.id, userText: 'lanjut' });

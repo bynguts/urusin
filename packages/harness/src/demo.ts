@@ -8,6 +8,7 @@ import {
   type RequestOptions,
 } from '@urusin/llm';
 import { openDb, upsertChunks, type Db } from '@urusin/rag';
+import { SEMUA_WILAYAH, menyebutWilayah } from '@urusin/registry';
 import { INTENT_JENIS, type IntentJenis } from './intent.js';
 import { DATAMARK } from './spotlight.js';
 
@@ -128,6 +129,95 @@ function bestSource(prompt: string): { refId: string; quote: string } | null {
   return best;
 }
 
+const wantsFacts = (t: string) =>
+  /syarat|persyaratan|cara|bagaimana|biaya|dokumen|berkas|bawa|urus|buat|daftar|\?/i.test(t);
+
+const AFIRMASI = /^\s*(ya|iya+|betul|benar|bener|ok|oke|yup)\b/i;
+
+/** Catatan state harness terakhir (pesan system "STATE URUSAN: ..."). */
+function stateNote(messages: readonly ChatMessage[]): string {
+  return text(
+    [...messages].reverse().find((m) => m.role === 'system' && text(m).startsWith('STATE URUSAN:')),
+  );
+}
+
+/** Wilayah yang disebut warga: yang didahului "ke" = tujuan, lainnya = KTP/asal (urutan kemunculan). */
+function sebutanWilayah(t: string): { ktp?: string; tujuan?: string } {
+  const lower = ` ${t.toLowerCase()} `;
+  const ketemu = SEMUA_WILAYAH.filter((w) => menyebutWilayah(t, w))
+    .map((w) => {
+      const inti = w.nama.toLowerCase().replace(/^(kabupaten|kota)( administrasi)? /, '');
+      return { inti, at: lower.indexOf(` ${inti}`) + 1 };
+    })
+    .sort((a, b) => a.at - b.at);
+  const out: { ktp?: string; tujuan?: string } = {};
+  const sudah = new Set<string>();
+  for (const { inti, at } of ketemu) {
+    // Nama ganda (Bekasi = Kota/Kabupaten) muncul dua kali: cukup sekali, tool yang menanyakan.
+    if (sudah.has(inti)) continue;
+    sudah.add(inti);
+    const sebelum = lower.slice(Math.max(0, at - 16), at);
+    const jenis = /(kota|kabupaten|kab)\.?\s+$/.exec(sebelum)?.[1];
+    const sebut = jenis ? `${jenis === 'kota' ? 'Kota' : 'Kabupaten'} ${inti}` : inti;
+    if (/\bke\s+((kota|kabupaten|kab)\.?\s+)?$/.test(sebelum)) out.tujuan ??= sebut;
+    else out.ktp ??= sebut;
+  }
+  return out;
+}
+
+/**
+ * Wilayah dulu (seperti arahan prompt): selama catatan state menyebut wilayah KTP belum ditetapkan (atau tujuan
+ * pindah belum ada), tetapkan dari ucapan warga atau tanyakan. null = wilayah sudah siap, lanjut alur biasa.
+ */
+function langkahWilayah(
+  messages: readonly ChatMessage[],
+  userText: string,
+  lastToolName: string | undefined,
+  lastToolResult: string,
+): { tool: string; args: Record<string, unknown> } | { reply: string } | null {
+  const note = stateNote(messages);
+  // Rencana Peristiwa Hidup diblokir sampai wilayah siap: tanyakan dulu. Urusan lain dijawab dari korpus nasional.
+  const peristiwa = /Jenis urusan: (kelahiran|kematian|perkawinan|pindah)\./.test(note);
+  const belumKtp = peristiwa && /WILAYAH KTP: belum ditetapkan/.test(note);
+  const belumTujuan = /butuh kab\/kota tujuan/.test(note);
+  if (lastToolName === 'wilayah__tetapkan') {
+    if (lastToolResult.startsWith('Wilayah KTP ditetapkan')) {
+      if (belumTujuan) return { reply: 'Pindah ke kabupaten/kota mana?' };
+      // Warga sekaligus bertanya persyaratan: lanjut mencari sumber untuk wilayahnya.
+      if (wantsFacts(userText)) return null;
+      return {
+        reply: 'Terima kasih, wilayah KTP sudah dicatat. Rencana disusun dari kanal resmi wilayah Anda.',
+      };
+    }
+    const pilihan = /Pilihan: ([^.]+)\./.exec(lastToolResult)?.[1];
+    return {
+      reply: pilihan
+        ? `Maksud Anda yang mana: ${pilihan}?`
+        : 'KTP Anda terdaftar di kabupaten/kota mana? Sebutkan nama kabupaten/kotanya.',
+    };
+  }
+  if (lastToolName || (!belumKtp && !belumTujuan)) return null;
+  const sebut = sebutanWilayah(userText);
+  if (belumKtp) {
+    const usulan = /Usulan \([^)]*\): (.+?)\. Tanyakan/.exec(note)?.[1];
+    if (sebut.ktp)
+      return {
+        tool: 'wilayah__tetapkan',
+        args: { ktp: sebut.ktp, ...(sebut.tujuan ? { tujuan: sebut.tujuan } : {}) },
+      };
+    if (usulan && AFIRMASI.test(userText)) return { tool: 'wilayah__tetapkan', args: { ktp: usulan } };
+    return {
+      reply: usulan
+        ? `Aturan dan situs resmi berbeda di tiap kab/kota. KTP Anda terdaftar di ${usulan}, betul?`
+        : 'Aturan dan situs resmi berbeda di tiap kab/kota. KTP Anda terdaftar di kabupaten/kota mana?',
+    };
+  }
+  const ktpTercatat = /WILAYAH KTP: (.+?) \(\d{4}\)/.exec(note)?.[1];
+  const tujuan = sebut.tujuan ?? sebut.ktp;
+  if (tujuan && ktpTercatat) return { tool: 'wilayah__tetapkan', args: { ktp: ktpTercatat, tujuan } };
+  return { reply: 'Pindah ke kabupaten/kota mana?' };
+}
+
 /** Langkah berikutnya untuk agen: tool-call berikutnya atau balasan teks. */
 function nextAction(
   messages: readonly ChatMessage[],
@@ -136,14 +226,16 @@ function nextAction(
   const lastUserIdx = messages.map((m) => m.role).lastIndexOf('user');
   const after = messages.slice(lastUserIdx + 1);
   const lastAssistantTool = [...after].reverse().find((m) => m.role === 'assistant' && m.tool_calls?.length);
-  const lastToolName =
+  const toolTerakhir =
     lastAssistantTool?.role === 'assistant' && lastAssistantTool.tool_calls?.[0]?.type === 'function'
       ? lastAssistantTool.tool_calls[0].function.name
       : undefined;
-  const wantsFacts = /syarat|persyaratan|cara|bagaimana|biaya|dokumen|berkas|bawa|urus|buat|daftar|\?/i.test(
-    userText,
-  );
-  if (!wantsFacts && !lastToolName)
+  const lastToolResult = text([...after].reverse().find((m) => m.role === 'tool'));
+  const wilayah = langkahWilayah(messages, userText, toolTerakhir, lastToolResult);
+  if (wilayah) return wilayah;
+  // Wilayah baru saja ditetapkan dan warga bertanya persyaratan: lanjut seolah belum ada tool.
+  const lastToolName = toolTerakhir === 'wilayah__tetapkan' ? undefined : toolTerakhir;
+  if (!wantsFacts(userText) && !lastToolName)
     return { reply: 'Halo! Saya Urusin. Ceritakan urusan apa yang ingin Anda selesaikan.' };
   if (!lastToolName) return { tool: 'rag__cari_pengetahuan', args: { query: userText.slice(0, 400) } };
   if (lastToolName === 'rag__cari_pengetahuan')
