@@ -302,6 +302,10 @@ export const PengamatanSchema = z.object({
 });
 export type Pengamatan = z.infer<typeof PengamatanSchema>;
 
+/**
+ * `ketuk_tautan` (aditif): warga mengetuk sendiri tautan pembuka (`ElemenAmatan.tautanPembuka`) yang disorot,
+ * lalu AI melanjutkan. Bukan serah final.
+ */
 export const AlasanSerahkanSchema = z.enum([
   'masuk_akun',
   'otp',
@@ -309,6 +313,7 @@ export const AlasanSerahkanSchema = z.enum([
   'isi_sendiri',
   'final',
   'tidak_yakin',
+  'ketuk_tautan',
 ]);
 export const SebabTidakBisaSchema = z.enum([
   'layanan_tidak_ada',
