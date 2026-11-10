@@ -159,7 +159,11 @@ function transkripTeks(h) {
   for (const l of h.langkah) {
     if (l.peran === 'warga') {
       baris.push(l.jenis === 'klik' ? `Warga menekan [${l.teks}]` : `Warga: ${l.teks}`);
-      if (l.http?.status >= 400) baris.push(`[GALAT HTTP ${l.http.status} ${l.http.kode ?? ''}]`);
+      // Pesan galat yang tampil ke warga ikut dinilai juri (mis. peringatan PII di Beranda).
+      if (l.http?.status >= 400)
+        baris.push(
+          `[GALAT HTTP ${l.http.status} ${l.http.kode ?? ''}]${l.http.pesanWarga ? ` Tampil ke warga: "${l.http.pesanWarga}"` : ''}`,
+        );
     } else {
       const t = renderLangkahAgen(l.events, { denganProgres: Boolean(l.aksi) });
       baris.push(t || '(Urusin tidak menampilkan apa-apa)');

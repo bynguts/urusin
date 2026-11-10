@@ -546,6 +546,8 @@ describe('mulai ditolak karena PII (p07)', () => {
       h.langkah.filter((l) => l.peran === 'warga').map((l) => l.http.status),
       [422, 303],
     );
+    // Peringatan yang tampil ke warga ikut tercatat agar juri melihatnya.
+    assert.equal(h.langkah[0].http.pesanWarga, 'Pesan berisi nomor pribadi.');
     assert.equal(cekGalat(h.langkah, { izinkanKode: ['PII_IN_PAYLOAD'] }).lulus, true);
   });
 

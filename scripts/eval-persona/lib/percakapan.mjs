@@ -50,7 +50,8 @@ export async function jalankanPercakapan({
       typeof persona.pesanPertama === 'function' ? persona.pesanPertama(rahasia) : persona.pesanPertama;
     let t0 = Date.now();
     let r = await sesi.mulai(pesan1, wilayahPerangkat);
-    langkah.push({ peran: 'warga', jenis: 'ketik', teks: pesan1, http: { status: r.status, kode: r.kode } });
+    const httpMulai = (x) => ({ status: x.status, kode: x.kode, pesanWarga: x.pesanWarga });
+    langkah.push({ peran: 'warga', jenis: 'ketik', teks: pesan1, http: httpMulai(r) });
     layar.push(`Warga: ${pesan1}`);
     // Beranda menolak cerita berisi data pribadi (422) dengan peringatan: warga sungguhan mengetik ulang tanpa
     // data itu. Simulator mendapat kesempatan yang sama (maks. 2 kali).
@@ -65,7 +66,7 @@ export async function jalankanPercakapan({
         peran: 'warga',
         jenis: 'ketik',
         teks: pesan1,
-        http: { status: r.status, kode: r.kode },
+        http: httpMulai(r),
         alasan: a.alasan,
       });
       layar.push(`Warga: ${pesan1}`);
