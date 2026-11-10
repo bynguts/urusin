@@ -114,7 +114,8 @@ jobs:
         run: pnpm exec lhci autorun
 
       # Runner self-hosted (agent-vm): install + build + lhci di kontainer Playwright terbatas lewat ci-docker
-      # (user runner tanpa grup docker). Skor di ARM terbatas 1 CPU bisa lebih rendah dari runner GitHub.
+      # (user runner tanpa grup docker). Di sana cpuSlowdownMultiplier dikalibrasi dari benchmarkIndex host
+      # (scripts/lhci-cpu.mjs, rumus resmi Lighthouse, clamp [1, 4]); target perangkat dan ambang tetap sama.
       - name: Lighthouse CI (self-hosted, kontainer Playwright)
         if: runner.environment == 'self-hosted'
         run: sudo -n /opt/urusin-ci/bin/ci-docker pw perf "$GITHUB_WORKSPACE" "$GITHUB_SHA"
@@ -122,6 +123,27 @@ jobs:
       - name: Ringkasan skor
         if: always()
         run: |
+          # Kalibrasi CPU yang dipakai (.lighthouseci/cpu-calibration.json) + nilai yang benar-benar tercatat di LHR.
+          node -e '
+            const fs = require("fs");
+            const dir = ".lighthouseci";
+            const read = (f) => { try { return JSON.parse(fs.readFileSync(`${dir}/${f}`, "utf8")); } catch { return null; } };
+            const cal = read("cpu-calibration.json");
+            const runs = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /^lhr-.*\.json$/.test(f)).map(read).filter(Boolean) : [];
+            const med = (a) => a.sort((x, y) => x - y)[Math.floor(a.length / 2)];
+            const used = [...new Set(runs.map((r) => r.configSettings?.throttling?.cpuSlowdownMultiplier))].join(", ");
+            const bi = runs.map((r) => r.environment?.benchmarkIndex).filter(Number.isFinite);
+            console.log("### CPU throttling Lighthouse (simulasi)\n");
+            console.log("Target perangkat tetap Moto G Power-class: 4x pada benchmarkIndex 1533 (rumus resmi Lighthouse, lihat scripts/lhci-cpu.mjs). Ambang assertion tidak berubah.\n");
+            if (!cal) console.log("- Kalibrasi: tidak ada `.lighthouseci/cpu-calibration.json`");
+            else {
+              console.log(`- \`cpuSlowdownMultiplier\`: **${cal.multiplier}x** (sumber: ${cal.source})`);
+              if (cal.benchmarkIndex !== undefined) console.log(`- benchmarkIndex kalibrasi: median **${cal.benchmarkIndex}** (sampel ${cal.samples.join(", ")}) -> rumus resmi ${cal.officialMultiplier ?? "-"}x, dibulatkan ke atas 0,1, clamp [1, 4]`);
+              if (cal.warning) console.log(`- Peringatan: ${cal.warning}`);
+            }
+            if (runs.length && bi.length) console.log(`- Tercatat di LHR (${runs.length} run): multiplier ${used}; benchmarkIndex median ${med(bi)} (min ${Math.min(...bi)}, maks ${Math.max(...bi)})`);
+            console.log();
+          ' >> "$GITHUB_STEP_SUMMARY"
           {
             echo "### Lighthouse (mobile, median 3 run)"
             echo
