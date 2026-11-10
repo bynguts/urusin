@@ -1,0 +1,107 @@
+[
+  {
+    "id": "n01",
+    "pertanyaan": "Syarat bikin akta kelahiran anak apa saja menurut aturan pusat?",
+    "relevan": ["perpres-96-2018-pasal#pasal-33"]
+  },
+  {
+    "id": "n02",
+    "pertanyaan": "Kalau tidak punya surat keterangan lahir dari bidan, akta kelahiran tetap bisa dibuat?",
+    "relevan": ["perpres-96-2018-pasal#pasal-34", "perpres-96-2018-pasal#pasal-33"]
+  },
+  {
+    "id": "n03",
+    "pertanyaan": "Pindah domisili ke kabupaten lain beda provinsi, prosedurnya bagaimana?",
+    "relevan": [
+      "perpres-96-2018-pasal#pasal-25",
+      "permendagri-108-2019-pasal#pasal-30",
+      "permendagri-108-2019-pasal#pasal-28"
+    ]
+  },
+  {
+    "id": "n04",
+    "pertanyaan": "Surat pindah antar kota diurus di Disdukcapil daerah asal atau tujuan?",
+    "relevan": ["permendagri-108-2019-pasal#pasal-30", "perpres-96-2018-pasal#pasal-25"]
+  },
+  {
+    "id": "n05",
+    "pertanyaan": "KTP elektronik saya hilang, syarat cetak ulangnya apa?",
+    "relevan": ["perpres-96-2018-pasal#pasal-21"]
+  },
+  {
+    "id": "n06",
+    "pertanyaan": "Bisa rekam dan cetak KTP-el di luar kota domisili?",
+    "relevan": ["perpres-96-2018-pasal#pasal-22", "permendagri-108-2019-pasal#pasal-24"]
+  },
+  {
+    "id": "n07",
+    "pertanyaan": "Syarat bikin KIA untuk anak usia 5 sampai 17 tahun",
+    "relevan": ["permendagri-7-2026-pasal#pasal-6"]
+  },
+  {
+    "id": "n08",
+    "pertanyaan": "Apakah KIA bisa diajukan online lewat aplikasi IKD?",
+    "relevan": ["permendagri-7-2026-pasal#pasal-26", "permendagri-7-2026-pasal#pasal-24"]
+  },
+  {
+    "id": "n09",
+    "pertanyaan": "Batas waktu melaporkan kelahiran bayi berapa hari?",
+    "relevan": ["uu-24-2013-pasal#pasal-27"]
+  },
+  {
+    "id": "n10",
+    "pertanyaan": "Telat lapor kelahiran lebih dari 60 hari, apa akibatnya?",
+    "relevan": ["uu-24-2013-pasal#pasal-32"]
+  },
+  {
+    "id": "n11",
+    "pertanyaan": "Kematian anggota keluarga wajib dilaporkan paling lambat kapan?",
+    "relevan": ["uu-24-2013-pasal#pasal-44"]
+  },
+  {
+    "id": "n12",
+    "pertanyaan": "Apakah mengurus KTP dan KK dipungut biaya?",
+    "relevan": ["uu-24-2013-pasal#pasal-79a"]
+  },
+  {
+    "id": "n13",
+    "pertanyaan": "Sudah menikah sah secara agama, apakah perkawinan perlu dilaporkan ke Dukcapil?",
+    "relevan": ["uu-23-2006-pasal#pasal-34"]
+  },
+  {
+    "id": "n14",
+    "pertanyaan": "Apakah Permendagri 2 tahun 2016 tentang KIA masih berlaku?",
+    "relevan": ["permendagri-7-2026-pasal#pasal-34"]
+  },
+  {
+    "id": "n15",
+    "pertanyaan": "Persyaratan akta kelahiran bayi baru lahir di Surabaya apa saja?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#sipil-akta-kelahiran"],
+    "catatan": "penjaga wilayah: chunk daerah harus mengalahkan teks pasal nasional"
+  },
+  {
+    "id": "n16",
+    "pertanyaan": "Mau pindah domisili dari Surabaya ke luar provinsi, ngurusnya di mana?",
+    "kodeWilayah": "3578",
+    "relevan": ["klampid-katalog#daftar-pindah-keluar"],
+    "catatan": "penjaga wilayah: chunk daerah harus mengalahkan teks pasal nasional"
+  },
+  {
+    "id": "n17",
+    "pertanyaan": "Kehilangan KTP elektronik, dokumen apa yang dibawa ke Disdukcapil Wonogiri?",
+    "kodeWilayah": "3312",
+    "relevan": ["wonogiri-ktp-el#0"],
+    "catatan": "penjaga wilayah: chunk daerah harus mengalahkan teks pasal nasional"
+  },
+  {
+    "id": "n18",
+    "pertanyaan": "KIA untuk anak umur 10 tahun di Surabaya syaratnya apa?",
+    "kodeWilayah": "3578",
+    "relevan": [
+      "klampid-katalog#daftar-kartu-identitas-anak",
+      "klampid-katalog#daftar-kia-lebih-dari-5-tahun-sekolah-integrasi"
+    ],
+    "catatan": "penjaga wilayah: chunk daerah harus mengalahkan teks pasal nasional"
+  }
+]

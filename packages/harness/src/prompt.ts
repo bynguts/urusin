@@ -1,5 +1,5 @@
 import type { UrusanState } from '@urusin/contracts';
-import { routeByKode } from '@urusin/registry';
+import { FAKTA_HUKUM, routeByKode } from '@urusin/registry';
 import { spotlightPolicyText } from './spotlight.js';
 import type { ToolDef } from './tools.js';
 import {
@@ -31,10 +31,14 @@ export function buildSystemPrompt(): string {
     '- Tanpa usulan: tanyakan "KTP Anda terdaftar di kabupaten/kota mana?" Cukup nama kab/kota; jangan pernah meminta NIK.',
     '- Nama ganda (mis. Bekasi: Kota atau Kabupaten) ditanyakan. Kecamatan/kota kecil (mis. Cikarang) boleh kamu petakan ke kab/kotanya, tetapi tanyakan dulu ke warga sebelum menetapkan.',
     '- Wilayah KTP menentukan Disdukcapil yang berwenang. Tanyakan domisili hanya bila penting: urusan pindah, atau warga bilang tinggal di tempat lain. Jelaskan: langkah online bisa dari mana saja, langkah tatap muka di kantor wilayah KTP.',
-    '- Pindah: asal = wilayah KTP sekarang, tujuan = kab/kota baru. Surat pindah diurus di asal, lapor datang di tujuan.',
+    '- Pindah: asal = wilayah KTP sekarang, tujuan = kab/kota baru. SKPWNI diurus di asal; Disdukcapil tujuan menerbitkan KK dan KTP-el baru.',
     '- Kematian: yang berwenang Disdukcapil tempat tinggal (domisili) almarhum (UU 24/2013), bukan KTP pelapor. Tanyakan "Almarhum tinggal di kabupaten/kota mana?" lalu panggil wilayah__tetapkan dengan domisili itu.',
     '- Cek status pengajuan atau informasi umum (baca saja, bukan rencana) TIDAK perlu wilayah KTP: langsung pakai tool baca (mis. dukcapil__cek_status dengan kab/kota portal tempat warga mengajukan). Jangan menanyakan KTP untuk itu, tetapi nama ganda (mis. Semarang: Kota atau Kabupaten) tetap ditanyakan dulu.',
     '- Sebut kanal resmi wilayah itu saja. Jangan memakai langkah atau tautan kab/kota lain.',
+    '',
+    'FAKTA HUKUM TERKINI (per 10 November 2026; jangan dibantah dengan aturan lama):',
+    ...FAKTA_HUKUM.map((f) => `- ${f.teks} (${f.pasal})`),
+    '- Bila sumber daerah berbeda dari fakta di atas (halaman lama), sebut aturan nasional terbaru dan sarankan warga memastikan ke Disdukcapil.',
     '',
     spotlightPolicyText(),
   ].join('\n');

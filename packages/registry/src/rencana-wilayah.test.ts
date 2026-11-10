@@ -90,14 +90,23 @@ describe('rencanaWilayah: KTP ≠ domisili dan pindah', () => {
   it('pindah Surabaya → Kab. Bekasi: SKPWNI di asal, datang/KK/KTP-el di tujuan, tanpa Wonogiri', () => {
     const r = rencanaWilayah('pindah', { ktp: '3578', tujuan: '3216' })!;
     expect(JSON.stringify(r)).not.toMatch(/wonogiri/i);
-    const [pwni, dwni, kk, ktp] = r.langkah;
-    expect(pwni!.judul).toMatch(/Kota Surabaya/);
+    expect(r.langkah.map((l) => l.id)).toEqual(['skpwni', 'kk-ktp-el']);
+    const [pwni, tujuan] = r.langkah;
+    expect(pwni!.judul).toMatch(/SKPWNI.*Kota Surabaya/);
     expect(pwni!.sourceRef[0]!.url).toMatch(/surabaya/);
-    for (const l of [dwni!, kk!, ktp!]) {
-      expect(l.judul).toMatch(/Kab\. Bekasi/);
-      expect(l.sourceRef[0]!.url).toMatch(/bekasikab/);
-    }
-    expect(dwni!.dependsOn).toEqual(['skpwni']);
+    expect(pwni!.keterangan).toMatch(/100 hari kerja/);
+    expect(pwni!.keterangan).toMatch(/Disdukcapil tujuan bisa membantu/);
+    expect(tujuan!.judul).toMatch(/Kab\. Bekasi.*KK dan KTP-el/);
+    expect(tujuan!.sourceRef[0]!.url).toMatch(/bekasikab/);
+    expect(tujuan!.dokumen).toContain('SKPWNI dari daerah asal');
+    expect(tujuan!.keterangan).toMatch(/KTP-el lama ditarik di sini, bukan di asal/);
+    expect(tujuan!.dependsOn).toEqual(['skpwni']);
+    // SKDWNI bukan dokumen nasional: tidak disebut bila tujuan bukan daerah yang memakai nama itu.
+    expect(JSON.stringify(r)).not.toMatch(/SKDWNI/);
+    expect(pwni!.sourceRef.map((s) => s.url)).toContain(
+      'https://peraturan.bpk.go.id/Download/129847/Permendagri%20108%20Tahun%202019.pdf',
+    );
+    expect(tujuan!.sourceRef.map((s) => s.url)).toContain('https://peraturan.go.id/files/ps96-2018.pdf');
     expect(r.kanal.map((k) => k.url)).toEqual([
       'https://wargaklampid-dispendukcapil.surabaya.go.id/',
       'https://sitepak.bekasikab.go.id/',
@@ -108,5 +117,33 @@ describe('rencanaWilayah: KTP ≠ domisili dan pindah', () => {
     const r = rencanaWilayah('pindah', { ktp: '3312', tujuan: '3578' })!;
     expect(JSON.stringify(r.langkah[0])).toMatch(/wonogiri/i);
     for (const l of r.langkah.slice(1)) expect(JSON.stringify(l)).not.toMatch(/wonogiri/i);
+  });
+  it('pindah ke Wonogiri: SKDWNI hanya disebut sebagai nama layanan lokal di sisi tujuan', () => {
+    const r = rencanaWilayah('pindah', { ktp: '3578', tujuan: '3312' })!;
+    expect(r.keluaran).not.toContain('SKDWNI');
+    const tujuan = r.langkah[1]!;
+    expect(tujuan.keterangan).toMatch(
+      /Di Wonogiri layanan ini bernama Surat Keterangan Datang WNI \(SKDWNI\)/,
+    );
+    expect(tujuan.dokumen).toContain('SKPWNI dari daerah asal');
+    expect(JSON.stringify(r.langkah[0])).not.toMatch(/SKDWNI/);
+  });
+  it('pindah dalam satu kab/kota: satu langkah tanpa SKPWNI antar daerah (Permendagri 108/2019 Ps. 29)', () => {
+    const r = rencanaWilayah('pindah', { ktp: '3578', tujuan: '3578' })!;
+    expect(r.langkah.map((l) => l.id)).toEqual(['pindah-alamat']);
+    expect(r.langkah[0]!.judul).toMatch(/Kota Surabaya.*KK dan KTP-el alamat baru/);
+    expect(r.langkah[0]!.keterangan).toMatch(/Ps\. 29/);
+    expect(r.catatan).toMatch(/cukup satu kali lapor/);
+  });
+  it('rencana nasional memuat batas waktu dan dasar hukum bersumber', () => {
+    const lahir = rencanaWilayah('kelahiran', { ktp: '3216' })!.langkah[0]!;
+    expect(lahir.keterangan).toMatch(/paling lambat 60 hari/);
+    expect(lahir.keterangan).toMatch(/tanpa penetapan pengadilan/);
+    expect(lahir.sourceRef.map((s) => s.url)).toContain('https://peraturan.go.id/files/uu24-2013bt.pdf');
+    const mati = rencanaWilayah('kematian', { ktp: '3216' })!.langkah[0]!;
+    expect(mati.keterangan).toMatch(/paling lambat 30 hari/);
+    const kawin = rencanaWilayah('perkawinan', { ktp: '3216' })!.langkah[0]!;
+    expect(kawin.keterangan).toMatch(/KUA kecamatan dan Dukcapil tidak menerbitkan kutipan akta/);
+    expect(kawin.sourceRef.map((s) => s.url)).toContain('https://peraturan.go.id/files/uu23-2006.pdf');
   });
 });

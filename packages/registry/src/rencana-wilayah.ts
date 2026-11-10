@@ -1,13 +1,21 @@
 import {
   REF_KK,
   REF_KTP,
-  REF_PERPRES,
   REF_SKDWNI,
   REF_SKPWNI,
   findBundel,
   type Bundel,
   type Langkah,
 } from './peristiwa.js';
+import {
+  REF_DUKCAPIL_2023,
+  REF_PERPRES,
+  REF_PERPRES_TEKS,
+  REF_PMD108,
+  REF_PMD7_2026,
+  REF_UU23,
+  REF_UU24,
+} from './regulasi.js';
 import { routeByKode } from './router.js';
 import type { CityEntry, SourceRef } from './schema.js';
 import { kontakDukcapil, namaPendekWilayah, wilayahByKode, type Wilayah } from './wilayah.js';
@@ -108,8 +116,8 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
             'KTP-el orang tua',
           ],
           bawa: [],
-          keterangan: `Persyaratan nasional (Perpres 96/2018). ${cara}`,
-          sourceRef: ref,
+          keterangan: `Persyaratan nasional (Perpres 96/2018). Laporkan paling lambat 60 hari sejak kelahiran (UU 24/2013 Ps. 27); lewat dari itu akta tetap terbit setelah keputusan Kepala Disdukcapil, tanpa penetapan pengadilan (Ps. 32 ayat 1). ${cara}`,
+          sourceRef: [...ref, REF_UU24],
         }),
         L({
           id: 'siapkan-sptjm',
@@ -122,8 +130,8 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
           ],
           bawa: [],
           keterangan:
-            'Pengganti dokumen yang tidak dimiliki (Perpres 96/2018), bukan langkah wajib bagi semua.',
-          sourceRef: [REF_PERPRES],
+            'Pengganti dokumen yang tidak dimiliki (Perpres 96/2018 Ps. 34), bukan langkah wajib bagi semua.',
+          sourceRef: [REF_PERPRES_TEKS],
         }),
         L({
           id: 'ambil',
@@ -133,8 +141,8 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
           dependsOn: ['ajukan'],
           dokumen: [],
           bawa: ['Bukti pengajuan'],
-          keterangan: `Ada daerah yang mengirim dokumen untuk dicetak mandiri, ada yang diambil di kantor. ${cara}`,
-          sourceRef: [sumber(kanal)],
+          keterangan: `Ada daerah yang mengirim dokumen untuk dicetak mandiri, ada yang diambil di kantor. KIA anak bisa terbit bersama akta dengan melampirkan fotokopi KK saja (Permendagri 7/2026 Ps. 6 ayat 1). ${cara}`,
+          sourceRef: [sumber(kanal), REF_PMD7_2026],
         }),
       ];
     case 'kematian':
@@ -150,8 +158,8 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
             'KTP-el pelapor',
           ],
           bawa: [],
-          keterangan: `Persyaratan nasional (Perpres 96/2018). ${cara}`,
-          sourceRef: ref,
+          keterangan: `Persyaratan nasional (Perpres 96/2018). Kematian dilaporkan paling lambat 30 hari sejak tanggal kematian; kewajiban lapor ada pada ketua RT atau sebutan lain (UU 24/2013 Ps. 44). ${cara}`,
+          sourceRef: [...ref, REF_UU24],
         }),
         L({
           id: 'ambil',
@@ -178,8 +186,8 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
             'KTP-el dan Kartu Keluarga',
           ],
           bawa: [],
-          keterangan: `Perkawinan beragama Islam dicatat di KUA kecamatan; Disdukcapil mencatat perkawinan lainnya. Persyaratan nasional (Perpres 96/2018). ${cara}`,
-          sourceRef: ref,
+          keterangan: `Perkawinan beragama Islam dicatat di KUA kecamatan dan Dukcapil tidak menerbitkan kutipan akta perkawinannya; buktinya buku nikah. Perkawinan lainnya dilaporkan ke Disdukcapil paling lambat 60 hari (UU 23/2006 Ps. 34). Persyaratan nasional (Perpres 96/2018). ${cara}`,
+          sourceRef: [...ref, REF_UU23],
         }),
         L({
           id: 'pencatatan',
@@ -199,17 +207,35 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
 }
 
 /**
- * Pindah: dua yurisdiksi. Surat pindah (SKPWNI) dari Disdukcapil ASAL (wilayah KTP sekarang), lalu lapor datang,
- * KK, dan KTP-el di TUJUAN. Halaman resmi Wonogiri hanya dirujuk bila sisi itu memang Wonogiri.
+ * Pindah antar kab/kota: dua yurisdiksi. Surat Keterangan Pindah (SKPWNI) dari Disdukcapil ASAL (wilayah KTP
+ * sekarang), lalu Disdukcapil TUJUAN menerbitkan KK dan KTP-el alamat baru (Perpres 96/2018 Ps. 25; Permendagri
+ * 108/2019 Ps. 28-31). Dalam satu kab/kota cukup satu langkah (Ps. 29). Halaman resmi Wonogiri hanya dirujuk bila
+ * sisi itu memang Wonogiri; di sana layanan sisi tujuan bernama "SKDWNI", nama lokal, bukan dokumen nasional.
  */
 function langkahPindah(asal: Wilayah | null, tujuan: Wilayah | null): Langkah[] {
   const kAsal = asal ? kanalWilayah(asal.kodeKabKota) : { ...KANAL_NASIONAL, jenis: 'nasional' as const };
   const kTujuan = tujuan
     ? kanalWilayah(tujuan.kodeKabKota)
     : { ...KANAL_NASIONAL, jenis: 'nasional' as const };
-  const wng = (w: Wilayah | null, ref: SourceRef) => (w?.kodeKabKota === '3312' ? [ref] : []);
+  const wng = (w: Wilayah | null, ...refs: SourceRef[]) => (w?.kodeKabKota === '3312' ? refs : []);
   const dAsal = disebut(asal, 'Disdukcapil daerah asal (sesuai KTP sekarang)');
   const dTujuan = disebut(tujuan, 'Disdukcapil daerah tujuan');
+  const pemilikRumah =
+    'Surat pernyataan tidak keberatan dari pemilik rumah, bila menumpang KK, sewa, kontrak, atau kos';
+  if (asal && tujuan && asal.kodeKabKota === tujuan.kodeKabKota)
+    return [
+      L({
+        id: 'pindah-alamat',
+        judul: `Laporkan pindah alamat di ${dAsal}: terima KK dan KTP-el alamat baru`,
+        jenis: 'online-manual',
+        lokasi: 'disdukcapil',
+        dependsOn: [],
+        dokumen: ['Kartu Keluarga', 'KK yang akan ditumpangi, bila menumpang KK', pemilikRumah],
+        bawa: ['KTP-el lama'],
+        keterangan: `Pindah dalam satu kab/kota cukup satu langkah: Disdukcapil langsung menerbitkan KK dan KTP-el alamat baru dan mencabut yang lama (Permendagri 108/2019 Ps. 29). ${lewatKanal(kAsal, asal)}`,
+        sourceRef: [sumber(kAsal), ...wng(asal, REF_SKPWNI), REF_PMD108],
+      }),
+    ];
   return [
     L({
       id: 'skpwni',
@@ -217,42 +243,26 @@ function langkahPindah(asal: Wilayah | null, tujuan: Wilayah | null): Langkah[] 
       jenis: 'online-manual',
       lokasi: 'disdukcapil',
       dependsOn: [],
-      dokumen: ['Kartu Keluarga', 'KTP-el', 'Formulir F-1.03 (pendaftaran perpindahan penduduk)'],
+      dokumen: ['Kartu Keluarga', 'Formulir F-1.03 (pendaftaran perpindahan penduduk)', pemilikRumah],
       bawa: [],
-      keterangan: `Diurus di daerah asal, sesuai alamat KTP sekarang. ${lewatKanal(kAsal, asal)}`,
-      sourceRef: [sumber(kAsal), ...wng(asal, REF_SKPWNI), REF_PERPRES],
+      keterangan: `Diurus di daerah asal, sesuai alamat KTP sekarang. SKPWNI berlaku 100 hari kerja (Permendagri 108/2019 Ps. 30 ayat 2). Sudah tinggal di tujuan? Disdukcapil tujuan bisa membantu memintakan SKPWNI ke asal secara elektronik (Ps. 31). ${lewatKanal(kAsal, asal)}`,
+      sourceRef: [sumber(kAsal), ...wng(asal, REF_SKPWNI), REF_PERPRES, REF_PMD108],
     }),
     L({
-      id: 'skdwni',
-      judul: `Lapor kedatangan (SKDWNI) di ${dTujuan}`,
+      id: 'kk-ktp-el',
+      judul: `Lapor datang di ${dTujuan}: terima KK dan KTP-el alamat baru`,
       jenis: 'online-manual',
       lokasi: 'disdukcapil',
       dependsOn: ['skpwni'],
-      dokumen: ['SKPWNI dari daerah asal', 'Formulir F-1.03'],
-      bawa: [],
-      keterangan: `Setelah SKPWNI terbit. ${lewatKanal(kTujuan, tujuan)}`,
-      sourceRef: [sumber(kTujuan), ...wng(tujuan, REF_SKDWNI), REF_PERPRES],
-    }),
-    L({
-      id: 'kk',
-      judul: `Terima Kartu Keluarga baru dari ${dTujuan}`,
-      jenis: 'online-manual',
-      dependsOn: ['skdwni'],
-      dokumen: ['Surat keterangan pindah/datang'],
-      bawa: [],
-      keterangan: 'KK baru diterbitkan Disdukcapil tujuan setelah kedatangan dicatat.',
-      sourceRef: [sumber(kTujuan), ...wng(tujuan, REF_KK)],
-    }),
-    L({
-      id: 'ktp-el',
-      judul: `Perbarui KTP-el di ${dTujuan}`,
-      jenis: 'offline',
-      lokasi: 'disdukcapil',
-      dependsOn: ['kk'],
-      dokumen: ['Surat keterangan pindah'],
-      bawa: ['KTP-el lama', 'Kartu Keluarga terbaru'],
-      keterangan: 'Perekaman/pencetakan KTP-el dengan alamat baru; tanyakan lokasinya ke kanal resmi tujuan.',
-      sourceRef: [sumber(kTujuan), ...wng(tujuan, REF_KTP)],
+      dokumen: ['SKPWNI dari daerah asal', 'KTP-el dan/atau KIA alamat lama', pemilikRumah],
+      bawa: ['KTP-el lama'],
+      keterangan: `Setelah SKPWNI terbit. Disdukcapil tujuan menerbitkan KK dan KTP-el alamat baru berdasarkan SKPWNI (Perpres 96/2018 Ps. 17 dan Ps. 25 ayat 5); KTP-el lama ditarik di sini, bukan di asal.${tujuan?.kodeKabKota === '3312' ? ' Di Wonogiri layanan ini bernama Surat Keterangan Datang WNI (SKDWNI).' : ''} ${lewatKanal(kTujuan, tujuan)}`,
+      sourceRef: [
+        sumber(kTujuan),
+        ...wng(tujuan, REF_SKDWNI, REF_KK, REF_KTP),
+        REF_PERPRES_TEKS,
+        REF_DUKCAPIL_2023,
+      ],
     }),
   ];
 }
@@ -287,10 +297,11 @@ export function rencanaWilayah(slug: string, opsi: OpsiRencana): RencanaWilayah 
   if (bundel.slug === 'pindah') {
     langkah = langkahPindah(ktp, tujuan);
     if (tujuan) kanal.push(kanalWilayah(tujuan.kodeKabKota));
-    catatan =
-      ktp && tujuan
-        ? `Pindah dari ${ktp.nama} ke ${tujuan.nama}: surat pindah diurus di asal, lapor datang di tujuan. Ketersediaan layanan online diperiksa per situs sebelum dijanjikan.`
-        : 'Pindah melibatkan dua Disdukcapil: asal (sesuai KTP sekarang) dan tujuan. Sebutkan keduanya agar kanal resminya tepat.';
+    catatan = !(ktp && tujuan)
+      ? 'Pindah antar kab/kota melibatkan dua Disdukcapil: asal (sesuai KTP sekarang) dan tujuan. Sebutkan keduanya agar kanal resminya tepat.'
+      : ktp.kodeKabKota === tujuan.kodeKabKota
+        ? `Pindah alamat di dalam ${ktp.nama}: cukup satu kali lapor, tanpa surat pindah antar daerah. Ketersediaan layanan online diperiksa per situs sebelum dijanjikan.`
+        : `Pindah dari ${ktp.nama} ke ${tujuan.nama}: SKPWNI diurus di asal, lalu Disdukcapil tujuan menerbitkan KK dan KTP-el baru. Ketersediaan layanan online diperiksa per situs sebelum dijanjikan.`;
   } else if (ktp && bundel.kodeWilayah === ktp.kodeKabKota) {
     const { entry } = routeByKode(ktp.kodeKabKota);
     khususWilayah = true;

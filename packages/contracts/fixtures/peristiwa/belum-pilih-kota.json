@@ -6,26 +6,26 @@
     "tier": "dipandu",
     "kodeKabKota": null,
     "kota": null,
-    "keluaran": ["Surat pindah"],
+    "keluaran": ["SKPWNI"],
     "catatan": "Pilih kab/kota untuk melihat langkah yang berlaku.",
     "langkah": [
       {
         "id": "skpwni",
-        "judul": "Minta surat pindah di kelurahan",
+        "judul": "Urus surat pindah (SKPWNI) di Disdukcapil daerah asal",
         "jenis": "offline",
         "dependsOn": [],
         "dokumen": [],
         "bawa": [],
-        "keterangan": "Ikuti petunjuk di halaman resmi.",
+        "keterangan": "SKPWNI diterbitkan Disdukcapil daerah asal (Perpres 96/2018 Ps. 25 ayat 3); ikuti petunjuk di halaman resmi.",
         "sumber": [
           {
-            "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
-            "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
-            "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri"
+            "url": "https://peraturan.go.id/files/ps96-2018.pdf",
+            "judul": "Perpres No. 96 Tahun 2018 (teks lengkap)",
+            "instansi": "Pemerintah Republik Indonesia"
           }
         ],
         "verifiedAt": "2026-11-05T02:00:00.000Z",
-        "lokasi": "kelurahan-desa"
+        "lokasi": "disdukcapil"
       }
     ]
   }

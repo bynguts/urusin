@@ -7,6 +7,7 @@ import { htmlToText, htmlTitle } from './extract.js';
 import { MIN_INTERVAL_MS, PoliteFetcher, USER_AGENT, type Deps, type FetchLike } from './fetcher.js';
 import { runIngest } from './ingest.js';
 import { Robots } from './robots.js';
+import { loadPasal } from './pasal.js';
 import { loadSources, type SourceEntry } from './sources.js';
 
 const HTML = `<html><head><title>Layanan &amp; Syarat</title><style>.x{}</style></head><body>
@@ -220,6 +221,53 @@ describe('runIngest', () => {
     });
     expect(countChunks(db)).toBe(0);
   });
+  describe('adapter pasal', () => {
+    const PDF = 'https://peraturan.contoh.go.id/files/uu.pdf';
+    const uu = src({
+      id: 'uu-uji-pasal',
+      url: PDF,
+      judul: 'UU Uji (teks pasal)',
+      jenis: 'pdf',
+      adapter: 'pasal',
+      domain: 'nasional',
+      kodeWilayah: null,
+    });
+    const pasal = {
+      'uu-uji-pasal': [
+        { pasal: 'Pasal 27', teks: 'Setiap kelahiran wajib dilaporkan paling lambat 60 (enam puluh) hari.' },
+        { pasal: 'Pasal 79A', teks: 'Pengurusan dan penerbitan Dokumen Kependudukan tidak dipungut biaya.' },
+      ],
+    };
+    const routes = {
+      'https://peraturan.contoh.go.id/robots.txt': { body: 'User-agent: *\nAllow: /' },
+      [PDF]: { body: '%PDF-1.4 isi', type: 'application/pdf' },
+    };
+    it('PDF resmi diambil; satu chunk nasional per pasal dengan id dan judul pasal', async () => {
+      const db = openDb(':memory:');
+      const r = await runIngest({ sources: [uu], dryRun: false, db, deps: fakeDeps(routes).deps, pasal });
+      expect(r[0]).toMatchObject({ action: 'ingested', chunks: 2 });
+      const hit = searchBm25(db, { query: 'dipungut biaya' })[0]!;
+      expect(hit).toMatchObject({ id: 'uu-uji-pasal#pasal-79a', kodeWilayah: null });
+      expect(hit.kutipan).toEqual({
+        url: PDF,
+        judul: 'UU Uji (teks pasal) - Pasal 79A',
+        instansi: 'Dinas Contoh',
+      });
+      expect(hit.text).toBe(pasal['uu-uji-pasal'][1]!.teks);
+    });
+    it('sumber pasal tanpa teks di pasal.json -> galat, tidak menulis chunk', async () => {
+      const db = openDb(':memory:');
+      const r = await runIngest({ sources: [uu], dryRun: false, db, deps: fakeDeps(routes).deps, pasal: {} });
+      expect(r[0]).toMatchObject({ action: 'error', reason: 'pasal-tidak-ada' });
+      expect(countChunks(db)).toBe(0);
+    });
+    it('respons bukan PDF dilewati', async () => {
+      const db = openDb(':memory:');
+      const deps = fakeDeps({ ...routes, [PDF]: { body: '<html></html>' } }).deps;
+      const r = await runIngest({ sources: [uu], dryRun: false, db, deps, pasal });
+      expect(r[0]).toMatchObject({ action: 'skipped', reason: 'tipe-konten-tidak-didukung' });
+    });
+  });
   it('origin di luar allowlist ditolak saat penulisan', async () => {
     const { deps } = fakeDeps({ 'https://contoh.com/x': { body: HTML } });
     const db = openDb(':memory:');
@@ -253,6 +301,17 @@ describe('data/sources.json', () => {
       'ombudsman-pengaduan',
     ]) {
       expect(ids).toContain(id);
+    }
+  });
+  it('sumber ber-adapter pasal: PDF nasional dan teksnya ada di data/regulasi/pasal.json (dua arah)', () => {
+    const pasal = loadPasal();
+    const ids = sources.filter((s) => s.adapter === 'pasal').map((s) => s.id);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(Object.keys(pasal).sort()).toEqual([...ids].sort());
+    for (const s of sources.filter((x) => x.adapter === 'pasal')) {
+      expect([s.jenis, s.domain, s.kodeWilayah, s.ingest], s.id).toEqual(['pdf', 'nasional', null, true]);
+      const nomor = pasal[s.id]!.map((p) => p.pasal);
+      expect(new Set(nomor).size, s.id).toBe(nomor.length);
     }
   });
   it('file mentah tidak memuat PII', () => {

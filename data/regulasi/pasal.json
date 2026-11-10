@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "catatan": "Teks pasal verbatim dari berkas resmi (URL di data/sources.json, sumber ber-adapter 'pasal'), diekstrak dengan pdftotext dan diperiksa per pasal pada 2026-11-10. Hanya pasal yang dibuka dan dicocokkan; baris kepala/kaki halaman dibuang, pemenggalan baris disatukan. Ejaan dan salah ketik resmi dibiarkan (mis. PMD 108/2019 Ps. 30 ayat (3) merujuk 'ayat (3)'). Ubah hanya bersama sumbernya.",
+  "sumber": {
+    "uu-24-2013-pasal": [
+      {
+        "pasal": "Pasal 27",
+        "teks": "(1) Setiap kelahiran wajib dilaporkan oleh Penduduk kepada Instansi Pelaksana setempat paling lambat 60 (enam puluh) hari sejak kelahiran.\n(2) Berdasarkan laporan sebagaimana dimaksud pada ayat (1), Pejabat Pencatatan Sipil mencatat pada Register Akta Kelahiran dan menerbitkan Kutipan Akta Kelahiran."
+      },
+      {
+        "pasal": "Pasal 32",
+        "teks": "(1) Pelaporan kelahiran sebagaimana dimaksud dalam Pasal 27 ayat (1) yang melampaui batas waktu 60 (enam puluh) hari sejak tanggal kelahiran, pencatatan dan penerbitan Akta Kelahiran dilaksanakan setelah mendapatkan keputusan Kepala Instansi Pelaksana setempat.\n(2) Dihapus.\n(3) Ketentuan lebih lanjut mengenai persyaratan dan tata cara pencatatan kelahiran sebagaimana dimaksud pada ayat (1) diatur dalam Peraturan Presiden."
+      },
+      {
+        "pasal": "Pasal 44",
+        "teks": "(1) Setiap kematian wajib dilaporkan oleh ketua rukun tetangga atau nama lainnya di domisili Penduduk kepada Instansi Pelaksana setempat paling lambat 30 (tiga puluh) hari sejak tanggal kematian.\n(2) Berdasarkan laporan sebagaimana dimaksud pada ayat (1) Pejabat Pencatatan Sipil mencatat pada Register Akta Kematian dan menerbitkan Kutipan Akta Kematian.\n(3) Pencatatan kematian sebagaimana dimaksud pada ayat (2) dilakukan berdasarkan keterangan kematian dari pihak yang berwenang.\n(4) Dalam hal terjadi ketidakjelasan keberadaan seseorang karena hilang atau mati tetapi tidak ditemukan jenazahnya, pencatatan oleh Pejabat Pencatatan Sipil baru dilakukan setelah adanya penetapan pengadilan.\n(5) Dalam hal terjadi kematian seseorang yang tidak jelas identitasnya, Instansi Pelaksana melakukan pencatatan kematian berdasarkan keterangan dari kepolisian."
+      },
+      {
+        "pasal": "Pasal 79A",
+        "teks": "Pengurusan dan penerbitan Dokumen Kependudukan tidak dipungut biaya."
+      }
+    ],
+    "uu-23-2006-pasal": [
+      {
+        "pasal": "Pasal 34",
+        "teks": "(1) Perkawinan yang sah berdasarkan ketentuan Peraturan Perundang-undangan wajib dilaporkan oleh Penduduk kepada Instansi Pelaksana di tempat terjadinya perkawinan paling lambat 60 (enam puluh) hari sejak tanggal perkawinan.\n(2) Berdasarkan laporan sebagaimana dimaksud pada ayat (1), Pejabat Pencatatan Sipil mencatat pada Register Akta Perkawinan dan menerbitkan Kutipan Akta Perkawinan.\n(3) Kutipan Akta Perkawinan sebagaimana dimaksud pada ayat (2) masing-masing diberikan kepada suami dan istri.\n(4) Pelaporan sebagaimana dimaksud pada ayat (1) dilakukan oleh Penduduk yang beragama Islam kepada KUAKec.\n(5) Data hasil pencatatan atas peristiwa sebagaimana dimaksud pada ayat (4) dan dalam Pasal 8 ayat (2) wajib disampaikan oleh KUAKec kepada Instansi Pelaksana dalam waktu paling lambat 10 (sepuluh) hari setelah pencatatan perkawinan dilaksanakan.\n(6) Hasil pencatatan data sebagaimana dimaksud pada ayat (5) tidak memerlukan penerbitan kutipan akta Pencatatan Sipil.\n(7) Pada tingkat kecamatan laporan sebagaimana dimaksud pada ayat (1) dilakukan pada UPTD Instansi Pelaksana."
+      }
+    ],
+    "perpres-96-2018-pasal": [
+      {
+        "pasal": "Pasal 14",
+        "teks": "Penerbitan KTP-el bagi Penduduk WNI atau Penduduk Orang Asing terdiri atas:\na. penerbitan KTP-el baru;\nb. penerbitan KTP-el karena pindah datang;\nc. penerbitan KTP-el karena perubahan data;\nd. penerbitan KTP-el karena perpanjangan bagi Penduduk Orang Asing yang memiliki izin tinggal tetap;\ne. penerbitan KTP-el karena hilang atau rusak; dan\nf. penerbitan KTP-el di luar domisili."
+      },
+      {
+        "pasal": "Pasal 17",
+        "teks": "(1) Penerbitan KTP-el karena pindah datang bagi Penduduk WNI dalam wilayah Negara Kesatuan Republik Indonesia harus memenuhi persyaratan:\na. surat keterangan pindah dari Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota daerah asal; dan\nb. KK.\n(2) Penerbitan KTP-el karena pindah datang bagi WNI yang datang dari luar wilayah Negara Kesatuan Republik Indonesia harus memenuhi persyaratan:\na. Surat keterangan pindah dari Perwakilan Republik Indonesia; dan\nb. KK."
+      },
+      {
+        "pasal": "Pasal 21",
+        "teks": "Penerbitan KTP-el karena hilang atau rusak bagi Penduduk WNI atau Orang Asing yang memiliki izin tinggal tetap harus memenuhi persyaratan:\na. surat keterangan hilang dari kepolisian;\nb. KTP-el yang rusak;\nc. KK;\nd. Dokumen Perjalanan Republik Indonesia atau Dokumen Perjalanan; dan\ne. kartu izin tinggal tetap."
+      },
+      {
+        "pasal": "Pasal 22",
+        "teks": "Perekaman dan penerbitan KTP-el baru oleh Disdukcapil Kabupaten/Kota di luar domisili dapat dilakukan dengan memenuhi persyaratan:\na. tidak melakukan perubahan data Penduduk; dan\nb. KK."
+      },
+      {
+        "pasal": "Pasal 25",
+        "teks": "(1) Pendaftaran perpindahan Penduduk WNI dalam wilayah Negara Kesatuan Republik Indonesia dilakukan dengan penerbitan surat keterangan pindah yang didasarkan pada klasifikasi perpindahan Penduduk.\n(2) Klasifikasi perpindahan Penduduk sebagaimana dimaksud pada ayat (1) terdiri atas:\na. dalam satu desa/kelurahan atau yang disebut dengan nama lain;\nb. antardesa/kelurahan atau yang disebut dengan nama lain dalam satu kecamatan;\nc. antarkecamatan atau yang disebut dengan nama lain dalam satu kabupaten/kota;\nd. antarkabupaten/kota dalam satu provinsi; dan\ne. antarprovinsi.\n(3) Penerbitan surat keterangan pindah WNI sebagaimana dimaksud pada ayat (1) dilakukan pada Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota di daerah asal dengan menunjukkan KK.\n(4) Surat keterangan pindah sebagaimana dimaksud pada ayat (3) digunakan sebagai dasar proses perubahan KK bagi kepala/anggota keluarga yang tidak pindah.\n(5) Surat keterangan pindah sebagaimana dimaksud pada ayat (3) digunakan sebagai dasar penerbitan KK, KIA, atau KTP-el dengan alamat baru."
+      },
+      {
+        "pasal": "Pasal 33",
+        "teks": "(1) Pencatatan kelahiran WNI harus memenuhi persyaratan:\na. surat keterangan kelahiran;\nb. buku nikah/kutipan akta perkawinan atau bukti lain yang sah;\nc. KK; dan\nd. KTP-el.\n(2) Pencatatan kelahiran WNI bagi anak yang baru lahir atau baru ditemukan dan tidak diketahui asal usulnya atau keberadaan orang tuanya harus memenuhi persyaratan berita acara dari kepolisian.\n(3) Pencatatan kelahiran WNI bagi anak yang tidak diketahui asal usulnya atau keberadaan orang tuanya selain yang dimaksud pada ayat (2) harus memenuhi persyaratan surat pernyataan tanggung jawab mutlak kebenaran data kelahiran dengan 2 (dua) orang saksi.\n(4) Pencatatan kelahiran WNI yang bertempat tinggal di luar wilayah Negara Kesatuan Republik Indonesia yang sedang berkunjung ke Indonesia harus memenuhi persyaratan:\na. surat keterangan kelahiran;\nb. buku nikah/kutipan akta perkawinan atau bukti nikah/perkawinan lainnya; dan\nc. Dokumen Perjalanan Republik Indonesia dan/atau Dokumen Perjalanan orang tua; atau\nd. surat keterangan pindah luar negeri.\n(5) Pencatatan kelahiran Orang Asing sebagaimana dimaksud dalam Pasal 32 ayat (2) harus memenuhi persyaratan:\na. surat keterangan kelahiran;\nb. Dokumen Perjalanan; dan\nc. KTP-el atau kartu izin tinggal tetap atau kartu izin tinggal terbatas atau visa kunjungan."
+      },
+      {
+        "pasal": "Pasal 34",
+        "teks": "Penduduk dapat membuat surat pernyataan tanggung jawab mutlak atas kebenaran data dengan diketahui oleh 2 (dua) orang saksi dalam hal:\na. tidak memiliki surat keterangan kelahiran; dan/atau\nb. tidak memiliki buku nikah/kutipan akta perkawinan atau bukti lain yang sah tetapi status hubungan dalam KK menunjukan sebagai suami istri."
+      }
+    ],
+    "permendagri-108-2019-pasal": [
+      {
+        "pasal": "Pasal 18",
+        "teks": "(1) Penerbitan KTP-el sebagaimana dimaksud dalam Pasal 2 ayat (1) huruf c, bagi Penduduk WNI atau Penduduk Orang Asing terdiri atas:\na. penerbitan KTP-el baru;\nb. penerbitan KTP-el karena pindah datang;\nc. penerbitan KTP-el karena adanya perubahan data;\nd. penerbitan KTP-el karena perpanjangan bagi Penduduk Orang Asing yang memiliki Izin Tinggal Tetap;\ne. penerbitan KTP-el karena hilang atau rusak; dan\nf. penerbitan KTP-el di luar domisili.\n(2) Selain penerbitan KTP-el sebagaimana dimaksud pada ayat (1), terdapat penerbitan KTP-el lainnya yaitu penerbitan KTP-el bagi petugas khusus."
+      },
+      {
+        "pasal": "Pasal 24",
+        "teks": "Penerbitan KTP-el di luar domisili bagi Penduduk WNI atau Penduduk Orang Asing sebagaimana dimaksud dalam Pasal 18 ayat (1) huruf f, dengan memenuhi persyaratan sesuai dengan ketentuan Peraturan Presiden mengenai persyaratan dan tata cara pendaftaran Penduduk dan Pencatatan Sipil dan dilengkapi dengan syarat lainnya berupa:\na. sudah melakukan perekaman biometrik dan tercantum dalam basis data kependudukan;\nb. Dokumen Perjalanan; dan\nc. kartu Izin Tinggal Tetap."
+      },
+      {
+        "pasal": "Pasal 28",
+        "teks": "(1) Pendaftaran sebagaimana dimaksud dalam Pasal 27 huruf a dan huruf c, dilakukan dengan penerbitan SKP yang didasarkan pada klasifikasi perpindahan Penduduk dengan memenuhi persyaratan sesuai dengan ketentuan Peraturan Presiden mengenai persyaratan dan tata cara Pendaftaran Penduduk dan Pencatatan Sipil dan dilengkapi dengan syarat lainnya berupa surat pernyataan di atas materai tidak keberatan penggunaan alamat dalam dokumen kependudukan dari pemilik rumah untuk digunakan oleh Penduduk yang menempati tempat tinggal yang bukan miliknya.\n(2) Klasifikasi perpindahan Penduduk sebagaimana dimaksud pada ayat (1), terdiri atas:\na. dalam satu desa/kelurahan atau yang disebut dengan nama lain;\nb. antardesa/kelurahan atau yang disebut dengan nama lain dalam satu kecamatan;\nc. antarkecamatan atau yang disebut dengan nama lain dalam satu kabupaten/kota;\nd. antarkabupaten/kota dalam satu provinsi; atau\ne. antarprovinsi."
+      },
+      {
+        "pasal": "Pasal 29",
+        "teks": "(1) Klasifikasi perpindahan Penduduk sebagaimana dimaksud dalam Pasal 28 ayat (2) huruf a, huruf b, dan huruf c dilakukan dengan tata cara:\na. Penduduk mengisi dan menandatangani formulir biodata serta menyerahkan persyaratan sesuai dengan ketentuan Peraturan Presiden mengenai persyaratan dan tata cara Pendaftaran Penduduk dan Pencatatan Sipil yang mengatur mengenai perpindahan Penduduk;\nb. petugas melakukan verifikasi dan validasi terhadap formulir dan persyaratan sesuai dengan ketentuan Peraturan Presiden mengenai persyaratan dan tata cara Pendaftaran Penduduk dan Pencatatan Sipil yang mengatur mengenai perpindahan Penduduk;\nc. petugas pada Disdukcapil Kabupaten/Kota atau kepala UPT Disdukcapil Kabupaten/Kota melakukan perekaman data dalam basis data kependudukan; dan\nd. kepala Disdukcapil Kabupaten/Kota atau kepala UPT Disdukcapil Kabupaten/Kota menerbitkan dan menyerahkan KK, KTP-el dan/atau KIA dengan alamat baru.\n(2) Kepala Disdukcapil Kabupaten/Kota atau kepala UPT Disdukcapil Kabupaten/Kota mencabut KK, KTP-el dan/atau KIA alamat lama untuk selanjutnya dimusnahkan sesuai dengan ketentuan peraturan perundang-undangan."
+      },
+      {
+        "pasal": "Pasal 30",
+        "teks": "(1) Klasifikasi perpindahan Penduduk sebagaimana dimaksud dalam Pasal 28 ayat (2) huruf d dan huruf e pada Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota daerah asal dilakukan dengan tata cara:\na. Penduduk mengisi dan menandatangani formulir biodata serta menyerahkan persyaratan sesuai dengan ketentuan Peraturan Presiden mengenai persyaratan dan tata cara Pendaftaran Penduduk dan Pencatatan Sipil yang mengatur mengenai perpindahan Penduduk;\nb. petugas melakukan verifikasi dan validasi terhadap formulir dan persyaratan sesuai dengan ketentuan Peraturan Presiden mengenai persyaratan dan tata cara Pendaftaran Penduduk dan Pencatatan Sipil yang mengatur mengenai perpindahan Penduduk;\nc. petugas pada Disdukcapil Kabupaten/Kota atau kepala UPT Disdukcapil Kabupaten/Kota melakukan perekaman data dalam basis data kependudukan;\nd. kepala Disdukcapil Kabupaten/Kota atau kepala UPT Disdukcapil Kabupaten/Kota menerbitkan dan menandatangani SKP;\ne. SKP yang telah diterbitkan dan ditandatangani selanjutnya diserahkan kepada Penduduk; dan\nf. kepala Disdukcapil Kabupaten/Kota atau kepala UPT Disdukcapil Kabupaten/Kota menerbitkan KK bagi kepala/anggota keluarga tidak pindah.\n(2) SKP sebagaimana dimaksud pada ayat (1) huruf d, berlaku selama 100 (seratus) hari kerja sejak diterbitkannya SKP.\n(3) Dalam hal masa berlaku SKP sebagaimana dimaksud pada ayat (3) sudah berakhir, Penduduk tidak melaporkan rencana kepindahannya pada daerah tujuan, SKP dinyatakan tidak berlaku.\n(4) SKP yang tidak berlaku sebagaimana dimaksud pada ayat (3), menjadi dasar pembatalan pindah dengan menggunakan SIAK di daerah asal.\n(5) Dalam hal Penduduk bermaksud melakukan pendaftaran perpindahan Penduduk melebihi masa berlaku SKP sebagaimana dimaksud pada ayat (3), Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota dapat mengkomunikasikan pengurusan SKP melalui surat elektronik atau media elektronik lainnya."
+      },
+      {
+        "pasal": "Pasal 31",
+        "teks": "Dalam hal Penduduk secara faktual telah berdomisili di Kabupaten/Kota daerah tujuan, Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota daerah tujuan membantu komunikasi pengurusan SKP melalui surat elektronik atau media elektronik lainnya ke Disdukcapil Kabupaten/Kota daerah asal guna mendapatkan SKP."
+      }
+    ],
+    "permendagri-7-2026-pasal": [
+      {
+        "pasal": "Pasal 4",
+        "teks": "Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota menerbitkan KIA bagi:\na. Anak WNI kurang dari 5 (lima) tahun bersamaan dengan penerbitan kutipan akta kelahiran;\nb. Anak WNI berusia kurang dari 5 (lima) tahun sudah memiliki akta kelahiran tetapi belum memiliki KIA;\nc. Anak WNI berusia 5 (lima) tahun sampai dengan usia 17 (tujuh belas) tahun kurang satu hari sudah memiliki akta kelahiran tetapi belum memiliki KIA; dan\nd. Anak WNI yang baru datang dari luar negeri."
+      },
+      {
+        "pasal": "Pasal 6",
+        "teks": "(1) Permohonan Penerbitan KIA bagi Anak WNI kurang dari 5 (lima) tahun bersamaan dengan penerbitan kutipan akta kelahiran sebagaimana dimaksud dalam Pasal 4 huruf a, disampaikan dengan melampirkan dokumen persyaratan berupa fotokopi kartu keluarga atau wali.\n(2) Permohonan Penerbitan KIA bagi Anak berusia kurang dari 5 (lima) tahun sudah memiliki akta kelahiran tetapi belum memiliki KIA sebagaimana dimaksud dalam Pasal 4 huruf b, disampaikan dengan melampirkan dokumen persyaratan berupa fotokopi kutipan akta kelahiran dan fotokopi kartu keluarga atau wali.\n(3) Permohonan Penerbitan KIA bagi Anak berusia 5 (lima) tahun sampai dengan usia 17 (tujuh belas) tahun kurang satu hari sudah memiliki akta kelahiran tetapi belum memiliki KIA sebagaimana dimaksud dalam Pasal 4 huruf c, disampaikan dengan melampirkan dokumen persyaratan berupa:\na. fotokopi kutipan akta kelahiran;\nb. fotokopi kartu keluarga atau wali; dan\nc. pas foto Anak berwarna ukuran 2x3 cm sebanyak 1 (satu) lembar.\n(4) Permohonan Penerbitan KIA bagi Anak WNI yang baru datang dari luar negeri sebagaimana dimaksud dalam Pasal 4 huruf d, disampaikan dengan melampirkan:\na. dokumen persyaratan sebagaimana dimaksud pada ayat (2) dan surat keterangan pindah dari perwakilan Republik Indonesia bagi Anak berusia kurang dari 5 (lima) tahun sudah memiliki akta kelahiran tetapi belum memiliki KIA; dan\nb. dokumen persyaratan sebagaimana dimaksud pada ayat (3) dan surat keterangan pindah dari perwakilan Republik Indonesia bagi Anak berusia 5 (lima) tahun sampai dengan usia 17 (tujuh belas) tahun kurang satu hari sudah memiliki akta kelahiran tetapi belum memiliki KIA."
+      },
+      {
+        "pasal": "Pasal 24",
+        "teks": "Penerbitan KIA sebagaimana dimaksud dalam Pasal 3 dapat dilakukan secara tatap muka atau secara daring melalui IKD."
+      },
+      {
+        "pasal": "Pasal 25",
+        "teks": "(1) Penerbitan KIA secara tatap muka sebagaimana dimaksud dalam Pasal 24 dilakukan dengan cara Pemohon mengisi formulir pengajuan pelayanan pendaftaran peristiwa kependudukan (F-1.02) dan menyampaikan permohonan serta dokumen persyaratan.\n(2) Formulir pengajuan pelayanan dan permohonan serta dokumen persyaratan sebagaimana dimaksud pada ayat (1) dilakukan verifikasi dan validasi.\n(3) Berdasarkan hasil verifikasi dan validasi sebagaimana dimaksud pada ayat (2) petugas pada Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota melakukan perekaman data dalam basis data kependudukan.\n(4) Berdasarkan hasil perekaman data dalam basis data kependudukan sebagaimana dimaksud pada ayat (3) Kepala Disdukcapil Kabupaten/Kota atau Kepala UPT Disdukcapil Kabupaten/Kota menandatangani dan menerbitkan KIA."
+      },
+      {
+        "pasal": "Pasal 26",
+        "teks": "(1) Penerbitan KIA secara daring sebagaimana dimaksud dalam Pasal 24 dilakukan melalui aplikasi IKD.\n(2) Penerbitan KIA secara daring sebagaimana dimaksud pada ayat (1) untuk Anak usia 5 (lima) tahun sampai dengan Anak usia 17 (tujuh belas) tahun kurang 1 (satu) hari dilakukan dengan mengunggah pasfoto atau swafoto melalui aplikasi IKD.\n(3) Pemohon dapat mencetak KIA melalui mesin anjungan dukcapil mandiri.\n(4) Anjungan dukcapil mandiri sebagaimana dimaksud pada ayat (3) merupakan suatu alat yang terdiri dari berbagai perangkat pendukung dan sistem aplikasi yang kompatibel dan terkoneksi dengan sistem informasi administrasi kependudukan sebagai alternatif pelayanan administrasi kependudukan kepada Penduduk yang sudah terdaftar dalam database kependudukan, di luar unit pelayanan utama pada dinas dan unit pelaksana teknis dalam rangka meningkatkan kualitas pelayanan kepada masyarakat."
+      },
+      {
+        "pasal": "Pasal 34",
+        "teks": "Pada saat Peraturan Menteri ini mulai berlaku, Peraturan Menteri Dalam Negeri Nomor 2 Tahun 2016 tentang Kartu Identitas Anak (Berita Negara Republik Indonesia Tahun 2016 Nomor 80), dicabut dan dinyatakan tidak berlaku."
+      }
+    ]
+  }
+}
