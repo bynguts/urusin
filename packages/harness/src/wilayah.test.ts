@@ -462,3 +462,27 @@ describe('temuan eval persona W2: ganti wilayah membuang sumber wilayah lama', (
     expect(JSON.stringify(out.events)).not.toMatch(/wonogiri/i);
   });
 });
+
+describe('temuan eval persona W6: hand-off tidak diulang identik', () => {
+  it('pertanyaan tanpa sumber berulang: kanal lain, lalu langkah lain tanpa hand-off yang sama', async () => {
+    const jawab = tool('urusan__jawab_persyaratan', { pertanyaan: 'nomor antrean berapa?' });
+    const { env, u, provider } = setup([jawab, jawab, jawab, balas('Coba datang langsung ke kantor.')], {
+      jenis: 'skck',
+      kodeKabKota: '3312',
+    });
+    const kanal = async () => {
+      const out = await runTurn(env.deps, { urusanId: u.id, userText: 'nomor antrean berapa?' });
+      return of(out.events, 'handoff').map((h) => h.kanal.map((k) => k.url));
+    };
+    const [pertama] = await kanal();
+    const [kedua] = await kanal();
+    expect(pertama!.length).toBeGreaterThan(0);
+    expect(kedua!.length).toBeGreaterThan(0);
+    // Kanal kedua tidak mengulang satu pun kanal pertama.
+    const norm = (x: string) => x.toLowerCase().replace(/\/+$/, '');
+    expect(kedua!.some((k) => pertama!.map(norm).includes(norm(k)))).toBe(false);
+    // Semua kanal sudah diberikan: tidak ada hand-off lagi, model diminta memberi langkah lain.
+    expect(await kanal()).toHaveLength(0);
+    expect(hasilTool(provider)).toMatch(/JANGAN ulangi/);
+  });
+});

@@ -3,10 +3,12 @@ import { ADAPTERS } from '@urusin/adapters';
 import { llmText } from '@urusin/core';
 import { LAYANAN_KORPUS, cariPengetahuanTool } from '@urusin/rag';
 import {
+  KANAL_NASIONAL,
   REF_PERPRES,
   SEED_ENTRIES,
   cariWilayah,
   kanalWilayah,
+  kontakDukcapil,
   menyebutWilayah,
   routeByKode,
   type HasilCariWilayah,
@@ -212,6 +214,69 @@ export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkR
   });
 }
 
+const urlSama = (u: string) => u.trim().toLowerCase().replace(/\/+$/, '');
+
+/**
+ * Hand-off tanpa pengulangan: warga yang sudah diarahkan ke kanal yang sama tidak diberi hand-off identik lagi.
+ * Kanal pengganti berurutan: kanal resmi wilayah (kanalWilayah: portal → situs Disdukcapil → nasional), situs
+ * Disdukcapil terverifikasi, lalu kanal nasional. Bila semuanya sudah diberikan, tidak ada hand-off baru: model
+ * diminta memberi langkah lain (isi kartu rencana atau datang ke kantor) tanpa mengulang kanal.
+ */
+function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>): ToolResult {
+  const kunci = (k: { url?: string | undefined; nama: string }) => urlSama(k.url ?? k.nama);
+  const sudah = new Set(
+    ctx.store
+      .eventsOfType(ctx.urusan.id, 'handoff', 20)
+      .flatMap((e) => (e.payload as PayloadOf<'handoff'>).kanal.map(kunci)),
+  );
+  const biasa: ToolResult = {
+    content: 'Tidak ada sumber resmi yang cukup; warga diarahkan ke kanal resmi.',
+    endTurn: true,
+    events: [{ type: 'handoff', ...h }],
+  };
+  if (h.kanal.some((k) => !sudah.has(kunci(k)))) return biasa;
+  const kode = kodeKtp(ctx.store, ctx.urusan) ?? ctx.urusan.kodeKabKota;
+  const calon: PayloadOf<'handoff'>['kanal'] = [];
+  if (kode) {
+    const k = kanalWilayah(kode);
+    calon.push({ nama: k.instansi, url: k.url });
+    const d = kontakDukcapil(kode);
+    if (d)
+      calon.push({
+        nama: `Disdukcapil ${routeByKode(kode).entry.nama}`,
+        url: d.website,
+        ...(d.alamat ? { kontak: d.alamat } : {}),
+      });
+  }
+  calon.push({ nama: KANAL_NASIONAL.instansi, url: KANAL_NASIONAL.url });
+  const lain = calon.filter(
+    (k, i) => !sudah.has(kunci(k)) && calon.findIndex((x) => kunci(x) === kunci(k)) === i,
+  );
+  const first = lain[0];
+  if (first) {
+    return {
+      ...biasa,
+      events: [
+        {
+          type: 'handoff',
+          alasan: `Kanal yang tadi belum menjawab ini. Coba tanyakan ke ${first.nama} (${first.url}).`,
+          sebab: h.sebab,
+          kanal: lain,
+        },
+      ],
+    };
+  }
+  const rencana = chunkRencana(ctx).map((c) => c.text);
+  return {
+    content: [
+      `Hand-off ke kanal resmi yang sama (${h.kanal.map((k) => k.url ?? k.nama).join(', ')}) SUDAH diberikan sebelumnya: JANGAN ulangi kanal itu dan jangan mengulang jawaban tadi.`,
+      rencana.length > 0
+        ? `Beri langkah berikutnya yang berbeda dari isi kartu rencana: ${rencana.join(' | ')}`
+        : 'Beri langkah berikutnya yang berbeda: tanyakan detail yang belum jelas, atau sarankan datang langsung ke kantor instansi itu dan bertanya ke petugas.',
+    ].join(' '),
+  };
+}
+
 /**
  * Jawaban persyaratan/prosedur: ditandai oleh tool ini (bukan regex). Tidak ada teks mentah yang di-stream;
  * hanya event progress, lalu objek tervalidasi (`grounded_answer`) atau `handoff`.
@@ -226,12 +291,8 @@ export const urusanJawabPersyaratan = defineTool({
   async execute(ctx, args): Promise<ToolResult> {
     const chunks = [...ctx.store.getChunks(ctx.urusan.id), ...chunkRencana(ctx)];
     const ctxHandoff = { kodeKabKota: ctx.urusan.kodeKabKota };
-    const handoffEvent = (sebab: PayloadOf<'handoff'>['sebab']): ToolResult => ({
-      content: 'Tidak ada sumber resmi yang cukup; warga diarahkan ke kanal resmi.',
-      endTurn: true,
-      events: [{ type: 'handoff', ...buildHandoff({ ...ctxHandoff, chunks }, sebab) }],
-    });
-    if (chunks.length === 0) return handoffEvent('tanpa_sumber');
+    if (chunks.length === 0)
+      return handoffTanpaUlang(ctx, buildHandoff({ ...ctxHandoff, chunks }, 'tanpa_sumber'));
 
     const gen = await generateGroundedAnswer({
       provider: ctx.deps.provider,
@@ -243,13 +304,7 @@ export const urusanJawabPersyaratan = defineTool({
     });
     const verified = verifyGrounded(gen.data, chunks, ctxHandoff, ctx.deps.now());
     const usage = { usage: gen.usage, structuredMode: gen.method };
-    if (verified.handoff) {
-      return {
-        ...handoffEvent(verified.handoff.sebab),
-        events: [{ type: 'handoff', ...verified.handoff }],
-        ...usage,
-      };
-    }
+    if (verified.handoff) return { ...handoffTanpaUlang(ctx, verified.handoff), ...usage };
     const data: PayloadOf<'grounded_answer'> = {
       klaim: verified.klaim,
       klaimDibuang: verified.klaimDibuang,
