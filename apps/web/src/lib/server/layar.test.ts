@@ -2,7 +2,7 @@ import { isHttpError, isRedirect } from '@sveltejs/kit';
 import { DemoProvider } from '@urusin/harness';
 import { createRawSnippet } from 'svelte';
 import { render } from 'svelte/server';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { actions as beranda, load as muatLanding } from '../../routes/+page.server';
 import { load as muatJejak } from '../../routes/jejak/[id]/+page.server';
 import { load as muatPeristiwa } from '../../routes/peristiwa/[slug]/+page.server';
@@ -265,7 +265,10 @@ describe('render server komponen', () => {
 
 describe('/privasi', () => {
   it('menyebut setiap pemroses data pihak lain, lokasi pendamping Indonesia, dan retensi cadangan', async () => {
+    // LandingNav membaca `page.data.akun` (CTA tamu vs akun); di luar SvelteKit konteks `page` tidak ada.
+    vi.doMock('$app/state', () => ({ page: { data: { akun: null } } }));
     const { default: Privasi } = await import('../../routes/privasi/+page.svelte');
+    vi.doUnmock('$app/state');
     const { body } = render(Privasi);
     for (const pihak of [
       'Oracle Cloud',
