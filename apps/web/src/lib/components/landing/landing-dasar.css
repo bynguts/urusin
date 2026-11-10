@@ -17,6 +17,12 @@
   line-height: inherit;
   letter-spacing: inherit;
 }
+:where(.lp) :where(h1, h2, h3, h4) {
+  text-wrap: balance;
+}
+:where(.lp) :where(p) {
+  text-wrap: pretty;
+}
 :where(.lp) :where(a) {
   color: inherit;
   text-decoration: none;

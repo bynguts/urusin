@@ -39,6 +39,7 @@
   --sb-stroke-secondary: #e6dbd1;
   --sb-stroke-tertiary: #efebe7;
   --sb-brand-orange: #ed5a31;
+  --sb-brand-orange-ink: #c8441f;
   --sb-brand-leaf: #d6c530;
   --sb-accent-orange: #f2805d;
   --sb-error: #ef4343;
@@ -51,7 +52,7 @@
   --sb-badge-rose-bg: #f1e8e5;
   --sb-badge-rose-ink: #8e544f;
   --sb-badge-green-bg: #ebf0e7;
-  --sb-badge-green-ink: #567c4d;
+  --sb-badge-green-ink: #44683a;
   --sb-badge-blue-bg: #eaf0f5;
   --sb-badge-blue-ink: #4b6889;
   --sb-badge-purple-bg: #f3eaf4;
@@ -144,7 +145,7 @@
   --color-line: var(--sb-stroke);
   --color-line-2: var(--sb-stroke-secondary);
   --color-line-3: var(--sb-stroke-tertiary);
-  --color-brand: var(--sb-brand-orange);
+  --color-brand: var(--sb-brand-orange-ink, #c8441f);
   --color-leaf: var(--sb-brand-leaf);
   --color-accent: var(--sb-accent-orange);
   --color-galat: var(--sb-a11y-error-text);
@@ -251,10 +252,17 @@ body {
 @layer base {
   h1,
   h2,
-  h3 {
+  h3,
+  h4,
+  h5,
+  h6 {
     font-weight: 480;
     letter-spacing: -0.03em;
     line-height: 1.15;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
 }
 
