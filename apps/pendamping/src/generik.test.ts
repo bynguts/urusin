@@ -1,0 +1,451 @@
+import { randomInt } from 'node:crypto';
+import type { CatatanPendamping, Pengamatan } from '@urusin/contracts';
+import { describe, expect, it } from 'vitest';
+import { createGerbangTulis, JENDELA_ISI_MS, type Jendela } from './gerbang-tulis.js';
+import {
+  GenerikRun,
+  PESAN_GENERIK,
+  redaksi,
+  tidakLazim,
+  type AksiRunner,
+  type HasilRunner,
+  type IzinGenerik,
+  type KolomIzin,
+  type PetaRef,
+  type TanganHalaman,
+} from './generik.js';
+
+const H1 = 'a'.repeat(64);
+const H2 = 'b'.repeat(64);
+const PH_NAMA = '{{PEMOHON.NAMA}}';
+const PH_NIK = '{{PEMOHON.NIK}}';
+const T0 = 5_000_000;
+
+function pengamatan(over: Partial<Pengamatan> = {}): Pengamatan {
+  return {
+    v: 1,
+    seq: 0,
+    host: 'portal.contoh.go.id',
+    jalur: '/layanan/kk',
+    judul: 'Formulir KK',
+    sinyal: {
+      login: false,
+      otp: false,
+      captcha: false,
+      tantangan: false,
+      halamanAkhir: false,
+      sukses: false,
+      galatForm: false,
+    },
+    elemen: [
+      { ref: 'e1', peran: 'teks', nama: 'Nama lengkap', isian: 'kosong' },
+      { ref: 'e2', peran: 'teks', nama: 'Nomor Induk Kependudukan', isian: 'kosong' },
+      { ref: 'e3', peran: 'tombol', nama: 'Lanjut', kelas: 'lanjut' },
+      { ref: 'e4', peran: 'tautan', nama: 'Daftar Layanan', kelas: 'navigasi' },
+      { ref: 'e5', peran: 'tombol', nama: 'Kirim', kelas: 'kirim' },
+    ],
+    teks: 'Isi formulir berikut.',
+    sidik: 'sidik-halaman',
+    ...over,
+  };
+}
+
+const PETA: PetaRef = {
+  e1: { jalur: 'form > input:nth-of-type(1)', sidik: 's-nama' },
+  e2: { jalur: 'form > input:nth-of-type(2)', sidik: 's-nik' },
+  e3: { jalur: 'form > button:nth-of-type(1)', sidik: 's-lanjut' },
+  e4: { jalur: 'nav > a:nth-of-type(1)', sidik: 's-tautan' },
+  e5: { jalur: 'form > button:nth-of-type(2)', sidik: 's-kirim' },
+};
+
+type Opsi = {
+  amati?: () => Pengamatan;
+  aksi?: (a: AksiRunner) => HasilRunner | null;
+  urlBoleh?: (url: string) => boolean;
+};
+
+function harness(o: Opsi = {}) {
+  let now = T0;
+  const panggilan: AksiRunner[] = [];
+  const navigasi: string[] = [];
+  const jendelaSaatAksi: Jendela[] = [];
+  const jejak: CatatanPendamping[] = [];
+  const serah: { alasan: string; pesan: string; sorot: unknown }[] = [];
+  const tidakBisa: string[] = [];
+  const diisiDikirim: Record<string, string>[] = [];
+  const minta: { rencanaHash: string; kolom: KolomIzin[]; berkas: string[] }[] = [];
+  const vault = new Map<string, string>();
+  const setuju = new Map<string, Set<string>>();
+  const ref: { run?: GenerikRun } = {};
+  const gerbang = createGerbangTulis({
+    wargaPegang: () => false,
+    onBlokir: (c, j) => ref.run!.blokir(c, j),
+    now: () => now,
+  });
+  const tangan: TanganHalaman = {
+    async amati(_seq, diisi) {
+      diisiDikirim.push(diisi);
+      return { pengamatan: (o.amati ?? pengamatan)(), peta: PETA };
+    },
+    async aksi(a) {
+      panggilan.push(a);
+      jendelaSaatAksi.push(gerbang.jendela());
+      return o.aksi ? o.aksi(a) : { status: 'ok', aturan: 'A_OK' };
+    },
+    async navigasi(url) {
+      jendelaSaatAksi.push(gerbang.jendela());
+      navigasi.push(url);
+    },
+    sorot: async () => ({ x: 1, y: 2, lebar: 3, tinggi: 4 }),
+    tenang: async () => {},
+  };
+  const izin: IzinGenerik = {
+    disetujui: (h, sidik, ph) => setuju.get(h)?.has(`${sidik}|${ph}`) ?? false,
+    berkasDisetujui: (h, nama) => setuju.get(h)?.has(`berkas|${nama}`) ?? false,
+    minta: (p) => void minta.push(p),
+    nilai: (ph) => vault.get(ph),
+    berkas: () => undefined,
+    vault: () => vault.entries(),
+  };
+  const run = (ref.run = new GenerikRun({
+    tangan,
+    gerbang,
+    izin,
+    urlBoleh: o.urlBoleh ?? (() => true),
+    jejak: (c) => void jejak.push(c),
+    serahkan: (alasan, pesan, sorot) => void serah.push({ alasan, pesan, sorot }),
+    tidakBisa: (p) => void tidakBisa.push(p),
+    now: () => now,
+  }));
+  return {
+    run,
+    gerbang,
+    panggilan,
+    navigasi,
+    jendelaSaatAksi,
+    jejak,
+    serah,
+    tidakBisa,
+    diisiDikirim,
+    minta,
+    vault,
+    setujui: (h: string, ...k: string[]) => setuju.set(h, new Set(k)),
+    maju: (ms: number) => (now += ms),
+  };
+}
+
+describe('GenerikRun: kunci halaman akhir', () => {
+  it('klik pada halaman akhir = HALAMAN_AKHIR tanpa menyentuh halaman', async () => {
+    const h = harness({
+      amati: () => pengamatan({ sinyal: { ...pengamatan().sinyal, halamanAkhir: true } }),
+    });
+    const p = await h.run.amati();
+    expect(p?.sinyal.halamanAkhir).toBe(true);
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] });
+    expect(r).toEqual([{ indeks: 0, kode: 'HALAMAN_AKHIR' }]);
+    expect(h.panggilan).toEqual([]);
+  });
+
+  it('kunci mengikuti pengamatan terakhir', async () => {
+    let akhir = true;
+    const h = harness({
+      amati: () => pengamatan({ sinyal: { ...pengamatan().sinyal, halamanAkhir: akhir } }),
+    });
+    await h.run.amati();
+    akhir = false;
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] });
+    expect(r[0]?.kode).toBe('ok');
+  });
+});
+
+describe('GenerikRun: persetujuan terikat rencanaHash', () => {
+  it('isi tanpa persetujuan = BELUM_DISETUJUI, tidak ada aksi yang dijalankan, lembar diminta', async () => {
+    const h = harness();
+    await h.run.amati();
+    h.vault.set(PH_NAMA, 'Budi Santoso');
+    const r = await h.run.aksi({
+      rencanaHash: H1,
+      aksi: [
+        { jenis: 'klik', ref: 'e4' },
+        { jenis: 'isi', ref: 'e1', nilai: PH_NAMA },
+        { jenis: 'isi', ref: 'e2', nilai: PH_NIK },
+      ],
+    });
+    expect(r).toEqual([
+      { indeks: 0, kode: 'DILEWATI' },
+      { indeks: 1, kode: 'BELUM_DISETUJUI' },
+      { indeks: 2, kode: 'BELUM_DISETUJUI' },
+    ]);
+    expect(h.panggilan).toEqual([]);
+    expect(h.minta).toEqual([
+      {
+        rencanaHash: H1,
+        berkas: [],
+        kolom: [
+          { placeholder: PH_NAMA, labelPortal: 'Nama lengkap', sidik: 's-nama' },
+          { placeholder: PH_NIK, labelPortal: 'Nomor Induk Kependudukan', sidik: 's-nik' },
+        ],
+      },
+    ]);
+  });
+
+  it('pasangan disetujui untuk rencana itu saja; rencana lain = BELUM_DISETUJUI', async () => {
+    const h = harness();
+    await h.run.amati();
+    h.vault.set(PH_NAMA, 'Budi Santoso');
+    h.setujui(H1, `s-nama|${PH_NAMA}`);
+    const lain = await h.run.aksi({ rencanaHash: H2, aksi: [{ jenis: 'isi', ref: 'e1', nilai: PH_NAMA }] });
+    expect(lain).toEqual([{ indeks: 0, kode: 'BELUM_DISETUJUI' }]);
+    expect(h.panggilan).toEqual([]);
+    const ok = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'isi', ref: 'e1', nilai: PH_NAMA }] });
+    expect(ok).toEqual([{ indeks: 0, kode: 'ok' }]);
+    expect(h.panggilan).toEqual([{ jenis: 'isi', ref: 'e1', placeholder: PH_NAMA, nilai: 'Budi Santoso' }]);
+    // Jendela isi: XHR non-GET boleh <= 3 detik.
+    expect(h.jendelaSaatAksi).toEqual([{ jenis: 'ai_isi', sampai: T0 + JENDELA_ISI_MS }]);
+    // Pengamatan berikutnya menampilkan placeholder (bukan nilai) untuk kolom yang diisi worker.
+    await h.run.amati();
+    expect(h.diisiDikirim.at(-1)).toEqual({ 's-nama': PH_NAMA });
+  });
+
+  it('pasangan disetujui untuk kolom lain (sidik beda) tidak berlaku', async () => {
+    const h = harness();
+    await h.run.amati();
+    h.vault.set(PH_NIK, '1234567890123456'); // pii-scan:allow (nilai sintetis)
+    h.setujui(H1, `s-nik|${PH_NIK}`);
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'isi', ref: 'e1', nilai: PH_NIK }] });
+    expect(r).toEqual([{ indeks: 0, kode: 'BELUM_DISETUJUI' }]);
+    expect(h.minta[0]?.kolom[0]).toMatchObject({
+      placeholder: PH_NIK,
+      labelPortal: 'Nama lengkap',
+      tidakLazim: true,
+    });
+  });
+});
+
+describe('GenerikRun: ref', () => {
+  it('tanpa pengamatan = REF_TIDAK_ADA; seq lain = REF_BASI; ref asing = REF_TIDAK_ADA', async () => {
+    const h = harness();
+    expect(await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] })).toEqual([
+      { indeks: 0, kode: 'REF_TIDAK_ADA' },
+    ]);
+    const p = await h.run.amati();
+    expect(
+      await h.run.aksi({
+        rencanaHash: H1,
+        seq: p!.seq + 7,
+        aksi: [
+          { jenis: 'klik', ref: 'e3' },
+          { jenis: 'klik', ref: 'e4' },
+        ],
+      }),
+    ).toEqual([
+      { indeks: 0, kode: 'REF_BASI' },
+      { indeks: 1, kode: 'DILEWATI' },
+    ]);
+    expect(await h.run.aksi({ rencanaHash: H1, seq: p!.seq, aksi: [{ jenis: 'klik', ref: 'e99' }] })).toEqual(
+      [{ indeks: 0, kode: 'REF_TIDAK_ADA' }],
+    );
+    expect(h.panggilan).toEqual([]);
+  });
+
+  it('sidik berubah di halaman = REF_BASI; aksi berikutnya dilewati', async () => {
+    const h = harness({ aksi: () => ({ status: 'gagal', aturan: 'A_REF_BASI', kode: 'REF_BASI' }) });
+    await h.run.amati();
+    const r = await h.run.aksi({
+      rencanaHash: H1,
+      aksi: [
+        { jenis: 'centang', ref: 'e1', nilai: true },
+        { jenis: 'klik', ref: 'e3' },
+      ],
+    });
+    expect(r).toEqual([
+      { indeks: 0, kode: 'REF_BASI' },
+      { indeks: 1, kode: 'DILEWATI' },
+    ]);
+  });
+});
+
+describe('GenerikRun: klik dan gerbang tulis', () => {
+  it('klik pada tombol kirim ditolak klasifikator = KELAS_DITOLAK, dicatat tanpa teks', async () => {
+    const h = harness({
+      aksi: () => ({
+        status: 'ditolak',
+        aturan: 'K4_SUBMITTER',
+        kode: 'KLIK_DITOLAK',
+        kelas: 'kirim',
+        fitur: { submitterAsli: true, terlihat: true, aktif: true, tag: 'button', hrefHost: '' },
+      }),
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e5' }] });
+    expect(r).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK', kelas: 'kirim' }]);
+    expect(h.jejak.find((c) => c.jenis === 'klik')).toEqual({
+      jenis: 'klik',
+      ref: 'e5',
+      kelas: 'kirim',
+      aturan: 4,
+      fitur: ['submitterAsli', 'terlihat', 'aktif'],
+      putusan: 'tolak',
+    });
+    expect(h.gerbang.jendela()).toEqual({ jenis: 'ai_diam' });
+  });
+
+  it('klik `lanjut` yang memicu fetch POST: diblokir, eskalasi `periksa` dengan sorotan', async () => {
+    const h = harness({
+      aksi: (a) => {
+        // Handler tombol type=button memanggil fetch POST: route melihatnya selama jendela ai_klik.
+        expect(
+          h.gerbang.periksa({ metode: 'POST', dokumen: false, url: 'https://portal.contoh.go.id/api' }),
+        ).toBe('blokir');
+        return { status: 'ok', aturan: 'K10_LANJUT', kelas: a.jenis === 'klik' ? 'lanjut' : undefined };
+      },
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] });
+    expect(r).toEqual([{ indeks: 0, kode: 'GERBANG_MEMBLOKIR', kelas: 'lanjut' }]);
+    expect(h.jendelaSaatAksi).toEqual([{ jenis: 'ai_klik' }]);
+    expect(h.serah).toEqual([
+      { alasan: 'periksa', pesan: PESAN_GENERIK.periksa, sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 } },
+    ]);
+    expect(h.jejak).toContainEqual(
+      expect.objectContaining({ jenis: 'blokir', metode: 'POST', jendela: 'ai_klik' }),
+    );
+    expect(h.gerbang.jendela()).toEqual({ jenis: 'ai_diam' });
+  });
+
+  it('blokir saat ai_diam hanya dicatat (tanpa eskalasi)', async () => {
+    const h = harness();
+    expect(
+      h.gerbang.periksa({ metode: 'POST', dokumen: false, url: 'https://portal.contoh.go.id/ping' }),
+    ).toBe('blokir');
+    expect(h.serah).toEqual([]);
+    expect(h.jejak).toEqual([expect.objectContaining({ jenis: 'blokir', jendela: 'ai_diam' })]);
+  });
+
+  it('pilih yang memicu form.submit() (POST dokumen) diblokir dan diserahkan ke warga', async () => {
+    const h = harness({
+      aksi: () => {
+        expect(
+          h.gerbang.periksa({ metode: 'POST', dokumen: true, url: 'https://portal.contoh.go.id/x' }),
+        ).toBe('blokir');
+        return { status: 'ok', aturan: 'A_OK' };
+      },
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({
+      rencanaHash: H1,
+      aksi: [{ jenis: 'pilih', ref: 'e1', nilai: { opsi: 2 } }],
+    });
+    expect(r).toEqual([{ indeks: 0, kode: 'GERBANG_MEMBLOKIR' }]);
+    expect(h.serah[0]?.alasan).toBe('periksa');
+  });
+
+  it('klik `navigasi` = Page.navigate(href) setelah allowlist, jendela ai_klik ke href itu', async () => {
+    const href = 'https://portal.contoh.go.id/layanan/kk#atas';
+    const h = harness({
+      aksi: () => ({ status: 'navigasi', aturan: 'K8_NAVIGASI', kelas: 'navigasi', href }),
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({
+      rencanaHash: H1,
+      aksi: [
+        { jenis: 'klik', ref: 'e4' },
+        { jenis: 'klik', ref: 'e3' },
+      ],
+    });
+    expect(r).toEqual([
+      { indeks: 0, kode: 'ok', kelas: 'navigasi' },
+      { indeks: 1, kode: 'DILEWATI' },
+    ]);
+    expect(h.navigasi).toEqual(['https://portal.contoh.go.id/layanan/kk']);
+    expect(h.jendelaSaatAksi.at(-1)).toEqual({
+      jenis: 'ai_klik',
+      navKe: 'https://portal.contoh.go.id/layanan/kk',
+    });
+  });
+
+  it('tautan ke host di luar allowlist: tidak dinavigasi, host_kandidat + serah ke warga', async () => {
+    const h = harness({
+      aksi: () => ({
+        status: 'navigasi',
+        aturan: 'K8_NAVIGASI',
+        kelas: 'navigasi',
+        href: 'https://lain.example/x',
+      }),
+      urlBoleh: () => false,
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+    expect(r).toEqual([{ indeks: 0, kode: 'GERBANG_MEMBLOKIR', kelas: 'navigasi' }]);
+    expect(h.navigasi).toEqual([]);
+    expect(h.jejak).toContainEqual({ jenis: 'host_kandidat', host: 'lain.example' });
+    expect(h.serah[0]?.pesan).toBe(PESAN_GENERIK.hostLain);
+  });
+
+  it('serahkan dan tidak_bisa memakai pesan bertemplat', async () => {
+    const h = harness();
+    await h.run.amati();
+    const r = await h.run.aksi({
+      rencanaHash: H1,
+      aksi: [{ jenis: 'serahkan', alasan: 'final', ref: 'e5' }],
+    });
+    expect(r).toEqual([{ indeks: 0, kode: 'ok' }]);
+    expect(h.serah).toEqual([
+      { alasan: 'final', pesan: PESAN_GENERIK.final, sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 } },
+    ]);
+    expect(h.jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'final' });
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'tidak_bisa', sebab: 'hanya_aplikasi' }] });
+    expect(h.tidakBisa).toHaveLength(1);
+  });
+});
+
+describe('redaksi', () => {
+  const acak = (n: number, abjad: string) =>
+    Array.from({ length: n }, () => abjad[randomInt(abjad.length)]).join('');
+
+  it('properti: respons amati tidak pernah memuat nilai vault mentah', async () => {
+    for (let i = 0; i < 200; i++) {
+      const nik = acak(16, '0123456789');
+      const nama = `${acak(5, 'abcdefghij')} ${acak(7, 'klmnopqrst')}`;
+      const kk = acak(16, '0123456789');
+      const spasi = nik.replace(/(\d{4})(?=\d)/g, '$1 ');
+      const h = harness({
+        amati: () =>
+          pengamatan({
+            judul: `Data ${nama.toUpperCase()}`,
+            jalur: `/cek/${nik}`,
+            teks: `NIK Anda ${spasi}. Nama: ${nama}. KK ${kk}-${nik}.`,
+            elemen: [
+              { ref: 'e1', peran: 'teks', nama: `Halo ${nama}`, petunjuk: nik, galat: `${kk} salah` },
+              { ref: 'e2', peran: 'pilihan', nama: 'Pilih', opsi: [nik, `x ${nama} y`] },
+            ],
+          }),
+      });
+      h.vault.set(PH_NIK, nik);
+      h.vault.set(PH_NAMA, nama);
+      h.vault.set('{{PEMOHON.NO_KK}}', kk);
+      const p = await h.run.amati();
+      expect(p).not.toBeNull();
+      const json = JSON.stringify(p);
+      for (const v of [nik, nama, kk, spasi, nama.toUpperCase()]) expect(json).not.toContain(v);
+      expect(p!.teks).toContain(PH_NIK);
+    }
+  });
+
+  it('nilai pendek tidak disamarkan; nilai terpanjang dulu', () => {
+    expect(redaksi('L dan P', [['{{A.B}}', 'L']])).toBe('L dan P');
+    expect(
+      redaksi('Jl. Merdeka 10 Merdeka', [
+        ['{{A.JALAN}}', 'Merdeka'],
+        ['{{A.ALAMAT}}', 'Jl. Merdeka 10'],
+      ]),
+    ).toBe('{{A.ALAMAT}} {{A.JALAN}}');
+  });
+
+  it('tidakLazim: NIK ke kolom yang bukan kolom NIK ditandai', () => {
+    expect(tidakLazim(PH_NIK, 'Nomor Induk Kependudukan')).toBe(false);
+    expect(tidakLazim(PH_NIK, 'Catatan tambahan')).toBe(true);
+    expect(tidakLazim(PH_NAMA, 'Catatan tambahan')).toBe(false);
+  });
+});
