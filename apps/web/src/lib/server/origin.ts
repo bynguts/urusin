@@ -23,13 +23,6 @@ export type OriginException = {
 
 export const ORIGIN_EXCEPTIONS: readonly OriginException[] = [
   {
-    path: '/api/mcp',
-    awalan: true,
-    kebijakan: 'jika-ada',
-    alasan:
-      'Klien MCP bukan browser dan tidak mengirim Origin; bila Origin ada, harus origin kita (anti DNS rebinding).',
-  },
-  {
     path: '/api/csp-report',
     kebijakan: 'bebas',
     alasan:

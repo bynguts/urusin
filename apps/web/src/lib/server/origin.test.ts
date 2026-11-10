@@ -66,31 +66,13 @@ describe('anti-CSRF: Origin persis di request pengubah state', () => {
 });
 
 describe('pengecualian Origin terdaftar (satu tempat: lib/server/origin.ts)', () => {
-  it('daftar pengecualian persis dua entri', () => {
-    expect(ORIGIN_EXCEPTIONS.map((e) => `${e.path}:${e.kebijakan}`)).toEqual([
-      '/api/mcp:jika-ada',
-      '/api/csp-report:bebas',
-    ]);
+  it('daftar pengecualian persis satu entri', () => {
+    expect(ORIGIN_EXCEPTIONS.map((e) => `${e.path}:${e.kebijakan}`)).toEqual(['/api/csp-report:bebas']);
   });
 
-  describe('/api/mcp/*: tanpa Origin boleh, Origin asing ditolak', () => {
-    it('tanpa Origin lolos (klien MCP bukan browser)', async () => {
-      expect(await run(req('/api/mcp/rpc', null))).toMatchObject({ status: 200, reached: true });
-      expect(await run(req('/api/mcp', null))).toMatchObject({ status: 200, reached: true });
-    });
-    it('Origin sama dengan origin publik lolos', async () => {
-      expect((await run(req('/api/mcp/rpc', ORIGIN))).status).toBe(200);
-    });
-    it('Origin asing ditolak 403', async () => {
-      expect(await run(req('/api/mcp/rpc', 'https://jahat.example'))).toMatchObject({
-        status: 403,
-        reached: false,
-      });
-      expect((await run(req('/api/mcp/rpc', 'null'))).status).toBe(403);
-    });
-    it('awalan tidak bocor ke path mirip (/api/mcpx tetap kena aturan umum)', async () => {
-      expect((await run(req('/api/mcpx/rpc', null))).status).toBe(403);
-    });
+  it('/api/mcp tidak punya rute: tidak ada pengecualian, POST tanpa Origin tetap 403', async () => {
+    expect(await run(req('/api/mcp/rpc', null))).toMatchObject({ status: 403, reached: false });
+    expect(await run(req('/api/mcp', null))).toMatchObject({ status: 403, reached: false });
   });
 
   describe('/api/csp-report: dilewatkan dan rutenya tetap berfungsi', () => {
