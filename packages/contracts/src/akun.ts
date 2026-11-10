@@ -166,6 +166,11 @@ export const KonfirmasiSandiResponseSchema = z.object({ berhasil: z.literal(true
 export const IzinkanIsiRequestSchema = z.object({
   writeList: z.array(z.string().min(1).max(100)).min(1).max(60),
   targetOrigin: z.string().url().max(2048),
+  /** Navigator generik (ADR 0030): persetujuan terikat ke rencana halaman yang ditampilkan di lembar. */
+  rencanaHash: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .optional(),
 });
 export const IzinkanIsiResponseSchema = z.object({
   diizinkan: z.literal(true),
