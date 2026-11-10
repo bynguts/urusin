@@ -8,6 +8,7 @@ import { load as muatJejak } from '../../routes/jejak/[id]/+page.server';
 import { load as muatPeristiwa } from '../../routes/peristiwa/[slug]/+page.server';
 import { load as muatUrusan } from '../../routes/urusan/[id]/+page.server';
 import Chip from '../components/ui/Chip.svelte';
+import KartuRencana from '../components/urusan/KartuRencana.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
 
@@ -141,5 +142,33 @@ describe('render server komponen', () => {
     expect(body).toContain('Langkah 4 dari 5');
     expect(body).toContain('Periksa dan kirim');
     expect(body).toContain(`/urusan/${id}`);
+  });
+
+  it('kartu rencana menampilkan dokumen persyaratan dan keterangan tiap langkah', () => {
+    const { body } = render(KartuRencana, {
+      props: {
+        rencana: {
+          type: 'plan_card',
+          ringkasan: 'Akta kelahiran · Banyumas',
+          langkah: [
+            {
+              id: 'ajukan',
+              jenis: 'online-manual',
+              judul: 'Ajukan akta kelahiran',
+              bawa: [],
+              dokumen: ['Kartu Keluarga', 'KTP-el orang tua'],
+              keterangan: 'Persyaratan nasional (Perpres 96/2018).',
+              sumber: [],
+            },
+          ],
+        } as never,
+        kelayakan: null,
+        bisaSetujui: false,
+        onsetujui: () => {},
+        onubah: () => {},
+      },
+    });
+    expect(body).toContain('KTP-el orang tua');
+    expect(body).toContain('Persyaratan nasional (Perpres 96/2018).');
   });
 });

@@ -3,6 +3,7 @@ import { ADAPTERS } from '@urusin/adapters';
 import { llmText } from '@urusin/core';
 import { LAYANAN_KORPUS, cariPengetahuanTool } from '@urusin/rag';
 import {
+  REF_PERPRES,
   SEED_ENTRIES,
   cariWilayah,
   kanalWilayah,
@@ -17,7 +18,15 @@ import { KALIMAT_TETAP, buildHandoff, generateGroundedAnswer, verifyGrounded } f
 import { spotlight } from './spotlight.js';
 import { paramsHash, type ChunkRecord } from './store.js';
 import { NON_TERMINAL_STATES, defineTool, type ToolContext, type ToolDef, type ToolResult } from './tools.js';
-import { AFIRMASI, TEKS_WILAYAH, kalimatKanal, kartuRencana, kodeKtp, wilayahUrusan } from './wilayah.js';
+import {
+  AFIRMASI,
+  TEKS_WILAYAH,
+  kalimatKanal,
+  kartuRencana,
+  kodeKtp,
+  rencanaPeristiwa,
+  wilayahUrusan,
+} from './wilayah.js';
 
 const kodeKabKota = z.string().regex(/^\d{4}$/);
 
@@ -174,18 +183,48 @@ export const urusanUsulkanRencana = defineTool({
 });
 
 /**
+ * Persyaratan dari registry untuk wilayah yang sudah dipastikan warga (dokumen + keterangan tiap langkah rencana),
+ * sebagai potongan yang sah dikutip. Jadi "dokumen apa saja?" setelah rencana terjawab bersumber walau korpus RAG
+ * tidak memuat pasal nasionalnya. Sumber: Perpres 96/2018 bila langkah merujuknya, selain itu sumber pertama langkah.
+ */
+export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkRecord[] {
+  const w = wilayahUrusan(ctx.store, ctx.urusan);
+  if (!ctx.urusan.jenis || !w.ktp) return [];
+  const r = rencanaPeristiwa(ctx.urusan.jenis, {
+    ktp: w.ktp.kodeKabKota,
+    domisili: w.domisili?.kodeKabKota ?? null,
+    tujuan: w.tujuan?.kodeKabKota ?? null,
+  });
+  if (!r) return [];
+  return r.langkah.flatMap((l) => {
+    const ref = l.sourceRef.find((s) => s.url === REF_PERPRES.url) ?? l.sourceRef[0];
+    if (!ref || l.dokumen.length === 0) return [];
+    return [
+      {
+        refId: `rencana-${r.slug}-${l.id}`,
+        text: `${l.judul}. Dokumen yang disiapkan: ${l.dokumen.join('; ')}. ${l.keterangan}`,
+        url: ref.url,
+        judul: ref.judul,
+        instansi: ref.instansi,
+        verifiedAt: l.verifiedAt,
+      },
+    ];
+  });
+}
+
+/**
  * Jawaban persyaratan/prosedur: ditandai oleh tool ini (bukan regex). Tidak ada teks mentah yang di-stream;
  * hanya event progress, lalu objek tervalidasi (`grounded_answer`) atau `handoff`.
  */
 export const urusanJawabPersyaratan = defineTool({
   name: 'urusan__jawab_persyaratan',
   description:
-    'Susun jawaban bersumber atas pertanyaan persyaratan/prosedur dari potongan yang sudah dicari. Panggil setelah rag__cari_pengetahuan.',
+    'Susun jawaban bersumber atas pertanyaan persyaratan/prosedur dari potongan yang sudah dicari. Panggil setelah rag__cari_pengetahuan. Dokumen persyaratan rencana wilayah urusan (registry) selalu ikut sebagai sumber.',
   effect: 'answer',
   input: z.object({ pertanyaan: llmText().max(500) }),
   allowedStates: NON_TERMINAL_STATES,
   async execute(ctx, args): Promise<ToolResult> {
-    const chunks = ctx.store.getChunks(ctx.urusan.id);
+    const chunks = [...ctx.store.getChunks(ctx.urusan.id), ...chunkRencana(ctx)];
     const ctxHandoff = { kodeKabKota: ctx.urusan.kodeKabKota };
     const handoffEvent = (sebab: PayloadOf<'handoff'>['sebab']): ToolResult => ({
       content: 'Tidak ada sumber resmi yang cukup; warga diarahkan ke kanal resmi.',

@@ -391,3 +391,36 @@ describe('temuan review: penetapan wilayah tidak menimpa diam-diam', () => {
     expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).ktp).toBeNull();
   });
 });
+
+describe('temuan eval persona: persyaratan dan wilayah setelah rencana', () => {
+  const jawab = (refId: string, kutipanPersis: string, teks: string) =>
+    fakeCompletion({
+      content: JSON.stringify({ klaim: [{ teks, kutipan: [{ refId, kutipanPersis }] }], handoff: null }),
+    });
+
+  it('W1: kartu rencana membawa daftar dokumen nasional dan keterangannya', async () => {
+    const { env, u } = setup([balas('Rencana sudah saya siapkan.')], {
+      jenis: 'kelahiran',
+      kodeKabKota: '3302',
+    });
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    const ajukan = of(out.events, 'plan_card')[0]!.langkah[0]!;
+    expect(ajukan.dokumen).toContain('Kartu Keluarga');
+    expect(ajukan.dokumen).toContain('KTP-el orang tua');
+    expect(ajukan.keterangan).toMatch(/Perpres 96\/2018/);
+  });
+
+  it('W1: "dokumen apa saja?" setelah wilayah ditetapkan dijawab dari registry, bukan hand-off', async () => {
+    const { env, u } = setup(
+      [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'dokumen apa saja yang dibawa?' }),
+        jawab('rencana-kelahiran-ajukan', 'KTP-el orang tua', 'Siapkan KTP-el orang tua.'),
+      ],
+      { jenis: 'kelahiran', kodeKabKota: '3302' },
+    );
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'dokumen apa saja yang dibawa?' });
+    expect(of(out.events, 'handoff')).toHaveLength(0);
+    const kutipan = of(out.events, 'grounded_answer')[0]!.klaim[0]!.kutipan[0]!;
+    expect(kutipan.url).toBe('https://peraturan.go.id/id/perpres-no-96-tahun-2018');
+  });
+});

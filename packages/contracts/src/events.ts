@@ -81,6 +81,10 @@ export const LangkahKartuSchema = z.object({
   judul: z.string().min(1),
   lokasi: z.string().optional(),
   bawa: z.array(z.string()),
+  /** Dokumen persyaratan langkah ini (registry: persyaratan nasional atau bundel kab/kota). */
+  dokumen: z.array(z.string()).optional(),
+  /** Keterangan langkah untuk warga: dasar persyaratan dan cara mengajukan di kanal resmi. */
+  keterangan: z.string().optional(),
   sumber: z.array(SumberSchema),
 });
 export type LangkahKartu = z.infer<typeof LangkahKartuSchema>;

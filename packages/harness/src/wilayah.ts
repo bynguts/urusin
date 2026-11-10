@@ -243,6 +243,8 @@ export function kartuRencana(
         jenis: l.jenis,
         ...(l.lokasi ? { lokasi: l.lokasi } : {}),
         bawa: l.bawa,
+        ...(l.dokumen.length > 0 ? { dokumen: l.dokumen } : {}),
+        ...(l.keterangan ? { keterangan: l.keterangan } : {}),
         sumber: sumber.filter((s, j) => sumber.findIndex((x) => x.url === s.url) === j),
       };
     }),
