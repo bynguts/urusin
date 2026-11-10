@@ -181,6 +181,7 @@ export type EgressPihakKetiga = { host: string; alasan: string };
 
 export const EGRESS_PIHAK_KETIGA: readonly EgressPihakKetiga[] = Object.freeze([
   { host: 'challenges.cloudflare.com', alasan: 'Cloudflare Turnstile' },
+  { host: 'brunhild.challenges.cloudflare.com', alasan: 'Cloudflare Turnstile (flow, probe portal nyata)' },
   { host: 'www.google.com', alasan: 'reCAPTCHA (www.google.com/recaptcha)' },
   { host: 'www.gstatic.com', alasan: 'aset reCAPTCHA' },
   { host: 'www.recaptcha.net', alasan: 'reCAPTCHA (domain alternatif)' },
@@ -193,6 +194,32 @@ export const EGRESS_PIHAK_KETIGA: readonly EgressPihakKetiga[] = Object.freeze([
   { host: 'ajax.googleapis.com', alasan: 'CDN pustaka umum' },
   { host: 'fonts.googleapis.com', alasan: 'Google Fonts (CSS)' },
   { host: 'fonts.gstatic.com', alasan: 'Google Fonts (berkas)' },
+  { host: 'unpkg.com', alasan: 'CDN pustaka umum (probe portal nyata)' },
+  { host: 'cdn.tailwindcss.com', alasan: 'CDN Tailwind (probe portal nyata)' },
+  { host: 'stackpath.bootstrapcdn.com', alasan: 'CDN Bootstrap (probe portal nyata)' },
+  { host: 'maxcdn.bootstrapcdn.com', alasan: 'CDN Bootstrap' },
+  { host: 'cdn.datatables.net', alasan: 'CDN DataTables (probe portal nyata)' },
+  { host: 'fonts.bunny.net', alasan: 'fon web (probe portal nyata)' },
+]);
+
+/**
+ * Aset umum (CDN pustaka, fon) yang ikut BAWAAN setiap sesi wilayah: probe portal nyata (65 portal) menunjukkan
+ * tampilan rusak/"loading..." bila jQuery/Bootstrap/Tailwind/fon diblokir. Hanya subresource GET; gerbang tulis
+ * tetap memblokir tulis dari aksi AI. Semua anggota wajib terdaftar di `EGRESS_PIHAK_KETIGA`.
+ */
+export const EGRESS_ASET_UMUM: readonly string[] = Object.freeze([
+  'cdn.jsdelivr.net',
+  'cdnjs.cloudflare.com',
+  'code.jquery.com',
+  'ajax.googleapis.com',
+  'unpkg.com',
+  'cdn.tailwindcss.com',
+  'stackpath.bootstrapcdn.com',
+  'maxcdn.bootstrapcdn.com',
+  'cdn.datatables.net',
+  'fonts.googleapis.com',
+  'fonts.gstatic.com',
+  'fonts.bunny.net',
 ]);
 
 /** Semua host https yang boleh dihubungi peramban pendamping: domain resmi + pihak ketiga terdaftar. */
