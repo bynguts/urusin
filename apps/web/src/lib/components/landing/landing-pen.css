@@ -2766,6 +2766,15 @@
   height: 14px;
   overflow: visible;
   width: 18px;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center;
+}
+.n-faq-item[open] .lp268 {
+  transform: rotate(90deg);
+}
+.n-faq-item[open] .lp266 {
+  background-color: #f7f2ed;
+  box-shadow: 0px 8px 24px #25252214;
 }
 .lp269 {
   align-items: flex-start;
@@ -2776,14 +2785,45 @@
   width: 100%;
 }
 .n-faq-item[open] .n-answer-row {
-  animation: lp-naik-faq 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: lp-faq-buka 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-@keyframes lp-naik-faq {
-  from {
+.n-faq-item[open] .n-answer {
+  animation: lp-faq-bubble-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.n-faq-item[open] .lp271 {
+  animation: lp-faq-teks-fade 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+}
+@keyframes lp-faq-buka {
+  0% {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(-8px);
   }
-  to {
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes lp-faq-bubble-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+    transform-origin: top right;
+  }
+  65% {
+    transform: scale(1.008);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    transform-origin: top right;
+  }
+}
+@keyframes lp-faq-teks-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  100% {
     opacity: 1;
     transform: translateY(0);
   }

@@ -170,7 +170,8 @@
     vertical-align: bottom;
     animation: lp-typewriter-text 8s steps(48, end) infinite;
   }
-  .lp .n-prompt-caret {
+  .lp .n-prompt-typewriter::after {
+    content: '';
     display: inline-block;
     width: 2px;
     height: 1.15em;
@@ -366,18 +367,6 @@
     animation-duration: 51s, auto;
     animation-delay: -25.5s, 0s;
     animation-direction: reverse, normal;
-  }
-
-  /* Kotak prompt: kursor berkedip di akhir kalimat */
-  .lp .n-prompt-text::after {
-    content: '';
-    display: inline-block;
-    width: 2px;
-    height: 1em;
-    margin: 0 -4px 0 2px;
-    vertical-align: -0.12em;
-    background: #252522;
-    animation: lp-kedip 1.1s steps(1) infinite;
   }
 }
 

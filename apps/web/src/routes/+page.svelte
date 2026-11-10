@@ -1279,7 +1279,6 @@
           <span class="lp100"> Dukcapil</span><span class="lp98">, lalu daftarkan ke </span>
           <span class="lp101"> BPJS Kesehatan </span>
         </span>
-        <span class="n-prompt-caret" aria-hidden="true"></span>
       </p>
       <div class="n-prompt-row lp102">
         <img
