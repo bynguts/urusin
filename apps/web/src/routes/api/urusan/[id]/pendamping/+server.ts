@@ -1,6 +1,6 @@
 import { MulaiPendampingRequestSchema } from '@urusin/contracts';
 import { matchOfficialOrigin } from '@urusin/core';
-import { mulaiPengajuan } from '@urusin/harness';
+import { ADAPTER_GENERIK, jalurModeUji, mulaiPengajuan } from '@urusin/harness';
 import { routeByKode } from '@urusin/registry';
 import { z } from 'zod';
 import { catatHasilEksekusi } from '#lib/server/eksekusi.js';
@@ -14,6 +14,12 @@ import {
   skema,
   teruskan,
 } from '#lib/server/pendamping.js';
+import {
+  PESAN_MODE_UJI_TANPA_REPLIKA,
+  hentikanNavigator,
+  mulaiNavigator,
+  pulihkanNavigator,
+} from '#lib/server/pendamping/navigator.js';
 import { modeUjiPendamping } from '#lib/server/pendamping/pemilik.js';
 import { akses } from './akses';
 import type { RequestHandler } from './$types';
@@ -49,22 +55,59 @@ export const POST: RequestHandler = async ({ request, params }) => {
       (a.u.kodeKabKota ? routeByKode(a.u.kodeKabKota).entry.portal?.origin : undefined);
     if (!origin || !matchOfficialOrigin(origin).ok)
       return apiError(422, 'ADAPTER_TIDAK_ADA', 'Kota ini belum mendukung Browser Pendamping.');
-    const r = await mulaiSesi(pendampingConfig(), {
+    // Juri (salinan demo) dan tamu selalu ke replika uji; situs resmi asli hanya untuk akun warga pemiliknya.
+    const modeUji = await modeUjiPendamping(request, a.u);
+    const cfg = pendampingConfig();
+    const generik = offered.data.adapterId === ADAPTER_GENERIK;
+    // Mode Uji generik: replika dipasang di awalan override worker; jalur portal asli hanya dibawa bila replika
+    // mendeklarasikannya, selain itu akar replika.
+    const paramsSesi =
+      modeUji && generik
+        ? { ...offered.data.params, jalur: jalurModeUji(origin, offered.data.params.jalur) }
+        : offered.data.params;
+    const r = await mulaiSesi(cfg, {
       urusanId: a.u.id,
       sidHash: a.sidHash,
       executionId: offered.data.executionId,
       adapterId: offered.data.adapterId,
       flowId: offered.data.flowId,
       origin,
-      params: offered.data.params,
-      // Juri (salinan demo) dan tamu selalu ke replika uji; situs resmi asli hanya untuk akun warga pemiliknya.
-      modeUji: await modeUjiPendamping(request, a.u),
+      params: paramsSesi,
+      modeUji,
       ...(body.data.viewport ? { viewport: body.data.viewport } : {}),
     });
     if (r.ok) {
       a.rt.publish(a.u.id, { type: 'progress', label: 'Browser Pendamping disiapkan.' });
       if (offered.data.bacaSaja !== true)
         mulaiPengajuan(a.rt.store, a.u.id, (e) => void a.rt.publish(a.u.id, e));
+      // Portal wilayah tanpa adapter: otak Navigator generik di web menggerakkan sesi lewat kanal internal.
+      if (offered.data.adapterId === ADAPTER_GENERIK)
+        mulaiNavigator(
+          a.rt,
+          {
+            urusan: a.u,
+            executionId: offered.data.executionId,
+            owner: { urusanId: a.u.id, sidHash: a.sidHash },
+            modeUji,
+          },
+          { cfg },
+        );
+    }
+    // Mode Uji generik tanpa replika (worker menolak 422): panduan langkah dengan pesan templat.
+    else if (
+      modeUji &&
+      offered.data.adapterId === ADAPTER_GENERIK &&
+      r.response.status === 422 &&
+      (await r.response
+        .clone()
+        .json()
+        .then((b: { kode?: unknown }) => b?.kode === 'ADAPTER_TIDAK_ADA')
+        .catch(() => false))
+    ) {
+      catatHasilEksekusi(a.rt, a.u, offered.data.executionId, 'drift', 'Browser Pendamping', {
+        labelKhusus: PESAN_MODE_UJI_TANPA_REPLIKA,
+      });
+      return apiError(422, 'PENDAMPING_TANPA_REPLIKA', PESAN_MODE_UJI_TANPA_REPLIKA);
     }
     // Situs khusus jaringan Indonesia tanpa worker wilayah yang hidup: jujur, lalu beralih ke panduan langkah.
     else if (r.dipandu)
@@ -92,15 +135,31 @@ export const GET: RequestHandler = async ({ request, params }) => {
     });
     if (!r.ok) return r.response;
     const hasil = hasilAkhir(r.data);
-    const offered = hasil
-      ? ExecutionPayload.safeParse(
-          a.rt.store.findOffered(a.u.id, 'execution_request', { executionId: r.data.executionId }),
-        )
-      : undefined;
-    const bacaSaja = offered?.success === true && offered.data.bacaSaja === true;
+    const offered = ExecutionPayload.safeParse(
+      a.rt.store.findOffered(a.u.id, 'execution_request', { executionId: r.data.executionId }),
+    );
+    // Sesi generik bermode AI tanpa loop Navigator (web restart / loop sudah berhenti): pulihkan atau
+    // kembalikan kendali ke warga, supaya layar tidak tertahan "AI sedang mengisi".
+    if (
+      offered.success &&
+      offered.data.adapterId === ADAPTER_GENERIK &&
+      r.data.mode === 'ai' &&
+      (r.data.status === 'berjalan' || r.data.status === 'menunggu_data')
+    )
+      await pulihkanNavigator(
+        a.rt,
+        {
+          urusan: a.u,
+          executionId: r.data.executionId,
+          owner: { urusanId: a.u.id, sidHash: a.sidHash },
+          modeUji: await modeUjiPendamping(request, a.u),
+        },
+        { cfg: pendampingConfig() },
+      );
+    const bacaSaja = offered.success && offered.data.bacaSaja === true;
     if (
       hasil &&
-      offered?.success &&
+      offered.success &&
       catatHasilEksekusi(a.rt, a.u, r.data.executionId, hasil, 'Browser Pendamping', { bacaSaja })
     ) {
       const bukti = labelBukti(r.data);
@@ -121,6 +180,7 @@ export const DELETE: RequestHandler = async ({ request, params }) => {
     const a = await akses(request, params.id, true);
     if (!a.ok) return a.response;
     const owner = { urusanId: a.u.id, sidHash: a.sidHash };
+    hentikanNavigator(a.u.id);
     return teruskan(await panggilPemilik(pendampingConfig(), '/internal/sesi/akhiri', skema.sesi, owner));
   } catch (e) {
     return errorResponse(e);

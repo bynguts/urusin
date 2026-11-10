@@ -3,7 +3,8 @@ import type { EventOf, EventPayload, UrusinEvent } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
 import { chunkRencana } from './builtin-tools.js';
-import { setujuiRencana } from './rencana.js';
+import { portalWebWilayah } from './generik.js';
+import { rutePendamping, setujuiRencana } from './rencana.js';
 import { buildStateNote, buildSystemPrompt } from './prompt.js';
 import { jejakView } from './trace.js';
 import { makeEnv } from './testing.js';
@@ -96,26 +97,76 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
     ['3578', 'Kota Surabaya', 'https://wargaklampid-dispendukcapil.surabaya.go.id/'],
     ['3216', 'Kabupaten Bekasi', 'https://sitepak.bekasikab.go.id/'],
     ['1101', 'Kabupaten Aceh Selatan', 'https://dukcapil.kemendagri.go.id/'],
-  ])('%s %s: kanal resmi sendiri, tier dipandu jujur, tanpa Browser Pendamping', async (kode, nama, url) => {
-    const { env, u } = setup([balas('Rencana sudah saya siapkan.')], {
-      jenis: 'kelahiran',
-      kodeKabKota: kode,
-    });
-    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
-    const kartu = of(out.events, 'plan_card')[0]!;
-    expect(kartu).toBeDefined();
-    expect(JSON.stringify(kartu)).not.toMatch(/wonogiri/i);
-    expect(kartu.wilayah?.ktp).toEqual({ kodeKabKota: kode, nama });
-    expect(kartu.tier).toBe('dipandu');
-    expect(kartu.langkah.some((l) => l.jenis === 'online-adapter')).toBe(false);
-    expect(kartu.langkah[0]!.sumber[0]!.url).toBe(url);
-    expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
-    // Setujui rencana: tidak ada Browser Pendamping yang ditawarkan di wilayah tanpa adapter tulis.
-    const events: EventPayload[] = [];
-    const r = setujuiRencana(env.store, u.id, (e) => void events.push(e));
-    expect(r.executionId).toBeNull();
-    expect(events.some((e) => e.type === 'execution_request')).toBe(false);
-  });
+  ])(
+    '%s %s: kanal resmi sendiri, tanpa adapter Wonogiri; Pendamping hanya generik ke portal sendiri',
+    async (kode, nama, url) => {
+      const { env, u } = setup([balas('Rencana sudah saya siapkan.')], {
+        jenis: 'kelahiran',
+        kodeKabKota: kode,
+      });
+      const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+      const kartu = of(out.events, 'plan_card')[0]!;
+      expect(kartu).toBeDefined();
+      expect(JSON.stringify(kartu)).not.toMatch(/wonogiri/i);
+      expect(kartu.wilayah?.ktp).toEqual({ kodeKabKota: kode, nama });
+      // Tier jujur: `semi` hanya bila Navigator generik benar-benar ditawarkan (portal web wilayah itu sendiri).
+      const portalWeb = portalWebWilayah(kode);
+      expect(kartu.tier).toBe(portalWeb ? 'semi' : 'dipandu');
+      if (portalWeb) {
+        const host = new URL(portalWeb.origin).host;
+        expect(kartu.pendamping).toEqual({
+          jalur: 'generik',
+          host,
+          keterangan: `AI membantu mengisi formulir di ${host}; Anda sendiri yang masuk akun, lolos verifikasi, dan menekan Kirim.`,
+        });
+        expect(kartu.catatan).toContain(kartu.pendamping!.keterangan);
+      } else expect(kartu.pendamping).toBeUndefined();
+      expect(kartu.langkah.some((l) => l.jenis === 'online-adapter')).toBe(false);
+      expect(kartu.langkah[0]!.sumber[0]!.url).toBe(url);
+      expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
+      // Setujui rencana: tanpa adapter tulis. Portal `web` di registry -> Navigator generik ke portal wilayah itu
+      // sendiri (ADR 0030); selain itu tidak ada Browser Pendamping.
+      const events: EventPayload[] = [];
+      const r = setujuiRencana(env.store, u.id, (e) => void events.push(e));
+      const req = events.find((e): e is EventOf<'execution_request'> => e.type === 'execution_request');
+      const portal = portalWebWilayah(kode);
+      if (portal) {
+        expect(r.executionId).not.toBeNull();
+        expect(req).toMatchObject({ adapterId: 'generik', origin: portal.origin, params: { kode } });
+      } else {
+        expect(r.executionId).toBeNull();
+        expect(req).toBeUndefined();
+      }
+    },
+  );
+
+  it.each([
+    [
+      '3374',
+      'semi',
+      'BROWSER PENDAMPING (tingkat semi, Navigator generik): AI membantu mengisi formulir di ',
+    ],
+    ['1211', 'dipandu', 'BROWSER PENDAMPING: tidak tersedia untuk urusan ini (tingkat dipandu)'],
+  ])(
+    '%s: tier state, kartu, dan catatan state untuk agen sama dengan rute Pendamping (%s)',
+    async (kode, tier, baris) => {
+      const { env, u, provider } = setup([balas('Rencana sudah saya siapkan.')], {
+        jenis: 'kelahiran',
+        kodeKabKota: kode,
+      });
+      const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+      expect(of(out.events, 'plan_card')[0]!.tier).toBe(tier);
+      expect(of(out.events, 'state').every((e) => e.tier === tier)).toBe(true);
+      const call = provider.calls.find((c) => c.kind === 'create');
+      const note = call?.kind === 'create' ? call.params.messages.map((m) => m.content).join('\n') : '';
+      expect(note).toContain(baris);
+      const events: EventPayload[] = [];
+      setujuiRencana(env.store, u.id, (e) => void events.push(e));
+      const tiers = events.filter((e): e is EventOf<'state'> => e.type === 'state').map((e) => e.tier);
+      expect(tiers.length).toBeGreaterThan(0);
+      expect(new Set(tiers)).toEqual(new Set([tier]));
+    },
+  );
 
   it('jawaban tanpa sumber menyebut kanal wilayah itu sendiri (situs Disdukcapil terverifikasi)', async () => {
     const { env, u, provider } = setup(
@@ -553,9 +604,13 @@ describe('temuan eval persona W10 dan W11: aturan prompt wilayah', () => {
   });
 
   it('W11: wilayah tingkat dipandu menyatakan Browser Pendamping tidak tersedia', () => {
-    expect(catatan('3374')).toContain('Browser Pendamping tidak tersedia di wilayah ini');
-    expect(catatan('3374')).toMatch(/JANGAN menyuruh warga menekan "Setujui dan buka situs"/);
+    // Kab. Dairi: kanal WhatsApp, tanpa portal web = dipandu.
+    expect(catatan('1211')).toContain('Browser Pendamping tidak tersedia di wilayah ini');
+    expect(catatan('1211')).toMatch(/JANGAN menyuruh warga menekan "Setujui dan buka situs"/);
     expect(catatan('3312')).toContain('Browser Pendamping tersedia di wilayah ini');
+    // Kota Semarang: portal web tanpa adapter = Navigator generik, sama dengan rute saat rencana disetujui.
+    expect(catatan('3374')).toContain('Browser Pendamping tersedia di wilayah ini');
+    expect(catatan('3374')).toContain('Navigator generik');
     // Prompt statis tidak lagi menyuruh mengarahkan ke tombol itu tanpa syarat.
     expect(buildSystemPrompt()).not.toMatch(/arahkan warga ke tombol itu/);
   });
@@ -630,7 +685,7 @@ describe('tindak lanjut eval persona 7173a47', () => {
     expect(hasilTool(provider)).toContain('Siapkan KTP-el orang tua.');
   });
 
-  it('pindah dari Wonogiri: rencana dipandu, jadi catatan state menyatakan Pendamping tidak tersedia', () => {
+  it('pindah dari Wonogiri: catatan state mengikuti rute Pendamping yang ditawarkan saat persetujuan', () => {
     const note = buildStateNote({
       state: 'MEMAHAMI',
       jenis: 'pindah',
@@ -639,7 +694,11 @@ describe('tindak lanjut eval persona 7173a47', () => {
       tools: [],
       confirmations: [],
     });
-    expect(note).toContain('Browser Pendamping tidak tersedia di wilayah ini');
+    // Adapter Telunjuk Sakti tidak punya alur pindah; portal web Wonogiri dikerjakan Navigator generik.
+    const rute = rutePendamping({ jenis: 'pindah', kodeKabKota: '3312' });
+    expect(rute.jalur).toBe('generik');
+    expect(note).toContain('Browser Pendamping tersedia di wilayah ini');
+    expect(note).not.toContain('Browser Pendamping tidak tersedia');
   });
 
   it('baca-saja tanpa KTP tetap menanyakan nama ganda (Kota/Kabupaten Semarang)', () => {

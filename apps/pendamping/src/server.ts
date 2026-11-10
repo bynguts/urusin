@@ -4,8 +4,11 @@ import http from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  AksiSesiInternalSchema,
+  AmatiSesiInternalSchema,
   BerkasSesiInternalSchema,
   IsiSesiInternalSchema,
+  JejakSesiInternalSchema,
   MulaiSesiInternalSchema,
   PENDAMPING_WS_CLOSE,
   PENDAMPING_WS_MAX_PAYLOAD,
@@ -13,6 +16,8 @@ import {
   PendampingClientMessageSchema,
   PendampingViewportSchema,
   PlaceholderVaultSchema,
+  SelesaiSesiInternalSchema,
+  TungguSesiInternalSchema,
   type PendampingGalat,
   type PendampingServerMessage,
   type TiketPendampingResponse,
@@ -259,7 +264,38 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         const body = parseJson(raw, IsiSesiInternalSchema);
         if (!body)
           return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
-        return json(res, 200, await manager.isiData(body, body.isian));
+        return json(res, 200, await manager.isiData(body, body.isian, body.rencanaHash, body.berkas));
+      }
+      // Navigator generik (ADR 0030): otak di web, tangan di sini. Pemilik = urusanId + sidHash di body.
+      if (path === '/internal/sesi/amati') {
+        const body = parseJson(raw, AmatiSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, await manager.amati(body, body.pantau === true));
+      }
+      if (path === '/internal/sesi/aksi') {
+        const body = parseJson(raw, AksiSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, await manager.aksi(body, body));
+      }
+      if (path === '/internal/sesi/tunggu') {
+        const body = parseJson(raw, TungguSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, await manager.tunggu(body, body.maksMs));
+      }
+      if (path === '/internal/sesi/selesai') {
+        const body = parseJson(raw, SelesaiSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, await manager.selesai(body, body.bukti, body.executionId));
+      }
+      if (path === '/internal/sesi/jejak') {
+        const body = parseJson(raw, JejakSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, manager.kurasJejak(body));
       }
       if (path === '/internal/sesi/berkas') {
         const body = parseJson(raw, BerkasSesiInternalSchema);

@@ -172,6 +172,40 @@ describe('Browser Pendamping', () => {
     expect(await s.izinkanIsi()).toMatch(/Koneksi terputus/);
   });
 
+  it('izinkanIsi Navigator generik: hanya data yang dicentang + rencanaHash; lembar tertutup, AI lanjut', async () => {
+    const kiriman: string[] = [];
+    const s = new SesiPendampingUi(
+      'u_3',
+      async () => null,
+      async (_url, init) => {
+        kiriman.push(String(init?.body));
+        return Response.json({ diizinkan: true, kurang: ['NIK'] });
+      },
+    );
+    const H = 'c'.repeat(64);
+    const ORIGIN_SITUS = 'https://sidnok.semarangkota.go.id';
+    s.data = {
+      ...s.data,
+      butuhData: {
+        placeholder: ['{{PEMOHON.NIK}}', '{{PEMOHON.NAMA}}'],
+        berkas: ['KTP'],
+        origin: ORIGIN_SITUS,
+        kolom: [
+          { placeholder: '{{PEMOHON.NIK}}', labelPortal: 'Nomor identitas', tidakLazim: true },
+          { placeholder: '{{PEMOHON.NAMA}}', labelPortal: 'Nama Pemohon' },
+        ],
+        rencanaHash: H,
+      },
+    };
+    expect(await s.izinkanIsi({ placeholder: ['{{PEMOHON.NAMA}}'], berkas: ['KTP'] })).toBeUndefined();
+    expect(JSON.parse(kiriman[0]!)).toEqual({
+      writeList: ['{{PEMOHON.NAMA}}', 'berkas:KTP'],
+      targetOrigin: ORIGIN_SITUS,
+      rencanaHash: H,
+    });
+    expect(s.data.butuhData).toBeNull();
+  });
+
   it('Lanjutkan pada berkas_kurang: izin baru untuk berkas itu saja, lalu kendali kembali; giliran lain langsung', async () => {
     const kiriman: string[] = [];
     let kurang: string[] = [];

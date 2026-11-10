@@ -40,6 +40,7 @@ import {
 } from './pendamping';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
 import { SID_COOKIE } from './sesi';
+import { hentikanNavigator } from './pendamping/navigator';
 
 const ORIGIN = 'http://localhost:3000';
 const SID = 'ab'.repeat(16);
@@ -536,6 +537,41 @@ describe('broker Browser Pendamping', () => {
       calls = [];
       const lagi = await kirim(u.id, { writeList, targetOrigin: BUTUH.origin });
       expect(lagi.status).toBe(200);
+    });
+
+    it('Navigator generik: rencanaHash dari butuh ikut ke /internal/sesi/isi (worker menolak isi tanpa itu)', async () => {
+      const u = siapkan();
+      const H = 'e'.repeat(64);
+      const butuhGenerik = {
+        placeholder: ['{{PEMOHON.NIK}}'],
+        berkas: [],
+        origin: SITUS,
+        kolom: [{ placeholder: '{{PEMOHON.NIK}}', labelPortal: 'NIK Pemohon' }],
+        rencanaHash: H,
+      };
+      const asal = reply;
+      reply = (path, body, host) =>
+        path === '/internal/sesi/butuh' ? { status: 200, body: butuhGenerik } : asal(path, body, host);
+      const res = await kirim(u.id, { writeList: ['{{PEMOHON.NIK}}'], targetOrigin: SITUS, rencanaHash: H });
+      expect(res.status).toBe(200);
+      const isi = calls.find((c) => new URL(c.url).pathname === '/internal/sesi/isi');
+      expect(isi?.body).toEqual({
+        urusanId: u.id,
+        sidHash: hashSid(SID),
+        isian: { '{{PEMOHON.NIK}}': NIK },
+        rencanaHash: H,
+        // Berkas yang disetujui di putaran INI (kosong: lembar tanpa berkas).
+        berkas: [],
+      });
+      // Persetujuan untuk rencana lain tidak bisa dipakai untuk halaman ini.
+      calls = [];
+      const lain = await kirim(u.id, {
+        writeList: ['{{PEMOHON.NIK}}'],
+        targetOrigin: SITUS,
+        rencanaHash: 'f'.repeat(64),
+      });
+      expect(lain.status).toBe(403);
+      expect(jalur()).not.toContain('/internal/sesi/isi');
     });
 
     it('origin sesi hidup beda dengan targetOrigin persetujuan -> 403 tanpa nilai ke worker', async () => {
@@ -1073,6 +1109,53 @@ describe('broker Browser Pendamping', () => {
       expect(((await r2.json()) as any).sesiId).toBe('lama');
       await new Promise((ok) => setTimeout(ok, 20));
       expect(calls.map((c) => new URL(c.url).pathname)).not.toContain('/internal/sesi/akhiri');
+    });
+
+    it('sesi generik asli: worker id diutamakan bila sehat; tanpa itu tetap di worker server, kecuali host id-only', async () => {
+      const cfg = pendampingConfig(process.env) as PendampingConfig;
+      const SBY = 'https://wargaklampid-dispendukcapil.surabaya.go.id';
+      kesehatan = () => ({ status: 200, body: SEHAT });
+      expect((await pilihWorker(cfg, SBY, 'u1', undefined, false, 'generik'))?.id).toBe('laptop-a');
+      // Mode Uji generik (replika) dan adapter lain: urutan biasa, worker server dulu.
+      expect((await pilihWorker(cfg, SBY, 'u2', undefined, true, 'generik'))?.id).toBe('vps');
+      expect((await pilihWorker(cfg, SBY, 'u3', undefined, false, 'telunjuk-sakti-wonogiri'))?.id).toBe(
+        'vps',
+      );
+      resetBrokerPendamping();
+      kesehatan = (host) => (host.startsWith('100.101') ? 'mati' : { status: 200, body: SEHAT });
+      // Tidak bergantung laptop: portal biasa tetap jalan di worker server.
+      expect((await pilihWorker(cfg, SBY, 'u1', undefined, false, 'generik'))?.id).toBe('vps');
+      // Host `id-only` di registry (bukti nyata menolak IP pusat data): tanpa worker id = null (dipandu).
+      const SMG = 'https://sidnok.semarangkota.go.id';
+      expect(await pilihWorker(cfg, SMG, 'u4', undefined, false, 'generik')).toBeNull();
+    });
+
+    it('mulai sesi generik: Mode Uji membuka akar replika, akun warga membawa jalur portal asli', async () => {
+      const generik = (u: { id: string }) =>
+        rt.publish(u.id, {
+          type: 'execution_request',
+          executionId: 'x_gen',
+          adapterId: 'generik',
+          flowId: 'kelahiran',
+          ringkasan: 'Ajukan akta kelahiran',
+          params: { jenis: 'kelahiran', kode: '3312', jalur: '/Siap_Om' },
+          tool: 'dukcapil__ajukan_layanan',
+          paramsHash: 'h',
+        });
+      const tamu = urusanDenganEksekusi();
+      generik(tamu);
+      expect((await mulai(ev(req('POST', { executionId: 'x_gen' }), tamu.id))).status).toBe(201);
+      expect(calls[0]?.body).toMatchObject({
+        modeUji: true,
+        params: { jenis: 'kelahiran', kode: '3312', jalur: '/' },
+      });
+      hentikanNavigator(tamu.id);
+      calls = [];
+      const { u, cookie } = await urusanAkunNyata();
+      generik(u);
+      expect((await mulai(ev(req('POST', { executionId: 'x_gen' }, cookie), u.id))).status).toBe(201);
+      expect(calls[0]?.body).toMatchObject({ modeUji: false, params: { jalur: '/Siap_Om' } });
+      hentikanNavigator(u.id);
     });
 
     it('setelah web restart: pemegang sesi ditemukan lewat status; 404 di semua worker diteruskan', async () => {

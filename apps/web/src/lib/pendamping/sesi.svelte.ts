@@ -1,5 +1,6 @@
 import { daftarWrite, labelPlaceholder } from './isi-data.js';
 import type {
+  KolomButuh,
   KoneksiViewer,
   PabrikViewer,
   PendampingBukti,
@@ -42,7 +43,14 @@ export type DataPendamping = {
   pesan: string | null;
   bukti: PendampingBukti | null;
   koneksi: KoneksiViewer | null;
-  butuhData: { placeholder: string[]; berkas: string[]; origin?: string | undefined } | null;
+  butuhData: {
+    placeholder: string[];
+    berkas: string[];
+    origin?: string | undefined;
+    /** Navigator generik: baris lembar per kolom halaman ini (label portal = teks situs, tak tepercaya). */
+    kolom?: KolomButuh[] | undefined;
+    rencanaHash?: string | undefined;
+  } | null;
   /** Situs yang benar-benar dibuka peramban + apakah itu replika uji (Mode Uji), dari status server. */
   situs: { origin: string; replika: boolean } | null;
 };
@@ -298,17 +306,19 @@ export class SesiPendampingUi {
    * `butuh_data` (POST /api/urusan/[id]/izinkan-isi). Server menyimpan persetujuan, lalu mengambil nilai Data
    * Diri/Dokumen dan mengirimnya ke sesi lewat kanal internal; peramban tidak pernah memegang nilainya.
    * Mengembalikan pesan untuk warga (yang harus diisi sendiri, atau galat), atau undefined bila lengkap.
+   * Navigator generik: `pilihan` = baris yang dicentang warga di lembar; persetujuan terikat `rencanaHash`
+   * halaman itu. Baris yang tidak dicentang diisi warga sendiri (AI menyerahkannya setelah baris lain terisi).
    */
-  async izinkanIsi(): Promise<string | undefined> {
+  async izinkanIsi(pilihan?: { placeholder: string[]; berkas: string[] }): Promise<string | undefined> {
     const butuh = this.data.butuhData;
     if (!butuh) return undefined;
-    const writeList = daftarWrite(butuh.placeholder, butuh.berkas);
+    const writeList = daftarWrite(pilihan?.placeholder ?? butuh.placeholder, pilihan?.berkas ?? butuh.berkas);
     if (writeList.length === 0) {
       const sendiri = butuh.placeholder.map(labelPlaceholder).filter((l, i, a) => a.indexOf(l) === i);
       return `Isi sendiri di layar: ${sendiri.join(', ')}.`;
     }
     if (!butuh.origin) return 'Situs tujuan belum diketahui. Isi sendiri di layar.';
-    return this.kirimIzin(writeList, butuh.origin, true);
+    return this.kirimIzin(writeList, butuh.origin, true, butuh.rencanaHash);
   }
 
   /** POST izinkan-isi (daftar write + origin, tanpa nilai); pesan untuk warga, atau undefined bila lengkap. */
@@ -316,13 +326,14 @@ export class SesiPendampingUi {
     writeList: string[],
     targetOrigin: string,
     awal = false,
+    rencanaHash?: string,
   ): Promise<string | undefined> {
     let res: Response;
     try {
       res = await this.ambil(`/api/urusan/${encodeURIComponent(this.urusanId)}/izinkan-isi`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', accept: 'application/json' },
-        body: JSON.stringify({ writeList, targetOrigin }),
+        body: JSON.stringify({ writeList, targetOrigin, ...(rencanaHash ? { rencanaHash } : {}) }),
       });
     } catch {
       return 'Koneksi terputus. Coba lagi atau isi sendiri.';
@@ -330,6 +341,11 @@ export class SesiPendampingUi {
     const j = (await res.json().catch(() => null)) as { pesanWarga?: string; kurang?: string[] } | null;
     if (!res.ok) return j?.pesanWarga ?? 'Izin belum tercatat. Coba lagi atau isi sendiri.';
     const kurang = j?.kurang ?? [];
+    // Navigator generik: AI langsung lanjut; baris yang tidak disetujui diserahkan ke warga di layar nanti.
+    if (rencanaHash) {
+      this.data = { ...this.data, butuhData: null };
+      return undefined;
+    }
     if (awal && kurang.length === 0) this.data = { ...this.data, butuhData: null };
     return kurang.length ? `Isi sendiri di layar: ${kurang.join(', ')}.` : undefined;
   }

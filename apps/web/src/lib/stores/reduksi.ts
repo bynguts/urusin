@@ -95,6 +95,7 @@ export function terapkanEvent(s: KeadaanUrusan, e: UrusinEvent): KeadaanUrusan {
         ...(e.version !== undefined ? { version: e.version } : {}),
       };
     case 'policy_gate':
+    case 'jejak_pendamping':
       return next;
   }
 }

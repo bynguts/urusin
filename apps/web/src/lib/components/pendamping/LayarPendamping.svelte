@@ -58,6 +58,7 @@
     periksa: 'Periksa halaman ini',
     isi_sendiri: 'Isi kolom ini sendiri',
     berkas_kurang: 'Dokumen belum ada',
+    ketuk_tautan: 'Buka formulir di situs',
   };
   const CATATAN_GILIRAN: Record<string, string> = {
     login: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
@@ -67,6 +68,7 @@
     periksa: 'AI menunggu sampai Anda selesai.',
     isi_sendiri: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
     berkas_kurang: 'Lanjutkan meminta izin Anda untuk mengunggah dokumen itu saja.',
+    ketuk_tautan: 'AI tidak mengetuk tautan ini; Anda yang membukanya.',
   };
   // Giliran kirim: nama tombol dibaca dari halaman (mis. "Selesai"), bukan nama karangan Urusin.
   const tombolKirim = $derived(data.giliran?.alasan === 'final' ? data.giliran.tombol : undefined);
@@ -137,8 +139,9 @@
           {judulGiliran}
         </p>
         {#if isiGiliran}<p class="text-[15px] leading-[23px] text-muted">{isiGiliran}</p>{/if}
-        {#if data.giliran.alasan === 'isi_sendiri' || data.giliran.alasan === 'berkas_kurang'}
-          <!-- Kolom di luar Data Diri (mis. nomor kitir) atau Dokumen yang belum ada: warga, lalu AI lanjut. -->
+        {#if ['isi_sendiri', 'berkas_kurang', 'ketuk_tautan'].includes(data.giliran.alasan)}
+          <!-- Kolom di luar Data Diri (mis. nomor kitir), Dokumen yang belum ada, atau tautan pembuka formulir
+               yang hanya boleh diketuk warga: warga, lalu AI lanjut. -->
           <div class="flex flex-wrap gap-2">
             {#if data.giliran.alasan === 'berkas_kurang'}
               <a href={resolve('/dokumen')} target="_blank" rel="noopener" class={TOMBOL_TERANG}

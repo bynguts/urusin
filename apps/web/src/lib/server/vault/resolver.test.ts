@@ -157,3 +157,20 @@ export const x = resolusiNilai;
     expect(await aturan('apps/web/src/lib/server/pendamping/isi.ts')).not.toContain('no-restricted-imports');
   }, 120_000);
 });
+
+describe('ikatan rencanaHash (Navigator generik)', () => {
+  it('token untuk rencana A tidak berlaku untuk rencana B atau tanpa rencana', () => {
+    const A = 'a'.repeat(64);
+    for (const rencanaHash of ['b'.repeat(64), undefined]) {
+      const token = izinkanIsi(rt, pemilik, ['nik'], SITUS, { rencanaHash: A });
+      const p = { ownerId: pemilik, token, writeList: ['nik'], targetOrigin: SITUS, rencanaHash };
+      expect(kode(() => resolusiNilai(rt, p))).toBe('IZIN_TIDAK_VALID');
+    }
+    const token = izinkanIsi(rt, pemilik, ['nik'], SITUS, { rencanaHash: A });
+    const p = { ownerId: pemilik, token, writeList: ['nik'], targetOrigin: SITUS, rencanaHash: A };
+    expect(resolusiNilai(rt, p)).toEqual({ nik: NIK });
+    expect(kode(() => izinkanIsi(rt, pemilik, ['nik'], SITUS, { rencanaHash: 'bukan-hash' }))).toBe(
+      'IZIN_TIDAK_VALID',
+    );
+  });
+});

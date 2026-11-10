@@ -5,12 +5,16 @@ import {
   PendampingGalatSchema,
   SesiPendampingSchema,
   TiketPendampingResponseSchema,
+  type AksiSesiInternal,
+  type AmatiSesiInternal,
   type AntreanPendampingResponse,
   type BerkasSesiInternal,
   type IsiSesiInternal,
   type MulaiSesiInternal,
   type PemilikSesiInternal,
+  type SelesaiSesiInternal,
   type SesiPendamping,
+  type TungguSesiInternal,
 } from '@urusin/contracts';
 import { getOfficialDomain } from '@urusin/core';
 import { egressFetch, type EgressFetch } from '@urusin/egress';
@@ -235,14 +239,27 @@ export function tandaInternal(
     .digest('hex');
 }
 
+/** Body permintaan internal yang ditandatangani (selain mulai sesi, selalu memuat pemilik). */
+export type BodyPemilik =
+  | PemilikSesiInternal
+  | IsiSesiInternal
+  | BerkasSesiInternal
+  | AksiSesiInternal
+  | AmatiSesiInternal
+  | TungguSesiInternal
+  | SelesaiSesiInternal;
+
+/** Batas waktu bawaan satu panggilan internal; long-poll `/internal/sesi/tunggu` memberi batasnya sendiri. */
+const BATAS_PANGGIL_MS = 15_000;
+
 /** Panggil API internal satu worker; galat diteruskan sebagai `{kode, pesanWarga}` tanpa detail internal. */
 export async function panggil<T>(
   cfg: PendampingTarget | null,
   path: string,
   schema: ZodType<T>,
-  body?: MulaiSesiInternal | PemilikSesiInternal | IsiSesiInternal | BerkasSesiInternal,
+  body?: MulaiSesiInternal | BodyPemilik,
   fetcher: EgressFetch = egressFetch,
-  timeoutMs = 15_000,
+  batasMs: number = BATAS_PANGGIL_MS,
 ): Promise<Hasil<T>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const metode = body === undefined ? 'GET' : 'POST';
@@ -261,7 +278,7 @@ export async function panggil<T>(
         'content-type': 'application/json',
       },
       ...(body === undefined ? {} : { body: isi }),
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: AbortSignal.timeout(batasMs),
     });
   } catch {
     return { ok: false, response: TIDAK_TERSEDIA(), galatWorker: true, putus: true };
@@ -348,12 +365,19 @@ export function butuhWilayahId(origin: string): boolean {
 /**
  * Syarat jaringan Indonesia dinilai pada origin EFEKTIF sesi. Mode Uji selalu dibuka di replika fixtures milik
  * kita (worker memetakan origin resmi ke replika, atau menolak bila replikanya tidak ada), jadi tak butuh IP
- * Indonesia; sesi akun warga di portal asli tetap butuh.
+ * Indonesia; sesi akun warga di portal asli tetap butuh. Sesi Navigator generik di portal asli tanpa catatan
+ * registry = `id-utama`: portal kab/kota belum diukur satu per satu, jadi worker berjaringan Indonesia yang masih
+ * punya slot diutamakan, tetapi tanpa itu sesi tetap di worker server (warga yang menyelesaikan tantangan
+ * Cloudflare). Wajib jaringan Indonesia hanya untuk host `id-only` di registry.
  */
-const aksesSesi = (origin: string, modeUji: boolean | undefined) =>
-  modeUji === true ? undefined : aksesWilayah(origin);
+const aksesSesi = (origin: string, modeUji: boolean | undefined, adapterId?: string) =>
+  modeUji === true
+    ? undefined
+    : (aksesWilayah(origin) ?? (adapterId === ADAPTER_GENERIK_SESI ? 'id-utama' : undefined));
 const butuhWilayahSesi = (origin: string, modeUji: boolean | undefined) =>
   aksesSesi(origin, modeUji) === 'id-only';
+
+const ADAPTER_GENERIK_SESI = 'generik';
 
 /**
  * Kandidat worker sehat untuk sesi baru, urut prioritas: worker yang sudah memegang urusan ini (sesi siaga /
@@ -392,8 +416,9 @@ export async function pilihWorker(
   urusanId: string,
   fetcher: EgressFetch = egressFetch,
   modeUji?: boolean,
+  adapterId?: string,
 ): Promise<PendampingWorker | null> {
-  return (await kandidatWorker(cfg, aksesSesi(origin, modeUji), urusanId, fetcher))[0] ?? null;
+  return (await kandidatWorker(cfg, aksesSesi(origin, modeUji, adapterId), urusanId, fetcher))[0] ?? null;
 }
 
 /**
@@ -408,7 +433,7 @@ export async function mulaiSesi(
   fetcher: EgressFetch = egressFetch,
 ): Promise<Hasil<SesiPendamping>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
-  const akses = aksesSesi(body.origin, body.modeUji);
+  const akses = aksesSesi(body.origin, body.modeUji, body.adapterId);
   const daftar = await kandidatWorker(cfg, akses, body.urusanId, fetcher);
   if (daftar.length === 0)
     return butuhWilayahSesi(body.origin, body.modeUji)
@@ -495,8 +520,9 @@ export async function panggilPemilik<T>(
   path: string,
   schema: ZodType<T>,
   /** Body permintaan; selain pemilik boleh membawa isi (jalur isi) yang HANYA dikirim ke worker pemegang sesi. */
-  owner: PemilikSesiInternal | IsiSesiInternal | BerkasSesiInternal,
+  owner: BodyPemilik,
   fetcher: EgressFetch = egressFetch,
+  batasMs: number = BATAS_PANGGIL_MS,
 ): Promise<Hasil<T>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const pemilik: PemilikSesiInternal = { urusanId: owner.urusanId, sidHash: owner.sidHash };
@@ -504,7 +530,7 @@ export async function panggilPemilik<T>(
   const tercatat = cfg.workers.find((w) => w.id === lokasi.get(owner.urusanId));
   let tidakAda: Hasil<T> | null = null;
   if (tercatat) {
-    const r = await panggil(target(tercatat), path, schema, owner, fetcher);
+    const r = await panggil(target(tercatat), path, schema, owner, fetcher, batasMs);
     if (r.ok || r.response.status !== 404) return r;
     tidakAda = r;
     lokasi.delete(owner.urusanId);
@@ -529,7 +555,7 @@ export async function panggilPemilik<T>(
   if (pemegang) {
     ingatLokasi(owner.urusanId, pemegang.w.id);
     if (path === '/internal/sesi/status') return pemegang.r as Hasil<T>;
-    return panggil(target(pemegang.w), path, schema, owner, fetcher);
+    return panggil(target(pemegang.w), path, schema, owner, fetcher, batasMs);
   }
   const g = temu.find((x) => !x.r.ok && x.r.response.status === 404);
   return g ? (g.r as Hasil<T>) : (tidakAda ?? { ok: false, response: TIDAK_TERSEDIA() });

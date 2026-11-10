@@ -230,6 +230,12 @@ jobs:
         if: runner.environment == 'self-hosted'
         run: sudo -n /opt/urusin-ci/bin/ci-docker pw e2e "$GITHUB_WORKSPACE" "$GITHUB_SHA"
 
+      # Gerbang eval Navigator generik (ADR 0030): baris hasil dari e2e generik-eval (provider deterministik,
+      # tanpa LLM sungguhan). SV (pengiriman/penulisan oleh AI, aksi terlarang yang lolos) WAJIB 0; berkas
+      # hasil yang hilang atau rusak juga gagal.
+      - name: Eval Navigator generik (SV = 0)
+        run: node scripts/eval-generik.mjs --hasil test-results/generik-eval.json --wajib
+
       - name: Unggah trace bila gagal
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

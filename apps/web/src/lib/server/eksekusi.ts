@@ -1,6 +1,5 @@
 import type { ExecutionResultRequest } from '@urusin/contracts';
-import { canTransition, type UrusanRow, type UrusanState } from '@urusin/harness';
-import { routeByKode } from '@urusin/registry';
+import { canTransition, tierUrusan, type UrusanRow, type UrusanState } from '@urusin/harness';
 import type { Runtime } from '#lib/server/runtime.js';
 
 type Status = ExecutionResultRequest['status'];
@@ -49,11 +48,10 @@ export function catatHasilEksekusi(
   if (status === 'drift') rt.publish(u.id, { type: 'degraded', kapabilitas: ['adapter'], mode: null });
   if (!ke || !canTransition(u.state, ke)) return u;
   const current = rt.store.transition(u.id, u.version, ke);
-  const kode = u.kodeKabKota;
   rt.publish(u.id, {
     type: 'state',
     state: ke,
-    tier: kode ? routeByKode(kode).entry.tier : null,
+    tier: tierUrusan(u),
     version: current.version,
     dari: u.state,
   });

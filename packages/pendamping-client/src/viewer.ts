@@ -1,4 +1,5 @@
 import type {
+  KolomButuh,
   PendampingClientMessage,
   PendampingEvent,
   PendampingFrameMeta,
@@ -82,7 +83,14 @@ export type ViewerEvents = {
   event: PendampingEvent;
   status: SesiPendamping;
   /** Data yang masih dibutuhkan (tanpa nilai) + `origin` situs yang akan diisi, untuk "Izinkan isi" di web. */
-  butuh_data: { placeholder: string[]; berkas: string[]; origin: string };
+  butuh_data: {
+    placeholder: string[];
+    berkas: string[];
+    origin: string;
+    /** Navigator generik: baris lembar per kolom (label portal = teks situs, tidak tepercaya) + hash rencana. */
+    kolom?: KolomButuh[];
+    rencanaHash?: string;
+  };
   galat: { kode: PendampingKodeGalat; pesanWarga: string };
   koneksi: ViewerStatus;
   frame: PendampingFrameMeta;
@@ -298,7 +306,13 @@ export function createPendampingViewer(
         emit('status', msg.sesi);
         break;
       case 'butuh_data':
-        emit('butuh_data', { placeholder: msg.placeholder, berkas: msg.berkas, origin: msg.origin });
+        emit('butuh_data', {
+          placeholder: msg.placeholder,
+          berkas: msg.berkas,
+          origin: msg.origin,
+          ...(msg.kolom ? { kolom: msg.kolom } : {}),
+          ...(msg.rencanaHash ? { rencanaHash: msg.rencanaHash } : {}),
+        });
         break;
       case 'galat':
         emit('galat', { kode: msg.kode, pesanWarga: msg.pesanWarga });

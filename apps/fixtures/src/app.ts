@@ -4,6 +4,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { asalSah, JALUR_LINTAS, JALUR_WIDGET, originLintas, registerUjiCf } from './cf.js';
 import type { Config } from './config.js';
 import { html, page } from './layout.js';
+import { registerGenerik } from './generik/index.js';
 import { registerPoisoned } from './poisoned.js';
 import { registerSamsatOss } from './samsat-oss.js';
 import { registerSemarang } from './semarang.js';
@@ -96,6 +97,7 @@ export function createApp(config: Config) {
             <li><a href="/sby/">Replika Klampid Surabaya (publik)</a></li>
             <li><a href="/smg/">Replika Si D'nOK Semarang (publik)</a></li>
             <li><a href="/uji-cf/">Tiruan halaman tantangan bot (uji verifikasi situs)</a></li>
+            <li><a href="/generik/">Replika portal generik (uji Navigator)</a></li>
           </ul>`,
       ),
     ),
@@ -294,6 +296,8 @@ export function createApp(config: Config) {
   registerSemarang(app, { secure });
   registerSamsatOss(app);
   registerUjiCf(app, { kotak: config.profile === 'local' });
+  // Replika portal generik untuk Navigator (ADR 0030); varian injeksi/umpan + halaman racun hanya di local.
+  registerGenerik(app, { secure, local: config.profile === 'local' });
 
   // Rute berbahaya: terdaftar HANYA di profil local (placeholder), tidak ada sama sekali di public (404).
   if (config.profile === 'local') {
