@@ -380,7 +380,11 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
   }
 }
 
-async function wire(config: Config, init: RunInit, iso: Isolated): Promise<ActiveRun> {
+/**
+ * Sambungkan Chromium yang sudah diluncurkan ke sesi (dipakai `startBrowserRun`; e2e memakainya langsung agar
+ * bisa mengamati halaman).
+ */
+export async function wire(config: Config, init: RunInit, iso: Isolated): Promise<ActiveRun> {
   const { context } = iso;
   const { hooks } = init;
   // Berubah per execution (sesi siaga dipakai lagi untuk langkah berikutnya di urusan yang sama).
@@ -470,7 +474,13 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
       // Selama tantangan situs aktif SEMUA op menunggu: AI tidak menyentuh halaman tantangan sama sekali.
       // Sebelum op yang mengubah halaman, pastikan widget tantangan yang baru muncul sudah diperiksa.
       if (MUTATING.has(op.kind)) await periksaTantangan();
-      if (MUTATING.has(op.kind) || pantau.aktif || masukAktif) await waitResume();
+      if (MUTATING.has(op.kind) || pantau.aktif || masukAktif) {
+        await waitResume();
+        // Interpreter memeriksa domain tab SEBELUM op ini menunggu; selama ditahan warga (atau situs) bisa
+        // memindahkan halaman. Periksa ULANG setelah dilepas: AI tidak pernah menyentuh halaman di luar allowlist.
+        const izin = destroyed ? undefined : await policy(page.url());
+        if (izin && !izin.ok) return { ok: false, code: izin.code, message: izin.message };
+      }
       if (destroyed) return { ok: false, code: 'CANCELLED', message: 'sesi berakhir' };
       return evaluate(op);
     },
