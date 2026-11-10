@@ -217,9 +217,10 @@ const SEEDS: Seed[] = [
     tier: 'dipandu',
     validasi: 'tidak-ada-portal',
     origin: 'https://dispendukcapil.sukoharjokab.go.id',
-    portal: 'MELODI (WhatsApp)',
+    portal: 'Dispendukcapil Sukoharjo',
     instansi: dinas('Kabupaten Sukoharjo'),
-    catatan: 'Layanan online hanya lewat WhatsApp per jenis layanan.',
+    catatan:
+      'Layanan online hanya lewat WhatsApp per jenis layanan (MELODI); situs ini situs dinas, bukan WhatsApp.',
   },
   {
     kode: '3310',

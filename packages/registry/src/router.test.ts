@@ -117,6 +117,12 @@ describe('seed registry', () => {
       expect(e.tier === 'semi', e.nama).toBe(e.adapterId !== undefined && e.validasi === 'kirim-asli');
     }
   });
+  it('nama portal tidak menyamar sebagai kanal lain: situs dinas tidak dilabeli WhatsApp', () => {
+    for (const e of SEED_ENTRIES) {
+      if (e.portal && /^https?:/.test(e.portal.origin))
+        expect(e.portal.nama, e.nama).not.toMatch(/whatsapp/i);
+    }
+  });
   it('hanya Wonogiri berstatus kirim-asli', () => {
     expect(SEED_ENTRIES.filter((e) => e.validasi === 'kirim-asli').map((e) => e.kodeKabKota)).toEqual([
       '3312',
