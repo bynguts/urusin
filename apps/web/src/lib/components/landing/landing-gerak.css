@@ -378,23 +378,23 @@
 
 /* Interaksi: tombol terangkat, panah "Pelajari" bergeser, karakter kartu menyembul */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116),
+  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116, .lp130),
   .lp .lp117 > img,
-  .lp .lp110 {
+  .lp :is(.lp110, .lp127) {
     transition:
       transform 0.25s var(--lp-e),
       translate 0.35s var(--lp-e);
   }
-  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116):hover {
+  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116, .lp130):hover {
     transform: translateY(-1px);
   }
-  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116):active {
+  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116, .lp130):active {
     transform: scale(0.98);
   }
   .lp .lp117:hover > img {
     translate: 3px 0;
   }
-  .lp .lp108:hover .lp110 {
+  .lp .lp108:hover :is(.lp110, .lp127) {
     translate: 0 -6px;
   }
 }

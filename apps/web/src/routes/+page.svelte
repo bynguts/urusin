@@ -2496,98 +2496,145 @@
       </div>
     </div>
     <div class="n-bubbles lp264">
-      <div class="lp265">
-        <div class="lp266">
-          <div class="lp267">Apakah Urusin bagian dari pemerintah?</div>
-        </div>
-        <img
-          class="lp268"
-          src="/pen/i-6c52db901b.svg"
-          alt=""
-          width="18"
-          height="14"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
-      <div class="n-answer-row lp269">
-        <div class="n-answer lp270">
-          <div class="lp271">
-            Bukan. Urusin membantumu memahami dan menyiapkan urusan. Keputusan layanan tetap di instansi
-            terkait.
+      <details class="n-faq-item" name="faq" open>
+        <summary class="lp265">
+          <div class="lp266">
+            <span class="lp267">Apakah Urusin bagian dari pemerintah?</span>
+          </div>
+          <img
+            class="lp268"
+            src="/pen/i-6c52db901b.svg"
+            alt=""
+            width="18"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+        </summary>
+        <div class="n-answer-row lp269">
+          <div class="n-answer lp270">
+            <div class="lp271">
+              Bukan. Urusin membantumu memahami dan menyiapkan urusan. Keputusan layanan tetap di instansi
+              terkait.
+            </div>
           </div>
         </div>
-      </div>
-      <div class="lp265">
-        <div class="lp266">
-          <div class="lp267">Apakah data saya aman?</div>
+      </details>
+      <details class="n-faq-item" name="faq">
+        <summary class="lp265">
+          <div class="lp266">
+            <span class="lp267">Apakah data saya aman?</span>
+          </div>
+          <img
+            class="lp268"
+            src="/pen/i-6c52db901b.svg"
+            alt=""
+            width="18"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+        </summary>
+        <div class="n-answer-row lp269">
+          <div class="n-answer lp270">
+            <div class="lp271">
+              Aman. Data dan berkasmu disimpan terenkripsi di server per akun. Model AI tidak pernah menerima data identitas asli (NIK, KK, nama), dan data tamu terhapus otomatis setelah 72 jam.
+            </div>
+          </div>
         </div>
-        <img
-          class="lp268"
-          src="/pen/i-6c52db901b.svg"
-          alt=""
-          width="18"
-          height="14"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
-      <div class="lp265">
-        <div class="lp266">
-          <div class="lp267">Bisa dipakai untuk mengurus orang tua saya?</div>
+      </details>
+      <details class="n-faq-item" name="faq">
+        <summary class="lp265">
+          <div class="lp266">
+            <span class="lp267">Bisa dipakai untuk mengurus orang tua saya?</span>
+          </div>
+          <img
+            class="lp268"
+            src="/pen/i-6c52db901b.svg"
+            alt=""
+            width="18"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+        </summary>
+        <div class="n-answer-row lp269">
+          <div class="n-answer lp270">
+            <div class="lp271">
+              Bisa. Kamu bisa mendampingi orang tua atau anggota keluarga lain untuk menyiapkan syarat, mengunggah berkas, dan memandu pengisian di situs resmi.
+            </div>
+          </div>
         </div>
-        <img
-          class="lp268"
-          src="/pen/i-6c52db901b.svg"
-          alt=""
-          width="18"
-          height="14"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
-      <div class="lp265">
-        <div class="lp266">
-          <div class="lp267">Apakah AI bisa mengirim formulir sendiri?</div>
+      </details>
+      <details class="n-faq-item" name="faq">
+        <summary class="lp265">
+          <div class="lp266">
+            <span class="lp267">Apakah AI bisa mengirim formulir sendiri?</span>
+          </div>
+          <img
+            class="lp268"
+            src="/pen/i-6c52db901b.svg"
+            alt=""
+            width="18"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+        </summary>
+        <div class="n-answer-row lp269">
+          <div class="n-answer lp270">
+            <div class="lp271">
+              Tidak. AI hanya mengisi kolom yang sudah kamu setujui di Browser Pendamping. Login, CAPTCHA, OTP, dan tombol Kirim akhir selalu dikerjakan oleh kamu sendiri.
+            </div>
+          </div>
         </div>
-        <img
-          class="lp268"
-          src="/pen/i-6c52db901b.svg"
-          alt=""
-          width="18"
-          height="14"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
-      <div class="lp265">
-        <div class="lp266">
-          <div class="lp267">Bagaimana kalau informasinya sudah berubah?</div>
+      </details>
+      <details class="n-faq-item" name="faq">
+        <summary class="lp265">
+          <div class="lp266">
+            <span class="lp267">Bagaimana kalau informasinya sudah berubah?</span>
+          </div>
+          <img
+            class="lp268"
+            src="/pen/i-6c52db901b.svg"
+            alt=""
+            width="18"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+        </summary>
+        <div class="n-answer-row lp269">
+          <div class="n-answer lp270">
+            <div class="lp271">
+              Urusin membaca syarat langsung dari regulasi dan portal resmi daerah yang dilengkapi tanggal verifikasi. Bila ada perubahan atau situs belum didukung, Urusin akan memberi tahu dan beralih ke mode dipandu.
+            </div>
+          </div>
         </div>
-        <img
-          class="lp268"
-          src="/pen/i-6c52db901b.svg"
-          alt=""
-          width="18"
-          height="14"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
-      <div class="lp265">
-        <div class="lp266">
-          <div class="lp267">Berapa biayanya?</div>
+      </details>
+      <details class="n-faq-item" name="faq">
+        <summary class="lp265">
+          <div class="lp266">
+            <span class="lp267">Berapa biayanya?</span>
+          </div>
+          <img
+            class="lp268"
+            src="/pen/i-6c52db901b.svg"
+            alt=""
+            width="18"
+            height="14"
+            loading="lazy"
+            decoding="async"
+          />
+        </summary>
+        <div class="n-answer-row lp269">
+          <div class="n-answer lp270">
+            <div class="lp271">
+              Gratis. Seluruh layanan Urusin tidak dipungut biaya. Layanan adminduk di Disdukcapil menurut Undang-Undang juga gratis; jika ada biaya resmi (mis. leges/materai), dibayarkan langsung ke instansi.
+            </div>
+          </div>
         </div>
-        <img
-          class="lp268"
-          src="/pen/i-6c52db901b.svg"
-          alt=""
-          width="18"
-          height="14"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
+      </details>
     </div>
     <img
       class="n-faq-companion lp272"
