@@ -255,7 +255,7 @@ export const ElemenAmatanSchema = z.object({
    * bersih. Kemungkinan pembuka formulir, tetapi tetap TIDAK boleh diklik AI: serahkan ke warga untuk diketuk
    * sendiri, lalu AI melanjutkan.
    */
-  sebabKelas: z.enum(['nama_tautan']).optional(),
+  tautanPembuka: z.literal(true).optional(),
   /** Formulir pemilik elemen (`f0`..`f99`). */
   form: z
     .string()
@@ -303,7 +303,7 @@ export const PengamatanSchema = z.object({
 export type Pengamatan = z.infer<typeof PengamatanSchema>;
 
 /**
- * `ketuk_tautan` (aditif): warga mengetuk sendiri tautan pembuka (`ElemenAmatan.sebabKelas: 'nama_tautan'`) yang disorot,
+ * `ketuk_tautan` (aditif): warga mengetuk sendiri tautan pembuka (`ElemenAmatan.tautanPembuka`) yang disorot,
  * lalu AI melanjutkan. Bukan serah final.
  */
 export const AlasanSerahkanSchema = z.enum([

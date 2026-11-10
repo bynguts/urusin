@@ -124,20 +124,20 @@ describe('bangunPengamatan', () => {
     ]);
   });
 
-  it('sebabKelas nama_tautan hanya untuk tautan GET yang kirim karena nama saja', () => {
+  it('tautanPembuka hanya untuk tautan GET yang kirim karena nama saja', () => {
     document.body.innerHTML = `<a href="/permohonan/kk">Ajukan Permohonan Kartu Keluarga</a>
       <a href="/permohonan/12/ajukan">Ajukan Sekarang</a>
       <a href="/layanan">Daftar Layanan</a>
       <button type="button">Ajukan</button>`;
     const { pengamatan: p } = amati();
     expect(PengamatanSchema.safeParse(p).success).toBe(true);
-    expect(p.elemen.map((e) => [e.nama, e.kelas, e.sebabKelas])).toEqual([
-      ['Ajukan Permohonan Kartu Keluarga', 'kirim', 'nama_tautan'],
+    expect(p.elemen.map((e) => [e.nama, e.kelas, e.tautanPembuka])).toEqual([
+      ['Ajukan Permohonan Kartu Keluarga', 'kirim', true],
       ['Ajukan Sekarang', 'kirim', undefined],
       ['Daftar Layanan', 'navigasi', undefined],
       ['Ajukan', 'kirim', undefined],
     ]);
-    expect(elemenBernama(p, 'Daftar Layanan')).not.toHaveProperty('sebabKelas');
+    expect(elemenBernama(p, 'Daftar Layanan')).not.toHaveProperty('tautanPembuka');
   });
 
   it('tautan di halaman akhir tidak pernah ditandai pembuka', () => {
@@ -146,7 +146,7 @@ describe('bangunPengamatan', () => {
     const { pengamatan: p } = amati();
     expect(p.sinyal.halamanAkhir).toBe(true);
     expect(elemenBernama(p, 'Ajukan Permohonan')).toMatchObject({ kelas: 'kirim' });
-    expect(elemenBernama(p, 'Ajukan Permohonan')).not.toHaveProperty('sebabKelas');
+    expect(elemenBernama(p, 'Ajukan Permohonan')).not.toHaveProperty('tautanPembuka');
   });
 
   it('isian: kosong / terisi_situs / terisi_warga / placeholder yang diisi worker', () => {

@@ -533,7 +533,7 @@ export function bangunPengamatan(doc: Document, opsi: OpsiAmati): HasilAmati {
     if (peran === 'tombol' || peran === 'tautan' || peran === 'tab') {
       const k = klasifikasi(el, akhir);
       e.kelas = k.kelas;
-      if (peran === 'tautan' && k.aturan === 'K7_NEG_NAMA_TAUTAN') e.sebabKelas = 'nama_tautan';
+      if (peran === 'tautan' && k.aturan === 'K7_NEG_NAMA_TAUTAN') e.tautanPembuka = true;
     } else {
       if (c.grup ? c.grup.some((r) => wajibDari(r)) : wajibDari(el)) e.wajib = true;
       const terlarang = terlarangDari(el, nama, petunjuk);

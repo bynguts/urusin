@@ -277,8 +277,8 @@ test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka form
   });
   try {
     const pembuka = satu(p, 'Ajukan Permohonan Kartu Keluarga');
-    expect(pembuka).toMatchObject({ peran: 'tautan', kelas: 'kirim', sebabKelas: 'nama_tautan' });
-    expect(satu(p, 'Ajukan Sekarang')).not.toHaveProperty('sebabKelas');
+    expect(pembuka).toMatchObject({ peran: 'tautan', kelas: 'kirim', tautanPembuka: true });
+    expect(satu(p, 'Ajukan Sekarang')).not.toHaveProperty('tautanPembuka');
     const klik = await manager.aksi(o, {
       ...o,
       rencanaHash: H,
