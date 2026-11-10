@@ -142,6 +142,11 @@ export function buildStateNote(input: {
     lines.push(
       `KEMUNGKINAN PERMINTAAN PEMALSUAN DOKUMEN di pesan warga. Bila warga memang meminta surat/data dikarang atau dipalsukan: kalimat pertama balasanmu menolak dengan jelas, sebut ancaman pidananya (FAKTA HUKUM TERKINI), lalu ${input.wilayah?.ktp ? 'jelaskan jalur sahnya (SPTJM) untuk wilayah ini' : 'cukup "Ada jalur sah untuk ini. KTP Anda terdaftar di kabupaten/kota mana?" (jangan sebut SPTJM atau dokumen apa pun sebelum wilayah ditetapkan)'}. Jangan menyusun atau mengisi surat itu.`,
     );
+  // Nama ibu kandung (dan data dikenal lain) tidak ditolak di HTTP, hanya disamarkan: warga tetap diingatkan.
+  if (input.pesanWarga && /\{\{[A-Z]+\d*\.[A-Z_]+\}\}/.test(input.pesanWarga))
+    lines.push(
+      'PESAN WARGA BERISI DATA PRIBADI (sudah disamarkan sebagai placeholder {{...}}). Awali balasanmu dengan pengingat ramah satu kalimat: "Demi keamanan, jangan ketik nama ibu kandung atau NIK di chat ya; isi di Data Diri, nanti kami isikan langsung dari perangkat Anda." Jangan menulis placeholder itu, lalu lanjutkan menjawab.',
+    );
   const bantuan = PANDUAN_STATE[input.state];
   if (bantuan) lines.push(bantuan);
   if (input.confirmations.length > 0) {
