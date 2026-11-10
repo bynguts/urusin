@@ -252,7 +252,8 @@ describe('ketahanan: worker belum siap, galat sesaat, dan LLM gagal', () => {
       alasan: 'layanan_ai',
       pesan: PESAN_AMBIL_ALIH.layanan_ai,
     });
-    expect(worker.semuaAksi).toEqual([{ jenis: 'serahkan', alasan: 'tidak_yakin' }]);
+    // N2: serah akhir ke worker selalu `berhenti` (tanpa janji coba lagi); alasan aslinya di hasil loop.
+    expect(worker.semuaAksi).toEqual([{ jenis: 'serahkan', alasan: 'berhenti' }]);
   });
 
   it('warga menekan Kirim sendiri sesudah serah final: halaman sukses terdeteksi saat warga memegang kendali', async () => {
@@ -431,7 +432,7 @@ describe('anggaran: habis berakhir dengan ambil alih bertemplat', () => {
     const h = await hasil;
     expect(h).toMatchObject({ akhir: 'ambil_alih', alasan: 'anggaran_halaman' });
     expect(h.pesan).toBe(PESAN_AMBIL_ALIH.anggaran_halaman);
-    expect(worker.semuaAksi.at(-1)).toEqual({ jenis: 'serahkan', alasan: 'tidak_yakin' });
+    expect(worker.semuaAksi.at(-1)).toEqual({ jenis: 'serahkan', alasan: 'berhenti' });
     expect(worker.semuaAksi.filter((a) => a.jenis === 'klik')).toHaveLength(BATAS_ANGGARAN.halaman);
   });
 
@@ -535,7 +536,7 @@ describe('Mode Uji dan host wilayah', () => {
     expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'host_luar' });
     expect(jejak).toContainEqual({ jenis: 'host_kandidat', host: 'sso.contoh-luar.id' });
     expect(provider.calls).toHaveLength(0);
-    expect(worker.semuaAksi).toEqual([{ jenis: 'serahkan', alasan: 'tidak_yakin' }]);
+    expect(worker.semuaAksi).toEqual([{ jenis: 'serahkan', alasan: 'berhenti' }]);
   });
 });
 
@@ -875,7 +876,7 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
       pesan: PESAN_AMBIL_ALIH.kuota,
     });
     expect(provider.calls).toHaveLength(0);
-    expect(worker.semuaAksi).toEqual([{ jenis: 'serahkan', alasan: 'tidak_yakin' }]);
+    expect(worker.semuaAksi).toEqual([{ jenis: 'serahkan', alasan: 'berhenti' }]);
   });
 
   it('tidak_bisa: beralih ke dipandu dengan pesan templat', async () => {

@@ -224,7 +224,8 @@ async function serahkanKeWarga(
     if (a.mode !== 'ai') return;
     if (a.executionId !== undefined && a.executionId !== executionId) return;
     const seq = a.pengamatan.seq;
-    const aksi = [{ jenis: 'serahkan' as const, alasan: 'tidak_yakin' as const }];
+    // Loop sudah berhenti: serah akhir tanpa janji "coba lagi".
+    const aksi = [{ jenis: 'serahkan' as const, alasan: 'berhenti' as const }];
     await t.aksi({ rencanaHash: hashRencana({ aksi, seq }), aksi, seq, kolom: [], berkas: [] });
     const j = await t.kuras?.();
     if (j && (j.executionId === undefined || j.executionId === executionId))

@@ -157,7 +157,8 @@ function alasanKontrak(a: AlasanAmbilAlih): Extract<Aksi, { jenis: 'serahkan' }>
 }
 
 function alasanDariKontrak(a: Extract<Aksi, { jenis: 'serahkan' }>['alasan']): AlasanAmbilAlih {
-  return a;
+  // `berhenti` hanya dikirim loop sendiri (serah akhir); validator tidak mengizinkannya dari model.
+  return a === 'berhenti' ? 'tidak_yakin' : a;
 }
 
 /** Identitas elemen untuk ikat ulang tanpa LLM (sidik: peran + label + petunjuk + form). */
@@ -483,9 +484,12 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
     }
   }
 
-  /** Serahkan akhir: Navigator berhenti, warga melanjutkan sendiri (pesan templat). */
+  /**
+   * Serahkan akhir: Navigator berhenti, warga melanjutkan sendiri (pesan templat). Di worker selalu `berhenti`
+   * (tanpa janji "coba lagi"); alasan sebenarnya hanya di hasil/resi loop.
+   */
   async function serahkanAkhir(alasan: AlasanAmbilAlih, seq: number): Promise<HasilNavigator> {
-    const aksi: Aksi[] = [{ jenis: 'serahkan', alasan: alasanKontrak(alasan) }];
+    const aksi: Aksi[] = [{ jenis: 'serahkan', alasan: 'berhenti' }];
     ang.jedaAi();
     await tangan.aksiAman({
       rencanaHash: hashRencana({ aksi, host: hostTerakhir, seq }),

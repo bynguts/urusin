@@ -275,7 +275,7 @@ describe('broker Navigator web', () => {
     });
     // Tidak ada aksi halaman: satu-satunya panggilan aksi = mengembalikan kendali ke warga (tanpa ref/nilai).
     expect(w.panggilan.filter((p) => p.path === '/internal/sesi/aksi').map((p) => p.body.aksi)).toEqual([
-      [{ jenis: 'serahkan', alasan: 'tidak_yakin' }],
+      [{ jenis: 'serahkan', alasan: 'berhenti' }],
     ]);
     expect(llm.provider.calls).toHaveLength(0);
   });

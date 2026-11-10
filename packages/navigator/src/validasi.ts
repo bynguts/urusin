@@ -59,8 +59,9 @@ const AksiKetatSchema = z.discriminatedUnion('jenis', [
   z.strictObject({
     jenis: z.literal('serahkan'),
     // `ketuk_tautan` hanya dibuat validator dari klik ke tautan pembuka (`tautanWarga`), tidak pernah oleh model:
-    // model yang menyorot tombol Kirim sebagai "tautan" akan menyesatkan warga (review keamanan N1).
-    alasan: AlasanSerahkanSchema.exclude(['ketuk_tautan']),
+    // model yang menyorot tombol Kirim sebagai "tautan" akan menyesatkan warga (review keamanan N1). `berhenti`
+    // hanya serah akhir loop sendiri.
+    alasan: AlasanSerahkanSchema.exclude(['ketuk_tautan', 'berhenti']),
     ref: RefSchema.optional(),
   }),
   z.strictObject({ jenis: z.literal('tidak_bisa'), sebab: SebabTidakBisaSchema }),

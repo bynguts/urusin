@@ -259,6 +259,8 @@ describe('tautan pembuka (kirim karena nama saja): serah ketuk_tautan, bukan kli
         expect(tolak(rencana({ jenis: 'serahkan', alasan: 'ketuk_tautan', ref }), p)).toEqual([
           'SKEMA_TIDAK_SAH',
         ]);
+    // `berhenti` hanya serah akhir loop sendiri, bukan pilihan model.
+    expect(tolak(rencana({ jenis: 'serahkan', alasan: 'berhenti' }), beranda())).toEqual(['SKEMA_TIDAK_SAH']);
   });
 
   it('N1: ref serah harus diamati dan cocok dengan alasannya (isi_sendiri hanya ke kolom)', () => {
