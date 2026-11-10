@@ -19,7 +19,7 @@ describe('data kanal-layanan', () => {
   });
 
   it('wilayah persona utama punya kontak layanan Disdukcapil', () => {
-    for (const kode of ['3312', '3311', '3310', '3374', '3404', '3275', '3276', '3578', '3175'])
+    for (const kode of ['3312', '3311', '3310', '3374', '3404', '3216', '3275', '3276', '3578', '3175'])
       expect(kontakLayanan(kode, 'adminduk'), kode).toBeDefined();
   });
 });

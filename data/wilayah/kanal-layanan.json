@@ -1,7 +1,7 @@
 {
   "catatan": "Kontak layanan resmi per kab/kota, dibaca otomatis dari halaman .go.id instansinya (situs Disdukcapil terverifikasi di kontak-dukcapil.json dan halaman di sumber-kanal.json). Setiap nilai membawa sumberUrl dan dicekPada. Wilayah yang tidak tercantum berarti belum ada data, bukan tidak punya kontak.",
-  "wilayah": 89,
-  "total": 189,
+  "wilayah": 90,
+  "total": 190,
   "entri": [
     {
       "kode": "1109",
@@ -874,6 +874,15 @@
       "jenis": "whatsapp",
       "nilai": "0811-1053-2203",
       "sumberUrl": "https://disdukcapil.purwakartakab.go.id/home/",
+      "dicekPada": "2026-11-10"
+    },
+    {
+      "kode": "3216",
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bekasi",
+      "jenis": "email",
+      "nilai": "disdukcapil@bekasikab.go.id",
+      "sumberUrl": "https://disdukcapil.bekasikab.go.id/contact",
       "dicekPada": "2026-11-10"
     },
     {

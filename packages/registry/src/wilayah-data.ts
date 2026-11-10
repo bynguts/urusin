@@ -1257,6 +1257,12 @@ export const DATA_KONTAK_DUKCAPIL: readonly {
     sourceUrl: 'https://disdukcapil.tubankab.go.id/',
     verifiedAt: '2026-11-08T13:54:57.285Z',
   },
+  {
+    kode: '9304',
+    website: 'https://dukcapil.asmatkab.go.id',
+    sourceUrl: 'https://dukcapil.asmatkab.go.id/index.html',
+    verifiedAt: '2026-11-10T14:06:21.013Z',
+  },
 ];
 
 /** Kontak layanan resmi per kab/kota; tiap nilai membawa halaman sumber .go.id dan tanggal cek. */
@@ -2145,6 +2151,15 @@ export const DATA_KANAL_LAYANAN: readonly {
     jenis: 'whatsapp',
     nilai: '0811-1053-2203',
     sumberUrl: 'https://disdukcapil.purwakartakab.go.id/home/',
+    dicekPada: '2026-11-10',
+  },
+  {
+    kode: '3216',
+    layanan: 'adminduk',
+    instansi: 'Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bekasi',
+    jenis: 'email',
+    nilai: 'disdukcapil@bekasikab.go.id',
+    sumberUrl: 'https://disdukcapil.bekasikab.go.id/contact',
     dicekPada: '2026-11-10',
   },
   {

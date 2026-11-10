@@ -1,7 +1,7 @@
 {
   "catatan": "Situs resmi Disdukcapil per kab/kota. Hanya status \"terverifikasi\" yang boleh ditampilkan sebagai fakta; \"belum_terverifikasi\" berarti belum ada situs .go.id yang lolos pemeriksaan otomatis (bukan berarti tidak ada).",
   "total": 514,
-  "terverifikasi": 112,
+  "terverifikasi": 113,
   "kontak": [
     {
       "kode": "1101",
@@ -2921,7 +2921,11 @@
     {
       "kode": "9304",
       "nama": "Kabupaten Asmat",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.asmatkab.go.id",
+      "judulHalaman": "BERANDA",
+      "sourceUrl": "https://dukcapil.asmatkab.go.id/index.html",
+      "verifiedAt": "2026-11-10T14:06:21.013Z"
     },
     {
       "kode": "9401",

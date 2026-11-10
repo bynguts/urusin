@@ -249,7 +249,7 @@ describe('hand-off menurut layanan (W3), kontak (W6), dan dedup URL (W9)', () =>
   });
 
   it('kontak tidak dikarang untuk wilayah tanpa situs terverifikasi maupun kontak layanan resmi', () => {
-    const k = handoffChannels({ kodeKabKota: '3216', jenis: 'ktp', chunks: [] });
+    const k = handoffChannels({ kodeKabKota: '1101', jenis: 'ktp', chunks: [] });
     expect(k.length).toBeGreaterThan(0);
     expect(k.every((x) => x.kontak === undefined)).toBe(true);
   });

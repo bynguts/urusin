@@ -18,6 +18,12 @@
       "layanan": "adminduk",
       "instansi": "Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta",
       "url": "https://kependudukancapil.jakarta.go.id/"
+    },
+    {
+      "kode": ["3216"],
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bekasi",
+      "url": "https://disdukcapil.bekasikab.go.id/"
     }
   ],
   "entri": [
@@ -91,6 +97,15 @@
       "jenis": "email",
       "nilai": "admin@jogja.polri.go.id",
       "sumberUrl": "https://jogja.polri.go.id/sleman/",
+      "dicekPada": "2026-11-10"
+    },
+    {
+      "kode": "3216",
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bekasi",
+      "jenis": "email",
+      "nilai": "disdukcapil@bekasikab.go.id",
+      "sumberUrl": "https://disdukcapil.bekasikab.go.id/contact",
       "dicekPada": "2026-11-10"
     }
   ]
