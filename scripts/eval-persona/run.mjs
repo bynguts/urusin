@@ -30,6 +30,7 @@ import {
   cekGemaPii,
   cekPendamping,
   cekWilayahSebelumRencana,
+  pendekkanHash,
   samarkan,
   urlTampil,
 } from './lib/periksa.mjs';
@@ -268,8 +269,8 @@ async function main() {
         return g;
       })(),
     };
-    // Simpan dengan PII sintetis disamarkan.
-    const aman = JSON.parse(samarkan(JSON.stringify({ ...h, rahasia: undefined }), h.rahasia));
+    // Simpan dengan PII sintetis disamarkan dan hash dipendekkan (pii-scan).
+    const aman = pendekkanHash(JSON.parse(samarkan(JSON.stringify({ ...h, rahasia: undefined }), h.rahasia)));
     const teks = samarkan(transkripTeks(h), h.rahasia);
     let juri = null;
     if (!opsi['tanpa-juri']) {

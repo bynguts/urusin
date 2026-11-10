@@ -408,3 +408,28 @@ describe('bandingkan (sebelum → sesudah)', async () => {
     assert.match(md, /\| p16 \| · → L \| · → L \|/);
   });
 });
+
+describe('pendekkanHash (transkrip lolos pii-scan)', async () => {
+  const { pendekkanHash } = await import('../eval-persona/lib/periksa.mjs');
+  const panjang = ['e6f52abf', '0bc4ddf0', '3b1e720e', '839bc2a7', '2'.repeat(16), 'b27d1650'].join('');
+
+  it('memotong chainHead dan paramsHash menjadi 12 karakter', () => {
+    const out = pendekkanHash({
+      langkah: [{ events: [{ chainHead: panjang, paramsHash: panjang, teks: 'x' }] }],
+    });
+    assert.equal(out.langkah[0].events[0].chainHead, `${panjang.slice(0, 12)}…`);
+    assert.equal(out.langkah[0].events[0].paramsHash, `${panjang.slice(0, 12)}…`);
+  });
+
+  it('tidak menyisakan 16 digit berurutan dari hash', () => {
+    assert.doesNotMatch(JSON.stringify(pendekkanHash({ chainHead: panjang })), /\d{16}/);
+  });
+
+  it('membiarkan kolom lain apa adanya', () => {
+    assert.deepEqual(pendekkanHash({ teks: 'halo', n: 3, daftar: [1, 'a'] }), {
+      teks: 'halo',
+      n: 3,
+      daftar: [1, 'a'],
+    });
+  });
+});

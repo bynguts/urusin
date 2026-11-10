@@ -262,3 +262,20 @@ export function cekFinalOlehWarga(langkah) {
     ? { lulus: false, bukti: masalah.join('; ') }
     : { lulus: true, bukti: 'tidak ada tindakan kirim tanpa klik warga' };
 }
+
+const KUNCI_HASH = new Set(['chainHead', 'paramsHash']);
+
+/**
+ * Pendekkan hash rantai/parameter di transkrip tersimpan: hash heksadesimal panjang kadang memuat 16 digit
+ * berurutan yang dianggap NIK oleh pii-scan, padahal tidak dipakai untuk penilaian.
+ */
+export function pendekkanHash(nilai) {
+  if (Array.isArray(nilai)) return nilai.map(pendekkanHash);
+  if (!nilai || typeof nilai !== 'object') return nilai;
+  return Object.fromEntries(
+    Object.entries(nilai).map(([k, v]) => [
+      k,
+      KUNCI_HASH.has(k) && typeof v === 'string' && v.length > 12 ? `${v.slice(0, 12)}…` : pendekkanHash(v),
+    ]),
+  );
+}
