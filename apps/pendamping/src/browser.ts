@@ -286,7 +286,8 @@ export async function launchIsolated(
   viewport: PendampingViewport,
   /** Host https sesi ini (host origin + host yang dideklarasikan adapter), bukan seluruh registry. */
   hosts: readonly string[],
-  onBlocked: (host: string) => void = () => {},
+  /** `dokumen` = navigasi bingkai utama (hanya dari lapis rute; proxy tidak tahu). */
+  onBlocked: (host: string, dokumen?: boolean) => void = () => {},
   /**
    * Gerbang tulis Navigator generik (lapis SETELAH allowlist; tidak pernah melonggarkannya). undefined = sesi
    * adapter (tanpa gerbang).
@@ -346,8 +347,11 @@ export async function launchIsolated(
       const ok = urlDiAllowlist(allowedHosts, req.url());
       if (!ok) {
         const host = URL.parse(req.url())?.hostname;
-        if (host) onBlocked(host);
-        return route.abort('blockedbyclient');
+        const dokumen = gerbang ? permintaanGerbang(req).dokumen : false;
+        if (host) onBlocked(host, dokumen);
+        // Generik: navigasi dokumen ke host lain (mis. redirect 302) tidak meng-commit halaman galat; warga
+        // tetap di halaman sebelumnya dan diberi giliran.
+        return route.abort(dokumen ? 'aborted' : 'blockedbyclient');
       }
       // `aborted` (net::ERR_ABORTED): navigasi dokumen yang dibatalkan tidak meng-commit halaman galat, jadi
       // warga tetap melihat formulir yang sama (dengan isiannya) untuk ditekan sendiri.
@@ -414,11 +418,12 @@ export function pidsOfProfile(userDataDir: string, proc = '/proc'): number[] {
 type KendaliGerbang = {
   wargaPegang: () => boolean;
   blokir: Parameters<typeof createGerbangTulis>[0]['onBlokir'];
+  hostDiblokir: (host: string, dokumen: boolean | undefined) => void;
 };
 
 export async function startBrowserRun(config: Config, init: RunInit): Promise<ActiveRun> {
   const reported = new Set<string>();
-  const kendali: KendaliGerbang = { wargaPegang: () => false, blokir: () => {} };
+  const kendali: KendaliGerbang = { wargaPegang: () => false, blokir: () => {}, hostDiblokir: () => {} };
   const gerbang = init.generik
     ? createGerbangTulis({
         wargaPegang: () => kendali.wargaPegang(),
@@ -430,7 +435,8 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
     config,
     init.viewport,
     hosts,
-    (host) => {
+    (host, dokumen) => {
+      if (gerbang && !kendali.wargaPegang()) kendali.hostDiblokir(host, dokumen);
       if (reported.size < 20 && !reported.has(host)) {
         reported.add(host);
         init.hooks.event({ jenis: 'diblokir', host });
@@ -998,6 +1004,7 @@ async function wire(
           }
         },
         tenang,
+        urlKini: () => page.url(),
       }),
       gerbang: gen.gerbang,
       izin,
@@ -1015,6 +1022,7 @@ async function wire(
     const run = generik;
     gen.kendali.wargaPegang = ditahan;
     gen.kendali.blokir = (c, j) => run.blokir(c, j);
+    gen.kendali.hostDiblokir = (host, dokumen) => run.hostDiblokir(host, dokumen);
   }
 
   const g = generik;

@@ -235,6 +235,31 @@ describe('persetujuan generik terikat rencanaHash', () => {
   });
 });
 
+describe('aksi: kolom dari web', () => {
+  it('placeholder kolom wajib ada di aksi isi/pilih rencana; kolom asing = 422', async () => {
+    const h = harness();
+    const { run } = await sesiBerjalan(h);
+    const aksi = [{ jenis: 'isi' as const, ref: 'e1', nilai: PH }];
+    await expect(
+      h.manager.aksi(owner('u1'), {
+        ...owner('u1'),
+        rencanaHash: H1,
+        aksi,
+        kolom: [{ placeholder: '{{PEMOHON.NIK}}', labelPortal: 'NIK' }],
+      }),
+    ).rejects.toMatchObject({ status: 422 });
+    expect(run.aksiMasuk).toEqual([]);
+    const r = await h.manager.aksi(owner('u1'), {
+      ...owner('u1'),
+      rencanaHash: H1,
+      aksi,
+      kolom: [{ placeholder: PH, labelPortal: 'Nama' }],
+    });
+    expect(r.hasil).toEqual([{ indeks: 0, kode: 'ok' }]);
+    expect(run.aksiMasuk).toEqual([aksi]);
+  });
+});
+
 describe('amati/aksi/tunggu/jejak', () => {
   it('aksi saat warga memegang kendali tidak dijalankan', async () => {
     const h = harness();
