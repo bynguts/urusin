@@ -13,6 +13,21 @@ import { sensor } from './env.mjs';
 
 const PROXY = { host: '127.0.0.1', port: 20128 };
 
+/** Env embedding + rerank seperti produksi (Jina); kosong bila kunci tidak ada (BM25 saja). */
+export function envEmbed(rahasia) {
+  if (!rahasia.JINA_API_KEY) return {};
+  return {
+    LLM_EMBED_BASE_URL: 'https://api.jina.ai/v1',
+    LLM_EMBED_API_KEY: rahasia.JINA_API_KEY,
+    LLM_EMBED_MODEL: 'jina-embeddings-v5-omni-small',
+    LLM_EMBED_TASK_QUERY: 'retrieval.query',
+    LLM_EMBED_TASK_PASSAGE: 'retrieval.passage',
+    RERANK_BASE_URL: 'https://api.jina.ai/v1',
+    RERANK_API_KEY: rahasia.JINA_API_KEY,
+    RERANK_MODEL: 'jina-reranker-v3',
+  };
+}
+
 /** Relay TCP lokal ke host LLM. Mengembalikan { baseUrl, tutup } atau baseUrl asli bila sudah loopback. */
 export async function relayLlm(baseUrl) {
   const u = new URL(baseUrl);
@@ -61,7 +76,7 @@ async function portBebas() {
   });
 }
 
-const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+export const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const jalankan = (cmd, args, cwd) =>
   execFileSync(cmd, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
 
@@ -131,18 +146,7 @@ export async function mulaiServer({ akar, rahasia, llmBaseUrl, ragDb, logBerkas 
     URUSIN_DAILY_IDR_CAP: '50000',
     URUSIN_LLM_DISABLED: '0',
     ...(ragDb ? { URUSIN_RAG_DB: ragDb } : {}),
-    ...(rahasia.JINA_API_KEY
-      ? {
-          LLM_EMBED_BASE_URL: 'https://api.jina.ai/v1',
-          LLM_EMBED_API_KEY: rahasia.JINA_API_KEY,
-          LLM_EMBED_MODEL: 'jina-embeddings-v5-omni-small',
-          LLM_EMBED_TASK_QUERY: 'retrieval.query',
-          LLM_EMBED_TASK_PASSAGE: 'retrieval.passage',
-          RERANK_BASE_URL: 'https://api.jina.ai/v1',
-          RERANK_API_KEY: rahasia.JINA_API_KEY,
-          RERANK_MODEL: 'jina-reranker-v3',
-        }
-      : {}),
+    ...envEmbed(rahasia),
     RAG_ABSTAIN_MIN_COVERAGE: '0.1',
     RAG_ABSTAIN_MIN_RERANK_SCORE: '0.05',
   };
