@@ -1,6 +1,14 @@
 import { OFFICIAL_DOMAINS, type OfficialDomain } from '@urusin/core';
 import { kanalFor } from '@urusin/rag';
-import { KANAL_NASIONAL, kanalWilayah, kontakDukcapil, wilayahByKode } from '@urusin/registry';
+import {
+  KANAL_NASIONAL,
+  kanalWilayah,
+  kontakDukcapil,
+  kontakLayanan,
+  ringkasKontak,
+  wilayahByKode,
+  type LayananKontak,
+} from '@urusin/registry';
 import { generateStructured, type CapabilityFlags, type ChatMessage, type ChatProvider } from '@urusin/llm';
 import { z } from 'zod';
 import type { KutipanTerverifikasi, PayloadOf } from '@urusin/contracts';
@@ -156,7 +164,18 @@ function kanalNasional(id: string, cadangan: string): KanalHandoff {
   return { nama: k?.instansi ?? cadangan, ...(k?.url ? { url: k.url } : {}) };
 }
 
-/** Disdukcapil wilayah KTP (kanal registry, lalu situs terverifikasi beserta alamatnya); tanpa wilayah: Ditjen Dukcapil. */
+/** Kanal dari kontak layanan resmi tercatat (telepon/WA/email/jam), bertaut ke halaman sumbernya. */
+function kanalKontakLayanan(kode: string, layanan: LayananKontak): KanalHandoff | undefined {
+  const k = kontakLayanan(kode, layanan);
+  const ringkas = k ? ringkasKontak(k) : '';
+  if (!k || !ringkas) return undefined;
+  return { nama: k.instansi, url: k.sumber[0]!.url, kontak: ringkas };
+}
+
+/**
+ * Disdukcapil wilayah KTP (kanal registry, situs terverifikasi beserta alamatnya, lalu kontak layanan resmi);
+ * tanpa wilayah: Ditjen Dukcapil.
+ */
 function kanalAdminduk(kode: string | null): KanalHandoff[] {
   const nasional = `${KANAL_NASIONAL.judul}, ${KANAL_NASIONAL.instansi}`;
   if (!kode) return [{ nama: nasional, url: KANAL_NASIONAL.url }];
@@ -170,6 +189,14 @@ function kanalAdminduk(kode: string | null): KanalHandoff[] {
       url: kontak.website,
       ...(kontak.alamat ? { kontak: `Alamat: ${kontak.alamat}` } : {}),
     });
+  const layanan = kanalKontakLayanan(kode, 'adminduk');
+  if (layanan) {
+    // Kontak menempel pada kanal instansi yang sama (host sama) agar tidak tampil sebagai kanal terpisah.
+    const host = (u: string | undefined) => (u ? new URL(u).hostname.replace(/^www\./, '') : '');
+    const sama = out.findLast((o) => o.url && host(o.url) === host(layanan.url));
+    if (sama) sama.kontak = sama.kontak ? `${sama.kontak} · ${layanan.kontak}` : layanan.kontak;
+    else out.push(layanan);
+  }
   return out;
 }
 
@@ -184,7 +211,9 @@ function kanalLayanan(jenis: string | null, kode: string | null): KanalHandoff[]
     case 'skck':
       return [
         kanalNasional('skck', 'Kepolisian Negara Republik Indonesia (Polri)'),
-        { nama: w ? `Polres atau Polsek di ${w.nama}` : 'Polres atau Polsek sesuai domisili Anda' },
+        (kode ? kanalKontakLayanan(kode, 'skck') : undefined) ?? {
+          nama: w ? `Polres atau Polsek di ${w.nama}` : 'Polres atau Polsek sesuai domisili Anda',
+        },
       ];
     case 'pajak_kendaraan': {
       const prov = w?.kodeKabKota.slice(0, 2);
