@@ -452,7 +452,14 @@ async function jalankanRun(jalur: string, otak: Otak, kembalikanGerbang = 0): Pr
       return a;
     },
     aksi: async (r) => {
-      const h = await m.aksi(o, { ...o, rencanaHash: r.rencanaHash, aksi: r.aksi, seq: r.seq });
+      // Sama dengan broker web: baris lembar ikut dikirim (worker menolak 422 baris di luar rencana).
+      const h = await m.aksi(o, {
+        ...o,
+        rencanaHash: r.rencanaHash,
+        aksi: r.aksi,
+        seq: r.seq,
+        ...(r.kolom.length > 0 ? { kolom: r.kolom } : {}),
+      });
       nilai(r.aksi, h);
       if (h.hasil.some((x) => x.kode === 'GERBANG_MEMBLOKIR')) serahTerakhir = 'gerbang';
       return h;
