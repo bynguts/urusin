@@ -326,12 +326,15 @@ export const dukcapilCekStatus = defineTool({
   effect: 'read',
   input: z.object({ kodeKabKota }),
   allowedStates: NON_TERMINAL_STATES,
-  origin(args, { urusan }) {
-    return alurBaca(routeByKode(urusan.kodeKabKota ?? args.kodeKabKota).entry.adapterId, 'cek_status')
-      ?.origin;
+  // Tool ini juga dipanggil langsung tanpa urusan (e2e/alat Browser Pendamping): konteks urusan opsional.
+  origin(args, ctx) {
+    const kode = ctx?.urusan?.kodeKabKota ?? args.kodeKabKota;
+    return alurBaca(routeByKode(kode).entry.adapterId, 'cek_status')?.origin;
   },
   execute(ctx, rawArgs): ToolResult {
-    const args = { kodeKabKota: ctx.urusan.kodeKabKota ?? rawArgs.kodeKabKota };
+    // Wilayah KTP yang sudah dipastikan warga menang atas kode dari model; tanpa urusan pakai argumen.
+    const pasti = ctx?.urusan && ctx.store ? kodeKtp(ctx.store, ctx.urusan) : null;
+    const args = { kodeKabKota: pasti ?? rawArgs.kodeKabKota };
     const { entry } = routeByKode(args.kodeKabKota);
     const alur = alurBaca(entry.adapterId, 'cek_status');
     if (!alur) {
