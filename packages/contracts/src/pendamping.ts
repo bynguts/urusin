@@ -442,6 +442,20 @@ export const TungguSesiResponseSchema = z.object({
 });
 export type TungguSesiResponse = z.infer<typeof TungguSesiResponseSchema>;
 
+// --- POST /internal/sesi/selesai (web -> worker): Navigator melihat halaman sukses ---
+/**
+ * Navigator melihat `sinyal.sukses` (biasanya sesudah warga sendiri menekan Kirim, juga saat warga memegang
+ * kendali). Worker memeriksa ulang halaman SAAT INI (harus sukses; bila tidak = 409), mencatat bukti ke jejak
+ * audit, lalu sesi menjadi `siaga` dengan hasil `berhasil`. `bukti.nomor` hanya disimpan bila tertulis di
+ * halaman itu. Idempoten saat sesi sudah siaga.
+ */
+export const SelesaiSesiInternalSchema = PemilikSesiInternalSchema.extend({
+  bukti: PendampingBuktiSchema.optional(),
+});
+export type SelesaiSesiInternal = z.infer<typeof SelesaiSesiInternalSchema>;
+export const SelesaiSesiResponseSchema = SesiPendampingSchema;
+export type SelesaiSesiResponse = z.infer<typeof SelesaiSesiResponseSchema>;
+
 // --- POST /internal/sesi/butuh: data yang masih dibutuhkan sesi sebelum AI mulai (A-M1, jalur isi server) ---
 export const ButuhSesiInternalSchema = z.object({
   placeholder: z.array(PlaceholderVaultSchema),
@@ -465,6 +479,11 @@ export const IsiSesiInternalSchema = PemilikSesiInternalSchema.extend({
    * rencana lain; pasangan (sidik ref, placeholder) yang disetujui terikat ke hash ini.
    */
   rencanaHash: RencanaHashSchema.optional(),
+  /**
+   * Navigator generik: berkas yang disetujui warga di putaran INI (bukan seluruh berkas sesi). Tidak ada = berkas
+   * yang dikirim lewat `/internal/sesi/berkas` sejak lembar ini dibuka.
+   */
+  berkas: z.array(NamaBerkasAdapterSchema).max(20).optional(),
 });
 export type IsiSesiInternal = z.infer<typeof IsiSesiInternalSchema>;
 
