@@ -305,6 +305,8 @@ export type Pengamatan = z.infer<typeof PengamatanSchema>;
 /**
  * `ketuk_tautan` (aditif): warga mengetuk sendiri tautan pembuka (`ElemenAmatan.tautanPembuka`) yang disorot,
  * lalu AI melanjutkan. Bukan serah final.
+ * `berhenti` (aditif): serah akhir; Navigator berhenti dan warga melanjutkan sendiri (tanpa janji coba lagi).
+ * `kembalikan` sesudahnya tetap `takeover`.
  */
 export const AlasanSerahkanSchema = z.enum([
   'masuk_akun',
@@ -314,6 +316,7 @@ export const AlasanSerahkanSchema = z.enum([
   'final',
   'tidak_yakin',
   'ketuk_tautan',
+  'berhenti',
 ]);
 export const SebabTidakBisaSchema = z.enum([
   'layanan_tidak_ada',
@@ -559,6 +562,11 @@ export const PendampingClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ambil_alih') }),
   /** Warga mengembalikan kendali ke AI. */
   z.object({ type: z.literal('kembalikan') }),
+  /**
+   * (aditif) Giliran `ketuk_tautan`: warga menekan tombol Urusin "Buka …" alih-alih mengetuk elemen halaman.
+   * `ref` harus tautan pembuka yang sedang disorot; worker membuka href-nya (GET, host wilayah), bukan klik.
+   */
+  z.object({ type: z.literal('buka_tautan'), ref: RefSchema }),
   /*
    * Tidak ada pesan nilai vault atau berkas dari perangkat (A-M1): nilai Data Diri dan Dokumen hanya masuk
    * lewat kanal internal web -> worker (`/internal/sesi/isi`, `/internal/sesi/berkas`) setelah "Izinkan isi".
@@ -601,6 +609,7 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
      * `berkas_kurang`: Dokumen untuk langkah unggah belum ada di akun (`berkas`); warga menambahkannya di
      * /dokumen, lalu Lanjutkan = "Izinkan isi" baru untuk berkas itu saja, dan langkah unggah diulang.
      * `ketuk_tautan` (aditif): warga mengetuk tautan pembuka yang disorot (navigasi GET), lalu Lanjutkan.
+     * `berhenti` (aditif): Navigator berhenti; warga melanjutkan sendiri (tanpa tombol coba lagi).
      */
     alasan: z.enum([
       'login',
@@ -612,6 +621,7 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
       'isi_sendiri',
       'berkas_kurang',
       'ketuk_tautan',
+      'berhenti',
     ]),
     pesan: z.string(),
     sorot: PendampingSorotSchema.optional(),
@@ -620,6 +630,18 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
     /** Hanya `berkas_kurang`: nama berkas adapter dan origin situs tujuan (untuk persetujuan ulang). */
     berkas: z
       .object({ nama: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/), origin: z.url().max(2048) })
+      .optional(),
+    /**
+     * (aditif) Hanya `ketuk_tautan`: tautan pembuka yang disorot. `nama` teks situs (tak tepercaya, tampil
+     * sebagai teks biasa); `ref` dikirim kembali lewat `buka_tautan`.
+     */
+    tautan: z
+      .object({
+        ref: RefSchema,
+        nama: z.string().max(80),
+        host: z.string().min(1).max(253),
+        jalur: z.string().max(200),
+      })
       .optional(),
   }),
   /** Situs memblokir peramban server (WAF/bot wall): urusan beralih ke mode dipandu. */

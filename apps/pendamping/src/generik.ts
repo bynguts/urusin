@@ -137,6 +137,7 @@ export const PESAN_GENERIK = {
   final: 'Periksa semua isian. Hanya Anda yang boleh menekan tombol kirim.',
   tidak_yakin:
     'AI tidak yakin langkah berikutnya. Lanjutkan sendiri, atau tekan Lanjutkan untuk mencoba lagi.',
+  berhenti: 'AI berhenti di sini. Lanjutkan sendiri dari layar ini.',
 } as const;
 
 const PESAN_TIDAK_BISA: Record<Extract<Aksi, { jenis: 'tidak_bisa' }>['sebab'], string> = {
@@ -157,6 +158,7 @@ const ALASAN_GILIRAN: Record<Extract<Aksi, { jenis: 'serahkan' }>['alasan'], Ala
   final: 'final',
   tidak_yakin: 'periksa',
   ketuk_tautan: 'ketuk_tautan',
+  berhenti: 'berhenti',
 };
 
 // --- Redaksi ------------------------------------------------------------------------------------------

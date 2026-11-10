@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AlasanSerahkanSchema,
   decodePendampingFrame,
   encodePendampingFrame,
   ENDPOINT,
@@ -140,6 +141,23 @@ describe('kontrak pendamping', () => {
     expect(decodePendampingFrame(bukanJson)).toBeNull();
     const tanpaJpeg = buf.subarray(0, 7 + new DataView(buf.buffer).getUint16(5));
     expect(decodePendampingFrame(tanpaJpeg)).toBeNull();
+  });
+
+  it('tambahan aditif N5/N2: buka_tautan ber-ref, tautan di giliran ketuk_tautan, alasan berhenti', () => {
+    expect(PendampingClientMessageSchema.safeParse({ type: 'buka_tautan', ref: 'e12' }).success).toBe(true);
+    // Klien tidak pernah mengirim URL: hanya ref elemen.
+    for (const m of [{ type: 'buka_tautan' }, { type: 'buka_tautan', ref: 'https://a.go.id/x' }])
+      expect(PendampingClientMessageSchema.safeParse(m).success).toBe(false);
+    const giliran = (event: object) =>
+      PendampingServerMessageSchema.safeParse({
+        type: 'event',
+        event: { jenis: 'giliran_anda', pesan: 'p', ...event },
+      }).success;
+    const tautan = { ref: 'e3', nama: 'Daftar Akta Kelahiran', host: 'a.go.id', jalur: '/akta/baru' };
+    expect(giliran({ alasan: 'ketuk_tautan', tautan })).toBe(true);
+    expect(giliran({ alasan: 'ketuk_tautan', tautan: { ...tautan, nama: 'x'.repeat(81) } })).toBe(false);
+    expect(giliran({ alasan: 'berhenti' })).toBe(true);
+    expect(AlasanSerahkanSchema.safeParse('berhenti').success).toBe(true);
   });
 
   it('tambahan aditif: siaga, alasan masuk_akun/verifikasi_situs/isi_sendiri, bukti, ack, fokus', () => {
