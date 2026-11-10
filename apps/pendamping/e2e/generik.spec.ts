@@ -319,3 +319,70 @@ test('generik: kolom web di lembar izin; redirect 302 ke host sesi lanjut, ke ho
     await situs.tutup();
   }
 });
+
+test('generik: tolak semua (isi kosong) dan "Saya isi sendiri" lalu kembalikan -> tunggu kembali, AI lanjut', async () => {
+  const situs = await situsUji();
+  const config = loadConfig({
+    PENDAMPING_FIXTURE_ORIGINS: situs.origin,
+    PENDAMPING_ORIGIN_OVERRIDES: `${RESMI}=${situs.origin}`,
+    PENDAMPING_HEADLESS: '1',
+  });
+  const manager = new SessionManager(config, createBrowserFactory(config));
+  const o = { urusanId: 'u-tolak', sidHash: SID };
+  try {
+    const sesi = await manager.create({
+      ...o,
+      executionId: 'x_tolak',
+      adapterId: ADAPTER_GENERIK,
+      flowId: 'navigator',
+      origin: RESMI,
+      params: { jalur: '/formulir' },
+      modeUji: true,
+    });
+    await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('berjalan');
+    const p = (await manager.amati(o)).pengamatan;
+    const isi = [{ jenis: 'isi' as const, ref: cari(p, 'Nama lengkap', 'teks').ref, nilai: PH }];
+    const minta = async (rencanaHash: string) => {
+      const r = await manager.aksi(o, { ...o, rencanaHash, seq: p.seq, aksi: isi });
+      expect(r.hasil).toEqual([{ indeks: 0, kode: 'BELUM_DISETUJUI' }]);
+      expect(manager.status(o).status).toBe('menunggu_data');
+    };
+
+    // 1) Tolak semua lewat isi kosong: tunggu yang sedang berjalan langsung kembali.
+    await minta(H1);
+    const t1 = manager.tunggu(o, 30_000);
+    await manager.isiData(o, {}, H1);
+    expect(await t1).toEqual({ mode: 'ai', status: 'berjalan', habisWaktu: false });
+
+    // 2) "Saya isi sendiri" dari lembar = ambil alih; warga mengetik sendiri lalu mengembalikan kendali.
+    await minta(H2);
+    await manager.handleClient(sesi.sesiId, { type: 'ambil_alih' });
+    expect(manager.status(o)).toMatchObject({ status: 'berjalan', mode: 'takeover' });
+    const t2 = manager.tunggu(o, 30_000);
+    await manager.handleClient(sesi.sesiId, { type: 'kembalikan' });
+    expect(await t2).toEqual({ mode: 'ai', status: 'berjalan', habisWaktu: false });
+
+    // Rencana yang ditolak tidak pernah mengisi kolom; AI bisa lanjut ke aksi berikutnya.
+    const a2 = await manager.amati(o);
+    expect(a2.mode).toBe('ai');
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H2,
+      seq: a2.pengamatan.seq,
+      aksi: [{ jenis: 'centang', ref: cari(a2.pengamatan, 'Punya NPWP', 'centang').ref, nilai: true }],
+    });
+    expect(r.hasil).toEqual([{ indeks: 0, kode: 'ok' }]);
+    expect(JSON.stringify(a2.pengamatan)).not.toContain(NILAI);
+    const jejak = manager.kurasJejak(o).catatan;
+    expect(jejak.filter((c) => c.jenis === 'persetujuan' || c.jenis === 'ambil_alih')).toEqual([
+      { jenis: 'persetujuan', rencanaHash: H1, n: 0 },
+      { jenis: 'ambil_alih', fase: 'mulai' },
+      { jenis: 'persetujuan', rencanaHash: H2, n: 0 },
+      { jenis: 'ambil_alih', fase: 'selesai' },
+    ]);
+    expect(situs.hitung('/kirim') + situs.hitung('/simpan')).toBe(0);
+  } finally {
+    await manager.shutdown();
+    await situs.tutup();
+  }
+});
