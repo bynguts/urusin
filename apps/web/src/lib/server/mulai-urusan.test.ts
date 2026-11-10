@@ -3,6 +3,7 @@ import { isRedirect } from '@sveltejs/kit';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mulaiUrusanDariForm } from './mulai-urusan';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
+import { PESAN_PII } from './http';
 import { SID_COOKIE } from './sesi';
 
 let rt: Runtime;
@@ -62,5 +63,19 @@ describe('mulaiUrusanDariForm: pemilik urusan', () => {
     const tamu = rt.akun.tamuDariSid(SID);
     expect(tamu).toBeDefined();
     expect(rt.akun.pemilikVaultUrusan(id, { sid: SID })).toBe(tamu);
+  });
+});
+
+/** Jalur tanpa JS harus menolak NIK sama seperti POST /api/urusan (422, pesan warga yang sama). */
+describe('mulaiUrusanDariForm: PII', () => {
+  it('pesan berisi NIK → 422 dengan pesan warga yang sama dengan API; tidak ada urusan dibuat, pesan tidak digemakan', async () => {
+    const nik = ['3312', '0101', '0190', '0003'].join('');
+    const r = (await mulaiUrusanDariForm(
+      eventForm({ pesan: `NIK saya ${nik}, mau urus akta`, kodeKabKota: '3312' }, '10.0.0.3'),
+    )) as { status: number; data: { pesanWarga: string; pesan: string } };
+    expect(r.status).toBe(422);
+    expect(r.data.pesanWarga).toBe(PESAN_PII);
+    expect(r.data.pesan).not.toContain(nik);
+    expect(rt.store.db.prepare('SELECT COUNT(*) n FROM urusan').get()).toEqual({ n: 0 });
   });
 });

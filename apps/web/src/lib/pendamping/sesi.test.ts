@@ -31,3 +31,76 @@ describe('SesiPendampingUi: situs yang benar-benar dibuka', () => {
     expect(ui.data.situs).toEqual({ origin: 'https://telunjuksakti.wonogirikab.go.id', replika: false });
   });
 });
+
+/** Viewer palsu: menyimpan handler supaya tes bisa memutar urutan pesan worker yang sebenarnya. */
+async function tersambung(ambil: (url: string, init?: RequestInit) => Response) {
+  const h: Record<string, (v: unknown) => void> = {};
+  const viewer = {
+    mode: null,
+    koneksi: 'tersambung',
+    on: (t: string, cb: (v: unknown) => void) => ((h[t] = cb), () => {}),
+    ambilAlih() {},
+    kembalikan() {},
+    akhiri() {},
+    tutup() {},
+  };
+  const panggilan: string[] = [];
+  const ui = new SesiPendampingUi('u', async () => (() => viewer) as never, (async (
+    url: string,
+    init?: RequestInit,
+  ) => {
+    panggilan.push(`${init?.method ?? 'GET'} ${url}`);
+    return ambil(url, init);
+  }) as never);
+  await ui.mulai(
+    'x_1',
+    () => ({}) as HTMLCanvasElement,
+    () => null,
+  );
+  const kirim = (t: string, v: unknown) => h[t]!(v);
+  return { ui, kirim, panggilan };
+}
+
+const jawabBawaan = (url: string, init?: RequestInit) =>
+  url.endsWith('/tiket')
+    ? Response.json({ wsUrl: 'ws://x/s', tiket: 't' })
+    : init?.method === 'DELETE'
+      ? Response.json(sesi({ status: 'selesai', mode: 'done' }))
+      : Response.json(sesi(), { status: 201 });
+
+describe('SesiPendampingUi: setelah Kirim, teks jujur soal peramban', () => {
+  it('siaga (peramban masih hidup) bukan selesai/ditutup dan bukan dijeda; penutupan sungguhan = selesai + done', async () => {
+    const { ui, kirim } = await tersambung(jawabBawaan);
+    const bukti = { nomor: 'FX-REG-0001' };
+    // Urutan pesan worker saat siaga: event selesai, mode takeover, status siaga.
+    kirim('event', { jenis: 'selesai', hasil: 'berhasil', pesan: 'Terkirim.', bukti });
+    kirim('mode', { mode: 'takeover', pesan: 'Terkirim.' });
+    expect([ui.data.keadaan, ui.data.mode]).toEqual(['siaga', 'takeover']);
+    kirim('status', sesi({ status: 'siaga', mode: 'takeover', hasil: 'berhasil' }));
+    expect(ui.data.keadaan).toBe('siaga');
+    expect(ui.data.bukti).toEqual(bukti);
+    // Ditutup sungguhan (idle/TTL): event selesai, mode done, status selesai.
+    kirim('event', { jenis: 'selesai', hasil: 'berhasil', pesan: 'Sesi ditutup.' });
+    kirim('mode', { mode: 'done', pesan: 'Sesi ditutup.' });
+    kirim('status', sesi({ status: 'selesai', mode: 'done', hasil: 'berhasil' }));
+    expect([ui.data.keadaan, ui.data.mode]).toEqual(['selesai', 'done']);
+  });
+
+  it('Tutup sekarang: DELETE sesi, lalu selesai + done; gagal = tetap siaga dengan pesan jujur', async () => {
+    let gagal = true;
+    const { ui, kirim, panggilan } = await tersambung((url, init) =>
+      init?.method === 'DELETE' && gagal ? new Response('x', { status: 502 }) : jawabBawaan(url, init),
+    );
+    kirim('status', sesi({ status: 'siaga', mode: 'takeover', hasil: 'berhasil' }));
+    await ui.tutupSekarang();
+    expect(ui.data.keadaan).toBe('siaga');
+    expect(ui.data.pesan).toMatch(/belum bisa ditutup/);
+    gagal = false;
+    await ui.tutupSekarang();
+    expect(panggilan.filter((p) => p.startsWith('DELETE'))).toEqual([
+      'DELETE /api/urusan/u/pendamping',
+      'DELETE /api/urusan/u/pendamping',
+    ]);
+    expect([ui.data.keadaan, ui.data.mode]).toEqual(['selesai', 'done']);
+  });
+});

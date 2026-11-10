@@ -1,7 +1,7 @@
 /**
  * Data per perangkat untuk tamu (tanpa akun): daftar id urusan yang dimulai di perangkat ini, wilayah layanan,
  * dan dua pilihan tampilan tambahan (kontras tinggi, kurangi gerakan). Disimpan di localStorage; bila diblokir,
- * tetap jalan di memori. Id urusan adalah token kapabilitas: hanya disimpan di perangkat warga.
+ * tetap jalan di memori. Server tetap hanya menjawab urusan milik peminta (`urusanMilik`), bukan siapa pun pemegang id.
  */
 export type CatatanUrusan = {
   id: string;

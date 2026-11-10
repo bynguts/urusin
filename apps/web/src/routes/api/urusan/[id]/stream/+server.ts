@@ -3,6 +3,7 @@ import type { UrusinEvent } from '#lib/contracts.js';
 import { apiError, errorResponse } from '#lib/server/http.js';
 import { getRuntime } from '#lib/server/runtime.js';
 import { frame, heartbeatFrame } from '#lib/server/sse.js';
+import { urusanMilik } from '#lib/server/urusan-akses.js';
 import type { RequestHandler } from './$types';
 
 const encoder = new TextEncoder();
@@ -13,11 +14,11 @@ const encoder = new TextEncoder();
  * menjaga koneksi di balik proxy. Saat klien putus: berhenti berlangganan; bila tidak ada pelanggan tersisa setelah
  * masa tenggang, loop LLM yang sedang berjalan dibatalkan (AbortController), sehingga tidak ada panggilan LLM berikutnya.
  */
-export const GET: RequestHandler = async ({ params, request, url }) => {
+export const GET: RequestHandler = async ({ params, request, url, locals }) => {
   try {
     const rt = await getRuntime();
     const id = params.id;
-    if (!rt.store.getUrusan(id)) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
+    if (!urusanMilik(rt, id, locals)) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
 
     const raw = request.headers.get('last-event-id') ?? url.searchParams.get('lastEventId') ?? '0';
     const last = Number.parseInt(raw, 10);

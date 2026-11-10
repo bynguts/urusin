@@ -52,19 +52,28 @@ describe('RateLimiter', () => {
 });
 
 describe('cookie sesi', () => {
-  const jalankan = async (cookie: string | null) => {
+  const SEGAR = '__Host-urusin_sid_segar';
+  const jalankan = async (cookie: string | null, lain: Record<string, string> = {}) => {
     const set: { name: string; value: string; opts: Record<string, unknown> }[] = [];
+    const hapus: string[] = [];
+    const toples: Record<string, string | undefined> = { [SID_COOKIE]: cookie ?? undefined, ...lain };
     let sid: string | undefined;
     await handle({
       event: {
         request: new Request(`${ORIGIN}/api/health`),
         url: new URL(`${ORIGIN}/api/health`),
         cookies: {
-          get: (n: string) => (n === SID_COOKIE ? (cookie ?? undefined) : undefined),
-          set: (name: string, value: string, opts: Record<string, unknown>) =>
-            set.push({ name, value, opts }),
+          get: (n: string) => toples[n],
+          set: (name: string, value: string, opts: Record<string, unknown>) => {
+            toples[name] = value;
+            set.push({ name, value, opts });
+          },
+          delete: (name: string) => hapus.push(name),
         },
         locals: {
+          get sid() {
+            return sid;
+          },
           set sid(v: string | undefined) {
             sid = v;
           },
@@ -72,7 +81,12 @@ describe('cookie sesi', () => {
       } as never,
       resolve: async () => new Response('ok'),
     });
-    return { set, sid };
+    return {
+      set: set.filter((c) => c.name === SID_COOKIE),
+      segar: set.filter((c) => c.name === SEGAR),
+      hapus,
+      sid,
+    };
   };
 
   it('tanpa cookie: terbit id acak 128-bit, HttpOnly + SameSite=Lax', async () => {
@@ -80,6 +94,29 @@ describe('cookie sesi', () => {
     expect(r.set).toHaveLength(1);
     expect(r.set[0]!.value).toMatch(/^[0-9a-f]{32}$/);
     expect(r.set[0]!.opts).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/' });
+    expect(r.sid).toBe(r.set[0]!.value);
+  });
+
+  it('cookie sid tamu diperpanjang ke umur penuh bila penanda harian sudah habis (>1 hari), bukan tiap permintaan', async () => {
+    const sah = 'a'.repeat(32);
+    const lama = await jalankan(sah);
+    expect(lama.set).toEqual([
+      { name: SID_COOKIE, value: sah, opts: expect.objectContaining({ maxAge: 30 * 24 * 3600 }) },
+    ]);
+    expect(lama.segar).toEqual([
+      { name: SEGAR, value: '1', opts: expect.objectContaining({ maxAge: 24 * 3600, httpOnly: true }) },
+    ]);
+    expect(lama.sid).toBe(sah);
+    expect(await jalankan(sah, { [SEGAR]: '1' })).toMatchObject({ set: [], segar: [], sid: sah });
+  });
+
+  it('cookie akun kedaluwarsa: dihapus dan urusin_sid diputar (pemakai berikutnya tidak mengadopsi urusan tamu)', async () => {
+    const sah = 'b'.repeat(32);
+    const r = await jalankan(sah, { [SEGAR]: '1', '__Host-urusin_akun': 'f'.repeat(43) });
+    expect(r.hapus).toEqual(expect.arrayContaining(['__Host-urusin_akun', 'urusin_terakhir']));
+    expect(r.set).toHaveLength(1);
+    expect(r.set[0]!.value).toMatch(/^[0-9a-f]{32}$/);
+    expect(r.set[0]!.value).not.toBe(sah);
     expect(r.sid).toBe(r.set[0]!.value);
   });
 
@@ -129,7 +166,7 @@ describe('cookie sesi', () => {
 
   it('cookie sah dipakai ulang; cookie rusak diganti', async () => {
     const sah = 'a'.repeat(32);
-    expect(await jalankan(sah)).toMatchObject({ set: [], sid: sah });
+    expect(await jalankan(sah, { [SEGAR]: '1' })).toMatchObject({ set: [], sid: sah });
     const r = await jalankan('bukan-id; drop');
     expect(r.set).toHaveLength(1);
     expect(r.sid).not.toBe('bukan-id; drop');
@@ -169,6 +206,7 @@ describe('kuota per-IP dan per-sesi', () => {
   it('turn: batas per-menit per IP; permintaan yang ditolak tidak memulai turn', async () => {
     setup({ turnPerMenitIp: 1, turnPerMenitSesi: 100 });
     const u = rt.store.createUrusan();
+    rt.akun.catatPemilikUrusan(u.id, { sid: 'sid' });
     const turn = (ip: string) => kirimTurn(ev(post({ teks: 'halo' }), ip, 'sid', { id: u.id }));
     expect((await turn('10.0.2.1')).status).toBe(202);
     for (let i = 0; i < 50 && rt.running.has(u.id); i++) await new Promise((r) => setTimeout(r, 20));

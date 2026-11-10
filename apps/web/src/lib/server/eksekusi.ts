@@ -4,7 +4,7 @@ import { routeByKode } from '@urusin/registry';
 import type { Runtime } from '#lib/server/runtime.js';
 
 type Status = ExecutionResultRequest['status'];
-type Sumber = 'Ekstensi' | 'Browser Pendamping';
+type Sumber = 'Browser Pendamping';
 
 const label = (sumber: Sumber, status: Status) =>
   ({
@@ -16,7 +16,8 @@ const label = (sumber: Sumber, status: Status) =>
 
 /**
  * Catat hasil sebuah `execution_request` (sekali saja) dan terapkan transisi state: `berhasil` -> TERKIRIM
- * bila state mengizinkan, `drift` -> DIPANDU. Dipakai laporan ekstensi dan sinkron status Browser Pendamping.
+ * bila state mengizinkan, `drift` -> DIPANDU. Satu-satunya pelapor: status tepercaya dari worker Browser
+ * Pendamping (GET /api/urusan/[id]/pendamping); endpoint laporan ekstensi sudah dihapus bersama ekstensinya.
  * Alur baca-saja (cek status, PKB, NIB) tidak mengirim apa pun: hasilnya dicatat tanpa transisi state.
  * Mengembalikan null bila hasil untuk executionId ini sudah pernah dicatat.
  */
@@ -25,7 +26,7 @@ export function catatHasilEksekusi(
   u: UrusanRow,
   executionId: string,
   status: Status,
-  sumber: Sumber = 'Ekstensi',
+  sumber: Sumber = 'Browser Pendamping',
   opsi: {
     /** Label progres pengganti bila alasan sebenarnya bukan perubahan tampilan (mis. worker wilayah mati). */
     labelKhusus?: string;

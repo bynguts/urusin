@@ -239,7 +239,10 @@ export class SessionManager {
     if (input.modeUji === true) {
       if (!ov)
         throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'Mode uji: situs ini belum punya replika uji.');
-      return withOverride(built.program, ov);
+      // Host tambahan adapter (mis. api-prd.oss.go.id) ikut ke allowlist egress sesi: buang semua *.go.id agar
+      // peramban juri/tamu tidak pernah bisa menjangkau portal pemerintah asli, walau replika memanggilnya.
+      const p = withOverride(built.program, ov);
+      return { ...p, hosts: (p.hosts ?? []).filter((h) => !hostPemerintah(h)) };
     }
     // Produksi di luar Mode Uji: portal resmi apa adanya. Dev/CI: pemetaan fixture bila dikonfigurasi.
     return ov && !this.config.production ? withOverride(built.program, ov) : built.program;
@@ -741,6 +744,12 @@ export class SessionManager {
       if (t >= s.kedaluwarsaPada || idle) await this.end(s, 'kedaluwarsa', 'dibatalkan', PESAN.kedaluwarsa);
     }
   }
+}
+
+/** Host pemerintah Indonesia (`go.id` atau subdomainnya). */
+function hostPemerintah(host: string): boolean {
+  const h = host.toLowerCase().replace(/\.$/, '');
+  return h === 'go.id' || h.endsWith('.go.id');
 }
 
 /**

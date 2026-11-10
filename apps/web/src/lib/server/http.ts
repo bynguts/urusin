@@ -6,6 +6,10 @@ import type { GalatApi } from '#lib/contracts.js';
 
 const NO_STORE = { 'cache-control': 'no-store' } as const;
 
+/** Pesan warga untuk teks berisi NIK/KK/HP/email (API JSON dan form tanpa JS memakai kalimat yang sama). */
+export const PESAN_PII =
+  'Pesan berisi nomor pribadi. Hapus nomornya, kami mengisinya langsung di perangkat Anda.';
+
 /** Semua galat JSON memakai bentuk seragam `{kode, pesanWarga}`. */
 export function apiError(status: number, kode: string, pesanWarga: string): Response {
   return json({ kode, pesanWarga } satisfies GalatApi, { status, headers: NO_STORE });
@@ -48,11 +52,7 @@ export async function readBody<T>(
   if (kinds.length > 0) {
     return {
       ok: false,
-      response: apiError(
-        422,
-        'PII_IN_PAYLOAD',
-        'Pesan berisi nomor pribadi. Hapus nomornya, kami mengisinya langsung di perangkat Anda.',
-      ),
+      response: apiError(422, 'PII_IN_PAYLOAD', PESAN_PII),
     };
   }
   return { ok: true, data: parsed.data };

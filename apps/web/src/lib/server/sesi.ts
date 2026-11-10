@@ -5,8 +5,8 @@ import { apiError } from '#lib/server/http.js';
 import type { Runtime } from '#lib/server/runtime.js';
 
 /**
- * Sesi anonim: cookie acak (HttpOnly, SameSite=Lax) sebagai identitas kuota, BUKAN autentikasi. Urusan tetap
- * dilindungi id kapabilitas yang tak bisa ditebak, jadi hilangnya cookie tidak mengunci warga dari urusannya.
+ * Sesi anonim: cookie acak (HttpOnly, SameSite=Lax) sebagai identitas kuota dan penanda pemilik urusan tamu
+ * (`urusanMilik`). Hilang cookie = urusan tamu tidak bisa dibuka lagi; masuk akun memindahkannya ke akun.
  */
 export const SID_COOKIE = '__Host-urusin_sid';
 /** Nama lama (sebelum __Host-): dibaca sekali oleh `migrasiSid`, lalu dihapus. */
@@ -34,11 +34,25 @@ export function migrasiSid(cookies: Pick<Cookies, 'get' | 'set' | 'delete'>, now
   cookies.delete(SID_COOKIE_LAMA, { path: '/' });
 }
 
-export function ensureSession(cookies: Cookies): string {
+/**
+ * Penanda "urusin_sid baru saja diperpanjang" (1 hari). Hilang = sudah lebih dari sehari: cookie sid ditulis ulang
+ * dengan umur penuh, jadi tamu yang aktif tidak kehilangan urusannya saat 30 hari sejak kunjungan pertama lewat.
+ */
+const SID_SEGAR_COOKIE = '__Host-urusin_sid_segar';
+const SEGAR_OPSI = { ...SID_OPSI, maxAge: 60 * 60 * 24 } as const;
+
+export function ensureSession(cookies: Pick<Cookies, 'get' | 'set'>): string {
   const ada = cookies.get(SID_COOKIE);
-  if (ada && SID_RE.test(ada)) return ada;
+  if (ada && SID_RE.test(ada)) {
+    if (!cookies.get(SID_SEGAR_COOKIE)) {
+      cookies.set(SID_COOKIE, ada, SID_OPSI);
+      cookies.set(SID_SEGAR_COOKIE, '1', SEGAR_OPSI);
+    }
+    return ada;
+  }
   const sid = randomBytes(16).toString('hex');
   cookies.set(SID_COOKIE, sid, SID_OPSI);
+  cookies.set(SID_SEGAR_COOKIE, '1', SEGAR_OPSI);
   return sid;
 }
 
@@ -58,6 +72,11 @@ export function catatTerakhir(cookies: Cookies, id: string, publicOrigin: string
     secure: publicOrigin.startsWith('https://'),
     maxAge: SID_TTL_SEC,
   });
+}
+
+/** Keluar/hapus akun: perangkat bersama tidak boleh lagi menunjuk urusan pemakai sebelumnya. */
+export function hapusTerakhir(cookies: Pick<Cookies, 'delete'>): void {
+  cookies.delete(TERAKHIR_COOKIE, { path: '/' });
 }
 
 export function bacaTerakhir(cookies: Cookies): string | null {

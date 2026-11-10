@@ -4,6 +4,7 @@
   import Field from '#lib/components/ui/Field.svelte';
   import Tombol from '#lib/components/ui/Tombol.svelte';
   import InputSandi from '#lib/components/auth/InputSandi.svelte';
+  import { ambilLokal } from '#lib/stores/app.svelte.js';
 
   /**
    * Zona bahaya akun (hak hapus UU PDP): "Keluar dari semua perangkat" dan "Hapus akun". Form action di
@@ -22,6 +23,7 @@
   } = $props();
 
   const aksi = resolve('/pengaturan');
+  const lokal = ambilLokal();
   let sibukKeluar = $state(false);
   let sibukHapus = $state(false);
 </script>
@@ -41,7 +43,9 @@
     class="flex flex-col gap-3 rounded-kartu border border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
     use:enhance={() => {
       sibukKeluar = true;
-      return async ({ update }) => {
+      return async ({ result, update }) => {
+        // Berhasil (redirect): daftar urusan dan pesan di perangkat ini ikut dihapus (perangkat bersama).
+        if (result.type === 'redirect') lokal.hapusSemua();
         await update();
         sibukKeluar = false;
       };
@@ -65,7 +69,9 @@
     class="flex flex-col gap-4 rounded-kartu border border-galat-garis/60 p-4 sm:p-5"
     use:enhance={() => {
       sibukHapus = true;
-      return async ({ update }) => {
+      return async ({ result, update }) => {
+        // Terhapus (redirect ke /), bukan diminta masuk ulang dulu.
+        if (result.type === 'redirect' && result.location === '/') lokal.hapusSemua();
         await update({ reset: false });
         sibukHapus = false;
       };

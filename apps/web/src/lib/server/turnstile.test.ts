@@ -1,5 +1,7 @@
+import { DEFAULT_KUOTA } from '@urusin/akun';
 import { describe, expect, it } from 'vitest';
 import {
+  peringatanKuotaJuri,
   peringatanTurnstile,
   TURNSTILE_SITEVERIFY,
   TURNSTILE_TOKEN_FIXTURE,
@@ -62,6 +64,18 @@ describe('turnstileFromEnv', () => {
     expect(await t.verifikasi('tok', 'ip')).toBe(false);
     expect(panggilan).toHaveLength(4);
   });
+
+  it('produksi: kunci rahasia tanpa site key ditolak saat start (widget juri tidak bisa dirender)', () => {
+    expect(() => turnstileFromEnv({ TURNSTILE_SECRET_KEY: 'rahasia', NODE_ENV: 'production' })).toThrow(
+      /TURNSTILE_SITE_KEY/,
+    );
+    const t = turnstileFromEnv({
+      TURNSTILE_SECRET_KEY: 'rahasia',
+      TURNSTILE_SITE_KEY: 'situs',
+      NODE_ENV: 'production',
+    });
+    expect([t.mode, t.siteKey]).toEqual(['cloudflare', 'situs']);
+  });
 });
 
 describe('peringatanTurnstile (review delta 53fff2d)', () => {
@@ -74,5 +88,22 @@ describe('peringatanTurnstile (review delta 53fff2d)', () => {
     expect(peringatanTurnstile(nonaktif, {})).toBeNull();
     const aktif = turnstileFromEnv({ TURNSTILE_SECRET_KEY: 'kunci-uji-rahasia' });
     expect(peringatanTurnstile(aktif, { NODE_ENV: 'production' })).toBeNull();
+  });
+});
+
+describe('peringatanKuotaJuri: produksi tanpa Turnstile, 4 IP bisa menghabiskan batas global juri', () => {
+  it('alert bila per IP × 4 ≥ global; bawaan aman; Turnstile aktif, dev, dan CI diam', () => {
+    const prod = { NODE_ENV: 'production' };
+    const nonaktif = turnstileFromEnv({});
+    expect(peringatanKuotaJuri(nonaktif, { demoPerIpHari: 50, demoAktifMaks: 200 }, prod)).toMatch(
+      /URUSIN_DEMO_PER_IP_HARI=50 × 4 IP ≥ URUSIN_DEMO_AKTIF_MAKS=200/,
+    );
+    expect(peringatanKuotaJuri(nonaktif, DEFAULT_KUOTA, prod)).toBeNull();
+    expect(peringatanKuotaJuri(nonaktif, { demoPerIpHari: 50, demoAktifMaks: 200 }, {})).toBeNull();
+    expect(
+      peringatanKuotaJuri(nonaktif, { demoPerIpHari: 50, demoAktifMaks: 200 }, { ...prod, CI: 'true' }),
+    ).toBeNull();
+    const aktif = turnstileFromEnv({ TURNSTILE_SECRET_KEY: 'kunci-uji-rahasia' });
+    expect(peringatanKuotaJuri(aktif, { demoPerIpHari: 50, demoAktifMaks: 200 }, prod)).toBeNull();
   });
 });

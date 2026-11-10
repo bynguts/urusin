@@ -118,9 +118,9 @@ export function akunPublik(rt: Runtime, a: AkunInternal, sid?: string): Akun {
 
 /**
  * Selesaikan login: hapus sesi lama yang dibawa cookie (rotasi), pasang cookie token baru, putar urusin_sid
- * dan ikat ulang semua yang terikat sid lama dalam satu transaksi (akun terverifikasi: urusan + vault tamu
- * pindah ke akun; akun belum terverifikasi/demo: tetap terikat sid baru), lalu tautkan identitas Google yang
- * menunggu bukti sandi bila ada cookie tiketnya.
+ * dan ikat ulang semua yang terikat sid lama dalam satu transaksi (urusan tamu pindah ke akun/demo yang masuk;
+ * vault tamu pindah hanya ke akun terverifikasi, selain itu tetap terikat sid baru), lalu tautkan identitas
+ * Google yang menunggu bukti sandi bila ada cookie tiketnya.
  */
 export function pasangSesi(
   rt: Runtime,
@@ -137,16 +137,20 @@ export function pasangSesi(
   const sidLama = cookies.get(SID_COOKIE);
   const sidBaru = rotasiSid(cookies);
   const terverifikasi = akun.jenis === 'akun' && akun.emailVerifiedAt !== null;
-  const r = rt.akun.rotasiPemilik({ sidLama, sidBaru, userId: terverifikasi ? akun.id : null });
+  const r = rt.akun.rotasiPemilik({
+    sidLama,
+    sidBaru,
+    userId: terverifikasi ? akun.id : null,
+    akunId: akun.id,
+  });
   let googleTertaut = false;
   const tiket = cookies.get(TAUTKAN_COOKIE);
   if (tiket) {
     if (opts.buktiSandi) googleTertaut = rt.akun.tautkanGoogle(tiket, akun.id);
     cookies.delete(TAUTKAN_COOKIE, BASE);
   }
-  // Akun belum terverifikasi: urusan hanya diikat ulang ke sid baru, tidak dipindahkan ke akun.
   return {
-    urusanDipindahkan: terverifikasi ? r.urusanDipindahkan : 0,
+    urusanDipindahkan: r.urusanDipindahkan,
     vaultDipindahkan: r.vaultDipindahkan,
     googleTertaut,
   };

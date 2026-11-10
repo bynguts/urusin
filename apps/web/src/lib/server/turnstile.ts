@@ -20,7 +20,8 @@ type Env = Record<string, string | undefined>;
 
 /**
  * Turnstile dari env:
- * - `TURNSTILE_SECRET_KEY` terisi → siteverify Cloudflare lewat egress (gagal jaringan = token ditolak);
+ * - `TURNSTILE_SECRET_KEY` terisi → siteverify Cloudflare lewat egress (gagal jaringan = token ditolak); di
+ *   produksi wajib bersama `TURNSTILE_SITE_KEY` (widget di /masuk) dan token wajib di tombol juri;
  * - `URUSIN_TURNSTILE_FIXTURE=1` (hanya di luar produksi) → hanya `TURNSTILE_TOKEN_FIXTURE` diterima (e2e);
  * - selain itu (kosong atau placeholder `ganti-dengan-…`) nonaktif. "Masuk sebagai juri" tetap jalan (batas per
  *   IP, batas aktif, kedaluwarsa); di produksi operator diberi alert (`peringatanTurnstile`).
@@ -31,9 +32,13 @@ export function turnstileFromEnv(env: Env = process.env, fetch: EgressFetch = eg
   if (fixture && env.NODE_ENV === 'production')
     throw new Error('URUSIN_TURNSTILE_FIXTURE hanya untuk e2e; tidak boleh di produksi');
   if (secret) {
+    const siteKey = nilaiEnv(env.TURNSTILE_SITE_KEY) ?? '';
+    // Token wajib tetapi widget tidak bisa dirender: semua juri terkunci. Tolak start di produksi.
+    if (!siteKey && env.NODE_ENV === 'production')
+      throw new Error('TURNSTILE_SITE_KEY wajib bila TURNSTILE_SECRET_KEY diisi (widget di /masuk)');
     return {
       mode: 'cloudflare',
-      siteKey: nilaiEnv(env.TURNSTILE_SITE_KEY) ?? '',
+      siteKey,
       async verifikasi(token, ip) {
         if (!token || token.length > 4096) return false;
         try {
@@ -67,4 +72,18 @@ export function turnstileFromEnv(env: Env = process.env, fetch: EgressFetch = eg
 export function peringatanTurnstile(t: Turnstile, env: Env = process.env): string | null {
   if (t.mode !== 'nonaktif' || env.NODE_ENV !== 'production' || env.CI === 'true') return null;
   return 'Turnstile nonaktif di produksi (TURNSTILE_SECRET_KEY kosong): juri dan login tanpa tantangan bot';
+}
+
+/**
+ * Tanpa Turnstile, batas global salinan juri hanya aman bila jauh di atas batas per IP: bila 4 IP saja bisa
+ * menghabiskannya (per IP × 4 ≥ global), semua juri terkunci DEMO_PENUH sampai salinan kedaluwarsa (24 jam).
+ */
+export function peringatanKuotaJuri(
+  t: Turnstile,
+  kuota: { demoPerIpHari: number; demoAktifMaks: number },
+  env: Env = process.env,
+): string | null {
+  if (t.mode !== 'nonaktif' || env.NODE_ENV !== 'production' || env.CI === 'true') return null;
+  if (kuota.demoPerIpHari * 4 < kuota.demoAktifMaks) return null;
+  return `batas juri rapuh tanpa Turnstile: URUSIN_DEMO_PER_IP_HARI=${kuota.demoPerIpHari} × 4 IP ≥ URUSIN_DEMO_AKTIF_MAKS=${kuota.demoAktifMaks}; naikkan batas global atau pasang Turnstile`;
 }

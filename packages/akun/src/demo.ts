@@ -36,12 +36,20 @@ const PNG_CONTOH = Buffer.from(
 
 /**
  * Dokumen CONTOH untuk salinan demo juri (KK, KTP, surat keterangan lahir) agar alur Browser Pendamping akta
- * kelahiran di replika uji bisa langsung mengunggah tanpa juri membawa foto dokumen sendiri. Fiktif.
+ * kelahiran di replika uji bisa langsung mengunggah tanpa juri membawa foto dokumen sendiri. Fiktif. Id tetap:
+ * vault menyajikannya sebagai rujukan bersama baca-saja untuk setiap salinan demo (tidak disalin per akun).
  */
-export function dokumenContoh(): { jenis: string; judul: string; mime: string; bytes: Buffer }[] {
+export function dokumenContoh(): { id: string; jenis: string; judul: string; mime: string; bytes: Buffer }[] {
+  const id = (n: number) => `dok_${String(n).padStart(32, '0')}`;
   return [
-    { jenis: 'kk', judul: 'Contoh KK (fiktif)', mime: 'image/png', bytes: PNG_CONTOH },
-    { jenis: 'ktp', judul: 'Contoh KTP (fiktif)', mime: 'image/png', bytes: PNG_CONTOH },
-    { jenis: 'surat', judul: 'Contoh surat keterangan lahir (fiktif)', mime: 'image/png', bytes: PNG_CONTOH },
+    { id: id(1), jenis: 'kk', judul: 'Contoh KK (fiktif)', mime: 'image/png', bytes: PNG_CONTOH },
+    { id: id(2), jenis: 'ktp', judul: 'Contoh KTP (fiktif)', mime: 'image/png', bytes: PNG_CONTOH },
+    {
+      id: id(3),
+      jenis: 'surat',
+      judul: 'Contoh surat keterangan lahir (fiktif)',
+      mime: 'image/png',
+      bytes: PNG_CONTOH,
+    },
   ];
 }

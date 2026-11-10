@@ -43,7 +43,8 @@ export const load: PageServerLoad = async ({ url, locals, cookies }) => {
     ulang: ulang ? { email: locals.akun?.email ?? '' } : null,
     googleAktif: rt.akun.googleAktif,
     juri: juriTersedia(rt),
-    turnstileSiteKey: rt.turnstile.siteKey,
+    /** Widget hanya untuk Turnstile Cloudflare sungguhan; mode tiruan (e2e) mengisi field `turnstile`. */
+    turnstileSiteKey: rt.turnstile.mode === 'cloudflare' ? rt.turnstile.siteKey : '',
     /** Ada identitas Google yang menunggu bukti sandi: masuk dengan sandi akan menautkannya. */
     tautkan: cookies.get(TAUTKAN_COOKIE) !== undefined,
     galat: kode ? { kode, pesanWarga: new AkunError(kode).pesanWarga } : null,

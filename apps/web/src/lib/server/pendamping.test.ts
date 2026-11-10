@@ -538,6 +538,16 @@ describe('broker Browser Pendamping', () => {
       pasangPemeriksaPemilikAkun(pemeriksaPemilikVault);
       reply = () => ({ status: 201, body: sesi() });
       expect((await mulai(ev(req('POST', { executionId: 'x_1' }), milik.id))).status).toBe(201);
+      // Cek pemilik = cek rute urusan lain (urusanMilik), bukan vault: urusan dari form tanpa turn (belum ada
+      // baris tamu/vault) tetap bisa membuka Pendamping oleh pemiliknya; vault diperiksa terpisah saat mengisi.
+      const sidForm = 'cd'.repeat(16);
+      const form = urusanDenganEksekusi();
+      rt.akun.catatPemilikUrusan(form.id, { sid: sidForm });
+      expect(rt.akun.tamuDariSid(sidForm)).toBeUndefined();
+      expect((await status(ev(req('GET', undefined, `${SID_COOKIE}=${sidForm}`), form.id))).status).not.toBe(
+        404,
+      );
+      expect((await status(ev(req('GET', undefined, `${SID_COOKIE}=${SID}`), form.id))).status).toBe(404);
     });
   });
 
