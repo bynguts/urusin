@@ -24,7 +24,7 @@ export const POST: RequestHandler = async (event) => {
     }
     const jenis = body.data.peristiwa && body.data.peristiwa !== 'lainnya' ? body.data.peristiwa : undefined;
     const u = rt.store.createUrusan({ kodeKabKota: body.data.kodeKabKota, jenis });
-    // Pemilik: akun sinkron yang masuk, atau hash sid (diikat ulang ke akun saat warga masuk).
+    // Pemilik: akun/demo yang masuk, atau hash sid (dipindah ke akun saat warga masuk).
     rt.akun.catatPemilikUrusan(u.id, { akun: event.locals.akun, sid: event.locals.sid });
     const turn = body.data.pesan
       ? startTurnInBackground(rt, { urusanId: u.id, userText: body.data.pesan })

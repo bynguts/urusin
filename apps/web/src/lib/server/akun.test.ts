@@ -22,6 +22,7 @@ import { GET as urusanAkun } from '../../routes/api/akun/urusan/+server';
 import { POST as verifikasiApi } from '../../routes/api/akun/verifikasi/+server';
 import { POST as kirimUlangApi } from '../../routes/api/akun/verifikasi/kirim-ulang/+server';
 import { POST as buatUrusan } from '../../routes/api/urusan/+server';
+import { GET as statusUrusan } from '../../routes/api/urusan/[id]/+server';
 import { POST as turnApi } from '../../routes/api/urusan/[id]/turn/+server';
 import { GET as vaultList, POST as vaultPost } from '../../routes/api/vault/+server';
 import { GET as dataDiriGet, PUT as dataDiriPut } from '../../routes/api/vault/data-diri/+server';
@@ -512,6 +513,38 @@ describe('keluar, ubah sandi, reset, hapus akun', () => {
       ),
     );
     expect(e.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
+  });
+
+  it('akun belum terverifikasi: buat urusan → keluar → masuk lagi → urusan tetap terbuka; pemilik lain 404', async () => {
+    expect((await daftarApi(ev(post({ email: EMAIL, sandi: SANDI })))).status).toBe(202);
+    const a = await masuk();
+    expect(akunDari(a.jar).emailVerifiedAt).toBeNull();
+    const { id } = (await (await lewatHook(post({}, '/api/urusan'), a.jar, buatUrusan)).json()) as any;
+    const buka = (jar: Jar) =>
+      lewatHook(new Request(`${ORIGIN}/api/urusan/${id}`), jar, statusUrusan, { id }).then((r) => r.status);
+    expect(await buka(a.jar)).toBe(200);
+    await lewatHook(post({}, '/api/akun/keluar'), a.jar, keluarApi);
+    expect(await buka(a.jar)).toBe(404); // perangkat bersama: setelah keluar tidak terbuka
+    await masuk(a.jar);
+    expect(await buka(a.jar)).toBe(200);
+    // Perangkat lain, akun yang sama: ikut akun (bukan cookie perangkat).
+    expect(await buka((await masuk()).jar)).toBe(200);
+    // Pemilik lain: akun lain dan tamu → 404 yang sama.
+    await daftarVerifikasi('orang-lain@example.com', SANDI2);
+    expect(await buka((await masuk(new Jar(), 'orang-lain@example.com', SANDI2)).jar)).toBe(404);
+    expect(await buka(new Jar())).toBe(404);
+  });
+
+  it('juri: urusan tamu yang dimulai sebelum masuk ikut salinan demonya (tidak yatim di sid)', async () => {
+    const jar = new Jar();
+    const { id } = (await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any;
+    const ts = { turnstile: TURNSTILE_TOKEN_FIXTURE };
+    expect((await juriApi(ev(post(ts, '/api/akun/juri'), { jar, ip: '10.9.0.1' }))).status).toBe(200);
+    const demo = akunDari(jar);
+    expect(rt.akun.urusanMilik(demo.id)).toEqual([id]);
+    jar.set(SID_COOKIE, 'e'.repeat(32), {}); // sid berganti (mis. cookie dibersihkan): tetap milik juri
+    const r = await lewatHook(new Request(`${ORIGIN}/api/urusan/${id}`), jar, statusUrusan, { id });
+    expect(r.status).toBe(200);
   });
 
   it('ubah sandi merotasi cookie; reset menghapus semua sesi', async () => {

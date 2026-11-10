@@ -6,7 +6,7 @@ import type { Runtime } from '#lib/server/runtime.js';
 export type PemintaUrusan = { akun?: Akun | undefined; sid?: string | undefined };
 
 /**
- * Satu-satunya pintu baca/tulis urusan per id: urusan dikembalikan HANYA bila peminta pemiliknya (akun sinkron
+ * Satu-satunya pintu baca/tulis urusan per id: urusan dikembalikan HANYA bila peminta pemiliknya (akun/demo
  * yang sama, atau cookie sesi yang sama untuk urusan tamu). Bukan pemilik, urusan tidak ada, atau urusan lama
  * tanpa catatan pemilik → undefined; pemanggil menjawab 404 yang sama agar keberadaan urusan tidak bocor.
  * API memakai `locals.sid` (diisi hooks untuk /api/); loader halaman membaca cookie `SID_COOKIE` sendiri.

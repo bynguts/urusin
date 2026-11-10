@@ -779,14 +779,14 @@ describe('#47 rotasi tamu → akun (§3.26.6)', () => {
     expect(hitung('SELECT COUNT(*) n FROM users WHERE id = ?', tamu)).toBe(0);
   });
 
-  it('catat pemilik: akun belum terverifikasi dicatat sebagai sid; tanpa pemilik diabaikan', async () => {
+  it('catat pemilik: akun belum terverifikasi dicatat sebagai akunnya (bukan sid); tanpa pemilik diabaikan', async () => {
     await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
     const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
     urusan('u_x', 'u_y');
     akun.catatPemilikUrusan('u_x', { akun: a, sid: 'sid-z' });
     akun.catatPemilikUrusan('u_y', {});
     expect(db.prepare('SELECT urusan_id, user_id, guest_sid_hash FROM urusan_owner').all()).toEqual([
-      { urusan_id: 'u_x', user_id: null, guest_sid_hash: hashSid('sid-z') },
+      { urusan_id: 'u_x', user_id: a.id, guest_sid_hash: null },
     ]);
   });
 });
@@ -827,6 +827,72 @@ describe('token persetujuan "Izinkan isi"', () => {
     const tok2 = akun.terbitkanIzin(tamu, h, origin);
     t += 5 * 60_000 + 1;
     expect(
+
+  it('akun belum terverifikasi: buat urusan → keluar (sid diputar) → masuk lagi → urusan tetap terbuka; orang lain 404', async () => {
+    await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
+    const m1 = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
+    expect(akun.sinkron(m1.akun)).toBe(false);
+    // Vault akun belum terverifikasi tetap satu perangkat (tamu terikat sid); urusan dicatat ke akunnya.
+    const tamu = akun.pastikanTamu('sid-1', ctx);
+    urusan('u_a');
+    akun.catatPemilikUrusan('u_a', { akun: m1.akun, sid: 'sid-1' });
+    expect(akun.pemilikVaultUrusan('u_a', { akun: m1.akun, sid: 'sid-1' })).toBe(tamu);
+    // Keluar: sesi dihapus, sid diputar (tanpa rotasi pemilik). Masuk lagi di sid baru.
+    akun.keluar(m1.token);
+    const m2 = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
+    akun.rotasiPemilik({ sidLama: 'sid-2', sidBaru: 'sid-3', userId: null, akunId: m2.akun.id });
+    expect(akun.adalahPemilikUrusan('u_a', { akun: m2.akun, sid: 'sid-3' })).toBe(true);
+    expect(akun.urusanMilik(m2.akun.id)).toEqual(['u_a']);
+    // Pemilik lain: akun lain, sid lama, sid lain, tanpa apa-apa → tetap bukan pemilik.
+    await daftarTerverifikasi(EMAIL_LAIN, SANDI2);
+    const lain = (await akun.masuk({ email: EMAIL_LAIN, sandi: SANDI2 }, ctx)).akun;
+    expect(akun.adalahPemilikUrusan('u_a', { akun: lain, sid: 'sid-3' })).toBe(false);
+    expect(akun.adalahPemilikUrusan('u_a', { sid: 'sid-1' })).toBe(false);
+    expect(akun.adalahPemilikUrusan('u_a', { sid: 'sid-3' })).toBe(false);
+    expect(akun.pemilikVaultUrusan('u_a', { akun: lain, sid: 'sid-1' })).toBeUndefined();
+  });
+
+  it('masuk (belum terverifikasi atau demo) memindahkan urusan tamu ke akunnya; vault tamu tetap terikat sid baru', async () => {
+    await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
+    const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
+    const tamu = akun.pastikanTamu('sid-lama', ctx);
+    urusan('u_t1');
+    akun.catatPemilikUrusan('u_t1', { sid: 'sid-lama' });
+    expect(
+      akun.rotasiPemilik({ sidLama: 'sid-lama', sidBaru: 'sid-baru', userId: null, akunId: a.id }),
+    ).toEqual({ urusanDipindahkan: 1, vaultDipindahkan: false });
+    expect(akun.urusanMilik(a.id)).toEqual(['u_t1']);
+    expect(akun.tamuDariSid('sid-baru')).toBe(tamu);
+    // Juri: urusan tamu ikut salinan demonya, jadi Keluar (sid diputar) tidak membuatnya yatim di sid.
+    const demo = akun.buatDemo({ ip: '198.51.100.40' }).akun;
+    urusan('u_t2');
+    akun.catatPemilikUrusan('u_t2', { sid: 'sid-baru' });
+    akun.rotasiPemilik({ sidLama: 'sid-baru', sidBaru: 'sid-juri', userId: null, akunId: demo.id });
+    expect(akun.adalahPemilikUrusan('u_t2', { akun: demo, sid: 'sid-lain' })).toBe(true);
+    expect(akun.adalahPemilikUrusan('u_t2', { sid: 'sid-juri' })).toBe(false);
+  });
+
+  it('pemilik kotak surat memverifikasi akun orang lain: urusan pemegang lama tidak diwariskan; pemilik sendiri tetap', async () => {
+    // Penyerobot mendaftar email korban, masuk tanpa verifikasi, membuat urusan.
+    await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
+    const penyerobot = (await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).akun;
+    urusan('u_tanam');
+    akun.catatPemilikUrusan('u_tanam', { akun: penyerobot });
+    // Korban mendaftar dengan sandinya sendiri lalu memverifikasi dari kotak suratnya.
+    await akun.daftar({ email: EMAIL, sandi: SANDI2 }, ctx);
+    await akun.verifikasiEmail(tokenDari(mailer.last(EMAIL, 'verifikasi')!.link), SANDI2, ctx);
+    expect(akun.urusanMilik(penyerobot.id)).toEqual([]);
+    expect(hitung("SELECT COUNT(*) n FROM urusan WHERE id = 'u_tanam'")).toBe(0);
+
+    // Pemilik sendiri (sandi sama, termasuk daftar ulang dengan sandi yang sama): urusannya tetap.
+    await akun.daftar({ email: EMAIL_LAIN, sandi: SANDI }, ctx);
+    const sendiri = (await akun.masuk({ email: EMAIL_LAIN, sandi: SANDI }, ctx)).akun;
+    urusan('u_milik');
+    akun.catatPemilikUrusan('u_milik', { akun: sendiri });
+    await akun.daftar({ email: EMAIL_LAIN, sandi: SANDI }, ctx);
+    await akun.verifikasiEmail(tokenDari(mailer.last(EMAIL_LAIN, 'verifikasi')!.link), SANDI, ctx);
+    expect(akun.urusanMilik(sendiri.id)).toEqual(['u_milik']);
+  });
       (await galat(() => akun.pakaiIzin(tok2, { userId: tamu, writeListHash: h, targetOrigin: origin })))
         .kode,
     ).toBe('IZIN_TIDAK_VALID');
