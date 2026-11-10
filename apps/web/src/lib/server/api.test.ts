@@ -8,7 +8,6 @@ import { GET as pengetahuan } from '../../routes/api/pengetahuan/+server';
 import { GET as peristiwa } from '../../routes/api/peristiwa/[slug]/+server';
 import { GET as transparansi } from '../../routes/api/transparansi/+server';
 import { GET as daftarUrusan, POST as buatUrusan } from '../../routes/api/urusan/+server';
-import { POST as eksekusi } from '../../routes/api/urusan/[id]/execution-result/+server';
 import { GET as jejak } from '../../routes/api/urusan/[id]/jejak/+server';
 import { POST as konfirmasi } from '../../routes/api/urusan/[id]/konfirmasi/+server';
 import { POST as setujuiRencana } from '../../routes/api/urusan/[id]/rencana/setujui/+server';
@@ -16,6 +15,7 @@ import { GET as statusUrusan } from '../../routes/api/urusan/[id]/+server';
 import { GET as stream } from '../../routes/api/urusan/[id]/stream/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
 import { GET as devSse } from '../../routes/dev/fixtures/sse/+server';
+import { catatHasilEksekusi } from './eksekusi';
 import { createRuntime, piiKeyFromEnv, quotaFromEnv, setRuntimeForTests, type Runtime } from './runtime';
 
 const ORIGIN = 'http://localhost:3000';
@@ -244,7 +244,6 @@ describe('pemilik urusan: id saja tidak cukup', () => {
       jejak: await jejak(evSebagai(locals, get('/j'), p)),
       konfirmasi: await konfirmasi(evSebagai(locals, post({ tool: 't', paramsHash: 'h' }), p)),
       setujui: await setujuiRencana(evSebagai(locals, post({}), p)),
-      eksekusi: await eksekusi(evSebagai(locals, post({ executionId: 'x_1', status: 'berhasil' }), p)),
     };
     return r;
   }
@@ -286,7 +285,7 @@ describe('pemilik urusan: id saja tidak cukup', () => {
   });
 });
 
-describe('POST /konfirmasi dan /execution-result', () => {
+describe('POST /konfirmasi dan hasil eksekusi', () => {
   const GATE = {
     type: 'gate',
     jenis: 'konfirmasi',
@@ -311,34 +310,29 @@ describe('POST /konfirmasi dan /execution-result', () => {
     expect(rt.store.activeConfirmations(id).map((c) => c.id)).toEqual([j.confirmationId]);
   });
 
-  it('execution-result: id tak dikenal 404, laporan ganda 409, drift → DIPANDU', async () => {
-    const id = await kosong();
-    const req = {
-      type: 'execution_request',
-      executionId: 'x_1',
-      adapterId: 'a',
-      flowId: 'f',
-      ringkasan: 'r',
-      params: {},
-      tool: 't',
-      paramsHash: 'h',
-    } as const;
-    rt.publish(id, req);
-    expect((await eksekusi(ev(post({ executionId: 'x_asing', status: 'berhasil' }), { id }))).status).toBe(
-      404,
-    );
+  it('endpoint execution-result (sisa ekstensi) sudah tidak ada: hasil hanya lewat status Browser Pendamping', () => {
+    const rute = Object.keys(import.meta.glob('../../routes/api/urusan/**/+server.ts'));
+    expect(rute.length).toBeGreaterThan(5);
+    expect(rute.filter((r) => r.includes('execution-result'))).toEqual([]);
+  });
 
-    const ok = await eksekusi(ev(post({ executionId: 'x_1', status: 'drift' }), { id }));
-    expect(ok.status).toBe(200);
-    expect(await ok.json()).toMatchObject({ diterima: true, state: 'DIPANDU' });
-    const dup = await eksekusi(ev(post({ executionId: 'x_1', status: 'berhasil' }), { id }));
-    expect(dup.status).toBe(409);
-    expect((await dup.json()).kode).toBe('EKSEKUSI_SUDAH_DILAPORKAN');
+  it('hasil eksekusi: dicatat sekali, drift → DIPANDU', async () => {
+    const id = await kosong();
+    const ok = catatHasilEksekusi(rt, rt.store.getUrusanOrThrow(id), 'x_1', 'drift', 'Browser Pendamping');
+    expect(ok?.state).toBe('DIPANDU');
+    const dup = catatHasilEksekusi(
+      rt,
+      rt.store.getUrusanOrThrow(id),
+      'x_1',
+      'berhasil',
+      'Browser Pendamping',
+    );
+    expect(dup).toBeNull();
     const types = rt.store.eventsAfter(id, 0).map((e) => e.type);
     expect(types).toEqual(expect.arrayContaining(['degraded', 'state']));
   });
 
-  it('execution-result berhasil dari MENUNGGU_SUBMIT_WARGA → TERKIRIM', async () => {
+  it('hasil berhasil dari MENUNGGU_SUBMIT_WARGA → TERKIRIM', async () => {
     const id = await kosong();
     let v = rt.store.getUrusanOrThrow(id).version;
     for (const s of [
@@ -353,18 +347,8 @@ describe('POST /konfirmasi dan /execution-result', () => {
       'MENUNGGU_SUBMIT_WARGA',
     ] as const)
       v = rt.store.transition(id, v, s).version;
-    rt.publish(id, {
-      type: 'execution_request',
-      executionId: 'x_2',
-      adapterId: 'a',
-      flowId: 'f',
-      ringkasan: 'r',
-      params: {},
-      tool: 't',
-      paramsHash: 'h',
-    });
-    const res = await eksekusi(ev(post({ executionId: 'x_2', status: 'berhasil' }), { id }));
-    expect(await res.json()).toMatchObject({ state: 'TERKIRIM' });
+    const u = catatHasilEksekusi(rt, rt.store.getUrusanOrThrow(id), 'x_2', 'berhasil', 'Browser Pendamping');
+    expect(u?.state).toBe('TERKIRIM');
   });
 });
 
