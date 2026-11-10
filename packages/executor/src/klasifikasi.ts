@@ -579,6 +579,24 @@ function tautanGetBiasa(f: FiturKendali): boolean {
   );
 }
 
+/** Jalur+kueri (sudah dinormalkan) memuat token tulis NEG_JALUR (ajukan, kirim, simpan, hapus, ...). */
+function jalurNeg(jalur: string): boolean {
+  return tokenKata(jalur).some((t) => !BUKAN_NEG.test(t) && NEG_JALUR.some((k) => t.includes(k)));
+}
+
+/**
+ * URL navigasi yang jalur/kuerinya berbunyi tulis (aturan jalur yang sama dengan tautan K7). Dipakai gerbang
+ * tulis worker untuk navigasi dokumen yang tidak dipicu aksi AI (redirect JS halaman saat ai_diam).
+ */
+export function jalurTulis(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return jalurNeg(normalTeks(decodeURIComponent(u.pathname + u.search)));
+  } catch {
+    return true;
+  }
+}
+
 /** Aturan §3 atas fitur. Murni: fitur yang sama selalu menghasilkan kelas yang sama. */
 export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: AturanKlasifikasi } {
   const nama = [f.teksTampak, f.ariaLabel, f.nilai, f.title].filter(Boolean);
@@ -599,11 +617,7 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
     cocokNeg(t.join(' '), NEG_AKAR) || t.some((x) => NEG_IKON.some((k) => x.includes(k)));
   const negNama = !menuAman && nama.some((n) => cocokNeg(n, NEG_AKAR));
   const negIkon = negToken(f.ikon);
-  const negLain =
-    negToken(f.idKelas) ||
-    (tautan &&
-      tokenKata(f.href.jalur).some((t) => !BUKAN_NEG.test(t) && NEG_JALUR.some((k) => t.includes(k)))) ||
-    f.href.download;
+  const negLain = negToken(f.idKelas) || (tautan && jalurNeg(f.href.jalur)) || f.href.download;
   if (negLain) return { kelas: 'kirim', aturan: 'K7_NEG' };
   // Ikon saja (probe SIDAK: feather credit-card = ikon KTP/KK) pada tautan GET bersih: pembuka, diketuk warga.
   if (negIkon && !negNama)

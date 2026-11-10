@@ -54,6 +54,18 @@ const HALAMAN: Record<string, string> = {
   '/beranda': kerangka(`<style>a{display:block;padding:20px}</style><h1>Layanan Online</h1>
 <a href="/permohonan/kk">Ajukan Permohonan Kartu Keluarga</a>
 <a href="/permohonan/12/ajukan">Ajukan Sekarang</a>`),
+  // Probe 3208: SPA yang baru merender kendali 1,5 detik setelah load.
+  '/spa': kerangka(`<div id="app">Memuat...</div><script>setTimeout(() => {
+  document.getElementById('app').innerHTML = '<form><label>Nama Lengkap <input name="nama"></label></form>';
+}, 1500);</script>`),
+  // Probe 3674: redirect JS halaman sendiri (bukan aksi AI) ke ?p=close_form; dan redirect ke jalur tulis.
+  '/alih': kerangka(
+    `<p>Mengalihkan...</p><script>setTimeout(() => { location.href = '/tutup?p=close_form'; }, 300);</script>`,
+  ),
+  '/tutup': kerangka('<h1>Pendaftaran online ditutup</h1><a href="/">Beranda</a>'),
+  '/alih-tulis': kerangka(
+    `<p>Mengalihkan...</p><script>setTimeout(() => { location.href = '/permohonan/9/kirim'; }, 300);</script>`,
+  ),
   // F5 (poc /s4): pernyataan terselubung + checkbox non-data.
   // H3: halaman sukses setelah warga menekan Kirim sendiri.
   '/sukses': kerangka(
@@ -329,6 +341,36 @@ test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka form
     });
   } finally {
     await manager.shutdown();
+  }
+});
+
+test('probe 3208: SPA lambat (0 elemen saat load) teramati setelah DOM tenang', async () => {
+  const { manager, p } = await sesi(situs, '/spa', 'spa');
+  try {
+    expect(satu(p, 'Nama Lengkap')).toMatchObject({ peran: 'teks', isian: 'kosong' });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe 3674: redirect JS halaman sesudah navigasi lolos bila jalur bersih, diblokir bila jalur tulis', async () => {
+  const bersih = await sesi(situs, '/alih', 'alih');
+  try {
+    await expect
+      .poll(async () => (await bersih.manager.amati(bersih.o)).pengamatan.jalur, { timeout: 10_000 })
+      .toBe('/tutup');
+  } finally {
+    await bersih.manager.shutdown();
+  }
+  const tulis = await sesi(situs, '/alih-tulis', 'alih-tulis');
+  try {
+    await new Promise((r) => setTimeout(r, 1_500));
+    expect(situs.hitung('/permohonan/9/kirim')).toBe(0);
+    expect(tulis.manager.kurasJejak(tulis.o).catatan).toContainEqual(
+      expect.objectContaining({ jenis: 'blokir', metode: 'GET' }),
+    );
+  } finally {
+    await tulis.manager.shutdown();
   }
 });
 

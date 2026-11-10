@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { jalurTulis } from '@urusin/executor';
 
 /**
  * Gerbang tulis jaringan Navigator generik (ADR 0030, desain §2 "Firewall"). Lapis kedua setelah klasifikator
@@ -94,11 +95,18 @@ function samaUrl(a: string, b: string): boolean {
  */
 export function putuskan(j: Jendela, r: PermintaanGerbang, sekarang: number = Date.now()): Putusan {
   if (j.jenis === 'warga') return 'lanjut';
+  // Telemetri/verifikasi tantangan (Turnstile flow, reCAPTCHA reload) bukan tulis ke portal: lolos di semua
+  // jendela AI agar widget tidak gagal karena balapan dengan klik AI (probe #14). Navigasi dokumen tidak.
+  if (!r.dokumen && urlTantangan(r.url)) return 'lanjut';
   const aman = AMAN.has(r.metode.toUpperCase());
   switch (j.jenis) {
     case 'ai_diam':
       if (j.tungguWarga) return aman || urlTantangan(r.url) ? 'lanjut' : 'blokir';
-      return r.utama || !aman ? 'blokir' : 'lanjut';
+      if (!aman) return 'blokir';
+      // Redirect JS/meta halaman sendiri (probe 3674 ?p=close_form): GET bingkai utama boleh bila jalur/kuerinya
+      // tidak berbunyi tulis (aturan jalur yang sama dengan tautan yang boleh diklik AI). Host tetap dibatasi
+      // allowlist egress sesi.
+      return r.utama && jalurTulis(r.url) ? 'blokir' : 'lanjut';
     case 'ai_isi':
       if (r.dokumen) return 'blokir';
       if (aman) return 'lanjut';
@@ -109,7 +117,10 @@ export function putuskan(j: Jendela, r: PermintaanGerbang, sekarang: number = Da
       const navKe = j.navKe;
       if (navKe === undefined) return 'blokir';
       if (!r.utama) return 'lanjut';
-      return samaUrl(r.url, navKe) || (r.asal !== undefined && samaUrl(r.asal, navKe)) ? 'lanjut' : 'blokir';
+      if (samaUrl(r.url, navKe) || (r.asal !== undefined && samaUrl(r.asal, navKe))) return 'lanjut';
+      // Redirect JS/meta halaman tujuan sesudah navigasi AI ke navKe (probe 3674 pilih_layanan -> ?p=close_form):
+      // aturan yang sama dengan ai_diam. Klik tombol tanpa navKe tetap tidak boleh memicu navigasi apa pun.
+      return jalurTulis(r.url) ? 'blokir' : 'lanjut';
     }
   }
 }
