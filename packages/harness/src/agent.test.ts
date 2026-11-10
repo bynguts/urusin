@@ -561,7 +561,6 @@ describe('timeout, pembatalan, konkurensi', () => {
 describe('error LLM bertipe (#22)', () => {
   it.each([
     ['refusal', { content: null, refusal: 'Maaf.' }, 'LLM_REFUSAL', false],
-    ['length', { content: 'terpot', finishReason: 'length' as const }, 'LLM_LENGTH', true],
     ['content_filter', { content: '', finishReason: 'content_filter' as const }, 'LLM_CONTENT_FILTER', false],
   ])('%s → error event %s tanpa panggilan tambahan', async (_n, reply, kode, retry) => {
     const provider = new FakeProvider({ replies: [fakeCompletion(reply)] });
@@ -571,6 +570,38 @@ describe('error LLM bertipe (#22)', () => {
     expect(out.status).toBe('galat');
     expect(out.events.find((e) => e.type === 'error')!).toMatchObject({ kode, bisaUlang: retry });
     expect(provider.calls).toHaveLength(1);
+  });
+});
+
+describe('balasan terpotong (finish_reason=length)', () => {
+  const potong = () => fakeCompletion({ content: 'terpot', finishReason: 'length' });
+
+  it('diulang sekali dengan instruksi ringkas dan ruang token dua kali lipat', async () => {
+    const provider = new FakeProvider({
+      replies: [potong(), fakeCompletion({ content: 'Bisa, ini singkatnya.' })],
+    });
+    const env = makeEnv({ provider });
+    const u = env.store.createUrusan({ jenis: 'akta' });
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'x' });
+    expect(out.status).toBe('selesai');
+    expect(out.events.some((e) => e.type === 'error')).toBe(false);
+    const [a, b] = provider.calls.map((c) => (c.kind === 'create' ? c.params : undefined));
+    expect(b!.max_tokens).toBe(a!.max_tokens! * 2);
+    expect(JSON.stringify(b!.messages)).toMatch(/Balasanmu tadi terpotong/);
+    expect(JSON.stringify(a!.messages)).not.toMatch(/Balasanmu tadi terpotong/);
+  });
+
+  it('terpotong lagi: error LLM_LENGTH (bisa diulang), tanpa ulangan ketiga', async () => {
+    const provider = new FakeProvider({ replies: [potong(), potong(), fakeCompletion({ content: 'x' })] });
+    const env = makeEnv({ provider });
+    const u = env.store.createUrusan({ jenis: 'akta' });
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'x' });
+    expect(out.status).toBe('galat');
+    expect(out.events.find((e) => e.type === 'error')!).toMatchObject({
+      kode: 'LLM_LENGTH',
+      bisaUlang: true,
+    });
+    expect(provider.calls).toHaveLength(2);
   });
 });
 
