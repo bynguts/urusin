@@ -726,6 +726,87 @@ describe('broker Browser Pendamping', () => {
       expect(evs.some((e) => e.type === 'degraded')).toBe(false);
     });
 
+    it('id-utama, laptop penuh (aktif 1 / maks 1) -> server; urusan itu tetap lekat di server walau laptop lowong', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      try {
+        const { u, cookie } = await urusanAkunNyata();
+        kesehatan = (host) => ({
+          status: 200,
+          body: host.startsWith('100.101') ? { ...SEHAT, aktif: 1, maks: 1 } : SEHAT,
+        });
+        expect((await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(201);
+        expect(calls.map((c) => c.host)).toEqual(['127.0.0.1:4330']);
+        // Laptop lowong lagi (cache kesehatan kedaluwarsa), urusan yang sama memulai langkah berikutnya: tetap di
+        // server yang memegang sesinya (sesi siaga), tidak pindah ke laptop.
+        vi.setSystemTime(Date.now() + 10_000);
+        kesehatan = () => ({ status: 200, body: SEHAT });
+        calls = [];
+        expect((await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(201);
+        expect(calls.map((c) => c.host)).toEqual(['127.0.0.1:4330']);
+        // Urusan lain tetap mendahulukan laptop yang lowong.
+        const cfg = pendampingConfig(process.env) as PendampingConfig;
+        expect(
+          (await pilihWorker(cfg, 'https://telunjuksakti.wonogirikab.go.id', 'lain', undefined, false))?.id,
+        ).toBe('laptop-a');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('id-utama, laptop sehat tapi start ditolak (401/403/5xx/jaringan) -> server; 401/403 tidak sampai ke warga', async () => {
+      for (const gagal of [
+        { status: 401, body: { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' } },
+        { status: 403, body: { kode: 'DILARANG', pesanWarga: 'x' } },
+        { status: 502, body: {} },
+        'putus' as const,
+      ]) {
+        resetBrokerPendamping();
+        const { u, cookie } = await urusanAkunNyata();
+        calls = [];
+        reply = (_p, _b, host) => {
+          if (!host.startsWith('100.101')) return { status: 201, body: sesi() };
+          if (gagal === 'putus') throw new Error('ECONNRESET');
+          return gagal;
+        };
+        const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
+        expect(r.status, JSON.stringify(gagal)).toBe(201);
+        expect(calls.map((c) => c.host)).toEqual(['100.101.1.2:4330', '127.0.0.1:4330']);
+        // Langkah berikutnya urusan itu lekat di server yang benar-benar memegang sesinya.
+        calls = [];
+        reply = () => ({ status: 200, body: sesi({ mode: 'ai', status: 'berjalan' }) });
+        expect((await status(ev(req('GET', undefined, cookie), u.id))).status).toBe(200);
+        expect(calls[0]?.host).toBe('127.0.0.1:4330');
+      }
+    });
+
+    it('id-utama: galat sah untuk warga (403 SESI_BUKAN_MILIK) diteruskan, tanpa mencoba worker lain', async () => {
+      const { u, cookie } = await urusanAkunNyata();
+      reply = () => ({
+        status: 403,
+        body: { kode: 'SESI_BUKAN_MILIK', pesanWarga: 'sesi milik perangkat lain' },
+      });
+      const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
+      expect(r.status).toBe(403);
+      expect(((await r.json()) as { kode: string }).kode).toBe('SESI_BUKAN_MILIK');
+      expect(calls.map((c) => c.host)).toEqual(['100.101.1.2:4330']);
+    });
+
+    it('id-only: start di laptop gagal (401/5xx) -> 503 umum, TIDAK jatuh ke server', async () => {
+      for (const gagal of [
+        { status: 401, body: { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' } },
+        { status: 500, body: {} },
+      ]) {
+        resetBrokerPendamping();
+        const { u, cookie } = await urusanAkunNyata('semarang');
+        calls = [];
+        reply = (_p, _b, host) => (host.startsWith('100.101') ? gagal : { status: 201, body: sesi() });
+        const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
+        expect(r.status).toBe(503);
+        expect(((await r.json()) as { kode: string }).kode).toBe('LAYANAN_TIDAK_TERSEDIA');
+        expect(calls.map((c) => c.host)).toEqual(['100.101.1.2:4330']);
+      }
+    });
+
     it('situs id-utama tanpa worker sehat sama sekali -> 503 umum, bukan pesan wilayah/dipandu', async () => {
       const { u, cookie } = await urusanAkunNyata();
       kesehatan = () => 'mati';

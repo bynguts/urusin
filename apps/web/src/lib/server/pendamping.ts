@@ -29,8 +29,9 @@ import { SID_COOKIE } from '#lib/server/sesi.js';
  * portal asli; Mode Uji selalu tanpa syarat wilayah):
  * - `id-only` (blokir keras IP luar negeri): HANYA worker `region: 'id'`; tak ada yang sehat -> mode dipandu
  *   dengan pesan jujur;
- * - `id-utama` (dari server muncul kotak centang yang diselesaikan warga): worker `id` yang sehat didahulukan,
- *   selain itu worker mana pun (server tetap melayani; laptop hanya bonus);
+ * - `id-utama` (dari server muncul kotak centang yang diselesaikan warga): worker `id` yang sehat dan masih punya
+ *   slot didahulukan, selain itu beban terendah; start yang gagal di worker (jaringan, 401/403, 5xx) dicoba di
+ *   kandidat berikutnya (server tetap melayani; laptop hanya bonus);
  * - lainnya: worker non-`id` lebih dulu (laptop dihemat), lalu beban terendah.
  * Tanpa `PENDAMPING_WORKERS`: satu worker dari `PENDAMPING_INTERNAL_URL` (region
  * `PENDAMPING_INTERNAL_REGION`, bawaan `umum`; URL WS `PENDAMPING_PUBLIC_WS_URL` bila diisi).
@@ -189,8 +190,12 @@ export const hashSid = (sid: string) => createHash('sha256').update(sid).digest(
 
 export type Hasil<T> =
   | { ok: true; data: T; status: number }
-  /** `dipandu`: pesan jujur untuk warga bila urusan harus beralih ke panduan langkah (tak ada worker wilayah). */
-  | { ok: false; response: Response; dipandu?: string };
+  /**
+   * `dipandu`: pesan jujur untuk warga bila urusan harus beralih ke panduan langkah (tak ada worker wilayah).
+   * `galatWorker`: kegagalan di sisi worker/kanal (jaringan, timeout, 401/403 kanal internal, 5xx), bukan
+   * jawaban galat sah untuk warga; worker lain boleh dicoba (`mulaiSesi`).
+   */
+  | { ok: false; response: Response; dipandu?: string; galatWorker?: true };
 
 const TIDAK_TERSEDIA = () =>
   apiError(
@@ -257,18 +262,19 @@ export async function panggil<T>(
       signal: AbortSignal.timeout(15_000),
     });
   } catch {
-    return { ok: false, response: TIDAK_TERSEDIA() };
+    return { ok: false, response: TIDAK_TERSEDIA(), galatWorker: true };
   }
   const raw: unknown = await res.json().catch(() => null);
   if (!res.ok) {
     const g = PendampingGalatSchema.safeParse(raw);
-    return {
-      ok: false,
-      response:
-        g.success && res.status < 500
-          ? apiError(res.status, g.data.kode, g.data.pesanWarga)
-          : TIDAK_TERSEDIA(),
-    };
+    // 401/403 = kanal internal ditolak (token worker salah/dirotasi, proxy di depan worker): urusan operator,
+    // bukan warga. Satu-satunya 403 untuk warga adalah SESI_BUKAN_MILIK (sesi urusan ini milik perangkat lain).
+    const kanalDitolak =
+      res.status === 401 || (res.status === 403 && !(g.success && g.data.kode === 'SESI_BUKAN_MILIK'));
+    if (kanalDitolak || res.status >= 500)
+      return { ok: false, response: TIDAK_TERSEDIA(), galatWorker: true };
+    if (!g.success) return { ok: false, response: TIDAK_TERSEDIA() };
+    return { ok: false, response: apiError(res.status, g.data.kode, g.data.pesanWarga) };
   }
   const parsed = schema.safeParse(raw);
   return parsed.success
@@ -348,9 +354,36 @@ const butuhWilayahSesi = (origin: string, modeUji: boolean | undefined) =>
   aksesSesi(origin, modeUji) === 'id-only';
 
 /**
- * Pilih worker untuk sesi baru: worker yang sudah memegang urusan ini bila sehat (sesi siaga), lalu beban
- * terendah. `null` = tak ada worker sehat yang memenuhi syarat wilayah.
+ * Kandidat worker sehat untuk sesi baru, urut prioritas: worker yang sudah memegang urusan ini (sesi siaga /
+ * lekat), lalu
+ * - `id-utama`: worker `id` yang MASIH punya slot (beban < 1) lebih dulu; selain itu beban terendah (laptop
+ *   penuh tidak membuat warga mengantre bila server lowong);
+ * - lainnya: worker non-`id` lebih dulu (laptop dihemat), lalu beban terendah.
+ * `id-only` hanya worker `id`. Kosong = tak ada worker sehat yang memenuhi syarat wilayah.
  */
+async function kandidatWorker(
+  cfg: PendampingConfig,
+  akses: ReturnType<typeof aksesSesi>,
+  urusanId: string,
+  fetcher: EgressFetch,
+): Promise<PendampingWorker[]> {
+  const kandidat = cfg.workers.filter((w) => akses !== 'id-only' || w.region === REGION_ID);
+  const hidup = (await Promise.all(kandidat.map(async (w) => ({ w, s: await sehat(w, fetcher) })))).filter(
+    (x): x is { w: PendampingWorker; s: Sehat } => x.s !== null,
+  );
+  const lekat = (w: PendampingWorker) => Number(w.id !== lokasi.get(urusanId));
+  const urutan = (w: PendampingWorker, s: Sehat) =>
+    akses === 'id-utama'
+      ? Number(!(w.region === REGION_ID && beban(w, s) < 1))
+      : Number(w.region === REGION_ID);
+  hidup.sort(
+    (a, b) =>
+      lekat(a.w) - lekat(b.w) || urutan(a.w, a.s) - urutan(b.w, b.s) || beban(a.w, a.s) - beban(b.w, b.s),
+  );
+  return hidup.map((x) => x.w);
+}
+
+/** Worker pertama untuk sesi baru (lihat `kandidatWorker`); `null` = tak ada yang sehat dan memenuhi syarat. */
 export async function pilihWorker(
   cfg: PendampingConfig,
   origin: string,
@@ -358,23 +391,14 @@ export async function pilihWorker(
   fetcher: EgressFetch = egressFetch,
   modeUji?: boolean,
 ): Promise<PendampingWorker | null> {
-  const akses = aksesSesi(origin, modeUji);
-  const kandidat = cfg.workers.filter((w) => akses !== 'id-only' || w.region === REGION_ID);
-  const hidup = (await Promise.all(kandidat.map(async (w) => ({ w, s: await sehat(w, fetcher) })))).filter(
-    (x): x is { w: PendampingWorker; s: Sehat } => x.s !== null,
-  );
-  const lekat = hidup.find((x) => x.w.id === lokasi.get(urusanId));
-  if (lekat) return lekat.w;
-  // `id-utama`: worker `id` lebih dulu; lainnya worker non-`id` lebih dulu (laptop dihemat).
-  const urutan = (w: PendampingWorker) =>
-    akses === 'id-utama' ? Number(w.region !== REGION_ID) : Number(w.region === REGION_ID);
-  hidup.sort((a, b) => urutan(a.w) - urutan(b.w) || beban(a.w, a.s) - beban(b.w, b.s));
-  return hidup[0]?.w ?? null;
+  return (await kandidatWorker(cfg, aksesSesi(origin, modeUji), urusanId, fetcher))[0] ?? null;
 }
 
 /**
  * POST /internal/sesi ke worker yang tepat. `dipandu` HANYA untuk situs `id-only` tanpa worker `id` yang sehat;
- * situs lain (termasuk `id-utama`) hanya gagal bila tidak ada worker sehat sama sekali.
+ * situs lain (termasuk `id-utama`) hanya gagal bila tidak ada worker sehat sama sekali. Bila start gagal di sisi
+ * worker (jaringan/timeout, 401/403 kanal internal, 5xx) kandidat sehat berikutnya dicoba, KECUALI situs
+ * `id-only` (tidak pernah jatuh ke worker lain; galat dari worker `id` diteruskan apa adanya).
  */
 export async function mulaiSesi(
   cfg: PendampingConfig | null,
@@ -382,8 +406,9 @@ export async function mulaiSesi(
   fetcher: EgressFetch = egressFetch,
 ): Promise<Hasil<SesiPendamping>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
-  const w = await pilihWorker(cfg, body.origin, body.urusanId, fetcher, body.modeUji);
-  if (!w)
+  const akses = aksesSesi(body.origin, body.modeUji);
+  const daftar = await kandidatWorker(cfg, akses, body.urusanId, fetcher);
+  if (daftar.length === 0)
     return butuhWilayahSesi(body.origin, body.modeUji)
       ? {
           ok: false,
@@ -391,14 +416,21 @@ export async function mulaiSesi(
           dipandu: PESAN_WILAYAH,
         }
       : { ok: false, response: TIDAK_TERSEDIA() };
-  const r = await panggil(
-    { url: w.url, token: w.token ?? cfg.token },
-    '/internal/sesi',
-    skema.sesi,
-    body,
-    fetcher,
-  );
-  if (r.ok) ingatLokasi(body.urusanId, w.id);
+  let r: Hasil<SesiPendamping> = { ok: false, response: TIDAK_TERSEDIA() };
+  for (const w of akses === 'id-only' ? daftar.slice(0, 1) : daftar) {
+    r = await panggil(
+      { url: w.url, token: w.token ?? cfg.token },
+      '/internal/sesi',
+      skema.sesi,
+      body,
+      fetcher,
+    );
+    if (r.ok) {
+      ingatLokasi(body.urusanId, w.id);
+      return r;
+    }
+    if (!r.galatWorker) return r;
+  }
   return r;
 }
 
