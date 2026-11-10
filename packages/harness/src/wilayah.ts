@@ -19,8 +19,12 @@ import type { HarnessStore, UrusanRow } from './store.js';
 type Publish = (e: EventPayload) => void;
 type PayloadWilayah = PayloadOf<'wilayah'>;
 
-/** Jawaban "ya/betul" warga. Dipakai tool wilayah__tetapkan dan DemoProvider (satu definisi). */
-export const AFIRMASI = /^\s*(ya|iya+|y|yes|betul|benar|bener|ok|oke|okay|yup|tepat|sesuai|sudah benar)\b/i;
+/**
+ * Jawaban "ya/betul" warga, boleh diawali seruan lisan ("Oh, iya betul", "Eh iya"). Dipakai tool wilayah__tetapkan
+ * dan DemoProvider (satu definisi).
+ */
+export const AFIRMASI =
+  /^\s*(?:(?:oh+|o|eh|ah|nah|wah|oalah|lho|loh|hmm+)[\s,.!]+)?(ya|iya+|iyo|y|yes|betul|benar|bener|ok|oke|okay|yup|tepat|sesuai|sudah benar|leres|nggih|inggih)\b/i;
 
 /**
  * Potongan kalimat catatan state dan hasil tool wilayah. DemoProvider membacanya kembali, jadi didefinisikan di
@@ -49,7 +53,8 @@ export type WilayahUrusan = {
   ktp: WilayahRef | null;
   domisili: WilayahRef | null;
   tujuan: WilayahRef | null;
-  usulan: { ktp: WilayahRef; sumber: 'data_diri' | 'pilihan' } | null;
+  /** warga = wilayah yang sudah ditanyakan agen di percakapan (lihat `selaraskanUsulan`). */
+  usulan: { ktp: WilayahRef; sumber: 'data_diri' | 'pilihan' | 'warga' } | null;
 };
 
 export function refWilayah(kode: string): WilayahRef | null {
@@ -67,12 +72,11 @@ export function wilayahUrusan(store: HarnessStore, u: UrusanRow): WilayahUrusan 
     ktp,
     domisili: ktp ? (ditetapkan?.domisili ?? null) : null,
     tujuan: ktp ? (ditetapkan?.tujuan ?? null) : null,
-    usulan:
-      usulan && usulan.sumber !== 'warga'
-        ? { ktp: usulan.ktp, sumber: usulan.sumber }
-        : kolom && !ktp
-          ? { ktp: kolom, sumber: 'pilihan' }
-          : null,
+    usulan: usulan
+      ? { ktp: usulan.ktp, sumber: usulan.sumber }
+      : kolom && !ktp
+        ? { ktp: kolom, sumber: 'pilihan' }
+        : null,
   };
 }
 
@@ -126,7 +130,8 @@ export function kodeDisebut(teks: string): string[] {
  * Satu kanal konfirmasi: bila balasan agen menyebut tepat satu kab/kota yang berbeda dari usulan yang sedang
  * tampil sebagai kartu (wilayah KTP belum ditetapkan), terbitkan usulan kab/kota itu (sumber `warga`: dari
  * percakapan). Kartu "Ya, betul" jadi selalu sama dengan wilayah yang terakhir ditanyakan agen; kartu lama tidak
- * aktif lagi karena bukan usulan terakhir.
+ * aktif lagi karena bukan usulan terakhir. Tanpa kartu sama sekali, usulan hanya terbit bila agen memang
+ * menanyakan konfirmasi ("..., betul?"), mis. Cikarang dipetakan ke Kabupaten Bekasi.
  */
 export function selaraskanUsulan(
   store: HarnessStore,
@@ -139,9 +144,9 @@ export function selaraskanUsulan(
     .eventsOfType(u.id, 'wilayah', 20)
     .map((e) => e.payload as PayloadWilayah)
     .find((e) => e.status === 'usulan');
-  if (!usulan) return;
+  if (!usulan && !/\b(betul|benar)\s*\?/i.test(teksAgen)) return;
   const disebut = kodeDisebut(teksAgen);
-  if (disebut.length !== 1 || disebut[0] === usulan.ktp.kodeKabKota) return;
+  if (disebut.length !== 1 || disebut[0] === usulan?.ktp.kodeKabKota) return;
   const ktp = refWilayah(disebut[0]!);
   if (ktp) publish({ type: 'wilayah', status: 'usulan', ktp, sumber: 'warga' });
 }

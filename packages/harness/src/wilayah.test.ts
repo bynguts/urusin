@@ -8,6 +8,7 @@ import { buildStateNote, buildSystemPrompt } from './prompt.js';
 import { jejakView } from './trace.js';
 import { makeEnv } from './testing.js';
 import {
+  AFIRMASI,
   buatUrusanTerwilayah,
   refWilayah,
   tetapkanWilayah,
@@ -671,5 +672,83 @@ describe('tindak lanjut eval persona 7173a47', () => {
     expect(buildSystemPrompt()).toMatch(
       /nama ganda \(mis\. Semarang: Kota atau Kabupaten\) tetap ditanyakan/,
     );
+  });
+});
+
+describe('temuan eval persona p12: wilayah yang sudah dibenarkan tidak ditanyakan ulang', () => {
+  it('AFIRMASI menerima seruan lisan di depan, menolak sanggahan', () => {
+    for (const t of ['Oh, iya betul, KTP saya di Cikarang Utara.', 'iya', 'Eh iya bener', 'nggih leres'])
+      expect(AFIRMASI.test(t), t).toBe(true);
+    for (const t of ['Bukan, KTP saya Kota Bekasi', 'Oh bukan', 'Ohio'])
+      expect(AFIRMASI.test(t), t).toBe(false);
+  });
+
+  it('Cikarang: agen bertanya sekali, warga membenarkan sambil menyebut kecamatan, wilayah langsung ditetapkan', async () => {
+    const { env, u, provider } = setup(
+      [
+        balas('Cikarang Utara masuk Kabupaten Bekasi. KTP Anda terdaftar di Kabupaten Bekasi, betul?'),
+        tool('wilayah__tetapkan', { ktp: 'Kabupaten Bekasi' }),
+        balas('Baik, rencananya saya siapkan.'),
+      ],
+      { jenis: 'kelahiran' },
+    );
+    const out1 = await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'KTP saya dan istri alamatnya Cikarang Utara. Itu masuk Kota Cikarang ya?',
+    });
+    // Pertanyaan konfirmasi agen jadi kartu "Ya, betul" juga, walau sebelumnya tidak ada usulan.
+    expect(of(out1.events, 'wilayah').at(-1)).toMatchObject({
+      status: 'usulan',
+      ktp: { kodeKabKota: '3216' },
+      sumber: 'warga',
+    });
+    const out2 = await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'Oh, iya betul, KTP saya dan istri di Cikarang Utara.',
+    });
+    expect(hasilTool(provider)).not.toMatch(/Belum dikonfirmasi/);
+    expect(of(out2.events, 'wilayah').at(-1)).toMatchObject({
+      status: 'ditetapkan',
+      ktp: { kodeKabKota: '3216' },
+    });
+    expect(of(out2.events, 'plan_card')).toHaveLength(1);
+  });
+
+  it('catatan state: usulan yang sudah ditanyakan tidak ditanyakan ulang; wilayah pasti dilarang ditanya lagi', () => {
+    const tools: never[] = [];
+    const ktp = { kodeKabKota: '3216', nama: 'Kabupaten Bekasi' };
+    const tanpaKtp = { ktp: null, domisili: null, tujuan: null };
+    const dariAgen = buildStateNote({
+      state: 'MEMAHAMI',
+      jenis: 'kelahiran',
+      kodeKabKota: null,
+      wilayah: { ...tanpaKtp, usulan: { ktp, sumber: 'warga' } },
+      tools,
+      confirmations: [],
+    });
+    expect(dariAgen).toContain('sudah kamu tanyakan di percakapan');
+    expect(dariAgen).toMatch(
+      /langsung panggil wilayah__tetapkan dengan Kabupaten Bekasi; jangan bertanya ulang/,
+    );
+    expect(dariAgen).not.toContain('pilihan di perangkat');
+    const dataDiri = buildStateNote({
+      state: 'MEMAHAMI',
+      jenis: 'kelahiran',
+      kodeKabKota: null,
+      wilayah: { ...tanpaKtp, usulan: { ktp, sumber: 'data_diri' } },
+      tools,
+      confirmations: [],
+    });
+    expect(dataDiri).toContain('Tanyakan sekali: "KTP Anda terdaftar di Kabupaten Bekasi, betul?"');
+    const pasti = buildStateNote({
+      state: 'MEMAHAMI',
+      jenis: 'kelahiran',
+      kodeKabKota: '3216',
+      wilayah: { ktp, domisili: null, tujuan: null, usulan: null },
+      tools,
+      confirmations: [],
+    });
+    expect(pasti).toContain('Jangan tanyakan atau minta konfirmasi wilayah KTP lagi.');
+    expect(buildSystemPrompt()).toMatch(/Konfirmasi wilayah cukup SEKALI/);
   });
 });

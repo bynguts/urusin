@@ -30,6 +30,7 @@ export function buildSystemPrompt(): string {
     '- Ada usulan wilayah (Data Diri atau pilihan di perangkat)? Tanyakan satu kalimat: "KTP Anda terdaftar di <nama usulan>, betul?" Jangan anggap benar sebelum warga membenarkan.',
     '- Tanpa usulan: tanyakan "KTP Anda terdaftar di kabupaten/kota mana?" Cukup nama kab/kota; jangan pernah meminta NIK.',
     '- Nama ganda (mis. Bekasi: Kota atau Kabupaten) ditanyakan. Kecamatan/kota kecil (mis. Cikarang) boleh kamu petakan ke kab/kotanya, tetapi tanyakan dulu ke warga sebelum menetapkan.',
+    '- Konfirmasi wilayah cukup SEKALI. Warga menjawab "iya/betul/benar" (juga "Oh, iya betul, KTP saya di Cikarang Utara") atas wilayah yang kamu tanyakan = sudah dibenarkan: langsung panggil wilayah__tetapkan, jangan menanyakan "betul?" lagi. Wilayah KTP yang sudah ditetapkan tidak ditanyakan lagi.',
     '- Wilayah KTP menentukan Disdukcapil yang berwenang. Tanyakan domisili hanya bila penting: urusan pindah, atau warga bilang tinggal di tempat lain. Jelaskan: langkah online bisa dari mana saja, langkah tatap muka di kantor wilayah KTP.',
     '- Pindah: asal = wilayah KTP sekarang, tujuan = kab/kota baru. SKPWNI diurus di asal; Disdukcapil tujuan menerbitkan KK dan KTP-el baru.',
     '- Kematian: yang berwenang Disdukcapil tempat tinggal (domisili) almarhum (UU 24/2013), bukan KTP pelapor. Tanyakan "Almarhum tinggal di kabupaten/kota mana?" lalu panggil wilayah__tetapkan dengan domisili itu.',
@@ -77,6 +78,7 @@ function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: 
   if (w.ktp) {
     out.push(
       `${TEKS_WILAYAH.baris} ${w.ktp.nama} (${w.ktp.kodeKabKota}), ${TEKS_WILAYAH.sudah} ${kalimatKanal(w.ktp.kodeKabKota)}`,
+      'Jangan tanyakan atau minta konfirmasi wilayah KTP lagi.',
       tierWilayah(jenis, w) === 'semi'
         ? 'Browser Pendamping tersedia di wilayah ini untuk mengisi pengajuan.'
         : 'Browser Pendamping tidak tersedia di wilayah ini (tingkat dipandu): JANGAN menyuruh warga menekan "Setujui dan buka situs" dan jangan menjanjikan AI mengisi; pandu langkah demi langkah lewat kanal resmi. Cek status baca-saja hanya lewat dukcapil__cek_status.',
@@ -85,10 +87,16 @@ function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: 
     if (w.tujuan) out.push(`Tujuan pindah: ${w.tujuan.nama}.`);
   } else {
     out.push(TEKS_WILAYAH.belum);
-    if (w.usulan)
+    if (w.usulan) {
+      const { ktp, sumber } = w.usulan;
+      const tanya = `${jenis === 'kematian' ? 'Almarhum tinggal di' : 'KTP Anda terdaftar di'} ${ktp.nama}, betul?`;
+      const benarkan = `Bila pesan terakhir warga membenarkannya (mis. "iya", "betul"), langsung panggil wilayah__tetapkan dengan ${ktp.nama}; jangan bertanya ulang.`;
       out.push(
-        `${TEKS_WILAYAH.usulan} (${w.usulan.sumber === 'data_diri' ? 'Data Diri akun' : 'pilihan di perangkat'}): ${w.usulan.ktp.nama}. Tanyakan: "${jenis === 'kematian' ? 'Almarhum tinggal di' : 'KTP Anda terdaftar di'} ${w.usulan.ktp.nama}, betul?"`,
+        sumber === 'warga'
+          ? `${TEKS_WILAYAH.usulan} (sudah kamu tanyakan di percakapan): ${ktp.nama}. Tanyakan lagi hanya bila warga belum menjawabnya. ${benarkan}`
+          : `${TEKS_WILAYAH.usulan} (${sumber === 'data_diri' ? 'Data Diri akun' : 'pilihan di perangkat'}): ${ktp.nama}. Tanyakan sekali: "${tanya}" ${benarkan}`,
       );
+    }
   }
   const belum = wilayahBelumSiap(jenis, w);
   if (belum) out.push(`Rencana belum bisa disusun: ${belum}.`);
