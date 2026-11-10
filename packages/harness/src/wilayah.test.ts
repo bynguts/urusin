@@ -3,11 +3,12 @@ import type { EventOf, EventPayload, UrusinEvent } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
 import { setujuiRencana } from './rencana.js';
-import { buildSystemPrompt } from './prompt.js';
+import { buildStateNote, buildSystemPrompt } from './prompt.js';
 import { jejakView } from './trace.js';
 import { makeEnv } from './testing.js';
 import {
   buatUrusanTerwilayah,
+  refWilayah,
   tetapkanWilayah,
   usulkanRencanaOtomatis,
   usulkanWilayah,
@@ -517,5 +518,31 @@ describe('temuan eval persona W5: yurisdiksi kematian dan cek status tanpa KTP',
     expect(buildSystemPrompt()).toMatch(
       /Cek status pengajuan atau informasi umum .* TIDAK perlu wilayah KTP/,
     );
+  });
+});
+
+describe('temuan eval persona W10 dan W11: aturan prompt wilayah', () => {
+  const catatan = (kode: string) =>
+    buildStateNote({
+      state: 'RENCANA_DIUSULKAN',
+      jenis: 'kelahiran',
+      kodeKabKota: kode,
+      wilayah: { ktp: refWilayah(kode), domisili: null, tujuan: null, usulan: null },
+      tools: [],
+      confirmations: [],
+    });
+
+  it('W10: wilayah yang sudah disebut warga langsung ditetapkan, tanpa ditanya ulang', () => {
+    expect(buildSystemPrompt()).toMatch(
+      /sudah menyebut sendiri kab\/kota KTP\/KK-nya .* Langsung panggil wilayah__tetapkan/,
+    );
+  });
+
+  it('W11: wilayah tingkat dipandu menyatakan Browser Pendamping tidak tersedia', () => {
+    expect(catatan('3374')).toContain('Browser Pendamping tidak tersedia di wilayah ini');
+    expect(catatan('3374')).toMatch(/JANGAN menyuruh warga menekan "Setujui dan buka situs"/);
+    expect(catatan('3312')).toContain('Browser Pendamping tersedia di wilayah ini');
+    // Prompt statis tidak lagi menyuruh mengarahkan ke tombol itu tanpa syarat.
+    expect(buildSystemPrompt()).not.toMatch(/arahkan warga ke tombol itu/);
   });
 });

@@ -1,4 +1,5 @@
 import type { UrusanState } from '@urusin/contracts';
+import { routeByKode } from '@urusin/registry';
 import { spotlightPolicyText } from './spotlight.js';
 import type { ToolDef } from './tools.js';
 import { TEKS_WILAYAH, kalimatKanal, wilayahBelumSiap, type WilayahUrusan } from './wilayah.js';
@@ -14,11 +15,12 @@ export function buildSystemPrompt(): string {
     '- Jangan pernah menyatakan warga "memenuhi syarat". Keputusan ada di petugas instansi.',
     '- Data pribadi (NIK, KK, nama, alamat, HP, email) tidak pernah kamu lihat. Bila perlu merujuknya, gunakan placeholder seperti {{PEMOHON.NIK}} HANYA dalam teks balasan, jangan di parameter tool, dan jangan minta warga menuliskannya di chat.',
     '- Tindakan yang mengubah data di situs luar butuh konfirmasi warga (confirmationId yang diberikan sistem). Tanpa itu, jangan memanggilnya. Pengiriman akhir selalu diklik warga sendiri.',
-    '- Urusin punya Browser Pendamping: peramban di server yang membuka portal resmi kota yang didukung dan mengisi pengajuan (mis. mengunggah Dokumen warga) setelah warga menekan "Setujui rencana" lalu "Setujui dan buka situs". Warga mengetik sandi/CAPTCHA dan menekan kirim akhir sendiri. Jangan bilang kamu tidak bisa membantu mengisi di kota yang didukung; arahkan warga ke tombol itu. Sistem, bukan kamu, yang membuka Browser Pendamping.',
+    '- Browser Pendamping (peramban di server yang membuka portal resmi dan mengisi pengajuan, mis. mengunggah Dokumen warga, setelah warga menekan "Setujui rencana" lalu "Setujui dan buka situs") HANYA ada di wilayah yang catatan state-nya menyebut "Browser Pendamping tersedia". Di wilayah itu jangan bilang kamu tidak bisa membantu mengisi. Di wilayah lain JANGAN menyuruh warga menekan "Setujui dan buka situs" dan jangan menjanjikan AI mengisi formulir: pandu warga langkah demi langkah lewat kanal resmi. Warga mengetik sandi/CAPTCHA dan menekan kirim akhir sendiri. Sistem, bukan kamu, yang membuka Browser Pendamping.',
     '- Gunakan Bahasa Indonesia sederhana, ramah, singkat. Bila tidak yakin, tanyakan satu pertanyaan klarifikasi.',
     '',
     'WILAYAH DULU:',
     '- Aturan, situs resmi, dan cara akses berbeda di tiap kab/kota. Sebelum merencanakan, pastikan kab/kota sesuai KTP warga, lalu panggil wilayah__tetapkan. Sistem menolak rencana sampai wilayah KTP ditetapkan.',
+    '- Warga sudah menyebut sendiri kab/kota KTP/KK-nya (mis. "KTP saya Wonogiri", "KK saya juga Wonogiri")? Langsung panggil wilayah__tetapkan dengan wilayah itu; jangan bertanya ulang "betul?".',
     '- Ada usulan wilayah (Data Diri atau pilihan di perangkat)? Tanyakan satu kalimat: "KTP Anda terdaftar di <nama usulan>, betul?" Jangan anggap benar sebelum warga membenarkan.',
     '- Tanpa usulan: tanyakan "KTP Anda terdaftar di kabupaten/kota mana?" Cukup nama kab/kota; jangan pernah meminta NIK.',
     '- Nama ganda (mis. Bekasi: Kota atau Kabupaten) ditanyakan. Kecamatan/kota kecil (mis. Cikarang) boleh kamu petakan ke kab/kotanya, tetapi tanyakan dulu ke warga sebelum menetapkan.',
@@ -49,6 +51,9 @@ function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: 
   if (w.ktp) {
     out.push(
       `${TEKS_WILAYAH.baris} ${w.ktp.nama} (${w.ktp.kodeKabKota}), ${TEKS_WILAYAH.sudah} ${kalimatKanal(w.ktp.kodeKabKota)}`,
+      routeByKode(w.ktp.kodeKabKota).entry.tier === 'semi'
+        ? 'Browser Pendamping tersedia di wilayah ini untuk mengisi pengajuan.'
+        : 'Browser Pendamping tidak tersedia di wilayah ini (tingkat dipandu): JANGAN menyuruh warga menekan "Setujui dan buka situs" dan jangan menjanjikan AI mengisi; pandu langkah demi langkah lewat kanal resmi. Cek status baca-saja hanya lewat dukcapil__cek_status.',
     );
     if (w.domisili) out.push(`Domisili: ${w.domisili.nama} (berbeda dari KTP).`);
     if (w.tujuan) out.push(`Tujuan pindah: ${w.tujuan.nama}.`);
