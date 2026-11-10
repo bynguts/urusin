@@ -22,8 +22,12 @@ export function renderEvent(e) {
           .filter(Boolean)
           .join('\n');
       });
-      return `[KARTU RENCANA] ${e.ringkasan}\n${baris.join('\n')}`;
+      return `[KARTU RENCANA] ${e.ringkasan}${wilayahRencana(e)}${e.catatan ? `\n  Catatan: ${e.catatan}` : ''}\n${baris.join('\n')}`;
     }
+    case 'wilayah':
+      return e.status === 'usulan'
+        ? `[KARTU WILAYAH] KTP Anda terdaftar di ${e.ktp.nama}? (usulan dari ${e.sumber === 'data_diri' ? 'Data Diri akun Anda' : 'pilihan wilayah di perangkat ini'}; rencana disusun setelah Anda memastikannya)`
+        : `(sistem) ${kalimatWilayah(e)}`;
     case 'grounded_answer': {
       const klaim = e.klaim.map(
         (k) =>
@@ -42,6 +46,19 @@ export function renderEvent(e) {
     default:
       return '';
   }
+}
+
+/** Sama dengan kalimatWilayah di apps/web/src/lib/components/urusan/linimasa.ts (feat/wilayah-dulu). */
+function kalimatWilayah(e) {
+  let t = `Wilayah KTP: ${e.ktp.nama}`;
+  if (e.tujuan) t += ` · pindah ke ${e.tujuan.nama}`;
+  if (e.domisili) t += ` · tinggal di ${e.domisili.nama}`;
+  return t;
+}
+
+function wilayahRencana(e) {
+  if (!e.wilayah) return '';
+  return `\n  ${kalimatWilayah(e.wilayah)}${e.tier ? ` (tingkat ${e.tier})` : ''}`;
 }
 
 /** Teks layar satu langkah agen (event yang terlihat warga saja). */
@@ -63,15 +80,29 @@ export function tombolTersedia(events) {
   let state = null;
   let adaRencana = false;
   let konfirmasi = false;
+  let usulan = null;
+  let ditetapkanSeq = 0;
   for (const e of events) {
     if (e.type === 'state') state = e.state;
     if (e.type === 'plan_card') adaRencana = true;
     if (e.type === 'gate' && e.jenis === 'konfirmasi' && e.paramsHash) konfirmasi = true;
+    if (e.type === 'wilayah' && e.status === 'usulan') usulan = e;
+    if (e.type === 'wilayah' && e.status === 'ditetapkan') ditetapkanSeq = e.seq;
   }
   const t = [];
+  // Kartu wilayah (feat/wilayah-dulu: linimasa.ts + urusan/[id]/+page.svelte): usulan terakhir yang belum
+  // dijawab, aktif selama urusan BARU/MEMAHAMI.
+  if (usulan && usulan.seq > ditetapkanSeq && (state === null || state === 'BARU' || state === 'MEMAHAMI'))
+    t.push('Ya, betul', 'Bukan');
   if (state === 'RENCANA_DIUSULKAN' && adaRencana) t.push('Setujui rencana');
   if (konfirmasi) t.push('Setujui dan buka situs');
   return t;
+}
+
+/** Usulan wilayah yang sedang bisa dijawab "Ya, betul", atau null. */
+export function usulanWilayahAktif(events) {
+  if (!tombolTersedia(events).includes('Ya, betul')) return null;
+  return [...events].reverse().find((e) => e.type === 'wilayah' && e.status === 'usulan') ?? null;
 }
 
 export function stateTerakhir(events) {

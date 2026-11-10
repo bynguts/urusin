@@ -169,13 +169,31 @@ export function cekWilayahSebelumRencana(langkah, persona, kodeUrusan) {
       (l.events ?? []).some((e) => e.type === 'plan_card' || e.type === 'grounded_answer'),
   );
   if (idx < 0) return { lulus: null, bukti: 'tidak ada rencana/jawaban persyaratan' };
-  const adaKartu = (langkah[idx].events ?? []).some((e) => e.type === 'plan_card');
-  if (adaKartu && !(persona.kodeBenar ?? []).includes(kodeUrusan))
+  // Kode rencana: wilayah pada kartu (sejak gerbang wilayah) atau kode urusan (sebelumnya).
+  const kodeKartu = (e) => e.wilayah?.ktp?.kodeKabKota ?? kodeUrusan;
+  const kartu = semuaEvent(langkah).filter((e) => e.type === 'plan_card');
+  const benar = persona.kodeBenar ?? [];
+  const boleh = new Set([...benar, ...(persona.kodeBolehRencana ?? [])]);
+  const salah = kartu.find((e) => !boleh.has(kodeKartu(e)));
+  if (salah)
     return {
       lulus: false,
-      bukti: `rencana dibuat untuk kode ${kodeUrusan ?? 'kosong'}, seharusnya ${(persona.kodeBenar ?? []).join('/')}`,
+      bukti: `rencana dibuat untuk kode ${kodeKartu(salah) ?? 'kosong'}, seharusnya ${benar.join('/')}`,
     };
+  if (persona.kodeBolehRencana?.length) {
+    const akhir = kartu.at(-1);
+    if (!akhir || !benar.includes(kodeKartu(akhir)))
+      return {
+        lulus: false,
+        bukti: `tidak ada rencana untuk wilayah akhir ${benar.join('/')} setelah warga mengganti wilayah`,
+      };
+  }
   const sebelum = langkah.slice(0, idx);
+  const ditetapkan = sebelum.some(
+    (l) =>
+      l.peran === 'urusin' && (l.events ?? []).some((e) => e.type === 'wilayah' && e.status === 'ditetapkan'),
+  );
+  if (ditetapkan) return { lulus: true, bukti: 'wilayah ditetapkan warga sebelum rencana' };
   const kata = (persona.kataWilayah ?? []).map((k) => k.toLowerCase());
   const wargaSebut = sebelum.some(
     (l) => l.peran === 'warga' && kata.some((k) => String(l.teks).toLowerCase().includes(k)),
@@ -210,7 +228,7 @@ export function cekGalat(langkah, opsi = {}) {
     for (const e of evs.filter((x) => x.type === 'error')) masalah.push(`langkah ${n}: galat ${e.kode}`);
     if (l.status && l.status !== 'selesai') masalah.push(`langkah ${n}: turn ${l.status}`);
     // Klik "Setujui rencana" bukan turn agen: label status (progress) adalah keluarannya yang tampil.
-    const tampil = (e) => teksEvent(e).some(Boolean) || (l.aksi === 'setujui' && e.type === 'progress');
+    const tampil = (e) => teksEvent(e).some(Boolean) || (Boolean(l.aksi) && e.type === 'progress');
     if (!evs.some(tampil)) masalah.push(`langkah ${n}: buntu, tidak ada yang tampil`);
   });
   return masalah.length > 0

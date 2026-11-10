@@ -305,3 +305,70 @@ describe('gabung (otomatis + juri)', async () => {
     );
   });
 });
+
+describe('gerbang wilayah (feat/wilayah-dulu)', async () => {
+  const { tombolTersedia, renderEvent } = await import('../eval-persona/lib/layar.mjs');
+  const usulan = (kode, nama, seq) =>
+    ev('wilayah', { seq, status: 'usulan', sumber: 'data_diri', ktp: { kodeKabKota: kode, nama } });
+  const tetap = (kode, nama, seq) =>
+    ev('wilayah', { seq, status: 'ditetapkan', sumber: 'warga', ktp: { kodeKabKota: kode, nama } });
+  const state = (s, seq) => ev('state', { seq, state: s, tier: null, version: 1 });
+  const rencanaWil = (kode) => ({
+    ...rencana('https://a.go.id'),
+    wilayah: { ktp: { kodeKabKota: kode, nama: 'x' } },
+  });
+
+  it('kartu usulan wilayah aktif menampilkan tombol Ya, betul dan Bukan', () => {
+    assert.deepEqual(tombolTersedia([state('MEMAHAMI', 1), usulan('3312', 'Kabupaten Wonogiri', 2)]), [
+      'Ya, betul',
+      'Bukan',
+    ]);
+  });
+  it('usulan yang sudah dijawab (ditetapkan sesudahnya) tidak aktif lagi', () => {
+    const evs = [
+      state('MEMAHAMI', 1),
+      usulan('3312', 'Kabupaten Wonogiri', 2),
+      tetap('3374', 'Kota Semarang', 3),
+    ];
+    assert.deepEqual(tombolTersedia(evs), []);
+  });
+  it('kartu wilayah tampil di layar sebagai pertanyaan konfirmasi', () => {
+    assert.match(
+      renderEvent(usulan('3312', 'Kabupaten Wonogiri', 2)),
+      /KTP Anda terdaftar di Kabupaten Wonogiri\?/,
+    );
+    assert.match(renderEvent(tetap('3374', 'Kota Semarang', 3)), /Wilayah KTP: Kota Semarang/);
+  });
+  it('kode wilayah pada kartu rencana menang atas kode urusan', () => {
+    const p = { kodeBenar: ['3374'], kataWilayah: ['semarang'] };
+    const r = cekWilayahSebelumRencana([warga('KTP saya Semarang'), urusin(rencanaWil('3312'))], p, '3374');
+    assert.equal(r.lulus, false);
+    assert.match(r.bukti, /3312/);
+  });
+  it('wilayah yang ditetapkan sebelum rencana dihitung sudah ditentukan', () => {
+    const p = { kodeBenar: ['3374'], kataWilayah: ['zzz'] };
+    const r = cekWilayahSebelumRencana(
+      [warga('halo'), urusin(tetap('3374', 'Kota Semarang', 3)), urusin(rencanaWil('3374'))],
+      p,
+      '3374',
+    );
+    assert.equal(r.lulus, true);
+  });
+  it('rencana awal untuk wilayah lama boleh bila kodenya diizinkan, asal rencana terakhir benar', () => {
+    const p = { kodeBenar: ['3311'], kodeBolehRencana: ['3312'], kataWilayah: ['wonogiri', 'sukoharjo'] };
+    const l = [
+      warga('saya di Wonogiri'),
+      urusin(rencanaWil('3312')),
+      warga('eh KTP saya Sukoharjo'),
+      urusin(rencanaWil('3311')),
+    ];
+    assert.equal(cekWilayahSebelumRencana(l, p, '3311').lulus, true);
+    const salah = [
+      warga('saya di Wonogiri'),
+      urusin(rencanaWil('3312')),
+      warga('eh KTP saya Sukoharjo'),
+      urusin(teks('ok')),
+    ];
+    assert.equal(cekWilayahSebelumRencana(salah, p, '3311').lulus, false);
+  });
+});
