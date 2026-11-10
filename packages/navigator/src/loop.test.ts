@@ -227,6 +227,38 @@ describe('ketahanan: worker belum siap, galat sesaat, dan LLM gagal', () => {
     expect(jejak.find((c) => c.jenis === 'bukti')).toMatchObject({ bukti: { nomor: 'REG-2026-00777' } });
   });
 
+  it('halaman sukses dikonfirmasi worker (selesai) dengan bukti; bukti dicatat worker, bukan loop', async () => {
+    const worker = new WorkerPalsu([halamanTinjau(), SUKSES]);
+    const dilapor: unknown[] = [];
+    worker.selesai = async (b) => void dilapor.push(b);
+    worker.saatSerahkan = (alasan) => (alasan === 'final' ? { aksi: 'pegang', ke: 1 } : { aksi: 'selesai' });
+    const { hasil, jejak } = jalankan(worker, new ProviderSkrip(() => SERAHKAN_FINAL), { pantauMs: 10 });
+    expect(await hasil).toMatchObject({ akhir: 'selesai', bukti: { nomor: 'REG-2026-00777' } });
+    expect(dilapor).toMatchObject([{ nomor: 'REG-2026-00777' }]);
+    expect(jejak.filter((c) => c.jenis === 'bukti')).toEqual([]);
+  });
+
+  it('worker menolak klaim sukses (409, halaman berubah): tidak selesai; di halaman AI = serahkan tidak_yakin', async () => {
+    const worker = new WorkerPalsu([SUKSES]);
+    let n = 0;
+    worker.selesai = async () => {
+      n++;
+      throw galat();
+    };
+    const { hasil } = jalankan(worker, new ProviderSkrip(() => SERAHKAN_FINAL));
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'tidak_yakin' });
+    expect(n).toBe(1);
+    // 503 sesaat diulang sebelum menyerah.
+    const lagi = new WorkerPalsu([SUKSES]);
+    let m = 0;
+    lagi.selesai = async () => {
+      if (m++ === 0) throw galat('sesaat');
+    };
+    const h = await jalankan(lagi, new ProviderSkrip(() => SERAHKAN_FINAL), tanpaJeda).hasil;
+    expect(h).toMatchObject({ akhir: 'selesai' });
+    expect(m).toBe(2);
+  });
+
   it('halaman sukses di host di luar wilayah saat warga memegang kendali TIDAK diakui', async () => {
     const worker = new WorkerPalsu([halamanTinjau(), { ...SUKSES, host: 'palsu.contoh' }]);
     let n = 0;

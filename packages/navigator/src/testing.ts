@@ -6,6 +6,7 @@ import type {
   ElemenAmatan,
   HasilAksi,
   KolomButuh,
+  PendampingBukti,
   PendampingMode,
   PendampingStatus,
   Pengamatan,
@@ -122,6 +123,8 @@ export class WorkerPalsu implements TanganPendamping {
   ) => { aksi: 'kembalikan'; ke?: number } | { aksi: 'selesai' } | { aksi: 'pegang'; ke?: number } = () => ({
     aksi: 'selesai',
   });
+  /** Konfirmasi halaman sukses ke worker (`/internal/sesi/selesai`); tidak dipasang = tanpa konfirmasi. */
+  selesai?: (bukti?: PendampingBukti) => Promise<unknown>;
   /** executionId yang dilaporkan `kuras` (sesi milik eksekusi lain bila beda dari loop). */
   executionId: string | undefined = undefined;
   /** Hasil paksa per panggilan aksi (mis. REF_BASI sekali). */

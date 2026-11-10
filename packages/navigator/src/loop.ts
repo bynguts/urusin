@@ -46,6 +46,11 @@ export interface TanganPendamping {
    * host kandidat). Dipanggil sesudah setiap amati/aksi/tunggu agar urutan jejak mengikuti kejadian.
    */
   kuras?(): Promise<{ catatan: CatatanPendamping[]; terbuang: number; executionId?: string }>;
+  /**
+   * Laporkan halaman sukses (`/internal/sesi/selesai`): worker memeriksa ulang halaman SAAT INI, mencatat bukti
+   * ke jejaknya sendiri, dan sesi menjadi siaga (hasil berhasil). Galat = halaman tidak lagi sukses.
+   */
+  selesai?(bukti?: PendampingBukti): Promise<unknown>;
 }
 
 export type GalatSementara = 'belum_siap' | 'sesaat';
@@ -333,11 +338,30 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
   const hostSah = (host: string) =>
     (!o.modeUji || o.modeUji.hostsFixture.has(host)) && o.hostsBoleh.has(host);
 
-  /** Amati baca-saja saat warga memegang kendali: halaman sukses di host sah, atau null. Galat diabaikan. */
+  /**
+   * Halaman sukses dikonfirmasi worker (`selesai`): worker memeriksa ulang halaman saat ini dan mencatat bukti
+   * (satu sumber). Tanpa `selesai` (tangan uji), pengamatan dipercaya. Galat sementara diulang; galat lain =
+   * halaman tidak lagi sukses (false).
+   */
+  async function konfirmasiSukses(p: Pengamatan): Promise<boolean> {
+    const selesai = o.tangan.selesai?.bind(o.tangan);
+    if (!selesai) return true;
+    const bukti = buktiDariPengamatan(p);
+    try {
+      await sesudah(await cobaUlang(() => selesai(bukti)));
+      return true;
+    } catch (e) {
+      if (e instanceof SesiLain) throw e;
+      return false;
+    }
+  }
+
+  /** Amati baca-saja saat warga memegang kendali: halaman sukses di host sah (dikonfirmasi worker), atau null. */
   async function pantau(): Promise<Pengamatan | null> {
     try {
       const a = await tangan.amati({ pantau: true });
-      return a.pengamatan.sinyal.sukses && hostSah(a.pengamatan.host) ? a.pengamatan : null;
+      const p = a.pengamatan;
+      return p.sinyal.sukses && hostSah(p.host) && (await konfirmasiSukses(p)) ? p : null;
     } catch (e) {
       if (e instanceof SesiLain) throw e;
       return null;
@@ -383,7 +407,8 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
   function selesaiDari(p: Pengamatan): HasilNavigator {
     hostTerakhir = p.host;
     buktiAkhir = buktiDariPengamatan(p);
-    if (buktiAkhir) o.jejak({ jenis: 'bukti', bukti: buktiAkhir });
+    // Dengan `selesai`, bukti dicatat worker (sesudah memeriksa halamannya); tanpa itu dicatat di sini.
+    if (buktiAkhir && !o.tangan.selesai) o.jejak({ jenis: 'bukti', bukti: buktiAkhir });
     ang.jedaAi();
     return { akhir: 'selesai', bukti: buktiAkhir, pesan: ringkasBukti(buktiAkhir), resi: resi('selesai') };
   }
@@ -606,7 +631,11 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         o.jejak({ jenis: 'host_kandidat', host: p.host });
         return await serahkanAkhir('host_luar', p.seq);
       }
-      if (p.sinyal.sukses) return selesaiDari(p);
+      if (p.sinyal.sukses) {
+        if (await konfirmasiSukses(p)) return selesaiDari(p);
+        // Worker tidak mengakui halaman ini sebagai sukses: tidak diklaim berhasil, warga memeriksa sendiri.
+        return await serahkanAkhir('tidak_yakin', p.seq);
+      }
       ang.catatHalaman(p.sidik, halamanStruktur(p));
       const habis = ang.habis();
       if (habis) return await serahkanAkhir(habis, p.seq);
