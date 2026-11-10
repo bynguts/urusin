@@ -597,6 +597,19 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     expect(h.serah[0]?.pesan).toBe(PESAN_GENERIK.hostLain);
   });
 
+  it('probe 3208: amati 0 elemen (SPA lambat) = tunggu tenang lalu amati ulang sekali', async () => {
+    let n = 0;
+    const h = harness({ amati: () => (n++ === 0 ? pengamatan({ elemen: [] }) : pengamatan()) });
+    const p = await h.run.amati();
+    expect(n).toBe(2);
+    expect(p?.elemen.length).toBeGreaterThan(0);
+    // Halaman yang memang kosong: hanya satu ulangan, tidak berputar.
+    let m = 0;
+    const kosong = harness({ amati: () => (m++, pengamatan({ elemen: [] })) });
+    expect((await kosong.run.amati())?.elemen).toEqual([]);
+    expect(m).toBe(2);
+  });
+
   it('serahkan dan tidak_bisa memakai pesan bertemplat', async () => {
     const h = harness();
     await h.run.amati();

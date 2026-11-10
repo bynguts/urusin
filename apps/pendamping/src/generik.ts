@@ -347,7 +347,12 @@ export class GenerikRun {
 
   private async amatiSekarang(pantau: boolean): Promise<Pengamatan | null> {
     const seq = ++this.seq;
-    const r = await this.d.tangan.amati(seq, Object.fromEntries(this.diisi));
+    let r = await this.d.tangan.amati(seq, Object.fromEntries(this.diisi));
+    // SPA yang baru merender setelah load (probe 3208): 0 elemen = tunggu DOM tenang lalu amati sekali lagi.
+    if (r && (r.pengamatan as { elemen?: unknown[] }).elemen?.length === 0) {
+      await this.d.tangan.tenang();
+      r = await this.d.tangan.amati(seq, Object.fromEntries(this.diisi));
+    }
     if (!r) return null;
     const vault = [...this.d.izin.vault()];
     const parsed = PengamatanSchema.safeParse(r.pengamatan);

@@ -256,6 +256,9 @@ export const PROFIL_PREFS = Object.freeze({
 });
 
 /** URL lolos allowlist host:port sesi (lapis `context.route`; sama dengan proxy egress). */
+/** Kendali yang dihitung `tenang()` untuk menilai DOM sudah stabil. */
+const SEL_KENDALI_TENANG = 'input, textarea, select, button, a[href], [role="button"], [role="link"]';
+
 export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): boolean {
   const u = URL.parse(url);
   const port = Number(u?.port || (u?.protocol === 'https:' ? 443 : 80));
@@ -1044,6 +1047,19 @@ export async function wire(
       await new Promise((r) => setTimeout(r, 400));
       const batas = Date.now() + 10_000;
       while (loading && !destroyed && Date.now() < batas) await new Promise((r) => setTimeout(r, 100));
+      // SPA (probe 3208): kendali baru muncul setelah load. Tunggu jumlahnya > 0 dan sama pada dua bacaan
+      // berturut-turut (<= 5 detik). Hitungan lewat locator (dunia utilitas Playwright), tanpa skrip halaman.
+      const batasDom = Date.now() + 5_000;
+      let sebelum = -1;
+      while (!destroyed && Date.now() < batasDom) {
+        const n = await page
+          .locator(SEL_KENDALI_TENANG)
+          .count()
+          .catch(() => -1);
+        if (n > 0 && n === sebelum) return;
+        sebelum = n;
+        await new Promise((r) => setTimeout(r, 250));
+      }
     };
     generik = new GenerikRun({
       tangan: tanganRunner({
