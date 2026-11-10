@@ -323,7 +323,7 @@ describe('broker Navigator web', () => {
     expect(h).toMatchObject({ akhir: 'ambil_alih', alasan: 'kuota', pesan: PESAN_AMBIL_ALIH.kuota });
     expect(llm.provider.calls).toHaveLength(0);
     const aksi = w.panggilan.filter((p) => p.path === '/internal/sesi/aksi').map((p) => p.body.aksi);
-    expect(aksi).toEqual([[{ jenis: 'serahkan', alasan: 'tidak_yakin' }]]);
+    expect(aksi).toEqual([[{ jenis: 'serahkan', alasan: 'berhenti' }]]);
     const progress = rt.store
       .eventsOfType(u.id, 'progress', 5)
       .map((e) => (e.payload as { label: string }).label);
