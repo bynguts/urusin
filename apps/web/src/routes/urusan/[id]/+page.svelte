@@ -317,6 +317,7 @@
             onambilalih={() => sesi.ambilAlih()}
             onkembalikan={() => void sesi.kembalikan()}
             onhentikan={() => void sesi.hentikan()}
+            ontutup={() => void sesi.tutupSekarang()}
             onmulailagi={() => {
               const e = k.permintaanEksekusi;
               if (e)

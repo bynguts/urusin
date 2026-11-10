@@ -2,7 +2,7 @@
   import { resolve } from '$app/paths';
   import Icon from '../Icon.svelte';
   import ChipMode from './ChipMode.svelte';
-  import type { DataPendamping } from '#lib/pendamping/sesi.svelte.js';
+  import { PESAN_GAGAL_TUTUP, type DataPendamping } from '#lib/pendamping/sesi.svelte.js';
   import { domain } from '#lib/urusan-status.js';
 
   /**
@@ -19,6 +19,7 @@
     onambilalih,
     onkembalikan,
     onhentikan,
+    ontutup,
     onmulailagi,
     onpanduan,
   }: {
@@ -30,12 +31,16 @@
     onambilalih: () => void;
     onkembalikan: () => void;
     onhentikan: () => void;
+    /** Siaga: tutup peramban server sekarang (DELETE sesi). */
+    ontutup: () => void;
     onmulailagi: () => void;
     onpanduan: () => void;
   } = $props();
 
   const k = $derived(data.keadaan);
-  const siaran = $derived(k === 'ai' || k === 'giliran' || k === 'dijeda' || k === 'terputus');
+  const siaran = $derived(
+    k === 'ai' || k === 'giliran' || k === 'dijeda' || k === 'siaga' || k === 'terputus',
+  );
   const takeover = $derived(data.mode === 'takeover');
   const persen = $derived(
     data.langkah
@@ -153,6 +158,31 @@
         <button type="button" onclick={onhentikan} class={TOMBOL_TERANG}>Batalkan</button>
       </div>
     </div>
+  {:else if k === 'siaga'}
+    <!-- Siaga: langkah selesai, peramban server masih hidup sebentar (hasil tetap terbaca di siaran). -->
+    <div
+      role="status"
+      data-siaga
+      class="flex shrink-0 flex-wrap items-center gap-3.5 border-b border-line bg-bg-2 px-[18px] py-3.5"
+    >
+      <span class="grid size-[34px] shrink-0 place-items-center rounded-full bg-hijau text-hijau-ink">
+        <Icon name="centang" class="size-[17px]" />
+      </span>
+      <div class="flex min-w-[min(100%,14rem)] flex-1 basis-56 flex-col gap-1.5">
+        <p class="text-[17px] leading-normal font-bold text-ink">
+          {#if data.bukti?.nomor}Nomor permohonan <span class="font-mono">{data.bukti.nomor}</span
+            >{:else}Langkah ini selesai{/if}
+        </p>
+        <p class="text-[15px] leading-[23px] text-muted">
+          Browser masih terbuka sebentar untuk langkah berikutnya, lalu ditutup otomatis bersama login dan
+          cookie-nya.
+        </p>
+        {#if data.pesan === PESAN_GAGAL_TUTUP}<p role="alert" class="text-[15px] text-galat">
+            {data.pesan}
+          </p>{/if}
+      </div>
+      <button type="button" onclick={ontutup} class={TOMBOL_TERANG}>Tutup sekarang</button>
+    </div>
   {/if}
 
   <!-- Siaran layar: canvas selalu ada agar viewer bisa menggambar; keadaan lain menutupinya. -->
@@ -209,7 +239,12 @@
           {:else}
             <p class={JUDUL}>Pengajuan terkirim</p>
           {/if}
-          <p class="text-center text-[13px] text-card-ink">Browser ditutup. Login dan cookie ikut dihapus.</p>
+          {#if data.mode === 'done'}
+            <!-- Hanya saat sesi benar-benar ditutup (mode done), bukan saat siaga. -->
+            <p class="text-center text-[13px] text-card-ink">
+              Browser ditutup. Login dan cookie ikut dihapus.
+            </p>
+          {/if}
         {:else if k === 'kedaluwarsa'}
           <span class="{LINGKAR} bg-bg-2 text-muted"><Icon name="waktu-habis" class="size-[21.6px]" /></span>
           <p class={JUDUL}>Sesi berakhir</p>

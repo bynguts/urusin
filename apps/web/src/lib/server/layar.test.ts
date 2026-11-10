@@ -10,6 +10,7 @@ import { load as muatUrusan } from '../../routes/urusan/[id]/+page.server';
 import Chip from '../components/ui/Chip.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
+import { dataAwal, type DataPendamping } from '../pendamping/sesi.svelte.js';
 import { SID_COOKIE } from './sesi';
 
 const SID = 'a'.repeat(32);
@@ -174,5 +175,38 @@ describe('/privasi', () => {
       'disimpan 3 hari',
     ])
       expect(body, pihak).toContain(pihak);
+  });
+});
+
+describe('Browser Pendamping setelah Kirim', () => {
+  const layar = async (data: Partial<DataPendamping>) => {
+    const { default: LayarPendamping } = await import('../components/pendamping/LayarPendamping.svelte');
+    const noop = () => {};
+    return render(LayarPendamping, {
+      props: {
+        data: { ...dataAwal(), ...data },
+        situs: 'https://telunjuksakti.wonogirikab.go.id',
+        onambilalih: noop,
+        onkembalikan: noop,
+        onhentikan: noop,
+        ontutup: noop,
+        onmulailagi: noop,
+        onpanduan: noop,
+      },
+    }).body;
+  };
+  const DITUTUP = 'Browser ditutup. Login dan cookie ikut dihapus.';
+
+  it('siaga: nomor + "masih terbuka sebentar" + Tutup sekarang, tanpa klaim ditutup', async () => {
+    const b = await layar({ keadaan: 'siaga', mode: 'takeover', bukti: { nomor: 'FX-REG-0001' } });
+    expect(b).toContain('FX-REG-0001');
+    expect(b).toContain('Browser masih terbuka sebentar');
+    expect(b).toContain('Tutup sekarang');
+    expect(b).not.toContain(DITUTUP);
+  });
+
+  it('teks "Browser ditutup" hanya saat sesi benar-benar ditutup (mode done)', async () => {
+    expect(await layar({ keadaan: 'selesai', mode: 'done' })).toContain(DITUTUP);
+    expect(await layar({ keadaan: 'selesai', mode: 'takeover' })).not.toContain(DITUTUP);
   });
 });
