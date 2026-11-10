@@ -5,7 +5,13 @@ import { runTurn } from './agent.js';
 import { setujuiRencana } from './rencana.js';
 import { jejakView } from './trace.js';
 import { makeEnv } from './testing.js';
-import { tetapkanWilayah, usulkanRencanaOtomatis, usulkanWilayah, wilayahUrusan } from './wilayah.js';
+import {
+  buatUrusanTerwilayah,
+  tetapkanWilayah,
+  usulkanRencanaOtomatis,
+  usulkanWilayah,
+  wilayahUrusan,
+} from './wilayah.js';
 
 type Env = ReturnType<typeof makeEnv>;
 const of = <T extends UrusinEvent['type']>(events: readonly UrusinEvent[], t: T) =>
@@ -31,7 +37,7 @@ function setup(
 ) {
   const provider = new FakeProvider({ replies });
   const env = makeEnv({ provider });
-  const u = env.store.createUrusan(input);
+  const u = buatUrusanTerwilayah(env.store, input);
   return { provider, env, u };
 }
 
@@ -314,5 +320,74 @@ describe('usulan Data Diri: ditawarkan untuk dikonfirmasi, tidak pernah diam-dia
     expect(u).toMatchObject({ state: 'RENCANA_DIUSULKAN', kodeKabKota: '3312' });
     const types = env.store.eventsAfter(u.id).map((e) => e.type);
     expect(types).toEqual(['wilayah', 'wilayah', 'plan_card', 'state']);
+  });
+});
+
+describe('temuan review: penetapan wilayah tidak menimpa diam-diam', () => {
+  const urusanMemahami = (jenis = 'pindah') => {
+    const env = makeEnv({ provider: new FakeProvider() });
+    const u0 = env.store.createUrusan({ jenis });
+    const u = env.store.transition(u0.id, u0.version, 'MEMAHAMI');
+    return { env, u, pub: publisher(env, u.id) };
+  };
+  const jumlahWilayah = (env: Env, id: string) => env.store.eventsOfType(id, 'wilayah', 50).length;
+
+  it('panggilan hanya-KTP mempertahankan tujuan pindah; null eksplisit menghapusnya', () => {
+    const { env, u, pub } = urusanMemahami();
+    let cur = tetapkanWilayah(env.store, u, { ktp: '3312', tujuan: '3578' }, pub);
+    cur = tetapkanWilayah(env.store, cur, { ktp: '3313' }, pub);
+    expect(wilayahUrusan(env.store, cur)).toMatchObject({
+      ktp: { kodeKabKota: '3313' },
+      tujuan: { kodeKabKota: '3578' },
+    });
+    cur = tetapkanWilayah(env.store, cur, { ktp: '3313', tujuan: null }, pub);
+    expect(wilayahUrusan(env.store, cur).tujuan).toBeNull();
+  });
+
+  it('wilayah yang sama ditetapkan lagi: tanpa event baru dan versi tidak naik', () => {
+    const { env, u, pub } = urusanMemahami('kelahiran');
+    const a = tetapkanWilayah(env.store, u, { ktp: '3312' }, pub);
+    const b = tetapkanWilayah(env.store, a, { ktp: '3312' }, pub);
+    expect(b.version).toBe(a.version);
+    expect(jumlahWilayah(env, u.id)).toBe(1);
+  });
+
+  it('kolom dan event audit ditulis atomik: event gagal → kolom tidak berubah', () => {
+    const { env, u } = urusanMemahami('kelahiran');
+    expect(() =>
+      tetapkanWilayah(env.store, u, { ktp: '3312' }, () => {
+        throw new Error('event gagal');
+      }),
+    ).toThrow('event gagal');
+    expect(env.store.getUrusanOrThrow(u.id)).toMatchObject({ kodeKabKota: null, version: u.version });
+  });
+
+  it('urusan lama berkolom 3312 tanpa event ditetapkan: hanya usulan, tanpa rencana, setujui ditolak', () => {
+    const env = makeEnv({ provider: new FakeProvider() });
+    const u0 = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'kelahiran' });
+    let u = env.store.transition(u0.id, u0.version, 'MEMAHAMI');
+    expect(wilayahUrusan(env.store, u)).toMatchObject({
+      ktp: null,
+      usulan: { ktp: { kodeKabKota: '3312' }, sumber: 'pilihan' },
+    });
+    expect(usulkanRencanaOtomatis(env.store, u, publisher(env, u.id)).state).toBe('MEMAHAMI');
+    u = env.store.transition(u.id, u.version, 'RENCANA_DIUSULKAN');
+    expect(() => setujuiRencana(env.store, u.id, () => {})).toThrow(/wilayah KTP warga belum ditetapkan/);
+  });
+
+  it('"ya" atas pertanyaan lain tidak mengonfirmasi usulan wilayah', async () => {
+    const { env, u, provider } = setup(
+      [
+        balas('Apakah anak Anda lahir di rumah sakit?'),
+        tool('wilayah__tetapkan', { ktp: 'Kabupaten Wonogiri' }),
+        balas('Baik.'),
+      ],
+      { jenis: 'kelahiran' },
+    );
+    usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
+    await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    await runTurn(env.deps, { urusanId: u.id, userText: 'ya' });
+    expect(hasilTool(provider)).toMatch(/Belum dikonfirmasi warga/);
+    expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).ktp).toBeNull();
   });
 });

@@ -8,9 +8,10 @@ import {
   type RequestOptions,
 } from '@urusin/llm';
 import { openDb, upsertChunks, type Db } from '@urusin/rag';
-import { SEMUA_WILAYAH, menyebutWilayah } from '@urusin/registry';
+import { temukanWilayah } from '@urusin/registry';
 import { INTENT_JENIS, type IntentJenis } from './intent.js';
 import { DATAMARK } from './spotlight.js';
+import { AFIRMASI, TEKS_WILAYAH } from './wilayah.js';
 
 /**
  * Model palsu "cukup pintar" untuk dijalankan tanpa kunci LLM (demo lokal, eval CI): klasifikasi intent
@@ -132,8 +133,6 @@ function bestSource(prompt: string): { refId: string; quote: string } | null {
 const wantsFacts = (t: string) =>
   /syarat|persyaratan|cara|bagaimana|biaya|dokumen|berkas|bawa|urus|buat|daftar|\?/i.test(t);
 
-const AFIRMASI = /^\s*(ya|iya+|betul|benar|bener|ok|oke|yup)\b/i;
-
 /** Catatan state harness terakhir (pesan system "STATE URUSAN: ..."). */
 function stateNote(messages: readonly ChatMessage[]): string {
   return text(
@@ -141,25 +140,18 @@ function stateNote(messages: readonly ChatMessage[]): string {
   );
 }
 
-/** Wilayah yang disebut warga: yang didahului "ke" = tujuan, lainnya = KTP/asal (urutan kemunculan). */
+/**
+ * Wilayah yang disebut warga (nama terpanjang menang, lihat `temukanWilayah`): yang didahului "ke" = tujuan,
+ * lainnya = KTP/asal, menurut urutan kemunculan. Nama ganda (Bekasi) dikirim apa adanya; tool yang menanyakan.
+ */
 function sebutanWilayah(t: string): { ktp?: string; tujuan?: string } {
-  const lower = ` ${t.toLowerCase()} `;
-  const ketemu = SEMUA_WILAYAH.filter((w) => menyebutWilayah(t, w))
-    .map((w) => {
-      const inti = w.nama.toLowerCase().replace(/^(kabupaten|kota)( administrasi)? /, '');
-      return { inti, at: lower.indexOf(` ${inti}`) + 1 };
-    })
-    .sort((a, b) => a.at - b.at);
   const out: { ktp?: string; tujuan?: string } = {};
-  const sudah = new Set<string>();
-  for (const { inti, at } of ketemu) {
-    // Nama ganda (Bekasi = Kota/Kabupaten) muncul dua kali: cukup sekali, tool yang menanyakan.
-    if (sudah.has(inti)) continue;
-    sudah.add(inti);
-    const sebelum = lower.slice(Math.max(0, at - 16), at);
-    const jenis = /(kota|kabupaten|kab)\.?\s+$/.exec(sebelum)?.[1];
-    const sebut = jenis ? `${jenis === 'kota' ? 'Kota' : 'Kabupaten'} ${inti}` : inti;
-    if (/\bke\s+((kota|kabupaten|kab)\.?\s+)?$/.test(sebelum)) out.tujuan ??= sebut;
+  const sudah = new Set<number>();
+  for (const x of temukanWilayah(t)) {
+    if (sudah.has(x.mulai)) continue;
+    sudah.add(x.mulai);
+    const sebut = x.jenisDisebut ? `${x.jenisDisebut === 'kota' ? 'Kota' : 'Kabupaten'} ${x.teks}` : x.teks;
+    if (x.sebelum === 'ke') out.tujuan ??= sebut;
     else out.ktp ??= sebut;
   }
   return out;
@@ -178,10 +170,10 @@ function langkahWilayah(
   const note = stateNote(messages);
   // Rencana Peristiwa Hidup diblokir sampai wilayah siap: tanyakan dulu. Urusan lain dijawab dari korpus nasional.
   const peristiwa = /Jenis urusan: (kelahiran|kematian|perkawinan|pindah)\./.test(note);
-  const belumKtp = peristiwa && /WILAYAH KTP: belum ditetapkan/.test(note);
-  const belumTujuan = /butuh kab\/kota tujuan/.test(note);
+  const belumKtp = peristiwa && note.includes(TEKS_WILAYAH.belum);
+  const belumTujuan = note.includes(TEKS_WILAYAH.butuhTujuan);
   if (lastToolName === 'wilayah__tetapkan') {
-    if (lastToolResult.startsWith('Wilayah KTP ditetapkan')) {
+    if (lastToolResult.startsWith(TEKS_WILAYAH.ditetapkan)) {
       if (belumTujuan) return { reply: 'Pindah ke kabupaten/kota mana?' };
       // Warga sekaligus bertanya persyaratan: lanjut mencari sumber untuk wilayahnya.
       if (wantsFacts(userText)) return null;
@@ -189,7 +181,7 @@ function langkahWilayah(
         reply: 'Terima kasih, wilayah KTP sudah dicatat. Rencana disusun dari kanal resmi wilayah Anda.',
       };
     }
-    const pilihan = /Pilihan: ([^.]+)\./.exec(lastToolResult)?.[1];
+    const pilihan = new RegExp(`${TEKS_WILAYAH.pilihan} ([^.]+)\\.`).exec(lastToolResult)?.[1];
     return {
       reply: pilihan
         ? `Maksud Anda yang mana: ${pilihan}?`
@@ -199,7 +191,7 @@ function langkahWilayah(
   if (lastToolName || (!belumKtp && !belumTujuan)) return null;
   const sebut = sebutanWilayah(userText);
   if (belumKtp) {
-    const usulan = /Usulan \([^)]*\): (.+?)\. Tanyakan/.exec(note)?.[1];
+    const usulan = new RegExp(`${TEKS_WILAYAH.usulan} \\([^)]*\\): (.+?)\\. Tanyakan`).exec(note)?.[1];
     if (sebut.ktp)
       return {
         tool: 'wilayah__tetapkan',
@@ -212,7 +204,7 @@ function langkahWilayah(
         : 'Aturan dan situs resmi berbeda di tiap kab/kota. KTP Anda terdaftar di kabupaten/kota mana?',
     };
   }
-  const ktpTercatat = /WILAYAH KTP: (.+?) \(\d{4}\)/.exec(note)?.[1];
+  const ktpTercatat = new RegExp(`${TEKS_WILAYAH.baris} (.+?) \\(\\d{4}\\)`).exec(note)?.[1];
   const tujuan = sebut.tujuan ?? sebut.ktp;
   if (tujuan && ktpTercatat) return { tool: 'wilayah__tetapkan', args: { ktp: ktpTercatat, tujuan } };
   return { reply: 'Pindah ke kabupaten/kota mana?' };

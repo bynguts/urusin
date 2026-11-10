@@ -17,7 +17,7 @@ import { KALIMAT_TETAP, buildHandoff, generateGroundedAnswer, verifyGrounded } f
 import { spotlight } from './spotlight.js';
 import { paramsHash, type ChunkRecord } from './store.js';
 import { NON_TERMINAL_STATES, defineTool, type ToolContext, type ToolDef, type ToolResult } from './tools.js';
-import { kalimatKanal, kartuRencana, wilayahUrusan } from './wilayah.js';
+import { AFIRMASI, TEKS_WILAYAH, kalimatKanal, kartuRencana, kodeKtp, wilayahUrusan } from './wilayah.js';
 
 const kodeKabKota = z.string().regex(/^\d{4}$/);
 
@@ -88,7 +88,7 @@ export const ragCariPengetahuan = defineTool({
   allowedStates: NON_TERMINAL_STATES,
   async execute(ctx, args): Promise<ToolResult> {
     // Wilayah urusan yang sudah dipastikan warga menang atas kode tebakan model.
-    const kode = ctx.urusan.kodeKabKota ?? args.kodeKabKota ?? null;
+    const kode = kodeKtp(ctx.store, ctx.urusan) ?? args.kodeKabKota ?? null;
     const out = await retrieve(ctx, args.query, kode, args.layanan);
     return { content: formatHits(out.hasil, ctx.nonce, 4, kode), terbungkus: true };
   },
@@ -103,7 +103,7 @@ export const dukcapilCekPersyaratan = defineTool({
   input: z.object({ kodeKabKota, layanan: llmText().max(80) }),
   allowedStates: NON_TERMINAL_STATES,
   async execute(ctx, args): Promise<ToolResult> {
-    const kode = ctx.urusan.kodeKabKota ?? args.kodeKabKota;
+    const kode = kodeKtp(ctx.store, ctx.urusan) ?? args.kodeKabKota;
     const { entry } = routeByKode(kode);
     const out = await retrieve(ctx, `persyaratan ${args.layanan}`, kode, undefined);
     const head = `${entry.nama}: tingkat ${entry.tier}, validasi ${entry.validasi}. ${kalimatKanal(kode)}`;
@@ -141,7 +141,6 @@ export const urusanUsulkanRencana = defineTool({
     // Peristiwa Hidup: rencana deterministik untuk wilayah ini menang atas langkah karangan model.
     const kartu = ctx.urusan.jenis ? kartuRencana(ctx.urusan.jenis, w, ctx.deps.ragDb) : undefined;
     const k = kanalWilayah(ktp.kodeKabKota);
-    const sumber = [{ url: k.url, judul: k.judul, instansi: k.instansi }];
     return {
       content: 'Rencana ditampilkan kepada warga untuk disetujui.',
       nextState: 'RENCANA_DIUSULKAN',
@@ -153,12 +152,13 @@ export const urusanUsulkanRencana = defineTool({
               type: 'plan_card',
               ringkasan: args.ringkasan,
               // Model tidak boleh menjanjikan Browser Pendamping: tanpa alur adapter, semua langkah online = manual.
+              // Langkah karangan model tidak diberi sumber: kanal resmi bukan bukti isi langkahnya (cukup di catatan).
               langkah: args.langkah.map((l, i) => ({
                 id: `l${i + 1}`,
                 judul: l.judul,
                 jenis: l.jenis === 'online-adapter' ? ('online-manual' as const) : l.jenis,
                 bawa: l.bawa ?? [],
-                sumber,
+                sumber: [],
               })),
               wilayah: {
                 ktp,
@@ -166,7 +166,7 @@ export const urusanUsulkanRencana = defineTool({
                 ...(w.tujuan ? { tujuan: w.tujuan } : {}),
               },
               tier: 'dipandu',
-              catatan: `Diurus lewat ${k.judul} (${ktp.nama}).`,
+              catatan: `Langkah disusun asisten, belum bersumber. Pastikan di kanal resmi ${ktp.nama}: ${k.judul} (${k.url}).`,
             },
       ],
     };
@@ -394,17 +394,15 @@ export const ossCariNib = defineTool({
   },
 });
 
-const AFIRMASI = /^\s*(ya|iya+|y|yes|betul|benar|bener|ok|oke|okay|yup|tepat|sesuai|sudah benar)\b/i;
-
 const teksPesan = (m: { content?: unknown }) => (typeof m.content === 'string' ? m.content : '');
 
 /**
  * Bukti bahwa WARGA (bukan model) menyebut atau membenarkan wilayah ini: namanya/kodenya ada di pesan warga
- * urusan ini, atau pesan terakhir warga berupa "ya/betul" atas usulan wilayah itu atau atas pertanyaan
- * terakhir asisten yang menyebutnya. Pemetaan kecamatan → kab/kota oleh model (mis. Cikarang → Kab. Bekasi)
- * karena itu wajib ditanyakan dulu.
+ * urusan ini, atau pesan terakhir warga berupa "ya/betul" tepat setelah pesan asisten terakhir yang menyebut
+ * wilayah itu. "Ya" atas pertanyaan lain tidak pernah dihitung, juga bila wilayahnya sama dengan usulan.
+ * Pemetaan kecamatan → kab/kota oleh model (mis. Cikarang → Kab. Bekasi) karena itu wajib ditanyakan dulu.
  */
-function dibenarkanWarga(ctx: ToolContext, w: Wilayah, usulan: string | null): boolean {
+function dibenarkanWarga(ctx: ToolContext, w: Wilayah): boolean {
   const riwayat = ctx.store.loadHistory(ctx.urusan.id);
   const warga = [
     ctx.pesanWarga,
@@ -415,7 +413,6 @@ function dibenarkanWarga(ctx: ToolContext, w: Wilayah, usulan: string | null): b
   ];
   if (warga.some((t) => menyebutWilayah(t, w))) return true;
   if (!AFIRMASI.test(ctx.pesanWarga)) return false;
-  if (usulan === w.kodeKabKota) return true;
   const tanyaTerakhir = [...riwayat].reverse().find((m) => m.role === 'assistant' && teksPesan(m));
   return tanyaTerakhir ? menyebutWilayah(teksPesan(tanyaTerakhir), w) : false;
 }
@@ -443,7 +440,6 @@ export const wilayahTetapkan = defineTool({
   allowedStates: ['MEMAHAMI', 'RENCANA_DIUSULKAN'],
   execute(ctx, args): ToolResult {
     const sekarang = wilayahUrusan(ctx.store, ctx.urusan);
-    const usulan = sekarang.usulan?.ktp.kodeKabKota ?? null;
     // Wilayah yang SUDAH dipastikan warga tidak perlu dikonfirmasi ulang (mis. menambah tujuan pindah).
     const tercatat = {
       ktp: sekarang.ktp?.kodeKabKota,
@@ -462,12 +458,9 @@ export const wilayahTetapkan = defineTool({
         };
       if (h.status === 'ambigu')
         return {
-          content: `Wilayah ${peran[kunci]} belum pasti. Pilihan: ${daftarPilihan(h)}. Tanyakan warga yang mana, lalu panggil lagi dengan nama lengkapnya.`,
+          content: `Wilayah ${peran[kunci]} belum pasti. ${TEKS_WILAYAH.pilihan} ${daftarPilihan(h)}. Tanyakan warga yang mana, lalu panggil lagi dengan nama lengkapnya.`,
         };
-      if (
-        tercatat[kunci] !== h.wilayah.kodeKabKota &&
-        !dibenarkanWarga(ctx, h.wilayah, kunci === 'ktp' ? usulan : null)
-      )
+      if (tercatat[kunci] !== h.wilayah.kodeKabKota && !dibenarkanWarga(ctx, h.wilayah))
         return {
           content: `Belum dikonfirmasi warga. Tanyakan dulu: "${kunci === 'ktp' ? 'KTP Anda terdaftar di' : kunci === 'tujuan' ? 'Pindah ke' : 'Sekarang tinggal di'} ${h.wilayah.nama}, betul?" Panggil lagi setelah warga membenarkan.`,
         };
@@ -480,7 +473,7 @@ export const wilayahTetapkan = defineTool({
       : 'Belum ada Browser Pendamping di sini: tingkat dipandu (warga mengisi sendiri dengan panduan).';
     return {
       content: [
-        `Wilayah KTP ditetapkan: ${ktp.nama}. ${kalimatKanal(ktp.kodeKabKota)} ${pendamping}`,
+        `${TEKS_WILAYAH.ditetapkan} ${ktp.nama}. ${kalimatKanal(ktp.kodeKabKota)} ${pendamping}`,
         pasti.domisili && pasti.domisili.kodeKabKota !== ktp.kodeKabKota
           ? `Domisili ${pasti.domisili.nama}: urusan kependudukan tetap di Disdukcapil ${ktp.nama}; langkah online bisa dari mana saja, tatap muka di kantor wilayah KTP.`
           : '',
@@ -488,10 +481,11 @@ export const wilayahTetapkan = defineTool({
       ]
         .filter(Boolean)
         .join('\n'),
+      // Hanya yang disebut di panggilan ini; domisili/tujuan yang tidak disebut tetap seperti sekarang.
       wilayah: {
         ktp: ktp.kodeKabKota,
-        domisili: pasti.domisili?.kodeKabKota ?? null,
-        tujuan: pasti.tujuan?.kodeKabKota ?? null,
+        ...(pasti.domisili ? { domisili: pasti.domisili.kodeKabKota } : {}),
+        ...(pasti.tujuan ? { tujuan: pasti.tujuan.kodeKabKota } : {}),
       },
     };
   },
