@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import type { Aksi, AksiSesiResponse, Pengamatan } from '@urusin/contracts';
+import type { Aksi, AksiSesiResponse, PendampingSorot, Pengamatan } from '@urusin/contracts';
 import { unmark } from '@urusin/harness';
 import { fakeCompletion, type ChatParams, type ChatProvider } from '@urusin/llm';
 import {
@@ -239,9 +239,13 @@ function rencanaOrakel(h: HalamanPrompt): unknown {
     }
   }
   // Halaman tanpa kolom (beranda, dasbor): buka layanan yang dituju, atau halaman masuk.
+  // Tautan pembuka formulir: navigasi biasa, atau `tautan_warga` (kelas kirim karena namanya; warga yang
+  // mengetuk, sistem mengubah klik ini menjadi serah `ketuk_tautan`).
   const tautan =
-    h.elemen.find((e) => e.kelas === 'navigasi' && /\b(mulai|ajukan)\b/.test(normal(e.nama))) ??
-    h.elemen.find((e) => e.kelas === 'navigasi' && /\bmasuk\b/.test(normal(e.nama)));
+    h.elemen.find(
+      (e) =>
+        (e.kelas === 'navigasi' || e.kelas === 'tautan_warga') && /\b(mulai|ajukan)\b/.test(normal(e.nama)),
+    ) ?? h.elemen.find((e) => e.kelas === 'navigasi' && /\bmasuk\b/.test(normal(e.nama)));
   if (aksi.length === 0 && tautan) return { aksi: [{ jenis: 'klik', ref: tautan.ref }] };
   const lanjut = h.elemen.find((e) => e.kelas === 'lanjut' && /lanjut|berikut/.test(normal(e.nama)));
   const kirim = h.elemen.some((e) => e.kelas === 'kirim');
@@ -375,6 +379,8 @@ type Run = {
   isiVault: number;
   /** Jejak persetujuan n=0 (tolak semua). */
   tolakSemua: number;
+  /** Tautan pembuka formulir yang diketuk warga (serah `ketuk_tautan`). */
+  ketukWarga: number;
   /** Alasan serah terakhir yang dijalankan worker. */
   serahAkhir: string | undefined;
   ms: number;
@@ -404,6 +410,16 @@ async function jalankanRun(jalur: string, otak: Otak, kembalikanGerbang = 0, tol
     params: { jalur },
     modeUji: true,
   });
+  // Layar warga palsu: hanya menangkap sorotan giliran (kotak tautan yang harus diketuk warga).
+  let sorot: PendampingSorot | undefined;
+  await m.attach(sesi.sesiId, {
+    send: (pesan) => {
+      if (pesan.type === 'event' && pesan.event.jenis === 'giliran_anda') sorot = pesan.event.sorot;
+    },
+    frame: () => undefined,
+    ack: () => undefined,
+    close: () => undefined,
+  });
   await expect.poll(() => m.status(o).status, { timeout: 30_000 }).toBe('berjalan');
 
   let obs: Pengamatan | undefined;
@@ -418,6 +434,7 @@ async function jalankanRun(jalur: string, otak: Otak, kembalikanGerbang = 0, tol
   const lembarDilihat = new Set<string>();
   let isiVault = 0;
   let tolakSemua = 0;
+  let ketukWarga = 0;
 
   /** Nilai kebenaran setiap aksi yang benar-benar dijalankan worker (kode ok). */
   const nilai = (aksi: Aksi[], r: AksiSesiResponse) => {
@@ -523,7 +540,32 @@ async function jalankanRun(jalur: string, otak: Otak, kembalikanGerbang = 0, tol
         continue;
       }
       if (st.mode !== 'takeover') continue;
-      const kini = (await m.amati(o)).pengamatan;
+      const kini = (await m.amati(o, true)).pengamatan;
+      // Tautan pembuka formulir yang disorot: warga mengetuknya (ketukan nyata), lalu mengembalikan kendali.
+      if (serahTerakhir === 'ketuk_tautan') {
+        serahTerakhir = undefined;
+        if (sorot) {
+          const x = Math.round(sorot.x + sorot.lebar / 2);
+          const y = Math.round(sorot.y + sorot.tinggi / 2);
+          for (const aksi of ['down', 'up'] as const)
+            await m.handleClient(sesi.sesiId, {
+              type: 'pointer',
+              aksi,
+              x,
+              y,
+              jenis: 'mouse',
+              tombol: 'left',
+            });
+          await expect
+            .poll(async () => (await m.amati(o, true).catch(() => null))?.pengamatan.jalur, {
+              timeout: 15_000,
+            })
+            .not.toBe(kini.jalur);
+        }
+        ketukWarga++;
+        await m.handleClient(sesi.sesiId, { type: 'kembalikan' });
+        continue;
+      }
       if (['masuk_akun', 'captcha', 'otp'].includes(serahTerakhir ?? '') && /\/masuk$/.test(kini.jalur)) {
         await masukAkun(sesi.sesiId, kini.jalur, o);
         serahTerakhir = undefined;
@@ -577,6 +619,7 @@ async function jalankanRun(jalur: string, otak: Otak, kembalikanGerbang = 0, tol
     lembar: lembarDilihat.size,
     isiVault,
     tolakSemua,
+    ketukWarga,
     serahAkhir: serahTerakhir,
     ms: Date.now() - mulai,
   };
