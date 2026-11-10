@@ -286,6 +286,8 @@ export const CatatanPendampingSchema = z.discriminatedUnion('jenis', [
     rencanaHash: HashHexSchema,
     putusan: z.enum(['terima', 'tolak']),
     aturan: z.array(IdAturanSchema).max(25),
+    /** Aditif: hash rencana asal yang persetujuannya dipakai (validasi ulang sesudah ikat ulang ref). */
+    asal: HashHexSchema.optional(),
   }),
   z.object({
     jenis: z.literal('klik'),
@@ -321,6 +323,18 @@ export const CatatanPendampingSchema = z.discriminatedUnion('jenis', [
    * `terbuang`). Hanya angka, tanpa isi; tanda bahwa rantai audit sesi ini tidak lengkap.
    */
   z.object({ jenis: z.literal('jejak_terbuang'), n: z.number().int().positive().max(1_000_000) }),
+  /**
+   * Aditif: resi akhir satu eksekusi Navigator (tanpa nilai): cara berakhir, hash resi kanonik, dan hitungan
+   * anggaran. Bukti nomor (bila ada) dicatat terpisah sebagai `bukti`.
+   */
+  z.object({
+    jenis: z.literal('resi'),
+    akhir: z.string().min(1).max(40),
+    hash: HashHexSchema,
+    halaman: z.number().int().nonnegative(),
+    aksi: z.number().int().nonnegative(),
+    panggilanLlm: z.number().int().nonnegative(),
+  }),
 ]);
 export type CatatanPendamping = z.infer<typeof CatatanPendampingSchema>;
 
