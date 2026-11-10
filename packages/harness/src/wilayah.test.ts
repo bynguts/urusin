@@ -424,3 +424,41 @@ describe('temuan eval persona: persyaratan dan wilayah setelah rencana', () => {
     expect(kutipan.url).toBe('https://peraturan.go.id/id/perpres-no-96-tahun-2018');
   });
 });
+
+describe('temuan eval persona W2: ganti wilayah membuang sumber wilayah lama', () => {
+  it('potongan Wonogiri yang diambil sebelum ganti ke Sukoharjo tidak bisa dikutip lagi', async () => {
+    const { env, u } = setup(
+      [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'syarat akta kelahiran?' }),
+        fakeCompletion({
+          content: JSON.stringify({
+            klaim: [
+              {
+                teks: 'Standar Wonogiri mencantumkan fotokopi surat keterangan kelahiran.',
+                kutipan: [{ refId: 'wng-1', kutipanPersis: 'fotokopi surat keterangan kelahiran' }],
+              },
+            ],
+            handoff: null,
+          }),
+        }),
+      ],
+      { jenis: 'kelahiran', kodeKabKota: '3312' },
+    );
+    env.store.saveChunks(u.id, [
+      {
+        refId: 'wng-1',
+        text: 'Persyaratan akta kelahiran Disdukcapil Wonogiri: fotokopi surat keterangan kelahiran.',
+        url: 'https://disdukcapil.wonogirikab.go.id/',
+        judul: 'Disdukcapil Wonogiri',
+        instansi: 'Disdukcapil Kabupaten Wonogiri',
+        verifiedAt: null,
+      },
+    ]);
+    const cur = env.store.getUrusanOrThrow(u.id);
+    tetapkanWilayah(env.store, cur, { ktp: '3311' }, publisher(env, u.id));
+    expect(env.store.getChunks(u.id)).toHaveLength(0);
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
+    expect(of(out.events, 'grounded_answer')).toHaveLength(0);
+    expect(JSON.stringify(out.events)).not.toMatch(/wonogiri/i);
+  });
+});

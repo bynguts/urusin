@@ -119,7 +119,8 @@ export type InputWilayah = {
  * Tetapkan wilayah KTP (+ domisili/tujuan) urusan: CAS pada `kode_kabkota` dan event `wilayah` ditetapkan
  * (jejak audit) dalam satu transaksi. domisili/tujuan yang tidak disebut tetap seperti sekarang. Tanpa perubahan
  * apa pun: tidak ada event dan versi tidak naik. Bila rencana sudah diusulkan untuk wilayah lain, urusan kembali
- * ke MEMAHAMI agar rencana disusun ulang. Hanya sebelum rencana disetujui.
+ * ke MEMAHAMI agar rencana disusun ulang. KTP berganti: potongan korpus yang sudah diambil dibuang. Hanya sebelum
+ * rencana disetujui.
  */
 export function tetapkanWilayah(
   store: HarnessStore,
@@ -144,6 +145,9 @@ export function tetapkanWilayah(
   if (!berubah) return u;
   const tx = store.db.transaction(() => {
     let cur = store.setKodeKabKota(u.id, u.version, ktp.kodeKabKota);
+    // Potongan yang diambil sebelum wilayah ini (wilayah lama/tebakan) tidak boleh lagi lolos verifikasi kutipan;
+    // potongan nasional/provinsi diambil ulang lewat rag__cari_pengetahuan dengan wilayah baru.
+    if (sebelum.ktp?.kodeKabKota !== ktp.kodeKabKota) store.clearChunks(u.id);
     publish({
       type: 'wilayah',
       status: 'ditetapkan',
