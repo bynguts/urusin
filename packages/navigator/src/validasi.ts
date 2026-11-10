@@ -158,7 +158,10 @@ export function kanonik(v: unknown): string {
   return JSON.stringify(v);
 }
 
-/** sha256 hex atas rencana kanonik `{aksi}`; persetujuan warga dan aksi worker terikat ke hash ini. */
+/**
+ * sha256 hex atas objek kanonik. Rencana halaman di-hash bersama halamannya (`{aksi, host, sidik, seq}`, lihat
+ * `validasiRencana`), jadi rencana identik di halaman lain tidak berbagi persetujuan.
+ */
 export function hashRencana(r: unknown): string {
   return createHash('sha256').update(kanonik(r)).digest('hex');
 }
@@ -187,7 +190,7 @@ export function validasiRencana(mentah: unknown, p: Pengamatan, opsi: OpsiValida
   const parsed = RencanaKetatSchema.safeParse(mentah);
   if (!parsed.success)
     return { ok: false, aturan: ['SKEMA_TIDAK_SAH'], rencanaHash: hashRencana(mentah ?? null) };
-  const rencanaHash = hashRencana(parsed.data);
+  const rencanaHash = hashRencana({ ...parsed.data, host: p.host, sidik: p.sidik, seq: p.seq });
   const aksi = parsed.data.aksi as Aksi[];
   const katalog = opsi.katalog ?? new Set(Object.keys(KATALOG_PLACEHOLDER));
   const berkasBoleh = opsi.berkas ?? new Set(KATALOG_BERKAS);

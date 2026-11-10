@@ -172,7 +172,15 @@ describe('validator rencana: rencana sah', () => {
     expect(v.kolom).toEqual([{ placeholder: '{{PEMOHON.NIK}}', labelPortal: 'Nomor Induk Kependudukan' }]);
     expect(v.berkas).toEqual(['KTP']);
     expect(v.rencanaHash).toMatch(/^[0-9a-f]{64}$/);
-    expect(v.rencanaHash).toBe(hashRencana(v.rencana));
+    const h = halamanForm();
+    expect(v.rencanaHash).toBe(hashRencana({ ...v.rencana, host: h.host, sidik: h.sidik, seq: h.seq }));
+  });
+
+  it('rencana identik di halaman lain (seq/sidik beda) tidak berbagi rencanaHash', () => {
+    const a = validasiRencana(fixture('rencana-isi'), halamanForm());
+    const b = validasiRencana(fixture('rencana-isi'), { ...halamanForm(), seq: 9 });
+    expect(a.ok && b.ok).toBe(true);
+    expect(a.rencanaHash).not.toBe(b.rencanaHash);
   });
 
   it('NIK ke kolom identitas yang samar: lolos tetapi baris ditandai tidakLazim', () => {

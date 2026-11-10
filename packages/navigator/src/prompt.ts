@@ -39,11 +39,12 @@ export type MasukanPrompt = {
 export const NAMA_SKEMA = 'rencana_halaman';
 
 /**
- * Deret 12+ angka (angka Unicode apa pun, boleh dipisah spasi/titik/garis/karakter tak terlihat) di teks
+ * Deret 12+ angka (angka Unicode apa pun, boleh dipisah spasi/titik/garis/karakter tak terlihat, atau 1-2 tanda
+ * baca lain seperti koma/titik dua) di teks
  * halaman: potongan NIK/KK yang terpotong batas panjang worker tidak dikenali pemindai NIK, jadi ikut diganti.
  * Model tidak butuh angka panjang untuk memilih ref.
  */
-const DERET_ANGKA = /\p{Nd}(?:[\s.\-/\p{Cf}]*\p{Nd}){11,}/gu;
+const DERET_ANGKA = /\p{Nd}(?:(?:[\s.\-/\p{Cf}]*|[^\p{L}\p{Nd}]{0,2})\p{Nd}){11,}/gu;
 
 function aturanSistem(tujuan: string): string {
   return [
