@@ -28,6 +28,10 @@ Adapter tulisan tangan hanya ada untuk Telunjuk Sakti dan beberapa alur baca. Wa
 - Wizard yang menyimpan data per halaman lewat POST butuh satu ketukan warga per halaman.
 - Situs yang hanya lewat aplikasi atau WhatsApp tetap dipandu.
 - Host baru harus melalui recon dulu.
+- Risiko diterima: biaya LLM Navigator masuk meter kuota yang sama dengan agen (token/biaya per urusan + biaya
+  harian global; habis = serah templat `kuota`), tetapi belum ada batas per akun atau per juri. Akun yang membuat
+  banyak urusan dibatasi oleh batas biaya harian global dan rate limit HTTP per IP/sesi saja. Tinjau ulang bila
+  pemakaian nyata menunjukkan satu akun menghabiskan anggaran harian.
 
 ## Rujukan berkas utama
 
