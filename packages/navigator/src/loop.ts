@@ -230,6 +230,8 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
     try {
       const j = await o.tangan.kuras();
       for (const c of j.catatan) o.jejak(c);
+      // Buffer worker sempat penuh: catat jumlahnya agar celah di rantai audit terlihat.
+      if (j.terbuang > 0) o.jejak({ jenis: 'jejak_terbuang', n: Math.min(j.terbuang, 1_000_000) });
     } catch {
       // Jejak tetap di buffer worker dan ikut terkuras pada panggilan berikutnya.
     }

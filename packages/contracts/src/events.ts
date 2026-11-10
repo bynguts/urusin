@@ -316,6 +316,11 @@ export const CatatanPendampingSchema = z.discriminatedUnion('jenis', [
   /** Host di luar registry wilayah: diserahkan ke warga, tidak pernah ditambahkan saat runtime. */
   z.object({ jenis: z.literal('host_kandidat'), host: z.string().min(1).max(253) }),
   z.object({ jenis: z.literal('bukti'), bukti: PendampingBuktiSchema }),
+  /**
+   * Aditif: jumlah catatan worker yang terbuang karena buffer jejak penuh sebelum dikuras (`/jejak`
+   * `terbuang`). Hanya angka, tanpa isi; tanda bahwa rantai audit sesi ini tidak lengkap.
+   */
+  z.object({ jenis: z.literal('jejak_terbuang'), n: z.number().int().positive().max(1_000_000) }),
 ]);
 export type CatatanPendamping = z.infer<typeof CatatanPendampingSchema>;
 

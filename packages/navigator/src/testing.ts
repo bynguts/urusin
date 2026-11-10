@@ -278,8 +278,13 @@ export class WorkerPalsu implements TanganPendamping {
     return { mode: this.k.mode, status: this.k.status, habisWaktu: false };
   }
 
+  /** Jumlah catatan yang dibuang worker (buffer penuh) sejak kuras terakhir. */
+  terbuang = 0;
+
   async kuras(): Promise<{ catatan: CatatanPendamping[]; terbuang: number }> {
-    return { catatan: this.jejak.splice(0), terbuang: 0 };
+    const terbuang = this.terbuang;
+    this.terbuang = 0;
+    return { catatan: this.jejak.splice(0), terbuang };
   }
 
   /** Semua aksi yang pernah dikirim ke worker, rata. */

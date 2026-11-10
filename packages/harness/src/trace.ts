@@ -149,6 +149,8 @@ function ringkasJejakPendamping(c: Record<string, unknown>): string {
       return `Host di luar registry wilayah: ${String(c.host)} (diserahkan ke warga)`;
     case 'bukti':
       return 'Bukti pengajuan tercatat';
+    case 'jejak_terbuang':
+      return `${String(c.n)} catatan worker terbuang (buffer jejak penuh); rantai audit sesi ini tidak lengkap`;
     default:
       return 'jejak_pendamping';
   }

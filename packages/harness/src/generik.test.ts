@@ -162,6 +162,7 @@ describe('jejak Navigator di halaman Jejak', () => {
         jendela: 'ai_klik',
       },
       { jenis: 'ambil_alih', fase: 'mulai', alasan: 'final' },
+      { jenis: 'jejak_terbuang', n: 4 },
     ];
     for (const c of catatan) store.appendEvent(u.id, 'jejak_pendamping', { executionId: 'x_1', catatan: c });
     const ringkas = jejakView(store, u.id)
@@ -174,6 +175,7 @@ describe('jejak Navigator di halaman Jejak', () => {
       'Warga menyetujui 3 isian untuk rencana abababab',
       'Gerbang tulis memblokir POST ke sidnok.semarangkota.go.id',
       'Kendali ke warga (final)',
+      '4 catatan worker terbuang (buffer jejak penuh); rantai audit sesi ini tidak lengkap',
     ]);
   });
 });

@@ -443,6 +443,16 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
     expect(provider.calls).toHaveLength(2);
   });
 
+  it('jejak worker terbuang (buffer penuh): dicatat sebagai jumlah, sekali per kuras', async () => {
+    const worker = new WorkerPalsu([halamanTinjau()]);
+    worker.terbuang = 7;
+    const provider = new ProviderSkrip(() => SERAHKAN_FINAL);
+    const { hasil, jejak } = jalankan(worker, provider);
+    await hasil;
+    expect(jejak.filter((c) => c.jenis === 'jejak_terbuang')).toEqual([{ jenis: 'jejak_terbuang', n: 7 }]);
+    for (const c of jejak) expect(CatatanPendampingSchema.safeParse(c).success).toBe(true);
+  });
+
   it('kuota runtime habis: serahkan templat sebelum memanggil model', async () => {
     const worker = new WorkerPalsu([halamanForm()]);
     const provider = new ProviderSkrip(() => RENCANA_FORM);
