@@ -15,8 +15,15 @@ import { html, page } from './layout.js';
  */
 export const JALUR_WIDGET = '/cdn-cgi/challenge-platform/uji/';
 export const JALUR_LINTAS = '/uji-cf/lintas/';
+/**
+ * Varian kotak centang (HANYA profil local/e2e): halaman antara "Performing security verification" berstatus 200
+ * TANPA header cf-mitigated (deteksi lewat judul + iframe saja), widget berisi kotak centang yang mengirim form
+ * saat dicentang manusia (skrip eksternal same-origin, bukan otomatis). Tanpa logo/merek pihak ketiga.
+ */
+export const JALUR_KOTAK = '/uji-cf/kotak/';
+const JALUR_KOTAK_JS = `${JALUR_WIDGET}kotak.js`;
 const COOKIE = 'uji_cf';
-const KEMBALI = ['/uji-cf/', '/uji-cf/gagal/', JALUR_LINTAS] as const;
+const KEMBALI_DASAR = ['/uji-cf/', '/uji-cf/gagal/', JALUR_LINTAS] as const;
 
 /** Origin pasangan lintas-situs untuk Host loopback: 127.0.0.1:P <-> localhost:P; null bila bukan loopback. */
 export function originLintas(host: string | undefined): string | null {
@@ -31,19 +38,48 @@ export function asalSah(asal: string | undefined, host: string | undefined): str
   return pasangan && asal === pasangan ? pasangan : null;
 }
 
-export function registerUjiCf(app: Hono): void {
-  for (const jalur of KEMBALI) {
+const halamanLolos = () =>
+  page(
+    'Cek status kendaraan (uji)',
+    html`<h1>Cek status kendaraan</h1>
+      <p id="lolos">Verifikasi situs selesai.</p>
+      <label for="nopol">Nomor polisi</label>
+      <input id="nopol" name="nopol" autocomplete="off" />`,
+  );
+
+/** `kotak`: daftarkan varian kotak centang (profil local saja). */
+export function registerUjiCf(app: Hono, { kotak = false }: { kotak?: boolean } = {}): void {
+  const KEMBALI: readonly string[] = kotak ? [...KEMBALI_DASAR, JALUR_KOTAK] : KEMBALI_DASAR;
+  if (kotak) {
+    app.get(JALUR_KOTAK, (c) => {
+      if (getCookie(c, COOKIE) === 'lolos') return c.html(halamanLolos());
+      return c.html(
+        page(
+          'Performing security verification',
+          html`<h1>Verifikasi keamanan</h1>
+            <p>Halaman tiruan untuk pengujian (bukan layanan pihak ketiga). Centang kotak di bawah.</p>
+            <iframe
+              title="Verifikasi"
+              src="${JALUR_WIDGET}?kembali=${encodeURIComponent(JALUR_KOTAK)}&jenis=kotak"
+              width="300"
+              height="70"
+              style="border:1px solid #888"
+            ></iframe>`,
+        ),
+      );
+    });
+    app.get(JALUR_KOTAK_JS, (c) =>
+      c.body(
+        "document.getElementById('kotak-manusia').addEventListener('change', (e) => e.target.form.submit());\n",
+        200,
+        { 'content-type': 'text/javascript; charset=utf-8' },
+      ),
+    );
+  }
+
+  for (const jalur of KEMBALI_DASAR) {
     app.get(jalur, (c) => {
-      if (jalur !== '/uji-cf/gagal/' && getCookie(c, COOKIE) === 'lolos')
-        return c.html(
-          page(
-            'Cek status kendaraan (uji)',
-            html`<h1>Cek status kendaraan</h1>
-              <p id="lolos">Verifikasi situs selesai.</p>
-              <label for="nopol">Nomor polisi</label>
-              <input id="nopol" name="nopol" autocomplete="off" />`,
-          ),
-        );
+      if (jalur !== '/uji-cf/gagal/' && getCookie(c, COOKIE) === 'lolos') return c.html(halamanLolos());
       c.header('cf-mitigated', 'challenge');
       const host = c.req.header('host');
       const lintas = jalur === JALUR_LINTAS ? originLintas(host) : null;
@@ -69,7 +105,7 @@ export function registerUjiCf(app: Hono): void {
 
   app.get(JALUR_WIDGET, (c) => {
     const kembali = c.req.query('kembali') ?? '';
-    if (!(KEMBALI as readonly string[]).includes(kembali)) return c.text('kembali tidak sah', 400);
+    if (!KEMBALI.includes(kembali)) return c.text('kembali tidak sah', 400);
     const asal = asalSah(c.req.query('asal'), c.req.header('host'));
     return c.html(
       html`<!doctype html>
@@ -82,10 +118,24 @@ export function registerUjiCf(app: Hono): void {
             <form method="post" action="${JALUR_WIDGET}" target="_top" style="margin:0">
               <input type="hidden" name="kembali" value="${kembali}" />
               ${asal ? html`<input type="hidden" name="asal" value="${asal}" />` : ''}
-              <button id="saya-manusia" type="submit" style="width:300px;height:90px;font-size:18px">
-                Saya manusia
-              </button>
+              ${
+                kembali === JALUR_KOTAK
+                  ? html`<label
+                      style="display:flex;align-items:center;gap:12px;height:70px;padding:0 16px;font-size:16px"
+                    >
+                      <input id="kotak-manusia" type="checkbox" style="width:28px;height:28px" />
+                      Verify you are human
+                    </label>`
+                  : html`<button
+                      id="saya-manusia"
+                      type="submit"
+                      style="width:300px;height:90px;font-size:18px"
+                    >
+                      Saya manusia
+                    </button>`
+              }
             </form>
+            ${kembali === JALUR_KOTAK ? html`<script src="${JALUR_KOTAK_JS}"></script>` : ''}
           </body>
         </html>`,
     );
@@ -94,7 +144,7 @@ export function registerUjiCf(app: Hono): void {
   app.post(JALUR_WIDGET, async (c) => {
     const form = await c.req.parseBody();
     const kembali = String(form.kembali ?? '');
-    if (!(KEMBALI as readonly string[]).includes(kembali)) return c.text('kembali tidak sah', 400);
+    if (!KEMBALI.includes(kembali)) return c.text('kembali tidak sah', 400);
     // Widget lintas-origin tidak bisa memasang cookie untuk origin induk: kembali lewat jalur lolos milik induk.
     const asal = asalSah(String(form.asal ?? ''), c.req.header('host'));
     if (kembali === JALUR_LINTAS && asal) return c.redirect(`${asal}${JALUR_LINTAS}lolos`, 303);

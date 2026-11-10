@@ -266,4 +266,41 @@ describe('tiruan halaman tantangan bot (uji verifikasi situs)', () => {
       'src="/cdn-cgi/challenge-platform/uji/?kembali=%2Fuji-cf%2Flintas%2F"',
     );
   });
+
+  it('varian kotak centang hanya di profil local: 200 tanpa cf-mitigated, judul + iframe, tanpa merek', async () => {
+    const W = `${ORIGIN}/cdn-cgi/challenge-platform/uji/`;
+    const pub = make('public');
+    expect((await pub.request(`${ORIGIN}/uji-cf/kotak/`)).status).toBe(404);
+    expect((await pub.request(`${W}?kembali=%2Fuji-cf%2Fkotak%2F&jenis=kotak`)).status).toBe(400);
+    expect((await tekan(pub, '/uji-cf/kotak/')).status).toBe(400);
+
+    const app = make('local');
+    const res = await app.request(`${ORIGIN}/uji-cf/kotak/`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cf-mitigated')).toBeNull();
+    const t = await res.text();
+    expect(t).toContain('<title>Performing security verification (fixture)</title>');
+    expect(t).toContain('src="/cdn-cgi/challenge-platform/uji/?kembali=%2Fuji-cf%2Fkotak%2F&jenis=kotak"');
+    expect(t).not.toMatch(/cloudflare/i);
+    // Widget: kotak centang + skrip eksternal same-origin (CSP tanpa inline script tetap berlaku).
+    const w = await app.request(`${W}?kembali=%2Fuji-cf%2Fkotak%2F&jenis=kotak`);
+    expect(w.status).toBe(200);
+    const wt = await w.text();
+    expect(wt).toContain('id="kotak-manusia"');
+    expect(wt).toContain('type="checkbox"');
+    expect(wt).toContain('<script src="/cdn-cgi/challenge-platform/uji/kotak.js"></script>');
+    expect(wt).not.toContain('id="saya-manusia"');
+    expect(wt).not.toMatch(/cloudflare/i);
+    const js = await app.request(`${W}kotak.js`);
+    expect(js.headers.get('content-type')).toContain('text/javascript');
+    expect(await js.text()).toContain("getElementById('kotak-manusia')");
+    // Centang -> 303 + cookie lolos -> halaman cek status.
+    const ok = await tekan(app, '/uji-cf/kotak/');
+    expect(ok.status).toBe(303);
+    expect(ok.headers.get('location')).toBe('/uji-cf/kotak/');
+    const cookie = (ok.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+    const lolos = await app.request(`${ORIGIN}/uji-cf/kotak/`, { headers: { cookie } });
+    expect(lolos.status).toBe(200);
+    expect(await lolos.text()).toContain('id="nopol"');
+  });
 });

@@ -293,7 +293,7 @@ export function createApp(config: Config) {
   registerSurabaya(app);
   registerSemarang(app, { secure });
   registerSamsatOss(app);
-  registerUjiCf(app);
+  registerUjiCf(app, { kotak: config.profile === 'local' });
 
   // Rute berbahaya: terdaftar HANYA di profil local (placeholder), tidak ada sama sekali di public (404).
   if (config.profile === 'local') {
