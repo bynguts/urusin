@@ -167,6 +167,9 @@ export function redactLeaves<T>(value: T): T {
  */
 const PENGENAL: Readonly<Record<string, RegExp>> = {
   paramsHash: /^[0-9a-f]{64}$/,
+  // Jejak Navigator generik (ADR 0030): hash rencana dan sha256 jalur yang diblokir gerbang tulis.
+  rencanaHash: /^[0-9a-f]{64}$/,
+  jalurSha256: /^[0-9a-f]{64}$/,
   executionId: /^x_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
 };
 
