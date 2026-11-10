@@ -477,86 +477,246 @@
         <!-- Set 1 (Unit utama) -->
         <div class="n-wordmarks lp45">
           <div class="lp46">
-            <img class="lp47" src="/pen/i-3438e81725.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-3438e81725.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Dukcapil</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-533e38ff50.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-533e38ff50.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">BPJS Kesehatan</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-63d80529c0.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-63d80529c0.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Kemenag</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-53c23c4d87.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-53c23c4d87.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Imigrasi</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-c49f4545a4.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-c49f4545a4.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Samsat</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-3438e81725.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-3438e81725.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Dukcapil</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-533e38ff50.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-533e38ff50.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">BPJS Kesehatan</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-63d80529c0.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-63d80529c0.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Kemenag</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-53c23c4d87.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-53c23c4d87.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Imigrasi</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-c49f4545a4.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-c49f4545a4.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Samsat</div>
           </div>
         </div>
         <!-- Set 2 (Duplikat untuk infinite loop) -->
         <div class="n-wordmarks lp45" aria-hidden="true">
           <div class="lp46">
-            <img class="lp47" src="/pen/i-3438e81725.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-3438e81725.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Dukcapil</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-533e38ff50.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-533e38ff50.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">BPJS Kesehatan</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-63d80529c0.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-63d80529c0.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Kemenag</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-53c23c4d87.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-53c23c4d87.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Imigrasi</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-c49f4545a4.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-c49f4545a4.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Samsat</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-3438e81725.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-3438e81725.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Dukcapil</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-533e38ff50.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-533e38ff50.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">BPJS Kesehatan</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-63d80529c0.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-63d80529c0.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Kemenag</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-53c23c4d87.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-53c23c4d87.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Imigrasi</div>
           </div>
           <div class="lp46">
-            <img class="lp47" src="/pen/i-c49f4545a4.svg" alt="" width="22" height="22" loading="lazy" decoding="async" />
+            <img
+              class="lp47"
+              src="/pen/i-c49f4545a4.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="lp48">Samsat</div>
           </div>
         </div>
@@ -2573,7 +2733,8 @@
         <div class="n-answer-row lp269">
           <div class="n-answer lp270">
             <div class="lp271">
-              Aman. Data dan berkasmu disimpan terenkripsi di server per akun. Model AI tidak pernah menerima data identitas asli (NIK, KK, nama), dan data tamu terhapus otomatis setelah 72 jam.
+              Aman. Data dan berkasmu disimpan terenkripsi di server per akun. Model AI tidak pernah menerima
+              data identitas asli (NIK, KK, nama), dan data tamu terhapus otomatis setelah 72 jam.
             </div>
           </div>
         </div>
@@ -2596,7 +2757,8 @@
         <div class="n-answer-row lp269">
           <div class="n-answer lp270">
             <div class="lp271">
-              Bisa. Kamu bisa mendampingi orang tua atau anggota keluarga lain untuk menyiapkan syarat, mengunggah berkas, dan memandu pengisian di situs resmi.
+              Bisa. Kamu bisa mendampingi orang tua atau anggota keluarga lain untuk menyiapkan syarat,
+              mengunggah berkas, dan memandu pengisian di situs resmi.
             </div>
           </div>
         </div>
@@ -2619,7 +2781,8 @@
         <div class="n-answer-row lp269">
           <div class="n-answer lp270">
             <div class="lp271">
-              Tidak. AI hanya mengisi kolom yang sudah kamu setujui di Browser Pendamping. Login, CAPTCHA, OTP, dan tombol Kirim akhir selalu dikerjakan oleh kamu sendiri.
+              Tidak. AI hanya mengisi kolom yang sudah kamu setujui di Browser Pendamping. Login, CAPTCHA,
+              OTP, dan tombol Kirim akhir selalu dikerjakan oleh kamu sendiri.
             </div>
           </div>
         </div>
@@ -2642,7 +2805,9 @@
         <div class="n-answer-row lp269">
           <div class="n-answer lp270">
             <div class="lp271">
-              Urusin membaca syarat langsung dari regulasi dan portal resmi daerah yang dilengkapi tanggal verifikasi. Bila ada perubahan atau situs belum didukung, Urusin akan memberi tahu dan beralih ke mode dipandu.
+              Urusin membaca syarat langsung dari regulasi dan portal resmi daerah yang dilengkapi tanggal
+              verifikasi. Bila ada perubahan atau situs belum didukung, Urusin akan memberi tahu dan beralih
+              ke mode dipandu.
             </div>
           </div>
         </div>
@@ -2665,7 +2830,9 @@
         <div class="n-answer-row lp269">
           <div class="n-answer lp270">
             <div class="lp271">
-              Gratis. Seluruh layanan Urusin tidak dipungut biaya. Layanan adminduk di Disdukcapil menurut Undang-Undang juga gratis; jika ada biaya resmi (mis. leges/materai), dibayarkan langsung ke instansi.
+              Gratis. Seluruh layanan Urusin tidak dipungut biaya. Layanan adminduk di Disdukcapil menurut
+              Undang-Undang juga gratis; jika ada biaya resmi (mis. leges/materai), dibayarkan langsung ke
+              instansi.
             </div>
           </div>
         </div>

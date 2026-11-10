@@ -131,7 +131,8 @@
             href="#{b.id}"
             onclick={(e) => scrollKeBagian(b.id, e)}
             aria-current={aktif === b.id ? 'true' : undefined}
-            class="flex h-12 items-center gap-2.5 rounded-xl px-3 text-base leading-[23px] transition-all duration-150 {aktif === b.id
+            class="flex h-12 items-center gap-2.5 rounded-xl px-3 text-base leading-[23px] transition-all duration-150 {aktif ===
+            b.id
               ? 'bg-surface font-semibold text-ink shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
               : 'text-card-ink hover:bg-surface/60'}"
           >
@@ -433,7 +434,11 @@
       onclick={() => ubah(!nyala)}
       class="relative -my-2 grid h-12 w-14 shrink-0 place-items-center transition-transform duration-150 active:scale-95"
     >
-      <span class="h-8 w-14 rounded-full transition-colors duration-200 ease-out {nyala ? 'bg-primer' : 'bg-line-2'}"></span>
+      <span
+        class="h-8 w-14 rounded-full transition-colors duration-200 ease-out {nyala
+          ? 'bg-primer'
+          : 'bg-line-2'}"
+      ></span>
       <span
         class="absolute top-1/2 left-1/2 -ml-[13px] size-[26px] -translate-y-1/2 rounded-full bg-surface transition-transform duration-200 ease-out {nyala
           ? 'translate-x-3'

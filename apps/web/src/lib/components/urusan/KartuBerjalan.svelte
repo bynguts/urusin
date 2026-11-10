@@ -40,7 +40,9 @@
       <h3 class="truncate text-[17px] leading-6 font-semibold text-ink">{urusan.judul}</h3>
       <span class="inline-flex items-center gap-1.5 text-[15px] leading-[21px] text-card-ink">
         <span
-          class="size-2 shrink-0 rounded-full {TITIK[info.nada]} {info.nada === 'anda' ? 'animasi-pulsa' : ''}"
+          class="size-2 shrink-0 rounded-full {TITIK[info.nada]} {info.nada === 'anda'
+            ? 'animasi-pulsa'
+            : ''}"
           aria-hidden="true"
         ></span>
         {urusan.ringkasan ? info.label : 'Memuat status…'}

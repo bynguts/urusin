@@ -157,8 +157,9 @@
         <h2 class="text-[0.9375rem] font-semibold text-ink">Mode Evaluasi &amp; Juri</h2>
       </div>
       <p class="mt-1.5 text-[0.875rem] leading-relaxed text-body">
-        Eksplorasi seluruh alur Urusin secara instan dengan salinan demo dan data contoh siap pakai tanpa perlu
-        mendaftar. Sesi ini terisolasi, aman, dan terhapus otomatis dalam 24 jam tanpa dikirim ke instansi resmi.
+        Eksplorasi seluruh alur Urusin secara instan dengan salinan demo dan data contoh siap pakai tanpa
+        perlu mendaftar. Sesi ini terisolasi, aman, dan terhapus otomatis dalam 24 jam tanpa dikirim ke
+        instansi resmi.
       </p>
       <form
         method="POST"

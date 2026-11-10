@@ -35,7 +35,10 @@
     <p class="auth-description mt-2 max-w-[34rem] text-[0.9375rem] text-body lg:mt-3.5 lg:text-[1.0625rem]">
       {sub}
     </p>
-    <div class="panel-karakter relative mt-auto hidden h-[264px] w-[516px] self-center lg:block" aria-hidden="true">
+    <div
+      class="panel-karakter relative mt-auto hidden h-[264px] w-[516px] self-center lg:block"
+      aria-hidden="true"
+    >
       <img
         src={ungu1}
         srcset="{ungu1} 192w, {ungu2} 384w"

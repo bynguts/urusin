@@ -34,7 +34,11 @@
   aria-label="Menu samping"
 >
   <div class="flex items-center justify-between px-1.5 py-1 {ciut ? 'flex-col gap-2' : ''}">
-    <a href={resolve('/beranda')} class="flex items-center gap-2 {ciut ? 'justify-center py-1' : ''}" aria-label="Urusin, ke Beranda">
+    <a
+      href={resolve('/beranda')}
+      class="flex items-center gap-2 {ciut ? 'justify-center py-1' : ''}"
+      aria-label="Urusin, ke Beranda"
+    >
       <img src={mark} alt="" width="24" height="24" class="size-6" />
       {#if !ciut}<span class="font-lora text-[22px] leading-6 font-medium tracking-[-0.6px] text-ink"
           >Urusin</span

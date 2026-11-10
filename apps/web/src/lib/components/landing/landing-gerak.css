@@ -155,7 +155,9 @@
   .lp .lp96 {
     position: relative;
     animation: lp-prompt-breath 8s ease-in-out infinite;
-    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    transition:
+      box-shadow 0.3s ease,
+      transform 0.3s ease;
   }
   .lp .n-prompt-text {
     position: relative;
@@ -449,7 +451,9 @@
   .lp .ur66 a,
   .lp .ur81 a,
   .lp .tj-q summary {
-    transition: color 0.15s ease, opacity 0.15s ease;
+    transition:
+      color 0.15s ease,
+      opacity 0.15s ease;
   }
   .lp a.lp302:hover,
   .lp .ur21 a:hover,
@@ -549,49 +553,59 @@
 }
 /* Animasi mengetik huruf per huruf (periode 9 s): kabar (0-28%), kisah (33-61%), cerita (66-95%) */
 @keyframes lp-ketik-0 {
-  0%, 2% {
+  0%,
+  2% {
     opacity: 0;
     transform: translateY(6px) scale(0.9);
   }
-  4%, 27% {
+  4%,
+  27% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-  29%, 100% {
+  29%,
+  100% {
     opacity: 0;
     transform: translateY(-6px);
   }
 }
 @keyframes lp-ketik-1 {
-  0%, 33% {
+  0%,
+  33% {
     opacity: 0;
     transform: translateY(6px) scale(0.9);
   }
-  35%, 60% {
+  35%,
+  60% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-  62%, 100% {
+  62%,
+  100% {
     opacity: 0;
     transform: translateY(-6px);
   }
 }
 @keyframes lp-ketik-2 {
-  0%, 66% {
+  0%,
+  66% {
     opacity: 0;
     transform: translateY(6px) scale(0.9);
   }
-  68%, 94% {
+  68%,
+  94% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-  96%, 100% {
+  96%,
+  100% {
     opacity: 0;
     transform: translateY(-6px);
   }
 }
 @keyframes lp-kedip-kursor {
-  0%, 100% {
+  0%,
+  100% {
     border-right-color: #252522;
   }
   50% {
@@ -599,40 +613,60 @@
   }
 }
 @keyframes lp-typewriter-text {
-  0%, 6% {
+  0%,
+  6% {
     max-width: 0;
   }
-  40%, 82% {
+  40%,
+  82% {
     max-width: 100%;
   }
-  92%, 100% {
+  92%,
+  100% {
     max-width: 0;
   }
 }
 @keyframes lp-send-pulse {
-  0%, 39% {
+  0%,
+  39% {
     transform: scale(1);
     opacity: 0.7;
   }
-  45%, 82% {
+  45%,
+  82% {
     transform: scale(1.08);
     opacity: 1;
     box-shadow: 0 4px 12px #25252233;
   }
-  88%, 100% {
+  88%,
+  100% {
     transform: scale(1);
     opacity: 0.7;
   }
 }
 @keyframes lp-prompt-breath {
-  0%, 6% {
-    box-shadow: 0px 8px 28px #2525220f, 0px 0px 1px #0000000f, 0px 1px 1px #0000000f, 0px 2px 4px #0000000a;
+  0%,
+  6% {
+    box-shadow:
+      0px 8px 28px #2525220f,
+      0px 0px 1px #0000000f,
+      0px 1px 1px #0000000f,
+      0px 2px 4px #0000000a;
   }
-  40%, 82% {
-    box-shadow: 0px 14px 38px #2525221c, 0px 0px 0px 1.5px #2525221f, 0px 2px 4px #0000000a;
+  40%,
+  82% {
+    box-shadow:
+      0px 14px 38px #2525221c,
+      0px 0px 0px 1.5px #2525221f,
+      0px 2px 4px #0000000a;
   }
-  92%, 100% {
-    box-shadow: 0px 8px 28px #2525220f, 0px 0px 1px #0000000f, 0px 1px 1px #0000000f, 0px 2px 4px #0000000a;
+  92%,
+  100% {
+    box-shadow:
+      0px 8px 28px #2525220f,
+      0px 0px 1px #0000000f,
+      0px 1px 1px #0000000f,
+      0px 2px 4px #0000000a;
   }
 }
 @keyframes lp-marquee-slide {

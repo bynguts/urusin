@@ -328,7 +328,9 @@ input[type='search']:focus-visible {
 }
 
 /* Fokus border untuk input mandiri bergaris (bukan transparan/tanpa garis) */
-input:not([type='radio']):not([type='checkbox']):not([type='submit']):not([type='button']):not([type='hidden']):not(.bg-transparent):not(.border-0):not(.border-none):focus,
+input:not([type='radio']):not([type='checkbox']):not([type='submit']):not([type='button']):not(
+    [type='hidden']
+  ):not(.bg-transparent):not(.border-0):not(.border-none):focus,
 select:not(.bg-transparent):focus {
   border-color: var(--sb-text-primary);
 }

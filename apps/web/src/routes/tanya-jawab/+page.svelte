@@ -71,8 +71,12 @@
     <div class="tj11">
       <nav class="tj12" aria-label="Kategori pertanyaan">
         <a class="tj13 tj-nav-link tj-nav-umum" href="#umum"><span class="tj14">Umum</span></a>
-        <a class="tj15 tj-nav-link tj-nav-keamanan" href="#keamanan"><span class="tj16">Keamanan &amp; privasi</span></a>
-        <a class="tj17 tj-nav-link tj-nav-pendamping" href="#pendamping"><span class="tj18">Browser Pendamping</span></a>
+        <a class="tj15 tj-nav-link tj-nav-keamanan" href="#keamanan"
+          ><span class="tj16">Keamanan &amp; privasi</span></a
+        >
+        <a class="tj17 tj-nav-link tj-nav-pendamping" href="#pendamping"
+          ><span class="tj18">Browser Pendamping</span></a
+        >
         <a class="tj19 tj-nav-link tj-nav-biaya" href="#biaya"><span class="tj20">Biaya &amp; akun</span></a>
       </nav>
       <div class="tj21">
