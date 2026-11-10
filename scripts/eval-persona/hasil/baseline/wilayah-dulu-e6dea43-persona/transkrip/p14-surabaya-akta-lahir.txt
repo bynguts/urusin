@@ -1,0 +1,80 @@
+Warga Kota Surabaya, bayi baru lahir: akta kelahiran
+====================================================
+
+Warga: Halo, saya warga Surabaya, anak saya baru lahir 2 minggu lalu. Akta kelahirannya bisa online?
+
+[KARTU WILAYAH] KTP Anda terdaftar di Kota Surabaya? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)
+Urusin: Selamat atas kelahiran anak Anda! KTP Anda terdaftar di Kota Surabaya, betul?
+
+Warga menekan [Ya, betul]
+
+(sistem) Wilayah KTP: Kota Surabaya
+[KARTU RENCANA] Kelahiran · Kota Surabaya
+  Wilayah KTP: Kota Surabaya (tingkat dipandu)
+  Catatan: Persyaratan nasional untuk Kota Surabaya; detail dan cara pengajuan mengikuti Klampid New Generation.
+  1. Ajukan akta kelahiran ke Disdukcapil Kota Surabaya [online]
+     Sumber: Klampid New Generation (https://wargaklampid-dispendukcapil.surabaya.go.id/); Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)
+  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]
+     Sumber: Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)
+  3. Terima akta kelahiran dan KK baru dari Disdukcapil Kota Surabaya [datang langsung, disdukcapil]
+     Bawa: Bukti pengajuan
+     Sumber: Klampid New Generation (https://wargaklampid-dispendukcapil.surabaya.go.id/)
+
+Warga menekan [Setujui rencana]
+
+(status: Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.)
+
+Warga: Saya punya surat lahir dari rumah sakit dan buku nikah. Untuk mengajukan lewat Klampid, dokumen apa saja yang perlu disiapkan dan bagaimana langkahnya? Apakah aktanya harus diambil langsung?
+
+[JAWABAN BERSUMBER]
+  - Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya pada kategori Pencatatan Sipil.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  - Katalog mencantumkan Panduan Akta Kelahiran sebagai panduan resmi.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: Maaf, dokumen yang perlu saya siapkan apa saja selain surat lahir dan buku nikah? Lalu langkah pengajuannya di Klampid bagaimana, dan apakah aktanya harus diambil langsung?
+
+[JAWABAN BERSUMBER]
+  - Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya dalam kategori Pencatatan Sipil.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  - Katalog Klampid menyebutkan bahwa panduan resmi Akta Kelahiran tersedia.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: Maaf, jawabannya masih belum menjawab pertanyaan saya. Di mana saya bisa membuka panduan resmi itu? Saya perlu tahu dokumen selain surat lahir dan buku nikah, langkah pengajuannya, serta apakah aktanya harus diambil langsung.
+
+Urusin: Maaf, jawaban sebelumnya belum menjawab pertanyaan Anda.
+
+Anda bisa membuka **[Klampid New Generation resmi Kota Surabaya](https://wargaklampid-dispendukcapil.surabaya.go.id/)**, lalu mencari **Akta Kelahiran** di kategori **Pencatatan Sipil**. Katalog resmi mencantumkan **Panduan Akta Kelahiran** untuk layanan tersebut. [Sumber: katalog Klampid, Akta Kelahiran]
+
+Untuk tiga hal yang Anda tanyakan:
+
+- **Dokumen tambahan:** Informasi resmi yang berhasil saya temukan belum memuat daftar dokumen lengkap selain surat lahir dan buku nikah. Saya belum bisa memastikan dokumen tambahan tanpa melihat isi panduannya.
+- **Langkah pengajuan:** Yang sudah terkonfirmasi, layanan Akta Kelahiran tersedia di Klampid dalam kategori Pencatatan Sipil. Rincian pengisian dan unggah dokumen belum tercantum dalam informasi yang saya temukan.
+- **Pengambilan akta:** Saya juga belum menemukan keterangan resmi yang memastikan apakah harus diambil langsung atau dapat dicetak sendiri.
+
+Karena rencana Anda sudah disetujui, Anda dapat menekan **“Setujui dan buka situs”** untuk membuka Browser Pendamping dan memeriksa panduan serta formulir di Klampid bersama saya. Sandi atau CAPTCHA Anda isi sendiri, dan tombol kirim akhir tetap Anda yang tekan. Jangan kirim data pribadi atau dokumen ke chat.
+
+Warga: Saya tidak melihat tombol “Setujui dan buka situs”, dan tadi tertulis situsnya belum bisa dibantu Browser Pendamping. Apakah saya harus membuka Klampid sendiri? Setelah masuk ke Akta Kelahiran, panduannya ada di bagian mana?
+
+[JAWABAN BERSUMBER]
+  - Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya, dalam kategori Pencatatan Sipil.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  - Katalog menyebut tersedia panduan resmi bernama Panduan Akta Kelahiran.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: Maaf, jawabannya masih sama dan belum menjawab. Karena tidak ada tombolnya, apakah saya harus membuka Klampid sendiri? Kalau posisi panduannya belum diketahui, mohon sampaikan. Saya juga bingung karena rencana tadi menyebut akta diambil langsung, tapi sebelumnya dibilang belum pasti. Yang benar bagaimana?
+
+Urusin: Maaf, saya keliru menyuruh Anda menekan tombol yang tidak tersedia, dan memberikan keterangan yang bertentangan soal pengambilan akta.
+
+**Ya, untuk saat ini silakan buka [Klampid New Generation resmi Surabaya](https://wargaklampid-dispendukcapil.surabaya.go.id/) sendiri**, karena pada layar Anda Browser Pendamping belum tersedia.
+
+Katalog resmi menyebut layanan **Akta Kelahiran** ada dalam kategori **Pencatatan Sipil** dan memiliki **Panduan Akta Kelahiran**. Namun, **saya belum mengetahui posisi atau tombol panduannya secara tepat** setelah layanan dibuka. [Sumber: katalog Klampid, Akta Kelahiran]
+
+Tentang pengambilan, **saya belum dapat memastikan apakah akta harus diambil langsung**. Keterangan dalam rencana sebelumnya yang menyatakan harus diambil langsung belum didukung informasi resmi yang berhasil saya temukan; mohon jangan jadikan itu patokan. Begitu juga, saya belum dapat memastikan daftar dokumen lengkap selain surat lahir dan buku nikah.
+
+Jika Anda menemukan keterangan panduan atau pemberitahuan di Klampid, Anda boleh menyalin **teks petunjuknya saja** ke sini. Jangan sertakan data pribadi; saya akan bantu menjelaskannya.
+
+[AKHIR: warga_selesai — Saya sudah tahu langkah berikutnya untuk membuka Klampid sendiri dan mencari layanan Akta Kelahiran.]

@@ -1,0 +1,613 @@
+{
+  "persona": "p11-bekasi-ambigu",
+  "urusanId": "u_5f0c37c15b9db4f3cc2d37595f7a217c",
+  "wilayahPerangkat": "3275",
+  "kodeUrusan": "3275",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Saya dari Bekasi, KTP saya rusak kena air. Bikin baru gimana?",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3275",
+            "nama": "Kota Bekasi"
+          },
+          "status": "usulan",
+          "sumber": "pilihan",
+          "type": "wilayah",
+          "seq": 1,
+          "at": "2026-11-10T08:06:32.234Z",
+          "chainHead": "61b7cda36280…"
+        },
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": null,
+          "version": 2,
+          "type": "state",
+          "seq": 2,
+          "at": "2026-11-10T08:06:32.236Z",
+          "chainHead": "db97f70b0da7…"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T08:06:32.237Z",
+          "chainHead": "90e6695fd252…"
+        },
+        {
+          "delta": "KTP Anda terdaftar di Kota Bekasi, betul?",
+          "type": "assistant_text",
+          "seq": 4,
+          "at": "2026-11-10T08:06:38.711Z",
+          "chainHead": "f6a09781c195…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_7466a361-7e9c-41e5-80cf-2757b6a8eddb",
+          "version": 3,
+          "type": "done",
+          "seq": 5,
+          "at": "2026-11-10T08:06:38.712Z",
+          "chainHead": "da610a88af6a…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 6482
+    },
+    {
+      "peran": "warga",
+      "jenis": "klik",
+      "teks": "Ya, betul",
+      "http": {
+        "status": 200
+      },
+      "alasan": "KTP Sari memang terdaftar di Kota Bekasi."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3275",
+            "nama": "Kota Bekasi"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 6,
+          "at": "2026-11-10T08:06:41.074Z",
+          "chainHead": "4409254b8aea…"
+        }
+      ],
+      "status": "selesai",
+      "aksi": "Ya, betul",
+      "ms": 1297
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Kalau KTP saya rusak, selanjutnya saya harus ke mana dan bawa apa ya?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya sudah memastikan wilayah KTP, tapi belum mendapat petunjuk pengurusannya."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 7,
+          "at": "2026-11-10T08:06:46.380Z",
+          "chainHead": "8832665fc076…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 8,
+          "at": "2026-11-10T08:06:51.066Z",
+          "chainHead": "3dd97c38ebbe…"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 9,
+          "at": "2026-11-10T08:06:52.916Z",
+          "chainHead": "48510b10e1eb…"
+        },
+        {
+          "label": "Menjalankan wilayah__tetapkan…",
+          "toolName": "wilayah__tetapkan",
+          "type": "progress",
+          "seq": 10,
+          "at": "2026-11-10T08:06:53.599Z",
+          "chainHead": "5ee6a9e747cc…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 11,
+          "at": "2026-11-10T08:06:56.583Z",
+          "chainHead": "6807ef872dc8…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T08:06:56.585Z",
+          "chainHead": "ed21718d3258…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi",
+              "url": "https://www.e-open.id/"
+            },
+            {
+              "nama": "Kota Bekasi",
+              "url": "https://www.e-open.id"
+            }
+          ],
+          "sebab": "tanpa_sumber",
+          "type": "handoff",
+          "seq": 13,
+          "at": "2026-11-10T08:06:56.585Z",
+          "chainHead": "427c668697e9…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_ee165e0c-2b72-4ee1-89ce-c22a68ddcfd7",
+          "version": 5,
+          "type": "done",
+          "seq": 14,
+          "at": "2026-11-10T08:06:56.587Z",
+          "chainHead": "edd15937d1f9…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 10215
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Saya harus datang ke kantor Disdukcapil atau bisa urus lewat situs itu? Terus perlu bawa apa saja ya?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Belum jelas harus ke mana dan dokumen apa yang perlu dibawa."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 15,
+          "at": "2026-11-10T08:06:59.723Z",
+          "chainHead": "7c2ab6b8c126…"
+        },
+        {
+          "delta": "Untuk KTP rusak di **Kota Bekasi**, Anda bisa mengecek layanan dan petunjuknya melalui kanal resmi **e-Open**: https://www.e-open.id/.\n\nNamun, informasi resmi yang saya temukan belum cukup untuk memastikan apakah penggantian bisa diselesaikan lewat situs, apakah Anda perlu datang ke kantor, atau dokumen apa saja yang harus dibawa. Sebaiknya periksa petunjuk layanan KTP rusak di e-Open atau tanyakan langsung kepada Disdukcapil Kota Bekasi sebelum datang, supaya tidak bolak-balik.\n\nAnda tidak perlu mengirimkan NIK atau foto dokumen ke chat ini.",
+          "type": "assistant_text",
+          "seq": 16,
+          "at": "2026-11-10T08:07:05.376Z",
+          "chainHead": "5cfa8934a57f…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_078d1c74-9c89-432a-8169-608e0923db19",
+          "version": 6,
+          "type": "done",
+          "seq": 17,
+          "at": "2026-11-10T08:07:05.377Z",
+          "chainHead": "6d956c140cf0…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 5658
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Di e-Open itu saya harus pilih menu apa untuk KTP rusak? Kalau mau tanya langsung ke Disdukcapil, hubunginya ke mana ya?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya masih belum tahu cara mencari layanan atau menghubungi Disdukcapil untuk memastikan dokumennya."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 18,
+          "at": "2026-11-10T08:07:12.875Z",
+          "chainHead": "831721a4903b…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 19,
+          "at": "2026-11-10T08:07:16.873Z",
+          "chainHead": "774ea47a0a59…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 20,
+          "at": "2026-11-10T08:07:21.130Z",
+          "chainHead": "2261c44e4663…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 21,
+          "at": "2026-11-10T08:07:21.131Z",
+          "chainHead": "0a97fa2312b8…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi",
+              "url": "https://www.e-open.id/"
+            },
+            {
+              "nama": "Kota Bekasi",
+              "url": "https://www.e-open.id"
+            }
+          ],
+          "sebab": "tanpa_sumber",
+          "type": "handoff",
+          "seq": 22,
+          "at": "2026-11-10T08:07:21.131Z",
+          "chainHead": "a991e0fadda3…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_dff2013d-a61f-4b97-8e8f-2ed3858c8c2b",
+          "version": 7,
+          "type": "done",
+          "seq": 23,
+          "at": "2026-11-10T08:07:21.133Z",
+          "chainHead": "7a6354990a36…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 8262
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Itu link yang tadi lagi. Saya harus pilih menu apa di e-Open buat KTP rusak? Ada nomor Disdukcapil Kota Bekasi yang bisa saya hubungi?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya belum tahu menu yang harus dipilih atau cara menghubungi Disdukcapil."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 24,
+          "at": "2026-11-10T08:07:26.632Z",
+          "chainHead": "4de2d0ecab49…"
+        },
+        {
+          "delta": "Maaf, saya belum menemukan sumber resmi yang memastikan **nama menu e-Open untuk KTP rusak** maupun **nomor kontak Disdukcapil Kota Bekasi**. Saya tidak ingin menebak dan membuat Anda salah memilih atau menghubungi nomor yang keliru.\n\nCoba periksa bagian **Bantuan atau Kontak** yang tercantum di e-Open untuk menanyakan kedua hal itu langsung. Saya paham ini belum menjawab menu dan nomornya secara spesifik.",
+          "type": "assistant_text",
+          "seq": 25,
+          "at": "2026-11-10T08:07:31.044Z",
+          "chainHead": "03ab90e2958b…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_b48c4b13-2fd3-4e7a-ad18-1fb087f8a6f7",
+          "version": 8,
+          "type": "done",
+          "seq": 26,
+          "at": "2026-11-10T08:07:31.048Z",
+          "chainHead": "20815a406f9a…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 4420
+    }
+  ],
+  "layar": [
+    "Warga: Saya dari Bekasi, KTP saya rusak kena air. Bikin baru gimana?",
+    "[KARTU WILAYAH] KTP Anda terdaftar di Kota Bekasi? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)\nUrusin: KTP Anda terdaftar di Kota Bekasi, betul?",
+    "Warga menekan [Ya, betul]",
+    "(sistem) Wilayah KTP: Kota Bekasi",
+    "Warga: Kalau KTP saya rusak, selanjutnya saya harus ke mana dan bawa apa ya?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi https://www.e-open.id/\n  - Kota Bekasi https://www.e-open.id",
+    "Warga: Saya harus datang ke kantor Disdukcapil atau bisa urus lewat situs itu? Terus perlu bawa apa saja ya?",
+    "Urusin: Untuk KTP rusak di **Kota Bekasi**, Anda bisa mengecek layanan dan petunjuknya melalui kanal resmi **e-Open**: https://www.e-open.id/.\n\nNamun, informasi resmi yang saya temukan belum cukup untuk memastikan apakah penggantian bisa diselesaikan lewat situs, apakah Anda perlu datang ke kantor, atau dokumen apa saja yang harus dibawa. Sebaiknya periksa petunjuk layanan KTP rusak di e-Open atau tanyakan langsung kepada Disdukcapil Kota Bekasi sebelum datang, supaya tidak bolak-balik.\n\nAnda tidak perlu mengirimkan NIK atau foto dokumen ke chat ini.",
+    "Warga: Di e-Open itu saya harus pilih menu apa untuk KTP rusak? Kalau mau tanya langsung ke Disdukcapil, hubunginya ke mana ya?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi https://www.e-open.id/\n  - Kota Bekasi https://www.e-open.id",
+    "Warga: Itu link yang tadi lagi. Saya harus pilih menu apa di e-Open buat KTP rusak? Ada nomor Disdukcapil Kota Bekasi yang bisa saya hubungi?",
+    "Urusin: Maaf, saya belum menemukan sumber resmi yang memastikan **nama menu e-Open untuk KTP rusak** maupun **nomor kontak Disdukcapil Kota Bekasi**. Saya tidak ingin menebak dan membuat Anda salah memilih atau menghubungi nomor yang keliru.\n\nCoba periksa bagian **Bantuan atau Kontak** yang tercantum di e-Open untuk menanyakan kedua hal itu langsung. Saya paham ini belum menjawab menu dan nomornya secara spesifik."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": false,
+    "catatan": "Saya belum mendapat menu atau nomor yang jelas dan jawabannya berulang, jadi saya menyerah."
+  },
+  "ms": 61263,
+  "giliranWarga": 6,
+  "nilai": {
+    "persona": "p11-bekasi-ambigu",
+    "judul": "Wilayah ambigu: \"saya dari Bekasi\" (Kota vs Kab.)",
+    "urusanId": "u_5f0c37c15b9db4f3cc2d37595f7a217c",
+    "wilayahPerangkat": "3275",
+    "kodeUrusan": "3275",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": false,
+      "catatan": "Saya belum mendapat menu atau nomor yang jelas dan jawabannya berulang, jadi saya menyerah."
+    },
+    "giliranWarga": 6,
+    "ms": 61263,
+    "url": [
+      "https://www.e-open.id/",
+      "https://www.e-open.id"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": null,
+        "bukti": "tidak ada rencana/jawaban persyaratan"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "langkah 4: buntu, tidak ada yang tampil"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": true,
+        "bukti": "Urusin: KTP Anda terdaftar di Kota Bekasi, betul?"
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/)."
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "informasi resmi yang saya temukan belum cukup untuk memastikan apakah penggantian bisa diselesaikan lewat situs, apakah Anda perlu datang ke kantor, atau dokumen apa saja yang harus dibawa."
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "kanal resmi **e-Open**: https://www.e-open.id/"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "(tidak ada tawaran Browser Pendamping atau klaim pengiriman)"
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "Anda tidak perlu mengirimkan NIK atau foto dokumen ke chat ini."
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "Saya tidak ingin menebak dan membuat Anda salah memilih atau menghubungi nomor yang keliru."
+      },
+      "h": {
+        "lulus": false,
+        "bukti": "Coba periksa bagian **Bantuan atau Kontak** yang tercantum di e-Open untuk menanyakan kedua hal itu langsung."
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "Saya belum menemukan sumber resmi yang memastikan **nama menu e-Open untuk KTP rusak** maupun **nomor kontak Disdukcapil Kota Bekasi**."
+      },
+      "ringkasan": "Urusin memastikan wilayah KTP dan menggunakan kanal Kota Bekasi yang benar. Namun, Urusin tidak memberikan persyaratan bersumber dan berakhir dengan arahan yang belum menyelesaikan kebuntuan warga.",
+      "cacat": [
+        {
+          "judul": "Persyaratan tidak diberikan",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "informasi resmi yang saya temukan belum cukup untuk memastikan apakah penggantian bisa diselesaikan lewat situs, apakah Anda perlu datang ke kantor, atau dokumen apa saja yang harus dibawa."
+        },
+        {
+          "judul": "Langkah lanjutan tetap samar",
+          "kriteria": "h",
+          "keparahan": "sedang",
+          "bukti": "Coba periksa bagian **Bantuan atau Kontak** yang tercantum di e-Open untuk menanyakan kedua hal itu langsung."
+        },
+        {
+          "judul": "Pengarahan berulang berujung buntu",
+          "kriteria": "i",
+          "keparahan": "tinggi",
+          "bukti": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/)."
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": true,
+        "bukti": "juri: Urusin: KTP Anda terdaftar di Kota Bekasi, betul?",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": null,
+            "bukti": "tidak ada rencana/jawaban persyaratan"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Urusin: KTP Anda terdaftar di Kota Bekasi, betul?"
+          }
+        ]
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "juri: Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/).",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/)."
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: informasi resmi yang saya temukan belum cukup untuk memastikan apakah penggantian bisa diselesaikan lewat situs, apakah Anda perlu datang ke kantor, atau dokumen apa saja yang harus dibawa.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "informasi resmi yang saya temukan belum cukup untuk memastikan apakah penggantian bisa diselesaikan lewat situs, apakah Anda perlu datang ke kantor, atau dokumen apa saja yang harus dibawa."
+          }
+        ]
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada tautan/nama wilayah lain | juri: kanal resmi **e-Open**: https://www.e-open.id/",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "kanal resmi **e-Open**: https://www.e-open.id/"
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada tawaran Browser Pendamping atau klaim pengiriman)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada tawaran Browser Pendamping atau klaim pengiriman)"
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: Anda tidak perlu mengirimkan NIK atau foto dokumen ke chat ini.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Anda tidak perlu mengirimkan NIK atau foto dokumen ke chat ini."
+          }
+        ]
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "juri: Saya tidak ingin menebak dan membuat Anda salah memilih atau menghubungi nomor yang keliru.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Saya tidak ingin menebak dan membuat Anda salah memilih atau menghubungi nomor yang keliru."
+          }
+        ]
+      },
+      "h": {
+        "lulus": false,
+        "bukti": "juri: Coba periksa bagian **Bantuan atau Kontak** yang tercantum di e-Open untuk menanyakan kedua hal itu langsung.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Coba periksa bagian **Bantuan atau Kontak** yang tercantum di e-Open untuk menanyakan kedua hal itu langsung."
+          }
+        ]
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "otomatis: langkah 4: buntu, tidak ada yang tampil | juri: Saya belum menemukan sumber resmi yang memastikan **nama menu e-Open untuk KTP rusak** maupun **nomor kontak Disdukcapil Kota Bekasi**.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": false,
+            "bukti": "langkah 4: buntu, tidak ada yang tampil"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Saya belum menemukan sumber resmi yang memastikan **nama menu e-Open untuk KTP rusak** maupun **nomor kontak Disdukcapil Kota Bekasi**."
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 33007,
+        "tokensOut": 567,
+        "costIdr": 0,
+        "panggilanLlm": 8
+      },
+      "simulator": {
+        "panggilan": 6,
+        "tokensIn": 17467,
+        "tokensOut": 441
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 4898,
+        "tokensOut": 687
+      }
+    }
+  }
+}

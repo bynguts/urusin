@@ -1,0 +1,57 @@
+SKCK untuk melamar kerja (di luar Dukcapil)
+===========================================
+
+Warga: Saya butuh SKCK buat lamar kerja. Bisa dibantu?
+
+Urusin: Bisa, saya bantu urus SKCK untuk melamar kerja.
+
+KTP Anda terdaftar di kabupaten/kota mana? Cukup sebutkan nama kabupaten atau kotanya, tanpa NIK.
+
+Warga: KTP saya terdaftar di Kota Depok, Jawa Barat.
+
+(sistem) Wilayah KTP: Kota Depok
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/
+  - Kota Depok https://silondomaju.depok.go.id
+
+Warga: Bukannya SKCK diurus di kepolisian, ya? Kalau untuk melamar kerja di BUMN, saya harus ke mana dan membawa apa saja?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/
+  - Kota Depok https://silondomaju.depok.go.id
+
+Warga: Maaf, tadi saya sudah tanya soal SKCK di kepolisian, tapi jawabannya masih Disdukcapil. Untuk melamar kerja di BUMN, saya harus ke kantor polisi yang mana dan membawa dokumen apa saja?
+
+Urusin: Betul, SKCK diurus di **kepolisian**, bukan Disdukcapil. Maaf, arahan saya sebelumnya keliru.
+
+Untuk lamaran BUMN, saya belum menemukan sumber resmi yang cukup untuk memastikan **tingkat kantor polisi yang berwenang** maupun daftar dokumen yang harus dibawa. Sebaiknya tanyakan ke **Polres Metro Depok** dengan menyebutkan bahwa SKCK diperlukan untuk melamar kerja di BUMN. Konfirmasikan juga apakah pengajuannya dilayani di sana atau harus di tingkat Polda, serta dokumen yang perlu dibawa.
+
+Jangan kirim NIK atau dokumen pribadi Anda di chat ini.
+
+Warga: Baik, terima kasih. Saya bisa menghubungi Polres Metro Depok lewat apa untuk menanyakan syarat SKCK ini?
+
+Urusin: Saya belum menemukan nomor telepon atau WhatsApp resmi **layanan SKCK Polres Metro Depok** yang bisa saya pastikan, jadi saya tidak ingin memberi nomor yang keliru.
+
+Anda bisa menanyakan kontak layanan SKCK melalui kanal resmi **Polres Metro Depok** atau datang langsung ke bagian pelayanan SKCK di kantor Polres. Sampaikan bahwa Anda memerlukan SKCK untuk melamar kerja di BUMN dan ingin memastikan kantor penerbit serta dokumen yang perlu dibawa.
+
+Warga: Baik, kalau saya datang langsung, alamat kantor Polres Metro Depok di mana ya?
+
+Urusin: Maaf, saya belum menemukan sumber resmi yang memastikan alamat kantor **Polres Metro Depok**, jadi saya tidak ingin memberikan alamat yang mungkin keliru.
+
+Anda bisa memeriksa alamatnya melalui kanal resmi Polres Metro Depok. Sebelum berangkat, sebaiknya pastikan juga lokasi dan jam pelayanan SKCK, serta apakah SKCK untuk lamaran BUMN dapat diterbitkan di sana.
+
+Warga: Kanal resmi Polres Metro Depok yang bisa saya cek itu situs atau akun apa ya? Saya masih bingung harus mencari alamat dan informasi SKCK-nya di mana.
+
+Urusin: Maaf, jawaban saya sebelumnya belum membantu Anda menemukan kanal yang tepat. **Silondo Maju adalah kanal layanan Pemkot Depok, bukan kanal kepolisian untuk SKCK.**
+
+Saya belum dapat memastikan situs atau nama akun resmi Polres Metro Depok dari sumber yang tersedia. Agar tidak salah mengarahkan Anda ke akun palsu, saya tidak akan menebak alamat situs atau nama akunnya.
+
+Untuk mencarinya, Anda bisa mengetik **“Polres Metro Depok SKCK”** di mesin pencari atau peta digital. Sebelum memakai nomor kontak atau mendatangi lokasi yang muncul, periksa apakah informasi itu juga tercantum pada kanal resmi kepolisian. Jangan mengirim NIK atau foto dokumen melalui akun yang belum terverifikasi.
+
+Warga: Maaf, saya masih bingung. Kalau kanal resminya saja belum tahu, bagaimana saya bisa memverifikasi hasil pencariannya? Adakah situs resmi kepolisian yang bisa saya cek untuk mencari kontak Polres Metro Depok?
+
+Urusin: Betul, Anda perlu titik awal yang jelas. Anda bisa mulai dari **situs resmi Polri: https://www.polri.go.id/**, lalu cari menu kontak atau informasi satuan kewilayahan untuk menanyakan kontak Polres Metro Depok.
+
+Saya belum bisa memastikan bahwa situs tersebut mencantumkan kontak atau alamat layanan SKCK Polres Metro Depok. Jadi, jika menemukan nomor atau akun lain lewat pencarian, sebaiknya konfirmasikan dulu melalui kontak yang tercantum di situs Polri sebelum mengirimkan data pribadi.
+
+[AKHIR: warga_selesai — Saya sudah mendapat situs resmi Polri sebagai titik awal untuk mencari kontak Polres Metro Depok.]
