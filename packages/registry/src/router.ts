@@ -1,6 +1,7 @@
 import { RegistryError } from './errors.js';
 import { CityEntrySchema, type CityEntry } from './schema.js';
 import { SEED_ENTRIES } from './seed.js';
+import { NAMA_WILAYAH, kontakDukcapil } from './wilayah.js';
 
 export type Route = {
   kodeKabKota: string;
@@ -31,6 +32,8 @@ export function createRouter(opts: RouterOptions = {}) {
     const found = byKode.get(kode);
     if (found) return { kodeKabKota: kode, entry: found, terdaftar: true };
     const nama = opts.namaWilayah?.get(kode) ?? `Kab/Kota ${kode}`;
+    // Situs Disdukcapil terverifikasi (kontak-dukcapil.json) menjadi kanal resmi kota tanpa entri khusus.
+    const kontak = kontakDukcapil(kode);
     return {
       kodeKabKota: kode,
       terdaftar: false,
@@ -39,7 +42,15 @@ export function createRouter(opts: RouterOptions = {}) {
         nama,
         tier: 'dipandu',
         validasi: 'tidak-ada-portal',
-        sourceRef: [],
+        sourceRef: kontak
+          ? [
+              {
+                url: kontak.website.endsWith('/') ? kontak.website : `${kontak.website}/`,
+                judul: `Situs Disdukcapil ${nama}`,
+                instansi: `Dinas Kependudukan dan Pencatatan Sipil ${nama}`,
+              },
+            ]
+          : [],
         verifiedAt: null,
         catatan: 'Belum ada entri khusus; gunakan langkah dipandu dari korpus nasional dan kanal resmi.',
       },
@@ -53,6 +64,7 @@ export function createRouter(opts: RouterOptions = {}) {
   return { routeByKode, routeByNik, entries };
 }
 
-const defaultRouter = createRouter();
+/** Router default: seed + nama resmi 514 kab/kota (kode di luar seed tetap bernama benar, bukan "Kab/Kota XXXX"). */
+const defaultRouter = createRouter({ namaWilayah: NAMA_WILAYAH });
 export const routeByNik = defaultRouter.routeByNik;
 export const routeByKode = defaultRouter.routeByKode;
