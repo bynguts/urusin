@@ -126,6 +126,11 @@ export class WorkerPalsu implements TanganPendamping {
   tolakPersetujuan = false;
   /** Warga menolak baris dengan placeholder ini saja. */
   tolakBaris = new Set<string>();
+  /**
+   * Warga menutup lembar dengan mengambil alih lalu mengembalikan kendali (tanpa izinkan-isi di web): seperti
+   * worker, rencana itu terikat tanpa baris (persetujuan n=0) dan web tidak mencatat persetujuan apa pun.
+   */
+  tolakLewatAmbilAlih = false;
   /** Klik ref ini dialihkan portal ke host di luar allowlist: worker memblokir dan menyerahkan (`periksa`). */
   hostLainPada = new Set<string>();
   private menunggu: string | null = null;
@@ -259,7 +264,11 @@ export class WorkerPalsu implements TanganPendamping {
     this.tungguN++;
     if (this.k.status === 'menunggu_data') {
       const m = this.izinMenunggu;
-      if (m) {
+      if (m && this.tolakLewatAmbilAlih) {
+        this.jejak.push({ jenis: 'ambil_alih', fase: 'mulai' });
+        this.jejak.push({ jenis: 'persetujuan', rencanaHash: m.rencanaHash, n: 0 });
+        this.jejak.push({ jenis: 'ambil_alih', fase: 'selesai' });
+      } else if (m) {
         const baris = this.tolakPersetujuan ? [] : m.baris.filter((b) => !this.tolakBaris.has(b));
         this.disetujui.set(m.rencanaHash, new Set(baris));
         this.jejak.push({ jenis: 'persetujuan', rencanaHash: m.rencanaHash, n: baris.length });

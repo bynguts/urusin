@@ -374,6 +374,41 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
     ).toEqual([]);
   });
 
+  /** Rencana isi NAMA + Lanjut; dipakai uji "tolak semua". */
+  const RENCANA_NAMA_LANJUT = {
+    aksi: [
+      { jenis: 'isi', ref: 'e2', nilai: '{{PEMOHON.NAMA}}' },
+      { jenis: 'klik', ref: 'e11' },
+    ],
+  };
+
+  it.each([
+    ['isi kosong di web (lembar ditolak)', false],
+    ['ambil alih lalu kembalikan saat lembar terbuka (tanpa catatan web)', true],
+  ])(
+    'tolak semua lewat %s: hash yang sama tidak dikirim ulang dengan baris vault, langsung isi sendiri',
+    async (_, lewatAmbilAlih) => {
+      const worker = new WorkerPalsu([halamanForm(), halamanTinjau()]);
+      if (lewatAmbilAlih) worker.tolakLewatAmbilAlih = true;
+      else worker.tolakPersetujuan = true;
+      worker.saatSerahkan = (alasan) =>
+        alasan === 'isi_sendiri' ? { aksi: 'kembalikan', ke: 1 } : { aksi: 'selesai' };
+      const provider = new ProviderSkrip((n) => (n === 0 ? RENCANA_NAMA_LANJUT : SERAHKAN_FINAL));
+      const { hasil, jejak } = jalankan(worker, provider, { persetujuan: (h) => worker.persetujuan(h) });
+      expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
+      // Satu putaran izin saja: setelah ditolak, Lanjut tidak ditekan dan kendali ke warga untuk baris itu.
+      expect(worker.diterima.map((d) => d.aksi)).toEqual([
+        RENCANA_NAMA_LANJUT.aksi,
+        [{ jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e2' }],
+        [{ jenis: 'serahkan', alasan: 'final' }],
+      ]);
+      expect(jejak.filter((c) => c.jenis === 'persetujuan')).toEqual([
+        { jenis: 'persetujuan', rencanaHash: worker.diterima[0]!.rencanaHash, n: 0 },
+      ]);
+      expect(jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'isi_sendiri' });
+    },
+  );
+
   it('warga menolak satu baris: baris lain diisi, Lanjut tidak ditekan, kendali ke warga untuk baris itu', async () => {
     const worker = new WorkerPalsu([halamanForm(), halamanTinjau()]);
     worker.tolakBaris = new Set(['{{PEMOHON.NIK}}']);

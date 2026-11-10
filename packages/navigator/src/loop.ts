@@ -186,6 +186,8 @@ function kolomUntuk(kolom: readonly KolomButuh[], aksi: readonly Aksi[]): KolomB
   return kolom.filter((k) => ph.has(k.placeholder));
 }
 
+const TANPA_IZIN: PersetujuanHalaman = { placeholder: new Set(), berkas: new Set() };
+
 /** Aksi isian/unggah yang disetujui warga (aksi lain tidak butuh persetujuan). */
 function aksiDisetujui(a: Aksi, izin: PersetujuanHalaman): boolean {
   if ((a.jenis === 'isi' || a.jenis === 'pilih') && typeof a.nilai === 'string')
@@ -367,7 +369,10 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         sudahDiminta = true;
         const h = setelahTunggu(await tungguKendali());
         if (h) return h;
-        const izin = o.persetujuan?.(rencanaHash);
+        // Tanpa catatan persetujuan web setelah lembar ditutup (warga mengambil alih / mengembalikan kendali saat
+        // lembar terbuka) = tolak semua: worker sudah mengikat rencana ini tanpa baris, jadi mengirim ulang baris
+        // vault dengan hash yang sama hanya membuka lembar lagi. Baris itu diisi warga sendiri.
+        const izin = o.persetujuan ? (o.persetujuan(rencanaHash) ?? TANPA_IZIN) : undefined;
         if (izin) {
           const ditolak = sisa.filter((a) => !aksiDisetujui(a, izin));
           if (ditolak.length > 0) {
