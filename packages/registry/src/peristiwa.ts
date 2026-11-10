@@ -145,7 +145,7 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
           'Buku nikah/kutipan akta perkawinan/bukti lain yang sah',
           'KK tempat penduduk terdaftar atau akan didaftarkan sebagai anggota keluarga',
           'KTP-el orang tua',
-          'Formulir F-2.01 (Pelaporan Pencatatan Sipil)',
+          'Formulir pelaporan yang disediakan petugas (F-2.01)',
         ],
         bawa: [],
         keterangan:
@@ -199,7 +199,7 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
           'Surat kematian dari dokter atau kepala desa/lurah (keterangan kepolisian bila identitas jenazah tidak jelas; salinan penetapan pengadilan hanya bila jenazah tidak ditemukan)',
           'Fotokopi KK/KTP orang yang meninggal',
           'Dokumen perjalanan bagi WNI bukan penduduk atau orang asing',
-          'Formulir F-2.01 (Pelaporan Pencatatan Sipil)',
+          'Formulir pelaporan yang disediakan petugas (F-2.01)',
         ],
         bawa: [],
         keterangan:
@@ -242,7 +242,7 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
           'KTP-el asli',
           'Kartu Keluarga asli',
           'Janda/duda cerai mati: fotokopi akta kematian pasangan; cerai hidup: fotokopi akta perceraian',
-          'Formulir F-2.01 (Pelaporan Pencatatan Sipil)',
+          'Formulir pelaporan yang disediakan petugas (F-2.01)',
         ],
         bawa: [],
         keterangan:
@@ -292,7 +292,7 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
         lokasi: 'disdukcapil',
         dependsOn: [],
         dokumen: [
-          'Formulir F-1.03',
+          'Formulir permohonan pindah yang disediakan petugas (F-1.03)',
           'Fotokopi KK',
           'Surat pernyataan tidak keberatan dari pemilik rumah, bila menumpang KK, sewa, kontrak, atau kos',
         ],

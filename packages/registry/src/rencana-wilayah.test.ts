@@ -77,6 +77,14 @@ describe('rencanaWilayah: tidak ada isi Wonogiri untuk warga daerah lain', () =>
     );
     const wng = rencanaWilayah('kelahiran', { ktp: '3312' })!;
     expect(wng.catatan).not.toMatch(/recon/i);
+    // p04: kode formulir hanya dalam kurung, bukan inti kalimat.
+    for (const slug of ['kelahiran', 'kematian', 'perkawinan', 'pindah'])
+      for (const kode of ['3404', '3312']) {
+        const opsi = slug === 'pindah' ? { ktp: kode, tujuan: '3216' } : { ktp: kode };
+        for (const d of rencanaWilayah(slug, opsi)!.langkah.flatMap((l) => l.dokumen))
+          if (/F-\d\.\d{2}/.test(d) && /^Formulir/.test(d))
+            expect(d, `${slug} ${kode}`).toMatch(/yang disediakan petugas \(F-\d\.\d{2}\)$/);
+      }
   });
   it('wilayah tanpa situs terverifikasi mengatakannya terus terang', () => {
     const r = rencanaWilayah('kelahiran', { ktp: '1101' })!;
