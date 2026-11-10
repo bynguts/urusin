@@ -11,12 +11,13 @@ import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
 import { batasi } from '#lib/server/sesi.js';
+import { urusanMilik } from '#lib/server/urusan-akses.js';
 import type { RequestHandler } from './$types';
 
 /**
  * Tombol "Ya, betul" di kartu wilayah: warga membenarkan kab/kota KTP (aksi terstruktur, bukan teks yang
  * ditafsirkan model). Wilayah tercatat dengan event audit; bila jenis urusan sudah diketahui, rencana yang benar
- * untuk wilayah itu langsung diusulkan. Model akses sama dengan /rencana/setujui (id urusan).
+ * untuk wilayah itu langsung diusulkan. Hanya pemilik urusan (urusanMilik), sama dengan /rencana/setujui.
  *
  * Kartu bisa basi (perangkat lain, atau warga sudah menyebut wilayahnya di obrolan), jadi endpoint ini hanya
  * MENETAPKAN, tidak pernah mengganti: wilayah KTP yang sama → 200 tanpa perubahan; wilayah lain yang sudah
@@ -33,7 +34,8 @@ export const POST: RequestHandler = async (event) => {
     const rt = await getRuntime();
     const ditolak = batasi(rt, event, 'turn');
     if (ditolak) return ditolak;
-    const u = rt.store.getUrusan(params.id);
+    // Bukan pemilik = sama dengan tidak ada (404): wilayah urusan orang lain tidak bisa ditetapkan.
+    const u = urusanMilik(rt, params.id, event.locals);
     if (!u) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
     if (isTerminal(u.state)) return apiError(409, 'TERMINAL', 'Urusan ini sudah selesai.');
     const sudah = wilayahUrusan(rt.store, u).ktp;

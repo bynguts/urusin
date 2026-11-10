@@ -14,6 +14,7 @@ import { POST as setujuiRencana } from '../../routes/api/urusan/[id]/rencana/set
 import { GET as statusUrusan } from '../../routes/api/urusan/[id]/+server';
 import { GET as stream } from '../../routes/api/urusan/[id]/stream/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
+import { POST as tetapkanWilayah } from '../../routes/api/urusan/[id]/wilayah/+server';
 import { GET as devSse } from '../../routes/dev/fixtures/sse/+server';
 import { catatHasilEksekusi } from './eksekusi';
 import { createRuntime, piiKeyFromEnv, quotaFromEnv, setRuntimeForTests, type Runtime } from './runtime';
@@ -251,6 +252,7 @@ describe('pemilik urusan: id saja tidak cukup', () => {
       jejak: await jejak(evSebagai(locals, get('/j'), p)),
       konfirmasi: await konfirmasi(evSebagai(locals, post({ tool: 't', paramsHash: 'h' }), p)),
       setujui: await setujuiRencana(evSebagai(locals, post({}), p)),
+      wilayah: await tetapkanWilayah(evSebagai(locals, post({ kodeKabKota: '3312' }), p)),
     };
     return r;
   }
@@ -267,6 +269,8 @@ describe('pemilik urusan: id saja tidak cukup', () => {
     // Tidak ada efek samping: tidak ada turn, tidak ada persetujuan, state tidak bergerak.
     expect(rt.store.db.prepare('SELECT COUNT(*) n FROM turns').get()).toEqual({ n: 0 });
     expect(rt.store.activeConfirmations(id)).toEqual([]);
+    expect(rt.store.eventsOfType(id, 'wilayah', 20)).toEqual([]);
+    expect(rt.store.getUrusanOrThrow(id).kodeKabKota).toBeNull();
     const daftar = await daftarUrusan(evSebagai({ sid: 'sid-lain' }, get(`/api/urusan?ids=${id}`)));
     expect(await daftar.json()).toEqual({ urusan: [] });
     // Pemilik tetap bisa.
