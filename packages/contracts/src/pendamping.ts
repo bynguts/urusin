@@ -250,6 +250,12 @@ export const ElemenAmatanSchema = z.object({
   /** Hanya tombol/tautan: kelas dari klasifikator deterministik. */
   kelas: KelasKendaliSchema.optional(),
   terlarang: TerlarangSchema.optional(),
+  /**
+   * Tautan GET berkelas `kirim` HANYA karena namanya (mis. "Ajukan Permohonan"): jalur, id/kelas, dan ikon
+   * bersih. Kemungkinan pembuka formulir, tetapi tetap TIDAK boleh diklik AI: serahkan ke warga untuk diketuk
+   * sendiri, lalu AI melanjutkan.
+   */
+  tautanPembuka: z.literal(true).optional(),
   /** Formulir pemilik elemen (`f0`..`f99`). */
   form: z
     .string()
