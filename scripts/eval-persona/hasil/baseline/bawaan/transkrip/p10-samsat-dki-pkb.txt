@@ -1,0 +1,24 @@
+Pengemudi di DKI: pajak kendaraan (Samsat)
+==========================================
+
+Warga: Bang, pajak motor saya udah mau jatuh tempo. Bisa cek berapa dan bayar online nggak?
+
+[JAWABAN BERSUMBER]
+  - Bapenda Jawa Tengah menyebut NEW SAKPOLE sebagai layanan untuk membayar pajak kendaraan dari mana saja.
+    (sumber: Bapenda Provinsi Jawa Tengah - NEW SAKPOLE — Badan Pendapatan Daerah Provinsi Jawa Tengah, https://bapenda.jatengprov.go.id/)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: Bang, motor saya plat B, terdaftar di Samsat DKI Jakarta. Itu kan layanan Jawa Tengah ya? Kalau buat cek dan bayar pajak tahunan di Jakarta lewat mana?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/
+  - Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id
+
+Warga: Lho, itu Dukcapil Wonogiri, Bang. Motor saya terdaftar di Samsat DKI Jakarta. Buat cek sama bayar pajak motor tahunan di Jakarta lewat mana ya?
+
+[KARTU BROWSER PENDAMPING] Cek info PKB di Samsat DKI Jakarta (tingkat semi). Baca saja, tidak ada yang dikirim. Hanya kendaraan terdaftar di Samsat DKI Jakarta. AI mengisi nomor polisi; verifikasi situs (Turnstile) Anda selesaikan sendiri. Struktur halaman hasil belum teramati: hasilnya Anda baca di layar. Situs: https://samsat-pkb2.jakarta.go.id (baca saja)
+[KONFIRMASI] Izinkan Browser Pendamping membuka situs resmi untuk membaca saja?
+
+Warga menekan [Setujui dan buka situs]
+
+[AKHIR: pendamping_dibuka — Browser Pendamping di luar cakupan eval]

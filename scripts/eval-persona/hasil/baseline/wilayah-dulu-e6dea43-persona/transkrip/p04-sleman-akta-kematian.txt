@@ -1,0 +1,27 @@
+Janda lansia di Kab. Sleman, literasi rendah: akta kematian suami
+=================================================================
+
+Warga: nak bapak meninggal kemarin lusa. katanya harus urus surat. ibu ndak ngerti
+
+[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Sleman? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)
+Urusin: Turut berduka cita atas meninggalnya Bapak. Saya bantu Ibu pelan-pelan, ya.
+
+KTP Ibu terdaftar di Kabupaten Sleman, betul?
+
+Warga: ibu tinggal di godean sleman tapi ndak tahu ktp terdaftar di mana nak
+
+Urusin: Tidak apa-apa, Bu. Godean berada di Kabupaten Sleman, tetapi kita perlu memastikan alamat yang tertulis di KTP Ibu.
+
+Kalau KTP-nya ada, bisakah Ibu melihat bagian **kabupaten/kota** dan menyebutkan namanya saja? Tidak perlu menuliskan NIK atau alamat lengkap di sini.
+
+Warga: ibu ndak lancar baca nak nanti minta anak lihatkan ya
+
+Urusin: Iya, Bu, tidak apa-apa. Nanti minta anak membantu melihat nama kabupaten atau kota yang tertulis di KTP Ibu, ya.
+
+Kalau sudah, sampaikan nama kabupaten atau kotanya saja di sini. Tidak perlu menuliskan NIK atau alamat lengkap.
+
+Warga: nggih nak nanti anak lihatkan dulu
+
+Urusin: Nggih, Bu. Tidak perlu buru-buru. Nanti setelah anak Ibu melihat KTP, kabari saya nama kabupaten atau kotanya saja, ya. Tidak perlu menuliskan NIK atau alamat lengkap.
+
+[AKHIR: warga_selesai — Ibu akan meminta anak melihat KTP dulu dan belum mendapat langkah untuk mengurus surat kematian.]

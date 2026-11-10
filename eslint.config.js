@@ -76,7 +76,15 @@ const rawHttpImports = (extra) => [
 
 export default ts.config(
   {
-    ignores: ['**/node_modules/', '**/dist/', '**/build/', '**/.svelte-kit/', '**/.turbo/', '**/coverage/'],
+    ignores: [
+      '**/node_modules/',
+      '**/dist/',
+      '**/build/',
+      '**/.svelte-kit/',
+      '**/.turbo/',
+      '**/coverage/',
+      'scripts/eval-persona/.cache/',
+    ],
   },
   js.configs.recommended,
   ...ts.configs.recommended,

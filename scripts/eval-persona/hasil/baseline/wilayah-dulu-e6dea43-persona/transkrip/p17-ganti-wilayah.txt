@@ -1,0 +1,51 @@
+Warga mengganti wilayah di tengah percakapan (Wonogiri lalu Sukoharjo)
+======================================================================
+
+Warga: Mas, saya dari Wonogiri. Anak saya baru lahir, mau urus akta kelahiran.
+
+[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Sukoharjo? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)
+Urusin: KTP Anda terdaftar di Kabupaten Sukoharjo, betul?
+
+Warga menekan [Ya, betul]
+
+(sistem) Wilayah KTP: Kabupaten Sukoharjo
+[KARTU RENCANA] Kelahiran · Kab. Sukoharjo
+  Wilayah KTP: Kabupaten Sukoharjo (tingkat dipandu)
+  Catatan: Persyaratan nasional untuk Kabupaten Sukoharjo; detail dan cara pengajuan mengikuti MELODI (WhatsApp).
+  1. Ajukan akta kelahiran ke Disdukcapil Kab. Sukoharjo [online]
+     Sumber: MELODI (WhatsApp) (https://dispendukcapil.sukoharjokab.go.id/); Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)
+  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]
+     Sumber: Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)
+  3. Terima akta kelahiran dan KK baru dari Disdukcapil Kab. Sukoharjo [datang langsung, disdukcapil]
+     Bawa: Bukti pengajuan
+     Sumber: MELODI (WhatsApp) (https://dispendukcapil.sukoharjokab.go.id/)
+
+Warga: Eh maaf mas, saya salah. KTP sama KK saya sekarang sudah Sukoharjo, Kartasura. Jadi gimana?
+
+Urusin: Baik, karena KTP dan KK Anda sekarang terdaftar di **Kabupaten Sukoharjo**, urusan akta kelahiran anak mengikuti layanan Disdukcapil Sukoharjo, bukan Wonogiri.
+
+Rencana pengurusannya sudah tersedia. Silakan tekan **“Setujui rencana”** pada kartu rencana agar saya bisa membantu memandu Anda. Untuk Sukoharjo, pengisian dilakukan sendiri oleh warga melalui kanal resmi MELODI (WhatsApp).
+
+Warga menekan [Setujui rencana]
+
+(status: Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.)
+
+Warga: Oke mas, cara mulai lewat WhatsApp MELODI gimana ya? Terus dokumen apa saja yang perlu saya siapkan? Surat lahir dari bidan sama buku nikah sudah ada.
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/
+  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id
+
+Warga: Mas, tadi katanya lewat WhatsApp MELODI. Nomornya berapa ya? Terus selain surat lahir sama buku nikah, saya perlu siapin apa lagi?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/
+  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id
+
+Warga: Mas, jawabannya kok sama lagi ya? Kalau nomor WhatsApp-nya belum ketemu, di situs Disdukcapil itu saya harus cari bagian apa? Terus KK sama KTP perlu disiapkan juga nggak?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/
+  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id
+
+[AKHIR: warga_selesai — Jawabannya berulang dan belum menjelaskan cara menemukan kontak MELODI atau dokumen yang perlu disiapkan.]

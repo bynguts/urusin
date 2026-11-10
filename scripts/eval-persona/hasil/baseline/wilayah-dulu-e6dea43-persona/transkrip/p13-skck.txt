@@ -1,0 +1,33 @@
+SKCK untuk melamar kerja (di luar Dukcapil)
+===========================================
+
+Warga: Saya butuh SKCK buat lamar kerja. Bisa dibantu?
+
+[KARTU WILAYAH] KTP Anda terdaftar di Kota Depok? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)
+Urusin: Tentu, saya bantu urus SKCK untuk melamar kerja.
+
+KTP Anda terdaftar di Kota Depok, betul?
+
+Warga menekan [Ya, betul]
+
+(sistem) Wilayah KTP: Kota Depok
+
+Warga: Betul, KTP saya Kota Depok. Untuk mengurus SKCK buat melamar kerja di BUMN, langkah selanjutnya bagaimana ya?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/
+  - Kota Depok https://silondomaju.depok.go.id
+
+Warga: Maaf, bukannya SKCK diurus di kepolisian ya, bukan Disdukcapil? Untuk melamar kerja di BUMN, saya harus mengurusnya di mana dan membawa apa saja?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/
+  - Kota Depok https://silondomaju.depok.go.id
+
+Warga: Maaf, jawabannya masih mengarah ke Disdukcapil. Saya perlu tahu kantor kepolisian yang harus saya datangi untuk SKCK melamar BUMN dan dokumen yang perlu dibawa. Bisa dibantu cek?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/
+  - Kota Depok https://silondomaju.depok.go.id
+
+[AKHIR: warga_selesai — Jawaban terus mengarah ke Disdukcapil meskipun sudah beberapa kali ditanyakan tentang pengurusan SKCK di kepolisian.]

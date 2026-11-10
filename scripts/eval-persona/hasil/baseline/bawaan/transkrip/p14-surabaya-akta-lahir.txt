@@ -1,0 +1,54 @@
+Warga Kota Surabaya, bayi baru lahir: akta kelahiran
+====================================================
+
+Warga: Halo, saya warga Surabaya, anak saya baru lahir 2 minggu lalu. Akta kelahirannya bisa online?
+
+[JAWABAN BERSUMBER]
+  - Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  Keputusan ada di petugas instansi terkait.
+[KARTU RENCANA] Kelahiran
+  1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]
+     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)
+  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]
+     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)
+  3. Ambil KIA [datang langsung, kecamatan]
+     Bawa: Bukti/SMS pengambilan
+     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)
+
+Warga: Maaf, saya di Surabaya, tapi rencana ini sumbernya dari Wonogiri. Untuk Surabaya, langkah pengajuan online dan dokumen yang perlu saya siapkan apa saja ya?
+
+[JAWABAN BERSUMBER]
+  - Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya, dalam kategori Pencatatan Sipil.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  - Katalog mencantumkan panduan resmi bernama Panduan Akta Kelahiran.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: Terima kasih. Bagaimana langkah mengajukannya di Klampid dan dokumen apa saja yang perlu saya siapkan? Saya punya surat lahir dari rumah sakit dan buku nikah.
+
+[JAWABAN BERSUMBER]
+  - Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya dalam kategori Pencatatan Sipil.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  - Katalog mencantumkan panduan resmi Akta Kelahiran.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: Maaf, jawabannya masih sama dan saya belum tahu langkah pengajuannya atau dokumen lengkapnya. Bisa tolong lihat panduan resmi Akta Kelahiran Surabaya dan jelaskan langkah serta persyaratannya?
+
+[JAWABAN BERSUMBER]
+  - Layanan Akta Kelahiran tersedia dalam kategori Pencatatan Sipil di Klampid New Generation Dispendukcapil Kota Surabaya.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  - Katalog menyebutkan bahwa Panduan Akta Kelahiran tersedia.
+    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: Maaf, jawabannya masih berulang dan belum menjelaskan isi panduannya. Apakah panduan tersebut bisa dibuka? Kalau tidak bisa, saya harus menghubungi siapa di Surabaya untuk memastikan dokumen dan langkah pengajuannya?
+
+Urusin: Maaf, jawaban saya tadi berulang dan belum membantu. **Saya belum bisa membuka isi panduan tersebut dari sumber yang tersedia**: katalog resmi hanya menyebutkan bahwa panduan Akta Kelahiran tersedia, tanpa menampilkan isi langkah dan daftar dokumennya. [klampid-katalog#sipil-akta-kelahiran]
+
+Untuk memastikan dokumen lengkap dan cara pengajuannya, silakan hubungi **Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya** atau tanyakan kepada petugas kelurahan di Surabaya. Sampaikan bahwa Anda sudah memiliki surat lahir dari rumah sakit dan buku nikah, lalu tanyakan dokumen tambahan serta cara mengajukan melalui Klampid. Saya belum menemukan nomor kontak resmi yang bisa saya pastikan, jadi saya tidak ingin menebaknya.
+
+**Jangan setujui rencana yang menyebut Wonogiri** untuk urusan Surabaya. Anda juga tidak perlu mengirim NIK, nomor KK, atau foto dokumen ke chat ini.
+
+[AKHIR: warga_selesai — Saya akan bertanya kepada petugas kelurahan tentang dokumen dan cara mengajukan lewat Klampid, tetapi panduannya belum berhasil dijelaskan.]

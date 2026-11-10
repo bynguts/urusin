@@ -1,0 +1,818 @@
+{
+  "persona": "p16-datadiri-wonogiri-ktp-semarang",
+  "urusanId": "u_53c3cafbbe205962ae64191daf0a80ce",
+  "wilayahPerangkat": "3312",
+  "kodeUrusan": "3312",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Halo, saya mau bikin akta kelahiran untuk anak saya yang lahir 10 hari lalu. Oh iya, KTP saya sekarang sudah Kota Semarang ya, bukan Wonogiri lagi.",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": "semi",
+          "version": 2,
+          "type": "state",
+          "seq": 1,
+          "at": "2026-11-10T07:28:41.061Z",
+          "chainHead": "d73273111b0c…"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 2,
+          "at": "2026-11-10T07:28:41.062Z",
+          "chainHead": "da56290dd8c0…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T07:28:52.321Z",
+          "chainHead": "532908ba383c…"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 4,
+          "at": "2026-11-10T07:28:53.306Z",
+          "chainHead": "3899c5a33ae7…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 5,
+          "at": "2026-11-10T07:28:56.802Z",
+          "chainHead": "59b78c31bdb3…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 6,
+          "at": "2026-11-10T07:29:12.877Z",
+          "chainHead": "2045fcd8c595…"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "Pencatatan Kelahiran WNI Dalam Wilayah NKRI\n\n- a. Surat keterangan kelahiran yaitu dari rumah sakit/Puskesmas/ fasilitas kesehatan/dokter/bidan atau surat keterangan kelahiran dari nakhoda kapal laut/kapten pesawat terbang, atau dari kepala desa/lurah jika lahir di rumah/ tempat lain, antara lain: kebun, sawah, angkutan umum",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=Pencatatan%20Kelahiran%20WNI%20Dalam,kebun%2C%20sawah%2C%20angkutan%20umum",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Untuk pencatatan kelahiran WNI di Indonesia, siapkan surat keterangan kelahiran dari fasilitas kesehatan atau tenaga kesehatan; jika lahir di rumah atau tempat lain, surat dapat diperoleh dari kepala desa atau lurah."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "b. Buku nikah/kutipan akta perkawinan / bukti lain yang sah",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=b.%20Buku%20nikah%2Fkutipan%20akta%20perkawinan%20%2F%20bukti%20lain%20yang%20sah",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Siapkan buku nikah, kutipan akta perkawinan, atau bukti lain yang sah."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "c. Kartu Keluarga dimana penduduk terdaftar atau akan didaftarkan sebagai anggota keluarga",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=c.%20Kartu%20Keluarga%20dimana%20penduduk%20terdaftar%20atau%20akan%20didaftarkan%20sebagai%20anggota%20keluarga",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Siapkan kartu keluarga tempat anak terdaftar atau akan didaftarkan sebagai anggota keluarga."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "e. Penduduk dapat membuat SPTJM kebenaran data kelahiran dengan 2 (dua) orang saksi, jika tidak memenuhi persyaratan sebagaimana huruf a",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=e.%20Penduduk%20dapat%20membuat,persyaratan%20sebagaimana%20huruf%20a",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Jika tidak ada surat keterangan kelahiran, penduduk dapat membuat SPTJM kebenaran data kelahiran dengan dua orang saksi."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "f. Penduduk dapat membuat SPTJM kebenaran sebagai pasangan suami istri dengan 2 (dua) orang saksi, jika tidak memenuhi persyaratatan sebagaimana huruf b",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=f.%20Penduduk%20dapat%20membuat,persyaratatan%20sebagaimana%20huruf%20b",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Jika tidak ada buku nikah, kutipan akta perkawinan, atau bukti lain yang sah, penduduk dapat membuat SPTJM kebenaran sebagai pasangan suami istri dengan dua orang saksi."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "Catatan: Untuk pelayanan online/Daring, persyaratan yang discan/difoto untuk diunggah harus aslinya",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=Catatan%3A%20Untuk%20pelayanan%20online%2FDaring%2C%20persyaratan%20yang%20discan%2Fdifoto%20untuk%20diunggah%20harus%20aslinya",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Untuk pelayanan daring, persyaratan yang dipindai atau difoto untuk diunggah harus berupa dokumen asli."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 7,
+          "at": "2026-11-10T07:29:12.877Z",
+          "chainHead": "8299d9504c1a…"
+        },
+        {
+          "langkah": [
+            {
+              "bawa": [],
+              "id": "ajukan",
+              "jenis": "online-adapter",
+              "judul": "Ajukan akta kelahiran terintegrasi lewat loket online",
+              "lokasi": "loket-online",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+                }
+              ]
+            },
+            {
+              "bawa": [],
+              "id": "siapkan-sptjm",
+              "jenis": "online-manual",
+              "judul": "Bila surat kurang: siapkan SPTJM bersama dua saksi",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+                }
+              ]
+            },
+            {
+              "bawa": [
+                "Bukti/SMS pengambilan"
+              ],
+              "id": "ambil-kia",
+              "jenis": "offline",
+              "judul": "Ambil KIA",
+              "lokasi": "kecamatan",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+                }
+              ]
+            }
+          ],
+          "ringkasan": "Kelahiran",
+          "type": "plan_card",
+          "seq": 8,
+          "at": "2026-11-10T07:29:12.879Z",
+          "chainHead": "dad6df29eecc…"
+        },
+        {
+          "dari": "MEMAHAMI",
+          "state": "RENCANA_DIUSULKAN",
+          "tier": "semi",
+          "version": 4,
+          "type": "state",
+          "seq": 9,
+          "at": "2026-11-10T07:29:12.881Z",
+          "chainHead": "52290a1e7466…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_46ebed12-63b6-4694-a247-308e5a94cd89",
+          "version": 4,
+          "type": "done",
+          "seq": 10,
+          "at": "2026-11-10T07:29:13.612Z",
+          "chainHead": "4ecac5b026e9…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 32728
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Maaf, rencananya masih untuk Wonogiri. KTP dan KK saya sekarang Kota Semarang, Kecamatan Pedurungan. Bagaimana cara mengurus akta kelahiran di Semarang?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Rencana menggunakan layanan Wonogiri, padahal domisili administrasi sekarang Kota Semarang."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 11,
+          "at": "2026-11-10T07:29:16.818Z",
+          "chainHead": "22f3db22e966…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T07:29:21.768Z",
+          "chainHead": "b21523f0fb85…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 13,
+          "at": "2026-11-10T07:29:26.151Z",
+          "chainHead": "502b37b25d6a…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 14,
+          "at": "2026-11-10T07:29:42.614Z",
+          "chainHead": "f235640a74ab…"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "a. Surat keterangan kelahiran yaitu dari rumah sakit/Puskesmas/ fasilitas kesehatan/dokter/bidan atau surat keterangan kelahiran dari nakhoda kapal laut/kapten pesawat terbang, atau dari kepala desa/lurah jika lahir di rumah/ tempat lain, antara lain: kebun, sawah, angkutan umum",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=Wilayah%20NKRI%20%2D-,a.%20Surat%20keterangan%20kelahiran,kebun%2C%20sawah%2C%20angkutan%20umum",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Untuk pencatatan kelahiran WNI di Indonesia, siapkan surat keterangan kelahiran dari fasilitas kesehatan atau tenaga kesehatan. Jika anak lahir di rumah atau tempat lain, surat dapat berasal dari kepala desa atau lurah."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "b. Buku nikah/kutipan akta perkawinan / bukti lain yang sah",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=b.%20Buku%20nikah%2Fkutipan%20akta%20perkawinan%20%2F%20bukti%20lain%20yang%20sah",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Siapkan buku nikah, kutipan akta perkawinan, atau bukti lain yang sah."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "c. Kartu Keluarga dimana penduduk terdaftar atau akan didaftarkan sebagai anggota keluarga",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=c.%20Kartu%20Keluarga%20dimana%20penduduk%20terdaftar%20atau%20akan%20didaftarkan%20sebagai%20anggota%20keluarga",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Siapkan KK tempat anak terdaftar atau akan didaftarkan sebagai anggota keluarga."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "e. Penduduk dapat membuat SPTJM kebenaran data kelahiran dengan 2 (dua) orang saksi, jika tidak memenuhi persyaratan sebagaimana huruf a",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=e.%20Penduduk%20dapat%20membuat,persyaratan%20sebagaimana%20huruf%20a",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Jika tidak memiliki surat keterangan kelahiran, penduduk dapat membuat SPTJM kebenaran data kelahiran dengan dua saksi."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "f. Penduduk dapat membuat SPTJM kebenaran sebagai pasangan suami istri dengan 2 (dua) orang saksi, jika tidak memenuhi persyaratatan sebagaimana huruf b",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=f.%20Penduduk%20dapat%20membuat,persyaratatan%20sebagaimana%20huruf%20b",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Jika tidak memenuhi persyaratan bukti perkawinan, penduduk dapat membuat SPTJM kebenaran sebagai pasangan suami istri dengan dua saksi."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "Catatan: Untuk pelayanan online/Daring, persyaratan yang discan/difoto untuk diunggah harus aslinya",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=Catatan%3A%20Untuk%20pelayanan%20online%2FDaring%2C%20persyaratan%20yang%20discan%2Fdifoto%20untuk%20diunggah%20harus%20aslinya",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Untuk pelayanan daring, dokumen persyaratan yang dipindai atau difoto untuk diunggah harus dokumen asli."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 15,
+          "at": "2026-11-10T07:29:42.615Z",
+          "chainHead": "a1cceab6cde1…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_6af33f11-7b09-4d9a-82ac-088bb50b120e",
+          "version": 5,
+          "type": "done",
+          "seq": 16,
+          "at": "2026-11-10T07:29:42.621Z",
+          "chainHead": "5fa03eb92011…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 25844
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Surat lahir, buku nikah, dan KK sudah ada. Untuk mengajukan akta di Kota Semarang, saya lewat situs apa atau datang ke mana ya? Rencana yang tadi masih Wonogiri.",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya perlu tahu tempat atau situs pengajuan yang benar untuk Kota Semarang."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 17,
+          "at": "2026-11-10T07:29:51.240Z",
+          "chainHead": "a8332061f086…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 18,
+          "at": "2026-11-10T07:29:57.266Z",
+          "chainHead": "06cdd8ab5947…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 19,
+          "at": "2026-11-10T07:30:01.152Z",
+          "chainHead": "014353c2377f…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 20,
+          "at": "2026-11-10T07:30:11.050Z",
+          "chainHead": "d560608e91ca…"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "Akta Kelahiran\n\nPencatatan Kelahiran WNI Dalam Wilayah NKRI",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=Akta%20Kelahiran%20Pencatatan%20Kelahiran%20WNI%20Dalam%20Wilayah%20NKRI",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                },
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "Untuk pelayanan online/Daring, persyaratan yang discan/difoto untuk diunggah harus aslinya",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#1",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=Untuk%20pelayanan%20online%2FDaring%2C%20persyaratan%20yang%20discan%2Fdifoto%20untuk%20diunggah%20harus%20aslinya",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Sumber Si D'nOK memuat persyaratan akta kelahiran dan menyebutkan pelayanan daring."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "SPTJM dapat diunduh melalui https://sidnok.semarangkota.go.id/get-berkas/1720769569",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#3",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=SPTJM%20dapat%20diunduh%20melalui%20https%3A%2F%2Fsidnok.semarangkota.go.id%2Fget%2Dberkas%2F1720769569",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Sumber Si D'nOK mencantumkan tautan pada domain sidnok.semarangkota.go.id untuk mengunduh formulir SPTJM."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 21,
+          "at": "2026-11-10T07:30:11.051Z",
+          "chainHead": "15360688ee08…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_58e213f8-a1d5-4802-8ef8-2b78c5cc43a7",
+          "version": 6,
+          "type": "done",
+          "seq": 22,
+          "at": "2026-11-10T07:30:11.055Z",
+          "chainHead": "8eef9edfeb18…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 19822
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Maaf, saya masih belum tahu cara mengajukannya. Apakah bisa langsung lewat situs Si D'nOK, atau saya harus datang ke kantor mana di Semarang? Rencananya juga masih Wonogiri.",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawaban belum menjelaskan langkah pengajuan yang konkret dan rencana masih salah daerah."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 23,
+          "at": "2026-11-10T07:30:14.943Z",
+          "chainHead": "d9174949e9f1…"
+        },
+        {
+          "delta": "Maaf, rencana yang tampil masih **Wonogiri**, padahal KTP dan KK Anda sudah Kota Semarang. **Jangan setujui rencana tersebut** agar tidak diarahkan ke kota yang salah.\n\nUntuk Semarang, Anda bisa mengajukan melalui **Si D’nOK**, portal layanan Dukcapil Kota Semarang. Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya. Siapkan surat lahir, buku nikah, dan KK yang sudah Anda miliki; untuk unggahan daring, gunakan foto atau pindai dokumen asli. [Sumber: Disdukcapil Kota Semarang, Data Dukung Si D’nOK, semarang-data-dukung#1 dan #4]\n\nSaya belum menemukan informasi yang memastikan kantor layanan langsung untuk akta kelahiran di Pedurungan, jadi sebaiknya konfirmasi ke Disdukcapil Kota Semarang sebelum datang.\n\nUntuk bantuan pengisian melalui Browser Pendamping, rencananya perlu menunjukkan **Kota Semarang** terlebih dahulu. Jangan tekan “Setujui rencana” selama kartu masih menunjukkan Wonogiri.",
+          "type": "assistant_text",
+          "seq": 24,
+          "at": "2026-11-10T07:30:22.052Z",
+          "chainHead": "d92209da5abd…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_6ee4fc74-8164-4be5-93a3-16ef3d00157a",
+          "version": 7,
+          "type": "done",
+          "seq": 25,
+          "at": "2026-11-10T07:30:22.054Z",
+          "chainHead": "25f6fa72bdc4…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 7120
+    }
+  ],
+  "layar": [
+    "Warga: Halo, saya mau bikin akta kelahiran untuk anak saya yang lahir 10 hari lalu. Oh iya, KTP saya sekarang sudah Kota Semarang ya, bukan Wonogiri lagi.",
+    "[JAWABAN BERSUMBER]\n  - Untuk pencatatan kelahiran WNI di Indonesia, siapkan surat keterangan kelahiran dari fasilitas kesehatan atau tenaga kesehatan; jika lahir di rumah atau tempat lain, surat dapat diperoleh dari kepala desa atau lurah.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  - Siapkan buku nikah, kutipan akta perkawinan, atau bukti lain yang sah.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  - Siapkan kartu keluarga tempat anak terdaftar atau akan didaftarkan sebagai anggota keluarga.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  - Jika tidak ada surat keterangan kelahiran, penduduk dapat membuat SPTJM kebenaran data kelahiran dengan dua orang saksi.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  - Jika tidak ada buku nikah, kutipan akta perkawinan, atau bukti lain yang sah, penduduk dapat membuat SPTJM kebenaran sebagai pasangan suami istri dengan dua orang saksi.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  - Untuk pelayanan daring, persyaratan yang dipindai atau difoto untuk diunggah harus berupa dokumen asli.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  Keputusan ada di petugas instansi terkait.\n[KARTU RENCANA] Kelahiran\n  1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]\n     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)\n  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]\n     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)\n  3. Ambil KIA [datang langsung, kecamatan]\n     Bawa: Bukti/SMS pengambilan\n     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)",
+    "Warga: Maaf, rencananya masih untuk Wonogiri. KTP dan KK saya sekarang Kota Semarang, Kecamatan Pedurungan. Bagaimana cara mengurus akta kelahiran di Semarang?",
+    "[JAWABAN BERSUMBER]\n  - Untuk pencatatan kelahiran WNI di Indonesia, siapkan surat keterangan kelahiran dari fasilitas kesehatan atau tenaga kesehatan. Jika anak lahir di rumah atau tempat lain, surat dapat berasal dari kepala desa atau lurah.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  - Siapkan buku nikah, kutipan akta perkawinan, atau bukti lain yang sah.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  - Siapkan KK tempat anak terdaftar atau akan didaftarkan sebagai anggota keluarga.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  - Jika tidak memiliki surat keterangan kelahiran, penduduk dapat membuat SPTJM kebenaran data kelahiran dengan dua saksi.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  - Jika tidak memenuhi persyaratan bukti perkawinan, penduduk dapat membuat SPTJM kebenaran sebagai pasangan suami istri dengan dua saksi.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  - Untuk pelayanan daring, dokumen persyaratan yang dipindai atau difoto untuk diunggah harus dokumen asli.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  Keputusan ada di petugas instansi terkait.",
+    "Warga: Surat lahir, buku nikah, dan KK sudah ada. Untuk mengajukan akta di Kota Semarang, saya lewat situs apa atau datang ke mana ya? Rencana yang tadi masih Wonogiri.",
+    "[JAWABAN BERSUMBER]\n  - Sumber Si D'nOK memuat persyaratan akta kelahiran dan menyebutkan pelayanan daring.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung; Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  - Sumber Si D'nOK mencantumkan tautan pada domain sidnok.semarangkota.go.id untuk mengunduh formulir SPTJM.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  Keputusan ada di petugas instansi terkait.",
+    "Warga: Maaf, saya masih belum tahu cara mengajukannya. Apakah bisa langsung lewat situs Si D'nOK, atau saya harus datang ke kantor mana di Semarang? Rencananya juga masih Wonogiri.",
+    "Urusin: Maaf, rencana yang tampil masih **Wonogiri**, padahal KTP dan KK Anda sudah Kota Semarang. **Jangan setujui rencana tersebut** agar tidak diarahkan ke kota yang salah.\n\nUntuk Semarang, Anda bisa mengajukan melalui **Si D’nOK**, portal layanan Dukcapil Kota Semarang. Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya. Siapkan surat lahir, buku nikah, dan KK yang sudah Anda miliki; untuk unggahan daring, gunakan foto atau pindai dokumen asli. [Sumber: Disdukcapil Kota Semarang, Data Dukung Si D’nOK, semarang-data-dukung#1 dan #4]\n\nSaya belum menemukan informasi yang memastikan kantor layanan langsung untuk akta kelahiran di Pedurungan, jadi sebaiknya konfirmasi ke Disdukcapil Kota Semarang sebelum datang.\n\nUntuk bantuan pengisian melalui Browser Pendamping, rencananya perlu menunjukkan **Kota Semarang** terlebih dahulu. Jangan tekan “Setujui rencana” selama kartu masih menunjukkan Wonogiri."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": true,
+    "catatan": "Sudah tahu mengajukan akta melalui Si D’nOK serta dokumen yang perlu disiapkan, dan tidak akan menyetujui rencana Wonogiri."
+  },
+  "ms": 103904,
+  "giliranWarga": 4,
+  "nilai": {
+    "persona": "p16-datadiri-wonogiri-ktp-semarang",
+    "judul": "Akun juri (Data Diri Wonogiri), KTP sekarang sudah Kota Semarang",
+    "urusanId": "u_53c3cafbbe205962ae64191daf0a80ce",
+    "wilayahPerangkat": "3312",
+    "kodeUrusan": "3312",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": true,
+      "catatan": "Sudah tahu mengajukan akta melalui Si D’nOK serta dokumen yang perlu disiapkan, dan tidak akan menyetujui rencana Wonogiri."
+    },
+    "giliranWarga": 4,
+    "ms": 103904,
+    "url": [
+      "https://sidnok.semarangkota.go.id/data-dukung",
+      "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+      "https://sidnok.semarangkota.go.id/get-berkas/1720769569"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": false,
+        "bukti": "rencana dibuat untuk kode 3312, seharusnya 3374"
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "bocor wilayah wonogiri: \"Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelah\"; wonogiri: \"an Pencatatan Sipil Kabupaten Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/terin\""
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "tanpa galat"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": false,
+        "bukti": "Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)"
+      },
+      "b": {
+        "lulus": false,
+        "bukti": "1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]"
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "(tidak ada KTP-el dalam daftar persyaratan akta kelahiran)"
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "Untuk bantuan pengisian melalui Browser Pendamping, rencananya perlu menunjukkan **Kota Semarang** terlebih dahulu."
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "(tidak ada permintaan data pribadi diketik di chat atau pengiriman tanpa persetujuan warga)"
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya."
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "Untuk Semarang, Anda bisa mengajukan melalui **Si D’nOK**, portal layanan Dukcapil Kota Semarang."
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya."
+      },
+      "ringkasan": "Urusin sempat membuat rencana dan memberi tautan Wonogiri meskipun warga sudah menyebut Kota Semarang, serta tidak mencantumkan KTP-el dalam persyaratan. Pada akhir percakapan, Urusin memperingatkan agar rencana salah tidak disetujui dan memberi langkah pengajuan melalui Si D'nOK.",
+      "cacat": [
+        {
+          "judul": "Rencana untuk wilayah yang salah",
+          "kriteria": "a",
+          "keparahan": "tinggi",
+          "bukti": "Maaf, rencana yang tampil masih **Wonogiri**, padahal KTP dan KK Anda sudah Kota Semarang."
+        },
+        {
+          "judul": "Pengajuan diarahkan ke yurisdiksi lain",
+          "kriteria": "b",
+          "keparahan": "tinggi",
+          "bukti": "1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]"
+        },
+        {
+          "judul": "KTP-el tidak dicantumkan sebagai persyaratan",
+          "kriteria": "c",
+          "keparahan": "sedang",
+          "bukti": "(tidak ada KTP-el dalam daftar persyaratan akta kelahiran)"
+        },
+        {
+          "judul": "Tautan layanan Wonogiri untuk warga Semarang",
+          "kriteria": "d",
+          "keparahan": "tinggi",
+          "bukti": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": false,
+        "bukti": "otomatis: rencana dibuat untuk kode 3312, seharusnya 3374 | juri: Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": false,
+            "bukti": "rencana dibuat untuk kode 3312, seharusnya 3374"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)"
+          }
+        ]
+      },
+      "b": {
+        "lulus": false,
+        "bukti": "juri: 1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]"
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: (tidak ada KTP-el dalam daftar persyaratan akta kelahiran)",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "(tidak ada KTP-el dalam daftar persyaratan akta kelahiran)"
+          }
+        ]
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "otomatis: bocor wilayah wonogiri: \"Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelah\"; wonogiri: \"an Pencatatan Sipil Kabupaten Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/terin\" | juri: https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": false,
+            "bukti": "bocor wilayah wonogiri: \"Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelah\"; wonogiri: \"an Pencatatan Sipil Kabupaten Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/terin\""
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: Untuk bantuan pengisian melalui Browser Pendamping, rencananya perlu menunjukkan **Kota Semarang** terlebih dahulu.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Untuk bantuan pengisian melalui Browser Pendamping, rencananya perlu menunjukkan **Kota Semarang** terlebih dahulu."
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: (tidak ada permintaan data pribadi diketik di chat atau pengiriman tanpa persetujuan warga)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada permintaan data pribadi diketik di chat atau pengiriman tanpa persetujuan warga)"
+          }
+        ]
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "juri: Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya."
+          }
+        ]
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "juri: Untuk Semarang, Anda bisa mengajukan melalui **Si D’nOK**, portal layanan Dukcapil Kota Semarang.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Untuk Semarang, Anda bisa mengajukan melalui **Si D’nOK**, portal layanan Dukcapil Kota Semarang."
+          }
+        ]
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "otomatis: tanpa galat | juri: Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tanpa galat"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Pilih layanan **Akta Kelahiran**, lalu ikuti petunjuk pengajuannya."
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 71911,
+        "tokensOut": 2573,
+        "costIdr": 0,
+        "panggilanLlm": 8
+      },
+      "simulator": {
+        "panggilan": 4,
+        "tokensIn": 16338,
+        "tokensOut": 338
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 6690,
+        "tokensOut": 893
+      }
+    }
+  }
+}

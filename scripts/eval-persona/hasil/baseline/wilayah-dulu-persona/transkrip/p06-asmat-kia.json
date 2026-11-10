@@ -1,0 +1,623 @@
+{
+  "persona": "p06-asmat-kia",
+  "urusanId": "u_d746ae3e1fc5afc0cd87ece05cd177c1",
+  "wilayahPerangkat": "9304",
+  "kodeUrusan": "9304",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Selamat siang. Sa mau bikin kartu identitas anak untuk anak sa yang umur 7 tahun. Bisa?",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "9304",
+            "nama": "Kabupaten Asmat"
+          },
+          "status": "usulan",
+          "sumber": "pilihan",
+          "type": "wilayah",
+          "seq": 1,
+          "at": "2026-11-10T07:44:53.332Z",
+          "chainHead": "6235cc811d8a…"
+        },
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": null,
+          "version": 2,
+          "type": "state",
+          "seq": 2,
+          "at": "2026-11-10T07:44:53.334Z",
+          "chainHead": "1d458a8ae7a4…"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T07:44:53.335Z",
+          "chainHead": "0fdefab376b9…"
+        },
+        {
+          "delta": "Selamat siang! Saya bisa bantu cari informasi pembuatan Kartu Identitas Anak (KIA) untuk anak Anda.\n\nKTP Anda terdaftar di Kabupaten Asmat, betul?",
+          "type": "assistant_text",
+          "seq": 4,
+          "at": "2026-11-10T07:45:04.719Z",
+          "chainHead": "02a216331299…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_3977397b-2769-47b9-a8d3-05562cd61bc9",
+          "version": 3,
+          "type": "done",
+          "seq": 5,
+          "at": "2026-11-10T07:45:04.720Z",
+          "chainHead": "3cc3b20426c6…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11397
+    },
+    {
+      "peran": "warga",
+      "jenis": "klik",
+      "teks": "Ya, betul",
+      "http": {
+        "status": 200
+      },
+      "alasan": "KTP terdaftar di Kabupaten Asmat, jadi sa konfirmasi wilayahnya."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "9304",
+            "nama": "Kabupaten Asmat"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 6,
+          "at": "2026-11-10T07:45:06.966Z",
+          "chainHead": "55f8cd942748…"
+        }
+      ],
+      "status": "selesai",
+      "aksi": "Ya, betul",
+      "ms": 1484
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Iya, sa di Agats, Kabupaten Asmat. Untuk bikin KIA anak sa, apa saja yang harus sa bawa dan urus di mana?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya perlu tahu syarat dan tempat mengurus KIA di Asmat."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 7,
+          "at": "2026-11-10T07:45:11.448Z",
+          "chainHead": "2dc839db5a5e…"
+        },
+        {
+          "label": "Menjalankan wilayah__tetapkan…",
+          "toolName": "wilayah__tetapkan",
+          "type": "progress",
+          "seq": 8,
+          "at": "2026-11-10T07:45:15.886Z",
+          "chainHead": "03be8a5b03e3…"
+        },
+        {
+          "ktp": {
+            "kodeKabKota": "9304",
+            "nama": "Kabupaten Asmat"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 9,
+          "at": "2026-11-10T07:45:15.888Z",
+          "chainHead": "cb60ca2643c9…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 10,
+          "at": "2026-11-10T07:45:15.889Z",
+          "chainHead": "dfb4668a0f9f…"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 11,
+          "at": "2026-11-10T07:45:16.630Z",
+          "chainHead": "67e1259cb370…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T07:45:19.803Z",
+          "chainHead": "b9ba2db44239…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 13,
+          "at": "2026-11-10T07:45:23.147Z",
+          "chainHead": "24f345fe773f…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://peraturan.go.id/id/permendagri-no-109-tahun-2019).",
+          "kanal": [
+            {
+              "nama": "Kementerian Dalam Negeri",
+              "url": "https://peraturan.go.id/id/permendagri-no-109-tahun-2019"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 14,
+          "at": "2026-11-10T07:45:23.147Z",
+          "chainHead": "0bae4ffa98ef…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_a97689d1-dd04-4dd6-8cf7-e04a3b497adc",
+          "version": 6,
+          "type": "done",
+          "seq": 15,
+          "at": "2026-11-10T07:45:23.150Z",
+          "chainHead": "c53ade2c230a…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11706
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Sa belum mengerti, itu cuma peraturan kah? Sa harus urus KIA di kantor mana di Asmat dan bawa apa saja? Kantor jauh, sa harus naik perahu.",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawaban belum menjelaskan kantor tujuan dan dokumen yang perlu dibawa."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 16,
+          "at": "2026-11-10T07:45:26.433Z",
+          "chainHead": "85aa4f9d7828…"
+        },
+        {
+          "delta": "Maaf, jawaban tadi belum menjawab pertanyaan Anda. Saya paham perjalanan naik perahu itu jauh, jadi sebaiknya jangan sampai berangkat sebelum informasi kantornya pasti.\n\nKIA diurus melalui **Dinas Kependudukan dan Pencatatan Sipil (Disdukcapil) Kabupaten Asmat**. Namun, saya belum menemukan sumber resmi yang memastikan **alamat kantor pelayanan KIA di Asmat** maupun **daftar berkas yang harus dibawa**. Saya tidak ingin menebak dan membuat Anda harus bolak-balik.\n\nSebelum berangkat, mohon hubungi **kanal resmi Dukcapil Kemendagri** untuk meminta informasi kontak Disdukcapil Asmat. Lalu tanyakan kepada Disdukcapil Asmat alamat dan jam layanan KIA, serta berkas untuk anak usia 7 tahun.",
+          "type": "assistant_text",
+          "seq": 17,
+          "at": "2026-11-10T07:45:33.797Z",
+          "chainHead": "b8fa6824ddfa…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_7a9985c1-2a8d-489a-aee6-d0e28ff28664",
+          "version": 7,
+          "type": "done",
+          "seq": 18,
+          "at": "2026-11-10T07:45:33.798Z",
+          "chainHead": "c7ae6c7450f6…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 7374
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Kanal resmi Dukcapil Kemendagri itu sa hubungi lewat mana? Sinyal di sini lemah. Sa su punya akta lahir anak dan KK, itu cukup kah?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Belum ada cara konkret menghubungi Dukcapil atau kepastian berkas sebelum berangkat."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 19,
+          "at": "2026-11-10T07:45:37.091Z",
+          "chainHead": "786636a5feb3…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 20,
+          "at": "2026-11-10T07:45:40.352Z",
+          "chainHead": "095641b7ad52…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 21,
+          "at": "2026-11-10T07:45:45.269Z",
+          "chainHead": "9a1f7f724227…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 22,
+          "at": "2026-11-10T07:45:48.088Z",
+          "chainHead": "fd428a092a88…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/).",
+          "kanal": [
+            {
+              "nama": "Kementerian Sosial",
+              "url": "https://cekbansos.kemensos.go.id/"
+            },
+            {
+              "nama": "Kementerian PANRB / Ombudsman RI (LAPOR!)",
+              "url": "https://www.lapor.go.id/tentang"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 23,
+          "at": "2026-11-10T07:45:48.089Z",
+          "chainHead": "c3e88ec6a085…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_ba5cbd63-570e-4ede-a687-73c1cc764182",
+          "version": 8,
+          "type": "done",
+          "seq": 24,
+          "at": "2026-11-10T07:45:48.092Z",
+          "chainHead": "2ca67fc98458…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11005
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Itu situs bansos kah? Sa mau urus KIA, bukan bantuan sosial. Sa harus hubungi Dukcapil lewat nomor apa? Akta lahir dan KK sa cukup kah?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawaban mengarahkan ke situs bansos dan belum menjawab kontak Dukcapil atau kelengkapan berkas KIA."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 25,
+          "at": "2026-11-10T07:45:51.755Z",
+          "chainHead": "c77ffc5d644c…"
+        },
+        {
+          "delta": "Maaf, **bukan situs bansos**. Yang saya maksud adalah situs resmi Dukcapil Kemendagri: **https://dukcapil.kemendagri.go.id/**.\n\nUntuk **nomor telepon Dukcapil**, saya belum menemukan nomor yang bisa saya pastikan masih resmi dan aktif. Saya tidak mau memberikan nomor yang salah, apalagi sinyal di sana lemah.\n\nUntuk **akta lahir dan KK**, saya juga belum bisa memastikan apakah itu sudah cukup untuk membuat KIA di Asmat. Sebelum naik perahu, bila memungkinkan, minta bantuan aparat kampung atau distrik untuk menanyakan ke Disdukcapil Asmat:\n\n- Alamat dan jam pelayanan KIA;\n- Apakah akta lahir dan KK sudah cukup, atau perlu berkas dan foto tambahan;\n- Apakah anak perlu ikut datang.\n\nMaaf saya belum bisa memastikan informasi itu supaya Anda tidak perlu bolak-balik.",
+          "type": "assistant_text",
+          "seq": 26,
+          "at": "2026-11-10T07:45:57.545Z",
+          "chainHead": "1306d036e20d…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_13598aa4-2377-4ea1-82b6-e089408dbf28",
+          "version": 9,
+          "type": "done",
+          "seq": 27,
+          "at": "2026-11-10T07:45:57.546Z",
+          "chainHead": "dfeb28385997…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 5797
+    }
+  ],
+  "layar": [
+    "Warga: Selamat siang. Sa mau bikin kartu identitas anak untuk anak sa yang umur 7 tahun. Bisa?",
+    "[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Asmat? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)\nUrusin: Selamat siang! Saya bisa bantu cari informasi pembuatan Kartu Identitas Anak (KIA) untuk anak Anda.\n\nKTP Anda terdaftar di Kabupaten Asmat, betul?",
+    "Warga menekan [Ya, betul]",
+    "(sistem) Wilayah KTP: Kabupaten Asmat",
+    "Warga: Iya, sa di Agats, Kabupaten Asmat. Untuk bikin KIA anak sa, apa saja yang harus sa bawa dan urus di mana?",
+    "(sistem) Wilayah KTP: Kabupaten Asmat\n[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://peraturan.go.id/id/permendagri-no-109-tahun-2019).\n  - Kementerian Dalam Negeri https://peraturan.go.id/id/permendagri-no-109-tahun-2019",
+    "Warga: Sa belum mengerti, itu cuma peraturan kah? Sa harus urus KIA di kantor mana di Asmat dan bawa apa saja? Kantor jauh, sa harus naik perahu.",
+    "Urusin: Maaf, jawaban tadi belum menjawab pertanyaan Anda. Saya paham perjalanan naik perahu itu jauh, jadi sebaiknya jangan sampai berangkat sebelum informasi kantornya pasti.\n\nKIA diurus melalui **Dinas Kependudukan dan Pencatatan Sipil (Disdukcapil) Kabupaten Asmat**. Namun, saya belum menemukan sumber resmi yang memastikan **alamat kantor pelayanan KIA di Asmat** maupun **daftar berkas yang harus dibawa**. Saya tidak ingin menebak dan membuat Anda harus bolak-balik.\n\nSebelum berangkat, mohon hubungi **kanal resmi Dukcapil Kemendagri** untuk meminta informasi kontak Disdukcapil Asmat. Lalu tanyakan kepada Disdukcapil Asmat alamat dan jam layanan KIA, serta berkas untuk anak usia 7 tahun.",
+    "Warga: Kanal resmi Dukcapil Kemendagri itu sa hubungi lewat mana? Sinyal di sini lemah. Sa su punya akta lahir anak dan KK, itu cukup kah?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/).\n  - Kementerian Sosial https://cekbansos.kemensos.go.id/\n  - Kementerian PANRB / Ombudsman RI (LAPOR!) https://www.lapor.go.id/tentang",
+    "Warga: Itu situs bansos kah? Sa mau urus KIA, bukan bantuan sosial. Sa harus hubungi Dukcapil lewat nomor apa? Akta lahir dan KK sa cukup kah?",
+    "Urusin: Maaf, **bukan situs bansos**. Yang saya maksud adalah situs resmi Dukcapil Kemendagri: **https://dukcapil.kemendagri.go.id/**.\n\nUntuk **nomor telepon Dukcapil**, saya belum menemukan nomor yang bisa saya pastikan masih resmi dan aktif. Saya tidak mau memberikan nomor yang salah, apalagi sinyal di sana lemah.\n\nUntuk **akta lahir dan KK**, saya juga belum bisa memastikan apakah itu sudah cukup untuk membuat KIA di Asmat. Sebelum naik perahu, bila memungkinkan, minta bantuan aparat kampung atau distrik untuk menanyakan ke Disdukcapil Asmat:\n\n- Alamat dan jam pelayanan KIA;\n- Apakah akta lahir dan KK sudah cukup, atau perlu berkas dan foto tambahan;\n- Apakah anak perlu ikut datang.\n\nMaaf saya belum bisa memastikan informasi itu supaya Anda tidak perlu bolak-balik."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": false,
+    "catatan": "Sudah tahu bisa minta bantuan aparat kampung atau distrik untuk menanyakan ke Disdukcapil Asmat, tetapi informasi berkas dan kantor belum pasti."
+  },
+  "ms": 66812,
+  "giliranWarga": 6,
+  "nilai": {
+    "persona": "p06-asmat-kia",
+    "judul": "Orang tua di Kab. Asmat (tanpa data registry): KIA anak",
+    "urusanId": "u_d746ae3e1fc5afc0cd87ece05cd177c1",
+    "wilayahPerangkat": "9304",
+    "kodeUrusan": "9304",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": false,
+      "catatan": "Sudah tahu bisa minta bantuan aparat kampung atau distrik untuk menanyakan ke Disdukcapil Asmat, tetapi informasi berkas dan kantor belum pasti."
+    },
+    "giliranWarga": 6,
+    "ms": 66812,
+    "url": [
+      "https://peraturan.go.id/id/permendagri-no-109-tahun-2019",
+      "https://cekbansos.kemensos.go.id/",
+      "https://www.lapor.go.id/tentang",
+      "https://dukcapil.kemendagri.go.id/**"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": null,
+        "bukti": "tidak ada rencana/jawaban persyaratan"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "langkah 4: buntu, tidak ada yang tampil"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": true,
+        "bukti": "KTP Anda terdaftar di Kabupaten Asmat, betul?"
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "KIA diurus melalui **Dinas Kependudukan dan Pencatatan Sipil (Disdukcapil) Kabupaten Asmat**."
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "Untuk **akta lahir dan KK**, saya juga belum bisa memastikan apakah itu sudah cukup untuk membuat KIA di Asmat."
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/)."
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "(tidak ada tawaran Browser Pendamping atau klaim pengiriman)"
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "(tidak ada permintaan data pribadi di chat atau pengulangan data sensitif)"
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "Saya paham perjalanan naik perahu itu jauh, jadi sebaiknya jangan sampai berangkat sebelum informasi kantornya pasti."
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "minta bantuan aparat kampung atau distrik untuk menanyakan ke Disdukcapil Asmat:"
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/)."
+      },
+      "ringkasan": "Urusin memastikan Asmat dan menyebut Disdukcapil yang tepat, tetapi tidak memberikan persyaratan KIA yang diminta meski tersedia dalam aturan nasional. Urusin juga sempat mengarahkan ke situs bansos yang tidak relevan; langkah akhirnya meminta bantuan aparat kampung atau distrik sebelum berangkat.",
+      "cacat": [
+        {
+          "judul": "Persyaratan KIA tidak dijawab",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "Untuk **akta lahir dan KK**, saya juga belum bisa memastikan apakah itu sudah cukup untuk membuat KIA di Asmat."
+        },
+        {
+          "judul": "Kanal bansos tidak sesuai layanan KIA",
+          "kriteria": "d",
+          "keparahan": "tinggi",
+          "bukti": "Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/)."
+        },
+        {
+          "judul": "Pengarahan salah menyebabkan kebuntuan",
+          "kriteria": "i",
+          "keparahan": "sedang",
+          "bukti": "Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/)."
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": true,
+        "bukti": "juri: KTP Anda terdaftar di Kabupaten Asmat, betul?",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": null,
+            "bukti": "tidak ada rencana/jawaban persyaratan"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "KTP Anda terdaftar di Kabupaten Asmat, betul?"
+          }
+        ]
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "juri: KIA diurus melalui **Dinas Kependudukan dan Pencatatan Sipil (Disdukcapil) Kabupaten Asmat**.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "KIA diurus melalui **Dinas Kependudukan dan Pencatatan Sipil (Disdukcapil) Kabupaten Asmat**."
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: Untuk **akta lahir dan KK**, saya juga belum bisa memastikan apakah itu sudah cukup untuk membuat KIA di Asmat.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Untuk **akta lahir dan KK**, saya juga belum bisa memastikan apakah itu sudah cukup untuk membuat KIA di Asmat."
+          }
+        ]
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "juri: Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/).",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/)."
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada tawaran Browser Pendamping atau klaim pengiriman)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada tawaran Browser Pendamping atau klaim pengiriman)"
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: (tidak ada permintaan data pribadi di chat atau pengulangan data sensitif)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada permintaan data pribadi di chat atau pengulangan data sensitif)"
+          }
+        ]
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "juri: Saya paham perjalanan naik perahu itu jauh, jadi sebaiknya jangan sampai berangkat sebelum informasi kantornya pasti.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Saya paham perjalanan naik perahu itu jauh, jadi sebaiknya jangan sampai berangkat sebelum informasi kantornya pasti."
+          }
+        ]
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "juri: minta bantuan aparat kampung atau distrik untuk menanyakan ke Disdukcapil Asmat:",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "minta bantuan aparat kampung atau distrik untuk menanyakan ke Disdukcapil Asmat:"
+          }
+        ]
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "otomatis: langkah 4: buntu, tidak ada yang tampil | juri: Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/).",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": false,
+            "bukti": "langkah 4: buntu, tidak ada yang tampil"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/)."
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 51268,
+        "tokensOut": 985,
+        "costIdr": 0,
+        "panggilanLlm": 8
+      },
+      "simulator": {
+        "panggilan": 6,
+        "tokensIn": 18110,
+        "tokensOut": 438
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 5518,
+        "tokensOut": 661
+      }
+    }
+  }
+}

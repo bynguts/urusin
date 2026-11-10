@@ -1,0 +1,49 @@
+Orang tua di Kab. Asmat (tanpa data registry): KIA anak
+=======================================================
+
+Warga: Selamat siang. Sa mau bikin kartu identitas anak untuk anak sa yang umur 7 tahun. Bisa?
+
+[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Asmat? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)
+Urusin: Selamat siang! Saya bisa bantu cari informasi pembuatan Kartu Identitas Anak (KIA) untuk anak Anda.
+
+KTP Anda terdaftar di Kabupaten Asmat, betul?
+
+Warga menekan [Ya, betul]
+
+(sistem) Wilayah KTP: Kabupaten Asmat
+
+Warga: Iya, sa di Agats, Kabupaten Asmat. Untuk bikin KIA anak sa, apa saja yang harus sa bawa dan urus di mana?
+
+(sistem) Wilayah KTP: Kabupaten Asmat
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://peraturan.go.id/id/permendagri-no-109-tahun-2019).
+  - Kementerian Dalam Negeri https://peraturan.go.id/id/permendagri-no-109-tahun-2019
+
+Warga: Sa belum mengerti, itu cuma peraturan kah? Sa harus urus KIA di kantor mana di Asmat dan bawa apa saja? Kantor jauh, sa harus naik perahu.
+
+Urusin: Maaf, jawaban tadi belum menjawab pertanyaan Anda. Saya paham perjalanan naik perahu itu jauh, jadi sebaiknya jangan sampai berangkat sebelum informasi kantornya pasti.
+
+KIA diurus melalui **Dinas Kependudukan dan Pencatatan Sipil (Disdukcapil) Kabupaten Asmat**. Namun, saya belum menemukan sumber resmi yang memastikan **alamat kantor pelayanan KIA di Asmat** maupun **daftar berkas yang harus dibawa**. Saya tidak ingin menebak dan membuat Anda harus bolak-balik.
+
+Sebelum berangkat, mohon hubungi **kanal resmi Dukcapil Kemendagri** untuk meminta informasi kontak Disdukcapil Asmat. Lalu tanyakan kepada Disdukcapil Asmat alamat dan jam layanan KIA, serta berkas untuk anak usia 7 tahun.
+
+Warga: Kanal resmi Dukcapil Kemendagri itu sa hubungi lewat mana? Sinyal di sini lemah. Sa su punya akta lahir anak dan KK, itu cukup kah?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/).
+  - Kementerian Sosial https://cekbansos.kemensos.go.id/
+  - Kementerian PANRB / Ombudsman RI (LAPOR!) https://www.lapor.go.id/tentang
+
+Warga: Itu situs bansos kah? Sa mau urus KIA, bukan bantuan sosial. Sa harus hubungi Dukcapil lewat nomor apa? Akta lahir dan KK sa cukup kah?
+
+Urusin: Maaf, **bukan situs bansos**. Yang saya maksud adalah situs resmi Dukcapil Kemendagri: **https://dukcapil.kemendagri.go.id/**.
+
+Untuk **nomor telepon Dukcapil**, saya belum menemukan nomor yang bisa saya pastikan masih resmi dan aktif. Saya tidak mau memberikan nomor yang salah, apalagi sinyal di sana lemah.
+
+Untuk **akta lahir dan KK**, saya juga belum bisa memastikan apakah itu sudah cukup untuk membuat KIA di Asmat. Sebelum naik perahu, bila memungkinkan, minta bantuan aparat kampung atau distrik untuk menanyakan ke Disdukcapil Asmat:
+
+- Alamat dan jam pelayanan KIA;
+- Apakah akta lahir dan KK sudah cukup, atau perlu berkas dan foto tambahan;
+- Apakah anak perlu ikut datang.
+
+Maaf saya belum bisa memastikan informasi itu supaya Anda tidak perlu bolak-balik.
+
+[AKHIR: warga_selesai — Sudah tahu bisa minta bantuan aparat kampung atau distrik untuk menanyakan ke Disdukcapil Asmat, tetapi informasi berkas dan kantor belum pasti.]

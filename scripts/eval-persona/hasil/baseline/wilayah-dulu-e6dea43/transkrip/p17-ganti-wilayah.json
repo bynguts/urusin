@@ -1,0 +1,907 @@
+{
+  "persona": "p17-ganti-wilayah",
+  "urusanId": "u_33f76442ca61c53532000535dc0b5b6d",
+  "wilayahPerangkat": "",
+  "kodeUrusan": "3311",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Mas, saya dari Wonogiri. Anak saya baru lahir, mau urus akta kelahiran.",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": null,
+          "version": 2,
+          "type": "state",
+          "seq": 1,
+          "at": "2026-11-10T08:19:37.913Z",
+          "chainHead": "2a67f6636622…"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 2,
+          "at": "2026-11-10T08:19:37.914Z",
+          "chainHead": "4861534527c2…"
+        },
+        {
+          "delta": "Selamat atas kelahiran buah hati Anda! KTP Anda terdaftar di Kabupaten Wonogiri, betul?",
+          "type": "assistant_text",
+          "seq": 3,
+          "at": "2026-11-10T08:19:48.996Z",
+          "chainHead": "c62cc3c34fbc…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_e9a40620-68a4-4218-9748-f180c680a7b3",
+          "version": 3,
+          "type": "done",
+          "seq": 4,
+          "at": "2026-11-10T08:19:48.997Z",
+          "chainHead": "4f090cfde314…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11090
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Iya mas, Wonogiri.",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya masih mengira urusannya mengikuti daerah asal saya."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 5,
+          "at": "2026-11-10T08:19:55.476Z",
+          "chainHead": "bbade15fd075…"
+        },
+        {
+          "label": "Menjalankan wilayah__tetapkan…",
+          "toolName": "wilayah__tetapkan",
+          "type": "progress",
+          "seq": 6,
+          "at": "2026-11-10T08:20:00.009Z",
+          "chainHead": "abe0cd792227…"
+        },
+        {
+          "ktp": {
+            "kodeKabKota": "3312",
+            "nama": "Kabupaten Wonogiri"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 7,
+          "at": "2026-11-10T08:20:00.010Z",
+          "chainHead": "1d3f640b08d4…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 8,
+          "at": "2026-11-10T08:20:00.011Z",
+          "chainHead": "de49e6fb0f64…"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 9,
+          "at": "2026-11-10T08:20:00.708Z",
+          "chainHead": "a5c0c3e33c36…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 10,
+          "at": "2026-11-10T08:20:04.139Z",
+          "chainHead": "c9083ecc64dd…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 11,
+          "at": "2026-11-10T08:20:30.618Z",
+          "chainHead": "5fa61420894c…"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan",
+                  "kutipanPersis": "Fotocopy Surat Keterangan Kelahiran dari RS/Puskesmas/ fasilitas Kesehatan/Dokter/Bidan atau surat keterangan Kelahiran dari nahkoda kapal laut/kapten pesawat terbang atau dari Kepala Desa/lurah jika lahir di rumah/tempat tempat lain, antara lain : kebun, sawah, angkutan umum",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-akta-kelahiran#0",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran#:~:text=Fotocopy%20Surat%20Keterangan%20Kelahiran,kebun%2C%20sawah%2C%20angkutan%20umum",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran",
+                  "verifiedAt": "2026-11-08T18:49:01.701Z"
+                }
+              ],
+              "teks": "Siapkan fotokopi surat keterangan kelahiran dari rumah sakit, puskesmas, fasilitas kesehatan, dokter, atau bidan. Untuk kelahiran di rumah atau tempat lain, surat dapat berasal dari kepala desa atau lurah."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan",
+                  "kutipanPersis": "Buku nikah/kutipan akta perkawinan/bukti lain yang sah",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-akta-kelahiran#0",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran#:~:text=Buku%20nikah%2Fkutipan%20akta%20perkawinan%2Fbukti%20lain%20yang%20sah",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran",
+                  "verifiedAt": "2026-11-08T18:49:01.701Z"
+                }
+              ],
+              "teks": "Siapkan buku nikah, kutipan akta perkawinan, atau bukti lain yang sah."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan",
+                  "kutipanPersis": "KK dimana penduduk terdaftar atau akan di daftarkan sebagai anggota keluarga",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-akta-kelahiran#0",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran#:~:text=KK%20dimana%20penduduk%20terdaftar%20atau%20akan%20di%20daftarkan%20sebagai%20anggota%20keluarga",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran",
+                  "verifiedAt": "2026-11-08T18:49:01.701Z"
+                }
+              ],
+              "teks": "Siapkan kartu keluarga tempat anak terdaftar atau akan didaftarkan sebagai anggota keluarga."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan",
+                  "kutipanPersis": "Penduduk dapat membuat SPTJM kebenaran data kelahiran dengan mengisi F-2.03 dan 2 orang saksi jika tidak memenuhi persyaratan sebagaimana nomor 1",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-akta-kelahiran#0",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran#:~:text=usulnya%2Fkeberadaan%20orangtuanya%3B%205.-,Penduduk%20dapat%20membuat%20SPTJM,persyaratan%20sebagaimana%20nomor%201",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran",
+                  "verifiedAt": "2026-11-08T18:49:01.701Z"
+                }
+              ],
+              "teks": "Jika surat keterangan kelahiran tidak tersedia, penduduk dapat membuat SPTJM kebenaran data kelahiran dengan mengisi F-2.03 dan menghadirkan dua saksi."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan",
+                  "kutipanPersis": "Penduduk dapat membuat SPTJM kebenaran sebagai pasangan suami istri dengan mengisi formulir F-2.04 dan 2 orang saksi jika tidak memenuhi persyaratan sebagaimana nomor 2",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-akta-kelahiran#0",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran#:~:text=nomor%201%3B%206.-,Penduduk%20dapat%20membuat%20SPTJM,persyaratan%20sebagaimana%20nomor%202",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran",
+                  "verifiedAt": "2026-11-08T18:49:01.701Z"
+                }
+              ],
+              "teks": "Jika bukti perkawinan yang dipersyaratkan tidak tersedia, penduduk dapat membuat SPTJM kebenaran sebagai pasangan suami istri dengan mengisi F-2.04 dan menghadirkan dua saksi."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan",
+                  "kutipanPersis": "Berita acara dari kepolisian bagi anak yang tidak diketahui asal usulnya/keberadaan orangtuanya",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-akta-kelahiran#0",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran#:~:text=Berita%20acara%20dari%20kepolisian%20bagi%20anak%20yang%20tidak%20diketahui%20asal%20usulnya%2Fkeberadaan%20orangtuanya",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran",
+                  "verifiedAt": "2026-11-08T18:49:01.701Z"
+                }
+              ],
+              "teks": "Untuk anak yang tidak diketahui asal-usul atau keberadaan orang tuanya, diperlukan berita acara dari kepolisian."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "Pemohon mengajukan permohonan Akta Kelahiran dengan mengisi Formulir F-2.01 (Formulir Pelaporan Pencatatan Sipil) dan melengkapi berkas persyaratan melalui Loket online",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-akta-kelahiran#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran#:~:text=Pemohon%20mengajukan%20permohonan%20Akta,persyaratan%20melalui%20Loket%20online",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran",
+                  "verifiedAt": "2026-11-08T18:49:01.701Z"
+                }
+              ],
+              "teks": "Ajukan permohonan melalui loket online dengan mengisi formulir F-2.01 dan melengkapi berkas persyaratan."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "untuk cetak mandiri pemohon wajib mengisi alamat email",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-akta-kelahiran#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran#:~:text=untuk%20cetak%20mandiri%20pemohon%20wajib%20mengisi%20alamat%20email",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran",
+                  "verifiedAt": "2026-11-08T18:49:01.701Z"
+                }
+              ],
+              "teks": "Jika memilih cetak mandiri, pemohon wajib mengisi alamat email."
+            }
+          ],
+          "klaimDibuang": 4,
+          "type": "grounded_answer",
+          "seq": 12,
+          "at": "2026-11-10T08:20:30.618Z",
+          "chainHead": "da2d28b3c455…"
+        },
+        {
+          "catatan": "Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 \"Akta Kelahiran\" (recon 2026-11-08): Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.",
+          "langkah": [
+            {
+              "bawa": [],
+              "id": "ajukan",
+              "jenis": "online-adapter",
+              "judul": "Ajukan akta kelahiran terintegrasi lewat loket online",
+              "lokasi": "loket-online",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+                }
+              ]
+            },
+            {
+              "bawa": [],
+              "id": "siapkan-sptjm",
+              "jenis": "online-manual",
+              "judul": "Bila surat kurang: siapkan SPTJM bersama dua saksi",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+                }
+              ]
+            },
+            {
+              "bawa": [
+                "Bukti/SMS pengambilan"
+              ],
+              "id": "ambil-kia",
+              "jenis": "offline",
+              "judul": "Ambil KIA",
+              "lokasi": "kecamatan",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+                }
+              ]
+            }
+          ],
+          "ringkasan": "Kelahiran · Kab. Wonogiri",
+          "tier": "semi",
+          "wilayah": {
+            "ktp": {
+              "kodeKabKota": "3312",
+              "nama": "Kabupaten Wonogiri"
+            }
+          },
+          "type": "plan_card",
+          "seq": 13,
+          "at": "2026-11-10T08:20:30.622Z",
+          "chainHead": "19b93e926c68…"
+        },
+        {
+          "dari": "MEMAHAMI",
+          "state": "RENCANA_DIUSULKAN",
+          "tier": "semi",
+          "version": 6,
+          "type": "state",
+          "seq": 14,
+          "at": "2026-11-10T08:20:30.623Z",
+          "chainHead": "72a6d3c08649…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_943630fe-7445-4774-b732-7863bb908896",
+          "version": 6,
+          "type": "done",
+          "seq": 15,
+          "at": "2026-11-10T08:20:30.626Z",
+          "chainHead": "e95bb6dc3349…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 35159
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Eh maaf mas, saya salah. KTP sama KK saya sekarang sudah Sukoharjo, Kartasura. Jadi gimana?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya baru sadar KTP dan KK saya sudah pindah, jadi rencana Wonogiri belum tentu sesuai."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 16,
+          "at": "2026-11-10T08:20:34.559Z",
+          "chainHead": "f384e6309b07…"
+        },
+        {
+          "label": "Menjalankan wilayah__tetapkan…",
+          "toolName": "wilayah__tetapkan",
+          "type": "progress",
+          "seq": 17,
+          "at": "2026-11-10T08:20:42.233Z",
+          "chainHead": "a88df1f8a9f1…"
+        },
+        {
+          "ktp": {
+            "kodeKabKota": "3311",
+            "nama": "Kabupaten Sukoharjo"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 18,
+          "at": "2026-11-10T08:20:42.236Z",
+          "chainHead": "90732ca9a1e8…"
+        },
+        {
+          "dari": "RENCANA_DIUSULKAN",
+          "state": "MEMAHAMI",
+          "tier": "dipandu",
+          "version": 9,
+          "type": "state",
+          "seq": 19,
+          "at": "2026-11-10T08:20:42.237Z",
+          "chainHead": "59a004b484a3…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 20,
+          "at": "2026-11-10T08:20:46.037Z",
+          "chainHead": "4077ac628900…"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 21,
+          "at": "2026-11-10T08:20:47.675Z",
+          "chainHead": "87daba389e58…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 22,
+          "at": "2026-11-10T08:20:51.830Z",
+          "chainHead": "38be307f5cb7…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 23,
+          "at": "2026-11-10T08:20:55.416Z",
+          "chainHead": "568f1f0569c5…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo",
+              "url": "https://dispendukcapil.sukoharjokab.go.id/"
+            },
+            {
+              "nama": "Kabupaten Sukoharjo",
+              "url": "https://dispendukcapil.sukoharjokab.go.id"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 24,
+          "at": "2026-11-10T08:20:55.417Z",
+          "chainHead": "3b449d04a42f…"
+        },
+        {
+          "catatan": "Persyaratan nasional untuk Kabupaten Sukoharjo; detail dan cara pengajuan mengikuti MELODI (WhatsApp).",
+          "langkah": [
+            {
+              "bawa": [],
+              "id": "ajukan",
+              "jenis": "online-manual",
+              "judul": "Ajukan akta kelahiran ke Disdukcapil Kab. Sukoharjo",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo",
+                  "judul": "MELODI (WhatsApp)",
+                  "url": "https://dispendukcapil.sukoharjokab.go.id/"
+                },
+                {
+                  "instansi": "Pemerintah Republik Indonesia",
+                  "judul": "Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil",
+                  "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018"
+                }
+              ]
+            },
+            {
+              "bawa": [],
+              "id": "siapkan-sptjm",
+              "jenis": "online-manual",
+              "judul": "Bila surat kurang: siapkan SPTJM bersama dua saksi",
+              "sumber": [
+                {
+                  "instansi": "Pemerintah Republik Indonesia",
+                  "judul": "Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil",
+                  "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018"
+                }
+              ]
+            },
+            {
+              "bawa": [
+                "Bukti pengajuan"
+              ],
+              "id": "ambil",
+              "jenis": "offline",
+              "judul": "Terima akta kelahiran dan KK baru dari Disdukcapil Kab. Sukoharjo",
+              "lokasi": "disdukcapil",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo",
+                  "judul": "MELODI (WhatsApp)",
+                  "url": "https://dispendukcapil.sukoharjokab.go.id/"
+                }
+              ]
+            }
+          ],
+          "ringkasan": "Kelahiran · Kab. Sukoharjo",
+          "tier": "dipandu",
+          "wilayah": {
+            "ktp": {
+              "kodeKabKota": "3311",
+              "nama": "Kabupaten Sukoharjo"
+            }
+          },
+          "type": "plan_card",
+          "seq": 25,
+          "at": "2026-11-10T08:20:55.422Z",
+          "chainHead": "7a3e8438c9db…"
+        },
+        {
+          "dari": "MEMAHAMI",
+          "state": "RENCANA_DIUSULKAN",
+          "tier": "dipandu",
+          "version": 10,
+          "type": "state",
+          "seq": 26,
+          "at": "2026-11-10T08:20:55.425Z",
+          "chainHead": "392c315c8822…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_ce36d5fd-c655-420f-b5af-2caea72d1099",
+          "version": 10,
+          "type": "done",
+          "seq": 27,
+          "at": "2026-11-10T08:20:55.427Z",
+          "chainHead": "1afba88dce3d…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 20878
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Mas, kalau lewat WhatsApp MELODI itu nomor berapa ya? Terus berkas apa saja yang perlu saya kirim?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Cara menghubungi MELODI dan berkas yang diperlukan belum jelas."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 28,
+          "at": "2026-11-10T08:20:59.990Z",
+          "chainHead": "37e5c4fa25bb…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 29,
+          "at": "2026-11-10T08:21:03.214Z",
+          "chainHead": "5ab2204380d6…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 30,
+          "at": "2026-11-10T08:21:07.844Z",
+          "chainHead": "212de10bbd5c…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 31,
+          "at": "2026-11-10T08:21:11.124Z",
+          "chainHead": "8b2a4b30ebb6…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo",
+              "url": "https://dispendukcapil.sukoharjokab.go.id/"
+            },
+            {
+              "nama": "Kabupaten Sukoharjo",
+              "url": "https://dispendukcapil.sukoharjokab.go.id"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 32,
+          "at": "2026-11-10T08:21:11.125Z",
+          "chainHead": "c2e4bc93eaae…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_d535d16f-031b-42d2-b419-5d994cb6a60c",
+          "version": 11,
+          "type": "done",
+          "seq": 33,
+          "at": "2026-11-10T08:21:11.127Z",
+          "chainHead": "7e090369c326…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11146
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Mas, di situs itu saya harus buka bagian apa buat cari nomor MELODI dan syarat akta kelahiran?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Petunjuk sebelumnya belum menjelaskan cara menemukan nomor WhatsApp dan persyaratan di situs resmi."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 34,
+          "at": "2026-11-10T08:21:16.403Z",
+          "chainHead": "772f8f17ea2d…"
+        },
+        {
+          "delta": "Mas, buka situs resmi [Disdukcapil Kabupaten Sukoharjo](https://dispendukcapil.sukoharjokab.go.id/), lalu cari bagian **Kontak atau Layanan MELODI** untuk nomor WhatsApp, dan bagian **Layanan atau Persyaratan Akta Kelahiran** untuk daftar berkas.\n\nSaya belum bisa memastikan nama menu atau nomor WhatsApp-nya dari sumber yang tersedia. Kalau sudah ketemu halamannya, Anda bisa sampaikan nama menunya atau informasi yang tertera—tanpa menuliskan data pribadi—dan saya bantu jelaskan. Jangan gunakan daftar berkas Wonogiri sebelumnya sebagai patokan Sukoharjo, ya.",
+          "type": "assistant_text",
+          "seq": 35,
+          "at": "2026-11-10T08:21:21.771Z",
+          "chainHead": "81580bda3d60…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_ca75e74d-92ed-4b13-b646-62a336683b93",
+          "version": 12,
+          "type": "done",
+          "seq": 36,
+          "at": "2026-11-10T08:21:21.772Z",
+          "chainHead": "a08418076941…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 5377
+    }
+  ],
+  "layar": [
+    "Warga: Mas, saya dari Wonogiri. Anak saya baru lahir, mau urus akta kelahiran.",
+    "Urusin: Selamat atas kelahiran buah hati Anda! KTP Anda terdaftar di Kabupaten Wonogiri, betul?",
+    "Warga: Iya mas, Wonogiri.",
+    "(sistem) Wilayah KTP: Kabupaten Wonogiri\n[JAWABAN BERSUMBER]\n  - Siapkan fotokopi surat keterangan kelahiran dari rumah sakit, puskesmas, fasilitas kesehatan, dokter, atau bidan. Untuk kelahiran di rumah atau tempat lain, surat dapat berasal dari kepala desa atau lurah.\n    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)\n  - Siapkan buku nikah, kutipan akta perkawinan, atau bukti lain yang sah.\n    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)\n  - Siapkan kartu keluarga tempat anak terdaftar atau akan didaftarkan sebagai anggota keluarga.\n    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)\n  - Jika surat keterangan kelahiran tidak tersedia, penduduk dapat membuat SPTJM kebenaran data kelahiran dengan mengisi F-2.03 dan menghadirkan dua saksi.\n    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)\n  - Jika bukti perkawinan yang dipersyaratkan tidak tersedia, penduduk dapat membuat SPTJM kebenaran sebagai pasangan suami istri dengan mengisi F-2.04 dan menghadirkan dua saksi.\n    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)\n  - Untuk anak yang tidak diketahui asal-usul atau keberadaan orang tuanya, diperlukan berita acara dari kepolisian.\n    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)\n  - Ajukan permohonan melalui loket online dengan mengisi formulir F-2.01 dan melengkapi berkas persyaratan.\n    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)\n  - Jika memilih cetak mandiri, pemohon wajib mengisi alamat email.\n    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)\n  (4 klaim dibuang karena kutipan tidak terverifikasi)\n  Keputusan ada di petugas instansi terkait.\n[KARTU RENCANA] Kelahiran · Kab. Wonogiri\n  Wilayah KTP: Kabupaten Wonogiri (tingkat semi)\n  Catatan: Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 \"Akta Kelahiran\" (recon 2026-11-08): Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.\n  1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]\n     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)\n  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]\n     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)\n  3. Ambil KIA [datang langsung, kecamatan]\n     Bawa: Bukti/SMS pengambilan\n     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)",
+    "Warga: Eh maaf mas, saya salah. KTP sama KK saya sekarang sudah Sukoharjo, Kartasura. Jadi gimana?",
+    "(sistem) Wilayah KTP: Kabupaten Sukoharjo\n[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/\n  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id\n[KARTU RENCANA] Kelahiran · Kab. Sukoharjo\n  Wilayah KTP: Kabupaten Sukoharjo (tingkat dipandu)\n  Catatan: Persyaratan nasional untuk Kabupaten Sukoharjo; detail dan cara pengajuan mengikuti MELODI (WhatsApp).\n  1. Ajukan akta kelahiran ke Disdukcapil Kab. Sukoharjo [online]\n     Sumber: MELODI (WhatsApp) (https://dispendukcapil.sukoharjokab.go.id/); Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)\n  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]\n     Sumber: Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)\n  3. Terima akta kelahiran dan KK baru dari Disdukcapil Kab. Sukoharjo [datang langsung, disdukcapil]\n     Bawa: Bukti pengajuan\n     Sumber: MELODI (WhatsApp) (https://dispendukcapil.sukoharjokab.go.id/)",
+    "Warga: Mas, kalau lewat WhatsApp MELODI itu nomor berapa ya? Terus berkas apa saja yang perlu saya kirim?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/\n  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id",
+    "Warga: Mas, di situs itu saya harus buka bagian apa buat cari nomor MELODI dan syarat akta kelahiran?",
+    "Urusin: Mas, buka situs resmi [Disdukcapil Kabupaten Sukoharjo](https://dispendukcapil.sukoharjokab.go.id/), lalu cari bagian **Kontak atau Layanan MELODI** untuk nomor WhatsApp, dan bagian **Layanan atau Persyaratan Akta Kelahiran** untuk daftar berkas.\n\nSaya belum bisa memastikan nama menu atau nomor WhatsApp-nya dari sumber yang tersedia. Kalau sudah ketemu halamannya, Anda bisa sampaikan nama menunya atau informasi yang tertera—tanpa menuliskan data pribadi—dan saya bantu jelaskan. Jangan gunakan daftar berkas Wonogiri sebelumnya sebagai patokan Sukoharjo, ya."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": false,
+    "catatan": "Sudah tahu harus membuka situs resmi Disdukcapil Sukoharjo untuk mencari kontak MELODI dan persyaratan, meski nama menu dan nomornya belum pasti."
+  },
+  "ms": 108691,
+  "giliranWarga": 5,
+  "nilai": {
+    "persona": "p17-ganti-wilayah",
+    "judul": "Warga mengganti wilayah di tengah percakapan (Wonogiri lalu Sukoharjo)",
+    "urusanId": "u_33f76442ca61c53532000535dc0b5b6d",
+    "wilayahPerangkat": "",
+    "kodeUrusan": "3311",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": false,
+      "catatan": "Sudah tahu harus membuka situs resmi Disdukcapil Sukoharjo untuk mencari kontak MELODI dan persyaratan, meski nama menu dan nomornya belum pasti."
+    },
+    "giliranWarga": 5,
+    "ms": 108691,
+    "url": [
+      "https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran",
+      "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+      "https://dispendukcapil.sukoharjokab.go.id/",
+      "https://dispendukcapil.sukoharjokab.go.id",
+      "https://peraturan.go.id/id/perpres-no-96-tahun-2018"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": true,
+        "bukti": "warga menyebut wilayah sebelum rencana"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "tanpa galat"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": true,
+        "bukti": "KTP Anda terdaftar di Kabupaten Wonogiri, betul?"
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "Wilayah KTP: Kabupaten Sukoharjo (tingkat dipandu)"
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "(tidak ada daftar persyaratan akta kelahiran untuk Sukoharjo setelah koreksi wilayah)"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri."
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tanpa menuliskan data pribadi"
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "Mas, buka situs resmi [Disdukcapil Kabupaten Sukoharjo](https://dispendukcapil.sukoharjokab.go.id/)"
+      },
+      "h": {
+        "lulus": false,
+        "bukti": "Saya belum bisa memastikan nama menu atau nomor WhatsApp-nya dari sumber yang tersedia."
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "Kalau sudah ketemu halamannya, Anda bisa sampaikan nama menunya atau informasi yang tertera"
+      },
+      "ringkasan": "Urusin memperbarui wilayah ke Sukoharjo dan mengarahkan warga ke situs resmi yang sesuai. Namun, Urusin tidak memberikan daftar persyaratan nasional untuk Sukoharjo dan langkah pencarian menu masih belum pasti.",
+      "cacat": [
+        {
+          "judul": "Persyaratan nasional tidak diberikan setelah koreksi",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "(tidak ada daftar persyaratan akta kelahiran untuk Sukoharjo setelah koreksi wilayah)"
+        },
+        {
+          "judul": "Langkah pencarian masih samar",
+          "kriteria": "h",
+          "keparahan": "sedang",
+          "bukti": "Saya belum bisa memastikan nama menu atau nomor WhatsApp-nya dari sumber yang tersedia."
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": true,
+        "bukti": "otomatis: warga menyebut wilayah sebelum rencana | juri: KTP Anda terdaftar di Kabupaten Wonogiri, betul?",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "warga menyebut wilayah sebelum rencana"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "KTP Anda terdaftar di Kabupaten Wonogiri, betul?"
+          }
+        ]
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "juri: Wilayah KTP: Kabupaten Sukoharjo (tingkat dipandu)",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Wilayah KTP: Kabupaten Sukoharjo (tingkat dipandu)"
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: (tidak ada daftar persyaratan akta kelahiran untuk Sukoharjo setelah koreksi wilayah)",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "(tidak ada daftar persyaratan akta kelahiran untuk Sukoharjo setelah koreksi wilayah)"
+          }
+        ]
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada tautan/nama wilayah lain | juri: Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/"
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri."
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: tanpa menuliskan data pribadi",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "tanpa menuliskan data pribadi"
+          }
+        ]
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "juri: Mas, buka situs resmi [Disdukcapil Kabupaten Sukoharjo](https://dispendukcapil.sukoharjokab.go.id/)",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Mas, buka situs resmi [Disdukcapil Kabupaten Sukoharjo](https://dispendukcapil.sukoharjokab.go.id/)"
+          }
+        ]
+      },
+      "h": {
+        "lulus": false,
+        "bukti": "juri: Saya belum bisa memastikan nama menu atau nomor WhatsApp-nya dari sumber yang tersedia.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Saya belum bisa memastikan nama menu atau nomor WhatsApp-nya dari sumber yang tersedia."
+          }
+        ]
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "otomatis: tanpa galat | juri: Kalau sudah ketemu halamannya, Anda bisa sampaikan nama menunya atau informasi yang tertera",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tanpa galat"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Kalau sudah ketemu halamannya, Anda bisa sampaikan nama menunya atau informasi yang tertera"
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 90220,
+        "tokensOut": 2251,
+        "costIdr": 0,
+        "panggilanLlm": 10
+      },
+      "simulator": {
+        "panggilan": 5,
+        "tokensIn": 21340,
+        "tokensOut": 414
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 6859,
+        "tokensOut": 651
+      }
+    }
+  }
+}

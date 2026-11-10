@@ -1,0 +1,32 @@
+Ibu di Kab. Wonogiri, bayi lahir minggu lalu (akta kelahiran, jalur demo)
+=========================================================================
+
+Warga: Assalamualaikum, anak saya lahir minggu lalu di puskesmas. Saya harus ngurus apa ya?
+
+[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Wonogiri? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)
+Urusin: Waalaikumsalam. Selamat atas kelahiran buah hati Anda!
+
+KTP Anda terdaftar di Kabupaten Wonogiri, betul?
+
+Warga menekan [Ya, betul]
+
+(sistem) Wilayah KTP: Kabupaten Wonogiri
+[KARTU RENCANA] Kelahiran · Kab. Wonogiri
+  Wilayah KTP: Kabupaten Wonogiri (tingkat semi)
+  Catatan: Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 "Akta Kelahiran" (recon 2026-11-08): Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.
+  1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]
+     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)
+  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]
+     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)
+  3. Ambil KIA [datang langsung, kecamatan]
+     Bawa: Bukti/SMS pengambilan
+     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)
+
+Warga menekan [Setujui rencana]
+
+[KARTU BROWSER PENDAMPING] Ajukan akta kelahiran terintegrasi lewat loket online di Telunjuk Sakti. AI mengunggah Dokumen Anda; Anda masuk akun (sandi, CAPTCHA) dan menekan Selesai sendiri. Situs: https://telunjuksakti.wonogirikab.go.id
+[KONFIRMASI] Izinkan Browser Pendamping membuka situs resmi dan mengisi pengajuan ini?
+
+Warga menekan [Setujui dan buka situs]
+
+[AKHIR: pendamping_dibuka — Browser Pendamping di luar cakupan eval]

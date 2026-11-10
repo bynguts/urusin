@@ -1,0 +1,52 @@
+Warga mengganti wilayah di tengah percakapan (Wonogiri lalu Sukoharjo)
+======================================================================
+
+Warga: Mas, saya dari Wonogiri. Anak saya baru lahir, mau urus akta kelahiran.
+
+[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Sukoharjo? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)
+Urusin: Selamat atas kelahiran anak Anda! KTP Anda terdaftar di Kabupaten Wonogiri, betul?
+
+Warga menekan [Ya, betul]
+
+(sistem) Wilayah KTP: Kabupaten Sukoharjo
+[KARTU RENCANA] Kelahiran · Kab. Sukoharjo
+  Wilayah KTP: Kabupaten Sukoharjo (tingkat dipandu)
+  Catatan: Persyaratan nasional untuk Kabupaten Sukoharjo; detail dan cara pengajuan mengikuti MELODI (WhatsApp).
+  1. Ajukan akta kelahiran ke Disdukcapil Kab. Sukoharjo [online]
+     Sumber: MELODI (WhatsApp) (https://dispendukcapil.sukoharjokab.go.id/); Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)
+  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]
+     Sumber: Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)
+  3. Terima akta kelahiran dan KK baru dari Disdukcapil Kab. Sukoharjo [datang langsung, disdukcapil]
+     Bawa: Bukti pengajuan
+     Sumber: MELODI (WhatsApp) (https://dispendukcapil.sukoharjokab.go.id/)
+
+Warga: Eh maaf mas, saya salah. KTP sama KK saya sekarang sudah Sukoharjo, Kartasura. Jadi gimana?
+
+(sistem) Wilayah KTP: Kabupaten Sukoharjo
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/
+  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id
+
+Warga: Mas, tadi katanya bisa lewat WhatsApp MELODI. Nomornya berapa ya, dan saya perlu siapkan apa saja?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/
+  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id
+
+Warga: Mas, saya sudah ada surat lahir dari bidan sama buku nikah. Selain itu perlu apa lagi? Terus nomor WhatsApp MELODI-nya lihat di bagian mana di situs itu ya?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/
+  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id
+
+Warga: Mas, jawabannya kok sama terus ya? Tadi katanya bisa lewat WhatsApp MELODI, tapi saya belum tahu nomornya atau perlu siapin apa lagi selain surat lahir dan buku nikah.
+
+Urusin: Maaf, Mas, jawaban saya tadi berulang dan belum menjawab pertanyaan Anda.
+
+Saya sudah mencari sumber resmi, tetapi **belum menemukan nomor WhatsApp MELODI, letak nomornya di situs, maupun daftar persyaratan akta kelahiran Sukoharjo yang bisa saya pastikan**. Jadi saya tidak ingin menebak nomor atau dokumen tambahannya.
+
+Silakan cek atau hubungi Disdukcapil melalui [situs resmi Disdukcapil Kabupaten Sukoharjo](https://dispendukcapil.sukoharjokab.go.id/), lalu tanyakan nomor MELODI dan dokumen yang diperlukan selain surat lahir dari bidan dan buku nikah. Simpan dulu kedua dokumen itu; jangan kirim data pribadi di chat ini.
+
+Maaf juga, penyebutan MELODI tadi belum saya lengkapi dengan informasi yang cukup untuk langsung menghubunginya.
+
+[AKHIR: warga_selesai — Saya masih belum tahu nomor MELODI atau dokumen tambahannya, dan jawabannya sudah berulang tanpa petunjuk yang lebih jelas.]

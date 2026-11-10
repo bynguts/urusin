@@ -1,0 +1,36 @@
+Orang tua di Kab. Asmat (tanpa data registry): KIA anak
+=======================================================
+
+Warga: Selamat siang. Sa mau bikin kartu identitas anak untuk anak sa yang umur 7 tahun. Bisa?
+
+Urusin: Selamat siang! Saya bantu cari informasi pembuatan Kartu Identitas Anak (KIA) untuk anak Anda.
+
+KTP Anda terdaftar di kabupaten/kota mana? Cukup sebutkan nama kabupaten atau kotanya, tidak perlu nomor NIK.
+
+Warga: Agats, Kabupaten Asmat.
+
+(sistem) Wilayah KTP: Kabupaten Asmat
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://dukcapil.kemendagri.go.id).
+  - Kementerian Dalam Negeri https://dukcapil.kemendagri.go.id
+
+Warga: Sa di Agats, Kabupaten Asmat. Sinyal di sini lemah, kantor dinas juga jauh harus naik perahu. Sa harus ke mana untuk urus KIA, dan bawa apa saja?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://peraturan.go.id/id/permendagri-no-108-tahun-2019).
+  - Kementerian Dalam Negeri https://peraturan.go.id/id/permendagri-no-108-tahun-2019
+  - Kementerian Dalam Negeri https://peraturan.go.id/id/permendagri-no-109-tahun-2019
+
+Warga: Sa susah buka situs, sinyal lemah. Ko bisa jelaskan langsung sa harus ke kantor mana di Asmat dan bawa apa saja? Anak sa su punya akta kelahiran, KK juga ada.
+
+Urusin: Saya mengerti, perjalanan naik perahu jauh dan sinyal juga lemah. **Jangan berangkat dulu sebelum tempat layanan dan berkasnya dipastikan**, supaya tidak perlu bolak-balik.
+
+Urusan KIA ditangani **Disdukcapil Kabupaten Asmat**. Namun, saya belum menemukan sumber resmi yang memastikan alamat kantor layanan KIA di Asmat atau daftar berkas yang diminta di sana. Jadi saya belum bisa memastikan harus bawa apa saja.
+
+Karena anak sudah punya **akta kelahiran dan KK**, simpan kedua dokumen itu untuk dipersiapkan. Sebelum berangkat, coba minta bantuan **kantor distrik atau aparat kampung** untuk menanyakan kepada Disdukcapil Asmat:
+
+- Di mana dan kapan layanan KIA tersedia, termasuk apakah ada layanan keliling atau jemput bola yang lebih dekat.
+- Berkas apa saja yang perlu dibawa, termasuk apakah perlu foto anak dan KTP orang tua.
+- Apakah anak perlu ikut datang.
+
+Saya belum dapat memastikan ada layanan keliling di tempat Anda, tetapi itu layak ditanyakan agar perjalanan bisa lebih ringan.
+
+[AKHIR: warga_selesai — Sudah tahu bisa tanya kantor distrik atau aparat kampung untuk memastikan lokasi layanan dan berkas sebelum berangkat.]

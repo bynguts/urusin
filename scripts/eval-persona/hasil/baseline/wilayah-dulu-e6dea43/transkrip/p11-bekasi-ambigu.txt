@@ -1,0 +1,45 @@
+Wilayah ambigu: "saya dari Bekasi" (Kota vs Kab.)
+=================================================
+
+Warga: Saya dari Bekasi, KTP saya rusak kena air. Bikin baru gimana?
+
+Urusin: KTP Anda terdaftar di **Kota Bekasi** atau **Kabupaten Bekasi**?
+
+Warga: Kota Bekasi, Bekasi Timur.
+
+(sistem) Wilayah KTP: Kota Bekasi
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi https://www.e-open.id/
+  - Kota Bekasi https://www.e-open.id
+
+Warga: Di situs itu saya harus pilih layanan yang mana ya? Terus buat ganti KTP rusak perlu bawa apa saja?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi https://www.e-open.id/
+  - Kota Bekasi https://www.e-open.id
+
+Warga: Tadi jawabannya sama, saya masih bingung. Di e-Open pilih layanan apa untuk KTP rusak, dan dokumen apa yang perlu saya siapkan?
+
+Urusin: Maaf, jawaban tadi belum membantu. Saya sudah mencari sumber resmi Kota Bekasi, tetapi belum menemukan informasi yang memastikan **nama menu di e-Open** maupun **daftar dokumen untuk KTP rusak**. Saya tidak ingin menebak dan membuat Anda memilih layanan atau menyiapkan dokumen yang keliru.
+
+Silakan buka [e-Open Kota Bekasi](https://www.e-open.id/). Jika Anda sudah melihat daftar layanannya, tuliskan pilihan menu yang muncul di sini—tanpa menyertakan data pribadi—agar saya bisa bantu mencocokkannya. Untuk dokumen, mohon konfirmasi melalui kanal resmi tersebut sebelum datang atau mengunggah berkas.
+
+Warga: Saya belum tahu harus cari daftar layanannya di bagian mana. Setelah buka e-Open, saya masuk ke menu apa dulu ya?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi https://www.e-open.id/
+  - Kota Bekasi https://www.e-open.id
+
+Warga: Saya masih bingung, jawabannya balik ke link lagi. Kalau belum tahu menu e-Open, saya bisa datang langsung ke mana untuk tanya dan urus KTP rusak?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi https://www.e-open.id/
+  - Kota Bekasi https://www.e-open.id
+
+Warga: Jawabannya link lagi. Saya bisa langsung tanya ke kantor kecamatan Bekasi Timur atau harus ke Disdukcapil Kota Bekasi? Kalau datang, sebaiknya bawa apa?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi https://www.e-open.id/
+  - Kota Bekasi https://www.e-open.id
+
+[AKHIR: warga_selesai — Saya menyerah karena terus diberi tautan tanpa jawaban tentang tempat datang dan dokumen yang perlu dibawa.]

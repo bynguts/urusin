@@ -1,0 +1,27 @@
+Wilayah ambigu: "saya dari Bekasi" (Kota vs Kab.)
+=================================================
+
+Warga: Saya dari Bekasi, KTP saya rusak kena air. Bikin baru gimana?
+
+Urusin: KTP Anda terdaftar di **Kota Bekasi atau Kabupaten Bekasi**? Cara mengurus KTP yang rusak bisa berbeda sesuai wilayahnya.
+
+Warga: Kota Bekasi, Bekasi Timur.
+
+(sistem) Wilayah KTP: Kota Bekasi
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi https://www.e-open.id/
+  - Kota Bekasi https://www.e-open.id
+
+Warga: Kalau KTP rusak, saya harus urus lewat situs itu atau datang ke kantor? Perlu bawa apa saja?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi (https://www.e-open.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi https://www.e-open.id/
+  - Kota Bekasi https://www.e-open.id
+
+Warga: Saya masih bingung, itu harus daftar lewat situsnya dulu atau langsung datang? KTP rusaknya perlu dibawa, sama KK juga?
+
+Urusin: Maaf, saya belum menemukan sumber resmi yang memastikan apakah untuk KTP rusak di Kota Bekasi Anda **harus daftar online dulu atau bisa langsung datang**, maupun apakah KTP rusak dan KK perlu dibawa. Jadi saya tidak ingin menebak.
+
+Untuk memastikannya, silakan cek kanal resmi **[e-Open Kota Bekasi](https://www.e-open.id/)** atau tanyakan langsung kepada Disdukcapil Kota Bekasi sebelum berangkat. Sampaikan bahwa KTP rusak terkena air, lalu tanyakan apakah perlu mendaftar dulu dan dokumen apa yang harus dibawa.
+
+[AKHIR: warga_selesai — Saya masih belum tahu harus daftar dulu atau datang dan dokumen apa yang perlu dibawa, tetapi jawabannya berulang dan saya buntu.]
