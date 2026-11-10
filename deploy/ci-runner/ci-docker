@@ -21,7 +21,7 @@ set -euo pipefail
 umask 077
 
 if [ "$(id -u)" = 0 ]; then
-  unset URUSIN_CI_ROOT URUSIN_CI_DF_ROOT URUSIN_CI_DISK_MAX URUSIN_CI_USER URUSIN_CI_TEST_PATH
+  unset URUSIN_CI_ROOT URUSIN_CI_DF_ROOT URUSIN_CI_DISK_MAX URUSIN_CI_USER URUSIN_CI_TEST_PATH URUSIN_CI_ARCH URUSIN_CI_BINFMT
 fi
 CI_ROOT="${URUSIN_CI_ROOT:-/opt/urusin-ci}"
 WORK_ROOT="$CI_ROOT/runner/_work"
@@ -69,7 +69,14 @@ pw_image() {
 # DOCKER_CONFIG selalu temp milik root (bukan /root/.docker; unit memakai ProtectHome), dihapus saat keluar.
 DOCKER_CONFIG="$(mktemp -d /tmp/urusin-ci-docker.XXXXXX)"
 export DOCKER_CONFIG
-trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+# BUANG_REF: image smoke milik job ini, dibuang saat keluar (juga bila smoke gagal, melewati timeout, atau job
+# dibatalkan). SMOKE_C: kontainer smoke yang sedang jalan, dihentikan dulu supaya image-nya bisa dibuang.
+BUANG_REF=""
+SMOKE_C=""
+trap 'rm -rf "$DOCKER_CONFIG"; [ -z "$SMOKE_C" ] || docker rm -f "$SMOKE_C" >/dev/null 2>&1; [ -z "$BUANG_REF" ] || buang_ref_lokal "$BUANG_REF"' EXIT
+# Pembatalan job (SIGINT/SIGTERM dari runner) tetap lewat trap EXIT di atas.
+trap 'exit 130' INT
+trap 'exit 143' TERM HUP
 
 # Login GHCR sementara: token dari stdin, hanya ke DOCKER_CONFIG temp di atas.
 ghcr_login() {
@@ -90,7 +97,8 @@ LIMITS_PERF=(--cpu-period 10000 --cpu-quota 15000 "${LIMITS_SISA[@]}")
 # Platform build: arm64 selalu (agent-vm). amd64 hanya bila binfmt qemu-x86_64 SUDAH terdaftar di host
 # (paket distro); skrip ini tidak pernah memasang binfmt (itu perubahan kernel host).
 platforms() {
-  if [ -e /proc/sys/fs/binfmt_misc/qemu-x86_64 ] && grep -qx enabled /proc/sys/fs/binfmt_misc/qemu-x86_64 2>/dev/null; then
+  local binfmt="${URUSIN_CI_BINFMT:-/proc/sys/fs/binfmt_misc/qemu-x86_64}"
+  if [ -e "$binfmt" ] && grep -qx enabled "$binfmt" 2>/dev/null; then
     echo linux/amd64,linux/arm64
   else
     echo "ci-docker: PERINGATAN: binfmt qemu-x86_64 tidak ada; hanya linux/arm64" >&2
@@ -176,12 +184,61 @@ cmd_build() {
   digest="$(sed -nE 's/.*"containerimage\.digest": *"(sha256:[0-9a-f]{64})".*/\1/p' "$meta" | head -n1)"
   valid_digest "$digest"
   echo "DIGEST: $digest"
+  # Builder docker-container + --push tidak memuat image ke daemon; bila ada ref lokal job ini, buang.
+  buang_ref_lokal "$REPO_PREFIX-$name:$sha" "$REPO_PREFIX-$name@$digest"
   # Anggaran disk agent-vm: cache builder dipangkas ke batasnya setelah SETIAP build (hanya builder urusin-ci).
   builder_gc >&2
 }
 
+# Arsitektur native host (agent-vm = arm64). Smoke hanya native: node amd64 di bawah qemu-x86_64 bisa
+# menggantung tanpa CPU (Release pernah tertahan > 22 menit). amd64 tetap dibangun dan di-push, lalu
+# divalidasi lewat manifest index (lihat cek_manifest).
+arch_native() {
+  local m="${URUSIN_CI_ARCH:-$(uname -m)}"
+  case "$m" in
+    aarch64 | arm64) echo arm64 ;;
+    x86_64 | amd64) echo amd64 ;;
+    *) die "arsitektur host tidak didukung: '$m'" ;;
+  esac
+}
+
+# Setiap platform yang dibangun (platforms) harus ada di manifest index yang di-push.
+cek_manifest() {
+  local ref raw p
+  ref="$1"
+  raw="$(timeout 120 docker buildx imagetools inspect --raw "$ref")" || die "manifest $ref tidak bisa dibaca"
+  for p in $(platforms 2>/dev/null | tr ',' ' '); do
+    grep -Eq "\"architecture\": *\"${p#linux/}\"" <<<"$raw" || die "manifest $ref tanpa $p"
+    echo "manifest: $p ada"
+  done
+}
+
+# docker run smoke dengan batas waktu. Kontainer diberi nama tetap supaya bisa dipaksa berhenti bila waktu
+# habis (timeout hanya membunuh klien docker); hook cleanup juga membersihkan urusin-ci-smoke-*.
+SMOKE_N=0
+smoke_run() {
+  local detik c rc
+  detik="$1"
+  shift
+  SMOKE_N=$((SMOKE_N + 1))
+  c="urusin-ci-smoke-$$-$SMOKE_N"
+  SMOKE_C="$c"
+  timeout "$detik" docker run --rm --name "$c" "$@" && { SMOKE_C=""; return 0; }
+  rc=$?
+  docker rm -f "$c" >/dev/null 2>&1 || true
+  SMOKE_C=""
+  [ "$rc" -ne 124 ] || echo "ci-docker: smoke melewati ${detik} s, kontainer $c dihentikan" >&2
+  return "$rc"
+}
+
+# Hanya ref urusin-* milik job ini; tanpa -f, jadi image yang dipakai kontainer produksi tidak tersentuh.
+buang_ref_lokal() {
+  local ref
+  for ref in "$@"; do docker image rm "$ref" >/dev/null 2>&1 || true; done
+}
+
 cmd_smoke() {
-  local name digest ws ref arch native other
+  local name digest ws ref arch
   name="$1"
   digest="$2"
   valid_name "$name"
@@ -190,46 +247,39 @@ cmd_smoke() {
   disk_guard
   ghcr_login
   ref="$REPO_PREFIX-$name@$digest"
-  native=arm64
-  other=amd64
-  for arch in $native $other; do
-    if [ "$arch" = amd64 ] && [ "$(platforms 2>/dev/null)" = linux/arm64 ]; then continue; fi
-    echo "::group::$name linux/$arch"
-    docker pull -q --platform "linux/$arch" "$ref" >/dev/null
-    case "$name" in
-      web)
-        docker run --rm "${LIMITS[@]}" --network none --platform "linux/$arch" --entrypoint node "$ref" \
-          -e "const r=require('better-sqlite3')(':memory:').prepare('select 1 as x').get();if(r.x!==1)process.exit(1);console.log(process.arch,'better-sqlite3 ok')"
-        ;;
-      fixtures)
-        docker run --rm "${LIMITS[@]}" --platform "linux/$arch" --entrypoint sh "$ref" -c \
-          'node dist/server.js & sleep 5; node -e "fetch(\"http://127.0.0.1:4000/health\").then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" && echo "fixtures ok"'
-        ;;
-      pendamping)
-        # Satu-satunya biner SUID = chrome-sandbox 0:4755, getcap kosong (sama dengan release.yml).
-        docker run --rm "${LIMITS[@]}" --platform "linux/$arch" --network none --entrypoint sh "$ref" -c \
-          'f=$(find / -xdev -type f -perm /6000 2>/dev/null); echo "$f"; case "$f" in /ms-playwright/chromium-*/chrome-linux*/chrome-sandbox) ;; *) exit 1 ;; esac; [ "$(stat -c %u:%a "$f")" = 0:4755 ] && [ "$CHROME_DEVEL_SANDBOX" = "$f" ] && c=$(getcap -r / 2>/dev/null) && echo "getcap: [$c]" && [ -z "$c" ]'
-        if [ "$arch" = "$native" ]; then
-          # Boot dengan pengerasan compose (seccomp terpasang di host, bukan dari workspace).
-          timeout 300 docker run --rm --init "${LIMITS[@]}" --platform "linux/$arch" --network none --read-only \
-            --tmpfs /tmp:size=768m --cap-drop ALL --cap-add SYS_ADMIN --cap-add SYS_CHROOT \
-            --security-opt "seccomp=$CI_ROOT/etc/pendamping-seccomp.json" \
-            -e PENDAMPING_INTERNAL_TOKEN="$(openssl rand -hex 32)" -e PENDAMPING_EDGE_URL=http://pendamping-edge:3129 \
-            -e PENDAMPING_EDGE_TOKEN="$(openssl rand -hex 32)" -e URUSIN_PUBLIC_ORIGIN=https://smoke.test \
-            --entrypoint sh "$ref" -c \
-            'node dist/main.js & for i in $(seq 1 60); do node dist/sehat.js 4330 && echo "pendamping ok (sandbox + tanpa rute)" && exit 0; kill -0 $! 2>/dev/null || exit 1; sleep 2; done; exit 1'
-          timeout 120 docker run --rm "${LIMITS[@]}" --platform "linux/$arch" --network none --entrypoint node "$ref" \
-            -e "import('./dist/edge.js').then((m)=>{m.loadEdgeConfig({PENDAMPING_EDGE_TOKEN:'x'.repeat(40)});console.log('edge ok')})"
-        else
-          timeout 600 docker run --rm "${LIMITS[@]}" --platform "linux/$arch" --network none --entrypoint node "$ref" \
-            -e "Promise.all([import('./dist/config.js'),import('./dist/edge.js'),import('playwright-core')]).then(()=>console.log(process.arch,'modul ok'))"
-        fi
-        ;;
-    esac
-    # Image smoke tidak disimpan (tanpa -f: image yang dipakai kontainer produksi tidak tersentuh).
-    docker image rm "$ref" >/dev/null 2>&1 || true
-    echo "::endgroup::"
-  done
+  arch="$(arch_native)"
+  cek_manifest "$ref"
+  echo "::group::$name linux/$arch (native)"
+  # Hanya varian native yang ditarik: image store daemon tidak menyimpan layer arsitektur lain. Image smoke
+  # tidak disimpan: trap EXIT membuangnya.
+  BUANG_REF="$ref"
+  timeout 900 docker pull -q --platform "linux/$arch" "$ref" >/dev/null
+  case "$name" in
+    web)
+      smoke_run 120 "${LIMITS[@]}" --network none --platform "linux/$arch" --entrypoint node "$ref" \
+        -e "const r=require('better-sqlite3')(':memory:').prepare('select 1 as x').get();if(r.x!==1)process.exit(1);console.log(process.arch,'better-sqlite3 ok')"
+      ;;
+    fixtures)
+      smoke_run 120 "${LIMITS[@]}" --platform "linux/$arch" --entrypoint sh "$ref" -c \
+        'node dist/server.js & sleep 5; node -e "fetch(\"http://127.0.0.1:4000/health\").then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" && echo "fixtures ok"'
+      ;;
+    pendamping)
+      # Satu-satunya biner SUID = chrome-sandbox 0:4755, getcap kosong (sama dengan release.yml).
+      smoke_run 300 "${LIMITS[@]}" --platform "linux/$arch" --network none --entrypoint sh "$ref" -c \
+        'f=$(find / -xdev -type f -perm /6000 2>/dev/null); echo "$f"; case "$f" in /ms-playwright/chromium-*/chrome-linux*/chrome-sandbox) ;; *) exit 1 ;; esac; [ "$(stat -c %u:%a "$f")" = 0:4755 ] && [ "$CHROME_DEVEL_SANDBOX" = "$f" ] && c=$(getcap -r / 2>/dev/null) && echo "getcap: [$c]" && [ -z "$c" ]'
+      # Boot dengan pengerasan compose (seccomp terpasang di host, bukan dari workspace).
+      smoke_run 300 --init "${LIMITS[@]}" --platform "linux/$arch" --network none --read-only \
+        --tmpfs /tmp:size=768m --cap-drop ALL --cap-add SYS_ADMIN --cap-add SYS_CHROOT \
+        --security-opt "seccomp=$CI_ROOT/etc/pendamping-seccomp.json" \
+        -e PENDAMPING_INTERNAL_TOKEN="$(openssl rand -hex 32)" -e PENDAMPING_EDGE_URL=http://pendamping-edge:3129 \
+        -e PENDAMPING_EDGE_TOKEN="$(openssl rand -hex 32)" -e URUSIN_PUBLIC_ORIGIN=https://smoke.test \
+        --entrypoint sh "$ref" -c \
+        'node dist/main.js & for i in $(seq 1 60); do node dist/sehat.js 4330 && echo "pendamping ok (sandbox + tanpa rute)" && exit 0; kill -0 $! 2>/dev/null || exit 1; sleep 2; done; exit 1'
+      smoke_run 120 "${LIMITS[@]}" --platform "linux/$arch" --network none --entrypoint node "$ref" \
+        -e "import('./dist/edge.js').then((m)=>{m.loadEdgeConfig({PENDAMPING_EDGE_TOKEN:'x'.repeat(40)});console.log('edge ok')})"
+      ;;
+  esac
+  echo "::endgroup::"
   if ! cmp -s "$ws/deploy/pendamping-seccomp.json" "$CI_ROOT/etc/pendamping-seccomp.json"; then
     echo "::warning::deploy/pendamping-seccomp.json di commit ini beda dari salinan terpasang di $CI_ROOT/etc; smoke memakai salinan terpasang"
   fi
@@ -283,10 +333,10 @@ case "${1:-}" in
   alias) [ $# -eq 3 ] || die "pemakaian: alias <sha40> <tag>"; cmd_alias "$2" "$3" ;;
   builder-init) cmd_builder_init ;;
   builder-gc) builder_gc ;;
-  # Hook job-completed: kontainer sisa milik runner (urusin-ci-pw-*) dan DOCKER_CONFIG temp lama. Builder
-  # buildkit (buildx_buildkit_urusin-ci0) tidak cocok pola ini dan tidak disentuh.
+  # Hook job-completed: kontainer sisa milik runner (urusin-ci-pw-*, urusin-ci-smoke-*) dan DOCKER_CONFIG temp
+  # lama. Builder buildkit (buildx_buildkit_urusin-ci0) tidak cocok pola ini dan tidak disentuh.
   cleanup)
-    docker ps -aq --filter 'name=^urusin-ci-pw-' | xargs -r docker rm -f >/dev/null
+    docker ps -aq --filter 'name=^urusin-ci-pw-' --filter 'name=^urusin-ci-smoke-' | xargs -r docker rm -f >/dev/null
     find /tmp -maxdepth 1 -name 'urusin-ci-docker.*' -type d ! -path "$DOCKER_CONFIG" -mmin +1 -exec rm -rf {} + 2>/dev/null || true
     echo "ci-docker: cleanup selesai"
     ;;
