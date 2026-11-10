@@ -1,15 +1,16 @@
 import { redirect } from '@sveltejs/kit';
 import { mulaiUrusanDariForm } from '#lib/server/mulai-urusan.js';
 import { getRuntime } from '#lib/server/runtime.js';
-import { bacaTerakhir } from '#lib/server/sesi.js';
+import { bacaTerakhir, SID_COOKIE } from '#lib/server/sesi.js';
+import { urusanMilik } from '#lib/server/urusan-akses.js';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Landing untuk pengunjung baru; peramban yang punya urusan berjalan langsung ke Ringkasan. */
-export const load: PageServerLoad = async ({ cookies }) => {
+export const load: PageServerLoad = async ({ cookies, locals }) => {
   const id = bacaTerakhir(cookies);
   if (!id) return;
   const rt = await getRuntime();
-  if (rt.store.getUrusan(id)) redirect(303, '/beranda');
+  if (urusanMilik(rt, id, { akun: locals.akun, sid: cookies.get(SID_COOKIE) })) redirect(303, '/beranda');
 };
 
 export const actions: Actions = {

@@ -11,6 +11,7 @@ import { GET as daftarUrusan, POST as buatUrusan } from '../../routes/api/urusan
 import { POST as eksekusi } from '../../routes/api/urusan/[id]/execution-result/+server';
 import { GET as jejak } from '../../routes/api/urusan/[id]/jejak/+server';
 import { POST as konfirmasi } from '../../routes/api/urusan/[id]/konfirmasi/+server';
+import { POST as setujuiRencana } from '../../routes/api/urusan/[id]/rencana/setujui/+server';
 import { GET as statusUrusan } from '../../routes/api/urusan/[id]/+server';
 import { GET as stream } from '../../routes/api/urusan/[id]/stream/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
@@ -219,6 +220,69 @@ describe('GET /api/urusan (daftar untuk /lacak)', () => {
     expect(await (await daftarUrusan(ev(get('/api/urusan')))).json()).toEqual({ urusan: [] });
     const many = Array.from({ length: 51 }, (_, i) => `u_${i.toString(16).padStart(32, 'a')}`).join(',');
     expect((await daftarUrusan(ev(get(`/api/urusan?ids=${many}`)))).status).toBe(422);
+  });
+});
+
+describe('pemilik urusan: id saja tidak cukup', () => {
+  /** Peminta lain: cookie sesi lain, atau akun yang masuk tetapi bukan pemiliknya. */
+  const evSebagai = (locals: App.Locals, request: Request, params: Record<string, string> = {}) =>
+    ({
+      request,
+      params,
+      url: new URL(request.url),
+      locals,
+      getClientAddress: () => '127.0.0.1',
+    }) as never;
+  const GATE = { type: 'gate', jenis: 'konfirmasi', pesan: 'Setujui?', tool: 't', paramsHash: 'h' } as const;
+
+  async function semuaRute(id: string, locals: App.Locals) {
+    const p = { id };
+    const r = {
+      status: await statusUrusan(evSebagai(locals, get('/s'), p)),
+      turn: await kirimTurn(evSebagai(locals, post({ teks: 'halo' }), p)),
+      stream: await stream(evSebagai(locals, get('/s'), p)),
+      jejak: await jejak(evSebagai(locals, get('/j'), p)),
+      konfirmasi: await konfirmasi(evSebagai(locals, post({ tool: 't', paramsHash: 'h' }), p)),
+      setujui: await setujuiRencana(evSebagai(locals, post({}), p)),
+      eksekusi: await eksekusi(evSebagai(locals, post({ executionId: 'x_1', status: 'berhasil' }), p)),
+    };
+    return r;
+  }
+
+  it('cookie sesi lain → 404 yang sama dengan urusan tak dikenal di SEMUA rute urusan; daftar kosong', async () => {
+    const id = await kosong(); // pemilik: sid-uji
+    rt.publish(id, GATE);
+    const asing = await semuaRute(id, { sid: 'sid-lain' });
+    const takAda = await semuaRute(`u_${'f'.repeat(32)}`, { sid: 'sid-uji' });
+    for (const [rute, res] of Object.entries(asing)) {
+      expect(res.status, rute).toBe(404);
+      expect(await res.json(), rute).toEqual(await takAda[rute as keyof typeof takAda].json());
+    }
+    // Tidak ada efek samping: tidak ada turn, tidak ada persetujuan, state tidak bergerak.
+    expect(rt.store.db.prepare('SELECT COUNT(*) n FROM turns').get()).toEqual({ n: 0 });
+    expect(rt.store.activeConfirmations(id)).toEqual([]);
+    const daftar = await daftarUrusan(evSebagai({ sid: 'sid-lain' }, get(`/api/urusan?ids=${id}`)));
+    expect(await daftar.json()).toEqual({ urusan: [] });
+    // Pemilik tetap bisa.
+    expect((await statusUrusan(ev(get('/s'), { id }))).status).toBe(200);
+    expect((await konfirmasi(ev(post({ tool: 't', paramsHash: 'h' }), { id }))).status).toBe(201);
+  });
+
+  it('urusan akun (juri): akun lain dan cookie sesi saja → 404; akun pemilik dari perangkat lain → 200', async () => {
+    const juri = rt.akun.buatDemo({ ip: '10.0.0.1' }).akun;
+    const lain = rt.akun.buatDemo({ ip: '10.0.0.2' }).akun;
+    const res = await buatUrusan(evSebagai({ sid: 'sid-uji', akun: juri }, post({ kodeKabKota: '3312' })));
+    const { id } = (await res.json()) as { id: string };
+    for (const locals of [{ sid: 'sid-uji', akun: lain }, { sid: 'sid-uji' }])
+      for (const [rute, r] of Object.entries(await semuaRute(id, locals))) expect(r.status, rute).toBe(404);
+    expect((await statusUrusan(evSebagai({ sid: 'sid-hp', akun: juri }, get('/s'), { id }))).status).toBe(
+      200,
+    );
+  });
+
+  it('urusan lama tanpa catatan pemilik: ditolak (gagal tertutup)', async () => {
+    const u = rt.store.createUrusan({ kodeKabKota: '3312' });
+    expect((await statusUrusan(ev(get('/s'), { id: u.id }))).status).toBe(404);
   });
 });
 

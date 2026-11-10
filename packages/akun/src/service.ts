@@ -1120,6 +1120,23 @@ export class AkunService {
   }
 
   /**
+   * Apakah `peminta` pemilik urusan ini: akun sinkron yang sama (`user_id`), atau cookie sesi yang sama untuk
+   * urusan tamu/akun belum terverifikasi (`guest_sid_hash`). Urusan tanpa catatan pemilik (lama, sebelum
+   * pemilik dicatat) → false: gagal tertutup. Berbeda dari `pemilikVaultUrusan`, tidak butuh baris tamu.
+   */
+  adalahPemilikUrusan(
+    urusanId: string,
+    peminta: { akun?: Akun | undefined; sid?: string | undefined },
+  ): boolean {
+    const r = this.db
+      .prepare('SELECT user_id, guest_sid_hash FROM urusan_owner WHERE urusan_id = ?')
+      .get(urusanId) as { user_id: string | null; guest_sid_hash: string | null } | undefined;
+    if (!r) return false;
+    if (r.user_id) return this.sinkron(peminta.akun) && peminta.akun!.id === r.user_id;
+    return Boolean(peminta.sid && r.guest_sid_hash && safeEqual(r.guest_sid_hash, hashSid(peminta.sid)));
+  }
+
+  /**
    * Pemilik vault sebuah urusan, HANYA bila `peminta` adalah pemilik itu: akun sinkron yang sama (`user_id`),
    * atau sid yang sama untuk urusan milik tamu. Selain itu (bukan pemilik, urusan tidak dikenal) → undefined.
    * Dipakai jalur isi Pendamping sebelum menerbitkan atau memakai token persetujuan.

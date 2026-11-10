@@ -707,7 +707,17 @@ describe('#47 rotasi tamu → akun (§3.26.6)', () => {
     expect(akun.pemilikVaultUrusan('u_t1', {})).toBeUndefined();
     expect(akun.pemilikVaultUrusan('u_tidak_ada', { sid: 'sid-lama' })).toBeUndefined();
 
+    // pemilik urusan (semua rute urusan): sid yang sama saja; akun lain, sid lain, atau tanpa catatan → false
+    expect(akun.adalahPemilikUrusan('u_t1', { sid: 'sid-lama' })).toBe(true);
+    expect(akun.adalahPemilikUrusan('u_t1', { sid: 'sid-orang-lain' })).toBe(false);
+    expect(akun.adalahPemilikUrusan('u_t1', { akun: a })).toBe(false);
+    expect(akun.adalahPemilikUrusan('u_t1', {})).toBe(false);
+    expect(akun.adalahPemilikUrusan('u_tidak_ada', { sid: 'sid-lama' })).toBe(false);
+
     const r = akun.rotasiPemilik({ sidLama: 'sid-lama', sidBaru: 'sid-baru', userId: a.id });
+    expect(akun.adalahPemilikUrusan('u_t1', { akun: a })).toBe(true);
+    expect(akun.adalahPemilikUrusan('u_t1', { sid: 'sid-lama' })).toBe(false);
+    expect(akun.adalahPemilikUrusan('u_t1', { akun: a, sid: 'sid-baru' })).toBe(true);
     expect(akun.pemilikVaultUrusan('u_t1', { akun: a })).toBe(a.id);
     expect(akun.pemilikVaultUrusan('u_t1', { sid: 'sid-baru' })).toBeUndefined();
     expect(akun.pemilikVaultUrusan('u_t1', { sid: 'sid-lama' })).toBeUndefined();

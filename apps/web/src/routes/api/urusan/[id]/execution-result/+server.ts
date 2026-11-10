@@ -3,6 +3,7 @@ import { isTerminal } from '@urusin/harness';
 import { catatHasilEksekusi } from '#lib/server/eksekusi.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { getRuntime } from '#lib/server/runtime.js';
+import { urusanMilik } from '#lib/server/urusan-akses.js';
 import type { RequestHandler } from './$types';
 
 /**
@@ -10,12 +11,12 @@ import type { RequestHandler } from './$types';
  * urusan ini yang diterima, dan sekali saja (laporan ganda 409). `berhasil` memajukan ke TERKIRIM bila state
  * mengizinkan; `drift` mengalihkan ke DIPANDU. Hasil lain hanya dicatat.
  */
-export const POST: RequestHandler = async ({ request, params }) => {
+export const POST: RequestHandler = async ({ request, params, locals }) => {
   const body = await readBody(request, ExecutionResultRequestSchema);
   if (!body.ok) return body.response;
   try {
     const rt = await getRuntime();
-    const u = rt.store.getUrusan(params.id);
+    const u = urusanMilik(rt, params.id, locals);
     if (!u) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
     if (isTerminal(u.state)) return apiError(409, 'TERMINAL', 'Urusan ini sudah selesai.');
     const { executionId, status } = body.data;

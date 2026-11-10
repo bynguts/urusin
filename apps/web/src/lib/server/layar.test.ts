@@ -10,6 +10,9 @@ import { load as muatUrusan } from '../../routes/urusan/[id]/+page.server';
 import Chip from '../components/ui/Chip.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
+import { SID_COOKIE } from './sesi';
+
+const SID = 'a'.repeat(32);
 
 let rt: Runtime;
 beforeEach(() => {
@@ -75,8 +78,11 @@ describe('form action mulai urusan (tanpa JS)', () => {
 });
 
 describe('load layar', () => {
-  const ke = (params: Record<string, string>, url = 'http://localhost:3000/x') =>
-    ({ params, url: new URL(url), setHeaders: () => {} }) as never;
+  const ke = (params: Record<string, string>, url = 'http://localhost:3000/x', sid = SID) => {
+    const cookies = kue();
+    cookies.set(SID_COOKIE, sid);
+    return { params, url: new URL(url), setHeaders: () => {}, cookies, locals: {} } as never;
+  };
 
   it('urusan dan jejak: id tidak valid atau tidak ada → 404', async () => {
     for (const load of [muatUrusan, muatJejak]) {
@@ -85,8 +91,20 @@ describe('load layar', () => {
     }
   });
 
+  it('urusan dan jejak: hanya pemilik; cookie sesi lain dan urusan tanpa pemilik → 404 yang sama', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran' });
+    const lama = rt.store.createUrusan({ jenis: 'kelahiran' }); // urusan lama tanpa catatan pemilik
+    rt.akun.catatPemilikUrusan(u.id, { sid: SID });
+    for (const load of [muatUrusan, muatJejak]) {
+      expect(isHttpError(await tangkap(load(ke({ id: u.id }))))).toBe(false);
+      expect(isHttpError(await tangkap(load(ke({ id: u.id }, undefined, 'b'.repeat(32)))), 404)).toBe(true);
+      expect(isHttpError(await tangkap(load(ke({ id: lama.id }))), 404)).toBe(true);
+    }
+  });
+
   it('jejak memuat rantai hash yang utuh untuk urusan baru', async () => {
     const u = rt.store.createUrusan({ jenis: 'kelahiran' });
+    rt.akun.catatPemilikUrusan(u.id, { sid: SID });
     const d = (await muatJejak(ke({ id: u.id }))) as { jenis: string; jejak: { rantai: { valid: boolean } } };
     expect(d.jenis).toBe('kelahiran');
     expect(d.jejak.rantai.valid).toBe(true);

@@ -5,8 +5,8 @@ import { apiError } from '#lib/server/http.js';
 import type { Runtime } from '#lib/server/runtime.js';
 
 /**
- * Sesi anonim: cookie acak (HttpOnly, SameSite=Lax) sebagai identitas kuota, BUKAN autentikasi. Urusan tetap
- * dilindungi id kapabilitas yang tak bisa ditebak, jadi hilangnya cookie tidak mengunci warga dari urusannya.
+ * Sesi anonim: cookie acak (HttpOnly, SameSite=Lax) sebagai identitas kuota dan penanda pemilik urusan tamu
+ * (`urusanMilik`). Hilang cookie = urusan tamu tidak bisa dibuka lagi; masuk akun memindahkannya ke akun.
  */
 export const SID_COOKIE = '__Host-urusin_sid';
 /** Nama lama (sebelum __Host-): dibaca sekali oleh `migrasiSid`, lalu dihapus. */

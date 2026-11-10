@@ -169,6 +169,7 @@ describe('kuota per-IP dan per-sesi', () => {
   it('turn: batas per-menit per IP; permintaan yang ditolak tidak memulai turn', async () => {
     setup({ turnPerMenitIp: 1, turnPerMenitSesi: 100 });
     const u = rt.store.createUrusan();
+    rt.akun.catatPemilikUrusan(u.id, { sid: 'sid' });
     const turn = (ip: string) => kirimTurn(ev(post({ teks: 'halo' }), ip, 'sid', { id: u.id }));
     expect((await turn('10.0.2.1')).status).toBe(202);
     for (let i = 0; i < 50 && rt.running.has(u.id); i++) await new Promise((r) => setTimeout(r, 20));

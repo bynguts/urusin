@@ -2,6 +2,7 @@ import { KonfirmasiRequestSchema, type KonfirmasiResponse } from '@urusin/contra
 import { isTerminal } from '@urusin/harness';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { getRuntime } from '#lib/server/runtime.js';
+import { urusanMilik } from '#lib/server/urusan-akses.js';
 import type { RequestHandler } from './$types';
 
 /**
@@ -9,12 +10,12 @@ import type { RequestHandler } from './$types';
  * membawa `tool` dan `paramsHash`). Hanya pasangan yang memang pernah kami tawarkan pada urusan ini yang diterima.
  * Persetujuan berlaku sekali pakai dan kedaluwarsa dalam 10 menit; AI hanya diberi tahu id-nya, tidak bisa membuatnya.
  */
-export const POST: RequestHandler = async ({ request, params }) => {
+export const POST: RequestHandler = async ({ request, params, locals }) => {
   const body = await readBody(request, KonfirmasiRequestSchema);
   if (!body.ok) return body.response;
   try {
     const rt = await getRuntime();
-    const u = rt.store.getUrusan(params.id);
+    const u = urusanMilik(rt, params.id, locals);
     if (!u) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
     if (isTerminal(u.state)) return apiError(409, 'TERMINAL', 'Urusan ini sudah selesai.');
     const { tool, paramsHash } = body.data;

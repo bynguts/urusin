@@ -46,10 +46,10 @@ export const POST: RequestHandler = async (event) => {
 };
 
 /**
- * Daftar urusan untuk /lacak. Tidak ada akun: klien menyebut id urusan yang ia pegang (`?ids=a,b`).
- * Id adalah token kapabilitas yang tidak bisa ditebak; id yang tidak dikenal diabaikan begitu saja.
+ * Daftar urusan untuk /lacak. Klien menyebut id urusan yang tercatat di perangkatnya (`?ids=a,b`); hanya urusan
+ * milik peminta (akun yang masuk atau cookie sesi ini) yang dijawab. Id lain diabaikan begitu saja.
  */
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
   const ids = (url.searchParams.get('ids') ?? '')
     .split(',')
     .map((s) => s.trim())
@@ -59,15 +59,17 @@ export const GET: RequestHandler = async ({ url }) => {
   try {
     const rt = await getRuntime();
     return apiJson({
-      urusan: rt.store.listUrusan([...new Set(ids)]).map((u) => ({
-        id: u.id,
-        state: u.state,
-        version: u.version,
-        kodeKabKota: u.kodeKabKota,
-        menunggu: menungguSiapa(u.state),
-        dibuatPada: u.createdAt,
-        diubahPada: u.updatedAt,
-      })),
+      urusan: rt.store
+        .listUrusan([...new Set(ids)].filter((id) => rt.akun.adalahPemilikUrusan(id, locals)))
+        .map((u) => ({
+          id: u.id,
+          state: u.state,
+          version: u.version,
+          kodeKabKota: u.kodeKabKota,
+          menunggu: menungguSiapa(u.state),
+          dibuatPada: u.createdAt,
+          diubahPada: u.updatedAt,
+        })),
     } satisfies DaftarUrusanResponse);
   } catch (e) {
     return errorResponse(e);
