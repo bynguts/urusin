@@ -314,7 +314,7 @@ export function quotaFromEnv(env: Record<string, string | undefined>) {
   const quota = {
     idrPerUsd: num(env.IDR_PER_USD, 16_500),
     sessionTurnCap: num(env.URUSIN_SESSION_TURN_CAP, 40),
-    sessionTokenCap: num(env.URUSIN_SESSION_TOKEN_CAP, 200_000),
+    sessionTokenCap: num(env.URUSIN_SESSION_TOKEN_CAP, 400_000),
     dailyIdrCap: num(env.URUSIN_DAILY_IDR_CAP, 0),
   };
   for (const [k, v] of Object.entries(quota)) {

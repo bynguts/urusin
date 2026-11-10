@@ -6,6 +6,8 @@ import { chunkRencana } from './builtin-tools.js';
 import { setujuiRencana } from './rencana.js';
 import { buildStateNote, buildSystemPrompt, mintaPemalsuan } from './prompt.js';
 import { jejakView } from './trace.js';
+import { DEFAULT_QUOTA } from './quota.js';
+import { ringkasRiwayat } from './tools.js';
 import { makeEnv } from './testing.js';
 import {
   AFIRMASI,
@@ -856,5 +858,45 @@ describe('temuan eval persona p09: tanpa jawaban sebelum wilayah, penolakan pema
     expect(note).toMatch(/PEMALSUAN DOKUMEN/);
     expect(note).toMatch(/ancaman pidananya/);
     expect(buildSystemPrompt()).toMatch(/kalimat PERTAMA menolak dengan jelas/);
+  });
+});
+
+describe('temuan eval persona p02: kuota sesi dan riwayat hemat', () => {
+  it('hasil RAG giliran lama diringkas, jawaban bersumber dan hasil wilayah tetap utuh', () => {
+    const panjang = 'x'.repeat(3000);
+    const call = (id: string, name: string) => ({
+      role: 'assistant' as const,
+      content: null,
+      tool_calls: [{ id, type: 'function' as const, function: { name, arguments: '{}' } }],
+    });
+    const out = ringkasRiwayat([
+      call('a', 'rag__cari_pengetahuan'),
+      { role: 'tool', tool_call_id: 'a', content: panjang },
+      call('b', 'urusan__jawab_persyaratan'),
+      { role: 'tool', tool_call_id: 'b', content: panjang },
+      { role: 'user', content: panjang },
+    ]);
+    expect((out[1]!.content as string).length).toBeLessThan(500);
+    expect(out[1]!.content).toMatch(/hasil lama diringkas/);
+    expect(out[3]!.content).toBe(panjang);
+    expect(out[4]!.content).toBe(panjang);
+  });
+
+  it('riwayat yang dikirim ke model memuat RAG giliran lalu dalam bentuk ringkas', async () => {
+    const { env, u, provider } = setup(
+      [tool('rag__cari_pengetahuan', { query: 'akta kelahiran' }), balas('Baik.'), balas('Ya.')],
+      { jenis: 'kelahiran', kodeKabKota: '3312' },
+    );
+    await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta?' });
+    await runTurn(env.deps, { urusanId: u.id, userText: 'oke' });
+    const last = provider.calls.at(-1)!;
+    const msgs = last.kind === 'create' ? last.params.messages : [];
+    const rag = msgs.find((m) => m.role === 'tool');
+    expect(rag?.content).toMatch(/hasil lama diringkas/);
+    expect(typeof rag?.content === 'string' && rag.content.length).toBeLessThan(500);
+  });
+
+  it('batas token sesi cukup untuk urusan pindah ~15 giliran', () => {
+    expect(DEFAULT_QUOTA.sessionTokenCap).toBe(400_000);
   });
 });

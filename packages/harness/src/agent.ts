@@ -30,7 +30,7 @@ import { buildStateNote, buildSystemPrompt } from './prompt.js';
 import type { QuotaMeter, QuotaStatus } from './quota.js';
 import { newNonce } from './spotlight.js';
 import type { HarnessStore, TurnStatus, UrusanRow } from './store.js';
-import { clip, type ToolContext, type ToolRegistry } from './tools.js';
+import { clip, ringkasRiwayat, type ToolContext, type ToolRegistry } from './tools.js';
 import { OTEL, type Tracer } from './trace.js';
 import {
   kodeUntukPii,
@@ -284,7 +284,7 @@ class TurnRunner {
   /** Semua pesan diredaksi (lapis 1) tepat sebelum dikirim; catatan state disisipkan sebelum pesan terakhir. */
   private buildMessages(note: string, extra: ChatMessage[] = []): ChatMessage[] {
     const turnMsgs = [...this.turnMessages, ...extra];
-    const history = this.store.loadHistory(this.turn.urusanId);
+    const history = ringkasRiwayat(this.store.loadHistory(this.turn.urusanId));
     // Catatan tidak boleh memisahkan assistant(tool_calls) dari hasil tool-nya: penyedia menolak urutan itu
     // (400). Bila pesan terakhir hasil tool, sisipkan sebelum assistant pemilik grup tool terakhir.
     let cut = turnMsgs.length - 1;

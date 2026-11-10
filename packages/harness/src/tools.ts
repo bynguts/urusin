@@ -1,6 +1,6 @@
 import type { RagSearcher } from '@urusin/rag';
 import { z } from 'zod';
-import type { CapabilityFlags, ChatProvider, ChatTool, Usage } from '@urusin/llm';
+import type { CapabilityFlags, ChatMessage, ChatProvider, ChatTool, Usage } from '@urusin/llm';
 import type { Db } from './db.js';
 import type { EventPayload, PayloadOf, UrusanState } from '@urusin/contracts';
 import type { UrusanRow, HarnessStore } from './store.js';
@@ -144,6 +144,28 @@ export class ToolRegistry {
   openaiTools(state: UrusanState): ChatTool[] {
     return this.describe(state).map((t) => ({ type: 'function', function: t }));
   }
+}
+
+/** Hasil tool giliran lama yang tetap utuh di riwayat: isi jawaban bersumber tidak boleh disangkal model. */
+const RIWAYAT_UTUH = new Set(['urusan__jawab_persyaratan', 'wilayah__tetapkan']);
+
+/**
+ * Hemat konteks: hasil tool dari giliran SEBELUMNYA (potongan RAG, persyaratan portal) dipangkas. Potongan itu
+ * sudah tersimpan di store untuk verifikasi kutipan dan bisa dicari ulang; di riwayat ia menyumbang ~65% karakter
+ * (eval p02: 21 rb dari 33 rb karakter) dan dikirim ulang di setiap panggilan model.
+ */
+export function ringkasRiwayat(history: readonly ChatMessage[], max = 400): ChatMessage[] {
+  const nama = new Map<string, string>();
+  return history.map((m) => {
+    if (m.role === 'assistant' && m.tool_calls)
+      for (const c of m.tool_calls) if (c.type === 'function') nama.set(c.id, c.function.name);
+    if (m.role !== 'tool' || typeof m.content !== 'string' || m.content.length <= max) return m;
+    if (RIWAYAT_UTUH.has(nama.get(m.tool_call_id) ?? '')) return m;
+    return {
+      ...m,
+      content: `${m.content.slice(0, max)}…[hasil lama diringkas; panggil tool lagi bila perlu]`,
+    };
+  });
 }
 
 /** Potong hasil tool agar ringkas (hemat token). */
