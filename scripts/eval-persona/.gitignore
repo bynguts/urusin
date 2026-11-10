@@ -1,0 +1,4 @@
+# Korpus RAG produksi (salinan lokal), worktree --ref, dan hasil run selain baseline yang di-commit.
+.cache/
+hasil/*
+!hasil/baseline/

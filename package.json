@@ -31,6 +31,7 @@
     "budget": "turbo run budget",
     "e2e": "turbo run e2e",
     "eval": "pnpm --filter @urusin/harness eval",
+    "eval:persona": "node scripts/eval-persona/run.mjs",
     "kek:rotate": "pnpm --filter @urusin/akun kek:rotate"
   },
   "devDependencies": {
