@@ -142,6 +142,14 @@ export function jalurCss(el: Element): string {
   const bagian: string[] = [];
   for (let e: Element | null = el; e && e.parentElement; e = e.parentElement) {
     const tag = e.tagName.toLowerCase();
+    // Tag ber-namespace (<cms:render>, probe 1102) bukan selektor tipe yang valid di semua mesin: pakai
+    // `*:nth-child` (posisi di antara semua saudara elemen) untuk langkah itu saja.
+    if (!/^[a-z][a-z0-9-]*$/.test(tag)) {
+      let ke = 1;
+      for (let s = e.previousElementSibling; s; s = s.previousElementSibling) ke++;
+      bagian.unshift(`*:nth-child(${ke})`);
+      continue;
+    }
     let ke = 1;
     for (let s = e.previousElementSibling; s; s = s.previousElementSibling) if (s.tagName === e.tagName) ke++;
     bagian.unshift(`${tag}:nth-of-type(${ke})`);
@@ -563,7 +571,8 @@ export function bangunPengamatan(doc: Document, opsi: OpsiAmati): HasilAmati {
     if (peran === 'tombol' || peran === 'tautan' || peran === 'tab') {
       const k = klasifikasi(el, akhir);
       e.kelas = k.kelas;
-      if (peran === 'tautan' && k.aturan === 'K7_NEG_NAMA_TAUTAN') e.tautanPembuka = true;
+      if (peran === 'tautan' && (k.aturan === 'K7_NEG_NAMA_TAUTAN' || k.aturan === 'K7_NEG_IKON_TAUTAN'))
+        e.tautanPembuka = true;
     } else {
       if (c.grup ? c.grup.some((r) => wajibDari(r)) : wajibDari(el)) e.wajib = true;
       const terlarang = terlarangDari(el, nama, petunjuk);

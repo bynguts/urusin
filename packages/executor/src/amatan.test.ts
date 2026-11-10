@@ -183,6 +183,28 @@ describe('bangunPengamatan', () => {
     expect(amati().pengamatan.sinyal).toMatchObject({ sukses: true, tantangan: false, login: false });
   });
 
+  it('probe SIDAK: tautan layanan berikon credit-card = tautanPembuka, toggler menu = ui_lokal', () => {
+    document.body.innerHTML = `<button class="navbar-toggler" aria-expanded="false">Menu</button>
+      <a class="nav-link" href="/layanan/kk"><svg class="feather feather-credit-card"></svg><span>KK</span></a>`;
+    const { pengamatan: p } = amati();
+    expect(p.elemen.map((e) => [e.nama, e.kelas, e.tautanPembuka])).toEqual([
+      ['Menu', 'ui_lokal', undefined],
+      ['KK', 'kirim', true],
+    ]);
+  });
+
+  it('probe 1102: tag ber-namespace (<cms:render>) tetap menghasilkan jalur yang bisa di-resolve', () => {
+    document.body.innerHTML = `<cms:render><div><label>Nama <input name="n"></label>
+      <a href="/layanan">Layanan</a></div></cms:render><cms:render><a href="/kontak">Kontak</a></cms:render>`;
+    const { pengamatan: p, peta } = amati();
+    expect(p.elemen.map((e) => e.nama)).toEqual(['Nama', 'Layanan', 'Kontak']);
+    for (const e of p.elemen) {
+      const el = elemenDariJalur(document, peta[e.ref]!.jalur);
+      expect(el, peta[e.ref]!.jalur).not.toBeNull();
+      expect(sidikElemen(el!)).toBe(peta[e.ref]!.sidik);
+    }
+  });
+
   it('sukses positif: judul hasil, alert, popup SweetAlert, nomor berdigit', () => {
     for (const html of [
       '<h1>Pendaftaran Berhasil</h1><p>Simpan nomor Anda.</p>',
