@@ -6,3 +6,4 @@ export * from './peristiwa.js';
 export * from './regulasi.js';
 export * from './wilayah.js';
 export * from './rencana-wilayah.js';
+export * from './kanal-layanan.js';
