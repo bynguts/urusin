@@ -7,7 +7,12 @@
   {
     "id": "n02",
     "pertanyaan": "Kalau tidak punya surat keterangan lahir dari bidan, akta kelahiran tetap bisa dibuat?",
-    "relevan": ["perpres-96-2018-pasal#pasal-34", "perpres-96-2018-pasal#pasal-33"]
+    "relevan": [
+      "perpres-96-2018-pasal#pasal-34",
+      "perpres-96-2018-pasal#pasal-33",
+      "permendagri-109-2019-pasal#pasal-5"
+    ],
+    "catatan": "Permendagri 109/2019 Ps. 5 ayat (2) huruf d (formulir SPTJM F-2.03) ditambahkan sebagai relevan saat pasalnya masuk korpus."
   },
   {
     "id": "n03",
@@ -103,5 +108,59 @@
       "klampid-katalog#daftar-kia-lebih-dari-5-tahun-sekolah-integrasi"
     ],
     "catatan": "penjaga wilayah: chunk daerah harus mengalahkan teks pasal nasional"
+  },
+  {
+    "id": "n19",
+    "pertanyaan": "Formulir F-1.02 itu formulir apa dan dipakai untuk apa?",
+    "relevan": ["permendagri-109-2019-pasal#pasal-4", "permendagri-109-2019-pasal#pasal-5"]
+  },
+  {
+    "id": "n20",
+    "pertanyaan": "SPTJM kebenaran sebagai pasangan suami istri pakai formulir nomor berapa?",
+    "relevan": [
+      "permendagri-109-2019-pasal#pasal-4",
+      "permendagri-109-2019-pasal#pasal-5",
+      "perpres-96-2018-pasal#pasal-34"
+    ]
+  },
+  {
+    "id": "n21",
+    "pertanyaan": "Apakah KTP-el orang tua wajib dilampirkan untuk bikin akta kelahiran?",
+    "relevan": ["permendagri-108-2019-pasal#pasal-43", "perpres-96-2018-pasal#pasal-33"]
+  },
+  {
+    "id": "n22",
+    "pertanyaan": "Syarat bikin KK baru setelah menikah apa saja?",
+    "relevan": ["perpres-96-2018-pasal#pasal-11"]
+  },
+  {
+    "id": "n23",
+    "pertanyaan": "Mau ubah data di KK karena ada perubahan status, syaratnya apa?",
+    "relevan": ["perpres-96-2018-pasal#pasal-12"]
+  },
+  {
+    "id": "n24",
+    "pertanyaan": "Apa hukumannya kalau memalsukan surat keterangan lahir untuk akta?",
+    "relevan": ["uu-23-2006-pasal#pasal-93", "uu-24-2013-pasal#pasal-94"]
+  },
+  {
+    "id": "n25",
+    "pertanyaan": "Syarat bikin SKCK untuk melamar kerja",
+    "relevan": ["perpol-1-2026-pasal#pasal-5", "perpol-1-2026-pasal#pasal-14", "perpol-1-2026-pasal#pasal-3"]
+  },
+  {
+    "id": "n26",
+    "pertanyaan": "SKCK berlaku berapa lama?",
+    "relevan": ["perpol-1-2026-pasal#pasal-3"]
+  },
+  {
+    "id": "n27",
+    "pertanyaan": "Petugas minta uang waktu mengurus KTP, apakah boleh?",
+    "relevan": ["uu-24-2013-pasal#pasal-95b", "uu-24-2013-pasal#pasal-79a"]
+  },
+  {
+    "id": "n28",
+    "pertanyaan": "Formulir apa yang diisi untuk mengurus surat keterangan pindah?",
+    "relevan": ["permendagri-109-2019-pasal#pasal-4", "permendagri-109-2019-pasal#pasal-5"]
   }
 ]
