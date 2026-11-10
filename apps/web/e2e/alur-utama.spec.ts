@@ -43,9 +43,11 @@ for (const lebar of [390, 1440]) {
     await page.goto('/urusanku');
     await expect(page.getByRole('heading', { name: 'Akta kelahiran' }).first()).toBeVisible();
 
-    // Peramban dengan urusan berjalan masuk ke Beranda (App 01): urusannya tampil di "Urusan berjalan"
+    // Riwayat tamu tidak mengalihkan landing; urusan tetap dapat dilanjutkan dari aplikasi.
     await page.goto('/');
-    await expect(page).toHaveURL(/\/beranda$/);
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Urusan administrasi');
+    await page.goto('/beranda');
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Apa yang ingin Anda urus?');
     const berjalan = page.getByRole('region', { name: 'Urusan berjalan' });
     await expect(berjalan.getByRole('heading', { name: 'Akta kelahiran' })).toBeVisible();

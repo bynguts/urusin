@@ -3,13 +3,14 @@ import { DemoProvider } from '@urusin/harness';
 import { createRawSnippet } from 'svelte';
 import { render } from 'svelte/server';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { actions as beranda } from '../../routes/+page.server';
+import { actions as beranda, load as muatLanding } from '../../routes/+page.server';
 import { load as muatJejak } from '../../routes/jejak/[id]/+page.server';
 import { load as muatPeristiwa } from '../../routes/peristiwa/[slug]/+page.server';
 import { load as muatUrusan } from '../../routes/urusan/[id]/+page.server';
 import Chip from '../components/ui/Chip.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
+import { TERAKHIR_COOKIE } from './sesi';
 
 let rt: Runtime;
 beforeEach(() => {
@@ -77,6 +78,30 @@ describe('form action mulai urusan (tanpa JS)', () => {
 describe('load layar', () => {
   const ke = (params: Record<string, string>, url = 'http://localhost:3000/x') =>
     ({ params, url: new URL(url), setHeaders: () => {} }) as never;
+
+  it('tamu dengan riwayat urusan tetap melihat landing, lalu dapat membuka aplikasi secara eksplisit', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran' });
+    const cookies = kue();
+    cookies.set(TERAKHIR_COOKIE, u.id);
+    expect(await muatLanding({ cookies, locals: { akun: null } } as never)).toBeUndefined();
+    expect(cookies.get(TERAKHIR_COOKIE)).toBe(u.id);
+    expect(rt.store.getUrusan(u.id)).not.toBeNull();
+  });
+
+  it('akun yang masuk dengan urusan tersimpan tetap dilanjutkan ke beranda', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran' });
+    const cookies = kue();
+    cookies.set(TERAKHIR_COOKIE, u.id);
+    const result = await tangkap(muatLanding({ cookies, locals: { akun: { jenis: 'akun' } } } as never));
+    expect(isRedirect(result)).toBe(true);
+    expect(result).toMatchObject({ status: 303, location: '/beranda' });
+  });
+
+  it('akun dengan cookie urusan yang sudah tidak ada tetap mendapat landing', async () => {
+    const cookies = kue();
+    cookies.set(TERAKHIR_COOKIE, `u_${'0'.repeat(32)}`);
+    expect(await muatLanding({ cookies, locals: { akun: { jenis: 'akun' } } } as never)).toBeUndefined();
+  });
 
   it('urusan dan jejak: id tidak valid atau tidak ada → 404', async () => {
     for (const load of [muatUrusan, muatJejak]) {

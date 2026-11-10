@@ -19,9 +19,9 @@
   let { judul, sub, children }: { judul: string; sub: string; children: Snippet } = $props();
 </script>
 
-<div class="flex min-h-dvh flex-col gap-3 bg-bg-2 p-0 lg:flex-row lg:p-3">
+<div class="flex min-h-dvh min-w-0 flex-col gap-3 bg-bg-2 p-0 lg:flex-row lg:p-3">
   <aside
-    class="panel-akun pola-titik relative flex flex-col overflow-hidden bg-gradient-to-b from-[#f9e9e0] via-bg to-bg-2 px-5 pt-5 pb-6 lg:w-[min(640px,46%)] lg:shrink-0 lg:rounded-[1.25rem] lg:border lg:border-line lg:px-10 lg:pt-9 lg:pb-0"
+    class="panel-akun pola-titik relative flex min-w-0 flex-col overflow-hidden bg-gradient-to-b from-[#f9e9e0] via-bg to-bg-2 px-5 pt-5 pb-6 lg:w-[min(640px,46%)] lg:shrink-0 lg:rounded-[1.25rem] lg:border lg:border-line lg:px-10 lg:pt-9 lg:pb-0"
     style:--panel-akun="url({panel})"
   >
     <a href={resolve('/')} class="flex h-12 w-fit items-center lg:h-auto"
@@ -32,7 +32,7 @@
     >
       {judul}
     </p>
-    <p class="mt-2 max-w-[34rem] text-[0.9375rem] text-body lg:mt-3.5 lg:text-[1.0625rem] lg:leading-[25px]">
+    <p class="auth-description mt-2 max-w-[34rem] text-[0.9375rem] text-body lg:mt-3.5 lg:text-[1.0625rem]">
       {sub}
     </p>
     <div class="relative mt-auto hidden h-[264px] w-[516px] self-center lg:block" aria-hidden="true">
@@ -69,13 +69,41 @@
   <main
     id="konten"
     tabindex="-1"
-    class="flex flex-1 items-start justify-center rounded-t-[1.5rem] bg-surface px-5 py-8 outline-none lg:items-center lg:rounded-[1.25rem] lg:shadow-lembut"
+    class="flex min-w-0 flex-1 items-start justify-center rounded-t-[1.5rem] bg-surface px-5 py-8 outline-none lg:items-center lg:rounded-[1.25rem] lg:shadow-lembut"
   >
-    <div class="w-full max-w-[27.5rem]">{@render children()}</div>
+    <div class="auth-content min-w-0 w-full max-w-[27.5rem]">{@render children()}</div>
   </main>
 </div>
 
 <style>
+  /* Teks besar dan email panjang harus membungkus tanpa memperlebar formulir atau bertumpuk. */
+  .auth-content {
+    overflow-wrap: anywhere;
+  }
+
+  .auth-content :global(h1) {
+    line-height: 1.2;
+  }
+
+  .auth-description,
+  .auth-content :global(p) {
+    line-height: 1.5;
+  }
+
+  .auth-content :global(input) {
+    min-width: 0;
+  }
+
+  .auth-content :global(button[type='submit']) {
+    padding: 0.75rem 1rem;
+    line-height: 1.4;
+  }
+
+  .auth-content :global(button[type='submit'] > img),
+  .auth-content :global(button[type='submit'] > svg) {
+    flex-shrink: 0;
+  }
+
   /* Latar panel desktop = gambar gradasi titik dari ekspor frame (sama di App 15–20). Gambarnya terang,
      jadi tema gelap tetap memakai latar token agar judul (warna ink tema) terbaca. */
   @media (min-width: 1024px) {

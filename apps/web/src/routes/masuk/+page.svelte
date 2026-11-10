@@ -115,8 +115,9 @@
       </div>
     </div>
     <div class="flex flex-col gap-2">
-      <div class="flex items-baseline justify-between gap-3">
-        <label for="sandi" class="text-[0.9375rem] font-semibold text-ink">Kata sandi</label>
+      <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+        <label for="sandi" class="text-[0.9375rem] font-semibold whitespace-nowrap text-ink">Kata sandi</label
+        >
         <a
           href={resolve('/lupa-sandi')}
           class="inline-flex min-h-12 items-center text-[0.9375rem] font-semibold text-brand"
