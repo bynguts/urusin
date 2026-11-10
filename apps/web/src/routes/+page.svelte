@@ -548,6 +548,7 @@
               <span><span>c</span><span>e</span><span>r</span><span>i</span><span>t</span><span>a</span></span
               >
             </span>
+            <span class="n-pil-caret" aria-hidden="true"></span>
           </span>
         </span>
         <span class="lp53"> bukan istilah </span>
@@ -1244,11 +1245,14 @@
     </div>
     <div class="n-prompt-box lp96" aria-hidden="true">
       <p class="n-prompt-text lp97">
-        <span class="lp98"> Urus </span>
-        <span class="lp99"> akta kelahiran </span>
-        <span class="lp98"> di </span>
-        <span class="lp100"> Dukcapil</span><span class="lp98">, lalu daftarkan ke </span>
-        <span class="lp101"> BPJS Kesehatan </span>
+        <span class="n-prompt-typewriter">
+          <span class="lp98"> Urus </span>
+          <span class="lp99"> akta kelahiran </span>
+          <span class="lp98"> di </span>
+          <span class="lp100"> Dukcapil</span><span class="lp98">, lalu daftarkan ke </span>
+          <span class="lp101"> BPJS Kesehatan </span>
+        </span>
+        <span class="n-prompt-caret" aria-hidden="true"></span>
       </p>
       <div class="n-prompt-row lp102">
         <img

@@ -96,10 +96,12 @@
     animation-delay: 4.7s;
   }
 
-  /* Pil "cerita": huruf naik bergiliran seperti kata yang berganti; "cerita" diam paling lama */
+  /* Pil "cerita": huruf diketik bergantian (animasi mengetik / typewriter) */
   .lp .n-pil {
     position: relative;
     overflow: hidden;
+    display: inline-flex;
+    align-items: center;
   }
   .lp .n-pil > .lp55:first-child {
     opacity: 0;
@@ -116,28 +118,73 @@
   }
   .lp .n-pil-kata > span > span {
     display: inline-block;
-    animation: lp-kata-2 9s infinite both;
+    animation: lp-ketik-2 9s infinite both;
+  }
+  .lp .n-pil-kata span span:nth-child(1) {
+    animation-delay: 0ms;
   }
   .lp .n-pil-kata span span:nth-child(2) {
-    animation-delay: 22ms;
+    animation-delay: 45ms;
   }
   .lp .n-pil-kata span span:nth-child(3) {
-    animation-delay: 44ms;
+    animation-delay: 90ms;
   }
   .lp .n-pil-kata span span:nth-child(4) {
-    animation-delay: 66ms;
+    animation-delay: 135ms;
   }
   .lp .n-pil-kata span span:nth-child(5) {
-    animation-delay: 88ms;
+    animation-delay: 180ms;
   }
   .lp .n-pil-kata span span:nth-child(6) {
-    animation-delay: 110ms;
+    animation-delay: 225ms;
   }
   .lp .n-pil-kata > span:nth-child(1) > span {
-    animation-name: lp-kata-0;
+    animation-name: lp-ketik-0;
   }
   .lp .n-pil-kata > span:nth-child(2) > span {
-    animation-name: lp-kata-1;
+    animation-name: lp-ketik-1;
+  }
+  .lp .n-pil-caret {
+    display: inline-block;
+    width: 2.5px;
+    height: 0.8em;
+    background-color: #4f7347;
+    margin-left: 2px;
+    border-radius: 1px;
+    animation: lp-kedip-kursor 0.75s infinite;
+  }
+
+  /* Animasi mengetik pada prompt box AI (lp96) */
+  .lp .lp96 {
+    position: relative;
+    animation: lp-prompt-breath 8s ease-in-out infinite;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+  .lp .n-prompt-text {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .lp .n-prompt-typewriter {
+    display: inline-block;
+    overflow: hidden;
+    white-space: nowrap;
+    vertical-align: bottom;
+    animation: lp-typewriter-text 8s steps(48, end) infinite;
+  }
+  .lp .n-prompt-caret {
+    display: inline-block;
+    width: 2px;
+    height: 1.15em;
+    background-color: #252522;
+    margin-left: 3px;
+    vertical-align: -2px;
+    border-radius: 1px;
+    animation: lp-kedip-kursor 0.75s infinite;
+  }
+  .lp .lp96 .lp104 {
+    animation: lp-send-pulse 8s ease-in-out infinite;
   }
 
   /* Ponsel: tidak ada gerak di jendela muat (TBT Lighthouse mobile). Hero langsung tampil tanpa
@@ -475,68 +522,92 @@
     clip-path: inset(0 0 0 0);
   }
 }
-/* Kata pil (periode 9 s): cerita diam 0-56%, kabar 59-76%, kisah 79-92%, cerita naik lagi 94.7-100%.
-   Kata lama keluar ke atas 200 ms, kata baru naik 480 ms dengan lonjakan; pil memotong keduanya. */
-@keyframes lp-kata-0 {
-  0%,
-  59% {
-    transform: translateY(110%);
-    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+/* Animasi mengetik huruf per huruf (periode 9 s): kabar (0-28%), kisah (33-61%), cerita (66-95%) */
+@keyframes lp-ketik-0 {
+  0%, 2% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.9);
   }
-  62.2% {
-    transform: translateY(-12%);
-    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  4%, 27% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
-  64.3%,
-  76% {
-    transform: none;
-    animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0);
-  }
-  78.2%,
-  100% {
-    transform: translateY(-110%);
+  29%, 100% {
+    opacity: 0;
+    transform: translateY(-6px);
   }
 }
-@keyframes lp-kata-1 {
-  0%,
-  79% {
-    transform: translateY(110%);
-    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+@keyframes lp-ketik-1 {
+  0%, 33% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.9);
   }
-  82.2% {
-    transform: translateY(-12%);
-    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  35%, 60% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
-  84.3%,
-  92% {
-    transform: none;
-    animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0);
-  }
-  94.2%,
-  100% {
-    transform: translateY(-110%);
+  62%, 100% {
+    opacity: 0;
+    transform: translateY(-6px);
   }
 }
-@keyframes lp-kata-2 {
-  0%,
-  56% {
-    transform: none;
-    animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0);
+@keyframes lp-ketik-2 {
+  0%, 66% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.9);
   }
-  58.2% {
-    transform: translateY(-110%);
-    animation-timing-function: step-end;
+  68%, 94% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
-  94.7% {
-    transform: translateY(110%);
-    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  96%, 100% {
+    opacity: 0;
+    transform: translateY(-6px);
   }
-  97.9% {
-    transform: translateY(-12%);
-    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes lp-kedip-kursor {
+  0%, 100% {
+    opacity: 1;
   }
-  100% {
-    transform: none;
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes lp-typewriter-text {
+  0%, 6% {
+    max-width: 0;
+  }
+  40%, 82% {
+    max-width: 100%;
+  }
+  92%, 100% {
+    max-width: 0;
+  }
+}
+@keyframes lp-send-pulse {
+  0%, 39% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  45%, 82% {
+    transform: scale(1.08);
+    opacity: 1;
+    box-shadow: 0 4px 12px #25252233;
+  }
+  88%, 100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+}
+@keyframes lp-prompt-breath {
+  0%, 6% {
+    box-shadow: 0px 8px 28px #2525220f, 0px 0px 1px #0000000f, 0px 1px 1px #0000000f, 0px 2px 4px #0000000a;
+  }
+  40%, 82% {
+    box-shadow: 0px 14px 38px #2525221c, 0px 0px 0px 1.5px #2525221f, 0px 2px 4px #0000000a;
+  }
+  92%, 100% {
+    box-shadow: 0px 8px 28px #2525220f, 0px 0px 1px #0000000f, 0px 1px 1px #0000000f, 0px 2px 4px #0000000a;
   }
 }
 
