@@ -71,7 +71,10 @@ export function siapkanKorpusPasal({ akar, ragDb, rahasia, aktif, log }) {
       });
     } catch (e) {
       galat.push(id);
-      log?.(`ingest ${id} gagal: ${sensor(String(e?.stderr ?? e?.message ?? e).slice(-400), rahasia)}`);
+      // Alasan ada di stdout CLI ("error <id> (TimeoutError)"); stderr hanya gema perintah pnpm.
+      const keluaran = `${e?.stdout ?? ''}\n${e?.stderr ?? e?.message ?? e}`;
+      const alasan = keluaran.match(/^error\s.*$/m)?.[0] ?? keluaran.slice(-400);
+      log?.(`ingest ${id} gagal: ${sensor(alasan, rahasia)}`);
     }
   }
   return {

@@ -1,6 +1,6 @@
 import { ingestEgressFetch } from '@urusin/egress';
 import type { Db } from '../db.js';
-import { PoliteFetcher, RobotsBlockedError, type Deps } from './fetcher.js';
+import { PoliteFetcher, RobotsBlockedError, batasWaktu, type Deps } from './fetcher.js';
 import type { SourceEntry } from './sources.js';
 import { klampidEndpoint, klampidHash, sanitizeKlampid } from './klampid.js';
 import { contentHash, loadSourceStates } from './state.js';
@@ -47,7 +47,11 @@ export async function runVerify(opts: VerifyOptions): Promise<VerifyReport[]> {
     if (st.etag) cond['if-none-match'] = st.etag;
     if (st.lastModified) cond['if-modified-since'] = st.lastModified;
     try {
-      const res = await fetcher.get(src.adapter === 'klampid' ? klampidEndpoint(src.url) : src.url, cond);
+      const res = await fetcher.get(
+        src.adapter === 'klampid' ? klampidEndpoint(src.url) : src.url,
+        cond,
+        batasWaktu(src),
+      );
       let same: boolean;
       if (res.status === 304) same = true;
       else if (res.status === 200)
