@@ -274,6 +274,35 @@ body {
   outline-offset: 2px;
 }
 
+/* PenDev Input & Select styling (vjU9u: stroke primary, ring 2px, offset 2px) */
+input:not([type='radio']):not([type='checkbox']):not([type='submit']):not([type='button']),
+select,
+textarea {
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+input:not([type='radio']):not([type='checkbox']):not([type='submit']):not([type='button']):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--sb-text-primary);
+  outline: none;
+  box-shadow:
+    0 0 0 1px var(--sb-text-primary),
+    0 0 0 4px var(--sb-focus);
+}
+
+input[aria-invalid='true']:focus,
+select[aria-invalid='true']:focus,
+textarea[aria-invalid='true']:focus {
+  border-color: var(--sb-error);
+  box-shadow:
+    0 0 0 1px var(--sb-error),
+    0 0 0 4px rgba(239, 67, 67, 0.25);
+}
+
 /* Fokus tidak tertutup header/nav bawah (WCAG 2.4.11). */
 :target,
 [id] {

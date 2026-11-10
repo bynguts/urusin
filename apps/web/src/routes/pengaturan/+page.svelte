@@ -80,23 +80,51 @@
 
   const coba = () =>
     tts.baca('Untuk akta kelahiran, siapkan surat keterangan lahir dari bidan atau rumah sakit.');
+
+  function scrollKeBagian(id: string, e: MouseEvent) {
+    e.preventDefault();
+    aktif = id;
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', `#${id}`);
+    }
+  }
+
+  $effect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            aktif = entry.target.id;
+          }
+        }
+      },
+      { rootMargin: '-80px 0px -60% 0px', threshold: 0.1 },
+    );
+    for (const b of BAGIAN) {
+      const el = document.getElementById(b.id);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  });
 </script>
 
 <svelte:head><title>Pengaturan · Urusin</title></svelte:head>
 
 <HeaderHalaman judul="Pengaturan" />
 
-<div class="flex min-h-0 flex-1">
+<div class="flex flex-1 items-start">
   <nav
     aria-label="Bagian pengaturan"
-    class="hidden w-[259.5px] shrink-0 border-r border-line bg-card px-4 py-5 lg:block"
+    class="hidden w-[259.5px] shrink-0 border-r border-line bg-card px-4 py-5 lg:sticky lg:top-[67.5px] lg:self-start lg:h-[calc(100dvh-67.5px-24px)] lg:overflow-y-auto lg:block"
   >
     <ul class="flex flex-col gap-1">
       {#each BAGIAN as b (b.id)}
         <li>
           <a
             href="#{b.id}"
-            onclick={() => (aktif = b.id)}
+            onclick={(e) => scrollKeBagian(b.id, e)}
             aria-current={aktif === b.id ? 'true' : undefined}
             class="flex h-12 items-center gap-2.5 rounded-xl px-3 text-base leading-[23px] transition-all duration-150 {aktif === b.id
               ? 'bg-surface font-semibold text-ink shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
@@ -249,16 +277,23 @@
       >
         <div class="flex flex-1 flex-col gap-1.5">
           <label for="pilih-wilayah" class="text-[0.9375rem] font-semibold text-ink">Kab/kota</label>
-          <select
-            id="pilih-wilayah"
-            bind:value={kodeWilayah}
-            onchange={() => (wilayahTersimpan = false)}
-            aria-describedby="d-wilayah"
-            autocomplete="address-level2"
-            class="h-12 rounded-xl border border-line-2 bg-surface px-3 text-base text-ink"
-          >
-            {#each data.kota as k (k.kodeKabKota)}<option value={k.kodeKabKota}>{k.nama}</option>{/each}
-          </select>
+          <div class="relative">
+            <select
+              id="pilih-wilayah"
+              bind:value={kodeWilayah}
+              onchange={() => (wilayahTersimpan = false)}
+              aria-describedby="d-wilayah"
+              autocomplete="address-level2"
+              class="h-12 w-full appearance-none rounded-xl border border-line-2 bg-surface pr-10 pl-4 text-base text-ink transition-colors hover:border-line cursor-pointer"
+            >
+              {#each data.kota as k (k.kodeKabKota)}
+                <option value={k.kodeKabKota} class="bg-surface text-ink">{k.nama}</option>
+              {/each}
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-muted">
+              <Icon name="bawah" class="size-4" />
+            </div>
+          </div>
         </div>
         <button
           type="submit"

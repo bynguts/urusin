@@ -119,7 +119,7 @@
       <main
         id="konten"
         tabindex="-1"
-        class="flex min-h-0 flex-1 flex-col bg-bg pb-24 outline-none lg:bg-transparent lg:pb-0"
+        class="flex flex-1 flex-col bg-bg pb-24 outline-none lg:bg-transparent lg:pb-0"
       >
         {@render children()}
       </main>

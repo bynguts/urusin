@@ -29,13 +29,13 @@
 </script>
 
 <aside
-  class="hidden h-full shrink-0 flex-col gap-5 overflow-y-auto px-2 pt-2.5 pb-2 transition-[width] duration-200 ease-out lg:flex {ciut
-    ? 'w-16'
-    : 'w-[248px]'}"
+  class="hidden h-full shrink-0 flex-col overflow-y-auto px-2 pt-2.5 pb-2 transition-[width] duration-200 ease-out lg:flex {ciut
+    ? 'w-16 gap-3.5'
+    : 'w-[248px] gap-5'}"
   aria-label="Menu samping"
 >
-  <div class="flex items-center justify-between px-1.5 py-1 {ciut ? 'flex-col gap-3' : ''}">
-    <a href={resolve('/beranda')} class="flex items-center gap-2" aria-label="Urusin, ke Beranda">
+  <div class="flex items-center justify-between px-1.5 py-1 {ciut ? 'flex-col gap-2' : ''}">
+    <a href={resolve('/beranda')} class="flex items-center gap-2 {ciut ? 'justify-center py-1' : ''}" aria-label="Urusin, ke Beranda">
       <img src={mark} alt="" width="24" height="24" class="size-6" />
       {#if !ciut}<span class="font-lora text-[22px] leading-6 font-medium tracking-[-0.6px] text-ink"
           >Urusin</span
@@ -120,7 +120,9 @@
   <a
     href={resolve(akun ? '/pengaturan' : '/masuk')}
     aria-label={ciut ? (akun ? namaAkun : 'Masuk') : undefined}
-    class="flex h-14 shrink-0 items-center gap-2.5 rounded-[14px] border border-line bg-surface px-2.5 hover:bg-card"
+    class="flex h-14 shrink-0 items-center rounded-[14px] border border-line bg-surface hover:bg-card {ciut
+      ? 'justify-center p-0'
+      : 'gap-2.5 px-2.5'}"
   >
     <span
       class="grid size-9 shrink-0 place-items-center rounded-full bg-mawar text-sm leading-none font-semibold text-mawar-ink"
