@@ -111,8 +111,46 @@ function ringkasEvent(type: string, payload: Record<string, unknown>): string {
         ? `Wilayah KTP diusulkan (${payload.sumber === 'data_diri' ? 'Data Diri' : 'pilihan perangkat'}): ${nama}`
         : `Wilayah KTP dipastikan warga: ${nama}`;
     }
+    case 'jejak_pendamping':
+      return ringkasJejakPendamping((payload.catatan ?? {}) as Record<string, unknown>);
     default:
       return type;
+  }
+}
+
+const pendek = (h: unknown) => String(h ?? '').slice(0, 8);
+
+/** Ringkasan satu catatan Navigator generik (tanpa nilai, tanpa teks halaman; hash dipendekkan). */
+function ringkasJejakPendamping(c: Record<string, unknown>): string {
+  switch (c.jenis) {
+    case 'amati':
+      return `Navigator mengamati ${String(c.host)} (${String(c.elemen)} elemen)`;
+    case 'rencana': {
+      const aksi = Array.isArray(c.aksi) ? (c.aksi as { jenis?: string }[]) : [];
+      return `Rencana ${pendek(c.rencanaHash)}: ${aksi.map((a) => a.jenis).join(', ') || '-'}`;
+    }
+    case 'validasi': {
+      const aturan = Array.isArray(c.aturan) ? (c.aturan as string[]) : [];
+      return c.putusan === 'terima'
+        ? `Validator menerima rencana ${pendek(c.rencanaHash)}`
+        : `Validator menolak rencana ${pendek(c.rencanaHash)} (${aturan.join(', ') || '-'})`;
+    }
+    case 'klik':
+      return `Klik ${String(c.ref)} kelas ${String(c.kelas)}: ${c.putusan === 'izinkan' ? 'diizinkan' : 'ditolak'}`;
+    case 'blokir':
+      return `Gerbang tulis memblokir ${String(c.metode)} ke ${String(c.host)}`;
+    case 'persetujuan':
+      return `Warga menyetujui ${String(c.n)} isian untuk rencana ${pendek(c.rencanaHash)}`;
+    case 'ambil_alih':
+      return c.fase === 'mulai'
+        ? `Kendali ke warga${c.alasan ? ` (${String(c.alasan)})` : ''}`
+        : 'Kendali kembali ke AI';
+    case 'host_kandidat':
+      return `Host di luar registry wilayah: ${String(c.host)} (diserahkan ke warga)`;
+    case 'bukti':
+      return 'Bukti pengajuan tercatat';
+    default:
+      return 'jejak_pendamping';
   }
 }
 

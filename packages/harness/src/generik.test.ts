@@ -14,6 +14,7 @@ import {
 import { rutePendamping, setujuiRencana } from './rencana.js';
 import { HarnessStore } from './store.js';
 import { makeEnv } from './testing.js';
+import { jejakView } from './trace.js';
 
 /** Registry wilayah (WP-D): Semarang web tanpa adapter, Dairi WhatsApp, Jakarta Pusat aplikasi. */
 const SMG = '3374';
@@ -133,5 +134,46 @@ describe('routing rencana.ts: adapter -> (platform) -> generik -> dipandu', () =
     expect(gate[0]).toMatchObject({ keputusan: 'deny', aturan: 'WILAYAH_BELUM_DITETAPKAN' });
     expect(out.events.some((e: UrusinEvent) => e.type === 'execution_request')).toBe(false);
     expect(env.store.getUrusanOrThrow(u.id)).toMatchObject({ state: 'MEMAHAMI', kodeKabKota: null });
+  });
+});
+
+describe('jejak Navigator di halaman Jejak', () => {
+  it('setiap catatan jejak_pendamping diringkas tanpa nilai; hash dipendekkan', () => {
+    const store = new HarnessStore(openHarnessDb());
+    const u = store.createUrusan({ kodeKabKota: SMG, jenis: 'kelahiran' });
+    const h = 'ab'.repeat(32);
+    const catatan = [
+      { jenis: 'amati', host: 'sidnok.semarangkota.go.id', sidik: 's1', elemen: 12 },
+      {
+        jenis: 'rencana',
+        model: 'm',
+        tokenMasuk: 1,
+        tokenKeluar: 1,
+        rencanaHash: h,
+        aksi: [{ jenis: 'isi', ref: 'e1' }],
+      },
+      { jenis: 'validasi', rencanaHash: h, putusan: 'tolak', aturan: ['KELAS_KLIK_DITOLAK'] },
+      { jenis: 'persetujuan', rencanaHash: h, n: 3 },
+      {
+        jenis: 'blokir',
+        metode: 'POST',
+        host: 'sidnok.semarangkota.go.id',
+        jalurSha256: h,
+        jendela: 'ai_klik',
+      },
+      { jenis: 'ambil_alih', fase: 'mulai', alasan: 'final' },
+    ];
+    for (const c of catatan) store.appendEvent(u.id, 'jejak_pendamping', { executionId: 'x_1', catatan: c });
+    const ringkas = jejakView(store, u.id)
+      .timeline.filter((i) => i.jenis === 'event' && i.type === 'jejak_pendamping')
+      .map((i) => (i.jenis === 'event' ? i.ringkas : ''));
+    expect(ringkas).toEqual([
+      'Navigator mengamati sidnok.semarangkota.go.id (12 elemen)',
+      'Rencana abababab: isi',
+      'Validator menolak rencana abababab (KELAS_KLIK_DITOLAK)',
+      'Warga menyetujui 3 isian untuk rencana abababab',
+      'Gerbang tulis memblokir POST ke sidnok.semarangkota.go.id',
+      'Kendali ke warga (final)',
+    ]);
   });
 });
