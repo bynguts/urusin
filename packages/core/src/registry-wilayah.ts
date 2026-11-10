@@ -1,6 +1,6 @@
 // BERKAS HASIL GENERATOR (scripts/gen-registry-wilayah.mjs). Jangan diubah tangan.
 // Sumber: data/wilayah/kontak-dukcapil.json (situs info terverifikasi) dan data/wilayah/portal-dukcapil.json
-// (kanal daring hasil recon). 182 wilayah, 56 berjenis web, 173 host persis.
+// (kanal daring hasil recon). 182 wilayah, 56 berjenis web, 175 host persis.
 import type { OfficialDomain } from './registry.js';
 
 /** A portal akun, B formulir web tanpa akun, C aplikasi saja, D WhatsApp/chatbot, E kanal nasional/kantor, F tidak diketahui. */
@@ -39,6 +39,11 @@ export type PortalWilayah = {
   hosts: readonly string[];
   /** Host situs informasi Disdukcapil (.go.id). */
   hostInfo: readonly string[];
+  /**
+   * Host aset .go.id yang dimuat halaman portal (CDN/API, probe nyata): ikut egress sesi (`hostsWilayah`),
+   * bukan host portal (vault/AI tidak ke sana).
+   */
+  hostAset?: readonly string[];
   /** Halaman bukti; wajib .go.id untuk host di luar .go.id. */
   sumber?: string;
   login: readonly LoginPortal[];
@@ -1829,6 +1834,7 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     url: 'https://sakura.dukcapil.klaten.go.id/',
     hosts: ['sakura.dukcapil.klaten.go.id'],
     hostInfo: ['dukcapil.klaten.go.id'],
+    hostAset: ['api.diskominfo.klaten.go.id'],
     sumber: 'https://dukcapil.klaten.go.id/sakura',
     login: ['nik_sandi', 'google'],
     proteksi: ['captcha_gambar'],
@@ -2123,6 +2129,7 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     url: 'https://dukcapilonline.slemankab.go.id/Flow/signin',
     hosts: ['dukcapilonline.slemankab.go.id'],
     hostInfo: [],
+    hostAset: ['dukcapil-cdn.slemankab.go.id'],
     sumber: 'https://dukcapilonline.slemankab.go.id/Flow/signin',
     login: ['email_sandi'],
     proteksi: ['slider'],
@@ -3796,6 +3803,13 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     verifiedAt: '2026-11-10',
   },
   {
+    host: 'api.diskominfo.klaten.go.id',
+    instansi: 'Disdukcapil Kabupaten Klaten',
+    layanan: 'Aset portal layanan (CDN/API)',
+    wilayah: '3310',
+    verifiedAt: '2026-11-10',
+  },
+  {
     host: 'sakura.dukcapil.klaten.go.id',
     instansi: 'Disdukcapil Kabupaten Klaten',
     layanan: 'Portal layanan adminduk daring (kelas A)',
@@ -3963,6 +3977,13 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     wilayah: '3402',
     verifiedAt: '2026-11-10',
     aksesWilayah: 'id-only',
+  },
+  {
+    host: 'dukcapil-cdn.slemankab.go.id',
+    instansi: 'Disdukcapil Kabupaten Sleman',
+    layanan: 'Aset portal layanan (CDN/API)',
+    wilayah: '3404',
+    verifiedAt: '2026-11-10',
   },
   {
     host: 'dukcapilonline.slemankab.go.id',
@@ -4155,7 +4176,7 @@ export const EGRESS_PIHAK_KETIGA_WILAYAH: readonly string[] = ['challenges.cloud
 export function hostsWilayah(kode: string): string[] {
   const p = Object.hasOwn(PORTAL_WILAYAH, kode) ? PORTAL_WILAYAH[kode] : undefined;
   if (!p) return [];
-  const sendiri = [...p.hostInfo, ...p.hosts];
+  const sendiri = [...p.hostInfo, ...p.hosts, ...(p.hostAset ?? [])];
   if (p.platform && Object.hasOwn(PLATFORM_WILAYAH, p.platform))
     sendiri.push(...PLATFORM_WILAYAH[p.platform]!.hosts);
   if (sendiri.length === 0) return [];

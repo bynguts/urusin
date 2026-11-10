@@ -144,8 +144,15 @@ export function susun(kabkota, kontak, portal) {
       if (u && !p.hosts.includes(u.hostname)) galat.push(`${ctx}: host url tidak ada di hosts`);
     }
     const hostInfo = [...new Set([...(i ? [i.host] : []), ...(p.hostInfo ?? [])])];
-    for (const h of [...p.hosts, ...hostInfo]) cekHost(h, ctx);
+    // Host aset portal (CDN/API .go.id yang dimuat halaman portal): ikut egress sesi, bukan tujuan AI/vault.
+    const hostAset = [...new Set(p.hostAset ?? [])];
+    for (const h of [...p.hosts, ...hostInfo, ...hostAset]) cekHost(h, ctx);
     for (const h of hostInfo) if (!hostGoId(h)) galat.push(`${ctx}: host info bukan .go.id "${h}"`);
+    for (const h of hostAset) {
+      if (!hostGoId(h)) galat.push(`${ctx}: host aset bukan .go.id "${h}"`);
+      if (p.hosts.includes(h) || hostInfo.includes(h)) galat.push(`${ctx}: host aset ganda "${h}"`);
+    }
+    if (hostAset.length > 0 && p.jenis !== 'web') galat.push(`${ctx}: hostAset hanya untuk jenis web`);
     const sumber = p.sumber ?? i?.sumber;
     const su = sumber ? cekUrl(sumber, ctx) : null;
     if (p.hosts.some((h) => !hostGoId(h))) {
@@ -160,6 +167,7 @@ export function susun(kabkota, kontak, portal) {
       ...(p.url ? { url: p.url } : {}),
       hosts: [...p.hosts],
       hostInfo,
+      ...(hostAset.length ? { hostAset } : {}),
       ...(sumber ? { sumber } : {}),
       login: [...p.login],
       proteksi: [...p.proteksi],
@@ -198,6 +206,13 @@ export function susun(kabkota, kontak, portal) {
       tambah(h, {
         instansi,
         layanan: 'Situs informasi Disdukcapil',
+        wilayah: w.kode,
+        verifiedAt: w.verifiedAt,
+      });
+    for (const h of w.hostAset ?? [])
+      tambah(h, {
+        instansi,
+        layanan: 'Aset portal layanan (CDN/API)',
         wilayah: w.kode,
         verifiedAt: w.verifiedAt,
       });
@@ -258,6 +273,11 @@ export type PortalWilayah = {
   hosts: readonly string[];
   /** Host situs informasi Disdukcapil (.go.id). */
   hostInfo: readonly string[];
+  /**
+   * Host aset .go.id yang dimuat halaman portal (CDN/API, probe nyata): ikut egress sesi (\`hostsWilayah\`),
+   * bukan host portal (vault/AI tidak ke sana).
+   */
+  hostAset?: readonly string[];
   /** Halaman bukti; wajib .go.id untuk host di luar .go.id. */
   sumber?: string;
   login: readonly LoginPortal[];
@@ -309,7 +329,7 @@ export const EGRESS_PIHAK_KETIGA_WILAYAH: readonly string[] = ['challenges.cloud
 export function hostsWilayah(kode: string): string[] {
   const p = Object.hasOwn(PORTAL_WILAYAH, kode) ? PORTAL_WILAYAH[kode] : undefined;
   if (!p) return [];
-  const sendiri = [...p.hostInfo, ...p.hosts];
+  const sendiri = [...p.hostInfo, ...p.hosts, ...(p.hostAset ?? [])];
   if (p.platform && Object.hasOwn(PLATFORM_WILAYAH, p.platform)) sendiri.push(...PLATFORM_WILAYAH[p.platform]!.hosts);
   if (sendiri.length === 0) return [];
   return [...new Set([...sendiri, ...EGRESS_PIHAK_KETIGA_WILAYAH])];

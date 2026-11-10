@@ -57,10 +57,12 @@ export function jalurModeUji(
 /** Login hanya lewat akun pihak ketiga (OAuth Google): egress sesi tidak bisa menjangkaunya. */
 const LOGIN_PIHAK_KETIGA = new Set(['google']);
 
-/** Host yang boleh dikerjakan AI di sesi wilayah ini: host wilayah tanpa host pihak ketiga. */
+/** Host yang boleh dikerjakan AI di sesi wilayah ini: host wilayah tanpa host pihak ketiga dan host aset. */
 export function hostsAiWilayah(kode: string | null | undefined): string[] {
-  if (!portalWilayah(kode)) return [];
-  return hostsWilayah(kode!).filter((h) => !EGRESS_PIHAK_KETIGA_WILAYAH.includes(h));
+  const p = portalWilayah(kode);
+  if (!p) return [];
+  const aset = p.hostAset ?? [];
+  return hostsWilayah(kode!).filter((h) => !EGRESS_PIHAK_KETIGA_WILAYAH.includes(h) && !aset.includes(h));
 }
 
 /** Portal web yang bisa dikerjakan Navigator generik: jenis `web`, URL https, host URL ada di host portal. */

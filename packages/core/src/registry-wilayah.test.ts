@@ -94,6 +94,12 @@ describe('lint registry wilayah (ADR 0030)', () => {
     expect(hostsWilayah('__proto__')).toEqual([]);
     // Tidak ada host wilayah lain yang bocor ke sesi.
     expect(wonogiri).not.toContain('www.e-open.id');
+    // Host aset portal (probe nyata: CDN/API .go.id yang dimuat halaman) ikut egress sesi wilayahnya saja.
+    expect(PORTAL_WILAYAH['3404']!.hostAset).toEqual(['dukcapil-cdn.slemankab.go.id']);
+    expect(PORTAL_WILAYAH['3310']!.hostAset).toEqual(['api.diskominfo.klaten.go.id']);
+    expect(hostsWilayah('3404')).toContain('dukcapil-cdn.slemankab.go.id');
+    expect(hostsWilayah('3310')).toContain('api.diskominfo.klaten.go.id');
+    expect(hostsWilayah('3312')).not.toContain('dukcapil-cdn.slemankab.go.id');
   });
 
   it('hostsTantanganWilayah: Cloudflare + host sesuai proteksi portal; semua terdaftar di egress', () => {

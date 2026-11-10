@@ -115,6 +115,17 @@ describe('registry wilayah untuk Navigator', () => {
     expect(hostsPortalWilayah(null)).toEqual([]);
   });
 
+  it('host aset portal: ikut sesi wilayah, bukan host portal (vault) atau host AI', () => {
+    for (const [kode, aset] of [
+      ['3404', 'dukcapil-cdn.slemankab.go.id'],
+      ['3310', 'api.diskominfo.klaten.go.id'],
+    ] as const) {
+      expect(hostsPortalWilayah(kode), kode).not.toContain(aset);
+      expect(hostsAiWilayah(kode), kode).not.toContain(aset);
+      expect(hostsAiWilayah(kode), kode).toEqual(expect.arrayContaining(PORTAL_WILAYAH[kode]!.hosts));
+    }
+  });
+
   it('platform bersama (SIDAK Aceh) ikut host portal tenant', () => {
     expect(hostsPortalWilayah('1101')).toContain('sidak.acehprov.go.id');
   });
