@@ -20,6 +20,7 @@ export URUSIN_CI_USER
 URUSIN_CI_USER="$(stat -c %U "$WS")"
 PIN='mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d'
 printf 'FROM %s AS pwbasis\n' "$PIN" > "$WS/apps/pendamping/Dockerfile"
+printf '{\n  "packageManager": "pnpm@10.20.0"\n}\n' > "$WS/package.json"
 SHA=2175bb0c67fe37631a73ad92e23d600b705a018b
 DIG="sha256:$(printf '%064d' 7)"
 TOKEN=tokenuji-bukan-rahasia-jangan-jadi-argumen
@@ -76,12 +77,17 @@ check "satu-satunya mount host = workspace" '[ "$(grep -o "\[-v\]" <<<"$run_line
 check "tanpa no-new-privileges (sandbox setuid, ADR 0029) dan tanpa --no-sandbox" '[[ "$run_line" != *"no-new-privileges"* && "$run_line" != *"--no-sandbox"* ]]'
 check "e2e menjalankan pnpm e2e sebagai uid pemilik workspace" '[[ "$run_line" == *"pnpm e2e"* && "$run_line" == *"[PW_UID=$(stat -c %u "$WS")]"* ]]'
 check "pw tidak login GHCR" '[[ "$calls" != *"[login]"* ]]'
+check "versi pnpm dibaca di host lalu dioper lewat env (root kontainer tanpa capability tak bisa membaca workspace 0750)" '[[ "$run_line" == *"[PNPM_VERSION=10.20.0]"* && "$run_line" != *"/work/package.json"* ]]'
 SHIM_DF_PCT=50 cid pw perf "$WS" "$SHA"
 check "perf menjalankan lhci autorun" '[ $rc -eq 0 ] && [[ "$calls" == *"lhci autorun"* ]]'
 printf 'FROM mcr.microsoft.com/playwright:v1.65.0-noble AS pwbasis\n' > "$WS/apps/pendamping/Dockerfile"
 SHIM_DF_PCT=50 cid pw e2e "$WS" "$SHA"
 check "basis Playwright tanpa pin digest ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
 printf 'FROM %s AS pwbasis\n' "$PIN" > "$WS/apps/pendamping/Dockerfile"
+printf '{}\n' > "$WS/package.json"
+SHIM_DF_PCT=50 cid pw e2e "$WS" "$SHA"
+check "package.json tanpa packageManager pnpm ditolak sebelum docker run" '[ $rc -ne 0 ] && [ -z "$calls" ]'
+printf '{\n  "packageManager": "pnpm@10.20.0"\n}\n' > "$WS/package.json"
 
 echo "== alias / builder"
 cid alias "$SHA" rc1
