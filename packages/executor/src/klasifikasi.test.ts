@@ -352,11 +352,33 @@ describe('halamanAkhir', () => {
     return halamanAkhir(document);
   };
 
-  it('frasa pernyataan / tinjauan menandai halaman akhir', () => {
-    expect(akhir('<p>Dengan ini saya menyatakan bahwa data yang saya isi adalah benar.</p>')).toBe(true);
-    expect(akhir('<h2>Periksa kembali data Anda</h2>')).toBe(true);
-    expect(akhir('<h2>Ringkasan Permohonan</h2>')).toBe(true);
-    expect(akhir('<h3>Konfirmasi Pengajuan</h3>')).toBe(true);
+  it('frasa pernyataan / tinjauan menandai halaman akhir (halaman berformulir/bertombol)', () => {
+    const b = '<button type="button">Kirim</button>';
+    expect(akhir(`<p>Dengan ini saya menyatakan bahwa data yang saya isi adalah benar.</p>${b}`)).toBe(true);
+    expect(akhir(`<h2>Periksa kembali data Anda</h2>${b}`)).toBe(true);
+    expect(akhir('<h2>Ringkasan Permohonan</h2><form><input name="catatan"></form>')).toBe(true);
+    expect(akhir(`<h3>Konfirmasi Pengajuan</h3>${b}`)).toBe(true);
+    // Tanpa kolom/tombol sama sekali: tidak ada yang bisa dikirim, bukan halaman akhir.
+    expect(akhir('<h3>Konfirmasi Pengajuan</h3><p>Teks saja.</p>')).toBe(false);
+  });
+
+  it('probe 1971: "konfirmasi pendaftaran" di FAQ akordeon beranda bukan halaman akhir', () => {
+    // Meniru beranda SIPELANGI: hero + pencarian + FAQ akordeon (jawaban terlipat) + kaki.
+    const html = `<nav class="navbar"><a class="navbar-brand" href="/">Si Pelangi</a>
+      <button class="navbar-toggler" type="button">Toggle navigation</button></nav>
+      <section><h1>Sistem Informasi Pengajuan</h1><a class="btn btn-primary" href="/permohonan/buat">Buat Permohonan</a>
+      <form action="/cari"><input name="keyword"><button class="btn">Cari</button></form></section>
+      <section><h2>Temukan Jawaban untuk Pertanyaan Kamu</h2>
+      <div class="accordion" id="faq"><div class="accordion-item">
+        <div class="accordion-header collapsed" role="button">Bagaimana proses registrasi sebagai Agen?</div>
+        <div class="accordion-collapse collapse"><div class="accordion-body">Isi formulir lalu tunggu email
+          konfirmasi pendaftaran dari admin. Periksa kembali data Anda sebelum mengirim.</div></div></div></div></section>
+      <footer><p>Dengan ini kami menyatakan layanan gratis.</p></footer>`;
+    expect(akhir(html)).toBe(false);
+    // Kontrol: frasa yang sama di isi halaman (bukan FAQ) tetap mengunci.
+    expect(
+      akhir(html.replace('<h1>Sistem Informasi Pengajuan</h1>', '<h1>Konfirmasi Pendaftaran</h1>')),
+    ).toBe(true);
   });
 
   it('checkbox pernyataan yang terlihat menandai halaman akhir; tersembunyi tidak', () => {

@@ -264,8 +264,11 @@ function atribut(el: Element, nama: string): string {
   return el.getAttribute(nama) ?? '';
 }
 
-/** Teks yang tampak di elemen: abaikan isi field, skrip, gaya, dan turunan tersembunyi. */
-export function teksTampakDari(el: Element): string {
+/**
+ * Teks yang tampak di elemen: abaikan isi field, skrip, gaya, dan turunan tersembunyi. `lewati` (opsional)
+ * membuang subpohon turunan tertentu (mis. FAQ/navigasi saat mencari frasa halaman akhir).
+ */
+export function teksTampakDari(el: Element, lewati?: (e: Element) => boolean): string {
   let hasil = '';
   const jalan = (n: Node): void => {
     if (n.nodeType === 3) {
@@ -280,6 +283,7 @@ export function teksTampakDari(el: Element): string {
     if (tag === 'TEXTAREA') return;
     if (e !== el && (tag === 'SELECT' || tag === 'INPUT' || tag === 'OPTION')) return;
     if (e !== el && (e.hasAttribute('hidden') || atribut(e, 'aria-hidden') === 'true')) return;
+    if (e !== el && lewati?.(e)) return;
     if (tag === 'IMG') hasil += ' ' + atribut(e, 'alt') + ' ';
     for (const c of e.childNodes) jalan(c);
     if (tag === 'BR' || tag === 'P' || tag === 'DIV' || tag === 'LI') hasil += ' ';
@@ -411,17 +415,33 @@ function labelSederhana(el: Element): string {
 }
 
 /** Teks halaman yang tampak untuk heuristik (tanpa isi field). */
+/**
+ * Wilayah yang bukan isi formulir: navigasi, kaki, FAQ/akordeon (termasuk jawaban yang terlipat), menu. Frasa
+ * halaman akhir di sini ("konfirmasi pendaftaran" di FAQ beranda) tidak mengunci halaman.
+ */
+const SEL_BUKAN_ISI_FORM =
+  'nav, footer, .navbar, .dropdown-menu, .breadcrumb, .accordion, .faq, [class*="faq" i], [id*="faq" i], details, .collapse:not(.show), marquee';
+
 function teksHalaman(doc: Document): string {
-  return doc.body ? normalTeks(lipatNeg(teksTampakDari(doc.body))) : '';
+  return doc.body ? normalTeks(lipatNeg(teksTampakDari(doc.body, (e) => e.matches(SEL_BUKAN_ISI_FORM)))) : '';
+}
+
+/** Halaman punya formulir yang bisa dikirim: kolom isian atau tombol yang terlihat di luar navigasi/FAQ. */
+function adaFormulirTerlihat(doc: Document): boolean {
+  for (const el of doc.querySelectorAll(
+    'input:not([type="hidden"]), textarea, select, button, [role="button"], [role="checkbox"], [contenteditable="true"]',
+  ))
+    if (!el.closest(SEL_BUKAN_ISI_FORM) && terlihatEl(el)) return true;
+  return false;
 }
 
 /**
- * Halaman deklarasi/tinjauan akhir: frasa pernyataan/ringkasan, atau checkbox pernyataan yang terlihat.
- * Dihitung ulang setiap klik (kunci halaman akhir).
+ * Halaman deklarasi/tinjauan akhir: frasa pernyataan/ringkasan di luar navigasi/FAQ pada halaman yang punya
+ * kolom isian atau tombol, atau checkbox pernyataan yang terlihat. Dihitung ulang setiap klik (kunci halaman
+ * akhir).
  */
 export function halamanAkhir(doc: Document): boolean {
-  const teks = teksHalaman(doc);
-  if (RE_HALAMAN_AKHIR.some((re) => re.test(teks))) return true;
+  if (adaFormulirTerlihat(doc) && RE_HALAMAN_AKHIR.some((re) => re.test(teksHalaman(doc)))) return true;
   for (const el of doc.querySelectorAll('input[type="checkbox"], [role="checkbox"]')) {
     if (terlihatEl(el) && checkboxPernyataan(el, labelSederhana(el))) return true;
   }
