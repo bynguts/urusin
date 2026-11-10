@@ -8,7 +8,9 @@ import { load as muatJejak } from '../../routes/jejak/[id]/+page.server';
 import { load as muatPeristiwa } from '../../routes/peristiwa/[slug]/+page.server';
 import { load as muatUrusan } from '../../routes/urusan/[id]/+page.server';
 import Chip from '../components/ui/Chip.svelte';
+import LayarPendamping from '../components/pendamping/LayarPendamping.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
+import { dataAwal, type DataPendamping } from '../pendamping/sesi.svelte.js';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
 
 let rt: Runtime;
@@ -141,5 +143,38 @@ describe('render server komponen', () => {
     expect(body).toContain('Langkah 4 dari 5');
     expect(body).toContain('Periksa dan kirim');
     expect(body).toContain(`/urusan/${id}`);
+  });
+
+  it('giliran ketuk_tautan: judul "Buka formulir di situs" dan tombol Lanjutkan, bukan jalan buntu', () => {
+    const noop = () => {};
+    const layar = (alasan: 'ketuk_tautan' | 'final') => {
+      const data: DataPendamping = {
+        ...dataAwal(),
+        keadaan: 'giliran',
+        mode: 'takeover',
+        giliran: {
+          jenis: 'giliran_anda',
+          alasan,
+          pesan: 'Ketuk tautan yang disorot untuk membuka formulir, lalu tekan Lanjutkan.',
+        },
+      };
+      return render(LayarPendamping, {
+        props: {
+          data,
+          situs: 'https://contoh-layanan.go.id',
+          onambilalih: noop,
+          onkembalikan: noop,
+          onhentikan: noop,
+          onmulailagi: noop,
+          onpanduan: noop,
+        },
+      }).body;
+    };
+    const body = layar('ketuk_tautan');
+    expect(body).toContain('Buka formulir di situs');
+    expect(body).toContain('AI tidak mengetuk tautan ini; Anda yang membukanya.');
+    expect(body).toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
+    // Pembanding: giliran kirim akhir tetap tanpa Lanjutkan (tombol Kirim di situs milik warga).
+    expect(layar('final')).not.toContain('Buka formulir di situs');
   });
 });
