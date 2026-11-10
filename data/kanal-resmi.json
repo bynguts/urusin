@@ -5,11 +5,10 @@
       "id": "skck",
       "layanan": "SKCK (Surat Keterangan Catatan Kepolisian)",
       "instansi": "Kepolisian Negara Republik Indonesia (Polri)",
-      "url": "https://skck.polri.go.id/",
-      "deskripsi": "Pengajuan SKCK dilakukan lewat layanan resmi Polri. Tautan diverifikasi dari portal resmi Polri (situs tujuan tidak terjangkau dari lingkungan verifikasi kami).",
-      "cek": "skck.polri.go.id",
-      "verifikasiVia": "https://www.polri.go.id/",
-      "verifiedAt": null
+      "url": "https://humas.polri.go.id/news/detail/2157823-kini-urus-skck-bisa-di-polres-mana-saja-cukup-daftar-lewat-aplikasi-super-app-polri-presisi",
+      "deskripsi": "Sesuai Peraturan Polri Nomor 1 Tahun 2026 tentang Penerbitan SKCK (ditetapkan 19 Mei 2026; teks di sisdivkum.polri.go.id), SKCK dimohonkan secara elektronik lewat fitur SKCK di aplikasi layanan digital Polri, yaitu aplikasi Super App Polri Presisi di ponsel (menurut Divisi Humas Polri). Penerbitan manual di loket SKCK kantor polisi setempat hanya bila aplikasi dinyatakan tidak berfungsi lewat pemberitahuan resmi Kepala Bidang Pelayanan Masyarakat Baintelkam Polri. Tautan: berita resmi Divisi Humas Polri tentang pendaftaran SKCK lewat aplikasi itu.",
+      "cek": "super app polri presisi",
+      "verifiedAt": "2026-11-10T13:33:42.721Z"
     },
     {
       "id": "sim",
