@@ -623,6 +623,11 @@ export class HarnessStore {
       .immediate();
   }
 
+  /** Buang semua potongan urusan ini (wilayah KTP berganti: potongan wilayah lama tidak boleh dikutip lagi). */
+  clearChunks(urusanId: string): void {
+    this.db.prepare('DELETE FROM retrieved_chunks WHERE urusan_id = ?').run(urusanId);
+  }
+
   getChunks(urusanId: string): ChunkRecord[] {
     const rows = this.db
       .prepare(

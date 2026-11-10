@@ -22,7 +22,11 @@
   } = $props();
 
   const asal = $derived(
-    usulan.sumber === 'data_diri' ? 'Data Diri akun Anda' : 'pilihan wilayah di perangkat ini',
+    usulan.sumber === 'data_diri'
+      ? 'Data Diri akun Anda'
+      : usulan.sumber === 'warga'
+        ? 'percakapan ini'
+        : 'pilihan wilayah di perangkat ini',
   );
 </script>
 

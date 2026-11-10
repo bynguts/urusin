@@ -3,13 +3,16 @@ import type { EventOf, EventPayload, UrusinEvent } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
 import { setujuiRencana } from './rencana.js';
+import { buildStateNote, buildSystemPrompt } from './prompt.js';
 import { jejakView } from './trace.js';
 import { makeEnv } from './testing.js';
 import {
   buatUrusanTerwilayah,
+  refWilayah,
   tetapkanWilayah,
   usulkanRencanaOtomatis,
   usulkanWilayah,
+  wilayahBelumSiap,
   wilayahUrusan,
 } from './wilayah.js';
 
@@ -389,5 +392,191 @@ describe('temuan review: penetapan wilayah tidak menimpa diam-diam', () => {
     await runTurn(env.deps, { urusanId: u.id, userText: 'ya' });
     expect(hasilTool(provider)).toMatch(/Belum dikonfirmasi warga/);
     expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).ktp).toBeNull();
+  });
+});
+
+describe('temuan eval persona: persyaratan dan wilayah setelah rencana', () => {
+  const jawab = (refId: string, kutipanPersis: string, teks: string) =>
+    fakeCompletion({
+      content: JSON.stringify({ klaim: [{ teks, kutipan: [{ refId, kutipanPersis }] }], handoff: null }),
+    });
+
+  it('W1: kartu rencana membawa daftar dokumen nasional dan keterangannya', async () => {
+    const { env, u } = setup([balas('Rencana sudah saya siapkan.')], {
+      jenis: 'kelahiran',
+      kodeKabKota: '3302',
+    });
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    const ajukan = of(out.events, 'plan_card')[0]!.langkah[0]!;
+    expect(ajukan.dokumen).toContain('Kartu Keluarga');
+    expect(ajukan.dokumen).toContain('KTP-el orang tua');
+    expect(ajukan.keterangan).toMatch(/Perpres 96\/2018/);
+  });
+
+  it('W1: "dokumen apa saja?" setelah wilayah ditetapkan dijawab dari registry, bukan hand-off', async () => {
+    const { env, u } = setup(
+      [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'dokumen apa saja yang dibawa?' }),
+        jawab('rencana-kelahiran-ajukan', 'KTP-el orang tua', 'Siapkan KTP-el orang tua.'),
+      ],
+      { jenis: 'kelahiran', kodeKabKota: '3302' },
+    );
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'dokumen apa saja yang dibawa?' });
+    expect(of(out.events, 'handoff')).toHaveLength(0);
+    const kutipan = of(out.events, 'grounded_answer')[0]!.klaim[0]!.kutipan[0]!;
+    expect(kutipan.url).toBe('https://peraturan.go.id/id/perpres-no-96-tahun-2018');
+  });
+});
+
+describe('temuan eval persona W2: ganti wilayah membuang sumber wilayah lama', () => {
+  it('potongan Wonogiri yang diambil sebelum ganti ke Sukoharjo tidak bisa dikutip lagi', async () => {
+    const { env, u } = setup(
+      [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'syarat akta kelahiran?' }),
+        fakeCompletion({
+          content: JSON.stringify({
+            klaim: [
+              {
+                teks: 'Standar Wonogiri mencantumkan fotokopi surat keterangan kelahiran.',
+                kutipan: [{ refId: 'wng-1', kutipanPersis: 'fotokopi surat keterangan kelahiran' }],
+              },
+            ],
+            handoff: null,
+          }),
+        }),
+      ],
+      { jenis: 'kelahiran', kodeKabKota: '3312' },
+    );
+    env.store.saveChunks(u.id, [
+      {
+        refId: 'wng-1',
+        text: 'Persyaratan akta kelahiran Disdukcapil Wonogiri: fotokopi surat keterangan kelahiran.',
+        url: 'https://disdukcapil.wonogirikab.go.id/',
+        judul: 'Disdukcapil Wonogiri',
+        instansi: 'Disdukcapil Kabupaten Wonogiri',
+        verifiedAt: null,
+      },
+    ]);
+    const cur = env.store.getUrusanOrThrow(u.id);
+    tetapkanWilayah(env.store, cur, { ktp: '3311' }, publisher(env, u.id));
+    expect(env.store.getChunks(u.id)).toHaveLength(0);
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
+    expect(of(out.events, 'grounded_answer')).toHaveLength(0);
+    expect(JSON.stringify(out.events)).not.toMatch(/wonogiri/i);
+  });
+});
+
+describe('temuan eval persona W6: hand-off tidak diulang identik', () => {
+  it('pertanyaan tanpa sumber berulang: kanal lain, lalu langkah lain tanpa hand-off yang sama', async () => {
+    const jawab = tool('urusan__jawab_persyaratan', { pertanyaan: 'nomor antrean berapa?' });
+    const { env, u, provider } = setup([jawab, jawab, jawab, balas('Coba datang langsung ke kantor.')], {
+      jenis: 'skck',
+      kodeKabKota: '3312',
+    });
+    const kanal = async () => {
+      const out = await runTurn(env.deps, { urusanId: u.id, userText: 'nomor antrean berapa?' });
+      return of(out.events, 'handoff').map((h) => h.kanal.map((k) => k.url));
+    };
+    const [pertama] = await kanal();
+    const [kedua] = await kanal();
+    expect(pertama!.length).toBeGreaterThan(0);
+    expect(kedua!.length).toBeGreaterThan(0);
+    // Kanal kedua tidak mengulang satu pun kanal pertama.
+    const norm = (x?: string) => (x ?? '').toLowerCase().replace(/\/+$/, '');
+    expect(kedua!.some((k) => pertama!.map(norm).includes(norm(k)))).toBe(false);
+    // Semua kanal sudah diberikan: tidak ada hand-off lagi, model diminta memberi langkah lain.
+    expect(await kanal()).toHaveLength(0);
+    expect(hasilTool(provider)).toMatch(/JANGAN ulangi/);
+  });
+});
+
+describe('temuan eval persona W5: yurisdiksi kematian dan cek status tanpa KTP', () => {
+  it('kematian: domisili almarhum cukup sebagai wilayah, tanpa menanyakan KTP', async () => {
+    const { env, u } = setup(
+      [tool('wilayah__tetapkan', { domisili: 'Kabupaten Sleman' }), balas('Baik, saya catat Sleman.')],
+      { jenis: 'kematian' },
+    );
+    const out = await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'Ibu saya meninggal, beliau tinggal di Godean Sleman. KTP-nya saya tidak tahu.',
+    });
+    expect(env.store.getUrusanOrThrow(u.id).kodeKabKota).toBe('3404');
+    const kartu = of(out.events, 'plan_card')[0]!;
+    expect(kartu.wilayah?.ktp.nama).toBe('Kabupaten Sleman');
+    expect(kartu.catatan).toMatch(/tempat tinggal almarhum \(UU 24\/2013\)/);
+  });
+
+  it('kematian tanpa wilayah: catatan state meminta domisili almarhum, bukan KTP pelapor', () => {
+    const belum = wilayahBelumSiap('kematian', { ktp: null, domisili: null, tujuan: null, usulan: null });
+    expect(belum).toMatch(/domisili almarhum/);
+    expect(buildSystemPrompt()).toMatch(
+      /Kematian: yang berwenang Disdukcapil tempat tinggal \(domisili\) almarhum/,
+    );
+  });
+
+  it('cek status/informasi baca-saja dikecualikan dari aturan wilayah dulu', () => {
+    expect(buildSystemPrompt()).toMatch(
+      /Cek status pengajuan atau informasi umum .* TIDAK perlu wilayah KTP/,
+    );
+  });
+});
+
+describe('temuan eval persona W10 dan W11: aturan prompt wilayah', () => {
+  const catatan = (kode: string) =>
+    buildStateNote({
+      state: 'RENCANA_DIUSULKAN',
+      jenis: 'kelahiran',
+      kodeKabKota: kode,
+      wilayah: { ktp: refWilayah(kode), domisili: null, tujuan: null, usulan: null },
+      tools: [],
+      confirmations: [],
+    });
+
+  it('W10: wilayah yang sudah disebut warga langsung ditetapkan, tanpa ditanya ulang', () => {
+    expect(buildSystemPrompt()).toMatch(
+      /sudah menyebut sendiri kab\/kota KTP\/KK-nya .* Langsung panggil wilayah__tetapkan/,
+    );
+  });
+
+  it('W11: wilayah tingkat dipandu menyatakan Browser Pendamping tidak tersedia', () => {
+    expect(catatan('3374')).toContain('Browser Pendamping tidak tersedia di wilayah ini');
+    expect(catatan('3374')).toMatch(/JANGAN menyuruh warga menekan "Setujui dan buka situs"/);
+    expect(catatan('3312')).toContain('Browser Pendamping tersedia di wilayah ini');
+    // Prompt statis tidak lagi menyuruh mengarahkan ke tombol itu tanpa syarat.
+    expect(buildSystemPrompt()).not.toMatch(/arahkan warga ke tombol itu/);
+  });
+});
+
+describe('temuan eval persona W4: kartu wilayah = wilayah yang ditanyakan agen', () => {
+  const usulanTerakhir = (env: Env, id: string) =>
+    env.store
+      .eventsOfType(id, 'wilayah', 20)
+      .map((e) => e.payload as { status: string; ktp: { kodeKabKota: string }; sumber: string })
+      .find((e) => e.status === 'usulan');
+
+  it('agen menanyakan kab/kota lain dari kartu: usulan baru untuk wilayah itu, kartu lama gugur', async () => {
+    const { env, u } = setup([balas('KTP Anda terdaftar di Kabupaten Wonogiri, betul?')], {
+      jenis: 'kelahiran',
+    });
+    usulkanWilayah(u.id, '3311', 'pilihan', publisher(env, u.id));
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya orang Wonogiri, mau urus akta' });
+    expect(of(out.events, 'wilayah').at(-1)).toMatchObject({
+      status: 'usulan',
+      ktp: { kodeKabKota: '3312' },
+      sumber: 'warga',
+    });
+    expect(usulanTerakhir(env, u.id)).toMatchObject({ ktp: { kodeKabKota: '3312' } });
+    // Wilayah belum ditetapkan: tetap perlu konfirmasi warga.
+    expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).ktp).toBeNull();
+  });
+
+  it('agen menanyakan wilayah yang sama dengan kartu: tidak ada usulan tambahan', async () => {
+    const { env, u } = setup([balas('KTP Anda terdaftar di Kabupaten Wonogiri, betul?')], {
+      jenis: 'kelahiran',
+    });
+    usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    expect(of(out.events, 'wilayah')).toHaveLength(0);
+    expect(usulanTerakhir(env, u.id)).toMatchObject({ sumber: 'data_diri' });
   });
 });

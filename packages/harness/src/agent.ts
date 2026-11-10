@@ -32,7 +32,13 @@ import { newNonce } from './spotlight.js';
 import type { HarnessStore, TurnStatus, UrusanRow } from './store.js';
 import { clip, type ToolContext, type ToolRegistry } from './tools.js';
 import { OTEL, type Tracer } from './trace.js';
-import { kodeUntukPii, tetapkanWilayah, usulkanRencanaOtomatis, wilayahUrusan } from './wilayah.js';
+import {
+  kodeUntukPii,
+  selaraskanUsulan,
+  tetapkanWilayah,
+  usulkanRencanaOtomatis,
+  wilayahUrusan,
+} from './wilayah.js';
 
 export type AgentConfig = {
   /** Batas waktu satu turn (rencana: 120 detik). */
@@ -334,6 +340,7 @@ class TurnRunner {
     try {
       await this.body();
       this.proposeRencana();
+      this.selaraskanKartuWilayah();
     } catch (err) {
       const reason = this.ctrl.signal.aborted ? (this.ctrl.signal.reason as unknown) : undefined;
       if (reason instanceof TurnAbort && reason.kind === 'timeout') {
@@ -396,6 +403,15 @@ class TurnRunner {
       this.deps.ragDb,
     );
     this.version = this.urusan.version;
+  }
+
+  /** Kartu usulan wilayah mengikuti kab/kota yang terakhir ditanyakan agen (lihat `selaraskanUsulan`). */
+  private selaraskanKartuWilayah(): void {
+    const teks = [...this.turnMessages]
+      .reverse()
+      .find((m) => m.role === 'assistant' && typeof m.content === 'string' && m.content);
+    if (teks?.role !== 'assistant' || typeof teks.content !== 'string') return;
+    selaraskanUsulan(this.store, this.urusan, teks.content, (e) => void this.emit(e));
   }
 
   private async body(): Promise<void> {

@@ -5,6 +5,7 @@ import {
   kanalWilayah,
   namaPendekWilayah,
   rencanaWilayah,
+  temukanWilayah,
   wilayahByKode,
   type CityEntry,
   type Langkah,
@@ -86,8 +87,13 @@ export function kodeUntukPii(store: HarnessStore, u: UrusanRow | undefined): str
   return u.kodeKabKota ?? wilayahUrusan(store, u).usulan?.ktp.kodeKabKota ?? null;
 }
 
-/** Alasan rencana belum boleh diusulkan; undefined = siap. Pindah butuh asal (KTP) DAN tujuan. */
+/**
+ * Alasan rencana belum boleh diusulkan; undefined = siap. Pindah butuh asal (KTP) DAN tujuan. Kematian: yang
+ * berwenang Disdukcapil domisili almarhum (UU 24/2013), jadi cukup domisili; KTP pelapor tidak ditanyakan.
+ */
 export function wilayahBelumSiap(jenis: string | null, w: WilayahUrusan): string | undefined {
+  if (!w.ktp && jenis === 'kematian')
+    return 'wilayah domisili almarhum belum ditetapkan: kematian dilaporkan ke Disdukcapil tempat tinggal almarhum (UU 24/2013); tanyakan kab/kota tempat tinggal almarhum (bukan KTP pelapor) lalu panggil wilayah__tetapkan dengan domisili';
   if (!w.ktp)
     return 'wilayah KTP warga belum ditetapkan: tanyakan kab/kota sesuai KTP lalu panggil wilayah__tetapkan';
   if (jenis === 'pindah' && !w.tujuan)
@@ -108,6 +114,38 @@ export function usulkanWilayah(
   return true;
 }
 
+/** Kab/kota KTP yang disebut dalam teks (tanpa tujuan "ke X"), tanpa duplikat. */
+export function kodeDisebut(teks: string): string[] {
+  const kode = temukanWilayah(teks)
+    .filter((s) => s.sebelum !== 'ke')
+    .map((s) => s.wilayah.kodeKabKota);
+  return [...new Set(kode)];
+}
+
+/**
+ * Satu kanal konfirmasi: bila balasan agen menyebut tepat satu kab/kota yang berbeda dari usulan yang sedang
+ * tampil sebagai kartu (wilayah KTP belum ditetapkan), terbitkan usulan kab/kota itu (sumber `warga`: dari
+ * percakapan). Kartu "Ya, betul" jadi selalu sama dengan wilayah yang terakhir ditanyakan agen; kartu lama tidak
+ * aktif lagi karena bukan usulan terakhir.
+ */
+export function selaraskanUsulan(
+  store: HarnessStore,
+  u: UrusanRow,
+  teksAgen: string,
+  publish: Publish,
+): void {
+  if (!teksAgen || wilayahUrusan(store, u).ktp) return;
+  const usulan = store
+    .eventsOfType(u.id, 'wilayah', 20)
+    .map((e) => e.payload as PayloadWilayah)
+    .find((e) => e.status === 'usulan');
+  if (!usulan) return;
+  const disebut = kodeDisebut(teksAgen);
+  if (disebut.length !== 1 || disebut[0] === usulan.ktp.kodeKabKota) return;
+  const ktp = refWilayah(disebut[0]!);
+  if (ktp) publish({ type: 'wilayah', status: 'usulan', ktp, sumber: 'warga' });
+}
+
 /** Masukan penetapan wilayah. domisili/tujuan: undefined = pertahankan nilai sekarang, null = hapus. */
 export type InputWilayah = {
   ktp: string;
@@ -119,7 +157,8 @@ export type InputWilayah = {
  * Tetapkan wilayah KTP (+ domisili/tujuan) urusan: CAS pada `kode_kabkota` dan event `wilayah` ditetapkan
  * (jejak audit) dalam satu transaksi. domisili/tujuan yang tidak disebut tetap seperti sekarang. Tanpa perubahan
  * apa pun: tidak ada event dan versi tidak naik. Bila rencana sudah diusulkan untuk wilayah lain, urusan kembali
- * ke MEMAHAMI agar rencana disusun ulang. Hanya sebelum rencana disetujui.
+ * ke MEMAHAMI agar rencana disusun ulang. KTP berganti: potongan korpus yang sudah diambil dibuang. Hanya sebelum
+ * rencana disetujui.
  */
 export function tetapkanWilayah(
   store: HarnessStore,
@@ -144,6 +183,9 @@ export function tetapkanWilayah(
   if (!berubah) return u;
   const tx = store.db.transaction(() => {
     let cur = store.setKodeKabKota(u.id, u.version, ktp.kodeKabKota);
+    // Potongan yang diambil sebelum wilayah ini (wilayah lama/tebakan) tidak boleh lagi lolos verifikasi kutipan;
+    // potongan nasional/provinsi diambil ulang lewat rag__cari_pengetahuan dengan wilayah baru.
+    if (sebelum.ktp?.kodeKabKota !== ktp.kodeKabKota) store.clearChunks(u.id);
     publish({
       type: 'wilayah',
       status: 'ditetapkan',
@@ -243,6 +285,8 @@ export function kartuRencana(
         jenis: l.jenis,
         ...(l.lokasi ? { lokasi: l.lokasi } : {}),
         bawa: l.bawa,
+        ...(l.dokumen.length > 0 ? { dokumen: l.dokumen } : {}),
+        ...(l.keterangan ? { keterangan: l.keterangan } : {}),
         sumber: sumber.filter((s, j) => sumber.findIndex((x) => x.url === s.url) === j),
       };
     }),

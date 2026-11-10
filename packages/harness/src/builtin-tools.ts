@@ -3,9 +3,12 @@ import { ADAPTERS } from '@urusin/adapters';
 import { llmText } from '@urusin/core';
 import { LAYANAN_KORPUS, cariPengetahuanTool } from '@urusin/rag';
 import {
+  KANAL_NASIONAL,
+  REF_PERPRES,
   SEED_ENTRIES,
   cariWilayah,
   kanalWilayah,
+  kontakDukcapil,
   menyebutWilayah,
   routeByKode,
   type HasilCariWilayah,
@@ -17,7 +20,15 @@ import { KALIMAT_TETAP, buildHandoff, generateGroundedAnswer, verifyGrounded } f
 import { spotlight } from './spotlight.js';
 import { paramsHash, type ChunkRecord } from './store.js';
 import { NON_TERMINAL_STATES, defineTool, type ToolContext, type ToolDef, type ToolResult } from './tools.js';
-import { AFIRMASI, TEKS_WILAYAH, kalimatKanal, kartuRencana, kodeKtp, wilayahUrusan } from './wilayah.js';
+import {
+  AFIRMASI,
+  TEKS_WILAYAH,
+  kalimatKanal,
+  kartuRencana,
+  kodeKtp,
+  rencanaPeristiwa,
+  wilayahUrusan,
+} from './wilayah.js';
 
 const kodeKabKota = z.string().regex(/^\d{4}$/);
 
@@ -174,25 +185,114 @@ export const urusanUsulkanRencana = defineTool({
 });
 
 /**
+ * Persyaratan dari registry untuk wilayah yang sudah dipastikan warga (dokumen + keterangan tiap langkah rencana),
+ * sebagai potongan yang sah dikutip. Jadi "dokumen apa saja?" setelah rencana terjawab bersumber walau korpus RAG
+ * tidak memuat pasal nasionalnya. Sumber: Perpres 96/2018 bila langkah merujuknya, selain itu sumber pertama langkah.
+ */
+export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkRecord[] {
+  const w = wilayahUrusan(ctx.store, ctx.urusan);
+  if (!ctx.urusan.jenis || !w.ktp) return [];
+  const r = rencanaPeristiwa(ctx.urusan.jenis, {
+    ktp: w.ktp.kodeKabKota,
+    domisili: w.domisili?.kodeKabKota ?? null,
+    tujuan: w.tujuan?.kodeKabKota ?? null,
+  });
+  if (!r) return [];
+  return r.langkah.flatMap((l) => {
+    const ref = l.sourceRef.find((s) => s.url === REF_PERPRES.url) ?? l.sourceRef[0];
+    if (!ref || l.dokumen.length === 0) return [];
+    return [
+      {
+        refId: `rencana-${r.slug}-${l.id}`,
+        text: `${l.judul}. Dokumen yang disiapkan: ${l.dokumen.join('; ')}. ${l.keterangan}`,
+        url: ref.url,
+        judul: ref.judul,
+        instansi: ref.instansi,
+        verifiedAt: l.verifiedAt,
+      },
+    ];
+  });
+}
+
+const urlSama = (u: string) => u.trim().toLowerCase().replace(/\/+$/, '');
+
+/**
+ * Hand-off tanpa pengulangan: warga yang sudah diarahkan ke kanal yang sama tidak diberi hand-off identik lagi.
+ * Kanal pengganti berurutan: kanal resmi wilayah (kanalWilayah: portal → situs Disdukcapil → nasional), situs
+ * Disdukcapil terverifikasi, lalu kanal nasional. Bila semuanya sudah diberikan, tidak ada hand-off baru: model
+ * diminta memberi langkah lain (isi kartu rencana atau datang ke kantor) tanpa mengulang kanal.
+ */
+function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>): ToolResult {
+  const kunci = (k: { url?: string | undefined; nama: string }) => urlSama(k.url ?? k.nama);
+  const sudah = new Set(
+    ctx.store
+      .eventsOfType(ctx.urusan.id, 'handoff', 20)
+      .flatMap((e) => (e.payload as PayloadOf<'handoff'>).kanal.map(kunci)),
+  );
+  const biasa: ToolResult = {
+    content: 'Tidak ada sumber resmi yang cukup; warga diarahkan ke kanal resmi.',
+    endTurn: true,
+    events: [{ type: 'handoff', ...h }],
+  };
+  if (h.kanal.some((k) => !sudah.has(kunci(k)))) return biasa;
+  const kode = kodeKtp(ctx.store, ctx.urusan) ?? ctx.urusan.kodeKabKota;
+  const calon: PayloadOf<'handoff'>['kanal'] = [];
+  if (kode) {
+    const k = kanalWilayah(kode);
+    calon.push({ nama: k.instansi, url: k.url });
+    const d = kontakDukcapil(kode);
+    if (d)
+      calon.push({
+        nama: `Disdukcapil ${routeByKode(kode).entry.nama}`,
+        url: d.website,
+        ...(d.alamat ? { kontak: d.alamat } : {}),
+      });
+  }
+  calon.push({ nama: KANAL_NASIONAL.instansi, url: KANAL_NASIONAL.url });
+  const lain = calon.filter(
+    (k, i) => !sudah.has(kunci(k)) && calon.findIndex((x) => kunci(x) === kunci(k)) === i,
+  );
+  const first = lain[0];
+  if (first) {
+    return {
+      ...biasa,
+      events: [
+        {
+          type: 'handoff',
+          alasan: `Kanal yang tadi belum menjawab ini. Coba tanyakan ke ${first.nama} (${first.url}).`,
+          sebab: h.sebab,
+          kanal: lain,
+        },
+      ],
+    };
+  }
+  const rencana = chunkRencana(ctx).map((c) => c.text);
+  return {
+    content: [
+      `Hand-off ke kanal resmi yang sama (${h.kanal.map((k) => k.url ?? k.nama).join(', ')}) SUDAH diberikan sebelumnya: JANGAN ulangi kanal itu dan jangan mengulang jawaban tadi.`,
+      rencana.length > 0
+        ? `Beri langkah berikutnya yang berbeda dari isi kartu rencana: ${rencana.join(' | ')}`
+        : 'Beri langkah berikutnya yang berbeda: tanyakan detail yang belum jelas, atau sarankan datang langsung ke kantor instansi itu dan bertanya ke petugas.',
+    ].join(' '),
+  };
+}
+
+/**
  * Jawaban persyaratan/prosedur: ditandai oleh tool ini (bukan regex). Tidak ada teks mentah yang di-stream;
  * hanya event progress, lalu objek tervalidasi (`grounded_answer`) atau `handoff`.
  */
 export const urusanJawabPersyaratan = defineTool({
   name: 'urusan__jawab_persyaratan',
   description:
-    'Susun jawaban bersumber atas pertanyaan persyaratan/prosedur dari potongan yang sudah dicari. Panggil setelah rag__cari_pengetahuan.',
+    'Susun jawaban bersumber atas pertanyaan persyaratan/prosedur dari potongan yang sudah dicari. Panggil setelah rag__cari_pengetahuan. Dokumen persyaratan rencana wilayah urusan (registry) selalu ikut sebagai sumber.',
   effect: 'answer',
   input: z.object({ pertanyaan: llmText().max(500) }),
   allowedStates: NON_TERMINAL_STATES,
   async execute(ctx, args): Promise<ToolResult> {
-    const chunks = ctx.store.getChunks(ctx.urusan.id);
+    const chunks = [...ctx.store.getChunks(ctx.urusan.id), ...chunkRencana(ctx)];
     const ctxHandoff = { kodeKabKota: ctx.urusan.kodeKabKota };
-    const handoffEvent = (sebab: PayloadOf<'handoff'>['sebab']): ToolResult => ({
-      content: 'Tidak ada sumber resmi yang cukup; warga diarahkan ke kanal resmi.',
-      endTurn: true,
-      events: [{ type: 'handoff', ...buildHandoff({ ...ctxHandoff, chunks }, sebab) }],
-    });
-    if (chunks.length === 0) return handoffEvent('tanpa_sumber');
+    if (chunks.length === 0)
+      return handoffTanpaUlang(ctx, buildHandoff({ ...ctxHandoff, chunks }, 'tanpa_sumber'));
 
     const gen = await generateGroundedAnswer({
       provider: ctx.deps.provider,
@@ -204,13 +304,7 @@ export const urusanJawabPersyaratan = defineTool({
     });
     const verified = verifyGrounded(gen.data, chunks, ctxHandoff, ctx.deps.now());
     const usage = { usage: gen.usage, structuredMode: gen.method };
-    if (verified.handoff) {
-      return {
-        ...handoffEvent(verified.handoff.sebab),
-        events: [{ type: 'handoff', ...verified.handoff }],
-        ...usage,
-      };
-    }
+    if (verified.handoff) return { ...handoffTanpaUlang(ctx, verified.handoff), ...usage };
     const data: PayloadOf<'grounded_answer'> = {
       klaim: verified.klaim,
       klaimDibuang: verified.klaimDibuang,
@@ -436,14 +530,21 @@ const daftarPilihan = (h: Extract<HasilCariWilayah, { status: 'ambigu' }>) =>
 export const wilayahTetapkan = defineTool({
   name: 'wilayah__tetapkan',
   description:
-    'Tetapkan kab/kota sesuai KTP warga (wajib sebelum rencana), plus domisili bila warga tinggal di kab/kota lain, dan tujuan untuk urusan pindah. Isi nama ("Kota Surabaya", "Kab. Bekasi") atau kode 4 digit. Panggil hanya setelah warga menyebut atau membenarkan wilayahnya; jangan pernah meminta NIK.',
+    'Tetapkan kab/kota sesuai KTP warga (wajib sebelum rencana), plus domisili bila warga tinggal di kab/kota lain, dan tujuan untuk urusan pindah. Kematian: cukup domisili almarhum (yurisdiksi pelaporan kematian), KTP boleh kosong. Isi nama ("Kota Surabaya", "Kab. Bekasi") atau kode 4 digit. Panggil hanya setelah warga menyebut atau membenarkan wilayahnya; jangan pernah meminta NIK.',
   effect: 'plan',
   input: z.object({
-    ktp: llmText().max(80).describe('Kab/kota sesuai alamat KTP warga (untuk pindah: kab/kota asal).'),
+    ktp: llmText()
+      .max(80)
+      .optional()
+      .describe(
+        'Kab/kota sesuai alamat KTP warga (untuk pindah: kab/kota asal). Boleh kosong hanya untuk kematian.',
+      ),
     domisili: llmText()
       .max(80)
       .optional()
-      .describe('Opsional. Kab/kota tempat tinggal sekarang, hanya bila berbeda dari KTP.'),
+      .describe(
+        'Opsional. Kab/kota tempat tinggal sekarang bila berbeda dari KTP. Kematian: kab/kota tempat tinggal almarhum.',
+      ),
     tujuan: llmText().max(80).optional().describe('Hanya urusan pindah: kab/kota tujuan.'),
   }),
   allowedStates: ['MEMAHAMI', 'RENCANA_DIUSULKAN'],
@@ -475,7 +576,15 @@ export const wilayahTetapkan = defineTool({
         };
       pasti[kunci] = h.wilayah;
     }
-    const ktp = pasti.ktp!;
+    // Kematian dilaporkan ke Disdukcapil domisili almarhum (UU 24/2013): domisili menjadi wilayah yurisdiksi.
+    const kematian = ctx.urusan.jenis === 'kematian' && pasti.domisili;
+    const ktp = kematian ? pasti.domisili! : pasti.ktp;
+    if (!ktp)
+      return {
+        content: sekarang.ktp
+          ? `${TEKS_WILAYAH.ditetapkan} ${sekarang.ktp.nama} (tidak berubah).`
+          : 'Kab/kota KTP belum disebut. Tanyakan "KTP Anda terdaftar di kabupaten/kota mana?" lalu panggil lagi dengan ktp.',
+      };
     const { entry } = routeByKode(ktp.kodeKabKota);
     const pendamping = entry.adapterId
       ? `Browser Pendamping punya adapter di ${entry.portal?.nama ?? entry.nama}.`
@@ -483,7 +592,8 @@ export const wilayahTetapkan = defineTool({
     return {
       content: [
         `${TEKS_WILAYAH.ditetapkan} ${ktp.nama}. ${kalimatKanal(ktp.kodeKabKota)} ${pendamping}`,
-        pasti.domisili && pasti.domisili.kodeKabKota !== ktp.kodeKabKota
+        kematian ? `Kematian dilaporkan ke Disdukcapil domisili almarhum (UU 24/2013): ${ktp.nama}.` : '',
+        !kematian && pasti.domisili && pasti.domisili.kodeKabKota !== ktp.kodeKabKota
           ? `Domisili ${pasti.domisili.nama}: urusan kependudukan tetap di Disdukcapil ${ktp.nama}; langkah online bisa dari mana saja, tatap muka di kantor wilayah KTP.`
           : '',
         pasti.tujuan ? `Tujuan pindah: ${kalimatKanal(pasti.tujuan.kodeKabKota)}` : '',
@@ -493,7 +603,7 @@ export const wilayahTetapkan = defineTool({
       // Hanya yang disebut di panggilan ini; domisili/tujuan yang tidak disebut tetap seperti sekarang.
       wilayah: {
         ktp: ktp.kodeKabKota,
-        ...(pasti.domisili ? { domisili: pasti.domisili.kodeKabKota } : {}),
+        ...(pasti.domisili && !kematian ? { domisili: pasti.domisili.kodeKabKota } : {}),
         ...(pasti.tujuan ? { tujuan: pasti.tujuan.kodeKabKota } : {}),
       },
     };
