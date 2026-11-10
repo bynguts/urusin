@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   catatanBlokir,
   createGerbangTulis,
+  jalurPihakKetigaBoleh,
   JENDELA_ISI_MS,
   putuskan,
   urlTantangan,
@@ -94,11 +95,21 @@ describe('putuskan (tabel lengkap)', () => {
       'lanjut',
     ],
     [
-      'tunggu POST tantangan Cloudflare di host portal',
+      'tunggu POST tantangan Cloudflare di host portal (cf-ray)',
+      tunggu,
+      {
+        ...req('POST', true, 'https://portal.contoh.go.id/cdn-cgi/challenge-platform/h/g/flow/ov1'),
+        hostCloudflare: true,
+      },
+      T,
+      'lanjut',
+    ],
+    [
+      'tunggu POST /cdn-cgi/challenge-platform/ di host tanpa cf-ray (review L3)',
       tunggu,
       req('POST', true, 'https://portal.contoh.go.id/cdn-cgi/challenge-platform/h/g/flow/ov1'),
       T,
-      'lanjut',
+      'blokir',
     ],
     [
       'tunggu POST reCAPTCHA',
@@ -127,11 +138,21 @@ describe('putuskan (tabel lengkap)', () => {
       'lanjut',
     ],
     [
-      'diam POST platform tantangan di host portal',
+      'diam POST platform tantangan di host portal (cf-ray)',
+      diam,
+      {
+        ...req('POST', false, 'https://portal.contoh.go.id/cdn-cgi/challenge-platform/h/g/jsd/r/1'),
+        hostCloudflare: true,
+      },
+      T,
+      'lanjut',
+    ],
+    [
+      'diam POST platform tantangan di host tanpa cf-ray',
       diam,
       req('POST', false, 'https://portal.contoh.go.id/cdn-cgi/challenge-platform/h/g/jsd/r/1'),
       T,
-      'lanjut',
+      'blokir',
     ],
     [
       'isi POST reCAPTCHA reload lewat batas',
@@ -232,12 +253,21 @@ describe('putuskan (tabel lengkap)', () => {
     }
   });
 
+  it('jalurPihakKetigaBoleh: www.google.com hanya /recaptcha/ (review L3)', () => {
+    expect(jalurPihakKetigaBoleh('https://www.google.com/recaptcha/api2/anchor?k=x')).toBe(true);
+    expect(jalurPihakKetigaBoleh('https://www.google.com/search?q=x')).toBe(false);
+    expect(jalurPihakKetigaBoleh('https://WWW.GOOGLE.COM/maps')).toBe(false);
+    expect(jalurPihakKetigaBoleh('https://www.gstatic.com/recaptcha/x.js')).toBe(true);
+    expect(jalurPihakKetigaBoleh(U)).toBe(true);
+  });
+
   it('urlTantangan: host tantangan pihak ketiga dan platform Cloudflare saja', () => {
     expect(urlTantangan('https://challenges.cloudflare.com/turnstile/v0/api.js')).toBe(true);
     expect(urlTantangan('https://newassets.hcaptcha.com/captcha/v1/x')).toBe(true);
     expect(urlTantangan('https://www.recaptcha.net/recaptcha/api2/reload')).toBe(true);
     expect(urlTantangan('https://www.google.com/recaptcha/api2/userverify')).toBe(true);
-    expect(urlTantangan('https://portal.contoh.go.id/cdn-cgi/challenge-platform/h/b/flow')).toBe(true);
+    expect(urlTantangan('https://portal.contoh.go.id/cdn-cgi/challenge-platform/h/b/flow', true)).toBe(true);
+    expect(urlTantangan('https://portal.contoh.go.id/cdn-cgi/challenge-platform/h/b/flow')).toBe(false);
     expect(urlTantangan('https://www.google.com/search')).toBe(false);
     expect(urlTantangan('https://cloudflare.com.evil.example/cdn-cgi/x')).toBe(false);
     expect(urlTantangan('https://challenges.cloudflare.com.evil.example/x')).toBe(false);

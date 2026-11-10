@@ -661,6 +661,12 @@ export class SessionManager {
 
   // ---- Navigator generik (web broker, HMAC) ---------------------------------
 
+  /** `executionId` dari Navigator (bila dikirim) harus eksekusi yang sedang dipegang sesi (review L4). */
+  private cekEksekusi(s: Sesi, executionId: string | undefined): void {
+    if (executionId !== undefined && executionId !== s.executionId)
+      throw new PendampingError('PESAN_TIDAK_SAH', 409, 'eksekusi bukan milik sesi ini');
+  }
+
   private requireGenerik(owner: { urusanId: string; sidHash: string }): Sesi & { run: ActiveRun } {
     const s = this.requireOwned(owner);
     if (!s.generik)
@@ -677,8 +683,13 @@ export class SessionManager {
   }
 
   /** Pengamatan halaman saat ini (sudah diredaksi worker). Boleh saat warga memegang kendali (baca saja). */
-  async amati(owner: { urusanId: string; sidHash: string }, pantau = false): Promise<AmatiSesiResponse> {
+  async amati(
+    owner: { urusanId: string; sidHash: string },
+    pantau = false,
+    executionId?: string,
+  ): Promise<AmatiSesiResponse> {
     const s = this.requireGenerik(owner);
+    this.cekEksekusi(s, executionId);
     const pengamatan = await s.run.generik!.amati(pantau);
     if (!pengamatan)
       throw new PendampingError('LAYANAN_TIDAK_TERSEDIA', 503, 'halaman sedang berpindah; amati lagi');
@@ -693,6 +704,7 @@ export class SessionManager {
    */
   async aksi(owner: { urusanId: string; sidHash: string }, req: AksiSesiInternal): Promise<AksiSesiResponse> {
     const s = this.requireGenerik(owner);
+    this.cekEksekusi(s, req.executionId);
     // Baris lembar dari web hanya untuk placeholder yang benar-benar dipakai rencana ini.
     if (req.kolom) {
       const dipakai = placeholderRencana(req.aksi);

@@ -201,8 +201,9 @@ const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function polaNilai(v: string): RegExp | undefined {
   const t = v.trim();
   if (t.length < NILAI_SAMAR_MIN) return undefined;
-  if (/^\d{6,}$/.test(t)) return new RegExp(t.split('').map(escRe).join('[\\s.\\-/]*'), 'g');
-  return new RegExp(t.split(/\s+/).map(escRe).join('\\s+'), 'gi');
+  // Pemisah apa pun yang bukan huruf/angka, sampai 4 karakter (" ** ", "_", "|", NBSP), review L2.
+  if (/^\d{6,}$/.test(t)) return new RegExp(t.split('').map(escRe).join('[^\\p{L}\\p{Nd}]{0,4}'), 'gu');
+  return new RegExp(t.split(/\s+/).map(escRe).join('[^\\p{L}\\p{Nd}]{1,4}'), 'giu');
 }
 
 /** Ganti setiap nilai vault di `s` dengan token placeholder-nya (nilai terpanjang dulu). */

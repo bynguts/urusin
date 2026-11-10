@@ -415,6 +415,8 @@ export const AmatiSesiInternalSchema = PemilikSesiInternalSchema.extend({
    * peta ref worker tidak diganti (ref dari pengamatan pantau = REF_BASI bila dipakai aksi).
    */
   pantau: z.boolean().optional(),
+  /** (Aditif) Bila ada: harus eksekusi yang sedang dipegang sesi (selain itu 409), seperti `selesai`. */
+  executionId: z.string().min(1).optional(),
 });
 export type AmatiSesiInternal = z.infer<typeof AmatiSesiInternalSchema>;
 export const AmatiSesiResponseSchema = z.object({
@@ -438,6 +440,8 @@ export const AksiSesiInternalSchema = PemilikSesiInternalSchema.extend({
    * label pengamatan.
    */
   kolom: z.array(KolomButuhSchema).max(150).optional(),
+  /** (Aditif) Bila ada: harus eksekusi yang sedang dipegang sesi (selain itu 409); loop lama tidak beraksi. */
+  executionId: z.string().min(1).optional(),
 });
 export type AksiSesiInternal = z.infer<typeof AksiSesiInternalSchema>;
 export const AksiSesiResponseSchema = z.object({

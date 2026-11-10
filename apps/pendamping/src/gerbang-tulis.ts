@@ -46,6 +46,11 @@ export type PermintaanGerbang = {
   url: string;
   /** URL awal rantai redirect (bila permintaan ini hasil redirect). */
   asal?: string | undefined;
+  /**
+   * Host permintaan pernah membalas dengan header `cf-ray` (Cloudflare nyata): syarat jalur
+   * `/cdn-cgi/challenge-platform/` di host portal dianggap tantangan (review L3).
+   */
+  hostCloudflare?: boolean | undefined;
 };
 
 export type Putusan = 'lanjut' | 'blokir';
@@ -60,17 +65,24 @@ const RE_HOST_TANTANGAN = /(^|\.)(challenges\.cloudflare\.com|hcaptcha\.com|reca
 
 /**
  * Permintaan ke tantangan pihak ketiga (Turnstile, hCaptcha, reCAPTCHA) atau platform tantangan Cloudflare di
- * host portal sendiri. Hanya dipakai saat warga memegang kendali; allowlist egress tetap berlaku lebih dulu.
+ * host portal sendiri (hanya host yang terbukti di belakang Cloudflare, `hostCloudflare`). Allowlist egress tetap
+ * berlaku lebih dulu.
  */
-export function urlTantangan(url: string): boolean {
+export function urlTantangan(url: string, hostCloudflare = false): boolean {
   const u = URL.parse(url);
   if (!u) return false;
   const host = u.hostname.toLowerCase();
   return (
     RE_HOST_TANTANGAN.test(host) ||
     (host === 'www.google.com' && u.pathname.startsWith('/recaptcha/')) ||
-    u.pathname.startsWith('/cdn-cgi/challenge-platform/')
+    (hostCloudflare && u.pathname.startsWith('/cdn-cgi/challenge-platform/'))
   );
+}
+
+/** www.google.com ada di allowlist sesi hanya untuk reCAPTCHA: jalur lain ditolak (review L3). */
+export function jalurPihakKetigaBoleh(url: string): boolean {
+  const u = URL.parse(url);
+  return !u || u.hostname.toLowerCase() !== 'www.google.com' || u.pathname.startsWith('/recaptcha/');
 }
 
 /** Metode yang tidak mengubah keadaan server (preflight CORS ikut di sini). */
@@ -97,11 +109,12 @@ export function putuskan(j: Jendela, r: PermintaanGerbang, sekarang: number = Da
   if (j.jenis === 'warga') return 'lanjut';
   // Telemetri/verifikasi tantangan (Turnstile flow, reCAPTCHA reload) bukan tulis ke portal: lolos di semua
   // jendela AI agar widget tidak gagal karena balapan dengan klik AI (probe #14). Navigasi dokumen tidak.
-  if (!r.dokumen && urlTantangan(r.url)) return 'lanjut';
+  const tantangan = urlTantangan(r.url, r.hostCloudflare === true);
+  if (!r.dokumen && tantangan) return 'lanjut';
   const aman = AMAN.has(r.metode.toUpperCase());
   switch (j.jenis) {
     case 'ai_diam':
-      if (j.tungguWarga) return aman || urlTantangan(r.url) ? 'lanjut' : 'blokir';
+      if (j.tungguWarga) return aman || tantangan ? 'lanjut' : 'blokir';
       if (!aman) return 'blokir';
       // Redirect JS/meta halaman sendiri (probe 3674 ?p=close_form): GET bingkai utama boleh bila jalur/kuerinya
       // tidak berbunyi tulis (aturan jalur yang sama dengan tautan yang boleh diklik AI). Host tetap dibatasi

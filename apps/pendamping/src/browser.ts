@@ -25,6 +25,7 @@ import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import {
   createGerbangTulis,
+  jalurPihakKetigaBoleh,
   JENDELA_WARGA_MS,
   type GerbangTulis,
   type PermintaanGerbang,
@@ -375,9 +376,17 @@ export async function launchIsolated(
     });
     // Lapis kedua (selain proxy): permintaan ke host:port di luar allowlist dibatalkan di peramban.
     // Gerbang tulis (generik) di rute yang SAMA, setelah allowlist: permintaan yang dibatalkan tidak pernah terkirim.
+    // Host yang terbukti di belakang Cloudflare (header cf-ray): hanya di sana /cdn-cgi/challenge-platform/
+    // dianggap tantangan oleh gerbang tulis (review L3; proteksi di registry belum lengkap).
+    const hostCf = new Set<string>();
+    context.on('response', (resp) => {
+      if (hostCf.size >= 64 || !resp.headers()['cf-ray']) return;
+      const h = URL.parse(resp.url())?.host;
+      if (h) hostCf.add(h);
+    });
     await context.route('**/*', (route) => {
       const req = route.request();
-      const ok = urlDiAllowlist(allowedHosts, req.url());
+      const ok = urlDiAllowlist(allowedHosts, req.url()) && jalurPihakKetigaBoleh(req.url());
       if (!ok) {
         const host = URL.parse(req.url())?.hostname;
         const dokumen = gerbang ? permintaanGerbang(req).utama : false;
@@ -388,7 +397,14 @@ export async function launchIsolated(
       }
       // `aborted` (net::ERR_ABORTED): navigasi dokumen yang dibatalkan tidak meng-commit halaman galat, jadi
       // warga tetap melihat formulir yang sama (dengan isiannya) untuk ditekan sendiri.
-      if (gerbang && gerbang.periksa(permintaanGerbang(req)) === 'blokir') return route.abort('aborted');
+      if (
+        gerbang &&
+        gerbang.periksa({
+          ...permintaanGerbang(req),
+          hostCloudflare: hostCf.has(URL.parse(req.url())?.host ?? ''),
+        }) === 'blokir'
+      )
+        return route.abort('aborted');
       return route.continue();
     });
     // Gerbang tulis tidak melihat frame WebSocket (proxy hanya memeriksa host): sesi generik menolak setiap

@@ -582,6 +582,24 @@ describe('selesai (H3): halaman sukses -> siaga berhasil + bukti di jejak', () =
     });
   });
 
+  it('L4: amati/aksi dengan executionId lain = 409; tanpa executionId atau sama = jalan', async () => {
+    const h = harness();
+    const { s } = await sesiBerjalan(h);
+    await expect(h.manager.amati(owner('u1'), false, 'x_lain')).rejects.toMatchObject({ status: 409 });
+    await expect(
+      h.manager.aksi(owner('u1'), {
+        ...owner('u1'),
+        rencanaHash: H1,
+        aksi: [{ jenis: 'serahkan', alasan: 'tidak_yakin' }],
+        executionId: 'x_lain',
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(h.runs[0]!.aksiMasuk).toEqual([]);
+    await expect(h.manager.amati(owner('u1'), false, s.executionId)).resolves.toMatchObject({
+      executionId: s.executionId,
+    });
+  });
+
   it('sesi adapter = 409', async () => {
     const h = harness();
     await h.manager.create({

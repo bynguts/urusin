@@ -857,6 +857,19 @@ describe('redaksi', () => {
     }
   });
 
+  it('L2: pemisah bukan huruf/angka sampai 4 karakter tetap disamarkan', () => {
+    const angka = acak(16, '0123456789');
+    const g = angka.match(/.{4}/g)!;
+    for (const pemisah of [' ** ', '_', '\u00a0', '|', ' - ', '.', ''])
+      expect(redaksi(`NIK ${g.join(pemisah)} ok`, [[PH_NIK, angka]]), JSON.stringify(pemisah)).toBe(
+        `NIK ${PH_NIK} ok`,
+      );
+    for (const nama of ['Budi_Santoso', 'budi - santoso', 'BUDI\u00a0SANTOSO', 'Budi.Santoso'])
+      expect(redaksi(`Nama: ${nama}.`, [[PH_NAMA, 'Budi Santoso']]), nama).toBe(`Nama: ${PH_NAMA}.`);
+    // Pemisah lebih dari 4 karakter atau huruf: bukan nilai yang sama.
+    expect(redaksi(`${g[0]}-----${g.slice(1).join('')}`, [[PH_NIK, angka]])).not.toContain(PH_NIK);
+  });
+
   it('nilai pendek tidak disamarkan; nilai terpanjang dulu', () => {
     expect(redaksi('L dan P', [['{{A.B}}', 'L']])).toBe('L dan P');
     expect(

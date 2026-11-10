@@ -271,7 +271,7 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         const body = parseJson(raw, AmatiSesiInternalSchema);
         if (!body)
           return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
-        return json(res, 200, await manager.amati(body, body.pantau === true));
+        return json(res, 200, await manager.amati(body, body.pantau === true, body.executionId));
       }
       if (path === '/internal/sesi/aksi') {
         const body = parseJson(raw, AksiSesiInternalSchema);
