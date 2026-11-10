@@ -107,6 +107,66 @@ describe('gen-caddyfile', () => {
       assert.throws(() => render('primary', hosts.primary, { importPath: bad }), bad);
   });
 
+  it('--worker: rute HANYA /pendamping/w/<id>/ws/* ke IP Tailscale, di situs app/verify', () => {
+    const text = render('primary', hosts.primary, {
+      pendamping: true,
+      workers: ['laptop-a=100.100.223.10:4330', 'laptop-b=100.64.0.7:4331'],
+    });
+    const code = text.replace(/^\s*#.*$/gm, '');
+    assert.ok(
+      text.includes(
+        [
+          '\thandle /pendamping/w/laptop-a/ws/* {',
+          '\t\turi strip_prefix /pendamping/w/laptop-a',
+          '\t\treverse_proxy 100.100.223.10:4330',
+          '\t}',
+        ].join('\n'),
+      ),
+    );
+    assert.deepEqual(code.match(/^[ \t]*handle .*$/gm), [
+      '\thandle /pendamping/ws/* {',
+      '\thandle /pendamping/w/laptop-a/ws/* {',
+      '\thandle /pendamping/w/laptop-b/ws/* {',
+    ]);
+    // Bukan handle_path seluruh /pendamping/w/<id>/*: /internal, /health, /debug edge worker tidak publik.
+    assert.doesNotMatch(code, /handle_path|\/internal|\/debug|[^i]\/health/);
+    assert.ok(code.indexOf('reverse_proxy 100.64.0.7:4331') < code.indexOf('import urusin_common'));
+    assert.deepEqual(siteLines(text), [`${hosts.primary.app}, ${hosts.primary.verify}`]);
+    // Tanpa --worker keluaran tetap sama persis (snippet terpasang tidak berubah).
+    assert.equal(
+      render('primary', hosts.primary, { pendamping: true, workers: [] }),
+      render('primary', hosts.primary, { pendamping: true }),
+    );
+  });
+
+  it('--worker ditolak: bukan IP Tailscale, id/port tidak sah, ganda, atau tanpa --pendamping', () => {
+    const r =
+      (workers, pendamping = true) =>
+      () =>
+        render('primary', hosts.primary, { pendamping, workers });
+    for (const bad of [
+      'laptop-a=192.168.1.5:4330',
+      'laptop-a=10.0.0.1:4330',
+      'laptop-a=100.63.255.255:4330',
+      'laptop-a=100.128.0.1:4330',
+      'laptop-a=127.0.0.1:4330',
+      'laptop-a=0.0.0.0:4330',
+      'laptop-a=100.300.0.1:4330',
+      'laptop-a=laptop.tailnet.ts.net:4330',
+      'laptop-a=100.100.223.10',
+      'laptop-a=100.100.223.10:0',
+      'laptop-a=100.100.223.10:70000',
+      'Laptop=100.100.223.10:4330',
+      '-a=100.100.223.10:4330',
+      'a/b=100.100.223.10:4330',
+      'a=100.100.223.10:4330\n}',
+      undefined,
+    ])
+      assert.throws(r([bad]), String(bad));
+    assert.throws(r(['a=100.64.0.1:4330', 'a=100.64.0.2:4330']), /ganda/);
+    assert.throws(r(['a=100.64.0.1:4330'], false), /--pendamping/);
+  });
+
   it('--check --set ... --file: 0 bila cocok, 1 bila menyimpang (flag beda/berkas hilang), 2 tanpa --file', () => {
     const dir = mkdtempSync(join(tmpdir(), 'caddy-'));
     const file = join(dir, 'Caddyfile.urusin');
@@ -128,5 +188,11 @@ describe('gen-caddyfile', () => {
     assert.equal(jalan('--check', ...args, '--file', join(dir, 'tidak-ada')), 1);
     assert.equal(jalan('--check', ...args), 2);
     assert.equal(jalan('--check'), 0, 'cek snippet ter-commit tetap');
+    // --worker ikut flag: snippet dengan worker hanya cocok bila flag --worker yang sama diberikan.
+    const w = ['--worker', 'laptop-a=100.100.223.10:4330'];
+    assert.equal(jalan(...args, ...w, '--out', file), 0);
+    assert.equal(jalan('--check', ...args, ...w, '--file', file), 0);
+    assert.equal(jalan('--check', ...args, '--file', file), 1);
+    assert.equal(jalan(...args, '--worker', 'laptop-a=192.168.1.5:4330', '--out', file), 1);
   });
 });
