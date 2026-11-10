@@ -60,6 +60,8 @@ function workerPalsu(host: string, opsi: { belumSiap?: number; sukses?: boolean 
   let belumSiap = opsi.belumSiap ?? 0;
   const panggilan: { path: string; body: Record<string, unknown> }[] = [];
   let mode: 'ai' | 'takeover' | 'done' = 'ai';
+  /** `sukses`: warga sudah menekan Kirim sendiri sesudah serah final (halaman sukses baru muncul sesudahnya). */
+  let dikirimWarga = false;
   /** Buffer jejak worker (dikuras lewat /internal/sesi/jejak). */
   let jejak: unknown[] = [];
   const fetcher = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
@@ -92,7 +94,7 @@ function workerPalsu(host: string, opsi: { belumSiap?: number; sukses?: boolean 
           return json({ kode: 'LAYANAN_TIDAK_TERSEDIA', pesanWarga: 'peramban sesi belum siap' }, 409);
         return json({
           mode,
-          pengamatan: opsi.sukses
+          pengamatan: dikirimWarga
             ? {
                 ...pengamatan(host),
                 sidik: 'sukses',
@@ -108,13 +110,14 @@ function workerPalsu(host: string, opsi: { belumSiap?: number; sukses?: boolean 
           if (x.jenis === 'serahkan') {
             mode = 'takeover';
             jejak.push({ jenis: 'ambil_alih', fase: 'mulai', alasan: x.alasan });
+            if (opsi.sukses && x.alasan === 'final') dikirimWarga = true;
           }
         return json({ mode, hasil: a.aksi.map((_, indeks) => ({ indeks, kode: 'ok' })) });
       }
       case '/internal/sesi/selesai': {
         // Worker memeriksa ulang halaman lalu mencatat bukti ke jejaknya sendiri; sesi siaga, kendali ke warga.
         const s = SelesaiSesiInternalSchema.parse(body);
-        if (!opsi.sukses) return json({ kode: 'PESAN_TIDAK_SAH', pesanWarga: 'bukan halaman sukses' }, 409);
+        if (!dikirimWarga) return json({ kode: 'PESAN_TIDAK_SAH', pesanWarga: 'bukan halaman sukses' }, 409);
         if (s.bukti) jejak.push({ jenis: 'bukti', bukti: s.bukti });
         mode = 'takeover';
         return json({
@@ -131,6 +134,11 @@ function workerPalsu(host: string, opsi: { belumSiap?: number; sukses?: boolean 
       }
       case '/internal/sesi/tunggu':
         TungguSesiInternalSchema.parse(body);
+        // Warga menekan Kirim sendiri lalu menekan Lanjutkan: kendali kembali ke AI di halaman sukses.
+        if (dikirimWarga && mode === 'takeover') {
+          mode = 'ai';
+          return json({ mode, status: 'berjalan', habisWaktu: false });
+        }
         mode = 'done';
         return json({ mode, status: 'selesai', habisWaktu: false });
       case '/internal/sesi/jejak': {
@@ -333,7 +341,7 @@ describe('broker Navigator web', () => {
     expect(w.panggilan.filter((p) => p.path === '/internal/sesi/amati').length).toBeGreaterThanOrEqual(3);
   });
 
-  it('halaman sukses: hasil berhasil dicatat ke urusan saat itu juga, resi masuk jejak', async () => {
+  it('halaman sukses sesudah serah final: hasil berhasil dicatat ke urusan saat itu juga, resi masuk jejak', async () => {
     const u = rt.store.createUrusan({ jenis: 'kelahiran', kodeKabKota: '3374' });
     const w = workerPalsu(HOST_REPLIKA, { sukses: true });
     const h = await jalankanNavigatorUrusan(
@@ -342,12 +350,15 @@ describe('broker Navigator web', () => {
       { cfg: CFG, fetcher: w.fetcher, llm: llmFinal() },
     );
     expect(h).toMatchObject({ akhir: 'selesai', bukti: { nomor: 'REG-2026-00555' } });
-    // Worker mengonfirmasi halaman lewat /internal/sesi/selesai (bukti ikut); tidak ada serahkan sesudahnya.
+    // Worker mengonfirmasi halaman lewat /internal/sesi/selesai (bukti ikut); satu-satunya aksi AI adalah serah
+    // final (warga sendiri yang menekan Kirim), tidak ada serahkan sesudah halaman sukses.
     expect(w.panggilan.find((p) => p.path === '/internal/sesi/selesai')?.body).toMatchObject({
       executionId: 'x_uji',
       bukti: { nomor: 'REG-2026-00555' },
     });
-    expect(w.panggilan.filter((p) => p.path === '/internal/sesi/aksi')).toEqual([]);
+    expect(w.panggilan.filter((p) => p.path === '/internal/sesi/aksi').map((p) => p.body.aksi)).toEqual([
+      [{ jenis: 'serahkan', alasan: 'final' }],
+    ]);
     const progress = rt.store
       .eventsOfType(u.id, 'progress', 10)
       .map((e) => (e.payload as { label: string }).label);
