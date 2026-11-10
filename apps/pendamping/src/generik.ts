@@ -156,8 +156,7 @@ const ALASAN_GILIRAN: Record<Extract<Aksi, { jenis: 'serahkan' }>['alasan'], Ala
   isi_sendiri: 'isi_sendiri',
   final: 'final',
   tidak_yakin: 'periksa',
-  // Warga mengetuk tautan lalu Lanjutkan: sama dengan lembar isi_sendiri (ada tombol Lanjutkan).
-  ketuk_tautan: 'isi_sendiri',
+  ketuk_tautan: 'ketuk_tautan',
 };
 
 // --- Redaksi ------------------------------------------------------------------------------------------
