@@ -359,6 +359,26 @@ describe('skrip runner untuk isolated world', () => {
     const real = readFileSync(fileURLToPath(import.meta.resolve('@urusin/executor/runner-ops')), 'utf8');
     expect(toInjectable(real)).toContain('return { runOp }');
   });
+
+  it('klasifikasi + amatan ikut digabung (Navigator generik); hanya impor relatif saudara yang dibuang', () => {
+    const src = runnerScript();
+    for (const fn of [
+      'function klasifikasi(',
+      'function halamanAkhir(',
+      'function bangunPengamatan(',
+      'function jalankanAksi(',
+    ])
+      expect(src).toContain(fn);
+    expect(src).not.toMatch(/sourceMappingURL/);
+    expect(toInjectable("import { a } from './amatan.js';\nexport function runOp() {}")).toContain(
+      'return { runOp }',
+    );
+    expect(() => toInjectable("import { a } from './lain.js';\nexport function runOp() {}")).toThrow(/impor/);
+    expect(() => toInjectable("import { a } from '../amatan.js';\nexport function runOp() {}")).toThrow(
+      /impor/,
+    );
+    expect(runnerExpression({ kind: 'amati', seq: 1 })).toContain('"kind":"amati"');
+  });
 });
 
 describe('peramban: utilitas', () => {
