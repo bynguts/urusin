@@ -9,6 +9,7 @@ import type {
 } from '@urusin/contracts';
 import { afterEach, describe, expect, it } from 'vitest';
 import { loadConfig, type Config } from './config.js';
+import type { IzinGenerik } from './generik.js';
 import { createServer } from './server.js';
 import { ADAPTER_GENERIK, SessionManager, sidHashOf, type ActiveRun, type RunInit } from './sessions.js';
 import { headerTanda } from './tanda.js';
@@ -232,6 +233,63 @@ describe('persetujuan generik terikat rencanaHash', () => {
     const kurang = await h.manager.isiData(owner('u1'), { [PH]: 'Budi' }, H1);
     expect(kurang.placeholder).toEqual(['{{PEMOHON.NIK}}']);
     expect(izin.disetujui(H1, 's-nik', '{{PEMOHON.NIK}}')).toBe(false);
+  });
+
+  const mintaNama = (izin: Pick<IzinGenerik, 'minta'>) =>
+    izin.minta({
+      rencanaHash: H1,
+      kolom: [{ placeholder: PH, labelPortal: 'Nama', sidik: 's-nama' }],
+      berkas: [],
+    });
+
+  it('isi dengan daftar kosong = tolak semua: berjalan lagi, tunggu kembali, tidak ada pasangan', async () => {
+    const h = harness();
+    const { izin } = await sesiBerjalan(h);
+    mintaNama(izin);
+    const p = h.manager.tunggu(owner('u1'), 5000);
+    expect(await h.manager.isiData(owner('u1'), {}, H1)).toEqual({ placeholder: [PH], berkas: [] });
+    expect(await p).toEqual({ mode: 'ai', status: 'berjalan', habisWaktu: false });
+    expect(izin.disetujui(H1, 's-nama', PH)).toBe(false);
+    expect(() => h.manager.butuhData(owner('u1'))).toThrow();
+    expect(h.manager.kurasJejak(owner('u1')).catatan).toEqual([
+      { jenis: 'persetujuan', rencanaHash: H1, n: 0 },
+    ]);
+  });
+
+  it('"Saya isi sendiri" (ambil alih dari lembar) lalu kembalikan: izin ditutup, tunggu kembali', async () => {
+    const h = harness();
+    const { s, izin } = await sesiBerjalan(h);
+    mintaNama(izin);
+    await h.manager.handleClient(s.sesiId, { type: 'ambil_alih' });
+    // Lembar ditutup: sesi berjalan, giliran warga; tidak lagi menunggu data.
+    expect(h.manager.status(owner('u1'))).toMatchObject({ status: 'berjalan', mode: 'takeover' });
+    expect(() => h.manager.butuhData(owner('u1'))).toThrow();
+    // "Tolak semua" yang datang belakangan untuk rencana itu = idempoten; rencana lain / isian = 409.
+    expect(await h.manager.isiData(owner('u1'), {}, H1)).toEqual({ placeholder: [], berkas: [] });
+    await expect(h.manager.isiData(owner('u1'), {}, H2)).rejects.toMatchObject({ status: 409 });
+    await expect(h.manager.isiData(owner('u1'), { [PH]: 'Budi' }, H1)).rejects.toMatchObject({
+      status: 409,
+    });
+    expect(izin.nilai(PH)).toBeUndefined();
+
+    const p = h.manager.tunggu(owner('u1'), 5000);
+    await h.manager.handleClient(s.sesiId, { type: 'kembalikan' });
+    expect(await p).toEqual({ mode: 'ai', status: 'berjalan', habisWaktu: false });
+    expect(izin.disetujui(H1, 's-nama', PH)).toBe(false);
+    expect(h.manager.kurasJejak(owner('u1')).catatan).toEqual([
+      { jenis: 'ambil_alih', fase: 'mulai' },
+      { jenis: 'persetujuan', rencanaHash: H1, n: 0 },
+      { jenis: 'ambil_alih', fase: 'selesai' },
+    ]);
+  });
+
+  it('kembalikan saat lembar masih terbuka (tanpa ambil alih) juga menutup izin', async () => {
+    const h = harness();
+    const { s, izin } = await sesiBerjalan(h);
+    mintaNama(izin);
+    const p = h.manager.tunggu(owner('u1'), 5000);
+    await h.manager.handleClient(s.sesiId, { type: 'kembalikan' });
+    expect(await p).toEqual({ mode: 'ai', status: 'berjalan', habisWaktu: false });
   });
 });
 

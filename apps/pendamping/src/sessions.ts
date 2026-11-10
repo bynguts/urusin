@@ -504,6 +504,17 @@ export class SessionManager {
     isian: Record<string, string>,
     rencanaHash?: string,
   ): Promise<{ placeholder: string[]; berkas: string[] }> {
+    const g = this.requireOwned(owner);
+    // Generik: "tolak semua" yang tiba setelah lembar ditutup (warga mengambil alih) = idempoten, bukan 409.
+    if (
+      g.generik &&
+      !g.izinMenunggu &&
+      Object.keys(isian).length === 0 &&
+      rencanaHash !== undefined &&
+      g.persetujuan?.rencanaHash === rencanaHash &&
+      g.persetujuan.pasangan.size === 0
+    )
+      return { placeholder: [], berkas: [] };
     const s = this.requireMenungguData(owner);
     if (s.generik) return this.isiGenerik(s, isian, rencanaHash);
     for (const [k, v] of Object.entries(isian)) if (s.butuh.placeholder.includes(k)) s.vault.set(k, v);
@@ -522,7 +533,8 @@ export class SessionManager {
   /**
    * Navigator generik: persetujuan warga untuk rencana yang menunggu. Hanya pasangan (sidik ref, placeholder)
    * dari baris lembar yang nilainya dikirim web (= ada di daftar write yang disetujui) yang boleh diisi worker,
-   * dan hanya untuk `rencanaHash` itu. Tidak ada rencana menunggu / rencana lain = 409.
+   * dan hanya untuk `rencanaHash` itu. `isian` kosong = warga menolak semua baris. Tidak ada rencana menunggu /
+   * rencana lain = 409.
    */
   private async isiGenerik(
     s: Sesi,
@@ -695,6 +707,23 @@ export class SessionManager {
     s.viewer?.send({ type: 'butuh_data', ...this.kurang(s), origin: s.program.origin, ...this.kolomIzin(s) });
   }
 
+  /**
+   * Warga menutup lembar izin tanpa menyetujui (mengambil alih / "Saya isi sendiri", atau mengembalikan kendali
+   * saat lembar masih terbuka): sama dengan menolak semua baris. Rencana itu terikat tanpa pasangan, sesi
+   * kembali `berjalan` (AI sudah mulai), dan long-poll `tunggu` dibangunkan.
+   */
+  private tolakIzin(s: Sesi): void {
+    const m = s.izinMenunggu;
+    if (!m) return;
+    s.persetujuan = { rencanaHash: m.rencanaHash, pasangan: new Set(), berkas: new Set() };
+    s.izinMenunggu = undefined;
+    s.butuh = { placeholder: [], berkas: [] };
+    s.aiDimulai = true;
+    s.status = 'berjalan';
+    this.catat(s, { jenis: 'persetujuan', rencanaHash: m.rencanaHash, n: 0 });
+    this.broadcastStatus(s);
+  }
+
   private izinGenerik(s: Sesi): IzinGenerik {
     return {
       disetujui: (h, sidik, ph) =>
@@ -786,6 +815,7 @@ export class SessionManager {
     // Sesi debug tidak punya AI: kendali selalu di tangan penguji.
     if (!s.run || TERMINAL.has(s.status) || s.manualUrl || s.status === 'siaga') return;
     this.catat(s, { jenis: 'ambil_alih', fase: aksi === 'ambil_alih' ? 'mulai' : 'selesai' });
+    this.tolakIzin(s);
     if (aksi === 'ambil_alih') {
       s.run.ambilAlih();
       this.setMode(s, 'takeover', 'Anda memegang kendali. AI berhenti sampai Anda mengembalikannya.');
