@@ -28,6 +28,7 @@
               <span class="min-w-0 flex-1">
                 <span class="block text-[0.9375rem] font-medium text-ink">{k.nama}</span>
                 <span class="block truncate text-sm text-muted">{domain(k.url)}</span>
+                {#if k.kontak}<span class="block text-sm text-body">{k.kontak}</span>{/if}
               </span>
               <Icon name="keluar" class="size-4 shrink-0" />
               <span class="sr-only">(buka di tab baru)</span>

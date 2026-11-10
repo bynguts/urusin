@@ -446,10 +446,7 @@ class TurnRunner {
   }
 
   private quotaStop(q: QuotaStatus): void {
-    const handoff = buildHandoff(
-      { kodeKabKota: this.urusan.kodeKabKota, chunks: this.store.getChunks(this.turn.urusanId) },
-      'kuota',
-    );
+    const handoff = buildHandoff({ kodeKabKota: this.urusan.kodeKabKota, jenis: this.urusan.jenis }, 'kuota');
     this.emit({ type: 'degraded', kapabilitas: ['llm'], mode: 'tanpa_ai' });
     this.emit({
       type: 'error',
