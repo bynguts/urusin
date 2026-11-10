@@ -848,7 +848,7 @@ async function wire(config: Config, init: RunInit, iso: Isolated): Promise<Activ
   }
   async function langkahTantangan(ada: boolean): Promise<void> {
     if (destroyed) return;
-    const hasil = pantau.amati(ada, navKe);
+    const hasil = pantau.amati(ada, navKe, page.url());
     if (hasil === 'tidak_ada') return;
     if (hasil === 'gagal') {
       clearInterval(tantanganPoll);

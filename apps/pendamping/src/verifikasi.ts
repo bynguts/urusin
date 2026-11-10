@@ -27,19 +27,37 @@ export function isInterstitialTitle(title: string): boolean {
 
 export type HasilPantau = 'tidak_ada' | 'mulai' | 'masih' | 'ulang' | 'lolos' | 'gagal';
 
+/** Tantangan yang muncul lagi di halaman yang sama dalam jendela ini setelah lolos = loop (ditolak situs). */
+export const JENDELA_ULANG_MS = 10_000;
+
+/** Halaman yang sama = origin + jalur sama (query/hash diabaikan: token tantangan sering ditempel di query). */
+function halaman(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return url;
+  }
+}
+
 /**
- * Mesin status tantangan. `amati(ada, navKe)` dipanggil setiap pemeriksaan; `navKe` = nomor dokumen utama
- * (naik pada setiap respons navigasi lintas-dokumen, bukan history API).
+ * Mesin status tantangan. `amati(ada, navKe, url, now)` dipanggil setiap pemeriksaan; `navKe` = nomor dokumen
+ * utama (naik pada setiap respons navigasi lintas-dokumen, bukan history API), `url` = URL halaman utama.
  * - tantangan muncul -> `mulai`; masih di dokumen yang sama -> `masih`;
  * - tantangan dimuat ulang (dokumen baru, masih tantangan) -> satu kegagalan (`ulang`);
- * - tantangan muncul lagi setelah sempat lolos -> satu kegagalan (loop);
+ * - tantangan muncul lagi setelah sempat lolos, di halaman yang SAMA dalam `JENDELA_ULANG_MS` -> satu
+ *   kegagalan (loop: situs menolak hasil verifikasi);
+ * - tantangan muncul lagi di halaman lain atau setelah jendela lewat -> tantangan baru (`mulai`, hitungan
+ *   kegagalan mulai dari nol): situs boleh menantang lagi di langkah berikutnya;
  * - kegagalan ke-`maksGagal` -> `gagal` (beralih ke dipandu); tantangan hilang -> `lolos`.
  */
 export function createPantauTantangan(maksGagal = 2) {
   let aktif = false;
   let nav = -1;
   let gagal = 0;
-  let pernahLolos = false;
+  /** Halaman tempat tantangan terakhir aktif. */
+  let halamanTantangan = '';
+  let lolosPada: number | undefined;
   let selesai = false;
   return {
     get aktif() {
@@ -48,18 +66,25 @@ export function createPantauTantangan(maksGagal = 2) {
     get gagal() {
       return gagal;
     },
-    amati(ada: boolean, navKe: number): HasilPantau {
+    amati(ada: boolean, navKe: number, url: string, now = Date.now()): HasilPantau {
       if (selesai) return 'gagal';
       if (!ada) {
         if (!aktif) return 'tidak_ada';
         aktif = false;
-        pernahLolos = true;
+        lolosPada = now;
         return 'lolos';
       }
       if (aktif && navKe === nav) return 'masih';
-      const ulang = aktif || pernahLolos;
+      const loop =
+        !aktif &&
+        lolosPada !== undefined &&
+        now - lolosPada <= JENDELA_ULANG_MS &&
+        halaman(url) === halamanTantangan;
+      const ulang = aktif || loop;
+      if (!aktif && !loop) gagal = 0;
       aktif = true;
       nav = navKe;
+      halamanTantangan = halaman(url);
       if (!ulang) return 'mulai';
       gagal++;
       if (gagal >= maksGagal) {

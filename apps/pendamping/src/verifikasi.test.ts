@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createPantauTantangan, isChallengeFrameUrl, isInterstitialTitle } from './verifikasi.js';
+import {
+  createPantauTantangan,
+  isChallengeFrameUrl,
+  isInterstitialTitle,
+  JENDELA_ULANG_MS,
+} from './verifikasi.js';
 import { detectBotWall, wallBisaDiverifikasi } from './waf.js';
 
 describe('verifikasi situs: deteksi', () => {
@@ -37,33 +42,61 @@ describe('verifikasi situs: deteksi', () => {
 });
 
 describe('verifikasi situs: mesin status', () => {
+  const A = 'https://oss.go.id/cari?__cf_chl_tk=1';
+  const B = 'https://oss.go.id/formulir';
+  const T0 = 1_000_000;
+
   it('muncul -> masih -> lolos; tanpa tantangan tidak ada apa-apa', () => {
     const p = createPantauTantangan();
-    expect(p.amati(false, 0)).toBe('tidak_ada');
-    expect(p.amati(true, 1)).toBe('mulai');
+    expect(p.amati(false, 0, A, T0)).toBe('tidak_ada');
+    expect(p.amati(true, 1, A, T0)).toBe('mulai');
     expect(p.aktif).toBe(true);
-    expect(p.amati(true, 1)).toBe('masih');
-    expect(p.amati(false, 2)).toBe('lolos');
+    expect(p.amati(true, 1, A, T0 + 500)).toBe('masih');
+    expect(p.amati(false, 2, A, T0 + 900)).toBe('lolos');
     expect(p.aktif).toBe(false);
     expect(p.gagal).toBe(0);
   });
 
   it('tantangan dimuat ulang dua kali (gagal/berulang) -> gagal, lalu tetap gagal', () => {
     const p = createPantauTantangan(2);
-    expect(p.amati(true, 1)).toBe('mulai');
-    expect(p.amati(true, 2)).toBe('ulang');
+    expect(p.amati(true, 1, A, T0)).toBe('mulai');
+    expect(p.amati(true, 2, A, T0 + 1_000)).toBe('ulang');
     expect(p.gagal).toBe(1);
-    expect(p.amati(true, 2)).toBe('masih');
-    expect(p.amati(true, 3)).toBe('gagal');
-    expect(p.amati(false, 4)).toBe('gagal');
+    expect(p.amati(true, 2, A, T0 + 2_000)).toBe('masih');
+    expect(p.amati(true, 3, A, T0 + 3_000)).toBe('gagal');
+    expect(p.amati(false, 4, A, T0 + 4_000)).toBe('gagal');
   });
 
-  it('tantangan muncul lagi setelah lolos (loop) dihitung kegagalan', () => {
+  it('mulai -> lolos -> muncul lagi CEPAT di halaman yang sama (loop) = kegagalan', () => {
     const p = createPantauTantangan(2);
-    p.amati(true, 1);
-    expect(p.amati(false, 2)).toBe('lolos');
-    expect(p.amati(true, 3)).toBe('ulang');
-    expect(p.amati(false, 4)).toBe('lolos');
-    expect(p.amati(true, 5)).toBe('gagal');
+    expect(p.amati(true, 1, A, T0)).toBe('mulai');
+    expect(p.amati(false, 2, A, T0 + 3_000)).toBe('lolos');
+    // Query beda (token tantangan) tetap halaman yang sama.
+    expect(p.amati(true, 3, 'https://oss.go.id/cari', T0 + 5_000)).toBe('ulang');
+    expect(p.gagal).toBe(1);
+    expect(p.amati(false, 4, A, T0 + 6_000)).toBe('lolos');
+    expect(p.amati(true, 5, A, T0 + 6_000 + JENDELA_ULANG_MS)).toBe('gagal');
+  });
+
+  it('mulai -> lolos -> muncul di halaman LAIN setelah jendela lewat = tantangan baru, bukan kegagalan', () => {
+    const p = createPantauTantangan(2);
+    expect(p.amati(true, 1, A, T0)).toBe('mulai');
+    expect(p.amati(false, 2, A, T0 + 3_000)).toBe('lolos');
+    expect(p.amati(true, 7, B, T0 + 3_000 + JENDELA_ULANG_MS + 1)).toBe('mulai');
+    expect(p.gagal).toBe(0);
+    expect(p.aktif).toBe(true);
+    // Tantangan baru itu punya jatah kegagalannya sendiri (dua kali tolak berturut-turut baru dipandu).
+    expect(p.amati(true, 8, B, T0 + 20_000)).toBe('ulang');
+    expect(p.amati(true, 9, B, T0 + 21_000)).toBe('gagal');
+  });
+
+  it('halaman lain dalam jendela, atau halaman sama setelah jendela lewat: juga tantangan baru', () => {
+    const p = createPantauTantangan(2);
+    p.amati(true, 1, A, T0);
+    p.amati(false, 2, A, T0 + 1_000);
+    expect(p.amati(true, 3, B, T0 + 2_000)).toBe('mulai');
+    p.amati(false, 4, B, T0 + 3_000);
+    expect(p.amati(true, 5, B, T0 + 3_000 + JENDELA_ULANG_MS + 1)).toBe('mulai');
+    expect(p.gagal).toBe(0);
   });
 });
