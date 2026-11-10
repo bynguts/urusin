@@ -2,6 +2,7 @@ import { FakeProvider, fakeCompletion } from '@urusin/llm';
 import type { EventOf, EventPayload, UrusinEvent } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
+import { chunkRencana } from './builtin-tools.js';
 import { setujuiRencana } from './rencana.js';
 import { buildStateNote, buildSystemPrompt } from './prompt.js';
 import { jejakView } from './trace.js';
@@ -578,5 +579,59 @@ describe('temuan eval persona W4: kartu wilayah = wilayah yang ditanyakan agen',
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
     expect(of(out.events, 'wilayah')).toHaveLength(0);
     expect(usulanTerakhir(env, u.id)).toMatchObject({ sumber: 'data_diri' });
+  });
+});
+
+describe('tindak lanjut eval persona 7173a47', () => {
+  it('potongan registry hanya berisi dokumen, tanpa klaim kanal/kantor atas nama Perpres', () => {
+    const env = makeEnv({ provider: new FakeProvider() });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3311', jenis: 'kelahiran' });
+    const [ajukan] = chunkRencana({ store: env.store, urusan: u });
+    expect(ajukan!.url).toBe('https://peraturan.go.id/id/perpres-no-96-tahun-2018');
+    expect(ajukan!.text).toContain('Kartu Keluarga');
+    expect(ajukan!.text).not.toMatch(/sukoharjo|disdukcapil|ajukan/i);
+  });
+
+  it('isi jawaban bersumber ikut dikembalikan ke model agar tidak disangkal', async () => {
+    const { env, u, provider } = setup(
+      [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'bawa apa saja?' }),
+        fakeCompletion({
+          content: JSON.stringify({
+            klaim: [
+              {
+                teks: 'Siapkan KTP-el orang tua.',
+                kutipan: [{ refId: 'rencana-kelahiran-ajukan', kutipanPersis: 'KTP-el orang tua' }],
+              },
+            ],
+            handoff: null,
+          }),
+        }),
+        balas('Bisa lewat situs resmi atau datang ke kantor.'),
+      ],
+      { jenis: 'kelahiran', kodeKabKota: '3302' },
+    );
+    await runTurn(env.deps, { urusanId: u.id, userText: 'bawa apa saja?' });
+    await runTurn(env.deps, { urusanId: u.id, userText: 'harus ke kantor atau lewat hp?' });
+    // Giliran berikutnya: riwayat yang dikirim ke model memuat isi jawaban tadi.
+    expect(hasilTool(provider)).toContain('Siapkan KTP-el orang tua.');
+  });
+
+  it('pindah dari Wonogiri: rencana dipandu, jadi catatan state menyatakan Pendamping tidak tersedia', () => {
+    const note = buildStateNote({
+      state: 'MEMAHAMI',
+      jenis: 'pindah',
+      kodeKabKota: '3312',
+      wilayah: { ktp: refWilayah('3312'), domisili: null, tujuan: refWilayah('3216'), usulan: null },
+      tools: [],
+      confirmations: [],
+    });
+    expect(note).toContain('Browser Pendamping tidak tersedia di wilayah ini');
+  });
+
+  it('baca-saja tanpa KTP tetap menanyakan nama ganda (Kota/Kabupaten Semarang)', () => {
+    expect(buildSystemPrompt()).toMatch(
+      /nama ganda \(mis\. Semarang: Kota atau Kabupaten\) tetap ditanyakan/,
+    );
   });
 });

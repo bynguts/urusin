@@ -2,7 +2,13 @@ import type { UrusanState } from '@urusin/contracts';
 import { routeByKode } from '@urusin/registry';
 import { spotlightPolicyText } from './spotlight.js';
 import type { ToolDef } from './tools.js';
-import { TEKS_WILAYAH, kalimatKanal, wilayahBelumSiap, type WilayahUrusan } from './wilayah.js';
+import {
+  TEKS_WILAYAH,
+  kalimatKanal,
+  rencanaPeristiwa,
+  wilayahBelumSiap,
+  type WilayahUrusan,
+} from './wilayah.js';
 
 /** Sistem prompt statis (prefix stabil agar prefix caching provider bisa bekerja). */
 export function buildSystemPrompt(): string {
@@ -27,7 +33,7 @@ export function buildSystemPrompt(): string {
     '- Wilayah KTP menentukan Disdukcapil yang berwenang. Tanyakan domisili hanya bila penting: urusan pindah, atau warga bilang tinggal di tempat lain. Jelaskan: langkah online bisa dari mana saja, langkah tatap muka di kantor wilayah KTP.',
     '- Pindah: asal = wilayah KTP sekarang, tujuan = kab/kota baru. Surat pindah diurus di asal, lapor datang di tujuan.',
     '- Kematian: yang berwenang Disdukcapil tempat tinggal (domisili) almarhum (UU 24/2013), bukan KTP pelapor. Tanyakan "Almarhum tinggal di kabupaten/kota mana?" lalu panggil wilayah__tetapkan dengan domisili itu.',
-    '- Cek status pengajuan atau informasi umum (baca saja, bukan rencana) TIDAK perlu wilayah KTP: langsung pakai tool baca (mis. dukcapil__cek_status dengan kab/kota portal tempat warga mengajukan). Jangan menanyakan KTP untuk itu.',
+    '- Cek status pengajuan atau informasi umum (baca saja, bukan rencana) TIDAK perlu wilayah KTP: langsung pakai tool baca (mis. dukcapil__cek_status dengan kab/kota portal tempat warga mengajukan). Jangan menanyakan KTP untuk itu, tetapi nama ganda (mis. Semarang: Kota atau Kabupaten) tetap ditanyakan dulu.',
     '- Sebut kanal resmi wilayah itu saja. Jangan memakai langkah atau tautan kab/kota lain.',
     '',
     spotlightPolicyText(),
@@ -44,6 +50,22 @@ const PANDUAN_STATE: Partial<Record<UrusanState, string>> = {
     'Browser Pendamping sedang berjalan. Warga memeriksa isian di layar lalu menekan Selesai sendiri.',
 };
 
+/**
+ * Tier yang berlaku: tier rencana Peristiwa Hidup bila jenisnya punya rencana (mis. pindah di Wonogiri tetap dipandu),
+ * selain itu tier kab/kota di registry.
+ */
+function tierWilayah(jenis: string | null, w: WilayahUrusan): 'semi' | 'dipandu' {
+  const ktp = w.ktp!.kodeKabKota;
+  const r = jenis
+    ? rencanaPeristiwa(jenis, {
+        ktp,
+        domisili: w.domisili?.kodeKabKota ?? null,
+        tujuan: w.tujuan?.kodeKabKota ?? null,
+      })
+    : undefined;
+  return r ? r.tier : routeByKode(ktp).entry.tier;
+}
+
 /** Baris wilayah di catatan state: yang sudah dipastikan, usulan yang belum, dan apa yang masih harus ditanyakan. */
 function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: string | null): string[] {
   if (!w) return [`Kode kab/kota: ${kode ?? 'belum diketahui'}.`];
@@ -51,7 +73,7 @@ function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: 
   if (w.ktp) {
     out.push(
       `${TEKS_WILAYAH.baris} ${w.ktp.nama} (${w.ktp.kodeKabKota}), ${TEKS_WILAYAH.sudah} ${kalimatKanal(w.ktp.kodeKabKota)}`,
-      routeByKode(w.ktp.kodeKabKota).entry.tier === 'semi'
+      tierWilayah(jenis, w) === 'semi'
         ? 'Browser Pendamping tersedia di wilayah ini untuk mengisi pengajuan.'
         : 'Browser Pendamping tidak tersedia di wilayah ini (tingkat dipandu): JANGAN menyuruh warga menekan "Setujui dan buka situs" dan jangan menjanjikan AI mengisi; pandu langkah demi langkah lewat kanal resmi. Cek status baca-saja hanya lewat dukcapil__cek_status.',
     );

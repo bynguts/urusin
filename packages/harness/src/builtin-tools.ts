@@ -188,6 +188,8 @@ export const urusanUsulkanRencana = defineTool({
  * Persyaratan dari registry untuk wilayah yang sudah dipastikan warga (dokumen + keterangan tiap langkah rencana),
  * sebagai potongan yang sah dikutip. Jadi "dokumen apa saja?" setelah rencana terjawab bersumber walau korpus RAG
  * tidak memuat pasal nasionalnya. Sumber: Perpres 96/2018 bila langkah merujuknya, selain itu sumber pertama langkah.
+ * Teksnya HANYA daftar dokumen (isi sumber itu); judul langkah dan cara mengajukan di kanal wilayah tidak ikut, agar
+ * tidak ada klaim kanal/kantor yang dikutip atas nama Perpres.
  */
 export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkRecord[] {
   const w = wilayahUrusan(ctx.store, ctx.urusan);
@@ -204,7 +206,7 @@ export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkR
     return [
       {
         refId: `rencana-${r.slug}-${l.id}`,
-        text: `${l.judul}. Dokumen yang disiapkan: ${l.dokumen.join('; ')}. ${l.keterangan}`,
+        text: `Dokumen persyaratan ${r.judul.toLowerCase()}: ${l.dokumen.join('; ')}.`,
         url: ref.url,
         judul: ref.judul,
         instansi: ref.instansi,
@@ -311,7 +313,8 @@ export const urusanJawabPersyaratan = defineTool({
       kalimatTetap: KALIMAT_TETAP,
     };
     return {
-      content: `Jawaban bersumber (${verified.klaim.length} klaim) sudah ditampilkan kepada warga.`,
+      // Isi klaim ikut dikembalikan ke model agar balasan berikutnya tidak menyangkal jawaban yang sudah tampil.
+      content: `Jawaban bersumber (${verified.klaim.length} klaim) sudah ditampilkan kepada warga: ${verified.klaim.map((k) => k.teks).join(' | ')}. Jangan menyangkal atau mengulanginya.`,
       endTurn: true,
       events: [{ type: 'grounded_answer', ...data }],
       ...usage,
