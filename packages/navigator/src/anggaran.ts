@@ -30,7 +30,9 @@ export type AlasanAmbilAlih =
   | 'isi_sendiri'
   | 'tidak_yakin'
   | 'host_luar'
-  | 'diblokir_situs';
+  | 'diblokir_situs'
+  /** Kuota AI runtime (per urusan / harian) habis: sama dengan kuota agen percakapan. */
+  | 'kuota';
 
 /** Pesan untuk warga per alasan: templat tetap, tanpa teks dari model atau halaman. */
 export const PESAN_AMBIL_ALIH: Readonly<Record<AlasanAmbilAlih, string>> = {
@@ -53,6 +55,8 @@ export const PESAN_AMBIL_ALIH: Readonly<Record<AlasanAmbilAlih, string>> = {
   host_luar:
     'Situs membuka alamat di luar daftar resmi wilayah Anda. AI berhenti; periksa alamatnya sebelum melanjutkan sendiri.',
   diblokir_situs: 'Situs menahan langkah otomatis. Silakan periksa layar dan lanjutkan sendiri.',
+  kuota:
+    'Batas bantuan AI untuk urusan ini sudah tercapai. Silakan lanjutkan sendiri dari layar ini; data yang sudah terisi tetap ada.',
 };
 
 export type SisaAnggaran = {

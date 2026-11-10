@@ -443,6 +443,19 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
     expect(provider.calls).toHaveLength(2);
   });
 
+  it('kuota runtime habis: serahkan templat sebelum memanggil model', async () => {
+    const worker = new WorkerPalsu([halamanForm()]);
+    const provider = new ProviderSkrip(() => RENCANA_FORM);
+    const { hasil } = jalankan(worker, provider, { kuotaHabis: () => true });
+    expect(await hasil).toMatchObject({
+      akhir: 'ambil_alih',
+      alasan: 'kuota',
+      pesan: PESAN_AMBIL_ALIH.kuota,
+    });
+    expect(provider.calls).toHaveLength(0);
+    expect(worker.semuaAksi).toEqual([{ jenis: 'serahkan', alasan: 'tidak_yakin' }]);
+  });
+
   it('tidak_bisa: beralih ke dipandu dengan pesan templat', async () => {
     const worker = new WorkerPalsu([halamanForm()]);
     const { hasil } = jalankan(

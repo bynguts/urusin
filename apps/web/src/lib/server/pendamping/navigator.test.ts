@@ -225,6 +225,56 @@ describe('broker Navigator web', () => {
     expect(llm.provider.calls).toHaveLength(0);
   });
 
+  it('biaya LLM Navigator masuk kuota runtime urusan yang sama (token + biaya harian)', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran', kodeKabKota: '3374' });
+    const w = workerPalsu(HOST_REPLIKA);
+    const provider = new FakeProvider({
+      replies: [
+        fakeCompletion({
+          content: JSON.stringify({ aksi: [{ jenis: 'serahkan', alasan: 'final' }] }),
+          usage: { prompt_tokens: 900, completion_tokens: 40, total_tokens: 940 },
+        }),
+      ],
+    });
+    const harian = rt.store.dailyCostIdr();
+    await jalankanNavigatorUrusan(
+      rt,
+      { urusan: u, executionId: 'x_uji', owner: { urusanId: u.id, sidHash: OWNER.sidHash }, modeUji: true },
+      { cfg: CFG, fetcher: w.fetcher, llm: { ...llmFinal(), provider } },
+    );
+    const row = rt.store.getUrusanOrThrow(u.id);
+    expect([row.tokensIn, row.tokensOut]).toEqual([900, 40]);
+    expect(rt.store.dailyCostIdr()).toBeCloseTo(
+      harian + rt.quota.costIdr({ prompt_tokens: 900, completion_tokens: 40 }),
+    );
+  });
+
+  it('kuota runtime habis: kendali ke warga dengan pesan templat, tanpa memanggil model', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran', kodeKabKota: '3374' });
+    // Urusan ini sudah menghabiskan batas token per urusan (mis. akun juri yang dipakai berulang).
+    rt.store.addUsage(u.id, {
+      tokensIn: rt.quota.config.sessionTokenCap,
+      tokensOut: 0,
+      costIdr: 0,
+      degraded: false,
+    });
+    const w = workerPalsu(HOST_REPLIKA);
+    const llm = llmFinal();
+    const h = await jalankanNavigatorUrusan(
+      rt,
+      { urusan: u, executionId: 'x_uji', owner: { urusanId: u.id, sidHash: OWNER.sidHash }, modeUji: true },
+      { cfg: CFG, fetcher: w.fetcher, llm },
+    );
+    expect(h).toMatchObject({ akhir: 'ambil_alih', alasan: 'kuota', pesan: PESAN_AMBIL_ALIH.kuota });
+    expect(llm.provider.calls).toHaveLength(0);
+    const aksi = w.panggilan.filter((p) => p.path === '/internal/sesi/aksi').map((p) => p.body.aksi);
+    expect(aksi).toEqual([[{ jenis: 'serahkan', alasan: 'tidak_yakin' }]]);
+    const progress = rt.store
+      .eventsOfType(u.id, 'progress', 5)
+      .map((e) => (e.payload as { label: string }).label);
+    expect(progress).toContain(PESAN_AMBIL_ALIH.kuota);
+  });
+
   it('katalog placeholder Navigator = field Data Diri yang bisa diselesaikan server', () => {
     for (const ph of Object.keys(KATALOG_PLACEHOLDER))
       expect([ph, fieldDataDiri(ph)]).not.toEqual([ph, undefined]);

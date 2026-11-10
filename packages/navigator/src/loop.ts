@@ -67,6 +67,11 @@ export type OpsiLoop = {
    * yang disetujui terisi kendali diserahkan (`isi_sendiri`) sebelum AI menekan Lanjut.
    */
   persetujuan?: (rencanaHash: string) => PersetujuanHalaman | undefined;
+  /**
+   * Kuota AI runtime yang sama dengan agen (per urusan, harian). true = habis: sebelum setiap panggilan LLM,
+   * kendali diserahkan ke warga dengan pesan templat `kuota`, tanpa memanggil model.
+   */
+  kuotaHabis?: () => boolean;
   anggaran?: Anggaran;
   jam?: () => number;
   /** Batas total menunggu warga (login, persetujuan, ambil alih) sebelum Navigator berhenti. */
@@ -468,6 +473,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         continue;
       }
 
+      if (o.kuotaHabis?.()) return await serahkanAkhir('kuota', p.seq);
       const minta = await mintaRencana(
         o.llm,
         {

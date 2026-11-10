@@ -8,6 +8,7 @@ import {
 } from '@urusin/contracts';
 import type { EgressFetch } from '@urusin/egress';
 import { hostsAiWilayah, type UrusanRow } from '@urusin/harness';
+import type { ChatProvider, Usage } from '@urusin/llm';
 import {
   jalankanNavigator,
   type HasilNavigator,
@@ -35,6 +36,8 @@ import type { Runtime } from '#lib/server/runtime.js';
  * - Baris lembar yang disetujui warga dicatat per `rencanaHash` saat izinkan-isi, agar baris yang ditolak
  *   tidak diminta ulang (warga mengisinya sendiri).
  * - Pesan untuk warga = templat dari @urusin/navigator, tidak pernah keluaran model.
+ * - Biaya LLM Navigator masuk kuota runtime yang SAMA dengan agen (token/biaya per urusan + biaya harian);
+ *   kuota habis = serahkan ke warga dengan pesan templat, tanpa memanggil model.
  */
 
 /** Galat kanal internal: status HTTP dari worker (404 = sesi tidak ada). */
@@ -105,6 +108,23 @@ export type DepsNavigator = {
   signal?: AbortSignal;
 };
 
+/** Provider yang mencatat setiap `usage` (termasuk jawaban yang gagal skema) ke meter kuota runtime. */
+function providerTerukur(inner: ChatProvider, catat: (u: Usage) => void): ChatProvider {
+  return {
+    get baseURL() {
+      return inner.baseURL;
+    },
+    create: async (params, opts) => {
+      const r = await inner.create(params, opts);
+      if (r.usage) catat(r.usage);
+      return r;
+    },
+    stream: (params, opts) => inner.stream(params, opts),
+    transcribe: (input) => inner.transcribe(input),
+    embed: (input) => inner.embed(input),
+  };
+}
+
 /** Jalankan satu eksekusi Navigator sampai selesai/serah/berhenti; jejak dan pesan templat diterbitkan ke urusan. */
 export async function jalankanNavigatorUrusan(
   rt: Runtime,
@@ -115,16 +135,28 @@ export async function jalankanNavigatorUrusan(
     void rt.publish(m.urusan.id, { type: 'jejak_pendamping', executionId: m.executionId, catatan });
   const b = berjalan.get(m.urusan.id);
   const fixture = hostsFixture();
+  const llm = deps.llm ?? { provider: rt.deps.provider, model: rt.deps.model, caps: rt.deps.caps };
+  const id = m.urusan.id;
+  const catatPemakaian = (u: Usage) =>
+    rt.store.addUsage(id, {
+      tokensIn: u.prompt_tokens,
+      tokensOut: u.completion_tokens,
+      costIdr: rt.quota.costIdr(u),
+      degraded: false,
+    });
   const hasil = await jalankanNavigator({
     executionId: m.executionId,
     tangan: deps.tangan ?? tanganWorker(deps.cfg, m.owner, deps.fetcher),
-    llm: deps.llm ?? { provider: rt.deps.provider, model: rt.deps.model, caps: rt.deps.caps },
+    llm: { ...llm, provider: providerTerukur(llm.provider, catatPemakaian) },
     tujuan: (m.urusan.jenis ? findBundel(m.urusan.jenis)?.judul : undefined) ?? 'Layanan kependudukan',
     hostsBoleh: m.modeUji ? fixture : new Set(hostsAiWilayah(m.urusan.kodeKabKota)),
     modeUji: m.modeUji ? { hostsFixture: fixture } : undefined,
     kodeKabKota: m.urusan.kodeKabKota,
     jejak,
     persetujuan: (h) => (b?.executionId === m.executionId ? b.persetujuan.get(h) : undefined),
+    // Navigator bukan giliran percakapan yang sedang diklaim: turnCount dipakai apa adanya.
+    kuotaHabis: () =>
+      rt.quota.check(rt.store.getUrusanOrThrow(id), { countThisTurn: false }).mode === 'habis',
     ...(deps.signal ? { signal: deps.signal } : {}),
   });
   rt.publish(m.urusan.id, { type: 'progress', label: hasil.pesan });
