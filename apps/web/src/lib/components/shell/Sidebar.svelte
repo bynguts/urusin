@@ -4,14 +4,13 @@
   import mark from '#lib/assets/img/app/urusin-mark-48.webp';
   import Icon from '../Icon.svelte';
   import { NAV, menuAktif } from './navigasi.js';
-  import { ambilLokal, ambilPrefs } from '#lib/stores/app.svelte.js';
+  import { ambilLokal } from '#lib/stores/app.svelte.js';
 
   /**
    * Menu samping App 01–14 (Rafi): 248 px, logo + Urusan baru + lima menu + Urusan aktif + kartu akun.
    * Tombol panel menciutkan menu jadi rel ikon; urusan yang sedang dibuka disorot di "Urusan aktif".
    */
   const lokal = ambilLokal();
-  const prefs = ambilPrefs();
   const aktif = $derived(lokal.data.urusan.slice(0, 5));
   /** Sesi juri (`jenis: 'demo'`) tidak punya email (docs/ui/auth.md). */
   const akun = $derived(page.data.akun as { email: string | null; nama?: string | null } | null | undefined);
@@ -42,15 +41,6 @@
         >{/if}
     </a>
     <div class="flex items-center gap-1 {ciut ? 'flex-col' : ''}">
-      <button
-        type="button"
-        onclick={() => prefs.atur('tema', prefs.nilai.tema === 'gelap' ? 'terang' : 'gelap')}
-        aria-label={prefs.nilai.tema === 'gelap' ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'}
-        title={prefs.nilai.tema === 'gelap' ? 'Tema terang' : 'Tema gelap'}
-        class="grid size-9 place-items-center rounded-xl text-ink transition-all duration-150 active:scale-90 hover:bg-surface/70"
-      >
-        <Icon name={prefs.nilai.tema === 'gelap' ? 'matahari' : 'bulan'} class="size-[18px]" />
-      </button>
       <button
         type="button"
         onclick={() => (ciut = !ciut)}

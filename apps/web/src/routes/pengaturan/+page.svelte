@@ -28,10 +28,6 @@
     { nilai: 1.25, label: 'Besar', aa: 'text-xl leading-5' },
     { nilai: 1.5, label: 'Sangat besar', aa: 'text-2xl leading-6' },
   ];
-  const TEMA: { nilai: Prefs['tema']; label: string }[] = [
-    { nilai: 'terang', label: 'Terang' },
-    { nilai: 'gelap', label: 'Gelap' },
-  ];
 
   let kodeWilayah = $state(lokal.data.wilayah.kodeKabKota);
   let wilayahTersimpan = $state(false);
@@ -239,30 +235,6 @@
           </li>
         {/if}
       </ul>
-
-      <fieldset class="flex flex-col gap-4 rounded-[18px] border border-line p-4 sm:p-[22px]">
-        <legend class="sr-only">Tema</legend>
-        <p aria-hidden="true" class="text-lg leading-[26px] font-semibold text-ink">Tema</p>
-        <div class="grid max-w-sm grid-cols-2 gap-1.5 rounded-2xl bg-bg-2 p-[5px]">
-          {#each TEMA as t (t.nilai)}
-            {@const pilih = (prefs.nilai.tema === 'gelap' ? 'gelap' : 'terang') === t.nilai}
-            <label
-              class="relative flex min-h-12 cursor-pointer items-center justify-center rounded-xl text-[15px] leading-[22px] transition-all duration-150 ease-out has-focus-visible:outline-2 has-focus-visible:outline-ink active:scale-[0.98] {pilih
-                ? 'bg-surface font-semibold text-ink shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
-                : 'text-card-ink hover:bg-surface/60'}"
-            >
-              <input
-                type="radio"
-                name="tema"
-                class="sr-only"
-                checked={pilih}
-                onchange={() => prefs.atur('tema', t.nilai)}
-              />
-              {t.label}
-            </label>
-          {/each}
-        </div>
-      </fieldset>
     </section>
 
     <section id="wilayah" aria-labelledby="h-wilayah" class="flex max-w-[50rem] scroll-mt-24 flex-col gap-4">

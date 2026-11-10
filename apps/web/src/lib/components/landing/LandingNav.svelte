@@ -2,7 +2,6 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import mark from '#lib/assets/img/pen-landing/urusin-mark-52.webp';
-  import Icon from '#lib/components/Icon.svelte';
 
   /**
    * Header situs publik dari frame pen Rafi (n2rpg / F6RSq): logo, tautan bagian landing, Privasi, Masuk, Mulai
@@ -47,21 +46,6 @@
     <!-- eslint-enable svelte/no-navigation-without-resolve -->
   </nav>
   <div class="lp10">
-    <button
-      type="button"
-      id="btn-tema-landing"
-      data-toggle-tema
-      class="lp-tombol-tema"
-      aria-label="Ganti tema"
-      title="Ganti tema"
-    >
-      <span class="lp-ikon-matahari" aria-hidden="true">
-        <Icon name="matahari" class="size-[18px]" />
-      </span>
-      <span class="lp-ikon-bulan" aria-hidden="true">
-        <Icon name="bulan" class="size-[18px]" />
-      </span>
-    </button>
     {#if page.data.akun}
       <a class="lp8" href={resolve('/beranda')}>
         <span class="lp9"> Beranda </span>

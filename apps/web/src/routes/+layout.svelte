@@ -20,11 +20,11 @@
   const akun = $derived(page.data.akun as { email: string } | null | undefined);
   let menuBuka = $state(false);
 
-  // Preferensi tampilan diterapkan di <html>: ukuran huruf, tema, kontras, gerak.
+  // Preferensi tampilan diterapkan di <html>: ukuran huruf, kontras, gerak. Aplikasi beroperasi dalam mode terang.
   $effect(() => {
     const html = document.documentElement;
     html.style.setProperty('--skala-huruf', String(prefs.nilai.ukuranHuruf));
-    html.dataset.theme = prefs.nilai.tema === 'gelap' ? 'dark' : 'light';
+    html.dataset.theme = 'light';
     html.dataset.kontras = lokal.data.kontrasTinggi ? 'tinggi' : 'normal';
     html.dataset.gerak = lokal.data.kurangiGerak ? 'kurang' : 'normal';
   });
@@ -61,15 +61,6 @@
           <span class="font-lora text-[22px] leading-6 font-medium tracking-[-0.6px] text-ink">Urusin</span>
         </a>
         <div class="flex items-center gap-2">
-          <button
-            type="button"
-            class="grid size-11 place-items-center rounded-full bg-bg-2 text-ink transition-colors hover:bg-card"
-            aria-label={prefs.nilai.tema === 'gelap' ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'}
-            title={prefs.nilai.tema === 'gelap' ? 'Tema terang' : 'Tema gelap'}
-            onclick={() => prefs.atur('tema', prefs.nilai.tema === 'gelap' ? 'terang' : 'gelap')}
-          >
-            <Icon name={prefs.nilai.tema === 'gelap' ? 'matahari' : 'bulan'} class="size-5" />
-          </button>
           <button
             type="button"
             class="grid size-11 place-items-center rounded-full bg-bg-2 text-ink transition-colors hover:bg-card"

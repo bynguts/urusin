@@ -155,7 +155,7 @@
       </h2>
       <label for="cari-bantuan" class="sr-only">Cari bantuan</label>
       <div
-        class="flex h-14 w-full items-center gap-2.5 rounded-full border border-line-2 bg-surface px-[18px] shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] focus-within:outline-2 focus-within:outline-ink"
+        class="flex h-14 w-full items-center gap-2.5 rounded-full border border-line-2 bg-surface px-[18px] shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] focus-within:ring-2 focus-within:ring-ink focus-within:outline-none"
       >
         <Icon name="cari" class="pointer-events-none size-[18px] shrink-0 text-ink" />
         <input
@@ -163,7 +163,7 @@
           type="search"
           bind:value={cari}
           placeholder="Cari bantuan, misalnya: cara mengunggah dokumen"
-          class="h-full min-w-0 flex-1 bg-transparent text-base leading-[25px] text-ink outline-none placeholder:text-muted sm:text-[17px]"
+          class="h-full min-w-0 flex-1 border-none bg-transparent text-base leading-[25px] text-ink shadow-none outline-none placeholder:text-muted focus:border-none focus:shadow-none focus:outline-none sm:text-[17px]"
         />
       </div>
     </div>
