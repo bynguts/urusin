@@ -12,7 +12,7 @@ import {
   jalurModeUji,
   portalWebWilayah,
 } from './generik.js';
-import { aturJaringanId, rutePendamping, setujuiRencana } from './rencana.js';
+import { aturJaringanId, mulaiPengajuan, rutePendamping, setujuiRencana, tierEksekusi } from './rencana.js';
 import { buatUrusanTerwilayah, rencanaPeristiwa } from './wilayah.js';
 import { HarnessStore } from './store.js';
 import { makeEnv } from './testing.js';
@@ -187,6 +187,35 @@ describe('routing rencana.ts: adapter -> (platform) -> generik -> dipandu', () =
     aturJaringanId(() => true);
     expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: SMG }).jalur).toBe('generik');
     expect(rencanaPeristiwa('kelahiran', { ktp: SMG })?.tier).toBe('semi');
+  });
+
+  it('N11: tier dibekukan per eksekusi; kesehatan worker ID yang berubah di tengah jalan tidak mengubahnya', () => {
+    const { store, u } = urusanDiusulkan(SMG, 'kelahiran');
+    const events: EventPayload[] = [];
+    const publish = (e: EventPayload) => {
+      store.appendEvent(u.id, e.type, e);
+      events.push(e);
+    };
+    // Sehat hanya pada pembacaan pertama: satu persetujuan = satu keputusan rute (tier dan tindakan sama).
+    let n = 0;
+    aturJaringanId(() => n++ === 0);
+    const r = setujuiRencana(store, u.id, publish);
+    expect(r.urusan.state).toBe('MENUNGGU_KONFIRMASI');
+    expect(r.executionId).not.toBeNull();
+    // Worker ID mati sesudah eksekusi ditawarkan: langkah eksekusi ini tetap bertier saat ditawarkan.
+    aturJaringanId(() => false);
+    mulaiPengajuan(store, u.id, publish);
+    const tier = events.flatMap((e) => (e.type === 'state' ? [[e.state, e.tier]] : []));
+    expect(tier).toEqual([
+      ['RENCANA_DISETUJUI', 'semi'],
+      ['MENYIAPKAN_BERKAS', 'semi'],
+      ['BERKAS_SIAP', 'semi'],
+      ['MENGISI', 'semi'],
+      ['MENUNGGU_KONFIRMASI', 'semi'],
+      ['MENGUNGGAH', 'semi'],
+      ['MENUNGGU_SUBMIT_WARGA', 'semi'],
+    ]);
+    expect(tierEksekusi(store, store.getUrusanOrThrow(u.id))).toBe('semi');
   });
 
   it('3. wilayah non-web (WhatsApp, aplikasi): dipandu dengan alasan jujur, tanpa permintaan eksekusi', () => {

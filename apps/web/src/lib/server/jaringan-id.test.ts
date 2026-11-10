@@ -1,5 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons/payload tanpa tipe */
-import { DemoProvider, aturJaringanId, tetapkanWilayah, usulkanRencanaOtomatis } from '@urusin/harness';
+import {
+  DemoProvider,
+  aturJaringanId,
+  mulaiPengajuan,
+  tetapkanWilayah,
+  usulkanRencanaOtomatis,
+} from '@urusin/harness';
+import { catatHasilEksekusi } from './eksekusi';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Kebijakan egress diuji di packages/egress; di sini egressFetch diteruskan ke fetch global yang di-stub.
@@ -198,6 +205,12 @@ describe('kejujuran tier portal id-only (worker berjaringan Indonesia)', () => {
     expect(kartu.tier).toBe('semi');
     expect(setuju.pendamping).toBe(true);
     expect(payloads(id, 'execution_request')[0]).toMatchObject({ adapterId: 'generik', origin: SMG });
+    // N11: worker ID mati sesudah eksekusi ditawarkan; TERKIRIM tetap bertier saat ditawarkan (semi).
+    mulaiPengajuan(rt.store, id, (e) => void rt.publish(id, e));
+    aturJaringanId(() => false);
+    const x = payloads(id, 'execution_request')[0].executionId as string;
+    catatHasilEksekusi(rt, rt.store.getUrusanOrThrow(id), x, 'berhasil', 'Browser Pendamping');
+    expect(payloads(id, 'state').at(-1)).toMatchObject({ state: 'TERKIRIM', tier: 'semi' });
   });
 
   it('pindah Wonogiri (Telunjuk Sakti id-utama) tetap ditawarkan tanpa worker ID: worker server melayani', async () => {

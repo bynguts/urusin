@@ -23,6 +23,8 @@ export function majukan(
   u: UrusanRow,
   jalur: readonly UrusanState[],
   publish: Publish,
+  /** Tier yang sudah dibekukan (satu keputusan rute); tanpa ini dihitung dari urusan saat ini. */
+  tier?: 'semi' | 'dipandu' | null,
 ): UrusanRow {
   let cur = u;
   for (const ke of jalur) {
@@ -31,7 +33,7 @@ export function majukan(
     publish({
       type: 'state',
       state: ke,
-      tier: tierUrusan(cur),
+      tier: tier !== undefined ? tier : tierUrusan(cur),
       version: cur.version,
       dari,
     });
@@ -161,11 +163,27 @@ export function keteranganPendamping(r: LangkahTulisPendamping): string {
  * Tier urusan yang JUJUR: `semi` hanya bila Browser Pendamping benar-benar akan ditawarkan untuk urusan ini
  * (adapter atau Navigator generik, lihat `rutePendamping`). Jenis belum diketahui: tier registry kota.
  */
-export function tierUrusan(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): 'semi' | 'dipandu' | null {
+export function tierUrusan(
+  u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>,
+  /** Rute yang sudah diputuskan untuk urusan ini (supaya tier dan tindakan dari satu keputusan yang sama). */
+  rute?: RutePendamping,
+): 'semi' | 'dipandu' | null {
   const kode = u.kodeKabKota && /^\d{4}$/.test(u.kodeKabKota) ? u.kodeKabKota : null;
   if (!kode) return null;
   if (!u.jenis) return routeByKode(kode).entry.tier;
-  return rutePendamping({ jenis: u.jenis, kodeKabKota: kode }).jalur === 'dipandu' ? 'dipandu' : 'semi';
+  return (rute ?? rutePendamping({ jenis: u.jenis, kodeKabKota: kode })).jalur === 'dipandu'
+    ? 'dipandu'
+    : 'semi';
+}
+
+/**
+ * Tier yang dibekukan untuk eksekusi yang sedang berjalan: tier event `state` terakhir (diterbitkan saat
+ * eksekusi ditawarkan), bukan kesehatan worker berjaringan Indonesia saat ini. Tanpa event = dihitung ulang.
+ */
+export function tierEksekusi(store: HarnessStore, u: UrusanRow): 'semi' | 'dipandu' | null {
+  const p = store.eventsOfType(u.id, 'state', 1)[0]?.payload;
+  const t = p !== null && typeof p === 'object' && 'tier' in p ? p.tier : undefined;
+  return t === 'semi' || t === 'dipandu' || t === null ? t : tierUrusan(u);
 }
 
 /**
@@ -198,13 +216,22 @@ export function setujuiRencana(
   // Rencana hanya disetujui untuk wilayah yang dipastikan warga (urusan lama berkolom default tanpa konfirmasi).
   const belum = wilayahBelumSiap(u.jenis, wilayahUrusan(store, u));
   if (belum) throw new HarnessError('WILAYAH_BELUM_DITETAPKAN', belum, 409);
-  let cur = majukan(store, u, ['RENCANA_DISETUJUI'], publish);
-  const jalan = rutePendamping(cur);
+  // Satu keputusan rute untuk seluruh persetujuan: tier di event state dan tindakan tidak bisa berbeda walau
+  // kesehatan worker berjaringan Indonesia berubah di tengah jalan.
+  const jalan = rutePendamping(u);
+  const tier = tierUrusan(u, jalan);
+  let cur = majukan(store, u, ['RENCANA_DISETUJUI'], publish, tier);
   if (jalan.jalur === 'dipandu') {
     publish({ type: 'progress', label: jalan.alasan });
     return { urusan: cur, executionId: null };
   }
-  cur = majukan(store, cur, ['MENYIAPKAN_BERKAS', 'BERKAS_SIAP', 'MENGISI', 'MENUNGGU_KONFIRMASI'], publish);
+  cur = majukan(
+    store,
+    cur,
+    ['MENYIAPKAN_BERKAS', 'BERKAS_SIAP', 'MENGISI', 'MENUNGGU_KONFIRMASI'],
+    publish,
+    tier,
+  );
   const args = {
     kodeKabKota: cur.kodeKabKota,
     layananId: jalan.jalur === 'generik' ? jalan.params.jenis : jalan.params.layanan_id,
@@ -243,5 +270,5 @@ export function setujuiRencana(
 export function mulaiPengajuan(store: HarnessStore, urusanId: string, publish: Publish): UrusanRow {
   const u = store.getUrusanOrThrow(urusanId);
   if (u.state !== 'MENUNGGU_KONFIRMASI' || !canTransition(u.state, 'MENGUNGGAH')) return u;
-  return majukan(store, u, ['MENGUNGGAH', 'MENUNGGU_SUBMIT_WARGA'], publish);
+  return majukan(store, u, ['MENGUNGGAH', 'MENUNGGU_SUBMIT_WARGA'], publish, tierEksekusi(store, u));
 }
