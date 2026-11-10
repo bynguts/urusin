@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons/payload tanpa tipe */
 import { isRedirect } from '@sveltejs/kit';
 import { SKEMA_FIXTURE, TetapkanWilayahResponseSchema } from '@urusin/contracts';
-import { DemoProvider, wilayahUrusan } from '@urusin/harness';
+import { DemoProvider, portalWebWilayah, rutePendamping, wilayahUrusan } from '@urusin/harness';
 import { kanalWilayah } from '@urusin/registry';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { actions as beranda } from '../../routes/+page.server';
@@ -121,7 +121,7 @@ describe('wilayah dulu: usulan saat urusan dibuat', () => {
 });
 
 describe('POST /api/urusan/[id]/wilayah (tombol "Ya, betul")', () => {
-  it('Surabaya: wilayah ditetapkan dengan audit, rencana nasional + kanal Surabaya, tanpa Wonogiri, tier dipandu', async () => {
+  it('Surabaya: wilayah ditetapkan dengan audit, rencana nasional + kanal Surabaya, tanpa Wonogiri, tier jujur', async () => {
     const id = await urusanBaru('3578');
     const res = await tetapkan(ev(post({ kodeKabKota: '3578' }), { id }));
     expect(res.status).toBe(200);
@@ -134,7 +134,14 @@ describe('POST /api/urusan/[id]/wilayah (tombol "Ya, betul")', () => {
     expect(payloads(id, 'wilayah').at(-1)).toMatchObject({ status: 'ditetapkan', sumber: 'warga' });
     const [kartu] = payloads(id, 'plan_card');
     expect(JSON.stringify(kartu)).not.toMatch(/wonogiri/i);
-    expect(kartu).toMatchObject({ tier: 'dipandu', wilayah: { ktp: { kodeKabKota: '3578' } } });
+    // Surabaya punya portal web resmi: Navigator generik ditawarkan, jadi tier `semi` + keterangan templat.
+    const host = new URL(portalWebWilayah('3578')!.origin).host;
+    expect(kartu).toMatchObject({
+      tier: 'semi',
+      wilayah: { ktp: { kodeKabKota: '3578' } },
+      pendamping: { jalur: 'generik', host },
+    });
+    expect(kartu.catatan).toContain(`AI membantu mengisi formulir di ${host}`);
     expect(kartu.langkah.flatMap((l: any) => l.sumber.map((s: any) => s.url))).toContain(
       kanalWilayah('3578').url,
     );
@@ -219,15 +226,21 @@ describe('peristiwaView dan daftar wilayah', () => {
     ['3578', 'Kota Surabaya'],
     ['3216', 'Kabupaten Bekasi'],
     ['1101', 'Kabupaten Aceh Selatan'],
-  ])('%s (%s): tanpa langkah/tautan Wonogiri, kanal resminya sendiri, tier dipandu', (kode, nama) => {
-    for (const slug of ['kelahiran', 'kematian', 'perkawinan', 'pindah']) {
-      const v = peristiwaView(slug, kode)!;
-      expect(JSON.stringify(v), slug).not.toMatch(/wonogiri/i);
-      expect(v.tier).toBe('dipandu');
-      expect(v.kota).toMatchObject({ kodeKabKota: kode, nama });
-      expect(v.langkah.flatMap((l) => l.sumber.map((s) => s.url))).toContain(kanalWilayah(kode).url);
-    }
-  });
+  ])(
+    '%s (%s): tanpa langkah/tautan Wonogiri, kanal resminya sendiri, tier = rute Pendamping',
+    (kode, nama) => {
+      for (const slug of ['kelahiran', 'kematian', 'perkawinan', 'pindah']) {
+        const v = peristiwaView(slug, kode)!;
+        expect(JSON.stringify(v), slug).not.toMatch(/wonogiri/i);
+        // Tier sama dengan yang ditawarkan saat rencana disetujui (Navigator generik bila portal web).
+        expect(v.tier, slug).toBe(
+          rutePendamping({ jenis: slug, kodeKabKota: kode }).jalur === 'dipandu' ? 'dipandu' : 'semi',
+        );
+        expect(v.kota).toMatchObject({ kodeKabKota: kode, nama });
+        expect(v.langkah.flatMap((l) => l.sumber.map((s) => s.url))).toContain(kanalWilayah(kode).url);
+      }
+    },
+  );
 
   it('3312 tetap memakai bundel Wonogiri (semi); tanpa kode: nasional tanpa Wonogiri', () => {
     expect(peristiwaView('kelahiran', '3312')).toMatchObject({ tier: 'semi', kodeKabKota: '3312' });

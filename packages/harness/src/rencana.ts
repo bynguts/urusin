@@ -26,11 +26,10 @@ export function majukan(
   for (const ke of jalur) {
     const dari = cur.state;
     cur = store.transition(cur.id, cur.version, ke);
-    const kode = cur.kodeKabKota;
     publish({
       type: 'state',
       state: ke,
-      tier: kode && /^\d{4}$/.test(kode) ? routeByKode(kode).entry.tier : null,
+      tier: tierUrusan(cur),
       version: cur.version,
       dari,
     });
@@ -101,6 +100,25 @@ export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): Rut
       nama: `Ajukan ${bundel.judul.toLowerCase()} di portal resmi Disdukcapil ${nama ?? portal.nama}`,
     };
   return { jalur: 'dipandu', alasan: alasanDipandu(kode, nama) };
+}
+
+/** Kalimat templat untuk warga: apa yang dikerjakan AI di portal ini dan apa yang tetap dikerjakan warga. */
+export function keteranganPendamping(r: LangkahTulisPendamping): string {
+  const host = new URL(r.origin).host;
+  return r.jalur === 'generik'
+    ? `AI membantu mengisi formulir di ${host}; Anda sendiri yang masuk akun, lolos verifikasi, dan menekan Kirim.`
+    : `AI mengisi formulir di ${host}; Anda sendiri yang masuk akun dan menekan Kirim.`;
+}
+
+/**
+ * Tier urusan yang JUJUR: `semi` hanya bila Browser Pendamping benar-benar akan ditawarkan untuk urusan ini
+ * (adapter atau Navigator generik, lihat `rutePendamping`). Jenis belum diketahui: tier registry kota.
+ */
+export function tierUrusan(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): 'semi' | 'dipandu' | null {
+  const kode = u.kodeKabKota && /^\d{4}$/.test(u.kodeKabKota) ? u.kodeKabKota : null;
+  if (!kode) return null;
+  if (!u.jenis) return routeByKode(kode).entry.tier;
+  return rutePendamping({ jenis: u.jenis, kodeKabKota: kode }).jalur === 'dipandu' ? 'dipandu' : 'semi';
 }
 
 /**

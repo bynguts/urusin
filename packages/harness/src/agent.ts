@@ -20,7 +20,7 @@ import type { EventBus } from './bus.js';
 import type { Db } from './db.js';
 import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/contracts';
 import { HarnessError, TurnInProgressError } from './errors.js';
-import { routeByKode } from '@urusin/registry';
+import { tierUrusan } from './rencana.js';
 import { toEvent } from './envelope.js';
 import { buildHandoff } from './grounding.js';
 import { classifyIntent } from './intent.js';
@@ -234,8 +234,7 @@ class TurnRunner {
   }
 
   private tier(): 'semi' | 'dipandu' | null {
-    const kode = this.urusan.kodeKabKota;
-    return kode && /^\d{4}$/.test(kode) ? routeByKode(kode).entry.tier : null;
+    return tierUrusan(this.urusan);
   }
 
   private applyTransition(to: UrusanState): void {

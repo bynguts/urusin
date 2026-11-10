@@ -99,7 +99,18 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
       expect(kartu).toBeDefined();
       expect(JSON.stringify(kartu)).not.toMatch(/wonogiri/i);
       expect(kartu.wilayah?.ktp).toEqual({ kodeKabKota: kode, nama });
-      expect(kartu.tier).toBe('dipandu');
+      // Tier jujur: `semi` hanya bila Navigator generik benar-benar ditawarkan (portal web wilayah itu sendiri).
+      const portalWeb = portalWebWilayah(kode);
+      expect(kartu.tier).toBe(portalWeb ? 'semi' : 'dipandu');
+      if (portalWeb) {
+        const host = new URL(portalWeb.origin).host;
+        expect(kartu.pendamping).toEqual({
+          jalur: 'generik',
+          host,
+          keterangan: `AI membantu mengisi formulir di ${host}; Anda sendiri yang masuk akun, lolos verifikasi, dan menekan Kirim.`,
+        });
+        expect(kartu.catatan).toContain(kartu.pendamping!.keterangan);
+      } else expect(kartu.pendamping).toBeUndefined();
       expect(kartu.langkah.some((l) => l.jenis === 'online-adapter')).toBe(false);
       expect(kartu.langkah[0]!.sumber[0]!.url).toBe(url);
       expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
@@ -116,6 +127,34 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
         expect(r.executionId).toBeNull();
         expect(req).toBeUndefined();
       }
+    },
+  );
+
+  it.each([
+    [
+      '3374',
+      'semi',
+      'BROWSER PENDAMPING (tingkat semi, Navigator generik): AI membantu mengisi formulir di ',
+    ],
+    ['1211', 'dipandu', 'BROWSER PENDAMPING: tidak tersedia untuk urusan ini (tingkat dipandu)'],
+  ])(
+    '%s: tier state, kartu, dan catatan state untuk agen sama dengan rute Pendamping (%s)',
+    async (kode, tier, baris) => {
+      const { env, u, provider } = setup([balas('Rencana sudah saya siapkan.')], {
+        jenis: 'kelahiran',
+        kodeKabKota: kode,
+      });
+      const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+      expect(of(out.events, 'plan_card')[0]!.tier).toBe(tier);
+      expect(of(out.events, 'state').every((e) => e.tier === tier)).toBe(true);
+      const call = provider.calls.find((c) => c.kind === 'create');
+      const note = call?.kind === 'create' ? call.params.messages.map((m) => m.content).join('\n') : '';
+      expect(note).toContain(baris);
+      const events: EventPayload[] = [];
+      setujuiRencana(env.store, u.id, (e) => void events.push(e));
+      const tiers = events.filter((e): e is EventOf<'state'> => e.type === 'state').map((e) => e.tier);
+      expect(tiers.length).toBeGreaterThan(0);
+      expect(new Set(tiers)).toEqual(new Set([tier]));
     },
   );
 

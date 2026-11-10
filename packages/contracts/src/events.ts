@@ -116,6 +116,18 @@ export const PlanCardEventSchema = event('plan_card', {
   tier: TierSchema.optional(),
   /** Catatan untuk warga: kantor/situs yang berwenang, domisili beda, atau pindah dua Disdukcapil. */
   catatan: z.string().optional(),
+  /**
+   * Bantuan Browser Pendamping untuk rencana ini (aditif): `adapter` = alur tulisan tangan, `generik` = Navigator
+   * generik di portal web resmi wilayah KTP. `keterangan` = kalimat templat untuk warga (apa yang dikerjakan AI,
+   * apa yang tetap dikerjakan warga). Tidak ada = dipandu.
+   */
+  pendamping: z
+    .object({
+      jalur: z.enum(['adapter', 'generik']),
+      host: z.string().min(1).max(253),
+      keterangan: z.string().max(300),
+    })
+    .optional(),
 });
 
 /**

@@ -12,7 +12,7 @@ import {
 } from '@urusin/registry';
 import type { Db } from './db.js';
 import { HarnessError } from './errors.js';
-import { majukan } from './rencana.js';
+import { keteranganPendamping, majukan, rutePendamping } from './rencana.js';
 import type { HarnessStore, UrusanRow } from './store.js';
 
 type Publish = (e: EventPayload) => void;
@@ -131,12 +131,28 @@ export function pendampingTersedia(entry: CityEntry, langkah: Langkah): boolean 
   return Boolean(adapter && flow && !flow.bacaSaja && adapter.origin === entry.portal.origin);
 }
 
-/** Rencana peristiwa yang benar untuk wilayah ini, dengan cek adapter sungguhan (dipakai harness dan web). */
+export type BantuanPendamping = { jalur: 'adapter' | 'generik'; host: string; keterangan: string };
+
+/**
+ * Rencana peristiwa yang benar untuk wilayah ini, dengan cek adapter sungguhan (dipakai harness dan web). Tier
+ * mengikuti rute Browser Pendamping yang SAMA dengan yang ditawarkan saat rencana disetujui (`rutePendamping`):
+ * wilayah web tanpa adapter yang dikerjakan Navigator generik = `semi` + keterangan templat, bukan `dipandu`.
+ */
 export function rencanaPeristiwa(
   slug: string,
   w: { ktp: string | null; domisili?: string | null; tujuan?: string | null },
-): RencanaWilayah | undefined {
-  return rencanaWilayah(slug, { ...w, pendampingTersedia });
+): (RencanaWilayah & { pendamping?: BantuanPendamping }) | undefined {
+  const r = rencanaWilayah(slug, { ...w, pendampingTersedia });
+  if (!r || !w.ktp) return r;
+  const rute = rutePendamping({ jenis: r.slug, kodeKabKota: w.ktp });
+  if (rute.jalur === 'dipandu') return r;
+  const pendamping: BantuanPendamping = {
+    jalur: rute.jalur,
+    host: new URL(rute.origin).host,
+    keterangan: keteranganPendamping(rute),
+  };
+  if (rute.jalur === 'adapter') return { ...r, pendamping };
+  return { ...r, tier: 'semi', catatan: `${r.catatan} ${pendamping.keterangan}`, pendamping };
 }
 
 /**
@@ -198,6 +214,7 @@ export function kartuRencana(
     },
     tier: r.tier,
     catatan: r.catatan,
+    ...(r.pendamping ? { pendamping: r.pendamping } : {}),
   };
 }
 
