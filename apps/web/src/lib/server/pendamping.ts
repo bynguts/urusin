@@ -5,12 +5,14 @@ import {
   PendampingGalatSchema,
   SesiPendampingSchema,
   TiketPendampingResponseSchema,
+  type AksiSesiInternal,
   type AntreanPendampingResponse,
   type BerkasSesiInternal,
   type IsiSesiInternal,
   type MulaiSesiInternal,
   type PemilikSesiInternal,
   type SesiPendamping,
+  type TungguSesiInternal,
 } from '@urusin/contracts';
 import { getOfficialDomain } from '@urusin/core';
 import { egressFetch, type EgressFetch } from '@urusin/egress';
@@ -164,13 +166,21 @@ export function tandaInternal(
     .digest('hex');
 }
 
+/** Body permintaan internal yang ditandatangani (selain mulai sesi, selalu memuat pemilik). */
+export type BodyPemilik =
+  PemilikSesiInternal | IsiSesiInternal | BerkasSesiInternal | AksiSesiInternal | TungguSesiInternal;
+
+/** Batas waktu bawaan satu panggilan internal; long-poll `/internal/sesi/tunggu` memberi batasnya sendiri. */
+const BATAS_PANGGIL_MS = 15_000;
+
 /** Panggil API internal satu worker; galat diteruskan sebagai `{kode, pesanWarga}` tanpa detail internal. */
 export async function panggil<T>(
   cfg: PendampingTarget | null,
   path: string,
   schema: ZodType<T>,
-  body?: MulaiSesiInternal | PemilikSesiInternal | IsiSesiInternal | BerkasSesiInternal,
+  body?: MulaiSesiInternal | BodyPemilik,
   fetcher: EgressFetch = egressFetch,
+  batasMs: number = BATAS_PANGGIL_MS,
 ): Promise<Hasil<T>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const metode = body === undefined ? 'GET' : 'POST';
@@ -189,7 +199,7 @@ export async function panggil<T>(
         'content-type': 'application/json',
       },
       ...(body === undefined ? {} : { body: isi }),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(batasMs),
     });
   } catch {
     return { ok: false, response: TIDAK_TERSEDIA() };
@@ -336,8 +346,9 @@ export async function panggilPemilik<T>(
   path: string,
   schema: ZodType<T>,
   /** Body permintaan; selain pemilik boleh membawa isi (jalur isi) yang HANYA dikirim ke worker pemegang sesi. */
-  owner: PemilikSesiInternal | IsiSesiInternal | BerkasSesiInternal,
+  owner: BodyPemilik,
   fetcher: EgressFetch = egressFetch,
+  batasMs: number = BATAS_PANGGIL_MS,
 ): Promise<Hasil<T>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const pemilik: PemilikSesiInternal = { urusanId: owner.urusanId, sidHash: owner.sidHash };
@@ -345,7 +356,7 @@ export async function panggilPemilik<T>(
   const tercatat = cfg.workers.find((w) => w.id === lokasi.get(owner.urusanId));
   let tidakAda: Hasil<T> | null = null;
   if (tercatat) {
-    const r = await panggil(target(tercatat), path, schema, owner, fetcher);
+    const r = await panggil(target(tercatat), path, schema, owner, fetcher, batasMs);
     if (r.ok || r.response.status !== 404) return r;
     tidakAda = r;
     lokasi.delete(owner.urusanId);
@@ -364,7 +375,7 @@ export async function panggilPemilik<T>(
   if (pemegang) {
     ingatLokasi(owner.urusanId, pemegang.w.id);
     if (path === '/internal/sesi/status') return pemegang.r as Hasil<T>;
-    return panggil(target(pemegang.w), path, schema, owner, fetcher);
+    return panggil(target(pemegang.w), path, schema, owner, fetcher, batasMs);
   }
   const g = temu.find((x) => !x.r.ok && x.r.response.status === 404);
   return g ? (g.r as Hasil<T>) : (tidakAda ?? { ok: false, response: TIDAK_TERSEDIA() });

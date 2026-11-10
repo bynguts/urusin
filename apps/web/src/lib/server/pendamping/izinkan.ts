@@ -28,7 +28,11 @@ export async function isiSesiDariVault(
   if (!b.ok) return b;
   let ambil: ReturnType<typeof ambilIsianUntukIsi>;
   try {
-    ambil = ambilIsianUntukIsi(rt, { urusanId: owner.urusanId, liveOrigin: b.data.origin });
+    ambil = ambilIsianUntukIsi(rt, {
+      urusanId: owner.urusanId,
+      liveOrigin: b.data.origin,
+      rencanaHash: b.data.rencanaHash,
+    });
   } catch (e) {
     if (!(e instanceof AkunError)) throw e;
     return {

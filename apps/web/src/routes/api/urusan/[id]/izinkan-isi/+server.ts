@@ -4,11 +4,13 @@ import { apiError, apiJson } from '#lib/server/http.js';
 import { hashSid, pendampingConfig } from '#lib/server/pendamping.js';
 import { izinkanIsiUrusan } from '#lib/server/pendamping/isi.js';
 import { isiSesiDariVault } from '#lib/server/pendamping/izinkan.js';
+import { catatPersetujuanNavigator } from '#lib/server/pendamping/navigator.js';
 import { getRuntime } from '#lib/server/runtime.js';
 import type { RequestHandler } from './$types';
 
 /**
- * "Izinkan isi" (A-M1): peramban hanya mengirim `{writeList, targetOrigin}` (origin dari `butuh_data` sesi).
+ * "Izinkan isi" (A-M1): peramban hanya mengirim `{writeList, targetOrigin, rencanaHash?}` (dari `butuh_data` sesi;
+ * `rencanaHash` untuk lembar per halaman Navigator generik).
  * Server memeriksa pemilik urusan, menerbitkan token persetujuan (hanya portal registry `kirim-asli` atau situs
  * latihan), lalu bila Browser Pendamping terpasang langsung mengisi sesi: controller mengambil nilai lewat
  * `ambilIsianUntukIsi` dengan origin sesi yang hidup dan mengirimnya ke worker lewat kanal internal.
@@ -27,7 +29,11 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
       peminta,
       writeList: body.data.writeList,
       targetOrigin: body.data.targetOrigin,
+      rencanaHash: body.data.rencanaHash,
     });
+    // Navigator generik: persetujuan per halaman {rencanaHash, n} masuk jejak audit (tanpa nilai).
+    if (body.data.rencanaHash)
+      catatPersetujuanNavigator(rt, params.id, body.data.rencanaHash, body.data.writeList.length);
     const cfg = pendampingConfig();
     // Tanpa Browser Pendamping: persetujuan tetap tersimpan (sekali pakai, 5 menit) untuk diambil nanti.
     if (!cfg || !locals.sid) return apiJson({ diizinkan: true, kurang });

@@ -139,6 +139,9 @@ importers:
       '@urusin/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@urusin/navigator':
+        specifier: workspace:*
+        version: link:../../packages/navigator
       '@urusin/pendamping-client':
         specifier: workspace:*
         version: link:../../packages/pendamping-client
