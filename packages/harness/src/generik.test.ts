@@ -12,7 +12,7 @@ import {
   jalurModeUji,
   portalWebWilayah,
 } from './generik.js';
-import { aturJaringanId, rutePendamping, setujuiRencana } from './rencana.js';
+import { aturJaringanId, mulaiPengajuan, rutePendamping, setujuiRencana, tierEksekusi } from './rencana.js';
 import { buatUrusanTerwilayah, rencanaPeristiwa } from './wilayah.js';
 import { HarnessStore } from './store.js';
 import { makeEnv } from './testing.js';
@@ -67,6 +67,44 @@ describe('registry wilayah untuk Navigator', () => {
     expect(PORTAL_WILAYAH['3201']?.login).toEqual(['google']);
     expect(portalWebWilayah('3201')).toBeUndefined();
     expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: '3201' }).jalur).toBe('dipandu');
+    // Alasan jujur: login Google, bukan "belum bisa dibantu" umum.
+    expect(alasanDipandu('3201', 'Kab. Bogor')).toMatch(/hanya bisa dimasuki dengan akun Google/);
+  });
+
+  it('probe portal nyata: jalur masuk portal dari registry sampai params sesi (bukan "/")', () => {
+    // 1871 "/" situs info, 3321 "/" halaman default IIS, 3571 "/" halaman kosong.
+    for (const [kode, jalur] of [
+      ['1871', '/pendaftaran'],
+      ['3321', '/Siap_Om'],
+      ['3571', '/sakti'],
+    ] as const) {
+      expect(new URL(portalWebWilayah(kode)!.url).pathname, kode).toBe(jalur);
+      expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }), kode).toMatchObject({
+        jalur: 'generik',
+        params: { kode, jalur },
+      });
+      const { store, u, events, publish } = urusanDiusulkan(kode, 'kelahiran');
+      setujuiRencana(store, u.id, publish);
+      const req = events.find((e): e is EventOf<'execution_request'> => e.type === 'execution_request');
+      expect(req?.params, kode).toMatchObject({ kode, jalur });
+    }
+  });
+
+  it('probe portal nyata: portal id-only baru dipandu tanpa worker ID; portal mati/berubah selalu dipandu', () => {
+    for (const kode of ['1271', '1372', '1403', '1771', '3275', '3279', '3402', '3674', '6271']) {
+      aturJaringanId(() => false);
+      expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }), kode).toMatchObject({
+        jalur: 'dipandu',
+        sebab: 'jaringan_id',
+      });
+      aturJaringanId(() => true);
+      expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }).jalur, kode).toBe('generik');
+    }
+    for (const kode of ['1117', '1171', '1173', '1114', '3314', '1116', '3525', '1102', '1471']) {
+      expect(portalWebWilayah(kode), kode).toBeUndefined();
+      expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }).jalur, kode).toBe('dipandu');
+      expect(hostsPortalWilayah(kode), kode).toEqual([]);
+    }
   });
 
   it('host portal: hanya host portal persis (tanpa host info dan pihak ketiga)', () => {
@@ -75,6 +113,17 @@ describe('registry wilayah untuk Navigator', () => {
     expect(hostsAiWilayah(SMG)).not.toContain('challenges.cloudflare.com');
     expect(hostsPortalWilayah(DAIRI)).toEqual([]);
     expect(hostsPortalWilayah(null)).toEqual([]);
+  });
+
+  it('host aset portal: ikut sesi wilayah, bukan host portal (vault) atau host AI', () => {
+    for (const [kode, aset] of [
+      ['3404', 'dukcapil-cdn.slemankab.go.id'],
+      ['3310', 'api.diskominfo.klaten.go.id'],
+    ] as const) {
+      expect(hostsPortalWilayah(kode), kode).not.toContain(aset);
+      expect(hostsAiWilayah(kode), kode).not.toContain(aset);
+      expect(hostsAiWilayah(kode), kode).toEqual(expect.arrayContaining([...PORTAL_WILAYAH[kode]!.hosts]));
+    }
   });
 
   it('platform bersama (SIDAK Aceh) ikut host portal tenant', () => {
@@ -149,6 +198,35 @@ describe('routing rencana.ts: adapter -> (platform) -> generik -> dipandu', () =
     aturJaringanId(() => true);
     expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: SMG }).jalur).toBe('generik');
     expect(rencanaPeristiwa('kelahiran', { ktp: SMG })?.tier).toBe('semi');
+  });
+
+  it('N11: tier dibekukan per eksekusi; kesehatan worker ID yang berubah di tengah jalan tidak mengubahnya', () => {
+    const { store, u } = urusanDiusulkan(SMG, 'kelahiran');
+    const events: EventPayload[] = [];
+    const publish = (e: EventPayload) => {
+      store.appendEvent(u.id, e.type, e);
+      events.push(e);
+    };
+    // Sehat hanya pada pembacaan pertama: satu persetujuan = satu keputusan rute (tier dan tindakan sama).
+    let n = 0;
+    aturJaringanId(() => n++ === 0);
+    const r = setujuiRencana(store, u.id, publish);
+    expect(r.urusan.state).toBe('MENUNGGU_KONFIRMASI');
+    expect(r.executionId).not.toBeNull();
+    // Worker ID mati sesudah eksekusi ditawarkan: langkah eksekusi ini tetap bertier saat ditawarkan.
+    aturJaringanId(() => false);
+    mulaiPengajuan(store, u.id, publish);
+    const tier = events.flatMap((e) => (e.type === 'state' ? [[e.state, e.tier]] : []));
+    expect(tier).toEqual([
+      ['RENCANA_DISETUJUI', 'semi'],
+      ['MENYIAPKAN_BERKAS', 'semi'],
+      ['BERKAS_SIAP', 'semi'],
+      ['MENGISI', 'semi'],
+      ['MENUNGGU_KONFIRMASI', 'semi'],
+      ['MENGUNGGAH', 'semi'],
+      ['MENUNGGU_SUBMIT_WARGA', 'semi'],
+    ]);
+    expect(tierEksekusi(store, store.getUrusanOrThrow(u.id))).toBe('semi');
   });
 
   it('3. wilayah non-web (WhatsApp, aplikasi): dipandu dengan alasan jujur, tanpa permintaan eksekusi', () => {

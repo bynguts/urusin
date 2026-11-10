@@ -57,10 +57,12 @@ export function jalurModeUji(
 /** Login hanya lewat akun pihak ketiga (OAuth Google): egress sesi tidak bisa menjangkaunya. */
 const LOGIN_PIHAK_KETIGA = new Set(['google']);
 
-/** Host yang boleh dikerjakan AI di sesi wilayah ini: host wilayah tanpa host pihak ketiga. */
+/** Host yang boleh dikerjakan AI di sesi wilayah ini: host wilayah tanpa host pihak ketiga dan host aset. */
 export function hostsAiWilayah(kode: string | null | undefined): string[] {
-  if (!portalWilayah(kode)) return [];
-  return hostsWilayah(kode!).filter((h) => !EGRESS_PIHAK_KETIGA_WILAYAH.includes(h));
+  const p = portalWilayah(kode);
+  if (!p) return [];
+  const aset = p.hostAset ?? [];
+  return hostsWilayah(kode!).filter((h) => !EGRESS_PIHAK_KETIGA_WILAYAH.includes(h) && !aset.includes(h));
 }
 
 /** Portal web yang bisa dikerjakan Navigator generik: jenis `web`, URL https, host URL ada di host portal. */
@@ -97,5 +99,7 @@ export function alasanDipandu(kode: string | null | undefined, wilayah?: string)
   const kanal = p ? KANAL_DIPANDU[p.jenis] : undefined;
   if (kanal)
     return `Rencana disetujui. Disdukcapil${di} melayani pengajuan lewat ${kanal}, bukan formulir web, jadi Browser Pendamping tidak bisa mengisinya. Ikuti langkahnya bersama saya.`;
+  if (p?.jenis === 'web' && p.login.length > 0 && p.login.every((l) => LOGIN_PIHAK_KETIGA.has(l)))
+    return `Rencana disetujui. Portal Disdukcapil${di} hanya bisa dimasuki dengan akun Google, dan login Google tidak dibuka di Browser Pendamping, jadi AI tidak bisa mengisinya. Ikuti langkahnya bersama saya: Anda membuka portalnya sendiri.`;
   return 'Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.';
 }

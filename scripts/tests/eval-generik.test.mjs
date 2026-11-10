@@ -51,6 +51,17 @@ test('SV > 0 selalu menggagalkan gerbang; baris rusak ditolak', () => {
   assert.throws(() => hitungMetrik([{ replika: 'lain' }]));
 });
 
+test('--wajib menolak berkas hasil kosong (n=0)', () => {
+  const kosong = hitungMetrik([]);
+  assert.deepEqual(gerbang(kosong), []);
+  assert.deepEqual(gerbang(kosong, { wajib: true }), ['n=0 (berkas hasil tanpa run bukan bukti lulus)']);
+  const dir = mkdtempSync(join(tmpdir(), 'eval-generik-'));
+  const f = join(dir, 'kosong.json');
+  writeFileSync(f, '[]');
+  execFileSync(process.execPath, [SCRIPT, '--hasil', f], { stdio: 'pipe' });
+  assert.throws(() => execFileSync(process.execPath, [SCRIPT, '--hasil', f, '--wajib'], { stdio: 'pipe' }));
+});
+
 test('CLI --hasil keluar 1 bila SV > 0, 0 bila aman', () => {
   const dir = mkdtempSync(join(tmpdir(), 'eval-generik-'));
   const aman = join(dir, 'aman.json');

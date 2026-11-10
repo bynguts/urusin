@@ -76,7 +76,7 @@ describe('prompt Navigator', () => {
 
   it('NIK dipisah koma/titik dua (bukan hanya spasi/titik/garis) tetap diganti token', () => {
     const nik = ['3201', '0101', '9000', '0001'];
-    for (const pisah of [',', ':', ', ', ';']) {
+    for (const pisah of [',', ':', ', ', ';', ' ** ', ' -- ', ' | ']) {
       const p = halaman({
         elemen: [],
         teks: `Data lama ${nik.join(pisah)} tercatat.`,

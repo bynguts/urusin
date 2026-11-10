@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import type { Aksi, AksiSesiResponse, PendampingSorot, Pengamatan } from '@urusin/contracts';
+import type { Aksi, AksiSesiResponse, Pengamatan } from '@urusin/contracts';
 import { unmark } from '@urusin/harness';
 import { fakeCompletion, type ChatParams, type ChatProvider } from '@urusin/llm';
 import {
@@ -410,11 +410,11 @@ async function jalankanRun(jalur: string, otak: Otak, kembalikanGerbang = 0, tol
     params: { jalur },
     modeUji: true,
   });
-  // Layar warga palsu: hanya menangkap sorotan giliran (kotak tautan yang harus diketuk warga).
-  let sorot: PendampingSorot | undefined;
+  // Layar warga palsu: hanya menangkap tautan giliran ketuk_tautan (tombol "Buka" di layar warga).
+  let tautanRef: string | undefined;
   await m.attach(sesi.sesiId, {
     send: (pesan) => {
-      if (pesan.type === 'event' && pesan.event.jenis === 'giliran_anda') sorot = pesan.event.sorot;
+      if (pesan.type === 'event' && pesan.event.jenis === 'giliran_anda') tautanRef = pesan.event.tautan?.ref;
     },
     frame: () => undefined,
     ack: () => undefined,
@@ -541,29 +541,19 @@ async function jalankanRun(jalur: string, otak: Otak, kembalikanGerbang = 0, tol
       }
       if (st.mode !== 'takeover') continue;
       const kini = (await m.amati(o, true)).pengamatan;
-      // Tautan pembuka formulir yang disorot: warga mengetuknya (ketukan nyata), lalu mengembalikan kendali.
+      // Tautan pembuka yang disorot: warga menekan tombol "Buka" (buka_tautan); worker membukanya lewat GET
+      // dan AI lanjut sendiri.
       if (serahTerakhir === 'ketuk_tautan') {
         serahTerakhir = undefined;
-        if (sorot) {
-          const x = Math.round(sorot.x + sorot.lebar / 2);
-          const y = Math.round(sorot.y + sorot.tinggi / 2);
-          for (const aksi of ['down', 'up'] as const)
-            await m.handleClient(sesi.sesiId, {
-              type: 'pointer',
-              aksi,
-              x,
-              y,
-              jenis: 'mouse',
-              tombol: 'left',
-            });
+        if (tautanRef) {
+          await m.handleClient(sesi.sesiId, { type: 'buka_tautan', ref: tautanRef });
           await expect
             .poll(async () => (await m.amati(o, true).catch(() => null))?.pengamatan.jalur, {
               timeout: 15_000,
             })
             .not.toBe(kini.jalur);
-        }
+        } else await m.handleClient(sesi.sesiId, { type: 'kembalikan' });
         ketukWarga++;
-        await m.handleClient(sesi.sesiId, { type: 'kembalikan' });
         continue;
       }
       if (['masuk_akun', 'captcha', 'otp'].includes(serahTerakhir ?? '') && /\/masuk$/.test(kini.jalur)) {

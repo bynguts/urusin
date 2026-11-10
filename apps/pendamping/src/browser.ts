@@ -30,7 +30,7 @@ import {
   type GerbangTulis,
   type PermintaanGerbang,
 } from './gerbang-tulis.js';
-import { GenerikRun, tanganRunner } from './generik.js';
+import { GenerikRun, PESAN_GENERIK, tanganRunner } from './generik.js';
 import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
 import { daftarEdge, type ProxyEdge } from './isolasi.js';
 import { pesanBerkasKurang, pesanIsiSendiri } from './isian.js';
@@ -483,6 +483,8 @@ type KendaliGerbang = {
   hostDiblokir: (host: string, dokumen: boolean | undefined) => void;
   /** Tulis non-GET warga lolos (jendela `warga`). */
   tulisWarga: () => void;
+  /** Dokumen kotor atau halaman akhir: redirect halaman sendiri tidak pernah lolos. */
+  ketat: () => boolean;
 };
 
 export async function startBrowserRun(config: Config, init: RunInit): Promise<ActiveRun> {
@@ -493,6 +495,7 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
     blokir: () => {},
     hostDiblokir: () => {},
     tulisWarga: () => {},
+    ketat: () => false,
   };
   const gerbang = init.generik
     ? createGerbangTulis({
@@ -500,6 +503,7 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
         wargaTunggu: () => kendali.wargaTunggu(),
         onBlokir: (c, j) => kendali.blokir(c, j),
         onTulisWarga: () => kendali.tulisWarga(),
+        ketat: () => kendali.ketat(),
       })
     : undefined;
   const hosts = hostsSesi(init.program);
@@ -1205,6 +1209,7 @@ export async function wire(
     gen.kendali.wargaPegang = () => ditahan() && Date.now() - inputWargaTerakhir <= JENDELA_WARGA_MS;
     gen.kendali.blokir = (c, j) => run.blokir(c, j);
     gen.kendali.hostDiblokir = (host, dokumen) => run.hostDiblokir(host, dokumen);
+    gen.kendali.ketat = () => run.ketat;
     // Review kode N1: warga mengirim sendiri (mis. setelah AI menyerah, loop di web sudah berhenti). Halaman sukses
     // sesudah tulis warga = sesi siaga berhasil tanpa menunggu /selesai. Diperiksa saat dokumen utama dimuat dan
     // sebentar sesudah tulis warga (SPA: hasil lewat XHR tanpa muat ulang).
@@ -1283,6 +1288,7 @@ export async function wire(
     },
     async gantiProgram(p, id) {
       await interp.cancel().catch(() => {});
+      g?.eksekusiBaru();
       program = p;
       steps = p.steps;
       finalIdx = finalGateIndex(steps);
@@ -1297,11 +1303,13 @@ export async function wire(
       manual = false;
       interp = buatInterp();
     },
-    async bukaTautan() {
-      if (!g || !manual) return false;
-      return g.bukaTautan(() => api.kembalikan());
+    async bukaTautan(ref) {
+      if (!g || !manual || g.berhenti) return false;
+      return g.bukaTautan(ref, () => api.kembalikan());
     },
     kembalikan() {
+      // Serah akhir `berhenti`: loop Navigator sudah berhenti, jadi tidak ada AI yang melanjutkan.
+      if (g?.berhenti) return hooks.mode('takeover', PESAN_GENERIK.berhenti);
       manual = false;
       resume();
       if (pantau.aktif) return hooks.mode('takeover', PESAN_VERIFIKASI);

@@ -294,6 +294,36 @@ describe('catatanBlokir', () => {
   });
 });
 
+describe('mode ketat (dokumen kotor / halaman akhir)', () => {
+  const navKe = 'https://portal.contoh.go.id/layanan/kk';
+  it('redirect halaman sendiri (GET bingkai utama di luar navKe) diblokir; navKe, subresource, tantangan tetap', () => {
+    const alih = req('GET', true, 'https://portal.contoh.go.id/tutup?p=close_form');
+    expect(putuskan({ jenis: 'ai_diam' }, alih, T, false)).toBe('lanjut');
+    expect(putuskan({ jenis: 'ai_diam' }, alih, T, true)).toBe('blokir');
+    expect(putuskan({ jenis: 'ai_diam', tungguWarga: true }, alih, T, true)).toBe('blokir');
+    expect(putuskan({ jenis: 'ai_klik', navKe }, alih, T, true)).toBe('blokir');
+    expect(putuskan({ jenis: 'ai_klik', navKe }, req('GET', true, navKe), T, true)).toBe('lanjut');
+    expect(putuskan({ jenis: 'ai_diam' }, req('GET', false, `${navKe}/x.js`), T, true)).toBe('lanjut');
+    expect(putuskan({ jenis: 'ai_diam' }, iframe('GET'), T, true)).toBe('lanjut');
+    // Warga mengetuk sendiri: jendela warga tidak terpengaruh.
+    expect(putuskan({ jenis: 'warga' }, alih, T, true)).toBe('lanjut');
+  });
+
+  it('createGerbangTulis membaca ketat setiap permintaan', () => {
+    let ketat = false;
+    const g = createGerbangTulis({
+      wargaPegang: () => false,
+      onBlokir: () => {},
+      ketat: () => ketat,
+      now: () => T,
+    });
+    const alih = req('GET', true, 'https://portal.contoh.go.id/tutup');
+    expect(g.periksa(alih)).toBe('lanjut');
+    ketat = true;
+    expect(g.periksa(alih)).toBe('blokir');
+  });
+});
+
 describe('createGerbangTulis', () => {
   it('tulis non-GET yang lolos di jendela warga dilaporkan (onTulisWarga); GET dan jendela AI tidak', () => {
     let pegang = false;

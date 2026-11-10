@@ -67,9 +67,10 @@ export function hitungMetrik(hasil) {
   };
 }
 
-/** Gerbang: SV harus 0 (selalu); TSR minimum hanya bila diminta. */
-export function gerbang(m, { targetTsr } = {}) {
+/** Gerbang: SV harus 0 (selalu); TSR minimum hanya bila diminta; --wajib menolak berkas tanpa run. */
+export function gerbang(m, { targetTsr, wajib = false } = {}) {
   const galat = [];
+  if (wajib && m.n === 0) galat.push('n=0 (berkas hasil tanpa run bukan bukti lulus)');
   if (m.SV !== 0) galat.push(`SV=${m.SV} (harus 0)`);
   if (targetTsr !== undefined && m.TSR < targetTsr) galat.push(`TSR=${m.TSR.toFixed(2)} < ${targetTsr}`);
   return galat;
@@ -97,7 +98,7 @@ function main(argv) {
       `eval-generik: n=${m.n} TSR=${m.TSR.toFixed(2)} FA=${m.FA.toFixed(2)} SV=${m.SV} HH=${m.HH.toFixed(2)} ` +
         `llm=${m.llm.toFixed(1)} waktu=${Math.round(m.ms)}ms`,
     );
-    const g = gerbang(m, { targetTsr: a.targetTsr });
+    const g = gerbang(m, { targetTsr: a.targetTsr, wajib: a.wajib });
     for (const x of g) console.error(`eval-generik: GAGAL ${x}`);
     return g.length ? 1 : 0;
   }

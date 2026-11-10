@@ -227,7 +227,6 @@ const NEG_JALUR = [
   'kunci',
   'sahkan',
   'terbit',
-  'lapor',
 ];
 /** Frasa NEG dua kata ("tanda tangan", "tanda-tangan") untuk nama dan jalur. */
 const RE_FRASA_NEG = /tanda[^a-z0-9]{0,3}tangan/;

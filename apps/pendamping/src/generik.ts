@@ -65,8 +65,8 @@ export type TanganHalaman = {
   urlKini(): string;
 };
 
-/** Tujuan tautan pembuka untuk giliran `ketuk_tautan` (event `giliran_anda.tautan`). */
-export type TautanGiliran = { nama: string; host: string; jalur: string };
+/** Tujuan tautan pembuka untuk giliran `ketuk_tautan` (event `giliran_anda.tautan`; `ref` kembali lewat `buka_tautan`). */
+export type TautanGiliran = { ref: string; nama: string; host: string; jalur: string };
 
 function decodeURIComponentAman(s: string): string {
   try {
@@ -159,12 +159,13 @@ export const PESAN_GENERIK = {
   captcha: 'Situs meminta kode keamanan (CAPTCHA). Selesaikan sendiri; AI menunggu.',
   isi_sendiri: 'Isi sendiri kolom yang disorot, lalu tekan Lanjutkan.',
   ketuk_tautan:
-    'AI tidak membuka tautan ini sendiri. Periksa nama dan alamat tujuannya, lalu tekan Buka tautan bila sesuai.',
+    'AI tidak membuka tautan ini sendiri. Periksa nama dan alamat tujuannya, lalu tekan tombol Buka bila sesuai.',
   final: 'Periksa semua isian. Hanya Anda yang boleh menekan tombol kirim.',
   tidak_yakin:
     'AI tidak yakin langkah berikutnya. Lanjutkan sendiri, atau tekan Lanjutkan untuk mencoba lagi.',
   kotor:
     'Halaman ini mencoba mengirim data sendiri, jadi AI berhenti dan halaman dimuat ulang. Periksa halaman, lalu lanjutkan sendiri.',
+  berhenti: 'AI berhenti di sini. Lanjutkan sendiri dari layar ini.',
 } as const;
 
 const PESAN_TIDAK_BISA: Record<Extract<Aksi, { jenis: 'tidak_bisa' }>['sebab'], string> = {
@@ -185,6 +186,7 @@ const ALASAN_GILIRAN: Record<Extract<Aksi, { jenis: 'serahkan' }>['alasan'], Ala
   final: 'final',
   tidak_yakin: 'periksa',
   ketuk_tautan: 'ketuk_tautan',
+  berhenti: 'berhenti',
 };
 
 // --- Redaksi ------------------------------------------------------------------------------------------
@@ -320,6 +322,10 @@ export class GenerikRun {
   private refPembuka = new Set<string>();
   /** Giliran `ketuk_tautan` yang aktif: ref tautan yang boleh dibuka lewat `buka_tautan` (review N5). */
   private pembukaAktif: string | undefined;
+  /** Serah akhir `berhenti`: loop Navigator sudah berhenti; Lanjutkan tidak mengembalikan kendali ke AI. */
+  private berhentiAkhir = false;
+  /** Pengamatan terakhir dokumen INI halaman akhir (direset saat dokumen baru ter-commit; untuk mode ketat). */
+  private akhirDok = false;
 
   constructor(private readonly d: GenerikDeps) {
     this.now = d.now ?? Date.now;
@@ -327,6 +333,7 @@ export class GenerikRun {
 
   /** Dokumen bingkai utama baru ter-commit: timer/retry dokumen lama mati, bendera kotor direset. */
   dokumenBaru(): void {
+    this.akhirDok = false;
     this.pembukaAktif = undefined;
     this.kotorDok = false;
     this.kotorDiserahkan = false;
@@ -344,6 +351,24 @@ export class GenerikRun {
 
   get kotor(): boolean {
     return this.kotorDok;
+  }
+
+  /** Serah akhir `berhenti` aktif (warga melanjutkan sendiri; `kembalikan` tetap giliran warga). */
+  get berhenti(): boolean {
+    return this.berhentiAkhir;
+  }
+
+  /** Eksekusi baru di sesi yang sama (loop Navigator baru): serah akhir sebelumnya tidak berlaku lagi. */
+  eksekusiBaru(): void {
+    this.berhentiAkhir = false;
+  }
+
+  /**
+   * Redirect JS/meta halaman sendiri (GET bingkai utama di luar navKe) tidak pernah lolos di dokumen kotor (N2)
+   * atau halaman akhir: gerbang memakai ini sebagai mode ketat.
+   */
+  get ketat(): boolean {
+    return this.kotorDok || this.akhirDok;
   }
 
   /** Kotak sorot terkini (posisi sekarang, mengikuti gulir) dari serah terakhir; undefined bila tidak ada. */
@@ -477,6 +502,7 @@ export class GenerikRun {
     this.peta = r.peta;
     this.seqTerakhir = seq;
     this.kunciAkhir = cek.data.sinyal.halamanAkhir;
+    this.akhirDok = cek.data.sinyal.halamanAkhir;
     this.namaRef = new Map(cek.data.elemen.map((e) => [e.ref, e.nama]));
     this.refPembuka = new Set(cek.data.elemen.filter((e) => e.tautanPembuka).map((e) => e.ref));
     this.pembukaAktif = undefined;
@@ -576,6 +602,7 @@ export class GenerikRun {
       const sorot = ref ? await this.d.tangan.sorot(ref.jalur) : undefined;
       this.sorotJalur = ref?.jalur;
       this.pembukaAktif = tautan ? a.ref : undefined;
+      this.berhentiAkhir = a.alasan === 'berhenti';
       this.d.jejak({ jenis: 'ambil_alih', fase: 'mulai', alasan: a.alasan });
       this.d.serahkan(ALASAN_GILIRAN[a.alasan], PESAN_GENERIK[a.alasan], sorot, tautan);
       return { kode: 'ok', halamanBerganti: true };
@@ -712,7 +739,7 @@ export class GenerikRun {
     const u = await this.tautanUrl(ref);
     if (!u) return undefined;
     const jalur = redaksi(decodeURIComponentAman(u.pathname), this.d.izin.vault()).slice(0, 200) || '/';
-    return { nama: (this.namaRef.get(ref) ?? '').slice(0, 120), host: u.host, jalur };
+    return { ref, nama: (this.namaRef.get(ref) ?? '').slice(0, 80), host: u.host, jalur };
   }
 
   /**
@@ -720,11 +747,13 @@ export class GenerikRun {
    * ulang dari DOM, `lanjut()` mengembalikan kendali ke AI, lalu navigasi GET bingkai utama ke href itu (jendela
    * `ai_klik` dengan navKe), tanpa klik dan tanpa handler JS halaman. false = tidak ada giliran itu / tautan berubah.
    */
-  bukaTautan(lanjut: () => void): Promise<boolean> {
+  bukaTautan(refWarga: string, lanjut: () => void): Promise<boolean> {
     return this.serial(async () => {
       const ref = this.pembukaAktif;
+      // Hanya ref tautan pembuka yang sedang disorot; ref lain tidak menghabiskan giliran.
+      if (!ref || ref !== refWarga) return false;
       this.pembukaAktif = undefined;
-      if (!ref || this.kunciAkhir) return false;
+      if (this.kunciAkhir) return false;
       const u = await this.tautanUrl(ref);
       if (!u) return false;
       lanjut();
