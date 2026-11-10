@@ -4,7 +4,7 @@ import type { PendampingEvent, PendampingHasil, PendampingSorot, PendampingStatu
 import { createBrowserFactory } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
 import type { ActiveRun, Hooks } from '../src/sessions.js';
-import { FIXTURE_ORIGIN, FIXTURES_PORT } from '../playwright.config.js';
+import { FIXTURE_LOCAL_ORIGIN, FIXTURE_ORIGIN, FIXTURES_PORT } from '../playwright.config.js';
 
 /**
  * Verifikasi situs (B-b) terhadap tiruan halaman tantangan di apps/fixtures (bukan Cloudflare asli):
@@ -21,9 +21,9 @@ type Rekam = {
 /** Origin pasangan lintas-situs fixture (widget tantangan dalam iframe lintas-proses). */
 const FIXTURE_LINTAS = `http://localhost:${FIXTURES_PORT}`;
 
-async function mulai(jalur: string): Promise<{ run: ActiveRun; rekam: Rekam }> {
+async function mulai(jalur: string, origin = FIXTURE_ORIGIN): Promise<{ run: ActiveRun; rekam: Rekam }> {
   const config = loadConfig({
-    PENDAMPING_FIXTURE_ORIGINS: `${FIXTURE_ORIGIN},${FIXTURE_LINTAS}`,
+    PENDAMPING_FIXTURE_ORIGINS: `${FIXTURE_ORIGIN},${FIXTURE_LINTAS},${FIXTURE_LOCAL_ORIGIN}`,
     PENDAMPING_HEADLESS: '1',
   });
   const rekam: Rekam = { events: [], modes: [] };
@@ -38,7 +38,7 @@ async function mulai(jalur: string): Promise<{ run: ActiveRun; rekam: Rekam }> {
   };
   const run = await createBrowserFactory(config)({
     sesiId: `verif-${jalur}`,
-    program: { origin: FIXTURE_ORIGIN, steps: [nav(jalur), fill(css('#nopol'), 'B 1234 UJI')] },
+    program: { origin, steps: [nav(jalur), fill(css('#nopol'), 'B 1234 UJI')] },
     executionId: 'x_verif',
     viewport: { lebar: 390, tinggi: 844, dpr: 2, seluler: true },
     hooks,
@@ -95,6 +95,28 @@ test('widget tantangan di iframe LINTAS-origin: ketukan warga diteruskan CDP sam
   try {
     const sorot = await tungguSorot(rekam, 'Situs meminta verifikasi');
     expect(sorot.lebar).toBeGreaterThan(200);
+    await ketuk(run, sorot);
+    await expect
+      .poll(() => rekam.ended, { timeout: 30_000 })
+      .toMatchObject({ status: 'siaga', hasil: 'berhasil' });
+    expect(rekam.modes).toContain('ai:Verifikasi selesai. AI melanjutkan pengisian.');
+  } finally {
+    await run.destroy();
+  }
+});
+
+test('kotak centang "Performing security verification" (200, tanpa cf-mitigated): serah ke warga, lanjut otomatis', async () => {
+  const { run, rekam } = await mulai('/uji-cf/kotak/', FIXTURE_LOCAL_ORIGIN);
+  try {
+    const sorot = await tungguSorot(rekam, 'Situs meminta verifikasi keamanan');
+    expect(sorot.lebar).toBeGreaterThan(200);
+    expect(rekam.modes.at(-1)).toMatch(
+      /^takeover:Situs meminta verifikasi keamanan\. Ketuk kotak 'Verify you are human'/,
+    );
+    // AI menunggu: tidak mencentang, tidak mengisi.
+    await new Promise((r) => setTimeout(r, 2_500));
+    expect(rekam.ended).toBeUndefined();
+
     await ketuk(run, sorot);
     await expect
       .poll(() => rekam.ended, { timeout: 30_000 })

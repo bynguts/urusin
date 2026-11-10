@@ -20,7 +20,7 @@ export function isChallengeFrameUrl(url: string): boolean {
 
 /** Judul halaman antara (interstitial) tantangan bot. */
 export function isInterstitialTitle(title: string): boolean {
-  return /^\s*(?:just a moment|checking your browser|verifying you are human|one more step|tunggu sebentar|ddos-guard)/i.test(
+  return /^\s*(?:just a moment|checking your browser|verifying you are human|verify you are human|performing security verification|one more step|tunggu sebentar|melakukan verifikasi keamanan|ddos-guard)/i.test(
     title,
   );
 }

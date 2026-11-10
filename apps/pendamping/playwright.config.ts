@@ -7,6 +7,9 @@ import { defineConfig } from '@playwright/test';
 export const FIXTURES_PORT = Number(process.env.PENDAMPING_E2E_FIXTURES_PORT ?? 4331);
 export const PENDAMPING_PORT = Number(process.env.PENDAMPING_E2E_PORT ?? 4332);
 export const FIXTURE_ORIGIN = `http://127.0.0.1:${FIXTURES_PORT}`;
+/** Fixtures profil local (varian khusus uji, mis. kotak centang `/uji-cf/kotak/`); alur login tetap di public. */
+export const FIXTURES_LOCAL_PORT = Number(process.env.PENDAMPING_E2E_FIXTURES_LOCAL_PORT ?? 4333);
+export const FIXTURE_LOCAL_ORIGIN = `http://127.0.0.1:${FIXTURES_LOCAL_PORT}`;
 export const PENDAMPING_ORIGIN = `http://127.0.0.1:${PENDAMPING_PORT}`;
 export const INTERNAL_TOKEN = 'e2e-token-bukan-rahasia-0123456789abcdef';
 
@@ -23,6 +26,12 @@ export default defineConfig({
       url: `${FIXTURE_ORIGIN}/health`,
       reuseExistingServer: false,
       env: { FIXTURES_PROFILE: 'public', FIXTURES_PORT: String(FIXTURES_PORT) },
+    },
+    {
+      command: 'node ../fixtures/dist/server.js',
+      url: `${FIXTURE_LOCAL_ORIGIN}/health`,
+      reuseExistingServer: false,
+      env: { FIXTURES_PROFILE: 'local', FIXTURES_PORT: String(FIXTURES_LOCAL_PORT) },
     },
     {
       command: 'node dist/main.js',

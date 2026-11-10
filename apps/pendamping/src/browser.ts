@@ -204,7 +204,7 @@ const PESAN_MASUK =
   'AI melanjutkan setelah Anda masuk.';
 
 const PESAN_VERIFIKASI =
-  'Situs meminta verifikasi bahwa Anda manusia. Selesaikan sendiri (ketuk kotak verifikasi); AI menunggu dan tidak akan mengekliknya.';
+  "Situs meminta verifikasi keamanan. Ketuk kotak 'Verify you are human', lalu tunggu sebentar. AI menunggu dan tidak akan mengekliknya.";
 
 /** Widget Turnstile sudah menghasilkan token? (hanya ada/tidaknya; nilai token tidak pernah dibaca keluar). */
 const TOKEN_TURNSTILE_ADA = `Array.from(document.querySelectorAll('input[name="cf-turnstile-response"]')).some((e) => e.value.length > 0)`;
