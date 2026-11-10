@@ -6,10 +6,9 @@
  * AI hanya boleh mengklik kelas `navigasi`, `ui_lokal`, atau `lanjut`. Homoglif, karakter tak terlihat, dan
  * ikon tanpa nama tidak pernah menghasilkan kecocokan positif.
  */
+import type { KelasKendali } from '@urusin/contracts';
 
-// selaras dengan @urusin/contracts KelasKendaliSchema (WP-D)
-export type KelasKendali =
-  'navigasi' | 'ui_lokal' | 'lanjut' | 'kirim' | 'masuk' | 'tantangan' | 'tidak_pasti';
+export type { KelasKendali };
 
 /** Id aturan untuk jejak audit: K1..K11 sesuai urutan §3. */
 export type AturanKlasifikasi =
@@ -54,6 +53,7 @@ export type FiturKendali = {
 
 export type HasilKlasifikasi = { kelas: KelasKendali; aturan: AturanKlasifikasi; fitur: FiturKendali };
 
+/** Salinan runtime KELAS_BOLEH_KLIK_AI kontrak (skrip halaman tidak boleh impor runtime; tes memastikan sama). */
 export const KELAS_BOLEH_KLIK_AI: readonly KelasKendali[] = ['navigasi', 'ui_lokal', 'lanjut'];
 
 export function bolehDiklikAi(kelas: KelasKendali): boolean {
