@@ -15,3 +15,4 @@ deploy/pendamping-seccomp.json
 
 # Keluaran eval persona (transkrip/skor dibangkitkan mesin)
 scripts/eval-persona/hasil/
+scripts/eval-persona/.cache/
