@@ -9,12 +9,17 @@
   import { ambilLokal, ambilPrefs } from '#lib/stores/app.svelte.js';
   import { page } from '$app/state';
   import { resolve } from '$app/paths';
+  import { MediaQuery } from 'svelte/reactivity';
   import type { LayoutProps } from './$types';
 
   let { children }: LayoutProps = $props();
 
   const prefs = ambilPrefs();
   const lokal = ambilLokal();
+  // Menu samping hanya tampil mulai lg (64rem, `hidden lg:flex`). SSR tetap merendernya (desktop tanpa
+  // kedip); di HP klien membuang markup tersembunyi itu alih-alih meng-hydrate-nya, dan memasangnya bila
+  // layar melebar. Tampilan sama di semua ukuran.
+  const layarLebar = new MediaQuery('min-width: 64rem', true);
   // Halaman Web publik berdesain landing dan rute auth tampil tanpa kerangka aplikasi.
   const polos = $derived(rutWeb(page.url.pathname) || rutAuth(page.url.pathname));
   const akun = $derived(page.data.akun as { email: string } | null | undefined);
@@ -46,7 +51,7 @@
 {:else}
   <!-- App 01–14: bingkai krem bertitik, menu samping 248 px, panel utama putih membulat (desktop). -->
   <div class="bingkai-app flex min-h-dvh bg-bg-2 lg:h-dvh lg:gap-3 lg:p-3">
-    <Sidebar />
+    {#if layarLebar.current}<Sidebar />{/if}
 
     <div
       class="flex min-w-0 flex-1 flex-col bg-bg lg:overflow-y-auto lg:rounded-2xl lg:bg-surface lg:shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] lg:outline lg:outline-1 lg:-outline-offset-1 lg:outline-line"

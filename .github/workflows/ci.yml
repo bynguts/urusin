@@ -78,7 +78,7 @@ jobs:
   perf:
     name: Lighthouse CI (mobile)
     runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
-    timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 20 }}
+    timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 30 }}
     env:
       HUSKY: '0'
       GIT_SHA: ${{ github.sha }}
@@ -104,7 +104,7 @@ jobs:
         run: pnpm build
 
       # Rute dan batas ada di perf-routes.cjs dan lighthouserc.cjs. Emulasi mobile (Moto G Power, slow 4G),
-      # 3 run, median; pelanggaran apa pun menggagalkan job.
+      # 5 run, median; pelanggaran apa pun menggagalkan job.
       - name: Lighthouse CI
         if: runner.environment == 'github-hosted'
         env:
@@ -145,7 +145,7 @@ jobs:
             console.log();
           ' >> "$GITHUB_STEP_SUMMARY"
           {
-            echo "### Lighthouse (mobile, median 3 run)"
+            echo "### Lighthouse (mobile, median 5 run)"
             echo
             echo "| URL | Performance | Accessibility | LCP (ms) | TBT (ms) | Script (KB) | Total (KB) |"
             echo "|---|---|---|---|---|---|---|"
