@@ -1,5 +1,6 @@
 import type net from 'node:net';
 import { hostsSesi } from '@urusin/adapters';
+import { EGRESS_ASET_UMUM } from '@urusin/core';
 import type {
   AksiSesiInternal,
   HasilAksi,
@@ -145,11 +146,18 @@ describe('programDari(generik)', () => {
       await h.flush();
       return hostsSesi(h.runs.at(-1)!.init.program);
     };
-    // Bawaan dari registry wilayah: host portal + tantangan sesuai proteksi (cloudflare), tanpa host info.
+    // Bawaan dari registry wilayah: host portal + tantangan Cloudflare (termasuk flow brunhild) + aset umum
+    // CDN/fon, tanpa host info.
     expect(await hostsDari('u1', { kode: '3312', jalur: '/' })).toEqual([
       'telunjuksakti.wonogirikab.go.id',
       'challenges.cloudflare.com',
+      'brunhild.challenges.cloudflare.com',
+      ...EGRESS_ASET_UMUM,
     ]);
+    // CDN boleh diminta eksplisit oleh web.
+    expect(
+      await hostsDari('u4', { kode: '3312', hosts: 'telunjuksakti.wonogirikab.go.id,unpkg.com' }),
+    ).toEqual(['telunjuksakti.wonogirikab.go.id', 'unpkg.com']);
     // Diminta web: semuanya harus milik wilayah itu (host info boleh diminta eksplisit).
     expect(await hostsDari('u2', { kode: '3312', hosts: 'disdukcapil.wonogirikab.go.id' })).toEqual([
       'telunjuksakti.wonogirikab.go.id',

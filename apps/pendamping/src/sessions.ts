@@ -25,6 +25,7 @@ import type {
 } from '@urusin/contracts';
 import { ADAPTERS, buildProgram, requiredData, type Params, type Program } from '@urusin/adapters';
 import {
+  EGRESS_ASET_UMUM,
   PLATFORM_WILAYAH,
   PORTAL_WILAYAH,
   egressAllowedHosts,
@@ -209,8 +210,9 @@ function hostsSesiWilayah(kode: string): { boleh: Set<string>; bawaan: string[] 
   const platform =
     p.platform && Object.hasOwn(PLATFORM_WILAYAH, p.platform) ? PLATFORM_WILAYAH[p.platform]!.hosts : [];
   return {
-    boleh: new Set([...hostsWilayah(kode), ...tantangan]),
-    bawaan: [...new Set([...p.hosts, ...platform, ...tantangan])],
+    boleh: new Set([...hostsWilayah(kode), ...tantangan, ...EGRESS_ASET_UMUM]),
+    // Aset umum (CDN/fon) ikut bawaan: tanpa itu ~21 portal nyata rusak tampilannya (probe #4).
+    bawaan: [...new Set([...p.hosts, ...platform, ...tantangan, ...EGRESS_ASET_UMUM])],
   };
 }
 
