@@ -121,6 +121,7 @@ function alasanKontrak(a: AlasanAmbilAlih): Extract<Aksi, { jenis: 'serahkan' }>
     case 'captcha':
     case 'final':
     case 'isi_sendiri':
+    case 'ketuk_tautan':
       return a;
     default:
       return 'tidak_yakin';
