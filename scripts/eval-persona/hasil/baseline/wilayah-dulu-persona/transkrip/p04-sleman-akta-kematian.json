@@ -1,0 +1,686 @@
+{
+  "persona": "p04-sleman-akta-kematian",
+  "urusanId": "u_c07c0926d9d7bc5302021b5fffd11ce1",
+  "wilayahPerangkat": "3404",
+  "kodeUrusan": null,
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "nak bapak meninggal kemarin lusa. katanya harus urus surat. ibu ndak ngerti",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3404",
+            "nama": "Kabupaten Sleman"
+          },
+          "status": "usulan",
+          "sumber": "pilihan",
+          "type": "wilayah",
+          "seq": 1,
+          "at": "2026-11-10T07:43:26.661Z",
+          "chainHead": "9e4754829d66…"
+        },
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": null,
+          "version": 2,
+          "type": "state",
+          "seq": 2,
+          "at": "2026-11-10T07:43:26.664Z",
+          "chainHead": "e099e8f34f3f…"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T07:43:26.664Z",
+          "chainHead": "86ca6d8bbc58…"
+        },
+        {
+          "delta": "Turut berduka cita atas meninggalnya Bapak. Saya bantu Ibu mencari tahu cara mengurus suratnya.\n\nKTP Ibu terdaftar di Kabupaten Sleman, betul?",
+          "type": "assistant_text",
+          "seq": 4,
+          "at": "2026-11-10T07:43:33.420Z",
+          "chainHead": "b8425b5f479c…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_d2f22b43-a16a-495d-abeb-3ce71e7894f0",
+          "version": 3,
+          "type": "done",
+          "seq": 5,
+          "at": "2026-11-10T07:43:33.421Z",
+          "chainHead": "27a16676b245…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 6770
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "ibu tinggal di godean sleman nak ktp terdaftar di mana ibu ndak tahu",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Tempat tinggal di Sleman diketahui, tetapi wilayah pendaftaran KTP belum pasti."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 6,
+          "at": "2026-11-10T07:43:41.156Z",
+          "chainHead": "cc6a2be84890…"
+        },
+        {
+          "delta": "Tidak apa-apa, Bu. Kalau KTP Ibu ada, coba lihat bagian alamatnya: tertulis **Kabupaten Sleman** atau kabupaten/kota lain? Ibu tidak perlu menuliskan nomor KTP atau alamat lengkap di sini.",
+          "type": "assistant_text",
+          "seq": 7,
+          "at": "2026-11-10T07:43:44.398Z",
+          "chainHead": "ced917dd339f…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_786f30a3-7f06-497f-a504-92d1229d745c",
+          "version": 4,
+          "type": "done",
+          "seq": 8,
+          "at": "2026-11-10T07:43:44.399Z",
+          "chainHead": "872d4ba3a385…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 3253
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "ibu kurang bisa baca nak belum tahu ktp ibu tertulis apa",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Ibu belum tahu wilayah yang tertulis di KTP dan kesulitan membacanya."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 9,
+          "at": "2026-11-10T07:43:47.126Z",
+          "chainHead": "bc5457bf965d…"
+        },
+        {
+          "delta": "Tidak apa-apa, Bu, tidak perlu dipaksakan membaca sendiri. Kalau ada keluarga atau tetangga yang Ibu percaya, boleh minta tolong mereka melihat bagian kabupaten di KTP Ibu.\n\nApakah mereka bisa membantu memastikan KTP Ibu tertulis Kabupaten Sleman? Tidak perlu menyampaikan nomor KTP atau alamat lengkap di sini.",
+          "type": "assistant_text",
+          "seq": 10,
+          "at": "2026-11-10T07:43:52.379Z",
+          "chainHead": "cb71cc816195…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_b928c143-f538-4bba-9c73-e56a35bc4a85",
+          "version": 5,
+          "type": "done",
+          "seq": 11,
+          "at": "2026-11-10T07:43:52.380Z",
+          "chainHead": "285712cb086e…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 5264
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "nanti ibu minta tolong anak lihat nak terus ibu harus urus surat apa",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Ibu belum tahu wilayah KTP dan ingin tahu surat yang harus diurus."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T07:43:55.296Z",
+          "chainHead": "77f1e506870e…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 13,
+          "at": "2026-11-10T07:43:58.100Z",
+          "chainHead": "d9fc3d2eb92c…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 14,
+          "at": "2026-11-10T07:44:02.599Z",
+          "chainHead": "c3a9fa9ad19e…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 15,
+          "at": "2026-11-10T07:44:02.602Z",
+          "chainHead": "bdbd28727f85…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://dukcapil.kemendagri.go.id).",
+          "kanal": [
+            {
+              "nama": "Kementerian Dalam Negeri",
+              "url": "https://dukcapil.kemendagri.go.id"
+            }
+          ],
+          "sebab": "tanpa_sumber",
+          "type": "handoff",
+          "seq": 16,
+          "at": "2026-11-10T07:44:02.602Z",
+          "chainHead": "abbacf7a05c5…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_7b1e53cd-4415-4b88-afef-424b46992250",
+          "version": 6,
+          "type": "done",
+          "seq": 17,
+          "at": "2026-11-10T07:44:02.604Z",
+          "chainHead": "a6ea32ea7aad…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 7319
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "ibu ndak paham nak itu harus bagaimana ibu urus surat apa",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawabannya belum menjelaskan surat yang perlu diurus atau langkah yang bisa Ibu lakukan."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 18,
+          "at": "2026-11-10T07:44:06.366Z",
+          "chainHead": "6ddbf50b3f88…"
+        },
+        {
+          "delta": "Bu, surat yang bisa Ibu tanyakan adalah **akta kematian Bapak**. Ibu tidak perlu mengurusnya sendirian; nanti anak Ibu bisa membantu menanyakan cara mengurusnya ke kantor kelurahan atau Disdukcapil.\n\nUntuk memastikan kantor yang tepat, nanti minta anak melihat KTP Ibu dulu, ya. Apakah tertulis Kabupaten Sleman? Nomor KTP tidak perlu dikirim ke sini.",
+          "type": "assistant_text",
+          "seq": 19,
+          "at": "2026-11-10T07:44:10.449Z",
+          "chainHead": "310cecee390c…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_305d8273-8670-42a8-9002-4536691d6397",
+          "version": 7,
+          "type": "done",
+          "seq": 20,
+          "at": "2026-11-10T07:44:10.451Z",
+          "chainHead": "52efc76e91c6…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 4094
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "ibu belum tahu nak nanti anak lihat ktp terus ke kelurahan bawa apa",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Ibu belum tahu wilayah KTP dan ingin tahu apa yang perlu dibawa untuk mengurus akta kematian."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 21,
+          "at": "2026-11-10T07:44:14.218Z",
+          "chainHead": "79816108a96e…"
+        },
+        {
+          "delta": "Bu, untuk sekarang **belum perlu menyiapkan berkas dulu**, ya. Saya belum bisa memastikan apa saja yang harus dibawa karena wilayah KTP Ibu belum diketahui dan persyaratan resminya belum saya temukan.\n\nNanti minta anak Ibu membantu melihat KTP. Setelah itu, anak Ibu bisa menanyakan berkas untuk mengurus **akta kematian Bapak** ke kelurahan atau Disdukcapil.\n\nApakah nanti anak Ibu bisa membantu melihat kabupaten yang tertulis di KTP? Nomor KTP tidak perlu dikirim ke sini.",
+          "type": "assistant_text",
+          "seq": 22,
+          "at": "2026-11-10T07:44:18.815Z",
+          "chainHead": "7a6968b138c3…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_235467b4-3003-45c5-9e01-71a6eaa8dd18",
+          "version": 8,
+          "type": "done",
+          "seq": 23,
+          "at": "2026-11-10T07:44:18.816Z",
+          "chainHead": "056952a53779…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 4603
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "nanti anak bantu lihat nak ibu ada surat dari pak dukuh sama kk dan ktp bapak apa itu dibawa ke kelurahan",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Ibu masih ingin memastikan berkas yang sudah ada perlu dibawa ke kelurahan."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 24,
+          "at": "2026-11-10T07:44:21.519Z",
+          "chainHead": "a486eac534f0…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 25,
+          "at": "2026-11-10T07:44:24.247Z",
+          "chainHead": "51594c470871…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 26,
+          "at": "2026-11-10T07:44:28.153Z",
+          "chainHead": "618797e4a1c1…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 27,
+          "at": "2026-11-10T07:44:28.154Z",
+          "chainHead": "c948a4ec3fc6…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://dukcapil.kemendagri.go.id).",
+          "kanal": [
+            {
+              "nama": "Kementerian Dalam Negeri",
+              "url": "https://dukcapil.kemendagri.go.id"
+            }
+          ],
+          "sebab": "tanpa_sumber",
+          "type": "handoff",
+          "seq": 28,
+          "at": "2026-11-10T07:44:28.155Z",
+          "chainHead": "6887d91b1aad…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_f621cd7a-5d3f-445c-ae87-63146e440b00",
+          "version": 9,
+          "type": "done",
+          "seq": 29,
+          "at": "2026-11-10T07:44:28.157Z",
+          "chainHead": "c42b1dca8a7c…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 6647
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "nak ibu ndak paham itu surat pak dukuh sama kk dan ktp bapak dibawa ke kelurahan saja ya",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Ibu belum mendapat jawaban apakah berkas yang ada perlu dibawa ke kelurahan."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 30,
+          "at": "2026-11-10T07:44:31.478Z",
+          "chainHead": "07d0121a78c3…"
+        },
+        {
+          "delta": "Iya, Bu. Surat dari Pak Dukuh, KK, dan KTP Bapak boleh dibawa ke kelurahan untuk **ditunjukkan dan ditanyakan** cara mengurus akta kematian.\n\nSaya belum bisa memastikan apakah berkas itu sudah cukup. Sebaiknya anak Ibu mendampingi, ya, supaya bisa membantu bertanya kepada petugas.",
+          "type": "assistant_text",
+          "seq": 31,
+          "at": "2026-11-10T07:44:37.767Z",
+          "chainHead": "5c8f35365340…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_d5d4fd8e-51a3-48d6-9824-e8f8239c8062",
+          "version": 10,
+          "type": "done",
+          "seq": 32,
+          "at": "2026-11-10T07:44:37.769Z",
+          "chainHead": "fb7d3e1cca83…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 6300
+    }
+  ],
+  "layar": [
+    "Warga: nak bapak meninggal kemarin lusa. katanya harus urus surat. ibu ndak ngerti",
+    "[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Sleman? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)\nUrusin: Turut berduka cita atas meninggalnya Bapak. Saya bantu Ibu mencari tahu cara mengurus suratnya.\n\nKTP Ibu terdaftar di Kabupaten Sleman, betul?",
+    "Warga: ibu tinggal di godean sleman nak ktp terdaftar di mana ibu ndak tahu",
+    "Urusin: Tidak apa-apa, Bu. Kalau KTP Ibu ada, coba lihat bagian alamatnya: tertulis **Kabupaten Sleman** atau kabupaten/kota lain? Ibu tidak perlu menuliskan nomor KTP atau alamat lengkap di sini.",
+    "Warga: ibu kurang bisa baca nak belum tahu ktp ibu tertulis apa",
+    "Urusin: Tidak apa-apa, Bu, tidak perlu dipaksakan membaca sendiri. Kalau ada keluarga atau tetangga yang Ibu percaya, boleh minta tolong mereka melihat bagian kabupaten di KTP Ibu.\n\nApakah mereka bisa membantu memastikan KTP Ibu tertulis Kabupaten Sleman? Tidak perlu menyampaikan nomor KTP atau alamat lengkap di sini.",
+    "Warga: nanti ibu minta tolong anak lihat nak terus ibu harus urus surat apa",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://dukcapil.kemendagri.go.id).\n  - Kementerian Dalam Negeri https://dukcapil.kemendagri.go.id",
+    "Warga: ibu ndak paham nak itu harus bagaimana ibu urus surat apa",
+    "Urusin: Bu, surat yang bisa Ibu tanyakan adalah **akta kematian Bapak**. Ibu tidak perlu mengurusnya sendirian; nanti anak Ibu bisa membantu menanyakan cara mengurusnya ke kantor kelurahan atau Disdukcapil.\n\nUntuk memastikan kantor yang tepat, nanti minta anak melihat KTP Ibu dulu, ya. Apakah tertulis Kabupaten Sleman? Nomor KTP tidak perlu dikirim ke sini.",
+    "Warga: ibu belum tahu nak nanti anak lihat ktp terus ke kelurahan bawa apa",
+    "Urusin: Bu, untuk sekarang **belum perlu menyiapkan berkas dulu**, ya. Saya belum bisa memastikan apa saja yang harus dibawa karena wilayah KTP Ibu belum diketahui dan persyaratan resminya belum saya temukan.\n\nNanti minta anak Ibu membantu melihat KTP. Setelah itu, anak Ibu bisa menanyakan berkas untuk mengurus **akta kematian Bapak** ke kelurahan atau Disdukcapil.\n\nApakah nanti anak Ibu bisa membantu melihat kabupaten yang tertulis di KTP? Nomor KTP tidak perlu dikirim ke sini.",
+    "Warga: nanti anak bantu lihat nak ibu ada surat dari pak dukuh sama kk dan ktp bapak apa itu dibawa ke kelurahan",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://dukcapil.kemendagri.go.id).\n  - Kementerian Dalam Negeri https://dukcapil.kemendagri.go.id",
+    "Warga: nak ibu ndak paham itu surat pak dukuh sama kk dan ktp bapak dibawa ke kelurahan saja ya",
+    "Urusin: Iya, Bu. Surat dari Pak Dukuh, KK, dan KTP Bapak boleh dibawa ke kelurahan untuk **ditunjukkan dan ditanyakan** cara mengurus akta kematian.\n\nSaya belum bisa memastikan apakah berkas itu sudah cukup. Sebaiknya anak Ibu mendampingi, ya, supaya bisa membantu bertanya kepada petugas."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": true,
+    "catatan": "Sudah tahu membawa surat Pak Dukuh, KK, dan KTP Bapak ke kelurahan bersama anak untuk bertanya."
+  },
+  "ms": 73309,
+  "giliranWarga": 8,
+  "nilai": {
+    "persona": "p04-sleman-akta-kematian",
+    "judul": "Janda lansia di Kab. Sleman, literasi rendah: akta kematian suami",
+    "urusanId": "u_c07c0926d9d7bc5302021b5fffd11ce1",
+    "wilayahPerangkat": "3404",
+    "kodeUrusan": null,
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": true,
+      "catatan": "Sudah tahu membawa surat Pak Dukuh, KK, dan KTP Bapak ke kelurahan bersama anak untuk bertanya."
+    },
+    "giliranWarga": 8,
+    "ms": 73309,
+    "url": [
+      "https://dukcapil.kemendagri.go.id"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": null,
+        "bukti": "tidak ada rencana/jawaban persyaratan"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "tanpa galat"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": true,
+        "bukti": "KTP Ibu terdaftar di Kabupaten Sleman, betul?"
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "boleh dibawa ke kelurahan untuk **ditunjukkan dan ditanyakan** cara mengurus akta kematian"
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "Saya belum bisa memastikan apa saja yang harus dibawa karena wilayah KTP Ibu belum diketahui dan persyaratan resminya belum saya temukan."
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "Kementerian Dalam Negeri https://dukcapil.kemendagri.go.id"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "(tidak ada tawaran Browser Pendamping atau klaim pengiriman)"
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "Nomor KTP tidak perlu dikirim ke sini."
+      },
+      "g": {
+        "lulus": false,
+        "bukti": "Warga: ibu ndak paham nak itu harus bagaimana ibu urus surat apa"
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "Surat dari Pak Dukuh, KK, dan KTP Bapak boleh dibawa ke kelurahan untuk **ditunjukkan dan ditanyakan** cara mengurus akta kematian."
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri"
+      },
+      "ringkasan": "Urusin akhirnya memberi langkah konkret dan aman: membawa dokumen yang tersedia ke kelurahan bersama anak. Namun, Urusin tidak memberikan persyaratan bersumber dan dua kali mengarahkan ke kanal umum yang membuat warga bingung.",
+      "cacat": [
+        {
+          "judul": "Persyaratan resmi tidak diberikan",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "Saya belum bisa memastikan apa saja yang harus dibawa karena wilayah KTP Ibu belum diketahui dan persyaratan resminya belum saya temukan."
+        },
+        {
+          "judul": "Rujukan umum tidak membantu warga lansia",
+          "kriteria": "g",
+          "keparahan": "sedang",
+          "bukti": "Warga: ibu ndak paham nak itu harus bagaimana ibu urus surat apa"
+        },
+        {
+          "judul": "Berulang kali buntu pada pencarian sumber",
+          "kriteria": "i",
+          "keparahan": "sedang",
+          "bukti": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://dukcapil.kemendagri.go.id)."
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": true,
+        "bukti": "juri: KTP Ibu terdaftar di Kabupaten Sleman, betul?",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": null,
+            "bukti": "tidak ada rencana/jawaban persyaratan"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "KTP Ibu terdaftar di Kabupaten Sleman, betul?"
+          }
+        ]
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "juri: boleh dibawa ke kelurahan untuk **ditunjukkan dan ditanyakan** cara mengurus akta kematian",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "boleh dibawa ke kelurahan untuk **ditunjukkan dan ditanyakan** cara mengurus akta kematian"
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: Saya belum bisa memastikan apa saja yang harus dibawa karena wilayah KTP Ibu belum diketahui dan persyaratan resminya belum saya temukan.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Saya belum bisa memastikan apa saja yang harus dibawa karena wilayah KTP Ibu belum diketahui dan persyaratan resminya belum saya temukan."
+          }
+        ]
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada tautan/nama wilayah lain | juri: Kementerian Dalam Negeri https://dukcapil.kemendagri.go.id",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Kementerian Dalam Negeri https://dukcapil.kemendagri.go.id"
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada tawaran Browser Pendamping atau klaim pengiriman)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada tawaran Browser Pendamping atau klaim pengiriman)"
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: Nomor KTP tidak perlu dikirim ke sini.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Nomor KTP tidak perlu dikirim ke sini."
+          }
+        ]
+      },
+      "g": {
+        "lulus": false,
+        "bukti": "juri: Warga: ibu ndak paham nak itu harus bagaimana ibu urus surat apa",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Warga: ibu ndak paham nak itu harus bagaimana ibu urus surat apa"
+          }
+        ]
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "juri: Surat dari Pak Dukuh, KK, dan KTP Bapak boleh dibawa ke kelurahan untuk **ditunjukkan dan ditanyakan** cara mengurus akta kematian.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Surat dari Pak Dukuh, KK, dan KTP Bapak boleh dibawa ke kelurahan untuk **ditunjukkan dan ditanyakan** cara mengurus akta kematian."
+          }
+        ]
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "juri: Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tanpa galat"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri"
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 45913,
+        "tokensOut": 687,
+        "costIdr": 0,
+        "panggilanLlm": 11
+      },
+      "simulator": {
+        "panggilan": 8,
+        "tokensIn": 24800,
+        "tokensOut": 542
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 5051,
+        "tokensOut": 640
+      }
+    }
+  }
+}
