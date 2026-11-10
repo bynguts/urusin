@@ -37,6 +37,29 @@ describe('registry wilayah untuk Navigator', () => {
     expect(PORTAL_WILAYAH[JAKPUS]?.jenis).toBe('aplikasi');
   });
 
+  it('params sesi generik: jalur masuk portal dan host sesi = host portal (+ Cloudflare hanya bila dipakai)', () => {
+    // Kota Surabaya: portal di jalur /app, tanpa proteksi Cloudflare.
+    const sby = rutePendamping({ jenis: 'kelahiran', kodeKabKota: '3578' });
+    expect(sby).toMatchObject({ jalur: 'generik', params: { jalur: '/app' } });
+    if (sby.jalur !== 'generik') return;
+    expect(String(sby.params.hosts).split(',')).toEqual(hostsPortalWilayah('3578'));
+    // Kota Bandar Lampung: jalur /pendaftaran dan portal ber-Cloudflare.
+    const bdl = rutePendamping({ jenis: 'kelahiran', kodeKabKota: '1871' });
+    expect(bdl).toMatchObject({ params: { jalur: '/pendaftaran' } });
+    if (bdl.jalur !== 'generik') return;
+    const hosts = String(bdl.params.hosts).split(',');
+    expect(hosts).toEqual([...hostsPortalWilayah('1871'), 'challenges.cloudflare.com']);
+    // Host info Disdukcapil tidak pernah ikut sesi.
+    for (const h of PORTAL_WILAYAH['1871']!.hostInfo)
+      if (!hostsPortalWilayah('1871').includes(h)) expect(hosts).not.toContain(h);
+  });
+
+  it('portal yang hanya bisa dimasuki lewat akun Google (OAuth diblokir egress) = dipandu', () => {
+    expect(PORTAL_WILAYAH['3201']?.login).toEqual(['google']);
+    expect(portalWebWilayah('3201')).toBeUndefined();
+    expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: '3201' }).jalur).toBe('dipandu');
+  });
+
   it('host portal: hanya host portal persis (tanpa host info dan pihak ketiga)', () => {
     expect(hostsPortalWilayah(SMG)).toEqual(PORTAL_WILAYAH[SMG]!.hosts);
     expect(hostsPortalWilayah(SMG)).not.toContain('challenges.cloudflare.com');
@@ -163,6 +186,8 @@ describe('jejak Navigator di halaman Jejak', () => {
       },
       { jenis: 'ambil_alih', fase: 'mulai', alasan: 'final' },
       { jenis: 'jejak_terbuang', n: 4 },
+      { jenis: 'validasi', rencanaHash: 'cd'.repeat(32), putusan: 'terima', aturan: [], asal: h },
+      { jenis: 'resi', akhir: 'selesai', hash: h, halaman: 3, aksi: 9, panggilanLlm: 4 },
     ];
     for (const c of catatan) store.appendEvent(u.id, 'jejak_pendamping', { executionId: 'x_1', catatan: c });
     const ringkas = jejakView(store, u.id)
@@ -176,6 +201,8 @@ describe('jejak Navigator di halaman Jejak', () => {
       'Gerbang tulis memblokir POST ke sidnok.semarangkota.go.id',
       'Kendali ke warga (final)',
       '4 catatan worker terbuang (buffer jejak penuh); rantai audit sesi ini tidak lengkap',
+      'Validator menerima rencana cdcdcdcd (ikat ulang dari abababab)',
+      'Resi Navigator (selesai): 3 halaman, 9 aksi, 4 panggilan LLM, hash abababab',
     ]);
   });
 });

@@ -131,9 +131,10 @@ function ringkasJejakPendamping(c: Record<string, unknown>): string {
     }
     case 'validasi': {
       const aturan = Array.isArray(c.aturan) ? (c.aturan as string[]) : [];
+      const asal = c.asal ? ` (ikat ulang dari ${pendek(c.asal)})` : '';
       return c.putusan === 'terima'
-        ? `Validator menerima rencana ${pendek(c.rencanaHash)}`
-        : `Validator menolak rencana ${pendek(c.rencanaHash)} (${aturan.join(', ') || '-'})`;
+        ? `Validator menerima rencana ${pendek(c.rencanaHash)}${asal}`
+        : `Validator menolak rencana ${pendek(c.rencanaHash)}${asal} (${aturan.join(', ') || '-'})`;
     }
     case 'klik':
       return `Klik ${String(c.ref)} kelas ${String(c.kelas)}: ${c.putusan === 'izinkan' ? 'diizinkan' : 'ditolak'}`;
@@ -149,6 +150,8 @@ function ringkasJejakPendamping(c: Record<string, unknown>): string {
       return `Host di luar registry wilayah: ${String(c.host)} (diserahkan ke warga)`;
     case 'bukti':
       return 'Bukti pengajuan tercatat';
+    case 'resi':
+      return `Resi Navigator (${String(c.akhir)}): ${String(c.halaman)} halaman, ${String(c.aksi)} aksi, ${String(c.panggilanLlm)} panggilan LLM, hash ${pendek(c.hash)}`;
     case 'jejak_terbuang':
       return `${String(c.n)} catatan worker terbuang (buffer jejak penuh); rantai audit sesi ini tidak lengkap`;
     default:

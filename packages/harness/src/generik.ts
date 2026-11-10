@@ -31,6 +31,22 @@ export function hostsPortalWilayah(kode: string | null | undefined): string[] {
   return [...new Set([...p.hosts, ...platform])];
 }
 
+/**
+ * Host sesi peramban generik wilayah ini (`params.hosts` ke worker): host portal + platform, ditambah host
+ * tantangan pihak ketiga (Cloudflare) HANYA bila portal tercatat memakai proteksi itu. Tanpa host info
+ * Disdukcapil: sesi Navigator hanya untuk portal.
+ */
+export function hostsSesiWilayah(kode: string | null | undefined): string[] {
+  const p = portalWilayah(kode);
+  const portal = hostsPortalWilayah(kode);
+  if (!p || portal.length === 0) return [];
+  const tantangan = p.proteksi.some((x) => x === 'cloudflare' || x === 'turnstile');
+  return [...new Set([...portal, ...(tantangan ? EGRESS_PIHAK_KETIGA_WILAYAH : [])])];
+}
+
+/** Login hanya lewat akun pihak ketiga (OAuth Google): egress sesi tidak bisa menjangkaunya. */
+const LOGIN_PIHAK_KETIGA = new Set(['google']);
+
 /** Host yang boleh dikerjakan AI di sesi wilayah ini: host wilayah tanpa host pihak ketiga. */
 export function hostsAiWilayah(kode: string | null | undefined): string[] {
   if (!portalWilayah(kode)) return [];
@@ -43,6 +59,8 @@ export function portalWebWilayah(
 ): { origin: string; url: string; nama: string } | undefined {
   const p = portalWilayah(kode);
   if (!p || p.jenis !== 'web' || !p.url) return undefined;
+  // Portal yang HANYA bisa dimasuki lewat akun pihak ketiga tidak bisa dikerjakan di sesi (OAuth diblokir).
+  if (p.login.length > 0 && p.login.every((l) => LOGIN_PIHAK_KETIGA.has(l))) return undefined;
   let url: URL;
   try {
     url = new URL(p.url);
