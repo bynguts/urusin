@@ -364,6 +364,8 @@ describe('K7_NEG_NAMA_TAUTAN: tautan yang kena NEG hanya lewat nama', () => {
 
   it('nama saja (jalur/id/ikon bersih) = kirim dengan aturan tersendiri', () => {
     for (const html of [
+      // N6: menu "Laporan" tetap tautan pembuka (warga membukanya lewat tombol Buka).
+      '<a href="/laporan/kelahiran" data-uji>Laporan Kelahiran</a>',
       '<a href="/permohonan/kk" data-uji>Ajukan Permohonan Kartu Keluarga</a>',
       '<a href="/formulir" data-uji>Mulai Pendaftaran</a>',
       '<a href="/layanan/akta" data-uji>Proses Akta Kelahiran</a>',

@@ -126,6 +126,11 @@ const HALAMAN: Record<string, string> = {
   // Review kode N4: tautan target=_blank yang diketuk warga.
   '/popup': kerangka(`<a href="/permohonan/kk?dari=popup" target="_blank"
   style="position:fixed;left:0;top:300px;width:300px;height:80px;display:block">Formulir KK</a>`),
+  // Mode ketat: halaman akhir yang mengalihkan dirinya sendiri (redirect JS) sesudah diamati.
+  '/akhir-alih':
+    kerangka(`<h2>Periksa kembali data permohonan</h2><p>Dengan ini saya menyatakan data benar.</p>
+<form method="post" action="/api/final-g"><button type="submit">Kirim Permohonan</button></form>
+<script>setTimeout(() => { location.href = '/tutup?dari=akhir'; }, 2500);</script>`),
   // F6: halaman membuka WebSocket (mis. socket.io) dan mengirim lewat situ.
   '/ws': kerangka(`<h1>Formulir</h1><script>
   const ws = new WebSocket('ws://' + location.host + '/ws');
@@ -414,8 +419,9 @@ test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka form
           e.jenis === 'giliran_anda' && e.alasan === 'ketuk_tautan',
       );
     await expect.poll(() => giliran()?.sorot, { timeout: 10_000 }).toBeTruthy();
-    expect(giliran()!.pesan).toContain('Buka tautan');
+    expect(giliran()!.pesan).toContain('tombol Buka');
     expect(giliran()!.tautan).toEqual({
+      ref: pembuka.ref,
       nama: 'Ajukan Permohonan Kartu Keluarga',
       host: new URL(situs.origin).host,
       jalur: '/permohonan/kk',
@@ -492,7 +498,7 @@ test('N5 (PoC E): buka_tautan = navigasi GET dari worker; listener halaman (prev
     expect(pembuka.tautanPembuka).toBe(true);
     // buka_tautan di luar giliran ketuk_tautan diabaikan (penghitung situs dipakai bersama antar tes).
     const awal = situs.hitung('/permohonan/kk');
-    await manager.handleClient(sesiId, { type: 'buka_tautan' });
+    await manager.handleClient(sesiId, { type: 'buka_tautan', ref: pembuka.ref });
     expect(situs.hitung('/permohonan/kk')).toBe(awal);
     await manager.aksi(o, {
       ...o,
@@ -504,8 +510,14 @@ test('N5 (PoC E): buka_tautan = navigasi GET dari worker; listener halaman (prev
       .poll(() => events.find((e) => e.jenis === 'giliran_anda' && e.alasan === 'ketuk_tautan'), {
         timeout: 10_000,
       })
-      .toMatchObject({ tautan: { nama: 'Ajukan Permohonan Kartu Keluarga', jalur: '/permohonan/kk' } });
-    await manager.handleClient(sesiId, { type: 'buka_tautan' });
+      .toMatchObject({
+        tautan: { ref: pembuka.ref, nama: 'Ajukan Permohonan Kartu Keluarga', jalur: '/permohonan/kk' },
+      });
+    // Ref lain dari perangkat ditolak; ref tautan yang disorot dibuka.
+    await manager.handleClient(sesiId, { type: 'buka_tautan', ref: 'e999' });
+    expect(manager.status(o).mode).toBe('takeover');
+    expect(situs.hitung('/permohonan/kk')).toBe(awal);
+    await manager.handleClient(sesiId, { type: 'buka_tautan', ref: pembuka.ref });
     await expect.poll(() => situs.hitung('/permohonan/kk'), { timeout: 10_000 }).toBe(awal + 1);
     await expect.poll(() => manager.status(o).mode, { timeout: 10_000 }).toBe('ai');
     expect((await manager.amati(o)).pengamatan.jalur).toBe('/permohonan/kk');
@@ -633,6 +645,47 @@ test('N7 (poc-centang): centang deklarasi/berkata kerja tulis tidak pernah dicen
       });
       expect(['TERLARANG', 'HALAMAN_AKHIR'], nama).toContain(r.hasil[0]?.kode);
     }
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('mode ketat: redirect JS halaman akhir sendiri tidak lolos', async () => {
+  const { manager, o, p } = await sesi(situs, '/akhir-alih', 'akhir-alih');
+  try {
+    expect(p.sinyal.halamanAkhir).toBe(true);
+    await new Promise((r) => setTimeout(r, 3_500));
+    expect((await manager.amati(o, true)).pengamatan.jalur).toBe('/akhir-alih');
+    expect(manager.kurasJejak(o).catatan).toContainEqual(
+      expect.objectContaining({ jenis: 'blokir', metode: 'GET', jendela: 'ai_diam' }),
+    );
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('berhenti: serah akhir tanpa janji coba lagi; Lanjutkan tetap giliran warga', async () => {
+  const { manager, o, sesiId, p } = await sesi(situs, '/s4-data', 'berhenti');
+  const events: PendampingEvent[] = [];
+  await manager.attach(sesiId, {
+    send: (m: PendampingServerMessage) => void (m.type === 'event' && events.push(m.event)),
+    frame: () => {},
+    ack: () => {},
+    close: () => {},
+  });
+  try {
+    await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'serahkan', alasan: 'berhenti' }],
+    });
+    await expect.poll(() => manager.status(o).mode, { timeout: 10_000 }).toBe('takeover');
+    const g = events.find((e) => e.jenis === 'giliran_anda' && e.alasan === 'berhenti');
+    expect(g && 'pesan' in g ? g.pesan : '').not.toMatch(/coba lagi/i);
+    await manager.handleClient(sesiId, { type: 'kembalikan' });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(manager.status(o).mode).toBe('takeover');
   } finally {
     await manager.shutdown();
   }

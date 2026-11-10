@@ -410,11 +410,11 @@ async function jalankanRun(jalur: string, otak: Otak, kembalikanGerbang = 0, tol
     params: { jalur },
     modeUji: true,
   });
-  // Layar warga palsu: hanya menangkap tujuan tautan pembuka di giliran (tombol "Buka …" di layar warga).
-  let tautan: { nama: string; host: string; jalur: string } | undefined;
+  // Layar warga palsu: hanya menangkap tautan giliran ketuk_tautan (tombol "Buka" di layar warga).
+  let tautanRef: string | undefined;
   await m.attach(sesi.sesiId, {
     send: (pesan) => {
-      if (pesan.type === 'event' && pesan.event.jenis === 'giliran_anda') tautan = pesan.event.tautan;
+      if (pesan.type === 'event' && pesan.event.jenis === 'giliran_anda') tautanRef = pesan.event.tautan?.ref;
     },
     frame: () => undefined,
     ack: () => undefined,
@@ -541,18 +541,18 @@ async function jalankanRun(jalur: string, otak: Otak, kembalikanGerbang = 0, tol
       }
       if (st.mode !== 'takeover') continue;
       const kini = (await m.amati(o, true)).pengamatan;
-      // Tautan pembuka yang disorot: warga menekan tombol Urusin "Buka …" (pesan buka_tautan, tanpa URL); worker
-      // membaca ulang href-nya, membukanya lewat GET, lalu mengembalikan kendali ke AI sendiri.
+      // Tautan pembuka yang disorot: warga menekan tombol "Buka" (buka_tautan); worker membukanya lewat GET
+      // dan AI lanjut sendiri.
       if (serahTerakhir === 'ketuk_tautan') {
         serahTerakhir = undefined;
-        expect(tautan, 'giliran ketuk_tautan membawa tujuan tautan').toBeDefined();
-        tautan = undefined;
-        await m.handleClient(sesi.sesiId, { type: 'buka_tautan' });
-        await expect
-          .poll(async () => (await m.amati(o, true).catch(() => null))?.pengamatan.jalur, {
-            timeout: 15_000,
-          })
-          .not.toBe(kini.jalur);
+        if (tautanRef) {
+          await m.handleClient(sesi.sesiId, { type: 'buka_tautan', ref: tautanRef });
+          await expect
+            .poll(async () => (await m.amati(o, true).catch(() => null))?.pengamatan.jalur, {
+              timeout: 15_000,
+            })
+            .not.toBe(kini.jalur);
+        } else await m.handleClient(sesi.sesiId, { type: 'kembalikan' });
         ketukWarga++;
         continue;
       }

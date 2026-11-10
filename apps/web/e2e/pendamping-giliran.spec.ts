@@ -3,16 +3,22 @@ import { expect, test } from '@playwright/test';
 // Giliran `ketuk_tautan` lewat UI warga (bukan API): layanan pendamping digantikan tiruan di batas jaringan
 // peramban (POST /pendamping + /tiket di-route, WebSocket viewer di-routeWebSocket). Layar, SesiPendampingUi
 // dan klien viewer adalah kode produksi. Tiruan mengirim giliran "tautan pembuka" seperti worker; warga melihat
-// judul "Buka tautan di situs" dan menekan tombol Urusin "Buka …"; viewer mengirim `buka_tautan` (tanpa URL),
+// judul "Buka tautan di situs" dan menekan tombol Urusin "Buka …"; viewer mengirim `buka_tautan` ber-ref tautan
+// yang ditampilkan (tanpa URL),
 // worker tiruan mengembalikan mode ai seperti worker asli. Tidak ada situs pemerintah yang dibuka.
 const WS_TIRUAN = 'ws://127.0.0.1:9/tiruan-pendamping/ws';
 const PESAN_GILIRAN = 'Ketuk tautan yang disorot, lalu tekan Lanjutkan.';
-const TAUTAN = { nama: 'Daftar Akta Kelahiran', host: 'telunjuksakti.wonogirikab.go.id', jalur: '/akta' };
+const TAUTAN = {
+  ref: 'e5',
+  nama: 'Daftar Akta Kelahiran',
+  host: 'telunjuksakti.wonogirikab.go.id',
+  jalur: '/akta',
+};
 
 test('giliran ketuk_tautan: warga menekan Buka di layar; viewer mengirim buka_tautan sekali, AI lanjut', async ({
   page,
 }) => {
-  const dariWarga: { type: string }[] = [];
+  const dariWarga: { type: string; ref?: string }[] = [];
   let sesi: Record<string, unknown> | null = null;
 
   await page.route(/\/api\/urusan\/u_[0-9a-f]+\/pendamping(\/tiket)?$/, async (route) => {
@@ -83,7 +89,7 @@ test('giliran ketuk_tautan: warga menekan Buka di layar; viewer mengirim buka_ta
   await bukaTautan.click();
   await expect
     .poll(() => dariWarga.filter((m) => m.type === 'buka_tautan'))
-    .toEqual([{ type: 'buka_tautan' }]);
+    .toEqual([{ type: 'buka_tautan', ref: 'e5' }]);
   await expect(page.getByText('Buka tautan di situs')).toHaveCount(0);
   expect(dariWarga.map((m) => m.type)).not.toContain('kembalikan');
 });

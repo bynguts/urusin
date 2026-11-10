@@ -221,6 +221,7 @@ describe('render server komponen', () => {
   it('giliran ketuk_tautan: judul netral, tombol Buka ber-host+jalur dan Lanjutkan; berhenti tanpa Lanjutkan', () => {
     const noop = () => {};
     const tautan = {
+      ref: 'e4',
       nama: 'Daftar <b>Akta</b>',
       host: 'contoh-layanan.go.id',
       jalur: '/akta/baru',

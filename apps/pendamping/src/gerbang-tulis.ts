@@ -105,7 +105,13 @@ function samaUrl(a: string, b: string): boolean {
  * Putusan murni satu permintaan terhadap jendela saat ini. `sekarang` hanya dipakai jendela `ai_isi`.
  * Default tolak: metode tidak dikenal = non-GET.
  */
-export function putuskan(j: Jendela, r: PermintaanGerbang, sekarang: number = Date.now()): Putusan {
+export function putuskan(
+  j: Jendela,
+  r: PermintaanGerbang,
+  sekarang: number = Date.now(),
+  /** Dokumen kotor (N2) atau halaman akhir: GET bingkai utama di luar navKe (redirect halaman) diblokir. */
+  ketat = false,
+): Putusan {
   if (j.jenis === 'warga') return 'lanjut';
   // Telemetri/verifikasi tantangan (Turnstile flow, reCAPTCHA reload) bukan tulis ke portal: lolos di semua
   // jendela AI agar widget tidak gagal karena balapan dengan klik AI (probe #14). Navigasi dokumen tidak.
@@ -114,8 +120,12 @@ export function putuskan(j: Jendela, r: PermintaanGerbang, sekarang: number = Da
   const aman = AMAN.has(r.metode.toUpperCase());
   switch (j.jenis) {
     case 'ai_diam':
-      if (j.tungguWarga) return aman || tantangan ? 'lanjut' : 'blokir';
+      if (j.tungguWarga) {
+        if (ketat && r.utama && !tantangan) return 'blokir';
+        return aman || tantangan ? 'lanjut' : 'blokir';
+      }
       if (!aman) return 'blokir';
+      if (ketat && r.utama) return 'blokir';
       // Redirect JS/meta halaman sendiri (probe 3674 ?p=close_form): GET bingkai utama boleh bila jalur/kuerinya
       // tidak berbunyi tulis (aturan jalur yang sama dengan tautan yang boleh diklik AI). Host tetap dibatasi
       // allowlist egress sesi.
@@ -133,7 +143,7 @@ export function putuskan(j: Jendela, r: PermintaanGerbang, sekarang: number = Da
       if (samaUrl(r.url, navKe) || (r.asal !== undefined && samaUrl(r.asal, navKe))) return 'lanjut';
       // Redirect JS/meta halaman tujuan sesudah navigasi AI ke navKe (probe 3674 pilih_layanan -> ?p=close_form):
       // aturan yang sama dengan ai_diam. Klik tombol tanpa navKe tetap tidak boleh memicu navigasi apa pun.
-      return jalurTulis(r.url) ? 'blokir' : 'lanjut';
+      return ketat || jalurTulis(r.url) ? 'blokir' : 'lanjut';
     }
   }
 }
@@ -188,6 +198,8 @@ export function createGerbangTulis(opts: {
   onBlokir: (c: CatatanBlokir, j: Exclude<Jendela, { jenis: 'warga' }>) => void;
   /** Tulis non-GET yang lolos di jendela `warga` (warga mengirim sendiri); tanpa catatan apa pun. */
   onTulisWarga?: () => void;
+  /** Mode ketat (dokumen kotor / halaman akhir), dibaca setiap permintaan. */
+  ketat?: () => boolean;
   now?: () => number;
 }): GerbangTulis {
   const now = opts.now ?? Date.now;
@@ -205,7 +217,7 @@ export function createGerbangTulis(opts: {
     },
     periksa(r) {
       const j = jendela();
-      const p = putuskan(j, r, now());
+      const p = putuskan(j, r, now(), opts.ketat?.() === true);
       if (p === 'blokir' && j.jenis !== 'warga') opts.onBlokir(catatanBlokir(j, r), j);
       if (p === 'lanjut' && j.jenis === 'warga' && !AMAN.has(r.metode.toUpperCase())) opts.onTulisWarga?.();
       return p;

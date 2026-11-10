@@ -143,6 +143,21 @@ describe('kontrak pendamping', () => {
     expect(decodePendampingFrame(tanpaJpeg)).toBeNull();
   });
 
+  it('tambahan aditif N5: buka_tautan ber-ref tanpa URL; tautan ber-ref di giliran ketuk_tautan', () => {
+    expect(PendampingClientMessageSchema.safeParse({ type: 'buka_tautan', ref: 'e12' }).success).toBe(true);
+    for (const m of [{ type: 'buka_tautan' }, { type: 'buka_tautan', ref: 'https://a.go.id/x' }])
+      expect(PendampingClientMessageSchema.safeParse(m).success).toBe(false);
+    const giliran = (tautan: object) =>
+      PendampingServerMessageSchema.safeParse({
+        type: 'event',
+        event: { jenis: 'giliran_anda', alasan: 'ketuk_tautan', pesan: 'p', tautan },
+      }).success;
+    const t = { ref: 'e3', nama: 'Daftar Akta Kelahiran', host: 'a.go.id', jalur: '/akta/baru' };
+    expect(giliran(t)).toBe(true);
+    expect(giliran({ ...t, ref: undefined })).toBe(false);
+    expect(giliran({ ...t, nama: 'x'.repeat(81) })).toBe(false);
+  });
+
   it('tambahan aditif N2: alasan serah dan giliran berhenti', () => {
     expect(AlasanSerahkanSchema.safeParse('berhenti').success).toBe(true);
     expect(

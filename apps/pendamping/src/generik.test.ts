@@ -743,22 +743,46 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
         alasan: 'ketuk_tautan',
         pesan: PESAN_GENERIK.ketuk_tautan,
         sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 },
-        tautan: { nama: 'Ajukan Permohonan KK', host: 'portal.contoh.go.id', jalur: '/permohonan/kk' },
+        tautan: {
+          ref: 'e6',
+          nama: 'Ajukan Permohonan KK',
+          host: 'portal.contoh.go.id',
+          jalur: '/permohonan/kk',
+        },
       },
     ]);
     expect(PESAN_GENERIK.ketuk_tautan).not.toMatch(/formulir/);
     expect(h.jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'ketuk_tautan' });
 
     let lanjut = 0;
-    expect(await h.run.bukaTautan(() => void lanjut++)).toBe(true);
+    // Ref lain dari perangkat: ditolak tanpa menghabiskan giliran.
+    expect(await h.run.bukaTautan('e5', () => void lanjut++)).toBe(false);
+    expect(h.navigasi).toEqual([]);
+    expect(await h.run.bukaTautan('e6', () => void lanjut++)).toBe(true);
     expect(lanjut).toBe(1);
     const tujuan = 'https://portal.contoh.go.id/permohonan/kk?jenis=baru';
     expect(h.navigasi).toEqual([tujuan]);
     expect(h.jendelaSaatAksi.at(-1)).toEqual({ jenis: 'ai_klik', navKe: tujuan });
     expect(h.gerbang.jendela()).toEqual({ jenis: 'ai_diam' });
     // Sekali per giliran.
-    expect(await h.run.bukaTautan(() => void lanjut++)).toBe(false);
+    expect(await h.run.bukaTautan('e6', () => void lanjut++)).toBe(false);
     expect(h.navigasi).toHaveLength(1);
+  });
+
+  it('berhenti: serah akhir tercatat; mode ketat = dokumen kotor atau halaman akhir dokumen ini', async () => {
+    const h = harness({ amati: () => PEMBUKA(true), peta: PETA_PEMBUKA });
+    expect(h.run.ketat).toBe(false);
+    await h.run.amati();
+    expect(h.run.ketat).toBe(true);
+    h.run.dokumenBaru();
+    expect(h.run.ketat).toBe(false);
+    expect(h.run.berhenti).toBe(false);
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'serahkan', alasan: 'berhenti' }] });
+    expect(h.run.berhenti).toBe(true);
+    expect(h.serah.at(-1)).toMatchObject({ alasan: 'berhenti', pesan: PESAN_GENERIK.berhenti });
+    expect(PESAN_GENERIK.berhenti).not.toMatch(/coba lagi/i);
+    h.run.eksekusiBaru();
+    expect(h.run.berhenti).toBe(false);
   });
 
   it('N1: serahkan ketuk_tautan ke ref bukan tautan pembuka, tanpa ref, atau di halaman akhir = KELAS_DITOLAK', async () => {
@@ -793,7 +817,7 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
         aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }],
       }),
     ).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK' }]);
-    expect(await berubah.run.bukaTautan(() => {})).toBe(false);
+    expect(await berubah.run.bukaTautan('e6', () => {})).toBe(false);
     expect(berubah.navigasi).toEqual([]);
 
     const luar = harness({

@@ -567,11 +567,10 @@ export const PendampingClientMessageSchema = z.discriminatedUnion('type', [
   /** Warga mengembalikan kendali ke AI. */
   z.object({ type: z.literal('kembalikan') }),
   /**
-   * (Aditif) Warga menekan "Buka tautan" pada giliran `ketuk_tautan`: worker membaca ulang href tautan yang
-   * disorot lalu membukanya lewat navigasi GET (tanpa klik/JS halaman), dan AI melanjutkan. Tanpa URL dari
-   * perangkat; di luar giliran itu diabaikan.
+   * (aditif) Giliran `ketuk_tautan`: warga menekan tombol Urusin "Buka …" alih-alih mengetuk elemen halaman.
+   * `ref` harus tautan pembuka yang sedang disorot; worker membuka href-nya (GET, host wilayah), bukan klik.
    */
-  z.object({ type: z.literal('buka_tautan') }),
+  z.object({ type: z.literal('buka_tautan'), ref: RefSchema }),
   /*
    * Tidak ada pesan nilai vault atau berkas dari perangkat (A-M1): nilai Data Diri dan Dokumen hanya masuk
    * lewat kanal internal web -> worker (`/internal/sesi/isi`, `/internal/sesi/berkas`) setelah "Izinkan isi".
@@ -632,20 +631,21 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
     sorot: PendampingSorotSchema.optional(),
     /** Hanya `final`: nama tombol kirim yang tersorot, dibaca dari halaman (mis. "Selesai"). */
     tombol: z.string().min(1).max(40).optional(),
-    /**
-     * (Aditif) Hanya `ketuk_tautan`: nama tautan (diredaksi seperti pengamatan) dan tujuannya (host + jalur, tanpa
-     * query/fragmen) untuk tombol "Buka tautan" di layar warga.
-     */
-    tautan: z
-      .object({
-        nama: z.string().max(120),
-        host: z.string().min(1).max(253),
-        jalur: z.string().min(1).max(200),
-      })
-      .optional(),
     /** Hanya `berkas_kurang`: nama berkas adapter dan origin situs tujuan (untuk persetujuan ulang). */
     berkas: z
       .object({ nama: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/), origin: z.url().max(2048) })
+      .optional(),
+    /**
+     * (aditif) Hanya `ketuk_tautan`: tautan pembuka yang disorot. `nama` teks situs (tak tepercaya, tampil
+     * sebagai teks biasa); `ref` dikirim kembali lewat `buka_tautan`.
+     */
+    tautan: z
+      .object({
+        ref: RefSchema,
+        nama: z.string().max(80),
+        host: z.string().min(1).max(253),
+        jalur: z.string().max(200),
+      })
       .optional(),
   }),
   /** Situs memblokir peramban server (WAF/bot wall): urusan beralih ke mode dipandu. */

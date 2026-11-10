@@ -53,6 +53,12 @@ Adapter tulisan tangan hanya ada untuk Telunjuk Sakti dan beberapa alur baca. Wa
   juga dipakai timer halaman. Dipertimbangkan: atribusi lewat stack inisiator CDP (`Network.requestWillBeSent`
   `initiator.stack`) untuk membedakan tulis dari handler ketukan warga dan dari timer; belum dipakai karena
   stack async tidak andal lintas `setTimeout`/promise dan menambah lapis CDP Network di samping rute Playwright.
+- Sisa risiko diterima (redirect halaman sendiri, probe 3674): saat AI diam atau sesudah navigasi AI ke `navKe`,
+  GET bingkai utama ke URL lain (redirect JS/meta halaman) lolos bila jalur/kuerinya tidak berbunyi tulis
+  (`jalurTulis`, aturan jalur yang sama dengan tautan `navigasi` K8). Risikonya setara klik `navigasi` yang
+  sudah diterima: GET ke jalur bersih di host allowlist. Batasnya: di dokumen kotor (N2) dan di dokumen yang
+  pengamatan terakhirnya halaman akhir, redirect itu tidak pernah lolos (mode ketat gerbang, juga saat warga
+  memegang kendali tanpa mengetuk); dokumen baru yang ter-commit mengakhiri mode ketat.
 
 ## Rujukan berkas utama
 
