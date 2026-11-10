@@ -14,11 +14,16 @@ export type OfficialDomain = {
   /** Tanggal verifikasi manual (ISO). null = seed dari rencana, verifikasi manual belum dicatat. */
   verifiedAt: string | null;
   /**
-   * `id-only`: situs menolak IP pusat data/luar negeri (diukur dari agent-vm: 403 atau tantangan bot), jadi
-   * Browser Pendamping harus berjalan di worker berwilayah `id` (laptop anggota lewat Tailscale). Tanpa
-   * worker `id` yang sehat urusan beralih ke mode dipandu. Kosong = worker mana pun.
+   * Syarat jaringan Browser Pendamping (diukur dari agent-vm, IP pusat data Singapura, Chromium headed biasa):
+   * - `id-only`: situs MEMBLOKIR KERAS IP luar negeri (mis. halaman "Akses Terbatas - Khusus Indonesia", tanpa
+   *   apa pun yang bisa diselesaikan warga), jadi hanya worker berwilayah `id` yang bisa membukanya; tanpa worker
+   *   `id` yang sehat urusan beralih ke mode dipandu.
+   * - `id-utama`: dari server muncul tantangan INTERAKTIF (kotak centang Turnstile) yang diselesaikan warga
+   *   sendiri lewat takeover `verifikasi_situs`; worker `id` yang sehat didahulukan (biasanya tanpa tantangan),
+   *   selain itu worker mana pun (server tetap melayani 24/7).
+   * Kosong = worker mana pun (worker non-`id` didahulukan).
    */
-  aksesWilayah?: 'id-only';
+  aksesWilayah?: 'id-only' | 'id-utama';
 };
 
 export const OFFICIAL_DOMAINS: readonly OfficialDomain[] = Object.freeze([
@@ -28,7 +33,8 @@ export const OFFICIAL_DOMAINS: readonly OfficialDomain[] = Object.freeze([
     layanan: 'Telunjuk Sakti (layanan adminduk daring)',
     wilayah: '3312',
     verifiedAt: null,
-    aksesWilayah: 'id-only',
+    // 2026-11-10 dari agent-vm: 403 cf-mitigated: challenge + kotak centang Turnstile (bukan blokir keras).
+    aksesWilayah: 'id-utama',
   },
   {
     host: 'disdukcapil.wonogirikab.go.id',
@@ -103,6 +109,7 @@ export const OFFICIAL_DOMAINS: readonly OfficialDomain[] = Object.freeze([
     layanan: 'Sidnok (layanan adminduk daring)',
     wilayah: '3374',
     verifiedAt: null,
+    // 2026-11-10 dari agent-vm: 403 "Akses Terbatas - Khusus Indonesia" (WAF ESA), tanpa tantangan.
     aksesWilayah: 'id-only',
   },
 ]);
