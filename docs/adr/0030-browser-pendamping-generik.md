@@ -32,6 +32,12 @@ Adapter tulisan tangan hanya ada untuk Telunjuk Sakti dan beberapa alur baca. Wa
   harian global; habis = serah templat `kuota`), tetapi belum ada batas per akun atau per juri. Akun yang membuat
   banyak urusan dibatasi oleh batas biaya harian global dan rate limit HTTP per IP/sesi saja. Tinjau ulang bila
   pemakaian nyata menunjukkan satu akun menghabiskan anggaran harian.
+- Sisa risiko diterima (gerbang tulis): CAPTCHA tak terlihat (mis. `grecaptcha.execute`, Turnstile) yang dipicu
+  klik AI lalu memanggil callback pengiriman bisa lolos bila callback itu jalan paling lama 3 detik
+  (`JENDELA_WARGA_MS`) setelah warga mengetuk di dalam iframe tantangan. Selama ambil alih, ketukan di iframe
+  tantangan belum dibedakan dari ketukan di halaman, kecuali saat verifikasi situs (`pantau`) aktif. Penanda
+  tautan pembuka (`tautanPembuka`, aturan `K7_NEG_NAMA_TAUTAN`) tidak mengubah ini: tautan itu tetap diketuk
+  warga, bukan AI. Tinjau ulang bila ada portal nyata yang memakai CAPTCHA tak terlihat pada tombol non-final.
 
 ## Rujukan berkas utama
 
