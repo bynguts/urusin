@@ -66,6 +66,24 @@ const HALAMAN: Record<string, string> = {
   '/alih-tulis': kerangka(
     `<p>Mengalihkan...</p><script>setTimeout(() => { location.href = '/permohonan/9/kirim'; }, 300);</script>`,
   ),
+  // N2 (poc2 B): klik AI "Lanjut" lalu POST tertunda 1,5 detik kemudian, diulang terus.
+  '/tertunda': kerangka(`<div id="l1"><button type="button" id="b">Lanjut</button></div>
+<div id="l2" style="display:none"><label>Jenis layanan <select name="jenis"><option value="">--</option><option value="kk">KK</option></select></label></div>
+<script>document.getElementById('b').addEventListener('click', () => {
+  document.getElementById('l1').style.display='none'; document.getElementById('l2').style.display='block';
+  setTimeout(() => { setInterval(() => fetch('/api/final-b', { method: 'POST', body: 'final=1' }).catch(() => {}), 200); }, 1500);
+});</script>`),
+  // N4 (poc2 A): retry POST tanpa batas dari klik AI; area kosong dan kolom ketik untuk ketukan warga.
+  '/retry-tanpa-batas':
+    kerangka(`<style>#kosong{position:fixed;left:0;top:300px;width:300px;height:200px;background:#eee}
+#nama{position:fixed;left:0;top:520px;width:300px;height:40px}
+#ok{position:fixed;left:0;top:600px;width:300px;height:40px}</style>
+<button type="button" id="b">Lanjut</button><div id="kosong">area kosong</div>
+<label>Nama <input id="nama" name="nama"></label>
+<button type="button" id="ok" onclick="fetch('/api/warga-a',{method:'POST',body:'x'})">Kirim saya</button>
+<script>document.getElementById('b').addEventListener('click', () => {
+  const t = setInterval(async () => { try { await fetch('/api/final-a', { method: 'POST', body: 'final=1' }); clearInterval(t); } catch (e) {} }, 250);
+});</script>`),
   // F5 (poc /s4): pernyataan terselubung + checkbox non-data.
   // H3: halaman sukses setelah warga menekan Kirim sendiri.
   '/sukses': kerangka(
@@ -402,6 +420,94 @@ test('M5: tidak_bisa = dipandu (drift), bukan gagal', async () => {
     });
     await expect.poll(() => manager.status(o).status, { timeout: 10_000 }).toBe('dipandu');
     expect(manager.status(o).hasil).toBe('drift');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+async function ketuk(manager: SessionManager, sesiId: string, x: number, y: number) {
+  for (const aksi of ['down', 'up'] as const)
+    await manager.handleClient(sesiId, {
+      type: 'pointer',
+      aksi,
+      x,
+      y,
+      jenis: 'touch',
+      tombol: 'left',
+      klik: 1,
+    });
+}
+
+test('N2: POST tertunda dari klik AI tidak lolos; halaman kotor dimuat ulang dan diserahkan ke warga', async () => {
+  const { manager, o, sesiId, p } = await sesi(situs, '/tertunda', 'tertunda');
+  const events: PendampingEvent[] = [];
+  await manager.attach(sesiId, {
+    send: (m: PendampingServerMessage) => void (m.type === 'event' && events.push(m.event)),
+    frame: () => {},
+    ack: () => {},
+    close: () => {},
+  });
+  try {
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'klik', ref: satu(p, 'Lanjut').ref }],
+    });
+    expect(r.hasil).toEqual([{ indeks: 0, kode: 'ok', kelas: 'lanjut' }]);
+    // POST pertama muncul 1,5 detik sesudah klik (AI diam): halaman kotor -> muat ulang -> giliran warga.
+    await expect.poll(() => manager.status(o).mode, { timeout: 10_000 }).toBe('takeover');
+    await expect
+      .poll(
+        () => events.some((e) => e.jenis === 'giliran_anda' && e.pesan.includes('mengirim data sendiri')),
+        {
+          timeout: 10_000,
+        },
+      )
+      .toBe(true);
+    // Muat ulang mematikan timer: langkah 1 tampil lagi, select langkah 2 tersembunyi.
+    const p2 = (await manager.amati(o)).pengamatan;
+    expect(p2.jalur).toBe('/tertunda');
+    expect(semua(p2, 'Jenis layanan')).toEqual([]);
+    // AI tidak bisa menyentuh halaman selama giliran warga (PoC: pilih membuka jendela isi untuk POST tertunda).
+    const pilih = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p2.seq,
+      aksi: [{ jenis: 'klik', ref: satu(p2, 'Lanjut').ref }],
+    });
+    expect(pilih.hasil[0]?.kode).not.toBe('ok');
+    await new Promise((r) => setTimeout(r, 3_000));
+    expect(situs.hitung('/api/final-b')).toBe(0);
+    expect(manager.kurasJejak(o).catatan).toContainEqual(
+      expect.objectContaining({ jenis: 'blokir', metode: 'POST', jendela: 'ai_diam' }),
+    );
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('N4: halaman kotor = ketukan area kosong/kolom ketik dan ketikan tidak membuka jendela tulis', async () => {
+  const { manager, o, sesiId, p } = await sesi(situs, '/retry-tanpa-batas', 'retry-tb');
+  try {
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'klik', ref: satu(p, 'Lanjut').ref }],
+    });
+    expect(r.hasil).toEqual([{ indeks: 0, kode: 'GERBANG_MEMBLOKIR', kelas: 'lanjut' }]);
+    expect(manager.status(o).mode).toBe('takeover');
+    await ketuk(manager, sesiId, 100, 400);
+    await new Promise((r) => setTimeout(r, 1_500));
+    expect(situs.hitung('/api/final-a')).toBe(0);
+    await ketuk(manager, sesiId, 100, 540);
+    await manager.handleClient(sesiId, { type: 'text', teks: 'Budi' });
+    await new Promise((r) => setTimeout(r, 1_500));
+    expect(situs.hitung('/api/final-a')).toBe(0);
+    // Kontrol positif: ketukan pada tombol nyata membuka jendela warga (tulis warga sampai).
+    await ketuk(manager, sesiId, 100, 620);
+    await expect.poll(() => situs.hitung('/api/warga-a'), { timeout: 10_000 }).toBe(1);
   } finally {
     await manager.shutdown();
   }

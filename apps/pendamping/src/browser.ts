@@ -255,10 +255,19 @@ export const PROFIL_PREFS = Object.freeze({
   translate: { enabled: false },
 });
 
-/** URL lolos allowlist host:port sesi (lapis `context.route`; sama dengan proxy egress). */
+/**
+ * Kontrol yang ketukannya membuka jendela tulis warga di halaman kotor (N4). Kolom ketik (input teks, textarea,
+ * contenteditable) bukan kontrol walau di dalam label.
+ */
+const SEL_KONTROL_KETUK =
+  'button, a[href], area[href], input[type="submit"], input[type="image"], input[type="button"], input[type="checkbox"], input[type="radio"], [role="button"], [role="link"], [role="checkbox"], [role="radio"], label, summary, select';
+const SEL_KOLOM_KETIK =
+  'textarea, [contenteditable=""], [contenteditable="true"], input:not([type="submit"], [type="image"], [type="button"], [type="checkbox"], [type="radio"], [type="reset"], [type="file"])';
+
 /** Kendali yang dihitung `tenang()` untuk menilai DOM sudah stabil. */
 const SEL_KENDALI_TENANG = 'input, textarea, select, button, a[href], [role="button"], [role="link"]';
 
+/** URL lolos allowlist host:port sesi (lapis `context.route`; sama dengan proxy egress). */
 export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): boolean {
   const u = URL.parse(url);
   const port = Number(u?.port || (u?.protocol === 'https:' ? 443 : 80));
@@ -550,6 +559,42 @@ export async function wire(
    * menyelesaikan tantangan, bukan menyetujui tulis di halaman portal.
    */
   let inputWargaTerakhir = Number.NEGATIVE_INFINITY;
+
+  /** Keputusan ketukan saat halaman kotor (ditetapkan saat pointer down, dipakai pointer up yang sama). */
+  let ketukKotorSah = false;
+
+  /**
+   * Ketukan warga mengenai kotak sorot serah terakhir, atau kontrol nyata (DOM.getNodeForLocation lalu `closest`
+   * di dunia terisolasi, prototipe halaman tidak dipakai). Gagal = tidak.
+   */
+  async function ketukanKeKontrol(x: number, y: number): Promise<boolean> {
+    const kotak = await generik?.kotakSorot();
+    if (kotak && x >= kotak.x && x <= kotak.x + kotak.lebar && y >= kotak.y && y <= kotak.y + kotak.tinggi)
+      return true;
+    try {
+      const { backendNodeId } = (await cdp.send('DOM.getNodeForLocation', {
+        x: Math.round(x),
+        y: Math.round(y),
+        includeUserAgentShadowDOM: false,
+      })) as { backendNodeId: number };
+      const { executionContextId } = (await cdp.send('Page.createIsolatedWorld', {
+        frameId: await mainFrameId(),
+        worldName: 'urusin-ketuk',
+      })) as { executionContextId: number };
+      const { object } = (await cdp.send('DOM.resolveNode', { backendNodeId, executionContextId })) as {
+        object: { objectId?: string };
+      };
+      if (!object.objectId) return false;
+      const r = (await cdp.send('Runtime.callFunctionOn', {
+        objectId: object.objectId,
+        functionDeclaration: `function () { const e = this.nodeType === 1 ? this : this.parentElement; return !!(e && !e.matches(${JSON.stringify(SEL_KOLOM_KETIK)}) && !e.closest('[contenteditable=""], [contenteditable="true"]') && e.closest(${JSON.stringify(SEL_KONTROL_KETUK)})); }`,
+        returnByValue: true,
+      })) as { result: { value?: unknown } };
+      return r.result.value === true;
+    } catch {
+      return false;
+    }
+  }
 
   const mainFrameId = async () =>
     ((await cdp.send('Page.getFrameTree')) as { frameTree: { frame: { id: string } } }).frameTree.frame.id;
@@ -1102,6 +1147,11 @@ export async function wire(
       tidakBisa: (pesan) => hooks.ended('dipandu', 'drift', pesan),
     });
     const run = generik;
+    // Dokumen bingkai utama baru (cross-document, ter-commit) = timer dokumen lama mati: bendera kotor direset.
+    cdp.on('Page.frameNavigated', (e: { frame: { parentId?: string } }) => {
+      if (!e.frame.parentId) run.dokumenBaru();
+    });
+    await cdp.send('Page.enable').catch(() => {});
     gen.kendali.wargaTunggu = ditahan;
     gen.kendali.wargaPegang = () => ditahan() && Date.now() - inputWargaTerakhir <= JENDELA_WARGA_MS;
     gen.kendali.blokir = (c, j) => run.blokir(c, j);
@@ -1136,7 +1186,15 @@ export async function wire(
       const nyata =
         m.type === 'text' ||
         ((m.type === 'pointer' || m.type === 'key') && (m.aksi === 'down' || m.aksi === 'up'));
-      if (nyata && !pantau.aktif) inputWargaTerakhir = Date.now();
+      let buka = nyata && !pantau.aktif;
+      // N4: halaman kotor (tulis tertunda dari klik AI masih berdenyut) = jendela tulis hanya untuk ketukan yang
+      // mengenai kotak sorot atau kontrol (tombol/tautan/label/pilihan). Ketikan dan ketukan di area kosong tidak.
+      if (buka && g?.kotor) {
+        if (m.type !== 'pointer') buka = false;
+        else if (m.aksi === 'down') buka = ketukKotorSah = await ketukanKeKontrol(m.x, m.y);
+        else buka = ketukKotorSah;
+      }
+      if (buka) inputWargaTerakhir = Date.now();
       for (const cmd of toCdp(m, touch)) {
         await cdp.send(cmd.method as 'Input.insertText', cmd.params as never).catch(() => undefined);
       }

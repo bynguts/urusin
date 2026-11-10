@@ -486,6 +486,71 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     expect(h.jejak).toEqual([expect.objectContaining({ jenis: 'blokir', jendela: 'ai_diam' })]);
   });
 
+  const postTertunda = (h: ReturnType<typeof harness>) =>
+    h.gerbang.periksa({
+      metode: 'POST',
+      dokumen: false,
+      utama: false,
+      xhr: true,
+      url: 'https://portal.contoh.go.id/api/final',
+    });
+  const tunggu = () => new Promise((r) => setTimeout(r, 0));
+
+  it('N2: POST tertunda dari klik AI saat ai_diam = halaman kotor: muat ulang (GET) lalu serah, sekali per dokumen', async () => {
+    const h = harness({ aksi: () => ({ status: 'ok', aturan: 'K10_LANJUT', kelas: 'lanjut' }) });
+    await h.run.amati();
+    expect(await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] })).toEqual([
+      { indeks: 0, kode: 'ok', kelas: 'lanjut' },
+    ]);
+    expect(h.run.kotor).toBe(false);
+    expect(postTertunda(h)).toBe('blokir');
+    expect(h.run.kotor).toBe(true);
+    expect(postTertunda(h)).toBe('blokir');
+    // amati masuk antre serial yang sama: setelah ini muat ulang dan serah sudah selesai.
+    await h.run.amati(true);
+    await tunggu();
+    expect(h.navigasi).toEqual(['https://portal.contoh.go.id/form']);
+    expect(h.jendelaSaatAksi.at(-1)).toEqual({ jenis: 'ai_klik', navKe: 'https://portal.contoh.go.id/form' });
+    expect(h.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.kotor, sorot: undefined }]);
+    expect(h.gerbang.jendela()).toEqual({ jenis: 'ai_diam' });
+
+    // Dokumen baru (hasil muat ulang) bersih; kotor lagi di URL yang sama: serah tanpa muat ulang kedua.
+    h.run.dokumenBaru();
+    expect(h.run.kotor).toBe(false);
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] });
+    postTertunda(h);
+    await h.run.amati(true);
+    await tunggu();
+    expect(h.navigasi).toHaveLength(1);
+    expect(h.serah).toHaveLength(2);
+  });
+
+  it('N2: halaman kotor tidak pernah dapat jendela XHR isi lagi', async () => {
+    const h = harness();
+    h.vault.set(PH_NAMA, 'Budi');
+    h.setujui(H1, `s-nama|${PH_NAMA}`);
+    await h.run.amati();
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'isi', ref: 'e1', nilai: PH_NAMA }] });
+    expect(h.jendelaSaatAksi[0]).toMatchObject({ jenis: 'ai_isi' });
+    h.maju(JENDELA_ISI_MS * 3);
+    // Lewat jendela isi: kotor, cukup dicatat.
+    expect(postTertunda(h)).toBe('blokir');
+    expect(h.serah).toEqual([]);
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'isi', ref: 'e1', nilai: PH_NAMA }] });
+    expect(h.jendelaSaatAksi[1]).toEqual({ jenis: 'ai_diam' });
+    expect(postTertunda(h)).toBe('blokir');
+  });
+
+  it('heartbeat POST di dokumen yang belum disentuh AI: kotor, tetapi tanpa muat ulang/serah', async () => {
+    const h = harness();
+    await h.run.amati();
+    postTertunda(h);
+    await tunggu();
+    expect(h.run.kotor).toBe(true);
+    expect(h.navigasi).toEqual([]);
+    expect(h.serah).toEqual([]);
+  });
+
   it('pilih yang memicu form.submit() (POST dokumen) diblokir dan diserahkan ke warga', async () => {
     const h = harness({
       aksi: () => {
