@@ -186,7 +186,7 @@ export const urusanJawabPersyaratan = defineTool({
   allowedStates: NON_TERMINAL_STATES,
   async execute(ctx, args): Promise<ToolResult> {
     const chunks = ctx.store.getChunks(ctx.urusan.id);
-    const ctxHandoff = { kodeKabKota: ctx.urusan.kodeKabKota };
+    const ctxHandoff = { kodeKabKota: ctx.urusan.kodeKabKota, jenis: ctx.urusan.jenis };
     const handoffEvent = (sebab: PayloadOf<'handoff'>['sebab']): ToolResult => ({
       content: 'Tidak ada sumber resmi yang cukup; warga diarahkan ke kanal resmi.',
       endTurn: true,

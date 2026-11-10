@@ -92,6 +92,34 @@ describe('tool per state dan nama bernamespace', () => {
   });
 });
 
+describe('hand-off urusan__jawab_persyaratan mengikuti jenis urusan', () => {
+  it('SKCK di Kota Depok diarahkan ke Polri/Polres, bukan Disdukcapil Depok', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        fakeCompletion({
+          toolCalls: [
+            {
+              name: 'urusan__jawab_persyaratan',
+              arguments: JSON.stringify({ pertanyaan: 'Apa syarat SKCK?' }),
+            },
+          ],
+        }),
+        fakeCompletion({ content: 'baik' }),
+      ],
+    });
+    const env = makeEnv({ provider });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3276', jenis: 'skck' });
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Apa syarat SKCK?' });
+    const h = out.events.find((e) => e.type === 'handoff');
+    expect(h).toBeDefined();
+    const handoff = h as Extract<typeof h, { type: 'handoff' }>;
+    expect(handoff.kanal[0]?.nama).toMatch(/Polri|Kepolisian/);
+    expect(handoff.kanal.some((k) => k.nama.includes('Polres') && k.nama.includes('Kota Depok'))).toBe(true);
+    expect(handoff.kanal.some((k) => /Kependudukan|Dukcapil/i.test(k.nama))).toBe(false);
+    expect(handoff.alasan).not.toMatch(/Kependudukan|silondomaju/);
+  });
+});
+
 describe('policy gate (tool tulis)', () => {
   const ajukan = (extra: Record<string, unknown> = {}) =>
     JSON.stringify({ kodeKabKota: '3312', layananId: 9, ...extra });
