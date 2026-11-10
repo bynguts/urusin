@@ -101,6 +101,13 @@ const HALAMAN: Record<string, string> = {
   '/draf': kerangka(
     '<div class="alert alert-success">Data berhasil disimpan. Silakan lanjut ke tahap 2 dari 4.</div><label>Nama Ayah <input name="ayah"></label>',
   ),
+  // N1 (poc2 D): halaman tinjauan dengan tombol kirim akhir.
+  '/akhir': kerangka(`<h2>Periksa kembali data permohonan</h2><p>Dengan ini saya menyatakan data benar.</p>
+<form method="post" action="/api/final-d"><button type="submit" id="kirim" style="position:fixed;left:20px;top:200px;width:200px;height:60px">Kirim Permohonan</button></form>`),
+  // N5 (poc2 E): tautan pembuka dengan listener preventDefault + fetch POST.
+  '/pembuka-jahat': kerangka(`<style>a{display:block;padding:20px}</style>
+<a id="aj" href="/permohonan/kk">Ajukan Permohonan Kartu Keluarga</a>
+<script>document.getElementById('aj').addEventListener('click', (e) => { e.preventDefault(); fetch('/api/final-e', {method:'POST', body:'final=1'}); });</script>`),
   // F6: halaman membuka WebSocket (mis. socket.io) dan mengirim lewat situ.
   '/ws': kerangka(`<h1>Formulir</h1><script>
   const ws = new WebSocket('ws://' + location.host + '/ws');
@@ -355,7 +362,12 @@ test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka form
           e.jenis === 'giliran_anda' && e.alasan === 'ketuk_tautan',
       );
     await expect.poll(() => giliran()?.sorot, { timeout: 10_000 }).toBeTruthy();
-    expect(giliran()!.pesan).toBe('Ketuk tautan yang disorot untuk membuka formulir, lalu tekan Lanjutkan.');
+    expect(giliran()!.pesan).toContain('Buka tautan');
+    expect(giliran()!.tautan).toEqual({
+      nama: 'Ajukan Permohonan Kartu Keluarga',
+      host: new URL(situs.origin).host,
+      jalur: '/permohonan/kk',
+    });
     expect(manager.status(o).mode).toBe('takeover');
     await new Promise((r) => setTimeout(r, 300));
     expect(situs.hitung('/permohonan/kk')).toBe(0);
@@ -382,6 +394,72 @@ test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka form
       fase: 'mulai',
       alasan: 'ketuk_tautan',
     });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('N1 (PoC D): serahkan ketuk_tautan ke tombol kirim di halaman akhir ditolak worker', async () => {
+  const { manager, o, sesiId, p } = await sesi(situs, '/akhir', 'akhir');
+  const events: PendampingEvent[] = [];
+  await manager.attach(sesiId, {
+    send: (m: PendampingServerMessage) => void (m.type === 'event' && events.push(m.event)),
+    frame: () => {},
+    ack: () => {},
+    close: () => {},
+  });
+  try {
+    expect(p.sinyal.halamanAkhir).toBe(true);
+    const kirim = satu(p, 'Kirim Permohonan');
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: kirim.ref }],
+    });
+    expect(r.hasil).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK' }]);
+    expect(events.some((e) => e.jenis === 'giliran_anda' && e.alasan === 'ketuk_tautan')).toBe(false);
+    expect(manager.status(o).mode).toBe('ai');
+    expect(situs.hitung('/api/final-d')).toBe(0);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('N5 (PoC E): buka_tautan = navigasi GET dari worker; listener halaman (preventDefault + POST) tidak jalan', async () => {
+  const { manager, o, sesiId, p } = await sesi(situs, '/pembuka-jahat', 'pembuka-jahat');
+  const events: PendampingEvent[] = [];
+  await manager.attach(sesiId, {
+    send: (m: PendampingServerMessage) => void (m.type === 'event' && events.push(m.event)),
+    frame: () => {},
+    ack: () => {},
+    close: () => {},
+  });
+  try {
+    const pembuka = satu(p, 'Ajukan Permohonan Kartu Keluarga');
+    expect(pembuka.tautanPembuka).toBe(true);
+    // buka_tautan di luar giliran ketuk_tautan diabaikan (penghitung situs dipakai bersama antar tes).
+    const awal = situs.hitung('/permohonan/kk');
+    await manager.handleClient(sesiId, { type: 'buka_tautan' });
+    expect(situs.hitung('/permohonan/kk')).toBe(awal);
+    await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: pembuka.ref }],
+    });
+    await expect
+      .poll(() => events.find((e) => e.jenis === 'giliran_anda' && e.alasan === 'ketuk_tautan'), {
+        timeout: 10_000,
+      })
+      .toMatchObject({ tautan: { nama: 'Ajukan Permohonan Kartu Keluarga', jalur: '/permohonan/kk' } });
+    await manager.handleClient(sesiId, { type: 'buka_tautan' });
+    await expect.poll(() => situs.hitung('/permohonan/kk'), { timeout: 10_000 }).toBe(awal + 1);
+    await expect.poll(() => manager.status(o).mode, { timeout: 10_000 }).toBe('ai');
+    expect((await manager.amati(o)).pengamatan.jalur).toBe('/permohonan/kk');
+    await new Promise((r) => setTimeout(r, 500));
+    expect(situs.hitung('/api/final-e')).toBe(0);
+    expect(manager.kurasJejak(o).catatan).toContainEqual({ jenis: 'ambil_alih', fase: 'selesai' });
   } finally {
     await manager.shutdown();
   }

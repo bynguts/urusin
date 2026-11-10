@@ -1142,10 +1142,16 @@ export async function wire(
         urlDiAllowlist(izinHost, url) &&
         checkUrl(url, { testMode: fixtureOrigins.length > 0, fixtureOrigins }).ok,
       jejak,
-      serahkan(alasan, pesan, box) {
+      serahkan(alasan, pesan, box, tautan) {
         manual = true;
         hooks.mode('takeover', pesan);
-        hooks.event({ jenis: 'giliran_anda', alasan, pesan, ...(box ? { sorot: box } : {}) });
+        hooks.event({
+          jenis: 'giliran_anda',
+          alasan,
+          pesan,
+          ...(box ? { sorot: box } : {}),
+          ...(tautan ? { tautan } : {}),
+        });
       },
       // Situs tidak bisa dikerjakan AI (mis. hanya lewat WhatsApp): dipandu, bukan gagal (sama dengan drift adapter).
       tidakBisa: (pesan) => hooks.ended('dipandu', 'drift', pesan),
@@ -1182,7 +1188,7 @@ export async function wire(
   }
 
   const g = generik;
-  return {
+  const api: ActiveRun = {
     ...(g
       ? {
           generik: {
@@ -1252,6 +1258,10 @@ export async function wire(
       manual = false;
       interp = buatInterp();
     },
+    async bukaTautan() {
+      if (!g || !manual) return false;
+      return g.bukaTautan(() => api.kembalikan());
+    },
     kembalikan() {
       manual = false;
       resume();
@@ -1294,4 +1304,5 @@ export async function wire(
       await iso.close();
     },
   };
+  return api;
 }

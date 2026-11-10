@@ -65,6 +65,9 @@ type Opsi = {
   saatNavigasi?: (run: GenerikRun) => void;
   /** URL dokumen akhir setelah navigasi ke URL tertentu (mensimulasikan redirect 302). */
   alihkan?: Record<string, string>;
+  peta?: PetaRef;
+  /** Href tautan pembuka per ref (op runner `tautan`). */
+  tautan?: Record<string, string>;
 };
 
 function harness(o: Opsi = {}) {
@@ -73,7 +76,7 @@ function harness(o: Opsi = {}) {
   const navigasi: string[] = [];
   const jendelaSaatAksi: Jendela[] = [];
   const jejak: CatatanPendamping[] = [];
-  const serah: { alasan: string; pesan: string; sorot: unknown }[] = [];
+  const serah: { alasan: string; pesan: string; sorot: unknown; tautan?: unknown }[] = [];
   const tidakBisa: string[] = [];
   const diisiDikirim: Record<string, string>[] = [];
   const minta: Parameters<IzinGenerik['minta']>[0][] = [];
@@ -89,7 +92,7 @@ function harness(o: Opsi = {}) {
   const tangan: TanganHalaman = {
     async amati(_seq, diisi) {
       diisiDikirim.push(diisi);
-      return { pengamatan: (o.amati ?? pengamatan)(), peta: PETA };
+      return { pengamatan: (o.amati ?? pengamatan)(), peta: o.peta ?? PETA };
     },
     async aksi(a) {
       panggilan.push(a);
@@ -103,6 +106,7 @@ function harness(o: Opsi = {}) {
       o.saatNavigasi?.(ref.run!);
     },
     sorot: async () => ({ x: 1, y: 2, lebar: 3, tinggi: 4 }),
+    tautan: async (r) => o.tautan?.[r],
     tenang: async () => {},
     urlKini: () => urlKini,
   };
@@ -120,7 +124,8 @@ function harness(o: Opsi = {}) {
     izin,
     urlBoleh: o.urlBoleh ?? (() => true),
     jejak: (c) => void jejak.push(c),
-    serahkan: (alasan, pesan, sorot) => void serah.push({ alasan, pesan, sorot }),
+    serahkan: (alasan, pesan, sorot, tautan) =>
+      void serah.push({ alasan, pesan, sorot, ...(tautan ? { tautan } : {}) }),
     tidakBisa: (p) => void tidakBisa.push(p),
     now: () => now,
   }));
@@ -704,12 +709,23 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     expect(h.tidakBisa).toHaveLength(1);
   });
 
-  it('serahkan ketuk_tautan = giliran ketuk_tautan dengan sorot, bukan final', async () => {
-    const h = harness();
+  const PEMBUKA = (akhir = false) =>
+    pengamatan({
+      sinyal: { ...pengamatan().sinyal, halamanAkhir: akhir },
+      elemen: [
+        ...pengamatan().elemen,
+        { ref: 'e6', peran: 'tautan', nama: 'Ajukan Permohonan KK', kelas: 'kirim', tautanPembuka: true },
+      ],
+    });
+  const PETA_PEMBUKA: PetaRef = { ...PETA, e6: { jalur: 'main > a', sidik: 's-pembuka' } };
+  const HREF = 'https://portal.contoh.go.id/permohonan/kk?jenis=baru#atas';
+
+  it('serahkan ketuk_tautan = giliran dengan sorot + tujuan; buka_tautan = navigasi GET sekali, AI lanjut', async () => {
+    const h = harness({ amati: () => PEMBUKA(), peta: PETA_PEMBUKA, tautan: { e6: HREF } });
     await h.run.amati();
     const r = await h.run.aksi({
       rencanaHash: H1,
-      aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e5' }],
+      aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }],
     });
     expect(r).toEqual([{ indeks: 0, kode: 'ok' }]);
     expect(h.serah).toEqual([
@@ -717,9 +733,84 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
         alasan: 'ketuk_tautan',
         pesan: PESAN_GENERIK.ketuk_tautan,
         sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 },
+        tautan: { nama: 'Ajukan Permohonan KK', host: 'portal.contoh.go.id', jalur: '/permohonan/kk' },
       },
     ]);
+    expect(PESAN_GENERIK.ketuk_tautan).not.toMatch(/formulir/);
     expect(h.jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'ketuk_tautan' });
+
+    let lanjut = 0;
+    expect(await h.run.bukaTautan(() => void lanjut++)).toBe(true);
+    expect(lanjut).toBe(1);
+    const tujuan = 'https://portal.contoh.go.id/permohonan/kk?jenis=baru';
+    expect(h.navigasi).toEqual([tujuan]);
+    expect(h.jendelaSaatAksi.at(-1)).toEqual({ jenis: 'ai_klik', navKe: tujuan });
+    expect(h.gerbang.jendela()).toEqual({ jenis: 'ai_diam' });
+    // Sekali per giliran.
+    expect(await h.run.bukaTautan(() => void lanjut++)).toBe(false);
+    expect(h.navigasi).toHaveLength(1);
+  });
+
+  it('N1: serahkan ketuk_tautan ke ref bukan tautan pembuka, tanpa ref, atau di halaman akhir = KELAS_DITOLAK', async () => {
+    const biasa = harness({ tautan: { e5: 'https://portal.contoh.go.id/kirim' } });
+    await biasa.run.amati();
+    for (const ref of ['e5', 'e3', undefined]) {
+      const r = await biasa.run.aksi({
+        rencanaHash: H1,
+        aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ...(ref ? { ref } : {}) }],
+      });
+      expect(r, String(ref)).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK' }]);
+    }
+    expect(biasa.serah).toEqual([]);
+
+    const akhir = harness({ amati: () => PEMBUKA(true), peta: PETA_PEMBUKA, tautan: { e6: HREF } });
+    await akhir.run.amati();
+    expect(
+      await akhir.run.aksi({
+        rencanaHash: H1,
+        aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }],
+      }),
+    ).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK' }]);
+    expect(akhir.serah).toEqual([]);
+  });
+
+  it('N5: tautan berubah di DOM atau ke host lain = KELAS_DITOLAK; buka_tautan tanpa giliran = tidak apa-apa', async () => {
+    const berubah = harness({ amati: () => PEMBUKA(), peta: PETA_PEMBUKA });
+    await berubah.run.amati();
+    expect(
+      await berubah.run.aksi({
+        rencanaHash: H1,
+        aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }],
+      }),
+    ).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK' }]);
+    expect(await berubah.run.bukaTautan(() => {})).toBe(false);
+    expect(berubah.navigasi).toEqual([]);
+
+    const luar = harness({
+      amati: () => PEMBUKA(),
+      peta: PETA_PEMBUKA,
+      tautan: { e6: 'https://jahat.contoh.com/permohonan' },
+      urlBoleh: (u) => u.startsWith('https://portal.contoh.go.id/'),
+    });
+    await luar.run.amati();
+    expect(
+      await luar.run.aksi({
+        rencanaHash: H1,
+        aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }],
+      }),
+    ).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK' }]);
+  });
+
+  it('N5: jalur tujuan diredaksi dengan nilai vault (tujuan tampil ke warga)', async () => {
+    const h = harness({
+      amati: () => PEMBUKA(),
+      peta: PETA_PEMBUKA,
+      tautan: { e6: 'https://portal.contoh.go.id/warga/Budi%20Santoso/kk' },
+    });
+    h.vault.set(PH_NAMA, 'Budi Santoso');
+    await h.run.amati();
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }] });
+    expect(h.serah[0]?.tautan).toMatchObject({ jalur: `/warga/${PH_NAMA}/kk` });
   });
 });
 

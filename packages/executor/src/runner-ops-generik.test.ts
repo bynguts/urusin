@@ -242,6 +242,40 @@ describe('op aksi: tulis', () => {
   });
 });
 
+describe('runOp: tautan (buka_tautan, review N5)', () => {
+  it('tautan pembuka: href absolut tanpa klik dan tanpa handler halaman', async () => {
+    const h = pasang('<a href="/permohonan/kk">Ajukan Permohonan Kartu Keluarga</a>');
+    const ditekan = vi.fn();
+    document.querySelector('a')!.addEventListener('click', ditekan);
+    const r = await runOp({
+      kind: 'tautan',
+      ref: refDari(h, 'Ajukan Permohonan Kartu Keluarga'),
+      peta: h.peta,
+    });
+    expect(r).toEqual({ ok: true, value: { href: `${location.origin}/permohonan/kk` } });
+    expect(ditekan).not.toHaveBeenCalled();
+  });
+
+  it('bukan tautan pembuka (navigasi biasa, jalur tulis, tombol), ref basi, atau halaman akhir = gagal', async () => {
+    const h =
+      pasang(`<a href="/layanan/kk">Daftar Layanan</a><a href="/permohonan/12/ajukan">Ajukan Sekarang</a>
+<form><button type="submit">Kirim Permohonan</button></form><a href="/permohonan/kk">Ajukan Permohonan KK</a>`);
+    for (const nama of ['Daftar Layanan', 'Ajukan Sekarang', 'Kirim Permohonan']) {
+      const r = await runOp({ kind: 'tautan', ref: refDari(h, nama), peta: h.peta });
+      expect(r.ok, nama).toBe(false);
+    }
+    const ref = refDari(h, 'Ajukan Permohonan KK');
+    document.querySelectorAll('a')[2]!.textContent = 'Kirim Data';
+    expect((await runOp({ kind: 'tautan', ref, peta: h.peta })).ok).toBe(false);
+
+    const akhir =
+      pasang(`<h2>Periksa kembali data permohonan</h2><p>Dengan ini saya menyatakan data benar.</p>
+<a href="/permohonan/kk">Ajukan Permohonan KK</a><form><button type="submit">Kirim</button></form>`);
+    const r = await runOp({ kind: 'tautan', ref: refDari(akhir, 'Ajukan Permohonan KK'), peta: akhir.peta });
+    expect(r).toMatchObject({ ok: false, code: 'HALAMAN_AKHIR' });
+  });
+});
+
 describe('runOp: amati dan aksi', () => {
   it('amati mengembalikan pengamatan + peta; aksi mengembalikan hasil per aksi', async () => {
     document.body.innerHTML = '<label>Nama <input name="n"></label><button type="submit">Kirim</button>';

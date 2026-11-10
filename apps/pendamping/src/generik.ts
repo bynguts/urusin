@@ -57,11 +57,24 @@ export type TanganHalaman = {
   navigasi(url: string): Promise<void>;
   /** Kotak elemen (piksel CSS viewport) untuk disorot ke warga. */
   sorot(jalur: string): Promise<PendampingSorot | undefined>;
+  /** Href tautan pembuka `ref` yang dibaca ulang dari DOM (op runner `tautan`); undefined = bukan/tidak lagi. */
+  tautan(ref: string, peta: PetaRef): Promise<string | undefined>;
   /** Tunggu halaman tenang setelah klik/navigasi (muat selesai atau jeda singkat). */
   tenang(): Promise<void>;
   /** URL dokumen utama yang ter-commit saat ini (mis. `chrome-error://...` bila navigasi gagal). */
   urlKini(): string;
 };
+
+/** Tujuan tautan pembuka untuk giliran `ketuk_tautan` (event `giliran_anda.tautan`). */
+export type TautanGiliran = { nama: string; host: string; jalur: string };
+
+function decodeURIComponentAman(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
 
 /** Evaluator op runner di isolated world (browser.ts) -> TanganHalaman. */
 export function tanganRunner(deps: {
@@ -87,6 +100,12 @@ export function tanganRunner(deps: {
     async sorot(jalur) {
       const r = await deps.evaluate({ kind: 'rect', target: [{ by: 'css', value: jalur }] });
       return r !== 'interrupted' && r.ok ? (r.value as PendampingSorot) : undefined;
+    },
+    async tautan(ref, peta) {
+      const r = await deps.evaluate({ kind: 'tautan', ref, peta });
+      const href =
+        r !== 'interrupted' && r.ok ? (r.value as { href?: unknown } | undefined)?.href : undefined;
+      return typeof href === 'string' ? href : undefined;
     },
     tenang: deps.tenang,
     urlKini: deps.urlKini,
@@ -121,8 +140,8 @@ export type GenerikDeps = {
   /** Allowlist egress sesi (host persis + skema); false = host di luar registry. */
   urlBoleh(url: string): boolean;
   jejak(c: CatatanPendamping): void;
-  /** Warga memegang kendali (takeover) dengan pesan bertemplat + sorotan. */
-  serahkan(alasan: AlasanGiliran, pesan: string, sorot?: PendampingSorot): void;
+  /** Warga memegang kendali (takeover) dengan pesan bertemplat + sorotan (+ tujuan tautan untuk `ketuk_tautan`). */
+  serahkan(alasan: AlasanGiliran, pesan: string, sorot?: PendampingSorot, tautan?: TautanGiliran): void;
   /** Situs tidak bisa dikerjakan otomatis: sesi beralih ke mode dipandu. */
   tidakBisa(pesan: string): void;
   now?: () => number;
@@ -139,7 +158,8 @@ export const PESAN_GENERIK = {
   otp: 'Situs meminta kode OTP. Ketik sendiri kodenya; AI tidak pernah membacanya.',
   captcha: 'Situs meminta kode keamanan (CAPTCHA). Selesaikan sendiri; AI menunggu.',
   isi_sendiri: 'Isi sendiri kolom yang disorot, lalu tekan Lanjutkan.',
-  ketuk_tautan: 'Ketuk tautan yang disorot untuk membuka formulir, lalu tekan Lanjutkan.',
+  ketuk_tautan:
+    'AI tidak membuka tautan ini sendiri. Periksa nama dan alamat tujuannya, lalu tekan Buka tautan bila sesuai.',
   final: 'Periksa semua isian. Hanya Anda yang boleh menekan tombol kirim.',
   tidak_yakin:
     'AI tidak yakin langkah berikutnya. Lanjutkan sendiri, atau tekan Lanjutkan untuk mencoba lagi.',
@@ -295,6 +315,10 @@ export class GenerikRun {
    * halaman sukses diterima sebagai "terkirim".
    */
   private tulisWargaSejakAi = false;
+  /** Ref tautan pembuka di pengamatan terakhir (review N1: serah `ketuk_tautan` hanya ke ref ini). */
+  private refPembuka = new Set<string>();
+  /** Giliran `ketuk_tautan` yang aktif: ref tautan yang boleh dibuka lewat `buka_tautan` (review N5). */
+  private pembukaAktif: string | undefined;
 
   constructor(private readonly d: GenerikDeps) {
     this.now = d.now ?? Date.now;
@@ -302,6 +326,7 @@ export class GenerikRun {
 
   /** Dokumen bingkai utama baru ter-commit: timer/retry dokumen lama mati, bendera kotor direset. */
   dokumenBaru(): void {
+    this.pembukaAktif = undefined;
     this.kotorDok = false;
     this.kotorDiserahkan = false;
     this.aiBertindakDok = false;
@@ -452,6 +477,8 @@ export class GenerikRun {
     this.seqTerakhir = seq;
     this.kunciAkhir = cek.data.sinyal.halamanAkhir;
     this.namaRef = new Map(cek.data.elemen.map((e) => [e.ref, e.nama]));
+    this.refPembuka = new Set(cek.data.elemen.filter((e) => e.tautanPembuka).map((e) => e.ref));
+    this.pembukaAktif = undefined;
     this.d.jejak({
       jenis: 'amati',
       host: cek.data.host,
@@ -536,10 +563,20 @@ export class GenerikRun {
   ): Promise<{ kode: KodeHasilAksi; kelas?: KelasKendali; halamanBerganti?: boolean }> {
     if (a.jenis === 'serahkan') {
       const ref = a.ref ? this.peta[a.ref] : undefined;
+      let tautan: TautanGiliran | undefined;
+      if (a.alasan === 'ketuk_tautan') {
+        // Review N1: hanya tautan pembuka dari pengamatan terakhir, tidak pernah di halaman akhir (tombol kirim
+        // tidak bisa disorot sebagai "tautan"). Tujuan dibaca ulang dari DOM untuk ditampilkan ke warga (N5).
+        if (this.kunciAkhir || !a.ref || !ref || !this.refPembuka.has(a.ref))
+          return { kode: 'KELAS_DITOLAK' };
+        tautan = await this.tautanGiliran(a.ref);
+        if (!tautan) return { kode: 'KELAS_DITOLAK' };
+      }
       const sorot = ref ? await this.d.tangan.sorot(ref.jalur) : undefined;
       this.sorotJalur = ref?.jalur;
+      this.pembukaAktif = tautan ? a.ref : undefined;
       this.d.jejak({ jenis: 'ambil_alih', fase: 'mulai', alasan: a.alasan });
-      this.d.serahkan(ALASAN_GILIRAN[a.alasan], PESAN_GENERIK[a.alasan], sorot);
+      this.d.serahkan(ALASAN_GILIRAN[a.alasan], PESAN_GENERIK[a.alasan], sorot, tautan);
       return { kode: 'ok', halamanBerganti: true };
     }
     if (a.jenis === 'tidak_bisa') {
@@ -657,6 +694,55 @@ export class GenerikRun {
     await this.keluarAllowlist(urlSebelum);
     if (await this.eskalasiBila(ref)) return { kode: 'GERBANG_MEMBLOKIR' as const, ...k };
     return { kode: 'ok' as const, ...k, halamanBerganti: true };
+  }
+
+  /** Href tautan pembuka yang lolos allowlist, dalam bentuk yang ditampilkan ke warga (jalur diredaksi). */
+  private async tautanUrl(ref: string): Promise<URL | undefined> {
+    const href = await this.d.tangan.tautan(ref, this.peta);
+    const u = href ? URL.parse(href) : null;
+    if (!u || !this.d.urlBoleh(u.href)) return undefined;
+    u.hash = '';
+    return u;
+  }
+
+  private async tautanGiliran(ref: string): Promise<TautanGiliran | undefined> {
+    const u = await this.tautanUrl(ref);
+    if (!u) return undefined;
+    const jalur = redaksi(decodeURIComponentAman(u.pathname), this.d.izin.vault()).slice(0, 200) || '/';
+    return { nama: (this.namaRef.get(ref) ?? '').slice(0, 120), host: u.host, jalur };
+  }
+
+  /**
+   * Warga menekan "Buka tautan" (pesan `buka_tautan`, review N5) pada giliran `ketuk_tautan` yang aktif: href dibaca
+   * ulang dari DOM, `lanjut()` mengembalikan kendali ke AI, lalu navigasi GET bingkai utama ke href itu (jendela
+   * `ai_klik` dengan navKe), tanpa klik dan tanpa handler JS halaman. false = tidak ada giliran itu / tautan berubah.
+   */
+  bukaTautan(lanjut: () => void): Promise<boolean> {
+    return this.serial(async () => {
+      const ref = this.pembukaAktif;
+      this.pembukaAktif = undefined;
+      if (!ref || this.kunciAkhir) return false;
+      const u = await this.tautanUrl(ref);
+      if (!u) return false;
+      lanjut();
+      this.aiBertindakDok = true;
+      this.tulisWargaSejakAi = false;
+      this.aksiBerjalan = { blokir: [], hostLain: false };
+      this.hostDitolakTerakhir = undefined;
+      const urlSebelum = this.d.tangan.urlKini();
+      try {
+        this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: u.href });
+        await this.d.tangan.navigasi(u.href);
+        await this.d.tangan.tenang();
+        await this.keluarAllowlist(urlSebelum);
+        this.d.gerbang.setAi({ jenis: 'ai_diam' });
+        await this.eskalasiBila(ref ? this.peta[ref] : undefined);
+      } finally {
+        this.aksiBerjalan = undefined;
+        this.d.gerbang.setAi({ jenis: 'ai_diam' });
+      }
+      return true;
+    });
   }
 
   /** Halaman awal sesi (origin program): navigasi AI ke URL persis itu saja. */

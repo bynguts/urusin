@@ -100,6 +100,8 @@ export type ActiveRun = {
   input(m: Extract<PendampingClientMessage, { type: 'pointer' | 'wheel' | 'key' | 'text' }>): Promise<void>;
   ambilAlih(): void;
   kembalikan(): void;
+  /** Sesi generik: buka tautan pembuka giliran `ketuk_tautan` lalu AI lanjut; false = tidak ada giliran itu. */
+  bukaTautan?(): Promise<boolean>;
   /** Ganti program untuk execution berikutnya di peramban yang sama (sesi siaga). */
   gantiProgram(program: Program, executionId: string): Promise<void>;
   setViewer(send: ((f: Frame) => void) | null): Promise<void>;
@@ -949,6 +951,13 @@ export class SessionManager {
       case 'ambil_alih':
       case 'kembalikan':
         return this.handleControl(s, m.type);
+      case 'buka_tautan': {
+        if (!s.generik || !s.run?.bukaTautan || s.mode !== 'takeover' || s.status !== 'berjalan') return;
+        if (!(await s.run.bukaTautan())) return;
+        this.catat(s, { jenis: 'ambil_alih', fase: 'selesai' });
+        this.tolakIzin(s);
+        return;
+      }
       case 'akhiri':
         return this.end(s, 'dibatalkan', 'dibatalkan', PESAN.dibatalkan);
       case 'halo':

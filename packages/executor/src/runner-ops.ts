@@ -36,7 +36,13 @@ export type RunnerOp =
   /** Navigator generik: pengamatan halaman (tanpa nilai field) + peta ref untuk memori worker. */
   | { kind: 'amati'; seq: number; diisi?: Record<string, string> | undefined }
   /** Navigator generik: jalankan aksi satu per satu; `peta` = peta ref dari `amati` terakhir. */
-  | { kind: 'aksi'; aksi: AksiRunner[]; peta: PetaRef };
+  | { kind: 'aksi'; aksi: AksiRunner[]; peta: PetaRef }
+  /**
+   * Navigator generik: href tautan pembuka `ref` (dibaca ulang dari DOM) untuk dibuka worker lewat navigasi GET,
+   * tanpa klik dan tanpa handler JS halaman. Hanya tautan yang masih kena aturan tautan pembuka, bukan di halaman
+   * akhir.
+   */
+  | { kind: 'tautan'; ref: string; peta: PetaRef };
 
 /**
  * Aksi yang sudah divalidasi web dan di-resolve worker. `nilai` pada isi/pilih adalah nilai vault yang sudah
@@ -504,6 +510,22 @@ function satuAksi(doc: Document, a: AksiRunner, peta: PetaRef): Putusan {
   }
 }
 
+/** Aturan klasifikasi tautan pembuka (amatan `tautanPembuka`). */
+const ATURAN_PEMBUKA = new Set(['K7_NEG_NAMA_TAUTAN', 'K7_NEG_IKON_TAUTAN']);
+
+/** Href tautan pembuka yang masih sama di DOM (sidik), diklasifikasi ulang di tugas JS yang sama. */
+export function hrefTautanPembuka(doc: Document, ref: string, peta: PetaRef): RunnerResult {
+  const el = elemenRef(doc, peta, ref);
+  if (!(el instanceof Element)) return fail(el.kode ?? RunnerCode.REF_BASI, 'ref tidak cocok');
+  if (halamanAkhir(doc)) return fail(RunnerCode.HALAMAN_AKHIR, 'halaman akhir');
+  const win = doc.defaultView;
+  if (!win || !(el instanceof win.HTMLAnchorElement) || !el.href || !terlihatEl(el))
+    return fail(RunnerCode.ELEMEN_TIDAK_SESUAI, 'bukan tautan');
+  if (!ATURAN_PEMBUKA.has(klasifikasi(el, false).aturan))
+    return fail(RunnerCode.KLIK_DITOLAK, 'bukan tautan pembuka');
+  return { ok: true, value: { href: el.href } };
+}
+
 /**
  * Jalankan aksi berurutan. Berhenti pada aksi pertama yang tidak `ok` (sisanya `dilewati`), setelah
  * `navigasi`, dan setelah klik `lanjut` (halaman kemungkinan berganti; amati ulang dulu).
@@ -557,6 +579,8 @@ export async function runOp(
         return { ok: true, value: await hooks.consent(doc, op.summary) };
       case 'amati':
         return { ok: true, value: bangunPengamatan(doc, { seq: op.seq, diisi: op.diisi }) };
+      case 'tautan':
+        return hrefTautanPembuka(doc, op.ref, op.peta);
       case 'aksi':
         return { ok: true, value: jalankanAksi(doc, op.aksi, op.peta) };
     }
