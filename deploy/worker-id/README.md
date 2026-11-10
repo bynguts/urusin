@@ -1,9 +1,12 @@
 # Worker Browser Pendamping berjaringan Indonesia (laptop, lewat Tailscale)
 
-Telunjuk Sakti (Disdukcapil Wonogiri) dan Si D'nOK ada di registry dengan `aksesWilayah: 'id-only'`: dari IP
-datacenter (agent-vm, Singapura) Cloudflare memberi tantangan yang tidak lolos (`403 cf-mitigated: challenge`,
-Chromium headed tetap di "Just a moment..."). Dari koneksi rumah/seluler Indonesia milik tim, Chromium headed
-biasa lolos sendiri dan sampai ke halaman TelunjukSakti. Folder ini menjalankan worker Pendamping region `id`
+Worker ini OPSIONAL: Urusin berjalan 24/7 dari server tanpa laptop. Telunjuk Sakti (Disdukcapil Wonogiri)
+berstatus `aksesWilayah: 'id-utama'`: dari IP datacenter (agent-vm, Singapura) Cloudflare memberi tantangan
+kotak centang (`403 cf-mitigated: challenge`, "Performing security verification") yang diketuk warga sendiri
+lewat Browser Pendamping, lalu AI melanjutkan; bila laptop ini hidup, web mendahulukannya (dari koneksi
+rumah/seluler Indonesia Chromium headed biasa lolos tanpa tantangan). Hanya Si D'nOK (`aksesWilayah: 'id-only'`,
+blokir keras "Akses Terbatas - Khusus Indonesia") yang benar-benar butuh worker ini; tanpanya situs itu
+dipandu. Folder ini menjalankan worker Pendamping region `id`
 di laptop anggota (Docker Desktop di Windows/macOS, atau Docker Linux), dijangkau web di agent-vm hanya lewat
 Tailscale. Tanpa stealth/pemalsuan sidik jari, tanpa layanan CAPTCHA, tanpa proxy residensial: warga sendiri
 yang mengetik login/OTP/CAPTCHA, mengklik tantangan bila muncul, dan menekan Kirim/Selesai.
@@ -66,7 +69,7 @@ pendamping mendengarkan di 172.x.y.z:4330 (maks 1 sesi, TTL 15 menit, headed di 
 
 ```sh
 bash deploy/worker-id/worker.sh sehat   # {"ok":true,"aktif":0,"maks":1,"menunggu":0} lewat IP Tailscale
-bash deploy/worker-id/worker.sh down    # berhenti; web otomatis beralih ke mode dipandu untuk situs id-only
+bash deploy/worker-id/worker.sh down    # berhenti; Telunjuk Sakti kembali ke server; hanya situs id-only yang dipandu
 docker compose -p urusin-worker-id logs --tail 50 pendamping pendamping-edge
 ```
 

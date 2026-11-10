@@ -509,8 +509,11 @@ bukan `PENDAMPING_INTERNAL_TOKEN`), dan URL WS `wss://$DOMAIN/pendamping/w/<id>/
 `[{"id":"vps","url":"http://127.0.0.1:4330","region":"umum","maxSessions":2,"wsUrl":"wss://$DOMAIN/pendamping/ws"},{"id":"laptop-a","url":"http://100.x.y.z:4330","region":"id","maxSessions":1,"wsUrl":"wss://$DOMAIN/pendamping/w/laptop-a/ws","token":"<acak >= 32>"}]`.
 Setiap worker WAJIB punya `wsUrl`, dan `token` bila bukan 127.0.0.1; JSON tidak sah = Pendamping tidak tersedia
 sama sekali. Kanal web -> worker ditandatangani HMAC (bukan bearer polos), dan web memeriksa `GET /health` tiap
-worker. Situs `aksesWilayah: 'id-only'` (Telunjuk Sakti, Si D'nOK) hanya dirutekan ke worker `region: "id"`;
-bila semua mati, urusan beralih ke mode dipandu dengan pesan jujur. Rute WS worker tambahan dibangkitkan
+worker. Server adalah jalur utama, laptop opsional: situs `aksesWilayah: 'id-utama'` (Telunjuk Sakti:
+tantangan kotak centang yang diketuk warga sendiri) mendahulukan worker `region: "id"` yang sehat, lalu worker
+sehat mana pun (VPS); hanya bila TIDAK ADA worker sehat sama sekali muncul 503 umum. Situs
+`aksesWilayah: 'id-only'` (Si D'nOK: blokir keras IP non-Indonesia) hanya ke worker `region: "id"`; bila semua
+mati, urusan beralih ke mode dipandu dengan pesan jujur. Rute WS worker tambahan dibangkitkan
 (dikerjakan lead, izin per kejadian): tambahkan `--worker laptop-a=100.x.y.z:4330` ke perintah
 `gen-caddyfile.mjs` di atas. Blok yang dihasilkan HANYA `handle /pendamping/w/<id>/ws/*` (prefiks dibuang,
 edge menerima `/ws/<uuid>`); jangan memakai `handle_path /pendamping/w/<id>/*`, yang ikut membuka
