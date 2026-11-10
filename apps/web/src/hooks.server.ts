@@ -8,7 +8,7 @@ import { checkOrigin } from '#lib/server/origin.js';
 import { pasangPemeriksaPemilikAkun } from '#lib/server/pendamping.js';
 import { pemeriksaPemilikVault } from '#lib/server/pendamping/pemilik.js';
 import { getRuntime, publicOrigin } from '#lib/server/runtime.js';
-import { ensureSession, migrasiSid } from '#lib/server/sesi.js';
+import { ensureSession, hapusTerakhir, migrasiSid, rotasiSid } from '#lib/server/sesi.js';
 import { turnstileFromEnv } from '#lib/server/turnstile.js';
 
 // Backstop egress (review v11 M2): web berjalan di network host. Jadikan Agent egress runtime (LLM + Jina,
@@ -49,16 +49,25 @@ export const handle: Handle = async ({ event, resolve }) => {
   migrasiSid(event.cookies);
   // Cookie sesi anonim hanya untuk API (identitas kuota); halaman statis tetap bebas cookie agar bisa di-cache.
   if (event.url.pathname.startsWith('/api/')) event.locals.sid = ensureSession(event.cookies);
-  // Sesi login: hanya bila cookie ada (tamu tidak menyentuh DB). Token tidak sah/kedaluwarsa → cookie dihapus.
+  // Sesi login: hanya bila cookie ada (tamu tidak menyentuh DB). Token tidak sah/kedaluwarsa → cookie dihapus
+  // dan urusin_sid diputar seperti Keluar: pemakai berikutnya di perangkat bersama tidak mengadopsi urusan tamu
+  // atau vault satu-perangkat pemakai sebelumnya. Runtime gagal (bukan sesi kedaluwarsa) tidak memutar apa pun.
   const token = event.cookies.get(AKUN_COOKIE);
   if (token) {
     const s = await getRuntime()
-      .then((rt) => rt.akun.sesi(token))
+      .then((rt) => rt.akun.sesi(token) ?? 'kedaluwarsa')
       .catch(() => null);
-    if (s) {
+    if (s && s !== 'kedaluwarsa') {
       event.locals.akun = s.akun;
       event.locals.akunSesi = { tokenHash: s.tokenHash, authAt: s.authAt, pernahUnduh: s.pernahUnduh };
-    } else hapusAkunCookie(event.cookies);
+    } else {
+      hapusAkunCookie(event.cookies);
+      if (s === 'kedaluwarsa') {
+        const sid = rotasiSid(event.cookies);
+        if (event.locals.sid) event.locals.sid = sid;
+        hapusTerakhir(event.cookies);
+      }
+    }
   }
   const response = await resolve(event);
   // Satu baris per respons API gagal (pola rute + status + kode saja), untuk diagnosis operator.

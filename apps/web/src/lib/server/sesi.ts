@@ -34,11 +34,25 @@ export function migrasiSid(cookies: Pick<Cookies, 'get' | 'set' | 'delete'>, now
   cookies.delete(SID_COOKIE_LAMA, { path: '/' });
 }
 
-export function ensureSession(cookies: Cookies): string {
+/**
+ * Penanda "urusin_sid baru saja diperpanjang" (1 hari). Hilang = sudah lebih dari sehari: cookie sid ditulis ulang
+ * dengan umur penuh, jadi tamu yang aktif tidak kehilangan urusannya saat 30 hari sejak kunjungan pertama lewat.
+ */
+const SID_SEGAR_COOKIE = '__Host-urusin_sid_segar';
+const SEGAR_OPSI = { ...SID_OPSI, maxAge: 60 * 60 * 24 } as const;
+
+export function ensureSession(cookies: Pick<Cookies, 'get' | 'set'>): string {
   const ada = cookies.get(SID_COOKIE);
-  if (ada && SID_RE.test(ada)) return ada;
+  if (ada && SID_RE.test(ada)) {
+    if (!cookies.get(SID_SEGAR_COOKIE)) {
+      cookies.set(SID_COOKIE, ada, SID_OPSI);
+      cookies.set(SID_SEGAR_COOKIE, '1', SEGAR_OPSI);
+    }
+    return ada;
+  }
   const sid = randomBytes(16).toString('hex');
   cookies.set(SID_COOKIE, sid, SID_OPSI);
+  cookies.set(SID_SEGAR_COOKIE, '1', SEGAR_OPSI);
   return sid;
 }
 

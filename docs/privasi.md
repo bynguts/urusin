@@ -71,7 +71,8 @@ cara tanpa akun.
 
 Urusin hanya memakai cookie yang dibutuhkan agar aplikasi berjalan:
 
-- `__Host-urusin_sid`: mengenali peramban ini untuk kuota dan data tamu (30 hari).
+- `__Host-urusin_sid`: mengenali peramban ini untuk kuota dan data tamu (30 hari sejak terakhir dipakai).
+- `__Host-urusin_sid_segar`: penanda harian agar cookie di atas diperpanjang paling sering sekali sehari (1 hari).
 - `__Host-urusin_akun`: sesi masuk akun (berakhir setelah 7 hari tidak dipakai, paling lama 30 hari).
 - `__Host-urusin_oauth` dan `__Host-urusin_tautkan`: sementara, selama proses masuk atau menautkan Google.
 - `urusin_terakhir`: urusan terakhir yang Anda buka di peramban ini (30 hari).
