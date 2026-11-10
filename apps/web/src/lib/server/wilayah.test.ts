@@ -93,17 +93,16 @@ describe('wilayah dulu: usulan saat urusan dibuat', () => {
     expect(wilayahUrusan(rt.store, rt.store.getUrusanOrThrow(id)).usulan).toBeNull();
   });
 
-  it('Data Diri akun diusulkan lebih dulu daripada pilihan perangkat', async () => {
+  it('pilihan eksplisit di halaman menang atas Data Diri; tanpa pilihan (atau sama) sumbernya Data Diri', async () => {
     const akun = akunJuri();
-    const res = await buatUrusan(ev(post({ peristiwa: 'kelahiran', kodeKabKota: '3578' }), {}, { akun }));
-    const { id } = (await res.json()) as { id: string };
-    expect(payloads(id, 'wilayah')).toEqual([
-      expect.objectContaining({
-        status: 'usulan',
-        sumber: 'data_diri',
-        ktp: expect.objectContaining({ kodeKabKota: '3312' }),
-      }),
-    ]);
+    const usulan = async (body: Record<string, string>) => {
+      const res = await buatUrusan(ev(post({ peristiwa: 'kelahiran', ...body }), {}, { akun }));
+      const { id } = (await res.json()) as { id: string };
+      return payloads(id, 'wilayah').map((e) => [e.ktp.kodeKabKota, e.sumber]);
+    };
+    expect(await usulan({ kodeKabKota: '3578' })).toEqual([['3578', 'pilihan']]);
+    expect(await usulan({})).toEqual([['3312', 'data_diri']]);
+    expect(await usulan({ kodeKabKota: '3312' })).toEqual([['3312', 'data_diri']]);
   });
 
   it('halaman peristiwa: tanpa ?kodeKabKota, kab/kota Data Diri diisikan sebagai usulan', async () => {
@@ -140,6 +139,20 @@ describe('POST /api/urusan/[id]/wilayah (tombol "Ya, betul")', () => {
     );
     expect(kartu.langkah.some((l: any) => l.jenis === 'online-adapter')).toBe(false);
     expect(rt.store.verifyChain(id).ok).toBe(true);
+  });
+
+  it('kartu basi tidak menimpa: KTP sama → 200 tanpa perubahan; KTP lain → 409 WILAYAH_SUDAH_DITETAPKAN', async () => {
+    const id = await urusanBaru('3312');
+    expect((await tetapkan(ev(post({ kodeKabKota: '3310' }), { id }))).status).toBe(200); // Klaten di obrolan
+    const sebelum = rt.store.getUrusanOrThrow(id);
+    const jumlah = payloads(id, 'wilayah').length;
+    const basi = await tetapkan(ev(post({ kodeKabKota: '3312' }), { id }));
+    expect(basi.status).toBe(409);
+    expect((await basi.json()).kode).toBe('WILAYAH_SUDAH_DITETAPKAN');
+    const sama = await tetapkan(ev(post({ kodeKabKota: '3310' }), { id }));
+    expect(await sama.json()).toEqual({ state: sebelum.state, version: sebelum.version, rencana: false });
+    expect(rt.store.getUrusanOrThrow(id)).toMatchObject({ kodeKabKota: '3310', version: sebelum.version });
+    expect(payloads(id, 'wilayah')).toHaveLength(jumlah);
   });
 
   it('kode tidak dikenal 422; format salah 422; urusan tidak ada 404', async () => {

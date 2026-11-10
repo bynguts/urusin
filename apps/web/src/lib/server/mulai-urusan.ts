@@ -12,9 +12,10 @@ export const PESAN_AWAL_COOKIE = 'urusin_pesan_awal';
 export type GagalMulai = { pesanWarga: string; pesan: string };
 
 /**
- * Wilayah dulu: kab/kota dari Data Diri akun (bila ada) atau pilihan di perangkat dicatat sebagai USULAN saja,
- * sebelum turn pertama. Warga tetap mengonfirmasi (kartu "Ya, betul" atau di obrolan) sebelum rencana disusun:
- * perangkat bisa dipakai bersama dan Data Diri bisa usang.
+ * Wilayah dulu: kab/kota yang dipilih di halaman (bila ada) atau dari Data Diri akun dicatat sebagai USULAN saja,
+ * sebelum turn pertama. Pilihan eksplisit menang atas Data Diri; bila sama, sumbernya tetap Data Diri. Warga tetap
+ * mengonfirmasi (kartu "Ya, betul" atau di obrolan) sebelum rencana disusun: perangkat bisa dipakai bersama dan
+ * Data Diri bisa usang.
  */
 export function usulkanWilayahAwal(
   rt: Runtime,
@@ -25,9 +26,10 @@ export function usulkanWilayahAwal(
   const p = pemilikVault(rt, event, { buat: false });
   const dariDataDiri = p ? rt.akun.vault.getDataDiri(p.id)?.data.kodeKabKota : undefined;
   const publish = (e: Parameters<Runtime['publish']>[1]) => void rt.publish(urusanId, e);
-  if (typeof dariDataDiri === 'string' && usulkanWilayah(urusanId, dariDataDiri, 'data_diri', publish))
+  const dataDiri = typeof dariDataDiri === 'string' ? dariDataDiri : undefined;
+  if (kodePilihan && kodePilihan !== dataDiri && usulkanWilayah(urusanId, kodePilihan, 'pilihan', publish))
     return;
-  if (kodePilihan) usulkanWilayah(urusanId, kodePilihan, 'pilihan', publish);
+  if (dataDiri) usulkanWilayah(urusanId, dataDiri, 'data_diri', publish);
 }
 
 /**

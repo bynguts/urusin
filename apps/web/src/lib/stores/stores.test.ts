@@ -193,6 +193,15 @@ describe('UrusanStore: sambung, resume, kirim', () => {
     expect(store.keadaan.sedangBerjalan).toBe(false);
   });
 
+  it('tetapkanWilayah: tanpa versi dan tanpa kirim ulang otomatis saat 409 (kartu basi tidak menimpa)', async () => {
+    const ambil = vi.fn().mockResolvedValueOnce(json({ kode: 'WILAYAH_SUDAH_DITETAPKAN' }, 409));
+    const store = siapkan(ambil);
+    expect(await store.tetapkanWilayah('3312')).toBe('konflik');
+    expect(ambil).toHaveBeenCalledTimes(1);
+    expect(ambil.mock.calls[0]![0]).toBe('/api/urusan/u_abc/wilayah');
+    expect(JSON.parse((ambil.mock.calls[0]![1] as { body: string }).body)).toEqual({ kodeKabKota: '3312' });
+  });
+
   it('409 versi basi: ambil status, tidak ada turn berjalan -> kirim ulang sekali dengan versi segar', async () => {
     const ambil = vi
       .fn()

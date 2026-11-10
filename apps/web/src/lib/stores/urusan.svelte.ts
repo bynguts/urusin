@@ -155,21 +155,31 @@ export class UrusanStore implements StoreUrusan {
    * diketahui, rencana untuk wilayah itu menyusul lewat stream.
    */
   tetapkanWilayah(kodeKabKota: string): Promise<'ok' | 'konflik' | 'galat'> {
-    return this.aksi('wilayah', { kodeKabKota });
+    // Tanpa versi dan tanpa kirim ulang otomatis: server hanya menetapkan bila belum ada wilayah KTP (wilayah
+    // lain yang sudah dipastikan → 409), jadi kartu basi tidak pernah menimpa pilihan warga.
+    return this.aksi('wilayah', { kodeKabKota }, { versi: false, ulang: false });
   }
 
-  /** Aksi terstruktur POST /api/urusan/[id]/<jalur> dengan versi terbaru; 409 → ambil status lalu coba sekali lagi. */
-  private async aksi(jalur: string, isi: Record<string, unknown>): Promise<'ok' | 'konflik' | 'galat'> {
+  /**
+   * Aksi terstruktur POST /api/urusan/[id]/<jalur>, bawaannya dengan versi terbaru; 409 → ambil status lalu coba
+   * sekali lagi (kecuali `ulang: false`).
+   */
+  private async aksi(
+    jalur: string,
+    isi: Record<string, unknown>,
+    opsi: { versi: boolean; ulang: boolean } = { versi: true, ulang: true },
+  ): Promise<'ok' | 'konflik' | 'galat'> {
     const id = this.keadaan.id;
     if (!id) return 'galat';
     const kirim = () =>
       this.ambil(`/api/urusan/${encodeURIComponent(id)}/${jalur}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...isi, expectedVersion: this.keadaan.version }),
+        body: JSON.stringify(opsi.versi ? { ...isi, expectedVersion: this.keadaan.version } : isi),
       });
     try {
       let res = await kirim();
+      if (res.status === 409 && !opsi.ulang) return 'konflik';
       if (res.status === 409) {
         const st = await this.statusTerbaru(id);
         if (!st || st.berjalan) return st ? 'konflik' : 'galat';
