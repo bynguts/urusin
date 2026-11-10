@@ -9,15 +9,20 @@ import {
   matchOfficialOrigin,
   matchOfficialUrl,
 } from './registry.js';
+import { DOMAIN_WILAYAH } from './registry-wilayah.js';
 
 const T = 'telunjuksakti.wonogirikab.go.id';
 
 describe('registry domain resmi', () => {
-  it('memuat 14 domain seed tanpa duplikat, semuanya .go.id', () => {
+  it('memuat 14 domain seed lalu host wilayah, tanpa duplikat; host bukan .go.id hanya dari data wilayah', () => {
     const hosts = OFFICIAL_DOMAINS.map((d) => d.host);
-    expect(hosts).toHaveLength(14);
+    expect(hosts.slice(0, 14)).toContain(T);
+    expect(hosts.length).toBe(14 + DOMAIN_WILAYAH.filter((d) => !hosts.slice(0, 14).includes(d.host)).length);
     expect(new Set(hosts).size).toBe(hosts.length);
-    for (const h of hosts) expect(h.endsWith('.go.id') || h === 'oss.go.id').toBe(true);
+    for (const h of hosts.slice(0, 14)) expect(h.endsWith('.go.id') || h === 'oss.go.id').toBe(true);
+    // Pengecualian bukan .go.id (mis. e-open.id) wajib bersumber halaman .go.id: lihat registry-wilayah.test.ts.
+    for (const h of hosts.filter((x) => !x.endsWith('.go.id')))
+      expect(DOMAIN_WILAYAH.some((d) => d.host === h)).toBe(true);
   });
 
   it('situs yang menolak IP pusat data ditandai aksesWilayah id-only (diukur dari agent-vm)', () => {

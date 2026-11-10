@@ -188,12 +188,263 @@ export const NamaBerkasAdapterSchema = z
   .max(64)
   .regex(/^[A-Za-z][A-Za-z0-9_]*$/);
 
+// --- Navigator generik (ADR 0030): pengamatan halaman, rencana per halaman, aksi terbatas ---
+/**
+ * Rujukan elemen dari pengamatan terakhir (`e1`..`e9999`). Peta ref -> {jalur, sidik} hanya ada di memori
+ * worker dan tidak pernah ditulis ke DOM; sidik berubah saat aksi = `REF_BASI`.
+ */
+export const RefSchema = z.string().regex(/^e\d{1,4}$/);
+export type Ref = z.infer<typeof RefSchema>;
+
+/**
+ * Kelas kendali deterministik dari klasifikator di halaman (executor/klasifikasi.ts). AI hanya boleh mengeklik
+ * `navigasi`, `ui_lokal`, atau `lanjut`; selebihnya dikerjakan warga (default tolak).
+ */
+export const KelasKendaliSchema = z.enum([
+  'navigasi',
+  'ui_lokal',
+  'lanjut',
+  'kirim',
+  'masuk',
+  'tantangan',
+  'tidak_pasti',
+]);
+export type KelasKendali = z.infer<typeof KelasKendaliSchema>;
+/** Kelas yang boleh diklik AI. Selain ini klik ditolak di validator web DAN diulang di halaman saat klik. */
+export const KELAS_BOLEH_KLIK_AI: readonly KelasKendali[] = ['navigasi', 'ui_lokal', 'lanjut'];
+
+export const PeranElemenSchema = z.enum([
+  'teks',
+  'angka',
+  'tanggal',
+  'pilihan',
+  'centang',
+  'radio',
+  'berkas',
+  'tombol',
+  'tautan',
+  'tab',
+  'area',
+]);
+export type PeranElemen = z.infer<typeof PeranElemenSchema>;
+
+/** Kolom yang tidak pernah diisi AI: sandi, OTP, CAPTCHA, dan pernyataan (warga sendiri). */
+export const TerlarangSchema = z.enum(['sandi', 'otp', 'captcha', 'pernyataan']);
+export type Terlarang = z.infer<typeof TerlarangSchema>;
+
+/** Keadaan isian kolom: tidak pernah nilai mentah, hanya keadaan atau placeholder vault yang diisi worker. */
+export const IsianElemenSchema = z.union([
+  z.enum(['kosong', 'terisi_situs', 'terisi_warga']),
+  PlaceholderVaultSchema,
+]);
+
+export const ElemenAmatanSchema = z.object({
+  ref: RefSchema,
+  peran: PeranElemenSchema,
+  /** Label dari halaman: TIDAK TEPERCAYA (bisa berisi instruksi sisipan). */
+  nama: z.string().max(120),
+  petunjuk: z.string().max(120).optional(),
+  wajib: z.boolean().optional(),
+  isian: IsianElemenSchema.optional(),
+  opsi: z.array(z.string().max(80)).max(40).optional(),
+  /** Hanya tombol/tautan: kelas dari klasifikator deterministik. */
+  kelas: KelasKendaliSchema.optional(),
+  terlarang: TerlarangSchema.optional(),
+  /** Formulir pemilik elemen (`f0`..`f99`). */
+  form: z
+    .string()
+    .regex(/^f\d{1,2}$/)
+    .optional(),
+  /** Pesan galat validasi situs di dekat kolom (sudah diredaksi). */
+  galat: z.string().max(120).optional(),
+});
+export type ElemenAmatan = z.infer<typeof ElemenAmatanSchema>;
+
+export const SinyalHalamanSchema = z.object({
+  login: z.boolean(),
+  otp: z.boolean(),
+  captcha: z.boolean(),
+  tantangan: z.boolean(),
+  /** Halaman tinjauan/pernyataan: kunci halaman akhir, AI tidak boleh mengeklik apa pun. */
+  halamanAkhir: z.boolean(),
+  sukses: z.boolean(),
+  galatForm: z.boolean(),
+});
+export type SinyalHalaman = z.infer<typeof SinyalHalamanSchema>;
+
+/** Pengamatan satu halaman yang sudah diredaksi worker; satu-satunya yang dilihat model tentang halaman. */
+export const PengamatanSchema = z.object({
+  v: z.literal(1),
+  seq: z.number().int().nonnegative(),
+  host: z
+    .string()
+    .min(1)
+    .max(253)
+    .regex(/^[a-z0-9.-]+(?::\d{1,5})?$/),
+  /** Path tanpa query string dan fragmen. */
+  jalur: z
+    .string()
+    .max(200)
+    .regex(/^\/[^?#]*$/),
+  judul: z.string().max(120),
+  sinyal: SinyalHalamanSchema,
+  elemen: z.array(ElemenAmatanSchema).max(150),
+  /** Judul bagian/peringatan, sudah diredaksi di worker (nilai vault diganti token). */
+  teks: z.string().max(2500),
+  /** Hash struktural halaman untuk deteksi putaran. */
+  sidik: z.string().min(1).max(128),
+});
+export type Pengamatan = z.infer<typeof PengamatanSchema>;
+
+export const AlasanSerahkanSchema = z.enum([
+  'masuk_akun',
+  'otp',
+  'captcha',
+  'isi_sendiri',
+  'final',
+  'tidak_yakin',
+]);
+export const SebabTidakBisaSchema = z.enum([
+  'layanan_tidak_ada',
+  'hanya_aplikasi',
+  'hanya_whatsapp',
+  'situs_rusak',
+  'butuh_kamera',
+  'lainnya',
+]);
+
+/**
+ * Ruang aksi model: hanya ref, placeholder vault, indeks opsi teramati, atau boolean. Tidak ada URL, teks bebas,
+ * tombol keyboard (Enter), atau JS. Tidak ada aksi "kirim": pengiriman akhir selalu warga.
+ */
+export const AksiSchema = z.discriminatedUnion('jenis', [
+  z.object({ jenis: z.literal('isi'), ref: RefSchema, nilai: PlaceholderVaultSchema }),
+  z.object({
+    jenis: z.literal('pilih'),
+    ref: RefSchema,
+    nilai: z.union([PlaceholderVaultSchema, z.object({ opsi: z.number().int().min(0).max(39) })]),
+  }),
+  z.object({ jenis: z.literal('centang'), ref: RefSchema, nilai: z.boolean() }),
+  z.object({ jenis: z.literal('unggah'), ref: RefSchema, berkas: NamaBerkasAdapterSchema }),
+  z.object({ jenis: z.literal('klik'), ref: RefSchema }),
+  z.object({ jenis: z.literal('serahkan'), alasan: AlasanSerahkanSchema, ref: RefSchema.optional() }),
+  z.object({ jenis: z.literal('tidak_bisa'), sebab: SebabTidakBisaSchema }),
+]);
+export type Aksi = z.infer<typeof AksiSchema>;
+export type JenisAksi = Aksi['jenis'];
+export const JenisAksiSchema = z.enum([
+  'isi',
+  'pilih',
+  'centang',
+  'unggah',
+  'klik',
+  'serahkan',
+  'tidak_bisa',
+]);
+/** Aksi terminal: paling banyak satu per rencana dan harus yang terakhir. */
+export const AKSI_TERMINAL: readonly JenisAksi[] = ['serahkan', 'tidak_bisa'];
+
+/** Satu rencana per halaman. Paling banyak satu aksi terminal, dan harus di posisi terakhir. */
+export const RencanaHalamanSchema = z
+  .object({ aksi: z.array(AksiSchema).min(1).max(25) })
+  .superRefine((r, ctx) => {
+    r.aksi.forEach((a, i) => {
+      if (AKSI_TERMINAL.includes(a.jenis) && i !== r.aksi.length - 1)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['aksi', i],
+          message: 'aksi terminal (serahkan/tidak_bisa) harus satu-satunya dan terakhir',
+        });
+    });
+  });
+export type RencanaHalaman = z.infer<typeof RencanaHalamanSchema>;
+
+/** sha256 hex atas rencana kanonik; persetujuan warga dan aksi worker terikat ke hash ini. */
+export const RencanaHashSchema = z.string().regex(/^[0-9a-f]{64}$/);
+
+/**
+ * Satu baris lembar "Izinkan AI mengisi?": kolom portal yang akan diisi dari placeholder vault.
+ * `labelPortal` adalah label halaman (tidak tepercaya, ditampilkan sebagai teks biasa). `tidakLazim` = nilai
+ * sensitif (mis. NIK) ke kolom yang tidak tampak seperti kolom itu; ditandai agar warga memeriksa.
+ */
+export const KolomButuhSchema = z.object({
+  placeholder: PlaceholderVaultSchema,
+  labelPortal: z.string().max(120),
+  tidakLazim: z.boolean().optional(),
+});
+export type KolomButuh = z.infer<typeof KolomButuhSchema>;
+
+/** Hasil satu aksi di worker. `REF_BASI`: sidik elemen berubah; Navigator mengikat ulang tanpa LLM. */
+export const KodeHasilAksiSchema = z.enum([
+  'ok',
+  'REF_BASI',
+  'REF_TIDAK_ADA',
+  'KELAS_DITOLAK',
+  'TERLARANG',
+  'BELUM_DISETUJUI',
+  'GERBANG_MEMBLOKIR',
+  'HALAMAN_AKHIR',
+  'DILEWATI',
+  'GALAT',
+]);
+export type KodeHasilAksi = z.infer<typeof KodeHasilAksiSchema>;
+
+export const HasilAksiSchema = z.object({
+  indeks: z.number().int().min(0).max(24),
+  kode: KodeHasilAksiSchema,
+  /** Kelas klik saat itu (dihitung ulang di halaman), bila aksinya klik. */
+  kelas: KelasKendaliSchema.optional(),
+});
+export type HasilAksi = z.infer<typeof HasilAksiSchema>;
+
+// --- POST /internal/sesi/amati (web -> worker): pengamatan halaman saat ini ---
+export const AmatiSesiInternalSchema = PemilikSesiInternalSchema;
+export type AmatiSesiInternal = z.infer<typeof AmatiSesiInternalSchema>;
+export const AmatiSesiResponseSchema = z.object({
+  /** Pemegang kendali saat ini: `takeover` = warga, Navigator menunggu lewat `/internal/sesi/tunggu`. */
+  mode: PendampingModeSchema,
+  pengamatan: PengamatanSchema,
+});
+export type AmatiSesiResponse = z.infer<typeof AmatiSesiResponseSchema>;
+
+// --- POST /internal/sesi/aksi (web -> worker): aksi rencana yang sudah divalidasi web ---
+export const AksiSesiInternalSchema = PemilikSesiInternalSchema.extend({
+  rencanaHash: RencanaHashSchema,
+  aksi: z.array(AksiSchema).min(1).max(25),
+  /** `seq` pengamatan yang menjadi dasar rencana (ref dari pengamatan lain ditolak). */
+  seq: z.number().int().nonnegative().optional(),
+});
+export type AksiSesiInternal = z.infer<typeof AksiSesiInternalSchema>;
+export const AksiSesiResponseSchema = z.object({
+  mode: PendampingModeSchema,
+  /** Satu entri per aksi yang dicoba; worker berhenti pada aksi pertama yang bukan `ok`. */
+  hasil: z.array(HasilAksiSchema).max(25),
+});
+export type AksiSesiResponse = z.infer<typeof AksiSesiResponseSchema>;
+
+// --- POST /internal/sesi/tunggu (web -> worker): long-poll selama warga memegang kendali ---
+export const TUNGGU_MAKS_MS = 25_000;
+export const TungguSesiInternalSchema = PemilikSesiInternalSchema.extend({
+  maksMs: z.number().int().min(0).max(TUNGGU_MAKS_MS),
+});
+export type TungguSesiInternal = z.infer<typeof TungguSesiInternalSchema>;
+export const TungguSesiResponseSchema = z.object({
+  mode: PendampingModeSchema,
+  status: PendampingStatusSchema,
+  /** true bila kembali karena `maksMs` habis tanpa perubahan kendali. */
+  habisWaktu: z.boolean(),
+});
+export type TungguSesiResponse = z.infer<typeof TungguSesiResponseSchema>;
+
 // --- POST /internal/sesi/butuh: data yang masih dibutuhkan sesi sebelum AI mulai (A-M1, jalur isi server) ---
 export const ButuhSesiInternalSchema = z.object({
   placeholder: z.array(PlaceholderVaultSchema),
   berkas: z.array(NamaBerkasAdapterSchema),
   /** Origin yang benar-benar dibuka peramban sesi (tujuan nilai; fixture saat dipetakan di dev/uji). */
   origin: z.url(),
+  /** Navigator generik: baris lembar persetujuan per kolom halaman ini, terikat ke `rencanaHash`. */
+  kolom: z.array(KolomButuhSchema).max(150).optional(),
+  rencanaHash: RencanaHashSchema.optional(),
 });
 export type ButuhSesiInternal = z.infer<typeof ButuhSesiInternalSchema>;
 
@@ -362,6 +613,10 @@ export const PendampingServerMessageSchema = z.discriminatedUnion('type', [
     placeholder: z.array(z.string()),
     berkas: z.array(z.string()),
     origin: z.url(),
+    /** Navigator generik: baris (placeholder, label portal) yang disetujui satu per satu oleh warga. */
+    kolom: z.array(KolomButuhSchema).max(150).optional(),
+    /** Navigator generik: persetujuan dikirim ke web bersama hash rencana halaman ini. */
+    rencanaHash: RencanaHashSchema.optional(),
   }),
   z.object({ type: z.literal('galat'), kode: PendampingKodeGalatSchema, pesanWarga: z.string() }),
   z.object({ type: z.literal('pong'), t: z.number() }),

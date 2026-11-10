@@ -1,0 +1,144 @@
+{
+  "skema": "sse",
+  "catatan": "Jejak Navigator generik di rantai audit: sidik, model/token, aksi tanpa nilai, putusan validator, kelas klik, blokir gerbang tulis, persetujuan, ambil alih, host kandidat, bukti.",
+  "data": [
+    {
+      "type": "jejak_pendamping",
+      "executionId": "x_generik-0001",
+      "catatan": {
+        "jenis": "amati",
+        "host": "localhost:4400",
+        "sidik": "9f2c1a7b",
+        "elemen": 7
+      },
+      "seq": 1,
+      "at": "2026-11-10T03:00:00.000Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd01"
+    },
+    {
+      "type": "jejak_pendamping",
+      "executionId": "x_generik-0001",
+      "catatan": {
+        "jenis": "rencana",
+        "model": "pythia",
+        "tokenMasuk": 1800,
+        "tokenKeluar": 120,
+        "rencanaHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "aksi": [
+          {
+            "jenis": "isi",
+            "ref": "e1"
+          },
+          {
+            "jenis": "serahkan"
+          }
+        ]
+      },
+      "seq": 2,
+      "at": "2026-11-10T03:00:01.000Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd02"
+    },
+    {
+      "type": "jejak_pendamping",
+      "executionId": "x_generik-0001",
+      "catatan": {
+        "jenis": "validasi",
+        "rencanaHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "putusan": "terima",
+        "aturan": []
+      },
+      "seq": 3,
+      "at": "2026-11-10T03:00:02.000Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd03"
+    },
+    {
+      "type": "jejak_pendamping",
+      "executionId": "x_generik-0001",
+      "catatan": {
+        "jenis": "persetujuan",
+        "rencanaHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "n": 1
+      },
+      "seq": 4,
+      "at": "2026-11-10T03:00:03.000Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd04"
+    },
+    {
+      "type": "jejak_pendamping",
+      "executionId": "x_generik-0001",
+      "catatan": {
+        "jenis": "klik",
+        "ref": "e9",
+        "kelas": "kirim",
+        "aturan": 4,
+        "fitur": ["submitterAsli"],
+        "putusan": "tolak"
+      },
+      "seq": 5,
+      "at": "2026-11-10T03:00:04.000Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd05"
+    },
+    {
+      "type": "jejak_pendamping",
+      "executionId": "x_generik-0001",
+      "catatan": {
+        "jenis": "blokir",
+        "metode": "POST",
+        "host": "localhost:4400",
+        "jalurSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "jendela": "ai_klik"
+      },
+      "seq": 6,
+      "at": "2026-11-10T03:00:05.000Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd06"
+    },
+    {
+      "type": "jejak_pendamping",
+      "executionId": "x_generik-0001",
+      "catatan": {
+        "jenis": "ambil_alih",
+        "fase": "mulai",
+        "alasan": "final"
+      },
+      "seq": 7,
+      "at": "2026-11-10T03:00:06.000Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd07"
+    },
+    {
+      "type": "jejak_pendamping",
+      "executionId": "x_generik-0001",
+      "catatan": {
+        "jenis": "host_kandidat",
+        "host": "layanan.contoh.go.id"
+      },
+      "seq": 8,
+      "at": "2026-11-10T03:00:07.000Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd08"
+    },
+    {
+      "type": "jejak_pendamping",
+      "executionId": "x_generik-0001",
+      "catatan": {
+        "jenis": "ambil_alih",
+        "fase": "selesai"
+      },
+      "seq": 9,
+      "at": "2026-11-10T03:00:08.000Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd09"
+    },
+    {
+      "type": "jejak_pendamping",
+      "executionId": "x_generik-0001",
+      "catatan": {
+        "jenis": "bukti",
+        "bukti": {
+          "nomor": "UJI-KK/0007",
+          "status": "Diterima"
+        }
+      },
+      "seq": 10,
+      "at": "2026-11-10T03:00:09.000Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd10"
+    }
+  ]
+}
