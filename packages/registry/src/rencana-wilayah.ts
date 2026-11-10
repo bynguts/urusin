@@ -101,7 +101,7 @@ const lewatKanal = (k: KanalWilayah, w: Wilayah | null) =>
  * (validasi kirim-asli atau read-only). Selain itu (pending-recon, tanpa portal, atau tanpa entri) Urusin tidak
  * boleh melabeli langkah "online" atau "datang langsung".
  */
-export function onlineTerverifikasi(w: Wilayah | null): boolean {
+export function onlineTerverifikasi(w: Pick<Wilayah, 'kodeKabKota'> | null): boolean {
   if (!w) return false;
   const { entry } = routeByKode(w.kodeKabKota);
   return Boolean(entry.portal) && (entry.validasi === 'kirim-asli' || entry.validasi === 'read-only');
