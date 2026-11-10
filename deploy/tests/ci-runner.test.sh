@@ -20,6 +20,7 @@ export URUSIN_CI_USER
 URUSIN_CI_USER="$(stat -c %U "$WS")"
 PIN='mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d'
 printf 'FROM %s AS pwbasis\n' "$PIN" > "$WS/apps/pendamping/Dockerfile"
+printf '{\n  "packageManager": "pnpm@10.20.0"\n}\n' > "$WS/package.json"
 SHA=2175bb0c67fe37631a73ad92e23d600b705a018b
 DIG="sha256:$(printf '%064d' 7)"
 TOKEN=tokenuji-bukan-rahasia-jangan-jadi-argumen
@@ -76,12 +77,17 @@ check "satu-satunya mount host = workspace" '[ "$(grep -o "\[-v\]" <<<"$run_line
 check "tanpa no-new-privileges (sandbox setuid, ADR 0029) dan tanpa --no-sandbox" '[[ "$run_line" != *"no-new-privileges"* && "$run_line" != *"--no-sandbox"* ]]'
 check "e2e menjalankan pnpm e2e sebagai uid pemilik workspace" '[[ "$run_line" == *"pnpm e2e"* && "$run_line" == *"[PW_UID=$(stat -c %u "$WS")]"* ]]'
 check "pw tidak login GHCR" '[[ "$calls" != *"[login]"* ]]'
+check "versi pnpm dibaca di host lalu dioper lewat env (root kontainer tanpa capability tak bisa membaca workspace 0750)" '[[ "$run_line" == *"[PNPM_VERSION=10.20.0]"* && "$run_line" != *"/work/package.json"* ]]'
 SHIM_DF_PCT=50 cid pw perf "$WS" "$SHA"
 check "perf menjalankan lhci autorun" '[ $rc -eq 0 ] && [[ "$calls" == *"lhci autorun"* ]]'
 printf 'FROM mcr.microsoft.com/playwright:v1.65.0-noble AS pwbasis\n' > "$WS/apps/pendamping/Dockerfile"
 SHIM_DF_PCT=50 cid pw e2e "$WS" "$SHA"
 check "basis Playwright tanpa pin digest ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
 printf 'FROM %s AS pwbasis\n' "$PIN" > "$WS/apps/pendamping/Dockerfile"
+printf '{}\n' > "$WS/package.json"
+SHIM_DF_PCT=50 cid pw e2e "$WS" "$SHA"
+check "package.json tanpa packageManager pnpm ditolak sebelum docker run" '[ $rc -ne 0 ] && [ -z "$calls" ]'
+printf '{\n  "packageManager": "pnpm@10.20.0"\n}\n' > "$WS/package.json"
 
 echo "== alias / builder"
 cid alias "$SHA" rc1
@@ -94,10 +100,10 @@ SHIM_NO_BUILDER=1 cid builder-init
 check "builder-init: docker-container + buildkitd.toml + batas CPU/memori" '[[ "$calls" == *"[--driver] [docker-container]"* && "$calls" == *"buildkitd.toml]"* && "$calls" == *"memory=4g"* ]]'
 
 echo "== hook job-started"
-out="$(PATH="$HERE/shims-ci:$PATH" SHIM_DF_PCT=87 bash "$CI/job-started" 2>&1)"
+out="$(PATH="$HERE/shims-ci:$PATH" SHIM_DF_PCT=87 bash "$CI/job-started.sh" 2>&1)"
 rc=$?
 check "disk 87% boleh jalan" '[ $rc -eq 0 ] && [[ "$out" == *"87%"* ]]'
-out="$(PATH="$HERE/shims-ci:$PATH" SHIM_DF_PCT=88 bash "$CI/job-started" 2>&1)"
+out="$(PATH="$HERE/shims-ci:$PATH" SHIM_DF_PCT=88 bash "$CI/job-started.sh" 2>&1)"
 rc=$?
 check "disk 88% menggagalkan job dengan ::error::" '[ $rc -ne 0 ] && [[ "$out" == "::error::"* ]]'
 
@@ -106,23 +112,31 @@ mkdir -p "$SB/bin" "$WS/node_modules/x" "$WS/apps/web/node_modules/y" "$SB/luar/
 printf '#!/usr/bin/env bash\necho "$*" >> "%s/sudo.log"\n' "$SHIM_DIR" > "$SB/bin/sudo"
 chmod +x "$SB/bin/sudo"
 # Salinan uji dengan akar _work dialihkan ke sandbox (skrip asli memakai path tetap /opt/urusin-ci).
-sed "s#/opt/urusin-ci/runner/#$URUSIN_CI_ROOT/runner/#" "$CI/job-completed" > "$SB/job-completed"
+sed "s#/opt/urusin-ci/runner/#$URUSIN_CI_ROOT/runner/#" "$CI/job-completed.sh" > "$SB/job-completed"
 printf '#!/usr/bin/env bash\necho "$*" >> "%s/pnpm.log"\n' "$SHIM_DIR" > "$SB/bin/pnpm"
 chmod +x "$SB/bin/pnpm"
 H="$URUSIN_CI_ROOT/runner/_home"
 mkdir -p "$H/.local/share/pnpm/store/v10"
 head -c 2097152 /dev/zero > "$H/.local/share/pnpm/store/v10/blob"
-jc() { out="$(HOME="$H" GITHUB_WORKSPACE="$1" PATH="$SB/bin:$HERE/shims-ci:$PATH" SHIM_DF_PCT=84 PNPM_STORE_MAX_MB="${MAXMB:-1024}" bash "$SB/job-completed" 2>&1)"; rc=$?; }
+jc() { out="$(HOME="$H" GITHUB_WORKSPACE="$1" PATH="$SB/bin:$HERE/shims-ci:$PATH" SHIM_DF_PCT=84 PNPM_STORE_MAX_MB="${MAXMB:-1024}" bash -e -o pipefail "$SB/job-completed" 2>&1)"; rc=$?; }  # seperti runner: bash -e -o pipefail
 jc "$WS"
 check "job-completed: hapus node_modules workspace, cleanup lewat sudo, cetak df" '[ $rc -eq 0 ] && [ ! -e "$WS/node_modules" ] && [ ! -e "$WS/apps/web/node_modules" ] && grep -q "^-n /opt/urusin-ci/bin/ci-docker cleanup$" "$SHIM_DIR/sudo.log" && [[ "$out" == *"84%"* ]]'
 check "job-completed: pnpm store prune; store di bawah batas tetap ada" 'grep -qx "store prune" "$SHIM_DIR/pnpm.log" && [ -f "$H/.local/share/pnpm/store/v10/blob" ]'
 MAXMB=1 jc "$WS"
 check "job-completed: store di atas batas keras dihapus" '[ $rc -eq 0 ] && [ ! -e "$H/.local/share/pnpm/store" ]'
+# Job tanpa pnpm (mis. Gitleaks): tidak ada pnpm di PATH dan tidak ada $HOME/setup-pnpm. Di bawah bash -e hook
+# tetap harus keluar 0 (dulu: substitusi `command -v pnpm || find` gagal -> hook exit 1 -> job ditandai gagal).
+mkdir -p "$SB/binsudo" && cp "$SB/bin/sudo" "$SB/binsudo/sudo"
+out="$(HOME="$H" GITHUB_WORKSPACE="$WS" PATH="$SB/binsudo:$HERE/shims-ci:/usr/bin:/bin" SHIM_DF_PCT=84 bash -e -o pipefail "$SB/job-completed" 2>&1)"; rc=$?
+check "job-completed: tanpa pnpm dan tanpa setup-pnpm tetap exit 0 di bawah bash -e" '[ $rc -eq 0 ] && [[ "$out" == *"84%"* ]]'
 jc "$SB/luar/x"
 check "job-completed: tidak menyentuh di luar _work" '[ $rc -eq 0 ] && [ -d "$SB/luar/x/node_modules" ]'
 
 echo "== berkas pemasangan"
-check "unit: batas CPU/memori/IO + prestart root + hook job-completed" 'grep -q "^CPUQuota=150%" "$CI/urusin-ci-runner.service" && grep -q "^MemoryMax=" "$CI/urusin-ci-runner.service" && grep -q "^IOWeight=" "$CI/urusin-ci-runner.service" && grep -q "^ExecStartPre=+/opt/urusin-ci/bin/runner-prestart" "$CI/urusin-ci-runner.service" && grep -q "^Environment=ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/urusin-ci/bin/job-completed" "$CI/urusin-ci-runner.service"'
+check "unit: batas CPU/memori/IO + prestart root + hook job-completed" 'grep -q "^CPUQuota=150%" "$CI/urusin-ci-runner.service" && grep -q "^MemoryMax=" "$CI/urusin-ci-runner.service" && grep -q "^IOWeight=" "$CI/urusin-ci-runner.service" && grep -q "^ExecStartPre=+/opt/urusin-ci/bin/runner-prestart" "$CI/urusin-ci-runner.service" && grep -q "^Environment=ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/urusin-ci/bin/job-completed\.sh$" "$CI/urusin-ci-runner.service"'
+check "unit: setiap hook runner berakhiran .sh/.ps1/.js (runner menolak path lain)" '[ "$(grep -c "^Environment=ACTIONS_RUNNER_HOOK_JOB_" "$CI/urusin-ci-runner.service")" -eq 2 ] && ! grep "^Environment=ACTIONS_RUNNER_HOOK_JOB_" "$CI/urusin-ci-runner.service" | grep -Evq "\.(sh|ps1|js)$" && (for h in $(grep "^Environment=ACTIONS_RUNNER_HOOK_JOB_" "$CI/urusin-ci-runner.service" | sed "s#.*/bin/##"); do [ -f "$CI/$h" ] && grep -q " $h" "$CI/install.sh" || exit 1; done)'
+WF="$HERE/../../.github/workflows"
+check "workflow: job pull_request tidak pernah ke runner self-hosted" '[ "$(grep -h "URUSIN_RUNNER" "$WF"/*.yml | grep -c "runs-on:")" -ge 1 ] && ! grep -h "runs-on:.*URUSIN_RUNNER" "$WF"/*.yml | grep -vq "github.event_name != '"'"'pull_request'"'"' && vars.URUSIN_RUNNER"'
 check "unit: runner persisten (run.sh), tanpa runner-start/JIT" 'grep -q "^ExecStart=/opt/urusin-ci/runner/run.sh" "$CI/urusin-ci-runner.service" && ! grep -q "runner-start" "$CI/urusin-ci-runner.service" && [ ! -e "$CI/runner-start" ]'
 check "tanpa PAT di box: tanpa jitconfig/--ephemeral; gh-admin-token hanya dihapus" '! grep -nE "generate-jitconfig|--ephemeral|--jitconfig" "$CI"/install.sh "$CI"/uninstall.sh "$CI"/runner-prestart && [ "$(grep -c gh-admin-token "$CI/install.sh")" = 1 ] && grep -q "rm -f.*gh-admin-token" "$CI/install.sh"'
 check "token registrasi/remove lewat env, bukan argumen --token" '! grep -nE -- "--token" "$CI"/install.sh "$CI"/uninstall.sh && grep -q "ACTIONS_RUNNER_INPUT_TOKEN=" "$CI/install.sh" && grep -q "ACTIONS_RUNNER_INPUT_TOKEN=" "$CI/uninstall.sh"'

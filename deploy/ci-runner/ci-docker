@@ -118,7 +118,11 @@ cmd_pw() {
   # Lalu turun ke uid/gid pemilik workspace tanpa capability efektif; kode repo berjalan di sana. turbo
   # menyaring env (PLAYWRIGHT_BROWSERS_PATH hilang), jadi ~/.cache/ms-playwright ditautkan ke /ms-playwright.
   # Sandbox Chromium tetap AKTIF (setuid, atau userns bila diizinkan); tidak pernah --no-sandbox untuk pendamping.
-  local uid gid
+  # Versi pnpm dibaca DI HOST (root penuh). Fase root di kontainer berjalan dengan --cap-drop ALL, jadi tanpa
+  # CAP_DAC_OVERRIDE ia tidak bisa membaca workspace milik urusin-ci (0750): "Permission denied".
+  local uid gid pnpm_v
+  pnpm_v="$(sed -nE 's/.*"packageManager": *"pnpm@([0-9]+[.][0-9]+[.][0-9]+).*/\1/p' "$ws/package.json" | head -n1)"
+  [[ "$pnpm_v" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]] || die "packageManager pnpm@x.y.z tidak ada di package.json"
   uid="$(stat -c %u "$ws")"
   gid="$(stat -c %g "$ws")"
   docker run --rm --init --name "$name" "${LIMITS[@]}" \
@@ -127,7 +131,7 @@ cmd_pw() {
     --tmpfs /tmp:size=1g,exec,mode=1777 \
     -v "$ws:/work" -w /work \
     -e CI=true -e HUSKY=0 -e GIT_SHA="$sha" -e HOME=/tmp/home \
-    -e PW_SCRIPT="$script" -e PW_UID="$uid" -e PW_GID="$gid" \
+    -e PW_SCRIPT="$script" -e PW_UID="$uid" -e PW_GID="$gid" -e PNPM_VERSION="$pnpm_v" \
     --entrypoint bash "$img" -c '
       set -e
       src="$(ls /ms-playwright/chromium-*/chrome-linux*/chrome_sandbox | head -n1)"
@@ -137,9 +141,7 @@ cmd_pw() {
         rm -f "$d/chrome-sandbox" && cp "$src" "$d/chrome-sandbox" && chmod 4755 "$d/chrome-sandbox"
         [ "$(stat -c %u:%a "$d/chrome-sandbox")" = 0:4755 ] || { echo "chrome-sandbox $d bukan 0:4755" >&2; exit 1; }
       done
-      v="$(sed -nE "s/.*\"packageManager\": *\"pnpm@([0-9]+[.][0-9]+[.][0-9]+).*/\1/p" /work/package.json)"
-      [ -n "$v" ] || { echo "packageManager pnpm@x.y.z tidak ada di package.json" >&2; exit 1; }
-      HOME=/root npm install -g --silent "pnpm@$v" >/dev/null  # cache npm root di /root, bukan HOME user
+      HOME=/root npm install -g --silent "pnpm@$PNPM_VERSION" >/dev/null  # cache npm root di /root, bukan HOME user
       exec setpriv --reuid="$PW_UID" --regid="$PW_GID" --clear-groups --inh-caps=-all \
         bash -c "mkdir -p \"\$HOME/.cache\" && ln -sfn /ms-playwright \"\$HOME/.cache/ms-playwright\" && $PW_SCRIPT"'
 }

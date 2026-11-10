@@ -22,7 +22,7 @@ concurrency:
 jobs:
   osv-scanner:
     name: OSV-Scanner (pnpm-lock.yaml)
-    runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     env:
       OSV_SCANNER_VERSION: 2.7.0
@@ -53,7 +53,7 @@ jobs:
 
   pnpm-audit:
     name: pnpm audit --prod
-    runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - name: Checkout

@@ -69,12 +69,14 @@ run install -d -m 0700 -o root -g root "$CI_ROOT/etc" "$CI_ROOT/buildx"
 run install -d -m 0750 -o "$CI_USER" -g "$CI_USER" "$CI_ROOT/runner"
 
 # --- Skrip (root-owned; user runner hanya bisa menjalankan) ---------------------------------------
-for f in ci-docker runner-prestart job-started job-completed; do
+# Hook runner WAJIB berakhiran .sh/.ps1/.js (runner 2.338 menolak path lain dan menggagalkan job).
+for f in ci-docker runner-prestart job-started.sh job-completed.sh; do
   run install -m 0755 -o root -g root "$HERE/$f" "$CI_ROOT/bin/$f"
 done
 run install -m 0644 -o root -g root "$HERE/buildkitd.toml" "$CI_ROOT/etc/buildkitd.toml"
 run install -m 0644 -o root -g root "$DEPLOY/pendamping-seccomp.json" "$CI_ROOT/etc/pendamping-seccomp.json"
 run rm -f "$CI_ROOT/bin/runner-start" "$CI_ROOT/etc/gh-admin-token" # sisa versi JIT (tidak ada token di box)
+run rm -f "$CI_ROOT/bin/job-started" "$CI_ROOT/bin/job-completed" # nama hook lama tanpa .sh
 
 # --- Runner (versi + sha256 dipin) ----------------------------------------------------------------
 tarball="actions-runner-linux-arm64-${RUNNER_VERSION}.tar.gz"

@@ -24,8 +24,8 @@ KillMode=mixed
 KillSignal=SIGINT
 TimeoutStopSec=60
 Environment=DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-Environment=ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/urusin-ci/bin/job-started
-Environment=ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/urusin-ci/bin/job-completed
+Environment=ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/urusin-ci/bin/job-started.sh
+Environment=ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/urusin-ci/bin/job-completed.sh
 Environment=RUNNER_TOOL_CACHE=/opt/urusin-ci/runner/_tool
 # Rumah user (/opt/urusin-ci) read-only di bawah ProtectSystem=strict; cache pnpm/npm/setup-pnpm ke sini.
 Environment=HOME=/opt/urusin-ci/runner/_home
