@@ -1,7 +1,9 @@
-import { routeByKode } from '@urusin/registry';
+import { OFFICIAL_DOMAINS, type OfficialDomain } from '@urusin/core';
+import { kanalFor } from '@urusin/rag';
+import { KANAL_NASIONAL, kanalWilayah, kontakDukcapil, wilayahByKode } from '@urusin/registry';
 import { generateStructured, type CapabilityFlags, type ChatMessage, type ChatProvider } from '@urusin/llm';
 import { z } from 'zod';
-import type { KutipanTerverifikasi, PayloadOf, Sumber } from '@urusin/contracts';
+import type { KutipanTerverifikasi, PayloadOf } from '@urusin/contracts';
 import { DATAMARK, newNonce, spotlight, spotlightPolicyText } from './spotlight.js';
 import type { ChunkRecord } from './store.js';
 import { textFragmentUrl } from './textfragment.js';
@@ -112,30 +114,115 @@ export type GroundedResult = {
 
 export type HandoffContext = {
   kodeKabKota?: string | null | undefined;
-  chunks: readonly ChunkRecord[];
+  /** Jenis urusan (`IntentJenis`): menentukan instansi tujuan. Kosong = adminduk (cakupan utama Urusin). */
+  jenis?: string | null | undefined;
+  /**
+   * Tidak dipakai memilih kanal: hasil retrieval bisa berasal dari layanan atau wilayah lain (mis. cekbansos
+   * untuk KTP patah), jadi kanal hand-off hanya diambil dari data kanal resmi per layanan.
+   */
+  chunks?: readonly ChunkRecord[] | undefined;
 };
 
-const NASIONAL: Sumber = {
-  url: 'https://dukcapil.kemendagri.go.id',
-  judul: 'Direktorat Jenderal Kependudukan dan Pencatatan Sipil',
-  instansi: 'Kementerian Dalam Negeri',
-};
+type KanalHandoff = PayloadOf<'handoff'>['kanal'][number];
 
-/** Kanal resmi untuk hand-off: dari registry kota (sourceRef + portal), lalu sumber chunk, lalu kanal nasional. */
-export function handoffChannels(ctx: HandoffContext): Sumber[] {
-  const out: Sumber[] = [];
-  const push = (s: Sumber) => {
-    if (!out.some((o) => o.url === s.url)) out.push(s);
-  };
-  if (ctx.kodeKabKota && /^\d{4}$/.test(ctx.kodeKabKota)) {
-    const { entry } = routeByKode(ctx.kodeKabKota);
-    for (const s of entry.sourceRef) push(s);
-    if (entry.portal) push({ url: entry.portal.origin, judul: entry.portal.nama, instansi: entry.nama });
+/** Jenis urusan kependudukan: kanalnya Disdukcapil. Jenis lain punya instansinya sendiri (kanalLayanan). */
+export const ADMINDUK: ReadonlySet<string> = new Set([
+  'kelahiran',
+  'kematian',
+  'perkawinan',
+  'pindah',
+  'ktp',
+  'kk',
+  'akta',
+]);
+
+/** Kunci pembanding URL: host huruf kecil, tanpa fragment, tanpa garis miring di akhir path. */
+export function kunciUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.protocol}//${u.host.toLowerCase()}${u.pathname.replace(/\/+$/, '')}${u.search}`;
+  } catch {
+    return url.trim().toLowerCase();
   }
-  if (out.length === 0) {
-    for (const c of ctx.chunks.slice(0, 2)) push({ url: c.url, judul: c.judul, instansi: c.instansi });
+}
+
+/** Domain resmi terdaftar di @urusin/core untuk satu layanan. */
+const domainResmi = (cocok: (d: OfficialDomain) => boolean): KanalHandoff[] =>
+  OFFICIAL_DOMAINS.filter(cocok).map((d) => ({ nama: d.instansi, url: `https://${d.host}/` }));
+
+/** Kanal nasional dari data/kanal-resmi.json; tautan hanya bila sudah terverifikasi. */
+function kanalNasional(id: string, cadangan: string): KanalHandoff {
+  const k = kanalFor(id);
+  return { nama: k?.instansi ?? cadangan, ...(k?.url ? { url: k.url } : {}) };
+}
+
+/** Disdukcapil wilayah KTP (kanal registry, lalu situs terverifikasi beserta alamatnya); tanpa wilayah: Ditjen Dukcapil. */
+function kanalAdminduk(kode: string | null): KanalHandoff[] {
+  const nasional = `${KANAL_NASIONAL.judul}, ${KANAL_NASIONAL.instansi}`;
+  if (!kode) return [{ nama: nasional, url: KANAL_NASIONAL.url }];
+  const k = kanalWilayah(kode);
+  const out: KanalHandoff[] = [{ nama: k.jenis === 'nasional' ? nasional : k.instansi, url: k.url }];
+  const kontak = kontakDukcapil(kode);
+  const w = wilayahByKode(kode);
+  if (kontak && w)
+    out.push({
+      nama: `Dinas Kependudukan dan Pencatatan Sipil ${w.nama}`,
+      url: kontak.website,
+      ...(kontak.alamat ? { kontak: `Alamat: ${kontak.alamat}` } : {}),
+    });
+  return out;
+}
+
+/**
+ * Instansi menurut LAYANAN, bukan default Disdukcapil: SKCK ke Polri, pajak kendaraan ke Samsat/Bapenda provinsi,
+ * bansos ke Kemensos dan dinas sosial, cek DPT ke KPU, pengaduan ke SP4N-LAPOR!, adminduk ke Disdukcapil wilayah KTP.
+ * Jenis lain: kosong, karena Urusin belum punya data kanalnya (tidak menebak dari chunk).
+ */
+function kanalLayanan(jenis: string | null, kode: string | null): KanalHandoff[] {
+  const w = kode ? wilayahByKode(kode) : undefined;
+  switch (jenis) {
+    case 'skck':
+      return [
+        kanalNasional('skck', 'Kepolisian Negara Republik Indonesia (Polri)'),
+        { nama: w ? `Polres atau Polsek di ${w.nama}` : 'Polres atau Polsek sesuai domisili Anda' },
+      ];
+    case 'pajak_kendaraan': {
+      const prov = w?.kodeKabKota.slice(0, 2);
+      const resmi = domainResmi((d) => /pajak kendaraan/i.test(d.layanan) && d.wilayah === prov);
+      if (resmi.length > 0) return resmi;
+      return [
+        {
+          nama: w
+            ? `Samsat atau Bapenda Provinsi ${w.provinsi}`
+            : 'Samsat atau Bapenda provinsi tempat kendaraan terdaftar',
+        },
+      ];
+    }
+    case 'bansos':
+      return [
+        ...domainResmi((d) => /bansos/i.test(d.layanan)),
+        { nama: w ? `Dinas sosial ${w.nama}` : 'Dinas sosial kab/kota sesuai KTP Anda' },
+      ];
+    case 'cek_dpt':
+      return [kanalNasional('dpt', 'Komisi Pemilihan Umum (KPU)')];
+    case 'pengaduan':
+      return domainResmi((d) => d.layanan === 'Pengaduan publik');
+    default:
+      return jenis === null || ADMINDUK.has(jenis) ? kanalAdminduk(kode) : [];
   }
-  if (out.length === 0) push(NASIONAL);
+}
+
+/** Kanal resmi untuk hand-off menurut layanan urusan; URL yang hanya beda tulisan digabung (kontaknya dipertahankan). */
+export function handoffChannels(ctx: HandoffContext): KanalHandoff[] {
+  const kode = ctx.kodeKabKota && /^\d{4}$/.test(ctx.kodeKabKota) ? ctx.kodeKabKota : null;
+  const out: KanalHandoff[] = [];
+  for (const k of kanalLayanan(ctx.jenis ?? null, kode)) {
+    const ada = out.find((o) =>
+      k.url ? o.url !== undefined && kunciUrl(o.url) === kunciUrl(k.url) : !o.url && o.nama === k.nama,
+    );
+    if (!ada) out.push(k);
+    else if (k.kontak && !ada.kontak) ada.kontak = k.kontak;
+  }
   return out;
 }
 
@@ -146,9 +233,11 @@ export function buildHandoff(
   const kanal = handoffChannels(ctx);
   const first = kanal[0];
   return {
-    alasan: `Saya belum menemukan sumber resmi untuk ini. Tanyakan ke ${first?.instansi ?? 'instansi terkait'} (${first?.url ?? NASIONAL.url}).`,
+    alasan: first
+      ? `Saya belum menemukan sumber resmi untuk ini. Tanyakan ke ${first.nama}${first.url ? ` (${first.url})` : ''}.`
+      : 'Saya belum menemukan sumber resmi untuk ini, dan Urusin belum punya data kanal resmi untuk urusan ini. Tanyakan langsung ke instansi yang menangani urusan tersebut.',
     sebab,
-    kanal: kanal.map((k) => ({ nama: k.instansi, url: k.url })),
+    kanal,
   };
 }
 
@@ -213,7 +302,7 @@ export function verifyGrounded(
   dropped += Math.max(0, answer.klaim.length - MAX_KLAIM);
   if (klaim.length === 0) {
     const sebab = chunks.length === 0 ? 'tanpa_sumber' : 'kutipan_tidak_terverifikasi';
-    return { klaim: [], klaimDibuang: dropped, handoff: buildHandoff({ ...ctx, chunks }, sebab) };
+    return { klaim: [], klaimDibuang: dropped, handoff: buildHandoff(ctx, sebab) };
   }
   return { klaim, klaimDibuang: dropped };
 }

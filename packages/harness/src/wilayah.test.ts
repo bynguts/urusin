@@ -471,7 +471,7 @@ describe('temuan eval persona W6: hand-off tidak diulang identik', () => {
   it('pertanyaan tanpa sumber berulang: kanal lain, lalu langkah lain tanpa hand-off yang sama', async () => {
     const jawab = tool('urusan__jawab_persyaratan', { pertanyaan: 'nomor antrean berapa?' });
     const { env, u, provider } = setup([jawab, jawab, jawab, balas('Coba datang langsung ke kantor.')], {
-      jenis: 'skck',
+      jenis: 'kk',
       kodeKabKota: '3312',
     });
     const kanal = async () => {
@@ -487,6 +487,19 @@ describe('temuan eval persona W6: hand-off tidak diulang identik', () => {
     expect(kedua!.some((k) => pertama!.map(norm).includes(norm(k)))).toBe(false);
     // Semua kanal sudah diberikan: tidak ada hand-off lagi, model diminta memberi langkah lain.
     expect(await kanal()).toHaveLength(0);
+    expect(hasilTool(provider)).toMatch(/JANGAN ulangi/);
+  });
+
+  it('SKCK: hand-off berulang tidak pernah dialihkan ke Disdukcapil', async () => {
+    const jawab = tool('urusan__jawab_persyaratan', { pertanyaan: 'syarat SKCK?' });
+    const { env, u, provider } = setup([jawab, jawab, balas('Datang ke Polres terdekat.')], {
+      jenis: 'skck',
+      kodeKabKota: '3276',
+    });
+    await runTurn(env.deps, { urusanId: u.id, userText: 'syarat SKCK?' });
+    const kedua = await runTurn(env.deps, { urusanId: u.id, userText: 'syarat SKCK?' });
+    expect(of(kedua.events, 'handoff')).toHaveLength(0);
+    expect(JSON.stringify(kedua.events)).not.toMatch(/dukcapil/i);
     expect(hasilTool(provider)).toMatch(/JANGAN ulangi/);
   });
 });

@@ -8,7 +8,6 @@ import {
   SEED_ENTRIES,
   cariWilayah,
   kanalWilayah,
-  kontakDukcapil,
   menyebutWilayah,
   routeByKode,
   type HasilCariWilayah,
@@ -16,7 +15,15 @@ import {
 } from '@urusin/registry';
 import { z } from 'zod';
 import type { PayloadOf } from '@urusin/contracts';
-import { KALIMAT_TETAP, buildHandoff, generateGroundedAnswer, verifyGrounded } from './grounding.js';
+import {
+  ADMINDUK,
+  KALIMAT_TETAP,
+  buildHandoff,
+  generateGroundedAnswer,
+  handoffChannels,
+  kunciUrl,
+  verifyGrounded,
+} from './grounding.js';
 import { spotlight } from './spotlight.js';
 import { paramsHash, type ChunkRecord } from './store.js';
 import { NON_TERMINAL_STATES, defineTool, type ToolContext, type ToolDef, type ToolResult } from './tools.js';
@@ -216,16 +223,14 @@ export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkR
   });
 }
 
-const urlSama = (u: string) => u.trim().toLowerCase().replace(/\/+$/, '');
-
 /**
  * Hand-off tanpa pengulangan: warga yang sudah diarahkan ke kanal yang sama tidak diberi hand-off identik lagi.
- * Kanal pengganti berurutan: kanal resmi wilayah (kanalWilayah: portal → situs Disdukcapil → nasional), situs
- * Disdukcapil terverifikasi, lalu kanal nasional. Bila semuanya sudah diberikan, tidak ada hand-off baru: model
- * diminta memberi langkah lain (isi kartu rencana atau datang ke kantor) tanpa mengulang kanal.
+ * Kanal pengganti hanya untuk urusan kependudukan: kanal Disdukcapil wilayah (handoffChannels), lalu kanal nasional.
+ * Bila semuanya sudah diberikan, atau layanan lain (SKCK, Samsat, ...), tidak ada hand-off baru: model diminta
+ * memberi langkah lain (isi kartu rencana atau datang ke kantor) tanpa mengulang kanal.
  */
 function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>): ToolResult {
-  const kunci = (k: { url?: string | undefined; nama: string }) => urlSama(k.url ?? k.nama);
+  const kunci = (k: { url?: string | undefined; nama: string }) => (k.url ? kunciUrl(k.url) : k.nama);
   const sudah = new Set(
     ctx.store
       .eventsOfType(ctx.urusan.id, 'handoff', 20)
@@ -237,20 +242,17 @@ function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>): ToolResul
     events: [{ type: 'handoff', ...h }],
   };
   if (h.kanal.some((k) => !sudah.has(kunci(k)))) return biasa;
+  // Pengganti hanya untuk urusan kependudukan (kanal Disdukcapil wilayah, lalu Ditjen Dukcapil); layanan lain
+  // (SKCK, Samsat, ...) tidak pernah dialihkan ke Disdukcapil.
+  const jenis = ctx.urusan.jenis;
   const kode = kodeKtp(ctx.store, ctx.urusan) ?? ctx.urusan.kodeKabKota;
-  const calon: PayloadOf<'handoff'>['kanal'] = [];
-  if (kode) {
-    const k = kanalWilayah(kode);
-    calon.push({ nama: k.instansi, url: k.url });
-    const d = kontakDukcapil(kode);
-    if (d)
-      calon.push({
-        nama: `Disdukcapil ${routeByKode(kode).entry.nama}`,
-        url: d.website,
-        ...(d.alamat ? { kontak: d.alamat } : {}),
-      });
-  }
-  calon.push({ nama: KANAL_NASIONAL.instansi, url: KANAL_NASIONAL.url });
+  const calon: PayloadOf<'handoff'>['kanal'] =
+    jenis === null || ADMINDUK.has(jenis)
+      ? [
+          ...handoffChannels({ kodeKabKota: kode, jenis }),
+          { nama: KANAL_NASIONAL.instansi, url: KANAL_NASIONAL.url },
+        ]
+      : [];
   const lain = calon.filter(
     (k, i) => !sudah.has(kunci(k)) && calon.findIndex((x) => kunci(x) === kunci(k)) === i,
   );
@@ -261,7 +263,7 @@ function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>): ToolResul
       events: [
         {
           type: 'handoff',
-          alasan: `Kanal yang tadi belum menjawab ini. Coba tanyakan ke ${first.nama} (${first.url}).`,
+          alasan: `Kanal yang tadi belum menjawab ini. Coba tanyakan ke ${first.nama}${first.url ? ` (${first.url})` : ''}.`,
           sebab: h.sebab,
           kanal: lain,
         },
@@ -292,7 +294,7 @@ export const urusanJawabPersyaratan = defineTool({
   allowedStates: NON_TERMINAL_STATES,
   async execute(ctx, args): Promise<ToolResult> {
     const chunks = [...ctx.store.getChunks(ctx.urusan.id), ...chunkRencana(ctx)];
-    const ctxHandoff = { kodeKabKota: ctx.urusan.kodeKabKota };
+    const ctxHandoff = { kodeKabKota: ctx.urusan.kodeKabKota, jenis: ctx.urusan.jenis };
     if (chunks.length === 0)
       return handoffTanpaUlang(ctx, buildHandoff({ ...ctxHandoff, chunks }, 'tanpa_sumber'));
 
