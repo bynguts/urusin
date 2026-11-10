@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   GroundedAnswerSchema,
   buildHandoff,
+  KLAIM_RINGKAS,
   generateGroundedAnswer,
   handoffChannels,
   kunciUrl,
@@ -338,6 +339,12 @@ describe('generateGroundedAnswer', () => {
     const prompt = call?.kind === 'create' ? JSON.stringify(call.params.messages) : '';
     expect(prompt).toContain('DATA_TAK_TEPERCAYA');
     expect(prompt).toContain(DATAMARK);
+    // Temuan eval persona p17: jawaban terlalu panjang. Ringkas, tetapi isi wajib didahulukan.
+    expect(prompt).toContain(`paling banyak ${KLAIM_RINGKAS} klaim`);
+    expect(prompt).toMatch(
+      /dokumen yang wajib disiapkan, lalu kanal\/cara mengajukan, lalu langkah berikutnya/,
+    );
+    expect(prompt).toMatch(/Lewati rincian proses internal petugas/);
     const v = verifyGrounded(r.data, [chunk()], {}, NOW);
     expect(v.klaim).toHaveLength(1);
   });

@@ -752,3 +752,13 @@ describe('temuan eval persona p12: wilayah yang sudah dibenarkan tidak ditanyaka
     expect(buildSystemPrompt()).toMatch(/Konfirmasi wilayah cukup SEKALI/);
   });
 });
+
+describe('temuan eval persona p17: balasan ringkas tanpa kehilangan isi wajib', () => {
+  it('prompt sistem membatasi panjang, mengikuti gaya warga, dan menjaga isi wajib', () => {
+    const p = buildSystemPrompt();
+    expect(p).toMatch(/paling banyak 4 kalimat pendek atau 5 butir/);
+    expect(p).toMatch(/Ikuti gaya warga/);
+    expect(p).toMatch(/Jangan mengulang isi kartu rencana atau jawaban bersumber/);
+    expect(p).toMatch(/dokumen yang perlu disiapkan, kanal\/kantor yang dituju, dan langkah berikutnya/);
+  });
+});
