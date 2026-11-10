@@ -260,6 +260,19 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
   let sesiLain = false;
   /** Halaman sukses yang terlihat saat warga memegang kendali (warga sendiri yang menekan Kirim). */
   let suksesWarga: Pengamatan | null = null;
+  /** Sidik pengamatan terakhir yang diperiksa (`periksaHost`). */
+  let sidikTerakhir = '';
+  /**
+   * Halaman tempat kendali diserahkan untuk Kirim akhir (`final`, atau `periksa` sesudah gerbang tulis menahan
+   * pengiriman). null = belum pernah: `sinyal.sukses` belum diakui sama sekali (teks petunjuk seperti "nomor
+   * resi anda" di beranda bukan bukti pengajuan).
+   */
+  let serahFinal: { sidik: string } | null = null;
+  /**
+   * `sukses` hanya diakui sesudah serah `final` DAN halamannya berubah sejak serah itu (warga sendiri yang
+   * mengetuk Kirim). Selain itu sinyalnya diabaikan dan halaman dikerjakan seperti biasa.
+   */
+  const suksesSah = (p: Pengamatan) => p.sinyal.sukses && serahFinal !== null && p.sidik !== serahFinal.sidik;
   /** Warga sempat memegang kendali di penantian terakhir. */
   let wargaPegang = false;
   /** Placeholder yang ditolak warga per halaman fisik: diisi warga sendiri, tidak diminta izin lagi. */
@@ -366,7 +379,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
     try {
       const a = await tangan.amati({ pantau: true });
       const p = a.pengamatan;
-      return p.sinyal.sukses && hostSah(p.host) && (await konfirmasiSukses(p)) ? p : null;
+      return suksesSah(p) && hostSah(p.host) && (await konfirmasiSukses(p)) ? p : null;
     } catch (e) {
       if (e instanceof SesiLain) throw e;
       return null;
@@ -423,6 +436,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
     const aksi: Aksi[] = [
       { jenis: 'serahkan', alasan: alasanKontrak(alasan), ...(ref !== undefined ? { ref } : {}) },
     ];
+    if (alasan === 'final') serahFinal = { sidik: sidikTerakhir };
     // Jejak ambil alih (mulai/selesai) dicatat worker saat serahkan benar-benar dijalankan / kendali kembali.
     const r = await tangan.aksiAman({
       rencanaHash: hashRencana({ aksi, host: hostTerakhir, seq }),
@@ -481,6 +495,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
   /** Mode Uji: host harus replika. Wilayah: host harus milik wilayah urusan. */
   function periksaHost(p: Pengamatan): 'ok' | 'mode_uji' | 'luar' {
     hostTerakhir = p.host;
+    sidikTerakhir = p.sidik;
     if (o.modeUji && !o.modeUji.hostsFixture.has(p.host)) return 'mode_uji';
     if (!o.hostsBoleh.has(p.host)) return 'luar';
     return 'ok';
@@ -613,7 +628,9 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         case 'TERLARANG':
           return { kode: 'serahkan', alasan: 'final', ref: refAksi(sisa[i]), seq: obs.seq };
         case 'GERBANG_MEMBLOKIR':
-          // Worker sudah membatalkan permintaan dan menyerahkan kendali (`periksa`) ke warga.
+          // Worker sudah membatalkan permintaan dan menyerahkan kendali (`periksa`) ke warga: warga sendiri yang
+          // memeriksa lalu mengirim, jadi setara serah `final`.
+          serahFinal = { sidik: obs.sidik };
           return { kode: 'tunggu' };
         default:
           return { kode: 'ulang' };
@@ -636,7 +653,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         o.jejak({ jenis: 'host_kandidat', host: p.host });
         return await serahkanAkhir('host_luar', p.seq);
       }
-      if (p.sinyal.sukses) {
+      if (suksesSah(p)) {
         if (await konfirmasiSukses(p)) return selesaiDari(p);
         // Worker tidak mengakui halaman ini sebagai sukses: tidak diklaim berhasil, warga memeriksa sendiri.
         return await serahkanAkhir('tidak_yakin', p.seq);
