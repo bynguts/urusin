@@ -44,6 +44,36 @@ test('wildcard, port, dan huruf besar ditolak', () => {
   }
 });
 
+test('hostAset: hanya .go.id, tidak ganda dengan host portal/info, hanya jenis web; masuk domain resmi', () => {
+  const ok = susun(kabkota, kontak, {
+    wilayah: { 3275: { ...dasar, hosts: ['a.bekasikota.go.id'], hostAset: ['cdn.bekasikota.go.id'] } },
+  });
+  assert.deepEqual(ok.galat, []);
+  assert.deepEqual(ok.wilayah['3275'].hostAset, ['cdn.bekasikota.go.id']);
+  assert.ok(ok.domain.some((d) => d.host === 'cdn.bekasikota.go.id' && d.wilayah === '3275'));
+  // Tanpa hostAset: field tidak ditulis.
+  const tanpa = susun(kabkota, kontak, { wilayah: { 3275: { ...dasar, hosts: ['a.bekasikota.go.id'] } } });
+  assert.equal('hostAset' in tanpa.wilayah['3275'], false);
+  for (const [hostAset, pesan] of [
+    [['cdn.acehcms.id'], 'host aset bukan .go.id'],
+    [['a.bekasikota.go.id'], 'host aset ganda'],
+  ]) {
+    const h = susun(kabkota, kontak, {
+      wilayah: { 3275: { ...dasar, hosts: ['a.bekasikota.go.id'], hostAset } },
+    });
+    assert.ok(
+      h.galat.some((g) => g.includes(pesan)),
+      pesan,
+    );
+  }
+  const wa = susun(kabkota, kontak, {
+    wilayah: {
+      3275: { ...dasar, kelas: 'D', jenis: 'whatsapp', hosts: [], hostAset: ['cdn.bekasikota.go.id'] },
+    },
+  });
+  assert.ok(wa.galat.some((g) => g.includes('hostAset hanya untuk jenis web')));
+});
+
 test('jenis harus cocok dengan kelas dan host hanya untuk jenis web', () => {
   const a = susun(kabkota, kontak, { wilayah: { 3275: { ...dasar, kelas: 'D', hosts: ['a.go.id'] } } });
   assert.ok(a.galat.some((g) => g.includes('tidak cocok dengan kelas')));

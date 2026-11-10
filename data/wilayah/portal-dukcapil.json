@@ -52,18 +52,17 @@
       "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
     },
     "1102": {
-      "kelas": "A",
-      "jenis": "web",
-      "url": "https://disdukcapil.acehtenggarakab.go.id/",
-      "hosts": ["disdukcapil.acehtenggarakab.go.id"],
+      "kelas": "F",
+      "jenis": "tidak_diketahui",
+      "hosts": [],
+      "hostInfo": ["disdukcapil.acehtenggarakab.go.id"],
       "sumber": "https://sidak.acehprov.go.id/kabkota",
-      "login": ["email_sandi", "username_sandi", "google"],
+      "login": [],
       "proteksi": [],
       "domisili": "tidak_diketahui",
-      "platform": "sidak-aceh",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
+      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (host ternyata situs informasi CMS Disdukcapil, bukan tenant SIDAK). Portal tercatat sebelumnya: disdukcapil.acehtenggarakab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
     },
     "1103": {
       "kelas": "A",
@@ -220,18 +219,16 @@
       "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
     },
     "1114": {
-      "kelas": "A",
-      "jenis": "web",
-      "url": "https://sipayo.acehjayakab.go.id/",
-      "hosts": ["sipayo.acehjayakab.go.id"],
+      "kelas": "F",
+      "jenis": "tidak_diketahui",
+      "hosts": [],
       "sumber": "https://sidak.acehprov.go.id/kabkota",
-      "login": ["email_sandi", "username_sandi", "google"],
+      "login": [],
       "proteksi": [],
       "domisili": "tidak_diketahui",
-      "platform": "sidak-aceh",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
+      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (sertifikat TLS tidak cocok dengan nama host, ERR_CERT_COMMON_NAME_INVALID, dari jaringan Indonesia dan Singapura). Portal tercatat sebelumnya: sipayo.acehjayakab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
     },
     "1115": {
       "kelas": "A",
@@ -248,32 +245,28 @@
       "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
     },
     "1116": {
-      "kelas": "A",
-      "jenis": "web",
-      "url": "https://silatersipu.acehtamiangkab.go.id/",
-      "hosts": ["silatersipu.acehtamiangkab.go.id"],
+      "kelas": "F",
+      "jenis": "tidak_diketahui",
+      "hosts": [],
       "sumber": "https://sidak.acehprov.go.id/kabkota",
-      "login": ["email_sandi", "username_sandi", "google"],
+      "login": [],
       "proteksi": [],
       "domisili": "tidak_diketahui",
-      "platform": "sidak-aceh",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
+      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (Cloudflare \"404 Domain Not Found\"). Portal tercatat sebelumnya: silatersipu.acehtamiangkab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
     },
     "1117": {
-      "kelas": "A",
-      "jenis": "web",
-      "url": "https://cecah.benermeriahkab.go.id/",
-      "hosts": ["cecah.benermeriahkab.go.id"],
+      "kelas": "F",
+      "jenis": "tidak_diketahui",
+      "hosts": [],
       "sumber": "https://sidak.acehprov.go.id/kabkota",
-      "login": ["email_sandi", "username_sandi", "google"],
+      "login": [],
       "proteksi": [],
       "domisili": "tidak_diketahui",
-      "platform": "sidak-aceh",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
+      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (nama host tidak ada di DNS (NXDOMAIN)). Portal tercatat sebelumnya: cecah.benermeriahkab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
     },
     "1118": {
       "kelas": "A",
@@ -290,18 +283,16 @@
       "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
     },
     "1171": {
-      "kelas": "A",
-      "jenis": "web",
-      "url": "https://primadona.bandaacehkota.go.id/",
-      "hosts": ["primadona.bandaacehkota.go.id", "sihati.bandaacehkota.go.id"],
+      "kelas": "F",
+      "jenis": "tidak_diketahui",
+      "hosts": [],
       "sumber": "https://sidak.acehprov.go.id/kabkota",
-      "login": ["email_sandi", "username_sandi", "google"],
+      "login": [],
       "proteksi": [],
       "domisili": "tidak_diketahui",
-      "platform": "sidak-aceh",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Tenant SIDAK; juga SiHati Online (akta lahir/mati, email + sandi)."
+      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (nama host tidak ada di DNS (NXDOMAIN)). Portal tercatat sebelumnya: primadona.bandaacehkota.go.id, sihati.bandaacehkota.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
     },
     "1172": {
       "kelas": "A",
@@ -318,18 +309,16 @@
       "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
     },
     "1173": {
-      "kelas": "A",
-      "jenis": "web",
-      "url": "https://simpedu.lhokseumawekota.go.id/",
-      "hosts": ["simpedu.lhokseumawekota.go.id"],
+      "kelas": "F",
+      "jenis": "tidak_diketahui",
+      "hosts": [],
       "sumber": "https://sidak.acehprov.go.id/kabkota",
-      "login": ["email_sandi", "username_sandi", "google"],
+      "login": [],
       "proteksi": [],
       "domisili": "tidak_diketahui",
-      "platform": "sidak-aceh",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
+      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (nama host tidak ada di DNS (NXDOMAIN)). Portal tercatat sebelumnya: simpedu.lhokseumawekota.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
     },
     "1174": {
       "kelas": "A",
@@ -432,11 +421,12 @@
       "hosts": ["sibisa.medan.go.id"],
       "sumber": "https://sibisa.medan.go.id/",
       "login": ["nik_sandi"],
-      "proteksi": [],
+      "proteksi": ["turnstile"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "SIBISA; daftar dengan NIK, KK, email, WA, foto KTP dan swafoto."
+      "catatan": "SIBISA; daftar dengan NIK, KK, email, WA, foto KTP dan swafoto. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (koneksi ditolak dari IP Singapura). Turnstile tertanam di /portal.",
+      "aksesWilayah": "id-only"
     },
     "1304": {
       "kelas": "A",
@@ -501,7 +491,8 @@
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "PALADO; juga WhatsApp."
+      "catatan": "PALADO; juga WhatsApp. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare \"you have been blocked\" dari IP Singapura).",
+      "aksesWilayah": "id-only"
     },
     "1374": {
       "kelas": "F",
@@ -525,21 +516,20 @@
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Simpel Dukcapil."
+      "catatan": "Simpel Dukcapil. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare \"you have been blocked\" dari IP Singapura).",
+      "aksesWilayah": "id-only"
     },
     "1471": {
-      "kelas": "B",
-      "jenis": "web",
-      "url": "https://appdukcapil.pekanbaru.go.id/",
-      "hosts": ["appdukcapil.pekanbaru.go.id", "sipenduduk.pekanbaru.go.id"],
+      "kelas": "F",
+      "jenis": "tidak_diketahui",
+      "hosts": [],
       "sumber": "https://appdukcapil.pekanbaru.go.id/",
-      "login": ["tanpa_akun"],
+      "login": [],
       "proteksi": [],
       "domisili": "tidak_diketahui",
-      "jamLayanan": "Senin-Jumat 09.00-13.59",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Pusat Aplikasi: Pedang Biru (KK pendatang, perlu SKPWNI), SKPWNI keluar, KIA; kode pengajuan."
+      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (halaman login /Home/login 404 (\"Coming Soon - Sipenduduk V3\")). Portal tercatat sebelumnya: appdukcapil.pekanbaru.go.id, sipenduduk.pekanbaru.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
     },
     "1502": {
       "kelas": "D",
@@ -598,7 +588,8 @@
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "SLAWE / Sipadek; permohonan dan lacak."
+      "catatan": "SLAWE / Sipadek; permohonan dan lacak. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare \"you have been blocked\" dari IP Singapura).",
+      "aksesWilayah": "id-only"
     },
     "1811": {
       "kelas": "D",
@@ -668,11 +659,11 @@
       "hosts": ["pelangi.pangkalpinangkota.go.id"],
       "sumber": "https://pelangi.pangkalpinangkota.go.id/",
       "login": [],
-      "proteksi": [],
+      "proteksi": ["recaptcha"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "SI-Pelangi: cari permohonan, unggah berkas (A/B)."
+      "catatan": "SI-Pelangi: cari permohonan, unggah berkas (A/B). OBS 2026-11-10: login memakai reCAPTCHA."
     },
     "2102": {
       "kelas": "D",
@@ -773,7 +764,7 @@
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Siloka (SPA React); masuk dengan Google."
+      "catatan": "Siloka (SPA React); masuk dengan Google. OBS 2026-11-10: hanya bisa masuk dengan akun Google; tidak dikerjakan Browser Pendamping (dipandu)."
     },
     "3204": {
       "kelas": "F",
@@ -899,8 +890,9 @@
       "domisili": "tidak_diketahui",
       "bukti": "PRI",
       "verifiedAt": "2026-11-08",
-      "catatan": "e-Open (bukan .go.id) ditautkan resmi dari menu Pelayanan Publik disdukcapil.bekasikota.go.id; akun diverifikasi petugas. Kedua host ditautkan dari halaman resmi itu (dicek 2026-11-10); klien otomatis mendapat 403 Cloudflare.",
-      "hostInfo": ["disdukcapil.bekasikota.go.id"]
+      "catatan": "e-Open (bukan .go.id) ditautkan resmi dari menu Pelayanan Publik disdukcapil.bekasikota.go.id; akun diverifikasi petugas. Kedua host ditautkan dari halaman resmi itu (dicek 2026-11-10); klien otomatis mendapat 403 Cloudflare. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare \"you have been blocked\" dari IP Singapura).",
+      "hostInfo": ["disdukcapil.bekasikota.go.id"],
+      "aksesWilayah": "id-only"
     },
     "3276": {
       "kelas": "A",
@@ -926,7 +918,8 @@
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "PAK ONOM."
+      "catatan": "PAK ONOM. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare \"you have been blocked\" dari IP Singapura).",
+      "aksesWilayah": "id-only"
     },
     "3306": {
       "kelas": "F",
@@ -955,6 +948,7 @@
       "jenis": "web",
       "url": "https://sakura.dukcapil.klaten.go.id/",
       "hosts": ["sakura.dukcapil.klaten.go.id"],
+      "hostAset": ["api.diskominfo.klaten.go.id"],
       "sumber": "https://dukcapil.klaten.go.id/sakura",
       "login": ["nik_sandi", "google"],
       "proteksi": ["captcha_gambar"],
@@ -999,17 +993,16 @@
       "catatan": "Paklay Komplit (kelas A belum pasti; host belum tercatat, WAF sliding verification)."
     },
     "3314": {
-      "kelas": "A",
-      "jenis": "web",
-      "url": "https://sianton.dukcapil.sragenkab.go.id/",
-      "hosts": ["sianton.dukcapil.sragenkab.go.id", "pandu-online.sragenkab.go.id"],
+      "kelas": "F",
+      "jenis": "tidak_diketahui",
+      "hosts": [],
       "sumber": "https://sianton.dukcapil.sragenkab.go.id/",
-      "login": ["nik_sandi"],
+      "login": [],
       "proteksi": [],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Sianton dan Pandu Online; login diawali cek NIK."
+      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (sertifikat TLS tidak valid (jaringan Indonesia) dan waktu habis (Singapura)). Portal tercatat sebelumnya: sianton.dukcapil.sragenkab.go.id, pandu-online.sragenkab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
     },
     "3315": {
       "kelas": "A",
@@ -1109,13 +1102,15 @@
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Dukcapil Smart; 13 layanan termasuk pindah datang (lampir SKPWNI)."
+      "catatan": "Dukcapil Smart; 13 layanan termasuk pindah datang (lampir SKPWNI). OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (HTTP 403 dari IP Singapura).",
+      "aksesWilayah": "id-only"
     },
     "3404": {
       "kelas": "A",
       "jenis": "web",
       "url": "https://dukcapilonline.slemankab.go.id/Flow/signin",
       "hosts": ["dukcapilonline.slemankab.go.id"],
+      "hostAset": ["dukcapil-cdn.slemankab.go.id"],
       "sumber": "https://dukcapilonline.slemankab.go.id/Flow/signin",
       "login": ["email_sandi"],
       "proteksi": ["slider"],
@@ -1180,7 +1175,8 @@
       "jamLayanan": "Jumat sampai pukul 10.00",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "SILAO."
+      "catatan": "SILAO. OBS 2026-11-10: dari IP Singapura muncul interstitial Turnstile (kotak centang) sebelum portal; dari jaringan Indonesia langsung terbuka.",
+      "aksesWilayah": "id-utama"
     },
     "3514": {
       "kelas": "D",
@@ -1227,17 +1223,16 @@
       "catatan": "Layanan daring daerah dialihkan ke aplikasi IKD (situs resmi Disdukcapil Ngawi)."
     },
     "3525": {
-      "kelas": "A",
-      "jenis": "web",
-      "url": "https://poedak.gresikkab.go.id/",
-      "hosts": ["poedak.gresikkab.go.id"],
+      "kelas": "F",
+      "jenis": "tidak_diketahui",
+      "hosts": [],
       "sumber": "https://poedak.gresikkab.go.id/",
-      "login": ["hp_sandi"],
-      "proteksi": ["recaptcha", "cloudflare"],
+      "login": [],
+      "proteksi": [],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "POEDAK v3.2; aktivasi akun."
+      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (Cloudflare \"you have been blocked\" dari jaringan Indonesia dan Singapura). Portal tercatat sebelumnya: poedak.gresikkab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
     },
     "3571": {
       "kelas": "A",
@@ -1313,7 +1308,8 @@
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Rumah Dukcapil: Mulai Pendaftaran (?p=pilih_layanan) dan cek status tanpa akun."
+      "catatan": "Rumah Dukcapil: Mulai Pendaftaran (?p=pilih_layanan) dan cek status tanpa akun. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare \"you have been blocked\" dari IP Singapura).",
+      "aksesWilayah": "id-only"
     },
     "5103": {
       "kelas": "F",
@@ -1427,7 +1423,8 @@
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "SI-DOI."
+      "catatan": "SI-DOI. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (HTTP 444 (koneksi diputus) dari IP Singapura).",
+      "aksesWilayah": "id-only"
     },
     "6371": {
       "kelas": "A",
@@ -1449,11 +1446,11 @@
       "hosts": ["layanan-online-dukcapil.kukarkab.go.id"],
       "sumber": "https://layanan-online-dukcapil.kukarkab.go.id/",
       "login": ["nik_sandi"],
-      "proteksi": ["captcha_hitung"],
+      "proteksi": ["captcha_hitung", "recaptcha"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Arsip digital dokumen, lacak nomor registrasi."
+      "catatan": "Arsip digital dokumen, lacak nomor registrasi. OBS 2026-11-10: login memakai reCAPTCHA."
     },
     "6471": {
       "kelas": "F",
@@ -1554,7 +1551,8 @@
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-10",
-      "catatan": "Akta lahir/kawin/cerai/mati, perubahan data anak; lacak lewat email."
+      "catatan": "Akta lahir/kawin/cerai/mati, perubahan data anak; lacak lewat email. OBS 2026-11-10: dari IP Singapura muncul interstitial Turnstile (kotak centang) sebelum portal; dari jaringan Indonesia langsung terbuka.",
+      "aksesWilayah": "id-utama"
     },
     "7471": {
       "kelas": "F",

@@ -14,6 +14,11 @@ Adapter tulisan tangan hanya ada untuk Telunjuk Sakti dan beberapa alur baca. Wa
 - Navigasi hanya ke host persis wilayah itu di registry; edge tetap menegakkan union registry.
 - Nilai vault hanya mengalir untuk pasangan (kolom, placeholder) yang disetujui warga per halaman.
 - Mode Uji hanya membuka replika.
+- Worker berjaringan Indonesia (laptop tim lewat Tailscale) hanya dipakai sesuai catatan registry yang terukur
+  oleh probe nyata. `id-only` (IP pusat data ditolak keras) wajib worker itu; tanpa worker sehat, urusan
+  dipandu sejak kartu rencana. `id-utama` (mis. interstitial Turnstile dari IP pusat data) mendahulukannya,
+  tetapi tetap jalan di worker server bila laptop mati atau penuh. Portal tanpa catatan tidak diutamakan ke
+  laptop, supaya nilai Data Diri warga tidak ikut ke memori perangkat tim tanpa alasan terukur.
 - Semua langkah dicatat di rantai audit tanpa nilai.
 - ADR 0025 tetap berlaku: tanpa penyelesai CAPTCHA dan tanpa penyamaran.
 

@@ -117,6 +117,8 @@ export type PendampingViewer = {
   on<K extends keyof ViewerEvents>(type: K, cb: (v: ViewerEvents[K]) => void): () => void;
   ambilAlih(): void;
   kembalikan(): void;
+  /** Giliran ketuk_tautan: minta worker membuka tautan pembuka yang disorot (tanpa URL dari perangkat). */
+  bukaTautan(): void;
   akhiri(): void;
   /* Tidak ada kirim nilai vault/berkas (A-M1): nilai hanya lewat server web setelah "Izinkan isi". */
   tutup(): void;
@@ -490,6 +492,7 @@ export function createPendampingViewer(
     },
     ambilAlih: () => kirim({ type: 'ambil_alih' }),
     kembalikan: () => kirim({ type: 'kembalikan' }),
+    bukaTautan: () => kirim({ type: 'buka_tautan' }),
     akhiri: () => kirim({ type: 'akhiri' }),
     tutup() {
       ditutup = true;

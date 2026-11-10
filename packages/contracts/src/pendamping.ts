@@ -305,6 +305,8 @@ export type Pengamatan = z.infer<typeof PengamatanSchema>;
 /**
  * `ketuk_tautan` (aditif): warga mengetuk sendiri tautan pembuka (`ElemenAmatan.tautanPembuka`) yang disorot,
  * lalu AI melanjutkan. Bukan serah final.
+ * `berhenti` (aditif): serah akhir; Navigator berhenti dan warga melanjutkan sendiri (tanpa janji coba lagi).
+ * `kembalikan` sesudahnya tetap `takeover`.
  */
 export const AlasanSerahkanSchema = z.enum([
   'masuk_akun',
@@ -314,6 +316,7 @@ export const AlasanSerahkanSchema = z.enum([
   'final',
   'tidak_yakin',
   'ketuk_tautan',
+  'berhenti',
 ]);
 export const SebabTidakBisaSchema = z.enum([
   'layanan_tidak_ada',
@@ -611,6 +614,7 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
      * `berkas_kurang`: Dokumen untuk langkah unggah belum ada di akun (`berkas`); warga menambahkannya di
      * /dokumen, lalu Lanjutkan = "Izinkan isi" baru untuk berkas itu saja, dan langkah unggah diulang.
      * `ketuk_tautan` (aditif): warga mengetuk tautan pembuka yang disorot (navigasi GET), lalu Lanjutkan.
+     * `berhenti` (aditif): Navigator berhenti; warga melanjutkan sendiri (tanpa tombol coba lagi).
      */
     alasan: z.enum([
       'login',
@@ -622,6 +626,7 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
       'isi_sendiri',
       'berkas_kurang',
       'ketuk_tautan',
+      'berhenti',
     ]),
     pesan: z.string(),
     sorot: PendampingSorotSchema.optional(),

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AlasanSerahkanSchema,
   decodePendampingFrame,
   encodePendampingFrame,
   ENDPOINT,
@@ -140,6 +141,16 @@ describe('kontrak pendamping', () => {
     expect(decodePendampingFrame(bukanJson)).toBeNull();
     const tanpaJpeg = buf.subarray(0, 7 + new DataView(buf.buffer).getUint16(5));
     expect(decodePendampingFrame(tanpaJpeg)).toBeNull();
+  });
+
+  it('tambahan aditif N2: alasan serah dan giliran berhenti', () => {
+    expect(AlasanSerahkanSchema.safeParse('berhenti').success).toBe(true);
+    expect(
+      PendampingServerMessageSchema.safeParse({
+        type: 'event',
+        event: { jenis: 'giliran_anda', alasan: 'berhenti', pesan: 'p' },
+      }).success,
+    ).toBe(true);
   });
 
   it('tambahan aditif: siaga, alasan masuk_akun/verifikasi_situs/isi_sendiri, bukti, ack, fokus', () => {

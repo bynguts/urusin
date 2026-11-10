@@ -1,5 +1,5 @@
 import type { ExecutionResultRequest } from '@urusin/contracts';
-import { canTransition, tierUrusan, type UrusanRow, type UrusanState } from '@urusin/harness';
+import { canTransition, tierEksekusi, type UrusanRow, type UrusanState } from '@urusin/harness';
 import type { Runtime } from '#lib/server/runtime.js';
 
 type Status = ExecutionResultRequest['status'];
@@ -51,7 +51,8 @@ export function catatHasilEksekusi(
   rt.publish(u.id, {
     type: 'state',
     state: ke,
-    tier: tierUrusan(u),
+    // Tier dibekukan per eksekusi (saat ditawarkan), bukan kesehatan worker ID saat hasil tiba.
+    tier: tierEksekusi(rt.store, u),
     version: current.version,
     dari: u.state,
   });

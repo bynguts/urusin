@@ -45,6 +45,8 @@ const PROTEKSI = [
   'honeypot',
 ];
 const DOMISILI = ['khusus_penduduk', 'tidak_dibatasi', 'tidak_diketahui'];
+/** Syarat jaringan portal (OfficialDomain.aksesWilayah): `id-only` = IP luar negeri ditolak keras. */
+const AKSES = ['id-only', 'id-utama'];
 const HOST = /^(?!-)[a-z0-9-]{1,63}(?:\.(?!-)[a-z0-9-]{1,63})+$/;
 const TANGGAL = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -133,13 +135,24 @@ export function susun(kabkota, kontak, portal) {
     if (!['OBS', 'PRI'].includes(p.bukti)) galat.push(`${ctx}: bukti harus OBS/PRI`);
     if (!TANGGAL.test(p.verifiedAt)) galat.push(`${ctx}: verifiedAt bukan YYYY-MM-DD`);
     if (p.platform && !platform[p.platform]) galat.push(`${ctx}: platform tidak dikenal "${p.platform}"`);
+    if (p.aksesWilayah !== undefined && (!AKSES.includes(p.aksesWilayah) || p.jenis !== 'web'))
+      galat.push(
+        `${ctx}: aksesWilayah "${p.aksesWilayah}" tidak sah (hanya ${AKSES.join('/')} untuk jenis web)`,
+      );
     if (p.url) {
       const u = cekUrl(p.url, ctx);
       if (u && !p.hosts.includes(u.hostname)) galat.push(`${ctx}: host url tidak ada di hosts`);
     }
     const hostInfo = [...new Set([...(i ? [i.host] : []), ...(p.hostInfo ?? [])])];
-    for (const h of [...p.hosts, ...hostInfo]) cekHost(h, ctx);
+    // Host aset portal (CDN/API .go.id yang dimuat halaman portal): ikut egress sesi, bukan tujuan AI/vault.
+    const hostAset = [...new Set(p.hostAset ?? [])];
+    for (const h of [...p.hosts, ...hostInfo, ...hostAset]) cekHost(h, ctx);
     for (const h of hostInfo) if (!hostGoId(h)) galat.push(`${ctx}: host info bukan .go.id "${h}"`);
+    for (const h of hostAset) {
+      if (!hostGoId(h)) galat.push(`${ctx}: host aset bukan .go.id "${h}"`);
+      if (p.hosts.includes(h) || hostInfo.includes(h)) galat.push(`${ctx}: host aset ganda "${h}"`);
+    }
+    if (hostAset.length > 0 && p.jenis !== 'web') galat.push(`${ctx}: hostAset hanya untuk jenis web`);
     const sumber = p.sumber ?? i?.sumber;
     const su = sumber ? cekUrl(sumber, ctx) : null;
     if (p.hosts.some((h) => !hostGoId(h))) {
@@ -154,12 +167,14 @@ export function susun(kabkota, kontak, portal) {
       ...(p.url ? { url: p.url } : {}),
       hosts: [...p.hosts],
       hostInfo,
+      ...(hostAset.length ? { hostAset } : {}),
       ...(sumber ? { sumber } : {}),
       login: [...p.login],
       proteksi: [...p.proteksi],
       domisili: p.domisili,
       ...(p.jamLayanan ? { jamLayanan: p.jamLayanan } : {}),
       ...(p.platform ? { platform: p.platform } : {}),
+      ...(p.aksesWilayah ? { aksesWilayah: p.aksesWilayah } : {}),
       bukti: p.bukti,
       verifiedAt: p.verifiedAt,
       catatan: p.catatan,
@@ -194,12 +209,20 @@ export function susun(kabkota, kontak, portal) {
         wilayah: w.kode,
         verifiedAt: w.verifiedAt,
       });
+    for (const h of w.hostAset ?? [])
+      tambah(h, {
+        instansi,
+        layanan: 'Aset portal layanan (CDN/API)',
+        wilayah: w.kode,
+        verifiedAt: w.verifiedAt,
+      });
     for (const h of w.hosts)
       tambah(h, {
         instansi,
         layanan: `Portal layanan adminduk daring (kelas ${w.kelas})`,
         wilayah: w.kode,
         verifiedAt: w.verifiedAt,
+        ...(w.aksesWilayah ? { aksesWilayah: w.aksesWilayah } : {}),
       });
   }
 
@@ -250,6 +273,11 @@ export type PortalWilayah = {
   hosts: readonly string[];
   /** Host situs informasi Disdukcapil (.go.id). */
   hostInfo: readonly string[];
+  /**
+   * Host aset .go.id yang dimuat halaman portal (CDN/API, probe nyata): ikut egress sesi (\`hostsWilayah\`),
+   * bukan host portal (vault/AI tidak ke sana).
+   */
+  hostAset?: readonly string[];
   /** Halaman bukti; wajib .go.id untuk host di luar .go.id. */
   sumber?: string;
   login: readonly LoginPortal[];
@@ -258,6 +286,8 @@ export type PortalWilayah = {
   jamLayanan?: string;
   /** Platform bersama (mis. \`sidak-aceh\`), lihat \`PLATFORM_WILAYAH\`. */
   platform?: string;
+  /** Syarat jaringan host portal (diteruskan ke \`OfficialDomain.aksesWilayah\`); \`id-only\` = IP luar negeri ditolak. */
+  aksesWilayah?: 'id-only' | 'id-utama';
   /** OBS diamati langsung, PRI recon sebelumnya. */
   bukti: 'OBS' | 'PRI';
   verifiedAt: string;
@@ -299,7 +329,7 @@ export const EGRESS_PIHAK_KETIGA_WILAYAH: readonly string[] = ['challenges.cloud
 export function hostsWilayah(kode: string): string[] {
   const p = Object.hasOwn(PORTAL_WILAYAH, kode) ? PORTAL_WILAYAH[kode] : undefined;
   if (!p) return [];
-  const sendiri = [...p.hostInfo, ...p.hosts];
+  const sendiri = [...p.hostInfo, ...p.hosts, ...(p.hostAset ?? [])];
   if (p.platform && Object.hasOwn(PLATFORM_WILAYAH, p.platform)) sendiri.push(...PLATFORM_WILAYAH[p.platform]!.hosts);
   if (sendiri.length === 0) return [];
   return [...new Set([...sendiri, ...EGRESS_PIHAK_KETIGA_WILAYAH])];

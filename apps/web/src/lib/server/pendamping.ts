@@ -366,19 +366,15 @@ export function butuhWilayahId(origin: string): boolean {
 /**
  * Syarat jaringan Indonesia dinilai pada origin EFEKTIF sesi. Mode Uji selalu dibuka di replika fixtures milik
  * kita (worker memetakan origin resmi ke replika, atau menolak bila replikanya tidak ada), jadi tak butuh IP
- * Indonesia; sesi akun warga di portal asli tetap butuh. Sesi Navigator generik di portal asli tanpa catatan
- * registry = `id-utama`: portal kab/kota belum diukur satu per satu, jadi worker berjaringan Indonesia yang masih
- * punya slot diutamakan, tetapi tanpa itu sesi tetap di worker server (warga yang menyelesaikan tantangan
- * Cloudflare). Wajib jaringan Indonesia hanya untuk host `id-only` di registry.
+ * Indonesia; sesi akun warga di portal asli tetap butuh. Syaratnya HANYA dari catatan registry yang terukur
+ * (probe nyata): `id-utama` = worker berjaringan Indonesia diutamakan (mis. interstitial Turnstile dari IP pusat
+ * data), `id-only` = wajib. Portal tanpa catatan tidak diutamakan ke worker laptop tim (ADR 0030): nilai Data
+ * Diri warga tidak ikut ke memori perangkat itu tanpa alasan terukur.
  */
-const aksesSesi = (origin: string, modeUji: boolean | undefined, adapterId?: string) =>
-  modeUji === true
-    ? undefined
-    : (aksesWilayah(origin) ?? (adapterId === ADAPTER_GENERIK_SESI ? 'id-utama' : undefined));
+const aksesSesi = (origin: string, modeUji: boolean | undefined) =>
+  modeUji === true ? undefined : aksesWilayah(origin);
 const butuhWilayahSesi = (origin: string, modeUji: boolean | undefined) =>
   aksesSesi(origin, modeUji) === 'id-only';
-
-const ADAPTER_GENERIK_SESI = 'generik';
 
 /**
  * Kandidat worker sehat untuk sesi baru, urut prioritas: worker yang sudah memegang urusan ini (sesi siaga /
@@ -413,6 +409,8 @@ async function kandidatWorker(
 // --- Ketersediaan jaringan Indonesia untuk rute rencana (host `id-only`, harness `aturJaringanId`) ---
 
 const JARINGAN_ID_TTL_MS = 10_000;
+/** Lebih tua dari ini = dingin (proses tanpa pemanas latar): ditunggu, bukan dipakai apa adanya. */
+const JARINGAN_ID_DINGIN_MS = 60_000;
 let jaringanId: { waktu: number; siap: boolean } | undefined;
 let jaringanIdJalan: Promise<boolean> | undefined;
 
@@ -425,13 +423,32 @@ export async function segarkanJaringanId(
   cfg: PendampingConfig | null = pendampingConfig(),
   fetcher: EgressFetch = egressFetch,
 ): Promise<boolean> {
-  if (jaringanId && Date.now() - jaringanId.waktu < JARINGAN_ID_TTL_MS) return jaringanId.siap;
-  jaringanIdJalan ??= (async () => {
+  const umur = jaringanId ? Date.now() - jaringanId.waktu : Infinity;
+  if (jaringanId && umur < JARINGAN_ID_TTL_MS) return jaringanId.siap;
+  const jalan = (jaringanIdJalan ??= (async () => {
     const siap = cfg ? (await kandidatWorker(cfg, 'id-only', '', fetcher)).length > 0 : false;
     jaringanId = { waktu: Date.now(), siap };
     return siap;
-  })().finally(() => (jaringanIdJalan = undefined));
-  return jaringanIdJalan;
+  })().finally(() => (jaringanIdJalan = undefined)));
+  // Basi tetapi belum dingin: nilai terakhir dipakai, penyegaran berjalan di latar (tanpa latensi per turn
+  // saat worker ID mati). Sesi id-only tetap diperiksa ulang saat dimulai (mulaiSesi), jadi tetap jujur.
+  if (jaringanId && umur < JARINGAN_ID_DINGIN_MS) {
+    jalan.catch(() => {});
+    return jaringanId.siap;
+  }
+  return jalan;
+}
+
+let pemanasJaringanId: ReturnType<typeof setInterval> | undefined;
+/**
+ * Panaskan cache jaringan Indonesia saat start lalu segarkan berkala di latar (`unref`, tidak menahan proses):
+ * keputusan rute membaca nilai sinkron yang segar, termasuk turn pertama urusan baru.
+ */
+export function panaskanJaringanId(): void {
+  if (pemanasJaringanId) return;
+  void segarkanJaringanId().catch(() => {});
+  pemanasJaringanId = setInterval(() => void segarkanJaringanId().catch(() => {}), JARINGAN_ID_TTL_MS);
+  pemanasJaringanId.unref?.();
 }
 
 /** Nilai terakhir, sinkron (untuk `aturJaringanId`); basi atau belum ada = disegarkan di latar. */
@@ -448,9 +465,8 @@ export async function pilihWorker(
   urusanId: string,
   fetcher: EgressFetch = egressFetch,
   modeUji?: boolean,
-  adapterId?: string,
 ): Promise<PendampingWorker | null> {
-  return (await kandidatWorker(cfg, aksesSesi(origin, modeUji, adapterId), urusanId, fetcher))[0] ?? null;
+  return (await kandidatWorker(cfg, aksesSesi(origin, modeUji), urusanId, fetcher))[0] ?? null;
 }
 
 /**
@@ -465,7 +481,7 @@ export async function mulaiSesi(
   fetcher: EgressFetch = egressFetch,
 ): Promise<Hasil<SesiPendamping>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
-  const akses = aksesSesi(body.origin, body.modeUji, body.adapterId);
+  const akses = aksesSesi(body.origin, body.modeUji);
   const daftar = await kandidatWorker(cfg, akses, body.urusanId, fetcher);
   if (daftar.length === 0)
     return butuhWilayahSesi(body.origin, body.modeUji)

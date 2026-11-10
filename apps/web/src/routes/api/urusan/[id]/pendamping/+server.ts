@@ -17,7 +17,6 @@ import {
 import {
   PESAN_MODE_UJI_TANPA_REPLIKA,
   hentikanNavigator,
-  mulaiNavigator,
   pulihkanNavigator,
 } from '#lib/server/pendamping/navigator.js';
 import { modeUjiPendamping } from '#lib/server/pendamping/pemilik.js';
@@ -32,6 +31,16 @@ const ExecutionPayload = z.object({
   origin: z.url().optional(),
   bacaSaja: z.boolean().optional(),
 });
+
+/** Sesi yang langkahnya sudah selesai (siaga) atau berakhir: tidak ada yang digerakkan Navigator. */
+const SESI_TANPA_LOOP: ReadonlySet<string> = new Set([
+  'siaga',
+  'selesai',
+  'gagal',
+  'dipandu',
+  'kedaluwarsa',
+  'dibatalkan',
+]);
 
 /**
  * Mulai Browser Pendamping untuk `execution_request` yang sudah disetujui warga (layar konfirmasi). Langkah
@@ -81,8 +90,10 @@ export const POST: RequestHandler = async ({ request, params }) => {
       if (offered.data.bacaSaja !== true)
         mulaiPengajuan(a.rt.store, a.u.id, (e) => void a.rt.publish(a.u.id, e));
       // Portal wilayah tanpa adapter: otak Navigator generik di web menggerakkan sesi lewat kanal internal.
-      if (offered.data.adapterId === ADAPTER_GENERIK)
-        mulaiNavigator(
+      // Worker idempoten per executionId: POST ulang (reload) tidak memasang loop baru beranggaran penuh untuk
+      // eksekusi yang pernah jalan, dan sesi siaga/berakhir tidak digerakkan sama sekali.
+      if (offered.data.adapterId === ADAPTER_GENERIK && !SESI_TANPA_LOOP.has(r.data.status))
+        await pulihkanNavigator(
           a.rt,
           {
             urusan: a.u,

@@ -163,6 +163,7 @@ export const PESAN_GENERIK = {
   final: 'Periksa semua isian. Hanya Anda yang boleh menekan tombol kirim.',
   tidak_yakin:
     'AI tidak yakin langkah berikutnya. Lanjutkan sendiri, atau tekan Lanjutkan untuk mencoba lagi.',
+  berhenti: 'AI berhenti di sini. Lanjutkan sendiri dari layar ini.',
   kotor:
     'Halaman ini mencoba mengirim data sendiri, jadi AI berhenti dan halaman dimuat ulang. Periksa halaman, lalu lanjutkan sendiri.',
 } as const;
@@ -185,6 +186,7 @@ const ALASAN_GILIRAN: Record<Extract<Aksi, { jenis: 'serahkan' }>['alasan'], Ala
   final: 'final',
   tidak_yakin: 'periksa',
   ketuk_tautan: 'ketuk_tautan',
+  berhenti: 'berhenti',
 };
 
 // --- Redaksi ------------------------------------------------------------------------------------------
