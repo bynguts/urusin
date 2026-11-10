@@ -19,6 +19,8 @@ export type AturanKlasifikasi =
   | 'K5_ATRIBUT'
   | 'K6_AKHIR_DIALOG'
   | 'K7_NEG'
+  /** Tautan GET yang kena NEG hanya lewat nama (jalur/id/ikon bersih): tetap `kirim`, tanda "tautan pembuka". */
+  | 'K7_NEG_NAMA_TAUTAN'
   | 'K7B_TEKS_CURIGA'
   | 'K8_NAVIGASI'
   | 'K9_UI_LOKAL'
@@ -526,6 +528,20 @@ function bersihkanPanah(s: string): string {
   return s.replace(RE_PANAH_TEPI, '').trim();
 }
 
+/** Tautan GET biasa: `a[href]`/`area[href]` http(s), bukan javascript:, fragmen saja, atau unduhan. */
+function tautanGetBiasa(f: FiturKendali): boolean {
+  return (
+    (f.tag === 'a' || f.tag === 'area') &&
+    f.href.ada &&
+    f.href.host !== '' &&
+    !f.href.js &&
+    !f.href.hanyaFragmen &&
+    !f.href.download &&
+    !f.atributBerbahaya &&
+    !f.teksCuriga
+  );
+}
+
 /** Aturan §3 atas fitur. Murni: fitur yang sama selalu menghasilkan kelas yang sama. */
 export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: AturanKlasifikasi } {
   const nama = [f.teksTampak, f.ariaLabel, f.nilai, f.title].filter(Boolean);
@@ -543,15 +559,20 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
   // Frasa menu persis (Daftar Layanan, Status Pengajuan) melewati cek NAMA saja; id/kelas/ikon/jalur tetap.
   const menuAman = tautan && nama.length > 0 && nama.every((n) => MENU_AMAN.has(bersihkanPanah(lipatNeg(n))));
   const idKelas = f.idKelas.join(' ');
-  if (
-    (!menuAman && nama.some((n) => cocokNeg(n, NEG_AKAR))) ||
+  const negNama = !menuAman && nama.some((n) => cocokNeg(n, NEG_AKAR));
+  const negLain =
     cocokNeg(idKelas, NEG_AKAR) ||
     f.idKelas.some((t) => NEG_IKON.some((k) => t.includes(k))) ||
     (tautan &&
       tokenKata(f.href.jalur).some((t) => !BUKAN_NEG.test(t) && NEG_JALUR.some((k) => t.includes(k)))) ||
-    f.href.download
-  )
-    return { kelas: 'kirim', aturan: 'K7_NEG' };
+    f.href.download;
+  if (negLain) return { kelas: 'kirim', aturan: 'K7_NEG' };
+  if (negNama)
+    // Tautan GET biasa yang hanya namanya berbunyi tulis (Ajukan/Daftar/Proses): tetap kirim, tetapi otak boleh
+    // menyerahkannya ke warga sebagai "ketuk tautan" (bukan tombol final).
+    return tautanGetBiasa(f)
+      ? { kelas: 'kirim', aturan: 'K7_NEG_NAMA_TAUTAN' }
+      : { kelas: 'kirim', aturan: 'K7_NEG' };
 
   // Homoglif / karakter tak terlihat / tanpa nama: tidak pernah cocok positif.
   if (f.teksCuriga || nama.length === 0) return { kelas: 'tidak_pasti', aturan: 'K7B_TEKS_CURIGA' };

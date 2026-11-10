@@ -310,6 +310,42 @@ describe('klasifikator klik final (tabel §3)', () => {
   });
 });
 
+describe('K7_NEG_NAMA_TAUTAN: tautan yang kena NEG hanya lewat nama', () => {
+  const aturan = (html: string) => {
+    document.body.innerHTML = html;
+    return klasifikasi(document.querySelector('[data-uji]')!);
+  };
+
+  it('nama saja (jalur/id/ikon bersih) = kirim dengan aturan tersendiri', () => {
+    for (const html of [
+      '<a href="/permohonan/kk" data-uji>Ajukan Permohonan Kartu Keluarga</a>',
+      '<a href="/formulir" data-uji>Mulai Pendaftaran</a>',
+      '<a href="/layanan/akta" data-uji>Proses Akta Kelahiran</a>',
+    ])
+      expect(aturan(html)).toMatchObject({ kelas: 'kirim', aturan: 'K7_NEG_NAMA_TAUTAN' });
+  });
+
+  it('NEG lewat jalur/id/ikon/unduhan/atribut, atau bukan tautan GET = K7_NEG biasa', () => {
+    for (const html of [
+      '<a href="/permohonan/12/ajukan" data-uji>Ajukan Permohonan</a>',
+      '<a href="/permohonan/kk" class="btn-submit" data-uji>Ajukan Permohonan</a>',
+      '<a href="/permohonan/kk" data-uji><i class="fa fa-paper-plane"></i> Ajukan</a>',
+      '<a href="/permohonan/kk" download data-uji>Ajukan Permohonan</a>',
+      '<a href="#" data-uji>Ajukan Permohonan</a>',
+      '<a href="javascript:void(0)" data-uji>Ajukan Permohonan</a>',
+      '<button type="button" data-uji>Ajukan Permohonan</button>',
+    ])
+      expect(aturan(html), html).toMatchObject({ kelas: 'kirim', aturan: expect.not.stringMatching(/NAMA/) });
+  });
+
+  it('data-method non-GET tetap K5_ATRIBUT', () => {
+    expect(aturan('<a href="/permohonan/kk" data-method="post" data-uji>Ajukan</a>')).toMatchObject({
+      kelas: 'kirim',
+      aturan: 'K5_ATRIBUT',
+    });
+  });
+});
+
 describe('halamanAkhir', () => {
   const akhir = (html: string) => {
     document.body.innerHTML = html;
