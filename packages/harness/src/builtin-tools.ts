@@ -347,7 +347,7 @@ export const dukcapilCekStatus = defineTool({
       args,
       alur,
       'cek_status',
-      `Cek status pengajuan di ${entry.portal?.nama ?? entry.nama} (tingkat ${entry.tier}).`,
+      `Cek status pengajuan di ${entry.portal?.nama ?? entry.nama} lewat Browser Pendamping.`,
     );
   },
 });
@@ -375,7 +375,7 @@ export const samsatCekPkb = defineTool({
       args,
       SAMSAT_DKI,
       'cek_pkb',
-      'Cek info PKB di Samsat DKI Jakarta (tingkat semi).',
+      'Cek info PKB di Samsat DKI Jakarta lewat Browser Pendamping.',
     );
   },
 });
@@ -390,7 +390,13 @@ export const ossCariNib = defineTool({
   allowedStates: NON_TERMINAL_STATES,
   origin: () => OSS_NIB.origin,
   execute(_ctx, args): ToolResult {
-    return permintaanBaca('oss__cari_nib', args, OSS_NIB, 'cari_nib', 'Cari NIB di OSS (tingkat semi).');
+    return permintaanBaca(
+      'oss__cari_nib',
+      args,
+      OSS_NIB,
+      'cari_nib',
+      'Cari NIB di OSS lewat Browser Pendamping.',
+    );
   },
 });
 

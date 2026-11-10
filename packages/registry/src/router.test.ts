@@ -52,7 +52,11 @@ describe('routeByNik', () => {
     expect(r.entry.tier).toBe('semi');
     expect(r.entry.validasi).toBe('kirim-asli');
   });
-  it('Surabaya dan Semarang -> semi read-only', () => {
+  it('Surabaya dan Semarang -> dipandu; adapter baca-saja (cek status) tetap ada', () => {
+    expect(routeByNik('3578000000000000').entry).toMatchObject({
+      tier: 'dipandu',
+      adapterId: 'klampid-surabaya',
+    });
     expect(routeByNik('3578000000000000').entry.validasi).toBe('read-only');
     expect(routeByNik('3374000000000000').entry.validasi).toBe('read-only');
   });
@@ -107,10 +111,10 @@ describe('seed registry', () => {
       expect(CityEntrySchema.safeParse(r.routeByKode(k.kode).entry).success, k.kode).toBe(true);
     }
   });
-  it('verifiedAt null; tier semi HANYA bila ada adapter (portal tanpa adapter = dipandu)', () => {
+  it('verifiedAt null; tier semi HANYA bila ada adapter TULIS (kirim-asli); baca-saja = dipandu', () => {
     for (const e of SEED_ENTRIES) {
       expect(e.verifiedAt).toBeNull();
-      expect(e.tier === 'semi', e.nama).toBe(e.adapterId !== undefined);
+      expect(e.tier === 'semi', e.nama).toBe(e.adapterId !== undefined && e.validasi === 'kirim-asli');
     }
   });
   it('hanya Wonogiri berstatus kirim-asli', () => {

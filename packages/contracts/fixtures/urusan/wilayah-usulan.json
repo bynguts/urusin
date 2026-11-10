@@ -69,7 +69,7 @@
     {
       "type": "state",
       "state": "RENCANA_DIUSULKAN",
-      "tier": "semi",
+      "tier": "dipandu",
       "version": 4,
       "dari": "MEMAHAMI",
       "seq": 6,
