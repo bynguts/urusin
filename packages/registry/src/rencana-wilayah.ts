@@ -305,6 +305,8 @@ export function rencanaWilayah(slug: string, opsi: OpsiRencana): RencanaWilayah 
     catatan = ktp
       ? `Persyaratan nasional untuk ${ktp.nama}; detail dan cara pengajuan mengikuti ${kanalKtp.judul}.`
       : 'Persyaratan nasional. Pilih kab/kota sesuai KTP agar kanal resmi wilayah Anda ditampilkan.';
+    if (ktp && bundel.slug === 'kematian')
+      catatan = `Kematian dilaporkan ke Disdukcapil tempat tinggal almarhum (UU 24/2013): ${ktp.nama}. ${catatan}`;
   }
   if (ktp && domisili && bundel.slug !== 'pindah')
     catatan = `${catatanDomisili(ktp, domisili, kanalKtp)} ${catatan}`;

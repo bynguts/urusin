@@ -530,14 +530,21 @@ const daftarPilihan = (h: Extract<HasilCariWilayah, { status: 'ambigu' }>) =>
 export const wilayahTetapkan = defineTool({
   name: 'wilayah__tetapkan',
   description:
-    'Tetapkan kab/kota sesuai KTP warga (wajib sebelum rencana), plus domisili bila warga tinggal di kab/kota lain, dan tujuan untuk urusan pindah. Isi nama ("Kota Surabaya", "Kab. Bekasi") atau kode 4 digit. Panggil hanya setelah warga menyebut atau membenarkan wilayahnya; jangan pernah meminta NIK.',
+    'Tetapkan kab/kota sesuai KTP warga (wajib sebelum rencana), plus domisili bila warga tinggal di kab/kota lain, dan tujuan untuk urusan pindah. Kematian: cukup domisili almarhum (yurisdiksi pelaporan kematian), KTP boleh kosong. Isi nama ("Kota Surabaya", "Kab. Bekasi") atau kode 4 digit. Panggil hanya setelah warga menyebut atau membenarkan wilayahnya; jangan pernah meminta NIK.',
   effect: 'plan',
   input: z.object({
-    ktp: llmText().max(80).describe('Kab/kota sesuai alamat KTP warga (untuk pindah: kab/kota asal).'),
+    ktp: llmText()
+      .max(80)
+      .optional()
+      .describe(
+        'Kab/kota sesuai alamat KTP warga (untuk pindah: kab/kota asal). Boleh kosong hanya untuk kematian.',
+      ),
     domisili: llmText()
       .max(80)
       .optional()
-      .describe('Opsional. Kab/kota tempat tinggal sekarang, hanya bila berbeda dari KTP.'),
+      .describe(
+        'Opsional. Kab/kota tempat tinggal sekarang bila berbeda dari KTP. Kematian: kab/kota tempat tinggal almarhum.',
+      ),
     tujuan: llmText().max(80).optional().describe('Hanya urusan pindah: kab/kota tujuan.'),
   }),
   allowedStates: ['MEMAHAMI', 'RENCANA_DIUSULKAN'],
@@ -569,7 +576,15 @@ export const wilayahTetapkan = defineTool({
         };
       pasti[kunci] = h.wilayah;
     }
-    const ktp = pasti.ktp!;
+    // Kematian dilaporkan ke Disdukcapil domisili almarhum (UU 24/2013): domisili menjadi wilayah yurisdiksi.
+    const kematian = ctx.urusan.jenis === 'kematian' && pasti.domisili;
+    const ktp = kematian ? pasti.domisili! : pasti.ktp;
+    if (!ktp)
+      return {
+        content: sekarang.ktp
+          ? `${TEKS_WILAYAH.ditetapkan} ${sekarang.ktp.nama} (tidak berubah).`
+          : 'Kab/kota KTP belum disebut. Tanyakan "KTP Anda terdaftar di kabupaten/kota mana?" lalu panggil lagi dengan ktp.',
+      };
     const { entry } = routeByKode(ktp.kodeKabKota);
     const pendamping = entry.adapterId
       ? `Browser Pendamping punya adapter di ${entry.portal?.nama ?? entry.nama}.`
@@ -577,7 +592,8 @@ export const wilayahTetapkan = defineTool({
     return {
       content: [
         `${TEKS_WILAYAH.ditetapkan} ${ktp.nama}. ${kalimatKanal(ktp.kodeKabKota)} ${pendamping}`,
-        pasti.domisili && pasti.domisili.kodeKabKota !== ktp.kodeKabKota
+        kematian ? `Kematian dilaporkan ke Disdukcapil domisili almarhum (UU 24/2013): ${ktp.nama}.` : '',
+        !kematian && pasti.domisili && pasti.domisili.kodeKabKota !== ktp.kodeKabKota
           ? `Domisili ${pasti.domisili.nama}: urusan kependudukan tetap di Disdukcapil ${ktp.nama}; langkah online bisa dari mana saja, tatap muka di kantor wilayah KTP.`
           : '',
         pasti.tujuan ? `Tujuan pindah: ${kalimatKanal(pasti.tujuan.kodeKabKota)}` : '',
@@ -587,7 +603,7 @@ export const wilayahTetapkan = defineTool({
       // Hanya yang disebut di panggilan ini; domisili/tujuan yang tidak disebut tetap seperti sekarang.
       wilayah: {
         ktp: ktp.kodeKabKota,
-        ...(pasti.domisili ? { domisili: pasti.domisili.kodeKabKota } : {}),
+        ...(pasti.domisili && !kematian ? { domisili: pasti.domisili.kodeKabKota } : {}),
         ...(pasti.tujuan ? { tujuan: pasti.tujuan.kodeKabKota } : {}),
       },
     };

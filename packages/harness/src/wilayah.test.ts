@@ -3,6 +3,7 @@ import type { EventOf, EventPayload, UrusinEvent } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
 import { setujuiRencana } from './rencana.js';
+import { buildSystemPrompt } from './prompt.js';
 import { jejakView } from './trace.js';
 import { makeEnv } from './testing.js';
 import {
@@ -10,6 +11,7 @@ import {
   tetapkanWilayah,
   usulkanRencanaOtomatis,
   usulkanWilayah,
+  wilayahBelumSiap,
   wilayahUrusan,
 } from './wilayah.js';
 
@@ -484,5 +486,36 @@ describe('temuan eval persona W6: hand-off tidak diulang identik', () => {
     // Semua kanal sudah diberikan: tidak ada hand-off lagi, model diminta memberi langkah lain.
     expect(await kanal()).toHaveLength(0);
     expect(hasilTool(provider)).toMatch(/JANGAN ulangi/);
+  });
+});
+
+describe('temuan eval persona W5: yurisdiksi kematian dan cek status tanpa KTP', () => {
+  it('kematian: domisili almarhum cukup sebagai wilayah, tanpa menanyakan KTP', async () => {
+    const { env, u } = setup(
+      [tool('wilayah__tetapkan', { domisili: 'Kabupaten Sleman' }), balas('Baik, saya catat Sleman.')],
+      { jenis: 'kematian' },
+    );
+    const out = await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'Ibu saya meninggal, beliau tinggal di Godean Sleman. KTP-nya saya tidak tahu.',
+    });
+    expect(env.store.getUrusanOrThrow(u.id).kodeKabKota).toBe('3404');
+    const kartu = of(out.events, 'plan_card')[0]!;
+    expect(kartu.wilayah?.ktp.nama).toBe('Kabupaten Sleman');
+    expect(kartu.catatan).toMatch(/tempat tinggal almarhum \(UU 24\/2013\)/);
+  });
+
+  it('kematian tanpa wilayah: catatan state meminta domisili almarhum, bukan KTP pelapor', () => {
+    const belum = wilayahBelumSiap('kematian', { ktp: null, domisili: null, tujuan: null, usulan: null });
+    expect(belum).toMatch(/domisili almarhum/);
+    expect(buildSystemPrompt()).toMatch(
+      /Kematian: yang berwenang Disdukcapil tempat tinggal \(domisili\) almarhum/,
+    );
+  });
+
+  it('cek status/informasi baca-saja dikecualikan dari aturan wilayah dulu', () => {
+    expect(buildSystemPrompt()).toMatch(
+      /Cek status pengajuan atau informasi umum .* TIDAK perlu wilayah KTP/,
+    );
   });
 });

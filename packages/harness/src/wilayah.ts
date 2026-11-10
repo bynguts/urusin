@@ -86,8 +86,13 @@ export function kodeUntukPii(store: HarnessStore, u: UrusanRow | undefined): str
   return u.kodeKabKota ?? wilayahUrusan(store, u).usulan?.ktp.kodeKabKota ?? null;
 }
 
-/** Alasan rencana belum boleh diusulkan; undefined = siap. Pindah butuh asal (KTP) DAN tujuan. */
+/**
+ * Alasan rencana belum boleh diusulkan; undefined = siap. Pindah butuh asal (KTP) DAN tujuan. Kematian: yang
+ * berwenang Disdukcapil domisili almarhum (UU 24/2013), jadi cukup domisili; KTP pelapor tidak ditanyakan.
+ */
 export function wilayahBelumSiap(jenis: string | null, w: WilayahUrusan): string | undefined {
+  if (!w.ktp && jenis === 'kematian')
+    return 'wilayah domisili almarhum belum ditetapkan: kematian dilaporkan ke Disdukcapil tempat tinggal almarhum (UU 24/2013); tanyakan kab/kota tempat tinggal almarhum (bukan KTP pelapor) lalu panggil wilayah__tetapkan dengan domisili';
   if (!w.ktp)
     return 'wilayah KTP warga belum ditetapkan: tanyakan kab/kota sesuai KTP lalu panggil wilayah__tetapkan';
   if (jenis === 'pindah' && !w.tujuan)

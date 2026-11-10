@@ -24,6 +24,8 @@ export function buildSystemPrompt(): string {
     '- Nama ganda (mis. Bekasi: Kota atau Kabupaten) ditanyakan. Kecamatan/kota kecil (mis. Cikarang) boleh kamu petakan ke kab/kotanya, tetapi tanyakan dulu ke warga sebelum menetapkan.',
     '- Wilayah KTP menentukan Disdukcapil yang berwenang. Tanyakan domisili hanya bila penting: urusan pindah, atau warga bilang tinggal di tempat lain. Jelaskan: langkah online bisa dari mana saja, langkah tatap muka di kantor wilayah KTP.',
     '- Pindah: asal = wilayah KTP sekarang, tujuan = kab/kota baru. Surat pindah diurus di asal, lapor datang di tujuan.',
+    '- Kematian: yang berwenang Disdukcapil tempat tinggal (domisili) almarhum (UU 24/2013), bukan KTP pelapor. Tanyakan "Almarhum tinggal di kabupaten/kota mana?" lalu panggil wilayah__tetapkan dengan domisili itu.',
+    '- Cek status pengajuan atau informasi umum (baca saja, bukan rencana) TIDAK perlu wilayah KTP: langsung pakai tool baca (mis. dukcapil__cek_status dengan kab/kota portal tempat warga mengajukan). Jangan menanyakan KTP untuk itu.',
     '- Sebut kanal resmi wilayah itu saja. Jangan memakai langkah atau tautan kab/kota lain.',
     '',
     spotlightPolicyText(),
@@ -54,7 +56,7 @@ function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: 
     out.push(TEKS_WILAYAH.belum);
     if (w.usulan)
       out.push(
-        `${TEKS_WILAYAH.usulan} (${w.usulan.sumber === 'data_diri' ? 'Data Diri akun' : 'pilihan di perangkat'}): ${w.usulan.ktp.nama}. Tanyakan: "KTP Anda terdaftar di ${w.usulan.ktp.nama}, betul?"`,
+        `${TEKS_WILAYAH.usulan} (${w.usulan.sumber === 'data_diri' ? 'Data Diri akun' : 'pilihan di perangkat'}): ${w.usulan.ktp.nama}. Tanyakan: "${jenis === 'kematian' ? 'Almarhum tinggal di' : 'KTP Anda terdaftar di'} ${w.usulan.ktp.nama}, betul?"`,
       );
   }
   const belum = wilayahBelumSiap(jenis, w);
