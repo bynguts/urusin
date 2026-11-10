@@ -45,6 +45,7 @@
     "husky": "9.1.7",
     "prettier": "3.9.10",
     "prettier-plugin-svelte": "4.1.1",
+    "puppeteer-core": "25.16.0",
     "svelte": "5.57.3",
     "turbo": "2.11.10",
     "typescript": "6.0.3",
