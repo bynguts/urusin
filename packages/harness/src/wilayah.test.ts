@@ -858,10 +858,30 @@ describe('temuan eval persona p09: tanpa jawaban sebelum wilayah, penolakan pema
     expect(note).toMatch(/PEMALSUAN DOKUMEN/);
     expect(note).toMatch(/ancaman pidananya/);
     expect(buildSystemPrompt()).toMatch(/kalimat PERTAMA menolak dengan jelas/);
-    // Eval 61887ad: penolakan yang ikut mendaftar KK/buku nikah dihitung jawaban sebelum wilayah (a).
-    expect(buildSystemPrompt()).toMatch(
-      /jangan sebut dokumen lain \(KK, buku nikah, formulir\); tutup dengan menanyakan wilayah KTP/,
+    // Keputusan koordinator: sebelum wilayah pasti cukup "ada jalur sah" lalu tanya wilayah; SPTJM sesudahnya.
+    const p = buildSystemPrompt();
+    expect(p).toContain(
+      '"Ada jalur sah untuk ini. KTP Anda terdaftar di kabupaten/kota mana?" tanpa menyebut SPTJM',
     );
+    expect(note).toMatch(/jangan sebut SPTJM atau dokumen apa pun sebelum wilayah ditetapkan/);
+    const sudah = buildStateNote({
+      state: 'MEMAHAMI',
+      jenis: 'kelahiran',
+      kodeKabKota: '3310',
+      wilayah: {
+        ktp: { kodeKabKota: '3310', nama: 'Kabupaten Klaten' },
+        domisili: null,
+        tujuan: null,
+        usulan: null,
+      },
+      tools: [],
+      confirmations: [],
+      pesanWarga: P09,
+    });
+    expect(sudah).toMatch(/jelaskan jalur sahnya \(SPTJM\) untuk wilayah ini/);
+    // Warga yang tidak yakin wilayah KTP-nya dibantu tanpa meminta digit NIK.
+    expect(p).toMatch(/Warga tidak yakin KTP-nya terdaftar di mana\? Bantu menemukannya/);
+    expect(p).toMatch(/Jangan pernah meminta NIK atau sebagian digit NIK lewat chat/);
   });
 });
 
