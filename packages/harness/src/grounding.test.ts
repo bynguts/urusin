@@ -233,6 +233,19 @@ describe('hand-off menurut layanan (W3), kontak (W6), dan dedup URL (W9)', () =>
     expect(wng).toEqual([{ nama: 'Samsat atau Bapenda Provinsi Jawa Tengah' }]);
   });
 
+  it('adminduk DKI (p05): Suku Dinas kota administrasi lebih dulu, situs Dinas provinsi sebagai pengganti', () => {
+    const h = buildHandoff({ kodeKabKota: '3175', jenis: 'kk', chunks: [] }, 'tanpa_sumber');
+    expect(h.kanal[0]).toEqual({
+      nama: 'Suku Dinas Kependudukan dan Pencatatan Sipil Kota Administrasi Jakarta Timur',
+      url: 'https://alpukat-dukcapil.jakarta.go.id/',
+    });
+    expect(h.alasan).toContain(
+      'Suku Dinas Kependudukan dan Pencatatan Sipil Kota Administrasi Jakarta Timur',
+    );
+    expect(h.alasan).not.toMatch(/Provinsi DKI/);
+    expect(host(h.kanal[1]?.url)).toBe('kependudukancapil.jakarta.go.id');
+  });
+
   it('bansos: Kemensos (cekbansos) lalu dinas sosial wilayah, bukan Disdukcapil', () => {
     const k = handoffChannels({ kodeKabKota: '3312', jenis: 'bansos', chunks: [] });
     expect(host(k[0]?.url)).toBe('cekbansos.kemensos.go.id');

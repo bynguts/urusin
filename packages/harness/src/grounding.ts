@@ -159,11 +159,18 @@ function kanalNasional(id: string, cadangan: string): KanalHandoff {
 }
 
 /** Disdukcapil wilayah KTP (kanal registry, lalu situs terverifikasi beserta alamatnya); tanpa wilayah: Ditjen Dukcapil. */
+const DUKCAPIL_DKI: KanalHandoff = {
+  nama: 'Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta',
+  url: 'https://kependudukancapil.jakarta.go.id/',
+};
+
 function kanalAdminduk(kode: string | null): KanalHandoff[] {
   const nasional = `${KANAL_NASIONAL.judul}, ${KANAL_NASIONAL.instansi}`;
   if (!kode) return [{ nama: nasional, url: KANAL_NASIONAL.url }];
   const k = kanalWilayah(kode);
   const out: KanalHandoff[] = [{ nama: k.jenis === 'nasional' ? nasional : k.instansi, url: k.url }];
+  // DKI: Suku Dinas kota administrasi (portal Alpukat) lebih dulu, lalu situs Dinas Dukcapil Provinsi.
+  if (kode.startsWith('31')) out.push(DUKCAPIL_DKI);
   const kontak = kontakDukcapil(kode);
   const w = wilayahByKode(kode);
   if (kontak && w)
