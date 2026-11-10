@@ -327,6 +327,10 @@ describe('broker Navigator web', () => {
     expect(new GalatTangan(409, 'SESI_SUDAH_ADA').sementara).toBeUndefined();
     expect(new GalatTangan(404, 'SESI_TIDAK_ADA').sementara).toBeUndefined();
     expect(new GalatTangan(422, 'PESAN_TIDAK_SAH').sementara).toBeUndefined();
+    // N6: 404 sesi tidak ada = sesi sudah diakhiri (loop berhenti sesi_berakhir), bukan galat worker.
+    expect(new GalatTangan(404, 'SESI_TIDAK_ADA').berakhir).toBe(true);
+    expect(new GalatTangan(404).berakhir).toBe(false);
+    expect(new GalatTangan(503).berakhir).toBe(false);
   });
 
   it('sesi baru: worker menjawab 409 "belum siap" di awal, loop menunggu lalu jalan (bukan galat_worker)', async () => {

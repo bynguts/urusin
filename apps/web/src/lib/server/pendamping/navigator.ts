@@ -50,10 +50,12 @@ import type { Runtime } from '#lib/server/runtime.js';
 /**
  * Galat kanal internal: status HTTP + kode dari worker (404 = sesi tidak ada). `sementara` (dibaca loop
  * Navigator): 409 LAYANAN_TIDAK_TERSEDIA = peramban sesi belum siap; 503 = halaman sedang berpindah atau
- * worker sesaat tidak terjangkau (termasuk batas waktu panggilan).
+ * worker sesaat tidak terjangkau (termasuk batas waktu panggilan). `berakhir`: 404 SESI_TIDAK_ADA = sesi sudah
+ * diakhiri (loop berhenti `sesi_berakhir`, bukan "tidak bisa dihubungi").
  */
 export class GalatTangan extends Error {
   readonly sementara: 'belum_siap' | 'sesaat' | undefined;
+  readonly berakhir: boolean;
   constructor(
     readonly status: number,
     readonly kode?: string,
@@ -66,6 +68,7 @@ export class GalatTangan extends Error {
         : status === 409 && kode === 'LAYANAN_TIDAK_TERSEDIA'
           ? 'belum_siap'
           : undefined;
+    this.berakhir = status === 404 && kode === 'SESI_TIDAK_ADA';
   }
 }
 
