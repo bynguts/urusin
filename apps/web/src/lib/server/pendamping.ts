@@ -322,6 +322,7 @@ export function resetBrokerPendamping(): void {
   kesehatan.clear();
   lokasi.clear();
   asalWsMemo = undefined;
+  jaringanId = undefined;
 }
 
 function ingatLokasi(urusanId: string, workerId: string): void {
@@ -407,6 +408,37 @@ async function kandidatWorker(
       lekat(a.w) - lekat(b.w) || urutan(a.w, a.s) - urutan(b.w, b.s) || beban(a.w, a.s) - beban(b.w, b.s),
   );
   return hidup.map((x) => x.w);
+}
+
+// --- Ketersediaan jaringan Indonesia untuk rute rencana (host `id-only`, harness `aturJaringanId`) ---
+
+const JARINGAN_ID_TTL_MS = 10_000;
+let jaringanId: { waktu: number; siap: boolean } | undefined;
+let jaringanIdJalan: Promise<boolean> | undefined;
+
+/**
+ * Ada worker `id` sehat untuk host `id-only`? Pool dan pemeriksaan SAMA dengan `pilihWorker` (`kandidatWorker`
+ * dengan akses `id-only`, cache kesehatan per worker), hasilnya di-cache JARINGAN_ID_TTL_MS. Tanpa konfigurasi
+ * pendamping = false. Ditunggu sebelum keputusan rute (persetujuan rencana, wilayah, turn agen).
+ */
+export async function segarkanJaringanId(
+  cfg: PendampingConfig | null = pendampingConfig(),
+  fetcher: EgressFetch = egressFetch,
+): Promise<boolean> {
+  if (jaringanId && Date.now() - jaringanId.waktu < JARINGAN_ID_TTL_MS) return jaringanId.siap;
+  jaringanIdJalan ??= (async () => {
+    const siap = cfg ? (await kandidatWorker(cfg, 'id-only', '', fetcher)).length > 0 : false;
+    jaringanId = { waktu: Date.now(), siap };
+    return siap;
+  })().finally(() => (jaringanIdJalan = undefined));
+  return jaringanIdJalan;
+}
+
+/** Nilai terakhir, sinkron (untuk `aturJaringanId`); basi atau belum ada = disegarkan di latar. */
+export function jaringanIdSiap(): boolean {
+  if (!jaringanId || Date.now() - jaringanId.waktu >= JARINGAN_ID_TTL_MS)
+    void segarkanJaringanId().catch(() => {});
+  return jaringanId?.siap ?? false;
 }
 
 /** Worker pertama untuk sesi baru (lihat `kandidatWorker`); `null` = tak ada yang sehat dan memenuhi syarat. */

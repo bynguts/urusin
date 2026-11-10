@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ADAPTERS } from '@urusin/adapters';
 import type { EventPayload, UrusanState } from '@urusin/contracts';
+import { getOfficialDomain } from '@urusin/core';
 import { findBundel, namaPendekWilayah, routeByKode, wilayahByKode } from '@urusin/registry';
 import { ConflictError, HarnessError } from './errors.js';
 import { ADAPTER_GENERIK, alasanDipandu, portalWebWilayah } from './generik.js';
@@ -48,7 +49,38 @@ export type LangkahTulisPendamping = {
   nama: string;
 };
 
-export type RutePendamping = LangkahTulisPendamping | { jalur: 'dipandu'; alasan: string };
+/**
+ * `sebab: 'jaringan_id'`: portal hanya menerima IP Indonesia (registry `aksesWilayah: 'id-only'`) dan tidak ada
+ * worker berjaringan Indonesia yang sehat; kartu rencana menyebut alasan itu sejak awal.
+ */
+export type RutePendamping =
+  LangkahTulisPendamping | { jalur: 'dipandu'; alasan: string; sebab?: 'jaringan_id' };
+
+/**
+ * Ada worker Browser Pendamping berjaringan Indonesia (`region: 'id'`) yang sehat? Dipasang web (hooks.server) dengan
+ * pool dan cache singkat yang sama dengan pemilihan worker sesi. Bawaan `false`: tanpa worker Indonesia yang
+ * terbukti sehat, portal `id-only` tidak dijanjikan (dipandu sejak kartu, bukan gagal saat mulai).
+ */
+let jaringanIdSiap: () => boolean = () => false;
+
+/** Pasang pemeriksa worker berjaringan Indonesia (web: hooks.server); uji memasang nilai tetap. */
+export function aturJaringanId(cek: () => boolean): void {
+  jaringanIdSiap = cek;
+}
+
+/** Kalimat jujur untuk warga: portal `id-only` tanpa Browser Pendamping berjaringan Indonesia. */
+export function kalimatJaringanId(wilayah?: string): string {
+  const di = wilayah ? ` ${wilayah}` : '';
+  return `Situs Disdukcapil${di} hanya bisa dibuka dari jaringan Indonesia, dan Browser Pendamping berjaringan Indonesia sedang tidak aktif, jadi AI belum bisa mengisinya. Anda membuka situsnya sendiri dan kami pandu langkahnya.`;
+}
+
+function hanyaJaringanId(origin: string): boolean {
+  try {
+    return getOfficialDomain(new URL(origin).hostname)?.aksesWilayah === 'id-only';
+  } catch {
+    return false;
+  }
+}
 
 /** Adapter tulisan tangan (jalur cepat): langkah `online-adapter` bundel di portal `kirim-asli` kota ini. */
 function langkahAdapter(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): LangkahTulisPendamping | undefined {
@@ -80,16 +112,28 @@ function langkahAdapter(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): LangkahTul
  * Routing Browser Pendamping (ADR 0030), berurutan: (1) adapter tulisan tangan, (2) adapter platform (belum
  * ada), (3) Navigator generik bila wilayah KTP punya portal `web` di registry wilayah, (4) dipandu dengan
  * alasan jujur. Wilayah harus SUDAH ditetapkan warga (`kodeKabKota`); tanpa itu selalu dipandu (gerbang
- * WILAYAH_BELUM_DITETAPKAN tetap berlaku di tool rencana).
+ * WILAYAH_BELUM_DITETAPKAN tetap berlaku di tool rencana). Portal `id-only` hanya ditawarkan bila ada worker
+ * berjaringan Indonesia yang sehat (`aturJaringanId`); selain itu dipandu dengan `sebab: 'jaringan_id'`.
  */
 export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): RutePendamping {
   const kode = u.kodeKabKota && /^\d{4}$/.test(u.kodeKabKota) ? u.kodeKabKota : null;
   if (!kode) return { jalur: 'dipandu', alasan: alasanDipandu(null) };
-  const adapter = langkahAdapter({ jenis: u.jenis, kodeKabKota: kode });
-  if (adapter) return adapter;
   const w = wilayahByKode(kode);
   const nama = w ? namaPendekWilayah(w.nama) : undefined;
-  const bundel = u.jenis ? findBundel(u.jenis) : undefined;
+  const r = ruteDasar(u.jenis, kode, nama);
+  if (r.jalur !== 'dipandu' && hanyaJaringanId(r.origin) && !jaringanIdSiap())
+    return {
+      jalur: 'dipandu',
+      alasan: `Rencana disetujui. ${kalimatJaringanId(nama)}`,
+      sebab: 'jaringan_id',
+    };
+  return r;
+}
+
+function ruteDasar(jenis: UrusanRow['jenis'], kode: string, nama: string | undefined): RutePendamping {
+  const adapter = langkahAdapter({ jenis, kodeKabKota: kode });
+  if (adapter) return adapter;
+  const bundel = jenis ? findBundel(jenis) : undefined;
   const portal = portalWebWilayah(kode);
   if (bundel && portal)
     return {

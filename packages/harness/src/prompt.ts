@@ -2,7 +2,7 @@ import type { UrusanState } from '@urusin/contracts';
 import { FAKTA_HUKUM, routeByKode } from '@urusin/registry';
 import { spotlightPolicyText } from './spotlight.js';
 import type { ToolDef } from './tools.js';
-import { keteranganPendamping, rutePendamping, tierUrusan } from './rencana.js';
+import { kalimatJaringanId, keteranganPendamping, rutePendamping, tierUrusan } from './rencana.js';
 import {
   TEKS_WILAYAH,
   kalimatKanal,
@@ -101,7 +101,9 @@ function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: 
 function barisPendamping(jenis: string, kode: string): string {
   const r = rutePendamping({ jenis, kodeKabKota: kode });
   if (r.jalur === 'dipandu')
-    return 'BROWSER PENDAMPING: tidak tersedia untuk urusan ini (tingkat dipandu); pandu warga mengisi sendiri.';
+    return r.sebab === 'jaringan_id'
+      ? `BROWSER PENDAMPING: tidak tersedia untuk urusan ini (tingkat dipandu); pandu warga mengisi sendiri. Alasan untuk warga: ${kalimatJaringanId()}`
+      : 'BROWSER PENDAMPING: tidak tersedia untuk urusan ini (tingkat dipandu); pandu warga mengisi sendiri.';
   return `BROWSER PENDAMPING (tingkat ${tierUrusan({ jenis, kodeKabKota: kode })}, ${r.jalur === 'generik' ? 'Navigator generik' : 'adapter'}): ${keteranganPendamping(r)}`;
 }
 

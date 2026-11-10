@@ -9,6 +9,7 @@ import {
 } from '@urusin/harness';
 import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
+import { segarkanJaringanId } from '#lib/server/pendamping.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
 import { batasi } from '#lib/server/sesi.js';
 import { urusanMilik } from '#lib/server/urusan-akses.js';
@@ -34,6 +35,8 @@ export const POST: RequestHandler = async (event) => {
     const rt = await getRuntime();
     const ditolak = batasi(rt, event, 'turn');
     if (ditolak) return ditolak;
+    // Rencana yang diusulkan di sini menimbang worker berjaringan Indonesia (portal `id-only`).
+    await segarkanJaringanId();
     // Bukan pemilik = sama dengan tidak ada (404): wilayah urusan orang lain tidak bisa ditetapkan.
     const u = urusanMilik(rt, params.id, event.locals);
     if (!u) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');

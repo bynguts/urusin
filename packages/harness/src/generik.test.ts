@@ -1,7 +1,7 @@
 import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/contracts';
 import { PORTAL_WILAYAH } from '@urusin/core';
 import { FakeProvider, fakeCompletion } from '@urusin/llm';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
 import { openHarnessDb } from './db.js';
 import {
@@ -12,8 +12,8 @@ import {
   jalurModeUji,
   portalWebWilayah,
 } from './generik.js';
-import { rutePendamping, setujuiRencana } from './rencana.js';
-import { buatUrusanTerwilayah } from './wilayah.js';
+import { aturJaringanId, rutePendamping, setujuiRencana } from './rencana.js';
+import { buatUrusanTerwilayah, rencanaPeristiwa } from './wilayah.js';
 import { HarnessStore } from './store.js';
 import { makeEnv } from './testing.js';
 import { jejakView } from './trace.js';
@@ -22,6 +22,8 @@ import { jejakView } from './trace.js';
 const SMG = '3374';
 const DAIRI = '1211';
 const JAKPUS = '3171';
+
+afterEach(() => aturJaringanId(() => false));
 
 function urusanDiusulkan(kodeKabKota: string, jenis: string) {
   const store = new HarnessStore(openHarnessDb());
@@ -103,6 +105,8 @@ describe('routing rencana.ts: adapter -> (platform) -> generik -> dipandu', () =
   });
 
   it('2. wilayah web tanpa adapter: Navigator generik ke portal wilayah, gerbang konfirmasi tetap', () => {
+    // Portal Semarang `id-only`: ditawarkan karena ada worker berjaringan Indonesia yang sehat.
+    aturJaringanId(() => true);
     const { store, u, events, publish } = urusanDiusulkan(SMG, 'kelahiran');
     const r = setujuiRencana(store, u.id, publish);
     expect(r.urusan.state).toBe('MENUNGGU_KONFIRMASI');
@@ -116,6 +120,35 @@ describe('routing rencana.ts: adapter -> (platform) -> generik -> dipandu', () =
     expect(req?.ringkasan).toMatch(/izinkan per halaman/);
     expect(req?.ringkasan).toMatch(/menekan Kirim sendiri/);
     expect(events.at(-1)).toMatchObject({ type: 'gate', jenis: 'konfirmasi', paramsHash: req?.paramsHash });
+  });
+
+  it('2b. portal id-only tanpa worker ID sehat: dipandu sejak kartu; id-utama (Wonogiri) tetap di server', () => {
+    aturJaringanId(() => false);
+    expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: SMG })).toMatchObject({
+      jalur: 'dipandu',
+      sebab: 'jaringan_id',
+      alasan: expect.stringContaining('hanya bisa dibuka dari jaringan Indonesia'),
+    });
+    const kartu = rencanaPeristiwa('kelahiran', { ktp: SMG })!;
+    expect(kartu.tier).toBe('dipandu');
+    expect(kartu.pendamping).toBeUndefined();
+    expect(kartu.catatan).toContain('Browser Pendamping berjaringan Indonesia sedang tidak aktif');
+    const { store, u, events, publish } = urusanDiusulkan(SMG, 'kelahiran');
+    expect(setujuiRencana(store, u.id, publish)).toMatchObject({
+      executionId: null,
+      urusan: { state: 'RENCANA_DISETUJUI' },
+    });
+    expect(events.some((e) => e.type === 'execution_request' || e.type === 'gate')).toBe(false);
+    // Telunjuk Sakti Wonogiri `id-utama`: worker server tetap melayani (warga menyelesaikan kotak centang).
+    expect(rutePendamping({ jenis: 'pindah', kodeKabKota: '3312' })).toMatchObject({
+      jalur: 'generik',
+      origin: 'https://telunjuksakti.wonogirikab.go.id',
+    });
+    expect(rencanaPeristiwa('pindah', { ktp: '3312' })?.tier).toBe('semi');
+    // Kembali ditawarkan begitu worker ID sehat.
+    aturJaringanId(() => true);
+    expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: SMG }).jalur).toBe('generik');
+    expect(rencanaPeristiwa('kelahiran', { ktp: SMG })?.tier).toBe('semi');
   });
 
   it('3. wilayah non-web (WhatsApp, aplikasi): dipandu dengan alasan jujur, tanpa permintaan eksekusi', () => {

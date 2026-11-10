@@ -13,7 +13,7 @@ import {
 } from '@urusin/registry';
 import type { Db } from './db.js';
 import { HarnessError } from './errors.js';
-import { keteranganPendamping, majukan, rutePendamping } from './rencana.js';
+import { kalimatJaringanId, keteranganPendamping, majukan, rutePendamping } from './rencana.js';
 import type { HarnessStore, UrusanRow } from './store.js';
 
 type Publish = (e: EventPayload) => void;
@@ -242,6 +242,12 @@ export function rencanaPeristiwa(
   const r = rencanaWilayah(slug, { ...w, pendampingTersedia });
   if (!r || !w.ktp) return r;
   const rute = rutePendamping({ jenis: r.slug, kodeKabKota: w.ktp });
+  // Portal `id-only` tanpa worker berjaringan Indonesia: dipandu sejak kartu, dengan alasan yang jujur.
+  if (rute.jalur === 'dipandu' && rute.sebab === 'jaringan_id') {
+    const kab = wilayahByKode(w.ktp);
+    const kalimat = kalimatJaringanId(kab ? namaPendekWilayah(kab.nama) : undefined);
+    return { ...r, tier: 'dipandu', catatan: `${r.catatan} ${kalimat}` };
+  }
   if (rute.jalur === 'dipandu') return r;
   const pendamping: BantuanPendamping = {
     jalur: rute.jalur,

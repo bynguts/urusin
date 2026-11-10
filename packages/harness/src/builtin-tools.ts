@@ -27,7 +27,7 @@ import {
 import { spotlight } from './spotlight.js';
 import { paramsHash, type ChunkRecord } from './store.js';
 import { NON_TERMINAL_STATES, defineTool, type ToolContext, type ToolDef, type ToolResult } from './tools.js';
-import { keteranganPendamping, rutePendamping, tierUrusan } from './rencana.js';
+import { kalimatJaringanId, keteranganPendamping, rutePendamping, tierUrusan } from './rencana.js';
 import {
   AFIRMASI,
   TEKS_WILAYAH,
@@ -600,9 +600,11 @@ export const wilayahTetapkan = defineTool({
     const pendamping =
       rute && rute.jalur !== 'dipandu'
         ? `Browser Pendamping: ${keteranganPendamping(rute)}`
-        : entry.adapterId
-          ? `Browser Pendamping punya adapter di ${entry.portal?.nama ?? entry.nama}.`
-          : 'Browser Pendamping belum tersedia untuk urusan ini: tingkat dipandu (warga mengisi sendiri dengan panduan).';
+        : rute?.sebab === 'jaringan_id'
+          ? `Browser Pendamping belum tersedia untuk urusan ini (tingkat dipandu): ${kalimatJaringanId(ktp.nama)}`
+          : entry.adapterId
+            ? `Browser Pendamping punya adapter di ${entry.portal?.nama ?? entry.nama}.`
+            : 'Browser Pendamping belum tersedia untuk urusan ini: tingkat dipandu (warga mengisi sendiri dengan panduan).';
     return {
       content: [
         `${TEKS_WILAYAH.ditetapkan} ${ktp.nama}. ${kalimatKanal(ktp.kodeKabKota)} ${pendamping}`,

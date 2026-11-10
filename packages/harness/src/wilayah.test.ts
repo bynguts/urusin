@@ -1,10 +1,10 @@
 import { FakeProvider, fakeCompletion } from '@urusin/llm';
 import type { EventOf, EventPayload, UrusinEvent } from '@urusin/contracts';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
 import { chunkRencana } from './builtin-tools.js';
 import { portalWebWilayah } from './generik.js';
-import { rutePendamping, setujuiRencana } from './rencana.js';
+import { aturJaringanId, rutePendamping, setujuiRencana } from './rencana.js';
 import { buildStateNote, buildSystemPrompt } from './prompt.js';
 import { jejakView } from './trace.js';
 import { makeEnv } from './testing.js';
@@ -92,6 +92,9 @@ describe('gerbang wilayah: rencana diblokir di kode sampai wilayah KTP ditetapka
   });
 });
 
+// Bawaan harness: tidak ada worker berjaringan Indonesia (web memasang pemeriksa pool worker di hooks.server).
+afterEach(() => aturJaringanId(() => false));
+
 describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', () => {
   it.each([
     ['3578', 'Kota Surabaya', 'https://wargaklampid-dispendukcapil.surabaya.go.id/'],
@@ -143,13 +146,17 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
   it.each([
     [
       '3374',
+      true,
       'semi',
       'BROWSER PENDAMPING (tingkat semi, Navigator generik): AI membantu mengisi formulir di ',
     ],
-    ['1211', 'dipandu', 'BROWSER PENDAMPING: tidak tersedia untuk urusan ini (tingkat dipandu)'],
+    // Sidnok Semarang `id-only` tanpa worker berjaringan Indonesia yang sehat: dipandu sejak kartu.
+    ['3374', false, 'dipandu', 'hanya bisa dibuka dari jaringan Indonesia'],
+    ['1211', true, 'dipandu', 'BROWSER PENDAMPING: tidak tersedia untuk urusan ini (tingkat dipandu)'],
   ])(
-    '%s: tier state, kartu, dan catatan state untuk agen sama dengan rute Pendamping (%s)',
-    async (kode, tier, baris) => {
+    '%s (worker ID sehat: %s): tier state, kartu, dan catatan state untuk agen sama dengan rute Pendamping (%s)',
+    async (kode, idSehat, tier, baris) => {
+      aturJaringanId(() => idSehat);
       const { env, u, provider } = setup([balas('Rencana sudah saya siapkan.')], {
         jenis: 'kelahiran',
         kodeKabKota: kode,
@@ -161,10 +168,21 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
       const note = call?.kind === 'create' ? call.params.messages.map((m) => m.content).join('\n') : '';
       expect(note).toContain(baris);
       const events: EventPayload[] = [];
-      setujuiRencana(env.store, u.id, (e) => void events.push(e));
+      const r = setujuiRencana(env.store, u.id, (e) => void events.push(e));
       const tiers = events.filter((e): e is EventOf<'state'> => e.type === 'state').map((e) => e.tier);
       expect(tiers.length).toBeGreaterThan(0);
       expect(new Set(tiers)).toEqual(new Set([tier]));
+      if (tier === 'dipandu') expect(r.executionId).toBeNull();
+      if (!idSehat) {
+        // Alasan jujur sejak kartu rencana, dan tidak ada "Setujui dan buka situs" yang dijanjikan.
+        expect(of(out.events, 'plan_card')[0]!.catatan).toContain(
+          'hanya bisa dibuka dari jaringan Indonesia',
+        );
+        expect(events.some((e) => e.type === 'execution_request' || e.type === 'gate')).toBe(false);
+        expect(events.find((e) => e.type === 'progress')).toMatchObject({
+          label: expect.stringContaining('Browser Pendamping berjaringan Indonesia sedang tidak aktif'),
+        });
+      }
     },
   );
 
@@ -608,7 +626,11 @@ describe('temuan eval persona W10 dan W11: aturan prompt wilayah', () => {
     expect(catatan('1211')).toContain('Browser Pendamping tidak tersedia di wilayah ini');
     expect(catatan('1211')).toMatch(/JANGAN menyuruh warga menekan "Setujui dan buka situs"/);
     expect(catatan('3312')).toContain('Browser Pendamping tersedia di wilayah ini');
-    // Kota Semarang: portal web tanpa adapter = Navigator generik, sama dengan rute saat rencana disetujui.
+    // Kota Semarang (Sidnok `id-only`): tanpa worker berjaringan Indonesia yang sehat = dipandu + alasan jujur.
+    expect(catatan('3374')).toContain('Browser Pendamping tidak tersedia di wilayah ini');
+    expect(catatan('3374')).toContain('hanya bisa dibuka dari jaringan Indonesia');
+    // Dengan worker ID sehat: Navigator generik, sama dengan rute saat rencana disetujui.
+    aturJaringanId(() => true);
     expect(catatan('3374')).toContain('Browser Pendamping tersedia di wilayah ini');
     expect(catatan('3374')).toContain('Navigator generik');
     // Prompt statis tidak lagi menyuruh mengarahkan ke tombol itu tanpa syarat.
