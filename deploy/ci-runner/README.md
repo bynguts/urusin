@@ -84,12 +84,12 @@ Karena itu runner ini hanya untuk repo private dan wajib dicopot sebelum Public.
 
 ## Batas sumber daya (agent-vm: 2 vCPU, 11 GB RAM, dipakai bersama)
 
-| Bagian                                           | Batas                                                                                                                                       |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit `urusin-ci-runner` (runner + langkah host)  | `CPUQuota=150%` (1,5 dari 2 CPU), `CPUWeight=20`, `IOWeight=10`, `Nice=10`, `MemoryHigh=3500M`, `MemoryMax=4G`, tanpa swap, `TasksMax=2048` |
-| Kontainer dari `ci-docker` (di luar cgroup unit) | `--cpus 1.5 --cpu-shares 256 --memory 4g --memory-swap 4g --pids-limit 2048`                                                                |
-| Builder buildkit `urusin-ci`                     | CPU 1,5 (shares 256), memori 4g, cache ≤ 1,5 GB (gc setelah tiap build, 7 hari)                                                             |
-| Paralel                                          | 1 runner = 1 job sekaligus (CI penuh berjalan berurutan, lebih lambat)                                                                      |
+| Bagian                                           | Batas                                                                                                                                                                                              |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit `urusin-ci-runner` (runner + langkah host)  | `CPUQuota=150%` (1,5 dari 2 CPU), `CPUWeight=20`, `IOWeight=10`, `Nice=10`, `MemoryHigh=3500M`, `MemoryMax=4G`, tanpa swap, `TasksMax=2048`                                                        |
+| Kontainer dari `ci-docker` (di luar cgroup unit) | `--cpus 1.5 --cpu-shares 256 --memory 4g --memory-swap 4g --pids-limit 2048`; `pw perf`: `--cpu-period 10000 --cpu-quota 15000` (tetap 1,5 CPU, jeda throttle CFS lebih pendek) ganti `--cpus 1.5` |
+| Builder buildkit `urusin-ci`                     | CPU 1,5 (shares 256), memori 4g, cache ≤ 1,5 GB (gc setelah tiap build, 7 hari)                                                                                                                    |
+| Paralel                                          | 1 runner = 1 job sekaligus (CI penuh berjalan berurutan, lebih lambat)                                                                                                                             |
 
 Layanan pengguna (proxy :20128, Caddy, kontainer lain, Xvfb :99) selalu punya ≥ 0,5 CPU terjamin dan menang ~5:1 saat CPU berebut (bobot 20 vs 100 / shares 256 vs 1024), serta ≥ 4 GB RAM. Batas 1,5 CPU dipilih karena e2e akun.spec flaky di 1 CPU (lulus 17/17 di 4 CPU). `IOWeight`
 hampir tidak berpengaruh di agent-vm (scheduler disk `none`); perlindungan I/O nyata = batas CPU/memori + penjaga disk. Timeout

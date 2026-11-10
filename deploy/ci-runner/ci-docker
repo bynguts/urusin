@@ -81,7 +81,11 @@ ghcr_login() {
 
 # Batas sumber daya untuk SEMUA kontainer yang dibuat runner (di luar cgroup unit systemd runner).
 # Tanpa --blkio-weight: scheduler disk agent-vm "none" (bobot I/O tidak berlaku) dan Docker Desktop menolaknya.
-LIMITS=(--cpus 1.5 --cpu-shares 256 --memory 4g --memory-swap 4g --pids-limit 2048 --ulimit core=0)
+LIMITS_SISA=(--cpu-shares 256 --memory 4g --memory-swap 4g --pids-limit 2048 --ulimit core=0)
+LIMITS=(--cpus 1.5 "${LIMITS_SISA[@]}")
+# `pw perf` (Lighthouse): rata-rata tetap 1,5 CPU, tetapi periode CFS 10 ms (bawaan 100 ms). Bila kuota habis,
+# jeda throttle selalu < 10 ms, bukan puluhan ms yang menyela task main-thread dan menambah noise TBT.
+LIMITS_PERF=(--cpu-period 10000 --cpu-quota 15000 "${LIMITS_SISA[@]}")
 
 # Platform build: arm64 selalu (agent-vm). amd64 hanya bila binfmt qemu-x86_64 SUDAH terdaftar di host
 # (paket distro); skrip ini tidak pernah memasang binfmt (itu perubahan kernel host).
@@ -125,7 +129,9 @@ cmd_pw() {
   [[ "$pnpm_v" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]] || die "packageManager pnpm@x.y.z tidak ada di package.json"
   uid="$(stat -c %u "$ws")"
   gid="$(stat -c %g "$ws")"
-  docker run --rm --init --name "$name" "${LIMITS[@]}" \
+  local limits=("${LIMITS[@]}")
+  [ "$job" = perf ] && limits=("${LIMITS_PERF[@]}")
+  docker run --rm --init --name "$name" "${limits[@]}" \
     --cap-drop ALL --cap-add SYS_ADMIN --cap-add SYS_CHROOT --cap-add SETUID --cap-add SETGID \
     --security-opt "seccomp=$CI_ROOT/etc/pendamping-seccomp.json" \
     --tmpfs /tmp:size=1g,exec,mode=1777 \
