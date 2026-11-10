@@ -136,7 +136,9 @@ export function susun(kabkota, kontak, portal) {
     if (!TANGGAL.test(p.verifiedAt)) galat.push(`${ctx}: verifiedAt bukan YYYY-MM-DD`);
     if (p.platform && !platform[p.platform]) galat.push(`${ctx}: platform tidak dikenal "${p.platform}"`);
     if (p.aksesWilayah !== undefined && (!AKSES.includes(p.aksesWilayah) || p.jenis !== 'web'))
-      galat.push(`${ctx}: aksesWilayah "${p.aksesWilayah}" tidak sah (hanya ${AKSES.join('/')} untuk jenis web)`);
+      galat.push(
+        `${ctx}: aksesWilayah "${p.aksesWilayah}" tidak sah (hanya ${AKSES.join('/')} untuk jenis web)`,
+      );
     if (p.url) {
       const u = cekUrl(p.url, ctx);
       if (u && !p.hosts.includes(u.hostname)) galat.push(`${ctx}: host url tidak ada di hosts`);
