@@ -376,6 +376,16 @@ export async function launchIsolated(
       if (gerbang && gerbang.periksa(permintaanGerbang(req)) === 'blokir') return route.abort('aborted');
       return route.continue();
     });
+    // Gerbang tulis tidak melihat frame WebSocket (proxy hanya memeriksa host): sesi generik menolak setiap
+    // koneksi WebSocket sebelum tersambung ke server (gagal tertutup), dicatat sebagai blokir `WSOCKET`.
+    if (gerbang)
+      await context.routeWebSocket(
+        () => true,
+        (ws) => {
+          gerbang.tolak({ metode: 'WSOCKET', dokumen: false, utama: false, xhr: false, url: ws.url() });
+          return ws.close({ code: 1008, reason: 'websocket tidak diizinkan di sesi pendamping' });
+        },
+      );
     const ctx = context;
     return {
       context: ctx,
@@ -1049,7 +1059,8 @@ async function wire(
         hooks.mode('takeover', pesan);
         hooks.event({ jenis: 'giliran_anda', alasan, pesan, ...(box ? { sorot: box } : {}) });
       },
-      tidakBisa: (pesan) => hooks.ended('dipandu', 'gagal', pesan),
+      // Situs tidak bisa dikerjakan AI (mis. hanya lewat WhatsApp): dipandu, bukan gagal (sama dengan drift adapter).
+      tidakBisa: (pesan) => hooks.ended('dipandu', 'drift', pesan),
     });
     const run = generik;
     gen.kendali.wargaTunggu = ditahan;

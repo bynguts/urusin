@@ -61,6 +61,8 @@ type FakeRun = ActiveRun & { init: RunInit; calls: string[]; aksiMasuk: AksiSesi
 
 function harness(over: Partial<Config> = {}) {
   const runs: FakeRun[] = [];
+  /** Pengamatan yang dikembalikan run palsu (diganti tes, mis. halaman sukses). */
+  const ctl = { amatan: PENGAMATAN };
   const config = { ...loadConfig({}), ...over };
   const factory = async (init: RunInit): Promise<FakeRun> => {
     const calls: string[] = [];
@@ -80,7 +82,7 @@ function harness(over: Partial<Config> = {}) {
       setViewer: async () => {},
       destroy: async () => void calls.push('destroy'),
       generik: {
-        amati: async () => PENGAMATAN,
+        amati: async () => ctl.amatan,
         aksi: async (req): Promise<HasilAksi[]> => {
           aksiMasuk.push(req.aksi);
           return req.aksi.map((_, indeks) => ({ indeks, kode: 'ok' }));
@@ -102,7 +104,7 @@ function harness(over: Partial<Config> = {}) {
       close: () => {},
     };
   };
-  return { manager, runs, config, flush, viewer };
+  return { manager, runs, config, flush, viewer, ctl };
 }
 
 describe('programDari(generik)', () => {
@@ -123,7 +125,10 @@ describe('programDari(generik)', () => {
       originOverrides: new Map([[RESMI, `${FX}/generik/akun`]]),
     });
     const s = await h.manager.create(
-      input('u1', { modeUji: true, params: { hosts: 'challenges.cloudflare.com', jalur: '/masuk' } }),
+      input('u1', {
+        modeUji: true,
+        params: { kode: '3312', hosts: 'challenges.cloudflare.com', jalur: '/masuk' },
+      }),
     );
     await h.flush();
     const p = h.runs[0]!.init.program;
@@ -133,26 +138,43 @@ describe('programDari(generik)', () => {
     expect(h.runs[0]!.init.generik).toBeDefined();
   });
 
-  it('produksi tanpa Mode Uji: portal resmi + host terdaftar; origin/host di luar registry = 422', async () => {
-    const h = harness({ production: true });
-    await h.manager.create(input('u1', { params: { hosts: 'challenges.cloudflare.com' } }));
-    await h.flush();
-    expect(hostsSesi(h.runs[0]!.init.program)).toEqual([
+  it('produksi: host sesi = host wilayah `kode` (bawaan portal + tantangan relevan); di luar wilayah = 422', async () => {
+    const h = harness({ production: true, maxSessions: 20 });
+    const hostsDari = async (id: string, params: Record<string, string>) => {
+      await h.manager.create(input(id, { params }));
+      await h.flush();
+      return hostsSesi(h.runs.at(-1)!.init.program);
+    };
+    // Bawaan dari registry wilayah: host portal + tantangan sesuai proteksi (cloudflare), tanpa host info.
+    expect(await hostsDari('u1', { kode: '3312', jalur: '/' })).toEqual([
       'telunjuksakti.wonogirikab.go.id',
       'challenges.cloudflare.com',
     ]);
-    await expect(h.manager.create(input('u2', { origin: 'https://contoh.example' }))).rejects.toMatchObject({
-      status: 422,
-    });
-    await expect(h.manager.create(input('u3', { params: { hosts: 'evil.example' } }))).rejects.toMatchObject({
-      status: 422,
-    });
-    await expect(
-      h.manager.create(input('u4', { params: { jalur: '//evil.example/x' } })),
-    ).rejects.toMatchObject({
-      status: 422,
-    });
-    expect(h.runs).toHaveLength(1);
+    // Diminta web: semuanya harus milik wilayah itu (host info boleh diminta eksplisit).
+    expect(await hostsDari('u2', { kode: '3312', hosts: 'disdukcapil.wonogirikab.go.id' })).toEqual([
+      'telunjuksakti.wonogirikab.go.id',
+      'disdukcapil.wonogirikab.go.id',
+    ]);
+    // Tanpa kode: hanya host origin.
+    expect(await hostsDari('u3', {})).toEqual(['telunjuksakti.wonogirikab.go.id']);
+    const runs = h.runs.length;
+    for (const [id, extra] of [
+      // reCAPTCHA tidak ada di proteksi portal Wonogiri.
+      ['t1', { params: { kode: '3312', hosts: 'www.google.com' } }],
+      // Host portal wilayah lain.
+      ['t2', { params: { kode: '3312', hosts: 'sidnok.semarangkota.go.id' } }],
+      // Origin bukan portal wilayah `kode`.
+      ['t3', { origin: 'https://sidnok.semarangkota.go.id', params: { kode: '3312' } }],
+      // Host diminta tanpa kode wilayah.
+      ['t4', { params: { hosts: 'challenges.cloudflare.com' } }],
+      ['t5', { origin: 'https://contoh.example' }],
+      ['t6', { params: { jalur: '//evil.example/x' } }],
+      ['t7', { params: { kode: '9999' } }],
+    ] as const)
+      await expect(h.manager.create(input(id, extra as Partial<MulaiSesiInternal>))).rejects.toMatchObject({
+        status: 422,
+      });
+    expect(h.runs).toHaveLength(runs);
   });
 });
 
@@ -432,5 +454,116 @@ describe('server: endpoint internal generik (HMAC)', () => {
     const jejak = await call('/internal/sesi/jejak', owner('u1'));
     expect(await jejak.json()).toEqual({ executionId: 'x_u1', catatan: [], terbuang: 0 });
     expect((await call('/internal/sesi/jejak', owner('u1', OTHER))).status).toBe(403);
+
+    // selesai: tanda wajib, pemilik, bukti tervalidasi zod, halaman harus sukses.
+    expect((await call('/internal/sesi/selesai', owner('u1'), 'salah'.repeat(8))).status).toBe(401);
+    expect((await call('/internal/sesi/selesai', owner('u1', OTHER))).status).toBe(403);
+    expect(
+      (await call('/internal/sesi/selesai', { ...owner('u1'), bukti: { nomor: '<script>' } })).status,
+    ).toBe(422);
+    expect((await call('/internal/sesi/selesai', owner('u1'))).status).toBe(409);
+    h.ctl.amatan = { ...PENGAMATAN, sinyal: { ...PENGAMATAN.sinyal, sukses: true }, teks: 'Nomor REG-1' };
+    const selesai = await call('/internal/sesi/selesai', { ...owner('u1'), bukti: { nomor: 'REG-1' } });
+    expect(selesai.status).toBe(200);
+    expect(await selesai.json()).toMatchObject({
+      status: 'siaga',
+      hasil: 'berhasil',
+      bukti: { nomor: 'REG-1' },
+    });
+  });
+});
+
+describe('selesai (H3): halaman sukses -> siaga berhasil + bukti di jejak', () => {
+  const SUKSES: Pengamatan = {
+    ...PENGAMATAN,
+    sinyal: { ...PENGAMATAN.sinyal, sukses: true },
+    teks: 'Permohonan berhasil dikirim. Nomor registrasi: REG-2026-0001.',
+  };
+
+  it('halaman belum sukses = 409; sukses saat warga memegang kendali = siaga berhasil', async () => {
+    const h = harness();
+    const { s } = await sesiBerjalan(h);
+    await expect(h.manager.selesai(owner('u1'), { nomor: 'REG-2026-0001' })).rejects.toMatchObject({
+      status: 409,
+    });
+    // Warga menekan Kirim sendiri (takeover), lalu halaman sukses muncul.
+    await h.manager.handleClient(s.sesiId, { type: 'ambil_alih' });
+    h.ctl.amatan = SUKSES;
+    await expect(h.manager.selesai(owner('u1', OTHER))).rejects.toMatchObject({ status: 403 });
+    const v = await h.manager.selesai(owner('u1'), { nomor: 'REG-2026-0001', status: 'Terkirim' });
+    expect(v).toMatchObject({ status: 'siaga', hasil: 'berhasil' });
+    expect(h.manager.status(owner('u1'))).toMatchObject({ status: 'siaga', hasil: 'berhasil' });
+    expect(h.manager.kurasJejak(owner('u1')).catatan).toContainEqual({
+      jenis: 'bukti',
+      bukti: { nomor: 'REG-2026-0001', status: 'Terkirim' },
+    });
+    // Idempoten.
+    expect(await h.manager.selesai(owner('u1'))).toMatchObject({ status: 'siaga' });
+  });
+
+  it('nomor bukti yang tidak tertulis di halaman tidak dicatat', async () => {
+    const h = harness();
+    await sesiBerjalan(h);
+    h.ctl.amatan = SUKSES;
+    await h.manager.selesai(owner('u1'), { nomor: 'KARANGAN-999', status: 'Terkirim' });
+    expect(h.manager.kurasJejak(owner('u1')).catatan).toEqual([
+      { jenis: 'bukti', bukti: { status: 'Terkirim' } },
+    ]);
+  });
+
+  it('sesi adapter = 409', async () => {
+    const h = harness();
+    await h.manager.create({
+      ...input('u-adapter'),
+      adapterId: 'telunjuk-sakti-wonogiri',
+      flowId: 'ajukan',
+      params: { layanan_id: 1 },
+    });
+    await h.flush();
+    await expect(h.manager.selesai(owner('u-adapter'))).rejects.toMatchObject({ status: 409 });
+  });
+});
+
+describe('persetujuan berkas per putaran (M6) dan tujuan = origin halaman (F7)', () => {
+  const ktp = { nama: 'KTP', namaBerkas: 'ktp.pdf', mime: 'application/pdf', dataBase64: 'eA==' };
+
+  it('berkas putaran lalu tidak otomatis disetujui di putaran berikutnya', async () => {
+    const h = harness();
+    const { izin } = await sesiBerjalan(h);
+    izin.minta({ rencanaHash: H1, kolom: [], berkas: ['KTP'] });
+    await h.manager.isiBerkas(owner('u1'), ktp);
+    await h.manager.isiData(owner('u1'), {}, H1);
+    expect(izin.berkasDisetujui(H1, 'KTP')).toBe(true);
+
+    // Putaran 2: warga membatalkan centang KTP (web tidak mengirim berkas lagi).
+    izin.minta({ rencanaHash: H2, kolom: [], berkas: ['KTP'] });
+    await h.manager.isiData(owner('u1'), {}, H2);
+    expect(izin.berkasDisetujui(H2, 'KTP')).toBe(false);
+
+    // Putaran 3: web menyebut berkas yang disetujui secara eksplisit (berkas sudah tersimpan).
+    const H3 = '3'.repeat(64);
+    izin.minta({ rencanaHash: H3, kolom: [], berkas: ['KTP'] });
+    await h.manager.isiData(owner('u1'), {}, H3, ['KTP']);
+    expect(izin.berkasDisetujui(H3, 'KTP')).toBe(true);
+  });
+
+  it('origin lembar = origin halaman yang diisi; kembali ke origin sesi setelah lembar ditutup', async () => {
+    const h = harness();
+    const { s, izin } = await sesiBerjalan(h);
+    const v = h.viewer();
+    await h.manager.attach(s.sesiId, v);
+    izin.minta({
+      rencanaHash: H1,
+      kolom: [{ placeholder: PH, labelPortal: 'Nama', sidik: 's-nama' }],
+      berkas: [],
+      origin: 'https://layanan.contoh.go.id',
+    });
+    expect(h.manager.butuhData(owner('u1')).origin).toBe('https://layanan.contoh.go.id');
+    expect(v.sent.find((m) => m.type === 'butuh_data')).toMatchObject({
+      origin: 'https://layanan.contoh.go.id',
+    });
+    await h.manager.isiData(owner('u1'), { [PH]: 'Budi' }, H1);
+    izin.minta({ rencanaHash: H2, kolom: [], berkas: [] });
+    expect(h.manager.butuhData(owner('u1')).origin).toBe(RESMI);
   });
 });

@@ -51,6 +51,16 @@ const HALAMAN: Record<string, string> = {
   <button><span role="button">Lanjut</span></button></form>
 <iframe name="sink" style="width:1px;height:1px"></iframe>`),
   // F5 (poc /s4): pernyataan terselubung + checkbox non-data.
+  // H3: halaman sukses setelah warga menekan Kirim sendiri.
+  '/sukses': kerangka(
+    '<h1>Permohonan berhasil dikirim</h1><div class="alert alert-success">Nomor registrasi: REG-2026-0001</div>',
+  ),
+  // F6: halaman membuka WebSocket (mis. socket.io) dan mengirim lewat situ.
+  '/ws': kerangka(`<h1>Formulir</h1><script>
+  const ws = new WebSocket('ws://' + location.host + '/ws');
+  ws.onopen = () => ws.send('kirim=1');
+  ws.onclose = (e) => { document.title = 'ws-tutup-' + e.code; };
+</script>`),
   '/s4':
     kerangka(`<form><label><input type="checkbox" name="ok"> Data di atas sudah benar dan saya pahami konsekuensinya</label>
 <label><input type="checkbox" name="kabar"> Kirimi saya kabar</label>
@@ -60,6 +70,7 @@ const HALAMAN: Record<string, string> = {
 
 async function situsUji() {
   const hitung = new Map<string, number>();
+  let upgrade = 0;
   const server = http.createServer((req, res) => {
     const jalur = new URL(req.url ?? '/', 'http://x').pathname;
     if (req.method !== 'GET' || !(jalur in HALAMAN)) hitung.set(jalur, (hitung.get(jalur) ?? 0) + 1);
@@ -69,8 +80,13 @@ async function situsUji() {
       res.end(HALAMAN[jalur] ?? kerangka('<p>diterima</p>'));
     });
   });
+  server.on('upgrade', (_req, socket) => {
+    upgrade++;
+    socket.destroy();
+  });
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   return {
+    upgrade: () => upgrade,
     origin: `http://127.0.0.1:${(server.address() as net.AddressInfo).port}`,
     hitung: (j: string) => hitung.get(j) ?? 0,
     tutup: () => new Promise<void>((r) => server.close(() => r())),
@@ -241,6 +257,53 @@ test('F5: centang pernyataan terselubung dan non-data ditolak; opsi data boleh',
       aksi: [{ jenis: 'centang', ref: sama.ref, nilai: true }],
     });
     expect(r.hasil).toEqual([{ indeks: 0, kode: 'ok' }]);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('H3: halaman sukses saat warga memegang kendali -> selesai = siaga berhasil + bukti di jejak', async () => {
+  const { manager, o, sesiId, p } = await sesi(situs, '/sukses', 'sukses');
+  try {
+    expect(p.sinyal.sukses).toBe(true);
+    await manager.handleClient(sesiId, { type: 'ambil_alih' });
+    // Nomor karangan tidak pernah tercatat; nomor yang tertulis di halaman tercatat.
+    const v = await manager.selesai(o, { nomor: 'REG-2026-0001', status: 'Terkirim' });
+    expect(v).toMatchObject({ status: 'siaga', hasil: 'berhasil', bukti: { nomor: 'REG-2026-0001' } });
+    expect(manager.kurasJejak(o).catatan).toContainEqual({
+      jenis: 'bukti',
+      bukti: { nomor: 'REG-2026-0001', status: 'Terkirim' },
+    });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('M5: tidak_bisa = dipandu (drift), bukan gagal', async () => {
+  const { manager, o, p } = await sesi(situs, '/s4', 'tidak-bisa');
+  try {
+    await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'tidak_bisa', sebab: 'hanya_whatsapp' }],
+    });
+    await expect.poll(() => manager.status(o).status, { timeout: 10_000 }).toBe('dipandu');
+    expect(manager.status(o).hasil).toBe('drift');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('F6: WebSocket di sesi generik ditolak sebelum tersambung ke server', async () => {
+  const { manager, o } = await sesi(situs, '/ws', 'ws');
+  try {
+    await expect
+      .poll(() => manager.kurasJejak(o).catatan.some((c) => c.jenis === 'blokir' && c.metode === 'WSOCKET'), {
+        timeout: 10_000,
+      })
+      .toBe(true);
+    expect(situs.upgrade()).toBe(0);
   } finally {
     await manager.shutdown();
   }

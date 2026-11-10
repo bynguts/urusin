@@ -16,6 +16,7 @@ import {
   PendampingClientMessageSchema,
   PendampingViewportSchema,
   PlaceholderVaultSchema,
+  SelesaiSesiInternalSchema,
   TungguSesiInternalSchema,
   type PendampingGalat,
   type PendampingServerMessage,
@@ -263,7 +264,7 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         const body = parseJson(raw, IsiSesiInternalSchema);
         if (!body)
           return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
-        return json(res, 200, await manager.isiData(body, body.isian, body.rencanaHash));
+        return json(res, 200, await manager.isiData(body, body.isian, body.rencanaHash, body.berkas));
       }
       // Navigator generik (ADR 0030): otak di web, tangan di sini. Pemilik = urusanId + sidHash di body.
       if (path === '/internal/sesi/amati') {
@@ -283,6 +284,12 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         if (!body)
           return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
         return json(res, 200, await manager.tunggu(body, body.maksMs));
+      }
+      if (path === '/internal/sesi/selesai') {
+        const body = parseJson(raw, SelesaiSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, await manager.selesai(body, body.bukti));
       }
       if (path === '/internal/sesi/jejak') {
         const body = parseJson(raw, JejakSesiInternalSchema);

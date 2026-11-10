@@ -146,6 +146,11 @@ export type GerbangTulis = {
   setAi(j: Exclude<Jendela, { jenis: 'warga' }>): void;
   /** Dipanggil dari `context.route` SETELAH allowlist egress lolos. */
   periksa(r: PermintaanGerbang): Putusan;
+  /**
+   * Kanal yang tidak bisa diperiksa per permintaan (WebSocket): selalu ditolak; dicatat seperti blokir lain
+   * bila jendela bukan `warga`.
+   */
+  tolak(r: PermintaanGerbang): 'blokir';
 };
 
 /**
@@ -177,6 +182,11 @@ export function createGerbangTulis(opts: {
       const p = putuskan(j, r, now());
       if (p === 'blokir' && j.jenis !== 'warga') opts.onBlokir(catatanBlokir(j, r), j);
       return p;
+    },
+    tolak(r) {
+      const j = jendela();
+      if (j.jenis !== 'warga') opts.onBlokir(catatanBlokir(j, r), j);
+      return 'blokir';
     },
   };
 }

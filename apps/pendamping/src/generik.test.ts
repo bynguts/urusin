@@ -10,7 +10,6 @@ import {
   type AksiRunner,
   type HasilRunner,
   type IzinGenerik,
-  type KolomIzin,
   type PetaRef,
   type TanganHalaman,
 } from './generik.js';
@@ -77,7 +76,7 @@ function harness(o: Opsi = {}) {
   const serah: { alasan: string; pesan: string; sorot: unknown }[] = [];
   const tidakBisa: string[] = [];
   const diisiDikirim: Record<string, string>[] = [];
-  const minta: { rencanaHash: string; kolom: KolomIzin[]; berkas: string[] }[] = [];
+  const minta: Parameters<IzinGenerik['minta']>[0][] = [];
   const vault = new Map<string, string>();
   const setuju = new Map<string, Set<string>>();
   const ref: { run?: GenerikRun } = {};
@@ -189,6 +188,8 @@ describe('GenerikRun: persetujuan terikat rencanaHash', () => {
     expect(h.minta).toEqual([
       {
         rencanaHash: H1,
+        // Tujuan persetujuan = origin halaman yang sedang diisi.
+        origin: 'https://portal.contoh.go.id',
         berkas: [],
         kolom: [
           { placeholder: PH_NAMA, labelPortal: 'Nama lengkap', sidik: 's-nama' },

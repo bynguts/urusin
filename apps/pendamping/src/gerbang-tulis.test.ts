@@ -222,6 +222,19 @@ describe('createGerbangTulis', () => {
     expect(blokir.map((b) => b.jendela)).toEqual(['ai_diam', 'ai_isi']);
   });
 
+  it('tolak (WebSocket): selalu blokir; dicatat hanya di jendela AI', () => {
+    let pegang = false;
+    const blokir: CatatanBlokir[] = [];
+    const g = createGerbangTulis({ wargaPegang: () => pegang, onBlokir: (c) => blokir.push(c) });
+    const ws = { metode: 'WSOCKET', dokumen: false, utama: false, xhr: false, url: 'wss://a.go.id/ws' };
+    expect(g.tolak(ws)).toBe('blokir');
+    pegang = true;
+    expect(g.tolak(ws)).toBe('blokir');
+    expect(blokir).toEqual([
+      expect.objectContaining({ metode: 'WSOCKET', jendela: 'ai_diam', host: 'a.go.id' }),
+    ]);
+  });
+
   it('takeover tanpa input = ai_diam tungguWarga; input warga nyata = warga', () => {
     let pegang = false;
     let tunggu = true;
