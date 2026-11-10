@@ -2,3 +2,4 @@
 .cache/
 hasil/*
 !hasil/baseline/
+hasil/**/server.log
