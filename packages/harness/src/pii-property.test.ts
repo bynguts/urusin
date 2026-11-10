@@ -4,6 +4,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
 import { redactingProvider } from './guarded-llm.js';
+import { PiiInterceptor, redactForStorage } from './pii.js';
 import { dumpDb, makeEnv } from './testing.js';
 
 /**
@@ -219,6 +220,129 @@ describe('properti: jalur embed dan rerank (lapis provider terakhir)', () => {
       }),
       { numRuns: RUNS },
     );
+  });
+});
+
+describe('properti: nama (gadis) ibu kandung tidak lolos ke LLM maupun DB', () => {
+  /** Potongan nama nyata (>= 4 huruf, bukan kata umum) agar pemeriksa substring tidak salah kena. */
+  const BAGIAN_NAMA = [
+    'Sutinah',
+    'Wiryosentono',
+    'Siti',
+    'Aminah',
+    'Wahyuni',
+    "Ma'rifah",
+    'Kartika',
+    'Rahayu',
+    'Endang',
+    'Purwanti',
+    'Theresia',
+    'Yohana',
+    'Lestari',
+    'Sulastri',
+    'Ngatini',
+    'Juwariyah',
+    'Kadek',
+    'Nyoman',
+    'Fatimah',
+    'Zahra',
+    'Margaretha',
+    'Simanjuntak',
+  ];
+  const kapital = fc.constantFrom(
+    (s: string) => s,
+    (s: string) => s.toLowerCase(),
+    (s: string) => s.toUpperCase(),
+  );
+  const nama = fc
+    .tuple(
+      fc.array(fc.constantFrom(...BAGIAN_NAMA), { minLength: 1, maxLength: 4 }),
+      kapital,
+      fc.constantFrom('', '', 'Hj. ', 'Ny. ', 'Almh. '),
+    )
+    .map(([bagian, k, gelar]) => ({ bagian, teks: gelar + bagian.map(k).join(' ') }));
+  const POLA = fc.constantFrom(
+    (n: string) => `nama ibu kandung ${n}`,
+    (n: string) => `nama ibu kandung saya ${n}`,
+    (n: string) => `Nama gadis ibu kandung: ${n}`,
+    (n: string) => `nama gadis ibu ${n}`,
+    (n: string) => `nama ibu kandung saya adalah ${n}`,
+    (n: string) => `NAMA IBU KANDUNG = ${n}`,
+    (n: string) => `nama ibu: ${n}`,
+    (n: string) => `nama ibunya ${n}`,
+    (n: string) => `ibu kandung saya bernama ${n}`,
+    (n: string) => `ibu saya namanya ${n}`,
+    (n: string) => `mama saya bernama ${n}`,
+    (n: string) => `ibu kandung: ${n}`,
+    (n: string) => `ibu kandung saya adalah ${n}`,
+    (n: string) => `${n} adalah nama ibu kandung saya`,
+    (n: string) => `${n} itu nama gadis ibu saya`,
+  );
+  const AWAL = fc.constantFrom('', 'Ini data saya biar cepat: ', 'tolong bantu urus KTP. ', 'Oh iya, ');
+  const AKHIR = fc.constantFrom(
+    '',
+    '.',
+    ', tolong urusin ya',
+    '. Tolong urusin ya, saya di Wonogiri.',
+    ' dan ayah saya Budi',
+    ' tolong dibantu',
+    '\nterima kasih',
+  );
+
+  const bocor = (teks: string, bagian: readonly string[]) =>
+    bagian.filter((b) => new RegExp(`(^|[^\\p{L}])${b}([^\\p{L}]|$)`, 'iu').test(teks));
+
+  it('redaksi teks: tidak satu pun bagian nama tersisa', () => {
+    fc.assert(
+      fc.property(nama, POLA, AWAL, AKHIR, (n, pola, awal, akhir) => {
+        const teks = awal + pola(n.teks) + akhir;
+        const out = new PiiInterceptor().redact(teks);
+        expect(bocor(out.text, n.bagian)).toEqual([]);
+        expect(out.text).toContain('NAMA_IBU}}');
+        expect(bocor(redactForStorage(teks), n.bagian)).toEqual([]);
+      }),
+      { numRuns: 300 },
+    );
+  });
+
+  it('end-to-end: nama ibu tidak ada di prompt LLM maupun baris DB (turns, audit, span)', async () => {
+    await fc.assert(
+      fc.asyncProperty(nama, POLA, AWAL, AKHIR, async (n, pola, awal, akhir) => {
+        const { provider, e } = env();
+        const u = e.store.createUrusan({ jenis: 'ktp' });
+        await runTurn(e.deps, { urusanId: u.id, userText: awal + pola(n.teks) + akhir });
+        expect(bocor(semuaPrompt(provider), n.bagian)).toEqual([]);
+        expect(bocor(dumpDb(e.store.db), n.bagian)).toEqual([]);
+      }),
+      { numRuns: RUNS },
+    );
+  }, 20_000);
+
+  it('contoh p07: NIK dan nama gadis ibu dalam satu pesan', async () => {
+    const { provider, e } = env();
+    const u = e.store.createUrusan({ jenis: 'ktp' });
+    await runTurn(e.deps, {
+      urusanId: u.id,
+      userText: `KTP saya rusak, patah jadi dua. Ini data saya biar cepat: NIK ${NIK_UJI}, nama ibu kandung Sutinah Wiryosentono. Tolong urusin ya, saya di Wonogiri.`,
+    });
+    for (const s of [semuaPrompt(provider), dumpDb(e.store.db)]) {
+      expect(s).not.toMatch(/Sutinah|Wiryosentono/i);
+      expect(proyeksiDigit(s)).not.toContain(NIK_UJI);
+    }
+    expect(semuaPrompt(provider)).toContain('{{PEMOHON.NAMA_IBU}}');
+    expect(semuaPrompt(provider)).toContain('Wonogiri');
+  });
+
+  it('kalimat tanpa nama ibu tidak ikut diredaksi', () => {
+    for (const teks of [
+      'Demi keamanan, tidak perlu membagikan NIK atau nama ibu kandung di chat.',
+      'Siapa nama ibu kandung Anda?',
+      'Ibu kandung saya sudah meninggal tahun lalu.',
+      'nama ibu kandung harus sesuai KK',
+      'Mohon lengkapi nama ibu kandung pada formulir.',
+      'Ibu saya tinggal di Sleman.',
+    ])
+      expect(new PiiInterceptor().redact(teks).text).toBe(teks);
   });
 });
 
