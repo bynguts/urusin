@@ -2,9 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { ADAPTERS } from '@urusin/adapters';
 import type { EventPayload, UrusanState } from '@urusin/contracts';
 import { findBundel, routeByKode } from '@urusin/registry';
-import { ConflictError } from './errors.js';
+import { ConflictError, HarnessError } from './errors.js';
 import { canTransition } from './state.js';
 import { paramsHash, type HarnessStore, type UrusanRow } from './store.js';
+import { wilayahBelumSiap, wilayahUrusan } from './wilayah.js';
 
 type Publish = (e: EventPayload) => void;
 
@@ -89,6 +90,9 @@ export function setujuiRencana(
   const u = store.getUrusanOrThrow(urusanId);
   if (u.state !== 'RENCANA_DIUSULKAN' || (expectedVersion !== undefined && expectedVersion !== u.version))
     throw new ConflictError();
+  // Rencana hanya disetujui untuk wilayah yang dipastikan warga (urusan lama berkolom default tanpa konfirmasi).
+  const belum = wilayahBelumSiap(u.jenis, wilayahUrusan(store, u));
+  if (belum) throw new HarnessError('WILAYAH_BELUM_DITETAPKAN', belum, 409);
   let cur = majukan(store, u, ['RENCANA_DISETUJUI'], publish);
   const jalan = langkahPendamping(cur);
   if (!jalan) {

@@ -7,6 +7,7 @@ import { createHarness } from '../runtime.js';
 import { INJECTION_CASES, type InjectionCase } from '../injection/cases.js';
 import { runInjectionSuite, summarizeAsr, type AsrSummary } from '../injection/runner.js';
 import { INTENT_TASKS, type EvalTask } from './tasks.js';
+import { buatUrusanTerwilayah } from '../wilayah.js';
 
 export type RunResult = {
   taskId: string;
@@ -82,7 +83,7 @@ async function runOnce(task: EvalTask, o: EvalOptions): Promise<RunResult> {
     ...(o.prices ? { prices: o.prices } : {}),
     ...(o.idrPerUsd ? { quota: { idrPerUsd: o.idrPerUsd } } : {}),
   });
-  const u = env.store.createUrusan(task.kodeKabKota ? { kodeKabKota: task.kodeKabKota } : {});
+  const u = buatUrusanTerwilayah(env.store, { kodeKabKota: task.kodeKabKota });
   const t0 = performance.now();
   try {
     const out = await runTurn(env.deps, { urusanId: u.id, userText: task.teks });

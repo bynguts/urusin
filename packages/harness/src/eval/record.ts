@@ -6,6 +6,7 @@ import { runTurn } from '../agent.js';
 import { createDemoRagDb, DemoProvider } from '../demo.js';
 import { createHarness } from '../runtime.js';
 import { INTENT_TASKS } from './tasks.js';
+import { buatUrusanTerwilayah } from '../wilayah.js';
 
 /**
  * Rekam alur DemoProvider (tanpa jaringan) menjadi fixture SSE untuk pemilik UI:
@@ -36,7 +37,7 @@ for (const p of PILIHAN) {
     caps: ALL_ON,
     ragDb: createDemoRagDb(),
   });
-  const u = env.store.createUrusan(task.kodeKabKota ? { kodeKabKota: task.kodeKabKota } : {});
+  const u = buatUrusanTerwilayah(env.store, { kodeKabKota: task.kodeKabKota });
   const out = await runTurn(env.deps, { urusanId: u.id, userText: task.teks });
   const data = { skema: 'sse', catatan: `Rekaman DemoProvider: "${task.teks}"`, data: out.events };
   writeFileSync(join(OUT, `${p.nama}.json`), `${JSON.stringify(data, null, 2)}\n`);

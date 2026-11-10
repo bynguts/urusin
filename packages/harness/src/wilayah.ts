@@ -18,10 +18,31 @@ import type { HarnessStore, UrusanRow } from './store.js';
 type Publish = (e: EventPayload) => void;
 type PayloadWilayah = PayloadOf<'wilayah'>;
 
+/** Jawaban "ya/betul" warga. Dipakai tool wilayah__tetapkan dan DemoProvider (satu definisi). */
+export const AFIRMASI = /^\s*(ya|iya+|y|yes|betul|benar|bener|ok|oke|okay|yup|tepat|sesuai|sudah benar)\b/i;
+
 /**
- * Keadaan wilayah satu urusan. `ktp` = wilayah KTP yang SUDAH dipastikan warga (kolom `kode_kabkota`); domisili
- * dan tujuan diambil dari event `wilayah` ditetapkan terakhir; `usulan` = kandidat dari Data Diri/pemilih
- * perangkat yang belum dikonfirmasi. Tidak ada default diam-diam: tanpa konfirmasi, `ktp` null.
+ * Potongan kalimat catatan state dan hasil tool wilayah. DemoProvider membacanya kembali, jadi didefinisikan di
+ * satu tempat agar penulis (prompt/tool) dan pembaca (demo) tidak bergeser.
+ */
+export const TEKS_WILAYAH = {
+  /** Awal baris catatan state tentang wilayah KTP. */
+  baris: 'WILAYAH KTP:',
+  belum: 'WILAYAH KTP: belum ditetapkan.',
+  sudah: 'sudah dipastikan warga.',
+  usulan: 'Usulan',
+  butuhTujuan: 'urusan pindah butuh kab/kota tujuan',
+  /** Awal hasil tool wilayah__tetapkan yang berhasil. */
+  ditetapkan: 'Wilayah KTP ditetapkan:',
+  /** Penanda daftar pilihan nama ganda di hasil tool. */
+  pilihan: 'Pilihan:',
+} as const;
+
+/**
+ * Keadaan wilayah satu urusan. `ktp` = wilayah KTP yang SUDAH dipastikan warga: kolom `kode_kabkota` hanya
+ * dihitung bila event `wilayah` ditetapkan terakhir menyebut kode yang sama (urusan lama yang kolomnya terisi
+ * default Wonogiri tanpa konfirmasi diperlakukan sebagai usulan). Domisili dan tujuan dari event itu juga;
+ * `usulan` = kandidat dari Data Diri/pemilih perangkat yang belum dikonfirmasi. Tanpa konfirmasi, `ktp` null.
  */
 export type WilayahUrusan = {
   ktp: WilayahRef | null;
@@ -39,14 +60,24 @@ export function wilayahUrusan(store: HarnessStore, u: UrusanRow): WilayahUrusan 
   const events = store.eventsOfType(u.id, 'wilayah', 20).map((e) => e.payload as PayloadWilayah);
   const ditetapkan = events.find((e) => e.status === 'ditetapkan');
   const usulan = events.find((e) => e.status === 'usulan');
-  const ktp = u.kodeKabKota ? refWilayah(u.kodeKabKota) : null;
-  const cocok = ditetapkan && ktp && ditetapkan.ktp.kodeKabKota === ktp.kodeKabKota;
+  const kolom = u.kodeKabKota ? refWilayah(u.kodeKabKota) : null;
+  const ktp = ditetapkan && kolom && ditetapkan.ktp.kodeKabKota === kolom.kodeKabKota ? kolom : null;
   return {
     ktp,
-    domisili: cocok ? (ditetapkan.domisili ?? null) : null,
-    tujuan: cocok ? (ditetapkan.tujuan ?? null) : null,
-    usulan: usulan && usulan.sumber !== 'warga' ? { ktp: usulan.ktp, sumber: usulan.sumber } : null,
+    domisili: ktp ? (ditetapkan?.domisili ?? null) : null,
+    tujuan: ktp ? (ditetapkan?.tujuan ?? null) : null,
+    usulan:
+      usulan && usulan.sumber !== 'warga'
+        ? { ktp: usulan.ktp, sumber: usulan.sumber }
+        : kolom && !ktp
+          ? { ktp: kolom, sumber: 'pilihan' }
+          : null,
   };
+}
+
+/** Kode wilayah KTP yang sudah dipastikan warga, atau null. */
+export function kodeKtp(store: HarnessStore, u: UrusanRow): string | null {
+  return wilayahUrusan(store, u).ktp?.kodeKabKota ?? null;
 }
 
 /** Kode yang dipakai pendeteksi PII (NIK terpecah): wilayah KTP, atau usulannya bila belum ditetapkan. */
@@ -60,7 +91,7 @@ export function wilayahBelumSiap(jenis: string | null, w: WilayahUrusan): string
   if (!w.ktp)
     return 'wilayah KTP warga belum ditetapkan: tanyakan kab/kota sesuai KTP lalu panggil wilayah__tetapkan';
   if (jenis === 'pindah' && !w.tujuan)
-    return 'urusan pindah butuh kab/kota tujuan: tanyakan lalu panggil wilayah__tetapkan dengan tujuan';
+    return `${TEKS_WILAYAH.butuhTujuan}: tanyakan lalu panggil wilayah__tetapkan dengan tujuan`;
   return undefined;
 }
 
@@ -77,6 +108,7 @@ export function usulkanWilayah(
   return true;
 }
 
+/** Masukan penetapan wilayah. domisili/tujuan: undefined = pertahankan nilai sekarang, null = hapus. */
 export type InputWilayah = {
   ktp: string;
   domisili?: string | null | undefined;
@@ -84,9 +116,10 @@ export type InputWilayah = {
 };
 
 /**
- * Tetapkan wilayah KTP (+ domisili/tujuan) urusan: CAS pada `kode_kabkota`, lalu event `wilayah` ditetapkan
- * (jejak audit). Bila rencana sudah diusulkan untuk wilayah lain, urusan kembali ke MEMAHAMI agar rencana
- * disusun ulang. Hanya sebelum rencana disetujui.
+ * Tetapkan wilayah KTP (+ domisili/tujuan) urusan: CAS pada `kode_kabkota` dan event `wilayah` ditetapkan
+ * (jejak audit) dalam satu transaksi. domisili/tujuan yang tidak disebut tetap seperti sekarang. Tanpa perubahan
+ * apa pun: tidak ada event dan versi tidak naik. Bila rencana sudah diusulkan untuk wilayah lain, urusan kembali
+ * ke MEMAHAMI agar rencana disusun ulang. Hanya sebelum rencana disetujui.
  */
 export function tetapkanWilayah(
   store: HarnessStore,
@@ -96,27 +129,49 @@ export function tetapkanWilayah(
 ): UrusanRow {
   const ktp = refWilayah(input.ktp);
   if (!ktp) throw new HarnessError('WILAYAH_TIDAK_DIKENAL', 'kode kab/kota tidak dikenal', 422);
-  const ref = (k: string | null | undefined) => (k ? refWilayah(k) : null);
-  const domisili = ref(input.domisili);
-  const tujuan = ref(input.tujuan);
   if (!['BARU', 'MEMAHAMI', 'RENCANA_DIUSULKAN'].includes(u.state))
     throw new HarnessError('WILAYAH_TERKUNCI', 'wilayah tidak bisa diubah setelah rencana disetujui', 409);
   const sebelum = wilayahUrusan(store, u);
-  let cur = store.setKodeKabKota(u.id, u.version, ktp.kodeKabKota);
-  publish({
-    type: 'wilayah',
-    status: 'ditetapkan',
-    ktp,
-    sumber: 'warga',
-    ...(domisili && domisili.kodeKabKota !== ktp.kodeKabKota ? { domisili } : {}),
-    ...(tujuan ? { tujuan } : {}),
-  });
+  const gabung = (baru: string | null | undefined, lama: WilayahRef | null) =>
+    baru === undefined ? lama : baru === null ? null : refWilayah(baru);
+  const domisiliRaw = gabung(input.domisili, sebelum.domisili);
+  const domisili = domisiliRaw && domisiliRaw.kodeKabKota !== ktp.kodeKabKota ? domisiliRaw : null;
+  const tujuan = gabung(input.tujuan, sebelum.tujuan);
   const berubah =
     sebelum.ktp?.kodeKabKota !== ktp.kodeKabKota ||
     (sebelum.tujuan?.kodeKabKota ?? null) !== (tujuan?.kodeKabKota ?? null) ||
     (sebelum.domisili?.kodeKabKota ?? null) !== (domisili?.kodeKabKota ?? null);
-  if (cur.state === 'RENCANA_DIUSULKAN' && berubah) cur = majukan(store, cur, ['MEMAHAMI'], publish);
-  return cur;
+  if (!berubah) return u;
+  const tx = store.db.transaction(() => {
+    let cur = store.setKodeKabKota(u.id, u.version, ktp.kodeKabKota);
+    publish({
+      type: 'wilayah',
+      status: 'ditetapkan',
+      ktp,
+      sumber: 'warga',
+      ...(domisili ? { domisili } : {}),
+      ...(tujuan ? { tujuan } : {}),
+    });
+    if (cur.state === 'RENCANA_DIUSULKAN') cur = majukan(store, cur, ['MEMAHAMI'], publish);
+    return cur;
+  });
+  return tx.immediate();
+}
+
+/**
+ * Urusan baru yang wilayah KTP-nya sudah dipastikan (kolom + event `wilayah` ditetapkan, sama seperti konfirmasi
+ * warga). Untuk seed demo, eval, dan tes; alur warga selalu lewat usulan lalu konfirmasi.
+ */
+export function buatUrusanTerwilayah(
+  store: HarnessStore,
+  input: { kodeKabKota?: string | undefined; jenis?: string | undefined },
+): UrusanRow {
+  const u = store.createUrusan(input.jenis ? { jenis: input.jenis } : {});
+  if (!input.kodeKabKota) return u;
+  return tetapkanWilayah(store, u, { ktp: input.kodeKabKota }, (e) => {
+    const { type, ...isi } = e;
+    store.appendEvent(u.id, type, isi);
+  });
 }
 
 /** Browser Pendamping sanggup mengerjakan langkah ini di portal kota: adapter ada, alur TULIS (bukan baca-saja). */

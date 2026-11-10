@@ -4,10 +4,11 @@ import { openHarnessDb } from './db.js';
 import { ConflictError } from './errors.js';
 import { TOOL_AJUKAN, langkahPendamping, mulaiPengajuan, setujuiRencana } from './rencana.js';
 import { HarnessStore, paramsHash } from './store.js';
+import { buatUrusanTerwilayah } from './wilayah.js';
 
 function urusanDiusulkan(kodeKabKota: string, jenis: string) {
   const store = new HarnessStore(openHarnessDb());
-  let u = store.createUrusan({ kodeKabKota, jenis });
+  let u = buatUrusanTerwilayah(store, { kodeKabKota, jenis });
   for (const ke of ['MEMAHAMI', 'RENCANA_DIUSULKAN'] as UrusanState[])
     u = store.transition(u.id, u.version, ke);
   const events: EventPayload[] = [];
