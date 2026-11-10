@@ -6,7 +6,7 @@ import { aksiWarga } from './warga.mjs';
 /**
  * @param {{origin: string, ip: string, persona: object, llmWarga: import('./llm.mjs').KlienLlm,
  *          wilayahPerangkat: string, aksiWilayah?: {versi: boolean, ulang: boolean}, maksGiliran: number,
- *          log?: (s: string) => void}} o
+ *          log?: (s: string) => void, sesi?: SesiWarga}} o
  */
 export async function jalankanPercakapan({
   origin,
@@ -17,9 +17,9 @@ export async function jalankanPercakapan({
   aksiWilayah,
   maksGiliran,
   log,
+  sesi = new SesiWarga({ origin, ip }),
 }) {
   const rahasia = persona.rahasia?.() ?? {};
-  const sesi = new SesiWarga({ origin, ip });
   const langkah = [];
   const layar = [];
   const mulaiMs = Date.now();
@@ -46,12 +46,30 @@ export async function jalankanPercakapan({
         return selesai();
       }
     }
-    const pesan1 =
+    let pesan1 =
       typeof persona.pesanPertama === 'function' ? persona.pesanPertama(rahasia) : persona.pesanPertama;
-    const t0 = Date.now();
-    const r = await sesi.mulai(pesan1, wilayahPerangkat);
+    let t0 = Date.now();
+    let r = await sesi.mulai(pesan1, wilayahPerangkat);
     langkah.push({ peran: 'warga', jenis: 'ketik', teks: pesan1, http: { status: r.status, kode: r.kode } });
     layar.push(`Warga: ${pesan1}`);
+    // Beranda menolak cerita berisi data pribadi (422) dengan peringatan: warga sungguhan mengetik ulang tanpa
+    // data itu. Simulator mendapat kesempatan yang sama (maks. 2 kali).
+    for (let ulang = 0; r.status === 422 && ulang < 2; ulang++) {
+      layar.push(`[GALAT] ${r.pesanWarga ?? 'Urusan tidak bisa dimulai.'}`);
+      const a = await aksiWarga(llmWarga, { persona, rahasia, layar, tombol: [], sisaGiliran: maksGiliran });
+      if (a.aksi !== 'ketik') break;
+      pesan1 = a.teks;
+      t0 = Date.now();
+      r = await sesi.mulai(pesan1, wilayahPerangkat);
+      langkah.push({
+        peran: 'warga',
+        jenis: 'ketik',
+        teks: pesan1,
+        http: { status: r.status, kode: r.kode },
+        alasan: a.alasan,
+      });
+      layar.push(`Warga: ${pesan1}`);
+    }
     if (r.status !== 303) {
       layar.push(`[GALAT] ${r.pesanWarga ?? 'Urusan tidak bisa dimulai.'}`);
       akhir = { alasan: 'gagal_mulai', puas: false };

@@ -13,6 +13,8 @@ import {
   samarkan,
   urlTampil,
 } from '../eval-persona/lib/periksa.mjs';
+import { dataAksi } from '../eval-persona/lib/klien.mjs';
+import { jalankanPercakapan } from '../eval-persona/lib/percakapan.mjs';
 
 const ev = (type, isi = {}) => ({ type, seq: 1, at: '2026-11-10T00:00:00.000Z', chainHead: 'x', ...isi });
 const warga = (teks) => ({ peran: 'warga', jenis: 'ketik', teks, http: { status: 202 } });
@@ -478,5 +480,93 @@ describe('SesiWarga.aksi menunggu turn yang dipicu aksi', async () => {
     const s = sesiPalsu({ state: 'RENCANA_DISETUJUI', version: 4 });
     await s.aksi('rencana/setujui', {});
     assert.deepEqual(s.ditunggu, []);
+  });
+});
+
+describe('mulai ditolak karena PII (p07)', () => {
+  it('dataAksi membaca data fail() form action (devalue)', () => {
+    const data = JSON.stringify([
+      { pesanWarga: 1, pesan: 2, kode: 3 },
+      'Pesan berisi nomor pribadi.',
+      '',
+      'PII_IN_PAYLOAD',
+    ]);
+    assert.deepEqual(dataAksi(data), {
+      pesanWarga: 'Pesan berisi nomor pribadi.',
+      pesan: '',
+      kode: 'PII_IN_PAYLOAD',
+    });
+    assert.deepEqual(dataAksi('bukan json'), {});
+  });
+
+  it('warga simulasi mengetik ulang tanpa NIK lalu percakapan berlanjut', async () => {
+    const dikirim = [];
+    const sesi = {
+      id: null,
+      events: [],
+      async mulai(pesan) {
+        dikirim.push(pesan);
+        if (/\d{16}/.test(pesan))
+          return { status: 422, kode: 'PII_IN_PAYLOAD', pesanWarga: 'Pesan berisi nomor pribadi.' };
+        this.id = 'u_1';
+        this.events = [
+          ev('assistant_text', { delta: 'Baik, KTP rusak di Wonogiri.' }),
+          ev('done', { status: 'selesai' }),
+        ];
+        return { status: 303 };
+      },
+      async tungguDone() {
+        return { status: 'selesai' };
+      },
+      sejak() {
+        return this.events;
+      },
+      async kodeUrusan() {
+        return '3312';
+      },
+      tutup() {},
+    };
+    const nik = ['3312', '0101', '0101', '0001'].join('');
+    const llmWarga = {
+      async json() {
+        return { aksi: 'ketik', teks: 'KTP saya patah, saya di Wonogiri.', alasan: 'pesan ditolak' };
+      },
+    };
+    const h = await jalankanPercakapan({
+      persona: { id: 'p07', kartu: 'x', pesanPertama: `NIK ${nik}, KTP rusak` },
+      llmWarga,
+      wilayahPerangkat: '',
+      maksGiliran: 1,
+      sesi,
+    });
+    assert.equal(dikirim.length, 2);
+    assert.doesNotMatch(dikirim[1], /\d{16}/);
+    assert.equal(h.akhir.alasan, 'batas_giliran');
+    assert.deepEqual(
+      h.langkah.filter((l) => l.peran === 'warga').map((l) => l.http.status),
+      [422, 303],
+    );
+    assert.equal(cekGalat(h.langkah, { izinkanKode: ['PII_IN_PAYLOAD'] }).lulus, true);
+  });
+
+  it('galat mulai selain PII tetap berakhir gagal_mulai tanpa diulang', async () => {
+    let n = 0;
+    const sesi = {
+      id: null,
+      async mulai() {
+        n++;
+        return { status: 429, kode: 'failure' };
+      },
+      tutup() {},
+    };
+    const h = await jalankanPercakapan({
+      persona: { id: 'x', kartu: 'x', pesanPertama: 'halo' },
+      llmWarga: { json: async () => assert.fail('tidak boleh dipanggil') },
+      wilayahPerangkat: '',
+      maksGiliran: 3,
+      sesi,
+    });
+    assert.equal(n, 1);
+    assert.equal(h.akhir.alasan, 'gagal_mulai');
   });
 });
