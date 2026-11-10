@@ -34,12 +34,14 @@ setel() {
 
 acak() { head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 
-# 0 bila $1 IPv4 literal di 100.64.0.0/10 (Tailscale), sama dengan pengecualian egress web.
+# 0 bila $1 IPv4 literal di 100.64.0.0/10 (Tailscale), sama dengan pengecualian egress web. Oktet 0-255 TANPA nol
+# di depan (`100.064.0.1` ditolak: `[ -eq ]`/sebagian parser membacanya oktal, dan Caddy/web menolaknya).
+OKTET='(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])'
 ip_tailscale() {
-  local a b c d
-  [[ "$1" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]] || return 1
-  a=${BASH_REMATCH[1]} b=${BASH_REMATCH[2]} c=${BASH_REMATCH[3]} d=${BASH_REMATCH[4]}
-  [ "$a" -eq 100 ] && [ "$b" -ge 64 ] && [ "$b" -le 127 ] && [ "$c" -le 255 ] && [ "$d" -le 255 ]
+  local b
+  [[ "$1" =~ ^$OKTET\.$OKTET\.$OKTET\.$OKTET$ ]] || return 1
+  b=${BASH_REMATCH[2]}
+  [ "${BASH_REMATCH[1]}" = 100 ] && [ "$b" -ge 64 ] && [ "$b" -le 127 ]
 }
 
 # 0 bila IP $1 terpasang di antarmuka host ini (Linux `ip`, Windows `ipconfig`, macOS `ifconfig`).

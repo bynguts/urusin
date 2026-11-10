@@ -74,6 +74,13 @@ setel WORKER_TAILSCALE_IP 100.101.102.104
 : > "$LOG"
 jalan up
 check "IP Tailscale yang tidak terpasang di host ditolak" '[ $? -ne 0 ] && [ ! -s "$LOG" ]'
+# Nol di depan oktet ditolak walau persis teks itu "terpasang" (Caddy/web menolaknya; sebagian parser = oktal).
+for ip in 100.064.0.1 100.101.102.013 100.101.00.1; do
+  setel WORKER_TAILSCALE_IP "$ip"
+  : > "$LOG"
+  SHIM_IP_HOST="$ip" jalan up
+  check "WORKER_TAILSCALE_IP='$ip' (nol di depan) ditolak, docker tidak dipanggil" '[ $? -ne 0 ] && [ ! -s "$LOG" ]'
+done
 setel WORKER_TAILSCALE_IP 100.101.102.103
 setel WORKER_EDGE_TOKEN "$TOK"
 jalan up

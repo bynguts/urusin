@@ -30,7 +30,9 @@ const DEFAULT_IMPORT = '/etc/caddy/urusin/Caddyfile.urusin';
 const IMPORT_RE = /^(\/[A-Za-z0-9._-]+)+\/Caddyfile\.urusin$/;
 const HOST_RE = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 /** Id worker sama dengan skema `PENDAMPING_WORKERS` di web (apps/web/src/lib/server/pendamping.ts). */
-const WORKER_RE = /^([a-z0-9][a-z0-9-]{0,31})=(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})$/;
+/** Oktet IPv4 desimal 0-255 TANPA nol di depan (`064` ditolak: sebagian parser membacanya sebagai oktal). */
+const OKTET = '(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
+const WORKER_RE = new RegExp(`^([a-z0-9][a-z0-9-]{0,31})=(${OKTET}(?:\\.${OKTET}){3}):(\\d{1,5})$`);
 
 /**
  * `<id>=<ip>:<port>` -> worker. IP WAJIB IPv4 literal Tailscale (100.64.0.0/10), sama dengan pengecualian egress
