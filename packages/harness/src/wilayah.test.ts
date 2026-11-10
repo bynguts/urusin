@@ -3,6 +3,7 @@ import type { EventOf, EventPayload, UrusinEvent } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
 import { setujuiRencana } from './rencana.js';
+import { jejakView } from './trace.js';
 import { makeEnv } from './testing.js';
 import { tetapkanWilayah, usulkanRencanaOtomatis, usulkanWilayah, wilayahUrusan } from './wilayah.js';
 
@@ -183,6 +184,9 @@ describe('wilayah__tetapkan: validasi ke 514 kab/kota', () => {
       state: 'RENCANA_DIUSULKAN',
     });
     expect(env.store.verifyChain(u.id).ok).toBe(true);
+    expect(jejakView(env.store, u.id).timeline.map((e) => ('ringkas' in e ? e.ringkas : ''))).toContain(
+      'Wilayah KTP dipastikan warga: Kota Surabaya',
+    );
   });
 
   it('pemetaan kecamatan oleh model (Cikarang → Kab. Bekasi) wajib dibenarkan warga dulu', async () => {
