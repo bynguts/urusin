@@ -427,7 +427,9 @@ describe('server: endpoint internal generik (HMAC)', () => {
     expect((await call('/internal/sesi/amati', owner('u1', OTHER))).status).toBe(403);
     const amati = await call('/internal/sesi/amati', owner('u1'));
     expect(amati.status).toBe(200);
-    expect(await amati.json()).toEqual({ mode: 'ai', pengamatan: PENGAMATAN });
+    expect(await amati.json()).toEqual({ mode: 'ai', pengamatan: PENGAMATAN, executionId: 'x_u1' });
+    const pantau = await call('/internal/sesi/amati', { ...owner('u1'), pantau: true });
+    expect(pantau.status).toBe(200);
 
     // URL/JS/teks bebas di aksi ditolak di batas (zod), sebelum sampai ke peramban.
     for (const buruk of [
@@ -465,6 +467,7 @@ describe('server: endpoint internal generik (HMAC)', () => {
     h.ctl.amatan = { ...PENGAMATAN, sinyal: { ...PENGAMATAN.sinyal, sukses: true }, teks: 'Nomor REG-1' };
     const selesai = await call('/internal/sesi/selesai', { ...owner('u1'), bukti: { nomor: 'REG-1' } });
     expect(selesai.status).toBe(200);
+    expect(selesai.status === 200 && (await selesai.clone().json()).executionId).toBe('x_u1');
     expect(await selesai.json()).toMatchObject({
       status: 'siaga',
       hasil: 'berhasil',
@@ -497,8 +500,22 @@ describe('selesai (H3): halaman sukses -> siaga berhasil + bukti di jejak', () =
       jenis: 'bukti',
       bukti: { nomor: 'REG-2026-0001', status: 'Terkirim' },
     });
-    // Idempoten.
+    // Idempoten; eksekusi lain = 409.
     expect(await h.manager.selesai(owner('u1'))).toMatchObject({ status: 'siaga' });
+    await expect(h.manager.selesai(owner('u1'), undefined, 'x_lain')).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('sesi berakhir = 404 (jangan diulang); peramban belum siap = 409 LAYANAN_TIDAK_TERSEDIA', async () => {
+    const h = harness({ maxSessions: 1 });
+    await sesiBerjalan(h);
+    // u2 antre (peramban belum ada).
+    await h.manager.create(input('u2'));
+    await expect(h.manager.amati(owner('u2'))).rejects.toMatchObject({
+      status: 409,
+      kode: 'LAYANAN_TIDAK_TERSEDIA',
+    });
+    await h.manager.akhiri(owner('u1'));
+    await expect(h.manager.amati(owner('u1'))).rejects.toMatchObject({ status: 404 });
   });
 
   it('nomor bukti yang tidak tertulis di halaman tidak dicatat', async () => {

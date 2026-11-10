@@ -8,6 +8,7 @@ import {
   URUTAN_KANAL,
   hostsWilayah,
 } from './registry-wilayah.js';
+import { hostsTantanganWilayah } from './tantangan-wilayah.js';
 
 const HOST_PERSIS = /^(?!-)[a-z0-9-]{1,63}(?:\.(?!-)[a-z0-9-]{1,63})+$/;
 const goId = (h: string) => h.endsWith('.go.id');
@@ -86,6 +87,19 @@ describe('lint registry wilayah (ADR 0030)', () => {
     expect(hostsWilayah('__proto__')).toEqual([]);
     // Tidak ada host wilayah lain yang bocor ke sesi.
     expect(wonogiri).not.toContain('www.e-open.id');
+  });
+
+  it('hostsTantanganWilayah: Cloudflare + host sesuai proteksi portal; semua terdaftar di egress', () => {
+    expect(hostsTantanganWilayah('3312')).toEqual(['challenges.cloudflare.com']);
+    expect(hostsTantanganWilayah('1306')).toEqual(
+      expect.arrayContaining(['challenges.cloudflare.com', 'www.google.com', 'www.recaptcha.net']),
+    );
+    expect(hostsTantanganWilayah('3208')).toEqual(expect.arrayContaining(['js.hcaptcha.com']));
+    expect(hostsTantanganWilayah('9999')).toEqual([]);
+    expect(hostsTantanganWilayah('__proto__')).toEqual([]);
+    const egress = new Set(egressAllowedHosts());
+    for (const kode of Object.keys(PORTAL_WILAYAH))
+      for (const h of hostsTantanganWilayah(kode)) expect(egress.has(h), `${kode} ${h}`).toBe(true);
   });
 
   it('urutan kanal routing multi-kanal', () => {

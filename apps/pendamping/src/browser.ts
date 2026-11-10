@@ -1071,7 +1071,7 @@ async function wire(
 
   const g = generik;
   return {
-    ...(g ? { generik: { amati: () => g.amati(), aksi: (req) => g.aksi(req) } } : {}),
+    ...(g ? { generik: { amati: (pantau) => g.amati(pantau), aksi: (req) => g.aksi(req) } } : {}),
     async mulaiAi() {
       if (g) {
         // Generik: AI hanya membuka halaman awal; selanjutnya otak di web memanggil amati/aksi.

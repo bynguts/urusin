@@ -398,12 +398,20 @@ export const HasilAksiSchema = z.object({
 export type HasilAksi = z.infer<typeof HasilAksiSchema>;
 
 // --- POST /internal/sesi/amati (web -> worker): pengamatan halaman saat ini ---
-export const AmatiSesiInternalSchema = PemilikSesiInternalSchema;
+export const AmatiSesiInternalSchema = PemilikSesiInternalSchema.extend({
+  /**
+   * Pantau baca-saja (mis. menunggu `sinyal.sukses` saat warga memegang kendali): jejak `amati` tidak dicatat dan
+   * peta ref worker tidak diganti (ref dari pengamatan pantau = REF_BASI bila dipakai aksi).
+   */
+  pantau: z.boolean().optional(),
+});
 export type AmatiSesiInternal = z.infer<typeof AmatiSesiInternalSchema>;
 export const AmatiSesiResponseSchema = z.object({
   /** Pemegang kendali saat ini: `takeover` = warga, Navigator menunggu lewat `/internal/sesi/tunggu`. */
   mode: PendampingModeSchema,
   pengamatan: PengamatanSchema,
+  /** Eksekusi yang sedang dipegang sesi (loop lama berhenti bila berbeda). */
+  executionId: z.string().min(1).optional(),
 });
 export type AmatiSesiResponse = z.infer<typeof AmatiSesiResponseSchema>;
 
@@ -450,6 +458,8 @@ export type TungguSesiResponse = z.infer<typeof TungguSesiResponseSchema>;
  * halaman itu. Idempoten saat sesi sudah siaga.
  */
 export const SelesaiSesiInternalSchema = PemilikSesiInternalSchema.extend({
+  /** Bila ada: harus eksekusi yang sedang dipegang sesi (selain itu 409). */
+  executionId: z.string().min(1).optional(),
   bukti: PendampingBuktiSchema.optional(),
 });
 export type SelesaiSesiInternal = z.infer<typeof SelesaiSesiInternalSchema>;
