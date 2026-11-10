@@ -554,8 +554,24 @@ test('#49 zona bahaya di Pengaturan: keluar dari semua perangkat, lalu hapus aku
   await expect(versi).toHaveAttribute('href', `https://github.com/bynguts/urusin/commit/${E2E_GIT_SHA}`);
   const zona = page.locator('[data-zona-bahaya]');
   await expect(zona.getByRole('heading', { name: 'Zona bahaya' })).toBeVisible();
+  // Perangkat bersama: daftar urusan di perangkat ini harus ikut hilang saat keluar.
+  const urusanLokal = () =>
+    page.evaluate(
+      () => (JSON.parse(localStorage.getItem('urusin.lokal.v1') ?? '{}') as { urusan?: unknown[] }).urusan,
+    );
+  await page.evaluate(() =>
+    localStorage.setItem(
+      'urusin.lokal.v1',
+      JSON.stringify({
+        urusan: [
+          { id: `u_${'d'.repeat(32)}`, judul: 'Urusan lama', peristiwa: null, dibuatPada: '2026-11-10' },
+        ],
+      }),
+    ),
+  );
   await zona.getByRole('button', { name: 'Keluar dari semua perangkat' }).click();
   await expect(page).toHaveURL(/\/masuk$/);
+  expect(await urusanLokal()).toEqual([]);
   expect((await sesiApi(page)).masuk).toBe(false);
   expect((await sesiApi(hp.page)).masuk).toBe(false); // perangkat lain ikut dikeluarkan
   await hp.ctx.close();

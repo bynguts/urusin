@@ -39,7 +39,7 @@ import { actions as pengaturanPage, load as pengaturanLoad } from '../../routes/
 import { actions as verifPage, load as verifLoad } from '../../routes/verifikasi-email/+page.server';
 import { AKUN_COOKIE, OAUTH_COOKIE, TAUTKAN_COOKIE } from './akun';
 import { createRuntime, googleRedirectUri, setRuntimeForTests, type Runtime } from './runtime';
-import { SID_COOKIE } from './sesi';
+import { SID_COOKIE, TERAKHIR_COOKIE } from './sesi';
 import { TURNSTILE_TOKEN_FIXTURE, turnstileFromEnv } from './turnstile';
 
 const ORIGIN = 'http://localhost:3000';
@@ -466,6 +466,52 @@ describe('keluar, ubah sandi, reset, hapus akun', () => {
     expect(rt.akun.sesi(b.jar.get(AKUN_COOKIE))).toBeNull();
     expect((await keluarApi(ev(post({})))).status).toBe(200);
     expect((await keluarSemuaApi(ev(post({})))).status).toBe(401);
+  });
+
+  it('perangkat bersama: keluar, keluar semua, dan hapus akun menghapus cookie urusan terakhir', async () => {
+    const terakhir = `u_${'c'.repeat(32)}`;
+    await daftarVerifikasi();
+    const a = await masuk();
+    a.jar.set(TERAKHIR_COOKIE, terakhir, {});
+    await lewatHook(post({}, '/api/akun/keluar'), a.jar, keluarApi);
+    expect(a.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
+
+    const b = await masuk();
+    b.jar.set(TERAKHIR_COOKIE, terakhir, {});
+    await lewatHook(post({}, '/api/akun/keluar-semua'), b.jar, keluarSemuaApi);
+    expect(b.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
+
+    const c = await masuk();
+    c.jar.set(TERAKHIR_COOKIE, terakhir, {});
+    await caught(
+      pengaturanPage.keluarSemua(
+        ev(form({}, '/pengaturan?/keluarSemua'), { jar: c.jar, locals: localsDari(c.jar) }),
+      ),
+    );
+    expect(c.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
+
+    const d = await masuk();
+    d.jar.set(TERAKHIR_COOKIE, terakhir, {});
+    const ok = await lewatHook(
+      post({ konfirmasi: 'HAPUS', sandi: SANDI }, '/api/akun/hapus'),
+      d.jar,
+      hapusApi,
+    );
+    expect(ok.status).toBe(200);
+    expect(d.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
+
+    await daftarVerifikasi();
+    const e = await masuk();
+    e.jar.set(TERAKHIR_COOKIE, terakhir, {});
+    await caught(
+      pengaturanPage.hapusAkun(
+        ev(form({ konfirmasi: 'HAPUS', sandi: SANDI }, '/pengaturan?/hapusAkun'), {
+          jar: e.jar,
+          locals: localsDari(e.jar),
+        }),
+      ),
+    );
+    expect(e.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
   });
 
   it('ubah sandi merotasi cookie; reset menghapus semua sesi', async () => {

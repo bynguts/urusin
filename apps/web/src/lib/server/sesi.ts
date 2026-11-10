@@ -60,6 +60,11 @@ export function catatTerakhir(cookies: Cookies, id: string, publicOrigin: string
   });
 }
 
+/** Keluar/hapus akun: perangkat bersama tidak boleh lagi menunjuk urusan pemakai sebelumnya. */
+export function hapusTerakhir(cookies: Pick<Cookies, 'delete'>): void {
+  cookies.delete(TERAKHIR_COOKIE, { path: '/' });
+}
+
 export function bacaTerakhir(cookies: Cookies): string | null {
   const id = cookies.get(TERAKHIR_COOKIE);
   return id && ID_URUSAN_RE.test(id) ? id : null;
