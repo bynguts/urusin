@@ -413,6 +413,12 @@ export const AksiSesiInternalSchema = PemilikSesiInternalSchema.extend({
   aksi: z.array(AksiSchema).min(1).max(25),
   /** `seq` pengamatan yang menjadi dasar rencana (ref dari pengamatan lain ditolak). */
   seq: z.number().int().nonnegative().optional(),
+  /**
+   * Baris lembar "Izinkan AI mengisi?" dari validator web (termasuk `tidakLazim`). Setiap `placeholder` wajib
+   * muncul di aksi isi/pilih rencana ini (kolom asing = 422). Tidak ada = worker menurunkan baris sendiri dari
+   * label pengamatan.
+   */
+  kolom: z.array(KolomButuhSchema).max(150).optional(),
 });
 export type AksiSesiInternal = z.infer<typeof AksiSesiInternalSchema>;
 export const AksiSesiResponseSchema = z.object({

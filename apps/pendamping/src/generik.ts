@@ -53,6 +53,8 @@ export type TanganHalaman = {
   sorot(jalur: string): Promise<PendampingSorot | undefined>;
   /** Tunggu halaman tenang setelah klik/navigasi (muat selesai atau jeda singkat). */
   tenang(): Promise<void>;
+  /** URL dokumen utama yang ter-commit saat ini (mis. `chrome-error://...` bila navigasi gagal). */
+  urlKini(): string;
 };
 
 /** Evaluator op runner di isolated world (browser.ts) -> TanganHalaman. */
@@ -60,6 +62,7 @@ export function tanganRunner(deps: {
   evaluate(op: unknown): Promise<{ ok: true; value?: unknown } | { ok: false; code: string } | 'interrupted'>;
   navigasi(url: string): Promise<void>;
   tenang(): Promise<void>;
+  urlKini(): string;
 }): TanganHalaman {
   return {
     async amati(seq, diisi) {
@@ -80,6 +83,7 @@ export function tanganRunner(deps: {
       return r !== 'interrupted' && r.ok ? (r.value as PendampingSorot) : undefined;
     },
     tenang: deps.tenang,
+    urlKini: deps.urlKini,
   };
 }
 
@@ -233,7 +237,21 @@ function nomorAturan(aturan: string): number {
 
 // --- GenerikRun ----------------------------------------------------------------------------------------
 
-export type AksiPermintaan = { rencanaHash: string; aksi: Aksi[]; seq?: number | undefined };
+export type AksiPermintaan = {
+  rencanaHash: string;
+  aksi: Aksi[];
+  seq?: number | undefined;
+  /** Baris lembar dari validator web (sudah diperiksa sessions.ts: placeholder ada di rencana). */
+  kolom?: KolomButuh[] | undefined;
+};
+
+/** Placeholder vault yang dipakai aksi isi/pilih sebuah rencana (sumber nilai yang butuh persetujuan). */
+export function placeholderRencana(aksi: readonly Aksi[]): Set<string> {
+  const out = new Set<string>();
+  for (const a of aksi)
+    if (a.jenis === 'isi' || (a.jenis === 'pilih' && typeof a.nilai === 'string')) out.add(a.nilai as string);
+  return out;
+}
 
 export class GenerikRun {
   private seq = 0;
@@ -244,7 +262,8 @@ export class GenerikRun {
   private readonly diisi = new Map<string, string>();
   /** Nama kolom (sudah diredaksi) per ref dari pengamatan terakhir: label lembar persetujuan. */
   private namaRef = new Map<string, string>();
-  private aksiBerjalan: { blokir: CatatanBlokir[] } | undefined;
+  /** Selama satu aksi/navigasi AI: blokir gerbang dan host di luar allowlist yang terjadi karenanya. */
+  private aksiBerjalan: { blokir: CatatanBlokir[]; hostLain: boolean } | undefined;
   private antre: Promise<unknown> = Promise.resolve();
   private readonly now: () => number;
 
@@ -269,6 +288,44 @@ export class GenerikRun {
     // Di luar aksi: navigasi dokumen yang diblokir tepat setelah isi (mis. onchange form.submit()) = warga.
     if (j.jenis === 'ai_isi' && c.dokumen && this.now() <= j.sampai + JENDELA_ISI_MS)
       this.d.serahkan('periksa', PESAN_GENERIK.periksa);
+  }
+
+  /** Host terakhir yang ditolak proxy egress (proxy tidak tahu dokumen/subresource): calon host kandidat. */
+  private hostDitolakTerakhir: string | undefined;
+
+  /**
+   * Allowlist egress menolak permintaan ke host di luar sesi. `dokumen` true = navigasi bingkai utama dari lapis
+   * rute: selama aksi AI = host kandidat + serah ke warga; di luar aksi cukup dicatat. `undefined` = dari proxy
+   * (mis. hop redirect 302, yang tidak melewati rute): hanya diingat; eskalasi diputuskan dari URL dokumen
+   * setelah navigasi (`keluarAllowlist`).
+   */
+  hostDiblokir(host: string, dokumen: boolean | undefined): void {
+    if (dokumen === undefined) {
+      this.hostDitolakTerakhir = host.slice(0, 253);
+      return;
+    }
+    if (!dokumen) return;
+    this.d.jejak({ jenis: 'host_kandidat', host: host.slice(0, 253) });
+    if (this.aksiBerjalan) this.aksiBerjalan.hostLain = true;
+  }
+
+  /**
+   * Setelah klik/navigasi AI: dokumen utama berakhir di luar allowlist (redirect ke host lain = halaman galat
+   * atau halaman tolak proxy)? Catat host kandidat, kembalikan peramban ke halaman sebelumnya (GET ke URL yang
+   * sudah lolos allowlist), dan tandai aksi untuk diserahkan ke warga.
+   */
+  private async keluarAllowlist(urlSebelum: string | undefined): Promise<void> {
+    const kini = this.d.tangan.urlKini();
+    if (!this.aksiBerjalan || this.d.urlBoleh(kini)) return;
+    const u = URL.parse(kini);
+    const host = u && /^https?:$/.test(u.protocol) ? u.host : this.hostDitolakTerakhir;
+    if (host) this.d.jejak({ jenis: 'host_kandidat', host: host.slice(0, 253) });
+    this.aksiBerjalan.hostLain = true;
+    if (urlSebelum && this.d.urlBoleh(urlSebelum)) {
+      this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: urlSebelum });
+      await this.d.tangan.navigasi(urlSebelum);
+      await this.d.tangan.tenang();
+    }
   }
 
   /** Serialkan amati/aksi: satu operasi halaman pada satu waktu. */
@@ -333,13 +390,15 @@ export class GenerikRun {
         if (sidik === undefined) return;
         if (this.d.izin.disetujui(rencanaHash, sidik, ph) && this.d.izin.nilai(ph) !== undefined) return;
         perluIzin.add(i);
-        const labelPortal = (this.namaRef.get(a.ref) ?? '').slice(0, 120);
-        kolom.push({
-          placeholder: ph,
-          labelPortal,
-          ...(tidakLazim(ph, labelPortal) ? { tidakLazim: true } : {}),
-          sidik,
-        });
+        // Baris dari validator web bila ada (label + tidakLazim); selain itu dari label pengamatan.
+        // tidakLazim = OR keduanya: penanda keamanan tidak pernah hilang karena sumber lain.
+        const namaAmatan = (this.namaRef.get(a.ref) ?? '').slice(0, 120);
+        const web =
+          req.kolom?.find((k) => k.placeholder === ph && k.labelPortal === namaAmatan) ??
+          req.kolom?.find((k) => k.placeholder === ph);
+        const labelPortal = web?.labelPortal ?? namaAmatan;
+        const lazimTidak = web?.tidakLazim === true || tidakLazim(ph, labelPortal);
+        kolom.push({ placeholder: ph, labelPortal, ...(lazimTidak ? { tidakLazim: true } : {}), sidik });
       } else if (a.jenis === 'unggah') {
         if (this.d.izin.berkasDisetujui(rencanaHash, a.berkas) && this.d.izin.berkas(a.berkas)) return;
         perluIzin.add(i);
@@ -425,15 +484,20 @@ export class GenerikRun {
     op: AksiRunner,
     ref: RefTersimpan,
   ): Promise<{ kode: KodeHasilAksi; kelas?: KelasKendali; halamanBerganti?: boolean }> {
-    this.aksiBerjalan = { blokir: [] };
+    this.aksiBerjalan = { blokir: [], hostLain: false };
+    this.hostDitolakTerakhir = undefined;
+    const urlSebelum = this.d.tangan.urlKini();
     try {
       const r = await this.d.tangan.aksi(op, this.peta);
       if (op.jenis === 'klik' && r) this.catatKlik(op.ref, r);
       if (!r) return { kode: 'GALAT' };
       const kelas = r.kelas && KelasKendaliSchema.safeParse(r.kelas).success ? r.kelas : undefined;
-      if (r.status === 'navigasi') return await this.navigasi(r.href, ref, kelas);
+      if (r.status === 'navigasi') return await this.navigasi(r.href, ref, kelas, urlSebelum);
       const kode = kodeDari(r);
-      if (kode === 'ok' && op.jenis === 'klik') await this.d.tangan.tenang();
+      if (kode === 'ok' && op.jenis === 'klik') {
+        await this.d.tangan.tenang();
+        await this.keluarAllowlist(urlSebelum);
+      }
       if (await this.eskalasiBila(ref)) return { kode: 'GERBANG_MEMBLOKIR', ...(kelas ? { kelas } : {}) };
       return {
         kode,
@@ -445,11 +509,11 @@ export class GenerikRun {
     }
   }
 
-  private async eskalasiBila(ref: RefTersimpan, pesan: string = PESAN_GENERIK.periksa): Promise<boolean> {
-    const b = this.aksiBerjalan?.blokir ?? [];
-    if (b.length === 0) return false;
-    const sorot = await this.d.tangan.sorot(ref.jalur).catch(() => undefined);
-    this.d.serahkan('periksa', pesan, sorot);
+  private async eskalasiBila(ref: RefTersimpan | undefined): Promise<boolean> {
+    const a = this.aksiBerjalan;
+    if (!a || (a.blokir.length === 0 && !a.hostLain)) return false;
+    const sorot = ref ? await this.d.tangan.sorot(ref.jalur).catch(() => undefined) : undefined;
+    this.d.serahkan('periksa', a.hostLain ? PESAN_GENERIK.hostLain : PESAN_GENERIK.periksa, sorot);
     return true;
   }
 
@@ -464,7 +528,12 @@ export class GenerikRun {
     }
   }
 
-  private async navigasi(href: string | undefined, ref: RefTersimpan, kelas: KelasKendali | undefined) {
+  private async navigasi(
+    href: string | undefined,
+    ref: RefTersimpan,
+    kelas: KelasKendali | undefined,
+    urlSebelum: string,
+  ) {
     const k = kelas ? { kelas } : {};
     const u = href ? URL.parse(href) : null;
     if (!u || !this.d.urlBoleh(u.href)) {
@@ -477,6 +546,7 @@ export class GenerikRun {
     this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: u.href });
     await this.d.tangan.navigasi(u.href);
     await this.d.tangan.tenang();
+    await this.keluarAllowlist(urlSebelum);
     if (await this.eskalasiBila(ref)) return { kode: 'GERBANG_MEMBLOKIR' as const, ...k };
     return { kode: 'ok' as const, ...k, halamanBerganti: true };
   }
@@ -484,10 +554,18 @@ export class GenerikRun {
   /** Halaman awal sesi (origin program): navigasi AI ke URL persis itu saja. */
   async mulai(url: string): Promise<void> {
     await this.serial(async () => {
-      this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: url });
-      await this.d.tangan.navigasi(url);
-      await this.d.tangan.tenang();
-      this.d.gerbang.setAi({ jenis: 'ai_diam' });
+      this.aksiBerjalan = { blokir: [], hostLain: false };
+      this.hostDitolakTerakhir = undefined;
+      try {
+        this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: url });
+        await this.d.tangan.navigasi(url);
+        await this.d.tangan.tenang();
+        await this.keluarAllowlist(undefined);
+        this.d.gerbang.setAi({ jenis: 'ai_diam' });
+        await this.eskalasiBila(undefined);
+      } finally {
+        this.aksiBerjalan = undefined;
+      }
     });
   }
 

@@ -27,7 +27,7 @@ import { ADAPTERS, buildProgram, requiredData, type Params, type Program } from 
 import { egressAllowedHosts, matchOfficialOrigin, nav, type Step } from '@urusin/core';
 import { checkUrl, type UploadFile } from '@urusin/executor';
 import type { Config } from './config.js';
-import type { IzinGenerik, KolomIzin } from './generik.js';
+import { placeholderRencana, type IzinGenerik, type KolomIzin } from './generik.js';
 import { isInputMessage } from './input.js';
 import { dariDataDiri } from './isian.js';
 import type { FrameMasuk } from './stream.js';
@@ -71,7 +71,7 @@ export type JenisFokus = Extract<PendampingServerMessage, { type: 'fokus' }>['je
 export type PortGenerik = {
   /** null = halaman sedang berpindah; coba lagi. */
   amati(): Promise<Pengamatan | null>;
-  aksi(req: Pick<AksiSesiInternal, 'rencanaHash' | 'aksi' | 'seq'>): Promise<HasilAksi[]>;
+  aksi(req: Pick<AksiSesiInternal, 'rencanaHash' | 'aksi' | 'seq' | 'kolom'>): Promise<HasilAksi[]>;
 };
 
 export type ActiveRun = {
@@ -608,6 +608,12 @@ export class SessionManager {
    */
   async aksi(owner: { urusanId: string; sidHash: string }, req: AksiSesiInternal): Promise<AksiSesiResponse> {
     const s = this.requireGenerik(owner);
+    // Baris lembar dari web hanya untuk placeholder yang benar-benar dipakai rencana ini.
+    if (req.kolom) {
+      const dipakai = placeholderRencana(req.aksi);
+      if (!req.kolom.every((k) => dipakai.has(k.placeholder)))
+        throw new PendampingError('PESAN_TIDAK_SAH', 422, 'kolom memuat placeholder di luar rencana');
+    }
     const mode = this.modeNavigator(s);
     if (mode !== 'ai' || (s.status !== 'berjalan' && s.status !== 'menunggu_data'))
       return { mode, hasil: req.aksi.map((_, indeks) => ({ indeks, kode: 'DILEWATI' as const })) };

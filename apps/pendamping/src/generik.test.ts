@@ -62,6 +62,10 @@ type Opsi = {
   amati?: () => Pengamatan;
   aksi?: (a: AksiRunner) => HasilRunner | null;
   urlBoleh?: (url: string) => boolean;
+  /** Dipanggil saat worker menavigasi (mis. untuk mensimulasikan redirect yang dibatalkan allowlist). */
+  saatNavigasi?: (run: GenerikRun) => void;
+  /** URL dokumen akhir setelah navigasi ke URL tertentu (mensimulasikan redirect 302). */
+  alihkan?: Record<string, string>;
 };
 
 function harness(o: Opsi = {}) {
@@ -77,6 +81,7 @@ function harness(o: Opsi = {}) {
   const vault = new Map<string, string>();
   const setuju = new Map<string, Set<string>>();
   const ref: { run?: GenerikRun } = {};
+  let urlKini = 'https://portal.contoh.go.id/form';
   const gerbang = createGerbangTulis({
     wargaPegang: () => false,
     onBlokir: (c, j) => ref.run!.blokir(c, j),
@@ -95,9 +100,12 @@ function harness(o: Opsi = {}) {
     async navigasi(url) {
       jendelaSaatAksi.push(gerbang.jendela());
       navigasi.push(url);
+      urlKini = o.alihkan?.[url] ?? url;
+      o.saatNavigasi?.(ref.run!);
     },
     sorot: async () => ({ x: 1, y: 2, lebar: 3, tinggi: 4 }),
     tenang: async () => {},
+    urlKini: () => urlKini,
   };
   const izin: IzinGenerik = {
     disetujui: (h, sidik, ph) => setuju.get(h)?.has(`${sidik}|${ph}`) ?? false,
@@ -263,6 +271,134 @@ describe('GenerikRun: ref', () => {
       { indeks: 0, kode: 'REF_BASI' },
       { indeks: 1, kode: 'DILEWATI' },
     ]);
+  });
+});
+
+describe('GenerikRun: kolom dari validator web', () => {
+  it('label dan tidakLazim web dipakai; tidakLazim = OR dengan heuristik worker', async () => {
+    const h = harness();
+    await h.run.amati();
+    await h.run.aksi({
+      rencanaHash: H1,
+      aksi: [
+        { jenis: 'isi', ref: 'e1', nilai: PH_NAMA },
+        { jenis: 'isi', ref: 'e2', nilai: PH_NIK },
+      ],
+      kolom: [
+        { placeholder: PH_NAMA, labelPortal: 'Nama (sesuai KTP)', tidakLazim: true },
+        { placeholder: PH_NIK, labelPortal: 'Catatan' },
+      ],
+    });
+    expect(h.minta[0]?.kolom).toEqual([
+      { placeholder: PH_NAMA, labelPortal: 'Nama (sesuai KTP)', tidakLazim: true, sidik: 's-nama' },
+      // Web tidak menandai, heuristik worker menandai NIK ke label "Catatan".
+      { placeholder: PH_NIK, labelPortal: 'Catatan', tidakLazim: true, sidik: 's-nik' },
+    ]);
+  });
+
+  it('tanpa kolom web: label dari pengamatan', async () => {
+    const h = harness();
+    await h.run.amati();
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'isi', ref: 'e1', nilai: PH_NAMA }] });
+    expect(h.minta[0]?.kolom).toEqual([
+      { placeholder: PH_NAMA, labelPortal: 'Nama lengkap', sidik: 's-nama' },
+    ]);
+  });
+});
+
+describe('GenerikRun: host di luar allowlist', () => {
+  it('redirect navigasi AI ke host lain: GERBANG_MEMBLOKIR, host_kandidat, serah ke warga', async () => {
+    const h = harness({
+      aksi: () => ({
+        status: 'navigasi',
+        aturan: 'K8_NAVIGASI',
+        kelas: 'navigasi',
+        href: 'https://portal.contoh.go.id/pindah',
+      }),
+      // Allowlist rute membatalkan redirect 302 ke host lain selama navigasi AI.
+      saatNavigasi: (run) => run.hostDiblokir('lain.example', true),
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+    expect(r).toEqual([{ indeks: 0, kode: 'GERBANG_MEMBLOKIR', kelas: 'navigasi' }]);
+    expect(h.jejak).toContainEqual({ jenis: 'host_kandidat', host: 'lain.example' });
+    expect(h.serah[0]?.pesan).toBe(PESAN_GENERIK.hostLain);
+  });
+
+  it('halaman awal yang di-redirect ke host lain juga diserahkan ke warga', async () => {
+    const h = harness({ saatNavigasi: (run) => run.hostDiblokir('lain.example', true) });
+    await h.run.mulai('https://portal.contoh.go.id/');
+    expect(h.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.hostLain, sorot: undefined }]);
+  });
+
+  const hanyaPortal = (u: string) => URL.parse(u)?.host === 'portal.contoh.go.id';
+
+  it('redirect 302 yang ditolak proxy (bukan rute): dari URL dokumen, peramban dikembalikan', async () => {
+    const pindah = 'https://portal.contoh.go.id/pindah';
+    const h = harness({
+      aksi: () => ({ status: 'navigasi', aturan: 'K8_NAVIGASI', kelas: 'navigasi', href: pindah }),
+      urlBoleh: hanyaPortal,
+      alihkan: { [pindah]: 'chrome-error://chromewebdata/' },
+      // Hop redirect tidak lewat rute Playwright; proxy egress yang menolak (tanpa info dokumen).
+      saatNavigasi: (run) => run.hostDiblokir('lain.example', undefined),
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+    expect(r).toEqual([{ indeks: 0, kode: 'GERBANG_MEMBLOKIR', kelas: 'navigasi' }]);
+    expect(h.jejak.filter((c) => c.jenis === 'host_kandidat')).toEqual([
+      { jenis: 'host_kandidat', host: 'lain.example' },
+    ]);
+    expect(h.navigasi).toEqual([pindah, 'https://portal.contoh.go.id/form']);
+    expect(h.serah[0]?.pesan).toBe(PESAN_GENERIK.hostLain);
+    expect(h.gerbang.jendela()).toEqual({ jenis: 'ai_diam' });
+  });
+
+  it('dokumen berakhir di host http(s) lain: host itu yang jadi kandidat', async () => {
+    const pindah = 'https://portal.contoh.go.id/pindah';
+    const h = harness({
+      aksi: () => ({ status: 'navigasi', aturan: 'K8_NAVIGASI', kelas: 'navigasi', href: pindah }),
+      urlBoleh: hanyaPortal,
+      alihkan: { [pindah]: 'https://sso.lain.example/masuk' },
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+    expect(r[0]?.kode).toBe('GERBANG_MEMBLOKIR');
+    expect(h.jejak).toContainEqual({ jenis: 'host_kandidat', host: 'sso.lain.example' });
+  });
+
+  it('halaman awal di-redirect lewat proxy: diserahkan ke warga, tanpa navigasi balik', async () => {
+    const awal = 'https://portal.contoh.go.id/';
+    const h = harness({
+      urlBoleh: hanyaPortal,
+      alihkan: { [awal]: 'chrome-error://chromewebdata/' },
+      saatNavigasi: (run) => run.hostDiblokir('lain.example', undefined),
+    });
+    await h.run.mulai(awal);
+    expect(h.navigasi).toEqual([awal]);
+    expect(h.jejak).toContainEqual({ jenis: 'host_kandidat', host: 'lain.example' });
+    expect(h.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.hostLain, sorot: undefined }]);
+  });
+
+  it('penolakan proxy untuk subresource (dokumen tetap di allowlist): tidak dicatat, tidak diserahkan', async () => {
+    const pindah = 'https://portal.contoh.go.id/pindah';
+    const h = harness({
+      aksi: () => ({ status: 'navigasi', aturan: 'K8_NAVIGASI', kelas: 'navigasi', href: pindah }),
+      urlBoleh: hanyaPortal,
+      saatNavigasi: (run) => run.hostDiblokir('cdn.lain.example', undefined),
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+    expect(r[0]?.kode).toBe('ok');
+    expect(h.jejak.filter((c) => c.jenis === 'host_kandidat')).toEqual([]);
+    expect(h.serah).toEqual([]);
+  });
+
+  it('di luar aksi AI: hanya dicatat; subresource diabaikan', () => {
+    const h = harness();
+    h.run.hostDiblokir('iklan.example', false);
+    h.run.hostDiblokir('lain.example', true);
+    expect(h.jejak).toEqual([{ jenis: 'host_kandidat', host: 'lain.example' }]);
+    expect(h.serah).toEqual([]);
   });
 });
 

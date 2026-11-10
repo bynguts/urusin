@@ -205,3 +205,117 @@ test('generik: submit ditolak, isi butuh izin, REF_BASI, fetch POST diblokir -> 
     await situs.tutup();
   }
 });
+
+const AWAL = `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Layanan</title></head><body>
+<h1>Layanan kependudukan</h1>
+<label for="nama">Nama lengkap</label><input id="nama" name="nama" type="text">
+<a href="/pindah-dalam">Daftar Layanan</a>
+</body></html>`;
+const TUJUAN = `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Daftar layanan</title></head><body>
+<h1>Daftar layanan</h1><a href="/pindah-luar">Info Layanan</a></body></html>`;
+
+/** Situs uji dengan redirect 302: ke jalur lain di host yang sama, dan ke host di luar allowlist sesi. */
+async function situsRedirect() {
+  const server = http.createServer((req, res) => {
+    const jalur = new URL(req.url ?? '/', 'http://x').pathname;
+    const port = (server.address() as net.AddressInfo).port;
+    if (jalur === '/pindah-dalam') {
+      res.writeHead(302, { location: '/layanan/kk' });
+      return res.end();
+    }
+    if (jalur === '/pindah-luar') {
+      res.writeHead(302, { location: `http://127.0.0.2:${port}/luar` });
+      return res.end();
+    }
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(jalur === '/layanan/kk' ? TUJUAN : AWAL);
+  });
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+  return {
+    origin: `http://127.0.0.1:${(server.address() as net.AddressInfo).port}`,
+    tutup: () => new Promise<void>((r) => server.close(() => r())),
+  };
+}
+
+test('generik: kolom web di lembar izin; redirect 302 ke host sesi lanjut, ke host lain diserahkan ke warga', async () => {
+  const situs = await situsRedirect();
+  const config = loadConfig({
+    PENDAMPING_FIXTURE_ORIGINS: situs.origin,
+    PENDAMPING_ORIGIN_OVERRIDES: `${RESMI}=${situs.origin}`,
+    PENDAMPING_HEADLESS: '1',
+  });
+  const manager = new SessionManager(config, createBrowserFactory(config));
+  const o = { urusanId: 'u-redirect', sidHash: SID };
+  try {
+    await manager.create({
+      ...o,
+      executionId: 'x_redirect',
+      adapterId: ADAPTER_GENERIK,
+      flowId: 'navigator',
+      origin: RESMI,
+      params: { jalur: '/awal' },
+      modeUji: true,
+    });
+    await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('berjalan');
+    const a1 = await manager.amati(o);
+    const nama = cari(a1.pengamatan, 'Nama lengkap', 'teks');
+
+    // Kolom dari validator web: placeholder asing = 422; kolom sah dipakai apa adanya di lembar izin.
+    const isi = [{ jenis: 'isi' as const, ref: nama.ref, nilai: PH }];
+    await expect(
+      manager.aksi(o, {
+        ...o,
+        rencanaHash: H1,
+        seq: a1.pengamatan.seq,
+        aksi: isi,
+        kolom: [{ placeholder: '{{PEMOHON.NIK}}', labelPortal: 'NIK' }],
+      }),
+    ).rejects.toMatchObject({ status: 422 });
+    const r0 = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H1,
+      seq: a1.pengamatan.seq,
+      aksi: isi,
+      kolom: [{ placeholder: PH, labelPortal: 'Nama sesuai KTP', tidakLazim: true }],
+    });
+    expect(r0.hasil).toEqual([{ indeks: 0, kode: 'BELUM_DISETUJUI' }]);
+    expect(manager.butuhData(o)).toMatchObject({
+      kolom: [{ placeholder: PH, labelPortal: 'Nama sesuai KTP', tidakLazim: true }],
+      rencanaHash: H1,
+    });
+    // Warga menolak baris itu: tidak ada pasangan yang terikat, AI lanjut tanpa mengisinya.
+    await manager.isiData(o, {}, H1);
+    expect(manager.status(o).status).toBe('berjalan');
+
+    // 302 ke jalur lain di host sesi setelah Page.navigate: lanjut.
+    const r1 = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H2,
+      seq: a1.pengamatan.seq,
+      aksi: [{ jenis: 'klik', ref: cari(a1.pengamatan, 'Daftar Layanan', 'tautan').ref }],
+    });
+    expect(r1).toEqual({ mode: 'ai', hasil: [{ indeks: 0, kode: 'ok', kelas: 'navigasi' }] });
+    const a2 = await manager.amati(o);
+    expect(a2.pengamatan.jalur).toBe('/layanan/kk');
+
+    // 302 ke host di luar allowlist: dibatalkan, halaman tetap, warga mengambil alih, host kandidat dicatat.
+    const r2 = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H2,
+      seq: a2.pengamatan.seq,
+      aksi: [{ jenis: 'klik', ref: cari(a2.pengamatan, 'Info Layanan', 'tautan').ref }],
+    });
+    expect(r2).toEqual({
+      mode: 'takeover',
+      hasil: [{ indeks: 0, kode: 'GERBANG_MEMBLOKIR', kelas: 'navigasi' }],
+    });
+    expect((await manager.amati(o)).pengamatan.jalur).toBe('/layanan/kk');
+    expect(manager.kurasJejak(o).catatan).toContainEqual({
+      jenis: 'host_kandidat',
+      host: `127.0.0.2:${new URL(situs.origin).port}`,
+    });
+  } finally {
+    await manager.shutdown();
+    await situs.tutup();
+  }
+});
