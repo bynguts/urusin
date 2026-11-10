@@ -12,7 +12,8 @@
 //                                             # gagal (exit 1) bila <berkas> (mis. snippet terpasang) menyimpang
 //
 // `--worker laptop-a=100.100.223.10:4330` (boleh berulang, butuh --pendamping): rute WebSocket worker Pendamping
-// tambahan lewat Tailscale, `wss://<app>/pendamping/w/<id>/ws/<uuid>` -> edge worker `/ws/<uuid>`. Sama dengan
+// tambahan lewat Tailscale, `wss://<app>/pendamping/w/<id>/ws/<uuid>` (HANYA upgrade WebSocket GET; cookie hanya
+// `__Host-urusin_sid`) -> edge worker `/ws/<uuid>`; jalur lain di bawah /pendamping/w/<id>/ 404. Sama dengan
 // `wsUrl` worker itu di PENDAMPING_WORKERS (web).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -130,14 +131,33 @@ export function render(
     '\treverse_proxy 127.0.0.1:4330',
     '}',
   ];
-  // Worker tambahan: HANYA /pendamping/w/<id>/ws/* (bukan seluruh /pendamping/w/<id>/*), supaya /internal/*,
-  // /health, dan /debug edge worker tidak pernah publik. Edge worker sendiri juga hanya meng-upgrade /ws/<uuid>.
+  // Worker tambahan: HANYA upgrade WebSocket GET ke /pendamping/w/<id>/ws/* yang diteruskan; jalur lain di bawah
+  // /pendamping/w/<id>/ (termasuk /internal/*, /health, /debug edge worker, dan GET biasa ke /ws/*) dijawab 404.
+  // Laptop anggota bukan host tepercaya penuh: ke sana hanya cookie `__Host-urusin_sid` (pendamping memakainya
+  // untuk mencocokkan pemilik sesi); cookie lain (sesi akun, dll.) dan Authorization tidak pernah dikirim.
+  // Tanpa cookie sid yang berbentuk sah, permintaan berhenti di 404 (placeholder cookie yang tidak ada dibiarkan
+  // Caddy apa adanya, jadi tanpa syarat ini teks `{http.request.cookie...}` yang akan sampai ke laptop).
+  // `method GET` + Connection/Upgrade cukup: Caddy 2.11 tidak mengiklankan WebSocket HTTP/2 (RFC 8441,
+  // SETTINGS_ENABLE_CONNECT_PROTOCOL=0), jadi peramban selalu memakai upgrade HTTP/1.1.
   for (const w of ws)
     pdLines.push(
       `# Worker Pendamping "${w.id}" lewat Tailscale (wsUrl wss://${app}/pendamping/w/${w.id}/ws).`,
-      `handle /pendamping/w/${w.id}/ws/* {`,
+      `@w_${w.id} {`,
+      `\tpath /pendamping/w/${w.id}/ws/*`,
+      '\theader Connection *Upgrade*',
+      '\theader Upgrade websocket',
+      '\theader_regexp Cookie `(?:^|; *)__Host-urusin_sid=[0-9a-f]{32}(?:;|$)`',
+      '\tmethod GET',
+      '}',
+      `handle @w_${w.id} {`,
       `\turi strip_prefix /pendamping/w/${w.id}`,
-      `\treverse_proxy ${w.ip}:${w.port}`,
+      `\treverse_proxy ${w.ip}:${w.port} {`,
+      '\t\theader_up Cookie "__Host-urusin_sid={http.request.cookie.__Host-urusin_sid}"',
+      '\t\theader_up -Authorization',
+      '\t}',
+      '}',
+      `handle /pendamping/w/${w.id}/* {`,
+      '\trespond 404',
       '}',
     );
   const pdBlock = pdLines.map((l) => (pendamping ? `\t${l}` : `\t# ${l}`)).join('\n');

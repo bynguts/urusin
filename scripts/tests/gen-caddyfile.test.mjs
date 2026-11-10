@@ -107,7 +107,7 @@ describe('gen-caddyfile', () => {
       assert.throws(() => render('primary', hosts.primary, { importPath: bad }), bad);
   });
 
-  it('--worker: rute HANYA /pendamping/w/<id>/ws/* ke IP Tailscale, di situs app/verify', () => {
+  it('--worker: HANYA upgrade WS GET /pendamping/w/<id>/ws/* ke IP Tailscale; sisanya 404; cookie hanya sid', () => {
     const text = render('primary', hosts.primary, {
       pendamping: true,
       workers: ['laptop-a=100.100.223.10:4330', 'laptop-b=100.64.0.7:4331'],
@@ -116,18 +116,60 @@ describe('gen-caddyfile', () => {
     assert.ok(
       text.includes(
         [
-          '\thandle /pendamping/w/laptop-a/ws/* {',
+          '\t@w_laptop-a {',
+          '\t\tpath /pendamping/w/laptop-a/ws/*',
+          '\t\theader Connection *Upgrade*',
+          '\t\theader Upgrade websocket',
+          '\t\theader_regexp Cookie `(?:^|; *)__Host-urusin_sid=[0-9a-f]{32}(?:;|$)`',
+          '\t\tmethod GET',
+          '\t}',
+          '\thandle @w_laptop-a {',
           '\t\turi strip_prefix /pendamping/w/laptop-a',
-          '\t\treverse_proxy 100.100.223.10:4330',
+          '\t\treverse_proxy 100.100.223.10:4330 {',
+          '\t\t\theader_up Cookie "__Host-urusin_sid={http.request.cookie.__Host-urusin_sid}"',
+          '\t\t\theader_up -Authorization',
+          '\t\t}',
+          '\t}',
+          '\thandle /pendamping/w/laptop-a/* {',
+          '\t\trespond 404',
           '\t}',
         ].join('\n'),
       ),
     );
     assert.deepEqual(code.match(/^[ \t]*handle .*$/gm), [
       '\thandle /pendamping/ws/* {',
-      '\thandle /pendamping/w/laptop-a/ws/* {',
-      '\thandle /pendamping/w/laptop-b/ws/* {',
+      '\thandle @w_laptop-a {',
+      '\thandle /pendamping/w/laptop-a/* {',
+      '\thandle @w_laptop-b {',
+      '\thandle /pendamping/w/laptop-b/* {',
     ]);
+    // Cookie lain (sesi akun) dan Authorization tidak pernah sampai ke laptop: SETIAP reverse_proxy worker
+    // menimpa Cookie dengan sid saja dan membuang Authorization.
+    const proxyWorker = code.match(/reverse_proxy 100\.[^\n]* \{\n(?:\t\t\t[^\n]*\n)*\t\t\}/g) ?? [];
+    assert.equal(proxyWorker.length, 2);
+    for (const b of proxyWorker) {
+      assert.match(
+        b,
+        /\n\t+header_up Cookie "__Host-urusin_sid=\{http\.request\.cookie\.__Host-urusin_sid\}"\n/,
+      );
+      assert.match(b, /\n\t+header_up -Authorization\n/);
+    }
+    // Setiap matcher worker mensyaratkan path ws + upgrade websocket + cookie sid berbentuk sah + GET.
+    for (const id of ['laptop-a', 'laptop-b'])
+      assert.ok(
+        code.includes(
+          [
+            `\t@w_${id} {`,
+            `\t\tpath /pendamping/w/${id}/ws/*`,
+            '\t\theader Connection *Upgrade*',
+            '\t\theader Upgrade websocket',
+            '\t\theader_regexp Cookie `(?:^|; *)__Host-urusin_sid=[0-9a-f]{32}(?:;|$)`',
+            '\t\tmethod GET',
+            '\t}',
+          ].join('\n'),
+        ),
+        id,
+      );
     // Bukan handle_path seluruh /pendamping/w/<id>/*: /internal, /health, /debug edge worker tidak publik.
     assert.doesNotMatch(code, /handle_path|\/internal|\/debug|[^i]\/health/);
     assert.ok(code.indexOf('reverse_proxy 100.64.0.7:4331') < code.indexOf('import urusin_common'));
