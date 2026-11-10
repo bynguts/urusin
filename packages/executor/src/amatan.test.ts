@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { PengamatanSchema } from '@urusin/contracts';
 import { BATAS_AMATAN, bangunPengamatan, elemenDariJalur, ikatUlang, sidikElemen } from './amatan.js';
 import { setNativeValue } from './runner-ops.js';
 
@@ -268,6 +269,7 @@ describe('properti: pengamatan tidak pernah memuat nilai isian', () => {
         document.title = `Hasil ${gema}`;
       }
       const hasil = bangunPengamatan(document, { seq: seed });
+      PengamatanSchema.parse(hasil.pengamatan); // juga sah menurut kontrak WP-D
       const serial = JSON.stringify(hasil);
       for (const v of nilai) {
         diperiksa++;
@@ -279,5 +281,5 @@ describe('properti: pengamatan tidak pernah memuat nilai isian', () => {
       document.title = '';
     }
     expect(diperiksa).toBeGreaterThan(1000);
-  });
+  }, 60_000); // 300 halaman DOM nyata + parse zod; jauh di atas 5 s bawaan saat turbo paralel
 });
