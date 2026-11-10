@@ -479,7 +479,7 @@ describe('temuan eval persona W6: hand-off tidak diulang identik', () => {
     expect(pertama!.length).toBeGreaterThan(0);
     expect(kedua!.length).toBeGreaterThan(0);
     // Kanal kedua tidak mengulang satu pun kanal pertama.
-    const norm = (x: string) => x.toLowerCase().replace(/\/+$/, '');
+    const norm = (x?: string) => (x ?? '').toLowerCase().replace(/\/+$/, '');
     expect(kedua!.some((k) => pertama!.map(norm).includes(norm(k)))).toBe(false);
     // Semua kanal sudah diberikan: tidak ada hand-off lagi, model diminta memberi langkah lain.
     expect(await kanal()).toHaveLength(0);
