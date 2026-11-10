@@ -63,6 +63,7 @@ check "DOCKER_CONFIG temp dihapus setelah selesai" '[ ! -e "$(cat "$SHIM_DIR/log
 check "builder khusus urusin-ci + push + SBOM + provenance max" '[[ "$calls" == *"[--builder] [urusin-ci]"* && "$calls" == *"[--push] [--sbom=true] [--provenance=mode=max]"* ]]'
 check "tag ghcr.io/bynguts/urusin-web:<sha> + GIT_SHA" '[[ "$calls" == *"[--tag] [ghcr.io/bynguts/urusin-web:$SHA]"* && "$calls" == *"[GIT_SHA=$SHA]"* ]]'
 check "tanpa entitlement --allow / network host" '[[ "$calls" != *"--allow"* && "$calls" != *"network=host"* ]]'
+check "build membuang ref lokal job ini saja (:sha dan @digest, tanpa -f/prune image)" '[[ "$calls" == *"[image] [rm] [ghcr.io/bynguts/urusin-web:$SHA]"* && "$calls" == *"[image] [rm] [ghcr.io/bynguts/urusin-web@$DIG]"* ]] && [[ "$calls" != *"image] [prune"* && "$calls" != *"system"* ]]'
 check "cache builder dipangkas ke 1,5 GB setelah build" '[[ "$calls" == *"[buildx] [prune] [--builder] [urusin-ci] [--force] [--max-used-space] [1500mb]"* ]]'
 
 echo "== pw (kontainer Playwright)"
@@ -91,13 +92,38 @@ SHIM_DF_PCT=50 cid pw e2e "$WS" "$SHA"
 check "package.json tanpa packageManager pnpm ditolak sebelum docker run" '[ $rc -ne 0 ] && [ -z "$calls" ]'
 printf '{\n  "packageManager": "pnpm@10.20.0"\n}\n' > "$WS/package.json"
 
+echo "== smoke (hanya arsitektur native, semua dengan timeout)"
+printf 'enabled\n' > "$SB/binfmt-ada"
+export URUSIN_CI_ARCH=aarch64 URUSIN_CI_BINFMT="$SB/binfmt-ada"
+REF="ghcr.io/bynguts/urusin-web@$DIG"
+SHIM_DF_PCT=50 cid smoke web "$DIG" "$WS"
+check "smoke web lulus di host arm64" '[ $rc -eq 0 ]'
+check "manifest index diperiksa (imagetools inspect --raw)" '[[ "$calls" == *"[buildx] [imagetools] [inspect] [--raw] [$REF]"* ]]'
+check "hanya varian native yang ditarik (satu pull linux/arm64)" '[ "$(grep -c "^docker \[pull\]" <<<"$calls")" = 1 ] && [[ "$calls" == *"[pull] [-q] [--platform] [linux/arm64] [$REF]"* ]]'
+check "tidak ada pull/run amd64 (qemu)" '[[ "$calls" != *"linux/amd64"* ]]'
+check "kontainer smoke bernama urusin-ci-smoke-* (bisa dihentikan paksa)" '[[ "$(grep "^docker \[run\]" <<<"$calls")" == *"[--name] [urusin-ci-smoke-"* ]]'
+check "image smoke dibuang (tanpa -f, tanpa prune)" '[[ "$calls" == *"[image] [rm] [$REF]"* ]] && [[ "$calls" != *"prune"* && "$calls" != *"[rm] [-f] [$REF]"* ]]'
+SHIM_DF_PCT=50 cid smoke pendamping "$DIG" "$WS"
+check "smoke pendamping: 3 run native, semuanya urusin-ci-smoke-*" '[ $rc -eq 0 ] && [ "$(grep -c "^docker \[run\]" <<<"$calls")" = 3 ] && [ "$(grep "^docker \[run\]" <<<"$calls" | grep -c "\[--name\] \[urusin-ci-smoke-")" = 3 ] && [[ "$calls" != *"linux/amd64"* ]]'
+SHIM_PLATFORMS="linux/arm64" SHIM_DF_PCT=50 cid smoke web "$DIG" "$WS"
+check "binfmt ada tetapi manifest tanpa amd64: ditolak sebelum pull" '[ $rc -ne 0 ] && [[ "$out" == *"tanpa linux/amd64"* ]] && [[ "$calls" != *"[pull]"* ]]'
+URUSIN_CI_BINFMT="$SB/tidak-ada" SHIM_PLATFORMS="linux/arm64" SHIM_DF_PCT=50 cid smoke web "$DIG" "$WS"
+check "tanpa binfmt: index arm64 saja cukup" '[ $rc -eq 0 ]'
+SHIM_RUN_RC=124 SHIM_DF_PCT=50 cid smoke fixtures "$DIG" "$WS"
+check "smoke melewati timeout: gagal, kontainer dihentikan paksa, image tetap dibuang" '[ $rc -ne 0 ] && [[ "$out" == *"melewati"* ]] && [[ "$calls" == *"[rm] [-f] [urusin-ci-smoke-"* ]] && [[ "$calls" == *"[image] [rm] [ghcr.io/bynguts/urusin-fixtures@$DIG]"* ]]'
+URUSIN_CI_ARCH=riscv64 SHIM_DF_PCT=50 cid smoke web "$DIG" "$WS"
+check "arsitektur host tak dikenal ditolak sebelum pull" '[ $rc -ne 0 ] && [[ "$calls" != *"[pull]"* ]]'
+smoke_src="$(sed -n '/^cmd_smoke()/,/^}/p' "$CI/ci-docker")"
+check "di cmd_smoke tidak ada docker run tanpa batas waktu" '[ -n "$smoke_src" ] && ! grep -q "docker run" <<<"$smoke_src" && grep -q "timeout 900 docker pull" <<<"$smoke_src"'
+unset URUSIN_CI_ARCH URUSIN_CI_BINFMT
+
 echo "== alias / builder"
 cid alias "$SHA" rc1
 check "alias membuat tag dari digest :<sha> (imagetools create, bukan build)" '[ $rc -eq 0 ] && [ "$(grep -c "\[imagetools\] \[create\]" <<<"$calls")" = 3 ] && [[ "$calls" != *"[build]"* ]]'
 cid builder-gc
 check "gc hanya untuk builder urusin-ci, batas 1,5 GB (bukan prune global)" '[[ "$calls" == *"[buildx] [prune] [--builder] [urusin-ci] [--force] [--max-used-space] [1500mb]"* ]] && [[ "$calls" != *"[system]"* && "$calls" != *"[builder] [prune]"* ]]'
 cid cleanup
-check "cleanup hanya kontainer urusin-ci-pw-* (tanpa prune)" '[ $rc -eq 0 ] && [[ "$calls" == *"[name=^urusin-ci-pw-]"* ]] && [[ "$calls" != *"prune"* ]]'
+check "cleanup hanya kontainer urusin-ci-pw-* dan urusin-ci-smoke-* (tanpa prune)" '[ $rc -eq 0 ] && [[ "$calls" == *"[name=^urusin-ci-pw-] [--filter] [name=^urusin-ci-smoke-]"* ]] && [[ "$calls" != *"prune"* ]]'
 SHIM_NO_BUILDER=1 cid builder-init
 check "builder-init: docker-container + buildkitd.toml + batas CPU/memori" '[[ "$calls" == *"[--driver] [docker-container]"* && "$calls" == *"buildkitd.toml]"* && "$calls" == *"memory=4g"* ]]'
 
