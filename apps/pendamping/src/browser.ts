@@ -349,8 +349,9 @@ export async function launchIsolated(
         if (host) onBlocked(host);
         return route.abort('blockedbyclient');
       }
-      if (gerbang && gerbang.periksa(permintaanGerbang(req)) === 'blokir')
-        return route.abort('blockedbyclient');
+      // `aborted` (net::ERR_ABORTED): navigasi dokumen yang dibatalkan tidak meng-commit halaman galat, jadi
+      // warga tetap melihat formulir yang sama (dengan isiannya) untuk ditekan sendiri.
+      if (gerbang && gerbang.periksa(permintaanGerbang(req)) === 'blokir') return route.abort('aborted');
       return route.continue();
     });
     const ctx = context;
@@ -712,8 +713,10 @@ async function wire(
     if (r.isNavigationRequest() && r.frame() === page.mainFrame()) loading = true;
   });
   page.on('requestfailed', (r) => {
-    if (r.isNavigationRequest() && r.frame() === page.mainFrame())
-      navGagal = r.failure()?.errorText ?? 'net::ERR_FAILED';
+    if (!r.isNavigationRequest() || r.frame() !== page.mainFrame()) return;
+    navGagal = r.failure()?.errorText ?? 'net::ERR_FAILED';
+    // Navigasi yang dibatalkan (gerbang tulis) tidak memuat halaman apa pun: tidak ada `load` yang menyusul.
+    if (navGagal === 'net::ERR_ABORTED') loading = false;
   });
   page.on('framenavigated', (f) => {
     if (f !== page.mainFrame()) return;
