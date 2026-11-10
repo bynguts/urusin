@@ -73,7 +73,7 @@ export type HasilAksi = {
 /** Fitur klik untuk audit: hanya struktur dan boolean, tanpa teks situs. */
 export type FiturAudit = Omit<
   FiturKendali,
-  'teksTampak' | 'ariaLabel' | 'nilai' | 'title' | 'idKelas' | 'href'
+  'teksTampak' | 'ariaLabel' | 'nilai' | 'title' | 'idKelas' | 'ikon' | 'href'
 > & { hrefHost: string };
 
 export type HasilAksiOp = { hasil: HasilAksi[] };
@@ -385,7 +385,7 @@ const tolak = (status: 'ditolak' | 'gagal', aturan: string, kode: string): Putus
 });
 
 function fiturAudit(f: FiturKendali): FiturAudit {
-  const { teksTampak: _t, ariaLabel: _a, nilai: _n, title: _ti, idKelas: _i, href, ...sisa } = f;
+  const { teksTampak: _t, ariaLabel: _a, nilai: _n, title: _ti, idKelas: _i, ikon: _ik, href, ...sisa } = f;
   return { ...sisa, hrefHost: href.host };
 }
 

@@ -21,6 +21,8 @@ export type AturanKlasifikasi =
   | 'K7_NEG'
   /** Tautan GET yang kena NEG hanya lewat nama (jalur/id/ikon bersih): tetap `kirim`, amatan `tautanPembuka`. */
   | 'K7_NEG_NAMA_TAUTAN'
+  /** Tautan GET yang kena NEG hanya lewat ikon di dalamnya (mis. feather credit-card): tetap `kirim`, pembuka. */
+  | 'K7_NEG_IKON_TAUTAN'
   | 'K7B_TEKS_CURIGA'
   | 'K8_NAVIGASI'
   | 'K9_UI_LOKAL'
@@ -36,8 +38,10 @@ export type FiturKendali = {
   /** Hanya label tombol `input[type=button|submit|reset|image]`; nilai field isian TIDAK PERNAH dibaca. */
   nilai: string;
   title: string;
-  /** Token id/class/name/ikon (huruf kecil, tanpa pemisah). */
+  /** Token id/class/name elemen itu sendiri (huruf kecil, tanpa pemisah). */
   idKelas: string[];
+  /** Token ikon di dalam elemen (`<i class="fa ...">`, svg/use, material-icons). */
+  ikon: string[];
   href: { ada: boolean; host: string; jalur: string; js: boolean; download: boolean; hanyaFragmen: boolean };
   submitterAsli: boolean;
   formAdaSandi: boolean;
@@ -333,9 +337,12 @@ function formPemilik(el: Element): HTMLFormElement | null {
 function submitterAsliDari(el: Element): boolean {
   const tag = el.tagName;
   if (tag === 'BUTTON') {
-    // Atribut type kosong/tak dikenal = submit (default HTML), di dalam form maupun tidak.
+    // Atribut type kosong/tak dikenal = submit (default HTML), tetapi hanya mengirim bila punya form pemilik
+    // (form leluhur atau atribut form=). Di luar form (menu seluler) tidak mengirim apa pun. type=submit eksplisit
+    // tetap submitter di mana pun.
     const t = (el.getAttribute('type') ?? '').trim().toLowerCase();
-    return t !== 'button' && t !== 'reset';
+    if (t === 'button' || t === 'reset') return false;
+    return t === 'submit' || formPemilik(el) !== null;
   }
   if (tag === 'INPUT') {
     const t = (el as HTMLInputElement).type;
@@ -376,7 +383,7 @@ function hostDari(src: string, dasar: string): string {
 
 function dalamFrameTantanganDari(el: Element): boolean {
   const doc = el.ownerDocument;
-  const dasar = doc.defaultView?.location.href ?? 'about:blank';
+  const dasar = doc.baseURI || 'about:blank';
   if (RE_HOST_TANTANGAN.test(doc.defaultView?.location.hostname ?? '')) return true;
   if (el.tagName === 'IFRAME' && RE_HOST_TANTANGAN.test(hostDari(atribut(el, 'src'), dasar))) return true;
   if (el.closest(SEL_WADAH_TANTANGAN)) return true;
@@ -448,9 +455,17 @@ export function halamanAkhir(doc: Document): boolean {
   return false;
 }
 
+function tokenDari(sumber: string[]): string[] {
+  return sumber.flatMap((s) => tokenKata(normalTeks(s).replace(/([a-z])([A-Z])/g, '$1 $2')));
+}
+
 function tokenIdKelas(el: Element): string[] {
-  const sumber = [el.id, atribut(el, 'class'), atribut(el, 'name')];
-  // Ikon di dalam tombol/tautan: <i class="fa fa-paper-plane">, <span class="material-icons">send</span>, svg.
+  return tokenDari([el.id, atribut(el, 'class'), atribut(el, 'name')]);
+}
+
+/** Ikon di dalam tombol/tautan: <i class="fa fa-paper-plane">, <span class="material-icons">send</span>, svg. */
+function tokenIkon(el: Element): string[] {
+  const sumber: string[] = [];
   for (const ikon of el.querySelectorAll(
     'i, svg, use, span[class*="icon"], span[class*="fa-"], span[class*="bi-"]',
   )) {
@@ -462,7 +477,7 @@ function tokenIdKelas(el: Element): string[] {
     );
     if (/material|icon/.test(atribut(ikon, 'class'))) sumber.push(ikon.textContent ?? '');
   }
-  return sumber.flatMap((s) => tokenKata(normalTeks(s).replace(/([a-z])([A-Z])/g, '$1 $2')));
+  return tokenDari(sumber);
 }
 
 /** Bangun fitur §3 dari elemen. `akhir` boleh diisi bila sudah dihitung untuk halaman yang sama. */
@@ -490,7 +505,8 @@ export function fiturKendali(el: Element, akhir?: boolean): FiturKendali {
     href.download = el.hasAttribute('download');
     href.hanyaFragmen = h === '' || h.startsWith('#');
     try {
-      const u = new URL(h, doc.defaultView?.location.href ?? 'about:blank');
+      // baseURI (menghormati <base href>) = URL yang benar-benar dibuka saat diklik.
+      const u = new URL(h, doc.baseURI || 'about:blank');
       href.host = /^https?:$/.test(u.protocol) ? u.host.toLowerCase() : '';
       href.jalur = normalTeks(decodeURIComponent(u.pathname + u.search));
     } catch {
@@ -508,6 +524,7 @@ export function fiturKendali(el: Element, akhir?: boolean): FiturKendali {
     nilai,
     title: normalTeks(el.getAttribute('title')),
     idKelas: tokenIdKelas(el),
+    ikon: tokenIkon(el),
     href,
     submitterAsli: submitterAsliDari(el),
     formAdaSandi: !!form?.querySelector('input[type="password"]'),
@@ -578,15 +595,21 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
 
   // Frasa menu persis (Daftar Layanan, Status Pengajuan) melewati cek NAMA saja; id/kelas/ikon/jalur tetap.
   const menuAman = tautan && nama.length > 0 && nama.every((n) => MENU_AMAN.has(bersihkanPanah(lipatNeg(n))));
-  const idKelas = f.idKelas.join(' ');
+  const negToken = (t: string[]) =>
+    cocokNeg(t.join(' '), NEG_AKAR) || t.some((x) => NEG_IKON.some((k) => x.includes(k)));
   const negNama = !menuAman && nama.some((n) => cocokNeg(n, NEG_AKAR));
+  const negIkon = negToken(f.ikon);
   const negLain =
-    cocokNeg(idKelas, NEG_AKAR) ||
-    f.idKelas.some((t) => NEG_IKON.some((k) => t.includes(k))) ||
+    negToken(f.idKelas) ||
     (tautan &&
       tokenKata(f.href.jalur).some((t) => !BUKAN_NEG.test(t) && NEG_JALUR.some((k) => t.includes(k)))) ||
     f.href.download;
   if (negLain) return { kelas: 'kirim', aturan: 'K7_NEG' };
+  // Ikon saja (probe SIDAK: feather credit-card = ikon KTP/KK) pada tautan GET bersih: pembuka, diketuk warga.
+  if (negIkon && !negNama)
+    return tautanGetBiasa(f)
+      ? { kelas: 'kirim', aturan: 'K7_NEG_IKON_TAUTAN' }
+      : { kelas: 'kirim', aturan: 'K7_NEG' };
   if (negNama)
     // Tautan GET biasa yang hanya namanya berbunyi tulis (Ajukan/Daftar/Proses): tetap kirim, tetapi otak boleh
     // menyerahkannya ke warga sebagai "ketuk tautan" (bukan tombol final).
@@ -602,7 +625,7 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
   if (f.kendaliLokal) return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
 
   const tombolBiasa =
-    (f.tag === 'button' && f.type === 'button') ||
+    (f.tag === 'button' && !f.submitterAsli && f.type !== 'reset') ||
     (f.tag === 'input' && f.type === 'button') ||
     f.role === 'button';
   const namaUtama = bersihkanPanah(f.teksTampak || f.nilai);
@@ -644,6 +667,9 @@ export function klasifikasi(el: Element, akhir?: boolean): HasilKlasifikasi {
   if (!bolehDiklikAi(utama.kelas)) return utama;
   for (const x of aktivatorTerkait(el)) {
     const k = putuskanKelas(fiturKendali(x, fitur.halamanAkhir));
+    // Probe 1901: <button type=button><a href=/jenis-layanan>. Tombol pembungkus tanpa sinyal apa pun (K11:
+    // bukan submitter, tanpa atribut berbahaya, nama netral) tidak mengunci tautan navigasi di dalamnya.
+    if (utama.aturan === 'K8_NAVIGASI' && k.aturan === 'K11_DEFAULT') continue;
     if (!bolehDiklikAi(k.kelas)) return { ...k, fitur };
   }
   return utama;
