@@ -257,7 +257,12 @@ function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?
   const w = wilayahUrusan(ctx.store, ctx.urusan);
   const kode = kodeUtama ?? kodeKtp(ctx.store, ctx.urusan) ?? ctx.urusan.kodeKabKota;
   // Pindah: dua Disdukcapil berwenang (asal dan tujuan); yang tidak sedang ditanyakan jadi kanal pengganti.
-  const kodeLain = jenis === 'pindah' ? [w.ktp?.kodeKabKota, w.tujuan?.kodeKabKota] : [];
+  // Domisili (KTP luar daerah) dan wilayah KTP saling jadi pengganti.
+  const kodeLain = [
+    w.ktp?.kodeKabKota,
+    w.domisili?.kodeKabKota,
+    ...(jenis === 'pindah' ? [w.tujuan?.kodeKabKota] : []),
+  ];
   const calon: PayloadOf<'handoff'>['kanal'] =
     jenis === null || ADMINDUK.has(jenis)
       ? [

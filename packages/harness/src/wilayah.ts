@@ -91,14 +91,23 @@ const SISI_TUJUAN =
   /\b(tujuan|lapor datang|daerah baru|alamat baru|tempat baru|skdwni|surat (keterangan )?datang)\b/i;
 
 /**
- * Yurisdiksi untuk hand-off: wilayah KTP, kecuali urusan pindah yang ditanyakan tentang sisi TUJUAN: nama tujuan
- * disebut (nama asal tidak), atau kata "tujuan/lapor datang/alamat baru" tanpa menyebut SKPWNI. SKPWNI ke asal.
+ * Yurisdiksi untuk hand-off: wilayah KTP, kecuali (1) di luar pindah, warga menyebut kab/kota DOMISILI-nya (mis. KTP Surabaya,
+ * kuliah di Semarang, bertanya "Disdukcapil Semarang di mana?"): kanal domisili; (2) urusan pindah yang ditanyakan
+ * tentang sisi TUJUAN: nama tujuan disebut (nama asal tidak), atau kata "tujuan/lapor datang/alamat baru" tanpa
+ * menyebut SKPWNI. SKPWNI ke asal.
  */
 export function kodeYurisdiksi(store: HarnessStore, u: UrusanRow, teks: string): string | null {
   const w = wilayahUrusan(store, u);
   const asal = w.ktp?.kodeKabKota ?? u.kodeKabKota;
-  if (u.jenis !== 'pindah' || !w.ktp || !w.tujuan || w.tujuan.kodeKabKota === w.ktp.kodeKabKota) return asal;
   const kode = temukanWilayah(teks).map((s) => s.wilayah.kodeKabKota);
+  // Domisili disebut: warga bertanya tentang kantor tempat tinggalnya, juga bila sekaligus protes "kok Surabaya?".
+  if (
+    u.jenis !== 'pindah' &&
+    w.domisili &&
+    (kode.includes(w.domisili.kodeKabKota) || sebutInti(teks, w.domisili))
+  )
+    return w.domisili.kodeKabKota;
+  if (u.jenis !== 'pindah' || !w.ktp || !w.tujuan || w.tujuan.kodeKabKota === w.ktp.kodeKabKota) return asal;
   if (kode.includes(w.ktp.kodeKabKota) || sebutInti(teks, w.ktp)) return asal;
   // Nama tujuan menang, juga untuk minta bantuan SKPWNI di tujuan (Permendagri 108/2019 Ps. 31).
   if (kode.includes(w.tujuan.kodeKabKota) || sebutInti(teks, w.tujuan)) return w.tujuan.kodeKabKota;
