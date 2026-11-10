@@ -50,7 +50,7 @@ const memoryKV = (): KV => {
 
 const INTERRUPTED_RE =
   /Execution context was destroyed|Cannot find context|Inspected target navigated|Target closed|Frame .* detached|No frame/i;
-const MUTATING: ReadonlySet<RunnerOp['kind']> = new Set(['step', 'upload', 'consent']);
+const MUTATING: ReadonlySet<RunnerOp['kind']> = new Set(['step', 'upload', 'consent', 'aksi']);
 
 /** Kode galat jaringan Chromium (`net::ERR_*`) -> alasan dalam kata sederhana. */
 function alasanJaringan(net: string): string {
@@ -496,7 +496,7 @@ async function wire(
   const mainFrameId = async () =>
     ((await cdp.send('Page.getFrameTree')) as { frameTree: { frame: { id: string } } }).frameTree.frame.id;
 
-  async function evaluate(op: RunnerOp | { kind: 'amati' | 'aksi' }): Promise<RunnerResult | 'interrupted'> {
+  async function evaluate(op: RunnerOp): Promise<RunnerResult | 'interrupted'> {
     try {
       const { executionContextId } = (await cdp.send('Page.createIsolatedWorld', {
         frameId: await mainFrameId(),
@@ -976,7 +976,16 @@ async function wire(
     };
     generik = new GenerikRun({
       tangan: tanganRunner({
-        evaluate: (op) => evaluate(op as RunnerOp),
+        // Aksi generik = op yang mengubah halaman: periksa tantangan dulu; selama tantangan/takeover AI tidak
+        // menyentuh halaman sama sekali (aksi gagal, Navigator menunggu lewat `tunggu`).
+        evaluate: async (op) => {
+          const o = op as RunnerOp;
+          if (MUTATING.has(o.kind)) {
+            await periksaTantangan();
+            if (ditahan() || destroyed) return { ok: false, code: 'DITAHAN', message: 'giliran warga' };
+          }
+          return evaluate(o);
+        },
         async navigasi(url) {
           navTerakhir = url;
           navGagal = undefined;

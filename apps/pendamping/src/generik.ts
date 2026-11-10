@@ -12,7 +12,13 @@ import {
   type PendampingSorot,
   type Pengamatan,
 } from '@urusin/contracts';
-import type { UploadFile } from '@urusin/executor';
+import type {
+  AksiRunner,
+  HasilAksi as HasilAksiRunner,
+  PetaRef,
+  RefTersimpan,
+  UploadFile,
+} from '@urusin/executor';
 import { JENDELA_ISI_MS, type CatatanBlokir, type GerbangTulis, type Jendela } from './gerbang-tulis.js';
 
 /**
@@ -29,27 +35,12 @@ import { JENDELA_ISI_MS, type CatatanBlokir, type GerbangTulis, type Jendela } f
 
 // --- Port ke runner op `amati`/`aksi` (packages/executor, WP-A). SATU-SATUNYA titik integrasi. ---------------
 
-export type RefTersimpan = { jalur: string; sidik: string };
-export type PetaRef = Record<string, RefTersimpan>;
+/** Tipe op runner dari @urusin/executor (WP-A): peta ref, aksi ter-resolve, hasil rinci. */
+export type { AksiRunner, PetaRef, RefTersimpan };
 
-/** Aksi yang dikirim ke runner: nilai vault sudah di-resolve worker (hanya pasangan yang disetujui). */
-export type AksiRunner =
-  | { jenis: 'isi'; ref: string; placeholder: string; nilai: string }
-  | { jenis: 'pilih'; ref: string; opsi: number }
-  | { jenis: 'pilih'; ref: string; placeholder: string; nilai: string }
-  | { jenis: 'centang'; ref: string; nilai: boolean }
-  | { jenis: 'unggah'; ref: string; berkas: UploadFile }
-  | { jenis: 'klik'; ref: string };
-
-/** Hasil satu aksi dari runner (tanpa nilai). */
-export type HasilRunner = {
-  status: 'ok' | 'navigasi' | 'ditolak' | 'gagal' | 'dilewati';
-  /** Id aturan: `K1_..`..`K11_..` (klasifikator) atau `A_*` (runner). */
-  aturan: string;
-  kode?: string | undefined;
-  kelas?: KelasKendali | undefined;
+/** Hasil satu aksi dari runner (tanpa nilai): bagian HasilAksi executor yang dipakai worker. */
+export type HasilRunner = Pick<HasilAksiRunner, 'status' | 'aturan' | 'kode' | 'kelas' | 'href'> & {
   fitur?: Record<string, unknown> | undefined;
-  href?: string | undefined;
 };
 
 export type TanganHalaman = {
