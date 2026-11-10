@@ -19,7 +19,7 @@ export type AturanKlasifikasi =
   | 'K5_ATRIBUT'
   | 'K6_AKHIR_DIALOG'
   | 'K7_NEG'
-  /** Tautan GET yang kena NEG hanya lewat nama (jalur/id/ikon bersih): tetap `kirim`, amatan `sebabKelas: 'nama_tautan'`. */
+  /** Tautan GET yang kena NEG hanya lewat nama (jalur/id/ikon bersih): tetap `kirim`, amatan `tautanPembuka`. */
   | 'K7_NEG_NAMA_TAUTAN'
   | 'K7B_TEKS_CURIGA'
   | 'K8_NAVIGASI'
