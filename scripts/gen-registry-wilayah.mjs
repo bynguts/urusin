@@ -45,6 +45,8 @@ const PROTEKSI = [
   'honeypot',
 ];
 const DOMISILI = ['khusus_penduduk', 'tidak_dibatasi', 'tidak_diketahui'];
+/** Syarat jaringan portal (OfficialDomain.aksesWilayah): `id-only` = IP luar negeri ditolak keras. */
+const AKSES = ['id-only', 'id-utama'];
 const HOST = /^(?!-)[a-z0-9-]{1,63}(?:\.(?!-)[a-z0-9-]{1,63})+$/;
 const TANGGAL = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -133,6 +135,8 @@ export function susun(kabkota, kontak, portal) {
     if (!['OBS', 'PRI'].includes(p.bukti)) galat.push(`${ctx}: bukti harus OBS/PRI`);
     if (!TANGGAL.test(p.verifiedAt)) galat.push(`${ctx}: verifiedAt bukan YYYY-MM-DD`);
     if (p.platform && !platform[p.platform]) galat.push(`${ctx}: platform tidak dikenal "${p.platform}"`);
+    if (p.aksesWilayah !== undefined && (!AKSES.includes(p.aksesWilayah) || p.jenis !== 'web'))
+      galat.push(`${ctx}: aksesWilayah "${p.aksesWilayah}" tidak sah (hanya ${AKSES.join('/')} untuk jenis web)`);
     if (p.url) {
       const u = cekUrl(p.url, ctx);
       if (u && !p.hosts.includes(u.hostname)) galat.push(`${ctx}: host url tidak ada di hosts`);
@@ -160,6 +164,7 @@ export function susun(kabkota, kontak, portal) {
       domisili: p.domisili,
       ...(p.jamLayanan ? { jamLayanan: p.jamLayanan } : {}),
       ...(p.platform ? { platform: p.platform } : {}),
+      ...(p.aksesWilayah ? { aksesWilayah: p.aksesWilayah } : {}),
       bukti: p.bukti,
       verifiedAt: p.verifiedAt,
       catatan: p.catatan,
@@ -200,6 +205,7 @@ export function susun(kabkota, kontak, portal) {
         layanan: `Portal layanan adminduk daring (kelas ${w.kelas})`,
         wilayah: w.kode,
         verifiedAt: w.verifiedAt,
+        ...(w.aksesWilayah ? { aksesWilayah: w.aksesWilayah } : {}),
       });
   }
 
@@ -258,6 +264,8 @@ export type PortalWilayah = {
   jamLayanan?: string;
   /** Platform bersama (mis. \`sidak-aceh\`), lihat \`PLATFORM_WILAYAH\`. */
   platform?: string;
+  /** Syarat jaringan host portal (diteruskan ke \`OfficialDomain.aksesWilayah\`); \`id-only\` = IP luar negeri ditolak. */
+  aksesWilayah?: 'id-only' | 'id-utama';
   /** OBS diamati langsung, PRI recon sebelumnya. */
   bukti: 'OBS' | 'PRI';
   verifiedAt: string;

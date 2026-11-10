@@ -67,6 +67,44 @@ describe('registry wilayah untuk Navigator', () => {
     expect(PORTAL_WILAYAH['3201']?.login).toEqual(['google']);
     expect(portalWebWilayah('3201')).toBeUndefined();
     expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: '3201' }).jalur).toBe('dipandu');
+    // Alasan jujur: login Google, bukan "belum bisa dibantu" umum.
+    expect(alasanDipandu('3201', 'Kab. Bogor')).toMatch(/hanya bisa dimasuki dengan akun Google/);
+  });
+
+  it('probe portal nyata: jalur masuk portal dari registry sampai params sesi (bukan "/")', () => {
+    // 1871 "/" situs info, 3321 "/" halaman default IIS, 3571 "/" halaman kosong.
+    for (const [kode, jalur] of [
+      ['1871', '/pendaftaran'],
+      ['3321', '/Siap_Om'],
+      ['3571', '/sakti'],
+    ] as const) {
+      expect(new URL(portalWebWilayah(kode)!.url).pathname, kode).toBe(jalur);
+      expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }), kode).toMatchObject({
+        jalur: 'generik',
+        params: { kode, jalur },
+      });
+      const { store, u, events, publish } = urusanDiusulkan(kode, 'kelahiran');
+      setujuiRencana(store, u.id, publish);
+      const req = events.find((e): e is EventOf<'execution_request'> => e.type === 'execution_request');
+      expect(req?.params, kode).toMatchObject({ kode, jalur });
+    }
+  });
+
+  it('probe portal nyata: portal id-only baru dipandu tanpa worker ID; portal mati/berubah selalu dipandu', () => {
+    for (const kode of ['1271', '1372', '1403', '1771', '3275', '3279', '3402', '3674', '6271']) {
+      aturJaringanId(() => false);
+      expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }), kode).toMatchObject({
+        jalur: 'dipandu',
+        sebab: 'jaringan_id',
+      });
+      aturJaringanId(() => true);
+      expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }).jalur, kode).toBe('generik');
+    }
+    for (const kode of ['1117', '1171', '1173', '1114', '3314', '1116', '3525', '1102', '1471']) {
+      expect(portalWebWilayah(kode), kode).toBeUndefined();
+      expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }).jalur, kode).toBe('dipandu');
+      expect(hostsPortalWilayah(kode), kode).toEqual([]);
+    }
   });
 
   it('host portal: hanya host portal persis (tanpa host info dan pihak ketiga)', () => {

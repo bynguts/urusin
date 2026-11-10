@@ -97,5 +97,7 @@ export function alasanDipandu(kode: string | null | undefined, wilayah?: string)
   const kanal = p ? KANAL_DIPANDU[p.jenis] : undefined;
   if (kanal)
     return `Rencana disetujui. Disdukcapil${di} melayani pengajuan lewat ${kanal}, bukan formulir web, jadi Browser Pendamping tidak bisa mengisinya. Ikuti langkahnya bersama saya.`;
+  if (p?.jenis === 'web' && p.login.length > 0 && p.login.every((l) => LOGIN_PIHAK_KETIGA.has(l)))
+    return `Rencana disetujui. Portal Disdukcapil${di} hanya bisa dimasuki dengan akun Google, dan login Google tidak dibuka di Browser Pendamping, jadi AI tidak bisa mengisinya. Ikuti langkahnya bersama saya: Anda membuka portalnya sendiri.`;
   return 'Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.';
 }

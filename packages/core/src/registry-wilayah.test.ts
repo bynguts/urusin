@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { EGRESS_PIHAK_KETIGA, OFFICIAL_DOMAINS, egressAllowedHosts, isOfficialUrl } from './registry.js';
+import {
+  EGRESS_PIHAK_KETIGA,
+  OFFICIAL_DOMAINS,
+  egressAllowedHosts,
+  getOfficialDomain,
+  isOfficialUrl,
+} from './registry.js';
 import {
   DOMAIN_WILAYAH,
   EGRESS_PIHAK_KETIGA_WILAYAH,
@@ -43,12 +49,13 @@ describe('lint registry wilayah (ADR 0030)', () => {
       expect(w.hosts.length > 0, w.kode).toBe(w.jenis === 'web');
       expect(w.kode, w.kode).toMatch(/^\d{4}$/);
     }
-    expect(portal.filter((w) => w.jenis === 'web').length).toBeGreaterThanOrEqual(60);
+    // Probe portal nyata 2026-11-10: 9 portal mati/berubah dikeluarkan dari jalur web.
+    expect(portal.filter((w) => w.jenis === 'web').length).toBeGreaterThanOrEqual(55);
   });
 
-  it('SIDAK Aceh: satu platform dirujuk 23 kab/kota Aceh', () => {
+  it('SIDAK Aceh: satu platform dirujuk 17 tenant Aceh yang hidup (probe 2026-11-10)', () => {
     const sidak = portal.filter((w) => w.platform === 'sidak-aceh');
-    expect(sidak).toHaveLength(23);
+    expect(sidak).toHaveLength(17);
     for (const w of sidak) expect(w.kode.startsWith('11')).toBe(true);
     expect(PLATFORM_WILAYAH['sidak-aceh']!.hosts).toEqual(['sidak.acehprov.go.id']);
   });
@@ -100,6 +107,36 @@ describe('lint registry wilayah (ADR 0030)', () => {
     const egress = new Set(egressAllowedHosts());
     for (const kode of Object.keys(PORTAL_WILAYAH))
       for (const h of hostsTantanganWilayah(kode)) expect(egress.has(h), `${kode} ${h}`).toBe(true);
+  });
+
+  it('probe portal nyata 2026-11-10: id-only, proteksi, Google-only, dan portal mati/berubah', () => {
+    // SG ditolak, ID terbuka: host portal ber-aksesWilayah id-only (diteruskan ke OFFICIAL_DOMAINS).
+    for (const kode of ['1271', '1372', '1403', '1771', '3275', '3279', '3402', '3674', '6271']) {
+      const w = PORTAL_WILAYAH[kode]!;
+      expect(w.aksesWilayah, kode).toBe('id-only');
+      for (const h of w.hosts) expect(getOfficialDomain(h)?.aksesWilayah, `${kode} ${h}`).toBe('id-only');
+    }
+    // Tanpa catatan id-only: tetap tanpa syarat jaringan dari data wilayah.
+    expect(getOfficialDomain('weh.sabangkota.go.id')?.aksesWilayah).toBeUndefined();
+    // Proteksi yang teramati: reCAPTCHA (host Google ikut sesi) dan Turnstile.
+    for (const kode of ['1971', '6402']) {
+      expect(PORTAL_WILAYAH[kode]!.proteksi, kode).toContain('recaptcha');
+      expect(hostsTantanganWilayah(kode), kode).toEqual(expect.arrayContaining(['www.google.com']));
+    }
+    expect(PORTAL_WILAYAH['1271']!.proteksi).toContain('turnstile');
+    expect(PORTAL_WILAYAH['3201']!.login).toEqual(['google']);
+    // Mati/berubah: bukan jalur web lagi, tanpa host portal, catatan OBS bertanggal + alasan.
+    for (const kode of ['1117', '1171', '1173', '1114', '3314', '1116', '3525', '1102', '1471']) {
+      const w = PORTAL_WILAYAH[kode]!;
+      expect(w.jenis, kode).toBe('tidak_diketahui');
+      expect(w.hosts, kode).toEqual([]);
+      expect(w.url, kode).toBeUndefined();
+      expect(w.platform, kode).toBeUndefined();
+      expect(w.catatan, kode).toMatch(/^OBS 2026-11-10: portal daring tidak bisa dipakai \(.+\)/);
+    }
+    expect(getOfficialDomain('cecah.benermeriahkab.go.id')).toBeUndefined();
+    // 1102: host tetap tercatat sebagai situs informasi Disdukcapil, bukan portal layanan.
+    expect(PORTAL_WILAYAH['1102']!.hostInfo).toContain('disdukcapil.acehtenggarakab.go.id');
   });
 
   it('urutan kanal routing multi-kanal', () => {
