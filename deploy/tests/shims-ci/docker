@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Docker palsu untuk tes ci-docker: catat argumen (satu baris per panggilan), tiru login/buildx/run.
+{ printf "docker"; printf " [%s]" "$@"; echo; } >> "$SHIM_DIR/calls.log"
+case "$1" in
+  login) printf '%s' "$(cat)" > "$SHIM_DIR/login.stdin"; echo "$DOCKER_CONFIG" > "$SHIM_DIR/login.dir"; exit 0 ;;
+  buildx)
+    case "$2" in
+      build)
+        while [ $# -gt 0 ]; do [ "$1" = --metadata-file ] && { printf '{"containerimage.digest": "sha256:%064d"}\n' 7 > "$2"; }; shift; done
+        exit 0 ;;
+      inspect) exit "${SHIM_NO_BUILDER:-0}" ;;
+      imagetools) [ "$3" = inspect ] && printf 'sha256:%064d\n' 5; exit 0 ;;
+      *) exit 0 ;;
+    esac ;;
+  *) exit 0 ;;
+esac

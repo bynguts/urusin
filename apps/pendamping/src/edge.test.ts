@@ -172,7 +172,13 @@ describe('proxy CONNECT edge', () => {
   it('server: tanpa kredensial 407, kredensial sah + tujuan terlarang 403, HTTP biasa 403', async () => {
     const d = createDaftarSesi(4);
     d.pasang('u'.repeat(16), SANDI, [HOST], 60_000, cfg.union);
-    const p = createEdgeProxy(cfg, d, async () => ['127.0.0.1']);
+    const log: string[] = [];
+    const p = createEdgeProxy(
+      cfg,
+      d,
+      async () => ['127.0.0.1'],
+      (b) => log.push(b),
+    );
     const port = await dengar(p.server);
     const tanpa = await connect(port, `${HOST}:443`);
     expect(tanpa).toMatch(/^HTTP\/1\.1 407/);
@@ -183,6 +189,31 @@ describe('proxy CONNECT edge', () => {
     expect(await connect(port, `rusak`, `${'u'.repeat(16)}:${SANDI}`)).toMatch(/^HTTP\/1\.1 403/);
     const biasa = await fetch(`http://127.0.0.1:${port}/`);
     expect(biasa.status).toBe(403);
+    // Setiap penolakan tercatat satu baris: host + alasan (407: ada/tidaknya kredensial), tanpa kredensial.
+    expect(log).toHaveLength(5);
+    expect(log[0]).toBe(`edge: CONNECT 407 host=${HOST} kredensial=tidak_ada`);
+    expect(log[1]).toBe(`edge: CONNECT 407 host=${HOST} kredensial=tidak_sah`);
+    expect(log[2]).toMatch(new RegExp(`^edge: CONNECT ditolak host=${HOST} alasan=.*127.0.0.1`));
+    expect(log[4]).toBe('edge: CONNECT ditolak host=? alasan=rusak');
+    expect(log.join()).not.toContain(SANDI);
+    p.tutup();
+  });
+
+  it('server: tujuan sah tapi hulu tidak terjangkau -> 502 + satu baris host/jalur/kode galat', async () => {
+    const d = createDaftarSesi(4);
+    d.pasang('u'.repeat(16), SANDI, [HOST], 60_000, cfg.union);
+    const log: string[] = [];
+    // Proxy hulu di port tertutup: tidak ada lalu lintas keluar dari tes, koneksi ditolak seketika.
+    const lewat = { ...cfg, upstreamProxy: new URL('http://127.0.0.1:1') };
+    const p = createEdgeProxy(
+      lewat,
+      d,
+      async () => ['93.184.216.34'],
+      (b) => log.push(b),
+    );
+    const port = await dengar(p.server);
+    expect(await connect(port, `${HOST}:443`, `${'u'.repeat(16)}:${SANDI}`)).toMatch(/^HTTP\/1\.1 502/);
+    expect(log).toEqual([`edge: CONNECT gagal host=${HOST} jalur=hulu galat=ECONNREFUSED`]);
     p.tutup();
   });
 });

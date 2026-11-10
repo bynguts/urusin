@@ -37,7 +37,12 @@ export type Hooks = {
   /** Ada kemajuan AI (menunda idle). */
   activity(): void;
   /** Sesi berakhir dari sisi peramban (drift, bot wall, memori, galat). */
-  ended(status: PendampingStatus, hasil: PendampingHasil, pesan: string): void;
+  ended(
+    status: PendampingStatus,
+    hasil: PendampingHasil,
+    pesan: string,
+    galat?: { kode: string; net?: string | undefined },
+  ): void;
   /**
    * Alur (execution) selesai berhasil: sesi `siaga`, peramban tetap hidup (warga membaca hasil, langkah
    * berikutnya di urusan yang sama tanpa login ulang) sampai TTL/idle/diakhiri.
@@ -166,6 +171,8 @@ export class SessionManager {
   private readonly active = new Set<string>();
   private readonly tickets = new Map<string, { sesiId: string; exp: number }>();
   private readonly tombstones = new Map<string, { sesi: SesiPendamping; exp: number }>();
+  /** Penutupan peramban yang sedang berjalan (sesi sudah keluar dari peta, Chromium belum tertutup). */
+  private readonly penutupan = new Set<Promise<void>>();
   private sweeper: ReturnType<typeof setInterval> | undefined;
 
   constructor(
@@ -179,11 +186,17 @@ export class SessionManager {
     this.sweeper.unref?.();
   }
 
+  /**
+   * Akhiri semua sesi dan TUNGGU semua Chromium tertutup, termasuk sesi yang sudah berakhir sendiri (gagal,
+   * memori, TTL) tetapi penutupannya masih berjalan: tanpa itu proses (atau tes berikutnya) melihat peramban
+   * yang setengah tertutup.
+   */
   async shutdown(): Promise<void> {
     clearInterval(this.sweeper);
     await Promise.all(
       [...this.sessions.values()].map((s) => this.end(s, 'dibatalkan', 'dibatalkan', PESAN.dibatalkan)),
     );
+    await Promise.allSettled([...this.penutupan]);
   }
 
   // ---- API internal (dipanggil web broker) ---------------------------------
@@ -566,6 +579,8 @@ export class SessionManager {
       ...(s.pesan ? { pesan: s.pesan } : {}),
       ...(s.hasil ? { hasil: s.hasil } : {}),
       ...(s.bukti ? { bukti: s.bukti } : {}),
+      situs: s.program.origin,
+      replika: this.config.fixtureOrigins.includes(s.program.origin),
     };
   }
 
@@ -609,7 +624,7 @@ export class SessionManager {
       fokus: (jenis) => s.viewer?.send({ type: 'fokus', jenis }),
       event: (e) => this.emit(s, e),
       activity: () => void (s.lastActivity = this.now()),
-      ended: (status, hasil, pesan) => void this.end(s, status, hasil, pesan),
+      ended: (status, hasil, pesan, galat) => void this.end(s, status, hasil, pesan, galat),
       langkahSelesai: (pesan, bukti) => this.siaga(s, pesan, bukti),
       berkasKurang: (nama) => void (s.berkasDitunggu = nama),
     };
@@ -662,7 +677,13 @@ export class SessionManager {
     this.broadcastStatus(s);
   }
 
-  async end(s: Sesi, status: PendampingStatus, hasil: PendampingHasil, pesan: string): Promise<void> {
+  async end(
+    s: Sesi,
+    status: PendampingStatus,
+    hasil: PendampingHasil,
+    pesan: string,
+    galat?: { kode: string; net?: string | undefined },
+  ): Promise<void> {
     if (TERMINAL.has(s.status)) return;
     // Sesi siaga yang ditutup (warga, idle, TTL): execution terakhirnya tetap berhasil.
     if (s.status === 'siaga') {
@@ -674,7 +695,12 @@ export class SessionManager {
     s.pesan = pesan;
     s.mode = 'done';
     const viewer = s.viewer;
-    viewer?.send({ type: 'event', event: { jenis: 'selesai', hasil, pesan } });
+    const kode = galat && /^[A-Z][A-Z0-9_]{1,63}$/.test(galat.kode) ? galat.kode : undefined;
+    const net = galat?.net && /^net::ERR_[A-Z0-9_]{1,64}$/.test(galat.net) ? galat.net : undefined;
+    viewer?.send({
+      type: 'event',
+      event: { jenis: 'selesai', hasil, pesan, ...(kode ? { kode } : {}), ...(net ? { net } : {}) },
+    });
     viewer?.send({ type: 'mode', mode: 'done', pesan });
     viewer?.send({ type: 'status', sesi: this.view(s) });
     viewer?.close(4000, 'selesai');
@@ -689,11 +715,19 @@ export class SessionManager {
     this.sessions.delete(s.id);
     const run = s.run;
     s.run = undefined;
+    const tutup = (async () => {
+      try {
+        await run?.destroy();
+      } finally {
+        this.active.delete(s.id);
+        await this.pump();
+      }
+    })();
+    this.penutupan.add(tutup);
     try {
-      await run?.destroy();
+      await tutup;
     } finally {
-      this.active.delete(s.id);
-      await this.pump();
+      this.penutupan.delete(tutup);
     }
   }
 

@@ -17,8 +17,8 @@ concurrency:
 jobs:
   verify:
     name: Lint, typecheck, test, build, budget, audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 20 }}
     env:
       HUSKY: '0'
       GIT_SHA: ${{ github.sha }}
@@ -77,8 +77,8 @@ jobs:
 
   perf:
     name: Lighthouse CI (mobile)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 20 }}
     env:
       HUSKY: '0'
       GIT_SHA: ${{ github.sha }}
@@ -96,19 +96,28 @@ jobs:
           cache: pnpm
 
       - name: Install
+        if: runner.environment == 'github-hosted'
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build
+        if: runner.environment == 'github-hosted'
         run: pnpm build
 
       # Rute dan batas ada di perf-routes.cjs dan lighthouserc.cjs. Emulasi mobile (Moto G Power, slow 4G),
       # 3 run, median; pelanggaran apa pun menggagalkan job.
       - name: Lighthouse CI
+        if: runner.environment == 'github-hosted'
         env:
           PORT: '4173'
           HOST: 127.0.0.1
           ORIGIN: http://127.0.0.1:4173
         run: pnpm exec lhci autorun
+
+      # Runner self-hosted (agent-vm): install + build + lhci di kontainer Playwright terbatas lewat ci-docker
+      # (user runner tanpa grup docker). Skor di ARM terbatas 1 CPU bisa lebih rendah dari runner GitHub.
+      - name: Lighthouse CI (self-hosted, kontainer Playwright)
+        if: runner.environment == 'self-hosted'
+        run: sudo -n /opt/urusin-ci/bin/ci-docker pw perf "$GITHUB_WORKSPACE" "$GITHUB_SHA"
 
       - name: Ringkasan skor
         if: always()
@@ -147,8 +156,8 @@ jobs:
 
   e2e:
     name: E2E web (Playwright Chromium)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 20 }}
     env:
       HUSKY: '0'
       GIT_SHA: ${{ github.sha }}
@@ -166,9 +175,11 @@ jobs:
           cache: pnpm
 
       - name: Install
+        if: runner.environment == 'github-hosted'
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Pasang Chromium Playwright
+        if: runner.environment == 'github-hosted'
         run: pnpm --filter @urusin/web exec playwright install --with-deps chromium
 
       # Runner ubuntu-24.04 membatasi user namespace tak berhak lewat AppArmor, sehingga Chromium e2e pendamping
@@ -176,7 +187,9 @@ jobs:
       # Pembatasan dilonggarkan HANYA di runner GitHub sekali pakai ini supaya sandbox userns Chromium tetap
       # AKTIF; jangan pernah --no-sandbox / chromiumSandbox: false. Bukan untuk agent-vm: produksi memakai
       # sandbox setuid di kontainer (ADR 0029) dan boot pendamping tetap gagal-tertutup tanpa sandbox.
+      # HANYA runner GitHub sekali pakai: sysctl host DILARANG di agent-vm (self-hosted memakai kontainer di bawah).
       - name: Izinkan userns tak berhak untuk sandbox Chromium (runner sekali pakai)
+        if: runner.environment == 'github-hosted'
         run: |
           if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
@@ -185,7 +198,15 @@ jobs:
       # turbo membangun web lebih dulu; Playwright menyalakan build node web dengan DB sementara. E2E pendamping
       # (fixture saja, headless) ikut berjalan.
       - name: E2E
+        if: runner.environment == 'github-hosted'
         run: pnpm e2e
+
+      # Self-hosted: install + `pnpm e2e` di image Playwright resmi (digest = basis apps/pendamping/Dockerfile).
+      # Sandbox Chromium tetap aktif (chrome-sandbox setuid + seccomp Playwright, seperti produksi; ADR 0029),
+      # tanpa sysctl host dan tanpa --no-sandbox.
+      - name: E2E (self-hosted, kontainer Playwright)
+        if: runner.environment == 'self-hosted'
+        run: sudo -n /opt/urusin-ci/bin/ci-docker pw e2e "$GITHUB_WORKSPACE" "$GITHUB_SHA"
 
       - name: Unggah trace bila gagal
         if: failure()
@@ -199,8 +220,8 @@ jobs:
 
   coverage:
     name: Coverage (ambang per paket)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 20 }}
     env:
       HUSKY: '0'
       GIT_SHA: ${{ github.sha }}
@@ -245,8 +266,8 @@ jobs:
 
   rc-compat:
     name: Kompatibilitas rilis kandidat (image rc* terakhir di atas DB HEAD)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 20 }}
     permissions:
       contents: read
       packages: read
@@ -262,11 +283,22 @@ jobs:
           fetch-tags: true
 
       # Tidak berbuat apa pun selama belum ada tag rc*; setelah ada, langkah di bawah aktif otomatis.
+      # Runner self-hosted (cadangan menit habis): rc-compat butuh Docker langsung, jadi DILEWATI dengan peringatan
+      # (cakupan berkurang selama cadangan; lihat deploy/ci-runner/README.md). Kembali ke runner GitHub = jalan lagi.
+      # Cek migrasi aditif statis (git diff + node, tanpa Docker): SELALU jalan bila ada tag rc* (output `tag`),
+      # termasuk di runner self-hosted. `present` hanya menggerbang langkah rc-compat yang butuh Docker.
       - name: Cari tag rc* terakhir
         id: rc
+        env:
+          RUNNER_ENV: ${{ runner.environment }}
         run: |
           tag="$(git tag -l 'rc*' --sort=-version:refname | head -n1)"
-          if [ -z "$tag" ]; then
+          if [ -n "$tag" ] && [ "$RUNNER_ENV" = self-hosted ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+            echo "::warning::rc-compat DILEWATI di runner self-hosted (tag ${tag}); cakupan berkurang selama runner cadangan."
+            echo "rc-compat: DILEWATI di runner self-hosted (tag ${tag}); cakupan berkurang (cek migrasi aditif tetap jalan)." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -z "$tag" ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "::notice::belum ada tag rc*: rc-compat dilewati (tidak ada yang diperiksa)"
             echo "rc-compat: belum ada tag rc*, dilewati." >> "$GITHUB_STEP_SUMMARY"
@@ -276,20 +308,22 @@ jobs:
             echo "rc-compat: memakai tag ${tag}" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Migrasi sejak tag rc harus aditif (tanpa DROP/RENAME)
-        if: steps.rc.outputs.present == 'true'
-        run: node scripts/check-additive-migrations.mjs "${{ steps.rc.outputs.tag }}"
-
       - name: Setup pnpm
-        if: steps.rc.outputs.present == 'true'
+        if: steps.rc.outputs.tag != ''
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
       - name: Setup Node
-        if: steps.rc.outputs.present == 'true'
+        if: steps.rc.outputs.tag != ''
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
+
+      - name: Migrasi sejak tag rc harus aditif (tanpa DROP/RENAME)
+        if: steps.rc.outputs.tag != ''
+        env:
+          RC_TAG: ${{ steps.rc.outputs.tag }}
+        run: node scripts/check-additive-migrations.mjs "$RC_TAG"
 
       - name: Install
         if: steps.rc.outputs.present == 'true'
@@ -345,7 +379,7 @@ jobs:
 
   contract-freeze:
     name: Pembekuan kontrak (vs contracts-take1)
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     env:
       HUSKY: '0'
@@ -377,7 +411,7 @@ jobs:
 
   gitleaks:
     name: Gitleaks
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     env:
       GITLEAKS_VERSION: 8.30.1
@@ -389,13 +423,15 @@ jobs:
 
       - name: Pasang gitleaks (checksum diverifikasi)
         run: |
+          case "$(uname -m)" in x86_64) arch=x64 ;; aarch64) arch=arm64 ;; *) echo "::error::arsitektur $(uname -m)"; exit 1 ;; esac
           base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
-          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_${arch}.tar.gz"
           curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 -o "$tarball" "$base/$tarball"
           curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 -o checksums.txt "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
           grep " ${tarball}\$" checksums.txt | sha256sum -c -
-          tar -xzf "$tarball" gitleaks
-          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/bin" gitleaks
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       - name: Pindai riwayat
         run: gitleaks git --redact --no-banner --verbose .

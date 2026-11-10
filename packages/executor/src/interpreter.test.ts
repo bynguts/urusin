@@ -193,6 +193,31 @@ describe('interpreter: gate.human', () => {
     await loadPage(interp, driver, `${FX}/welcome`);
     expect((await cursorOf(kv)).status).toBe('done');
   });
+
+  it('messageIf: teks giliran mengikuti kolom yang benar-benar ada di halaman', async () => {
+    const sandi = css('input[type="password"]');
+    const langkah = [
+      nav('/login'),
+      gate.human('Ketik kode CAPTCHA', {
+        until: urlIncludes('/welcome'),
+        messageIf: { check: { kind: 'elementExists', target: [sandi] }, message: 'Ketik sandi dan CAPTCHA' },
+      }),
+    ];
+    for (const [adaSandi, pesan] of [
+      [false, 'Ketik kode CAPTCHA'],
+      [true, 'Ketik sandi dan CAPTCHA'],
+    ] as const) {
+      const { interp, driver, kv } = setup();
+      driver.handler = (op) => {
+        if (op.kind !== 'check') return { ok: true, value: true };
+        // until (urlIncludes) belum terpenuhi; elementExists(sandi) = ada/tidaknya kolom sandi.
+        return { ok: true, value: op.check.kind === 'elementExists' ? adaSandi : false };
+      };
+      await interp.start(req(langkah));
+      await loadPage(interp, driver, `${FX}/login`);
+      expect(await cursorOf(kv)).toMatchObject({ status: 'waiting_gate', message: pesan });
+    }
+  });
 });
 
 describe('interpreter: gate kedua (persetujuan)', () => {

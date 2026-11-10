@@ -35,6 +35,17 @@ describe('adapter bawaan', () => {
       op: 'gate.human',
       until: { value: expect.stringContaining('/welcome/permohonan') },
     });
+    // Giliran masuk: replika publik hanya HP + CAPTCHA (tanpa sandi); teks sandi hanya bila kolomnya ada.
+    expect(steps.find((s) => s.op === 'gate.human')).toMatchObject({
+      message: 'Giliran Anda: ketik kode CAPTCHA, lalu tekan Masuk.',
+      messageIf: {
+        check: {
+          kind: 'elementExists',
+          target: [css('input[type="password"]'), { by: 'name', value: 'password' }],
+        },
+        message: 'Giliran Anda: ketik kata sandi dan kode CAPTCHA, lalu tekan Masuk.',
+      },
+    });
     // Tombol Masuk dan Selesai adalah elemen khusus warga.
     expect(humanOnlyTargets(steps).map((t) => t[0])).toEqual([css('#loginSubmit'), css('#btnSelesai')]);
     expect(JSON.stringify(steps)).not.toMatch(/\d{10,}/);
