@@ -144,12 +144,13 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
           'Surat keterangan kelahiran dari RS/Puskesmas/fasilitas kesehatan/dokter/bidan, atau dari kepala desa/lurah bila lahir di rumah atau tempat lain',
           'Buku nikah/kutipan akta perkawinan/bukti lain yang sah',
           'KK tempat penduduk terdaftar atau akan didaftarkan sebagai anggota keluarga',
+          'KTP-el orang tua',
           'Formulir F-2.01 (Pelaporan Pencatatan Sipil)',
         ],
         bawa: [],
         keterangan:
-          'Untuk cetak mandiri akta dan KK, alamat email wajib diisi. Berkas yang tidak sesuai dibatalkan dan pemohon menerima SMS pembatalan. Kelahiran dilaporkan paling lambat 60 hari (UU 24/2013 Ps. 27); lewat dari itu akta tetap terbit setelah keputusan Kepala Disdukcapil, tanpa penetapan pengadilan (Ps. 32 ayat 1).',
-        sourceRef: [REF_LAHIR, REF_UU24],
+          'Untuk cetak mandiri akta dan KK, alamat email wajib diisi. Berkas yang tidak sesuai dibatalkan dan pemohon menerima SMS pembatalan. KTP-el tidak disyaratkan bagi ibu kandung di bawah 17 tahun yang belum kawin (Permendagri 108/2019 Ps. 43 ayat 3). Kelahiran dilaporkan paling lambat 60 hari (UU 24/2013 Ps. 27); lewat dari itu akta tetap terbit setelah keputusan Kepala Disdukcapil, tanpa penetapan pengadilan (Ps. 32 ayat 1).',
+        sourceRef: [REF_LAHIR, REF_PERPRES_TEKS, REF_PMD108, REF_UU24],
       }),
       L({
         id: 'siapkan-sptjm',
@@ -157,8 +158,8 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
         jenis: 'online-manual',
         dependsOn: [],
         dokumen: [
-          'SPTJM kebenaran data kelahiran (F-2.03) dan dua orang saksi, bila surat keterangan kelahiran tidak ada',
-          'SPTJM kebenaran sebagai pasangan suami istri (F-2.04) dan dua orang saksi, bila tidak punya buku nikah/akta perkawinan',
+          'SPTJM kebenaran data kelahiran (F-2.03) diketahui dua orang saksi, bila surat keterangan kelahiran tidak ada',
+          'SPTJM kebenaran sebagai pasangan suami istri (F-2.04) diketahui dua orang saksi, bila tidak punya buku nikah/akta perkawinan tetapi KK menunjukkan orang tua suami istri',
         ],
         bawa: [],
         keterangan:

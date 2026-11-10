@@ -58,6 +58,20 @@ export const REF_DUKCAPIL_2023: SourceRef = {
   instansi: KEMENDAGRI,
 };
 
+/** Permendagri 109/2019 (status Berlaku di peraturan.go.id): kode dan kegunaan formulir adminduk, Ps. 4 dan 5. */
+export const REF_PMD109: SourceRef = {
+  url: 'https://peraturan.go.id/files/bn1790-2019.pdf',
+  judul:
+    'Permendagri No. 109 Tahun 2019 tentang Formulir dan Buku yang Digunakan dalam Administrasi Kependudukan',
+  instansi: KEMENDAGRI,
+};
+/** Peraturan Polri 1/2026 (berlaku 20 Mei 2026; mencabut Perpol 6/2023). */
+export const REF_PERPOL1_2026: SourceRef = {
+  url: 'https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf',
+  judul: 'Peraturan Polri No. 1 Tahun 2026 tentang Penerbitan Surat Keterangan Catatan Kepolisian',
+  instansi: 'Kepolisian Negara Republik Indonesia',
+};
+
 export type FaktaHukum = {
   id: string;
   /** Kalimat siap tampil, Bahasa Indonesia sederhana. */
@@ -159,6 +173,13 @@ export const FAKTA_HUKUM: readonly FaktaHukum[] = [
     sourceRef: [REF_PMD108],
   },
   {
+    id: 'lahir-syarat',
+    teks: 'Akta kelahiran: surat keterangan kelahiran, buku nikah/kutipan akta perkawinan atau bukti lain yang sah, KK tempat bayi didaftarkan, dan KTP-el. KTP-el tidak disyaratkan bagi ibu kandung di bawah 17 tahun yang belum kawin. Pemohon mengisi formulir pelaporan pencatatan sipil F-2.01.',
+    pasal:
+      'Perpres 96/2018 Ps. 33 ayat (1); Permendagri 108/2019 Ps. 43 ayat (1) sampai (3); Permendagri 109/2019 Ps. 4 ayat (2) huruf d',
+    sourceRef: [REF_PERPRES_TEKS, REF_PMD108, REF_PMD109],
+  },
+  {
     id: 'lahir-60-hari',
     teks: 'Kelahiran wajib dilaporkan ke Disdukcapil paling lambat 60 hari sejak kelahiran.',
     pasal: 'UU 24/2013 Ps. 27 ayat (1)',
@@ -178,9 +199,67 @@ export const FAKTA_HUKUM: readonly FaktaHukum[] = [
   },
   {
     id: 'gratis',
-    teks: 'Pengurusan dan penerbitan dokumen kependudukan tidak dipungut biaya.',
+    teks: 'Pengurusan dan penerbitan dokumen kependudukan tidak dipungut biaya. Petugas yang memungut biaya diancam penjara paling lama 6 tahun dan/atau denda paling banyak Rp75 juta (Ps. 95B).',
     pasal: 'UU 24/2013 Ps. 79A',
     sourceRef: [REF_UU24],
+  },
+  {
+    id: 'pemalsuan-pidana',
+    teks: 'Memalsukan surat atau dokumen saat melapor ke Disdukcapil diancam penjara paling lama 6 tahun dan/atau denda paling banyak Rp50 juta (UU 23/2006 Ps. 93). Memerintahkan, memfasilitasi, atau melakukan manipulasi data kependudukan diancam penjara paling lama 6 tahun dan/atau denda paling banyak Rp75 juta (UU 24/2013 Ps. 94). Jalur sah bila dokumen tidak ada adalah SPTJM.',
+    pasal: 'UU 23/2006 Ps. 93; UU 24/2013 Ps. 94',
+    sourceRef: [REF_UU23, REF_UU24],
+  },
+  {
+    id: 'formulir-f102',
+    teks: 'Formulir F-1.02 (pendaftaran peristiwa kependudukan) dipakai untuk KK, KTP-el, dan KIA baru serta karena perubahan data. Panduan Ditjen Dukcapil juga meminta F-1.02 untuk KTP-el atau KK yang hilang atau rusak.',
+    pasal:
+      'Permendagri 109/2019 Ps. 4 ayat (2) huruf b dan Ps. 5 ayat (1) huruf b; panduan Ditjen Dukcapil 2023',
+    sourceRef: [REF_PMD109, REF_DUKCAPIL_2023],
+  },
+  {
+    id: 'formulir-f103',
+    teks: 'Surat keterangan pindah diajukan dengan formulir F-1.03 (pendaftaran perpindahan penduduk) dan fotokopi KK di Disdukcapil daerah asal.',
+    pasal:
+      'Permendagri 109/2019 Ps. 4 ayat (2) huruf c dan Ps. 5 ayat (1) huruf c; panduan Ditjen Dukcapil 2023',
+    sourceRef: [REF_PMD109, REF_DUKCAPIL_2023],
+  },
+  {
+    id: 'formulir-f201',
+    teks: 'Pencatatan kelahiran, kematian, perkawinan, dan peristiwa penting lain di Indonesia memakai formulir pelaporan pencatatan sipil F-2.01.',
+    pasal: 'Permendagri 109/2019 Ps. 4 ayat (2) huruf d dan Ps. 5 ayat (1) huruf d',
+    sourceRef: [REF_PMD109],
+  },
+  {
+    id: 'pindah-pemilik-rumah',
+    teks: 'Bila menempati rumah bukan milik sendiri (menumpang, sewa, kontrak, kos), surat keterangan pindah juga butuh surat pernyataan bermeterai dari pemilik rumah bahwa ia tidak keberatan alamatnya dipakai.',
+    pasal: 'Permendagri 108/2019 Ps. 28 ayat (1)',
+    sourceRef: [REF_PMD108],
+  },
+  {
+    id: 'kk-keluarga-baru',
+    teks: 'KK baru karena menikah (membentuk keluarga baru): buku nikah/kutipan akta perkawinan; bila datang dari kab/kota lain, juga surat keterangan pindah. Perkawinan belum tercatat: SPTJM perkawinan belum tercatat (F-1.05). Isi formulir F-1.02.',
+    pasal:
+      'Perpres 96/2018 Ps. 11 ayat (1) huruf a dan b; Permendagri 109/2019 Ps. 4 ayat (3) huruf b dan Ps. 5 ayat (2) huruf b; panduan Ditjen Dukcapil 2023',
+    sourceRef: [REF_PERPRES_TEKS, REF_PMD109, REF_DUKCAPIL_2023],
+  },
+  {
+    id: 'kk-perubahan-data',
+    teks: 'KK karena perubahan data (mis. status kawin atau tambah anggota keluarga): KK lama dan surat keterangan/bukti perubahan peristiwa (mis. buku nikah, akta kelahiran). Isi F-1.02 dan surat pernyataan perubahan elemen data F-1.06.',
+    pasal:
+      'Perpres 96/2018 Ps. 12; Permendagri 109/2019 Ps. 4 ayat (3) huruf c; panduan Ditjen Dukcapil 2023',
+    sourceRef: [REF_PERPRES_TEKS, REF_PMD109, REF_DUKCAPIL_2023],
+  },
+  {
+    id: 'skck-polri',
+    teks: 'SKCK diterbitkan Polri (Baintelkam), bukan Disdukcapil. Pengajuan lewat fitur SKCK di aplikasi layanan digital Polri (perlu akun): isi lokasi domisili, data diri, pasfoto latar merah, keperluan, lalu pilih lokasi dan tanggal; bayar sesuai tarif resmi; SKCK dicetak dari aplikasi atau diambil di kantor polisi terdekat. Pemohon harus peserta aktif JKN (BPJS Kesehatan), kecuali WNI yang berada di luar negeri. SKCK berlaku 6 bulan untuk 1 keperluan. Perpol 6/2023 sudah dicabut.',
+    pasal: 'Perpol 1/2026 Ps. 2 sampai 5, Ps. 9, Ps. 10, dan Ps. 20',
+    sourceRef: [REF_PERPOL1_2026],
+  },
+  {
+    id: 'skck-manual',
+    teks: 'Bila aplikasi Polri tidak berfungsi (diumumkan resmi), SKCK diurus manual di loket SKCK kantor polisi setempat: isi formulir permohonan dan bawa KTP, KK, akta kelahiran, ijazah terakhir, pasfoto, bukti peserta aktif JKN, dan paspor berlaku minimal 6 bulan untuk keperluan ke luar negeri.',
+    pasal: 'Perpol 1/2026 Ps. 12 sampai 14',
+    sourceRef: [REF_PERPOL1_2026],
   },
   {
     id: 'kawin-kua',
@@ -190,9 +269,9 @@ export const FAKTA_HUKUM: readonly FaktaHukum[] = [
   },
   {
     id: 'sptjm',
-    teks: 'Tanpa surat keterangan kelahiran atau buku nikah, warga boleh membuat SPTJM yang diketahui 2 saksi. Dasarnya Perpres 96/2018 Ps. 34; Permendagri 9/2016 sudah dicabut.',
+    teks: 'Tanpa surat keterangan kelahiran dari dokter/bidan/penolong kelahiran: SPTJM kebenaran data kelahiran (formulir F-2.03). Tanpa buku nikah/kutipan akta perkawinan tetapi KK menunjukkan orang tua suami istri: SPTJM kebenaran sebagai pasangan suami istri (F-2.04). Keduanya diketahui 2 orang saksi. Dasarnya Perpres 96/2018 Ps. 34; Permendagri 9/2016 sudah dicabut.',
     pasal: 'Perpres 96/2018 Ps. 34',
-    sourceRef: [REF_PERPRES_TEKS, REF_PMD108_STATUS],
+    sourceRef: [REF_PERPRES_TEKS, REF_PMD109, REF_PMD108_STATUS],
   },
   {
     id: 'dki-pkb-pemutihan',
