@@ -181,7 +181,7 @@
       <ul class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {#each tampil as d (d.id)}
           <li
-            class="relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-within:outline-2 focus-within:outline-ink"
+            class="relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 focus-within:outline-2 focus-within:outline-ink"
           >
             <div class="flex h-[104px] items-center justify-center {LATAR[d.jenis]}" aria-hidden="true">
               {#if d.jenis === 'ktp'}

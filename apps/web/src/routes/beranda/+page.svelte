@@ -124,7 +124,7 @@
               type="button"
               onclick={bicara}
               aria-pressed={mendikte}
-              class="inline-flex h-10 items-center gap-2 rounded-full bg-bg-2 px-3.5 text-[15px] leading-[22px] text-card-ink hover:bg-line-3"
+              class="inline-flex h-10 items-center gap-2 rounded-full bg-bg-2 px-3.5 text-[15px] leading-[22px] text-card-ink transition-all duration-150 ease-out hover:bg-line-3 active:scale-95"
             >
               <Icon name="mikrofon" class="size-4 text-ink" />
               {mendikte ? 'Mendengarkan…' : 'Bicara'}
@@ -132,7 +132,7 @@
           {/if}
           <a
             href="{resolve('/pengaturan')}#wilayah"
-            class="inline-flex h-10 items-center gap-2 rounded-full border border-line-2 px-3.5 text-[15px] leading-[22px] text-ink hover:bg-card"
+            class="inline-flex h-10 items-center gap-2 rounded-full border border-line-2 px-3.5 text-[15px] leading-[22px] text-ink transition-all duration-150 ease-out hover:bg-card active:scale-95"
           >
             <Icon name="lokasi" class="size-4 text-brand" />
             {wilayah.nama}
@@ -143,7 +143,7 @@
           type="submit"
           disabled={mengirim}
           aria-busy={mengirim || undefined}
-          class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-[23px] font-semibold text-primer-ink hover:opacity-90 disabled:opacity-80"
+          class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-[23px] font-semibold text-primer-ink transition-all duration-150 ease-out hover:opacity-90 active:scale-[0.98] disabled:opacity-80"
         >
           Kirim
           <Icon name={mengirim ? 'memuat' : 'panah'} class="size-[17px] {mengirim ? 'animate-spin' : ''}" />

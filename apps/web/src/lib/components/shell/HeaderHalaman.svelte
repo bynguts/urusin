@@ -43,7 +43,7 @@
       type="button"
       onclick={bacakan}
       aria-pressed={tts.membaca}
-      class="inline-flex min-h-11 items-center gap-2 rounded-full border border-line-2 bg-surface px-4 text-[15px] leading-[23px] text-ink hover:bg-card"
+      class="inline-flex min-h-11 items-center gap-2 rounded-full border border-line-2 bg-surface px-4 text-[15px] leading-[23px] text-ink transition-all duration-150 ease-out hover:bg-card active:scale-95"
     >
       <Icon name="bacakan" class="size-4.5" />
       {tts.membaca ? 'Berhenti' : 'Bacakan'}

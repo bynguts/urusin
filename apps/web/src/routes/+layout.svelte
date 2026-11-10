@@ -121,7 +121,11 @@
         tabindex="-1"
         class="flex flex-1 flex-col bg-bg pb-24 outline-none lg:bg-transparent lg:pb-0"
       >
-        {@render children()}
+        {#key page.url.pathname}
+          <div class="animasi-dasbor-masuk flex flex-1 flex-col">
+            {@render children()}
+          </div>
+        {/key}
       </main>
     </div>
   </div>

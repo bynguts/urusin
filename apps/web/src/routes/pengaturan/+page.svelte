@@ -169,7 +169,7 @@
           {#each UKURAN as u (u.nilai)}
             {@const pilih = prefs.nilai.ukuranHuruf === u.nilai}
             <label
-              class="relative flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 text-center has-focus-visible:outline-2 has-focus-visible:outline-ink sm:flex-row sm:gap-2.5 {pilih
+              class="relative flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 text-center transition-all duration-150 ease-out has-focus-visible:outline-2 has-focus-visible:outline-ink active:scale-[0.98] sm:flex-row sm:gap-2.5 {pilih
                 ? 'bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
                 : 'hover:bg-surface/60'}"
             >
@@ -247,7 +247,7 @@
           {#each TEMA as t (t.nilai)}
             {@const pilih = (prefs.nilai.tema === 'gelap' ? 'gelap' : 'terang') === t.nilai}
             <label
-              class="relative flex min-h-12 cursor-pointer items-center justify-center rounded-xl text-[15px] leading-[22px] has-focus-visible:outline-2 has-focus-visible:outline-ink {pilih
+              class="relative flex min-h-12 cursor-pointer items-center justify-center rounded-xl text-[15px] leading-[22px] transition-all duration-150 ease-out has-focus-visible:outline-2 has-focus-visible:outline-ink active:scale-[0.98] {pilih
                 ? 'bg-surface font-semibold text-ink shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
                 : 'text-card-ink hover:bg-surface/60'}"
             >
@@ -457,11 +457,11 @@
       aria-labelledby="s-{id}"
       aria-describedby="k-{id}"
       onclick={() => ubah(!nyala)}
-      class="relative -my-2 grid h-12 w-14 shrink-0 place-items-center"
+      class="relative -my-2 grid h-12 w-14 shrink-0 place-items-center transition-transform duration-150 active:scale-95"
     >
-      <span class="h-8 w-14 rounded-full transition-colors {nyala ? 'bg-primer' : 'bg-line-2'}"></span>
+      <span class="h-8 w-14 rounded-full transition-colors duration-200 ease-out {nyala ? 'bg-primer' : 'bg-line-2'}"></span>
       <span
-        class="absolute top-1/2 left-1/2 -ml-[13px] size-[26px] -translate-y-1/2 rounded-full bg-surface transition-transform {nyala
+        class="absolute top-1/2 left-1/2 -ml-[13px] size-[26px] -translate-y-1/2 rounded-full bg-surface transition-transform duration-200 ease-out {nyala
           ? 'translate-x-3'
           : '-translate-x-3'}"
       ></span>
