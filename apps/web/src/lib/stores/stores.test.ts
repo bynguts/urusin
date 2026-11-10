@@ -170,6 +170,29 @@ describe('UrusanStore: sambung, resume, kirim', () => {
     expect(body).toEqual({ teks: 'lagi', expectedVersion: store.keadaan.version });
   });
 
+  it('kirim: done turn ini sudah tiba sebelum respons 202 → tidak ditandai berjalan lagi', async () => {
+    let lepas: (r: Response) => void = () => {};
+    const ambil = vi.fn().mockReturnValueOnce(new Promise<Response>((r) => (lepas = r)));
+    const store = siapkan(ambil);
+    const janji = store.kirim('lagi');
+    const a = SumberPalsu.semua[0]!;
+    const seq = store.keadaan.lastSeq;
+    a.kirim({ type: 'progress', seq: seq + 1, at: 'x', chainHead: 'h', label: 'x' } as never);
+    a.kirim({
+      type: 'done',
+      seq: seq + 2,
+      at: 'x',
+      chainHead: 'h',
+      turnId: 't-cepat',
+      status: 'selesai',
+      lanjutkan: false,
+      degraded: false,
+    } as never);
+    lepas(json({ turnId: 't-cepat', diterima: true }, 202));
+    expect(await janji).toBe('ok');
+    expect(store.keadaan.sedangBerjalan).toBe(false);
+  });
+
   it('409 versi basi: ambil status, tidak ada turn berjalan -> kirim ulang sekali dengan versi segar', async () => {
     const ambil = vi
       .fn()

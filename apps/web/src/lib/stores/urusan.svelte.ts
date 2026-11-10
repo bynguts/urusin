@@ -128,7 +128,13 @@ export class UrusanStore implements StoreUrusan {
         if (res.status === 409) return 'konflik';
       }
       if (!res.ok) return 'galat';
-      this.keadaan = mulaiTurnBaru(this.keadaan);
+      // Turn cepat bisa selesai (event `done` sudah tiba lewat stream) sebelum respons 202 ini sampai: jangan
+      // menghapus hasilnya dan menandai berjalan lagi, nanti UI menunggu selamanya.
+      const j = (await res.json().catch(() => null)) as { turnId?: unknown } | null;
+      const sudahSelesai =
+        typeof j?.turnId === 'string' &&
+        this.keadaan.events.some((e) => e.type === 'done' && e.turnId === j.turnId);
+      if (!sudahSelesai) this.keadaan = mulaiTurnBaru(this.keadaan);
       if (this.keadaan.status === 'diam' || this.keadaan.status === 'terputus') this.sambung(id);
       return 'ok';
     } catch {
