@@ -44,7 +44,8 @@ export async function classifyIntent(opts: {
     caps: opts.caps,
     schema: IntentSchema,
     name: 'klasifikasi_urusan',
-    maxTokens: 64,
+    // JSON {jenis, keyakinan} < 30 token; 64 terlalu sempit untuk model yang menambah spasi/penjelasan (eval p06).
+    maxTokens: 256,
     signal: opts.signal,
     messages: [
       { role: 'system', content: INTENT_SYSTEM_PROMPT },

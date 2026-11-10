@@ -591,6 +591,20 @@ describe('balasan terpotong (finish_reason=length)', () => {
     expect(JSON.stringify(a!.messages)).not.toMatch(/Balasanmu tadi terpotong/);
   });
 
+  it('klasifikasi terpotong (p06): turn tetap berjalan, jenis diklasifikasi ulang giliran berikutnya', async () => {
+    const provider = new FakeProvider({
+      replies: [potong(), fakeCompletion({ content: 'Bisa, Bapak/Ibu.' })],
+    });
+    const env = makeEnv({ provider });
+    const u = env.store.createUrusan({});
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Sa mau bikin kartu identitas anak.' });
+    expect(out.status).toBe('selesai');
+    expect(out.events.some((e) => e.type === 'error')).toBe(false);
+    expect(env.store.getUrusanOrThrow(u.id).jenis).toBeNull();
+    const c = provider.calls[0];
+    expect(c?.kind === 'create' ? c.params.max_tokens : undefined).toBe(256);
+  });
+
   it('terpotong lagi: error LLM_LENGTH (bisa diulang), tanpa ulangan ketiga', async () => {
     const provider = new FakeProvider({ replies: [potong(), potong(), fakeCompletion({ content: 'x' })] });
     const env = makeEnv({ provider });
