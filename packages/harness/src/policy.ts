@@ -72,7 +72,12 @@ export class PolicyGate {
     if (tool.butuhWilayah === 'adminduk' && jenis !== null && ADMINDUK.has(jenis)) {
       const w = wilayahUrusan(this.store, input.urusan);
       const belum = w.ktp ? undefined : wilayahBelumSiap(jenis === 'pindah' ? null : jenis, w);
-      if (belum) return deny('WILAYAH_BELUM_DITETAPKAN', belum);
+      // Tanpa penegasan ini model menjawab persyaratan di teks bebas (tanpa verifikasi kutipan) saat ditolak.
+      if (belum)
+        return deny(
+          'WILAYAH_BELUM_DITETAPKAN',
+          `${belum}. Jangan menjawab persyaratan atau mengutip sumber di teks bebas sebelum wilayah ditetapkan.`,
+        );
     }
 
     // (2) lapis 2 PII: tolak placeholder/PII di SEMUA string yang ditulis model, sebelum zod.
