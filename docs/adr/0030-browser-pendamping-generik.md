@@ -38,6 +38,16 @@ Adapter tulisan tangan hanya ada untuk Telunjuk Sakti dan beberapa alur baca. Wa
   tantangan belum dibedakan dari ketukan di halaman, kecuali saat verifikasi situs (`pantau`) aktif. Penanda
   tautan pembuka (`tautanPembuka`, aturan `K7_NEG_NAMA_TAUTAN`) tidak mengubah ini: tautan itu tetap diketuk
   warga, bukan AI. Tinjau ulang bila ada portal nyata yang memakai CAPTCHA tak terlihat pada tombol non-final.
+- Tulis tertunda dari aksi AI (timer/retry, review N2/N4): tulis non-GET yang diblokir menandai dokumen "kotor"
+  sampai navigasi bingkai utama berikutnya ter-commit. Dokumen kotor tidak lagi dapat jendela XHR isi; blokir
+  saat AI diam sesudah AI bertindak di dokumen itu = muat ulang lewat GET (sekali per URL) lalu serah ke warga;
+  ketukan warga hanya membuka jendela tulis bila mengenai kotak sorot atau kontrol (tombol, tautan, label,
+  pilihan), bukan area kosong, kolom ketik, atau ketikan. Sisa risiko diterima: (1) percobaan tulis tertunda
+  PERTAMA yang kebetulan jatuh di dalam jendela isi (≤ `JENDELA_ISI_MS`) sebelum ada blokir apa pun tetap lolos;
+  (2) di dokumen kotor yang tidak dimuat ulang, ketukan warga pada kontrol nyata membuka jendela 3 detik yang
+  juga dipakai timer halaman. Dipertimbangkan: atribusi lewat stack inisiator CDP (`Network.requestWillBeSent`
+  `initiator.stack`) untuk membedakan tulis dari handler ketukan warga dan dari timer; belum dipakai karena
+  stack async tidak andal lintas `setTimeout`/promise dan menambah lapis CDP Network di samping rute Playwright.
 
 ## Rujukan berkas utama
 

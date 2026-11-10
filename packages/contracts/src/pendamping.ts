@@ -415,6 +415,8 @@ export const AmatiSesiInternalSchema = PemilikSesiInternalSchema.extend({
    * peta ref worker tidak diganti (ref dari pengamatan pantau = REF_BASI bila dipakai aksi).
    */
   pantau: z.boolean().optional(),
+  /** (Aditif) Bila ada: harus eksekusi yang sedang dipegang sesi (selain itu 409), seperti `selesai`. */
+  executionId: z.string().min(1).optional(),
 });
 export type AmatiSesiInternal = z.infer<typeof AmatiSesiInternalSchema>;
 export const AmatiSesiResponseSchema = z.object({
@@ -438,6 +440,8 @@ export const AksiSesiInternalSchema = PemilikSesiInternalSchema.extend({
    * label pengamatan.
    */
   kolom: z.array(KolomButuhSchema).max(150).optional(),
+  /** (Aditif) Bila ada: harus eksekusi yang sedang dipegang sesi (selain itu 409); loop lama tidak beraksi. */
+  executionId: z.string().min(1).optional(),
 });
 export type AksiSesiInternal = z.infer<typeof AksiSesiInternalSchema>;
 export const AksiSesiResponseSchema = z.object({
@@ -559,6 +563,12 @@ export const PendampingClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ambil_alih') }),
   /** Warga mengembalikan kendali ke AI. */
   z.object({ type: z.literal('kembalikan') }),
+  /**
+   * (Aditif) Warga menekan "Buka tautan" pada giliran `ketuk_tautan`: worker membaca ulang href tautan yang
+   * disorot lalu membukanya lewat navigasi GET (tanpa klik/JS halaman), dan AI melanjutkan. Tanpa URL dari
+   * perangkat; di luar giliran itu diabaikan.
+   */
+  z.object({ type: z.literal('buka_tautan') }),
   /*
    * Tidak ada pesan nilai vault atau berkas dari perangkat (A-M1): nilai Data Diri dan Dokumen hanya masuk
    * lewat kanal internal web -> worker (`/internal/sesi/isi`, `/internal/sesi/berkas`) setelah "Izinkan isi".
@@ -617,6 +627,17 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
     sorot: PendampingSorotSchema.optional(),
     /** Hanya `final`: nama tombol kirim yang tersorot, dibaca dari halaman (mis. "Selesai"). */
     tombol: z.string().min(1).max(40).optional(),
+    /**
+     * (Aditif) Hanya `ketuk_tautan`: nama tautan (diredaksi seperti pengamatan) dan tujuannya (host + jalur, tanpa
+     * query/fragmen) untuk tombol "Buka tautan" di layar warga.
+     */
+    tautan: z
+      .object({
+        nama: z.string().max(120),
+        host: z.string().min(1).max(253),
+        jalur: z.string().min(1).max(200),
+      })
+      .optional(),
     /** Hanya `berkas_kurang`: nama berkas adapter dan origin situs tujuan (untuk persetujuan ulang). */
     berkas: z
       .object({ nama: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/), origin: z.url().max(2048) })

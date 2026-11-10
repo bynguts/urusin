@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { jalurTulis } from '@urusin/executor';
 
 /**
  * Gerbang tulis jaringan Navigator generik (ADR 0030, desain §2 "Firewall"). Lapis kedua setelah klasifikator
@@ -45,6 +46,11 @@ export type PermintaanGerbang = {
   url: string;
   /** URL awal rantai redirect (bila permintaan ini hasil redirect). */
   asal?: string | undefined;
+  /**
+   * Host permintaan pernah membalas dengan header `cf-ray` (Cloudflare nyata): syarat jalur
+   * `/cdn-cgi/challenge-platform/` di host portal dianggap tantangan (review L3).
+   */
+  hostCloudflare?: boolean | undefined;
 };
 
 export type Putusan = 'lanjut' | 'blokir';
@@ -59,21 +65,28 @@ const RE_HOST_TANTANGAN = /(^|\.)(challenges\.cloudflare\.com|hcaptcha\.com|reca
 
 /**
  * Permintaan ke tantangan pihak ketiga (Turnstile, hCaptcha, reCAPTCHA) atau platform tantangan Cloudflare di
- * host portal sendiri. Hanya dipakai saat warga memegang kendali; allowlist egress tetap berlaku lebih dulu.
+ * host portal sendiri (hanya host yang terbukti di belakang Cloudflare, `hostCloudflare`). Allowlist egress tetap
+ * berlaku lebih dulu.
  */
-export function urlTantangan(url: string): boolean {
+export function urlTantangan(url: string, hostCloudflare = false): boolean {
   const u = URL.parse(url);
   if (!u) return false;
   const host = u.hostname.toLowerCase();
   return (
     RE_HOST_TANTANGAN.test(host) ||
     (host === 'www.google.com' && u.pathname.startsWith('/recaptcha/')) ||
-    u.pathname.startsWith('/cdn-cgi/challenge-platform/')
+    (hostCloudflare && u.pathname.startsWith('/cdn-cgi/challenge-platform/'))
   );
 }
 
+/** www.google.com ada di allowlist sesi hanya untuk reCAPTCHA: jalur lain ditolak (review L3). */
+export function jalurPihakKetigaBoleh(url: string): boolean {
+  const u = URL.parse(url);
+  return !u || u.hostname.toLowerCase() !== 'www.google.com' || u.pathname.startsWith('/recaptcha/');
+}
+
 /** Metode yang tidak mengubah keadaan server (preflight CORS ikut di sini). */
-const AMAN: ReadonlySet<string> = new Set(['GET', 'HEAD', 'OPTIONS']);
+export const AMAN: ReadonlySet<string> = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /** URL tanpa fragmen (fragmen tidak pernah dikirim ke server). */
 function tanpaFragmen(u: string): string | undefined {
@@ -94,11 +107,19 @@ function samaUrl(a: string, b: string): boolean {
  */
 export function putuskan(j: Jendela, r: PermintaanGerbang, sekarang: number = Date.now()): Putusan {
   if (j.jenis === 'warga') return 'lanjut';
+  // Telemetri/verifikasi tantangan (Turnstile flow, reCAPTCHA reload) bukan tulis ke portal: lolos di semua
+  // jendela AI agar widget tidak gagal karena balapan dengan klik AI (probe #14). Navigasi dokumen tidak.
+  const tantangan = urlTantangan(r.url, r.hostCloudflare === true);
+  if (!r.dokumen && tantangan) return 'lanjut';
   const aman = AMAN.has(r.metode.toUpperCase());
   switch (j.jenis) {
     case 'ai_diam':
-      if (j.tungguWarga) return aman || urlTantangan(r.url) ? 'lanjut' : 'blokir';
-      return r.utama || !aman ? 'blokir' : 'lanjut';
+      if (j.tungguWarga) return aman || tantangan ? 'lanjut' : 'blokir';
+      if (!aman) return 'blokir';
+      // Redirect JS/meta halaman sendiri (probe 3674 ?p=close_form): GET bingkai utama boleh bila jalur/kuerinya
+      // tidak berbunyi tulis (aturan jalur yang sama dengan tautan yang boleh diklik AI). Host tetap dibatasi
+      // allowlist egress sesi.
+      return r.utama && jalurTulis(r.url) ? 'blokir' : 'lanjut';
     case 'ai_isi':
       if (r.dokumen) return 'blokir';
       if (aman) return 'lanjut';
@@ -109,7 +130,10 @@ export function putuskan(j: Jendela, r: PermintaanGerbang, sekarang: number = Da
       const navKe = j.navKe;
       if (navKe === undefined) return 'blokir';
       if (!r.utama) return 'lanjut';
-      return samaUrl(r.url, navKe) || (r.asal !== undefined && samaUrl(r.asal, navKe)) ? 'lanjut' : 'blokir';
+      if (samaUrl(r.url, navKe) || (r.asal !== undefined && samaUrl(r.asal, navKe))) return 'lanjut';
+      // Redirect JS/meta halaman tujuan sesudah navigasi AI ke navKe (probe 3674 pilih_layanan -> ?p=close_form):
+      // aturan yang sama dengan ai_diam. Klik tombol tanpa navKe tetap tidak boleh memicu navigasi apa pun.
+      return jalurTulis(r.url) ? 'blokir' : 'lanjut';
     }
   }
 }
@@ -162,6 +186,8 @@ export function createGerbangTulis(opts: {
   wargaPegang: () => boolean;
   wargaTunggu?: () => boolean;
   onBlokir: (c: CatatanBlokir, j: Exclude<Jendela, { jenis: 'warga' }>) => void;
+  /** Tulis non-GET yang lolos di jendela `warga` (warga mengirim sendiri); tanpa catatan apa pun. */
+  onTulisWarga?: () => void;
   now?: () => number;
 }): GerbangTulis {
   const now = opts.now ?? Date.now;
@@ -181,6 +207,7 @@ export function createGerbangTulis(opts: {
       const j = jendela();
       const p = putuskan(j, r, now());
       if (p === 'blokir' && j.jenis !== 'warga') opts.onBlokir(catatanBlokir(j, r), j);
+      if (p === 'lanjut' && j.jenis === 'warga' && !AMAN.has(r.metode.toUpperCase())) opts.onTulisWarga?.();
       return p;
     },
     tolak(r) {

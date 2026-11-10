@@ -19,7 +19,13 @@ import type {
   RefTersimpan,
   UploadFile,
 } from '@urusin/executor';
-import { JENDELA_ISI_MS, type CatatanBlokir, type GerbangTulis, type Jendela } from './gerbang-tulis.js';
+import {
+  AMAN,
+  JENDELA_ISI_MS,
+  type CatatanBlokir,
+  type GerbangTulis,
+  type Jendela,
+} from './gerbang-tulis.js';
 
 /**
  * GenerikRun: "tangan" Navigator generik di worker (ADR 0030). Otak (LLM + validator) ada di web; worker
@@ -51,11 +57,24 @@ export type TanganHalaman = {
   navigasi(url: string): Promise<void>;
   /** Kotak elemen (piksel CSS viewport) untuk disorot ke warga. */
   sorot(jalur: string): Promise<PendampingSorot | undefined>;
+  /** Href tautan pembuka `ref` yang dibaca ulang dari DOM (op runner `tautan`); undefined = bukan/tidak lagi. */
+  tautan(ref: string, peta: PetaRef): Promise<string | undefined>;
   /** Tunggu halaman tenang setelah klik/navigasi (muat selesai atau jeda singkat). */
   tenang(): Promise<void>;
   /** URL dokumen utama yang ter-commit saat ini (mis. `chrome-error://...` bila navigasi gagal). */
   urlKini(): string;
 };
+
+/** Tujuan tautan pembuka untuk giliran `ketuk_tautan` (event `giliran_anda.tautan`). */
+export type TautanGiliran = { nama: string; host: string; jalur: string };
+
+function decodeURIComponentAman(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
 
 /** Evaluator op runner di isolated world (browser.ts) -> TanganHalaman. */
 export function tanganRunner(deps: {
@@ -81,6 +100,12 @@ export function tanganRunner(deps: {
     async sorot(jalur) {
       const r = await deps.evaluate({ kind: 'rect', target: [{ by: 'css', value: jalur }] });
       return r !== 'interrupted' && r.ok ? (r.value as PendampingSorot) : undefined;
+    },
+    async tautan(ref, peta) {
+      const r = await deps.evaluate({ kind: 'tautan', ref, peta });
+      const href =
+        r !== 'interrupted' && r.ok ? (r.value as { href?: unknown } | undefined)?.href : undefined;
+      return typeof href === 'string' ? href : undefined;
     },
     tenang: deps.tenang,
     urlKini: deps.urlKini,
@@ -115,8 +140,8 @@ export type GenerikDeps = {
   /** Allowlist egress sesi (host persis + skema); false = host di luar registry. */
   urlBoleh(url: string): boolean;
   jejak(c: CatatanPendamping): void;
-  /** Warga memegang kendali (takeover) dengan pesan bertemplat + sorotan. */
-  serahkan(alasan: AlasanGiliran, pesan: string, sorot?: PendampingSorot): void;
+  /** Warga memegang kendali (takeover) dengan pesan bertemplat + sorotan (+ tujuan tautan untuk `ketuk_tautan`). */
+  serahkan(alasan: AlasanGiliran, pesan: string, sorot?: PendampingSorot, tautan?: TautanGiliran): void;
   /** Situs tidak bisa dikerjakan otomatis: sesi beralih ke mode dipandu. */
   tidakBisa(pesan: string): void;
   now?: () => number;
@@ -133,10 +158,13 @@ export const PESAN_GENERIK = {
   otp: 'Situs meminta kode OTP. Ketik sendiri kodenya; AI tidak pernah membacanya.',
   captcha: 'Situs meminta kode keamanan (CAPTCHA). Selesaikan sendiri; AI menunggu.',
   isi_sendiri: 'Isi sendiri kolom yang disorot, lalu tekan Lanjutkan.',
-  ketuk_tautan: 'Ketuk tautan yang disorot untuk membuka formulir, lalu tekan Lanjutkan.',
+  ketuk_tautan:
+    'AI tidak membuka tautan ini sendiri. Periksa nama dan alamat tujuannya, lalu tekan Buka tautan bila sesuai.',
   final: 'Periksa semua isian. Hanya Anda yang boleh menekan tombol kirim.',
   tidak_yakin:
     'AI tidak yakin langkah berikutnya. Lanjutkan sendiri, atau tekan Lanjutkan untuk mencoba lagi.',
+  kotor:
+    'Halaman ini mencoba mengirim data sendiri, jadi AI berhenti dan halaman dimuat ulang. Periksa halaman, lalu lanjutkan sendiri.',
 } as const;
 
 const PESAN_TIDAK_BISA: Record<Extract<Aksi, { jenis: 'tidak_bisa' }>['sebab'], string> = {
@@ -173,8 +201,9 @@ const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function polaNilai(v: string): RegExp | undefined {
   const t = v.trim();
   if (t.length < NILAI_SAMAR_MIN) return undefined;
-  if (/^\d{6,}$/.test(t)) return new RegExp(t.split('').map(escRe).join('[\\s.\\-/]*'), 'g');
-  return new RegExp(t.split(/\s+/).map(escRe).join('\\s+'), 'gi');
+  // Pemisah apa pun yang bukan huruf/angka, sampai 4 karakter (" ** ", "_", "|", NBSP), review L2.
+  if (/^\d{6,}$/.test(t)) return new RegExp(t.split('').map(escRe).join('[^\\p{L}\\p{Nd}]{0,4}'), 'gu');
+  return new RegExp(t.split(/\s+/).map(escRe).join('[^\\p{L}\\p{Nd}]{1,4}'), 'giu');
 }
 
 /** Ganti setiap nilai vault di `s` dengan token placeholder-nya (nilai terpanjang dulu). */
@@ -269,9 +298,57 @@ export class GenerikRun {
   private aksiBerjalan: { blokir: CatatanBlokir[]; hostLain: boolean } | undefined;
   private antre: Promise<unknown> = Promise.resolve();
   private readonly now: () => number;
+  /**
+   * Dokumen "kotor" (review N2): ada tulis non-GET yang diblokir di dokumen ini (timer/retry dari klik AI). Tidak
+   * pernah dapat jendela XHR `ai_isi` lagi, dan ketukan warga hanya membuka jendela tulis bila mengenai kontrol
+   * (N4). Direset hanya oleh navigasi bingkai utama yang ter-commit (`dokumenBaru`).
+   */
+  private kotorDok = false;
+  private kotorDiserahkan = false;
+  /** AI sudah menjalankan aksi di dokumen ini (heartbeat halaman yang belum disentuh AI bukan tulis tertunda AI). */
+  private aiBertindakDok = false;
+  /** URL terakhir yang dimuat ulang karena kotor (mencegah putaran muat ulang di halaman yang sama). */
+  private muatUlangTerakhir: string | undefined;
+  /** Jalur CSS elemen yang disorot pada serah terakhir (kotak sorot untuk ketukan warga saat kotor). */
+  private sorotJalur: string | undefined;
+  /**
+   * Ada tulis non-GET oleh warga (lolos di jendela `warga`) sejak aksi AI terakhir di halaman (review N3): syarat
+   * halaman sukses diterima sebagai "terkirim".
+   */
+  private tulisWargaSejakAi = false;
+  /** Ref tautan pembuka di pengamatan terakhir (review N1: serah `ketuk_tautan` hanya ke ref ini). */
+  private refPembuka = new Set<string>();
+  /** Giliran `ketuk_tautan` yang aktif: ref tautan yang boleh dibuka lewat `buka_tautan` (review N5). */
+  private pembukaAktif: string | undefined;
 
   constructor(private readonly d: GenerikDeps) {
     this.now = d.now ?? Date.now;
+  }
+
+  /** Dokumen bingkai utama baru ter-commit: timer/retry dokumen lama mati, bendera kotor direset. */
+  dokumenBaru(): void {
+    this.pembukaAktif = undefined;
+    this.kotorDok = false;
+    this.kotorDiserahkan = false;
+    this.aiBertindakDok = false;
+  }
+
+  /** Gerbang tulis meloloskan tulis non-GET warga. */
+  tulisWarga(): void {
+    this.tulisWargaSejakAi = true;
+  }
+
+  adaTulisWargaSejakAksiAi(): boolean {
+    return this.tulisWargaSejakAi;
+  }
+
+  get kotor(): boolean {
+    return this.kotorDok;
+  }
+
+  /** Kotak sorot terkini (posisi sekarang, mengikuti gulir) dari serah terakhir; undefined bila tidak ada. */
+  async kotakSorot(): Promise<PendampingSorot | undefined> {
+    return this.sorotJalur ? this.d.tangan.sorot(this.sorotJalur).catch(() => undefined) : undefined;
   }
 
   /** Dipanggil gerbang tulis setiap kali permintaan dibatalkan (sinkron, dari handler route). */
@@ -283,6 +360,8 @@ export class GenerikRun {
       jalurSha256: c.jalurSha256,
       jendela: c.jendela,
     });
+    // WebSocket ditolak di semua sesi generik (bukan tanda tulis tertunda); selain itu non-GET = kotor.
+    if (!AMAN.has(c.metode) && c.metode !== 'WSOCKET') this.kotorDok = true;
     // Isi: navigasi (bingkai mana pun, mis. form POST ke iframe) dan tulis non-XHR (beacon) = eskalasi; XHR yang
     // lewat batas jendela cukup dicatat. Klik: setiap blokir = eskalasi.
     const tulisLain = c.dokumen || !c.xhr;
@@ -291,8 +370,42 @@ export class GenerikRun {
       return;
     }
     // Di luar aksi: tulis yang diblokir tepat setelah isi (onchange form.submit(), sendBeacon) = warga.
-    if (j.jenis === 'ai_isi' && tulisLain && this.now() <= j.sampai + JENDELA_ISI_MS)
+    if (j.jenis === 'ai_isi' && tulisLain && this.now() <= j.sampai + JENDELA_ISI_MS) {
       this.d.serahkan('periksa', PESAN_GENERIK.periksa);
+      return;
+    }
+    // N2: tulis tertunda (timer/retry dari aksi AI) saat AI diam = halaman kotor -> muat ulang (GET, mematikan
+    // timer) lalu serahkan ke warga. Sekali per dokumen.
+    if (
+      j.jenis === 'ai_diam' &&
+      !j.tungguWarga &&
+      this.kotorDok &&
+      this.aiBertindakDok &&
+      !this.kotorDiserahkan
+    ) {
+      this.kotorDiserahkan = true;
+      void this.serahkanKotor();
+    }
+  }
+
+  private serahkanKotor(): Promise<void> {
+    return this.serial(async () => {
+      const url = this.d.tangan.urlKini();
+      if (this.d.urlBoleh(url) && this.muatUlangTerakhir !== url) {
+        this.muatUlangTerakhir = url;
+        this.tulisWargaSejakAi = false;
+        this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: url });
+        try {
+          await this.d.tangan.navigasi(url);
+          await this.d.tangan.tenang();
+        } finally {
+          this.d.gerbang.setAi({ jenis: 'ai_diam' });
+        }
+      }
+      this.sorotJalur = undefined;
+      this.d.jejak({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'tidak_yakin' });
+      this.d.serahkan('periksa', PESAN_GENERIK.kotor);
+    });
   }
 
   /** Host terakhir yang ditolak proxy egress (proxy tidak tahu dokumen/subresource): calon host kandidat. */
@@ -347,7 +460,12 @@ export class GenerikRun {
 
   private async amatiSekarang(pantau: boolean): Promise<Pengamatan | null> {
     const seq = ++this.seq;
-    const r = await this.d.tangan.amati(seq, Object.fromEntries(this.diisi));
+    let r = await this.d.tangan.amati(seq, Object.fromEntries(this.diisi));
+    // SPA yang baru merender setelah load (probe 3208): 0 elemen = tunggu DOM tenang lalu amati sekali lagi.
+    if (r && (r.pengamatan as { elemen?: unknown[] }).elemen?.length === 0) {
+      await this.d.tangan.tenang();
+      r = await this.d.tangan.amati(seq, Object.fromEntries(this.diisi));
+    }
     if (!r) return null;
     const vault = [...this.d.izin.vault()];
     const parsed = PengamatanSchema.safeParse(r.pengamatan);
@@ -360,6 +478,8 @@ export class GenerikRun {
     this.seqTerakhir = seq;
     this.kunciAkhir = cek.data.sinyal.halamanAkhir;
     this.namaRef = new Map(cek.data.elemen.map((e) => [e.ref, e.nama]));
+    this.refPembuka = new Set(cek.data.elemen.filter((e) => e.tautanPembuka).map((e) => e.ref));
+    this.pembukaAktif = undefined;
     this.d.jejak({
       jenis: 'amati',
       host: cek.data.host,
@@ -444,9 +564,20 @@ export class GenerikRun {
   ): Promise<{ kode: KodeHasilAksi; kelas?: KelasKendali; halamanBerganti?: boolean }> {
     if (a.jenis === 'serahkan') {
       const ref = a.ref ? this.peta[a.ref] : undefined;
+      let tautan: TautanGiliran | undefined;
+      if (a.alasan === 'ketuk_tautan') {
+        // Review N1: hanya tautan pembuka dari pengamatan terakhir, tidak pernah di halaman akhir (tombol kirim
+        // tidak bisa disorot sebagai "tautan"). Tujuan dibaca ulang dari DOM untuk ditampilkan ke warga (N5).
+        if (this.kunciAkhir || !a.ref || !ref || !this.refPembuka.has(a.ref))
+          return { kode: 'KELAS_DITOLAK' };
+        tautan = await this.tautanGiliran(a.ref);
+        if (!tautan) return { kode: 'KELAS_DITOLAK' };
+      }
       const sorot = ref ? await this.d.tangan.sorot(ref.jalur) : undefined;
+      this.sorotJalur = ref?.jalur;
+      this.pembukaAktif = tautan ? a.ref : undefined;
       this.d.jejak({ jenis: 'ambil_alih', fase: 'mulai', alasan: a.alasan });
-      this.d.serahkan(ALASAN_GILIRAN[a.alasan], PESAN_GENERIK[a.alasan], sorot);
+      this.d.serahkan(ALASAN_GILIRAN[a.alasan], PESAN_GENERIK[a.alasan], sorot, tautan);
       return { kode: 'ok', halamanBerganti: true };
     }
     if (a.jenis === 'tidak_bisa') {
@@ -473,6 +604,8 @@ export class GenerikRun {
         break;
       }
       case 'centang':
+        // Kunci halaman akhir juga untuk centang (review N7); runner memeriksa ulang dari DOM.
+        if (this.kunciAkhir) return { kode: 'HALAMAN_AKHIR' };
         op = { jenis: 'centang', ref: a.ref, nilai: a.nilai };
         break;
       case 'unggah': {
@@ -482,7 +615,10 @@ export class GenerikRun {
         break;
       }
     }
-    this.d.gerbang.setAi({ jenis: 'ai_isi', sampai: this.now() + JENDELA_ISI_MS });
+    // Halaman kotor: tanpa jendela XHR (tulis tertunda dari klik AI tidak boleh menumpang jendela isi).
+    this.d.gerbang.setAi(
+      this.kotorDok ? { jenis: 'ai_diam' } : { jenis: 'ai_isi', sampai: this.now() + JENDELA_ISI_MS },
+    );
     const h = await this.jalankan(op, ref);
     if (h.kode === 'ok' && 'placeholder' in op) this.diisi.set(ref.sidik, op.placeholder);
     return h;
@@ -495,6 +631,8 @@ export class GenerikRun {
   ): Promise<{ kode: KodeHasilAksi; kelas?: KelasKendali; halamanBerganti?: boolean }> {
     this.aksiBerjalan = { blokir: [], hostLain: false };
     this.hostDitolakTerakhir = undefined;
+    this.aiBertindakDok = true;
+    this.tulisWargaSejakAi = false;
     const urlSebelum = this.d.tangan.urlKini();
     try {
       const r = await this.d.tangan.aksi(op, this.peta);
@@ -522,6 +660,7 @@ export class GenerikRun {
     const a = this.aksiBerjalan;
     if (!a || (a.blokir.length === 0 && !a.hostLain)) return false;
     const sorot = ref ? await this.d.tangan.sorot(ref.jalur).catch(() => undefined) : undefined;
+    this.sorotJalur = ref?.jalur;
     this.d.serahkan('periksa', a.hostLain ? PESAN_GENERIK.hostLain : PESAN_GENERIK.periksa, sorot);
     return true;
   }
@@ -560,11 +699,61 @@ export class GenerikRun {
     return { kode: 'ok' as const, ...k, halamanBerganti: true };
   }
 
+  /** Href tautan pembuka yang lolos allowlist, dalam bentuk yang ditampilkan ke warga (jalur diredaksi). */
+  private async tautanUrl(ref: string): Promise<URL | undefined> {
+    const href = await this.d.tangan.tautan(ref, this.peta);
+    const u = href ? URL.parse(href) : null;
+    if (!u || !this.d.urlBoleh(u.href)) return undefined;
+    u.hash = '';
+    return u;
+  }
+
+  private async tautanGiliran(ref: string): Promise<TautanGiliran | undefined> {
+    const u = await this.tautanUrl(ref);
+    if (!u) return undefined;
+    const jalur = redaksi(decodeURIComponentAman(u.pathname), this.d.izin.vault()).slice(0, 200) || '/';
+    return { nama: (this.namaRef.get(ref) ?? '').slice(0, 120), host: u.host, jalur };
+  }
+
+  /**
+   * Warga menekan "Buka tautan" (pesan `buka_tautan`, review N5) pada giliran `ketuk_tautan` yang aktif: href dibaca
+   * ulang dari DOM, `lanjut()` mengembalikan kendali ke AI, lalu navigasi GET bingkai utama ke href itu (jendela
+   * `ai_klik` dengan navKe), tanpa klik dan tanpa handler JS halaman. false = tidak ada giliran itu / tautan berubah.
+   */
+  bukaTautan(lanjut: () => void): Promise<boolean> {
+    return this.serial(async () => {
+      const ref = this.pembukaAktif;
+      this.pembukaAktif = undefined;
+      if (!ref || this.kunciAkhir) return false;
+      const u = await this.tautanUrl(ref);
+      if (!u) return false;
+      lanjut();
+      this.aiBertindakDok = true;
+      this.tulisWargaSejakAi = false;
+      this.aksiBerjalan = { blokir: [], hostLain: false };
+      this.hostDitolakTerakhir = undefined;
+      const urlSebelum = this.d.tangan.urlKini();
+      try {
+        this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: u.href });
+        await this.d.tangan.navigasi(u.href);
+        await this.d.tangan.tenang();
+        await this.keluarAllowlist(urlSebelum);
+        this.d.gerbang.setAi({ jenis: 'ai_diam' });
+        await this.eskalasiBila(ref ? this.peta[ref] : undefined);
+      } finally {
+        this.aksiBerjalan = undefined;
+        this.d.gerbang.setAi({ jenis: 'ai_diam' });
+      }
+      return true;
+    });
+  }
+
   /** Halaman awal sesi (origin program): navigasi AI ke URL persis itu saja. */
   async mulai(url: string): Promise<void> {
     await this.serial(async () => {
       this.aksiBerjalan = { blokir: [], hostLain: false };
       this.hostDitolakTerakhir = undefined;
+      this.tulisWargaSejakAi = false;
       try {
         this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: url });
         await this.d.tangan.navigasi(url);

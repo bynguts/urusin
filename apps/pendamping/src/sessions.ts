@@ -25,6 +25,7 @@ import type {
 } from '@urusin/contracts';
 import { ADAPTERS, buildProgram, requiredData, type Params, type Program } from '@urusin/adapters';
 import {
+  EGRESS_ASET_UMUM,
   PLATFORM_WILAYAH,
   PORTAL_WILAYAH,
   egressAllowedHosts,
@@ -72,6 +73,11 @@ export type Hooks = {
    * Selama itu web boleh mengirim berkas itu saja lewat jalur isi server (persetujuan baru).
    */
   berkasKurang(nama: string | undefined): void;
+  /**
+   * Sesi generik: halaman sukses terlihat sesudah warga mengirim sendiri (tulis warga sejak aksi AI terakhir), mis.
+   * setelah AI menyerah dan loop Navigator di web sudah berhenti (review kode N1). Sesi masuk `siaga` berhasil.
+   */
+  suksesWarga?(p: Pengamatan): void;
 };
 
 export type Frame = FrameMasuk;
@@ -84,6 +90,8 @@ export type PortGenerik = {
    */
   amati(pantau?: boolean): Promise<Pengamatan | null>;
   aksi(req: Pick<AksiSesiInternal, 'rencanaHash' | 'aksi' | 'seq' | 'kolom'>): Promise<HasilAksi[]>;
+  /** Ada tulis non-GET oleh warga sejak aksi AI terakhir (syarat halaman sukses = terkirim, review N3). */
+  adaTulisWargaSejakAksiAi(): boolean;
 };
 
 export type ActiveRun = {
@@ -92,6 +100,8 @@ export type ActiveRun = {
   input(m: Extract<PendampingClientMessage, { type: 'pointer' | 'wheel' | 'key' | 'text' }>): Promise<void>;
   ambilAlih(): void;
   kembalikan(): void;
+  /** Sesi generik: buka tautan pembuka giliran `ketuk_tautan` lalu AI lanjut; false = tidak ada giliran itu. */
+  bukaTautan?(): Promise<boolean>;
   /** Ganti program untuk execution berikutnya di peramban yang sama (sesi siaga). */
   gantiProgram(program: Program, executionId: string): Promise<void>;
   setViewer(send: ((f: Frame) => void) | null): Promise<void>;
@@ -209,8 +219,9 @@ function hostsSesiWilayah(kode: string): { boleh: Set<string>; bawaan: string[] 
   const platform =
     p.platform && Object.hasOwn(PLATFORM_WILAYAH, p.platform) ? PLATFORM_WILAYAH[p.platform]!.hosts : [];
   return {
-    boleh: new Set([...hostsWilayah(kode), ...tantangan]),
-    bawaan: [...new Set([...p.hosts, ...platform, ...tantangan])],
+    boleh: new Set([...hostsWilayah(kode), ...tantangan, ...EGRESS_ASET_UMUM]),
+    // Aset umum (CDN/fon) ikut bawaan: tanpa itu ~21 portal nyata rusak tampilannya (probe #4).
+    bawaan: [...new Set([...p.hosts, ...platform, ...tantangan, ...EGRESS_ASET_UMUM])],
   };
 }
 
@@ -650,6 +661,12 @@ export class SessionManager {
 
   // ---- Navigator generik (web broker, HMAC) ---------------------------------
 
+  /** `executionId` dari Navigator (bila dikirim) harus eksekusi yang sedang dipegang sesi (review L4). */
+  private cekEksekusi(s: Sesi, executionId: string | undefined): void {
+    if (executionId !== undefined && executionId !== s.executionId)
+      throw new PendampingError('PESAN_TIDAK_SAH', 409, 'eksekusi bukan milik sesi ini');
+  }
+
   private requireGenerik(owner: { urusanId: string; sidHash: string }): Sesi & { run: ActiveRun } {
     const s = this.requireOwned(owner);
     if (!s.generik)
@@ -666,8 +683,13 @@ export class SessionManager {
   }
 
   /** Pengamatan halaman saat ini (sudah diredaksi worker). Boleh saat warga memegang kendali (baca saja). */
-  async amati(owner: { urusanId: string; sidHash: string }, pantau = false): Promise<AmatiSesiResponse> {
+  async amati(
+    owner: { urusanId: string; sidHash: string },
+    pantau = false,
+    executionId?: string,
+  ): Promise<AmatiSesiResponse> {
     const s = this.requireGenerik(owner);
+    this.cekEksekusi(s, executionId);
     const pengamatan = await s.run.generik!.amati(pantau);
     if (!pengamatan)
       throw new PendampingError('LAYANAN_TIDAK_TERSEDIA', 503, 'halaman sedang berpindah; amati lagi');
@@ -682,6 +704,7 @@ export class SessionManager {
    */
   async aksi(owner: { urusanId: string; sidHash: string }, req: AksiSesiInternal): Promise<AksiSesiResponse> {
     const s = this.requireGenerik(owner);
+    this.cekEksekusi(s, req.executionId);
     // Baris lembar dari web hanya untuk placeholder yang benar-benar dipakai rencana ini.
     if (req.kolom) {
       const dipakai = placeholderRencana(req.aksi);
@@ -740,14 +763,37 @@ export class SessionManager {
     const s0 = this.requireOwned(owner);
     if (executionId !== undefined && executionId !== s0.executionId)
       throw new PendampingError('PESAN_TIDAK_SAH', 409, 'eksekusi bukan milik sesi ini');
-    if (s0.generik && s0.status === 'siaga') return this.view(s0);
+    if (s0.generik && s0.status === 'siaga') {
+      // Sukses sudah diterima worker (tulis warga + halaman sukses); bukti dari Navigator boleh menyusul sekali.
+      const port = s0.run?.generik;
+      if (bukti && !s0.bukti && port?.adaTulisWargaSejakAksiAi()) {
+        const p = await port.amati(true).catch(() => null);
+        if (p?.sinyal.sukses && s0.status === 'siaga') this.terimaSukses(s0, p, bukti);
+      }
+      return this.view(s0);
+    }
+    // Sesi yang sudah berakhir (mis. diakhiri saat amati berjalan) tidak pernah dilaporkan berhasil (review N7).
+    const berakhir = () => new PendampingError('PESAN_TIDAK_SAH', 409, 'sesi pendamping sudah berakhir');
+    if (TERMINAL.has(s0.status)) throw berakhir();
     const s = this.requireGenerik(owner);
-    const p = await s.run.generik!.amati(true);
+    const port = s.run.generik!;
+    // Halaman "sukses" tanpa pengiriman oleh warga (dasbor, label, draf) bukan bukti terkirim (review N3).
+    if (!port.adaTulisWargaSejakAksiAi())
+      throw new PendampingError('PESAN_TIDAK_SAH', 409, 'belum ada pengiriman oleh warga');
+    const p = await port.amati(true);
     if (!p) throw new PendampingError('LAYANAN_TIDAK_TERSEDIA', 503, 'halaman sedang berpindah; coba lagi');
     if (!p.sinyal.sukses)
       throw new PendampingError('PESAN_TIDAK_SAH', 409, 'halaman belum menunjukkan permohonan terkirim');
-    if (TERMINAL.has(s.status)) return this.view(s);
-    // Yang terlihat Navigator: teks penting, judul, dan nama/petunjuk/galat elemen.
+    if (TERMINAL.has(s.status)) throw berakhir();
+    this.terimaSukses(s, p, bukti);
+    return this.view(s);
+  }
+
+  /**
+   * Halaman sukses sesudah tulis warga: bukti dicatat (nomor hanya bila tertulis di halaman yang terlihat Navigator:
+   * teks penting, judul, nama/petunjuk/galat elemen), lalu sesi `siaga` berhasil.
+   */
+  private terimaSukses(s: Sesi, p: Pengamatan, bukti?: PendampingBukti): void {
     const tertulis = [p.judul, p.teks, ...p.elemen.flatMap((e) => [e.nama, e.petunjuk ?? '', e.galat ?? ''])];
     const nomor = bukti?.nomor && tertulis.some((t) => t.includes(bukti.nomor!)) ? bukti.nomor : undefined;
     const b: PendampingBukti | undefined =
@@ -756,8 +802,8 @@ export class SessionManager {
         : undefined;
     if (b) this.catat(s, { jenis: 'bukti', bukti: b });
     s.izinMenunggu = undefined;
-    this.siaga(s, PESAN.terkirim, b);
-    return this.view(s);
+    if (s.status !== 'siaga') return this.siaga(s, PESAN.terkirim, b);
+    if (b) s.bukti = b;
   }
 
   /** Kuras catatan audit Navigator (untuk event `jejak_pendamping`); juga setelah sesi berakhir (nisan). */
@@ -917,6 +963,13 @@ export class SessionManager {
       case 'ambil_alih':
       case 'kembalikan':
         return this.handleControl(s, m.type);
+      case 'buka_tautan': {
+        if (!s.generik || !s.run?.bukaTautan || s.mode !== 'takeover' || s.status !== 'berjalan') return;
+        if (!(await s.run.bukaTautan())) return;
+        this.catat(s, { jenis: 'ambil_alih', fase: 'selesai' });
+        this.tolakIzin(s);
+        return;
+      }
       case 'akhiri':
         return this.end(s, 'dibatalkan', 'dibatalkan', PESAN.dibatalkan);
       case 'halo':
@@ -1049,6 +1102,10 @@ export class SessionManager {
         void this.end(s, 'selesai', 'berhasil', pesan);
       },
       berkasKurang: (nama) => void (s.berkasDitunggu = nama),
+      suksesWarga: (p) => {
+        if (!s.generik || TERMINAL.has(s.status) || s.status === 'siaga' || !p.sinyal.sukses) return;
+        this.terimaSukses(s, p);
+      },
     };
     try {
       const run = await this.factory({

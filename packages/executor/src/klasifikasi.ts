@@ -21,6 +21,8 @@ export type AturanKlasifikasi =
   | 'K7_NEG'
   /** Tautan GET yang kena NEG hanya lewat nama (jalur/id/ikon bersih): tetap `kirim`, amatan `tautanPembuka`. */
   | 'K7_NEG_NAMA_TAUTAN'
+  /** Tautan GET yang kena NEG hanya lewat ikon di dalamnya (mis. feather credit-card): tetap `kirim`, pembuka. */
+  | 'K7_NEG_IKON_TAUTAN'
   | 'K7B_TEKS_CURIGA'
   | 'K8_NAVIGASI'
   | 'K9_UI_LOKAL'
@@ -36,8 +38,10 @@ export type FiturKendali = {
   /** Hanya label tombol `input[type=button|submit|reset|image]`; nilai field isian TIDAK PERNAH dibaca. */
   nilai: string;
   title: string;
-  /** Token id/class/name/ikon (huruf kecil, tanpa pemisah). */
+  /** Token id/class/name elemen itu sendiri (huruf kecil, tanpa pemisah). */
   idKelas: string[];
+  /** Token ikon di dalam elemen (`<i class="fa ...">`, svg/use, material-icons). */
+  ikon: string[];
   href: { ada: boolean; host: string; jalur: string; js: boolean; download: boolean; hanyaFragmen: boolean };
   submitterAsli: boolean;
   formAdaSandi: boolean;
@@ -136,6 +140,15 @@ const NEG_AKAR = [
   'register',
   'finish',
   'payment',
+  // Review N6: kata kerja tulis/pengesahan di luar daftar awal ("Tanda Tangani", "Finalisasi", "Serahkan").
+  'tandatangan',
+  'final',
+  'serahkan',
+  'setor',
+  'kunci',
+  'sahkan',
+  'terbitkan',
+  'lapor',
 ];
 /** Kata NEG pendek: hanya cocok sebagai token utuh (supaya "ya" tidak mengenai "layanan"). */
 const NEG_TOKEN = [
@@ -151,6 +164,7 @@ const NEG_TOKEN = [
   'apply',
   'agree',
   'accept',
+  'tte',
 ];
 /**
  * Tautan memakai NEG yang sama dengan tombol ("Ajukan Permohonan", "Proses Permohonan" = kirim). Pengecualian
@@ -206,7 +220,17 @@ const NEG_JALUR = [
   'apply',
   'terima',
   'tolak',
+  'tandatangan',
+  'tte',
+  'serah',
+  'setor',
+  'kunci',
+  'sahkan',
+  'terbit',
+  'lapor',
 ];
+/** Frasa NEG dua kata ("tanda tangan", "tanda-tangan") untuk nama dan jalur. */
+const RE_FRASA_NEG = /tanda[^a-z0-9]{0,3}tangan/;
 /** Token ikon yang berarti kirim/simpan/hapus/keluar (fa-paper-plane, bi-send, material "send", ...). */
 const NEG_IKON = [
   'paper',
@@ -257,6 +281,12 @@ const RE_PERNYATAAN =
  * dengan KTP", "Punya NPWP", jenis layanan/dokumen. Selain itu (persetujuan, langganan kabar, "saya bukan robot")
  * default tolak. Pernyataan selalu kalah walau memuat kata data.
  */
+/**
+ * Deklarasi orang pertama/kesesuaian ("Data yang saya isi sesuai KTP", "Saya sudah membaca persyaratan") dan
+ * label berkata kerja tulis ("Kirim permohonan KK baru") bukan opsi data walau memuat kata data (review N7).
+ * Sengaja TIDAK masuk RE_PERNYATAAN: itu mengunci halaman akhir.
+ */
+const RE_CENTANG_DEKLARASI = /\b(saya|kami|sesuai|membaca|telah|sudah)\b/;
 const RE_CENTANG_DATA =
   /\b(sama dengan|alamat|domisili|punya|memiliki|mempunyai|npwp|bpjs|kk|ktp|kia|akta|ijazah|paspor|sim|layanan|jenis|kategori|keperluan|disabilitas|difabel|penyandang|anak|istri|suami|ayah|ibu|wali|kepala keluarga|anggota keluarga|pindah|baru|hilang|rusak|perubahan|perbaikan|laki|perempuan|wni|wna)\b/;
 
@@ -264,8 +294,11 @@ function atribut(el: Element, nama: string): string {
   return el.getAttribute(nama) ?? '';
 }
 
-/** Teks yang tampak di elemen: abaikan isi field, skrip, gaya, dan turunan tersembunyi. */
-export function teksTampakDari(el: Element): string {
+/**
+ * Teks yang tampak di elemen: abaikan isi field, skrip, gaya, dan turunan tersembunyi. `lewati` (opsional)
+ * membuang subpohon turunan tertentu (mis. FAQ/navigasi saat mencari frasa halaman akhir).
+ */
+export function teksTampakDari(el: Element, lewati?: (e: Element) => boolean): string {
   let hasil = '';
   const jalan = (n: Node): void => {
     if (n.nodeType === 3) {
@@ -280,6 +313,7 @@ export function teksTampakDari(el: Element): string {
     if (tag === 'TEXTAREA') return;
     if (e !== el && (tag === 'SELECT' || tag === 'INPUT' || tag === 'OPTION')) return;
     if (e !== el && (e.hasAttribute('hidden') || atribut(e, 'aria-hidden') === 'true')) return;
+    if (e !== el && lewati?.(e)) return;
     if (tag === 'IMG') hasil += ' ' + atribut(e, 'alt') + ' ';
     for (const c of e.childNodes) jalan(c);
     if (tag === 'BR' || tag === 'P' || tag === 'DIV' || tag === 'LI') hasil += ' ';
@@ -329,9 +363,12 @@ function formPemilik(el: Element): HTMLFormElement | null {
 function submitterAsliDari(el: Element): boolean {
   const tag = el.tagName;
   if (tag === 'BUTTON') {
-    // Atribut type kosong/tak dikenal = submit (default HTML), di dalam form maupun tidak.
+    // Atribut type kosong/tak dikenal = submit (default HTML), tetapi hanya mengirim bila punya form pemilik
+    // (form leluhur atau atribut form=). Di luar form (menu seluler) tidak mengirim apa pun. type=submit eksplisit
+    // tetap submitter di mana pun.
     const t = (el.getAttribute('type') ?? '').trim().toLowerCase();
-    return t !== 'button' && t !== 'reset';
+    if (t === 'button' || t === 'reset') return false;
+    return t === 'submit' || formPemilik(el) !== null;
   }
   if (tag === 'INPUT') {
     const t = (el as HTMLInputElement).type;
@@ -372,7 +409,7 @@ function hostDari(src: string, dasar: string): string {
 
 function dalamFrameTantanganDari(el: Element): boolean {
   const doc = el.ownerDocument;
-  const dasar = doc.defaultView?.location.href ?? 'about:blank';
+  const dasar = doc.baseURI || 'about:blank';
   if (RE_HOST_TANTANGAN.test(doc.defaultView?.location.hostname ?? '')) return true;
   if (el.tagName === 'IFRAME' && RE_HOST_TANTANGAN.test(hostDari(atribut(el, 'src'), dasar))) return true;
   if (el.closest(SEL_WADAH_TANTANGAN)) return true;
@@ -395,7 +432,12 @@ export function checkboxPernyataan(el: Element, label: string): boolean {
  */
 export function centangDataAman(label: string): boolean {
   const t = normalTeks(lipatNeg(label));
-  return !RE_PERNYATAAN.test(t) && RE_CENTANG_DATA.test(t);
+  return (
+    !RE_PERNYATAAN.test(t) &&
+    !RE_CENTANG_DEKLARASI.test(t) &&
+    !cocokNeg(t, NEG_AKAR) &&
+    RE_CENTANG_DATA.test(t)
+  );
 }
 
 /** Label sederhana untuk field (label[for], label pembungkus, aria-label). Dipakai deteksi pernyataan. */
@@ -411,26 +453,50 @@ function labelSederhana(el: Element): string {
 }
 
 /** Teks halaman yang tampak untuk heuristik (tanpa isi field). */
+/**
+ * Wilayah yang bukan isi formulir: navigasi, kaki, FAQ/akordeon (termasuk jawaban yang terlipat), menu. Frasa
+ * halaman akhir di sini ("konfirmasi pendaftaran" di FAQ beranda) tidak mengunci halaman.
+ */
+const SEL_BUKAN_ISI_FORM =
+  'nav, footer, .navbar, .dropdown-menu, .breadcrumb, .accordion, .faq, [class*="faq" i], [id*="faq" i], details, .collapse:not(.show), marquee';
+
 function teksHalaman(doc: Document): string {
-  return doc.body ? normalTeks(lipatNeg(teksTampakDari(doc.body))) : '';
+  return doc.body ? normalTeks(lipatNeg(teksTampakDari(doc.body, (e) => e.matches(SEL_BUKAN_ISI_FORM)))) : '';
+}
+
+/** Halaman punya formulir yang bisa dikirim: kolom isian atau tombol yang terlihat di luar navigasi/FAQ. */
+function adaFormulirTerlihat(doc: Document): boolean {
+  for (const el of doc.querySelectorAll(
+    'input:not([type="hidden"]), textarea, select, button, [role="button"], [role="checkbox"], [contenteditable="true"]',
+  ))
+    if (!el.closest(SEL_BUKAN_ISI_FORM) && terlihatEl(el)) return true;
+  return false;
 }
 
 /**
- * Halaman deklarasi/tinjauan akhir: frasa pernyataan/ringkasan, atau checkbox pernyataan yang terlihat.
- * Dihitung ulang setiap klik (kunci halaman akhir).
+ * Halaman deklarasi/tinjauan akhir: frasa pernyataan/ringkasan di luar navigasi/FAQ pada halaman yang punya
+ * kolom isian atau tombol, atau checkbox pernyataan yang terlihat. Dihitung ulang setiap klik (kunci halaman
+ * akhir).
  */
 export function halamanAkhir(doc: Document): boolean {
-  const teks = teksHalaman(doc);
-  if (RE_HALAMAN_AKHIR.some((re) => re.test(teks))) return true;
+  if (adaFormulirTerlihat(doc) && RE_HALAMAN_AKHIR.some((re) => re.test(teksHalaman(doc)))) return true;
   for (const el of doc.querySelectorAll('input[type="checkbox"], [role="checkbox"]')) {
     if (terlihatEl(el) && checkboxPernyataan(el, labelSederhana(el))) return true;
   }
   return false;
 }
 
+function tokenDari(sumber: string[]): string[] {
+  return sumber.flatMap((s) => tokenKata(normalTeks(s).replace(/([a-z])([A-Z])/g, '$1 $2')));
+}
+
 function tokenIdKelas(el: Element): string[] {
-  const sumber = [el.id, atribut(el, 'class'), atribut(el, 'name')];
-  // Ikon di dalam tombol/tautan: <i class="fa fa-paper-plane">, <span class="material-icons">send</span>, svg.
+  return tokenDari([el.id, atribut(el, 'class'), atribut(el, 'name')]);
+}
+
+/** Ikon di dalam tombol/tautan: <i class="fa fa-paper-plane">, <span class="material-icons">send</span>, svg. */
+function tokenIkon(el: Element): string[] {
+  const sumber: string[] = [];
   for (const ikon of el.querySelectorAll(
     'i, svg, use, span[class*="icon"], span[class*="fa-"], span[class*="bi-"]',
   )) {
@@ -442,7 +508,7 @@ function tokenIdKelas(el: Element): string[] {
     );
     if (/material|icon/.test(atribut(ikon, 'class'))) sumber.push(ikon.textContent ?? '');
   }
-  return sumber.flatMap((s) => tokenKata(normalTeks(s).replace(/([a-z])([A-Z])/g, '$1 $2')));
+  return tokenDari(sumber);
 }
 
 /** Bangun fitur §3 dari elemen. `akhir` boleh diisi bila sudah dihitung untuk halaman yang sama. */
@@ -470,7 +536,8 @@ export function fiturKendali(el: Element, akhir?: boolean): FiturKendali {
     href.download = el.hasAttribute('download');
     href.hanyaFragmen = h === '' || h.startsWith('#');
     try {
-      const u = new URL(h, doc.defaultView?.location.href ?? 'about:blank');
+      // baseURI (menghormati <base href>) = URL yang benar-benar dibuka saat diklik.
+      const u = new URL(h, doc.baseURI || 'about:blank');
       href.host = /^https?:$/.test(u.protocol) ? u.host.toLowerCase() : '';
       href.jalur = normalTeks(decodeURIComponent(u.pathname + u.search));
     } catch {
@@ -488,6 +555,7 @@ export function fiturKendali(el: Element, akhir?: boolean): FiturKendali {
     nilai,
     title: normalTeks(el.getAttribute('title')),
     idKelas: tokenIdKelas(el),
+    ikon: tokenIkon(el),
     href,
     submitterAsli: submitterAsliDari(el),
     formAdaSandi: !!form?.querySelector('input[type="password"]'),
@@ -521,7 +589,8 @@ function tokenNeg(t: string, akar: readonly string[]): boolean {
 }
 
 function cocokNeg(teks: string, akar: readonly string[]): boolean {
-  return tokenKata(lipatNeg(teks)).some((t) => tokenNeg(t, akar));
+  const t = lipatNeg(teks);
+  return RE_FRASA_NEG.test(t) || tokenKata(t).some((k) => tokenNeg(k, akar));
 }
 
 function bersihkanPanah(s: string): string {
@@ -542,6 +611,27 @@ function tautanGetBiasa(f: FiturKendali): boolean {
   );
 }
 
+/** Jalur+kueri (sudah dinormalkan) memuat token tulis NEG_JALUR (ajukan, kirim, simpan, hapus, ...). */
+function jalurNeg(jalur: string): boolean {
+  return (
+    RE_FRASA_NEG.test(jalur) ||
+    tokenKata(jalur).some((t) => !BUKAN_NEG.test(t) && NEG_JALUR.some((k) => t.includes(k)))
+  );
+}
+
+/**
+ * URL navigasi yang jalur/kuerinya berbunyi tulis (aturan jalur yang sama dengan tautan K7). Dipakai gerbang
+ * tulis worker untuk navigasi dokumen yang tidak dipicu aksi AI (redirect JS halaman saat ai_diam).
+ */
+export function jalurTulis(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return jalurNeg(normalTeks(decodeURIComponent(u.pathname + u.search)));
+  } catch {
+    return true;
+  }
+}
+
 /** Aturan §3 atas fitur. Murni: fitur yang sama selalu menghasilkan kelas yang sama. */
 export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: AturanKlasifikasi } {
   const nama = [f.teksTampak, f.ariaLabel, f.nilai, f.title].filter(Boolean);
@@ -558,15 +648,17 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
 
   // Frasa menu persis (Daftar Layanan, Status Pengajuan) melewati cek NAMA saja; id/kelas/ikon/jalur tetap.
   const menuAman = tautan && nama.length > 0 && nama.every((n) => MENU_AMAN.has(bersihkanPanah(lipatNeg(n))));
-  const idKelas = f.idKelas.join(' ');
+  const negToken = (t: string[]) =>
+    cocokNeg(t.join(' '), NEG_AKAR) || t.some((x) => NEG_IKON.some((k) => x.includes(k)));
   const negNama = !menuAman && nama.some((n) => cocokNeg(n, NEG_AKAR));
-  const negLain =
-    cocokNeg(idKelas, NEG_AKAR) ||
-    f.idKelas.some((t) => NEG_IKON.some((k) => t.includes(k))) ||
-    (tautan &&
-      tokenKata(f.href.jalur).some((t) => !BUKAN_NEG.test(t) && NEG_JALUR.some((k) => t.includes(k)))) ||
-    f.href.download;
+  const negIkon = negToken(f.ikon);
+  const negLain = negToken(f.idKelas) || (tautan && jalurNeg(f.href.jalur)) || f.href.download;
   if (negLain) return { kelas: 'kirim', aturan: 'K7_NEG' };
+  // Ikon saja (probe SIDAK: feather credit-card = ikon KTP/KK) pada tautan GET bersih: pembuka, diketuk warga.
+  if (negIkon && !negNama)
+    return tautanGetBiasa(f)
+      ? { kelas: 'kirim', aturan: 'K7_NEG_IKON_TAUTAN' }
+      : { kelas: 'kirim', aturan: 'K7_NEG' };
   if (negNama)
     // Tautan GET biasa yang hanya namanya berbunyi tulis (Ajukan/Daftar/Proses): tetap kirim, tetapi otak boleh
     // menyerahkannya ke warga sebagai "ketuk tautan" (bukan tombol final).
@@ -582,7 +674,7 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
   if (f.kendaliLokal) return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
 
   const tombolBiasa =
-    (f.tag === 'button' && f.type === 'button') ||
+    (f.tag === 'button' && !f.submitterAsli && f.type !== 'reset') ||
     (f.tag === 'input' && f.type === 'button') ||
     f.role === 'button';
   const namaUtama = bersihkanPanah(f.teksTampak || f.nilai);
@@ -624,6 +716,9 @@ export function klasifikasi(el: Element, akhir?: boolean): HasilKlasifikasi {
   if (!bolehDiklikAi(utama.kelas)) return utama;
   for (const x of aktivatorTerkait(el)) {
     const k = putuskanKelas(fiturKendali(x, fitur.halamanAkhir));
+    // Probe 1901: <button type=button><a href=/jenis-layanan>. Tombol pembungkus tanpa sinyal apa pun (K11:
+    // bukan submitter, tanpa atribut berbahaya, nama netral) tidak mengunci tautan navigasi di dalamnya.
+    if (utama.aturan === 'K8_NAVIGASI' && k.aturan === 'K11_DEFAULT') continue;
     if (!bolehDiklikAi(k.kelas)) return { ...k, fitur };
   }
   return utama;

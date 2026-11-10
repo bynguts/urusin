@@ -65,6 +65,9 @@ type Opsi = {
   saatNavigasi?: (run: GenerikRun) => void;
   /** URL dokumen akhir setelah navigasi ke URL tertentu (mensimulasikan redirect 302). */
   alihkan?: Record<string, string>;
+  peta?: PetaRef;
+  /** Href tautan pembuka per ref (op runner `tautan`). */
+  tautan?: Record<string, string>;
 };
 
 function harness(o: Opsi = {}) {
@@ -73,7 +76,7 @@ function harness(o: Opsi = {}) {
   const navigasi: string[] = [];
   const jendelaSaatAksi: Jendela[] = [];
   const jejak: CatatanPendamping[] = [];
-  const serah: { alasan: string; pesan: string; sorot: unknown }[] = [];
+  const serah: { alasan: string; pesan: string; sorot: unknown; tautan?: unknown }[] = [];
   const tidakBisa: string[] = [];
   const diisiDikirim: Record<string, string>[] = [];
   const minta: Parameters<IzinGenerik['minta']>[0][] = [];
@@ -89,7 +92,7 @@ function harness(o: Opsi = {}) {
   const tangan: TanganHalaman = {
     async amati(_seq, diisi) {
       diisiDikirim.push(diisi);
-      return { pengamatan: (o.amati ?? pengamatan)(), peta: PETA };
+      return { pengamatan: (o.amati ?? pengamatan)(), peta: o.peta ?? PETA };
     },
     async aksi(a) {
       panggilan.push(a);
@@ -103,6 +106,7 @@ function harness(o: Opsi = {}) {
       o.saatNavigasi?.(ref.run!);
     },
     sorot: async () => ({ x: 1, y: 2, lebar: 3, tinggi: 4 }),
+    tautan: async (r) => o.tautan?.[r],
     tenang: async () => {},
     urlKini: () => urlKini,
   };
@@ -120,7 +124,8 @@ function harness(o: Opsi = {}) {
     izin,
     urlBoleh: o.urlBoleh ?? (() => true),
     jejak: (c) => void jejak.push(c),
-    serahkan: (alasan, pesan, sorot) => void serah.push({ alasan, pesan, sorot }),
+    serahkan: (alasan, pesan, sorot, tautan) =>
+      void serah.push({ alasan, pesan, sorot, ...(tautan ? { tautan } : {}) }),
     tidakBisa: (p) => void tidakBisa.push(p),
     now: () => now,
   }));
@@ -149,6 +154,16 @@ describe('GenerikRun: kunci halaman akhir', () => {
     const p = await h.run.amati();
     expect(p?.sinyal.halamanAkhir).toBe(true);
     const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] });
+    expect(r).toEqual([{ indeks: 0, kode: 'HALAMAN_AKHIR' }]);
+    expect(h.panggilan).toEqual([]);
+  });
+
+  it('N7: centang pada halaman akhir = HALAMAN_AKHIR tanpa menyentuh halaman', async () => {
+    const h = harness({
+      amati: () => pengamatan({ sinyal: { ...pengamatan().sinyal, halamanAkhir: true } }),
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'centang', ref: 'e1', nilai: true }] });
     expect(r).toEqual([{ indeks: 0, kode: 'HALAMAN_AKHIR' }]);
     expect(h.panggilan).toEqual([]);
   });
@@ -486,6 +501,84 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     expect(h.jejak).toEqual([expect.objectContaining({ jenis: 'blokir', jendela: 'ai_diam' })]);
   });
 
+  const postTertunda = (h: ReturnType<typeof harness>) =>
+    h.gerbang.periksa({
+      metode: 'POST',
+      dokumen: false,
+      utama: false,
+      xhr: true,
+      url: 'https://portal.contoh.go.id/api/final',
+    });
+  const tunggu = () => new Promise((r) => setTimeout(r, 0));
+
+  it('N2: POST tertunda dari klik AI saat ai_diam = halaman kotor: muat ulang (GET) lalu serah, sekali per dokumen', async () => {
+    const h = harness({ aksi: () => ({ status: 'ok', aturan: 'K10_LANJUT', kelas: 'lanjut' }) });
+    await h.run.amati();
+    expect(await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] })).toEqual([
+      { indeks: 0, kode: 'ok', kelas: 'lanjut' },
+    ]);
+    expect(h.run.kotor).toBe(false);
+    expect(postTertunda(h)).toBe('blokir');
+    expect(h.run.kotor).toBe(true);
+    expect(postTertunda(h)).toBe('blokir');
+    // amati masuk antre serial yang sama: setelah ini muat ulang dan serah sudah selesai.
+    await h.run.amati(true);
+    await tunggu();
+    expect(h.navigasi).toEqual(['https://portal.contoh.go.id/form']);
+    expect(h.jendelaSaatAksi.at(-1)).toEqual({ jenis: 'ai_klik', navKe: 'https://portal.contoh.go.id/form' });
+    expect(h.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.kotor, sorot: undefined }]);
+    expect(h.gerbang.jendela()).toEqual({ jenis: 'ai_diam' });
+
+    // Dokumen baru (hasil muat ulang) bersih; kotor lagi di URL yang sama: serah tanpa muat ulang kedua.
+    h.run.dokumenBaru();
+    expect(h.run.kotor).toBe(false);
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] });
+    postTertunda(h);
+    await h.run.amati(true);
+    await tunggu();
+    expect(h.navigasi).toHaveLength(1);
+    expect(h.serah).toHaveLength(2);
+  });
+
+  it('N2: halaman kotor tidak pernah dapat jendela XHR isi lagi', async () => {
+    const h = harness();
+    h.vault.set(PH_NAMA, 'Budi');
+    h.setujui(H1, `s-nama|${PH_NAMA}`);
+    await h.run.amati();
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'isi', ref: 'e1', nilai: PH_NAMA }] });
+    expect(h.jendelaSaatAksi[0]).toMatchObject({ jenis: 'ai_isi' });
+    h.maju(JENDELA_ISI_MS * 3);
+    // Lewat jendela isi: kotor, cukup dicatat.
+    expect(postTertunda(h)).toBe('blokir');
+    expect(h.serah).toEqual([]);
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'isi', ref: 'e1', nilai: PH_NAMA }] });
+    expect(h.jendelaSaatAksi[1]).toEqual({ jenis: 'ai_diam' });
+    expect(postTertunda(h)).toBe('blokir');
+  });
+
+  it('N3: tulis warga tercatat sampai aksi AI berikutnya di halaman', async () => {
+    const h = harness();
+    await h.run.amati();
+    expect(h.run.adaTulisWargaSejakAksiAi()).toBe(false);
+    h.run.tulisWarga();
+    expect(h.run.adaTulisWargaSejakAksiAi()).toBe(true);
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'pilih', ref: 'e1', nilai: { opsi: 1 } }] });
+    expect(h.run.adaTulisWargaSejakAksiAi()).toBe(false);
+    h.run.tulisWarga();
+    await h.run.mulai('https://portal.contoh.go.id/form');
+    expect(h.run.adaTulisWargaSejakAksiAi()).toBe(false);
+  });
+
+  it('heartbeat POST di dokumen yang belum disentuh AI: kotor, tetapi tanpa muat ulang/serah', async () => {
+    const h = harness();
+    await h.run.amati();
+    postTertunda(h);
+    await tunggu();
+    expect(h.run.kotor).toBe(true);
+    expect(h.navigasi).toEqual([]);
+    expect(h.serah).toEqual([]);
+  });
+
   it('pilih yang memicu form.submit() (POST dokumen) diblokir dan diserahkan ke warga', async () => {
     const h = harness({
       aksi: () => {
@@ -597,6 +690,19 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     expect(h.serah[0]?.pesan).toBe(PESAN_GENERIK.hostLain);
   });
 
+  it('probe 3208: amati 0 elemen (SPA lambat) = tunggu tenang lalu amati ulang sekali', async () => {
+    let n = 0;
+    const h = harness({ amati: () => (n++ === 0 ? pengamatan({ elemen: [] }) : pengamatan()) });
+    const p = await h.run.amati();
+    expect(n).toBe(2);
+    expect(p?.elemen.length).toBeGreaterThan(0);
+    // Halaman yang memang kosong: hanya satu ulangan, tidak berputar.
+    let m = 0;
+    const kosong = harness({ amati: () => (m++, pengamatan({ elemen: [] })) });
+    expect((await kosong.run.amati())?.elemen).toEqual([]);
+    expect(m).toBe(2);
+  });
+
   it('serahkan dan tidak_bisa memakai pesan bertemplat', async () => {
     const h = harness();
     await h.run.amati();
@@ -613,12 +719,23 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     expect(h.tidakBisa).toHaveLength(1);
   });
 
-  it('serahkan ketuk_tautan = giliran ketuk_tautan dengan sorot, bukan final', async () => {
-    const h = harness();
+  const PEMBUKA = (akhir = false) =>
+    pengamatan({
+      sinyal: { ...pengamatan().sinyal, halamanAkhir: akhir },
+      elemen: [
+        ...pengamatan().elemen,
+        { ref: 'e6', peran: 'tautan', nama: 'Ajukan Permohonan KK', kelas: 'kirim', tautanPembuka: true },
+      ],
+    });
+  const PETA_PEMBUKA: PetaRef = { ...PETA, e6: { jalur: 'main > a', sidik: 's-pembuka' } };
+  const HREF = 'https://portal.contoh.go.id/permohonan/kk?jenis=baru#atas';
+
+  it('serahkan ketuk_tautan = giliran dengan sorot + tujuan; buka_tautan = navigasi GET sekali, AI lanjut', async () => {
+    const h = harness({ amati: () => PEMBUKA(), peta: PETA_PEMBUKA, tautan: { e6: HREF } });
     await h.run.amati();
     const r = await h.run.aksi({
       rencanaHash: H1,
-      aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e5' }],
+      aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }],
     });
     expect(r).toEqual([{ indeks: 0, kode: 'ok' }]);
     expect(h.serah).toEqual([
@@ -626,9 +743,84 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
         alasan: 'ketuk_tautan',
         pesan: PESAN_GENERIK.ketuk_tautan,
         sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 },
+        tautan: { nama: 'Ajukan Permohonan KK', host: 'portal.contoh.go.id', jalur: '/permohonan/kk' },
       },
     ]);
+    expect(PESAN_GENERIK.ketuk_tautan).not.toMatch(/formulir/);
     expect(h.jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'ketuk_tautan' });
+
+    let lanjut = 0;
+    expect(await h.run.bukaTautan(() => void lanjut++)).toBe(true);
+    expect(lanjut).toBe(1);
+    const tujuan = 'https://portal.contoh.go.id/permohonan/kk?jenis=baru';
+    expect(h.navigasi).toEqual([tujuan]);
+    expect(h.jendelaSaatAksi.at(-1)).toEqual({ jenis: 'ai_klik', navKe: tujuan });
+    expect(h.gerbang.jendela()).toEqual({ jenis: 'ai_diam' });
+    // Sekali per giliran.
+    expect(await h.run.bukaTautan(() => void lanjut++)).toBe(false);
+    expect(h.navigasi).toHaveLength(1);
+  });
+
+  it('N1: serahkan ketuk_tautan ke ref bukan tautan pembuka, tanpa ref, atau di halaman akhir = KELAS_DITOLAK', async () => {
+    const biasa = harness({ tautan: { e5: 'https://portal.contoh.go.id/kirim' } });
+    await biasa.run.amati();
+    for (const ref of ['e5', 'e3', undefined]) {
+      const r = await biasa.run.aksi({
+        rencanaHash: H1,
+        aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ...(ref ? { ref } : {}) }],
+      });
+      expect(r, String(ref)).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK' }]);
+    }
+    expect(biasa.serah).toEqual([]);
+
+    const akhir = harness({ amati: () => PEMBUKA(true), peta: PETA_PEMBUKA, tautan: { e6: HREF } });
+    await akhir.run.amati();
+    expect(
+      await akhir.run.aksi({
+        rencanaHash: H1,
+        aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }],
+      }),
+    ).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK' }]);
+    expect(akhir.serah).toEqual([]);
+  });
+
+  it('N5: tautan berubah di DOM atau ke host lain = KELAS_DITOLAK; buka_tautan tanpa giliran = tidak apa-apa', async () => {
+    const berubah = harness({ amati: () => PEMBUKA(), peta: PETA_PEMBUKA });
+    await berubah.run.amati();
+    expect(
+      await berubah.run.aksi({
+        rencanaHash: H1,
+        aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }],
+      }),
+    ).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK' }]);
+    expect(await berubah.run.bukaTautan(() => {})).toBe(false);
+    expect(berubah.navigasi).toEqual([]);
+
+    const luar = harness({
+      amati: () => PEMBUKA(),
+      peta: PETA_PEMBUKA,
+      tautan: { e6: 'https://jahat.contoh.com/permohonan' },
+      urlBoleh: (u) => u.startsWith('https://portal.contoh.go.id/'),
+    });
+    await luar.run.amati();
+    expect(
+      await luar.run.aksi({
+        rencanaHash: H1,
+        aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }],
+      }),
+    ).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK' }]);
+  });
+
+  it('N5: jalur tujuan diredaksi dengan nilai vault (tujuan tampil ke warga)', async () => {
+    const h = harness({
+      amati: () => PEMBUKA(),
+      peta: PETA_PEMBUKA,
+      tautan: { e6: 'https://portal.contoh.go.id/warga/Budi%20Santoso/kk' },
+    });
+    h.vault.set(PH_NAMA, 'Budi Santoso');
+    await h.run.amati();
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }] });
+    expect(h.serah[0]?.tautan).toMatchObject({ jalur: `/warga/${PH_NAMA}/kk` });
   });
 });
 
@@ -663,6 +855,19 @@ describe('redaksi', () => {
       for (const v of [nik, nama, kk, spasi, nama.toUpperCase()]) expect(json).not.toContain(v);
       expect(p!.teks).toContain(PH_NIK);
     }
+  });
+
+  it('L2: pemisah bukan huruf/angka sampai 4 karakter tetap disamarkan', () => {
+    const angka = acak(16, '0123456789');
+    const g = angka.match(/.{4}/g)!;
+    for (const pemisah of [' ** ', '_', '\u00a0', '|', ' - ', '.', ''])
+      expect(redaksi(`NIK ${g.join(pemisah)} ok`, [[PH_NIK, angka]]), JSON.stringify(pemisah)).toBe(
+        `NIK ${PH_NIK} ok`,
+      );
+    for (const nama of ['Budi_Santoso', 'budi - santoso', 'BUDI\u00a0SANTOSO', 'Budi.Santoso'])
+      expect(redaksi(`Nama: ${nama}.`, [[PH_NAMA, 'Budi Santoso']]), nama).toBe(`Nama: ${PH_NAMA}.`);
+    // Pemisah lebih dari 4 karakter atau huruf: bukan nilai yang sama.
+    expect(redaksi(`${g[0]}-----${g.slice(1).join('')}`, [[PH_NIK, angka]])).not.toContain(PH_NIK);
   });
 
   it('nilai pendek tidak disamarkan; nilai terpanjang dulu', () => {

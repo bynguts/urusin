@@ -25,6 +25,7 @@ import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import {
   createGerbangTulis,
+  jalurPihakKetigaBoleh,
   JENDELA_WARGA_MS,
   type GerbangTulis,
   type PermintaanGerbang,
@@ -255,6 +256,18 @@ export const PROFIL_PREFS = Object.freeze({
   translate: { enabled: false },
 });
 
+/**
+ * Kontrol yang ketukannya membuka jendela tulis warga di halaman kotor (N4). Kolom ketik (input teks, textarea,
+ * contenteditable) bukan kontrol walau di dalam label.
+ */
+const SEL_KONTROL_KETUK =
+  'button, a[href], area[href], input[type="submit"], input[type="image"], input[type="button"], input[type="checkbox"], input[type="radio"], [role="button"], [role="link"], [role="checkbox"], [role="radio"], label, summary, select';
+const SEL_KOLOM_KETIK =
+  'textarea, [contenteditable=""], [contenteditable="true"], input:not([type="submit"], [type="image"], [type="button"], [type="checkbox"], [type="radio"], [type="reset"], [type="file"])';
+
+/** Kendali yang dihitung `tenang()` untuk menilai DOM sudah stabil. */
+const SEL_KENDALI_TENANG = 'input, textarea, select, button, a[href], [role="button"], [role="link"]';
+
 /** URL lolos allowlist host:port sesi (lapis `context.route`; sama dengan proxy egress). */
 export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): boolean {
   const u = URL.parse(url);
@@ -363,9 +376,17 @@ export async function launchIsolated(
     });
     // Lapis kedua (selain proxy): permintaan ke host:port di luar allowlist dibatalkan di peramban.
     // Gerbang tulis (generik) di rute yang SAMA, setelah allowlist: permintaan yang dibatalkan tidak pernah terkirim.
+    // Host yang terbukti di belakang Cloudflare (header cf-ray): hanya di sana /cdn-cgi/challenge-platform/
+    // dianggap tantangan oleh gerbang tulis (review L3; proteksi di registry belum lengkap).
+    const hostCf = new Set<string>();
+    context.on('response', (resp) => {
+      if (hostCf.size >= 64 || !resp.headers()['cf-ray']) return;
+      const h = URL.parse(resp.url())?.host;
+      if (h) hostCf.add(h);
+    });
     await context.route('**/*', (route) => {
       const req = route.request();
-      const ok = urlDiAllowlist(allowedHosts, req.url());
+      const ok = urlDiAllowlist(allowedHosts, req.url()) && jalurPihakKetigaBoleh(req.url());
       if (!ok) {
         const host = URL.parse(req.url())?.hostname;
         const dokumen = gerbang ? permintaanGerbang(req).utama : false;
@@ -376,7 +397,14 @@ export async function launchIsolated(
       }
       // `aborted` (net::ERR_ABORTED): navigasi dokumen yang dibatalkan tidak meng-commit halaman galat, jadi
       // warga tetap melihat formulir yang sama (dengan isiannya) untuk ditekan sendiri.
-      if (gerbang && gerbang.periksa(permintaanGerbang(req)) === 'blokir') return route.abort('aborted');
+      if (
+        gerbang &&
+        gerbang.periksa({
+          ...permintaanGerbang(req),
+          hostCloudflare: hostCf.has(URL.parse(req.url())?.host ?? ''),
+        }) === 'blokir'
+      )
+        return route.abort('aborted');
       return route.continue();
     });
     // Gerbang tulis tidak melihat frame WebSocket (proxy hanya memeriksa host): sesi generik menolak setiap
@@ -453,6 +481,8 @@ type KendaliGerbang = {
   wargaTunggu: () => boolean;
   blokir: Parameters<typeof createGerbangTulis>[0]['onBlokir'];
   hostDiblokir: (host: string, dokumen: boolean | undefined) => void;
+  /** Tulis non-GET warga lolos (jendela `warga`). */
+  tulisWarga: () => void;
 };
 
 export async function startBrowserRun(config: Config, init: RunInit): Promise<ActiveRun> {
@@ -462,12 +492,14 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
     wargaTunggu: () => false,
     blokir: () => {},
     hostDiblokir: () => {},
+    tulisWarga: () => {},
   };
   const gerbang = init.generik
     ? createGerbangTulis({
         wargaPegang: () => kendali.wargaPegang(),
         wargaTunggu: () => kendali.wargaTunggu(),
         onBlokir: (c, j) => kendali.blokir(c, j),
+        onTulisWarga: () => kendali.tulisWarga(),
       })
     : undefined;
   const hosts = hostsSesi(init.program);
@@ -511,9 +543,9 @@ export async function wire(
   let executionId = init.executionId;
 
   const page: Page = context.pages()[0] ?? (await context.newPage());
-  // Pop-up / tab baru tidak terlihat di layar warga: tutup.
+  // Pop-up / tab baru tidak terlihat di layar warga: tutup (sesi generik: lihat penanganan pop-up warga di bawah).
   context.on('page', (p) => {
-    if (p !== page) void p.close();
+    if (p !== page && !gen) void p.close();
   });
   const cdp: CDPSession = await context.newCDPSession(page);
 
@@ -547,6 +579,42 @@ export async function wire(
    * menyelesaikan tantangan, bukan menyetujui tulis di halaman portal.
    */
   let inputWargaTerakhir = Number.NEGATIVE_INFINITY;
+
+  /** Keputusan ketukan saat halaman kotor (ditetapkan saat pointer down, dipakai pointer up yang sama). */
+  let ketukKotorSah = false;
+
+  /**
+   * Ketukan warga mengenai kotak sorot serah terakhir, atau kontrol nyata (DOM.getNodeForLocation lalu `closest`
+   * di dunia terisolasi, prototipe halaman tidak dipakai). Gagal = tidak.
+   */
+  async function ketukanKeKontrol(x: number, y: number): Promise<boolean> {
+    const kotak = await generik?.kotakSorot();
+    if (kotak && x >= kotak.x && x <= kotak.x + kotak.lebar && y >= kotak.y && y <= kotak.y + kotak.tinggi)
+      return true;
+    try {
+      const { backendNodeId } = (await cdp.send('DOM.getNodeForLocation', {
+        x: Math.round(x),
+        y: Math.round(y),
+        includeUserAgentShadowDOM: false,
+      })) as { backendNodeId: number };
+      const { executionContextId } = (await cdp.send('Page.createIsolatedWorld', {
+        frameId: await mainFrameId(),
+        worldName: 'urusin-ketuk',
+      })) as { executionContextId: number };
+      const { object } = (await cdp.send('DOM.resolveNode', { backendNodeId, executionContextId })) as {
+        object: { objectId?: string };
+      };
+      if (!object.objectId) return false;
+      const r = (await cdp.send('Runtime.callFunctionOn', {
+        objectId: object.objectId,
+        functionDeclaration: `function () { const e = this.nodeType === 1 ? this : this.parentElement; return !!(e && !e.matches(${JSON.stringify(SEL_KOLOM_KETIK)}) && !e.closest('[contenteditable=""], [contenteditable="true"]') && e.closest(${JSON.stringify(SEL_KONTROL_KETUK)})); }`,
+        returnByValue: true,
+      })) as { result: { value?: unknown } };
+      return r.result.value === true;
+    } catch {
+      return false;
+    }
+  }
 
   const mainFrameId = async () =>
     ((await cdp.send('Page.getFrameTree')) as { frameTree: { frame: { id: string } } }).frameTree.frame.id;
@@ -1038,12 +1106,50 @@ export async function wire(
   let generikDimulai = false;
   if (gen && init.generik) {
     const izinHost = new Set(egressRules(gen.hosts, config.fixtureOrigins).map((r) => `${r.host}:${r.port}`));
+    const urlBoleh = (url: string) =>
+      urlDiAllowlist(izinHost, url) &&
+      checkUrl(url, { testMode: fixtureOrigins.length > 0, fixtureOrigins }).ok;
+    // Review kode N4: tautan target=_blank yang diketuk warga membuka pop-up yang tidak terlihat di layar. Pop-up
+    // selalu ditutup; navigasi GET-nya (hanya dari ketukan warga, lolos allowlist) dibuka di halaman utama.
+    // Metode navigasi terakhir per URL (pop-up baru tersedia setelah navigasinya dimulai; bingkainya belum
+    // terhubung ke halaman saat permintaan terlihat). Pop-up hasil form POST tidak pernah diulang sebagai GET.
+    const metodeNav = new Map<string, string>();
+    context.on('request', (r) => {
+      if (!r.isNavigationRequest()) return;
+      metodeNav.delete(r.url());
+      metodeNav.set(r.url(), r.method());
+      if (metodeNav.size > 32) metodeNav.delete(metodeNav.keys().next().value!);
+    });
+    context.on('page', (p) => {
+      if (p === page) return;
+      const dariWarga = manual && Date.now() - inputWargaTerakhir <= JENDELA_WARGA_MS;
+      void (async () => {
+        if (dariWarga) await p.waitForLoadState('domcontentloaded', { timeout: 3_000 }).catch(() => {});
+        const url = p.url();
+        await p.close().catch(() => {});
+        if (!dariWarga || metodeNav.get(url) !== 'GET' || destroyed || !manual || !urlBoleh(url)) return;
+        await cdp.send('Page.navigate', { url }).catch(() => undefined);
+      })();
+    });
     const { izin, jejak } = init.generik;
     const tenang = async () => {
       // Jeda singkat agar handler klik sempat memicu permintaan; bila navigasi dimulai, tunggu muat (<= 10 detik).
       await new Promise((r) => setTimeout(r, 400));
       const batas = Date.now() + 10_000;
       while (loading && !destroyed && Date.now() < batas) await new Promise((r) => setTimeout(r, 100));
+      // SPA (probe 3208): kendali baru muncul setelah load. Tunggu jumlahnya > 0 dan sama pada dua bacaan
+      // berturut-turut (<= 5 detik). Hitungan lewat locator (dunia utilitas Playwright), tanpa skrip halaman.
+      const batasDom = Date.now() + 5_000;
+      let sebelum = -1;
+      while (!destroyed && Date.now() < batasDom) {
+        const n = await page
+          .locator(SEL_KENDALI_TENANG)
+          .count()
+          .catch(() => -1);
+        if (n > 0 && n === sebelum) return;
+        sebelum = n;
+        await new Promise((r) => setTimeout(r, 250));
+      }
     };
     generik = new GenerikRun({
       tangan: tanganRunner({
@@ -1073,28 +1179,64 @@ export async function wire(
       }),
       gerbang: gen.gerbang,
       izin,
-      urlBoleh: (url) =>
-        urlDiAllowlist(izinHost, url) &&
-        checkUrl(url, { testMode: fixtureOrigins.length > 0, fixtureOrigins }).ok,
+      urlBoleh,
       jejak,
-      serahkan(alasan, pesan, box) {
+      serahkan(alasan, pesan, box, tautan) {
         manual = true;
         hooks.mode('takeover', pesan);
-        hooks.event({ jenis: 'giliran_anda', alasan, pesan, ...(box ? { sorot: box } : {}) });
+        hooks.event({
+          jenis: 'giliran_anda',
+          alasan,
+          pesan,
+          ...(box ? { sorot: box } : {}),
+          ...(tautan ? { tautan } : {}),
+        });
       },
       // Situs tidak bisa dikerjakan AI (mis. hanya lewat WhatsApp): dipandu, bukan gagal (sama dengan drift adapter).
       tidakBisa: (pesan) => hooks.ended('dipandu', 'drift', pesan),
     });
     const run = generik;
+    // Dokumen bingkai utama baru (cross-document, ter-commit) = timer dokumen lama mati: bendera kotor direset.
+    cdp.on('Page.frameNavigated', (e: { frame: { parentId?: string } }) => {
+      if (!e.frame.parentId) run.dokumenBaru();
+    });
+    await cdp.send('Page.enable').catch(() => {});
     gen.kendali.wargaTunggu = ditahan;
     gen.kendali.wargaPegang = () => ditahan() && Date.now() - inputWargaTerakhir <= JENDELA_WARGA_MS;
     gen.kendali.blokir = (c, j) => run.blokir(c, j);
     gen.kendali.hostDiblokir = (host, dokumen) => run.hostDiblokir(host, dokumen);
+    // Review kode N1: warga mengirim sendiri (mis. setelah AI menyerah, loop di web sudah berhenti). Halaman sukses
+    // sesudah tulis warga = sesi siaga berhasil tanpa menunggu /selesai. Diperiksa saat dokumen utama dimuat dan
+    // sebentar sesudah tulis warga (SPA: hasil lewat XHR tanpa muat ulang).
+    let memeriksaSukses = false;
+    const periksaSuksesWarga = async () => {
+      if (!manual || destroyed || memeriksaSukses || !run.adaTulisWargaSejakAksiAi()) return;
+      memeriksaSukses = true;
+      try {
+        const p = await run.amati(true).catch(() => null);
+        if (p?.sinyal.sukses && run.adaTulisWargaSejakAksiAi()) hooks.suksesWarga?.(p);
+      } finally {
+        memeriksaSukses = false;
+      }
+    };
+    page.on('load', () => void periksaSuksesWarga());
+    gen.kendali.tulisWarga = () => {
+      run.tulisWarga();
+      for (const ms of [1_500, 5_000]) setTimeout(() => void periksaSuksesWarga(), ms).unref?.();
+    };
   }
 
   const g = generik;
-  return {
-    ...(g ? { generik: { amati: (pantau) => g.amati(pantau), aksi: (req) => g.aksi(req) } } : {}),
+  const api: ActiveRun = {
+    ...(g
+      ? {
+          generik: {
+            amati: (pantau) => g.amati(pantau),
+            aksi: (req) => g.aksi(req),
+            adaTulisWargaSejakAksiAi: () => g.adaTulisWargaSejakAksiAi(),
+          },
+        }
+      : {}),
     async mulaiAi() {
       if (g) {
         // Generik: AI hanya membuka halaman awal; selanjutnya otak di web memanggil amati/aksi.
@@ -1120,7 +1262,15 @@ export async function wire(
       const nyata =
         m.type === 'text' ||
         ((m.type === 'pointer' || m.type === 'key') && (m.aksi === 'down' || m.aksi === 'up'));
-      if (nyata && !pantau.aktif) inputWargaTerakhir = Date.now();
+      let buka = nyata && !pantau.aktif;
+      // N4: halaman kotor (tulis tertunda dari klik AI masih berdenyut) = jendela tulis hanya untuk ketukan yang
+      // mengenai kotak sorot atau kontrol (tombol/tautan/label/pilihan). Ketikan dan ketukan di area kosong tidak.
+      if (buka && g?.kotor) {
+        if (m.type !== 'pointer') buka = false;
+        else if (m.aksi === 'down') buka = ketukKotorSah = await ketukanKeKontrol(m.x, m.y);
+        else buka = ketukKotorSah;
+      }
+      if (buka) inputWargaTerakhir = Date.now();
       for (const cmd of toCdp(m, touch)) {
         await cdp.send(cmd.method as 'Input.insertText', cmd.params as never).catch(() => undefined);
       }
@@ -1146,6 +1296,10 @@ export async function wire(
       kembaliKe = undefined;
       manual = false;
       interp = buatInterp();
+    },
+    async bukaTautan() {
+      if (!g || !manual) return false;
+      return g.bukaTautan(() => api.kembalikan());
     },
     kembalikan() {
       manual = false;
@@ -1189,4 +1343,5 @@ export async function wire(
       await iso.close();
     },
   };
+  return api;
 }
