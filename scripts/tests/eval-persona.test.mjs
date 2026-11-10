@@ -372,3 +372,39 @@ describe('gerbang wilayah (feat/wilayah-dulu)', async () => {
     assert.equal(cekWilayahSebelumRencana(salah, p, '3311').lulus, false);
   });
 });
+
+describe('bandingkan (sebelum → sesudah)', async () => {
+  const { bandingkan } = await import('../eval-persona/lib/banding.mjs');
+  const skor = (persona, nilai) => ({
+    persona,
+    nilai: Object.fromEntries(Object.entries(nilai).map(([k, v]) => [k, { lulus: v }])),
+  });
+  const sebelum = { hasil: [skor('p01', { a: false, b: true }), skor('p02', { a: true, b: null })] };
+  const sesudah = { hasil: [skor('p01', { a: true, b: false }), skor('p16', { a: true, b: true })] };
+
+  it('menandai kriteria yang membaik dan memburuk per persona', () => {
+    const b = bandingkan(sebelum, sesudah, ['a', 'b']);
+    const p01 = b.baris.find((x) => x.persona === 'p01');
+    assert.deepEqual(p01.sel.a, { sebelum: false, sesudah: true, arah: 'naik' });
+    assert.deepEqual(p01.sel.b, { sebelum: true, sesudah: false, arah: 'turun' });
+  });
+
+  it('persona yang hanya ada di satu sisi tetap tampil dengan nilai kosong di sisi lain', () => {
+    const b = bandingkan(sebelum, sesudah, ['a', 'b']);
+    assert.equal(b.baris.find((x) => x.persona === 'p16').sel.a.sebelum, undefined);
+    assert.equal(b.baris.find((x) => x.persona === 'p02').sel.a.sesudah, undefined);
+  });
+
+  it('total lulus hanya menghitung persona yang dinilai di kedua sisi', () => {
+    const b = bandingkan(sebelum, sesudah, ['a', 'b']);
+    assert.deepEqual(b.total.a, { sebelum: 0, sesudah: 1, dinilai: 1 });
+    assert.deepEqual(b.total.b, { sebelum: 1, sesudah: 0, dinilai: 1 });
+  });
+
+  it('merender tabel markdown dengan panah perubahan', async () => {
+    const { tabelBanding } = await import('../eval-persona/lib/banding.mjs');
+    const md = tabelBanding(bandingkan(sebelum, sesudah, ['a', 'b']), ['a', 'b']);
+    assert.match(md, /\| p01 \| G → \*\*L\*\* \| L → \*\*G\*\* \|/);
+    assert.match(md, /\| p16 \| · → L \| · → L \|/);
+  });
+});
