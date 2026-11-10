@@ -32,7 +32,9 @@ module.exports = {
       startServerCommand: 'node scripts/lhci-serve.mjs',
       startServerReadyPattern: 'Listening on',
       url: ROUTES.map((r) => `http://127.0.0.1:${PORT}${r}`),
-      numberOfRuns: 3,
+      // 5 run per URL: dokumentasi Lighthouse (docs/variability.md) menganjurkan median 5 run untuk meredam
+      // varians; dengan 3 run satu run berisik sudah menggeser median. Ambang assertion di bawah tidak berubah.
+      numberOfRuns: 5,
       settings: {
         formFactor: 'mobile',
         chromeFlags,
