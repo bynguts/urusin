@@ -127,6 +127,14 @@ const PERAN_ISI: readonly PeranElemen[] = ['teks', 'angka', 'tanggal', 'area'];
 const PERAN_PILIH: readonly PeranElemen[] = ['pilihan', 'radio'];
 const PERAN_KLIK: readonly PeranElemen[] = ['tombol', 'tautan', 'tab'];
 
+/**
+ * Tautan pembuka formulir yang dikelaskan `kirim` HANYA karena namanya ("Mulai Pendaftaran", "Ajukan
+ * Permohonan"; worker menandai `tautanPembuka`). AI tidak mengekliknya; warga yang mengetuk.
+ */
+export function tautanWarga(e: ElemenAmatan | undefined): boolean {
+  return e?.peran === 'tautan' && e.kelas === 'kirim' && e.tautanPembuka === true;
+}
+
 export type OpsiValidasi = {
   /** Placeholder yang boleh dipakai (bawaan: semua kunci KATALOG_PLACEHOLDER). */
   katalog?: ReadonlySet<string>;
@@ -187,14 +195,27 @@ export function kelaziman(
  * aturan stabil, tanpa duplikat). Rencana mentah dari model diterima sebagai `unknown`.
  */
 export function validasiRencana(mentah: unknown, p: Pengamatan, opsi: OpsiValidasi = {}): PutusanValidasi {
-  const parsed = RencanaKetatSchema.safeParse(mentah);
-  if (!parsed.success)
+  const mentahSah = RencanaKetatSchema.safeParse(mentah);
+  if (!mentahSah.success)
     return { ok: false, aturan: ['SKEMA_TIDAK_SAH'], rencanaHash: hashRencana(mentah ?? null) };
+  const elemen = new Map(p.elemen.map((e) => [e.ref, e]));
+  // Klik terakhir ke tautan pembuka formulir (`kirim` hanya karena namanya, F3) diganti serah ke warga
+  // `ketuk_tautan`: AI tidak pernah mengekliknya; warga yang mengetuk, lalu AI melanjutkan. Hash dihitung
+  // dari rencana yang sudah diganti (yang benar-benar dijalankan).
+  const parsed = {
+    ...mentahSah,
+    data: { ...mentahSah.data, aksi: gantiKetukTautan(mentahSah.data.aksi as Aksi[]) },
+  };
   const rencanaHash = hashRencana({ ...parsed.data, host: p.host, sidik: p.sidik, seq: p.seq });
-  const aksi = parsed.data.aksi as Aksi[];
+  const aksi = parsed.data.aksi;
   const katalog = opsi.katalog ?? new Set(Object.keys(KATALOG_PLACEHOLDER));
   const berkasBoleh = opsi.berkas ?? new Set(KATALOG_BERKAS);
-  const elemen = new Map(p.elemen.map((e) => [e.ref, e]));
+
+  function gantiKetukTautan(a: Aksi[]): Aksi[] {
+    const akhir = a.at(-1);
+    if (akhir?.jenis !== 'klik' || p.sinyal.halamanAkhir || !tautanWarga(elemen.get(akhir.ref))) return a;
+    return [...a.slice(0, -1), { jenis: 'serahkan', alasan: 'ketuk_tautan', ref: akhir.ref }];
+  }
   const langgar = new Set<IdAturan>();
   const kolom = new Map<string, KolomButuh>();
   const berkas = new Set<string>();

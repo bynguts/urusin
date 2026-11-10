@@ -211,6 +211,38 @@ describe('validator rencana: rencana sah', () => {
   });
 });
 
+describe('tautan pembuka (kirim karena nama saja): serah ketuk_tautan, bukan klik AI', () => {
+  const beranda = (over: Partial<Pengamatan> = {}): Pengamatan => ({
+    ...halamanForm(),
+    elemen: [
+      { ref: 'e1', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', tautanPembuka: true },
+      { ref: 'e2', peran: 'tombol', nama: 'Ajukan', kelas: 'kirim', tautanPembuka: true },
+      { ref: 'e3', peran: 'tautan', nama: 'Kirim Data', kelas: 'kirim' },
+    ],
+    ...over,
+  });
+
+  it('klik terakhir ke tautan pembuka diganti serahkan ketuk_tautan; hash mengikat rencana pengganti', () => {
+    const p = beranda();
+    const v = validasiRencana(rencana({ jenis: 'klik', ref: 'e1' }), p);
+    expect(v).toMatchObject({
+      ok: true,
+      rencana: { aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e1' }] },
+    });
+    const pengganti = { aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e1' }] };
+    expect(v.rencanaHash).toBe(hashRencana({ ...pengganti, host: p.host, sidik: p.sidik, seq: p.seq }));
+  });
+
+  it('tanpa penanda, bukan tautan, atau di halaman akhir: tetap ditolak sebagai klik kirim', () => {
+    expect(tolak(rencana({ jenis: 'klik', ref: 'e3' }), beranda())).toContain('KELAS_KLIK_DITOLAK');
+    expect(tolak(rencana({ jenis: 'klik', ref: 'e2' }), beranda())).toContain('KELAS_KLIK_DITOLAK');
+    const akhir = beranda({ sinyal: { ...halamanForm().sinyal, halamanAkhir: true } });
+    expect(tolak(rencana({ jenis: 'klik', ref: 'e1' }), akhir)).toEqual(
+      expect.arrayContaining(['KELAS_KLIK_DITOLAK', 'HALAMAN_AKHIR_TERKUNCI']),
+    );
+  });
+});
+
 describe('skema ketat', () => {
   it('bisa dikirim sebagai json_schema strict', () => {
     const s = toStrictJsonSchema(RencanaKetatSchema);

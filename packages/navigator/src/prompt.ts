@@ -8,7 +8,13 @@ import {
   type ChatProvider,
   type RequestOptions,
 } from '@urusin/llm';
-import { KATALOG_BERKAS, KATALOG_PLACEHOLDER, RencanaKetatSchema, type IdAturan } from './validasi.js';
+import {
+  KATALOG_BERKAS,
+  KATALOG_PLACEHOLDER,
+  RencanaKetatSchema,
+  tautanWarga,
+  type IdAturan,
+} from './validasi.js';
 
 /**
  * Prompt Navigator (ADR 0030, invariant 3/4). Semua teks halaman (judul, jalur, label, petunjuk, opsi, galat,
@@ -56,6 +62,7 @@ function aturanSistem(tujuan: string): string {
     '- Pilihan: pakai {"opsi":n} dengan n indeks dari daftar opsi elemen itu, atau placeholder katalog.',
     '- Unggah: pakai nama berkas dari KATALOG BERKAS.',
     '- Klik HANYA elemen dengan kelas navigasi, ui_lokal, atau lanjut. Paling banyak satu klik, dan harus aksi terakhir.',
+    '- Tautan kelas tautan_warga membuka formulir layanan tetapi hanya boleh diketuk warga: bila formulir yang dituju ada di balik tautan itu, rencanakan klik ke ref itu sebagai aksi terakhir (sistem menyerahkannya ke warga).',
     '- Jangan mengisi, mencentang, atau mengeklik elemen bertanda terlarang (sandi, otp, captcha, pernyataan).',
     '- Tombol kirim/simpan/ajukan/daftar dan halaman tinjauan atau pernyataan SELALU dikerjakan warga: akhiri dengan {"jenis":"serahkan","alasan":"final"}.',
     '- Halaman masuk akun, OTP, atau CAPTCHA: {"jenis":"serahkan","alasan":"masuk_akun"|"otp"|"captcha"}.',
@@ -85,7 +92,7 @@ export function pesanRencana(m: MasukanPrompt): ChatMessage[] {
     const bagian: string[] = [e.ref, e.peran];
     if (e.wajib) bagian.push('wajib');
     if (e.isian) bagian.push(`isian=${e.isian}`);
-    if (e.kelas) bagian.push(`kelas=${e.kelas}`);
+    if (e.kelas) bagian.push(`kelas=${tautanWarga(e) ? 'tautan_warga' : e.kelas}`);
     if (e.terlarang) bagian.push(`terlarang=${e.terlarang}`);
     if (e.form) bagian.push(`form=${e.form}`);
     bagian.push(`nama=${data(e.nama, e.ref, 200)}`);

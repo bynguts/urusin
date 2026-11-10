@@ -296,6 +296,32 @@ describe('ketahanan: worker belum siap, galat sesaat, dan LLM gagal', () => {
   });
 });
 
+describe('tautan pembuka formulir: warga mengetuk, AI melanjutkan', () => {
+  it('klik ke tautan pembuka = serah ketuk_tautan (bukan klik AI, bukan final); sesudah kembali AI mengisi', async () => {
+    const beranda = halaman({
+      sidik: 'beranda',
+      jalur: '/generik/tanpa-akun/',
+      elemen: [
+        { ref: 'e1', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', tautanPembuka: true },
+      ],
+    });
+    const worker = new WorkerPalsu([beranda, halamanForm(), halamanTinjau()]);
+    worker.setujuiSemua = true;
+    worker.saatSerahkan = (alasan) =>
+      alasan === 'ketuk_tautan' ? { aksi: 'kembalikan', ke: 1 } : { aksi: 'selesai' };
+    const provider = new ProviderSkrip((n) =>
+      n === 0 ? { aksi: [{ jenis: 'klik', ref: 'e1' }] } : n === 1 ? RENCANA_FORM : SERAHKAN_FINAL,
+    );
+    const { hasil, jejak } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
+    expect(worker.semuaAksi.filter((a) => a.jenis === 'klik').map((a) => a.ref)).not.toContain('e1');
+    expect(worker.semuaAksi).toContainEqual({ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e1' });
+    expect(jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'ketuk_tautan' });
+    // Formulir di balik tautan tetap diisi AI sesudah warga mengembalikan kendali.
+    expect(worker.semuaAksi.some((a) => a.jenis === 'isi')).toBe(true);
+  });
+});
+
 describe('FakeProvider "LLM jahat": ditolak SETIAP kali', () => {
   const JAHAT: [string, unknown][] = [
     ['terus klik tombol final', { aksi: [{ jenis: 'klik', ref: 'e6' }] }],
