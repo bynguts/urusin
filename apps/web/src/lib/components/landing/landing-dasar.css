@@ -1,26 +1,9 @@
 /* Dasar landing hasil konversi frame n2rpg (pen Rafi). Kelas lpN di landing-pen.css adalah gaya ekspor apa adanya. */
 
 /*
- * Berkas huruf yang sama dengan layout.css, tetapi font-display: optional. Dipakai di depan tumpukan
- * huruf ponsel di bawah: bila huruf yang dipramuat sudah siap saat render pertama (Chrome menunggu
- * sebentar untuk huruf optional yang dipramuat), tata letak pertama langsung memakai huruf asli, tanpa
- * tata letak cadangan dingin dan tanpa tata letak ulang saat swap (TBT). Bila belum siap, famili ini
- * dilewati dan famili swap berikutnya berlaku persis seperti sebelumnya.
+ * 'Strawberry Sans Siap' dan 'Lora Urusin Siap' (font-display: optional, dipakai di depan tumpukan huruf
+ * ponsel di bawah) didefinisikan di routes/layout.css dan dipramuat di +layout.svelte untuk semua halaman.
  */
-@font-face {
-  font-family: 'Strawberry Sans Siap';
-  src: url('../../assets/fonts/strawberry-sans.woff2') format('woff2');
-  font-weight: 400 900;
-  font-style: normal;
-  font-display: optional;
-}
-@font-face {
-  font-family: 'Lora Urusin Siap';
-  src: url('../../assets/fonts/lora-urusin-500.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: optional;
-}
 .lp {
   --lp-serif: 'Lora Urusin', Georgia, serif;
   font-family: 'Strawberry Sans', system-ui, sans-serif;

@@ -1,6 +1,8 @@
 <script lang="ts">
   import './layout.css';
   import favicon from '#lib/assets/img/favicon.png';
+  import fontStrawberry from '#lib/assets/fonts/strawberry-sans.woff2';
+  import fontLora from '#lib/assets/fonts/lora-urusin-500.woff2';
   import mark from '#lib/assets/img/app/urusin-mark-48.webp';
   import NavBawah from '#lib/components/shell/NavBawah.svelte';
   import Sidebar from '#lib/components/shell/Sidebar.svelte';
@@ -37,6 +39,10 @@
 
 <svelte:head>
   <link rel="icon" href={favicon} type="image/png" />
+  <!-- Huruf dipramuat agar tiba sedini mungkin dan bersamaan: di ponsel alias optional-nya (layout.css)
+       langsung dipakai pada tata letak pertama, tanpa tata letak cadangan + tata letak ulang saat swap (TBT). -->
+  <link rel="preload" as="font" type="font/woff2" href={fontStrawberry} crossorigin="anonymous" />
+  <link rel="preload" as="font" type="font/woff2" href={fontLora} crossorigin="anonymous" />
   <title>Urusin</title>
 </svelte:head>
 

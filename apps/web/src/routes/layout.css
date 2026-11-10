@@ -24,6 +24,28 @@
   font-display: swap;
 }
 
+/*
+ * Berkas huruf yang sama, tetapi font-display: optional. Dipakai di depan tumpukan huruf ponsel (body di
+ * bawah, dan landing-dasar.css): bila huruf yang dipramuat (+layout.svelte) sudah siap saat render pertama
+ * (Chrome menunggu sebentar untuk huruf optional yang dipramuat), tata letak pertama langsung memakai huruf
+ * asli, tanpa tata letak cadangan dingin dan tanpa tata letak ulang saat swap (TBT). Bila belum siap, famili
+ * ini dilewati dan famili swap berikutnya berlaku persis seperti sebelumnya.
+ */
+@font-face {
+  font-family: 'Strawberry Sans Siap';
+  src: url('../lib/assets/fonts/strawberry-sans.woff2') format('woff2');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: optional;
+}
+@font-face {
+  font-family: 'Lora Urusin Siap';
+  src: url('../lib/assets/fonts/lora-urusin-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: optional;
+}
+
 :root,
 [data-theme='light'] {
   color-scheme: light;
@@ -249,6 +271,26 @@ body {
   background: var(--sb-bg-secondary);
   line-height: 1.5;
   letter-spacing: -0.01em;
+}
+
+/* Ponsel: alias optional di depan (lihat @font-face di atas); cadangan Arial sebelum system-ui karena tata
+   letak dengan cadangan itu jauh lebih murah daripada mencari huruf UI sistem. Desktop tidak berubah. */
+@media (max-width: 767px) {
+  body {
+    font-family:
+      'Strawberry Sans Siap',
+      'Strawberry Sans',
+      Arial,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      'Noto Sans',
+      sans-serif;
+  }
+  .font-lora {
+    font-family: 'Lora Urusin Siap', 'Lora Urusin', Georgia, serif;
+  }
 }
 
 /* Di layer base supaya kelas utilitas pada judul (berat, tracking, leading) tetap berlaku. */
