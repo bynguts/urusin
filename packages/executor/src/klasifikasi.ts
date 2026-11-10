@@ -281,6 +281,12 @@ const RE_PERNYATAAN =
  * dengan KTP", "Punya NPWP", jenis layanan/dokumen. Selain itu (persetujuan, langganan kabar, "saya bukan robot")
  * default tolak. Pernyataan selalu kalah walau memuat kata data.
  */
+/**
+ * Deklarasi orang pertama/kesesuaian ("Data yang saya isi sesuai KTP", "Saya sudah membaca persyaratan") dan
+ * label berkata kerja tulis ("Kirim permohonan KK baru") bukan opsi data walau memuat kata data (review N7).
+ * Sengaja TIDAK masuk RE_PERNYATAAN: itu mengunci halaman akhir.
+ */
+const RE_CENTANG_DEKLARASI = /\b(saya|kami|sesuai|membaca|telah|sudah)\b/;
 const RE_CENTANG_DATA =
   /\b(sama dengan|alamat|domisili|punya|memiliki|mempunyai|npwp|bpjs|kk|ktp|kia|akta|ijazah|paspor|sim|layanan|jenis|kategori|keperluan|disabilitas|difabel|penyandang|anak|istri|suami|ayah|ibu|wali|kepala keluarga|anggota keluarga|pindah|baru|hilang|rusak|perubahan|perbaikan|laki|perempuan|wni|wna)\b/;
 
@@ -426,7 +432,12 @@ export function checkboxPernyataan(el: Element, label: string): boolean {
  */
 export function centangDataAman(label: string): boolean {
   const t = normalTeks(lipatNeg(label));
-  return !RE_PERNYATAAN.test(t) && RE_CENTANG_DATA.test(t);
+  return (
+    !RE_PERNYATAAN.test(t) &&
+    !RE_CENTANG_DEKLARASI.test(t) &&
+    !cocokNeg(t, NEG_AKAR) &&
+    RE_CENTANG_DATA.test(t)
+  );
 }
 
 /** Label sederhana untuk field (label[for], label pembungkus, aria-label). Dipakai deteksi pernyataan. */

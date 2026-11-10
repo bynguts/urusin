@@ -603,6 +603,8 @@ export class GenerikRun {
         break;
       }
       case 'centang':
+        // Kunci halaman akhir juga untuk centang (review N7); runner memeriksa ulang dari DOM.
+        if (this.kunciAkhir) return { kode: 'HALAMAN_AKHIR' };
         op = { jenis: 'centang', ref: a.ref, nilai: a.nilai };
         break;
       case 'unggah': {

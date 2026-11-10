@@ -492,6 +492,9 @@ function satuAksi(doc: Document, a: AksiRunner, peta: PetaRef): Putusan {
   if (!bisaDiubah(el)) return tolak('gagal', 'A_NONAKTIF', RunnerCode.ELEMEN_NONAKTIF);
   // Penanda terlarang dihitung ulang dari DOM saat ini, bukan dari pengamatan yang bisa basi.
   if (terlarangElemen(el)) return tolak('ditolak', 'A_TERLARANG', RunnerCode.TERLARANG);
+  // Halaman akhir: tidak ada centang AI (persetujuan di halaman tinjauan milik warga, review N7).
+  if (a.jenis === 'centang' && halamanAkhir(doc))
+    return tolak('ditolak', 'A_HALAMAN_AKHIR', RunnerCode.HALAMAN_AKHIR);
   switch (a.jenis) {
     case 'isi':
       return kerjakanIsi(el, a.nilai);

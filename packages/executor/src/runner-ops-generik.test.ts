@@ -230,6 +230,38 @@ describe('op aksi: tulis', () => {
     expect([...document.querySelectorAll('input')].some((i) => i.checked)).toBe(false);
   });
 
+  it('N7: centang deklarasi (saya/sesuai/sudah membaca) dan label berkata kerja tulis = TERLARANG', () => {
+    const h = pasang(`<label><input type="checkbox" name="a"> Data yang saya isi sesuai KTP dan KK</label>
+      <label><input type="checkbox" name="b"> Saya sudah membaca persyaratan layanan</label>
+      <label><input type="checkbox" name="c"> Kirim permohonan KK baru sekarang</label>
+      <label><input type="checkbox" name="d"> Alamat domisili sama dengan KTP</label>`);
+    expect(h.pengamatan.elemen.map((e) => e.terlarang)).toEqual([
+      'pernyataan',
+      'pernyataan',
+      'pernyataan',
+      undefined,
+    ]);
+    for (const ref of ['e1', 'e2', 'e3'])
+      expect(aksi(h.peta, { jenis: 'centang', ref, nilai: true })[0]).toMatchObject({
+        status: 'ditolak',
+        kode: 'TERLARANG',
+      });
+    // Opsi data di halaman biasa (tanpa frasa halaman akhir seperti "kirim permohonan") tetap boleh.
+    const biasa = pasang('<label><input type="checkbox" name="d"> Alamat domisili sama dengan KTP</label>');
+    expect(aksi(biasa.peta, { jenis: 'centang', ref: 'e1', nilai: true })[0]).toMatchObject({ status: 'ok' });
+  });
+
+  it('N7: centang opsi data di halaman akhir = HALAMAN_AKHIR', () => {
+    const h = pasang('<label><input type="checkbox" name="d"> Alamat domisili sama dengan KTP</label>');
+    document.body.insertAdjacentHTML('afterbegin', '<p>Dengan ini saya menyatakan data di atas benar.</p>');
+    expect(aksi(h.peta, { jenis: 'centang', ref: 'e1', nilai: true })[0]).toMatchObject({
+      status: 'ditolak',
+      kode: 'HALAMAN_AKHIR',
+      aturan: 'A_HALAMAN_AKHIR',
+    });
+    expect(document.querySelector('input')!.checked).toBe(false);
+  });
+
   it('unggah ke field berkas', () => {
     const h = pasang('<label>KTP <input type="file" name="ktp"></label>');
     const r = aksi(h.peta, {

@@ -114,6 +114,15 @@ const HALAMAN: Record<string, string> = {
 <a href="/berkas/12/serah">Serahkan Berkas</a><br>
 <a href="/permohonan/12/lanjutkan">Lanjutkan Permohonan</a><br>
 <a href="/p/12/go">Ajukan Permohonan</a>`),
+  // N7 (poc-centang): deklarasi orang pertama dan label berkata kerja tulis.
+  '/centang-n7':
+    kerangka(`<form><label><input type="checkbox" name="a"> Data yang saya isi sesuai KTP dan KK</label>
+<label><input type="checkbox" name="b"> Saya sudah membaca persyaratan layanan</label>
+<label><input type="checkbox" name="c"> Kirim permohonan KK baru sekarang</label>
+<label>Nama <input name="nama"></label></form>`),
+  '/s4-data': kerangka(`<form><label><input type="checkbox" name="kabar"> Kirimi saya kabar</label>
+<label><input type="checkbox" name="sama"> Alamat domisili sama dengan KTP</label>
+<label>Nama <input name="nama"></label></form>`),
   // F6: halaman membuka WebSocket (mis. socket.io) dan mengirim lewat situ.
   '/ws': kerangka(`<h1>Formulir</h1><script>
   const ws = new WebSocket('ws://' + location.host + '/ws');
@@ -325,7 +334,7 @@ test('N6 (PoC C): Tanda Tangani / Finalisasi / Serahkan = kirim, tidak bisa dikl
   }
 });
 
-test('F5: centang pernyataan terselubung dan non-data ditolak; opsi data boleh', async () => {
+test('F5 + N7: centang pernyataan/non-data ditolak; halaman berpernyataan = kunci centang; opsi data boleh', async () => {
   const { manager, o, p } = await sesi(situs, '/s4', 's4');
   try {
     const pernyataan = satu(p, 'Data di atas sudah benar dan saya pahami konsekuensinya');
@@ -336,24 +345,35 @@ test('F5: centang pernyataan terselubung dan non-data ditolak; opsi data boleh',
       'pernyataan',
       undefined,
     ]);
-    for (const e of [pernyataan, kabar]) {
+    // Checkbox pernyataan = halaman akhir: tidak ada centang AI sama sekali di halaman ini (review N7).
+    expect(p.sinyal.halamanAkhir).toBe(true);
+    for (const e of [pernyataan, kabar, sama]) {
       const r = await manager.aksi(o, {
         ...o,
         rencanaHash: H,
         seq: p.seq,
         aksi: [{ jenis: 'centang', ref: e.ref, nilai: true }],
       });
-      expect(r.hasil, e.nama).toEqual([{ indeks: 0, kode: 'TERLARANG' }]);
+      expect(r.hasil, e.nama).toEqual([{ indeks: 0, kode: 'HALAMAN_AKHIR' }]);
     }
-    const r = await manager.aksi(o, {
-      ...o,
-      rencanaHash: H,
-      seq: p.seq,
-      aksi: [{ jenis: 'centang', ref: sama.ref, nilai: true }],
-    });
-    expect(r.hasil).toEqual([{ indeks: 0, kode: 'ok' }]);
   } finally {
     await manager.shutdown();
+  }
+  const data = await sesi(situs, '/s4-data', 's4-data');
+  try {
+    const kabar = satu(data.p, 'Kirimi saya kabar');
+    const sama = satu(data.p, 'Alamat domisili sama dengan KTP');
+    const centang = (ref: string) =>
+      data.manager.aksi(data.o, {
+        ...data.o,
+        rencanaHash: H,
+        seq: data.p.seq,
+        aksi: [{ jenis: 'centang', ref, nilai: true }],
+      });
+    expect((await centang(kabar.ref)).hasil).toEqual([{ indeks: 0, kode: 'TERLARANG' }]);
+    expect((await centang(sama.ref)).hasil).toEqual([{ indeks: 0, kode: 'ok' }]);
+  } finally {
+    await data.manager.shutdown();
   }
 });
 
@@ -578,6 +598,29 @@ for (const jalur of ['/dasbor', '/label', '/draf'])
       await manager.shutdown();
     }
   });
+
+test('N7 (poc-centang): centang deklarasi/berkata kerja tulis tidak pernah dicentang AI', async () => {
+  const { manager, o, p } = await sesi(situs, '/centang-n7', 'centang-n7');
+  try {
+    for (const nama of [
+      'Data yang saya isi sesuai KTP dan KK',
+      'Saya sudah membaca persyaratan layanan',
+      'Kirim permohonan KK baru sekarang',
+    ]) {
+      const e = satu(p, nama);
+      expect(e.terlarang, nama).toBe('pernyataan');
+      const r = await manager.aksi(o, {
+        ...o,
+        rencanaHash: H,
+        seq: p.seq,
+        aksi: [{ jenis: 'centang', ref: e.ref, nilai: true }],
+      });
+      expect(['TERLARANG', 'HALAMAN_AKHIR'], nama).toContain(r.hasil[0]?.kode);
+    }
+  } finally {
+    await manager.shutdown();
+  }
+});
 
 test('M5: tidak_bisa = dipandu (drift), bukan gagal', async () => {
   const { manager, o, p } = await sesi(situs, '/s4', 'tidak-bisa');

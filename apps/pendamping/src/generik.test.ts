@@ -158,6 +158,16 @@ describe('GenerikRun: kunci halaman akhir', () => {
     expect(h.panggilan).toEqual([]);
   });
 
+  it('N7: centang pada halaman akhir = HALAMAN_AKHIR tanpa menyentuh halaman', async () => {
+    const h = harness({
+      amati: () => pengamatan({ sinyal: { ...pengamatan().sinyal, halamanAkhir: true } }),
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'centang', ref: 'e1', nilai: true }] });
+    expect(r).toEqual([{ indeks: 0, kode: 'HALAMAN_AKHIR' }]);
+    expect(h.panggilan).toEqual([]);
+  });
+
   it('kunci mengikuti pengamatan terakhir', async () => {
     let akhir = true;
     const h = harness({
