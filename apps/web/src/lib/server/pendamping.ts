@@ -43,19 +43,31 @@ import { SID_COOKIE } from '#lib/server/sesi.js';
  * 127.0.0.1 atau Tailscale 100.64.0.0/10 (pengecualian persis di kebijakan egress), bukan nama DNS.
  */
 
+/**
+ * `new URL()` yang tidak melempar: refine zod 4 tetap dijalankan walau format `z.url()` sudah gagal, jadi URL
+ * rusak di env tidak boleh membuat pendampingConfig() (dan hooks CSP) melempar.
+ */
+const urlAman = (u: string): URL | null => (URL.canParse(u) ? new URL(u) : null);
+
+/** URL WS publik worker: ws(s) polos tanpa query/hash (juga untuk PENDAMPING_PUBLIC_WS_URL). */
+const WsUrlSchema = z.url({ protocol: /^wss?$/ }).refine((u) => {
+  const x = urlAman(u);
+  return x !== null && !x.search && !x.hash;
+}, 'wsUrl polos');
+
 const WorkerSchema = z
   .object({
     id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/),
     /** Origin internal worker TANPA jalur (yang ditandatangani adalah jalur /internal/* apa adanya). */
-    url: z.url().refine((u) => new URL(u).pathname === '/' && !new URL(u).search, 'url tanpa jalur'),
+    url: z.url().refine((u) => urlAman(u)?.pathname === '/' && !urlAman(u)?.search, 'url tanpa jalur'),
     region: z.string().regex(/^[a-z]{2,16}$/),
     maxSessions: z.number().int().positive().max(64),
     /** Basis URL WS publik worker ini (mis. wss://domain/pendamping/w/<id>/ws), tanpa garis miring akhir. */
-    wsUrl: z.url({ protocol: /^wss?$/ }).refine((u) => !new URL(u).search && !new URL(u).hash, 'wsUrl polos'),
+    wsUrl: WsUrlSchema,
     /** Rahasia HMAC khusus worker ini (>= 32 karakter); wajib bila url bukan 127.0.0.1. */
     token: z.string().min(32).optional(),
   })
-  .refine((w) => w.token !== undefined || new URL(w.url).hostname === '127.0.0.1', {
+  .refine((w) => w.token !== undefined || urlAman(w.url)?.hostname === '127.0.0.1', {
     message: 'worker di luar 127.0.0.1 wajib punya token sendiri',
   });
 export type PendampingWorker = Omit<z.infer<typeof WorkerSchema>, 'wsUrl'> & { wsUrl?: string | undefined };
@@ -91,6 +103,10 @@ export function pendampingConfig(
   }
   const url = env.PENDAMPING_INTERNAL_URL?.trim();
   if (!url) return null;
+  // URL WS cadangan divalidasi sama seperti `wsUrl` PENDAMPING_WORKERS: nilai rusak = Pendamping mati (null),
+  // bukan URL yang membuat hooks (CSP) atau tiket melempar galat di setiap permintaan.
+  const wsUrl = env.PENDAMPING_PUBLIC_WS_URL?.trim();
+  if (wsUrl && !WsUrlSchema.safeParse(wsUrl).success) return null;
   return {
     token,
     workers: [
@@ -99,9 +115,7 @@ export function pendampingConfig(
         url: url.replace(/\/$/, ''),
         region: env.PENDAMPING_INTERNAL_REGION?.trim() || 'umum',
         maxSessions: 64,
-        ...(env.PENDAMPING_PUBLIC_WS_URL?.trim()
-          ? { wsUrl: env.PENDAMPING_PUBLIC_WS_URL.trim().replace(/\/$/, '') }
-          : {}),
+        ...(wsUrl ? { wsUrl: wsUrl.replace(/\/$/, '') } : {}),
       },
     ],
   };
@@ -121,6 +135,26 @@ export function asalWsLain(cfg: PendampingConfig | null, originWeb: string): str
     if (u.host !== host) out.add(`${u.protocol}//${u.host}`);
   }
   return [...out];
+}
+
+let asalWsMemo: readonly string[] | undefined;
+
+/**
+ * `asalWsLain` untuk hooks (CSP), dihitung SEKALI per proses (env tidak berubah selama proses hidup). Galat apa
+ * pun (origin web/URL rusak) = daftar kosong: CSP aplikasi dikirim apa adanya (fail-open ke CSP lama), tidak
+ * pernah 500 di setiap halaman.
+ */
+export function asalWsUntukCsp(
+  originWeb: () => string,
+  env: Record<string, string | undefined> = process.env,
+): readonly string[] {
+  if (asalWsMemo) return asalWsMemo;
+  try {
+    asalWsMemo = asalWsLain(pendampingConfig(env), originWeb());
+  } catch {
+    asalWsMemo = [];
+  }
+  return asalWsMemo;
 }
 
 /** Tambahkan origin ke direktif `connect-src` header CSP (direktif lain tidak disentuh). */
@@ -262,6 +296,7 @@ const LOKASI_MAKS = 5_000;
 export function resetBrokerPendamping(): void {
   kesehatan.clear();
   lokasi.clear();
+  asalWsMemo = undefined;
 }
 
 function ingatLokasi(urusanId: string, workerId: string): void {

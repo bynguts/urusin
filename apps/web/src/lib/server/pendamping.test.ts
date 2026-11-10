@@ -24,6 +24,7 @@ import { daftarWrite } from '../pendamping/isi-data';
 import { pemeriksaPemilikVault } from './pendamping/pemilik';
 import {
   asalWsLain,
+  asalWsUntukCsp,
   hashSid,
   panggil,
   pasangPemeriksaPemilikAkun,
@@ -604,6 +605,41 @@ describe('broker Browser Pendamping', () => {
         "default-src 'self'; connect-src 'self' ws://localhost:4330; frame-ancestors 'none'",
       );
       expect(asalWsLain(null, 'http://localhost:3000')).toEqual([]);
+    });
+
+    it('CSP hook: PENDAMPING_PUBLIC_WS_URL rusak -> konfigurasi null; galat -> CSP lama; dihitung sekali', () => {
+      const satu = (ws: string) => ({
+        PENDAMPING_INTERNAL_TOKEN: 't',
+        PENDAMPING_INTERNAL_URL: 'http://127.0.0.1:4330',
+        PENDAMPING_PUBLIC_WS_URL: ws,
+      });
+      // Dulu diteruskan mentah dan `new URL()` di hooks melempar pada SETIAP permintaan halaman.
+      for (const rusak of ['bukan url', 'https://urusin.test/pendamping/ws', 'ws://x/ws?a=1', 'ws://x/ws#h'])
+        expect(pendampingConfig(satu(rusak)), rusak).toBeNull();
+      expect(pendampingConfig(satu('ws://localhost:4330/ws/'))?.workers[0]?.wsUrl).toBe(
+        'ws://localhost:4330/ws',
+      );
+      // PENDAMPING_WORKERS dengan URL yang tidak bisa diurai: null, bukan melempar (refine zod tetap jalan).
+      const env = (w: object) => ({
+        PENDAMPING_INTERNAL_TOKEN: 't',
+        PENDAMPING_WORKERS: JSON.stringify([w]),
+      });
+      expect(pendampingConfig(env({ ...VPS, wsUrl: 'bukan url' }))).toBeNull();
+      expect(pendampingConfig(env({ ...VPS, url: 'bukan url' }))).toBeNull();
+      expect(pendampingConfig(env({ ...LAPTOP, url: 'bukan url', token: undefined }))).toBeNull();
+      // Origin web rusak (melempar) -> daftar kosong: CSP aplikasi dikirim apa adanya.
+      expect(
+        asalWsUntukCsp(() => {
+          throw new Error('URUSIN_PUBLIC_ORIGIN rusak');
+        }, satu('ws://localhost:4330/ws')),
+      ).toEqual([]);
+      // Memo per proses: hasil pertama dipakai terus, konfigurasi tidak dibaca ulang per permintaan.
+      resetBrokerPendamping();
+      let dibaca = 0;
+      const origin = () => (dibaca++, 'http://localhost:3000');
+      expect(asalWsUntukCsp(origin, satu('ws://localhost:4330/ws'))).toEqual(['ws://localhost:4330']);
+      expect(asalWsUntukCsp(origin, satu('ws://localhost:9999/ws'))).toEqual(['ws://localhost:4330']);
+      expect(dibaca).toBe(1);
     });
 
     it('konfigurasi: JSON valid; JSON rusak, id ganda, url berjalur, tanpa token -> null; fallback satu URL', () => {
