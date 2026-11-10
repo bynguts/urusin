@@ -429,19 +429,34 @@
       "catatan": ""
     },
     {
-      "id": "skck-polri",
-      "url": "https://skck.polri.go.id/",
-      "judul": "SKCK Online Polri",
+      "id": "perpol-1-2026",
+      "url": "https://peraturan.go.id/id/peraturan-polri-no-1-tahun-2026",
+      "judul": "Peraturan Polri Nomor 1 Tahun 2026 tentang Penerbitan Surat Keterangan Catatan Kepolisian",
       "instansi": "Kepolisian Negara Republik Indonesia",
+      "jenis": "regulasi",
+      "domain": "nasional",
+      "kodeWilayah": null,
+      "layanan": "skck",
+      "status": "confirmed",
+      "robots": "ditemukan",
+      "lastFetched": "2026-11-10",
+      "ingest": true,
+      "catatan": "Halaman regulasi di peraturan.go.id (JDIHN); Perpol 1/2026, ditetapkan 19 Mei 2026, diundangkan 20 Mei 2026 (BN 2026 No. 326), status berlaku; mencabut Perpol 6/2023. Pasal 4-5: SKCK diterbitkan elektronik lewat fitur SKCK di aplikasi layanan digital Polri; Pasal 12-13: manual di loket kantor polisi hanya bila aplikasi dinyatakan tidak berfungsi. Menggantikan entri skck.polri.go.id (tidak terjangkau sejak 2026-11-08). Teks pasal perlu diperiksa sebelum dikutip."
+    },
+    {
+      "id": "skck-super-app-humas",
+      "url": "https://humas.polri.go.id/news/detail/2157823-kini-urus-skck-bisa-di-polres-mana-saja-cukup-daftar-lewat-aplikasi-super-app-polri-presisi",
+      "judul": "Kini Urus SKCK Bisa di Polres Mana Saja, Cukup Daftar Lewat Aplikasi Super App Polri Presisi",
+      "instansi": "Divisi Humas Polri",
       "jenis": "halaman",
       "domain": "skck",
       "kodeWilayah": null,
       "layanan": "skck",
-      "status": "unverified",
-      "robots": "tidak-terjangkau",
-      "lastFetched": null,
+      "status": "confirmed",
+      "robots": "ditemukan",
+      "lastFetched": "2026-11-10",
       "ingest": false,
-      "catatan": "Tidak terjangkau dari jaringan pemeriksa (koneksi gagal) pada 2026-11-08; URL diyakini resmi tetapi belum dikonfirmasi."
+      "catatan": "Berita resmi Divisi Humas Polri yang menamai aplikasi layanan digital Polri untuk SKCK: Super App Polri Presisi. Dipakai sebagai tautan kanal SKCK di data/kanal-resmi.json, bukan sumber korpus: halaman berita (bukan standar layanan), dan rantai sertifikat TLS-nya tidak lengkap sehingga fetch Node biasa gagal (perlu --use-system-ca)."
     },
     {
       "id": "sim-korlantas",
