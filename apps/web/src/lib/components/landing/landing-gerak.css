@@ -197,15 +197,6 @@
   .lp .lp45-marquee:hover .n-marquee-track {
     animation-play-state: paused;
   }
-  .lp .lp46 {
-    transition:
-      opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-      transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .lp .lp46:hover {
-    opacity: 0.95;
-    transform: translateY(-1px);
-  }
 
   /* Ponsel: tidak ada gerak di jendela muat (TBT Lighthouse mobile). Hero langsung tampil tanpa
      animasi masuk; karakter mengapung dan pil kata baru mulai 4 dtk setelah halaman dimuat. Bagian
@@ -455,18 +446,6 @@
   }
   .lp .lp108:hover :is(.lp110, .lp127) {
     translate: 0 -6px;
-  }
-
-  /* Kartu peristiwa di /urusan, langkah di /cara-kerja, dan hak data di /privasi */
-  .lp :is(.ck16, .ck23, .ck30, .ck38, .ck46, .ck54, .ck64, .ck71, .ck80, .ck86, .ck92, .ur16, .ur33, .ur48, .ur63, .ur78, .pv16, .pv27, .pv34) {
-    transition:
-      transform 0.25s var(--lp-e),
-      box-shadow 0.25s var(--lp-e),
-      border-color 0.2s ease;
-  }
-  .lp :is(.ck16, .ck23, .ck30, .ck38, .ck46, .ck54, .ck64, .ck71, .ck80, .ck86, .ck92, .ur16, .ur33, .ur48, .ur63, .ur78, .pv16, .pv27, .pv34):hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 28px rgba(37, 37, 34, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
   }
 
   /* Tautan footer dan subpage */
