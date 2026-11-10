@@ -557,3 +557,20 @@ docker compose -f compose.local.yml --env-file .env up --build   # http://localh
 
 SQLite (WAL) ada di volume Docker bernama `urusin_data` (`/data` di container), dipakai bersama kedua
 warna. Backup rutin: lihat bagian Backup. Cadangan manual sekali jalan: `./backup.sh`.
+
+### Korpus RAG: sumber teks pasal nasional
+
+Rilis yang membawa adapter `pasal` (branch `fix/fakta-regulasi`) menambah lima sumber di `data/sources.json`. Chunk-nya
+tidak ada di korpus lama, jadi setelah image baru naik, ingest kelima sumber itu sekali ke berkas korpus yang dipakai
+`URUSIN_RAG_DB` (path absolut, karena CLI berjalan dari `packages/rag`; butuh jaringan ke peraturan.go.id, robots dan
+jeda sopan sudah ditangani CLI):
+
+```
+for id in uu-24-2013-pasal uu-23-2006-pasal perpres-96-2018-pasal permendagri-108-2019-pasal permendagri-7-2026-pasal; do
+  pnpm rag:ingest --only "$id" --db "$URUSIN_RAG_DB"
+done
+pnpm rag:verify --db "$URUSIN_RAG_DB"   # sumber `*-pasal` harus "unchanged"
+```
+
+Ingest per sumber menghapus lalu menulis ulang chunk `<id>#*`, jadi aman diulang. Hasil yang diharapkan: 4 + 1 + 7 + 6 + 6
+= 24 chunk `*-pasal#pasal-*`. Teks chunk diambil dari `data/regulasi/pasal.json`; PDF hanya untuk hash verifikasi.
