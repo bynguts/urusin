@@ -122,7 +122,7 @@ describe('registry wilayah untuk Navigator', () => {
     ] as const) {
       expect(hostsPortalWilayah(kode), kode).not.toContain(aset);
       expect(hostsAiWilayah(kode), kode).not.toContain(aset);
-      expect(hostsAiWilayah(kode), kode).toEqual(expect.arrayContaining(PORTAL_WILAYAH[kode]!.hosts));
+      expect(hostsAiWilayah(kode), kode).toEqual(expect.arrayContaining([...PORTAL_WILAYAH[kode]!.hosts]));
     }
   });
 
