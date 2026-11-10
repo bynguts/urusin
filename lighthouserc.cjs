@@ -1,3 +1,4 @@
+const { execFileSync } = require('node:child_process');
 const { ROUTES } = require('./perf-routes.cjs');
 
 const PORT = process.env.PORT ?? '4173';
@@ -5,6 +6,21 @@ const PORT = process.env.PORT ?? '4173';
 // menggagalkan job. ('median-run' hanya menilai SATU run, yang skor performanya median, sehingga TBT
 // run itu saja yang dicek dan log menampilkan satu nilai.)
 const median = { aggregationMethod: 'median' };
+const chromeFlags = '--no-sandbox --headless=new';
+
+// Kalibrasi CPU (scripts/lhci-cpu.mjs): GitHub-hosted/lokal = bawaan 4x (settings tidak disentuh); kontainer
+// runner self-hosted = multiplier dari benchmarkIndex host lewat rumus resmi Lighthouse, clamp [1, 4]. Target
+// perangkat dan ambang di bawah tetap sama. Dihitung sekali: `lhci autorun` memuat file ini lalu menjalankan
+// collect/assert sebagai proses anak yang mewarisi env ini.
+process.env.URUSIN_LHCI_CPU ??= execFileSync(
+  process.execPath,
+  [`${__dirname}/scripts/lhci-cpu.mjs`, chromeFlags],
+  {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'inherit'],
+  },
+);
+const cpu = JSON.parse(process.env.URUSIN_LHCI_CPU);
 
 // Lighthouse bawaan = emulasi mobile (Moto G Power, 4G lambat). Semua pelanggaran berstatus "error".
 module.exports = {
@@ -19,7 +35,8 @@ module.exports = {
       numberOfRuns: 3,
       settings: {
         formFactor: 'mobile',
-        chromeFlags: '--no-sandbox --headless=new',
+        chromeFlags,
+        ...(cpu.source === 'default' ? {} : { throttling: { cpuSlowdownMultiplier: cpu.multiplier } }),
       },
     },
     assert: {
