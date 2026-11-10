@@ -6,6 +6,7 @@ import type { PendampingEvent } from '@urusin/contracts';
 import type { createPendampingViewer } from '@urusin/pendamping-client';
 
 export type {
+  KolomButuh,
   PendampingBukti,
   PendampingEvent,
   PendampingHasil,
