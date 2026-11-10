@@ -4,6 +4,7 @@ import type { CityEntry } from './schema.js';
  * Seed dari recon read-only 2026-11-08 (recon/dukcapil-kota-*.md, rea-dukcapil-sby-smg.md).
  * `verifiedAt` null untuk semuanya: pengamatan recon belum diverifikasi tangan oleh pemilik data.
  * Hanya Wonogiri berstatus `kirim-asli` (akun warga ada di tim); kota lain tidak diuji kirim asli.
+ * Tier jujur: `semi` HANYA bila ada adapter Browser Pendamping (`adapterId`); portal tanpa adapter = `dipandu`.
  */
 type Seed = {
   kode: string;
@@ -72,7 +73,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3573',
     nama: 'Kota Malang',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://siapel.malangkota.go.id',
     portal: 'SIAPEL',
@@ -83,7 +84,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3404',
     nama: 'Kabupaten Sleman',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://dukcapilonline.slemankab.go.id',
     portal: 'Dukcapil Online',
@@ -93,7 +94,7 @@ const SEEDS: Seed[] = [
   {
     kode: '1271',
     nama: 'Kota Medan',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://sibisa.medan.go.id',
     portal: 'SIBISA',
@@ -103,7 +104,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3671',
     nama: 'Kota Tangerang',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://sobatdukcapil.tangerangkota.go.id',
     portal: 'Sobat Dukcapil',
@@ -113,7 +114,7 @@ const SEEDS: Seed[] = [
   {
     kode: '7371',
     nama: 'Kota Makassar',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://dukcapil.makassarkota.go.id',
     portal: 'Layanan Dukcapil Makassar',
@@ -124,7 +125,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3276',
     nama: 'Kota Depok',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://silondomaju.depok.go.id',
     portal: 'Silondo Maju',
@@ -135,7 +136,7 @@ const SEEDS: Seed[] = [
   {
     kode: '3275',
     nama: 'Kota Bekasi',
-    tier: 'semi',
+    tier: 'dipandu',
     validasi: 'pending-recon',
     origin: 'https://www.e-open.id',
     portal: 'e-Open',

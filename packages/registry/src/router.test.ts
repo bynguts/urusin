@@ -107,10 +107,10 @@ describe('seed registry', () => {
       expect(CityEntrySchema.safeParse(r.routeByKode(k.kode).entry).success, k.kode).toBe(true);
     }
   });
-  it('verifiedAt null; adapter hanya pada tier semi', () => {
+  it('verifiedAt null; tier semi HANYA bila ada adapter (portal tanpa adapter = dipandu)', () => {
     for (const e of SEED_ENTRIES) {
       expect(e.verifiedAt).toBeNull();
-      if (e.adapterId) expect(e.tier).toBe('semi');
+      expect(e.tier === 'semi', e.nama).toBe(e.adapterId !== undefined);
     }
   });
   it('hanya Wonogiri berstatus kirim-asli', () => {
