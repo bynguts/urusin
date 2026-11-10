@@ -3,6 +3,7 @@
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
+  import '#lib/components/landing/landing-gerak.css';
   import './privasi.css';
   import LandingFooter from '#lib/components/landing/LandingFooter.svelte';
   import LandingNav from '#lib/components/landing/LandingNav.svelte';
@@ -33,7 +34,6 @@
 
   <section class="pv1" aria-labelledby="judul-privasi">
     <div class="pv2">
-      <div class="pv3"><span class="pv4">Privasi</span></div>
       <h1 class="pv5" id="judul-privasi">Data keluargamu tetap milikmu</h1>
       <p class="pv6">
         Urusin hanya memakai data yang kamu setujui, untuk urusan yang kamu pilih.<br />

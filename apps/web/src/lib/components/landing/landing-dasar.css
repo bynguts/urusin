@@ -24,7 +24,7 @@
 .lp {
   --lp-serif: 'Lora Urusin', Georgia, serif;
   font-family: 'Strawberry Sans', system-ui, sans-serif;
-  color: #252522;
+  color: var(--sb-text-primary, #252522);
   min-height: 100dvh;
 }
 .lp *,
@@ -38,6 +38,12 @@
   font-weight: inherit;
   line-height: inherit;
   letter-spacing: inherit;
+}
+:where(.lp) :where(h1, h2, h3, h4) {
+  text-wrap: balance;
+}
+:where(.lp) :where(p) {
+  text-wrap: pretty;
 }
 :where(.lp) :where(a) {
   color: inherit;
@@ -80,3 +86,4 @@
     contain-intrinsic-size: auto 236px;
   }
 }
+

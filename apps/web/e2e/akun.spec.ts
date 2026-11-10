@@ -350,7 +350,7 @@ test('#47 coba tanpa daftar: menjelajah tidak membuat baris; juri terisolasi; da
   await page.goto('/');
   await page.goto('/masuk');
   await page.getByRole('link', { name: 'Coba tanpa daftar' }).click();
-  await expect(page).toHaveURL(/\/beranda$/);
+  await expect(page).toHaveURL(/\/$/);
   expect((await sesiApi(page)).masuk).toBe(false);
   const v = await api(page, 'GET', '/api/vault');
   expect([v.status, v.json.pemilik, v.json.dataDiri.ada]).toEqual([200, 'tamu', false]);

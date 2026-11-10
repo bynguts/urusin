@@ -14,6 +14,16 @@ const VERIFY_HOSTS = Object.values(
 // Widget Cloudflare Turnstile di /masuk (juri, masuk setelah 3 gagal); dimuat hanya bila kuncinya dikonfigurasi.
 const TURNSTILE = 'https://challenges.cloudflare.com';
 
+// Di dev server lokal (Vite port 5173), set origin publik default agar form action SvelteKit
+// tidak ditolak oleh validasi CSRF Origin ketika pengguna membuka lewat browser lokal.
+if (!process.env.VITEST && !process.env.URUSIN_PUBLIC_ORIGIN) {
+  process.env.URUSIN_PUBLIC_ORIGIN = 'http://localhost:5173';
+}
+// Di dev server lokal, relaksasikan kuota akun demo per IP agar pengujian lokal tidak terblokir limit 3 akun/hari.
+if (!process.env.VITEST && !process.env.URUSIN_DEMO_PER_IP_HARI) {
+  process.env.URUSIN_DEMO_PER_IP_HARI = '100';
+}
+
 export default defineConfig({
   // Gambar kecil (avatar, ikon objek) tetap berkas terpisah, bukan base64 di JS: JS awal tiap rute punya
   // anggaran 70 KB gzip, sedangkan gambar bisa di-cache dan dimuat tanpa memblokir.

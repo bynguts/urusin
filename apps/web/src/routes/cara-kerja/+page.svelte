@@ -1,8 +1,10 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
+  import '#lib/components/landing/landing-gerak.css';
   import './cara-kerja.css';
   import LandingFooter from '#lib/components/landing/LandingFooter.svelte';
   import LandingNav from '#lib/components/landing/LandingNav.svelte';
@@ -45,6 +47,7 @@
    * cara-kerja.css). Header dan footer memakai komponen landing. Salinan yang menyebut ekstensi diganti karena
    * ekstensi sudah tidak ada; NIK contoh disamarkan seperti tampilan Urusin.
    */
+  const targetMulai = $derived(page.data.akun ? resolve('/beranda') : resolve('/daftar'));
 </script>
 
 <svelte:head>
@@ -60,9 +63,6 @@
   <!-- Page hero -->
   <section class="ck1">
     <div class="ck2">
-      <div class="ck3">
-        <p class="ck4">Cara kerja</p>
-      </div>
       <h1 class="ck5">Dari cerita sampai pengajuan, langkah demi langkah</h1>
       <p class="ck6">
         Urusin memahami kebutuhanmu, menyusun rencana dari aturan resmi, lalu membantu mengisi formulir.
@@ -1026,7 +1026,8 @@
           Gratis dan langsung dari browser. Ceritakan apa yang terjadi, Urusin yang menyusun langkahnya.
         </p>
         <div class="ck346">
-          <a class="ck347" href="{resolve('/beranda')}?baru">
+          <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+          <a class="ck347" href={targetMulai}>
             <img
               class="ck348"
               src="/pen/i-f8e6f89678.svg"
