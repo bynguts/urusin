@@ -94,10 +94,10 @@ SHIM_NO_BUILDER=1 cid builder-init
 check "builder-init: docker-container + buildkitd.toml + batas CPU/memori" '[[ "$calls" == *"[--driver] [docker-container]"* && "$calls" == *"buildkitd.toml]"* && "$calls" == *"memory=4g"* ]]'
 
 echo "== hook job-started"
-out="$(PATH="$HERE/shims-ci:$PATH" SHIM_DF_PCT=87 bash "$CI/job-started" 2>&1)"
+out="$(PATH="$HERE/shims-ci:$PATH" SHIM_DF_PCT=87 bash "$CI/job-started.sh" 2>&1)"
 rc=$?
 check "disk 87% boleh jalan" '[ $rc -eq 0 ] && [[ "$out" == *"87%"* ]]'
-out="$(PATH="$HERE/shims-ci:$PATH" SHIM_DF_PCT=88 bash "$CI/job-started" 2>&1)"
+out="$(PATH="$HERE/shims-ci:$PATH" SHIM_DF_PCT=88 bash "$CI/job-started.sh" 2>&1)"
 rc=$?
 check "disk 88% menggagalkan job dengan ::error::" '[ $rc -ne 0 ] && [[ "$out" == "::error::"* ]]'
 
@@ -106,7 +106,7 @@ mkdir -p "$SB/bin" "$WS/node_modules/x" "$WS/apps/web/node_modules/y" "$SB/luar/
 printf '#!/usr/bin/env bash\necho "$*" >> "%s/sudo.log"\n' "$SHIM_DIR" > "$SB/bin/sudo"
 chmod +x "$SB/bin/sudo"
 # Salinan uji dengan akar _work dialihkan ke sandbox (skrip asli memakai path tetap /opt/urusin-ci).
-sed "s#/opt/urusin-ci/runner/#$URUSIN_CI_ROOT/runner/#" "$CI/job-completed" > "$SB/job-completed"
+sed "s#/opt/urusin-ci/runner/#$URUSIN_CI_ROOT/runner/#" "$CI/job-completed.sh" > "$SB/job-completed"
 printf '#!/usr/bin/env bash\necho "$*" >> "%s/pnpm.log"\n' "$SHIM_DIR" > "$SB/bin/pnpm"
 chmod +x "$SB/bin/pnpm"
 H="$URUSIN_CI_ROOT/runner/_home"
@@ -122,7 +122,8 @@ jc "$SB/luar/x"
 check "job-completed: tidak menyentuh di luar _work" '[ $rc -eq 0 ] && [ -d "$SB/luar/x/node_modules" ]'
 
 echo "== berkas pemasangan"
-check "unit: batas CPU/memori/IO + prestart root + hook job-completed" 'grep -q "^CPUQuota=150%" "$CI/urusin-ci-runner.service" && grep -q "^MemoryMax=" "$CI/urusin-ci-runner.service" && grep -q "^IOWeight=" "$CI/urusin-ci-runner.service" && grep -q "^ExecStartPre=+/opt/urusin-ci/bin/runner-prestart" "$CI/urusin-ci-runner.service" && grep -q "^Environment=ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/urusin-ci/bin/job-completed" "$CI/urusin-ci-runner.service"'
+check "unit: batas CPU/memori/IO + prestart root + hook job-completed" 'grep -q "^CPUQuota=150%" "$CI/urusin-ci-runner.service" && grep -q "^MemoryMax=" "$CI/urusin-ci-runner.service" && grep -q "^IOWeight=" "$CI/urusin-ci-runner.service" && grep -q "^ExecStartPre=+/opt/urusin-ci/bin/runner-prestart" "$CI/urusin-ci-runner.service" && grep -q "^Environment=ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/urusin-ci/bin/job-completed\.sh$" "$CI/urusin-ci-runner.service"'
+check "unit: setiap hook runner berakhiran .sh/.ps1/.js (runner menolak path lain)" '[ "$(grep -c "^Environment=ACTIONS_RUNNER_HOOK_JOB_" "$CI/urusin-ci-runner.service")" -eq 2 ] && ! grep "^Environment=ACTIONS_RUNNER_HOOK_JOB_" "$CI/urusin-ci-runner.service" | grep -Evq "\.(sh|ps1|js)$" && (for h in $(grep "^Environment=ACTIONS_RUNNER_HOOK_JOB_" "$CI/urusin-ci-runner.service" | sed "s#.*/bin/##"); do [ -f "$CI/$h" ] && grep -q " $h" "$CI/install.sh" || exit 1; done)'
 check "unit: runner persisten (run.sh), tanpa runner-start/JIT" 'grep -q "^ExecStart=/opt/urusin-ci/runner/run.sh" "$CI/urusin-ci-runner.service" && ! grep -q "runner-start" "$CI/urusin-ci-runner.service" && [ ! -e "$CI/runner-start" ]'
 check "tanpa PAT di box: tanpa jitconfig/--ephemeral; gh-admin-token hanya dihapus" '! grep -nE "generate-jitconfig|--ephemeral|--jitconfig" "$CI"/install.sh "$CI"/uninstall.sh "$CI"/runner-prestart && [ "$(grep -c gh-admin-token "$CI/install.sh")" = 1 ] && grep -q "rm -f.*gh-admin-token" "$CI/install.sh"'
 check "token registrasi/remove lewat env, bukan argumen --token" '! grep -nE -- "--token" "$CI"/install.sh "$CI"/uninstall.sh && grep -q "ACTIONS_RUNNER_INPUT_TOKEN=" "$CI/install.sh" && grep -q "ACTIONS_RUNNER_INPUT_TOKEN=" "$CI/uninstall.sh"'
