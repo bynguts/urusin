@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
@@ -45,6 +46,7 @@
    * cara-kerja.css). Header dan footer memakai komponen landing. Salinan yang menyebut ekstensi diganti karena
    * ekstensi sudah tidak ada; NIK contoh disamarkan seperti tampilan Urusin.
    */
+  const targetMulai = $derived(page.data.akun ? resolve('/beranda') : resolve('/daftar'));
 </script>
 
 <svelte:head>
@@ -1026,7 +1028,8 @@
           Gratis dan langsung dari browser. Ceritakan apa yang terjadi, Urusin yang menyusun langkahnya.
         </p>
         <div class="ck346">
-          <a class="ck347" href="{resolve('/beranda')}?baru">
+          <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+          <a class="ck347" href={targetMulai}>
             <img
               class="ck348"
               src="/pen/i-f8e6f89678.svg"

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
@@ -213,6 +214,7 @@
   const demo2 = `${g71d3e1c} 659w, ${gd364869} 842w, ${g06f3705} 1080w, ${g9d9bb51} 1318w, ${g776a2c9} 1760w, ${g4d3be26} 2160w`;
   const demo1 = `${s1_659} 659w, ${s1_842} 842w, ${s1_1080} 1080w, ${s1_1318} 1318w, ${s1_1760} 1760w, ${s1_2160} 2160w`;
   const demo3 = `${s3_659} 659w, ${s3_842} 842w, ${s3_1080} 1080w, ${s3_1318} 1318w, ${s3_1760} 1760w, ${s3_2160} 2160w`;
+  const targetMulai = $derived(page.data.akun ? resolve('/beranda') : resolve('/daftar'));
 </script>
 
 <svelte:head>
@@ -251,7 +253,8 @@
         resmi.
       </div>
       <div class="lp16">
-        <a class="lp17" href="{resolve('/beranda')}?baru">
+        <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+        <a class="lp17" href={targetMulai}>
           <img class="lp18" src="/pen/i-25435a991f.svg" alt="" width="16" height="16" decoding="async" />
           <span class="lp19"> Mulai urusan </span>
         </a>
@@ -557,7 +560,8 @@
         selesai.
       </div>
       <div class="lp57">
-        <a class="lp58" href="{resolve('/beranda')}?baru">
+        <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+        <a class="lp58" href={targetMulai}>
           <span class="lp59"> Mulai urusan </span>
         </a>
         <a class="lp20" href="#cara-kerja">
@@ -1579,7 +1583,8 @@
         <div class="n-card-body lp114">
           <div class="lp115">Ceritakan kebutuhanmu, Urusin cari layanan yang sesuai.</div>
           <div class="lp52">
-            <a class="lp130" href="{resolve('/beranda')}?baru">
+            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+            <a class="lp130" href={targetMulai}>
               <span class="lp59"> Ceritakan </span>
             </a>
             <a class="lp117" href={resolve('/peristiwa/[slug]', { slug: 'lainnya' })}>
@@ -1598,7 +1603,7 @@
         </div>
       </div>
     </div>
-    <a class="lp20" href="{resolve('/beranda')}?baru">
+    <a class="lp20" href={resolve('/urusan')}>
       <span class="lp21"> Lihat semua urusan › </span>
     </a>
   </section>
@@ -2680,7 +2685,8 @@
           Gratis dan langsung dari browser. Ceritakan apa yang terjadi, Urusin yang menyusun langkahnya.
         </div>
         <div class="lp52">
-          <a class="lp17" href="{resolve('/beranda')}?baru">
+          <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+          <a class="lp17" href={targetMulai}>
             <img
               class="lp18"
               src="/pen/i-25435a991f.svg"

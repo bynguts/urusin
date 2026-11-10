@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
@@ -19,6 +20,7 @@
    * tanpa JavaScript); yang terbuka di frame terbuka di sini. Frame hanya memuat jawaban untuk pertanyaan yang
    * terbuka; jawaban lain ditulis dari docs/privasi.md dan perilaku sistem yang berjalan.
    */
+  const targetMulai = $derived(page.data.akun ? resolve('/beranda') : resolve('/daftar'));
 </script>
 
 <svelte:head>
@@ -407,7 +409,8 @@
         <h2 class="tj89">Belum ketemu jawabannya?</h2>
         <p class="tj90">Tanyakan ke Rose. Jawabannya disertai sumber resmi dan tanggal diperiksa.</p>
         <div class="tj91">
-          <a class="tj92" href="{resolve('/beranda')}?baru">
+          <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+          <a class="tj92" href={targetMulai}>
             <img
               class="tj93"
               src="/pen/i-744984ade4.svg"

@@ -183,6 +183,60 @@ html {
   /* Ukuran huruf dari Pengaturan: 1 = 16px dasar peramban; semua ukuran memakai rem. */
   font-size: calc(100% * var(--skala-huruf, 1));
   background: var(--sb-bg-secondary);
+  scrollbar-width: thin;
+  scrollbar-color: #25252233 transparent;
+}
+
+[data-theme='dark'] html {
+  scrollbar-color: #f7f3ed33 transparent;
+}
+
+/* Scrollbar kustom bernuansa hangat selaras dengan token DESIGN.md (ink, stroke-strong, neutral-bg) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #2525222e;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #25252259;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: #2525228c;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background-color: #f7f3ed2e;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background-color: #f7f3ed59;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:active {
+  background-color: #f7f3ed8c;
+}
+
+/* Sorotan teks bertema hangat selaras dengan brand orange Urusin */
+::selection {
+  background-color: #ed5a3126;
+  color: var(--sb-text-primary);
 }
 
 body {
