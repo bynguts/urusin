@@ -759,8 +759,11 @@ describe('temuan eval persona p17: balasan ringkas tanpa kehilangan isi wajib', 
     const p = buildSystemPrompt();
     expect(p).toMatch(/paling banyak 4 kalimat pendek atau 5 butir/);
     expect(p).toMatch(/Ikuti gaya warga/);
-    expect(p).toMatch(/Jangan mengulang isi kartu rencana atau jawaban bersumber/);
-    expect(p).toMatch(/dokumen yang perlu disiapkan, kanal\/kantor yang dituju, dan langkah berikutnya/);
+    expect(p).toMatch(/Jangan menyalin ulang seluruh kartu rencana atau jawaban bersumber/);
+    // p04 (lansia): ringkas, tetapi dokumen kunci tetap disebut ulang, bukan "lihat daftar di atas".
+    expect(p).toMatch(/selalu sebut ulang 2-3 dokumen kunci secara eksplisit/);
+    expect(p).not.toMatch(/rujuk saja/);
+    expect(p).toMatch(/dokumen kunci, kanal\/kantor yang dituju, dan langkah berikutnya/);
   });
 });
 
