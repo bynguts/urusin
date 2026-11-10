@@ -1,7 +1,14 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { PERISTIWA_BUNDEL } from './peristiwa.js';
-import { FAKTA_HUKUM, REF_PERPRES_TEKS, REF_PMD7_2026, REF_UU24 } from './regulasi.js';
+import {
+  FAKTA_HUKUM,
+  REF_PERPOL1_2026,
+  REF_PERPRES_TEKS,
+  REF_PMD109,
+  REF_PMD7_2026,
+  REF_UU24,
+} from './regulasi.js';
 import { rencanaWilayah } from './rencana-wilayah.js';
 
 const fakta = (id: string) => {
@@ -80,6 +87,54 @@ describe('FAKTA_HUKUM', () => {
     expect(fakta('kawin-kua').teks).toMatch(/Dukcapil tidak menerbitkan kutipan akta perkawinan/);
     expect(fakta('sptjm').pasal).toBe('Perpres 96/2018 Ps. 34');
     expect(fakta('sptjm').teks).toMatch(/9\/2016 sudah dicabut/);
+  });
+
+  it('akta kelahiran: KTP-el termasuk syarat, SPTJM F-2.03/F-2.04 dengan 2 saksi', () => {
+    const syarat = fakta('lahir-syarat');
+    expect(syarat.teks).toMatch(/KK tempat bayi didaftarkan, dan KTP-el/);
+    expect(syarat.teks).toMatch(/ibu kandung di bawah 17 tahun yang belum kawin/);
+    expect(syarat.teks).toMatch(/F-2\.01/);
+    expect(syarat.sourceRef).toContain(REF_PMD109);
+    const sptjm = fakta('sptjm').teks;
+    expect(sptjm).toMatch(/kebenaran data kelahiran \(formulir F-2\.03\)/);
+    expect(sptjm).toMatch(/pasangan suami istri \(F-2\.04\)/);
+    expect(sptjm).toMatch(/2 orang saksi/);
+    expect(fakta('pemalsuan-pidana').pasal).toBe('UU 23/2006 Ps. 93; UU 24/2013 Ps. 94');
+  });
+
+  it('formulir dan KK: F-1.02, F-1.03, F-1.05, F-1.06 sesuai Permendagri 109/2019', () => {
+    expect(fakta('formulir-f102').teks).toMatch(/hilang atau rusak/);
+    expect(fakta('formulir-f103').teks).toMatch(/F-1\.03.*daerah asal/);
+    expect(fakta('kk-keluarga-baru').teks).toMatch(/F-1\.05/);
+    expect(fakta('kk-perubahan-data').teks).toMatch(/KK lama.*F-1\.06/);
+    expect(fakta('pindah-pemilik-rumah').pasal).toBe('Permendagri 108/2019 Ps. 28 ayat (1)');
+  });
+
+  it('SKCK ikut Perpol 1/2026: lewat aplikasi Polri, berlaku 6 bulan, Perpol 6/2023 dicabut', () => {
+    const skck = fakta('skck-polri');
+    expect(skck.teks).toMatch(/bukan Disdukcapil/);
+    expect(skck.teks).toMatch(/aplikasi layanan digital Polri/);
+    expect(skck.teks).toMatch(/berlaku 6 bulan/);
+    expect(skck.teks).toMatch(/Perpol 6\/2023 sudah dicabut/);
+    expect(skck.sourceRef).toEqual([REF_PERPOL1_2026]);
+    expect(fakta('skck-manual').teks).toMatch(/KTP, KK, akta kelahiran, ijazah terakhir/);
+  });
+
+  it('setiap kode formulir F-x.yy yang disebut registry tercantum di teks Permendagri 109/2019 Ps. 4', () => {
+    const pasal = JSON.parse(
+      readFileSync(new URL('../../../data/regulasi/pasal.json', import.meta.url), 'utf8'),
+    ) as { sumber: Record<string, { pasal: string; teks: string }[]> };
+    const ps4 = pasal.sumber['permendagri-109-2019-pasal']?.find((p) => p.pasal === 'Pasal 4')?.teks ?? '';
+    const isi = JSON.stringify({
+      FAKTA_HUKUM,
+      PERISTIWA_BUNDEL,
+      rencana: ['kelahiran', 'kematian', 'perkawinan', 'pindah'].map((s) =>
+        rencanaWilayah(s, { ktp: '3216', tujuan: '3578' }),
+      ),
+    });
+    const kode = [...new Set(isi.match(/F-\d\.\d{2}/g) ?? [])];
+    expect(kode.length).toBeGreaterThanOrEqual(6);
+    for (const k of kode) expect(ps4, k).toContain(`kode ${k}`);
   });
 });
 

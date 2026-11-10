@@ -197,7 +197,7 @@
       "lastFetched": "2026-11-10",
       "adapter": "pasal",
       "ingest": true,
-      "catatan": "Teks pasal resmi berskala nasional (bukan wilayah): Pasal 27, 32, 44, 79A. Teks chunk dari data/regulasi/pasal.json (verbatim dari PDF ini, diperiksa 2026-11-10); ingest mengambil PDF untuk hash verifikasi. robots.txt peraturan.go.id tidak melarang."
+      "catatan": "Teks pasal resmi berskala nasional (bukan wilayah): Pasal 27, 32, 44, 79A, 94, 95B. Teks chunk dari data/regulasi/pasal.json (verbatim dari PDF ini, diperiksa 2026-11-10); ingest mengambil PDF untuk hash verifikasi. robots.txt peraturan.go.id tidak melarang."
     },
     {
       "id": "uu-23-2006-pasal",
@@ -213,7 +213,7 @@
       "lastFetched": "2026-11-10",
       "adapter": "pasal",
       "ingest": true,
-      "catatan": "Teks pasal resmi berskala nasional (bukan wilayah): Pasal 34. Teks chunk dari data/regulasi/pasal.json (verbatim dari PDF ini, diperiksa 2026-11-10); ingest mengambil PDF untuk hash verifikasi. robots.txt peraturan.go.id tidak melarang."
+      "catatan": "Teks pasal resmi berskala nasional (bukan wilayah): Pasal 34, 93. Teks chunk dari data/regulasi/pasal.json (verbatim dari PDF ini, diperiksa 2026-11-10); ingest mengambil PDF untuk hash verifikasi. robots.txt peraturan.go.id tidak melarang."
     },
     {
       "id": "perpres-96-2018-pasal",
@@ -229,7 +229,7 @@
       "lastFetched": "2026-11-10",
       "adapter": "pasal",
       "ingest": true,
-      "catatan": "Teks pasal resmi berskala nasional (bukan wilayah): Pasal 14, 17, 21, 22, 25, 33, 34. Teks chunk dari data/regulasi/pasal.json (verbatim dari PDF ini, diperiksa 2026-11-10); ingest mengambil PDF untuk hash verifikasi. robots.txt peraturan.go.id tidak melarang."
+      "catatan": "Teks pasal resmi berskala nasional (bukan wilayah): Pasal 10, 11, 12, 14, 17, 21, 22, 25, 33, 34. Teks chunk dari data/regulasi/pasal.json (verbatim dari PDF ini, diperiksa 2026-11-10); ingest mengambil PDF untuk hash verifikasi. robots.txt peraturan.go.id tidak melarang."
     },
     {
       "id": "permendagri-108-2019-pasal",
@@ -245,7 +245,7 @@
       "lastFetched": "2026-11-10",
       "adapter": "pasal",
       "ingest": true,
-      "catatan": "Teks pasal resmi berskala nasional (bukan wilayah): Pasal 18, 24, 28-31. Teks chunk dari data/regulasi/pasal.json (verbatim dari PDF ini, diperiksa 2026-11-10); ingest mengambil PDF untuk hash verifikasi. robots.txt peraturan.go.id tidak melarang. Berkasnya identik byte-per-byte dengan salinan JDIH BPK (BPK menolak UA UrusinBot dengan HTTP 403)."
+      "catatan": "Teks pasal resmi berskala nasional (bukan wilayah): Pasal 18, 24, 28, 29, 30, 31, 43. Teks chunk dari data/regulasi/pasal.json (verbatim dari PDF ini, diperiksa 2026-11-10); ingest mengambil PDF untuk hash verifikasi. robots.txt peraturan.go.id tidak melarang. Berkasnya identik byte-per-byte dengan salinan JDIH BPK (BPK menolak UA UrusinBot dengan HTTP 403)."
     },
     {
       "id": "permendagri-7-2026-pasal",
@@ -261,7 +261,39 @@
       "lastFetched": "2026-11-10",
       "adapter": "pasal",
       "ingest": true,
-      "catatan": "Teks pasal resmi berskala nasional (bukan wilayah): Pasal 4, 6, 24-26, 34. Teks chunk dari data/regulasi/pasal.json (verbatim dari PDF ini, diperiksa 2026-11-10); ingest mengambil PDF untuk hash verifikasi. robots.txt peraturan.go.id tidak melarang. Berkasnya identik byte-per-byte dengan salinan JDIH BPK (BPK menolak UA UrusinBot dengan HTTP 403)."
+      "catatan": "Teks pasal resmi berskala nasional (bukan wilayah): Pasal 4, 6, 24, 25, 26, 34. Teks chunk dari data/regulasi/pasal.json (verbatim dari PDF ini, diperiksa 2026-11-10); ingest mengambil PDF untuk hash verifikasi. robots.txt peraturan.go.id tidak melarang. Berkasnya identik byte-per-byte dengan salinan JDIH BPK (BPK menolak UA UrusinBot dengan HTTP 403)."
+    },
+    {
+      "id": "permendagri-109-2019-pasal",
+      "url": "https://peraturan.go.id/files/bn1790-2019.pdf",
+      "judul": "Permendagri No. 109 Tahun 2019 tentang Formulir dan Buku Administrasi Kependudukan (teks pasal)",
+      "instansi": "Kementerian Dalam Negeri",
+      "jenis": "pdf",
+      "domain": "nasional",
+      "kodeWilayah": null,
+      "layanan": "adminduk",
+      "status": "confirmed",
+      "robots": "ditemukan",
+      "lastFetched": "2026-11-10",
+      "adapter": "pasal",
+      "ingest": true,
+      "catatan": "Teks pasal resmi berskala nasional (bukan wilayah): Pasal 4, 5. Teks chunk dari data/regulasi/pasal.json (verbatim dari PDF ini, diperiksa 2026-11-10); ingest mengambil PDF untuk hash verifikasi. robots.txt peraturan.go.id tidak melarang. Status di peraturan.go.id: Berlaku. Pasal 4 dan 5 memuat kode formulir F-1.01 sampai F-2.04 beserta kegunaannya."
+    },
+    {
+      "id": "perpol-1-2026-pasal",
+      "url": "https://peraturan.go.id/files/peraturan-polri-no-1-tahun-2026.pdf",
+      "judul": "Peraturan Polri No. 1 Tahun 2026 tentang Penerbitan SKCK (teks pasal)",
+      "instansi": "Kepolisian Negara Republik Indonesia",
+      "jenis": "pdf",
+      "domain": "nasional",
+      "kodeWilayah": null,
+      "layanan": "skck",
+      "status": "confirmed",
+      "robots": "ditemukan",
+      "lastFetched": "2026-11-10",
+      "adapter": "pasal",
+      "ingest": true,
+      "catatan": "Teks pasal resmi berskala nasional (bukan wilayah): Pasal 2, 3, 4, 5, 10, 12, 13, 14. Teks chunk dari data/regulasi/pasal.json (verbatim dari PDF ini, diperiksa 2026-11-10); ingest mengambil PDF untuk hash verifikasi. robots.txt peraturan.go.id tidak melarang. Status di peraturan.go.id: Berlaku (BN 2026 No. 326, diundangkan 20 Mei 2026); Pasal 20 mencabut Perpol 6/2023 (dicatat di FAKTA_HUKUM, tidak dijadikan chunk karena hanya berisi judul peraturan lama)."
     },
     {
       "id": "uu-27-2022",

@@ -18,15 +18,39 @@
       {
         "pasal": "Pasal 79A",
         "teks": "Pengurusan dan penerbitan Dokumen Kependudukan tidak dipungut biaya."
+      },
+      {
+        "pasal": "Pasal 94",
+        "teks": "Setiap orang yang memerintahkan dan/atau memfasilitasi dan/atau melakukan manipulasi Data Kependudukan dan/atau elemen data Penduduk sebagaimana dimaksud dalam Pasal 77 dipidana dengan pidana penjara paling lama 6 (enam) tahun dan/atau denda paling banyak Rp75.000.000,00 (tujuh puluh lima juta rupiah)."
+      },
+      {
+        "pasal": "Pasal 95B",
+        "teks": "Setiap pejabat dan petugas pada desa/kelurahan, kecamatan, UPT Instansi Pelaksana dan Instansi Pelaksana yang memerintahkan dan/atau memfasilitasi dan/atau melakukan pungutan biaya kepada Penduduk dalam pengurusan dan penerbitan Dokumen Kependudukan sebagaimana dimaksud dalam Pasal 79A dipidana dengan pidana penjara paling lama 6 (enam) tahun dan/atau denda paling banyak Rp75.000.000,00 (tujuh puluh lima juta rupiah)."
       }
     ],
     "uu-23-2006-pasal": [
       {
         "pasal": "Pasal 34",
         "teks": "(1) Perkawinan yang sah berdasarkan ketentuan Peraturan Perundang-undangan wajib dilaporkan oleh Penduduk kepada Instansi Pelaksana di tempat terjadinya perkawinan paling lambat 60 (enam puluh) hari sejak tanggal perkawinan.\n(2) Berdasarkan laporan sebagaimana dimaksud pada ayat (1), Pejabat Pencatatan Sipil mencatat pada Register Akta Perkawinan dan menerbitkan Kutipan Akta Perkawinan.\n(3) Kutipan Akta Perkawinan sebagaimana dimaksud pada ayat (2) masing-masing diberikan kepada suami dan istri.\n(4) Pelaporan sebagaimana dimaksud pada ayat (1) dilakukan oleh Penduduk yang beragama Islam kepada KUAKec.\n(5) Data hasil pencatatan atas peristiwa sebagaimana dimaksud pada ayat (4) dan dalam Pasal 8 ayat (2) wajib disampaikan oleh KUAKec kepada Instansi Pelaksana dalam waktu paling lambat 10 (sepuluh) hari setelah pencatatan perkawinan dilaksanakan.\n(6) Hasil pencatatan data sebagaimana dimaksud pada ayat (5) tidak memerlukan penerbitan kutipan akta Pencatatan Sipil.\n(7) Pada tingkat kecamatan laporan sebagaimana dimaksud pada ayat (1) dilakukan pada UPTD Instansi Pelaksana."
+      },
+      {
+        "pasal": "Pasal 93",
+        "teks": "Setiap Penduduk yang dengan sengaja memalsukan surat dan/atau dokumen kepada Instansi Pelaksana dalam melaporkan Peristiwa Kependudukan dan Peristiwa Penting dipidana dengan pidana penjara paling lama 6 (enam) tahun dan/atau denda paling banyak Rp 50.000.000,00 (lima puluh juta rupiah)."
       }
     ],
     "perpres-96-2018-pasal": [
+      {
+        "pasal": "Pasal 10",
+        "teks": "(1) Penerbitan KK bagi Penduduk WNI atau Penduduk Orang Asing terdiri atas:\na. penerbitan KK baru;\nb. penerbitan KK karena perubahan data; dan\nc. penerbitan KK karena hilang atau rusak.\n(2) Penduduk Orang Asing sebagaimana dimaksud pada ayat (1) merupakan:\na. Penduduk Orang Asing yang memiliki izin tinggal tetap;\nb. Penduduk Orang Asing yang telah memperoleh kewarganegaraan Republik Indonesia; dan\nc. Penduduk Orang Asing yang memiliki anak berkewarganegaraan ganda yang telah memilih kewarganegaraan Republik Indonesia."
+      },
+      {
+        "pasal": "Pasal 11",
+        "teks": "(1) Penerbitan KK baru untuk Penduduk WNI harus memenuhi persyaratan:\na. buku nikah/kutipan akta perkawinan atau kutipan akta perceraian;\nb. surat keterangan pindah/surat keterangan pindah datang bagi Penduduk yang pindah dalam wilayah Negara Kesatuan Republik Indonesia;\nc. surat keterangan pindah luar negeri yang diterbitkan oleh Disdukcapil Kabupaten/Kota bagi WNI yang datang dari luar wilayah Negara Kesatuan Republik Indonesia karena pindah;\nd. surat keterangan pengganti tanda identitas bagi Penduduk rentan Administrasi Kependudukan; dan\ne. Petikan Keputusan Presiden tentang pewarganegaraan dan berita acara pengucapan sumpah atau pernyataan janji setia bagi Penduduk WNI yang semula berkewarganegaraan asing atau petikan Keputusan Menteri yang menyelenggarakan urusan pemerintahan di bidang hukum tentang perubahan status kewarganegaraan.\n(2) Penerbitan KK baru untuk Penduduk Orang Asing harus memenuhi persyaratan:\na. izin tinggal tetap;\nb. buku nikah/kutipan akta perkawinan atau kutipan akta perceraian atau yang disebut dengan nama lain; dan\nc. surat keterangan pindah bagi Penduduk yang pindah dalam wilayah Negara Kesatuan Republik Indonesia."
+      },
+      {
+        "pasal": "Pasal 12",
+        "teks": "Penerbitan KK karena perubahan data harus memenuhi persyaratan:\na. KK lama; dan\nb. surat keterangan/bukti perubahan Peristiwa Kependudukan dan Peristiwa Penting."
+      },
       {
         "pasal": "Pasal 14",
         "teks": "Penerbitan KTP-el bagi Penduduk WNI atau Penduduk Orang Asing terdiri atas:\na. penerbitan KTP-el baru;\nb. penerbitan KTP-el karena pindah datang;\nc. penerbitan KTP-el karena perubahan data;\nd. penerbitan KTP-el karena perpanjangan bagi Penduduk Orang Asing yang memiliki izin tinggal tetap;\ne. penerbitan KTP-el karena hilang atau rusak; dan\nf. penerbitan KTP-el di luar domisili."
@@ -80,6 +104,10 @@
       {
         "pasal": "Pasal 31",
         "teks": "Dalam hal Penduduk secara faktual telah berdomisili di Kabupaten/Kota daerah tujuan, Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota daerah tujuan membantu komunikasi pengurusan SKP melalui surat elektronik atau media elektronik lainnya ke Disdukcapil Kabupaten/Kota daerah asal guna mendapatkan SKP."
+      },
+      {
+        "pasal": "Pasal 43",
+        "teks": "(1) Pencatatan kelahiran WNI di wilayah Negara Kesatuan Republik Indonesia sebagaimana dimaksud dalam Pasal 42 huruf a, harus memenuhi persyaratan:\na. surat keterangan kelahiran;\nb. buku nikah/kutipan akta perkawinan atau bukti lain yang sah;\nc. KK; dan\nd. KTP-el.\n(2) KK sebagaimana dimaksud pada ayat (1) huruf c, merupakan KK dimana Penduduk terdaftar atau akan didaftarkan sebagai anggota keluarga.\n(3) KTP-el sebagaimana dimaksud pada ayat (1) huruf d, tidak dipersyaratkan bagi ibu kandung yang belum berusia 17 (tujuh belas) tahun dengan status belum kawin.\n(4) Pencatatan kelahiran WNI di wilayah Negara Kesatuan Republik Indonesia sebagaimana dimaksud pada ayat (1), yang dilakukan oleh Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota dilakukan dengan tata cara:\na. Pemohon mengisi dan menandatangani formulir pelaporan dengan menyerahkan persyaratan sebagaimana dimaksud pada ayat (1);\nb. petugas pelayanan melakukan verifikasi dan validasi terhadap formulir pelaporan dan persyaratan sebagaimana dimaksud pada ayat (1);\nc. petugas pada Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota melakukan perekaman data dalam basis data kependudukan;\nd. pejabat Pencatatan Sipil pada Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota mencatat dalam register akta kelahiran dan menerbitkan kutipan akta kelahiran; dan\ne. kutipan akta kelahiran disampaikan kepada Pemohon.\n(5) Dalam hal pencatatan kelahiran WNI di wilayah Negara Kesatuan Republik Indonesia sebagaimana dimaksud pada ayat (1) dilakukan melalui petugas registrasi pencatatan kelahiran, dilakukan dengan tata cara:\na. Pemohon mengisi dan menandatangani formulir pelaporan serta menyerahkan persyaratan sebagaimana dimaksud pada ayat (1);\nb. petugas registrasi melakukan verifikasi dan validasi terhadap formulir pelaporan dan persyaratan sebagaimana dimaksud pada ayat (1);\nc. petugas registrasi meneruskan formulir pelaporan dan persyaratan yang telah dilakukan verifikasi dan validasi sebagaimana dimaksud dalam huruf b, kepada petugas Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota untuk diterbitkan kutipan akta kelahiran;\nd. petugas pada Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota melakukan verifikasi dan validasi terhadap formulir pelaporan dan persyaratan sebagaimana dimaksud pada ayat (1);\ne. petugas pada Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota melakukan perekaman data dalam basis data kependudukan;\nf. pejabat Pencatatan Sipil pada Disdukcapil Kabupaten/Kota atau UPT Disdukcapil Kabupaten/Kota mencatat dalam register akta kelahiran dan menerbitkan kutipan akta kelahiran; dan\ng. kutipan akta kelahiran disampaikan kepada Pemohon."
       }
     ],
     "permendagri-7-2026-pasal": [
@@ -106,6 +134,50 @@
       {
         "pasal": "Pasal 34",
         "teks": "Pada saat Peraturan Menteri ini mulai berlaku, Peraturan Menteri Dalam Negeri Nomor 2 Tahun 2016 tentang Kartu Identitas Anak (Berita Negara Republik Indonesia Tahun 2016 Nomor 80), dicabut dan dinyatakan tidak berlaku."
+      }
+    ],
+    "permendagri-109-2019-pasal": [
+      {
+        "pasal": "Pasal 4",
+        "teks": "(1) Formulir pengajuan pelayanan Pendaftaran Penduduk dan Pencatatan Sipil sebagaimana dimaksud dalam Pasal 3 ayat (1) huruf a, terdiri dari:\na. Formulir pengajuan pelayanan; dan\nb. Formulir kelengkapan persyaratan pelayanan;\n(2) Formulir pengajuan pelayanan sebagaimana dimaksud pada ayat (1) huruf a, terdiri dari:\na. biodata keluarga, dengan kode F-1.01;\nb. pendaftaran peristiwa kependudukan, dengan kode F-1.02;\nc. pendaftaran perpindahan Penduduk, dengan kode F-1.03;\nd. pelaporan Pencatatan Sipil di dalam wilayah Negara Kesatuan Republik Indonesia, dengan kode F-2.01; dan\ne. pelaporan Pencatatan Sipil di luar wilayah Negara Kesatuan Republik Indonesia, dengan kode F-2.02.\n(3) Formulir kelengkapan persyaratan pelayanan sebagaimana dimaksud pada ayat (1) huruf b, terdiri dari:\na. surat pernyataan tidak memiliki dokumen kependudukan, dengan kode F-1.04;\nb. surat pernyataan tanggung jawab mutlak perkawinan/perceraian belum tercatat, dengan kode F-1.05;\nc. Surat Pernyataan perubahan elemen data kependudukan, dengan kode F-1.06;\nd. surat kuasa dalam pelayanan Administrasi Kependudukan, dengan kode F-1.07;\ne. surat pernyataan tanggung jawab mutlak kebenaran data kelahiran, dengan kode F-2.03; dan\nf. surat pernyataan tanggung jawab mutlak kebenaran sebagai pasangan suami isteri, dengan kode F-2.04."
+      },
+      {
+        "pasal": "Pasal 5",
+        "teks": "(1) Penggunaan Formulir sebagaimana dimaksud dalam Pasal 4 ayat (2), meliputi:\na. Formulir biodata keluarga untuk memasukan data: 1) kepala keluarga dan anggota keluarga bagi Penduduk; dan 2) kepala keluarga dan anggota keluarga bagi WNI di luar wilayah Negara Kesatuan Republik Indonesia.\nb. Formulir pendaftaran peristiwa kependudukan, untuk penerbitan: 1) KK, KTP-el, dan KIA baru bagi Penduduk WNI dan Orang Asing yang memiliki kartu izin tinggal tetap; 2) KK, KTP-el, dan KIA karena perubahan elemen data bagi Penduduk; 3) surat keterangan tempat tinggal bagi Orang Asing yang memiliki izin tinggal terbatas; dan 4) KK, KTP-el, dan KIA karena perpanjangan izin tinggal tetap.\nc. Formulir pendaftaran perpindahan kependudukan, untuk penerbitan: 1) surat keterangan pindah; dan 2) surat keterangan pindah luar negeri.\nd. Formulir pelaporan Pencatatan Sipil di dalam wilayah Negara Kesatuan Republik Indonesia untuk pelayanan pencatatan: 1) kelahiran; 2) lahir mati; 3) perkawinan; 4) pembatalan perkawinan; 5) perceraian; 6) pembatalan perceraian; 7) kematian; 8) pengangkatan anak; 9) pengakuan anak; 10) pengesahan anak; 11) perubahan nama; 12) perubahan status kewarganegaraan; 13) perubahan peristiwa penting lainnya; dan 14) pembetulan dan pembatalan akta Pencatatan Sipil.\ne. Formulir Pelaporan Pencatatan Sipil di luar wilayah Negara Kesatuan Republik Indonesia untuk pelayanan pelaporan dan pencatatan: 1) kelahiran; 2) perkawinan; 3) perceraian; 4) kematian; 5) pengangkatan anak warga negara asing oleh WNI; 6) pengakuan anak WNI yang bertempat tinggal di luar wilayah Negara Kesatuan Republik Indonesia; 7) pengesahan anak WNI yang bertempat tinggal di luar wilayah Negara Kesatuan Republik Indonesia; 8) pelepasan kewarganegaraan Republik Indonesia; dan 9) pembetulan akta Pencatatan Sipil.\n(2) Penggunaan Formulir kelengkapan persyaratan pelayanan sebagaimana dimaksud dalam Pasal 4 ayat (1) huruf b, meliputi:\na. Formulir surat pernyataan tidak memiliki dokumen kependudukan sebagai salah satu kelengkapan dalam penerbitan dokumen Kependudukan pertama kali bagi Penduduk yang tidak mempunyai dokumen kependudukan;\nb. Formulir surat pernyataan tanggung jawab mutlak perkawinan/perceraian belum tercatat sebagai salah satu persyaratan pencantuman status perkawinan/perceraian dalam KK bagi Penduduk yang tidak mempunyai dokumen perkawinan berupa buku nikah, akta perkawinan atau kutipan akta perceraian;\nc. Formulir surat kuasa dalam pelayanan Administrasi Kependudukan, untuk memberikan kuasa pengisian data pada Formulir pelayanan Administrasi Kependudukan bagi Penduduk atau WNI di luar wilayah Negara Kesatuan Republik Indonesia yang tidak mampu mengurus sendiri;\nd. Formulir surat pernyataan tanggung jawab mutlak kebenaran data kelahiran, untuk persyaratan pencatatan kelahiran apabila pemohon tidak dapat menunjukkan surat keterangan lahir dari dokter/bidan/penolong kelahiran; dan\ne. Formulir surat pernyataan tanggung jawab mutlak kebenaran sebagai pasangan suami isteri, untuk persyaratan pencatatan kelahiran apabila pemohon tidak dapat menunjukkan buku nikah/kutipan akta perkawinan tetapi status hubungan orangtua dalam KK menunjukan sebagai suami isteri."
+      }
+    ],
+    "perpol-1-2026-pasal": [
+      {
+        "pasal": "Pasal 2",
+        "teks": "(1) Penerbitan SKCK dilaksanakan oleh Badan Intelijen Keamanan Polri.\n(2) Penerbitan SKCK sebagaimana dimaksud pada ayat (1), diajukan oleh pemohon.\n(3) Pemohon sebagaimana dimaksud pada ayat (2), terdiri atas:\na. WNI; dan\nb. WNA.\n(4) Pemohon sebagaimana dimaksud pada ayat (3), terdaftar sebagai peserta aktif Jaminan Kesehatan.\n(5) Peserta aktif Jaminan Kesehatan sebagaimana dimaksud pada ayat (4), dikecualikan terhadap:\na. WNI yang berada di luar negeri;\nb. WNA yang berdomisili di Indonesia dan tidak bekerja; atau\nc. WNA yang berdomisili di Indonesia dan bekerja kurang dari 6 (enam) bulan.\n(6) Kepesertaan aktif Jaminan Kesehatan sebagaimana dimaksud pada ayat (4), diperoleh melalui Interoperabilitas Data dengan Badan Penyelenggara Jaminan Sosial Kesehatan.\n(7) Interoperabilitas Data sebagaimana dimaksud pada ayat (6), dilaksanakan sesuai dengan perjanjian kerja sama."
+      },
+      {
+        "pasal": "Pasal 3",
+        "teks": "(1) SKCK diterbitkan untuk 1 (satu) jenis keperluan dan 1 (satu) tujuan negara.\n(2) SKCK sebagaimana dimaksud pada ayat (1), berlaku selama 6 (enam) bulan.\n(3) Keperluan sebagaimana dimaksud pada ayat (1), paling sedikit meliputi:\na. melamar pekerjaan;\nb. melanjutkan pendidikan;\nc. pencalonan sebagai pejabat publik;\nd. pendaftaran sebagai prajurit Tentara Nasional Indonesia, anggota Polri atau Aparatur Sipil Negara;\ne. pengangkatan sebagai anggota organisasi profesi;\nf. penerbitan visa;\ng. perubahan status kewarganegaraan;\nh. naturalisasi; atau\ni. izin tinggal tetap atau sementara.\n(4) SKCK sebagaimana dimaksud pada ayat (1), dibuat dalam bahasa Indonesia dan bahasa Inggris.\n(5) SKCK memuat:\na. data diri pemohon;\nb. keterangan mengenai ada atau tidak adanya catatan kepolisian;\nc. keperluan dan/atau tujuan; dan\nd. keberlakuan SKCK.\n(6) SKCK sebagaimana dimaksud pada ayat (4), dibuat sesuai format sebagaimana tercantum dalam Lampiran yang merupakan bagian tidak terpisahkan dari Peraturan Kepolisian ini."
+      },
+      {
+        "pasal": "Pasal 4",
+        "teks": "(1) Penerbitan SKCK dilakukan secara elektronik melalui aplikasi layanan digital Polri.\n(2) Aplikasi layanan digital Polri sebagaimana dimaksud pada ayat (1), dapat diakses oleh pemohon yang memiliki akun pada aplikasi layanan digital Polri.\n(3) Akun pada aplikasi layanan digital Polri sebagaimana dimaksud pada ayat (2), diperoleh sesuai dengan prosedur yang terdapat dalam aplikasi layanan digital Polri."
+      },
+      {
+        "pasal": "Pasal 5",
+        "teks": "(1) Penerbitan SKCK dimohonkan melalui fitur SKCK pada aplikasi layanan digital Polri.\n(2) Dalam fitur SKCK sebagaimana dimaksud pada ayat (1), paling sedikit memuat:\na. informasi biaya penerbitan SKCK;\nb. syarat dokumen;\nc. ketentuan waktu pengambilan; dan\nd. keterangan lokasi pengambilan SKCK yang dipilih oleh pemohon.\n(3) Pemohon sebagaimana dimaksud pada ayat (1), melakukan pengisian data paling sedikit meliputi:\na. lokasi domisili pemohon;\nb. data diri pemohon;\nc. pasfoto;\nd. keperluan penerbitan SKCK; dan\ne. pemilihan lokasi dan tanggal penerbitan SKCK.\n(4) Pasfoto sebagaimana dimaksud pada ayat (3) huruf c, terdiri atas:\na. pasfoto dengan latar belakang warna merah bagi pemohon WNI; atau\nb. pasfoto dengan latar belakang warna kuning bagi pemohon WNA."
+      },
+      {
+        "pasal": "Pasal 10",
+        "teks": "(1) Pemohon yang telah melakukan pembayaran sebagaimana dimaksud dalam Pasal 9, dapat mengambil SKCK pada fitur cetak SKCK melalui aplikasi layanan digital Polri.\n(2) Pengambilan SKCK sebagaimana dimaksud pada ayat (1), juga dapat dilaksanakan pada kantor kepolisian terdekat.\n(3) Pengambilan SKCK sebagaimana dimaksud pada ayat (2), dapat diwakilkan dengan menunjukkan surat kuasa.\n(4) Surat kuasa sebagaimana dimaksud pada ayat (3), tercantum dalam Lampiran yang merupakan bagian yang tidak terpisahkan dari Peraturan Kepolisian ini."
+      },
+      {
+        "pasal": "Pasal 12",
+        "teks": "(1) Dalam hal aplikasi layanan digital Polri tidak berfungsi, penerbitan SKCK dapat dilakukan secara manual.\n(2) Aplikasi layanan digital Polri tidak berfungsi sebagaimana dimaksud pada ayat (1), dinyatakan melalui pemberitahuan resmi oleh Kepala Bidang Pelayanan Masyarakat Badan Intelijen Keamanan Polri."
+      },
+      {
+        "pasal": "Pasal 13",
+        "teks": "(1) Penerbitan SKCK secara manual sebagaimana dimaksud dalam Pasal 12 ayat (1), dilaksanakan dengan tahapan:\na. permohonan;\nb. verifikasi;\nc. pembayaran; dan\nd. penandatanganan.\n(2) Penerbitan SKCK secara manual sebagaimana dimaksud pada ayat (1), dilaksanakan di loket pelayanan SKCK pada kantor kepolisian setempat."
+      },
+      {
+        "pasal": "Pasal 14",
+        "teks": "(1) Permohonan sebagaimana dimaksud dalam Pasal 13 ayat (1) huruf a, dilaksanakan oleh pemohon dengan mengisi formulir permohonan dan menyerahkan dokumen pendukung.\n(2) Formulir permohonan sebagaimana dimaksud pada ayat (1), tercantum dalam Lampiran yang merupakan bagian tidak terpisahkan dari Peraturan Kepolisian ini.\n(3) Dokumen pendukung sebagaimana dimaksud pada ayat (1), paling sedikit meliputi:\na. kartu tanda penduduk;\nb. kartu keluarga;\nc. akta kelahiran;\nd. ijazah terakhir;\ne. pasfoto;\nf. paspor dengan masa berlaku paling sedikit 6 (enam) bulan untuk keperluan ke luar negeri; dan\ng. bukti status peserta aktif Jaminan Kesehatan.\n(4) Pasfoto sebagaimana dimaksud pada ayat (3) huruf e, terdiri atas:\na. pasfoto dengan latar belakang warna merah bagi pemohon WNI; atau\nb. pasfoto dengan latar belakang warna kuning bagi pemohon WNA.\n(5) Bukti status peserta aktif Jaminan Kesehatan sebagaimana dimaksud pada ayat (3) huruf g, dapat berupa hasil tangkapan layar status peserta aktif Jaminan Kesehatan pada sistem informasi Badan Penyelenggara Jaminan Sosial Kesehatan, bukti pembayaran iuran Jaminan Kesehatan bulan berjalan, atau bukti lain yang sah berdasarkan ketentuan Badan Penyelenggara Jaminan Sosial Kesehatan."
       }
     ]
   }
