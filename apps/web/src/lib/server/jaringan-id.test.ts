@@ -148,6 +148,33 @@ describe('kejujuran tier portal id-only (worker berjaringan Indonesia)', () => {
     expect(await segarkanJaringanId(null)).toBe(false);
   });
 
+  it('N12: cache basi dipakai seketika dan disegarkan di latar; cache dingin (>60 s) ditunggu', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const cfg = pendampingConfig(process.env) as PendampingConfig;
+      expect(await segarkanJaringanId(cfg)).toBe(true);
+      laptopHidup = false;
+      vi.setSystemTime(Date.now() + 15_000);
+      // Basi: jawaban seketika dari nilai terakhir, cek kesehatan berjalan di latar.
+      expect(await segarkanJaringanId(cfg)).toBe(true);
+      await vi.waitFor(() => expect(jaringanIdSiap()).toBe(false));
+      laptopHidup = true;
+      vi.setSystemTime(Date.now() + 70_000);
+      // Dingin: ditunggu, hasilnya segar.
+      expect(await segarkanJaringanId(cfg)).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('N5: POST /api/urusan menghangatkan cache jaringan Indonesia sebelum turn/kartu pertama', async () => {
+    expect(cekKesehatan).toBe(0);
+    const res = await buatUrusan(ev(post({ peristiwa: 'kelahiran', kodeKabKota: '3374' })));
+    expect(res.status).toBe(201);
+    expect(cekKesehatan).toBeGreaterThan(0);
+    expect(jaringanIdSiap()).toBe(true);
+  });
+
   it('Semarang tanpa worker ID sehat: dipandu + alasan jujur sejak kartu, tanpa "Setujui dan buka situs"', async () => {
     laptopHidup = false;
     const { id, kartu, setuju } = await alurWarga('3374', 'kelahiran');

@@ -5,6 +5,7 @@ import {
 } from '@urusin/contracts';
 import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
+import { segarkanJaringanId } from '#lib/server/pendamping.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
 import { usulkanWilayahAwal } from '#lib/server/mulai-urusan.js';
 import { menungguSiapa } from '#lib/server/ringkasan.js';
@@ -28,6 +29,8 @@ export const POST: RequestHandler = async (event) => {
     const u = rt.store.createUrusan({ jenis });
     // Pemilik: akun/demo yang masuk, atau hash sid (dipindah ke akun saat warga masuk).
     rt.akun.catatPemilikUrusan(u.id, { akun: event.locals.akun, sid: event.locals.sid });
+    // Turn pertama dan kartu wilayah memutuskan tier portal id-only: cache jaringan Indonesia tidak dingin.
+    await segarkanJaringanId();
     // kodeKabKota dari klien hanya usulan; wilayah KTP ditetapkan setelah warga mengonfirmasi.
     usulkanWilayahAwal(rt, event, u.id, body.data.kodeKabKota, body.data.pesan);
     const turn = body.data.pesan

@@ -9,6 +9,7 @@ import { checkOrigin } from '#lib/server/origin.js';
 import {
   asalWsUntukCsp,
   jaringanIdSiap,
+  panaskanJaringanId,
   pasangPemeriksaPemilikAkun,
   tambahConnectSrc,
 } from '#lib/server/pendamping.js';
@@ -33,6 +34,7 @@ pasangPemeriksaPemilikAkun(pemeriksaPemilikVault);
 // Rute rencana untuk portal `id-only` (Semarang) mengikuti worker berjaringan Indonesia yang benar-benar sehat:
 // tanpa itu dipandu sejak kartu rencana, bukan baru saat sesi dimulai.
 aturJaringanId(jaringanIdSiap);
+panaskanJaringanId();
 
 /**
  * Anti-CSRF (rencana §3.2): request pengubah state wajib membawa `Origin` yang PERSIS sama dengan

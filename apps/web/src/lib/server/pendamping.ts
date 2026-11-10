@@ -413,6 +413,8 @@ async function kandidatWorker(
 // --- Ketersediaan jaringan Indonesia untuk rute rencana (host `id-only`, harness `aturJaringanId`) ---
 
 const JARINGAN_ID_TTL_MS = 10_000;
+/** Lebih tua dari ini = dingin (proses tanpa pemanas latar): ditunggu, bukan dipakai apa adanya. */
+const JARINGAN_ID_DINGIN_MS = 60_000;
 let jaringanId: { waktu: number; siap: boolean } | undefined;
 let jaringanIdJalan: Promise<boolean> | undefined;
 
@@ -425,13 +427,32 @@ export async function segarkanJaringanId(
   cfg: PendampingConfig | null = pendampingConfig(),
   fetcher: EgressFetch = egressFetch,
 ): Promise<boolean> {
-  if (jaringanId && Date.now() - jaringanId.waktu < JARINGAN_ID_TTL_MS) return jaringanId.siap;
-  jaringanIdJalan ??= (async () => {
+  const umur = jaringanId ? Date.now() - jaringanId.waktu : Infinity;
+  if (jaringanId && umur < JARINGAN_ID_TTL_MS) return jaringanId.siap;
+  const jalan = (jaringanIdJalan ??= (async () => {
     const siap = cfg ? (await kandidatWorker(cfg, 'id-only', '', fetcher)).length > 0 : false;
     jaringanId = { waktu: Date.now(), siap };
     return siap;
-  })().finally(() => (jaringanIdJalan = undefined));
-  return jaringanIdJalan;
+  })().finally(() => (jaringanIdJalan = undefined)));
+  // Basi tetapi belum dingin: nilai terakhir dipakai, penyegaran berjalan di latar (tanpa latensi per turn
+  // saat worker ID mati). Sesi id-only tetap diperiksa ulang saat dimulai (mulaiSesi), jadi tetap jujur.
+  if (jaringanId && umur < JARINGAN_ID_DINGIN_MS) {
+    jalan.catch(() => {});
+    return jaringanId.siap;
+  }
+  return jalan;
+}
+
+let pemanasJaringanId: ReturnType<typeof setInterval> | undefined;
+/**
+ * Panaskan cache jaringan Indonesia saat start lalu segarkan berkala di latar (`unref`, tidak menahan proses):
+ * keputusan rute membaca nilai sinkron yang segar, termasuk turn pertama urusan baru.
+ */
+export function panaskanJaringanId(): void {
+  if (pemanasJaringanId) return;
+  void segarkanJaringanId().catch(() => {});
+  pemanasJaringanId = setInterval(() => void segarkanJaringanId().catch(() => {}), JARINGAN_ID_TTL_MS);
+  pemanasJaringanId.unref?.();
 }
 
 /** Nilai terakhir, sinkron (untuk `aturJaringanId`); basi atau belum ada = disegarkan di latar. */
