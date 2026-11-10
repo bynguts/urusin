@@ -28,7 +28,7 @@ export const POST: RequestHandler = async (event) => {
     // Pemilik: akun sinkron yang masuk, atau hash sid (diikat ulang ke akun saat warga masuk).
     rt.akun.catatPemilikUrusan(u.id, { akun: event.locals.akun, sid: event.locals.sid });
     // kodeKabKota dari klien hanya usulan; wilayah KTP ditetapkan setelah warga mengonfirmasi.
-    usulkanWilayahAwal(rt, event, u.id, body.data.kodeKabKota);
+    usulkanWilayahAwal(rt, event, u.id, body.data.kodeKabKota, body.data.pesan);
     const turn = body.data.pesan
       ? startTurnInBackground(rt, { urusanId: u.id, userText: body.data.pesan })
       : undefined;

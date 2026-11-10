@@ -546,3 +546,37 @@ describe('temuan eval persona W10 dan W11: aturan prompt wilayah', () => {
     expect(buildSystemPrompt()).not.toMatch(/arahkan warga ke tombol itu/);
   });
 });
+
+describe('temuan eval persona W4: kartu wilayah = wilayah yang ditanyakan agen', () => {
+  const usulanTerakhir = (env: Env, id: string) =>
+    env.store
+      .eventsOfType(id, 'wilayah', 20)
+      .map((e) => e.payload as { status: string; ktp: { kodeKabKota: string }; sumber: string })
+      .find((e) => e.status === 'usulan');
+
+  it('agen menanyakan kab/kota lain dari kartu: usulan baru untuk wilayah itu, kartu lama gugur', async () => {
+    const { env, u } = setup([balas('KTP Anda terdaftar di Kabupaten Wonogiri, betul?')], {
+      jenis: 'kelahiran',
+    });
+    usulkanWilayah(u.id, '3311', 'pilihan', publisher(env, u.id));
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya orang Wonogiri, mau urus akta' });
+    expect(of(out.events, 'wilayah').at(-1)).toMatchObject({
+      status: 'usulan',
+      ktp: { kodeKabKota: '3312' },
+      sumber: 'warga',
+    });
+    expect(usulanTerakhir(env, u.id)).toMatchObject({ ktp: { kodeKabKota: '3312' } });
+    // Wilayah belum ditetapkan: tetap perlu konfirmasi warga.
+    expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).ktp).toBeNull();
+  });
+
+  it('agen menanyakan wilayah yang sama dengan kartu: tidak ada usulan tambahan', async () => {
+    const { env, u } = setup([balas('KTP Anda terdaftar di Kabupaten Wonogiri, betul?')], {
+      jenis: 'kelahiran',
+    });
+    usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    expect(of(out.events, 'wilayah')).toHaveLength(0);
+    expect(usulanTerakhir(env, u.id)).toMatchObject({ sumber: 'data_diri' });
+  });
+});

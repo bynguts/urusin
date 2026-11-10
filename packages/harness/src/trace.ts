@@ -108,7 +108,7 @@ function ringkasEvent(type: string, payload: Record<string, unknown>): string {
     case 'wilayah': {
       const nama = (payload.ktp as { nama?: string } | undefined)?.nama ?? '?';
       return payload.status === 'usulan'
-        ? `Wilayah KTP diusulkan (${payload.sumber === 'data_diri' ? 'Data Diri' : 'pilihan perangkat'}): ${nama}`
+        ? `Wilayah KTP diusulkan (${payload.sumber === 'data_diri' ? 'Data Diri' : payload.sumber === 'warga' ? 'percakapan' : 'pilihan perangkat'}): ${nama}`
         : `Wilayah KTP dipastikan warga: ${nama}`;
     }
     default:

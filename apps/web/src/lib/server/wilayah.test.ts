@@ -105,6 +105,23 @@ describe('wilayah dulu: usulan saat urusan dibuat', () => {
     expect(await usulan({ kodeKabKota: '3312' })).toEqual([['3312', 'data_diri']]);
   });
 
+  it('pesan pertama menyebut kab/kota lain: usulan perangkat/Data Diri tidak diterbitkan (W4)', async () => {
+    const akun = akunJuri();
+    const usulan = async (body: Record<string, string>) => {
+      const res = await buatUrusan(ev(post({ peristiwa: 'kelahiran', ...body }), {}, { akun }));
+      const { id } = (await res.json()) as { id: string };
+      await selesai(id);
+      return payloads(id, 'wilayah')
+        .filter((e) => e.status === 'usulan' && e.sumber !== 'warga')
+        .map((e) => e.ktp.kodeKabKota);
+    };
+    expect(
+      await usulan({ kodeKabKota: '3311', pesan: 'KTP saya Kabupaten Wonogiri, mau urus akta' }),
+    ).toEqual(['3312']);
+    expect(await usulan({ pesan: 'KTP saya Kota Surabaya, mau urus akta kelahiran' })).toEqual([]);
+    expect(await usulan({ pesan: 'Saya mau urus akta kelahiran anak' })).toEqual(['3312']);
+  });
+
   it('halaman peristiwa: tanpa ?kodeKabKota, kab/kota Data Diri diisikan sebagai usulan', async () => {
     const akun = akunJuri();
     const d = (await muatPeristiwa(

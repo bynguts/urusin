@@ -5,6 +5,7 @@ import {
   kanalWilayah,
   namaPendekWilayah,
   rencanaWilayah,
+  temukanWilayah,
   wilayahByKode,
   type CityEntry,
   type Langkah,
@@ -111,6 +112,38 @@ export function usulkanWilayah(
   if (!ktp) return false;
   publish({ type: 'wilayah', status: 'usulan', ktp, sumber });
   return true;
+}
+
+/** Kab/kota KTP yang disebut dalam teks (tanpa tujuan "ke X"), tanpa duplikat. */
+export function kodeDisebut(teks: string): string[] {
+  const kode = temukanWilayah(teks)
+    .filter((s) => s.sebelum !== 'ke')
+    .map((s) => s.wilayah.kodeKabKota);
+  return [...new Set(kode)];
+}
+
+/**
+ * Satu kanal konfirmasi: bila balasan agen menyebut tepat satu kab/kota yang berbeda dari usulan yang sedang
+ * tampil sebagai kartu (wilayah KTP belum ditetapkan), terbitkan usulan kab/kota itu (sumber `warga`: dari
+ * percakapan). Kartu "Ya, betul" jadi selalu sama dengan wilayah yang terakhir ditanyakan agen; kartu lama tidak
+ * aktif lagi karena bukan usulan terakhir.
+ */
+export function selaraskanUsulan(
+  store: HarnessStore,
+  u: UrusanRow,
+  teksAgen: string,
+  publish: Publish,
+): void {
+  if (!teksAgen || wilayahUrusan(store, u).ktp) return;
+  const usulan = store
+    .eventsOfType(u.id, 'wilayah', 20)
+    .map((e) => e.payload as PayloadWilayah)
+    .find((e) => e.status === 'usulan');
+  if (!usulan) return;
+  const disebut = kodeDisebut(teksAgen);
+  if (disebut.length !== 1 || disebut[0] === usulan.ktp.kodeKabKota) return;
+  const ktp = refWilayah(disebut[0]!);
+  if (ktp) publish({ type: 'wilayah', status: 'usulan', ktp, sumber: 'warga' });
 }
 
 /** Masukan penetapan wilayah. domisili/tujuan: undefined = pertahankan nilai sekarang, null = hapus. */
