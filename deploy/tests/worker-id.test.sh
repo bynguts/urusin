@@ -138,6 +138,24 @@ check "web-env final: worker laptop + wsUrl ws://localhost:4330/ws, token intern
 jalan web-env lain
 check "web-env tanpa mode yang sah ditolak" '[ $? -ne 0 ]'
 
+echo "worker.sh web-env: nilai yang masuk JSON divalidasi (tanpa injeksi)"
+rm -f "$W/.env.web-publik"
+for kv in 'PENDAMPING_MAX_SESSIONS=1,"token":"x"' 'PENDAMPING_MAX_SESSIONS=0' 'PENDAMPING_MAX_SESSIONS=65' \
+  'PENDAMPING_MAX_SESSIONS=01' 'DOMAIN=a.example","x":"1' 'DOMAIN=https://urusinai.web.id' 'DOMAIN=localhost' \
+  'WORKER_TOKEN=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"bbbbbbbb'; do
+  k="${kv%%=*}" v="${kv#*=}" lama="$(nilai "${kv%%=*}")"
+  KUNCI="$k" NILAI="$v" awk 'index($0, ENVIRON["KUNCI"] "=") == 1 { print ENVIRON["KUNCI"] "=" ENVIRON["NILAI"]; next } { print }' \
+    "$W/.env" > "$W/.env.tmp" && mv "$W/.env.tmp" "$W/.env"
+  jalan web-env publik
+  check "web-env publik menolak $k='$v' tanpa menulis berkas" '[ $? -ne 0 ] && [ ! -e "$W/.env.web-publik" ]'
+  KUNCI="$k" NILAI="$lama" awk 'index($0, ENVIRON["KUNCI"] "=") == 1 { print ENVIRON["KUNCI"] "=" ENVIRON["NILAI"]; next } { print }' \
+    "$W/.env" > "$W/.env.tmp" && mv "$W/.env.tmp" "$W/.env"
+done
+VPS_MAX_SESSIONS='2,"x":1' jalan web-env publik
+check "web-env publik menolak VPS_MAX_SESSIONS yang bukan 1-64" '[ $? -ne 0 ] && [ ! -e "$W/.env.web-publik" ]'
+jalan web-env publik
+check "web-env publik sah lagi setelah nilai dipulihkan" '[ $? -eq 0 ] && [ -e "$W/.env.web-publik" ]'
+
 if docker_asli="$(PATH="${PATH#"$SB/bin:"}" command -v docker)" && "$docker_asli" compose version >/dev/null 2>&1; then
   echo "compose.yml (docker compose config sungguhan)"
   for final in 0 1; do

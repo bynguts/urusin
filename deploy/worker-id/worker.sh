@@ -54,10 +54,14 @@ ip_ada() {
 
 periksa_env() {
   [ -f "$ENV_FILE" ] || die ".env belum ada: jalankan 'worker.sh init'"
-  local id ip port tok edge
+  local id ip port tok edge dom maks
   id="$(nilai WORKER_ID)" ip="$(nilai WORKER_TAILSCALE_IP)" port="$(nilai WORKER_PORT)"
-  tok="$(nilai WORKER_TOKEN)" edge="$(nilai WORKER_EDGE_TOKEN)"
-  [ -n "$(nilai DOMAIN)" ] || die "DOMAIN kosong"
+  tok="$(nilai WORKER_TOKEN)" edge="$(nilai WORKER_EDGE_TOKEN)" dom="$(nilai DOMAIN)"
+  maks="$(nilai PENDAMPING_MAX_SESSIONS)"
+  # Nilai di bawah ditulis mentah ke JSON PENDAMPING_WORKERS (web-env): hanya bentuk yang pasti aman.
+  [[ "$dom" =~ ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$ ]] || die "DOMAIN bukan hostname: '$dom'"
+  [[ "${maks:-1}" =~ ^([1-9]|[1-5][0-9]|6[0-4])$ ]] || die "PENDAMPING_MAX_SESSIONS harus 1-64: '$maks'"
+  [[ "$tok" =~ ^[A-Za-z0-9_-]*$ ]] || die "WORKER_TOKEN hanya boleh [A-Za-z0-9_-] (jalankan ulang 'worker.sh init')"
   [[ "$id" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] || die "WORKER_ID tidak sah: '$id'"
   ip_tailscale "$ip" || die "WORKER_TAILSCALE_IP harus IP Tailscale 100.64.0.0/10 (bukan 0.0.0.0/LAN): '$ip'"
   ip_ada "$ip" || die "IP $ip tidak terpasang di host ini (Tailscale mati/IP salah?)"
@@ -130,6 +134,7 @@ cmd_web_env() {
   dom="$(nilai DOMAIN)" id="$(nilai WORKER_ID)" ip="$(nilai WORKER_TAILSCALE_IP)"
   port="$(nilai WORKER_PORT)" tok="$(nilai WORKER_TOKEN)" maks="$(nilai PENDAMPING_MAX_SESSIONS)"
   port="${port:-4330}" maks="${maks:-1}"
+  [[ "${VPS_MAX_SESSIONS:-2}" =~ ^([1-9]|[1-5][0-9]|6[0-4])$ ]] || die "VPS_MAX_SESSIONS harus 1-64"
   local laptop
   case "$mode" in
     publik)
