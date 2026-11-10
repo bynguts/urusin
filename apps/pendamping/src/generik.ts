@@ -280,13 +280,15 @@ export class GenerikRun {
       jalurSha256: c.jalurSha256,
       jendela: c.jendela,
     });
+    // Isi: navigasi (bingkai mana pun, mis. form POST ke iframe) dan tulis non-XHR (beacon) = eskalasi; XHR yang
+    // lewat batas jendela cukup dicatat. Klik: setiap blokir = eskalasi.
+    const tulisLain = c.dokumen || !c.xhr;
     if (this.aksiBerjalan) {
-      // Klik: setiap blokir = eskalasi. Isi: hanya navigasi dokumen (XHR lewat batas cukup dicatat).
-      if (j.jenis === 'ai_klik' || c.dokumen) this.aksiBerjalan.blokir.push(c);
+      if (j.jenis === 'ai_klik' || tulisLain) this.aksiBerjalan.blokir.push(c);
       return;
     }
-    // Di luar aksi: navigasi dokumen yang diblokir tepat setelah isi (mis. onchange form.submit()) = warga.
-    if (j.jenis === 'ai_isi' && c.dokumen && this.now() <= j.sampai + JENDELA_ISI_MS)
+    // Di luar aksi: tulis yang diblokir tepat setelah isi (onchange form.submit(), sendBeacon) = warga.
+    if (j.jenis === 'ai_isi' && tulisLain && this.now() <= j.sampai + JENDELA_ISI_MS)
       this.d.serahkan('periksa', PESAN_GENERIK.periksa);
   }
 

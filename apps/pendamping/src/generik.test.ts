@@ -432,7 +432,13 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
       aksi: (a) => {
         // Handler tombol type=button memanggil fetch POST: route melihatnya selama jendela ai_klik.
         expect(
-          h.gerbang.periksa({ metode: 'POST', dokumen: false, url: 'https://portal.contoh.go.id/api' }),
+          h.gerbang.periksa({
+            metode: 'POST',
+            dokumen: false,
+            utama: false,
+            xhr: true,
+            url: 'https://portal.contoh.go.id/api',
+          }),
         ).toBe('blokir');
         return { status: 'ok', aturan: 'K10_LANJUT', kelas: a.jenis === 'klik' ? 'lanjut' : undefined };
       },
@@ -453,7 +459,13 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
   it('blokir saat ai_diam hanya dicatat (tanpa eskalasi)', async () => {
     const h = harness();
     expect(
-      h.gerbang.periksa({ metode: 'POST', dokumen: false, url: 'https://portal.contoh.go.id/ping' }),
+      h.gerbang.periksa({
+        metode: 'POST',
+        dokumen: false,
+        utama: false,
+        xhr: true,
+        url: 'https://portal.contoh.go.id/ping',
+      }),
     ).toBe('blokir');
     expect(h.serah).toEqual([]);
     expect(h.jejak).toEqual([expect.objectContaining({ jenis: 'blokir', jendela: 'ai_diam' })]);
@@ -463,7 +475,13 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     const h = harness({
       aksi: () => {
         expect(
-          h.gerbang.periksa({ metode: 'POST', dokumen: true, url: 'https://portal.contoh.go.id/x' }),
+          h.gerbang.periksa({
+            metode: 'POST',
+            dokumen: true,
+            utama: true,
+            xhr: false,
+            url: 'https://portal.contoh.go.id/x',
+          }),
         ).toBe('blokir');
         return { status: 'ok', aturan: 'A_OK' };
       },
@@ -475,6 +493,51 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     });
     expect(r).toEqual([{ indeks: 0, kode: 'GERBANG_MEMBLOKIR' }]);
     expect(h.serah[0]?.alasan).toBe('periksa');
+  });
+
+  it.each([
+    ['form POST ke iframe', { dokumen: true, utama: false, xhr: false }],
+    ['sendBeacon', { dokumen: false, utama: false, xhr: false }],
+  ])('pilih yang memicu %s: diblokir dan diserahkan ke warga', async (_n, bentuk) => {
+    const h = harness({
+      aksi: () => {
+        expect(
+          h.gerbang.periksa({ metode: 'POST', ...bentuk, url: 'https://portal.contoh.go.id/ajukan' }),
+        ).toBe('blokir');
+        return { status: 'ok', aturan: 'A_OK' };
+      },
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({
+      rencanaHash: H1,
+      aksi: [{ jenis: 'pilih', ref: 'e1', nilai: { opsi: 1 } }],
+    });
+    expect(r).toEqual([{ indeks: 0, kode: 'GERBANG_MEMBLOKIR' }]);
+    expect(h.serah[0]?.alasan).toBe('periksa');
+  });
+
+  it('XHR autosave dalam jendela isi lolos tanpa eskalasi', async () => {
+    const h = harness({
+      aksi: () => {
+        expect(
+          h.gerbang.periksa({
+            metode: 'POST',
+            dokumen: false,
+            utama: false,
+            xhr: true,
+            url: 'https://portal.contoh.go.id/autosave',
+          }),
+        ).toBe('lanjut');
+        return { status: 'ok', aturan: 'A_OK' };
+      },
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({
+      rencanaHash: H1,
+      aksi: [{ jenis: 'pilih', ref: 'e1', nilai: { opsi: 1 } }],
+    });
+    expect(r).toEqual([{ indeks: 0, kode: 'ok' }]);
+    expect(h.serah).toEqual([]);
   });
 
   it('klik `navigasi` = Page.navigate(href) setelah allowlist, jendela ai_klik ke href itu', async () => {
