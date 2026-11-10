@@ -487,6 +487,39 @@ describe('broker Browser Pendamping', () => {
       expect(lagi.status).toBe(200);
     });
 
+    it('Navigator generik: rencanaHash dari butuh ikut ke /internal/sesi/isi (worker menolak isi tanpa itu)', async () => {
+      const u = siapkan();
+      const H = 'e'.repeat(64);
+      const butuhGenerik = {
+        placeholder: ['{{PEMOHON.NIK}}'],
+        berkas: [],
+        origin: SITUS,
+        kolom: [{ placeholder: '{{PEMOHON.NIK}}', labelPortal: 'NIK Pemohon' }],
+        rencanaHash: H,
+      };
+      const asal = reply;
+      reply = (path, body, host) =>
+        path === '/internal/sesi/butuh' ? { status: 200, body: butuhGenerik } : asal(path, body, host);
+      const res = await kirim(u.id, { writeList: ['{{PEMOHON.NIK}}'], targetOrigin: SITUS, rencanaHash: H });
+      expect(res.status).toBe(200);
+      const isi = calls.find((c) => new URL(c.url).pathname === '/internal/sesi/isi');
+      expect(isi?.body).toEqual({
+        urusanId: u.id,
+        sidHash: hashSid(SID),
+        isian: { '{{PEMOHON.NIK}}': NIK },
+        rencanaHash: H,
+      });
+      // Persetujuan untuk rencana lain tidak bisa dipakai untuk halaman ini.
+      calls = [];
+      const lain = await kirim(u.id, {
+        writeList: ['{{PEMOHON.NIK}}'],
+        targetOrigin: SITUS,
+        rencanaHash: 'f'.repeat(64),
+      });
+      expect(lain.status).toBe(403);
+      expect(jalur()).not.toContain('/internal/sesi/isi');
+    });
+
     it('origin sesi hidup beda dengan targetOrigin persetujuan -> 403 tanpa nilai ke worker', async () => {
       const u = siapkan();
       // Situs latihan ada di allowlist, tetapi sesi sedang membuka portal Wonogiri.

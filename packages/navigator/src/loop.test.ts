@@ -62,10 +62,12 @@ describe('loop Navigator: alur bahagia di replika', () => {
     for (const c of jejak) expect(CatatanPendampingSchema.safeParse(c).success).toBe(true);
     const teks = JSON.stringify(jejak);
     expect(teks).not.toMatch(/PEMOHON|Abaikan instruksi|Nomor Induk/);
+    // Jejak worker (persetujuan, ambil alih) dikuras dan disisipkan sesuai urutan kejadian.
     expect(jejak.map((c) => c.jenis)).toEqual([
       'amati',
       'rencana',
       'validasi',
+      'persetujuan',
       'amati',
       'rencana',
       'validasi',
@@ -343,9 +345,11 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
     expect(worker.semuaAksi.at(-1)).toEqual({ jenis: 'serahkan', alasan: 'final', ref: 'e1' });
   });
 
-  it('warga menolak baris persetujuan: aksi itu dilewati, tidak diulang tanpa henti', async () => {
+  it('warga menolak semua baris (tanpa catatan persetujuan web): tidak diminta ulang, diserahkan isi sendiri', async () => {
     const worker = new WorkerPalsu([halamanForm(), halamanTinjau()]);
     worker.tolakPersetujuan = true;
+    worker.saatSerahkan = (alasan) =>
+      alasan === 'isi_sendiri' ? { aksi: 'kembalikan', ke: 1 } : { aksi: 'selesai' };
     const provider = new ProviderSkrip((n) =>
       n === 0
         ? {
@@ -358,9 +362,52 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
     );
     const { hasil } = jalankan(worker, provider);
     expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
-    // Kirim ulang setelah putaran persetujuan masih tertahan → baris itu dilewati, tidak diminta lagi.
+    // Rencana yang sama dikirim ulang sekali setelah putaran persetujuan; masih tertahan → serahkan, bukan minta lagi.
     expect(worker.diterima.map((d) => d.aksi.length)).toEqual([2, 2, 1, 1]);
-    expect(worker.diterima[2]?.aksi).toEqual([{ jenis: 'klik', ref: 'e11' }]);
+    expect(worker.diterima[1]?.rencanaHash).toBe(worker.diterima[0]?.rencanaHash);
+    expect(worker.diterima[2]?.aksi).toEqual([{ jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e2' }]);
+    expect(
+      worker.diterima
+        .slice(2)
+        .flatMap((d) => d.aksi)
+        .filter((a) => a.jenis === 'klik'),
+    ).toEqual([]);
+  });
+
+  it('warga menolak satu baris: baris lain diisi, Lanjut tidak ditekan, kendali ke warga untuk baris itu', async () => {
+    const worker = new WorkerPalsu([halamanForm(), halamanTinjau()]);
+    worker.tolakBaris = new Set(['{{PEMOHON.NIK}}']);
+    worker.saatSerahkan = (alasan) =>
+      alasan === 'isi_sendiri' ? { aksi: 'kembalikan', ke: 1 } : { aksi: 'selesai' };
+    const provider = new ProviderSkrip((n) => (n === 0 ? RENCANA_FORM : SERAHKAN_FINAL));
+    const { hasil, jejak } = jalankan(worker, provider, { persetujuan: (h) => worker.persetujuan(h) });
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
+    // Sesudah persetujuan: hanya baris yang disetujui (+ pilihan tanpa nilai vault), tanpa Lanjut.
+    expect(worker.diterima[1]?.aksi).toEqual([
+      { jenis: 'isi', ref: 'e2', nilai: '{{PEMOHON.NAMA}}' },
+      { jenis: 'pilih', ref: 'e3', nilai: { opsi: 1 } },
+    ]);
+    expect(worker.diterima[1]?.rencanaHash).toBe(worker.diterima[0]?.rencanaHash);
+    expect(worker.diterima[2]?.aksi).toEqual([{ jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e1' }]);
+    // Baris yang ditolak tidak pernah dikirim lagi sesudah putaran persetujuan.
+    expect(
+      worker.diterima
+        .slice(1)
+        .flatMap((d) => d.aksi)
+        .some((a) => a.jenis === 'isi' && a.ref === 'e1'),
+    ).toBe(false);
+    expect(
+      worker.diterima
+        .slice(1)
+        .flatMap((d) => d.aksi)
+        .filter((a) => a.jenis === 'klik'),
+    ).toEqual([]);
+    expect(jejak).toContainEqual({
+      jenis: 'persetujuan',
+      rencanaHash: worker.diterima[0]!.rencanaHash,
+      n: 1,
+    });
+    expect(jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'isi_sendiri' });
   });
 
   it('tidak_bisa: beralih ke dipandu dengan pesan templat', async () => {

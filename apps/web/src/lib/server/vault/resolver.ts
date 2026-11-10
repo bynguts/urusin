@@ -1,5 +1,5 @@
 import { AkunError, hashDaftarWrite } from '@urusin/akun';
-import { hostsWilayah } from '@urusin/harness';
+import { hostsPortalWilayah } from '@urusin/harness';
 import { SEED_ENTRIES } from '@urusin/registry';
 import { originFixtures } from '#lib/server/hosts.js';
 import type { Runtime } from '#lib/server/runtime.js';
@@ -13,7 +13,7 @@ import type { Runtime } from '#lib/server/runtime.js';
  * 2. Jalur isi memanggil `resolusiNilai` dengan token itu; daftar field + origin harus PERSIS sama.
  * Nilai tidak pernah dicatat, tidak pernah dikembalikan ke model, dan hanya field di daftar write yang keluar.
  * Tujuan harus ada di allowlist: portal registry berstatus `kirim-asli` (yang punya adapter Pendamping), portal
- * milik wilayah urusan ini (`hostsWilayah` dari kode wilayah KTP yang sudah ditetapkan warga; Navigator generik,
+ * milik wilayah urusan ini (`hostsPortalWilayah`: host portal persis dari registry, dari kode wilayah KTP yang sudah ditetapkan warga; Navigator generik,
  * ADR 0030), atau situs latihan. Salinan demo (data sintetis) hanya boleh menuju situs latihan, tidak pernah ke
  * situs pemerintah sungguhan. Persetujuan Navigator generik juga terikat ke `rencanaHash` halaman yang
  * ditampilkan di lembar: hash itu ikut di hash daftar write, jadi token tidak bisa dipakai untuk rencana lain.
@@ -36,7 +36,7 @@ const PORTAL_ISI: ReadonlySet<string> = new Set(
 function portalMilikWilayah(origin: string, kode: string | null | undefined): boolean {
   if (!kode) return false;
   const u = new URL(origin);
-  return u.protocol === 'https:' && hostsWilayah(kode).includes(u.host);
+  return u.protocol === 'https:' && hostsPortalWilayah(kode).includes(u.host);
 }
 
 function pastikanTujuanBoleh(

@@ -1,6 +1,6 @@
 import { AkunError } from '@urusin/akun';
 import { MemoryMailer } from '@urusin/akun/testing';
-import { DemoProvider, pasangSumberPortalWilayah } from '@urusin/harness';
+import { DemoProvider, portalWebWilayah } from '@urusin/harness';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createRuntime, setRuntimeForTests, type Runtime } from '../runtime';
 import { ambilIsianUntukIsi, izinkanIsiUrusan } from './isi';
@@ -8,8 +8,8 @@ import { ambilIsianUntukIsi, izinkanIsiUrusan } from './isi';
 const NIK = ['3374', '0101', '0190', '0002'].join('');
 const KTX = { ip: '127.0.0.1', userAgent: null };
 const SID = 'a'.repeat(32);
-/** Portal wilayah Kota Semarang menurut registry wilayah tiruan (tes tidak menghubunginya). */
-const SMG = 'https://layanan.disdukcapil.semarangkota.go.id';
+/** Portal web Kota Semarang menurut registry wilayah (tes tidak menghubunginya). */
+const SMG = portalWebWilayah('3374')!.origin;
 const H1 = 'a'.repeat(64);
 const H2 = 'b'.repeat(64);
 
@@ -24,18 +24,12 @@ beforeEach(() => {
     akun: { mailer: new MemoryMailer(), google: null, vault: { diskPersen: () => 10 } },
   });
   setRuntimeForTests(rt);
-  pasangSumberPortalWilayah((k) =>
-    k === '3374'
-      ? { jenis: 'web', origin: SMG, hosts: ['layanan.disdukcapil.semarangkota.go.id'] }
-      : undefined,
-  );
   tamu = rt.akun.pastikanTamu(SID, KTX);
   rt.akun.vault.setDataDiri(tamu, { namaLengkap: 'Warga Uji', nik: NIK });
   u3 = rt.store.createUrusan({ jenis: 'kelahiran', kodeKabKota: '3374' }).id;
   rt.akun.catatPemilikUrusan(u3, { sid: SID });
 });
 afterEach(() => {
-  pasangSumberPortalWilayah();
   setRuntimeForTests(undefined);
 });
 
@@ -87,9 +81,7 @@ describe('Navigator generik: portal milik wilayah urusan + persetujuan terikat r
       rt.akun.catatPemilikUrusan(urusanId, { sid: SID });
       expect(kode(() => izinSmg({ urusanId }))).toBe('IZIN_TIDAK_VALID');
     }
-    expect(kode(() => izinSmg({ targetOrigin: 'http://layanan.disdukcapil.semarangkota.go.id' }))).toBe(
-      'IZIN_TIDAK_VALID',
-    );
+    expect(kode(() => izinSmg({ targetOrigin: SMG.replace('https:', 'http:') }))).toBe('IZIN_TIDAK_VALID');
   });
 
   it('akun demo tetap ditolak di portal wilayah (hanya situs latihan)', () => {

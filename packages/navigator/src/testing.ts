@@ -2,6 +2,7 @@ import type {
   Aksi,
   AksiSesiResponse,
   AmatiSesiResponse,
+  CatatanPendamping,
   ElemenAmatan,
   HasilAksi,
   KolomButuh,
@@ -11,7 +12,7 @@ import type {
   TungguSesiResponse,
 } from '@urusin/contracts';
 import { fakeCompletion, type ChatParams, type ChatProvider } from '@urusin/llm';
-import type { TanganPendamping } from './loop.js';
+import type { PersetujuanHalaman, TanganPendamping } from './loop.js';
 
 /** Bantuan uji (bukan untuk produksi): halaman replika, worker palsu sesuai kontrak, dan provider berskrip. */
 
@@ -86,17 +87,32 @@ export const halamanTinjau = (over: Partial<Pengamatan> = {}): Pengamatan =>
 
 type Kendali = { mode: PendampingMode; status: PendampingStatus };
 
+const butuhIzin = (a: Aksi): string | undefined =>
+  (a.jenis === 'isi' || a.jenis === 'pilih') && typeof a.nilai === 'string'
+    ? a.nilai
+    : a.jenis === 'unggah'
+      ? `berkas:${a.berkas}`
+      : undefined;
+
 /**
- * Worker palsu yang berbicara sesuai kontrak `/internal/sesi/{amati,aksi,tunggu}`. Persetujuan: aksi isi/
- * unggah pada rencanaHash yang belum disetujui → BELUM_DISETUJUI + status `menunggu_data`; `tunggu` meniru
- * warga (menyetujui, atau mengembalikan kendali sesuai `saatSerahkan`).
+ * Worker palsu yang berbicara sesuai protokol worker `/internal/sesi/{amati,aksi,tunggu,jejak}`:
+ * - aksi hanya jalan saat mode `ai` dan status `berjalan`/`menunggu_data`; selain itu semua DILEWATI;
+ * - `seq` bukan pengamatan terakhir: aksi ber-ref pertama REF_BASI, sisanya DILEWATI;
+ * - isian/unggah yang belum disetujui untuk rencanaHash itu: TIDAK ada yang dijalankan, baris itu
+ *   BELUM_DISETUJUI, sisanya DILEWATI, status `menunggu_data`;
+ * - berhenti pada aksi pertama yang bukan ok, dan sesudah klik/serahkan yang ok (sisanya DILEWATI);
+ * - `tunggu` meniru warga (menyetujui baris kecuali yang ditolak, atau mengembalikan kendali);
+ * - jejak worker (persetujuan, ambil alih) dikuras lewat `kuras`.
  */
 export class WorkerPalsu implements TanganPendamping {
   readonly diterima: { rencanaHash: string; aksi: Aksi[]; seq: number; kolom: KolomButuh[] }[] = [];
-  readonly disetujui = new Set<string>();
+  /** rencanaHash → placeholder/`berkas:<nama>` yang disetujui warga. */
+  readonly disetujui = new Map<string, Set<string>>();
+  readonly jejak: CatatanPendamping[] = [];
   amatiN = 0;
   tungguN = 0;
   private i = 0;
+  private seqAmati: number | undefined;
   private k: Kendali = { mode: 'ai', status: 'berjalan' };
   /** Apa yang dilakukan "warga" setelah serahkan: kembalikan kendali (opsional pindah halaman) atau selesai. */
   saatSerahkan: (alasan: string) => { aksi: 'kembalikan'; ke?: number } | { aksi: 'selesai' } = () => ({
@@ -108,7 +124,10 @@ export class WorkerPalsu implements TanganPendamping {
   setujuiSemua = false;
   /** Warga menolak semua baris persetujuan. */
   tolakPersetujuan = false;
+  /** Warga menolak baris dengan placeholder ini saja. */
+  tolakBaris = new Set<string>();
   private menunggu: string | null = null;
+  private izinMenunggu: { rencanaHash: string; baris: string[] } | null = null;
 
   constructor(readonly halaman: Pengamatan[]) {}
 
@@ -120,9 +139,25 @@ export class WorkerPalsu implements TanganPendamping {
     this.i = ke;
   }
 
+  /** Persetujuan per rencanaHash, bentuk yang dicatat web (`OpsiLoop.persetujuan`). */
+  persetujuan(rencanaHash: string): PersetujuanHalaman | undefined {
+    const s = this.disetujui.get(rencanaHash);
+    if (!s) return undefined;
+    return {
+      placeholder: new Set([...s].filter((x) => !x.startsWith('berkas:'))),
+      berkas: new Set([...s].filter((x) => x.startsWith('berkas:')).map((x) => x.slice(7))),
+    };
+  }
+
   async amati(): Promise<AmatiSesiResponse> {
     this.amatiN++;
+    if (this.k.mode === 'ai') this.seqAmati = this.kini.seq;
     return { mode: this.k.mode, pengamatan: this.kini };
+  }
+
+  private izin(h: string, a: Aksi): boolean {
+    const b = butuhIzin(a);
+    return b === undefined || this.setujuiSemua || this.disetujui.get(h)?.has(b) === true;
   }
 
   async aksi(r: {
@@ -132,41 +167,69 @@ export class WorkerPalsu implements TanganPendamping {
     kolom: KolomButuh[];
   }): Promise<AksiSesiResponse> {
     this.diterima.push({ rencanaHash: r.rencanaHash, aksi: r.aksi, seq: r.seq, kolom: r.kolom });
+    const lewati = (indeks: number) => ({ indeks, kode: 'DILEWATI' as const });
+    if (this.k.mode !== 'ai' || (this.k.status !== 'berjalan' && this.k.status !== 'menunggu_data'))
+      return { mode: this.k.mode, hasil: r.aksi.map((_, j) => lewati(j)) };
     const paksa = this.paksa.shift()?.(r.aksi);
     if (paksa) return { mode: this.k.mode, hasil: paksa };
+    if (r.seq !== this.seqAmati) {
+      const pertama = r.aksi.findIndex((a) => 'ref' in a && a.ref !== undefined);
+      if (pertama >= 0)
+        return {
+          mode: this.k.mode,
+          hasil: r.aksi.map((_, j) => (j === pertama ? { indeks: j, kode: 'REF_BASI' } : lewati(j))),
+        };
+    }
+    const perlu = r.aksi.flatMap((a, j) => (this.izin(r.rencanaHash, a) ? [] : [j]));
+    if (perlu.length > 0) {
+      this.k = { ...this.k, status: 'menunggu_data' };
+      this.izinMenunggu = {
+        rencanaHash: r.rencanaHash,
+        baris: r.aksi.flatMap((a) => {
+          const b = butuhIzin(a);
+          return b === undefined ? [] : [b];
+        }),
+      };
+      return {
+        mode: this.k.mode,
+        hasil: r.aksi.map((_, j) => (perlu.includes(j) ? { indeks: j, kode: 'BELUM_DISETUJUI' } : lewati(j))),
+      };
+    }
     const hasil: HasilAksi[] = [];
+    let berhenti = false;
     for (const [indeks, a] of r.aksi.entries()) {
+      if (berhenti) {
+        hasil.push(lewati(indeks));
+        continue;
+      }
       if (a.jenis === 'serahkan' || a.jenis === 'tidak_bisa') {
         this.k =
           a.jenis === 'tidak_bisa'
             ? { mode: 'done', status: 'dipandu' }
             : { mode: 'takeover', status: 'berjalan' };
         this.menunggu = a.jenis === 'serahkan' ? a.alasan : null;
+        if (a.jenis === 'serahkan') this.jejak.push({ jenis: 'ambil_alih', fase: 'mulai', alasan: a.alasan });
         hasil.push({ indeks, kode: 'ok' });
-        break;
+        berhenti = true;
+        continue;
       }
       const e = this.kini.elemen.find((x) => 'ref' in a && x.ref === a.ref);
       if (!e) {
         hasil.push({ indeks, kode: 'REF_TIDAK_ADA' });
-        break;
-      }
-      if (
-        (a.jenis === 'isi' || a.jenis === 'unggah') &&
-        !this.setujuiSemua &&
-        !this.disetujui.has(r.rencanaHash)
-      ) {
-        this.k = { ...this.k, status: 'menunggu_data' };
-        hasil.push({ indeks, kode: 'BELUM_DISETUJUI' });
-        break;
+        berhenti = true;
+        continue;
       }
       if (a.jenis === 'klik') {
         // Klasifikasi ulang di halaman: hanya kelas yang boleh AI.
         if (!e.kelas || !['navigasi', 'ui_lokal', 'lanjut'].includes(e.kelas)) {
           hasil.push({ indeks, kode: 'KELAS_DITOLAK', kelas: e.kelas ?? 'tidak_pasti' });
-          break;
+          berhenti = true;
+          continue;
         }
         hasil.push({ indeks, kode: 'ok', kelas: e.kelas });
         this.i++;
+        // Halaman berganti: worker berhenti, Navigator wajib mengamati ulang.
+        berhenti = true;
         continue;
       }
       hasil.push({ indeks, kode: 'ok' });
@@ -177,10 +240,13 @@ export class WorkerPalsu implements TanganPendamping {
   async tunggu(): Promise<TungguSesiResponse> {
     this.tungguN++;
     if (this.k.status === 'menunggu_data') {
-      if (!this.tolakPersetujuan) {
-        const terakhir = this.diterima.at(-1);
-        if (terakhir) this.disetujui.add(terakhir.rencanaHash);
+      const m = this.izinMenunggu;
+      if (m) {
+        const baris = this.tolakPersetujuan ? [] : m.baris.filter((b) => !this.tolakBaris.has(b));
+        this.disetujui.set(m.rencanaHash, new Set(baris));
+        this.jejak.push({ jenis: 'persetujuan', rencanaHash: m.rencanaHash, n: baris.length });
       }
+      this.izinMenunggu = null;
       this.k = { ...this.k, status: 'berjalan' };
     } else if (this.k.mode === 'takeover') {
       const s = this.saatSerahkan(this.menunggu ?? '');
@@ -188,9 +254,14 @@ export class WorkerPalsu implements TanganPendamping {
       else {
         if (s.ke !== undefined) this.i = s.ke;
         this.k = { mode: 'ai', status: 'berjalan' };
+        this.jejak.push({ jenis: 'ambil_alih', fase: 'selesai' });
       }
     }
     return { mode: this.k.mode, status: this.k.status, habisWaktu: false };
+  }
+
+  async kuras(): Promise<{ catatan: CatatanPendamping[]; terbuang: number }> {
+    return { catatan: this.jejak.splice(0), terbuang: 0 };
   }
 
   /** Semua aksi yang pernah dikirim ke worker, rata. */

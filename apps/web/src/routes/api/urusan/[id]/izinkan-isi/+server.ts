@@ -4,7 +4,6 @@ import { apiError, apiJson } from '#lib/server/http.js';
 import { hashSid, pendampingConfig } from '#lib/server/pendamping.js';
 import { izinkanIsiUrusan } from '#lib/server/pendamping/isi.js';
 import { isiSesiDariVault } from '#lib/server/pendamping/izinkan.js';
-import { catatPersetujuanNavigator } from '#lib/server/pendamping/navigator.js';
 import { getRuntime } from '#lib/server/runtime.js';
 import type { RequestHandler } from './$types';
 
@@ -31,9 +30,7 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
       targetOrigin: body.data.targetOrigin,
       rencanaHash: body.data.rencanaHash,
     });
-    // Navigator generik: persetujuan per halaman {rencanaHash, n} masuk jejak audit (tanpa nilai).
-    if (body.data.rencanaHash)
-      catatPersetujuanNavigator(rt, params.id, body.data.rencanaHash, body.data.writeList.length);
+    // Navigator generik: jejak persetujuan {rencanaHash, n} dicatat worker saat nilai diterima (tanpa nilai).
     const cfg = pendampingConfig();
     // Tanpa Browser Pendamping: persetujuan tetap tersimpan (sekali pakai, 5 menit) untuk diambil nanti.
     if (!cfg || !locals.sid) return apiJson({ diizinkan: true, kurang });

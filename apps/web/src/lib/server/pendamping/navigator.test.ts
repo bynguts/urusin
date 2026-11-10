@@ -58,6 +58,8 @@ const pengamatan = (host: string): Pengamatan => ({
 function workerPalsu(host: string) {
   const panggilan: { path: string; body: Record<string, unknown> }[] = [];
   let mode: 'ai' | 'takeover' | 'done' = 'ai';
+  /** Buffer jejak worker (dikuras lewat /internal/sesi/jejak). */
+  let jejak: unknown[] = [];
   const fetcher = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = new URL(String(input));
     const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status });
@@ -86,13 +88,22 @@ function workerPalsu(host: string) {
         return json({ mode, pengamatan: pengamatan(host) });
       case '/internal/sesi/aksi': {
         const a = AksiSesiInternalSchema.parse(body);
-        if (a.aksi.some((x: Aksi) => x.jenis === 'serahkan')) mode = 'takeover';
+        for (const x of a.aksi as Aksi[])
+          if (x.jenis === 'serahkan') {
+            mode = 'takeover';
+            jejak.push({ jenis: 'ambil_alih', fase: 'mulai', alasan: x.alasan });
+          }
         return json({ mode, hasil: a.aksi.map((_, indeks) => ({ indeks, kode: 'ok' })) });
       }
       case '/internal/sesi/tunggu':
         TungguSesiInternalSchema.parse(body);
         mode = 'done';
         return json({ mode, status: 'selesai', habisWaktu: false });
+      case '/internal/sesi/jejak': {
+        const catatan = jejak;
+        jejak = [];
+        return json({ executionId: 'x_uji', catatan, terbuang: 0 });
+      }
       default:
         return json({ kode: 'SESI_TIDAK_ADA', pesanWarga: 'x' }, 404);
     }
@@ -136,13 +147,20 @@ describe('broker Navigator web', () => {
     });
     expect(r).toEqual({ mode: 'takeover', hasil: [{ indeks: 0, kode: 'ok' }] });
     expect(await tangan.tunggu(25_000)).toMatchObject({ mode: 'done' });
+    expect(await tangan.kuras?.()).toEqual({
+      executionId: 'x_uji',
+      catatan: [{ jenis: 'ambil_alih', fase: 'mulai', alasan: 'final' }],
+      terbuang: 0,
+    });
     expect(w.panggilan.map((p) => p.path)).toEqual([
       '/internal/sesi/status',
       '/internal/sesi/amati',
       '/internal/sesi/aksi',
       '/internal/sesi/tunggu',
+      '/internal/sesi/jejak',
     ]);
     expect(w.panggilan[3]?.body).toEqual({ ...OWNER, maksMs: 25_000 });
+    expect(w.panggilan[4]?.body).toEqual(OWNER);
   });
 
   it('Mode Uji di replika: loop berjalan, jejak tersimpan di rantai audit tanpa nilai, pesan templat', async () => {
@@ -166,6 +184,15 @@ describe('broker Navigator web', () => {
       .eventsOfType(u.id, 'progress', 5)
       .map((e) => (e.payload as { label: string }).label);
     expect(progress).toContain(PESAN_AMBIL_ALIH.final);
+    // Jejak worker dikuras sesudah setiap panggilan dan masuk rantai audit urusan.
+    expect(jejak.map((j) => j.catatan)).toContainEqual({
+      jenis: 'ambil_alih',
+      fase: 'mulai',
+      alasan: 'final',
+    });
+    const jalur = w.panggilan.map((p) => p.path).filter((x) => x !== '/internal/sesi/status');
+    for (const [i, x] of jalur.entries())
+      if (x !== '/internal/sesi/jejak') expect(jalur[i + 1]).toBe('/internal/sesi/jejak');
   });
 
   it('Mode Uji: host non-fixture langsung berhenti, tanpa aksi ke worker dan tanpa LLM', async () => {
