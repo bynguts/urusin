@@ -2,6 +2,7 @@ import {
   AksiSesiResponseSchema,
   AmatiSesiResponseSchema,
   JejakSesiResponseSchema,
+  SelesaiSesiResponseSchema,
   TungguSesiResponseSchema,
   type CatatanPendamping,
   type PemilikSesiInternal,
@@ -113,6 +114,8 @@ export function tanganWorker(
     tunggu: (maksMs) =>
       minta('/internal/sesi/tunggu', TungguSesiResponseSchema, { ...pemilik, maksMs }, maksMs + 5_000),
     kuras: () => minta('/internal/sesi/jejak', JejakSesiResponseSchema, pemilik),
+    selesai: (bukti) =>
+      minta('/internal/sesi/selesai', SelesaiSesiResponseSchema, { ...pemilik, ...(bukti ? { bukti } : {}) }),
   };
 }
 
@@ -239,6 +242,7 @@ export async function jalankanNavigatorUrusan(
     // Setiap jalur keluar selain ambil alih/dipandu (yang sudah menyerahkan atau mengakhiri di worker),
     // termasuk galat tak terduga: kendali kembali ke warga. Sesi yang sudah berakhir dilewati.
     const lewati =
+      hasil?.akhir === 'selesai' ||
       hasil?.akhir === 'ambil_alih' ||
       hasil?.akhir === 'dipandu' ||
       (hasil?.akhir === 'berhenti' && (hasil.alasan === 'dibatalkan' || hasil.alasan === 'sesi_berakhir'));

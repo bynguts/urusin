@@ -70,10 +70,12 @@ export async function isiSesiDariVault(
       placeholder: Object.keys(isian),
       berkas: berkasTerkirim,
     });
+  // Navigator generik: berkas yang disetujui di putaran INI ikut (worker tidak lagi menganggap berkas putaran
+  // lalu sudah disetujui).
   const r = await panggilPemilik(cfg, '/internal/sesi/isi', skema.kurang, {
     ...owner,
     isian,
-    ...(rencanaHash ? { rencanaHash } : {}),
+    ...(rencanaHash ? { rencanaHash, berkas: berkasTerkirim } : {}),
   });
   if (!r.ok) return r;
   const kurang = r.data;

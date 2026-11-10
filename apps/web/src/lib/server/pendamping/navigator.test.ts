@@ -2,6 +2,7 @@ import { MemoryMailer } from '@urusin/akun/testing';
 import {
   AksiSesiInternalSchema,
   CatatanPendampingSchema,
+  SelesaiSesiInternalSchema,
   TungguSesiInternalSchema,
   type Aksi,
   type Pengamatan,
@@ -109,6 +110,24 @@ function workerPalsu(host: string, opsi: { belumSiap?: number; sukses?: boolean 
             jejak.push({ jenis: 'ambil_alih', fase: 'mulai', alasan: x.alasan });
           }
         return json({ mode, hasil: a.aksi.map((_, indeks) => ({ indeks, kode: 'ok' })) });
+      }
+      case '/internal/sesi/selesai': {
+        // Worker memeriksa ulang halaman lalu mencatat bukti ke jejaknya sendiri; sesi siaga, kendali ke warga.
+        const s = SelesaiSesiInternalSchema.parse(body);
+        if (!opsi.sukses) return json({ kode: 'PESAN_TIDAK_SAH', pesanWarga: 'bukan halaman sukses' }, 409);
+        if (s.bukti) jejak.push({ jenis: 'bukti', bukti: s.bukti });
+        mode = 'takeover';
+        return json({
+          sesiId: 's1',
+          urusanId: s.urusanId,
+          executionId: 'x_uji',
+          status: 'siaga',
+          mode,
+          antrean: null,
+          hasil: 'berhasil',
+          dibuatPada: '2026-11-10T00:00:00.000Z',
+          kedaluwarsaPada: '2026-11-10T01:00:00.000Z',
+        });
       }
       case '/internal/sesi/tunggu':
         TungguSesiInternalSchema.parse(body);
@@ -323,6 +342,11 @@ describe('broker Navigator web', () => {
       { cfg: CFG, fetcher: w.fetcher, llm: llmFinal() },
     );
     expect(h).toMatchObject({ akhir: 'selesai', bukti: { nomor: 'REG-2026-00555' } });
+    // Worker mengonfirmasi halaman lewat /internal/sesi/selesai (bukti ikut); tidak ada serahkan sesudahnya.
+    expect(w.panggilan.find((p) => p.path === '/internal/sesi/selesai')?.body).toMatchObject({
+      bukti: { nomor: 'REG-2026-00555' },
+    });
+    expect(w.panggilan.filter((p) => p.path === '/internal/sesi/aksi')).toEqual([]);
     const progress = rt.store
       .eventsOfType(u.id, 'progress', 10)
       .map((e) => (e.payload as { label: string }).label);
@@ -333,6 +357,8 @@ describe('broker Navigator web', () => {
       .eventsOfType(u.id, 'jejak_pendamping', 50)
       .map((e) => (e.payload as { catatan: { jenis: string } }).catatan);
     expect(jejak.find((c) => c.jenis === 'resi')).toMatchObject({ akhir: 'selesai', hash: h.resi.hash });
+    // Bukti dicatat sekali (oleh worker), bukan dua kali.
+    expect(jejak.filter((c) => c.jenis === 'bukti')).toHaveLength(1);
   });
 
   it('katalog placeholder Navigator = field Data Diri yang bisa diselesaikan server', () => {

@@ -37,6 +37,7 @@ import {
 } from './pendamping';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
 import { SID_COOKIE } from './sesi';
+import { hentikanNavigator } from './pendamping/navigator';
 
 const ORIGIN = 'http://localhost:3000';
 const SID = 'ab'.repeat(16);
@@ -508,6 +509,8 @@ describe('broker Browser Pendamping', () => {
         sidHash: hashSid(SID),
         isian: { '{{PEMOHON.NIK}}': NIK },
         rencanaHash: H,
+        // Berkas yang disetujui di putaran INI (kosong: lembar tanpa berkas).
+        berkas: [],
       });
       // Persetujuan untuk rencana lain tidak bisa dipakai untuk halaman ini.
       calls = [];
@@ -732,6 +735,53 @@ describe('broker Browser Pendamping', () => {
       kesehatan = () => 'mati';
       expect(await pilihWorker(dua, OSS, 'u2')).toBeNull();
       expect(await pilihWorker(dua, 'bukan url', 'u2')).toBeNull();
+    });
+
+    it('sesi generik asli: worker id diutamakan bila sehat; tanpa itu tetap di worker server, kecuali host id-only', async () => {
+      const cfg = pendampingConfig(process.env) as PendampingConfig;
+      const SBY = 'https://wargaklampid-dispendukcapil.surabaya.go.id';
+      kesehatan = () => ({ status: 200, body: SEHAT });
+      expect((await pilihWorker(cfg, SBY, 'u1', undefined, false, 'generik'))?.id).toBe('laptop-a');
+      // Mode Uji generik (replika) dan adapter lain: urutan biasa, worker server dulu.
+      expect((await pilihWorker(cfg, SBY, 'u2', undefined, true, 'generik'))?.id).toBe('vps');
+      expect((await pilihWorker(cfg, SBY, 'u3', undefined, false, 'telunjuk-sakti-wonogiri'))?.id).toBe(
+        'vps',
+      );
+      resetBrokerPendamping();
+      kesehatan = (host) => (host.startsWith('100.101') ? 'mati' : { status: 200, body: SEHAT });
+      // Tidak bergantung laptop: portal biasa tetap jalan di worker server.
+      expect((await pilihWorker(cfg, SBY, 'u1', undefined, false, 'generik'))?.id).toBe('vps');
+      // Host `id-only` di registry (bukti nyata menolak IP pusat data): tanpa worker id = null (dipandu).
+      const WNG = 'https://telunjuksakti.wonogirikab.go.id';
+      expect(await pilihWorker(cfg, WNG, 'u4', undefined, false, 'generik')).toBeNull();
+    });
+
+    it('mulai sesi generik: Mode Uji membuka akar replika, akun warga membawa jalur portal asli', async () => {
+      const generik = (u: { id: string }) =>
+        rt.publish(u.id, {
+          type: 'execution_request',
+          executionId: 'x_gen',
+          adapterId: 'generik',
+          flowId: 'kelahiran',
+          ringkasan: 'Ajukan akta kelahiran',
+          params: { jenis: 'kelahiran', kode: '3312', jalur: '/Siap_Om' },
+          tool: 'dukcapil__ajukan_layanan',
+          paramsHash: 'h',
+        });
+      const tamu = urusanDenganEksekusi();
+      generik(tamu);
+      expect((await mulai(ev(req('POST', { executionId: 'x_gen' }), tamu.id))).status).toBe(201);
+      expect(calls[0]?.body).toMatchObject({
+        modeUji: true,
+        params: { jenis: 'kelahiran', kode: '3312', jalur: '/' },
+      });
+      hentikanNavigator(tamu.id);
+      calls = [];
+      const { u, cookie } = await urusanAkunNyata();
+      generik(u);
+      expect((await mulai(ev(req('POST', { executionId: 'x_gen' }, cookie), u.id))).status).toBe(201);
+      expect(calls[0]?.body).toMatchObject({ modeUji: false, params: { jalur: '/Siap_Om' } });
+      hentikanNavigator(u.id);
     });
 
     it('setelah web restart: pemegang sesi ditemukan lewat status; 404 di semua worker diteruskan', async () => {

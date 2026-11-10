@@ -11,6 +11,7 @@ import {
   type IsiSesiInternal,
   type MulaiSesiInternal,
   type PemilikSesiInternal,
+  type SelesaiSesiInternal,
   type SesiPendamping,
   type TungguSesiInternal,
 } from '@urusin/contracts';
@@ -168,7 +169,12 @@ export function tandaInternal(
 
 /** Body permintaan internal yang ditandatangani (selain mulai sesi, selalu memuat pemilik). */
 export type BodyPemilik =
-  PemilikSesiInternal | IsiSesiInternal | BerkasSesiInternal | AksiSesiInternal | TungguSesiInternal;
+  | PemilikSesiInternal
+  | IsiSesiInternal
+  | BerkasSesiInternal
+  | AksiSesiInternal
+  | TungguSesiInternal
+  | SelesaiSesiInternal;
 
 /** Batas waktu bawaan satu panggilan internal; long-poll `/internal/sesi/tunggu` memberi batasnya sendiri. */
 const BATAS_PANGGIL_MS = 15_000;
@@ -281,15 +287,17 @@ export function butuhWilayahId(origin: string): boolean {
  * kita (worker memetakan origin resmi ke replika, atau menolak bila replikanya tidak ada), jadi tak butuh IP
  * Indonesia; sesi akun warga di portal asli tetap butuh.
  */
-const butuhWilayahSesi = (origin: string, modeUji: boolean | undefined, adapterId?: string) =>
-  // Portal wilayah Navigator generik (.go.id kab/kota) belum diukur satu per satu; banyak yang menolak IP pusat
-  // data, jadi sesi aslinya selalu ke worker berjaringan Indonesia (tanpa itu: dipandu, jujur).
-  modeUji !== true && (adapterId === ADAPTER_GENERIK_SESI || butuhWilayahId(origin));
+const butuhWilayahSesi = (origin: string, modeUji: boolean | undefined) =>
+  modeUji !== true && butuhWilayahId(origin);
+
 const ADAPTER_GENERIK_SESI = 'generik';
 
 /**
  * Pilih worker untuk sesi baru: worker yang sudah memegang urusan ini bila sehat (sesi siaga), lalu beban
- * terendah. `null` = tak ada worker sehat yang memenuhi syarat wilayah.
+ * terendah. `null` = tak ada worker sehat yang memenuhi syarat wilayah. Sesi Navigator generik di portal asli
+ * MENGUTAMAKAN worker berjaringan Indonesia bila ada yang sehat (portal kab/kota belum diukur satu per satu),
+ * tetapi tidak bergantung padanya: tanpa itu sesi tetap di worker server (warga yang menyelesaikan tantangan
+ * Cloudflare). Wajib jaringan Indonesia hanya untuk host `id-only` di registry.
  */
 export async function pilihWorker(
   cfg: PendampingConfig,
@@ -299,7 +307,8 @@ export async function pilihWorker(
   modeUji?: boolean,
   adapterId?: string,
 ): Promise<PendampingWorker | null> {
-  const idSaja = butuhWilayahSesi(origin, modeUji, adapterId);
+  const idSaja = butuhWilayahSesi(origin, modeUji);
+  const utamakanId = modeUji !== true && adapterId === ADAPTER_GENERIK_SESI;
   const kandidat = cfg.workers.filter((w) => !idSaja || w.region === REGION_ID);
   const hidup = (await Promise.all(kandidat.map(async (w) => ({ w, s: await sehat(w, fetcher) })))).filter(
     (x): x is { w: PendampingWorker; s: Sehat } => x.s !== null,
@@ -308,7 +317,7 @@ export async function pilihWorker(
   if (lekat) return lekat.w;
   hidup.sort(
     (a, b) =>
-      Number(a.w.region === REGION_ID) - Number(b.w.region === REGION_ID) ||
+      (Number(a.w.region === REGION_ID) - Number(b.w.region === REGION_ID)) * (utamakanId ? -1 : 1) ||
       beban(a.w, a.s) - beban(b.w, b.s),
   );
   return hidup[0]?.w ?? null;
@@ -323,7 +332,7 @@ export async function mulaiSesi(
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const w = await pilihWorker(cfg, body.origin, body.urusanId, fetcher, body.modeUji, body.adapterId);
   if (!w)
-    return butuhWilayahSesi(body.origin, body.modeUji, body.adapterId)
+    return butuhWilayahSesi(body.origin, body.modeUji)
       ? {
           ok: false,
           response: apiError(503, 'PENDAMPING_WILAYAH_TIDAK_TERSEDIA', PESAN_WILAYAH),

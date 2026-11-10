@@ -1,6 +1,6 @@
 import { MulaiPendampingRequestSchema } from '@urusin/contracts';
 import { matchOfficialOrigin } from '@urusin/core';
-import { ADAPTER_GENERIK, mulaiPengajuan } from '@urusin/harness';
+import { ADAPTER_GENERIK, jalurModeUji, mulaiPengajuan } from '@urusin/harness';
 import { routeByKode } from '@urusin/registry';
 import { z } from 'zod';
 import { catatHasilEksekusi } from '#lib/server/eksekusi.js';
@@ -58,6 +58,13 @@ export const POST: RequestHandler = async ({ request, params }) => {
     // Juri (salinan demo) dan tamu selalu ke replika uji; situs resmi asli hanya untuk akun warga pemiliknya.
     const modeUji = await modeUjiPendamping(request, a.u);
     const cfg = pendampingConfig();
+    const generik = offered.data.adapterId === ADAPTER_GENERIK;
+    // Mode Uji generik: replika dipasang di awalan override worker; jalur portal asli hanya dibawa bila replika
+    // mendeklarasikannya, selain itu akar replika.
+    const paramsSesi =
+      modeUji && generik
+        ? { ...offered.data.params, jalur: jalurModeUji(origin, offered.data.params.jalur) }
+        : offered.data.params;
     const r = await mulaiSesi(cfg, {
       urusanId: a.u.id,
       sidHash: a.sidHash,
@@ -65,7 +72,7 @@ export const POST: RequestHandler = async ({ request, params }) => {
       adapterId: offered.data.adapterId,
       flowId: offered.data.flowId,
       origin,
-      params: offered.data.params,
+      params: paramsSesi,
       modeUji,
       ...(body.data.viewport ? { viewport: body.data.viewport } : {}),
     });
