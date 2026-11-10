@@ -7,6 +7,13 @@ import {
   TierSchema,
   UrusanStateSchema,
 } from './common.js';
+import {
+  AlasanSerahkanSchema,
+  JenisAksiSchema,
+  KelasKendaliSchema,
+  PendampingBuktiSchema,
+  RefSchema,
+} from './pendamping.js';
 
 /**
  * Event SSE: satu union bertanda `type`. Setiap frame: `id: <seq>`, `event: <type>`, `data: <JSON event>`.
@@ -234,6 +241,77 @@ export const PolicyGateEventSchema = event('policy_gate', {
   pesan: z.string().optional(),
 });
 
+const HashHexSchema = z.string().regex(/^[0-9a-f]{64}$/);
+/** Id aturan (validator/klasifikator/gerbang), mis. `REF_TIDAK_DIAMATI`. Tanpa teks bebas. */
+const IdAturanSchema = z.string().regex(/^[A-Z][A-Z0-9_]{1,63}$/);
+/** Token fitur klasifikator, mis. `submitterAsli`, `neg:kirim`. Tanpa nilai kolom. */
+const TokenFiturSchema = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_:.-]{0,47}$/);
+
+/**
+ * Satu catatan Navigator generik (ADR 0030) di rantai audit. TIDAK PERNAH memuat nilai isian, teks halaman,
+ * atau ketukan warga: hanya sidik pengamatan, model/token, aksi tanpa nilai, putusan validator, kelas klik,
+ * blokir gerbang tulis {metode, host, sha(path)}, persetujuan {rencanaHash, n}, ambil alih, dan bukti.
+ */
+export const CatatanPendampingSchema = z.discriminatedUnion('jenis', [
+  z.object({
+    jenis: z.literal('amati'),
+    host: z.string().min(1).max(253),
+    sidik: z.string().min(1).max(128),
+    elemen: z.number().int().nonnegative(),
+  }),
+  z.object({
+    jenis: z.literal('rencana'),
+    model: z.string().min(1).max(100),
+    tokenMasuk: z.number().int().nonnegative(),
+    tokenKeluar: z.number().int().nonnegative(),
+    rencanaHash: HashHexSchema,
+    /** Aksi yang diusulkan tanpa nilai: jenis + ref saja. */
+    aksi: z.array(z.object({ jenis: JenisAksiSchema, ref: RefSchema.optional() })).max(25),
+  }),
+  z.object({
+    jenis: z.literal('validasi'),
+    rencanaHash: HashHexSchema,
+    putusan: z.enum(['terima', 'tolak']),
+    aturan: z.array(IdAturanSchema).max(25),
+  }),
+  z.object({
+    jenis: z.literal('klik'),
+    ref: RefSchema,
+    kelas: KelasKendaliSchema,
+    /** Nomor aturan klasifikator yang cocok pertama (1..11). */
+    aturan: z.number().int().min(1).max(20),
+    fitur: z.array(TokenFiturSchema).max(20),
+    putusan: z.enum(['izinkan', 'tolak']),
+  }),
+  z.object({
+    jenis: z.literal('blokir'),
+    metode: z.string().regex(/^[A-Z]{3,7}$/),
+    host: z.string().min(1).max(253),
+    jalurSha256: HashHexSchema,
+    jendela: z.enum(['ai_diam', 'ai_isi', 'ai_klik']),
+  }),
+  z.object({
+    jenis: z.literal('persetujuan'),
+    rencanaHash: HashHexSchema,
+    n: z.number().int().nonnegative(),
+  }),
+  z.object({
+    jenis: z.literal('ambil_alih'),
+    fase: z.enum(['mulai', 'selesai']),
+    alasan: AlasanSerahkanSchema.optional(),
+  }),
+  /** Host di luar registry wilayah: diserahkan ke warga, tidak pernah ditambahkan saat runtime. */
+  z.object({ jenis: z.literal('host_kandidat'), host: z.string().min(1).max(253) }),
+  z.object({ jenis: z.literal('bukti'), bukti: PendampingBuktiSchema }),
+]);
+export type CatatanPendamping = z.infer<typeof CatatanPendampingSchema>;
+
+/** Jejak Navigator generik (aditif). Tanpa nilai dan tanpa teks halaman. */
+export const JejakPendampingEventSchema = event('jejak_pendamping', {
+  executionId: z.string().min(1),
+  catatan: CatatanPendampingSchema,
+});
+
 export const UrusinEventSchema = z.discriminatedUnion('type', [
   ProgressEventSchema,
   AssistantTextEventSchema,
@@ -252,6 +330,7 @@ export const UrusinEventSchema = z.discriminatedUnion('type', [
   DoneEventSchema,
   PolicyGateEventSchema,
   WilayahEventSchema,
+  JejakPendampingEventSchema,
 ]);
 
 export type UrusinEvent = z.infer<typeof UrusinEventSchema>;

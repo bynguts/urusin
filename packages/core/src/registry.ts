@@ -1,4 +1,5 @@
 import { ErrorCode } from './errors.js';
+import { DOMAIN_WILAYAH } from './registry-wilayah.js';
 
 /**
  * Registry domain resmi (rencana §3.8). Pencocokan EXACT origin `https://<host>`:
@@ -21,7 +22,7 @@ export type OfficialDomain = {
   aksesWilayah?: 'id-only';
 };
 
-export const OFFICIAL_DOMAINS: readonly OfficialDomain[] = Object.freeze([
+const DOMAIN_SEED: readonly OfficialDomain[] = [
   {
     host: 'telunjuksakti.wonogirikab.go.id',
     instansi: 'Disdukcapil Kabupaten Wonogiri',
@@ -105,6 +106,12 @@ export const OFFICIAL_DOMAINS: readonly OfficialDomain[] = Object.freeze([
     verifiedAt: null,
     aksesWilayah: 'id-only',
   },
+];
+
+/** Seed tangan + host persis wilayah (registry-wilayah.ts, hasil generator); seed menang bila host sama. */
+export const OFFICIAL_DOMAINS: readonly OfficialDomain[] = Object.freeze([
+  ...DOMAIN_SEED,
+  ...DOMAIN_WILAYAH.filter((d) => !DOMAIN_SEED.some((s) => s.host === d.host)),
 ]);
 
 const BY_HOST = new Map(OFFICIAL_DOMAINS.map((d) => [d.host, d]));
