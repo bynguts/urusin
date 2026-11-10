@@ -193,9 +193,10 @@ export type Hasil<T> =
   /**
    * `dipandu`: pesan jujur untuk warga bila urusan harus beralih ke panduan langkah (tak ada worker wilayah).
    * `galatWorker`: kegagalan di sisi worker/kanal (jaringan, timeout, 401/403 kanal internal, 5xx), bukan
-   * jawaban galat sah untuk warga; worker lain boleh dicoba (`mulaiSesi`).
+   * jawaban galat sah untuk warga; worker lain boleh dicoba (`mulaiSesi`). `putus`: tanpa jawaban sama sekali
+   * (jaringan/timeout), jadi worker itu BISA saja sudah membuat sesinya.
    */
-  | { ok: false; response: Response; dipandu?: string; galatWorker?: true };
+  | { ok: false; response: Response; dipandu?: string; galatWorker?: true; putus?: true };
 
 const TIDAK_TERSEDIA = () =>
   apiError(
@@ -241,6 +242,7 @@ export async function panggil<T>(
   schema: ZodType<T>,
   body?: MulaiSesiInternal | PemilikSesiInternal | IsiSesiInternal | BerkasSesiInternal,
   fetcher: EgressFetch = egressFetch,
+  timeoutMs = 15_000,
 ): Promise<Hasil<T>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const metode = body === undefined ? 'GET' : 'POST';
@@ -259,10 +261,10 @@ export async function panggil<T>(
         'content-type': 'application/json',
       },
       ...(body === undefined ? {} : { body: isi }),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
-    return { ok: false, response: TIDAK_TERSEDIA(), galatWorker: true };
+    return { ok: false, response: TIDAK_TERSEDIA(), galatWorker: true, putus: true };
   }
   const raw: unknown = await res.json().catch(() => null);
   if (!res.ok) {
@@ -417,26 +419,76 @@ export async function mulaiSesi(
         }
       : { ok: false, response: TIDAK_TERSEDIA() };
   let r: Hasil<SesiPendamping> = { ok: false, response: TIDAK_TERSEDIA() };
-  for (const w of akses === 'id-only' ? daftar.slice(0, 1) : daftar) {
-    r = await panggil(
-      { url: w.url, token: w.token ?? cfg.token },
-      '/internal/sesi',
-      skema.sesi,
-      body,
-      fetcher,
-    );
-    if (r.ok) {
-      ingatLokasi(body.urusanId, w.id);
-      return r;
+  // Worker yang tidak menjawab (jaringan/timeout) bisa saja sudah membuat sesinya: setelah kandidat lain dicoba,
+  // sesi itu ditutup best-effort agar tidak menjadi sesi yatim yang memakan slot sampai TTL.
+  const yatim: PendampingWorker[] = [];
+  const pemilik: PemilikSesiInternal = { urusanId: body.urusanId, sidHash: body.sidHash };
+  try {
+    for (const w of akses === 'id-only' ? daftar.slice(0, 1) : daftar) {
+      r = await panggil(
+        { url: w.url, token: w.token ?? cfg.token },
+        '/internal/sesi',
+        skema.sesi,
+        body,
+        fetcher,
+      );
+      if (r.ok) {
+        ingatLokasi(body.urusanId, w.id);
+        return r;
+      }
+      if (r.putus) yatim.push(w);
+      if (!r.galatWorker) return r;
     }
-    if (!r.galatWorker) return r;
+    return r;
+  } finally {
+    for (const w of yatim) void akhiriYatim(cfg, w, pemilik, fetcher);
   }
-  return r;
 }
+
+const AKHIRI_YATIM_MS = 3_000;
+const STATUS_AKHIR: ReadonlySet<SesiPendamping['status']> = new Set([
+  'selesai',
+  'gagal',
+  'dipandu',
+  'kedaluwarsa',
+  'dibatalkan',
+]);
+
+/**
+ * Tutup best-effort sesi (urusan, sid) di worker yang tidak dipakai lagi (fire-and-forget, timeout pendek). Galat
+ * ditelan; log satu baris tanpa PII (id worker + status saja). 404 = memang tidak ada sesi di sana.
+ */
+export async function akhiriYatim(
+  cfg: PendampingConfig,
+  w: PendampingWorker,
+  pemilik: PemilikSesiInternal,
+  fetcher: EgressFetch = egressFetch,
+): Promise<void> {
+  try {
+    const r = await panggil(
+      { url: w.url, token: w.token ?? cfg.token },
+      '/internal/sesi/akhiri',
+      skema.sesi,
+      { urusanId: pemilik.urusanId, sidHash: pemilik.sidHash },
+      fetcher,
+      AKHIRI_YATIM_MS,
+    );
+    if (!r.ok && r.response.status !== 404)
+      console.log(`pendamping: penutupan sesi yatim gagal worker=${w.id} status=${r.response.status}`);
+  } catch {
+    console.log(`pendamping: penutupan sesi yatim gagal worker=${w.id}`);
+  }
+}
+
+/** Sesi hidup lebih dulu, lalu yang paling baru dibuat. */
+const lebihUtama = (a: SesiPendamping, b: SesiPendamping) =>
+  Number(STATUS_AKHIR.has(a.status)) - Number(STATUS_AKHIR.has(b.status)) ||
+  Date.parse(b.dibuatPada) - Date.parse(a.dibuatPada);
 
 /**
  * Panggil endpoint sesi milik (urusan, sid) di worker yang memegangnya: dari peta lokasi, atau (setelah web
- * restart) dengan menanyakan status ke worker sehat lain. 404 dari semua worker diteruskan apa adanya.
+ * restart) dengan menanyakan status ke worker sehat lain; bila beberapa worker memegang sesi urusan ini, yang
+ * hidup dan paling baru dipakai dan sisanya ditutup. 404 dari semua worker diteruskan apa adanya.
  */
 export async function panggilPemilik<T>(
   cfg: PendampingConfig | null,
@@ -467,7 +519,13 @@ export async function panggilPemilik<T>(
       r: await panggil(target(w), '/internal/sesi/status', skema.sesi, pemilik, fetcher),
     })),
   );
-  const pemegang = temu.find((x) => x.r.ok);
+  // Lebih dari satu worker bisa memegang sesi urusan ini (mis. start yang putus lalu dialihkan): pakai yang hidup
+  // dan paling baru, tutup sesi hidup lainnya (best-effort) supaya status/tiket tidak berganti-ganti worker.
+  const ada = temu.flatMap((x) => (x.r.ok ? [{ w: x.w, r: x.r, s: x.r.data }] : []));
+  ada.sort((a, b) => lebihUtama(a.s, b.s));
+  const pemegang = ada[0];
+  for (const x of ada.slice(1))
+    if (!STATUS_AKHIR.has(x.s.status)) void akhiriYatim(cfg, x.w, pemilik, fetcher);
   if (pemegang) {
     ingatLokasi(owner.urusanId, pemegang.w.id);
     if (path === '/internal/sesi/status') return pemegang.r as Hasil<T>;

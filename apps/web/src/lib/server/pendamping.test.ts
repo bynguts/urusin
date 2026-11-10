@@ -770,13 +770,81 @@ describe('broker Browser Pendamping', () => {
         };
         const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
         expect(r.status, JSON.stringify(gagal)).toBe(201);
-        expect(calls.map((c) => c.host)).toEqual(['100.101.1.2:4330', '127.0.0.1:4330']);
+        // Hanya start (penutupan best-effort sesi yatim untuk kasus putus diuji tersendiri).
+        expect(calls.filter((c) => c.url.endsWith('/internal/sesi')).map((c) => c.host)).toEqual([
+          '100.101.1.2:4330',
+          '127.0.0.1:4330',
+        ]);
         // Langkah berikutnya urusan itu lekat di server yang benar-benar memegang sesinya.
+        await new Promise((ok) => setTimeout(ok, 20));
         calls = [];
         reply = () => ({ status: 200, body: sesi({ mode: 'ai', status: 'berjalan' }) });
         expect((await status(ev(req('GET', undefined, cookie), u.id))).status).toBe(200);
         expect(calls[0]?.host).toBe('127.0.0.1:4330');
       }
+    });
+
+    it('start putus (jaringan/timeout) di laptop lalu dialihkan ke server: sesi laptop ditutup best-effort', async () => {
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        const { u, cookie } = await urusanAkunNyata();
+        reply = (p, _b, host) => {
+          if (host.startsWith('100.101') && p === '/internal/sesi') throw new Error('ETIMEDOUT');
+          return { status: 200, body: sesi({ status: 'dibatalkan' }) };
+        };
+        expect((await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(200);
+        await vi.waitFor(() =>
+          expect(calls.map((c) => `${c.host}${new URL(c.url).pathname}`)).toContain(
+            '100.101.1.2:4330/internal/sesi/akhiri',
+          ),
+        );
+        const akhiri = calls.find((c) => c.url.endsWith('/internal/sesi/akhiri'))!;
+        expect(akhiri.body).toEqual({ urusanId: u.id, sidHash: hashSid(SID) });
+        // Bertanda tangan dengan token laptop sendiri.
+        expect(akhiri.tanda).toBe(
+          tandaInternal(
+            TOKEN_LAPTOP,
+            akhiri.waktu!,
+            akhiri.nonce!,
+            'POST',
+            '/internal/sesi/akhiri',
+            akhiri.raw,
+          ),
+        );
+        expect(
+          calls.filter((c) => c.host === '100.101.1.2:4330').map((c) => new URL(c.url).pathname),
+        ).toEqual(['/internal/sesi', '/internal/sesi/akhiri']);
+
+        // Penutupan yang gagal ditelan: start tetap berhasil, satu baris log tanpa PII (id worker + status).
+        resetBrokerPendamping();
+        const b = await urusanAkunNyata();
+        calls = [];
+        reply = (p, _b, host) => {
+          if (host.startsWith('100.101')) {
+            if (p === '/internal/sesi') throw new Error('ECONNRESET');
+            return { status: 500, body: {} };
+          }
+          return { status: 201, body: sesi() };
+        };
+        expect((await mulai(ev(req('POST', { executionId: 'x_1' }, b.cookie), b.u.id))).status).toBe(201);
+        await vi.waitFor(() =>
+          expect(log).toHaveBeenCalledWith(
+            'pendamping: penutupan sesi yatim gagal worker=laptop-a status=503',
+          ),
+        );
+        expect(JSON.stringify(log.mock.calls)).not.toContain(b.u.id);
+      } finally {
+        log.mockRestore();
+      }
+    });
+
+    it('start ditolak (401/5xx, ada jawaban) -> tidak ada penutupan ke worker itu', async () => {
+      const { u, cookie } = await urusanAkunNyata();
+      reply = (_p, _b, host) =>
+        host.startsWith('100.101') ? { status: 401, body: {} } : { status: 201, body: sesi() };
+      expect((await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(201);
+      await new Promise((r) => setTimeout(r, 20));
+      expect(calls.map((c) => new URL(c.url).pathname)).not.toContain('/internal/sesi/akhiri');
     });
 
     it('id-utama: galat sah untuk warga (403 SESI_BUKAN_MILIK) diteruskan, tanpa mencoba worker lain', async () => {
@@ -882,6 +950,52 @@ describe('broker Browser Pendamping', () => {
       kesehatan = () => 'mati';
       expect(await pilihWorker(dua, OSS, 'u2')).toBeNull();
       expect(await pilihWorker(dua, 'bukan url', 'u2')).toBeNull();
+    });
+
+    it('setelah web restart, DUA worker memegang sesi urusan ini: pakai yang hidup dan terbaru, tutup sisanya', async () => {
+      const u = urusanDenganEksekusi();
+      const lama = sesi({
+        sesiId: 'lama',
+        status: 'berjalan',
+        mode: 'ai',
+        dibuatPada: '2026-11-09T00:00:00.000Z',
+      });
+      const baru = sesi({
+        sesiId: 'baru',
+        status: 'berjalan',
+        mode: 'ai',
+        dibuatPada: '2026-11-09T00:05:00.000Z',
+      });
+      // Laptop (urutan pertama di konfigurasi) memegang sesi LAMA, server sesi BARU.
+      reply = (p, _b, host) =>
+        p === '/internal/sesi/akhiri'
+          ? { status: 200, body: { ...lama, status: 'dibatalkan' } }
+          : { status: 200, body: host.startsWith('100.101') ? lama : baru };
+      const r = await status(ev(req('GET'), u.id));
+      expect(r.status).toBe(200);
+      expect(((await r.json()) as any).sesiId).toBe('baru');
+      await vi.waitFor(() =>
+        expect(calls.map((c) => `${c.host}${new URL(c.url).pathname}`)).toContain(
+          '100.101.1.2:4330/internal/sesi/akhiri',
+        ),
+      );
+      expect(calls.filter((c) => c.url.endsWith('/akhiri')).map((c) => c.host)).toEqual(['100.101.1.2:4330']);
+      // Langkah berikutnya ke worker terpilih saja.
+      calls = [];
+      expect((await serahkan(ev(req('POST'), u.id))).status).toBe(200);
+      expect(calls.map((c) => c.host)).toEqual(['127.0.0.1:4330']);
+
+      // Sesi yang sudah berakhir kalah dari sesi hidup walau lebih baru, dan tidak perlu ditutup.
+      resetBrokerPendamping();
+      calls = [];
+      reply = (_p, _b, host) => ({
+        status: 200,
+        body: host.startsWith('100.101') ? { ...baru, status: 'selesai', mode: 'done' } : lama,
+      });
+      const r2 = await status(ev(req('GET'), u.id));
+      expect(((await r2.json()) as any).sesiId).toBe('lama');
+      await new Promise((ok) => setTimeout(ok, 20));
+      expect(calls.map((c) => new URL(c.url).pathname)).not.toContain('/internal/sesi/akhiri');
     });
 
     it('setelah web restart: pemegang sesi ditemukan lewat status; 404 di semua worker diteruskan', async () => {
