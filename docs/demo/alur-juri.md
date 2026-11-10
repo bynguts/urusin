@@ -23,23 +23,25 @@ video submission (lihat aturan 3 di [`video-demo.md`](video-demo.md)); tempatnya
 
 ## Langkah dan waktu
 
-Kolom "Waktu" adalah durasi langkah itu di run 9; kolom "Total" adalah jam log run 9 dihitung dari klik
+Kolom "Waktu" adalah durasi langkah itu di run 9 (langkah 3 dan 3a berubah sejak wilayah dulu, belum
+diukur ulang); kolom "Total" adalah jam log run 9 dihitung dari klik
 **Mulai urusan ini**. Total run 9 memuat jeda skrip QA (±15 detik menunggu sebelum klik), jadi peragaan
 manual yang lancar sedikit lebih cepat.
 
-| #   | Yang diklik atau diketik                                                                                            | Yang tampil                                                                                                         | Waktu   | Total |
-| --- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------- | ----- |
-| 1   | `/masuk` → **Masuk sebagai juri** (centang Turnstile bila diminta)                                                  | Masuk ke **Beranda** sebagai "Salinan demo juri"                                                                    | ±6 dtk  | –     |
-| 2   | Beranda → kartu **Kelahiran** → pastikan **Kabupaten Wonogiri** → **Mulai urusan ini**                              | Halaman urusan "Akta kelahiran"; pesan "Saya ingin mengurus kelahiran…" terkirim otomatis                           | ±2 dtk  | 0:00  |
-| 3   | (tunggu)                                                                                                            | "Memahami kebutuhan Anda…" → "Mencari sumber resmi…" → jawaban bersumber [1][2] + kartu **Rencana · 3 langkah**     | 34 dtk  | 0:34  |
-| 4   | **Setujui rencana**                                                                                                 | Kartu **Setujui dan buka situs** (ringkasan isian + chip Situs resmi)                                               | ≤11 dtk | 0:45  |
-| 5   | **Setujui dan buka situs**                                                                                          | Bilah atas `fixtures.urusinai.web.id` · **Mode uji** · Menyiapkan                                                   | 2 dtk   | 0:47  |
-| 6   | Lembar **Izinkan AI mengisi?** → **Izinkan isi**                                                                    | Chip "AI sedang mengisi"; AI membuka halaman login dan mengisi Nomor HP                                             | <1 dtk  | 0:52  |
-| 7   | Banner **Giliran Anda · Masuk akun di situs resmi**. Ketuk kolom **Nomor HP** di siaran, hapus, ketik `08000000001` | Nomor HP berubah di siaran (ketikan tidak dibaca AI)                                                                | ±4 dtk  | 0:56  |
-| 8   | Ketuk kolom **Masukkan kode diatas**, ketik `DEV123`                                                                | Kode tampil di kolom                                                                                                | ±3 dtk  | 0:59  |
-| 9   | Ketuk tombol **Masuk** di siaran (tombol yang disorot)                                                              | AI lanjut: membuka formulir, mengunggah KK, KTP, dan surat keterangan lahir (3 berkas), lalu berhenti sebelum kirim | 1 dtk   | 1:04  |
-| 10  | Banner **Periksa isian, lalu tekan Kirim pengajuan**. Periksa isian di siaran                                       | "Formulir terisi · AI menunggu Anda · 11 dari 11"; AI dikunci dari tombol kirim                                     | –       | –     |
-| 11  | Ketuk tombol akhir yang disorot di siaran (di replika berlabel **Selesai**)                                         | Hasil **berhasil**; nomor permohonan **`FX-REG-0002`** (nomor berikutnya berbeda)                                   | 9 dtk   | 1:13  |
+| #   | Yang diklik atau diketik                                                                                                          | Yang tampil                                                                                                                   | Waktu        | Total |
+| --- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------ | ----- |
+| 1   | `/masuk` → **Masuk sebagai juri** (centang Turnstile bila diminta)                                                                | Masuk ke **Beranda** sebagai "Salinan demo juri"                                                                              | ±6 dtk       | –     |
+| 2   | Beranda → kartu **Kelahiran** → kab/kota sudah terisi **Kabupaten Wonogiri** (dari Data Diri salinan juri) → **Mulai urusan ini** | Halaman urusan "Akta kelahiran"; pesan "Saya ingin mengurus kelahiran…" terkirim otomatis                                     | ±2 dtk       | 0:00  |
+| 3   | (tunggu)                                                                                                                          | Kartu **KTP Anda terdaftar di Kabupaten Wonogiri?** dan pertanyaan yang sama dari AI (bisa disertai jawaban bersumber [1][2]) | belum diukur | –     |
+| 3a  | **Ya, betul** (satu-satunya klik tambahan sejak run 9)                                                                            | Baris "Wilayah KTP: Kabupaten Wonogiri" + kartu **Rencana · 3 langkah** dengan label "AI bisa bantu mengisi di situs resmi"   | ±1 dtk       | –     |
+| 4   | **Setujui rencana**                                                                                                               | Kartu **Setujui dan buka situs** (ringkasan isian + chip Situs resmi)                                                         | ≤11 dtk      | 0:45  |
+| 5   | **Setujui dan buka situs**                                                                                                        | Bilah atas `fixtures.urusinai.web.id` · **Mode uji** · Menyiapkan                                                             | 2 dtk        | 0:47  |
+| 6   | Lembar **Izinkan AI mengisi?** → **Izinkan isi**                                                                                  | Chip "AI sedang mengisi"; AI membuka halaman login dan mengisi Nomor HP                                                       | <1 dtk       | 0:52  |
+| 7   | Banner **Giliran Anda · Masuk akun di situs resmi**. Ketuk kolom **Nomor HP** di siaran, hapus, ketik `08000000001`               | Nomor HP berubah di siaran (ketikan tidak dibaca AI)                                                                          | ±4 dtk       | 0:56  |
+| 8   | Ketuk kolom **Masukkan kode diatas**, ketik `DEV123`                                                                              | Kode tampil di kolom                                                                                                          | ±3 dtk       | 0:59  |
+| 9   | Ketuk tombol **Masuk** di siaran (tombol yang disorot)                                                                            | AI lanjut: membuka formulir, mengunggah KK, KTP, dan surat keterangan lahir (3 berkas), lalu berhenti sebelum kirim           | 1 dtk        | 1:04  |
+| 10  | Banner **Periksa isian, lalu tekan Kirim pengajuan**. Periksa isian di siaran                                                     | "Formulir terisi · AI menunggu Anda · 11 dari 11"; AI dikunci dari tombol kirim                                               | –            | –     |
+| 11  | Ketuk tombol akhir yang disorot di siaran (di replika berlabel **Selesai**)                                                       | Hasil **berhasil**; nomor permohonan **`FX-REG-0002`** (nomor berikutnya berbeda)                                             | 9 dtk        | 1:13  |
 
 Ringkas: dari **Setujui dan buka situs** sampai Kirim **28 detik** di run 9, termasuk ±10 detik warga
 mengetik dan memeriksa. Dari **Mulai urusan ini** sampai nomor permohonan **1 menit 13 detik**. Sisakan
@@ -47,7 +49,8 @@ mengetik dan memeriksa. Dari **Mulai urusan ini** sampai nomor permohonan **1 me
 
 ## Kalimat narasi singkat per langkah
 
-- Langkah 3: "Urusin mencari aturan resmi Disdukcapil Wonogiri; setiap syarat punya nomor sumber."
+- Langkah 3–3a: "Aturan dan situs berbeda di tiap kab/kota, jadi Urusin memastikan dulu wilayah KTP warga. Data Diri hanya usulan; warga yang membenarkan."
+- Setelah 3a: "Urusin memakai aturan resmi Disdukcapil Wonogiri; setiap syarat punya nomor sumber."
 - Langkah 6: "Sebelum AI mengisi, warga melihat data apa yang dikirim ke situs mana, lalu mengizinkan."
 - Langkah 7–9: "Login dan CAPTCHA selalu diketik warga sendiri. Yang diketik di sini tidak dibaca AI."
 - Langkah 11: "Tombol kirim akhir hanya bisa ditekan warga. AI dikunci di kode, bukan sekadar dilarang."
