@@ -6,8 +6,14 @@ import {
   normalTeks,
   teksTampakDari,
   terlihatEl,
-  type KelasKendali,
 } from './klasifikasi.js';
+import type {
+  ElemenAmatan,
+  Pengamatan,
+  PeranElemen as PeranElemenKontrak,
+  SinyalHalaman,
+  Terlarang,
+} from '@urusin/contracts';
 
 /**
  * Pembangun pengamatan (Pengamatan) untuk Navigator generik (desain generik §1, invarian 4).
@@ -18,58 +24,13 @@ import {
  * `isian` (kosong/terisi_situs/terisi_warga/placeholder) dan untuk menyamarkan gema nilai di teks situs.
  */
 
-// --- Tipe kontrak: selaras dengan @urusin/contracts PengamatanSchema (WP-D) ---
-export type PeranElemen =
-  | 'teks'
-  | 'angka'
-  | 'tanggal'
-  | 'pilihan'
-  | 'centang'
-  | 'radio'
-  | 'berkas'
-  | 'tombol'
-  | 'tautan'
-  | 'tab'
-  | 'area';
-export type TerlarangElemen = 'sandi' | 'otp' | 'captcha' | 'pernyataan';
+// --- Tipe kontrak dari @urusin/contracts (WP-D); hanya `import type`, tidak ada impor runtime di halaman ---
+export type PeranElemen = PeranElemenKontrak;
+export type TerlarangElemen = Terlarang;
 /** `kosong` | `terisi_situs` | `terisi_warga` | placeholder vault (`{{PEMOHON.NIK}}`). Bukan nilai mentah. */
-export type IsianElemen = 'kosong' | 'terisi_situs' | 'terisi_warga' | (string & {});
-
-export type ElemenAmatan = {
-  ref: string;
-  peran: PeranElemen;
-  nama: string;
-  petunjuk?: string;
-  wajib?: boolean;
-  isian?: IsianElemen;
-  opsi?: string[];
-  kelas?: KelasKendali;
-  terlarang?: TerlarangElemen;
-  form?: string;
-  galat?: string;
-};
-
-export type SinyalAmatan = {
-  login: boolean;
-  otp: boolean;
-  captcha: boolean;
-  tantangan: boolean;
-  halamanAkhir: boolean;
-  sukses: boolean;
-  galatForm: boolean;
-};
-
-export type Pengamatan = {
-  v: 1;
-  seq: number;
-  host: string;
-  jalur: string;
-  judul: string;
-  sinyal: SinyalAmatan;
-  elemen: ElemenAmatan[];
-  teks: string;
-  sidik: string;
-};
+export type IsianElemen = NonNullable<ElemenAmatan['isian']>;
+export type SinyalAmatan = SinyalHalaman;
+export type { ElemenAmatan, Pengamatan };
 
 /** Entri peta ref: disimpan di memori worker, TIDAK PERNAH ditulis ke DOM. */
 export type RefTersimpan = { jalur: string; sidik: string };
@@ -619,7 +580,9 @@ export function bangunPengamatan(doc: Document, opsi: OpsiAmati): HasilAmati {
       ),
   };
   const host = win?.location.host ?? '';
-  const jalur = potong(win?.location.pathname ?? '', BATAS_AMATAN.jalur);
+  const pathname = win?.location.pathname ?? '';
+  // Kontrak: jalur selalu path absolut tanpa query/fragmen (about:blank dan sejenisnya -> '/').
+  const jalur = potong(pathname.startsWith('/') ? pathname : '/', BATAS_AMATAN.jalur);
   const sidik = hashTeks(
     [
       host,

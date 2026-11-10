@@ -38,6 +38,7 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@urusin/contracts": "workspace:*",
     "@urusin/core": "workspace:*"
   },
   "devDependencies": {
