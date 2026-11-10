@@ -621,6 +621,7 @@ describe('#47 tamu malas, salinan demo, dan batas per IP', () => {
     expect(kunciIp('1::2::3')).toBe('1::2::3');
     expect(kunciIp('zz::1')).toBe('zz::1');
     expect(kunciIp('2001:db8::300.1.1.1')).toBe('2001:db8::300.1.1.1');
+    akun = buat({ kuota: { tamuPerIpHari: 20, demoPerIpHari: 3 } });
     for (let i = 0; i < 20; i++)
       akun.pastikanTamu(`sid6-${i}`, { ip: `2001:db8:5:6::${(i + 1).toString(16)}` });
     expect((await galat(() => akun.pastikanTamu('sid6-x', { ip: '2001:db8:5:6:dead:beef::9' }))).kode).toBe(
@@ -637,7 +638,8 @@ describe('#47 tamu malas, salinan demo, dan batas per IP', () => {
     ).toBe('RATE_LIMITED');
   });
 
-  it('paling banyak 20 tamu baru per IP per 24 jam', async () => {
+  it('batas tamu baru per IP per 24 jam (di sini 20; bawaan 200, tahan NAT)', async () => {
+    akun = buat({ kuota: { tamuPerIpHari: 20 } });
     for (let i = 0; i < 20; i++) akun.pastikanTamu(`sid-${i}`, ctx);
     expect((await galat(() => akun.pastikanTamu('sid-x', ctx))).kode).toBe('TAMU_PENUH');
     akun.pastikanTamu('sid-x', { ip: '198.51.100.20' });
@@ -646,8 +648,8 @@ describe('#47 tamu malas, salinan demo, dan batas per IP', () => {
     expect(() => akun.pastikanTamu('sid-y', ctx)).not.toThrow();
   });
 
-  it('salinan demo: terisolasi, data sintetis, 3 per IP per hari, batas global, kedaluwarsa 24 jam', async () => {
-    akun = buat({ kuota: { demoAktifMaks: 4 } });
+  it('salinan demo: terisolasi, data sintetis, batas per IP (di sini 3), batas global, kedaluwarsa 24 jam', async () => {
+    akun = buat({ kuota: { demoPerIpHari: 3, demoAktifMaks: 4 } });
     const a = akun.buatDemo(ctx);
     const b = akun.buatDemo(ctx);
     expect(a.akun.id).not.toBe(b.akun.id);
