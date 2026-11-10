@@ -570,3 +570,17 @@ describe('mulai ditolak karena PII (p07)', () => {
     assert.equal(h.akhir.alasan, 'gagal_mulai');
   });
 });
+
+describe('layar kartu wilayah', () => {
+  it('usulan dari percakapan diberi label sama dengan UI', async () => {
+    const { renderLangkahAgen } = await import('../eval-persona/lib/layar.mjs');
+    const t = renderLangkahAgen([
+      ev('wilayah', {
+        status: 'usulan',
+        ktp: { kodeKabKota: '3216', nama: 'Kabupaten Bekasi' },
+        sumber: 'warga',
+      }),
+    ]);
+    assert.match(t, /usulan dari percakapan ini/);
+  });
+});
