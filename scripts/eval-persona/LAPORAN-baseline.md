@@ -104,6 +104,14 @@ terkait Wonogiri.
 Mengatur wilayah dengan benar hanya menaikkan b/d sedikit: rencana masih memakai bundel Wonogiri (D2) dan korpus tidak
 punya aturan nasional (D7), jadi c tetap 1/15.
 
+**Persona tambahan p16-p17 di main** (`hasil/baseline/bawaan-tambahan/`, mode bawaan) untuk dibandingkan dengan
+`feat/wilayah-dulu`; hasil lengkap ada di `LAPORAN-wilayah-dulu.md`.
+
+- p16 (Data Diri Wonogiri, KTP Kota Semarang): a/b/c/d gagal. Kartu rencana tetap Wonogiri walau warga menulis "KTP
+  saya sekarang sudah Kota Semarang".
+- p17 (ganti Wonogiri → Sukoharjo): a/b/c/d/i gagal. Setelah koreksi masih "Tanyakan ke Dinas Kependudukan dan
+  Pencatatan Sipil Kabupaten Wonogiri".
+
 ### Bukti singkat per persona (mode bawaan kecuali disebut)
 
 - **p01** (jalur demo): jawaban bersumber + kartu rencana + Telunjuk Sakti muncul di giliran 1, tetapi wilayah tidak pernah
