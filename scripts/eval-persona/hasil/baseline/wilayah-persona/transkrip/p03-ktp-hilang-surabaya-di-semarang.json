@@ -1,0 +1,781 @@
+{
+  "persona": "p03-ktp-hilang-surabaya-di-semarang",
+  "urusanId": "u_b075aa52e62a9a8ae9d792b7727d90ca",
+  "wilayahPerangkat": "3578",
+  "kodeUrusan": "3578",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "ktp ku ilang kak pas di angkot, aku sekarang kuliah di semarang. gmn ya",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": "semi",
+          "version": 2,
+          "type": "state",
+          "seq": 1,
+          "at": "2026-11-10T06:43:07.830Z",
+          "chainHead": "a6134ef726f99fe98774434e831347e89f608d16a5f94d88651a2827aa31bfb2"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 2,
+          "at": "2026-11-10T06:43:07.831Z",
+          "chainHead": "f0dbc315c0d8a9af191d5af54eac8fc44f9f7d1807a1d2e6b61825a332019340"
+        },
+        {
+          "delta": "Waduh, semoga segera bisa diurus ya. KTP yang hilang itu **tercatat beralamat di Surabaya atau daerah lain**? Ini membantu aku cek cara pengurusannya, meski kamu sekarang kuliah di Semarang.\n\nCukup sebutkan kabupaten atau kotanya saja, tidak perlu kirim NIK atau alamat lengkap di chat.",
+          "type": "assistant_text",
+          "seq": 3,
+          "at": "2026-11-10T06:43:22.620Z",
+          "chainHead": "12eebf31c6f890a24722d1ad4964f1fb4f04550b02c30b5649e8dfe9d6ff8996"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_38eb9d9b-b99f-42aa-b8b9-2bd0cb7cc6a2",
+          "version": 3,
+          "type": "done",
+          "seq": 4,
+          "at": "2026-11-10T06:43:22.622Z",
+          "chainHead": "8025b552c2c1f9b213faf8bbabcfc1887a88c6fe0e878f6c55e29da82d832c14"
+        }
+      ],
+      "status": "selesai",
+      "ms": 14848
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "ktpku terdaftar di kota surabaya kak. bisa ngurus dari semarang aja ga ya?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Urusin menanyakan kota tempat KTP terdaftar dan Dimas ingin menghindari pulang ke Surabaya."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 5,
+          "at": "2026-11-10T06:43:27.064Z",
+          "chainHead": "83b1311e298c1361f5778820c79d213d3d1513e6f2f8eb35d16ebcef502adbb1"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 6,
+          "at": "2026-11-10T06:43:30.432Z",
+          "chainHead": "52f466e4d423d5e88b232dd568d6283f634f6a50069beea46c1593f508df1cad"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 7,
+          "at": "2026-11-10T06:43:35.591Z",
+          "chainHead": "79600b7056f771004a724d11ffecab44627f52fb2156858a1addd24f858c0b92"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 8,
+          "at": "2026-11-10T06:43:42.227Z",
+          "chainHead": "a95ba6c1498c4470b9708ed30ca4de0013a9f001e10dc90ff4de1397f4f8e895"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation - katalog layanan publik - Pengajuan KTP Elektronik",
+                  "kutipanPersis": "Layanan Pengajuan KTP Elektronik tersedia di Klampid New Generation Dispendukcapil Kota Surabaya, kategori Pendaftaran Penduduk",
+                  "perluDicekUlang": false,
+                  "refId": "klampid-katalog#daftar-pengajuan-ktp-elektronik",
+                  "textFragmentUrl": "https://wargaklampid-dispendukcapil.surabaya.go.id/#:~:text=Layanan%20Pengajuan%20KTP%20Elektronik,Surabaya%2C%20kategori%20Pendaftaran%20Penduduk",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+                  "verifiedAt": "2026-11-08T18:46:54.353Z"
+                }
+              ],
+              "teks": "Dispendukcapil Kota Surabaya menyediakan layanan Pengajuan KTP Elektronik melalui Klampid New Generation."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 9,
+          "at": "2026-11-10T06:43:42.228Z",
+          "chainHead": "284f2b8527ffc055d60077d3561e9399e22585a8d17c8390f322e43801e8725e"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_febd1940-e0cc-4e57-a338-10ca69a14b89",
+          "version": 4,
+          "type": "done",
+          "seq": 10,
+          "at": "2026-11-10T06:43:42.232Z",
+          "chainHead": "4b17ccef6ef2f4e9ad0135350d282b1c03df19c1ba39d153dff06138d0ca1d7a"
+        }
+      ],
+      "status": "selesai",
+      "ms": 15175
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "bisa diurus dari semarang aja lewat klampid itu ga kak? perlu surat kehilangan polisi juga?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Belum jelas apakah KTP hilang bisa diurus tanpa pulang ke Surabaya dan apa saja syaratnya."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 11,
+          "at": "2026-11-10T06:43:46.422Z",
+          "chainHead": "854121f7d106382f54ce70f16a1d60ab9b353ddd2b3e136e7562b8ba18b4dc26"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T06:43:50.049Z",
+          "chainHead": "666635528add9f0fb00bd59840581f3c585ef96cc5d70d9f834412ff58701240"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 13,
+          "at": "2026-11-10T06:43:53.759Z",
+          "chainHead": "07605b03c749d29f9162b901ce0981a9794c9dd2e274ed762ba04528a590e13f"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 14,
+          "at": "2026-11-10T06:43:57.263Z",
+          "chainHead": "821a827c0eccaf8eeac2eaf3a7d7d6f7f1161bae79ed0d2425f8f6b30280140f"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 15,
+          "at": "2026-11-10T06:44:04.494Z",
+          "chainHead": "c3c3ff06e38e43fa30acecd06c6ff7cbe192091680196bdd0b19310e25c88a3b"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation - katalog layanan publik - Pengajuan KTP Elektronik",
+                  "kutipanPersis": "Layanan Pengajuan KTP Elektronik tersedia di Klampid New Generation Dispendukcapil Kota Surabaya, kategori Pendaftaran Penduduk",
+                  "perluDicekUlang": false,
+                  "refId": "klampid-katalog#daftar-pengajuan-ktp-elektronik",
+                  "textFragmentUrl": "https://wargaklampid-dispendukcapil.surabaya.go.id/#:~:text=Layanan%20Pengajuan%20KTP%20Elektronik,Surabaya%2C%20kategori%20Pendaftaran%20Penduduk",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+                  "verifiedAt": "2026-11-08T18:46:54.353Z"
+                }
+              ],
+              "teks": "Terverifikasi: Klampid New Generation Surabaya menyediakan layanan Pengajuan KTP Elektronik."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation - katalog layanan publik - Pengajuan Cetak KTP",
+                  "kutipanPersis": "Pengajuan Cetak KTP (khusus untuk yg baru saja melakukan perekaman, lansia, dan pasca pindah datang",
+                  "perluDicekUlang": false,
+                  "refId": "klampid-katalog#daftar-pengajuan-cetak-ktp",
+                  "textFragmentUrl": "https://wargaklampid-dispendukcapil.surabaya.go.id/#:~:text=Pengajuan%20Cetak%20KTP%20%28khusus,dan%20pasca%20pindah%20datang",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+                  "verifiedAt": "2026-11-08T18:46:54.353Z"
+                }
+              ],
+              "teks": "Terverifikasi: Layanan Pengajuan Cetak KTP dalam katalog dikhususkan bagi orang yang baru melakukan perekaman, lansia, dan penduduk pasca pindah datang."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 16,
+          "at": "2026-11-10T06:44:04.495Z",
+          "chainHead": "f056ab48b847b72269f24ca271a80ded0679cf411853a3ac616cd07f3077104b"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_f826f879-5cfc-470c-a2fc-becbfbdd4c12",
+          "version": 5,
+          "type": "done",
+          "seq": 17,
+          "at": "2026-11-10T06:44:04.500Z",
+          "chainHead": "9ff5f4d3bef81729ccfd9b090d481290e3e7234fbb83317b1a267fa8e37d61db"
+        }
+      ],
+      "status": "selesai",
+      "ms": 18085
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "jadi buat ktp hilang bisa diurus dari semarang atau harus ke surabaya kak? surat kehilangan polisi perlu ga?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawaban sebelumnya belum menjelaskan cara mengurus KTP hilang dari Semarang atau kebutuhan surat kehilangan."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 18,
+          "at": "2026-11-10T06:44:15.244Z",
+          "chainHead": "06249970f1798ea55ef449706ca4553dbef6d5b2177c306715a24773c15f566f"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 19,
+          "at": "2026-11-10T06:44:21.526Z",
+          "chainHead": "aab55fc30997c3bd24224aab904a7749f0c6dea8f87a918aab389d4d3e88fdba"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 20,
+          "at": "2026-11-10T06:44:27.482Z",
+          "chainHead": "25300e3ef8cd19ca5acbcbb04f6e7c2b6c087317f6da829eb4e59cc851d8b8e3"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 21,
+          "at": "2026-11-10T06:44:32.739Z",
+          "chainHead": "655a49397388fd9134bd975ae68c083866d9eb9fce90afe50cdf4bc4c8dc5988"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation - katalog layanan publik - Pengajuan KTP Elektronik",
+                  "kutipanPersis": "Layanan Pengajuan KTP Elektronik tersedia di Klampid New Generation Dispendukcapil Kota Surabaya, kategori Pendaftaran Penduduk",
+                  "perluDicekUlang": false,
+                  "refId": "klampid-katalog#daftar-pengajuan-ktp-elektronik",
+                  "textFragmentUrl": "https://wargaklampid-dispendukcapil.surabaya.go.id/#:~:text=Layanan%20Pengajuan%20KTP%20Elektronik,Surabaya%2C%20kategori%20Pendaftaran%20Penduduk",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+                  "verifiedAt": "2026-11-08T18:46:54.353Z"
+                }
+              ],
+              "teks": "Klampid Dispendukcapil Kota Surabaya mencantumkan layanan Pengajuan KTP Elektronik."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 22,
+          "at": "2026-11-10T06:44:32.740Z",
+          "chainHead": "440534f75b8de58baec6833db5037ebe579d1d003c41a5dd422ec99a4599af01"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_3b16b7c4-b4ed-44c2-8cb6-7df51b891b5f",
+          "version": 6,
+          "type": "done",
+          "seq": 23,
+          "at": "2026-11-10T06:44:32.742Z",
+          "chainHead": "5524e875a9398bcc1efa2d1176a4b2531a70f31debb6bb06fbfe21924f288336"
+        }
+      ],
+      "status": "selesai",
+      "ms": 17509
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "kak, itu belum jawab pertanyaanku 😅 aku harus hubungi siapa buat mastiin bisa urus dari semarang dan perlu surat kehilangan atau enggak?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawaban belum menjelaskan cara mengurus KTP hilang atau ke mana harus memastikan persyaratannya."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 24,
+          "at": "2026-11-10T06:44:37.851Z",
+          "chainHead": "d126c63cab47bf7b374ea5726a01e70ae0c7ee6ed2c3167cd9d772766daaef8c"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 25,
+          "at": "2026-11-10T06:44:41.417Z",
+          "chainHead": "875cbc223080fb8b13e88769ba012b800edb5ab2fa04ff0a5966dabf50712ffd"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 26,
+          "at": "2026-11-10T06:44:45.401Z",
+          "chainHead": "149188b76ae2852a9ba0bed1ca43cc1a5bfe54785fb883216513a3bf6479c553"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 27,
+          "at": "2026-11-10T06:44:50.237Z",
+          "chainHead": "4f54a6f31d59f9a88758f7d2f7200ab5ebb4e3f2116f9ea730b7f3a536544c38"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation - katalog layanan publik - Pengajuan KTP Elektronik",
+                  "kutipanPersis": "Layanan Pengajuan KTP Elektronik tersedia di Klampid New Generation Dispendukcapil Kota Surabaya, kategori Pendaftaran Penduduk",
+                  "perluDicekUlang": false,
+                  "refId": "klampid-katalog#daftar-pengajuan-ktp-elektronik",
+                  "textFragmentUrl": "https://wargaklampid-dispendukcapil.surabaya.go.id/#:~:text=Layanan%20Pengajuan%20KTP%20Elektronik,Surabaya%2C%20kategori%20Pendaftaran%20Penduduk",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+                  "verifiedAt": "2026-11-08T18:46:54.353Z"
+                }
+              ],
+              "teks": "Dispendukcapil Kota Surabaya menyediakan layanan Pengajuan KTP Elektronik melalui Klampid New Generation."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 28,
+          "at": "2026-11-10T06:44:50.238Z",
+          "chainHead": "86ab21a8939ddd720e859d1e5bdddb71a3c7c18b292d8db4de295c69c74f248b"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_7c7b12bf-16c4-4666-a982-80ae1a3c9dff",
+          "version": 7,
+          "type": "done",
+          "seq": 29,
+          "at": "2026-11-10T06:44:50.240Z",
+          "chainHead": "5da20ff7282b65f940917bb172d684dc808d3eb91cb79dbfae45c113040025cb"
+        }
+      ],
+      "status": "selesai",
+      "ms": 12397
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "kak, aku udah tanya beberapa kali tapi jawabannya sama terus 😅 ada nomor atau kontak dispendukcapil surabaya yang bisa aku hubungi ga?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawabannya belum memberi kontak atau menjawab cara mengurus KTP hilang dari Semarang."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 30,
+          "at": "2026-11-10T06:44:53.896Z",
+          "chainHead": "8a57d0a913ec70b41129233c35c44c7cbbc1169dda1383278c81596492eb6ddf"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 31,
+          "at": "2026-11-10T06:45:07.148Z",
+          "chainHead": "6d40048d452cfd6d6385492e95aa3f2bf29a329bc06e1ac4beb4d1d65af1f049"
+        },
+        {
+          "delta": "Maaf ya, Kak, aku tadi berulang kali belum menjawab pertanyaanmu. **Aku belum menemukan nomor telepon atau WhatsApp Dispendukcapil Surabaya yang bisa kupastikan resmi**, jadi aku tidak mau memberikan nomor yang belum terverifikasi.\n\nUntuk memastikannya, Kakak bisa mencari **kontak pelayanan Dispendukcapil Kota Surabaya** melalui kanal resmi Pemerintah Kota Surabaya, lalu tanyakan:\n\n> “KTP saya terdaftar di Surabaya dan hilang di Semarang. Apakah penggantian dan pengambilan KTP bisa dilakukan tanpa kembali ke Surabaya? Apakah perlu surat kehilangan polisi?”\n\nSumber yang kutemukan hanya memastikan bahwa Klampid punya layanan pengajuan KTP elektronik; belum menjawab dua pertanyaan itu. Layanan Helpdesk yang tercantum di Klampid pun khusus gangguan aplikasi dan jaringan, bukan informasi persyaratan. [Sumber: katalog Klampid, Pengajuan KTP Elektronik dan Helpdesk]\n\nJangan kirim NIK atau data pribadi di chat ini ya, Kak.",
+          "type": "assistant_text",
+          "seq": 32,
+          "at": "2026-11-10T06:45:13.893Z",
+          "chainHead": "76cab0457284fe4c6d4043e0ab1b770d17a38b9778dfb3a9b59e797f6737906d"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_c499688b-a906-4265-bd57-7c0bf2b347af",
+          "version": 8,
+          "type": "done",
+          "seq": 33,
+          "at": "2026-11-10T06:45:13.895Z",
+          "chainHead": "24845db8305a18c0cfd5e699194e4b7a68a5f0d096d1d9d3f88742bd0fd33480"
+        }
+      ],
+      "status": "selesai",
+      "ms": 20003
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "oke kak, kanal resmi pemkot surabaya yang bisa aku cek itu situsnya apa ya?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya masih perlu tahu situs resmi yang harus dibuka untuk mencari kontak."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 34,
+          "at": "2026-11-10T06:45:17.487Z",
+          "chainHead": "b3c0a09d60c7801ff2a1f352acf9ee3294495a0d9d3a15e435696c5897f1c0bf"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 35,
+          "at": "2026-11-10T06:45:19.980Z",
+          "chainHead": "4eb7456b9d35df6572c93634911b4e15d1f5f69ddceee4327bb981a873887188"
+        },
+        {
+          "delta": "Situs resmi Pemerintah Kota Surabaya adalah **[surabaya.go.id](https://www.surabaya.go.id)**, Kak. Di sana, Kakak bisa mencari kontak **Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya**.\n\nMaaf ya, aku belum bisa memastikan nomor kontaknya dari sumber yang kutemukan, jadi sebaiknya cek kontak terbaru langsung di situs tersebut.",
+          "type": "assistant_text",
+          "seq": 36,
+          "at": "2026-11-10T06:45:24.042Z",
+          "chainHead": "d0fc752af069502920b5340d358a7c04525e18a48bee89bc26f4b563ab6822be"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_0b0fb8de-8cc2-4b31-9df7-04bac609135e",
+          "version": 9,
+          "type": "done",
+          "seq": 37,
+          "at": "2026-11-10T06:45:24.044Z",
+          "chainHead": "d4da402ee304138040f0676dd9476d2c16b1752a04eb93d95fe0c83721d384ac"
+        }
+      ],
+      "status": "selesai",
+      "ms": 6562
+    }
+  ],
+  "layar": [
+    "Warga: ktp ku ilang kak pas di angkot, aku sekarang kuliah di semarang. gmn ya",
+    "Urusin: Waduh, semoga segera bisa diurus ya. KTP yang hilang itu **tercatat beralamat di Surabaya atau daerah lain**? Ini membantu aku cek cara pengurusannya, meski kamu sekarang kuliah di Semarang.\n\nCukup sebutkan kabupaten atau kotanya saja, tidak perlu kirim NIK atau alamat lengkap di chat.",
+    "Warga: ktpku terdaftar di kota surabaya kak. bisa ngurus dari semarang aja ga ya?",
+    "[JAWABAN BERSUMBER]\n  - Dispendukcapil Kota Surabaya menyediakan layanan Pengajuan KTP Elektronik melalui Klampid New Generation.\n    (sumber: Klampid New Generation - katalog layanan publik - Pengajuan KTP Elektronik — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)\n  Keputusan ada di petugas instansi terkait.",
+    "Warga: bisa diurus dari semarang aja lewat klampid itu ga kak? perlu surat kehilangan polisi juga?",
+    "[JAWABAN BERSUMBER]\n  - Terverifikasi: Klampid New Generation Surabaya menyediakan layanan Pengajuan KTP Elektronik.\n    (sumber: Klampid New Generation - katalog layanan publik - Pengajuan KTP Elektronik — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)\n  - Terverifikasi: Layanan Pengajuan Cetak KTP dalam katalog dikhususkan bagi orang yang baru melakukan perekaman, lansia, dan penduduk pasca pindah datang.\n    (sumber: Klampid New Generation - katalog layanan publik - Pengajuan Cetak KTP — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)\n  Keputusan ada di petugas instansi terkait.",
+    "Warga: jadi buat ktp hilang bisa diurus dari semarang atau harus ke surabaya kak? surat kehilangan polisi perlu ga?",
+    "[JAWABAN BERSUMBER]\n  - Klampid Dispendukcapil Kota Surabaya mencantumkan layanan Pengajuan KTP Elektronik.\n    (sumber: Klampid New Generation - katalog layanan publik - Pengajuan KTP Elektronik — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)\n  Keputusan ada di petugas instansi terkait.",
+    "Warga: kak, itu belum jawab pertanyaanku 😅 aku harus hubungi siapa buat mastiin bisa urus dari semarang dan perlu surat kehilangan atau enggak?",
+    "[JAWABAN BERSUMBER]\n  - Dispendukcapil Kota Surabaya menyediakan layanan Pengajuan KTP Elektronik melalui Klampid New Generation.\n    (sumber: Klampid New Generation - katalog layanan publik - Pengajuan KTP Elektronik — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)\n  Keputusan ada di petugas instansi terkait.",
+    "Warga: kak, aku udah tanya beberapa kali tapi jawabannya sama terus 😅 ada nomor atau kontak dispendukcapil surabaya yang bisa aku hubungi ga?",
+    "Urusin: Maaf ya, Kak, aku tadi berulang kali belum menjawab pertanyaanmu. **Aku belum menemukan nomor telepon atau WhatsApp Dispendukcapil Surabaya yang bisa kupastikan resmi**, jadi aku tidak mau memberikan nomor yang belum terverifikasi.\n\nUntuk memastikannya, Kakak bisa mencari **kontak pelayanan Dispendukcapil Kota Surabaya** melalui kanal resmi Pemerintah Kota Surabaya, lalu tanyakan:\n\n> “KTP saya terdaftar di Surabaya dan hilang di Semarang. Apakah penggantian dan pengambilan KTP bisa dilakukan tanpa kembali ke Surabaya? Apakah perlu surat kehilangan polisi?”\n\nSumber yang kutemukan hanya memastikan bahwa Klampid punya layanan pengajuan KTP elektronik; belum menjawab dua pertanyaan itu. Layanan Helpdesk yang tercantum di Klampid pun khusus gangguan aplikasi dan jaringan, bukan informasi persyaratan. [Sumber: katalog Klampid, Pengajuan KTP Elektronik dan Helpdesk]\n\nJangan kirim NIK atau data pribadi di chat ini ya, Kak.",
+    "Warga: oke kak, kanal resmi pemkot surabaya yang bisa aku cek itu situsnya apa ya?",
+    "Urusin: Situs resmi Pemerintah Kota Surabaya adalah **[surabaya.go.id](https://www.surabaya.go.id)**, Kak. Di sana, Kakak bisa mencari kontak **Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya**.\n\nMaaf ya, aku belum bisa memastikan nomor kontaknya dari sumber yang kutemukan, jadi sebaiknya cek kontak terbaru langsung di situs tersebut."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": true,
+    "catatan": "Sudah tahu situs resmi yang bisa dicek untuk mencari kontak Dispendukcapil Surabaya."
+  },
+  "ms": 139445,
+  "giliranWarga": 7,
+  "nilai": {
+    "persona": "p03-ktp-hilang-surabaya-di-semarang",
+    "judul": "Mahasiswa KTP Kota Surabaya tinggal di Semarang, KTP-el hilang",
+    "urusanId": "u_b075aa52e62a9a8ae9d792b7727d90ca",
+    "wilayahPerangkat": "3578",
+    "kodeUrusan": "3578",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": true,
+      "catatan": "Sudah tahu situs resmi yang bisa dicek untuk mencari kontak Dispendukcapil Surabaya."
+    },
+    "giliranWarga": 7,
+    "ms": 139445,
+    "url": [
+      "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+      "https://www.surabaya.go.id"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": true,
+        "bukti": "warga menyebut wilayah sebelum rencana"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "tanpa galat"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": true,
+        "bukti": "KTP yang hilang itu **tercatat beralamat di Surabaya atau daerah lain**?"
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "Di sana, Kakak bisa mencari kontak **Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya**."
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "(tidak ada jawaban persyaratan surat kehilangan, KK, dan formulir F-1.02)"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "Situs resmi Pemerintah Kota Surabaya adalah **[surabaya.go.id](https://www.surabaya.go.id)**"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "(tidak ada tawaran Browser Pendamping atau klaim pengiriman)"
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "Jangan kirim NIK atau data pribadi di chat ini ya, Kak."
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "Maaf ya, Kak, aku tadi berulang kali belum menjawab pertanyaanmu."
+      },
+      "h": {
+        "lulus": false,
+        "bukti": "Di sana, Kakak bisa mencari kontak **Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya**."
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "Maaf ya, Kak, aku tadi berulang kali belum menjawab pertanyaanmu."
+      },
+      "ringkasan": "Urusin memastikan wilayah dan memberikan situs resmi, tetapi tidak menjawab persyaratan yang berulang kali ditanyakan. Percakapan berakhir dengan warga diminta mencari kontak sendiri, sementara jawaban tentang surat kehilangan dan pilihan layanan luar domisili tetap belum diberikan.",
+      "cacat": [
+        {
+          "judul": "Persyaratan tidak dijawab",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "(tidak ada jawaban persyaratan surat kehilangan, KK, dan formulir F-1.02)"
+        },
+        {
+          "judul": "Pilihan layanan luar domisili tidak dijelaskan",
+          "kriteria": "c",
+          "keparahan": "sedang",
+          "bukti": "Sumber yang kutemukan hanya memastikan bahwa Klampid punya layanan pengajuan KTP elektronik; belum menjawab dua pertanyaan itu."
+        },
+        {
+          "judul": "Langkah akhir masih menyisakan pencarian kontak",
+          "kriteria": "h",
+          "keparahan": "sedang",
+          "bukti": "Di sana, Kakak bisa mencari kontak **Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya**."
+        },
+        {
+          "judul": "Jawaban berulang menyebabkan kebuntuan",
+          "kriteria": "i",
+          "keparahan": "tinggi",
+          "bukti": "Maaf ya, Kak, aku tadi berulang kali belum menjawab pertanyaanmu."
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": true,
+        "bukti": "otomatis: warga menyebut wilayah sebelum rencana | juri: KTP yang hilang itu **tercatat beralamat di Surabaya atau daerah lain**?",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "warga menyebut wilayah sebelum rencana"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "KTP yang hilang itu **tercatat beralamat di Surabaya atau daerah lain**?"
+          }
+        ]
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "juri: Di sana, Kakak bisa mencari kontak **Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya**.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Di sana, Kakak bisa mencari kontak **Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya**."
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: (tidak ada jawaban persyaratan surat kehilangan, KK, dan formulir F-1.02)",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "(tidak ada jawaban persyaratan surat kehilangan, KK, dan formulir F-1.02)"
+          }
+        ]
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada tautan/nama wilayah lain | juri: Situs resmi Pemerintah Kota Surabaya adalah **[surabaya.go.id](https://www.surabaya.go.id)**",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Situs resmi Pemerintah Kota Surabaya adalah **[surabaya.go.id](https://www.surabaya.go.id)**"
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada tawaran Browser Pendamping atau klaim pengiriman)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada tawaran Browser Pendamping atau klaim pengiriman)"
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: Jangan kirim NIK atau data pribadi di chat ini ya, Kak.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Jangan kirim NIK atau data pribadi di chat ini ya, Kak."
+          }
+        ]
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "juri: Maaf ya, Kak, aku tadi berulang kali belum menjawab pertanyaanmu.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Maaf ya, Kak, aku tadi berulang kali belum menjawab pertanyaanmu."
+          }
+        ]
+      },
+      "h": {
+        "lulus": false,
+        "bukti": "juri: Di sana, Kakak bisa mencari kontak **Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya**.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Di sana, Kakak bisa mencari kontak **Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya**."
+          }
+        ]
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "juri: Maaf ya, Kak, aku tadi berulang kali belum menjawab pertanyaanmu.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tanpa galat"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Maaf ya, Kak, aku tadi berulang kali belum menjawab pertanyaanmu."
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 116919,
+        "tokensOut": 1971,
+        "costIdr": 0,
+        "panggilanLlm": 15
+      },
+      "simulator": {
+        "panggilan": 7,
+        "tokensIn": 21787,
+        "tokensOut": 492
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 5616,
+        "tokensOut": 708
+      }
+    }
+  }
+}

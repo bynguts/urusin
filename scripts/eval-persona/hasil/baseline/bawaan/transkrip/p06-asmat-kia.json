@@ -1,0 +1,559 @@
+{
+  "persona": "p06-asmat-kia",
+  "urusanId": "u_d6289fff44f6a690c7cefd1ecdbb7ebb",
+  "wilayahPerangkat": "3312",
+  "kodeUrusan": "3312",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Selamat siang. Sa mau bikin kartu identitas anak untuk anak sa yang umur 7 tahun. Bisa?",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": "semi",
+          "version": 2,
+          "type": "state",
+          "seq": 1,
+          "at": "2026-11-10T06:36:54.624Z",
+          "chainHead": "43dacc8f4d3dc720e5be398d9976bbcf96efe5dbd4863a2d63f197ea257e0fbf"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 2,
+          "at": "2026-11-10T06:36:54.624Z",
+          "chainHead": "e4a01f383dcddcf4c0c2d97b672f8411dc41aa5fb75544f5aa26dda4b79ca64f"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T06:37:03.925Z",
+          "chainHead": "628f90463e94adbb6b0f114d9cea4c46601cee4196ff05c2b0f8763ded753f39"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 4,
+          "at": "2026-11-10T06:37:07.863Z",
+          "chainHead": "de143c2fffb96a4cc0a4ce084910dec9cdfa9a29bbf223a16e42a040ea6b76bc"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 5,
+          "at": "2026-11-10T06:37:22.657Z",
+          "chainHead": "d5bec639da2710537f111808d8262a85e88acdb5ac34344f7f60ba9177747f04"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA) BARU, PERUBAHAN DATA, HILANG DAN RUSAK › persyaratan",
+                  "kutipanPersis": "Foto copy Kartu Keluarga terbaru;\n2. Foto copy Kutipan Akta Kelahiran",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-kia#0",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak#:~:text=Foto%20copy%20Kartu%20Keluarga%20terbaru%3B%202.%20Foto%20copy%20Kutipan%20Akta%20Kelahiran",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak",
+                  "verifiedAt": "2026-11-08T18:48:30.491Z"
+                }
+              ],
+              "teks": "Siapkan fotokopi Kartu Keluarga terbaru dan fotokopi kutipan akta kelahiran."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA) BARU, PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "Tatap muka langsung\na. Pemohon menyerahkan berkas persyaratan",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-kia#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak#:~:text=Tatap%20muka%20langsung%20a.%20Pemohon%20menyerahkan%20berkas%20persyaratan",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak",
+                  "verifiedAt": "2026-11-08T18:48:30.491Z"
+                },
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA) BARU, PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "Daring (Online)\na. Pemohon mengirim berkas persyaratan secara Online",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-kia#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak#:~:text=Daring%20%28Online%29%20a.%20Pemohon%20mengirim%20berkas%20persyaratan%20secara%20Online",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak",
+                  "verifiedAt": "2026-11-08T18:48:30.491Z"
+                }
+              ],
+              "teks": "Permohonan dapat dilakukan secara tatap muka dengan menyerahkan berkas persyaratan, atau secara daring dengan mengirimkan berkas secara online."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA) BARU, PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "Front Office meneliti kelengkapan berkas persyaratan. Jika sesuai dilanjutkan ke proses input data. Jika tidak sesuai, berkas dikembalikan kepada pemohon",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-kia#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak#:~:text=Front%20Office%20meneliti%20kelengkapan,berkas%20dikembalikan%20kepada%20pemohon",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak",
+                  "verifiedAt": "2026-11-08T18:48:30.491Z"
+                }
+              ],
+              "teks": "Petugas memeriksa berkas; jika sesuai, data diproses, dan jika tidak sesuai, berkas dikembalikan."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA) BARU, PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "Bagian Produksi mencetak Kartu Identitas Anak (KIA) dan melakukan update status menjadi sudah dicetak/selesai. Pemohon mendapatkan SMS pengambilan;\ng. Petugas Pengambilan menyerahkan Kartu Identitas Anak (KIA) kepada pemohon",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-kia#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak#:~:text=Bagian%20Produksi%20mencetak%20Kartu,Anak%20%28KIA%29%20kepada%20pemohon",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak",
+                  "verifiedAt": "2026-11-08T18:48:30.491Z"
+                }
+              ],
+              "teks": "Untuk permohonan tatap muka, setelah KIA dicetak pemohon mendapat SMS pengambilan, lalu petugas menyerahkan KIA kepada pemohon."
+            }
+          ],
+          "klaimDibuang": 2,
+          "type": "grounded_answer",
+          "seq": 6,
+          "at": "2026-11-10T06:37:22.657Z",
+          "chainHead": "ce06d55616dd3ad139880413f0282b84f04984b27dfca0c98325390fc48ee400"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_38a3f386-96d2-4314-b698-3a057ab2b750",
+          "version": 3,
+          "type": "done",
+          "seq": 7,
+          "at": "2026-11-10T06:37:22.664Z",
+          "chainHead": "54358bbb8ed9d6041de10f90ede51016790a3f910b7d58d4c63e2db828d9911e"
+        }
+      ],
+      "status": "selesai",
+      "ms": 28052
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Itu untuk Wonogiri kah? Sa di Agats, Kabupaten Asmat. Kalau di sini urusnya di mana dan bawa apa saja? Kantor jauh, harus naik perahu, sinyal juga lemah.",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawaban memakai sumber daerah lain dan belum menjelaskan langkah yang berlaku di Asmat."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 8,
+          "at": "2026-11-10T06:37:26.412Z",
+          "chainHead": "3163d1f6ebb679ad6dac42659c1da5c2bfc9a0d007ad9adeb410e271db3be988"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 9,
+          "at": "2026-11-10T06:37:29.149Z",
+          "chainHead": "77db30457dcd29b3b21706f250dec7208c649a89735dc2498db324a3a22b5327"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 10,
+          "at": "2026-11-10T06:37:33.150Z",
+          "chainHead": "bd5e7747031733b03034122faa79a01c31e9b62d89a05630dbb196db4cdc3aa9"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 11,
+          "at": "2026-11-10T06:37:36.658Z",
+          "chainHead": "7427e337ab2288d57ddbbdadab7bc5a465bdd0eb01d3570a5c49a62592682320"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T06:37:39.812Z",
+          "chainHead": "7062ef4d97ecfba67fccd7173c53b5ce6238756ba2b6ae63eca1d130b4497f8a"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+              "url": "https://telunjuksakti.wonogirikab.go.id/"
+            },
+            {
+              "nama": "Kabupaten Wonogiri",
+              "url": "https://telunjuksakti.wonogirikab.go.id"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 13,
+          "at": "2026-11-10T06:37:39.813Z",
+          "chainHead": "4aff7e38011cb2777700502481302eaefc739221198aa1b7e690db28b0d0ea5b"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_0127ca02-2806-4be7-8b55-c3631af6f15b",
+          "version": 4,
+          "type": "done",
+          "seq": 14,
+          "at": "2026-11-10T06:37:39.817Z",
+          "chainHead": "ec15c1567e3d2450c4b45fd80fac66db8755b82a3efbbe0c732dfa3a5f2287f5"
+        }
+      ],
+      "status": "selesai",
+      "ms": 13412
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Itu masih Wonogiri, sa di Agats, Kabupaten Asmat. Ada kontak atau tempat tanya Disdukcapil Asmat kah? Sa perlu tahu berkas apa saja sebelum naik perahu ke sana.",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Arahan masih ke Wonogiri dan belum menjawab tempat serta persyaratan di Asmat."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 15,
+          "at": "2026-11-10T06:37:43.383Z",
+          "chainHead": "934b02808987bf69b366592136cbe5b97c72c15453ed59dd490de96f9c3359b0"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 16,
+          "at": "2026-11-10T06:37:47.712Z",
+          "chainHead": "48bb73e14b6e16d4237e1e85021f29766df3785b17b9f861c40dd6f7a3531a26"
+        },
+        {
+          "delta": "Maaf, benar: Ibu/Bapak di **Agats, Kabupaten Asmat**, bukan Wonogiri. Informasi Wonogiri tadi tidak boleh saya pastikan berlaku di Asmat.\n\nSaya belum menemukan **nomor kontak atau alamat Disdukcapil Asmat yang terverifikasi**. Supaya tidak sia-sia naik perahu, coba tanyakan dulu kepada **aparat kampung atau kantor distrik setempat** apakah mereka punya kontak resmi Disdukcapil Asmat atau informasi pelayanan keliling.\n\nSaat mendapat kontaknya, tanyakan:\n- Di mana tempat mengurus KIA dan kapan buka?\n- Untuk anak usia 7 tahun, berkas dan foto apa yang harus dibawa?\n- Apakah anak harus ikut hadir, dan apakah KIA bisa selesai pada hari yang sama?\n- Apakah ada pelayanan keliling yang lebih dekat?\n\nSaya belum bisa memastikan daftar berkas khusus Asmat, jadi sebaiknya jangan mengandalkan daftar Wonogiri tadi sebelum dikonfirmasi.",
+          "type": "assistant_text",
+          "seq": 17,
+          "at": "2026-11-10T06:37:54.914Z",
+          "chainHead": "558cb978caa2ff2cc7e3bb2f4b0fda7d9a407ed2f4791f352c5d9f918ccd1aae"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_d0e421f1-17ef-4305-bda8-07398713eff8",
+          "version": 5,
+          "type": "done",
+          "seq": 18,
+          "at": "2026-11-10T06:37:54.916Z",
+          "chainHead": "8ecda34fcd703579b5c0a69a78b41a5c0b0b7e5394c25640c045f8409e9b0d9c"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11538
+    }
+  ],
+  "layar": [
+    "Warga: Selamat siang. Sa mau bikin kartu identitas anak untuk anak sa yang umur 7 tahun. Bisa?",
+    "[JAWABAN BERSUMBER]\n  - Siapkan fotokopi Kartu Keluarga terbaru dan fotokopi kutipan akta kelahiran.\n    (sumber: Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA) BARU, PERUBAHAN DATA, HILANG DAN RUSAK › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak)\n  - Permohonan dapat dilakukan secara tatap muka dengan menyerahkan berkas persyaratan, atau secara daring dengan mengirimkan berkas secara online.\n    (sumber: Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA) BARU, PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak; Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA) BARU, PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak)\n  - Petugas memeriksa berkas; jika sesuai, data diproses, dan jika tidak sesuai, berkas dikembalikan.\n    (sumber: Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA) BARU, PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak)\n  - Untuk permohonan tatap muka, setelah KIA dicetak pemohon mendapat SMS pengambilan, lalu petugas menyerahkan KIA kepada pemohon.\n    (sumber: Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA) BARU, PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak)\n  (2 klaim dibuang karena kutipan tidak terverifikasi)\n  Keputusan ada di petugas instansi terkait.",
+    "Warga: Itu untuk Wonogiri kah? Sa di Agats, Kabupaten Asmat. Kalau di sini urusnya di mana dan bawa apa saja? Kantor jauh, harus naik perahu, sinyal juga lemah.",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/\n  - Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id",
+    "Warga: Itu masih Wonogiri, sa di Agats, Kabupaten Asmat. Ada kontak atau tempat tanya Disdukcapil Asmat kah? Sa perlu tahu berkas apa saja sebelum naik perahu ke sana.",
+    "Urusin: Maaf, benar: Ibu/Bapak di **Agats, Kabupaten Asmat**, bukan Wonogiri. Informasi Wonogiri tadi tidak boleh saya pastikan berlaku di Asmat.\n\nSaya belum menemukan **nomor kontak atau alamat Disdukcapil Asmat yang terverifikasi**. Supaya tidak sia-sia naik perahu, coba tanyakan dulu kepada **aparat kampung atau kantor distrik setempat** apakah mereka punya kontak resmi Disdukcapil Asmat atau informasi pelayanan keliling.\n\nSaat mendapat kontaknya, tanyakan:\n- Di mana tempat mengurus KIA dan kapan buka?\n- Untuk anak usia 7 tahun, berkas dan foto apa yang harus dibawa?\n- Apakah anak harus ikut hadir, dan apakah KIA bisa selesai pada hari yang sama?\n- Apakah ada pelayanan keliling yang lebih dekat?\n\nSaya belum bisa memastikan daftar berkas khusus Asmat, jadi sebaiknya jangan mengandalkan daftar Wonogiri tadi sebelum dikonfirmasi."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": true,
+    "catatan": "Sudah ada langkah konkret untuk bertanya ke aparat kampung atau kantor distrik sebelum naik perahu."
+  },
+  "ms": 63336,
+  "giliranWarga": 3,
+  "nilai": {
+    "persona": "p06-asmat-kia",
+    "judul": "Orang tua di Kab. Asmat (tanpa data registry): KIA anak",
+    "urusanId": "u_d6289fff44f6a690c7cefd1ecdbb7ebb",
+    "wilayahPerangkat": "3312",
+    "kodeUrusan": "3312",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": true,
+      "catatan": "Sudah ada langkah konkret untuk bertanya ke aparat kampung atau kantor distrik sebelum naik perahu."
+    },
+    "giliranWarga": 3,
+    "ms": 63336,
+    "url": [
+      "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identitas-anak-kia-baru-perubahan-data-hilang-dan-rusak",
+      "https://telunjuksakti.wonogirikab.go.id/",
+      "https://telunjuksakti.wonogirikab.go.id"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": false,
+        "bukti": "rencana/jawaban di langkah 2 sebelum wilayah warga diketahui"
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "bocor wilayah wonogiri: \"Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identit\"; wonogiri: \"Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA)\""
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "tanpa galat"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": false,
+        "bukti": "Siapkan fotokopi Kartu Keluarga terbaru dan fotokopi kutipan akta kelahiran."
+      },
+      "b": {
+        "lulus": false,
+        "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri"
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "Untuk anak usia 7 tahun, berkas dan foto apa yang harus dibawa?"
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "(tidak ada tawaran Browser Pendamping atau janji pengisian dan pengiriman)"
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "(tidak ada permintaan atau pengungkapan data pribadi dan tidak ada klaim pengiriman)"
+      },
+      "g": {
+        "lulus": false,
+        "bukti": "Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak"
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "coba tanyakan dulu kepada **aparat kampung atau kantor distrik setempat**"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "apakah mereka punya kontak resmi Disdukcapil Asmat atau informasi pelayanan keliling"
+      },
+      "ringkasan": "Urusin memakai sumber dan mengarahkan warga Asmat ke Wonogiri sebelum akhirnya mengakui kesalahan. Langkah bertanya ke aparat setempat cukup konkret, tetapi persyaratan nasional untuk anak usia 7 tahun dan sumber resminya tetap tidak diberikan.",
+      "cacat": [
+        {
+          "judul": "Persyaratan diberikan sebelum wilayah ditanyakan",
+          "kriteria": "a",
+          "keparahan": "tinggi",
+          "bukti": "Siapkan fotokopi Kartu Keluarga terbaru dan fotokopi kutipan akta kelahiran."
+        },
+        {
+          "judul": "Warga Asmat diarahkan ke instansi Wonogiri",
+          "kriteria": "b",
+          "keparahan": "tinggi",
+          "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri"
+        },
+        {
+          "judul": "Persyaratan usia tujuh tahun tidak dilengkapi dan disumberi dengan aturan nasional",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "Untuk anak usia 7 tahun, berkas dan foto apa yang harus dibawa?"
+        },
+        {
+          "judul": "Kanal Wonogiri diberikan untuk warga Asmat",
+          "kriteria": "d",
+          "keparahan": "tinggi",
+          "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/"
+        },
+        {
+          "judul": "Kutipan sumber panjang dan berulang",
+          "kriteria": "g",
+          "keparahan": "rendah",
+          "bukti": "Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak"
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": false,
+        "bukti": "otomatis: rencana/jawaban di langkah 2 sebelum wilayah warga diketahui | juri: Siapkan fotokopi Kartu Keluarga terbaru dan fotokopi kutipan akta kelahiran.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": false,
+            "bukti": "rencana/jawaban di langkah 2 sebelum wilayah warga diketahui"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Siapkan fotokopi Kartu Keluarga terbaru dan fotokopi kutipan akta kelahiran."
+          }
+        ]
+      },
+      "b": {
+        "lulus": false,
+        "bukti": "juri: Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri"
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: Untuk anak usia 7 tahun, berkas dan foto apa yang harus dibawa?",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Untuk anak usia 7 tahun, berkas dan foto apa yang harus dibawa?"
+          }
+        ]
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "otomatis: bocor wilayah wonogiri: \"Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identit\"; wonogiri: \"Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA)\" | juri: Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": false,
+            "bukti": "bocor wilayah wonogiri: \"Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-identit\"; wonogiri: \"Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU IDENTITAS ANAK (KIA)\""
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/"
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada tawaran Browser Pendamping atau janji pengisian dan pengiriman)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada tawaran Browser Pendamping atau janji pengisian dan pengiriman)"
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: (tidak ada permintaan atau pengungkapan data pribadi dan tidak ada klaim pengiriman)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada permintaan atau pengungkapan data pribadi dan tidak ada klaim pengiriman)"
+          }
+        ]
+      },
+      "g": {
+        "lulus": false,
+        "bukti": "juri: Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Pelayanan Penerbitan Kartu Identitas Anak (Kia) Baru, Perubahan Data, Hilang Dan Rusak"
+          }
+        ]
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "juri: coba tanyakan dulu kepada **aparat kampung atau kantor distrik setempat**",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "coba tanyakan dulu kepada **aparat kampung atau kantor distrik setempat**"
+          }
+        ]
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "otomatis: tanpa galat | juri: apakah mereka punya kontak resmi Disdukcapil Asmat atau informasi pelayanan keliling",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tanpa galat"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "apakah mereka punya kontak resmi Disdukcapil Asmat atau informasi pelayanan keliling"
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 52696,
+        "tokensOut": 1344,
+        "costIdr": 0,
+        "panggilanLlm": 8
+      },
+      "simulator": {
+        "panggilan": 3,
+        "tokensIn": 10947,
+        "tokensOut": 225
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 6073,
+        "tokensOut": 853
+      }
+    }
+  }
+}
