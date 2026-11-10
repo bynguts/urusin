@@ -4,6 +4,7 @@ import type { GateRule, UrusanState } from '@urusin/contracts';
 import type { QuotaStatus } from './quota.js';
 import { paramsHash, type HarnessStore, type UrusanRow } from './store.js';
 import { CONFIRMATION_FIELD, modelFacingSchema, type ToolDef, type ToolRegistry } from './tools.js';
+import { wilayahBelumSiap, wilayahUrusan } from './wilayah.js';
 
 export type GateInput = {
   urusan: UrusanRow;
@@ -57,6 +58,12 @@ export class PolicyGate {
     // (1) tool diizinkan di state ini.
     if (!tool.allowedStates.includes(input.state)) {
       return deny('TOOL_NOT_ALLOWED_IN_STATE', `tool ini tidak tersedia pada tahap ${input.state}`);
+    }
+
+    // (1b) gerbang wilayah: rencana tidak boleh disusun sebelum wilayah KTP dipastikan warga (dikunci di kode).
+    if (tool.butuhWilayah) {
+      const belum = wilayahBelumSiap(input.urusan.jenis, wilayahUrusan(this.store, input.urusan));
+      if (belum) return deny('WILAYAH_BELUM_DITETAPKAN', belum);
     }
 
     // (2) lapis 2 PII: tolak placeholder/PII di SEMUA string yang ditulis model, sebelum zod.

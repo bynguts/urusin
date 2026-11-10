@@ -41,6 +41,8 @@ export type ToolContext = {
   deps: ToolDeps;
   /** Nonce spotlighting untuk turn ini. */
   nonce: string;
+  /** Pesan warga turn ini (sudah diredaksi): bukti bahwa warga sendiri menyebut/membenarkan sesuatu. */
+  pesanWarga: string;
   signal: AbortSignal;
 };
 
@@ -56,6 +58,8 @@ export type ToolResult = {
   execution?: ExecutionRequest;
   /** Transisi state yang diminta tool; diterapkan harness lewat CAS dan state machine. */
   nextState?: UrusanState;
+  /** Wilayah yang ditetapkan tool (`wilayah__tetapkan`); diterapkan harness lewat CAS + event audit. */
+  wilayah?: { ktp: string; domisili?: string | null; tujuan?: string | null };
   /** Akhiri turn setelah tool ini (mis. jawaban bersumber sudah dikirim ke warga). */
   endTurn?: boolean;
   /** Pemakaian token dari panggilan LLM bersarang di dalam tool (untuk meter biaya). */
@@ -71,6 +75,8 @@ export type ToolDef<S extends z.ZodType = z.ZodType> = {
   allowedStates: readonly UrusanState[];
   /** Origin situs luar yang disentuh (wajib terdaftar di registry domain resmi untuk tool write). */
   origin?: (args: z.infer<S>, ctx: { urusan: UrusanRow }) => string | undefined;
+  /** Gerbang wilayah: tool ditolak (WILAYAH_BELUM_DITETAPKAN) sampai wilayah KTP (dan tujuan pindah) ditetapkan. */
+  butuhWilayah?: boolean;
   /** Operasi span OTel; default `execute_tool`. */
   spanOperation?: 'execute_tool' | 'retrieval';
   execute(ctx: ToolContext, args: z.infer<S>): Promise<ToolResult> | ToolResult;

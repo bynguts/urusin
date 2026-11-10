@@ -2,21 +2,34 @@ import { randomUUID } from 'node:crypto';
 import { ADAPTERS } from '@urusin/adapters';
 import { llmText } from '@urusin/core';
 import { LAYANAN_KORPUS, cariPengetahuanTool } from '@urusin/rag';
-import { routeByKode } from '@urusin/registry';
+import {
+  SEED_ENTRIES,
+  cariWilayah,
+  kanalWilayah,
+  menyebutWilayah,
+  routeByKode,
+  type HasilCariWilayah,
+  type Wilayah,
+} from '@urusin/registry';
 import { z } from 'zod';
 import type { PayloadOf } from '@urusin/contracts';
 import { KALIMAT_TETAP, buildHandoff, generateGroundedAnswer, verifyGrounded } from './grounding.js';
 import { spotlight } from './spotlight.js';
 import { paramsHash, type ChunkRecord } from './store.js';
 import { NON_TERMINAL_STATES, defineTool, type ToolContext, type ToolDef, type ToolResult } from './tools.js';
+import { kalimatKanal, kartuRencana, wilayahUrusan } from './wilayah.js';
 
 const kodeKabKota = z.string().regex(/^\d{4}$/);
 
 type Hit = ReturnType<typeof cariPengetahuanTool.execute>['hasil'][number];
 
-/** Anggaran per hit ditetapkan SEBELUM dibungkus (spotlight maxChars); keluaran terbungkus tidak boleh dipotong lagi. */
-export function formatHits(hits: readonly Hit[], nonce: string, max = 4): string {
-  if (hits.length === 0) return 'Tidak ada hasil di basis pengetahuan resmi. Arahkan warga ke kanal resmi.';
+/**
+ * Anggaran per hit ditetapkan SEBELUM dibungkus (spotlight maxChars); keluaran terbungkus tidak boleh dipotong lagi.
+ * Tanpa hasil: sebut kanal resmi wilayah itu sendiri (portal, situs Disdukcapil terverifikasi, atau nasional).
+ */
+export function formatHits(hits: readonly Hit[], nonce: string, max = 4, kode?: string | null): string {
+  if (hits.length === 0)
+    return `Tidak ada hasil di basis pengetahuan resmi. Arahkan warga ke kanal resmi${kode ? `: ${kalimatKanal(kode)}` : '.'}`;
   return hits
     .slice(0, max)
     .map(
@@ -74,8 +87,10 @@ export const ragCariPengetahuan = defineTool({
   }),
   allowedStates: NON_TERMINAL_STATES,
   async execute(ctx, args): Promise<ToolResult> {
-    const out = await retrieve(ctx, args.query, args.kodeKabKota ?? ctx.urusan.kodeKabKota, args.layanan);
-    return { content: formatHits(out.hasil, ctx.nonce), terbungkus: true };
+    // Wilayah urusan yang sudah dipastikan warga menang atas kode tebakan model.
+    const kode = ctx.urusan.kodeKabKota ?? args.kodeKabKota ?? null;
+    const out = await retrieve(ctx, args.query, kode, args.layanan);
+    return { content: formatHits(out.hasil, ctx.nonce, 4, kode), terbungkus: true };
   },
 });
 
@@ -88,12 +103,13 @@ export const dukcapilCekPersyaratan = defineTool({
   input: z.object({ kodeKabKota, layanan: llmText().max(80) }),
   allowedStates: NON_TERMINAL_STATES,
   async execute(ctx, args): Promise<ToolResult> {
-    const { entry } = routeByKode(args.kodeKabKota);
-    const out = await retrieve(ctx, `persyaratan ${args.layanan}`, args.kodeKabKota, undefined);
-    const head = `${entry.nama}: tingkat ${entry.tier}, validasi ${entry.validasi}${entry.portal ? `, portal ${entry.portal.nama}` : ''}.`;
+    const kode = ctx.urusan.kodeKabKota ?? args.kodeKabKota;
+    const { entry } = routeByKode(kode);
+    const out = await retrieve(ctx, `persyaratan ${args.layanan}`, kode, undefined);
+    const head = `${entry.nama}: tingkat ${entry.tier}, validasi ${entry.validasi}. ${kalimatKanal(kode)}`;
     return {
       content: `${head}
-${formatHits(out.hasil, ctx.nonce)}`,
+${formatHits(out.hasil, ctx.nonce, 4, kode)}`,
       terbungkus: true,
     };
   },
@@ -102,8 +118,9 @@ ${formatHits(out.hasil, ctx.nonce)}`,
 export const urusanUsulkanRencana = defineTool({
   name: 'urusan__usulkan_rencana',
   description:
-    'Usulkan rencana langkah kepada warga untuk disetujui. Memindahkan urusan ke RENCANA_DIUSULKAN.',
+    'Usulkan rencana langkah kepada warga untuk disetujui. Memindahkan urusan ke RENCANA_DIUSULKAN. Ditolak sampai wilayah KTP ditetapkan (wilayah__tetapkan).',
   effect: 'plan',
+  butuhWilayah: true,
   input: z.object({
     ringkasan: llmText().max(300),
     langkah: z
@@ -118,23 +135,39 @@ export const urusanUsulkanRencana = defineTool({
       .max(10),
   }),
   allowedStates: ['MEMAHAMI'],
-  execute(_ctx, args): ToolResult {
+  execute(ctx, args): ToolResult {
+    const w = wilayahUrusan(ctx.store, ctx.urusan);
+    const ktp = w.ktp!; // dijamin gerbang wilayah (butuhWilayah)
+    // Peristiwa Hidup: rencana deterministik untuk wilayah ini menang atas langkah karangan model.
+    const kartu = ctx.urusan.jenis ? kartuRencana(ctx.urusan.jenis, w, ctx.deps.ragDb) : undefined;
+    const k = kanalWilayah(ktp.kodeKabKota);
+    const sumber = [{ url: k.url, judul: k.judul, instansi: k.instansi }];
     return {
       content: 'Rencana ditampilkan kepada warga untuk disetujui.',
       nextState: 'RENCANA_DIUSULKAN',
       endTurn: true,
       events: [
-        {
-          type: 'plan_card',
-          ringkasan: args.ringkasan,
-          langkah: args.langkah.map((l, i) => ({
-            id: `l${i + 1}`,
-            judul: l.judul,
-            jenis: l.jenis,
-            bawa: l.bawa ?? [],
-            sumber: [],
-          })),
-        },
+        kartu
+          ? { type: 'plan_card', ...kartu }
+          : {
+              type: 'plan_card',
+              ringkasan: args.ringkasan,
+              // Model tidak boleh menjanjikan Browser Pendamping: tanpa alur adapter, semua langkah online = manual.
+              langkah: args.langkah.map((l, i) => ({
+                id: `l${i + 1}`,
+                judul: l.judul,
+                jenis: l.jenis === 'online-adapter' ? ('online-manual' as const) : l.jenis,
+                bawa: l.bawa ?? [],
+                sumber,
+              })),
+              wilayah: {
+                ktp,
+                ...(w.domisili ? { domisili: w.domisili } : {}),
+                ...(w.tujuan ? { tujuan: w.tujuan } : {}),
+              },
+              tier: 'dipandu',
+              catatan: `Diurus lewat ${k.judul} (${ktp.nama}).`,
+            },
       ],
     };
   },
@@ -200,7 +233,9 @@ export const dukcapilAjukanLayanan = defineTool({
   effect: 'write',
   input: z.object({ kodeKabKota, layananId: z.number().int().positive() }),
   allowedStates: ['BERKAS_SIAP', 'MENGISI', 'MENUNGGU_KONFIRMASI', 'MENGUNGGAH'],
-  origin(args) {
+  origin(args, { urusan }) {
+    // Hanya portal wilayah KTP urusan ini: kode lain dari model tidak pernah membuka situs kota lain.
+    if (urusan.kodeKabKota && args.kodeKabKota !== urusan.kodeKabKota) return undefined;
     const { entry } = routeByKode(args.kodeKabKota);
     return entry.validasi === 'kirim-asli' ? entry.portal?.origin : undefined;
   },
@@ -279,24 +314,30 @@ function permintaanBaca(
   };
 }
 
+/** Kota yang adapternya punya alur cek status (diturunkan dari registry + adapter, bukan daftar tulisan tangan). */
+const KOTA_CEK_STATUS = SEED_ENTRIES.filter((e) => alurBaca(e.adapterId, 'cek_status'))
+  .map((e) => `${e.nama} (${e.portal?.nama ?? e.adapterId})`)
+  .join(', ');
+
 /** Cek status pengajuan kependudukan di portal kota (hanya kota yang adapternya punya alur cek_status). */
 export const dukcapilCekStatus = defineTool({
   name: 'dukcapil__cek_status',
-  description:
-    "Cek status pengajuan kependudukan di portal resmi kota lewat Browser Pendamping (baca saja). Tersedia untuk Surabaya (Klampid), Semarang (Si D'nOK), dan Wonogiri (Telunjuk Sakti, perlu login warga). Kota lain: arahkan ke kanal resmi.",
+  description: `Cek status pengajuan kependudukan di portal resmi kota lewat Browser Pendamping (baca saja), untuk wilayah KTP urusan. Tersedia untuk: ${KOTA_CEK_STATUS}. Kota lain: arahkan ke kanal resmi.`,
   effect: 'read',
   input: z.object({ kodeKabKota }),
   allowedStates: NON_TERMINAL_STATES,
-  origin(args) {
-    return alurBaca(routeByKode(args.kodeKabKota).entry.adapterId, 'cek_status')?.origin;
+  origin(args, { urusan }) {
+    return alurBaca(routeByKode(urusan.kodeKabKota ?? args.kodeKabKota).entry.adapterId, 'cek_status')
+      ?.origin;
   },
-  execute(_ctx, args): ToolResult {
+  execute(ctx, rawArgs): ToolResult {
+    const args = { kodeKabKota: ctx.urusan.kodeKabKota ?? rawArgs.kodeKabKota };
     const { entry } = routeByKode(args.kodeKabKota);
     const alur = alurBaca(entry.adapterId, 'cek_status');
     if (!alur) {
       const lewat = entry.portal
         ? ` lewat ${entry.portal.nama} (${entry.portal.origin})`
-        : ' di kantor dinas';
+        : ` lewat ${kalimatKanal(args.kodeKabKota)}`;
       return {
         content: `${entry.nama}: tingkat dipandu untuk cek status. Browser Pendamping belum punya alur cek status di sini; warga mengecek sendiri${lewat}.`,
       };
@@ -353,6 +394,109 @@ export const ossCariNib = defineTool({
   },
 });
 
+const AFIRMASI = /^\s*(ya|iya+|y|yes|betul|benar|bener|ok|oke|okay|yup|tepat|sesuai|sudah benar)\b/i;
+
+const teksPesan = (m: { content?: unknown }) => (typeof m.content === 'string' ? m.content : '');
+
+/**
+ * Bukti bahwa WARGA (bukan model) menyebut atau membenarkan wilayah ini: namanya/kodenya ada di pesan warga
+ * urusan ini, atau pesan terakhir warga berupa "ya/betul" atas usulan wilayah itu atau atas pertanyaan
+ * terakhir asisten yang menyebutnya. Pemetaan kecamatan → kab/kota oleh model (mis. Cikarang → Kab. Bekasi)
+ * karena itu wajib ditanyakan dulu.
+ */
+function dibenarkanWarga(ctx: ToolContext, w: Wilayah, usulan: string | null): boolean {
+  const riwayat = ctx.store.loadHistory(ctx.urusan.id);
+  const warga = [
+    ctx.pesanWarga,
+    ...riwayat
+      .filter((m) => m.role === 'user')
+      .map(teksPesan)
+      .filter((t) => !t.startsWith('HASIL_TOOL')),
+  ];
+  if (warga.some((t) => menyebutWilayah(t, w))) return true;
+  if (!AFIRMASI.test(ctx.pesanWarga)) return false;
+  if (usulan === w.kodeKabKota) return true;
+  const tanyaTerakhir = [...riwayat].reverse().find((m) => m.role === 'assistant' && teksPesan(m));
+  return tanyaTerakhir ? menyebutWilayah(teksPesan(tanyaTerakhir), w) : false;
+}
+
+const daftarPilihan = (h: Extract<HasilCariWilayah, { status: 'ambigu' }>) =>
+  h.pilihan.map((w) => `${w.nama} (${w.kodeKabKota}, ${w.provinsi})`).join('; ');
+
+/**
+ * Wilayah dulu: tetapkan kab/kota KTP warga (yurisdiksi Dukcapil), domisili bila berbeda, dan tujuan pindah.
+ * Divalidasi ke 514 kab/kota; nama ganda (Bekasi = Kota/Kabupaten) dikembalikan sebagai pilihan untuk ditanyakan.
+ */
+export const wilayahTetapkan = defineTool({
+  name: 'wilayah__tetapkan',
+  description:
+    'Tetapkan kab/kota sesuai KTP warga (wajib sebelum rencana), plus domisili bila warga tinggal di kab/kota lain, dan tujuan untuk urusan pindah. Isi nama ("Kota Surabaya", "Kab. Bekasi") atau kode 4 digit. Panggil hanya setelah warga menyebut atau membenarkan wilayahnya; jangan pernah meminta NIK.',
+  effect: 'plan',
+  input: z.object({
+    ktp: llmText().max(80).describe('Kab/kota sesuai alamat KTP warga (untuk pindah: kab/kota asal).'),
+    domisili: llmText()
+      .max(80)
+      .optional()
+      .describe('Opsional. Kab/kota tempat tinggal sekarang, hanya bila berbeda dari KTP.'),
+    tujuan: llmText().max(80).optional().describe('Hanya urusan pindah: kab/kota tujuan.'),
+  }),
+  allowedStates: ['MEMAHAMI', 'RENCANA_DIUSULKAN'],
+  execute(ctx, args): ToolResult {
+    const sekarang = wilayahUrusan(ctx.store, ctx.urusan);
+    const usulan = sekarang.usulan?.ktp.kodeKabKota ?? null;
+    // Wilayah yang SUDAH dipastikan warga tidak perlu dikonfirmasi ulang (mis. menambah tujuan pindah).
+    const tercatat = {
+      ktp: sekarang.ktp?.kodeKabKota,
+      domisili: sekarang.domisili?.kodeKabKota,
+      tujuan: sekarang.tujuan?.kodeKabKota,
+    };
+    const peran = { ktp: 'KTP', domisili: 'domisili', tujuan: 'tujuan' } as const;
+    const pasti: Partial<Record<keyof typeof peran, Wilayah>> = {};
+    for (const kunci of ['ktp', 'domisili', 'tujuan'] as const) {
+      const teks = args[kunci];
+      if (!teks) continue;
+      const h = cariWilayah(teks);
+      if (h.status === 'tidak_dikenal')
+        return {
+          content: `Wilayah ${peran[kunci]} tidak dikenal di 514 kab/kota. Tanyakan nama kabupaten/kotanya (bukan kecamatan/desa). Bila warga menyebut kecamatan atau kota kecil, sebutkan kab/kotanya dan minta warga membenarkan dulu.`,
+        };
+      if (h.status === 'ambigu')
+        return {
+          content: `Wilayah ${peran[kunci]} belum pasti. Pilihan: ${daftarPilihan(h)}. Tanyakan warga yang mana, lalu panggil lagi dengan nama lengkapnya.`,
+        };
+      if (
+        tercatat[kunci] !== h.wilayah.kodeKabKota &&
+        !dibenarkanWarga(ctx, h.wilayah, kunci === 'ktp' ? usulan : null)
+      )
+        return {
+          content: `Belum dikonfirmasi warga. Tanyakan dulu: "${kunci === 'ktp' ? 'KTP Anda terdaftar di' : kunci === 'tujuan' ? 'Pindah ke' : 'Sekarang tinggal di'} ${h.wilayah.nama}, betul?" Panggil lagi setelah warga membenarkan.`,
+        };
+      pasti[kunci] = h.wilayah;
+    }
+    const ktp = pasti.ktp!;
+    const { entry } = routeByKode(ktp.kodeKabKota);
+    const pendamping = entry.adapterId
+      ? `Browser Pendamping punya adapter di ${entry.portal?.nama ?? entry.nama}.`
+      : 'Belum ada Browser Pendamping di sini: tingkat dipandu (warga mengisi sendiri dengan panduan).';
+    return {
+      content: [
+        `Wilayah KTP ditetapkan: ${ktp.nama}. ${kalimatKanal(ktp.kodeKabKota)} ${pendamping}`,
+        pasti.domisili && pasti.domisili.kodeKabKota !== ktp.kodeKabKota
+          ? `Domisili ${pasti.domisili.nama}: urusan kependudukan tetap di Disdukcapil ${ktp.nama}; langkah online bisa dari mana saja, tatap muka di kantor wilayah KTP.`
+          : '',
+        pasti.tujuan ? `Tujuan pindah: ${kalimatKanal(pasti.tujuan.kodeKabKota)}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      wilayah: {
+        ktp: ktp.kodeKabKota,
+        domisili: pasti.domisili?.kodeKabKota ?? null,
+        tujuan: pasti.tujuan?.kodeKabKota ?? null,
+      },
+    };
+  },
+});
+
 /** Terdaftar supaya percobaan memanggilnya ditolak gate dengan aturan yang jelas; tidak pernah ditawarkan ke model. */
 export const dukcapilKlikSelesai = defineTool({
   name: 'dukcapil__klik_selesai',
@@ -376,5 +520,6 @@ export function builtinTools(): ToolDef[] {
     dukcapilCekStatus,
     samsatCekPkb,
     ossCariNib,
+    wilayahTetapkan,
   ] as unknown as ToolDef[];
 }

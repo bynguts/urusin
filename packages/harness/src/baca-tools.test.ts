@@ -112,9 +112,12 @@ describe('tool baca-saja Browser Pendamping', () => {
     expect(JSON.stringify(hasilTool)).toMatch(/SIAPEL/);
   });
 
-  it('kode di luar registry: tidak ada portal, warga ke kantor dinas', () => {
-    const r = dukcapilCekStatus.execute({} as ToolContext, { kodeKabKota: '9999' });
-    expect(r).toMatchObject({ content: expect.stringMatching(/di kantor dinas\.$/) });
+  it('kode di luar registry: tidak ada portal, warga diarahkan ke kanal resmi (nasional)', () => {
+    const ctx = { urusan: { kodeKabKota: null } } as unknown as ToolContext;
+    const r = dukcapilCekStatus.execute(ctx, { kodeKabKota: '9999' });
+    expect(r).toMatchObject({
+      content: expect.stringMatching(/kanal nasional https:\/\/dukcapil\.kemendagri\.go\.id/),
+    });
     expect((r as { execution?: unknown }).execution).toBeUndefined();
     expect(dukcapilCekStatus.origin?.({ kodeKabKota: '9999' }, { urusan: {} as never })).toBeUndefined();
   });
