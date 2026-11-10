@@ -126,6 +126,8 @@ export class WorkerPalsu implements TanganPendamping {
   tolakPersetujuan = false;
   /** Warga menolak baris dengan placeholder ini saja. */
   tolakBaris = new Set<string>();
+  /** Klik ref ini dialihkan portal ke host di luar allowlist: worker memblokir dan menyerahkan (`periksa`). */
+  hostLainPada = new Set<string>();
   private menunggu: string | null = null;
   private izinMenunggu: { rencanaHash: string; baris: string[] } | null = null;
 
@@ -167,6 +169,13 @@ export class WorkerPalsu implements TanganPendamping {
     kolom: KolomButuh[];
   }): Promise<AksiSesiResponse> {
     this.diterima.push({ rencanaHash: r.rencanaHash, aksi: r.aksi, seq: r.seq, kolom: r.kolom });
+    // Seperti worker (422): baris lembar wajib milik aksi isi/pilih rencana yang dikirim.
+    const ph = new Set(
+      r.aksi.flatMap((a) =>
+        a.jenis === 'isi' || (a.jenis === 'pilih' && typeof a.nilai === 'string') ? [a.nilai as string] : [],
+      ),
+    );
+    if (r.kolom.some((k) => !ph.has(k.placeholder))) throw new Error('422 kolom di luar rencana');
     const lewati = (indeks: number) => ({ indeks, kode: 'DILEWATI' as const });
     if (this.k.mode !== 'ai' || (this.k.status !== 'berjalan' && this.k.status !== 'menunggu_data'))
       return { mode: this.k.mode, hasil: r.aksi.map((_, j) => lewati(j)) };
@@ -216,6 +225,15 @@ export class WorkerPalsu implements TanganPendamping {
       const e = this.kini.elemen.find((x) => 'ref' in a && x.ref === a.ref);
       if (!e) {
         hasil.push({ indeks, kode: 'REF_TIDAK_ADA' });
+        berhenti = true;
+        continue;
+      }
+      if (a.jenis === 'klik' && this.hostLainPada.has(a.ref)) {
+        // Seperti worker: permintaan dibatalkan, kendali ke warga dengan pesan templat hostLain.
+        this.k = { mode: 'takeover', status: 'berjalan' };
+        this.menunggu = 'periksa';
+        this.jejak.push({ jenis: 'host_kandidat', host: 'portal-lain.invalid' });
+        hasil.push({ indeks, kode: 'GERBANG_MEMBLOKIR', kelas: e.kelas ?? 'navigasi' });
         berhenti = true;
         continue;
       }

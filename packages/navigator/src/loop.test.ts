@@ -388,6 +388,15 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
       { jenis: 'pilih', ref: 'e3', nilai: { opsi: 1 } },
     ]);
     expect(worker.diterima[1]?.rencanaHash).toBe(worker.diterima[0]?.rencanaHash);
+    // Baris lembar ikut aksi yang dikirim (worker menolak 422 baris di luar rencana).
+    expect(worker.diterima[0]?.kolom.map((k) => k.placeholder)).toEqual([
+      '{{PEMOHON.NIK}}',
+      '{{PEMOHON.NAMA}}',
+    ]);
+    expect(worker.diterima[1]?.kolom).toEqual([
+      { placeholder: '{{PEMOHON.NAMA}}', labelPortal: 'Nama Lengkap Pemohon' },
+    ]);
+    expect(worker.diterima[2]?.kolom).toEqual([]);
     expect(worker.diterima[2]?.aksi).toEqual([{ jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e1' }]);
     // Baris yang ditolak tidak pernah dikirim lagi sesudah putaran persetujuan.
     expect(
@@ -408,6 +417,30 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
       n: 1,
     });
     expect(jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'isi_sendiri' });
+  });
+
+  it('klik dialihkan ke host lain (GERBANG_MEMBLOKIR): worker menyerahkan, loop menunggu tanpa gagal, lalu lanjut', async () => {
+    const worker = new WorkerPalsu([halamanForm(), halamanTinjau()]);
+    worker.setujuiSemua = true;
+    worker.hostLainPada = new Set(['e11']);
+    worker.saatSerahkan = (alasan) =>
+      alasan === 'periksa' ? { aksi: 'kembalikan', ke: 1 } : { aksi: 'selesai' };
+    const provider = new ProviderSkrip((n) => (n === 0 ? RENCANA_FORM : SERAHKAN_FINAL));
+    const { hasil, jejak } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({
+      akhir: 'ambil_alih',
+      alasan: 'final',
+      pesan: PESAN_AMBIL_ALIH.final,
+    });
+    // Pesan ke warga dikirim worker (templat hostLain); loop tidak menambah serahkan sendiri dan tidak mengulang klik.
+    expect(worker.semuaAksi.filter((a) => a.jenis === 'serahkan')).toEqual([
+      { jenis: 'serahkan', alasan: 'final' },
+    ]);
+    expect(worker.semuaAksi.filter((a) => a.jenis === 'klik')).toHaveLength(1);
+    // Satu tunggu untuk gerbang (warga mengembalikan kendali), satu untuk serahkan final.
+    expect(worker.tungguN).toBe(2);
+    expect(jejak).toContainEqual({ jenis: 'host_kandidat', host: 'portal-lain.invalid' });
+    expect(provider.calls).toHaveLength(2);
   });
 
   it('tidak_bisa: beralih ke dipandu dengan pesan templat', async () => {

@@ -170,6 +170,17 @@ type HasilJalan =
 const refAksi = (a: Aksi | undefined): string | undefined =>
   a && 'ref' in a && a.ref !== undefined ? a.ref : undefined;
 
+/**
+ * Baris lembar untuk aksi yang BENAR-BENAR dikirim: worker menolak (422) baris yang placeholder-nya tidak dipakai
+ * aksi isi/pilih rencana itu, mis. setelah baris yang ditolak warga dibuang atau rencana dipotong.
+ */
+function kolomUntuk(kolom: readonly KolomButuh[], aksi: readonly Aksi[]): KolomButuh[] {
+  const ph = new Set<string>();
+  for (const a of aksi)
+    if (a.jenis === 'isi' || (a.jenis === 'pilih' && typeof a.nilai === 'string')) ph.add(a.nilai as string);
+  return kolom.filter((k) => ph.has(k.placeholder));
+}
+
 /** Aksi isian/unggah yang disetujui warga (aksi lain tidak butuh persetujuan). */
 function aksiDisetujui(a: Aksi, izin: PersetujuanHalaman): boolean {
   if ((a.jenis === 'isi' || a.jenis === 'pilih') && typeof a.nilai === 'string')
@@ -328,7 +339,13 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         : { kode: 'ok' };
     for (;;) {
       if (sisa.length === 0) return selesai();
-      const r = await tangan.aksi({ rencanaHash, aksi: sisa, seq: obs.seq, kolom, berkas });
+      const r = await tangan.aksi({
+        rencanaHash,
+        aksi: sisa,
+        seq: obs.seq,
+        kolom: kolomUntuk(kolom, sisa),
+        berkas,
+      });
       ang.catatAksi(r.hasil.filter((h) => h.kode === 'ok').length);
       if (r.mode === 'done') return { kode: 'berakhir' };
       // Satu entri per aksi (kontrak worker); entri hilang dianggap tidak dijalankan.

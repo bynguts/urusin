@@ -65,6 +65,8 @@ export function tanganWorker(
         rencanaHash: r.rencanaHash,
         aksi: r.aksi,
         seq: r.seq,
+        // Label portal + tanda tidak lazim untuk lembar persetujuan (hanya baris aksi yang dikirim).
+        ...(r.kolom.length > 0 ? { kolom: r.kolom } : {}),
       }),
     // Long-poll: batas HTTP sedikit di atas maksMs worker.
     tunggu: (maksMs) =>

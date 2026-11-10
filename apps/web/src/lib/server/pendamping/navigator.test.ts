@@ -161,6 +161,18 @@ describe('broker Navigator web', () => {
     ]);
     expect(w.panggilan[3]?.body).toEqual({ ...OWNER, maksMs: 25_000 });
     expect(w.panggilan[4]?.body).toEqual(OWNER);
+    // Tanpa baris: field kolom tidak dikirim.
+    expect(w.panggilan[2]?.body).not.toHaveProperty('kolom');
+    // Baris lembar (label portal + tidak lazim) dari validator ikut ke worker untuk butuh_data.
+    const kolom = [{ placeholder: '{{PEMOHON.NIK}}', labelPortal: 'Nomor Kependudukan', tidakLazim: true }];
+    await tangan.aksi({
+      rencanaHash: 'e'.repeat(64),
+      aksi: [{ jenis: 'isi', ref: 'e1', nilai: '{{PEMOHON.NIK}}' }],
+      seq: 1,
+      kolom,
+      berkas: [],
+    });
+    expect(w.panggilan.at(-1)).toMatchObject({ path: '/internal/sesi/aksi', body: { kolom } });
   });
 
   it('Mode Uji di replika: loop berjalan, jejak tersimpan di rantai audit tanpa nilai, pesan templat', async () => {
