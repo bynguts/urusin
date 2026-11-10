@@ -234,6 +234,9 @@ export class SesiWarga {
     }
     const j = await res.json().catch(() => ({}));
     if (res.ok && typeof j.version === 'number') this.version = Math.max(this.version, j.version);
+    // Aksi yang memicu turn (mis. wilayah ditetapkan → rencana) mengembalikan turnId: tunggu selesai seperti UI,
+    // kalau tidak pesan warga berikutnya kena 409 TURN_IN_PROGRESS.
+    if (res.ok && typeof j.turnId === 'string') await this.tungguDone(seqAwal, j.turnId);
     await this.tunggu((s) => s.heartbeat === true, 5_000);
     await this.tunggu((s) => s.heartbeat === true, 5_000);
     return { http: { status: res.status, kode: j.kode, pesanWarga: j.pesanWarga }, seqAwal, body: j };

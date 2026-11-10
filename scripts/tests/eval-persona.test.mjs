@@ -451,3 +451,32 @@ describe('opsiAksiWilayah (meniru UrusanStore cabang yang diuji)', async () => {
     assert.deepEqual(opsiAksiWilayah(''), { versi: true, ulang: true });
   });
 });
+
+describe('SesiWarga.aksi menunggu turn yang dipicu aksi', async () => {
+  const { SesiWarga } = await import('../eval-persona/lib/klien.mjs');
+  const sesiPalsu = (balasan) => {
+    const s = new SesiWarga({ origin: 'http://lokal.invalid', ip: '198.51.100.1' });
+    s.id = 'u_x';
+    s.lastSeq = 7;
+    s.ditunggu = [];
+    s.http = async () => new Response(JSON.stringify(balasan), { status: 200 });
+    s.tunggu = async () => ({ heartbeat: true });
+    s.tungguDone = async (seq, turnId) => {
+      s.ditunggu.push([seq, turnId]);
+      return { type: 'done' };
+    };
+    return s;
+  };
+
+  it('menunggu done untuk turnId dari respons agar turn berikutnya tidak kena 409 TURN_IN_PROGRESS', async () => {
+    const s = sesiPalsu({ state: 'MEMAHAMI', version: 3, turnId: 't_1' });
+    await s.aksi('wilayah', { kodeKabKota: '3374' });
+    assert.deepEqual(s.ditunggu, [[7, 't_1']]);
+  });
+
+  it('tidak menunggu done bila respons tanpa turnId', async () => {
+    const s = sesiPalsu({ state: 'RENCANA_DISETUJUI', version: 4 });
+    await s.aksi('rencana/setujui', {});
+    assert.deepEqual(s.ditunggu, []);
+  });
+});
