@@ -6,6 +6,7 @@ import {
 import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
+import { usulkanWilayahAwal } from '#lib/server/mulai-urusan.js';
 import { menungguSiapa } from '#lib/server/ringkasan.js';
 import { batasi } from '#lib/server/sesi.js';
 import type { RequestHandler } from './$types';
@@ -23,9 +24,11 @@ export const POST: RequestHandler = async (event) => {
       if (tamu) return tamu;
     }
     const jenis = body.data.peristiwa && body.data.peristiwa !== 'lainnya' ? body.data.peristiwa : undefined;
-    const u = rt.store.createUrusan({ kodeKabKota: body.data.kodeKabKota, jenis });
+    const u = rt.store.createUrusan({ jenis });
     // Pemilik: akun sinkron yang masuk, atau hash sid (diikat ulang ke akun saat warga masuk).
     rt.akun.catatPemilikUrusan(u.id, { akun: event.locals.akun, sid: event.locals.sid });
+    // kodeKabKota dari klien hanya usulan; wilayah KTP ditetapkan setelah warga mengonfirmasi.
+    usulkanWilayahAwal(rt, event, u.id, body.data.kodeKabKota);
     const turn = body.data.pesan
       ? startTurnInBackground(rt, { urusanId: u.id, userText: body.data.pesan })
       : undefined;

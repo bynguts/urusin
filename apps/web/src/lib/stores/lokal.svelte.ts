@@ -14,14 +14,14 @@ export type Wilayah = { kodeKabKota: string; nama: string };
 
 export type DataLokal = {
   urusan: CatatanUrusan[];
-  wilayah: Wilayah;
+  /** Pilihan wilayah di perangkat ini: hanya usulan, selalu dikonfirmasi warga di urusan. null = belum dipilih. */
+  wilayah: Wilayah | null;
   kontrasTinggi: boolean;
   kurangiGerak: boolean;
 };
 
 const KUNCI = 'urusin.lokal.v1';
 const ID_RE = /^u_[0-9a-f]{32}$/;
-export const WILAYAH_AWAL: Wilayah = { kodeKabKota: '3312', nama: 'Kab. Wonogiri' };
 const MAKS_URUSAN = 50;
 
 /** Ambil hanya bentuk yang valid dari data tersimpan. */
@@ -50,7 +50,7 @@ export function bersihkanLokal(raw: unknown): DataLokal {
   const wilayah =
     w && typeof w.kodeKabKota === 'string' && /^\d{4}$/.test(w.kodeKabKota) && typeof w.nama === 'string'
       ? { kodeKabKota: w.kodeKabKota, nama: w.nama.slice(0, 80) }
-      : WILAYAH_AWAL;
+      : null;
   return {
     urusan,
     wilayah,
@@ -100,7 +100,7 @@ export class LokalStore {
     return this.data.urusan.find((u) => u.id === id);
   }
 
-  aturWilayah(w: Wilayah): void {
+  aturWilayah(w: Wilayah | null): void {
     this.data = { ...this.data, wilayah: bersihkanLokal({ wilayah: w }).wilayah };
     this.simpan();
   }

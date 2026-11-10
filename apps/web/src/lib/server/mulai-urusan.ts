@@ -1,6 +1,7 @@
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
-import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
-import { getRuntime, publicOrigin, startTurnInBackground } from '#lib/server/runtime.js';
+import { usulkanWilayah } from '@urusin/harness';
+import { pastikanTamuUntukTurn, pemilikVault } from '#lib/server/akun.js';
+import { getRuntime, publicOrigin, startTurnInBackground, type Runtime } from '#lib/server/runtime.js';
 import { batasi, catatTerakhir, ensureSession } from '#lib/server/sesi.js';
 
 const PERISTIWA = ['kelahiran', 'kematian', 'perkawinan', 'pindah', 'lainnya'] as const;
@@ -9,6 +10,25 @@ type Peristiwa = (typeof PERISTIWA)[number];
 export const PESAN_AWAL_COOKIE = 'urusin_pesan_awal';
 
 export type GagalMulai = { pesanWarga: string; pesan: string };
+
+/**
+ * Wilayah dulu: kab/kota dari Data Diri akun (bila ada) atau pilihan di perangkat dicatat sebagai USULAN saja,
+ * sebelum turn pertama. Warga tetap mengonfirmasi (kartu "Ya, betul" atau di obrolan) sebelum rencana disusun:
+ * perangkat bisa dipakai bersama dan Data Diri bisa usang.
+ */
+export function usulkanWilayahAwal(
+  rt: Runtime,
+  event: Pick<RequestEvent, 'locals' | 'cookies' | 'request' | 'getClientAddress'>,
+  urusanId: string,
+  kodePilihan: string | undefined,
+): void {
+  const p = pemilikVault(rt, event, { buat: false });
+  const dariDataDiri = p ? rt.akun.vault.getDataDiri(p.id)?.data.kodeKabKota : undefined;
+  const publish = (e: Parameters<Runtime['publish']>[1]) => void rt.publish(urusanId, e);
+  if (typeof dariDataDiri === 'string' && usulkanWilayah(urusanId, dariDataDiri, 'data_diri', publish))
+    return;
+  if (kodePilihan) usulkanWilayah(urusanId, kodePilihan, 'pilihan', publish);
+}
 
 /**
  * Form action "mulai urusan" (Beranda dan Rencana peristiwa): sama dengan POST /api/urusan, tetapi lewat
@@ -48,12 +68,11 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
   }
 
   const jenis = peristiwa && peristiwa !== 'lainnya' ? peristiwa : undefined;
-  const u = rt.store.createUrusan({
-    ...(/^\d{4}$/.test(kode) ? { kodeKabKota: kode } : {}),
-    ...(jenis ? { jenis } : {}),
-  });
+  // Wilayah urusan belum ditetapkan saat dibuat: pilihan perangkat hanya usulan (lihat usulkanWilayahAwal).
+  const u = rt.store.createUrusan(jenis ? { jenis } : {});
   // Pemilik: sama dengan POST /api/urusan. Tanpa ini endpoint Browser Pendamping (cek pemilik) menjawab 404.
   rt.akun.catatPemilikUrusan(u.id, { akun: event.locals.akun, sid: event.locals.sid });
+  usulkanWilayahAwal(rt, event, u.id, /^\d{4}$/.test(kode) ? kode : undefined);
   if (pesan) startTurnInBackground(rt, { urusanId: u.id, userText: pesan });
   catatTerakhir(event.cookies, u.id, publicOrigin());
   // Formulir terkirim sebelum JavaScript siap: pesan pertama tidak sempat dicatat di perangkat. Titipkan

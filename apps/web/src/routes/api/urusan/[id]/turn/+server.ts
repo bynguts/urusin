@@ -1,4 +1,5 @@
 import { TurnRequestSchema, type TurnResponse } from '@urusin/contracts';
+import { kodeUntukPii } from '@urusin/harness';
 import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
@@ -18,8 +19,9 @@ export const POST: RequestHandler = async (event) => {
   if (ditolak) return ditolak;
   const tamu = pastikanTamuUntukTurn(rt, event);
   if (tamu) return tamu;
+  // NIK terpecah dideteksi memakai wilayah KTP urusan, atau usulannya selama belum ditetapkan.
   const body = await readBody(request, TurnRequestSchema, {
-    kodeKabKota: rt.store.getUrusan(params.id)?.kodeKabKota ?? null,
+    kodeKabKota: kodeUntukPii(rt.store, rt.store.getUrusan(params.id)),
   });
   if (!body.ok) return body.response;
   try {

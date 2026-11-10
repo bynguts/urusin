@@ -114,14 +114,21 @@ async function kosong() {
 describe('POST /api/urusan dan /turn', () => {
   // Batas eksplisit: tes paling lambat di berkas ini (~1-2 dtk sendirian dan di turbo paralel penuh).
   it('membuat urusan, turn berjalan di latar belakang, event datar lolos skema kontrak', async () => {
-    const u = await mulai('Apa syarat akta kelahiran anak saya?');
+    // Wilayah dulu: warga menyebut kab/kota KTP-nya, jadi agen langsung menetapkannya lalu menjawab bersumber.
+    const u = await mulai('Apa syarat akta kelahiran anak saya? KTP saya Kabupaten Wonogiri.');
     expect(u.id).toMatch(/^u_[0-9a-f]{32}$/);
     const res = await stream(ev(get('/s'), { id: u.id }));
     expect(res.headers.get('content-type')).toContain('text/event-stream');
     const frames = await readFrames(res, hasDone);
     const events = frames.map(parse).filter((f) => f.event);
     const types = events.map((e) => e.event);
-    expect(types).toEqual(expect.arrayContaining(['state', 'progress', 'grounded_answer', 'done']));
+    expect(types).toEqual(
+      expect.arrayContaining(['wilayah', 'state', 'progress', 'grounded_answer', 'done']),
+    );
+    expect(events.filter((e) => e.event === 'wilayah').map((e) => e.data!.status)).toEqual([
+      'usulan',
+      'ditetapkan',
+    ]);
     expect(types).not.toContain('assistant_text');
     expect(types.at(-1)).toBe('done');
     expect(events.map((e) => Number(e.id))).toEqual(events.map((_, i) => i + 1));

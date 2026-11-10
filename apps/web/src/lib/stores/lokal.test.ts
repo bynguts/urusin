@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LokalStore, WILAYAH_AWAL, bersihkanLokal, namaPendek } from './lokal.svelte.js';
+import { LokalStore, bersihkanLokal, namaPendek } from './lokal.svelte.js';
 
 const ID = `u_${'a'.repeat(32)}`;
 const ID2 = `u_${'b'.repeat(32)}`;
@@ -15,7 +15,7 @@ function gudang() {
 }
 
 describe('bersihkanLokal', () => {
-  it('membuang entri tidak valid dan memakai wilayah awal', () => {
+  it('membuang entri tidak valid; tanpa pilihan valid wilayah kosong (bukan Wonogiri diam-diam)', () => {
     const d = bersihkanLokal({
       urusan: [
         { id: ID, judul: 'Akta', dibuatPada: 'x' },
@@ -26,7 +26,8 @@ describe('bersihkanLokal', () => {
       kontrasTinggi: 'ya',
     });
     expect(d.urusan).toEqual([{ id: ID, judul: 'Akta', peristiwa: null, dibuatPada: 'x' }]);
-    expect(d.wilayah).toEqual(WILAYAH_AWAL);
+    expect(d.wilayah).toBeNull();
+    expect(bersihkanLokal(null).wilayah).toBeNull();
     expect(d.kontrasTinggi).toBe(false);
   });
 
@@ -60,7 +61,9 @@ describe('LokalStore', () => {
     expect(s.ambilTertunda()).toBeNull();
     s.aturWilayah({ kodeKabKota: '3372', nama: 'Kota Surakarta' });
     s.atur('kontrasTinggi', true);
-    expect(s.data.wilayah.kodeKabKota).toBe('3372');
+    expect(s.data.wilayah?.kodeKabKota).toBe('3372');
+    s.aturWilayah(null);
+    expect(s.data.wilayah).toBeNull();
     s.hapusSemua();
     expect(s.data.urusan).toEqual([]);
     expect(s.data.kontrasTinggi).toBe(false);

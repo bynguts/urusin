@@ -1,5 +1,5 @@
 import { isHttpError, isRedirect } from '@sveltejs/kit';
-import { DemoProvider } from '@urusin/harness';
+import { DemoProvider, wilayahUrusan } from '@urusin/harness';
 import { createRawSnippet } from 'svelte';
 import { render } from 'svelte/server';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -64,13 +64,18 @@ describe('form action mulai urusan (tanpa JS)', () => {
     expect(r.data.pesanWarga).toMatch(/Tulis dulu/);
   });
 
-  it('dari kartu peristiwa → urusan dibuat dengan jenis + kab/kota, lalu 303 ke layar urusan', async () => {
+  it('dari kartu peristiwa → urusan dibuat dengan jenis + usulan kab/kota, lalu 303 ke layar urusan', async () => {
     const r = await tangkap(beranda.mulai(kirimForm({ peristiwa: 'kelahiran', kodeKabKota: '3312' })));
     expect(isRedirect(r)).toBe(true);
     const lokasi = (r as { location: string }).location;
     expect(lokasi).toMatch(/^\/urusan\/u_[0-9a-f]{32}$/);
     const u = rt.store.getUrusan(lokasi.split('/').at(-1)!);
-    expect(u).toMatchObject({ jenis: 'kelahiran', kodeKabKota: '3312' });
+    // Pilihan di perangkat hanya usulan: wilayah KTP urusan belum ditetapkan sampai warga mengonfirmasi.
+    expect(u).toMatchObject({ jenis: 'kelahiran', kodeKabKota: null });
+    expect(wilayahUrusan(rt.store, u!)).toMatchObject({
+      ktp: null,
+      usulan: { ktp: { kodeKabKota: '3312' }, sumber: 'pilihan' },
+    });
   });
 });
 

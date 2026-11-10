@@ -96,7 +96,7 @@
   const tampil = $derived(
     kata ? FAQ.filter((f) => (f.tanya + ' ' + f.jawab.join(' ')).toLowerCase().includes(kata)) : FAQ,
   );
-  const kota = $derived(data.kota.find((k) => k.kodeKabKota === lokal.data.wilayah.kodeKabKota));
+  const kota = $derived(data.kota.find((k) => k.kodeKabKota === lokal.data.wilayah?.kodeKabKota));
 
   function buka(id: string) {
     cari = '';
