@@ -1,4 +1,5 @@
 import type { Check, Selector, Step, Target } from '@urusin/core';
+import type { HasilAksi as HasilAksiKontrak, KodeHasilAksi } from '@urusin/contracts';
 import type { ConsentSummary, UploadFile } from './types.js';
 import { bangunPengamatan, elemenDariJalur, sidikElemen, terlarangElemen, type PetaRef } from './amatan.js';
 import {
@@ -76,6 +77,30 @@ export type FiturAudit = Omit<
 > & { hrefHost: string };
 
 export type HasilAksiOp = { hasil: HasilAksi[] };
+
+/**
+ * Hasil runner (rinci, untuk jejak audit) -> `HasilAksiSchema` kontrak (ringkas, untuk Navigator di web).
+ * `navigasi` = ok dari sisi halaman; worker yang memutuskan blokir gerbang/allowlist (GERBANG_MEMBLOKIR).
+ */
+export function keHasilKontrak(h: HasilAksi): HasilAksiKontrak {
+  const kode: KodeHasilAksi =
+    h.status === 'ok' || h.status === 'navigasi'
+      ? 'ok'
+      : h.status === 'dilewati'
+        ? 'DILEWATI'
+        : h.kode === RunnerCode.REF_BASI
+          ? 'REF_BASI'
+          : h.kode === RunnerCode.REF_TIDAK_DIKENAL
+            ? 'REF_TIDAK_ADA'
+            : h.kode === RunnerCode.KLIK_DITOLAK
+              ? 'KELAS_DITOLAK'
+              : h.kode === RunnerCode.TERLARANG
+                ? 'TERLARANG'
+                : h.kode === RunnerCode.HALAMAN_AKHIR
+                  ? 'HALAMAN_AKHIR'
+                  : 'GALAT';
+  return h.kelas ? { indeks: h.i, kode, kelas: h.kelas } : { indeks: h.i, kode };
+}
 
 export type RunnerResult = { ok: true; value?: unknown } | { ok: false; code: string; message: string };
 
