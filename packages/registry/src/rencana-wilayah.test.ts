@@ -70,6 +70,14 @@ describe('rencanaWilayah: tidak ada isi Wonogiri untuk warga daerah lain', () =>
     expect(pindah.langkah.map((l) => l.jenis)).toEqual(['online-manual', 'cek-kanal']);
     expect(rencanaWilayah('kelahiran', { ktp: null })!.langkah[0]!.jenis).toBe('cek-kanal');
   });
+  it('catatan rencana tanpa istilah internal (p01/p04: bahasa sederhana)', () => {
+    const r = rencanaWilayah('kematian', { ktp: '3404' })!;
+    expect(r.catatan).toMatch(
+      /Syarat ini berlaku di seluruh Indonesia\. Cara mengajukan di Kabupaten Sleman: lihat /,
+    );
+    const wng = rencanaWilayah('kelahiran', { ktp: '3312' })!;
+    expect(wng.catatan).not.toMatch(/recon/i);
+  });
   it('wilayah tanpa situs terverifikasi mengatakannya terus terang', () => {
     const r = rencanaWilayah('kelahiran', { ktp: '1101' })!;
     expect(r.langkah[0]!.keterangan).toMatch(/belum terverifikasi/);

@@ -334,7 +334,7 @@ export function rencanaWilayah(slug: string, opsi: OpsiRencana): RencanaWilayah 
   } else {
     langkah = langkahNasional(bundel.slug, ktp, kanalKtp);
     catatan = ktp
-      ? `Persyaratan nasional untuk ${ktp.nama}; detail dan cara pengajuan mengikuti ${kanalKtp.judul}.`
+      ? `Syarat ini berlaku di seluruh Indonesia. Cara mengajukan di ${ktp.nama}: lihat ${kanalKtp.judul}.`
       : 'Persyaratan nasional. Pilih kab/kota sesuai KTP agar kanal resmi wilayah Anda ditampilkan.';
     if (ktp && bundel.slug === 'kematian')
       catatan = `Kematian dilaporkan ke Disdukcapil tempat tinggal almarhum (UU 24/2013): ${ktp.nama}. ${catatan}`;

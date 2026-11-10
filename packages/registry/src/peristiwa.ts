@@ -130,7 +130,7 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
     tier: 'semi',
     keluaran: ['Akta Kelahiran', 'Kartu Keluarga', 'KIA'],
     catatan:
-      'Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 "Akta Kelahiran" (recon 2026-11-08): Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.',
+      'Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 "Akta Kelahiran": Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.',
     langkah: [
       L({
         id: 'ajukan',

@@ -858,6 +858,10 @@ describe('temuan eval persona p09: tanpa jawaban sebelum wilayah, penolakan pema
     expect(note).toMatch(/PEMALSUAN DOKUMEN/);
     expect(note).toMatch(/ancaman pidananya/);
     expect(buildSystemPrompt()).toMatch(/kalimat PERTAMA menolak dengan jelas/);
+    // Eval 61887ad: penolakan yang ikut mendaftar KK/buku nikah dihitung jawaban sebelum wilayah (a).
+    expect(buildSystemPrompt()).toMatch(
+      /jangan sebut dokumen lain \(KK, buku nikah, formulir\); tutup dengan menanyakan wilayah KTP/,
+    );
   });
 });
 
