@@ -95,8 +95,10 @@ class FakeCanvas extends FakeTarget {
   style = { touchAction: '' };
   drawn: number[][] = [];
   captured: number[] = [];
+  rect = { left: 0, top: 0, width: 200, height: 400 };
+  focusOpts: unknown[] = [];
   getBoundingClientRect() {
-    return { left: 0, top: 0, width: 200, height: 400 };
+    return { ...this.rect };
   }
   getContext() {
     return {
@@ -107,7 +109,9 @@ class FakeCanvas extends FakeTarget {
   setPointerCapture(id: number) {
     this.captured.push(id);
   }
-  focus() {}
+  focus(o?: unknown) {
+    this.focusOpts.push(o);
+  }
 }
 
 class FakeInput extends FakeTarget {
@@ -266,6 +270,34 @@ describe('createPendampingViewer', () => {
     expect(input.focused).toBe(1);
     expect(input.value).toBe('');
     expect(canvas.style.touchAction).toBe('none');
+  });
+
+  it('gestur memakai rect kanvas saat pointerdown walau halaman bergeser sebelum pointerup', async () => {
+    const { canvas, viewer } = setup();
+    await tick();
+    const ws = FakeWs.all[0]!;
+    ws.open();
+    ws.push({ type: 'frame', seq: 1, data: 'AAAA', meta: META });
+    await tick();
+    ws.push({ type: 'mode', mode: 'takeover', pesan: 'Giliran Anda' });
+    expect(viewer.mode).toBe('takeover');
+    canvas.fire('pointerdown', pointer(100, 200));
+    // Fokus/keyboard menggeser halaman: kanvas naik 100 px di tengah gestur (jari tidak bergerak).
+    canvas.rect = { ...canvas.rect, top: -100 };
+    canvas.fire('pointermove', pointer(100, 200));
+    canvas.fire('pointerup', pointer(100, 200));
+    // Gestur berikutnya memakai rect baru: titik layar yang sama kini jatuh 200 px lebih bawah di halaman.
+    canvas.fire('pointerdown', pointer(100, 100));
+    canvas.fire('pointercancel', pointer(100, 100));
+    const sent = ws.sent.slice(1).map((m) => [m.aksi, m.x, m.y]);
+    expect(sent).toEqual([
+      ['down', 200, 400],
+      ['move', 200, 400],
+      ['up', 200, 400],
+      ['down', 200, 400],
+      ['cancel', 200, 400],
+    ]);
+    expect(canvas.focusOpts).toEqual([{ preventScroll: true }, { preventScroll: true }]);
   });
 
   it('sambung ulang dengan tiket baru; berhenti pada kode akhir; tutup melepas listener', async () => {

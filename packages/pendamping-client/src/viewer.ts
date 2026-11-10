@@ -355,12 +355,19 @@ export function createPendampingViewer(
   }
 
   // ---- input -------------------------------------------------------------
-  const titik = (e: { clientX: number; clientY: number }) =>
-    meta ? petakanKoordinat(e.clientX, e.clientY, canvas.getBoundingClientRect(), meta) : null;
+  const titik = (e: { clientX: number; clientY: number }, rect: Rect = canvas.getBoundingClientRect()) =>
+    meta ? petakanKoordinat(e.clientX, e.clientY, rect, meta) : null;
 
+  // Rect kanvas dikunci saat pointerdown dan dipakai ulang untuk move/up/cancel gestur yang sama: bila halaman
+  // bergeser di tengah gestur (keyboard HP menutup, scroll karena fokus), titik lepas tetap dipetakan ke tempat
+  // yang sama dengan titik tekan, sehingga ketukan warga (mis. "Masuk") tidak hilang.
+  let rectGestur: Rect | null = null;
   const onPointer = (aksi: 'down' | 'move' | 'up' | 'cancel') => (e: PointerEvent) => {
+    if (aksi === 'down') rectGestur = canvas.getBoundingClientRect();
+    const rect = rectGestur ?? canvas.getBoundingClientRect();
+    if (aksi === 'up' || aksi === 'cancel') rectGestur = null;
     if (mode !== 'takeover') return;
-    const p = titik(e);
+    const p = titik(e, rect);
     if (!p) return;
     if (aksi === 'move') {
       const now = Date.now();
@@ -369,7 +376,7 @@ export function createPendampingViewer(
     }
     if (aksi === 'down') {
       canvas.setPointerCapture?.(e.pointerId);
-      canvas.focus?.();
+      canvas.focus?.({ preventScroll: true });
       opts.inputTeks?.focus({ preventScroll: true });
     }
     e.preventDefault?.();
