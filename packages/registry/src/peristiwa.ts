@@ -93,23 +93,23 @@ const REF_KAWIN = wng(
   'terintegrasi-pencatatan-akta-perkawinan-kartu-keluarga-ktp-el',
   'Terintegrasi Pencatatan Akta Perkawinan, Kartu Keluarga, KTP-el',
 );
-const REF_SKPWNI = wng(
+export const REF_SKPWNI = wng(
   'pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni',
   'Penerbitan Surat Keterangan Pindah WNI (SKPWNI)',
 );
-const REF_SKDWNI = wng(
+export const REF_SKDWNI = wng(
   'pelayanan-penerbitan-surat-keterangan-datang-warga-negara-indonesia-skdwni',
   'Penerbitan Surat Keterangan Datang WNI (SKDWNI)',
 );
-const REF_KK = wng(
+export const REF_KK = wng(
   'pelayanan-penerbitan-kartu-keluarga-baru-perubahan-data-penambahan-anggota-keluarga-pengurangan-anggota-keluarga-hilang-dan-rusak',
   'Penerbitan Kartu Keluarga',
 );
-const REF_KTP = wng(
+export const REF_KTP = wng(
   'pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak',
   'Penerbitan KTP-el',
 );
-const REF_PERPRES: SourceRef = {
+export const REF_PERPRES: SourceRef = {
   url: 'https://peraturan.go.id/id/perpres-no-96-tahun-2018',
   judul:
     'Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil',
