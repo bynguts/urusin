@@ -91,15 +91,17 @@ const SISI_TUJUAN =
   /\b(tujuan|lapor datang|daerah baru|alamat baru|tempat baru|skdwni|surat (keterangan )?datang)\b/i;
 
 /**
- * Yurisdiksi untuk hand-off: wilayah KTP, kecuali (1) di luar pindah, warga menyebut kab/kota DOMISILI-nya (mis. KTP Surabaya,
- * kuliah di Semarang, bertanya "Disdukcapil Semarang di mana?"): kanal domisili; (2) urusan pindah yang ditanyakan
+ * Yurisdiksi untuk hand-off: wilayah KTP, kecuali (1) di luar pindah, warga menyebut kab/kota DOMISILI-nya
+ * (mis. KTP Surabaya, kuliah di Semarang, bertanya "Disdukcapil Semarang di mana?"): kanal domisili; KTP-el juga
+ * kab/kota lain yang disebut warga walau domisili belum dicatat; (2) urusan pindah yang ditanyakan
  * tentang sisi TUJUAN: nama tujuan disebut (nama asal tidak), atau kata "tujuan/lapor datang/alamat baru" tanpa
  * menyebut SKPWNI. SKPWNI ke asal.
  */
 export function kodeYurisdiksi(store: HarnessStore, u: UrusanRow, teks: string): string | null {
   const w = wilayahUrusan(store, u);
   const asal = w.ktp?.kodeKabKota ?? u.kodeKabKota;
-  const kode = temukanWilayah(teks).map((s) => s.wilayah.kodeKabKota);
+  const disebut = temukanWilayah(teks);
+  const kode = disebut.map((s) => s.wilayah.kodeKabKota);
   // Domisili disebut: warga bertanya tentang kantor tempat tinggalnya, juga bila sekaligus protes "kok Surabaya?".
   if (
     u.jenis !== 'pindah' &&
@@ -107,6 +109,16 @@ export function kodeYurisdiksi(store: HarnessStore, u: UrusanRow, teks: string):
     (kode.includes(w.domisili.kodeKabKota) || sebutInti(teks, w.domisili))
   )
     return w.domisili.kodeKabKota;
+  // KTP-el bisa dicetak di Disdukcapil mana pun. Domisili belum dicatat (agen tidak memanggil wilayah__tetapkan),
+  // tetapi warga menyebut tepat satu kab/kota selain kota KTP-nya (p03 ulang, juga saat protes "kok Surabaya?"):
+  // kanal kab/kota itu.
+  if (u.jenis === 'ktp' && w.ktp && !w.domisili) {
+    // Nama polos ("semarang") cocok ke Kota dan Kabupaten; yang disebut lengkap ("kota semarang") didahulukan.
+    const sebutan = disebut.filter((x) => x.wilayah.kodeKabKota !== w.ktp?.kodeKabKota);
+    const lengkap = sebutan.filter((x) => x.jenisDisebut !== null);
+    const lain = [...new Set((lengkap.length > 0 ? lengkap : sebutan).map((x) => x.wilayah.kodeKabKota))];
+    if (lain.length === 1) return lain[0]!;
+  }
   if (u.jenis !== 'pindah' || !w.ktp || !w.tujuan || w.tujuan.kodeKabKota === w.ktp.kodeKabKota) return asal;
   if (kode.includes(w.ktp.kodeKabKota) || sebutInti(teks, w.ktp)) return asal;
   // Nama tujuan menang, juga untuk minta bantuan SKPWNI di tujuan (Permendagri 108/2019 Ps. 31).
