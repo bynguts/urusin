@@ -10,7 +10,7 @@ import {
 import { DemoProvider } from '@urusin/harness';
 import { FakeProvider, fakeCompletion } from '@urusin/llm';
 import { KATALOG_PLACEHOLDER, PESAN_AMBIL_ALIH, PESAN_BERHENTI } from '@urusin/navigator';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fieldDataDiri } from '#lib/pendamping/isi-data.js';
 import {
   HEADER_ISI,
@@ -22,7 +22,16 @@ import {
   type PendampingConfig,
 } from '../pendamping';
 import { createRuntime, setRuntimeForTests, type Runtime } from '../runtime';
-import { GalatTangan, hostsFixture, jalankanNavigatorUrusan, tanganWorker } from './navigator';
+import {
+  GalatTangan,
+  hentikanNavigator,
+  hostsFixture,
+  jalankanNavigatorUrusan,
+  mulaiNavigator,
+  navigatorBerjalan,
+  tanganWorker,
+} from './navigator';
+import type { TanganPendamping } from '@urusin/navigator';
 
 const TOKEN = 't'.repeat(40);
 const CFG: PendampingConfig = {
@@ -319,6 +328,60 @@ describe('broker Navigator web', () => {
       .eventsOfType(u.id, 'progress', 5)
       .map((e) => (e.payload as { label: string }).label);
     expect(progress).toContain(PESAN_AMBIL_ALIH.kuota);
+  });
+
+  it('N8: loop lama yang diganti eksekusi baru tidak menerbitkan progres ke layar (resi tetap di jejaknya)', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran', kodeKabKota: '3374' });
+    /** Tangan yang menahan amati sampai dilepas, lalu gagal (loop yang sudah dibatalkan = dibatalkan). */
+    const tahan = () => {
+      let lepas!: () => void;
+      const gerbang = new Promise<void>((r) => (lepas = r));
+      const t: TanganPendamping = {
+        amati: async () => {
+          await gerbang;
+          throw new Error('sesi lama ditutup');
+        },
+        aksi: async () => ({ mode: 'done', hasil: [] }),
+        tunggu: async () => ({ mode: 'done', status: 'dibatalkan', habisWaktu: false }),
+      };
+      return { t, lepas };
+    };
+    const m = (executionId: string) => ({
+      urusan: u,
+      executionId,
+      owner: { urusanId: u.id, sidHash: OWNER.sidHash },
+      modeUji: true,
+    });
+    const a = tahan();
+    const b = tahan();
+    expect(mulaiNavigator(rt, m('x_a'), { cfg: CFG, tangan: a.t, llm: llmFinal() })).toBe(true);
+    expect(mulaiNavigator(rt, m('x_b'), { cfg: CFG, tangan: b.t, llm: llmFinal() })).toBe(true);
+    expect(navigatorBerjalan(u.id)).toBe('x_b');
+    a.lepas();
+    await vi.waitFor(() =>
+      expect(
+        rt.store
+          .eventsOfType(u.id, 'jejak_pendamping', 50)
+          .some(
+            (e) =>
+              (e.payload as { executionId: string; catatan: { jenis: string } }).catatan.jenis === 'resi',
+          ),
+      ).toBe(true),
+    );
+    const progress = rt.store
+      .eventsOfType(u.id, 'progress', 10)
+      .map((e) => (e.payload as { label: string }).label);
+    expect(progress).not.toContain(PESAN_BERHENTI.dibatalkan);
+    expect(navigatorBerjalan(u.id)).toBe('x_b');
+    hentikanNavigator(u.id);
+    b.lepas();
+    await vi.waitFor(() => expect(navigatorBerjalan(u.id)).toBeUndefined());
+    // Loop yang dihentikan sendiri (bukan diganti) tetap memberi tahu layar.
+    await vi.waitFor(() =>
+      expect(
+        rt.store.eventsOfType(u.id, 'progress', 10).map((e) => (e.payload as { label: string }).label),
+      ).toContain(PESAN_BERHENTI.dibatalkan),
+    );
   });
 
   it('galat worker dipetakan: 409 belum siap & 503 = sementara (diulang loop), 404/422 = bukan', () => {

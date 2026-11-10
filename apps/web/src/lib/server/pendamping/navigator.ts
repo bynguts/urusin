@@ -155,9 +155,26 @@ const berjalan = new Map<string, Berjalan>();
 /**
  * Eksekusi yang loop-nya pernah dijalankan proses ini. Loop yang hilang hanya dipasang ulang untuk eksekusi
  * yang BELUM pernah dijalankan di proses ini (web restart); selain itu kendali dikembalikan ke warga, supaya
- * anggaran per eksekusi tidak bisa direset dengan menekan Kembalikan.
+ * anggaran per eksekusi tidak bisa direset dengan menekan Kembalikan. Dibatasi (LRU) supaya tidak tumbuh
+ * tanpa batas di proses yang hidup lama.
  */
 const pernahJalan = new Set<string>();
+const PERNAH_JALAN_MAKS = 5_000;
+function tandaiPernahJalan(executionId: string): void {
+  pernahJalan.delete(executionId);
+  pernahJalan.add(executionId);
+  if (pernahJalan.size > PERNAH_JALAN_MAKS) pernahJalan.delete(pernahJalan.values().next().value as string);
+}
+
+/** executionId loop yang sedang berjalan untuk urusan ini (untuk uji dan diagnosa). */
+export const navigatorBerjalan = (urusanId: string): string | undefined =>
+  berjalan.get(urusanId)?.executionId;
+
+/** Loop eksekusi ini sudah diganti loop eksekusi lain di urusan yang sama: hasilnya basi untuk layar. */
+const diganti = (urusanId: string, executionId: string): boolean => {
+  const kini = berjalan.get(urusanId);
+  return kini !== undefined && kini.executionId !== executionId;
+};
 
 export type MasukanNavigator = {
   urusan: Pick<UrusanRow, 'id' | 'jenis' | 'kodeKabKota'>;
@@ -237,7 +254,7 @@ export async function jalankanNavigatorUrusan(
       degraded: false,
     });
   const tangan = deps.tangan ?? tanganWorker(deps.cfg, m.owner, deps.fetcher, m.executionId);
-  pernahJalan.add(m.executionId);
+  tandaiPernahJalan(m.executionId);
   let hasil: HasilNavigator | undefined;
   try {
     hasil = await jalankanNavigator({
@@ -274,6 +291,9 @@ export async function jalankanNavigatorUrusan(
     aksi: r.aksi,
     panggilanLlm: r.panggilanLlm,
   });
+  // Loop lama yang diganti eksekusi baru (sesi lama diakhiri, sesi baru dibuat): resinya tetap di jejak
+  // eksekusinya sendiri, tetapi pesannya tidak diterbitkan ke layar yang kini milik eksekusi baru.
+  if (diganti(id, m.executionId)) return hasil;
   rt.publish(m.urusan.id, { type: 'progress', label: hasil.pesan });
   // Halaman sukses = berhasil (TERKIRIM), dicatat sekali per eksekusi; laporan "dibatalkan" yang datang
   // kemudian saat warga menutup sesi tidak menimpanya.
@@ -295,6 +315,7 @@ export function mulaiNavigator(rt: Runtime, m: MasukanNavigator, deps: DepsNavig
   berjalan.set(m.urusan.id, { executionId: m.executionId, ac, persetujuan: new Map() });
   void jalankanNavigatorUrusan(rt, m, { ...deps, signal: ac.signal })
     .catch(() => {
+      if (diganti(m.urusan.id, m.executionId)) return;
       rt.publish(m.urusan.id, {
         type: 'progress',
         label: 'Bantuan AI berhenti karena gangguan. Anda tetap bisa melanjutkan sendiri dari layar.',
@@ -312,9 +333,10 @@ export function hentikanNavigator(urusanId: string): void {
 }
 
 /**
- * Loop hilang (web restart, atau loop sudah berhenti) sementara sesi generik masih bermode `ai`: pasang ulang
- * untuk eksekusi yang belum pernah dijalankan proses ini, selain itu kembalikan kendali ke warga.
- * true bila loop dipasang ulang.
+ * Loop hilang (web restart, atau loop sudah berhenti) sementara sesi generik masih hidup: pasang loop untuk
+ * eksekusi yang belum pernah dijalankan proses ini, selain itu kembalikan kendali ke warga (bila masih di
+ * tangan AI). Dipakai juga oleh POST mulai: POST ulang untuk eksekusi yang sama tidak mereset anggaran.
+ * true bila loop dipasang.
  */
 export async function pulihkanNavigator(
   rt: Runtime,

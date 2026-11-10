@@ -606,7 +606,9 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
         return [{ indeks: 0, kode: 'REF_BASI' }];
       },
     ];
-    const provider = new ProviderSkrip(() => ({ aksi: [{ jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e1' }] }));
+    const provider = new ProviderSkrip(() => ({
+      aksi: [{ jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e1' }],
+    }));
     const { hasil, jejak } = jalankan(worker, provider);
     expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'isi_sendiri' });
     expect(provider.calls).toHaveLength(1);

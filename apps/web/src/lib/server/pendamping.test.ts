@@ -40,7 +40,7 @@ import {
 } from './pendamping';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
 import { SID_COOKIE } from './sesi';
-import { hentikanNavigator } from './pendamping/navigator';
+import { hentikanNavigator, navigatorBerjalan } from './pendamping/navigator';
 
 const ORIGIN = 'http://localhost:3000';
 const SID = 'ab'.repeat(16);
@@ -1128,6 +1128,40 @@ describe('broker Browser Pendamping', () => {
       // Host `id-only` di registry (bukti nyata menolak IP pusat data): tanpa worker id = null (dipandu).
       const SMG = 'https://sidnok.semarangkota.go.id';
       expect(await pilihWorker(cfg, SMG, 'u4', undefined, false, 'generik')).toBeNull();
+    });
+
+    it('N3: POST mulai generik tidak memasang loop untuk sesi siaga/berakhir, atau ulang untuk eksekusi yang pernah jalan', async () => {
+      const u = urusanDenganEksekusi();
+      rt.publish(u.id, {
+        type: 'execution_request',
+        executionId: 'x_n3',
+        adapterId: 'generik',
+        flowId: 'kelahiran',
+        ringkasan: 'Ajukan akta kelahiran',
+        params: { jenis: 'kelahiran', kode: '3312' },
+        tool: 'dukcapil__ajukan_layanan',
+        paramsHash: 'h',
+      });
+      const post = () => mulai(ev(req('POST', { executionId: 'x_n3' }), u.id));
+      // Sesi siaga (langkah sebelumnya sudah selesai): tidak ada yang digerakkan.
+      reply = () => ({
+        status: 201,
+        body: sesi({ executionId: 'x_n3', status: 'siaga', mode: 'done', antrean: null }),
+      });
+      expect((await post()).status).toBe(201);
+      expect(navigatorBerjalan(u.id)).toBeUndefined();
+      // Sesi baru (peramban masih dimulai, worker menjawab 409 belum siap): loop dipasang dan menunggu.
+      reply = (path) =>
+        path === '/internal/sesi'
+          ? { status: 201, body: sesi({ executionId: 'x_n3' }) }
+          : { status: 409, body: { kode: 'LAYANAN_TIDAK_TERSEDIA', pesanWarga: 'x' } };
+      expect((await post()).status).toBe(201);
+      expect(navigatorBerjalan(u.id)).toBe('x_n3');
+      hentikanNavigator(u.id);
+      await vi.waitFor(() => expect(navigatorBerjalan(u.id)).toBeUndefined(), { timeout: 5_000 });
+      // POST ulang (reload) untuk eksekusi yang sama: tidak ada loop baru beranggaran penuh.
+      expect((await post()).status).toBe(201);
+      expect(navigatorBerjalan(u.id)).toBeUndefined();
     });
 
     it('mulai sesi generik: Mode Uji membuka akar replika, akun warga membawa jalur portal asli', async () => {
