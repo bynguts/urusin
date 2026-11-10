@@ -248,11 +248,12 @@ export const HapusDataResponseSchema = z.object({ terhapus: z.number().int().non
 export const ENDPOINT = {
   buatUrusan: { method: 'POST', path: '/api/urusan', sukses: 201, diimplementasi: true },
   turn: { method: 'POST', path: '/api/urusan/[id]/turn', sukses: 202, diimplementasi: true },
+  // Laporan ekstensi; dihapus bersama ekstensi (hasil kini lewat status Browser Pendamping). Skema tetap (beku).
   executionResult: {
     method: 'POST',
     path: '/api/urusan/[id]/execution-result',
     sukses: 200,
-    diimplementasi: true,
+    diimplementasi: false,
   },
   konfirmasi: { method: 'POST', path: '/api/urusan/[id]/konfirmasi', sukses: 201, diimplementasi: true },
   tetapkanWilayah: { method: 'POST', path: '/api/urusan/[id]/wilayah', sukses: 200, diimplementasi: true },

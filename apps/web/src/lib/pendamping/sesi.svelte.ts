@@ -9,7 +9,10 @@ import type {
   ViewerPendamping,
 } from './tipe.js';
 
-/** Keadaan layar Browser Pendamping (papan "Browser Pendamping · Keadaan", 11 keadaan). */
+/**
+ * Keadaan layar Browser Pendamping (papan "Browser Pendamping · Keadaan", 11 keadaan) + `siaga`: langkah selesai,
+ * peramban server MASIH hidup sebentar untuk langkah berikutnya (bukan "ditutup").
+ */
 export type KeadaanLayar =
   | 'mati'
   | 'antre'
@@ -18,11 +21,15 @@ export type KeadaanLayar =
   | 'giliran'
   | 'dijeda'
   | 'selesai'
+  | 'siaga'
   | 'kedaluwarsa'
   | 'terputus'
   | 'dipandu'
   | 'galat'
   | 'tidak_tersedia';
+
+/** Pesan bila "Tutup sekarang" gagal (ditampilkan di lembar siaga). */
+export const PESAN_GAGAL_TUTUP = 'Browser belum bisa ditutup. Coba lagi; browser juga tutup sendiri.';
 
 export type GiliranAnda = Extract<PendampingEvent, { jenis: 'giliran_anda' }>;
 
@@ -63,8 +70,9 @@ export function keadaanDariSesi(s: Pick<SesiPendamping, 'status' | 'mode'>, gili
     case 'memulai':
     case 'menunggu_data':
       return 'menyiapkan';
-    case 'berjalan':
     case 'siaga':
+      return 'siaga';
+    case 'berjalan':
       if (s.mode === 'takeover') return giliran ? 'giliran' : 'dijeda';
       return 'ai';
     case 'selesai':
@@ -175,14 +183,17 @@ export class SesiPendampingUi {
           ...this.data,
           mode,
           giliran,
+          // Event `selesai` lalu mode takeover (bukan done) = sesi siaga: peramban belum ditutup.
           keadaan:
             mode === 'done'
               ? this.data.keadaan
-              : mode === 'takeover'
-                ? giliran
-                  ? 'giliran'
-                  : 'dijeda'
-                : 'ai',
+              : this.data.keadaan === 'selesai' || this.data.keadaan === 'siaga'
+                ? 'siaga'
+                : mode === 'takeover'
+                  ? giliran
+                    ? 'giliran'
+                    : 'dijeda'
+                  : 'ai',
           pesan: pesan ?? this.data.pesan,
         };
       }),
@@ -309,6 +320,23 @@ export class SesiPendampingUi {
     }
     this.tutup();
     this.data = { ...dataAwal() };
+  }
+
+  /**
+   * Siaga → "Tutup sekarang": peramban server dan login/cookie di dalamnya dihancurkan sekarang. Hasil (nomor)
+   * tetap tampil; teks "Browser ditutup" baru muncul setelah server mengonfirmasi.
+   */
+  async tutupSekarang(): Promise<void> {
+    try {
+      const r = await this.ambil(this.dasar, { method: 'DELETE' });
+      // 404: sesi sudah tidak ada (tutup sendiri) = sudah tertutup.
+      if (!r.ok && r.status !== 404) throw new Error(String(r.status));
+    } catch {
+      this.data = { ...this.data, pesan: PESAN_GAGAL_TUTUP };
+      return;
+    }
+    this.tutup();
+    this.data = { ...this.data, keadaan: 'selesai', mode: 'done', giliran: null };
   }
 
   tutup(): void {

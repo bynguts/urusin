@@ -1,13 +1,14 @@
 import type { StatusUrusanResponse } from '@urusin/contracts';
 import { apiError, apiJson, errorResponse } from '#lib/server/http.js';
 import { getRuntime } from '#lib/server/runtime.js';
+import { urusanMilik } from '#lib/server/urusan-akses.js';
 import type { RequestHandler } from './$types';
 
 /** Status ringan urusan (versi + apakah ada turn berjalan); dipakai klien untuk pulih dari 409. */
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, locals }) => {
   try {
     const rt = await getRuntime();
-    const u = rt.store.getUrusan(params.id);
+    const u = urusanMilik(rt, params.id, locals);
     if (!u) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
     return apiJson({
       id: u.id,

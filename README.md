@@ -248,8 +248,8 @@ Juri **tidak butuh kredensial**:
 - Halaman Masuk → **"Masuk sebagai juri"**.
   - Membuat salinan demo terisolasi berisi Data Diri sintetis (bukan data orang sungguhan), berlaku 24 jam.
   - Setiap klik mendapat salinannya sendiri, jadi juri tidak saling menimpa data.
-  - Batas 3 salinan per IP per hari dan 200 salinan aktif. Salinan yang kedaluwarsa langsung membebaskan
-    tempat.
+  - Batas 50 salinan per IP per hari (tahan satu NAT aula lomba) dan 2000 salinan aktif. Salinan yang
+    kedaluwarsa langsung membebaskan tempat. Dokumen contoh dirujuk bersama, tidak disalin per juri.
   - Data sintetis hanya boleh diisikan ke situs latihan, tidak pernah ke situs pemerintah (ditegakkan
     resolver vault di server).
 - **"Coba tanpa daftar"** (mode tamu) membuka semua fitur tanpa akun.

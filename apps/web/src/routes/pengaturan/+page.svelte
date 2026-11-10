@@ -73,6 +73,8 @@
     try {
       await fetch('/api/akun/keluar', { method: 'POST' });
     } finally {
+      // Perangkat bersama: daftar urusan dan pesan di perangkat ini ikut dihapus sebelum pindah halaman.
+      lokal.hapusSemua();
       location.assign(resolve('/'));
     }
   }

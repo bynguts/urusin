@@ -75,6 +75,8 @@ export default defineConfig({
       // IdP OIDC tiruan (#48) dan Turnstile tiruan (#45, juri); keduanya ditolak server di produksi.
       URUSIN_OIDC_FIXTURE: '1',
       URUSIN_TURNSTILE_FIXTURE: '1',
+      // #45 menguji mekanisme batas juri per IP dengan angka kecil (bawaan 50, tahan NAT aula lomba).
+      URUSIN_DEMO_PER_IP_HARI: '3',
       // IP klien dari header (seperti di belakang Caddy): tiap tes memakai IP sendiri untuk batas per IP.
       ADDRESS_HEADER: 'x-forwarded-for',
       XFF_DEPTH: '1',

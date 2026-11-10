@@ -1,5 +1,5 @@
 import type { Db } from '@urusin/harness';
-import { dataDiriSintetis, dokumenContoh } from './demo.js';
+import { dataDiriSintetis } from './demo.js';
 import { maskEmail, normalizeEmail } from './email.js';
 import { AkunError } from './errors.js';
 import { GoogleError, type GoogleOidc } from './google.js';
@@ -73,12 +73,20 @@ export const LOCKOUT = Object.freeze({
   kunciMaksSec: 3600,
 });
 
-/** Batas pembuatan pemilik sementara (host bersama, do-no-harm). */
+/**
+ * Batas pembuatan pemilik sementara (host bersama, do-no-harm). Batas per IP harus tahan satu NAT bersama
+ * (aula lomba, kampus, warnet): semua juri/pengunjung di satu tempat tampak sebagai satu IP. Pengaman utamanya
+ * batas global salinan aktif + kedaluwarsa + Turnstile (wajib bila kuncinya dikonfigurasi). Batas global dibuat
+ * jauh di atas per IP × beberapa IP: tanpa Turnstile, segelintir IP tidak boleh bisa menghabiskannya dan mengunci
+ * semua juri. Salinan demo murah (Data Diri sintetis saja; dokumen contoh dirujuk bersama, tidak disalin) dan
+ * kedaluwarsa 24 jam. Semua bisa diatur lewat env (`URUSIN_TAMU_PER_IP_HARI`, `URUSIN_DEMO_PER_IP_HARI`,
+ * `URUSIN_DEMO_AKTIF_MAKS`).
+ */
 export type Kuota = { tamuPerIpHari: number; demoPerIpHari: number; demoAktifMaks: number };
 export const DEFAULT_KUOTA: Kuota = Object.freeze({
-  tamuPerIpHari: 20,
-  demoPerIpHari: 3,
-  demoAktifMaks: 200,
+  tamuPerIpHari: 200,
+  demoPerIpHari: 50,
+  demoAktifMaks: 2000,
 });
 
 /** Email dianggap tertunda selama ini setelah satu kegagalan kirim (kuota habis, DNS belum siap). */
@@ -249,7 +257,7 @@ export function amanNext(next: string | null | undefined, fallback = '/'): strin
 export class AkunService {
   private readonly db: Db;
   private readonly ttl: AkunTtl;
-  private readonly kuota: Kuota;
+  readonly kuota: Kuota;
   private readonly now: () => Date;
   private readonly log: (line: string) => void;
   private readonly alert: (pesan: string) => void;
@@ -491,15 +499,7 @@ export class AkunService {
       return baru;
     });
     this.deps.vault.setDataDiri(id, dataDiriSintetis());
-    // Dokumen contoh: upaya terbaik (kuota/penyimpanan penuh tidak boleh menggagalkan masuk juri).
-    for (const d of dokumenContoh()) {
-      try {
-        this.deps.vault.putDocument(id, d);
-      } catch (e) {
-        if (!(e instanceof AkunError)) throw e;
-        break;
-      }
-    }
+    // Dokumen contoh TIDAK disalin: vault menyajikannya sebagai rujukan bersama baca-saja untuk setiap salinan demo.
     return { token: this.buatSesi(id, ctx), akun: toAkun(this.userById(id)!) };
   }
 
@@ -618,8 +618,14 @@ export class AkunService {
     const hash = t.password_hash ?? u.password_hash;
     if (!hash || sandi.length === 0 || sandi.length > 1024 || !(await verifyPassword(hash, sandi)))
       throw new AkunError('KREDENSIAL_SALAH');
+    // Kotak surat memverifikasi akun yang dibuat/dipakai orang lain (sandi lama tidak diketahuinya): urusan yang
+    // dibuat selama belum terverifikasi milik pemegang lama, jadi tidak ikut diwariskan (anti tanam urusan).
+    const gantiPemegang =
+      !u.email_verified_at &&
+      !(u.password_hash && (hash === u.password_hash || (await verifyPassword(u.password_hash, sandi))));
     const userId = this.pakaiToken(token, 'verify');
     this.tx(() => {
+      if (gantiPemegang) this.hapusUrusanSemua(this.urusanMilik(userId));
       this.db
         .prepare(
           'UPDATE users SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?',
@@ -1052,9 +1058,12 @@ export class AkunService {
 
   // --- kepemilikan urusan dan rotasi pemilik ---
 
-  /** Catat pemilik urusan baru: akun sinkron/demo → user_id; selain itu → hash urusin_sid (tamu). */
+  /**
+   * Catat pemilik urusan baru: akun yang masuk (terverifikasi atau belum) dan salinan demo → user_id, jadi keluar
+   * lalu masuk lagi tetap membuka urusannya; tamu → hash urusin_sid. Gerbang `sinkron` hanya untuk vault.
+   */
   catatPemilikUrusan(urusanId: string, pemilik: { akun?: Akun | undefined; sid?: string | undefined }): void {
-    const userId = this.sinkron(pemilik.akun) ? pemilik.akun!.id : null;
+    const userId = pemilik.akun?.id ?? null;
     const sh = !userId && pemilik.sid ? hashSid(pemilik.sid) : null;
     if (!userId && !sh) return;
     this.db
@@ -1066,14 +1075,19 @@ export class AkunService {
 
   /**
    * Rotasi `urusin_sid` saat masuk, dalam SATU transaksi:
-   * - `userId` (akun terverifikasi): urusan tamu pindah ke akun; vault tamu dienkripsi ulang dengan DEK akun
-   *   lalu DEK tamu dihancurkan dan baris tamu dihapus;
-   * - `userId = null` (akun belum terverifikasi = tetap seperti tamu): semua yang terikat hash sid lama
-   *   diikat ke hash sid baru;
+   * - urusan tamu pindah ke `akunId` (akun apa pun yang masuk, juga belum terverifikasi atau demo; default
+   *   `userId`); tanpa keduanya diikat ke hash sid baru;
+   * - `userId` (pemilik vault sinkron: akun terverifikasi): vault tamu dienkripsi ulang dengan DEK akun lalu DEK
+   *   tamu dihancurkan dan baris tamu dihapus. `userId = null`: tamu (vault satu perangkat) diikat ke sid baru;
    * - setiap pengikat terdaftar (Pendamping) mengikat ulang hash pemilik lama → baru.
    * Satu kegagalan membatalkan semuanya (berkas baru dibuang); sid lama tidak lagi memiliki apa pun.
    */
-  rotasiPemilik(p: { sidLama: string | undefined; sidBaru: string; userId: string | null }): {
+  rotasiPemilik(p: {
+    sidLama: string | undefined;
+    sidBaru: string;
+    userId: string | null;
+    akunId?: string | null | undefined;
+  }): {
     urusanDipindahkan: number;
     vaultDipindahkan: boolean;
   } {
@@ -1087,20 +1101,17 @@ export class AkunService {
     let urusanDipindahkan = 0;
     try {
       this.tx(() => {
-        if (p.userId) {
-          urusanDipindahkan = this.db
-            .prepare('UPDATE urusan_owner SET user_id = ?, guest_sid_hash = NULL WHERE guest_sid_hash = ?')
-            .run(p.userId, hl).changes;
-          if (tamu) {
-            rencana!.terapkan();
-            this.db.prepare('DELETE FROM users WHERE id = ?').run(tamu.id);
-          }
-        } else {
-          urusanDipindahkan = this.db
-            .prepare('UPDATE urusan_owner SET guest_sid_hash = ? WHERE guest_sid_hash = ?')
-            .run(hb, hl).changes;
-          if (tamu) this.db.prepare('UPDATE users SET sid_hash = ? WHERE id = ?').run(hb, tamu.id);
-        }
+        const pemilikUrusan = p.akunId ?? p.userId;
+        urusanDipindahkan = pemilikUrusan
+          ? this.db
+              .prepare('UPDATE urusan_owner SET user_id = ?, guest_sid_hash = NULL WHERE guest_sid_hash = ?')
+              .run(pemilikUrusan, hl).changes
+          : this.db.prepare('UPDATE urusan_owner SET guest_sid_hash = ? WHERE guest_sid_hash = ?').run(hb, hl)
+              .changes;
+        if (tamu && p.userId) {
+          rencana!.terapkan();
+          this.db.prepare('DELETE FROM users WHERE id = ?').run(tamu.id);
+        } else if (tamu) this.db.prepare('UPDATE users SET sid_hash = ? WHERE id = ?').run(hb, tamu.id);
         for (const f of this.pengikat) f({ hashLama: hl, hashBaru: hb, userId: p.userId });
       });
     } catch (e) {
@@ -1120,8 +1131,26 @@ export class AkunService {
   }
 
   /**
-   * Pemilik vault sebuah urusan, HANYA bila `peminta` adalah pemilik itu: akun sinkron yang sama (`user_id`),
-   * atau sid yang sama untuk urusan milik tamu. Selain itu (bukan pemilik, urusan tidak dikenal) → undefined.
+   * Apakah `peminta` pemilik urusan ini: akun yang sama (`user_id`; terverifikasi atau belum, juga demo), atau
+   * cookie sesi yang sama untuk urusan tamu (`guest_sid_hash`). Urusan tanpa catatan pemilik (lama, sebelum
+   * pemilik dicatat) → false: gagal tertutup. Berbeda dari `pemilikVaultUrusan`, tidak butuh baris tamu.
+   */
+  adalahPemilikUrusan(
+    urusanId: string,
+    peminta: { akun?: Akun | undefined; sid?: string | undefined },
+  ): boolean {
+    const r = this.db
+      .prepare('SELECT user_id, guest_sid_hash FROM urusan_owner WHERE urusan_id = ?')
+      .get(urusanId) as { user_id: string | null; guest_sid_hash: string | null } | undefined;
+    if (!r) return false;
+    if (r.user_id) return peminta.akun !== undefined && peminta.akun.id === r.user_id;
+    return Boolean(peminta.sid && r.guest_sid_hash && safeEqual(r.guest_sid_hash, hashSid(peminta.sid)));
+  }
+
+  /**
+   * Pemilik vault sebuah urusan, HANYA bila `peminta` adalah pemilik urusan itu (`adalahPemilikUrusan`): akun
+   * sinkron → dirinya; akun belum terverifikasi → tamu terikat sid-nya (vault satu perangkat); urusan tamu → tamu
+   * sid yang sama. Selain itu (bukan pemilik, urusan tidak dikenal, belum ada vault) → undefined.
    * Dipakai jalur isi Pendamping sebelum menerbitkan atau memakai token persetujuan.
    */
   pemilikVaultUrusan(
@@ -1132,8 +1161,10 @@ export class AkunService {
       .prepare('SELECT user_id, guest_sid_hash FROM urusan_owner WHERE urusan_id = ?')
       .get(urusanId) as { user_id: string | null; guest_sid_hash: string | null } | undefined;
     if (!r) return undefined;
-    if (r.user_id)
-      return this.sinkron(peminta.akun) && peminta.akun!.id === r.user_id ? r.user_id : undefined;
+    if (r.user_id) {
+      if (peminta.akun?.id !== r.user_id) return undefined;
+      return this.sinkron(peminta.akun) ? r.user_id : this.tamuDariSid(peminta.sid);
+    }
     if (!peminta.sid || r.guest_sid_hash !== hashSid(peminta.sid)) return undefined;
     return this.tamuDariSid(peminta.sid);
   }

@@ -17,6 +17,7 @@
     mati: { teks: 'Menyiapkan', ikon: 'memuat', nada: 'bg-bg-2 text-muted' },
     dijeda: { teks: 'Dijeda', ikon: 'jeda', nada: 'bg-bg-2 text-muted' },
     selesai: { teks: 'Selesai', ikon: 'centang-bulat', nada: 'bg-hijau text-hijau-ink' },
+    siaga: { teks: 'Selesai', ikon: 'centang-bulat', nada: 'bg-hijau text-hijau-ink' },
     kedaluwarsa: { teks: 'Sesi berakhir', ikon: 'waktu-habis', nada: 'bg-bg-2 text-muted' },
     terputus: { teks: 'Terputus', ikon: 'terputus', nada: 'bg-bg-2 text-muted' },
     dipandu: { teks: 'Mode dipandu', ikon: 'peta', nada: 'bg-merah text-galat' },

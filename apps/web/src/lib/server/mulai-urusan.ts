@@ -1,6 +1,8 @@
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
+import { detectPii } from '@urusin/core';
 import { kodeDisebut, usulkanWilayah } from '@urusin/harness';
 import { pastikanTamuUntukTurn, pemilikVault } from '#lib/server/akun.js';
+import { PESAN_PII } from '#lib/server/http.js';
 import { getRuntime, publicOrigin, startTurnInBackground, type Runtime } from '#lib/server/runtime.js';
 import { batasi, catatTerakhir, ensureSession } from '#lib/server/sesi.js';
 
@@ -52,6 +54,9 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
   const peristiwa = PERISTIWA.find((p) => p === peristiwaRaw) as Peristiwa | undefined;
   if (!pesan && !peristiwa)
     return fail(422, { pesanWarga: 'Tulis dulu apa yang ingin Anda urus.', pesan } satisfies GagalMulai);
+  // Sama dengan readBody di POST /api/urusan: NIK/KK/HP/email tidak boleh menuju model. Pesan tidak digemakan.
+  if (pesan && detectPii(pesan, /^\d{4}$/.test(kode) ? { kodeKabKota: kode } : {}).length > 0)
+    return fail(422, { pesanWarga: PESAN_PII, pesan: '' } satisfies GagalMulai);
 
   const rt = await getRuntime();
   event.locals.sid = ensureSession(event.cookies);

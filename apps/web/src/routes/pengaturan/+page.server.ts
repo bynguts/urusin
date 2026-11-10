@@ -4,7 +4,7 @@ import { hapusAkunCookie } from '#lib/server/akun.js';
 import { gagalForm, teks } from '#lib/server/akun-form.js';
 import { daftarKota } from '#lib/server/referensi.js';
 import { getRuntime } from '#lib/server/runtime.js';
-import { rotasiSid } from '#lib/server/sesi.js';
+import { hapusTerakhir, rotasiSid } from '#lib/server/sesi.js';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Tujuan masuk ulang (Google atau sandi) sebelum menghapus akun tanpa sandi, lalu kembali ke zona bahaya. */
@@ -27,6 +27,7 @@ export const actions: Actions = {
     rt.akun.keluarSemua(locals.akun.id);
     hapusAkunCookie(cookies);
     rotasiSid(cookies);
+    hapusTerakhir(cookies);
     redirect(303, '/masuk');
   },
   /**
@@ -49,6 +50,7 @@ export const actions: Actions = {
     }
     hapusAkunCookie(cookies);
     rotasiSid(cookies);
+    hapusTerakhir(cookies);
     redirect(303, '/');
   },
 };

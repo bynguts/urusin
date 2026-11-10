@@ -177,9 +177,11 @@ Firewall tidak diubah; sebagai gantinya:
   | `URUSIN_PII_KEY_PREV`                        | Hanya selama rotasi kunci vault (lihat di bawah); hapus setelah `kek:rotate`.                                                                                                                                            |
 
   Tanpa Turnstile, tombol "Masuk sebagai juri" **tetap jalan** di produksi supaya juri tidak pernah terkunci:
-  batas 3 salinan per IP per hari (`URUSIN_DEMO_PER_IP_HARI`), 200 salinan aktif (`URUSIN_DEMO_AKTIF_MAKS`),
+  batas 50 salinan per IP per hari (`URUSIN_DEMO_PER_IP_HARI`, tahan satu NAT aula lomba), 2000 salinan aktif (`URUSIN_DEMO_AKTIF_MAKS`),
   umur 24 jam, dan batas vault tamu/demo tetap berlaku. Server mencatat `[ALERT] Turnstile nonaktif di produksi`
-  saat start sebagai pengingat. Dengan Turnstile, token wajib.
+  saat start sebagai pengingat, dan `[ALERT] batas juri rapuh tanpa Turnstile` bila per IP × 4 ≥ batas global
+  (4 IP saja bisa mengunci semua juri 24 jam). `.env` lama dengan `URUSIN_DEMO_AKTIF_MAKS=200` memicu alert itu. Dengan Turnstile (`TURNSTILE_SECRET_KEY` + `TURNSTILE_SITE_KEY`; produksi menolak
+  start bila hanya rahasianya), widget tampil di /masuk dan token wajib; daftarkan hostname app di widget Cloudflare.
   `URUSIN_OIDC_FIXTURE`/`URUSIN_TURNSTILE_FIXTURE` tidak boleh ada di produksi: server menolak boot.
 
 ## Kunci vault (`URUSIN_PII_KEY`): escrow dan rotasi

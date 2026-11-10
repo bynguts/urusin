@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
-import { DevMailer, GoogleOidc, sha256Hex, type Akun } from '@urusin/akun';
+import { DEFAULT_KUOTA, DevMailer, GoogleOidc, sha256Hex, type Akun } from '@urusin/akun';
 import { FakeGoogle, MemoryMailer } from '@urusin/akun/testing';
 import { GalatApiSchema, SesiAkunResponseSchema, VaultResponseSchema } from '@urusin/contracts';
 import { DemoProvider } from '@urusin/harness';
@@ -22,6 +22,7 @@ import { GET as urusanAkun } from '../../routes/api/akun/urusan/+server';
 import { POST as verifikasiApi } from '../../routes/api/akun/verifikasi/+server';
 import { POST as kirimUlangApi } from '../../routes/api/akun/verifikasi/kirim-ulang/+server';
 import { POST as buatUrusan } from '../../routes/api/urusan/+server';
+import { GET as statusUrusan } from '../../routes/api/urusan/[id]/+server';
 import { POST as turnApi } from '../../routes/api/urusan/[id]/turn/+server';
 import { GET as vaultList, POST as vaultPost } from '../../routes/api/vault/+server';
 import { GET as dataDiriGet, PUT as dataDiriPut } from '../../routes/api/vault/data-diri/+server';
@@ -39,7 +40,7 @@ import { actions as pengaturanPage, load as pengaturanLoad } from '../../routes/
 import { actions as verifPage, load as verifLoad } from '../../routes/verifikasi-email/+page.server';
 import { AKUN_COOKIE, OAUTH_COOKIE, TAUTKAN_COOKIE } from './akun';
 import { createRuntime, googleRedirectUri, setRuntimeForTests, type Runtime } from './runtime';
-import { SID_COOKIE } from './sesi';
+import { SID_COOKIE, TERAKHIR_COOKIE } from './sesi';
 import { TURNSTILE_TOKEN_FIXTURE, turnstileFromEnv } from './turnstile';
 
 const ORIGIN = 'http://localhost:3000';
@@ -55,9 +56,11 @@ let mailer: MemoryMailer;
 let google: FakeGoogle;
 let jam: number;
 
-function buatRt(akun: NonNullable<Parameters<typeof createRuntime>[0]>['akun'] = {}) {
+type InitRt = NonNullable<Parameters<typeof createRuntime>[0]>;
+
+function buatRt(akun: InitRt['akun'] = {}, provider: InitRt['provider'] = new DemoProvider()) {
   rt = createRuntime({
-    provider: new DemoProvider(),
+    provider,
     config: { dbPath: ':memory:', disconnectGraceMs: 0 },
     akun: {
       mailer,
@@ -75,6 +78,25 @@ function buatRt(akun: NonNullable<Parameters<typeof createRuntime>[0]>['akun'] =
     },
   });
   setRuntimeForTests(rt);
+}
+
+/**
+ * Model yang menunggu sampai turn dibatalkan, tanpa kerja CPU. Untuk tes yang hanya butuh turn DIMULAI (tamu malas):
+ * turn demo penuh di latar memakan ~1,5 s CPU (6+ s di runner ARM) dan menahan permintaan berikutnya.
+ */
+class ModelDiam extends DemoProvider {
+  override create(_p: unknown, opts: { signal?: AbortSignal | undefined } = {}): Promise<never> {
+    return new Promise((_, tolak) =>
+      opts.signal?.addEventListener('abort', () => tolak(new Error('dibatalkan'))),
+    );
+  }
+}
+
+/** Sesi juri (salinan demo) tanpa hash sandi: pemilik/sesi murah untuk tes yang tidak menguji sandi. */
+async function masukJuri(jar = new Jar(), ip = '127.0.0.1') {
+  const r = await juriApi(ev(post({ turnstile: TURNSTILE_TOKEN_FIXTURE }, '/api/akun/juri'), { jar, ip }));
+  expect(r.status).toBe(200);
+  return { jar };
 }
 
 beforeAll(async () => {
@@ -342,7 +364,9 @@ describe('keamanan', () => {
 
   it('penguncian: Turnstile wajib setelah 3 gagal, terkunci 15 menit setelah 5; pesan sama untuk email ada/tidak', async () => {
     await daftarVerifikasi();
-    for (const email of [EMAIL, 'hantu@example.com']) {
+    // Dua email berjalan bersamaan (hash argon2 boleh 2 serentak): penghitung kegagalan per email, jadi
+    // urutan di dalam satu email tetap; waktu tes kira-kira separuh.
+    const uji = async (email: string) => {
       for (let i = 0; i < 3; i++)
         expect((await masuk(new Jar(), email, SANDI2)).body.kode).toBe('KREDENSIAL_SALAH');
       const tanpa = await masuk(new Jar(), email, SANDI2);
@@ -356,7 +380,8 @@ describe('keamanan', () => {
       const kunci = await masuk(new Jar(), email, SANDI, ts);
       expect([kunci.res.status, kunci.body.kode]).toEqual([429, 'TERKUNCI']);
       expect(Number(kunci.res.headers.get('retry-after'))).toBeGreaterThan(0);
-    }
+    };
+    await Promise.all([uji(EMAIL), uji('hantu@example.com')]);
     jam += 16 * 60 * 1000;
     expect((await masuk()).res.status).toBe(200);
   });
@@ -466,6 +491,80 @@ describe('keluar, ubah sandi, reset, hapus akun', () => {
     expect(rt.akun.sesi(b.jar.get(AKUN_COOKIE))).toBeNull();
     expect((await keluarApi(ev(post({})))).status).toBe(200);
     expect((await keluarSemuaApi(ev(post({})))).status).toBe(401);
+  });
+
+  it('perangkat bersama: keluar, keluar semua, dan hapus akun menghapus cookie urusan terakhir', async () => {
+    const terakhir = `u_${'c'.repeat(32)}`;
+    // Sesi juri: tanpa hash sandi (yang diuji penghapusan cookie, sama untuk semua jenis akun).
+    const a = await masukJuri();
+    a.jar.set(TERAKHIR_COOKIE, terakhir, {});
+    await lewatHook(post({}, '/api/akun/keluar'), a.jar, keluarApi);
+    expect(a.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
+
+    const b = await masukJuri();
+    b.jar.set(TERAKHIR_COOKIE, terakhir, {});
+    await lewatHook(post({}, '/api/akun/keluar-semua'), b.jar, keluarSemuaApi);
+    expect(b.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
+
+    // Aksi Pengaturan hanya untuk akun warga: satu akun bersandi untuk keduanya.
+    await daftarVerifikasi();
+    const c = await masuk();
+    c.jar.set(TERAKHIR_COOKIE, terakhir, {});
+    await caught(
+      pengaturanPage.keluarSemua(
+        ev(form({}, '/pengaturan?/keluarSemua'), { jar: c.jar, locals: localsDari(c.jar) }),
+      ),
+    );
+    expect(c.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
+
+    const d = await masukJuri();
+    d.jar.set(TERAKHIR_COOKIE, terakhir, {});
+    const ok = await lewatHook(post({ konfirmasi: 'HAPUS' }, '/api/akun/hapus'), d.jar, hapusApi);
+    expect(ok.status).toBe(200);
+    expect(d.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
+
+    const e = await masuk();
+    e.jar.set(TERAKHIR_COOKIE, terakhir, {});
+    await caught(
+      pengaturanPage.hapusAkun(
+        ev(form({ konfirmasi: 'HAPUS', sandi: SANDI }, '/pengaturan?/hapusAkun'), {
+          jar: e.jar,
+          locals: localsDari(e.jar),
+        }),
+      ),
+    );
+    expect(e.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
+  });
+
+  it('akun belum terverifikasi: buat urusan → keluar → masuk lagi → urusan tetap terbuka; pemilik lain 404', async () => {
+    expect((await daftarApi(ev(post({ email: EMAIL, sandi: SANDI })))).status).toBe(202);
+    const a = await masuk();
+    expect(akunDari(a.jar).emailVerifiedAt).toBeNull();
+    const { id } = (await (await lewatHook(post({}, '/api/urusan'), a.jar, buatUrusan)).json()) as any;
+    const buka = (jar: Jar) =>
+      lewatHook(new Request(`${ORIGIN}/api/urusan/${id}`), jar, statusUrusan, { id }).then((r) => r.status);
+    expect(await buka(a.jar)).toBe(200);
+    await lewatHook(post({}, '/api/akun/keluar'), a.jar, keluarApi);
+    expect(await buka(a.jar)).toBe(404); // perangkat bersama: setelah keluar tidak terbuka
+    await masuk(a.jar);
+    expect(await buka(a.jar)).toBe(200);
+    // Perangkat lain, akun yang sama: ikut akun (bukan cookie perangkat).
+    expect(await buka((await masuk()).jar)).toBe(200);
+    // Pemilik lain: akun lain (salinan juri, tanpa hash sandi) dan tamu → 404 yang sama.
+    expect(await buka((await masukJuri()).jar)).toBe(404);
+    expect(await buka(new Jar())).toBe(404);
+  });
+
+  it('juri: urusan tamu yang dimulai sebelum masuk ikut salinan demonya (tidak yatim di sid)', async () => {
+    const jar = new Jar();
+    const { id } = (await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any;
+    const ts = { turnstile: TURNSTILE_TOKEN_FIXTURE };
+    expect((await juriApi(ev(post(ts, '/api/akun/juri'), { jar, ip: '10.9.0.1' }))).status).toBe(200);
+    const demo = akunDari(jar);
+    expect(rt.akun.urusanMilik(demo.id)).toEqual([id]);
+    jar.set(SID_COOKIE, 'e'.repeat(32), {}); // sid berganti (mis. cookie dibersihkan): tetap milik juri
+    const r = await lewatHook(new Request(`${ORIGIN}/api/urusan/${id}`), jar, statusUrusan, { id });
+    expect(r.status).toBe(200);
   });
 
   it('ubah sandi merotasi cookie; reset menghapus semua sesi', async () => {
@@ -680,9 +779,8 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
     const penuh = await lewatHook(multipart(new Blob(['x'], { type: 'image/png' })), a.jar, vaultPost);
     expect([penuh.status, (await penuh.json()).kode]).toEqual([409, 'DOKUMEN_KUOTA_PENUH']);
 
-    // akun lain: 404 untuk unduh dan hapus
-    await daftarVerifikasi('lain@example.com');
-    const b = await masuk(new Jar(), 'lain@example.com');
+    // pemilik lain (salinan juri, tanpa hash sandi): 404 untuk unduh dan hapus
+    const b = await masukJuri();
     expect((await lewatHook(vget(`/api/vault/${doc.id}`), b.jar, dokumenGet, { id: doc.id })).status).toBe(
       404,
     );
@@ -720,7 +818,7 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
   });
 
   it('tamu malas: turn pertama membuat tamu; kuota pembuatan tamu per IP → 429 TAMU_PENUH', async () => {
-    buatRt({ kuota: { tamuPerIpHari: 1, demoPerIpHari: 3, demoAktifMaks: 200 } });
+    buatRt({ kuota: { tamuPerIpHari: 1, demoPerIpHari: 3, demoAktifMaks: 200 } }, new ModelDiam());
     const jar = new Jar();
     const u = await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json();
     expect(hitung('SELECT COUNT(*) n FROM users')).toBe(0);
@@ -730,6 +828,7 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
     const lain = new Jar();
     const r = await lewatHook(post({ pesan: 'halo' }, '/api/urusan'), lain, buatUrusan);
     expect([r.status, (await r.json()).kode]).toEqual([429, 'TAMU_PENUH']);
+    for (const c of rt.running.values()) c.abort();
   });
 
   it('rotasi tamu → akun: urusan + vault tamu pindah ke akun dalam satu langkah; perangkat lain melihatnya', async () => {
@@ -759,7 +858,8 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
 });
 
 describe('Masuk sebagai juri (salinan demo terisolasi)', () => {
-  it('Turnstile wajib; salinan berisi data sintetis, terisolasi per klik; maksimal 3 per IP per hari', async () => {
+  it('Turnstile wajib; salinan berisi data sintetis, terisolasi per klik; batas per IP (di sini 3)', async () => {
+    buatRt({ kuota: { tamuPerIpHari: 20, demoPerIpHari: 3, demoAktifMaks: 200 } });
     const tanpa = await juriApi(ev(post({}, '/api/akun/juri')));
     expect([tanpa.status, (await tanpa.json()).kode]).toEqual([403, 'TURNSTILE_WAJIB']);
     const jars: Jar[] = [];
@@ -794,7 +894,10 @@ describe('Masuk sebagai juri (salinan demo terisolasi)', () => {
     const r = await juriApi(ev(post(ts, '/api/akun/juri'), { ip: '10.1.0.2' }));
     expect([r.status, (await r.json()).kode]).toEqual([503, 'DEMO_PENUH']);
 
-    buatRt({ turnstile: turnstileFromEnv({}) });
+    buatRt({
+      turnstile: turnstileFromEnv({}),
+      kuota: { tamuPerIpHari: 20, demoPerIpHari: 3, demoAktifMaks: 200 },
+    });
     const env = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
     try {
@@ -806,6 +909,28 @@ describe('Masuk sebagai juri (salinan demo terisolasi)', () => {
     } finally {
       process.env.NODE_ENV = env;
     }
+  });
+
+  it('aula lomba (satu NAT): batas bawaan tidak mengunci juri ke-4 dst. maupun pengunjung tamu ke-21 dst.', async () => {
+    expect(DEFAULT_KUOTA).toEqual({ tamuPerIpHari: 200, demoPerIpHari: 50, demoAktifMaks: 2000 });
+    const ts = { turnstile: TURNSTILE_TOKEN_FIXTURE };
+    for (let i = 0; i < 12; i++)
+      expect(
+        (await juriApi(ev(post(ts, '/api/akun/juri'), { ip: '203.0.113.7' }))).status,
+        `juri ${i + 1}`,
+      ).toBe(200);
+    for (let i = 0; i < 30; i++)
+      expect(() =>
+        rt.akun.pastikanTamu(i.toString(16).padStart(32, '0'), { ip: '203.0.113.7' }),
+      ).not.toThrow();
+  });
+
+  it('halaman masuk: widget Turnstile hanya untuk Cloudflare sungguhan; tanpa token juri ditolak', async () => {
+    expect(((await masukLoad(ev(get('/masuk')) as never)) as any).turnstileSiteKey).toBe(''); // tiruan e2e
+    buatRt({ turnstile: turnstileFromEnv({ TURNSTILE_SECRET_KEY: 'rahasia', TURNSTILE_SITE_KEY: 'situs' }) });
+    expect(((await masukLoad(ev(get('/masuk')) as never)) as any).turnstileSiteKey).toBe('situs');
+    const r = await juriApi(ev(post({}, '/api/akun/juri')));
+    expect([r.status, (await r.json()).kode]).toEqual([403, 'TURNSTILE_WAJIB']);
   });
 
   it('halaman masuk: aksi juri mengalihkan ke beranda dengan sesi demo', async () => {

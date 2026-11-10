@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, statfsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Db } from '@urusin/harness';
+import { dokumenContoh } from './demo.js';
 import { AkunError } from './errors.js';
 import { newId } from './token.js';
 
@@ -306,7 +307,29 @@ export class Vault {
     return { id, jenis: doc.jenis, judul: doc.judul, mime: doc.mime, size: doc.bytes.length, createdAt: at };
   }
 
+  /**
+   * Dokumen contoh untuk salinan demo: rujukan bersama baca-saja (byte di memori, tidak ada berkas/baris per
+   * salinan), jadi ribuan salinan demo tidak memakan disk. Tidak dihitung ke batas berkas, tidak bisa dihapus.
+   */
+  private contoh(userId: string): DokumenMeta[] {
+    const u = this.db.prepare('SELECT jenis, created_at FROM users WHERE id = ?').get(userId) as
+      { jenis: string; created_at: string } | undefined;
+    if (u?.jenis !== 'demo') return [];
+    return dokumenContoh().map((d) => ({
+      id: d.id,
+      jenis: d.jenis,
+      judul: d.judul,
+      mime: d.mime,
+      size: d.bytes.length,
+      createdAt: u.created_at,
+    }));
+  }
+
   listDocuments(userId: string): DokumenMeta[] {
+    return [...this.dokumenSendiri(userId), ...this.contoh(userId)];
+  }
+
+  private dokumenSendiri(userId: string): DokumenMeta[] {
     const rows = this.db
       .prepare(
         `SELECT id, jenis, judul_ct, mime, size, created_at FROM vault_documents
@@ -335,7 +358,9 @@ export class Vault {
 
   getDocument(userId: string, docId: string): { meta: DokumenMeta; bytes: Buffer } | null {
     if (!ID_RE.test(docId)) return null;
-    const meta = this.listDocuments(userId).find((d) => d.id === docId);
+    const c = this.contoh(userId).find((d) => d.id === docId);
+    if (c) return { meta: c, bytes: dokumenContoh().find((d) => d.id === docId)!.bytes };
+    const meta = this.dokumenSendiri(userId).find((d) => d.id === docId);
     if (!meta) return null;
     const dek = this.dek(userId, false)!;
     const sealed = readFileSync(this.filePath(userId, docId));
@@ -359,7 +384,7 @@ export class Vault {
   siapkanPindah(dari: string, ke: string): RencanaPindah {
     const tulisBaru: string[] = [];
     const lama = this.getDataDiri(dari);
-    const docs = this.muatPindah(ke, this.listDocuments(dari));
+    const docs = this.muatPindah(ke, this.dokumenSendiri(dari));
     if (!lama && docs.length === 0) {
       return {
         terapkan: () => this.shredDb(dari),

@@ -5,6 +5,7 @@
   import InputSandi from '#lib/components/auth/InputSandi.svelte';
   import KerangkaAuth from '#lib/components/auth/KerangkaAuth.svelte';
   import { dataAuth, formAuth, galatAuth } from '#lib/components/auth/form.js';
+  import { turnstile, ulangTurnstile } from '#lib/components/auth/turnstile.js';
 
   /**
    * App 15 Masuk. Aksi `?/masuk` (email + sandi; `turnstile` diisi widget setelah 3 gagal) dan `?/juri`
@@ -88,13 +89,15 @@
       sibuk = true;
       return async ({ update }) => {
         await update({ reset: false });
+        ulangTurnstile();
         sibuk = false;
       };
     }}
   >
     <input type="hidden" name="next" value={next} />
-    <!-- Widget Turnstile (site key data.turnstileSiteKey) mengisi cf-turnstile-response; field ini untuk uji. -->
+    <!-- Widget Turnstile (hanya bila dikonfigurasi) mengisi cf-turnstile-response; field ini untuk uji. -->
     <input type="hidden" name="turnstile" value="" />
+    {#if data.turnstileSiteKey}<div use:turnstile={data.turnstileSiteKey}></div>{/if}
     <div class="flex flex-col gap-2">
       <label for="email" class="text-[0.9375rem] font-semibold text-ink">Email</label>
       <div class="relative">
@@ -154,6 +157,7 @@
       </p>
       <form method="POST" action="?/juri" data-juri class="mt-3">
         <input type="hidden" name="turnstile" value="" />
+        {#if data.turnstileSiteKey}<div class="mb-3" use:turnstile={data.turnstileSiteKey}></div>{/if}
         <button
           type="submit"
           class="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border border-line-2 bg-surface font-semibold text-ink hover:bg-bg-2"

@@ -214,7 +214,7 @@ describe('Browser Pendamping', () => {
     expect(keadaanDariSesi({ status: 'menunggu_data', mode: 'ai' }, false)).toBe('menyiapkan');
     expect(keadaanDariSesi({ status: 'berjalan', mode: 'ai' }, false)).toBe('ai');
     expect(keadaanDariSesi({ status: 'berjalan', mode: 'takeover' }, true)).toBe('giliran');
-    expect(keadaanDariSesi({ status: 'siaga', mode: 'takeover' }, false)).toBe('dijeda');
+    expect(keadaanDariSesi({ status: 'siaga', mode: 'takeover' }, false)).toBe('siaga');
     expect(keadaanDariSesi({ status: 'gagal', mode: 'ai' }, false)).toBe('galat');
     expect(keadaanDariSesi({ status: 'dibatalkan', mode: 'ai' }, false)).toBe('mati');
   });

@@ -5,6 +5,7 @@ import { hashSid, pendampingConfig } from '#lib/server/pendamping.js';
 import { izinkanIsiUrusan } from '#lib/server/pendamping/isi.js';
 import { isiSesiDariVault } from '#lib/server/pendamping/izinkan.js';
 import { getRuntime } from '#lib/server/runtime.js';
+import { urusanMilik } from '#lib/server/urusan-akses.js';
 import type { RequestHandler } from './$types';
 
 /**
@@ -20,8 +21,7 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
   try {
     const rt = await getRuntime();
     const peminta = { akun: locals.akun, sid: locals.sid };
-    if (!rt.akun.pemilikVaultUrusan(params.id, peminta))
-      return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
+    if (!urusanMilik(rt, params.id, peminta)) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
     const { kurang } = izinkanIsiUrusan(rt, {
       urusanId: params.id,
       peminta,

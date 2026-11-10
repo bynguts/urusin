@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import net from 'node:net';
 import type { MulaiSesiInternal, PendampingServerMessage } from '@urusin/contracts';
-import { ADAPTERS } from '@urusin/adapters';
+import { ADAPTERS, hostsSesi } from '@urusin/adapters';
 import { afterEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { loadConfig, type Config } from './config.js';
@@ -264,6 +264,21 @@ describe('SessionManager', () => {
       kode: 'ADAPTER_TIDAK_ADA',
     });
     expect(tanpa.runs).toHaveLength(0);
+  });
+
+  it('Mode Uji: host egress sesi tanpa satu pun *.go.id (OSS: api-prd/gw/s3.oss.go.id dibuang)', async () => {
+    const fx = 'https://fixtures.urusin.test';
+    const ov = new Map([['https://oss.go.id', `${fx}/oss`]]);
+    const h = harness({ production: true, fixtureOrigins: [fx], originOverrides: ov, maxSessions: 2 });
+    const oss = { adapterId: 'oss-nib', flowId: 'cari_nib', origin: 'https://oss.go.id', params: {} };
+    await h.manager.create(input('u-juri', { ...oss, modeUji: true }));
+    await h.manager.create(input('u-warga', { ...oss, modeUji: false }));
+    await h.flush();
+    const [juri, warga] = h.runs.map((r) => hostsSesi(r.init.program));
+    expect(juri).toEqual(['fixtures.urusin.test', 'challenges.cloudflare.com']);
+    expect(juri!.filter((x) => x === 'go.id' || x.endsWith('.go.id'))).toEqual([]);
+    // Akun warga di luar Mode Uji tetap ke portal resmi dengan host adapternya.
+    expect(warga).toEqual(expect.arrayContaining(['oss.go.id', 'api-prd.oss.go.id', 'gw.oss.go.id']));
   });
 
   it('override berawalan jalur: nav dan halaman login probe diberi awalan fixture', async () => {

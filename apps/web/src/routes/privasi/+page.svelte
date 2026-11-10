@@ -140,6 +140,16 @@
           <div class="pv30 pv-c3" role="cell" data-label="Bisa dihapus">Ya, bersama akun</div>
         </div>
         <div class="pv28" role="row">
+          <div class="pv29 pv-c0" role="rowheader">Cadangan basis data</div>
+          <div class="pv30 pv-c1" role="cell" data-label="Disimpan di">
+            Server Urusin di Singapura; Data Diri dan dokumen tetap terenkripsi
+          </div>
+          <div class="pv30 pv-c2" role="cell" data-label="Berapa lama">
+            Dibuat tiap 6 jam, disimpan 3 hari
+          </div>
+          <div class="pv30 pv-c3" role="cell" data-label="Bisa dihapus">Terhapus sendiri setelah 3 hari</div>
+        </div>
+        <div class="pv28" role="row">
           <div class="pv29 pv-c0" role="rowheader">Password, OTP, dan cookie situs pemerintah</div>
           <div class="pv31 pv-c1" role="cell">
             <img src="/pen/i-363eb3c9d6.svg" alt="" width="18" height="18" />
@@ -147,6 +157,89 @@
           </div>
           <div class="pv30 pv-c2 pv-kosong" role="cell"><span aria-hidden="true">—</span></div>
           <div class="pv30 pv-c3 pv-kosong" role="cell"><span aria-hidden="true">—</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pv21" aria-labelledby="judul-pihak">
+      <div class="pv22">
+        <h2 class="pv23" id="judul-pihak">Pihak lain yang memproses data</h2>
+        <p class="pv24">
+          Kami tidak menjual data, tidak memasang iklan, dan tidak memakai pelacak pihak ketiga. Pengiriman ke
+          pihak di luar Indonesia adalah transfer data lintas negara (UU PDP Pasal 56) atas persetujuanmu.
+        </p>
+      </div>
+      <div class="pv25" role="table" aria-label="Pihak lain yang memproses data">
+        <div class="pv26" role="row">
+          <div class="pv27 pv-c0" role="columnheader">Pihak</div>
+          <div class="pv27 pv-c1" role="columnheader">Data yang diterima</div>
+          <div class="pv27 pv-c2" role="columnheader">Peran</div>
+          <div class="pv27 pv-c3" role="columnheader">Lokasi</div>
+        </div>
+        <div class="pv28" role="row">
+          <div class="pv29 pv-c0" role="rowheader">Oracle Cloud (hosting)</div>
+          <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
+            Semua data di atas. Data Diri dan dokumen dalam bentuk terenkripsi
+          </div>
+          <div class="pv30 pv-c2" role="cell" data-label="Peran">Server dan basis data Urusin</div>
+          <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Singapura</div>
+        </div>
+        <div class="pv28" role="row">
+          <div class="pv29 pv-c0" role="rowheader">
+            Laptop tim Urusin (Browser Pendamping jaringan Indonesia)
+          </div>
+          <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
+            Login dan isian yang kamu ketik di sesi situs yang hanya menerima jaringan Indonesia (mis.
+            Telunjuk Sakti Wonogiri). Hanya di memori selama sesi aktif, dihapus saat sesi ditutup. Tersambung
+            lewat Tailscale, terenkripsi
+          </div>
+          <div class="pv30 pv-c2" role="cell" data-label="Peran">Menjalankan peramban pendamping</div>
+          <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Indonesia</div>
+        </div>
+        <div class="pv28" role="row">
+          <div class="pv29 pv-c0" role="rowheader">OpenAI (model GPT, lewat proxy model tim)</div>
+          <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
+            Teks percakapan, termasuk nama dan teks bebas yang kamu ketik. NIK, KK, HP, dan email diganti
+            penanda sebelum dikirim
+          </div>
+          <div class="pv30 pv-c2" role="cell" data-label="Peran">
+            Model AI yang menjawab dan menyusun rencana
+          </div>
+          <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Di luar Indonesia</div>
+        </div>
+        <div class="pv28" role="row">
+          <div class="pv29 pv-c0" role="rowheader">Google (bila kamu memilihnya)</div>
+          <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
+            Proses masuk dengan akun Google kamu
+          </div>
+          <div class="pv30 pv-c2" role="cell" data-label="Peran">Masuk dengan Google</div>
+          <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Global</div>
+        </div>
+        <div class="pv28" role="row">
+          <div class="pv29 pv-c0" role="rowheader">Resend</div>
+          <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
+            Alamat email kamu dan isi email verifikasi atau atur ulang sandi. Saat ini belum aktif
+          </div>
+          <div class="pv30 pv-c2" role="cell" data-label="Peran">Pengiriman email</div>
+          <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Amerika Serikat</div>
+        </div>
+        <div class="pv28" role="row">
+          <div class="pv29 pv-c0" role="rowheader">Cloudflare Turnstile</div>
+          <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
+            Data teknis peramban untuk membedakan manusia dan bot, hanya di tombol juri dan setelah beberapa
+            kali gagal masuk
+          </div>
+          <div class="pv30 pv-c2" role="cell" data-label="Peran">Anti-bot</div>
+          <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Global</div>
+        </div>
+        <div class="pv28" role="row">
+          <div class="pv29 pv-c0" role="rowheader">Jina AI</div>
+          <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
+            Kalimat pertanyaan yang sudah tanpa data pribadi, hanya bila pencarian sumber berbasis vektor
+            diaktifkan
+          </div>
+          <div class="pv30 pv-c2" role="cell" data-label="Peran">Pencarian sumber resmi</div>
+          <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Di luar Indonesia</div>
         </div>
       </div>
     </section>

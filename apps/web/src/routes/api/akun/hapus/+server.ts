@@ -2,7 +2,7 @@ import { HapusAkunRequestSchema } from '@urusin/contracts';
 import { akunErrorResponse, hapusAkunCookie, readAkunBody, wajibMasuk } from '#lib/server/akun.js';
 import { apiJson } from '#lib/server/http.js';
 import { getRuntime } from '#lib/server/runtime.js';
-import { rotasiSid } from '#lib/server/sesi.js';
+import { hapusTerakhir, rotasiSid } from '#lib/server/sesi.js';
 import type { RequestHandler } from './$types';
 
 /**
@@ -20,6 +20,7 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
     await rt.akun.hapusAkun(m.id, body.data, { authAt: locals.akunSesi?.authAt });
     hapusAkunCookie(cookies);
     rotasiSid(cookies);
+    hapusTerakhir(cookies);
     return apiJson({ terhapus: true });
   } catch (e) {
     return akunErrorResponse(e);

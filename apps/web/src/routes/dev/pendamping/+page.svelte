@@ -14,6 +14,7 @@
     'ai',
     'dijeda',
     'selesai',
+    'siaga',
     'kedaluwarsa',
     'terputus',
     'dipandu',
@@ -22,7 +23,11 @@
   const langkah = { indeks: 4, total: 8, label: 'Mengisi formulir' };
 
   function contoh(k: KeadaanLayar): DataPendamping {
-    const d: DataPendamping = { ...dataAwal(), keadaan: k, mode: k === 'dijeda' ? 'takeover' : 'ai' };
+    const d: DataPendamping = {
+      ...dataAwal(),
+      keadaan: k,
+      mode: k === 'dijeda' || k === 'siaga' ? 'takeover' : k === 'selesai' ? 'done' : 'ai',
+    };
     if (k === 'antre') d.antrean = { posisi: 2, panjang: 3 };
     if (k === 'ai' || k === 'dijeda' || k === 'terputus') d.langkah = langkah;
     if (k === 'giliran') {
@@ -34,7 +39,7 @@
         pesan: 'AI berhenti di sini dan tidak bisa menekan Kirim.',
       };
     }
-    if (k === 'selesai') d.bukti = { nomor: 'CONTOH-0001' };
+    if (k === 'selesai' || k === 'siaga') d.bukti = { nomor: 'CONTOH-0001' };
     return d;
   }
 
@@ -55,6 +60,7 @@
           onambilalih={noop}
           onkembalikan={noop}
           onhentikan={noop}
+          ontutup={noop}
           onmulailagi={noop}
           onpanduan={noop}
         />

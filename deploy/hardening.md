@@ -183,6 +183,17 @@ Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan meng
 - Setiap perubahan hanya dengan go-ahead pengguna, lewat `deploy/caddy-install.sh` atau, untuk tata letak
   `/opt/urusin` saat ini, prosedur manual setara di deploy/README.md "Caddy (host)" (lihat "Model izin").
 
+## Catatan rilis: kepemilikan urusan (fix/keamanan-pemilik)
+
+- Setiap rute urusan, loader halaman, dan Browser Pendamping memeriksa pemilik (`urusanMilik`): id urusan saja
+  tidak cukup. Pemilik = akun/demo yang membuat atau masuk (`user_id`), atau cookie `urusin_sid` untuk tamu.
+- **Sengaja:** urusan lama tanpa baris `urusan_owner` (dibuat sebelum pemilik dicatat) menjawab 404 untuk semua
+  orang (gagal tertutup). Tidak ada migrasi yang menebak pemiliknya.
+- Keluar, keluar semua, hapus akun, dan sesi akun kedaluwarsa memutar `urusin_sid` dan menghapus
+  `urusin_terakhir`: pemakai berikutnya di perangkat bersama tidak mengadopsi urusan tamu sebelumnya.
+- Batas juri: 50 per IP per hari, 2000 aktif. `.env` lama yang masih menyematkan `URUSIN_DEMO_PER_IP_HARI=3`,
+  `URUSIN_TAMU_PER_IP_HARI=20`, atau `URUSIN_DEMO_AKTIF_MAKS=200` harus diperbarui atau dihapus.
+
 ## Status produksi B1 (2026-11-09)
 
 - Main 8278852 dari satu run Release: web, `urusin-pendamping` dan `urusin-fixtures` (revisi sama, arm64).
