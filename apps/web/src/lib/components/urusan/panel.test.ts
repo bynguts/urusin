@@ -62,6 +62,14 @@ describe('panel Rencana mengikuti rencana dan tier', () => {
     expect(body).toContain('Masuk akun di situs resmi');
   });
 
+  it('Browser Pendamping masih disiapkan: langkah 2–3 belum "Selesai"', () => {
+    const body = panel({ state: 'BERKAS_SIAP', rencana: aktaSemi, persiapan: true });
+    expect(body).toContain('Langkah 2 dari 5');
+    expect(body).toContain('Menyiapkan browser');
+    // Hanya langkah 1 yang selesai (ikon centang berlabel "Selesai" + teks "Selesai").
+    expect(body.match(/>Selesai</g) ?? []).toHaveLength(1);
+  });
+
   it('sebelum rencana: lima langkah hanya untuk adminduk; urusan informasi tanpa daftar statis', () => {
     expect(langkahPanel(null, 'kelahiran')).toBe(LANGKAH_RENCANA);
     expect(langkahPanel(null, 'pengaduan')).toEqual([]);

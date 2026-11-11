@@ -58,8 +58,11 @@
   const keadaanUrusan = $derived(k.state ?? data.urusan.state);
   // Panel Rencana selama Browser Pendamping berjalan mengikuti giliran nyata sesi (login, AI mengisi, Kirim),
   // bukan state urusan yang sudah melompat ke "tekan Kirim" sejak eksekusi disetujui.
+  // Selama browser masih antre/disiapkan, langkah masuk akun belum dimulai (bukan "Selesai").
+  const persiapanPendamping = $derived(sesi.data.keadaan === 'antre' || sesi.data.keadaan === 'menyiapkan');
   const keadaanPanel = $derived.by(() => {
     const d = sesi.data;
+    if (persiapanPendamping) return 'BERKAS_SIAP' as const;
     if (d.keadaan === 'ai') return 'MENGISI' as const;
     if (d.keadaan === 'giliran' && d.giliran)
       return d.giliran.alasan === 'final'
@@ -91,6 +94,20 @@
   });
   const instansi = $derived(k.rencana?.langkah.find((x) => x.sumber.length)?.sumber[0]?.instansi);
   const pendampingAktif = $derived(!pendampingDitutup && sesi.data.keadaan !== 'mati');
+  // Pesan agen di panel Pendamping hanya bila itu item terakhir percakapan; pertanyaan lama yang sudah
+  // dijawab (mis. wilayah KTP) tidak ditampilkan lagi.
+  const pesanPanel = $derived(linimasa.slice(-1).filter((x) => x.jenis === 'teks'));
+  // Kartu "Setujui dan buka situs" yang bisa ditindaklanjuti (paling banyak satu).
+  const konfirmasiAktif = $derived.by(() => {
+    const it = linimasa.findLast((x) => x.jenis === 'konfirmasi');
+    return it?.jenis === 'konfirmasi' &&
+      it.terakhir &&
+      !k.sedangBerjalan &&
+      it.permintaan !== null &&
+      (keadaanUrusan === 'MENUNGGU_KONFIRMASI' || it.permintaan.bacaSaja === true)
+      ? it.key
+      : null;
+  });
   const kosong = $derived(linimasa.length === 0 && !k.sedangBerjalan);
 
   // Hanya bergantung pada id urusan; store dan catatan perangkat dibaca/ditulis tanpa dilacak.
@@ -126,6 +143,32 @@
     void tick().then(() => {
       // Gulir hanya percakapannya; scrollIntoView juga menggulir bingkai aplikasi dan browser di sebelahnya.
       if (daftarPercakapan) daftarPercakapan.scrollTop = daftarPercakapan.scrollHeight;
+    });
+  });
+
+  // Kartu persetujuan yang baru aktif digulir ke tengah layar sekali: di HP komposer lengket menutupi bagian
+  // bawah percakapan, jadi tombol "Setujui dan buka situs" tidak terlihat. Gerak halus kecuali warga memilih
+  // kurangi gerakan (sistem atau Pengaturan).
+  let konfirmasiDigulir: string | null = null;
+  $effect(() => {
+    const key = konfirmasiAktif;
+    if (!key || key === konfirmasiDigulir) return;
+    konfirmasiDigulir = key;
+    void tick().then(() => {
+      const kartu = document.querySelector<HTMLElement>(`[data-konfirmasi="${CSS.escape(key)}"]`);
+      const el = kartu?.querySelector<HTMLElement>('footer') ?? kartu;
+      if (!el) return;
+      const tenang =
+        matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        document.documentElement.dataset.gerak === 'kurang';
+      const behavior: ScrollBehavior = tenang ? 'auto' : 'smooth';
+      const wadah = daftarPercakapan;
+      // Laptop: percakapan punya gulir sendiri; gulir wadahnya saja agar bingkai aplikasi tidak ikut bergeser.
+      if (wadah && wadah.scrollHeight > wadah.clientHeight) {
+        const r = el.getBoundingClientRect();
+        const w = wadah.getBoundingClientRect();
+        wadah.scrollTo({ top: wadah.scrollTop + r.top - w.top - (w.height - r.height) / 2, behavior });
+      } else el.scrollIntoView({ block: 'center', behavior });
     });
   });
 
@@ -320,11 +363,12 @@
           {kutipan}
           bind:tab
           {sorot}
+          persiapan={persiapanPendamping}
         >
           {#snippet bawah()}
             {#if pendampingAktif}
               <div class="flex flex-col gap-3 border-t border-line pt-4">
-                {#each linimasa.filter((x) => x.jenis === 'teks').slice(-1) as it (it.key)}
+                {#each pesanPanel as it (it.key)}
                   {#if it.jenis === 'teks'}
                     <PesanAgen avatar={p.avatar}><p class="text-[0.9375rem]">{it.teks}</p></PesanAgen>
                   {/if}
@@ -447,19 +491,18 @@
               {:else if it.jenis === 'konfirmasi'}
                 <PesanAgen avatar={p.avatar}>
                   <p>Sebelum saya membuka situs resmi, periksa dulu data yang akan diisi:</p>
-                  <KartuKonfirmasi
-                    gate={it.gate}
-                    permintaan={it.permintaan}
-                    {situs}
-                    aktif={it.terakhir &&
-                      !k.sedangBerjalan &&
-                      it.permintaan !== null &&
-                      (keadaanUrusan === 'MENUNGGU_KONFIRMASI' || it.permintaan.bacaSaja === true)}
-                    status={konfirmasi?.key === it.key ? konfirmasi.status : 'menunggu'}
-                    pesanGalat={it.terakhir ? konfirmasiGalat : undefined}
-                    onsetujui={() => void setujui(it.key, it.gate, it.permintaan)}
-                    onbatal={() => void kirim('Batalkan, saya belum mau melanjutkan.')}
-                  />
+                  <div data-konfirmasi={it.key}>
+                    <KartuKonfirmasi
+                      gate={it.gate}
+                      permintaan={it.permintaan}
+                      {situs}
+                      aktif={it.key === konfirmasiAktif}
+                      status={konfirmasi?.key === it.key ? konfirmasi.status : 'menunggu'}
+                      pesanGalat={it.terakhir ? konfirmasiGalat : undefined}
+                      onsetujui={() => void setujui(it.key, it.gate, it.permintaan)}
+                      onbatal={() => void kirim('Batalkan, saya belum mau melanjutkan.')}
+                    />
+                  </div>
                 </PesanAgen>
               {:else if it.jenis === 'giliran'}
                 <PesanAgen avatar={p.avatar}>

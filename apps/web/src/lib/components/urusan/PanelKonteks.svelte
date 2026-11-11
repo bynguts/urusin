@@ -25,6 +25,7 @@
     kutipan,
     tab = $bindable('rencana'),
     sorot = null,
+    persiapan = false,
     bawah,
   }: {
     state: UrusanState | null;
@@ -36,10 +37,16 @@
     kutipan: readonly (KutipanTerverifikasi & { nomor: number })[];
     tab?: TabPanel;
     sorot?: string | null;
+    /** Browser Pendamping masih antre/disiapkan: langkah sekarang belum dimulai, yang bekerja Urusin. */
+    persiapan?: boolean;
     bawah?: Snippet | undefined;
   } = $props();
 
-  const info = $derived(infoStatus(state));
+  const info = $derived(
+    persiapan
+      ? { ...infoStatus(state), label: 'Menyiapkan browser', nada: 'ai' as const }
+      : infoStatus(state),
+  );
 
   const JUDUL: Partial<Record<UrusanState, string>> = {
     BARU: 'Ceritakan urusan Anda',
@@ -169,7 +176,7 @@
                         : 'font-medium text-[#b5481f]'
                       : 'text-muted'}"
                 >
-                  {#if k === 'selesai'}Selesai{:else if k === 'kini'}{info.nada === 'ai'
+                  {#if k === 'selesai'}Selesai{:else if k === 'kini'}{info.nada === 'ai' && !persiapan
                       ? 'Sedang berjalan'
                       : info.label}{:else if i === 0}Bisa mulai setelah rencana disetujui{:else}Setelah
                     langkah {i} · {l.pelaku}{/if}
