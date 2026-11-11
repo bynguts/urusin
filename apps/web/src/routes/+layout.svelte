@@ -129,10 +129,10 @@
       <main
         id="konten"
         tabindex="-1"
-        class="flex flex-1 flex-col bg-bg pb-24 outline-none lg:bg-transparent lg:pb-0"
+        class="flex min-h-0 flex-1 flex-col bg-bg pb-24 outline-none lg:bg-transparent lg:pb-0"
       >
         {#key page.url.pathname}
-          <div class="animasi-dasbor-masuk flex flex-1 flex-col">
+          <div class="animasi-dasbor-masuk flex min-h-0 flex-1 flex-col">
             {@render children()}
           </div>
         {/key}

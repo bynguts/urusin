@@ -15,9 +15,15 @@ test('N1: AI berhenti, warga mengirim sendiri, "Saya sudah mengirim" -> 409 juju
 }) => {
   let sesi: Record<string, unknown> | null = null;
   let terkirim = 0;
+  let penutupan = 0;
+  await page.setViewportSize({ width: 1280, height: 600 });
 
   await page.route(/\/api\/urusan\/u_[0-9a-f]+\/pendamping(\/tiket|\/terkirim)?$/, async (route) => {
     const req = route.request();
+    if (req.method() === 'DELETE') {
+      penutupan++;
+      return route.fulfill({ status: penutupan === 1 ? 502 : 200, json: {} });
+    }
     if (req.method() !== 'POST') return route.fallback();
     if (req.url().endsWith('/tiket'))
       return route.fulfill({ json: { wsUrl: WS_TIRUAN, tiket: 'tiket-tiruan-e2e' } });
@@ -88,6 +94,25 @@ test('N1: AI berhenti, warga mengirim sendiri, "Saya sudah mengirim" -> 409 juju
   // Serah akhir: "AI berhenti", tanpa Lanjutkan, dengan "Saya sudah mengirim".
   const lembar = page.getByRole('status').filter({ hasText: PESAN_BERHENTI });
   await expect(lembar).toBeVisible({ timeout: 20_000 });
+  const browser = page.getByRole('region', { name: 'Browser Pendamping', exact: true });
+  const tutup = browser.getByRole('button', { name: 'Tutup Browser Pendamping', exact: true });
+  await expect(tutup).toBeVisible();
+  const posisiAwal = await browser.boundingBox();
+  const panel = page.getByRole('complementary', { name: 'Rencana, dokumen, dan sumber' });
+  const langkah = await panel.getByRole('list').first().boundingBox();
+  const chat = await panel
+    .getByRole('textbox', { name: 'Tulis jawaban atau pertanyaan', exact: true })
+    .boundingBox();
+  expect(langkah).not.toBeNull();
+  expect(chat).not.toBeNull();
+  expect(langkah!.y + langkah!.height).toBeLessThanOrEqual(chat!.y);
+  await panel.hover();
+  await page.mouse.wheel(0, 900);
+  await expect.poll(() => panel.evaluate((e) => e.scrollTop)).toBeGreaterThan(0);
+  expect(await browser.boundingBox()).toEqual(posisiAwal);
+  expect(await page.locator('#panel-utama').evaluate((e) => e.scrollTop)).toBe(0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await page.screenshot({ path: test.info().outputPath('pendamping-scroll.png') });
   await expect(lembar.getByRole('button', { name: 'Lanjutkan' })).toHaveCount(0);
   const sudah = lembar.getByRole('button', { name: 'Saya sudah mengirim' });
 
@@ -101,4 +126,16 @@ test('N1: AI berhenti, warga mengirim sendiri, "Saya sudah mengirim" -> 409 juju
   await expect(page.getByText('FX-REG-0042')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Saya sudah mengirim' })).toHaveCount(0);
   expect(terkirim).toBe(2);
+
+  // Tutup hadir juga sesudah selesai. Gagal di server: panel tetap terbuka; berhasil: kembali ke chat.
+  await tutup.click();
+  await expect(browser.getByRole('alert')).toContainText('belum bisa ditutup');
+  await expect(browser).toBeVisible();
+  await tutup.click();
+  await expect(browser).toHaveCount(0);
+  await expect(page.getByRole('log', { name: 'Percakapan urusan' })).toBeVisible();
+  await expect(
+    page.getByRole('textbox', { name: 'Tulis jawaban atau pertanyaan', exact: true }),
+  ).toBeFocused();
+  expect(penutupan).toBe(2);
 });
