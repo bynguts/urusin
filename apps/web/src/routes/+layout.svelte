@@ -28,12 +28,20 @@
   let menuBuka = $state(false);
 
   // Preferensi tampilan diterapkan di <html>: ukuran huruf, kontras, gerak. Aplikasi beroperasi dalam mode terang.
+  // Hanya nilai yang berbeda yang ditulis. Nilai bawaan sudah ada di app.html (skala bawaan = cadangan
+  // `var(--skala-huruf, 1)` di layout.css), jadi hidrasi warga berpreferensi bawaan tidak mengubah <html> dan
+  // tidak memicu hitung ulang gaya seluruh dokumen di dalam task hidrasi (TBT).
   $effect(() => {
     const html = document.documentElement;
-    html.style.setProperty('--skala-huruf', String(prefs.nilai.ukuranHuruf));
-    html.dataset.theme = 'light';
-    html.dataset.kontras = lokal.data.kontrasTinggi ? 'tinggi' : 'normal';
-    html.dataset.gerak = lokal.data.kurangiGerak ? 'kurang' : 'normal';
+    const skala = String(prefs.nilai.ukuranHuruf);
+    if ((html.style.getPropertyValue('--skala-huruf') || '1') !== skala)
+      html.style.setProperty('--skala-huruf', skala);
+    const atur = (k: 'theme' | 'kontras' | 'gerak', v: string) => {
+      if (html.dataset[k] !== v) html.dataset[k] = v;
+    };
+    atur('theme', 'light');
+    atur('kontras', lokal.data.kontrasTinggi ? 'tinggi' : 'normal');
+    atur('gerak', lokal.data.kurangiGerak ? 'kurang' : 'normal');
   });
 </script>
 
