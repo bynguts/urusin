@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 import type { Pengamatan, PendampingEvent, PendampingServerMessage } from '@urusin/contracts';
 import { createBrowserFactory } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
-import { ADAPTER_GENERIK, SessionManager, sidHashOf } from '../src/sessions.js';
+import { ADAPTER_GENERIK, PendampingError, SessionManager, sidHashOf } from '../src/sessions.js';
 
 /**
  * Regresi PoC review keamanan Navigator generik (F1-F5) di Chromium nyata lewat SessionManager: worker, runner
@@ -585,7 +585,18 @@ test('kode N4: tautan target=_blank yang diketuk warga dibuka di halaman utama (
     await manager.handleClient(sesiId, { type: 'ambil_alih' });
     await ketuk(manager, sesiId, 150, 340);
     await expect
-      .poll(async () => (await manager.amati(o, true)).pengamatan.jalur, { timeout: 10_000 })
+      .poll(
+        async () => {
+          // 503 "halaman sedang berpindah" sementara di bawah beban = belum, coba lagi.
+          try {
+            return (await manager.amati(o, true)).pengamatan.jalur;
+          } catch (e) {
+            if (e instanceof PendampingError && e.status === 503) return undefined;
+            throw e;
+          }
+        },
+        { timeout: 10_000 },
+      )
       .toBe('/permohonan/kk');
   } finally {
     await manager.shutdown();
