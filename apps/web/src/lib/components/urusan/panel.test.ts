@@ -70,6 +70,28 @@ describe('panel Rencana mengikuti rencana dan tier', () => {
     expect(body.match(/>Selesai</g) ?? []).toHaveLength(1);
   });
 
+  it('tab Sumber menghitung sumber rencana yang belum dikutip, unik per URL', () => {
+    const s = (n: number) => ({ url: `https://contoh.go.id/${n}`, judul: `Sumber ${n}`, instansi: 'Dinas' });
+    const rencana = {
+      ...cekBansos,
+      langkah: [
+        { ...cekBansos.langkah[0]!, sumber: [s(1), s(2)] },
+        { ...cekBansos.langkah[1]!, sumber: [s(2), s(3), s(4)] },
+      ],
+    } as EventOf<'plan_card'>;
+    const kutipan = [
+      { refId: 'r1', nomor: 1, url: s(1).url, judul: 'Kutipan 1', kutipanPersis: 'isi', instansi: 'Dinas' },
+    ] as never;
+    const semua = panel({ state: 'RENCANA_DISETUJUI', rencana, tab: 'sumber' });
+    expect(semua).toMatch(/Sumber\s*(<!--[^>]*-->\s*)*<span[^>]*>4</);
+    for (const n of [1, 2, 3, 4]) expect(semua).toContain(`Sumber ${n}`);
+    expect(semua).not.toContain('Sumber resmi muncul di sini');
+    const campur = panel({ state: 'RENCANA_DISETUJUI', rencana, tab: 'sumber', kutipan });
+    expect(campur).toContain('Kutipan 1');
+    expect(campur).not.toContain('>Sumber 1<');
+    expect(campur.match(/Buka situs resmi/g) ?? []).toHaveLength(3);
+  });
+
   it('sebelum rencana: lima langkah hanya untuk adminduk; urusan informasi tanpa daftar statis', () => {
     expect(langkahPanel(null, 'kelahiran')).toBe(LANGKAH_RENCANA);
     expect(langkahPanel(null, 'pengaduan')).toEqual([]);

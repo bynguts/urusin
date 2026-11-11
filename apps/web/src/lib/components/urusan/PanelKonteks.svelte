@@ -78,6 +78,18 @@
       (state && JUDUL[state]) ||
       'Urusin sedang memahami kebutuhan Anda',
   );
+  // Sumber resmi langkah-langkah rencana (registry), unik per URL dan belum muncul sebagai kutipan jawaban.
+  const sumberRencana = $derived.by(() => {
+    const ada = new Set(kutipan.map((q) => q.url));
+    const out: { url: string; judul: string; instansi: string }[] = [];
+    for (const l of rencana?.langkah ?? [])
+      for (const s of l.sumber)
+        if (!ada.has(s.url)) {
+          ada.add(s.url);
+          out.push(s);
+        }
+    return out;
+  });
   const dokSiap = $derived(checklist?.item.filter((i) => i.status === 'ok').length ?? 0);
 
   function keadaanLangkah(i: number): 'selesai' | 'kini' | 'nanti' {
@@ -129,7 +141,7 @@
     pilihan={[
       { nilai: 'rencana', label: 'Rencana' },
       { nilai: 'dokumen', label: 'Dokumen' },
-      { nilai: 'sumber', label: 'Sumber', jumlah: kutipan.length },
+      { nilai: 'sumber', label: 'Sumber', jumlah: kutipan.length + sumberRencana.length },
     ]}
   />
 
@@ -268,11 +280,33 @@
               <span class="sr-only">(tab baru)</span>
             </a>
           </article>
-        {:else}
+        {/each}
+        {#each sumberRencana as s, i (s.url)}
+          <article class="flex flex-col gap-2.5 rounded-[14px] border border-line bg-surface p-4">
+            <h3 class="flex items-start gap-2 text-base leading-6 font-semibold text-ink">
+              <span
+                class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-bg-2 text-xs leading-3 font-semibold text-ink"
+                >{kutipan.length + i + 1}</span
+              >
+              {s.judul}
+            </h3>
+            <p class="text-sm leading-[21px] text-muted">{s.instansi}</p>
+            <a
+              href={s.url}
+              target="_blank"
+              rel="external noopener noreferrer"
+              class="inline-flex h-11 items-center gap-2 self-start rounded-full bg-bg-2 px-3.5 text-[15px] leading-[23px] text-ink hover:bg-line-3"
+            >
+              Buka situs resmi <Icon name="keluar" class="size-4" />
+              <span class="sr-only">(tab baru)</span>
+            </a>
+          </article>
+        {/each}
+        {#if !kutipan.length && !sumberRencana.length}
           <p class="rounded-xl bg-card p-4 text-[0.9375rem] text-body">
             Sumber resmi muncul di sini setelah Urusin menjawab dengan kutipan.
           </p>
-        {/each}
+        {/if}
       </div>
     {/if}
   </div>
