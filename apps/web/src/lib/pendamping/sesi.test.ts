@@ -161,11 +161,11 @@ describe('SesiPendampingUi: setelah Kirim, teks jujur soal peramban', () => {
       init?.method === 'DELETE' && gagal ? new Response('x', { status: 502 }) : jawabBawaan(url, init),
     );
     kirim('status', sesi({ status: 'siaga', mode: 'takeover', hasil: 'berhasil' }));
-    await ui.tutupSekarang();
+    expect(await ui.tutupSekarang()).toBe(false);
     expect(ui.data.keadaan).toBe('siaga');
     expect(ui.data.pesan).toMatch(/belum bisa ditutup/);
     gagal = false;
-    await ui.tutupSekarang();
+    expect(await ui.tutupSekarang()).toBe(true);
     expect(panggilan.filter((p) => p.startsWith('DELETE'))).toEqual([
       'DELETE /api/urusan/u/pendamping',
       'DELETE /api/urusan/u/pendamping',

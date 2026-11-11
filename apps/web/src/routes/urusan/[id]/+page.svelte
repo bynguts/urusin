@@ -45,7 +45,9 @@
   let tab = $state<TabPanel>('rencana');
   let sorot = $state<string | null>(null);
   let panelHpBuka = $state(false);
-  let ujungDaftar: HTMLDivElement | undefined = $state();
+  let daftarPercakapan = $state<HTMLDivElement>();
+  let pendampingDitutup = $state(false);
+  let menutupPendamping = $state(false);
   let konfirmasi = $state<{ key: string; status: 'mengirim' | 'disetujui' } | null>(null);
   let konfirmasiGalat = $state<string | undefined>(undefined);
   let canvas: HTMLCanvasElement | null = $state(null);
@@ -89,7 +91,7 @@
     return adapter?.sumber[0]?.url ?? l?.[0]?.sumber[0]?.url ?? null;
   });
   const instansi = $derived(k.rencana?.langkah.find((x) => x.sumber.length)?.sumber[0]?.instansi);
-  const pendampingAktif = $derived(sesi.data.keadaan !== 'mati');
+  const pendampingAktif = $derived(!pendampingDitutup && sesi.data.keadaan !== 'mati');
   const kosong = $derived(linimasa.length === 0 && !k.sedangBerjalan);
 
   // Hanya bergantung pada id urusan; store dan catatan perangkat dibaca/ditulis tanpa dilacak.
@@ -122,7 +124,10 @@
   $effect(() => {
     void linimasa.length;
     void k.progres;
-    void tick().then(() => ujungDaftar?.scrollIntoView({ block: 'end' }));
+    void tick().then(() => {
+      // Gulir hanya percakapannya; scrollIntoView juga menggulir bingkai aplikasi dan browser di sebelahnya.
+      if (daftarPercakapan) daftarPercakapan.scrollTop = daftarPercakapan.scrollHeight;
+    });
   });
 
   function judulDariPesan(t: string | undefined): string {
@@ -219,12 +224,14 @@
       }
       konfirmasiGalat = undefined;
       konfirmasi = { key, status: 'disetujui' };
-      if (permintaan)
+      if (permintaan) {
+        pendampingDitutup = false;
         void sesi.mulai(
           permintaan.executionId,
           () => canvas,
           () => inputTeks,
         );
+      }
     } catch {
       konfirmasi = null;
       konfirmasiGalat = 'Koneksi terputus. Persetujuan belum tercatat.';
@@ -246,6 +253,20 @@
     sesi.data = { ...sesi.data, butuhData: null };
   }
 
+  async function tutupPendamping() {
+    if (menutupPendamping) return;
+    menutupPendamping = true;
+    try {
+      if (await sesi.tutupSekarang()) {
+        pendampingDitutup = true;
+        await tick();
+        komposer?.focus();
+      }
+    } finally {
+      menutupPendamping = false;
+    }
+  }
+
   const DEGRADED = {
     hemat: 'AI sedang hemat: jawaban lebih singkat, sumber resmi tetap disertakan.',
     tanpa_ai: 'AI sedang tidak tersedia. Ikuti langkah dari sumber resmi di panel Rencana.',
@@ -257,7 +278,7 @@
   <meta name="referrer" content="no-referrer" />
 </svelte:head>
 
-<div class="flex min-h-0 flex-1 flex-col lg:h-dvh">
+<div class="flex min-h-0 flex-1 flex-col lg:overflow-hidden">
   <HeaderHalaman {judul}>
     {#snippet awal()}<Lencana peristiwa={p} />{/snippet}
   </HeaderHalaman>
@@ -273,11 +294,11 @@
     </p>
   {/if}
 
-  <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
+  <div class="flex min-h-0 flex-1 flex-col lg:flex-row lg:overflow-hidden">
     <!-- Panel konteks: di HP di atas percakapan dan bisa dilipat; di laptop kolom kanan 400 px. -->
     <aside
       aria-label="Rencana, dokumen, dan sumber"
-      class="order-first border-b border-line bg-card lg:order-last lg:w-[399.5px] lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-l"
+      class="order-first min-h-0 border-b border-line bg-card lg:order-last lg:w-[399.5px] lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-l"
     >
       <button
         type="button"
@@ -290,7 +311,7 @@
         <span class="flex-1">Rencana, dokumen, dan sumber</span>
         <Icon name={panelHpBuka ? 'atas' : 'bawah'} class="size-5" />
       </button>
-      <div id="panel-konteks" class="{panelHpBuka ? '' : 'max-lg:hidden'} lg:h-full">
+      <div id="panel-konteks" class="{panelHpBuka ? '' : 'max-lg:hidden'} lg:min-h-full">
         <PanelKonteks
           state={keadaanPanel}
           sedangBerjalan={k.sedangBerjalan}
@@ -336,8 +357,10 @@
             onbukatautan={() => sesi.bukaTautan()}
             onsudahkirim={() => sesi.sudahMengirim()}
             onhentikan={() => void sesi.hentikan()}
-            ontutup={() => void sesi.tutupSekarang()}
+            ontutup={() => void tutupPendamping()}
+            menutup={menutupPendamping}
             onmulailagi={() => {
+              pendampingDitutup = false;
               const e = k.permintaanEksekusi;
               if (e)
                 void sesi.mulai(
@@ -354,7 +377,7 @@
           />
         </div>
       {:else}
-        <div class="min-h-0 flex-1 overflow-y-auto">
+        <div bind:this={daftarPercakapan} class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div
             role="log"
             aria-label="Percakapan urusan"
@@ -489,7 +512,6 @@
                 Lanjutkan <Icon name="panah" class="size-4.5" />
               </button>
             {/if}
-            <div bind:this={ujungDaftar}></div>
           </div>
         </div>
 

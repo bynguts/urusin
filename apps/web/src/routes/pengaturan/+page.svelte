@@ -5,6 +5,7 @@
   import Icon from '#lib/components/Icon.svelte';
   import type { NamaIkon } from '#lib/components/ikon.js';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
+  import PilihWilayah from '#lib/components/ui/PilihWilayah.svelte';
   import ZonaBahaya from '#lib/components/akun/ZonaBahaya.svelte';
   import { ambilLokal, ambilPrefs, ambilTts } from '#lib/stores/app.svelte.js';
   import type { PageProps } from './$types';
@@ -142,7 +143,7 @@
     </ul>
   </nav>
 
-  <div class="flex min-w-0 flex-1 flex-col gap-10 px-4 py-6 sm:px-8 lg:px-12 lg:py-8">
+  <div class="@container flex min-w-0 flex-1 flex-col gap-10 px-4 py-6 sm:px-8 lg:px-12 lg:py-8">
     <section
       id="tampilan"
       aria-labelledby="h-tampilan"
@@ -160,14 +161,14 @@
         </p>
       </div>
 
-      <fieldset class="flex flex-col gap-4 rounded-[18px] border border-line p-4 sm:p-[22px]">
+      <fieldset class="flex flex-col gap-4 rounded-[18px] border border-line p-[16px] sm:p-[22px]">
         <legend class="sr-only">Ukuran huruf</legend>
         <p aria-hidden="true" class="text-lg leading-[26px] font-semibold text-ink">Ukuran huruf</p>
         <div class="grid grid-cols-3 gap-1.5 rounded-2xl bg-bg-2 p-[5px]">
           {#each UKURAN as u (u.nilai)}
             {@const pilih = prefs.nilai.ukuranHuruf === u.nilai}
             <label
-              class="relative flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 text-center transition-all duration-150 ease-out has-focus-visible:outline-2 has-focus-visible:outline-ink active:scale-[0.98] sm:flex-row sm:gap-2.5 {pilih
+              class="relative flex min-h-16 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-1 text-center transition-all duration-150 ease-out has-focus-visible:outline-2 has-focus-visible:outline-ink active:scale-[0.98] @sm:flex-row @sm:gap-2.5 @sm:px-2 {pilih
                 ? 'bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
                 : 'hover:bg-surface/60'}"
             >
@@ -250,32 +251,23 @@
         </p>
       </div>
       <form
-        class="flex flex-col gap-3 sm:flex-row sm:items-end rounded-[18px] border border-line p-4 sm:p-[22px]"
+        class="flex flex-col gap-3 rounded-[18px] border border-line p-4 @lg:flex-row @lg:items-end sm:p-[22px]"
         onsubmit={(e) => {
           e.preventDefault();
           simpanWilayah();
         }}
       >
-        <div class="flex flex-1 flex-col gap-1.5">
+        <div class="flex min-w-0 flex-1 flex-col gap-1.5">
           <label for="pilih-wilayah" class="text-[0.9375rem] font-semibold text-ink">Kab/kota</label>
-          <div class="relative">
-            <select
-              id="pilih-wilayah"
-              bind:value={kodeWilayah}
-              onchange={() => (wilayahTersimpan = false)}
-              aria-describedby="d-wilayah"
-              autocomplete="address-level2"
-              class="h-12 w-full appearance-none rounded-xl border border-line-2 bg-surface pr-10 pl-4 text-base text-ink transition-colors hover:border-line cursor-pointer"
-            >
-              <option value="" class="bg-surface text-ink">Belum dipilih</option>
-              {#each data.kota as k (k.kodeKabKota)}
-                <option value={k.kodeKabKota} class="bg-surface text-ink">{k.nama}</option>
-              {/each}
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-muted">
-              <Icon name="bawah" class="size-4" />
-            </div>
-          </div>
+          <PilihWilayah
+            id="pilih-wilayah"
+            kota={data.kota}
+            bind:value={kodeWilayah}
+            onchange={() => (wilayahTersimpan = false)}
+            describedby="d-wilayah"
+            bolehKosong
+            placeholder="Belum dipilih"
+          />
         </div>
         <button
           type="submit"
@@ -295,7 +287,7 @@
         Keluarga
       </h2>
       <div
-        class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-[18px] border border-line p-4 sm:p-[22px]"
+        class="flex flex-col gap-3 rounded-[18px] border border-line p-4 @lg:flex-row @lg:items-center @lg:justify-between sm:p-[22px]"
       >
         {#if akun}
           <p class="min-w-0 text-base text-ink">
@@ -369,7 +361,7 @@
         </p>
       </div>
       <div
-        class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-[18px] border border-line p-4 sm:p-[22px]"
+        class="flex flex-col gap-3 rounded-[18px] border border-line p-4 @lg:flex-row @lg:items-center @lg:justify-between sm:p-[22px]"
       >
         <p class="text-[0.9375rem] text-body">
           {dataDihapus
@@ -379,9 +371,10 @@
         <button
           type="button"
           onclick={hapusLokal}
-          class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full border border-galat-garis bg-surface px-5 font-semibold text-galat hover:bg-mawar"
+          class="inline-flex min-h-12 max-w-full items-center justify-center gap-2 rounded-full border border-galat-garis bg-surface px-5 py-2 text-center font-semibold text-galat hover:bg-mawar"
         >
-          <Icon name="hapus" class="size-4.5" /> Hapus data di perangkat ini
+          <Icon name="hapus" class="size-4.5 shrink-0" />
+          <span class="min-w-0">Hapus data di perangkat ini</span>
         </button>
       </div>
       {#if page.data.versi}

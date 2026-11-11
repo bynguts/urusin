@@ -3,12 +3,12 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { onMount } from 'svelte';
   import Icon from '#lib/components/Icon.svelte';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
   import ChipSumber from '#lib/components/urusan/ChipSumber.svelte';
   import Lencana from '#lib/components/urusan/Lencana.svelte';
   import Chip from '#lib/components/ui/Chip.svelte';
+  import PilihWilayah from '#lib/components/ui/PilihWilayah.svelte';
   import { ambilLokal } from '#lib/stores/app.svelte.js';
   import { namaPendek } from '#lib/stores/lokal.svelte.js';
   import { tanggal } from '#lib/urusan-status.js';
@@ -22,12 +22,6 @@
   const pesan = $derived(`Saya ingin mengurus ${p.judul.toLowerCase()}. Apa saja yang perlu saya siapkan?`);
   let mengirim = $state(false);
   let pilihKota = $state<HTMLSelectElement>();
-
-  // HP lambat: warga bisa memilih kota sebelum hidrasi, saat onchange belum terpasang. Pilihan itu diteruskan
-  // begitu halaman hidup, bukan hilang diam-diam.
-  onMount(() => {
-    if (pilihKota?.value && pilihKota.value !== (data.kodeDipilih ?? '')) simpanWilayah(pilihKota);
-  });
 
   // Dengan JS: bila belum memilih kota dan perangkat ini punya pilihan wilayah, pakai itu (usulan saja).
   // Pilihan warga di kolom (termasuk sebelum hidrasi) tidak ditimpa usulan ini.
@@ -68,20 +62,18 @@
 
   <form method="GET" class="mt-6 flex flex-col gap-2" data-sveltekit-keepfocus data-sveltekit-noscroll>
     <label for="kota" class="text-[0.9375rem] font-medium text-ink">Kabupaten/kota sesuai KTP Anda</label>
-    <div class="flex flex-wrap gap-2">
-      <select
-        id="kota"
-        name="kodeKabKota"
-        bind:this={pilihKota}
-        onchange={(e) => simpanWilayah(e.currentTarget)}
-        aria-describedby="kota-petunjuk"
-        class="min-h-12 min-w-0 flex-1 rounded-xl border border-line-2 bg-surface px-4 text-base text-ink"
-      >
-        <option value="" disabled selected={!data.kodeDipilih}>Pilih kabupaten/kota</option>
-        {#each data.kota as k (k.kodeKabKota)}
-          <option value={k.kodeKabKota} selected={k.kodeKabKota === data.kodeDipilih}>{k.nama}</option>
-        {/each}
-      </select>
+    <div class="flex flex-wrap items-start gap-2">
+      <div class="min-w-0 flex-1">
+        <PilihWilayah
+          id="kota"
+          name="kodeKabKota"
+          kota={data.kota}
+          value={data.kodeDipilih ?? ''}
+          bind:select={pilihKota}
+          onchange={simpanWilayah}
+          describedby="kota-petunjuk"
+        />
+      </div>
       <noscript>
         <button
           type="submit"

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { tick } from 'svelte';
   import blueBerpikir from '#lib/assets/img/blue-berpikir.webp';
   import objBrowser from '#lib/assets/img/obj-browser.webp';
   import objPerisai from '#lib/assets/img/obj-perisai.webp';
@@ -98,9 +99,11 @@
   );
   const kota = $derived(data.kota.find((k) => k.kodeKabKota === lokal.data.wilayah?.kodeKabKota));
 
-  function buka(id: string) {
+  async function buka(id: string) {
     cari = '';
     terbuka = id;
+    await tick();
+    document.getElementById(`tanya-${id}`)?.scrollIntoView({ block: 'start' });
   }
 
   type Pintasan = {
@@ -215,7 +218,7 @@
         <details
           id="tanya-{f.id}"
           open={terbuka === f.id || !!kata}
-          class="group border-t border-line first-of-type:border-t-0"
+          class="group scroll-mt-36 border-t border-line first-of-type:border-t-0 lg:scroll-mt-24"
           ontoggle={(e) => {
             if ((e.currentTarget as HTMLDetailsElement).open) terbuka = f.id;
           }}
@@ -246,6 +249,9 @@
           <!-- eslint-disable svelte/no-navigation-without-resolve -- href sudah lewat resolve(), situs resmi, atau anchor -->
           <a
             href={p.href}
+            onclick={() => {
+              if (p.href.startsWith('#tanya-')) void buka(p.href.slice('#tanya-'.length));
+            }}
             target={p.luar ? '_blank' : undefined}
             rel={p.luar ? 'noopener noreferrer' : undefined}
             class="flex items-center gap-3 rounded-[14px] px-3.5 py-3 transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 {p.gelap
