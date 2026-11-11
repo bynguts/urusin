@@ -9,14 +9,16 @@
   import Chip from '../ui/Chip.svelte';
   import Tab from '../ui/Tab.svelte';
   import Titik from '../ui/Titik.svelte';
-  import { LANGKAH_RENCANA, infoStatus, tanggal } from '#lib/urusan-status.js';
+  import { LANGKAH_RENCANA, infoStatus, langkahKini, langkahPanel, tanggal } from '#lib/urusan-status.js';
 
   /**
-   * Panel konteks 400 px (App 02–09): status + judul langkah sekarang + progres 5 segmen, lalu tab Rencana,
-   * Dokumen, Sumber. Di HP panel ini tampil di atas percakapan dan bisa dilipat.
+   * Panel konteks 400 px (App 02–09): status + judul langkah sekarang + progres per langkah, lalu tab Rencana,
+   * Dokumen, Sumber. Langkahnya mengikuti rencana (`langkahPanel`): lima langkah Pendamping hanya bila rencana
+   * dibantu Pendamping. Di HP panel ini tampil di atas percakapan dan bisa dilipat.
    */
   let {
     state,
+    jenis = null,
     sedangBerjalan,
     rencana,
     checklist,
@@ -26,6 +28,8 @@
     bawah,
   }: {
     state: UrusanState | null;
+    /** Jenis urusan (klasifikasi harness), untuk langkah sebelum rencana ada. */
+    jenis?: string | null;
     sedangBerjalan: boolean;
     rencana: EventOf<'plan_card'> | null;
     checklist: EventOf<'checklist'> | null;
@@ -59,8 +63,14 @@
     GAGAL_AMAN: 'Urusin berhenti dengan aman',
   };
 
-  const judul = $derived((state && JUDUL[state]) || 'Urusin sedang memahami kebutuhan Anda');
-  const sekarang = $derived(info.langkah);
+  const langkah = $derived(langkahPanel(rencana, jenis));
+  const sekarang = $derived(langkahKini(state, langkah));
+  // Di luar lima langkah Pendamping, judulnya langkah rencana yang sedang dikerjakan warga.
+  const judul = $derived(
+    (langkah !== LANGKAH_RENCANA && sekarang >= 1 && langkah[sekarang - 1]?.judul) ||
+      (state && JUDUL[state]) ||
+      'Urusin sedang memahami kebutuhan Anda',
+  );
   const dokSiap = $derived(checklist?.item.filter((i) => i.status === 'ok').length ?? 0);
 
   function keadaanLangkah(i: number): 'selesai' | 'kini' | 'nanti' {
@@ -78,14 +88,18 @@
         >{sedangBerjalan && info.nada !== 'ai' ? 'Urusin sedang bekerja' : info.label}</Titik
       >
       <span class="text-sm text-card-ink">
-        {#if sekarang >= 1 && sekarang <= 5}Langkah {sekarang} dari 5{:else if rencana}Rencana · {rencana
-            .langkah.length} langkah{:else}Menyusun rencana{/if}
+        {#if sekarang >= 1 && sekarang <= langkah.length}Langkah {sekarang} dari {langkah.length}{:else if rencana}Rencana
+          · {rencana.langkah.length} langkah{:else}Menyusun rencana{/if}
       </span>
     </div>
     <h2 class="text-xl leading-[26px] font-semibold tracking-[-0.3px] text-ink">{judul}</h2>
     {#if sekarang >= 1}
-      <div class="grid grid-cols-5 gap-1" aria-hidden="true">
-        {#each LANGKAH_RENCANA as _, i (i)}
+      <div
+        class="grid gap-1"
+        style:grid-template-columns="repeat({langkah.length}, minmax(0, 1fr))"
+        aria-hidden="true"
+      >
+        {#each langkah as _, i (i)}
           {@const k = keadaanLangkah(i)}
           <span
             class="h-1.5 rounded-[3px] {k === 'selesai'
@@ -116,10 +130,10 @@
     {#if tab === 'rencana'}
       <div id="panel-panel-rencana" role="tabpanel" aria-labelledby="panel-tab-rencana">
         <ol class="flex flex-col">
-          {#each LANGKAH_RENCANA as l, i (l.judul)}
+          {#each langkah as l, i (i)}
             {@const k = keadaanLangkah(i)}
             <li class="relative flex min-h-[70px] gap-3 last:min-h-12">
-              {#if i < LANGKAH_RENCANA.length - 1}
+              {#if i < langkah.length - 1}
                 <span
                   class="absolute top-[26px] bottom-0 left-3 w-0.5 {k === 'selesai'
                     ? 'bg-[#cfe0bf]'
@@ -161,6 +175,10 @@
                     langkah {i} · {l.pelaku}{/if}
                 </p>
               </div>
+            </li>
+          {:else}
+            <li class="rounded-xl bg-card p-4 text-[0.9375rem] text-body">
+              Langkah muncul di sini setelah Urusin menyusun rencana.
             </li>
           {/each}
         </ol>

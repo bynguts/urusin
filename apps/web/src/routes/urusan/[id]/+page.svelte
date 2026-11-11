@@ -313,6 +313,7 @@
       <div id="panel-konteks" class="{panelHpBuka ? '' : 'max-lg:hidden'} lg:min-h-full">
         <PanelKonteks
           state={keadaanPanel}
+          jenis={data.urusan.jenis}
           sedangBerjalan={k.sedangBerjalan}
           rencana={k.rencana}
           checklist={k.checklist}

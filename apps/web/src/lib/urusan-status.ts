@@ -1,4 +1,4 @@
-import type { UrusanState } from '#lib/contracts.js';
+import type { EventOf, JenisLangkah, UrusanState } from '#lib/contracts.js';
 
 export type NadaStatus = 'anda' | 'ai' | 'instansi' | 'selesai' | 'netral';
 
@@ -22,6 +22,46 @@ export const LANGKAH_RENCANA = [
   { judul: 'Periksa lalu tekan Kirim', pelaku: 'Anda' },
   { judul: 'Verifikasi dan ambil dokumen', pelaku: 'Instansi' },
 ] as const;
+
+export type LangkahPanel = { readonly judul: string; readonly pelaku: string };
+
+/** Pelaku langkah rencana, sama dengan label di kartu rencana. */
+const PELAKU_JENIS: Record<JenisLangkah, string> = {
+  'online-adapter': 'AI',
+  'online-manual': 'Anda',
+  offline: 'Instansi',
+  'cek-kanal': 'Anda',
+};
+
+/** Jenis urusan adminduk yang dikerjakan lewat formulir resmi (lima langkah sebelum rencananya ada). */
+const JENIS_ADMINDUK = new Set(['kelahiran', 'kematian', 'perkawinan', 'pindah', 'ktp', 'kk', 'akta']);
+
+/**
+ * Langkah panel Rencana. Lima langkah Browser Pendamping (masuk akun → AI mengisi → Kirim) hanya untuk rencana
+ * yang memang dibantu Pendamping. Rencana dipandu, cek data, dan urusan informasi memakai langkah rencananya
+ * sendiri. Sebelum ada rencana, lima langkah hanya untuk jenis adminduk; selain itu kosong.
+ */
+export function langkahPanel(
+  rencana: Pick<EventOf<'plan_card'>, 'langkah' | 'pendamping'> | null,
+  jenis?: string | null,
+): readonly LangkahPanel[] {
+  if (rencana)
+    return rencana.pendamping
+      ? LANGKAH_RENCANA
+      : rencana.langkah.map((l) => ({ judul: l.judul, pelaku: PELAKU_JENIS[l.jenis] }));
+  return jenis && JENIS_ADMINDUK.has(jenis) ? LANGKAH_RENCANA : [];
+}
+
+/**
+ * Langkah aktif (0 = belum disetujui, panjang+1 = semua selesai) untuk daftar dari `langkahPanel`. Rencana di
+ * luar lima langkah Pendamping tidak punya penanda per langkah: setelah disetujui warga ada di langkah pertama.
+ */
+export function langkahKini(state: UrusanState | null | undefined, daftar: readonly LangkahPanel[]): number {
+  const l = infoStatus(state).langkah;
+  if (daftar === LANGKAH_RENCANA) return l;
+  if (!daftar.length || l === 0) return 0;
+  return state === 'SELESAI' ? daftar.length + 1 : 1;
+}
 
 const PETA: Record<UrusanState, InfoStatus> = {
   BARU: { label: 'AI menyusun rencana', nada: 'ai', langkah: 0, aksi: 'Buka', kelompok: 'lainnya' },
