@@ -32,7 +32,7 @@ import {
   type GerbangTulis,
   type PermintaanGerbang,
 } from './gerbang-tulis.js';
-import { GenerikRun, PESAN_GENERIK, tanganRunner } from './generik.js';
+import { GenerikRun, naikHttps, PESAN_GENERIK, tanganRunner } from './generik.js';
 import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
 import { daftarEdge, type ProxyEdge } from './isolasi.js';
 import { pesanBerkasKurang, pesanIsiSendiri } from './isian.js';
@@ -381,6 +381,11 @@ export async function launchIsolated(
    * adapter (tanpa gerbang).
    */
   gerbang?: GerbangTulis,
+  /**
+   * Navigasi dokumen bingkai utama GET ke `http://` host sesi yang hanya terdaftar untuk https (probe gel4 9171):
+   * permintaan http dibatalkan (tidak pernah terkirim) dan bentuk https-nya diserahkan ke sini untuk dibuka.
+   */
+  onNaikHttps: (url: string) => void = () => {},
 ): Promise<Isolated> {
   const rules = egressRules(hosts, config.fixtureOrigins);
   const allowedHosts = new Set(rules.map((r) => `${r.host}:${r.port}`));
@@ -441,6 +446,19 @@ export async function launchIsolated(
     await context.route('**/*', (route) => {
       const req = route.request();
       const ok = izinRute(allowedHosts, req);
+      if (!ok && req.method() === 'GET' && permintaanGerbang(req).utama) {
+        const https = naikHttps(req.url(), (u) =>
+          izinRute(allowedHosts, {
+            url: () => u,
+            resourceType: () => 'document',
+            isNavigationRequest: () => true,
+          }),
+        );
+        if (https) {
+          onNaikHttps(https);
+          return route.abort('aborted');
+        }
+      }
       if (!ok) {
         const host = URL.parse(req.url())?.hostname;
         const dokumen = gerbang ? permintaanGerbang(req).utama : false;
@@ -539,6 +557,8 @@ type KendaliGerbang = {
   tulisWarga: () => void;
   /** Dokumen kotor atau halaman akhir: redirect halaman sendiri tidak pernah lolos. */
   ketat: () => boolean;
+  /** Tautan http:// host sesi yang diketuk warga: buka bentuk https-nya (probe gel4 9171). */
+  naikHttps: (url: string) => void;
 };
 
 export async function startBrowserRun(config: Config, init: RunInit): Promise<ActiveRun> {
@@ -550,6 +570,7 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
     hostDiblokir: () => {},
     tulisWarga: () => {},
     ketat: () => false,
+    naikHttps: () => {},
   };
   const gerbang = init.generik
     ? createGerbangTulis({
@@ -573,6 +594,7 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
       }
     },
     gerbang,
+    (url) => kendali.naikHttps(url),
   );
   try {
     return await wire(config, init, iso, gerbang ? { gerbang, kendali, hosts } : undefined);
@@ -1274,6 +1296,11 @@ export async function wire(
     gen.kendali.blokir = (c, j) => run.blokir(c, j);
     gen.kendali.hostDiblokir = (host, dokumen) => run.hostDiblokir(host, dokumen);
     gen.kendali.ketat = () => run.ketat;
+    // Hanya dari ketukan warga yang baru saja terjadi (navigasi AI sudah dinaikkan di GenerikRun.navigasi).
+    gen.kendali.naikHttps = (url) => {
+      if (destroyed || !gen.kendali.wargaPegang() || !urlBoleh(url)) return;
+      setTimeout(() => void cdp.send('Page.navigate', { url }).catch(() => undefined), 0);
+    };
     // Review kode N1: warga mengirim sendiri (mis. setelah AI menyerah, loop di web sudah berhenti). Halaman sukses
     // sesudah tulis warga = sesi siaga berhasil tanpa menunggu /selesai. Diperiksa saat dokumen utama dimuat dan
     // sebentar sesudah tulis warga (SPA: hasil lewat XHR tanpa muat ulang).

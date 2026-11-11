@@ -19,7 +19,7 @@ import {
 import { loadConfig } from './config.js';
 import { createTouchMapper, toCdp } from './input.js';
 import { runnerExpression, runnerScript, toInjectable } from './runner-script.js';
-import { detectBotWall, suspicious } from './waf.js';
+import { detectBotWall, suspicious, wallBisaDiverifikasi } from './waf.js';
 
 const EDGE_ENV = {
   PENDAMPING_EDGE_URL: 'http://pendamping-edge:3129',
@@ -371,6 +371,36 @@ describe('deteksi WAF / bot wall', () => {
     ).toBe('imperva');
     expect(detectBotWall({ status: 429, headers: {} })).toBe('rate-limit');
     expect(detectBotWall({ status: 503, headers: {}, body: 'Sucuri WebSite Firewall' })).toBe('sucuri');
+  });
+
+  it('probe gel4: blokir keras Cloudflare tidak dikira tantangan walau memuat skrip telemetri JSD', () => {
+    const jsd = '<script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script>';
+    const cf = { 'cf-ray': '8f0000000000abcd-SIN' };
+    expect(
+      detectBotWall({
+        status: 403,
+        headers: cf,
+        body: `<title>Attention Required! | Cloudflare</title><h1>Sorry, you have been blocked</h1>${jsd}`,
+      }),
+    ).toBe('cloudflare-block');
+    expect(
+      detectBotWall({ status: 403, headers: cf, body: `<h2>Sorry, you have been blocked</h2>${jsd}` }),
+    ).toBe('cloudflare-block');
+    // Tantangan berbahasa Indonesia ("Tunggu sebentar...") dengan opsi tantangan.
+    expect(
+      detectBotWall({
+        status: 403,
+        headers: cf,
+        body: '<title>Tunggu sebentar...</title><script>window._cf_chl_opt={cType:"managed"}</script>',
+      }),
+    ).toBe('cloudflare-challenge');
+    expect(detectBotWall({ status: 403, headers: cf, body: '<title>Tunggu sebentar...</title>' })).toBe(
+      'cloudflare-challenge',
+    );
+    // 403 biasa dari server asal yang kebetulan memuat skrip telemetri: bukan bot wall.
+    expect(detectBotWall({ status: 403, headers: cf, body: `<p>Akses ditolak</p>${jsd}` })).toBeNull();
+    expect(wallBisaDiverifikasi('cloudflare-block')).toBe(false);
+    expect(wallBisaDiverifikasi('cloudflare-challenge')).toBe(true);
   });
 
   it('halaman login ber-CAPTCHA biasa dan 404 bukan bot wall', () => {

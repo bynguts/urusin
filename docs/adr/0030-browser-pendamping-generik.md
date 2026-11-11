@@ -45,13 +45,18 @@ Adapter tulisan tangan hanya ada untuk Telunjuk Sakti dan beberapa alur baca. Wa
   warga, bukan AI. Tinjau ulang bila ada portal nyata yang memakai CAPTCHA tak terlihat pada tombol non-final.
 - Tulis tertunda dari aksi AI (timer/retry, review N2/N4): tulis non-GET yang diblokir menandai dokumen "kotor"
   sampai navigasi bingkai utama berikutnya ter-commit. Dokumen kotor tidak lagi dapat jendela XHR isi; blokir
-  saat AI diam sesudah AI bertindak di dokumen itu = muat ulang lewat GET (sekali per URL) lalu serah ke warga;
-  ketukan warga hanya membuka jendela tulis bila mengenai kotak sorot, tombol kirim, atau tautan; kontrol isian
-  (radio, centang, pilihan, label, summary), area kosong, kolom ketik, dan ketikan tidak (re-review N4, PoC A).
+  saat AI diam sesudah AI bertindak di dokumen itu = muat ulang lewat GET (sekali per URL tanpa fragmen) lalu
+  serah ke warga. Eskalasi klik/isi AI yang diblokir (GERBANG_MEMBLOKIR) juga memuat ulang dokumen kotor SEBELUM
+  warga memegang kendali (re-review A2), sehingga timer/retry dari klik AI mati; biayanya, isian AI di halaman
+  itu hilang dan AI mengisi ulang setelah warga menekan Lanjutkan. Bila muat ulang tidak bisa (kotor kedua di
+  URL yang sama), ketukan warga hanya membuka jendela tulis bila mengenai kotak sorot atau tombol submit asli
+  (`button type=submit`, `input submit/image`); bukan `type=button`, bukan tautan (termasuk tautan fragmen). Di
+  dokumen kotor tanpa aksi AI, ketukan pada tombol kirim atau tautan juga membuka jendela; kontrol isian (radio,
+  centang, pilihan, label, summary), area kosong, kolom ketik, dan ketikan tidak (re-review N4, PoC A).
   Sisa risiko diterima: (1) percobaan tulis tertunda PERTAMA yang kebetulan jatuh di dalam jendela isi
   (≤ `JENDELA_ISI_MS`) sebelum ada blokir apa pun tetap lolos; (2) di dokumen kotor yang tidak dimuat ulang,
-  ketukan warga pada tombol kirim atau tautan membuka jendela 3 detik yang juga dipakai timer halaman (warga
-  memang sedang bermaksud mengirim/berpindah). Dipertimbangkan: atribusi lewat stack inisiator CDP (`Network.requestWillBeSent`
+  ketukan warga pada kotak sorot atau tombol submit asli membuka jendela 3 detik yang juga dipakai timer halaman
+  (warga memang sedang bermaksud mengirim). Dipertimbangkan: atribusi lewat stack inisiator CDP (`Network.requestWillBeSent`
   `initiator.stack`) untuk membedakan tulis dari handler ketukan warga dan dari timer; belum dipakai karena
   stack async tidak andal lintas `setTimeout`/promise dan menambah lapis CDP Network di samping rute Playwright.
 - Sisa risiko diterima (redirect halaman sendiri, probe 3674): saat AI diam atau sesudah navigasi AI ke `navKe`,

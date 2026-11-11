@@ -183,6 +183,22 @@ const HALAMAN: Record<string, string> = {
 <button type="submit">Daftar Sekarang</button></form>`),
 };
 
+/**
+ * Probe gel4 (1101/3312/7371): halaman Cloudflare tiruan (403 + cf-ray), keduanya memuat skrip telemetri JSD
+ * seperti halaman asli. Tantangan = bisa diselesaikan warga; blokir keras = tidak ada yang bisa diselesaikan.
+ */
+const JSD = '<script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script>';
+const RESPON_KHUSUS: Record<string, { status: number; html: string }> = {
+  '/cf-tantangan': {
+    status: 403,
+    html: `<!doctype html><html><head><title>Tunggu sebentar...</title></head><body><p>Melakukan verifikasi keamanan</p><script>window._cf_chl_opt={cType:'managed'}</script>${JSD}</body></html>`,
+  },
+  '/cf-blokir': {
+    status: 403,
+    html: `<!doctype html><html><head><title>Attention Required! | Cloudflare</title></head><body><h1>Sorry, you have been blocked</h1><h2>You are unable to access contoh.go.id</h2>${JSD}</body></html>`,
+  },
+};
+
 async function situsUji() {
   const hitung = new Map<string, number>();
   let upgrade = 0;
@@ -191,6 +207,16 @@ async function situsUji() {
     if (req.method !== 'GET' || !(jalur in HALAMAN)) hitung.set(jalur, (hitung.get(jalur) ?? 0) + 1);
     req.resume();
     req.on('end', () => {
+      const khusus = Object.hasOwn(RESPON_KHUSUS, jalur) ? RESPON_KHUSUS[jalur] : undefined;
+      if (khusus) {
+        res.writeHead(khusus.status, {
+          'content-type': 'text/html; charset=utf-8',
+          'cache-control': 'no-store',
+          'cf-ray': '8f0000000000abcd-SIN',
+          server: 'cloudflare',
+        });
+        return void res.end(khusus.html);
+      }
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
       res.end(HALAMAN[jalur] ?? kerangka('<p>diterima</p>'));
     });
@@ -210,7 +236,7 @@ async function situsUji() {
 
 type Situs = Awaited<ReturnType<typeof situsUji>>;
 
-async function sesi(situs: Situs, jalur: string, id: string) {
+async function sesi(situs: Situs, jalur: string, id: string, amati = true) {
   const config = loadConfig({
     PENDAMPING_FIXTURE_ORIGINS: situs.origin,
     PENDAMPING_ORIGIN_OVERRIDES: `${RESMI}=${situs.origin}`,
@@ -227,8 +253,14 @@ async function sesi(situs: Situs, jalur: string, id: string) {
     params: { jalur },
     modeUji: true,
   });
-  await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('berjalan');
-  const p = (await manager.amati(o)).pengamatan;
+  if (amati) await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('berjalan');
+  else
+    await expect
+      .poll(() => !['antre', 'memulai', 'menunggu_data'].includes(manager.status(o).status), {
+        timeout: 30_000,
+      })
+      .toBe(true);
+  const p = amati ? (await manager.amati(o)).pengamatan : (undefined as unknown as Pengamatan);
   return { manager, o, sesiId: s.sesiId, p };
 }
 
@@ -628,6 +660,39 @@ test('kode N4: tautan target=_blank yang diketuk warga dibuka di halaman utama (
         { timeout: 10_000 },
       )
       .toBe('/permohonan/kk');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 (1101/3312): halaman tantangan Cloudflare 403 = giliran verifikasi warga, bukan sukses', async () => {
+  const { manager, o, sesiId } = await sesi(situs, '/cf-tantangan', 'cf-tantangan', false);
+  const events: PendampingEvent[] = [];
+  await manager.attach(sesiId, {
+    send: (m: PendampingServerMessage) => void (m.type === 'event' && events.push(m.event)),
+    frame: () => {},
+    ack: () => {},
+    close: () => {},
+  });
+  try {
+    await expect.poll(() => manager.status(o).mode, { timeout: 15_000 }).toBe('takeover');
+    expect(manager.status(o).status).toBe('berjalan');
+    expect(manager.status(o).pesan).toMatch(/verifikasi/i);
+    // Bukan sukses: tidak ada pengiriman warga, selesai ditolak.
+    await expect(manager.selesai(o)).rejects.toMatchObject({ status: 409 });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 (7371): blokir keras Cloudflare (you have been blocked) = dipandu dengan pesan jujur', async () => {
+  const { manager, o } = await sesi(situs, '/cf-blokir', 'cf-blokir', false);
+  try {
+    await expect.poll(() => manager.status(o).status, { timeout: 15_000 }).toBe('dipandu');
+    const st = manager.status(o);
+    expect(st.pesan).toMatch(/memblokir peramban server Urusin/);
+    expect(st.pesan).toMatch(/perangkat Anda sendiri/);
+    expect(st.status).not.toBe('berhasil');
   } finally {
     await manager.shutdown();
   }

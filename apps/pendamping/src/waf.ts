@@ -12,9 +12,22 @@ export type ResponseInfo = {
   body?: string | undefined;
 };
 
+/**
+ * Urutan penting: blokir keras Cloudflare diperiksa SEBELUM tantangan, karena halaman blokir (dan halaman biasa)
+ * di belakang Cloudflare ikut memuat skrip telemetri `/cdn-cgi/challenge-platform/scripts/jsd/main.js` (probe
+ * gel4 7371: "you have been blocked" tidak boleh dikira tantangan yang bisa diselesaikan warga). Penanda
+ * tantangan hanya yang khas halaman tantangan (`_cf_chl_opt`, orkestrasi `/challenge-platform/h/`, judul
+ * interstitial), bukan sekadar kata `challenge-platform`.
+ */
 const MARKERS: { re: RegExp; nama: string }[] = [
-  { re: /cf-chl|challenge-platform|cf_chl_opt|Just a moment\.\.\./i, nama: 'cloudflare-challenge' },
-  { re: /Attention Required! \| Cloudflare|cf-error-details/i, nama: 'cloudflare-block' },
+  {
+    re: /Attention Required! \| Cloudflare|cf-error-details|Sorry, you have been blocked|you have been blocked/i,
+    nama: 'cloudflare-block',
+  },
+  {
+    re: /cf_chl_opt|cf-chl-|\/cdn-cgi\/challenge-platform\/h\/|<title>\s*(?:Just a moment|Tunggu sebentar|Melakukan verifikasi keamanan|Performing security verification)/i,
+    nama: 'cloudflare-challenge',
+  },
   { re: /Incapsula incident ID|_Incapsula_Resource/i, nama: 'imperva' },
   { re: /Request unsuccessful\. Incapsula/i, nama: 'imperva' },
   { re: /Access Denied[\s\S]{0,200}Reference #[0-9a-f.]+/i, nama: 'akamai' },

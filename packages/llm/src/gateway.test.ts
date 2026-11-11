@@ -216,7 +216,7 @@ describe('larangan SDK vendor lain', () => {
       filePath: join(root, 'packages/llm/src/contoh.ts'),
     });
     expect(res?.messages.map((m) => m.ruleId)).toContain('no-restricted-imports');
-  }, 30_000);
+  }, 120_000);
 
   it('tidak ada import SDK vendor lain di source repo', () => {
     const offenders: string[] = [];
@@ -243,8 +243,8 @@ describe('larangan SDK vendor lain', () => {
       }
     }
     expect(offenders).toEqual([]);
-    // Pemindaian disk ikut melambat saat turbo menjalankan banyak tugas paralel (CI): batas longgar.
-  }, 60_000);
+    // Pemindaian disk (dan ESLint di atas) melambat saat turbo menjalankan banyak tugas paralel: batas longgar.
+  }, 120_000);
 });
 
 describe('stream selalu eksplisit di body permintaan', () => {
