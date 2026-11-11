@@ -17,7 +17,8 @@
 #   5. Gagal di langkah 2-4 => rollback otomatis (promosikan ulang yang lama) dan exit non-zero.
 #
 # Variabel (opsional): GHCR_TOKEN/GHCR_USER (login sementara), DRAIN_SECONDS (default 120 = batas turn agen), REQUIRE_LLM=1 (gagal bila web tidak menjangkau LLM_BASE_URL), IMAGE_REPO, WAIT_SECONDS, SETTLE_SECONDS, PORT_BLUE, PORT_GREEN, SKIP_SMOKE=1,
-# REQUIRE_PROVENANCE (default 1; 0 = cukup label revision, JANGAN dipakai di produksi).
+# REQUIRE_PROVENANCE (default 1; 0 = cukup label revision, JANGAN dipakai di produksi),
+# CAPS_WAIT_SECONDS (default 90; batas tunggu kapabilitas.ai "normal" di /api/kemampuan pada mode LLM).
 # GHCR: DOCKER_CONFIG dari lingkungan dihormati. Bila GHCR_TOKEN diset (dan DOCKER_CONFIG tidak), skrip
 # membuat DOCKER_CONFIG sementara di /tmp (chmod 700), login lewat stdin, dan menghapusnya saat keluar.
 # Skrip ini tidak pernah menulis ke konfigurasi docker di HOME pengguna. Idempotent: menjalankan ulang dengan argumen sama aman (warna berganti).
@@ -30,6 +31,9 @@ PORT_BLUE="${PORT_BLUE:-4310}"
 PORT_GREEN="${PORT_GREEN:-4311}"
 WAIT_SECONDS="${WAIT_SECONDS:-90}"
 SETTLE_SECONDS="${SETTLE_SECONDS:-3}"
+# Probe kapabilitas LLM saat boot <= 15 s (timeout per probe, paralel); bila galat, probe ulang di latar pada
+# +15 s lalu +30 s. 90 s mencakup probe boot + dua probe ulang sebelum deploy dinyatakan gagal.
+CAPS_WAIT_SECONDS="${CAPS_WAIT_SECONDS:-90}"
 DRAIN_SECONDS="${DRAIN_SECONDS:-120}"
 REQUIRE_PROVENANCE="${REQUIRE_PROVENANCE:-1}"
 ENV_FILE=".env"
@@ -321,6 +325,30 @@ if ! bash ./check-llm-reach.sh "$idle"; then
   if [ "${REQUIRE_LLM:-0}" = 1 ]; then fail "web-$idle tidak menjangkau LLM_BASE_URL (REQUIRE_LLM=1)"; fi
   echo "deploy: PERINGATAN: web-$idle tidak menjangkau LLM_BASE_URL; fitur AI akan gagal (set REQUIRE_LLM=1 untuk menggagalkan deploy)" >&2
 fi
+
+# Mode LLM: runtime yang probe kapabilitasnya galat melayani tanpa AI (satu aksi per giliran agen). Jangan
+# promosikan sebelum /api/kemampuan melaporkan ai "normal" ("hemat" = kuota harian >= 70%, bukan kapabilitas:
+# rollback tidak menolong, cukup peringatan). Mode demo dilewati.
+wait_caps() { # port
+  local waited=0 body="" llm="" ai="" probe=""
+  while :; do
+    body="$(curl -fsS --max-time 5 "http://127.0.0.1:$1/api/kemampuan" 2>/dev/null || true)"
+    llm="$(printf '%s' "$body" | sed -n 's/.*"llm":"\([a-z]*\)".*/\1/p')"
+    ai="$(printf '%s' "$body" | sed -n 's/.*"ai":"\([a-z_]*\)".*/\1/p')"
+    probe="$(printf '%s' "$body" | sed -n 's/.*"probe":"\([a-z_]*\)".*/\1/p')"
+    [ "$llm" = demo ] && return 0
+    if [ "$llm" = llm ]; then
+      [ "$ai" = normal ] && { echo "deploy: kapabilitas AI normal (probe ${probe:-?})"; return 0; }
+      [ "$ai" = hemat ] && { echo "deploy: peringatan: kapabilitas AI hemat (kuota harian >= 70%)" >&2; return 0; }
+    fi
+    [ "$waited" -lt "$CAPS_WAIT_SECONDS" ] || break
+    sleep 3
+    waited=$((waited + 3))
+  done
+  echo "deploy: /api/kemampuan: llm=${llm:-?} ai=${ai:-?} probe=${probe:-?} setelah ${CAPS_WAIT_SECONDS}s" >&2
+  return 1
+}
+wait_caps "$idle_port" || fail "web-$idle: kapabilitas AI tidak normal (probe LLM galat? cek /api/health .probe)"
 
 # --- 3. Smoke langsung ke warna idle, lalu promosi --------------------------------------------
 # /api/ready harus ada (image mengenal blue/green) dan belum siap: 503. 404 berarti image tanpa rute itu.

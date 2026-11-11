@@ -37,6 +37,7 @@ import {
 import { createRagSearcher, openDb, type RagSearchInfo } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { httpKeluar } from './http-keluar.js';
+import { aturStatusProbe, pantauProbe } from './probe-ulang.js';
 import { buatOidcFixture, type OidcFixture } from './oidc-fixture.js';
 import { peringatanKuotaJuri, peringatanTurnstile, turnstileFromEnv, type Turnstile } from './turnstile.js';
 import { RateLimiter } from './limiter.js';
@@ -335,19 +336,17 @@ async function buildFromEnv(): Promise<Runtime> {
 
   const cfg = loadLlmConfig(env);
   const provider = new OpenAIProvider(cfg);
-  // LLM_CAPS_PIN (rencana §3.11) menang atas probe; tanpa pin, probe saat boot (gagal = mode degraded).
-  let caps = pinnedCaps(env.LLM_CAPS_PIN);
-  if (!caps) {
-    try {
-      const report = await probeCapabilities({ provider, models: cfg.models });
-      caps = applyForcedOff(report, cfg.forcedOff).flags;
-    } catch {
-      caps = { ...ALL_OFF };
-    }
-  }
+  // LLM_CAPS_PIN (rencana §3.11) menang atas probe. Tanpa pin: probe saat boot; probe yang GALAT (proxy sibuk,
+  // timeout) tidak membuat degraded selamanya: diulang di latar dengan backoff (probe-ulang.ts) sampai pulih.
+  const pin = pinnedCaps(env.LLM_CAPS_PIN);
+  const probe = async () =>
+    applyForcedOff(await probeCapabilities({ provider, models: cfg.models }), cfg.forcedOff);
+  let laporan: Awaited<ReturnType<typeof probe>> | null = null;
+  if (!pin) laporan = await probe().catch(() => null);
+  const caps = pin ?? (laporan ? { ...laporan.flags } : { ...ALL_OFF });
   const prices: Prices = cfg.prices;
   const piiKey = piiKeyFromEnv(env, true);
-  return createRuntime({
+  const rt = createRuntime({
     mode: 'llm',
     provider,
     harness: {
@@ -359,6 +358,9 @@ async function buildFromEnv(): Promise<Runtime> {
       ...(piiKey ? { piiKey: kunciPlaceholderHmac(piiKey) } : {}),
     },
   });
+  if (pin) aturStatusProbe({ status: 'pin' });
+  else pantauProbe({ caps: rt.deps.caps, laporan, probe, catat: (p) => console.warn(`llm: ${p}`) });
+  return rt;
 }
 
 let instance: Promise<Runtime> | undefined;

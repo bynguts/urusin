@@ -11,6 +11,11 @@ case "$url" in
     if [ -n "${SHIM_NO_READY:-}" ]; then echo 404; exit 0; fi
     if [ -f "$SHIM_DIR/running.$c" ] && [ "$(cat "$SHIM_DIR/promoted" 2>/dev/null)" = "$c" ]; then echo 200; else echo 503; fi
     exit 0 ;;
+  http://127.0.0.1:431[01]/api/kemampuan)
+    # SHIM_KEMAMPUAN: badan JSON (default mode demo); SHIM_KEMAMPUAN_GAGAL=1 = kontainer tak menjawab.
+    [ -z "${SHIM_KEMAMPUAN_GAGAL:-}" ] || exit 22
+    demo='{"llm":"demo","kapabilitas":{"ai":"normal"}}'
+    printf '%s' "${SHIM_KEMAMPUAN:-$demo}"; exit 0 ;;
   http://127.0.0.1:4310/api/health) [ -f "$SHIM_DIR/running.blue" ] && { body blue; exit 0; }; exit 7 ;;
   http://127.0.0.1:4311/api/health) [ -f "$SHIM_DIR/running.green" ] && { body green; exit 0; }; exit 7 ;;
   https://verify.*) [ -z "${SHIM_PUBLIC_FAIL:-}" ] || exit 60; echo 200; exit 0 ;;
