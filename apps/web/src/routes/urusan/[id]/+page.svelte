@@ -66,9 +66,8 @@
     return keadaanUrusan;
   });
   const p = $derived(peristiwaDariJenis(data.urusan.jenis));
-  const judul = $derived(
-    judulUrusan(data.urusan.jenis) ?? lokal.cari(data.urusan.id)?.judul ?? 'Urusan baru',
-  );
+  const judulJenis = $derived(judulUrusan(data.urusan.jenis));
+  const judul = $derived(judulJenis ?? lokal.cari(data.urusan.id)?.judul ?? 'Urusan baru');
   const linimasa = $derived(bangunLinimasa(k.events, pesan));
   const kutipan = $derived.by(() => {
     const peta = new SvelteMap<string, KutipanTerverifikasi & { nomor: number }>();
@@ -394,7 +393,10 @@
                 <PesanAgen avatar={p.avatar}><KartuHandoff handoff={it.e} /></PesanAgen>
               {:else if it.jenis === 'rencana'}
                 <PesanAgen avatar={p.avatar}>
-                  <p>Ini rencana yang saya sarankan untuk {judul.toLowerCase()}:</p>
+                  <!-- Judul cadangan berasal dari kalimat warga; hanya judul jenis yang layak disisipkan. -->
+                  <p>
+                    Ini rencana yang saya sarankan{judulJenis ? ` untuk ${judulJenis.toLowerCase()}` : ''}:
+                  </p>
                   <KartuRencana
                     rencana={it.e}
                     kelayakan={k.kelayakan}
