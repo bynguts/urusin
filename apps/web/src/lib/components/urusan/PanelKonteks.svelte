@@ -71,7 +71,7 @@
   }
 </script>
 
-<div class="flex h-full flex-col gap-5 px-4 py-5 sm:p-6">
+<div class="flex min-h-full flex-col gap-5 px-4 py-5 sm:p-6">
   <div class="flex flex-col gap-3.5 pb-1">
     <div class="flex items-center justify-between gap-3">
       <Titik nada={info.nada} tebal
@@ -112,7 +112,7 @@
     ]}
   />
 
-  <div class="min-h-0 flex-1">
+  <div class="flex-1">
     {#if tab === 'rencana'}
       <div id="panel-panel-rencana" role="tabpanel" aria-labelledby="panel-tab-rencana">
         <ol class="flex flex-col">
