@@ -12,6 +12,7 @@ import {
   jalurModeUji,
   portalWebWilayah,
 } from './generik.js';
+import { catatanDipandu } from './builtin-tools.js';
 import { aturJaringanId, mulaiPengajuan, rutePendamping, setujuiRencana, tierEksekusi } from './rencana.js';
 import { buatUrusanTerwilayah, rencanaPeristiwa } from './wilayah.js';
 import { HarnessStore } from './store.js';
@@ -245,6 +246,28 @@ describe('routing rencana.ts: adapter -> (platform) -> generik -> dipandu', () =
     }
     // Jenis urusan tak dikenal di wilayah web pun tetap dipandu.
     expect(rutePendamping({ jenis: 'lainnya', kodeKabKota: SMG }).jalur).toBe('dipandu');
+  });
+
+  it('3b. layanan non-adminduk tidak diarahkan ke Disdukcapil (QA warga: Samsat Jakarta, LAPOR! Bandung)', () => {
+    // Sebelumnya: "Disdukcapil Jakarta Pusat melayani pengajuan lewat aplikasi ponsel resmi" untuk pajak motor.
+    for (const jenis of ['pajak_kendaraan', 'pengaduan', 'bansos'])
+      expect(rutePendamping({ jenis, kodeKabKota: JAKPUS })).toEqual({
+        jalur: 'dipandu',
+        alasan: alasanDipandu(null),
+      });
+    expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: JAKPUS })).toMatchObject({
+      alasan: expect.stringMatching(/Disdukcapil/),
+    });
+
+    const ktp = { kodeKabKota: JAKPUS, nama: 'Kota Administrasi Jakarta Pusat' };
+    const dukcapil = { judul: 'Alpukat Betawi', url: 'https://alpukat-dukcapil.jakarta.go.id/' };
+    expect(catatanDipandu('kelahiran', ktp, dukcapil)).toContain('alpukat-dukcapil.jakarta.go.id');
+    for (const jenis of ['pajak_kendaraan', 'pengaduan', 'lainnya']) {
+      const c = catatanDipandu(jenis, ktp, dukcapil);
+      expect(c).toMatch(/^Langkah disusun asisten, belum bersumber\./);
+      expect(c).not.toContain('alpukat');
+    }
+    expect(catatanDipandu('pengaduan', ktp, dukcapil)).toContain('lapor.go.id');
   });
 
   it('4. wilayah belum ditetapkan: dipandu, dan tool rencana tetap kena WILAYAH_BELUM_DITETAPKAN', async () => {

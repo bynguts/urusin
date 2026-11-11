@@ -137,6 +137,24 @@ ${formatHits(out.hasil, ctx.nonce, 4, kode)}`,
   },
 });
 
+/**
+ * Catatan rencana karangan model. Adminduk: kanal Disdukcapil wilayah KTP. Layanan lain (Samsat, bansos, LAPOR!)
+ * memakai kanal instansinya sendiri; kanal Disdukcapil di sana salah alamat.
+ */
+export function catatanDipandu(
+  jenis: string | null,
+  ktp: { kodeKabKota: string; nama: string },
+  k: { judul: string; url: string },
+): string {
+  const awal = 'Langkah disusun asisten, belum bersumber.';
+  if (!jenis || ADMINDUK.has(jenis))
+    return `${awal} Pastikan di kanal resmi ${ktp.nama}: ${k.judul} (${k.url}).`;
+  const lain = handoffChannels({ jenis, kodeKabKota: ktp.kodeKabKota }).find((x) => x.url);
+  return lain
+    ? `${awal} Pastikan di kanal resmi ${lain.nama} (${lain.url}).`
+    : `${awal} Pastikan langsung ke instansi yang menangani layanan ini.`;
+}
+
 export const urusanUsulkanRencana = defineTool({
   name: 'urusan__usulkan_rencana',
   description:
@@ -195,7 +213,7 @@ export const urusanUsulkanRencana = defineTool({
                 ...(w.tujuan ? { tujuan: w.tujuan } : {}),
               },
               tier: 'dipandu',
-              catatan: `Langkah disusun asisten, belum bersumber. Pastikan di kanal resmi ${ktp.nama}: ${k.judul} (${k.url}).`,
+              catatan: catatanDipandu(ctx.urusan.jenis, ktp, k),
             },
       ],
     };
