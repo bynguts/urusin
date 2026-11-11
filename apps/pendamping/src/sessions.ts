@@ -223,8 +223,9 @@ function hostsSesiWilayah(kode: string): { boleh: Set<string>; bawaan: string[] 
     p.platform && Object.hasOwn(PLATFORM_WILAYAH, p.platform) ? PLATFORM_WILAYAH[p.platform]!.hosts : [];
   return {
     boleh: new Set([...hostsWilayah(kode), ...tantangan, ...EGRESS_ASET_UMUM]),
-    // Aset umum (CDN/fon) ikut bawaan: tanpa itu ~21 portal nyata rusak tampilannya (probe #4).
-    bawaan: [...new Set([...p.hosts, ...platform, ...tantangan, ...EGRESS_ASET_UMUM])],
+    // Aset umum (CDN/fon) ikut bawaan: tanpa itu ~21 portal nyata rusak tampilannya (probe #4). Host aset .go.id
+    // milik portal (`hostAset`, CDN/API pemda) juga: tanpa itu XHR/aset 3310 dan 3404 diblokir (probe gel4).
+    bawaan: [...new Set([...p.hosts, ...(p.hostAset ?? []), ...platform, ...tantangan, ...EGRESS_ASET_UMUM])],
   };
 }
 
