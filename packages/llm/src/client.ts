@@ -35,11 +35,13 @@ export function createOpenAIClient(
 export class OpenAIProvider implements ChatProvider {
   readonly baseURL: string;
   private readonly client: OpenAI;
+  private readonly reasoning: { reasoning_effort?: NonNullable<LlmConfig['reasoningEffort']> };
   private readonly transcribeClient: OpenAI;
 
   constructor(config: LlmConfig, transport: ProviderTransport = {}) {
     this.baseURL = config.baseURL;
     this.client = createOpenAIClient(config, transport);
+    this.reasoning = config.reasoningEffort ? { reasoning_effort: config.reasoningEffort } : {};
     this.transcribeClient = config.transcribeBaseURL
       ? createOpenAIClient({ ...config, baseURL: config.transcribeBaseURL }, transport)
       : this.client;
@@ -48,7 +50,7 @@ export class OpenAIProvider implements ChatProvider {
   async create(params: ChatParams, opts: RequestOptions = {}): Promise<ChatCompletion> {
     // `stream` selalu eksplisit: provider nyata mengalirkan SSE bila field ini dihilangkan.
     const r: unknown = await this.client.chat.completions.create(
-      { ...params, stream: false },
+      { ...this.reasoning, ...params, stream: false },
       { signal: opts.signal },
     );
     // Proxy yang tetap membalas SSE untuk stream:false: SDK mengembalikan teks mentah (bukan JSON).
@@ -59,7 +61,10 @@ export class OpenAIProvider implements ChatProvider {
     params: ChatStreamParams,
     opts: RequestOptions = {},
   ): Promise<AsyncIterable<ChatCompletionChunk>> {
-    return this.client.chat.completions.create({ ...params, stream: true }, { signal: opts.signal });
+    return this.client.chat.completions.create(
+      { ...this.reasoning, ...params, stream: true },
+      { signal: opts.signal },
+    );
   }
 
   async transcribe(input: { model: string; audio: Uint8Array; filename: string; language?: string }) {

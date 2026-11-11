@@ -62,6 +62,8 @@ x-web-env: &web-env
   XFF_DEPTH: '1'
   BODY_SIZE_LIMIT: 10M
   DATABASE_URL: file:/data/urusin.db
+  # Model bernalar di proxy: penalaran rendah memangkas puluhan detik per giliran tanpa menurunkan klaim lolos.
+  LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-low}
 
 services:
   # Selalu berdasarkan digest, mis. ghcr.io/bynguts/urusin-web@sha256:... (ditulis deploy.sh ke

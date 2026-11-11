@@ -142,6 +142,7 @@ export async function mulaiServer({ akar, rahasia, llmBaseUrl, ragDb, logBerkas 
     LLM_BASE_URL: llmBaseUrl,
     LLM_API_KEY: rahasia.LLM_API_KEY,
     LLM_AGENT_MODEL: rahasia.LLM_AGENT_MODEL,
+    LLM_REASONING_EFFORT: process.env.LLM_REASONING_EFFORT ?? 'low',
     URUSIN_PII_KEY: randomBytes(32).toString('base64'),
     URUSIN_DAILY_IDR_CAP: '50000',
     URUSIN_LLM_DISABLED: '0',
