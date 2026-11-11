@@ -574,14 +574,11 @@ export class GenerikRun {
     const cek = PengamatanSchema.safeParse(p);
     if (!cek.success) return null;
     if (pantau) return cek.data;
-    // Halaman tanpa formulir dan tanpa kendali masuk: mungkin tombol masuknya disembunyikan di layar ponsel
-    // (probe gel4 3279). Tangan melebarkan viewport hanya bila itu benar-benar memunculkan kendali masuk.
-    const polos =
-      !cek.data.sinyal.login &&
-      !cek.data.elemen.some(
-        (e) => e.kelas === 'masuk' || e.tautanPembuka || !['tombol', 'tautan', 'tab'].includes(e.peran),
-      );
-    if (polos && (await this.d.tangan.lebarkan?.())) return this.amatiSekarang(false);
+    // Tanpa kendali masuk yang terlihat: mungkin tombol masuknya disembunyikan di layar ponsel (probe gel4 3279;
+    // gel5 3402: beranda berisi banyak tautan, bukan halaman polos). Tangan memeriksa sendiri kendali masuk yang
+    // tersembunyi dan melebarkan viewport hanya bila itu benar-benar memunculkannya.
+    const tanpaMasuk = !cek.data.sinyal.login && !cek.data.elemen.some((e) => e.kelas === 'masuk');
+    if (tanpaMasuk && (await this.d.tangan.lebarkan?.())) return this.amatiSekarang(false);
     this.peta = r.peta;
     this.seqTerakhir = seq;
     this.kunciAkhir = cek.data.sinyal.halamanAkhir;

@@ -53,6 +53,11 @@ export type FiturKendali = {
   aktif: boolean;
   /** role=tab, aria-controls, aria-expanded, data-(bs-)toggle, atau <summary>. */
   kendaliLokal: boolean;
+  /**
+   * Hanya membuka panel di halaman (probe gel5 3402): data-(bs-)toggle collapse/offcanvas/dropdown/modal/tab/pill
+   * atau aria-controls + aria-expanded, di luar form, tautan dengan href kosong/`#...`/`/`.
+   */
+  pembukaPanel: boolean;
   /** Nama memuat homoglif/aksara non-Latin atau karakter tak terlihat. */
   teksCuriga: boolean;
 };
@@ -358,6 +363,19 @@ export function aktifEl(el: Element): boolean {
   return true;
 }
 
+/** Nilai data-(bs-)toggle yang hanya membuka/menutup panel di halaman yang sama (Bootstrap dan sejenisnya). */
+const TOGEL_PANEL: ReadonlySet<string> = new Set(['collapse', 'offcanvas', 'dropdown', 'modal', 'tab', 'pill']);
+
+function pembukaPanelDari(el: Element, tag: string, rawHref: string | null): boolean {
+  if (formPemilik(el)) return false;
+  const togel = (el.getAttribute('data-bs-toggle') ?? el.getAttribute('data-toggle') ?? '').trim().toLowerCase();
+  if (!TOGEL_PANEL.has(togel) && !(el.hasAttribute('aria-controls') && el.hasAttribute('aria-expanded')))
+    return false;
+  if (tag !== 'a' && tag !== 'area') return true;
+  const h = (rawHref ?? '').trim();
+  return h === '' || h.startsWith('#') || h === '/';
+}
+
 function formPemilik(el: Element): HTMLFormElement | null {
   return (el as HTMLInputElement).form ?? el.closest('form');
 }
@@ -575,6 +593,7 @@ export function fiturKendali(el: Element, akhir?: boolean): FiturKendali {
       el.hasAttribute('aria-expanded') ||
       el.hasAttribute('data-toggle') ||
       el.hasAttribute('data-bs-toggle'),
+    pembukaPanel: pembukaPanelDari(el, tag, rawHref),
     teksCuriga: teksCurigaDari(
       ...[
         teksTampak,
@@ -679,6 +698,10 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
     return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
   if (f.halamanAkhir) return { kelas: 'kirim', aturan: 'K6_AKHIR_DIALOG' };
   if (negLain) return { kelas: 'kirim', aturan: 'K7_NEG' };
+  // Pembuka panel lokal ("Masuk atau Daftar" membuka offcanvas, probe gel5 3402): kata NEG di NAMA saja tidak
+  // menjadikannya kirim. Tidak ada request tulis dari membuka panel; gerbang tulis worker tetap menjaga klik AI.
+  if (f.pembukaPanel && !negIkon && !f.teksCuriga && nama.length > 0)
+    return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
   // Ikon saja (probe SIDAK: feather credit-card = ikon KTP/KK) pada tautan GET bersih: pembuka, diketuk warga.
   if (negIkon && !negNama)
     return tautanGetBiasa(f)

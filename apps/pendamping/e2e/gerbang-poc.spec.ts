@@ -219,7 +219,7 @@ const HALAMAN: Record<string, string> = {
  */
 const RESPONSIF = (isi: string) =>
   `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">` +
-  `<style>.d-none{display:none}@media (min-width:992px){.d-lg-block{display:block}}.collapse:not(.show){display:none}</style>` +
+  `<style>.d-none{display:none}@media (min-width:992px){.d-lg-block{display:block}}.collapse:not(.show),.offcanvas:not(.show){display:none}@media (min-width:576px){.d-sm-none{display:none}}</style>` +
   `<title>Uji</title></head><body>${isi}` +
   `<script>const t=()=>{document.title='lebar '+innerWidth};t();setInterval(t,100)</script></body></html>`;
 HALAMAN['/responsif'] = RESPONSIF(`<header><a href="/responsif">PAK ONOM</a>
@@ -228,6 +228,17 @@ HALAMAN['/responsif'] = RESPONSIF(`<header><a href="/responsif">PAK ONOM</a>
 <a href="javascript:void(0)" class="btn d-none d-lg-block" onclick="location.href='/responsif-masuk'">MASUK</a></nav>
 <a href="javascript:void(0)" class="btn d-none d-lg-block" onclick="location.href='/responsif-masuk'">MASUK</a></header>
 <h1>Selamat datang</h1><p>Pelayanan administrasi kependudukan online.</p><a href="/responsif-bantuan">Bantuan</a>`);
+// Probe gel5 3402: beranda berisi pencarian + banyak tautan (bukan halaman polos). "Masuk atau Daftar" (hanya
+// di ponsel) membuka offcanvas berisi tautan Masuk.
+HALAMAN['/panel-masuk'] = RESPONSIF(`<header><a href="/panel-masuk">Dukcapil Smart</a>
+<a href="#" class="d-sm-none" data-bs-toggle="offcanvas" data-bs-target="#panel" onclick="document.getElementById('panel').classList.add('show');return false">Masuk atau Daftar</a></header>
+<div id="panel" class="offcanvas"><a href="/responsif-masuk">Masuk</a><a href="/responsif-bantuan">Bantuan</a></div>
+<form action="/cari"><label>Cari layanan <input name="q"></label></form>
+<a href="/responsif-bantuan">Kartu Keluarga</a><a href="/responsif-bantuan">Akta Kelahiran</a><a href="/responsif-bantuan">Pindah Datang</a>`);
+// Probe gel5 3402: halaman berformulir (bukan polos) dengan MASUK khusus layar lebar.
+HALAMAN['/responsif-form'] = RESPONSIF(`<header><a href="/responsif-form">Portal</a>
+<a href="/responsif-masuk" class="btn d-none d-lg-block">MASUK</a></header>
+<form action="/cari"><label>Cari layanan <input name="q"></label></form><a href="/responsif-bantuan">Bantuan</a>`);
 HALAMAN['/responsif-bantuan'] = RESPONSIF('<h1>Bantuan</h1><a href="/responsif">Beranda</a>');
 HALAMAN['/responsif-menu'] = RESPONSIF(`<header><a href="/responsif-menu">PAK ONOM</a>
 <button type="button" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('show')"><i class="fa fa-bars"></i></button>
@@ -1402,6 +1413,42 @@ test('smoke 3279: halaman 500 yang tetap berisi formulir tidak dianggap gangguan
     expect(satu(p, 'NIK Pemohon')).toMatchObject({ peran: 'teks' });
     await new Promise((r) => setTimeout(r, 3_000));
     expect(manager.status(o).status).toBe('berjalan');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel5 3402: "Masuk atau Daftar" pembuka offcanvas = ui_lokal; AI membukanya dan tautan Masuk muncul', async () => {
+  const { manager, o, p } = await sesi(situs, '/panel-masuk', 'panel-masuk');
+  try {
+    const pembuka = satu(p, 'Masuk atau Daftar');
+    expect(pembuka.kelas).toBe('ui_lokal');
+    // Masuk di offcanvas tertutup: dibuka lewat panel, bukan dengan melebarkan layar.
+    expect(p.judul).toBe('lebar 390');
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'klik', ref: pembuka.ref }],
+    });
+    expect(r.hasil[0]?.kode).toBe('ok');
+    await expect
+      .poll(async () => semua((await manager.amati(o)).pengamatan, 'Masuk').map((e) => e.kelas), {
+        timeout: 10_000,
+      })
+      .toEqual(['navigasi']);
+    expect(situs.hitung('/responsif-masuk')).toBe(0);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel5 3402: MASUK khusus layar lebar di halaman berformulir (bukan polos) tetap memicu pelebaran', async () => {
+  const { manager, o, p } = await sesi(situs, '/responsif-form', 'responsif-form');
+  try {
+    expect(p.judul).toBe('lebar 992');
+    expect(semua(p, 'MASUK').length).toBeGreaterThan(0);
+    expect(manager.status(o).pesan).toBe(PESAN_LAYAR_LEBAR);
   } finally {
     await manager.shutdown();
   }

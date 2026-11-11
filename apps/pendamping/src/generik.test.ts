@@ -217,11 +217,16 @@ describe('GenerikRun: tombol masuk khusus layar lebar (probe gel4 3279)', () => 
     expect(h.diisiDikirim).toHaveLength(2);
   });
 
-  it('formulir, kendali masuk, atau pantau baca-saja: tidak melebarkan', async () => {
+  it('probe gel5 3402: halaman berformulir/banyak tautan tanpa kendali masuk tetap diperiksa', async () => {
+    let dipanggil = 0;
+    await harness({ amati: () => pengamatan(), lebarkan: async () => (dipanggil++, false) }).run.amati();
+    expect(dipanggil).toBe(1);
+  });
+
+  it('kendali masuk terlihat, formulir masuk, atau pantau baca-saja: tidak melebarkan', async () => {
     let dipanggil = 0;
     const lebarkan = async () => (dipanggil++, false);
     for (const amati of [
-      () => pengamatan(),
       () => beranda(true),
       () => pengamatan({ sinyal: { ...pengamatan().sinyal, login: true }, elemen: [] }),
     ]) {

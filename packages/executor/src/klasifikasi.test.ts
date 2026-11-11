@@ -491,6 +491,35 @@ describe('probe gel4: tombol menu ikon saja dan pembuka kalender', () => {
   });
 });
 
+describe('probe gel5 3402: pembuka panel lokal bernama NEG', () => {
+  const aturan = (html: string) => {
+    document.body.innerHTML = html;
+    const k = klasifikasi(document.querySelector('[data-uji]')!);
+    return { kelas: k.kelas, aturan: k.aturan };
+  };
+
+  it('"Masuk atau Daftar" pembuka offcanvas/collapse/dropdown (href #, /, atau tombol) di luar form = ui_lokal', () => {
+    for (const html of [
+      '<a href="#" class="d-sm-none" data-bs-toggle="offcanvas" data-bs-target="#panel" data-uji>Masuk atau Daftar</a>',
+      '<a href="/" data-toggle="collapse" data-target="#akun" data-uji>Masuk atau Daftar</a>',
+      '<a href="#akun" aria-controls="akun" aria-expanded="false" data-uji>Daftar</a>',
+      '<button type="button" data-bs-toggle="dropdown" data-uji>Daftar / Masuk</button>',
+    ])
+      expect(aturan(html), html).toMatchObject({ kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' });
+  });
+
+  it('tanpa toggle panel, di dalam form, href jalur lain, atau id/kelas NEG: tetap kirim', () => {
+    for (const html of [
+      '<a href="/daftar" data-uji>Masuk atau Daftar</a>',
+      '<a href="/daftar" data-bs-toggle="collapse" data-uji>Daftar</a>',
+      '<form><input name="q"><button type="button" data-bs-toggle="collapse" data-uji>Daftar</button></form>',
+      '<a href="#" class="btn-submit" data-bs-toggle="modal" data-uji>Daftar</a>',
+      '<a href="#" data-bs-toggle="modal" data-uji><i class="fa fa-paper-plane"></i> Daftar</a>',
+    ])
+      expect(kelasDari(html), html).toBe('kirim');
+  });
+});
+
 describe('halamanAkhir', () => {
   const akhir = (html: string) => {
     document.body.innerHTML = html;
