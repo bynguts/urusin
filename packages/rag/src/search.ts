@@ -81,6 +81,41 @@ export function isPasalChunk(id: string): boolean {
   return id.includes(`#${PASAL_KEY_PREFIX}`);
 }
 
+/**
+ * Komponen standar pelayanan (Permenpan-RB 15/2014) selain persyaratan dan prosedur, sesuai label bagian
+ * `chunkByHeading` (judul chunk `... › biaya`). Semua bagian satu layanan berbagi judul yang sama, dan judul bagian
+ * ini lebih pendek, jadi BM25 kolom judul mengunggulkannya di atas `› persyaratan` dan `› sistem, mekanisme, dan
+ * prosedur`: "KTP-el rusak" menjawab dengan biaya/jangka waktu/dasar hukum lalu abstain. Skornya dikali
+ * BAGIAN_PRIOR, kecuali kueri memang menanyakan bagian itu.
+ */
+const BAGIAN_PELENGKAP: readonly { bagian: RegExp; ditanya: RegExp }[] = [
+  { bagian: /^(biaya|tarif)$/, ditanya: /\b(biaya|tarif|bayar|gratis|harga|ongkos|retribusi)\b/i },
+  {
+    bagian: /^(jangka waktu|waktu|lama proses)$/,
+    ditanya: /\b(berapa lama|lamanya|lama proses|jangka waktu|berapa hari|kapan jadi|kapan selesai)\b/i,
+  },
+  { bagian: /^produk pelayanan$/, ditanya: /\bproduk\b/i },
+  { bagian: /^pengelolaan pengaduan$/, ditanya: /\b(adu|aduan|pengaduan|keluh\w*|komplain)\b/i },
+  {
+    bagian: /^dasar hukum$/,
+    ditanya: /\b(dasar hukum|peraturan|regulasi|undang|perda|perbup|perwali|permendagri|perpres)\b/i,
+  },
+];
+
+export const BAGIAN_PRIOR = 0.5;
+
+/** Pengali skor chunk menurut bagian standar pelayanannya (lihat BAGIAN_PELENGKAP); 1 untuk chunk lain. */
+export function bagianPrior(judul: string, query: string): number {
+  const i = judul.lastIndexOf(' › ');
+  if (i === -1) return 1;
+  const bagian = judul
+    .slice(i + 3)
+    .trim()
+    .toLowerCase();
+  const b = BAGIAN_PELENGKAP.find((x) => x.bagian.test(bagian));
+  return b && !b.ditanya.test(query) ? BAGIAN_PRIOR : 1;
+}
+
 /** Pengali skor bm25() di SQL: PASAL_PRIOR untuk chunk pasal bila ada kode wilayah, selain itu 1. */
 export function pasalPriorSql(opts: SearchOptions): string {
   return opts.kodeKabKota
