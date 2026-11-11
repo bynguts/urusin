@@ -150,9 +150,9 @@ export function alasanPii(teks: string): string | null {
 
 const BUKTI: Partial<Record<JenisButirIngatan, (nilai: string) => RegExp>> = {
   lansia: () =>
-    /\b(lansia|lanjut usia|manula|sepuh|sudah tua|orang tua (?:yang )?sudah|(?:usia|umur)\s*(?:saya\s*)?[6-9]\d|[6-9]\d\s*tahun)\b/i,
+    /\b(lansia|lanjut usia|manula|sepuh|sudah tua|orang tua (?:yang )?sudah|(?:ber)?(?:usia|umur)\s*(?:saya\s*)?(?:sudah\s*)?(?:[6-9]\d|1[01]\d)|[6-9]\d\s*tahun)\b/i,
   bahasa_sederhana: () =>
-    /\b(sederhana|mudah dipahami|mudah dimengerti|gampang dimengerti|bahasa awam|tidak paham istilah|kurang paham|pelan[- ]pelan|jangan pakai istilah|bahasa biasa)\b/i,
+    /\b(sederhana|mudah dipahami|mudah dimengerti|gampang dimengerti|bahasa awam|bahasa (?:yang )?(?:mudah|gampang)|(?:tidak|tdk|kurang|nggak|ngga|gak|ga|ndak) (?:paham|ngerti|mengerti) istilah|kurang paham|pelan[- ]pelan|jangan (?:pakai|pake|gunakan) istilah|bahasa biasa)\b/i,
   kanal: (n) =>
     n === 'online'
       ? /\b(online|daring|lewat (?:hp|internet|aplikasi|web|situs)|dari rumah)\b/i
@@ -276,6 +276,138 @@ export function periksaBukti(op: OperasiIngatan, nilai: string, bukti: BuktiWarg
     return;
   }
   if (!teksDariWarga(nilai, bukti.pesan)) tolak();
+}
+
+// --- preferensi yang warga NYATAKAN sendiri: ditangkap deterministik (tanpa tebakan LLM) ---
+
+const SUBJEK = String.raw`(?:saya|aku|sy)`;
+/** Awal pola bersubjek: "saya …", atau "dan …" yang melanjutkan kalimat ber-subjek "saya". */
+const AWAL = String.raw`(?:${SUBJEK}|dan(?:\s+juga)?)`;
+const DIAWALI_SUBJEK = new RegExp(String.raw`^${SUBJEK}\b`, 'i');
+/** Kata sebelum "saya" yang menjadikannya kepemilikan ("ibu saya sudah tua" = ibunya, bukan warga). */
+const KERABAT = new Set(
+  'ibu bapak ayah mama papa mamah emak anak suami istri orang tua ortu mertua nenek kakek mbah eyang cucu adik kakak kakaknya keluarga tetangga teman paman bibi om tante pakde bude saudara'.split(
+    ' ',
+  ),
+);
+const NEGASI_SEBELUM = /\b(?:tidak|tdk|bukan|nggak|ngga|gak|ga|ndak|jangan|belum|tanpa)\s+(?:\w+\s+)?$/;
+const USIA = String.raw`(?:[6-9]\d|1[01]\d)`;
+const PILIH = String.raw`(?:lebih\s+(?:suka|senang|pilih|memilih|nyaman|enak|gampang|mudah)|maunya|prefer|kalau\s+bisa|${SUBJEK}\s+(?:suka|pilih|memilih))`;
+
+type AturanPreferensi = {
+  jenis: JenisButirIngatan;
+  re: RegExp;
+  /** Pola diawali subjek ("saya …"): kata sebelumnya tidak boleh kerabat (kepemilikan). */
+  subjek?: boolean;
+  nilai?: (m: RegExpMatchArray) => string;
+};
+
+const ATURAN_PREFERENSI: readonly AturanPreferensi[] = [
+  {
+    jenis: 'lansia',
+    subjek: true,
+    re: new RegExp(
+      String.raw`\b${AWAL}\s+(?:(?:ini|sudah|udah|sdh|seorang|termasuk)\s+)*(?:lansia|lanjut\s+usia|manula|sepuh|tua\b)`,
+      'giu',
+    ),
+  },
+  {
+    jenis: 'lansia',
+    subjek: true,
+    re: new RegExp(
+      String.raw`\b${AWAL}\s+(?:(?:sudah|udah|sdh)\s+)?(?:(?:ber)?(?:usia|umur)\s+${USIA}|${USIA}\s*(?:tahun|thn|th)\b)`,
+      'giu',
+    ),
+  },
+  {
+    jenis: 'lansia',
+    re: new RegExp(String.raw`\b(?:usia|umur)\s+${SUBJEK}\s+(?:(?:sudah|udah|sdh)\s+)?${USIA}\b`, 'giu'),
+  },
+  {
+    jenis: 'bahasa_sederhana',
+    re: /\b(?:tolong|mohon|minta|pakai|pake|gunakan|jelaskan|jelasin|terangkan|bicara|ngomong)\b[^.?!\n]{0,30}?\b(?:bahasa\s+(?:yang\s+)?(?:sederhana|mudah|gampang|biasa|awam)|yang\s+sederhana|sederhana\s+(?:saja|aja)|pelan[- ]pelan)/giu,
+  },
+  {
+    jenis: 'bahasa_sederhana',
+    subjek: true,
+    re: new RegExp(
+      String.raw`\b${AWAL}\s+(?:kurang|tidak|tdk|nggak|ngga|gak|ga|ndak)\s+(?:paham|ngerti|mengerti)\s+istilah`,
+      'giu',
+    ),
+  },
+  { jenis: 'bahasa_sederhana', re: /\bjangan\s+(?:pakai|pake|gunakan)\s+istilah/giu },
+  {
+    jenis: 'aksesibilitas',
+    subjek: true,
+    re: new RegExp(
+      String.raw`\b${AWAL}\s+(?:(?:ini|seorang|termasuk)\s+)?(tuna\s?netra|tuna\s?rungu|tuna\s?wicara|tuna\s?daksa|tuli|buta|low\s+vision|penyandang\s+disabilitas|disabilitas|difabel)\b`,
+      'giu',
+    ),
+    nilai: (m) => m[1]!,
+  },
+  {
+    jenis: 'aksesibilitas',
+    subjek: true,
+    re: new RegExp(
+      String.raw`\b${AWAL}\s+(?:(?:sudah|udah)\s+)?((?:pakai|pake|memakai|menggunakan|pengguna|naik)\s+(?:kursi\s+roda|tongkat|alat\s+bantu\s+dengar|alat\s+bantu\s+jalan)|(?:punya|memiliki)\s+(?:keterbatasan\s+\p{L}+|disabilitas(?:\s+\p{L}+)?)|(?:sulit|susah|tidak\s+bisa|tdk\s+bisa|gak\s+bisa|ga\s+bisa|kurang\s+bisa)\s+(?:melihat|membaca|mendengar|berjalan|jalan))`,
+      'giu',
+    ),
+    nilai: (m) => m[1]!,
+  },
+  {
+    jenis: 'kanal',
+    re: new RegExp(
+      String.raw`\b${PILIH}\s+(?:(?:untuk|yang|urus|mengurus|ngurus|lewat|secara)\s+)*(?:online|daring|lewat\s+(?:hp|internet|aplikasi|web|situs))\b`,
+      'giu',
+    ),
+    nilai: () => 'online',
+  },
+  {
+    jenis: 'kanal',
+    re: /\b(?:mau|ingin|pengen|bisa)\s+(?:(?:urus|lewat|secara)\s+)?(?:online|daring)\s+(?:saja|aja|sj)\b/giu,
+    nilai: () => 'online',
+  },
+  {
+    jenis: 'kanal',
+    re: new RegExp(
+      String.raw`\b${PILIH}\s+(?:untuk\s+)?(?:datang\s+langsung|datang\s+ke\s+kantor|langsung\s+ke\s+kantor|tatap\s+muka|offline)\b`,
+      'giu',
+    ),
+    nilai: () => 'datang',
+  },
+  {
+    jenis: 'kanal',
+    re: /\b(?:mau|ingin|pengen)\s+datang\s+langsung\s+(?:saja|aja|sj)\b/giu,
+    nilai: () => 'datang',
+  },
+];
+
+/**
+ * Preferensi yang warga NYATAKAN sendiri di pesannya (lansia/usia lanjut, minta bahasa sederhana/pelan,
+ * disabilitas/aksesibilitas, lebih suka online vs datang langsung), dengan aturan tetap. Kalimat tanya, bentuk
+ * ingkar ("bukan lansia", "jangan pakai bahasa sederhana"), dan kepemilikan ("ibu saya sudah tua") dilewati;
+ * kanal yang bertentangan dalam satu pesan tidak dicatat. Hasilnya tetap lewat `jalankanOperasi` (PII + bukti).
+ */
+export function preferensiDinyatakan(teks: string): OperasiIngatan[] {
+  const out = new Map<JenisButirIngatan, OperasiIngatan>();
+  const kanal = new Set<string>();
+  for (const kalimat of teks.normalize('NFKC').split(/(?<=[.!?\n;])/)) {
+    const k = kalimat.replace(/\s+/g, ' ').trim();
+    if (!k || k.endsWith('?') || /^(?:apa|apakah|bisakah|bolehkah|gimana|bagaimana)\b/i.test(k)) continue;
+    for (const a of ATURAN_PREFERENSI) {
+      for (const m of k.matchAll(a.re)) {
+        const sebelum = k.slice(0, m.index).toLowerCase();
+        if (NEGASI_SEBELUM.test(sebelum)) continue;
+        if (a.subjek && KERABAT.has(sebelum.trim().split(/\s+/).pop() ?? '')) continue;
+        if (a.subjek && /^dan\b/i.test(m[0]) && !DIAWALI_SUBJEK.test(k)) continue;
+        const nilai = a.nilai?.(m).replace(/\s+/g, ' ').trim().toLowerCase();
+        if (a.jenis === 'kanal') kanal.add(nilai!);
+        if (!out.has(a.jenis)) out.set(a.jenis, { aksi: 'simpan', jenis: a.jenis, nilai });
+      }
+    }
+  }
+  if (kanal.size > 1) out.delete('kanal');
+  return [...out.values()];
 }
 
 export const idButir = (): string => `ing_${randomBytes(8).toString('hex')}`;
@@ -554,6 +686,23 @@ export function ingatWilayah(
     if (!kode || !wilayahByKode(kode)) continue;
     const { event } = jalankanOperasi(ing, { aksi: 'simpan', jenis, nilai: kode }, null, at);
     if (event) out.push(event);
+  }
+  return out;
+}
+
+/**
+ * Preferensi yang warga nyatakan di pesan giliran ini dicatat otomatis (jalur yang sama dengan wilayah otomatis):
+ * kartu "Urusin mengingat" muncul dan bisa dibatalkan. Butir yang gagal validasi/bukti dilewati diam-diam.
+ */
+export function ingatPreferensi(ing: IngatanTurn, pesanWarga: string, at: string): EventPayload[] {
+  const out: EventPayload[] = [];
+  for (const op of preferensiDinyatakan(pesanWarga)) {
+    try {
+      const { event } = jalankanOperasi(ing, op, { pesan: [pesanWarga], terakhir: pesanWarga }, at);
+      if (event) out.push(event);
+    } catch (e) {
+      if (!(e instanceof IngatanError)) throw e;
+    }
   }
   return out;
 }

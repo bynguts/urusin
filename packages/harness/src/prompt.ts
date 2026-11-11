@@ -123,6 +123,13 @@ function barisPendamping(jenis: string, kode: string): string {
  * Pesan warga yang meminta dokumen dipalsukan/dikarang (nama bidan/saksi asal-asalan, surat palsu). Hanya penanda
  * untuk catatan state; penolakan tetap disusun model sesuai prompt sistem.
  */
+/** Warga meminta sesuatu diingat lintas urusan ("tolong ingat …", "catat ya …", "ingat ya, saya …"). */
+export function mintaDiingat(teks: string): boolean {
+  return /\b(?:tolong|mohon|minta|harap)\s+(?:di)?(?:ingat|catat)(?:kan|in)?\b|\b(?:ingat|catat)(?:kan|in)?\s+(?:ya,?\s+)?(?:bahwa|kalau|kalo)\b|\b(?:ingat|catat)\s+ya\b|\bdiingat\s+(?:ya|saja|aja)\b/i.test(
+    teks,
+  );
+}
+
 export function mintaPemalsuan(teks: string): boolean {
   return (
     /\b(palsu\w*|memalsu\w*|rekayasa\w*|ngarang|mengarang|manipulasi)\b/i.test(teks) ||
@@ -161,10 +168,15 @@ export function buildStateNote(input: {
     lines.push(
       'PESAN WARGA BERISI DATA PRIBADI (sudah disamarkan sebagai placeholder {{...}}). Awali balasanmu dengan pengingat ramah satu kalimat: "Demi keamanan, jangan ketik nama ibu kandung atau NIK di chat ya; isi di Data Diri, nanti kami isikan langsung dari perangkat Anda." Jangan menulis placeholder itu, lalu lanjutkan menjawab.',
     );
-  if (input.ingatanAktif)
+  if (input.ingatanAktif) {
     lines.push(
-      'INGATAN WARGA: bila warga menyatakan sendiri preferensinya (lansia, ingin bahasa sederhana, lebih suka online atau datang langsung, kebutuhan aksesibilitas) atau meminta sesuatu diingat, panggil ingatan__ingat untuk butir itu. Jangan menyimpan data pribadi; wilayah yang ditetapkan tercatat otomatis.',
+      'INGATAN WARGA: wilayah yang ditetapkan dan preferensi yang warga nyatakan jelas (lansia, bahasa sederhana, aksesibilitas, online/datang) dicatat otomatis oleh sistem. Panggil ingatan__ingat bila warga MEMINTA sesuatu diingat ("tolong ingat …", "catat ya …") atau menyatakan preferensi dengan kata lain yang belum tercatat. Jangan pernah menyimpan data pribadi.',
     );
+    if (input.pesanWarga && mintaDiingat(input.pesanWarga))
+      lines.push(
+        'WARGA MEMINTA SESUATU DIINGAT: sebelum membalas, panggil ingatan__ingat {"aksi":"simpan","jenis":"catatan","nilai":"<inti permintaan warga dengan kata-katanya sendiri, paling banyak 200 karakter>"}, lalu sebut singkat bahwa Urusin akan mengingatnya. Bila isinya data pribadi (NIK, nomor HP, alamat lengkap, nama ibu kandung), JANGAN disimpan: arahkan ke Data Diri.',
+      );
+  }
   const bantuan = PANDUAN_STATE[input.state];
   if (bantuan) lines.push(bantuan);
   if (input.confirmations.length > 0) {

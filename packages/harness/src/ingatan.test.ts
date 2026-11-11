@@ -12,12 +12,15 @@ import {
   estimasiToken,
   gabungIngatan,
   ingatanKosong,
+  ingatPreferensi,
   jalankanOperasi,
   nilaiButir,
+  preferensiDinyatakan,
   terapkanOperasi,
   type Ingatan,
   type PenyimpanIngatan,
 } from './ingatan.js';
+import { buildStateNote, mintaDiingat } from './prompt.js';
 import { DATAMARK, isSpotlighted } from './spotlight.js';
 import { FAKE_HP, FAKE_NIK, makeEnv } from './testing.js';
 
@@ -183,6 +186,96 @@ describe('bukti: hanya yang warga nyatakan sendiri', () => {
   });
 });
 
+describe('preferensi yang warga nyatakan sendiri: aturan tetap, bukan tebakan LLM', () => {
+  const tangkap = (t: string) =>
+    preferensiDinyatakan(t).map((o) => (o.nilai ? `${o.jenis}=${o.nilai}` : o.jenis));
+
+  it.each([
+    ['Saya sudah lansia. KTP saya Kabupaten Wonogiri.', ['lansia']],
+    ['saya ini sudah tua nak, ndak ngerti hp', ['lansia']],
+    ['Umur saya 72, mau urus KTP yang hilang', ['lansia']],
+    ['saya sudah berusia 68 tahun', ['lansia']],
+    ['Tolong pakai bahasa yang sederhana ya, saya kurang paham istilah', ['bahasa_sederhana']],
+    ['jelaskan pelan-pelan saja mas', ['bahasa_sederhana']],
+    ['Jangan pakai istilah hukum ya.', ['bahasa_sederhana']],
+    ['Saya tunanetra, pakai pembaca layar', ['aksesibilitas=tunanetra']],
+    ['saya pakai kursi roda', ['aksesibilitas=pakai kursi roda']],
+    ['Saya susah berjalan jauh', ['aksesibilitas=susah berjalan']],
+    ['Saya lebih suka urus online saja', ['kanal=online']],
+    ['kalau bisa lewat hp aja', ['kanal=online']],
+    ['Saya lebih suka datang langsung ke kantor', ['kanal=datang']],
+    [
+      'Saya lansia dan pakai kursi roda. Tolong bahasa yang sederhana, saya lebih suka online.',
+      ['lansia', 'aksesibilitas=pakai kursi roda', 'bahasa_sederhana', 'kanal=online'],
+    ],
+  ])('%s', (teks, harapan) => {
+    expect(tangkap(teks)).toEqual(harapan);
+  });
+
+  it.each([
+    'Ibu saya sudah tua, mau urus akta kematian bapak', // milik kerabat
+    'orang tua saya lansia semua',
+    'anak saya pakai kursi roda',
+    'Saya bukan lansia kok', // ingkar
+    'Jangan pakai bahasa yang sederhana, saya paham',
+    'Apakah saya termasuk lansia?', // pertanyaan
+    'Bisa online atau harus datang?',
+    'nak bapak meninggal kemarin lusa. katanya harus urus surat. ibu ndak ngerti', // tersirat, bukan pernyataan
+    'Bapak meninggal di usia 78 tahun',
+    'Mau urus akta kelahiran secara online',
+    'Saya lebih suka online, eh tapi lebih suka datang langsung ke kantor', // kanal bertentangan
+  ])('tidak dicatat: %s', (teks) => {
+    expect(tangkap(teks)).toEqual([]);
+  });
+
+  it('tetap lewat pemindai PII + bukti: placeholder/teks yang tidak diucapkan warga tidak tersimpan', () => {
+    const p = penyimpanMemori();
+    const ing = { pemilik: 'akun_1', penyimpan: p };
+    const ev = ingatPreferensi(ing, 'Saya tunanetra. NIK saya {{PEMOHON.NIK}}, saya lebih suka online.', AT);
+    expect(ev.map((e) => (e.type === 'ingatan' ? e.butir.label : ''))).toEqual([
+      'Kebutuhan aksesibilitas: tunanetra',
+      'Lebih suka mengurus online',
+    ]);
+    expect(JSON.stringify(p.isi)).not.toContain('NIK');
+    // sudah tersimpan: pernyataan ulang tidak memunculkan kartu baru
+    expect(ingatPreferensi(ing, 'saya tunanetra', AT)).toEqual([]);
+    expect(() =>
+      jalankanOperasi(
+        ing,
+        { aksi: 'simpan', jenis: 'aksesibilitas', nilai: 'pakai kursi roda' },
+        { pesan: ['saya tunanetra'], terakhir: 'saya tunanetra' },
+        AT,
+      ),
+    ).toThrow(IngatanError);
+  });
+
+  it('permintaan "tolong ingat" dikenali untuk petunjuk ingatan__ingat', () => {
+    for (const t of [
+      'Tolong ingat ya, saya kerja shift malam jadi bisanya sore',
+      'catat ya kalau saya cuma bisa hari Sabtu',
+      'Ingat ya bahwa anak saya kembar',
+      'mohon diingat saya tidak bisa naik tangga',
+    ])
+      expect(mintaDiingat(t), t).toBe(true);
+    for (const t of ['saya ingat dulu pernah urus KTP', 'mau urus akta', 'tolong bantu saya'])
+      expect(mintaDiingat(t), t).toBe(false);
+    const note = (pesanWarga: string) =>
+      buildStateNote({
+        state: 'MEMAHAMI',
+        jenis: 'kelahiran',
+        kodeKabKota: null,
+        tools: [],
+        confirmations: [],
+        pesanWarga,
+        ingatanAktif: true,
+      });
+    expect(note('Tolong ingat ya, saya kerja shift malam')).toContain('WARGA MEMINTA SESUATU DIINGAT');
+    expect(note('Tolong ingat ya, saya kerja shift malam')).toContain('"jenis":"catatan"');
+    expect(note('mau urus akta')).not.toContain('WARGA MEMINTA SESUATU DIINGAT');
+    expect(note('mau urus akta')).toContain('INGATAN WARGA:');
+  });
+});
+
 describe('blok prompt "Yang Urusin tahu tentang warga ini"', () => {
   const konteks = (i: Ingatan) => ({
     ingatan: i,
@@ -275,7 +368,7 @@ describe('agen: ingatan dipakai dan dicatat', () => {
     );
   });
 
-  it('wilayah__tetapkan mencatat KTP + domisili ke ingatan dengan kartu; tool ingat menyimpan preferensi', async () => {
+  it('wilayah__tetapkan mencatat KTP + domisili ke ingatan dengan kartu; tool ingat menyimpan catatan yang diminta', async () => {
     const provider = new FakeProvider();
     const p = penyimpanMemori();
     const env = makeEnv({ provider, ingatan: p });
@@ -290,19 +383,78 @@ describe('agen: ingatan dipakai dan dicatat', () => {
         ],
       }),
       fakeCompletion({
-        toolCalls: [{ name: INGAT_TOOL, arguments: JSON.stringify({ aksi: 'simpan', jenis: 'lansia' }) }],
+        toolCalls: [
+          {
+            name: INGAT_TOOL,
+            arguments: JSON.stringify({ aksi: 'simpan', jenis: 'catatan', nilai: 'kerja shift malam' }),
+          },
+        ],
       }),
       fakeCompletion({ content: 'Baik.' }),
     );
     const out = await runTurn(env.deps, {
       urusanId: u.id,
-      userText: 'KTP saya Wonogiri tapi tinggal di Kota Semarang, saya sudah lansia',
+      userText:
+        'KTP saya Wonogiri tapi tinggal di Kota Semarang, saya sudah lansia. Tolong ingat saya kerja shift malam.',
     });
     const kartu = out.events
       .filter((e) => e.type === 'ingatan')
       .map((e) => (e.type === 'ingatan' ? e.butir.label : ''));
-    expect(kartu).toEqual(['Wilayah KTP: Kabupaten Wonogiri', 'Domisili: Kota Semarang', 'Warga lansia']);
-    expect(daftarTampil(p.muat('akun_1')).map((b) => b.jenis)).toEqual(['ktp', 'domisili', 'lansia']);
+    expect(kartu).toEqual([
+      'Warga lansia', // aturan tetap, di awal turn
+      'Wilayah KTP: Kabupaten Wonogiri',
+      'Domisili: Kota Semarang',
+      'Catatan: kerja shift malam', // tool ingatan__ingat atas permintaan warga
+    ]);
+    expect(daftarTampil(p.muat('akun_1')).map((b) => b.jenis)).toEqual([
+      'ktp',
+      'domisili',
+      'lansia',
+      'catatan',
+    ]);
+  });
+
+  it('preferensi yang dinyatakan dicatat deterministik (tanpa tool call model) dan dipakai di urusan kedua', async () => {
+    const provider = new FakeProvider();
+    const p = penyimpanMemori();
+    const env = makeEnv({ provider, ingatan: p });
+    const u1 = env.store.createUrusan({ jenis: 'ktp' });
+    provider.enqueue(fakeCompletion({ content: 'Baik, Pak.' }));
+    const o1 = await runTurn(env.deps, {
+      urusanId: u1.id,
+      userText:
+        'Saya sudah lansia dan pakai kursi roda. Tolong pakai bahasa yang sederhana ya. KTP saya hilang.',
+    });
+    expect(
+      o1.events.filter((e) => e.type === 'ingatan').map((e) => (e.type === 'ingatan' ? e.butir.label : '')),
+    ).toEqual([
+      'Warga lansia',
+      'Kebutuhan aksesibilitas: pakai kursi roda',
+      'Ingin dijelaskan dengan bahasa sederhana',
+    ]);
+    // kartu muncul sebelum balasan model; model tidak memanggil tool apa pun
+    const urutan = o1.events.map((e) => e.type);
+    expect(urutan.indexOf('ingatan')).toBeLessThan(urutan.indexOf('assistant_text'));
+
+    const u2 = env.store.createUrusan({ jenis: 'kk' });
+    provider.enqueue(fakeCompletion({ content: 'Baik.' }));
+    await runTurn(env.deps, { urusanId: u2.id, userText: 'mau urus KK baru' });
+    const c = provider.calls.at(-1)!;
+    if (c.kind !== 'create') throw new Error('bukan create');
+    const blok = String(c.params.messages[1]!.content).replaceAll(DATAMARK, ' ');
+    expect(blok).toMatch(/^YANG URUSIN TAHU TENTANG WARGA INI/);
+    expect(blok).toContain('lansia');
+    expect(blok).toContain('bahasa sederhana');
+    expect(blok).toContain('kursi roda');
+  });
+
+  it('tanpa pemilik vault preferensi tidak dicatat', async () => {
+    const provider = new FakeProvider();
+    const env = makeEnv({ provider, ingatan: penyimpanMemori({ pemilik: null }) });
+    const u = env.store.createUrusan({ jenis: 'ktp' });
+    provider.enqueue(fakeCompletion({ content: 'Baik.' }));
+    const o = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya sudah lansia' });
+    expect(o.events.some((e) => e.type === 'ingatan')).toBe(false);
   });
 
   it('kematian: wilayah almarhum tidak dicatat sebagai wilayah warga', async () => {

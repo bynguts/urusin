@@ -26,6 +26,7 @@ import { buildHandoff } from './grounding.js';
 import {
   INGAT_TOOL,
   blokIngatan,
+  ingatPreferensi,
   ingatWilayah,
   muatKonteks,
   type IngatanTurn,
@@ -445,6 +446,7 @@ class TurnRunner {
 
   private async body(): Promise<void> {
     if (this.urusan.state === 'BARU') this.applyTransition('MEMAHAMI');
+    this.ingatPreferensi();
     this.progress('Memahami kebutuhan Anda…');
     if (this.urusan.jenis === null) await this.classify();
     if (this.quotaStatus().mode === 'hemat')
@@ -733,6 +735,20 @@ class TurnRunner {
       if (this.ctrl.signal.aborted || isLlmTerminalError(e)) throw e;
       if (e instanceof HarnessError) throw e;
       return { content: JSON.stringify({ is_error: true, pesan: 'tool gagal dijalankan' }), end: false };
+    }
+  }
+
+  /**
+   * Preferensi yang warga nyatakan di pesan ini (lansia, bahasa sederhana, aksesibilitas, kanal) dicatat dengan
+   * aturan tetap, bukan tebakan model; teks yang dipakai sudah diredaksi. Gagal simpan tidak menggagalkan turn.
+   */
+  private ingatPreferensi(): void {
+    if (!this.ingatan) return;
+    try {
+      const teks = this.turn.pii.redact(this.turn.userText).text;
+      for (const e of ingatPreferensi(this.ingatan, teks, this.now().toISOString())) this.emit(e);
+    } catch {
+      // vault tidak tersedia: turn tetap berjalan tanpa ingatan baru.
     }
   }
 
