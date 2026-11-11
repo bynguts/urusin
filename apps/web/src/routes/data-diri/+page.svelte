@@ -142,31 +142,22 @@
 
 <svelte:head><title>Data diri · Urusin</title></svelte:head>
 
-<HeaderHalaman judul="Dokumen" />
+<HeaderHalaman judul="Data diri" />
 
-<div class="flex w-full flex-col gap-5 px-4 py-6 sm:px-10 sm:py-7">
-  <div class="flex flex-wrap items-end justify-between gap-4">
-    <div class="flex flex-col gap-1">
-      <h2 class="text-[26px] leading-8 font-semibold tracking-[-0.7px] text-ink sm:text-[28px]">
-        Data diri keluarga
-      </h2>
-      <p class="text-base text-body sm:text-[17px] sm:leading-[25px]">
-        Isi sekali saja. Urusin memakainya untuk mengisi formulir yang Anda setujui.
-      </p>
-    </div>
+<div class="flex w-full flex-col gap-6 px-4 py-5 sm:px-10 sm:py-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <TabBrankas aktif="data-diri" />
     {#if hasil?.ok && !ubah}
       <button
         type="button"
         onclick={() => mulaiUbah()}
-        class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-5 text-base leading-[23px] font-semibold text-primer-ink hover:opacity-90"
+        class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-primer px-5 text-sm font-semibold text-primer-ink transition-transform duration-150 hover:opacity-90 active:scale-95"
       >
-        <Icon name="tambah-orang" class="size-[18px]" />
+        <Icon name="tambah-orang" class="size-4" />
         {kosong ? 'Isi data diri' : 'Ubah data diri'}
       </button>
     {/if}
   </div>
-
-  <div><TabBrankas aktif="data-diri" /></div>
 
   {#if hasil === null}
     <div class="h-96 animate-pulse rounded-2xl bg-card" aria-hidden="true"></div>

@@ -1,5 +1,6 @@
 import { daftarWrite, labelPlaceholder } from './isi-data.js';
 import type {
+  KolomButuh,
   KoneksiViewer,
   PabrikViewer,
   PendampingBukti,
@@ -42,9 +43,20 @@ export type DataPendamping = {
   pesan: string | null;
   bukti: PendampingBukti | null;
   koneksi: KoneksiViewer | null;
-  butuhData: { placeholder: string[]; berkas: string[]; origin?: string | undefined } | null;
+  butuhData: {
+    placeholder: string[];
+    berkas: string[];
+    origin?: string | undefined;
+    /** Navigator generik: baris lembar per kolom halaman ini (label portal = teks situs, tak tepercaya). */
+    kolom?: KolomButuh[] | undefined;
+    rencanaHash?: string | undefined;
+  } | null;
   /** Situs yang benar-benar dibuka peramban + apakah itu replika uji (Mode Uji), dari status server. */
   situs: { origin: string; replika: boolean } | null;
+  /** "Saya sudah mengirim": sedang diperiksa worker. */
+  memeriksaKirim?: boolean;
+  /** Jawaban jujur bila pengiriman belum terlihat (409) atau pemeriksaan gagal. */
+  pesanKirim?: string | null;
 };
 
 export function dataAwal(): DataPendamping {
@@ -90,6 +102,9 @@ export function keadaanDariSesi(s: Pick<SesiPendamping, 'status' | 'mode'>, gili
 
 type Ambil = typeof fetch;
 
+/** Jeda periksa ulang status server selama AI memegang kendali (lihat `jadwalPantauAi`). */
+export const PANTAU_AI_MS = 15_000;
+
 /**
  * Pengendali sesi Browser Pendamping untuk satu urusan: memulai sesi (POST /pendamping), menyambungkan viewer
  * lewat tiket sekali pakai, dan menerjemahkan pesan viewer menjadi `data` reaktif untuk layar.
@@ -101,6 +116,7 @@ export class SesiPendampingUi {
   /** executionId yang hasilnya sudah disinkronkan ke server (GET status mencatat hasil + nomor permohonan). */
   private tersinkron: string | null = null;
   private executionId: string | null = null;
+  private pantauAi: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly urusanId: string,
@@ -200,6 +216,7 @@ export class SesiPendampingUi {
                   : 'ai',
           pesan: pesan ?? this.data.pesan,
         };
+        this.jadwalPantauAi();
       }),
       v.on('event', (e) => this.terapkanEvent(e)),
       v.on('butuh_data', (b) => (this.data = { ...this.data, butuhData: b })),
@@ -224,6 +241,23 @@ export class SesiPendampingUi {
       bukti: s.bukti ?? this.data.bukti,
       situs: s.situs ? { origin: s.situs, replika: s.replika === true } : this.data.situs,
     };
+    this.jadwalPantauAi();
+  }
+
+  /**
+   * Selama mode `ai`, GET status berkala: server memulihkan loop Navigator yang hilang (web restart, atau loop
+   * sudah berhenti lalu warga menekan Lanjutkan) atau mengembalikan kendali ke warga, sehingga layar tidak
+   * tertahan "AI sedang mengisi" tanpa pengemudi. Jawabannya tidak dipakai; keadaan baru datang lewat viewer.
+   */
+  private jadwalPantauAi(): void {
+    if (this.pantauAi || this.data.mode !== 'ai' || !this.viewer) return;
+    this.pantauAi = setTimeout(() => {
+      this.pantauAi = null;
+      if (this.data.mode !== 'ai' || !this.viewer) return;
+      void this.ambil(this.dasar)
+        .catch(() => undefined)
+        .finally(() => this.jadwalPantauAi());
+    }, PANTAU_AI_MS);
   }
 
   terapkanEvent(e: PendampingEvent): void {
@@ -279,6 +313,43 @@ export class SesiPendampingUi {
   }
 
   /**
+   * Giliran `ketuk_tautan`: tombol Urusin "Buka …" meminta worker membuka tautan pembuka yang disorot, terikat
+   * ref tautan yang ditampilkan (perangkat tidak pernah mengirim URL). Worker membaca ulang href-nya dan
+   * mengembalikan kendali ke AI; sorotan yang sudah berubah ditolak worker.
+   */
+  bukaTautan(): void {
+    const t = this.data.giliran?.alasan === 'ketuk_tautan' ? this.data.giliran.tautan : undefined;
+    if (!t) return;
+    this.data = { ...this.data, giliran: null };
+    this.viewer?.bukaTautan(t.ref);
+  }
+
+  /**
+   * "Saya sudah mengirim" (AI berhenti / warga memegang kendali): warga melaporkan sudah menekan Kirim sendiri.
+   * Server meneruskan ke worker yang memeriksa ulang halaman saat ini (tulis warga + halaman sukses); hanya itu
+   * yang dicatat berhasil. Selain itu warga mendapat jawaban jujur dari server (mis. belum terlihat terkirim).
+   */
+  async sudahMengirim(): Promise<void> {
+    if (this.data.memeriksaKirim) return;
+    this.data = { ...this.data, memeriksaKirim: true, pesanKirim: null };
+    let pesan: string | null = 'Belum bisa diperiksa. Coba lagi sebentar lagi.';
+    try {
+      const r = await this.ambil(`${this.dasar}/terkirim`, {
+        method: 'POST',
+        headers: { accept: 'application/json' },
+      });
+      const j = (await r.json().catch(() => null)) as (SesiPendamping & { pesanWarga?: string }) | null;
+      if (r.ok && j) {
+        pesan = null;
+        this.terapkanSesi(j);
+      } else if (j?.pesanWarga) pesan = j.pesanWarga;
+    } catch {
+      pesan = 'Koneksi terputus. Periksa internet Anda, lalu coba lagi.';
+    }
+    this.data = { ...this.data, memeriksaKirim: false, pesanKirim: pesan };
+  }
+
+  /**
    * Lanjutkan. Pada giliran `berkas_kurang`: "Izinkan isi" baru untuk berkas itu saja (warga baru menambahkannya
    * di Dokumen), lalu kendali dikembalikan; langkah unggah diulang, dan bila berkas masih belum ada giliran yang
    * sama muncul lagi.
@@ -298,17 +369,19 @@ export class SesiPendampingUi {
    * `butuh_data` (POST /api/urusan/[id]/izinkan-isi). Server menyimpan persetujuan, lalu mengambil nilai Data
    * Diri/Dokumen dan mengirimnya ke sesi lewat kanal internal; peramban tidak pernah memegang nilainya.
    * Mengembalikan pesan untuk warga (yang harus diisi sendiri, atau galat), atau undefined bila lengkap.
+   * Navigator generik: `pilihan` = baris yang dicentang warga di lembar; persetujuan terikat `rencanaHash`
+   * halaman itu. Baris yang tidak dicentang diisi warga sendiri (AI menyerahkannya setelah baris lain terisi).
    */
-  async izinkanIsi(): Promise<string | undefined> {
+  async izinkanIsi(pilihan?: { placeholder: string[]; berkas: string[] }): Promise<string | undefined> {
     const butuh = this.data.butuhData;
     if (!butuh) return undefined;
-    const writeList = daftarWrite(butuh.placeholder, butuh.berkas);
+    const writeList = daftarWrite(pilihan?.placeholder ?? butuh.placeholder, pilihan?.berkas ?? butuh.berkas);
     if (writeList.length === 0) {
       const sendiri = butuh.placeholder.map(labelPlaceholder).filter((l, i, a) => a.indexOf(l) === i);
       return `Isi sendiri di layar: ${sendiri.join(', ')}.`;
     }
     if (!butuh.origin) return 'Situs tujuan belum diketahui. Isi sendiri di layar.';
-    return this.kirimIzin(writeList, butuh.origin, true);
+    return this.kirimIzin(writeList, butuh.origin, true, butuh.rencanaHash);
   }
 
   /** POST izinkan-isi (daftar write + origin, tanpa nilai); pesan untuk warga, atau undefined bila lengkap. */
@@ -316,13 +389,14 @@ export class SesiPendampingUi {
     writeList: string[],
     targetOrigin: string,
     awal = false,
+    rencanaHash?: string,
   ): Promise<string | undefined> {
     let res: Response;
     try {
       res = await this.ambil(`/api/urusan/${encodeURIComponent(this.urusanId)}/izinkan-isi`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', accept: 'application/json' },
-        body: JSON.stringify({ writeList, targetOrigin }),
+        body: JSON.stringify({ writeList, targetOrigin, ...(rencanaHash ? { rencanaHash } : {}) }),
       });
     } catch {
       return 'Koneksi terputus. Coba lagi atau isi sendiri.';
@@ -330,6 +404,11 @@ export class SesiPendampingUi {
     const j = (await res.json().catch(() => null)) as { pesanWarga?: string; kurang?: string[] } | null;
     if (!res.ok) return j?.pesanWarga ?? 'Izin belum tercatat. Coba lagi atau isi sendiri.';
     const kurang = j?.kurang ?? [];
+    // Navigator generik: AI langsung lanjut; baris yang tidak disetujui diserahkan ke warga di layar nanti.
+    if (rencanaHash) {
+      this.data = { ...this.data, butuhData: null };
+      return undefined;
+    }
     if (awal && kurang.length === 0) this.data = { ...this.data, butuhData: null };
     return kurang.length ? `Isi sendiri di layar: ${kurang.join(', ')}.` : undefined;
   }
@@ -364,6 +443,8 @@ export class SesiPendampingUi {
   }
 
   tutup(): void {
+    if (this.pantauAi) clearTimeout(this.pantauAi);
+    this.pantauAi = null;
     for (const f of this.lepas) f();
     this.lepas = [];
     this.viewer?.tutup();

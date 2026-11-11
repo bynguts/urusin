@@ -4,6 +4,7 @@ import { labelPlaceholder } from '#lib/pendamping/isi-data.js';
 import { apiError } from '#lib/server/http.js';
 import { panggilPemilik, skema, type PendampingConfig } from '#lib/server/pendamping.js';
 import { ambilIsianUntukIsi } from '#lib/server/pendamping/isi.js';
+import { catatPersetujuanNavigator } from '#lib/server/pendamping/navigator.js';
 import type { Runtime } from '#lib/server/runtime.js';
 
 /**
@@ -28,7 +29,11 @@ export async function isiSesiDariVault(
   if (!b.ok) return b;
   let ambil: ReturnType<typeof ambilIsianUntukIsi>;
   try {
-    ambil = ambilIsianUntukIsi(rt, { urusanId: owner.urusanId, liveOrigin: b.data.origin });
+    ambil = ambilIsianUntukIsi(rt, {
+      urusanId: owner.urusanId,
+      liveOrigin: b.data.origin,
+      rencanaHash: b.data.rencanaHash,
+    });
   } catch (e) {
     if (!(e instanceof AkunError)) throw e;
     return {
@@ -42,6 +47,7 @@ export async function isiSesiDariVault(
   }
   const butuh = new Set(b.data.placeholder);
   const isian = Object.fromEntries(Object.entries(ambil.isian).filter(([k]) => butuh.has(k)));
+  const berkasTerkirim: string[] = [];
   for (const d of ambil.berkas) {
     // Daftar write memakai `berkas:<JENIS>` huruf besar; nama adapter (`{{FILE:foto}}`) bisa huruf kecil.
     const nama = b.data.berkas.find((n) => n.toUpperCase() === d.nama.toUpperCase());
@@ -54,8 +60,23 @@ export async function isiSesiDariVault(
       dataBase64: d.bytes.toString('base64'),
     });
     if (!rb.ok) return rb;
+    berkasTerkirim.push(nama);
   }
-  const r = await panggilPemilik(cfg, '/internal/sesi/isi', skema.kurang, { ...owner, isian });
+  const rencanaHash = b.data.rencanaHash;
+  // Navigator generik: baris yang benar-benar disetujui dicatat SEBELUM worker melanjutkan AI (isi = panggilan
+  // terakhir), supaya loop tahu baris mana yang ditolak warga dan tidak memintanya lagi.
+  if (rencanaHash)
+    catatPersetujuanNavigator(owner.urusanId, rencanaHash, {
+      placeholder: Object.keys(isian),
+      berkas: berkasTerkirim,
+    });
+  // Navigator generik: berkas yang disetujui di putaran INI ikut (worker tidak lagi menganggap berkas putaran
+  // lalu sudah disetujui).
+  const r = await panggilPemilik(cfg, '/internal/sesi/isi', skema.kurang, {
+    ...owner,
+    isian,
+    ...(rencanaHash ? { rencanaHash, berkas: berkasTerkirim } : {}),
+  });
   if (!r.ok) return r;
   const kurang = r.data;
   return {

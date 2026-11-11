@@ -41,6 +41,9 @@ importers:
       prettier-plugin-svelte:
         specifier: 4.1.1
         version: 4.1.1(prettier@3.9.10)(svelte@5.57.3(@typescript-eslint/types@8.72.1))
+      puppeteer-core:
+        specifier: 25.16.0
+        version: 25.16.0(proxy-agent@6.5.0)
       svelte:
         specifier: 5.57.3
         version: 5.57.3(@typescript-eslint/types@8.72.1)
@@ -115,6 +118,12 @@ importers:
       '@urusin/harness':
         specifier: workspace:*
         version: link:../../packages/harness
+      '@urusin/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
+      '@urusin/navigator':
+        specifier: workspace:*
+        version: link:../../packages/navigator
       vitest:
         specifier: 5.1.0
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
@@ -139,6 +148,9 @@ importers:
       '@urusin/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@urusin/navigator':
+        specifier: workspace:*
+        version: link:../../packages/navigator
       '@urusin/pendamping-client':
         specifier: workspace:*
         version: link:../../packages/pendamping-client
@@ -292,6 +304,9 @@ importers:
 
   packages/executor:
     dependencies:
+      '@urusin/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@urusin/core':
         specifier: workspace:*
         version: link:../core
@@ -367,6 +382,31 @@ importers:
       '@vitest/coverage-v8':
         specifier: 5.1.0
         version: 5.1.0(vitest@5.1.0)
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))
+
+  packages/navigator:
+    dependencies:
+      '@urusin/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@urusin/harness':
+        specifier: workspace:*
+        version: link:../harness
+      '@urusin/llm':
+        specifier: workspace:*
+        version: link:../llm
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
+      fast-check:
+        specifier: 4.10.2
+        version: 4.10.2
       vitest:
         specifier: 5.1.0
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(happy-dom@21.0.4)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0))

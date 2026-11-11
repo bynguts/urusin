@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { ADAPTERS } from '@urusin/adapters';
 import type { EventPayload, UrusanState } from '@urusin/contracts';
-import { findBundel, routeByKode } from '@urusin/registry';
+import { getOfficialDomain } from '@urusin/core';
+import { findBundel, namaPendekWilayah, routeByKode, wilayahByKode } from '@urusin/registry';
 import { ConflictError, HarnessError } from './errors.js';
+import { ADAPTER_GENERIK, alasanDipandu, portalWebWilayah } from './generik.js';
 import { canTransition } from './state.js';
 import { paramsHash, type HarnessStore, type UrusanRow } from './store.js';
 import { wilayahBelumSiap, wilayahUrusan } from './wilayah.js';
@@ -21,16 +23,17 @@ export function majukan(
   u: UrusanRow,
   jalur: readonly UrusanState[],
   publish: Publish,
+  /** Tier yang sudah dibekukan (satu keputusan rute); tanpa ini dihitung dari urusan saat ini. */
+  tier?: 'semi' | 'dipandu' | null,
 ): UrusanRow {
   let cur = u;
   for (const ke of jalur) {
     const dari = cur.state;
     cur = store.transition(cur.id, cur.version, ke);
-    const kode = cur.kodeKabKota;
     publish({
       type: 'state',
       state: ke,
-      tier: kode && /^\d{4}$/.test(kode) ? routeByKode(kode).entry.tier : null,
+      tier: tier !== undefined ? tier : tierUrusan(cur),
       version: cur.version,
       dari,
     });
@@ -38,20 +41,52 @@ export function majukan(
   return cur;
 }
 
+/** Langkah tulis yang dikerjakan Browser Pendamping: adapter tulisan tangan atau Navigator generik. */
+export type LangkahTulisPendamping = {
+  jalur: 'adapter' | 'generik';
+  adapterId: string;
+  flowId: string;
+  params: Record<string, string | number | boolean>;
+  origin: string;
+  nama: string;
+};
+
 /**
- * Langkah rencana yang bisa dikerjakan Browser Pendamping di portal kota ini: langkah `online-adapter` bundel,
- * kota berstatus `kirim-asli` dengan adapter yang punya alur tersebut (bukan baca-saja). Selain itu undefined.
+ * `sebab: 'jaringan_id'`: portal hanya menerima IP Indonesia (registry `aksesWilayah: 'id-only'`) dan tidak ada
+ * worker berjaringan Indonesia yang sehat; kartu rencana menyebut alasan itu sejak awal.
  */
-export function langkahPendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>):
-  | {
-      adapterId: string;
-      flowId: string;
-      params: Record<string, string | number | boolean>;
-      origin: string;
-      nama: string;
-    }
-  | undefined {
-  if (!u.jenis || !u.kodeKabKota || !/^\d{4}$/.test(u.kodeKabKota)) return undefined;
+export type RutePendamping =
+  LangkahTulisPendamping | { jalur: 'dipandu'; alasan: string; sebab?: 'jaringan_id' };
+
+/**
+ * Ada worker Browser Pendamping berjaringan Indonesia (`region: 'id'`) yang sehat? Dipasang web (hooks.server) dengan
+ * pool dan cache singkat yang sama dengan pemilihan worker sesi. Bawaan `false`: tanpa worker Indonesia yang
+ * terbukti sehat, portal `id-only` tidak dijanjikan (dipandu sejak kartu, bukan gagal saat mulai).
+ */
+let jaringanIdSiap: () => boolean = () => false;
+
+/** Pasang pemeriksa worker berjaringan Indonesia (web: hooks.server); uji memasang nilai tetap. */
+export function aturJaringanId(cek: () => boolean): void {
+  jaringanIdSiap = cek;
+}
+
+/** Kalimat jujur untuk warga: portal `id-only` tanpa Browser Pendamping berjaringan Indonesia. */
+export function kalimatJaringanId(wilayah?: string): string {
+  const di = wilayah ? ` ${wilayah}` : '';
+  return `Situs Disdukcapil${di} hanya bisa dibuka dari jaringan Indonesia, dan Browser Pendamping berjaringan Indonesia sedang tidak aktif, jadi AI belum bisa mengisinya. Anda membuka situsnya sendiri dan kami pandu langkahnya.`;
+}
+
+function hanyaJaringanId(origin: string): boolean {
+  try {
+    return getOfficialDomain(new URL(origin).hostname)?.aksesWilayah === 'id-only';
+  } catch {
+    return false;
+  }
+}
+
+/** Adapter tulisan tangan (jalur cepat): langkah `online-adapter` bundel di portal `kirim-asli` kota ini. */
+function langkahAdapter(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): LangkahTulisPendamping | undefined {
+  if (!u.jenis || !u.kodeKabKota) return undefined;
   const bundel = findBundel(u.jenis);
   const langkah = bundel?.langkah.find((l) => l.jenis === 'online-adapter' && l.pendamping);
   if (!bundel || !langkah?.pendamping) return undefined;
@@ -66,12 +101,100 @@ export function langkahPendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>):
       : undefined;
   if (!adapter || !flow || flow.bacaSaja || adapter.origin !== entry.portal.origin) return undefined;
   return {
+    jalur: 'adapter',
     adapterId: entry.adapterId,
     flowId: langkah.pendamping.flowId,
     params: langkah.pendamping.params,
     origin: adapter.origin,
     nama: `${langkah.judul} di ${entry.portal.nama}`,
   };
+}
+
+/**
+ * Routing Browser Pendamping (ADR 0030), berurutan: (1) adapter tulisan tangan, (2) adapter platform (belum
+ * ada), (3) Navigator generik bila wilayah KTP punya portal `web` di registry wilayah, (4) dipandu dengan
+ * alasan jujur. Wilayah harus SUDAH ditetapkan warga (`kodeKabKota`); tanpa itu selalu dipandu (gerbang
+ * WILAYAH_BELUM_DITETAPKAN tetap berlaku di tool rencana). Portal `id-only` hanya ditawarkan bila ada worker
+ * berjaringan Indonesia yang sehat (`aturJaringanId`); selain itu dipandu dengan `sebab: 'jaringan_id'`.
+ */
+export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): RutePendamping {
+  const kode = u.kodeKabKota && /^\d{4}$/.test(u.kodeKabKota) ? u.kodeKabKota : null;
+  if (!kode) return { jalur: 'dipandu', alasan: alasanDipandu(null) };
+  const w = wilayahByKode(kode);
+  const nama = w ? namaPendekWilayah(w.nama) : undefined;
+  const r = ruteDasar(u.jenis, kode, nama);
+  if (r.jalur !== 'dipandu' && hanyaJaringanId(r.origin) && !jaringanIdSiap())
+    return {
+      jalur: 'dipandu',
+      alasan: `Rencana disetujui. ${kalimatJaringanId(nama)}`,
+      sebab: 'jaringan_id',
+    };
+  return r;
+}
+
+function ruteDasar(jenis: UrusanRow['jenis'], kode: string, nama: string | undefined): RutePendamping {
+  const adapter = langkahAdapter({ jenis, kodeKabKota: kode });
+  if (adapter) return adapter;
+  const bundel = jenis ? findBundel(jenis) : undefined;
+  const portal = portalWebWilayah(kode);
+  if (bundel && portal)
+    return {
+      jalur: 'generik',
+      adapterId: ADAPTER_GENERIK,
+      flowId: bundel.slug,
+      // Jalur masuk portal (mis. `/Siap_Om`, `/login`). Host sesi tidak dikirim: worker memakai bawaan wilayah
+      // `kode` (host portal + platform + host tantangan sesuai proteksi portal), satu sumber dengan registry.
+      params: { jenis: bundel.slug, kode, jalur: new URL(portal.url).pathname },
+      origin: portal.origin,
+      nama: `Ajukan ${bundel.judul.toLowerCase()} di portal resmi Disdukcapil ${nama ?? portal.nama}`,
+    };
+  return { jalur: 'dipandu', alasan: alasanDipandu(kode, nama) };
+}
+
+/** Kalimat templat untuk warga: apa yang dikerjakan AI di portal ini dan apa yang tetap dikerjakan warga. */
+export function keteranganPendamping(r: LangkahTulisPendamping): string {
+  const host = new URL(r.origin).host;
+  return r.jalur === 'generik'
+    ? `AI membantu mengisi formulir di ${host}; Anda sendiri yang masuk akun, lolos verifikasi, dan menekan Kirim.`
+    : `AI mengisi formulir di ${host}; Anda sendiri yang masuk akun dan menekan Kirim.`;
+}
+
+/**
+ * Tier urusan yang JUJUR: `semi` hanya bila Browser Pendamping benar-benar akan ditawarkan untuk urusan ini
+ * (adapter atau Navigator generik, lihat `rutePendamping`). Jenis belum diketahui: tier registry kota.
+ */
+export function tierUrusan(
+  u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>,
+  /** Rute yang sudah diputuskan untuk urusan ini (supaya tier dan tindakan dari satu keputusan yang sama). */
+  rute?: RutePendamping,
+): 'semi' | 'dipandu' | null {
+  const kode = u.kodeKabKota && /^\d{4}$/.test(u.kodeKabKota) ? u.kodeKabKota : null;
+  if (!kode) return null;
+  if (!u.jenis) return routeByKode(kode).entry.tier;
+  return (rute ?? rutePendamping({ jenis: u.jenis, kodeKabKota: kode })).jalur === 'dipandu'
+    ? 'dipandu'
+    : 'semi';
+}
+
+/**
+ * Tier yang dibekukan untuk eksekusi yang sedang berjalan: tier event `state` terakhir (diterbitkan saat
+ * eksekusi ditawarkan), bukan kesehatan worker berjaringan Indonesia saat ini. Tanpa event = dihitung ulang.
+ */
+export function tierEksekusi(store: HarnessStore, u: UrusanRow): 'semi' | 'dipandu' | null {
+  const p = store.eventsOfType(u.id, 'state', 1)[0]?.payload;
+  const t = p !== null && typeof p === 'object' && 'tier' in p ? p.tier : undefined;
+  return t === 'semi' || t === 'dipandu' || t === null ? t : tierUrusan(u);
+}
+
+/**
+ * Langkah rencana yang bisa dikerjakan Browser Pendamping untuk urusan ini (adapter atau Navigator generik),
+ * atau undefined bila dipandu.
+ */
+export function langkahPendamping(
+  u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>,
+): LangkahTulisPendamping | undefined {
+  const r = rutePendamping(u);
+  return r.jalur === 'dipandu' ? undefined : r;
 }
 
 /**
@@ -93,18 +216,26 @@ export function setujuiRencana(
   // Rencana hanya disetujui untuk wilayah yang dipastikan warga (urusan lama berkolom default tanpa konfirmasi).
   const belum = wilayahBelumSiap(u.jenis, wilayahUrusan(store, u));
   if (belum) throw new HarnessError('WILAYAH_BELUM_DITETAPKAN', belum, 409);
-  let cur = majukan(store, u, ['RENCANA_DISETUJUI'], publish);
-  const jalan = langkahPendamping(cur);
-  if (!jalan) {
-    publish({
-      type: 'progress',
-      label:
-        'Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.',
-    });
+  // Satu keputusan rute untuk seluruh persetujuan: tier di event state dan tindakan tidak bisa berbeda walau
+  // kesehatan worker berjaringan Indonesia berubah di tengah jalan.
+  const jalan = rutePendamping(u);
+  const tier = tierUrusan(u, jalan);
+  let cur = majukan(store, u, ['RENCANA_DISETUJUI'], publish, tier);
+  if (jalan.jalur === 'dipandu') {
+    publish({ type: 'progress', label: jalan.alasan });
     return { urusan: cur, executionId: null };
   }
-  cur = majukan(store, cur, ['MENYIAPKAN_BERKAS', 'BERKAS_SIAP', 'MENGISI', 'MENUNGGU_KONFIRMASI'], publish);
-  const args = { kodeKabKota: cur.kodeKabKota, layananId: jalan.params.layanan_id };
+  cur = majukan(
+    store,
+    cur,
+    ['MENYIAPKAN_BERKAS', 'BERKAS_SIAP', 'MENGISI', 'MENUNGGU_KONFIRMASI'],
+    publish,
+    tier,
+  );
+  const args = {
+    kodeKabKota: cur.kodeKabKota,
+    layananId: jalan.jalur === 'generik' ? jalan.params.jenis : jalan.params.layanan_id,
+  };
   const hash = paramsHash(TOOL_AJUKAN, args);
   const executionId = `x_${randomUUID()}`;
   publish({
@@ -112,7 +243,10 @@ export function setujuiRencana(
     executionId,
     adapterId: jalan.adapterId,
     flowId: jalan.flowId,
-    ringkasan: `${jalan.nama}. AI mengunggah Dokumen Anda; Anda masuk akun (sandi, CAPTCHA) dan menekan Selesai sendiri.`,
+    ringkasan:
+      jalan.jalur === 'generik'
+        ? `${jalan.nama}. AI mengisi formulir hanya dengan data yang Anda izinkan per halaman; Anda masuk akun (sandi, CAPTCHA) dan menekan Kirim sendiri.`
+        : `${jalan.nama}. AI mengunggah Dokumen Anda; Anda masuk akun (sandi, CAPTCHA) dan menekan Selesai sendiri.`,
     params: jalan.params,
     tool: TOOL_AJUKAN,
     paramsHash: hash,
@@ -136,5 +270,5 @@ export function setujuiRencana(
 export function mulaiPengajuan(store: HarnessStore, urusanId: string, publish: Publish): UrusanRow {
   const u = store.getUrusanOrThrow(urusanId);
   if (u.state !== 'MENUNGGU_KONFIRMASI' || !canTransition(u.state, 'MENGUNGGAH')) return u;
-  return majukan(store, u, ['MENGUNGGAH', 'MENUNGGU_SUBMIT_WARGA'], publish);
+  return majukan(store, u, ['MENGUNGGAH', 'MENUNGGU_SUBMIT_WARGA'], publish, tierEksekusi(store, u));
 }

@@ -34,7 +34,7 @@ const tokenTurnstile = (form: FormData) => teks(form, 'cf-turnstile-response') |
 export const load: PageServerLoad = async ({ url, locals, cookies }) => {
   const next = amanNext(url.searchParams.get('lanjut') ?? url.searchParams.get('next'));
   const ulang = url.searchParams.get('ulang') === '1' && locals.akun?.jenis === 'akun';
-  if (locals.akun && !ulang) redirect(303, next);
+  if (locals.akun && !ulang) redirect(303, next === '/' ? '/beranda' : next);
   const rt = await getRuntime();
   const kode = GALAT_QUERY.find((k) => k === url.searchParams.get('galat'));
   return {

@@ -1,7 +1,15 @@
 // Data uji dibangun dari potongan agar file ini sendiri tidak memicu pii-scan.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { isAllowedEmail, isNikLike, mask, scanText } from '../pii-scan.mjs';
+import {
+  isAllowedEmail,
+  isEntriBersumber,
+  isNikLike,
+  isSkippedPath,
+  mask,
+  scanKontakJson,
+  scanText,
+} from '../pii-scan.mjs';
 
 const join = (...parts) => parts.join('');
 // 33 12 01 | 15 08 90 | 0001 → Jawa Tengah, tgl 15, bln 08
@@ -83,5 +91,117 @@ describe('mask', () => {
   it('menyamarkan bagian tengah', () => {
     assert.equal(mask('abcdefgh'), 'ab****gh');
     assert.equal(mask('abc'), '****');
+  });
+});
+
+describe('isSkippedPath', () => {
+  it('melewati lockfile, biner, dan hanya berkas hasil generator wilayah-data.ts', () => {
+    assert.equal(isSkippedPath('pnpm-lock.yaml'), true);
+    assert.equal(isSkippedPath('apps/web/static/logo.png'), true);
+    assert.equal(isSkippedPath('packages/registry/src/wilayah-data.ts'), true);
+  });
+  it('JSON kontak resmi, tetangga, dan salinan di folder lain tetap dipindai', () => {
+    assert.equal(isSkippedPath('data/wilayah/kanal-layanan.json'), false);
+    assert.equal(isSkippedPath('data/wilayah/sumber-kanal.json'), false);
+    assert.equal(isSkippedPath('data/wilayah/kontak-dukcapil.json'), false);
+    assert.equal(isSkippedPath('packages/registry/src/kanal-layanan.ts'), false);
+    assert.equal(isSkippedPath('fixtures/packages/registry/src/wilayah-data.ts'), false);
+  });
+});
+
+describe('scanKontakJson', () => {
+  const WA = join('0811', '-8355', '-599');
+  const EMAIL = join('dukcapil', '@', 'contohkab.go.id');
+  const entri = (o) => ({
+    kode: '3404',
+    layanan: 'adminduk',
+    jenis: 'whatsapp',
+    nilai: WA,
+    sumberUrl: 'https://dukcapil.contohkab.go.id/',
+    dicekPada: '2026-11-10',
+    ...o,
+  });
+  const scan = (data) => scanKontakJson(JSON.stringify(data, null, 2));
+
+  it('entri bersumber https .go.id / .polri.go.id bertanggal cek lolos', () => {
+    const data = {
+      entri: [
+        entri(),
+        entri({ jenis: 'email', nilai: EMAIL }),
+        entri({ layanan: 'skck', sumberUrl: 'https://polres.contoh.polri.go.id/kontak' }),
+      ],
+    };
+    assert.deepEqual(scan(data), []);
+  });
+
+  it('entri tanpa sumber, sumber bukan https .go.id, atau tanpa dicekPada ditolak', () => {
+    const tolak = [
+      entri({ sumberUrl: undefined }),
+      entri({ sumberUrl: 'http://dukcapil.contohkab.go.id/' }),
+      entri({ sumberUrl: 'https://dukcapil-contohkab.blogspot.com/' }),
+      entri({ sumberUrl: 'https://go.id.penipu.com/' }),
+      entri({ dicekPada: undefined }),
+      entri({ dicekPada: 'kemarin' }),
+    ];
+    for (const e of tolak)
+      assert.deepEqual(
+        scan({ entri: [e] }).map((f) => f.kind),
+        ['phone'],
+        JSON.stringify(e),
+      );
+  });
+
+  it('nomor/email di luar nilai langsung entri bersumber ditolak walau sama dengan nomor resmi', () => {
+    const f = scan({ catatan: `hubungi ${WA}`, entri: [entri({ instansi: { kontak: EMAIL } })] });
+    assert.deepEqual(
+      f.map((x) => [x.kind, x.line]),
+      [
+        ['phone', '$.catatan'],
+        ['email', '$.entri[0].instansi.kontak'],
+      ],
+    );
+  });
+
+  it('telepon/email di field selain nilai/kontak milik entri bersumber tetap ditolak', () => {
+    const waLink = `https://wa.me/62${WA.replace(/\D/g, '').slice(1)}`;
+    const f = scan({
+      entri: [
+        entri({ kontak: EMAIL }),
+        entri({ instansi: `Disdukcapil ${WA}`, catatan: EMAIL, url: waLink }),
+      ],
+    });
+    assert.deepEqual(
+      f.map((x) => [x.kind, x.line]),
+      [
+        ['phone', '$.entri[1].instansi'],
+        ['email', '$.entri[1].catatan'],
+        ['phone', '$.entri[1].url'],
+      ],
+    );
+  });
+
+  it('NIK di berkas kanal ditolak, juga di dalam entri bersumber dan dengan penanda allow', () => {
+    const allow = `// ${'pii-scan'}:allow`;
+    assert.deepEqual(
+      scan({ entri: [entri({ nilai: `${WA} NIK ${NIK_MALE} ${allow}` })] }).map((f) => f.kind),
+      ['nik'],
+    );
+    assert.deepEqual(
+      scan({ entri: [entri({ catatan: Number(NIK_FEMALE) })] }).map((f) => f.kind),
+      ['nik'],
+    );
+  });
+
+  it('JSON rusak dipindai sebagai teks biasa', () => {
+    assert.deepEqual(
+      scanKontakJson(`{"nilai": "${WA}"`).map((f) => f.kind),
+      ['phone'],
+    );
+  });
+
+  it('isEntriBersumber menolak bukan-objek', () => {
+    assert.equal(isEntriBersumber(null), false);
+    assert.equal(isEntriBersumber([entri()]), false);
+    assert.equal(isEntriBersumber(entri()), true);
   });
 });

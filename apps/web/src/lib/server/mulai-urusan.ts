@@ -3,6 +3,7 @@ import { detectPii } from '@urusin/core';
 import { kodeDisebut, usulkanWilayah } from '@urusin/harness';
 import { pastikanTamuUntukTurn, pemilikVault } from '#lib/server/akun.js';
 import { PESAN_PII } from '#lib/server/http.js';
+import { segarkanJaringanId } from '#lib/server/pendamping.js';
 import { getRuntime, publicOrigin, startTurnInBackground, type Runtime } from '#lib/server/runtime.js';
 import { batasi, catatTerakhir, ensureSession } from '#lib/server/sesi.js';
 
@@ -83,6 +84,8 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
   const u = rt.store.createUrusan(jenis ? { jenis } : {});
   // Pemilik: sama dengan POST /api/urusan. Tanpa ini endpoint Browser Pendamping (cek pemilik) menjawab 404.
   rt.akun.catatPemilikUrusan(u.id, { akun: event.locals.akun, sid: event.locals.sid });
+  // Sama dengan POST /api/urusan: tier portal id-only di turn pertama memakai cache yang tidak dingin.
+  await segarkanJaringanId();
   usulkanWilayahAwal(rt, event, u.id, /^\d{4}$/.test(kode) ? kode : undefined, pesan);
   if (pesan) startTurnInBackground(rt, { urusanId: u.id, userText: pesan });
   catatTerakhir(event.cookies, u.id, publicOrigin());

@@ -1,10 +1,23 @@
 import type { Check, Selector, Step, Target } from '@urusin/core';
+import type { HasilAksi as HasilAksiKontrak, KodeHasilAksi } from '@urusin/contracts';
 import type { ConsentSummary, UploadFile } from './types.js';
+import { bangunPengamatan, elemenDariJalur, sidikElemen, terlarangElemen, type PetaRef } from './amatan.js';
+import {
+  aktifEl,
+  bolehDiklikAi,
+  halamanAkhir,
+  klasifikasi,
+  normalTeks,
+  terlihatEl,
+  type FiturKendali,
+  type KelasKendali,
+} from './klasifikasi.js';
 
 /**
  * Operasi step-runner yang berjalan DI DALAM halaman (world terisolasi ekstensi / isolated world CDP di
  * Browser Pendamping). Satu op per pemanggilan; hasil dilaporkan ke interpreter (rencana §3.5 butir 2).
- * WAJIB tanpa impor runtime (hanya `import type`): pendamping menyuntikkan berkas hasil build ini apa adanya.
+ * WAJIB tanpa impor runtime selain modul saudara klasifikasi.ts dan amatan.ts (keduanya juga tanpa impor):
+ * pendamping menggabungkan ketiganya menjadi satu skrip dan membuang baris impor relatif itu.
  */
 
 export type RunnerOp =
@@ -19,7 +32,81 @@ export type RunnerOp =
   | { kind: 'check'; check: Check; baseline?: number | undefined }
   | { kind: 'wait'; check: Check; timeoutMs: number; baseline?: number | undefined }
   | { kind: 'count'; target: Target }
-  | { kind: 'consent'; summary: ConsentSummary };
+  | { kind: 'consent'; summary: ConsentSummary }
+  /** Navigator generik: pengamatan halaman (tanpa nilai field) + peta ref untuk memori worker. */
+  | { kind: 'amati'; seq: number; diisi?: Record<string, string> | undefined }
+  /** Navigator generik: jalankan aksi satu per satu; `peta` = peta ref dari `amati` terakhir. */
+  | { kind: 'aksi'; aksi: AksiRunner[]; peta: PetaRef }
+  /**
+   * Navigator generik: href tautan pembuka `ref` (dibaca ulang dari DOM) untuk dibuka worker lewat navigasi GET,
+   * tanpa klik dan tanpa handler JS halaman. Hanya tautan yang masih kena aturan tautan pembuka, bukan di halaman
+   * akhir.
+   */
+  | { kind: 'tautan'; ref: string; peta: PetaRef };
+
+/**
+ * Aksi yang sudah divalidasi web dan di-resolve worker. `nilai` pada isi/pilih adalah nilai vault yang sudah
+ * di-resolve worker HANYA untuk pasangan (sidik ref, placeholder) yang disetujui warga; `placeholder` dibawa
+ * untuk jejak. Nilai mentah tidak pernah muncul di hasil maupun pesan galat.
+ */
+export type AksiRunner =
+  | { jenis: 'isi'; ref: string; placeholder: string; nilai: string }
+  | { jenis: 'pilih'; ref: string; opsi: number }
+  | { jenis: 'pilih'; ref: string; placeholder: string; nilai: string }
+  | { jenis: 'centang'; ref: string; nilai: boolean }
+  | { jenis: 'unggah'; ref: string; berkas: UploadFile }
+  | { jenis: 'klik'; ref: string };
+
+/**
+ * Hasil per aksi untuk jejak audit (tanpa nilai). `ok` = dikerjakan; `navigasi` = klik tautan GET yang
+ * dikembalikan ke worker (worker memeriksa allowlist lalu Page.navigate(href)); `ditolak` = dilarang aturan;
+ * `gagal` = elemen tidak cocok/basi; `dilewati` = tidak dijalankan karena aksi sebelumnya berhenti.
+ */
+export type HasilAksi = {
+  i: number;
+  jenis: AksiRunner['jenis'];
+  ref: string;
+  status: 'ok' | 'navigasi' | 'ditolak' | 'gagal' | 'dilewati';
+  /** Id aturan: K1..K11 (klasifikator) atau A_* (runner). */
+  aturan: string;
+  kode?: string;
+  kelas?: KelasKendali;
+  fitur?: FiturAudit;
+  href?: string;
+  placeholder?: string;
+};
+
+/** Fitur klik untuk audit: hanya struktur dan boolean, tanpa teks situs. */
+export type FiturAudit = Omit<
+  FiturKendali,
+  'teksTampak' | 'ariaLabel' | 'nilai' | 'title' | 'idKelas' | 'ikon' | 'href'
+> & { hrefHost: string };
+
+export type HasilAksiOp = { hasil: HasilAksi[] };
+
+/**
+ * Hasil runner (rinci, untuk jejak audit) -> `HasilAksiSchema` kontrak (ringkas, untuk Navigator di web).
+ * `navigasi` = ok dari sisi halaman; worker yang memutuskan blokir gerbang/allowlist (GERBANG_MEMBLOKIR).
+ */
+export function keHasilKontrak(h: HasilAksi): HasilAksiKontrak {
+  const kode: KodeHasilAksi =
+    h.status === 'ok' || h.status === 'navigasi'
+      ? 'ok'
+      : h.status === 'dilewati'
+        ? 'DILEWATI'
+        : h.kode === RunnerCode.REF_BASI
+          ? 'REF_BASI'
+          : h.kode === RunnerCode.REF_TIDAK_DIKENAL
+            ? 'REF_TIDAK_ADA'
+            : h.kode === RunnerCode.KLIK_DITOLAK
+              ? 'KELAS_DITOLAK'
+              : h.kode === RunnerCode.TERLARANG
+                ? 'TERLARANG'
+                : h.kode === RunnerCode.HALAMAN_AKHIR
+                  ? 'HALAMAN_AKHIR'
+                  : 'GALAT';
+  return h.kelas ? { indeks: h.i, kode, kelas: h.kelas } : { indeks: h.i, kode };
+}
 
 export type RunnerResult = { ok: true; value?: unknown } | { ok: false; code: string; message: string };
 
@@ -33,6 +120,14 @@ export const RunnerCode = {
   WAIT_TIMEOUT: 'WAIT_TIMEOUT',
   FINAL_NOT_AUTOMATABLE: 'FINAL_NOT_AUTOMATABLE',
   UNSUPPORTED_OP: 'UNSUPPORTED_OP',
+  REF_BASI: 'REF_BASI',
+  REF_TIDAK_DIKENAL: 'REF_TIDAK_DIKENAL',
+  KLIK_DITOLAK: 'KLIK_DITOLAK',
+  HALAMAN_AKHIR: 'HALAMAN_AKHIR',
+  TERLARANG: 'TERLARANG',
+  ELEMEN_TIDAK_SESUAI: 'ELEMEN_TIDAK_SESUAI',
+  ELEMEN_NONAKTIF: 'ELEMEN_NONAKTIF',
+  OPSI_TIDAK_ADA: 'OPSI_TIDAK_ADA',
 } as const;
 
 const fail = (code: string, message: string): RunnerResult => ({ ok: false, code, message });
@@ -204,6 +299,10 @@ function uploadFile(doc: Document, target: Target, file: UploadFile): RunnerResu
   const win = doc.defaultView;
   const el = resolveTarget(doc, target);
   if (!win || !el) return fail(RunnerCode.ADAPTER_DRIFT, 'field berkas tidak ditemukan');
+  return pasangBerkas(win, el, file);
+}
+
+function pasangBerkas(win: Window & typeof globalThis, el: Element, file: UploadFile): RunnerResult {
   if (!(el instanceof win.HTMLInputElement) || el.type !== 'file')
     return fail(RunnerCode.ADAPTER_DRIFT, 'elemen bukan field berkas');
   const bin = win.atob(file.base64);
@@ -281,6 +380,183 @@ function runStep(doc: Document, step: Step, finalTargets?: Target[]): RunnerResu
   }
 }
 
+// --- Navigator generik: op `aksi` ---
+
+type Putusan = Omit<HasilAksi, 'i' | 'jenis' | 'ref'>;
+
+const tolak = (status: 'ditolak' | 'gagal', aturan: string, kode: string): Putusan => ({
+  status,
+  aturan,
+  kode,
+});
+
+function fiturAudit(f: FiturKendali): FiturAudit {
+  const { teksTampak: _t, ariaLabel: _a, nilai: _n, title: _ti, idKelas: _i, ikon: _ik, href, ...sisa } = f;
+  return { ...sisa, hrefHost: href.host };
+}
+
+/** Elemen dari peta ref, dengan verifikasi sidik di DOM saat ini. */
+function elemenRef(doc: Document, peta: PetaRef, ref: string): Element | Putusan {
+  const simpan = peta[ref];
+  if (!simpan) return tolak('gagal', 'A_REF_TIDAK_DIKENAL', RunnerCode.REF_TIDAK_DIKENAL);
+  const el = elemenDariJalur(doc, simpan.jalur);
+  if (!el || sidikElemen(el) !== simpan.sidik) return tolak('gagal', 'A_REF_BASI', RunnerCode.REF_BASI);
+  return el;
+}
+
+function bisaDiubah(el: Element): boolean {
+  return terlihatEl(el) && aktifEl(el) && !(el as HTMLInputElement).readOnly;
+}
+
+const TIPE_ISI = /^(text|email|tel|search|url|number|date|datetime-local|month|week|time)$/;
+
+function kerjakanIsi(el: Element, nilai: string): Putusan {
+  const tipe = el.tagName === 'INPUT' ? (el as HTMLInputElement).type : '';
+  if (!(el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && TIPE_ISI.test(tipe))))
+    return tolak('gagal', 'A_JENIS_ELEMEN', RunnerCode.ELEMEN_TIDAK_SESUAI);
+  if (!setNativeValue(el, nilai)) return tolak('gagal', 'A_JENIS_ELEMEN', RunnerCode.ELEMEN_TIDAK_SESUAI);
+  return { status: 'ok', aturan: 'A_OK' };
+}
+
+function kerjakanPilih(el: Element, a: Extract<AksiRunner, { jenis: 'pilih' }>): Putusan {
+  const win = el.ownerDocument.defaultView;
+  if (!win) return tolak('gagal', 'A_JENIS_ELEMEN', RunnerCode.ELEMEN_TIDAK_SESUAI);
+  if (el instanceof win.HTMLSelectElement) {
+    const opsi = [...el.options];
+    const ke =
+      'opsi' in a
+        ? a.opsi
+        : opsi.findIndex((o) => o.value === a.nilai || normalTeks(o.text) === normalTeks(a.nilai));
+    const o = opsi[ke];
+    if (!o || o.disabled) return tolak('gagal', 'A_OPSI_TIDAK_ADA', RunnerCode.OPSI_TIDAK_ADA);
+    setNativeValue(el, o.value);
+    if (el.selectedIndex !== ke) {
+      el.selectedIndex = ke;
+      el.dispatchEvent(new win.Event('change', { bubbles: true }));
+    }
+    return { status: 'ok', aturan: 'A_OK' };
+  }
+  if (el instanceof win.HTMLInputElement && el.type === 'radio') {
+    const grup = [...(el.form ?? el.ownerDocument).querySelectorAll('input[type="radio"]')].filter(
+      (r): r is HTMLInputElement =>
+        r instanceof win.HTMLInputElement && r.name === el.name && r.form === el.form && terlihatEl(r),
+    );
+    const anggota = el.name ? grup : [el];
+    const r =
+      'opsi' in a
+        ? anggota[a.opsi]
+        : anggota.find(
+            (x) => x.value === a.nilai || normalTeks(x.labels?.[0]?.textContent) === normalTeks(a.nilai),
+          );
+    if (!r || !aktifEl(r)) return tolak('gagal', 'A_OPSI_TIDAK_ADA', RunnerCode.OPSI_TIDAK_ADA);
+    if (!r.checked) r.click();
+    return r.checked
+      ? { status: 'ok', aturan: 'A_OK' }
+      : tolak('gagal', 'A_TIDAK_BERUBAH', RunnerCode.ELEMEN_NONAKTIF);
+  }
+  return tolak('gagal', 'A_JENIS_ELEMEN', RunnerCode.ELEMEN_TIDAK_SESUAI);
+}
+
+function kerjakanCentang(el: Element, nilai: boolean): Putusan {
+  const win = el.ownerDocument.defaultView;
+  if (!win || !(el instanceof win.HTMLInputElement) || el.type !== 'checkbox')
+    return tolak('gagal', 'A_JENIS_ELEMEN', RunnerCode.ELEMEN_TIDAK_SESUAI);
+  if (el.checked !== nilai) el.click();
+  return el.checked === nilai
+    ? { status: 'ok', aturan: 'A_OK' }
+    : tolak('gagal', 'A_TIDAK_BERUBAH', RunnerCode.ELEMEN_NONAKTIF);
+}
+
+/**
+ * Klik AI: klasifikasi DIJALANKAN ULANG di tugas JS yang sama tepat sebelum klik (tanpa await di antaranya),
+ * sehingga halaman tidak sempat mengganti tombol di antara pemeriksaan dan klik.
+ */
+function kerjakanKlik(doc: Document, el: Element): Putusan {
+  if (halamanAkhir(doc)) return tolak('ditolak', 'A_HALAMAN_AKHIR', RunnerCode.HALAMAN_AKHIR);
+  const k = klasifikasi(el, false);
+  const dasar = { kelas: k.kelas, fitur: fiturAudit(k.fitur) };
+  if (!bolehDiklikAi(k.kelas)) return { ...dasar, ...tolak('ditolak', k.aturan, RunnerCode.KLIK_DITOLAK) };
+  if (k.kelas === 'navigasi') {
+    // Bukan el.click(): worker memeriksa allowlist lalu Page.navigate(href) (tanpa popup/target=_blank).
+    return { ...dasar, status: 'navigasi', aturan: k.aturan, href: (el as HTMLAnchorElement).href };
+  }
+  (el as HTMLElement).click();
+  return { ...dasar, status: 'ok', aturan: k.aturan };
+}
+
+function satuAksi(doc: Document, a: AksiRunner, peta: PetaRef): Putusan {
+  const el = elemenRef(doc, peta, a.ref);
+  if (!(el instanceof Element)) return el;
+  if (a.jenis === 'klik') return kerjakanKlik(doc, el);
+  // Aksi tulis: field harus terlihat, aktif, tidak readonly, dan tidak terlarang (sandi/OTP/CAPTCHA/pernyataan).
+  if (!bisaDiubah(el)) return tolak('gagal', 'A_NONAKTIF', RunnerCode.ELEMEN_NONAKTIF);
+  // Penanda terlarang dihitung ulang dari DOM saat ini, bukan dari pengamatan yang bisa basi.
+  if (terlarangElemen(el)) return tolak('ditolak', 'A_TERLARANG', RunnerCode.TERLARANG);
+  // Halaman akhir: tidak ada centang AI (persetujuan di halaman tinjauan milik warga, review N7).
+  if (a.jenis === 'centang' && halamanAkhir(doc))
+    return tolak('ditolak', 'A_HALAMAN_AKHIR', RunnerCode.HALAMAN_AKHIR);
+  switch (a.jenis) {
+    case 'isi':
+      return kerjakanIsi(el, a.nilai);
+    case 'pilih':
+      return kerjakanPilih(el, a);
+    case 'centang':
+      return kerjakanCentang(el, a.nilai);
+    case 'unggah': {
+      const win = doc.defaultView;
+      if (!win) return tolak('gagal', 'A_JENIS_ELEMEN', RunnerCode.ELEMEN_TIDAK_SESUAI);
+      const r = pasangBerkas(win, el, a.berkas);
+      return r.ok
+        ? { status: 'ok', aturan: 'A_OK' }
+        : tolak('gagal', 'A_JENIS_ELEMEN', RunnerCode.ELEMEN_TIDAK_SESUAI);
+    }
+  }
+}
+
+/** Aturan klasifikasi tautan pembuka (amatan `tautanPembuka`). */
+const ATURAN_PEMBUKA = new Set(['K7_NEG_NAMA_TAUTAN', 'K7_NEG_IKON_TAUTAN']);
+
+/** Href tautan pembuka yang masih sama di DOM (sidik), diklasifikasi ulang di tugas JS yang sama. */
+export function hrefTautanPembuka(doc: Document, ref: string, peta: PetaRef): RunnerResult {
+  const el = elemenRef(doc, peta, ref);
+  if (!(el instanceof Element)) return fail(el.kode ?? RunnerCode.REF_BASI, 'ref tidak cocok');
+  if (halamanAkhir(doc)) return fail(RunnerCode.HALAMAN_AKHIR, 'halaman akhir');
+  const win = doc.defaultView;
+  if (!win || !(el instanceof win.HTMLAnchorElement) || !el.href || !terlihatEl(el))
+    return fail(RunnerCode.ELEMEN_TIDAK_SESUAI, 'bukan tautan');
+  if (!ATURAN_PEMBUKA.has(klasifikasi(el, false).aturan))
+    return fail(RunnerCode.KLIK_DITOLAK, 'bukan tautan pembuka');
+  return { ok: true, value: { href: el.href } };
+}
+
+/**
+ * Jalankan aksi berurutan. Berhenti pada aksi pertama yang tidak `ok` (sisanya `dilewati`), setelah
+ * `navigasi`, dan setelah klik `lanjut` (halaman kemungkinan berganti; amati ulang dulu).
+ */
+export function jalankanAksi(doc: Document, aksi: AksiRunner[], peta: PetaRef): HasilAksiOp {
+  const hasil: HasilAksi[] = [];
+  let berhenti = false;
+  aksi.forEach((a, i) => {
+    const dasar = { i, jenis: a.jenis, ref: a.ref };
+    if (berhenti) {
+      hasil.push({ ...dasar, status: 'dilewati', aturan: 'A_DILEWATI' });
+      return;
+    }
+    let p: Putusan;
+    try {
+      p = satuAksi(doc, a, peta);
+    } catch {
+      // Pesan galat asli sengaja dibuang: bisa memuat nilai.
+      p = tolak('gagal', 'A_GALAT', 'RUNNER_ERROR');
+    }
+    const h: HasilAksi = { ...dasar, ...p };
+    if ('placeholder' in a) h.placeholder = a.placeholder;
+    hasil.push(h);
+    if (p.status !== 'ok' || p.kelas === 'lanjut') berhenti = true;
+  });
+  return { hasil };
+}
+
 /** Titik masuk tunggal runner. `nav` dan `gate.human` ditangani interpreter, bukan di sini. */
 export async function runOp(
   op: RunnerOp,
@@ -304,6 +580,12 @@ export async function runOp(
       case 'consent':
         if (!hooks.consent) return fail(RunnerCode.UNSUPPORTED_OP, 'consent tidak tersedia di eksekutor ini');
         return { ok: true, value: await hooks.consent(doc, op.summary) };
+      case 'amati':
+        return { ok: true, value: bangunPengamatan(doc, { seq: op.seq, diisi: op.diisi }) };
+      case 'tautan':
+        return hrefTautanPembuka(doc, op.ref, op.peta);
+      case 'aksi':
+        return { ok: true, value: jalankanAksi(doc, op.aksi, op.peta) };
     }
   } catch (e) {
     return fail('RUNNER_ERROR', e instanceof Error ? e.message : String(e));

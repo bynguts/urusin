@@ -684,7 +684,14 @@ describe('server HTTP + WebSocket', () => {
 
   it('API internal: token wajib, validasi body, alur buat-status-tiket-serahkan-akhiri; tidak ada jalur teks halaman', async () => {
     const { call, base } = await start();
-    expect((await fetch(`${base}/health`)).status).toBe(200);
+    // Kemampuan (aditif): web hanya memakai worker ber-`generik` untuk sesi generik dan situs id-only.
+    expect(await (await fetch(`${base}/health`)).json()).toEqual({
+      ok: true,
+      aktif: 0,
+      maks: 2,
+      menunggu: 0,
+      generik: true,
+    });
     expect((await call('/internal/antrean', undefined, 'salah')).status).toBe(401);
     // Token polos (skema lama) dan tanda kedaluwarsa ditolak.
     const polos = { authorization: `Bearer ${'t'.repeat(40)}` };

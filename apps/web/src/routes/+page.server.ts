@@ -5,8 +5,9 @@ import { bacaTerakhir, SID_COOKIE } from '#lib/server/sesi.js';
 import { urusanMilik } from '#lib/server/urusan-akses.js';
 import type { Actions, PageServerLoad } from './$types';
 
-/** Landing untuk pengunjung baru; peramban yang punya urusan berjalan langsung ke Ringkasan. */
+/** Riwayat urusan tamu bukan sesi login: landing tetap terbuka sampai warga memilih masuk aplikasi. */
 export const load: PageServerLoad = async ({ cookies, locals }) => {
+  if (!locals.akun) return;
   const id = bacaTerakhir(cookies);
   if (!id) return;
   const rt = await getRuntime();

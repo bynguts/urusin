@@ -104,7 +104,9 @@ describe('property: pencocok allowlist domain', () => {
   it('subdomain tambahan di depan host resmi ditolak', () => {
     fc.assert(
       fc.property(label, host, (l, h) => {
-        expect(isOfficialUrl(`https://${l}.${h}/`)).toBe(false);
+        // Registry wilayah memuat pasangan host induk + subdomain persis (mis. dukcapil.x.go.id dan
+        // sakura.dukcapil.x.go.id): yang terdaftar persis tetap diterima, selebihnya ditolak.
+        expect(isOfficialUrl(`https://${l}.${h}/`)).toBe(hosts.includes(`${l}.${h}`));
       }),
     );
   });

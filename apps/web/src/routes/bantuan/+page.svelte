@@ -155,7 +155,7 @@
       </h2>
       <label for="cari-bantuan" class="sr-only">Cari bantuan</label>
       <div
-        class="flex h-14 w-full items-center gap-2.5 rounded-full border border-line-2 bg-surface px-[18px] shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] focus-within:outline-2 focus-within:outline-ink"
+        class="flex h-14 w-full items-center gap-2.5 rounded-full border border-line-2 bg-surface px-[18px] shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] focus-within:ring-2 focus-within:ring-ink focus-within:outline-none"
       >
         <Icon name="cari" class="pointer-events-none size-[18px] shrink-0 text-ink" />
         <input
@@ -163,7 +163,7 @@
           type="search"
           bind:value={cari}
           placeholder="Cari bantuan, misalnya: cara mengunggah dokumen"
-          class="h-full min-w-0 flex-1 bg-transparent text-base leading-[25px] text-ink outline-none placeholder:text-muted sm:text-[17px]"
+          class="h-full min-w-0 flex-1 border-none bg-transparent text-base leading-[25px] text-ink shadow-none outline-none placeholder:text-muted focus:border-none focus:shadow-none focus:outline-none sm:text-[17px]"
         />
       </div>
     </div>
@@ -182,7 +182,7 @@
         <a
           href="#tanya-{t.ke}"
           onclick={() => buka(t.ke)}
-          class="flex flex-1 items-center gap-3.5 rounded-2xl border border-line bg-surface p-3.5 shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] hover:bg-card"
+          class="flex flex-1 items-center gap-3.5 rounded-2xl border border-line bg-surface p-3.5 shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:shadow-md active:translate-y-0"
         >
           <span
             class="grid size-[72px] shrink-0 place-items-center rounded-[14px] {t.latar} dark:bg-bg-2"
@@ -221,10 +221,13 @@
           }}
         >
           <summary
-            class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-[18px] py-3.5 text-base leading-[23px] text-ink group-open:pb-1.5 group-open:font-semibold [&::-webkit-details-marker]:hidden"
+            class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-[18px] py-3.5 text-base leading-[23px] text-ink transition-colors duration-150 hover:bg-card/50 group-open:pb-1.5 group-open:font-semibold [&::-webkit-details-marker]:hidden"
           >
             {f.tanya}
-            <Icon name="bawah" class="size-[18px] shrink-0 group-open:rotate-180" />
+            <Icon
+              name="bawah"
+              class="size-[18px] shrink-0 transition-transform duration-200 ease-out group-open:rotate-180"
+            />
           </summary>
           <div class="flex flex-col gap-1.5 px-[18px] pb-3.5 text-[15px] leading-[22px] text-card-ink">
             {#each f.jawab as p, i (i)}<p>{p}</p>{/each}
@@ -245,9 +248,9 @@
             href={p.href}
             target={p.luar ? '_blank' : undefined}
             rel={p.luar ? 'noopener noreferrer' : undefined}
-            class="flex items-center gap-3 rounded-[14px] px-3.5 py-3 {p.gelap
+            class="flex items-center gap-3 rounded-[14px] px-3.5 py-3 transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 {p.gelap
               ? 'bg-primer text-primer-ink hover:opacity-90'
-              : 'border border-line bg-surface text-ink hover:bg-card'}"
+              : 'border border-line bg-surface text-ink hover:bg-card hover:shadow-xs'}"
           >
             <span
               class="grid size-10 shrink-0 place-items-center rounded-xl {p.gelap

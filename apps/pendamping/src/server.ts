@@ -4,8 +4,11 @@ import http from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  AksiSesiInternalSchema,
+  AmatiSesiInternalSchema,
   BerkasSesiInternalSchema,
   IsiSesiInternalSchema,
+  JejakSesiInternalSchema,
   MulaiSesiInternalSchema,
   PENDAMPING_WS_CLOSE,
   PENDAMPING_WS_MAX_PAYLOAD,
@@ -13,6 +16,8 @@ import {
   PendampingClientMessageSchema,
   PendampingViewportSchema,
   PlaceholderVaultSchema,
+  SelesaiSesiInternalSchema,
+  TungguSesiInternalSchema,
   type PendampingGalat,
   type PendampingServerMessage,
   type TiketPendampingResponse,
@@ -132,6 +137,12 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
   let belumHalo = 0;
 
   const periksaInternal = createPenjagaUlang(config.internalToken);
+  /**
+   * Kemampuan worker di /health (aditif): `generik` = Navigator generik (ADR 0030) beserta portal wilayah
+   * registry image ini. Web hanya memakai worker yang melaporkannya untuk sesi generik dan situs `id-only`,
+   * jadi worker laptop ber-image lama tidak pernah membuat urusan gagal (dipandu jujur).
+   */
+  const kemampuan = { generik: true, ...(config.sha ? { sha: config.sha } : {}) } as const;
   /** Semafor global: paling banyak satu pembacaan isi besar (> 64 KB) sekaligus. */
   let bacaBesarAktif = false;
   const server = http.createServer(async (req, res) => {
@@ -139,7 +150,7 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
     const path = url.pathname;
     try {
       if (req.method === 'GET' && path === '/health')
-        return json(res, 200, { ok: true, ...manager.antrean() });
+        return json(res, 200, { ok: true, ...manager.antrean(), ...kemampuan });
 
       if (config.devPage && req.method === 'GET' && path === '/dev') {
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
@@ -259,7 +270,38 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
         const body = parseJson(raw, IsiSesiInternalSchema);
         if (!body)
           return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
-        return json(res, 200, await manager.isiData(body, body.isian));
+        return json(res, 200, await manager.isiData(body, body.isian, body.rencanaHash, body.berkas));
+      }
+      // Navigator generik (ADR 0030): otak di web, tangan di sini. Pemilik = urusanId + sidHash di body.
+      if (path === '/internal/sesi/amati') {
+        const body = parseJson(raw, AmatiSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, await manager.amati(body, body.pantau === true, body.executionId));
+      }
+      if (path === '/internal/sesi/aksi') {
+        const body = parseJson(raw, AksiSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, await manager.aksi(body, body));
+      }
+      if (path === '/internal/sesi/tunggu') {
+        const body = parseJson(raw, TungguSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, await manager.tunggu(body, body.maksMs));
+      }
+      if (path === '/internal/sesi/selesai') {
+        const body = parseJson(raw, SelesaiSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, await manager.selesai(body, body.bukti, body.executionId));
+      }
+      if (path === '/internal/sesi/jejak') {
+        const body = parseJson(raw, JejakSesiInternalSchema);
+        if (!body)
+          return galat(res, 422, { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'Permintaan tidak sesuai.' });
+        return json(res, 200, manager.kurasJejak(body));
       }
       if (path === '/internal/sesi/berkas') {
         const body = parseJson(raw, BerkasSesiInternalSchema);

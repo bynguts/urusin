@@ -1,8 +1,10 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
+  import '#lib/components/landing/landing-gerak.css';
   import './urusan.css';
   import LandingFooter from '#lib/components/landing/LandingFooter.svelte';
   import LandingNav from '#lib/components/landing/LandingNav.svelte';
@@ -37,6 +39,7 @@
    * urusan.css). Header dan footer memakai komponen landing. Tombol "Mulai urusan" di kartu adalah formulir
    * POST ke aksi landing (jalan tanpa JavaScript), judul kartu menuju halaman peristiwanya.
    */
+  const targetMulai = $derived(page.data.akun ? resolve('/beranda') : resolve('/daftar'));
 </script>
 
 <svelte:head>
@@ -52,9 +55,6 @@
   <!-- Page hero -->
   <section class="ur1">
     <div class="ur2">
-      <div class="ur3">
-        <p class="ur4">Urusan</p>
-      </div>
       <h1 class="ur5">Urusan yang bisa dibantu Urusin</h1>
       <p class="ur6">
         Mulai dari peristiwa hidup yang sedang kamu alami. Urusin tahu dokumen dan instansi mana yang
@@ -389,7 +389,8 @@
             <p class="ur114">Sesuai urusanmu</p>
           </div>
           <div class="ur115"></div>
-          <a class="ur116" href="{resolve('/beranda')}?baru">
+          <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+          <a class="ur116" href={targetMulai}>
             <span class="ur117">Mulai urusan</span>
             <img
               class="ur118"
@@ -1077,7 +1078,8 @@
           Gratis dan langsung dari browser. Ceritakan apa yang terjadi, Urusin yang menyusun langkahnya.
         </p>
         <div class="ur253">
-          <a class="ur254" href="{resolve('/beranda')}?baru">
+          <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+          <a class="ur254" href={targetMulai}>
             <img
               class="ur255"
               src="/pen/i-f8e6f89678.svg"

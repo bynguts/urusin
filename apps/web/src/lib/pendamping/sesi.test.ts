@@ -1,6 +1,6 @@
 import type { SesiPendamping } from '@urusin/contracts';
-import { describe, expect, it } from 'vitest';
-import { SesiPendampingUi } from './sesi.svelte.js';
+import { describe, expect, it, vi } from 'vitest';
+import { PANTAU_AI_MS, SesiPendampingUi } from './sesi.svelte.js';
 
 const sesi = (extra: Partial<SesiPendamping> = {}): SesiPendamping => ({
   sesiId: '00000000-0000-4000-8000-000000000001',
@@ -109,6 +109,33 @@ const jawabBawaan = (url: string, init?: RequestInit) =>
     : init?.method === 'DELETE'
       ? Response.json(sesi({ status: 'selesai', mode: 'done' }))
       : Response.json(sesi(), { status: 201 });
+
+describe('SesiPendampingUi: mode AI tanpa pengemudi (N2)', () => {
+  it('selama mode ai, status server diperiksa berkala (server memulihkan loop); berhenti saat giliran warga', async () => {
+    vi.useFakeTimers();
+    try {
+      const { ui, kirim, panggilan } = await tersambung(jawabBawaan);
+      const get = () => panggilan.filter((p) => p === 'GET /api/urusan/u/pendamping').length;
+      kirim('mode', { mode: 'ai' });
+      expect(get()).toBe(0);
+      await vi.advanceTimersByTimeAsync(PANTAU_AI_MS);
+      expect(get()).toBe(1);
+      await vi.advanceTimersByTimeAsync(PANTAU_AI_MS);
+      expect(get()).toBe(2);
+      // Kendali ke warga: tidak ada pemeriksaan lagi.
+      kirim('mode', { mode: 'takeover' });
+      await vi.advanceTimersByTimeAsync(PANTAU_AI_MS * 3);
+      expect(get()).toBe(2);
+      // Lanjutkan (mode ai lagi), lalu layar ditutup: pemeriksaan ikut berhenti.
+      kirim('mode', { mode: 'ai' });
+      ui.tutup();
+      await vi.advanceTimersByTimeAsync(PANTAU_AI_MS * 3);
+      expect(get()).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
 
 describe('SesiPendampingUi: setelah Kirim, teks jujur soal peramban', () => {
   it('siaga (peramban masih hidup) bukan selesai/ditutup dan bukan dijeda; penutupan sungguhan = selesai + done', async () => {

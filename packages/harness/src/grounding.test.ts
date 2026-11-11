@@ -11,9 +11,11 @@ import {
   normalizeForMatch,
   verifyGrounded,
 } from './grounding.js';
+import { kontakLayanan, type KontakLayanan } from '@urusin/registry';
 import { DATAMARK, spotlight } from './spotlight.js';
 import type { ChunkRecord } from './store.js';
 import { appendTextFragment, buildDirective, encodeTerm, textFragmentUrl } from './textfragment.js';
+import { kalimatKanal } from './wilayah.js';
 
 const URL1 = 'https://telunjuksakti.wonogirikab.go.id/layanan/akta-kelahiran';
 const chunk = (over: Partial<ChunkRecord> = {}): ChunkRecord => ({
@@ -255,13 +257,13 @@ describe('hand-off menurut layanan (W3), kontak (W6), dan dedup URL (W9)', () =>
 
   it('adminduk dengan wilayah: kanal Disdukcapil membawa alamat terverifikasi', () => {
     const skh = handoffChannels({ kodeKabKota: '3311', jenis: 'kk', chunks: [] });
-    expect(skh.some((k) => k.kontak === 'Alamat: Jalan Kyai Mawardi No. 1 Sukoharjo')).toBe(true);
+    expect(skh.some((k) => k.kontak?.startsWith('Alamat: Jalan Kyai Mawardi No. 1 Sukoharjo'))).toBe(true);
     const wng = handoffChannels({ kodeKabKota: '3312', jenis: 'kelahiran', chunks: [] });
     expect(wng.some((k) => k.kontak?.includes('Jalan Jenderal Sudirman Nomor 147A'))).toBe(true);
   });
 
-  it('kontak tidak dikarang untuk wilayah yang belum terverifikasi', () => {
-    const k = handoffChannels({ kodeKabKota: '3276', jenis: 'ktp', chunks: [] });
+  it('kontak tidak dikarang untuk wilayah tanpa situs terverifikasi maupun kontak layanan resmi', () => {
+    const k = handoffChannels({ kodeKabKota: '1101', jenis: 'ktp', chunks: [] });
     expect(k.length).toBeGreaterThan(0);
     expect(k.every((x) => x.kontak === undefined)).toBe(true);
   });
@@ -404,5 +406,42 @@ describe('temuan 4: fakta di klaim harus terbukti di kutipan', () => {
     const r = verifyGrounded(banyak, [c], {}, NOW);
     expect(r.klaim).toHaveLength(8);
     expect(r.klaimDibuang).toBe(4);
+  });
+});
+
+describe('kontak layanan resmi (kanal-layanan.json) di hand-off dan kalimat kanal', () => {
+  const nilai = (k: KontakLayanan) => [...k.telepon, ...k.whatsapp, ...k.email];
+
+  it('adminduk Wonogiri: kanal Disdukcapil membawa telepon/WA/email resmi, tanpa kanal dobel', () => {
+    const resmi = kontakLayanan('3312', 'adminduk')!;
+    expect(nilai(resmi).length).toBeGreaterThan(0);
+    const k = handoffChannels({ kodeKabKota: '3312', jenis: 'kelahiran' });
+    const semua = k.map((x) => x.kontak ?? '').join(' ');
+    for (const v of nilai(resmi)) expect(semua).toContain(v);
+    const kunci = k.map((x) => kunciUrl(x.url ?? x.nama));
+    expect(new Set(kunci).size).toBe(kunci.length);
+  });
+
+  it('wilayah tanpa situs terverifikasi tetapi punya kontak resmi (Kota Depok) tetap membawa kontaknya', () => {
+    const resmi = kontakLayanan('3276', 'adminduk')!;
+    const k = handoffChannels({ kodeKabKota: '3276', jenis: 'ktp' });
+    expect(k.some((x) => nilai(resmi).every((v) => x.kontak?.includes(v)))).toBe(true);
+  });
+
+  it('SKCK Sleman: Polresta Sleman dengan kontak resmi; Depok tanpa data tetap Polres/Polsek tanpa kontak', () => {
+    const sleman = handoffChannels({ kodeKabKota: '3404', jenis: 'skck' });
+    const polresta = sleman.find((x) => x.nama === 'Polresta Sleman');
+    expect(polresta?.kontak).toContain('WhatsApp');
+    expect(new URL(polresta!.url!).hostname.endsWith('polri.go.id')).toBe(true);
+    const depok = handoffChannels({ kodeKabKota: '3276', jenis: 'skck' });
+    expect(depok.some((x) => x.nama === 'Polres atau Polsek di Kota Depok' && !x.kontak)).toBe(true);
+  });
+
+  it('kalimatKanal menyebut kontak resmi beserta sumber dan tanggal cek; wilayah tanpa data tidak', () => {
+    const resmi = kontakLayanan('3312', 'adminduk')!;
+    const kal = kalimatKanal('3312');
+    for (const v of nilai(resmi)) expect(kal).toContain(v);
+    expect(kal).toContain(`sumber ${resmi.sumber[0]!.url}, dicek ${resmi.sumber[0]!.dicekPada}`);
+    expect(kalimatKanal('9304')).not.toContain('Kontak resmi');
   });
 });

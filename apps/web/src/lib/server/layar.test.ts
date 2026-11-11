@@ -2,8 +2,8 @@ import { isHttpError, isRedirect } from '@sveltejs/kit';
 import { DemoProvider, wilayahUrusan } from '@urusin/harness';
 import { createRawSnippet } from 'svelte';
 import { render } from 'svelte/server';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { actions as beranda } from '../../routes/+page.server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { actions as beranda, load as muatLanding } from '../../routes/+page.server';
 import { load as muatJejak } from '../../routes/jejak/[id]/+page.server';
 import { load as muatPeristiwa } from '../../routes/peristiwa/[slug]/+page.server';
 import { load as muatUrusan } from '../../routes/urusan/[id]/+page.server';
@@ -13,7 +13,7 @@ import KartuRencana from '../components/urusan/KartuRencana.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
 import { dataAwal, type DataPendamping } from '../pendamping/sesi.svelte';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
-import { SID_COOKIE } from './sesi';
+import { SID_COOKIE, TERAKHIR_COOKIE } from './sesi';
 
 const SID = 'a'.repeat(32);
 
@@ -91,6 +91,40 @@ describe('load layar', () => {
     cookies.set(SID_COOKIE, sid);
     return { params, url: new URL(url), setHeaders: () => {}, cookies, locals: {} } as never;
   };
+
+  it('tamu dengan riwayat urusan tetap melihat landing, lalu dapat membuka aplikasi secara eksplisit', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran' });
+    rt.akun.catatPemilikUrusan(u.id, { sid: SID });
+    const cookies = kue();
+    cookies.set(SID_COOKIE, SID);
+    cookies.set(TERAKHIR_COOKIE, u.id);
+    expect(await muatLanding({ cookies, locals: {} } as never)).toBeUndefined();
+    expect(cookies.get(TERAKHIR_COOKIE)).toBe(u.id);
+    expect(rt.store.getUrusan(u.id)).not.toBeNull();
+  });
+
+  it('akun yang masuk dengan urusan miliknya dilanjutkan ke beranda', async () => {
+    const { akun } = rt.akun.buatDemo({ ip: '127.0.0.1' });
+    const u = rt.store.createUrusan({ jenis: 'kelahiran' });
+    rt.akun.catatPemilikUrusan(u.id, { akun });
+    const cookies = kue();
+    cookies.set(TERAKHIR_COOKIE, u.id);
+    const result = await tangkap(muatLanding({ cookies, locals: { akun } } as never));
+    expect(isRedirect(result)).toBe(true);
+    expect(result).toMatchObject({ status: 303, location: '/beranda' });
+  });
+
+  it('akun dengan cookie urusan milik orang lain atau yang sudah tidak ada tetap mendapat landing', async () => {
+    const { akun } = rt.akun.buatDemo({ ip: '127.0.0.1' });
+    const asing = rt.store.createUrusan({ jenis: 'kelahiran' });
+    rt.akun.catatPemilikUrusan(asing.id, { sid: SID });
+    for (const id of [asing.id, `u_${'0'.repeat(32)}`]) {
+      const cookies = kue();
+      cookies.set(SID_COOKIE, 'b'.repeat(32));
+      cookies.set(TERAKHIR_COOKIE, id);
+      expect(await muatLanding({ cookies, locals: { akun } } as never)).toBeUndefined();
+    }
+  });
 
   it('urusan dan jejak: id tidak valid atau tidak ada → 404', async () => {
     for (const load of [muatUrusan, muatJejak]) {
@@ -218,6 +252,70 @@ describe('render server komponen', () => {
     expect(tanpa).not.toContain('Kirim pengajuan');
   });
 
+  it('giliran ketuk_tautan: judul netral, tombol Buka ber-host+jalur dan Lanjutkan; berhenti tanpa Lanjutkan', () => {
+    const noop = () => {};
+    const tautan = {
+      ref: 'e4',
+      nama: 'Daftar <b>Akta</b>',
+      host: 'contoh-layanan.go.id',
+      jalur: '/akta/baru',
+    };
+    const layar = (alasan: 'ketuk_tautan' | 'final' | 'berhenti', denganTautan = true) => {
+      const data: DataPendamping = {
+        ...dataAwal(),
+        keadaan: 'giliran',
+        mode: 'takeover',
+        giliran: {
+          jenis: 'giliran_anda',
+          alasan,
+          pesan:
+            alasan === 'berhenti'
+              ? 'AI berhenti di sini. Lanjutkan sendiri dari layar ini.'
+              : 'Ketuk tautan yang disorot, lalu tekan Lanjutkan.',
+          ...(alasan === 'ketuk_tautan' && denganTautan ? { tautan } : {}),
+        },
+      };
+      return render(LayarPendamping, {
+        props: {
+          data,
+          situs: 'https://contoh-layanan.go.id',
+          onambilalih: noop,
+          onkembalikan: noop,
+          onhentikan: noop,
+          ontutup: noop,
+          onmulailagi: noop,
+          onpanduan: noop,
+        },
+      }).body;
+    };
+    const body = layar('ketuk_tautan');
+    // Judul netral: tautan pembuka belum tentu formulir.
+    expect(body).toContain('Buka tautan di situs');
+    expect(body).not.toContain('Buka formulir');
+    expect(body).toContain('AI tidak mengetuk tautan ini; Anda yang membukanya.');
+    // Worker membuka tautan lalu AI lanjut: hanya tombol Buka, tanpa Lanjutkan.
+    expect(body).not.toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
+    // Tombol Buka: nama tautan dari situs sebagai teks (di-escape), plus host + jalur tujuan.
+    expect(body).toMatch(/data-buka-tautan[^>]*>[\s\S]*?Buka “Daftar &lt;b>Akta&lt;\/b>”/);
+    expect(body).toContain('(contoh-layanan.go.id/akta/baru)');
+    expect(body).not.toContain('<b>Akta</b>');
+    // Worker lama tanpa `tautan`: tanpa tombol Buka, Lanjutkan tetap ada.
+    expect(layar('ketuk_tautan', false)).not.toContain('data-buka-tautan');
+    expect(layar('ketuk_tautan', false)).toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
+    // Pembanding: giliran kirim akhir tetap tanpa Lanjutkan (tombol Kirim di situs milik warga).
+    expect(layar('final')).not.toContain('Buka tautan di situs');
+    expect(layar('final')).not.toContain('data-buka-tautan');
+    // N2: serah akhir: "AI berhenti", tanpa janji coba lagi dan tanpa Lanjutkan.
+    const henti = layar('berhenti');
+    expect(henti).toContain('AI berhenti');
+    expect(henti).not.toMatch(/mencoba lagi/);
+    expect(henti).not.toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
+    // Warga mengirim sendiri lalu melapor: "Saya sudah mengirim" hanya di serah akhir, bukan giliran lain.
+    expect(henti).toMatch(/data-sudah-kirim[^>]*>Saya sudah mengirim<\/button>/);
+    expect(layar('final')).not.toContain('data-sudah-kirim');
+    expect(layar('ketuk_tautan')).not.toContain('data-sudah-kirim');
+  });
+
   it('halaman urusan memuat nomor permohonan yang tersimpan (kartu Terkirim setelah sesi ditutup)', async () => {
     const u = rt.store.createUrusan({ jenis: 'kelahiran' });
     rt.store.catatNomorPermohonan(u.id, 'FX-REG-0002');
@@ -265,7 +363,10 @@ describe('render server komponen', () => {
 
 describe('/privasi', () => {
   it('menyebut setiap pemroses data pihak lain, lokasi pendamping Indonesia, dan retensi cadangan', async () => {
+    // LandingNav membaca `page.data.akun` (CTA tamu vs akun); di luar SvelteKit konteks `page` tidak ada.
+    vi.doMock('$app/state', () => ({ page: { data: { akun: null } } }));
     const { default: Privasi } = await import('../../routes/privasi/+page.svelte');
+    vi.doUnmock('$app/state');
     const { body } = render(Privasi);
     for (const pihak of [
       'Oracle Cloud',
@@ -308,6 +409,22 @@ describe('Browser Pendamping setelah Kirim', () => {
     expect(b).toContain('Browser masih terbuka sebentar');
     expect(b).toContain('Tutup sekarang');
     expect(b).not.toContain(DITUTUP);
+  });
+
+  it('takeover tanpa giliran (dijeda): Saya sudah mengirim + pesan 409 yang jujur; AI mengisi: tidak ada', async () => {
+    const b = await layar({ keadaan: 'dijeda', mode: 'takeover' });
+    expect(b).toMatch(/data-sudah-kirim[^>]*>Saya sudah mengirim<\/button>/);
+    expect(b).not.toContain('role="alert"');
+    const belum = await layar({
+      keadaan: 'dijeda',
+      mode: 'takeover',
+      pesanKirim: 'Belum terlihat terkirim. Periksa halaman situsnya, lalu coba lagi.',
+    });
+    expect(belum).toMatch(/role="alert"[^>]*>Belum terlihat terkirim\. Periksa halaman situsnya/);
+    expect(await layar({ keadaan: 'dijeda', mode: 'takeover', memeriksaKirim: true })).toMatch(
+      /<button[^>]*disabled[^>]*data-sudah-kirim/,
+    );
+    expect(await layar({ keadaan: 'ai', mode: 'ai' })).not.toContain('data-sudah-kirim');
   });
 
   it('teks "Browser ditutup" hanya saat sesi benar-benar ditutup (mode done)', async () => {

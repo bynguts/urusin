@@ -1,5 +1,6 @@
 import { findPiiSpans, normalizeForScan, type PiiKind, type PiiOptions } from '@urusin/core';
 import type { ChatMessage } from '@urusin/llm';
+import { kontakResmiTercatat } from '@urusin/registry';
 
 /**
  * Lapis 1 interseptor PII (rencana §3.7): sebelum SETIAP panggilan LLM, NIK/KK (16 digit), HP, email, dan nama ibu kandung
@@ -216,6 +217,8 @@ export class PiiInterceptor {
   redact(text: string): RedactResult {
     const hits: { start: number; end: number; kind: PlaceholderKind; value: string; token?: string }[] = [];
     for (const s of findPiiSpans(text, this.ctx)) {
+      // Nomor/email kontak resmi instansi (data/wilayah/kanal-layanan.json) bukan data pribadi warga.
+      if ((s.kind === 'phone' || s.kind === 'email') && kontakResmiTercatat(s.value)) continue;
       const kind: PlaceholderKind =
         s.kind === 'nik' && KK_CONTEXT_RE.test(text.slice(Math.max(0, s.start - 25), s.start))
           ? 'kk'
@@ -292,6 +295,9 @@ export function redactLeaves<T>(value: T): T {
  */
 const PENGENAL: Readonly<Record<string, RegExp>> = {
   paramsHash: /^[0-9a-f]{64}$/,
+  // Jejak Navigator generik (ADR 0030): hash rencana dan sha256 jalur yang diblokir gerbang tulis.
+  rencanaHash: /^[0-9a-f]{64}$/,
+  jalurSha256: /^[0-9a-f]{64}$/,
   executionId: /^x_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
 };
 

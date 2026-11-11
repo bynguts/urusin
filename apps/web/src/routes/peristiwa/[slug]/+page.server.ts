@@ -3,6 +3,7 @@ import { KodeKabKotaSchema } from '@urusin/contracts';
 import { wilayahByKode } from '@urusin/registry';
 import { findPeristiwa } from '#lib/peristiwa.js';
 import { pemilikVault } from '#lib/server/akun.js';
+import { segarkanJaringanId } from '#lib/server/pendamping.js';
 import { daftarKota, peristiwaView } from '#lib/server/referensi.js';
 import { getRuntime } from '#lib/server/runtime.js';
 import type { PageServerLoad } from './$types';
@@ -27,6 +28,7 @@ export const load: PageServerLoad = async (event) => {
       dariDataDiri = true;
     }
   }
+  if (kode) await segarkanJaringanId();
   const rencana = peristiwa.slug === 'lainnya' ? null : peristiwaView(peristiwa.slug, kode);
   const kota = daftarKota().map((k) => ({ kodeKabKota: k.kodeKabKota, nama: k.nama }));
   return { peristiwa, rencana, kota, kodeDipilih: kode, dariDataDiri };

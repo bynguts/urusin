@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import mark from '#lib/assets/img/pen-landing/urusin-mark-52.webp';
 
   /**
@@ -10,6 +11,7 @@
   type Halaman = 'cara-kerja' | 'urusan' | 'privasi' | 'tanya-jawab';
   let { aktif }: { aktif?: Halaman } = $props();
   const diLanding = $derived(aktif === undefined);
+  const targetMulai = $derived(page.data.akun ? resolve('/beranda') : resolve('/daftar'));
   const TAUTAN: { id: Halaman; label: string; href: string }[] = [
     { id: 'cara-kerja', label: 'Cara kerja', href: resolve('/cara-kerja') },
     { id: 'urusan', label: 'Urusan', href: resolve('/urusan') },
@@ -44,11 +46,22 @@
     <!-- eslint-enable svelte/no-navigation-without-resolve -->
   </nav>
   <div class="lp10">
-    <a class="lp8" href={resolve('/masuk')}>
-      <span class="lp9"> Masuk </span>
-    </a>
-    <a class="lp11" href="{resolve('/beranda')}?baru">
-      <span class="lp12"> Mulai gratis </span>
-    </a>
+    {#if page.data.akun}
+      <a class="lp8" href={resolve('/beranda')}>
+        <span class="lp9"> Beranda </span>
+      </a>
+      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+      <a class="lp11" href={resolve('/beranda')}>
+        <span class="lp12"> Buka beranda </span>
+      </a>
+    {:else}
+      <a class="lp8" href={resolve('/masuk')}>
+        <span class="lp9"> Masuk </span>
+      </a>
+      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+      <a class="lp11" href={targetMulai}>
+        <span class="lp12"> Mulai gratis </span>
+      </a>
+    {/if}
   </div>
 </header>

@@ -29,7 +29,7 @@
 </script>
 
 <header
-  class="sticky top-20 z-10 flex min-h-16 flex-wrap items-center gap-3 border-b border-line bg-bg/95 px-4 py-3 backdrop-blur sm:px-7 lg:top-0 lg:min-h-[67.5px] lg:bg-surface/95 lg:py-2"
+  class="sticky top-16 z-10 flex min-h-14 flex-wrap items-center gap-3 border-b border-line bg-bg/95 px-4 py-2.5 backdrop-blur sm:px-7 lg:top-0 lg:min-h-[67.5px] lg:bg-surface/95 lg:py-2"
 >
   {#if awal}{@render awal()}{/if}
   <h1
@@ -43,7 +43,7 @@
       type="button"
       onclick={bacakan}
       aria-pressed={tts.membaca}
-      class="inline-flex min-h-11 items-center gap-2 rounded-full border border-line-2 bg-surface px-4 text-[15px] leading-[23px] text-ink hover:bg-card"
+      class="inline-flex min-h-11 items-center gap-2 rounded-full border border-line-2 bg-surface px-4 text-[15px] leading-[23px] text-ink transition-all duration-150 ease-out hover:bg-card active:scale-95"
     >
       <Icon name="bacakan" class="size-4.5" />
       {tts.membaca ? 'Berhenti' : 'Bacakan'}

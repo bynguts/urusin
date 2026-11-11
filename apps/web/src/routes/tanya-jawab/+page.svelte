@@ -1,8 +1,10 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import '#lib/components/landing/landing-dasar.css';
   import '#lib/components/landing/landing-pen.css';
   import '#lib/components/landing/landing-responsif.css';
+  import '#lib/components/landing/landing-gerak.css';
   import './tanya-jawab.css';
   import LandingFooter from '#lib/components/landing/LandingFooter.svelte';
   import LandingNav from '#lib/components/landing/LandingNav.svelte';
@@ -19,6 +21,7 @@
    * tanpa JavaScript); yang terbuka di frame terbuka di sini. Frame hanya memuat jawaban untuk pertanyaan yang
    * terbuka; jawaban lain ditulis dari docs/privasi.md dan perilaku sistem yang berjalan.
    */
+  const targetMulai = $derived(page.data.akun ? resolve('/beranda') : resolve('/daftar'));
 </script>
 
 <svelte:head>
@@ -34,9 +37,6 @@
   <!-- Page hero -->
   <section class="tj1">
     <div class="tj2">
-      <div class="tj3">
-        <p class="tj4">Tanya jawab</p>
-      </div>
       <h1 class="tj5">Pertanyaan yang sering diajukan</h1>
       <p class="tj6">
         Jawaban singkat soal cara kerja, keamanan, Browser Pendamping, dan biaya. Belum ketemu? Tanyakan
@@ -70,10 +70,14 @@
   <section class="tj10">
     <div class="tj11">
       <nav class="tj12" aria-label="Kategori pertanyaan">
-        <a class="tj13" href="#umum"><span class="tj14">Umum</span></a>
-        <a class="tj15" href="#keamanan"><span class="tj16">Keamanan &amp; privasi</span></a>
-        <a class="tj17" href="#pendamping"><span class="tj18">Browser Pendamping</span></a>
-        <a class="tj19" href="#biaya"><span class="tj20">Biaya &amp; akun</span></a>
+        <a class="tj13 tj-nav-link tj-nav-umum" href="#umum"><span class="tj14">Umum</span></a>
+        <a class="tj15 tj-nav-link tj-nav-keamanan" href="#keamanan"
+          ><span class="tj16">Keamanan &amp; privasi</span></a
+        >
+        <a class="tj17 tj-nav-link tj-nav-pendamping" href="#pendamping"
+          ><span class="tj18">Browser Pendamping</span></a
+        >
+        <a class="tj19 tj-nav-link tj-nav-biaya" href="#biaya"><span class="tj20">Biaya &amp; akun</span></a>
       </nav>
       <div class="tj21">
         <div class="tj22" id="umum">
@@ -407,7 +411,8 @@
         <h2 class="tj89">Belum ketemu jawabannya?</h2>
         <p class="tj90">Tanyakan ke Rose. Jawabannya disertai sumber resmi dan tanggal diperiksa.</p>
         <div class="tj91">
-          <a class="tj92" href="{resolve('/beranda')}?baru">
+          <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+          <a class="tj92" href={targetMulai}>
             <img
               class="tj93"
               src="/pen/i-744984ade4.svg"

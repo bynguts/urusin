@@ -28,6 +28,7 @@ import {
 import { spotlight } from './spotlight.js';
 import { paramsHash, type ChunkRecord } from './store.js';
 import { NON_TERMINAL_STATES, defineTool, type ToolContext, type ToolDef, type ToolResult } from './tools.js';
+import { kalimatJaringanId, keteranganPendamping, rutePendamping, tierUrusan } from './rencana.js';
 import {
   AFIRMASI,
   TEKS_WILAYAH,
@@ -126,7 +127,8 @@ export const dukcapilCekPersyaratan = defineTool({
     const kode = kodeKtp(ctx.store, ctx.urusan) ?? args.kodeKabKota;
     const { entry } = routeByKode(kode);
     const out = await retrieve(ctx, `persyaratan ${args.layanan}`, kode, undefined);
-    const head = `${entry.nama}: tingkat ${entry.tier}, validasi ${entry.validasi}. ${kalimatKanal(kode)}`;
+    const tier = tierUrusan({ jenis: ctx.urusan.jenis, kodeKabKota: kode }) ?? entry.tier;
+    const head = `${entry.nama}: tingkat ${tier}, validasi ${entry.validasi}. ${kalimatKanal(kode)}`;
     return {
       content: `${head}
 ${formatHits(out.hasil, ctx.nonce, 4, kode)}`,
@@ -613,9 +615,18 @@ export const wilayahTetapkan = defineTool({
           : 'Kab/kota KTP belum disebut. Tanyakan "KTP Anda terdaftar di kabupaten/kota mana?" lalu panggil lagi dengan ktp.',
       };
     const { entry } = routeByKode(ktp.kodeKabKota);
-    const pendamping = entry.adapterId
-      ? `Browser Pendamping punya adapter di ${entry.portal?.nama ?? entry.nama}.`
-      : 'Belum ada Browser Pendamping di sini: tingkat dipandu (warga mengisi sendiri dengan panduan).';
+    // Sama dengan rute yang ditawarkan saat rencana disetujui (adapter -> generik -> dipandu).
+    const rute = ctx.urusan.jenis
+      ? rutePendamping({ jenis: ctx.urusan.jenis, kodeKabKota: ktp.kodeKabKota })
+      : undefined;
+    const pendamping =
+      rute && rute.jalur !== 'dipandu'
+        ? `Browser Pendamping: ${keteranganPendamping(rute)}`
+        : rute?.sebab === 'jaringan_id'
+          ? `Browser Pendamping belum tersedia untuk urusan ini (tingkat dipandu): ${kalimatJaringanId(ktp.nama)}`
+          : entry.adapterId
+            ? `Browser Pendamping punya adapter di ${entry.portal?.nama ?? entry.nama}.`
+            : 'Browser Pendamping belum tersedia untuk urusan ini: tingkat dipandu (warga mengisi sendiri dengan panduan).';
     return {
       content: [
         `${TEKS_WILAYAH.ditetapkan} ${ktp.nama}. ${kalimatKanal(ktp.kodeKabKota)} ${pendamping}`,

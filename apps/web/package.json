@@ -27,6 +27,7 @@
     "@urusin/harness": "workspace:*",
     "@urusin/pendamping-client": "workspace:*",
     "@urusin/llm": "workspace:*",
+    "@urusin/navigator": "workspace:*",
     "@urusin/rag": "workspace:*",
     "@urusin/registry": "workspace:*",
     "better-sqlite3": "13.0.3",

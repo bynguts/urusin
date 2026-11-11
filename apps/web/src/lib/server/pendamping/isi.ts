@@ -23,6 +23,10 @@ type Persetujuan = {
   writeList: readonly string[];
   fields: string[];
   targetOrigin: string;
+  /** Wilayah KTP urusan (sudah ditetapkan warga): portal wilayah ini boleh menjadi tujuan. */
+  kodeWilayah: string | null;
+  /** Navigator generik: persetujuan untuk rencana halaman ini saja. */
+  rencanaHash?: string | undefined;
 };
 
 /** Persetujuan tertunda per urusan (proses tunggal; hilang saat restart = warga menekan "Izinkan isi" lagi). */
@@ -59,14 +63,29 @@ function fieldDari(writeList: readonly string[]): string[] {
  */
 export function izinkanIsiUrusan(
   rt: Runtime,
-  p: { urusanId: string; peminta: Peminta; writeList: readonly string[]; targetOrigin: string },
+  p: {
+    urusanId: string;
+    peminta: Peminta;
+    writeList: readonly string[];
+    targetOrigin: string;
+    rencanaHash?: string | undefined;
+  },
 ): { kurang: string[] } {
   const ownerId = rt.akun.pemilikVaultUrusan(p.urusanId, p.peminta);
   if (!ownerId) throw new AkunError('IZIN_TIDAK_VALID');
   const fields = fieldDari(p.writeList);
   const targetOrigin = asal(p.targetOrigin);
-  const token = izinkanIsi(rt, ownerId, fields, targetOrigin);
-  tertunda.set(p.urusanId, { ownerId, token, writeList: p.writeList, fields, targetOrigin });
+  const kodeWilayah = rt.store.getUrusan(p.urusanId)?.kodeKabKota ?? null;
+  const token = izinkanIsi(rt, ownerId, fields, targetOrigin, { kodeWilayah, rencanaHash: p.rencanaHash });
+  tertunda.set(p.urusanId, {
+    ownerId,
+    token,
+    writeList: p.writeList,
+    fields,
+    targetOrigin,
+    kodeWilayah,
+    rencanaHash: p.rencanaHash,
+  });
   const data = rt.akun.vault.getDataDiri(ownerId)?.data ?? {};
   const jenisAda = new Set(rt.akun.vault.listDocuments(ownerId).map((d) => d.jenis));
   const kurang: string[] = [];
@@ -84,20 +103,24 @@ export function izinkanIsiUrusan(
 
 /**
  * Dipanggil controller Pendamping saat halaman tujuan terbuka. `liveOrigin` = URL/origin halaman yang sedang
- * dimuat Chromium. Persetujuan dipakai sekali (juga bila origin salah).
+ * dimuat Chromium; `rencanaHash` = rencana halaman yang sedang menunggu persetujuan di worker (Navigator
+ * generik), harus sama dengan yang disetujui warga. Persetujuan dipakai sekali (juga bila origin/hash salah).
  */
 export function ambilIsianUntukIsi(
   rt: Runtime,
-  p: { urusanId: string; liveOrigin: string },
+  p: { urusanId: string; liveOrigin: string; rencanaHash?: string | undefined },
 ): { isian: Record<string, string>; berkas: BerkasIsi[] } {
   const s = tertunda.get(p.urusanId);
   tertunda.delete(p.urusanId);
-  if (!s || asal(p.liveOrigin) !== s.targetOrigin) throw new AkunError('IZIN_TIDAK_VALID');
+  if (!s || asal(p.liveOrigin) !== s.targetOrigin || p.rencanaHash !== s.rencanaHash)
+    throw new AkunError('IZIN_TIDAK_VALID');
   const { nilai, berkas } = resolusiIsi(rt, {
     ownerId: s.ownerId,
     token: s.token,
     writeList: s.fields,
     targetOrigin: s.targetOrigin,
+    kodeWilayah: s.kodeWilayah,
+    rencanaHash: s.rencanaHash,
   });
   const isian: Record<string, string> = {};
   for (const w of s.writeList) {

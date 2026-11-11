@@ -118,8 +118,9 @@
       </div>
     </div>
     <div class="flex flex-col gap-2">
-      <div class="flex items-baseline justify-between gap-3">
-        <label for="sandi" class="text-[0.9375rem] font-semibold text-ink">Kata sandi</label>
+      <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+        <label for="sandi" class="text-[0.9375rem] font-semibold whitespace-nowrap text-ink">Kata sandi</label
+        >
         <a
           href={resolve('/lupa-sandi')}
           class="inline-flex min-h-12 items-center text-[0.9375rem] font-semibold text-brand"
@@ -144,25 +145,43 @@
         class="inline-flex min-h-12 items-center font-semibold text-ink">Daftar</a
       >
     </p>
-    <a href={resolve('/beranda')} class="inline-flex min-h-12 items-center font-semibold text-ink underline"
+    <a href={resolve('/')} class="inline-flex min-h-12 items-center font-semibold text-ink underline"
       >Coba tanpa daftar</a
     >
   </div>
 
   {#if data.juri}
-    <section class="mt-4 rounded-2xl border border-line bg-card px-4 py-4">
-      <p class="text-[0.9375rem] text-body">
-        Juri lomba tidak perlu akun: satu klik membuat salinan demo berisi data contoh, khusus untuk Anda,
-        terhapus otomatis dalam 24 jam. Data contoh tidak pernah dikirim ke situs pemerintah.
+    <section class="mt-4 rounded-2xl border border-line bg-card p-4.5 sm:p-5">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex size-2 rounded-full bg-hijau" aria-hidden="true"></span>
+        <h2 class="text-[0.9375rem] font-semibold text-ink">Mode Evaluasi &amp; Juri</h2>
+      </div>
+      <p class="mt-1.5 text-[0.875rem] leading-relaxed text-body">
+        Eksplorasi seluruh alur Urusin secara instan dengan salinan demo dan data contoh siap pakai tanpa
+        perlu mendaftar. Sesi ini terisolasi, aman, dan terhapus otomatis dalam 24 jam tanpa dikirim ke
+        instansi resmi.
       </p>
-      <form method="POST" action="?/juri" data-juri class="mt-3">
+      <form
+        method="POST"
+        action="?/juri"
+        data-juri
+        use:enhance={() => {
+          sibuk = true;
+          return async ({ update }) => {
+            sibuk = false;
+            await update();
+          };
+        }}
+        class="mt-3.5"
+      >
         <input type="hidden" name="turnstile" value="" />
         {#if data.turnstileSiteKey}<div class="mb-3" use:turnstile={data.turnstileSiteKey}></div>{/if}
         <button
           type="submit"
-          class="flex min-h-14 w-full items-center justify-center gap-2 rounded-full border border-line-2 bg-surface font-semibold text-ink hover:bg-bg-2"
+          disabled={sibuk}
+          class="flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-line-2 bg-surface font-semibold text-ink transition-all duration-150 hover:bg-bg-2 hover:shadow-xs active:scale-[0.99] disabled:opacity-60"
         >
-          <Icon name="perisai-centang" class="size-5" /> Masuk sebagai juri
+          <Icon name="perisai-centang" class="size-5 text-hijau" /> Masuk sebagai juri
         </button>
       </form>
     </section>

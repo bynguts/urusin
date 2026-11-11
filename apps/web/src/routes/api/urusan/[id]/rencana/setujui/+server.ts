@@ -1,6 +1,7 @@
 import { TurnInProgressError, isTerminal, setujuiRencana } from '@urusin/harness';
 import { z } from 'zod';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
+import { segarkanJaringanId } from '#lib/server/pendamping.js';
 import { getRuntime } from '#lib/server/runtime.js';
 import { urusanMilik } from '#lib/server/urusan-akses.js';
 import type { RequestHandler } from './$types';
@@ -18,6 +19,8 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
   if (!body.ok) return body.response;
   try {
     const rt = await getRuntime();
+    // Portal `id-only` hanya ditawarkan bila worker berjaringan Indonesia sehat SAAT persetujuan.
+    await segarkanJaringanId();
     const u = urusanMilik(rt, params.id, locals);
     if (!u) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
     if (isTerminal(u.state)) return apiError(409, 'TERMINAL', 'Urusan ini sudah selesai.');

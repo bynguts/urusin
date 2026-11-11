@@ -181,7 +181,9 @@ describe('createPendampingViewer', () => {
     viewer.on('koneksi', (k) => seen.push(k));
     viewer.on('event', (e) => seen.push(`event:${e.jenis}`));
     viewer.on('status', (s) => seen.push(`status:${s.status}`));
-    viewer.on('butuh_data', (d) => seen.push(`data:${d.berkas.join()}`));
+    viewer.on('butuh_data', (d) =>
+      seen.push(`data:${d.berkas.join()}${d.rencanaHash ? `:${d.kolom?.[0]?.labelPortal}` : ''}`),
+    );
     viewer.on('galat', (g) => seen.push(`galat:${g.kode}`));
     const frames: number[] = [];
     viewer.on('frame', (m) => frames.push(m.lebar));
@@ -198,16 +200,38 @@ describe('createPendampingViewer', () => {
     ws.push({ type: 'event', event: { jenis: 'langkah', indeks: 0, total: 3, label: 'x' } });
     ws.push({ type: 'status', sesi: { status: 'antre' } });
     ws.push({ type: 'butuh_data', placeholder: [], berkas: ['ktp'], origin: 'https://a.example' });
+    ws.push({
+      type: 'butuh_data',
+      placeholder: ['{{PEMOHON.NAMA}}'],
+      berkas: [],
+      origin: 'https://a.example',
+      kolom: [{ placeholder: '{{PEMOHON.NAMA}}', labelPortal: 'Nama Pemohon' }],
+      rencanaHash: 'a'.repeat(64),
+    });
     ws.push({ type: 'galat', kode: 'INTERNAL', pesanWarga: 'x' });
     ws.push({ type: 'pong', t: 1 });
     ws.onmessage?.({ data: 'bukan json' });
     ws.onmessage?.({ data: new Uint8Array(1) });
     // 'menyambung' terpancar sinkron sebelum listener terpasang.
-    expect(seen).toEqual(['tersambung', 'event:langkah', 'status:antre', 'data:ktp', 'galat:INTERNAL']);
+    expect(seen).toEqual([
+      'tersambung',
+      'event:langkah',
+      'status:antre',
+      'data:ktp',
+      'data::Nama Pemohon',
+      'galat:INTERNAL',
+    ]);
     viewer.ambilAlih();
     viewer.kembalikan();
+    viewer.bukaTautan('e7');
     viewer.akhiri();
-    expect(ws.sent.slice(1).map((m) => m.type)).toEqual(['ambil_alih', 'kembalikan', 'akhiri']);
+    expect(ws.sent.slice(1).map((m) => m.type)).toEqual([
+      'ambil_alih',
+      'kembalikan',
+      'buka_tautan',
+      'akhiri',
+    ]);
+    expect(ws.sent.find((m) => m.type === 'buka_tautan')).toEqual({ type: 'buka_tautan', ref: 'e7' });
     // A-M1: viewer tidak punya jalur kirim nilai vault atau berkas.
     expect('kirimVault' in viewer || 'kirimBerkas' in viewer).toBe(false);
   });

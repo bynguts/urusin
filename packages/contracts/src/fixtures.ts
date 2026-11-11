@@ -2,6 +2,7 @@ import { z } from 'zod';
 import * as api from './api.js';
 import { GalatApiSchema } from './common.js';
 import { UrusinEventSchema } from './events.js';
+import { PengamatanSchema, RencanaHalamanSchema } from './pendamping.js';
 import { KeadaanLayarSchema } from './stores.js';
 
 /**
@@ -24,6 +25,9 @@ export const SKEMA_FIXTURE = {
   health: api.HealthResponseSchema,
   kartu: api.KartuResponseSchema,
   sambung: api.SambungResponseSchema,
+  // Navigator generik (ADR 0030): contoh pengamatan halaman dan rencana per halaman.
+  pengamatan: PengamatanSchema,
+  rencana_halaman: RencanaHalamanSchema,
 } as const;
 export type NamaSkemaFixture = keyof typeof SKEMA_FIXTURE;
 

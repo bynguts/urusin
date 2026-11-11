@@ -1,0 +1,13 @@
+{
+  "skema": "rencana_halaman",
+  "catatan": "Rencana satu halaman: isi dari placeholder vault, pilih indeks opsi teramati, unggah berkas, lalu serahkan final ke warga.",
+  "data": {
+    "aksi": [
+      { "jenis": "isi", "ref": "e1", "nilai": "{{PEMOHON.NIK}}" },
+      { "jenis": "isi", "ref": "e2", "nilai": "{{PEMOHON.NAMA}}" },
+      { "jenis": "pilih", "ref": "e3", "nilai": { "opsi": 1 } },
+      { "jenis": "unggah", "ref": "e4", "berkas": "KTP" },
+      { "jenis": "serahkan", "alasan": "final", "ref": "e6" }
+    ]
+  }
+}

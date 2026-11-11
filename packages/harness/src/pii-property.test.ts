@@ -1,5 +1,5 @@
 import { FakeProvider, fakeCompletion, type ChatMessage } from '@urusin/llm';
-import { SEED_ENTRIES } from '@urusin/registry';
+import { SEED_ENTRIES, kontakLayanan } from '@urusin/registry';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
@@ -343,6 +343,22 @@ describe('properti: nama (gadis) ibu kandung tidak lolos ke LLM maupun DB', () =
       'Ibu saya tinggal di Sleman.',
     ])
       expect(new PiiInterceptor().redact(teks).text).toBe(teks);
+  });
+});
+
+describe('kontak resmi instansi bukan data pribadi', () => {
+  it('WA/email resmi dari kanal-layanan tetap utuh; nomor dan email warga tetap diganti placeholder', () => {
+    const resmi = kontakLayanan('3312', 'adminduk')!;
+    const wa = resmi.whatsapp[0]!;
+    const email = resmi.email[0]!;
+    const out = new PiiInterceptor().redact(
+      `Hubungi WhatsApp Disdukcapil ${wa} atau ${email}. Nomor saya 0812-0000-0001, email saya warga@gmail.com`, // pii-scan:allow
+    ).text;
+    expect(out).toContain(wa);
+    expect(out).toContain(email);
+    expect(out).not.toContain('0812-0000-0001'); // pii-scan:allow
+    expect(out).not.toContain('warga@gmail.com'); // pii-scan:allow
+    expect(redactForStorage(`WA resmi ${wa}`)).toContain(wa);
   });
 });
 

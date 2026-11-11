@@ -235,9 +235,9 @@
    * "Izinkan isi" (A-M1): peramban hanya mengirim daftar write + origin tujuan. Server menyimpan persetujuan;
    * Pendamping mengambil nilai Data Diri dan berkas di server. Nilai vault tidak pernah lewat peramban.
    */
-  async function izinkanIsi() {
+  async function izinkanIsi(pilihan?: { placeholder: string[]; berkas: string[] }) {
     izin = { sibuk: true };
-    const pesan = await sesi.izinkanIsi();
+    const pesan = await sesi.izinkanIsi(pilihan);
     izin = { sibuk: false, ...(pesan ? { pesan } : {}) };
   }
 
@@ -333,6 +333,8 @@
             bind:inputTeks
             onambilalih={() => sesi.ambilAlih()}
             onkembalikan={() => void sesi.kembalikan()}
+            onbukatautan={() => sesi.bukaTautan()}
+            onsudahkirim={() => sesi.sudahMengirim()}
             onhentikan={() => void sesi.hentikan()}
             ontutup={() => void sesi.tutupSekarang()}
             onmulailagi={() => {
@@ -521,8 +523,10 @@
   buka={sesi.data.butuhData !== null}
   placeholder={sesi.data.butuhData?.placeholder ?? []}
   berkas={sesi.data.butuhData?.berkas ?? []}
+  kolom={sesi.data.butuhData?.kolom}
+  rencanaHash={sesi.data.butuhData?.rencanaHash}
   sibuk={izin.sibuk}
   pesan={izin.pesan}
-  onizinkan={() => void izinkanIsi()}
+  onizinkan={(pilihan) => void izinkanIsi(pilihan)}
   ontolak={isiSendiri}
 />

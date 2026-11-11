@@ -20,7 +20,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "gen:wilayah": "node scripts/gen-wilayah.mjs && pnpm -w exec prettier --write packages/registry/src/wilayah-data.ts"
+    "gen:wilayah": "node scripts/gen-wilayah.mjs"
   },
   "dependencies": {
     "zod": "4.6.7"
