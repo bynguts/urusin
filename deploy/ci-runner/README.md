@@ -9,6 +9,7 @@
 > gh api -X POST repos/bynguts/urusin/actions/runners/remove-token --jq .token \
 >   | ssh ubuntu@agent-vm 'sudo /tmp/urusin-ci-install/deploy/ci-runner/uninstall.sh'   # token lewat stdin
 > gh variable delete URUSIN_RUNNER --repo bynguts/urusin  # semua job kembali ke ubuntu-latest
+> deploy/ci-runner-laptop/down.sh   # runner kedua di laptop + variabel URUSIN_RUNNER_UJI (lihat ../ci-runner-laptop)
 > gh api repos/bynguts/urusin/actions/runners --jq .total_count   # harus 0
 > ```
 >

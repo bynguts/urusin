@@ -89,11 +89,14 @@ log (README "Batasan"), jadi alur daftar dengan email tidak termasuk checklist i
 Repo publik + runner self-hosted = siapa pun bisa menjalankan kode di agent-vm lewat PR dari fork. Langkah ini
 wajib walaupun runner cadangan tidak pernah dipasang (cukup memastikan hasilnya nol).
 
-| #   | Langkah                                                             | Hasil yang diharapkan       | Bila gagal                                                   |
-| --- | ------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------ |
-| 7.1 | `gh api repos/bynguts/urusin/actions/runners --jq .total_count`     | `0`                         | `sudo deploy/ci-runner/uninstall.sh` di agent-vm, ulangi 7.1 |
-| 7.2 | `gh variable list --repo bynguts/urusin`                            | Tidak ada `URUSIN_RUNNER`   | `gh variable delete URUSIN_RUNNER --repo bynguts/urusin`     |
-| 7.3 | `ssh agent-vm 'systemctl is-active urusin-ci-runner; id urusin-ci'` | `inactive` / tidak ada user | Jalankan uninstall; jangan ubah visibilitas sebelum bersih   |
-| 7.4 | Token admin lokal yang membuat registration/remove token runner     | Sudah dirotasi/dicabut      | Rotasi sekarang (tidak pernah ada PAT di box)                |
+| #   | Langkah                                                             | Hasil yang diharapkan         | Bila gagal                                                        |
+| --- | ------------------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------------- |
+| 7.1 | `gh api repos/bynguts/urusin/actions/runners --jq .total_count`     | `0`                           | `sudo deploy/ci-runner/uninstall.sh` di agent-vm, ulangi 7.1      |
+| 7.2 | `gh variable list --repo bynguts/urusin`                            | Tidak ada `URUSIN_RUNNER`     | `gh variable delete URUSIN_RUNNER --repo bynguts/urusin`          |
+| 7.3 | `ssh agent-vm 'systemctl is-active urusin-ci-runner; id urusin-ci'` | `inactive` / tidak ada user   | Jalankan uninstall; jangan ubah visibilitas sebelum bersih        |
+| 7.4 | Token admin lokal yang membuat registration/remove token runner     | Sudah dirotasi/dicabut        | Rotasi sekarang (tidak pernah ada PAT di box)                     |
+| 7.5 | `deploy/ci-runner-laptop/down.sh` di laptop (runner kedua)          | `sisa runner ... : 0`         | `gh api -X DELETE .../actions/runners/<id>` label `urusin-laptop` |
+| 7.6 | `gh variable delete URUSIN_RUNNER_UJI --repo bynguts/urusin`        | Tidak ada `URUSIN_RUNNER_UJI` | Ulangi; jangan ubah visibilitas sebelum bersih                    |
 
-Detail: [`deploy/ci-runner/README.md`](../../deploy/ci-runner/README.md).
+Detail: [`deploy/ci-runner/README.md`](../../deploy/ci-runner/README.md) dan
+[`deploy/ci-runner-laptop/README.md`](../../deploy/ci-runner-laptop/README.md).

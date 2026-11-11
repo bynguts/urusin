@@ -20,6 +20,11 @@ Berkas: `compose.prod.yml`, `Caddyfile.urusin.primary` (+ `.fallback`), `hardeni
 > `gh variable delete URUSIN_RUNNER --repo bynguts/urusin` → `gh api repos/bynguts/urusin/actions/runners --jq .total_count`
 > = 0 → rotasi token admin lokal (tidak pernah ada PAT di box) → baru ubah visibilitas. Detail, batas sumber daya, dan keputusan sudoers vs grup docker:
 > [`ci-runner/README.md`](ci-runner/README.md).
+>
+> **Runner CI kedua di laptop (`ci-runner-laptop/`, `URUSIN_RUNNER_UJI=urusin-laptop`) untuk job non-ci-docker
+> di `ci.yml`. Juga WAJIB dicopot sebelum Public:** `deploy/ci-runner-laptop/down.sh` (hapus variabel, kontainer,
+> registrasi) → `gh variable delete URUSIN_RUNNER_UJI --repo bynguts/urusin` bila tersisa. Detail:
+> [`ci-runner-laptop/README.md`](ci-runner-laptop/README.md).
 
 ## Instalasi pertama
 
