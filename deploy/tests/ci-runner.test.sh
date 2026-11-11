@@ -88,9 +88,9 @@ check "e2e menjalankan pnpm e2e sebagai uid pemilik workspace" '[[ "$run_line" =
 check "pw tidak login GHCR" '[[ "$calls" != *"[login]"* ]]'
 check "versi pnpm dibaca di host lalu dioper lewat env (root kontainer tanpa capability tak bisa membaca workspace 0750)" '[[ "$run_line" == *"[PNPM_VERSION=10.20.0]"* && "$run_line" != *"/work/package.json"* ]]'
 SHIM_DF_PCT=50 cid pw perf "$WS" "$SHA"
-check "perf menjalankan lhci autorun" '[ $rc -eq 0 ] && [[ "$calls" == *"lhci autorun"* ]]'
+check "perf menjalankan scripts/lhci-jalan.mjs (autorun hanya untuk checkout tanpa skrip itu)" '[ $rc -eq 0 ] && [[ "$calls" == *"if [ -f scripts/lhci-jalan.mjs ]; then node scripts/lhci-jalan.mjs; else pnpm exec lhci autorun; fi"* ]]'
 run_line="$(grep '^docker \[run\]' <<<"$calls")"
-check "perf: kuota CPU sama 1,5 dengan periode CFS 10 ms (tanpa --cpus), batas lain tetap" '[[ "$run_line" == *"[--cpu-period] [10000] [--cpu-quota] [15000]"* && "$run_line" != *"[--cpus]"* && "$run_line" == *"[--cpu-shares] [256]"* && "$run_line" == *"[--memory] [4g]"* && "$run_line" == *"[--pids-limit] [2048]"* ]]'
+check "perf: kuota CPU sama 1,5 dengan periode CFS 10 ms (tanpa --cpus), bobot CPU bawaan 1024, batas lain tetap" '[[ "$run_line" == *"[--cpu-period] [10000] [--cpu-quota] [15000] [--cpu-shares] [1024]"* && "$run_line" != *"[--cpus]"* && "$run_line" != *"[--cpu-shares] [256]"* && "$run_line" == *"[--memory] [4g]"* && "$run_line" == *"[--pids-limit] [2048]"* ]]'
 printf 'FROM mcr.microsoft.com/playwright:v1.65.0-noble AS pwbasis\n' > "$WS/apps/pendamping/Dockerfile"
 SHIM_DF_PCT=50 cid pw e2e "$WS" "$SHA"
 check "basis Playwright tanpa pin digest ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'

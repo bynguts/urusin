@@ -34,6 +34,18 @@
   let posisi = $state('');
 
   const nama = $derived(kota.find((k) => k.kodeKabKota === value)?.nama ?? placeholder);
+  // ~515 <option> select asli sebagai satu string HTML, bukan {#each}: hidrasi cukup mengadopsi node SSR, tanpa
+  // satu efek per opsi (task hidrasi /pengaturan memendek ~25%, TBT Lighthouse). Isinya dari registri wilayah
+  // server, tetap di-escape. Berubah (pilihan baru) = opsi dibuat ulang dengan `selected` pada kode terpilih.
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const opsi = $derived(
+    kota
+      .map(
+        (k) =>
+          `<option value="${esc(k.kodeKabKota)}"${value === k.kodeKabKota ? ' selected' : ''}>${esc(k.nama)}</option>`,
+      )
+      .join(''),
+  );
   const pilihan = $derived(bolehKosong ? [{ kodeKabKota: '', nama: placeholder }, ...kota] : kota);
   const kata = $derived(cari.trim().toLocaleLowerCase('id-ID').split(/\s+/).filter(Boolean));
   const hasil = $derived(
@@ -42,6 +54,12 @@
 
   // Select tetap menjadi kontrol form asli. Pilihan sebelum hidrasi dibaca sebelum UI pencarian muncul.
   onMount(() => {
+    // Hidrasi mengadopsi opsi SSR apa adanya, padahal `value` klien bisa berbeda (mis. wilayah dari penyimpanan
+    // perangkat). Pasang atribut `selected` pada opsinya, sama dengan yang dilakukan efek {#each} sebelumnya saat
+    // hidrasi, lalu baca nilai select seperti biasa.
+    if (select && value) {
+      for (const o of select.options) if (o.value === value) o.setAttribute('selected', '');
+    }
     const awal = select?.value ?? value;
     const berubah = awal !== value;
     value = awal;
@@ -148,13 +166,15 @@
   });
 </script>
 
+<!-- Atribut dinamis bernilai string ('', 'true'), bukan boolean/angka: untuk nilai non-string Svelte memindai
+     semua setter prototipe elemen (sekali per jenis elemen, ~5 ms) di dalam task hidrasi. Select ber-`hidden`
+     (display none) sudah keluar dari urutan Tab, jadi tanpa tabindex -1. -->
 <select
   id={siap ? `${id}-asli` : id}
   {name}
   bind:this={select}
-  hidden={siap}
-  aria-hidden={siap ? true : undefined}
-  tabindex={siap ? -1 : undefined}
+  hidden={siap ? '' : undefined}
+  aria-hidden={siap ? 'true' : undefined}
   aria-describedby={describedby}
   autocomplete="address-level2"
   onchange={(e) => {
@@ -164,9 +184,8 @@
   class="min-h-12 w-full min-w-0 rounded-xl border border-line-2 bg-surface px-4 text-base text-ink"
 >
   <option value="" disabled={!bolehKosong} selected={!value}>{placeholder}</option>
-  {#each kota as k (k.kodeKabKota)}
-    <option value={k.kodeKabKota} selected={value === k.kodeKabKota}>{k.nama}</option>
-  {/each}
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -- opsi dari registri wilayah server, di-escape (lihat `esc`) -->
+  {@html opsi}
 </select>
 
 {#if siap}
@@ -175,7 +194,7 @@
       bind:this={input}
       {id}
       role="combobox"
-      aria-expanded={terbuka}
+      aria-expanded={terbuka ? 'true' : 'false'}
       aria-controls="{id}-daftar"
       aria-autocomplete="list"
       aria-activedescendant={terbuka && hasil[aktif] ? `${id}-opsi-${aktif}` : undefined}
@@ -201,7 +220,7 @@
     <button
       type="button"
       aria-label={terbuka ? 'Tutup pilihan kabupaten/kota' : 'Buka pilihan kabupaten/kota'}
-      aria-expanded={terbuka}
+      aria-expanded={terbuka ? 'true' : 'false'}
       aria-controls="{id}-daftar"
       tabindex="-1"
       onpointerdown={(e) => e.preventDefault()}

@@ -92,11 +92,15 @@ ghcr_login() {
 
 # Batas sumber daya untuk SEMUA kontainer yang dibuat runner (di luar cgroup unit systemd runner).
 # Tanpa --blkio-weight: scheduler disk agent-vm "none" (bobot I/O tidak berlaku) dan Docker Desktop menolaknya.
-LIMITS_SISA=(--cpu-shares 256 --memory 4g --memory-swap 4g --pids-limit 2048 --ulimit core=0)
+LIMITS_DASAR=(--memory 4g --memory-swap 4g --pids-limit 2048 --ulimit core=0)
+LIMITS_SISA=(--cpu-shares 256 "${LIMITS_DASAR[@]}")
 LIMITS=(--cpus 1.5 "${LIMITS_SISA[@]}")
 # `pw perf` (Lighthouse): rata-rata tetap 1,5 CPU, tetapi periode CFS 10 ms (bawaan 100 ms). Bila kuota habis,
 # jeda throttle selalu < 10 ms, bukan puluhan ms yang menyela task main-thread dan menambah noise TBT.
-LIMITS_PERF=(--cpu-period 10000 --cpu-quota 15000 "${LIMITS_SISA[@]}")
+# Bobot CPU bawaan (1024, sama dengan kontainer lain), bukan 256: dengan 256 kontainer perf hanya mendapat 1/4
+# jatah saat host sibuk, task teramati memanjang lalu dikali multiplier, dan TBT melonjak (run 43032218573,
+# 43042454102). Kuota 1,5 CPU tetap menjadi batas atas, jadi layanan lain tidak pernah kehilangan lebih dari itu.
+LIMITS_PERF=(--cpu-period 10000 --cpu-quota 15000 --cpu-shares 1024 "${LIMITS_DASAR[@]}")
 
 # Platform build: arm64 selalu (agent-vm). amd64 hanya bila binfmt qemu-x86_64 SUDAH terdaftar di host
 # (paket distro); skrip ini tidak pernah memasang binfmt (itu perubahan kernel host).
@@ -120,7 +124,8 @@ cmd_pw() {
   case "$job" in
     e2e) script='pnpm install --frozen-lockfile --ignore-scripts && pnpm e2e' ;;
     perf)
-      script='pnpm install --frozen-lockfile --ignore-scripts && pnpm build && CHROME_PATH="$(ls -d /ms-playwright/chromium-*/chrome-linux*/chrome | head -n1)" PORT=4173 HOST=127.0.0.1 ORIGIN=http://127.0.0.1:4173 pnpm exec lhci autorun'
+      # scripts/lhci-jalan.mjs (collect + ulang run host-sibuk + assert); checkout lama tanpa skrip itu: autorun.
+      script='pnpm install --frozen-lockfile --ignore-scripts && pnpm build && CHROME_PATH="$(ls -d /ms-playwright/chromium-*/chrome-linux*/chrome | head -n1)" PORT=4173 HOST=127.0.0.1 ORIGIN=http://127.0.0.1:4173 && export CHROME_PATH PORT HOST ORIGIN && if [ -f scripts/lhci-jalan.mjs ]; then node scripts/lhci-jalan.mjs; else pnpm exec lhci autorun; fi'
       ;;
     *) die "job Playwright tidak dikenal: '$job' (e2e|perf)" ;;
   esac
