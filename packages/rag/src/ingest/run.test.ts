@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { runKanal } from './kanal-verify.js';
 import type { ProbeGet } from './kontak.js';
 import { runKontak } from './kontak-run.js';
+import { runPemda } from './pemda-run.js';
 
 const tmp = () => mkdtempSync(join(tmpdir(), 'urusin-run-'));
 const NOW = new Date('2026-11-08T00:00:00.000Z');
@@ -91,5 +92,67 @@ describe('runKontak', () => {
     expect(refreshed).toBe(1);
     const limited = await runKontak({ ...p, limit: 2, refresh: true, deps, log: () => undefined });
     expect(limited).toBe(2);
+    // --belum: hanya 11 entri belum_terverifikasi yang diperiksa ulang; Kota Wila dipertahankan.
+    const belum = await runKontak({ ...p, belum: true, deps, log: () => undefined });
+    expect(belum).toBe(11);
+  });
+});
+
+describe('runPemda', () => {
+  const setup = () => {
+    const dir = tmp();
+    const wilayahPath = join(dir, 'kabkota.json');
+    const kontakPath = join(dir, 'kontak.json');
+    writeFileSync(
+      wilayahPath,
+      JSON.stringify({
+        provinsi: [{ kode: '91', nama: 'Papua' }],
+        kabkota: [
+          { kode: '9171', jenis: 'kota', nama: 'Kota Jayapura' },
+          { kode: '9103', jenis: 'kabupaten', nama: 'Kabupaten Jayapura' },
+          { kode: '3201', jenis: 'kabupaten', nama: 'Kabupaten Bogor' },
+        ],
+      }),
+    );
+    // Kab. Bogor sudah punya situs Disdukcapil terverifikasi: tidak butuh cadangan pemda.
+    writeFileSync(kontakPath, JSON.stringify({ kontak: [{ kode: '3201', status: 'terverifikasi' }] }));
+    return { wilayahPath, kontakPath, outPath: join(dir, 'pemda.json') };
+  };
+  let naik = false;
+  const deps = {
+    resolves: async (h: string) => h === 'papua.go.id' || (naik && h === 'jayapurakota.go.id'),
+    get: (async (url: string) => ({
+      status: 200,
+      body: url.includes('papua')
+        ? '<p>Situs resmi Pemerintah Provinsi Papua</p>'
+        : '<p>Situs resmi Pemerintah Kota Jayapura</p>',
+      contentType: 'text/html',
+      finalUrl: url,
+    })) as ProbeGet,
+    now: () => NOW,
+  };
+
+  it('provinsi + kab/kota tanpa situs Disdukcapil; --belum hanya mengulang yang belum terverifikasi', async () => {
+    const p = setup();
+    expect(await runPemda({ ...p, deps, log: () => undefined })).toBe(3);
+    const baca = () =>
+      JSON.parse(readFileSync(p.outPath, 'utf8')) as {
+        total: number;
+        pemda: { kode: string; status: string }[];
+      };
+    expect(baca().total).toBe(3);
+    expect(
+      baca()
+        .pemda.filter((x) => x.status === 'terverifikasi')
+        .map((x) => x.kode),
+    ).toEqual(['91']);
+    expect(await runPemda({ ...p, deps, log: () => undefined })).toBe(0);
+    naik = true; // situs Pemkot Jayapura tadi turun, sekarang naik
+    expect(await runPemda({ ...p, belum: true, deps, log: () => undefined })).toBe(2);
+    expect(
+      baca()
+        .pemda.filter((x) => x.status === 'terverifikasi')
+        .map((x) => x.kode),
+    ).toEqual(['91', '9171']);
   });
 });

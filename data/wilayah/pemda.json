@@ -1,0 +1,2407 @@
+{
+  "catatan": "Situs resmi pemerintah daerah (.go.id) sebagai kanal cadangan bila situs Disdukcapil kab/kota belum terverifikasi: portal Pemerintah Kabupaten/Kota (kode 4 digit) dan situs Dinas Dukcapil atau portal Pemerintah Provinsi (kode 2 digit). Terverifikasi = halaman depan .go.id menyebut \"Kabupaten/Kota/Provinsi <nama>\" utuh. Diisi oleh pnpm --filter @urusin/rag rag:pemda; belum_terverifikasi bukan berarti tidak ada.",
+  "total": 321,
+  "terverifikasi": 159,
+  "pemda": [
+    {
+      "kode": "11",
+      "nama": "Aceh",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://acehprov.go.id",
+      "judulHalaman": "Pemerintahan Aceh",
+      "sourceUrl": "https://acehprov.go.id/",
+      "verifiedAt": "2026-11-11T14:05:24.651Z"
+    },
+    {
+      "kode": "12",
+      "nama": "Sumatera Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "13",
+      "nama": "Sumatera Barat",
+      "status": "terverifikasi",
+      "jenis": "dukcapil",
+      "website": "https://disdukcapil.sumbarprov.go.id",
+      "judulHalaman": "Disdukcapil Prov Sumbar",
+      "sourceUrl": "https://disdukcapil.sumbarprov.go.id/",
+      "verifiedAt": "2026-11-11T14:06:31.814Z"
+    },
+    {
+      "kode": "14",
+      "nama": "Riau",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "15",
+      "nama": "Jambi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "16",
+      "nama": "Sumatera Selatan",
+      "status": "terverifikasi",
+      "jenis": "dukcapil",
+      "website": "https://disdukcapil.sumselprov.go.id",
+      "judulHalaman": "Beranda - Disdukcapil Sumsel",
+      "sourceUrl": "https://disdukcapil.sumselprov.go.id/",
+      "verifiedAt": "2026-11-11T14:06:46.228Z"
+    },
+    {
+      "kode": "17",
+      "nama": "Bengkulu",
+      "status": "terverifikasi",
+      "jenis": "dukcapil",
+      "website": "https://dukcapil.bengkuluprov.go.id",
+      "judulHalaman": "Beranda - Dinas Kependudukan dan Pencatatan Sipil",
+      "sourceUrl": "https://dukcapil.bengkuluprov.go.id/",
+      "verifiedAt": "2026-11-11T14:06:48.624Z"
+    },
+    {
+      "kode": "18",
+      "nama": "Lampung",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://lampungprov.go.id",
+      "judulHalaman": "Portal Resmi Pemerintah Provinsi Lampung",
+      "sourceUrl": "https://lampungprov.go.id/",
+      "verifiedAt": "2026-11-11T14:06:52.339Z"
+    },
+    {
+      "kode": "19",
+      "nama": "Kepulauan Bangka Belitung",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://babelprov.go.id",
+      "judulHalaman": "Pemerintah Provinsi Kepulauan Bangka Belitung",
+      "sourceUrl": "https://babelprov.go.id/",
+      "verifiedAt": "2026-11-11T14:55:13.406Z"
+    },
+    {
+      "kode": "21",
+      "nama": "Kepulauan Riau",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://kepriprov.go.id",
+      "judulHalaman": "Beranda - Portal Pemerintah Provinsi Kepulauan Riau",
+      "sourceUrl": "https://kepriprov.go.id/",
+      "verifiedAt": "2026-11-11T14:07:42.496Z"
+    },
+    {
+      "kode": "31",
+      "nama": "Daerah Khusus Ibukota Jakarta",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://www.jakarta.go.id",
+      "judulHalaman": "Jakarta",
+      "sourceUrl": "https://www.jakarta.go.id/",
+      "verifiedAt": "2026-11-11T14:08:13.116Z"
+    },
+    {
+      "kode": "32",
+      "nama": "Jawa Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "33",
+      "nama": "Jawa Tengah",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://jatengprov.go.id",
+      "judulHalaman": "Pemerintah Provinsi Jawa Tengah &#8211; Portal Resmi Pemerintah Provinsi Jawa Tengah",
+      "sourceUrl": "https://jatengprov.go.id/",
+      "verifiedAt": "2026-11-11T14:08:22.866Z"
+    },
+    {
+      "kode": "34",
+      "nama": "Daerah Istimewa Yogyakarta",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "35",
+      "nama": "Jawa Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "36",
+      "nama": "Banten",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bantenprov.go.id",
+      "judulHalaman": "Beranda - Website Resmi Pemerintah Provinsi Banten",
+      "sourceUrl": "https://bantenprov.go.id/",
+      "verifiedAt": "2026-11-11T14:08:35.567Z"
+    },
+    {
+      "kode": "51",
+      "nama": "Bali",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://baliprov.go.id",
+      "judulHalaman": "Pemerintah Provinsi Bali",
+      "sourceUrl": "https://baliprov.go.id/web",
+      "verifiedAt": "2026-11-11T14:08:38.187Z"
+    },
+    {
+      "kode": "52",
+      "nama": "Nusa Tenggara Barat",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://ntbprov.go.id",
+      "judulHalaman": "Provinsi NTB | Dashboard",
+      "sourceUrl": "https://ntbprov.go.id/",
+      "verifiedAt": "2026-11-11T15:45:36.404Z"
+    },
+    {
+      "kode": "53",
+      "nama": "Nusa Tenggara Timur",
+      "status": "terverifikasi",
+      "jenis": "dukcapil",
+      "website": "https://dukcapil.nttprov.go.id",
+      "judulHalaman": "Dashboard Dinas Kependudukan dan Pencatatan Sipil Provinsi Nusa Tenggara Timur",
+      "sourceUrl": "https://dukcapil.nttprov.go.id/",
+      "verifiedAt": "2026-11-11T14:08:43.773Z"
+    },
+    {
+      "kode": "61",
+      "nama": "Kalimantan Barat",
+      "status": "terverifikasi",
+      "jenis": "dukcapil",
+      "website": "https://dukcapil.kalbarprov.go.id",
+      "judulHalaman": "Dukcapil Provinsi Kalimantan Barat",
+      "sourceUrl": "https://dukcapil.kalbarprov.go.id/",
+      "verifiedAt": "2026-11-11T14:08:45.535Z"
+    },
+    {
+      "kode": "62",
+      "nama": "Kalimantan Tengah",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://kalteng.go.id",
+      "judulHalaman": "PORTAL BERITA - PEMERINTAH PROVINSI KALIMANTAN TENGAH",
+      "sourceUrl": "https://kalteng.go.id/",
+      "verifiedAt": "2026-11-11T14:08:50.791Z"
+    },
+    {
+      "kode": "63",
+      "nama": "Kalimantan Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "64",
+      "nama": "Kalimantan Timur",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://www.kaltimprov.go.id",
+      "judulHalaman": "Kaltim",
+      "sourceUrl": "https://www.kaltimprov.go.id/",
+      "verifiedAt": "2026-11-11T14:09:04.990Z"
+    },
+    {
+      "kode": "65",
+      "nama": "Kalimantan Utara",
+      "status": "terverifikasi",
+      "jenis": "dukcapil",
+      "website": "https://disdukcapil.kaltaraprov.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kalimantan Utara - DUKCAPIL BISA; DUKCAPIL GO DIGITAL",
+      "sourceUrl": "https://disdukcapil.kaltaraprov.go.id/",
+      "verifiedAt": "2026-11-11T14:09:06.629Z"
+    },
+    {
+      "kode": "71",
+      "nama": "Sulawesi Utara",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://sulutprov.go.id",
+      "judulHalaman": "Pemerintah Provinsi Sulawesi Utara",
+      "sourceUrl": "https://sulutprov.go.id/",
+      "verifiedAt": "2026-11-11T14:09:08.277Z"
+    },
+    {
+      "kode": "72",
+      "nama": "Sulawesi Tengah",
+      "status": "terverifikasi",
+      "jenis": "dukcapil",
+      "website": "https://dukcapil.sultengprov.go.id",
+      "judulHalaman": "DISDUKCAPIL SULTENG &#8211; GERAKAN INDONESIA SADAR ADMINISTRASI KEPENDUDUKAN",
+      "sourceUrl": "https://dukcapil.sultengprov.go.id/",
+      "verifiedAt": "2026-11-11T14:09:12.267Z"
+    },
+    {
+      "kode": "73",
+      "nama": "Sulawesi Selatan",
+      "status": "terverifikasi",
+      "jenis": "dukcapil",
+      "website": "https://dukcapil.sulselprov.go.id",
+      "judulHalaman": "Dukcapil Sulsel",
+      "sourceUrl": "https://dukcapil.sulselprov.go.id/",
+      "verifiedAt": "2026-11-11T14:09:15.648Z"
+    },
+    {
+      "kode": "74",
+      "nama": "Sulawesi Tenggara",
+      "status": "terverifikasi",
+      "jenis": "dukcapil",
+      "website": "https://disdukcapil.sultraprov.go.id",
+      "judulHalaman": "DISDUKCAPIL SULTRA",
+      "sourceUrl": "https://disdukcapil.sultraprov.go.id/",
+      "verifiedAt": "2026-11-11T14:09:16.974Z"
+    },
+    {
+      "kode": "75",
+      "nama": "Gorontalo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "76",
+      "nama": "Sulawesi Barat",
+      "status": "terverifikasi",
+      "jenis": "dukcapil",
+      "website": "https://dukcapil.sulbarprov.go.id",
+      "judulHalaman": "Dukcapil",
+      "sourceUrl": "https://dukcapil.sulbarprov.go.id/",
+      "verifiedAt": "2026-11-11T14:09:25.631Z"
+    },
+    {
+      "kode": "81",
+      "nama": "Maluku",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://malukuprov.go.id",
+      "judulHalaman": "Portal - Pemerintah Provinsi Maluku",
+      "sourceUrl": "https://malukuprov.go.id/",
+      "verifiedAt": "2026-11-11T14:09:31.005Z"
+    },
+    {
+      "kode": "82",
+      "nama": "Maluku Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "91",
+      "nama": "Papua",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://papua.go.id",
+      "judulHalaman": "Pemerintah Provinsi Papua - Transformasi Papua Baru",
+      "sourceUrl": "https://papua.go.id/",
+      "verifiedAt": "2026-11-11T14:09:58.279Z"
+    },
+    {
+      "kode": "92",
+      "nama": "Papua Barat",
+      "status": "terverifikasi",
+      "jenis": "dukcapil",
+      "website": "https://disdukcapil.papuabaratprov.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Provinsi Papua Barat",
+      "sourceUrl": "https://disdukcapil.papuabaratprov.go.id/",
+      "verifiedAt": "2026-11-11T14:10:01.871Z"
+    },
+    {
+      "kode": "93",
+      "nama": "Papua Selatan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://papuaselatan.go.id",
+      "judulHalaman": "Provinsi Papua Selatan",
+      "sourceUrl": "https://papuaselatan.go.id/",
+      "verifiedAt": "2026-11-11T14:10:02.975Z"
+    },
+    {
+      "kode": "94",
+      "nama": "Papua Tengah",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://papuatengahprov.go.id",
+      "judulHalaman": "Pemerintah Provinsi Papua Tengah &#8211; Gerbang Cendrawasih",
+      "sourceUrl": "https://papuatengahprov.go.id/",
+      "verifiedAt": "2026-11-11T14:10:07.670Z"
+    },
+    {
+      "kode": "95",
+      "nama": "Papua Pegunungan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "96",
+      "nama": "Papua Barat Daya",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://papuabaratdayaprov.go.id",
+      "judulHalaman": "Pemerintah Provinsi Papua Barat Daya",
+      "sourceUrl": "https://papuabaratdayaprov.go.id/",
+      "verifiedAt": "2026-11-11T14:10:21.242Z"
+    },
+    {
+      "kode": "1101",
+      "nama": "Kabupaten Aceh Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1102",
+      "nama": "Kabupaten Aceh Tenggara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1103",
+      "nama": "Kabupaten Aceh Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1105",
+      "nama": "Kabupaten Aceh Barat",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://acehbaratkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Aceh Barat | Portal Resmi Informasi & Layanan Publik",
+      "sourceUrl": "https://acehbaratkab.go.id/",
+      "verifiedAt": "2026-11-11T14:10:36.888Z"
+    },
+    {
+      "kode": "1106",
+      "nama": "Kabupaten Aceh Besar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1107",
+      "nama": "Kabupaten Pidie",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://pidiekab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Pidie - Beranda",
+      "sourceUrl": "https://pidiekab.go.id/",
+      "verifiedAt": "2026-11-11T14:10:43.182Z"
+    },
+    {
+      "kode": "1108",
+      "nama": "Kabupaten Aceh Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1110",
+      "nama": "Kabupaten Aceh Singkil",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1111",
+      "nama": "Kabupaten Bireuen",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1112",
+      "nama": "Kabupaten Aceh Barat Daya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1113",
+      "nama": "Kabupaten Gayo Lues",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1114",
+      "nama": "Kabupaten Aceh Jaya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1115",
+      "nama": "Kabupaten Nagan Raya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1117",
+      "nama": "Kabupaten Bener Meriah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1172",
+      "nama": "Kota Sabang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1174",
+      "nama": "Kota Langsa",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://langsakota.go.id",
+      "judulHalaman": "Beranda",
+      "sourceUrl": "https://langsakota.go.id/",
+      "verifiedAt": "2026-11-11T14:11:30.700Z"
+    },
+    {
+      "kode": "1175",
+      "nama": "Kota Subulussalam",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1201",
+      "nama": "Kabupaten Tapanuli Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1202",
+      "nama": "Kabupaten Tapanuli Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1203",
+      "nama": "Kabupaten Tapanuli Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1205",
+      "nama": "Kabupaten Langkat",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://langkatkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Langkat",
+      "sourceUrl": "https://langkatkab.go.id/",
+      "verifiedAt": "2026-11-11T14:11:38.323Z"
+    },
+    {
+      "kode": "1208",
+      "nama": "Kabupaten Simalungun",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://simalungunkab.go.id",
+      "judulHalaman": "Kabupaten Simalungun",
+      "sourceUrl": "https://simalungunkab.go.id/",
+      "verifiedAt": "2026-11-11T14:11:42.015Z"
+    },
+    {
+      "kode": "1213",
+      "nama": "Kabupaten Mandailing Natal",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1214",
+      "nama": "Kabupaten Nias Selatan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://niasselatankab.go.id",
+      "judulHalaman": "PEMERINTAH KABUPATEN NIAS SELATAN",
+      "sourceUrl": "https://niasselatankab.go.id/",
+      "verifiedAt": "2026-11-11T14:11:47.806Z"
+    },
+    {
+      "kode": "1215",
+      "nama": "Kabupaten Pakpak Bharat",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://pakpakbharatkab.go.id",
+      "judulHalaman": "Portal Pemerintah Kabupaten Pakpak Bharat : Bage Ate Rejeki Bage Tennah Sodip",
+      "sourceUrl": "https://pakpakbharatkab.go.id/",
+      "verifiedAt": "2026-11-11T14:11:48.968Z"
+    },
+    {
+      "kode": "1216",
+      "nama": "Kabupaten Humbang Hasundutan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://humbanghasundutankab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Humbang Hasundutan",
+      "sourceUrl": "https://humbanghasundutankab.go.id/",
+      "verifiedAt": "2026-11-11T14:11:53.568Z"
+    },
+    {
+      "kode": "1221",
+      "nama": "Kabupaten Padang Lawas",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://padanglawaskab.go.id",
+      "judulHalaman": "Padang Lawas",
+      "sourceUrl": "https://padanglawaskab.go.id/i/",
+      "verifiedAt": "2026-11-11T14:11:55.013Z"
+    },
+    {
+      "kode": "1222",
+      "nama": "Kabupaten Labuhanbatu Selatan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://labuhanbatuselatankab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Labuhanbatu Selatan",
+      "sourceUrl": "https://labuhanbatuselatankab.go.id/",
+      "verifiedAt": "2026-11-11T14:12:07.975Z"
+    },
+    {
+      "kode": "1223",
+      "nama": "Kabupaten Labuhanbatu Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1225",
+      "nama": "Kabupaten Nias Barat",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://niasbaratkab.go.id",
+      "judulHalaman": "Pemkab Nias Barat - Website Resmi Pemkab Nias Barat",
+      "sourceUrl": "https://niasbaratkab.go.id/",
+      "verifiedAt": "2026-11-11T14:12:12.971Z"
+    },
+    {
+      "kode": "1271",
+      "nama": "Kota Medan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1275",
+      "nama": "Kota Binjai",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://binjaikota.go.id",
+      "judulHalaman": "Pemerintah Kota Binjai",
+      "sourceUrl": "https://binjaikota.go.id/",
+      "verifiedAt": "2026-11-11T14:12:18.648Z"
+    },
+    {
+      "kode": "1303",
+      "nama": "Kabupaten Sijunjung",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1309",
+      "nama": "Kabupaten Kepulauan Mentawai",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1311",
+      "nama": "Kabupaten Solok Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1373",
+      "nama": "Kota Sawahlunto",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://sawahluntokota.go.id",
+      "judulHalaman": "Kota Sawahlunto",
+      "sourceUrl": "https://sawahluntokota.go.id/",
+      "verifiedAt": "2026-11-11T14:13:18.893Z"
+    },
+    {
+      "kode": "1376",
+      "nama": "Kota Payakumbuh",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://payakumbuhkota.go.id",
+      "judulHalaman": "City of Randang",
+      "sourceUrl": "https://payakumbuhkota.go.id/",
+      "verifiedAt": "2026-11-11T14:13:20.847Z"
+    },
+    {
+      "kode": "1402",
+      "nama": "Kabupaten Indragiri Hulu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1404",
+      "nama": "Kabupaten Indragiri Hilir",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1407",
+      "nama": "Kabupaten Rokan Hilir",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1409",
+      "nama": "Kabupaten Kuantan Singingi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1410",
+      "nama": "Kabupaten Kepulauan Meranti",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1472",
+      "nama": "Kota Dumai",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://dumaikota.go.id",
+      "judulHalaman": "Website Resmi Pemerintah Kota Dumai",
+      "sourceUrl": "https://dumaikota.go.id/",
+      "verifiedAt": "2026-11-11T14:13:27.100Z"
+    },
+    {
+      "kode": "1501",
+      "nama": "Kabupaten Kerinci",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://kerincikab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Kerinci",
+      "sourceUrl": "https://kerincikab.go.id/beranda",
+      "verifiedAt": "2026-11-11T14:13:36.713Z"
+    },
+    {
+      "kode": "1504",
+      "nama": "Kabupaten Batanghari",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://batangharikab.go.id",
+      "judulHalaman": ".:: Situs Pemerintah Kabupaten Batanghari | Bumi Serentak Bak Regam ::.",
+      "sourceUrl": "https://batangharikab.go.id/",
+      "verifiedAt": "2026-11-11T14:13:39.284Z"
+    },
+    {
+      "kode": "1505",
+      "nama": "Kabupaten Muaro Jambi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1506",
+      "nama": "Kabupaten Tanjung Jabung Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1507",
+      "nama": "Kabupaten Tanjung Jabung Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1601",
+      "nama": "Kabupaten Ogan Komering Ulu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1602",
+      "nama": "Kabupaten Ogan Komering Ilir",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1603",
+      "nama": "Kabupaten Muara Enim",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://muaraenimkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Muara Enim",
+      "sourceUrl": "https://muaraenimkab.go.id/",
+      "verifiedAt": "2026-11-11T14:58:54.177Z"
+    },
+    {
+      "kode": "1604",
+      "nama": "Kabupaten Lahat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1605",
+      "nama": "Kabupaten Musi Rawas",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://www.musirawaskab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Musi Rawas | Website Resmi Pemerintah Kabupaten Musi Rawas",
+      "sourceUrl": "https://www.musirawaskab.go.id/",
+      "verifiedAt": "2026-11-11T14:59:22.178Z"
+    },
+    {
+      "kode": "1606",
+      "nama": "Kabupaten Musi Banyuasin",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1607",
+      "nama": "Kabupaten Banyuasin",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1608",
+      "nama": "Kabupaten Ogan Komering Ulu Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1609",
+      "nama": "Kabupaten Ogan Komering Ulu Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1610",
+      "nama": "Kabupaten Ogan Ilir",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1611",
+      "nama": "Kabupaten Empat Lawang",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://empatlawangkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Empat Lawang",
+      "sourceUrl": "https://empatlawangkab.go.id/",
+      "verifiedAt": "2026-11-11T14:15:10.949Z"
+    },
+    {
+      "kode": "1612",
+      "nama": "Kabupaten Penukal Abab Lematang Ilir",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1613",
+      "nama": "Kabupaten Musi Rawas Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1672",
+      "nama": "Kota Pagar Alam",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1673",
+      "nama": "Kota Lubuk Linggau",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://lubuklinggaukota.go.id",
+      "judulHalaman": "Pemerintah Kota Lubuk Linggau | Website Resmi Pemerintah Kota Lubuk Linggau",
+      "sourceUrl": "https://lubuklinggaukota.go.id/",
+      "verifiedAt": "2026-11-11T14:16:22.524Z"
+    },
+    {
+      "kode": "1674",
+      "nama": "Kota Prabumulih",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1702",
+      "nama": "Kabupaten Rejang Lebong",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://www.rejanglebongkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Rejang Lebong",
+      "sourceUrl": "https://www.rejanglebongkab.go.id/",
+      "verifiedAt": "2026-11-11T14:16:27.762Z"
+    },
+    {
+      "kode": "1703",
+      "nama": "Kabupaten Bengkulu Utara",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bengkuluutarakab.go.id",
+      "judulHalaman": "Home - Bengkulu Utara",
+      "sourceUrl": "https://bengkuluutarakab.go.id/",
+      "verifiedAt": "2026-11-11T14:16:30.107Z"
+    },
+    {
+      "kode": "1704",
+      "nama": "Kabupaten Kaur",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://kaurkab.go.id",
+      "judulHalaman": "Dashboard",
+      "sourceUrl": "https://kaurkab.go.id/",
+      "verifiedAt": "2026-11-11T14:16:31.417Z"
+    },
+    {
+      "kode": "1705",
+      "nama": "Kabupaten Seluma",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://selumakab.go.id",
+      "judulHalaman": "Portal Resmi Kabupaten Seluma - Seluma",
+      "sourceUrl": "https://selumakab.go.id/",
+      "verifiedAt": "2026-11-11T14:16:33.602Z"
+    },
+    {
+      "kode": "1706",
+      "nama": "Kabupaten Mukomuko",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1707",
+      "nama": "Kabupaten Lebong",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://lebongkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten lebong &#8211; Portal Resmi Pemerintah Kabupaten Lebong",
+      "sourceUrl": "https://lebongkab.go.id/",
+      "verifiedAt": "2026-11-11T14:16:40.419Z"
+    },
+    {
+      "kode": "1708",
+      "nama": "Kabupaten Kepahiang",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://kepahiangkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Kepahiang | Kepahiang Tanah Sehasen",
+      "sourceUrl": "https://kepahiangkab.go.id/",
+      "verifiedAt": "2026-11-11T14:16:41.865Z"
+    },
+    {
+      "kode": "1801",
+      "nama": "Kabupaten Lampung Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1804",
+      "nama": "Kabupaten Lampung Barat",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://lampungbaratkab.go.id",
+      "judulHalaman": "Kabupaten Lampung Barat",
+      "sourceUrl": "https://lampungbaratkab.go.id/",
+      "verifiedAt": "2026-11-11T14:16:53.488Z"
+    },
+    {
+      "kode": "1806",
+      "nama": "Kabupaten Tanggamus",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1809",
+      "nama": "Kabupaten Pesawaran",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://pesawarankab.go.id",
+      "judulHalaman": "Portal Kabupaten Pesawaran",
+      "sourceUrl": "https://pesawarankab.go.id/",
+      "verifiedAt": "2026-11-11T14:17:20.376Z"
+    },
+    {
+      "kode": "1812",
+      "nama": "Kabupaten Tulang Bawang Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1902",
+      "nama": "Kabupaten Belitung",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "1904",
+      "nama": "Kabupaten Bangka Tengah",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bangkatengahkab.go.id",
+      "judulHalaman": "Portal Resmi Pemerintah Kabupaten Bangka Tengah",
+      "sourceUrl": "https://bangkatengahkab.go.id/",
+      "verifiedAt": "2026-11-11T15:50:46.506Z"
+    },
+    {
+      "kode": "1906",
+      "nama": "Kabupaten Belitung Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "2101",
+      "nama": "Kabupaten Bintan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "2105",
+      "nama": "Kabupaten Kepulauan Anambas",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "2172",
+      "nama": "Kota Tanjung Pinang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3101",
+      "nama": "Kabupaten Administrasi Kepulauan Seribu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3171",
+      "nama": "Kota Administrasi Jakarta Pusat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3172",
+      "nama": "Kota Administrasi Jakarta Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3173",
+      "nama": "Kota Administrasi Jakarta Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3174",
+      "nama": "Kota Administrasi Jakarta Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3175",
+      "nama": "Kota Administrasi Jakarta Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3201",
+      "nama": "Kabupaten Bogor",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bogorkab.go.id",
+      "judulHalaman": "Portal Resmi Kabupaten Bogor",
+      "sourceUrl": "https://bogorkab.go.id/",
+      "verifiedAt": "2026-11-11T14:18:05.796Z"
+    },
+    {
+      "kode": "3202",
+      "nama": "Kabupaten Sukabumi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3205",
+      "nama": "Kabupaten Garut",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://www.garutkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Garut - Beranda",
+      "sourceUrl": "https://www.garutkab.go.id/",
+      "verifiedAt": "2026-11-11T14:18:20.483Z"
+    },
+    {
+      "kode": "3209",
+      "nama": "Kabupaten Cirebon",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3213",
+      "nama": "Kabupaten Subang",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://www.subang.go.id",
+      "judulHalaman": "Website Resmi Pemerintah Daerah Kabupaten Subang",
+      "sourceUrl": "https://www.subang.go.id/",
+      "verifiedAt": "2026-11-11T15:52:19.883Z"
+    },
+    {
+      "kode": "3216",
+      "nama": "Kabupaten Bekasi",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://www.bekasikab.go.id",
+      "judulHalaman": "bekasikab | Home",
+      "sourceUrl": "https://www.bekasikab.go.id/",
+      "verifiedAt": "2026-11-11T15:02:54.235Z"
+    },
+    {
+      "kode": "3218",
+      "nama": "Kabupaten Pangandaran",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3271",
+      "nama": "Kota Bogor",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3275",
+      "nama": "Kota Bekasi",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bekasikota.go.id",
+      "judulHalaman": "Pemerintah Kota Bekasi | Situs Resmi",
+      "sourceUrl": "https://bekasikota.go.id/",
+      "verifiedAt": "2026-11-11T14:19:57.002Z"
+    },
+    {
+      "kode": "3276",
+      "nama": "Kota Depok",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://depok.go.id",
+      "judulHalaman": "Portal Resmi Pemerintah Kota Depok",
+      "sourceUrl": "https://depok.go.id/",
+      "verifiedAt": "2026-11-11T14:20:10.441Z"
+    },
+    {
+      "kode": "3277",
+      "nama": "Kota Cimahi",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://cimahikota.go.id",
+      "judulHalaman": "Selamat Datang di Website Resmi Pemerintah Daerah Kota Cimahi",
+      "sourceUrl": "https://cimahikota.go.id/",
+      "verifiedAt": "2026-11-11T14:20:12.024Z"
+    },
+    {
+      "kode": "3278",
+      "nama": "Kota Tasikmalaya",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://tasikmalayakota.go.id",
+      "judulHalaman": "Pemerintah Kota Tasikmalaya",
+      "sourceUrl": "https://tasikmalayakota.go.id/",
+      "verifiedAt": "2026-11-11T14:20:13.782Z"
+    },
+    {
+      "kode": "3301",
+      "nama": "Kabupaten Cilacap",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3303",
+      "nama": "Kabupaten Purbalingga",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://www.purbalinggakab.go.id",
+      "judulHalaman": "Homepage - Pemerintah Kabupaten Purbalingga",
+      "sourceUrl": "https://www.purbalinggakab.go.id/",
+      "verifiedAt": "2026-11-11T14:20:26.444Z"
+    },
+    {
+      "kode": "3304",
+      "nama": "Kabupaten Banjarnegara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3305",
+      "nama": "Kabupaten Kebumen",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://kebumenkab.go.id",
+      "judulHalaman": "Website Resmi Pemerintah Kabupaten Kebumen",
+      "sourceUrl": "https://kebumenkab.go.id/",
+      "verifiedAt": "2026-11-11T14:20:32.871Z"
+    },
+    {
+      "kode": "3313",
+      "nama": "Kabupaten Karanganyar",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://www.karanganyarkab.go.id",
+      "judulHalaman": "Kabupaten Karanganyar |",
+      "sourceUrl": "https://www.karanganyarkab.go.id/",
+      "verifiedAt": "2026-11-11T14:20:55.994Z"
+    },
+    {
+      "kode": "3316",
+      "nama": "Kabupaten Blora",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3317",
+      "nama": "Kabupaten Rembang",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://rembangkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Rembang",
+      "sourceUrl": "https://rembangkab.go.id/",
+      "verifiedAt": "2026-11-11T14:21:07.128Z"
+    },
+    {
+      "kode": "3322",
+      "nama": "Kabupaten Semarang",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://semarangkab.go.id",
+      "judulHalaman": "Portal Pemerintah Kabupaten Semarang",
+      "sourceUrl": "https://semarangkab.go.id/landing/",
+      "verifiedAt": "2026-11-11T14:21:08.475Z"
+    },
+    {
+      "kode": "3323",
+      "nama": "Kabupaten Temanggung",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://temanggungkab.go.id",
+      "judulHalaman": "PEMERINTAH KABUPATEN TEMANGGUNG",
+      "sourceUrl": "https://temanggungkab.go.id/",
+      "verifiedAt": "2026-11-11T14:21:34.424Z"
+    },
+    {
+      "kode": "3326",
+      "nama": "Kabupaten Pekalongan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3327",
+      "nama": "Kabupaten Pemalang",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://pemalangkab.go.id",
+      "judulHalaman": "Home - Pemerintah Kabupaten Pemalang",
+      "sourceUrl": "https://pemalangkab.go.id/",
+      "verifiedAt": "2026-11-11T14:21:39.682Z"
+    },
+    {
+      "kode": "3329",
+      "nama": "Kabupaten Brebes",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://brebeskab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Brebes",
+      "sourceUrl": "https://brebeskab.go.id/",
+      "verifiedAt": "2026-11-11T14:21:43.857Z"
+    },
+    {
+      "kode": "3371",
+      "nama": "Kota Magelang",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://magelangkota.go.id",
+      "judulHalaman": "Website Resmi Kota Magelang",
+      "sourceUrl": "https://magelangkota.go.id/",
+      "verifiedAt": "2026-11-11T14:21:45.936Z"
+    },
+    {
+      "kode": "3376",
+      "nama": "Kota Tegal",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://tegalkota.go.id",
+      "judulHalaman": "Pemerintah Kota Tegal - Beranda",
+      "sourceUrl": "https://tegalkota.go.id/v2/",
+      "verifiedAt": "2026-11-11T14:21:56.994Z"
+    },
+    {
+      "kode": "3403",
+      "nama": "Kabupaten Gunungkidul",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3404",
+      "nama": "Kabupaten Sleman",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3471",
+      "nama": "Kota Yogyakarta",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3502",
+      "nama": "Kabupaten Ponorogo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3507",
+      "nama": "Kabupaten Malang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3508",
+      "nama": "Kabupaten Lumajang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3509",
+      "nama": "Kabupaten Jember",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3510",
+      "nama": "Kabupaten Banyuwangi",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3511",
+      "nama": "Kabupaten Bondowoso",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bondowosokab.go.id",
+      "judulHalaman": "Website Resmi Pemerintah Kabupaten Bondowoso",
+      "sourceUrl": "https://bondowosokab.go.id/",
+      "verifiedAt": "2026-11-11T14:23:14.299Z"
+    },
+    {
+      "kode": "3519",
+      "nama": "Kabupaten Madiun",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3520",
+      "nama": "Kabupaten Magetan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://magetan.go.id",
+      "judulHalaman": "Magetan Official &#8211; Website Resmi Pemerintah Kabupaten Magetan",
+      "sourceUrl": "https://magetan.go.id/",
+      "verifiedAt": "2026-11-11T14:23:27.619Z"
+    },
+    {
+      "kode": "3522",
+      "nama": "Kabupaten Bojonegoro",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bojonegorokab.go.id",
+      "judulHalaman": "PORTAL RESMI - PEMKAB BOJONEGORO",
+      "sourceUrl": "https://bojonegorokab.go.id/",
+      "verifiedAt": "2026-11-11T15:56:52.377Z"
+    },
+    {
+      "kode": "3525",
+      "nama": "Kabupaten Gresik",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3526",
+      "nama": "Kabupaten Bangkalan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bangkalankab.go.id",
+      "judulHalaman": "Website Pemerintah Kabupaten Bangkalan",
+      "sourceUrl": "https://bangkalankab.go.id/",
+      "verifiedAt": "2026-11-11T14:25:12.301Z"
+    },
+    {
+      "kode": "3527",
+      "nama": "Kabupaten Sampang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3574",
+      "nama": "Kota Probolinggo",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://probolinggokota.go.id",
+      "judulHalaman": "Portal Probolinggo Kota",
+      "sourceUrl": "https://probolinggokota.go.id/",
+      "verifiedAt": "2026-11-11T14:25:46.635Z"
+    },
+    {
+      "kode": "3575",
+      "nama": "Kota Pasuruan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3576",
+      "nama": "Kota Mojokerto",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "3602",
+      "nama": "Kabupaten Lebak",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://lebakkab.go.id",
+      "judulHalaman": "Portal Resmi Pemerintah Kabupaten Lebak",
+      "sourceUrl": "https://lebakkab.go.id/",
+      "verifiedAt": "2026-11-11T14:26:20.382Z"
+    },
+    {
+      "kode": "3603",
+      "nama": "Kabupaten Tangerang",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://tangerangkab.go.id",
+      "judulHalaman": "Beranda :: Web Terpadu Kabupaten Tangerang",
+      "sourceUrl": "https://tangerangkab.go.id/",
+      "verifiedAt": "2026-11-11T15:05:16.540Z"
+    },
+    {
+      "kode": "3672",
+      "nama": "Kota Cilegon",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://www.cilegon.go.id",
+      "judulHalaman": "Website Kota Cilegon",
+      "sourceUrl": "https://www.cilegon.go.id/",
+      "verifiedAt": "2026-11-11T14:26:53.615Z"
+    },
+    {
+      "kode": "3674",
+      "nama": "Kota Tangerang Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5107",
+      "nama": "Kabupaten Karangasem",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://karangasemkab.go.id",
+      "judulHalaman": "PORTAL PEMERINTAH KABUPATEN KARANGASEM",
+      "sourceUrl": "https://karangasemkab.go.id/",
+      "verifiedAt": "2026-11-11T14:27:39.848Z"
+    },
+    {
+      "kode": "5171",
+      "nama": "Kota Denpasar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5203",
+      "nama": "Kabupaten Lombok Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5204",
+      "nama": "Kabupaten Sumbawa",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5207",
+      "nama": "Kabupaten Sumbawa Barat",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://sumbawabaratkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Sumbawa Barat",
+      "sourceUrl": "https://sumbawabaratkab.go.id/",
+      "verifiedAt": "2026-11-11T14:28:23.724Z"
+    },
+    {
+      "kode": "5208",
+      "nama": "Kabupaten Lombok Utara",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://lombokutarakab.go.id",
+      "judulHalaman": "Kabupaten Lombok Utara",
+      "sourceUrl": "https://lombokutarakab.go.id/",
+      "verifiedAt": "2026-11-11T14:28:25.772Z"
+    },
+    {
+      "kode": "5301",
+      "nama": "Kabupaten Kupang",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://kupangkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Kupang",
+      "sourceUrl": "https://kupangkab.go.id/web/",
+      "verifiedAt": "2026-11-11T14:28:36.929Z"
+    },
+    {
+      "kode": "5302",
+      "nama": "Kabupaten Timor Tengah Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5303",
+      "nama": "Kabupaten Timor Tengah Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5304",
+      "nama": "Kabupaten Belu",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://belukab.go.id",
+      "judulHalaman": "Home - PEMERINTAH KABUPATEN BELU",
+      "sourceUrl": "https://belukab.go.id/",
+      "verifiedAt": "2026-11-11T14:28:42.983Z"
+    },
+    {
+      "kode": "5305",
+      "nama": "Kabupaten Alor",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5306",
+      "nama": "Kabupaten Flores Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5307",
+      "nama": "Kabupaten Sikka",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://sikkakab.go.id",
+      "judulHalaman": "SIKKA - Portal Resmi Kabupaten SIKKA",
+      "sourceUrl": "https://sikkakab.go.id/",
+      "verifiedAt": "2026-11-11T14:29:01.237Z"
+    },
+    {
+      "kode": "5308",
+      "nama": "Kabupaten Ende",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://endekab.go.id",
+      "judulHalaman": "ENDEKAB",
+      "sourceUrl": "https://endekab.go.id/",
+      "verifiedAt": "2026-11-11T14:29:26.361Z"
+    },
+    {
+      "kode": "5309",
+      "nama": "Kabupaten Ngada",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://portal.ngadakab.go.id",
+      "judulHalaman": "Beranda - Portal Ngada",
+      "sourceUrl": "https://portal.ngadakab.go.id/",
+      "verifiedAt": "2026-11-11T14:29:28.907Z"
+    },
+    {
+      "kode": "5312",
+      "nama": "Kabupaten Sumba Barat",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://www.sumbabaratkab.go.id",
+      "judulHalaman": "Portal Resmi - Pemda Kab. Sumba Barat",
+      "sourceUrl": "https://www.sumbabaratkab.go.id/",
+      "verifiedAt": "2026-11-11T14:29:40.960Z"
+    },
+    {
+      "kode": "5313",
+      "nama": "Kabupaten Lembata",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://lembatakab.go.id",
+      "judulHalaman": "Portal Resmi Pemerintah Daerah Kabupaten Lembata",
+      "sourceUrl": "https://lembatakab.go.id/",
+      "verifiedAt": "2026-11-11T14:29:43.108Z"
+    },
+    {
+      "kode": "5314",
+      "nama": "Kabupaten Rote Ndao",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://rotendaokab.go.id",
+      "judulHalaman": "ROTENDAOKAB.GO.ID &#8211; Situs Resmi Pemerintah Kabupaten Rote Ndao",
+      "sourceUrl": "https://rotendaokab.go.id/",
+      "verifiedAt": "2026-11-11T14:29:45.093Z"
+    },
+    {
+      "kode": "5317",
+      "nama": "Kabupaten Sumba Tengah",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://sumbatengahkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Sumba Tengah",
+      "sourceUrl": "https://sumbatengahkab.go.id/",
+      "verifiedAt": "2026-11-11T14:29:55.640Z"
+    },
+    {
+      "kode": "5318",
+      "nama": "Kabupaten Sumba Barat Daya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "5319",
+      "nama": "Kabupaten Manggarai Timur",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://www.manggaraitimurkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Manggarai Timur - Pemerintah Kabupaten Manggarai Timur",
+      "sourceUrl": "https://www.manggaraitimurkab.go.id/",
+      "verifiedAt": "2026-11-11T14:30:03.083Z"
+    },
+    {
+      "kode": "5320",
+      "nama": "Kabupaten Sabu Raijua",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://saburaijuakab.go.id",
+      "judulHalaman": "",
+      "sourceUrl": "https://saburaijuakab.go.id/",
+      "verifiedAt": "2026-11-11T14:30:05.778Z"
+    },
+    {
+      "kode": "5321",
+      "nama": "Kabupaten Malaka",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://malakakab.go.id",
+      "judulHalaman": "Home - Profil Pemerintah Daerah Kabupaten Malaka",
+      "sourceUrl": "https://malakakab.go.id/",
+      "verifiedAt": "2026-11-11T14:30:07.192Z"
+    },
+    {
+      "kode": "6104",
+      "nama": "Kabupaten Ketapang",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://ketapangkab.go.id",
+      "judulHalaman": "Ketapang – Beranda",
+      "sourceUrl": "https://ketapangkab.go.id/",
+      "verifiedAt": "2026-11-11T14:30:31.065Z"
+    },
+    {
+      "kode": "6109",
+      "nama": "Kabupaten Sekadau",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6171",
+      "nama": "Kota Pontianak",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://pontianak.go.id",
+      "judulHalaman": "Pemerintah Kota Pontianak",
+      "sourceUrl": "https://pontianak.go.id/",
+      "verifiedAt": "2026-11-11T14:31:35.754Z"
+    },
+    {
+      "kode": "6172",
+      "nama": "Kota Singkawang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6202",
+      "nama": "Kabupaten Kotawaringin Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6203",
+      "nama": "Kabupaten Kapuas",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6206",
+      "nama": "Kabupaten Katingan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://katingankab.go.id",
+      "judulHalaman": "Portal Katingan",
+      "sourceUrl": "https://katingankab.go.id/",
+      "verifiedAt": "2026-11-11T14:31:51.162Z"
+    },
+    {
+      "kode": "6301",
+      "nama": "Kabupaten Tanah Laut",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6306",
+      "nama": "Kabupaten Hulu Sungai Selatan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://hulusungaiselatankab.go.id",
+      "judulHalaman": "Portal Pemerintah Kabupaten Hulu Sungai Selatan",
+      "sourceUrl": "https://hulusungaiselatankab.go.id/",
+      "verifiedAt": "2026-11-11T14:34:33.064Z"
+    },
+    {
+      "kode": "6307",
+      "nama": "Kabupaten Hulu Sungai Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6308",
+      "nama": "Kabupaten Hulu Sungai Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6310",
+      "nama": "Kabupaten Tanah Bumbu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6311",
+      "nama": "Kabupaten Balangan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://balangankab.go.id",
+      "judulHalaman": "Portal Pemerintah Kabupaten Balangan",
+      "sourceUrl": "https://balangankab.go.id/",
+      "verifiedAt": "2026-11-11T14:34:47.370Z"
+    },
+    {
+      "kode": "6401",
+      "nama": "Kabupaten Paser",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://paserkab.go.id",
+      "judulHalaman": "Portal Resmi Pemerintah Kabupaten Paser",
+      "sourceUrl": "https://paserkab.go.id/",
+      "verifiedAt": "2026-11-11T14:35:13.486Z"
+    },
+    {
+      "kode": "6402",
+      "nama": "Kabupaten Kutai Kartanegara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6409",
+      "nama": "Kabupaten Penajam Paser Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6411",
+      "nama": "Kabupaten Mahakam Ulu",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://mahakamulukab.go.id",
+      "judulHalaman": "Portal Resmi - Mahakam Ulu",
+      "sourceUrl": "https://mahakamulukab.go.id/",
+      "verifiedAt": "2026-11-11T14:35:32.370Z"
+    },
+    {
+      "kode": "6471",
+      "nama": "Kota Balikpapan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://balikpapan.go.id",
+      "judulHalaman": "Portal Pemerintah Kota Balikpapan",
+      "sourceUrl": "https://balikpapan.go.id/",
+      "verifiedAt": "2026-11-11T14:35:44.146Z"
+    },
+    {
+      "kode": "6501",
+      "nama": "Kabupaten Bulungan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "6503",
+      "nama": "Kabupaten Nunukan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://nunukankab.go.id",
+      "judulHalaman": "Nunukan Satu - Kantor Daring",
+      "sourceUrl": "https://nunukankab.go.id/",
+      "verifiedAt": "2026-11-11T14:36:14.480Z"
+    },
+    {
+      "kode": "7101",
+      "nama": "Kabupaten Bolaang Mongondow",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7102",
+      "nama": "Kabupaten Minahasa",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://minahasa.go.id",
+      "judulHalaman": "Portal Kabupaten Minahasa",
+      "sourceUrl": "https://minahasa.go.id/",
+      "verifiedAt": "2026-11-11T14:36:23.696Z"
+    },
+    {
+      "kode": "7103",
+      "nama": "Kabupaten Kepulauan Sangihe",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7104",
+      "nama": "Kabupaten Kepulauan Talaud",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7105",
+      "nama": "Kabupaten Minahasa Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7106",
+      "nama": "Kabupaten Minahasa Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7107",
+      "nama": "Kabupaten Minahasa Tenggara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7108",
+      "nama": "Kabupaten Bolaang Mongondow Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7109",
+      "nama": "Kabupaten Kep. Siau Tagulandang Biaro",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7110",
+      "nama": "Kabupaten Bolaang Mongondow Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7111",
+      "nama": "Kabupaten Bolaang Mongondow Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7171",
+      "nama": "Kota Manado",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7172",
+      "nama": "Kota Bitung",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bitungkota.go.id",
+      "judulHalaman": "KOTA BITUNG - Harmonisasi Menuju Bitung Maju 2025 - 2030",
+      "sourceUrl": "https://bitungkota.go.id/",
+      "verifiedAt": "2026-11-11T14:36:45.798Z"
+    },
+    {
+      "kode": "7201",
+      "nama": "Kabupaten Banggai",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://banggaikab.go.id",
+      "judulHalaman": "PORTAL RESMI LAYANAN PUBLIK PEMERINTAH KABUPATEN BANGGAI",
+      "sourceUrl": "https://banggaikab.go.id/",
+      "verifiedAt": "2026-11-11T14:37:05.838Z"
+    },
+    {
+      "kode": "7203",
+      "nama": "Kabupaten Donggala",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7204",
+      "nama": "Kabupaten Toli-Toli",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7205",
+      "nama": "Kabupaten Buol",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://buolkab.go.id",
+      "judulHalaman": "Portal Resmi Pemerintah Kabupaten Buol",
+      "sourceUrl": "https://buolkab.go.id/",
+      "verifiedAt": "2026-11-11T14:37:40.580Z"
+    },
+    {
+      "kode": "7207",
+      "nama": "Kabupaten Banggai Kepulauan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7209",
+      "nama": "Kabupaten Tojo Una Una",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://tojounauna.go.id",
+      "judulHalaman": "",
+      "sourceUrl": "https://tojounauna.go.id/",
+      "verifiedAt": "2026-11-11T14:38:17.760Z"
+    },
+    {
+      "kode": "7210",
+      "nama": "Kabupaten Sigi",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://sigikab.go.id",
+      "judulHalaman": "Portal Pemerintah Kabupaten Sigi",
+      "sourceUrl": "https://sigikab.go.id/",
+      "verifiedAt": "2026-11-11T14:38:20.153Z"
+    },
+    {
+      "kode": "7211",
+      "nama": "Kabupaten Banggai Laut",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://banggailautkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Banggai Laut | Portal Resmi Layanan Publik",
+      "sourceUrl": "https://banggailautkab.go.id/",
+      "verifiedAt": "2026-11-11T14:38:21.604Z"
+    },
+    {
+      "kode": "7212",
+      "nama": "Kabupaten Morowali Utara",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://morowaliutarakab.go.id",
+      "judulHalaman": "PORTAL RESMI - PEMKAB MOROWALI UTARA",
+      "sourceUrl": "https://morowaliutarakab.go.id/welcome/index",
+      "verifiedAt": "2026-11-11T14:38:24.270Z"
+    },
+    {
+      "kode": "7302",
+      "nama": "Kabupaten Bulukumba",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bulukumbakab.go.id",
+      "judulHalaman": "Beranda&#039;ta - Bulukumbakab.go.id - Website Resmi Pemerintah Kabupaten Bulukumba",
+      "sourceUrl": "https://bulukumbakab.go.id/",
+      "verifiedAt": "2026-11-11T14:38:35.632Z"
+    },
+    {
+      "kode": "7303",
+      "nama": "Kabupaten Bantaeng",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bantaengkab.go.id",
+      "judulHalaman": "Bantaengkab.go.id",
+      "sourceUrl": "https://bantaengkab.go.id/",
+      "verifiedAt": "2026-11-11T14:38:37.208Z"
+    },
+    {
+      "kode": "7304",
+      "nama": "Kabupaten Jeneponto",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://jenepontokab.go.id",
+      "judulHalaman": "Diskominfo Jeneponto",
+      "sourceUrl": "https://jenepontokab.go.id/",
+      "verifiedAt": "2026-11-11T14:38:50.531Z"
+    },
+    {
+      "kode": "7305",
+      "nama": "Kabupaten Takalar",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://takalarkab.go.id",
+      "judulHalaman": "Website Kabupaten Takalar",
+      "sourceUrl": "https://takalarkab.go.id/",
+      "verifiedAt": "2026-11-11T14:38:54.225Z"
+    },
+    {
+      "kode": "7308",
+      "nama": "Kabupaten Bone",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bone.go.id",
+      "judulHalaman": "Website Resmi Pemerintah Kabupaten Bone &#8211; Bumi Arung Palakka Sumange Tealara",
+      "sourceUrl": "https://bone.go.id/",
+      "verifiedAt": "2026-11-11T14:39:19.387Z"
+    },
+    {
+      "kode": "7309",
+      "nama": "Kabupaten Maros",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://maroskab.go.id",
+      "judulHalaman": "Kabupaten Maros &#8211; Website Resmi Kabupaten Maros",
+      "sourceUrl": "https://maroskab.go.id/",
+      "verifiedAt": "2026-11-11T15:06:41.733Z"
+    },
+    {
+      "kode": "7310",
+      "nama": "Kabupaten Pangkajene dan Kepulauan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7313",
+      "nama": "Kabupaten Wajo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7314",
+      "nama": "Kabupaten Sidenreng Rappang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7315",
+      "nama": "Kabupaten Pinrang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7316",
+      "nama": "Kabupaten Enrekang",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://enrekangkab.go.id",
+      "judulHalaman": "Website resmi pemerintah kabupaten enrekang",
+      "sourceUrl": "https://enrekangkab.go.id/",
+      "verifiedAt": "2026-11-11T15:59:03.227Z"
+    },
+    {
+      "kode": "7317",
+      "nama": "Kabupaten Luwu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7318",
+      "nama": "Kabupaten Tana Toraja",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://tanatorajakab.go.id",
+      "judulHalaman": "Beranda - Pemkab Tana Toraja",
+      "sourceUrl": "https://tanatorajakab.go.id/",
+      "verifiedAt": "2026-11-11T14:43:01.492Z"
+    },
+    {
+      "kode": "7324",
+      "nama": "Kabupaten Luwu Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7371",
+      "nama": "Kota Makassar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7401",
+      "nama": "Kabupaten Kolaka",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7402",
+      "nama": "Kabupaten Konawe",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://konawekab.go.id",
+      "judulHalaman": "Beranda - Portal Resmi Kabupaten Konawe",
+      "sourceUrl": "https://konawekab.go.id/",
+      "verifiedAt": "2026-11-11T14:44:40.168Z"
+    },
+    {
+      "kode": "7403",
+      "nama": "Kabupaten Muna",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7405",
+      "nama": "Kabupaten Konawe Selatan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://konaweselatankab.go.id",
+      "judulHalaman": "KAB. KONSEL",
+      "sourceUrl": "https://konaweselatankab.go.id/",
+      "verifiedAt": "2026-11-11T14:45:55.956Z"
+    },
+    {
+      "kode": "7407",
+      "nama": "Kabupaten Wakatobi",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://wakatobikab.go.id",
+      "judulHalaman": "Website Pemda Wakatobi",
+      "sourceUrl": "https://wakatobikab.go.id/",
+      "verifiedAt": "2026-11-11T14:46:00.472Z"
+    },
+    {
+      "kode": "7408",
+      "nama": "Kabupaten Kolaka Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7409",
+      "nama": "Kabupaten Konawe Utara",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://konaweutarakab.go.id",
+      "judulHalaman": "ARTIKEL - KONAWE UTARA",
+      "sourceUrl": "https://konaweutarakab.go.id/",
+      "verifiedAt": "2026-11-11T14:46:03.193Z"
+    },
+    {
+      "kode": "7410",
+      "nama": "Kabupaten Buton Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7411",
+      "nama": "Kabupaten Kolaka Timur",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://kolakatimurkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Kolaka Timur",
+      "sourceUrl": "https://kolakatimurkab.go.id/",
+      "verifiedAt": "2026-11-11T16:02:58.690Z"
+    },
+    {
+      "kode": "7412",
+      "nama": "Kabupaten Konawe Kepulauan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7414",
+      "nama": "Kabupaten Buton Tengah",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://butontengahkab.go.id",
+      "judulHalaman": "Buton Tengah",
+      "sourceUrl": "https://butontengahkab.go.id/",
+      "verifiedAt": "2026-11-11T14:46:57.029Z"
+    },
+    {
+      "kode": "7415",
+      "nama": "Kabupaten Buton Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7471",
+      "nama": "Kota Kendari",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://kendarikota.go.id",
+      "judulHalaman": "Portal Resmi Pemerintah Daerah Kota Kendari",
+      "sourceUrl": "https://kendarikota.go.id/",
+      "verifiedAt": "2026-11-11T14:47:05.626Z"
+    },
+    {
+      "kode": "7501",
+      "nama": "Kabupaten Gorontalo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7502",
+      "nama": "Kabupaten Boalemo",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://boalemokab.go.id",
+      "judulHalaman": "Portal Resmi - Pemerintah Daerah Kabupaten Boalemo",
+      "sourceUrl": "https://boalemokab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:15.695Z"
+    },
+    {
+      "kode": "7503",
+      "nama": "Kabupaten Bone Bolango",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bonebolangokab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Bone Bolango",
+      "sourceUrl": "https://bonebolangokab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:31.131Z"
+    },
+    {
+      "kode": "7504",
+      "nama": "Kabupaten Pohuwato",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://pohuwatokab.go.id",
+      "judulHalaman": "POHUWATO – Portal Informasi",
+      "sourceUrl": "https://pohuwatokab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:32.319Z"
+    },
+    {
+      "kode": "7505",
+      "nama": "Kabupaten Gorontalo Utara",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7601",
+      "nama": "Kabupaten Pasangkayu",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://pasangkayukab.go.id",
+      "judulHalaman": "Kabupaten Pasangkayu",
+      "sourceUrl": "https://pasangkayukab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:40.671Z"
+    },
+    {
+      "kode": "7602",
+      "nama": "Kabupaten Mamuju",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7603",
+      "nama": "Kabupaten Mamasa",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "7604",
+      "nama": "Kabupaten Polewali Mandar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8101",
+      "nama": "Kabupaten Maluku Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8102",
+      "nama": "Kabupaten Maluku Tenggara",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://malukutenggarakab.go.id",
+      "judulHalaman": "Maluku Tenggara - Beranda",
+      "sourceUrl": "https://malukutenggarakab.go.id/",
+      "verifiedAt": "2026-11-11T14:48:01.979Z"
+    },
+    {
+      "kode": "8103",
+      "nama": "Kabupaten Kepulauan Tanimbar",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8105",
+      "nama": "Kabupaten Seram Bagian Timur",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://serambagiantimurkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Seram Bagian Timur",
+      "sourceUrl": "https://serambagiantimurkab.go.id/",
+      "verifiedAt": "2026-11-11T14:48:06.228Z"
+    },
+    {
+      "kode": "8106",
+      "nama": "Kabupaten Seram Bagian Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8109",
+      "nama": "Kabupaten Buru Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8171",
+      "nama": "Kota Ambon",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8201",
+      "nama": "Kabupaten Halmahera Barat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8202",
+      "nama": "Kabupaten Halmahera Tengah",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8204",
+      "nama": "Kabupaten Halmahera Selatan",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://halmaheraselatankab.go.id",
+      "judulHalaman": "Beranda - Kabupaten Halmahera Selatan",
+      "sourceUrl": "https://halmaheraselatankab.go.id/",
+      "verifiedAt": "2026-11-11T14:49:08.180Z"
+    },
+    {
+      "kode": "8206",
+      "nama": "Kabupaten Halmahera Timur",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8208",
+      "nama": "Kabupaten Pulau Taliabu",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "8271",
+      "nama": "Kota Ternate",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://ternatekota.go.id",
+      "judulHalaman": "Pemerintah Kota Ternate",
+      "sourceUrl": "https://ternatekota.go.id/",
+      "verifiedAt": "2026-11-11T14:49:19.469Z"
+    },
+    {
+      "kode": "8272",
+      "nama": "Kota Tidore Kepulauan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9103",
+      "nama": "Kabupaten Jayapura",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://jayapurakab.go.id",
+      "judulHalaman": "Beranda - Kabupaten Jayapura",
+      "sourceUrl": "https://jayapurakab.go.id/",
+      "verifiedAt": "2026-11-11T14:49:22.743Z"
+    },
+    {
+      "kode": "9105",
+      "nama": "Kabupaten Kepulauan Yapen",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9106",
+      "nama": "Kabupaten Biak Numfor",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9110",
+      "nama": "Kabupaten Sarmi",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://sarmigov.sarmikab.go.id",
+      "judulHalaman": "Beranda | Pemerintah Daerah Kabupaten Sarmi",
+      "sourceUrl": "https://sarmigov.sarmikab.go.id/",
+      "verifiedAt": "2026-11-11T14:49:26.101Z"
+    },
+    {
+      "kode": "9111",
+      "nama": "Kabupaten Keerom",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://keeromkab.go.id",
+      "judulHalaman": "Home - Kabupaten Keerom",
+      "sourceUrl": "https://keeromkab.go.id/v6/",
+      "verifiedAt": "2026-11-11T14:49:31.657Z"
+    },
+    {
+      "kode": "9115",
+      "nama": "Kabupaten Waropen",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://waropenkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten waropen",
+      "sourceUrl": "https://waropenkab.go.id/",
+      "verifiedAt": "2026-11-11T14:49:35.317Z"
+    },
+    {
+      "kode": "9119",
+      "nama": "Kabupaten Supiori",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://supiorikab.go.id",
+      "judulHalaman": "Kabupaten Supiori",
+      "sourceUrl": "https://supiorikab.go.id/",
+      "verifiedAt": "2026-11-11T14:49:37.865Z"
+    },
+    {
+      "kode": "9120",
+      "nama": "Kabupaten Mamberamo Raya",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://mamberamorayakab.go.id",
+      "judulHalaman": "Mamberamo Raya - Situs Asli Kabupaten Mamberamoraya",
+      "sourceUrl": "https://mamberamorayakab.go.id/",
+      "verifiedAt": "2026-11-11T14:49:39.109Z"
+    },
+    {
+      "kode": "9171",
+      "nama": "Kota Jayapura",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://jayapurakota.go.id",
+      "judulHalaman": "Pemerintah Kota Jayapura &#8211; Hen Tecahi Yo Onomi T&#039;mar Ni Hanased &#8211; Satu Hati Membangun Kota Untuk Kemuliaan Tuhan &#8211;",
+      "sourceUrl": "https://jayapurakota.go.id/",
+      "verifiedAt": "2026-11-11T16:03:47.698Z"
+    },
+    {
+      "kode": "9203",
+      "nama": "Kabupaten Fak Fak",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9207",
+      "nama": "Kabupaten Teluk Wondama",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9211",
+      "nama": "Kabupaten Manokwari Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9212",
+      "nama": "Kabupaten Pegunungan Arfak",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9302",
+      "nama": "Kabupaten Boven Digoel",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://bovendigoelkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Boven Digoel",
+      "sourceUrl": "https://bovendigoelkab.go.id/",
+      "verifiedAt": "2026-11-11T14:50:44.355Z"
+    },
+    {
+      "kode": "9401",
+      "nama": "Kabupaten Nabire",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://nabirekab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Nabire &#8211; “NABIRE AMAN, MANDIRI DAN SEJAHTERA SECARA BERKELANJUTAN”",
+      "sourceUrl": "https://nabirekab.go.id/",
+      "verifiedAt": "2026-11-11T14:50:50.077Z"
+    },
+    {
+      "kode": "9402",
+      "nama": "Kabupaten Puncak Jaya",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://puncakjayakab.go.id",
+      "judulHalaman": "Home - Website Kabupaten Puncak Jaya",
+      "sourceUrl": "https://puncakjayakab.go.id/",
+      "verifiedAt": "2026-11-11T16:04:57.815Z"
+    },
+    {
+      "kode": "9405",
+      "nama": "Kabupaten Puncak",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://puncakkab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Puncak Provinsi Papua Tengah",
+      "sourceUrl": "https://puncakkab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:05.019Z"
+    },
+    {
+      "kode": "9407",
+      "nama": "Kabupaten Intan Jaya",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://intanjayakab.go.id",
+      "judulHalaman": "Portal Resmi Pemerintah Kabupaten Intan Jaya",
+      "sourceUrl": "https://intanjayakab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:08.624Z"
+    },
+    {
+      "kode": "9408",
+      "nama": "Kabupaten Deiyai",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://new.deiyaikab.go.id",
+      "judulHalaman": "Beranda | Portal Resmi Kabupaten Deiyai",
+      "sourceUrl": "https://new.deiyaikab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:11.090Z"
+    },
+    {
+      "kode": "9502",
+      "nama": "Kabupaten Pegunungan Bintang",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9503",
+      "nama": "Kabupaten Yahukimo",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9504",
+      "nama": "Kabupaten Tolikara",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://tolikarakab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Tolikara | Selamat datang",
+      "sourceUrl": "https://tolikarakab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:18.667Z"
+    },
+    {
+      "kode": "9505",
+      "nama": "Kabupaten Mamberamo Tengah",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://mamberamotengahkab.go.id",
+      "judulHalaman": "Home - Pemerintah Kabupaten Mamberamo Tengah",
+      "sourceUrl": "https://mamberamotengahkab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:20.785Z"
+    },
+    {
+      "kode": "9506",
+      "nama": "Kabupaten Yalimo",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://yalimokab.go.id",
+      "judulHalaman": "Pemerintah Kabupaten Yalimo",
+      "sourceUrl": "https://yalimokab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:22.659Z"
+    },
+    {
+      "kode": "9507",
+      "nama": "Kabupaten Lanny Jaya",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9508",
+      "nama": "Kabupaten Nduga",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://ndugakab.go.id",
+      "judulHalaman": "Website Pemerintah Kabupaten Nduga &#8211; Papua Pegunungan - Website Resmi Pemerintah Kabupaten Nduga Provinsi Papua Pegunungan",
+      "sourceUrl": "https://ndugakab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:42.891Z"
+    },
+    {
+      "kode": "9601",
+      "nama": "Kabupaten Sorong",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://sorongkab.go.id",
+      "judulHalaman": "Portal Resmi Pemerintah Kabupaten Sorong",
+      "sourceUrl": "https://sorongkab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:44.971Z"
+    },
+    {
+      "kode": "9602",
+      "nama": "Kabupaten Sorong Selatan",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9604",
+      "nama": "Kabupaten Tambrauw",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://tambrauwkab.go.id",
+      "judulHalaman": "Portal Resmi - Pemerintah Kabupaten Tambrauw",
+      "sourceUrl": "https://tambrauwkab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:53.893Z"
+    },
+    {
+      "kode": "9605",
+      "nama": "Kabupaten Maybrat",
+      "status": "belum_terverifikasi"
+    },
+    {
+      "kode": "9671",
+      "nama": "Kota Sorong",
+      "status": "terverifikasi",
+      "jenis": "pemda",
+      "website": "https://portal.sorongkota.go.id",
+      "judulHalaman": "Portal Pemerintah Kota Sorong - Kota Termaju Di Tanah Papua",
+      "sourceUrl": "https://portal.sorongkota.go.id/",
+      "verifiedAt": "2026-11-11T14:52:02.460Z"
+    }
+  ]
+}
