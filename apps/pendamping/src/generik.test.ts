@@ -835,6 +835,43 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     ).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK' }]);
   });
 
+  it('TOCTOU (PoC E3): href ditukar setelah ditampilkan = tidak dibuka, giliran tetap di warga', async () => {
+    for (const tukar of [
+      'https://portal.contoh.go.id/p/12/x',
+      'https://portal.contoh.go.id/permohonan/kk?jenis=ganti',
+      undefined,
+    ]) {
+      const tautan: Record<string, string> = { e6: HREF };
+      const h = harness({ amati: () => PEMBUKA(), peta: PETA_PEMBUKA, tautan });
+      await h.run.amati();
+      await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }] });
+      expect(h.serah[0]?.tautan).toMatchObject({ jalur: '/permohonan/kk' });
+      if (tukar) tautan.e6 = tukar;
+      else delete tautan.e6;
+      let lanjut = 0;
+      expect(await h.run.bukaTautan('e6', () => void lanjut++), String(tukar)).toBe(false);
+      expect(lanjut).toBe(0);
+      expect(h.navigasi).toEqual([]);
+      expect(h.serah.at(-1)).toEqual({
+        alasan: 'periksa',
+        pesan: PESAN_GENERIK.tautan_berubah,
+        sorot: undefined,
+      });
+      // Giliran itu habis: kembalikan href semula pun tidak dibuka tanpa giliran baru.
+      tautan.e6 = HREF;
+      expect(await h.run.bukaTautan('e6', () => void lanjut++)).toBe(false);
+      expect(h.navigasi).toEqual([]);
+    }
+    // Hanya fragmen yang berubah = tujuan sama (fragmen tidak dikirim ke server).
+    const tautan: Record<string, string> = { e6: HREF };
+    const h = harness({ amati: () => PEMBUKA(), peta: PETA_PEMBUKA, tautan });
+    await h.run.amati();
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e6' }] });
+    tautan.e6 = 'https://portal.contoh.go.id/permohonan/kk?jenis=baru#bawah';
+    expect(await h.run.bukaTautan('e6', () => {})).toBe(true);
+    expect(h.navigasi).toEqual(['https://portal.contoh.go.id/permohonan/kk?jenis=baru']);
+  });
+
   it('N5: jalur tujuan diredaksi dengan nilai vault (tujuan tampil ke warga)', async () => {
     const h = harness({
       amati: () => PEMBUKA(),

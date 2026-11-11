@@ -114,6 +114,10 @@ const HALAMAN: Record<string, string> = {
   '/pembuka-jahat': kerangka(`<style>a{display:block;padding:20px}</style>
 <a id="aj" href="/permohonan/kk">Ajukan Permohonan Kartu Keluarga</a>
 <script>document.getElementById('aj').addEventListener('click', (e) => { e.preventDefault(); fetch('/api/final-e', {method:'POST', body:'final=1'}); });</script>`),
+  // TOCTOU (re-review PoC E3): href tautan pembuka ditukar diam-diam setelah tujuannya ditampilkan ke warga.
+  '/pembuka-ganti': kerangka(`<style>a{display:block;padding:20px}</style>
+<a id="aj" href="/permohonan/kk">Ajukan Permohonan Kartu Keluarga</a>
+<script>setTimeout(() => { document.getElementById('aj').href = '/p/12/x'; }, 3000);</script>`),
   // N6 (poc2 C): kata kerja tulis/pengesahan di nama tautan.
   '/tautan': kerangka(`<a href="/dok/12/tte">Tanda Tangani Dokumen</a><br>
 <a href="/data/12/kunci">Finalisasi Data</a><br>
@@ -530,6 +534,46 @@ test('N5 (PoC E): buka_tautan = navigasi GET dari worker; listener halaman (prev
     await new Promise((r) => setTimeout(r, 500));
     expect(situs.hitung('/api/final-e')).toBe(0);
     expect(manager.kurasJejak(o).catatan).toContainEqual({ jenis: 'ambil_alih', fase: 'selesai' });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('TOCTOU (PoC E3): href ditukar setelah ditampilkan = buka_tautan tidak membuka apa pun', async () => {
+  const { manager, o, sesiId, p } = await sesi(situs, '/pembuka-ganti', 'pembuka-ganti');
+  const events: PendampingEvent[] = [];
+  await manager.attach(sesiId, {
+    send: (m: PendampingServerMessage) => void (m.type === 'event' && events.push(m.event)),
+    frame: () => {},
+    ack: () => {},
+    close: () => {},
+  });
+  try {
+    const pembuka = satu(p, 'Ajukan Permohonan Kartu Keluarga');
+    const awal = situs.hitung('/permohonan/kk');
+    await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: pembuka.ref }],
+    });
+    // Yang ditampilkan ke warga = href semula (halaman menukarnya 3 detik sesudah dimuat).
+    expect(events.find((e) => e.jenis === 'giliran_anda' && e.alasan === 'ketuk_tautan')).toMatchObject({
+      tautan: { ref: pembuka.ref, jalur: '/permohonan/kk' },
+    });
+    await new Promise((r) => setTimeout(r, 3_500));
+    await manager.handleClient(sesiId, { type: 'buka_tautan', ref: pembuka.ref });
+    await new Promise((r) => setTimeout(r, 1_000));
+    expect(situs.hitung('/p/12/x')).toBe(0);
+    expect(situs.hitung('/permohonan/kk')).toBe(awal);
+    expect(manager.status(o).mode).toBe('takeover');
+    expect(events.at(-1)).toMatchObject({
+      jenis: 'giliran_anda',
+      alasan: 'periksa',
+      pesan: expect.stringContaining('berubah'),
+    });
+    expect(events.at(-1)).not.toHaveProperty('tautan');
+    expect(manager.kurasJejak(o).catatan).not.toContainEqual({ jenis: 'ambil_alih', fase: 'selesai' });
   } finally {
     await manager.shutdown();
   }
