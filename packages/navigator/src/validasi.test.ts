@@ -282,6 +282,22 @@ describe('tautan pembuka (kirim karena nama saja): serah ketuk_tautan, bukan kli
     );
     expect(validasiRencana(rencana({ jenis: 'serahkan', alasan: 'final', ref: 'e5' }), p).ok).toBe(true);
   });
+
+  it('serah selain final tidak boleh menyorot tombol kirim akhir', () => {
+    const p = beranda({
+      elemen: [
+        ...beranda().elemen,
+        { ref: 'e5', peran: 'tombol', nama: 'Kirim Permohonan', kelas: 'kirim' },
+        { ref: 'e6', peran: 'tombol', nama: 'Masuk', kelas: 'masuk' },
+      ],
+      sinyal: { ...halamanForm().sinyal, halamanAkhir: true },
+    });
+    for (const alasan of ['masuk_akun', 'otp', 'captcha', 'tidak_yakin'] as const)
+      expect(tolak(rencana({ jenis: 'serahkan', alasan, ref: 'e5' }), p)).toEqual(['KELAS_KLIK_DITOLAK']);
+    expect(validasiRencana(rencana({ jenis: 'serahkan', alasan: 'final', ref: 'e5' }), p).ok).toBe(true);
+    expect(validasiRencana(rencana({ jenis: 'serahkan', alasan: 'masuk_akun', ref: 'e6' }), p).ok).toBe(true);
+    expect(validasiRencana(rencana({ jenis: 'serahkan', alasan: 'tidak_yakin' }), p).ok).toBe(true);
+  });
 });
 
 describe('skema ketat', () => {
