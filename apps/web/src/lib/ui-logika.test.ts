@@ -245,7 +245,11 @@ describe('Browser Pendamping', () => {
 
   it('status sesi menjadi keadaan layar', () => {
     expect(keadaanDariSesi({ status: 'antre', mode: 'ai' }, false)).toBe('antre');
+    // Izin isi diminta: "Menyiapkan" hanya sampai portal tergambar; sesudahnya situs tetap terlihat.
     expect(keadaanDariSesi({ status: 'menunggu_data', mode: 'ai' }, false)).toBe('menyiapkan');
+    expect(keadaanDariSesi({ status: 'menunggu_data', mode: null }, false, true)).toBe('ai');
+    expect(keadaanDariSesi({ status: 'menunggu_data', mode: 'takeover' }, false, true)).toBe('dijeda');
+    expect(keadaanDariSesi({ status: 'memulai', mode: null }, false, true)).toBe('menyiapkan');
     expect(keadaanDariSesi({ status: 'berjalan', mode: 'ai' }, false)).toBe('ai');
     expect(keadaanDariSesi({ status: 'berjalan', mode: 'takeover' }, true)).toBe('giliran');
     expect(keadaanDariSesi({ status: 'siaga', mode: 'takeover' }, false)).toBe('siaga');

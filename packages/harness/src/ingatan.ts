@@ -713,6 +713,7 @@ const JUDUL: Record<string, string> = {
   pindah: 'pindah domisili',
   ktp: 'KTP-el',
   kk: 'kartu keluarga',
+  kia: 'KIA',
   akta: 'akta',
   skck: 'SKCK',
   pajak_kendaraan: 'pajak kendaraan',

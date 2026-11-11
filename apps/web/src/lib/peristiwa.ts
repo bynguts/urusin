@@ -92,6 +92,7 @@ const JUDUL_JENIS: Record<string, string> = {
   pindah: 'Pindah domisili',
   ktp: 'KTP elektronik',
   kk: 'Kartu Keluarga',
+  kia: 'Kartu Identitas Anak',
   akta: 'Akta',
   skck: 'SKCK',
   pajak_kendaraan: 'Pajak kendaraan',

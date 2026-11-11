@@ -62,6 +62,9 @@ describe('klasifikasi kata kunci', () => {
     ['Saya mau pindah domisili dari Kota Semarang ke Kabupaten Sleman.', 'pindah'],
     ['Saya baru menikah dan mau bikin KK baru, pisah dari KK orang tua.', 'kk'],
     ['Anak saya baru umur 17 tahun, mau bikin KTP pertama kali.', 'ktp'],
+    ['Mau bikin KIA untuk anak saya, KTP Jakarta Selatan', 'kia'],
+    ['Cara urus kartu identitas anak?', 'kia'],
+    ['kartu anak hilang', 'kia'],
   ])('%s -> %s', (teks, jenis) => expect(klasifikasiKataKunci(teks)).toBe(jenis));
 
   it.each([

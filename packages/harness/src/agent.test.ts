@@ -601,7 +601,7 @@ describe('balasan terpotong (finish_reason=length)', () => {
     });
     const env = makeEnv({ provider });
     const u = env.store.createUrusan({});
-    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Sa mau bikin kartu identitas anak.' });
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Sa mau urus surat untuk anak.' });
     expect(out.status).toBe('selesai');
     expect(out.events.some((e) => e.type === 'error')).toBe(false);
     expect(env.store.getUrusanOrThrow(u.id).jenis).toBeNull();

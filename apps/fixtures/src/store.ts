@@ -11,6 +11,23 @@ export const SERVICES: readonly Service[] = [
     name: 'Akta Kelahiran (replika uji)',
     requirements: ['Kartu Keluarga (KK) Orang Tua', 'KTP orang tua', 'Surat keterangan kelahiran'],
   },
+  // Layanan KTP-el dengan id portal asli (8 baru, 9 perubahan data, 10 hilang, 11 rusak): demo cetak ulang KTP-el.
+  { id: 8, name: 'KTP Baru (replika uji)', requirements: ['Fotokopi Kartu Keluarga terbaru'] },
+  {
+    id: 9,
+    name: 'KTP Perubahan Data (replika uji)',
+    requirements: ['Fotokopi Kartu Keluarga terbaru', 'KTP-el lama', 'Data dukung perubahan data'],
+  },
+  {
+    id: 10,
+    name: 'KTP Hilang (replika uji)',
+    requirements: ['Fotokopi Kartu Keluarga terbaru', 'Surat kehilangan dari kepolisian'],
+  },
+  {
+    id: 11,
+    name: 'KTP Rusak (replika uji)',
+    requirements: ['Fotokopi Kartu Keluarga terbaru', 'KTP-el yang rusak'],
+  },
 ];
 
 export type Application = { no: number; layanan: string; tanggal: string; status: string };

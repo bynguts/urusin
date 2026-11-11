@@ -18,7 +18,7 @@ import {
   type PersetujuanHalaman,
   type TanganPendamping,
 } from '@urusin/navigator';
-import { findBundel } from '@urusin/registry';
+import { tujuanPendamping } from '@urusin/registry';
 import type { ZodType } from 'zod';
 import { originFixtures } from '#lib/server/hosts.js';
 import { panggilPemilik, type BodyPemilik, type PendampingConfig } from '#lib/server/pendamping.js';
@@ -266,7 +266,12 @@ export async function jalankanNavigatorUrusan(
       executionId: m.executionId,
       tangan,
       llm: { ...llm, provider: providerTerukur(llm.provider, catatPemakaian) },
-      tujuan: (m.urusan.jenis ? findBundel(m.urusan.jenis)?.judul : undefined) ?? 'Layanan kependudukan',
+      tujuan: tujuanPendamping(
+        m.urusan.jenis,
+        rt.store
+          .loadHistory(id)
+          .flatMap((p) => (p.role === 'user' && typeof p.content === 'string' ? [p.content] : [])),
+      ),
       hostsBoleh: m.modeUji ? fixture : new Set(hostsPortalWilayah(m.urusan.kodeKabKota)),
       modeUji: m.modeUji ? { hostsFixture: fixture } : undefined,
       kodeKabKota: m.urusan.kodeKabKota,
