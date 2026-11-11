@@ -66,7 +66,12 @@ test('N1: AI berhenti, warga mengirim sendiri, "Saya sudah mengirim" -> 409 juju
 
   // Jalur warga yang sama dengan pendamping-giliran: Wonogiri → rencana → persetujuan → buka situs.
   await page.goto('/peristiwa/kelahiran');
-  await page.getByLabel('Kabupaten/kota sesuai KTP Anda').selectOption('3312');
+  await expect(page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' })).toHaveAttribute(
+    'aria-autocomplete',
+    'list',
+  );
+  await page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' }).fill('Wonogiri');
+  await page.getByRole('option', { name: 'Kabupaten Wonogiri', exact: true }).click();
   await expect(page).toHaveURL(/kodeKabKota=3312/);
   await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
   await expect(page).toHaveURL(/\/urusan\/u_[0-9a-f]{32}$/);
