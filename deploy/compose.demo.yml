@@ -13,6 +13,8 @@
 #                      portal resmi dipetakan ke replika, jadi situs pemerintah asli tidak pernah dibuka.
 # - fixtures         : 127.0.0.1:4320 (profil public). Juga dibuka ke host di 127.0.0.1:${DEMO_FIXTURES_PORT}
 #                      untuk ditunjukkan langsung ke juri.
+# - LLM (opsional)   : web memanggil 127.0.0.1:20128 (pengecualian egress proxy LLM); gerbang meneruskan ke
+#                      DEMO_LLM_UPSTREAM. Internet/proxy mati: `demo-final.sh offline` (DemoProvider).
 # Produksi (deploy/compose.prod.yml) tetap memakai edge + jaringan internal; berkas ini hanya untuk laptop demo.
 name: urusin-demo
 

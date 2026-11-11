@@ -212,6 +212,10 @@ cmd_cek() {
     *'"maks":'[1-9]*) ok "Browser Pendamping siap $antre" ;;
     *) merah "Browser Pendamping tidak terjangkau dari web: ${antre:-tanpa jawaban}" ;;
   esac
+  case "$antre" in
+    *'"aktif":0'*) ;;
+    *'"aktif":'*) kuning "masih ada sesi Pendamping sisa gladi (hilang sendiri <= 10 menit; segera: docker restart urusin-demo-pendamping-1)" ;;
+  esac
 
   # 6. Fixtures (replika) yang dipakai alur demo
   local fx f
