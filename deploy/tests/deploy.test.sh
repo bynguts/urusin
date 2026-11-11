@@ -230,6 +230,26 @@ run_deploy "$SHA_B" "$DIG_B"
 check "field runningTurns tidak ada (image lama): menunggu penuh" '[ $RC -eq 0 ] && grep -q "jumlah tidak diketahui" "$SB/out.log"'
 check "DOCKER_CONFIG tidak ditulis: skrip tidak menyebut ~/.docker" '! grep -rEq "(~|\$HOME)/\.docker" "$DEPLOY"/*.sh'
 
+echo "13b. image sudah di host (ci-docker simpan): pull dilewati; tanpa registry, provenance dari salinan lokal"
+new_sandbox
+export SHIM_LABEL="$SHA_A" SHIM_LOKAL=1
+run_deploy "$SHA_A" "$DIG_A"
+check "image lokal: tanpa docker pull, deploy sukses" '[ $RC -eq 0 ] && ! calls | grep -q "^docker pull" && grep -q "pull dilewati" "$SB/out.log"'
+export SHIM_REGISTRY_MATI=1 PROVENANCE_DIR="$SB/prov"
+mkdir -p "$PROVENANCE_DIR"
+run_deploy "$SHA_A" "$DIG_A"
+check "registry mati tanpa salinan provenance: ditolak (REQUIRE_PROVENANCE=1)" '[ $RC -ne 0 ] && grep -q "provenance buildx tidak memuat" "$SB/out.log"'
+printf '{"vcs":{"revision":"%s"}}\n' "$SHA_B" > "$PROVENANCE_DIR/${DIG_A#sha256:}.json"
+run_deploy "$SHA_A" "$DIG_A"
+check "salinan provenance untuk SHA lain: ditolak" '[ $RC -ne 0 ] && grep -q "salinan lokal" "$SB/out.log"'
+printf '{"vcs":{"revision":"%s"}}\n' "$SHA_A" > "$PROVENANCE_DIR/${DIG_A#sha256:}.json"
+run_deploy "$SHA_A" "$DIG_A"
+check "salinan provenance cocok: deploy sukses tanpa pull/registry" '[ $RC -eq 0 ] && grep -q "provenance dari salinan lokal" "$SB/out.log" && ! calls | grep -q "^docker pull"'
+export SHIM_LABEL="$SHA_B"
+run_deploy "$SHA_A" "$DIG_A"
+check "image lokal dengan label revision lain: tetap ditolak" '[ $RC -ne 0 ] && grep -q "label revision image" "$SB/out.log"'
+unset SHIM_LOKAL SHIM_REGISTRY_MATI PROVENANCE_DIR
+
 echo "13c. login GHCR sementara lewat GHCR_TOKEN"
 new_sandbox
 export SHIM_LABEL="$SHA_A" GHCR_TOKEN="tok-uji-ghcr" TMPDIR="$SB/tmp"
@@ -296,9 +316,22 @@ for v in 27.5.1 "" abc; do
 done
 new_sandbox
 export SHIM_DOCKER_VERSION=28.0.0
-(cd "$SB/deploy" && bash ./pendamping-up.sh) > "$SB/out.log" 2>&1; RC=$?
-check "pendamping-up.sh, docker 28 -> compose up pendamping + edge" '[ $RC -eq 0 ] && calls | grep -q "^docker compose .*up -d pendamping pendamping-edge"'
-unset SHIM_DOCKER_VERSION
+PIMG="ghcr.io/bynguts/urusin-pendamping@$DIG_A"
+pup() { (cd "$SB/deploy" && PENDAMPING_WAIT=2 bash ./pendamping-up.sh) > "$SB/out.log" 2>&1; RC=$?; }
+pup
+check "pendamping-up.sh tanpa PENDAMPING_IMAGE@digest -> ditolak sebelum compose" '[ $RC -ne 0 ] && ! calls | grep -q "^docker compose"'
+printf 'PENDAMPING_IMAGE=%s\nGIT_SHA_PENDAMPING=%s\n' "$PIMG" "$SHA_B" >> "$SB/deploy/.env"
+export SHIM_LABEL="$SHA_A" SHIM_PENDAMPING_HEALTH="{\"ok\":true,\"aktif\":0,\"maks\":2,\"menunggu\":0,\"generik\":true,\"sha\":\"${SHA_A:0:12}\"}"
+pup
+check "pendamping-up.sh, docker 28 -> compose up pendamping + edge, sha /health = revision" '[ $RC -eq 0 ] && calls | grep -q "^docker compose .*up -d pendamping pendamping-edge" && grep -q "= revision image" "$SB/out.log"'
+check "GIT_SHA_PENDAMPING lama di .env: hanya catatan (tidak dipakai)" 'grep -q "GIT_SHA_PENDAMPING di .env tidak dipakai" "$SB/out.log"'
+export SHIM_PENDAMPING_HEALTH="{\"ok\":true,\"aktif\":0,\"maks\":2,\"menunggu\":0,\"generik\":true,\"sha\":\"${SHA_B:0:12}\"}"
+pup
+check "pendamping-up.sh: /health sha != revision image -> gagal" '[ $RC -ne 0 ] && grep -q "!= label revision" "$SB/out.log"'
+unset SHIM_PENDAMPING_HEALTH
+pup
+check "pendamping-up.sh: tidak sehat dalam batas waktu -> gagal" '[ $RC -ne 0 ] && grep -q "belum sehat" "$SB/out.log"'
+unset SHIM_DOCKER_VERSION SHIM_LABEL
 
 echo "izin direktori deploy dan rahasia (0751 / 0600)"
 case "$(uname -s)" in

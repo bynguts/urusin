@@ -13,6 +13,7 @@ case "$url" in
     exit 0 ;;
   http://127.0.0.1:4310/api/health) [ -f "$SHIM_DIR/running.blue" ] && { body blue; exit 0; }; exit 7 ;;
   http://127.0.0.1:4311/api/health) [ -f "$SHIM_DIR/running.green" ] && { body green; exit 0; }; exit 7 ;;
+  http://127.0.0.1:4330/health) [ -n "${SHIM_PENDAMPING_HEALTH:-}" ] || exit 7; echo "$SHIM_PENDAMPING_HEALTH"; exit 0 ;;
   https://verify.*) [ -z "${SHIM_PUBLIC_FAIL:-}" ] || exit 60; echo 200; exit 0 ;;
   https://*/api/health) echo "${SHIM_PUBLIC_HEALTH_CODE:-404}"; exit 0 ;; # Caddy: respond /api/health 404
   https://*/api/ready)

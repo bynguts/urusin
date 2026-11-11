@@ -37,8 +37,17 @@ Setiap pemasangan dan pengaktifan tetap butuh persetujuan per kejadian (aturan d
     build). Membersihkan cache HANYA lewat `ci-docker builder-gc`
     (`docker buildx prune --builder urusin-ci --max-used-space 1500mb`) atau `ci-docker builder-rm`. Tidak pernah prune global, tidak
     pernah `daemon.json`. amd64 dibangun lewat binfmt `qemu-x86_64` yang **sudah** terdaftar di host (paket
-    distro); CI tidak pernah memasang binfmt. Smoke test: arm64 native (boot pendamping penuh dengan pengerasan
-    compose), amd64 lewat binfmt. Output tetap `DIGEST: sha256:...` di log job, sama dengan runner GitHub.
+    distro); CI tidak pernah memasang binfmt. Output tetap `DIGEST: sha256:...` di log job, sama dengan runner
+    GitHub.
+  - **Smoke test Release hanya arsitektur native host** (arm64; boot pendamping penuh dengan pengerasan
+    compose). Node amd64 di bawah `qemu-x86_64` bisa menggantung tanpa CPU, jadi amd64 tidak di-smoke di sini:
+    amd64 tetap dibangun + di-push, lalu `ci-docker smoke` memastikan setiap platform yang dibangun ada di
+    manifest index (`docker buildx imagetools inspect --raw`). Hanya varian native yang ditarik
+    (`docker pull --platform`). Setiap `docker run` smoke dibatasi `timeout` dan diberi nama
+    `urusin-ci-smoke-*` (dihentikan paksa saat waktu habis; hook `cleanup` juga membersihkannya).
+  - **Image job tidak menumpuk di daemon**: setelah smoke, `ci-docker` membuang ref `urusin-*@<digest>` milik
+    job itu; setelah build, ref `:<sha>`/`@<digest>` lokal (bila ada). `docker image rm` tanpa `-f` dan hanya
+    ref milik job itu: tidak ada prune image global, image yang dipakai kontainer produksi tidak tersentuh.
   - **rc-compat** (aktif hanya bila ada tag `rc*`) belum punya varian self-hosted: di runner ini langkahnya
     **dilewati dengan `::warning::`** (bukan gagal); cakupan rc-compat berkurang selama runner cadangan aktif. Cek migrasi aditif
     (`scripts/check-additive-migrations.mjs`, statis: git diff + node) **tetap jalan** di runner ini.
@@ -51,7 +60,7 @@ Setiap pemasangan dan pengaktifan tetap butuh persetujuan per kejadian (aturan d
 - **Kebersihan antar job.** `actions/checkout` membersihkan workspace di awal job (`clean: true`, bawaan).
   Hook `job-completed` setelah setiap job: hapus `node_modules` di workspace, `pnpm store prune` di `_home`
   (batas keras 1 GB: store dihapus bila lebih), hapus kontainer sisa
-  `urusin-ci-pw-*` dan temp `ci-docker` (`ci-docker cleanup`), lalu cetak `df` agar tren disk terlihat di log.
+  `urusin-ci-pw-*`/`urusin-ci-smoke-*` dan temp `ci-docker` (`ci-docker cleanup`), lalu cetak `df` agar tren disk terlihat di log.
 - **Penjaga disk.** Hook `job-started` menggagalkan job bila disk ≥ 88%; `runner-prestart` tidak menyalakan
   runner; `ci-docker` menolak build/pull/run. Tidak ada pembersihan otomatis selain cache builder sendiri.
 

@@ -220,7 +220,8 @@ Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan meng
   (`..`, `%2e%2e`, `..%2f`, `..%5c`, `//`, `..;`, `/pendamping/internal|debug|health`) diuji langsung lewat
   Caddy: semua 404, polos maupun dengan header upgrade.
 - `fixtures` publish `127.0.0.1:4320`; `fixtures.urusinai.web.id` mengirim `X-Robots-Tag: noindex, nofollow`.
-- `.env`: `PENDAMPING_IMAGE`, `GIT_SHA_PENDAMPING`, `PENDAMPING_INTERNAL_URL`, `URUSIN_PUBLIC_ORIGIN`;
+- `.env`: `PENDAMPING_IMAGE`, `PENDAMPING_INTERNAL_URL`, `URUSIN_PUBLIC_ORIGIN` (`GIT_SHA_PENDAMPING` tidak dipakai
+  lagi: sha worker = GIT_SHA yang dibakar ke image, diperiksa `pendamping-up.sh` terhadap label revision);
   `FIXTURES_IMAGE` di `.env.images`. `COMPOSE_PROFILES` TIDAK diset global: `pendamping-up.sh` dan perintah
   fixtures menyetel profilnya sendiri, jadi `deploy.sh` tidak menyentuh layanan itu.
 - `.env.images.keep`: digest pendamping aktif dan sebelumnya (rollback).

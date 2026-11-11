@@ -151,7 +151,8 @@ services:
       # Ikat satu-satunya IPv4 kontainer (jaringan internal), bukan wildcard.
       HOST: antarmuka
       PORT: '4330'
-      GIT_SHA: ${GIT_SHA_PENDAMPING:-}
+      # GIT_SHA sengaja TIDAK diset (sama dengan web): /health `sha` harus membuktikan SHA yang dibakar ke image
+      # (ARG/ENV GIT_SHA di Dockerfile), bukan nilai .env yang bisa basi setelah image diganti.
       PENDAMPING_INTERNAL_TOKEN: ${PENDAMPING_INTERNAL_TOKEN:-} # wajib >= 32 karakter; pendamping menolak start tanpanya
       PENDAMPING_EDGE_URL: http://pendamping-edge:3129
       PENDAMPING_EDGE_TOKEN: ${PENDAMPING_EDGE_TOKEN:-} # wajib >= 32 karakter

@@ -111,8 +111,14 @@ fi
 
 web_image="${IMAGE_REPO}@${digest}"
 
-echo "deploy: pull ${web_image}"
-docker pull "$web_image" >/dev/null
+# Image yang sudah ada di docker host (mis. ditarik Release lewat `ci-docker simpan`, tanpa kredensial di VPS)
+# tidak ditarik ulang; label revision dan provenance tetap diperiksa di bawah.
+if docker image inspect "$web_image" >/dev/null 2>&1; then
+  echo "deploy: ${web_image} sudah ada di host, pull dilewati"
+else
+  echo "deploy: pull ${web_image}"
+  docker pull "$web_image" >/dev/null
+fi
 
 label_sha="$(docker image inspect "$web_image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null || true)"
 # Label revision harus SHA git LENGKAP (40 hex); "dev", kosong, atau SHA pendek ditolak.
@@ -128,6 +134,13 @@ expected_sha="$label_sha"
 # Ini pencocokan isi metadata provenance, BUKAN verifikasi kriptografis attestation (tanda tangan/
 # cosign belum dipakai). Melindungi dari image salah-SHA, bukan dari registry yang disusupi.
 provenance="$(docker buildx imagetools inspect "$web_image" --format '{{json .Provenance}}' 2>/dev/null || true)"
+# Tanpa akses registry (VPS tanpa login GHCR): salinan provenance yang disimpan `ci-docker simpan` (root, 0644)
+# saat Release menarik image ini dengan token job.
+prov_lokal="${PROVENANCE_DIR:-/opt/urusin-ci/provenance}/${digest#sha256:}.json"
+if { [ -z "$provenance" ] || [ "$provenance" = "null" ]; } && [ -f "$prov_lokal" ]; then
+  provenance="$(cat "$prov_lokal")"
+  echo "deploy: provenance dari salinan lokal $prov_lokal (ci-docker simpan)"
+fi
 if [ -n "$provenance" ] && [ "$provenance" != "null" ] && [ "$provenance" != "{}" ] && grep -qF -- "$label_sha" <<<"$provenance"; then
   echo "deploy: provenance memuat SHA lengkap ${label_sha:0:12}... (isi dicocokkan; tanda tangan tidak diverifikasi)"
 elif [ "$REQUIRE_PROVENANCE" = "0" ]; then
