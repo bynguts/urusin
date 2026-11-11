@@ -17,7 +17,7 @@ concurrency:
 jobs:
   verify:
     name: Lint, typecheck, test, build, budget, audit
-    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER && (vars.URUSIN_RUNNER_UJI || vars.URUSIN_RUNNER)) || 'ubuntu-latest' }}
     timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 20 }}
     env:
       HUSKY: '0'
@@ -252,7 +252,7 @@ jobs:
 
   coverage:
     name: Coverage (ambang per paket)
-    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER && (vars.URUSIN_RUNNER_UJI || vars.URUSIN_RUNNER)) || 'ubuntu-latest' }}
     timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 20 }}
     env:
       HUSKY: '0'
@@ -298,7 +298,7 @@ jobs:
 
   rc-compat:
     name: Kompatibilitas rilis kandidat (image rc* terakhir di atas DB HEAD)
-    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER && (vars.URUSIN_RUNNER_UJI || vars.URUSIN_RUNNER)) || 'ubuntu-latest' }}
     timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 20 }}
     permissions:
       contents: read
@@ -411,7 +411,7 @@ jobs:
 
   contract-freeze:
     name: Pembekuan kontrak (vs contracts-take1)
-    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER && (vars.URUSIN_RUNNER_UJI || vars.URUSIN_RUNNER)) || 'ubuntu-latest' }}
     timeout-minutes: 10
     env:
       HUSKY: '0'
@@ -443,7 +443,7 @@ jobs:
 
   gitleaks:
     name: Gitleaks
-    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER && (vars.URUSIN_RUNNER_UJI || vars.URUSIN_RUNNER)) || 'ubuntu-latest' }}
     timeout-minutes: 10
     env:
       GITLEAKS_VERSION: 8.30.1
