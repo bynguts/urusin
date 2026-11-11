@@ -58,6 +58,11 @@
   const dokumen = $derived(hasil?.ok ? hasil.data.dokumen : []);
   const jenisAda = $derived([...new Set(dokumen.map((d) => d.jenis))]);
   const tampil = $derived(filter === 'semua' ? dokumen : dokumen.filter((d) => d.jenis === filter));
+  const dapatDihapus = $derived(dokumen.filter((d) => !d.bacaSaja));
+
+  $effect(() => {
+    if (filter !== 'semua' && !jenisAda.includes(filter)) filter = 'semua';
+  });
 
   // --- Tambah dokumen ---
   // Dialog tertutup tidak terlihat saat load: modulnya dimuat terpisah (dipanaskan saat idle setelah brankas
@@ -107,10 +112,12 @@
 
   // Latar sampul per jenis (App 11): KTP biru, KK/akta/surat krem, foto ungu.
   async function hapusSemua() {
-    if (!confirm(`Hapus semua ${dokumen.length} dokumen dari brankas? Tindakan ini tidak bisa dibatalkan.`))
+    if (
+      !confirm(`Hapus semua ${dapatDihapus.length} dokumen dari brankas? Tindakan ini tidak bisa dibatalkan.`)
+    )
       return;
     const gagal: string[] = [];
-    for (const d of [...dokumen]) {
+    for (const d of [...dapatDihapus]) {
       const r = await hapusDokumen(d.id);
       if (!r.ok) gagal.push(d.judul);
       else if (hasil?.ok)
@@ -231,14 +238,15 @@
                 {LABEL_JENIS[d.jenis]} · {ukuranBerkas(d.ukuran)}
               </p>
               <p class="text-sm leading-5 text-muted">Tersimpan {tanggal(d.disimpanPada)}</p>
+              {#if d.bacaSaja}<p class="text-sm leading-5 text-muted">Contoh bawaan · hanya baca</p>{/if}
             </div>
-            <button
-              type="button"
-              onclick={() => hapus(d)}
-              class="absolute top-2 right-2 z-10 grid size-11 place-items-center rounded-full bg-surface/90 text-galat shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] hover:bg-mawar"
-            >
-              <Icon name="hapus" class="size-[18px]" /><span class="sr-only">Hapus {d.judul}</span>
-            </button>
+            {#if !d.bacaSaja}<button
+                type="button"
+                onclick={() => hapus(d)}
+                class="absolute top-2 right-2 z-10 grid size-11 place-items-center rounded-full bg-surface/90 text-galat shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] hover:bg-mawar"
+              >
+                <Icon name="hapus" class="size-[18px]" /><span class="sr-only">Hapus {d.judul}</span>
+              </button>{/if}
           </li>
         {/each}
       </ul>
@@ -262,7 +270,7 @@
       <p class="flex-1 text-[15px] leading-[22px] text-card-ink">
         Dokumen tidak dikirim ke mana pun sampai Anda menyetujui pemakaiannya di sebuah urusan.
       </p>
-      {#if dokumen.length}
+      {#if dapatDihapus.length}
         <button
           type="button"
           onclick={hapusSemua}

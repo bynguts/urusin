@@ -272,6 +272,8 @@ describe('PrefsStore', () => {
     a.atur('ukuranHuruf', 1.25);
     a.atur('tema', 'gelap');
     expect(new PrefsStore(gudang).nilai).toMatchObject({ ukuranHuruf: 1.25, tema: 'gelap' });
+    a.reset();
+    expect(new PrefsStore(gudang).nilai).toEqual(PREFS_AWAL);
     const rusak = {
       getItem: () => {
         throw new Error('diblokir');
