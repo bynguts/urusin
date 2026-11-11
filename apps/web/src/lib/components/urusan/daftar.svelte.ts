@@ -13,7 +13,11 @@ export class DaftarUrusan {
   galat = $state(false);
   private urutan = 0;
 
-  constructor(private readonly ambil: typeof fetch = (...a) => fetch(...a)) {}
+  constructor(
+    private readonly ambil: typeof fetch = (...a) => fetch(...a),
+    /** Batas tunggu status: permintaan yang menggantung berakhir sebagai galat (ada "Coba lagi"), bukan memuat terus. */
+    private readonly batasMs = 15_000,
+  ) {}
 
   async muat(catatan: readonly CatatanUrusan[]): Promise<void> {
     const urutan = ++this.urutan;
@@ -25,6 +29,7 @@ export class DaftarUrusan {
       const ids = catatan.map((c) => c.id).join(',');
       const res = await this.ambil(`/api/urusan?ids=${encodeURIComponent(ids)}`, {
         headers: { accept: 'application/json' },
+        signal: AbortSignal.timeout(this.batasMs),
       });
       if (!res.ok) throw new Error(String(res.status));
       const j = (await res.json()) as DaftarUrusanResponse;
