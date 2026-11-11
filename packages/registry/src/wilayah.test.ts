@@ -31,7 +31,7 @@ describe('data wilayah tertanam', () => {
     const j = baca('kontak-dukcapil.json');
     const ok = j.kontak.filter((k) => k.status === 'terverifikasi');
     expect(DATA_KONTAK_DUKCAPIL.map((k) => [k.kode, k.website])).toEqual(ok.map((k) => [k.kode, k.website]));
-    expect(kontakDukcapil('3578')).toBeUndefined(); // Surabaya belum terverifikasi
+    expect(kontakDukcapil('1101')).toBeUndefined(); // Aceh Selatan belum terverifikasi
     expect(kontakDukcapil('3312')?.website).toMatch(/wonogirikab\.go\.id/);
   });
   it('router default memakai nama resmi untuk kode di luar seed (bukan "Kab/Kota XXXX")', () => {

@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { kanalWilayah, onlineTerverifikasi, rencanaWilayah, wilayahByKode } from './index.js';
+import {
+  kanalProvinsi,
+  kanalWilayah,
+  onlineTerverifikasi,
+  rencanaLayanan,
+  rencanaWilayah,
+  wilayahByKode,
+} from './index.js';
 
 const semua = () => true;
 
-describe('kanalWilayah: portal → situs Disdukcapil terverifikasi → nasional', () => {
+describe('kanalWilayah: portal → situs Disdukcapil → situs pemda → situs provinsi → nasional', () => {
   it('Surabaya: portal Klampid di registry', () => {
     expect(kanalWilayah('3578')).toMatchObject({
       jenis: 'portal',
@@ -19,8 +26,26 @@ describe('kanalWilayah: portal → situs Disdukcapil terverifikasi → nasional'
       url: expect.stringMatching(/acehtengahkab/),
     });
   });
-  it('tanpa portal dan tanpa kontak (Aceh Selatan): kanal nasional', () => {
-    expect(kanalWilayah('1101')).toMatchObject({
+  it('tanpa situs Disdukcapil, ada situs Pemerintah Kota (Kota Jayapura, QA produksi): situs pemda', () => {
+    expect(kanalWilayah('9171')).toEqual({
+      url: 'https://jayapurakota.go.id/',
+      judul: 'Situs resmi Pemerintah Kota Jayapura',
+      instansi: 'Pemerintah Kota Jayapura',
+      jenis: 'pemda',
+    });
+  });
+  it('tanpa situs kab/kota sama sekali (Aceh Selatan): situs resmi provinsinya', () => {
+    expect(kanalWilayah('1101')).toMatchObject({ jenis: 'provinsi', url: 'https://acehprov.go.id/' });
+    expect(kanalProvinsi('1101')?.instansi).toBe('Pemerintah Provinsi Aceh');
+  });
+  it('provinsi dengan situs Dinas Dukcapil (Papua Barat): Dinas Dukcapil provinsi', () => {
+    expect(kanalProvinsi('9202')).toMatchObject({
+      instansi: 'Dinas Kependudukan dan Pencatatan Sipil Provinsi Papua Barat',
+      url: expect.stringMatching(/^https:\/\/disdukcapil\.papuabaratprov\.go\.id\/$/),
+    });
+  });
+  it('tanpa situs kab/kota dan provinsi (Tapanuli Tengah): kanal nasional', () => {
+    expect(kanalWilayah('1201')).toMatchObject({
       jenis: 'nasional',
       url: 'https://dukcapil.kemendagri.go.id/',
     });
@@ -31,7 +56,8 @@ describe('rencanaWilayah: tidak ada isi Wonogiri untuk warga daerah lain', () =>
   it.each([
     ['3578', 'Kota Surabaya', 'https://wargaklampid-dispendukcapil.surabaya.go.id/'],
     ['3216', 'Kabupaten Bekasi', 'https://sitepak.bekasikab.go.id/'],
-    ['1101', 'Kabupaten Aceh Selatan', 'https://dukcapil.kemendagri.go.id/'],
+    ['1101', 'Kabupaten Aceh Selatan', 'https://acehprov.go.id/'],
+    ['1201', 'Kabupaten Tapanuli Tengah', 'https://dukcapil.kemendagri.go.id/'],
   ])('%s (%s): langkah nasional + kanal resmi sendiri, tier dipandu', (kode, nama, url) => {
     for (const slug of ['kelahiran', 'kematian', 'perkawinan']) {
       const r = rencanaWilayah(slug, { ktp: kode, pendampingTersedia: semua })!;
@@ -86,9 +112,13 @@ describe('rencanaWilayah: tidak ada isi Wonogiri untuk warga daerah lain', () =>
             expect(d, `${slug} ${kode}`).toMatch(/yang disediakan petugas \(F-\d\.\d{2}\)$/);
       }
   });
-  it('wilayah tanpa situs terverifikasi mengatakannya terus terang', () => {
+  it('wilayah tanpa situs Disdukcapil terverifikasi mengatakannya terus terang', () => {
     const r = rencanaWilayah('kelahiran', { ktp: '1101' })!;
     expect(r.langkah[0]!.keterangan).toMatch(/belum terverifikasi/);
+    // Situs pemda/provinsi hanya sumber informasi resmi daerah, bukan tempat mengajukan.
+    expect(r.langkah[0]!.keterangan).toMatch(
+      /tanyakan cara pengajuan ke kantor Disdukcapil Kabupaten Aceh Selatan; informasi resmi daerah ada di Situs resmi Pemerintah Provinsi Aceh/,
+    );
   });
   it('tanpa wilayah: rencana umum nasional, tanpa Wonogiri', () => {
     const r = rencanaWilayah('kelahiran', { ktp: null })!;
@@ -187,5 +217,44 @@ describe('rencanaWilayah: KTP ≠ domisili dan pindah', () => {
     const kawin = rencanaWilayah('perkawinan', { ktp: '3216' })!.langkah[0]!;
     expect(kawin.keterangan).toMatch(/KUA kecamatan dan Dukcapil tidak menerbitkan kutipan akta/);
     expect(kawin.sourceRef.map((s) => s.url)).toContain('https://peraturan.go.id/files/uu23-2006.pdf');
+  });
+});
+
+describe('rencanaLayanan: rencana minimal KK/KTP-el bersumber pasal Perpres 96/2018 untuk wilayah mana pun', () => {
+  const PASAL = 'https://peraturan.go.id/files/ps96-2018.pdf';
+
+  it('KK (pengantin baru, Kota Jayapura): dua langkah, dokumen dari Ps. 11 dan 12, tiap langkah bersumber', () => {
+    const r = rencanaLayanan('kk', { ktp: '9171' })!;
+    expect(r.slug).toBe('kk');
+    expect(r.langkah.map((l) => l.id)).toEqual(['ajukan', 'ambil']);
+    const ajukan = r.langkah[0]!;
+    expect(ajukan.judul).toBe('Ajukan penerbitan KK ke Disdukcapil Kota Jayapura');
+    expect(ajukan.dokumen.join(' ')).toMatch(/buku nikah\/kutipan akta perkawinan/);
+    expect(ajukan.dokumen.join(' ')).toMatch(/surat keterangan pindah/);
+    expect(ajukan.keterangan).toMatch(/Perpres 96\/2018 Ps\. 11 ayat 1 dan Ps\. 12/);
+    expect(ajukan.sourceRef.map((s) => s.url)).toContain(PASAL);
+    for (const l of r.langkah) expect(l.sourceRef.length).toBeGreaterThan(0);
+    // Kanal resmi Kota Jayapura sendiri (bukan Kemendagri, bukan kab/kota lain).
+    expect(r.kanal[0]!.url).toBe('https://jayapurakota.go.id/');
+    expect(ajukan.sourceRef[0]!.url).toBe('https://jayapurakota.go.id/');
+  });
+
+  it('KTP-el: hilang/rusak/pindah datang (Ps. 17, 21); domisili lain disebut boleh cetak di sana (Ps. 22)', () => {
+    const r = rencanaLayanan('ktp', { ktp: '3578', domisili: '3374' })!;
+    expect(r.langkah[0]!.dokumen.join(' ')).toMatch(/surat keterangan hilang dari kepolisian dan KK/);
+    expect(r.langkah[0]!.keterangan).toMatch(/Ps\. 17 ayat 1 dan Ps\. 21/);
+    expect(r.catatan).toMatch(
+      /KTP-el bisa diterbitkan Disdukcapil Kota Semarang tanpa pulang ke Kota Surabaya/,
+    );
+    expect(r.catatan).toMatch(/Ps\. 22/);
+    expect(r.kanal.map((k) => k.url)).toEqual([
+      'https://wargaklampid-dispendukcapil.surabaya.go.id/',
+      expect.stringMatching(/semarang/),
+    ]);
+  });
+
+  it('jenis lain: tidak ada rencana (model tidak diberi sumber karangan)', () => {
+    expect(rencanaLayanan('akta', { ktp: '3312' })).toBeUndefined();
+    expect(rencanaLayanan('kelahiran', { ktp: '3312' })).toBeUndefined();
   });
 });

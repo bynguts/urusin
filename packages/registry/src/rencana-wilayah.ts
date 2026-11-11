@@ -19,13 +19,45 @@ import {
 } from './regulasi.js';
 import { routeByKode } from './router.js';
 import type { CityEntry, SourceRef } from './schema.js';
-import { kontakDukcapil, namaPendekWilayah, wilayahByKode, type Wilayah } from './wilayah.js';
+import { kontakDukcapil, namaPendekWilayah, situsPemda, wilayahByKode, type Wilayah } from './wilayah.js';
 
 /** Kanal resmi satu kab/kota untuk rencana: dari mana warga mengajukan. */
 export type KanalWilayah = SourceRef & {
-  /** portal = portal layanan di registry; disdukcapil = situs Disdukcapil terverifikasi; nasional = cadangan. */
-  jenis: 'portal' | 'disdukcapil' | 'nasional';
+  /**
+   * portal = portal layanan di registry; disdukcapil = situs Disdukcapil terverifikasi; pemda = situs resmi
+   * Pemerintah Kabupaten/Kota; provinsi = situs Dinas Dukcapil atau Pemerintah Provinsi; nasional = cadangan akhir.
+   * Hanya portal dan disdukcapil yang menjadi tempat mengajukan; pemda dan provinsi sumber informasi resmi daerah.
+   */
+  jenis: 'portal' | 'disdukcapil' | 'pemda' | 'provinsi' | 'nasional';
 };
+
+/** Kanal Disdukcapil kab/kota (tempat mengajukan), bukan cadangan pemda/provinsi/nasional. */
+export const kanalDisdukcapil = (k: Pick<KanalWilayah, 'jenis'>): boolean =>
+  k.jenis === 'portal' || k.jenis === 'disdukcapil';
+
+/**
+ * Situs resmi provinsi tempat kab/kota ini berada: Dinas Dukcapil provinsi bila terverifikasi, selain itu portal
+ * Pemerintah Provinsi. undefined bila keduanya belum terverifikasi.
+ */
+export function kanalProvinsi(kode: string): KanalWilayah | undefined {
+  const w = wilayahByKode(kode);
+  const p = situsPemda(kode.slice(0, 2));
+  if (!w || !p) return undefined;
+  const url = p.website.endsWith('/') ? p.website : `${p.website}/`;
+  return p.jenis === 'dukcapil'
+    ? {
+        url,
+        judul: `Situs Dinas Dukcapil Provinsi ${w.provinsi}`,
+        instansi: `Dinas Kependudukan dan Pencatatan Sipil Provinsi ${w.provinsi}`,
+        jenis: 'provinsi',
+      }
+    : {
+        url,
+        judul: `Situs resmi Pemerintah Provinsi ${w.provinsi}`,
+        instansi: `Pemerintah Provinsi ${w.provinsi}`,
+        jenis: 'provinsi',
+      };
+}
 
 export const KANAL_NASIONAL: SourceRef = {
   url: 'https://dukcapil.kemendagri.go.id/',
@@ -36,8 +68,9 @@ export const KANAL_NASIONAL: SourceRef = {
 const dinas = (nama: string) => `Dinas Kependudukan dan Pencatatan Sipil ${nama}`;
 
 /**
- * Kanal resmi kab/kota, berurutan: portal layanan di registry, lalu situs Disdukcapil yang terverifikasi
- * (data/wilayah/kontak-dukcapil.json), lalu situs Ditjen Dukcapil. Tidak pernah memakai kanal kota lain.
+ * Kanal resmi kab/kota, berurutan: portal layanan di registry, situs Disdukcapil yang terverifikasi
+ * (data/wilayah/kontak-dukcapil.json), situs resmi Pemerintah Kabupaten/Kota, situs Dinas Dukcapil/Pemerintah
+ * provinsinya (data/wilayah/pemda.json), lalu situs Ditjen Dukcapil. Tidak pernah memakai kanal kota lain.
  */
 export function kanalWilayah(kode: string): KanalWilayah {
   const { entry } = routeByKode(kode);
@@ -56,7 +89,15 @@ export function kanalWilayah(kode: string): KanalWilayah {
       instansi: dinas(entry.nama),
       jenis: 'disdukcapil',
     };
-  return { ...KANAL_NASIONAL, jenis: 'nasional' };
+  const pemda = situsPemda(kode);
+  if (pemda)
+    return {
+      url: pemda.website.endsWith('/') ? pemda.website : `${pemda.website}/`,
+      judul: `Situs resmi Pemerintah ${entry.nama}`,
+      instansi: `Pemerintah ${entry.nama}`,
+      jenis: 'pemda',
+    };
+  return kanalProvinsi(kode) ?? { ...KANAL_NASIONAL, jenis: 'nasional' };
 }
 
 const sumber = (k: KanalWilayah): SourceRef => ({ url: k.url, judul: k.judul, instansi: k.instansi });
@@ -91,11 +132,13 @@ const disebut = (w: Wilayah | null, cadangan: string) =>
   w ? `Disdukcapil ${namaPendekWilayah(w.nama)}` : cadangan;
 
 const lewatKanal = (k: KanalWilayah, w: Wilayah | null) =>
-  k.jenis === 'nasional'
-    ? w
-      ? `Situs resmi Disdukcapil ${w.nama} belum terverifikasi di Urusin: tanyakan cara pengajuan ke kantor Disdukcapil ${w.nama} atau lewat kanal nasional.`
-      : 'Pilih kab/kota sesuai KTP agar Urusin menunjukkan situs resmi yang tepat.'
-    : `Cara mengajukan (online atau loket) dan formulir mengikuti ${k.judul}; periksa di sana sebelum berangkat.`;
+  kanalDisdukcapil(k)
+    ? `Cara mengajukan (online atau loket) dan formulir mengikuti ${k.judul}; periksa di sana sebelum berangkat.`
+    : !w
+      ? 'Pilih kab/kota sesuai KTP agar Urusin menunjukkan situs resmi yang tepat.'
+      : k.jenis === 'nasional'
+        ? `Situs resmi Disdukcapil ${w.nama} belum terverifikasi di Urusin: tanyakan cara pengajuan ke kantor Disdukcapil ${w.nama} atau lewat kanal nasional.`
+        : `Situs resmi Disdukcapil ${w.nama} belum terverifikasi di Urusin: tanyakan cara pengajuan ke kantor Disdukcapil ${w.nama}; informasi resmi daerah ada di ${k.judul} (${k.url}).`;
 
 /**
  * Pengajuan online di kab/kota ini sudah terverifikasi di registry: portal layanan yang alurnya sudah dicek
@@ -293,10 +336,128 @@ function langkahPindah(asal: Wilayah | null, tujuan: Wilayah | null): Langkah[] 
   ];
 }
 
+/** Jenis urusan di luar Peristiwa Hidup yang punya rencana nasional bersumber (Perpres 96/2018). */
+export const JENIS_LAYANAN = ['kk', 'ktp'] as const;
+export type JenisLayanan = (typeof JENIS_LAYANAN)[number];
+
+/** Rencana minimal untuk urusan KK/KTP-el: persyaratan nasional bersumber pasal + kanal resmi wilayah KTP. */
+export type RencanaLayanan = {
+  slug: JenisLayanan;
+  judul: string;
+  tier: 'dipandu';
+  catatan: string;
+  langkah: Langkah[];
+  ktp: Wilayah | null;
+  domisili: Wilayah | null;
+  kanal: KanalWilayah[];
+  khususWilayah: false;
+};
+
+function langkahLayanan(slug: JenisLayanan, ktp: Wilayah | null, kanal: KanalWilayah): Langkah[] {
+  const dinasKtp = disebut(ktp, 'Disdukcapil kab/kota sesuai KTP Anda');
+  const cara = lewatKanal(kanal, ktp);
+  const ref = [sumber(kanal), REF_PERPRES_TEKS, REF_PERPRES];
+  if (slug === 'kk')
+    return [
+      L({
+        id: 'ajukan',
+        judul: `Ajukan penerbitan KK ke ${dinasKtp}`,
+        jenis: caraAjukan(ktp),
+        dependsOn: [],
+        dokumen: [
+          'KK baru (mis. setelah menikah): buku nikah/kutipan akta perkawinan',
+          'Bila pasangan atau anggota keluarga pindah dari kab/kota lain: surat keterangan pindah',
+          'KK karena perubahan data: KK lama dan surat keterangan/bukti perubahannya',
+        ],
+        bawa: [],
+        keterangan: `Persyaratan nasional (Perpres 96/2018 Ps. 11 ayat 1 dan Ps. 12). ${cara}`,
+        sourceRef: ref,
+      }),
+      L({
+        id: 'ambil',
+        judul: `Terima KK baru dari ${dinasKtp}`,
+        jenis: 'cek-kanal',
+        lokasi: 'disdukcapil',
+        dependsOn: ['ajukan'],
+        dokumen: [],
+        bawa: ['Bukti pengajuan'],
+        keterangan: `Ada daerah yang mengirim KK untuk dicetak mandiri, ada yang diambil di kantor. ${cara}`,
+        sourceRef: [sumber(kanal)],
+      }),
+    ];
+  return [
+    L({
+      id: 'ajukan',
+      judul: `Ajukan KTP-el ke ${dinasKtp}`,
+      jenis: caraAjukan(ktp),
+      dependsOn: [],
+      dokumen: [
+        'KTP-el hilang: surat keterangan hilang dari kepolisian dan KK',
+        'KTP-el rusak: KTP-el yang rusak dan KK',
+        'Pindah datang: surat keterangan pindah dari Disdukcapil daerah asal dan KK',
+      ],
+      bawa: [],
+      keterangan: `Persyaratan nasional (Perpres 96/2018 Ps. 17 ayat 1 dan Ps. 21). Di luar domisili, KTP-el bisa diterbitkan Disdukcapil kab/kota lain bila tidak ada perubahan data, dengan membawa KK (Ps. 22). ${cara}`,
+      sourceRef: ref,
+    }),
+    L({
+      id: 'ambil',
+      judul: `Terima KTP-el dari ${dinasKtp}`,
+      jenis: 'cek-kanal',
+      lokasi: 'disdukcapil',
+      dependsOn: ['ajukan'],
+      dokumen: [],
+      bawa: ['Bukti pengajuan'],
+      keterangan: cara,
+      sourceRef: [sumber(kanal)],
+    }),
+  ];
+}
+
+/**
+ * Rencana minimal bersumber untuk urusan KK/KTP-el (bukan Peristiwa Hidup), untuk wilayah mana pun: persyaratan
+ * nasional dari pasal Perpres 96/2018 dan kanal resmi wilayah KTP (Disdukcapil, cadangan pemda/provinsi/nasional).
+ * undefined untuk jenis lain.
+ */
+export function rencanaLayanan(
+  jenis: string,
+  opsi: { ktp: string | null; domisili?: string | null | undefined },
+): RencanaLayanan | undefined {
+  if (!(JENIS_LAYANAN as readonly string[]).includes(jenis)) return undefined;
+  const slug = jenis as JenisLayanan;
+  const ktp = opsi.ktp ? (wilayahByKode(opsi.ktp) ?? null) : null;
+  const domisiliRaw = opsi.domisili ? (wilayahByKode(opsi.domisili) ?? null) : null;
+  const domisili = domisiliRaw && domisiliRaw.kodeKabKota !== ktp?.kodeKabKota ? domisiliRaw : null;
+  const kanalKtp = ktp ? kanalWilayah(ktp.kodeKabKota) : { ...KANAL_NASIONAL, jenis: 'nasional' as const };
+  const kanal: KanalWilayah[] = [kanalKtp];
+  let catatan = ktp
+    ? `Syarat ini berlaku di seluruh Indonesia. Cara mengajukan di ${ktp.nama}: lihat ${kanalKtp.judul}.`
+    : 'Persyaratan nasional. Pilih kab/kota sesuai KTP agar kanal resmi wilayah Anda ditampilkan.';
+  if (ktp && domisili) {
+    const kanalDom = kanalWilayah(domisili.kodeKabKota);
+    kanal.push(kanalDom);
+    catatan =
+      slug === 'ktp'
+        ? `Anda tinggal di ${domisili.nama}: KTP-el bisa diterbitkan Disdukcapil ${domisili.nama} tanpa pulang ke ${ktp.nama} bila tidak ada perubahan data, dengan membawa KK (Perpres 96/2018 Ps. 22); lihat ${kanalDom.judul}. ${catatan}`
+        : `${catatanDomisili(ktp, domisili, kanalKtp)} ${catatan}`;
+  }
+  return {
+    slug,
+    judul: slug === 'kk' ? 'Kartu Keluarga (KK)' : 'KTP elektronik (KTP-el)',
+    tier: 'dipandu',
+    catatan,
+    langkah: langkahLayanan(slug, ktp, kanalKtp),
+    ktp,
+    domisili,
+    kanal,
+    khususWilayah: false,
+  };
+}
+
 function catatanDomisili(ktp: Wilayah, domisili: Wilayah, kanal: KanalWilayah): string {
   return (
     `Anda tinggal di ${domisili.nama}, tetapi urusan kependudukan ditangani Disdukcapil sesuai alamat KTP: ${ktp.nama}. ` +
-    (kanal.jenis === 'nasional'
+    (!kanalDisdukcapil(kanal)
       ? `Langkah tatap muka dilakukan di kantor ${ktp.nama}; tanyakan dulu apakah bisa dilayani dari jauh.`
       : `Langkah online lewat ${kanal.judul} bisa dikerjakan dari mana saja; langkah tatap muka di kantor ${ktp.nama}.`)
   );
