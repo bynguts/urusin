@@ -2,6 +2,7 @@ import type { RagSearcher } from '@urusin/rag';
 import { z } from 'zod';
 import type { CapabilityFlags, ChatMessage, ChatProvider, ChatTool, Usage } from '@urusin/llm';
 import type { Db } from './db.js';
+import type { CacheJawaban } from './grounding.js';
 import type { EventPayload, PayloadOf, UrusanState } from '@urusin/contracts';
 import type { IngatanTurn } from './ingatan.js';
 import type { UrusanRow, HarnessStore } from './store.js';
@@ -33,6 +34,8 @@ export type ToolDeps = {
   ragDb?: Db | undefined;
   /** Pencari produksi (hybrid + rerank, @urusin/rag createRagSearcher); tanpa ini BM25 sinkron atas ragDb. */
   ragSearch?: RagSearcher['search'] | undefined;
+  /** Cache keluaran generator jawaban bersumber (lihat `CacheJawaban`); tanpa ini tiap jawaban memanggil model. */
+  cacheJawaban?: CacheJawaban | undefined;
   now: () => Date;
 };
 

@@ -22,7 +22,7 @@ import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/co
 import { HarnessError, TurnInProgressError } from './errors.js';
 import { tierUrusan } from './rencana.js';
 import { toEvent } from './envelope.js';
-import { buildHandoff } from './grounding.js';
+import { ADMINDUK, buildHandoff, type CacheJawaban } from './grounding.js';
 import {
   INGAT_TOOL,
   blokIngatan,
@@ -47,8 +47,10 @@ import {
   kodeDisebut,
   kodeUntukPii,
   refWilayah,
+  rencanaUrusan,
   selaraskanUsulan,
   tetapkanWilayah,
+  tujuanDariPesan,
   usulkanRencanaOtomatis,
   wilayahBelumSiap,
   wilayahDariPesan,
@@ -61,6 +63,7 @@ const TOOL_RENCANA = 'urusan__usulkan_rencana';
 /** Tool pencarian sumber; langkah yang hanya berisi ini selalu diikuti jawaban bersumber. */
 const TOOL_CARI: ReadonlySet<string> = new Set(['rag__cari_pengetahuan', 'dukcapil__cek_persyaratan']);
 const TOOL_JAWAB = 'urusan__jawab_persyaratan';
+const TOOL_CARI_KORPUS = 'rag__cari_pengetahuan';
 
 /** Kueri pencarian pertama di langkah itu sebagai pertanyaan jawaban bersumber. */
 function kueriCari(calls: readonly { function: { arguments: string } }[]): string | undefined {
@@ -83,6 +86,10 @@ function kueriCari(calls: readonly { function: { arguments: string } }[]): strin
 
 const SUSUN_RENCANA =
   'Jawaban di atas sudah tampil ke warga. Sekarang susun rencana langkah untuk warga dengan urusan__usulkan_rencana: ringkasan satu kalimat, 1-4 langkah konkret sesuai jawaban dan kanal resmi wilayah ini (dokumen yang dibawa di "bawa"). Jangan menulis balasan teks.';
+
+/** Rencana yang diminta bersamaan dengan jawaban bersumber (lihat `jawabDanRencana`): dasarnya potongan sumber. */
+const SUSUN_RENCANA_PARALEL =
+  'Sistem sedang menyusun jawaban bersumber dari potongan di atas untuk warga. Sekarang susun rencana langkah untuk warga dengan urusan__usulkan_rencana: ringkasan satu kalimat, 1-4 langkah konkret sesuai potongan sumber resmi di atas dan kanal resmi wilayah ini (dokumen yang dibawa di "bawa"). Jangan menulis balasan teks.';
 
 export type AgentConfig = {
   /** Batas waktu satu turn (rencana: 120 detik). */
@@ -116,6 +123,8 @@ export type AgentDeps = {
   locks?: Set<string> | undefined;
   /** Ingatan warga lintas urusan (ADR 0031); tanpa ini tidak ada blok ingatan dan tool `ingatan__ingat`. */
   ingatan?: PenyimpanIngatan | undefined;
+  /** Cache keluaran generator jawaban bersumber (lihat `CacheJawaban`). */
+  cacheJawaban?: CacheJawaban | undefined;
 };
 
 export type TurnOutcome = {
@@ -268,6 +277,8 @@ class TurnRunner {
    * tidak bisa menanam/menghapus ingatan lintas urusan.
    */
   private kontenTakTepercaya = false;
+  /** Wilayah KTP ditetapkan dari pesan giliran ini sendiri (`wilayahDariPesan`), syarat `jalurCepat`. */
+  private wilayahDariTeks = false;
 
   constructor(
     private readonly deps: AgentDeps,
@@ -405,12 +416,14 @@ class TurnRunner {
     });
   }
 
-  private async callLlm(params: ChatParams): Promise<ChatCompletion> {
+  /** `batal`: sinyal tambahan untuk panggilan paralel yang bisa tidak lagi dibutuhkan (lihat `jawabDanRencana`). */
+  private async callLlm(params: ChatParams, batal?: AbortSignal): Promise<ChatCompletion> {
     for (let attempt = 0; ; attempt++) {
       try {
-        return await this.deps.provider.create(params, { signal: this.llmSignal() });
+        const signal = batal ? AbortSignal.any([this.llmSignal(), batal]) : this.llmSignal();
+        return await this.deps.provider.create(params, { signal });
       } catch (e) {
-        if (this.ctrl.signal.aborted) throw e;
+        if (this.ctrl.signal.aborted || batal?.aborted) throw e;
         const timedOut = e instanceof Error && (e.name === 'TimeoutError' || e.name === 'APIUserAbortError');
         if (attempt === 0 && (isRetryableError(e) || timedOut)) continue;
         throw e;
@@ -525,7 +538,165 @@ class TurnRunner {
       return;
     }
     if (this.cukupKartuWilayah()) return;
+    if (await this.jalurCepat()) return;
     await this.toolLoop();
+  }
+
+  /**
+   * Giliran pertama yang jenis dan wilayah KTP-nya ditetapkan dari pesan warga itu sendiri (kata kunci/klasifikasi +
+   * `wilayahDariPesan`), tanpa riwayat: langkah model pertama di sini selalu
+   * rag__cari_pengetahuan (lalu jawaban bersumber), jadi harness langsung (1) mengusulkan kartu rencana
+   * deterministik bila jenisnya punya (tampil dalam hitungan milidetik, sebelum LLM), (2) mencari korpus dengan teks
+   * warga lewat gerbang tool yang sama, dan (3) menyusun jawaban bersumber; rencana karangan model diminta PARALEL
+   * dengan jawaban. Hemat satu round-trip LLM (5-9 detik). Hanya kependudukan (layanan lain bisa butuh tool baca
+   * lain, mis. samsat__cek_pkb), dan pesan yang perlu ditanggapi model dulu (pemalsuan, data pribadi, cek status)
+   * tetap lewat loop agen.
+   */
+  private async jalurCepat(): Promise<boolean> {
+    const u = this.urusan;
+    if (!this.wilayahDariTeks || u.state !== 'MEMAHAMI' || !u.jenis || !ADMINDUK.has(u.jenis)) return false;
+    const w = wilayahUrusan(this.store, u);
+    if (wilayahBelumSiap(u.jenis, w)) return false;
+    const teks = this.teksWarga;
+    if (mintaPemalsuan(teks) || /\{\{[A-Z]+\d*\.[A-Z_]+\}\}/.test(teks) || /\bstatus\b/i.test(teks))
+      return false;
+    if (this.store.loadHistory(this.turn.urusanId, 1).length > 0) return false;
+    const ada = new Set(this.deps.registry.forState(u.state).map((t) => t.name));
+    if (!ada.has(TOOL_CARI_KORPUS) || !ada.has(TOOL_JAWAB) || this.quotaStatus().mode === 'habis')
+      return false;
+
+    // Kueri = judul rencana + teks warga: kueri model biasanya kalimat warga yang diringkas ("syarat ganti KTP-el
+    // rusak"); judul menjaga cakupan leksikal (gerbang abstain RAG) untuk pesan yang panjang/santai.
+    const judul = w.ktp
+      ? rencanaUrusan(u.jenis, {
+          ktp: w.ktp.kodeKabKota,
+          domisili: w.domisili?.kodeKabKota ?? null,
+          tujuan: w.tujuan?.kodeKabKota ?? null,
+        })?.judul
+      : undefined;
+    // Kartu rencana deterministik (bila jenisnya punya) tampil SEKARANG, sebelum panggilan LLM mana pun.
+    this.proposeRencana();
+    const args = JSON.stringify({
+      query: `${judul ? `persyaratan ${judul.toLowerCase()}. ` : ''}${teks}`.slice(0, 500),
+      layanan: 'adminduk',
+    });
+    const id = 'call_cari_cepat';
+    const r = await this.handleToolCall(TOOL_CARI_KORPUS, args);
+    this.turnMessages.push(
+      {
+        role: 'assistant',
+        content: null,
+        tool_calls: [
+          { id, type: 'function' as const, function: { name: TOOL_CARI_KORPUS, arguments: args } },
+        ],
+      },
+      { role: 'tool', tool_call_id: id, content: r.content },
+    );
+    // Tanpa potongan: model yang mengarahkan warga ke kanal resmi (sama dengan loop biasa).
+    if (!r.content.includes('<<DATA_TAK_TEPERCAYA sumber="rag"')) {
+      await this.toolLoop();
+      return true;
+    }
+    const j = await this.jawabDanRencana(teks.slice(0, 500), 'call_jawab_cepat');
+    if (j.rencana) return true;
+    if (!j.end || j.dipaksa) await this.toolLoop();
+    else if (j.answer && this.perluRencana()) await this.toolLoop(true);
+    return true;
+  }
+
+  /**
+   * Jawaban bersumber langsung (tanpa round-trip model). Bila urusan ini butuh rencana karangan model, permintaan
+   * rencana berjalan PARALEL dengan generator jawaban (keduanya 5-20 detik di proxy produksi), bukan sesudahnya. Tool
+   * rencana tetap dijalankan SESUDAH jawaban dan lewat gerbang yang sama, agar catatan rencana menautkan sumber
+   * jawaban itu. Rencana paralel yang tidak dipakai (jawaban gagal, rencana tidak lagi perlu) dibatalkan.
+   */
+  private async jawabDanRencana(
+    pertanyaan: string,
+    id: string,
+  ): Promise<{ end: boolean; answer: boolean; rencana: boolean; dipaksa: boolean }> {
+    const args = JSON.stringify({ pertanyaan });
+    // Jawaban dimulai lebih dulu (urutan panggilan model tetap: jawaban, lalu rencana).
+    const jawab = this.handleToolCall(TOOL_JAWAB, args);
+    const batal = new AbortController();
+    const rencana = this.perluRencana()
+      ? this.mintaRencana(batal.signal).then(
+          (c) => ({ c }),
+          (e: unknown) => ({ e }),
+        )
+      : null;
+    const hentikan = async () => {
+      batal.abort();
+      await rencana;
+    };
+    let r: Awaited<ReturnType<TurnRunner['handleToolCall']>>;
+    try {
+      r = await jawab;
+    } catch (e) {
+      await hentikan();
+      throw e;
+    }
+    this.turnMessages.push(
+      {
+        role: 'assistant',
+        content: null,
+        tool_calls: [{ id, type: 'function' as const, function: { name: TOOL_JAWAB, arguments: args } }],
+      },
+      { role: 'tool', tool_call_id: id, content: r.content },
+    );
+    const hasil = { end: r.end, answer: r.answer === true, rencana: false, dipaksa: false };
+    if (!rencana || !r.end || !hasil.answer || !this.perluRencana()) {
+      await hentikan();
+      return hasil;
+    }
+    const out = await rencana;
+    if ('e' in out) {
+      // Galat terminal (penolakan, filter konten) tetap menggagalkan turn; selain itu jatuh ke rencana berurutan.
+      if (this.ctrl.signal.aborted || isLlmTerminalError(out.e)) throw out.e;
+      return hasil;
+    }
+    const msg = out.c.choices[0]?.message;
+    const calls = (msg?.tool_calls ?? []).filter((c) => c.type === 'function');
+    if (!msg || calls.length === 0) return hasil;
+    // Sama dengan langkah rencana berurutan: semua panggilan model lewat gerbang, apa pun namanya.
+    const g = await this.jalankanPanggilan(msg.content ?? null, calls);
+    return { ...hasil, rencana: g.ended, dipaksa: true };
+  }
+
+  /** Permintaan rencana (tool rencana dipaksa) dari konteks saat ini; untuk jalur paralel `jawabDanRencana`. */
+  private async mintaRencana(batal: AbortSignal): Promise<ChatCompletion> {
+    const q = this.quotaStatus();
+    const tools = this.deps.registry
+      .openaiTools(this.urusan.state)
+      .filter((t) => t.type !== 'function' || this.toolDitawarkan(t.function.name));
+    const span = this.deps.tracer.start(this.scope, `chat ${this.deps.model}`, 'chat');
+    let completion: ChatCompletion;
+    try {
+      completion = await this.callLlm(
+        {
+          model: this.deps.model,
+          max_tokens: q.maxTokens,
+          messages: [
+            ...this.buildMessages(this.stateNote()),
+            { role: 'system', content: SUSUN_RENCANA_PARALEL },
+          ],
+          tools,
+          tool_choice: { type: 'function', function: { name: TOOL_RENCANA } },
+        },
+        batal,
+      );
+    } catch (e) {
+      span.end({ status: 'error', errorCode: (e as Error).name, model: this.deps.model });
+      throw e;
+    }
+    const acc = this.account(completion.usage ? [completion.usage] : []);
+    span.end({
+      model: this.deps.model,
+      ...acc,
+      degraded: false,
+      attrs: { [OTEL.operationName]: 'chat', 'urusin.step': 'rencana_paralel' },
+    });
+    assertCompletionUsable(completion, q.maxTokens);
+    return completion;
   }
 
   private get teksWarga(): string {
@@ -545,14 +716,19 @@ class TurnRunner {
     const hasil = wilayahDariPesan(this.teksWarga);
     if (!hasil) return;
     if (hasil.ktp) {
+      // Pindah: tujuan "ke <kab/kota>" yang disebut warga sendiri ikut ditetapkan (sama dengan wilayah__tetapkan
+      // atas sebutan warga), agar rencana tidak menunggu round-trip model hanya untuk mencatat tujuan.
+      const ke = u.jenis === 'pindah' ? tujuanDariPesan(this.teksWarga) : null;
+      const input = { ktp: hasil.kode, ...(ke && ke !== hasil.kode ? { tujuan: ke } : {}) };
       this.urusan = tetapkanWilayah(
         this.store,
         { ...u, version: this.version },
-        { ktp: hasil.kode },
+        input,
         (e) => void this.emit(e),
       );
       this.version = this.urusan.version;
-      this.ingatWilayah({ ktp: hasil.kode });
+      this.wilayahDariTeks = true;
+      this.ingatWilayah(input);
       return;
     }
     const ktp = refWilayah(hasil.kode);
@@ -647,9 +823,10 @@ class TurnRunner {
     return !wilayahBelumSiap(u.jenis, w) && kartuRencana(u.jenis, w) === undefined;
   }
 
-  private async toolLoop(): Promise<void> {
-    let paksaRencana = false;
-    let rencanaDipaksa = false;
+  /** `paksaAwal`: langkah pertama langsung meminta rencana (jawaban sudah tampil, lihat `jalurCepat`). */
+  private async toolLoop(paksaAwal = false): Promise<void> {
+    let paksaRencana = paksaAwal;
+    let rencanaDipaksa = paksaAwal;
     for (let step = 0; step < this.cfg.maxSteps; step++) {
       const q = this.quotaStatus();
       if (q.mode === 'habis') return this.quotaStop(q);
@@ -710,30 +887,8 @@ class TurnRunner {
         return;
       }
 
-      const group: ChatMessage[] = [
-        {
-          role: 'assistant',
-          content: msg.content ?? null,
-          tool_calls: calls.map((c) => ({
-            id: c.id,
-            type: 'function' as const,
-            function: { ...c.function, name: safeToolName(c.function.name) },
-          })),
-        },
-      ];
-      let ended = false;
-      let dijawab = false;
-      for (const call of calls) {
-        if (ended) {
-          group.push({ role: 'tool', tool_call_id: call.id, content: 'dilewati: turn sudah selesai' });
-          continue;
-        }
-        const r = await this.handleToolCall(call.function.name, call.function.arguments);
-        group.push({ role: 'tool', tool_call_id: call.id, content: r.content });
-        ended = r.end;
-        dijawab = r.answer === true;
-      }
-      this.turnMessages.push(...group);
+      const g = await this.jalankanPanggilan(msg.content ?? null, calls);
+      let { ended, dijawab } = g;
       // Setelah mencari sumber, model selalu memanggil urusan__jawab_persyaratan: langsung dijalankan (hemat satu
       // round-trip LLM, 10-15 detik di proxy produksi). Hanya saat memahami kebutuhan dengan wilayah KTP pasti dan
       // pencarian menemukan potongan (hasil terbungkus); tanpa hasil, model yang mengarahkan ke kanal resmi.
@@ -741,27 +896,21 @@ class TurnRunner {
         !ended &&
         this.urusan.state === 'MEMAHAMI' &&
         calls.every((c) => TOOL_CARI.has(safeToolName(c.function.name))) &&
-        group.some(
-          (m) =>
-            m.role === 'tool' &&
-            typeof m.content === 'string' &&
-            m.content.includes('<<DATA_TAK_TEPERCAYA sumber="rag"'),
-        ) &&
+        g.isi.some((c) => c.includes('<<DATA_TAK_TEPERCAYA sumber="rag"')) &&
         wilayahUrusan(this.store, this.urusan).ktp
       ) {
-        const id = `call_jawab_${step}`;
-        const args = JSON.stringify({ pertanyaan: kueriCari(calls) ?? this.teksWarga.slice(0, 500) });
-        const r = await this.handleToolCall(TOOL_JAWAB, args);
-        this.turnMessages.push(
-          {
-            role: 'assistant',
-            content: null,
-            tool_calls: [{ id, type: 'function' as const, function: { name: TOOL_JAWAB, arguments: args } }],
-          },
-          { role: 'tool', tool_call_id: id, content: r.content },
+        const j = await this.jawabDanRencana(
+          kueriCari(calls) ?? this.teksWarga.slice(0, 500),
+          `call_jawab_${step}`,
         );
-        ended = r.end;
-        dijawab = r.answer === true;
+        if (j.rencana) return;
+        ended = j.end;
+        dijawab = j.answer;
+        // Rencana paralel sudah dicoba (mis. model memanggil tool lain): tidak dipaksa dua kali.
+        if (j.dipaksa) {
+          rencanaDipaksa = true;
+          continue;
+        }
       }
       if (ended && dijawab && !rencanaDipaksa && this.perluRencana()) {
         rencanaDipaksa = true;
@@ -776,6 +925,40 @@ class TurnRunner {
       pesanWarga: 'Terlalu banyak langkah tanpa hasil. Coba pertanyaan yang lebih spesifik.',
       bisaUlang: true,
     });
+  }
+
+  /** Jalankan satu grup tool_calls model lewat gerbang (berurutan) dan catat grupnya di pesan turn. */
+  private async jalankanPanggilan(
+    content: string | null,
+    calls: readonly { id: string; function: { name: string; arguments: string } }[],
+  ): Promise<{ ended: boolean; dijawab: boolean; isi: string[] }> {
+    const group: ChatMessage[] = [
+      {
+        role: 'assistant',
+        content,
+        tool_calls: calls.map((c) => ({
+          id: c.id,
+          type: 'function' as const,
+          function: { ...c.function, name: safeToolName(c.function.name) },
+        })),
+      },
+    ];
+    const isi: string[] = [];
+    let ended = false;
+    let dijawab = false;
+    for (const call of calls) {
+      if (ended) {
+        group.push({ role: 'tool', tool_call_id: call.id, content: 'dilewati: turn sudah selesai' });
+        continue;
+      }
+      const r = await this.handleToolCall(call.function.name, call.function.arguments);
+      group.push({ role: 'tool', tool_call_id: call.id, content: r.content });
+      isi.push(r.content);
+      ended = r.end;
+      dijawab = r.answer === true;
+    }
+    this.turnMessages.push(...group);
+    return { ended, dijawab, isi };
   }
 
   /**
@@ -893,6 +1076,7 @@ class TurnRunner {
         caps: this.deps.caps,
         ragDb: this.deps.ragDb,
         ragSearch: this.deps.ragSearch,
+        cacheJawaban: this.deps.cacheJawaban,
         now: this.now,
       },
       nonce: this.nonce,
