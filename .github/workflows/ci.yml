@@ -460,11 +460,18 @@ jobs:
           case "$(uname -m)" in x86_64) arch=x64 ;; aarch64) arch=arm64 ;; *) echo "::error::arsitektur $(uname -m)"; exit 1 ;; esac
           base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
           tarball="gitleaks_${GITLEAKS_VERSION}_linux_${arch}.tar.gz"
-          curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 -o "$tarball" "$base/$tarball"
-          curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 -o checksums.txt "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
-          grep " ${tarball}\$" checksums.txt | sha256sum -c -
+          # Tarball disimpan di tool cache runner (persisten di self-hosted, mis. runner laptop yang jaringannya
+          # lambat); checksum tetap diverifikasi setiap job dan tarball yang tidak cocok dibuang.
+          cache="${RUNNER_TOOL_CACHE:-$RUNNER_TEMP}/gitleaks/${GITLEAKS_VERSION}"
+          mkdir -p "$cache"
+          if [ ! -f "$cache/$tarball" ]; then
+            curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 -o "$cache/$tarball.tmp" "$base/$tarball"
+            mv "$cache/$tarball.tmp" "$cache/$tarball"
+          fi
+          curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 -o "$RUNNER_TEMP/checksums.txt" "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          (cd "$cache" && grep " ${tarball}\$" "$RUNNER_TEMP/checksums.txt" | sha256sum -c -) || { rm -f "$cache/$tarball"; exit 1; }
           mkdir -p "$RUNNER_TEMP/bin"
-          tar -xzf "$tarball" -C "$RUNNER_TEMP/bin" gitleaks
+          tar -xzf "$cache/$tarball" -C "$RUNNER_TEMP/bin" gitleaks
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       - name: Pindai riwayat
