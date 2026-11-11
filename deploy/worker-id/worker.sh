@@ -81,11 +81,18 @@ compose() {
 }
 
 sehat() {
-  local ip port
+  local ip port h
   ip="$(nilai WORKER_TAILSCALE_IP)" port="$(nilai WORKER_PORT)"
   port="${port:-4330}"
-  curl -fsS -m 5 "http://$ip:$port/health" || return 1
+  h="$(curl -fsS -m 5 "http://$ip:$port/health")" || return 1
+  echo "$h"
   echo "  <- http://$ip:$port/health (Tailscale)"
+  # Image lama (tanpa kemampuan `generik`): web tidak memakai worker ini untuk Navigator generik maupun situs
+  # id-only (urusan dipandu). Sehat tetap sehat; ini hanya peringatan agar image diperbarui (README).
+  case "$h" in
+    *'"generik":true'*) ;;
+    *) echo "worker: PERINGATAN image lama (tanpa \"generik\" di /health): situs id-only dipandu; perbarui image (README §Perbarui image)" >&2 ;;
+  esac
   if [ "${FINAL:-0}" = 1 ]; then
     curl -fsS -m 5 "http://127.0.0.1:$port/health" || return 1
     echo "  <- http://127.0.0.1:$port/health (loopback, final)"

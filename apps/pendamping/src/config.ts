@@ -90,6 +90,11 @@ export type Config = {
    * Headless hanya untuk CI terhadap fixture; sesi ke origin non-fixture ditolak saat headless.
    */
   headless: boolean;
+  /**
+   * Commit image (GIT_SHA build-arg, 12 hex pertama) untuk /health; undefined di dev. Membantu operator
+   * memastikan worker laptop sama dengan produksi.
+   */
+  sha?: string | undefined;
 };
 
 export const DEFAULTS = Object.freeze({
@@ -240,5 +245,6 @@ export function loadConfig(
     devPage: !production && env.PENDAMPING_DEV_PAGE === '1',
     chromiumPath: env.PENDAMPING_CHROMIUM_PATH || undefined,
     headless,
+    sha: /^[0-9a-f]{7,40}$/.test(env.GIT_SHA ?? '') ? env.GIT_SHA!.slice(0, 12) : undefined,
   };
 }
