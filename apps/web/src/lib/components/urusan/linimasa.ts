@@ -184,3 +184,14 @@ export function nilaiParam(v: string | number | boolean): string {
   if (/\{\{[^}]+\}\}/.test(s)) return 'Diambil dari Data Diri Anda';
   return s;
 }
+
+/**
+ * Kutipan unik per `refId`, urutan pertama dipertahankan. Satu klaim bisa membawa beberapa kutipan persis dari
+ * potongan sumber yang sama; tanpa ini blok `{#each … (q.refId)}` melempar each_key_duplicate dan halaman urusan
+ * jatuh ke 500 setiap kali dimuat.
+ */
+export function unikPerRef<T extends { refId: string }>(kutipan: readonly T[]): T[] {
+  const peta = new Map<string, T>();
+  for (const q of kutipan) if (!peta.has(q.refId)) peta.set(q.refId, q);
+  return [...peta.values()];
+}

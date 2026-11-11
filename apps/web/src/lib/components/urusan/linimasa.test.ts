@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { UrusinEvent } from '#lib/contracts.js';
-import { bangunLinimasa, labelParam, labelProgres, nilaiParam } from './linimasa.js';
+import { bangunLinimasa, labelParam, labelProgres, nilaiParam, unikPerRef } from './linimasa.js';
 
 const at = '2026-11-09T01:00:00.000Z';
 const ev = (seq: number, type: string, isi: Record<string, unknown> = {}) =>
@@ -110,5 +110,18 @@ describe('label untuk warga', () => {
     expect(nilaiParam(false)).toBe('Tidak');
     expect(nilaiParam('{{PEMOHON.NIK}}')).toBe('Diambil dari Data Diri Anda');
     expect(nilaiParam(3)).toBe('3');
+  });
+});
+
+describe('unikPerRef', () => {
+  it('satu klaim dengan dua kutipan dari potongan yang sama hanya menyisakan satu per refId', () => {
+    // Kasus produksi (KTP-el rusak Wonogiri): "Tatap muka langsung" dan "melalui Loket Online" sama-sama #1.
+    const out = unikPerRef([
+      { refId: 'wonogiri-ktp-el#1', kutipanPersis: 'Tatap muka langsung' },
+      { refId: 'wonogiri-ktp-el#1', kutipanPersis: 'melalui Loket Online' },
+      { refId: 'wonogiri-ktp-el#2', kutipanPersis: 'loket Kecamatan' },
+    ]);
+    expect(out.map((q) => q.refId)).toEqual(['wonogiri-ktp-el#1', 'wonogiri-ktp-el#2']);
+    expect(out[0]?.kutipanPersis).toBe('Tatap muka langsung');
   });
 });
