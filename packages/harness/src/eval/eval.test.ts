@@ -35,11 +35,12 @@ describe('eval harness (FakeProvider, cepat, tanpa jaringan)', () => {
     const r = await runEval({
       k: 3,
       model: 'm',
-      tasks: INTENT_TASKS.slice(0, 2),
+      // Tugas tanpa kata kunci jenis (klasifikasiKataKunci), jadi intent tetap dari model.
+      tasks: [INTENT_TASKS[2]!, INTENT_TASKS[5]!],
       // percobaan ke-2 salah mengklasifikasi intent
       provider: () =>
         new DemoProvider({
-          intentOverride: (t) => (++n === 2 ? 'lainnya' : t.includes('lahir') ? 'kelahiran' : 'kematian'),
+          intentOverride: (t) => (++n === 2 ? 'lainnya' : t.includes('menikah') ? 'perkawinan' : 'kk'),
         }),
     });
     expect(r.tugas[0]).toMatchObject({ lolos: 2, k: 3, passHatK: false });

@@ -175,6 +175,33 @@ export function kodeDisebut(teks: string): string[] {
   return [...new Set(kode)];
 }
 
+const KATA_KTP = /\b(ktp|e-?ktp|ktp-?el|kk|kartu keluarga|kartu tanda penduduk)\b/i;
+
+/**
+ * Wilayah dari pesan warga, tanpa LLM: `ktp` = warga sendiri menyebut KTP/KK-nya di kab/kota itu (satu kalimat
+ * memuat kata KTP/KK dan nama tempatnya, dan seluruh pesan hanya menyebut satu kab/kota), `disebut` = satu
+ * kab/kota disebut tanpa kata KTP/KK ("warga Kota Medan", "tinggal di Wonogiri"): cukup diusulkan sebagai kartu.
+ * Nama ganda (Bekasi, Semarang) atau dua kab/kota: null, agen yang bertanya.
+ */
+export function wilayahDariPesan(teks: string): { kode: string; ktp: boolean } | null {
+  const disebut = kodeDisebut(teks);
+  if (disebut.length !== 1) return null;
+  const kode = disebut[0]!;
+  const ktp = teks.split(/[.?!\n]+/).some((k) => KATA_KTP.test(k) && kodeDisebut(k).includes(kode));
+  return { kode, ktp };
+}
+
+/**
+ * Teks agen yang isinya hanya pertanyaan konfirmasi wilayah ("KTP Anda terdaftar di X, betul?"): kartu wilayah
+ * sudah menanyakannya, jadi teks ini tidak ditampilkan lagi (pertanyaan ganda).
+ */
+export function hanyaTanyaWilayah(teks: string): boolean {
+  const t = teks.trim();
+  if (t.length > 220 || !t.endsWith('?')) return false;
+  if (t.split(/[.?!]+\s/).filter(Boolean).length > 2) return false;
+  return /\bterdaftar di\b|\b(betul|benar)\s*\?$/i.test(t);
+}
+
 /**
  * Satu kanal konfirmasi: bila balasan agen menyebut tepat satu kab/kota yang berbeda dari usulan yang sedang
  * tampil sebagai kartu (wilayah KTP belum ditetapkan), terbitkan usulan kab/kota itu (sumber `warga`: dari

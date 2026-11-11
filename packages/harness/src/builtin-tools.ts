@@ -549,7 +549,8 @@ const teksPesan = (m: { content?: unknown }) => (typeof m.content === 'string' ?
 /**
  * Bukti bahwa WARGA (bukan model) menyebut atau membenarkan wilayah ini: namanya/kodenya ada di pesan warga
  * urusan ini, atau pesan terakhir warga berupa "ya/betul" tepat setelah pesan asisten terakhir yang menyebut
- * wilayah itu. "Ya" atas pertanyaan lain tidak pernah dihitung, juga bila wilayahnya sama dengan usulan.
+ * wilayah itu (bila belum ada pertanyaan teks: kartu usulan wilayah itu). "Ya" atas pertanyaan lain tidak pernah
+ * dihitung, juga bila wilayahnya sama dengan usulan.
  * Pemetaan kecamatan → kab/kota oleh model (mis. Cikarang → Kab. Bekasi) karena itu wajib ditanyakan dulu.
  */
 function dibenarkanWarga(ctx: ToolContext, w: Wilayah): boolean {
@@ -564,7 +565,9 @@ function dibenarkanWarga(ctx: ToolContext, w: Wilayah): boolean {
   if (warga.some((t) => menyebutWilayah(t, w))) return true;
   if (!AFIRMASI.test(ctx.pesanWarga)) return false;
   const tanyaTerakhir = [...riwayat].reverse().find((m) => m.role === 'assistant' && teksPesan(m));
-  return tanyaTerakhir ? menyebutWilayah(teksPesan(tanyaTerakhir), w) : false;
+  if (tanyaTerakhir) return menyebutWilayah(teksPesan(tanyaTerakhir), w);
+  // Belum ada pertanyaan teks: yang ditanyakan hanya kartu usulan wilayah (agen tidak dipanggil di giliran itu).
+  return wilayahUrusan(ctx.store, ctx.urusan).usulan?.ktp.kodeKabKota === w.kodeKabKota;
 }
 
 const daftarPilihan = (h: Extract<HasilCariWilayah, { status: 'ambigu' }>) =>

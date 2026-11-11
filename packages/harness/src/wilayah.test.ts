@@ -88,7 +88,10 @@ describe('gerbang wilayah: rencana diblokir di kode sampai wilayah KTP ditetapka
       jenis: 'kelahiran',
     });
     usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
+    // Giliran pertama: kartu usulan yang bertanya, agen tidak dipanggil.
     await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    expect(provider.calls.filter((c) => c.kind === 'create')).toHaveLength(0);
+    await runTurn(env.deps, { urusanId: u.id, userText: 'Anaknya lahir minggu lalu' });
     const call = provider.calls.find((c) => c.kind === 'create');
     const note = call?.kind === 'create' ? call.params.messages.map((m) => m.content).join('\n') : '';
     expect(note).toContain('WILAYAH KTP: belum ditetapkan.');
@@ -392,15 +395,13 @@ describe('KTP ≠ domisili dan pindah (asal → tujuan)', () => {
 describe('usulan Data Diri: ditawarkan untuk dikonfirmasi, tidak pernah diam-diam', () => {
   it('"ya" atas usulan Data Diri → wilayah ditetapkan; tanpa itu tetap kosong', async () => {
     const { env, u, provider } = setup(
-      [
-        balas('Aturan berbeda per kab/kota. KTP Anda terdaftar di Kabupaten Wonogiri, betul?'),
-        tool('wilayah__tetapkan', { ktp: 'Kabupaten Wonogiri' }),
-        balas('Baik.'),
-      ],
+      [tool('wilayah__tetapkan', { ktp: 'Kabupaten Wonogiri' }), balas('Baik.')],
       { jenis: 'kelahiran' },
     );
     usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
-    await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    // Kartu usulan yang bertanya (tanpa teks agen); "ya" yang diketik membenarkan kartu itu.
+    const t1 = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    expect(of(t1.events, 'assistant_text')).toHaveLength(0);
     expect(env.store.getUrusanOrThrow(u.id).kodeKabKota).toBeNull();
     const w = wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id));
     expect(w).toMatchObject({ ktp: null, usulan: { sumber: 'data_diri', ktp: { kodeKabKota: '3312' } } });
@@ -489,6 +490,7 @@ describe('temuan review: penetapan wilayah tidak menimpa diam-diam', () => {
     );
     usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
     await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    await runTurn(env.deps, { urusanId: u.id, userText: 'Anaknya lahir minggu lalu' });
     await runTurn(env.deps, { urusanId: u.id, userText: 'ya' });
     expect(hasilTool(provider)).toMatch(/Belum dikonfirmasi warga/);
     expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).ktp).toBeNull();
@@ -573,6 +575,10 @@ describe('temuan eval persona W6: hand-off tidak diulang identik', () => {
       jenis: 'kk',
       kodeKabKota: '3312',
     });
+    // Rencana sudah diusulkan: hand-off tidak lagi diikuti penyusunan rencana di giliran yang sama.
+    let cur = env.store.getUrusanOrThrow(u.id);
+    if (cur.state === 'BARU') cur = env.store.transition(u.id, cur.version, 'MEMAHAMI');
+    env.store.transition(u.id, cur.version, 'RENCANA_DIUSULKAN');
     const kanal = async () => {
       const out = await runTurn(env.deps, { urusanId: u.id, userText: 'nomor antrean berapa?' });
       return of(out.events, 'handoff').map((h) => h.kanal.map((k) => k.url));
