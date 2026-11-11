@@ -15,6 +15,7 @@ import {
   PendampingBuktiSchema,
   RefSchema,
 } from './pendamping.js';
+import { ButirIngatanKartuSchema } from './ingatan.js';
 
 /**
  * Event SSE: satu union bertanda `type`. Setiap frame: `id: <seq>`, `event: <type>`, `data: <JSON event>`.
@@ -142,8 +143,11 @@ export const PlanCardEventSchema = event('plan_card', {
 export const WilayahEventSchema = event('wilayah', {
   status: z.enum(['usulan', 'ditetapkan']),
   ktp: WilayahRefSchema,
-  /** data_diri = Data Diri akun; pilihan = pemilih wilayah di perangkat; warga = disebut/dikonfirmasi warga. */
-  sumber: z.enum(['data_diri', 'pilihan', 'warga']),
+  /**
+   * data_diri = Data Diri akun; pilihan = pemilih wilayah di perangkat; warga = disebut/dikonfirmasi warga;
+   * ingatan = Ingatan warga dari urusan sebelumnya (aditif, ADR 0031; hanya usulan).
+   */
+  sumber: z.enum(['data_diri', 'pilihan', 'warga', 'ingatan']),
   domisili: WilayahRefSchema.optional(),
   tujuan: WilayahRefSchema.optional(),
 });
@@ -362,6 +366,15 @@ export const JejakSesiResponseSchema = z.object({
 });
 export type JejakSesiResponse = z.infer<typeof JejakSesiResponseSchema>;
 
+/**
+ * Ingatan warga berubah di turn ini (ADR 0031): kartu "Urusin mengingat: ..." dengan tombol Batalkan. Hanya label
+ * butir (tanpa PII; isi sudah lolos pemindai PII saat disimpan), bukan isi vault.
+ */
+export const IngatanEventSchema = event('ingatan', {
+  aksi: z.enum(['simpan', 'hapus']),
+  butir: ButirIngatanKartuSchema,
+});
+
 export const UrusinEventSchema = z.discriminatedUnion('type', [
   ProgressEventSchema,
   AssistantTextEventSchema,
@@ -381,6 +394,7 @@ export const UrusinEventSchema = z.discriminatedUnion('type', [
   PolicyGateEventSchema,
   WilayahEventSchema,
   JejakPendampingEventSchema,
+  IngatanEventSchema,
 ]);
 
 export type UrusinEvent = z.infer<typeof UrusinEventSchema>;
