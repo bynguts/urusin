@@ -11,6 +11,8 @@ resmi dan menyusun langkahnya. Pengisian formulir di situs resmi dikerjakan lewa
 live, lihat Status di bawah). Login, OTP, CAPTCHA, dan **tombol Kirim terakhir selalu ditekan warga sendiri**.
 
 - **Aplikasi langsung:** <https://urusinai.web.id>
+- **Video demo (YouTube, 3–5 menit):** _tautan menyusul_ (`https://youtu.be/<id-video>`; skrip dan checklist
+  rekaman: [docs/demo/video-demo.md](docs/demo/video-demo.md)).
 - **Masuk tanpa akun:** buka aplikasi lalu pilih "Coba tanpa daftar", atau "Masuk sebagai juri" di halaman Masuk
   (lihat [§7](#7-akun-demonstrasi)).
 - **Versi yang berjalan:** baris kecil `v<sha7>` di bawah halaman Pengaturan (bertaut ke commit di GitHub), atau
