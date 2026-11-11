@@ -445,3 +445,44 @@ describe('kontak layanan resmi (kanal-layanan.json) di hand-off dan kalimat kana
     expect(kalimatKanal('9304')).not.toContain('Kontak resmi');
   });
 });
+
+describe('refId dari atribut delimiter spotlight', () => {
+  it('"sumber_1" (bentuk id di delimiter) dipadankan ke chunk "sumber#1"; kutipan memakai refId asli', () => {
+    const c = chunk({
+      refId: 'wonogiri-ktp-el#0',
+      text: 'Persyaratan: c. KTP-el rusak (jika KTP-el rusak);',
+    });
+    const r = verifyGrounded(
+      {
+        klaim: [
+          {
+            teks: 'Bawa KTP-el yang rusak.',
+            kutipan: [{ refId: 'wonogiri-ktp-el_0', kutipanPersis: 'KTP-el rusak (jika KTP-el rusak)' }],
+          },
+        ],
+      },
+      [c],
+      {},
+      NOW,
+    );
+    expect(r.handoff).toBeUndefined();
+    expect(r.klaim[0]!.kutipan[0]!.refId).toBe('wonogiri-ktp-el#0');
+  });
+
+  it('id persis tetap menang atas padanan delimiter', () => {
+    const persis = chunk({ refId: 'a_1', text: 'Teks persis milik chunk a_1 yang benar.' });
+    const lain = chunk({ refId: 'a#1', text: 'Teks lain milik chunk a#1 saja.' });
+    const r = verifyGrounded(
+      {
+        klaim: [
+          { teks: 'Klaim.', kutipan: [{ refId: 'a_1', kutipanPersis: 'Teks persis milik chunk a_1' }] },
+        ],
+      },
+      [lain, persis],
+      {},
+      NOW,
+    );
+    expect(r.klaim).toHaveLength(1);
+    expect(r.klaim[0]!.kutipan[0]!.refId).toBe('a_1');
+  });
+});

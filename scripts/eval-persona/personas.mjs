@@ -300,6 +300,68 @@ export const PERSONA = [
     harapan:
       "Ini urusan KEDUA warga. Di urusan pertama warga menyatakan pengguna kursi roda dan lebih suka mengurus online; KTP Kota Semarang sudah ditetapkan. Urusin TIDAK menanyakan wilayah dari nol: mengusulkan Kota Semarang dari ingatan lalu konfirmasi; mengutamakan jalur online resmi Kota Semarang (Si D'nOK) dan tidak menyuruh datang tanpa alasan; bila ada langkah yang harus datang, menyinggung kebutuhan aksesibilitas; syarat KIA (aturan nasional Permendagri 2/2016) bersumber. Tidak ada Wonogiri.",
   },
+  // p20-p23: pesan pembuka QA warga produksi 2026-11-11 (akun juri, Data Diri Wonogiri), untuk mengukur jumlah
+  // pesan dan detik sampai rencana.
+  {
+    id: 'p20-wonogiri-lansia-ktp-rusak',
+    judul: 'Lansia di Kab. Wonogiri, KTP-el rusak (akun juri)',
+    masuk: 'juri',
+    pesanPertama:
+      'Saya sudah tua, tinggal di Wonogiri. KTP-el saya rusak, retak dan chipnya tidak terbaca. Bagaimana cara ganti KTP yang rusak?',
+    kartu:
+      'Kamu Mbah Darmo (72), pensiunan petani di Kecamatan Wonogiri, Kabupaten Wonogiri. KTP-el dan KK kamu Wonogiri. KTP-el kamu retak dan chipnya tidak terbaca. Kamu tidak paham internet; cucumu yang membantu memegang HP. Bahasa sederhana, sopan, kalimat pendek. Bila ditanya wilayah KTP, jawab Wonogiri.',
+    kodeBenar: ['3312'],
+    kataWilayah: ['wonogiri'],
+    wilayahTerkait: ['wonogiri'],
+    adapterBoleh: ['telunjuk-sakti-wonogiri'],
+    harapan:
+      'Wilayah Wonogiri dipastikan sekali; syarat penggantian KTP-el rusak BERSUMBER dari Standar Pelayanan Disdukcapil Wonogiri (KTP-el rusak dibawa, formulir F-1.02 dari petugas); kanal Disdukcapil/MPP Wonogiri atau Telunjuk Sakti; rencana muncul tanpa warga harus meminta lagi.',
+  },
+  {
+    id: 'p21-makassar-akta-lahir',
+    judul: 'Warga Kota Makassar, bayi baru lahir: akta kelahiran (akun juri)',
+    masuk: 'juri',
+    pesanPertama:
+      'Anak saya baru lahir minggu lalu di rumah sakit di Makassar. KTP saya Kota Makassar. Bagaimana cara buat akta kelahiran bayi?',
+    kartu:
+      'Kamu Daeng Rahmat (33), tinggal di Kecamatan Panakkukang, Kota Makassar. KTP dan KK Kota Makassar. Anak lahir 7 hari lalu di RS di Makassar, surat keterangan lahir dan buku nikah ada. Bahasa sopan.',
+    kodeBenar: ['7371'],
+    kataWilayah: ['makassar', 'panakkukang'],
+    wilayahTerkait: ['makassar'],
+    adapterBoleh: [],
+    harapan:
+      'Wilayah Kota Makassar langsung ditetapkan dari pesan; rencana akta kelahiran (Perpres 96/2018: surat keterangan lahir, buku nikah, KK, KTP-el, F-2.01) dengan kanal Disdukcapil Kota Makassar; tidak ada Wonogiri.',
+  },
+  {
+    id: 'p22-medan-bansos',
+    judul: 'Warga Kota Medan: cek penerima bansos (akun juri)',
+    masuk: 'juri',
+    pesanPertama:
+      'Saya warga Kota Medan. Bagaimana cara cek apakah keluarga saya terdaftar sebagai penerima bansos?',
+    kartu:
+      'Kamu Bu Rosmawati (45), ibu rumah tangga di Kecamatan Medan Denai, Kota Medan. KTP dan KK Kota Medan. Ingin tahu apakah keluargamu terdaftar penerima bansos. Bahasa sopan, sederhana.',
+    kodeBenar: ['1271'],
+    kataWilayah: ['medan'],
+    wilayahTerkait: ['medan'],
+    adapterBoleh: [],
+    harapan:
+      'Wilayah Kota Medan; cara cek lewat Cek Bansos Kemensos (cekbansos.kemensos.go.id) bersumber, warga mengisi sendiri; bila tidak sesuai, lapor ke kelurahan/dinas sosial; rencana muncul tanpa warga harus meminta lagi; tidak ada Wonogiri.',
+  },
+  {
+    id: 'p23-jaktim-pajak-motor',
+    judul: 'Warga Jakarta Timur: pajak motor tahunan di Samsat (akun juri)',
+    masuk: 'juri',
+    pesanPertama:
+      'Saya tinggal di Jakarta Timur, KTP Jakarta Timur. Mau bayar pajak kendaraan motor tahunan di Samsat, bisa online tidak? Apa syaratnya?',
+    kartu:
+      'Kamu Pak Hendra (41), karyawan di Kecamatan Duren Sawit, Jakarta Timur. KTP Jakarta Timur, motor plat B atas nama sendiri, STNK masih berlaku (pajak tahunan, bukan ganti plat 5 tahunan). Bahasa sopan.',
+    kodeBenar: ['3175'],
+    kataWilayah: ['jakarta timur', 'duren sawit'],
+    wilayahTerkait: ['jakarta'],
+    adapterBoleh: ['samsat-dki'],
+    harapan:
+      'Paham ini urusan Samsat/Bapenda DKI (bukan Dukcapil); cek & bayar PKB tahunan lewat kanal resmi DKI bersumber (mis. pajakonline.jakarta.go.id / bank / SIGNAL) dengan syarat KTP sesuai STNK dan STNK; rencana muncul tanpa warga harus meminta lagi; tidak ada Wonogiri.',
+  },
 ];
 
 export function cariPersona(ids) {

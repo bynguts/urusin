@@ -12,7 +12,7 @@ import {
 import { generateStructured, type CapabilityFlags, type ChatMessage, type ChatProvider } from '@urusin/llm';
 import { z } from 'zod';
 import type { KutipanTerverifikasi, PayloadOf } from '@urusin/contracts';
-import { DATAMARK, newNonce, spotlight, spotlightPolicyText } from './spotlight.js';
+import { DATAMARK, idDelimiter, newNonce, spotlight, spotlightPolicyText } from './spotlight.js';
 import type { ChunkRecord } from './store.js';
 import { textFragmentUrl } from './textfragment.js';
 
@@ -41,7 +41,7 @@ const STALE_DAYS = 30;
 const MIN_QUOTE_CHARS = 12;
 export const MAX_KLAIM = 8;
 /** Batas klaim yang diminta dari model (MAX_KLAIM tetap jaring pengaman): jawaban panjang menenggelamkan warga. */
-export const KLAIM_RINGKAS = 6;
+export const KLAIM_RINGKAS = 4;
 export const MAX_KLAIM_CHARS = 400;
 
 /** Token faktual yang harus terbukti di kutipan: angka (termasuk Rp/titik/koma), URL, dan nomor telepon. */
@@ -304,7 +304,11 @@ export function verifyGrounded(
   ctx: Omit<HandoffContext, 'chunks'> = {},
   now: Date = new Date(),
 ): GroundedResult {
+  // Model kerap menyalin id dari atribut delimiter spotlight (`wonogiri-ktp-el_1`), bukan dari kurung siku
+  // (`wonogiri-ktp-el#1`). Tanpa padanan ini SEMUA klaim atas chunk ber-`#` dibuang dan warga mendapat hand-off
+  // "belum ada sumber resmi" walau sumbernya ada (QA warga: KTP-el rusak Wonogiri). Id persis tetap menang.
   const byId = new Map(chunks.map((c) => [c.refId, c]));
+  for (const c of chunks) if (!byId.has(idDelimiter(c.refId))) byId.set(idDelimiter(c.refId), c);
   const klaim: GroundedResult['klaim'] = [];
   let dropped = 0;
 
@@ -323,7 +327,7 @@ export function verifyGrounded(
         break;
       }
       citations.push({
-        refId: c.refId,
+        refId: chunk.refId,
         kutipanPersis: exact,
         url: chunk.url,
         judul: chunk.judul,
@@ -385,6 +389,7 @@ export async function generateGroundedAnswer(opts: GroundedGenerationOptions) {
         '- kutipanPersis HARUS salinan kata per kata dari sumber (boleh tanpa tanda "' +
           DATAMARK +
           '", kembalikan jadi spasi biasa). refId HARUS salah satu ID di dalam kurung siku pada sumber.',
+        '- kutipanPersis cukup potongan TERPENDEK yang membuktikan klaim (6-25 kata), biasanya satu kutipan per klaim; jangan menyalin seluruh daftar. Jawaban ringkas lebih cepat sampai ke warga.',
         '- Jangan membuat klaim tanpa kutipan. Bila sumber tidak memuat jawabannya, kembalikan klaim kosong dan isi handoff.',
         '- Jangan menulis nomor identitas, nomor HP, atau email warga.',
       ].join('\n'),

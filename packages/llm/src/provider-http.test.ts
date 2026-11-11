@@ -138,6 +138,17 @@ describe('OpenAIProvider lewat HTTP', () => {
     expect(res.usage).toEqual({ prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 });
   });
 
+  it('LLM_REASONING_EFFORT dikirim sebagai reasoning_effort; kosong = tidak dikirim', async () => {
+    const msg = { model: 'agen', messages: [{ role: 'user' as const, content: 'hai' }] };
+    await provider().create(msg);
+    expect('reasoning_effort' in lastChatBody()).toBe(false);
+    await provider({ LLM_REASONING_EFFORT: 'LOW' }).create(msg);
+    expect(lastChatBody().reasoning_effort).toBe('low');
+    await provider({ LLM_REASONING_EFFORT: 'low' }).stream({ ...msg, stream: true });
+    expect(lastChatBody().reasoning_effort).toBe('low');
+    expect(() => provider({ LLM_REASONING_EFFORT: 'super' })).toThrow();
+  });
+
   it('create(): balasan bukan JSON maupun SSE = galat (bukan teks mentah)', async () => {
     await expect(
       provider().create({ model: 'bukan-json', messages: [{ role: 'user', content: 'hai' }] }),

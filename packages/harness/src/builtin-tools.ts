@@ -148,14 +148,40 @@ export function catatanDipandu(
   jenis: string | null,
   ktp: { kodeKabKota: string; nama: string },
   k: { judul: string; url: string },
+  sumberJawaban: readonly { instansi: string; url: string }[] = [],
 ): string {
-  const awal = 'Langkah disusun asisten, belum bersumber.';
+  // Jujur: langkahnya tetap karangan asisten; yang bersumber hanya jawaban yang mendasarinya.
+  const awal =
+    sumberJawaban.length > 0
+      ? `Langkah disusun asisten dari jawaban bersumber di atas (${sumberJawaban
+          .map((s) => `${s.instansi}, ${s.url}`)
+          .join('; ')}); urutan langkahnya sendiri belum bersumber.`
+      : 'Langkah disusun asisten, belum bersumber.';
   if (!jenis || ADMINDUK.has(jenis))
     return `${awal} Pastikan di kanal resmi ${ktp.nama}: ${k.judul} (${k.url}).`;
   const lain = handoffChannels({ jenis, kodeKabKota: ktp.kodeKabKota }).find((x) => x.url);
   return lain
     ? `${awal} Pastikan di kanal resmi ${lain.nama} (${lain.url}).`
     : `${awal} Pastikan langsung ke instansi yang menangani layanan ini.`;
+}
+
+/**
+ * Sumber (instansi + url, unik, maks. 2) dari jawaban bersumber terakhir urusan ini, hanya bila jawaban itu
+ * disusun setelah wilayah KTP terakhir ditetapkan (jawaban untuk wilayah lama tidak ditautkan).
+ */
+export function sumberJawabanTerakhir(
+  ctx: Pick<ToolContext, 'store' | 'urusan'>,
+): { instansi: string; url: string }[] {
+  const jawaban = ctx.store.eventsOfType(ctx.urusan.id, 'grounded_answer', 1)[0];
+  if (!jawaban) return [];
+  const wilayah = ctx.store
+    .eventsOfType(ctx.urusan.id, 'wilayah', 20)
+    .find((e) => (e.payload as PayloadOf<'wilayah'>).status === 'ditetapkan');
+  if (!wilayah || wilayah.seq > jawaban.seq) return [];
+  const unik = new Map<string, { instansi: string; url: string }>();
+  for (const k of (jawaban.payload as PayloadOf<'grounded_answer'>).klaim)
+    for (const q of k.kutipan) if (!unik.has(q.url)) unik.set(q.url, { instansi: q.instansi, url: q.url });
+  return [...unik.values()].slice(0, 2);
 }
 
 export const urusanUsulkanRencana = defineTool({
@@ -216,7 +242,7 @@ export const urusanUsulkanRencana = defineTool({
                 ...(w.tujuan ? { tujuan: w.tujuan } : {}),
               },
               tier: 'dipandu',
-              catatan: catatanDipandu(ctx.urusan.jenis, ktp, k),
+              catatan: catatanDipandu(ctx.urusan.jenis, ktp, k, sumberJawabanTerakhir(ctx)),
             },
       ],
     };
@@ -555,7 +581,8 @@ const teksPesan = (m: { content?: unknown }) => (typeof m.content === 'string' ?
 /**
  * Bukti bahwa WARGA (bukan model) menyebut atau membenarkan wilayah ini: namanya/kodenya ada di pesan warga
  * urusan ini, atau pesan terakhir warga berupa "ya/betul" tepat setelah pesan asisten terakhir yang menyebut
- * wilayah itu. "Ya" atas pertanyaan lain tidak pernah dihitung, juga bila wilayahnya sama dengan usulan.
+ * wilayah itu (bila belum ada pertanyaan teks: kartu usulan wilayah itu). "Ya" atas pertanyaan lain tidak pernah
+ * dihitung, juga bila wilayahnya sama dengan usulan.
  * Pemetaan kecamatan → kab/kota oleh model (mis. Cikarang → Kab. Bekasi) karena itu wajib ditanyakan dulu.
  */
 function dibenarkanWarga(ctx: ToolContext, w: Wilayah): boolean {
@@ -570,7 +597,9 @@ function dibenarkanWarga(ctx: ToolContext, w: Wilayah): boolean {
   if (warga.some((t) => menyebutWilayah(t, w))) return true;
   if (!AFIRMASI.test(ctx.pesanWarga)) return false;
   const tanyaTerakhir = [...riwayat].reverse().find((m) => m.role === 'assistant' && teksPesan(m));
-  return tanyaTerakhir ? menyebutWilayah(teksPesan(tanyaTerakhir), w) : false;
+  if (tanyaTerakhir) return menyebutWilayah(teksPesan(tanyaTerakhir), w);
+  // Belum ada pertanyaan teks: yang ditanyakan hanya kartu usulan wilayah (agen tidak dipanggil di giliran itu).
+  return wilayahUrusan(ctx.store, ctx.urusan).usulan?.ktp.kodeKabKota === w.kodeKabKota;
 }
 
 const daftarPilihan = (h: Extract<HasilCariWilayah, { status: 'ambigu' }>) =>

@@ -876,8 +876,11 @@ describe('DemoProvider (e2e tanpa kunci LLM)', () => {
     );
     expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u2.id)).usulan?.sumber).toBe('ingatan');
     const o2 = await runTurn(env.deps, { urusanId: u2.id, userText: 'Mau catat perkawinan' });
-    const teks = o2.events.flatMap((e) => (e.type === 'assistant_text' ? [e.delta] : [])).join(' ');
-    expect(teks).toContain('KTP Anda terdaftar di Kabupaten Wonogiri, betul?');
+    // Konfirmasi lewat kartu usulan (bukan teks pertanyaan ganda): wilayah belum ditetapkan tanpa warga.
+    expect(o2.events.filter((e) => e.type === 'assistant_text')).toEqual([]);
+    const w2 = wilayahUrusan(env.store, env.store.getUrusanOrThrow(u2.id));
+    expect(w2.ktp).toBeNull();
+    expect(w2.usulan).toMatchObject({ sumber: 'ingatan', ktp: { kodeKabKota: '3312' } });
     expect(label(o2)).toEqual([]);
   }, 20_000);
 });

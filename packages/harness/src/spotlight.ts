@@ -41,6 +41,11 @@ export type SpotlightOptions = {
   maxChars?: number;
 };
 
+/** Bentuk `id` di atribut delimiter: karakter di luar `[\w.:-]` menjadi `_` (refId `sumber#3` → `sumber_3`). */
+export function idDelimiter(id: string): string {
+  return id.replace(/[^\w.:-]/g, '_');
+}
+
 /** Bungkus + datamark satu potong konten tak tepercaya. */
 export function spotlight(source: UntrustedSource, text: string, opts: SpotlightOptions): string {
   const max = opts.maxChars ?? DEFAULT_MAX_UNTRUSTED_CHARS;
@@ -51,7 +56,7 @@ export function spotlight(source: UntrustedSource, text: string, opts: Spotlight
     truncated = true;
   }
   const marked = clean.split(/\s+/).filter(Boolean).join(DATAMARK);
-  const id = opts.id ? ` id="${opts.id.replace(/[^\w.:-]/g, '_')}"` : '';
+  const id = opts.id ? ` id="${idDelimiter(opts.id)}"` : '';
   return (
     `<<DATA_TAK_TEPERCAYA sumber="${source}"${id} nonce="${opts.nonce}">>` +
     marked +

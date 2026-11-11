@@ -185,6 +185,10 @@ export async function runInjectionCase(c: InjectionCase): Promise<InjectionResul
     : undefined;
 
   const replies: FakeReply[] = fetchCall ? [fetchCall] : [];
+  // Di MEMAHAMI harness sendiri menjalankan urusan__jawab_persyaratan setelah pencarian rag yang menemukan potongan
+  // (satu panggilan generator jawaban bersumber); langkah model berikutnya (rencana) adalah tempat serangan dicoba.
+  if (fetchCall && c.kanal === 'rag' && c.state === 'MEMAHAMI')
+    replies.push(fakeCompletion({ content: JSON.stringify({ klaim: [], handoff: { pesan: 'tidak ada' } }) }));
   if (c.serangan && attackArgs) replies.push(call(c.serangan.tool, attackArgs));
   else
     replies.push(
