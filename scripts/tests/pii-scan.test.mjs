@@ -162,6 +162,24 @@ describe('scanKontakJson', () => {
     );
   });
 
+  it('telepon/email di field selain nilai/kontak milik entri bersumber tetap ditolak', () => {
+    const waLink = `https://wa.me/62${WA.replace(/\D/g, '').slice(1)}`;
+    const f = scan({
+      entri: [
+        entri({ kontak: EMAIL }),
+        entri({ instansi: `Disdukcapil ${WA}`, catatan: EMAIL, url: waLink }),
+      ],
+    });
+    assert.deepEqual(
+      f.map((x) => [x.kind, x.line]),
+      [
+        ['phone', '$.entri[1].instansi'],
+        ['email', '$.entri[1].catatan'],
+        ['phone', '$.entri[1].url'],
+      ],
+    );
+  });
+
   it('NIK di berkas kanal ditolak, juga di dalam entri bersumber dan dengan penanda allow', () => {
     const allow = `// ${'pii-scan'}:allow`;
     assert.deepEqual(
