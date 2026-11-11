@@ -161,7 +161,7 @@
       const tenang =
         matchMedia('(prefers-reduced-motion: reduce)').matches ||
         document.documentElement.dataset.gerak === 'kurang';
-      const behavior: ScrollBehavior = tenang ? 'auto' : 'smooth';
+      const behavior = tenang ? ('auto' as const) : ('smooth' as const);
       const wadah = daftarPercakapan;
       // Laptop: percakapan punya gulir sendiri; gulir wadahnya saja agar bingkai aplikasi tidak ikut bergeser.
       if (wadah && wadah.scrollHeight > wadah.clientHeight) {

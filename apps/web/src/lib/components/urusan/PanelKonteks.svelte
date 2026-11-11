@@ -4,6 +4,7 @@
 
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { SvelteSet } from 'svelte/reactivity';
   import type { EventOf, KutipanTerverifikasi, UrusanState } from '#lib/contracts.js';
   import Icon from '../Icon.svelte';
   import Chip from '../ui/Chip.svelte';
@@ -80,7 +81,7 @@
   );
   // Sumber resmi langkah-langkah rencana (registry), unik per URL dan belum muncul sebagai kutipan jawaban.
   const sumberRencana = $derived.by(() => {
-    const ada = new Set(kutipan.map((q) => q.url));
+    const ada = new SvelteSet(kutipan.map((q) => q.url));
     const out: { url: string; judul: string; instansi: string }[] = [];
     for (const l of rencana?.langkah ?? [])
       for (const s of l.sumber)
