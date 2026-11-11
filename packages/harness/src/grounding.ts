@@ -413,7 +413,12 @@ export async function generateGroundedAnswer(opts: GroundedGenerationOptions) {
         '- Jangan menulis nomor identitas, nomor HP, atau email warga.',
       ].join('\n'),
     },
-    { role: 'user', content: `Pertanyaan warga: ${opts.pertanyaan}\n\nSUMBER:\n${sources}` },
+    // Pertanyaan juga dibungkus: di sini ia hanya bahan untuk menentukan apa yang dijawab, bukan perintah
+    // (mis. "abaikan aturan kutipan").
+    {
+      role: 'user',
+      content: `Pertanyaan warga: ${spotlight('pertanyaan_warga', opts.pertanyaan, { nonce, id: 'pertanyaan', maxChars: 600 })}\n\nSUMBER:\n${sources}`,
+    },
   ];
   return generateStructured({
     provider: opts.provider,
@@ -444,7 +449,9 @@ export class CacheJawaban {
 
   static kunci(model: string, pertanyaan: string, chunks: readonly ChunkRecord[]): string {
     const h = createHash('sha256').update(`${model}\n${normalizeForMatch(pertanyaan)}`);
-    for (const c of chunks) h.update(`\n${c.refId}\n${c.url}\n${c.verifiedAt ?? ''}\n${c.text}`);
+    // Judul dan instansi ikut kunci: keduanya tampil di prompt dan di kutipan yang dilihat warga.
+    for (const c of chunks)
+      h.update(JSON.stringify([c.refId, c.url, c.judul, c.instansi, c.verifiedAt ?? null, c.text]));
     return h.digest('hex');
   }
 

@@ -9,7 +9,8 @@ import { randomBytes } from 'node:crypto';
 
 export const DATAMARK = 'ˆ'; // ˆ
 
-export type UntrustedSource = 'rag' | 'dom' | 'tool_output' | 'ocr' | 'user_file' | 'ingatan';
+export type UntrustedSource =
+  'rag' | 'dom' | 'tool_output' | 'ocr' | 'user_file' | 'ingatan' | 'pertanyaan_warga';
 
 export const DEFAULT_MAX_UNTRUSTED_CHARS = 1200;
 

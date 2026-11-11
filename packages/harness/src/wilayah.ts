@@ -201,10 +201,18 @@ export function wilayahDariPesan(teks: string): { kode: string; ktp: boolean } |
 }
 
 /**
- * Tujuan pindah dari pesan warga, tanpa LLM: tepat satu kab/kota yang disebut sesudah "ke" ("pindah dari Kota
- * Semarang ke Kabupaten Sleman"). Lebih dari satu, atau nama ganda (Bekasi): null, agen yang bertanya.
+ * Tujuan pindah dari pesan warga, tanpa LLM: hanya pola tegas "pindah (domisili) (dari X) ke Y" tanpa kata ragu
+ * (mungkin, belum tahu, rencana, ...), dan tepat satu kab/kota sesudah "ke". Selain itu null: tujuan tidak
+ * ditetapkan, agen yang menanyakan/memastikannya (wilayah__tetapkan atas jawaban warga).
  */
 export function tujuanDariPesan(teks: string): string | null {
+  if (!/\bpindah\s+(domisili\s+)?(dari\s+[^.?!\n]{1,60}?\s+)?ke\s+\S/i.test(teks)) return null;
+  if (
+    /\b(mungkin|belum\s+(tahu|tau|pasti|yakin)|rencana\w*|kayaknya|sepertinya|antara|atau|bisa\s+jadi|masih\s+bingung)\b/i.test(
+      teks,
+    )
+  )
+    return null;
   const ke = [
     ...new Set(
       temukanWilayah(teks)

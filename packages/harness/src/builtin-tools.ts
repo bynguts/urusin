@@ -395,8 +395,11 @@ export const urusanJawabPersyaratan = defineTool({
           chunks,
           signal: ctx.signal,
         });
-    if (cache && !tersimpan) cache.simpan(kunci, gen.data, gen.method);
     const verified = verifyGrounded(gen.data, chunks, ctxHandoff, ctx.deps.now());
+    // Hanya jawaban yang lolos verifikasi utuh (ada klaim, tidak ada yang dibuang) yang disimpan: keluaran model
+    // yang sebagian salah kutip atau berakhir hand-off selalu dicoba ulang ke model.
+    if (cache && !tersimpan && !verified.handoff && verified.klaim.length > 0 && verified.klaimDibuang === 0)
+      cache.simpan(kunci, gen.data, gen.method);
     const usage = { usage: gen.usage, structuredMode: gen.method };
     if (verified.handoff) return { ...handoffTanpaUlang(ctx, verified.handoff, kode), ...usage };
     const data: PayloadOf<'grounded_answer'> = {
