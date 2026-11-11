@@ -26,7 +26,7 @@ import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import {
   asetUmumBoleh,
   createGerbangTulis,
-  hostAsetUmum,
+  hostAset,
   jalurPihakKetigaBoleh,
   JENDELA_WARGA_MS,
   type GerbangTulis,
@@ -1203,7 +1203,7 @@ export async function wire(
     const izinHost = new Set(egressRules(gen.hosts, config.fixtureOrigins).map((r) => `${r.host}:${r.port}`));
     const urlBoleh = (url: string) =>
       urlDiAllowlist(izinHost, url) &&
-      !hostAsetUmum(url) &&
+      !hostAset(url) &&
       checkUrl(url, { testMode: fixtureOrigins.length > 0, fixtureOrigins }).ok;
     // Review kode N4: tautan target=_blank yang diketuk warga membuka pop-up yang tidak terlihat di layar. Pop-up
     // selalu ditutup; navigasi GET-nya (hanya dari ketukan warga, lolos allowlist) dibuka di halaman utama.
