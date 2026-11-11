@@ -77,10 +77,16 @@ const HALAMAN: Record<string, string> = {
   '/retry-tanpa-batas':
     kerangka(`<style>#kosong{position:fixed;left:0;top:300px;width:300px;height:200px;background:#eee}
 #nama{position:fixed;left:0;top:520px;width:300px;height:40px}
-#ok{position:fixed;left:0;top:600px;width:300px;height:40px}</style>
+#ok{position:fixed;left:0;top:600px;width:300px;height:40px}
+#rl{position:fixed;left:0;top:650px;width:300px;height:30px}
+#c{position:fixed;left:0;top:690px;width:300px;height:30px;margin:0}
+#s{position:fixed;left:0;top:730px;width:300px;height:30px}</style>
 <button type="button" id="b">Lanjut</button><div id="kosong">area kosong</div>
 <label>Nama <input id="nama" name="nama"></label>
 <button type="button" id="ok" onclick="fetch('/api/warga-a',{method:'POST',body:'x'})">Kirim saya</button>
+<label id="rl"><input type="radio" name="jk" value="L"> Laki-laki</label>
+<input type="checkbox" id="c" name="setuju">
+<select id="s" name="agama"><option>Islam</option><option>Kristen</option></select>
 <script>document.getElementById('b').addEventListener('click', () => {
   const t = setInterval(async () => { try { await fetch('/api/final-a', { method: 'POST', body: 'final=1' }); clearInterval(t); } catch (e) {} }, 250);
 });</script>`),
@@ -756,7 +762,7 @@ test('N2: POST tertunda dari klik AI tidak lolos; halaman kotor dimuat ulang dan
   }
 });
 
-test('N4: halaman kotor = ketukan area kosong/kolom ketik dan ketikan tidak membuka jendela tulis', async () => {
+test('N4: halaman kotor = ketukan area kosong/kolom ketik/kontrol isian dan ketikan tidak membuka jendela tulis', async () => {
   const { manager, o, sesiId, p } = await sesi(situs, '/retry-tanpa-batas', 'retry-tb');
   try {
     const r = await manager.aksi(o, {
@@ -774,6 +780,12 @@ test('N4: halaman kotor = ketukan area kosong/kolom ketik dan ketikan tidak memb
     await manager.handleClient(sesiId, { type: 'text', teks: 'Budi' });
     await new Promise((r) => setTimeout(r, 1_500));
     expect(situs.hitung('/api/final-a')).toBe(0);
+    // Re-review N4 (PoC A): radio (lewat label), centang, dan pilihan = kontrol isian, bukan maksud mengirim.
+    for (const y of [665, 705, 745]) {
+      await ketuk(manager, sesiId, 150, y);
+      await new Promise((r) => setTimeout(r, 1_000));
+      expect(situs.hitung('/api/final-a'), `ketukan y=${y}`).toBe(0);
+    }
     // Kontrol positif: ketukan pada tombol nyata membuka jendela warga (tulis warga sampai).
     await ketuk(manager, sesiId, 100, 620);
     await expect.poll(() => situs.hitung('/api/warga-a'), { timeout: 10_000 }).toBe(1);

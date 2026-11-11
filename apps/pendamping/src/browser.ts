@@ -257,11 +257,12 @@ export const PROFIL_PREFS = Object.freeze({
 });
 
 /**
- * Kontrol yang ketukannya membuka jendela tulis warga di halaman kotor (N4). Kolom ketik (input teks, textarea,
- * contenteditable) bukan kontrol walau di dalam label.
+ * Kontrol yang ketukannya membuka jendela tulis warga di halaman kotor (N4): hanya tombol kirim dan tautan.
+ * Kontrol isian (radio, centang, pilihan, label, summary) dan kolom ketik tidak: menyentuhnya bukan maksud
+ * mengirim, jadi retry tertunda dari klik AI tidak boleh ikut lolos (re-review N4, PoC A).
  */
 const SEL_KONTROL_KETUK =
-  'button, a[href], area[href], input[type="submit"], input[type="image"], input[type="button"], input[type="checkbox"], input[type="radio"], [role="button"], [role="link"], [role="checkbox"], [role="radio"], label, summary, select';
+  'button:not([type="reset"]), a[href], area[href], input[type="submit"], input[type="image"], input[type="button"], [role="button"], [role="link"]';
 const SEL_KOLOM_KETIK =
   'textarea, [contenteditable=""], [contenteditable="true"], input:not([type="submit"], [type="image"], [type="button"], [type="checkbox"], [type="radio"], [type="reset"], [type="file"])';
 
@@ -1269,7 +1270,7 @@ export async function wire(
         ((m.type === 'pointer' || m.type === 'key') && (m.aksi === 'down' || m.aksi === 'up'));
       let buka = nyata && !pantau.aktif;
       // N4: halaman kotor (tulis tertunda dari klik AI masih berdenyut) = jendela tulis hanya untuk ketukan yang
-      // mengenai kotak sorot atau kontrol (tombol/tautan/label/pilihan). Ketikan dan ketukan di area kosong tidak.
+      // mengenai kotak sorot, tombol kirim, atau tautan. Ketikan, kontrol isian, dan area kosong tidak.
       if (buka && g?.kotor) {
         if (m.type !== 'pointer') buka = false;
         else if (m.aksi === 'down') buka = ketukKotorSah = await ketukanKeKontrol(m.x, m.y);
