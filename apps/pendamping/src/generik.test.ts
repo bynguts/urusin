@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { createGerbangTulis, JENDELA_ISI_MS, type Jendela } from './gerbang-tulis.js';
 import {
   GenerikRun,
+  naikHttps,
   PESAN_GENERIK,
   redaksi,
   tidakLazim,
@@ -362,6 +363,48 @@ describe('GenerikRun: host di luar allowlist', () => {
   });
 
   const hanyaPortal = (u: string) => URL.parse(u)?.host === 'portal.contoh.go.id';
+
+  it('probe gel4 9171: naikHttps menaikkan http:// host sesi https-saja, tidak pernah membuka http polos', () => {
+    const boleh = (u: string) => {
+      const x = URL.parse(u);
+      return (
+        (x?.protocol === 'https:' && x.host === 'portal.contoh.go.id') ||
+        (x?.protocol === 'http:' && x.host === '127.0.0.1:4341')
+      );
+    };
+    expect(naikHttps('http://portal.contoh.go.id/pacemace/kk?x=1#a', boleh)).toBe(
+      'https://portal.contoh.go.id/pacemace/kk?x=1#a',
+    );
+    expect(naikHttps('http://portal.contoh.go.id:80/a', boleh)).toBe('https://portal.contoh.go.id/a');
+    // Port lain, host lain, sudah https, atau http yang memang boleh (fixture) = tidak dinaikkan.
+    expect(naikHttps('http://portal.contoh.go.id:8080/a', boleh)).toBeUndefined();
+    expect(naikHttps('http://lain.contoh.go.id/a', boleh)).toBeUndefined();
+    expect(naikHttps('https://portal.contoh.go.id/a', boleh)).toBeUndefined();
+    expect(naikHttps('http://127.0.0.1:4341/a', boleh)).toBeUndefined();
+    expect(naikHttps('bukan url', boleh)).toBeUndefined();
+  });
+
+  it('probe gel4 9171: klik tautan http:// ke host portal = navigasi https, bukan host lain', async () => {
+    const h = harness({
+      aksi: () => ({
+        status: 'navigasi',
+        aturan: 'K8_NAVIGASI',
+        kelas: 'navigasi',
+        href: 'http://portal.contoh.go.id/pacemace/layanan',
+      }),
+      urlBoleh: (u) => URL.parse(u)?.protocol === 'https:' && hanyaPortal(u),
+    });
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+    expect(r).toEqual([{ indeks: 0, kode: 'ok', kelas: 'navigasi' }]);
+    expect(h.navigasi).toEqual(['https://portal.contoh.go.id/pacemace/layanan']);
+    expect(h.jendelaSaatAksi.at(-1)).toEqual({
+      jenis: 'ai_klik',
+      navKe: 'https://portal.contoh.go.id/pacemace/layanan',
+    });
+    expect(h.jejak.some((c) => c.jenis === 'host_kandidat')).toBe(false);
+    expect(h.serah).toEqual([]);
+  });
 
   it('redirect 302 yang ditolak proxy (bukan rute): dari URL dokumen, peramban dikembalikan', async () => {
     const pindah = 'https://portal.contoh.go.id/pindah';

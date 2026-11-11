@@ -77,6 +77,18 @@ function decodeURIComponentAman(s: string): string {
 }
 
 /** Evaluator op runner di isolated world (browser.ts) -> TanganHalaman. */
+/**
+ * Probe gel4 9171: tautan `http://` (port bawaan) ke host sesi yang terdaftar hanya untuk https dinaikkan ke
+ * `https://` bila bentuk https-nya lolos `boleh`. http polos tidak pernah dibuka; URL yang memang boleh lewat http
+ * (fixture uji) tidak diubah. undefined = tidak ada kenaikan yang sah.
+ */
+export function naikHttps(url: string, boleh: (url: string) => boolean): string | undefined {
+  const u = URL.parse(url);
+  if (!u || u.protocol !== 'http:' || (u.port !== '' && u.port !== '80') || boleh(u.href)) return undefined;
+  u.protocol = 'https:';
+  return boleh(u.href) ? u.href : undefined;
+}
+
 export function tanganRunner(deps: {
   evaluate(op: unknown): Promise<{ ok: true; value?: unknown } | { ok: false; code: string } | 'interrupted'>;
   navigasi(url: string): Promise<void>;
@@ -752,7 +764,7 @@ export class GenerikRun {
     urlSebelum: string,
   ) {
     const k = kelas ? { kelas } : {};
-    const u = href ? URL.parse(href) : null;
+    const u = href ? URL.parse(naikHttps(href, this.d.urlBoleh) ?? href) : null;
     if (!u || !this.d.urlBoleh(u.href)) {
       if (u?.host) this.d.jejak({ jenis: 'host_kandidat', host: u.host.slice(0, 253) });
       const sorot = await this.d.tangan.sorot(ref.jalur).catch(() => undefined);
@@ -771,7 +783,7 @@ export class GenerikRun {
   /** Href tautan pembuka yang lolos allowlist, dalam bentuk yang ditampilkan ke warga (jalur diredaksi). */
   private async tautanUrl(ref: string): Promise<URL | undefined> {
     const href = await this.d.tangan.tautan(ref, this.peta);
-    const u = href ? URL.parse(href) : null;
+    const u = href ? URL.parse(naikHttps(href, this.d.urlBoleh) ?? href) : null;
     if (!u || !this.d.urlBoleh(u.href)) return undefined;
     u.hash = '';
     return u;
