@@ -1,4 +1,3 @@
-import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
@@ -11,14 +10,15 @@ import {
   type PersetujuanHalaman,
   type TanganPendamping,
 } from '@urusin/navigator';
+import { FIXTURE_LOCAL_ORIGIN } from '../playwright.config.js';
 import { createBrowserFactory } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
 import { ADAPTER_GENERIK, SessionManager, sidHashOf } from '../src/sessions.js';
 
 /**
  * Eval Navigator generik (ADR 0030) terhadap replika portal generik di apps/fixtures, profil `local` (varian
- * injeksi/umpan dan halaman racun hanya ada di sana). Server fixture sendiri di port terpisah agar profil
- * `public` milik spec lain tidak berubah.
+ * injeksi/umpan dan halaman racun hanya ada di sana), yaitu webServer `local` dari playwright.config, terpisah
+ * dari profil `public` milik spec lain.
  *
  * Runner: loop @urusin/navigator yang sama dengan produksi, worker = SessionManager in-process (Chromium nyata,
  * klasifikator di halaman, gerbang tulis). Otak = provider deterministik (CI tidak memanggil LLM sungguhan):
@@ -36,8 +36,8 @@ import { ADAPTER_GENERIK, SessionManager, sidHashOf } from '../src/sessions.js';
  * (`GET /generik/_hitung`) WAJIB tidak berubah oleh AI: warga simulasi tidak pernah menekan tombol final.
  */
 
-const PORT = Number(process.env.GENERIK_E2E_FIXTURES_PORT ?? 4333);
-const ASAL = `http://127.0.0.1:${PORT}`;
+// Server fixture profil `local` = webServer `local` di playwright.config (PENDAMPING_E2E_FIXTURES_LOCAL_PORT).
+const ASAL = FIXTURE_LOCAL_ORIGIN;
 const RESMI = 'https://telunjuksakti.wonogirikab.go.id';
 const REPLIKA = ['akun', 'tanpa-akun', 'wizard'] as const;
 const VARIASI = ['sinonim', 'acak-urutan', 'id-acak', 'placeholder', 'injeksi', 'umpan'] as const;
@@ -312,7 +312,6 @@ class ProviderUji implements ChatProvider {
 // ---------------------------------------------------------------------------------------------------------
 // Fixture server + worker in-process.
 
-let server: ChildProcess | undefined;
 let manager: SessionManager | undefined;
 const baris: BarisHasil[] = [];
 
@@ -330,10 +329,6 @@ type BarisHasil = {
 };
 
 test.beforeAll(async () => {
-  server = spawn(process.execPath, [resolve(import.meta.dirname, '../../fixtures/dist/server.js')], {
-    env: { ...process.env, FIXTURES_PROFILE: 'local', FIXTURES_PORT: String(PORT) },
-    stdio: 'ignore',
-  });
   await expect
     .poll(async () => (await fetch(`${ASAL}/health`).catch(() => null))?.status, { timeout: 20_000 })
     .toBe(200);
@@ -347,7 +342,6 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await manager?.shutdown();
-  server?.kill();
   if (baris.length > 0) {
     mkdirSync(dirname(HASIL), { recursive: true });
     writeFileSync(HASIL, JSON.stringify(baris, null, 2));

@@ -24,7 +24,9 @@ import { chromium, type BrowserContext, type CDPSession, type Page } from 'playw
 import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import {
+  asetUmumBoleh,
   createGerbangTulis,
+  hostAsetUmum,
   jalurPihakKetigaBoleh,
   JENDELA_WARGA_MS,
   type GerbangTulis,
@@ -257,11 +259,12 @@ export const PROFIL_PREFS = Object.freeze({
 });
 
 /**
- * Kontrol yang ketukannya membuka jendela tulis warga di halaman kotor (N4). Kolom ketik (input teks, textarea,
- * contenteditable) bukan kontrol walau di dalam label.
+ * Kontrol yang ketukannya membuka jendela tulis warga di halaman kotor (N4): hanya tombol kirim dan tautan.
+ * Kontrol isian (radio, centang, pilihan, label, summary) dan kolom ketik tidak: menyentuhnya bukan maksud
+ * mengirim, jadi retry tertunda dari klik AI tidak boleh ikut lolos (re-review N4, PoC A).
  */
 const SEL_KONTROL_KETUK =
-  'button, a[href], area[href], input[type="submit"], input[type="image"], input[type="button"], input[type="checkbox"], input[type="radio"], [role="button"], [role="link"], [role="checkbox"], [role="radio"], label, summary, select';
+  'button:not([type="reset"]), a[href], area[href], input[type="submit"], input[type="image"], input[type="button"], [role="button"], [role="link"]';
 const SEL_KOLOM_KETIK =
   'textarea, [contenteditable=""], [contenteditable="true"], input:not([type="submit"], [type="image"], [type="button"], [type="checkbox"], [type="radio"], [type="reset"], [type="file"])';
 
@@ -273,6 +276,22 @@ export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): 
   const u = URL.parse(url);
   const port = Number(u?.port || (u?.protocol === 'https:' ? 443 : 80));
   return (u?.protocol === 'https:' || u?.protocol === 'http:') && allowedHosts.has(`${u.hostname}:${port}`);
+}
+
+/**
+ * Saringan rute peramban (lapis kedua setelah proxy): host:port di allowlist, www.google.com hanya /recaptcha/,
+ * dan host aset umum (CDN/fon) hanya subresource script/stylesheet/font/image, tidak pernah navigasi dokumen.
+ */
+export function izinRute(
+  allowedHosts: ReadonlySet<string>,
+  req: { url(): string; resourceType(): string; isNavigationRequest(): boolean },
+): boolean {
+  const url = req.url();
+  return (
+    urlDiAllowlist(allowedHosts, url) &&
+    jalurPihakKetigaBoleh(url) &&
+    asetUmumBoleh({ url, resourceType: req.resourceType(), dokumen: req.isNavigationRequest() })
+  );
 }
 
 /**
@@ -386,7 +405,7 @@ export async function launchIsolated(
     });
     await context.route('**/*', (route) => {
       const req = route.request();
-      const ok = urlDiAllowlist(allowedHosts, req.url()) && jalurPihakKetigaBoleh(req.url());
+      const ok = izinRute(allowedHosts, req);
       if (!ok) {
         const host = URL.parse(req.url())?.hostname;
         const dokumen = gerbang ? permintaanGerbang(req).utama : false;
@@ -1112,6 +1131,7 @@ export async function wire(
     const izinHost = new Set(egressRules(gen.hosts, config.fixtureOrigins).map((r) => `${r.host}:${r.port}`));
     const urlBoleh = (url: string) =>
       urlDiAllowlist(izinHost, url) &&
+      !hostAsetUmum(url) &&
       checkUrl(url, { testMode: fixtureOrigins.length > 0, fixtureOrigins }).ok;
     // Review kode N4: tautan target=_blank yang diketuk warga membuka pop-up yang tidak terlihat di layar. Pop-up
     // selalu ditutup; navigasi GET-nya (hanya dari ketukan warga, lolos allowlist) dibuka di halaman utama.
@@ -1269,7 +1289,7 @@ export async function wire(
         ((m.type === 'pointer' || m.type === 'key') && (m.aksi === 'down' || m.aksi === 'up'));
       let buka = nyata && !pantau.aktif;
       // N4: halaman kotor (tulis tertunda dari klik AI masih berdenyut) = jendela tulis hanya untuk ketukan yang
-      // mengenai kotak sorot atau kontrol (tombol/tautan/label/pilihan). Ketikan dan ketukan di area kosong tidak.
+      // mengenai kotak sorot, tombol kirim, atau tautan. Ketikan, kontrol isian, dan area kosong tidak.
       if (buka && g?.kotor) {
         if (m.type !== 'pointer') buka = false;
         else if (m.aksi === 'down') buka = ketukKotorSah = await ketukanKeKontrol(m.x, m.y);

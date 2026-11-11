@@ -166,6 +166,8 @@ export const PESAN_GENERIK = {
   kotor:
     'Halaman ini mencoba mengirim data sendiri, jadi AI berhenti dan halaman dimuat ulang. Periksa halaman, lalu lanjutkan sendiri.',
   berhenti: 'AI berhenti di sini. Lanjutkan sendiri dari layar ini.',
+  tautan_berubah:
+    'Alamat tautan ini berubah setelah ditampilkan, jadi tidak dibuka. Periksa halaman, lalu lanjutkan sendiri.',
 } as const;
 
 const PESAN_TIDAK_BISA: Record<Extract<Aksi, { jenis: 'tidak_bisa' }>['sebab'], string> = {
@@ -322,6 +324,8 @@ export class GenerikRun {
   private refPembuka = new Set<string>();
   /** Giliran `ketuk_tautan` yang aktif: ref tautan yang boleh dibuka lewat `buka_tautan` (review N5). */
   private pembukaAktif: string | undefined;
+  /** URL absolut (host + jalur + kueri) tujuan yang DITAMPILKAN ke warga untuk giliran `ketuk_tautan` aktif. */
+  private pembukaUrl: string | undefined;
   /** Serah akhir `berhenti`: loop Navigator sudah berhenti; Lanjutkan tidak mengembalikan kendali ke AI. */
   private berhentiAkhir = false;
   /** Pengamatan terakhir dokumen INI halaman akhir (direset saat dokumen baru ter-commit; untuk mode ketat). */
@@ -335,6 +339,7 @@ export class GenerikRun {
   dokumenBaru(): void {
     this.akhirDok = false;
     this.pembukaAktif = undefined;
+    this.pembukaUrl = undefined;
     this.kotorDok = false;
     this.kotorDiserahkan = false;
     this.aiBertindakDok = false;
@@ -591,17 +596,20 @@ export class GenerikRun {
     if (a.jenis === 'serahkan') {
       const ref = a.ref ? this.peta[a.ref] : undefined;
       let tautan: TautanGiliran | undefined;
+      let tujuan: URL | undefined;
       if (a.alasan === 'ketuk_tautan') {
         // Review N1: hanya tautan pembuka dari pengamatan terakhir, tidak pernah di halaman akhir (tombol kirim
         // tidak bisa disorot sebagai "tautan"). Tujuan dibaca ulang dari DOM untuk ditampilkan ke warga (N5).
         if (this.kunciAkhir || !a.ref || !ref || !this.refPembuka.has(a.ref))
           return { kode: 'KELAS_DITOLAK' };
-        tautan = await this.tautanGiliran(a.ref);
-        if (!tautan) return { kode: 'KELAS_DITOLAK' };
+        tujuan = await this.tautanUrl(a.ref);
+        if (!tujuan) return { kode: 'KELAS_DITOLAK' };
+        tautan = this.tautanGiliran(a.ref, tujuan);
       }
       const sorot = ref ? await this.d.tangan.sorot(ref.jalur) : undefined;
       this.sorotJalur = ref?.jalur;
       this.pembukaAktif = tautan ? a.ref : undefined;
+      this.pembukaUrl = tujuan?.href;
       this.berhentiAkhir = a.alasan === 'berhenti';
       this.d.jejak({ jenis: 'ambil_alih', fase: 'mulai', alasan: a.alasan });
       this.d.serahkan(ALASAN_GILIRAN[a.alasan], PESAN_GENERIK[a.alasan], sorot, tautan);
@@ -735,9 +743,7 @@ export class GenerikRun {
     return u;
   }
 
-  private async tautanGiliran(ref: string): Promise<TautanGiliran | undefined> {
-    const u = await this.tautanUrl(ref);
-    if (!u) return undefined;
+  private tautanGiliran(ref: string, u: URL): TautanGiliran {
     const jalur = redaksi(decodeURIComponentAman(u.pathname), this.d.izin.vault()).slice(0, 200) || '/';
     return { ref, nama: (this.namaRef.get(ref) ?? '').slice(0, 80), host: u.host, jalur };
   }
@@ -746,16 +752,23 @@ export class GenerikRun {
    * Warga menekan "Buka tautan" (pesan `buka_tautan`, review N5) pada giliran `ketuk_tautan` yang aktif: href dibaca
    * ulang dari DOM, `lanjut()` mengembalikan kendali ke AI, lalu navigasi GET bingkai utama ke href itu (jendela
    * `ai_klik` dengan navKe), tanpa klik dan tanpa handler JS halaman. false = tidak ada giliran itu / tautan berubah.
+   * Re-review TOCTOU (PoC E3): href yang dibaca ulang harus SAMA PERSIS (host + jalur + kueri) dengan tujuan yang
+   * ditampilkan ke warga; bila halaman menukarnya, tidak dibuka dan giliran tetap di warga dengan pesan netral.
    */
   bukaTautan(refWarga: string, lanjut: () => void): Promise<boolean> {
     return this.serial(async () => {
       const ref = this.pembukaAktif;
       // Hanya ref tautan pembuka yang sedang disorot; ref lain tidak menghabiskan giliran.
       if (!ref || ref !== refWarga) return false;
+      const ditampilkan = this.pembukaUrl;
       this.pembukaAktif = undefined;
+      this.pembukaUrl = undefined;
       if (this.kunciAkhir) return false;
       const u = await this.tautanUrl(ref);
-      if (!u) return false;
+      if (!u || u.href !== ditampilkan) {
+        this.d.serahkan('periksa', PESAN_GENERIK.tautan_berubah);
+        return false;
+      }
       lanjut();
       this.aiBertindakDok = true;
       this.tulisWargaSejakAi = false;
