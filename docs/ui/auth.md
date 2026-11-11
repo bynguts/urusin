@@ -14,6 +14,18 @@ Keputusan dan model ancaman ada di [ADR 0028](../adr/0028-akun-dan-login.md). Ko
 - Semua formulir berfungsi **tanpa JavaScript** (form action biasa). `use:enhance` boleh ditambahkan.
 - Status login di setiap halaman lewat `data.akun` dari `+layout.server.ts`: `null` untuk tamu, atau `{ jenis: 'akun' | 'demo', email (null untuk demo), emailTerverifikasi }`.
 
+## Brankas dan pengaturan perangkat
+
+- Item `DokumenAkun` dari `/api/vault` dapat membawa `bacaSaja: true`. Ini menandai berkas contoh bersama
+  pada salinan demo juri. Berkas tetap bisa diunduh dan dipakai untuk latihan. UI menampilkan
+  "Contoh bawaan · hanya baca" serta menyembunyikan tombol hapus; Hapus semua hanya menghitung unggahan
+  sendiri. Server tetap menolak penghapusan rujukan contoh.
+- Jika jenis dokumen yang sedang difilter habis setelah penghapusan, filter kembali ke Semua supaya
+  berkas lain tetap terlihat. Tabel Data Diri dapat digulir mendatar dan difokuskan untuk tombol panah.
+- "Hapus data di perangkat ini" membersihkan daftar urusan/pesan serta wilayah lokal, mengembalikan
+  preferensi tampilan ke nilai awal, menghentikan pembacaan suara, dan langsung memperbarui kontrol
+  wilayah. Data Diri dan dokumen di server mengikuti aksi brankas/akun masing-masing.
+
 ## Rute halaman (form action)
 
 | Layar                        | Rute                          | Aksi dan field                                                                                                                             | Hasil sukses                                                                                            | Galat (`form.kode`)                                                                                                                   |
