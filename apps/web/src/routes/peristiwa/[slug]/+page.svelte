@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
+  import { onMount } from 'svelte';
   import Icon from '#lib/components/Icon.svelte';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
   import ChipSumber from '#lib/components/urusan/ChipSumber.svelte';
@@ -20,10 +21,18 @@
   const r = $derived(data.rencana);
   const pesan = $derived(`Saya ingin mengurus ${p.judul.toLowerCase()}. Apa saja yang perlu saya siapkan?`);
   let mengirim = $state(false);
+  let pilihKota = $state<HTMLSelectElement>();
+
+  // HP lambat: warga bisa memilih kota sebelum hidrasi, saat onchange belum terpasang. Pilihan itu diteruskan
+  // begitu halaman hidup, bukan hilang diam-diam.
+  onMount(() => {
+    if (pilihKota?.value && pilihKota.value !== (data.kodeDipilih ?? '')) simpanWilayah(pilihKota);
+  });
 
   // Dengan JS: bila belum memilih kota dan perangkat ini punya pilihan wilayah, pakai itu (usulan saja).
+  // Pilihan warga di kolom (termasuk sebelum hidrasi) tidak ditimpa usulan ini.
   $effect(() => {
-    if (data.kodeDipilih || page.url.searchParams.has('kodeKabKota')) return;
+    if (data.kodeDipilih || page.url.searchParams.has('kodeKabKota') || pilihKota?.value) return;
     const kode = lokal.data.wilayah?.kodeKabKota;
     if (!kode) return;
     // eslint-disable-next-line svelte/no-navigation-without-resolve -- path lewat resolve(), hanya ditambah query
@@ -32,8 +41,7 @@
     });
   });
 
-  function simpanWilayah(e: Event) {
-    const sel = e.currentTarget as HTMLSelectElement;
+  function simpanWilayah(sel: HTMLSelectElement) {
     const k = data.kota.find((x) => x.kodeKabKota === sel.value);
     if (k) lokal.aturWilayah({ kodeKabKota: k.kodeKabKota, nama: namaPendek(k.nama) });
     sel.form?.requestSubmit();
@@ -64,7 +72,8 @@
       <select
         id="kota"
         name="kodeKabKota"
-        onchange={simpanWilayah}
+        bind:this={pilihKota}
+        onchange={(e) => simpanWilayah(e.currentTarget)}
         aria-describedby="kota-petunjuk"
         class="min-h-12 min-w-0 flex-1 rounded-xl border border-line-2 bg-surface px-4 text-base text-ink"
       >

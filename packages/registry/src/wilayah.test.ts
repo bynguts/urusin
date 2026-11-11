@@ -8,6 +8,7 @@ import {
   menyebutWilayah,
   temukanWilayah,
   namaPendekWilayah,
+  penandaWilayah,
   routeByKode,
   wilayahByKode,
 } from './index.js';
@@ -90,6 +91,9 @@ describe('nama dan penanda', () => {
     expect(namaPendekWilayah('Kabupaten Wonogiri')).toBe('Kab. Wonogiri');
     expect(namaPendekWilayah('Kota Surabaya')).toBe('Kota Surabaya');
     expect(namaPendekWilayah('Kota Administrasi Jakarta Pusat')).toBe('Jakarta Pusat');
+  });
+  it('penandaWilayah: nama inti tanpa awalan, dan kodenya', () => {
+    expect(penandaWilayah(wilayahByKode('3216')!)).toEqual(['bekasi', '3216']);
   });
   it('menyebutWilayah: nama inti atau kode, utuh per kata', () => {
     const bks = wilayahByKode('3216')!;

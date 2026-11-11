@@ -27,6 +27,12 @@ const EDGE_ENV = {
 };
 
 describe('config', () => {
+  it('sha /health: 12 hex pertama GIT_SHA; selain hex (dev/kosong) tidak dilaporkan', () => {
+    expect(loadConfig({ GIT_SHA: 'c9aa9afcf41cfb55e362e39fe8546eaa8876135e' }).sha).toBe('c9aa9afcf41c');
+    expect(loadConfig({ GIT_SHA: 'dev' }).sha).toBeUndefined();
+    expect(loadConfig({}).sha).toBeUndefined();
+  });
+
   it('default aman: 127.0.0.1:4330, 2 sesi, TTL 15 menit, idle 3 menit, headed, dev/debug mati', () => {
     const c = loadConfig({});
     expect(c).toMatchObject({

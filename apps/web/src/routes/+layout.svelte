@@ -1,6 +1,8 @@
 <script lang="ts">
   import './layout.css';
   import favicon from '#lib/assets/img/favicon.png';
+  import fontStrawberry from '#lib/assets/fonts/strawberry-sans.woff2';
+  import fontLora from '#lib/assets/fonts/lora-urusin-500.woff2';
   import mark from '#lib/assets/img/app/urusin-mark-48.webp';
   import NavBawah from '#lib/components/shell/NavBawah.svelte';
   import Sidebar from '#lib/components/shell/Sidebar.svelte';
@@ -26,17 +28,29 @@
   let menuBuka = $state(false);
 
   // Preferensi tampilan diterapkan di <html>: ukuran huruf, kontras, gerak. Aplikasi beroperasi dalam mode terang.
+  // Hanya nilai yang berbeda yang ditulis. Nilai bawaan sudah ada di app.html (skala bawaan = cadangan
+  // `var(--skala-huruf, 1)` di layout.css), jadi hidrasi warga berpreferensi bawaan tidak mengubah <html> dan
+  // tidak memicu hitung ulang gaya seluruh dokumen di dalam task hidrasi (TBT).
   $effect(() => {
     const html = document.documentElement;
-    html.style.setProperty('--skala-huruf', String(prefs.nilai.ukuranHuruf));
-    html.dataset.theme = 'light';
-    html.dataset.kontras = lokal.data.kontrasTinggi ? 'tinggi' : 'normal';
-    html.dataset.gerak = lokal.data.kurangiGerak ? 'kurang' : 'normal';
+    const skala = String(prefs.nilai.ukuranHuruf);
+    if ((html.style.getPropertyValue('--skala-huruf') || '1') !== skala)
+      html.style.setProperty('--skala-huruf', skala);
+    const atur = (k: 'theme' | 'kontras' | 'gerak', v: string) => {
+      if (html.dataset[k] !== v) html.dataset[k] = v;
+    };
+    atur('theme', 'light');
+    atur('kontras', lokal.data.kontrasTinggi ? 'tinggi' : 'normal');
+    atur('gerak', lokal.data.kurangiGerak ? 'kurang' : 'normal');
   });
 </script>
 
 <svelte:head>
   <link rel="icon" href={favicon} type="image/png" />
+  <!-- Huruf dipramuat agar tiba sedini mungkin dan bersamaan: di ponsel alias optional-nya (layout.css)
+       langsung dipakai pada tata letak pertama, tanpa tata letak cadangan + tata letak ulang saat swap (TBT). -->
+  <link rel="preload" as="font" type="font/woff2" href={fontStrawberry} crossorigin="anonymous" />
+  <link rel="preload" as="font" type="font/woff2" href={fontLora} crossorigin="anonymous" />
   <title>Urusin</title>
 </svelte:head>
 

@@ -35,9 +35,24 @@ module.exports = {
       // 5 run per URL: dokumentasi Lighthouse (docs/variability.md) menganjurkan median 5 run untuk meredam
       // varians; dengan 3 run satu run berisik sudah menggeser median. Ambang assertion di bawah tidak berubah.
       numberOfRuns: 5,
+      // Rute dasbor (RUTE_MASUK di perf-routes.cjs) diukur dalam keadaan masuk sebagai akun demo; rute lain
+      // sebagai tamu. Dengan puppeteerScript, lhci meluncurkan Chrome lewat puppeteer dan Lighthouse
+      // tersambung ke sana, jadi flag Chrome dipasang di puppeteerLaunchOptions (settings.chromeFlags diabaikan).
+      puppeteerScript: 'scripts/lhci-masuk.cjs',
+      // Flag bawaan chrome-launcher (yang dipakai Lighthouse bila meluncurkan Chrome sendiri) yang tidak ada di
+      // bawaan puppeteer: lingkungan ukur tetap sama dengan sebelum puppeteerScript.
+      puppeteerLaunchOptions: {
+        args: [
+          ...chromeFlags.split(' '),
+          '--disable-component-update',
+          '--disable-domain-reliability',
+          '--force-fieldtrials=*BackgroundTracing/default/',
+          '--no-default-browser-check',
+          '--propagate-iph-for-testing',
+        ],
+      },
       settings: {
         formFactor: 'mobile',
-        chromeFlags,
         ...(cpu.source === 'default' ? {} : { throttling: { cpuSlowdownMultiplier: cpu.multiplier } }),
       },
     },

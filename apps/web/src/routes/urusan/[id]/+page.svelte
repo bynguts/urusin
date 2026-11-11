@@ -341,6 +341,7 @@
             onambilalih={() => sesi.ambilAlih()}
             onkembalikan={() => void sesi.kembalikan()}
             onbukatautan={() => sesi.bukaTautan()}
+            onsudahkirim={() => sesi.sudahMengirim()}
             onhentikan={() => void sesi.hentikan()}
             ontutup={() => void sesi.tutupSekarang()}
             onmulailagi={() => {

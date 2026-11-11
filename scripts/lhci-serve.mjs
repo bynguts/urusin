@@ -11,7 +11,8 @@
  * - minimum_length bawaan Caddy 512 byte: respons lebih pendek dikirim tanpa kompresi;
  * - level bawaan Caddy: zstd 3, gzip 5. Respons terkompres: Vary: Accept-Encoding, tanpa Content-Length.
  *
- * Pemakaian (lighthouserc.cjs): PORT, HOST, ORIGIN seperti `node apps/web/build`.
+ * Pemakaian (lighthouserc.cjs): PORT, HOST, ORIGIN seperti `node apps/web/build`. URUSIN_PUBLIC_ORIGIN
+ * bawaan = origin proxy ini (http://HOST:PORT), supaya rute dasbor bisa diukur dalam keadaan masuk.
  */
 import { spawn } from 'node:child_process';
 import http from 'node:http';
@@ -172,7 +173,14 @@ function main() {
   const host = process.env.HOST ?? '127.0.0.1';
   const upstreamPort = port + 1000;
   const child = spawn(process.execPath, ['apps/web/build'], {
-    env: { ...process.env, PORT: String(upstreamPort), HOST: '127.0.0.1' },
+    env: {
+      ...process.env,
+      PORT: String(upstreamPort),
+      HOST: '127.0.0.1',
+      // Cek CSRF membandingkan Origin dengan origin publik; peramban Lighthouse membuka proxy ini, jadi login
+      // akun demo (scripts/lhci-masuk.cjs) harus berasal dari origin yang sama dengan halaman yang diukur.
+      URUSIN_PUBLIC_ORIGIN: process.env.URUSIN_PUBLIC_ORIGIN ?? `http://${host}:${port}`,
+    },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   const stop = () => child.kill('SIGTERM');

@@ -12,13 +12,14 @@ import {
   type IsiSesiInternal,
   type MulaiSesiInternal,
   type PemilikSesiInternal,
+  type PendampingKodeGalat,
   type SelesaiSesiInternal,
   type SesiPendamping,
   type TungguSesiInternal,
 } from '@urusin/contracts';
 import { getOfficialDomain } from '@urusin/core';
 import { egressFetch, type EgressFetch } from '@urusin/egress';
-import { redactForStorage, type UrusanRow } from '@urusin/harness';
+import { ADAPTER_GENERIK, redactForStorage, type UrusanRow } from '@urusin/harness';
 import { z, type ZodType } from 'zod';
 import { apiError, apiJson } from '#lib/server/http.js';
 import { SID_COOKIE } from '#lib/server/sesi.js';
@@ -200,7 +201,15 @@ export type Hasil<T> =
    * jawaban galat sah untuk warga; worker lain boleh dicoba (`mulaiSesi`). `putus`: tanpa jawaban sama sekali
    * (jaringan/timeout), jadi worker itu BISA saja sudah membuat sesinya.
    */
-  | { ok: false; response: Response; dipandu?: string; galatWorker?: true; putus?: true };
+  | {
+      ok: false;
+      response: Response;
+      dipandu?: string;
+      galatWorker?: true;
+      putus?: true;
+      /** Kode galat sah dari worker (bila ada), mis. `ADAPTER_TIDAK_ADA` dari worker ber-image lama. */
+      kode?: PendampingKodeGalat;
+    };
 
 const TIDAK_TERSEDIA = () =>
   apiError(
@@ -208,6 +217,11 @@ const TIDAK_TERSEDIA = () =>
     'LAYANAN_TIDAK_TERSEDIA',
     'Browser Pendamping sedang tidak tersedia. Coba lagi sebentar lagi.',
   );
+
+/** Worker berjaringan Indonesia sehat tetapi gagal memulai sesi (image lama, kanal ditolak, 5xx, putus). */
+export const PESAN_WILAYAH_GAGAL =
+  'Browser Pendamping berjaringan Indonesia belum bisa membuka situs ini sekarang. Kami beralih ke panduan ' +
+  'langkah: Anda membuka situsnya sendiri, kami pandu.';
 
 export const PESAN_WILAYAH =
   'Situs ini hanya bisa dibuka dari jaringan Indonesia, dan Browser Pendamping berjaringan Indonesia ' +
@@ -293,7 +307,11 @@ export async function panggil<T>(
     if (kanalDitolak || res.status >= 500)
       return { ok: false, response: TIDAK_TERSEDIA(), galatWorker: true };
     if (!g.success) return { ok: false, response: TIDAK_TERSEDIA() };
-    return { ok: false, response: apiError(res.status, g.data.kode, g.data.pesanWarga) };
+    return {
+      ok: false,
+      response: apiError(res.status, g.data.kode, g.data.pesanWarga),
+      kode: g.data.kode,
+    };
   }
   const parsed = schema.safeParse(raw);
   return parsed.success
@@ -301,13 +319,23 @@ export async function panggil<T>(
     : { ok: false, response: TIDAK_TERSEDIA() };
 }
 
-// --- Kesehatan worker (GET /health publik: {ok, aktif, maks, menunggu}) ---
+// --- Kesehatan worker (GET /health publik: {ok, aktif, maks, menunggu, generik?, sha?}) ---
 
 const HealthSchema = z.object({
   ok: z.literal(true),
   aktif: z.number().int().nonnegative(),
   maks: z.number().int().positive(),
   menunggu: z.number().int().nonnegative(),
+  /**
+   * (Aditif) Worker menjalankan Navigator generik beserta portal wilayah registry-nya. Tidak ada pada worker
+   * `id` = image laptop lama: tidak dipakai untuk sesi generik maupun situs `id-only` (worker itu menolaknya 422).
+   */
+  generik: z.literal(true).optional(),
+  /** (Aditif) Commit image worker, hanya untuk operator. */
+  sha: z
+    .string()
+    .regex(/^[0-9a-f]{7,40}$/)
+    .optional(),
 });
 type Sehat = z.infer<typeof HealthSchema>;
 
@@ -382,17 +410,23 @@ const butuhWilayahSesi = (origin: string, modeUji: boolean | undefined) =>
  * - `id-utama`: worker `id` yang MASIH punya slot (beban < 1) lebih dulu; selain itu beban terendah (laptop
  *   penuh tidak membuat warga mengantre bila server lowong);
  * - lainnya: worker non-`id` lebih dulu (laptop dihemat), lalu beban terendah.
- * `id-only` hanya worker `id`. Kosong = tak ada worker sehat yang memenuhi syarat wilayah.
+ * `id-only` hanya worker `id`. Untuk sesi generik dan situs `id-only`, worker `id` (laptop, diperbarui terpisah
+ * dari produksi) hanya dipakai bila melaporkan `generik` di /health: image lama tidak memenuhi syarat, jadi
+ * `id-utama` jatuh ke server dan `id-only` dipandu (bukan gagal 422). Worker server dirilis bersama web, jadi
+ * tidak disyaratkan. Kosong = tak ada worker sehat yang memenuhi syarat.
  */
 async function kandidatWorker(
   cfg: PendampingConfig,
   akses: ReturnType<typeof aksesSesi>,
   urusanId: string,
   fetcher: EgressFetch,
+  generik = false,
 ): Promise<PendampingWorker[]> {
+  const perluGenerik = generik || akses === 'id-only';
   const kandidat = cfg.workers.filter((w) => akses !== 'id-only' || w.region === REGION_ID);
   const hidup = (await Promise.all(kandidat.map(async (w) => ({ w, s: await sehat(w, fetcher) })))).filter(
-    (x): x is { w: PendampingWorker; s: Sehat } => x.s !== null,
+    (x): x is { w: PendampingWorker; s: Sehat } =>
+      x.s !== null && !(perluGenerik && x.w.region === REGION_ID && x.s.generik !== true),
   );
   const lekat = (w: PendampingWorker) => Number(w.id !== lokasi.get(urusanId));
   const urutan = (w: PendampingWorker, s: Sehat) =>
@@ -465,15 +499,18 @@ export async function pilihWorker(
   urusanId: string,
   fetcher: EgressFetch = egressFetch,
   modeUji?: boolean,
+  generik = false,
 ): Promise<PendampingWorker | null> {
-  return (await kandidatWorker(cfg, aksesSesi(origin, modeUji), urusanId, fetcher))[0] ?? null;
+  return (await kandidatWorker(cfg, aksesSesi(origin, modeUji), urusanId, fetcher, generik))[0] ?? null;
 }
 
 /**
- * POST /internal/sesi ke worker yang tepat. `dipandu` HANYA untuk situs `id-only` tanpa worker `id` yang sehat;
- * situs lain (termasuk `id-utama`) hanya gagal bila tidak ada worker sehat sama sekali. Bila start gagal di sisi
- * worker (jaringan/timeout, 401/403 kanal internal, 5xx) kandidat sehat berikutnya dicoba, KECUALI situs
- * `id-only` (tidak pernah jatuh ke worker lain; galat dari worker `id` diteruskan apa adanya).
+ * POST /internal/sesi ke worker yang tepat. `dipandu` HANYA untuk situs `id-only`: tanpa worker `id` sehat yang
+ * mampu (`generik` di /health), ATAU worker itu gagal memulai (jaringan/timeout, 401/403 kanal internal, 5xx,
+ * 422 `ADAPTER_TIDAK_ADA` dari image lama). Situs lain (termasuk `id-utama`) hanya gagal bila tidak ada worker
+ * sehat sama sekali; start gagal di sisi worker = kandidat sehat berikutnya dicoba. `id-only` tidak pernah jatuh
+ * ke worker lain (IP non-Indonesia ditolak situsnya); galat sah untuk warga (409/403 milik, antrean penuh)
+ * diteruskan apa adanya.
  */
 export async function mulaiSesi(
   cfg: PendampingConfig | null,
@@ -482,7 +519,7 @@ export async function mulaiSesi(
 ): Promise<Hasil<SesiPendamping>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const akses = aksesSesi(body.origin, body.modeUji);
-  const daftar = await kandidatWorker(cfg, akses, body.urusanId, fetcher);
+  const daftar = await kandidatWorker(cfg, akses, body.urusanId, fetcher, body.adapterId === ADAPTER_GENERIK);
   if (daftar.length === 0)
     return butuhWilayahSesi(body.origin, body.modeUji)
       ? {
@@ -510,6 +547,12 @@ export async function mulaiSesi(
         return r;
       }
       if (r.putus) yatim.push(w);
+      if (akses === 'id-only' && (r.galatWorker || r.kode === 'ADAPTER_TIDAK_ADA'))
+        return {
+          ok: false,
+          response: apiError(503, 'PENDAMPING_WILAYAH_TIDAK_TERSEDIA', PESAN_WILAYAH_GAGAL),
+          dipandu: PESAN_WILAYAH_GAGAL,
+        };
       if (!r.galatWorker) return r;
     }
     return r;

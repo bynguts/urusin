@@ -310,6 +310,10 @@ describe('render server komponen', () => {
     expect(henti).toContain('AI berhenti');
     expect(henti).not.toMatch(/mencoba lagi/);
     expect(henti).not.toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
+    // Warga mengirim sendiri lalu melapor: "Saya sudah mengirim" hanya di serah akhir, bukan giliran lain.
+    expect(henti).toMatch(/data-sudah-kirim[^>]*>Saya sudah mengirim<\/button>/);
+    expect(layar('final')).not.toContain('data-sudah-kirim');
+    expect(layar('ketuk_tautan')).not.toContain('data-sudah-kirim');
   });
 
   it('halaman urusan memuat nomor permohonan yang tersimpan (kartu Terkirim setelah sesi ditutup)', async () => {
@@ -405,6 +409,22 @@ describe('Browser Pendamping setelah Kirim', () => {
     expect(b).toContain('Browser masih terbuka sebentar');
     expect(b).toContain('Tutup sekarang');
     expect(b).not.toContain(DITUTUP);
+  });
+
+  it('takeover tanpa giliran (dijeda): Saya sudah mengirim + pesan 409 yang jujur; AI mengisi: tidak ada', async () => {
+    const b = await layar({ keadaan: 'dijeda', mode: 'takeover' });
+    expect(b).toMatch(/data-sudah-kirim[^>]*>Saya sudah mengirim<\/button>/);
+    expect(b).not.toContain('role="alert"');
+    const belum = await layar({
+      keadaan: 'dijeda',
+      mode: 'takeover',
+      pesanKirim: 'Belum terlihat terkirim. Periksa halaman situsnya, lalu coba lagi.',
+    });
+    expect(belum).toMatch(/role="alert"[^>]*>Belum terlihat terkirim\. Periksa halaman situsnya/);
+    expect(await layar({ keadaan: 'dijeda', mode: 'takeover', memeriksaKirim: true })).toMatch(
+      /<button[^>]*disabled[^>]*data-sudah-kirim/,
+    );
+    expect(await layar({ keadaan: 'ai', mode: 'ai' })).not.toContain('data-sudah-kirim');
   });
 
   it('teks "Browser ditutup" hanya saat sesi benar-benar ditutup (mode done)', async () => {

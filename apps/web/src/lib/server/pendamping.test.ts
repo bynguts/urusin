@@ -18,6 +18,7 @@ import {
 import { POST as serahkan } from '../../routes/api/urusan/[id]/pendamping/serahkan/+server';
 import { POST as izinkanIsi } from '../../routes/api/urusan/[id]/izinkan-isi/+server';
 import { POST as tiket } from '../../routes/api/urusan/[id]/pendamping/tiket/+server';
+import { POST as terkirim } from '../../routes/api/urusan/[id]/pendamping/terkirim/+server';
 import { AKUN_COOKIE } from './akun';
 import { checkOrigin } from './origin';
 import { daftarWrite } from '../pendamping/isi-data';
@@ -30,6 +31,7 @@ import {
   pasangPemeriksaPemilikAkun,
   pendampingConfig,
   PESAN_WILAYAH,
+  PESAN_WILAYAH_GAGAL,
   pilihWorker,
   resetBrokerPendamping,
   sidDariRequest,
@@ -63,7 +65,7 @@ let calls: Panggilan[];
 let reply: (path: string, body: any, host: string) => { status: number; body: unknown };
 /** Jawaban GET /health per host worker; 'mati' = koneksi ditolak. */
 let kesehatan: (host: string) => { status: number; body: unknown } | 'mati';
-const SEHAT = { ok: true, aktif: 0, maks: 2, menunggu: 0 };
+const SEHAT = { ok: true, aktif: 0, maks: 2, menunggu: 0, generik: true };
 
 const sesi = (extra: object = {}) => ({
   sesiId: '00000000-0000-4000-8000-000000000001',
@@ -377,6 +379,62 @@ describe('broker Browser Pendamping', () => {
     expect(bukti).toHaveLength(1);
     expect(bukti[0]).toContain('nomor REG-0001');
     expect(JSON.stringify(labels)).not.toContain(NIK);
+  });
+
+  describe('"Saya sudah mengirim" (POST /pendamping/terkirim)', () => {
+    const TAKEOVER = { status: 200, body: sesi({ status: 'berjalan', mode: 'takeover', antrean: null }) };
+    it('worker menerima (tulis warga + halaman sukses): sesi siaga berhasil dicatat sekali + nomor', async () => {
+      const u = urusanDenganEksekusi();
+      const siaga = sesi({
+        status: 'siaga',
+        mode: 'takeover',
+        hasil: 'berhasil',
+        antrean: null,
+        bukti: { nomor: 'REG-0009' },
+      });
+      reply = (path) => (path.endsWith('/selesai') ? { status: 200, body: siaga } : TAKEOVER);
+      const r = await terkirim(ev(req('POST'), u.id));
+      expect(r.status).toBe(200);
+      expect(((await r.json()) as any).hasil).toBe('berhasil');
+      // Pemilik saja, tanpa executionId: worker memeriksa halaman saat ini, bukan klaim perangkat.
+      expect(
+        calls.filter((c) => c.url.endsWith('/selesai')).map((c) => [new URL(c.url).pathname, c.body]),
+      ).toEqual([['/internal/sesi/selesai', { urusanId: u.id, sidHash: hashSid(SID) }]]);
+      await terkirim(ev(req('POST'), u.id));
+      const labels = rt.store
+        .eventsAfter(u.id)
+        .filter((e) => e.type === 'progress')
+        .map((e) => (e.payload as { label: string }).label);
+      expect(labels.filter((l) => l.includes('Browser Pendamping melaporkan langkah berhasil'))).toHaveLength(
+        1,
+      );
+    });
+
+    it('worker 409 (belum ada tulis warga / halaman belum sukses): pesan jujur, tidak ada yang dicatat', async () => {
+      const u = urusanDenganEksekusi();
+      const tolak = { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'halaman belum menunjukkan permohonan terkirim' };
+      reply = (path) => (path.endsWith('/selesai') ? { status: 409, body: tolak } : TAKEOVER);
+      const r = await terkirim(ev(req('POST'), u.id));
+      expect(r.status).toBe(409);
+      expect(await r.json()).toEqual({
+        kode: 'BELUM_TERKIRIM',
+        pesanWarga: 'Belum terlihat terkirim. Periksa halaman situsnya, lalu coba lagi.',
+      });
+      expect(rt.store.eventsAfter(u.id).filter((e) => e.type === 'progress')).toHaveLength(0);
+    });
+
+    it('bukan pemilik -> 404, tanpa cookie sesi -> 401, Origin asing ditolak; worker tidak dipanggil', async () => {
+      const u = urusanDenganEksekusi();
+      pasangPemeriksaPemilikAkun(() => false);
+      expect((await terkirim(ev(req('POST'), u.id))).status).toBe(404);
+      pasangPemeriksaPemilikAkun(undefined);
+      expect((await terkirim(ev(req('POST', undefined, null), u.id))).status).toBe(401);
+      expect((await terkirim(ev(req('POST'), 'u_tidak_ada'))).status).toBe(404);
+      expect(calls).toHaveLength(0);
+      expect(
+        checkOrigin('POST', `/api/urusan/${u.id}/pendamping/terkirim`, 'https://evil.example', ORIGIN),
+      ).toMatchObject({ allowed: false });
+    });
   });
 
   it('baca-saja (Samsat): origin dari permintaan, bukan portal kota; hasil dicatat tanpa transisi state', async () => {
@@ -972,10 +1030,11 @@ describe('broker Browser Pendamping', () => {
       expect(calls.map((c) => c.host)).toEqual(['100.101.1.2:4330']);
     });
 
-    it('id-only: start di laptop gagal (401/5xx) -> 503 umum, TIDAK jatuh ke server', async () => {
+    it('id-only: start di laptop gagal (401/5xx/422 image lama) -> 503 jujur + dipandu, TIDAK jatuh ke server', async () => {
       for (const gagal of [
         { status: 401, body: { kode: 'TIKET_TIDAK_SAH', pesanWarga: 'Tidak berwenang.' } },
         { status: 500, body: {} },
+        { status: 422, body: { kode: 'ADAPTER_TIDAK_ADA', pesanWarga: 'adapter/flow tidak dikenal' } },
       ]) {
         resetBrokerPendamping();
         const { u, cookie } = await urusanAkunNyata('semarang');
@@ -983,9 +1042,56 @@ describe('broker Browser Pendamping', () => {
         reply = (_p, _b, host) => (host.startsWith('100.101') ? gagal : { status: 201, body: sesi() });
         const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
         expect(r.status).toBe(503);
-        expect(((await r.json()) as { kode: string }).kode).toBe('LAYANAN_TIDAK_TERSEDIA');
+        expect(await r.json()).toEqual({
+          kode: 'PENDAMPING_WILAYAH_TIDAK_TERSEDIA',
+          pesanWarga: PESAN_WILAYAH_GAGAL,
+        });
         expect(calls.map((c) => c.host)).toEqual(['100.101.1.2:4330']);
+        const evs = rt.store.eventsAfter(u.id);
+        expect(
+          evs.some((e) => e.type === 'state' && (e.payload as { state: string }).state === 'DIPANDU'),
+        ).toBe(true);
+        expect(
+          evs.some((e) => e.type === 'state' && (e.payload as { state: string }).state === 'GAGAL_AMAN'),
+        ).toBe(false);
       }
+    });
+
+    it('id-only: galat sah untuk warga (409 SESI_SUDAH_ADA) tetap diteruskan, bukan dipandu', async () => {
+      const { u, cookie } = await urusanAkunNyata('semarang');
+      reply = () => ({ status: 409, body: { kode: 'SESI_SUDAH_ADA', pesanWarga: 'sudah ada sesi' } });
+      const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
+      expect(r.status).toBe(409);
+      expect(((await r.json()) as { kode: string }).kode).toBe('SESI_SUDAH_ADA');
+      expect(JSON.stringify(rt.store.eventsAfter(u.id))).not.toContain(PESAN_WILAYAH_GAGAL);
+    });
+
+    it('kemampuan `generik` hanya disyaratkan pada worker id (laptop); worker server dirilis bersama web', async () => {
+      const cfg = pendampingConfig(process.env) as PendampingConfig;
+      const LAMA = { ok: true, aktif: 0, maks: 2, menunggu: 0 };
+      kesehatan = () => ({ status: 200, body: LAMA });
+      const OSS = 'https://oss.go.id';
+      const SBD = 'https://silao.situbondokab.go.id';
+      expect((await pilihWorker(cfg, OSS, 'g1', undefined, false, true))?.id).toBe('vps');
+      // id-utama generik: laptop lama dilewati, server melayani; sesi adapter tetap boleh di laptop lama.
+      expect((await pilihWorker(cfg, SBD, 'g2', undefined, false, true))?.id).toBe('vps');
+      expect((await pilihWorker(cfg, SBD, 'g3', undefined, false, false))?.id).toBe('laptop-a');
+      expect(await pilihWorker(cfg, 'https://sidnok.semarangkota.go.id', 'g4', undefined, false)).toBeNull();
+    });
+
+    it('id-only: laptop sehat tetapi image lama (tanpa `generik`) -> dipandu tanpa memanggil worker', async () => {
+      const { u, cookie } = await urusanAkunNyata('semarang');
+      kesehatan = (host) =>
+        host.startsWith('100.101')
+          ? { status: 200, body: { ok: true, aktif: 0, maks: 1, menunggu: 0 } }
+          : { status: 200, body: SEHAT };
+      const r = await mulai(ev(req('POST', { executionId: 'x_1' }, cookie), u.id));
+      expect(r.status).toBe(503);
+      expect(await r.json()).toEqual({
+        kode: 'PENDAMPING_WILAYAH_TIDAK_TERSEDIA',
+        pesanWarga: PESAN_WILAYAH,
+      });
+      expect(calls).toHaveLength(0);
     });
 
     it('situs id-utama tanpa worker sehat sama sekali -> 503 umum, bukan pesan wilayah/dipandu', async () => {

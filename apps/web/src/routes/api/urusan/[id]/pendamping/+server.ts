@@ -2,18 +2,9 @@ import { MulaiPendampingRequestSchema } from '@urusin/contracts';
 import { matchOfficialOrigin } from '@urusin/core';
 import { ADAPTER_GENERIK, jalurModeUji, mulaiPengajuan } from '@urusin/harness';
 import { routeByKode } from '@urusin/registry';
-import { z } from 'zod';
 import { catatHasilEksekusi } from '#lib/server/eksekusi.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
-import {
-  hasilAkhir,
-  labelBukti,
-  mulaiSesi,
-  panggilPemilik,
-  pendampingConfig,
-  skema,
-  teruskan,
-} from '#lib/server/pendamping.js';
+import { mulaiSesi, panggilPemilik, pendampingConfig, skema, teruskan } from '#lib/server/pendamping.js';
 import {
   PESAN_MODE_UJI_TANPA_REPLIKA,
   hentikanNavigator,
@@ -21,16 +12,8 @@ import {
 } from '#lib/server/pendamping/navigator.js';
 import { modeUjiPendamping } from '#lib/server/pendamping/pemilik.js';
 import { akses } from './akses';
+import { ExecutionPayload, catatHasilSesi, eksekusiDitawarkan } from './hasil';
 import type { RequestHandler } from './$types';
-
-const ExecutionPayload = z.object({
-  executionId: z.string(),
-  adapterId: z.string().min(1),
-  flowId: z.string().min(1),
-  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
-  origin: z.url().optional(),
-  bacaSaja: z.boolean().optional(),
-});
 
 /** Sesi yang langkahnya sudah selesai (siaga) atau berakhir: tidak ada yang digerakkan Navigator. */
 const SESI_TANPA_LOOP: ReadonlySet<string> = new Set([
@@ -145,10 +128,7 @@ export const GET: RequestHandler = async ({ request, params }) => {
       sidHash: a.sidHash,
     });
     if (!r.ok) return r.response;
-    const hasil = hasilAkhir(r.data);
-    const offered = ExecutionPayload.safeParse(
-      a.rt.store.findOffered(a.u.id, 'execution_request', { executionId: r.data.executionId }),
-    );
+    const offered = eksekusiDitawarkan(a, r.data.executionId);
     // Sesi generik bermode AI tanpa loop Navigator (web restart / loop sudah berhenti): pulihkan atau
     // kembalikan kendali ke warga, supaya layar tidak tertahan "AI sedang mengisi".
     if (
@@ -167,18 +147,7 @@ export const GET: RequestHandler = async ({ request, params }) => {
         },
         { cfg: pendampingConfig() },
       );
-    const bacaSaja = offered.success && offered.data.bacaSaja === true;
-    if (
-      hasil &&
-      offered.success &&
-      catatHasilEksekusi(a.rt, a.u, r.data.executionId, hasil, 'Browser Pendamping', { bacaSaja })
-    ) {
-      const bukti = labelBukti(r.data);
-      if (bukti) a.rt.publish(a.u.id, { type: 'progress', label: bukti });
-      // Pengajuan terkirim: nomor permohonan disimpan di urusan (Urusanku, halaman urusan) setelah sesi tutup.
-      const nomor = r.data.bukti?.nomor;
-      if (hasil === 'berhasil' && !bacaSaja && nomor) a.rt.store.catatNomorPermohonan(a.u.id, nomor);
-    }
+    catatHasilSesi(a, r.data);
     return apiJson(r.data);
   } catch (e) {
     return errorResponse(e);

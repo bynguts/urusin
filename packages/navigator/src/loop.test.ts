@@ -35,6 +35,7 @@ const RENCANA_FORM = {
 const SERAHKAN_FINAL = { aksi: [{ jenis: 'serahkan', alasan: 'final' }] };
 
 describe('loop Navigator: alur bahagia di replika', () => {
+  // Loop Navigator penuh (amati sampai serah): runner CI ARM yang sibuk bisa melewati 5 dtk bawaan.
   it('amati → rencana → validasi → persetujuan per halaman → aksi → halaman akhir diserahkan', async () => {
     const worker = new WorkerPalsu([halamanForm(), halamanTinjau()]);
     const provider = new ProviderSkrip((n) => (n === 0 ? RENCANA_FORM : SERAHKAN_FINAL));
@@ -76,7 +77,7 @@ describe('loop Navigator: alur bahagia di replika', () => {
     ]);
     expect(h.resi.rencana).toHaveLength(2);
     expect(h.resi.hash).toMatch(/^[0-9a-f]{64}$/);
-  });
+  }, 30_000);
 
   it('halaman sukses sesudah serah final: bukti nomor registrasi diambil deterministik, tanpa LLM', async () => {
     const sukses = halaman({

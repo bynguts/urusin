@@ -35,7 +35,9 @@ import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
  */
 const ORIGIN = 'http://localhost:3000';
 const SMG = 'https://sidnok.semarangkota.go.id';
-const SEHAT = { ok: true, aktif: 0, maks: 2, menunggu: 0 };
+const SEHAT = { ok: true, aktif: 0, maks: 2, menunggu: 0, generik: true, sha: 'c90c4780abcd' };
+/** /health worker ber-image lama (sebelum kemampuan `generik` dilaporkan). */
+const { generik: _g, sha: _s, ...SEHAT_LAMA } = SEHAT;
 const VPS = {
   id: 'vps',
   url: 'http://127.0.0.1:4330',
@@ -54,6 +56,7 @@ const LAPTOP = {
 
 let rt: Runtime;
 let laptopHidup: boolean;
+let laptopLama: boolean;
 let cekKesehatan: number;
 
 beforeEach(() => {
@@ -68,13 +71,15 @@ beforeEach(() => {
   vi.stubEnv('PENDAMPING_INTERNAL_TOKEN', 'token-uji');
   vi.stubEnv('PENDAMPING_WORKERS', JSON.stringify([VPS, LAPTOP]));
   laptopHidup = true;
+  laptopLama = false;
   cekKesehatan = 0;
   vi.stubGlobal('fetch', async (url: string) => {
     const u = new URL(url);
     if (u.pathname !== '/health') throw new Error(`panggilan tak terduga: ${url}`);
     cekKesehatan++;
     if (u.host.startsWith('100.101') && !laptopHidup) throw new Error('ECONNREFUSED');
-    return new Response(JSON.stringify(SEHAT), { status: 200 });
+    const lama = u.host.startsWith('100.101') && laptopLama;
+    return new Response(JSON.stringify(lama ? SEHAT_LAMA : SEHAT), { status: 200 });
   });
 });
 afterEach(() => {
@@ -153,6 +158,29 @@ describe('kejujuran tier portal id-only (worker berjaringan Indonesia)', () => {
     expect(await pilihWorker(cfg, SMG, 'u1', undefined, false)).toBeNull();
     resetBrokerPendamping();
     expect(await segarkanJaringanId(null)).toBe(false);
+  });
+
+  it('worker ID sehat tetapi image lama (tanpa `generik` di /health): jaringan Indonesia TIDAK siap', async () => {
+    const cfg = pendampingConfig(process.env) as PendampingConfig;
+    laptopLama = true;
+    expect(await segarkanJaringanId(cfg)).toBe(false);
+    expect(await pilihWorker(cfg, SMG, 'u1', undefined, false)).toBeNull();
+    // Situs umum adapter tetap boleh di worker lama; sesi generik tidak.
+    const TS = 'https://telunjuksakti.wonogirikab.go.id';
+    expect((await pilihWorker(cfg, TS, 'u2', undefined, false))?.id).toBe('laptop-a');
+    expect((await pilihWorker(cfg, TS, 'u3', undefined, false, true))?.id).toBe('vps');
+    resetBrokerPendamping();
+    laptopLama = false;
+    expect(await segarkanJaringanId(cfg)).toBe(true);
+  });
+
+  it('Semarang dengan worker ID ber-image lama: dipandu + alasan jujur sejak kartu', async () => {
+    laptopLama = true;
+    const { id, kartu, setuju } = await alurWarga('3374', 'kelahiran');
+    expect(kartu.tier).toBe('dipandu');
+    expect(kartu.catatan).toContain('hanya bisa dibuka dari jaringan Indonesia');
+    expect(setuju.pendamping).toBe(false);
+    expect(payloads(id, 'execution_request')).toHaveLength(0);
   });
 
   it('N12: cache basi dipakai seketika dan disegarkan di latar; cache dingin (>60 s) ditunggu', async () => {

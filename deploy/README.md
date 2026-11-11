@@ -515,10 +515,11 @@ worker. Server adalah jalur utama, laptop opsional: situs `aksesWilayah: 'id-uta
 tantangan kotak centang yang diketuk warga sendiri) mendahulukan worker `region: "id"` yang sehat DAN masih punya
 slot, selain itu beban terendah (VPS); start yang gagal di worker (jaringan/timeout, 401/403, 5xx) langsung
 dicoba di kandidat sehat berikutnya, dan urusan yang sudah lekat di satu worker tetap di sana. Hanya bila TIDAK
-ADA worker sehat sama sekali muncul 503 umum. Situs `aksesWilayah: 'id-only'` (Si D'nOK: blokir keras IP
-non-Indonesia) hanya ke worker `region: "id"`, tanpa jatuh ke VPS; bila semua mati, urusan beralih ke mode
-dipandu dengan pesan jujur. 401/403 kanal internal dari worker tidak pernah diteruskan ke warga (jadi 503
-umum). Rute WS worker tambahan dibangkitkan (dikerjakan lead, izin per kejadian): tambahkan
+ADA worker sehat sama sekali muncul 503 umum. Situs `aksesWilayah: 'id-only'` (blokir keras IP non-Indonesia;
+daftar di deploy/worker-id/README.md) hanya ke worker `region: "id"`, tanpa jatuh ke VPS; bila tidak ada yang
+sehat, worker id-nya ber-image lama (`/health` tanpa `"generik":true`), atau start di sana gagal (422 image
+lama, 401/403, 5xx, putus), urusan beralih ke mode dipandu dengan pesan jujur. Sesi generik juga tidak
+dirutekan ke worker id ber-image lama. 401/403 kanal internal dari worker tidak pernah diteruskan ke warga. Rute WS worker tambahan dibangkitkan (dikerjakan lead, izin per kejadian): tambahkan
 `--worker laptop-a=100.x.y.z:4330` ke perintah `gen-caddyfile.mjs` di atas. Blok yang dihasilkan: matcher
 `@w_<id>` (HANYA `GET` upgrade WebSocket ke `/pendamping/w/<id>/ws/*` yang membawa cookie `__Host-urusin_sid`
 berbentuk sah), prefiks dibuang (edge menerima `/ws/<uuid>`), Cookie ditimpa jadi sid saja dan `Authorization`

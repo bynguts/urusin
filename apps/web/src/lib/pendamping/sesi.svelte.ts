@@ -53,6 +53,10 @@ export type DataPendamping = {
   } | null;
   /** Situs yang benar-benar dibuka peramban + apakah itu replika uji (Mode Uji), dari status server. */
   situs: { origin: string; replika: boolean } | null;
+  /** "Saya sudah mengirim": sedang diperiksa worker. */
+  memeriksaKirim?: boolean;
+  /** Jawaban jujur bila pengiriman belum terlihat (409) atau pemeriksaan gagal. */
+  pesanKirim?: string | null;
 };
 
 export function dataAwal(): DataPendamping {
@@ -318,6 +322,31 @@ export class SesiPendampingUi {
     if (!t) return;
     this.data = { ...this.data, giliran: null };
     this.viewer?.bukaTautan(t.ref);
+  }
+
+  /**
+   * "Saya sudah mengirim" (AI berhenti / warga memegang kendali): warga melaporkan sudah menekan Kirim sendiri.
+   * Server meneruskan ke worker yang memeriksa ulang halaman saat ini (tulis warga + halaman sukses); hanya itu
+   * yang dicatat berhasil. Selain itu warga mendapat jawaban jujur dari server (mis. belum terlihat terkirim).
+   */
+  async sudahMengirim(): Promise<void> {
+    if (this.data.memeriksaKirim) return;
+    this.data = { ...this.data, memeriksaKirim: true, pesanKirim: null };
+    let pesan: string | null = 'Belum bisa diperiksa. Coba lagi sebentar lagi.';
+    try {
+      const r = await this.ambil(`${this.dasar}/terkirim`, {
+        method: 'POST',
+        headers: { accept: 'application/json' },
+      });
+      const j = (await r.json().catch(() => null)) as (SesiPendamping & { pesanWarga?: string }) | null;
+      if (r.ok && j) {
+        pesan = null;
+        this.terapkanSesi(j);
+      } else if (j?.pesanWarga) pesan = j.pesanWarga;
+    } catch {
+      pesan = 'Koneksi terputus. Periksa internet Anda, lalu coba lagi.';
+    }
+    this.data = { ...this.data, memeriksaKirim: false, pesanKirim: pesan };
   }
 
   /**

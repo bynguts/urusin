@@ -113,7 +113,11 @@ const caraAjukan = (w: Wilayah | null): Langkah['jenis'] =>
   onlineTerverifikasi(w) ? 'online-manual' : 'cek-kanal';
 
 /** Langkah dari persyaratan nasional (Perpres 96/2018) + kanal resmi wilayah KTP. Tanpa isi kota lain. */
-function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: KanalWilayah): Langkah[] {
+function langkahNasional(
+  slug: Exclude<Bundel['slug'], 'pindah'>,
+  ktp: Wilayah | null,
+  kanal: KanalWilayah,
+): Langkah[] {
   const ref = [sumber(kanal), REF_PERPRES];
   const dinasKtp = disebut(ktp, 'Disdukcapil kab/kota sesuai KTP Anda');
   const cara = lewatKanal(kanal, ktp);
@@ -221,8 +225,6 @@ function langkahNasional(slug: Bundel['slug'], ktp: Wilayah | null, kanal: Kanal
           sourceRef: [sumber(kanal)],
         }),
       ];
-    case 'pindah':
-      return [];
   }
 }
 
