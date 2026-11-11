@@ -40,7 +40,8 @@
     <span class="grid size-9 shrink-0 place-items-center rounded-[9px] bg-[#2f6b4f] text-white">
       <Icon name="instansi" class="size-[18px]" />
     </span>
-    <div class="min-w-0 flex-1">
+    <!-- min-w-40: di HP chip "Situs resmi" turun baris alih-alih menjepit judul jadi 1–2 kata per baris. -->
+    <div class="min-w-40 flex-1">
       <h2 class="text-base leading-[22px] font-semibold text-ink">
         {permintaan?.ringkasan || gate.pesan || 'Formulir resmi'}
       </h2>
