@@ -5,13 +5,15 @@ import net, { BlockList, isIP } from 'node:net';
 import type { networkInterfaces } from 'node:os';
 import type { Duplex } from 'node:stream';
 import {
+  asetPemdaDisetujui,
   browserUnion,
   checkConnect,
   checkConnectHost,
+  domainPemda,
   EgressBlockedError,
   type BrowserScope,
 } from '@urusin/egress';
-import { dialUpstream, type Resolver } from './egress.js';
+import { cnameTetapGoId, dialUpstream, type Resolver, type ResolverCname } from './egress.js';
 import { domainPemdaSesi } from './gerbang-tulis.js';
 import { bacaIsiBertanda, createPenjagaUlang, headerDari } from './tanda.js';
 
@@ -119,7 +121,11 @@ export function pilihAntarmuka(
   return { internal: internal[0]!.address, publik: publik[0]!.address };
 }
 
-type Entri = { sandi: Buffer; sesi: Set<string>; exp: number };
+/** `aset` = host aset pemda yang disetujui tepat waktu oleh rute peramban sesi (POST /sesi/<user>/aset). */
+type Entri = { sandi: Buffer; sesi: Set<string>; aset: Set<string>; exp: number };
+
+/** Lingkup CONNECT satu sesi: host sesi (sudah dibatasi union) + host aset pemda yang disetujui. */
+export type LingkupSesi = { sesi: ReadonlySet<string>; aset: ReadonlySet<string> };
 
 const sha = (s: string) => createHash('sha256').update(s).digest();
 
@@ -135,21 +141,36 @@ export function createDaftarSesi(maks: number, now: () => number = Date.now) {
       bersihkan();
       if (!m.has(user) && m.size >= maks) return false;
       const sesi = new Set(hosts.map((h) => h.toLowerCase()).filter((h) => union.has(h)));
-      m.set(user, { sandi: sha(sandi), sesi, exp: now() + Math.min(ttlMs, TTL_MAKS_MS) });
+      m.set(user, { sandi: sha(sandi), sesi, aset: new Set(), exp: now() + Math.min(ttlMs, TTL_MAKS_MS) });
+      return true;
+    },
+    /**
+     * Setujui host aset pemda untuk sesi `user` (probe gel5 3310): hanya subdomain domain pemda yang diturunkan
+     * edge sendiri dari host sesi (sesi ∩ union), maks. 64 host. Worker tidak bisa memperluas ke pemda lain.
+     */
+    setujuiAset(user: string, host: string): boolean {
+      const e = m.get(user);
+      if (!e || e.exp <= now()) return false;
+      const h = host.toLowerCase().replace(/\.$/, '');
+      if (e.aset.has(h)) return true;
+      const d = domainPemda(h);
+      if (e.aset.size >= 64 || d === undefined || isIP(h) !== 0 || !domainPemdaSesi(e.sesi).has(d))
+        return false;
+      e.aset.add(h);
       return true;
     },
     hapus(user: string) {
       m.delete(user);
     },
-    /** Kredensial Basic -> set host sesi; undefined bila tidak sah/kedaluwarsa. */
-    periksa(header: string | undefined): Set<string> | undefined {
+    /** Kredensial Basic -> lingkup sesi; undefined bila tidak sah/kedaluwarsa. */
+    periksa(header: string | undefined): LingkupSesi | undefined {
       const b64 = /^Basic ([A-Za-z0-9+/=]+)$/.exec(header ?? '')?.[1];
       if (!b64) return undefined;
       const [user, sandi] = Buffer.from(b64, 'base64').toString('utf8').split(':');
       if (!user || !sandi) return undefined;
       const e = m.get(user);
       if (!e || e.exp <= now()) return undefined;
-      return timingSafeEqual(e.sandi, sha(sandi)) ? e.sesi : undefined;
+      return timingSafeEqual(e.sandi, sha(sandi)) ? { sesi: e.sesi, aset: e.aset } : undefined;
     },
     get ukuran() {
       bersihkan();
@@ -186,6 +207,7 @@ export function createEdgeProxy(
   resolve: Resolver = defaultResolver,
   /** Satu baris per CONNECT yang ditolak/gagal: host + alasan saja (tanpa path, header, atau isi). */
   catat: (baris: string) => void = (b) => console.log(b),
+  cname?: ResolverCname,
 ) {
   const sockets = new Set<Duplex>();
   const track = (s: Duplex) => {
@@ -199,13 +221,22 @@ export function createEdgeProxy(
     sesi: ReadonlySet<string>,
     host: string,
     port: number,
+    aset: ReadonlySet<string> = new Set(),
   ): Promise<{ ok: true; address: string } | { ok: false; reason: string }> {
     let addresses: string[];
-    // Domain pemda diturunkan edge sendiri dari host sesi (yang sudah dibatasi union), bukan dari worker.
-    const lingkup: BrowserScope = { sesi, union: cfg.union, domainPemda: domainPemdaSesi(sesi) };
+    // Domain pemda diturunkan edge sendiri dari host sesi (yang sudah dibatasi union), bukan dari worker; host
+    // aset di luar union hanya yang disetujui tepat waktu (bukan tujuan redirect yang tidak melewati rute).
+    const lingkup: BrowserScope = {
+      sesi,
+      union: cfg.union,
+      domainPemda: domainPemdaSesi(sesi),
+      asetPemda: aset,
+    };
     try {
       // Port, IP literal, union, set sesi diperiksa SEBELUM DNS: host di luar izin tidak pernah di-resolve.
-      checkConnectHost(host, port, 'browser', lingkup);
+      const h = checkConnectHost(host, port, 'browser', lingkup);
+      if (!sesi.has(h) && asetPemdaDisetujui(h, lingkup) && !(await cnameTetapGoId(h, cname)))
+        return { ok: false, reason: 'cname_luar_go_id' };
       addresses = await resolve(host);
     } catch (e) {
       return { ok: false, reason: e instanceof EgressBlockedError ? e.message : 'dns_gagal' };
@@ -226,8 +257,8 @@ export function createEdgeProxy(
   server.on('connection', track);
   server.on('connect', async (req, client: Duplex, head: Buffer) => {
     track(client);
-    const sesi = daftar.periksa(req.headers['proxy-authorization']);
-    if (!sesi) {
+    const lingkup = daftar.periksa(req.headers['proxy-authorization']);
+    if (!lingkup) {
       // 407 tanpa kredensial itu normal (Chromium lalu mengulang dengan kredensial sesi); kredensial yang
       // tidak sah/kedaluwarsa = sesi tidak terdaftar di edge.
       const kredensial = req.headers['proxy-authorization'] === undefined ? 'tidak_ada' : 'tidak_sah';
@@ -244,7 +275,7 @@ export function createEdgeProxy(
     }
     const target = parseAuthority(req.url ?? '');
     const d = target
-      ? await decide(sesi, target.host, target.port)
+      ? await decide(lingkup.sesi, target.host, target.port, lingkup.aset)
       : ({ ok: false, reason: 'rusak' } as const);
     if (!target || !d.ok) {
       catat(`edge: CONNECT ditolak host=${target?.host ?? '?'} alasan=${d.ok ? 'rusak' : d.reason}`);
@@ -390,12 +421,14 @@ export function createEdgeKontrol(
     };
     const path = new URL(req.url ?? '/', 'http://x').pathname;
     if (req.method === 'GET' && path === '/health') return kirim(200, { ok: true, sesi: daftar.ukuran });
-    const user = /^\/sesi\/([^/]+)$/.exec(path)?.[1];
-    if (!user || !USER_RE.test(user) || (req.method !== 'PUT' && req.method !== 'DELETE'))
-      return kirim(404, { ok: false });
+    // POST /sesi/<user>/aset {host}: persetujuan host aset pemda tepat waktu dari rute peramban (probe gel5 3310).
+    const userAset = /^\/sesi\/([^/]+)\/aset$/.exec(path)?.[1];
+    const user = userAset ?? /^\/sesi\/([^/]+)$/.exec(path)?.[1];
+    const metodeSah = userAset ? req.method === 'POST' : req.method === 'PUT' || req.method === 'DELETE';
+    if (!user || !USER_RE.test(user) || !metodeSah) return kirim(404, { ok: false });
     // Tanda tangan header (termasuk panjang + hash isi yang dideklarasikan) diperiksa sebelum isi dibaca.
     const h = headerDari(req);
-    if (!periksa(h, req.method, path)) {
+    if (!periksa(h, req.method ?? '', path)) {
       res.setHeader('connection', 'close');
       return kirim(401, { ok: false });
     }
@@ -409,6 +442,17 @@ export function createEdgeKontrol(
     if (req.method === 'DELETE') {
       daftar.hapus(user);
       return kirim(200, { ok: true });
+    }
+    if (userAset) {
+      let host: unknown;
+      try {
+        host = (JSON.parse(raw.toString('utf8')) as { host?: unknown }).host;
+      } catch {
+        return kirim(422, { ok: false });
+      }
+      if (typeof host !== 'string' || host.length > 253 || !daftar.setujuiAset(user, host))
+        return kirim(422, { ok: false });
+      return kirim(201, { ok: true });
     }
     let body: { sandi?: unknown; hosts?: unknown; ttlMs?: unknown };
     try {

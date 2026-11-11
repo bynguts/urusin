@@ -1,8 +1,8 @@
-import { lookup as dnsLookup } from 'node:dns/promises';
+import { lookup as dnsLookup, resolveCname } from 'node:dns/promises';
 import http from 'node:http';
 import net, { isIP } from 'node:net';
 import type { Duplex } from 'node:stream';
-import { domainPemda, isBlockedAddress } from '@urusin/egress';
+import { asetPemdaDisetujui, isBlockedAddress } from '@urusin/egress';
 
 /**
  * Proxy egress pengizin (allowlisting forward proxy) per sesi. Chromium memakai `--proxy-server` ke sini
@@ -42,8 +42,48 @@ export type EgressProxy = {
   /** Host yang ditolak sejak dibuat (untuk event `diblokir`, tanpa path). */
   onBlocked(listener: (host: string) => void): void;
   decide(host: string, port: number): Promise<EgressDecision>;
+  /**
+   * Setujui host aset pemda tepat waktu (rute peramban sudah meloloskan GET gambar/style/fon ke host itu).
+   * false = bukan subdomain domain pemda sesi (tidak disetujui).
+   */
+  setujuiAset(host: string): boolean;
   close(): Promise<void>;
 };
+
+/** Satu langkah CNAME (`dns.resolveCname`); [] = tidak ada CNAME. */
+export type ResolverCname = (host: string) => Promise<string[]>;
+
+const cnameBawaan: ResolverCname = async (host) => {
+  try {
+    return await resolveCname(host);
+  } catch (e) {
+    // Tanpa rekaman CNAME / nama tidak ada = akhir rantai (lookup alamat sesudahnya yang gagal bila perlu).
+    const code = (e as { code?: string }).code;
+    if (code === 'ENODATA' || code === 'ENOTFOUND') return [];
+    throw e;
+  }
+};
+
+/**
+ * Rantai CNAME host aset pemda tetap di `*.go.id` (maks. 8 lompatan). Host .go.id yang meng-CNAME ke luar
+ * (CDN/hosting pihak lain) tidak diperlakukan sebagai aset pemda. Galat DNS lain = gagal tertutup.
+ */
+export async function cnameTetapGoId(host: string, cname: ResolverCname = cnameBawaan): Promise<boolean> {
+  let h = host;
+  for (let i = 0; i < 8; i++) {
+    let target: string[];
+    try {
+      target = await cname(h);
+    } catch {
+      return false;
+    }
+    const t = target[0]?.toLowerCase().replace(/\.$/, '');
+    if (t === undefined) return true;
+    if (!/(^|\.)[a-z0-9-]+\.go\.id$/.test(t)) return false;
+    h = t;
+  }
+  return false;
+}
 
 /** Normalisasi host dari permintaan (buang kurung IPv6, titik akhir, huruf besar). */
 function normHost(host: string): string {
@@ -53,18 +93,31 @@ function normHost(host: string): string {
     .toLowerCase();
 }
 
-/** `pemda`: domain pemda portal sesi; subdomainnya boleh di :443 (sama dengan edge, probe gel5 3310). */
+/**
+ * `pemda` = domain pemda portal sesi, `aset` = host aset pemda yang disetujui rute tepat waktu (set hidup, diisi
+ * `setujuiAset`): host di luar aturan persis hanya lolos di :443 bila ada di keduanya dan rantai CNAME-nya tetap
+ * di *.go.id (sama dengan edge, probe gel5 3310).
+ */
 export function createEgressPolicy(
   rules: readonly EgressRule[],
   resolve: Resolver = defaultResolver,
   pemda: ReadonlySet<string> = new Set(),
+  aset: ReadonlySet<string> = new Set(),
+  cname: ResolverCname = cnameBawaan,
 ) {
   const byKey = new Map(rules.map((r) => [`${normHost(r.host)}:${r.port}`, r]));
   return async function decide(rawHost: string, port: number): Promise<EgressDecision> {
     const host = normHost(rawHost);
-    const d = port === 443 && isIP(host) === 0 ? domainPemda(host) : undefined;
-    const rule: EgressRule | undefined =
-      byKey.get(`${host}:${port}`) ?? (d !== undefined && pemda.has(d) ? { host, port } : undefined);
+    let rule: EgressRule | undefined = byKey.get(`${host}:${port}`);
+    if (
+      !rule &&
+      port === 443 &&
+      isIP(host) === 0 &&
+      asetPemdaDisetujui(host, { domainPemda: pemda, asetPemda: aset })
+    ) {
+      if (!(await cnameTetapGoId(host, cname))) return { ok: false, reason: 'cname_luar_go_id' };
+      rule = { host, port };
+    }
     if (!rule) return { ok: false, reason: 'host_tidak_diizinkan' };
     let addresses: string[];
     try {
@@ -143,9 +196,16 @@ export function dialUpstream(upstream: URL, host: string, port: number): Promise
 
 export async function startEgressProxy(
   rules: readonly EgressRule[],
-  opts: { resolve?: Resolver; upstream?: URL | undefined; pemda?: ReadonlySet<string> } = {},
+  opts: {
+    resolve?: Resolver;
+    upstream?: URL | undefined;
+    pemda?: ReadonlySet<string>;
+    cname?: ResolverCname;
+  } = {},
 ): Promise<EgressProxy> {
-  const decide = createEgressPolicy(rules, opts.resolve, opts.pemda);
+  const pemda = opts.pemda ?? new Set<string>();
+  const aset = new Set<string>();
+  const decide = createEgressPolicy(rules, opts.resolve, pemda, aset, opts.cname);
   const listeners: ((host: string) => void)[] = [];
   const sockets = new Set<Duplex>();
   const blocked = (host: string) => {
@@ -242,6 +302,14 @@ export async function startEgressProxy(
   return {
     port,
     onBlocked: (l) => void listeners.push(l),
+    setujuiAset(host) {
+      const h = normHost(host);
+      if (aset.has(h)) return true;
+      if (aset.size >= 64 || !asetPemdaDisetujui(h, { domainPemda: pemda, asetPemda: new Set([h]) }))
+        return false;
+      aset.add(h);
+      return true;
+    },
     decide,
     close: () =>
       new Promise<void>((ok) => {

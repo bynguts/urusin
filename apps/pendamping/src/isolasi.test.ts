@@ -44,6 +44,22 @@ describe('kredensial proxy edge per sesi', () => {
     expect(periksaTanda(EDGE.token, tanda, 'PUT', path)).toBe(true);
     expect(isiCocok(tanda, body)).toBe(true);
     expect(periksaTanda('x'.repeat(40), tanda, 'PUT', path)).toBe(false);
+    // Persetujuan host aset pemda tepat waktu: POST bertanda ke /sesi/<user>/aset (status selain 201 = false).
+    expect(await pe.setujuiAset('cdn.a.go.id')).toBe(false);
+    const post = calls[1]!;
+    const jalurAset = `${path}/aset`;
+    expect(post.url).toBe(`http://pendamping-edge:3129${jalurAset}`);
+    expect(JSON.parse(String(post.init.body))).toEqual({ host: 'cdn.a.go.id' });
+    const ha = post.init.headers as Record<string, string>;
+    const tandaAset = {
+      waktu: ha['x-urusin-waktu'],
+      nonce: ha['x-urusin-nonce'],
+      tanda: ha['x-urusin-tanda'],
+      isi: ha['x-urusin-isi-sha256'],
+      panjang: String(Buffer.byteLength(String(post.init.body))),
+    };
+    expect(periksaTanda(EDGE.token, tandaAset, 'POST', jalurAset)).toBe(true);
+    calls.splice(1);
     await pe.hapus();
     expect(calls[1]).toMatchObject({ url: put.url, init: { method: 'DELETE' } });
 

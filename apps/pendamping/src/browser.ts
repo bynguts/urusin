@@ -379,6 +379,12 @@ export const KENDALI_MASUK_EXPR = `(() => {
 /** Lebar CSS yang dicoba (batas sm/md/lg/xl/xxl kerangka CSS umum) untuk memunculkan kendali masuk. */
 const LEBAR_RESPONSIF = [768, 992, 1200, 1400] as const;
 
+/** WebSocket (ws/wss) ke host:port allowlist sesi (ws = http, wss = https untuk pencocokan port bawaan). */
+export function wsDiAllowlist(allowedHosts: ReadonlySet<string>, u: URL): boolean {
+  if (u.protocol !== 'ws:' && u.protocol !== 'wss:') return false;
+  return urlDiAllowlist(allowedHosts, `${u.protocol === 'wss:' ? 'https:' : 'http:'}//${u.host}/`);
+}
+
 /** URL lolos allowlist host:port sesi (lapis `context.route`; sama dengan proxy egress). */
 export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): boolean {
   const u = URL.parse(url);
@@ -525,7 +531,9 @@ export async function launchIsolated(
       const h = URL.parse(resp.url())?.host;
       if (h) hostCf.add(h);
     });
-    await context.route('**/*', (route) => {
+    // Host aset pemda yang sudah disetujui tepat waktu di proxy/edge (cache agar edge tidak dipanggil per gambar).
+    const asetDisetujui = new Set<string>();
+    await context.route('**/*', async (route) => {
       const req = route.request();
       const ok = izinRute(allowedHosts, req, pemda);
       if (!ok && req.method() === 'GET' && permintaanGerbang(req).utama) {
@@ -550,6 +558,20 @@ export async function launchIsolated(
         // tetap di halaman sebelumnya dan diberi giliran.
         return route.abort(dokumen ? 'aborted' : 'blockedbyclient');
       }
+      // Aset pemda di luar allowlist (lolos izinRute = GET gambar/style/fon subdomain pemda sesi): proxy/edge baru
+      // meloloskan host itu SETELAH disetujui di sini. Tujuan redirect 30x tidak melewati rute ini (Playwright
+      // meneruskan hop redirect tanpa handler), jadi host saudara yang belum disetujui tetap ditolak di jaringan.
+      if (!urlDiAllowlist(allowedHosts, req.url())) {
+        const host = URL.parse(req.url())?.hostname ?? '';
+        if (!asetDisetujui.has(host)) {
+          const setuju = proxy ? proxy.setujuiAset(host) : await edge!.setujuiAset(host);
+          if (!setuju) {
+            onBlocked(host, false);
+            return route.abort('blockedbyclient');
+          }
+          asetDisetujui.add(host);
+        }
+      }
       // `aborted` (net::ERR_ABORTED): navigasi dokumen yang dibatalkan tidak meng-commit halaman galat, jadi
       // warga tetap melihat formulir yang sama (dengan isiannya) untuk ditekan sendiri.
       if (
@@ -562,16 +584,40 @@ export async function launchIsolated(
         return route.abort('aborted');
       return route.continue();
     });
-    // Gerbang tulis tidak melihat frame WebSocket (proxy hanya memeriksa host): sesi generik menolak setiap
-    // koneksi WebSocket sebelum tersambung ke server (gagal tertutup), dicatat sebagai blokir `WSOCKET`.
-    if (gerbang)
-      await context.routeWebSocket(
-        () => true,
-        (ws) => {
+    // WebSocket tidak lewat context.route. Semua sesi: hanya ke host:port allowlist sesi (aset pemda tepat waktu
+    // tidak termasuk). Generik: gerbang tulis tidak melihat frame WebSocket, jadi setiap koneksi ditolak sebelum
+    // tersambung (gagal tertutup), dicatat sebagai blokir `WSOCKET`.
+    await context.routeWebSocket(
+      () => true,
+      (ws) => {
+        const u = URL.parse(ws.url());
+        if (gerbang) {
           gerbang.tolak({ metode: 'WSOCKET', dokumen: false, utama: false, xhr: false, url: ws.url() });
           return ws.close({ code: 1008, reason: 'websocket tidak diizinkan di sesi pendamping' });
-        },
-      );
+        }
+        if (u && wsDiAllowlist(allowedHosts, u)) return void ws.connectToServer();
+        if (u) onBlocked(u.hostname, false);
+        return ws.close({ code: 1008, reason: 'websocket di luar allowlist sesi' });
+      },
+    );
+    // Penjaga bingkai utama (lapis setelah rute): dokumen utama yang ter-commit di host di luar allowlist (mis.
+    // tujuan redirect 30x yang tidak melewati rute, ke host aset pemda yang sudah disetujui) tidak dipakai:
+    // dicatat sebagai blokir dokumen, lalu kembali ke halaman sebelumnya (atau halaman kosong).
+    const jagaUtama = (p: Page) =>
+      p.on('framenavigated', (f) => {
+        if (f !== p.mainFrame()) return;
+        const u = URL.parse(f.url());
+        if (!u || !/^https?:$/.test(u.protocol) || urlDiAllowlist(allowedHosts, u.href)) return;
+        onBlocked(u.hostname, true);
+        void (async () => {
+          await p.goBack({ timeout: 5_000 }).catch(() => null);
+          const kini = URL.parse(p.url());
+          if (kini && /^https?:$/.test(kini.protocol) && !urlDiAllowlist(allowedHosts, kini.href))
+            await p.goto('about:blank').catch(() => {});
+        })();
+      });
+    for (const p of context.pages()) jagaUtama(p);
+    context.on('page', jagaUtama);
     const ctx = context;
     return {
       context: ctx,

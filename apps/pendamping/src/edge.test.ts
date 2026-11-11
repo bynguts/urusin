@@ -107,7 +107,7 @@ describe('daftar kredensial per sesi', () => {
       d.pasang('u'.repeat(16), SANDI, [HOST, 'evil.example', 'CHALLENGES.cloudflare.com'], 60_000, cfg.union),
     ).toBe(true);
     const ok = d.periksa(`Basic ${Buffer.from(`${'u'.repeat(16)}:${SANDI}`).toString('base64')}`);
-    expect([...(ok ?? [])].sort()).toEqual(['challenges.cloudflare.com', HOST]);
+    expect([...(ok?.sesi ?? [])].sort()).toEqual(['challenges.cloudflare.com', HOST]);
     expect(d.periksa(`Basic ${Buffer.from(`${'u'.repeat(16)}:salah`).toString('base64')}`)).toBeUndefined();
     expect(d.periksa('Bearer x')).toBeUndefined();
     expect(d.periksa(undefined)).toBeUndefined();
@@ -232,7 +232,9 @@ describe('kanal kontrol edge', () => {
     const h = headerTanda(TOKEN, 'PUT', path, isi);
     expect((await fetch(`${base}${path}`, { method: 'PUT', headers: h, body: isi })).status).toBe(201);
     expect((await fetch(`${base}${path}`, { method: 'PUT', headers: h, body: isi })).status).toBe(401);
-    expect(d.periksa(`Basic ${Buffer.from(`${user}:${SANDI}`).toString('base64')}`)?.has(HOST)).toBe(true);
+    expect(d.periksa(`Basic ${Buffer.from(`${user}:${SANDI}`).toString('base64')}`)?.sesi.has(HOST)).toBe(
+      true,
+    );
     // Tanda dengan rahasia lain ditolak.
     const lain = headerTanda('x'.repeat(40), 'PUT', path, isi);
     expect((await fetch(`${base}${path}`, { method: 'PUT', headers: lain, body: isi })).status).toBe(401);
@@ -445,20 +447,75 @@ describe('proxy balik edge', () => {
   });
 });
 
-describe('probe gel5 3310: edge, subdomain pemda yang sama', () => {
-  it('domain pemda diturunkan dari host sesi: cdn.<pemda sesi> lolos, pemda lain/privat tidak', async () => {
+describe('probe gel5 3310: edge, aset pemda tepat waktu', () => {
+  const resolve = async (h: string) => (h === 'privat.wonogirikab.go.id' ? ['10.0.0.9'] : ['93.184.216.34']);
+  const cname = async (h: string) => (h === 'luar.wonogirikab.go.id' ? ['x.cloudfront.net.'] : []);
+
+  it('decide: hanya host aset disetujui berdomain pemda sesi; belum disetujui, apex, privat, CNAME luar ditolak', async () => {
     const sesi = new Set([HOST]);
-    const p = createEdgeProxy(cfg, createDaftarSesi(4), async (h) =>
-      h === 'privat.wonogirikab.go.id' ? ['10.0.0.9'] : ['93.184.216.34'],
-    );
-    expect(await p.decide(sesi, 'cdn.wonogirikab.go.id', 443)).toEqual({
+    const p = createEdgeProxy(cfg, createDaftarSesi(4), resolve, () => {}, cname);
+    const aset = new Set([
+      'cdn.wonogirikab.go.id',
+      'privat.wonogirikab.go.id',
+      'luar.wonogirikab.go.id',
+      'cdn.klaten.go.id',
+    ]);
+    expect(await p.decide(sesi, 'cdn.wonogirikab.go.id', 443, aset)).toEqual({
       ok: true,
       address: '93.184.216.34',
     });
-    expect(await p.decide(sesi, 'cdn.klaten.go.id', 443)).toMatchObject({ ok: false });
-    expect(await p.decide(sesi, 'cdn.wonogirikab.go.id', 80)).toMatchObject({ ok: false });
-    expect(await p.decide(sesi, 'privat.wonogirikab.go.id', 443)).toMatchObject({ ok: false });
-    // Sesi tanpa host .go.id: tidak ada domain pemda.
-    expect(await p.decide(new Set(), 'cdn.wonogirikab.go.id', 443)).toMatchObject({ ok: false });
+    expect(await p.decide(sesi, 'cdn.wonogirikab.go.id', 443)).toMatchObject({ ok: false });
+    expect(await p.decide(sesi, 'x.wonogirikab.go.id', 443, aset)).toMatchObject({ ok: false });
+    expect(await p.decide(sesi, 'wonogirikab.go.id', 443, aset)).toMatchObject({ ok: false });
+    expect(await p.decide(sesi, 'cdn.klaten.go.id', 443, aset)).toMatchObject({ ok: false });
+    expect(await p.decide(sesi, 'cdn.wonogirikab.go.id', 80, aset)).toMatchObject({ ok: false });
+    expect(await p.decide(sesi, 'privat.wonogirikab.go.id', 443, aset)).toMatchObject({ ok: false });
+    expect(await p.decide(sesi, 'luar.wonogirikab.go.id', 443, aset)).toEqual({
+      ok: false,
+      reason: 'cname_luar_go_id',
+    });
+    // Sesi tanpa host .go.id: tidak ada domain pemda walau host ada di set aset.
+    expect(await p.decide(new Set(), 'cdn.wonogirikab.go.id', 443, aset)).toMatchObject({ ok: false });
+  });
+
+  it('kontrol: POST /sesi/<user>/aset bertanda; hanya subdomain pemda sesi, sesi terdaftar', async () => {
+    const d = createDaftarSesi(4);
+    const port = await dengar(createEdgeKontrol(cfg, d));
+    const base = `http://127.0.0.1:${port}`;
+    const user = 'b'.repeat(24);
+    const isiSesi = JSON.stringify({ sandi: SANDI, hosts: [HOST], ttlMs: 60_000 });
+    const hs = headerTanda(TOKEN, 'PUT', `/sesi/${user}`, isiSesi);
+    expect((await fetch(`${base}/sesi/${user}`, { method: 'PUT', headers: hs, body: isiSesi })).status).toBe(
+      201,
+    );
+    const jalur = `/sesi/${user}/aset`;
+    const aset = (host: string) => {
+      const isi = JSON.stringify({ host });
+      return fetch(`${base}${jalur}`, {
+        method: 'POST',
+        headers: headerTanda(TOKEN, 'POST', jalur, isi),
+        body: isi,
+      });
+    };
+    expect(
+      (await fetch(`${base}${jalur}`, { method: 'POST', body: '{"host":"cdn.wonogirikab.go.id"}' })).status,
+    ).toBe(401);
+    expect((await aset('cdn.wonogirikab.go.id')).status).toBe(201);
+    expect((await aset('cdn.klaten.go.id')).status).toBe(422);
+    expect((await aset('evil.example')).status).toBe(422);
+    const lingkup = d.periksa(`Basic ${Buffer.from(`${user}:${SANDI}`).toString('base64')}`);
+    expect([...(lingkup?.aset ?? [])]).toEqual(['cdn.wonogirikab.go.id']);
+    // Sesi tak terdaftar.
+    const lain = `/sesi/${'c'.repeat(24)}/aset`;
+    const isi = JSON.stringify({ host: 'cdn.wonogirikab.go.id' });
+    expect(
+      (
+        await fetch(`${base}${lain}`, {
+          method: 'POST',
+          headers: headerTanda(TOKEN, 'POST', lain, isi),
+          body: isi,
+        })
+      ).status,
+    ).toBe(422);
   });
 });

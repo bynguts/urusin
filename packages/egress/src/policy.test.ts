@@ -290,8 +290,19 @@ describe('checkConnect (profil browser)', () => {
     ).toThrow(/bukan untuk CONNECT/);
   });
 
-  it('probe gel5 3310: subdomain domain pemda yang sama lolos tanpa union; pemda lain, port lain, alamat privat tidak', () => {
-    const lingkup = { sesi, domainPemda: new Set(['klaten.go.id']) };
+  it('probe gel5 3310: aset pemda disetujui tepat waktu lolos tanpa union; belum disetujui, apex, pemda lain tidak', () => {
+    const domain = new Set(['klaten.go.id']);
+    const lingkup = {
+      sesi,
+      domainPemda: domain,
+      asetPemda: new Set(['cdn.klaten.go.id', 'cdn.slemankab.go.id']),
+    };
+    // Host saudara belum disetujui (mis. tujuan redirect) dan apex pemda: ditolak.
+    expect(() => checkConnectHost('x.klaten.go.id', 443, 'browser', lingkup)).toThrow(/union registry/);
+    expect(() => checkConnectHost('klaten.go.id', 443, 'browser', lingkup)).toThrow(/union registry/);
+    expect(() => checkConnectHost('cdn.klaten.go.id', 443, 'browser', { sesi, domainPemda: domain })).toThrow(
+      /union registry/,
+    );
     expect(domainPemda('sakura.dukcapil.KLATEN.go.id.')).toBe('klaten.go.id');
     expect(domainPemda('klaten.go.id')).toBe('klaten.go.id');
     expect(domainPemda('go.id')).toBeUndefined();
