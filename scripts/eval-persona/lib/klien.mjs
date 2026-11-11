@@ -1,5 +1,6 @@
 // Klien HTTP yang meniru peramban warga (apps/web/src/lib/stores/urusan.svelte.ts + beranda):
-//   - pesan pertama lewat form action Beranda `?/mulai` (use:enhance, header x-sveltekit-action) dengan
+//   - pesan pertama lewat form action landing `/?/mulai` (warga tamu; Beranda `/beranda?/mulai` kini wajib login dan
+//     mengalihkan tamu ke /masuk), header x-sveltekit-action, dengan
 //     `kodeKabKota` tersembunyi = wilayah perangkat (WILAYAH_AWAL di lib/stores/lokal.svelte.ts bila belum diubah);
 //   - pesan berikutnya lewat POST /api/urusan/[id]/turn {teks, expectedVersion} (pulih dari 409 seperti UI);
 //   - "Setujui rencana" lewat POST /api/urusan/[id]/rencana/setujui;
@@ -60,10 +61,10 @@ export class SesiWarga {
     return res;
   }
 
-  /** Pesan pertama dari kotak cerita Beranda. Mengembalikan { status, kode?, pesanWarga? }. */
+  /** Pesan pertama dari kotak cerita landing (warga tamu). Mengembalikan { status, kode?, pesanWarga? }. */
   async mulai(pesan, kodeKabKota) {
     const form = new URLSearchParams({ pesan, kodeKabKota: kodeKabKota ?? '' });
-    const res = await this.http('/beranda?/mulai', {
+    const res = await this.http('/?/mulai', {
       method: 'POST',
       headers: {
         'content-type': 'application/x-www-form-urlencoded',
