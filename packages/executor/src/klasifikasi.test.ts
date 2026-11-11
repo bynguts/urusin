@@ -540,35 +540,38 @@ describe('halamanAkhir', () => {
     expect(akhir('<label><input type="checkbox"> Alamat domisili sama dengan KTP</label>')).toBe(false);
   });
 
-  it('probe 3324/3404: form pendaftaran dengan kolom wajib kosong + centang S&K bukan halaman akhir', () => {
+  it('probe 3324/3404: form pendaftaran bercentang S&K tetap halaman akhir; pembuka kalender ui_lokal', () => {
     const sk =
       '<label><input type="checkbox" required> Saya telah membaca dan menyetujui Syarat dan Ketentuan</label>';
-    const form = (isi: string) =>
-      `<form method="post"><h2>Pendaftaran Akun</h2>${isi}${sk}<button type="submit">Daftar</button></form>`;
-    expect(akhir(form('<label>NIK <input name="nik" required></label>'))).toBe(false);
-    expect(akhir(form('<label>Email <input type="email" aria-required="true"></label>'))).toBe(false);
-    // Tombol pembuka kalender di form itu = ui_lokal; submit tetap kirim.
-    document.body.innerHTML = form(
-      '<label>Tanggal lahir <input name="tgl" required placeholder="DD-MM-YYYY"></label><button type="button" aria-label="Buka kalender"></button>',
-    );
+    document.body.innerHTML = `<form method="post"><h2>Pendaftaran Akun</h2>
+      <label>Tanggal lahir <input name="tgl" required placeholder="DD-MM-YYYY"></label>
+      <button type="button" aria-label="Buka kalender"></button>${sk}<button type="submit">Daftar</button></form>`;
+    expect(halamanAkhir(document)).toBe(true);
     expect(klasifikasi(document.querySelector('[aria-label="Buka kalender"]')!).kelas).toBe('ui_lokal');
     expect(klasifikasi(document.querySelector('button[type="submit"]')!).kelas).toBe('kirim');
+    // Tombol lain di halaman akhir tetap kirim (K6), termasuk Lanjut.
+    document.body.insertAdjacentHTML('beforeend', '<button type="button" id="l">Lanjut</button>');
+    expect(klasifikasi(document.getElementById('l')!)).toMatchObject({
+      kelas: 'kirim',
+      aturan: 'K6_AKHIR_DIALOG',
+    });
   });
 
-  it('kolom terisi, opsional, sandi, OTP, atau CAPTCHA tidak membuka kunci halaman akhir', () => {
-    const sk = '<label><input type="checkbox"> Dengan ini saya menyatakan data di atas benar</label>';
-    for (const kolom of [
-      '<input name="nik" required value="isi">',
-      '<input name="catatan">',
-      '<input type="password" name="sandi" required>',
-      '<input name="kode" autocomplete="one-time-code" required>',
-      '<label>Kode OTP <input name="kode" required></label>',
-      '<label>Captcha <input name="hasil" required></label>',
-      '<div><img src="/gambar/captcha.png"><input name="jawaban" required></div>',
-      '<input name="nik" required readonly>',
-      '<input name="nik" required style="display:none">',
-    ])
-      expect(akhir(`<form>${kolom}${sk}<button type="button">Kirim</button></form>`), kolom).toBe(true);
+  it('review G4: kolom wajib kosong tidak membatalkan halaman tinjauan akhir', () => {
+    const html = `<h2>Periksa kembali data permohonan</h2><p>Dengan ini saya menyatakan data benar.</p>
+      <label>Catatan untuk petugas <input name="catatan" required></label><button type="button" id="b">Lanjut</button>
+      <form method="post" action="/api/final"><button type="submit">Kirim Permohonan</button></form>`;
+    expect(akhir(html)).toBe(true);
+    expect(klasifikasi(document.getElementById('b')!).kelas).toBe('kirim');
+    expect(akhir(html.replace('<p>Dengan ini saya menyatakan data benar.</p>', ''))).toBe(true);
+  });
+
+  it('pembuka kalender di dialog konfirmasi tetap kirim', () => {
+    expect(
+      kelasDari(
+        '<div role="alertdialog"><p>Kirim permohonan?</p><button type="button" data-uji>Buka kalender</button></div>',
+      ),
+    ).toBe('kirim');
   });
 
   it('halaman formulir biasa bukan halaman akhir; frasa di dalam textarea/skrip diabaikan', () => {
