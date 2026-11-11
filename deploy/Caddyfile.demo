@@ -1,0 +1,25 @@
+# Gerbang demo final (deploy/compose.demo.yml): satu-satunya port host. Rute sama dengan Caddy produksi
+# (/pendamping/ws/* ke worker, sisanya ke web), plus replika di :4321 dan penerus proxy LLM di 127.0.0.1:20128.
+{
+  admin off
+  auto_https off
+}
+:80 {
+  handle /pendamping/ws/* {
+    uri strip_prefix /pendamping
+    reverse_proxy 127.0.0.1:4330
+  }
+  handle {
+    reverse_proxy 127.0.0.1:3000
+  }
+}
+:4321 {
+  reverse_proxy 127.0.0.1:4320
+}
+http://127.0.0.1:20128 {
+  bind 127.0.0.1
+  reverse_proxy {$DEMO_LLM_UPSTREAM} {
+    header_up Host {upstream_hostport}
+    flush_interval -1
+  }
+}

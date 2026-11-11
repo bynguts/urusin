@@ -329,10 +329,18 @@ export function quotaFromEnv(env: Record<string, string | undefined>) {
   return quota;
 }
 
+/**
+ * Mode LLM hanya bila LLM_BASE_URL, LLM_API_KEY, dan LLM_AGENT_MODEL terisi DAN saklar darurat
+ * `URUSIN_LLM_DISABLED=1` tidak aktif (mis. internet venue putus saat demo: DemoProvider, tanpa jaringan).
+ */
+export function llmAktif(env: Record<string, string | undefined>): boolean {
+  if (env.URUSIN_LLM_DISABLED?.trim() === '1') return false;
+  return Boolean(env.LLM_BASE_URL && env.LLM_API_KEY && env.LLM_AGENT_MODEL);
+}
+
 async function buildFromEnv(): Promise<Runtime> {
   const env = process.env;
-  const haveLlm = Boolean(env.LLM_BASE_URL && env.LLM_API_KEY && env.LLM_AGENT_MODEL);
-  if (!haveLlm) return createRuntime({ mode: 'demo' });
+  if (!llmAktif(env)) return createRuntime({ mode: 'demo' });
 
   const cfg = loadLlmConfig(env);
   const provider = new OpenAIProvider(cfg);
