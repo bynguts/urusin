@@ -429,7 +429,7 @@ export class Vault {
   siapkanPindah(
     dari: string,
     ke: string,
-    titipIngatan?: (akun: unknown, tamu: unknown) => unknown,
+    titipIngatan?: (akun: unknown, tamu: unknown, at: string) => unknown,
   ): RencanaPindah {
     const tulisBaru: string[] = [];
     const lama = this.getDataDiri(dari);
@@ -447,7 +447,8 @@ export class Vault {
     const terapkanIngatan = () => {
       if (!ingatanLama || !titipIngatan) return;
       const akun = bacaAman(ke);
-      if (akun.ok) this.setIngatan(ke, titipIngatan(akun.isi?.data, ingatanLama.data));
+      if (akun.ok)
+        this.setIngatan(ke, titipIngatan(akun.isi?.data, ingatanLama.data, this.now().toISOString()));
     };
     if (!lama && !ingatanLama && docs.length === 0) {
       return {

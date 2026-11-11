@@ -181,12 +181,12 @@ describe('rotasi tamu → akun', () => {
       ['ktp', '3312'],
       ['catatan', 'suka pagi'],
     ]);
-    expect(jumlahDariTamu(g)).toBe(4);
-    expect(bawaDariTamu(g).butir.map((b) => [b.jenis, b.nilai])).toEqual([
+    const kini = new Date(t).toISOString();
+    expect(jumlahDariTamu(g, kini)).toBe(2); // ktp + lansia; catatan tamu (butuh persetujuan) tidak dititipkan
+    expect(bawaDariTamu(g, kini).butir.map((b) => [b.jenis, b.nilai])).toEqual([
       ['ktp', '3312'],
       ['catatan', 'suka pagi'],
       ['lansia', 'ya'],
-      ['catatan', 'diantar cucu'],
     ]);
     expect(db.prepare('SELECT COUNT(*) n FROM vault_ingatan WHERE user_id = ?').get(tamu)).toEqual({ n: 0 });
     expect(db.prepare('SELECT COUNT(*) n FROM user_keys WHERE user_id = ?').get(tamu)).toEqual({ n: 0 });
