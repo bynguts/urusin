@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { CapabilityFlags, ChatMessage, ChatProvider, ChatTool, Usage } from '@urusin/llm';
 import type { Db } from './db.js';
 import type { EventPayload, PayloadOf, UrusanState } from '@urusin/contracts';
+import type { IngatanTurn } from './ingatan.js';
 import type { UrusanRow, HarnessStore } from './store.js';
 import { TERMINAL_STATES, URUSAN_STATES } from './state.js';
 
@@ -44,6 +45,8 @@ export type ToolContext = {
   /** Pesan warga turn ini (sudah diredaksi): bukti bahwa warga sendiri menyebut/membenarkan sesuatu. */
   pesanWarga: string;
   signal: AbortSignal;
+  /** Ingatan warga pemilik urusan (ADR 0031); tidak ada = urusan tanpa pemilik vault. */
+  ingatan?: IngatanTurn | undefined;
 };
 
 export type EmittableEvent = EventPayload;

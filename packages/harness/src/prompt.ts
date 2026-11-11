@@ -31,7 +31,7 @@ export function buildSystemPrompt(): string {
     'WILAYAH DULU:',
     '- Aturan, situs resmi, dan cara akses berbeda di tiap kab/kota. Sebelum merencanakan, pastikan kab/kota sesuai KTP warga, lalu panggil wilayah__tetapkan. Sistem menolak rencana sampai wilayah KTP ditetapkan.',
     '- Warga sudah menyebut sendiri kab/kota KTP/KK-nya (mis. "KTP saya Wonogiri", "KK saya juga Wonogiri")? Langsung panggil wilayah__tetapkan dengan wilayah itu; jangan bertanya ulang "betul?".',
-    '- Ada usulan wilayah (Data Diri atau pilihan di perangkat)? Tanyakan satu kalimat: "KTP Anda terdaftar di <nama usulan>, betul?" Jangan anggap benar sebelum warga membenarkan.',
+    '- Ada usulan wilayah (Data Diri, pilihan di perangkat, atau Ingatan warga)? Tanyakan satu kalimat: "KTP Anda terdaftar di <nama usulan>, betul?" Jangan anggap benar sebelum warga membenarkan.',
     '- Tanpa usulan: tanyakan "KTP Anda terdaftar di kabupaten/kota mana?" Cukup nama kab/kota; jangan pernah meminta NIK.',
     '- Warga tidak yakin KTP-nya terdaftar di mana? Bantu menemukannya: minta warga melihat nama kabupaten/kota yang tertulis di KTP atau KK, atau memilihnya di kartu/pilihan kab-kota di layar. Bila belum bisa dicek, jangan berputar menanyakan hal yang sama: tawarkan kab/kota tempat tinggalnya sebagai dugaan sementara ("Biasanya sama dengan tempat tinggal Anda. Kita pakai Kabupaten X dulu? Bisa diubah nanti."), lalu panggil wilayah__tetapkan setelah warga setuju dan lanjutkan. Jangan pernah meminta NIK atau sebagian digit NIK lewat chat.',
     '- Nama ganda (mis. Bekasi: Kota atau Kabupaten) ditanyakan. Kecamatan/kota kecil (mis. Cikarang) boleh kamu petakan ke kab/kotanya, tetapi tanyakan dulu ke warga sebelum menetapkan.',
@@ -100,7 +100,7 @@ function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: 
       out.push(
         sumber === 'warga'
           ? `${TEKS_WILAYAH.usulan} (sudah kamu tanyakan di percakapan): ${ktp.nama}. Tanyakan lagi hanya bila warga belum menjawabnya. ${benarkan}`
-          : `${TEKS_WILAYAH.usulan} (${sumber === 'data_diri' ? 'Data Diri akun' : 'pilihan di perangkat'}): ${ktp.nama}. Tanyakan sekali: "${tanya}" ${benarkan}`,
+          : `${TEKS_WILAYAH.usulan} (${sumber === 'data_diri' ? 'Data Diri akun' : sumber === 'ingatan' ? 'Ingatan warga dari urusan sebelumnya' : 'pilihan di perangkat'}): ${ktp.nama}. Tanyakan sekali: "${tanya}" ${benarkan}`,
       );
     }
   }
@@ -143,6 +143,8 @@ export function buildStateNote(input: {
   confirmations: readonly { id: string; tool: string }[];
   /** Pesan warga giliran ini (sudah diredaksi). */
   pesanWarga?: string;
+  /** Urusan punya pemilik vault: tool ingatan__ingat ditawarkan (ADR 0031). */
+  ingatanAktif?: boolean;
 }): string {
   const lines = [
     `STATE URUSAN: ${input.state}`,
@@ -158,6 +160,10 @@ export function buildStateNote(input: {
   if (input.pesanWarga && /\{\{[A-Z]+\d*\.[A-Z_]+\}\}/.test(input.pesanWarga))
     lines.push(
       'PESAN WARGA BERISI DATA PRIBADI (sudah disamarkan sebagai placeholder {{...}}). Awali balasanmu dengan pengingat ramah satu kalimat: "Demi keamanan, jangan ketik nama ibu kandung atau NIK di chat ya; isi di Data Diri, nanti kami isikan langsung dari perangkat Anda." Jangan menulis placeholder itu, lalu lanjutkan menjawab.',
+    );
+  if (input.ingatanAktif)
+    lines.push(
+      'INGATAN WARGA: bila warga menyatakan sendiri preferensinya (lansia, ingin bahasa sederhana, lebih suka online atau datang langsung, kebutuhan aksesibilitas) atau meminta sesuatu diingat, panggil ingatan__ingat untuk butir itu. Jangan menyimpan data pribadi; wilayah yang ditetapkan tercatat otomatis.',
     );
   const bantuan = PANDUAN_STATE[input.state];
   if (bantuan) lines.push(bantuan);

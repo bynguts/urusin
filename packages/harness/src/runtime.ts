@@ -6,6 +6,7 @@ import { EventBus } from './bus.js';
 import { builtinTools } from './builtin-tools.js';
 import { openHarnessDb, type Db } from './db.js';
 import { DEFAULT_QUOTA, QuotaMeter, type QuotaConfig } from './quota.js';
+import { ingatanIngat, type PenyimpanIngatan } from './ingatan.js';
 import { HarnessStore } from './store.js';
 import { ToolRegistry, type ToolDef } from './tools.js';
 import { Tracer } from './trace.js';
@@ -27,6 +28,8 @@ export type HarnessOptions = {
   tools?: readonly ToolDef[];
   /** Rahasia HMAC pemetaan placeholder PII (lihat `StoreOptions.piiKey`). */
   piiKey?: string;
+  /** Ingatan warga lintas urusan (ADR 0031): bila ada, tool `ingatan__ingat` ikut terdaftar. */
+  ingatan?: PenyimpanIngatan;
 };
 
 /** Komposisi akar: store + registry + kuota + tracer + bus → `AgentDeps` siap dipakai `runTurn`. */
@@ -36,7 +39,10 @@ export function createHarness(opts: HarnessOptions) {
     now,
     ...(opts.piiKey ? { piiKey: opts.piiKey } : {}),
   });
-  const registry = new ToolRegistry(opts.tools ?? builtinTools());
+  const registry = new ToolRegistry([
+    ...(opts.tools ?? builtinTools()),
+    ...(opts.ingatan ? [ingatanIngat] : []),
+  ]);
   const quota = new QuotaMeter(store, opts.prices ?? { inputPerMTok: 0, outputPerMTok: 0, audioPerMin: 0 }, {
     ...DEFAULT_QUOTA,
     ...opts.quota,
@@ -56,6 +62,7 @@ export function createHarness(opts: HarnessOptions) {
     config: opts.config,
     now,
     locks: new Set(),
+    ingatan: opts.ingatan,
   };
   return { deps, store, registry, quota, bus };
 }

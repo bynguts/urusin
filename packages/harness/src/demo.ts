@@ -17,6 +17,7 @@ import {
   temukanWilayah,
   type SourceRef,
 } from '@urusin/registry';
+import { INGAT_TOOL } from './ingatan.js';
 import { INTENT_JENIS, type IntentJenis } from './intent.js';
 import { DATAMARK } from './spotlight.js';
 import { AFIRMASI, TEKS_WILAYAH } from './wilayah.js';
@@ -220,19 +221,45 @@ function langkahWilayah(
   return { reply: 'Pindah ke kabupaten/kota mana?' };
 }
 
+/** Preferensi yang warga nyatakan sendiri (demo): lansia atau minta bahasa sederhana. */
+const PREFERENSI_DEMO: [RegExp, string][] = [
+  [/\b(lansia|lanjut usia|sudah tua)\b/i, 'lansia'],
+  [/\bbahasa (yang )?sederhana\b/i, 'bahasa_sederhana'],
+];
+
 /** Langkah berikutnya untuk agen: tool-call berikutnya atau balasan teks. */
 function nextAction(
   messages: readonly ChatMessage[],
+  tools: readonly string[] = [],
 ): { tool: string; args: Record<string, unknown> } | { reply: string } {
   const userText = lastUserText(messages);
   const lastUserIdx = messages.map((m) => m.role).lastIndexOf('user');
   const after = messages.slice(lastUserIdx + 1);
-  const lastAssistantTool = [...after].reverse().find((m) => m.role === 'assistant' && m.tool_calls?.length);
-  const toolTerakhir =
-    lastAssistantTool?.role === 'assistant' && lastAssistantTool.tool_calls?.[0]?.type === 'function'
-      ? lastAssistantTool.tool_calls[0].function.name
+  // Ingatan warga (ADR 0031): preferensi yang warga sebut sendiri dicatat sekali per turn, sebelum alur lain.
+  const sudahIngat = after.some(
+    (m) =>
+      m.role === 'assistant' &&
+      m.tool_calls?.some((c) => c.type === 'function' && c.function.name === INGAT_TOOL),
+  );
+  if (tools.includes(INGAT_TOOL) && !sudahIngat)
+    for (const [re, jenis] of PREFERENSI_DEMO)
+      if (re.test(userText)) return { tool: INGAT_TOOL, args: { aksi: 'simpan', jenis } };
+  // Panggilan ingatan__ingat tidak dihitung: alur berlanjut seolah belum ada tool (hasilnya juga dilewati).
+  const namaTool = (m: ChatMessage) =>
+    m.role === 'assistant' && m.tool_calls?.[0]?.type === 'function'
+      ? m.tool_calls[0].function.name
       : undefined;
-  const lastToolResult = text([...after].reverse().find((m) => m.role === 'tool'));
+  const alur = after.filter((m, i) => {
+    if (namaTool(m) === INGAT_TOOL) return false;
+    const pemanggil = after
+      .slice(0, i)
+      .reverse()
+      .find((x) => x.role === 'assistant');
+    return !(m.role === 'tool' && pemanggil && namaTool(pemanggil) === INGAT_TOOL);
+  });
+  const lastAssistantTool = [...alur].reverse().find((m) => m.role === 'assistant' && m.tool_calls?.length);
+  const toolTerakhir = lastAssistantTool ? namaTool(lastAssistantTool) : undefined;
+  const lastToolResult = text([...alur].reverse().find((m) => m.role === 'tool'));
   const wilayah = langkahWilayah(messages, userText, toolTerakhir, lastToolResult);
   if (wilayah) return wilayah;
   // Wilayah baru saja ditetapkan dan warga bertanya persyaratan: lanjut seolah belum ada tool.
@@ -297,7 +324,10 @@ export class DemoProvider extends FakeProvider {
         handoff: null,
       });
     }
-    const next = nextAction(params.messages);
+    const next = nextAction(
+      params.messages,
+      (params.tools ?? []).flatMap((t) => (t.type === 'function' ? [t.function.name] : [])),
+    );
     if (kind === 'action') {
       return asStructured(
         'tool' in next
