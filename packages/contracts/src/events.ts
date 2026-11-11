@@ -251,6 +251,8 @@ export const GateRuleSchema = z.enum([
   'ORIGIN_NOT_OFFICIAL',
   'QUOTA_EXCEEDED',
   'WILAYAH_BELUM_DITETAPKAN',
+  /** ingatan__ingat ditolak di giliran yang sudah membaca konten tak tepercaya (ADR 0031). */
+  'UNTRUSTED_CONTENT_READ',
 ]);
 export type GateRule = z.infer<typeof GateRuleSchema>;
 
@@ -370,8 +372,12 @@ export type JejakSesiResponse = z.infer<typeof JejakSesiResponseSchema>;
  * Ingatan warga berubah di turn ini (ADR 0031): kartu "Urusin mengingat: ..." dengan tombol Batalkan. Hanya label
  * butir (tanpa PII; isi sudah lolos pemindai PII saat disimpan), bukan isi vault.
  */
+/**
+ * Kartu ingatan: `simpan`/`hapus`, atau `usulan` = butir sensitif (aksesibilitas) yang menunggu persetujuan warga
+ * ("Ya, ingat"/"Tidak"). Label catatan/aksesibilitas generik: isinya diambil live dari GET /api/ingatan.
+ */
 export const IngatanEventSchema = event('ingatan', {
-  aksi: z.enum(['simpan', 'hapus']),
+  aksi: z.enum(['simpan', 'hapus', 'usulan']),
   butir: ButirIngatanKartuSchema,
 });
 

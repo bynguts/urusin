@@ -52,6 +52,11 @@ export type ButirIngatanKartu = z.infer<typeof ButirIngatanKartuSchema>;
 // --- GET /api/ingatan ---
 export const IngatanResponseSchema = z.object({
   butir: z.array(ButirIngatanTampilSchema),
+  /**
+   * Usulan butir sensitif yang menunggu "Ya, ingat" (label = pertanyaan siap baca, mis. "Ingat bahwa Anda tuli?").
+   * Kartu chat mengambil isi dari sini, bukan dari event.
+   */
+  usulan: z.array(ButirIngatanTampilSchema).optional(),
 });
 export type IngatanResponse = z.infer<typeof IngatanResponseSchema>;
 
@@ -60,3 +65,10 @@ export const HapusIngatanResponseSchema = z.object({
   dihapus: z.number().int().nonnegative(),
 });
 export type HapusIngatanResponse = z.infer<typeof HapusIngatanResponseSchema>;
+
+// --- POST /api/ingatan/[id]: warga menyetujui usulan butir sensitif ("Ya, ingat") ---
+export const SetujuiIngatanResponseSchema = z.object({
+  disetujui: z.number().int().nonnegative(),
+  butir: ButirIngatanTampilSchema.optional(),
+});
+export type SetujuiIngatanResponse = z.infer<typeof SetujuiIngatanResponseSchema>;
