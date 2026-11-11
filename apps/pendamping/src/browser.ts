@@ -24,6 +24,7 @@ import { chromium, type BrowserContext, type CDPSession, type Page } from 'playw
 import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import {
+  asetUmumBoleh,
   createGerbangTulis,
   hostAsetUmum,
   jalurPihakKetigaBoleh,
@@ -278,6 +279,22 @@ export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): 
 }
 
 /**
+ * Saringan rute peramban (lapis kedua setelah proxy): host:port di allowlist, www.google.com hanya /recaptcha/,
+ * dan host aset umum (CDN/fon) hanya subresource script/stylesheet/font/image, tidak pernah navigasi dokumen.
+ */
+export function izinRute(
+  allowedHosts: ReadonlySet<string>,
+  req: { url(): string; resourceType(): string; isNavigationRequest(): boolean },
+): boolean {
+  const url = req.url();
+  return (
+    urlDiAllowlist(allowedHosts, url) &&
+    jalurPihakKetigaBoleh(url) &&
+    asetUmumBoleh({ url, resourceType: req.resourceType(), dokumen: req.isNavigationRequest() })
+  );
+}
+
+/**
  * Bentuk permintaan untuk gerbang tulis: metode, navigasi dokumen di bingkai mana pun (`dokumen`) dan di bingkai
  * utama (`utama`), XHR/fetch, dan URL awal rantai redirect. Navigasi tanpa bingkai yang bisa ditelusuri
  * dianggap navigasi bingkai utama (gagal tertutup).
@@ -388,11 +405,7 @@ export async function launchIsolated(
     });
     await context.route('**/*', (route) => {
       const req = route.request();
-      // Host aset umum (CDN/fon) hanya untuk subresource: navigasi dokumen ke sana ditolak seperti host lain.
-      const ok =
-        urlDiAllowlist(allowedHosts, req.url()) &&
-        jalurPihakKetigaBoleh(req.url()) &&
-        !(req.isNavigationRequest() && hostAsetUmum(req.url()));
+      const ok = izinRute(allowedHosts, req);
       if (!ok) {
         const host = URL.parse(req.url())?.hostname;
         const dokumen = gerbang ? permintaanGerbang(req).utama : false;

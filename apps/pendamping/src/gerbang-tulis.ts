@@ -98,6 +98,18 @@ export function hostAsetUmum(url: string): boolean {
   return h !== undefined && HOST_ASET_UMUM.has(h);
 }
 
+/** Jenis sumber daya yang boleh diambil dari host aset umum (Playwright `resourceType`). */
+const TIPE_ASET_UMUM: ReadonlySet<string> = new Set(['script', 'stylesheet', 'font', 'image']);
+
+/**
+ * Host aset umum hanya melayani subresource script/stylesheet/font/image; navigasi dokumen (bingkai mana pun),
+ * XHR/fetch, dan jenis lain ke host itu ditolak (re-review MEDIUM: unpkg menyajikan HTML paket npm sebagai
+ * text/html sementara bilah atas tetap menampilkan origin portal). Host lain tidak terpengaruh.
+ */
+export function asetUmumBoleh(r: { url: string; resourceType: string; dokumen: boolean }): boolean {
+  return !hostAsetUmum(r.url) || (!r.dokumen && TIPE_ASET_UMUM.has(r.resourceType));
+}
+
 /** Metode yang tidak mengubah keadaan server (preflight CORS ikut di sini). */
 export const AMAN: ReadonlySet<string> = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -125,6 +137,8 @@ export function putuskan(
   /** Dokumen kotor (N2) atau halaman akhir: GET bingkai utama di luar navKe (redirect halaman) diblokir. */
   ketat = false,
 ): Putusan {
+  // Dokumen dari host aset umum (CDN/fon) tidak pernah lolos, di jendela mana pun termasuk warga.
+  if (r.dokumen && hostAsetUmum(r.url)) return 'blokir';
   if (j.jenis === 'warga') return 'lanjut';
   // Telemetri/verifikasi tantangan (Turnstile flow, reCAPTCHA reload) bukan tulis ke portal: lolos di semua
   // jendela AI agar widget tidak gagal karena balapan dengan klik AI (probe #14). Navigasi dokumen tidak.

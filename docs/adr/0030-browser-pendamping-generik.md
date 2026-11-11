@@ -71,7 +71,11 @@ Adapter tulisan tangan hanya ada untuk Telunjuk Sakti dan beberapa alur baca. Wa
 - Tujuan `buka_tautan` (re-review TOCTOU, PoC E3): URL absolut yang ditampilkan ke warga disimpan saat giliran
   `ketuk_tautan` dikirim; href yang dibaca ulang saat warga menekan Buka harus sama persis (host, jalur, kueri),
   selain itu tidak dibuka dan giliran tetap di warga. Host aset umum (CDN/fon, `EGRESS_ASET_UMUM`) hanya untuk
-  subresource: tidak pernah menjadi dokumen bingkai mana pun atau tujuan navigasi AI, tautan, pop-up.
+  subresource script/stylesheet/font/image (rute peramban); navigasi dokumen bingkai mana pun ke host itu
+  ditolak di rute dan di gerbang tulis pada SEMUA jendela (termasuk warga), dan bukan tujuan navigasi AI,
+  tautan, atau pop-up. Alasannya: unpkg/jsdelivr menyajikan HTML paket npm siapa saja sebagai text/html,
+  sementara bilah atas layar tetap menampilkan origin portal. Konsekuensinya XHR/fetch ke CDN (mis. JSON dari
+  jsdelivr) juga ditolak; tinjau ulang bila recon menemukan portal yang membutuhkannya.
 
 ## Rujukan berkas utama
 

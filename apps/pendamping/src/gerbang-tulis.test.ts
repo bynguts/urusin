@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { EGRESS_ASET_UMUM } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
 import {
+  asetUmumBoleh,
   catatanBlokir,
   createGerbangTulis,
   hostAsetUmum,
@@ -265,6 +266,42 @@ describe('putuskan (tabel lengkap)', () => {
     expect(hostAsetUmum('https://challenges.cloudflare.com/turnstile/v0/api.js')).toBe(false);
     expect(hostAsetUmum('https://cdn.jsdelivr.net.jahat.com/')).toBe(false);
     expect(hostAsetUmum('bukan url')).toBe(false);
+  });
+
+  it('putuskan: dokumen dari host aset umum diblokir di SEMUA jendela, subresource GET-nya tidak (re-review MEDIUM)', () => {
+    const cdn = 'https://unpkg.com/paket-jahat@1.0.0/index.html';
+    const dok = (utama: boolean): PermintaanGerbang => ({
+      metode: 'GET',
+      dokumen: true,
+      utama,
+      xhr: false,
+      url: cdn,
+    });
+    const sub: PermintaanGerbang = {
+      metode: 'GET',
+      dokumen: false,
+      utama: false,
+      xhr: false,
+      url: 'https://unpkg.com/jquery@3/dist/jquery.min.js',
+    };
+    const jendela: Jendela[] = [
+      { jenis: 'warga' },
+      { jenis: 'ai_diam' },
+      { jenis: 'ai_diam', tungguWarga: true },
+      { jenis: 'ai_isi', sampai: T + 3_000 },
+      { jenis: 'ai_klik', navKe: cdn },
+    ];
+    for (const j of jendela) {
+      for (const ketat of [false, true]) {
+        expect(putuskan(j, dok(true), T, ketat), `${JSON.stringify(j)} utama`).toBe('blokir');
+        expect(putuskan(j, dok(false), T, ketat), `${JSON.stringify(j)} iframe`).toBe('blokir');
+      }
+      if (j.jenis !== 'ai_klik') expect(putuskan(j, sub, T), JSON.stringify(j)).toBe('lanjut');
+    }
+    expect(asetUmumBoleh({ url: cdn, resourceType: 'document', dokumen: true })).toBe(false);
+    expect(asetUmumBoleh({ url: sub.url, resourceType: 'script', dokumen: false })).toBe(true);
+    expect(asetUmumBoleh({ url: sub.url, resourceType: 'fetch', dokumen: false })).toBe(false);
+    expect(asetUmumBoleh({ url: U, resourceType: 'fetch', dokumen: false })).toBe(true);
   });
 
   it('jalurPihakKetigaBoleh: www.google.com hanya /recaptcha/ (review L3)', () => {

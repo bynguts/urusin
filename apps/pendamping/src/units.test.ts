@@ -7,6 +7,7 @@ import { css, fill, gate, nav, upload, urlIncludes } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
 import {
   chromiumArgs,
+  izinRute,
   pesanGagal,
   pidsOfProfile,
   PROFIL_PREFS,
@@ -186,6 +187,42 @@ describe('proxy peramban', () => {
     // Hanya IP literal: nama host (atau sisipan aturan) ditolak.
     expect(() => chromiumArgs({ jsHeapMb: 1 }, 'pendamping-edge')).toThrow(/IP literal/);
     expect(() => chromiumArgs({ jsHeapMb: 1 }, '1.2.3.4 , MAP * 5.6.7.8')).toThrow(/IP literal/);
+  });
+});
+
+describe('rute peramban: host aset umum (re-review MEDIUM)', () => {
+  const izin = new Set([
+    'portal.contoh.go.id:443',
+    'unpkg.com:443',
+    'fonts.gstatic.com:443',
+    'www.google.com:443',
+  ]);
+  const req = (url: string, resourceType: string, nav = false) => ({
+    url: () => url,
+    resourceType: () => resourceType,
+    isNavigationRequest: () => nav,
+  });
+
+  it('CDN/fon: hanya script/stylesheet/font/image; navigasi dokumen dan XHR ditolak', () => {
+    for (const t of ['script', 'stylesheet', 'font', 'image'])
+      expect(izinRute(izin, req('https://unpkg.com/jquery@3/dist/jquery.min.js', t)), t).toBe(true);
+    expect(izinRute(izin, req('https://fonts.gstatic.com/s/inter/v1/a.woff2', 'font'))).toBe(true);
+    expect(izinRute(izin, req('https://unpkg.com/paket-jahat@1.0.0/index.html', 'document', true))).toBe(
+      false,
+    );
+    expect(izinRute(izin, req('https://unpkg.com/paket-jahat@1.0.0/index.html', 'document', false))).toBe(
+      false,
+    );
+    for (const t of ['xhr', 'fetch', 'media', 'websocket', 'other', 'ping'])
+      expect(izinRute(izin, req('https://unpkg.com/x.json', t)), t).toBe(false);
+  });
+
+  it('host portal tidak terpengaruh; allowlist dan reCAPTCHA tetap berlaku', () => {
+    expect(izinRute(izin, req('https://portal.contoh.go.id/permohonan', 'document', true))).toBe(true);
+    expect(izinRute(izin, req('https://portal.contoh.go.id/api/x', 'xhr'))).toBe(true);
+    expect(izinRute(izin, req('https://jahat.contoh.com/', 'document', true))).toBe(false);
+    expect(izinRute(izin, req('https://www.google.com/search?q=x', 'document', true))).toBe(false);
+    expect(izinRute(izin, req('https://www.google.com/recaptcha/api2/anchor', 'document', true))).toBe(true);
   });
 });
 
