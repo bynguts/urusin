@@ -34,7 +34,7 @@ exit 0
 EOF
 cat > "$SB/bin/curl" <<'EOF'
 #!/usr/bin/env bash
-echo '{"ok":true,"aktif":0,"maks":1,"menunggu":0}'
+if [ -n "${SHIM_HEALTH:-}" ]; then echo "$SHIM_HEALTH"; else echo '{"ok":true,"aktif":0,"maks":1,"menunggu":0,"generik":true}'; fi
 EOF
 cat > "$SB/bin/ip" <<'EOF'
 #!/usr/bin/env bash
@@ -102,6 +102,12 @@ check "up memakai compose.yml saja" 'grep -q "compose -f $W/compose.yml --env-fi
 : > "$LOG"
 jalan up --final
 check "up --final menambah compose.final.yml" 'grep -q "compose -f $W/compose.yml -f $W/compose.final.yml --env-file $W/.env up -d" "$LOG"'
+
+echo "worker.sh sehat: image lama (tanpa generik) diperingatkan"
+jalan sehat
+check "sehat image baru: tanpa peringatan" '[ $? -eq 0 ] && ! grep -q "image lama" "$SB/out"'
+SHIM_HEALTH='{"ok":true,"aktif":0,"maks":1,"menunggu":0}' jalan sehat
+check "sehat image lama: tetap sehat, tetapi diperingatkan" '[ $? -eq 0 ] && grep -q "image lama" "$SB/out"'
 
 echo "worker.sh web-env"
 jalan web-env publik
