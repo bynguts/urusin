@@ -137,6 +137,12 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
   let belumHalo = 0;
 
   const periksaInternal = createPenjagaUlang(config.internalToken);
+  /**
+   * Kemampuan worker di /health (aditif): `generik` = Navigator generik (ADR 0030) beserta portal wilayah
+   * registry image ini. Web hanya memakai worker yang melaporkannya untuk sesi generik dan situs `id-only`,
+   * jadi worker laptop ber-image lama tidak pernah membuat urusan gagal (dipandu jujur).
+   */
+  const kemampuan = { generik: true, ...(config.sha ? { sha: config.sha } : {}) } as const;
   /** Semafor global: paling banyak satu pembacaan isi besar (> 64 KB) sekaligus. */
   let bacaBesarAktif = false;
   const server = http.createServer(async (req, res) => {
@@ -144,7 +150,7 @@ export function createServer(config: Config, manager: SessionManager): http.Serv
     const path = url.pathname;
     try {
       if (req.method === 'GET' && path === '/health')
-        return json(res, 200, { ok: true, ...manager.antrean() });
+        return json(res, 200, { ok: true, ...manager.antrean(), ...kemampuan });
 
       if (config.devPage && req.method === 'GET' && path === '/dev') {
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
