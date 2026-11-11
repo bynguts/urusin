@@ -648,8 +648,9 @@
   </div>
 </div>
 
+<!-- Izin isi hanya setelah portal (atau replika Mode Uji) tergambar: warga melihat situsnya dulu. -->
 <LembarIzinkan
-  buka={sesi.data.butuhData !== null}
+  buka={sesi.data.butuhData !== null && sesi.data.tayang}
   placeholder={sesi.data.butuhData?.placeholder ?? []}
   berkas={sesi.data.butuhData?.berkas ?? []}
   kolom={sesi.data.butuhData?.kolom}

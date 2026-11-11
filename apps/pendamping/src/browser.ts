@@ -35,6 +35,7 @@ import {
 import { GenerikRun, naikHttps, PESAN_GENERIK, tanganRunner } from './generik.js';
 import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
 import { daftarEdge, type ProxyEdge } from './isolasi.js';
+import { logSesi } from './log.js';
 import { pesanBerkasKurang, pesanIsiSendiri } from './isian.js';
 import { runnerExpression } from './runner-script.js';
 import type { ActiveRun, Frame, JenisFokus, RunFactory, RunInit } from './sessions.js';
@@ -101,6 +102,20 @@ export function pesanGagal(code: string, host: string, net?: string): string {
 /** Situs instansi menjawab 5xx tanpa satu kendali pun (smoke 3279: Apache 503 di balik Cloudflare). */
 export function pesanGangguan(host: string, status: number): string {
   return `Situs ${host} sedang gangguan (HTTP ${status}): server instansi tidak melayani saat ini, bukan masalah di Urusin. Coba lagi beberapa saat lagi.`;
+}
+
+/**
+ * Batas navigasi halaman utama sampai dokumen ter-commit. Lebih dari ini = situs tidak terjangkau dari worker ini
+ * (mis. portal yang hanya melayani IP Indonesia): sesi berakhir dengan pesan dan jalur panduan, bukan kanvas putih.
+ */
+export const NAV_BATAS_MS = Number(process.env.PENDAMPING_NAV_BATAS_MS) || 45_000;
+
+/** Kode galat jaringan dari galat Playwright (`net::ERR_*`); timeout tanpa kode = ERR_TIMED_OUT. */
+export function netDariGalat(e: unknown): string {
+  const t = e instanceof Error ? e.message : String(e);
+  return (
+    /net::ERR_[A-Z0-9_]+/.exec(t)?.[0] ?? (/timeout/i.test(t) ? 'net::ERR_TIMED_OUT' : 'net::ERR_FAILED')
+  );
 }
 
 export function stepLabel(step: Step | undefined): string {
@@ -737,6 +752,44 @@ export async function wire(
   let navTerakhir: string | undefined;
   /** Galat jaringan navigasi halaman utama terakhir (`net::ERR_*`), dikosongkan setiap navigasi baru. */
   let navGagal: string | undefined;
+  /** Jumlah dokumen utama yang ter-commit (framenavigated): pengawas navigasi yang tidak pernah ter-commit. */
+  let commitKe = 0;
+  /** Halaman awal portal sudah dibuka (`bukaAwal`): warga tidak pernah mendapat about:blank. */
+  let awalDibuka = false;
+  const hostSesi = () => URL.parse(program.origin)?.host ?? '-';
+  /** Portal tidak terjangkau dari worker ini: sesi berakhir jujur dengan pesan + jalur panduan. */
+  const tidakTerjangkau = (net: string) => {
+    if (destroyed) return;
+    logSesi('nav_gagal', { sesi: init.sesiId, host: hostSesi(), net });
+    hooks.ended('gagal', 'gagal', pesanGagal('SITUS_TIDAK_TERJANGKAU', hostSesi(), net), {
+      kode: 'SITUS_TIDAK_TERJANGKAU',
+      net,
+    });
+  };
+  /**
+   * Navigasi CDP dengan batas: `Page.navigate` yang menggantung (koneksi ke situs tidak pernah dijawab) dihentikan
+   * sesudah NAV_BATAS_MS. Hasil: galat jaringan (`net::ERR_*`) atau undefined bila navigasi berjalan.
+   */
+  const navigasiCdp = async (url: string): Promise<string | undefined> => {
+    let batas: ReturnType<typeof setTimeout> | undefined;
+    const r = await Promise.race([
+      cdp.send('Page.navigate', { url }).catch(() => undefined) as Promise<
+        { errorText?: string } | undefined
+      >,
+      new Promise<'batas'>((res) => (batas = setTimeout(() => res('batas'), NAV_BATAS_MS))),
+    ]).finally(() => clearTimeout(batas));
+    if (r !== 'batas') return r?.errorText || undefined;
+    void cdp.send('Page.stopLoading').catch(() => undefined);
+    return 'net::ERR_TIMED_OUT';
+  };
+  /** Pengawas: navigasi ke `url` yang tidak ter-commit dalam NAV_BATAS_MS = situs tidak terjangkau. */
+  const awasiCommit = (url: string) => {
+    const awal = commitKe;
+    setTimeout(() => {
+      if (destroyed || commitKe !== awal || navTerakhir !== url || ditahan()) return;
+      tidakTerjangkau(navGagal && navGagal !== 'net::ERR_ABORTED' ? navGagal : 'net::ERR_TIMED_OUT');
+    }, NAV_BATAS_MS).unref?.();
+  };
   let kembaliKe: string | undefined;
   /** AI diam selama warga memegang kendali, tantangan situs aktif, atau warga perlu masuk akun. */
   const ditahan = () => manual || pantau.aktif || masukAktif;
@@ -836,9 +889,10 @@ export async function wire(
       navTerakhir = url;
       navGagal = undefined;
       loading = true;
-      const r = (await cdp.send('Page.navigate', { url }).catch(() => undefined)) as
-        { errorText?: string } | undefined;
-      if (r?.errorText) navGagal = r.errorText;
+      awasiCommit(url);
+      const net = await navigasiCdp(url);
+      if (net) navGagal = net;
+      if (net === 'net::ERR_TIMED_OUT') tidakTerjangkau(net);
     },
     async run(_tab, op) {
       // Saat warga memegang kendali, op yang mengubah halaman menunggu; pemeriksaan (check) tetap jalan.
@@ -1040,6 +1094,7 @@ export async function wire(
   });
   page.on('framenavigated', (f) => {
     if (f !== page.mainFrame()) return;
+    commitKe++;
     loading = true;
     void interp.onTabUpdated(1, { status: 'loading' });
   });
@@ -1399,10 +1454,9 @@ export async function wire(
           navTerakhir = url;
           navGagal = undefined;
           loading = true;
-          const r = (await cdp.send('Page.navigate', { url }).catch(() => undefined)) as
-            { errorText?: string } | undefined;
-          if (r?.errorText) {
-            navGagal = r.errorText;
+          const net = await navigasiCdp(url);
+          if (net) {
+            navGagal = net;
             loading = false;
           }
         },
@@ -1555,6 +1609,30 @@ export async function wire(
   }
 
   const g = generik;
+  /** Halaman awal sesi: jalur langkah `nav` pertama, atau akar portal. */
+  const urlAwal = () => {
+    const awal = steps[0];
+    return `${program.origin}${awal?.op === 'nav' ? awal.path : '/'}`;
+  };
+  /** Halaman awal gagal dibuka / tidak pernah ter-commit = situs tidak terjangkau (bukan kanvas putih). */
+  const periksaNavAwal = async (t0: number, c0: number) => {
+    // Peristiwa commit bisa tiba sesaat sesudah navigasi kembali: tunggu sampai batas yang sama.
+    const gagalNyata = () =>
+      (navGagal && navGagal !== 'net::ERR_ABORTED') || page.url().startsWith('chrome-error:');
+    while (!destroyed && commitKe === c0 && !gagalNyata() && Date.now() - t0 < NAV_BATAS_MS)
+      await new Promise((r) => setTimeout(r, 200));
+    if (destroyed) return;
+    const net =
+      navGagal && navGagal !== 'net::ERR_ABORTED'
+        ? navGagal
+        : page.url().startsWith('chrome-error:')
+          ? 'net::ERR_FAILED'
+          : commitKe === c0
+            ? 'net::ERR_TIMED_OUT'
+            : undefined;
+    if (net) return tidakTerjangkau(net);
+    logSesi('nav_awal', { sesi: init.sesiId, host: hostSesi(), ms: Date.now() - t0 });
+  };
   const api: ActiveRun = {
     ...(g
       ? {
@@ -1570,9 +1648,11 @@ export async function wire(
         // Generik: AI hanya membuka halaman awal; selanjutnya otak di web memanggil amati/aksi.
         if (generikDimulai) return;
         generikDimulai = true;
-        const awal = steps[0];
-        await g.mulai(`${program.origin}${awal?.op === 'nav' ? awal.path : '/'}`);
-        return;
+        awalDibuka = true;
+        const t0 = Date.now();
+        const c0 = commitKe;
+        await g.mulai(urlAwal());
+        return void (await periksaNavAwal(t0, c0));
       }
       if (init.manualUrl) {
         // Mode debug: tidak ada AI; penguji manusia memegang kendali sejak awal.
@@ -1584,6 +1664,22 @@ export async function wire(
       }
       const started = await interp.start({ executionId, origin: program.origin, steps });
       if ('ok' in started) hooks.ended('gagal', 'gagal', 'Langkah otomatis tidak bisa dimulai.');
+    },
+    async bukaAwal() {
+      // Adapter: halaman langkah pertama (mis. halaman masuk) tampil dulu, tanpa isian atau klik AI; izin isi
+      // baru diminta sesudahnya, saat AI akan mengisi. Generik membuka halamannya sendiri di `mulaiAi` (tanpa
+      // izin di muka; izin per halaman sesudah halaman tampil).
+      if (g || init.manualUrl || destroyed || awalDibuka) return;
+      awalDibuka = true;
+      const url = urlAwal();
+      const t0 = Date.now();
+      const c0 = commitKe;
+      navTerakhir = url;
+      navGagal = undefined;
+      await page
+        .goto(url, { waitUntil: 'commit', timeout: NAV_BATAS_MS })
+        .catch((e: unknown) => void (navGagal ??= netDariGalat(e)));
+      await periksaNavAwal(t0, c0);
     },
     async input(m) {
       // Jendela tulis warga dibuka SEBELUM input diteruskan (handler klik halaman berjalan saat dispatch).
@@ -1617,6 +1713,8 @@ export async function wire(
     },
     ambilAlih() {
       manual = true;
+      // Warga mengambil alih (atau menolak izin) sebelum portal terbuka: buka portalnya, jangan about:blank.
+      if (!awalDibuka && !destroyed) void api.bukaAwal?.();
     },
     async gantiProgram(p, id) {
       await interp.cancel().catch(() => {});
@@ -1649,6 +1747,8 @@ export async function wire(
       // Gerbang warga belum terpenuhi: tetap giliran warga; selain itu AI lanjut.
       if (status === 'waiting_gate') void interp.recheckGate();
       else if (status === 'waiting_citizen') void interp.citizenDone();
+      // Adapter yang belum pernah mulai (izin isi belum diberikan): bukan "AI melanjutkan"; sesi meminta izin lagi.
+      else if (status === undefined && !g) return;
       else if (status !== 'handoff') hooks.mode('ai', 'AI melanjutkan pengisian.');
     },
     async setViewer(send) {

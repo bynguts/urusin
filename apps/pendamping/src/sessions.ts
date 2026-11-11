@@ -41,6 +41,7 @@ import { placeholderRencana, type IzinGenerik, type KolomIzin } from './generik.
 import { isInputMessage } from './input.js';
 import { dariDataDiri } from './isian.js';
 import type { FrameMasuk } from './stream.js';
+import { hostDari, logSesi } from './log.js';
 
 /**
  * Manajer sesi Browser Pendamping: kepemilikan (urusan + hash cookie sesi), antrean FIFO dengan batas sesi
@@ -97,6 +98,11 @@ export type PortGenerik = {
 export type ActiveRun = {
   /** Mulai AI (dipanggil setelah semua data vault/berkas tersedia). */
   mulaiAi(): Promise<void>;
+  /**
+   * Tampilkan halaman awal portal TANPA aksi AI, agar warga melihat situsnya sebelum izin isi diminta. Langkah AI
+   * tetap mulai dari awal saat `mulaiAi`. Opsional: run tanpa halaman awal (generik membuka halamannya sendiri).
+   */
+  bukaAwal?(): Promise<void>;
   input(m: Extract<PendampingClientMessage, { type: 'pointer' | 'wheel' | 'key' | 'text' }>): Promise<void>;
   ambilAlih(): void;
   kembalikan(): void;
@@ -504,6 +510,13 @@ export class SessionManager {
     };
     this.sessions.set(s.id, s);
     this.queue.push(s.id);
+    logSesi('sesi_dibuat', {
+      sesi: s.id,
+      jalur: s.generik ? 'generik' : s.manualUrl ? 'manual' : 'adapter',
+      host: hostDari(s.program.origin),
+      aktif: this.active.size,
+      antre: this.queue.length,
+    });
     await this.pump();
     return this.view(s);
   }
@@ -858,6 +871,7 @@ export class SessionManager {
     s.aiDimulai = false;
     s.status = 'menunggu_data';
     s.butuh = { placeholder: [...new Set(p.kolom.map((k) => k.placeholder))], berkas: [...p.berkas] };
+    logSesi('izin_diminta', { sesi: s.id, kolom: p.kolom.length, berkas: p.berkas.length });
     this.broadcastStatus(s);
     s.viewer?.send({
       type: 'butuh_data',
@@ -880,6 +894,7 @@ export class SessionManager {
     s.butuh = { placeholder: [], berkas: [] };
     s.aiDimulai = true;
     s.status = 'berjalan';
+    logSesi('izin_ditolak', { sesi: s.id });
     this.catat(s, { jenis: 'persetujuan', rencanaHash: m.rencanaHash, n: 0 });
     this.broadcastStatus(s);
   }
@@ -986,6 +1001,7 @@ export class SessionManager {
   private handleControl(s: Sesi, aksi: 'ambil_alih' | 'kembalikan'): void {
     // Sesi debug tidak punya AI: kendali selalu di tangan penguji.
     if (!s.run || TERMINAL.has(s.status) || s.manualUrl || s.status === 'siaga') return;
+    logSesi('kendali', { sesi: s.id, aksi, status: s.status });
     this.catat(s, { jenis: 'ambil_alih', fase: aksi === 'ambil_alih' ? 'mulai' : 'selesai' });
     this.tolakIzin(s);
     if (aksi === 'ambil_alih') {
@@ -994,6 +1010,9 @@ export class SessionManager {
       this.emit(s, { jenis: 'giliran_anda', alasan: 'diminta_warga', pesan: 'Anda memegang kendali.' });
     } else {
       s.run.kembalikan();
+      // QA prod: "Saya isi sendiri" lalu "Lanjutkan" sebelum AI pernah mulai = layar "AI sedang mengisi" tanpa
+      // pengemudi. AI hanya mulai lewat izin isi: lembar izin diminta lagi (atau AI mulai bila datanya lengkap).
+      if (s.status === 'menunggu_data' && !s.aiDimulai) void this.maybeStartAi(s);
     }
   }
 
@@ -1093,6 +1112,11 @@ export class SessionManager {
     s.status = 'memulai';
     s.lastActivity = this.now();
     this.broadcastStatus(s);
+    logSesi('sesi_memulai', {
+      sesi: s.id,
+      host: hostDari(s.program.origin),
+      tungguMs: this.now() - s.dibuatPada,
+    });
     const hooks: Hooks = {
       mode: (mode, pesan) => this.setMode(s, mode, pesan),
       fokus: (jenis) => s.viewer?.send({ type: 'fokus', jenis }),
@@ -1125,10 +1149,16 @@ export class SessionManager {
       if (TERMINAL.has(s.status)) return void (await run.destroy()); // diakhiri saat memulai
       s.run = run;
       if (s.viewer) await run.setViewer((f) => s.viewer?.frame(f));
+      logSesi('peramban_siap', { sesi: s.id, ms: this.now() - s.dibuatPada, viewer: s.viewer !== undefined });
+      // Portal tampil dulu (warga melihatnya), baru izin isi diminta saat AI akan mengisi. Gagal/tidak terjangkau
+      // = sesi berakhir dengan pesan dan jalur panduan (lihat `bukaAwal`), bukan kanvas putih.
+      await run.bukaAwal?.();
+      if (TERMINAL.has(s.status)) return; // diakhiri selama halaman awal dimuat
       s.status = 'menunggu_data';
       this.broadcastStatus(s);
       await this.maybeStartAi(s);
-    } catch {
+    } catch (e) {
+      logSesi('galat', { sesi: s.id, tahap: 'activate', nama: e instanceof Error ? e.name : 'unknown' });
       await this.end(s, 'gagal', 'gagal', 'Peramban pendamping gagal dimulai. Coba lagi sebentar lagi.');
     }
   }
@@ -1137,9 +1167,11 @@ export class SessionManager {
     if (!s.run || s.aiDimulai || s.status !== 'menunggu_data') return;
     const k = this.kurang(s);
     if (k.placeholder.length > 0 || k.berkas.length > 0) {
+      logSesi('izin_diminta', { sesi: s.id, kolom: k.placeholder.length, berkas: k.berkas.length });
       s.viewer?.send({ type: 'butuh_data', ...k, origin: this.originIzin(s), ...this.kolomIzin(s) });
       return;
     }
+    logSesi('ai_mulai', { sesi: s.id });
     s.aiDimulai = true;
     s.status = 'berjalan';
     this.setMode(s, 'ai', 'AI sedang mengisi formulir.');
@@ -1181,6 +1213,15 @@ export class SessionManager {
     const viewer = s.viewer;
     const kode = galat && /^[A-Z][A-Z0-9_]{1,63}$/.test(galat.kode) ? galat.kode : undefined;
     const net = galat?.net && /^net::ERR_[A-Z0-9_]{1,64}$/.test(galat.net) ? galat.net : undefined;
+    logSesi('sesi_akhir', {
+      sesi: s.id,
+      status,
+      hasil,
+      kode,
+      net,
+      host: hostDari(s.program.origin),
+      durasiMs: this.now() - s.dibuatPada,
+    });
     const bukti = hasil === 'berhasil' ? s.bukti : undefined;
     viewer?.send({
       type: 'event',

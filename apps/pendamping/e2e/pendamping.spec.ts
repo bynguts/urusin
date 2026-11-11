@@ -490,6 +490,68 @@ test('pengawas memori: sesi di atas anggaran dihentikan, warga diarahkan ke pand
   await manager.shutdown();
 });
 
+/** Jumlah piksel gelap (teks/kendali) di frame JPEG: halaman about:blank = 0. */
+async function pikselGelap(page: Page, jpeg: Uint8Array): Promise<number> {
+  await page.setContent('<canvas id="c"></canvas>');
+  return page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/jpeg;base64,${b64}`;
+    await img.decode();
+    const c = document.getElementById('c') as HTMLCanvasElement;
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i]! + d[i + 1]! + d[i + 2]! < 300) n++;
+    return n;
+  }, Buffer.from(jpeg).toString('base64'));
+}
+
+test('portal tampil SEBELUM izin isi; menolak izin = warga memegang portal yang sudah terbuka', async ({
+  page,
+}) => {
+  const config = loadConfig({
+    PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN,
+    PENDAMPING_ORIGIN_OVERRIDES: `https://telunjuksakti.wonogirikab.go.id=${FIXTURE_ORIGIN}`,
+    PENDAMPING_HEADLESS: '1',
+  });
+  const manager = new SessionManager(config, createBrowserFactory(config));
+  const o = { urusanId: 'u-portal-dulu', sidHash: SID };
+  try {
+    const s = await manager.create({
+      ...o,
+      executionId: 'x_portal_dulu',
+      adapterId: 'telunjuk-sakti-wonogiri',
+      flowId: 'ajukan',
+      origin: 'https://telunjuksakti.wonogirikab.go.id',
+      params: { layanan_id: 11 },
+      modeUji: true,
+    });
+    await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('menunggu_data');
+    const pesan: { type: string }[] = [];
+    const frame: Uint8Array[] = [];
+    const viewer = {
+      send: (m: { type: string }) => void pesan.push(m),
+      frame: (f: { jpeg: Uint8Array }) => void frame.push(f.jpeg),
+      ack: () => {},
+      close: () => {},
+    };
+    await manager.attach(s.sesiId, viewer as never);
+    // Izin diminta, dan yang tampil di layar warga sudah halaman portal (bukan about:blank putih).
+    expect(pesan.map((m) => m.type)).toContain('butuh_data');
+    await expect.poll(() => frame.length, { timeout: 15_000 }).toBeGreaterThan(0);
+    expect(await pikselGelap(page, frame.at(-1)!)).toBeGreaterThan(50);
+    // "Saya isi sendiri": kendali ke warga, sesi tetap hidup di portal yang sama.
+    await manager.handleClient(s.sesiId, { type: 'ambil_alih' });
+    expect(manager.status(o)).toMatchObject({ mode: 'takeover' });
+    expect(['menunggu_data', 'berjalan']).toContain(manager.status(o).status);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
 test('langkah 0 tak bisa membuka situs (CONNECT ditolak) -> gagal dengan alasan jaringan yang jelas', async () => {
   // Replika https di port tertutup: proxy egress menjawab CONNECT dengan 502, Chromium menampilkan halaman
   // galat (net::ERR_TUNNEL_CONNECTION_FAILED), persis pola produksi bila edge tidak bisa tersambung.
@@ -514,8 +576,8 @@ test('langkah 0 tak bisa membuka situs (CONNECT ditolak) -> gagal dengan alasan 
     params: { layanan_id: 1 },
     modeUji: true,
   });
-  await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('menunggu_data');
-  await manager.isiData(o, {}); // Data Diri kosong: AI tetap mulai (kolom diisi warga nanti)
+  // Halaman awal dibuka SEBELUM izin isi: situs tidak terjangkau = sesi berakhir jujur, tanpa lembar izin dan
+  // tanpa kanvas putih.
   await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('gagal');
   const pesan = manager.status(o).pesan ?? '';
   expect(pesan).toContain(`Halaman 127.0.0.1:${port} tidak bisa dibuka`);

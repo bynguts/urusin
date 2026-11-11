@@ -520,6 +520,20 @@ export async function mulaiSesi(
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const akses = aksesSesi(body.origin, body.modeUji);
   const daftar = await kandidatWorker(cfg, akses, body.urusanId, fetcher, body.adapterId === ADAPTER_GENERIK);
+  // Jejak rute sesi untuk operator: host portal, syarat jaringan, worker, id sesi worker. Tanpa id urusan/PII.
+  const log = (ev: string, isi: Record<string, string | number | boolean | undefined>) =>
+    console.log(
+      JSON.stringify({
+        t: new Date().toISOString(),
+        src: 'web-pendamping',
+        ev,
+        host: URL.parse(body.origin)?.host ?? '-',
+        akses: akses ?? 'bebas',
+        modeUji: body.modeUji === true,
+        ...isi,
+      }),
+    );
+  log('rute_kandidat', { kandidat: daftar.map((w) => `${w.id}:${w.region}`).join(',') || '-' });
   if (daftar.length === 0)
     return butuhWilayahSesi(body.origin, body.modeUji)
       ? {
@@ -543,9 +557,11 @@ export async function mulaiSesi(
         fetcher,
       );
       if (r.ok) {
+        log('rute_worker', { worker: w.id, region: w.region, hasil: 'ok', sesi: r.data.sesiId });
         ingatLokasi(body.urusanId, w.id);
         return r;
       }
+      log('rute_worker', { worker: w.id, region: w.region, hasil: r.putus ? 'putus' : (r.kode ?? 'galat') });
       if (r.putus) yatim.push(w);
       if (akses === 'id-only' && (r.galatWorker || r.kode === 'ADAPTER_TIDAK_ADA'))
         return {
