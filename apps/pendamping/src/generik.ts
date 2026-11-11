@@ -68,6 +68,8 @@ export type TanganHalaman = {
    * itu memunculkannya; true = lebar berubah (amati ulang).
    */
   lebarkan?(): Promise<boolean>;
+  /** Konten fade-in (blok besar berisi tautan/kolom) masih transparan (probe gel5 6171). */
+  belumTampil?(): Promise<boolean>;
 };
 
 /** Tujuan tautan pembuka untuk giliran `ketuk_tautan` (event `giliran_anda.tautan`; `ref` kembali lewat `buka_tautan`). */
@@ -100,6 +102,7 @@ export function tanganRunner(deps: {
   tenang(): Promise<void>;
   urlKini(): string;
   lebarkan?(): Promise<boolean>;
+  belumTampil?(): Promise<boolean>;
 }): TanganHalaman {
   return {
     async amati(seq, diisi) {
@@ -128,6 +131,7 @@ export function tanganRunner(deps: {
     tenang: deps.tenang,
     urlKini: deps.urlKini,
     ...(deps.lebarkan ? { lebarkan: deps.lebarkan } : {}),
+    ...(deps.belumTampil ? { belumTampil: deps.belumTampil } : {}),
   };
 }
 
@@ -565,6 +569,12 @@ export class GenerikRun {
     if (r && (r.pengamatan as { elemen?: unknown[] }).elemen?.length === 0) {
       await this.d.tangan.tenang();
       r = await this.d.tangan.amati(seq, Object.fromEntries(this.diisi));
+    }
+    // Masih banyak konten transparan sesudah batas tunggu fade-in (probe gel5 6171): tunggu sekali lagi lalu amati
+    // ulang. Pantau baca-saja tidak menunggu.
+    if (r && !pantau && (await this.d.tangan.belumTampil?.())) {
+      await this.d.tangan.tenang();
+      r = (await this.d.tangan.amati(seq, Object.fromEntries(this.diisi))) ?? r;
     }
     if (!r) return null;
     const vault = [...this.d.izin.vault()];

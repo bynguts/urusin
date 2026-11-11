@@ -1048,6 +1048,25 @@ export async function wire(
     loading = true;
     void interp.onTabUpdated(1, { status: 'loading' });
   });
+  // Permintaan yang sedang berjalan (bingkai mana pun): batas tunggu konten fade-in dihitung dari jaringan idle,
+  // bukan dari event load saja (probe gel5 6171: terowongan lambat). Long-poll (> 10 dtk) tidak dihitung.
+  const jalanJaringan = new Map<object, number>();
+  let aktivitasJaringan = Date.now();
+  page.on('request', (r) => {
+    jalanJaringan.set(r, Date.now());
+    aktivitasJaringan = Date.now();
+  });
+  const reqSelesai = (r: object) => {
+    jalanJaringan.delete(r);
+    aktivitasJaringan = Date.now();
+  };
+  page.on('requestfinished', reqSelesai);
+  page.on('requestfailed', reqSelesai);
+  const jaringanIdle = () => {
+    const t = Date.now();
+    for (const [r, mulai] of jalanJaringan) if (t - mulai > 10_000) jalanJaringan.delete(r);
+    return jalanJaringan.size === 0 && t - aktivitasJaringan >= 500;
+  };
   page.on('load', () => {
     loading = false;
     // Periksa tantangan dan status masuk dulu agar interpreter tidak melangkah di halaman tantangan/login.
@@ -1357,6 +1376,8 @@ export async function wire(
     const hitungMasuk = async () =>
       (await nilaiTerisolasi(KENDALI_MASUK_EXPR).catch(() => undefined)) as
         { terlihat: number; tersembunyi: number } | undefined;
+    const belumTampil = async () =>
+      (await nilaiTerisolasi(KONTEN_BELUM_TAMPIL_EXPR).catch(() => false)) === true;
     const tenang = async () => {
       // Jeda singkat agar handler klik sempat memicu permintaan; bila navigasi dimulai, tunggu muat (<= 10 detik).
       await new Promise((r) => setTimeout(r, 400));
@@ -1376,11 +1397,16 @@ export async function wire(
         await new Promise((r) => setTimeout(r, 250));
       }
       // Konten fade-in (probe gel4 6171): tunggu transisi/animasi berhingga selesai dan konten besar yang memuat
-      // kendali tidak lagi transparan, paling lama 3 detik.
-      const batasPudar = Date.now() + 3_000;
-      while (!destroyed && Date.now() < batasPudar) {
-        const belum = await nilaiTerisolasi(KONTEN_BELUM_TAMPIL_EXPR).catch(() => false);
-        if (belum !== true) return;
+      // kendali tidak lagi transparan. Batas 3 detik dihitung sejak jaringan idle (gel5: konten dibuka sesudah
+      // data XHR/terowongan lambat, bukan sesudah load), paling lambat sejak 8 detik menunggu idle.
+      const mulaiPudar = Date.now();
+      let idleSejak: number | undefined;
+      while (!destroyed) {
+        if (!(await belumTampil())) return;
+        const t = Date.now();
+        if (idleSejak === undefined && jaringanIdle()) idleSejak = t;
+        const pangkal = idleSejak ?? (t - mulaiPudar >= 8_000 ? mulaiPudar + 8_000 : undefined);
+        if (pangkal !== undefined && t >= pangkal + 3_000) return;
         await new Promise((r) => setTimeout(r, 100));
       }
     };
@@ -1412,6 +1438,7 @@ export async function wire(
           }
         },
         tenang,
+        belumTampil,
         urlKini: () => page.url(),
         async lebarkan() {
           if (lebarAsli || destroyed || ditahan()) return false;

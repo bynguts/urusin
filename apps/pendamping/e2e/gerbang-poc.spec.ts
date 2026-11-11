@@ -82,6 +82,14 @@ const HALAMAN: Record<string, string> = {
   document.getElementById('page-content').classList.add('tampil');
   document.querySelector('.preloader').remove();
 }, 1500));</script>`),
+  // Probe gel5 6171: load cepat, konten baru dibuka sesudah data XHR lambat (5 dtk, terowongan lambat). Tautan
+  // kepala selalu tampil, jadi pengamatan tidak kosong (bukan jalur "0 elemen").
+  '/pudar-data':
+    kerangka(`<style>#isi{opacity:0;transition:opacity .3s}#isi.tampil{opacity:1}#isi a{display:block;padding:80px 16px}</style>
+<header><a href="/bantuan">Beranda</a></header>
+<div id="isi"><h1>Pilih layanan</h1><a href="/antrian">Kartu Keluarga Data</a><a href="/cek">Akta Kelahiran Data</a>
+<a href="/pindah">Pindah Datang Data</a></div>
+<script>fetch('/data-lambat', { cache: 'no-store' }).then(() => document.getElementById('isi').classList.add('tampil'));</script>`),
   // Varian: body sendiri opacity 0 (opacity tidak diwariskan ke gaya anak), tampil 1,5 detik setelah load.
   '/pudar-body': `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Uji</title>
 <style>body{opacity:0;transition:opacity .5s}body.tampil{opacity:1}a{display:block;padding:30px 16px}</style></head>
@@ -313,6 +321,13 @@ async function situsUji() {
     if (req.method !== 'GET' || !(jalur in HALAMAN)) hitung.set(jalur, (hitung.get(jalur) ?? 0) + 1);
     req.resume();
     req.on('end', () => {
+      if (jalur === '/data-lambat') {
+        setTimeout(() => {
+          res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+          res.end('{}');
+        }, 5_000);
+        return;
+      }
       if (jalur === '/ts-pemicu') {
         res.writeHead(200, { 'content-type': 'text/plain', 'cache-control': 'no-store' });
         return void res.end(pemicuTs ? 'ya' : 'belum');
@@ -1449,6 +1464,16 @@ test('probe gel5 3402: MASUK khusus layar lebar di halaman berformulir (bukan po
     expect(p.judul).toBe('lebar 992');
     expect(semua(p, 'MASUK').length).toBeGreaterThan(0);
     expect(manager.status(o).pesan).toBe(PESAN_LAYAR_LEBAR);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel5 6171: konten dibuka sesudah data XHR lambat -> batas tunggu dari jaringan idle, tautan teramati', async () => {
+  const { manager, p } = await sesi(situs, '/pudar-data', 'pudar-data');
+  try {
+    for (const nama of ['Kartu Keluarga Data', 'Akta Kelahiran Data', 'Pindah Datang Data'])
+      expect(satu(p, nama).kelas, nama).toBe('navigasi');
   } finally {
     await manager.shutdown();
   }

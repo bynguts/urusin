@@ -71,6 +71,7 @@ type Opsi = {
   tautan?: Record<string, string>;
   /** Tangan `lebarkan` (probe gel4 3279); undefined = tangan tanpa kemampuan itu. */
   lebarkan?: () => Promise<boolean>;
+  belumTampil?: () => Promise<boolean>;
 };
 
 function harness(o: Opsi = {}) {
@@ -113,6 +114,7 @@ function harness(o: Opsi = {}) {
     tenang: async () => {},
     urlKini: () => urlKini,
     ...(o.lebarkan ? { lebarkan: o.lebarkan } : {}),
+    ...(o.belumTampil ? { belumTampil: o.belumTampil } : {}),
   };
   const izin: IzinGenerik = {
     disetujui: (h, sidik, ph) => setuju.get(h)?.has(`${sidik}|${ph}`) ?? false,
@@ -1087,5 +1089,40 @@ describe('redaksi', () => {
     expect(tidakLazim(PH_NIK, 'Nomor Induk Kependudukan')).toBe(false);
     expect(tidakLazim(PH_NIK, 'Catatan tambahan')).toBe(true);
     expect(tidakLazim(PH_NAMA, 'Catatan tambahan')).toBe(false);
+  });
+});
+
+describe('GenerikRun: konten fade-in masih transparan (probe gel5 6171)', () => {
+  it('sesudah batas tunggu masih transparan: tunggu sekali lagi lalu amati ulang (sekali saja)', async () => {
+    let tampil = false;
+    let ditanya = 0;
+    const h = harness({
+      amati: () =>
+        pengamatan({
+          elemen: tampil
+            ? pengamatan().elemen
+            : [{ ref: 'e4', peran: 'tautan', nama: 'Daftar Layanan', kelas: 'navigasi' }],
+        }),
+      belumTampil: async () => {
+        ditanya++;
+        tampil = true;
+        return true;
+      },
+    });
+    const p = await h.run.amati();
+    expect(ditanya).toBe(1);
+    expect(p?.elemen).toHaveLength(5);
+    expect(h.diisiDikirim).toHaveLength(2);
+  });
+
+  it('pantau baca-saja dan konten yang sudah tampil: tanpa amati ulang', async () => {
+    let ditanya = 0;
+    const belumTampil = async () => (ditanya++, false);
+    const h = harness({ belumTampil });
+    await h.run.amati(true);
+    expect(ditanya).toBe(0);
+    await h.run.amati();
+    expect(ditanya).toBe(1);
+    expect(h.diisiDikirim).toHaveLength(2);
   });
 });
