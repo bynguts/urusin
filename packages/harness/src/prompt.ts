@@ -152,6 +152,8 @@ export function buildStateNote(input: {
   pesanWarga?: string;
   /** Urusan punya pemilik vault: tool ingatan__ingat ditawarkan (ADR 0031). */
   ingatanAktif?: boolean;
+  /** Butir ingatan yang baru dicatat otomatis di giliran ini (label). */
+  ingatanBaru?: readonly string[];
 }): string {
   const lines = [
     `STATE URUSAN: ${input.state}`,
@@ -172,6 +174,10 @@ export function buildStateNote(input: {
     lines.push(
       'INGATAN WARGA: wilayah yang ditetapkan dan preferensi yang warga nyatakan jelas (lansia, bahasa sederhana, aksesibilitas, online/datang) dicatat otomatis oleh sistem. Panggil ingatan__ingat bila warga MEMINTA sesuatu diingat ("tolong ingat …", "catat ya …") atau menyatakan preferensi dengan kata lain yang belum tercatat. Jangan pernah menyimpan data pribadi.',
     );
+    if (input.ingatanBaru?.length)
+      lines.push(
+        `SUDAH DICATAT OTOMATIS di giliran ini (warga sudah melihat kartunya): ${input.ingatanBaru.join('; ')}. Jangan panggil ingatan__ingat untuk hal yang sama.`,
+      );
     if (input.pesanWarga && mintaDiingat(input.pesanWarga))
       lines.push(
         'WARGA MEMINTA SESUATU DIINGAT: sebelum membalas, panggil ingatan__ingat {"aksi":"simpan","jenis":"catatan","nilai":"<inti permintaan warga dengan kata-katanya sendiri, paling banyak 200 karakter>"}, lalu sebut singkat bahwa Urusin akan mengingatnya. Bila isinya data pribadi (NIK, nomor HP, alamat lengkap, nama ibu kandung), JANGAN disimpan: arahkan ke Data Diri.',

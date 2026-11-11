@@ -222,6 +222,8 @@ class TurnRunner {
   /** Ingatan pemilik urusan, dimuat sekali per turn (blok prompt stabil selama turn). */
   private readonly ingatan: IngatanTurn | null;
   private readonly blokIngatan: string | null;
+  /** Label butir yang dicatat otomatis di giliran ini (petunjuk agar model tidak mencatat ulang). */
+  private readonly ingatanBaru: string[] = [];
 
   constructor(
     private readonly deps: AgentDeps,
@@ -337,6 +339,7 @@ class TurnRunner {
       confirmations: this.store.activeConfirmations(this.turn.urusanId),
       pesanWarga: this.turn.pii.redact(this.turn.userText).text,
       ingatanAktif: this.ingatan !== null,
+      ingatanBaru: this.ingatanBaru,
     });
   }
 
@@ -746,7 +749,10 @@ class TurnRunner {
     if (!this.ingatan) return;
     try {
       const teks = this.turn.pii.redact(this.turn.userText).text;
-      for (const e of ingatPreferensi(this.ingatan, teks, this.now().toISOString())) this.emit(e);
+      for (const e of ingatPreferensi(this.ingatan, teks, this.now().toISOString())) {
+        this.emit(e);
+        if (e.type === 'ingatan') this.ingatanBaru.push(e.butir.label);
+      }
     } catch {
       // vault tidak tersedia: turn tetap berjalan tanpa ingatan baru.
     }

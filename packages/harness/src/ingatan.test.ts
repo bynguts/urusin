@@ -435,6 +435,12 @@ describe('agen: ingatan dipakai dan dicatat', () => {
     // kartu muncul sebelum balasan model; model tidak memanggil tool apa pun
     const urutan = o1.events.map((e) => e.type);
     expect(urutan.indexOf('ingatan')).toBeLessThan(urutan.indexOf('assistant_text'));
+    // model diberi tahu apa yang sudah tercatat agar tidak memanggil ingatan__ingat untuk hal yang sama
+    const c1 = provider.calls[0]!;
+    if (c1.kind !== 'create') throw new Error('bukan create');
+    expect(JSON.stringify(c1.params.messages)).toContain(
+      'SUDAH DICATAT OTOMATIS di giliran ini (warga sudah melihat kartunya): Warga lansia; Kebutuhan aksesibilitas: pakai kursi roda',
+    );
 
     const u2 = env.store.createUrusan({ jenis: 'kk' });
     provider.enqueue(fakeCompletion({ content: 'Baik.' }));
