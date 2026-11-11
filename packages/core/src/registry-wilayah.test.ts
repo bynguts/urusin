@@ -144,18 +144,86 @@ describe('lint registry wilayah (ADR 0030)', () => {
     }
     expect(PORTAL_WILAYAH['1271']!.proteksi).toContain('turnstile');
     expect(PORTAL_WILAYAH['3201']!.login).toEqual(['google']);
-    // Mati/berubah: bukan jalur web lagi, tanpa host portal, catatan OBS bertanggal + alasan.
-    for (const kode of ['1117', '1171', '1173', '1114', '3314', '1116', '3525', '1102', '1471']) {
+    // Mati (recon ulang 2026-11-12): bukan jalur web, tanpa host portal, catatan OBS bertanggal + bukti.
+    for (const kode of ['1117', '1173', '3525']) {
       const w = PORTAL_WILAYAH[kode]!;
       expect(w.jenis, kode).toBe('tidak_diketahui');
       expect(w.hosts, kode).toEqual([]);
       expect(w.url, kode).toBeUndefined();
       expect(w.platform, kode).toBeUndefined();
-      expect(w.catatan, kode).toMatch(/^OBS 2026-11-10: portal daring tidak bisa dipakai \(.+\)/);
+      expect(w.catatan, kode).toMatch(/^OBS 2026-11-12: portal daring tidak bisa dipakai \(.+\)/);
+      // Tetap dipandu ke situs Disdukcapil yang benar bila ada.
+      if (kode !== '3525') expect(w.hostInfo.length, kode).toBeGreaterThan(0);
     }
     expect(getOfficialDomain('cecah.benermeriahkab.go.id')).toBeUndefined();
-    // 1102: host tetap tercatat sebagai situs informasi Disdukcapil, bukan portal layanan.
+    expect(getOfficialDomain('simpedu.lhokseumawekota.go.id')).toBeUndefined();
+    expect(getOfficialDomain('poedak.gresikkab.go.id')).toBeUndefined();
+    // 1102: host lama tetap tercatat sebagai situs informasi Disdukcapil, bukan portal layanan.
     expect(PORTAL_WILAYAH['1102']!.hostInfo).toContain('disdukcapil.acehtenggarakab.go.id');
+    expect(PORTAL_WILAYAH['1102']!.hosts).not.toContain('disdukcapil.acehtenggarakab.go.id');
+  });
+
+  it('recon ulang kelas F 2026-11-12: portal pengganti ditawarkan ke Browser Pendamping', () => {
+    // kode -> [kelas, host url, login yang wajib ada]
+    const pengganti: Record<string, [string, string, string]> = {
+      '1102': ['A', 'simpel.acehtenggarakab.go.id', 'email_sandi'],
+      '1116': ['B', 'disdukcapil.acehtamiangkab.go.id', 'tanpa_akun'],
+      '1171': ['A', 'sihati.bandaacehkota.go.id', 'email_sandi'],
+      '1471': ['B', 'appdukcapil.pekanbaru.go.id', 'tanpa_akun'],
+      '3314': ['A', 'pandu-online.sragenkab.go.id', 'nik_sandi'],
+    };
+    for (const [kode, [kelas, host, login]] of Object.entries(pengganti)) {
+      const w = PORTAL_WILAYAH[kode]!;
+      expect(w.kelas, kode).toBe(kelas);
+      expect(w.jenis, kode).toBe('web');
+      const u = new URL(w.url!);
+      // Syarat "ditawarkan" (routing Pendamping): https, host url = host portal, bukan Google-saja.
+      expect(u.protocol, kode).toBe('https:');
+      expect(u.hostname, kode).toBe(host);
+      expect(w.hosts, kode).toContain(u.hostname);
+      expect(w.login, kode).toContain(login);
+      expect(
+        w.login.every((l) => l === 'google'),
+        kode,
+      ).toBe(false);
+      expect(w.platform, kode).toBeUndefined();
+      expect(w.catatan, kode).toMatch(/^OBS 2026-11-12: /);
+      expect(isOfficialUrl(w.url!), kode).toBe(true);
+      expect(getOfficialDomain(u.hostname)?.wilayah, kode).toBe(kode);
+      expect(hostsWilayah(kode), kode).toContain(u.hostname);
+    }
+    // Host lama yang mati/TLS rusak tidak pernah menjadi host sesi.
+    for (const h of [
+      'primadona.bandaacehkota.go.id',
+      'silatersipu.acehtamiangkab.go.id',
+      'sianton.dukcapil.sragenkab.go.id',
+      'sipayo.acehjayakab.go.id',
+    ])
+      expect(getOfficialDomain(h), h).toBeUndefined();
+    // 1114: TLS sipayo rusak; kanal resmi WhatsApp/Facebook dari situs Disdukcapil = dipandu (kelas D).
+    expect(PORTAL_WILAYAH['1114']).toMatchObject({ kelas: 'D', jenis: 'whatsapp', hosts: [] });
+    expect(PORTAL_WILAYAH['1114']!.hostInfo).toContain('dukcapil.acehjayakab.go.id');
+    // 1471: sipenduduk hanya info/lacak (ikut sesi wilayah, bukan host portal); formulir pada jam layanan.
+    expect(PORTAL_WILAYAH['1471']!.hostInfo).toContain('sipenduduk.pekanbaru.go.id');
+    expect(PORTAL_WILAYAH['1471']!.jamLayanan).toMatch(/09\.00-13\.59/);
+    expect(hostsWilayah('1471')).toContain('sipenduduk.pekanbaru.go.id');
+  });
+
+  it('probe 2026-11-12: 1101 id-only (JSD macet dari SG), 1771 jam layanan, 3315 masuk langsung /login', () => {
+    const acehSelatan = PORTAL_WILAYAH['1101']!;
+    expect(acehSelatan.aksesWilayah).toBe('id-only');
+    expect(acehSelatan.platform).toBe('sidak-aceh');
+    expect(acehSelatan.proteksi).toEqual(expect.arrayContaining(['cloudflare', 'turnstile']));
+    expect(getOfficialDomain('simpeladminduk.acehselatankab.go.id')?.aksesWilayah).toBe('id-only');
+    // Host platform bersama tidak ikut id-only (tenant SIDAK lain tetap dari worker mana pun).
+    expect(getOfficialDomain('sidak.acehprov.go.id')?.aksesWilayah).toBeUndefined();
+    const bengkulu = PORTAL_WILAYAH['1771']!;
+    expect(bengkulu.url).toBe('https://slawe.bengkulukota.go.id/');
+    expect(bengkulu.jamLayanan).toBe('Senin-Jumat 08.00-16.00 WIB');
+    const grobogan = PORTAL_WILAYAH['3315']!;
+    expect(grobogan.url).toBe('https://klikdukcapil.grobogan.go.id/login');
+    expect(grobogan.login).toEqual(['nik_sandi']);
+    expect(grobogan.proteksi).toContain('turnstile');
   });
 
   it('probe 2026-11-11: login PAK ONOM (3279) di host pemkot lain, ikut portal dan id-only', () => {

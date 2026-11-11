@@ -348,6 +348,8 @@ describe('tautan pembuka formulir: warga mengetuk, AI melanjutkan', () => {
       jalur: '/generik/tanpa-akun/',
       elemen: [
         { ref: 'e1', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', tautanPembuka: true },
+        // Dua CTA berbeda = ambigu: model yang memilih (tanpa jalan pintas CTA).
+        { ref: 'e2', peran: 'tautan', nama: 'Ajukan Akta Kematian', kelas: 'kirim', tautanPembuka: true },
       ],
     });
     const worker = new WorkerPalsu([beranda, halamanForm(), halamanTinjau()]);
@@ -363,6 +365,51 @@ describe('tautan pembuka formulir: warga mengetuk, AI melanjutkan', () => {
     expect(worker.semuaAksi).toContainEqual({ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e1' });
     expect(jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'ketuk_tautan' });
     // Formulir di balik tautan tetap diisi AI sesudah warga mengembalikan kendali.
+    expect(worker.semuaAksi.some((a) => a.jenis === 'isi')).toBe(true);
+  });
+
+  it('probe 9171 PaceMace: CTA "Mulai Pendaftaran" didahulukan di atas "Persyaratan & Formulir" tanpa LLM', async () => {
+    // Amatan beranda nyata (probe gel5-prod): model yang condong ke tautan informasi tidak ditanya sama sekali.
+    const beranda = halaman({
+      sidik: 'pacemace',
+      host: HOST_UJI,
+      jalur: '/pacemace/',
+      judul: 'PaceMace - Kota Jayapura',
+      teks: 'PaceMace Pelayanan Cepat Masyarakat Cerdas Persyaratan & Formulir Mulai Pendaftaran Cek Status KTP-el',
+      elemen: [
+        { ref: 'e1', peran: 'tautan', nama: 'PaceMace', kelas: 'navigasi' },
+        { ref: 'e2', peran: 'tombol', nama: 'Toggle navigation', kelas: 'ui_lokal' },
+        { ref: 'e6', peran: 'tautan', nama: 'Persyaratan & Formulir', kelas: 'navigasi' },
+        { ref: 'e8', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', tautanPembuka: true },
+        { ref: 'e10', peran: 'tautan', nama: 'Cek Status KTP-el', kelas: 'navigasi' },
+      ],
+    });
+    const worker = new WorkerPalsu([beranda, halamanForm(), halamanTinjau()]);
+    worker.setujuiSemua = true;
+    worker.saatSerahkan = (alasan) =>
+      alasan === 'ketuk_tautan' ? { aksi: 'kembalikan', ke: 1 } : { aksi: 'selesai' };
+    const promptBeranda: string[] = [];
+    const provider = new ProviderSkrip((n, params) => {
+      const isi = JSON.stringify(params.messages);
+      if (isi.includes('PaceMace')) {
+        promptBeranda.push(isi);
+        return { aksi: [{ jenis: 'klik', ref: 'e6' }] };
+      }
+      return n === 0 ? RENCANA_FORM : SERAHKAN_FINAL;
+    });
+    const { hasil, jejak } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
+    expect(promptBeranda).toEqual([]);
+    expect(worker.semuaAksi.filter((a) => a.jenis === 'klik').map((a) => a.ref)).not.toContain('e6');
+    expect(worker.semuaAksi).toContainEqual({ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e8' });
+    expect(jejak).toContainEqual(
+      expect.objectContaining({
+        jenis: 'rencana',
+        model: 'aturan:cta_pengajuan',
+        tokenMasuk: 0,
+        tokenKeluar: 0,
+      }),
+    );
     expect(worker.semuaAksi.some((a) => a.jenis === 'isi')).toBe(true);
   });
 });

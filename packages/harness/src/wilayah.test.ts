@@ -111,6 +111,8 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
   ])(
     '%s %s: kanal resmi sendiri, tanpa adapter Wonogiri; Pendamping hanya generik ke portal sendiri',
     async (kode, nama, url) => {
+      // Worker berjaringan Indonesia sehat: portal id-only (1101 sejak probe 2026-11-12) tetap ditawarkan.
+      aturJaringanId(() => true);
       const { env, u } = setup([balas('Rencana sudah saya siapkan.')], {
         jenis: 'kelahiran',
         kodeKabKota: kode,

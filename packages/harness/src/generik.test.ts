@@ -92,7 +92,7 @@ describe('registry wilayah untuk Navigator', () => {
   });
 
   it('probe portal nyata: portal id-only baru dipandu tanpa worker ID; portal mati/berubah selalu dipandu', () => {
-    for (const kode of ['1271', '1372', '1403', '1771', '3275', '3279', '3402', '3674', '6271']) {
+    for (const kode of ['1101', '1271', '1372', '1403', '1771', '3275', '3279', '3402', '3674', '6271']) {
       aturJaringanId(() => false);
       expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }), kode).toMatchObject({
         jalur: 'dipandu',
@@ -101,10 +101,18 @@ describe('registry wilayah untuk Navigator', () => {
       aturJaringanId(() => true);
       expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }).jalur, kode).toBe('generik');
     }
-    for (const kode of ['1117', '1171', '1173', '1114', '3314', '1116', '3525', '1102', '1471']) {
+    // Recon ulang 2026-11-12: tetap mati (NXDOMAIN, TLS rusak, blokir Cloudflare) = selalu dipandu.
+    for (const kode of ['1117', '1173', '1114', '3525']) {
       expect(portalWebWilayah(kode), kode).toBeUndefined();
       expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }).jalur, kode).toBe('dipandu');
       expect(hostsPortalWilayah(kode), kode).toEqual([]);
+    }
+    // Portal pengganti hidup (recon 2026-11-12): Pendamping generik ditawarkan tanpa syarat jaringan ID.
+    aturJaringanId(() => false);
+    for (const kode of ['1102', '1116', '1171', '1471', '3314']) {
+      expect(portalWebWilayah(kode), kode).toBeDefined();
+      expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }).jalur, kode).toBe('generik');
+      expect(hostsPortalWilayah(kode), kode).toEqual(PORTAL_WILAYAH[kode]!.hosts);
     }
   });
 

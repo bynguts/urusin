@@ -9,6 +9,7 @@ import {
   RencanaKetatSchema,
   hashRencana,
   kelaziman,
+  pembukaPengajuan,
   validasiRencana,
   type IdAturan,
 } from './validasi.js';
@@ -297,6 +298,74 @@ describe('tautan pembuka (kirim karena nama saja): serah ketuk_tautan, bukan kli
     expect(validasiRencana(rencana({ jenis: 'serahkan', alasan: 'final', ref: 'e5' }), p).ok).toBe(true);
     expect(validasiRencana(rencana({ jenis: 'serahkan', alasan: 'masuk_akun', ref: 'e6' }), p).ok).toBe(true);
     expect(validasiRencana(rencana({ jenis: 'serahkan', alasan: 'tidak_yakin' }), p).ok).toBe(true);
+  });
+});
+
+describe('pembukaPengajuan: CTA mulai/daftar layanan didahulukan di atas tautan informasi', () => {
+  // Cermin amatan probe 9171 (PaceMace Kota Jayapura, gel5-prod): beranda tanpa formulir.
+  const paceMace = (over: Partial<Pengamatan> = {}): Pengamatan => ({
+    ...halamanForm(),
+    jalur: '/pacemace/',
+    judul: 'PaceMace - Kota Jayapura',
+    elemen: [
+      { ref: 'e1', peran: 'tautan', nama: 'PaceMace', kelas: 'navigasi' },
+      { ref: 'e2', peran: 'tombol', nama: 'Toggle navigation', kelas: 'ui_lokal' },
+      { ref: 'e6', peran: 'tautan', nama: 'Persyaratan & Formulir', kelas: 'navigasi' },
+      { ref: 'e8', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', tautanPembuka: true },
+      { ref: 'e10', peran: 'tautan', nama: 'Cek Status KTP-el', kelas: 'navigasi' },
+      { ref: 'e12', peran: 'tautan', nama: 'Pojok Dukcapil', kelas: 'navigasi' },
+    ],
+    ...over,
+  });
+
+  it('beranda PaceMace: "Mulai Pendaftaran" dipilih, bukan "Persyaratan & Formulir"', () => {
+    expect(pembukaPengajuan(paceMace())).toBe('e8');
+    // Menu ponsel + desktop memuat CTA yang sama dua kali: tetap satu CTA.
+    const ganda = paceMace({
+      elemen: [
+        ...paceMace().elemen,
+        { ref: 'e20', peran: 'tautan', nama: 'Mulai  pendaftaran', kelas: 'kirim', tautanPembuka: true },
+      ],
+    });
+    expect(pembukaPengajuan(ganda)).toBe('e8');
+    for (const nama of ['Ajukan Permohonan', 'Buat Permohonan Baru', 'Daftar Sekarang'])
+      expect(
+        pembukaPengajuan(
+          paceMace({
+            elemen: [{ ref: 'e3', peran: 'tautan', nama, kelas: 'kirim', tautanPembuka: true }],
+          }),
+        ),
+      ).toBe('e3');
+  });
+
+  it('tidak berlaku: halaman berformulir, halaman masuk/akhir/tantangan, CTA akun, atau dua CTA berbeda', () => {
+    expect(pembukaPengajuan(halamanForm())).toBeUndefined();
+    const s = paceMace().sinyal;
+    for (const k of ['login', 'halamanAkhir', 'tantangan', 'captcha', 'otp'] as const)
+      expect(pembukaPengajuan(paceMace({ sinyal: { ...s, [k]: true } }))).toBeUndefined();
+    const berkolom = paceMace({
+      elemen: [...paceMace().elemen, { ref: 'e30', peran: 'teks', nama: 'Nomor resi' }],
+    });
+    expect(pembukaPengajuan(berkolom)).toBeUndefined();
+    for (const nama of ['Daftar Akun', 'Registrasi', 'Masuk / Daftar'])
+      expect(
+        pembukaPengajuan(
+          paceMace({ elemen: [{ ref: 'e3', peran: 'tautan', nama, kelas: 'kirim', tautanPembuka: true }] }),
+        ),
+      ).toBeUndefined();
+    // Tanpa penanda tautanPembuka (tombol kirim biasa) tidak pernah dipilih.
+    expect(
+      pembukaPengajuan(
+        paceMace({ elemen: [{ ref: 'e3', peran: 'tombol', nama: 'Mulai Pendaftaran', kelas: 'kirim' }] }),
+      ),
+    ).toBeUndefined();
+    const dua = paceMace({
+      elemen: [
+        ...paceMace().elemen,
+        { ref: 'e9', peran: 'tautan', nama: 'Ajukan Akta Kematian', kelas: 'kirim', tautanPembuka: true },
+      ],
+    });
+    expect(pembukaPengajuan(dua)).toBeUndefined();
   });
 });
 

@@ -193,6 +193,23 @@ describe('bangunPengamatan', () => {
     ]);
   });
 
+  it('probe 9171 PaceMace: "Mulai Pendaftaran" = tautanPembuka, "Persyaratan & Formulir" = navigasi', () => {
+    // Markup ringkas beranda dukcapil.jayapurakota.go.id/pacemace/ (recon 2026-11-12): kartu layanan bergambar.
+    document.title = 'PaceMace - Kota Jayapura';
+    document.body.innerHTML = `<nav><a class="navbar-brand" href="/pacemace">PaceMace</a>
+      <button class="navbar-toggler" data-bs-toggle="collapse" aria-label="Toggle navigation">Menu</button></nav>
+      <section>
+        <div class="card"><a href="/pacemace/persyaratan-dan-formulir">Persyaratan &amp; Formulir</a></div>
+        <div class="card"><a href="/pacemace/mulai-pendaftaran">Mulai Pendaftaran</a></div>
+        <div class="card"><a href="/pacemace/pengecekan-status-ktp">Cek Status KTP-el</a></div>
+      </section>`;
+    const { pengamatan: p } = amati();
+    expect(elemenBernama(p, 'Persyaratan & Formulir')).toMatchObject({ kelas: 'navigasi' });
+    expect(elemenBernama(p, 'Persyaratan & Formulir')).not.toHaveProperty('tautanPembuka');
+    expect(elemenBernama(p, 'Mulai Pendaftaran')).toMatchObject({ kelas: 'kirim', tautanPembuka: true });
+    expect(elemenBernama(p, 'Cek Status KTP-el')).toMatchObject({ kelas: 'navigasi' });
+  });
+
   it('probe 1102: tag ber-namespace (<cms:render>) tetap menghasilkan jalur yang bisa di-resolve', () => {
     document.body.innerHTML = `<cms:render><div><label>Nama <input name="n"></label>
       <a href="/layanan">Layanan</a></div></cms:render><cms:render><a href="/kontak">Kontak</a></cms:render>`;
