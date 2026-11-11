@@ -36,7 +36,9 @@ services:
       PENDAMPING_PUBLIC_WS_URL: wss://${DOMAIN}/pendamping/w/${WORKER_ID:?WORKER_ID wajib diisi}/ws
       PENDAMPING_MAX_SESSIONS: ${PENDAMPING_MAX_SESSIONS:-1}
       PENDAMPING_MAX_QUEUE: ${PENDAMPING_MAX_QUEUE:-10}
-      PENDAMPING_SESSION_MEM_MB: ${PENDAMPING_SESSION_MEM_MB:-450}
+      # Satu sesi saja di laptop: pengawas memori mengikuti mem_limit (1300m) dengan sisa ~200 MB untuk Node,
+      # Xvfb, dan proses lain (probe gel4 6271: portal Palangkaraya memakai ~800 MB, terhenti di batas 450).
+      PENDAMPING_SESSION_MEM_MB: ${PENDAMPING_SESSION_MEM_MB:-1100}
       PENDAMPING_FPS: ${PENDAMPING_FPS:-8}
       PENDAMPING_DEBUG_TOKEN: ${PENDAMPING_DEBUG_TOKEN:-}
       # Mode Uji (juri/tamu) sama dengan produksi: portal resmi dipetakan ke replika di fixtures.$DOMAIN.
@@ -46,7 +48,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=768m
-    # Satu sesi (laptop) x 512 MB + Node/Xvfb; batas sama dengan produksi supaya perilaku pengawas sama.
+    # Satu sesi (laptop) sampai 1100 MB (PENDAMPING_SESSION_MEM_MB) + Node/Xvfb; produksi VPS tetap 2 x 450 MB.
     mem_limit: 1300m
     memswap_limit: 1300m
     cpus: 2.0

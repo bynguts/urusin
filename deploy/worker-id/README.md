@@ -86,6 +86,11 @@ sandbox Chromium aktif (user namespace)
 pendamping mendengarkan di 172.x.y.z:4330 (maks 1 sesi, TTL 15 menit, headed di Xvfb :0)
 ```
 
+Batas memori: kontainer `mem_limit 1300m` untuk SATU sesi, jadi pengawas memori per sesi bawaannya 1100 MB
+(`PENDAMPING_SESSION_MEM_MB`, sisa ~200 MB untuk Node/Xvfb). Portal berat (probe gel4 6271, ~800 MB) muat.
+Bila `PENDAMPING_MAX_SESSIONS` dinaikkan, turunkan batas ini ke ~450 MB per sesi seperti VPS. Sesi yang tetap
+menembus batas dihentikan dan warga diarahkan ke panduan langkah.
+
 ## Sehari-hari
 
 ```sh

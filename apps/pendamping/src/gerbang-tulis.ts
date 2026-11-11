@@ -128,14 +128,32 @@ export function hostAset(url: string): boolean {
 /** Jenis sumber daya yang boleh diambil dari host aset umum (Playwright `resourceType`). */
 const TIPE_ASET_UMUM: ReadonlySet<string> = new Set(['script', 'stylesheet', 'font', 'image']);
 
+/** XHR/fetch: jenis yang boleh ke host aset pemda .go.id, hanya dengan metode GET (probe gel4 3310). */
+const TIPE_XHR: ReadonlySet<string> = new Set(['xhr', 'fetch']);
+
 /**
  * Host aset umum hanya melayani subresource script/stylesheet/font/image; navigasi dokumen (bingkai mana pun),
  * XHR/fetch, dan jenis lain ke host itu ditolak (re-review MEDIUM: unpkg menyajikan HTML paket npm sebagai
  * text/html sementara bilah atas tetap menampilkan origin portal). Host aset pemda (`hostAset`) diperlakukan
- * sama (re-review LOW). Host lain tidak terpengaruh.
+ * sama (re-review LOW), kecuali XHR/fetch GET ke host .go.id milik portal (API data pemda, probe gel4 3310:
+ * api.diskominfo.klaten.go.id). Tulis non-GET ke host aset tetap ditolak di sini; ke host lain tetap lewat
+ * gerbang tulis. Host lain tidak terpengaruh. `metode` tidak diketahui = bukan GET (gagal tertutup).
  */
-export function asetUmumBoleh(r: { url: string; resourceType: string; dokumen: boolean }): boolean {
-  return !hostAset(r.url) || (!r.dokumen && TIPE_ASET_UMUM.has(r.resourceType));
+export function asetUmumBoleh(r: {
+  url: string;
+  resourceType: string;
+  dokumen: boolean;
+  metode?: string | undefined;
+}): boolean {
+  if (!hostAset(r.url)) return true;
+  if (r.dokumen) return false;
+  if (TIPE_ASET_UMUM.has(r.resourceType)) return true;
+  return (
+    TIPE_XHR.has(r.resourceType) &&
+    r.metode?.toUpperCase() === 'GET' &&
+    !hostAsetUmum(r.url) &&
+    /\.go\.id$/.test(URL.parse(r.url)?.hostname.toLowerCase().replace(/\.$/, '') ?? '')
+  );
 }
 
 /** Metode yang tidak mengubah keadaan server (preflight CORS ikut di sini). */

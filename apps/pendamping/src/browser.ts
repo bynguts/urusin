@@ -216,6 +216,17 @@ const PESAN_MASUK =
 /** Pengajuan terkirim: sesi ditutup, peramban beserta login dan cookie dihapus. */
 export const PESAN_TERKIRIM = 'Pengajuan terkirim. Browser ditutup; login dan cookie ikut dihapus.';
 
+/** Pengawas memori menghentikan sesi (situs terlalu berat untuk peramban server): warga diarahkan ke panduan. */
+export const PESAN_MEMORI =
+  'Halaman situs ini terlalu berat untuk peramban pendamping Urusin, jadi sesi dihentikan. Kami beralih ke panduan langkah: buka situs resmi di perangkat Anda sendiri.';
+
+/** Generik: giliran masuk akun/CAPTCHA/OTP terdeteksi selesai (halaman berganti, formulir masuk hilang). */
+export const PESAN_GILIRAN_SELESAI = 'Giliran Anda selesai. AI melanjutkan.';
+
+/** Generik: viewport dilebarkan karena tombol masuk situs hanya tampil di layar lebar (probe gel4 3279). */
+export const PESAN_LAYAR_LEBAR =
+  'Tombol masuk situs ini hanya muncul di layar lebar, jadi tampilan dilebarkan. Perbesar layar bila tulisan terlalu kecil.';
+
 const PESAN_VERIFIKASI =
   "Situs meminta verifikasi keamanan. Ketuk kotak 'Verify you are human', lalu tunggu sebentar. AI menunggu dan tidak akan mengekliknya.";
 
@@ -278,11 +289,17 @@ const SEL_KOLOM_KETIK =
 const SEL_KENDALI_TENANG = 'input, textarea, select, button, a[href], [role="button"], [role="link"]';
 
 /**
- * Konten belum tampil (probe gel4 6171: `#page-content` opacity 0, baru opacity 1 800 ms setelah load + transisi
- * 700 ms): ada transisi/animasi CSS berhingga yang sedang jalan, atau elemen di viewport (>= 2000 px persegi,
- * kedalaman <= 4 dari body) yang memuat kolom isian masih opacity < 0,1 / visibility hidden. Animasi tak berhingga
- * (spinner) dan elemen tanpa kotak (display:none, mis. modal tertutup) diabaikan. Dievaluasi di dunia terisolasi
- * (hanya membaca DOM/gaya).
+ * Konten belum tampil (probe gel4 6171: `#page-content` opacity 0 dan layar muat, baru opacity 1 800 ms setelah
+ * load lewat setTimeout + transisi 700 ms; isinya hanya tautan): salah satu dari
+ * - transisi/animasi CSS berhingga sedang jalan (animasi tak berhingga/spinner diabaikan);
+ * - html/body masih opacity < 0,1 / visibility hidden (opacity tidak diwariskan ke gaya anak) padahal ada kendali;
+ * - elemen di viewport (kedalaman <= 4 dari body, atau kontainer utama `main`/`#page-content`/`#content`/`#app`/
+ *   ...) masih opacity < 0,1 / visibility hidden dan memuat kolom isian (>= 2000 px persegi) atau tautan/tombol
+ *   (>= 20% viewport: blok konten, bukan menu tarik-turun kecil yang memang tersembunyi);
+ * - layar muat (id/kelas loader/preloader/loading/spinner) fixed/absolute yang masih menutupi >= 50% viewport.
+ * Jeda setTimeout sebelum transisi mulai tertangkap karena kontennya masih transparan. Elemen tanpa kotak
+ * (display:none, mis. modal tertutup) diabaikan. Pemanggil membatasi tunggu 3 detik. Dievaluasi di dunia
+ * terisolasi (hanya membaca DOM/gaya).
  */
 export const KONTEN_BELUM_TAMPIL_EXPR = `(() => {
   const anim = document.getAnimations().some((a) => {
@@ -293,18 +310,67 @@ export const KONTEN_BELUM_TAMPIL_EXPR = `(() => {
   if (anim) return true;
   const vw = innerWidth, vh = innerHeight, luas = vw * vh;
   if (!document.body || luas <= 0) return false;
-  const calon = document.body.querySelectorAll(':scope > *, :scope > * > *, :scope > * > * > *, :scope > * > * > * > *');
+  const ISIAN = 'input:not([type="hidden"]), select, textarea';
+  const KENDALI = ISIAN + ', a[href], button, [role="button"], [role="link"]';
+  const pudar = (g) => Number(g.opacity) < 0.1 || g.visibility === 'hidden';
+  if ([document.documentElement, document.body].some((el) => pudar(getComputedStyle(el))) && document.body.querySelector(KENDALI))
+    return true;
+  const RE_MUAT = /(^|[^a-z])(pre-?loader|loader|loading|spinner)([^a-z]|$)/i;
+  const calon = document.body.querySelectorAll(
+    ':scope > *, :scope > * > *, :scope > * > * > *, :scope > * > * > * > *, main, [role="main"], #page-content, #content, #main, #app, #root',
+  );
   for (const el of calon) {
     const r = el.getBoundingClientRect();
     const lebar = Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0));
     const tinggi = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
-    if (lebar * tinggi < 2000) continue;
+    const tampak = lebar * tinggi;
+    if (tampak < 2000) continue;
     const g = getComputedStyle(el);
-    if ((Number(g.opacity) < 0.1 || g.visibility === 'hidden') && el.querySelector('input:not([type="hidden"]), select, textarea'))
+    if (pudar(g)) {
+      if (el.querySelector(ISIAN)) return true;
+      if (tampak >= luas * 0.2 && el.querySelector(KENDALI)) return true;
+      continue;
+    }
+    if (
+      tampak >= luas * 0.5 &&
+      (g.position === 'fixed' || g.position === 'absolute') &&
+      RE_MUAT.test((el.id || '') + ' ' + (el.getAttribute('class') || ''))
+    )
       return true;
   }
   return false;
 })()`;
+
+/**
+ * Kendali masuk (nama persis masuk/login/sign in, seperti klasifikator) yang tampil vs tersembunyi oleh
+ * `display:none` responsif (probe gel4 3279: tombol MASUK `d-none d-lg-block`, tak tampil di lebar ponsel walau
+ * menu dibuka). Tidak dihitung: yang sengaja disembunyikan (`[hidden]`, aria-hidden, template) dan yang
+ * tersembunyi di wadah buka-tutup (collapse/offcanvas/dropdown/modal/drawer/dialog): itu dibuka lewat menu.
+ * Dievaluasi di dunia terisolasi (hanya membaca DOM/gaya).
+ */
+export const KENDALI_MASUK_EXPR = `(() => {
+  const NAMA = /^(masuk|login|log in|sign in|signin|masuk akun)$/;
+  const BUKA = /(^|[^a-z])(collapse|offcanvas|dropdown|modal|drawer)([^a-z]|$)/i;
+  const SEL = 'a, button, [role="button"], input[type="submit"], input[type="button"]';
+  let terlihat = 0, tersembunyi = 0;
+  for (const el of document.querySelectorAll(SEL)) {
+    const mentah = el.textContent || el.getAttribute('aria-label') || el.value || '';
+    const nama = String(mentah).toLowerCase().replace(/[^a-z]+/g, ' ').trim();
+    if (!NAMA.test(nama) || el.closest('[hidden], [aria-hidden="true"], template')) continue;
+    if (el.getClientRects().length > 0) {
+      if (getComputedStyle(el).visibility !== 'hidden') terlihat++;
+      continue;
+    }
+    let n = el;
+    while (n && getComputedStyle(n).display !== 'none') n = n.parentElement;
+    if (!n || n.tagName === 'DIALOG' || BUKA.test((n.id || '') + ' ' + (n.getAttribute('class') || ''))) continue;
+    tersembunyi++;
+  }
+  return { terlihat, tersembunyi };
+})()`;
+
+/** Lebar CSS yang dicoba (batas sm/md/lg/xl/xxl kerangka CSS umum) untuk memunculkan kendali masuk. */
+const LEBAR_RESPONSIF = [768, 992, 1200, 1400] as const;
 
 /** URL lolos allowlist host:port sesi (lapis `context.route`; sama dengan proxy egress). */
 export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): boolean {
@@ -315,17 +381,23 @@ export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): 
 
 /**
  * Saringan rute peramban (lapis kedua setelah proxy): host:port di allowlist, www.google.com hanya /recaptcha/,
- * dan host aset umum (CDN/fon) hanya subresource script/stylesheet/font/image, tidak pernah navigasi dokumen.
+ * dan host aset umum (CDN/fon) hanya subresource script/stylesheet/font/image, tidak pernah navigasi dokumen
+ * (host aset pemda .go.id: juga XHR/fetch GET).
  */
 export function izinRute(
   allowedHosts: ReadonlySet<string>,
-  req: { url(): string; resourceType(): string; isNavigationRequest(): boolean },
+  req: { url(): string; method(): string; resourceType(): string; isNavigationRequest(): boolean },
 ): boolean {
   const url = req.url();
   return (
     urlDiAllowlist(allowedHosts, url) &&
     jalurPihakKetigaBoleh(url) &&
-    asetUmumBoleh({ url, resourceType: req.resourceType(), dokumen: req.isNavigationRequest() })
+    asetUmumBoleh({
+      url,
+      metode: req.method(),
+      resourceType: req.resourceType(),
+      dokumen: req.isNavigationRequest(),
+    })
   );
 }
 
@@ -450,6 +522,7 @@ export async function launchIsolated(
         const https = naikHttps(req.url(), (u) =>
           izinRute(allowedHosts, {
             url: () => u,
+            method: () => 'GET',
             resourceType: () => 'document',
             isNavigationRequest: () => true,
           }),
@@ -643,6 +716,12 @@ export async function wire(
   let tantanganRespons = false;
   let tantanganPoll: ReturnType<typeof setInterval> | undefined;
   let sorotTantanganTerkirim = false;
+  /** Nomor dokumen tempat tantangan terakhir mulai/diulang. */
+  let tantanganNav = -1;
+  /** Nomor dokumen serah generik `login` (CAPTCHA/kode) terakhir yang masih dipegang warga. */
+  let serahLoginNav: number | undefined;
+  /** Generik: mulai/hentikan pemantauan selesainya giliran masuk akun/CAPTCHA/OTP (diisi saat generik dibuat). */
+  let mulaiPantauSerah: (pantauSerah: boolean) => Promise<void> = async () => {};
   let pesanTantangan = '';
   const pantau = createPantauTantangan(2);
   // Probe masuk akun (adapter): warga keluar/terlempar ke login -> takeover masuk_akun sampai masuk lagi.
@@ -1023,12 +1102,9 @@ export async function wire(
           `pendamping: sesi dihentikan kode=MEMORI_SESI mb=${mb} batas=${config.sessionMemMb} ` +
             `host=${new URL(program.origin).host}`,
         );
-        hooks.ended(
-          'gagal',
-          'gagal',
-          `Halaman ini memakai memori lebih dari batas peramban pendamping (${mb} MB dari ${config.sessionMemMb} MB). Lanjutkan lewat panduan.`,
-          { kode: 'MEMORI_SESI' },
-        );
+        // Bukan kesalahan warga: situsnya terlalu berat untuk peramban server. Arahkan ke panduan (dipandu),
+        // angka MB hanya di log operator.
+        hooks.ended('dipandu', 'drift', PESAN_MEMORI, { kode: 'MEMORI_SESI' });
       }
     } catch {
       // peramban sedang ditutup
@@ -1170,6 +1246,14 @@ export async function wire(
       clearInterval(tantanganPoll);
       tantanganPoll = undefined;
       hooks.activity();
+      // Generik: Navigator sempat menyerahkan CAPTCHA (sinyal tantangan di pengamatan) di dokumen tantangan yang
+      // sama, sebelum/bersamaan pemeriksaan tantangan. Tantangan itu kini hilang (judul/URL berganti), jadi
+      // serahnya selesai dan AI lanjut mengamati halaman berikutnya. Serah lain (final, isi sendiri) tidak.
+      if (manual && generik && !generik.berhenti && serahLoginNav === tantanganNav) {
+        manual = false;
+        serahLoginNav = undefined;
+        init.generik?.jejak({ jenis: 'ambil_alih', fase: 'selesai' });
+      }
       if (manual || status === 'waiting_gate' || status === 'waiting_citizen' || status === 'handoff')
         hooks.mode('takeover', 'Verifikasi selesai. Lanjutkan sendiri.');
       else hooks.mode('ai', 'Verifikasi selesai. AI melanjutkan pengisian.');
@@ -1178,6 +1262,7 @@ export async function wire(
     }
     // mulai / ulang / masih: warga memegang kendali; AI tidak pernah mengeklik kotak verifikasi.
     if (hasil === 'mulai' || hasil === 'ulang') {
+      tantanganNav = navKe;
       sorotTantanganTerkirim = false;
       pesanTantangan =
         hasil === 'ulang' ? 'Verifikasi belum diterima situs. Coba sekali lagi.' : PESAN_VERIFIKASI;
@@ -1228,6 +1313,16 @@ export async function wire(
       })();
     });
     const { izin, jejak } = init.generik;
+    /** Viewport ponsel asli selama dilebarkan untuk dokumen `dokLebar` (origin + jalur). */
+    let lebarAsli: { width: number; height: number } | undefined;
+    let dokLebar: string | undefined;
+    const halamanUrl = (url: string) => {
+      const u = URL.parse(url);
+      return u ? `${u.origin}${u.pathname}` : url;
+    };
+    const hitungMasuk = async () =>
+      (await nilaiTerisolasi(KENDALI_MASUK_EXPR).catch(() => undefined)) as
+        { terlihat: number; tersembunyi: number } | undefined;
     const tenang = async () => {
       // Jeda singkat agar handler klik sempat memicu permintaan; bila navigasi dimulai, tunggu muat (<= 10 detik).
       await new Promise((r) => setTimeout(r, 400));
@@ -1265,6 +1360,10 @@ export async function wire(
             await periksaTantangan();
             if (ditahan() || destroyed) return { ok: false, code: 'DITAHAN', message: 'giliran warga' };
           }
+          // Interstitial tantangan (Turnstile "Verify you are human", probe gel4 1372/3275): diperiksa SEBELUM
+          // pengamatan, jadi mode yang dibaca Navigator sesudahnya sudah giliran warga (verifikasi_situs, sorot
+          // widget). Navigator menunggu, lalu lanjut sendiri setelah tantangan hilang (`lolos`).
+          else if (o.kind === 'amati') await periksaTantangan();
           return evaluate(o);
         },
         async navigasi(url) {
@@ -1280,6 +1379,30 @@ export async function wire(
         },
         tenang,
         urlKini: () => page.url(),
+        async lebarkan() {
+          if (lebarAsli || destroyed || ditahan()) return false;
+          const awal = await hitungMasuk();
+          if (!awal || awal.terlihat > 0 || awal.tersembunyi === 0) return false;
+          const asli = page.viewportSize() ?? { width: init.viewport.lebar, height: init.viewport.tinggi };
+          for (const lebar of LEBAR_RESPONSIF) {
+            if (lebar <= asli.width) continue;
+            // Rasio layar ponsel dipertahankan: frame tetap memenuhi layar warga (diperkecil, bukan dipotong).
+            await page.setViewportSize({
+              width: lebar,
+              height: Math.round((lebar * asli.height) / asli.width),
+            });
+            await new Promise((r) => setTimeout(r, 250));
+            if (destroyed) return false;
+            if (((await hitungMasuk())?.terlihat ?? 0) > 0) {
+              lebarAsli = asli;
+              dokLebar = halamanUrl(page.url());
+              hooks.mode('ai', PESAN_LAYAR_LEBAR);
+              return true;
+            }
+          }
+          await page.setViewportSize(asli).catch(() => {});
+          return false;
+        },
       }),
       gerbang: gen.gerbang,
       izin,
@@ -1287,6 +1410,12 @@ export async function wire(
       jejak,
       serahkan(alasan, pesan, box, tautan) {
         manual = true;
+        // Serah CAPTCHA/kode (`login`) di dokumen ini: bila dokumen yang sama ternyata halaman tantangan, serah ini
+        // ikut selesai saat tantangannya lolos (lihat langkahTantangan).
+        serahLoginNav = alasan === 'login' ? navKe : undefined;
+        // Giliran masuk akun / CAPTCHA / OTP: worker memantau sendiri kapan giliran itu selesai (AI lanjut tanpa
+        // menunggu tombol warga). Serah lain (final, isi sendiri, tautan, berhenti) tetap menunggu warga.
+        void mulaiPantauSerah(alasan === 'login' || alasan === 'masuk_akun');
         hooks.mode('takeover', pesan);
         hooks.event({
           jenis: 'giliran_anda',
@@ -1300,9 +1429,68 @@ export async function wire(
       tidakBisa: (pesan) => hooks.ended('dipandu', 'drift', pesan),
     });
     const run = generik;
+
+    /**
+     * Giliran masuk akun / CAPTCHA / OTP selesai tanpa tombol warga: dokumen utama berganti (nomor dokumen, jalur,
+     * atau judul) DAN pengamatan baca-saja tidak lagi menunjukkan formulir masuk, CAPTCHA, OTP, atau tantangan.
+     * Halaman sukses dibiarkan ke Navigator (pantau sukses). Gagal masuk yang tetap di formulir = tetap giliran
+     * warga; tombol "Sudah, lanjutkan" di web tetap jadi cadangan (`kembalikan`).
+     */
+    const halamanKini = () => halamanUrl(page.url());
+    let serahGiliran: { nav: number; halaman: string; judul: string } | undefined;
+    let serahPoll: ReturnType<typeof setInterval> | undefined;
+    let memeriksaSerah = false;
+    const hentiPantauSerah = () => {
+      serahGiliran = undefined;
+      clearInterval(serahPoll);
+      serahPoll = undefined;
+    };
+    mulaiPantauSerah = async (pantauSerah: boolean) => {
+      hentiPantauSerah();
+      if (!pantauSerah) return;
+      const awal = { nav: navKe, halaman: halamanKini(), judul: await page.title().catch(() => '') };
+      if (!manual || destroyed) return;
+      serahGiliran = awal;
+      serahPoll = setInterval(() => void periksaSerahSelesai(), 1000);
+      serahPoll.unref?.();
+    };
+    const periksaSerahSelesai = async () => {
+      const s = serahGiliran;
+      if (!s || destroyed || !manual || run.berhenti) return hentiPantauSerah();
+      if (memeriksaSerah || pantau.aktif || masukAktif || loading) return;
+      memeriksaSerah = true;
+      try {
+        const berganti =
+          navKe !== s.nav ||
+          halamanKini() !== s.halaman ||
+          (await page.title().catch(() => s.judul)) !== s.judul;
+        if (!berganti) return;
+        const p = await run.amati(true).catch(() => null);
+        if (!p || serahGiliran !== s || !manual || destroyed || pantau.aktif) return;
+        const { login, captcha, otp, tantangan, sukses } = p.sinyal;
+        if (login || captcha || otp || tantangan || sukses) return;
+        hentiPantauSerah();
+        manual = false;
+        serahLoginNav = undefined;
+        jejak({ jenis: 'ambil_alih', fase: 'selesai' });
+        hooks.activity();
+        hooks.mode('ai', PESAN_GILIRAN_SELESAI);
+        resume();
+      } finally {
+        memeriksaSerah = false;
+      }
+    };
     // Dokumen bingkai utama baru (cross-document, ter-commit) = timer dokumen lama mati: bendera kotor direset.
-    cdp.on('Page.frameNavigated', (e: { frame: { parentId?: string } }) => {
-      if (!e.frame.parentId) run.dokumenBaru();
+    cdp.on('Page.frameNavigated', (e: { frame: { parentId?: string; url: string } }) => {
+      if (e.frame.parentId) return;
+      run.dokumenBaru();
+      // Dokumen lain (mis. halaman masuk sesudah tombol MASUK): kembali ke lebar ponsel.
+      if (lebarAsli && halamanUrl(e.frame.url) !== dokLebar) {
+        const asli = lebarAsli;
+        lebarAsli = undefined;
+        dokLebar = undefined;
+        void page.setViewportSize(asli).catch(() => {});
+      }
     });
     await cdp.send('Page.enable').catch(() => {});
     gen.kendali.wargaTunggu = ditahan;
