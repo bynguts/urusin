@@ -57,6 +57,9 @@ describe('klasifikasi kata kunci', () => {
     ['Mau bayar pajak kendaraan motor tahunan di Samsat', 'pajak_kendaraan'],
     ['Ayah saya meninggal minggu lalu', 'kematian'],
     ['Saya butuh SKCK buat lamar kerja', 'skck'],
+    ['Mau bikin KIA untuk anak saya, KTP Jakarta Selatan', 'kia'],
+    ['Cara urus kartu identitas anak?', 'kia'],
+    ['kartu anak hilang', 'kia'],
   ])('%s -> %s', (teks, jenis) => expect(klasifikasiKataKunci(teks)).toBe(jenis));
 
   it.each([

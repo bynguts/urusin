@@ -1,5 +1,6 @@
 import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/contracts';
 import { PORTAL_WILAYAH } from '@urusin/core';
+import { bundelPendamping, namaPendekWilayah, wilayahByKode } from '@urusin/registry';
 import { FakeProvider, fakeCompletion } from '@urusin/llm';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
@@ -13,8 +14,16 @@ import {
   portalWebWilayah,
 } from './generik.js';
 import { catatanDipandu } from './builtin-tools.js';
-import { aturJaringanId, mulaiPengajuan, rutePendamping, setujuiRencana, tierEksekusi } from './rencana.js';
-import { buatUrusanTerwilayah, rencanaPeristiwa } from './wilayah.js';
+import { ADMINDUK } from './grounding.js';
+import {
+  aturJaringanId,
+  mulaiPengajuan,
+  rutePendamping,
+  setujuiRencana,
+  tierEksekusi,
+  tierUrusan,
+} from './rencana.js';
+import { buatUrusanTerwilayah, rencanaPeristiwa, rencanaUrusan } from './wilayah.js';
 import { HarnessStore } from './store.js';
 import { makeEnv } from './testing.js';
 import { jejakView } from './trace.js';
@@ -25,6 +34,11 @@ const DAIRI = '1211';
 const JAKPUS = '3171';
 
 afterEach(() => aturJaringanId(() => false));
+
+const namaWilayah = (kode: string) => {
+  const w = wilayahByKode(kode);
+  return w ? namaPendekWilayah(w.nama) : undefined;
+};
 
 function urusanDiusulkan(kodeKabKota: string, jenis: string) {
   const store = new HarnessStore(openHarnessDb());
@@ -298,6 +312,79 @@ describe('routing rencana.ts: adapter -> (platform) -> generik -> dipandu', () =
     expect(gate[0]).toMatchObject({ keputusan: 'deny', aturan: 'WILAYAH_BELUM_DITETAPKAN' });
     expect(out.events.some((e: UrusinEvent) => e.type === 'execution_request')).toBe(false);
     expect(env.store.getUrusanOrThrow(u.id)).toMatchObject({ state: 'MEMAHAMI', kodeKabKota: null });
+  });
+});
+
+describe('setiap layanan adminduk × wilayah berportal web mendapat rute Browser Pendamping', () => {
+  const PORTAL_WEB = Object.keys(PORTAL_WILAYAH).filter((k) => portalWebWilayah(k));
+  const TANPA_WEB = Object.keys(PORTAL_WILAYAH).filter((k) => !portalWebWilayah(k));
+
+  it('setiap jenis adminduk punya bundel (tidak ada jenis yang diam-diam jatuh ke dipandu)', () => {
+    expect([...ADMINDUK].sort()).toEqual(
+      ['akta', 'kelahiran', 'kematian', 'kia', 'kk', 'ktp', 'perkawinan', 'pindah'].sort(),
+    );
+    for (const jenis of ADMINDUK) expect(bundelPendamping(jenis), jenis).toBeDefined();
+  });
+
+  it('jenis × wilayah portal web: rute adapter atau Navigator generik ke portal wilayah itu', () => {
+    aturJaringanId(() => true);
+    expect(PORTAL_WEB.length).toBeGreaterThan(20);
+    for (const kode of PORTAL_WEB)
+      for (const jenis of ADMINDUK) {
+        const r = rutePendamping({ jenis, kodeKabKota: kode });
+        expect(r.jalur, `${jenis} × ${kode}`).not.toBe('dipandu');
+        if (r.jalur === 'dipandu') continue;
+        if (r.jalur === 'generik') {
+          expect(r.origin, `${jenis} × ${kode}`).toBe(portalWebWilayah(kode)!.origin);
+          expect(r.params, `${jenis} × ${kode}`).toMatchObject({ jenis, kode });
+        }
+        // Kartu rencana dan tindakan dari keputusan rute yang sama.
+        expect(tierUrusan({ jenis, kodeKabKota: kode }), `${jenis} × ${kode}`).toBe('semi');
+      }
+  });
+
+  it('QA Wonogiri: cetak ulang KTP-el rusak = Browser Pendamping di Telunjuk Sakti, bukan "belum bisa dibantu"', () => {
+    const r = rutePendamping({ jenis: 'ktp', kodeKabKota: '3312' });
+    expect(r).toMatchObject({
+      jalur: 'generik',
+      flowId: 'ktp',
+      origin: 'https://telunjuksakti.wonogirikab.go.id',
+      nama: 'Ajukan penerbitan KTP-el di portal resmi Disdukcapil Kab. Wonogiri',
+    });
+    const kartu = rencanaUrusan('ktp', { ktp: '3312' })!;
+    expect(kartu).toMatchObject({ tier: 'semi', pendamping: { host: 'telunjuksakti.wonogirikab.go.id' } });
+    const { store, u, events, publish } = urusanDiusulkan('3312', 'ktp');
+    const hasil = setujuiRencana(store, u.id, publish);
+    expect(hasil.urusan.state).toBe('MENUNGGU_KONFIRMASI');
+    expect(events.find((e) => e.type === 'execution_request')).toMatchObject({
+      adapterId: ADAPTER_GENERIK,
+      params: { jenis: 'ktp', kode: '3312' },
+    });
+    expect(events.some((e) => e.type === 'progress' && /belum bisa dibantu/.test(e.label))).toBe(false);
+    for (const jenis of ['kk', 'kia', 'akta']) {
+      const x = urusanDiusulkan('3312', jenis);
+      expect(setujuiRencana(x.store, x.u.id, x.publish).executionId, jenis).not.toBeNull();
+    }
+  });
+
+  it('wilayah tanpa portal web dan layanan non-adminduk tetap dipandu dengan kanal yang benar', () => {
+    aturJaringanId(() => true);
+    for (const kode of TANPA_WEB)
+      for (const jenis of ADMINDUK) {
+        const r = rutePendamping({ jenis, kodeKabKota: kode });
+        expect(r, `${jenis} × ${kode}`).toMatchObject({ jalur: 'dipandu' });
+        expect(r.jalur === 'dipandu' && r.alasan, `${jenis} × ${kode}`).toBe(
+          alasanDipandu(kode, namaWilayah(kode)),
+        );
+      }
+    expect(rutePendamping({ jenis: 'ktp', kodeKabKota: DAIRI })).toMatchObject({
+      alasan: expect.stringMatching(/lewat WhatsApp/),
+    });
+    for (const jenis of ['skck', 'pajak_kendaraan', 'bansos', 'pengaduan', 'cek_dpt', 'lainnya'])
+      expect(rutePendamping({ jenis, kodeKabKota: '3312' }), jenis).toEqual({
+        jalur: 'dipandu',
+        alasan: alasanDipandu(null),
+      });
   });
 });
 

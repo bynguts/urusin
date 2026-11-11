@@ -331,10 +331,18 @@ export function rencanaPeristiwa(
 ): (RencanaWilayah & { pendamping?: BantuanPendamping }) | undefined {
   const r = rencanaWilayah(slug, { ...w, pendampingTersedia });
   if (!r || !w.ktp) return r;
-  const rute = rutePendamping({ jenis: r.slug, kodeKabKota: w.ktp });
+  return denganRute(r, w.ktp);
+}
+
+/** Tier, catatan, dan bantuan Pendamping kartu rencana dari `rutePendamping` (satu keputusan rute). */
+function denganRute<R extends { slug: string; tier: 'semi' | 'dipandu'; catatan: string }>(
+  r: R,
+  ktp: string,
+): Omit<R, 'tier'> & { tier: 'semi' | 'dipandu'; pendamping?: BantuanPendamping } {
+  const rute = rutePendamping({ jenis: r.slug, kodeKabKota: ktp });
   // Portal `id-only` tanpa worker berjaringan Indonesia: dipandu sejak kartu, dengan alasan yang jujur.
   if (rute.jalur === 'dipandu' && rute.sebab === 'jaringan_id') {
-    const kab = wilayahByKode(w.ktp);
+    const kab = wilayahByKode(ktp);
     const kalimat = kalimatJaringanId(kab ? namaPendekWilayah(kab.nama) : undefined);
     return { ...r, tier: 'dipandu', catatan: `${r.catatan} ${kalimat}` };
   }
@@ -365,7 +373,11 @@ export function rencanaUrusan(
   jenis: string,
   w: { ktp: string | null; domisili?: string | null; tujuan?: string | null },
 ): RencanaUrusan | undefined {
-  return rencanaPeristiwa(jenis, w) ?? rencanaLayanan(jenis, { ktp: w.ktp, domisili: w.domisili ?? null });
+  const peristiwa = rencanaPeristiwa(jenis, w);
+  if (peristiwa) return peristiwa;
+  const layanan = rencanaLayanan(jenis, { ktp: w.ktp, domisili: w.domisili ?? null });
+  // KK/KTP-el di portal web wilayah: Browser Pendamping ditawarkan sama seperti Peristiwa Hidup.
+  return layanan && w.ktp ? denganRute(layanan, w.ktp) : layanan;
 }
 
 /**
