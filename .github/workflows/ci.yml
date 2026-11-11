@@ -108,18 +108,20 @@ jobs:
         run: pnpm build
 
       # Rute dan batas ada di perf-routes.cjs dan lighthouserc.cjs. Emulasi mobile (Moto G Power, slow 4G),
-      # 5 run, median; pelanggaran apa pun menggagalkan job.
+      # 5 run, median; pelanggaran apa pun menggagalkan job. scripts/lhci-jalan.mjs = collect + assert (di sini,
+      # tanpa kalibrasi CPU, sama dengan `lhci autorun`).
       - name: Lighthouse CI
         if: runner.environment == 'github-hosted'
         env:
           PORT: '4173'
           HOST: 127.0.0.1
           ORIGIN: http://127.0.0.1:4173
-        run: pnpm exec lhci autorun
+        run: node scripts/lhci-jalan.mjs
 
       # Runner self-hosted (agent-vm): install + build + lhci di kontainer Playwright terbatas lewat ci-docker
       # (user runner tanpa grup docker). Di sana cpuSlowdownMultiplier dikalibrasi dari benchmarkIndex host
       # (scripts/lhci-cpu.mjs, rumus resmi Lighthouse, clamp [1, 4]); target perangkat dan ambang tetap sama.
+      # Run yang terukur saat host sibuk (benchmarkIndex < 0,85 x kalibrasi) diulang oleh scripts/lhci-jalan.mjs.
       - name: Lighthouse CI (self-hosted, kontainer Playwright)
         if: runner.environment == 'self-hosted'
         run: sudo -n /opt/urusin-ci/bin/ci-docker pw perf "$GITHUB_WORKSPACE" "$GITHUB_SHA"
@@ -146,6 +148,13 @@ jobs:
               if (cal.warning) console.log(`- Peringatan: ${cal.warning}`);
             }
             if (runs.length && bi.length) console.log(`- Tercatat di LHR (${runs.length} run): multiplier ${used}; benchmarkIndex median ${med(bi)} (min ${Math.min(...bi)}, maks ${Math.max(...bi)})`);
+            const st = read("stabil.json");
+            if (st?.minBenchmarkIndex) {
+              const rute = Object.entries(st.rute);
+              const ganti = rute.reduce((n, [, r]) => n + r.diganti.length, 0);
+              console.log(`- Run sah: benchmarkIndex >= ${st.minBenchmarkIndex} (${st.rasio} x acuan ${st.acuan}); ${ganti} run host-sibuk diganti (scripts/lhci-jalan.mjs)`);
+              for (const [u, r] of rute) if (r.sah < r.dinilai.length) console.log(`- Peringatan ${u}: hanya ${r.sah}/${r.dinilai.length} run sah, run sibuk ikut dinilai`);
+            }
             console.log();
           ' >> "$GITHUB_STEP_SUMMARY"
           {
