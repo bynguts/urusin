@@ -319,17 +319,23 @@ export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): 
 
 /**
  * Saringan rute peramban (lapis kedua setelah proxy): host:port di allowlist, www.google.com hanya /recaptcha/,
- * dan host aset umum (CDN/fon) hanya subresource script/stylesheet/font/image, tidak pernah navigasi dokumen.
+ * dan host aset umum (CDN/fon) hanya subresource script/stylesheet/font/image, tidak pernah navigasi dokumen
+ * (host aset pemda .go.id: juga XHR/fetch GET).
  */
 export function izinRute(
   allowedHosts: ReadonlySet<string>,
-  req: { url(): string; resourceType(): string; isNavigationRequest(): boolean },
+  req: { url(): string; method(): string; resourceType(): string; isNavigationRequest(): boolean },
 ): boolean {
   const url = req.url();
   return (
     urlDiAllowlist(allowedHosts, url) &&
     jalurPihakKetigaBoleh(url) &&
-    asetUmumBoleh({ url, resourceType: req.resourceType(), dokumen: req.isNavigationRequest() })
+    asetUmumBoleh({
+      url,
+      metode: req.method(),
+      resourceType: req.resourceType(),
+      dokumen: req.isNavigationRequest(),
+    })
   );
 }
 
@@ -454,6 +460,7 @@ export async function launchIsolated(
         const https = naikHttps(req.url(), (u) =>
           izinRute(allowedHosts, {
             url: () => u,
+            method: () => 'GET',
             resourceType: () => 'document',
             isNavigationRequest: () => true,
           }),

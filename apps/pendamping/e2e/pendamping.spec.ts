@@ -373,6 +373,65 @@ test('SSRF: dari dalam peramban pendamping, 127.0.0.1:2019 dan 169.254.169.254 t
   expect((canary.address() as net.AddressInfo | null) ?? null).toBeNull();
 });
 
+test('probe gel4 3310: XHR/fetch GET ke host aset pemda .go.id lolos rute; tulis dan CDN umum tidak', async () => {
+  // Proxy hulu tiruan: setiap CONNECT dicatat lalu ditolak 502, jadi permintaan yang lolos rute peramban tidak
+  // pernah sampai ke situs asli (lapis yang diuji di sini hanya `context.route`/izinRute).
+  const connect: string[] = [];
+  const hulu = http.createServer();
+  hulu.on('connect', (req, socket) => {
+    connect.push(req.url ?? '');
+    socket.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+  });
+  await new Promise<void>((ok) => hulu.listen(0, '127.0.0.1', ok));
+  const config = loadConfig({
+    PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN,
+    PENDAMPING_HEADLESS: '1',
+    PENDAMPING_UPSTREAM_PROXY: `http://127.0.0.1:${(hulu.address() as net.AddressInfo).port}`,
+  });
+  const ASET = 'https://api.diskominfo.klaten.go.id';
+  const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true }, [
+    'api.diskominfo.klaten.go.id',
+    'unpkg.com',
+  ]);
+  const gagal = new Map<string, string>();
+  iso.context.on('requestfailed', (r) =>
+    gagal.set(`${r.method()} ${r.url()}`, r.failure()?.errorText ?? '?'),
+  );
+  try {
+    // Halaman kosong tanpa CSP (halaman fixture membatasi connect-src): yang diuji hanya rute peramban.
+    const page = await iso.context.newPage();
+    await page.evaluate(
+      async ({ aset }) => {
+        const coba = (u: string, init?: RequestInit) =>
+          fetch(u, { mode: 'no-cors', cache: 'no-store', ...init }).catch(() => undefined);
+        await coba(`${aset}/v1/statistik.json`);
+        await coba(`${aset}/v1/kirim`, { method: 'POST', body: 'x' });
+        await coba('https://unpkg.com/paket@1.0.0/data.json');
+        await new Promise<void>((ok) => {
+          const x = new XMLHttpRequest();
+          x.open('GET', `${aset}/v1/xhr.json`);
+          x.onloadend = () => ok();
+          x.send();
+        });
+      },
+      { aset: ASET },
+    );
+    await expect.poll(() => gagal.size, { timeout: 10_000 }).toBeGreaterThanOrEqual(4);
+    // GET (fetch + XHR) ke host aset pemda: lolos rute (gagal hanya karena proxy hulu tiruan).
+    for (const u of [`GET ${ASET}/v1/statistik.json`, `GET ${ASET}/v1/xhr.json`]) {
+      expect(gagal.get(u), u).toBeDefined();
+      expect(gagal.get(u), u).not.toMatch(/ERR_BLOCKED_BY_CLIENT/);
+    }
+    // Tulis ke host aset dan XHR/fetch ke CDN umum: dibatalkan di peramban, tidak pernah terkirim.
+    expect(gagal.get(`POST ${ASET}/v1/kirim`)).toMatch(/^net::ERR_BLOCKED_BY_CLIENT/);
+    expect(gagal.get('GET https://unpkg.com/paket@1.0.0/data.json')).toMatch(/^net::ERR_BLOCKED_BY_CLIENT/);
+    expect(connect.every((c) => c === 'api.diskominfo.klaten.go.id:443')).toBe(true);
+  } finally {
+    await iso.close();
+    hulu.close();
+  }
+});
+
 test('residu: profil sesi (cookie, Login Data) terhapus total setelah ditutup; pengelola sandi mati', async () => {
   const config = loadConfig({ PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN, PENDAMPING_HEADLESS: '1' });
   const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true }, [
