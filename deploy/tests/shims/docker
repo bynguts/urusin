@@ -24,9 +24,13 @@ case "$1" in
     case "$2" in
       ls) cat "$SHIM_DIR/images.tsv" 2>/dev/null; exit 0 ;; # image-retention.sh: repo<TAB>digest
       rm) echo "$3" >> "$SHIM_DIR/rm.log"; [[ "$3" != *"${SHIM_RM_BUSY:-tidak-ada}"* ]] || exit 1; exit 0 ;;
+      # deploy.sh: `image inspect <ref>` tanpa --format = cek image lokal (SHIM_LOKAL=1 = sudah ada).
+      inspect) if [[ "$*" == *--format* ]]; then echo "${SHIM_LABEL-}"; exit 0; fi; [ -n "${SHIM_LOKAL:-}" ]; exit $? ;;
       *) echo "${SHIM_LABEL-}"; exit 0 ;;
     esac ;;
   buildx)
+    # Registry tak terjangkau tanpa login (VPS tanpa kredensial GHCR).
+    [ -z "${SHIM_REGISTRY_MATI:-}" ] || exit 1
     case "$*" in
       *Provenance*)
         if [ -n "${SHIM_PROVENANCE+x}" ]; then echo "$SHIM_PROVENANCE"
