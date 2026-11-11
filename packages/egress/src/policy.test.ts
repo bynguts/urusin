@@ -59,6 +59,32 @@ describe('isBlockedAddress', () => {
 });
 
 describe('assertTargetAllowed', () => {
+  it('gateway Tailscale hanya origin LLM_BASE_URL pada port 20128 di runtime', () => {
+    const env = { LLM_BASE_URL: 'http://100.101.1.2:20128/v1' };
+    const a = buildAllowlist('runtime', env);
+    expect(assertTargetAllowed('http:', '100.101.1.2', 20128, a)).toBe(true);
+    for (const [protocol, host, port] of [
+      ['https:', '100.101.1.2', 20128],
+      ['http:', '100.101.1.3', 20128],
+      ['http:', '100.101.1.2', 2019],
+      ['http:', '100.101.1.2', 4330],
+    ] as const)
+      expect(() => assertTargetAllowed(protocol, host, port, a)).toThrow(EgressBlockedError);
+    for (const profile of ['ingest', 'browser'] as const)
+      expect(() => assertTargetAllowed('http:', '100.101.1.2', 20128, buildAllowlist(profile, env))).toThrow(
+        EgressBlockedError,
+      );
+    for (const envLain of [
+      {},
+      { RERANK_BASE_URL: env.LLM_BASE_URL },
+      { LLM_BASE_URL: 'http://10.0.0.1:20128/v1' },
+      { LLM_BASE_URL: 'http://100.101.1.2:2019/v1' },
+    ])
+      expect(() =>
+        assertTargetAllowed('http:', '100.101.1.2', 20128, buildAllowlist('runtime', envLain)),
+      ).toThrow(EgressBlockedError);
+  });
+
   it('127.0.0.1:20128 (proxy LLM) satu-satunya alamat lokal yang boleh', () => {
     expect(assertTargetAllowed('http:', LLM_PROXY.host, LLM_PROXY.port, allow)).toBe(true);
     expect(assertTargetAllowed('https:', '127.0.0.1', 20128, allow)).toBe(true);

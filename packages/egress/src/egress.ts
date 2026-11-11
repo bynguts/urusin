@@ -7,6 +7,7 @@ import {
   EgressBlockedError,
   isBlockedAddress,
   isLlmProxy,
+  isLlmTailscale,
   isPendampingInternal,
 } from './policy.js';
 import type { Allowlist, EgressProfile } from './policy.js';
@@ -121,6 +122,8 @@ export function createEgress(opts: EgressOptions = {}): Egress {
       // Host luar (mis. *.go.id) tidak boleh membelokkan permintaan ke proxy LLM lokal (M1).
       if (isLlmProxy(next) && !isLlmProxy(original))
         throw new EgressBlockedError('redirect ke proxy LLM lokal dari host lain ditolak');
+      if (isLlmTailscale(next, allowlist) && next.origin !== original.origin)
+        throw new EgressBlockedError('redirect ke gateway LLM Tailscale dari origin lain ditolak');
       if (isPendampingInternal(next, allowlist) && next.origin !== original.origin)
         throw new EgressBlockedError('redirect ke worker pendamping internal dari origin lain ditolak');
       if (
