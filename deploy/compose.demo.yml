@@ -1,0 +1,212 @@
+# Demo final di SATU laptop, tanpa VPS dan tanpa Tailscale: web + Browser Pendamping + fixtures (replika situs
+# pemerintah) + DB (SQLite di volume) di http://localhost. Jalankan lewat skrip, bukan `up` manual:
+#
+#   bash scripts/demo-final.sh up        # siapkan .env.demo, build/pull image, naikkan, lalu preflight
+#
+# Topologi: keempat layanan berbagi SATU network namespace (milik `gerbang`), jadi semuanya saling bertemu di
+# 127.0.0.1 tanpa mengubah kebijakan egress mana pun:
+# - gerbang (Caddy)  : satu-satunya port host, 127.0.0.1:${DEMO_PORT}. / -> web, /pendamping/ws/* -> pendamping
+#                      (sama dengan rute Caddy produksi). Cookie __Host-urusin_sid ikut ke WS karena origin sama.
+# - web              : 127.0.0.1:3000; worker Pendamping http://127.0.0.1:4330 (pengecualian egress web = 127.0.0.1).
+# - pendamping       : 127.0.0.1:4330, NODE_ENV=development TANPA edge: egress Chromium diperiksa proxy di dalam
+#                      proses dan HANYA ke origin fixture lokal yang didaftarkan (http://127.0.0.1:4320). Semua
+#                      portal resmi dipetakan ke replika, jadi situs pemerintah asli tidak pernah dibuka.
+# - fixtures         : 127.0.0.1:4320 (profil public). Juga dibuka ke host di 127.0.0.1:${DEMO_FIXTURES_PORT}
+#                      untuk ditunjukkan langsung ke juri.
+# Produksi (deploy/compose.prod.yml) tetap memakai edge + jaringan internal; berkas ini hanya untuk laptop demo.
+name: urusin-demo
+
+x-log: &log
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '2'
+
+services:
+  gerbang:
+    image: caddy:2.11.2
+    restart: unless-stopped
+    command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile']
+    environment:
+      # Origin proxy LLM sungguhan (mis. http://100.x.y.z:20128 lewat Tailscale). Web memanggilnya lewat
+      # 127.0.0.1:20128, satu-satunya alamat lokal yang diizinkan kebijakan egress web untuk LLM.
+      DEMO_LLM_UPSTREAM: ${DEMO_LLM_UPSTREAM:-http://127.0.0.1:9}
+    volumes:
+      - ./Caddyfile.demo:/etc/caddy/Caddyfile:ro
+    ports:
+      # Loopback saja: demo tidak pernah dibuka ke LAN venue.
+      - '127.0.0.1:${DEMO_PORT:-80}:80'
+      - '127.0.0.1:${DEMO_FIXTURES_PORT:-4320}:4321'
+    read_only: true
+    tmpfs:
+      - /data:size=8m
+      - /config:size=8m
+    mem_limit: 64m
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt:
+      - no-new-privileges:true
+    logging: *log
+
+  web:
+    image: ${DEMO_WEB_IMAGE:-urusin-demo-web:local}
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-local}
+    restart: unless-stopped
+    network_mode: service:gerbang
+    depends_on: [gerbang]
+    env_file:
+      # Ditulis `scripts/demo-final.sh` (chmod 600, diabaikan git): SESSION_SECRET, URUSIN_PII_KEY, token
+      # Pendamping, dan (opsional) LLM_*. Tanpa LLM_* web memakai DemoProvider.
+      - path: .env.demo
+        required: true
+    environment:
+      NODE_ENV: production
+      HOST: 127.0.0.1
+      PORT: '3000'
+      ORIGIN: ${DEMO_ORIGIN:-http://localhost}
+      URUSIN_PUBLIC_ORIGIN: ${DEMO_ORIGIN:-http://localhost}
+      PROTOCOL_HEADER: x-forwarded-proto
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: '1'
+      BODY_SIZE_LIMIT: 10M
+      DATABASE_URL: file:/data/urusin.db
+      # Saklar satu langkah `demo-final.sh offline|online`: 1 = DemoProvider walau LLM_* terisi.
+      URUSIN_LLM_DISABLED: ${DEMO_LLM_DISABLED:-0}
+      # Korpus RAG produksi bila ada di deploy/data/demo/rag.db (skrip mengisi path ini); kosong = korpus contoh.
+      URUSIN_RAG_DB: ${DEMO_RAG_DB:-}
+      # Turnstile mati: widget-nya dimuat dari Cloudflare dan gagal saat internet venue putus. Tombol juri tetap
+      # dibatasi per IP + global.
+      TURNSTILE_SITE_KEY: ''
+      TURNSTILE_SECRET_KEY: ''
+      URUSIN_EMAIL_MODE: log
+      # Satu worker lokal, region `id` supaya situs id-only (Si D'nOK) juga dilayani.
+      PENDAMPING_WORKERS: '[{"id":"demo","url":"http://127.0.0.1:4330","region":"id","maxSessions":2,"wsUrl":"${DEMO_WS_ORIGIN:-ws://localhost}/pendamping/ws"}]'
+      # Replika lokal = tujuan sah data sintetis juri dan host yang boleh dikerjakan AI di Mode Uji.
+      URUSIN_FIXTURES_ORIGINS: http://127.0.0.1:4320
+      # Satu NAT = satu laptop: semua klik juri tampak dari IP yang sama.
+      URUSIN_DEMO_PER_IP_HARI: '500'
+      URUSIN_TAMU_PER_IP_HARI: '500'
+      URUSIN_LIMIT_BUAT_IP_PER_JAM: '200'
+      URUSIN_LIMIT_TURN_IP_PER_MENIT: '120'
+    volumes:
+      - data:/data
+      - ./data/demo:/rag:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    mem_limit: 768m
+    cpus: 2.0
+    pids_limit: 256
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    logging: *log
+
+  pendamping:
+    image: ${DEMO_PENDAMPING_IMAGE:-urusin-demo-pendamping:local}
+    build:
+      context: ..
+      dockerfile: apps/pendamping/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-local}
+    restart: unless-stopped
+    network_mode: service:gerbang
+    depends_on: [gerbang, fixtures]
+    init: true
+    env_file:
+      - path: .env.demo
+        required: true
+    environment:
+      # Bukan produksi: tanpa edge, egress Chromium lewat proxy di dalam proses yang hanya mengizinkan fixture
+      # lokal di bawah (alamat loopback diizinkan HANYA untuk origin yang didaftarkan persis).
+      NODE_ENV: development
+      HOST: 127.0.0.1
+      PORT: '4330'
+      PENDAMPING_ALLOWED_ORIGINS: ${DEMO_ORIGIN:-http://localhost}
+      PENDAMPING_PUBLIC_WS_URL: ${DEMO_WS_ORIGIN:-ws://localhost}/pendamping/ws
+      PENDAMPING_MAX_SESSIONS: '2'
+      PENDAMPING_MAX_QUEUE: '4'
+      PENDAMPING_SESSION_MEM_MB: '450'
+      # Layar lebih halus untuk proyektor (bawaan produksi 8).
+      PENDAMPING_FPS: '12'
+      # Demo di panggung: sesi tidak dihancurkan saat juri bertanya beberapa menit (bawaan 3 menit).
+      PENDAMPING_IDLE_MS: '600000'
+      PENDAMPING_FIXTURE_ORIGINS: http://127.0.0.1:4320
+      PENDAMPING_ORIGIN_OVERRIDES: >-
+        https://telunjuksakti.wonogirikab.go.id=http://127.0.0.1:4320,https://wargaklampid-dispendukcapil.surabaya.go.id=http://127.0.0.1:4320/sby,https://sidnok.semarangkota.go.id=http://127.0.0.1:4320/smg,https://samsat-pkb2.jakarta.go.id=http://127.0.0.1:4320/samsat,https://oss.go.id=http://127.0.0.1:4320/oss
+    read_only: true
+    tmpfs:
+      - /tmp:size=768m
+    mem_limit: 1300m
+    memswap_limit: 1300m
+    cpus: 2.0
+    pids_limit: 512
+    ulimits:
+      core: 0
+    # Sandbox Chromium aktif seperti produksi (ADR 0029).
+    cap_drop: [ALL]
+    cap_add: [SYS_ADMIN, SYS_CHROOT]
+    security_opt:
+      - seccomp=./pendamping-seccomp.json
+    healthcheck:
+      test: ['CMD', 'node', 'dist/sehat.js', '4330']
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging: *log
+
+  fixtures:
+    image: ${DEMO_FIXTURES_IMAGE:-urusin-demo-fixtures:local}
+    build:
+      context: ..
+      dockerfile: apps/fixtures/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-local}
+    restart: unless-stopped
+    network_mode: service:gerbang
+    depends_on: [gerbang]
+    environment:
+      FIXTURES_PROFILE: public
+      FIXTURES_PORT: '4320'
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 128
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4320/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    logging: *log
+
+volumes:
+  data:
