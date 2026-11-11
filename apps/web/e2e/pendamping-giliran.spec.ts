@@ -62,7 +62,12 @@ test('giliran ketuk_tautan: warga menekan Buka di layar; viewer mengirim buka_ta
 
   // Jalur warga yang sama dengan pendamping-gerbang: Wonogiri → rencana → persetujuan → buka situs.
   await page.goto('/peristiwa/kelahiran');
-  await page.getByLabel('Kabupaten/kota sesuai KTP Anda').selectOption('3312');
+  await expect(page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' })).toHaveAttribute(
+    'aria-autocomplete',
+    'list',
+  );
+  await page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' }).fill('Wonogiri');
+  await page.getByRole('option', { name: 'Kabupaten Wonogiri', exact: true }).click();
   await expect(page).toHaveURL(/kodeKabKota=3312/);
   await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
   await expect(page).toHaveURL(/\/urusan\/u_[0-9a-f]{32}$/);

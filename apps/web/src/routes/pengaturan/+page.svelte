@@ -5,6 +5,7 @@
   import Icon from '#lib/components/Icon.svelte';
   import type { NamaIkon } from '#lib/components/ikon.js';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
+  import PilihWilayah from '#lib/components/ui/PilihWilayah.svelte';
   import ZonaBahaya from '#lib/components/akun/ZonaBahaya.svelte';
   import { ambilLokal, ambilPrefs, ambilTts } from '#lib/stores/app.svelte.js';
   import type { PageProps } from './$types';
@@ -256,26 +257,17 @@
           simpanWilayah();
         }}
       >
-        <div class="flex flex-1 flex-col gap-1.5">
+        <div class="flex min-w-0 flex-1 flex-col gap-1.5">
           <label for="pilih-wilayah" class="text-[0.9375rem] font-semibold text-ink">Kab/kota</label>
-          <div class="relative">
-            <select
-              id="pilih-wilayah"
-              bind:value={kodeWilayah}
-              onchange={() => (wilayahTersimpan = false)}
-              aria-describedby="d-wilayah"
-              autocomplete="address-level2"
-              class="h-12 w-full appearance-none rounded-xl border border-line-2 bg-surface pr-10 pl-4 text-base text-ink transition-colors hover:border-line cursor-pointer"
-            >
-              <option value="" class="bg-surface text-ink">Belum dipilih</option>
-              {#each data.kota as k (k.kodeKabKota)}
-                <option value={k.kodeKabKota} class="bg-surface text-ink">{k.nama}</option>
-              {/each}
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-muted">
-              <Icon name="bawah" class="size-4" />
-            </div>
-          </div>
+          <PilihWilayah
+            id="pilih-wilayah"
+            kota={data.kota}
+            bind:value={kodeWilayah}
+            onchange={() => (wilayahTersimpan = false)}
+            describedby="d-wilayah"
+            bolehKosong
+            placeholder="Belum dipilih"
+          />
         </div>
         <button
           type="submit"
