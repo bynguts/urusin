@@ -201,6 +201,9 @@ function withInstruction(messages: ChatMessage[], instruction: ChatMessage): Cha
   return [...messages.slice(0, -1), instruction, ...messages.slice(-1)];
 }
 
+/** Hasil tool di mode degraded disisipkan sebagai pesan user `HASIL_TOOL <nama>: …`. */
+const HASIL_TOOL_RE = /^HASIL_TOOL ([a-z0-9]+__[a-z0-9_]+):/;
+
 class TurnRunner {
   private readonly cfg: AgentConfig;
   private readonly store: HarnessStore;
@@ -254,13 +257,18 @@ class TurnRunner {
     if (this.ingatan) this.kontenTakTepercaya = this.riwayatMemuatKontenLuar();
   }
 
-  /** Riwayat urusan (jendela yang sama dengan prompt) memuat hasil tool `kontenLuar`. */
+  /**
+   * Riwayat urusan (jendela yang sama dengan prompt) memuat hasil tool `kontenLuar`: pesan `tool` biasa, atau
+   * pesan `HASIL_TOOL <nama>: …` dari mode degraded (tanpa tool calling).
+   */
   private riwayatMemuatKontenLuar(): boolean {
     const nama = new Map<string, string>();
+    const luar = (n: string | undefined) => this.deps.registry.get(n ?? '')?.kontenLuar === true;
     for (const m of this.store.loadHistory(this.turn.urusanId)) {
       if (m.role === 'assistant' && m.tool_calls)
         for (const c of m.tool_calls) if (c.type === 'function') nama.set(c.id, c.function.name);
-      if (m.role === 'tool' && this.deps.registry.get(nama.get(m.tool_call_id) ?? '')?.kontenLuar)
+      if (m.role === 'tool' && luar(nama.get(m.tool_call_id))) return true;
+      if (m.role === 'user' && typeof m.content === 'string' && luar(HASIL_TOOL_RE.exec(m.content)?.[1]))
         return true;
     }
     return false;

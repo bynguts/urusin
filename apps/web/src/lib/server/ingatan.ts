@@ -5,6 +5,7 @@ import {
   bawaDariTamu,
   buangButir,
   buangDariTamu,
+  buangTitipanKedaluwarsa,
   daftarTampil,
   IngatanError,
   ingatWilayah,
@@ -25,12 +26,18 @@ import {
  */
 export function muatIngatan(akun: AkunService, pemilik: string): Ingatan {
   const raw = akun.vault.getIngatan(pemilik)?.data; // VaultError: alert sudah dikirim vault
+  let i: Ingatan;
   try {
-    return bacaIngatan(raw);
+    i = bacaIngatan(raw);
   } catch (e) {
     if (e instanceof IngatanError) console.error(`[ALERT] ingatan pemilik ${pemilik} rusak: ${e.message}`);
     throw e;
   }
+  // Titipan tamu yang kedaluwarsa dibuang saat dibaca (penyapu `bersihkan()` juga membuangnya).
+  const bersih = buangTitipanKedaluwarsa(i);
+  if (!bersih) return i;
+  simpanAtauHapus(akun, pemilik, bersih);
+  return bersih;
 }
 
 /** Simpan; ingatan yang kosong seluruhnya dihapus barisnya (bukan disimpan kosong). */
@@ -111,10 +118,7 @@ export function hapusSemuaIngatan(akun: AkunService, pemilik: string): number {
  * warga tahu apa yang akan dibawa. Hanya butir non-sensitif yang belum kedaluwarsa; titipan kedaluwarsa dibuang.
  */
 export function titipanIngatanTamu(akun: AkunService, pemilik: string): ButirIngatanTampil[] {
-  const i = muatIngatan(akun, pemilik);
-  const aktif = titipanAktif(i);
-  if (aktif.length === 0 && i.dariTamu?.length) simpanAtauHapus(akun, pemilik, buangDariTamu(i));
-  return daftarTampil({ versi: 1, butir: aktif });
+  return daftarTampil({ versi: 1, butir: titipanAktif(muatIngatan(akun, pemilik)) });
 }
 
 /** "Bawa ke akun": titipan tamu digabung tanpa menggusur butir akun. */

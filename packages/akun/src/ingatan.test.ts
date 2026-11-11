@@ -202,6 +202,30 @@ describe('rotasi tamu → akun', () => {
     expect(g.dariTamu?.map((b) => b.jenis)).toEqual(['bahasa_sederhana']);
   });
 
+  it('penyapu bersihkan() membuang titipan tamu yang kedaluwarsa (30 hari), yang masih berlaku tetap', async () => {
+    const a = await akunTerverifikasi();
+    const lansia = {
+      id: 'ing_00000000000000d1',
+      jenis: 'lansia',
+      nilai: 'ya',
+      at: new Date(t).toISOString(),
+    };
+    akun.vault.setIngatan(a.id, {
+      versi: 1,
+      butir: [{ ...lansia, id: 'ing_00000000000000d2', jenis: 'kanal', nilai: 'online' }],
+      dariTamu: [lansia],
+      dariTamuSejak: new Date(t).toISOString(),
+    });
+    t += 29 * 86_400_000;
+    akun.bersihkan();
+    expect(bacaIngatan(akun.vault.getIngatan(a.id)!.data).dariTamu).toHaveLength(1);
+    t += 2 * 86_400_000;
+    akun.bersihkan();
+    const g = bacaIngatan(akun.vault.getIngatan(a.id)!.data);
+    expect(g.dariTamu).toBeUndefined();
+    expect(g.butir.map((b) => b.jenis)).toEqual(['kanal']);
+  });
+
   it('ingatan akun yang rusak tidak ditimpa titipan dan tidak menggagalkan login', async () => {
     const a = await akunTerverifikasi();
     akun.vault.setIngatan(a.id, ingatan(['lansia']));
