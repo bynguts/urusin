@@ -473,12 +473,50 @@ function adaFormulirTerlihat(doc: Document): boolean {
   return false;
 }
 
+/** Tipe input berisi data warga (bukan sandi, centang, berkas, atau tombol). */
+const TIPE_ISIAN_DATA = new Set(['text', 'email', 'tel', 'number', 'date', 'datetime-local', 'month']);
+/** Kolom tantangan yang memang diisi warga di halaman akhir (sama dengan penanda terlarang OTP/CAPTCHA amatan). */
+const RE_KOLOM_TANTANGAN =
+  /captcha|\botp\b|one.?time|kode (verifikasi|otp|sms|wa|whatsapp|aktivasi|keamanan|gambar|unik|pengaman)|verification code|security code|\btoken\b|\bpin\b|ketik(kan)? (kode|karakter|teks|huruf|angka)/;
+const SEL_GAMBAR_CAPTCHA =
+  'img[src*="captcha" i], img[alt*="captcha" i], img[id*="captcha" i], img[class*="captcha" i], .g-recaptcha, .h-captcha';
+
+/**
+ * Masih ada kolom data WAJIB yang kosong dan bisa diisi di isi formulir: halaman masih tahap pengisian
+ * (formulir pendaftaran dengan centang S&K di bawahnya, probe 3324/3404), bukan tinjauan akhir. Kolom
+ * OTP/CAPTCHA (termasuk yang bersebelahan dengan gambar CAPTCHA) tidak dihitung: itu tugas warga di halaman akhir.
+ */
+function isianWajibKosong(doc: Document): boolean {
+  for (const el of doc.querySelectorAll('input, textarea')) {
+    const k = el as HTMLInputElement;
+    if (el.tagName === 'INPUT' && !TIPE_ISIAN_DATA.has(k.type)) continue;
+    if (!k.required && atribut(el, 'aria-required') !== 'true') continue;
+    if (k.value !== '' || k.readOnly || !aktifEl(el) || !terlihatEl(el) || el.closest(SEL_BUKAN_ISI_FORM))
+      continue;
+    if (atribut(el, 'autocomplete') === 'one-time-code') continue;
+    const cari = normalTeks(
+      [labelSederhana(el), atribut(el, 'placeholder'), el.id, atribut(el, 'name'), atribut(el, 'class')].join(
+        ' ',
+      ),
+    );
+    if (RE_KOLOM_TANTANGAN.test(cari)) continue;
+    let wadah = el.parentElement;
+    let dekatCaptcha = false;
+    for (let i = 0; i < 3 && wadah && !dekatCaptcha; i++, wadah = wadah.parentElement)
+      dekatCaptcha = !!wadah.querySelector(SEL_GAMBAR_CAPTCHA);
+    if (!dekatCaptcha) return true;
+  }
+  return false;
+}
+
 /**
  * Halaman deklarasi/tinjauan akhir: frasa pernyataan/ringkasan di luar navigasi/FAQ pada halaman yang punya
  * kolom isian atau tombol, atau checkbox pernyataan yang terlihat. Dihitung ulang setiap klik (kunci halaman
- * akhir).
+ * akhir). Halaman yang masih punya kolom data wajib kosong bukan halaman akhir: tombol kirimnya tetap `kirim`
+ * (K4/K7), centang pernyataan tetap terlarang, dan klik AI tetap hanya GET di gerbang tulis worker.
  */
 export function halamanAkhir(doc: Document): boolean {
+  if (isianWajibKosong(doc)) return false;
   if (adaFormulirTerlihat(doc) && RE_HALAMAN_AKHIR.some((re) => re.test(teksHalaman(doc)))) return true;
   for (const el of doc.querySelectorAll('input[type="checkbox"], [role="checkbox"]')) {
     if (terlihatEl(el) && checkboxPernyataan(el, labelSederhana(el))) return true;
@@ -632,6 +670,11 @@ export function jalurTulis(url: string): boolean {
   }
 }
 
+/** Token id/kelas/ikon tombol menu ponsel (hamburger). */
+const TOKEN_MENU: readonly string[] = ['bars', 'hamburger', 'burger', 'toggler', 'menu', 'navicon'];
+/** Nama tombol pembuka pemilih tanggal. */
+const RE_PEMBUKA_TANGGAL = /^((buka|tampilkan|pilih|lihat) )?(kalender|calendar|tanggal|date ?picker)$/;
+
 /** Aturan §3 atas fitur. Murni: fitur yang sama selalu menghasilkan kelas yang sama. */
 export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: AturanKlasifikasi } {
   const nama = [f.teksTampak, f.ariaLabel, f.nilai, f.title].filter(Boolean);
@@ -666,17 +709,29 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
       ? { kelas: 'kirim', aturan: 'K7_NEG_NAMA_TAUTAN' }
       : { kelas: 'kirim', aturan: 'K7_NEG' };
 
+  const tombolBiasa =
+    (f.tag === 'button' && !f.submitterAsli && f.type !== 'reset') ||
+    (f.tag === 'input' && f.type === 'button') ||
+    f.role === 'button';
+
+  // Tombol menu ikon saja (hamburger fa-bars / navbar-toggler, probe 3279 dan 6371): membuka menu ponsel, AI boleh.
+  // Bukan submitter (K4 di atas) dan klik AI tetap hanya GET di gerbang tulis worker.
+  if (
+    !f.teksCuriga &&
+    nama.length === 0 &&
+    tombolBiasa &&
+    [...f.ikon, ...f.idKelas].some((t) => TOKEN_MENU.includes(t))
+  )
+    return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
   // Homoglif / karakter tak terlihat / tanpa nama: tidak pernah cocok positif.
   if (f.teksCuriga || nama.length === 0) return { kelas: 'tidak_pasti', aturan: 'K7B_TEKS_CURIGA' };
 
   if (tautan && f.href.ada && f.href.host && !f.href.js && !f.href.hanyaFragmen)
     return { kelas: 'navigasi', aturan: 'K8_NAVIGASI' };
   if (f.kendaliLokal) return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
-
-  const tombolBiasa =
-    (f.tag === 'button' && !f.submitterAsli && f.type !== 'reset') ||
-    (f.tag === 'input' && f.type === 'button') ||
-    f.role === 'button';
+  // Pembuka widget tanggal ("Buka kalender", probe 3324): UI lokal di samping kolom tanggal.
+  if (tombolBiasa && nama.every((n) => RE_PEMBUKA_TANGGAL.test(bersihkanPanah(n))))
+    return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
   const namaUtama = bersihkanPanah(f.teksTampak || f.nilai);
   if (
     tombolBiasa &&
