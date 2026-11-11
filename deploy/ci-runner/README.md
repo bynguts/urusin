@@ -9,23 +9,36 @@
 > gh api -X POST repos/bynguts/urusin/actions/runners/remove-token --jq .token \
 >   | ssh ubuntu@agent-vm 'sudo /tmp/urusin-ci-install/deploy/ci-runner/uninstall.sh'   # token lewat stdin
 > gh variable delete URUSIN_RUNNER --repo bynguts/urusin  # semua job kembali ke ubuntu-latest
+> deploy/ci-runner-laptop/down.sh   # runner kedua di laptop + variabel URUSIN_RUNNER_UJI (lihat ../ci-runner-laptop)
 > gh api repos/bynguts/urusin/actions/runners --jq .total_count   # harus 0
 > ```
 >
 > Tidak ada PAT di box (runner hanya memegang kredensialnya sendiri, ikut terhapus). Tetap rotasi/cabut token
 > lokal yang dipakai untuk membuat registration token. Baru setelah itu ubah visibilitas repo ke Public.
 
-## Kapan dipakai
+## Status dan kapan dipakai
 
-Disiapkan, **tidak terpasang**. Dipasang hanya bila run CI/Release gagal karena batas menit atau billing
-GitHub Actions (pesan seperti "spending limit" / "minutes quota"), dan hanya selama repo masih private.
-Setiap pemasangan dan pengaktifan tetap butuh persetujuan per kejadian (aturan do-no-harm agent-vm).
+**Status: terpasang dan aktif.** Runner `urusin-self-agent-vm` (label `self-hosted`, `Linux`, `ARM64`,
+`urusin-self`) terdaftar di agent-vm, dan variabel repo `URUSIN_RUNNER=urusin-self` diset 2026-11-10. Semua
+job non-`pull_request` di CI/Release/Security/audit-branch berjalan di sini; job `pull_request` tetap di
+`ubuntu-latest` (lihat ekspresi `runs-on` di bawah).
+
+**Rencana: dicopot sebelum repo dibuat Public** (perintah di kotak atas, lalu verifikasi `total_count` = 0 dan
+variabel kosong). Sesudah itu semua job kembali ke runner GitHub, dan berkas di folder ini tinggal sebagai
+cadangan yang tidak terpasang.
+
+Runner hanya dipasang bila run CI/Release gagal karena batas menit atau billing GitHub Actions (pesan seperti
+"spending limit" / "minutes quota"), dan hanya selama repo masih private. Setiap pemasangan dan pengaktifan
+tetap butuh persetujuan per kejadian (aturan do-no-harm agent-vm).
 
 ## Cara kerja
 
 - **Satu variabel repo memindahkan semua job.** Setiap job di `ci.yml`, `release.yml`, `security.yml`, dan
-  `audit-branch.yml` memakai `runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}`. Set
+  `audit-branch.yml` memakai
+  `runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}`. Set
   `URUSIN_RUNNER=urusin-self` untuk pindah ke agent-vm; hapus variabelnya untuk kembali. Tanpa ubah kode.
+  Pengecualian `pull_request` bukan pengaman untuk repo publik: PR dari fork menjalankan YAML versi PR itu
+  sendiri dan bisa menulis `runs-on: [self-hosted, urusin-self]`, jadi runner tetap wajib dicopot.
   `codeql.yml` dan `scorecard.yml` tetap di runner GitHub (keduanya hanya bermakna saat repo publik).
 - **Langkah yang tidak aman di host punya varian self-hosted** (`if: runner.environment == 'self-hosted'`):
   - **E2E dan Lighthouse** berjalan di image Playwright resmi (digest = basis `apps/pendamping/Dockerfile`,
@@ -37,8 +50,17 @@ Setiap pemasangan dan pengaktifan tetap butuh persetujuan per kejadian (aturan d
     build). Membersihkan cache HANYA lewat `ci-docker builder-gc`
     (`docker buildx prune --builder urusin-ci --max-used-space 1500mb`) atau `ci-docker builder-rm`. Tidak pernah prune global, tidak
     pernah `daemon.json`. amd64 dibangun lewat binfmt `qemu-x86_64` yang **sudah** terdaftar di host (paket
-    distro); CI tidak pernah memasang binfmt. Smoke test: arm64 native (boot pendamping penuh dengan pengerasan
-    compose), amd64 lewat binfmt. Output tetap `DIGEST: sha256:...` di log job, sama dengan runner GitHub.
+    distro); CI tidak pernah memasang binfmt. Output tetap `DIGEST: sha256:...` di log job, sama dengan runner
+    GitHub.
+  - **Smoke test Release hanya arsitektur native host** (arm64; boot pendamping penuh dengan pengerasan
+    compose). Node amd64 di bawah `qemu-x86_64` bisa menggantung tanpa CPU, jadi amd64 tidak di-smoke di sini:
+    amd64 tetap dibangun + di-push, lalu `ci-docker smoke` memastikan setiap platform yang dibangun ada di
+    manifest index (`docker buildx imagetools inspect --raw`). Hanya varian native yang ditarik
+    (`docker pull --platform`). Setiap `docker run` smoke dibatasi `timeout` dan diberi nama
+    `urusin-ci-smoke-*` (dihentikan paksa saat waktu habis; hook `cleanup` juga membersihkannya).
+  - **Image job tidak menumpuk di daemon**: setelah smoke, `ci-docker` membuang ref `urusin-*@<digest>` milik
+    job itu; setelah build, ref `:<sha>`/`@<digest>` lokal (bila ada). `docker image rm` tanpa `-f` dan hanya
+    ref milik job itu: tidak ada prune image global, image yang dipakai kontainer produksi tidak tersentuh.
   - **rc-compat** (aktif hanya bila ada tag `rc*`) belum punya varian self-hosted: di runner ini langkahnya
     **dilewati dengan `::warning::`** (bukan gagal); cakupan rc-compat berkurang selama runner cadangan aktif. Cek migrasi aditif
     (`scripts/check-additive-migrations.mjs`, statis: git diff + node) **tetap jalan** di runner ini.
@@ -51,7 +73,7 @@ Setiap pemasangan dan pengaktifan tetap butuh persetujuan per kejadian (aturan d
 - **Kebersihan antar job.** `actions/checkout` membersihkan workspace di awal job (`clean: true`, bawaan).
   Hook `job-completed` setelah setiap job: hapus `node_modules` di workspace, `pnpm store prune` di `_home`
   (batas keras 1 GB: store dihapus bila lebih), hapus kontainer sisa
-  `urusin-ci-pw-*` dan temp `ci-docker` (`ci-docker cleanup`), lalu cetak `df` agar tren disk terlihat di log.
+  `urusin-ci-pw-*`/`urusin-ci-smoke-*` dan temp `ci-docker` (`ci-docker cleanup`), lalu cetak `df` agar tren disk terlihat di log.
 - **Penjaga disk.** Hook `job-started` menggagalkan job bila disk ≥ 88%; `runner-prestart` tidak menyalakan
   runner; `ci-docker` menolak build/pull/run. Tidak ada pembersihan otomatis selain cache builder sendiri.
 
@@ -84,17 +106,24 @@ Karena itu runner ini hanya untuk repo private dan wajib dicopot sebelum Public.
 
 ## Batas sumber daya (agent-vm: 2 vCPU, 11 GB RAM, dipakai bersama)
 
-| Bagian                                           | Batas                                                                                                                                                                                              |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit `urusin-ci-runner` (runner + langkah host)  | `CPUQuota=150%` (1,5 dari 2 CPU), `CPUWeight=20`, `IOWeight=10`, `Nice=10`, `MemoryHigh=3500M`, `MemoryMax=4G`, tanpa swap, `TasksMax=2048`                                                        |
-| Kontainer dari `ci-docker` (di luar cgroup unit) | `--cpus 1.5 --cpu-shares 256 --memory 4g --memory-swap 4g --pids-limit 2048`; `pw perf`: `--cpu-period 10000 --cpu-quota 15000` (tetap 1,5 CPU, jeda throttle CFS lebih pendek) ganti `--cpus 1.5` |
-| Builder buildkit `urusin-ci`                     | CPU 1,5 (shares 256), memori 4g, cache ≤ 1,5 GB (gc setelah tiap build, 7 hari)                                                                                                                    |
-| Paralel                                          | 1 runner = 1 job sekaligus (CI penuh berjalan berurutan, lebih lambat)                                                                                                                             |
+| Bagian                                           | Batas                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit `urusin-ci-runner` (runner + langkah host)  | `CPUQuota=150%` (1,5 dari 2 CPU), `CPUWeight=20`, `IOWeight=10`, `Nice=10`, `MemoryHigh=3500M`, `MemoryMax=4G`, tanpa swap, `TasksMax=2048`                                                                                                                                                    |
+| Kontainer dari `ci-docker` (di luar cgroup unit) | `--cpus 1.5 --cpu-shares 256 --memory 4g --memory-swap 4g --pids-limit 2048`; `pw perf`: `--cpu-period 10000 --cpu-quota 15000 --cpu-shares 256` (tetap 1,5 CPU, jeda throttle CFS lebih pendek; bobot tetap rendah agar layanan lain di host didahulukan) ganti `--cpus 1.5 --cpu-shares 256` |
+| Builder buildkit `urusin-ci`                     | CPU 1,5 (shares 256), memori 4g, cache ≤ 1,5 GB (gc setelah tiap build, 7 hari)                                                                                                                                                                                                                |
+| Paralel                                          | 1 runner = 1 job sekaligus (CI penuh berjalan berurutan, lebih lambat)                                                                                                                                                                                                                         |
 
 Layanan pengguna (proxy :20128, Caddy, kontainer lain, Xvfb :99) selalu punya ≥ 0,5 CPU terjamin dan menang ~5:1 saat CPU berebut (bobot 20 vs 100 / shares 256 vs 1024), serta ≥ 4 GB RAM. Batas 1,5 CPU dipilih karena e2e akun.spec flaky di 1 CPU (lulus 17/17 di 4 CPU). `IOWeight`
 hampir tidak berpengaruh di agent-vm (scheduler disk `none`); perlindungan I/O nyata = batas CPU/memori + penjaga disk. Timeout
 job berat di workflow otomatis ×3 saat `URUSIN_RUNNER` diset. Skor Lighthouse di ARM 1,5 CPU bisa lebih rendah dari
 runner GitHub; bila gagal hanya di runner ini, ulangi atau putuskan di lead (ambang tidak dilonggarkan diam-diam).
+
+Pengukuran Lighthouse di host bersama (`pw perf` -> `scripts/lhci-jalan.mjs`, ambang tetap): sebelum mulai menunggu load
+1 menit < jumlah CPU (paling lama 5 menit), lalu tiap run yang `benchmarkIndex`-nya < 0,85 x kalibrasi (host sibuk saat
+run itu) diulang, paling banyak menggandakan jumlah run. Kontainer perf memakai bobot CPU bawaan (1024) agar tidak
+kalah 1:4 saat CPU berebut; kuota 1,5 CPU tetap batas atasnya, jadi layanan pengguna tetap punya >= 0,5 CPU. Bukti
+kontensi: run 43032218573 (/pengaturan TBT 384, 319, 249, 46, 75) dan 43042454102 (/, /urusanku, /dokumen,
+/data-diri, /bantuan gagal; sampel kalibrasi 1123, 1176, 841) pada kode yang sama.
 
 ## Pasang (hanya setelah go dari lead/pengguna)
 

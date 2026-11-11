@@ -20,7 +20,8 @@ type Seed = {
 };
 
 // Kota/kabupaten administrasi DKI tidak punya Disdukcapil sendiri: layanan oleh Suku Dinas Dukcapil kota
-// administrasi di bawah Dinas Dukcapil Provinsi DKI Jakarta. Warga diarahkan ke Suku Dinas kotanya, bukan provinsi.
+// administrasi di bawah Dinas Dukcapil Provinsi DKI Jakarta, pemilik portal Alpukat (hand-off: lihat grounding.ts).
+const DKI = 'Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta';
 const DKI_CATATAN =
   'Layanan oleh Suku Dinas Dukcapil kota administrasi di bawah Dinas Dukcapil Provinsi DKI Jakarta. Satu portal untuk semua kode 31xx. Web menampilkan 503/pengembangan saat dicek; layanan lewat aplikasi. Cetak e-KTP dan pindah datang dari luar DKI lewat kantor.';
 const dki = (kode: string, nama: string): Seed => ({
@@ -30,7 +31,7 @@ const dki = (kode: string, nama: string): Seed => ({
   validasi: 'pending-recon',
   origin: 'https://alpukat-dukcapil.jakarta.go.id',
   portal: 'Alpukat Betawi',
-  instansi: `Suku Dinas Kependudukan dan Pencatatan Sipil ${nama}`,
+  instansi: DKI,
   catatan: DKI_CATATAN,
 });
 const dinas = (nama: string) => `Dinas Kependudukan dan Pencatatan Sipil ${nama}`;

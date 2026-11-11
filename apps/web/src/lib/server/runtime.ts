@@ -37,6 +37,8 @@ import {
 import { createRagSearcher, openDb, type RagSearchInfo } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { httpKeluar } from './http-keluar.js';
+import { aturStatusProbe, pantauProbe } from './probe-ulang.js';
+import { penyimpanIngatan } from './ingatan.js';
 import { buatOidcFixture, type OidcFixture } from './oidc-fixture.js';
 import { peringatanKuotaJuri, peringatanTurnstile, turnstileFromEnv, type Turnstile } from './turnstile.js';
 import { RateLimiter } from './limiter.js';
@@ -227,11 +229,17 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   // Korpus nyata: jalur produksi hybrid (BM25 + vektor Jina) + rerank endpoint, jatuh ke BM25 bila penyedia
   // gagal. Korpus demo tetap BM25 sinkron (tanpa vektor, tanpa jaringan).
   const searcher = config.ragDbPath ? createRagSearcher(ragDb, init.env ?? process.env) : undefined;
+  // Ingatan warga (ADR 0031) disimpan di vault akun; AkunService dirakit sesudah harness (butuh store).
+  const akunRef: { akun?: AkunService } = {};
   const h = createHarness({
     provider: init.provider ?? new DemoProvider(),
     db,
     ragDb,
     ragSearch: searcher?.search,
+    ingatan: penyimpanIngatan(() => {
+      if (!akunRef.akun) throw new Error('akun belum siap');
+      return akunRef.akun;
+    }),
     ...init.harness,
   });
   h.store.reapExpiredTurns();
@@ -256,6 +264,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     },
   };
   const { akun, oidcFixture } = createAkun(db, config, (id) => h.store.deleteUrusan(id), init.akun);
+  akunRef.akun = akun;
   const turnstile = init.akun?.turnstile ?? turnstileFromEnv();
   for (const peringatan of [
     peringatanTurnstile(turnstile, init.env ?? process.env),
@@ -328,26 +337,32 @@ export function quotaFromEnv(env: Record<string, string | undefined>) {
   return quota;
 }
 
+/**
+ * Mode LLM hanya bila LLM_BASE_URL, LLM_API_KEY, dan LLM_AGENT_MODEL terisi DAN saklar darurat
+ * `URUSIN_LLM_DISABLED=1` tidak aktif (mis. internet venue putus saat demo: DemoProvider, tanpa jaringan).
+ */
+export function llmAktif(env: Record<string, string | undefined>): boolean {
+  if (env.URUSIN_LLM_DISABLED?.trim() === '1') return false;
+  return Boolean(env.LLM_BASE_URL && env.LLM_API_KEY && env.LLM_AGENT_MODEL);
+}
+
 async function buildFromEnv(): Promise<Runtime> {
   const env = process.env;
-  const haveLlm = Boolean(env.LLM_BASE_URL && env.LLM_API_KEY && env.LLM_AGENT_MODEL);
-  if (!haveLlm) return createRuntime({ mode: 'demo' });
+  if (!llmAktif(env)) return createRuntime({ mode: 'demo' });
 
   const cfg = loadLlmConfig(env);
   const provider = new OpenAIProvider(cfg);
-  // LLM_CAPS_PIN (rencana §3.11) menang atas probe; tanpa pin, probe saat boot (gagal = mode degraded).
-  let caps = pinnedCaps(env.LLM_CAPS_PIN);
-  if (!caps) {
-    try {
-      const report = await probeCapabilities({ provider, models: cfg.models });
-      caps = applyForcedOff(report, cfg.forcedOff).flags;
-    } catch {
-      caps = { ...ALL_OFF };
-    }
-  }
+  // LLM_CAPS_PIN (rencana §3.11) menang atas probe. Tanpa pin: probe saat boot; probe yang GALAT (proxy sibuk,
+  // timeout) tidak membuat degraded selamanya: diulang di latar dengan backoff (probe-ulang.ts) sampai pulih.
+  const pin = pinnedCaps(env.LLM_CAPS_PIN);
+  const probe = async () =>
+    applyForcedOff(await probeCapabilities({ provider, models: cfg.models }), cfg.forcedOff);
+  let laporan: Awaited<ReturnType<typeof probe>> | null = null;
+  if (!pin) laporan = await probe().catch(() => null);
+  const caps = pin ?? (laporan ? { ...laporan.flags } : { ...ALL_OFF });
   const prices: Prices = cfg.prices;
   const piiKey = piiKeyFromEnv(env, true);
-  return createRuntime({
+  const rt = createRuntime({
     mode: 'llm',
     provider,
     harness: {
@@ -359,6 +374,9 @@ async function buildFromEnv(): Promise<Runtime> {
       ...(piiKey ? { piiKey: kunciPlaceholderHmac(piiKey) } : {}),
     },
   });
+  if (pin) aturStatusProbe({ status: 'pin' });
+  else pantauProbe({ caps: rt.deps.caps, laporan, probe, catat: (p) => console.warn(`llm: ${p}`) });
+  return rt;
 }
 
 let instance: Promise<Runtime> | undefined;

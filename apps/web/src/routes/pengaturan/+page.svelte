@@ -5,8 +5,10 @@
   import Icon from '#lib/components/Icon.svelte';
   import type { NamaIkon } from '#lib/components/ikon.js';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
+  import PilihWilayah from '#lib/components/ui/PilihWilayah.svelte';
   import ZonaBahaya from '#lib/components/akun/ZonaBahaya.svelte';
   import { ambilLokal, ambilPrefs, ambilTts } from '#lib/stores/app.svelte.js';
+  import { tanggal } from '#lib/urusan-status.js';
   import type { PageProps } from './$types';
 
   let { data, form }: PageProps = $props();
@@ -19,8 +21,21 @@
     { id: 'tampilan', label: 'Tampilan & suara', ikon: 'huruf' },
     { id: 'wilayah', label: 'Wilayah layanan', ikon: 'lokasi' },
     { id: 'akun', label: 'Keluarga', ikon: 'keluarga' },
+    { id: 'ingatan', label: 'Yang Urusin ingat', ikon: 'riwayat' },
     { id: 'privasi', label: 'Privasi & data', ikon: 'perisai-centang' },
   ];
+
+  /** Ikon per jenis butir ingatan (ikon yang sudah ada di set). */
+  const IKON_INGATAN: Record<string, NamaIkon> = {
+    ktp: 'lokasi',
+    domisili: 'lokasi',
+    tujuan: 'pindah',
+    bahasa_sederhana: 'huruf',
+    lansia: 'orang',
+    kanal: 'rute',
+    aksesibilitas: 'tangan',
+    catatan: 'berkas-teks',
+  };
   let aktif = $state('tampilan');
 
   const UKURAN: { nilai: Prefs['ukuranHuruf']; label: string; aa: string }[] = [
@@ -41,6 +56,10 @@
   function hapusLokal() {
     if (!confirm('Hapus daftar urusan, pesan, dan pengaturan dari perangkat ini?')) return;
     lokal.hapusSemua();
+    prefs.reset();
+    tts.berhenti();
+    kodeWilayah = '';
+    wilayahTersimpan = false;
     dataDihapus = true;
   }
 
@@ -142,7 +161,7 @@
     </ul>
   </nav>
 
-  <div class="flex min-w-0 flex-1 flex-col gap-10 px-4 py-6 sm:px-8 lg:px-12 lg:py-8">
+  <div class="@container flex min-w-0 flex-1 flex-col gap-10 px-4 py-6 sm:px-8 lg:px-12 lg:py-8">
     <section
       id="tampilan"
       aria-labelledby="h-tampilan"
@@ -160,14 +179,14 @@
         </p>
       </div>
 
-      <fieldset class="flex flex-col gap-4 rounded-[18px] border border-line p-4 sm:p-[22px]">
+      <fieldset class="flex flex-col gap-4 rounded-[18px] border border-line p-[16px] sm:p-[22px]">
         <legend class="sr-only">Ukuran huruf</legend>
         <p aria-hidden="true" class="text-lg leading-[26px] font-semibold text-ink">Ukuran huruf</p>
         <div class="grid grid-cols-3 gap-1.5 rounded-2xl bg-bg-2 p-[5px]">
           {#each UKURAN as u (u.nilai)}
             {@const pilih = prefs.nilai.ukuranHuruf === u.nilai}
             <label
-              class="relative flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 text-center transition-all duration-150 ease-out has-focus-visible:outline-2 has-focus-visible:outline-ink active:scale-[0.98] sm:flex-row sm:gap-2.5 {pilih
+              class="relative flex min-h-16 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-1 text-center transition-all duration-150 ease-out has-focus-visible:outline-2 has-focus-visible:outline-ink active:scale-[0.98] @sm:flex-row @sm:gap-2.5 @sm:px-2 {pilih
                 ? 'bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
                 : 'hover:bg-surface/60'}"
             >
@@ -250,32 +269,23 @@
         </p>
       </div>
       <form
-        class="flex flex-col gap-3 sm:flex-row sm:items-end rounded-[18px] border border-line p-4 sm:p-[22px]"
+        class="flex flex-col gap-3 rounded-[18px] border border-line p-4 @lg:flex-row @lg:items-end sm:p-[22px]"
         onsubmit={(e) => {
           e.preventDefault();
           simpanWilayah();
         }}
       >
-        <div class="flex flex-1 flex-col gap-1.5">
+        <div class="flex min-w-0 flex-1 flex-col gap-1.5">
           <label for="pilih-wilayah" class="text-[0.9375rem] font-semibold text-ink">Kab/kota</label>
-          <div class="relative">
-            <select
-              id="pilih-wilayah"
-              bind:value={kodeWilayah}
-              onchange={() => (wilayahTersimpan = false)}
-              aria-describedby="d-wilayah"
-              autocomplete="address-level2"
-              class="h-12 w-full appearance-none rounded-xl border border-line-2 bg-surface pr-10 pl-4 text-base text-ink transition-colors hover:border-line cursor-pointer"
-            >
-              <option value="" class="bg-surface text-ink">Belum dipilih</option>
-              {#each data.kota as k (k.kodeKabKota)}
-                <option value={k.kodeKabKota} class="bg-surface text-ink">{k.nama}</option>
-              {/each}
-            </select>
-            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-muted">
-              <Icon name="bawah" class="size-4" />
-            </div>
-          </div>
+          <PilihWilayah
+            id="pilih-wilayah"
+            kota={data.kota}
+            bind:value={kodeWilayah}
+            onchange={() => (wilayahTersimpan = false)}
+            describedby="d-wilayah"
+            bolehKosong
+            placeholder="Belum dipilih"
+          />
         </div>
         <button
           type="submit"
@@ -295,7 +305,7 @@
         Keluarga
       </h2>
       <div
-        class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-[18px] border border-line p-4 sm:p-[22px]"
+        class="flex flex-col gap-3 rounded-[18px] border border-line p-4 @lg:flex-row @lg:items-center @lg:justify-between sm:p-[22px]"
       >
         {#if akun}
           <p class="min-w-0 text-base text-ink">
@@ -353,6 +363,108 @@
       </div>
     </section>
 
+    <section id="ingatan" aria-labelledby="h-ingatan" class="flex max-w-[50rem] scroll-mt-24 flex-col gap-4">
+      <div class="flex flex-col gap-1.5">
+        <h2 id="h-ingatan" class="text-[22px] leading-[30px] font-semibold tracking-[-0.5px] text-ink">
+          Yang Urusin ingat
+        </h2>
+        <p class="text-base leading-[25px] text-body">
+          Hal yang Anda sebut sendiri di urusan sebelumnya, supaya tidak perlu bercerita ulang. Tanpa data
+          pribadi seperti NIK atau alamat, dan wilayah tetap ditanyakan dulu sebelum dipakai.
+        </p>
+      </div>
+      {#if data.ingatanTamu.length > 0}
+        <div
+          role="group"
+          aria-label="Ingatan dari perangkat ini"
+          class="flex flex-col gap-3 rounded-[18px] border border-line p-4 sm:p-[22px]"
+        >
+          <p class="text-[0.9375rem] text-body">
+            Ada {data.ingatanTamu.length} hal yang diingat di perangkat ini sebelum Anda masuk:
+          </p>
+          <ul aria-label="Diingat di perangkat ini" class="flex flex-col gap-1 text-[0.9375rem] text-ink">
+            {#each data.ingatanTamu as b (b.id)}<li>{b.label}</li>{/each}
+          </ul>
+          <div class="flex flex-wrap gap-3">
+            <form method="POST" action="?/bawaIngatanTamu">
+              <button
+                type="submit"
+                class="inline-flex min-h-12 shrink-0 items-center justify-center rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90"
+                >Bawa ke akun</button
+              >
+            </form>
+            <form method="POST" action="?/buangIngatanTamu">
+              <button
+                type="submit"
+                class="inline-flex min-h-12 items-center rounded-full border border-line-2 bg-surface px-5 font-semibold text-ink hover:bg-card"
+                >Buang</button
+              >
+            </form>
+          </div>
+        </div>
+      {/if}
+      {#if data.ingatanRusak}
+        <div
+          class="flex flex-col gap-3 rounded-[18px] border border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-[22px]"
+        >
+          <p role="status" class="text-[0.9375rem] text-body">
+            Ingatan tidak bisa dibaca saat ini. Anda tetap bisa menghapus semuanya.
+          </p>
+          <form method="POST" action="?/hapusSemuaIngatan">
+            <button
+              type="submit"
+              class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full border border-galat-garis bg-surface px-5 font-semibold text-galat hover:bg-mawar"
+            >
+              <Icon name="hapus" class="size-4.5" /> Hapus semua ingatan
+            </button>
+          </form>
+        </div>
+      {:else if data.ingatan.length > 0}
+        <ul aria-label="Butir yang diingat" class="overflow-hidden rounded-[18px] border border-line">
+          {#each data.ingatan as b (b.id)}
+            <li
+              class="flex items-center gap-3.5 border-t border-line px-4 py-4 first:border-t-0 sm:px-[22px]"
+            >
+              <span aria-hidden="true" class="grid size-10 shrink-0 place-items-center rounded-xl bg-bg-2"
+                ><Icon name={IKON_INGATAN[b.jenis] ?? 'riwayat'} class="size-[18px]" /></span
+              >
+              <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span class="text-[17px] leading-[25px] font-semibold break-words text-ink">{b.label}</span>
+                <span class="text-[15px] leading-[22px] text-muted">Diingat {tanggal(b.at)}</span>
+              </span>
+              <form method="POST" action="?/hapusIngatan">
+                <input type="hidden" name="id" value={b.id} />
+                <button
+                  type="submit"
+                  class="-mr-3 inline-flex h-11 shrink-0 items-center rounded-full px-3 text-[15px] font-semibold text-ink hover:bg-bg-2"
+                  >Hapus<span class="sr-only"> {b.label}</span></button
+                >
+              </form>
+            </li>
+          {/each}
+        </ul>
+        <div
+          class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-[18px] border border-line p-4 sm:p-[22px]"
+        >
+          <p class="text-[0.9375rem] text-body">
+            {data.ingatan.length} hal diingat. Menghapus tidak mengubah urusan yang sedang berjalan.
+          </p>
+          <form method="POST" action="?/hapusSemuaIngatan">
+            <button
+              type="submit"
+              class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full border border-galat-garis bg-surface px-5 font-semibold text-galat hover:bg-mawar"
+            >
+              <Icon name="hapus" class="size-4.5" /> Hapus semua ingatan
+            </button>
+          </form>
+        </div>
+      {:else}
+        <p role="status" class="rounded-[18px] border border-line p-4 text-[0.9375rem] text-body sm:p-[22px]">
+          Belum ada yang diingat.
+        </p>
+      {/if}
+    </section>
+
     {#if data.zonaBahaya}
       <ZonaBahaya punyaSandi={data.zonaBahaya.punyaSandi} galat={form ?? null} />
     {/if}
@@ -369,7 +481,7 @@
         </p>
       </div>
       <div
-        class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-[18px] border border-line p-4 sm:p-[22px]"
+        class="flex flex-col gap-3 rounded-[18px] border border-line p-4 @lg:flex-row @lg:items-center @lg:justify-between sm:p-[22px]"
       >
         <p class="text-[0.9375rem] text-body">
           {dataDihapus
@@ -379,9 +491,10 @@
         <button
           type="button"
           onclick={hapusLokal}
-          class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full border border-galat-garis bg-surface px-5 font-semibold text-galat hover:bg-mawar"
+          class="inline-flex min-h-12 max-w-full items-center justify-center gap-2 rounded-full border border-galat-garis bg-surface px-5 py-2 text-center font-semibold text-galat hover:bg-mawar"
         >
-          <Icon name="hapus" class="size-4.5" /> Hapus data di perangkat ini
+          <Icon name="hapus" class="size-4.5 shrink-0" />
+          <span class="min-w-0">Hapus data di perangkat ini</span>
         </button>
       </div>
       {#if page.data.versi}

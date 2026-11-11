@@ -2,6 +2,7 @@ import { OFFICIAL_DOMAINS, type OfficialDomain } from '@urusin/core';
 import { kanalFor } from '@urusin/rag';
 import {
   KANAL_NASIONAL,
+  kanalProvinsi,
   kanalWilayah,
   kontakDukcapil,
   kontakLayanan,
@@ -12,7 +13,7 @@ import {
 import { generateStructured, type CapabilityFlags, type ChatMessage, type ChatProvider } from '@urusin/llm';
 import { z } from 'zod';
 import type { KutipanTerverifikasi, PayloadOf } from '@urusin/contracts';
-import { DATAMARK, newNonce, spotlight, spotlightPolicyText } from './spotlight.js';
+import { DATAMARK, idDelimiter, newNonce, spotlight, spotlightPolicyText } from './spotlight.js';
 import type { ChunkRecord } from './store.js';
 import { textFragmentUrl } from './textfragment.js';
 
@@ -41,7 +42,7 @@ const STALE_DAYS = 30;
 const MIN_QUOTE_CHARS = 12;
 export const MAX_KLAIM = 8;
 /** Batas klaim yang diminta dari model (MAX_KLAIM tetap jaring pengaman): jawaban panjang menenggelamkan warga. */
-export const KLAIM_RINGKAS = 6;
+export const KLAIM_RINGKAS = 4;
 export const MAX_KLAIM_CHARS = 400;
 
 /** Token faktual yang harus terbukti di kutipan: angka (termasuk Rp/titik/koma), URL, dan nomor telepon. */
@@ -131,6 +132,12 @@ export type HandoffContext = {
    * untuk KTP patah), jadi kanal hand-off hanya diambil dari data kanal resmi per layanan.
    */
   chunks?: readonly ChunkRecord[] | undefined;
+  /**
+   * Warga bukan penduduk kab/kota ini (KTP di tempat lain, mis. KTP Surabaya bertanya ke Disdukcapil Semarang):
+   * portal layanan wilayah ini hanya untuk penduduknya (login NIK setempat), jadi kanal pertamanya situs informasi
+   * Disdukcapil, bukan portal.
+   */
+  bukanPenduduk?: boolean | undefined;
 };
 
 type KanalHandoff = PayloadOf<'handoff'>['kanal'][number];
@@ -184,15 +191,27 @@ function kanalKontakLayanan(kode: string, layanan: LayananKontak): KanalHandoff 
  * Disdukcapil wilayah KTP (kanal registry, situs terverifikasi beserta alamatnya, lalu kontak layanan resmi);
  * tanpa wilayah: Ditjen Dukcapil.
  */
-function kanalAdminduk(kode: string | null): KanalHandoff[] {
+function kanalAdminduk(kode: string | null, bukanPenduduk = false): KanalHandoff[] {
   const nasional = `${KANAL_NASIONAL.judul}, ${KANAL_NASIONAL.instansi}`;
   if (!kode) return [{ nama: nasional, url: KANAL_NASIONAL.url }];
   const k = kanalWilayah(kode);
-  const out: KanalHandoff[] = [{ nama: k.jenis === 'nasional' ? nasional : k.instansi, url: k.url }];
-  // DKI: Suku Dinas kota administrasi (portal Alpukat) lebih dulu, lalu situs Dinas Dukcapil Provinsi.
-  if (kode.startsWith('31')) out.push(DUKCAPIL_DKI);
-  const kontak = kontakDukcapil(kode);
   const w = wilayahByKode(kode);
+  // DKI (p05): yang melayani Suku Dinas Dukcapil kota administrasi, lewat portal milik Dinas provinsi; label
+  // menyebut keduanya agar tautan Alpukat tidak dikira situs Suku Dinas. Situs Dinas provinsi jadi pengganti.
+  const nama =
+    k.jenis === 'nasional'
+      ? nasional
+      : kode.startsWith('31') && w && k.jenis === 'portal'
+        ? `Suku Dinas Dukcapil ${w.nama} lewat ${k.judul}, portal ${k.instansi}`
+        : k.instansi;
+  // Bukan penduduk setempat (p03): portal berlogin NIK setempat dilewati bila ada situs informasi Disdukcapil.
+  const lewatiPortal = bukanPenduduk && k.jenis === 'portal' && Boolean(kontakDukcapil(kode));
+  const out: KanalHandoff[] = lewatiPortal ? [] : [{ nama, url: k.url }];
+  if (kode.startsWith('31')) out.push(DUKCAPIL_DKI);
+  // Tanpa situs Disdukcapil kab/kota (kanal pertama = situs pemda): situs Dinas Dukcapil/Pemerintah provinsi menyusul.
+  const prov = k.jenis === 'pemda' ? kanalProvinsi(kode) : undefined;
+  if (prov) out.push({ nama: prov.instansi, url: prov.url });
+  const kontak = kontakDukcapil(kode);
   if (kontak && w)
     out.push({
       nama: `Dinas Kependudukan dan Pencatatan Sipil ${w.nama}`,
@@ -215,7 +234,7 @@ function kanalAdminduk(kode: string | null): KanalHandoff[] {
  * bansos ke Kemensos dan dinas sosial, cek DPT ke KPU, pengaduan ke SP4N-LAPOR!, adminduk ke Disdukcapil wilayah KTP.
  * Jenis lain: kosong, karena Urusin belum punya data kanalnya (tidak menebak dari chunk).
  */
-function kanalLayanan(jenis: string | null, kode: string | null): KanalHandoff[] {
+function kanalLayanan(jenis: string | null, kode: string | null, bukanPenduduk = false): KanalHandoff[] {
   const w = kode ? wilayahByKode(kode) : undefined;
   switch (jenis) {
     case 'skck':
@@ -247,7 +266,7 @@ function kanalLayanan(jenis: string | null, kode: string | null): KanalHandoff[]
     case 'pengaduan':
       return domainResmi((d) => d.layanan === 'Pengaduan publik');
     default:
-      return jenis === null || ADMINDUK.has(jenis) ? kanalAdminduk(kode) : [];
+      return jenis === null || ADMINDUK.has(jenis) ? kanalAdminduk(kode, bukanPenduduk) : [];
   }
 }
 
@@ -255,7 +274,7 @@ function kanalLayanan(jenis: string | null, kode: string | null): KanalHandoff[]
 export function handoffChannels(ctx: HandoffContext): KanalHandoff[] {
   const kode = ctx.kodeKabKota && /^\d{4}$/.test(ctx.kodeKabKota) ? ctx.kodeKabKota : null;
   const out: KanalHandoff[] = [];
-  for (const k of kanalLayanan(ctx.jenis ?? null, kode)) {
+  for (const k of kanalLayanan(ctx.jenis ?? null, kode, ctx.bukanPenduduk === true)) {
     const ada = out.find((o) =>
       k.url ? o.url !== undefined && kunciUrl(o.url) === kunciUrl(k.url) : !o.url && o.nama === k.nama,
     );
@@ -297,7 +316,11 @@ export function verifyGrounded(
   ctx: Omit<HandoffContext, 'chunks'> = {},
   now: Date = new Date(),
 ): GroundedResult {
+  // Model kerap menyalin id dari atribut delimiter spotlight (`wonogiri-ktp-el_1`), bukan dari kurung siku
+  // (`wonogiri-ktp-el#1`). Tanpa padanan ini SEMUA klaim atas chunk ber-`#` dibuang dan warga mendapat hand-off
+  // "belum ada sumber resmi" walau sumbernya ada (QA warga: KTP-el rusak Wonogiri). Id persis tetap menang.
   const byId = new Map(chunks.map((c) => [c.refId, c]));
+  for (const c of chunks) if (!byId.has(idDelimiter(c.refId))) byId.set(idDelimiter(c.refId), c);
   const klaim: GroundedResult['klaim'] = [];
   let dropped = 0;
 
@@ -316,7 +339,7 @@ export function verifyGrounded(
         break;
       }
       citations.push({
-        refId: c.refId,
+        refId: chunk.refId,
         kutipanPersis: exact,
         url: chunk.url,
         judul: chunk.judul,
@@ -378,6 +401,7 @@ export async function generateGroundedAnswer(opts: GroundedGenerationOptions) {
         '- kutipanPersis HARUS salinan kata per kata dari sumber (boleh tanpa tanda "' +
           DATAMARK +
           '", kembalikan jadi spasi biasa). refId HARUS salah satu ID di dalam kurung siku pada sumber.',
+        '- kutipanPersis cukup potongan TERPENDEK yang membuktikan klaim (6-25 kata), biasanya satu kutipan per klaim; jangan menyalin seluruh daftar. Jawaban ringkas lebih cepat sampai ke warga.',
         '- Jangan membuat klaim tanpa kutipan. Bila sumber tidak memuat jawabannya, kembalikan klaim kosong dan isi handoff.',
         '- Jangan menulis nomor identitas, nomor HP, atau email warga.',
       ].join('\n'),

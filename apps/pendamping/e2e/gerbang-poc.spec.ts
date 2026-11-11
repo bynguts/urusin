@@ -2,7 +2,7 @@ import http from 'node:http';
 import type net from 'node:net';
 import { expect, test } from '@playwright/test';
 import type { Pengamatan, PendampingEvent, PendampingServerMessage } from '@urusin/contracts';
-import { createBrowserFactory } from '../src/browser.js';
+import { createBrowserFactory, PESAN_LAYAR_LEBAR, pesanGangguan } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
 import { ADAPTER_GENERIK, PendampingError, SessionManager, sidHashOf } from '../src/sessions.js';
 
@@ -68,6 +68,25 @@ const HALAMAN: Record<string, string> = {
   document.getElementById('isi').classList.add('tampil');
   document.getElementById('muat').remove();
 }, 800));</script>`),
+  // Probe gel4 6171 (/onlinecapil): #page-content berisi TAUTAN saja (tanpa kolom isian) opacity 0 di balik
+  // preloader, dengan tombol tutup yang sudah terlihat di luarnya (pengamatan tidak kosong); setTimeout setelah
+  // load (situs asli 800 ms, di sini 1,5 detik agar jeda pasti terlewati) baru transisi dan preloader dihapus.
+  '/pudar-tautan':
+    kerangka(`<style>#page-content{opacity:0;transition:opacity .7s}#page-content.tampil{opacity:1}
+#page-content a{display:block;padding:30px 16px}.preloader{position:fixed;top:60px;left:0;right:0;bottom:0;background:#fff}</style>
+<button type="button" aria-label="Tutup pengumuman">✕</button>
+<div class="preloader">Memuat halaman...</div>
+<div id="page-content"><h1>Pilih menu</h1><a href="/antrian">Daftar Antrian Pudar</a>
+<a href="/cek">Cek Status Pudar</a><a href="/unduh">Unduh Formulir Pudar</a></div>
+<script>addEventListener('load', () => setTimeout(() => {
+  document.getElementById('page-content').classList.add('tampil');
+  document.querySelector('.preloader').remove();
+}, 1500));</script>`),
+  // Varian: body sendiri opacity 0 (opacity tidak diwariskan ke gaya anak), tampil 1,5 detik setelah load.
+  '/pudar-body': `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Uji</title>
+<style>body{opacity:0;transition:opacity .5s}body.tampil{opacity:1}a{display:block;padding:30px 16px}</style></head>
+<body><a href="/antrian">Antrian Body Pudar</a><button type="button">Tombol Body Pudar</button>
+<script>addEventListener('load', () => setTimeout(() => document.body.classList.add('tampil'), 1500));</script></body></html>`,
   // Probe 3674: redirect JS halaman sendiri (bukan aksi AI) ke ?p=close_form; dan redirect ke jalur tulis.
   '/alih': kerangka(
     `<p>Mengalihkan...</p><script>setTimeout(() => { location.href = '/tutup?p=close_form'; }, 300);</script>`,
@@ -194,6 +213,27 @@ const HALAMAN: Record<string, string> = {
 };
 
 /**
+ * Probe gel4 3279: beranda responsif ala Bootstrap. Tombol MASUK `d-none d-lg-block` (tak tampil < 992 px walau
+ * menu dibuka); judul dokumen = lebar viewport saat ini. `/responsif-menu`: MASUK hanya di menu collapse
+ * tertutup (dibuka lewat hamburger, bukan dengan melebarkan layar).
+ */
+const RESPONSIF = (isi: string) =>
+  `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">` +
+  `<style>.d-none{display:none}@media (min-width:992px){.d-lg-block{display:block}}.collapse:not(.show){display:none}</style>` +
+  `<title>Uji</title></head><body>${isi}` +
+  `<script>const t=()=>{document.title='lebar '+innerWidth};t();setInterval(t,100)</script></body></html>`;
+HALAMAN['/responsif'] = RESPONSIF(`<header><a href="/responsif">PAK ONOM</a>
+<button type="button" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('show')"><i class="fa fa-bars"></i></button>
+<nav id="nav" class="collapse"><a href="/responsif-bantuan">Bantuan</a>
+<a href="javascript:void(0)" class="btn d-none d-lg-block" onclick="location.href='/responsif-masuk'">MASUK</a></nav>
+<a href="javascript:void(0)" class="btn d-none d-lg-block" onclick="location.href='/responsif-masuk'">MASUK</a></header>
+<h1>Selamat datang</h1><p>Pelayanan administrasi kependudukan online.</p><a href="/responsif-bantuan">Bantuan</a>`);
+HALAMAN['/responsif-bantuan'] = RESPONSIF('<h1>Bantuan</h1><a href="/responsif">Beranda</a>');
+HALAMAN['/responsif-menu'] = RESPONSIF(`<header><a href="/responsif-menu">PAK ONOM</a>
+<button type="button" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('show')"><i class="fa fa-bars"></i></button>
+<nav id="nav" class="collapse"><a href="/responsif-masuk">Masuk</a></nav></header><h1>Selamat datang</h1>`);
+
+/**
  * Probe gel4 (1101/3312/7371): halaman Cloudflare tiruan (403 + cf-ray), keduanya memuat skrip telemetri JSD
  * seperti halaman asli. Tantangan = bisa diselesaikan warga; blokir keras = tidak ada yang bisa diselesaikan.
  */
@@ -203,11 +243,56 @@ const RESPON_KHUSUS: Record<string, { status: number; html: string }> = {
     status: 403,
     html: `<!doctype html><html><head><title>Tunggu sebentar...</title></head><body><p>Melakukan verifikasi keamanan</p><script>window._cf_chl_opt={cType:'managed'}</script>${JSD}</body></html>`,
   },
+  // Smoke 3279: origin Apache mati di balik Cloudflare (503 tanpa kendali, skrip injeksi Cloudflare ikut).
+  '/gangguan-503': {
+    status: 503,
+    html: `<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><head><title>503 Service Unavailable</title></head><body><h1>Service Unavailable</h1><p>The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>${JSD}</body></html>`,
+  },
+  // 500 yang tetap berfungsi (warning PHP, halaman berisi formulir): bukan gangguan.
+  '/galat-500-berisi': {
+    status: 500,
+    html: '<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Layanan</title></head><body><p>Warning: Undefined variable</p><form><label>NIK Pemohon <input name="nik"></label></form><a href="/bantuan">Bantuan</a></body></html>',
+  },
   '/cf-blokir': {
     status: 403,
     html: `<!doctype html><html><head><title>Attention Required! | Cloudflare</title></head><body><h1>Sorry, you have been blocked</h1><h2>You are unable to access contoh.go.id</h2>${JSD}</body></html>`,
   },
 };
+
+/**
+ * Probe gel4 1372/3275: interstitial ala Turnstile "Verify you are human" (BUKAN Cloudflare, tidak meniru
+ * mekanismenya): widget di iframe jalur challenge-platform berisi kotak centang besar; centang = GET ke
+ * JALUR_TS_LOLOS (cookie lolos) lalu kembali ke halaman semula yang kini berisi formulir.
+ * - `/ts-antara`: judul interstitial, widget langsung ada.
+ * - `/ts-lambat`: judul biasa + penanda `.cf-turnstile`, widget baru disisipkan setelah uji membuka pemicu
+ *   (`/ts-pemicu`, dibaca halaman lewat GET berkala): Navigator sempat menyerahkan CAPTCHA sebelum pemeriksaan
+ *   tantangan melihat widgetnya.
+ */
+let pemicuTs = false;
+const JALUR_TS = ['/ts-antara', '/ts-lambat'];
+const JALUR_TS_LOLOS = '/cdn-cgi/challenge-platform/uji-ts/lolos';
+const widgetTs = (kembali: string) =>
+  `<iframe title="Widget verifikasi" src="/cdn-cgi/challenge-platform/uji-ts/widget?kembali=${kembali}" width="300" height="70" style="border:0;display:block"></iframe>`;
+const HALAMAN_TS_SESUDAH = kerangka(
+  '<h1>Layanan Kependudukan</h1><form><label>NIK Pemohon <input name="nik"></label></form>',
+);
+HALAMAN['/ts-antara'] =
+  `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Verify you are human</title></head>` +
+  `<body><p>Halaman tiruan untuk pengujian. Centang kotak di bawah.</p>${widgetTs('/ts-antara')}</body></html>`;
+HALAMAN['/ts-lambat'] = kerangka(`<h1>Keamanan situs</h1><a href="/bantuan">Bantuan</a>
+<div class="cf-turnstile" id="wadah"></div>
+<script>const t = setInterval(async () => {
+  if ((await (await fetch('/ts-pemicu', { cache: 'no-store' })).text()) !== 'ya') return;
+  clearInterval(t);
+  document.getElementById('wadah').innerHTML = ${JSON.stringify(widgetTs('/ts-lambat'))};
+}, 300);</script>`);
+HALAMAN['/cdn-cgi/challenge-platform/uji-ts/widget'] =
+  `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Widget</title><style>html,body{margin:0}` +
+  `label{display:flex;align-items:center;gap:8px;box-sizing:border-box;width:300px;height:70px;border:1px solid #888;font:16px sans-serif}` +
+  `input{width:28px;height:28px}</style></head><body><label><input type="checkbox" id="kotak-manusia"> Verify you are human</label>` +
+  `<script>document.getElementById('kotak-manusia').addEventListener('change', () => {` +
+  `top.location.href = '${JALUR_TS_LOLOS}?kembali=' + new URLSearchParams(location.search).get('kembali');` +
+  `});</script></body></html>`;
 
 async function situsUji() {
   const hitung = new Map<string, number>();
@@ -217,6 +302,23 @@ async function situsUji() {
     if (req.method !== 'GET' || !(jalur in HALAMAN)) hitung.set(jalur, (hitung.get(jalur) ?? 0) + 1);
     req.resume();
     req.on('end', () => {
+      if (jalur === '/ts-pemicu') {
+        res.writeHead(200, { 'content-type': 'text/plain', 'cache-control': 'no-store' });
+        return void res.end(pemicuTs ? 'ya' : 'belum');
+      }
+      // Tiruan interstitial Turnstile: hanya ketukan warga pada kotak centang yang membuka JALUR_TS_LOLOS.
+      if (jalur === JALUR_TS_LOLOS) {
+        const kembali = new URL(req.url ?? '/', 'http://x').searchParams.get('kembali') ?? '';
+        res.writeHead(302, {
+          location: JALUR_TS.includes(kembali) ? kembali : '/ts-antara',
+          'set-cookie': 'uji_ts=lolos; Path=/',
+        });
+        return void res.end();
+      }
+      if (JALUR_TS.includes(jalur) && /(^|;\s*)uji_ts=lolos/.test(req.headers.cookie ?? '')) {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+        return void res.end(HALAMAN_TS_SESUDAH);
+      }
       const khusus = Object.hasOwn(RESPON_KHUSUS, jalur) ? RESPON_KHUSUS[jalur] : undefined;
       if (khusus) {
         res.writeHead(khusus.status, {
@@ -246,7 +348,8 @@ async function situsUji() {
 
 type Situs = Awaited<ReturnType<typeof situsUji>>;
 
-async function sesi(situs: Situs, jalur: string, id: string, amati = true) {
+/** `rekam`: penampil tiruan dipasang SEBELUM sesi berjalan, event (giliran_anda, sorot) dikumpulkan sejak awal. */
+async function sesi(situs: Situs, jalur: string, id: string, amati = true, rekam = false) {
   const config = loadConfig({
     PENDAMPING_FIXTURE_ORIGINS: situs.origin,
     PENDAMPING_ORIGIN_OVERRIDES: `${RESMI}=${situs.origin}`,
@@ -263,6 +366,14 @@ async function sesi(situs: Situs, jalur: string, id: string, amati = true) {
     params: { jalur },
     modeUji: true,
   });
+  const events: PendampingEvent[] = [];
+  if (rekam)
+    await manager.attach(s.sesiId, {
+      send: (m: PendampingServerMessage) => void (m.type === 'event' && events.push(m.event)),
+      frame: () => {},
+      ack: () => {},
+      close: () => {},
+    });
   if (amati) await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('berjalan');
   else
     await expect
@@ -271,7 +382,7 @@ async function sesi(situs: Situs, jalur: string, id: string, amati = true) {
       })
       .toBe(true);
   const p = amati ? (await manager.amati(o)).pengamatan : (undefined as unknown as Pengamatan);
-  return { manager, o, sesiId: s.sesiId, p };
+  return { manager, o, sesiId: s.sesiId, p, events };
 }
 
 function semua(p: Pengamatan, nama: string) {
@@ -695,6 +806,87 @@ test('probe gel4 (1101/3312): halaman tantangan Cloudflare 403 = giliran verifik
   }
 });
 
+/** Event verifikasi_situs ber-sorot (kotak widget tantangan) terakhir. */
+const sorotVerifikasi = (events: PendampingEvent[]) =>
+  events.findLast(
+    (e): e is Extract<PendampingEvent, { jenis: 'giliran_anda' }> =>
+      e.jenis === 'giliran_anda' && e.alasan === 'verifikasi_situs' && e.sorot !== undefined,
+  )?.sorot;
+
+test('probe gel4 1372/3275: interstitial Turnstile = giliran warga + sorot widget; dicentang warga, AI lanjut sendiri', async () => {
+  const awal = situs.hitung(JALUR_TS_LOLOS);
+  const { manager, o, sesiId, events } = await sesi(situs, '/ts-antara', 'ts-antara', false, true);
+  try {
+    await expect.poll(() => manager.status(o).mode, { timeout: 15_000 }).toBe('takeover');
+    await expect.poll(() => sorotVerifikasi(events), { timeout: 15_000 }).toBeTruthy();
+    const kotak = sorotVerifikasi(events)!;
+    expect(kotak.lebar).toBeGreaterThanOrEqual(290);
+    expect(manager.status(o).pesan).toMatch(/Verify you are human/);
+    // Navigator mengamati: mode tetap giliran warga (AI menunggu), aksi apa pun tidak dijalankan.
+    const a = await manager.amati(o);
+    expect(a.mode).toBe('takeover');
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: a.pengamatan.seq,
+      aksi: [{ jenis: 'serahkan', alasan: 'captcha' }],
+    });
+    expect(r.hasil.every((h) => h.kode === 'DILEWATI')).toBe(true);
+    // Tanpa ketukan warga tidak ada yang mencentang (AI tidak pernah menyentuh widget).
+    await new Promise((ok) => setTimeout(ok, 2_000));
+    expect(situs.hitung(JALUR_TS_LOLOS)).toBe(awal);
+    expect(manager.status(o).mode).toBe('takeover');
+
+    // Warga sendiri mencentang (ketukan di kotak sorot, diteruskan CDP sampai ke iframe).
+    await ketuk(manager, sesiId, kotak.x + 30, kotak.y + kotak.tinggi / 2);
+    await expect.poll(() => manager.status(o).mode, { timeout: 15_000 }).toBe('ai');
+    expect(manager.status(o).pesan).toMatch(/Verifikasi selesai\. AI melanjutkan/);
+    expect(situs.hitung(JALUR_TS_LOLOS)).toBe(awal + 1);
+    // AI lanjut sendiri mengamati halaman berikutnya (judul/URL berganti, tantangan hilang).
+    const b = await manager.amati(o);
+    expect(b.mode).toBe('ai');
+    expect(b.pengamatan.judul).not.toMatch(/verify/i);
+    expect(satu(b.pengamatan, 'NIK Pemohon')).toMatchObject({ peran: 'teks' });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 1372/3275: CAPTCHA diserahkan sebelum widget tantangan terdeteksi -> tetap lanjut otomatis setelah lolos', async () => {
+  const awal = situs.hitung(JALUR_TS_LOLOS);
+  const { manager, o, sesiId, p, events } = await sesi(situs, '/ts-lambat', 'ts-lambat', true, true);
+  try {
+    // Navigator melihat sinyal tantangan di pengamatan (widget belum muncul) dan menyerahkan CAPTCHA ke warga.
+    expect(p.sinyal.tantangan).toBe(true);
+    expect(manager.status(o).mode).toBe('ai');
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'serahkan', alasan: 'captcha' }],
+    });
+    expect(r.hasil[0]?.kode).toBe('ok');
+    expect(manager.status(o).mode).toBe('takeover');
+    pemicuTs = true;
+    // Widget muncul di dokumen yang sama: pemeriksaan tantangan menyorotnya untuk warga.
+    await expect.poll(() => sorotVerifikasi(events), { timeout: 15_000 }).toBeTruthy();
+    const kotak = sorotVerifikasi(events)!;
+    expect(situs.hitung(JALUR_TS_LOLOS)).toBe(awal);
+    await ketuk(manager, sesiId, kotak.x + 30, kotak.y + kotak.tinggi / 2);
+    // Tantangan hilang: serah CAPTCHA di dokumen tantangan itu selesai, AI lanjut tanpa "Lanjutkan" dari warga.
+    await expect.poll(() => manager.status(o).mode, { timeout: 15_000 }).toBe('ai');
+    expect(manager.status(o).pesan).toMatch(/Verifikasi selesai\. AI melanjutkan/);
+    const b = await manager.amati(o);
+    expect(b.mode).toBe('ai');
+    expect(satu(b.pengamatan, 'NIK Pemohon')).toMatchObject({ peran: 'teks' });
+    expect(manager.kurasJejak(o).catatan).toContainEqual(
+      expect.objectContaining({ jenis: 'ambil_alih', fase: 'selesai' }),
+    );
+  } finally {
+    await manager.shutdown();
+  }
+});
+
 test('probe gel4 (7371): blokir keras Cloudflare (you have been blocked) = dipandu dengan pesan jujur', async () => {
   const { manager, o } = await sesi(situs, '/cf-blokir', 'cf-blokir', false);
   try {
@@ -713,6 +905,26 @@ test('probe gel4 6171: konten fade-in teramati setelah transisi selesai (tenang 
   try {
     expect(satu(p, 'Nama Pudar')).toMatchObject({ peran: 'teks', isian: 'kosong' });
     expect(satu(p, 'Tempat Lahir Pudar')).toMatchObject({ peran: 'teks' });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 6171: blok tautan di balik preloader, jeda setTimeout sebelum fade-in, tetap teramati', async () => {
+  const { manager, p } = await sesi(situs, '/pudar-tautan', 'pudar-tautan');
+  try {
+    for (const nama of ['Daftar Antrian Pudar', 'Cek Status Pudar', 'Unduh Formulir Pudar'])
+      expect(satu(p, nama)).toMatchObject({ peran: 'tautan' });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 6171: body opacity 0 sampai setTimeout: tautan/tombol teramati setelah tampil', async () => {
+  const { manager, p } = await sesi(situs, '/pudar-body', 'pudar-body');
+  try {
+    expect(satu(p, 'Antrian Body Pudar')).toMatchObject({ peran: 'tautan' });
+    expect(satu(p, 'Tombol Body Pudar')).toMatchObject({ peran: 'tombol' });
   } finally {
     await manager.shutdown();
   }
@@ -1131,6 +1343,65 @@ test('probe 3324/3404: pembuka kalender ui_lokal, tetapi klik AI di halaman akhi
     });
     expect(r.hasil).toEqual([{ indeks: 0, kode: 'HALAMAN_AKHIR' }]);
     expect(situs.hitung('/api/daftar')).toBe(0);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 3279: tombol MASUK khusus layar lebar -> viewport dilebarkan, dokumen lain kembali ke lebar ponsel', async () => {
+  const { manager, o, p } = await sesi(situs, '/responsif', 'responsif');
+  try {
+    // Lebar ponsel (390) menyembunyikan MASUK; worker melebarkan ke 992 (batas lg) dan memberi tahu warga.
+    expect(p.judul).toBe('lebar 992');
+    expect(semua(p, 'MASUK').length).toBeGreaterThan(0);
+    expect(manager.status(o).pesan).toBe(PESAN_LAYAR_LEBAR);
+    // Tidak ada yang diklik worker saat melebarkan.
+    expect(situs.hitung('/responsif-masuk')).toBe(0);
+    const bantuan = semua(p, 'Bantuan').find((e) => e.kelas === 'navigasi');
+    expect(bantuan).toBeTruthy();
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'klik', ref: bantuan!.ref }],
+    });
+    expect(r.hasil[0]?.kode).toBe('ok');
+    // Dokumen lain: kembali ke lebar ponsel.
+    await expect
+      .poll(async () => (await manager.amati(o)).pengamatan.judul, { timeout: 10_000 })
+      .toBe('lebar 390');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 3279: MASUK di menu collapse tertutup -> tidak dilebarkan (dibuka lewat menu)', async () => {
+  const { manager, o, p } = await sesi(situs, '/responsif-menu', 'responsif-menu');
+  try {
+    expect(p.judul).toBe('lebar 390');
+    expect(manager.status(o).pesan).not.toBe(PESAN_LAYAR_LEBAR);
+    expect(semua(p, 'Masuk')).toEqual([]);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('smoke 3279: situs 503 tanpa kendali sejak dokumen pertama -> sesi berakhir jujur (gangguan), bukan halaman kosong', async () => {
+  const { manager, o } = await sesi(situs, '/gangguan-503', 'gangguan-503', false);
+  try {
+    await expect.poll(() => manager.status(o).status, { timeout: 20_000 }).toBe('gagal');
+    expect(manager.status(o).pesan).toBe(pesanGangguan(new URL(situs.origin).host, 503));
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('smoke 3279: halaman 500 yang tetap berisi formulir tidak dianggap gangguan', async () => {
+  const { manager, o, p } = await sesi(situs, '/galat-500-berisi', 'galat-500-berisi');
+  try {
+    expect(satu(p, 'NIK Pemohon')).toMatchObject({ peran: 'teks' });
+    await new Promise((r) => setTimeout(r, 3_000));
+    expect(manager.status(o).status).toBe('berjalan');
   } finally {
     await manager.shutdown();
   }

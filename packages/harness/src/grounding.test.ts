@@ -238,13 +238,13 @@ describe('hand-off menurut layanan (W3), kontak (W6), dan dedup URL (W9)', () =>
   it('adminduk DKI (p05): Suku Dinas kota administrasi lebih dulu, situs Dinas provinsi sebagai pengganti', () => {
     const h = buildHandoff({ kodeKabKota: '3175', jenis: 'kk', chunks: [] }, 'tanpa_sumber');
     expect(h.kanal[0]).toEqual({
-      nama: 'Suku Dinas Kependudukan dan Pencatatan Sipil Kota Administrasi Jakarta Timur',
+      nama: 'Suku Dinas Dukcapil Kota Administrasi Jakarta Timur lewat Alpukat Betawi, portal Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta',
       url: 'https://alpukat-dukcapil.jakarta.go.id/',
     });
+    // Tanyakan ke Suku Dinas kota (bukan Dinas provinsi); Alpukat disebut portal provinsi, bukan situs Sudin.
     expect(h.alasan).toContain(
-      'Suku Dinas Kependudukan dan Pencatatan Sipil Kota Administrasi Jakarta Timur',
+      'Tanyakan ke Suku Dinas Dukcapil Kota Administrasi Jakarta Timur lewat Alpukat Betawi',
     );
-    expect(h.alasan).not.toMatch(/Provinsi DKI/);
     expect(host(h.kanal[1]?.url)).toBe('kependudukancapil.jakarta.go.id');
   });
 
@@ -443,5 +443,46 @@ describe('kontak layanan resmi (kanal-layanan.json) di hand-off dan kalimat kana
     for (const v of nilai(resmi)) expect(kal).toContain(v);
     expect(kal).toContain(`sumber ${resmi.sumber[0]!.url}, dicek ${resmi.sumber[0]!.dicekPada}`);
     expect(kalimatKanal('9304')).not.toContain('Kontak resmi');
+  });
+});
+
+describe('refId dari atribut delimiter spotlight', () => {
+  it('"sumber_1" (bentuk id di delimiter) dipadankan ke chunk "sumber#1"; kutipan memakai refId asli', () => {
+    const c = chunk({
+      refId: 'wonogiri-ktp-el#0',
+      text: 'Persyaratan: c. KTP-el rusak (jika KTP-el rusak);',
+    });
+    const r = verifyGrounded(
+      {
+        klaim: [
+          {
+            teks: 'Bawa KTP-el yang rusak.',
+            kutipan: [{ refId: 'wonogiri-ktp-el_0', kutipanPersis: 'KTP-el rusak (jika KTP-el rusak)' }],
+          },
+        ],
+      },
+      [c],
+      {},
+      NOW,
+    );
+    expect(r.handoff).toBeUndefined();
+    expect(r.klaim[0]!.kutipan[0]!.refId).toBe('wonogiri-ktp-el#0');
+  });
+
+  it('id persis tetap menang atas padanan delimiter', () => {
+    const persis = chunk({ refId: 'a_1', text: 'Teks persis milik chunk a_1 yang benar.' });
+    const lain = chunk({ refId: 'a#1', text: 'Teks lain milik chunk a#1 saja.' });
+    const r = verifyGrounded(
+      {
+        klaim: [
+          { teks: 'Klaim.', kutipan: [{ refId: 'a_1', kutipanPersis: 'Teks persis milik chunk a_1' }] },
+        ],
+      },
+      [lain, persis],
+      {},
+      NOW,
+    );
+    expect(r.klaim).toHaveLength(1);
+    expect(r.klaim[0]!.kutipan[0]!.refId).toBe('a_1');
   });
 });

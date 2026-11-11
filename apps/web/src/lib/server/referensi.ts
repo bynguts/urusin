@@ -60,7 +60,8 @@ export type KotaPilihan = { kodeKabKota: string; nama: string; situs: { url: str
 
 /**
  * Semua 514 kab/kota untuk pemilih wilayah (urut nama) + kanal resmi kab/kota itu sendiri bila tercatat
- * (portal layanan di registry atau situs Disdukcapil terverifikasi); null bila hanya ada situs nasional.
+ * (portal layanan di registry, situs Disdukcapil, atau situs resmi pemda kab/kota terverifikasi); null bila hanya ada
+ * situs provinsi atau nasional.
  */
 export function daftarKota(): KotaPilihan[] {
   return SEMUA_WILAYAH.map((w) => {
@@ -68,7 +69,7 @@ export function daftarKota(): KotaPilihan[] {
     return {
       kodeKabKota: w.kodeKabKota,
       nama: w.nama,
-      situs: k.jenis === 'nasional' ? null : { url: k.url, nama: k.judul },
+      situs: k.jenis === 'nasional' || k.jenis === 'provinsi' ? null : { url: k.url, nama: k.judul },
     };
   }).sort((a, b) => a.nama.localeCompare(b.nama));
 }

@@ -88,7 +88,10 @@ describe('gerbang wilayah: rencana diblokir di kode sampai wilayah KTP ditetapka
       jenis: 'kelahiran',
     });
     usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
+    // Giliran pertama: kartu usulan yang bertanya, agen tidak dipanggil.
     await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    expect(provider.calls.filter((c) => c.kind === 'create')).toHaveLength(0);
+    await runTurn(env.deps, { urusanId: u.id, userText: 'Anaknya lahir minggu lalu' });
     const call = provider.calls.find((c) => c.kind === 'create');
     const note = call?.kind === 'create' ? call.params.messages.map((m) => m.content).join('\n') : '';
     expect(note).toContain('WILAYAH KTP: belum ditetapkan.');
@@ -104,7 +107,7 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
   it.each([
     ['3578', 'Kota Surabaya', 'https://wargaklampid-dispendukcapil.surabaya.go.id/'],
     ['3216', 'Kabupaten Bekasi', 'https://sitepak.bekasikab.go.id/'],
-    ['1101', 'Kabupaten Aceh Selatan', 'https://dukcapil.kemendagri.go.id/'],
+    ['1101', 'Kabupaten Aceh Selatan', 'https://acehprov.go.id/'],
   ])(
     '%s %s: kanal resmi sendiri, tanpa adapter Wonogiri; Pendamping hanya generik ke portal sendiri',
     async (kode, nama, url) => {
@@ -206,7 +209,8 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
           ],
         }),
       ],
-      { kodeKabKota: kode, jenis: 'kk' },
+      // Jenis tanpa rencana bersumber (KK/KTP-el kini punya rencana minimal deterministik).
+      { kodeKabKota: kode, jenis: 'akta' },
     );
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus dokumen' });
     expect(of(out.events, 'plan_card')[0]!.langkah.map((l) => l.jenis)).toEqual([
@@ -392,15 +396,13 @@ describe('KTP ≠ domisili dan pindah (asal → tujuan)', () => {
 describe('usulan Data Diri: ditawarkan untuk dikonfirmasi, tidak pernah diam-diam', () => {
   it('"ya" atas usulan Data Diri → wilayah ditetapkan; tanpa itu tetap kosong', async () => {
     const { env, u, provider } = setup(
-      [
-        balas('Aturan berbeda per kab/kota. KTP Anda terdaftar di Kabupaten Wonogiri, betul?'),
-        tool('wilayah__tetapkan', { ktp: 'Kabupaten Wonogiri' }),
-        balas('Baik.'),
-      ],
+      [tool('wilayah__tetapkan', { ktp: 'Kabupaten Wonogiri' }), balas('Baik.')],
       { jenis: 'kelahiran' },
     );
     usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
-    await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    // Kartu usulan yang bertanya (tanpa teks agen); "ya" yang diketik membenarkan kartu itu.
+    const t1 = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    expect(of(t1.events, 'assistant_text')).toHaveLength(0);
     expect(env.store.getUrusanOrThrow(u.id).kodeKabKota).toBeNull();
     const w = wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id));
     expect(w).toMatchObject({ ktp: null, usulan: { sumber: 'data_diri', ktp: { kodeKabKota: '3312' } } });
@@ -489,6 +491,7 @@ describe('temuan review: penetapan wilayah tidak menimpa diam-diam', () => {
     );
     usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
     await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
+    await runTurn(env.deps, { urusanId: u.id, userText: 'Anaknya lahir minggu lalu' });
     await runTurn(env.deps, { urusanId: u.id, userText: 'ya' });
     expect(hasilTool(provider)).toMatch(/Belum dikonfirmasi warga/);
     expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).ktp).toBeNull();
@@ -569,10 +572,15 @@ describe('temuan eval persona W2: ganti wilayah membuang sumber wilayah lama', (
 describe('temuan eval persona W6: hand-off tidak diulang identik', () => {
   it('pertanyaan tanpa sumber berulang: kanal lain, lalu langkah lain tanpa hand-off yang sama', async () => {
     const jawab = tool('urusan__jawab_persyaratan', { pertanyaan: 'nomor antrean berapa?' });
+    // Jenis tanpa rencana (KK punya rencana yang dokumennya ikut jadi sumber, jadi tidak selalu hand-off).
     const { env, u, provider } = setup([jawab, jawab, jawab, balas('Coba datang langsung ke kantor.')], {
-      jenis: 'kk',
+      jenis: 'akta',
       kodeKabKota: '3312',
     });
+    // Rencana sudah diusulkan: hand-off tidak lagi diikuti penyusunan rencana di giliran yang sama.
+    let cur = env.store.getUrusanOrThrow(u.id);
+    if (cur.state === 'BARU') cur = env.store.transition(u.id, cur.version, 'MEMAHAMI');
+    env.store.transition(u.id, cur.version, 'RENCANA_DIUSULKAN');
     const kanal = async () => {
       const out = await runTurn(env.deps, { urusanId: u.id, userText: 'nomor antrean berapa?' });
       return of(out.events, 'handoff').map((h) => h.kanal.map((k) => k.url));
@@ -844,6 +852,7 @@ describe('temuan eval persona p17: balasan ringkas tanpa kehilangan isi wajib', 
     expect(p).toMatch(/paling banyak 4 kalimat pendek atau 5 butir/);
     expect(p).toMatch(/Ikuti gaya warga/);
     expect(p).toMatch(/warga lansia dijawab dengan kata sehari-hari/);
+    expect(p).toMatch(/dan tanpa kode formulir/);
     expect(p).toMatch(/formulir permohonan yang disediakan petugas \(F-1\.02\)": kodenya boleh dalam kurung/);
     expect(p).toMatch(/Jangan menyalin ulang seluruh kartu rencana atau jawaban bersumber/);
     // p04 (lansia): ringkas, tetapi dokumen kunci tetap disebut ulang, bukan "lihat daftar di atas".
@@ -909,6 +918,26 @@ describe('temuan eval persona p03: hand-off ikut domisili yang disebut warga', (
     expect(k('bawa apa aja?')).toBe('3578');
   });
 
+  it('KTP-el tanpa domisili tercatat: kab/kota lain yang disebut warga dipakai, tanpa kab/kota lain tetap KTP', () => {
+    const env = makeEnv({ provider: new FakeProvider() });
+    const u = buatUrusanTerwilayah(env.store, { jenis: 'ktp', kodeKabKota: '3578' });
+    const k = (t: string) => kodeYurisdiksi(env.store, u, t);
+    expect(k('di Kabupaten Bekasi tepatnya aku harus ke kantor mana buat cetak KTP?')).toBe('3216');
+    expect(k('kok disuruh tanya Surabaya? aku mau urus di Kabupaten Bekasi')).toBe('3216');
+    expect(k('KTP saya terdaftar di Kota Surabaya')).toBe('3578');
+    // Transkrip p03: "semarang" polos ambigu (Kota/Kab.), "kota semarang" menentukan.
+    expect(
+      k(
+        'kok disuruh tanya surabaya kak? aku mau urus di semarang. kantor disdukcapil kota semarang yang mana?',
+      ),
+    ).toBe('3374');
+    expect(k('aku kuliah di semarang')).toBe('3578');
+    expect(k('kantor mana buat cetak KTP?')).toBe('3578');
+    // Urusan lain (KK) tetap ke wilayah KTP.
+    const kk = buatUrusanTerwilayah(env.store, { jenis: 'kk', kodeKabKota: '3578' });
+    expect(kodeYurisdiksi(env.store, kk, 'Disdukcapil Kabupaten Bekasi di mana?')).toBe('3578');
+  });
+
   it('pertanyaan tentang Disdukcapil domisili tanpa sumber: hand-off ke domisili, KTP jadi pengganti', async () => {
     const provider = new FakeProvider({
       replies: [
@@ -925,6 +954,51 @@ describe('temuan eval persona p03: hand-off ikut domisili yang disebut warga', (
     const h = of(out.events, 'handoff')[0]!;
     expect(h.kanal[0]!.url).toMatch(/bekasikab/);
     expect(JSON.stringify(h.kanal[0])).not.toMatch(/surabaya/i);
+  });
+});
+
+describe('QA produksi: pengantin baru Kota Jayapura (KK), wilayah kecil tetap bersumber', () => {
+  it('KK di wilayah mana pun: rencana minimal otomatis, tiap langkah bersumber, Perpres 96/2018 Ps. 11', () => {
+    const env = makeEnv({ provider: new FakeProvider() });
+    let u = buatUrusanTerwilayah(env.store, { jenis: 'kk', kodeKabKota: '9171' });
+    u = env.store.transition(u.id, u.version, 'MEMAHAMI');
+    u = usulkanRencanaOtomatis(env.store, u, publisher(env, u.id));
+    expect(u.state).toBe('RENCANA_DIUSULKAN');
+    const kartu = of(
+      env.store
+        .eventsOfType(u.id, 'plan_card', 5)
+        .map((e) => ({ type: 'plan_card', ...(e.payload as object) }) as UrusinEvent),
+      'plan_card',
+    )[0]!;
+    expect(kartu.ringkasan).toBe('Kartu Keluarga (KK) · Kota Jayapura');
+    expect(kartu.langkah[0]!.sumber[0]!.url).toBe('https://jayapurakota.go.id/');
+    expect(kartu.langkah.length).toBe(2);
+    for (const l of kartu.langkah) expect(l.sumber.length).toBeGreaterThan(0);
+    expect(kartu.langkah[0]!.sumber.map((s) => s.url)).toContain(
+      'https://peraturan.go.id/files/ps96-2018.pdf',
+    );
+    expect(kartu.langkah[0]!.dokumen?.join(' ')).toMatch(/buku nikah/);
+  });
+});
+
+describe('temuan eval persona p03: Disdukcapil domisili untuk warga ber-KTP lain', () => {
+  it('hand-off ke domisili memakai situs informasi Disdukcapil, bukan portal berlogin NIK setempat', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'alamat Disdukcapil Kota Semarang' }),
+        fakeCompletion({ content: JSON.stringify({ klaim: [], handoff: null }) }),
+      ],
+    });
+    const env = makeEnv({ provider });
+    const u0 = buatUrusanTerwilayah(env.store, { jenis: 'ktp', kodeKabKota: '3578' });
+    const u = tetapkanWilayah(env.store, u0, { ktp: '3578', domisili: '3374' }, publisher(env, u0.id));
+    const out = await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'Disdukcapil Kota Semarang di mana kak?',
+    });
+    const h = of(out.events, 'handoff')[0]!;
+    expect(h.kanal[0]!.url).toMatch(/dispendukcapil\.semarangkota\.go\.id/);
+    expect(h.kanal.map((k) => k.url ?? '').join(' ')).not.toMatch(/sidnok/);
   });
 });
 

@@ -22,6 +22,7 @@
     onsudahkirim = () => {},
     onhentikan,
     ontutup,
+    menutup = false,
     onmulailagi,
     onpanduan,
   }: {
@@ -37,8 +38,9 @@
     /** AI berhenti / warga memegang kendali: "Saya sudah mengirim" (worker memeriksa halaman sukses). */
     onsudahkirim?: () => void;
     onhentikan: () => void;
-    /** Siaga: tutup peramban server sekarang (DELETE sesi). */
+    /** Tutup peramban server (DELETE sesi), lalu kembali ke percakapan. */
     ontutup: () => void;
+    menutup?: boolean;
     onmulailagi: () => void;
     onpanduan: () => void;
   } = $props();
@@ -131,7 +133,7 @@
 
 <section
   aria-label="Browser Pendamping"
-  class="flex h-full min-h-[32rem] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_16px_#0000000d]"
+  class="flex h-full min-h-[32rem] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_16px_#0000000d] lg:min-h-0"
 >
   <!-- Bilah atas (Top bar): gembok + domain resmi + instansi, chip mode di kanan -->
   <div class="flex min-h-[55.5px] shrink-0 items-center gap-2.5 border-b border-line bg-card px-4">
@@ -147,7 +149,24 @@
       {:else if instansi}<span class="hidden truncate text-sm text-card-ink sm:inline">{instansi}</span>{/if}
     </div>
     <ChipMode keadaan={k} />
+    <button
+      type="button"
+      aria-label="Tutup Browser Pendamping"
+      aria-busy={menutup}
+      disabled={menutup}
+      onclick={ontutup}
+      class="inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 text-sm font-semibold text-ink hover:bg-bg-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-wait disabled:opacity-60"
+    >
+      <Icon name={menutup ? 'memuat' : 'tutup'} class="size-4.5" />
+      <span class="hidden sm:inline">{menutup ? 'Menutup…' : 'Tutup'}</span>
+    </button>
   </div>
+
+  {#if data.pesan === PESAN_GAGAL_TUTUP}
+    <p role="alert" class="shrink-0 border-b border-line bg-card px-4 py-3 text-sm text-galat">
+      {data.pesan}
+    </p>
+  {/if}
 
   {#if k === 'giliran' && data.giliran}
     <!-- Giliran Anda sheet (App 07) -->
@@ -191,6 +210,14 @@
                 <Icon name="putar" class="size-[15px]" />Lanjutkan
               </button>
             {/if}
+          </div>
+        {:else if data.giliran.alasan === 'login' || data.giliran.alasan === 'masuk_akun'}
+          <!-- Masuk akun / CAPTCHA / OTP: worker mendeteksi sendiri giliran yang selesai (halaman berganti, formulir
+               masuk hilang) lalu AI lanjut. Bila belum terdeteksi, warga menekan ini sebagai cadangan. -->
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick={onkembalikan} data-sudah-lanjut class={TOMBOL_GELAP}>
+              <Icon name="putar" class="size-[15px]" />Sudah, lanjutkan
+            </button>
           </div>
         {:else if data.giliran.alasan === 'berhenti'}
           {@render sudahKirim()}
@@ -246,9 +273,6 @@
           Browser masih terbuka sebentar untuk langkah berikutnya, lalu ditutup otomatis bersama login dan
           cookie-nya.
         </p>
-        {#if data.pesan === PESAN_GAGAL_TUTUP}<p role="alert" class="text-[15px] text-galat">
-            {data.pesan}
-          </p>{/if}
       </div>
       <button type="button" onclick={ontutup} class={TOMBOL_TERANG}>Tutup sekarang</button>
     </div>

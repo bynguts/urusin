@@ -20,6 +20,7 @@ const { values } = parseArgs({
     out: { type: 'string', default: '../../data/wilayah/kontak-dukcapil.json' },
     only: { type: 'string' },
     refresh: { type: 'boolean', default: false },
+    belum: { type: 'boolean', default: false },
     limit: { type: 'string' },
   },
 });
@@ -51,6 +52,7 @@ await runKontak({
   outPath: resolve(values.out),
   only: values.only,
   refresh: values.refresh,
+  belum: values.belum,
   limit: values.limit ? Number(values.limit) : undefined,
   deps: { resolves, get, now: () => new Date() },
   log: console.log,

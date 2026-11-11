@@ -69,6 +69,8 @@ type Opsi = {
   peta?: PetaRef;
   /** Href tautan pembuka per ref (op runner `tautan`). */
   tautan?: Record<string, string>;
+  /** Tangan `lebarkan` (probe gel4 3279); undefined = tangan tanpa kemampuan itu. */
+  lebarkan?: () => Promise<boolean>;
 };
 
 function harness(o: Opsi = {}) {
@@ -110,6 +112,7 @@ function harness(o: Opsi = {}) {
     tautan: async (r) => o.tautan?.[r],
     tenang: async () => {},
     urlKini: () => urlKini,
+    ...(o.lebarkan ? { lebarkan: o.lebarkan } : {}),
   };
   const izin: IzinGenerik = {
     disetujui: (h, sidik, ph) => setuju.get(h)?.has(`${sidik}|${ph}`) ?? false,
@@ -179,6 +182,56 @@ describe('GenerikRun: kunci halaman akhir', () => {
     await h.run.amati();
     const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] });
     expect(r[0]?.kode).toBe('ok');
+  });
+});
+
+describe('GenerikRun: tombol masuk khusus layar lebar (probe gel4 3279)', () => {
+  const beranda = (masuk: boolean) =>
+    pengamatan({
+      jalur: '/',
+      judul: 'Beranda',
+      elemen: [
+        { ref: 'e1', peran: 'tautan', nama: 'Beranda', kelas: 'navigasi' },
+        { ref: 'e2', peran: 'tombol', nama: 'Menu', kelas: 'ui_lokal' },
+        ...(masuk ? [{ ref: 'e3', peran: 'tautan' as const, nama: 'Masuk', kelas: 'masuk' as const }] : []),
+      ],
+    });
+
+  it('halaman tanpa formulir dan tanpa kendali masuk: tangan melebarkan lalu halaman diamati ulang', async () => {
+    let lebar = false;
+    let dipanggil = 0;
+    const h = harness({
+      amati: () => beranda(lebar),
+      lebarkan: async () => {
+        dipanggil++;
+        if (lebar) return false;
+        lebar = true;
+        return true;
+      },
+    });
+    const p = await h.run.amati();
+    expect(dipanggil).toBe(1);
+    expect(p?.elemen.map((e) => e.nama)).toContain('Masuk');
+    // Peta ref/jejak milik pengamatan sesudah dilebarkan saja.
+    expect(h.jejak.filter((c) => c.jenis === 'amati')).toHaveLength(1);
+    expect(h.diisiDikirim).toHaveLength(2);
+  });
+
+  it('formulir, kendali masuk, atau pantau baca-saja: tidak melebarkan', async () => {
+    let dipanggil = 0;
+    const lebarkan = async () => (dipanggil++, false);
+    for (const amati of [
+      () => pengamatan(),
+      () => beranda(true),
+      () => pengamatan({ sinyal: { ...pengamatan().sinyal, login: true }, elemen: [] }),
+    ]) {
+      const h = harness({ amati, lebarkan });
+      await h.run.amati();
+      await h.run.amati(true);
+    }
+    // Pantau tidak pernah mengubah halaman, bahkan di halaman polos.
+    await harness({ amati: () => beranda(false), lebarkan }).run.amati(true);
+    expect(dipanggil).toBe(0);
   });
 });
 

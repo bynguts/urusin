@@ -427,7 +427,9 @@ describe('timeout, pembatalan, konkurensi', () => {
     });
     const env = makeEnv({ provider });
     const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
-    advance(env, u.id, ['MEMAHAMI']);
+    // Setelah rencana diusulkan: model sendiri yang memilih langkah sesudah pencarian (di MEMAHAMI harness langsung
+    // menjalankan urusan__jawab_persyaratan).
+    advance(env, u.id, ['MEMAHAMI', 'RENCANA_DIUSULKAN']);
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
     expect(types(out.events)).not.toContain('error');
     expect(env.store.getChunks(u.id).length).toBeGreaterThan(0);
@@ -449,7 +451,9 @@ describe('timeout, pembatalan, konkurensi', () => {
     });
     const env = makeEnv({ provider });
     const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
-    advance(env, u.id, ['MEMAHAMI']);
+    // Setelah rencana diusulkan: model sendiri yang memilih langkah sesudah pencarian (di MEMAHAMI harness langsung
+    // menjalankan urusan__jawab_persyaratan).
+    advance(env, u.id, ['MEMAHAMI', 'RENCANA_DIUSULKAN']);
     await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran?' });
     const sent = provider.calls.flatMap((c) => (c.kind === 'create' ? [c.params.messages] : []));
     expect(sent).toHaveLength(3);
@@ -589,6 +593,20 @@ describe('balasan terpotong (finish_reason=length)', () => {
     expect(b!.max_tokens).toBe(a!.max_tokens! * 2);
     expect(JSON.stringify(b!.messages)).toMatch(/Balasanmu tadi terpotong/);
     expect(JSON.stringify(a!.messages)).not.toMatch(/Balasanmu tadi terpotong/);
+  });
+
+  it('klasifikasi terpotong (p06): turn tetap berjalan, jenis diklasifikasi ulang giliran berikutnya', async () => {
+    const provider = new FakeProvider({
+      replies: [potong(), fakeCompletion({ content: 'Bisa, Bapak/Ibu.' })],
+    });
+    const env = makeEnv({ provider });
+    const u = env.store.createUrusan({});
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Sa mau bikin kartu identitas anak.' });
+    expect(out.status).toBe('selesai');
+    expect(out.events.some((e) => e.type === 'error')).toBe(false);
+    expect(env.store.getUrusanOrThrow(u.id).jenis).toBeNull();
+    const c = provider.calls[0];
+    expect(c?.kind === 'create' ? c.params.max_tokens : undefined).toBe(256);
   });
 
   it('terpotong lagi: error LLM_LENGTH (bisa diulang), tanpa ulangan ketiga', async () => {

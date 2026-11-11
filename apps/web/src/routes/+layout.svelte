@@ -26,6 +26,29 @@
   const polos = $derived(rutWeb(page.url.pathname) || rutAuth(page.url.pathname));
   const akun = $derived(page.data.akun as { email: string } | null | undefined);
   let menuBuka = $state(false);
+  let tombolMenu = $state<HTMLButtonElement>();
+  let menuHp = $state<HTMLElement>();
+
+  $effect(() => {
+    if (!menuBuka) return;
+    const diLuar = (e: Event) => {
+      if (e.target instanceof Node && !menuHp?.contains(e.target) && !tombolMenu?.contains(e.target))
+        menuBuka = false;
+    };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      menuBuka = false;
+      tombolMenu?.focus();
+    };
+    document.addEventListener('pointerdown', diLuar);
+    document.addEventListener('focusin', diLuar);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', diLuar);
+      document.removeEventListener('focusin', diLuar);
+      document.removeEventListener('keydown', escape);
+    };
+  });
 
   // Preferensi tampilan diterapkan di <html>: ukuran huruf, kontras, gerak. Aplikasi beroperasi dalam mode terang.
   // Hanya nilai yang berbeda yang ditulis. Nilai bawaan sudah ada di app.html (skala bawaan = cadangan
@@ -71,8 +94,8 @@
       class="relative flex min-w-0 flex-1 flex-col bg-bg lg:overflow-y-auto lg:overscroll-contain lg:rounded-2xl lg:bg-surface lg:shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] lg:outline lg:outline-1 lg:-outline-offset-1 lg:outline-line"
       id="panel-utama"
     >
-      <!-- Bilah atas HP (frame IzXAR) -->
-      <div
+      <!-- Bilah atas HP (frame IzXAR); <header> = landmark banner agar logo dan tombolnya di dalam landmark. -->
+      <header
         class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-line bg-bg/95 pr-5 pl-5 backdrop-blur lg:hidden"
       >
         <a href={resolve('/beranda')} class="flex h-11 items-center gap-2" aria-label="Urusin, ke Beranda">
@@ -95,6 +118,7 @@
             aria-label={menuBuka ? 'Tutup menu' : 'Buka menu'}
             aria-expanded={menuBuka}
             aria-controls="menu-app-hp"
+            bind:this={tombolMenu}
             onclick={() => (menuBuka = !menuBuka)}
           >
             <Icon name={menuBuka ? 'tutup' : 'menu'} class="size-5" />
@@ -103,6 +127,7 @@
         {#if menuBuka}
           <nav
             id="menu-app-hp"
+            bind:this={menuHp}
             aria-label="Menu"
             class="absolute inset-x-4 top-[4.75rem] rounded-[1.25rem] border border-line bg-surface p-3 shadow-lembut"
           >
@@ -124,15 +149,15 @@
             </a>
           </nav>
         {/if}
-      </div>
+      </header>
 
       <main
         id="konten"
         tabindex="-1"
-        class="flex flex-1 flex-col bg-bg pb-24 outline-none lg:bg-transparent lg:pb-0"
+        class="flex min-h-0 flex-1 flex-col bg-bg pb-24 outline-none lg:bg-transparent lg:pb-0"
       >
         {#key page.url.pathname}
-          <div class="animasi-dasbor-masuk flex flex-1 flex-col">
+          <div class="animasi-dasbor-masuk flex min-h-0 flex-1 flex-col">
             {@render children()}
           </div>
         {/key}

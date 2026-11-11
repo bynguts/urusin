@@ -26,7 +26,9 @@
       ? 'Data Diri akun Anda'
       : usulan.sumber === 'warga'
         ? 'percakapan ini'
-        : 'pilihan wilayah di perangkat ini',
+        : usulan.sumber === 'ingatan'
+          ? 'yang Urusin ingat dari urusan Anda sebelumnya'
+          : 'pilihan wilayah di perangkat ini',
   );
 </script>
 
@@ -37,9 +39,9 @@
   <div class="flex gap-3 px-4 py-3.5 sm:px-[18px]">
     <Icon name="lokasi" class="mt-1 size-[18px] shrink-0 text-brand" />
     <div class="min-w-0 flex-1">
-      <h3 class="text-[17px] leading-[26px] font-semibold text-ink">
+      <h2 class="text-[17px] leading-[26px] font-semibold text-ink">
         KTP Anda terdaftar di {usulan.ktp.nama}?
-      </h3>
+      </h2>
       <p class="mt-1 text-sm leading-[21px] text-body">
         Aturan dan situs resmi berbeda di tiap kab/kota. Usulan ini dari {asal}; rencana disusun setelah Anda
         memastikannya.

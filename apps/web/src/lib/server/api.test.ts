@@ -17,7 +17,14 @@ import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
 import { POST as tetapkanWilayah } from '../../routes/api/urusan/[id]/wilayah/+server';
 import { GET as devSse } from '../../routes/dev/fixtures/sse/+server';
 import { catatHasilEksekusi } from './eksekusi';
-import { createRuntime, piiKeyFromEnv, quotaFromEnv, setRuntimeForTests, type Runtime } from './runtime';
+import {
+  createRuntime,
+  llmAktif,
+  piiKeyFromEnv,
+  quotaFromEnv,
+  setRuntimeForTests,
+  type Runtime,
+} from './runtime';
 
 const ORIGIN = 'http://localhost:3000';
 // NIK sintetis, dirakit agar pemindai PII repo tidak menandai berkas ini
@@ -578,6 +585,16 @@ describe('temuan 5: kuota harian wajib di mode LLM', () => {
 
   it('menerima batas harian berhingga > 0', () => {
     expect(quotaFromEnv({ URUSIN_DAILY_IDR_CAP: '50000' }).dailyIdrCap).toBe(50000);
+  });
+});
+
+describe('URUSIN_LLM_DISABLED', () => {
+  const llm = { LLM_BASE_URL: 'http://127.0.0.1:9/v1', LLM_API_KEY: 'k', LLM_AGENT_MODEL: 'm' };
+  it('1 memaksa mode demo walau LLM_* lengkap; nilai lain tidak', () => {
+    expect(llmAktif(llm)).toBe(true);
+    expect(llmAktif({ ...llm, URUSIN_LLM_DISABLED: '1' })).toBe(false);
+    expect(llmAktif({ ...llm, URUSIN_LLM_DISABLED: '0' })).toBe(true);
+    expect(llmAktif({ ...llm, LLM_API_KEY: '' })).toBe(false);
   });
 });
 

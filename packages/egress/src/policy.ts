@@ -9,6 +9,7 @@ import { EGRESS_PIHAK_KETIGA, OFFICIAL_DOMAINS } from '@urusin/core';
  *   dikonfigurasi operator (`PENDAMPING_INTERNAL_URL` / `PENDAMPING_WORKERS[].url`), HANYA http, IP literal
  *   127.0.0.1 atau Tailscale 100.64.0.0/10 dengan port eksplisit, persis (profil runtime). Nama DNS yang
  *   resolve ke loopback tetap ditolak.
+ * - Gateway LLM Tailscale pada port 20128 hanya boleh pada origin persis `LLM_BASE_URL`, profil runtime.
  * - Dua profil terpisah (L2):
  *   - `runtime` (server web): host Jina + host akun (Google, Resend) + origin base URL
  *     LLM/embedding/rerank dari env operator.
@@ -116,6 +117,8 @@ export type Allowlist = {
   configured: ReadonlySet<string>;
   /** true hanya bila LLM_BASE_URL = 127.0.0.1:20128: pengecualian loopback proxy LLM aktif. */
   llmProxy: boolean;
+  /** Gateway LLM Tailscale: origin IP literal persis dari LLM_BASE_URL, hanya port 20128. */
+  llmTailscale?: string;
   /** Origin internal worker pendamping (`http://IP:port`, loopback/Tailscale) yang boleh persis. */
   internal?: ReadonlySet<string>;
 };
@@ -191,6 +194,13 @@ export function isLlmProxy(u: URL): boolean {
   return u.hostname === LLM_PROXY.host && (Number(u.port) || defaultPort(u.protocol)) === LLM_PROXY.port;
 }
 
+export function isLlmTailscale(u: URL, allow: Allowlist): boolean {
+  return (
+    allow.llmTailscale ===
+    originKey(u.protocol, unbracket(u.hostname), Number(u.port) || defaultPort(u.protocol))
+  );
+}
+
 /** Allowlist per profil. `runtime` memakai origin base URL dari env operator; `ingest` tidak. */
 export function buildAllowlist(
   profile: EgressProfile = 'runtime',
@@ -218,6 +228,9 @@ export function buildAllowlist(
     suffixes: [],
     configured,
     llmProxy: !!llm && llm.host === LLM_PROXY.host && llm.port === LLM_PROXY.port,
+    ...(llm && isIP(llm.host) === 4 && TAILSCALE.check(llm.host, 'ipv4') && llm.port === LLM_PROXY.port
+      ? { llmTailscale: originKey(llm.protocol, llm.host, llm.port) }
+      : {}),
     internal: pendampingInternalOrigins(env),
   };
 }
@@ -239,6 +252,7 @@ export function assertTargetAllowed(
     throw new EgressBlockedError(`port ${port} tidak valid`);
   if (isIP(host) !== 0) {
     if (allow.llmProxy && host === LLM_PROXY.host && port === LLM_PROXY.port) return true;
+    if (allow.llmTailscale === originKey(protocol, host, port)) return true;
     if (allow.internal?.has(originKey(protocol, host, port))) return true;
     if (isBlockedAddress(host)) throw new EgressBlockedError(`alamat ${host}:${port} lokal/privat`);
     if (allow.configured.has(originKey(protocol, host, port))) return true;

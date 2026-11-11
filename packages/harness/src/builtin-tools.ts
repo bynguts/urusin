@@ -36,7 +36,7 @@ import {
   kartuRencana,
   kodeKtp,
   kodeYurisdiksi,
-  rencanaPeristiwa,
+  rencanaUrusan,
   wilayahUrusan,
 } from './wilayah.js';
 
@@ -107,11 +107,12 @@ export const ragCariPengetahuan = defineTool({
       ),
   }),
   allowedStates: NON_TERMINAL_STATES,
+  kontenLuar: true,
   async execute(ctx, args): Promise<ToolResult> {
     // Wilayah urusan yang sudah dipastikan warga menang atas kode tebakan model.
     const kode = kodeKtp(ctx.store, ctx.urusan) ?? args.kodeKabKota ?? null;
     const out = await retrieve(ctx, args.query, kode, args.layanan);
-    return { content: formatHits(out.hasil, ctx.nonce, 4, kode), terbungkus: true };
+    return { content: formatHits(out.hasil, ctx.nonce, 4, kode), terbungkus: true, takTepercaya: true };
   },
 });
 
@@ -123,6 +124,7 @@ export const dukcapilCekPersyaratan = defineTool({
   spanOperation: 'retrieval',
   input: z.object({ kodeKabKota, layanan: llmText().max(80) }),
   allowedStates: NON_TERMINAL_STATES,
+  kontenLuar: true,
   async execute(ctx, args): Promise<ToolResult> {
     const kode = kodeKtp(ctx.store, ctx.urusan) ?? args.kodeKabKota;
     const { entry } = routeByKode(kode);
@@ -133,9 +135,54 @@ export const dukcapilCekPersyaratan = defineTool({
       content: `${head}
 ${formatHits(out.hasil, ctx.nonce, 4, kode)}`,
       terbungkus: true,
+      takTepercaya: true,
     };
   },
 });
+
+/**
+ * Catatan rencana karangan model. Adminduk: kanal Disdukcapil wilayah KTP. Layanan lain (Samsat, bansos, LAPOR!)
+ * memakai kanal instansinya sendiri; kanal Disdukcapil di sana salah alamat.
+ */
+export function catatanDipandu(
+  jenis: string | null,
+  ktp: { kodeKabKota: string; nama: string },
+  k: { judul: string; url: string },
+  sumberJawaban: readonly { instansi: string; url: string }[] = [],
+): string {
+  // Jujur: langkahnya tetap karangan asisten; yang bersumber hanya jawaban yang mendasarinya.
+  const awal =
+    sumberJawaban.length > 0
+      ? `Langkah disusun asisten dari jawaban bersumber di atas (${sumberJawaban
+          .map((s) => `${s.instansi}, ${s.url}`)
+          .join('; ')}); urutan langkahnya sendiri belum bersumber.`
+      : 'Langkah disusun asisten, belum bersumber.';
+  if (!jenis || ADMINDUK.has(jenis))
+    return `${awal} Pastikan di kanal resmi ${ktp.nama}: ${k.judul} (${k.url}).`;
+  const lain = handoffChannels({ jenis, kodeKabKota: ktp.kodeKabKota }).find((x) => x.url);
+  return lain
+    ? `${awal} Pastikan di kanal resmi ${lain.nama} (${lain.url}).`
+    : `${awal} Pastikan langsung ke instansi yang menangani layanan ini.`;
+}
+
+/**
+ * Sumber (instansi + url, unik, maks. 2) dari jawaban bersumber terakhir urusan ini, hanya bila jawaban itu
+ * disusun setelah wilayah KTP terakhir ditetapkan (jawaban untuk wilayah lama tidak ditautkan).
+ */
+export function sumberJawabanTerakhir(
+  ctx: Pick<ToolContext, 'store' | 'urusan'>,
+): { instansi: string; url: string }[] {
+  const jawaban = ctx.store.eventsOfType(ctx.urusan.id, 'grounded_answer', 1)[0];
+  if (!jawaban) return [];
+  const wilayah = ctx.store
+    .eventsOfType(ctx.urusan.id, 'wilayah', 20)
+    .find((e) => (e.payload as PayloadOf<'wilayah'>).status === 'ditetapkan');
+  if (!wilayah || wilayah.seq > jawaban.seq) return [];
+  const unik = new Map<string, { instansi: string; url: string }>();
+  for (const k of (jawaban.payload as PayloadOf<'grounded_answer'>).klaim)
+    for (const q of k.kutipan) if (!unik.has(q.url)) unik.set(q.url, { instansi: q.instansi, url: q.url });
+  return [...unik.values()].slice(0, 2);
+}
 
 export const urusanUsulkanRencana = defineTool({
   name: 'urusan__usulkan_rencana',
@@ -195,7 +242,7 @@ export const urusanUsulkanRencana = defineTool({
                 ...(w.tujuan ? { tujuan: w.tujuan } : {}),
               },
               tier: 'dipandu',
-              catatan: `Langkah disusun asisten, belum bersumber. Pastikan di kanal resmi ${ktp.nama}: ${k.judul} (${k.url}).`,
+              catatan: catatanDipandu(ctx.urusan.jenis, ktp, k, sumberJawabanTerakhir(ctx)),
             },
       ],
     };
@@ -212,7 +259,7 @@ export const urusanUsulkanRencana = defineTool({
 export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkRecord[] {
   const w = wilayahUrusan(ctx.store, ctx.urusan);
   if (!ctx.urusan.jenis || !w.ktp) return [];
-  const r = rencanaPeristiwa(ctx.urusan.jenis, {
+  const r = rencanaUrusan(ctx.urusan.jenis, {
     ktp: w.ktp.kodeKabKota,
     domisili: w.domisili?.kodeKabKota ?? null,
     tujuan: w.tujuan?.kodeKabKota ?? null,
@@ -233,6 +280,10 @@ export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkR
     ];
   });
 }
+
+/** Kanal kab/kota selain wilayah KTP warga (di luar pindah, yang tujuannya memang calon tempat tinggal). */
+const bukanPenduduk = (jenis: string | null, ktp: { kodeKabKota: string } | null, kode: string | null) =>
+  jenis !== 'pindah' && Boolean(ktp && kode && kode !== ktp.kodeKabKota);
 
 /**
  * Hand-off tanpa pengulangan: warga yang sudah diarahkan ke kanal yang sama tidak diberi hand-off identik lagi.
@@ -270,7 +321,9 @@ function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?
       ? [
           ...[kode, ...kodeLain]
             .filter((k, i, a): k is string => Boolean(k) && a.indexOf(k) === i)
-            .flatMap((k) => handoffChannels({ kodeKabKota: k, jenis })),
+            .flatMap((k) =>
+              handoffChannels({ kodeKabKota: k, jenis, bukanPenduduk: bukanPenduduk(jenis, w.ktp, k) }),
+            ),
           { nama: KANAL_NASIONAL.instansi, url: KANAL_NASIONAL.url },
         ]
       : [];
@@ -314,11 +367,17 @@ export const urusanJawabPersyaratan = defineTool({
   butuhWilayah: 'adminduk',
   input: z.object({ pertanyaan: llmText().max(500) }),
   allowedStates: NON_TERMINAL_STATES,
+  // Klaim jawaban diturunkan dari potongan RAG (tak tepercaya) dan dikembalikan ke model.
+  kontenLuar: true,
   async execute(ctx, args): Promise<ToolResult> {
     const chunks = [...ctx.store.getChunks(ctx.urusan.id), ...chunkRencana(ctx)];
     // Pindah: pertanyaan tentang Disdukcapil tujuan diarahkan ke tujuan, selain itu (SKPWNI) ke asal.
     const kode = kodeYurisdiksi(ctx.store, ctx.urusan, `${args.pertanyaan}\n${ctx.pesanWarga}`);
-    const ctxHandoff = { kodeKabKota: kode, jenis: ctx.urusan.jenis };
+    const ctxHandoff = {
+      kodeKabKota: kode,
+      jenis: ctx.urusan.jenis,
+      bukanPenduduk: bukanPenduduk(ctx.urusan.jenis, wilayahUrusan(ctx.store, ctx.urusan).ktp, kode),
+    };
     if (chunks.length === 0)
       return handoffTanpaUlang(ctx, buildHandoff({ ...ctxHandoff, chunks }, 'tanpa_sumber'), kode);
 
@@ -341,6 +400,7 @@ export const urusanJawabPersyaratan = defineTool({
     return {
       // Isi klaim ikut dikembalikan ke model agar balasan berikutnya tidak menyangkal jawaban yang sudah tampil.
       content: `Jawaban bersumber (${verified.klaim.length} klaim) sudah ditampilkan kepada warga: ${verified.klaim.map((k) => k.teks).join(' | ')}. Jangan menyangkal atau mengulanginya.`,
+      takTepercaya: true,
       endTurn: true,
       events: [{ type: 'grounded_answer', ...data }],
       ...usage,
@@ -531,7 +591,8 @@ const teksPesan = (m: { content?: unknown }) => (typeof m.content === 'string' ?
 /**
  * Bukti bahwa WARGA (bukan model) menyebut atau membenarkan wilayah ini: namanya/kodenya ada di pesan warga
  * urusan ini, atau pesan terakhir warga berupa "ya/betul" tepat setelah pesan asisten terakhir yang menyebut
- * wilayah itu. "Ya" atas pertanyaan lain tidak pernah dihitung, juga bila wilayahnya sama dengan usulan.
+ * wilayah itu (bila belum ada pertanyaan teks: kartu usulan wilayah itu). "Ya" atas pertanyaan lain tidak pernah
+ * dihitung, juga bila wilayahnya sama dengan usulan.
  * Pemetaan kecamatan → kab/kota oleh model (mis. Cikarang → Kab. Bekasi) karena itu wajib ditanyakan dulu.
  */
 function dibenarkanWarga(ctx: ToolContext, w: Wilayah): boolean {
@@ -546,7 +607,9 @@ function dibenarkanWarga(ctx: ToolContext, w: Wilayah): boolean {
   if (warga.some((t) => menyebutWilayah(t, w))) return true;
   if (!AFIRMASI.test(ctx.pesanWarga)) return false;
   const tanyaTerakhir = [...riwayat].reverse().find((m) => m.role === 'assistant' && teksPesan(m));
-  return tanyaTerakhir ? menyebutWilayah(teksPesan(tanyaTerakhir), w) : false;
+  if (tanyaTerakhir) return menyebutWilayah(teksPesan(tanyaTerakhir), w);
+  // Belum ada pertanyaan teks: yang ditanyakan hanya kartu usulan wilayah (agen tidak dipanggil di giliran itu).
+  return wilayahUrusan(ctx.store, ctx.urusan).usulan?.ktp.kodeKabKota === w.kodeKabKota;
 }
 
 const daftarPilihan = (h: Extract<HasilCariWilayah, { status: 'ambigu' }>) =>

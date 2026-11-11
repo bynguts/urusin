@@ -303,6 +303,9 @@ describe('putuskan (tabel lengkap)', () => {
     expect(asetUmumBoleh({ url: cdn, resourceType: 'document', dokumen: true })).toBe(false);
     expect(asetUmumBoleh({ url: sub.url, resourceType: 'script', dokumen: false })).toBe(true);
     expect(asetUmumBoleh({ url: sub.url, resourceType: 'fetch', dokumen: false })).toBe(false);
+    // CDN umum: XHR/fetch GET tetap ditolak (filter jenis ketat hanya dilonggarkan untuk host aset pemda .go.id).
+    expect(asetUmumBoleh({ url: sub.url, resourceType: 'fetch', dokumen: false, metode: 'GET' })).toBe(false);
+    expect(asetUmumBoleh({ url: sub.url, resourceType: 'xhr', dokumen: false, metode: 'GET' })).toBe(false);
     expect(asetUmumBoleh({ url: U, resourceType: 'fetch', dokumen: false })).toBe(true);
   });
 
@@ -314,8 +317,28 @@ describe('putuskan (tabel lengkap)', () => {
       for (const t of ['script', 'stylesheet', 'font', 'image'])
         expect(asetUmumBoleh({ url, resourceType: t, dokumen: false }), `${host} ${t}`).toBe(true);
       expect(asetUmumBoleh({ url, resourceType: 'document', dokumen: true }), host).toBe(false);
-      for (const t of ['xhr', 'fetch', 'media'])
-        expect(asetUmumBoleh({ url, resourceType: t, dokumen: false }), `${host} ${t}`).toBe(false);
+      // Probe gel4 3310: XHR/fetch GET ke host aset pemda .go.id lolos; metode lain atau tanpa metode ditolak.
+      for (const t of ['xhr', 'fetch']) {
+        expect(asetUmumBoleh({ url, resourceType: t, dokumen: false, metode: 'GET' }), `${host} ${t}`).toBe(
+          true,
+        );
+        expect(asetUmumBoleh({ url, resourceType: t, dokumen: false, metode: 'get' }), `${host} ${t}`).toBe(
+          true,
+        );
+        expect(asetUmumBoleh({ url, resourceType: t, dokumen: false }), `${host} ${t} ?`).toBe(false);
+        for (const m of ['POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
+          expect(
+            asetUmumBoleh({ url, resourceType: t, dokumen: false, metode: m }),
+            `${host} ${t} ${m}`,
+          ).toBe(false);
+      }
+      for (const t of ['media', 'websocket', 'other', 'ping'])
+        expect(asetUmumBoleh({ url, resourceType: t, dokumen: false, metode: 'GET' }), `${host} ${t}`).toBe(
+          false,
+        );
+      expect(asetUmumBoleh({ url, resourceType: 'document', dokumen: true, metode: 'GET' }), host).toBe(
+        false,
+      );
       const dok: PermintaanGerbang = { metode: 'GET', dokumen: true, utama: true, xhr: false, url };
       for (const j of [
         { jenis: 'warga' },

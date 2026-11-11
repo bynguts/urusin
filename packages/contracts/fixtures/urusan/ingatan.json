@@ -1,0 +1,44 @@
+{
+  "skema": "sse",
+  "catatan": "Ingatan warga (ADR 0031): urusan kedua, wilayah KTP dari ingatan hanya usulan yang tetap dikonfirmasi; setelah ditetapkan, Urusin mencatat ingatan baru dan warga bisa membatalkannya.",
+  "data": [
+    {
+      "type": "wilayah",
+      "status": "usulan",
+      "ktp": { "kodeKabKota": "3312", "nama": "Kabupaten Wonogiri" },
+      "sumber": "ingatan",
+      "seq": 1,
+      "at": "2026-11-11T03:00:00.000Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddde1"
+    },
+    {
+      "type": "assistant_text",
+      "delta": "Aturan dan situs resmi berbeda di tiap kab/kota. KTP Anda terdaftar di Kabupaten Wonogiri, betul?",
+      "seq": 2,
+      "at": "2026-11-11T03:00:00.700Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddde2"
+    },
+    {
+      "type": "ingatan",
+      "aksi": "simpan",
+      "butir": {
+        "id": "ing_0123456789abcdef",
+        "jenis": "domisili",
+        "label": "Domisili: Kota Semarang"
+      },
+      "seq": 3,
+      "at": "2026-11-11T03:00:09.000Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddde3"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0003",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 4,
+      "at": "2026-11-11T03:00:09.400Z",
+      "chainHead": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddde4"
+    }
+  ]
+}

@@ -16,6 +16,7 @@
   let { ontersimpan }: { ontersimpan: (d: DokumenAkun) => void | Promise<void> } = $props();
 
   let dialog = $state<HTMLDialogElement>();
+  let inputBerkas = $state<HTMLInputElement>();
   let jenis = $state<JenisDokumen>('ktp');
   let judul = $state('');
   let berkas = $state<File | null>(null);
@@ -26,6 +27,7 @@
     jenis = 'ktp';
     judul = '';
     berkas = null;
+    if (inputBerkas) inputBerkas.value = '';
     galatUnggah = '';
     dialog?.showModal();
   }
@@ -90,6 +92,7 @@
       {#snippet children({ describedby, invalid })}
         <input
           id="berkas-dok"
+          bind:this={inputBerkas}
           type="file"
           accept="image/jpeg,image/png,image/webp,application/pdf"
           capture="environment"

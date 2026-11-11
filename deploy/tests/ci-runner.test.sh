@@ -43,6 +43,14 @@ if [ -L "$URUSIN_CI_ROOT/runner/_work/lompat" ]; then
 fi
 cid smoke web "sha256:abc" "$WS"
 check "digest tidak lengkap ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
+cid simpan web "sha256:abc" "$WS"
+check "simpan: digest tidak lengkap ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
+cid simpan api "$DIG" "$WS"
+check "simpan: nama image di luar web|fixtures|pendamping ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
+cid simpan web "$DIG" "$SB/luar/x"
+check "simpan: workspace di luar _work ditolak" '[ $rc -ne 0 ] && [[ "$out" == *"di luar"* ]] && [ -z "$calls" ]'
+cid simpan web "$DIG"
+check "simpan: argumen kurang ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
 cid alias "$SHA" latest
 check "tag rilis selain rc*/v* ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
 cid pw rm "$WS" "$SHA"
@@ -63,6 +71,7 @@ check "DOCKER_CONFIG temp dihapus setelah selesai" '[ ! -e "$(cat "$SHIM_DIR/log
 check "builder khusus urusin-ci + push + SBOM + provenance max" '[[ "$calls" == *"[--builder] [urusin-ci]"* && "$calls" == *"[--push] [--sbom=true] [--provenance=mode=max]"* ]]'
 check "tag ghcr.io/bynguts/urusin-web:<sha> + GIT_SHA" '[[ "$calls" == *"[--tag] [ghcr.io/bynguts/urusin-web:$SHA]"* && "$calls" == *"[GIT_SHA=$SHA]"* ]]'
 check "tanpa entitlement --allow / network host" '[[ "$calls" != *"--allow"* && "$calls" != *"network=host"* ]]'
+check "build membuang ref lokal job ini saja (:sha dan @digest, tanpa -f/prune image)" '[[ "$calls" == *"[image] [rm] [ghcr.io/bynguts/urusin-web:$SHA]"* && "$calls" == *"[image] [rm] [ghcr.io/bynguts/urusin-web@$DIG]"* ]] && [[ "$calls" != *"image] [prune"* && "$calls" != *"system"* ]]'
 check "cache builder dipangkas ke 1,5 GB setelah build" '[[ "$calls" == *"[buildx] [prune] [--builder] [urusin-ci] [--force] [--max-used-space] [1500mb]"* ]]'
 
 echo "== pw (kontainer Playwright)"
@@ -79,9 +88,9 @@ check "e2e menjalankan pnpm e2e sebagai uid pemilik workspace" '[[ "$run_line" =
 check "pw tidak login GHCR" '[[ "$calls" != *"[login]"* ]]'
 check "versi pnpm dibaca di host lalu dioper lewat env (root kontainer tanpa capability tak bisa membaca workspace 0750)" '[[ "$run_line" == *"[PNPM_VERSION=10.20.0]"* && "$run_line" != *"/work/package.json"* ]]'
 SHIM_DF_PCT=50 cid pw perf "$WS" "$SHA"
-check "perf menjalankan lhci autorun" '[ $rc -eq 0 ] && [[ "$calls" == *"lhci autorun"* ]]'
+check "perf menjalankan scripts/lhci-jalan.mjs (autorun hanya untuk checkout tanpa skrip itu)" '[ $rc -eq 0 ] && [[ "$calls" == *"if [ -f scripts/lhci-jalan.mjs ]; then node scripts/lhci-jalan.mjs; else pnpm exec lhci autorun; fi"* ]]'
 run_line="$(grep '^docker \[run\]' <<<"$calls")"
-check "perf: kuota CPU sama 1,5 dengan periode CFS 10 ms (tanpa --cpus), batas lain tetap" '[[ "$run_line" == *"[--cpu-period] [10000] [--cpu-quota] [15000]"* && "$run_line" != *"[--cpus]"* && "$run_line" == *"[--cpu-shares] [256]"* && "$run_line" == *"[--memory] [4g]"* && "$run_line" == *"[--pids-limit] [2048]"* ]]'
+check "perf: kuota CPU sama 1,5 dengan periode CFS 10 ms (tanpa --cpus), bobot CPU tetap rendah 256, batas lain tetap" '[[ "$run_line" == *"[--cpu-period] [10000] [--cpu-quota] [15000] [--cpu-shares] [256]"* && "$run_line" != *"[--cpus]"* && "$run_line" != *"[--cpu-shares] [1024]"* && "$run_line" == *"[--memory] [4g]"* && "$run_line" == *"[--pids-limit] [2048]"* ]]'
 printf 'FROM mcr.microsoft.com/playwright:v1.65.0-noble AS pwbasis\n' > "$WS/apps/pendamping/Dockerfile"
 SHIM_DF_PCT=50 cid pw e2e "$WS" "$SHA"
 check "basis Playwright tanpa pin digest ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
@@ -91,13 +100,58 @@ SHIM_DF_PCT=50 cid pw e2e "$WS" "$SHA"
 check "package.json tanpa packageManager pnpm ditolak sebelum docker run" '[ $rc -ne 0 ] && [ -z "$calls" ]'
 printf '{\n  "packageManager": "pnpm@10.20.0"\n}\n' > "$WS/package.json"
 
+echo "== simpan (image rilis disimpan di host untuk deploy tanpa login)"
+SHIM_DF_PCT=88 cid simpan web "$DIG" "$WS"
+check "simpan: disk 88% ditolak sebelum Docker" '[ $rc -ne 0 ] && [ -z "$calls" ]'
+URUSIN_CI_ARCH=aarch64 SHIM_DF_PCT=50 cid simpan pendamping "$DIG" "$WS"
+SREF="ghcr.io/bynguts/urusin-pendamping@$DIG"
+check "simpan: sukses, mencetak SIMPAN" '[ $rc -eq 0 ] && [[ "$out" == *"SIMPAN: $SREF linux/arm64 revision=$SHA"* ]]'
+check "simpan: login GHCR lewat stdin, token tidak di argumen" '[ "$(cat "$SHIM_DIR/login.stdin")" = "$TOKEN" ] && [[ "$calls" != *"$TOKEN"* ]]'
+check "simpan: pull native by digest, image TIDAK dibuang" '[[ "$calls" == *"[pull] [-q] [--platform] [linux/arm64] [$SREF]"* ]] && [[ "$calls" != *"[image] [rm]"* ]] && [[ "$calls" != *"linux/amd64"* ]] && [[ "$calls" != *"prune"* ]]'
+check "simpan: manifest dicek sebelum pull" '[[ "$(grep -n "imagetools\] \[inspect\] \[--raw\]" <<<"$calls" | head -n1 | cut -d: -f1)" -lt "$(grep -n "\[pull\]" <<<"$calls" | cut -d: -f1)" ]]'
+PF="$URUSIN_CI_ROOT/provenance/${DIG#sha256:}.json"
+check "simpan: salinan provenance 0644 memuat SHA" '[ -f "$PF" ] && [ "$(stat -c %a "$PF")" = 644 ] && grep -q "$SHA" "$PF"'
+URUSIN_CI_ARCH=aarch64 SHIM_PROV_SHA=0000000000000000000000000000000000000000 SHIM_DF_PCT=50 cid simpan web "$DIG" "$WS"
+check "simpan: provenance tanpa SHA label ditolak" '[ $rc -ne 0 ] && [[ "$out" == *"tidak memuat SHA"* ]]'
+URUSIN_CI_ARCH=aarch64 SHIM_LABEL=dev SHIM_DF_PCT=50 cid simpan web "$DIG" "$WS"
+check "simpan: label revision bukan SHA lengkap ditolak" '[ $rc -ne 0 ] && [[ "$out" == *"bukan SHA lengkap"* ]]'
+URUSIN_CI_ARCH=aarch64 SHIM_PULL_RC=1 SHIM_DF_PCT=50 cid simpan web "$DIG" "$WS"
+check "simpan: pull gagal = gagal" '[ $rc -ne 0 ] && [[ "$out" == *"pull"*"gagal"* ]]'
+: > "$SHIM_DIR/calls.log"; out="$(bash "$CI/ci-docker" simpan web "$DIG" "$WS" </dev/null 2>&1)"; rc=$?; calls="$(cat "$SHIM_DIR/calls.log")"
+check "simpan: tanpa token di stdin ditolak sebelum pull" '[ $rc -ne 0 ] && [[ "$out" == *"token GHCR kosong"* ]] && [[ "$calls" != *"[pull]"* ]]'
+
+echo "== smoke (hanya arsitektur native, semua dengan timeout)"
+printf 'enabled\n' > "$SB/binfmt-ada"
+export URUSIN_CI_ARCH=aarch64 URUSIN_CI_BINFMT="$SB/binfmt-ada"
+REF="ghcr.io/bynguts/urusin-web@$DIG"
+SHIM_DF_PCT=50 cid smoke web "$DIG" "$WS"
+check "smoke web lulus di host arm64" '[ $rc -eq 0 ]'
+check "manifest index diperiksa (imagetools inspect --raw)" '[[ "$calls" == *"[buildx] [imagetools] [inspect] [--raw] [$REF]"* ]]'
+check "hanya varian native yang ditarik (satu pull linux/arm64)" '[ "$(grep -c "^docker \[pull\]" <<<"$calls")" = 1 ] && [[ "$calls" == *"[pull] [-q] [--platform] [linux/arm64] [$REF]"* ]]'
+check "tidak ada pull/run amd64 (qemu)" '[[ "$calls" != *"linux/amd64"* ]]'
+check "kontainer smoke bernama urusin-ci-smoke-* (bisa dihentikan paksa)" '[[ "$(grep "^docker \[run\]" <<<"$calls")" == *"[--name] [urusin-ci-smoke-"* ]]'
+check "image smoke dibuang (tanpa -f, tanpa prune)" '[[ "$calls" == *"[image] [rm] [$REF]"* ]] && [[ "$calls" != *"prune"* && "$calls" != *"[rm] [-f] [$REF]"* ]]'
+SHIM_DF_PCT=50 cid smoke pendamping "$DIG" "$WS"
+check "smoke pendamping: 3 run native, semuanya urusin-ci-smoke-*" '[ $rc -eq 0 ] && [ "$(grep -c "^docker \[run\]" <<<"$calls")" = 3 ] && [ "$(grep "^docker \[run\]" <<<"$calls" | grep -c "\[--name\] \[urusin-ci-smoke-")" = 3 ] && [[ "$calls" != *"linux/amd64"* ]]'
+SHIM_PLATFORMS="linux/arm64" SHIM_DF_PCT=50 cid smoke web "$DIG" "$WS"
+check "binfmt ada tetapi manifest tanpa amd64: ditolak sebelum pull" '[ $rc -ne 0 ] && [[ "$out" == *"tanpa linux/amd64"* ]] && [[ "$calls" != *"[pull]"* ]]'
+URUSIN_CI_BINFMT="$SB/tidak-ada" SHIM_PLATFORMS="linux/arm64" SHIM_DF_PCT=50 cid smoke web "$DIG" "$WS"
+check "tanpa binfmt: index arm64 saja cukup" '[ $rc -eq 0 ]'
+SHIM_RUN_RC=124 SHIM_DF_PCT=50 cid smoke fixtures "$DIG" "$WS"
+check "smoke melewati timeout: gagal, kontainer dihentikan paksa, image tetap dibuang" '[ $rc -ne 0 ] && [[ "$out" == *"melewati"* ]] && [[ "$calls" == *"[rm] [-f] [urusin-ci-smoke-"* ]] && [[ "$calls" == *"[image] [rm] [ghcr.io/bynguts/urusin-fixtures@$DIG]"* ]]'
+URUSIN_CI_ARCH=riscv64 SHIM_DF_PCT=50 cid smoke web "$DIG" "$WS"
+check "arsitektur host tak dikenal ditolak sebelum pull" '[ $rc -ne 0 ] && [[ "$calls" != *"[pull]"* ]]'
+smoke_src="$(sed -n '/^cmd_smoke()/,/^}/p' "$CI/ci-docker")"
+check "di cmd_smoke tidak ada docker run tanpa batas waktu" '[ -n "$smoke_src" ] && ! grep -q "docker run" <<<"$smoke_src" && grep -q "timeout 900 docker pull" <<<"$smoke_src"'
+unset URUSIN_CI_ARCH URUSIN_CI_BINFMT
+
 echo "== alias / builder"
 cid alias "$SHA" rc1
 check "alias membuat tag dari digest :<sha> (imagetools create, bukan build)" '[ $rc -eq 0 ] && [ "$(grep -c "\[imagetools\] \[create\]" <<<"$calls")" = 3 ] && [[ "$calls" != *"[build]"* ]]'
 cid builder-gc
 check "gc hanya untuk builder urusin-ci, batas 1,5 GB (bukan prune global)" '[[ "$calls" == *"[buildx] [prune] [--builder] [urusin-ci] [--force] [--max-used-space] [1500mb]"* ]] && [[ "$calls" != *"[system]"* && "$calls" != *"[builder] [prune]"* ]]'
 cid cleanup
-check "cleanup hanya kontainer urusin-ci-pw-* (tanpa prune)" '[ $rc -eq 0 ] && [[ "$calls" == *"[name=^urusin-ci-pw-]"* ]] && [[ "$calls" != *"prune"* ]]'
+check "cleanup hanya kontainer urusin-ci-pw-* dan urusin-ci-smoke-* (tanpa prune)" '[ $rc -eq 0 ] && [[ "$calls" == *"[name=^urusin-ci-pw-] [--filter] [name=^urusin-ci-smoke-]"* ]] && [[ "$calls" != *"prune"* ]]'
 SHIM_NO_BUILDER=1 cid builder-init
 check "builder-init: docker-container + buildkitd.toml + batas CPU/memori" '[[ "$calls" == *"[--driver] [docker-container]"* && "$calls" == *"buildkitd.toml]"* && "$calls" == *"memory=4g"* ]]'
 
@@ -139,6 +193,10 @@ check "unit: batas CPU/memori/IO + prestart root + hook job-completed" 'grep -q 
 check "unit: setiap hook runner berakhiran .sh/.ps1/.js (runner menolak path lain)" '[ "$(grep -c "^Environment=ACTIONS_RUNNER_HOOK_JOB_" "$CI/urusin-ci-runner.service")" -eq 2 ] && ! grep "^Environment=ACTIONS_RUNNER_HOOK_JOB_" "$CI/urusin-ci-runner.service" | grep -Evq "\.(sh|ps1|js)$" && (for h in $(grep "^Environment=ACTIONS_RUNNER_HOOK_JOB_" "$CI/urusin-ci-runner.service" | sed "s#.*/bin/##"); do [ -f "$CI/$h" ] && grep -q " $h" "$CI/install.sh" || exit 1; done)'
 WF="$HERE/../../.github/workflows"
 check "workflow: job pull_request tidak pernah ke runner self-hosted" '[ "$(grep -h "URUSIN_RUNNER" "$WF"/*.yml | grep -c "runs-on:")" -ge 1 ] && ! grep -h "runs-on:.*URUSIN_RUNNER" "$WF"/*.yml | grep -vq "github.event_name != '"'"'pull_request'"'"' && vars.URUSIN_RUNNER"'
+uji_cidocker="$(awk '/^  [a-z][a-z0-9-]*:$/ { if (job && uji && cd) print job; job = $1; uji = 0; cd = 0 } /runs-on:.*URUSIN_RUNNER_UJI/ { uji = 1 } /ci-docker/ { cd = 1 } END { if (job && uji && cd) print job }' "$WF/ci.yml")"
+check "workflow: job ci-docker (perf/e2e) tidak pernah ke runner laptop (URUSIN_RUNNER_UJI)" '[ -z "$uji_cidocker" ] && grep -q "runs-on:.*URUSIN_RUNNER_UJI" "$WF/ci.yml" && ! grep -h "URUSIN_RUNNER_UJI" "$WF"/*.yml | grep "runs-on:" | grep -vq "vars.URUSIN_RUNNER && (vars.URUSIN_RUNNER_UJI || vars.URUSIN_RUNNER)"'
+LT="$HERE/../ci-runner-laptop"
+check "runner laptop: token via stdin+env (bukan --token), image dipin digest, down.sh hapus variabel dan registrasi" '! grep -nE -- "--token" "$LT"/*.sh && grep -q "ACTIONS_RUNNER_INPUT_TOKEN=" "$LT/up.sh" && grep -qE "^FROM ghcr.io/actions/actions-runner:[0-9.]+@sha256:[0-9a-f]{64}$" "$LT/Dockerfile" && grep -q "gh variable delete URUSIN_RUNNER_UJI" "$LT/down.sh" && grep -q "DELETE \"repos/\$REPO/actions/runners/" "$LT/down.sh"'
 check "unit: runner persisten (run.sh), tanpa runner-start/JIT" 'grep -q "^ExecStart=/opt/urusin-ci/runner/run.sh" "$CI/urusin-ci-runner.service" && ! grep -q "runner-start" "$CI/urusin-ci-runner.service" && [ ! -e "$CI/runner-start" ]'
 check "tanpa PAT di box: tanpa jitconfig/--ephemeral; gh-admin-token hanya dihapus" '! grep -nE "generate-jitconfig|--ephemeral|--jitconfig" "$CI"/install.sh "$CI"/uninstall.sh "$CI"/runner-prestart && [ "$(grep -c gh-admin-token "$CI/install.sh")" = 1 ] && grep -q "rm -f.*gh-admin-token" "$CI/install.sh"'
 check "token registrasi/remove lewat env, bukan argumen --token" '! grep -nE -- "--token" "$CI"/install.sh "$CI"/uninstall.sh && grep -q "ACTIONS_RUNNER_INPUT_TOKEN=" "$CI/install.sh" && grep -q "ACTIONS_RUNNER_INPUT_TOKEN=" "$CI/uninstall.sh"'

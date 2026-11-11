@@ -17,7 +17,7 @@ concurrency:
 jobs:
   verify:
     name: Lint, typecheck, test, build, budget, audit
-    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER && (vars.URUSIN_RUNNER_UJI || vars.URUSIN_RUNNER)) || 'ubuntu-latest' }}
     timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 20 }}
     env:
       HUSKY: '0'
@@ -31,11 +31,13 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
+      # Runner laptop (deploy/ci-runner-laptop) memakai pnpm store lokal yang persisten: unduhan cache GitHub
+      # dari jaringan laptop lebih lambat daripada install inkremental dari store.
       - name: Setup Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+          cache: ${{ !startsWith(runner.name, 'urusin-ci-laptop') && 'pnpm' || '' }}
 
       # --ignore-scripts: tidak ada skrip lifecycle dependensi di CI (prepare milik workspace dijalankan
       # oleh turbo saat dibutuhkan, setelah paket workspace dibangun).
@@ -108,18 +110,20 @@ jobs:
         run: pnpm build
 
       # Rute dan batas ada di perf-routes.cjs dan lighthouserc.cjs. Emulasi mobile (Moto G Power, slow 4G),
-      # 5 run, median; pelanggaran apa pun menggagalkan job.
+      # 5 run, median; pelanggaran apa pun menggagalkan job. scripts/lhci-jalan.mjs = collect + assert (di sini,
+      # tanpa kalibrasi CPU, sama dengan `lhci autorun`).
       - name: Lighthouse CI
         if: runner.environment == 'github-hosted'
         env:
           PORT: '4173'
           HOST: 127.0.0.1
           ORIGIN: http://127.0.0.1:4173
-        run: pnpm exec lhci autorun
+        run: node scripts/lhci-jalan.mjs
 
       # Runner self-hosted (agent-vm): install + build + lhci di kontainer Playwright terbatas lewat ci-docker
       # (user runner tanpa grup docker). Di sana cpuSlowdownMultiplier dikalibrasi dari benchmarkIndex host
       # (scripts/lhci-cpu.mjs, rumus resmi Lighthouse, clamp [1, 4]); target perangkat dan ambang tetap sama.
+      # Run yang terukur saat host sibuk (benchmarkIndex < 0,85 x kalibrasi) diulang oleh scripts/lhci-jalan.mjs.
       - name: Lighthouse CI (self-hosted, kontainer Playwright)
         if: runner.environment == 'self-hosted'
         run: sudo -n /opt/urusin-ci/bin/ci-docker pw perf "$GITHUB_WORKSPACE" "$GITHUB_SHA"
@@ -146,6 +150,13 @@ jobs:
               if (cal.warning) console.log(`- Peringatan: ${cal.warning}`);
             }
             if (runs.length && bi.length) console.log(`- Tercatat di LHR (${runs.length} run): multiplier ${used}; benchmarkIndex median ${med(bi)} (min ${Math.min(...bi)}, maks ${Math.max(...bi)})`);
+            const st = read("stabil.json");
+            if (st?.minBenchmarkIndex) {
+              const rute = Object.entries(st.rute);
+              const ganti = rute.reduce((n, [, r]) => n + r.diganti.length, 0);
+              console.log(`- Run sah: benchmarkIndex >= ${st.minBenchmarkIndex} (${st.rasio} x acuan ${st.acuan}); ${ganti} run host-sibuk diganti (scripts/lhci-jalan.mjs)`);
+              for (const [u, r] of rute) if (r.sah < r.dinilai.length) console.log(`- Peringatan ${u}: hanya ${r.sah}/${r.dinilai.length} run sah, run sibuk ikut dinilai`);
+            }
             console.log();
           ' >> "$GITHUB_STEP_SUMMARY"
           {
@@ -252,7 +263,7 @@ jobs:
 
   coverage:
     name: Coverage (ambang per paket)
-    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER && (vars.URUSIN_RUNNER_UJI || vars.URUSIN_RUNNER)) || 'ubuntu-latest' }}
     timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 20 }}
     env:
       HUSKY: '0'
@@ -268,7 +279,7 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+          cache: ${{ !startsWith(runner.name, 'urusin-ci-laptop') && 'pnpm' || '' }}
 
       - name: Install
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -298,7 +309,7 @@ jobs:
 
   rc-compat:
     name: Kompatibilitas rilis kandidat (image rc* terakhir di atas DB HEAD)
-    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER && (vars.URUSIN_RUNNER_UJI || vars.URUSIN_RUNNER)) || 'ubuntu-latest' }}
     timeout-minutes: ${{ vars.URUSIN_RUNNER && 60 || 20 }}
     permissions:
       contents: read
@@ -349,7 +360,7 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+          cache: ${{ !startsWith(runner.name, 'urusin-ci-laptop') && 'pnpm' || '' }}
 
       - name: Migrasi sejak tag rc harus aditif (tanpa DROP/RENAME)
         if: steps.rc.outputs.tag != ''
@@ -411,7 +422,7 @@ jobs:
 
   contract-freeze:
     name: Pembekuan kontrak (vs contracts-take1)
-    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER && (vars.URUSIN_RUNNER_UJI || vars.URUSIN_RUNNER)) || 'ubuntu-latest' }}
     timeout-minutes: 10
     env:
       HUSKY: '0'
@@ -429,7 +440,7 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+          cache: ${{ !startsWith(runner.name, 'urusin-ci-laptop') && 'pnpm' || '' }}
 
       - name: Install
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -443,7 +454,7 @@ jobs:
 
   gitleaks:
     name: Gitleaks
-    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER && (vars.URUSIN_RUNNER_UJI || vars.URUSIN_RUNNER)) || 'ubuntu-latest' }}
     timeout-minutes: 10
     env:
       GITLEAKS_VERSION: 8.30.1
@@ -458,11 +469,18 @@ jobs:
           case "$(uname -m)" in x86_64) arch=x64 ;; aarch64) arch=arm64 ;; *) echo "::error::arsitektur $(uname -m)"; exit 1 ;; esac
           base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
           tarball="gitleaks_${GITLEAKS_VERSION}_linux_${arch}.tar.gz"
-          curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 -o "$tarball" "$base/$tarball"
-          curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 -o checksums.txt "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
-          grep " ${tarball}\$" checksums.txt | sha256sum -c -
+          # Tarball disimpan di tool cache runner (persisten di self-hosted, mis. runner laptop yang jaringannya
+          # lambat); checksum tetap diverifikasi setiap job dan tarball yang tidak cocok dibuang.
+          cache="${RUNNER_TOOL_CACHE:-$RUNNER_TEMP}/gitleaks/${GITLEAKS_VERSION}"
+          mkdir -p "$cache"
+          if [ ! -f "$cache/$tarball" ]; then
+            curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 -o "$cache/$tarball.tmp" "$base/$tarball"
+            mv "$cache/$tarball.tmp" "$cache/$tarball"
+          fi
+          curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 -o "$RUNNER_TEMP/checksums.txt" "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          (cd "$cache" && grep " ${tarball}\$" "$RUNNER_TEMP/checksums.txt" | sha256sum -c -) || { rm -f "$cache/$tarball"; exit 1; }
           mkdir -p "$RUNNER_TEMP/bin"
-          tar -xzf "$tarball" -C "$RUNNER_TEMP/bin" gitleaks
+          tar -xzf "$cache/$tarball" -C "$RUNNER_TEMP/bin" gitleaks
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       - name: Pindai riwayat

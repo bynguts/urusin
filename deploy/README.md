@@ -12,13 +12,19 @@ Berkas: `compose.prod.yml`, `Caddyfile.urusin.primary` (+ `.fallback`), `hardeni
 `tests/` (harness tanpa Docker). Layout datar (agent-vm) juga butuh `scripts/db-backup.mjs` dan `scripts/db-restore.mjs`
 (salinan `apps/web/scripts/`), dibaca `backup.sh`/`restore.sh`.
 
-> **Runner CI self-hosted (`ci-runner/`): cadangan bila menit GitHub Actions habis, TIDAK terpasang.**
-> Bila pernah dipasang, **WAJIB dicopot sebelum repo dibuat Public** (submission, tenggat 2026-11-14): di repo
+> **Runner CI self-hosted (`ci-runner/`): cadangan bila menit GitHub Actions habis. Status: TERPASANG di
+> agent-vm sejak 2026-11-10 (`URUSIN_RUNNER=urusin-self`), dicopot sebelum repo dibuat Public.**
+> Runner ini **WAJIB dicopot sebelum repo dibuat Public** (submission, tenggat 2026-11-14): di repo
 > publik PR dari fork bisa menjalankan kode di runner self-hosted, yaitu di agent-vm. Repo publik mendapat menit
 > GitHub gratis, jadi runner tidak dibutuhkan lagi. Urutan: `uninstall.sh` (remove-token lewat stdin) →
 > `gh variable delete URUSIN_RUNNER --repo bynguts/urusin` → `gh api repos/bynguts/urusin/actions/runners --jq .total_count`
 > = 0 → rotasi token admin lokal (tidak pernah ada PAT di box) → baru ubah visibilitas. Detail, batas sumber daya, dan keputusan sudoers vs grup docker:
 > [`ci-runner/README.md`](ci-runner/README.md).
+>
+> **Runner CI kedua di laptop (`ci-runner-laptop/`, `URUSIN_RUNNER_UJI=urusin-laptop`) untuk job non-ci-docker
+> di `ci.yml`. Juga WAJIB dicopot sebelum Public:** `deploy/ci-runner-laptop/down.sh` (hapus variabel, kontainer,
+> registrasi) → `gh variable delete URUSIN_RUNNER_UJI --repo bynguts/urusin` bila tersisa. Detail:
+> [`ci-runner-laptop/README.md`](ci-runner-laptop/README.md).
 
 ## Instalasi pertama
 
@@ -149,6 +155,28 @@ Firewall tidak diubah; sebagai gantinya:
   status HTTP apa pun (200/401/403) = terjangkau, timeout/koneksi gagal = gagal. `deploy.sh` memanggilnya
   setelah health dan sebelum promosi: hanya peringatan, kecuali `REQUIRE_LLM=1` (gagal + rollback).
   Jalankan manual: `./check-llm-reach.sh green`.
+- **Kapabilitas AI sebelum promosi.** Di mode LLM, `deploy.sh` menunggu `/api/kemampuan` warna idle melaporkan
+  `kapabilitas.ai` `"normal"` (paling lama `CAPS_WAIT_SECONDS`, default 90 s = probe boot + dua probe ulang).
+  `"hemat"` (kuota harian >= 70%) hanya peringatan; `"tanpa_ai"` atau tanpa jawaban = gagal + rollback, dengan
+  `probe=` di log (`mencoba_ulang` = probe kapabilitas galat). Mode demo dilewati.
+
+### Pin kapabilitas LLM (`LLM_CAPS_PIN`, produksi)
+
+Probe kapabilitas saat boot memanggil proxy LLM sungguhan (paralel, timeout 15 s per probe). Proxy yang sibuk
+atau membalas SSE untuk request non-stream dulu membuat runtime menetap di mode tanpa AI (satu aksi per giliran
+agen) sampai restart. Sekarang:
+
+- **Produksi memakai `LLM_CAPS_PIN`** di `.env` (JSON flag kapabilitas, kunci tak disebut = false): probe
+  dilewati, flag dipakai apa adanya, `/api/health` melaporkan `"probe":{"status":"pin"}`. Contoh:
+  `LLM_CAPS_PIN={"tools":true,"parallel_tool_calls":true,"json_schema_strict":true,"vision":true,"streaming_tools":true}`.
+  Ganti pin hanya setelah model/proxy diganti dan probe manual lulus; JSON rusak = pin diabaikan (probe jalan).
+- **Tanpa pin:** probe yang GALAT (timeout, jaringan, balasan bukan chat.completion) diulang di latar dengan
+  backoff 15 s, 30 s, 60 s, 2 menit, 4 menit, lalu tiap 5 menit sampai kapabilitas inti (`tools`,
+  `parallel_tool_calls`, `json_schema_strict`, `streaming_tools`) terjawab; yang lolos langsung dinyalakan
+  tanpa restart. Jawaban "tidak didukung" yang sah tidak diulang. Status: `/api/health` `.probe`
+  (`ok` | `mencoba_ulang` + `percobaan`, `berikutnyaPada`, `galat`) dan `/api/kemampuan` `.probe` (status saja).
+- Klien LLM menerima balasan SSE untuk `stream:false` (proxy pythia melakukannya) dan merakitnya menjadi
+  chat.completion biasa.
 
 ## Env produksi (placeholder; nilai asli hanya di `.env`, chmod 600)
 
@@ -536,7 +564,7 @@ nama itu lagi di sisi operator, jadi alamat yang akhirnya dihubungi ditentukan D
 proxy milik sendiri yang resolvernya dipercaya.
 
 Batas `pendamping`: `mem_limit`/`memswap_limit 1300m` (2 sesi x 512 MB + Node/Xvfb), pengawas menghentikan
-sesi di 450 MB RSS, `cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `ulimits core 0`,
+sesi di 450 MB RSS (worker-id laptop: 1 sesi, 1100 MB), `cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `ulimits core 0`,
 `init: true`. `pendamping-edge`: 128 MB, `cpus: 0.5`, `pids_limit: 64`.
 
 ## Uji skrip (tanpa Docker)
@@ -549,7 +577,7 @@ bash deploy/tests/ci-runner.test.sh       # runner CI self-hosted (docker/df pal
 shellcheck -x deploy/*.sh deploy/tests/deploy.test.sh deploy/tests/shims/*
 ```
 
-Kasus: bind loopback/`REQUIRE_LLM`/jangkauan LLM, render `compose.prod.yml` (`tests/compose-config.test.sh`, memakai `docker compose config` sungguhan bila ada), `zero-downtime.sh` (lulus/gagal), deploy pertama dan kedua (pindah warna), `gitSha` salah / warna baru tidak sehat / smoke publik
+Kasus: bind loopback/`REQUIRE_LLM`/jangkauan LLM, kapabilitas AI mode LLM (normal/hemat/tanpa_ai/tak menjawab), render `compose.prod.yml` (`tests/compose-config.test.sh`, memakai `docker compose config` sungguhan bila ada), `zero-downtime.sh` (lulus/gagal), deploy pertama dan kedua (pindah warna), `gitSha` salah / warna baru tidak sehat / smoke publik
 gagal (rollback otomatis, exit non-zero), label revision tidak cocok/pendek, provenance tanpa/SHA7 saja/SHA lengkap, `REQUIRE_PROVENANCE=0`,
 image tanpa `/api/ready` (ditolak sebelum `up` atau sebelum promosi), migrasi dari layout lama, backup + retensi + restic opsional, alert disk.
 

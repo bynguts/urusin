@@ -17,6 +17,6 @@ test('kab/kota dipilih sebelum hidrasi tetap membuka rencana wilayah itu', async
     lepas(); // selalu dilepas: permintaan tertahan tidak boleh menggantung penutupan konteks
   }
   await expect(page).toHaveURL(/kodeKabKota=3312/);
-  await expect(page.getByLabel('Kabupaten/kota sesuai KTP Anda')).toHaveValue('3312');
+  await expect(page.getByLabel('Kabupaten/kota sesuai KTP Anda')).toHaveValue('Kabupaten Wonogiri');
   await expect(page.getByRole('button', { name: 'Mulai urusan ini' })).toBeVisible();
 });

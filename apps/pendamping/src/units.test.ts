@@ -203,8 +203,9 @@ describe('rute peramban: host aset umum (re-review MEDIUM)', () => {
     'fonts.gstatic.com:443',
     'www.google.com:443',
   ]);
-  const req = (url: string, resourceType: string, nav = false) => ({
+  const req = (url: string, resourceType: string, nav = false, method = 'GET') => ({
     url: () => url,
+    method: () => method,
     resourceType: () => resourceType,
     isNavigationRequest: () => nav,
   });
@@ -223,12 +224,18 @@ describe('rute peramban: host aset umum (re-review MEDIUM)', () => {
       expect(izinRute(izin, req('https://unpkg.com/x.json', t)), t).toBe(false);
   });
 
-  it('re-review LOW: host aset pemda (hostAset) = subresource saja, dokumen dan XHR ditolak', () => {
+  it('re-review LOW + probe gel4 3310: host aset pemda = subresource + XHR/fetch GET, dokumen dan tulis ditolak', () => {
     const izinPemda = new Set(['dukcapilonline.slemankab.go.id:443', 'dukcapil-cdn.slemankab.go.id:443']);
     const cdn = 'https://dukcapil-cdn.slemankab.go.id/x';
     for (const t of ['script', 'stylesheet', 'font', 'image'])
       expect(izinRute(izinPemda, req(`${cdn}.js`, t)), t).toBe(true);
-    for (const t of ['xhr', 'fetch']) expect(izinRute(izinPemda, req(`${cdn}.json`, t)), t).toBe(false);
+    for (const t of ['xhr', 'fetch']) {
+      expect(izinRute(izinPemda, req(`${cdn}.json`, t)), t).toBe(true);
+      for (const m of ['POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])
+        expect(izinRute(izinPemda, req(`${cdn}.json`, t, false, m)), `${t} ${m}`).toBe(false);
+    }
+    for (const t of ['media', 'websocket', 'other', 'ping'])
+      expect(izinRute(izinPemda, req(`${cdn}.json`, t)), t).toBe(false);
     expect(izinRute(izinPemda, req(`${cdn}.html`, 'document', true))).toBe(false);
     expect(izinRute(izinPemda, req(`${cdn}.html`, 'document', false))).toBe(false);
     expect(

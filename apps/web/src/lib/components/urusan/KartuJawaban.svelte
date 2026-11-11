@@ -2,6 +2,7 @@
   import type { EventOf } from '#lib/contracts.js';
   import { tanggal } from '#lib/urusan-status.js';
   import ChipSumber from './ChipSumber.svelte';
+  import { unikPerRef } from './linimasa.js';
 
   /**
    * Jawaban bersumber (App 02): tiap klaim diberi nomor kutipan [n]; chip sumber di bawah membuka situs resmi
@@ -18,16 +19,14 @@
     onpilih?: ((refId: string) => void) | undefined;
   } = $props();
 
-  const kutipanUnik = $derived([
-    ...new Map(jawaban.klaim.flatMap((k) => k.kutipan).map((q) => [q.refId, q])).values(),
-  ]);
+  const kutipanUnik = $derived(unikPerRef(jawaban.klaim.flatMap((k) => k.kutipan)));
 </script>
 
 <div class="flex flex-col gap-3">
   {#each jawaban.klaim as k, i (i)}
     <p>
       {k.teks}
-      {#each k.kutipan as q (q.refId)}
+      {#each unikPerRef(k.kutipan) as q (q.refId)}
         <button
           type="button"
           onclick={() => onpilih?.(q.refId)}

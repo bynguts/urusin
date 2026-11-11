@@ -26,6 +26,11 @@ const EnvSchema = z.object({
   LLM_PRICE_INPUT_PER_MTOK: num(0),
   LLM_PRICE_OUTPUT_PER_MTOK: num(0),
   LLM_PRICE_AUDIO_PER_MIN: num(0),
+  LLM_REASONING_EFFORT: z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined || v.trim() === '' ? undefined : v.trim().toLowerCase()))
+    .pipe(z.enum(['minimal', 'low', 'medium', 'high']).optional()),
 });
 
 export type LlmConfig = {
@@ -43,6 +48,11 @@ export type LlmConfig = {
   prices: { inputPerMTok: number; outputPerMTok: number; audioPerMin: number };
   /** Kapabilitas yang dipaksa mati lewat env LLM_FORCE_NO_*. */
   forcedOff: Capability[];
+  /**
+   * `reasoning_effort` untuk model bernalar (env LLM_REASONING_EFFORT). Kosong = tidak dikirim. Di proxy produksi
+   * `low` memangkas token penalaran jawaban bersumber dari ~1000 ke ~150 (puluhan detik per giliran).
+   */
+  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high' | undefined;
 };
 
 /** Nama env override per kapabilitas, mis. LLM_FORCE_NO_JSON_SCHEMA=1. */
@@ -78,5 +88,6 @@ export function loadLlmConfig(env: Record<string, string | undefined> = process.
       audioPerMin: e.LLM_PRICE_AUDIO_PER_MIN,
     },
     forcedOff: CAPABILITIES.filter((c) => truthy(env[FORCE_ENV[c]])),
+    reasoningEffort: e.LLM_REASONING_EFFORT,
   };
 }

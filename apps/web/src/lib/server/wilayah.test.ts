@@ -181,7 +181,7 @@ describe('POST /api/urusan/[id]/wilayah (tombol "Ya, betul")', () => {
 
   it('urusan tanpa rencana yang sudah bercakap: "Ya, betul" melanjutkan giliran agen, tidak buntu', async () => {
     const res = await buatUrusan(
-      ev(post({ kodeKabKota: '3578', pesan: 'KTP saya rusak kena air, bikin baru gimana?' })),
+      ev(post({ kodeKabKota: '3578', pesan: 'Akta saya rusak kena air, bikin salinan gimana?' })),
     );
     const { id } = (await res.json()) as { id: string };
     await selesai(id);
@@ -237,11 +237,12 @@ describe('alur juri Wonogiri (Data Diri 3312): satu konfirmasi tambahan, lalu Br
     expect(isRedirect(r)).toBe(true);
     const id = (r as { location: string }).location.split('/').at(-1)!;
     await selesai(id);
-    // Turn pertama: menanyakan wilayah KTP, belum ada rencana.
+    // Turn pertama: menanyakan wilayah KTP lewat kartu (tanpa teks pertanyaan ganda), belum ada rencana.
     const teks = payloads(id, 'assistant_text')
       .map((e) => e.delta)
       .join('');
-    expect(teks).toContain('KTP Anda terdaftar di Kabupaten Wonogiri, betul?');
+    expect(teks).not.toContain('KTP Anda terdaftar di Kabupaten Wonogiri, betul?');
+    expect(wilayahUrusan(rt.store, rt.store.getUrusanOrThrow(id)).usulan).not.toBeNull();
     expect(payloads(id, 'plan_card')).toEqual([]);
 
     // Satu-satunya klik tambahan: "Ya, betul".

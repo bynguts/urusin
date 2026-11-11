@@ -64,6 +64,36 @@ afterAll(async () => {
 });
 
 describe('egress: tujuan lokal/privat tidak terjangkau', () => {
+  it('redirect dari layanan publik tidak dapat masuk ke gateway LLM Tailscale', async () => {
+    let hits = 0;
+    const e = createEgress({
+      env: { LLM_BASE_URL: 'http://100.101.1.2:20128/v1' },
+      transport: async () => {
+        hits++;
+        return new Response(null, { status: 307, headers: { location: 'http://100.101.1.2:20128/v1' } });
+      },
+    });
+    await expect(e.fetch('https://api.jina.ai/')).rejects.toThrow(/redirect ke gateway LLM Tailscale/);
+    expect(hits).toBe(1);
+    await e.agent.close();
+  });
+
+  it('gateway LLM Tailscale boleh redirect di origin yang sama', async () => {
+    const urls: string[] = [];
+    const e = createEgress({
+      env: { LLM_BASE_URL: 'http://100.101.1.2:20128/v1' },
+      transport: async (url) => {
+        urls.push(url.href);
+        return urls.length === 1
+          ? new Response(null, { status: 307, headers: { location: '/v1/chat/completions' } })
+          : new Response('ok');
+      },
+    });
+    expect(await (await e.fetch('http://100.101.1.2:20128/v1')).text()).toBe('ok');
+    expect(urls).toHaveLength(2);
+    await e.agent.close();
+  });
+
   const egress = createEgress({ env: {} });
   afterAll(() => egress.agent.close());
 

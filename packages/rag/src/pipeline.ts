@@ -7,6 +7,7 @@ import { rerankHits, type RerankDeps, type RerankStatus } from './rerank.js';
 import type { RetrievalDebug } from './schema.js';
 import { outOfScopeNoun } from './out-of-scope.js';
 import {
+  bagianPrior,
   isPasalChunk,
   PASAL_PRIOR,
   pasalPriorSql,
@@ -278,24 +279,28 @@ export function retrieveSync(
   const t2 = performance.now();
 
   const textRanked = combineScores(legs);
-  const fused = (
-    useVector
-      ? weightedRrf([
-          { hits: textRanked, weight: 1 },
-          { hits: (deps.vectorIds ?? []).map((id) => ({ id })), weight: 1 },
-        ])
-      : textRanked.map((h) => ({ id: h.id, skor: h.skor }))
-  ).slice(0, limit);
+  const fusedAll = useVector
+    ? weightedRrf([
+        { hits: textRanked, weight: 1 },
+        { hits: (deps.vectorIds ?? []).map((id) => ({ id })), weight: 1 },
+      ])
+    : textRanked.map((h) => ({ id: h.id, skor: h.skor }));
+  // Kandidat dua kali batas: bagian pelengkap standar pelayanan (biaya, dasar hukum, ...) yang turun karena
+  // bagianPrior memberi tempat bagi persyaratan/prosedur layanan yang sama di bawahnya.
+  const pool = fusedAll.slice(0, limit * 2);
   const known = new Map<string, Hit>(textRanked.map((h) => [h.id, h]));
   for (const [id, h] of hydrate(
     db,
-    fused.map((f) => f.id).filter((id) => !known.has(id)),
+    pool.map((f) => f.id).filter((id) => !known.has(id)),
   ))
     known.set(id, h);
-  const hits = fused.flatMap((f) => {
-    const h = known.get(f.id);
-    return h ? [{ ...h, skor: f.skor }] : [];
-  });
+  const hits = pool
+    .flatMap((f) => {
+      const h = known.get(f.id);
+      return h ? [{ ...h, skor: f.skor * bagianPrior(h.kutipan.judul, opts.query) }] : [];
+    })
+    .sort((a, b) => b.skor - a.skor || a.id.localeCompare(b.id))
+    .slice(0, limit);
   const t3 = performance.now();
 
   // Layanan luar cakupan yang disebut eksplisit (SIM, SKCK, ...) dan tidak ada di judul chunk mana pun:

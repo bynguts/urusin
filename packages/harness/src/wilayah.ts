@@ -2,9 +2,13 @@ import { ADAPTERS } from '@urusin/adapters';
 import type { EventPayload, PayloadOf, WilayahRef } from '@urusin/contracts';
 import { cariPengetahuanTool } from '@urusin/rag';
 import {
+  KANAL_NASIONAL,
+  kanalDisdukcapil,
+  kanalProvinsi,
   kanalWilayah,
   kontakLayanan,
   namaPendekWilayah,
+  rencanaLayanan,
   rencanaWilayah,
   ringkasKontak,
   temukanWilayah,
@@ -55,8 +59,8 @@ export type WilayahUrusan = {
   ktp: WilayahRef | null;
   domisili: WilayahRef | null;
   tujuan: WilayahRef | null;
-  /** warga = wilayah yang sudah ditanyakan agen di percakapan (lihat `selaraskanUsulan`). */
-  usulan: { ktp: WilayahRef; sumber: 'data_diri' | 'pilihan' | 'warga' } | null;
+  /** warga = wilayah yang sudah ditanyakan agen di percakapan (lihat `selaraskanUsulan`); ingatan = ADR 0031. */
+  usulan: { ktp: WilayahRef; sumber: 'data_diri' | 'pilihan' | 'warga' | 'ingatan' } | null;
 };
 
 export function refWilayah(kode: string): WilayahRef | null {
@@ -93,15 +97,17 @@ const SISI_TUJUAN =
   /\b(tujuan|lapor datang|daerah baru|alamat baru|tempat baru|skdwni|surat (keterangan )?datang)\b/i;
 
 /**
- * Yurisdiksi untuk hand-off: wilayah KTP, kecuali (1) di luar pindah, warga menyebut kab/kota DOMISILI-nya (mis. KTP Surabaya,
- * kuliah di Semarang, bertanya "Disdukcapil Semarang di mana?"): kanal domisili; (2) urusan pindah yang ditanyakan
+ * Yurisdiksi untuk hand-off: wilayah KTP, kecuali (1) di luar pindah, warga menyebut kab/kota DOMISILI-nya
+ * (mis. KTP Surabaya, kuliah di Semarang, bertanya "Disdukcapil Semarang di mana?"): kanal domisili; KTP-el juga
+ * kab/kota lain yang disebut warga walau domisili belum dicatat; (2) urusan pindah yang ditanyakan
  * tentang sisi TUJUAN: nama tujuan disebut (nama asal tidak), atau kata "tujuan/lapor datang/alamat baru" tanpa
  * menyebut SKPWNI. SKPWNI ke asal.
  */
 export function kodeYurisdiksi(store: HarnessStore, u: UrusanRow, teks: string): string | null {
   const w = wilayahUrusan(store, u);
   const asal = w.ktp?.kodeKabKota ?? u.kodeKabKota;
-  const kode = temukanWilayah(teks).map((s) => s.wilayah.kodeKabKota);
+  const disebut = temukanWilayah(teks);
+  const kode = disebut.map((s) => s.wilayah.kodeKabKota);
   // Domisili disebut: warga bertanya tentang kantor tempat tinggalnya, juga bila sekaligus protes "kok Surabaya?".
   if (
     u.jenis !== 'pindah' &&
@@ -109,6 +115,16 @@ export function kodeYurisdiksi(store: HarnessStore, u: UrusanRow, teks: string):
     (kode.includes(w.domisili.kodeKabKota) || sebutInti(teks, w.domisili))
   )
     return w.domisili.kodeKabKota;
+  // KTP-el bisa dicetak di Disdukcapil mana pun. Domisili belum dicatat (agen tidak memanggil wilayah__tetapkan),
+  // tetapi warga menyebut tepat satu kab/kota selain kota KTP-nya (p03 ulang, juga saat protes "kok Surabaya?"):
+  // kanal kab/kota itu.
+  if (u.jenis === 'ktp' && w.ktp && !w.domisili) {
+    // Nama polos ("semarang") cocok ke Kota dan Kabupaten; yang disebut lengkap ("kota semarang") didahulukan.
+    const sebutan = disebut.filter((x) => x.wilayah.kodeKabKota !== w.ktp?.kodeKabKota);
+    const lengkap = sebutan.filter((x) => x.jenisDisebut !== null);
+    const lain = [...new Set((lengkap.length > 0 ? lengkap : sebutan).map((x) => x.wilayah.kodeKabKota))];
+    if (lain.length === 1) return lain[0]!;
+  }
   if (u.jenis !== 'pindah' || !w.ktp || !w.tujuan || w.tujuan.kodeKabKota === w.ktp.kodeKabKota) return asal;
   if (kode.includes(w.ktp.kodeKabKota) || sebutInti(teks, w.ktp)) return asal;
   // Nama tujuan menang, juga untuk minta bantuan SKPWNI di tujuan (Permendagri 108/2019 Ps. 31).
@@ -142,11 +158,14 @@ export function wilayahBelumSiap(jenis: string | null, w: WilayahUrusan): string
   return undefined;
 }
 
-/** Catat usulan wilayah (Data Diri atau pemilih perangkat). Tidak mengubah urusan: warga tetap harus memastikan. */
+/**
+ * Catat usulan wilayah (Data Diri, pemilih perangkat, atau Ingatan warga). Tidak mengubah urusan: warga tetap harus
+ * memastikan.
+ */
 export function usulkanWilayah(
   urusanId: string,
   kode: string,
-  sumber: 'data_diri' | 'pilihan',
+  sumber: 'data_diri' | 'pilihan' | 'ingatan',
   publish: Publish,
 ): boolean {
   const ktp = refWilayah(kode);
@@ -161,6 +180,35 @@ export function kodeDisebut(teks: string): string[] {
     .filter((s) => s.sebelum !== 'ke')
     .map((s) => s.wilayah.kodeKabKota);
   return [...new Set(kode)];
+}
+
+// "Saya warga Kota Medan" = menyatakan diri penduduk (ber-KTP) di sana; "tinggal di" hanya domisili.
+const KATA_KTP =
+  /\b(ktp|e-?ktp|ktp-?el|kk|kartu keluarga|kartu tanda penduduk)\b|\b(saya|aku|kami)\s+warga\b/i;
+
+/**
+ * Wilayah dari pesan warga, tanpa LLM: `ktp` = warga sendiri menyebut KTP/KK-nya di kab/kota itu, atau "saya
+ * warga X" (satu kalimat memuat kata itu dan nama tempatnya, dan seluruh pesan hanya menyebut satu kab/kota),
+ * `disebut` = satu kab/kota disebut tanpa kata itu ("tinggal di Wonogiri"): cukup diusulkan sebagai kartu.
+ * Nama ganda (Bekasi, Semarang) atau dua kab/kota: null, agen yang bertanya.
+ */
+export function wilayahDariPesan(teks: string): { kode: string; ktp: boolean } | null {
+  const disebut = kodeDisebut(teks);
+  if (disebut.length !== 1) return null;
+  const kode = disebut[0]!;
+  const ktp = teks.split(/[.?!\n]+/).some((k) => KATA_KTP.test(k) && kodeDisebut(k).includes(kode));
+  return { kode, ktp };
+}
+
+/**
+ * Teks agen yang isinya hanya pertanyaan konfirmasi wilayah ("KTP Anda terdaftar di X, betul?"): kartu wilayah
+ * sudah menanyakannya, jadi teks ini tidak ditampilkan lagi (pertanyaan ganda).
+ */
+export function hanyaTanyaWilayah(teks: string): boolean {
+  const t = teks.trim();
+  if (t.length > 220 || !t.endsWith('?')) return false;
+  if (t.split(/[.?!]+\s/).filter(Boolean).length > 2) return false;
+  return /\bterdaftar di\b|\b(betul|benar)\s*\?$/i.test(t);
 }
 
 /**
@@ -300,6 +348,26 @@ export function rencanaPeristiwa(
   return { ...r, tier: 'semi', catatan: `${r.catatan} ${pendamping.keterangan}`, pendamping };
 }
 
+/** Rencana yang dipakai kartu dan potongan persyaratan: Peristiwa Hidup, atau rencana minimal KK/KTP-el. */
+export type RencanaUrusan = Pick<
+  RencanaWilayah,
+  'judul' | 'tier' | 'catatan' | 'langkah' | 'khususWilayah'
+> & {
+  slug: string;
+  pendamping?: BantuanPendamping;
+};
+
+/**
+ * Rencana Peristiwa Hidup (lihat `rencanaPeristiwa`), atau untuk urusan KK/KTP-el rencana minimal bersumber Perpres
+ * 96/2018 dengan kanal resmi wilayah (Disdukcapil, cadangan pemda/provinsi/nasional). undefined untuk jenis lain.
+ */
+export function rencanaUrusan(
+  jenis: string,
+  w: { ktp: string | null; domisili?: string | null; tujuan?: string | null },
+): RencanaUrusan | undefined {
+  return rencanaPeristiwa(jenis, w) ?? rencanaLayanan(jenis, { ktp: w.ktp, domisili: w.domisili ?? null });
+}
+
 /**
  * Sumber nasional/provinsi/wilayah dari korpus RAG (BM25 sinkron) untuk langkah pertama rencana. Filter wilayah
  * korpus hanya meloloskan chunk nasional, provinsi, atau kab/kota ini, jadi tidak ada sumber kota lain.
@@ -321,14 +389,14 @@ function sumberKorpus(ragDb: Db | undefined, judul: string, kode: string) {
   }
 }
 
-/** Kartu rencana (event plan_card) untuk urusan ini; undefined bila jenisnya bukan Peristiwa Hidup. */
+/** Kartu rencana (event plan_card) untuk urusan ini; undefined bila jenisnya tidak punya rencana (lihat `rencanaUrusan`). */
 export function kartuRencana(
   jenis: string,
   w: WilayahUrusan,
   ragDb?: Db,
 ): PayloadOf<'plan_card'> | undefined {
   if (!w.ktp) return undefined;
-  const r = rencanaPeristiwa(jenis, {
+  const r = rencanaUrusan(jenis, {
     ktp: w.ktp.kodeKabKota,
     domisili: w.domisili?.kodeKabKota ?? null,
     tujuan: w.tujuan?.kodeKabKota ?? null,
@@ -369,10 +437,13 @@ export function kartuRencana(
 export function kalimatKanal(kode: string): string {
   const k = kanalWilayah(kode);
   const nama = wilayahByKode(kode)?.nama ?? kode;
-  const baris =
-    k.jenis === 'nasional'
+  // Tanpa situs Disdukcapil: situs resmi pemda/provinsi sebagai sumber informasi, bukan tempat mengajukan.
+  const prov = k.jenis === 'pemda' ? kanalProvinsi(kode) : undefined;
+  const baris = kanalDisdukcapil(k)
+    ? `${nama}: kanal resmi ${k.judul} (${k.url}).`
+    : k.jenis === 'nasional'
       ? `${nama}: situs Disdukcapil belum terverifikasi; kanal nasional ${k.url}.`
-      : `${nama}: kanal resmi ${k.judul} (${k.url}).`;
+      : `${nama}: situs Disdukcapil belum terverifikasi; informasi resmi daerah di ${k.judul} (${k.url})${prov ? ` dan ${prov.judul} (${prov.url})` : ''}; kanal nasional ${KANAL_NASIONAL.url}. Pengajuan di kantor Disdukcapil ${nama}.`;
   const kontak = kontakLayanan(kode, 'adminduk');
   const ringkas = kontak ? ringkasKontak(kontak) : '';
   const sumber = kontak?.sumber[0];

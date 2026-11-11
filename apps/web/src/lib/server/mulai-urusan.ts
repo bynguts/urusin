@@ -3,6 +3,7 @@ import { detectPii } from '@urusin/core';
 import { kodeDisebut, usulkanWilayah } from '@urusin/harness';
 import { pastikanTamuUntukTurn, pemilikVault } from '#lib/server/akun.js';
 import { PESAN_PII } from '#lib/server/http.js';
+import { ktpIngatanUrusan } from '#lib/server/ingatan.js';
 import { segarkanJaringanId } from '#lib/server/pendamping.js';
 import { getRuntime, publicOrigin, startTurnInBackground, type Runtime } from '#lib/server/runtime.js';
 import { batasi, catatTerakhir, ensureSession } from '#lib/server/sesi.js';
@@ -20,6 +21,8 @@ export type GagalMulai = { pesanWarga: string; pesan: string; kode?: string };
  * mengonfirmasi (kartu "Ya, betul" atau di obrolan) sebelum rencana disusun: perangkat bisa dipakai bersama dan
  * Data Diri bisa usang. Pesan pertama yang menyebut kab/kota lain menang: usulan perangkat/Data Diri tidak
  * diterbitkan, agar kartu tidak bertentangan dengan wilayah yang ditanyakan agen dari pesan itu.
+ * Tanpa keduanya, wilayah KTP dari Ingatan warga (urusan sebelumnya, ADR 0031) menjadi usulan dengan aturan yang
+ * sama: tetap dikonfirmasi warga. Dipanggil sesudah pemilik urusan dicatat.
  */
 export function usulkanWilayahAwal(
   rt: Runtime,
@@ -36,7 +39,13 @@ export function usulkanWilayahAwal(
   const cocok = (kode: string) => disebut.length === 0 || disebut.includes(kode);
   const pilihan = kodePilihan && cocok(kodePilihan) ? kodePilihan : undefined;
   if (pilihan && pilihan !== dataDiri && usulkanWilayah(urusanId, pilihan, 'pilihan', publish)) return;
-  if (dataDiri && cocok(dataDiri)) usulkanWilayah(urusanId, dataDiri, 'data_diri', publish);
+  if (dataDiri && cocok(dataDiri)) {
+    usulkanWilayah(urusanId, dataDiri, 'data_diri', publish);
+    return;
+  }
+  if (pilihan || dataDiri) return;
+  const ingatan = ktpIngatanUrusan(rt.akun, urusanId);
+  if (ingatan && cocok(ingatan)) usulkanWilayah(urusanId, ingatan, 'ingatan', publish);
 }
 
 /**

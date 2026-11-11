@@ -31,6 +31,39 @@ beforeAll(async () => {
       if (url.endsWith('/chat/completions')) {
         // Meniru provider nyata: stream hanya bila field `stream` bernilai true; bila dihilangkan, SSE.
         const stream = (body as Record<string, unknown>).stream;
+        if ((body as Record<string, unknown>).model === 'sse-paksa') {
+          // Proxy yang membalas SSE walau stream:false; tool call terpecah dua potongan + usage.
+          res.setHeader('content-type', 'text/event-stream');
+          const base = { id: 'c2', object: 'chat.completion.chunk', created: 5, model: 'sse-paksa' };
+          const tc = (args: string, extra: object = {}, name?: string) => ({
+            ...base,
+            choices: [
+              {
+                index: 0,
+                delta: {
+                  tool_calls: [
+                    { index: 0, ...extra, function: { ...(name ? { name } : {}), arguments: args } },
+                  ],
+                },
+                finish_reason: null,
+              },
+            ],
+          });
+          res.write(
+            `data: ${JSON.stringify(tc('{"text":', { id: 'call_1', type: 'function' }, 'echo'))}\n\n`,
+          );
+          res.write(`data: ${JSON.stringify(tc('"ok"}'))}\n\n`);
+          res.write(
+            `data: ${JSON.stringify({ ...base, choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }], usage: { prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 } })}\n\n`,
+          );
+          res.end('data: [DONE]\n\n');
+          return;
+        }
+        if ((body as Record<string, unknown>).model === 'bukan-json') {
+          res.setHeader('content-type', 'text/plain');
+          res.end('proxy sibuk');
+          return;
+        }
         if (stream === false) {
           res.setHeader('content-type', 'application/json');
           res.end(JSON.stringify(completion));
@@ -92,6 +125,34 @@ describe('OpenAIProvider lewat HTTP', () => {
     const res = await provider().create({ model: 'agen', messages: [{ role: 'user', content: 'hai' }] });
     expect(res.choices[0]?.message.content).toBe('halo');
     expect(lastChatBody().stream).toBe(false);
+  });
+
+  it('create() tahan proxy yang membalas SSE untuk stream:false (konten, tool call, usage)', async () => {
+    const res = await provider().create({ model: 'sse-paksa', messages: [{ role: 'user', content: 'hai' }] });
+    expect(lastChatBody().stream).toBe(false);
+    const m = res.choices[0]!;
+    expect(m.finish_reason).toBe('tool_calls');
+    expect(m.message.tool_calls).toEqual([
+      { id: 'call_1', type: 'function', function: { name: 'echo', arguments: '{"text":"ok"}' } },
+    ]);
+    expect(res.usage).toEqual({ prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 });
+  });
+
+  it('LLM_REASONING_EFFORT dikirim sebagai reasoning_effort; kosong = tidak dikirim', async () => {
+    const msg = { model: 'agen', messages: [{ role: 'user' as const, content: 'hai' }] };
+    await provider().create(msg);
+    expect('reasoning_effort' in lastChatBody()).toBe(false);
+    await provider({ LLM_REASONING_EFFORT: 'LOW' }).create(msg);
+    expect(lastChatBody().reasoning_effort).toBe('low');
+    await provider({ LLM_REASONING_EFFORT: 'low' }).stream({ ...msg, stream: true });
+    expect(lastChatBody().reasoning_effort).toBe('low');
+    expect(() => provider({ LLM_REASONING_EFFORT: 'super' })).toThrow();
+  });
+
+  it('create(): balasan bukan JSON maupun SSE = galat (bukan teks mentah)', async () => {
+    await expect(
+      provider().create({ model: 'bukan-json', messages: [{ role: 'user', content: 'hai' }] }),
+    ).rejects.toThrow(/bukan JSON maupun SSE/);
   });
 
   it('stream() selalu mengirim stream:true dan membaca potongan SSE', async () => {

@@ -8,6 +8,8 @@
 #
 # Dipertahankan:
 #   - semua digest di .env.images (warna aktif + warna sebelumnya untuk rollback, FIXTURES_IMAGE);
+#   - semua digest urusin-* di .env (PENDAMPING_IMAGE, FIXTURES_IMAGE bila di sana);
+#   - image yang dipakai kontainer mana pun (berjalan atau berhenti) menurut `docker ps -a`;
 #   - digest di .env.images.keep (satu per baris, mis. image rc1; ditulis manual oleh lead);
 #   - KEEP_LAST (default 3) image terakhir per repo dari .env.images.history.
 # Hanya repo yang cocok ^ghcr.io/bynguts/urusin-[a-z0-9-]+$ yang disentuh.
@@ -28,7 +30,9 @@ esac
 # Referensi repo@sha256:... yang dipertahankan.
 keep="$(
   {
-    grep -hoE 'ghcr\.io/bynguts/urusin-[a-z0-9-]+@sha256:[0-9a-f]{64}' .env.images .env.images.keep 2>/dev/null || true
+    grep -hoE 'ghcr\.io/bynguts/urusin-[a-z0-9-]+@sha256:[0-9a-f]{64}' .env.images .env.images.keep .env 2>/dev/null || true
+    # Image kontainer (compose memakai repo@digest): yang sedang dipakai tidak pernah masuk rencana hapus.
+    docker ps -a --no-trunc --format '{{.Image}}' | grep -oE '^ghcr\.io/bynguts/urusin-[a-z0-9-]+@sha256:[0-9a-f]{64}$' || true
     # Riwayat: kolom 4 = image; ambil KEEP_LAST terakhir yang unik per repo.
     if [ -f .env.images.history ]; then
       cut -f4 .env.images.history | grep -E '@sha256:[0-9a-f]{64}$' | tac | awk -F@ -v n="$KEEP_LAST" '!seen[$0]++ { if (c[$1]++ < n) print }'

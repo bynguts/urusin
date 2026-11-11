@@ -10,6 +10,8 @@ export type ItemLinimasa =
   | { jenis: 'handoff'; key: string; e: EventOf<'handoff'> }
   | { jenis: 'rencana'; key: string; e: EventOf<'plan_card'>; terakhir: boolean }
   | { jenis: 'wilayah'; key: string; e: EventOf<'wilayah'>; terakhir: boolean }
+  /** Ingatan warga berubah (ADR 0031); `dibatalkan` = butir ini sudah dihapus lagi di event berikutnya. */
+  | { jenis: 'ingatan'; key: string; e: EventOf<'ingatan'>; dibatalkan: boolean }
   | { jenis: 'checklist'; key: string; e: EventOf<'checklist'> }
   | {
       jenis: 'konfirmasi';
@@ -87,6 +89,12 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
           out.push({ jenis: 'sistem', key, teks: kalimatWilayah(e), at: e.at });
         }
         break;
+      case 'ingatan':
+        if (e.aksi === 'hapus')
+          for (const it of out)
+            if (it.jenis === 'ingatan' && it.e.butir.id === e.butir.id) it.dibatalkan = true;
+        out.push({ jenis: 'ingatan', key, e, dibatalkan: false });
+        break;
       case 'execution_request':
         permintaan.set(e.paramsHash, e);
         permintaanTerakhir = e;
@@ -140,6 +148,8 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
     if ((it.jenis === 'galat' || it.jenis === 'waktu-habis') && i < idxTerakhirWarga) it.terakhir = false;
     // Usulan wilayah yang sudah dijawab (wilayah ditetapkan sesudahnya) tidak bisa dikonfirmasi lagi.
     if (it.jenis === 'wilayah' && it.e.seq < wilayahDitetapkanSeq) it.terakhir = false;
+    // Teks model ditampilkan polos: penanda tebal Markdown ("**Kota Medan**") tidak boleh tampil mentah.
+    if (it.jenis === 'teks') it.teks = it.teks.replace(/\*\*([^*\n]+)\*\*/g, '$1');
   }
   return out;
 }
@@ -183,4 +193,39 @@ export function nilaiParam(v: string | number | boolean): string {
   const s = String(v);
   if (/\{\{[^}]+\}\}/.test(s)) return 'Diambil dari Data Diri Anda';
   return s;
+}
+
+/**
+ * Kutipan unik per `refId`, urutan pertama dipertahankan. Satu klaim bisa membawa beberapa kutipan persis dari
+ * potongan sumber yang sama; tanpa ini blok `{#each … (q.refId)}` melempar each_key_duplicate dan halaman urusan
+ * jatuh ke 500 setiap kali dimuat.
+ */
+export function unikPerRef<T extends { refId: string }>(kutipan: readonly T[]): T[] {
+  const peta = new Map<string, T>();
+  for (const q of kutipan) if (!peta.has(q.refId)) peta.set(q.refId, q);
+  return [...peta.values()];
+}
+
+/** Parameter rute Pendamping (jalur portal, kode wilayah, id layanan): penanda teknis, bukan isian warga. */
+const PARAM_TEKNIS = new Set(['jalur', 'kode', 'jenis', 'layanan_id', 'layananId', 'urusinCode']);
+
+/** Baris "periksa sebelum AI mengisi": tanpa parameter teknis; daftar berkas adapter dibuat terbaca. */
+export function barisKonfirmasi(
+  params: Readonly<Record<string, string | number | boolean>>,
+): [label: string, nilai: string][] {
+  return Object.entries(params)
+    .filter(([k]) => !PARAM_TEKNIS.has(k))
+    .slice(0, 12)
+    .map(([k, v]): [string, string] =>
+      k === 'berkas' && typeof v === 'string'
+        ? [
+            'Berkas yang diunggah',
+            v
+              .split(',')
+              .map((b) => b.trim().toUpperCase())
+              .filter(Boolean)
+              .join(', '),
+          ]
+        : [labelParam(k), nilaiParam(v)],
+    );
 }

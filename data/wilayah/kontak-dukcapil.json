@@ -1,7 +1,7 @@
 {
   "catatan": "Situs resmi Disdukcapil per kab/kota. Hanya status \"terverifikasi\" yang boleh ditampilkan sebagai fakta; \"belum_terverifikasi\" berarti belum ada situs .go.id yang lolos pemeriksaan otomatis (bukan berarti tidak ada).",
   "total": 514,
-  "terverifikasi": 113,
+  "terverifikasi": 231,
   "kontak": [
     {
       "kode": "1101",
@@ -355,12 +355,21 @@
     {
       "kode": "1276",
       "nama": "Kota Tebing Tinggi",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.tebingtinggikota.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil - Kota Tebing Tinggi",
+      "alamat": "Jl. Gunung Bromo No. 5 Kel. Tanjung Marulak Kec. Rambutan Kota Tebing Tinggi No.",
+      "sourceUrl": "https://dukcapil.tebingtinggikota.go.id/",
+      "verifiedAt": "2026-11-11T14:28:53.175Z"
     },
     {
       "kode": "1277",
       "nama": "Kota Padangsidimpuan",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.padangsidimpuankota.go.id",
+      "judulHalaman": "",
+      "sourceUrl": "https://disdukcapil.padangsidimpuankota.go.id/",
+      "verifiedAt": "2026-11-11T15:19:35.622Z"
     },
     {
       "kode": "1278",
@@ -374,7 +383,11 @@
     {
       "kode": "1301",
       "nama": "Kabupaten Pesisir Selatan",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pesisirselatankab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Pesisir Selatan",
+      "sourceUrl": "https://disdukcapil.pesisirselatankab.go.id/",
+      "verifiedAt": "2026-11-11T14:28:58.186Z"
     },
     {
       "kode": "1302",
@@ -774,7 +787,11 @@
     {
       "kode": "1701",
       "nama": "Kabupaten Bengkulu Selatan",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bengkuluselatankab.go.id",
+      "judulHalaman": "DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL &#8211; KABUPATEN BENGKULU SELATAN",
+      "sourceUrl": "https://disdukcapil.bengkuluselatankab.go.id/",
+      "verifiedAt": "2026-11-11T14:31:25.257Z"
     },
     {
       "kode": "1702",
@@ -837,7 +854,11 @@
     {
       "kode": "1802",
       "nama": "Kabupaten Lampung Tengah",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.lampungtengahkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil",
+      "sourceUrl": "https://disdukcapil.lampungtengahkab.go.id/",
+      "verifiedAt": "2026-11-11T15:22:32.688Z"
     },
     {
       "kode": "1803",
@@ -879,7 +900,11 @@
     {
       "kode": "1808",
       "nama": "Kabupaten Way Kanan",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.waykanankab.go.id",
+      "judulHalaman": "SKPD Dinas Kependudukan dan Catatan Sipil",
+      "sourceUrl": "https://disdukcapil.waykanankab.go.id/",
+      "verifiedAt": "2026-11-11T14:32:16.113Z"
     },
     {
       "kode": "1809",
@@ -1014,7 +1039,12 @@
     {
       "kode": "2104",
       "nama": "Kabupaten Lingga",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.linggakab.go.id",
+      "judulHalaman": "DISDUKCAPIL LINGGA",
+      "alamat": "Jl. Garuda No.17, Dabo, Kec. Singkep, Kabupaten Lingga, Kepulauan Riau 29871.",
+      "sourceUrl": "https://disdukcapil.linggakab.go.id/",
+      "verifiedAt": "2026-11-11T14:33:25.304Z"
     },
     {
       "kode": "2105",
@@ -1078,7 +1108,11 @@
     {
       "kode": "3203",
       "nama": "Kabupaten Cianjur",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.cianjurkab.go.id",
+      "judulHalaman": "Disdukcapil Kab. Cianjur | Melayani Sepenuh Hati Mewujudkan Administrasi Kependudukan yang Tertib dan Akurat.",
+      "sourceUrl": "https://disdukcapil.cianjurkab.go.id/",
+      "verifiedAt": "2026-11-11T14:34:25.449Z"
     },
     {
       "kode": "3204",
@@ -1320,7 +1354,11 @@
     {
       "kode": "3309",
       "nama": "Kabupaten Boyolali",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.boyolali.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil",
+      "sourceUrl": "https://disdukcapil.boyolali.go.id/",
+      "verifiedAt": "2026-11-11T15:25:53.091Z"
     },
     {
       "kode": "3310",
@@ -1481,7 +1519,11 @@
     {
       "kode": "3372",
       "nama": "Kota Surakarta",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.surakarta.go.id",
+      "judulHalaman": "Disdukcapil Kota Surakarta &#8211; Memberikan pelayanan yang cepat, tepat dan akurat",
+      "sourceUrl": "https://dispendukcapil.surakarta.go.id/",
+      "verifiedAt": "2026-11-11T14:37:33.130Z"
     },
     {
       "kode": "3373",
@@ -1583,7 +1625,11 @@
     {
       "kode": "3505",
       "nama": "Kabupaten Blitar",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.blitarkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil - Dispendukcapil Kab. Blitar",
+      "sourceUrl": "https://dispendukcapil.blitarkab.go.id/",
+      "verifiedAt": "2026-11-11T14:38:17.376Z"
     },
     {
       "kode": "3506",
@@ -1678,7 +1724,11 @@
     {
       "kode": "3518",
       "nama": "Kabupaten Nganjuk",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.nganjukkab.go.id",
+      "judulHalaman": "Portal Resmi Dinas Kependudukan dan Pencatatan Sipil Kabupaten Nganjuk — Kabupaten Nganjuk",
+      "sourceUrl": "https://dispendukcapil.nganjukkab.go.id/",
+      "verifiedAt": "2026-11-11T14:38:25.258Z"
     },
     {
       "kode": "3519",
@@ -1716,7 +1766,11 @@
     {
       "kode": "3524",
       "nama": "Kabupaten Lamongan",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.lamongankab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Lamongan",
+      "sourceUrl": "https://disdukcapil.lamongankab.go.id/",
+      "verifiedAt": "2026-11-11T14:39:08.961Z"
     },
     {
       "kode": "3525",
@@ -1736,27 +1790,49 @@
     {
       "kode": "3528",
       "nama": "Kabupaten Pamekasan",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pamekasankab.go.id",
+      "judulHalaman": "DISDUKCAPIL &#8211; Kabupaten Pamekasan",
+      "sourceUrl": "https://disdukcapil.pamekasankab.go.id/",
+      "verifiedAt": "2026-11-11T14:39:40.903Z"
     },
     {
       "kode": "3529",
       "nama": "Kabupaten Sumenep",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.sumenepkab.go.id",
+      "judulHalaman": "Beranda - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sumenep",
+      "alamat": "Jl. Trunojoyo No. 122 Sumenep",
+      "sourceUrl": "https://disdukcapil.sumenepkab.go.id/",
+      "verifiedAt": "2026-11-11T14:39:43.906Z"
     },
     {
       "kode": "3571",
       "nama": "Kota Kediri",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.kedirikota.go.id",
+      "judulHalaman": "Dukcapil | Beranda",
+      "sourceUrl": "https://dispendukcapil.kedirikota.go.id/",
+      "verifiedAt": "2026-11-11T14:40:06.147Z"
     },
     {
       "kode": "3572",
       "nama": "Kota Blitar",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.blitarkota.go.id",
+      "judulHalaman": "Beranda | Dispendukcapil Kota Blitar",
+      "sourceUrl": "https://dispendukcapil.blitarkota.go.id/beranda",
+      "verifiedAt": "2026-11-11T15:28:40.101Z"
     },
     {
       "kode": "3573",
       "nama": "Kota Malang",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.malangkota.go.id",
+      "judulHalaman": "Dispendukcapil | Dinas Kependudukan dan Pencatatan Sipil Kota Malang",
+      "alamat": "Jl. Mayjend Sungkono (Perkantoran Terpadu) Arjowinangun, Kedungkandang, Kota Malang Dispendukcapil",
+      "sourceUrl": "https://dispendukcapil.malangkota.go.id/",
+      "verifiedAt": "2026-11-11T15:28:41.473Z"
     },
     {
       "kode": "3574",
@@ -1776,22 +1852,39 @@
     {
       "kode": "3577",
       "nama": "Kota Madiun",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://capil.madiunkota.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kota Madiun &#8211; Dukcapil Prima, Indonesia Maju",
+      "alamat": "Jalan Dr. Soetomo No. 83 Madiun 63132",
+      "sourceUrl": "https://capil.madiunkota.go.id/",
+      "verifiedAt": "2026-11-11T15:28:51.426Z"
     },
     {
       "kode": "3578",
       "nama": "Kota Surabaya",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.surabaya.go.id",
+      "judulHalaman": "Disdukcapil Kota Surabaya &#8211; Website Resmi Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+      "sourceUrl": "https://disdukcapil.surabaya.go.id/",
+      "verifiedAt": "2026-11-11T14:40:49.234Z"
     },
     {
       "kode": "3579",
       "nama": "Kota Batu",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dispendukcapil.batukota.go.id",
+      "judulHalaman": "Home | dispendukcapil",
+      "sourceUrl": "https://dispendukcapil.batukota.go.id/",
+      "verifiedAt": "2026-11-11T14:40:51.237Z"
     },
     {
       "kode": "3601",
       "nama": "Kabupaten Pandeglang",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pandeglangkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kab. Pandeglang",
+      "sourceUrl": "https://disdukcapil.pandeglangkab.go.id/",
+      "verifiedAt": "2026-11-11T15:28:52.757Z"
     },
     {
       "kode": "3602",
@@ -1806,12 +1899,20 @@
     {
       "kode": "3604",
       "nama": "Kabupaten Serang",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.serangkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil | Pemerintah Kabupaten Serang",
+      "sourceUrl": "https://disdukcapil.serangkab.go.id/",
+      "verifiedAt": "2026-11-11T14:41:41.384Z"
     },
     {
       "kode": "3671",
       "nama": "Kota Tangerang",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.tangerangkota.go.id",
+      "judulHalaman": "DISDUKCAPIL | Kota Tangerang",
+      "sourceUrl": "https://disdukcapil.tangerangkota.go.id/",
+      "verifiedAt": "2026-11-11T14:41:43.527Z"
     },
     {
       "kode": "3672",
@@ -1821,7 +1922,11 @@
     {
       "kode": "3673",
       "nama": "Kota Serang",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.serangkota.go.id",
+      "judulHalaman": "Disdukcapil",
+      "sourceUrl": "https://disdukcapil.serangkota.go.id/",
+      "verifiedAt": "2026-11-11T14:41:50.478Z"
     },
     {
       "kode": "3674",
@@ -1831,32 +1936,56 @@
     {
       "kode": "5101",
       "nama": "Kabupaten Jembrana",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.jembranakab.go.id",
+      "judulHalaman": "Website Dinas Kependudukan dan Catatan Sipil",
+      "sourceUrl": "https://dukcapil.jembranakab.go.id/",
+      "verifiedAt": "2026-11-11T14:41:54.976Z"
     },
     {
       "kode": "5102",
       "nama": "Kabupaten Tabanan",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.tabanankab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil &#8211; Pemerintah Kabupaten Tabanan",
+      "sourceUrl": "https://disdukcapil.tabanankab.go.id/",
+      "verifiedAt": "2026-11-11T14:41:56.667Z"
     },
     {
       "kode": "5103",
       "nama": "Kabupaten Badung",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.badungkab.go.id",
+      "judulHalaman": "Beranda | Disdukcapil Badung",
+      "sourceUrl": "https://disdukcapil.badungkab.go.id/",
+      "verifiedAt": "2026-11-11T14:42:01.560Z"
     },
     {
       "kode": "5104",
       "nama": "Kabupaten Gianyar",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.gianyarkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Gianyar",
+      "sourceUrl": "https://disdukcapil.gianyarkab.go.id/beranda",
+      "verifiedAt": "2026-11-11T14:42:03.756Z"
     },
     {
       "kode": "5105",
       "nama": "Kabupaten Klungkung",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.klungkungkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil &#8211; Pemerintah Kabupaten Klungkung",
+      "sourceUrl": "https://disdukcapil.klungkungkab.go.id/",
+      "verifiedAt": "2026-11-11T14:42:07.209Z"
     },
     {
       "kode": "5106",
       "nama": "Kabupaten Bangli",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.banglikab.go.id",
+      "judulHalaman": "Website Resmi Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bangli",
+      "sourceUrl": "https://disdukcapil.banglikab.go.id/",
+      "verifiedAt": "2026-11-11T14:42:08.985Z"
     },
     {
       "kode": "5107",
@@ -1866,7 +1995,11 @@
     {
       "kode": "5108",
       "nama": "Kabupaten Buleleng",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bulelengkab.go.id",
+      "judulHalaman": "Beranda Dinas Kependudukan dan Pencatatan Sipil",
+      "sourceUrl": "https://disdukcapil.bulelengkab.go.id/",
+      "verifiedAt": "2026-11-11T14:42:19.194Z"
     },
     {
       "kode": "5171",
@@ -1876,12 +2009,20 @@
     {
       "kode": "5201",
       "nama": "Kabupaten Lombok Barat",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.lombokbaratkab.go.id",
+      "judulHalaman": "DISDUKCAPIL",
+      "sourceUrl": "https://disdukcapil.lombokbaratkab.go.id/",
+      "verifiedAt": "2026-11-11T15:29:37.388Z"
     },
     {
       "kode": "5202",
       "nama": "Kabupaten Lombok Tengah",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.lomboktengahkab.go.id",
+      "judulHalaman": "Beranda | Dinas Dukcapil Lombok Tengah",
+      "sourceUrl": "https://disdukcapil.lomboktengahkab.go.id/",
+      "verifiedAt": "2026-11-11T14:42:34.231Z"
     },
     {
       "kode": "5203",
@@ -1896,12 +2037,20 @@
     {
       "kode": "5205",
       "nama": "Kabupaten Dompu",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.dompukab.go.id",
+      "judulHalaman": "Dukcapil Dompu - Pelayanan Cepat, Tepat, dan Gratis",
+      "sourceUrl": "https://dukcapil.dompukab.go.id/",
+      "verifiedAt": "2026-11-11T14:42:50.428Z"
     },
     {
       "kode": "5206",
       "nama": "Kabupaten Bima",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bimakab.go.id",
+      "judulHalaman": "Portal Resmi Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bima Pemerintah Kabupaten Bima",
+      "sourceUrl": "https://disdukcapil.bimakab.go.id/id",
+      "verifiedAt": "2026-11-11T14:43:07.648Z"
     },
     {
       "kode": "5207",
@@ -1916,12 +2065,21 @@
     {
       "kode": "5271",
       "nama": "Kota Mataram",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.mataramkota.go.id",
+      "judulHalaman": "Dukcapil",
+      "alamat": "Jl. Dr. Soejono Lingkar Selatan Kompleks Perkantoran Pemerintah Kota Mataram",
+      "sourceUrl": "https://dukcapil.mataramkota.go.id/",
+      "verifiedAt": "2026-11-11T14:44:23.735Z"
     },
     {
       "kode": "5272",
       "nama": "Kota Bima",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.bimakota.go.id",
+      "judulHalaman": "Website Resmi Dinas Dukcapil Kota Bima",
+      "sourceUrl": "https://dukcapil.bimakota.go.id/",
+      "verifiedAt": "2026-11-11T14:44:27.140Z"
     },
     {
       "kode": "5301",
@@ -1971,12 +2129,20 @@
     {
       "kode": "5310",
       "nama": "Kabupaten Manggarai",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.manggaraikab.go.id",
+      "judulHalaman": "Home",
+      "sourceUrl": "https://dukcapil.manggaraikab.go.id/",
+      "verifiedAt": "2026-11-11T14:44:48.634Z"
     },
     {
       "kode": "5311",
       "nama": "Kabupaten Sumba Timur",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.sumbatimurkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sumba Timur",
+      "sourceUrl": "https://dukcapil.sumbatimurkab.go.id/",
+      "verifiedAt": "2026-11-11T14:44:52.346Z"
     },
     {
       "kode": "5312",
@@ -1996,12 +2162,21 @@
     {
       "kode": "5315",
       "nama": "Kabupaten Manggarai Barat",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.manggaraibaratkab.go.id",
+      "judulHalaman": "Website Resmi Dinas Kependudukan dan Pencatatan Sipil Kabupaten Manggarai Barat",
+      "sourceUrl": "https://dukcapil.manggaraibaratkab.go.id/index.html",
+      "verifiedAt": "2026-11-11T14:44:55.989Z"
     },
     {
       "kode": "5316",
       "nama": "Kabupaten Nagekeo",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.nagekeokab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Nagekeo &#8211; Dukcapil Nagekeo, Dinas Kependudukan dan Pencatatan Sipil Nagekeo",
+      "alamat": "Jalan Jenderal Soeharto No.4 Nomor",
+      "sourceUrl": "https://dukcapil.nagekeokab.go.id/",
+      "verifiedAt": "2026-11-11T14:44:58.501Z"
     },
     {
       "kode": "5317",
@@ -2031,22 +2206,38 @@
     {
       "kode": "5371",
       "nama": "Kota Kupang",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.kupangkota.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil &#8211; Kota Kupang",
+      "sourceUrl": "https://dukcapil.kupangkota.go.id/",
+      "verifiedAt": "2026-11-11T14:45:08.705Z"
     },
     {
       "kode": "6101",
       "nama": "Kabupaten Sambas",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil1.sambas.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipl Kabupaten Sambas",
+      "sourceUrl": "https://disdukcapil1.sambas.go.id/",
+      "verifiedAt": "2026-11-11T14:45:36.573Z"
     },
     {
       "kode": "6102",
       "nama": "Kabupaten Mempawah",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.mempawahkab.go.id",
+      "judulHalaman": "DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL",
+      "sourceUrl": "https://dukcapil.mempawahkab.go.id/",
+      "verifiedAt": "2026-11-11T14:45:41.866Z"
     },
     {
       "kode": "6103",
       "nama": "Kabupaten Sanggau",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.sanggau.go.id",
+      "judulHalaman": "Beranda",
+      "sourceUrl": "https://disdukcapil.sanggau.go.id/",
+      "verifiedAt": "2026-11-11T14:45:54.253Z"
     },
     {
       "kode": "6104",
@@ -2056,22 +2247,38 @@
     {
       "kode": "6105",
       "nama": "Kabupaten Sintang",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.sintang.go.id",
+      "judulHalaman": "Home | Dukcapil Sintang",
+      "sourceUrl": "https://dukcapil.sintang.go.id/",
+      "verifiedAt": "2026-11-11T14:45:58.763Z"
     },
     {
       "kode": "6106",
       "nama": "Kabupaten Kapuas Hulu",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.kapuashulukab.go.id",
+      "judulHalaman": "DISDUKCAPIL KAB. KAPUAS HULU",
+      "sourceUrl": "https://disdukcapil.kapuashulukab.go.id/",
+      "verifiedAt": "2026-11-11T14:46:00.885Z"
     },
     {
       "kode": "6107",
       "nama": "Kabupaten Bengkayang",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bengkayangkab.go.id",
+      "judulHalaman": "Home - disdukcapil.bengkayangkab.go.id",
+      "sourceUrl": "https://disdukcapil.bengkayangkab.go.id/",
+      "verifiedAt": "2026-11-11T14:46:12.009Z"
     },
     {
       "kode": "6108",
       "nama": "Kabupaten Landak",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.landakkab.go.id",
+      "judulHalaman": "Home - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Landak",
+      "sourceUrl": "https://disdukcapil.landakkab.go.id/",
+      "verifiedAt": "2026-11-11T14:46:17.142Z"
     },
     {
       "kode": "6109",
@@ -2081,17 +2288,29 @@
     {
       "kode": "6110",
       "nama": "Kabupaten Melawi",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.melawikab.go.id",
+      "judulHalaman": "Disdukcapil Melawi",
+      "sourceUrl": "https://disdukcapil.melawikab.go.id/",
+      "verifiedAt": "2026-11-11T14:46:36.442Z"
     },
     {
       "kode": "6111",
       "nama": "Kabupaten Kayong Utara",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.kayongutarakab.go.id",
+      "judulHalaman": "Disdukcapil Kayong Utara — Senyum, Ikhlas, Amanah, Kekeluargaan",
+      "sourceUrl": "https://disdukcapil.kayongutarakab.go.id/",
+      "verifiedAt": "2026-11-11T14:46:38.024Z"
     },
     {
       "kode": "6112",
       "nama": "Kabupaten Kubu Raya",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.kuburaya.go.id",
+      "judulHalaman": "Dinas Dukcapil is under maintenance",
+      "sourceUrl": "https://dukcapil.kuburaya.go.id/",
+      "verifiedAt": "2026-11-11T14:46:42.574Z"
     },
     {
       "kode": "6171",
@@ -2106,7 +2325,12 @@
     {
       "kode": "6201",
       "nama": "Kabupaten Kotawaringin Barat",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.kotawaringinbaratkab.go.id",
+      "judulHalaman": "Disdukcapil Kotawaringin Barat",
+      "alamat": "JL. Sutan Syahrir No. 2, Pangkalan Bun, Kabupaten Kotawaringin Barat, Provinsi Kalimantan Tengah",
+      "sourceUrl": "https://disdukcapil.kotawaringinbaratkab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:18.976Z"
     },
     {
       "kode": "6202",
@@ -2121,12 +2345,20 @@
     {
       "kode": "6204",
       "nama": "Kabupaten Barito Selatan",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.baritoselatankab.go.id",
+      "judulHalaman": "DUKCAPIL BARSEL &#8211; Situs Web Dinas Kependudukan dan Pencatatan Sipil Kabupaten Barito Selatan",
+      "sourceUrl": "https://dukcapil.baritoselatankab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:23.020Z"
     },
     {
       "kode": "6205",
       "nama": "Kabupaten Barito Utara",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.baritoutarakab.go.id",
+      "judulHalaman": "DISDUKCAPIL KAB. BARITO UTARA &#8211; Dukcapil Go Digital",
+      "sourceUrl": "https://disdukcapil.baritoutarakab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:24.811Z"
     },
     {
       "kode": "6206",
@@ -2136,42 +2368,75 @@
     {
       "kode": "6207",
       "nama": "Kabupaten Seruyan",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.seruyankab.go.id",
+      "judulHalaman": "Disdukcapil Seruyan &#8211; PEMERINTAH KABUPATEN SERUYAN",
+      "sourceUrl": "https://disdukcapil.seruyankab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:31.652Z"
     },
     {
       "kode": "6208",
       "nama": "Kabupaten Sukamara",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.sukamarakab.go.id",
+      "judulHalaman": "Situs Resmi Dinas Kependudukan Pencatatan Sipil Kabupaten Sukamara",
+      "sourceUrl": "https://disdukcapil.sukamarakab.go.id/web/",
+      "verifiedAt": "2026-11-11T14:47:33.209Z"
     },
     {
       "kode": "6209",
       "nama": "Kabupaten Lamandau",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.lamandaukab.go.id",
+      "judulHalaman": "Disdukcapil Lamandau",
+      "sourceUrl": "https://disdukcapil.lamandaukab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:41.963Z"
     },
     {
       "kode": "6210",
       "nama": "Kabupaten Gunung Mas",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.gunungmaskab.go.id",
+      "judulHalaman": "DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL",
+      "sourceUrl": "https://disdukcapil.gunungmaskab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:48.169Z"
     },
     {
       "kode": "6211",
       "nama": "Kabupaten Pulang Pisau",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pulangpisaukab.go.id",
+      "judulHalaman": "DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KABUPATEN PULANG PISAU &#8211; DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL KABUPATEN PULANG PISAU",
+      "sourceUrl": "https://disdukcapil.pulangpisaukab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:49.238Z"
     },
     {
       "kode": "6212",
       "nama": "Kabupaten Murung Raya",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.murungrayakab.go.id",
+      "judulHalaman": "Disdukcapil - PEMERINTAH KABUPATEN MURUNG RAYA",
+      "alamat": "Jl. Bina Praja No. 006 Kelurahan Beriwit, Kecamatan Murung, Kabupaten Murung Raya, Kalimantan Tengah 73911",
+      "sourceUrl": "https://disdukcapil.murungrayakab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:51.435Z"
     },
     {
       "kode": "6213",
       "nama": "Kabupaten Barito Timur",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.baritotimurkab.go.id",
+      "judulHalaman": "Layanan Kependudukan &#8211; Disdukcapil Bartim",
+      "sourceUrl": "https://disdukcapil.baritotimurkab.go.id/",
+      "verifiedAt": "2026-11-11T14:47:54.509Z"
     },
     {
       "kode": "6271",
       "nama": "Kota Palangkaraya",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://palangkaraya.go.id",
+      "judulHalaman": "Pemerintah Kota Palangka Raya &#8211; Kota Cantik Palangka Raya",
+      "sourceUrl": "https://palangkaraya.go.id/",
+      "verifiedAt": "2026-11-11T14:48:03.049Z"
     },
     {
       "kode": "6301",
@@ -2181,22 +2446,38 @@
     {
       "kode": "6302",
       "nama": "Kabupaten Kotabaru",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.kotabarukab.go.id",
+      "judulHalaman": "Website Disdukcapil Kotabaru",
+      "sourceUrl": "https://disdukcapil.kotabarukab.go.id/",
+      "verifiedAt": "2026-11-11T15:32:35.995Z"
     },
     {
       "kode": "6303",
       "nama": "Kabupaten Banjar",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.banjarkab.go.id",
+      "judulHalaman": "Disdukcapil Kabupaten Banjar",
+      "sourceUrl": "https://disdukcapil.banjarkab.go.id/",
+      "verifiedAt": "2026-11-11T14:48:55.672Z"
     },
     {
       "kode": "6304",
       "nama": "Kabupaten Barito Kuala",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.baritokualakab.go.id",
+      "judulHalaman": "Beranda - Disdukcapil Kab. Barito Kuala",
+      "sourceUrl": "https://dukcapil.baritokualakab.go.id/",
+      "verifiedAt": "2026-11-11T14:48:59.830Z"
     },
     {
       "kode": "6305",
       "nama": "Kabupaten Tapin",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.tapinkab.go.id",
+      "judulHalaman": "DISDUKCAPIL TAPIN",
+      "sourceUrl": "https://dukcapil.tapinkab.go.id/",
+      "verifiedAt": "2026-11-11T14:49:01.038Z"
     },
     {
       "kode": "6306",
@@ -2216,7 +2497,11 @@
     {
       "kode": "6309",
       "nama": "Kabupaten Tabalong",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.tabalongkab.go.id",
+      "judulHalaman": "",
+      "sourceUrl": "https://disdukcapil.tabalongkab.go.id/",
+      "verifiedAt": "2026-11-11T14:49:15.275Z"
     },
     {
       "kode": "6310",
@@ -2231,12 +2516,20 @@
     {
       "kode": "6371",
       "nama": "Kota Banjarmasin",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.banjarmasinkota.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kota Banjarmasin",
+      "sourceUrl": "https://disdukcapil.banjarmasinkota.go.id/",
+      "verifiedAt": "2026-11-11T14:49:23.334Z"
     },
     {
       "kode": "6372",
       "nama": "Kota Banjarbaru",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.banjarbarukota.go.id",
+      "judulHalaman": "DISDUKCAPIL - BANJARBARU -",
+      "sourceUrl": "https://disdukcapil.banjarbarukota.go.id/",
+      "verifiedAt": "2026-11-11T15:33:00.270Z"
     },
     {
       "kode": "6401",
@@ -2251,17 +2544,29 @@
     {
       "kode": "6403",
       "nama": "Kabupaten Berau",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.beraukab.go.id",
+      "judulHalaman": "DISDUKCAPIL BERAU",
+      "sourceUrl": "https://disdukcapil.beraukab.go.id/beranda.html",
+      "verifiedAt": "2026-11-11T14:49:30.358Z"
     },
     {
       "kode": "6407",
       "nama": "Kabupaten Kutai Barat",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.kutaibaratkab.go.id",
+      "judulHalaman": "website disdukcapil",
+      "sourceUrl": "https://disdukcapil.kutaibaratkab.go.id/",
+      "verifiedAt": "2026-11-11T14:49:36.065Z"
     },
     {
       "kode": "6408",
       "nama": "Kabupaten Kutai Timur",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.kutaitimurkab.go.id",
+      "judulHalaman": "Disdukcapil Kutim",
+      "sourceUrl": "https://disdukcapil.kutaitimurkab.go.id/",
+      "verifiedAt": "2026-11-11T14:49:37.168Z"
     },
     {
       "kode": "6409",
@@ -2281,12 +2586,21 @@
     {
       "kode": "6472",
       "nama": "Kota Samarinda",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.samarindakota.go.id",
+      "judulHalaman": "Disdukcapil Samarinda",
+      "alamat": "Jl. Basuki Rahmat No.78, Samarinda 75122 Hubungi kami",
+      "sourceUrl": "https://disdukcapil.samarindakota.go.id/",
+      "verifiedAt": "2026-11-11T14:50:25.045Z"
     },
     {
       "kode": "6474",
       "nama": "Kota Bontang",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bontangkota.go.id",
+      "judulHalaman": "Dinas Kependudukan & Pencatatan Sipil Kota Bontang",
+      "sourceUrl": "https://disdukcapil.bontangkota.go.id/",
+      "verifiedAt": "2026-11-11T14:50:27.600Z"
     },
     {
       "kode": "6501",
@@ -2296,7 +2610,11 @@
     {
       "kode": "6502",
       "nama": "Kabupaten Malinau",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.malinau.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Catatan Sipil Kabupaten Malinau | Dinas Kependudukan dan Catatan Sipil",
+      "sourceUrl": "https://dukcapil.malinau.go.id/",
+      "verifiedAt": "2026-11-11T14:50:30.940Z"
     },
     {
       "kode": "6503",
@@ -2306,12 +2624,20 @@
     {
       "kode": "6504",
       "nama": "Kabupaten Tana Tidung",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.tanatidungkab.go.id",
+      "judulHalaman": "SIDAKO - Disdukcapil Tana Tidung",
+      "sourceUrl": "https://disdukcapil.tanatidungkab.go.id/",
+      "verifiedAt": "2026-11-11T14:50:43.047Z"
     },
     {
       "kode": "6571",
       "nama": "Kota Tarakan",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.tarakankota.go.id",
+      "judulHalaman": "Site is created successfully!",
+      "sourceUrl": "https://disdukcapil.tarakankota.go.id/",
+      "verifiedAt": "2026-11-11T14:50:45.327Z"
     },
     {
       "kode": "7101",
@@ -2381,12 +2707,21 @@
     {
       "kode": "7173",
       "nama": "Kota Tomohon",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.tomohon.go.id",
+      "judulHalaman": "Disdukcapil Kota Tomohon &#8211; Dinas Kependudukan dan Catatan Sipil Daerah Kota Tomohon",
+      "sourceUrl": "https://disdukcapil.tomohon.go.id/",
+      "verifiedAt": "2026-11-11T14:50:55.521Z"
     },
     {
       "kode": "7174",
       "nama": "Kota Kotamobagu",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.kotamobagu.go.id",
+      "judulHalaman": "Beranda",
+      "alamat": "Jalan Paloko Kinalang Nomor 3. Kota Kotamobagu",
+      "sourceUrl": "https://disdukcapil.kotamobagu.go.id/",
+      "verifiedAt": "2026-11-11T14:51:00.571Z"
     },
     {
       "kode": "7201",
@@ -2396,7 +2731,11 @@
     {
       "kode": "7202",
       "nama": "Kabupaten Poso",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.posokab.go.id",
+      "judulHalaman": "Website Dukcapil Poso",
+      "sourceUrl": "https://disdukcapil.posokab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:14.924Z"
     },
     {
       "kode": "7203",
@@ -2416,7 +2755,11 @@
     {
       "kode": "7206",
       "nama": "Kabupaten Morowali",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.morowalikab.go.id",
+      "judulHalaman": "DISDUKCAPIL MOROWALI",
+      "sourceUrl": "https://disdukcapil.morowalikab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:23.115Z"
     },
     {
       "kode": "7207",
@@ -2426,7 +2769,11 @@
     {
       "kode": "7208",
       "nama": "Kabupaten Parigi Moutong",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.parigimoutongkab.go.id",
+      "judulHalaman": "BERANDA - DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL",
+      "sourceUrl": "https://dukcapil.parigimoutongkab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:31.952Z"
     },
     {
       "kode": "7209",
@@ -2451,12 +2798,20 @@
     {
       "kode": "7271",
       "nama": "Kota Palu",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.palukota.go.id",
+      "judulHalaman": "DUKCAPIL KOTA PALU",
+      "sourceUrl": "https://dukcapil.palukota.go.id/one/",
+      "verifiedAt": "2026-11-11T14:51:53.259Z"
     },
     {
       "kode": "7301",
       "nama": "Kabupaten Kepulauan Selayar",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.kepulauanselayarkab.go.id",
+      "judulHalaman": "Website Resmi Disdukcapil Kepulauan Selayar",
+      "sourceUrl": "https://disdukcapil.kepulauanselayarkab.go.id/",
+      "verifiedAt": "2026-11-11T14:51:55.092Z"
     },
     {
       "kode": "7302",
@@ -2481,12 +2836,21 @@
     {
       "kode": "7306",
       "nama": "Kabupaten Gowa",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.gowakab.go.id",
+      "judulHalaman": "Disdukcapil Kab. Gowa |",
+      "alamat": "Jl. Tumanurung No 2 (Komp Gab. Dinas), Sungguminasa - Gowa",
+      "sourceUrl": "https://disdukcapil.gowakab.go.id/",
+      "verifiedAt": "2026-11-11T14:52:21.063Z"
     },
     {
       "kode": "7307",
       "nama": "Kabupaten Sinjai",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.sinjaikab.go.id",
+      "judulHalaman": "Portal Resmi Disdukcapil Kabupaten Sinjai | Pelayanan Adminduk Cepat & Gratis",
+      "sourceUrl": "https://dukcapil.sinjaikab.go.id/",
+      "verifiedAt": "2026-11-11T14:52:24.722Z"
     },
     {
       "kode": "7308",
@@ -2506,12 +2870,20 @@
     {
       "kode": "7311",
       "nama": "Kabupaten Barru",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.barrukab.go.id",
+      "judulHalaman": "Maintenance",
+      "sourceUrl": "https://dukcapil.barrukab.go.id/",
+      "verifiedAt": "2026-11-11T14:52:35.311Z"
     },
     {
       "kode": "7312",
       "nama": "Kabupaten Soppeng",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.soppeng.go.id",
+      "judulHalaman": "DUKCAPIL KAB.SOPPENG",
+      "sourceUrl": "https://disdukcapil.soppeng.go.id/",
+      "verifiedAt": "2026-11-11T14:52:37.724Z"
     },
     {
       "kode": "7313",
@@ -2546,7 +2918,11 @@
     {
       "kode": "7322",
       "nama": "Kabupaten Luwu Utara",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.luwuutarakab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil",
+      "sourceUrl": "https://disdukcapil.luwuutarakab.go.id/",
+      "verifiedAt": "2026-11-11T14:52:49.667Z"
     },
     {
       "kode": "7324",
@@ -2556,7 +2932,11 @@
     {
       "kode": "7326",
       "nama": "Kabupaten Toraja Utara",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.torajautarakab.go.id",
+      "judulHalaman": "Beranda",
+      "sourceUrl": "https://disdukcapil.torajautarakab.go.id/",
+      "verifiedAt": "2026-11-11T14:52:53.598Z"
     },
     {
       "kode": "7371",
@@ -2566,12 +2946,21 @@
     {
       "kode": "7372",
       "nama": "Kota Parepare",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pareparekota.go.id",
+      "judulHalaman": "Disdukcapil Kota Parepare",
+      "sourceUrl": "https://disdukcapil.pareparekota.go.id/",
+      "verifiedAt": "2026-11-11T14:53:18.905Z"
     },
     {
       "kode": "7373",
       "nama": "Kota Palopo",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.palopokota.go.id",
+      "judulHalaman": "Portal Resmi Disdukcapil Kota Palopo",
+      "alamat": "Jl. KHM. Hasyim No. 5 Kota Palopo",
+      "sourceUrl": "https://disdukcapil.palopokota.go.id/",
+      "verifiedAt": "2026-11-11T14:53:20.257Z"
     },
     {
       "kode": "7401",
@@ -2591,7 +2980,11 @@
     {
       "kode": "7404",
       "nama": "Kabupaten Buton",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.butonkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Buton",
+      "sourceUrl": "https://disdukcapil.butonkab.go.id/",
+      "verifiedAt": "2026-11-11T14:54:30.568Z"
     },
     {
       "kode": "7405",
@@ -2601,7 +2994,11 @@
     {
       "kode": "7406",
       "nama": "Kabupaten Bombana",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.bombanakab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Catatan Sipil Kab. Bombana",
+      "sourceUrl": "https://disdukcapil.bombanakab.go.id/",
+      "verifiedAt": "2026-11-11T14:54:34.825Z"
     },
     {
       "kode": "7407",
@@ -2636,7 +3033,11 @@
     {
       "kode": "7413",
       "nama": "Kabupaten Muna Barat",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.munabarat.go.id",
+      "judulHalaman": "DISDUKCAPIL &#8211; KABUPATEN MUNA BARAT",
+      "sourceUrl": "https://disdukcapil.munabarat.go.id/",
+      "verifiedAt": "2026-11-11T14:54:43.256Z"
     },
     {
       "kode": "7414",
@@ -2656,7 +3057,11 @@
     {
       "kode": "7472",
       "nama": "Kota Bau Bau",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.baubaukota.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Catatan Sipil Kota Baubau",
+      "sourceUrl": "https://dukcapil.baubaukota.go.id/",
+      "verifiedAt": "2026-11-11T14:55:58.130Z"
     },
     {
       "kode": "7501",
@@ -2686,7 +3091,11 @@
     {
       "kode": "7571",
       "nama": "Kota Gorontalo",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.gorontalokota.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil",
+      "sourceUrl": "https://dukcapil.gorontalokota.go.id/",
+      "verifiedAt": "2026-11-11T14:56:27.081Z"
     },
     {
       "kode": "7601",
@@ -2711,12 +3120,20 @@
     {
       "kode": "7605",
       "nama": "Kabupaten Majene",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.majenekab.go.id",
+      "judulHalaman": "DUKCAPIL MAJENE",
+      "sourceUrl": "https://disdukcapil.majenekab.go.id/",
+      "verifiedAt": "2026-11-11T15:39:30.600Z"
     },
     {
       "kode": "7606",
       "nama": "Kabupaten Mamuju Tengah",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.mamujutengahkab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil",
+      "sourceUrl": "https://disdukcapil.mamujutengahkab.go.id/",
+      "verifiedAt": "2026-11-11T14:57:01.279Z"
     },
     {
       "kode": "8101",
@@ -2736,7 +3153,11 @@
     {
       "kode": "8104",
       "nama": "Kabupaten Buru",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.burukab.go.id",
+      "judulHalaman": "",
+      "sourceUrl": "https://disdukcapil.burukab.go.id/",
+      "verifiedAt": "2026-11-11T14:57:25.811Z"
     },
     {
       "kode": "8105",
@@ -2751,12 +3172,20 @@
     {
       "kode": "8107",
       "nama": "Kabupaten Kepulauan Aru",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.kepulauanarukab.go.id",
+      "judulHalaman": "Dinas Dukcapil Kabupaten Kepulauan Aru",
+      "sourceUrl": "https://dukcapil.kepulauanarukab.go.id/",
+      "verifiedAt": "2026-11-11T14:57:40.985Z"
     },
     {
       "kode": "8108",
       "nama": "Kabupaten Maluku Barat Daya",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.malukubaratdayakab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Maluku Barat Daya",
+      "sourceUrl": "https://disdukcapil.malukubaratdayakab.go.id/",
+      "verifiedAt": "2026-11-11T14:57:45.592Z"
     },
     {
       "kode": "8109",
@@ -2771,7 +3200,11 @@
     {
       "kode": "8172",
       "nama": "Kota Tual",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.tualkota.go.id",
+      "judulHalaman": "Disdukcapil Kota Tual",
+      "sourceUrl": "https://disdukcapil.tualkota.go.id/",
+      "verifiedAt": "2026-11-11T14:57:52.599Z"
     },
     {
       "kode": "8201",
@@ -2786,7 +3219,11 @@
     {
       "kode": "8203",
       "nama": "Kabupaten Halmahera Utara",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.halmaherautarakab.go.id",
+      "judulHalaman": "Selamat Datang di Website Dinas Kependudukan Dan Pencatatan Sipil",
+      "sourceUrl": "https://dukcapil.halmaherautarakab.go.id/",
+      "verifiedAt": "2026-11-11T14:57:56.097Z"
     },
     {
       "kode": "8204",
@@ -2796,7 +3233,11 @@
     {
       "kode": "8205",
       "nama": "Kabupaten Kepulauan Sula",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.kepulauansulakab.go.id",
+      "judulHalaman": "Home - DUKCAPIL SULA",
+      "sourceUrl": "https://dukcapil.kepulauansulakab.go.id/",
+      "verifiedAt": "2026-11-11T14:58:01.481Z"
     },
     {
       "kode": "8206",
@@ -2806,7 +3247,11 @@
     {
       "kode": "8207",
       "nama": "Kabupaten Pulau Morotai",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.pulaumorotaikab.go.id",
+      "judulHalaman": "Website Dinas Kependudukan dan Catatan Sipil Kab. Pulau Morotai",
+      "sourceUrl": "https://disdukcapil.pulaumorotaikab.go.id/",
+      "verifiedAt": "2026-11-11T14:58:03.805Z"
     },
     {
       "kode": "8208",
@@ -2871,7 +3316,11 @@
     {
       "kode": "9202",
       "nama": "Kabupaten Manokwari",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.manokwarikab.go.id",
+      "judulHalaman": "DISDUKCAPIL KAB. MANOKWARI &#8211; DUCAPIL BISA !!!",
+      "sourceUrl": "https://disdukcapil.manokwarikab.go.id/",
+      "verifiedAt": "2026-11-11T14:59:22.870Z"
     },
     {
       "kode": "9203",
@@ -2881,7 +3330,11 @@
     {
       "kode": "9206",
       "nama": "Kabupaten Teluk Bintuni",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.telukbintunikab.go.id",
+      "judulHalaman": "Dinas Administrasi Kependudukan dan Catatan Sipil",
+      "sourceUrl": "https://dukcapil.telukbintunikab.go.id/",
+      "verifiedAt": "2026-11-11T15:02:08.100Z"
     },
     {
       "kode": "9207",
@@ -2891,7 +3344,11 @@
     {
       "kode": "9208",
       "nama": "Kabupaten Kaimana",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.kaimanakab.go.id",
+      "judulHalaman": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Kaimana",
+      "sourceUrl": "https://dukcapil.kaimanakab.go.id/",
+      "verifiedAt": "2026-11-11T15:02:15.420Z"
     },
     {
       "kode": "9211",
@@ -2906,7 +3363,11 @@
     {
       "kode": "9301",
       "nama": "Kabupaten Merauke",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.merauke.go.id",
+      "judulHalaman": "DINAS ADMINISTRASI KEPENDUDUKAN DAN PENCATATAN SIPIL KABUPATEN MERAUKE",
+      "sourceUrl": "https://disdukcapil.merauke.go.id/",
+      "verifiedAt": "2026-11-11T15:02:16.645Z"
     },
     {
       "kode": "9302",
@@ -2916,7 +3377,11 @@
     {
       "kode": "9303",
       "nama": "Kabupaten Mappi",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.mappikab.go.id",
+      "judulHalaman": "Dukcapil Kabupaten Mappi",
+      "sourceUrl": "https://dukcapil.mappikab.go.id/",
+      "verifiedAt": "2026-11-11T15:02:23.854Z"
     },
     {
       "kode": "9304",
@@ -2940,12 +3405,20 @@
     {
       "kode": "9403",
       "nama": "Kabupaten Paniai",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://dukcapil.paniaikab.go.id",
+      "judulHalaman": "Dukcapil Kabupaten Paniai",
+      "sourceUrl": "https://dukcapil.paniaikab.go.id/",
+      "verifiedAt": "2026-11-11T15:02:25.697Z"
     },
     {
       "kode": "9404",
       "nama": "Kabupaten Mimika",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.mimikakab.go.id",
+      "judulHalaman": "DISDUKCAPIL Kabupaten Mimika",
+      "sourceUrl": "https://disdukcapil.mimikakab.go.id/",
+      "verifiedAt": "2026-11-11T15:02:30.782Z"
     },
     {
       "kode": "9405",
@@ -2955,7 +3428,12 @@
     {
       "kode": "9406",
       "nama": "Kabupaten Dogiyai",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.dogiyaikab.go.id",
+      "judulHalaman": "DISDUKCAPIL &#8211; Kabupaten Dogiyai",
+      "alamat": "Jln. Trans Nabire - Ilaga Km.200 Dogiyai Kigamani, Kabupaten Dogiyai, Provinsi Papua Tengah",
+      "sourceUrl": "https://disdukcapil.dogiyaikab.go.id/",
+      "verifiedAt": "2026-11-11T15:02:32.485Z"
     },
     {
       "kode": "9407",
@@ -2970,7 +3448,11 @@
     {
       "kode": "9501",
       "nama": "Kabupaten Jayawijaya",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.jayawijayakab.go.id",
+      "judulHalaman": "Beranda Disdukcapil Jayawijaya",
+      "sourceUrl": "https://disdukcapil.jayawijayakab.go.id/",
+      "verifiedAt": "2026-11-11T15:02:35.301Z"
     },
     {
       "kode": "9502",
@@ -3020,7 +3502,11 @@
     {
       "kode": "9603",
       "nama": "Kabupaten Raja Ampat",
-      "status": "belum_terverifikasi"
+      "status": "terverifikasi",
+      "website": "https://disdukcapil.rajaampatkab.go.id",
+      "judulHalaman": "Home | Dinas Kependudukan Dan Pencatatan Sipil Raja Ampat",
+      "sourceUrl": "https://disdukcapil.rajaampatkab.go.id/",
+      "verifiedAt": "2026-11-11T15:03:23.626Z"
     },
     {
       "kode": "9604",

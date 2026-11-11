@@ -24,3 +24,4 @@ export * from './pii-fixtures.js';
 export * from './guarded-llm.js';
 export * from './wilayah.js';
 export * from './generik.js';
+export * from './ingatan.js';

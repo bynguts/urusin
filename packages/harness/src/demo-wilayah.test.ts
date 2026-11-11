@@ -22,12 +22,8 @@ describe('alur demo juri Wonogiri tetap utuh (akta kelahiran, Telunjuk Sakti lay
       urusanId: u.id,
       userText: 'Saya ingin mengurus kelahiran. Apa saja yang perlu saya siapkan?',
     });
-    // Satu-satunya tambahan: pertanyaan konfirmasi wilayah.
-    expect(
-      of(t1.events, 'assistant_text')
-        .map((e) => e.delta)
-        .join(''),
-    ).toMatch(/KTP Anda terdaftar di Kabupaten Wonogiri, betul\?/);
+    // Satu-satunya tambahan: kartu konfirmasi wilayah (usulan Data Diri), tanpa pertanyaan ganda di teks.
+    expect(of(t1.events, 'assistant_text')).toHaveLength(0);
     expect(of(t1.events, 'plan_card')).toHaveLength(0);
 
     const t2 = await runTurn(env.deps, { urusanId: u.id, userText: 'Ya' });

@@ -138,3 +138,15 @@ Pakai teks Indonesia yang panjang dan realistis, karena nama instansi bisa panja
 - Animasi centang saat berkas lolos cek, maksimal 300 ms, cukup CSS.
 
 Detail lengkap ada di audit best-case, bagian "Revisi dimensi 6" (`.omc/plans/bestcase-audit.md` di folder logicodix, bisa dikirim A).
+
+## 9. Interaksi dashboard yang sudah diuji
+
+- Pemilih kab/kota di Pengaturan dan Peristiwa memakai `PilihWilayah.svelte`: pencarian nama, tombol panah,
+  Enter, Escape, dan Tab. Nilai form tetap kode wilayah dari registry. Select asli tetap tersedia sebelum
+  hidrasi dan tanpa JavaScript; pilihan yang dibuat sebelum hidrasi tetap diteruskan.
+- Urusan baru membersihkan draf Beranda dan memfokuskan kotak cerita. Menu ponsel dapat ditutup dengan
+  Escape atau klik di luar; status urusan yang gagal dimuat menawarkan Coba lagi tanpa reload halaman.
+- Dialog unggah mereset berkas saat dibuka ulang. Kontrol Pengaturan mengikuti lebar panel agar huruf
+  besar tidak membuat pilihan dan tombol bertumpuk. Label navigasi bawah tetap muat di layar sempit.
+- Regresi interaksi ada di `apps/web/e2e/dashboard-ui.spec.ts`, `dashboard-interaksi.spec.ts`, dan
+  `pilih-wilayah.spec.ts`. Alur pengiriman Browser Pendamping di tes memakai situs latihan lokal.

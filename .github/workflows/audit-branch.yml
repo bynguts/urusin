@@ -18,7 +18,9 @@ concurrency:
 jobs:
   audit:
     name: audit-history origin/main..HEAD
-    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
+    # Runner self-hosted hanya untuk branch integrasi/*; branch kerja lain memakai runner GitHub agar antrean tunggal
+    # agent-vm tidak tersumbat (audit-history tetap wajib dijalankan lokal sebelum push).
+    runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER && startsWith(github.ref_name, 'integrasi/') && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - name: Checkout (riwayat lengkap)

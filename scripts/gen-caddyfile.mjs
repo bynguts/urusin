@@ -11,7 +11,7 @@
 //   node scripts/gen-caddyfile.mjs --check --set primary [flag yang sama] --file <berkas>
 //                                             # gagal (exit 1) bila <berkas> (mis. snippet terpasang) menyimpang
 //
-// `--worker laptop-a=100.100.223.10:4330` (boleh berulang, butuh --pendamping): rute WebSocket worker Pendamping
+// `--worker laptop-a=100.64.0.10:4330` (boleh berulang, butuh --pendamping): rute WebSocket worker Pendamping
 // tambahan lewat Tailscale, `wss://<app>/pendamping/w/<id>/ws/<uuid>` (HANYA upgrade WebSocket GET; cookie hanya
 // `__Host-urusin_sid`) -> edge worker `/ws/<uuid>`; jalur lain di bawah /pendamping/w/<id>/ 404. Sama dengan
 // `wsUrl` worker itu di PENDAMPING_WORKERS (web).

@@ -426,20 +426,21 @@ export class SesiPendampingUi {
   }
 
   /**
-   * Siaga → "Tutup sekarang": peramban server dan login/cookie di dalamnya dihancurkan sekarang. Hasil (nomor)
-   * tetap tampil; teks "Browser ditutup" baru muncul setelah server mengonfirmasi.
+   * Tutup peramban server beserta login/cookie. Hasil (nomor) tetap disimpan; pemanggil baru boleh
+   * menyembunyikan panel setelah true (server mengonfirmasi, atau sesi memang sudah tidak ada).
    */
-  async tutupSekarang(): Promise<void> {
+  async tutupSekarang(): Promise<boolean> {
     try {
       const r = await this.ambil(this.dasar, { method: 'DELETE' });
       // 404: sesi sudah tidak ada (tutup sendiri) = sudah tertutup.
       if (!r.ok && r.status !== 404) throw new Error(String(r.status));
     } catch {
       this.data = { ...this.data, pesan: PESAN_GAGAL_TUTUP };
-      return;
+      return false;
     }
     this.tutup();
     this.data = { ...this.data, keadaan: 'selesai', mode: 'done', giliran: null };
+    return true;
   }
 
   tutup(): void {

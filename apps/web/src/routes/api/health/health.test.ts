@@ -45,6 +45,21 @@ describe('GET /api/health', () => {
     expect(body.ok).toBe(true);
   });
 
+  it('melaporkan status probe kapabilitas LLM (probe ulang di latar)', async () => {
+    const { GET } = await withRuntime();
+    const probe = await import('#lib/server/probe-ulang.js');
+    const s = {
+      status: 'mencoba_ulang',
+      percobaan: 3,
+      berikutnyaPada: '2026-11-11T00:01:00.000Z',
+      galat: ['tools', 'streaming_tools'],
+    } as const;
+    probe.aturStatusProbe({ ...s, galat: [...s.galat] });
+    expect((await (await GET({} as never)).json()).probe).toEqual(s);
+    probe.aturStatusProbe({ status: 'ok', percobaan: 4 });
+    expect((await (await GET({} as never)).json()).probe).toEqual({ status: 'ok', percobaan: 4 });
+  });
+
   it('melaporkan jumlah turn yang sedang berjalan dari runtime', async () => {
     const { GET } = await withRuntime();
     const turns = await import('#lib/server/running-turns.js');
