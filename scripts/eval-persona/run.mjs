@@ -285,6 +285,7 @@ async function main() {
       });
       sesi = new SesiWarga({ origin, ip });
       sesi.cookie = s1.cookie;
+      sesi.masuk = s1.masuk;
     }
     const h = await jalankanPercakapan({
       origin,
