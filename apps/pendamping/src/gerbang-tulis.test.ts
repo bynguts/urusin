@@ -311,10 +311,11 @@ describe('putuskan (tabel lengkap)', () => {
       const url = `https://${host}/halaman.html`;
       expect(hostAsetWilayah(url), host).toBe(true);
       expect(hostAset(url), host).toBe(true);
-      for (const t of ['script', 'stylesheet', 'font', 'image', 'xhr', 'fetch'])
+      for (const t of ['script', 'stylesheet', 'font', 'image'])
         expect(asetUmumBoleh({ url, resourceType: t, dokumen: false }), `${host} ${t}`).toBe(true);
       expect(asetUmumBoleh({ url, resourceType: 'document', dokumen: true }), host).toBe(false);
-      expect(asetUmumBoleh({ url, resourceType: 'media', dokumen: false }), host).toBe(false);
+      for (const t of ['xhr', 'fetch', 'media'])
+        expect(asetUmumBoleh({ url, resourceType: t, dokumen: false }), `${host} ${t}`).toBe(false);
       const dok: PermintaanGerbang = { metode: 'GET', dokumen: true, utama: true, xhr: false, url };
       for (const j of [
         { jenis: 'warga' },

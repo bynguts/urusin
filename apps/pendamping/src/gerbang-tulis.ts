@@ -127,22 +127,15 @@ export function hostAset(url: string): boolean {
 
 /** Jenis sumber daya yang boleh diambil dari host aset umum (Playwright `resourceType`). */
 const TIPE_ASET_UMUM: ReadonlySet<string> = new Set(['script', 'stylesheet', 'font', 'image']);
-/**
- * Host aset pemda juga boleh XHR/fetch: API .go.id milik portal itu sendiri (probe gel4 3310: XHR ke
- * api.diskominfo.klaten.go.id); tulis non-GET tetap lewat gerbang tulis.
- */
-const TIPE_ASET_WILAYAH: ReadonlySet<string> = new Set([...TIPE_ASET_UMUM, 'xhr', 'fetch']);
 
 /**
  * Host aset umum hanya melayani subresource script/stylesheet/font/image; navigasi dokumen (bingkai mana pun),
  * XHR/fetch, dan jenis lain ke host itu ditolak (re-review MEDIUM: unpkg menyajikan HTML paket npm sebagai
- * text/html sementara bilah atas tetap menampilkan origin portal). Host aset pemda (`hostAset`) sama, ditambah
- * XHR/fetch (re-review LOW). Host lain tidak terpengaruh.
+ * text/html sementara bilah atas tetap menampilkan origin portal). Host aset pemda (`hostAset`) diperlakukan
+ * sama (re-review LOW). Host lain tidak terpengaruh.
  */
 export function asetUmumBoleh(r: { url: string; resourceType: string; dokumen: boolean }): boolean {
-  if (hostAsetUmum(r.url)) return !r.dokumen && TIPE_ASET_UMUM.has(r.resourceType);
-  if (hostAsetWilayah(r.url)) return !r.dokumen && TIPE_ASET_WILAYAH.has(r.resourceType);
-  return true;
+  return !hostAset(r.url) || (!r.dokumen && TIPE_ASET_UMUM.has(r.resourceType));
 }
 
 /** Metode yang tidak mengubah keadaan server (preflight CORS ikut di sini). */
