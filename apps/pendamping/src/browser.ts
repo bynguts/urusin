@@ -282,11 +282,17 @@ const SEL_KOLOM_KETIK =
 const SEL_KENDALI_TENANG = 'input, textarea, select, button, a[href], [role="button"], [role="link"]';
 
 /**
- * Konten belum tampil (probe gel4 6171: `#page-content` opacity 0, baru opacity 1 800 ms setelah load + transisi
- * 700 ms): ada transisi/animasi CSS berhingga yang sedang jalan, atau elemen di viewport (>= 2000 px persegi,
- * kedalaman <= 4 dari body) yang memuat kolom isian masih opacity < 0,1 / visibility hidden. Animasi tak berhingga
- * (spinner) dan elemen tanpa kotak (display:none, mis. modal tertutup) diabaikan. Dievaluasi di dunia terisolasi
- * (hanya membaca DOM/gaya).
+ * Konten belum tampil (probe gel4 6171: `#page-content` opacity 0 dan layar muat, baru opacity 1 800 ms setelah
+ * load lewat setTimeout + transisi 700 ms; isinya hanya tautan): salah satu dari
+ * - transisi/animasi CSS berhingga sedang jalan (animasi tak berhingga/spinner diabaikan);
+ * - html/body masih opacity < 0,1 / visibility hidden (opacity tidak diwariskan ke gaya anak) padahal ada kendali;
+ * - elemen di viewport (kedalaman <= 4 dari body, atau kontainer utama `main`/`#page-content`/`#content`/`#app`/
+ *   ...) masih opacity < 0,1 / visibility hidden dan memuat kolom isian (>= 2000 px persegi) atau tautan/tombol
+ *   (>= 20% viewport: blok konten, bukan menu tarik-turun kecil yang memang tersembunyi);
+ * - layar muat (id/kelas loader/preloader/loading/spinner) fixed/absolute yang masih menutupi >= 50% viewport.
+ * Jeda setTimeout sebelum transisi mulai tertangkap karena kontennya masih transparan. Elemen tanpa kotak
+ * (display:none, mis. modal tertutup) diabaikan. Pemanggil membatasi tunggu 3 detik. Dievaluasi di dunia
+ * terisolasi (hanya membaca DOM/gaya).
  */
 export const KONTEN_BELUM_TAMPIL_EXPR = `(() => {
   const anim = document.getAnimations().some((a) => {
@@ -297,14 +303,32 @@ export const KONTEN_BELUM_TAMPIL_EXPR = `(() => {
   if (anim) return true;
   const vw = innerWidth, vh = innerHeight, luas = vw * vh;
   if (!document.body || luas <= 0) return false;
-  const calon = document.body.querySelectorAll(':scope > *, :scope > * > *, :scope > * > * > *, :scope > * > * > * > *');
+  const ISIAN = 'input:not([type="hidden"]), select, textarea';
+  const KENDALI = ISIAN + ', a[href], button, [role="button"], [role="link"]';
+  const pudar = (g) => Number(g.opacity) < 0.1 || g.visibility === 'hidden';
+  if ([document.documentElement, document.body].some((el) => pudar(getComputedStyle(el))) && document.body.querySelector(KENDALI))
+    return true;
+  const RE_MUAT = /(^|[^a-z])(pre-?loader|loader|loading|spinner)([^a-z]|$)/i;
+  const calon = document.body.querySelectorAll(
+    ':scope > *, :scope > * > *, :scope > * > * > *, :scope > * > * > * > *, main, [role="main"], #page-content, #content, #main, #app, #root',
+  );
   for (const el of calon) {
     const r = el.getBoundingClientRect();
     const lebar = Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0));
     const tinggi = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
-    if (lebar * tinggi < 2000) continue;
+    const tampak = lebar * tinggi;
+    if (tampak < 2000) continue;
     const g = getComputedStyle(el);
-    if ((Number(g.opacity) < 0.1 || g.visibility === 'hidden') && el.querySelector('input:not([type="hidden"]), select, textarea'))
+    if (pudar(g)) {
+      if (el.querySelector(ISIAN)) return true;
+      if (tampak >= luas * 0.2 && el.querySelector(KENDALI)) return true;
+      continue;
+    }
+    if (
+      tampak >= luas * 0.5 &&
+      (g.position === 'fixed' || g.position === 'absolute') &&
+      RE_MUAT.test((el.id || '') + ' ' + (el.getAttribute('class') || ''))
+    )
       return true;
   }
   return false;

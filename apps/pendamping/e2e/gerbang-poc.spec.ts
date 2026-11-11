@@ -68,6 +68,25 @@ const HALAMAN: Record<string, string> = {
   document.getElementById('isi').classList.add('tampil');
   document.getElementById('muat').remove();
 }, 800));</script>`),
+  // Probe gel4 6171 (/onlinecapil): #page-content berisi TAUTAN saja (tanpa kolom isian) opacity 0 di balik
+  // preloader, dengan tombol tutup yang sudah terlihat di luarnya (pengamatan tidak kosong); setTimeout setelah
+  // load (situs asli 800 ms, di sini 1,5 detik agar jeda pasti terlewati) baru transisi dan preloader dihapus.
+  '/pudar-tautan':
+    kerangka(`<style>#page-content{opacity:0;transition:opacity .7s}#page-content.tampil{opacity:1}
+#page-content a{display:block;padding:30px 16px}.preloader{position:fixed;top:60px;left:0;right:0;bottom:0;background:#fff}</style>
+<button type="button" aria-label="Tutup pengumuman">✕</button>
+<div class="preloader">Memuat halaman...</div>
+<div id="page-content"><h1>Pilih menu</h1><a href="/antrian">Daftar Antrian Pudar</a>
+<a href="/cek">Cek Status Pudar</a><a href="/unduh">Unduh Formulir Pudar</a></div>
+<script>addEventListener('load', () => setTimeout(() => {
+  document.getElementById('page-content').classList.add('tampil');
+  document.querySelector('.preloader').remove();
+}, 1500));</script>`),
+  // Varian: body sendiri opacity 0 (opacity tidak diwariskan ke gaya anak), tampil 1,5 detik setelah load.
+  '/pudar-body': `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Uji</title>
+<style>body{opacity:0;transition:opacity .5s}body.tampil{opacity:1}a{display:block;padding:30px 16px}</style></head>
+<body><a href="/antrian">Antrian Body Pudar</a><button type="button">Tombol Body Pudar</button>
+<script>addEventListener('load', () => setTimeout(() => document.body.classList.add('tampil'), 1500));</script></body></html>`,
   // Probe 3674: redirect JS halaman sendiri (bukan aksi AI) ke ?p=close_form; dan redirect ke jalur tulis.
   '/alih': kerangka(
     `<p>Mengalihkan...</p><script>setTimeout(() => { location.href = '/tutup?p=close_form'; }, 300);</script>`,
@@ -713,6 +732,26 @@ test('probe gel4 6171: konten fade-in teramati setelah transisi selesai (tenang 
   try {
     expect(satu(p, 'Nama Pudar')).toMatchObject({ peran: 'teks', isian: 'kosong' });
     expect(satu(p, 'Tempat Lahir Pudar')).toMatchObject({ peran: 'teks' });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 6171: blok tautan di balik preloader, jeda setTimeout sebelum fade-in, tetap teramati', async () => {
+  const { manager, p } = await sesi(situs, '/pudar-tautan', 'pudar-tautan');
+  try {
+    for (const nama of ['Daftar Antrian Pudar', 'Cek Status Pudar', 'Unduh Formulir Pudar'])
+      expect(satu(p, nama)).toMatchObject({ peran: 'tautan' });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 6171: body opacity 0 sampai setTimeout: tautan/tombol teramati setelah tampil', async () => {
+  const { manager, p } = await sesi(situs, '/pudar-body', 'pudar-body');
+  try {
+    expect(satu(p, 'Antrian Body Pudar')).toMatchObject({ peran: 'tautan' });
+    expect(satu(p, 'Tombol Body Pudar')).toMatchObject({ peran: 'tombol' });
   } finally {
     await manager.shutdown();
   }
