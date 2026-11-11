@@ -113,6 +113,16 @@ const HALAMAN: Record<string, string> = {
   // N3/kode N1: warga mengirim sendiri (form POST ke /sukses); dan PoC F: dasbor, label, draf (bukan sukses).
   '/kirim-warga': kerangka(`<form method="post" action="/sukses"><label>Nama <input name="nama"></label>
 <button type="submit" style="position:fixed;left:0;top:300px;width:300px;height:80px">Kirim Permohonan</button></form>`),
+  // Re-review LOW: POST "cek status" warga (bukan kiriman final) yang hasilnya mirip halaman sukses.
+  '/cek-status': kerangka(`<h2>Lacak Permohonan</h2><form method="post" action="/hasil-cek">
+<label>Kode lacak <input name="kode"></label><label>Nama <input name="nama"></label>
+<label>Alamat <textarea name="alamat"></textarea></label>
+<button type="button" id="isi">Isi contoh</button>
+<button type="submit" style="position:fixed;left:0;top:400px;width:300px;height:60px">Cek Status</button></form>
+<a href="/bantuan">Bantuan</a>`),
+  '/hasil-cek': kerangka(
+    '<h1>Permohonan berhasil dikirim</h1><div class="alert alert-success">Nomor registrasi: REG-2026-0002</div>',
+  ),
   '/dasbor': kerangka(
     '<nav><a href="/bukti">Cetak Bukti Pendaftaran</a> <a href="/layanan">Layanan</a></nav><h1>Selamat datang</h1>',
   ),
@@ -724,10 +734,16 @@ test('probe 3674: redirect JS halaman sesudah navigasi lolos bila jalur bersih, 
   }
 });
 
-test('H3/N3: warga mengirim sendiri -> sukses diterima worker (siaga berhasil); bukti Navigator menyusul', async () => {
-  const { manager, o, sesiId } = await sesi(situs, '/kirim-warga', 'sukses');
+test('H3/N3: warga mengirim sendiri dari kotak sorot final -> sukses diterima worker; bukti Navigator menyusul', async () => {
+  const { manager, o, sesiId, p } = await sesi(situs, '/kirim-warga', 'sukses');
   try {
-    await manager.handleClient(sesiId, { type: 'ambil_alih' });
+    await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'serahkan', alasan: 'final', ref: satu(p, 'Kirim Permohonan').ref }],
+    });
+    await expect.poll(() => manager.status(o).mode, { timeout: 10_000 }).toBe('takeover');
     // Sebelum warga mengirim: halaman sukses belum ada, /selesai = 409.
     await expect(manager.selesai(o, { nomor: 'REG-2026-0001' })).rejects.toMatchObject({ status: 409 });
     await ketuk(manager, sesiId, 150, 340);
@@ -746,7 +762,24 @@ test('H3/N3: warga mengirim sendiri -> sukses diterima worker (siaga berhasil); 
   }
 });
 
-test('kode N1: AI menyerah, warga mengisi dan mengirim sendiri -> berhasil tanpa /selesai dari web', async () => {
+test('re-review LOW: POST warga yang bukan kiriman final tidak membuat sukses otomatis (tetap butuh /selesai)', async () => {
+  const { manager, o, sesiId, p } = await sesi(situs, '/cek-status', 'cek-status');
+  try {
+    expect(p.sinyal.halamanAkhir).toBe(false);
+    await manager.handleClient(sesiId, { type: 'ambil_alih' });
+    const sebelum = situs.hitung('/hasil-cek');
+    await ketuk(manager, sesiId, 150, 430);
+    await expect.poll(() => situs.hitung('/hasil-cek'), { timeout: 10_000 }).toBe(sebelum + 1);
+    // Halaman hasil mirip sukses, tetapi bukan kiriman final: sesi tidak ditandai berhasil sendiri.
+    await new Promise((r) => setTimeout(r, 6_500));
+    expect(manager.status(o).status).toBe('berjalan');
+    expect(manager.status(o).hasil).toBeUndefined();
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('kode N1 + re-review LOW: AI menyerah, warga mengirim sendiri (bukan kotak sorot final) -> berhasil lewat /selesai', async () => {
   const { manager, o, sesiId, p } = await sesi(situs, '/kirim-warga', 'menyerah');
   try {
     await manager.aksi(o, {
@@ -759,7 +792,20 @@ test('kode N1: AI menyerah, warga mengisi dan mengirim sendiri -> berhasil tanpa
     const sebelum = situs.hitung('/sukses');
     await ketuk(manager, sesiId, 150, 340);
     await expect.poll(() => situs.hitung('/sukses'), { timeout: 10_000 }).toBe(sebelum + 1);
-    await expect.poll(() => manager.status(o).status, { timeout: 10_000 }).toBe('siaga');
+    // Tanpa ketukan kotak sorot final: tidak diterima otomatis, tetapi /selesai (Navigator) menerimanya karena
+    // ada tulis warga dan halaman sukses.
+    await new Promise((r) => setTimeout(r, 6_000));
+    expect(manager.status(o).status).toBe('berjalan');
+    await expect
+      .poll(
+        () =>
+          manager
+            .selesai(o)
+            .then((v) => v.status)
+            .catch(() => 'belum'),
+        { timeout: 10_000 },
+      )
+      .toBe('siaga');
     expect(manager.status(o).hasil).toBe('berhasil');
   } finally {
     await manager.shutdown();

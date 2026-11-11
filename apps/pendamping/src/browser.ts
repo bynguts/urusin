@@ -662,16 +662,30 @@ export async function wire(
 
   /** Keputusan ketukan saat halaman kotor (ditetapkan saat pointer down, dipakai pointer up yang sama). */
   let ketukKotorSah = false;
+  /**
+   * Ketukan warga terakhir yang dinilai "kirim final" (kotak sorot serah `final`, atau tombol submit asli di
+   * halaman akhir). Tulis warga di jendela ketukan ini saja yang membuat sukses diterima otomatis (re-review LOW).
+   */
+  let ketukFinalTerakhir = Number.NEGATIVE_INFINITY;
 
   /**
    * Ketukan warga mengenai kotak sorot serah terakhir, atau kontrol nyata (DOM.getNodeForLocation lalu `closest`
    * di dunia terisolasi, prototipe halaman tidak dipakai). Gagal = tidak.
    */
   async function ketukanKeKontrol(x: number, y: number, keras: boolean): Promise<boolean> {
-    const sel = keras ? SEL_KIRIM_ASLI : SEL_KONTROL_KETUK;
+    return (
+      (await ketukanDiSorot(x, y)) || ketukanPadaKontrol(x, y, keras ? SEL_KIRIM_ASLI : SEL_KONTROL_KETUK)
+    );
+  }
+
+  async function ketukanDiSorot(x: number, y: number): Promise<boolean> {
     const kotak = await generik?.kotakSorot();
-    if (kotak && x >= kotak.x && x <= kotak.x + kotak.lebar && y >= kotak.y && y <= kotak.y + kotak.tinggi)
-      return true;
+    return (
+      !!kotak && x >= kotak.x && x <= kotak.x + kotak.lebar && y >= kotak.y && y <= kotak.y + kotak.tinggi
+    );
+  }
+
+  async function ketukanPadaKontrol(x: number, y: number, sel: string): Promise<boolean> {
     try {
       const { backendNodeId } = (await cdp.send('DOM.getNodeForLocation', {
         x: Math.round(x),
@@ -1302,22 +1316,23 @@ export async function wire(
       setTimeout(() => void cdp.send('Page.navigate', { url }).catch(() => undefined), 0);
     };
     // Review kode N1: warga mengirim sendiri (mis. setelah AI menyerah, loop di web sudah berhenti). Halaman sukses
-    // sesudah tulis warga = sesi siaga berhasil tanpa menunggu /selesai. Diperiksa saat dokumen utama dimuat dan
+    // sesudah kirim final warga (kotak sorot `final` / submit asli di halaman akhir) = sesi siaga berhasil tanpa
+    // menunggu /selesai; tulis warga lain tetap butuh /selesai. Diperiksa saat dokumen utama dimuat dan
     // sebentar sesudah tulis warga (SPA: hasil lewat XHR tanpa muat ulang).
     let memeriksaSukses = false;
     const periksaSuksesWarga = async () => {
-      if (!manual || destroyed || memeriksaSukses || !run.adaTulisWargaSejakAksiAi()) return;
+      if (!manual || destroyed || memeriksaSukses || !run.adaKirimFinalWargaSejakAksiAi()) return;
       memeriksaSukses = true;
       try {
         const p = await run.amati(true).catch(() => null);
-        if (p?.sinyal.sukses && run.adaTulisWargaSejakAksiAi()) hooks.suksesWarga?.(p);
+        if (p?.sinyal.sukses && run.adaKirimFinalWargaSejakAksiAi()) hooks.suksesWarga?.(p);
       } finally {
         memeriksaSukses = false;
       }
     };
     page.on('load', () => void periksaSuksesWarga());
     gen.kendali.tulisWarga = () => {
-      run.tulisWarga();
+      run.tulisWarga(Date.now() - ketukFinalTerakhir <= JENDELA_WARGA_MS);
       for (const ms of [1_500, 5_000]) setTimeout(() => void periksaSuksesWarga(), ms).unref?.();
     };
   }
@@ -1368,6 +1383,14 @@ export async function wire(
         else buka = ketukKotorSah;
       }
       if (buka) inputWargaTerakhir = Date.now();
+      // Re-review LOW: kirim final warga = ketukan pada kotak sorot serah `final`, atau tombol submit asli di
+      // halaman akhir. Tulis warga lain (mis. "cek status") tidak membuat sukses diterima otomatis.
+      if (buka && g && m.type === 'pointer' && m.aksi === 'down') {
+        const final =
+          (g.sorotFinal && (await ketukanDiSorot(m.x, m.y))) ||
+          (g.akhir && (await ketukanPadaKontrol(m.x, m.y, SEL_KIRIM_ASLI)));
+        if (final) ketukFinalTerakhir = Date.now();
+      }
       for (const cmd of toCdp(m, touch)) {
         await cdp.send(cmd.method as 'Input.insertText', cmd.params as never).catch(() => undefined);
       }

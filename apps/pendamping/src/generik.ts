@@ -334,6 +334,14 @@ export class GenerikRun {
    * halaman sukses diterima sebagai "terkirim".
    */
   private tulisWargaSejakAi = false;
+  /**
+   * Tulis warga itu menyusul ketukan pada kotak sorot serah `final` atau tombol submit asli di halaman akhir
+   * (re-review LOW): hanya ini yang membuat sukses diterima otomatis tanpa /selesai. Tulis warga lain (mis. "cek
+   * status") tetap butuh /selesai dari Navigator.
+   */
+  private kirimFinalWarga = false;
+  /** Serah terakhir di dokumen ini beralasan `final` (kotak sorot = tombol kirim akhir). */
+  private serahFinal = false;
   /** Ref tautan pembuka di pengamatan terakhir (review N1: serah `ketuk_tautan` hanya ke ref ini). */
   private refPembuka = new Set<string>();
   /** Giliran `ketuk_tautan` yang aktif: ref tautan yang boleh dibuka lewat `buka_tautan` (review N5). */
@@ -357,15 +365,35 @@ export class GenerikRun {
     this.kotorDok = false;
     this.kotorDiserahkan = false;
     this.aiBertindakDok = false;
+    this.serahFinal = false;
   }
 
-  /** Gerbang tulis meloloskan tulis non-GET warga. */
-  tulisWarga(): void {
+  /**
+   * Gerbang tulis meloloskan tulis non-GET warga. `final` = menyusul ketukan warga pada kotak sorot serah `final`
+   * atau tombol submit asli di halaman akhir (dinilai peramban).
+   */
+  tulisWarga(final = false): void {
     this.tulisWargaSejakAi = true;
+    if (final) this.kirimFinalWarga = true;
   }
 
   adaTulisWargaSejakAksiAi(): boolean {
     return this.tulisWargaSejakAi;
+  }
+
+  /** Ada kiriman final warga sejak aksi AI terakhir: syarat sukses diterima otomatis (tanpa /selesai). */
+  adaKirimFinalWargaSejakAksiAi(): boolean {
+    return this.kirimFinalWarga;
+  }
+
+  /** Kotak sorot aktif adalah tombol kirim akhir dari serah `final`. */
+  get sorotFinal(): boolean {
+    return this.serahFinal && this.sorotJalur !== undefined;
+  }
+
+  /** Pengamatan terakhir dokumen ini = halaman akhir. */
+  get akhir(): boolean {
+    return this.akhirDok;
   }
 
   get kotor(): boolean {
@@ -452,6 +480,7 @@ export class GenerikRun {
     if (!url || !this.d.urlBoleh(url) || this.muatUlangTerakhir === url) return false;
     this.muatUlangTerakhir = url;
     this.tulisWargaSejakAi = false;
+    this.kirimFinalWarga = false;
     this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: url });
     try {
       await this.d.tangan.navigasi(url);
@@ -466,6 +495,7 @@ export class GenerikRun {
     return this.serial(async () => {
       await this.muatUlangKotor();
       this.sorotJalur = undefined;
+      this.serahFinal = false;
       this.d.jejak({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'tidak_yakin' });
       this.d.serahkan('periksa', PESAN_GENERIK.kotor);
     });
@@ -641,6 +671,7 @@ export class GenerikRun {
       }
       const sorot = ref ? await this.d.tangan.sorot(ref.jalur) : undefined;
       this.sorotJalur = ref?.jalur;
+      this.serahFinal = a.alasan === 'final';
       this.pembukaAktif = tautan ? a.ref : undefined;
       this.pembukaUrl = tujuan?.href;
       this.berhentiAkhir = a.alasan === 'berhenti';
@@ -701,6 +732,7 @@ export class GenerikRun {
     this.hostDitolakTerakhir = undefined;
     this.aiBertindakDok = true;
     this.tulisWargaSejakAi = false;
+    this.kirimFinalWarga = false;
     const urlSebelum = this.d.tangan.urlKini();
     try {
       const r = await this.d.tangan.aksi(op, this.peta);
@@ -737,6 +769,7 @@ export class GenerikRun {
     }
     const sorot = ref ? await this.d.tangan.sorot(ref.jalur).catch(() => undefined) : undefined;
     this.sorotJalur = ref?.jalur;
+    this.serahFinal = false;
     const pesan = a.hostLain
       ? PESAN_GENERIK.hostLain
       : dimuatUlang
@@ -818,6 +851,7 @@ export class GenerikRun {
       lanjut();
       this.aiBertindakDok = true;
       this.tulisWargaSejakAi = false;
+      this.kirimFinalWarga = false;
       this.aksiBerjalan = { blokir: [], hostLain: false };
       this.hostDitolakTerakhir = undefined;
       const urlSebelum = this.d.tangan.urlKini();
@@ -842,6 +876,7 @@ export class GenerikRun {
       this.aksiBerjalan = { blokir: [], hostLain: false };
       this.hostDitolakTerakhir = undefined;
       this.tulisWargaSejakAi = false;
+      this.kirimFinalWarga = false;
       try {
         this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: url });
         await this.d.tangan.navigasi(url);
