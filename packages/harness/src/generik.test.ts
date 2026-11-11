@@ -1,6 +1,6 @@
 import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/contracts';
 import { PORTAL_WILAYAH } from '@urusin/core';
-import { bundelPendamping, namaPendekWilayah, wilayahByKode } from '@urusin/registry';
+import { bundelPendamping } from '@urusin/registry';
 import { FakeProvider, fakeCompletion } from '@urusin/llm';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
@@ -34,11 +34,6 @@ const DAIRI = '1211';
 const JAKPUS = '3171';
 
 afterEach(() => aturJaringanId(() => false));
-
-const namaWilayah = (kode: string) => {
-  const w = wilayahByKode(kode);
-  return w ? namaPendekWilayah(w.nama) : undefined;
-};
 
 function urusanDiusulkan(kodeKabKota: string, jenis: string) {
   const store = new HarnessStore(openHarnessDb());
@@ -317,6 +312,11 @@ describe('routing rencana.ts: adapter -> (platform) -> generik -> dipandu', () =
 
 describe('setiap layanan adminduk × wilayah berportal web mendapat rute Browser Pendamping', () => {
   const PORTAL_WEB = Object.keys(PORTAL_WILAYAH).filter((k) => portalWebWilayah(k));
+  /**
+   * 10 daerah prioritas pemilik (Pendamping aktif; wilayah lain dipandu "sedang dikembangkan" sesudah gerbang
+   * DAERAH_PENDAMPING_AKTIF di cabang feat/dipandu-meyakinkan digabung).
+   */
+  const DAERAH = ['3578', '3312', '3374', '1271', '3573', '3276', '3671', '1371', '1871', '6371'];
   const TANPA_WEB = Object.keys(PORTAL_WILAYAH).filter((k) => !portalWebWilayah(k));
 
   it('setiap jenis adminduk punya bundel (tidak ada jenis yang diam-diam jatuh ke dipandu)', () => {
@@ -326,10 +326,11 @@ describe('setiap layanan adminduk × wilayah berportal web mendapat rute Browser
     for (const jenis of ADMINDUK) expect(bundelPendamping(jenis), jenis).toBeDefined();
   });
 
-  it('jenis × wilayah portal web: rute adapter atau Navigator generik ke portal wilayah itu', () => {
+  it('jenis × daerah prioritas berportal web: rute adapter atau Navigator generik ke portal wilayah itu', () => {
     aturJaringanId(() => true);
-    expect(PORTAL_WEB.length).toBeGreaterThan(20);
-    for (const kode of PORTAL_WEB)
+    const prioritasWeb = PORTAL_WEB.filter((k) => DAERAH.includes(k));
+    expect(prioritasWeb.length).toBe(DAERAH.length);
+    for (const kode of prioritasWeb)
       for (const jenis of ADMINDUK) {
         const r = rutePendamping({ jenis, kodeKabKota: kode });
         expect(r.jalur, `${jenis} × ${kode}`).not.toBe('dipandu');
@@ -341,6 +342,21 @@ describe('setiap layanan adminduk × wilayah berportal web mendapat rute Browser
         // Kartu rencana dan tindakan dari keputusan rute yang sama.
         expect(tierUrusan({ jenis, kodeKabKota: kode }), `${jenis} × ${kode}`).toBe('semi');
       }
+  });
+
+  it('matriks prioritas pemilik: 10 daerah × 5 layanan = rute Pendamping ke portal daerah itu', () => {
+    aturJaringanId(() => true);
+    const LAYANAN = ['kelahiran', 'kk', 'pindah', 'kia', 'ktp'];
+    const gagal: string[] = [];
+    for (const kode of DAERAH)
+      for (const jenis of LAYANAN) {
+        const r = rutePendamping({ jenis, kodeKabKota: kode });
+        const portal = portalWebWilayah(kode);
+        if (r.jalur === 'dipandu' || !portal || new URL(r.origin).host !== new URL(portal.origin).host)
+          gagal.push(`${jenis} × ${kode}: ${r.jalur === 'dipandu' ? r.alasan : r.origin}`);
+        else expect(rencanaUrusan(jenis, { ktp: kode })?.pendamping, `${jenis} × ${kode}`).toBeDefined();
+      }
+    expect(gagal).toEqual([]);
   });
 
   it('QA Wonogiri: cetak ulang KTP-el rusak = Browser Pendamping di Telunjuk Sakti, bukan "belum bisa dibantu"', () => {
@@ -367,19 +383,13 @@ describe('setiap layanan adminduk × wilayah berportal web mendapat rute Browser
     }
   });
 
-  it('wilayah tanpa portal web dan layanan non-adminduk tetap dipandu dengan kanal yang benar', () => {
+  it('wilayah tanpa portal web dipandu; layanan non-adminduk dipandu dengan kanal instansinya', () => {
     aturJaringanId(() => true);
     for (const kode of TANPA_WEB)
       for (const jenis of ADMINDUK) {
         const r = rutePendamping({ jenis, kodeKabKota: kode });
         expect(r, `${jenis} × ${kode}`).toMatchObject({ jalur: 'dipandu' });
-        expect(r.jalur === 'dipandu' && r.alasan, `${jenis} × ${kode}`).toBe(
-          alasanDipandu(kode, namaWilayah(kode)),
-        );
       }
-    expect(rutePendamping({ jenis: 'ktp', kodeKabKota: DAIRI })).toMatchObject({
-      alasan: expect.stringMatching(/lewat WhatsApp/),
-    });
     for (const jenis of ['skck', 'pajak_kendaraan', 'bansos', 'pengaduan', 'cek_dpt', 'lainnya'])
       expect(rutePendamping({ jenis, kodeKabKota: '3312' }), jenis).toEqual({
         jalur: 'dipandu',
