@@ -1,4 +1,4 @@
-import { titipDariTamu, type Db } from '@urusin/harness';
+import { bacaIngatan, buangTitipanKedaluwarsa, titipDariTamu, type Db } from '@urusin/harness';
 import { dataDiriSintetis } from './demo.js';
 import { maskEmail, normalizeEmail } from './email.js';
 import { AkunError } from './errors.js';
@@ -1052,8 +1052,31 @@ export class AkunService {
       this.iso(-this.ttl.belumVerifikasiSec),
       now,
     );
+    lain += this.sapuTitipanIngatan(now);
     if (tamu + demo + belumVerifikasi > 0) this.lipatWal();
     return { tamu, demo, belumVerifikasi, lain };
+  }
+
+  /** Titipan ingatan tamu yang kedaluwarsa (ADR 0031, 30 hari) dibuang dari ingatan akun. Isi rusak dilewati. */
+  private sapuTitipanIngatan(now: string): number {
+    const ids = this.db
+      .prepare(
+        "SELECT i.user_id AS id FROM vault_ingatan i JOIN users u ON u.id = i.user_id WHERE u.jenis = 'akun'",
+      )
+      .all() as { id: string }[];
+    let n = 0;
+    for (const { id } of ids) {
+      try {
+        const raw = this.deps.vault.getIngatan(id);
+        const bersih = raw ? buangTitipanKedaluwarsa(bacaIngatan(raw.data), now) : null;
+        if (!bersih) continue;
+        this.deps.vault.setIngatan(id, bersih);
+        n++;
+      } catch {
+        // isi tidak bisa dibaca: sudah di-alert vault, tidak ditimpa
+      }
+    }
+    return n;
   }
 
   // --- kepemilikan urusan dan rotasi pemilik ---

@@ -191,6 +191,15 @@ export function titipanAktif(ingatan: Ingatan, now: string = new Date().toISOStr
   return (ingatan.dariTamu ?? []).filter((b) => !BUTUH_PERSETUJUAN.has(b.jenis));
 }
 
+/** Titipan tamu yang sudah kedaluwarsa (atau hanya berisi butir sensitif) dibuang; null bila tidak berubah. */
+export function buangTitipanKedaluwarsa(
+  ingatan: Ingatan,
+  now: string = new Date().toISOString(),
+): Ingatan | null {
+  if (!ingatan.dariTamu?.length || titipanAktif(ingatan, now).length > 0) return null;
+  return buangDariTamu(ingatan);
+}
+
 /** Jumlah butir tamu yang menunggu pilihan warga. */
 export const jumlahDariTamu = (ingatan: Ingatan, now?: string): number => titipanAktif(ingatan, now).length;
 
@@ -285,7 +294,7 @@ const BUKTI: Partial<Record<JenisButirIngatan, (nilai: string) => RegExp>> = {
  * dan permintaan di tengah teks tidak dihitung: pesan berantai yang diteruskan warga tidak boleh jadi catatan.
  */
 export const MINTA_DIINGAT_RE =
-  /^(?:(?:oh|eh|nah|iya|ya|pak|bu|mas|mbak|kak|dik|dek|bang|halo|hai)\b[\s,.!]*)*(?:(?:tolong|mohon|minta)\s+(?:di)?(?:ingat|catat)(?:kan|in)?(?!\s+bahwa\b)|(?:ingat|catat)(?:kan|in)?\s+ya)\b/i;
+  /^(?:(?:oh|eh|nah|iya|ya|pak|bu|mas|mbak|kak|dik|dek|bang|halo|hai)\b[\s,.!]*)*(?:(?:tolong|mohon|minta)\s+(?:di)?(?:ingat|catat)(?:kan|in)?(?![\s,]+bahwa\b)|(?:ingat|catat)(?:kan|in)?\s+ya)\b/i;
 /** Pesan tempelan/diteruskan (lebih dari 2 kalimat atau berbaris banyak) tidak pernah dianggap permintaan ingat. */
 const pesanTempelan = (teks: string) =>
   /\n/.test(teks.trim()) || teks.split(/(?<=[.!?])\s+/).filter((k) => k.trim()).length > 2;
