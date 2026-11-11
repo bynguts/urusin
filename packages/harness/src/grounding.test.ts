@@ -238,13 +238,13 @@ describe('hand-off menurut layanan (W3), kontak (W6), dan dedup URL (W9)', () =>
   it('adminduk DKI (p05): Suku Dinas kota administrasi lebih dulu, situs Dinas provinsi sebagai pengganti', () => {
     const h = buildHandoff({ kodeKabKota: '3175', jenis: 'kk', chunks: [] }, 'tanpa_sumber');
     expect(h.kanal[0]).toEqual({
-      nama: 'Suku Dinas Kependudukan dan Pencatatan Sipil Kota Administrasi Jakarta Timur',
+      nama: 'Suku Dinas Dukcapil Kota Administrasi Jakarta Timur lewat Alpukat Betawi, portal Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta',
       url: 'https://alpukat-dukcapil.jakarta.go.id/',
     });
+    // Tanyakan ke Suku Dinas kota (bukan Dinas provinsi); Alpukat disebut portal provinsi, bukan situs Sudin.
     expect(h.alasan).toContain(
-      'Suku Dinas Kependudukan dan Pencatatan Sipil Kota Administrasi Jakarta Timur',
+      'Tanyakan ke Suku Dinas Dukcapil Kota Administrasi Jakarta Timur lewat Alpukat Betawi',
     );
-    expect(h.alasan).not.toMatch(/Provinsi DKI/);
     expect(host(h.kanal[1]?.url)).toBe('kependudukancapil.jakarta.go.id');
   });
 

@@ -844,6 +844,7 @@ describe('temuan eval persona p17: balasan ringkas tanpa kehilangan isi wajib', 
     expect(p).toMatch(/paling banyak 4 kalimat pendek atau 5 butir/);
     expect(p).toMatch(/Ikuti gaya warga/);
     expect(p).toMatch(/warga lansia dijawab dengan kata sehari-hari/);
+    expect(p).toMatch(/dan tanpa kode formulir/);
     expect(p).toMatch(/formulir permohonan yang disediakan petugas \(F-1\.02\)": kodenya boleh dalam kurung/);
     expect(p).toMatch(/Jangan menyalin ulang seluruh kartu rencana atau jawaban bersumber/);
     // p04 (lansia): ringkas, tetapi dokumen kunci tetap disebut ulang, bukan "lihat daftar di atas".
@@ -907,6 +908,26 @@ describe('temuan eval persona p03: hand-off ikut domisili yang disebut warga', (
     expect(k('kok malah Surabaya? aku mau urus di Bekasi')).toBe('3216');
     expect(k('Disdukcapil Surabaya bisa dihubungi lewat apa?')).toBe('3578');
     expect(k('bawa apa aja?')).toBe('3578');
+  });
+
+  it('KTP-el tanpa domisili tercatat: kab/kota lain yang disebut warga dipakai, tanpa kab/kota lain tetap KTP', () => {
+    const env = makeEnv({ provider: new FakeProvider() });
+    const u = buatUrusanTerwilayah(env.store, { jenis: 'ktp', kodeKabKota: '3578' });
+    const k = (t: string) => kodeYurisdiksi(env.store, u, t);
+    expect(k('di Kabupaten Bekasi tepatnya aku harus ke kantor mana buat cetak KTP?')).toBe('3216');
+    expect(k('kok disuruh tanya Surabaya? aku mau urus di Kabupaten Bekasi')).toBe('3216');
+    expect(k('KTP saya terdaftar di Kota Surabaya')).toBe('3578');
+    // Transkrip p03: "semarang" polos ambigu (Kota/Kab.), "kota semarang" menentukan.
+    expect(
+      k(
+        'kok disuruh tanya surabaya kak? aku mau urus di semarang. kantor disdukcapil kota semarang yang mana?',
+      ),
+    ).toBe('3374');
+    expect(k('aku kuliah di semarang')).toBe('3578');
+    expect(k('kantor mana buat cetak KTP?')).toBe('3578');
+    // Urusan lain (KK) tetap ke wilayah KTP.
+    const kk = buatUrusanTerwilayah(env.store, { jenis: 'kk', kodeKabKota: '3578' });
+    expect(kodeYurisdiksi(env.store, kk, 'Disdukcapil Kabupaten Bekasi di mana?')).toBe('3578');
   });
 
   it('pertanyaan tentang Disdukcapil domisili tanpa sumber: hand-off ke domisili, KTP jadi pengganti', async () => {

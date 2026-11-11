@@ -459,7 +459,11 @@ class TurnRunner {
       this.version = this.urusan.version;
     } catch (e) {
       span.end({ status: 'error', errorCode: (e as Error).name, model: this.deps.model });
-      if (isLlmTerminalError(e) || this.ctrl.signal.aborted) throw e;
+      if (this.ctrl.signal.aborted) throw e;
+      // Klasifikasi terpotong (eval p06: pesan pembuka warga Asmat): jenis dibiarkan kosong agar diklasifikasi
+      // ulang giliran berikutnya; turn tetap berjalan, warga tidak melihat galat.
+      if (e instanceof LlmLengthError) return;
+      if (isLlmTerminalError(e)) throw e;
       if (!(e instanceof StructuredOutputError)) throw e;
       this.urusan = this.store.setJenis(this.turn.urusanId, this.version, 'lainnya');
       this.version = this.urusan.version;

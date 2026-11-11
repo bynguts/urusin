@@ -188,11 +188,18 @@ function kanalAdminduk(kode: string | null): KanalHandoff[] {
   const nasional = `${KANAL_NASIONAL.judul}, ${KANAL_NASIONAL.instansi}`;
   if (!kode) return [{ nama: nasional, url: KANAL_NASIONAL.url }];
   const k = kanalWilayah(kode);
-  const out: KanalHandoff[] = [{ nama: k.jenis === 'nasional' ? nasional : k.instansi, url: k.url }];
-  // DKI: Suku Dinas kota administrasi (portal Alpukat) lebih dulu, lalu situs Dinas Dukcapil Provinsi.
+  const w = wilayahByKode(kode);
+  // DKI (p05): yang melayani Suku Dinas Dukcapil kota administrasi, lewat portal milik Dinas provinsi; label
+  // menyebut keduanya agar tautan Alpukat tidak dikira situs Suku Dinas. Situs Dinas provinsi jadi pengganti.
+  const nama =
+    k.jenis === 'nasional'
+      ? nasional
+      : kode.startsWith('31') && w && k.jenis === 'portal'
+        ? `Suku Dinas Dukcapil ${w.nama} lewat ${k.judul}, portal ${k.instansi}`
+        : k.instansi;
+  const out: KanalHandoff[] = [{ nama, url: k.url }];
   if (kode.startsWith('31')) out.push(DUKCAPIL_DKI);
   const kontak = kontakDukcapil(kode);
-  const w = wilayahByKode(kode);
   if (kontak && w)
     out.push({
       nama: `Dinas Kependudukan dan Pencatatan Sipil ${w.nama}`,
