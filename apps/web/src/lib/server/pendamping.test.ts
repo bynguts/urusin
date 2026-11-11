@@ -18,6 +18,7 @@ import {
 import { POST as serahkan } from '../../routes/api/urusan/[id]/pendamping/serahkan/+server';
 import { POST as izinkanIsi } from '../../routes/api/urusan/[id]/izinkan-isi/+server';
 import { POST as tiket } from '../../routes/api/urusan/[id]/pendamping/tiket/+server';
+import { POST as terkirim } from '../../routes/api/urusan/[id]/pendamping/terkirim/+server';
 import { AKUN_COOKIE } from './akun';
 import { checkOrigin } from './origin';
 import { daftarWrite } from '../pendamping/isi-data';
@@ -377,6 +378,62 @@ describe('broker Browser Pendamping', () => {
     expect(bukti).toHaveLength(1);
     expect(bukti[0]).toContain('nomor REG-0001');
     expect(JSON.stringify(labels)).not.toContain(NIK);
+  });
+
+  describe('"Saya sudah mengirim" (POST /pendamping/terkirim)', () => {
+    const TAKEOVER = { status: 200, body: sesi({ status: 'berjalan', mode: 'takeover', antrean: null }) };
+    it('worker menerima (tulis warga + halaman sukses): sesi siaga berhasil dicatat sekali + nomor', async () => {
+      const u = urusanDenganEksekusi();
+      const siaga = sesi({
+        status: 'siaga',
+        mode: 'takeover',
+        hasil: 'berhasil',
+        antrean: null,
+        bukti: { nomor: 'REG-0009' },
+      });
+      reply = (path) => (path.endsWith('/selesai') ? { status: 200, body: siaga } : TAKEOVER);
+      const r = await terkirim(ev(req('POST'), u.id));
+      expect(r.status).toBe(200);
+      expect(((await r.json()) as any).hasil).toBe('berhasil');
+      // Pemilik saja, tanpa executionId: worker memeriksa halaman saat ini, bukan klaim perangkat.
+      expect(
+        calls.filter((c) => c.url.endsWith('/selesai')).map((c) => [new URL(c.url).pathname, c.body]),
+      ).toEqual([['/internal/sesi/selesai', { urusanId: u.id, sidHash: hashSid(SID) }]]);
+      await terkirim(ev(req('POST'), u.id));
+      const labels = rt.store
+        .eventsAfter(u.id)
+        .filter((e) => e.type === 'progress')
+        .map((e) => (e.payload as { label: string }).label);
+      expect(labels.filter((l) => l.includes('Browser Pendamping melaporkan langkah berhasil'))).toHaveLength(
+        1,
+      );
+    });
+
+    it('worker 409 (belum ada tulis warga / halaman belum sukses): pesan jujur, tidak ada yang dicatat', async () => {
+      const u = urusanDenganEksekusi();
+      const tolak = { kode: 'PESAN_TIDAK_SAH', pesanWarga: 'halaman belum menunjukkan permohonan terkirim' };
+      reply = (path) => (path.endsWith('/selesai') ? { status: 409, body: tolak } : TAKEOVER);
+      const r = await terkirim(ev(req('POST'), u.id));
+      expect(r.status).toBe(409);
+      expect(await r.json()).toEqual({
+        kode: 'BELUM_TERKIRIM',
+        pesanWarga: 'Belum terlihat terkirim. Periksa halaman situsnya, lalu coba lagi.',
+      });
+      expect(rt.store.eventsAfter(u.id).filter((e) => e.type === 'progress')).toHaveLength(0);
+    });
+
+    it('bukan pemilik -> 404, tanpa cookie sesi -> 401, Origin asing ditolak; worker tidak dipanggil', async () => {
+      const u = urusanDenganEksekusi();
+      pasangPemeriksaPemilikAkun(() => false);
+      expect((await terkirim(ev(req('POST'), u.id))).status).toBe(404);
+      pasangPemeriksaPemilikAkun(undefined);
+      expect((await terkirim(ev(req('POST', undefined, null), u.id))).status).toBe(401);
+      expect((await terkirim(ev(req('POST'), 'u_tidak_ada'))).status).toBe(404);
+      expect(calls).toHaveLength(0);
+      expect(
+        checkOrigin('POST', `/api/urusan/${u.id}/pendamping/terkirim`, 'https://evil.example', ORIGIN),
+      ).toMatchObject({ allowed: false });
+    });
   });
 
   it('baca-saja (Samsat): origin dari permintaan, bukan portal kota; hasil dicatat tanpa transisi state', async () => {

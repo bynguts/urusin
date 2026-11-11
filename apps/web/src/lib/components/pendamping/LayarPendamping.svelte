@@ -19,6 +19,7 @@
     onambilalih,
     onkembalikan,
     onbukatautan = () => {},
+    onsudahkirim = () => {},
     onhentikan,
     ontutup,
     onmulailagi,
@@ -33,6 +34,8 @@
     onkembalikan: () => void;
     /** Giliran ketuk_tautan: buka tautan pembuka yang disorot lewat worker (bukan ketukan di halaman). */
     onbukatautan?: () => void;
+    /** AI berhenti / warga memegang kendali: "Saya sudah mengirim" (worker memeriksa halaman sukses). */
+    onsudahkirim?: () => void;
     onhentikan: () => void;
     /** Siaga: tutup peramban server sekarang (DELETE sesi). */
     ontutup: () => void;
@@ -112,6 +115,20 @@
   const TEKS = 'w-full max-w-[280px] text-center text-sm leading-5 text-muted';
 </script>
 
+{#snippet sudahKirim()}
+  <!-- AI berhenti: warga mengirim sendiri, lalu Urusin memeriksa halaman suksesnya lewat worker. -->
+  <div class="flex flex-wrap gap-2">
+    <button
+      type="button"
+      onclick={onsudahkirim}
+      disabled={data.memeriksaKirim}
+      data-sudah-kirim
+      class={TOMBOL_TERANG}>Saya sudah mengirim</button
+    >
+  </div>
+  {#if data.pesanKirim}<p role="alert" class="text-[15px] text-galat">{data.pesanKirim}</p>{/if}
+{/snippet}
+
 <section
   aria-label="Browser Pendamping"
   class="flex h-full min-h-[32rem] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_16px_#0000000d]"
@@ -175,6 +192,8 @@
               </button>
             {/if}
           </div>
+        {:else if data.giliran.alasan === 'berhenti'}
+          {@render sudahKirim()}
         {/if}
       </div>
     </div>
@@ -192,12 +211,20 @@
         <p class="text-[15px] leading-[23px] text-muted">
           Yang Anda ketik tidak dicatat dan tidak dilihat AI. Mau lanjut atau batalkan?
         </p>
+        {#if data.pesanKirim}<p role="alert" class="text-[15px] text-galat">{data.pesanKirim}</p>{/if}
       </div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <button type="button" onclick={onkembalikan} class={TOMBOL_GELAP}>
           <Icon name="putar" class="size-[15px]" />Lanjutkan
         </button>
         <button type="button" onclick={onhentikan} class={TOMBOL_TERANG}>Batalkan</button>
+        <button
+          type="button"
+          onclick={onsudahkirim}
+          disabled={data.memeriksaKirim}
+          data-sudah-kirim
+          class={TOMBOL_TERANG}>Saya sudah mengirim</button
+        >
       </div>
     </div>
   {:else if k === 'siaga'}
