@@ -9,6 +9,7 @@
   import KartuGalat from '#lib/components/urusan/KartuGalat.svelte';
   import KartuGiliran from '#lib/components/urusan/KartuGiliran.svelte';
   import KartuHandoff from '#lib/components/urusan/KartuHandoff.svelte';
+  import KartuIngatan from '#lib/components/urusan/KartuIngatan.svelte';
   import KartuJawaban from '#lib/components/urusan/KartuJawaban.svelte';
   import KartuKonfirmasi from '#lib/components/urusan/KartuKonfirmasi.svelte';
   import KartuRencana from '#lib/components/urusan/KartuRencana.svelte';
@@ -124,6 +125,12 @@
     void k.progres;
     void tick().then(() => ujungDaftar?.scrollIntoView({ block: 'end' }));
   });
+
+  /** "Batalkan" di kartu "Urusin mengingat": hapus butir itu dari Ingatan warga (404 = sudah tidak ada). */
+  async function batalkanIngatan(id: string): Promise<boolean> {
+    const r = await fetch(`/api/ingatan/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => null);
+    return r !== null && (r.ok || r.status === 404);
+  }
 
   function judulDariPesan(t: string | undefined): string {
     if (!t) return 'Urusan baru';
@@ -381,6 +388,12 @@
                 >
                   <Icon name="centang-bulat" class="size-4 shrink-0" />{it.teks} · {waktuSingkat(it.at)}
                 </p>
+              {:else if it.jenis === 'ingatan'}
+                <KartuIngatan
+                  ingatan={it.e}
+                  dibatalkan={it.dibatalkan}
+                  onbatalkan={() => batalkanIngatan(it.e.butir.id)}
+                />
               {:else if it.jenis === 'teks'}
                 <PesanAgen avatar={p.avatar}
                   ><p class="leading-relaxed whitespace-pre-line">{it.teks}</p></PesanAgen

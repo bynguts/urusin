@@ -7,6 +7,18 @@ const ev = (seq: number, type: string, isi: Record<string, unknown> = {}) =>
   ({ seq, at, chainHead: 'h', type, ...isi }) as unknown as UrusinEvent;
 
 describe('bangunLinimasa', () => {
+  it('kartu ingatan: simpan tampil; hapus berikutnya menandai kartu lama dibatalkan', () => {
+    const butir = { id: 'ing_0123456789abcdef', jenis: 'lansia', label: 'Warga lansia' };
+    const out = bangunLinimasa(
+      [ev(1, 'ingatan', { aksi: 'simpan', butir }), ev(2, 'ingatan', { aksi: 'hapus', butir })],
+      [],
+    );
+    expect(out.map((x) => [x.jenis, x.jenis === 'ingatan' && x.dibatalkan])).toEqual([
+      ['ingatan', true],
+      ['ingatan', false],
+    ]);
+  });
+
   it('menyisipkan pesan warga sesuai urutan seq dan menggabungkan teks streaming', () => {
     const out = bangunLinimasa(
       [ev(2, 'assistant_text', { delta: 'Halo ' }), ev(3, 'assistant_text', { delta: 'Bu.' }), ev(4, 'done')],

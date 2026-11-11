@@ -26,7 +26,9 @@
       ? 'Data Diri akun Anda'
       : usulan.sumber === 'warga'
         ? 'percakapan ini'
-        : 'pilihan wilayah di perangkat ini',
+        : usulan.sumber === 'ingatan'
+          ? 'yang Urusin ingat dari urusan Anda sebelumnya'
+          : 'pilihan wilayah di perangkat ini',
   );
 </script>
 

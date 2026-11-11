@@ -10,6 +10,8 @@ export type ItemLinimasa =
   | { jenis: 'handoff'; key: string; e: EventOf<'handoff'> }
   | { jenis: 'rencana'; key: string; e: EventOf<'plan_card'>; terakhir: boolean }
   | { jenis: 'wilayah'; key: string; e: EventOf<'wilayah'>; terakhir: boolean }
+  /** Ingatan warga berubah (ADR 0031); `dibatalkan` = butir ini sudah dihapus lagi di event berikutnya. */
+  | { jenis: 'ingatan'; key: string; e: EventOf<'ingatan'>; dibatalkan: boolean }
   | { jenis: 'checklist'; key: string; e: EventOf<'checklist'> }
   | {
       jenis: 'konfirmasi';
@@ -86,6 +88,12 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
           wilayahDitetapkanSeq = e.seq;
           out.push({ jenis: 'sistem', key, teks: kalimatWilayah(e), at: e.at });
         }
+        break;
+      case 'ingatan':
+        if (e.aksi === 'hapus')
+          for (const it of out)
+            if (it.jenis === 'ingatan' && it.e.butir.id === e.butir.id) it.dibatalkan = true;
+        out.push({ jenis: 'ingatan', key, e, dibatalkan: false });
         break;
       case 'execution_request':
         permintaan.set(e.paramsHash, e);

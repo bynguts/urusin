@@ -37,6 +37,7 @@ import {
 import { createRagSearcher, openDb, type RagSearchInfo } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { httpKeluar } from './http-keluar.js';
+import { penyimpanIngatan } from './ingatan.js';
 import { buatOidcFixture, type OidcFixture } from './oidc-fixture.js';
 import { peringatanKuotaJuri, peringatanTurnstile, turnstileFromEnv, type Turnstile } from './turnstile.js';
 import { RateLimiter } from './limiter.js';
@@ -227,11 +228,17 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   // Korpus nyata: jalur produksi hybrid (BM25 + vektor Jina) + rerank endpoint, jatuh ke BM25 bila penyedia
   // gagal. Korpus demo tetap BM25 sinkron (tanpa vektor, tanpa jaringan).
   const searcher = config.ragDbPath ? createRagSearcher(ragDb, init.env ?? process.env) : undefined;
+  // Ingatan warga (ADR 0031) disimpan di vault akun; AkunService dirakit sesudah harness (butuh store).
+  const akunRef: { akun?: AkunService } = {};
   const h = createHarness({
     provider: init.provider ?? new DemoProvider(),
     db,
     ragDb,
     ragSearch: searcher?.search,
+    ingatan: penyimpanIngatan(() => {
+      if (!akunRef.akun) throw new Error('akun belum siap');
+      return akunRef.akun;
+    }),
     ...init.harness,
   });
   h.store.reapExpiredTurns();
@@ -256,6 +263,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     },
   };
   const { akun, oidcFixture } = createAkun(db, config, (id) => h.store.deleteUrusan(id), init.akun);
+  akunRef.akun = akun;
   const turnstile = init.akun?.turnstile ?? turnstileFromEnv();
   for (const peringatan of [
     peringatanTurnstile(turnstile, init.env ?? process.env),

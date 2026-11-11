@@ -96,6 +96,7 @@ export function terapkanEvent(s: KeadaanUrusan, e: UrusinEvent): KeadaanUrusan {
       };
     case 'policy_gate':
     case 'jejak_pendamping':
+    case 'ingatan':
       return next;
   }
 }
