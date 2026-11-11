@@ -15,6 +15,8 @@ case "$1" in
           printf '{"manifests": ['
           for p in ${SHIM_PLATFORMS-linux/arm64 linux/amd64}; do printf '{"platform": {"architecture": "%s", "os": "linux"}}, ' "${p#linux/}"; done
           printf '{"platform": {"architecture": "unknown", "os": "unknown"}}]}\n'
+        elif [ "$3" = inspect ] && [[ "$*" == *Provenance* ]]; then
+          echo "{\"SLSA\":{\"vcs\":\"${SHIM_PROV_SHA-2175bb0c67fe37631a73ad92e23d600b705a018b}\"}}"
         elif [ "$3" = inspect ]; then
           printf 'sha256:%064d\n' 5
         fi
@@ -22,5 +24,7 @@ case "$1" in
       *) exit 0 ;;
     esac ;;
   run) exit "${SHIM_RUN_RC:-0}" ;;
+  pull) exit "${SHIM_PULL_RC:-0}" ;;
+  image) [ "$2" = inspect ] && echo "${SHIM_LABEL-2175bb0c67fe37631a73ad92e23d600b705a018b}"; exit 0 ;;
   *) exit 0 ;;
 esac

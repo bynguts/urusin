@@ -13,6 +13,11 @@ on:
     branches: [main]
     tags: ['rc*', 'v*']
   workflow_dispatch:
+    inputs:
+      simpan_vps:
+        description: 'Runner self-hosted: simpan image native di docker host agent-vm (deploy tanpa login GHCR)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -141,6 +146,18 @@ jobs:
           NAME: ${{ matrix.name }}
           DIGEST: ${{ steps.build_self.outputs.digest }}
         run: printf '%s\n' "$GHCR_TOKEN" | sudo -n /opt/urusin-ci/bin/ci-docker smoke "$NAME" "$DIGEST" "$GITHUB_WORKSPACE"
+
+      # Opsional (workflow_dispatch simpan_vps=true): setelah smoke lulus, image native DISIMPAN di docker host
+      # agent-vm beserta salinan provenance (/opt/urusin-ci/provenance), memakai GITHUB_TOKEN job ini. deploy.sh
+      # lalu memakai image lokal tanpa kredensial GHCR di VPS (label revision + provenance tetap diperiksa).
+      - name: Simpan image di VPS (self-hosted, simpan_vps)
+        if: runner.environment == 'self-hosted' && inputs.simpan_vps
+        timeout-minutes: 20
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NAME: ${{ matrix.name }}
+          DIGEST: ${{ steps.build_self.outputs.digest }}
+        run: printf '%s\n' "$GHCR_TOKEN" | sudo -n /opt/urusin-ci/bin/ci-docker simpan "$NAME" "$DIGEST" "$GITHUB_WORKSPACE"
 
       # SBOM disimpan sebagai attestation di registry; ekstrak untuk dilampirkan ke GitHub Release.
       - name: Ekstrak SBOM

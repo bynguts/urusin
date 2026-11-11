@@ -43,6 +43,14 @@ if [ -L "$URUSIN_CI_ROOT/runner/_work/lompat" ]; then
 fi
 cid smoke web "sha256:abc" "$WS"
 check "digest tidak lengkap ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
+cid simpan web "sha256:abc" "$WS"
+check "simpan: digest tidak lengkap ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
+cid simpan api "$DIG" "$WS"
+check "simpan: nama image di luar web|fixtures|pendamping ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
+cid simpan web "$DIG" "$SB/luar/x"
+check "simpan: workspace di luar _work ditolak" '[ $rc -ne 0 ] && [[ "$out" == *"di luar"* ]] && [ -z "$calls" ]'
+cid simpan web "$DIG"
+check "simpan: argumen kurang ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
 cid alias "$SHA" latest
 check "tag rilis selain rc*/v* ditolak" '[ $rc -ne 0 ] && [ -z "$calls" ]'
 cid pw rm "$WS" "$SHA"
@@ -91,6 +99,26 @@ printf '{}\n' > "$WS/package.json"
 SHIM_DF_PCT=50 cid pw e2e "$WS" "$SHA"
 check "package.json tanpa packageManager pnpm ditolak sebelum docker run" '[ $rc -ne 0 ] && [ -z "$calls" ]'
 printf '{\n  "packageManager": "pnpm@10.20.0"\n}\n' > "$WS/package.json"
+
+echo "== simpan (image rilis disimpan di host untuk deploy tanpa login)"
+SHIM_DF_PCT=88 cid simpan web "$DIG" "$WS"
+check "simpan: disk 88% ditolak sebelum Docker" '[ $rc -ne 0 ] && [ -z "$calls" ]'
+URUSIN_CI_ARCH=aarch64 SHIM_DF_PCT=50 cid simpan pendamping "$DIG" "$WS"
+SREF="ghcr.io/bynguts/urusin-pendamping@$DIG"
+check "simpan: sukses, mencetak SIMPAN" '[ $rc -eq 0 ] && [[ "$out" == *"SIMPAN: $SREF linux/arm64 revision=$SHA"* ]]'
+check "simpan: login GHCR lewat stdin, token tidak di argumen" '[ "$(cat "$SHIM_DIR/login.stdin")" = "$TOKEN" ] && [[ "$calls" != *"$TOKEN"* ]]'
+check "simpan: pull native by digest, image TIDAK dibuang" '[[ "$calls" == *"[pull] [-q] [--platform] [linux/arm64] [$SREF]"* ]] && [[ "$calls" != *"[image] [rm]"* ]] && [[ "$calls" != *"linux/amd64"* ]] && [[ "$calls" != *"prune"* ]]'
+check "simpan: manifest dicek sebelum pull" '[[ "$(grep -n "imagetools\] \[inspect\] \[--raw\]" <<<"$calls" | head -n1 | cut -d: -f1)" -lt "$(grep -n "\[pull\]" <<<"$calls" | cut -d: -f1)" ]]'
+PF="$URUSIN_CI_ROOT/provenance/${DIG#sha256:}.json"
+check "simpan: salinan provenance 0644 memuat SHA" '[ -f "$PF" ] && [ "$(stat -c %a "$PF")" = 644 ] && grep -q "$SHA" "$PF"'
+URUSIN_CI_ARCH=aarch64 SHIM_PROV_SHA=0000000000000000000000000000000000000000 SHIM_DF_PCT=50 cid simpan web "$DIG" "$WS"
+check "simpan: provenance tanpa SHA label ditolak" '[ $rc -ne 0 ] && [[ "$out" == *"tidak memuat SHA"* ]]'
+URUSIN_CI_ARCH=aarch64 SHIM_LABEL=dev SHIM_DF_PCT=50 cid simpan web "$DIG" "$WS"
+check "simpan: label revision bukan SHA lengkap ditolak" '[ $rc -ne 0 ] && [[ "$out" == *"bukan SHA lengkap"* ]]'
+URUSIN_CI_ARCH=aarch64 SHIM_PULL_RC=1 SHIM_DF_PCT=50 cid simpan web "$DIG" "$WS"
+check "simpan: pull gagal = gagal" '[ $rc -ne 0 ] && [[ "$out" == *"pull"*"gagal"* ]]'
+: > "$SHIM_DIR/calls.log"; out="$(bash "$CI/ci-docker" simpan web "$DIG" "$WS" </dev/null 2>&1)"; rc=$?; calls="$(cat "$SHIM_DIR/calls.log")"
+check "simpan: tanpa token di stdin ditolak sebelum pull" '[ $rc -ne 0 ] && [[ "$out" == *"token GHCR kosong"* ]] && [[ "$calls" != *"[pull]"* ]]'
 
 echo "== smoke (hanya arsitektur native, semua dengan timeout)"
 printf 'enabled\n' > "$SB/binfmt-ada"

@@ -9,6 +9,8 @@
 #   ci-docker pw <e2e|perf> <workspace> <sha40>       Playwright resmi (versi = basis apps/pendamping/Dockerfile)
 #   ci-docker build <web|fixtures|pendamping> <sha40> <workspace>   token GHCR di stdin; cetak "DIGEST: sha256:..."
 #   ci-docker smoke <web|fixtures|pendamping> <sha256:digest> <workspace>  token GHCR di stdin
+#   ci-docker simpan <web|fixtures|pendamping> <sha256:digest> <workspace> token GHCR di stdin; image native
+#                                                      DISIMPAN di docker host + salinan provenance (deploy tanpa login)
 #   ci-docker sbom <web|fixtures|pendamping> <sha256:digest>        token GHCR di stdin; SBOM JSON ke stdout
 #   ci-docker alias <sha40> <rc*|v*>                   token GHCR di stdin; alias :<sha> -> :<tag> (tanpa build)
 #   ci-docker builder-init | builder-gc | builder-rm  builder buildx `urusin-ci` (cache <= 1,5 GB)
@@ -24,6 +26,8 @@ if [ "$(id -u)" = 0 ]; then
   unset URUSIN_CI_ROOT URUSIN_CI_DF_ROOT URUSIN_CI_DISK_MAX URUSIN_CI_USER URUSIN_CI_TEST_PATH URUSIN_CI_ARCH URUSIN_CI_BINFMT
 fi
 CI_ROOT="${URUSIN_CI_ROOT:-/opt/urusin-ci}"
+# Salinan provenance image yang disimpan `simpan` (dibaca deploy.sh bila registry tidak bisa dijangkau tanpa login).
+PROV_DIR="$CI_ROOT/provenance"
 WORK_ROOT="$CI_ROOT/runner/_work"
 BUILDER=urusin-ci
 CACHE_MAX=1500mb # anggaran disk agent-vm (lihat README); sama dengan maxUsedSpace di buildkitd.toml
@@ -285,6 +289,36 @@ cmd_smoke() {
   fi
 }
 
+# Tarik image rilis ke docker host dan BIARKAN di sana (tanpa BUANG_REF), supaya deploy.sh memakai image lokal
+# tanpa kredensial GHCR. Hanya varian native. Label revision harus SHA lengkap dan provenance buildx harus
+# memuatnya (cek yang sama dengan deploy.sh); provenance disalin ke $PROV_DIR/<hex digest>.json (0644, root).
+cmd_simpan() {
+  local name digest ref arch label prov tmp
+  name="$1"
+  digest="$2"
+  valid_name "$name"
+  valid_digest "$digest"
+  valid_ws "$3" >/dev/null
+  disk_guard
+  ghcr_login
+  ref="$REPO_PREFIX-$name@$digest"
+  arch="$(arch_native)"
+  cek_manifest "$ref"
+  timeout 900 docker pull -q --platform "linux/$arch" "$ref" >/dev/null || die "pull $ref gagal"
+  label="$(docker image inspect "$ref" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
+  [[ "$label" =~ ^[0-9a-f]{40}$ ]] || die "label revision $ref bukan SHA lengkap: '$label'"
+  prov="$(timeout 120 docker buildx imagetools inspect "$ref" --format '{{json .Provenance}}')" || die "provenance $ref tidak bisa dibaca"
+  grep -qF -- "$label" <<<"$prov" || die "provenance $ref tidak memuat SHA $label"
+  install -d -m 0755 "$PROV_DIR"
+  tmp="$(mktemp "$PROV_DIR/.prov.XXXXXX")"
+  printf '%s\n' "$prov" > "$tmp"
+  chmod 0644 "$tmp"
+  mv -f "$tmp" "$PROV_DIR/${digest#sha256:}.json"
+  # Salinan lama (> 30 hari) dibuang; image-nya diatur image-retention.sh di sisi deploy.
+  find "$PROV_DIR" -maxdepth 1 -name '*.json' -mtime +30 -delete 2>/dev/null || true
+  echo "SIMPAN: $ref linux/$arch revision=$label"
+}
+
 cmd_sbom() {
   valid_name "$1"
   valid_digest "$2"
@@ -329,6 +363,7 @@ case "${1:-}" in
   pw) [ $# -eq 4 ] || die "pemakaian: pw <e2e|perf> <workspace> <sha40>"; cmd_pw "$2" "$3" "$4" ;;
   build) [ $# -eq 4 ] || die "pemakaian: build <nama> <sha40> <workspace>"; cmd_build "$2" "$3" "$4" ;;
   smoke) [ $# -eq 4 ] || die "pemakaian: smoke <nama> <digest> <workspace>"; cmd_smoke "$2" "$3" "$4" ;;
+  simpan) [ $# -eq 4 ] || die "pemakaian: simpan <nama> <digest> <workspace>"; cmd_simpan "$2" "$3" "$4" ;;
   sbom) [ $# -eq 3 ] || die "pemakaian: sbom <nama> <digest>"; cmd_sbom "$2" "$3" ;;
   alias) [ $# -eq 3 ] || die "pemakaian: alias <sha40> <tag>"; cmd_alias "$2" "$3" ;;
   builder-init) cmd_builder_init ;;
@@ -345,5 +380,5 @@ case "${1:-}" in
     docker ps -aq --filter 'name=^urusin-ci-' | xargs -r docker rm -f >/dev/null
     docker buildx rm "$BUILDER" 2>/dev/null || true
     ;;
-  *) die "subperintah: pw|build|smoke|sbom|alias|builder-init|builder-gc|builder-rm|cleanup|teardown" ;;
+  *) die "subperintah: pw|build|smoke|simpan|sbom|alias|builder-init|builder-gc|builder-rm|cleanup|teardown" ;;
 esac
