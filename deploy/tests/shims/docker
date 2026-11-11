@@ -11,7 +11,8 @@ case "$1" in
     echo '{"auths":{"ghcr.io":{}}}' > "$DOCKER_CONFIG/config.json"
     echo "$DOCKER_CONFIG" > "$SHIM_DIR/login.dir"
     exit 0 ;;
-  ps | rm) exit 0 ;;
+  ps) cat "$SHIM_DIR/ps.txt" 2>/dev/null; exit 0 ;; # image-retention.sh: image kontainer (repo@digest)
+  rm) exit 0 ;;
   version) [ -n "${SHIM_DOCKER_VERSION+x}" ] && echo "$SHIM_DOCKER_VERSION" || echo 29.1.3; exit 0 ;;
   run)
     # backup.sh: wadah sqlite3 menulis .partial.db ke direktori yang di-mount sebagai /backup.
