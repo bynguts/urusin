@@ -107,7 +107,7 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
   it.each([
     ['3578', 'Kota Surabaya', 'https://wargaklampid-dispendukcapil.surabaya.go.id/'],
     ['3216', 'Kabupaten Bekasi', 'https://sitepak.bekasikab.go.id/'],
-    ['1101', 'Kabupaten Aceh Selatan', 'https://dukcapil.kemendagri.go.id/'],
+    ['1101', 'Kabupaten Aceh Selatan', 'https://acehprov.go.id/'],
   ])(
     '%s %s: kanal resmi sendiri, tanpa adapter Wonogiri; Pendamping hanya generik ke portal sendiri',
     async (kode, nama, url) => {
@@ -209,7 +209,8 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
           ],
         }),
       ],
-      { kodeKabKota: kode, jenis: 'kk' },
+      // Jenis tanpa rencana bersumber (KK/KTP-el kini punya rencana minimal deterministik).
+      { kodeKabKota: kode, jenis: 'akta' },
     );
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus dokumen' });
     expect(of(out.events, 'plan_card')[0]!.langkah.map((l) => l.jenis)).toEqual([
@@ -571,8 +572,9 @@ describe('temuan eval persona W2: ganti wilayah membuang sumber wilayah lama', (
 describe('temuan eval persona W6: hand-off tidak diulang identik', () => {
   it('pertanyaan tanpa sumber berulang: kanal lain, lalu langkah lain tanpa hand-off yang sama', async () => {
     const jawab = tool('urusan__jawab_persyaratan', { pertanyaan: 'nomor antrean berapa?' });
+    // Jenis tanpa rencana (KK punya rencana yang dokumennya ikut jadi sumber, jadi tidak selalu hand-off).
     const { env, u, provider } = setup([jawab, jawab, jawab, balas('Coba datang langsung ke kantor.')], {
-      jenis: 'kk',
+      jenis: 'akta',
       kodeKabKota: '3312',
     });
     // Rencana sudah diusulkan: hand-off tidak lagi diikuti penyusunan rencana di giliran yang sama.
@@ -952,6 +954,51 @@ describe('temuan eval persona p03: hand-off ikut domisili yang disebut warga', (
     const h = of(out.events, 'handoff')[0]!;
     expect(h.kanal[0]!.url).toMatch(/bekasikab/);
     expect(JSON.stringify(h.kanal[0])).not.toMatch(/surabaya/i);
+  });
+});
+
+describe('QA produksi: pengantin baru Kota Jayapura (KK), wilayah kecil tetap bersumber', () => {
+  it('KK di wilayah mana pun: rencana minimal otomatis, tiap langkah bersumber, Perpres 96/2018 Ps. 11', () => {
+    const env = makeEnv({ provider: new FakeProvider() });
+    let u = buatUrusanTerwilayah(env.store, { jenis: 'kk', kodeKabKota: '9171' });
+    u = env.store.transition(u.id, u.version, 'MEMAHAMI');
+    u = usulkanRencanaOtomatis(env.store, u, publisher(env, u.id));
+    expect(u.state).toBe('RENCANA_DIUSULKAN');
+    const kartu = of(
+      env.store
+        .eventsOfType(u.id, 'plan_card', 5)
+        .map((e) => ({ type: 'plan_card', ...(e.payload as object) }) as UrusinEvent),
+      'plan_card',
+    )[0]!;
+    expect(kartu.ringkasan).toBe('Kartu Keluarga (KK) · Kota Jayapura');
+    expect(kartu.langkah[0]!.sumber[0]!.url).toBe('https://jayapurakota.go.id/');
+    expect(kartu.langkah.length).toBe(2);
+    for (const l of kartu.langkah) expect(l.sumber.length).toBeGreaterThan(0);
+    expect(kartu.langkah[0]!.sumber.map((s) => s.url)).toContain(
+      'https://peraturan.go.id/files/ps96-2018.pdf',
+    );
+    expect(kartu.langkah[0]!.dokumen?.join(' ')).toMatch(/buku nikah/);
+  });
+});
+
+describe('temuan eval persona p03: Disdukcapil domisili untuk warga ber-KTP lain', () => {
+  it('hand-off ke domisili memakai situs informasi Disdukcapil, bukan portal berlogin NIK setempat', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'alamat Disdukcapil Kota Semarang' }),
+        fakeCompletion({ content: JSON.stringify({ klaim: [], handoff: null }) }),
+      ],
+    });
+    const env = makeEnv({ provider });
+    const u0 = buatUrusanTerwilayah(env.store, { jenis: 'ktp', kodeKabKota: '3578' });
+    const u = tetapkanWilayah(env.store, u0, { ktp: '3578', domisili: '3374' }, publisher(env, u0.id));
+    const out = await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'Disdukcapil Kota Semarang di mana kak?',
+    });
+    const h = of(out.events, 'handoff')[0]!;
+    expect(h.kanal[0]!.url).toMatch(/dispendukcapil\.semarangkota\.go\.id/);
+    expect(h.kanal.map((k) => k.url ?? '').join(' ')).not.toMatch(/sidnok/);
   });
 });
 

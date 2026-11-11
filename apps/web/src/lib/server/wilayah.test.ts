@@ -181,7 +181,7 @@ describe('POST /api/urusan/[id]/wilayah (tombol "Ya, betul")', () => {
 
   it('urusan tanpa rencana yang sudah bercakap: "Ya, betul" melanjutkan giliran agen, tidak buntu', async () => {
     const res = await buatUrusan(
-      ev(post({ kodeKabKota: '3578', pesan: 'KTP saya rusak kena air, bikin baru gimana?' })),
+      ev(post({ kodeKabKota: '3578', pesan: 'Akta saya rusak kena air, bikin salinan gimana?' })),
     );
     const { id } = (await res.json()) as { id: string };
     await selesai(id);

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Bangkitkan src/wilayah-data.ts dari data/wilayah/kabkota.json (514 kab/kota Kepmendagri),
-// data/wilayah/kontak-dukcapil.json (hanya kontak terverifikasi), dan data/wilayah/kanal-layanan.json (kontak
-// layanan resmi). Data ditanam sebagai modul TS supaya ikut
+// data/wilayah/kontak-dukcapil.json (hanya kontak terverifikasi), data/wilayah/kanal-layanan.json (kontak
+// layanan resmi), dan data/wilayah/pemda.json (situs resmi pemda/provinsi terverifikasi, kanal
+// cadangan). Data ditanam sebagai modul TS supaya ikut
 // ter-build ke dist: image produksi (pnpm deploy) tidak membawa folder data/ di akar repo.
 // Jalankan ulang setiap kali berkas JSON itu berubah: `pnpm --filter @urusin/registry gen:wilayah`.
 //   node packages/registry/scripts/gen-wilayah.mjs --check   # gagal (exit 1) bila wilayah-data.ts menyimpang dari
@@ -15,6 +16,7 @@ const target = new URL('../src/wilayah-data.ts', import.meta.url);
 const kabkota = JSON.parse(readFileSync(new URL('kabkota.json', root), 'utf8'));
 const kontak = JSON.parse(readFileSync(new URL('kontak-dukcapil.json', root), 'utf8'));
 const kanal = JSON.parse(readFileSync(new URL('kanal-layanan.json', root), 'utf8'));
+const pemda = JSON.parse(readFileSync(new URL('pemda.json', root), 'utf8'));
 
 const json = (v) => JSON.stringify(v);
 const provinsi = kabkota.provinsi.map((p) => `  [${json(p.kode)}, ${json(p.nama)}],`);
@@ -28,10 +30,23 @@ const kon = kontak.kontak
   });
 
 const kan = kanal.entri.map((e) => `  ${json(e)},`);
+const pem = pemda.pemda
+  .filter((p) => p.status === 'terverifikasi')
+  .map((p) => {
+    const o = {
+      kode: p.kode,
+      jenis: p.jenis,
+      website: p.website,
+      sourceUrl: p.sourceUrl,
+      verifiedAt: p.verifiedAt,
+    };
+    return `  ${json(o)},`;
+  });
 
 const out = `// BERKAS HASIL GENERATOR (packages/registry/scripts/gen-wilayah.mjs). Jangan diubah tangan.
 // Sumber: data/wilayah/kabkota.json, data/wilayah/kontak-dukcapil.json (status terverifikasi saja),
-// dan data/wilayah/kanal-layanan.json (kontak layanan resmi beserta URL sumber dan tanggal cek).
+// data/wilayah/kanal-layanan.json (kontak layanan resmi beserta URL sumber dan tanggal cek), dan
+// data/wilayah/pemda.json (situs resmi pemda kab/kota dan provinsi, status terverifikasi saja).
 
 /** [kode 2 digit, nama provinsi] */
 export const DATA_PROVINSI: readonly (readonly [string, string])[] = [
@@ -67,6 +82,21 @@ export const DATA_KANAL_LAYANAN: readonly {
 }[] = [
 ${kan.join('\n')}
 ];
+
+/**
+ * Situs resmi pemerintah daerah (.go.id) yang lolos verifikasi otomatis, kanal cadangan bila situs Disdukcapil
+ * kab/kota belum ada: kode 4 digit = portal Pemerintah Kabupaten/Kota; kode 2 digit = situs Dinas Dukcapil provinsi
+ * (jenis dukcapil) atau portal Pemerintah Provinsi (jenis pemda).
+ */
+export const DATA_PEMDA: readonly {
+  kode: string;
+  jenis: 'dukcapil' | 'pemda';
+  website: string;
+  sourceUrl: string;
+  verifiedAt: string;
+}[] = [
+${pem.join('\n')}
+];
 `;
 const targetPath = fileURLToPath(target);
 const teks = await prettier.format(out, {
@@ -86,6 +116,6 @@ if (process.argv.includes('--check')) {
 } else {
   writeFileSync(target, teks);
   console.log(
-    `wilayah-data.ts: ${kab.length} kab/kota, ${kon.length} kontak terverifikasi, ${kan.length} kontak layanan`,
+    `wilayah-data.ts: ${kab.length} kab/kota, ${kon.length} kontak terverifikasi, ${kan.length} kontak layanan, ${pem.length} situs pemda`,
   );
 }

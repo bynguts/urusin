@@ -1,4 +1,4 @@
-import { DATA_KABKOTA, DATA_KONTAK_DUKCAPIL, DATA_PROVINSI } from './wilayah-data.js';
+import { DATA_KABKOTA, DATA_KONTAK_DUKCAPIL, DATA_PEMDA, DATA_PROVINSI } from './wilayah-data.js';
 
 /**
  * 514 kab/kota Kepmendagri (data/wilayah/kabkota.json) sebagai sumber tunggal nama wilayah: pemilih wilayah,
@@ -182,6 +182,26 @@ export function menyebutWilayah(teks: string, w: Wilayah): boolean {
 export type KontakDukcapil = { website: string; alamat?: string; sourceUrl: string; verifiedAt: string };
 
 const KONTAK = new Map(DATA_KONTAK_DUKCAPIL.map((k) => [k.kode, k]));
+
+/**
+ * Situs resmi pemerintah daerah terverifikasi (kanal cadangan): `kode` 4 digit = portal Pemerintah Kabupaten/Kota,
+ * 2 digit = situs Dinas Dukcapil provinsi (`dukcapil`) atau portal Pemerintah Provinsi (`pemda`).
+ */
+export type SitusPemda = {
+  jenis: 'dukcapil' | 'pemda';
+  website: string;
+  sourceUrl: string;
+  verifiedAt: string;
+};
+
+const PEMDA = new Map(DATA_PEMDA.map((p) => [p.kode, p]));
+
+export function situsPemda(kode: string): SitusPemda | undefined {
+  const p = PEMDA.get(kode);
+  return p
+    ? { jenis: p.jenis, website: p.website, sourceUrl: p.sourceUrl, verifiedAt: p.verifiedAt }
+    : undefined;
+}
 
 export function kontakDukcapil(kode: string): KontakDukcapil | undefined {
   const k = KONTAK.get(kode);

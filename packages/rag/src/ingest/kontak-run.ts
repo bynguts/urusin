@@ -7,6 +7,8 @@ export type KontakRunOpts = {
   outPath: string;
   only?: string | undefined;
   refresh?: boolean | undefined;
+  /** Hanya periksa ulang entri `belum_terverifikasi` (yang terverifikasi dipertahankan). */
+  belum?: boolean | undefined;
   limit?: number | undefined;
   deps: ProbeDeps;
   log: (line: string) => void;
@@ -31,7 +33,8 @@ export async function runKontak(o: KontakRunOpts): Promise<number> {
   };
   const todo = wilayah.filter((k) => !o.only || k.kode.startsWith(o.only)).slice(0, o.limit);
   for (const k of todo) {
-    if (byKode.has(k.kode) && !o.refresh) continue;
+    const lama = byKode.get(k.kode);
+    if (lama && !o.refresh && !(o.belum && lama.status === 'belum_terverifikasi')) continue;
     byKode.set(k.kode, await probeKontak(k, o.deps));
     n++;
     if (n % 10 === 0) save();

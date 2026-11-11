@@ -25,8 +25,9 @@
     "rag:eval-agent": "tsc -p tsconfig.build.json && node dist/eval/agent-cli.js",
     "rag:verify": "tsc -p tsconfig.build.json && node dist/ingest/verify-cli.js",
     "rag:kanal": "tsc -p tsconfig.build.json && node dist/ingest/kanal-cli.js",
-    "rag:kontak": "tsc -p tsconfig.build.json && node dist/ingest/kontak-cli.js",
-    "rag:kanal-layanan": "tsc -p tsconfig.build.json && node dist/ingest/kanal-layanan-cli.js"
+    "rag:kontak": "tsc -p tsconfig.build.json && node --use-system-ca dist/ingest/kontak-cli.js",
+    "rag:kanal-layanan": "tsc -p tsconfig.build.json && node dist/ingest/kanal-layanan-cli.js",
+    "rag:pemda": "tsc -p tsconfig.build.json && node --use-system-ca dist/ingest/pemda-cli.js"
   },
   "dependencies": {
     "@urusin/core": "workspace:*",
