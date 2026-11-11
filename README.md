@@ -111,7 +111,7 @@ Fitur di bawah berjalan di <https://urusinai.web.id> dan diuji di CI, kecuali ya
   - Mode terang/gelap.
 - **Situs latihan (fixtures).** Replika jinak portal daerah (`apps/fixtures`, berbanner "Situs uji — bukan situs
   pemerintah") untuk e2e dan Mode Uji, supaya uji coba tidak pernah mengirim apa pun ke situs pemerintah. Host
-  publik `fixtures.urusinai.web.id` **(belum live)**.
+  publik `fixtures.urusinai.web.id` (live).
 
 ## 4. Teknologi
 
@@ -142,7 +142,7 @@ flowchart LR
     DB[(SQLite WAL<br/>urusan, jejak, akun,<br/>vault ciphertext)]
     PD["pendamping<br/>Chromium per sesi"]
     EDGE["pendamping-edge<br/>proxy CONNECT ber-allowlist"]
-    FX["fixtures<br/>situs latihan<br/>(belum live)"]
+    FX["fixtures<br/>situs latihan"]
   end
   LLM[[Penyedia LLM<br/>OpenAI-compatible]]
   JINA[[Jina<br/>embedding + rerank]]
