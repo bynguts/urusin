@@ -678,6 +678,10 @@ export async function wire(
   let tantanganRespons = false;
   let tantanganPoll: ReturnType<typeof setInterval> | undefined;
   let sorotTantanganTerkirim = false;
+  /** Nomor dokumen tempat tantangan terakhir mulai/diulang. */
+  let tantanganNav = -1;
+  /** Nomor dokumen serah generik `login` (CAPTCHA/kode) terakhir yang masih dipegang warga. */
+  let serahLoginNav: number | undefined;
   let pesanTantangan = '';
   const pantau = createPantauTantangan(2);
   // Probe masuk akun (adapter): warga keluar/terlempar ke login -> takeover masuk_akun sampai masuk lagi.
@@ -1202,6 +1206,14 @@ export async function wire(
       clearInterval(tantanganPoll);
       tantanganPoll = undefined;
       hooks.activity();
+      // Generik: Navigator sempat menyerahkan CAPTCHA (sinyal tantangan di pengamatan) di dokumen tantangan yang
+      // sama, sebelum/bersamaan pemeriksaan tantangan. Tantangan itu kini hilang (judul/URL berganti), jadi
+      // serahnya selesai dan AI lanjut mengamati halaman berikutnya. Serah lain (final, isi sendiri) tidak.
+      if (manual && generik && !generik.berhenti && serahLoginNav === tantanganNav) {
+        manual = false;
+        serahLoginNav = undefined;
+        init.generik?.jejak({ jenis: 'ambil_alih', fase: 'selesai' });
+      }
       if (manual || status === 'waiting_gate' || status === 'waiting_citizen' || status === 'handoff')
         hooks.mode('takeover', 'Verifikasi selesai. Lanjutkan sendiri.');
       else hooks.mode('ai', 'Verifikasi selesai. AI melanjutkan pengisian.');
@@ -1210,6 +1222,7 @@ export async function wire(
     }
     // mulai / ulang / masih: warga memegang kendali; AI tidak pernah mengeklik kotak verifikasi.
     if (hasil === 'mulai' || hasil === 'ulang') {
+      tantanganNav = navKe;
       sorotTantanganTerkirim = false;
       pesanTantangan =
         hasil === 'ulang' ? 'Verifikasi belum diterima situs. Coba sekali lagi.' : PESAN_VERIFIKASI;
@@ -1297,6 +1310,10 @@ export async function wire(
             await periksaTantangan();
             if (ditahan() || destroyed) return { ok: false, code: 'DITAHAN', message: 'giliran warga' };
           }
+          // Interstitial tantangan (Turnstile "Verify you are human", probe gel4 1372/3275): diperiksa SEBELUM
+          // pengamatan, jadi mode yang dibaca Navigator sesudahnya sudah giliran warga (verifikasi_situs, sorot
+          // widget). Navigator menunggu, lalu lanjut sendiri setelah tantangan hilang (`lolos`).
+          else if (o.kind === 'amati') await periksaTantangan();
           return evaluate(o);
         },
         async navigasi(url) {
@@ -1319,6 +1336,9 @@ export async function wire(
       jejak,
       serahkan(alasan, pesan, box, tautan) {
         manual = true;
+        // Serah CAPTCHA/kode (`login`) di dokumen ini: bila dokumen yang sama ternyata halaman tantangan, serah ini
+        // ikut selesai saat tantangannya lolos (lihat langkahTantangan).
+        serahLoginNav = alasan === 'login' ? navKe : undefined;
         hooks.mode('takeover', pesan);
         hooks.event({
           jenis: 'giliran_anda',

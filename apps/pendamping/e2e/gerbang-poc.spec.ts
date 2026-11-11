@@ -228,6 +228,41 @@ const RESPON_KHUSUS: Record<string, { status: number; html: string }> = {
   },
 };
 
+/**
+ * Probe gel4 1372/3275: interstitial ala Turnstile "Verify you are human" (BUKAN Cloudflare, tidak meniru
+ * mekanismenya): widget di iframe jalur challenge-platform berisi kotak centang besar; centang = GET ke
+ * JALUR_TS_LOLOS (cookie lolos) lalu kembali ke halaman semula yang kini berisi formulir.
+ * - `/ts-antara`: judul interstitial, widget langsung ada.
+ * - `/ts-lambat`: judul biasa + penanda `.cf-turnstile`, widget baru disisipkan setelah uji membuka pemicu
+ *   (`/ts-pemicu`, dibaca halaman lewat GET berkala): Navigator sempat menyerahkan CAPTCHA sebelum pemeriksaan
+ *   tantangan melihat widgetnya.
+ */
+let pemicuTs = false;
+const JALUR_TS = ['/ts-antara', '/ts-lambat'];
+const JALUR_TS_LOLOS = '/cdn-cgi/challenge-platform/uji-ts/lolos';
+const widgetTs = (kembali: string) =>
+  `<iframe title="Widget verifikasi" src="/cdn-cgi/challenge-platform/uji-ts/widget?kembali=${kembali}" width="300" height="70" style="border:0;display:block"></iframe>`;
+const HALAMAN_TS_SESUDAH = kerangka(
+  '<h1>Layanan Kependudukan</h1><form><label>NIK Pemohon <input name="nik"></label></form>',
+);
+HALAMAN['/ts-antara'] =
+  `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Verify you are human</title></head>` +
+  `<body><p>Halaman tiruan untuk pengujian. Centang kotak di bawah.</p>${widgetTs('/ts-antara')}</body></html>`;
+HALAMAN['/ts-lambat'] = kerangka(`<h1>Keamanan situs</h1><a href="/bantuan">Bantuan</a>
+<div class="cf-turnstile" id="wadah"></div>
+<script>const t = setInterval(async () => {
+  if ((await (await fetch('/ts-pemicu', { cache: 'no-store' })).text()) !== 'ya') return;
+  clearInterval(t);
+  document.getElementById('wadah').innerHTML = ${JSON.stringify(widgetTs('/ts-lambat'))};
+}, 300);</script>`);
+HALAMAN['/cdn-cgi/challenge-platform/uji-ts/widget'] =
+  `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Widget</title><style>html,body{margin:0}` +
+  `label{display:flex;align-items:center;gap:8px;box-sizing:border-box;width:300px;height:70px;border:1px solid #888;font:16px sans-serif}` +
+  `input{width:28px;height:28px}</style></head><body><label><input type="checkbox" id="kotak-manusia"> Verify you are human</label>` +
+  `<script>document.getElementById('kotak-manusia').addEventListener('change', () => {` +
+  `top.location.href = '${JALUR_TS_LOLOS}?kembali=' + new URLSearchParams(location.search).get('kembali');` +
+  `});</script></body></html>`;
+
 async function situsUji() {
   const hitung = new Map<string, number>();
   let upgrade = 0;
@@ -236,6 +271,23 @@ async function situsUji() {
     if (req.method !== 'GET' || !(jalur in HALAMAN)) hitung.set(jalur, (hitung.get(jalur) ?? 0) + 1);
     req.resume();
     req.on('end', () => {
+      if (jalur === '/ts-pemicu') {
+        res.writeHead(200, { 'content-type': 'text/plain', 'cache-control': 'no-store' });
+        return void res.end(pemicuTs ? 'ya' : 'belum');
+      }
+      // Tiruan interstitial Turnstile: hanya ketukan warga pada kotak centang yang membuka JALUR_TS_LOLOS.
+      if (jalur === JALUR_TS_LOLOS) {
+        const kembali = new URL(req.url ?? '/', 'http://x').searchParams.get('kembali') ?? '';
+        res.writeHead(302, {
+          location: JALUR_TS.includes(kembali) ? kembali : '/ts-antara',
+          'set-cookie': 'uji_ts=lolos; Path=/',
+        });
+        return void res.end();
+      }
+      if (JALUR_TS.includes(jalur) && /(^|;\s*)uji_ts=lolos/.test(req.headers.cookie ?? '')) {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+        return void res.end(HALAMAN_TS_SESUDAH);
+      }
       const khusus = Object.hasOwn(RESPON_KHUSUS, jalur) ? RESPON_KHUSUS[jalur] : undefined;
       if (khusus) {
         res.writeHead(khusus.status, {
@@ -265,7 +317,8 @@ async function situsUji() {
 
 type Situs = Awaited<ReturnType<typeof situsUji>>;
 
-async function sesi(situs: Situs, jalur: string, id: string, amati = true) {
+/** `rekam`: penampil tiruan dipasang SEBELUM sesi berjalan, event (giliran_anda, sorot) dikumpulkan sejak awal. */
+async function sesi(situs: Situs, jalur: string, id: string, amati = true, rekam = false) {
   const config = loadConfig({
     PENDAMPING_FIXTURE_ORIGINS: situs.origin,
     PENDAMPING_ORIGIN_OVERRIDES: `${RESMI}=${situs.origin}`,
@@ -282,6 +335,14 @@ async function sesi(situs: Situs, jalur: string, id: string, amati = true) {
     params: { jalur },
     modeUji: true,
   });
+  const events: PendampingEvent[] = [];
+  if (rekam)
+    await manager.attach(s.sesiId, {
+      send: (m: PendampingServerMessage) => void (m.type === 'event' && events.push(m.event)),
+      frame: () => {},
+      ack: () => {},
+      close: () => {},
+    });
   if (amati) await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('berjalan');
   else
     await expect
@@ -290,7 +351,7 @@ async function sesi(situs: Situs, jalur: string, id: string, amati = true) {
       })
       .toBe(true);
   const p = amati ? (await manager.amati(o)).pengamatan : (undefined as unknown as Pengamatan);
-  return { manager, o, sesiId: s.sesiId, p };
+  return { manager, o, sesiId: s.sesiId, p, events };
 }
 
 function semua(p: Pengamatan, nama: string) {
@@ -709,6 +770,87 @@ test('probe gel4 (1101/3312): halaman tantangan Cloudflare 403 = giliran verifik
     expect(manager.status(o).pesan).toMatch(/verifikasi/i);
     // Bukan sukses: tidak ada pengiriman warga, selesai ditolak.
     await expect(manager.selesai(o)).rejects.toMatchObject({ status: 409 });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+/** Event verifikasi_situs ber-sorot (kotak widget tantangan) terakhir. */
+const sorotVerifikasi = (events: PendampingEvent[]) =>
+  events.findLast(
+    (e): e is Extract<PendampingEvent, { jenis: 'giliran_anda' }> =>
+      e.jenis === 'giliran_anda' && e.alasan === 'verifikasi_situs' && e.sorot !== undefined,
+  )?.sorot;
+
+test('probe gel4 1372/3275: interstitial Turnstile = giliran warga + sorot widget; dicentang warga, AI lanjut sendiri', async () => {
+  const awal = situs.hitung(JALUR_TS_LOLOS);
+  const { manager, o, sesiId, events } = await sesi(situs, '/ts-antara', 'ts-antara', false, true);
+  try {
+    await expect.poll(() => manager.status(o).mode, { timeout: 15_000 }).toBe('takeover');
+    await expect.poll(() => sorotVerifikasi(events), { timeout: 15_000 }).toBeTruthy();
+    const kotak = sorotVerifikasi(events)!;
+    expect(kotak.lebar).toBeGreaterThanOrEqual(290);
+    expect(manager.status(o).pesan).toMatch(/Verify you are human/);
+    // Navigator mengamati: mode tetap giliran warga (AI menunggu), aksi apa pun tidak dijalankan.
+    const a = await manager.amati(o);
+    expect(a.mode).toBe('takeover');
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: a.pengamatan.seq,
+      aksi: [{ jenis: 'serahkan', alasan: 'captcha' }],
+    });
+    expect(r.hasil.every((h) => h.kode === 'DILEWATI')).toBe(true);
+    // Tanpa ketukan warga tidak ada yang mencentang (AI tidak pernah menyentuh widget).
+    await new Promise((ok) => setTimeout(ok, 2_000));
+    expect(situs.hitung(JALUR_TS_LOLOS)).toBe(awal);
+    expect(manager.status(o).mode).toBe('takeover');
+
+    // Warga sendiri mencentang (ketukan di kotak sorot, diteruskan CDP sampai ke iframe).
+    await ketuk(manager, sesiId, kotak.x + 30, kotak.y + kotak.tinggi / 2);
+    await expect.poll(() => manager.status(o).mode, { timeout: 15_000 }).toBe('ai');
+    expect(manager.status(o).pesan).toMatch(/Verifikasi selesai\. AI melanjutkan/);
+    expect(situs.hitung(JALUR_TS_LOLOS)).toBe(awal + 1);
+    // AI lanjut sendiri mengamati halaman berikutnya (judul/URL berganti, tantangan hilang).
+    const b = await manager.amati(o);
+    expect(b.mode).toBe('ai');
+    expect(b.pengamatan.judul).not.toMatch(/verify/i);
+    expect(satu(b.pengamatan, 'NIK Pemohon')).toMatchObject({ peran: 'teks' });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 1372/3275: CAPTCHA diserahkan sebelum widget tantangan terdeteksi -> tetap lanjut otomatis setelah lolos', async () => {
+  const awal = situs.hitung(JALUR_TS_LOLOS);
+  const { manager, o, sesiId, p, events } = await sesi(situs, '/ts-lambat', 'ts-lambat', true, true);
+  try {
+    // Navigator melihat sinyal tantangan di pengamatan (widget belum muncul) dan menyerahkan CAPTCHA ke warga.
+    expect(p.sinyal.tantangan).toBe(true);
+    expect(manager.status(o).mode).toBe('ai');
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'serahkan', alasan: 'captcha' }],
+    });
+    expect(r.hasil[0]?.kode).toBe('ok');
+    expect(manager.status(o).mode).toBe('takeover');
+    pemicuTs = true;
+    // Widget muncul di dokumen yang sama: pemeriksaan tantangan menyorotnya untuk warga.
+    await expect.poll(() => sorotVerifikasi(events), { timeout: 15_000 }).toBeTruthy();
+    const kotak = sorotVerifikasi(events)!;
+    expect(situs.hitung(JALUR_TS_LOLOS)).toBe(awal);
+    await ketuk(manager, sesiId, kotak.x + 30, kotak.y + kotak.tinggi / 2);
+    // Tantangan hilang: serah CAPTCHA di dokumen tantangan itu selesai, AI lanjut tanpa "Lanjutkan" dari warga.
+    await expect.poll(() => manager.status(o).mode, { timeout: 15_000 }).toBe('ai');
+    expect(manager.status(o).pesan).toMatch(/Verifikasi selesai\. AI melanjutkan/);
+    const b = await manager.amati(o);
+    expect(b.mode).toBe('ai');
+    expect(satu(b.pengamatan, 'NIK Pemohon')).toMatchObject({ peran: 'teks' });
+    expect(manager.kurasJejak(o).catatan).toContainEqual(
+      expect.objectContaining({ jenis: 'ambil_alih', fase: 'selesai' }),
+    );
   } finally {
     await manager.shutdown();
   }
