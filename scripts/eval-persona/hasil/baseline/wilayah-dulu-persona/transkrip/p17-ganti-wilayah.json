@@ -1,0 +1,740 @@
+{
+  "persona": "p17-ganti-wilayah",
+  "urusanId": "u_72ec5640262b94830d6383f565abefcd",
+  "wilayahPerangkat": "3311",
+  "kodeUrusan": "3311",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Mas, saya dari Wonogiri. Anak saya baru lahir, mau urus akta kelahiran.",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3311",
+            "nama": "Kabupaten Sukoharjo"
+          },
+          "status": "usulan",
+          "sumber": "pilihan",
+          "type": "wilayah",
+          "seq": 1,
+          "at": "2026-11-10T07:50:13.387Z",
+          "chainHead": "c36cf691ff52…"
+        },
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": null,
+          "version": 2,
+          "type": "state",
+          "seq": 2,
+          "at": "2026-11-10T07:50:13.389Z",
+          "chainHead": "13405e75dca9…"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T07:50:13.390Z",
+          "chainHead": "b7d5e3510603…"
+        },
+        {
+          "delta": "Selamat atas kelahiran anak Anda! KTP Anda terdaftar di Kabupaten Wonogiri, betul?",
+          "type": "assistant_text",
+          "seq": 4,
+          "at": "2026-11-10T07:50:24.562Z",
+          "chainHead": "ee7400e43590…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_79703ec2-eb72-401a-866b-9e0370afd0c8",
+          "version": 3,
+          "type": "done",
+          "seq": 5,
+          "at": "2026-11-10T07:50:24.563Z",
+          "chainHead": "e68ec2c7ca4c…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11180
+    },
+    {
+      "peran": "warga",
+      "jenis": "klik",
+      "teks": "Ya, betul",
+      "http": {
+        "status": 200
+      },
+      "alasan": "KTP saya sekarang memang terdaftar di Kabupaten Sukoharjo."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3311",
+            "nama": "Kabupaten Sukoharjo"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 6,
+          "at": "2026-11-10T07:50:30.607Z",
+          "chainHead": "419e6392ee94…"
+        },
+        {
+          "catatan": "Persyaratan nasional untuk Kabupaten Sukoharjo; detail dan cara pengajuan mengikuti MELODI (WhatsApp).",
+          "langkah": [
+            {
+              "bawa": [],
+              "id": "ajukan",
+              "jenis": "online-manual",
+              "judul": "Ajukan akta kelahiran ke Disdukcapil Kab. Sukoharjo",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo",
+                  "judul": "MELODI (WhatsApp)",
+                  "url": "https://dispendukcapil.sukoharjokab.go.id/"
+                },
+                {
+                  "instansi": "Pemerintah Republik Indonesia",
+                  "judul": "Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil",
+                  "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018"
+                }
+              ]
+            },
+            {
+              "bawa": [],
+              "id": "siapkan-sptjm",
+              "jenis": "online-manual",
+              "judul": "Bila surat kurang: siapkan SPTJM bersama dua saksi",
+              "sumber": [
+                {
+                  "instansi": "Pemerintah Republik Indonesia",
+                  "judul": "Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil",
+                  "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018"
+                }
+              ]
+            },
+            {
+              "bawa": [
+                "Bukti pengajuan"
+              ],
+              "id": "ambil",
+              "jenis": "offline",
+              "judul": "Terima akta kelahiran dan KK baru dari Disdukcapil Kab. Sukoharjo",
+              "lokasi": "disdukcapil",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo",
+                  "judul": "MELODI (WhatsApp)",
+                  "url": "https://dispendukcapil.sukoharjokab.go.id/"
+                }
+              ]
+            }
+          ],
+          "ringkasan": "Kelahiran · Kab. Sukoharjo",
+          "tier": "dipandu",
+          "wilayah": {
+            "ktp": {
+              "kodeKabKota": "3311",
+              "nama": "Kabupaten Sukoharjo"
+            }
+          },
+          "type": "plan_card",
+          "seq": 7,
+          "at": "2026-11-10T07:50:30.613Z",
+          "chainHead": "a572111a98c9…"
+        },
+        {
+          "dari": "MEMAHAMI",
+          "state": "RENCANA_DIUSULKAN",
+          "tier": "dipandu",
+          "version": 5,
+          "type": "state",
+          "seq": 8,
+          "at": "2026-11-10T07:50:30.614Z",
+          "chainHead": "366385831a1c…"
+        }
+      ],
+      "status": "selesai",
+      "aksi": "Ya, betul",
+      "ms": 2001
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Eh maaf mas, saya salah. KTP sama KK saya sekarang sudah Sukoharjo, Kartasura. Jadi gimana?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya baru sadar perlu meluruskan wilayah KTP dan KK setelah melihat rencana."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 9,
+          "at": "2026-11-10T07:50:36.752Z",
+          "chainHead": "e5a476f77367…"
+        },
+        {
+          "label": "Menjalankan wilayah__tetapkan…",
+          "toolName": "wilayah__tetapkan",
+          "type": "progress",
+          "seq": 10,
+          "at": "2026-11-10T07:50:39.128Z",
+          "chainHead": "bf696e6faedc…"
+        },
+        {
+          "ktp": {
+            "kodeKabKota": "3311",
+            "nama": "Kabupaten Sukoharjo"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 11,
+          "at": "2026-11-10T07:50:39.130Z",
+          "chainHead": "0dc0af95f394…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T07:50:43.107Z",
+          "chainHead": "332ae0fdc138…"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 13,
+          "at": "2026-11-10T07:50:43.866Z",
+          "chainHead": "185f65469813…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 14,
+          "at": "2026-11-10T07:50:47.875Z",
+          "chainHead": "45731d49b66e…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 15,
+          "at": "2026-11-10T07:50:50.902Z",
+          "chainHead": "1f369f6648f2…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo",
+              "url": "https://dispendukcapil.sukoharjokab.go.id/"
+            },
+            {
+              "nama": "Kabupaten Sukoharjo",
+              "url": "https://dispendukcapil.sukoharjokab.go.id"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 16,
+          "at": "2026-11-10T07:50:50.903Z",
+          "chainHead": "f539571b8a56…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_df56e259-ecfe-4b58-b095-abbb580ad47c",
+          "version": 7,
+          "type": "done",
+          "seq": 17,
+          "at": "2026-11-10T07:50:50.908Z",
+          "chainHead": "7bfd57a02c28…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 14164
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Mas, tadi katanya bisa lewat WhatsApp MELODI. Nomornya berapa ya, dan saya perlu siapkan apa saja?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya belum tahu nomor WhatsApp dan persyaratan yang harus disiapkan."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 18,
+          "at": "2026-11-10T07:50:57.815Z",
+          "chainHead": "37fb68ca3377…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 19,
+          "at": "2026-11-10T07:51:00.687Z",
+          "chainHead": "9db7c33aa186…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 20,
+          "at": "2026-11-10T07:51:04.335Z",
+          "chainHead": "41b6d57d42b9…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 21,
+          "at": "2026-11-10T07:51:07.577Z",
+          "chainHead": "7c458013618d…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo",
+              "url": "https://dispendukcapil.sukoharjokab.go.id/"
+            },
+            {
+              "nama": "Kabupaten Sukoharjo",
+              "url": "https://dispendukcapil.sukoharjokab.go.id"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 22,
+          "at": "2026-11-10T07:51:07.578Z",
+          "chainHead": "bf6435fac07d…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_7888c122-ee0e-4d49-b1d1-44bc2127d401",
+          "version": 8,
+          "type": "done",
+          "seq": 23,
+          "at": "2026-11-10T07:51:07.579Z",
+          "chainHead": "3e7955420f01…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 9771
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Mas, saya sudah ada surat lahir dari bidan sama buku nikah. Selain itu perlu apa lagi? Terus nomor WhatsApp MELODI-nya lihat di bagian mana di situs itu ya?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Nomor WhatsApp dan persyaratan pengajuan belum jelas."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 24,
+          "at": "2026-11-10T07:51:17.594Z",
+          "chainHead": "5b08b7f5b279…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 25,
+          "at": "2026-11-10T07:51:20.813Z",
+          "chainHead": "5b7942988a96…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 26,
+          "at": "2026-11-10T07:51:25.746Z",
+          "chainHead": "45bca471f149…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 27,
+          "at": "2026-11-10T07:51:28.666Z",
+          "chainHead": "df1ca2fc2068…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo",
+              "url": "https://dispendukcapil.sukoharjokab.go.id/"
+            },
+            {
+              "nama": "Kabupaten Sukoharjo",
+              "url": "https://dispendukcapil.sukoharjokab.go.id"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 28,
+          "at": "2026-11-10T07:51:28.666Z",
+          "chainHead": "dabdfea3690e…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_e3bfa063-5692-4cd5-980b-9ff8a390b1c2",
+          "version": 9,
+          "type": "done",
+          "seq": 29,
+          "at": "2026-11-10T07:51:28.668Z",
+          "chainHead": "e5917b564698…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11081
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Mas, jawabannya kok sama terus ya? Tadi katanya bisa lewat WhatsApp MELODI, tapi saya belum tahu nomornya atau perlu siapin apa lagi selain surat lahir dan buku nikah.",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya masih belum tahu nomor WhatsApp dan persyaratan yang perlu disiapkan."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 30,
+          "at": "2026-11-10T07:51:33.116Z",
+          "chainHead": "f13be4c7d8e2…"
+        },
+        {
+          "delta": "Maaf, Mas, jawaban saya tadi berulang dan belum menjawab pertanyaan Anda.\n\nSaya sudah mencari sumber resmi, tetapi **belum menemukan nomor WhatsApp MELODI, letak nomornya di situs, maupun daftar persyaratan akta kelahiran Sukoharjo yang bisa saya pastikan**. Jadi saya tidak ingin menebak nomor atau dokumen tambahannya.\n\nSilakan cek atau hubungi Disdukcapil melalui [situs resmi Disdukcapil Kabupaten Sukoharjo](https://dispendukcapil.sukoharjokab.go.id/), lalu tanyakan nomor MELODI dan dokumen yang diperlukan selain surat lahir dari bidan dan buku nikah. Simpan dulu kedua dokumen itu; jangan kirim data pribadi di chat ini.\n\nMaaf juga, penyebutan MELODI tadi belum saya lengkapi dengan informasi yang cukup untuk langsung menghubunginya.",
+          "type": "assistant_text",
+          "seq": 31,
+          "at": "2026-11-10T07:51:38.769Z",
+          "chainHead": "d800b9097bfe…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_93fee0c8-4a03-4857-a239-628610a62a84",
+          "version": 10,
+          "type": "done",
+          "seq": 32,
+          "at": "2026-11-10T07:51:38.770Z",
+          "chainHead": "c902c4bc2309…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 5660
+    }
+  ],
+  "layar": [
+    "Warga: Mas, saya dari Wonogiri. Anak saya baru lahir, mau urus akta kelahiran.",
+    "[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Sukoharjo? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)\nUrusin: Selamat atas kelahiran anak Anda! KTP Anda terdaftar di Kabupaten Wonogiri, betul?",
+    "Warga menekan [Ya, betul]",
+    "(sistem) Wilayah KTP: Kabupaten Sukoharjo\n[KARTU RENCANA] Kelahiran · Kab. Sukoharjo\n  Wilayah KTP: Kabupaten Sukoharjo (tingkat dipandu)\n  Catatan: Persyaratan nasional untuk Kabupaten Sukoharjo; detail dan cara pengajuan mengikuti MELODI (WhatsApp).\n  1. Ajukan akta kelahiran ke Disdukcapil Kab. Sukoharjo [online]\n     Sumber: MELODI (WhatsApp) (https://dispendukcapil.sukoharjokab.go.id/); Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)\n  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]\n     Sumber: Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)\n  3. Terima akta kelahiran dan KK baru dari Disdukcapil Kab. Sukoharjo [datang langsung, disdukcapil]\n     Bawa: Bukti pengajuan\n     Sumber: MELODI (WhatsApp) (https://dispendukcapil.sukoharjokab.go.id/)",
+    "Warga: Eh maaf mas, saya salah. KTP sama KK saya sekarang sudah Sukoharjo, Kartasura. Jadi gimana?",
+    "(sistem) Wilayah KTP: Kabupaten Sukoharjo\n[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/\n  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id",
+    "Warga: Mas, tadi katanya bisa lewat WhatsApp MELODI. Nomornya berapa ya, dan saya perlu siapkan apa saja?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/\n  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id",
+    "Warga: Mas, saya sudah ada surat lahir dari bidan sama buku nikah. Selain itu perlu apa lagi? Terus nomor WhatsApp MELODI-nya lihat di bagian mana di situs itu ya?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/\n  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id",
+    "Warga: Mas, jawabannya kok sama terus ya? Tadi katanya bisa lewat WhatsApp MELODI, tapi saya belum tahu nomornya atau perlu siapin apa lagi selain surat lahir dan buku nikah.",
+    "Urusin: Maaf, Mas, jawaban saya tadi berulang dan belum menjawab pertanyaan Anda.\n\nSaya sudah mencari sumber resmi, tetapi **belum menemukan nomor WhatsApp MELODI, letak nomornya di situs, maupun daftar persyaratan akta kelahiran Sukoharjo yang bisa saya pastikan**. Jadi saya tidak ingin menebak nomor atau dokumen tambahannya.\n\nSilakan cek atau hubungi Disdukcapil melalui [situs resmi Disdukcapil Kabupaten Sukoharjo](https://dispendukcapil.sukoharjokab.go.id/), lalu tanyakan nomor MELODI dan dokumen yang diperlukan selain surat lahir dari bidan dan buku nikah. Simpan dulu kedua dokumen itu; jangan kirim data pribadi di chat ini.\n\nMaaf juga, penyebutan MELODI tadi belum saya lengkapi dengan informasi yang cukup untuk langsung menghubunginya."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": false,
+    "catatan": "Saya masih belum tahu nomor MELODI atau dokumen tambahannya, dan jawabannya sudah berulang tanpa petunjuk yang lebih jelas."
+  },
+  "ms": 94871,
+  "giliranWarga": 6,
+  "nilai": {
+    "persona": "p17-ganti-wilayah",
+    "judul": "Warga mengganti wilayah di tengah percakapan (Wonogiri lalu Sukoharjo)",
+    "urusanId": "u_72ec5640262b94830d6383f565abefcd",
+    "wilayahPerangkat": "3311",
+    "kodeUrusan": "3311",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": false,
+      "catatan": "Saya masih belum tahu nomor MELODI atau dokumen tambahannya, dan jawabannya sudah berulang tanpa petunjuk yang lebih jelas."
+    },
+    "giliranWarga": 6,
+    "ms": 94871,
+    "url": [
+      "https://dispendukcapil.sukoharjokab.go.id/",
+      "https://peraturan.go.id/id/perpres-no-96-tahun-2018",
+      "https://dispendukcapil.sukoharjokab.go.id"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": true,
+        "bukti": "warga menyebut wilayah sebelum rencana"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "tanpa galat"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": false,
+        "bukti": "Urusin: Selamat atas kelahiran anak Anda! KTP Anda terdaftar di Kabupaten Wonogiri, betul?"
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "[KARTU RENCANA] Kelahiran · Kab. Sukoharjo"
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "(tidak ada daftar persyaratan akta kelahiran yang menjawab permintaan warga)"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "(tidak ada tawaran Browser Pendamping atau klaim sudah mengirim)"
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "jangan kirim data pribadi di chat ini."
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "Maaf, Mas, jawaban saya tadi berulang dan belum menjawab pertanyaan Anda."
+      },
+      "h": {
+        "lulus": false,
+        "bukti": "Silakan cek atau hubungi Disdukcapil melalui [situs resmi Disdukcapil Kabupaten Sukoharjo]"
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini."
+      },
+      "ringkasan": "Konfirmasi awal bertentangan dengan wilayah pada rencana, meskipun setelah koreksi warga diarahkan ke instansi Sukoharjo yang benar. Persyaratan tambahan tidak dijawab dan pengulangan rujukan membuat warga belum mendapat petunjuk yang cukup untuk melanjutkan.",
+      "cacat": [
+        {
+          "judul": "Konfirmasi wilayah bertentangan dengan rencana",
+          "kriteria": "a",
+          "keparahan": "tinggi",
+          "bukti": "KTP Anda terdaftar di Kabupaten Wonogiri, betul?"
+        },
+        {
+          "judul": "Persyaratan yang diminta tidak diberikan",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "(tidak ada daftar persyaratan akta kelahiran yang menjawab permintaan warga)"
+        },
+        {
+          "judul": "Petunjuk lanjutan terlalu umum",
+          "kriteria": "h",
+          "keparahan": "sedang",
+          "bukti": "Silakan cek atau hubungi Disdukcapil melalui [situs resmi Disdukcapil Kabupaten Sukoharjo]"
+        },
+        {
+          "judul": "Rujukan berulang tanpa menjawab pertanyaan",
+          "kriteria": "i",
+          "keparahan": "tinggi",
+          "bukti": "Maaf, Mas, jawaban saya tadi berulang dan belum menjawab pertanyaan Anda."
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": false,
+        "bukti": "juri: Urusin: Selamat atas kelahiran anak Anda! KTP Anda terdaftar di Kabupaten Wonogiri, betul?",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "warga menyebut wilayah sebelum rencana"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Urusin: Selamat atas kelahiran anak Anda! KTP Anda terdaftar di Kabupaten Wonogiri, betul?"
+          }
+        ]
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "juri: [KARTU RENCANA] Kelahiran · Kab. Sukoharjo",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "[KARTU RENCANA] Kelahiran · Kab. Sukoharjo"
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: (tidak ada daftar persyaratan akta kelahiran yang menjawab permintaan warga)",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "(tidak ada daftar persyaratan akta kelahiran yang menjawab permintaan warga)"
+          }
+        ]
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada tautan/nama wilayah lain | juri: Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/"
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada tawaran Browser Pendamping atau klaim sudah mengirim)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada tawaran Browser Pendamping atau klaim sudah mengirim)"
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: jangan kirim data pribadi di chat ini.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "jangan kirim data pribadi di chat ini."
+          }
+        ]
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "juri: Maaf, Mas, jawaban saya tadi berulang dan belum menjawab pertanyaan Anda.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Maaf, Mas, jawaban saya tadi berulang dan belum menjawab pertanyaan Anda."
+          }
+        ]
+      },
+      "h": {
+        "lulus": false,
+        "bukti": "juri: Silakan cek atau hubungi Disdukcapil melalui [situs resmi Disdukcapil Kabupaten Sukoharjo]",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Silakan cek atau hubungi Disdukcapil melalui [situs resmi Disdukcapil Kabupaten Sukoharjo]"
+          }
+        ]
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "juri: [DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tanpa galat"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini."
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 68601,
+        "tokensOut": 910,
+        "costIdr": 0,
+        "panggilanLlm": 10
+      },
+      "simulator": {
+        "panggilan": 6,
+        "tokensIn": 20148,
+        "tokensOut": 538
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 5732,
+        "tokensOut": 774
+      }
+    }
+  }
+}

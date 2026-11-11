@@ -1,0 +1,528 @@
+{
+  "persona": "p01-wonogiri-akta-lahir",
+  "urusanId": "u_763504de9feff5729717c2874d0952f3",
+  "wilayahPerangkat": "3312",
+  "kodeUrusan": "3312",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Assalamualaikum, anak saya lahir minggu lalu di puskesmas. Saya harus ngurus apa ya?",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3312",
+            "nama": "Kabupaten Wonogiri"
+          },
+          "status": "usulan",
+          "sumber": "pilihan",
+          "type": "wilayah",
+          "seq": 1,
+          "at": "2026-11-10T08:01:10.688Z",
+          "chainHead": "e3cc0263e74b…"
+        },
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": null,
+          "version": 2,
+          "type": "state",
+          "seq": 2,
+          "at": "2026-11-10T08:01:10.718Z",
+          "chainHead": "dd64ec39c9de…"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T08:01:10.719Z",
+          "chainHead": "45c5b9fa6856…"
+        },
+        {
+          "delta": "Waalaikumsalam. Selamat atas kelahiran buah hati Anda! Saya bantu cek pengurusan dokumen kelahirannya.\n\nKTP Anda terdaftar di Kabupaten Wonogiri, betul?",
+          "type": "assistant_text",
+          "seq": 4,
+          "at": "2026-11-10T08:01:17.167Z",
+          "chainHead": "7192bd6404e6…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_9e751e7f-087b-41de-badb-589c6c02a75e",
+          "version": 3,
+          "type": "done",
+          "seq": 5,
+          "at": "2026-11-10T08:01:17.168Z",
+          "chainHead": "d98b15f894da…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 6515
+    },
+    {
+      "peran": "warga",
+      "jenis": "klik",
+      "teks": "Ya, betul",
+      "http": {
+        "status": 200
+      },
+      "alasan": "KTP saya memang terdaftar di Kabupaten Wonogiri."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3312",
+            "nama": "Kabupaten Wonogiri"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 6,
+          "at": "2026-11-10T08:01:22.518Z",
+          "chainHead": "513feca7883c…"
+        },
+        {
+          "catatan": "Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 \"Akta Kelahiran\" (recon 2026-11-08): Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.",
+          "langkah": [
+            {
+              "bawa": [],
+              "id": "ajukan",
+              "jenis": "online-adapter",
+              "judul": "Ajukan akta kelahiran terintegrasi lewat loket online",
+              "lokasi": "loket-online",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+                }
+              ]
+            },
+            {
+              "bawa": [],
+              "id": "siapkan-sptjm",
+              "jenis": "online-manual",
+              "judul": "Bila surat kurang: siapkan SPTJM bersama dua saksi",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+                }
+              ]
+            },
+            {
+              "bawa": [
+                "Bukti/SMS pengambilan"
+              ],
+              "id": "ambil-kia",
+              "jenis": "offline",
+              "judul": "Ambil KIA",
+              "lokasi": "kecamatan",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia"
+                }
+              ]
+            }
+          ],
+          "ringkasan": "Kelahiran · Kab. Wonogiri",
+          "tier": "semi",
+          "wilayah": {
+            "ktp": {
+              "kodeKabKota": "3312",
+              "nama": "Kabupaten Wonogiri"
+            }
+          },
+          "type": "plan_card",
+          "seq": 7,
+          "at": "2026-11-10T08:01:22.519Z",
+          "chainHead": "513a073e9075…"
+        },
+        {
+          "dari": "MEMAHAMI",
+          "state": "RENCANA_DIUSULKAN",
+          "tier": "semi",
+          "version": 5,
+          "type": "state",
+          "seq": 8,
+          "at": "2026-11-10T08:01:22.521Z",
+          "chainHead": "d23b159c344e…"
+        }
+      ],
+      "status": "selesai",
+      "aksi": "Ya, betul",
+      "ms": 1327
+    },
+    {
+      "peran": "warga",
+      "jenis": "klik",
+      "teks": "Setujui rencana",
+      "http": {
+        "status": 200
+      },
+      "alasan": "Rencananya sesuai karena saya ingin mengurus akta kelahiran lewat HP."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "dari": "RENCANA_DIUSULKAN",
+          "state": "RENCANA_DISETUJUI",
+          "tier": "semi",
+          "version": 6,
+          "type": "state",
+          "seq": 9,
+          "at": "2026-11-10T08:01:27.340Z",
+          "chainHead": "da7c8aaf87ae…"
+        },
+        {
+          "dari": "RENCANA_DISETUJUI",
+          "state": "MENYIAPKAN_BERKAS",
+          "tier": "semi",
+          "version": 7,
+          "type": "state",
+          "seq": 10,
+          "at": "2026-11-10T08:01:27.341Z",
+          "chainHead": "d04e89f4d65b…"
+        },
+        {
+          "dari": "MENYIAPKAN_BERKAS",
+          "state": "BERKAS_SIAP",
+          "tier": "semi",
+          "version": 8,
+          "type": "state",
+          "seq": 11,
+          "at": "2026-11-10T08:01:27.342Z",
+          "chainHead": "5b38e7fc0004…"
+        },
+        {
+          "dari": "BERKAS_SIAP",
+          "state": "MENGISI",
+          "tier": "semi",
+          "version": 9,
+          "type": "state",
+          "seq": 12,
+          "at": "2026-11-10T08:01:27.343Z",
+          "chainHead": "36c0ba307c54…"
+        },
+        {
+          "dari": "MENGISI",
+          "state": "MENUNGGU_KONFIRMASI",
+          "tier": "semi",
+          "version": 10,
+          "type": "state",
+          "seq": 13,
+          "at": "2026-11-10T08:01:27.344Z",
+          "chainHead": "19e4bbe72023…"
+        },
+        {
+          "adapterId": "telunjuk-sakti-wonogiri",
+          "executionId": "x_6304e96d-522b-400e-bdec-bbd8f1319bb2",
+          "flowId": "ajukan",
+          "origin": "https://telunjuksakti.wonogirikab.go.id",
+          "params": {
+            "berkas": "kk,ktp,surat",
+            "layanan_id": 23
+          },
+          "paramsHash": "e2d3384e3e2d…",
+          "ringkasan": "Ajukan akta kelahiran terintegrasi lewat loket online di Telunjuk Sakti. AI mengunggah Dokumen Anda; Anda masuk akun (sandi, CAPTCHA) dan menekan Selesai sendiri.",
+          "tool": "dukcapil__ajukan_layanan",
+          "type": "execution_request",
+          "seq": 14,
+          "at": "2026-11-10T08:01:27.345Z",
+          "chainHead": "7630bf5d921a…"
+        },
+        {
+          "jenis": "konfirmasi",
+          "paramsHash": "e2d3384e3e2d…",
+          "pesan": "Izinkan Browser Pendamping membuka situs resmi dan mengisi pengajuan ini?",
+          "tool": "dukcapil__ajukan_layanan",
+          "type": "gate",
+          "seq": 15,
+          "at": "2026-11-10T08:01:27.346Z",
+          "chainHead": "ce4c12adeb26…"
+        }
+      ],
+      "status": "selesai",
+      "aksi": "Setujui rencana",
+      "ms": 1613
+    },
+    {
+      "peran": "warga",
+      "jenis": "klik",
+      "teks": "Setujui dan buka situs",
+      "alasan": "Bu Rina ingin dibantu mengurus akta kelahiran lewat HP."
+    }
+  ],
+  "layar": [
+    "Warga: Assalamualaikum, anak saya lahir minggu lalu di puskesmas. Saya harus ngurus apa ya?",
+    "[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Wonogiri? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)\nUrusin: Waalaikumsalam. Selamat atas kelahiran buah hati Anda! Saya bantu cek pengurusan dokumen kelahirannya.\n\nKTP Anda terdaftar di Kabupaten Wonogiri, betul?",
+    "Warga menekan [Ya, betul]",
+    "(sistem) Wilayah KTP: Kabupaten Wonogiri\n[KARTU RENCANA] Kelahiran · Kab. Wonogiri\n  Wilayah KTP: Kabupaten Wonogiri (tingkat semi)\n  Catatan: Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 \"Akta Kelahiran\" (recon 2026-11-08): Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.\n  1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]\n     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)\n  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]\n     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)\n  3. Ambil KIA [datang langsung, kecamatan]\n     Bawa: Bukti/SMS pengambilan\n     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)",
+    "Warga menekan [Setujui rencana]",
+    "[KARTU BROWSER PENDAMPING] Ajukan akta kelahiran terintegrasi lewat loket online di Telunjuk Sakti. AI mengunggah Dokumen Anda; Anda masuk akun (sandi, CAPTCHA) dan menekan Selesai sendiri. Situs: https://telunjuksakti.wonogirikab.go.id\n[KONFIRMASI] Izinkan Browser Pendamping membuka situs resmi dan mengisi pengajuan ini?",
+    "Warga menekan [Setujui dan buka situs]"
+  ],
+  "akhir": {
+    "alasan": "pendamping_dibuka",
+    "puas": true,
+    "catatan": "Browser Pendamping di luar cakupan eval"
+  },
+  "ms": 21074,
+  "giliranWarga": 4,
+  "nilai": {
+    "persona": "p01-wonogiri-akta-lahir",
+    "judul": "Ibu di Kab. Wonogiri, bayi lahir minggu lalu (akta kelahiran, jalur demo)",
+    "urusanId": "u_763504de9feff5729717c2874d0952f3",
+    "wilayahPerangkat": "3312",
+    "kodeUrusan": "3312",
+    "akhir": {
+      "alasan": "pendamping_dibuka",
+      "puas": true,
+      "catatan": "Browser Pendamping di luar cakupan eval"
+    },
+    "giliranWarga": 4,
+    "ms": 21074,
+    "url": [
+      "https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia",
+      "https://telunjuksakti.wonogirikab.go.id"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": true,
+        "bukti": "agen menanyakan wilayah sebelum rencana"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: telunjuk-sakti-wonogiri",
+        "ditawarkan": [
+          "telunjuk-sakti-wonogiri"
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "tanpa galat"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": true,
+        "bukti": "KTP Anda terdaftar di Kabupaten Wonogiri, betul?"
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "Ajukan akta kelahiran terintegrasi lewat loket online"
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "(tidak ada daftar persyaratan dokumen untuk pengajuan akta kelahiran)"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "Situs: https://telunjuksakti.wonogirikab.go.id"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "AI mengunggah Dokumen Anda; Anda masuk akun (sandi, CAPTCHA) dan menekan Selesai sendiri."
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "Anda masuk akun (sandi, CAPTCHA) dan menekan Selesai sendiri."
+      },
+      "g": {
+        "lulus": false,
+        "bukti": "Bila surat kurang: siapkan SPTJM bersama dua saksi"
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "Izinkan Browser Pendamping membuka situs resmi dan mengisi pengajuan ini?"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "[AKHIR: pendamping_dibuka — Browser Pendamping di luar cakupan eval]"
+      },
+      "ringkasan": "Wilayah dipastikan dan warga diarahkan ke kanal resmi Wonogiri dengan pengiriman akhir oleh warga. Namun, Urusin tidak menyampaikan daftar dokumen yang perlu disiapkan dan menggunakan istilah yang tidak dijelaskan.",
+      "cacat": [
+        {
+          "judul": "Persyaratan dokumen tidak disampaikan",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "(tidak ada daftar persyaratan dokumen untuk pengajuan akta kelahiran)"
+        },
+        {
+          "judul": "Istilah SPTJM tidak dijelaskan",
+          "kriteria": "g",
+          "keparahan": "rendah",
+          "bukti": "Bila surat kurang: siapkan SPTJM bersama dua saksi"
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": true,
+        "bukti": "otomatis: agen menanyakan wilayah sebelum rencana | juri: KTP Anda terdaftar di Kabupaten Wonogiri, betul?",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "agen menanyakan wilayah sebelum rencana"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "KTP Anda terdaftar di Kabupaten Wonogiri, betul?"
+          }
+        ]
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "juri: Ajukan akta kelahiran terintegrasi lewat loket online",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Ajukan akta kelahiran terintegrasi lewat loket online"
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: (tidak ada daftar persyaratan dokumen untuk pengajuan akta kelahiran)",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "(tidak ada daftar persyaratan dokumen untuk pengajuan akta kelahiran)"
+          }
+        ]
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada tautan/nama wilayah lain | juri: Situs: https://telunjuksakti.wonogirikab.go.id",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Situs: https://telunjuksakti.wonogirikab.go.id"
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: telunjuk-sakti-wonogiri | juri: AI mengunggah Dokumen Anda; Anda masuk akun (sandi, CAPTCHA) dan menekan Selesai sendiri.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: telunjuk-sakti-wonogiri",
+            "ditawarkan": [
+              "telunjuk-sakti-wonogiri"
+            ]
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "AI mengunggah Dokumen Anda; Anda masuk akun (sandi, CAPTCHA) dan menekan Selesai sendiri."
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: Anda masuk akun (sandi, CAPTCHA) dan menekan Selesai sendiri.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Anda masuk akun (sandi, CAPTCHA) dan menekan Selesai sendiri."
+          }
+        ]
+      },
+      "g": {
+        "lulus": false,
+        "bukti": "juri: Bila surat kurang: siapkan SPTJM bersama dua saksi",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Bila surat kurang: siapkan SPTJM bersama dua saksi"
+          }
+        ]
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "juri: Izinkan Browser Pendamping membuka situs resmi dan mengisi pengajuan ini?",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Izinkan Browser Pendamping membuka situs resmi dan mengisi pengajuan ini?"
+          }
+        ]
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "otomatis: tanpa galat | juri: [AKHIR: pendamping_dibuka — Browser Pendamping di luar cakupan eval]",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tanpa galat"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "[AKHIR: pendamping_dibuka — Browser Pendamping di luar cakupan eval]"
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 6275,
+        "tokensOut": 66,
+        "costIdr": 0,
+        "panggilanLlm": 2
+      },
+      "simulator": {
+        "panggilan": 3,
+        "tokensIn": 9224,
+        "tokensOut": 140
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 5748,
+        "tokensOut": 608
+      }
+    }
+  }
+}

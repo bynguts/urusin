@@ -139,16 +139,30 @@ Bangun korpus dari sumber resmi di `data/sources.json` (butuh jaringan; sopan: r
 pnpm rag:ingest --sources ../../data/sources.json --db .cache/rag.db
 pnpm rag:eval --gold ../../data/gold/tuning.json --pipelines ../../data/gold/pipelines.json
 pnpm rag:eval --gold ../../data/gold/heldout.json --pipelines ../../data/gold/pipelines.json
+pnpm rag:eval --gold ../../data/gold/nasional.json --pipelines ../../data/gold/pipelines.json
 ```
 
-Korpus (37 sumber, ~267 chunk): halaman standar pelayanan per layanan Disdukcapil Wonogiri, data dukung Si D'nOK
+Korpus (45 sumber, ~310 chunk): halaman standar pelayanan per layanan Disdukcapil Wonogiri, data dukung Si D'nOK
 Semarang, katalog layanan Klampid Surabaya (adapter GraphQL, disanitasi), Cek Bansos, LAPOR!, regulasi adminduk
-(hanya metadata dari peraturan.go.id), serta beberapa halaman Samsat/OSS/Ombudsman. Setiap chunk wajib punya
+(metadata dari peraturan.go.id), serta beberapa halaman Samsat/OSS/Ombudsman. Setiap chunk wajib punya
 `sourceUrl` dan `verifiedAt` non-null (skema Zod + trigger DB aditif).
+
+Teks pasal regulasi nasional (UU 23/2006 Ps 34, 93; UU 24/2013 Ps 27, 32, 44, 79A, 94, 95B; Perpres 96/2018 Ps 10-12,
+14, 17, 21, 22, 25, 33, 34; Permendagri 108/2019 Ps 18, 24, 28-31, 43; Permendagri 109/2019 Ps 4-5 (kode formulir F-1.01
+sampai F-2.04); Permendagri 7/2026 Ps 4, 6, 24-26, 34; Perpol 1/2026 tentang SKCK Ps 2-5, 10, 12-14) masuk lewat
+adapter `pasal`:
+sumber ber-`jenis: pdf` menunjuk PDF resmi di peraturan.go.id, ingest mengambil PDF itu (robots, jeda sopan) dan
+mencatat hash-nya untuk `rag:verify`, sedangkan teks chunk diambil dari kutipan verbatim di `data/regulasi/pasal.json`
+(tanpa dependensi parser PDF). Satu chunk per pasal, id `<sumber>#pasal-27a`, judul `<judul sumber> - Pasal 27A`,
+`kodeWilayah` null. Bahasa hukumnya umum, jadi dua penyesuaian (`PASAL_PRIOR` = 0.5 di `search.ts`): bila kode wilayah
+warga diketahui, skor BM25 chunk pasal dikali 0.5 agar chunk daerah didahulukan; dan cakupan abstain yang berasal dari
+chunk pasal dikali 0.5 agar satu kata umum ("hari", "kartu") tidak meloloskan kueri luar cakupan.
 
 Gold set: `data/gold/tuning.json` (50 pertanyaan: 13 Surabaya, 12 luar cakupan) untuk penyetelan dan
 `data/gold/heldout.json` (20 pertanyaan, 6 luar cakupan) yang TIDAK dipakai menyetel. `data/rag-gold.json` tetap contoh
 sintetis. Pertanyaan luar cakupan (`luarCakupan: true`) tidak punya `relevan`; jawaban benar adalah abstain.
+`data/gold/nasional.json` (28 pertanyaan) menguji teks pasal: 24 pertanyaan tanpa wilayah yang jawabannya pasal
+nasional, plus 4 penjaga wilayah (Surabaya, Wonogiri) yang jawabannya chunk daerah dan tidak boleh dikalahkan pasal.
 
 Keterbatasan korpus yang perlu diketahui sebelum menilai angka:
 
@@ -156,7 +170,7 @@ Keterbatasan korpus yang perlu diketahui sebelum menilai angka:
   Surabaya hanya bisa diarahkan ke layanan yang tepat, bukan dijawab rinci.
 - Id chunk halaman HTML berbasis urutan, sehingga bergeser bila halaman berubah. Gold yang rujukannya tidak cocok
   muncul di `tanpaChunkRelevan` pada laporan eval; id chunk Klampid stabil (`klampid-katalog#<kategori>-<slug>`).
-- SKCK, SIM, BPJS, Cek DPT, dan IKD umum belum ada di korpus (sumber tak terjangkau atau tak terverifikasi);
+- SIM, BPJS, Cek DPT, dan IKD umum belum ada di korpus (sumber tak terjangkau atau tak terverifikasi);
   pertanyaan tentangnya diperlakukan sebagai luar cakupan.
 - Tahap hybrid dan rerank butuh kunci embedding/LLM; tanpanya `rag:eval` hanya mengukur BM25.
 

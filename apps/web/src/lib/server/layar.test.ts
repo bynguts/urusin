@@ -1,5 +1,5 @@
 import { isHttpError, isRedirect } from '@sveltejs/kit';
-import { DemoProvider } from '@urusin/harness';
+import { DemoProvider, wilayahUrusan } from '@urusin/harness';
 import { createRawSnippet } from 'svelte';
 import { render } from 'svelte/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,7 @@ import { load as muatPeristiwa } from '../../routes/peristiwa/[slug]/+page.serve
 import { load as muatUrusan } from '../../routes/urusan/[id]/+page.server';
 import LayarPendamping from '../components/pendamping/LayarPendamping.svelte';
 import Chip from '../components/ui/Chip.svelte';
+import KartuRencana from '../components/urusan/KartuRencana.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
 import { dataAwal, type DataPendamping } from '../pendamping/sesi.svelte';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
@@ -69,13 +70,18 @@ describe('form action mulai urusan (tanpa JS)', () => {
     expect(r.data.pesanWarga).toMatch(/Tulis dulu/);
   });
 
-  it('dari kartu peristiwa → urusan dibuat dengan jenis + kab/kota, lalu 303 ke layar urusan', async () => {
+  it('dari kartu peristiwa → urusan dibuat dengan jenis + usulan kab/kota, lalu 303 ke layar urusan', async () => {
     const r = await tangkap(beranda.mulai(kirimForm({ peristiwa: 'kelahiran', kodeKabKota: '3312' })));
     expect(isRedirect(r)).toBe(true);
     const lokasi = (r as { location: string }).location;
     expect(lokasi).toMatch(/^\/urusan\/u_[0-9a-f]{32}$/);
     const u = rt.store.getUrusan(lokasi.split('/').at(-1)!);
-    expect(u).toMatchObject({ jenis: 'kelahiran', kodeKabKota: '3312' });
+    // Pilihan di perangkat hanya usulan: wilayah KTP urusan belum ditetapkan sampai warga mengonfirmasi.
+    expect(u).toMatchObject({ jenis: 'kelahiran', kodeKabKota: null });
+    expect(wilayahUrusan(rt.store, u!)).toMatchObject({
+      ktp: null,
+      usulan: { ktp: { kodeKabKota: '3312' }, sumber: 'pilihan' },
+    });
   });
 });
 
@@ -246,6 +252,70 @@ describe('render server komponen', () => {
     expect(tanpa).not.toContain('Kirim pengajuan');
   });
 
+  it('giliran ketuk_tautan: judul netral, tombol Buka ber-host+jalur dan Lanjutkan; berhenti tanpa Lanjutkan', () => {
+    const noop = () => {};
+    const tautan = {
+      ref: 'e4',
+      nama: 'Daftar <b>Akta</b>',
+      host: 'contoh-layanan.go.id',
+      jalur: '/akta/baru',
+    };
+    const layar = (alasan: 'ketuk_tautan' | 'final' | 'berhenti', denganTautan = true) => {
+      const data: DataPendamping = {
+        ...dataAwal(),
+        keadaan: 'giliran',
+        mode: 'takeover',
+        giliran: {
+          jenis: 'giliran_anda',
+          alasan,
+          pesan:
+            alasan === 'berhenti'
+              ? 'AI berhenti di sini. Lanjutkan sendiri dari layar ini.'
+              : 'Ketuk tautan yang disorot, lalu tekan Lanjutkan.',
+          ...(alasan === 'ketuk_tautan' && denganTautan ? { tautan } : {}),
+        },
+      };
+      return render(LayarPendamping, {
+        props: {
+          data,
+          situs: 'https://contoh-layanan.go.id',
+          onambilalih: noop,
+          onkembalikan: noop,
+          onhentikan: noop,
+          ontutup: noop,
+          onmulailagi: noop,
+          onpanduan: noop,
+        },
+      }).body;
+    };
+    const body = layar('ketuk_tautan');
+    // Judul netral: tautan pembuka belum tentu formulir.
+    expect(body).toContain('Buka tautan di situs');
+    expect(body).not.toContain('Buka formulir');
+    expect(body).toContain('AI tidak mengetuk tautan ini; Anda yang membukanya.');
+    // Worker membuka tautan lalu AI lanjut: hanya tombol Buka, tanpa Lanjutkan.
+    expect(body).not.toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
+    // Tombol Buka: nama tautan dari situs sebagai teks (di-escape), plus host + jalur tujuan.
+    expect(body).toMatch(/data-buka-tautan[^>]*>[\s\S]*?Buka “Daftar &lt;b>Akta&lt;\/b>”/);
+    expect(body).toContain('(contoh-layanan.go.id/akta/baru)');
+    expect(body).not.toContain('<b>Akta</b>');
+    // Worker lama tanpa `tautan`: tanpa tombol Buka, Lanjutkan tetap ada.
+    expect(layar('ketuk_tautan', false)).not.toContain('data-buka-tautan');
+    expect(layar('ketuk_tautan', false)).toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
+    // Pembanding: giliran kirim akhir tetap tanpa Lanjutkan (tombol Kirim di situs milik warga).
+    expect(layar('final')).not.toContain('Buka tautan di situs');
+    expect(layar('final')).not.toContain('data-buka-tautan');
+    // N2: serah akhir: "AI berhenti", tanpa janji coba lagi dan tanpa Lanjutkan.
+    const henti = layar('berhenti');
+    expect(henti).toContain('AI berhenti');
+    expect(henti).not.toMatch(/mencoba lagi/);
+    expect(henti).not.toMatch(/<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/);
+    // Warga mengirim sendiri lalu melapor: "Saya sudah mengirim" hanya di serah akhir, bukan giliran lain.
+    expect(henti).toMatch(/data-sudah-kirim[^>]*>Saya sudah mengirim<\/button>/);
+    expect(layar('final')).not.toContain('data-sudah-kirim');
+    expect(layar('ketuk_tautan')).not.toContain('data-sudah-kirim');
+  });
+
   it('halaman urusan memuat nomor permohonan yang tersimpan (kartu Terkirim setelah sesi ditutup)', async () => {
     const u = rt.store.createUrusan({ jenis: 'kelahiran' });
     rt.store.catatNomorPermohonan(u.id, 'FX-REG-0002');
@@ -260,6 +330,34 @@ describe('render server komponen', () => {
       locals: {},
     } as never)) as { urusan: { nomorPermohonan: string | null } };
     expect(d.urusan.nomorPermohonan).toBe('FX-REG-0002');
+  });
+
+  it('kartu rencana menampilkan dokumen persyaratan dan keterangan tiap langkah', () => {
+    const { body } = render(KartuRencana, {
+      props: {
+        rencana: {
+          type: 'plan_card',
+          ringkasan: 'Akta kelahiran · Banyumas',
+          langkah: [
+            {
+              id: 'ajukan',
+              jenis: 'online-manual',
+              judul: 'Ajukan akta kelahiran',
+              bawa: [],
+              dokumen: ['Kartu Keluarga', 'KTP-el orang tua'],
+              keterangan: 'Persyaratan nasional (Perpres 96/2018).',
+              sumber: [],
+            },
+          ],
+        } as never,
+        kelayakan: null,
+        bisaSetujui: false,
+        onsetujui: () => {},
+        onubah: () => {},
+      },
+    });
+    expect(body).toContain('KTP-el orang tua');
+    expect(body).toContain('Persyaratan nasional (Perpres 96/2018).');
   });
 });
 
@@ -311,6 +409,22 @@ describe('Browser Pendamping setelah Kirim', () => {
     expect(b).toContain('Browser masih terbuka sebentar');
     expect(b).toContain('Tutup sekarang');
     expect(b).not.toContain(DITUTUP);
+  });
+
+  it('takeover tanpa giliran (dijeda): Saya sudah mengirim + pesan 409 yang jujur; AI mengisi: tidak ada', async () => {
+    const b = await layar({ keadaan: 'dijeda', mode: 'takeover' });
+    expect(b).toMatch(/data-sudah-kirim[^>]*>Saya sudah mengirim<\/button>/);
+    expect(b).not.toContain('role="alert"');
+    const belum = await layar({
+      keadaan: 'dijeda',
+      mode: 'takeover',
+      pesanKirim: 'Belum terlihat terkirim. Periksa halaman situsnya, lalu coba lagi.',
+    });
+    expect(belum).toMatch(/role="alert"[^>]*>Belum terlihat terkirim\. Periksa halaman situsnya/);
+    expect(await layar({ keadaan: 'dijeda', mode: 'takeover', memeriksaKirim: true })).toMatch(
+      /<button[^>]*disabled[^>]*data-sudah-kirim/,
+    );
+    expect(await layar({ keadaan: 'ai', mode: 'ai' })).not.toContain('data-sudah-kirim');
   });
 
   it('teks "Browser ditutup" hanya saat sesi benar-benar ditutup (mode done)', async () => {

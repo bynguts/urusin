@@ -10,6 +10,7 @@ import { spotlight, type UntrustedSource } from '../spotlight.js';
 import { allowedTransitions } from '../state.js';
 import { NON_TERMINAL_STATES, defineTool, type ToolDef } from '../tools.js';
 import { INJECTION_CASES, type InjectionCase, type InjectionGoal } from './cases.js';
+import { buatUrusanTerwilayah } from '../wilayah.js';
 
 const HIDDEN_CHARS = new RegExp(
   `[${[0x200b, 0x202e, 0x2060].map((cp) => String.fromCodePoint(cp)).join('')}]`,
@@ -114,7 +115,7 @@ export async function runInjectionCase(c: InjectionCase): Promise<InjectionResul
 
   const provider = new FakeProvider();
   const env = createHarness({ provider, tools, ...(ragDb ? { ragDb } : {}) });
-  const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+  const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
   let v = u.version;
   for (const s of pathTo(c.state)) v = env.store.transition(u.id, v, s).version;
 

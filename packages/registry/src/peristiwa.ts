@@ -1,4 +1,13 @@
 import { z } from 'zod';
+import {
+  REF_DUKCAPIL_2023,
+  REF_PERPRES,
+  REF_PERPRES_TEKS,
+  REF_PMD108,
+  REF_PMD7_2026,
+  REF_UU23,
+  REF_UU24,
+} from './regulasi.js';
 import { SourceRefSchema, type SourceRef } from './schema.js';
 
 /**
@@ -10,7 +19,7 @@ import { SourceRefSchema, type SourceRef } from './schema.js';
 export const LangkahSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   judul: z.string().min(1),
-  jenis: z.enum(['online-adapter', 'online-manual', 'offline']),
+  jenis: z.enum(['online-adapter', 'online-manual', 'offline', 'cek-kanal']),
   /** Hanya langkah offline yang wajib punya lokasi. */
   lokasi: z
     .enum(['loket-online', 'kecamatan', 'disdukcapil', 'kelurahan-desa', 'pt-pos', 'kepolisian'])
@@ -93,28 +102,23 @@ const REF_KAWIN = wng(
   'terintegrasi-pencatatan-akta-perkawinan-kartu-keluarga-ktp-el',
   'Terintegrasi Pencatatan Akta Perkawinan, Kartu Keluarga, KTP-el',
 );
-const REF_SKPWNI = wng(
+export const REF_SKPWNI = wng(
   'pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni',
   'Penerbitan Surat Keterangan Pindah WNI (SKPWNI)',
 );
-const REF_SKDWNI = wng(
+/** Nama layanan pindah datang di Wonogiri. "SKDWNI" bukan dokumen nasional; dokumen nasionalnya hanya SKP/SKPWNI. */
+export const REF_SKDWNI = wng(
   'pelayanan-penerbitan-surat-keterangan-datang-warga-negara-indonesia-skdwni',
   'Penerbitan Surat Keterangan Datang WNI (SKDWNI)',
 );
-const REF_KK = wng(
+export const REF_KK = wng(
   'pelayanan-penerbitan-kartu-keluarga-baru-perubahan-data-penambahan-anggota-keluarga-pengurangan-anggota-keluarga-hilang-dan-rusak',
   'Penerbitan Kartu Keluarga',
 );
-const REF_KTP = wng(
+export const REF_KTP = wng(
   'pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak',
   'Penerbitan KTP-el',
 );
-const REF_PERPRES: SourceRef = {
-  url: 'https://peraturan.go.id/id/perpres-no-96-tahun-2018',
-  judul:
-    'Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil',
-  instansi: 'Pemerintah Republik Indonesia',
-};
 
 const L = (l: Omit<Langkah, 'verifiedAt'>): Langkah => ({ ...l, verifiedAt: null });
 
@@ -126,7 +130,7 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
     tier: 'semi',
     keluaran: ['Akta Kelahiran', 'Kartu Keluarga', 'KIA'],
     catatan:
-      'Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 "Akta Kelahiran" (recon 2026-11-08): Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.',
+      'Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 "Akta Kelahiran": Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.',
     langkah: [
       L({
         id: 'ajukan',
@@ -140,12 +144,13 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
           'Surat keterangan kelahiran dari RS/Puskesmas/fasilitas kesehatan/dokter/bidan, atau dari kepala desa/lurah bila lahir di rumah atau tempat lain',
           'Buku nikah/kutipan akta perkawinan/bukti lain yang sah',
           'KK tempat penduduk terdaftar atau akan didaftarkan sebagai anggota keluarga',
-          'Formulir F-2.01 (Pelaporan Pencatatan Sipil)',
+          'KTP-el orang tua',
+          'Formulir pelaporan yang disediakan petugas (F-2.01)',
         ],
         bawa: [],
         keterangan:
-          'Untuk cetak mandiri akta dan KK, alamat email wajib diisi. Berkas yang tidak sesuai dibatalkan dan pemohon menerima SMS pembatalan.',
-        sourceRef: [REF_LAHIR],
+          'Untuk cetak mandiri akta dan KK, alamat email wajib diisi. Berkas yang tidak sesuai dibatalkan dan pemohon menerima SMS pembatalan. KTP-el tidak disyaratkan bagi ibu kandung di bawah 17 tahun yang belum kawin (Permendagri 108/2019 Ps. 43 ayat 3). Kelahiran dilaporkan paling lambat 60 hari (UU 24/2013 Ps. 27); lewat dari itu akta tetap terbit setelah keputusan Kepala Disdukcapil, tanpa penetapan pengadilan (Ps. 32 ayat 1).',
+        sourceRef: [REF_LAHIR, REF_PERPRES_TEKS, REF_PMD108, REF_UU24],
       }),
       L({
         id: 'siapkan-sptjm',
@@ -153,12 +158,13 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
         jenis: 'online-manual',
         dependsOn: [],
         dokumen: [
-          'SPTJM kebenaran data kelahiran (F-2.03) dan dua orang saksi, bila surat keterangan kelahiran tidak ada',
-          'SPTJM kebenaran sebagai pasangan suami istri (F-2.04) dan dua orang saksi, bila tidak punya buku nikah/akta perkawinan',
+          'SPTJM kebenaran data kelahiran (F-2.03) diketahui dua orang saksi, bila surat keterangan kelahiran tidak ada',
+          'SPTJM kebenaran sebagai pasangan suami istri (F-2.04) diketahui dua orang saksi, bila tidak punya buku nikah/akta perkawinan tetapi KK menunjukkan orang tua suami istri',
         ],
         bawa: [],
-        keterangan: 'Pengganti dokumen yang tidak dimiliki, bukan langkah tambahan bagi semua orang.',
-        sourceRef: [REF_LAHIR],
+        keterangan:
+          'Pengganti dokumen yang tidak dimiliki (Perpres 96/2018 Ps. 34), bukan langkah tambahan bagi semua orang.',
+        sourceRef: [REF_LAHIR, REF_PERPRES_TEKS],
       }),
       L({
         id: 'ambil-kia',
@@ -169,8 +175,8 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
         dokumen: [],
         bawa: ['Bukti/SMS pengambilan'],
         keterangan:
-          'KIA dicetak Operator SIAK Kecamatan. Halaman resmi tidak menyebut lokasi pengambilan secara eksplisit; tanyakan ke Disdukcapil atau kecamatan sebelum berangkat.',
-        sourceRef: [REF_LAHIR],
+          'KIA dicetak Operator SIAK Kecamatan. Halaman resmi tidak menyebut lokasi pengambilan secara eksplisit; tanyakan ke Disdukcapil atau kecamatan sebelum berangkat. KIA yang terbit bersama akta cukup melampirkan fotokopi KK (Permendagri 7/2026 Ps. 6 ayat 1).',
+        sourceRef: [REF_LAHIR, REF_PMD7_2026],
       }),
     ],
   },
@@ -190,14 +196,15 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
         lokasi: 'loket-online',
         dependsOn: [],
         dokumen: [
-          'Surat kematian dari dokter atau kepala desa/lurah (atau dokumen pengganti sesuai keadaan, mis. keterangan kepolisian atau penetapan pengadilan)',
+          'Surat kematian dari dokter atau kepala desa/lurah (keterangan kepolisian bila identitas jenazah tidak jelas; salinan penetapan pengadilan hanya bila jenazah tidak ditemukan)',
           'Fotokopi KK/KTP orang yang meninggal',
           'Dokumen perjalanan bagi WNI bukan penduduk atau orang asing',
-          'Formulir F-2.01 (Pelaporan Pencatatan Sipil)',
+          'Formulir pelaporan yang disediakan petugas (F-2.01)',
         ],
         bawa: [],
-        keterangan: 'Untuk cetak mandiri akta dan KK, alamat email wajib diisi.',
-        sourceRef: [REF_MATI],
+        keterangan:
+          'Untuk cetak mandiri akta dan KK, alamat email wajib diisi. Kematian dilaporkan paling lambat 30 hari sejak tanggal kematian; kewajiban lapor ada pada ketua RT atau sebutan lain (UU 24/2013 Ps. 44).',
+        sourceRef: [REF_MATI, REF_UU24],
       }),
       L({
         id: 'ambil-ktp-el',
@@ -235,11 +242,12 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
           'KTP-el asli',
           'Kartu Keluarga asli',
           'Janda/duda cerai mati: fotokopi akta kematian pasangan; cerai hidup: fotokopi akta perceraian',
-          'Formulir F-2.01 (Pelaporan Pencatatan Sipil)',
+          'Formulir pelaporan yang disediakan petugas (F-2.01)',
         ],
         bawa: [],
-        keterangan: 'Petugas memeriksa kelengkapan; bila sesuai, pemohon diminta mengirim berkas fisik.',
-        sourceRef: [REF_KAWIN],
+        keterangan:
+          'Untuk perkawinan non-Muslim, dilaporkan paling lambat 60 hari. Perkawinan Muslim dicatat KUA kecamatan dan Dukcapil tidak menerbitkan kutipan akta perkawinannya (UU 23/2006 Ps. 34). Petugas memeriksa kelengkapan; bila sesuai, pemohon diminta mengirim berkas fisik.',
+        sourceRef: [REF_KAWIN, REF_UU23],
       }),
       L({
         id: 'kirim-berkas-pos',
@@ -271,11 +279,11 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
     judul: 'Pindah',
     kodeWilayah: null,
     tier: 'dipandu',
-    keluaran: ['SKPWNI', 'SKDWNI', 'Kartu Keluarga', 'KTP-el'],
+    keluaran: ['SKPWNI', 'Kartu Keluarga', 'KTP-el'],
     peringatan:
       'Risiko lebih tinggi: dua sistem berbeda. Tidak ada bundel resmi; alur ini orkestrasi buatan Urusin.',
     catatan:
-      'Persyaratan di bawah merujuk halaman Wonogiri sebagai contoh; ketersediaan online di instansi asal dan tujuan harus diperiksa per situs sebelum dijanjikan.',
+      'Pindah antar kab/kota: SKPWNI dari daerah asal, lalu daerah tujuan menerbitkan KK dan KTP-el baru. SKPWNI berlaku 100 hari kerja. Persyaratan merujuk halaman Wonogiri sebagai contoh; ketersediaan online di instansi asal dan tujuan harus diperiksa per situs sebelum dijanjikan.',
     langkah: [
       L({
         id: 'skpwni',
@@ -284,54 +292,30 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
         lokasi: 'disdukcapil',
         dependsOn: [],
         dokumen: [
-          'Formulir F-1.03',
-          'KTP asli dan fotokopi',
-          'Fotokopi KK sebelum pindah',
-          'Surat nikah (bagi yang sudah menikah)',
+          'Formulir permohonan pindah yang disediakan petugas (F-1.03)',
+          'Fotokopi KK',
+          'Surat pernyataan tidak keberatan dari pemilik rumah, bila menumpang KK, sewa, kontrak, atau kos',
         ],
         bawa: [],
         keterangan:
-          'Di Wonogiri tersedia tatap muka dan daring, 1 hari kerja, tanpa biaya; daerah lain bisa berbeda.',
-        sourceRef: [REF_SKPWNI, REF_PERPRES],
+          'Surat Keterangan Pindah (SKPWNI) diterbitkan Disdukcapil asal dan berlaku 100 hari kerja (Permendagri 108/2019 Ps. 30). Sudah tinggal di tujuan? Disdukcapil tujuan bisa membantu memintakannya ke asal secara elektronik (Ps. 31). Di Wonogiri tersedia tatap muka dan daring, 1 hari kerja, tanpa biaya; daerah lain bisa berbeda.',
+        sourceRef: [REF_SKPWNI, REF_PERPRES, REF_PMD108],
       }),
       L({
-        id: 'skdwni',
-        judul: 'Urus SKDWNI di daerah tujuan',
+        id: 'kk-ktp-el',
+        judul: 'Lapor datang di daerah tujuan: terima KK dan KTP-el alamat baru',
         jenis: 'online-manual',
         lokasi: 'disdukcapil',
         dependsOn: ['skpwni'],
         dokumen: [
-          'SKPWNI dari Disdukcapil asal',
-          'Biodata dari kabupaten/kota asal atau fotokopi KK terakhir',
-          'Surat nikah bagi yang sudah menikah (data harus sesuai)',
+          'SKPWNI dari Disdukcapil asal (di Wonogiri layanan ini disebut SKDWNI)',
+          'KTP-el dan/atau KIA alamat lama',
+          'Surat pernyataan tidak keberatan dari pemilik rumah, bila menumpang KK, sewa, kontrak, atau kos',
         ],
-        bawa: [],
-        keterangan: 'Mensyaratkan SKPWNI selesai lebih dulu.',
-        sourceRef: [REF_SKDWNI, REF_PERPRES],
-      }),
-      L({
-        id: 'kk',
-        judul: 'Terbitkan Kartu Keluarga di alamat baru',
-        jenis: 'online-manual',
-        dependsOn: ['skdwni'],
-        dokumen: [
-          'Surat Keterangan Pindah/Datang',
-          'Fotokopi akta kelahiran dan ijazah untuk verifikasi data',
-        ],
-        bawa: [],
-        keterangan: 'Syarat KK baru menurut halaman Wonogiri; periksa syarat instansi tujuan.',
-        sourceRef: [REF_KK],
-      }),
-      L({
-        id: 'ktp-el',
-        judul: 'Perbarui KTP-el',
-        jenis: 'offline',
-        lokasi: 'kecamatan',
-        dependsOn: ['kk'],
-        dokumen: ['SKP bila permohonan karena pindah datang antar kab/kota/provinsi'],
-        bawa: ['KTP-el lama', 'Kartu Keluarga terbaru'],
-        keterangan: 'KTP-el dicetak dan diambil di kecamatan menurut halaman Wonogiri.',
-        sourceRef: [REF_KTP],
+        bawa: ['KTP-el lama'],
+        keterangan:
+          'Disdukcapil tujuan menerbitkan KK dan KTP-el alamat baru berdasarkan SKPWNI (Perpres 96/2018 Ps. 17 dan Ps. 25 ayat 5); KTP-el lama ditarik di tujuan, bukan di asal.',
+        sourceRef: [REF_SKDWNI, REF_KK, REF_KTP, REF_PERPRES_TEKS, REF_DUKCAPIL_2023],
       }),
     ],
   },

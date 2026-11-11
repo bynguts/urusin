@@ -14,6 +14,7 @@ import { POST as setujuiRencana } from '../../routes/api/urusan/[id]/rencana/set
 import { GET as statusUrusan } from '../../routes/api/urusan/[id]/+server';
 import { GET as stream } from '../../routes/api/urusan/[id]/stream/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
+import { POST as tetapkanWilayah } from '../../routes/api/urusan/[id]/wilayah/+server';
 import { GET as devSse } from '../../routes/dev/fixtures/sse/+server';
 import { catatHasilEksekusi } from './eksekusi';
 import { createRuntime, piiKeyFromEnv, quotaFromEnv, setRuntimeForTests, type Runtime } from './runtime';
@@ -115,14 +116,21 @@ async function kosong() {
 describe('POST /api/urusan dan /turn', () => {
   // Batas eksplisit: tes paling lambat di berkas ini (~1-2 dtk sendirian dan di turbo paralel penuh).
   it('membuat urusan, turn berjalan di latar belakang, event datar lolos skema kontrak', async () => {
-    const u = await mulai('Apa syarat akta kelahiran anak saya?');
+    // Wilayah dulu: warga menyebut kab/kota KTP-nya, jadi agen langsung menetapkannya lalu menjawab bersumber.
+    const u = await mulai('Apa syarat akta kelahiran anak saya? KTP saya Kabupaten Wonogiri.');
     expect(u.id).toMatch(/^u_[0-9a-f]{32}$/);
     const res = await stream(ev(get('/s'), { id: u.id }));
     expect(res.headers.get('content-type')).toContain('text/event-stream');
     const frames = await readFrames(res, hasDone);
     const events = frames.map(parse).filter((f) => f.event);
     const types = events.map((e) => e.event);
-    expect(types).toEqual(expect.arrayContaining(['state', 'progress', 'grounded_answer', 'done']));
+    expect(types).toEqual(
+      expect.arrayContaining(['wilayah', 'state', 'progress', 'grounded_answer', 'done']),
+    );
+    expect(events.filter((e) => e.event === 'wilayah').map((e) => e.data!.status)).toEqual([
+      'usulan',
+      'ditetapkan',
+    ]);
     expect(types).not.toContain('assistant_text');
     expect(types.at(-1)).toBe('done');
     expect(events.map((e) => Number(e.id))).toEqual(events.map((_, i) => i + 1));
@@ -244,6 +252,7 @@ describe('pemilik urusan: id saja tidak cukup', () => {
       jejak: await jejak(evSebagai(locals, get('/j'), p)),
       konfirmasi: await konfirmasi(evSebagai(locals, post({ tool: 't', paramsHash: 'h' }), p)),
       setujui: await setujuiRencana(evSebagai(locals, post({}), p)),
+      wilayah: await tetapkanWilayah(evSebagai(locals, post({ kodeKabKota: '3312' }), p)),
     };
     return r;
   }
@@ -260,6 +269,8 @@ describe('pemilik urusan: id saja tidak cukup', () => {
     // Tidak ada efek samping: tidak ada turn, tidak ada persetujuan, state tidak bergerak.
     expect(rt.store.db.prepare('SELECT COUNT(*) n FROM turns').get()).toEqual({ n: 0 });
     expect(rt.store.activeConfirmations(id)).toEqual([]);
+    expect(rt.store.eventsOfType(id, 'wilayah', 20)).toEqual([]);
+    expect(rt.store.getUrusanOrThrow(id).kodeKabKota).toBeNull();
     const daftar = await daftarUrusan(evSebagai({ sid: 'sid-lain' }, get(`/api/urusan?ids=${id}`)));
     expect(await daftar.json()).toEqual({ urusan: [] });
     // Pemilik tetap bisa.

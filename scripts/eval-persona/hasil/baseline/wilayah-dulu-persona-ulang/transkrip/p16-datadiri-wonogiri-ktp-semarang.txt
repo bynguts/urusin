@@ -1,0 +1,70 @@
+Akun juri (Data Diri Wonogiri), KTP sekarang sudah Kota Semarang
+================================================================
+
+Warga: Halo, saya mau bikin akta kelahiran untuk anak saya yang lahir 10 hari lalu. Oh iya, KTP saya sekarang sudah Kota Semarang ya, bukan Wonogiri lagi.
+
+[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Wonogiri? (usulan dari Data Diri akun Anda; rencana disusun setelah Anda memastikannya)
+(sistem) Wilayah KTP: Kota Semarang
+[JAWABAN BERSUMBER]
+  - Untuk pencatatan kelahiran WNI di wilayah Indonesia, siapkan surat keterangan kelahiran dari fasilitas kesehatan atau tenaga kesehatan. Jika lahir di rumah atau tempat lain, surat dapat berasal dari kepala desa atau lurah; untuk kelahiran di kapal atau pesawat, surat dapat berasal dari nakhoda atau kapten pesawat.
+    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)
+  - Siapkan buku nikah, kutipan akta perkawinan, atau bukti lain yang sah.
+    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)
+  - Siapkan kartu keluarga tempat anak terdaftar atau akan didaftarkan sebagai anggota keluarga.
+    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)
+  - Untuk anak yang tidak diketahui asal-usul atau keberadaan orang tuanya, siapkan berita acara dari kepolisian.
+    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)
+  - Jika tidak memiliki surat keterangan kelahiran, penduduk dapat membuat SPTJM kebenaran data kelahiran dengan dua saksi.
+    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)
+  - Jika tidak memenuhi persyaratan bukti perkawinan, penduduk dapat membuat SPTJM kebenaran sebagai pasangan suami istri dengan dua saksi.
+    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)
+  - Untuk pelayanan daring, pindai atau foto dokumen asli untuk diunggah.
+    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)
+  Keputusan ada di petugas instansi terkait.
+[KARTU RENCANA] Kelahiran · Kota Semarang
+  Wilayah KTP: Kota Semarang (tingkat dipandu)
+  Catatan: Persyaratan nasional untuk Kota Semarang; detail dan cara pengajuan mengikuti Si D'nOK.
+  1. Ajukan akta kelahiran ke Disdukcapil Kota Semarang [online]
+     Sumber: Si D'nOK (https://sidnok.semarangkota.go.id/); Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018); Data Dukung - Si D'nOK - Data Dukung (https://sidnok.semarangkota.go.id/data-dukung)
+  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]
+     Sumber: Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)
+  3. Terima akta kelahiran dan KK baru dari Disdukcapil Kota Semarang [datang langsung, disdukcapil]
+     Bawa: Bukti pengajuan
+     Sumber: Si D'nOK (https://sidnok.semarangkota.go.id/)
+
+Warga menekan [Setujui rencana]
+
+(status: Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.)
+
+Warga: Baik, surat lahir dan buku nikah sudah ada. Untuk mengajukan lewat Si D'nOK, langkah awalnya bagaimana ya?
+
+Urusin: Langkah awalnya, tekan **“Setujui dan buka situs”** untuk membuka Si D’nOK melalui Browser Pendamping. Saya akan membantu pengisian pengajuan; siapkan surat lahir, buku nikah, dan dokumen pendukung lainnya dalam bentuk foto atau pindai dari dokumen asli.
+
+Jika diminta, Anda mengisi sandi atau CAPTCHA sendiri dan menekan tombol kirim akhir setelah memeriksa pengajuan. Jangan kirim data pribadi atau dokumen melalui chat.
+
+Warga: Tombol “Setujui dan buka situs” tidak ada di layar saya. Tadi juga tertulis situs ini belum bisa dibantu Browser Pendamping. Saya harus mulai dari mana di Si D’nOK?
+
+[JAWABAN BERSUMBER]
+  - Untuk pencatatan kelahiran WNI dalam wilayah NKRI, siapkan surat keterangan kelahiran, buku nikah atau bukti lain yang sah, dan kartu keluarga tempat penduduk terdaftar atau akan didaftarkan.
+    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)
+  - Untuk pelayanan daring, dokumen persyaratan yang dipindai atau difoto untuk diunggah harus dokumen asli.
+    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)
+  - Si D'nOK menyediakan menu Pendaftaran Baru dan Login, serta menu Cek Status Pengajuan dan Bantuan.
+    (sumber: Data Dukung - Si D'nOK — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)
+  (1 klaim dibuang karena kutipan tidak terverifikasi)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: Baik, saya buka situs Si D’nOK sendiri ya. Apakah saya harus pilih Pendaftaran Baru dulu, atau bisa langsung Login dengan akun Urusin saya?
+
+[JAWABAN BERSUMBER]
+  - Halaman Si D'nOK mencantumkan pilihan Pendaftaran Baru dan Login.
+    (sumber: Data Dukung - Si D'nOK — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: Maaf, apakah akun Urusin bisa dipakai untuk Login di Si D’nOK, atau saya perlu daftar akun baru?
+
+Urusin: Maaf, saya belum bisa memastikan bahwa akun Urusin dapat dipakai untuk masuk ke Si D’nOK. Sumber resmi yang saya temukan hanya menunjukkan bahwa Si D’nOK memiliki menu **Login** dan **Pendaftaran Baru**, tanpa menjelaskan hubungan akun dengan Urusin. [Sumber: Si D’nOK, Data Dukung](https://sidnok.semarangkota.go.id/)
+
+Jika Anda sudah punya akun Si D’nOK, pilih **Login**. Jika belum, pilih **Pendaftaran Baru** dan ikuti petunjuk di situs. Jangan membagikan sandi atau data pribadi di chat ini.
+
+[AKHIR: warga_selesai — Saya sudah tahu membuka Si D’nOK dan memilih Pendaftaran Baru jika belum punya akun, serta dokumen yang perlu disiapkan.]

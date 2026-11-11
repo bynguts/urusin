@@ -9,21 +9,36 @@ import {
   matchOfficialOrigin,
   matchOfficialUrl,
 } from './registry.js';
+import { DOMAIN_WILAYAH, PORTAL_WILAYAH } from './registry-wilayah.js';
 
 const T = 'telunjuksakti.wonogirikab.go.id';
 
 describe('registry domain resmi', () => {
-  it('memuat 14 domain seed tanpa duplikat, semuanya .go.id', () => {
+  it('memuat 14 domain seed lalu host wilayah, tanpa duplikat; host bukan .go.id hanya dari data wilayah', () => {
     const hosts = OFFICIAL_DOMAINS.map((d) => d.host);
-    expect(hosts).toHaveLength(14);
+    expect(hosts.slice(0, 14)).toContain(T);
+    expect(hosts.length).toBe(14 + DOMAIN_WILAYAH.filter((d) => !hosts.slice(0, 14).includes(d.host)).length);
     expect(new Set(hosts).size).toBe(hosts.length);
-    for (const h of hosts) expect(h.endsWith('.go.id') || h === 'oss.go.id').toBe(true);
+    for (const h of hosts.slice(0, 14)) expect(h.endsWith('.go.id') || h === 'oss.go.id').toBe(true);
+    // Pengecualian bukan .go.id (mis. e-open.id) wajib bersumber halaman .go.id: lihat registry-wilayah.test.ts.
+    for (const h of hosts.filter((x) => !x.endsWith('.go.id')))
+      expect(DOMAIN_WILAYAH.some((d) => d.host === h)).toBe(true);
   });
 
   it('aksesWilayah dari probe agent-vm: blokir keras = id-only, tantangan interaktif = id-utama', () => {
     const akses = (a: string) => OFFICIAL_DOMAINS.filter((d) => d.aksesWilayah === a).map((d) => d.host);
-    expect(akses('id-only')).toEqual(['sidnok.semarangkota.go.id']);
-    expect(akses('id-utama')).toEqual(['telunjuksakti.wonogirikab.go.id']);
+    // Seed tangan (Sidnok) + host portal wilayah yang ditolak dari IP Singapura (probe portal nyata 2026-11-10).
+    const probe = ['1271', '1372', '1403', '1771', '3275', '3279', '3402', '3674', '6271'].flatMap(
+      (k) => PORTAL_WILAYAH[k]!.hosts,
+    );
+    expect(akses('id-only').sort()).toEqual(['sidnok.semarangkota.go.id', ...probe].sort());
+    // id-utama: Telunjuk Sakti (seed) + portal dengan interstitial Turnstile dari IP Singapura (Situbondo, Makassar).
+    expect(akses('id-utama').sort()).toEqual(
+      [
+        'telunjuksakti.wonogirikab.go.id',
+        ...['3512', '7371'].flatMap((k) => PORTAL_WILAYAH[k]!.hosts),
+      ].sort(),
+    );
   });
 
   it.each(OFFICIAL_DOMAINS.map((d) => d.host))('menerima https://%s/', (host) => {

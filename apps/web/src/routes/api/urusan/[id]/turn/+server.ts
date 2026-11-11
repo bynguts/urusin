@@ -1,6 +1,8 @@
 import { TurnRequestSchema, type TurnResponse } from '@urusin/contracts';
+import { kodeUntukPii } from '@urusin/harness';
 import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
+import { segarkanJaringanId } from '#lib/server/pendamping.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
 import { batasi } from '#lib/server/sesi.js';
 import { urusanMilik } from '#lib/server/urusan-akses.js';
@@ -22,9 +24,12 @@ export const POST: RequestHandler = async (event) => {
   if (!u) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
   const tamu = pastikanTamuUntukTurn(rt, event);
   if (tamu) return tamu;
-  const body = await readBody(request, TurnRequestSchema, { kodeKabKota: u.kodeKabKota ?? null });
+  // NIK terpecah dideteksi memakai wilayah KTP urusan, atau usulannya selama belum ditetapkan.
+  const body = await readBody(request, TurnRequestSchema, { kodeKabKota: kodeUntukPii(rt.store, u) });
   if (!body.ok) return body.response;
   try {
+    // Rute Browser Pendamping di prompt/tool turn ini menimbang worker berjaringan Indonesia yang sehat.
+    await segarkanJaringanId();
     const { turnId } = startTurnInBackground(rt, {
       urusanId: params.id,
       userText: body.data.teks,

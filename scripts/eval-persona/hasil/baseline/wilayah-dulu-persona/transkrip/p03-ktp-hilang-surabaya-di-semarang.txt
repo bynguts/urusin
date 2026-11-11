@@ -1,0 +1,55 @@
+Mahasiswa KTP Kota Surabaya tinggal di Semarang, KTP-el hilang
+==============================================================
+
+Warga: ktp ku ilang kak pas di angkot, aku sekarang kuliah di semarang. gmn ya
+
+[KARTU WILAYAH] KTP Anda terdaftar di Kota Surabaya? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)
+Urusin: Wah, semoga segera bisa diurus ya. KTP Anda terdaftar di Kota Surabaya, betul?
+
+Warga menekan [Ya, betul]
+
+(sistem) Wilayah KTP: Kota Surabaya
+
+Warga: iya, ktp ku surabaya. bisa ngurusnya dari semarang aja nggak?
+
+(sistem) Wilayah KTP: Kota Surabaya · tinggal di Kota Semarang
+[JAWABAN BERSUMBER]
+  - Klampid New Generation Dispendukcapil Kota Surabaya menyediakan layanan Pengajuan KTP Elektronik.
+    (sumber: Klampid New Generation - katalog layanan publik - Pengajuan KTP Elektronik — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  - Layanan Pengajuan Cetak KTP yang tercantum dikhususkan bagi warga yang baru merekam, lansia, dan warga pasca pindah datang.
+    (sumber: Klampid New Generation - katalog layanan publik - Pengajuan Cetak KTP — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: kalau ktp hilang bisa diurus dari semarang nggak ya? harus lapor polisi dulu atau gimana?
+
+[JAWABAN BERSUMBER]
+  - Klampid New Generation Dispendukcapil Kota Surabaya menyediakan layanan Pengajuan KTP Elektronik.
+    (sumber: Klampid New Generation - katalog layanan publik - Pengajuan KTP Elektronik — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  - Layanan Pengajuan Cetak KTP yang tercantum dikhususkan bagi orang yang baru melakukan perekaman, lansia, dan orang yang baru pindah datang.
+    (sumber: Klampid New Generation - katalog layanan publik - Pengajuan Cetak KTP — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: kak, itu belum jawab pertanyaanku. ktp hilang bisa dicetak di semarang nggak? perlu surat kehilangan dari polisi dan bawa apa aja?
+
+[JAWABAN BERSUMBER]
+  - Klampid New Generation Dispendukcapil Kota Surabaya menyediakan layanan Pengajuan KTP Elektronik.
+    (sumber: Klampid New Generation - katalog layanan publik - Pengajuan KTP Elektronik — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  - Layanan Pengajuan Cetak KTP dalam katalog dikhususkan bagi orang yang baru melakukan perekaman, lansia, dan pasca pindah datang.
+    (sumber: Klampid New Generation - katalog layanan publik - Pengajuan Cetak KTP — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: kak, jawabannya sama terus 😅 kalau belum tahu, aku bisa tanya ke mana di semarang soal cetak ktp surabaya yang hilang dan syaratnya?
+
+Urusin: Maaf ya, jawabanku tadi berulang dan belum menjawab pertanyaanmu 😅
+
+Kamu bisa bertanya ke **Disdukcapil Kota Semarang** apakah mereka melayani cetak ulang KTP Surabaya yang hilang. Sekalian tanyakan apakah perlu surat kehilangan dari polisi, dokumen apa saja yang harus dibawa, dan apakah perlu datang langsung.
+
+Aku belum punya informasi resmi yang memastikan layanan lintas daerah itu tersedia di Semarang, jadi belum bisa memastikan syaratnya. Untuk pengajuan ke Surabaya, kanal resminya adalah [Klampid New Generation](https://wargaklampid-dispendukcapil.surabaya.go.id/). Jangan kirim NIK atau data pribadi lain di chat ini ya.
+
+Warga: oke, disdukcapil kota semarang itu alamatnya di mana ya? ada nomor yang bisa dihubungi dulu nggak?
+
+Urusin: Maaf ya, aku belum menemukan **alamat atau nomor telepon Disdukcapil Kota Semarang** di sumber resmi yang tersedia, jadi aku tidak mau menebak dan berisiko memberi kontak yang salah.
+
+Kamu bisa mencari **“Disdukcapil Kota Semarang”** di situs resmi Pemerintah Kota Semarang, lalu periksa halaman kontaknya sebelum menelepon. Tanyakan apakah mereka bisa mencetak ulang KTP Surabaya yang hilang, serta apakah perlu surat kehilangan polisi dan dokumen lainnya.
+
+[AKHIR: warga_selesai — Sudah tahu langkah berikutnya mencari kontak resmi Disdukcapil Semarang, meski alamat dan nomornya belum didapat.]

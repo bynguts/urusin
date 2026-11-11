@@ -17,6 +17,14 @@
     "./runner-ops": {
       "types": "./dist/runner-ops.d.ts",
       "default": "./dist/runner-ops.js"
+    },
+    "./klasifikasi": {
+      "types": "./dist/klasifikasi.d.ts",
+      "default": "./dist/klasifikasi.js"
+    },
+    "./amatan": {
+      "types": "./dist/amatan.d.ts",
+      "default": "./dist/amatan.js"
     }
   },
   "files": [
@@ -30,6 +38,7 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@urusin/contracts": "workspace:*",
     "@urusin/core": "workspace:*"
   },
   "devDependencies": {

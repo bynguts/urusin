@@ -1,8 +1,10 @@
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
 import { detectPii } from '@urusin/core';
-import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
+import { kodeDisebut, usulkanWilayah } from '@urusin/harness';
+import { pastikanTamuUntukTurn, pemilikVault } from '#lib/server/akun.js';
 import { PESAN_PII } from '#lib/server/http.js';
-import { getRuntime, publicOrigin, startTurnInBackground } from '#lib/server/runtime.js';
+import { segarkanJaringanId } from '#lib/server/pendamping.js';
+import { getRuntime, publicOrigin, startTurnInBackground, type Runtime } from '#lib/server/runtime.js';
 import { batasi, catatTerakhir, ensureSession } from '#lib/server/sesi.js';
 
 const PERISTIWA = ['kelahiran', 'kematian', 'perkawinan', 'pindah', 'lainnya'] as const;
@@ -10,7 +12,32 @@ type Peristiwa = (typeof PERISTIWA)[number];
 
 export const PESAN_AWAL_COOKIE = 'urusin_pesan_awal';
 
-export type GagalMulai = { pesanWarga: string; pesan: string };
+export type GagalMulai = { pesanWarga: string; pesan: string; kode?: string };
+
+/**
+ * Wilayah dulu: kab/kota yang dipilih di halaman (bila ada) atau dari Data Diri akun dicatat sebagai USULAN saja,
+ * sebelum turn pertama. Pilihan eksplisit menang atas Data Diri; bila sama, sumbernya tetap Data Diri. Warga tetap
+ * mengonfirmasi (kartu "Ya, betul" atau di obrolan) sebelum rencana disusun: perangkat bisa dipakai bersama dan
+ * Data Diri bisa usang. Pesan pertama yang menyebut kab/kota lain menang: usulan perangkat/Data Diri tidak
+ * diterbitkan, agar kartu tidak bertentangan dengan wilayah yang ditanyakan agen dari pesan itu.
+ */
+export function usulkanWilayahAwal(
+  rt: Runtime,
+  event: Pick<RequestEvent, 'locals' | 'cookies' | 'request' | 'getClientAddress'>,
+  urusanId: string,
+  kodePilihan: string | undefined,
+  pesan = '',
+): void {
+  const p = pemilikVault(rt, event, { buat: false });
+  const dariDataDiri = p ? rt.akun.vault.getDataDiri(p.id)?.data.kodeKabKota : undefined;
+  const publish = (e: Parameters<Runtime['publish']>[1]) => void rt.publish(urusanId, e);
+  const dataDiri = typeof dariDataDiri === 'string' ? dariDataDiri : undefined;
+  const disebut = kodeDisebut(pesan);
+  const cocok = (kode: string) => disebut.length === 0 || disebut.includes(kode);
+  const pilihan = kodePilihan && cocok(kodePilihan) ? kodePilihan : undefined;
+  if (pilihan && pilihan !== dataDiri && usulkanWilayah(urusanId, pilihan, 'pilihan', publish)) return;
+  if (dataDiri && cocok(dataDiri)) usulkanWilayah(urusanId, dataDiri, 'data_diri', publish);
+}
 
 /**
  * Form action "mulai urusan" (Beranda dan Rencana peristiwa): sama dengan POST /api/urusan, tetapi lewat
@@ -30,7 +57,7 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
     return fail(422, { pesanWarga: 'Tulis dulu apa yang ingin Anda urus.', pesan } satisfies GagalMulai);
   // Sama dengan readBody di POST /api/urusan: NIK/KK/HP/email tidak boleh menuju model. Pesan tidak digemakan.
   if (pesan && detectPii(pesan, /^\d{4}$/.test(kode) ? { kodeKabKota: kode } : {}).length > 0)
-    return fail(422, { pesanWarga: PESAN_PII, pesan: '' } satisfies GagalMulai);
+    return fail(422, { pesanWarga: PESAN_PII, pesan: '', kode: 'PII_IN_PAYLOAD' } satisfies GagalMulai);
 
   const rt = await getRuntime();
   event.locals.sid = ensureSession(event.cookies);
@@ -53,12 +80,13 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
   }
 
   const jenis = peristiwa && peristiwa !== 'lainnya' ? peristiwa : undefined;
-  const u = rt.store.createUrusan({
-    ...(/^\d{4}$/.test(kode) ? { kodeKabKota: kode } : {}),
-    ...(jenis ? { jenis } : {}),
-  });
+  // Wilayah urusan belum ditetapkan saat dibuat: pilihan perangkat hanya usulan (lihat usulkanWilayahAwal).
+  const u = rt.store.createUrusan(jenis ? { jenis } : {});
   // Pemilik: sama dengan POST /api/urusan. Tanpa ini endpoint Browser Pendamping (cek pemilik) menjawab 404.
   rt.akun.catatPemilikUrusan(u.id, { akun: event.locals.akun, sid: event.locals.sid });
+  // Sama dengan POST /api/urusan: tier portal id-only di turn pertama memakai cache yang tidak dingin.
+  await segarkanJaringanId();
+  usulkanWilayahAwal(rt, event, u.id, /^\d{4}$/.test(kode) ? kode : undefined, pesan);
   if (pesan) startTurnInBackground(rt, { urusanId: u.id, userText: pesan });
   catatTerakhir(event.cookies, u.id, publicOrigin());
   // Formulir terkirim sebelum JavaScript siap: pesan pertama tidak sempat dicatat di perangkat. Titipkan

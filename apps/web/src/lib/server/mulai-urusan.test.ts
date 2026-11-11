@@ -72,9 +72,10 @@ describe('mulaiUrusanDariForm: PII', () => {
     const nik = ['3312', '0101', '0190', '0003'].join('');
     const r = (await mulaiUrusanDariForm(
       eventForm({ pesan: `NIK saya ${nik}, mau urus akta`, kodeKabKota: '3312' }, '10.0.0.3'),
-    )) as { status: number; data: { pesanWarga: string; pesan: string } };
+    )) as { status: number; data: { pesanWarga: string; pesan: string; kode?: string } };
     expect(r.status).toBe(422);
     expect(r.data.pesanWarga).toBe(PESAN_PII);
+    expect(r.data.kode).toBe('PII_IN_PAYLOAD');
     expect(r.data.pesan).not.toContain(nik);
     expect(rt.store.db.prepare('SELECT COUNT(*) n FROM urusan').get()).toEqual({ n: 0 });
   });

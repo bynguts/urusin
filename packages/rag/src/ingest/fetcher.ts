@@ -4,6 +4,17 @@ import { Robots } from './robots.js';
 export const USER_AGENT = 'UrusinBot/0.1 (+hackathon; contact via repo)';
 export const USER_AGENT_TOKEN = 'urusinbot';
 export const MIN_INTERVAL_MS = 2000;
+/** Batas waktu satu permintaan HTML/JSON. */
+export const FETCH_TIMEOUT_MS = 20_000;
+/**
+ * Batas waktu PDF regulasi: peraturan.go.id menyajikan PDF berukuran MB dengan lambat (diukur 2026-11-10:
+ * Permendagri 109/2019 5,6 MB = 56 dtk; Perpol 1/2026 4,4 MB = 33 dtk), jadi 20 dtk selalu gagal untuk keduanya.
+ */
+export const PDF_TIMEOUT_MS = 180_000;
+
+/** Batas waktu menurut jenis sumber (lihat PDF_TIMEOUT_MS). */
+export const batasWaktu = (s: { jenis?: string | undefined }) =>
+  s.jenis === 'pdf' ? PDF_TIMEOUT_MS : FETCH_TIMEOUT_MS;
 
 export type FetchLike = (
   url: string,
@@ -50,7 +61,11 @@ export class PoliteFetcher {
     this.lastAt.set(host, this.deps.now());
   }
 
-  private async rawGet(url: string, extra: Record<string, string> = {}): Promise<FetchResult> {
+  private async rawGet(
+    url: string,
+    extra: Record<string, string> = {},
+    timeoutMs = FETCH_TIMEOUT_MS,
+  ): Promise<FetchResult> {
     await this.throttle(new URL(url).host);
     const res = await this.deps.fetch(url, {
       headers: {
@@ -59,7 +74,7 @@ export class PoliteFetcher {
         ...extra,
       },
       redirect: 'follow',
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     return {
       status: res.status,
@@ -82,11 +97,23 @@ export class PoliteFetcher {
     return p;
   }
 
-  /** `headers` = header kondisional opsional (If-None-Match / If-Modified-Since). */
-  async get(url: string, headers?: Record<string, string>): Promise<FetchResult> {
+  /**
+   * `headers` = header kondisional opsional (If-None-Match / If-Modified-Since). Habis waktu diulang sekali
+   * (tetap lewat jeda sopan): server regulasi kadang lambat sesaat.
+   */
+  async get(
+    url: string,
+    headers?: Record<string, string>,
+    timeoutMs = FETCH_TIMEOUT_MS,
+  ): Promise<FetchResult> {
     const u = new URL(url);
     const robots = await this.robotsFor(u.origin);
     if (!robots.isAllowed(u.pathname + u.search)) throw new RobotsBlockedError();
-    return this.rawGet(url, headers);
+    try {
+      return await this.rawGet(url, headers, timeoutMs);
+    } catch (e) {
+      if (!(e instanceof Error) || e.name !== 'TimeoutError') throw e;
+      return this.rawGet(url, headers, timeoutMs);
+    }
   }
 }

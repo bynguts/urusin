@@ -1,11 +1,18 @@
 import { assertAkunEnv } from '@urusin/akun';
+import { aturJaringanId } from '@urusin/harness';
 import type { Handle } from '@sveltejs/kit/hooks';
 import { installEgressBackstop } from '@urusin/egress';
 import { AKUN_COOKIE, hapusAkunCookie } from '#lib/server/akun.js';
 import { assertHostEnv } from '#lib/server/hosts.js';
 import { catatGalatApi } from '#lib/server/log-galat.js';
 import { checkOrigin } from '#lib/server/origin.js';
-import { asalWsUntukCsp, pasangPemeriksaPemilikAkun, tambahConnectSrc } from '#lib/server/pendamping.js';
+import {
+  asalWsUntukCsp,
+  jaringanIdSiap,
+  panaskanJaringanId,
+  pasangPemeriksaPemilikAkun,
+  tambahConnectSrc,
+} from '#lib/server/pendamping.js';
 import { pemeriksaPemilikVault } from '#lib/server/pendamping/pemilik.js';
 import { getRuntime, publicOrigin } from '#lib/server/runtime.js';
 import { ensureSession, hapusTerakhir, migrasiSid, rotasiSid } from '#lib/server/sesi.js';
@@ -24,6 +31,10 @@ assertAkunEnv(process.env);
 turnstileFromEnv(process.env);
 // m6: setiap endpoint Browser Pendamping memeriksa pemilik urusan lewat modul akun (404 bila bukan milik).
 pasangPemeriksaPemilikAkun(pemeriksaPemilikVault);
+// Rute rencana untuk portal `id-only` (Semarang) mengikuti worker berjaringan Indonesia yang benar-benar sehat:
+// tanpa itu dipandu sejak kartu rencana, bukan baru saat sesi dimulai.
+aturJaringanId(jaringanIdSiap);
+panaskanJaringanId();
 
 /**
  * Anti-CSRF (rencana §3.2): request pengubah state wajib membawa `Origin` yang PERSIS sama dengan

@@ -1,0 +1,112 @@
+{
+  "catatan": "Halaman resmi (.go.id) yang dipilih tangan untuk wilayah yang situs Disdukcapil-nya tidak terdeteksi otomatis, plus kanal SKCK Polres. Isi kontak di \"sumber\" dibaca otomatis oleh pnpm --filter @urusin/rag rag:kanal-layanan; layananOnline hanya dicatat bila host-nya disebut di halaman. \"entri\" = nilai dari halaman resmi yang menolak klien otomatis (403/TLS), dibaca dengan ekstraktor yang sama dari salinan halaman yang diambil sekali secara manual pada tanggal dicekPada.",
+  "sumber": [
+    {
+      "kode": ["3578"],
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+      "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/app"
+    },
+    {
+      "kode": ["3276"],
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Depok",
+      "url": "https://silondomaju.depok.go.id/"
+    },
+    {
+      "kode": ["3101", "3171", "3172", "3173", "3174", "3175"],
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta",
+      "url": "https://kependudukancapil.jakarta.go.id/"
+    },
+    {
+      "kode": ["3216"],
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bekasi",
+      "url": "https://disdukcapil.bekasikab.go.id/"
+    }
+  ],
+  "entri": [
+    {
+      "kode": "3404",
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sleman",
+      "jenis": "telepon",
+      "nilai": "+62274 868 362",
+      "sumberUrl": "https://dukcapil.slemankab.go.id/",
+      "dicekPada": "2026-11-10"
+    },
+    {
+      "kode": "3404",
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sleman",
+      "jenis": "email",
+      "nilai": "dukcapil@slemankab.go.id",
+      "sumberUrl": "https://dukcapil.slemankab.go.id/",
+      "dicekPada": "2026-11-10"
+    },
+    {
+      "kode": "3404",
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sleman",
+      "jenis": "jam_layanan",
+      "nilai": "Senin - Kamis : 08.00 - 14.00 WIB Jumat : 08.00 - 11.00 WIB",
+      "sumberUrl": "https://dukcapil.slemankab.go.id/",
+      "dicekPada": "2026-11-10"
+    },
+    {
+      "kode": "3275",
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi",
+      "jenis": "whatsapp",
+      "nilai": "0811-8355-599",
+      "sumberUrl": "https://disdukcapil.bekasikota.go.id/",
+      "dicekPada": "2026-11-10"
+    },
+    {
+      "kode": "3275",
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi",
+      "jenis": "email",
+      "nilai": "disdukcasipkotabekasi100@gmail.com",
+      "sumberUrl": "https://disdukcapil.bekasikota.go.id/",
+      "dicekPada": "2026-11-10"
+    },
+    {
+      "kode": "3275",
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Bekasi",
+      "jenis": "jam_layanan",
+      "nilai": "Senin 08:00 - 15:00 Selasa 08:00 - 15:00 Rabu 08:00 - 15:00 Kamis 08:00 - 15:00 Jum'at 08:00 - 15:00 Sabtu Tutup Minggu Tutup",
+      "sumberUrl": "https://disdukcapil.bekasikota.go.id/",
+      "dicekPada": "2026-11-10"
+    },
+    {
+      "kode": "3404",
+      "layanan": "skck",
+      "instansi": "Polresta Sleman",
+      "jenis": "whatsapp",
+      "nilai": "0813-3888-8110",
+      "sumberUrl": "https://jogja.polri.go.id/sleman/",
+      "dicekPada": "2026-11-10"
+    },
+    {
+      "kode": "3404",
+      "layanan": "skck",
+      "instansi": "Polresta Sleman",
+      "jenis": "email",
+      "nilai": "admin@jogja.polri.go.id",
+      "sumberUrl": "https://jogja.polri.go.id/sleman/",
+      "dicekPada": "2026-11-10"
+    },
+    {
+      "kode": "3216",
+      "layanan": "adminduk",
+      "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bekasi",
+      "jenis": "email",
+      "nilai": "disdukcapil@bekasikab.go.id",
+      "sumberUrl": "https://disdukcapil.bekasikab.go.id/contact",
+      "dicekPada": "2026-11-10"
+    }
+  ]
+}

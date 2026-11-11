@@ -12,6 +12,7 @@
   import KartuJawaban from '#lib/components/urusan/KartuJawaban.svelte';
   import KartuKonfirmasi from '#lib/components/urusan/KartuKonfirmasi.svelte';
   import KartuRencana from '#lib/components/urusan/KartuRencana.svelte';
+  import KartuWilayah from '#lib/components/urusan/KartuWilayah.svelte';
   import KartuTerkirim from '#lib/components/urusan/KartuTerkirim.svelte';
   import Komposer from '#lib/components/urusan/Komposer.svelte';
   import Lencana from '#lib/components/urusan/Lencana.svelte';
@@ -160,6 +161,22 @@
       pesanKomposer = 'Persetujuan belum tercatat. Periksa koneksi, lalu coba lagi.';
   }
 
+  async function wilayahBenar(kodeKabKota: string) {
+    mengirim = true;
+    pesanKomposer = null;
+    const hasil = await store.tetapkanWilayah(kodeKabKota);
+    mengirim = false;
+    if (hasil === 'konflik')
+      pesanKomposer =
+        'Wilayah belum bisa dicatat lewat kartu ini: mungkin sudah dipastikan di obrolan atau perangkat lain, atau Urusin masih bekerja. Muat ulang halaman untuk melihat yang terbaru.';
+    else if (hasil === 'galat') pesanKomposer = 'Wilayah belum tercatat. Periksa koneksi, lalu coba lagi.';
+  }
+
+  function wilayahBukan() {
+    teks = 'KTP saya terdaftar di ';
+    komposer?.focus();
+  }
+
   function ulangTerakhir() {
     const t = pesan.at(-1)?.teks;
     if (t) void kirim(t);
@@ -218,9 +235,9 @@
    * "Izinkan isi" (A-M1): peramban hanya mengirim daftar write + origin tujuan. Server menyimpan persetujuan;
    * Pendamping mengambil nilai Data Diri dan berkas di server. Nilai vault tidak pernah lewat peramban.
    */
-  async function izinkanIsi() {
+  async function izinkanIsi(pilihan?: { placeholder: string[]; berkas: string[] }) {
     izin = { sibuk: true };
-    const pesan = await sesi.izinkanIsi();
+    const pesan = await sesi.izinkanIsi(pilihan);
     izin = { sibuk: false, ...(pesan ? { pesan } : {}) };
   }
 
@@ -316,6 +333,8 @@
             bind:inputTeks
             onambilalih={() => sesi.ambilAlih()}
             onkembalikan={() => void sesi.kembalikan()}
+            onbukatautan={() => sesi.bukaTautan()}
+            onsudahkirim={() => sesi.sudahMengirim()}
             onhentikan={() => void sesi.hentikan()}
             ontutup={() => void sesi.tutupSekarang()}
             onmulailagi={() => {
@@ -383,6 +402,18 @@
                     sibuk={mengirim}
                     onsetujui={() => void setujuiRencana()}
                     onubah={ubahRencana}
+                  />
+                </PesanAgen>
+              {:else if it.jenis === 'wilayah'}
+                <PesanAgen avatar={p.avatar}>
+                  <KartuWilayah
+                    usulan={it.e}
+                    aktif={it.terakhir &&
+                      (keadaanUrusan === 'BARU' || keadaanUrusan === 'MEMAHAMI') &&
+                      !k.sedangBerjalan}
+                    sibuk={mengirim}
+                    onbenar={() => void wilayahBenar(it.e.ktp.kodeKabKota)}
+                    onbukan={wilayahBukan}
                   />
                 </PesanAgen>
               {:else if it.jenis === 'checklist'}
@@ -492,8 +523,10 @@
   buka={sesi.data.butuhData !== null}
   placeholder={sesi.data.butuhData?.placeholder ?? []}
   berkas={sesi.data.butuhData?.berkas ?? []}
+  kolom={sesi.data.butuhData?.kolom}
+  rencanaHash={sesi.data.butuhData?.rencanaHash}
   sibuk={izin.sibuk}
   pesan={izin.pesan}
-  onizinkan={() => void izinkanIsi()}
+  onizinkan={(pilihan) => void izinkanIsi(pilihan)}
   ontolak={isiSendiri}
 />

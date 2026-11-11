@@ -1,0 +1,629 @@
+{
+  "persona": "p15-semarang-cek-status",
+  "urusanId": "u_a98bc836add36fb54a45b2d0e393c95c",
+  "wilayahPerangkat": "3374",
+  "kodeUrusan": null,
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Saya sudah ajukan KK baru minggu lalu di Semarang, gimana cara cek statusnya?",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3374",
+            "nama": "Kota Semarang"
+          },
+          "status": "usulan",
+          "sumber": "pilihan",
+          "type": "wilayah",
+          "seq": 1,
+          "at": "2026-11-10T08:09:01.386Z",
+          "chainHead": "9103cfac3276…"
+        },
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": null,
+          "version": 2,
+          "type": "state",
+          "seq": 2,
+          "at": "2026-11-10T08:09:01.388Z",
+          "chainHead": "b0cfab0d4175…"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T08:09:01.389Z",
+          "chainHead": "e31d87e82a47…"
+        },
+        {
+          "delta": "KTP Anda terdaftar di Kota Semarang, betul?",
+          "type": "assistant_text",
+          "seq": 4,
+          "at": "2026-11-10T08:09:07.235Z",
+          "chainHead": "b86a31e9028b…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_8b9f5e6f-705b-4720-a2b5-e725eb596613",
+          "version": 3,
+          "type": "done",
+          "seq": 5,
+          "at": "2026-11-10T08:09:07.236Z",
+          "chainHead": "61de09cf0259…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 5858
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Saya tinggal di Banyumanik, Kota Semarang, tapi untuk wilayah terdaftar di KTP saya belum yakin. Apakah saya tetap bisa cek status pengajuan KK?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Tempat tinggal saya diketahui, tetapi wilayah terdaftar di KTP belum pasti."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 6,
+          "at": "2026-11-10T08:09:18.210Z",
+          "chainHead": "be86e7c6e31e…"
+        },
+        {
+          "delta": "Ya, status pengajuan biasanya bisa dicek melalui kanal tempat Anda mengajukan KK. Namun, karena Anda belum yakin wilayah yang tercantum di KTP, saya belum bisa memastikan kanal yang tepat.\n\nApakah Anda mengajukannya melalui layanan Disdukcapil Kota Semarang?",
+          "type": "assistant_text",
+          "seq": 7,
+          "at": "2026-11-10T08:09:21.755Z",
+          "chainHead": "766dd84037fc…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_20feb5fd-95e7-4704-b1ec-7529ff0d6335",
+          "version": 4,
+          "type": "done",
+          "seq": 8,
+          "at": "2026-11-10T08:09:21.756Z",
+          "chainHead": "d762d03fb34f…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 3555
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Ya, saya mengajukannya lewat layanan online Dispendukcapil Kota Semarang minggu lalu. Saya juga menyimpan kode pelayanannya. Bagaimana cara cek statusnya?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya menjawab kanal pengajuan tanpa memastikan wilayah KTP yang belum saya ketahui."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 9,
+          "at": "2026-11-10T08:09:25.485Z",
+          "chainHead": "b5b1fe7f4a8d…"
+        },
+        {
+          "delta": "Kode pelayanan yang Anda simpan bisa membantu saat mengecek status. Namun, sebelum membuka pengecekan, kita perlu memastikan wilayah yang tercantum di KTP Anda.\n\nBisa periksa apakah KTP Anda terdaftar di **Kota Semarang**? Tidak perlu menuliskan kode pelayanan atau data pribadi di chat.",
+          "type": "assistant_text",
+          "seq": 10,
+          "at": "2026-11-10T08:09:37.057Z",
+          "chainHead": "971a0c2f6ffa…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_c825b1d8-e888-4401-b88e-f3d016d31468",
+          "version": 5,
+          "type": "done",
+          "seq": 11,
+          "at": "2026-11-10T08:09:37.059Z",
+          "chainHead": "c50e98f96040…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11652
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Maaf, saya belum yakin wilayah yang tercantum di KTP. Karena pengajuannya sudah lewat layanan online Dispendukcapil Kota Semarang, apakah saya bisa cek langsung di sana dengan kode pelayanan?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya belum yakin wilayah KTP dan ingin tahu cara mengecek pengajuan yang sudah dilakukan."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T08:09:40.412Z",
+          "chainHead": "06b58a06b685…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 13,
+          "at": "2026-11-10T08:09:48.230Z",
+          "chainHead": "ec48160dee3c…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 14,
+          "at": "2026-11-10T08:09:52.654Z",
+          "chainHead": "129f62896b55…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 15,
+          "at": "2026-11-10T08:09:57.082Z",
+          "chainHead": "dd959d0e1ca7…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/).",
+          "kanal": [
+            {
+              "nama": "Kementerian Sosial",
+              "url": "https://cekbansos.kemensos.go.id/"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 16,
+          "at": "2026-11-10T08:09:57.083Z",
+          "chainHead": "f32553c2b389…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_7f87a49b-b644-448b-85df-97ed7c9b4e7d",
+          "version": 6,
+          "type": "done",
+          "seq": 17,
+          "at": "2026-11-10T08:09:57.085Z",
+          "chainHead": "926096672afb…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 16865
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Maaf, itu situs cek bansos, bukan untuk pengajuan KK. Saya mengajukan lewat layanan online Dispendukcapil Kota Semarang. Bagaimana cara cek statusnya di sana dengan kode pelayanan?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Arahan ke situs cek bansos tidak sesuai dengan pengajuan KK dan wilayah KTP belum pasti."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 18,
+          "at": "2026-11-10T08:10:03.991Z",
+          "chainHead": "f79c74316854…"
+        },
+        {
+          "delta": "Maaf, Anda benar: situs cek bansos tidak berkaitan dengan pengajuan KK.\n\nAnda bisa mencoba mengecek langsung di **layanan online Dispendukcapil Kota Semarang** tempat Anda mengajukan permohonan. Cari bagian status atau riwayat pengajuan, lalu gunakan kode pelayanan jika diminta. Saya belum menemukan petunjuk resmi yang memastikan nama menu atau apakah kode tersebut saja cukup.\n\nJika tidak menemukan statusnya, hubungi kanal resmi Dispendukcapil Kota Semarang dan siapkan kode pelayanan Anda. **Jangan tuliskan kode atau data pribadi di chat ini.**",
+          "type": "assistant_text",
+          "seq": 19,
+          "at": "2026-11-10T08:10:07.926Z",
+          "chainHead": "e6321e40f9ee…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_40a4a252-1ce6-4726-926c-cd8059463ef1",
+          "version": 7,
+          "type": "done",
+          "seq": 20,
+          "at": "2026-11-10T08:10:07.928Z",
+          "chainHead": "6d0f0b9eef86…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 3958
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Baik, terima kasih. Bisa minta tautan layanan online Dispendukcapil Kota Semarang tempat saya bisa cek status pengajuan KK?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya masih memerlukan tautan yang jelas untuk mengecek status pengajuan."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 21,
+          "at": "2026-11-10T08:10:13.078Z",
+          "chainHead": "1daf3b6c5248…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 22,
+          "at": "2026-11-10T08:10:15.848Z",
+          "chainHead": "cf15fe0dcdc9…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 23,
+          "at": "2026-11-10T08:10:19.788Z",
+          "chainHead": "0a4739e70c84…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 24,
+          "at": "2026-11-10T08:10:24.606Z",
+          "chainHead": "3774723c6076…"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK - Data Dukung",
+                  "kutipanPersis": "SPTJM dapat diunduh melalui https://sidnok.semarangkota.go.id/get-berkas/1720769569",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#3",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=SPTJM%20dapat%20diunduh%20melalui%20https%3A%2F%2Fsidnok.semarangkota.go.id%2Fget%2Dberkas%2F1720769569",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Tautan Si D'nOK Kota Semarang adalah https://sidnok.semarangkota.go.id."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Semarang",
+                  "judul": "Data Dukung - Si D'nOK",
+                  "kutipanPersis": "Cek Status Pengajuan",
+                  "perluDicekUlang": false,
+                  "refId": "semarang-data-dukung#0",
+                  "textFragmentUrl": "https://sidnok.semarangkota.go.id/data-dukung#:~:text=Cek%20Status%20Pengajuan",
+                  "url": "https://sidnok.semarangkota.go.id/data-dukung",
+                  "verifiedAt": "2026-11-08T18:46:56.792Z"
+                }
+              ],
+              "teks": "Di Si D'nOK tersedia menu “Cek Status Pengajuan”."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 25,
+          "at": "2026-11-10T08:10:24.606Z",
+          "chainHead": "57d495063f12…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_899bd628-07e5-4357-a04c-4d0a6826e2c3",
+          "version": 8,
+          "type": "done",
+          "seq": 26,
+          "at": "2026-11-10T08:10:24.612Z",
+          "chainHead": "5809ed0430e3…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11539
+    }
+  ],
+  "layar": [
+    "Warga: Saya sudah ajukan KK baru minggu lalu di Semarang, gimana cara cek statusnya?",
+    "[KARTU WILAYAH] KTP Anda terdaftar di Kota Semarang? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)\nUrusin: KTP Anda terdaftar di Kota Semarang, betul?",
+    "Warga: Saya tinggal di Banyumanik, Kota Semarang, tapi untuk wilayah terdaftar di KTP saya belum yakin. Apakah saya tetap bisa cek status pengajuan KK?",
+    "Urusin: Ya, status pengajuan biasanya bisa dicek melalui kanal tempat Anda mengajukan KK. Namun, karena Anda belum yakin wilayah yang tercantum di KTP, saya belum bisa memastikan kanal yang tepat.\n\nApakah Anda mengajukannya melalui layanan Disdukcapil Kota Semarang?",
+    "Warga: Ya, saya mengajukannya lewat layanan online Dispendukcapil Kota Semarang minggu lalu. Saya juga menyimpan kode pelayanannya. Bagaimana cara cek statusnya?",
+    "Urusin: Kode pelayanan yang Anda simpan bisa membantu saat mengecek status. Namun, sebelum membuka pengecekan, kita perlu memastikan wilayah yang tercantum di KTP Anda.\n\nBisa periksa apakah KTP Anda terdaftar di **Kota Semarang**? Tidak perlu menuliskan kode pelayanan atau data pribadi di chat.",
+    "Warga: Maaf, saya belum yakin wilayah yang tercantum di KTP. Karena pengajuannya sudah lewat layanan online Dispendukcapil Kota Semarang, apakah saya bisa cek langsung di sana dengan kode pelayanan?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/).\n  - Kementerian Sosial https://cekbansos.kemensos.go.id/",
+    "Warga: Maaf, itu situs cek bansos, bukan untuk pengajuan KK. Saya mengajukan lewat layanan online Dispendukcapil Kota Semarang. Bagaimana cara cek statusnya di sana dengan kode pelayanan?",
+    "Urusin: Maaf, Anda benar: situs cek bansos tidak berkaitan dengan pengajuan KK.\n\nAnda bisa mencoba mengecek langsung di **layanan online Dispendukcapil Kota Semarang** tempat Anda mengajukan permohonan. Cari bagian status atau riwayat pengajuan, lalu gunakan kode pelayanan jika diminta. Saya belum menemukan petunjuk resmi yang memastikan nama menu atau apakah kode tersebut saja cukup.\n\nJika tidak menemukan statusnya, hubungi kanal resmi Dispendukcapil Kota Semarang dan siapkan kode pelayanan Anda. **Jangan tuliskan kode atau data pribadi di chat ini.**",
+    "Warga: Baik, terima kasih. Bisa minta tautan layanan online Dispendukcapil Kota Semarang tempat saya bisa cek status pengajuan KK?",
+    "[JAWABAN BERSUMBER]\n  - Tautan Si D'nOK Kota Semarang adalah https://sidnok.semarangkota.go.id.\n    (sumber: Data Dukung - Si D'nOK - Data Dukung — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  - Di Si D'nOK tersedia menu “Cek Status Pengajuan”.\n    (sumber: Data Dukung - Si D'nOK — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)\n  Keputusan ada di petugas instansi terkait."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": true,
+    "catatan": "Saya sudah mendapat tautan Si D'nOK dan nama menu untuk mengecek status pengajuan."
+  },
+  "ms": 85586,
+  "giliranWarga": 6,
+  "nilai": {
+    "persona": "p15-semarang-cek-status",
+    "judul": "Warga Kota Semarang ingin cek status pengajuan",
+    "urusanId": "u_a98bc836add36fb54a45b2d0e393c95c",
+    "wilayahPerangkat": "3374",
+    "kodeUrusan": null,
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": true,
+      "catatan": "Saya sudah mendapat tautan Si D'nOK dan nama menu untuk mengecek status pengajuan."
+    },
+    "giliranWarga": 6,
+    "ms": 85586,
+    "url": [
+      "https://cekbansos.kemensos.go.id/",
+      "https://sidnok.semarangkota.go.id",
+      "https://sidnok.semarangkota.go.id/get-berkas/1720769569",
+      "https://sidnok.semarangkota.go.id/data-dukung"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": true,
+        "bukti": "warga menyebut wilayah sebelum rencana"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "tanpa galat"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": true,
+        "bukti": "Saya tinggal di Banyumanik, Kota Semarang"
+      },
+      "b": {
+        "lulus": false,
+        "bukti": "Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/)."
+      },
+      "c": {
+        "lulus": true,
+        "bukti": "Di Si D'nOK tersedia menu “Cek Status Pengajuan”."
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "Kementerian Sosial https://cekbansos.kemensos.go.id/"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "(tidak ada penawaran Browser Pendamping atau klaim pengiriman)"
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "Jangan tuliskan kode atau data pribadi di chat ini."
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "Maaf, Anda benar: situs cek bansos tidak berkaitan dengan pengajuan KK."
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "Tautan Si D'nOK Kota Semarang adalah https://sidnok.semarangkota.go.id."
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "Di Si D'nOK tersedia menu “Cek Status Pengajuan”."
+      },
+      "ringkasan": "Urusin sempat mengarahkan warga ke kanal bansos yang tidak berwenang untuk pengajuan KK. Setelah dikoreksi, Urusin memberikan tautan Si D'nOK dan nama menu cek status.",
+      "cacat": [
+        {
+          "judul": "Salah mengarahkan ke Kementerian Sosial",
+          "kriteria": "b",
+          "keparahan": "tinggi",
+          "bukti": "Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/)."
+        },
+        {
+          "judul": "Memberikan tautan cek bansos untuk status KK",
+          "kriteria": "d",
+          "keparahan": "tinggi",
+          "bukti": "Kementerian Sosial https://cekbansos.kemensos.go.id/"
+        },
+        {
+          "judul": "Meminta kepastian wilayah KTP yang tidak diperlukan untuk cek status",
+          "kriteria": "b",
+          "keparahan": "sedang",
+          "bukti": "sebelum membuka pengecekan, kita perlu memastikan wilayah yang tercantum di KTP Anda."
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": true,
+        "bukti": "otomatis: warga menyebut wilayah sebelum rencana | juri: Saya tinggal di Banyumanik, Kota Semarang",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "warga menyebut wilayah sebelum rencana"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Saya tinggal di Banyumanik, Kota Semarang"
+          }
+        ]
+      },
+      "b": {
+        "lulus": false,
+        "bukti": "juri: Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/).",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/)."
+          }
+        ]
+      },
+      "c": {
+        "lulus": true,
+        "bukti": "juri: Di Si D'nOK tersedia menu “Cek Status Pengajuan”.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Di Si D'nOK tersedia menu “Cek Status Pengajuan”."
+          }
+        ]
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "juri: Kementerian Sosial https://cekbansos.kemensos.go.id/",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Kementerian Sosial https://cekbansos.kemensos.go.id/"
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada penawaran Browser Pendamping atau klaim pengiriman)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada penawaran Browser Pendamping atau klaim pengiriman)"
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: Jangan tuliskan kode atau data pribadi di chat ini.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Jangan tuliskan kode atau data pribadi di chat ini."
+          }
+        ]
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "juri: Maaf, Anda benar: situs cek bansos tidak berkaitan dengan pengajuan KK.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Maaf, Anda benar: situs cek bansos tidak berkaitan dengan pengajuan KK."
+          }
+        ]
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "juri: Tautan Si D'nOK Kota Semarang adalah https://sidnok.semarangkota.go.id.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Tautan Si D'nOK Kota Semarang adalah https://sidnok.semarangkota.go.id."
+          }
+        ]
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "otomatis: tanpa galat | juri: Di Si D'nOK tersedia menu “Cek Status Pengajuan”.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tanpa galat"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Di Si D'nOK tersedia menu “Cek Status Pengajuan”."
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 50596,
+        "tokensOut": 769,
+        "costIdr": 0,
+        "panggilanLlm": 9
+      },
+      "simulator": {
+        "panggilan": 6,
+        "tokensIn": 17871,
+        "tokensOut": 498
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 4515,
+        "tokensOut": 733
+      }
+    }
+  }
+}

@@ -18,6 +18,8 @@
     inputTeks = $bindable(null),
     onambilalih,
     onkembalikan,
+    onbukatautan = () => {},
+    onsudahkirim = () => {},
     onhentikan,
     ontutup,
     onmulailagi,
@@ -30,6 +32,10 @@
     inputTeks?: HTMLTextAreaElement | null;
     onambilalih: () => void;
     onkembalikan: () => void;
+    /** Giliran ketuk_tautan: buka tautan pembuka yang disorot lewat worker (bukan ketukan di halaman). */
+    onbukatautan?: () => void;
+    /** AI berhenti / warga memegang kendali: "Saya sudah mengirim" (worker memeriksa halaman sukses). */
+    onsudahkirim?: () => void;
     onhentikan: () => void;
     /** Siaga: tutup peramban server sekarang (DELETE sesi). */
     ontutup: () => void;
@@ -58,16 +64,22 @@
     periksa: 'Periksa halaman ini',
     isi_sendiri: 'Isi kolom ini sendiri',
     berkas_kurang: 'Dokumen belum ada',
+    ketuk_tautan: 'Buka tautan di situs',
+    berhenti: 'AI berhenti',
   };
   const CATATAN_GILIRAN: Record<string, string> = {
     login: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
     masuk_akun: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
     verifikasi_situs: 'Situs memeriksa keamanan. Centang kotaknya sendiri.',
     final: 'AI dikunci agar tidak bisa mengirim.',
-    periksa: 'AI menunggu sampai Anda selesai.',
+    periksa: 'AI tidak menjalankan apa pun selama giliran Anda.',
     isi_sendiri: 'Ketikan Anda tidak dibaca AI dan tidak dicatat.',
     berkas_kurang: 'Lanjutkan meminta izin Anda untuk mengunggah dokumen itu saja.',
+    ketuk_tautan: 'AI tidak mengetuk tautan ini; Anda yang membukanya.',
+    berhenti: 'Yang Anda ketik tidak dicatat dan tidak dilihat AI.',
   };
+  // Tautan pembuka yang disorot (nama = teks situs, tak tepercaya: hanya tampil sebagai teks).
+  const tautan = $derived(data.giliran?.alasan === 'ketuk_tautan' ? data.giliran.tautan : undefined);
   // Giliran kirim: nama tombol dibaca dari halaman (mis. "Selesai"), bukan nama karangan Urusin.
   const tombolKirim = $derived(data.giliran?.alasan === 'final' ? data.giliran.tombol : undefined);
   const judulGiliran = $derived(
@@ -103,6 +115,20 @@
   const TEKS = 'w-full max-w-[280px] text-center text-sm leading-5 text-muted';
 </script>
 
+{#snippet sudahKirim()}
+  <!-- AI berhenti: warga mengirim sendiri, lalu Urusin memeriksa halaman suksesnya lewat worker. -->
+  <div class="flex flex-wrap gap-2">
+    <button
+      type="button"
+      onclick={onsudahkirim}
+      disabled={data.memeriksaKirim}
+      data-sudah-kirim
+      class={TOMBOL_TERANG}>Saya sudah mengirim</button
+    >
+  </div>
+  {#if data.pesanKirim}<p role="alert" class="text-[15px] text-galat">{data.pesanKirim}</p>{/if}
+{/snippet}
+
 <section
   aria-label="Browser Pendamping"
   class="flex h-full min-h-[32rem] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_16px_#0000000d]"
@@ -137,18 +163,37 @@
           {judulGiliran}
         </p>
         {#if isiGiliran}<p class="text-[15px] leading-[23px] text-muted">{isiGiliran}</p>{/if}
-        {#if data.giliran.alasan === 'isi_sendiri' || data.giliran.alasan === 'berkas_kurang'}
-          <!-- Kolom di luar Data Diri (mis. nomor kitir) atau Dokumen yang belum ada: warga, lalu AI lanjut. -->
+        {#if ['isi_sendiri', 'berkas_kurang', 'ketuk_tautan'].includes(data.giliran.alasan)}
+          <!-- Kolom di luar Data Diri (mis. nomor kitir), Dokumen yang belum ada, atau tautan pembuka formulir
+               yang hanya boleh diketuk warga: warga, lalu AI lanjut. -->
           <div class="flex flex-wrap gap-2">
             {#if data.giliran.alasan === 'berkas_kurang'}
               <a href={resolve('/dokumen')} target="_blank" rel="noopener" class={TOMBOL_TERANG}
                 >Buka Dokumen</a
               >
             {/if}
-            <button type="button" onclick={onkembalikan} class={TOMBOL_GELAP}>
-              <Icon name="putar" class="size-[15px]" />Lanjutkan
-            </button>
+            {#if tautan}
+              <button
+                type="button"
+                onclick={onbukatautan}
+                data-buka-tautan
+                class="inline-flex min-h-11 max-w-full items-center gap-[7px] rounded-full bg-primer px-4 py-2 text-left text-[15px] font-semibold text-primer-ink hover:opacity-90"
+              >
+                <span class="min-w-0 break-words"
+                  >Buka “{tautan.nama || 'tautan'}”
+                  <span class="font-normal opacity-80">({tautan.host}{tautan.jalur})</span></span
+                >
+              </button>
+            {/if}
+            {#if !tautan}
+              <!-- Tautan pembuka dengan tujuan dari worker: Buka (worker yang membuka, lalu AI lanjut). -->
+              <button type="button" onclick={onkembalikan} class={TOMBOL_GELAP}>
+                <Icon name="putar" class="size-[15px]" />Lanjutkan
+              </button>
+            {/if}
           </div>
+        {:else if data.giliran.alasan === 'berhenti'}
+          {@render sudahKirim()}
         {/if}
       </div>
     </div>
@@ -166,12 +211,20 @@
         <p class="text-[15px] leading-[23px] text-muted">
           Yang Anda ketik tidak dicatat dan tidak dilihat AI. Mau lanjut atau batalkan?
         </p>
+        {#if data.pesanKirim}<p role="alert" class="text-[15px] text-galat">{data.pesanKirim}</p>{/if}
       </div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <button type="button" onclick={onkembalikan} class={TOMBOL_GELAP}>
           <Icon name="putar" class="size-[15px]" />Lanjutkan
         </button>
         <button type="button" onclick={onhentikan} class={TOMBOL_TERANG}>Batalkan</button>
+        <button
+          type="button"
+          onclick={onsudahkirim}
+          disabled={data.memeriksaKirim}
+          data-sudah-kirim
+          class={TOMBOL_TERANG}>Saya sudah mengirim</button
+        >
       </div>
     </div>
   {:else if k === 'siaga'}

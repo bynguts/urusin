@@ -15,6 +15,10 @@ import {
 
 // --- POST /api/urusan ---
 export const BuatUrusanRequestSchema = z.object({
+  /**
+   * Wilayah dari pemilih di perangkat. Hanya USULAN: warga tetap diminta memastikan wilayah KTP-nya di urusan
+   * (event `wilayah`); Data Diri akun yang masuk didahulukan sebagai usulan.
+   */
   kodeKabKota: KodeKabKotaSchema.optional(),
   peristiwa: z.enum(['kelahiran', 'kematian', 'perkawinan', 'pindah', 'lainnya']).optional(),
   /** Pesan pertama (opsional); bila ada, satu turn langsung berjalan. */
@@ -68,6 +72,21 @@ export const KonfirmasiRequestSchema = z.object({
 export const KonfirmasiResponseSchema = z.object({
   confirmationId: z.string().min(1),
   kedaluwarsa: IsoWaktuSchema,
+});
+
+// --- POST /api/urusan/[id]/wilayah ---
+/** Tombol "Ya, betul" / pilihan kab/kota: warga memastikan wilayah KTP urusan ini. */
+export const TetapkanWilayahRequestSchema = z.object({
+  kodeKabKota: KodeKabKotaSchema,
+  expectedVersion: z.number().int().nonnegative().optional(),
+});
+export const TetapkanWilayahResponseSchema = z.object({
+  state: UrusanStateSchema,
+  version: z.number().int().nonnegative(),
+  /** true bila rencana langsung diusulkan (jenis urusan sudah diketahui). */
+  rencana: z.boolean(),
+  /** Tanpa rencana tetapi sudah ada percakapan: giliran agen dilanjutkan untuk wilayah ini (ikuti lewat stream). */
+  turnId: z.string().optional(),
 });
 
 // --- GET /api/urusan?ids=a,b ---
@@ -239,6 +258,7 @@ export const ENDPOINT = {
     diimplementasi: false,
   },
   konfirmasi: { method: 'POST', path: '/api/urusan/[id]/konfirmasi', sukses: 201, diimplementasi: true },
+  tetapkanWilayah: { method: 'POST', path: '/api/urusan/[id]/wilayah', sukses: 200, diimplementasi: true },
   statusUrusan: { method: 'GET', path: '/api/urusan/[id]', sukses: 200, diimplementasi: true },
   daftarUrusan: { method: 'GET', path: '/api/urusan', sukses: 200, diimplementasi: true },
   stream: { method: 'GET', path: '/api/urusan/[id]/stream', sukses: 200, diimplementasi: true },
@@ -289,6 +309,8 @@ export type ExecutionResultRequest = z.infer<typeof ExecutionResultRequestSchema
 export type ExecutionResultResponse = z.infer<typeof ExecutionResultResponseSchema>;
 export type KonfirmasiRequest = z.infer<typeof KonfirmasiRequestSchema>;
 export type KonfirmasiResponse = z.infer<typeof KonfirmasiResponseSchema>;
+export type TetapkanWilayahRequest = z.infer<typeof TetapkanWilayahRequestSchema>;
+export type TetapkanWilayahResponse = z.infer<typeof TetapkanWilayahResponseSchema>;
 export type RingkasanUrusan = z.infer<typeof RingkasanUrusanSchema>;
 export type StatusUrusanResponse = z.infer<typeof StatusUrusanResponseSchema>;
 export type DaftarUrusanResponse = z.infer<typeof DaftarUrusanResponseSchema>;

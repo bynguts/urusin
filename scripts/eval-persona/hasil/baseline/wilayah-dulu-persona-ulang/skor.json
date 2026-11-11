@@ -1,0 +1,271 @@
+{
+  "label": "wd-persona-p16",
+  "dibuat": "2026-11-10T07:54:27.385Z",
+  "gitSha": "c869666e0edfd3c1d4bfc9163134ffea4490f42a",
+  "akar": "D:\\project lock in\\urusin-wt-eval\\scripts\\eval-persona\\.cache\\wt-c869666",
+  "origin": "lokal (node build)",
+  "wilayahAwal": "persona",
+  "wilayahBawaanPerangkat": "",
+  "maksGiliran": 12,
+  "rag": {
+    "status": "ready",
+    "chunks": 267,
+    "vectors": 267,
+    "vectorModel": "jina-embeddings-v5-omni-small",
+    "pencarian": {
+      "vektor": true,
+      "rerank": true,
+      "embedModel": "jina-embeddings-v5-omni-small",
+      "rerankModel": "jina-reranker-v3"
+    }
+  },
+  "durasiMs": 111020,
+  "hasil": [
+    {
+      "persona": "p16-datadiri-wonogiri-ktp-semarang",
+      "judul": "Akun juri (Data Diri Wonogiri), KTP sekarang sudah Kota Semarang",
+      "urusanId": "u_a6f411da74b9e1e6020299bf601dfc34",
+      "wilayahPerangkat": "3374",
+      "kodeUrusan": "3374",
+      "akhir": {
+        "alasan": "warga_selesai",
+        "puas": true,
+        "catatan": "Saya sudah tahu membuka Si D’nOK dan memilih Pendaftaran Baru jika belum punya akun, serta dokumen yang perlu disiapkan."
+      },
+      "giliranWarga": 6,
+      "ms": 92168,
+      "url": [
+        "https://sidnok.semarangkota.go.id/data-dukung",
+        "https://sidnok.semarangkota.go.id/",
+        "https://peraturan.go.id/id/perpres-no-96-tahun-2018"
+      ],
+      "deterministik": {
+        "a": {
+          "lulus": true,
+          "bukti": "warga menyebut wilayah sebelum rencana"
+        },
+        "d": {
+          "lulus": true,
+          "bukti": "tidak ada tautan/nama wilayah lain"
+        },
+        "e": {
+          "lulus": true,
+          "bukti": "ditawarkan: (tidak ada)",
+          "ditawarkan": []
+        },
+        "f": {
+          "lulus": true,
+          "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+        },
+        "i": {
+          "lulus": true,
+          "bukti": "tanpa galat"
+        }
+      },
+      "juri": {
+        "a": {
+          "lulus": true,
+          "bukti": "Wilayah KTP: Kota Semarang"
+        },
+        "b": {
+          "lulus": true,
+          "bukti": "Ajukan akta kelahiran ke Disdukcapil Kota Semarang"
+        },
+        "c": {
+          "lulus": false,
+          "bukti": "(tidak ada persyaratan KTP-el dalam jawaban bersumber atau kartu rencana)"
+        },
+        "d": {
+          "lulus": true,
+          "bukti": "Sumber: Si D'nOK (https://sidnok.semarangkota.go.id/)"
+        },
+        "e": {
+          "lulus": false,
+          "bukti": "tekan **“Setujui dan buka situs”** untuk membuka Si D’nOK melalui Browser Pendamping. Saya akan membantu pengisian pengajuan"
+        },
+        "f": {
+          "lulus": true,
+          "bukti": "Jangan membagikan sandi atau data pribadi di chat ini."
+        },
+        "g": {
+          "lulus": true,
+          "bukti": "Jika Anda sudah punya akun Si D’nOK, pilih **Login**. Jika belum, pilih **Pendaftaran Baru** dan ikuti petunjuk di situs."
+        },
+        "h": {
+          "lulus": true,
+          "bukti": "Jika Anda sudah punya akun Si D’nOK, pilih **Login**. Jika belum, pilih **Pendaftaran Baru** dan ikuti petunjuk di situs."
+        },
+        "i": {
+          "lulus": false,
+          "bukti": "Tombol “Setujui dan buka situs” tidak ada di layar saya."
+        },
+        "ringkasan": "Wilayah dan kanal yang digunakan sudah sesuai Kota Semarang, tetapi daftar persyaratan tidak mencantumkan KTP-el. Urusin juga menjanjikan bantuan Browser Pendamping melalui tombol yang tidak tersedia, meski akhirnya memberi langkah manual yang konkret.",
+        "cacat": [
+          {
+            "judul": "Persyaratan KTP-el terlewat",
+            "kriteria": "c",
+            "keparahan": "sedang",
+            "bukti": "(tidak ada persyaratan KTP-el dalam jawaban bersumber atau kartu rencana)"
+          },
+          {
+            "judul": "Menjanjikan Browser Pendamping yang tidak tersedia",
+            "kriteria": "e",
+            "keparahan": "tinggi",
+            "bukti": "tekan **“Setujui dan buka situs”** untuk membuka Si D’nOK melalui Browser Pendamping. Saya akan membantu pengisian pengajuan"
+          },
+          {
+            "judul": "Instruksi tombol yang tidak ada membuat warga macet",
+            "kriteria": "i",
+            "keparahan": "sedang",
+            "bukti": "Tombol “Setujui dan buka situs” tidak ada di layar saya."
+          }
+        ]
+      },
+      "nilai": {
+        "a": {
+          "lulus": true,
+          "bukti": "otomatis: warga menyebut wilayah sebelum rencana | juri: Wilayah KTP: Kota Semarang",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": true,
+              "bukti": "warga menyebut wilayah sebelum rencana"
+            },
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Wilayah KTP: Kota Semarang"
+            }
+          ]
+        },
+        "b": {
+          "lulus": true,
+          "bukti": "juri: Ajukan akta kelahiran ke Disdukcapil Kota Semarang",
+          "komponen": [
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Ajukan akta kelahiran ke Disdukcapil Kota Semarang"
+            }
+          ]
+        },
+        "c": {
+          "lulus": false,
+          "bukti": "juri: (tidak ada persyaratan KTP-el dalam jawaban bersumber atau kartu rencana)",
+          "komponen": [
+            {
+              "sumber": "juri",
+              "lulus": false,
+              "bukti": "(tidak ada persyaratan KTP-el dalam jawaban bersumber atau kartu rencana)"
+            }
+          ]
+        },
+        "d": {
+          "lulus": true,
+          "bukti": "otomatis: tidak ada tautan/nama wilayah lain | juri: Sumber: Si D'nOK (https://sidnok.semarangkota.go.id/)",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": true,
+              "bukti": "tidak ada tautan/nama wilayah lain"
+            },
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Sumber: Si D'nOK (https://sidnok.semarangkota.go.id/)"
+            }
+          ]
+        },
+        "e": {
+          "lulus": false,
+          "bukti": "juri: tekan **“Setujui dan buka situs”** untuk membuka Si D’nOK melalui Browser Pendamping. Saya akan membantu pengisian pengajuan",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": true,
+              "bukti": "ditawarkan: (tidak ada)",
+              "ditawarkan": []
+            },
+            {
+              "sumber": "juri",
+              "lulus": false,
+              "bukti": "tekan **“Setujui dan buka situs”** untuk membuka Si D’nOK melalui Browser Pendamping. Saya akan membantu pengisian pengajuan"
+            }
+          ]
+        },
+        "f": {
+          "lulus": true,
+          "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: Jangan membagikan sandi atau data pribadi di chat ini.",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": true,
+              "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+            },
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Jangan membagikan sandi atau data pribadi di chat ini."
+            }
+          ]
+        },
+        "g": {
+          "lulus": true,
+          "bukti": "juri: Jika Anda sudah punya akun Si D’nOK, pilih **Login**. Jika belum, pilih **Pendaftaran Baru** dan ikuti petunjuk di situs.",
+          "komponen": [
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Jika Anda sudah punya akun Si D’nOK, pilih **Login**. Jika belum, pilih **Pendaftaran Baru** dan ikuti petunjuk di situs."
+            }
+          ]
+        },
+        "h": {
+          "lulus": true,
+          "bukti": "juri: Jika Anda sudah punya akun Si D’nOK, pilih **Login**. Jika belum, pilih **Pendaftaran Baru** dan ikuti petunjuk di situs.",
+          "komponen": [
+            {
+              "sumber": "juri",
+              "lulus": true,
+              "bukti": "Jika Anda sudah punya akun Si D’nOK, pilih **Login**. Jika belum, pilih **Pendaftaran Baru** dan ikuti petunjuk di situs."
+            }
+          ]
+        },
+        "i": {
+          "lulus": false,
+          "bukti": "juri: Tombol “Setujui dan buka situs” tidak ada di layar saya.",
+          "komponen": [
+            {
+              "sumber": "otomatis",
+              "lulus": true,
+              "bukti": "tanpa galat"
+            },
+            {
+              "sumber": "juri",
+              "lulus": false,
+              "bukti": "Tombol “Setujui dan buka situs” tidak ada di layar saya."
+            }
+          ]
+        }
+      },
+      "pemakaian": {
+        "agen": {
+          "tokensIn": 82441,
+          "tokensOut": 2161,
+          "costIdr": 0,
+          "panggilanLlm": 9
+        },
+        "simulator": {
+          "panggilan": 6,
+          "tokensIn": 23849,
+          "tokensOut": 456
+        },
+        "juri": {
+          "panggilan": 1,
+          "tokensIn": 6441,
+          "tokensOut": 513
+        }
+      }
+    }
+  ]
+}

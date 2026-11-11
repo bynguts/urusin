@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
+  import { onMount } from 'svelte';
   import Icon from '#lib/components/Icon.svelte';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
   import ChipSumber from '#lib/components/urusan/ChipSumber.svelte';
@@ -20,19 +21,27 @@
   const r = $derived(data.rencana);
   const pesan = $derived(`Saya ingin mengurus ${p.judul.toLowerCase()}. Apa saja yang perlu saya siapkan?`);
   let mengirim = $state(false);
+  let pilihKota = $state<HTMLSelectElement>();
 
-  // Dengan JS: bila belum memilih kota, pakai wilayah layanan perangkat ini.
+  // HP lambat: warga bisa memilih kota sebelum hidrasi, saat onchange belum terpasang. Pilihan itu diteruskan
+  // begitu halaman hidup, bukan hilang diam-diam.
+  onMount(() => {
+    if (pilihKota?.value && pilihKota.value !== (data.kodeDipilih ?? '')) simpanWilayah(pilihKota);
+  });
+
+  // Dengan JS: bila belum memilih kota dan perangkat ini punya pilihan wilayah, pakai itu (usulan saja).
+  // Pilihan warga di kolom (termasuk sebelum hidrasi) tidak ditimpa usulan ini.
   $effect(() => {
-    if (data.kodeDipilih || page.url.searchParams.has('kodeKabKota')) return;
-    const kode = lokal.data.wilayah.kodeKabKota;
+    if (data.kodeDipilih || page.url.searchParams.has('kodeKabKota') || pilihKota?.value) return;
+    const kode = lokal.data.wilayah?.kodeKabKota;
+    if (!kode) return;
     // eslint-disable-next-line svelte/no-navigation-without-resolve -- path lewat resolve(), hanya ditambah query
     void goto(`${resolve('/peristiwa/[slug]', { slug: p.slug })}?kodeKabKota=${kode}`, {
       replaceState: true,
     });
   });
 
-  function simpanWilayah(e: Event) {
-    const sel = e.currentTarget as HTMLSelectElement;
+  function simpanWilayah(sel: HTMLSelectElement) {
     const k = data.kota.find((x) => x.kodeKabKota === sel.value);
     if (k) lokal.aturWilayah({ kodeKabKota: k.kodeKabKota, nama: namaPendek(k.nama) });
     sel.form?.requestSubmit();
@@ -42,6 +51,7 @@
     'online-adapter': { label: 'Online · AI bisa bantu mengisi', nada: 'ai' },
     'online-manual': { label: 'Online · Anda isi sendiri', nada: 'anda' },
     offline: { label: 'Datang ke kantor', nada: 'instansi' },
+    'cek-kanal': { label: 'Cek cara di Disdukcapil setempat', nada: 'anda' },
   };
 </script>
 
@@ -57,13 +67,13 @@
   <p class="text-base text-body sm:text-[1.0625rem]">{p.ringkas}.</p>
 
   <form method="GET" class="mt-6 flex flex-col gap-2" data-sveltekit-keepfocus data-sveltekit-noscroll>
-    <label for="kota" class="text-[0.9375rem] font-medium text-ink">Kabupaten/kota tempat Anda mengurus</label
-    >
+    <label for="kota" class="text-[0.9375rem] font-medium text-ink">Kabupaten/kota sesuai KTP Anda</label>
     <div class="flex flex-wrap gap-2">
       <select
         id="kota"
         name="kodeKabKota"
-        onchange={simpanWilayah}
+        bind:this={pilihKota}
+        onchange={(e) => simpanWilayah(e.currentTarget)}
         aria-describedby="kota-petunjuk"
         class="min-h-12 min-w-0 flex-1 rounded-xl border border-line-2 bg-surface px-4 text-base text-ink"
       >
@@ -80,7 +90,10 @@
         >
       </noscript>
     </div>
-    <p id="kota-petunjuk" class="text-sm text-muted">Syarat dan situs resmi mengikuti wilayah ini.</p>
+    <p id="kota-petunjuk" class="text-sm text-muted">
+      {data.dariDataDiri ? 'Diisi dari Data Diri akun Anda. ' : ''}Syarat dan situs resmi mengikuti wilayah
+      KTP; Urusin memastikannya lagi saat urusan dimulai.
+    </p>
   </form>
 
   {#if r}

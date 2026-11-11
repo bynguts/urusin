@@ -515,10 +515,11 @@ worker. Server adalah jalur utama, laptop opsional: situs `aksesWilayah: 'id-uta
 tantangan kotak centang yang diketuk warga sendiri) mendahulukan worker `region: "id"` yang sehat DAN masih punya
 slot, selain itu beban terendah (VPS); start yang gagal di worker (jaringan/timeout, 401/403, 5xx) langsung
 dicoba di kandidat sehat berikutnya, dan urusan yang sudah lekat di satu worker tetap di sana. Hanya bila TIDAK
-ADA worker sehat sama sekali muncul 503 umum. Situs `aksesWilayah: 'id-only'` (Si D'nOK: blokir keras IP
-non-Indonesia) hanya ke worker `region: "id"`, tanpa jatuh ke VPS; bila semua mati, urusan beralih ke mode
-dipandu dengan pesan jujur. 401/403 kanal internal dari worker tidak pernah diteruskan ke warga (jadi 503
-umum). Rute WS worker tambahan dibangkitkan (dikerjakan lead, izin per kejadian): tambahkan
+ADA worker sehat sama sekali muncul 503 umum. Situs `aksesWilayah: 'id-only'` (blokir keras IP non-Indonesia;
+daftar di deploy/worker-id/README.md) hanya ke worker `region: "id"`, tanpa jatuh ke VPS; bila tidak ada yang
+sehat, worker id-nya ber-image lama (`/health` tanpa `"generik":true`), atau start di sana gagal (422 image
+lama, 401/403, 5xx, putus), urusan beralih ke mode dipandu dengan pesan jujur. Sesi generik juga tidak
+dirutekan ke worker id ber-image lama. 401/403 kanal internal dari worker tidak pernah diteruskan ke warga. Rute WS worker tambahan dibangkitkan (dikerjakan lead, izin per kejadian): tambahkan
 `--worker laptop-a=100.x.y.z:4330` ke perintah `gen-caddyfile.mjs` di atas. Blok yang dihasilkan: matcher
 `@w_<id>` (HANYA `GET` upgrade WebSocket ke `/pendamping/w/<id>/ws/*` yang membawa cookie `__Host-urusin_sid`
 berbentuk sah), prefiks dibuang (edge menerima `/ws/<uuid>`), Cookie ditimpa jadi sid saja dan `Authorization`
@@ -572,3 +573,21 @@ docker compose -f compose.local.yml --env-file .env up --build   # http://localh
 
 SQLite (WAL) ada di volume Docker bernama `urusin_data` (`/data` di container), dipakai bersama kedua
 warna. Backup rutin: lihat bagian Backup. Cadangan manual sekali jalan: `./backup.sh`.
+
+### Korpus RAG: sumber teks pasal nasional
+
+Adapter `pasal` (branch `fix/fakta-regulasi`, ditambah `fix/fakta-lengkap`) memakai tujuh sumber `*-pasal` di
+`data/sources.json`. Setiap kali `data/regulasi/pasal.json` berubah, ingest ulang ketujuh sumber itu ke berkas korpus yang dipakai
+`URUSIN_RAG_DB` (path absolut, karena CLI berjalan dari `packages/rag`; butuh jaringan ke peraturan.go.id, robots dan
+jeda sopan sudah ditangani CLI):
+
+```
+for id in uu-24-2013-pasal uu-23-2006-pasal perpres-96-2018-pasal permendagri-108-2019-pasal permendagri-7-2026-pasal \
+  permendagri-109-2019-pasal perpol-1-2026-pasal; do
+  pnpm rag:ingest --only "$id" --db "$URUSIN_RAG_DB"
+done
+pnpm rag:verify --db "$URUSIN_RAG_DB"   # sumber `*-pasal` harus "unchanged"
+```
+
+Ingest per sumber menghapus lalu menulis ulang chunk `<id>#*`, jadi aman diulang. Hasil yang diharapkan: 6 + 2 + 10 + 7 + 6 +
+2 + 8 = 41 chunk `*-pasal#pasal-*`. Teks chunk diambil dari `data/regulasi/pasal.json`; PDF hanya untuk hash verifikasi.

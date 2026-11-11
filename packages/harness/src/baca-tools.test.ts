@@ -69,6 +69,17 @@ const kasus = [
 ] as const;
 
 describe('tool baca-saja Browser Pendamping', () => {
+  it('dukcapil__cek_status tanpa konteks urusan (dipanggil langsung oleh e2e pendamping): pakai argumen', () => {
+    const ctx = {} as ToolContext;
+    const out = dukcapilCekStatus.execute(ctx, { kodeKabKota: '3374' }) as Awaited<
+      ReturnType<typeof dukcapilCekStatus.execute>
+    >;
+    expect(out.execution).toMatchObject({ adapterId: 'sidnok-semarang', flowId: 'cek_status' });
+    expect(dukcapilCekStatus.origin?.({ kodeKabKota: '3374' }, undefined as never)).toBe(
+      ADAPTERS['sidnok-semarang']!.origin,
+    );
+  });
+
   for (const k of kasus) {
     it(`${k.tool} ${JSON.stringify(k.args)} -> execution_request ${k.adapterId}/${k.flowId} lalu gate konfirmasi`, async () => {
       const { out } = await panggil(k.tool, k.args);
@@ -87,7 +98,9 @@ describe('tool baca-saja Browser Pendamping', () => {
       });
       expect(exec.executionId).toMatch(/^x_[0-9a-f-]{36}$/);
       expect(exec.ringkasan).toMatch(/Baca saja, tidak ada yang dikirim\./);
-      expect(exec.ringkasan).toMatch(/\(tingkat semi\)/);
+      // Baca saja bukan tingkat semi (semi = Browser Pendamping bisa mengisi/mengirim).
+      expect(exec.ringkasan).toMatch(/lewat Browser Pendamping\./);
+      expect(exec.ringkasan).not.toMatch(/tingkat semi/);
       expect(exec.ringkasan).toMatch(k.jujur);
       // Gate SESUDAH permintaan, dengan pasangan tool + paramsHash yang sama (kartu konfirmasi + POST /konfirmasi).
       const gate = out.events.slice(iExec + 1).find((e) => e.type === 'gate') as Gate | undefined;
@@ -112,9 +125,12 @@ describe('tool baca-saja Browser Pendamping', () => {
     expect(JSON.stringify(hasilTool)).toMatch(/SIAPEL/);
   });
 
-  it('kode di luar registry: tidak ada portal, warga ke kantor dinas', () => {
-    const r = dukcapilCekStatus.execute({} as ToolContext, { kodeKabKota: '9999' });
-    expect(r).toMatchObject({ content: expect.stringMatching(/di kantor dinas\.$/) });
+  it('kode di luar registry: tidak ada portal, warga diarahkan ke kanal resmi (nasional)', () => {
+    const ctx = { urusan: { kodeKabKota: null } } as unknown as ToolContext;
+    const r = dukcapilCekStatus.execute(ctx, { kodeKabKota: '9999' });
+    expect(r).toMatchObject({
+      content: expect.stringMatching(/kanal nasional https:\/\/dukcapil\.kemendagri\.go\.id/),
+    });
     expect((r as { execution?: unknown }).execution).toBeUndefined();
     expect(dukcapilCekStatus.origin?.({ kodeKabKota: '9999' }, { urusan: {} as never })).toBeUndefined();
   });

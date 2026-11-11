@@ -1,4 +1,5 @@
 import { AkunError, hashDaftarWrite } from '@urusin/akun';
+import { hostsPortalWilayah } from '@urusin/harness';
 import { SEED_ENTRIES } from '@urusin/registry';
 import { originFixtures } from '#lib/server/hosts.js';
 import type { Runtime } from '#lib/server/runtime.js';
@@ -11,9 +12,11 @@ import type { Runtime } from '#lib/server/runtime.js';
  *    (5 menit) yang terikat ke pemilik, hash daftar field yang akan ditulis, dan origin tujuan.
  * 2. Jalur isi memanggil `resolusiNilai` dengan token itu; daftar field + origin harus PERSIS sama.
  * Nilai tidak pernah dicatat, tidak pernah dikembalikan ke model, dan hanya field di daftar write yang keluar.
- * Tujuan harus ada di allowlist: portal registry berstatus `kirim-asli` (yang punya adapter Pendamping) atau
- * situs latihan. Salinan demo (data sintetis) hanya boleh menuju situs latihan, tidak pernah ke situs
- * pemerintah sungguhan.
+ * Tujuan harus ada di allowlist: portal registry berstatus `kirim-asli` (yang punya adapter Pendamping), portal
+ * milik wilayah urusan ini (`hostsPortalWilayah`: host portal persis dari registry, dari kode wilayah KTP yang sudah ditetapkan warga; Navigator generik,
+ * ADR 0030), atau situs latihan. Salinan demo (data sintetis) hanya boleh menuju situs latihan, tidak pernah ke
+ * situs pemerintah sungguhan. Persetujuan Navigator generik juga terikat ke `rencanaHash` halaman yang
+ * ditampilkan di lembar: hash itu ikut di hash daftar write, jadi token tidak bisa dipakai untuk rencana lain.
  */
 
 const asalTujuan = (targetOrigin: string): string => {
@@ -29,11 +32,36 @@ const PORTAL_ISI: ReadonlySet<string> = new Set(
   SEED_ENTRIES.flatMap((e) => (e.validasi === 'kirim-asli' && e.portal ? [e.portal.origin] : [])),
 );
 
-function pastikanTujuanBoleh(rt: Runtime, ownerId: string, origin: string): void {
+/** Origin https yang host-nya persis milik wilayah `kode` di registry wilayah (tanpa wildcard). */
+function portalMilikWilayah(origin: string, kode: string | null | undefined): boolean {
+  if (!kode) return false;
+  const u = new URL(origin);
+  return u.protocol === 'https:' && hostsPortalWilayah(kode).includes(u.host);
+}
+
+function pastikanTujuanBoleh(
+  rt: Runtime,
+  ownerId: string,
+  origin: string,
+  kodeWilayah: string | null | undefined,
+): void {
   const latihan = originFixtures().has(origin);
   if (rt.akun.akun(ownerId)?.jenis === 'demo' && !latihan) throw new AkunError('NILAI_SINTETIS_DITOLAK');
-  if (!latihan && !PORTAL_ISI.has(origin)) throw new AkunError('IZIN_TIDAK_VALID');
+  if (!latihan && !PORTAL_ISI.has(origin) && !portalMilikWilayah(origin, kodeWilayah))
+    throw new AkunError('IZIN_TIDAK_VALID');
 }
+
+const RENCANA_RE = /^[0-9a-f]{64}$/;
+
+/** Ikatan persetujuan: daftar write, ditambah `rencanaHash` bila persetujuan untuk rencana Navigator generik. */
+function hashIkatan(writeList: readonly string[], rencanaHash: string | undefined): string {
+  if (rencanaHash === undefined) return hashDaftarWrite(writeList);
+  if (!RENCANA_RE.test(rencanaHash)) throw new AkunError('IZIN_TIDAK_VALID');
+  return hashDaftarWrite([...writeList, `rencana:${rencanaHash}`]);
+}
+
+/** Konteks urusan untuk allowlist: wilayah KTP yang sudah ditetapkan dan hash rencana halaman (generik). */
+export type KonteksIzin = { kodeWilayah?: string | null | undefined; rencanaHash?: string | undefined };
 
 /** Terbitkan token persetujuan "Izinkan isi" untuk daftar field `writeList` menuju `targetOrigin`. */
 export function izinkanIsi(
@@ -41,10 +69,11 @@ export function izinkanIsi(
   ownerId: string,
   writeList: readonly string[],
   targetOrigin: string,
+  ktx: KonteksIzin = {},
 ): string {
   const origin = asalTujuan(targetOrigin);
-  pastikanTujuanBoleh(rt, ownerId, origin);
-  return rt.akun.terbitkanIzin(ownerId, hashDaftarWrite(writeList), origin);
+  pastikanTujuanBoleh(rt, ownerId, origin, ktx.kodeWilayah);
+  return rt.akun.terbitkanIzin(ownerId, hashIkatan(writeList, ktx.rencanaHash), origin);
 }
 
 /** Entri daftar write untuk berkas dari dompet dokumen: `berkas:<JENIS>` (mis. `berkas:KTP`). */
@@ -59,13 +88,13 @@ export type BerkasIsi = { nama: string; judul: string; mime: string; bytes: Buff
  */
 export function resolusiIsi(
   rt: Runtime,
-  p: { ownerId: string; token: string; writeList: readonly string[]; targetOrigin: string },
+  p: { ownerId: string; token: string; writeList: readonly string[]; targetOrigin: string } & KonteksIzin,
 ): { nilai: Record<string, string>; berkas: BerkasIsi[] } {
   const origin = asalTujuan(p.targetOrigin);
-  pastikanTujuanBoleh(rt, p.ownerId, origin);
+  pastikanTujuanBoleh(rt, p.ownerId, origin, p.kodeWilayah);
   rt.akun.pakaiIzin(p.token, {
     userId: p.ownerId,
-    writeListHash: hashDaftarWrite(p.writeList),
+    writeListHash: hashIkatan(p.writeList, p.rencanaHash),
     targetOrigin: origin,
   });
   const data = rt.akun.vault.getDataDiri(p.ownerId)?.data ?? {};
@@ -89,7 +118,7 @@ export function resolusiIsi(
 /** Seperti `resolusiIsi`, hanya nilai Data Diri. */
 export function resolusiNilai(
   rt: Runtime,
-  p: { ownerId: string; token: string; writeList: readonly string[]; targetOrigin: string },
+  p: { ownerId: string; token: string; writeList: readonly string[]; targetOrigin: string } & KonteksIzin,
 ): Record<string, string> {
   return resolusiIsi(rt, p).nilai;
 }

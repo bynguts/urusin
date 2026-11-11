@@ -7,6 +7,7 @@ import { loadGold } from './gold.js';
 const data = (f: string) => resolve(fileURLToPath(new URL(`../../../../data/${f}`, import.meta.url)));
 const tuning = loadGold(data('gold/tuning.json'));
 const heldout = loadGold(data('gold/heldout.json'));
+const nasional = loadGold(data('gold/nasional.json'));
 const sources = new Map(
   (
     JSON.parse(readFileSync(data('sources.json'), 'utf8')) as { sources: { id: string; ingest: boolean }[] }
@@ -31,13 +32,38 @@ describe('gold set korpus nyata', () => {
     }
   });
   it('id unik dan setiap referensi menunjuk sumber ber-ingest di sources.json', () => {
-    const all = [...tuning, ...heldout];
+    const all = [...tuning, ...heldout, ...nasional];
     expect(new Set(all.map((g) => g.id)).size).toBe(all.length);
     for (const g of all) {
       for (const ref of g.relevan) {
         const src = sources.get(ref.split('#')[0] ?? '');
         expect(src?.ingest, `${g.id}: ${ref}`).toBe(true);
       }
+    }
+  });
+  it('nasional: teks pasal untuk empat topik inti, ditambah penjaga wilayah yang menunjuk chunk daerah', () => {
+    const refs = new Set(nasional.flatMap((g) => g.relevan));
+    for (const r of [
+      'perpres-96-2018-pasal#pasal-33',
+      'perpres-96-2018-pasal#pasal-25',
+      'permendagri-108-2019-pasal#pasal-30',
+      'perpres-96-2018-pasal#pasal-21',
+      'permendagri-7-2026-pasal#pasal-6',
+    ]) {
+      expect(refs.has(r), r).toBe(true);
+    }
+    const penjaga = nasional.filter((g) => g.kodeWilayah);
+    expect(penjaga.length).toBeGreaterThanOrEqual(4);
+    for (const g of penjaga)
+      expect(
+        g.relevan.some((r) => r.includes('-pasal#')),
+        g.id,
+      ).toBe(false);
+    for (const g of nasional.filter((x) => !x.kodeWilayah)) {
+      expect(
+        g.relevan.every((r) => r.includes('-pasal#')),
+        g.id,
+      ).toBe(true);
     }
   });
 });

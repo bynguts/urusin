@@ -1,0 +1,33 @@
+Warga Kota Semarang ingin cek status pengajuan
+==============================================
+
+Warga: Saya sudah ajukan KK baru minggu lalu di Semarang, gimana cara cek statusnya?
+
+Urusin: KTP Anda terdaftar di Kota Semarang atau Kabupaten Semarang?
+
+Warga: Saya tinggal di Kecamatan Banyumanik, Kota Semarang. Pengajuan KK-nya lewat layanan online Dispendukcapil Semarang.
+
+Urusin: KTP Anda terdaftar di Kota Semarang juga, betul?
+
+Warga: Saya tinggal di Kota Semarang, tapi saya belum bisa memastikan KTP saya terdaftar di mana. Pengajuan KK-nya lewat layanan online Dispendukcapil Semarang, dan saya punya kode pelayanannya. Bagaimana cara cek statusnya?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Sosial (https://cekbansos.kemensos.go.id/).
+  - Kementerian Sosial https://cekbansos.kemensos.go.id/
+  - Ombudsman Republik Indonesia https://ombudsman.go.id/pengaduan
+
+Warga: Maaf, itu situs cek bansos, bukan untuk cek pengajuan KK saya. Saya mengajukannya lewat layanan online Dispendukcapil Semarang dan punya kode pelayanan. Di mana saya bisa cek statusnya?
+
+Urusin: Maaf, benar—cek bansos tidak terkait dengan pengajuan KK Anda.
+
+Saya belum menemukan petunjuk resmi yang cukup untuk memastikan di bagian mana kode pelayanan bisa digunakan. Silakan periksa status melalui **layanan online Dispendukcapil Kota Semarang yang Anda pakai saat mengajukan**, atau hubungi Dispendukcapil Kota Semarang melalui kanal resminya.
+
+Jangan kirim kode pelayanan atau data pribadi Anda di chat ini.
+
+Warga: Baik, terima kasih. Di layanan online yang saya pakai itu, saya harus pilih menu apa untuk cek status dengan kode pelayanan? Kalau belum tahu, bagaimana cara menghubungi Dispendukcapil Kota Semarang?
+
+[JAWABAN BERSUMBER]
+  - Si D'nOK memiliki menu “Cek Status Pengajuan”.
+    (sumber: Data Dukung - Si D'nOK — Dinas Kependudukan dan Pencatatan Sipil Kota Semarang, https://sidnok.semarangkota.go.id/data-dukung)
+  Keputusan ada di petugas instansi terkait.
+
+[AKHIR: warga_selesai — Saya sudah tahu menu Cek Status Pengajuan di Si D'nOK yang bisa dicoba.]

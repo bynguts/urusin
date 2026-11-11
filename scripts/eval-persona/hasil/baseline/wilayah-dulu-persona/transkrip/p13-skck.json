@@ -1,0 +1,700 @@
+{
+  "persona": "p13-skck",
+  "urusanId": "u_8d6f55cd6f4408e19532a9621430cd41",
+  "wilayahPerangkat": "3276",
+  "kodeUrusan": "3276",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Saya butuh SKCK buat lamar kerja. Bisa dibantu?",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3276",
+            "nama": "Kota Depok"
+          },
+          "status": "usulan",
+          "sumber": "pilihan",
+          "type": "wilayah",
+          "seq": 1,
+          "at": "2026-11-10T07:48:12.980Z",
+          "chainHead": "ecf17cc5fa67…"
+        },
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": null,
+          "version": 2,
+          "type": "state",
+          "seq": 2,
+          "at": "2026-11-10T07:48:12.981Z",
+          "chainHead": "febff6c49157…"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T07:48:12.982Z",
+          "chainHead": "14ba53472661…"
+        },
+        {
+          "delta": "Bisa, saya bantu urus SKCK untuk melamar kerja. KTP Anda terdaftar di Kota Depok, betul?",
+          "type": "assistant_text",
+          "seq": 4,
+          "at": "2026-11-10T07:48:17.101Z",
+          "chainHead": "751bf8151b8f…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_2f15b80c-2596-4ae8-9167-908ab488e9e7",
+          "version": 3,
+          "type": "done",
+          "seq": 5,
+          "at": "2026-11-10T07:48:17.102Z",
+          "chainHead": "3ea1545852eb…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 4128
+    },
+    {
+      "peran": "warga",
+      "jenis": "klik",
+      "teks": "Ya, betul",
+      "http": {
+        "status": 200
+      },
+      "alasan": "KTP saya memang terdaftar di Kota Depok dan saya masih membutuhkan langkah pengurusan SKCK."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3276",
+            "nama": "Kota Depok"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 6,
+          "at": "2026-11-10T07:48:20.321Z",
+          "chainHead": "9cc5518d9839…"
+        }
+      ],
+      "status": "selesai",
+      "aksi": "Ya, betul",
+      "ms": 1759
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Betul, KTP saya Depok. SKCK-nya untuk melamar kerja di BUMN. Selanjutnya saya harus bagaimana ya?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya perlu tahu langkah dan persyaratan untuk membuat SKCK."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 7,
+          "at": "2026-11-10T07:48:30.526Z",
+          "chainHead": "895e1176bea3…"
+        },
+        {
+          "label": "Menjalankan wilayah__tetapkan…",
+          "toolName": "wilayah__tetapkan",
+          "type": "progress",
+          "seq": 8,
+          "at": "2026-11-10T07:48:35.745Z",
+          "chainHead": "950cfc20ecce…"
+        },
+        {
+          "ktp": {
+            "kodeKabKota": "3276",
+            "nama": "Kota Depok"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 9,
+          "at": "2026-11-10T07:48:35.747Z",
+          "chainHead": "5cf4bec3708d…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 10,
+          "at": "2026-11-10T07:48:35.749Z",
+          "chainHead": "4f76e5c65f3f…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 11,
+          "at": "2026-11-10T07:48:40.517Z",
+          "chainHead": "fbdf544c3d29…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T07:48:40.518Z",
+          "chainHead": "f67c66deee1d…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kota Depok",
+              "url": "https://silondomaju.depok.go.id/"
+            },
+            {
+              "nama": "Kota Depok",
+              "url": "https://silondomaju.depok.go.id"
+            }
+          ],
+          "sebab": "tanpa_sumber",
+          "type": "handoff",
+          "seq": 13,
+          "at": "2026-11-10T07:48:40.518Z",
+          "chainHead": "e7cc2864e702…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_f7d67ae2-4bfa-478b-ac65-0c95f4ba176a",
+          "version": 6,
+          "type": "done",
+          "seq": 14,
+          "at": "2026-11-10T07:48:40.520Z",
+          "chainHead": "6760c0d66bcf…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 9998
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Maaf, bukannya SKCK diurus di kepolisian ya? Untuk melamar kerja di BUMN, saya harus ke mana dan membawa dokumen apa saja?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Arahan ke Dukcapil membingungkan dan belum menjelaskan langkah mengurus SKCK."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 15,
+          "at": "2026-11-10T07:48:44.950Z",
+          "chainHead": "d80aba1f6b0c…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 16,
+          "at": "2026-11-10T07:48:50.748Z",
+          "chainHead": "fabed5324f81…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 17,
+          "at": "2026-11-10T07:48:55.058Z",
+          "chainHead": "586a88a5d29c…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 18,
+          "at": "2026-11-10T07:48:55.059Z",
+          "chainHead": "d3394c870877…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kota Depok",
+              "url": "https://silondomaju.depok.go.id/"
+            },
+            {
+              "nama": "Kota Depok",
+              "url": "https://silondomaju.depok.go.id"
+            }
+          ],
+          "sebab": "tanpa_sumber",
+          "type": "handoff",
+          "seq": 19,
+          "at": "2026-11-10T07:48:55.060Z",
+          "chainHead": "4281ee31a64e…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_c4a71af3-2571-41ac-b32d-276905d572b4",
+          "version": 7,
+          "type": "done",
+          "seq": 20,
+          "at": "2026-11-10T07:48:55.061Z",
+          "chainHead": "4227ce30092d…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 10119
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Maaf, jawabannya masih mengarah ke Disdukcapil. Apakah saya perlu ke Polres Metro Depok untuk membuat SKCK buat melamar kerja di BUMN? Dokumen apa saja yang perlu saya bawa?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Arahan sebelumnya berulang dan belum menjawab tempat serta dokumen yang diperlukan."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 21,
+          "at": "2026-11-10T07:48:58.851Z",
+          "chainHead": "077555bb92a7…"
+        },
+        {
+          "delta": "Betul, SKCK diurus di **kepolisian**, bukan Disdukcapil. Maaf, arahan saya sebelumnya keliru.\n\nSaya belum menemukan sumber resmi yang cukup untuk memastikan apakah SKCK untuk lamaran BUMN Anda harus diterbitkan oleh **Polres Metro Depok** atau oleh kepolisian tingkat lain, maupun daftar dokumen yang harus dibawa.\n\nLangkah paling aman, tanyakan ke **layanan SKCK Polres Metro Depok** dengan menyebutkan bahwa SKCK diperlukan untuk melamar kerja di BUMN. Minta konfirmasi tingkat penerbit dan daftar dokumennya sebelum datang. Periksa juga pengumuman rekrutmen BUMN tersebut jika ada ketentuan khusus tentang SKCK.",
+          "type": "assistant_text",
+          "seq": 22,
+          "at": "2026-11-10T07:49:05.514Z",
+          "chainHead": "508385a80167…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_7b707add-90c6-4079-bc7c-08557c281683",
+          "version": 8,
+          "type": "done",
+          "seq": 23,
+          "at": "2026-11-10T07:49:05.516Z",
+          "chainHead": "141dd7c5a49f…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 6668
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Baik, terima kasih. Saya bisa menghubungi layanan SKCK Polres Metro Depok lewat nomor atau kanal resmi apa ya?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya perlu tahu cara menghubungi layanan SKCK sebelum bisa memastikan persyaratannya."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 24,
+          "at": "2026-11-10T07:49:09.568Z",
+          "chainHead": "5b32b421e9c7…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 25,
+          "at": "2026-11-10T07:49:12.596Z",
+          "chainHead": "1c88cfc81326…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 26,
+          "at": "2026-11-10T07:49:16.587Z",
+          "chainHead": "17caaf242fb9…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 27,
+          "at": "2026-11-10T07:49:16.588Z",
+          "chainHead": "8c97a1574e35…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kota Depok",
+              "url": "https://silondomaju.depok.go.id/"
+            },
+            {
+              "nama": "Kota Depok",
+              "url": "https://silondomaju.depok.go.id"
+            }
+          ],
+          "sebab": "tanpa_sumber",
+          "type": "handoff",
+          "seq": 28,
+          "at": "2026-11-10T07:49:16.588Z",
+          "chainHead": "9e7a46d00714…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_78cec69c-4eab-4637-9155-49a79881daa4",
+          "version": 9,
+          "type": "done",
+          "seq": 29,
+          "at": "2026-11-10T07:49:16.590Z",
+          "chainHead": "4a5f7e8cc120…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 7030
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Maaf, jawabannya kembali ke Disdukcapil. Saya ingin menghubungi layanan SKCK Polres Metro Depok. Apakah ada nomor telepon atau situs resmi kepolisian yang bisa saya hubungi?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Kanal yang diberikan masih Disdukcapil, bukan layanan SKCK kepolisian yang ditanyakan."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 30,
+          "at": "2026-11-10T07:49:19.826Z",
+          "chainHead": "e86525da207d…"
+        },
+        {
+          "delta": "Maaf, Anda benar: Silondo Maju adalah kanal Disdukcapil, bukan layanan SKCK kepolisian.\n\nSaya belum dapat memverifikasi nomor telepon atau situs resmi **layanan SKCK Polres Metro Depok**, jadi saya tidak ingin memberikan kontak yang mungkin keliru. Anda bisa menghubungi **layanan kepolisian 110** untuk menanyakan kontak resmi layanan SKCK Polres Metro Depok.",
+          "type": "assistant_text",
+          "seq": 31,
+          "at": "2026-11-10T07:49:23.838Z",
+          "chainHead": "72863e2f12da…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_28f91749-e801-4f66-a422-911ce79ed2f4",
+          "version": 10,
+          "type": "done",
+          "seq": 32,
+          "at": "2026-11-10T07:49:23.839Z",
+          "chainHead": "f187e6d6147c…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 4018
+    }
+  ],
+  "layar": [
+    "Warga: Saya butuh SKCK buat lamar kerja. Bisa dibantu?",
+    "[KARTU WILAYAH] KTP Anda terdaftar di Kota Depok? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)\nUrusin: Bisa, saya bantu urus SKCK untuk melamar kerja. KTP Anda terdaftar di Kota Depok, betul?",
+    "Warga menekan [Ya, betul]",
+    "(sistem) Wilayah KTP: Kota Depok",
+    "Warga: Betul, KTP saya Depok. SKCK-nya untuk melamar kerja di BUMN. Selanjutnya saya harus bagaimana ya?",
+    "(sistem) Wilayah KTP: Kota Depok\n[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/\n  - Kota Depok https://silondomaju.depok.go.id",
+    "Warga: Maaf, bukannya SKCK diurus di kepolisian ya? Untuk melamar kerja di BUMN, saya harus ke mana dan membawa dokumen apa saja?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/\n  - Kota Depok https://silondomaju.depok.go.id",
+    "Warga: Maaf, jawabannya masih mengarah ke Disdukcapil. Apakah saya perlu ke Polres Metro Depok untuk membuat SKCK buat melamar kerja di BUMN? Dokumen apa saja yang perlu saya bawa?",
+    "Urusin: Betul, SKCK diurus di **kepolisian**, bukan Disdukcapil. Maaf, arahan saya sebelumnya keliru.\n\nSaya belum menemukan sumber resmi yang cukup untuk memastikan apakah SKCK untuk lamaran BUMN Anda harus diterbitkan oleh **Polres Metro Depok** atau oleh kepolisian tingkat lain, maupun daftar dokumen yang harus dibawa.\n\nLangkah paling aman, tanyakan ke **layanan SKCK Polres Metro Depok** dengan menyebutkan bahwa SKCK diperlukan untuk melamar kerja di BUMN. Minta konfirmasi tingkat penerbit dan daftar dokumennya sebelum datang. Periksa juga pengumuman rekrutmen BUMN tersebut jika ada ketentuan khusus tentang SKCK.",
+    "Warga: Baik, terima kasih. Saya bisa menghubungi layanan SKCK Polres Metro Depok lewat nomor atau kanal resmi apa ya?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/\n  - Kota Depok https://silondomaju.depok.go.id",
+    "Warga: Maaf, jawabannya kembali ke Disdukcapil. Saya ingin menghubungi layanan SKCK Polres Metro Depok. Apakah ada nomor telepon atau situs resmi kepolisian yang bisa saya hubungi?",
+    "Urusin: Maaf, Anda benar: Silondo Maju adalah kanal Disdukcapil, bukan layanan SKCK kepolisian.\n\nSaya belum dapat memverifikasi nomor telepon atau situs resmi **layanan SKCK Polres Metro Depok**, jadi saya tidak ingin memberikan kontak yang mungkin keliru. Anda bisa menghubungi **layanan kepolisian 110** untuk menanyakan kontak resmi layanan SKCK Polres Metro Depok."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": true,
+    "catatan": "Sudah ada langkah konkret untuk menghubungi 110 dan menanyakan kontak resmi layanan SKCK Polres Metro Depok."
+  },
+  "ms": 73526,
+  "giliranWarga": 7,
+  "nilai": {
+    "persona": "p13-skck",
+    "judul": "SKCK untuk melamar kerja (di luar Dukcapil)",
+    "urusanId": "u_8d6f55cd6f4408e19532a9621430cd41",
+    "wilayahPerangkat": "3276",
+    "kodeUrusan": "3276",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": true,
+      "catatan": "Sudah ada langkah konkret untuk menghubungi 110 dan menanyakan kontak resmi layanan SKCK Polres Metro Depok."
+    },
+    "giliranWarga": 7,
+    "ms": 73526,
+    "url": [
+      "https://silondomaju.depok.go.id/",
+      "https://silondomaju.depok.go.id"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": null,
+        "bukti": "tidak ada rencana/jawaban persyaratan"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "langkah 4: buntu, tidak ada yang tampil"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": true,
+        "bukti": "KTP Anda terdaftar di Kota Depok, betul?"
+      },
+      "b": {
+        "lulus": false,
+        "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok"
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "Saya belum menemukan sumber resmi yang cukup untuk memastikan apakah SKCK untuk lamaran BUMN Anda harus diterbitkan oleh **Polres Metro Depok**"
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "(tidak ada tawaran Browser Pendamping)"
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "(tidak ada permintaan data pribadi atau pelanggaran keamanan)"
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "Maaf, Anda benar: Silondo Maju adalah kanal Disdukcapil, bukan layanan SKCK kepolisian."
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "Anda bisa menghubungi **layanan kepolisian 110** untuk menanyakan kontak resmi layanan SKCK Polres Metro Depok."
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/)."
+      },
+      "ringkasan": "Urusin memastikan wilayah KTP, tetapi berulang kali mengarahkan warga ke Disdukcapil untuk layanan SKCK dan tidak memberikan persyaratan yang diminta. Pada akhir percakapan Urusin mengoreksi arahannya dan memberi langkah konkret untuk menghubungi 110, tetapi sebelumnya warga mengalami kebuntuan berulang.",
+      "cacat": [
+        {
+          "judul": "Instansi dan kanal layanan salah",
+          "kriteria": "b",
+          "keparahan": "tinggi",
+          "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/)."
+        },
+        {
+          "judul": "Persyaratan SKCK tidak diberikan",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "(tidak ada daftar persyaratan SKCK)"
+        },
+        {
+          "judul": "Kanal Disdukcapil diberikan untuk SKCK",
+          "kriteria": "d",
+          "keparahan": "tinggi",
+          "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/"
+        },
+        {
+          "judul": "Jawaban salah berulang setelah dikoreksi",
+          "kriteria": "i",
+          "keparahan": "sedang",
+          "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/)."
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": true,
+        "bukti": "juri: KTP Anda terdaftar di Kota Depok, betul?",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": null,
+            "bukti": "tidak ada rencana/jawaban persyaratan"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "KTP Anda terdaftar di Kota Depok, betul?"
+          }
+        ]
+      },
+      "b": {
+        "lulus": false,
+        "bukti": "juri: Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok"
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: Saya belum menemukan sumber resmi yang cukup untuk memastikan apakah SKCK untuk lamaran BUMN Anda harus diterbitkan oleh **Polres Metro Depok**",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Saya belum menemukan sumber resmi yang cukup untuk memastikan apakah SKCK untuk lamaran BUMN Anda harus diterbitkan oleh **Polres Metro Depok**"
+          }
+        ]
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "juri: Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kota Depok https://silondomaju.depok.go.id/"
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada tawaran Browser Pendamping)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada tawaran Browser Pendamping)"
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: (tidak ada permintaan data pribadi atau pelanggaran keamanan)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada permintaan data pribadi atau pelanggaran keamanan)"
+          }
+        ]
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "juri: Maaf, Anda benar: Silondo Maju adalah kanal Disdukcapil, bukan layanan SKCK kepolisian.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Maaf, Anda benar: Silondo Maju adalah kanal Disdukcapil, bukan layanan SKCK kepolisian."
+          }
+        ]
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "juri: Anda bisa menghubungi **layanan kepolisian 110** untuk menanyakan kontak resmi layanan SKCK Polres Metro Depok.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Anda bisa menghubungi **layanan kepolisian 110** untuk menanyakan kontak resmi layanan SKCK Polres Metro Depok."
+          }
+        ]
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "otomatis: langkah 4: buntu, tidak ada yang tampil | juri: Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/).",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": false,
+            "bukti": "langkah 4: buntu, tidak ada yang tampil"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kota Depok (https://silondomaju.depok.go.id/)."
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 42531,
+        "tokensOut": 706,
+        "costIdr": 0,
+        "panggilanLlm": 10
+      },
+      "simulator": {
+        "panggilan": 7,
+        "tokensIn": 21014,
+        "tokensOut": 529
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 4873,
+        "tokensOut": 822
+      }
+    }
+  }
+}

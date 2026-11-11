@@ -1,0 +1,76 @@
+KTP Wonogiri, kerja di Cikarang, pindah domisili ke Kab. Bekasi
+===============================================================
+
+Warga: Mas, KTP saya masih Wonogiri tapi saya sudah 2 tahun kerja dan ngontrak di Cikarang. Mau pindah domisili biar KTP-nya Bekasi, gimana caranya?
+
+[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Wonogiri? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)
+Urusin: KTP Anda saat ini terdaftar di Kabupaten Wonogiri. Cikarang berada di Kabupaten Bekasi—apakah tujuan pindah Anda Kabupaten Bekasi, bukan Kota Bekasi?
+
+Warga menekan [Ya, betul]
+
+(sistem) Wilayah KTP: Kabupaten Wonogiri
+
+Warga: Iya, tujuan saya Kabupaten Bekasi, tepatnya di Pasirsari, Cikarang Selatan. Bisa diurus dari Bekasi atau online nggak ya? Saya susah izin kerja buat pulang ke Wonogiri.
+
+(sistem) Wilayah KTP: Kabupaten Wonogiri · pindah ke Kabupaten Bekasi · tinggal di Kabupaten Bekasi
+[JAWABAN BERSUMBER]
+  - Untuk pindah antar kabupaten, persyaratan SKPWNI Wonogiri yang terkonfirmasi adalah fotokopi kartu keluarga (KK).
+    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)
+  - Wonogiri menyediakan pengajuan SKPWNI secara daring: pemohon mengisi formulir F-1.03 dan mengirim berkas persyaratan secara online.
+    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)
+  - Untuk cetak mandiri SKPWNI Wonogiri, pemohon mengisi alamat email; SKPWNI dapat dicetak pada kertas HVS A4 80 gram.
+    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni; Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)
+  - Sumber Wonogiri meminta surat pernyataan tidak keberatan dari pemilik rumah bagi pengontrak dalam ketentuan pindah dalam satu kabupaten/kota; ketentuan itu tidak boleh langsung dianggap sebagai aturan Bekasi untuk kasus pindah antar kabupaten ini.
+    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)
+  Keputusan ada di petugas instansi terkait.
+[KARTU RENCANA] Pindah · Kab. Wonogiri → Kab. Bekasi
+  Wilayah KTP: Kabupaten Wonogiri · pindah ke Kabupaten Bekasi · tinggal di Kabupaten Bekasi (tingkat dipandu)
+  Catatan: Pindah dari Kabupaten Wonogiri ke Kabupaten Bekasi: surat pindah diurus di asal, lapor datang di tujuan. Ketersediaan layanan online diperiksa per situs sebelum dijanjikan.
+  1. Urus surat pindah (SKPWNI) di Disdukcapil Kab. Wonogiri [online, disdukcapil]
+     Sumber: Telunjuk Sakti (https://telunjuksakti.wonogirikab.go.id/); Penerbitan Surat Keterangan Pindah WNI (SKPWNI) (https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni); Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018); Standar Pelayanan dan Persyaratan Disdukcapil Wonogiri - Surat Keterangan Pindah Warga Negara Indonesia (SKPWNI) (https://disdukcapil.wonogirikab.go.id/layanan)
+  2. Lapor kedatangan (SKDWNI) di Disdukcapil Kab. Bekasi [online, disdukcapil]
+     Sumber: SITEPAK (https://sitepak.bekasikab.go.id/); Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)
+  3. Terima Kartu Keluarga baru dari Disdukcapil Kab. Bekasi [online]
+     Sumber: SITEPAK (https://sitepak.bekasikab.go.id/)
+  4. Perbarui KTP-el di Disdukcapil Kab. Bekasi [datang langsung, disdukcapil]
+     Bawa: KTP-el lama, Kartu Keluarga terbaru
+     Sumber: SITEPAK (https://sitepak.bekasikab.go.id/)
+
+Warga menekan [Setujui rencana]
+
+(status: Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.)
+
+Warga: Mas, buat ngajuin surat pindahnya di Telunjuk Sakti itu langkahnya gimana? Terus nanti lapor datang di Bekasi perlu bawa atau unggah apa aja, ya? Saya ngontrak soalnya.
+
+[JAWABAN BERSUMBER]
+  - Untuk pindah antar kabupaten, kota, atau provinsi dari Wonogiri, persyaratan yang tercantum adalah fotokopi KK.
+    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)
+  - Untuk pengajuan SKPWNI secara daring di Wonogiri, isi formulir F-1.03 dan kirim berkas persyaratan secara online.
+    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)
+  - Jika memilih cetak mandiri, pemohon wajib mengisi alamat email.
+    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)
+  - Petugas memeriksa berkas; jika tidak sesuai, berkas dikembalikan dan pemohon mendapat SMS pembatalan.
+    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)
+  - Setelah selesai, pemohon mendapat SMS pencetakan atau pengambilan; SKPWNI dapat diambil di loket online atau dicetak mandiri jika memilih layanan tersebut.
+    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)
+  Keputusan ada di petugas instansi terkait.
+
+Warga: Oke Mas, kalau lapor datang di Bekasi lewat SITEPAK itu perlu unggah apa aja? Karena saya ngontrak, perlu surat dari pemilik rumah juga nggak?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/
+  - Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id
+
+Warga: Mas, yang saya tanyakan lapor datang di Kabupaten Bekasi, kok disuruh tanya ke Wonogiri? Bisa kasih kontak Disdukcapil Kabupaten Bekasi yang bisa saya hubungi buat tanya berkas dan surat dari pemilik kontrakan?
+
+Urusin: Maaf, Mas benar. Untuk **lapor datang dan berkas kontrakan**, yang perlu ditanya adalah Disdukcapil **Kabupaten Bekasi**, bukan Wonogiri.
+
+Saya belum menemukan nomor telepon atau WhatsApp Disdukcapil Kabupaten Bekasi yang bisa saya pastikan resmi, jadi saya tidak mau menebak. Mas bisa mulai dari kanal resminya, [SITEPAK Kabupaten Bekasi](https://sitepak.bekasikab.go.id/), dan melihat informasi kontak atau bantuan yang tercantum di sana.
+
+Saat menghubungi petugas, Mas bisa bertanya:
+
+> “Saya pindah datang dari Wonogiri dan mengontrak di Pasirsari. Dokumen apa saja yang harus diunggah di SITEPAK? Apakah perlu surat tidak keberatan dari pemilik kontrakan, dan apakah ada format khusus?”
+
+Saya juga belum bisa memastikan bahwa surat pemilik kontrakan wajib untuk Bekasi; aturan Wonogiri tidak bisa dijadikan patokan untuk itu.
+
+[AKHIR: warga_selesai — Sudah tahu langkah berikutnya untuk mengecek kontak resmi di SITEPAK dan menanyakan berkas kontrakan ke petugas Bekasi.]

@@ -1,0 +1,864 @@
+{
+  "persona": "p14-surabaya-akta-lahir",
+  "urusanId": "u_949edf2d675c3853243110469d7f123b",
+  "wilayahPerangkat": "3578",
+  "kodeUrusan": "3578",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Halo, saya warga Surabaya, anak saya baru lahir 2 minggu lalu. Akta kelahirannya bisa online?",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3578",
+            "nama": "Kota Surabaya"
+          },
+          "status": "usulan",
+          "sumber": "pilihan",
+          "type": "wilayah",
+          "seq": 1,
+          "at": "2026-11-10T08:07:47.890Z",
+          "chainHead": "679ee05d75c0…"
+        },
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": null,
+          "version": 2,
+          "type": "state",
+          "seq": 2,
+          "at": "2026-11-10T08:07:47.920Z",
+          "chainHead": "9d9a35e411f2…"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T08:07:47.920Z",
+          "chainHead": "29c8bed3a42f…"
+        },
+        {
+          "delta": "Selamat atas kelahiran anak Anda! KTP Anda terdaftar di Kota Surabaya, betul?",
+          "type": "assistant_text",
+          "seq": 4,
+          "at": "2026-11-10T08:08:05.810Z",
+          "chainHead": "b86943140be2…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_efba6699-9f1f-4aa1-b9f0-0d8c9624643c",
+          "version": 3,
+          "type": "done",
+          "seq": 5,
+          "at": "2026-11-10T08:08:05.811Z",
+          "chainHead": "b972ed31b163…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 17927
+    },
+    {
+      "peran": "warga",
+      "jenis": "klik",
+      "teks": "Ya, betul",
+      "http": {
+        "status": 200
+      },
+      "alasan": "KTP saya memang terdaftar di Kota Surabaya."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3578",
+            "nama": "Kota Surabaya"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 6,
+          "at": "2026-11-10T08:08:08.387Z",
+          "chainHead": "876737a24db0…"
+        },
+        {
+          "catatan": "Persyaratan nasional untuk Kota Surabaya; detail dan cara pengajuan mengikuti Klampid New Generation.",
+          "langkah": [
+            {
+              "bawa": [],
+              "id": "ajukan",
+              "jenis": "online-manual",
+              "judul": "Ajukan akta kelahiran ke Disdukcapil Kota Surabaya",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/"
+                },
+                {
+                  "instansi": "Pemerintah Republik Indonesia",
+                  "judul": "Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil",
+                  "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018"
+                }
+              ]
+            },
+            {
+              "bawa": [],
+              "id": "siapkan-sptjm",
+              "jenis": "online-manual",
+              "judul": "Bila surat kurang: siapkan SPTJM bersama dua saksi",
+              "sumber": [
+                {
+                  "instansi": "Pemerintah Republik Indonesia",
+                  "judul": "Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil",
+                  "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018"
+                }
+              ]
+            },
+            {
+              "bawa": [
+                "Bukti pengajuan"
+              ],
+              "id": "ambil",
+              "jenis": "offline",
+              "judul": "Terima akta kelahiran dan KK baru dari Disdukcapil Kota Surabaya",
+              "lokasi": "disdukcapil",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/"
+                }
+              ]
+            }
+          ],
+          "ringkasan": "Kelahiran · Kota Surabaya",
+          "tier": "dipandu",
+          "wilayah": {
+            "ktp": {
+              "kodeKabKota": "3578",
+              "nama": "Kota Surabaya"
+            }
+          },
+          "type": "plan_card",
+          "seq": 7,
+          "at": "2026-11-10T08:08:08.392Z",
+          "chainHead": "b8e2d67eedb7…"
+        },
+        {
+          "dari": "MEMAHAMI",
+          "state": "RENCANA_DIUSULKAN",
+          "tier": "dipandu",
+          "version": 5,
+          "type": "state",
+          "seq": 8,
+          "at": "2026-11-10T08:08:08.394Z",
+          "chainHead": "71cf0104a7f8…"
+        }
+      ],
+      "status": "selesai",
+      "aksi": "Ya, betul",
+      "ms": 1971
+    },
+    {
+      "peran": "warga",
+      "jenis": "klik",
+      "teks": "Setujui rencana",
+      "http": {
+        "status": 200
+      },
+      "alasan": "Rencananya sesuai untuk mengurus akta kelahiran anak saya di Surabaya."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "dari": "RENCANA_DIUSULKAN",
+          "state": "RENCANA_DISETUJUI",
+          "tier": "dipandu",
+          "version": 6,
+          "type": "state",
+          "seq": 9,
+          "at": "2026-11-10T08:08:12.739Z",
+          "chainHead": "42b19e033729…"
+        },
+        {
+          "label": "Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.",
+          "type": "progress",
+          "seq": 10,
+          "at": "2026-11-10T08:08:12.740Z",
+          "chainHead": "cd6c375049d8…"
+        }
+      ],
+      "status": "selesai",
+      "aksi": "Setujui rencana",
+      "ms": 1664
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Saya punya surat lahir dari rumah sakit dan buku nikah. Untuk mengajukan lewat Klampid, dokumen apa saja yang perlu disiapkan dan bagaimana langkahnya? Apakah aktanya harus diambil langsung?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Rencana belum menjelaskan dokumen lengkap dan cara mengajukan melalui Klampid."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 11,
+          "at": "2026-11-10T08:08:21.437Z",
+          "chainHead": "0fd964922c51…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T08:08:25.012Z",
+          "chainHead": "8bc890566246…"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 13,
+          "at": "2026-11-10T08:08:25.629Z",
+          "chainHead": "4e237dfe57ce…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 14,
+          "at": "2026-11-10T08:08:28.881Z",
+          "chainHead": "b74c60bb3ada…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 15,
+          "at": "2026-11-10T08:08:35.331Z",
+          "chainHead": "f240c9901e06…"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation - katalog layanan publik - Akta Kelahiran",
+                  "kutipanPersis": "Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya, kategori Pencatatan Sipil",
+                  "perluDicekUlang": false,
+                  "refId": "klampid-katalog#sipil-akta-kelahiran",
+                  "textFragmentUrl": "https://wargaklampid-dispendukcapil.surabaya.go.id/#:~:text=Layanan%20Akta%20Kelahiran%20tersedia,Surabaya%2C%20kategori%20Pencatatan%20Sipil",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+                  "verifiedAt": "2026-11-08T18:46:54.353Z"
+                }
+              ],
+              "teks": "Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya pada kategori Pencatatan Sipil."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation - katalog layanan publik - Akta Kelahiran",
+                  "kutipanPersis": "Panduan resmi tersedia: Panduan Akta Kelahiran",
+                  "perluDicekUlang": false,
+                  "refId": "klampid-katalog#sipil-akta-kelahiran",
+                  "textFragmentUrl": "https://wargaklampid-dispendukcapil.surabaya.go.id/#:~:text=Panduan%20resmi%20tersedia%3A%20Panduan%20Akta%20Kelahiran",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+                  "verifiedAt": "2026-11-08T18:46:54.353Z"
+                }
+              ],
+              "teks": "Katalog mencantumkan Panduan Akta Kelahiran sebagai panduan resmi."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 16,
+          "at": "2026-11-10T08:08:35.331Z",
+          "chainHead": "367e6edc9f6d…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_4309ab9e-5912-4762-a0e7-b2c6f992716f",
+          "version": 7,
+          "type": "done",
+          "seq": 17,
+          "at": "2026-11-10T08:08:35.337Z",
+          "chainHead": "6b06353e662f…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 13908
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Maaf, dokumen yang perlu saya siapkan apa saja selain surat lahir dan buku nikah? Lalu langkah pengajuannya di Klampid bagaimana, dan apakah aktanya harus diambil langsung?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawaban belum menjelaskan dokumen, langkah pengajuan, maupun cara menerima akta."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 18,
+          "at": "2026-11-10T08:08:39.542Z",
+          "chainHead": "5b6e68413b55…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 19,
+          "at": "2026-11-10T08:08:42.596Z",
+          "chainHead": "cd9298a5a6a8…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 20,
+          "at": "2026-11-10T08:08:46.707Z",
+          "chainHead": "2807640c2e86…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 21,
+          "at": "2026-11-10T08:08:53.245Z",
+          "chainHead": "4a59d0f08943…"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation - katalog layanan publik - Akta Kelahiran",
+                  "kutipanPersis": "Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya, kategori Pencatatan Sipil",
+                  "perluDicekUlang": false,
+                  "refId": "klampid-katalog#sipil-akta-kelahiran",
+                  "textFragmentUrl": "https://wargaklampid-dispendukcapil.surabaya.go.id/#:~:text=Layanan%20Akta%20Kelahiran%20tersedia,Surabaya%2C%20kategori%20Pencatatan%20Sipil",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+                  "verifiedAt": "2026-11-08T18:46:54.353Z"
+                }
+              ],
+              "teks": "Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya dalam kategori Pencatatan Sipil."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation - katalog layanan publik - Akta Kelahiran",
+                  "kutipanPersis": "Panduan resmi tersedia: Panduan Akta Kelahiran",
+                  "perluDicekUlang": false,
+                  "refId": "klampid-katalog#sipil-akta-kelahiran",
+                  "textFragmentUrl": "https://wargaklampid-dispendukcapil.surabaya.go.id/#:~:text=Panduan%20resmi%20tersedia%3A%20Panduan%20Akta%20Kelahiran",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+                  "verifiedAt": "2026-11-08T18:46:54.353Z"
+                }
+              ],
+              "teks": "Katalog Klampid menyebutkan bahwa panduan resmi Akta Kelahiran tersedia."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 22,
+          "at": "2026-11-10T08:08:53.245Z",
+          "chainHead": "8aa9615fd1d4…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_2dbf1018-0bb3-40d9-9ed1-20e6401e0757",
+          "version": 8,
+          "type": "done",
+          "seq": 23,
+          "at": "2026-11-10T08:08:53.249Z",
+          "chainHead": "51475a89ba8c…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 13745
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Maaf, jawabannya masih belum menjawab pertanyaan saya. Di mana saya bisa membuka panduan resmi itu? Saya perlu tahu dokumen selain surat lahir dan buku nikah, langkah pengajuannya, serta apakah aktanya harus diambil langsung.",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawaban belum menjelaskan dokumen, langkah pengajuan, maupun cara menerima akta."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 24,
+          "at": "2026-11-10T08:08:56.708Z",
+          "chainHead": "d85cab7a9b3a…"
+        },
+        {
+          "delta": "Maaf, jawaban sebelumnya belum menjawab pertanyaan Anda.\n\nAnda bisa membuka **[Klampid New Generation resmi Kota Surabaya](https://wargaklampid-dispendukcapil.surabaya.go.id/)**, lalu mencari **Akta Kelahiran** di kategori **Pencatatan Sipil**. Katalog resmi mencantumkan **Panduan Akta Kelahiran** untuk layanan tersebut. [Sumber: katalog Klampid, Akta Kelahiran]\n\nUntuk tiga hal yang Anda tanyakan:\n\n- **Dokumen tambahan:** Informasi resmi yang berhasil saya temukan belum memuat daftar dokumen lengkap selain surat lahir dan buku nikah. Saya belum bisa memastikan dokumen tambahan tanpa melihat isi panduannya.\n- **Langkah pengajuan:** Yang sudah terkonfirmasi, layanan Akta Kelahiran tersedia di Klampid dalam kategori Pencatatan Sipil. Rincian pengisian dan unggah dokumen belum tercantum dalam informasi yang saya temukan.\n- **Pengambilan akta:** Saya juga belum menemukan keterangan resmi yang memastikan apakah harus diambil langsung atau dapat dicetak sendiri.\n\nKarena rencana Anda sudah disetujui, Anda dapat menekan **“Setujui dan buka situs”** untuk membuka Browser Pendamping dan memeriksa panduan serta formulir di Klampid bersama saya. Sandi atau CAPTCHA Anda isi sendiri, dan tombol kirim akhir tetap Anda yang tekan. Jangan kirim data pribadi atau dokumen ke chat.",
+          "type": "assistant_text",
+          "seq": 25,
+          "at": "2026-11-10T08:09:04.420Z",
+          "chainHead": "77e3f6268b03…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_f7130cf0-3a65-4432-9226-05206c89ebb0",
+          "version": 9,
+          "type": "done",
+          "seq": 26,
+          "at": "2026-11-10T08:09:04.422Z",
+          "chainHead": "03448007d630…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 7724
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Saya tidak melihat tombol “Setujui dan buka situs”, dan tadi tertulis situsnya belum bisa dibantu Browser Pendamping. Apakah saya harus membuka Klampid sendiri? Setelah masuk ke Akta Kelahiran, panduannya ada di bagian mana?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya ingin memastikan cara membuka panduan karena tombol yang disebutkan tidak ada dan bantuan peramban sebelumnya dinyatakan tidak tersedia."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 27,
+          "at": "2026-11-10T08:09:11.353Z",
+          "chainHead": "e592e8f244f2…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 28,
+          "at": "2026-11-10T08:09:17.569Z",
+          "chainHead": "ec97e0b8d519…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 29,
+          "at": "2026-11-10T08:09:21.747Z",
+          "chainHead": "643fa8eb4c18…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 30,
+          "at": "2026-11-10T08:09:28.636Z",
+          "chainHead": "dd27d1ad14c7…"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation - katalog layanan publik - Akta Kelahiran",
+                  "kutipanPersis": "Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya, kategori Pencatatan Sipil",
+                  "perluDicekUlang": false,
+                  "refId": "klampid-katalog#sipil-akta-kelahiran",
+                  "textFragmentUrl": "https://wargaklampid-dispendukcapil.surabaya.go.id/#:~:text=Layanan%20Akta%20Kelahiran%20tersedia,Surabaya%2C%20kategori%20Pencatatan%20Sipil",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+                  "verifiedAt": "2026-11-08T18:46:54.353Z"
+                }
+              ],
+              "teks": "Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya, dalam kategori Pencatatan Sipil."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya",
+                  "judul": "Klampid New Generation - katalog layanan publik - Akta Kelahiran",
+                  "kutipanPersis": "Panduan resmi tersedia: Panduan Akta Kelahiran",
+                  "perluDicekUlang": false,
+                  "refId": "klampid-katalog#sipil-akta-kelahiran",
+                  "textFragmentUrl": "https://wargaklampid-dispendukcapil.surabaya.go.id/#:~:text=Panduan%20resmi%20tersedia%3A%20Panduan%20Akta%20Kelahiran",
+                  "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+                  "verifiedAt": "2026-11-08T18:46:54.353Z"
+                }
+              ],
+              "teks": "Katalog menyebut tersedia panduan resmi bernama Panduan Akta Kelahiran."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 31,
+          "at": "2026-11-10T08:09:28.637Z",
+          "chainHead": "44ea4b21939c…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_00340aa0-e5c8-4dd0-b97d-3573acefc5c8",
+          "version": 10,
+          "type": "done",
+          "seq": 32,
+          "at": "2026-11-10T08:09:28.642Z",
+          "chainHead": "0193279cbb8c…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 17296
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Maaf, jawabannya masih sama dan belum menjawab. Karena tidak ada tombolnya, apakah saya harus membuka Klampid sendiri? Kalau posisi panduannya belum diketahui, mohon sampaikan. Saya juga bingung karena rencana tadi menyebut akta diambil langsung, tapi sebelumnya dibilang belum pasti. Yang benar bagaimana?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawaban masih belum menjelaskan cara membuka panduan dan bertentangan dengan rencana soal pengambilan akta."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 33,
+          "at": "2026-11-10T08:09:33.446Z",
+          "chainHead": "afcd9b96178f…"
+        },
+        {
+          "delta": "Maaf, saya keliru menyuruh Anda menekan tombol yang tidak tersedia, dan memberikan keterangan yang bertentangan soal pengambilan akta.\n\n**Ya, untuk saat ini silakan buka [Klampid New Generation resmi Surabaya](https://wargaklampid-dispendukcapil.surabaya.go.id/) sendiri**, karena pada layar Anda Browser Pendamping belum tersedia.\n\nKatalog resmi menyebut layanan **Akta Kelahiran** ada dalam kategori **Pencatatan Sipil** dan memiliki **Panduan Akta Kelahiran**. Namun, **saya belum mengetahui posisi atau tombol panduannya secara tepat** setelah layanan dibuka. [Sumber: katalog Klampid, Akta Kelahiran]\n\nTentang pengambilan, **saya belum dapat memastikan apakah akta harus diambil langsung**. Keterangan dalam rencana sebelumnya yang menyatakan harus diambil langsung belum didukung informasi resmi yang berhasil saya temukan; mohon jangan jadikan itu patokan. Begitu juga, saya belum dapat memastikan daftar dokumen lengkap selain surat lahir dan buku nikah.\n\nJika Anda menemukan keterangan panduan atau pemberitahuan di Klampid, Anda boleh menyalin **teks petunjuknya saja** ke sini. Jangan sertakan data pribadi; saya akan bantu menjelaskannya.",
+          "type": "assistant_text",
+          "seq": 34,
+          "at": "2026-11-10T08:09:39.882Z",
+          "chainHead": "ee7926715c5d…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_8d330881-43a6-4b68-898e-fb6330657be8",
+          "version": 11,
+          "type": "done",
+          "seq": 35,
+          "at": "2026-11-10T08:09:39.884Z",
+          "chainHead": "2a9008238aee…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 6477
+    }
+  ],
+  "layar": [
+    "Warga: Halo, saya warga Surabaya, anak saya baru lahir 2 minggu lalu. Akta kelahirannya bisa online?",
+    "[KARTU WILAYAH] KTP Anda terdaftar di Kota Surabaya? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)\nUrusin: Selamat atas kelahiran anak Anda! KTP Anda terdaftar di Kota Surabaya, betul?",
+    "Warga menekan [Ya, betul]",
+    "(sistem) Wilayah KTP: Kota Surabaya\n[KARTU RENCANA] Kelahiran · Kota Surabaya\n  Wilayah KTP: Kota Surabaya (tingkat dipandu)\n  Catatan: Persyaratan nasional untuk Kota Surabaya; detail dan cara pengajuan mengikuti Klampid New Generation.\n  1. Ajukan akta kelahiran ke Disdukcapil Kota Surabaya [online]\n     Sumber: Klampid New Generation (https://wargaklampid-dispendukcapil.surabaya.go.id/); Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)\n  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]\n     Sumber: Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)\n  3. Terima akta kelahiran dan KK baru dari Disdukcapil Kota Surabaya [datang langsung, disdukcapil]\n     Bawa: Bukti pengajuan\n     Sumber: Klampid New Generation (https://wargaklampid-dispendukcapil.surabaya.go.id/)",
+    "Warga menekan [Setujui rencana]",
+    "(status: Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.)",
+    "Warga: Saya punya surat lahir dari rumah sakit dan buku nikah. Untuk mengajukan lewat Klampid, dokumen apa saja yang perlu disiapkan dan bagaimana langkahnya? Apakah aktanya harus diambil langsung?",
+    "[JAWABAN BERSUMBER]\n  - Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya pada kategori Pencatatan Sipil.\n    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)\n  - Katalog mencantumkan Panduan Akta Kelahiran sebagai panduan resmi.\n    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)\n  Keputusan ada di petugas instansi terkait.",
+    "Warga: Maaf, dokumen yang perlu saya siapkan apa saja selain surat lahir dan buku nikah? Lalu langkah pengajuannya di Klampid bagaimana, dan apakah aktanya harus diambil langsung?",
+    "[JAWABAN BERSUMBER]\n  - Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya dalam kategori Pencatatan Sipil.\n    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)\n  - Katalog Klampid menyebutkan bahwa panduan resmi Akta Kelahiran tersedia.\n    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)\n  Keputusan ada di petugas instansi terkait.",
+    "Warga: Maaf, jawabannya masih belum menjawab pertanyaan saya. Di mana saya bisa membuka panduan resmi itu? Saya perlu tahu dokumen selain surat lahir dan buku nikah, langkah pengajuannya, serta apakah aktanya harus diambil langsung.",
+    "Urusin: Maaf, jawaban sebelumnya belum menjawab pertanyaan Anda.\n\nAnda bisa membuka **[Klampid New Generation resmi Kota Surabaya](https://wargaklampid-dispendukcapil.surabaya.go.id/)**, lalu mencari **Akta Kelahiran** di kategori **Pencatatan Sipil**. Katalog resmi mencantumkan **Panduan Akta Kelahiran** untuk layanan tersebut. [Sumber: katalog Klampid, Akta Kelahiran]\n\nUntuk tiga hal yang Anda tanyakan:\n\n- **Dokumen tambahan:** Informasi resmi yang berhasil saya temukan belum memuat daftar dokumen lengkap selain surat lahir dan buku nikah. Saya belum bisa memastikan dokumen tambahan tanpa melihat isi panduannya.\n- **Langkah pengajuan:** Yang sudah terkonfirmasi, layanan Akta Kelahiran tersedia di Klampid dalam kategori Pencatatan Sipil. Rincian pengisian dan unggah dokumen belum tercantum dalam informasi yang saya temukan.\n- **Pengambilan akta:** Saya juga belum menemukan keterangan resmi yang memastikan apakah harus diambil langsung atau dapat dicetak sendiri.\n\nKarena rencana Anda sudah disetujui, Anda dapat menekan **“Setujui dan buka situs”** untuk membuka Browser Pendamping dan memeriksa panduan serta formulir di Klampid bersama saya. Sandi atau CAPTCHA Anda isi sendiri, dan tombol kirim akhir tetap Anda yang tekan. Jangan kirim data pribadi atau dokumen ke chat.",
+    "Warga: Saya tidak melihat tombol “Setujui dan buka situs”, dan tadi tertulis situsnya belum bisa dibantu Browser Pendamping. Apakah saya harus membuka Klampid sendiri? Setelah masuk ke Akta Kelahiran, panduannya ada di bagian mana?",
+    "[JAWABAN BERSUMBER]\n  - Layanan Akta Kelahiran tersedia di Klampid New Generation Dispendukcapil Kota Surabaya, dalam kategori Pencatatan Sipil.\n    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)\n  - Katalog menyebut tersedia panduan resmi bernama Panduan Akta Kelahiran.\n    (sumber: Klampid New Generation - katalog layanan publik - Akta Kelahiran — Dinas Kependudukan dan Pencatatan Sipil Kota Surabaya, https://wargaklampid-dispendukcapil.surabaya.go.id/)\n  Keputusan ada di petugas instansi terkait.",
+    "Warga: Maaf, jawabannya masih sama dan belum menjawab. Karena tidak ada tombolnya, apakah saya harus membuka Klampid sendiri? Kalau posisi panduannya belum diketahui, mohon sampaikan. Saya juga bingung karena rencana tadi menyebut akta diambil langsung, tapi sebelumnya dibilang belum pasti. Yang benar bagaimana?",
+    "Urusin: Maaf, saya keliru menyuruh Anda menekan tombol yang tidak tersedia, dan memberikan keterangan yang bertentangan soal pengambilan akta.\n\n**Ya, untuk saat ini silakan buka [Klampid New Generation resmi Surabaya](https://wargaklampid-dispendukcapil.surabaya.go.id/) sendiri**, karena pada layar Anda Browser Pendamping belum tersedia.\n\nKatalog resmi menyebut layanan **Akta Kelahiran** ada dalam kategori **Pencatatan Sipil** dan memiliki **Panduan Akta Kelahiran**. Namun, **saya belum mengetahui posisi atau tombol panduannya secara tepat** setelah layanan dibuka. [Sumber: katalog Klampid, Akta Kelahiran]\n\nTentang pengambilan, **saya belum dapat memastikan apakah akta harus diambil langsung**. Keterangan dalam rencana sebelumnya yang menyatakan harus diambil langsung belum didukung informasi resmi yang berhasil saya temukan; mohon jangan jadikan itu patokan. Begitu juga, saya belum dapat memastikan daftar dokumen lengkap selain surat lahir dan buku nikah.\n\nJika Anda menemukan keterangan panduan atau pemberitahuan di Klampid, Anda boleh menyalin **teks petunjuknya saja** ke sini. Jangan sertakan data pribadi; saya akan bantu menjelaskannya."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": true,
+    "catatan": "Saya sudah tahu langkah berikutnya untuk membuka Klampid sendiri dan mencari layanan Akta Kelahiran."
+  },
+  "ms": 114555,
+  "giliranWarga": 8,
+  "nilai": {
+    "persona": "p14-surabaya-akta-lahir",
+    "judul": "Warga Kota Surabaya, bayi baru lahir: akta kelahiran",
+    "urusanId": "u_949edf2d675c3853243110469d7f123b",
+    "wilayahPerangkat": "3578",
+    "kodeUrusan": "3578",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": true,
+      "catatan": "Saya sudah tahu langkah berikutnya untuk membuka Klampid sendiri dan mencari layanan Akta Kelahiran."
+    },
+    "giliranWarga": 8,
+    "ms": 114555,
+    "url": [
+      "https://wargaklampid-dispendukcapil.surabaya.go.id/",
+      "https://peraturan.go.id/id/perpres-no-96-tahun-2018"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": true,
+        "bukti": "warga menyebut wilayah sebelum rencana"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "tanpa galat"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": true,
+        "bukti": "Warga menekan [Ya, betul]"
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "Ajukan akta kelahiran ke Disdukcapil Kota Surabaya [online]"
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "(tidak ada daftar persyaratan tambahan yang diminta warga)"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "Klampid New Generation (https://wargaklampid-dispendukcapil.surabaya.go.id/)"
+      },
+      "e": {
+        "lulus": false,
+        "bukti": "menekan **“Setujui dan buka situs”** untuk membuka Browser Pendamping dan memeriksa panduan serta formulir di Klampid bersama saya."
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "Sandi atau CAPTCHA Anda isi sendiri, dan tombol kirim akhir tetap Anda yang tekan. Jangan kirim data pribadi atau dokumen ke chat."
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "Maaf, saya keliru menyuruh Anda menekan tombol yang tidak tersedia, dan memberikan keterangan yang bertentangan soal pengambilan akta."
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "silakan buka [Klampid New Generation resmi Surabaya](https://wargaklampid-dispendukcapil.surabaya.go.id/) sendiri"
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "Maaf, jawabannya masih sama dan belum menjawab."
+      },
+      "ringkasan": "Wilayah dan kanal Surabaya benar, dan warga akhirnya diarahkan membuka Klampid sendiri. Namun, persyaratan yang diminta tidak dijawab, jawaban berulang menimbulkan kebuntuan, dan tawaran Browser Pendamping tidak sesuai dengan kemampuan yang tersedia.",
+      "cacat": [
+        {
+          "judul": "Persyaratan tambahan tidak diberikan",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "saya belum dapat memastikan daftar dokumen lengkap selain surat lahir dan buku nikah."
+        },
+        {
+          "judul": "Klaim pengambilan langsung tanpa dukungan",
+          "kriteria": "c",
+          "keparahan": "sedang",
+          "bukti": "Keterangan dalam rencana sebelumnya yang menyatakan harus diambil langsung belum didukung informasi resmi"
+        },
+        {
+          "judul": "Mengarahkan ke tombol pendamping yang tidak tersedia",
+          "kriteria": "e",
+          "keparahan": "tinggi",
+          "bukti": "menekan **“Setujui dan buka situs”** untuk membuka Browser Pendamping dan memeriksa panduan serta formulir di Klampid bersama saya."
+        },
+        {
+          "judul": "Jawaban berulang tanpa menyelesaikan pertanyaan",
+          "kriteria": "i",
+          "keparahan": "sedang",
+          "bukti": "Maaf, jawabannya masih sama dan belum menjawab."
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": true,
+        "bukti": "otomatis: warga menyebut wilayah sebelum rencana | juri: Warga menekan [Ya, betul]",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "warga menyebut wilayah sebelum rencana"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Warga menekan [Ya, betul]"
+          }
+        ]
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "juri: Ajukan akta kelahiran ke Disdukcapil Kota Surabaya [online]",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Ajukan akta kelahiran ke Disdukcapil Kota Surabaya [online]"
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: (tidak ada daftar persyaratan tambahan yang diminta warga)",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "(tidak ada daftar persyaratan tambahan yang diminta warga)"
+          }
+        ]
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada tautan/nama wilayah lain | juri: Klampid New Generation (https://wargaklampid-dispendukcapil.surabaya.go.id/)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Klampid New Generation (https://wargaklampid-dispendukcapil.surabaya.go.id/)"
+          }
+        ]
+      },
+      "e": {
+        "lulus": false,
+        "bukti": "juri: menekan **“Setujui dan buka situs”** untuk membuka Browser Pendamping dan memeriksa panduan serta formulir di Klampid bersama saya.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "menekan **“Setujui dan buka situs”** untuk membuka Browser Pendamping dan memeriksa panduan serta formulir di Klampid bersama saya."
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: Sandi atau CAPTCHA Anda isi sendiri, dan tombol kirim akhir tetap Anda yang tekan. Jangan kirim data pribadi atau dokumen ke chat.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Sandi atau CAPTCHA Anda isi sendiri, dan tombol kirim akhir tetap Anda yang tekan. Jangan kirim data pribadi atau dokumen ke chat."
+          }
+        ]
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "juri: Maaf, saya keliru menyuruh Anda menekan tombol yang tidak tersedia, dan memberikan keterangan yang bertentangan soal pengambilan akta.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Maaf, saya keliru menyuruh Anda menekan tombol yang tidak tersedia, dan memberikan keterangan yang bertentangan soal pengambilan akta."
+          }
+        ]
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "juri: silakan buka [Klampid New Generation resmi Surabaya](https://wargaklampid-dispendukcapil.surabaya.go.id/) sendiri",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "silakan buka [Klampid New Generation resmi Surabaya](https://wargaklampid-dispendukcapil.surabaya.go.id/) sendiri"
+          }
+        ]
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "juri: Maaf, jawabannya masih sama dan belum menjawab.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tanpa galat"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Maaf, jawabannya masih sama dan belum menjawab."
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 74124,
+        "tokensOut": 1920,
+        "costIdr": 0,
+        "panggilanLlm": 10
+      },
+      "simulator": {
+        "panggilan": 8,
+        "tokensIn": 27828,
+        "tokensOut": 688
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 5949,
+        "tokensOut": 714
+      }
+    }
+  }
+}

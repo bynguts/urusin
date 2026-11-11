@@ -1,6 +1,6 @@
 import type { RagSearcher } from '@urusin/rag';
 import { z } from 'zod';
-import type { CapabilityFlags, ChatProvider, ChatTool, Usage } from '@urusin/llm';
+import type { CapabilityFlags, ChatMessage, ChatProvider, ChatTool, Usage } from '@urusin/llm';
 import type { Db } from './db.js';
 import type { EventPayload, PayloadOf, UrusanState } from '@urusin/contracts';
 import type { UrusanRow, HarnessStore } from './store.js';
@@ -41,6 +41,8 @@ export type ToolContext = {
   deps: ToolDeps;
   /** Nonce spotlighting untuk turn ini. */
   nonce: string;
+  /** Pesan warga turn ini (sudah diredaksi): bukti bahwa warga sendiri menyebut/membenarkan sesuatu. */
+  pesanWarga: string;
   signal: AbortSignal;
 };
 
@@ -56,6 +58,8 @@ export type ToolResult = {
   execution?: ExecutionRequest;
   /** Transisi state yang diminta tool; diterapkan harness lewat CAS dan state machine. */
   nextState?: UrusanState;
+  /** Wilayah yang ditetapkan tool (`wilayah__tetapkan`); diterapkan harness lewat CAS + event audit. */
+  wilayah?: { ktp: string; domisili?: string | null; tujuan?: string | null };
   /** Akhiri turn setelah tool ini (mis. jawaban bersumber sudah dikirim ke warga). */
   endTurn?: boolean;
   /** Pemakaian token dari panggilan LLM bersarang di dalam tool (untuk meter biaya). */
@@ -71,6 +75,11 @@ export type ToolDef<S extends z.ZodType = z.ZodType> = {
   allowedStates: readonly UrusanState[];
   /** Origin situs luar yang disentuh (wajib terdaftar di registry domain resmi untuk tool write). */
   origin?: (args: z.infer<S>, ctx: { urusan: UrusanRow }) => string | undefined;
+  /**
+   * Gerbang wilayah: tool ditolak (WILAYAH_BELUM_DITETAPKAN) sampai wilayah KTP (dan tujuan pindah) ditetapkan.
+   * 'adminduk' = hanya urusan kependudukan, dan cukup wilayah KTP (jawaban persyaratan tidak menunggu tujuan pindah).
+   */
+  butuhWilayah?: boolean | 'adminduk';
   /** Operasi span OTel; default `execute_tool`. */
   spanOperation?: 'execute_tool' | 'retrieval';
   execute(ctx: ToolContext, args: z.infer<S>): Promise<ToolResult> | ToolResult;
@@ -135,6 +144,28 @@ export class ToolRegistry {
   openaiTools(state: UrusanState): ChatTool[] {
     return this.describe(state).map((t) => ({ type: 'function', function: t }));
   }
+}
+
+/** Hasil tool giliran lama yang tetap utuh di riwayat: isi jawaban bersumber tidak boleh disangkal model. */
+const RIWAYAT_UTUH = new Set(['urusan__jawab_persyaratan', 'wilayah__tetapkan']);
+
+/**
+ * Hemat konteks: hasil tool dari giliran SEBELUMNYA (potongan RAG, persyaratan portal) dipangkas. Potongan itu
+ * sudah tersimpan di store untuk verifikasi kutipan dan bisa dicari ulang; di riwayat ia menyumbang ~65% karakter
+ * (eval p02: 21 rb dari 33 rb karakter) dan dikirim ulang di setiap panggilan model.
+ */
+export function ringkasRiwayat(history: readonly ChatMessage[], max = 400): ChatMessage[] {
+  const nama = new Map<string, string>();
+  return history.map((m) => {
+    if (m.role === 'assistant' && m.tool_calls)
+      for (const c of m.tool_calls) if (c.type === 'function') nama.set(c.id, c.function.name);
+    if (m.role !== 'tool' || typeof m.content !== 'string' || m.content.length <= max) return m;
+    if (RIWAYAT_UTUH.has(nama.get(m.tool_call_id) ?? '')) return m;
+    return {
+      ...m,
+      content: `${m.content.slice(0, max)}…[hasil lama diringkas; panggil tool lagi bila perlu]`,
+    };
+  });
 }
 
 /** Potong hasil tool agar ringkas (hemat token). */

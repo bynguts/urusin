@@ -58,7 +58,75 @@ const PRIVATE_KEY_RE = /-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY(?: BLOCK)?-----/g;
 
 const ALLOW_MARKER = 'pii-scan:allow';
 const STATIC_EMAIL_ALLOW = ['git@github.com'];
-const SKIP_FILES = [/(^|\/)pnpm-lock\.yaml$/, /\.(png|jpe?g|gif|webp|ico|woff2?|pdf|zip)$/i];
+const SKIP_FILES = [
+  /(^|\/)pnpm-lock\.yaml$/,
+  /\.(png|jpe?g|gif|webp|ico|woff2?|pdf|zip)$/i,
+  // Hasil generator dari JSON yang dipindai di bawah (kabkota, kontak-dukcapil, kanal-layanan). Keidentikannya
+  // dengan keluaran generator dijaga tes packages/registry/src/wilayah-data.test.ts, jadi tak bisa disisipi tangan.
+  /^packages\/registry\/src\/wilayah-data\.ts$/,
+];
+// Data kontak resmi instansi: dipindai per entri JSON (scanKontakJson), bukan dilewati.
+const KONTAK_JSON_FILES = /^data\/wilayah\/(?:kanal-layanan|sumber-kanal)\.json$/;
+
+/** True bila berkas tidak dipindai sama sekali (lockfile, biner, berkas hasil generator di atas). */
+export function isSkippedPath(path) {
+  return SKIP_FILES.some((re) => re.test(path));
+}
+
+/** Entri bersumber: `sumberUrl` https di host *.go.id (termasuk *.polri.go.id) dan `dicekPada` YYYY-MM-DD. */
+export function isEntriBersumber(o) {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return false;
+  if (typeof o.dicekPada !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(o.dicekPada)) return false;
+  if (typeof o.sumberUrl !== 'string') return false;
+  try {
+    const u = new URL(o.sumberUrl);
+    return u.protocol === 'https:' && u.hostname.endsWith('.go.id');
+  } catch {
+    return false;
+  }
+}
+
+/** Field entri yang memang berisi nomor/email kontak instansi (skema data/wilayah/kanal-layanan.json). */
+const FIELD_KONTAK = new Set(['nilai', 'kontak']);
+
+/**
+ * Pindai berkas JSON kontak resmi instansi. Telepon/email hanya lolos di field kontak (FIELD_KONTAK: `nilai`, `kontak`)
+ * milik entri bersumber (isEntriBersumber); di tempat lain (field lain entri itu, catatan, entri tanpa sumber, kunci,
+ * objek bersarang) tetap ditolak.
+ * NIK dan private key selalu ditolak, dan penanda pii-scan:allow tidak berlaku. JSON rusak dipindai sebagai teks biasa.
+ * Temuan memakai jalur JSON (mis. `$.entri[3].nilai`) sebagai `line`.
+ * @param {string} text
+ * @param {{teamEmails?: string[]}} [opts]
+ */
+export function scanKontakJson(text, opts = {}) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return scanText(text, opts);
+  }
+  const findings = [];
+  const periksa = (nilai, jalur, bersumber) => {
+    for (const f of scanText(String(nilai), { ...opts, allowMarker: false })) {
+      if (bersumber && (f.kind === 'phone' || f.kind === 'email')) continue;
+      findings.push({ ...f, line: jalur });
+    }
+  };
+  const telusur = (v, jalur) => {
+    if (Array.isArray(v)) v.forEach((x, i) => telusur(x, `${jalur}[${i}]`));
+    else if (v && typeof v === 'object') {
+      const bersumber = isEntriBersumber(v);
+      for (const [k, x] of Object.entries(v)) {
+        periksa(k, `${jalur} (kunci)`, false);
+        if (typeof x === 'string' || typeof x === 'number')
+          periksa(x, `${jalur}.${k}`, bersumber && FIELD_KONTAK.has(k));
+        else telusur(x, `${jalur}.${k}`);
+      }
+    } else if (typeof v === 'string' || typeof v === 'number') periksa(v, jalur, false);
+  };
+  telusur(data, '$');
+  return findings;
+}
 
 /** NIK: PP KK CC DD MM YY NNNN; DD 01-31 (laki-laki) atau 41-71 (perempuan), MM 01-12. */
 export function isNikLike(digits) {
@@ -88,13 +156,13 @@ export function mask(value) {
 /**
  * Pindai teks. Mengembalikan temuan {kind, line, match} dengan nilai disamarkan.
  * @param {string} text
- * @param {{teamEmails?: string[]}} [opts]
+ * @param {{teamEmails?: string[], allowMarker?: boolean}} [opts] allowMarker false: penanda tidak berlaku.
  */
 export function scanText(text, opts = {}) {
   const teamEmails = opts.teamEmails ?? [];
   const findings = [];
   text.split(/\r?\n/).forEach((line, i) => {
-    if (line.includes(ALLOW_MARKER)) return;
+    if (opts.allowMarker !== false && line.includes(ALLOW_MARKER)) return;
     const push = (kind, value) => findings.push({ kind, line: i + 1, match: mask(value) });
     for (const m of line.matchAll(NIK_RE)) if (isNikLike(m[1])) push('nik', m[1]);
     for (const m of line.matchAll(PHONE_RE)) push('phone', m[0]);
@@ -125,7 +193,7 @@ function main(argv) {
   const teamEmails = loadTeamEmails();
   let total = 0;
   for (const path of listFiles(mode)) {
-    if (SKIP_FILES.some((re) => re.test(path))) continue;
+    if (isSkippedPath(path)) continue;
     // --staged membaca isi index (yang benar-benar akan di-commit), --all membaca HEAD.
     let buf;
     try {
@@ -134,7 +202,8 @@ function main(argv) {
       continue;
     }
     if (buf.includes(0)) continue; // file biner
-    for (const f of scanText(buf.toString('utf8'), { teamEmails })) {
+    const scan = KONTAK_JSON_FILES.test(path) ? scanKontakJson : scanText;
+    for (const f of scan(buf.toString('utf8'), { teamEmails })) {
       total++;
       console.error(`${path}:${f.line}: ${f.kind} terdeteksi (${f.match})`);
     }

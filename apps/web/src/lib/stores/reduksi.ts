@@ -14,6 +14,7 @@ export function keadaanAwal(): KeadaanUrusan {
     jawaban: null,
     handoff: null,
     rencana: null,
+    wilayah: null,
     checklist: null,
     kelayakan: null,
     permintaanEksekusi: null,
@@ -69,6 +70,8 @@ export function terapkanEvent(s: KeadaanUrusan, e: UrusinEvent): KeadaanUrusan {
       return { ...next, handoff: e, jawaban: null, progres: null };
     case 'plan_card':
       return { ...next, rencana: e };
+    case 'wilayah':
+      return { ...next, wilayah: e };
     case 'checklist':
       return { ...next, checklist: e };
     case 'eligibility':
@@ -92,6 +95,7 @@ export function terapkanEvent(s: KeadaanUrusan, e: UrusinEvent): KeadaanUrusan {
         ...(e.version !== undefined ? { version: e.version } : {}),
       };
     case 'policy_gate':
+    case 'jejak_pendamping':
       return next;
   }
 }

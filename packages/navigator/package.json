@@ -1,0 +1,34 @@
+{
+  "name": "@urusin/navigator",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Otak Navigator generik Browser Pendamping (ADR 0030): prompt, validator rencana, loop, anggaran, bukti",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@urusin/contracts": "workspace:*",
+    "@urusin/harness": "workspace:*",
+    "@urusin/llm": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "fast-check": "4.10.2",
+    "vitest": "5.1.0"
+  }
+}

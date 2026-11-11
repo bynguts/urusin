@@ -1,0 +1,70 @@
+Warga mengganti wilayah di tengah percakapan (Wonogiri lalu Sukoharjo)
+======================================================================
+
+Warga: Mas, saya dari Wonogiri. Anak saya baru lahir, mau urus akta kelahiran.
+
+Urusin: Selamat atas kelahiran buah hati Anda! KTP Anda terdaftar di Kabupaten Wonogiri, betul?
+
+Warga: Iya mas, Wonogiri.
+
+(sistem) Wilayah KTP: Kabupaten Wonogiri
+[JAWABAN BERSUMBER]
+  - Siapkan fotokopi surat keterangan kelahiran dari rumah sakit, puskesmas, fasilitas kesehatan, dokter, atau bidan. Untuk kelahiran di rumah atau tempat lain, surat dapat berasal dari kepala desa atau lurah.
+    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)
+  - Siapkan buku nikah, kutipan akta perkawinan, atau bukti lain yang sah.
+    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)
+  - Siapkan kartu keluarga tempat anak terdaftar atau akan didaftarkan sebagai anggota keluarga.
+    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)
+  - Jika surat keterangan kelahiran tidak tersedia, penduduk dapat membuat SPTJM kebenaran data kelahiran dengan mengisi F-2.03 dan menghadirkan dua saksi.
+    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)
+  - Jika bukti perkawinan yang dipersyaratkan tidak tersedia, penduduk dapat membuat SPTJM kebenaran sebagai pasangan suami istri dengan mengisi F-2.04 dan menghadirkan dua saksi.
+    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)
+  - Untuk anak yang tidak diketahui asal-usul atau keberadaan orang tuanya, diperlukan berita acara dari kepolisian.
+    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)
+  - Ajukan permohonan melalui loket online dengan mengisi formulir F-2.01 dan melengkapi berkas persyaratan.
+    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)
+  - Jika memilih cetak mandiri, pemohon wajib mengisi alamat email.
+    (sumber: Pencatatan Akta Kelahiran (Standar Pelayanan Disdukcapil Wonogiri) - PENCATATAN AKTA KELAHIRAN › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pencatatan-akta-kelahiran)
+  (4 klaim dibuang karena kutipan tidak terverifikasi)
+  Keputusan ada di petugas instansi terkait.
+[KARTU RENCANA] Kelahiran · Kab. Wonogiri
+  Wilayah KTP: Kabupaten Wonogiri (tingkat semi)
+  Catatan: Layanan terintegrasi Wonogiri: 1 hari kerja, tanpa biaya. Pengajuan online lewat Telunjuk Sakti layanan 23 "Akta Kelahiran" (recon 2026-11-08): Browser Pendamping mengunggah Dokumen, warga masuk akun dan menekan Selesai sendiri.
+  1. Ajukan akta kelahiran terintegrasi lewat loket online [online (dibantu), loket-online]
+     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)
+  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]
+     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)
+  3. Ambil KIA [datang langsung, kecamatan]
+     Bawa: Bukti/SMS pengambilan
+     Sumber: Terintegrasi Pencatatan Akta Kelahiran, Kartu Keluarga dan KIA (https://disdukcapil.wonogirikab.go.id/layanan/terintegrasi-pencatatan-akta-kelahiran-kartu-keluarga-dan-kia)
+
+Warga: Eh maaf mas, saya salah. KTP sama KK saya sekarang sudah Sukoharjo, Kartasura. Jadi gimana?
+
+(sistem) Wilayah KTP: Kabupaten Sukoharjo
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/
+  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id
+[KARTU RENCANA] Kelahiran · Kab. Sukoharjo
+  Wilayah KTP: Kabupaten Sukoharjo (tingkat dipandu)
+  Catatan: Persyaratan nasional untuk Kabupaten Sukoharjo; detail dan cara pengajuan mengikuti MELODI (WhatsApp).
+  1. Ajukan akta kelahiran ke Disdukcapil Kab. Sukoharjo [online]
+     Sumber: MELODI (WhatsApp) (https://dispendukcapil.sukoharjokab.go.id/); Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)
+  2. Bila surat kurang: siapkan SPTJM bersama dua saksi [online]
+     Sumber: Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)
+  3. Terima akta kelahiran dan KK baru dari Disdukcapil Kab. Sukoharjo [datang langsung, disdukcapil]
+     Bawa: Bukti pengajuan
+     Sumber: MELODI (WhatsApp) (https://dispendukcapil.sukoharjokab.go.id/)
+
+Warga: Mas, kalau lewat WhatsApp MELODI itu nomor berapa ya? Terus berkas apa saja yang perlu saya kirim?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo (https://dispendukcapil.sukoharjokab.go.id/).
+  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id/
+  - Kabupaten Sukoharjo https://dispendukcapil.sukoharjokab.go.id
+
+Warga: Mas, di situs itu saya harus buka bagian apa buat cari nomor MELODI dan syarat akta kelahiran?
+
+Urusin: Mas, buka situs resmi [Disdukcapil Kabupaten Sukoharjo](https://dispendukcapil.sukoharjokab.go.id/), lalu cari bagian **Kontak atau Layanan MELODI** untuk nomor WhatsApp, dan bagian **Layanan atau Persyaratan Akta Kelahiran** untuk daftar berkas.
+
+Saya belum bisa memastikan nama menu atau nomor WhatsApp-nya dari sumber yang tersedia. Kalau sudah ketemu halamannya, Anda bisa sampaikan nama menunya atau informasi yang tertera—tanpa menuliskan data pribadi—dan saya bantu jelaskan. Jangan gunakan daftar berkas Wonogiri sebelumnya sebagai patokan Sukoharjo, ya.
+
+[AKHIR: warga_selesai — Sudah tahu harus membuka situs resmi Disdukcapil Sukoharjo untuk mencari kontak MELODI dan persyaratan, meski nama menu dan nomornya belum pasti.]

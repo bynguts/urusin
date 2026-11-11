@@ -4,10 +4,11 @@ import { openHarnessDb } from './db.js';
 import { ConflictError } from './errors.js';
 import { TOOL_AJUKAN, langkahPendamping, mulaiPengajuan, setujuiRencana } from './rencana.js';
 import { HarnessStore, paramsHash } from './store.js';
+import { buatUrusanTerwilayah } from './wilayah.js';
 
 function urusanDiusulkan(kodeKabKota: string, jenis: string) {
   const store = new HarnessStore(openHarnessDb());
-  let u = store.createUrusan({ kodeKabKota, jenis });
+  let u = buatUrusanTerwilayah(store, { kodeKabKota, jenis });
   for (const ke of ['MEMAHAMI', 'RENCANA_DIUSULKAN'] as UrusanState[])
     u = store.transition(u.id, u.version, ke);
   const events: EventPayload[] = [];
@@ -55,10 +56,9 @@ describe('Setujui rencana -> Browser Pendamping (deterministik, tanpa model)', (
     expect(mulaiPengajuan(store, u.id, publish).state).toBe('MENUNGGU_SUBMIT_WARGA');
   });
 
-  it('kota tanpa adapter tulis (Surabaya baca-saja) atau jenis tanpa langkah adapter: berhenti di RENCANA_DISETUJUI', () => {
+  it('kota tanpa adapter tulis dan tanpa portal web (Dairi: WhatsApp) atau jenis tanpa bundel: berhenti di RENCANA_DISETUJUI', () => {
     for (const [kode, jenis] of [
-      ['3578', 'kelahiran'],
-      ['3312', 'kematian'],
+      ['1211', 'kelahiran'],
       ['3312', 'lainnya'],
     ] as const) {
       const { store, u, events, publish } = urusanDiusulkan(kode, jenis);
@@ -67,6 +67,17 @@ describe('Setujui rencana -> Browser Pendamping (deterministik, tanpa model)', (
       expect(events.some((e) => e.type === 'execution_request' || e.type === 'gate')).toBe(false);
       expect(langkahPendamping(r.urusan)).toBeUndefined();
     }
+  });
+
+  it('jenis tanpa alur adapter di kota beradapter (Wonogiri kematian): Navigator generik di portal kota itu', () => {
+    const { store, u, events, publish } = urusanDiusulkan('3312', 'kematian');
+    const r = setujuiRencana(store, u.id, publish);
+    expect(r.urusan.state).toBe('MENUNGGU_KONFIRMASI');
+    expect(events.find((e) => e.type === 'execution_request')).toMatchObject({
+      adapterId: 'generik',
+      params: { jenis: 'kematian', kode: '3312' },
+    });
+    expect(langkahPendamping(r.urusan)).toMatchObject({ jalur: 'generik' });
   });
 
   it('hanya dari RENCANA_DIUSULKAN dengan versi yang dilihat warga; persetujuan ganda ditolak', () => {

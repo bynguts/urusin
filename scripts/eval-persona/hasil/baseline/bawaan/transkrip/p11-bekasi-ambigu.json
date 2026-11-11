@@ -1,0 +1,733 @@
+{
+  "persona": "p11-bekasi-ambigu",
+  "urusanId": "u_0c03ef4c9dcfbb85840251bb18aef1e4",
+  "wilayahPerangkat": "3312",
+  "kodeUrusan": "3312",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Saya dari Bekasi, KTP saya rusak kena air. Bikin baru gimana?",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": "semi",
+          "version": 2,
+          "type": "state",
+          "seq": 1,
+          "at": "2026-11-10T06:39:49.799Z",
+          "chainHead": "058cef79256a1d9a3080c3efdddccd7cf0d1caf355a9741c667cd58a99483034"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 2,
+          "at": "2026-11-10T06:39:49.799Z",
+          "chainHead": "dfe0a953ab110701afc192c8998fe82a5b4ff8d7bc1bd9606949e64540532dfe"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T06:39:59.983Z",
+          "chainHead": "e495c7a4d7450d7b31c8b1053c2e5d8dee4d7f6cd82da78bbe4ab2a6549ec703"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 4,
+          "at": "2026-11-10T06:40:05.188Z",
+          "chainHead": "610dd88116d5e6c002c50867964a8e1421cd3950e97ca0487ed0d49ae265e0ab"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 5,
+          "at": "2026-11-10T06:40:17.937Z",
+          "chainHead": "b29ad13d9a299597b337a7d4d648832a5852d8fd6c633f7a74bf9cec69eb1c80"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU TANDA PENDUDUK ELETRONIK (KTP- EL) PERUBAHAN DATA, HILANG DAN RUSAK › persyaratan",
+                  "kutipanPersis": "c. KTP-el rusak (jika KTP-el rusak",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-ktp-el#0",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak#:~:text=c.%20KTP%2Del%20rusak%20%28jika%20KTP%2Del%20rusak",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak",
+                  "verifiedAt": "2026-11-08T18:48:41.751Z"
+                }
+              ],
+              "teks": "Dalam standar pelayanan Wonogiri, pemohon penggantian KTP-el rusak melampirkan KTP-el yang rusak."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU TANDA PENDUDUK ELETRONIK (KTP- EL) PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "1. Tatap muka langsung\na. Pemohon mengisi Formulir F-1.02 (Formulir Pendaftaran Peristiwa Kependudukan);\nb. Pemohon mengisi Formulir F-1.06 ( Formulir perubahan elemen data kependudukan) jika permohonan perubahan elemen data kependudukan",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-ktp-el#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak#:~:text=1.%20Tatap%20muka%20langsung,perubahan%20elemen%20data%20kependudukan",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak",
+                  "verifiedAt": "2026-11-08T18:48:41.751Z"
+                }
+              ],
+              "teks": "Untuk layanan tatap muka di Wonogiri, pemohon mengisi formulir F-1.02; formulir F-1.06 diperlukan jika ada perubahan elemen data kependudukan."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU TANDA PENDUDUK ELETRONIK (KTP- EL) PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "c. Front Office menerima dan memverifikasi kelengkapan berkas persyaratan. Jika berkas tidak lengkap dikembalikan kepada pemohon",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-ktp-el#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak#:~:text=c.%20Front%20Office%20menerima,lengkap%20dikembalikan%20kepada%20pemohon",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak",
+                  "verifiedAt": "2026-11-08T18:48:41.751Z"
+                }
+              ],
+              "teks": "Dalam prosedur tatap muka Wonogiri, petugas memeriksa kelengkapan berkas; berkas yang tidak lengkap dikembalikan kepada pemohon."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU TANDA PENDUDUK ELETRONIK (KTP- EL) PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "f. Bagian Produksi mencetak KTP-EL dan melakukan update status pada antrian pencetakan dokumen menjadi sudah dicetak. Pemohon mendapatkan SMS pengambilan;\ng. Bagian Pengambilan menyerahkan KTP-EL kepada pemohon",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-ktp-el#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak#:~:text=f.%20Bagian%20Produksi%20mencetak,menyerahkan%20KTP%2DEL%20kepada%20pemohon",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak",
+                  "verifiedAt": "2026-11-08T18:48:41.751Z"
+                }
+              ],
+              "teks": "Di Wonogiri, setelah KTP-el dicetak, pemohon mendapat SMS pengambilan dan KTP-el diserahkan kepada pemohon."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU TANDA PENDUDUK ELETRONIK (KTP- EL) PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "2. Daring (Online)\na. Pemohon mengisi Formulir F-1.02 (Formulir Pendaftaran Peristiwa Kependudukan) dan mengisi Formulir F-1.06 (Formulir perubahan elemen data kependudukan) jika ada perubahan elemen data kependudukan, melalui Loket Online",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-ktp-el#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak#:~:text=2.%20Daring%20%28Online%29%20a.,kependudukan%2C%20melalui%20Loket%20Online",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak",
+                  "verifiedAt": "2026-11-08T18:48:41.751Z"
+                }
+              ],
+              "teks": "Wonogiri juga menyediakan pengajuan daring melalui Loket Online dengan formulir F-1.02 dan, jika ada perubahan elemen data, F-1.06."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 6,
+          "at": "2026-11-10T06:40:17.938Z",
+          "chainHead": "5d2efd6cdd3dc81ba187d3cbf3b0f6f2fc007577d5a5e3f0fb746734fcf944df"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_cc3c8e04-cd98-4e9f-9aa2-647429b0b8b3",
+          "version": 3,
+          "type": "done",
+          "seq": 7,
+          "at": "2026-11-10T06:40:17.950Z",
+          "chainHead": "a23331a16783f1626f32054903259bde37db26fb2f3d7ae848770eab0211ac23"
+        }
+      ],
+      "status": "selesai",
+      "ms": 28183
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Saya di Kota Bekasi, Bekasi Timur. Itu kok infonya Wonogiri ya? Kalau di Bekasi saya harus ke mana dan bawa apa?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Informasi yang diberikan untuk Wonogiri, bukan tempat tinggal Sari di Kota Bekasi."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 8,
+          "at": "2026-11-10T06:40:21.087Z",
+          "chainHead": "e15ff2bb50765de46e64df24e6b4fbac24a2c7144ef95e8f506f7016e390a343"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 9,
+          "at": "2026-11-10T06:40:25.612Z",
+          "chainHead": "7aabbc182b94f203fbde64591b1f991f0e76cf6eb25f7c22c480082c93247403"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 10,
+          "at": "2026-11-10T06:40:28.662Z",
+          "chainHead": "164695b22a425e4d75adb4d5ed8210a8649ace9092206875ef5cf8cbf76c4966"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 11,
+          "at": "2026-11-10T06:40:33.042Z",
+          "chainHead": "3825dbbeb66d81667847af02b6e1d0d9dcdc9318950d5999d89091f9442198dd"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T06:40:41.591Z",
+          "chainHead": "5078a6b5e4ae8f735fab38b6a962257a465ee3183a2a3330bab809aaa98abdf7"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+              "url": "https://telunjuksakti.wonogirikab.go.id/"
+            },
+            {
+              "nama": "Kabupaten Wonogiri",
+              "url": "https://telunjuksakti.wonogirikab.go.id"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 13,
+          "at": "2026-11-10T06:40:41.592Z",
+          "chainHead": "4f691f9a10c3342b9c0fe6be085f3f8ff0374c81bf7c4ef8a42e0f68b9cff3f4"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_a6a9f8a8-e26f-42d8-8334-e43896373002",
+          "version": 4,
+          "type": "done",
+          "seq": 14,
+          "at": "2026-11-10T06:40:41.594Z",
+          "chainHead": "2ede59754e900929ee7d6b11eab656c1344791ce37c8d4a706880db161d3428e"
+        }
+      ],
+      "status": "selesai",
+      "ms": 20516
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Kok masih Wonogiri ya? Saya di Kota Bekasi, Bekasi Timur. Kalau buat ganti KTP rusak di sini harus ke mana dan bawa apa?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Informasinya masih untuk daerah yang salah dan belum menjawab langkah di Kota Bekasi."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 15,
+          "at": "2026-11-10T06:40:44.781Z",
+          "chainHead": "28e2175e686c39628ab5d1112df626d1396a824239e9c036893ccd28c255165d"
+        },
+        {
+          "delta": "Maaf, informasi Wonogiri tadi tidak tepat untuk Anda. Saya sudah mencari ketentuan khusus **Kota Bekasi**, tetapi belum menemukan sumber resmi yang cukup untuk memastikan lokasi layanan dan daftar berkasnya.\n\nUntuk menghindari perjalanan sia-sia, silakan tanyakan melalui **kanal resmi Disdukcapil Kota Bekasi** atau ke **Kecamatan Bekasi Timur** apakah penggantian KTP rusak dilayani di kecamatan atau melalui e-Open, serta dokumen apa saja yang harus dibawa. Simpan KTP yang rusak dan tanyakan juga apakah kartu tersebut perlu diserahkan.\n\nJangan tuliskan NIK atau data pribadi lain di chat ini.",
+          "type": "assistant_text",
+          "seq": 16,
+          "at": "2026-11-10T06:40:49.034Z",
+          "chainHead": "00b0cba364d42272e29542fb78206a4be7ec39109e49158042c61096723f82ee"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_d79922d4-6315-4cfb-84ce-0dccc4f8a1c6",
+          "version": 5,
+          "type": "done",
+          "seq": 17,
+          "at": "2026-11-10T06:40:49.039Z",
+          "chainHead": "550265ea79b4f7246d5d9dde3a3192d07915b81edc9a4374ce331278411453cc"
+        }
+      ],
+      "status": "selesai",
+      "ms": 4268
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Kanal resmi Disdukcapil Kota Bekasi yang bisa saya hubungi apa ya? Ada nomor atau situsnya?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya belum tahu kanal resmi yang bisa dihubungi untuk menanyakan penggantian KTP."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 18,
+          "at": "2026-11-10T06:40:54.227Z",
+          "chainHead": "55e73d87ff8ff28ec0d721dcb3a43ed265ddf58df089e577d71609d0d42a1205"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 19,
+          "at": "2026-11-10T06:40:58.422Z",
+          "chainHead": "ad5bb8cce207f5a35fdff2ac4d918c67888f4ec2996432196469ba51241dfdb8"
+        },
+        {
+          "delta": "Maaf, saya belum menemukan sumber resmi yang cukup untuk memastikan nomor telepon atau alamat situs Disdukcapil **Kota Bekasi**, jadi saya tidak ingin menebak.\n\nAnda bisa mencari **“Disdukcapil Kota Bekasi”** di mesin pencari, lalu pilih informasi kontak yang tercantum pada situs resmi Pemerintah Kota Bekasi. Pastikan tertulis *Kota Bekasi*, bukan Kabupaten Bekasi atau daerah lain. Anda juga bisa menanyakan kontak layanan langsung ke Kecamatan Bekasi Timur.",
+          "type": "assistant_text",
+          "seq": 20,
+          "at": "2026-11-10T06:41:04.937Z",
+          "chainHead": "c6887ace86fcbba6902266ab073e6c68a8b493e216e768a232fe5e17cef150da"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_df3ebe32-0335-4620-836f-d0c8ef4c1241",
+          "version": 6,
+          "type": "done",
+          "seq": 21,
+          "at": "2026-11-10T06:41:04.938Z",
+          "chainHead": "075574bddf058563d79184dde836bbd5516d0ebe65ffbf62de0966fc77afd0e3"
+        }
+      ],
+      "status": "selesai",
+      "ms": 10716
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Kalau begitu saya bisa langsung ke kantor Kecamatan Bekasi Timur buat tanya ya? Saya bawa KTP rusak sama KK perlu juga nggak?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya masih ingin memastikan langkah dan berkas sebelum pergi ke kecamatan."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 22,
+          "at": "2026-11-10T06:41:08.146Z",
+          "chainHead": "1d8fa2a952ce2926a4be2a4c3a217b9336e3a96e92c466a0d7dae726bbe2f52f"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 23,
+          "at": "2026-11-10T06:41:12.512Z",
+          "chainHead": "780991e198da7855977995bf4b8908e55d76e4695578896bc696cba1994d3f09"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 24,
+          "at": "2026-11-10T06:41:32.697Z",
+          "chainHead": "5a0fde53f4e454d0d5fdf4329a4eda5dde62949d6deea48bb2300fcdf5777ca6"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 25,
+          "at": "2026-11-10T06:41:36.349Z",
+          "chainHead": "4bdd025a69250b84050adc3b629f5ffe9db9039670f578cb45e8069433c50d68"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+              "url": "https://telunjuksakti.wonogirikab.go.id/"
+            },
+            {
+              "nama": "Kabupaten Wonogiri",
+              "url": "https://telunjuksakti.wonogirikab.go.id"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 26,
+          "at": "2026-11-10T06:41:36.349Z",
+          "chainHead": "a42aff58f22db9c6b78acee34fb96dd0cfdcd65db4a5a8a7997d4f7f9ab62d6c"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_456b2a84-9cc8-4172-bb9e-1b6d669607ed",
+          "version": 7,
+          "type": "done",
+          "seq": 27,
+          "at": "2026-11-10T06:41:36.370Z",
+          "chainHead": "782024c9a3112aae3abf472cfb830726f83698594aeee2fd38d4691bfa606b10"
+        }
+      ],
+      "status": "selesai",
+      "ms": 28233
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Lho, kok Wonogiri lagi? Saya di Bekasi Timur, Kota Bekasi. Saya bisa langsung ke kantor kecamatan buat tanya nggak? Perlu bawa KK juga selain KTP rusak?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawaban kembali mengarah ke daerah yang salah dan belum menjawab pertanyaan tentang kunjungan ke kecamatan serta dokumen."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 28,
+          "at": "2026-11-10T06:41:46.330Z",
+          "chainHead": "14be33e83cd9eabd0aaeacce2ccb9cb8edee5b0a10e79a83f47ee4a91cf2f4fa"
+        },
+        {
+          "delta": "Maaf, informasi Wonogiri tadi memang tidak relevan. Anda berada di **Bekasi Timur, Kota Bekasi**.\n\nYa, Anda bisa datang ke kantor Kecamatan Bekasi Timur untuk **bertanya** ke petugas. Namun, saya belum bisa memastikan apakah penggantian KTP rusak dilayani langsung di sana.\n\nBawa KTP yang rusak dan, kalau tersedia, **KK juga sebagai persiapan**. Saya belum menemukan sumber resmi yang memastikan apakah KK wajib dibawa untuk layanan ini di Kota Bekasi, jadi silakan pastikan kepada petugas.",
+          "type": "assistant_text",
+          "seq": 29,
+          "at": "2026-11-10T06:41:50.797Z",
+          "chainHead": "a6e32d66ef178cd6e06ec8fe2e3ff59af055b20ec8b33f3b07d1d1287e255fe6"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_0f3f896e-c2da-4c4b-a53f-9e27dd70888b",
+          "version": 8,
+          "type": "done",
+          "seq": 30,
+          "at": "2026-11-10T06:41:50.798Z",
+          "chainHead": "dc1e4400fce709022a7e6823dcc51ec030efac2691bb5318df8c6f94c0d8858e"
+        }
+      ],
+      "status": "selesai",
+      "ms": 4472
+    }
+  ],
+  "layar": [
+    "Warga: Saya dari Bekasi, KTP saya rusak kena air. Bikin baru gimana?",
+    "[JAWABAN BERSUMBER]\n  - Dalam standar pelayanan Wonogiri, pemohon penggantian KTP-el rusak melampirkan KTP-el yang rusak.\n    (sumber: Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU TANDA PENDUDUK ELETRONIK (KTP- EL) PERUBAHAN DATA, HILANG DAN RUSAK › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak)\n  - Untuk layanan tatap muka di Wonogiri, pemohon mengisi formulir F-1.02; formulir F-1.06 diperlukan jika ada perubahan elemen data kependudukan.\n    (sumber: Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU TANDA PENDUDUK ELETRONIK (KTP- EL) PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak)\n  - Dalam prosedur tatap muka Wonogiri, petugas memeriksa kelengkapan berkas; berkas yang tidak lengkap dikembalikan kepada pemohon.\n    (sumber: Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU TANDA PENDUDUK ELETRONIK (KTP- EL) PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak)\n  - Di Wonogiri, setelah KTP-el dicetak, pemohon mendapat SMS pengambilan dan KTP-el diserahkan kepada pemohon.\n    (sumber: Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU TANDA PENDUDUK ELETRONIK (KTP- EL) PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak)\n  - Wonogiri juga menyediakan pengajuan daring melalui Loket Online dengan formulir F-1.02 dan, jika ada perubahan elemen data, F-1.06.\n    (sumber: Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN KARTU TANDA PENDUDUK ELETRONIK (KTP- EL) PERUBAHAN DATA, HILANG DAN RUSAK › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak)\n  Keputusan ada di petugas instansi terkait.",
+    "Warga: Saya di Kota Bekasi, Bekasi Timur. Itu kok infonya Wonogiri ya? Kalau di Bekasi saya harus ke mana dan bawa apa?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/\n  - Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id",
+    "Warga: Kok masih Wonogiri ya? Saya di Kota Bekasi, Bekasi Timur. Kalau buat ganti KTP rusak di sini harus ke mana dan bawa apa?",
+    "Urusin: Maaf, informasi Wonogiri tadi tidak tepat untuk Anda. Saya sudah mencari ketentuan khusus **Kota Bekasi**, tetapi belum menemukan sumber resmi yang cukup untuk memastikan lokasi layanan dan daftar berkasnya.\n\nUntuk menghindari perjalanan sia-sia, silakan tanyakan melalui **kanal resmi Disdukcapil Kota Bekasi** atau ke **Kecamatan Bekasi Timur** apakah penggantian KTP rusak dilayani di kecamatan atau melalui e-Open, serta dokumen apa saja yang harus dibawa. Simpan KTP yang rusak dan tanyakan juga apakah kartu tersebut perlu diserahkan.\n\nJangan tuliskan NIK atau data pribadi lain di chat ini.",
+    "Warga: Kanal resmi Disdukcapil Kota Bekasi yang bisa saya hubungi apa ya? Ada nomor atau situsnya?",
+    "Urusin: Maaf, saya belum menemukan sumber resmi yang cukup untuk memastikan nomor telepon atau alamat situs Disdukcapil **Kota Bekasi**, jadi saya tidak ingin menebak.\n\nAnda bisa mencari **“Disdukcapil Kota Bekasi”** di mesin pencari, lalu pilih informasi kontak yang tercantum pada situs resmi Pemerintah Kota Bekasi. Pastikan tertulis *Kota Bekasi*, bukan Kabupaten Bekasi atau daerah lain. Anda juga bisa menanyakan kontak layanan langsung ke Kecamatan Bekasi Timur.",
+    "Warga: Kalau begitu saya bisa langsung ke kantor Kecamatan Bekasi Timur buat tanya ya? Saya bawa KTP rusak sama KK perlu juga nggak?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/\n  - Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id",
+    "Warga: Lho, kok Wonogiri lagi? Saya di Bekasi Timur, Kota Bekasi. Saya bisa langsung ke kantor kecamatan buat tanya nggak? Perlu bawa KK juga selain KTP rusak?",
+    "Urusin: Maaf, informasi Wonogiri tadi memang tidak relevan. Anda berada di **Bekasi Timur, Kota Bekasi**.\n\nYa, Anda bisa datang ke kantor Kecamatan Bekasi Timur untuk **bertanya** ke petugas. Namun, saya belum bisa memastikan apakah penggantian KTP rusak dilayani langsung di sana.\n\nBawa KTP yang rusak dan, kalau tersedia, **KK juga sebagai persiapan**. Saya belum menemukan sumber resmi yang memastikan apakah KK wajib dibawa untuk layanan ini di Kota Bekasi, jadi silakan pastikan kepada petugas."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": true,
+    "catatan": "Sudah tahu bisa datang ke Kecamatan Bekasi Timur untuk bertanya sambil membawa KTP rusak dan KK sebagai persiapan."
+  },
+  "ms": 124451,
+  "giliranWarga": 6,
+  "nilai": {
+    "persona": "p11-bekasi-ambigu",
+    "judul": "Wilayah ambigu: \"saya dari Bekasi\" (Kota vs Kab.)",
+    "urusanId": "u_0c03ef4c9dcfbb85840251bb18aef1e4",
+    "wilayahPerangkat": "3312",
+    "kodeUrusan": "3312",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": true,
+      "catatan": "Sudah tahu bisa datang ke Kecamatan Bekasi Timur untuk bertanya sambil membawa KTP rusak dan KK sebagai persiapan."
+    },
+    "giliranWarga": 6,
+    "ms": 124451,
+    "url": [
+      "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-penduduk-eletronik-ktp-el-perubahan-data-hilang-dan-rusak",
+      "https://telunjuksakti.wonogirikab.go.id/",
+      "https://telunjuksakti.wonogirikab.go.id"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": false,
+        "bukti": "rencana/jawaban di langkah 2 sebelum wilayah warga diketahui"
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "bocor wilayah wonogiri: \"Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-p\"; wonogiri: \"Dalam standar pelayanan Wonogiri, pemohon penggantian KTP-el rusak melampirkan KTP-e\""
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "tanpa galat"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": false,
+        "bukti": "Dalam standar pelayanan Wonogiri, pemohon penggantian KTP-el rusak melampirkan KTP-el yang rusak."
+      },
+      "b": {
+        "lulus": false,
+        "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/)."
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "Saya belum menemukan sumber resmi yang memastikan apakah KK wajib dibawa untuk layanan ini di Kota Bekasi"
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "(tidak ada tawaran Browser Pendamping atau klaim pengiriman)"
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "Jangan tuliskan NIK atau data pribadi lain di chat ini."
+      },
+      "g": {
+        "lulus": false,
+        "bukti": "Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak"
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "Anda bisa datang ke kantor Kecamatan Bekasi Timur untuk **bertanya** ke petugas."
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/)."
+      },
+      "ringkasan": "Urusin memberi informasi dan arahan Wonogiri berulang kali, termasuk setelah warga menjelaskan bahwa ia di Kota Bekasi. Langkah akhir untuk bertanya di kecamatan cukup konkret, tetapi persyaratan yang diberikan tetap tidak lengkap dan tidak bersumber untuk layanan warga.",
+      "cacat": [
+        {
+          "judul": "Persyaratan diberikan sebelum wilayah dipastikan",
+          "kriteria": "a",
+          "keparahan": "tinggi",
+          "bukti": "Dalam standar pelayanan Wonogiri, pemohon penggantian KTP-el rusak melampirkan KTP-el yang rusak."
+        },
+        {
+          "judul": "Berulang kali mengarahkan ke instansi wilayah lain",
+          "kriteria": "b",
+          "keparahan": "tinggi",
+          "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/)."
+        },
+        {
+          "judul": "Syarat KK tidak dipastikan dengan sumber resmi",
+          "kriteria": "c",
+          "keparahan": "sedang",
+          "bukti": "Saya belum menemukan sumber resmi yang memastikan apakah KK wajib dibawa untuk layanan ini di Kota Bekasi"
+        },
+        {
+          "judul": "Kanal Wonogiri diberikan kepada warga Kota Bekasi",
+          "kriteria": "d",
+          "keparahan": "tinggi",
+          "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/"
+        },
+        {
+          "judul": "Jawaban awal panjang dan dipenuhi judul sumber berulang",
+          "kriteria": "g",
+          "keparahan": "rendah",
+          "bukti": "Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak"
+        },
+        {
+          "judul": "Alur kembali macet pada arahan Wonogiri",
+          "kriteria": "i",
+          "keparahan": "tinggi",
+          "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/)."
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": false,
+        "bukti": "otomatis: rencana/jawaban di langkah 2 sebelum wilayah warga diketahui | juri: Dalam standar pelayanan Wonogiri, pemohon penggantian KTP-el rusak melampirkan KTP-el yang rusak.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": false,
+            "bukti": "rencana/jawaban di langkah 2 sebelum wilayah warga diketahui"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Dalam standar pelayanan Wonogiri, pemohon penggantian KTP-el rusak melampirkan KTP-el yang rusak."
+          }
+        ]
+      },
+      "b": {
+        "lulus": false,
+        "bukti": "juri: Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/)."
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: Saya belum menemukan sumber resmi yang memastikan apakah KK wajib dibawa untuk layanan ini di Kota Bekasi",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Saya belum menemukan sumber resmi yang memastikan apakah KK wajib dibawa untuk layanan ini di Kota Bekasi"
+          }
+        ]
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "otomatis: bocor wilayah wonogiri: \"Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-p\"; wonogiri: \"Dalam standar pelayanan Wonogiri, pemohon penggantian KTP-el rusak melampirkan KTP-e\" | juri: Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": false,
+            "bukti": "bocor wilayah wonogiri: \"Wonogiri https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-kartu-tanda-p\"; wonogiri: \"Dalam standar pelayanan Wonogiri, pemohon penggantian KTP-el rusak melampirkan KTP-e\""
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/"
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada tawaran Browser Pendamping atau klaim pengiriman)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada tawaran Browser Pendamping atau klaim pengiriman)"
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: Jangan tuliskan NIK atau data pribadi lain di chat ini.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Jangan tuliskan NIK atau data pribadi lain di chat ini."
+          }
+        ]
+      },
+      "g": {
+        "lulus": false,
+        "bukti": "juri: Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Pelayanan Penerbitan Kartu Tanda Penduduk Eletronik (Ktp- El) Perubahan Data, Hilang Dan Rusak"
+          }
+        ]
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "juri: Anda bisa datang ke kantor Kecamatan Bekasi Timur untuk **bertanya** ke petugas.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Anda bisa datang ke kantor Kecamatan Bekasi Timur untuk **bertanya** ke petugas."
+          }
+        ]
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "juri: Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tanpa galat"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/)."
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 68423,
+        "tokensOut": 1684,
+        "costIdr": 0,
+        "panggilanLlm": 11
+      },
+      "simulator": {
+        "panggilan": 6,
+        "tokensIn": 23595,
+        "tokensOut": 461
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 6136,
+        "tokensOut": 938
+      }
+    }
+  }
+}

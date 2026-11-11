@@ -225,8 +225,12 @@
   {
     "id": "t39",
     "pertanyaan": "Cara bikin SKCK di polres",
-    "relevan": [],
-    "luarCakupan": true
+    "relevan": [
+      "perpol-1-2026-pasal#pasal-5",
+      "perpol-1-2026-pasal#pasal-13",
+      "perpol-1-2026-pasal#pasal-14"
+    ],
+    "catatan": "Dulu luar cakupan; sejak teks Perpol 1/2026 masuk korpus (2026-11-10) dijawab dari pasalnya."
   },
   {
     "id": "t40",

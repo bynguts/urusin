@@ -84,8 +84,8 @@
       Apa yang ingin Anda urus?
     </h1>
     <p class="w-full max-w-[640px] text-base text-body sm:text-[17px] sm:leading-[25px]">
-      Ceritakan dengan bahasa sehari-hari. Urusin mencari aturan resmi untuk {wilayah.nama}, lalu menyusun
-      langkahnya.
+      Ceritakan dengan bahasa sehari-hari. Urusin memastikan dulu kab/kota KTP Anda, mencari aturan resmi
+      wilayah itu, lalu menyusun langkahnya.
     </p>
 
     <form
@@ -113,7 +113,9 @@
         placeholder="Contoh: Anak saya baru lahir, saya harus mengurus apa?"
         class="block max-h-60 min-h-[26px] w-full resize-none bg-transparent text-[18px] leading-[26px] text-ink [field-sizing:content] placeholder:text-muted focus:outline-none"
       ></textarea>
-      <input type="hidden" name="kodeKabKota" value={wilayah.kodeKabKota} />
+      {#if wilayah}
+        <input type="hidden" name="kodeKabKota" value={wilayah.kodeKabKota} />
+      {/if}
       {#if form?.pesanWarga}
         <p id="galat-pesan" role="alert" class="text-sm font-medium text-galat">{form.pesanWarga}</p>
       {/if}
@@ -135,8 +137,8 @@
             class="inline-flex h-10 items-center gap-2 rounded-full border border-line-2 px-3.5 text-[15px] leading-[22px] text-ink transition-all duration-150 ease-out hover:bg-card active:scale-95"
           >
             <Icon name="lokasi" class="size-4 text-brand" />
-            {wilayah.nama}
-            <span class="sr-only">(ubah wilayah)</span>
+            {wilayah?.nama ?? 'Pilih wilayah'}
+            <span class="sr-only">{wilayah ? '(ubah wilayah)' : '(opsional)'}</span>
           </a>
         </div>
         <button

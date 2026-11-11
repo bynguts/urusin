@@ -1,0 +1,16 @@
+Pengemudi di DKI: pajak kendaraan (Samsat)
+==========================================
+
+Warga: Bang, pajak motor saya udah mau jatuh tempo. Bisa cek berapa dan bayar online nggak?
+
+[KARTU WILAYAH] KTP Anda terdaftar di Kota Administrasi Jakarta Pusat? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)
+Urusin: Bisa saya bantu cek dan cari cara bayar online. KTP Anda terdaftar di Kota Administrasi Jakarta Pusat, betul?
+
+Warga: Saya tinggal di Tebet, Jakarta Selatan, tapi belum yakin KTP saya terdaftar di mana. Motor saya terdaftar di Samsat DKI. Bisa cek pajaknya pakai data motor aja nggak?
+
+[KARTU BROWSER PENDAMPING] Cek info PKB di Samsat DKI Jakarta (tingkat semi). Baca saja, tidak ada yang dikirim. Hanya kendaraan terdaftar di Samsat DKI Jakarta. AI mengisi nomor polisi; verifikasi situs (Turnstile) Anda selesaikan sendiri. Struktur halaman hasil belum teramati: hasilnya Anda baca di layar. Situs: https://samsat-pkb2.jakarta.go.id (baca saja)
+[KONFIRMASI] Izinkan Browser Pendamping membuka situs resmi untuk membaca saja?
+
+Warga menekan [Setujui dan buka situs]
+
+[AKHIR: pendamping_dibuka — Browser Pendamping di luar cakupan eval]

@@ -57,6 +57,8 @@ export type KeadaanUrusan = {
   gate: Extract<UrusinEvent, { type: 'gate' }> | null;
   degraded: Extract<UrusinEvent, { type: 'degraded' }> | null;
   galat: Extract<UrusinEvent, { type: 'error' }> | null;
+  /** Event wilayah terakhir (usulan yang menunggu konfirmasi, atau wilayah yang sudah ditetapkan). */
+  wilayah?: Extract<UrusinEvent, { type: 'wilayah' }> | null;
   /** true bila turn terakhir melewati batas waktu (event timeout). */
   waktuHabis: boolean;
   teksAsisten: string;
@@ -78,6 +80,8 @@ export interface StoreUrusan {
    * benar-benar masih berjalan (tulisan tidak hilang: kirim ulang sebentar lagi).
    */
   kirim(teks: string): Promise<'ok' | 'konflik' | 'galat'>;
+  /** Warga memastikan wilayah KTP (tombol, bukan teks bebas); rencana bisa langsung diusulkan. */
+  tetapkanWilayah?(kodeKabKota: string): Promise<'ok' | 'konflik' | 'galat'>;
   /** Terapkan satu event; dipakai stream dan pemutar fixture. */
   terapkan(e: UrusinEvent): void;
   reset(): void;

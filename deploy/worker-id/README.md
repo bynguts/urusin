@@ -5,11 +5,31 @@ berstatus `aksesWilayah: 'id-utama'`: dari IP datacenter (agent-vm, Singapura) C
 kotak centang (`403 cf-mitigated: challenge`, "Performing security verification") yang diketuk warga sendiri
 lewat Browser Pendamping, lalu AI melanjutkan; bila laptop ini hidup dan masih punya slot, web mendahulukannya
 (laptop penuh atau start gagal di laptop = langsung server). Dari koneksi
-rumah/seluler Indonesia Chromium headed biasa lolos tanpa tantangan). Hanya Si D'nOK (`aksesWilayah: 'id-only'`,
-blokir keras "Akses Terbatas - Khusus Indonesia") yang benar-benar butuh worker ini; tanpanya situs itu
-dipandu. Folder ini menjalankan worker Pendamping region `id`
-di laptop anggota (Docker Desktop di Windows/macOS, atau Docker Linux), dijangkau web di agent-vm hanya lewat
-Tailscale. Tanpa stealth/pemalsuan sidik jari, tanpa layanan CAPTCHA, tanpa proxy residensial: warga sendiri
+rumah/seluler Indonesia Chromium headed biasa lolos tanpa tantangan). Portal `aksesWilayah: 'id-only'` (IP luar
+negeri diblokir keras, mis. "Akses Terbatas - Khusus Indonesia") benar-benar butuh worker ini; tanpanya
+urusannya dipandu. Daftar id-only saat ini (registry, hasil probe nyata; sumber kebenaran:
+`packages/core/src/registry.ts` dan `registry-wilayah.ts` hasil generator):
+
+| Kode | Wilayah             | Portal (host sesi)                                   |
+| ---- | ------------------- | ---------------------------------------------------- |
+| 1271 | Kota Medan          | sibisa.medan.go.id                                   |
+| 1372 | Kota Solok          | palado.solokkota.go.id                               |
+| 1403 | Kab. Bengkalis      | simpel.disdukcapil.bengkaliskab.go.id                |
+| 1771 | Kota Bengkulu       | slawe.bengkulukota.go.id, sipadek.bengkulukota.go.id |
+| 3275 | Kota Bekasi         | www.e-open.id, e-open.id                             |
+| 3279 | Kota Banjar         | pakonom.banjarkota.go.id, bebeong.banjarkota.go.id   |
+| 3374 | Kota Semarang       | sidnok.semarangkota.go.id (Si D'nOK)                 |
+| 3402 | Kab. Bantul         | dukcapilonline.bantulkab.go.id                       |
+| 3674 | Kota Tangerang Sel. | rumahdukcapil.tangerangselatankota.go.id             |
+| 6271 | Kota Palangka Raya  | sidoidisdukcapil.palangkaraya.go.id                  |
+
+Web hanya memakai worker `id` untuk situs id-only bila `/health`-nya sehat DAN melaporkan `"generik":true`
+(image dengan Navigator generik dan registry di atas). Worker ber-image lama dianggap tidak siap: urusan
+id-only dipandu sejak kartu rencana, bukan gagal. Bila worker sehat tetapi gagal memulai sesi (422 image
+lama, token salah, 5xx, putus), urusan itu juga beralih ke panduan langkah dengan pesan jujur.
+
+Folder ini menjalankan worker Pendamping region `id` di laptop anggota (Docker Desktop di Windows/macOS, atau
+Docker Linux), dijangkau web di agent-vm hanya lewat Tailscale. Tanpa stealth/pemalsuan sidik jari, tanpa layanan CAPTCHA, tanpa proxy residensial: warga sendiri
 yang mengetik login/OTP/CAPTCHA, mengklik tantangan bila muncul, dan menekan Kirim/Selesai.
 
 ```
@@ -69,12 +89,14 @@ pendamping mendengarkan di 172.x.y.z:4330 (maks 1 sesi, TTL 15 menit, headed di 
 ## Sehari-hari
 
 ```sh
-bash deploy/worker-id/worker.sh sehat   # {"ok":true,"aktif":0,"maks":1,"menunggu":0} lewat IP Tailscale
+bash deploy/worker-id/worker.sh sehat   # {"ok":true,"aktif":0,"maks":1,"menunggu":0,"generik":true,"sha":"..."}
 bash deploy/worker-id/worker.sh down    # berhenti; Telunjuk Sakti kembali ke server; hanya situs id-only yang dipandu
 docker compose -p urusin-worker-id logs --tail 50 pendamping pendamping-edge
 ```
 
-Dari agent-vm (baca saja): `curl -fsS http://<IP Tailscale laptop>:4330/health`.
+Dari agent-vm (baca saja): `curl -fsS http://<IP Tailscale laptop>:4330/health`. Tanpa `"generik":true` =
+image lama (`worker.sh sehat` memperingatkannya): situs id-only dipandu sampai image diperbarui. `sha` = commit
+image (12 heks), bandingkan dengan produksi.
 
 Setelah laptop reboot: masuk (login) ke Windows dulu, tunggu Tailscale tersambung, lalu jalankan
 `bash deploy/worker-id/worker.sh up` (dan `sehat`). Docker Desktop bisa mulai sebelum IP Tailscale terpasang;
@@ -100,11 +122,42 @@ tidak pernah keluar laptop) dengan 32 byte acak, ditulis lewat env (bukan argume
   (bukan tempel di chat), lalu gabungkan ke `/opt/urusin/.env` (lead, dengan izin).
 - Rotasi: hapus `.env`, `init`, `up`, lalu ganti `token` worker ini di `PENDAMPING_WORKERS` web. Selama belum
   diganti, worker menjawab 401 ke web (`/health` tetap sehat karena tidak bertanda tangan): situs `id-utama`
-  langsung dicoba di server dan tetap jalan, sedangkan situs `id-only` mendapat 503 umum "sedang tidak tersedia"
-  (bukan mode dipandu, karena worker terlihat sehat) sampai token di web diganti. Warga tidak pernah melihat 401.
+  langsung dicoba di server dan tetap jalan, sedangkan urusan situs `id-only` beralih ke panduan langkah dengan
+  pesan jujur ("belum bisa membuka situs ini sekarang") sampai token di web diganti. Warga tidak pernah melihat 401.
 - Windows: `chmod 600` dari Git Bash TIDAK mengubah ACL NTFS. Simpan checkout di profil sendiri
   (`C:\Users\<nama>\...`, yang tidak terbaca akun lain), atau batasi berkasnya:
   `icacls deploy\worker-id\.env /inheritance:r /grant:r "%USERNAME%:F"` (ulangi untuk `.env.web-*`).
+
+## Perbarui image (laptop)
+
+Image laptop HARUS sama dengan produksi: image lama tidak mengenal portal id-only baru maupun Navigator generik
+(web lalu memandu urusan id-only, tidak memakai laptop). Perbarui setiap kali produksi dirilis, sebelum atau
+bersamaan dengan deploy web.
+
+1. Pastikan `.env` ada (`ls deploy/worker-id/.env`). Bila hilang (mis. worktree/checkout lama dihapus) tetapi
+   kontainer lama MASIH berjalan, pulihkan token yang sama dari env kontainer SEBELUM `down` (setelah `down`
+   env itu ikut hilang dan token harus dirotasi di web). Tanpa mencetak nilai:
+
+   ```sh
+   (umask 077; c=urusin-worker-id-pendamping-1
+    e() { docker inspect "$c" --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n "s/^$1=//p" | tr -d '\r'; }
+    printf 'DOMAIN=urusinai.web.id\nWORKER_ID=laptop-a\nWORKER_TAILSCALE_IP=%s\nWORKER_PORT=4330\nWORKER_TOKEN=%s\nWORKER_EDGE_TOKEN=%s\nPENDAMPING_MAX_SESSIONS=1\nPENDAMPING_DEBUG_TOKEN=\n' \
+      "$(tailscale ip -4 | head -n 1)" "$(e PENDAMPING_INTERNAL_TOKEN)" "$(e PENDAMPING_EDGE_TOKEN)" > deploy/worker-id/.env)
+   awk -F= '/TOKEN=/{print $1, length($2)}' deploy/worker-id/.env   # panjang saja: dua token 64
+   ```
+
+   Simpan cadangan `.env` di luar checkout (profil sendiri, bukan repo/chat).
+
+2. Pilih image yang SAMA dengan agent-vm: isi `PENDAMPING_IMAGE=ghcr.io/bynguts/urusin-pendamping@sha256:...`
+   di `.env` (digest dari `grep PENDAMPING_IMAGE /opt/urusin/.env`; `docker login ghcr.io` dengan PAT
+   `read:packages`), atau `worker.sh build` dari checkout yang `HEAD`-nya = commit produksi.
+3. `bash deploy/worker-id/worker.sh up` (compose `-p urusin-worker-id` mengganti kontainer lama; tidak perlu
+   `down` dulu), lalu `worker.sh sehat`: harus memuat `"generik":true` dan `sha` = commit produksi.
+4. Uji asap baca-saja (opsional, satu halaman per portal, jeda sopan): buka satu portal id-only sampai halaman
+   awal/login lewat kanal internal bertanda tangan, amati sekali (`pantau`), lalu akhiri. Tanpa login, isi,
+   atau kirim, dan jangan saat `aktif`/`menunggu` > 0 (slot warga).
+5. Dari web: `GET /api/pendamping/antrean` (`maks` = 2 + 1) dan buat urusan uji di salah satu kota id-only:
+   kartu rencana harus `semi` (bukan dipandu "jaringan Indonesia sedang tidak aktif").
 
 ## Produksi (agent-vm, dikerjakan lead dengan izin)
 

@@ -5,16 +5,21 @@ import {
   PendampingGalatSchema,
   SesiPendampingSchema,
   TiketPendampingResponseSchema,
+  type AksiSesiInternal,
+  type AmatiSesiInternal,
   type AntreanPendampingResponse,
   type BerkasSesiInternal,
   type IsiSesiInternal,
   type MulaiSesiInternal,
   type PemilikSesiInternal,
+  type PendampingKodeGalat,
+  type SelesaiSesiInternal,
   type SesiPendamping,
+  type TungguSesiInternal,
 } from '@urusin/contracts';
 import { getOfficialDomain } from '@urusin/core';
 import { egressFetch, type EgressFetch } from '@urusin/egress';
-import { redactForStorage, type UrusanRow } from '@urusin/harness';
+import { ADAPTER_GENERIK, redactForStorage, type UrusanRow } from '@urusin/harness';
 import { z, type ZodType } from 'zod';
 import { apiError, apiJson } from '#lib/server/http.js';
 import { SID_COOKIE } from '#lib/server/sesi.js';
@@ -196,7 +201,15 @@ export type Hasil<T> =
    * jawaban galat sah untuk warga; worker lain boleh dicoba (`mulaiSesi`). `putus`: tanpa jawaban sama sekali
    * (jaringan/timeout), jadi worker itu BISA saja sudah membuat sesinya.
    */
-  | { ok: false; response: Response; dipandu?: string; galatWorker?: true; putus?: true };
+  | {
+      ok: false;
+      response: Response;
+      dipandu?: string;
+      galatWorker?: true;
+      putus?: true;
+      /** Kode galat sah dari worker (bila ada), mis. `ADAPTER_TIDAK_ADA` dari worker ber-image lama. */
+      kode?: PendampingKodeGalat;
+    };
 
 const TIDAK_TERSEDIA = () =>
   apiError(
@@ -204,6 +217,11 @@ const TIDAK_TERSEDIA = () =>
     'LAYANAN_TIDAK_TERSEDIA',
     'Browser Pendamping sedang tidak tersedia. Coba lagi sebentar lagi.',
   );
+
+/** Worker berjaringan Indonesia sehat tetapi gagal memulai sesi (image lama, kanal ditolak, 5xx, putus). */
+export const PESAN_WILAYAH_GAGAL =
+  'Browser Pendamping berjaringan Indonesia belum bisa membuka situs ini sekarang. Kami beralih ke panduan ' +
+  'langkah: Anda membuka situsnya sendiri, kami pandu.';
 
 export const PESAN_WILAYAH =
   'Situs ini hanya bisa dibuka dari jaringan Indonesia, dan Browser Pendamping berjaringan Indonesia ' +
@@ -235,14 +253,27 @@ export function tandaInternal(
     .digest('hex');
 }
 
+/** Body permintaan internal yang ditandatangani (selain mulai sesi, selalu memuat pemilik). */
+export type BodyPemilik =
+  | PemilikSesiInternal
+  | IsiSesiInternal
+  | BerkasSesiInternal
+  | AksiSesiInternal
+  | AmatiSesiInternal
+  | TungguSesiInternal
+  | SelesaiSesiInternal;
+
+/** Batas waktu bawaan satu panggilan internal; long-poll `/internal/sesi/tunggu` memberi batasnya sendiri. */
+const BATAS_PANGGIL_MS = 15_000;
+
 /** Panggil API internal satu worker; galat diteruskan sebagai `{kode, pesanWarga}` tanpa detail internal. */
 export async function panggil<T>(
   cfg: PendampingTarget | null,
   path: string,
   schema: ZodType<T>,
-  body?: MulaiSesiInternal | PemilikSesiInternal | IsiSesiInternal | BerkasSesiInternal,
+  body?: MulaiSesiInternal | BodyPemilik,
   fetcher: EgressFetch = egressFetch,
-  timeoutMs = 15_000,
+  batasMs: number = BATAS_PANGGIL_MS,
 ): Promise<Hasil<T>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const metode = body === undefined ? 'GET' : 'POST';
@@ -261,7 +292,7 @@ export async function panggil<T>(
         'content-type': 'application/json',
       },
       ...(body === undefined ? {} : { body: isi }),
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: AbortSignal.timeout(batasMs),
     });
   } catch {
     return { ok: false, response: TIDAK_TERSEDIA(), galatWorker: true, putus: true };
@@ -276,7 +307,11 @@ export async function panggil<T>(
     if (kanalDitolak || res.status >= 500)
       return { ok: false, response: TIDAK_TERSEDIA(), galatWorker: true };
     if (!g.success) return { ok: false, response: TIDAK_TERSEDIA() };
-    return { ok: false, response: apiError(res.status, g.data.kode, g.data.pesanWarga) };
+    return {
+      ok: false,
+      response: apiError(res.status, g.data.kode, g.data.pesanWarga),
+      kode: g.data.kode,
+    };
   }
   const parsed = schema.safeParse(raw);
   return parsed.success
@@ -284,13 +319,23 @@ export async function panggil<T>(
     : { ok: false, response: TIDAK_TERSEDIA() };
 }
 
-// --- Kesehatan worker (GET /health publik: {ok, aktif, maks, menunggu}) ---
+// --- Kesehatan worker (GET /health publik: {ok, aktif, maks, menunggu, generik?, sha?}) ---
 
 const HealthSchema = z.object({
   ok: z.literal(true),
   aktif: z.number().int().nonnegative(),
   maks: z.number().int().positive(),
   menunggu: z.number().int().nonnegative(),
+  /**
+   * (Aditif) Worker menjalankan Navigator generik beserta portal wilayah registry-nya. Tidak ada pada worker
+   * `id` = image laptop lama: tidak dipakai untuk sesi generik maupun situs `id-only` (worker itu menolaknya 422).
+   */
+  generik: z.literal(true).optional(),
+  /** (Aditif) Commit image worker, hanya untuk operator. */
+  sha: z
+    .string()
+    .regex(/^[0-9a-f]{7,40}$/)
+    .optional(),
 });
 type Sehat = z.infer<typeof HealthSchema>;
 
@@ -305,6 +350,7 @@ export function resetBrokerPendamping(): void {
   kesehatan.clear();
   lokasi.clear();
   asalWsMemo = undefined;
+  jaringanId = undefined;
 }
 
 function ingatLokasi(urusanId: string, workerId: string): void {
@@ -348,7 +394,10 @@ export function butuhWilayahId(origin: string): boolean {
 /**
  * Syarat jaringan Indonesia dinilai pada origin EFEKTIF sesi. Mode Uji selalu dibuka di replika fixtures milik
  * kita (worker memetakan origin resmi ke replika, atau menolak bila replikanya tidak ada), jadi tak butuh IP
- * Indonesia; sesi akun warga di portal asli tetap butuh.
+ * Indonesia; sesi akun warga di portal asli tetap butuh. Syaratnya HANYA dari catatan registry yang terukur
+ * (probe nyata): `id-utama` = worker berjaringan Indonesia diutamakan (mis. interstitial Turnstile dari IP pusat
+ * data), `id-only` = wajib. Portal tanpa catatan tidak diutamakan ke worker laptop tim (ADR 0030): nilai Data
+ * Diri warga tidak ikut ke memori perangkat itu tanpa alasan terukur.
  */
 const aksesSesi = (origin: string, modeUji: boolean | undefined) =>
   modeUji === true ? undefined : aksesWilayah(origin);
@@ -361,17 +410,23 @@ const butuhWilayahSesi = (origin: string, modeUji: boolean | undefined) =>
  * - `id-utama`: worker `id` yang MASIH punya slot (beban < 1) lebih dulu; selain itu beban terendah (laptop
  *   penuh tidak membuat warga mengantre bila server lowong);
  * - lainnya: worker non-`id` lebih dulu (laptop dihemat), lalu beban terendah.
- * `id-only` hanya worker `id`. Kosong = tak ada worker sehat yang memenuhi syarat wilayah.
+ * `id-only` hanya worker `id`. Untuk sesi generik dan situs `id-only`, worker `id` (laptop, diperbarui terpisah
+ * dari produksi) hanya dipakai bila melaporkan `generik` di /health: image lama tidak memenuhi syarat, jadi
+ * `id-utama` jatuh ke server dan `id-only` dipandu (bukan gagal 422). Worker server dirilis bersama web, jadi
+ * tidak disyaratkan. Kosong = tak ada worker sehat yang memenuhi syarat.
  */
 async function kandidatWorker(
   cfg: PendampingConfig,
   akses: ReturnType<typeof aksesSesi>,
   urusanId: string,
   fetcher: EgressFetch,
+  generik = false,
 ): Promise<PendampingWorker[]> {
+  const perluGenerik = generik || akses === 'id-only';
   const kandidat = cfg.workers.filter((w) => akses !== 'id-only' || w.region === REGION_ID);
   const hidup = (await Promise.all(kandidat.map(async (w) => ({ w, s: await sehat(w, fetcher) })))).filter(
-    (x): x is { w: PendampingWorker; s: Sehat } => x.s !== null,
+    (x): x is { w: PendampingWorker; s: Sehat } =>
+      x.s !== null && !(perluGenerik && x.w.region === REGION_ID && x.s.generik !== true),
   );
   const lekat = (w: PendampingWorker) => Number(w.id !== lokasi.get(urusanId));
   const urutan = (w: PendampingWorker, s: Sehat) =>
@@ -385,6 +440,58 @@ async function kandidatWorker(
   return hidup.map((x) => x.w);
 }
 
+// --- Ketersediaan jaringan Indonesia untuk rute rencana (host `id-only`, harness `aturJaringanId`) ---
+
+const JARINGAN_ID_TTL_MS = 10_000;
+/** Lebih tua dari ini = dingin (proses tanpa pemanas latar): ditunggu, bukan dipakai apa adanya. */
+const JARINGAN_ID_DINGIN_MS = 60_000;
+let jaringanId: { waktu: number; siap: boolean } | undefined;
+let jaringanIdJalan: Promise<boolean> | undefined;
+
+/**
+ * Ada worker `id` sehat untuk host `id-only`? Pool dan pemeriksaan SAMA dengan `pilihWorker` (`kandidatWorker`
+ * dengan akses `id-only`, cache kesehatan per worker), hasilnya di-cache JARINGAN_ID_TTL_MS. Tanpa konfigurasi
+ * pendamping = false. Ditunggu sebelum keputusan rute (persetujuan rencana, wilayah, turn agen).
+ */
+export async function segarkanJaringanId(
+  cfg: PendampingConfig | null = pendampingConfig(),
+  fetcher: EgressFetch = egressFetch,
+): Promise<boolean> {
+  const umur = jaringanId ? Date.now() - jaringanId.waktu : Infinity;
+  if (jaringanId && umur < JARINGAN_ID_TTL_MS) return jaringanId.siap;
+  const jalan = (jaringanIdJalan ??= (async () => {
+    const siap = cfg ? (await kandidatWorker(cfg, 'id-only', '', fetcher)).length > 0 : false;
+    jaringanId = { waktu: Date.now(), siap };
+    return siap;
+  })().finally(() => (jaringanIdJalan = undefined)));
+  // Basi tetapi belum dingin: nilai terakhir dipakai, penyegaran berjalan di latar (tanpa latensi per turn
+  // saat worker ID mati). Sesi id-only tetap diperiksa ulang saat dimulai (mulaiSesi), jadi tetap jujur.
+  if (jaringanId && umur < JARINGAN_ID_DINGIN_MS) {
+    jalan.catch(() => {});
+    return jaringanId.siap;
+  }
+  return jalan;
+}
+
+let pemanasJaringanId: ReturnType<typeof setInterval> | undefined;
+/**
+ * Panaskan cache jaringan Indonesia saat start lalu segarkan berkala di latar (`unref`, tidak menahan proses):
+ * keputusan rute membaca nilai sinkron yang segar, termasuk turn pertama urusan baru.
+ */
+export function panaskanJaringanId(): void {
+  if (pemanasJaringanId) return;
+  void segarkanJaringanId().catch(() => {});
+  pemanasJaringanId = setInterval(() => void segarkanJaringanId().catch(() => {}), JARINGAN_ID_TTL_MS);
+  pemanasJaringanId.unref?.();
+}
+
+/** Nilai terakhir, sinkron (untuk `aturJaringanId`); basi atau belum ada = disegarkan di latar. */
+export function jaringanIdSiap(): boolean {
+  if (!jaringanId || Date.now() - jaringanId.waktu >= JARINGAN_ID_TTL_MS)
+    void segarkanJaringanId().catch(() => {});
+  return jaringanId?.siap ?? false;
+}
+
 /** Worker pertama untuk sesi baru (lihat `kandidatWorker`); `null` = tak ada yang sehat dan memenuhi syarat. */
 export async function pilihWorker(
   cfg: PendampingConfig,
@@ -392,15 +499,18 @@ export async function pilihWorker(
   urusanId: string,
   fetcher: EgressFetch = egressFetch,
   modeUji?: boolean,
+  generik = false,
 ): Promise<PendampingWorker | null> {
-  return (await kandidatWorker(cfg, aksesSesi(origin, modeUji), urusanId, fetcher))[0] ?? null;
+  return (await kandidatWorker(cfg, aksesSesi(origin, modeUji), urusanId, fetcher, generik))[0] ?? null;
 }
 
 /**
- * POST /internal/sesi ke worker yang tepat. `dipandu` HANYA untuk situs `id-only` tanpa worker `id` yang sehat;
- * situs lain (termasuk `id-utama`) hanya gagal bila tidak ada worker sehat sama sekali. Bila start gagal di sisi
- * worker (jaringan/timeout, 401/403 kanal internal, 5xx) kandidat sehat berikutnya dicoba, KECUALI situs
- * `id-only` (tidak pernah jatuh ke worker lain; galat dari worker `id` diteruskan apa adanya).
+ * POST /internal/sesi ke worker yang tepat. `dipandu` HANYA untuk situs `id-only`: tanpa worker `id` sehat yang
+ * mampu (`generik` di /health), ATAU worker itu gagal memulai (jaringan/timeout, 401/403 kanal internal, 5xx,
+ * 422 `ADAPTER_TIDAK_ADA` dari image lama). Situs lain (termasuk `id-utama`) hanya gagal bila tidak ada worker
+ * sehat sama sekali; start gagal di sisi worker = kandidat sehat berikutnya dicoba. `id-only` tidak pernah jatuh
+ * ke worker lain (IP non-Indonesia ditolak situsnya); galat sah untuk warga (409/403 milik, antrean penuh)
+ * diteruskan apa adanya.
  */
 export async function mulaiSesi(
   cfg: PendampingConfig | null,
@@ -409,7 +519,7 @@ export async function mulaiSesi(
 ): Promise<Hasil<SesiPendamping>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const akses = aksesSesi(body.origin, body.modeUji);
-  const daftar = await kandidatWorker(cfg, akses, body.urusanId, fetcher);
+  const daftar = await kandidatWorker(cfg, akses, body.urusanId, fetcher, body.adapterId === ADAPTER_GENERIK);
   if (daftar.length === 0)
     return butuhWilayahSesi(body.origin, body.modeUji)
       ? {
@@ -437,6 +547,12 @@ export async function mulaiSesi(
         return r;
       }
       if (r.putus) yatim.push(w);
+      if (akses === 'id-only' && (r.galatWorker || r.kode === 'ADAPTER_TIDAK_ADA'))
+        return {
+          ok: false,
+          response: apiError(503, 'PENDAMPING_WILAYAH_TIDAK_TERSEDIA', PESAN_WILAYAH_GAGAL),
+          dipandu: PESAN_WILAYAH_GAGAL,
+        };
       if (!r.galatWorker) return r;
     }
     return r;
@@ -495,8 +611,9 @@ export async function panggilPemilik<T>(
   path: string,
   schema: ZodType<T>,
   /** Body permintaan; selain pemilik boleh membawa isi (jalur isi) yang HANYA dikirim ke worker pemegang sesi. */
-  owner: PemilikSesiInternal | IsiSesiInternal | BerkasSesiInternal,
+  owner: BodyPemilik,
   fetcher: EgressFetch = egressFetch,
+  batasMs: number = BATAS_PANGGIL_MS,
 ): Promise<Hasil<T>> {
   if (!cfg) return { ok: false, response: TIDAK_TERSEDIA() };
   const pemilik: PemilikSesiInternal = { urusanId: owner.urusanId, sidHash: owner.sidHash };
@@ -504,7 +621,7 @@ export async function panggilPemilik<T>(
   const tercatat = cfg.workers.find((w) => w.id === lokasi.get(owner.urusanId));
   let tidakAda: Hasil<T> | null = null;
   if (tercatat) {
-    const r = await panggil(target(tercatat), path, schema, owner, fetcher);
+    const r = await panggil(target(tercatat), path, schema, owner, fetcher, batasMs);
     if (r.ok || r.response.status !== 404) return r;
     tidakAda = r;
     lokasi.delete(owner.urusanId);
@@ -529,7 +646,7 @@ export async function panggilPemilik<T>(
   if (pemegang) {
     ingatLokasi(owner.urusanId, pemegang.w.id);
     if (path === '/internal/sesi/status') return pemegang.r as Hasil<T>;
-    return panggil(target(pemegang.w), path, schema, owner, fetcher);
+    return panggil(target(pemegang.w), path, schema, owner, fetcher, batasMs);
   }
   const g = temu.find((x) => !x.r.ok && x.r.response.status === 404);
   return g ? (g.r as Hasil<T>) : (tidakAda ?? { ok: false, response: TIDAK_TERSEDIA() });

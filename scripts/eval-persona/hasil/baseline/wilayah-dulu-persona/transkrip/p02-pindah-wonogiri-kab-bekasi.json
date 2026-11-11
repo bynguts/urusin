@@ -1,0 +1,993 @@
+{
+  "persona": "p02-pindah-wonogiri-kab-bekasi",
+  "urusanId": "u_7f251d66774a1c7da51ef026f8903a12",
+  "wilayahPerangkat": "3312",
+  "kodeUrusan": "3312",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Mas, KTP saya masih Wonogiri tapi saya sudah 2 tahun kerja dan ngontrak di Cikarang. Mau pindah domisili biar KTP-nya Bekasi, gimana caranya?",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3312",
+            "nama": "Kabupaten Wonogiri"
+          },
+          "status": "usulan",
+          "sumber": "pilihan",
+          "type": "wilayah",
+          "seq": 1,
+          "at": "2026-11-10T07:42:55.449Z",
+          "chainHead": "0e10d84c0a1c…"
+        },
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": null,
+          "version": 2,
+          "type": "state",
+          "seq": 2,
+          "at": "2026-11-10T07:42:55.451Z",
+          "chainHead": "88474ff3c21b…"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T07:42:55.452Z",
+          "chainHead": "1609c246ad29…"
+        },
+        {
+          "delta": "KTP Anda saat ini terdaftar di Kabupaten Wonogiri. Cikarang berada di Kabupaten Bekasi—apakah tujuan pindah Anda Kabupaten Bekasi, bukan Kota Bekasi?",
+          "type": "assistant_text",
+          "seq": 4,
+          "at": "2026-11-10T07:43:05.129Z",
+          "chainHead": "5d12f109f24d…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_1a275e1d-0962-42f5-a6f2-cfa3332f250b",
+          "version": 3,
+          "type": "done",
+          "seq": 5,
+          "at": "2026-11-10T07:43:05.131Z",
+          "chainHead": "7e5fc8d60163…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 9785
+    },
+    {
+      "peran": "warga",
+      "jenis": "klik",
+      "teks": "Ya, betul",
+      "http": {
+        "status": 200
+      },
+      "alasan": "KTP saya memang terdaftar di Kabupaten Wonogiri."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3312",
+            "nama": "Kabupaten Wonogiri"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 6,
+          "at": "2026-11-10T07:43:07.909Z",
+          "chainHead": "63e1a05b6e59…"
+        }
+      ],
+      "status": "selesai",
+      "aksi": "Ya, betul",
+      "ms": 1852
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Iya, tujuan saya Kabupaten Bekasi, tepatnya di Pasirsari, Cikarang Selatan. Bisa diurus dari Bekasi atau online nggak ya? Saya susah izin kerja buat pulang ke Wonogiri.",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Perlu memastikan tujuan pindah dan menanyakan cara mengurus tanpa pulang ke Wonogiri."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 7,
+          "at": "2026-11-10T07:43:13.462Z",
+          "chainHead": "ac5b18f54f25…"
+        },
+        {
+          "label": "Menjalankan wilayah__tetapkan…",
+          "toolName": "wilayah__tetapkan",
+          "type": "progress",
+          "seq": 8,
+          "at": "2026-11-10T07:43:19.539Z",
+          "chainHead": "97896ea4b103…"
+        },
+        {
+          "domisili": {
+            "kodeKabKota": "3216",
+            "nama": "Kabupaten Bekasi"
+          },
+          "ktp": {
+            "kodeKabKota": "3312",
+            "nama": "Kabupaten Wonogiri"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "tujuan": {
+            "kodeKabKota": "3216",
+            "nama": "Kabupaten Bekasi"
+          },
+          "type": "wilayah",
+          "seq": 9,
+          "at": "2026-11-10T07:43:19.542Z",
+          "chainHead": "b871a5fff53c…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 10,
+          "at": "2026-11-10T07:43:19.544Z",
+          "chainHead": "0e3e3e697b3e…"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 11,
+          "at": "2026-11-10T07:43:20.235Z",
+          "chainHead": "496fea19e23a…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T07:43:20.902Z",
+          "chainHead": "5601fc52e337…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 13,
+          "at": "2026-11-10T07:43:25.076Z",
+          "chainHead": "d8748172e561…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 14,
+          "at": "2026-11-10T07:43:39.954Z",
+          "chainHead": "a3ffb2b670fb…"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › persyaratan",
+                  "kutipanPersis": "2. Perpindahan WNI antar Kab/Kota/Provinsi :\na. Fotocopy KK",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-skpwni#0",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni#:~:text=2.%20Perpindahan%20WNI%20antar%20Kab%2FKota%2FProvinsi%20%3A%20a.%20Fotocopy%20KK",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni",
+                  "verifiedAt": "2026-11-08T18:48:51.595Z"
+                }
+              ],
+              "teks": "Untuk pindah antar kabupaten, persyaratan SKPWNI Wonogiri yang terkonfirmasi adalah fotokopi kartu keluarga (KK)."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "2. Daring (Online)\na. Pemohon mengisi Formulir F-1.03 dan mengirim berkas persyaratan secara Online, untuk cetak mandiri pemohon wajib mengisi alamat email",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-skpwni#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni#:~:text=2.%20Daring%20%28Online%29%20a.,wajib%20mengisi%20alamat%20email",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni",
+                  "verifiedAt": "2026-11-08T18:48:51.595Z"
+                }
+              ],
+              "teks": "Wonogiri menyediakan pengajuan SKPWNI secara daring: pemohon mengisi formulir F-1.03 dan mengirim berkas persyaratan secara online."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "untuk cetak mandiri pemohon wajib mengisi alamat email",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-skpwni#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni#:~:text=untuk%20cetak%20mandiri%20pemohon%20wajib%20mengisi%20alamat%20email",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni",
+                  "verifiedAt": "2026-11-08T18:48:51.595Z"
+                },
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "Apabila pemohon memilih cetak mandiri melalui email pribadi maka SKPWNI dapat dicetak secara mandiri oleh pemohon menggunakan kertas HVS ukuran A4 80 gram",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-skpwni#2",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni#:~:text=Apabila%20pemohon%20memilih%20cetak,ukuran%20A4%2080%20gram",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni",
+                  "verifiedAt": "2026-11-08T18:48:51.595Z"
+                }
+              ],
+              "teks": "Untuk cetak mandiri SKPWNI Wonogiri, pemohon mengisi alamat email; SKPWNI dapat dicetak pada kertas HVS A4 80 gram."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › persyaratan",
+                  "kutipanPersis": "1. Perpindahan WNI dalam 1 Kab/Kota :\na. Fotocopy KK;\nb. Fotocopy KK yang akan ditumpangi (Jika akan menumpang KK);\nc. Dalam hal penduduk menumpang KK, menyewa rumah, kontrak dan kost perlu menyerahkan surat pernyataan tidak keberatan dari pemilik rumah;\n2. Perpindahan WNI antar Kab/Kota/Provinsi :\na. Fotocopy KK",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-skpwni#0",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni#:~:text=1.%20Perpindahan%20WNI%20dalam,%3A%20a.%20Fotocopy%20KK",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni",
+                  "verifiedAt": "2026-11-08T18:48:51.595Z"
+                }
+              ],
+              "teks": "Sumber Wonogiri meminta surat pernyataan tidak keberatan dari pemilik rumah bagi pengontrak dalam ketentuan pindah dalam satu kabupaten/kota; ketentuan itu tidak boleh langsung dianggap sebagai aturan Bekasi untuk kasus pindah antar kabupaten ini."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 15,
+          "at": "2026-11-10T07:43:39.955Z",
+          "chainHead": "0a272f80235b…"
+        },
+        {
+          "catatan": "Pindah dari Kabupaten Wonogiri ke Kabupaten Bekasi: surat pindah diurus di asal, lapor datang di tujuan. Ketersediaan layanan online diperiksa per situs sebelum dijanjikan.",
+          "langkah": [
+            {
+              "bawa": [],
+              "id": "skpwni",
+              "jenis": "online-manual",
+              "judul": "Urus surat pindah (SKPWNI) di Disdukcapil Kab. Wonogiri",
+              "lokasi": "disdukcapil",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Telunjuk Sakti",
+                  "url": "https://telunjuksakti.wonogirikab.go.id/"
+                },
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Penerbitan Surat Keterangan Pindah WNI (SKPWNI)",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni"
+                },
+                {
+                  "instansi": "Pemerintah Republik Indonesia",
+                  "judul": "Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil",
+                  "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018"
+                },
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Standar Pelayanan dan Persyaratan Disdukcapil Wonogiri - Surat Keterangan Pindah Warga Negara Indonesia (SKPWNI)",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan"
+                }
+              ]
+            },
+            {
+              "bawa": [],
+              "id": "skdwni",
+              "jenis": "online-manual",
+              "judul": "Lapor kedatangan (SKDWNI) di Disdukcapil Kab. Bekasi",
+              "lokasi": "disdukcapil",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bekasi",
+                  "judul": "SITEPAK",
+                  "url": "https://sitepak.bekasikab.go.id/"
+                },
+                {
+                  "instansi": "Pemerintah Republik Indonesia",
+                  "judul": "Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil",
+                  "url": "https://peraturan.go.id/id/perpres-no-96-tahun-2018"
+                }
+              ]
+            },
+            {
+              "bawa": [],
+              "id": "kk",
+              "jenis": "online-manual",
+              "judul": "Terima Kartu Keluarga baru dari Disdukcapil Kab. Bekasi",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bekasi",
+                  "judul": "SITEPAK",
+                  "url": "https://sitepak.bekasikab.go.id/"
+                }
+              ]
+            },
+            {
+              "bawa": [
+                "KTP-el lama",
+                "Kartu Keluarga terbaru"
+              ],
+              "id": "ktp-el",
+              "jenis": "offline",
+              "judul": "Perbarui KTP-el di Disdukcapil Kab. Bekasi",
+              "lokasi": "disdukcapil",
+              "sumber": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Bekasi",
+                  "judul": "SITEPAK",
+                  "url": "https://sitepak.bekasikab.go.id/"
+                }
+              ]
+            }
+          ],
+          "ringkasan": "Pindah · Kab. Wonogiri → Kab. Bekasi",
+          "tier": "dipandu",
+          "wilayah": {
+            "domisili": {
+              "kodeKabKota": "3216",
+              "nama": "Kabupaten Bekasi"
+            },
+            "ktp": {
+              "kodeKabKota": "3312",
+              "nama": "Kabupaten Wonogiri"
+            },
+            "tujuan": {
+              "kodeKabKota": "3216",
+              "nama": "Kabupaten Bekasi"
+            }
+          },
+          "type": "plan_card",
+          "seq": 16,
+          "at": "2026-11-10T07:43:39.967Z",
+          "chainHead": "f05c8b3af370…"
+        },
+        {
+          "dari": "MEMAHAMI",
+          "state": "RENCANA_DIUSULKAN",
+          "tier": "semi",
+          "version": 7,
+          "type": "state",
+          "seq": 17,
+          "at": "2026-11-10T07:43:39.970Z",
+          "chainHead": "cc5fa7c403c9…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_ce7511b9-efc4-406a-817d-4ff9e3f4b1e6",
+          "version": 7,
+          "type": "done",
+          "seq": 18,
+          "at": "2026-11-10T07:43:39.976Z",
+          "chainHead": "60e487186fd0…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 26522
+    },
+    {
+      "peran": "warga",
+      "jenis": "klik",
+      "teks": "Setujui rencana",
+      "http": {
+        "status": 200
+      },
+      "alasan": "Rencananya sesuai tujuan pindah dan menyediakan langkah online yang saya butuhkan."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "dari": "RENCANA_DIUSULKAN",
+          "state": "RENCANA_DISETUJUI",
+          "tier": "semi",
+          "version": 8,
+          "type": "state",
+          "seq": 19,
+          "at": "2026-11-10T07:43:42.444Z",
+          "chainHead": "27ce37c0bc08…"
+        },
+        {
+          "label": "Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.",
+          "type": "progress",
+          "seq": 20,
+          "at": "2026-11-10T07:43:42.444Z",
+          "chainHead": "25af676dd66b…"
+        }
+      ],
+      "status": "selesai",
+      "aksi": "Setujui rencana",
+      "ms": 1367
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Mas, buat ngajuin surat pindahnya di Telunjuk Sakti itu langkahnya gimana? Terus nanti lapor datang di Bekasi perlu bawa atau unggah apa aja, ya? Saya ngontrak soalnya.",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya masih perlu tahu cara mengajukan surat pindah dan persyaratan lapor datang di Bekasi."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 21,
+          "at": "2026-11-10T07:43:50.799Z",
+          "chainHead": "6b70ac6e954a…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 22,
+          "at": "2026-11-10T07:43:57.652Z",
+          "chainHead": "854345f098ad…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 23,
+          "at": "2026-11-10T07:43:58.480Z",
+          "chainHead": "45790171c171…"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 24,
+          "at": "2026-11-10T07:43:59.378Z",
+          "chainHead": "ea832d66f85e…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 25,
+          "at": "2026-11-10T07:44:04.421Z",
+          "chainHead": "7770cff9b26f…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 26,
+          "at": "2026-11-10T07:44:17.989Z",
+          "chainHead": "a08908b2e726…"
+        },
+        {
+          "kalimatTetap": "Keputusan ada di petugas instansi terkait.",
+          "klaim": [
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › persyaratan",
+                  "kutipanPersis": "2. Perpindahan WNI antar Kab/Kota/Provinsi :\na. Fotocopy KK",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-skpwni#0",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni#:~:text=2.%20Perpindahan%20WNI%20antar%20Kab%2FKota%2FProvinsi%20%3A%20a.%20Fotocopy%20KK",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni",
+                  "verifiedAt": "2026-11-08T18:48:51.595Z"
+                }
+              ],
+              "teks": "Untuk pindah antar kabupaten, kota, atau provinsi dari Wonogiri, persyaratan yang tercantum adalah fotokopi KK."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "2. Daring (Online)\na. Pemohon mengisi Formulir F-1.03 dan mengirim berkas persyaratan secara Online",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-skpwni#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni#:~:text=2.%20Daring%20%28Online%29%20a.,berkas%20persyaratan%20secara%20Online",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni",
+                  "verifiedAt": "2026-11-08T18:48:51.595Z"
+                }
+              ],
+              "teks": "Untuk pengajuan SKPWNI secara daring di Wonogiri, isi formulir F-1.03 dan kirim berkas persyaratan secara online."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "untuk cetak mandiri pemohon wajib mengisi alamat email",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-skpwni#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni#:~:text=untuk%20cetak%20mandiri%20pemohon%20wajib%20mengisi%20alamat%20email",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni",
+                  "verifiedAt": "2026-11-08T18:48:51.595Z"
+                }
+              ],
+              "teks": "Jika memilih cetak mandiri, pemohon wajib mengisi alamat email."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "Front Office meneliti kelengkapan berkas persyaratan. Jika sesuai dilanjutkan ke proses input data. Jika tidak sesuai, berkas dikembalikan kepada pemohon dan akan mendapatkan SMS pembatalan",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-skpwni#1",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni#:~:text=Indonesia%20%28SKPWNI%29%3B%20c.-,Front%20Office%20meneliti%20kelengkapan,akan%20mendapatkan%20SMS%20pembatalan",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni",
+                  "verifiedAt": "2026-11-08T18:48:51.595Z"
+                }
+              ],
+              "teks": "Petugas memeriksa berkas; jika tidak sesuai, berkas dikembalikan dan pemohon mendapat SMS pembatalan."
+            },
+            {
+              "kutipan": [
+                {
+                  "instansi": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+                  "judul": "Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur",
+                  "kutipanPersis": "Pemohon mendapatkan SMS pencetakan/pengambilan;\nh. Pemohon mengambil Surat Keterangan Pindah Warga Negara Indonesia (SKPWNI) di loket online. Apabila pemohon memilih cetak mandiri melalui email pribadi maka SKPWNI dapat dicetak secara mandiri oleh pemohon menggunakan kertas HVS ukuran A4 80 gram",
+                  "perluDicekUlang": false,
+                  "refId": "wonogiri-skpwni#2",
+                  "textFragmentUrl": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni#:~:text=Pemohon%20mendapatkan%20SMS%20pencetakan%2Fpengambilan%3B,ukuran%20A4%2080%20gram",
+                  "url": "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni",
+                  "verifiedAt": "2026-11-08T18:48:51.595Z"
+                }
+              ],
+              "teks": "Setelah selesai, pemohon mendapat SMS pencetakan atau pengambilan; SKPWNI dapat diambil di loket online atau dicetak mandiri jika memilih layanan tersebut."
+            }
+          ],
+          "klaimDibuang": 0,
+          "type": "grounded_answer",
+          "seq": 27,
+          "at": "2026-11-10T07:44:17.990Z",
+          "chainHead": "cbe47ddf4ca7…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_67a11b0d-4f08-4f82-924b-0141018ba1bd",
+          "version": 9,
+          "type": "done",
+          "seq": 28,
+          "at": "2026-11-10T07:44:17.998Z",
+          "chainHead": "f703c2f5ca3c…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 27209
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Oke Mas, kalau lapor datang di Bekasi lewat SITEPAK itu perlu unggah apa aja? Karena saya ngontrak, perlu surat dari pemilik rumah juga nggak?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Persyaratan lapor datang di Bekasi untuk pengontrak belum dijawab."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 29,
+          "at": "2026-11-10T07:44:21.990Z",
+          "chainHead": "52baf314716a…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 30,
+          "at": "2026-11-10T07:44:26.652Z",
+          "chainHead": "9c61febd0c47…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 31,
+          "at": "2026-11-10T07:44:30.387Z",
+          "chainHead": "443ff4c1027c…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 32,
+          "at": "2026-11-10T07:44:33.950Z",
+          "chainHead": "1ea443994f58…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri",
+              "url": "https://telunjuksakti.wonogirikab.go.id/"
+            },
+            {
+              "nama": "Kabupaten Wonogiri",
+              "url": "https://telunjuksakti.wonogirikab.go.id"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 33,
+          "at": "2026-11-10T07:44:33.950Z",
+          "chainHead": "d32a63906d5f…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_c72e03fb-8d3f-43fc-aaba-1c1d9a991150",
+          "version": 10,
+          "type": "done",
+          "seq": 34,
+          "at": "2026-11-10T07:44:33.953Z",
+          "chainHead": "4dc6bc0d2974…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11969
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Mas, yang saya tanyakan lapor datang di Kabupaten Bekasi, kok disuruh tanya ke Wonogiri? Bisa kasih kontak Disdukcapil Kabupaten Bekasi yang bisa saya hubungi buat tanya berkas dan surat dari pemilik kontrakan?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Arahan ke Wonogiri tidak menjawab pertanyaan tentang persyaratan lapor datang di Bekasi."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 35,
+          "at": "2026-11-10T07:44:37.349Z",
+          "chainHead": "89f7c4fcce16…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 36,
+          "at": "2026-11-10T07:44:41.080Z",
+          "chainHead": "0afad0dd91c2…"
+        },
+        {
+          "delta": "Maaf, Mas benar. Untuk **lapor datang dan berkas kontrakan**, yang perlu ditanya adalah Disdukcapil **Kabupaten Bekasi**, bukan Wonogiri.\n\nSaya belum menemukan nomor telepon atau WhatsApp Disdukcapil Kabupaten Bekasi yang bisa saya pastikan resmi, jadi saya tidak mau menebak. Mas bisa mulai dari kanal resminya, [SITEPAK Kabupaten Bekasi](https://sitepak.bekasikab.go.id/), dan melihat informasi kontak atau bantuan yang tercantum di sana.\n\nSaat menghubungi petugas, Mas bisa bertanya:\n\n> “Saya pindah datang dari Wonogiri dan mengontrak di Pasirsari. Dokumen apa saja yang harus diunggah di SITEPAK? Apakah perlu surat tidak keberatan dari pemilik kontrakan, dan apakah ada format khusus?”\n\nSaya juga belum bisa memastikan bahwa surat pemilik kontrakan wajib untuk Bekasi; aturan Wonogiri tidak bisa dijadikan patokan untuk itu.",
+          "type": "assistant_text",
+          "seq": 37,
+          "at": "2026-11-10T07:44:48.803Z",
+          "chainHead": "5562cba73a68…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_7269f611-d44b-4567-af1d-36676786c9b7",
+          "version": 11,
+          "type": "done",
+          "seq": 38,
+          "at": "2026-11-10T07:44:48.807Z",
+          "chainHead": "7ef1fd848a54…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11466
+    }
+  ],
+  "layar": [
+    "Warga: Mas, KTP saya masih Wonogiri tapi saya sudah 2 tahun kerja dan ngontrak di Cikarang. Mau pindah domisili biar KTP-nya Bekasi, gimana caranya?",
+    "[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Wonogiri? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)\nUrusin: KTP Anda saat ini terdaftar di Kabupaten Wonogiri. Cikarang berada di Kabupaten Bekasi—apakah tujuan pindah Anda Kabupaten Bekasi, bukan Kota Bekasi?",
+    "Warga menekan [Ya, betul]",
+    "(sistem) Wilayah KTP: Kabupaten Wonogiri",
+    "Warga: Iya, tujuan saya Kabupaten Bekasi, tepatnya di Pasirsari, Cikarang Selatan. Bisa diurus dari Bekasi atau online nggak ya? Saya susah izin kerja buat pulang ke Wonogiri.",
+    "(sistem) Wilayah KTP: Kabupaten Wonogiri · pindah ke Kabupaten Bekasi · tinggal di Kabupaten Bekasi\n[JAWABAN BERSUMBER]\n  - Untuk pindah antar kabupaten, persyaratan SKPWNI Wonogiri yang terkonfirmasi adalah fotokopi kartu keluarga (KK).\n    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)\n  - Wonogiri menyediakan pengajuan SKPWNI secara daring: pemohon mengisi formulir F-1.03 dan mengirim berkas persyaratan secara online.\n    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)\n  - Untuk cetak mandiri SKPWNI Wonogiri, pemohon mengisi alamat email; SKPWNI dapat dicetak pada kertas HVS A4 80 gram.\n    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni; Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)\n  - Sumber Wonogiri meminta surat pernyataan tidak keberatan dari pemilik rumah bagi pengontrak dalam ketentuan pindah dalam satu kabupaten/kota; ketentuan itu tidak boleh langsung dianggap sebagai aturan Bekasi untuk kasus pindah antar kabupaten ini.\n    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)\n  Keputusan ada di petugas instansi terkait.\n[KARTU RENCANA] Pindah · Kab. Wonogiri → Kab. Bekasi\n  Wilayah KTP: Kabupaten Wonogiri · pindah ke Kabupaten Bekasi · tinggal di Kabupaten Bekasi (tingkat dipandu)\n  Catatan: Pindah dari Kabupaten Wonogiri ke Kabupaten Bekasi: surat pindah diurus di asal, lapor datang di tujuan. Ketersediaan layanan online diperiksa per situs sebelum dijanjikan.\n  1. Urus surat pindah (SKPWNI) di Disdukcapil Kab. Wonogiri [online, disdukcapil]\n     Sumber: Telunjuk Sakti (https://telunjuksakti.wonogirikab.go.id/); Penerbitan Surat Keterangan Pindah WNI (SKPWNI) (https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni); Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018); Standar Pelayanan dan Persyaratan Disdukcapil Wonogiri - Surat Keterangan Pindah Warga Negara Indonesia (SKPWNI) (https://disdukcapil.wonogirikab.go.id/layanan)\n  2. Lapor kedatangan (SKDWNI) di Disdukcapil Kab. Bekasi [online, disdukcapil]\n     Sumber: SITEPAK (https://sitepak.bekasikab.go.id/); Perpres No. 96 Tahun 2018 tentang Persyaratan dan Tata Cara Pendaftaran Penduduk dan Pencatatan Sipil (https://peraturan.go.id/id/perpres-no-96-tahun-2018)\n  3. Terima Kartu Keluarga baru dari Disdukcapil Kab. Bekasi [online]\n     Sumber: SITEPAK (https://sitepak.bekasikab.go.id/)\n  4. Perbarui KTP-el di Disdukcapil Kab. Bekasi [datang langsung, disdukcapil]\n     Bawa: KTP-el lama, Kartu Keluarga terbaru\n     Sumber: SITEPAK (https://sitepak.bekasikab.go.id/)",
+    "Warga menekan [Setujui rencana]",
+    "(status: Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.)",
+    "Warga: Mas, buat ngajuin surat pindahnya di Telunjuk Sakti itu langkahnya gimana? Terus nanti lapor datang di Bekasi perlu bawa atau unggah apa aja, ya? Saya ngontrak soalnya.",
+    "[JAWABAN BERSUMBER]\n  - Untuk pindah antar kabupaten, kota, atau provinsi dari Wonogiri, persyaratan yang tercantum adalah fotokopi KK.\n    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › persyaratan — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)\n  - Untuk pengajuan SKPWNI secara daring di Wonogiri, isi formulir F-1.03 dan kirim berkas persyaratan secara online.\n    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)\n  - Jika memilih cetak mandiri, pemohon wajib mengisi alamat email.\n    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)\n  - Petugas memeriksa berkas; jika tidak sesuai, berkas dikembalikan dan pemohon mendapat SMS pembatalan.\n    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)\n  - Setelah selesai, pemohon mendapat SMS pencetakan atau pengambilan; SKPWNI dapat diambil di loket online atau dicetak mandiri jika memilih layanan tersebut.\n    (sumber: Pelayanan Penerbitan Surat Keterangan Pindah Warga Negara Indonesia (Skpwni) (Standar Pelayanan Disdukcapil Wonogiri) - PELAYANAN PENERBITAN SURAT KETERANGAN PINDAH WARGA NEGARA INDONESIA (SKPWNI) › sistem, mekanisme, dan prosedur — Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri, https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni)\n  Keputusan ada di petugas instansi terkait.",
+    "Warga: Oke Mas, kalau lapor datang di Bekasi lewat SITEPAK itu perlu unggah apa aja? Karena saya ngontrak, perlu surat dari pemilik rumah juga nggak?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/\n  - Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id",
+    "Warga: Mas, yang saya tanyakan lapor datang di Kabupaten Bekasi, kok disuruh tanya ke Wonogiri? Bisa kasih kontak Disdukcapil Kabupaten Bekasi yang bisa saya hubungi buat tanya berkas dan surat dari pemilik kontrakan?",
+    "Urusin: Maaf, Mas benar. Untuk **lapor datang dan berkas kontrakan**, yang perlu ditanya adalah Disdukcapil **Kabupaten Bekasi**, bukan Wonogiri.\n\nSaya belum menemukan nomor telepon atau WhatsApp Disdukcapil Kabupaten Bekasi yang bisa saya pastikan resmi, jadi saya tidak mau menebak. Mas bisa mulai dari kanal resminya, [SITEPAK Kabupaten Bekasi](https://sitepak.bekasikab.go.id/), dan melihat informasi kontak atau bantuan yang tercantum di sana.\n\nSaat menghubungi petugas, Mas bisa bertanya:\n\n> “Saya pindah datang dari Wonogiri dan mengontrak di Pasirsari. Dokumen apa saja yang harus diunggah di SITEPAK? Apakah perlu surat tidak keberatan dari pemilik kontrakan, dan apakah ada format khusus?”\n\nSaya juga belum bisa memastikan bahwa surat pemilik kontrakan wajib untuk Bekasi; aturan Wonogiri tidak bisa dijadikan patokan untuk itu."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": true,
+    "catatan": "Sudah tahu langkah berikutnya untuk mengecek kontak resmi di SITEPAK dan menanyakan berkas kontrakan ke petugas Bekasi."
+  },
+  "ms": 118822,
+  "giliranWarga": 7,
+  "nilai": {
+    "persona": "p02-pindah-wonogiri-kab-bekasi",
+    "judul": "KTP Wonogiri, kerja di Cikarang, pindah domisili ke Kab. Bekasi",
+    "urusanId": "u_7f251d66774a1c7da51ef026f8903a12",
+    "wilayahPerangkat": "3312",
+    "kodeUrusan": "3312",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": true,
+      "catatan": "Sudah tahu langkah berikutnya untuk mengecek kontak resmi di SITEPAK dan menanyakan berkas kontrakan ke petugas Bekasi."
+    },
+    "giliranWarga": 7,
+    "ms": 118822,
+    "url": [
+      "https://disdukcapil.wonogirikab.go.id/layanan/pelayanan-penerbitan-surat-keterangan-pindah-warga-negara-indonesia-skpwni",
+      "https://telunjuksakti.wonogirikab.go.id/",
+      "https://peraturan.go.id/id/perpres-no-96-tahun-2018",
+      "https://disdukcapil.wonogirikab.go.id/layanan",
+      "https://sitepak.bekasikab.go.id/",
+      "https://telunjuksakti.wonogirikab.go.id"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": true,
+        "bukti": "wilayah ditetapkan warga sebelum rencana"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "langkah 4: buntu, tidak ada yang tampil"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": true,
+        "bukti": "Cikarang berada di Kabupaten Bekasi—apakah tujuan pindah Anda Kabupaten Bekasi, bukan Kota Bekasi?"
+      },
+      "b": {
+        "lulus": false,
+        "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/)."
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "Saya juga belum bisa memastikan bahwa surat pemilik kontrakan wajib untuk Bekasi; aturan Wonogiri tidak bisa dijadikan patokan untuk itu."
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/)."
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "(tidak ada tawaran Browser Pendamping)"
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "(tidak ada permintaan atau pengungkapan data pribadi di chat)"
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "Maaf, Mas benar. Untuk **lapor datang dan berkas kontrakan**, yang perlu ditanya adalah Disdukcapil **Kabupaten Bekasi**, bukan Wonogiri."
+      },
+      "h": {
+        "lulus": false,
+        "bukti": "melihat informasi kontak atau bantuan yang tercantum di sana."
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "(tidak ada galat atau balasan kosong)"
+      },
+      "ringkasan": "Urusin memastikan wilayah dan memberikan prosedur asal yang bersumber, tetapi sempat mengarahkan pertanyaan kedatangan ke Wonogiri dan tidak menyampaikan syarat nasional bagi pengontrak. Koreksi akhirnya menunjuk SITEPAK tanpa memberikan kontak yang dipastikan tersedia, sehingga langkah menghubungi petugas masih samar.",
+      "cacat": [
+        {
+          "judul": "Pertanyaan kedatangan diarahkan ke daerah asal",
+          "kriteria": "b",
+          "keparahan": "tinggi",
+          "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/)."
+        },
+        {
+          "judul": "Kanal Wonogiri diberikan untuk layanan kedatangan Bekasi",
+          "kriteria": "d",
+          "keparahan": "tinggi",
+          "bukti": "Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri https://telunjuksakti.wonogirikab.go.id/"
+        },
+        {
+          "judul": "Syarat nasional surat pemilik kontrakan tidak disampaikan",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "Saya juga belum bisa memastikan bahwa surat pemilik kontrakan wajib untuk Bekasi; aturan Wonogiri tidak bisa dijadikan patokan untuk itu."
+        },
+        {
+          "judul": "Lapor datang disebut SKDWNI",
+          "kriteria": "c",
+          "keparahan": "sedang",
+          "bukti": "Lapor kedatangan (SKDWNI) di Disdukcapil Kab. Bekasi [online, disdukcapil]"
+        },
+        {
+          "judul": "Kontak akhir belum dipastikan tersedia",
+          "kriteria": "h",
+          "keparahan": "sedang",
+          "bukti": "Mas bisa mulai dari kanal resminya, [SITEPAK Kabupaten Bekasi](https://sitepak.bekasikab.go.id/), dan melihat informasi kontak atau bantuan yang tercantum di sana."
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": true,
+        "bukti": "otomatis: wilayah ditetapkan warga sebelum rencana | juri: Cikarang berada di Kabupaten Bekasi—apakah tujuan pindah Anda Kabupaten Bekasi, bukan Kota Bekasi?",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "wilayah ditetapkan warga sebelum rencana"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Cikarang berada di Kabupaten Bekasi—apakah tujuan pindah Anda Kabupaten Bekasi, bukan Kota Bekasi?"
+          }
+        ]
+      },
+      "b": {
+        "lulus": false,
+        "bukti": "juri: Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/)."
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: Saya juga belum bisa memastikan bahwa surat pemilik kontrakan wajib untuk Bekasi; aturan Wonogiri tidak bisa dijadikan patokan untuk itu.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Saya juga belum bisa memastikan bahwa surat pemilik kontrakan wajib untuk Bekasi; aturan Wonogiri tidak bisa dijadikan patokan untuk itu."
+          }
+        ]
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "juri: Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/).",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Kabupaten Wonogiri (https://telunjuksakti.wonogirikab.go.id/)."
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada tawaran Browser Pendamping)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada tawaran Browser Pendamping)"
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: (tidak ada permintaan atau pengungkapan data pribadi di chat)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada permintaan atau pengungkapan data pribadi di chat)"
+          }
+        ]
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "juri: Maaf, Mas benar. Untuk **lapor datang dan berkas kontrakan**, yang perlu ditanya adalah Disdukcapil **Kabupaten Bekasi**, bukan Wonogiri.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Maaf, Mas benar. Untuk **lapor datang dan berkas kontrakan**, yang perlu ditanya adalah Disdukcapil **Kabupaten Bekasi**, bukan Wonogiri."
+          }
+        ]
+      },
+      "h": {
+        "lulus": false,
+        "bukti": "juri: melihat informasi kontak atau bantuan yang tercantum di sana.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "melihat informasi kontak atau bantuan yang tercantum di sana."
+          }
+        ]
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "otomatis: langkah 4: buntu, tidak ada yang tampil",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": false,
+            "bukti": "langkah 4: buntu, tidak ada yang tampil"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada galat atau balasan kosong)"
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 119191,
+        "tokensOut": 2535,
+        "costIdr": 0,
+        "panggilanLlm": 10
+      },
+      "simulator": {
+        "panggilan": 7,
+        "tokensIn": 30245,
+        "tokensOut": 540
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 8168,
+        "tokensOut": 864
+      }
+    }
+  }
+}

@@ -1,0 +1,476 @@
+{
+  "persona": "p06-asmat-kia",
+  "urusanId": "u_2beb1d12debb962afb9edb7bb8e77207",
+  "wilayahPerangkat": "9304",
+  "kodeUrusan": "9304",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Selamat siang. Sa mau bikin kartu identitas anak untuk anak sa yang umur 7 tahun. Bisa?",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": "dipandu",
+          "version": 2,
+          "type": "state",
+          "seq": 1,
+          "at": "2026-11-10T06:44:44.902Z",
+          "chainHead": "6654d0334b2dad111e0d8012eea71585baec253837823876e94c9622e4cd8c55"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 2,
+          "at": "2026-11-10T06:44:44.902Z",
+          "chainHead": "9722af56739c12886e81d765b60019eb500a37f797a1ea5f32a28d49df6fe786"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T06:44:56.027Z",
+          "chainHead": "4014c2076f88e4cc885e30888d5fdc4de8b00acb2c61f9c2b7e8c7be3075a631"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 4,
+          "at": "2026-11-10T06:45:06.957Z",
+          "chainHead": "709b9f1064494c5b53875b67fb13882ac271664fc848bf0e6d870f0d29c0facd"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 5,
+          "at": "2026-11-10T06:45:10.713Z",
+          "chainHead": "b40004db14176a17828623833c12621beee2a03dec2d2c6aead764aa967cecde"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://peraturan.go.id/id/permendagri-no-108-tahun-2019).",
+          "kanal": [
+            {
+              "nama": "Kementerian Dalam Negeri",
+              "url": "https://peraturan.go.id/id/permendagri-no-108-tahun-2019"
+            },
+            {
+              "nama": "Kementerian Dalam Negeri",
+              "url": "https://peraturan.go.id/id/permendagri-no-109-tahun-2019"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 6,
+          "at": "2026-11-10T06:45:10.714Z",
+          "chainHead": "550ecf0ad74e7d78a132abb35877a797e6d4cb6dc1cba26fa847cb9457d230b2"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_22981738-d1d0-4b94-a0a4-96c9ee6b085c",
+          "version": 3,
+          "type": "done",
+          "seq": 7,
+          "at": "2026-11-10T06:45:10.716Z",
+          "chainHead": "4c8e9a986d0fe6a8c5020640a866e5e2808a92e68f224235ac481ce74b73cd82"
+        }
+      ],
+      "status": "selesai",
+      "ms": 25823
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Sa di Agats, Kabupaten Asmat. Untuk bikin KIA anak, sa harus ke mana dan bawa apa? Kantor jauh, harus naik perahu.",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Tautan peraturan belum menjelaskan langkah konkret untuk mengurus KIA di daerahnya."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 8,
+          "at": "2026-11-10T06:45:13.941Z",
+          "chainHead": "6f3a34c25d11a14299162a453c7a0d78a57450fc6ee6f46930968661c7912c56"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 9,
+          "at": "2026-11-10T06:45:16.261Z",
+          "chainHead": "013fe56e8395d914002e4d3cbee72be5db16c4079145229b5607934bc2b7aa85"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 10,
+          "at": "2026-11-10T06:45:20.014Z",
+          "chainHead": "c484e11829618ccd86bebcae1820262d0bcadfbfb0dc8a27e677aaebd695fbbe"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 11,
+          "at": "2026-11-10T06:45:25.438Z",
+          "chainHead": "6f7f9e71a4e283e848335b99b99a0cac84218818d0f19cc2e9de78c2eb338bf7"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T06:45:28.012Z",
+          "chainHead": "4418cfcb7e756f3f5b509d3748ef6db55ff40ce88dcc54a992e4ead794d09339"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://peraturan.go.id/id/permendagri-no-108-tahun-2019).",
+          "kanal": [
+            {
+              "nama": "Kementerian Dalam Negeri",
+              "url": "https://peraturan.go.id/id/permendagri-no-108-tahun-2019"
+            },
+            {
+              "nama": "Kementerian Dalam Negeri",
+              "url": "https://peraturan.go.id/id/permendagri-no-109-tahun-2019"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 13,
+          "at": "2026-11-10T06:45:28.013Z",
+          "chainHead": "ee3db96425445e333a409a826feae349e87529d5a15efc155cf60a893f551c22"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_0c2e8319-2433-45ab-87df-fdd2c2892a06",
+          "version": 4,
+          "type": "done",
+          "seq": 14,
+          "at": "2026-11-10T06:45:28.014Z",
+          "chainHead": "cbf09d5a8ae863247ad5ae52ce2b087a394210f9b2423673cba842046418b75c"
+        }
+      ],
+      "status": "selesai",
+      "ms": 14080
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Sa kurang paham, itu cuma kasih tautan lagi. Sa harus ke kantor mana di Asmat, dan bawa apa untuk bikin KIA anak sa? Kantor jauh, sa harus naik perahu.",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawabannya belum memberi tempat dan persyaratan yang jelas untuk mengurus KIA."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 15,
+          "at": "2026-11-10T06:45:32.715Z",
+          "chainHead": "651db69c763c40e81048e7cbf87a759b3a1d9a2efa8f9803da0cfdf7a3c60a58"
+        },
+        {
+          "delta": "Maaf, saya paham perjalanan dengan perahu jauh, jadi penting untuk memastikan dulu supaya tidak perlu bolak-balik.\n\nUrusan KIA ditangani **Dinas Kependudukan dan Pencatatan Sipil (Disdukcapil) Kabupaten Asmat**. Namun, saya belum menemukan sumber resmi yang memastikan **lokasi pelayanan, jam buka, atau daftar dokumen KIA di Asmat**. Saya tidak mau menebak dan membuat sa sia-sia naik perahu.\n\nSebelum berangkat, mohon minta bantuan **kantor kampung atau distrik di Agats** untuk menghubungi Disdukcapil Asmat dan memastikan:\n\n- Pelayanan KIA ada di kantor mana dan buka hari apa?\n- Dokumen apa saja yang harus dibawa untuk anak usia 7 tahun, termasuk apakah perlu foto anak?\n- Apakah ada pelayanan keliling yang lebih dekat?\n\nSaya belum punya nomor kontak resmi yang bisa dipastikan, jadi belum bisa memberikannya.",
+          "type": "assistant_text",
+          "seq": 16,
+          "at": "2026-11-10T06:45:38.376Z",
+          "chainHead": "fac8fff06f5c3c34dd8fddc0fbdbf2a250a2d00c654da5d7300e8e8add03405a"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_1a48f580-1db1-426b-ac3d-dc2b679386ae",
+          "version": 5,
+          "type": "done",
+          "seq": 17,
+          "at": "2026-11-10T06:45:38.377Z",
+          "chainHead": "c23b7e2b475ca8575b46b707008861e4616f523d0e37abdcb1ed428b2467ee0d"
+        }
+      ],
+      "status": "selesai",
+      "ms": 5669
+    }
+  ],
+  "layar": [
+    "Warga: Selamat siang. Sa mau bikin kartu identitas anak untuk anak sa yang umur 7 tahun. Bisa?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://peraturan.go.id/id/permendagri-no-108-tahun-2019).\n  - Kementerian Dalam Negeri https://peraturan.go.id/id/permendagri-no-108-tahun-2019\n  - Kementerian Dalam Negeri https://peraturan.go.id/id/permendagri-no-109-tahun-2019",
+    "Warga: Sa di Agats, Kabupaten Asmat. Untuk bikin KIA anak, sa harus ke mana dan bawa apa? Kantor jauh, harus naik perahu.",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://peraturan.go.id/id/permendagri-no-108-tahun-2019).\n  - Kementerian Dalam Negeri https://peraturan.go.id/id/permendagri-no-108-tahun-2019\n  - Kementerian Dalam Negeri https://peraturan.go.id/id/permendagri-no-109-tahun-2019",
+    "Warga: Sa kurang paham, itu cuma kasih tautan lagi. Sa harus ke kantor mana di Asmat, dan bawa apa untuk bikin KIA anak sa? Kantor jauh, sa harus naik perahu.",
+    "Urusin: Maaf, saya paham perjalanan dengan perahu jauh, jadi penting untuk memastikan dulu supaya tidak perlu bolak-balik.\n\nUrusan KIA ditangani **Dinas Kependudukan dan Pencatatan Sipil (Disdukcapil) Kabupaten Asmat**. Namun, saya belum menemukan sumber resmi yang memastikan **lokasi pelayanan, jam buka, atau daftar dokumen KIA di Asmat**. Saya tidak mau menebak dan membuat sa sia-sia naik perahu.\n\nSebelum berangkat, mohon minta bantuan **kantor kampung atau distrik di Agats** untuk menghubungi Disdukcapil Asmat dan memastikan:\n\n- Pelayanan KIA ada di kantor mana dan buka hari apa?\n- Dokumen apa saja yang harus dibawa untuk anak usia 7 tahun, termasuk apakah perlu foto anak?\n- Apakah ada pelayanan keliling yang lebih dekat?\n\nSaya belum punya nomor kontak resmi yang bisa dipastikan, jadi belum bisa memberikannya."
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": true,
+    "catatan": "Sudah tahu langkah berikutnya yaitu meminta kantor kampung atau distrik di Agats menghubungi Disdukcapil sebelum berangkat."
+  },
+  "ms": 63621,
+  "giliranWarga": 3,
+  "nilai": {
+    "persona": "p06-asmat-kia",
+    "judul": "Orang tua di Kab. Asmat (tanpa data registry): KIA anak",
+    "urusanId": "u_2beb1d12debb962afb9edb7bb8e77207",
+    "wilayahPerangkat": "9304",
+    "kodeUrusan": "9304",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": true,
+      "catatan": "Sudah tahu langkah berikutnya yaitu meminta kantor kampung atau distrik di Agats menghubungi Disdukcapil sebelum berangkat."
+    },
+    "giliranWarga": 3,
+    "ms": 63621,
+    "url": [
+      "https://peraturan.go.id/id/permendagri-no-108-tahun-2019",
+      "https://peraturan.go.id/id/permendagri-no-109-tahun-2019"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": null,
+        "bukti": "tidak ada rencana/jawaban persyaratan"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": true,
+        "bukti": "tanpa galat"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": true,
+        "bukti": "Warga: Sa di Agats, Kabupaten Asmat."
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "Urusan KIA ditangani **Dinas Kependudukan dan Pencatatan Sipil (Disdukcapil) Kabupaten Asmat**."
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "Dokumen apa saja yang harus dibawa untuk anak usia 7 tahun, termasuk apakah perlu foto anak?"
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "Tanyakan ke Kementerian Dalam Negeri (https://peraturan.go.id/id/permendagri-no-108-tahun-2019)."
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "(tidak ada tawaran Browser Pendamping atau klaim pengiriman)"
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "(tidak ada permintaan atau pengungkapan data pribadi)"
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "Maaf, saya paham perjalanan dengan perahu jauh, jadi penting untuk memastikan dulu supaya tidak perlu bolak-balik."
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "Sebelum berangkat, mohon minta bantuan **kantor kampung atau distrik di Agats** untuk menghubungi Disdukcapil Asmat"
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "Sa kurang paham, itu cuma kasih tautan lagi."
+      },
+      "ringkasan": "Urusin akhirnya menyebut Disdukcapil Asmat dan memberi langkah untuk memastikan layanan sebelum warga menempuh perjalanan jauh. Namun, ia mengulang tautan peraturan yang tidak tepat dan tidak memberikan persyaratan nasional KIA yang diminta.",
+      "cacat": [
+        {
+          "judul": "Persyaratan KIA tidak diberikan",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "Dokumen apa saja yang harus dibawa untuk anak usia 7 tahun, termasuk apakah perlu foto anak?"
+        },
+        {
+          "judul": "Tautan peraturan diarahkan sebagai kanal layanan",
+          "kriteria": "d",
+          "keparahan": "sedang",
+          "bukti": "Tanyakan ke Kementerian Dalam Negeri (https://peraturan.go.id/id/permendagri-no-108-tahun-2019)."
+        },
+        {
+          "judul": "Pengalihan yang sama diulang tanpa menjawab",
+          "kriteria": "i",
+          "keparahan": "sedang",
+          "bukti": "Sa kurang paham, itu cuma kasih tautan lagi."
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": true,
+        "bukti": "juri: Warga: Sa di Agats, Kabupaten Asmat.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": null,
+            "bukti": "tidak ada rencana/jawaban persyaratan"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Warga: Sa di Agats, Kabupaten Asmat."
+          }
+        ]
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "juri: Urusan KIA ditangani **Dinas Kependudukan dan Pencatatan Sipil (Disdukcapil) Kabupaten Asmat**.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Urusan KIA ditangani **Dinas Kependudukan dan Pencatatan Sipil (Disdukcapil) Kabupaten Asmat**."
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: Dokumen apa saja yang harus dibawa untuk anak usia 7 tahun, termasuk apakah perlu foto anak?",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Dokumen apa saja yang harus dibawa untuk anak usia 7 tahun, termasuk apakah perlu foto anak?"
+          }
+        ]
+      },
+      "d": {
+        "lulus": false,
+        "bukti": "juri: Tanyakan ke Kementerian Dalam Negeri (https://peraturan.go.id/id/permendagri-no-108-tahun-2019).",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Tanyakan ke Kementerian Dalam Negeri (https://peraturan.go.id/id/permendagri-no-108-tahun-2019)."
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada tawaran Browser Pendamping atau klaim pengiriman)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada tawaran Browser Pendamping atau klaim pengiriman)"
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: (tidak ada permintaan atau pengungkapan data pribadi)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada permintaan atau pengungkapan data pribadi)"
+          }
+        ]
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "juri: Maaf, saya paham perjalanan dengan perahu jauh, jadi penting untuk memastikan dulu supaya tidak perlu bolak-balik.",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Maaf, saya paham perjalanan dengan perahu jauh, jadi penting untuk memastikan dulu supaya tidak perlu bolak-balik."
+          }
+        ]
+      },
+      "h": {
+        "lulus": true,
+        "bukti": "juri: Sebelum berangkat, mohon minta bantuan **kantor kampung atau distrik di Agats** untuk menghubungi Disdukcapil Asmat",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Sebelum berangkat, mohon minta bantuan **kantor kampung atau distrik di Agats** untuk menghubungi Disdukcapil Asmat"
+          }
+        ]
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "juri: Sa kurang paham, itu cuma kasih tautan lagi.",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tanpa galat"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Sa kurang paham, itu cuma kasih tautan lagi."
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 40071,
+        "tokensOut": 688,
+        "costIdr": 0,
+        "panggilanLlm": 7
+      },
+      "simulator": {
+        "panggilan": 3,
+        "tokensIn": 8503,
+        "tokensOut": 217
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 5187,
+        "tokensOut": 638
+      }
+    }
+  }
+}

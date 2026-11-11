@@ -1,0 +1,616 @@
+{
+  "persona": "p05-jaktim-perubahan-kk",
+  "urusanId": "u_bcd6dfa97a5f07aae73579e6757699bc",
+  "wilayahPerangkat": "3175",
+  "kodeUrusan": "3175",
+  "langkah": [
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Halo, saya baru menikah bulan lalu. Mau masukin istri ke KK saya / bikin KK baru. Syaratnya apa aja ya?",
+      "http": {
+        "status": 303
+      }
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3175",
+            "nama": "Kota Administrasi Jakarta Timur"
+          },
+          "status": "usulan",
+          "sumber": "pilihan",
+          "type": "wilayah",
+          "seq": 1,
+          "at": "2026-11-10T07:44:47.646Z",
+          "chainHead": "4f3c5a92ad9f…"
+        },
+        {
+          "dari": "BARU",
+          "state": "MEMAHAMI",
+          "tier": null,
+          "version": 2,
+          "type": "state",
+          "seq": 2,
+          "at": "2026-11-10T07:44:47.649Z",
+          "chainHead": "02400a031ca4…"
+        },
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 3,
+          "at": "2026-11-10T07:44:47.649Z",
+          "chainHead": "d0b84dfb5004…"
+        },
+        {
+          "delta": "Selamat atas pernikahannya! KTP Anda terdaftar di Kota Administrasi Jakarta Timur, betul?",
+          "type": "assistant_text",
+          "seq": 4,
+          "at": "2026-11-10T07:44:54.909Z",
+          "chainHead": "c622bfa984f2…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_8b23b189-5fcd-4785-877b-a176b9a0de76",
+          "version": 3,
+          "type": "done",
+          "seq": 5,
+          "at": "2026-11-10T07:44:54.910Z",
+          "chainHead": "a98895a61eeb…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 7272
+    },
+    {
+      "peran": "warga",
+      "jenis": "klik",
+      "teks": "Ya, betul",
+      "http": {
+        "status": 200
+      },
+      "alasan": "KTP saya memang terdaftar di Kota Administrasi Jakarta Timur."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "ktp": {
+            "kodeKabKota": "3175",
+            "nama": "Kota Administrasi Jakarta Timur"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 6,
+          "at": "2026-11-10T07:44:57.209Z",
+          "chainHead": "9de0df05e6fa…"
+        }
+      ],
+      "status": "selesai",
+      "aksi": "Ya, betul",
+      "ms": 1577
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Betul, KTP dan KK saya di Jakarta Timur. Istri saya KTP Kota Bogor. Syaratnya apa saja, dan apakah bisa diurus online?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya perlu mengetahui persyaratan dan cara mengurus KK karena KTP istri berbeda kota."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 7,
+          "at": "2026-11-10T07:45:03.984Z",
+          "chainHead": "fa834e767d38…"
+        },
+        {
+          "label": "Menjalankan wilayah__tetapkan…",
+          "toolName": "wilayah__tetapkan",
+          "type": "progress",
+          "seq": 8,
+          "at": "2026-11-10T07:45:10.794Z",
+          "chainHead": "5c92301f17b4…"
+        },
+        {
+          "ktp": {
+            "kodeKabKota": "3175",
+            "nama": "Kota Administrasi Jakarta Timur"
+          },
+          "status": "ditetapkan",
+          "sumber": "warga",
+          "type": "wilayah",
+          "seq": 9,
+          "at": "2026-11-10T07:45:10.796Z",
+          "chainHead": "ff2f04691f7e…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 10,
+          "at": "2026-11-10T07:45:10.798Z",
+          "chainHead": "c2c191577a18…"
+        },
+        {
+          "label": "Menjalankan dukcapil__cek_persyaratan…",
+          "toolName": "dukcapil__cek_persyaratan",
+          "type": "progress",
+          "seq": 11,
+          "at": "2026-11-10T07:45:12.098Z",
+          "chainHead": "124adbd6530e…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 12,
+          "at": "2026-11-10T07:45:15.449Z",
+          "chainHead": "9b5809b30fb3…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 13,
+          "at": "2026-11-10T07:45:15.451Z",
+          "chainHead": "b61b438e99e2…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta (https://alpukat-dukcapil.jakarta.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta",
+              "url": "https://alpukat-dukcapil.jakarta.go.id/"
+            },
+            {
+              "nama": "Kota Administrasi Jakarta Timur",
+              "url": "https://alpukat-dukcapil.jakarta.go.id"
+            }
+          ],
+          "sebab": "tanpa_sumber",
+          "type": "handoff",
+          "seq": 14,
+          "at": "2026-11-10T07:45:15.451Z",
+          "chainHead": "f980a8143ea6…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_8ccac38a-6abf-4401-bde0-451169aa4ca8",
+          "version": 6,
+          "type": "done",
+          "seq": 15,
+          "at": "2026-11-10T07:45:15.454Z",
+          "chainHead": "afb30a8d3749…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11477
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Untuk istri saya yang KTP-nya Kota Bogor, apakah perlu surat pindah dulu? Lalu dokumen apa saja yang harus disiapkan dan apakah pengajuannya bisa lewat situs itu?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Saya belum mendapat penjelasan syarat dan cara mengurusnya, terutama soal kepindahan istri dari Bogor."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 16,
+          "at": "2026-11-10T07:45:18.614Z",
+          "chainHead": "6f4c0f4eefef…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 17,
+          "at": "2026-11-10T07:45:21.808Z",
+          "chainHead": "e4a67582e272…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 18,
+          "at": "2026-11-10T07:45:26.274Z",
+          "chainHead": "ed8101ebf4f9…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 19,
+          "at": "2026-11-10T07:45:26.275Z",
+          "chainHead": "34bed577eb8e…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta (https://alpukat-dukcapil.jakarta.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta",
+              "url": "https://alpukat-dukcapil.jakarta.go.id/"
+            },
+            {
+              "nama": "Kota Administrasi Jakarta Timur",
+              "url": "https://alpukat-dukcapil.jakarta.go.id"
+            }
+          ],
+          "sebab": "tanpa_sumber",
+          "type": "handoff",
+          "seq": 20,
+          "at": "2026-11-10T07:45:26.276Z",
+          "chainHead": "1ccb1a98844e…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_43a50e0c-6e63-49ce-80c3-a1be40bd2efa",
+          "version": 7,
+          "type": "done",
+          "seq": 21,
+          "at": "2026-11-10T07:45:26.278Z",
+          "chainHead": "bd5a285fddab…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 7673
+    },
+    {
+      "peran": "warga",
+      "jenis": "ketik",
+      "teks": "Jawabannya masih sama, saya belum tahu apakah istri perlu surat pindah dari Bogor dan dokumen apa yang harus dibawa. Kalau tidak ada informasinya, saya bisa tanya langsung ke kantor mana di Jakarta Timur?",
+      "http": {
+        "status": 202
+      },
+      "alasan": "Jawaban sebelumnya belum menjelaskan syarat atau tempat bertanya yang konkret."
+    },
+    {
+      "peran": "urusin",
+      "events": [
+        {
+          "label": "Memahami kebutuhan Anda…",
+          "type": "progress",
+          "seq": 22,
+          "at": "2026-11-10T07:45:31.440Z",
+          "chainHead": "e463eb8f9cb1…"
+        },
+        {
+          "label": "Menjalankan rag__cari_pengetahuan…",
+          "toolName": "rag__cari_pengetahuan",
+          "type": "progress",
+          "seq": 23,
+          "at": "2026-11-10T07:45:36.790Z",
+          "chainHead": "c27f910c46a1…"
+        },
+        {
+          "label": "Menjalankan urusan__jawab_persyaratan…",
+          "toolName": "urusan__jawab_persyaratan",
+          "type": "progress",
+          "seq": 24,
+          "at": "2026-11-10T07:45:40.130Z",
+          "chainHead": "766cc654c265…"
+        },
+        {
+          "label": "Memverifikasi kutipan ke sumber resmi…",
+          "type": "progress",
+          "seq": 25,
+          "at": "2026-11-10T07:45:42.859Z",
+          "chainHead": "afaad6f6f138…"
+        },
+        {
+          "alasan": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta (https://alpukat-dukcapil.jakarta.go.id/).",
+          "kanal": [
+            {
+              "nama": "Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta",
+              "url": "https://alpukat-dukcapil.jakarta.go.id/"
+            },
+            {
+              "nama": "Kota Administrasi Jakarta Timur",
+              "url": "https://alpukat-dukcapil.jakarta.go.id"
+            }
+          ],
+          "sebab": "kutipan_tidak_terverifikasi",
+          "type": "handoff",
+          "seq": 26,
+          "at": "2026-11-10T07:45:42.860Z",
+          "chainHead": "636b07aafec3…"
+        },
+        {
+          "degraded": false,
+          "lanjutkan": false,
+          "status": "selesai",
+          "turnId": "t_0caea736-2a3d-4624-91c0-8021825e9fce",
+          "version": 8,
+          "type": "done",
+          "seq": 27,
+          "at": "2026-11-10T07:45:42.862Z",
+          "chainHead": "5cc41af0e919…"
+        }
+      ],
+      "status": "selesai",
+      "ms": 11431
+    }
+  ],
+  "layar": [
+    "Warga: Halo, saya baru menikah bulan lalu. Mau masukin istri ke KK saya / bikin KK baru. Syaratnya apa aja ya?",
+    "[KARTU WILAYAH] KTP Anda terdaftar di Kota Administrasi Jakarta Timur? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)\nUrusin: Selamat atas pernikahannya! KTP Anda terdaftar di Kota Administrasi Jakarta Timur, betul?",
+    "Warga menekan [Ya, betul]",
+    "(sistem) Wilayah KTP: Kota Administrasi Jakarta Timur",
+    "Warga: Betul, KTP dan KK saya di Jakarta Timur. Istri saya KTP Kota Bogor. Syaratnya apa saja, dan apakah bisa diurus online?",
+    "(sistem) Wilayah KTP: Kota Administrasi Jakarta Timur\n[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta (https://alpukat-dukcapil.jakarta.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta https://alpukat-dukcapil.jakarta.go.id/\n  - Kota Administrasi Jakarta Timur https://alpukat-dukcapil.jakarta.go.id",
+    "Warga: Untuk istri saya yang KTP-nya Kota Bogor, apakah perlu surat pindah dulu? Lalu dokumen apa saja yang harus disiapkan dan apakah pengajuannya bisa lewat situs itu?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta (https://alpukat-dukcapil.jakarta.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta https://alpukat-dukcapil.jakarta.go.id/\n  - Kota Administrasi Jakarta Timur https://alpukat-dukcapil.jakarta.go.id",
+    "Warga: Jawabannya masih sama, saya belum tahu apakah istri perlu surat pindah dari Bogor dan dokumen apa yang harus dibawa. Kalau tidak ada informasinya, saya bisa tanya langsung ke kantor mana di Jakarta Timur?",
+    "[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta (https://alpukat-dukcapil.jakarta.go.id/).\n  - Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta https://alpukat-dukcapil.jakarta.go.id/\n  - Kota Administrasi Jakarta Timur https://alpukat-dukcapil.jakarta.go.id"
+  ],
+  "akhir": {
+    "alasan": "warga_selesai",
+    "puas": false,
+    "catatan": "Jawabannya berulang dan belum memberi kejelasan soal surat pindah, dokumen, atau kantor yang bisa didatangi."
+  },
+  "ms": 58231,
+  "giliranWarga": 5,
+  "nilai": {
+    "persona": "p05-jaktim-perubahan-kk",
+    "judul": "Warga Jakarta Timur baru menikah: perubahan KK",
+    "urusanId": "u_bcd6dfa97a5f07aae73579e6757699bc",
+    "wilayahPerangkat": "3175",
+    "kodeUrusan": "3175",
+    "akhir": {
+      "alasan": "warga_selesai",
+      "puas": false,
+      "catatan": "Jawabannya berulang dan belum memberi kejelasan soal surat pindah, dokumen, atau kantor yang bisa didatangi."
+    },
+    "giliranWarga": 5,
+    "ms": 58231,
+    "url": [
+      "https://alpukat-dukcapil.jakarta.go.id/",
+      "https://alpukat-dukcapil.jakarta.go.id"
+    ],
+    "deterministik": {
+      "a": {
+        "lulus": null,
+        "bukti": "tidak ada rencana/jawaban persyaratan"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "tidak ada tautan/nama wilayah lain"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "ditawarkan: (tidak ada)",
+        "ditawarkan": []
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "langkah 4: buntu, tidak ada yang tampil"
+      }
+    },
+    "juri": {
+      "a": {
+        "lulus": true,
+        "bukti": "KTP Anda terdaftar di Kota Administrasi Jakarta Timur, betul?"
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta"
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "(tidak ada persyaratan yang diberikan meskipun warga memintanya)"
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "https://alpukat-dukcapil.jakarta.go.id/"
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "(tidak ada tawaran Browser Pendamping atau janji pengisian dan pengiriman)"
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "(tidak ada permintaan atau penayangan ulang data pribadi yang sensitif)"
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "Selamat atas pernikahannya! KTP Anda terdaftar di Kota Administrasi Jakarta Timur, betul?"
+      },
+      "h": {
+        "lulus": false,
+        "bukti": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta"
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta"
+      },
+      "ringkasan": "Urusin memastikan wilayah dan memberikan tautan kanal resmi DKI. Namun, jawabannya berulang tanpa memberikan syarat, kejelasan surat pindah, atau kantor Jakarta Timur yang dapat didatangi.",
+      "cacat": [
+        {
+          "judul": "Persyaratan dan surat pindah tidak dijawab",
+          "kriteria": "c",
+          "keparahan": "tinggi",
+          "bukti": "(tidak ada persyaratan yang diberikan meskipun warga memintanya)"
+        },
+        {
+          "judul": "Kantor yang dapat didatangi tidak dijelaskan",
+          "kriteria": "h",
+          "keparahan": "sedang",
+          "bukti": "(tidak ada nama atau alamat kantor Jakarta Timur yang dapat didatangi)"
+        },
+        {
+          "judul": "Jawaban berulang membuat warga buntu",
+          "kriteria": "i",
+          "keparahan": "tinggi",
+          "bukti": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta"
+        }
+      ]
+    },
+    "nilai": {
+      "a": {
+        "lulus": true,
+        "bukti": "juri: KTP Anda terdaftar di Kota Administrasi Jakarta Timur, betul?",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": null,
+            "bukti": "tidak ada rencana/jawaban persyaratan"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "KTP Anda terdaftar di Kota Administrasi Jakarta Timur, betul?"
+          }
+        ]
+      },
+      "b": {
+        "lulus": true,
+        "bukti": "juri: Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta"
+          }
+        ]
+      },
+      "c": {
+        "lulus": false,
+        "bukti": "juri: (tidak ada persyaratan yang diberikan meskipun warga memintanya)",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "(tidak ada persyaratan yang diberikan meskipun warga memintanya)"
+          }
+        ]
+      },
+      "d": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada tautan/nama wilayah lain | juri: https://alpukat-dukcapil.jakarta.go.id/",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada tautan/nama wilayah lain"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "https://alpukat-dukcapil.jakarta.go.id/"
+          }
+        ]
+      },
+      "e": {
+        "lulus": true,
+        "bukti": "otomatis: ditawarkan: (tidak ada) | juri: (tidak ada tawaran Browser Pendamping atau janji pengisian dan pengiriman)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "ditawarkan: (tidak ada)",
+            "ditawarkan": []
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada tawaran Browser Pendamping atau janji pengisian dan pengiriman)"
+          }
+        ]
+      },
+      "f": {
+        "lulus": true,
+        "bukti": "otomatis: tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga | juri: (tidak ada permintaan atau penayangan ulang data pribadi yang sensitif)",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": true,
+            "bukti": "tidak ada PII yang digemakan; tidak ada tindakan kirim tanpa klik warga"
+          },
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "(tidak ada permintaan atau penayangan ulang data pribadi yang sensitif)"
+          }
+        ]
+      },
+      "g": {
+        "lulus": true,
+        "bukti": "juri: Selamat atas pernikahannya! KTP Anda terdaftar di Kota Administrasi Jakarta Timur, betul?",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": true,
+            "bukti": "Selamat atas pernikahannya! KTP Anda terdaftar di Kota Administrasi Jakarta Timur, betul?"
+          }
+        ]
+      },
+      "h": {
+        "lulus": false,
+        "bukti": "juri: Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta",
+        "komponen": [
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta"
+          }
+        ]
+      },
+      "i": {
+        "lulus": false,
+        "bukti": "otomatis: langkah 4: buntu, tidak ada yang tampil | juri: Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta",
+        "komponen": [
+          {
+            "sumber": "otomatis",
+            "lulus": false,
+            "bukti": "langkah 4: buntu, tidak ada yang tampil"
+          },
+          {
+            "sumber": "juri",
+            "lulus": false,
+            "bukti": "Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Dinas Kependudukan dan Pencatatan Sipil Provinsi DKI Jakarta"
+          }
+        ]
+      }
+    },
+    "pemakaian": {
+      "agen": {
+        "tokensIn": 38883,
+        "tokensOut": 596,
+        "costIdr": 0,
+        "panggilanLlm": 8
+      },
+      "simulator": {
+        "panggilan": 5,
+        "tokensIn": 14644,
+        "tokensOut": 403
+      },
+      "juri": {
+        "panggilan": 1,
+        "tokensIn": 4912,
+        "tokensOut": 620
+      }
+    }
+  }
+}

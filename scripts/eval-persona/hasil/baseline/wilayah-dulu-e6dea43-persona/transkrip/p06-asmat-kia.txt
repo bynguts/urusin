@@ -1,0 +1,38 @@
+Orang tua di Kab. Asmat (tanpa data registry): KIA anak
+=======================================================
+
+Warga: Selamat siang. Sa mau bikin kartu identitas anak untuk anak sa yang umur 7 tahun. Bisa?
+
+[KARTU WILAYAH] KTP Anda terdaftar di Kabupaten Asmat? (usulan dari pilihan wilayah di perangkat ini; rencana disusun setelah Anda memastikannya)
+Urusin: Selamat siang! Saya bantu cari informasi pembuatan Kartu Identitas Anak (KIA) untuk anak usia 7 tahun.
+
+KTP Anda terdaftar di Kabupaten Asmat, betul?
+
+Warga menekan [Ya, betul]
+
+(sistem) Wilayah KTP: Kabupaten Asmat
+
+Warga: Iyo, betul di Kabupaten Asmat. Sa harus urus KIA ini di mana dan bawa apa saja?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://dukcapil.kemendagri.go.id).
+  - Kementerian Dalam Negeri https://dukcapil.kemendagri.go.id
+
+Warga: Sa di Agats, Kabupaten Asmat. Sinyal di sini lemah, kantor dinas juga jauh harus naik perahu. Bisa kasih tahu sa harus ke mana dan bawa apa saja untuk urus KIA?
+
+[DIARAHKAN KE KANAL RESMI] Saya belum menemukan sumber resmi untuk ini. Tanyakan ke Kementerian Dalam Negeri (https://dukcapil.kemendagri.go.id).
+  - Kementerian Dalam Negeri https://dukcapil.kemendagri.go.id
+
+Warga: Sa su bilang sinyal lemah, susah buka situs itu. Tidak ada informasi kantor Dukcapil di Asmat yang bisa sa datangi dan dokumen apa yang harus sa bawa?
+
+Urusin: Maaf, saya tadi menyarankan situs padahal Anda sudah bilang sinyal lemah dan perjalanan ke kantor jauh.
+
+Urusan KIA ditangani **Dinas Dukcapil Kabupaten Asmat**, tetapi saya belum menemukan sumber resmi yang memastikan alamat kantornya di Agats atau daftar dokumen yang diminta di sana. Saya tidak mau menebak, supaya Anda tidak perlu naik perahu sia-sia.
+
+Kalau ada kesempatan bertanya langsung ke **kantor distrik atau aparat kampung**, coba minta bantuan memastikan:
+- Lokasi dan jam layanan Dukcapil Asmat untuk membuat KIA.
+- Dokumen dan foto anak yang perlu dibawa, serta apakah anak harus ikut hadir.
+- Apakah ada layanan keliling atau jemput bola yang lebih dekat.
+
+Saya belum bisa memastikan jawaban atas hal-hal itu dari sumber yang tersedia.
+
+[AKHIR: warga_selesai — Sudah ada langkah berikutnya untuk bertanya ke kantor distrik atau aparat kampung, tetapi lokasi dan syarat KIA belum pasti.]

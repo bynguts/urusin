@@ -9,6 +9,7 @@ import { HarnessStore } from './store.js';
 import { defineTool } from './tools.js';
 import { dumpDb, makeEnv } from './testing.js';
 import type { UrusanState } from '@urusin/contracts';
+import { buatUrusanTerwilayah } from './wilayah.js';
 
 const NIK = ['3271', '0101', '0190', '0001'].join('');
 const HP = ['0812', '3456', '7890'];
@@ -44,7 +45,7 @@ describe('temuan 1 (end-to-end): PII berformat tidak sampai ke LLM maupun DB', (
   it('NIK terbagi: kodeKabKota di urusan + 12 digit di pesan turn berikutnya', async () => {
     const provider = new FakeProvider({ replies: [fakeCompletion({ content: 'baik' })] });
     const env = makeEnv({ provider, caps: { tools: false } });
-    const u = env.store.createUrusan({ kodeKabKota: '3271', jenis: 'akta' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3271', jenis: 'akta' });
     await runTurn(env.deps, { urusanId: u.id, userText: `nomornya ${NIK.slice(4)} ya` });
     expect(prompts(provider)).not.toContain(NIK.slice(4));
     expect(dumpDb(env.store.db)).not.toContain(NIK.slice(4));
@@ -109,7 +110,7 @@ describe('temuan 3: redaksi penyimpanan tidak merusak JSON dan konfirmasi tidak 
     const tools = [...builtinTools().filter((t) => t.name !== 'dukcapil__ajukan_layanan'), gagal];
     const provider = new FakeProvider();
     const env = makeEnv({ provider, tools });
-    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'akta' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
     let v = env.store.getUrusanOrThrow(u.id).version;
     for (const st of [
       'MEMAHAMI',
@@ -274,7 +275,7 @@ describe('harness memajukan MEMAHAMI -> RENCANA_DIUSULKAN sendiri', () => {
   const jalankan = async (kode: string | undefined, jenis: string | undefined, teks = 'Halo') => {
     const provider = new FakeProvider({ replies: [fakeCompletion({ content: 'baik' })] });
     const env = makeEnv({ provider });
-    const u = env.store.createUrusan({
+    const u = buatUrusanTerwilayah(env.store, {
       ...(kode ? { kodeKabKota: kode } : {}),
       ...(jenis ? { jenis: jenis as never } : {}),
     });
@@ -311,7 +312,7 @@ describe('harness memajukan MEMAHAMI -> RENCANA_DIUSULKAN sendiri', () => {
       replies: [fakeCompletion({ content: 'a' }), fakeCompletion({ content: 'b' })],
     });
     const env = makeEnv({ provider });
-    const u = env.store.createUrusan({ kodeKabKota: '3312', jenis: 'kelahiran' });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'kelahiran' });
     await runTurn(env.deps, { urusanId: u.id, userText: 'satu' });
     const out2 = await runTurn(env.deps, { urusanId: u.id, userText: 'dua' });
     expect(out2.events.some((e) => e.type === 'plan_card')).toBe(false);

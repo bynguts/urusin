@@ -8,6 +8,7 @@ const TIPE = [
   'grounded_answer',
   'handoff',
   'plan_card',
+  'wilayah',
   'checklist',
   'eligibility',
   'execution_request',
@@ -127,7 +128,13 @@ export class UrusanStore implements StoreUrusan {
         if (res.status === 409) return 'konflik';
       }
       if (!res.ok) return 'galat';
-      this.keadaan = mulaiTurnBaru(this.keadaan);
+      // Turn cepat bisa selesai (event `done` sudah tiba lewat stream) sebelum respons 202 ini sampai: jangan
+      // menghapus hasilnya dan menandai berjalan lagi, nanti UI menunggu selamanya.
+      const j = (await res.json().catch(() => null)) as { turnId?: unknown } | null;
+      const sudahSelesai =
+        typeof j?.turnId === 'string' &&
+        this.keadaan.events.some((e) => e.type === 'done' && e.turnId === j.turnId);
+      if (!sudahSelesai) this.keadaan = mulaiTurnBaru(this.keadaan);
       if (this.keadaan.status === 'diam' || this.keadaan.status === 'terputus') this.sambung(id);
       return 'ok';
     } catch {
@@ -139,17 +146,40 @@ export class UrusanStore implements StoreUrusan {
    * "Setujui rencana": aksi terstruktur (bukan pesan chat yang ditafsirkan model). Hasilnya (state, permintaan
    * Browser Pendamping, kartu konfirmasi) mengalir lewat stream.
    */
-  async setujuiRencana(): Promise<'ok' | 'konflik' | 'galat'> {
+  setujuiRencana(): Promise<'ok' | 'konflik' | 'galat'> {
+    return this.aksi('rencana/setujui', {});
+  }
+
+  /**
+   * "Ya, betul" di kartu wilayah: warga memastikan kab/kota KTP (aksi terstruktur). Bila jenis urusan sudah
+   * diketahui, rencana untuk wilayah itu menyusul lewat stream.
+   */
+  tetapkanWilayah(kodeKabKota: string): Promise<'ok' | 'konflik' | 'galat'> {
+    // Tanpa versi dan tanpa kirim ulang otomatis: server hanya menetapkan bila belum ada wilayah KTP (wilayah
+    // lain yang sudah dipastikan → 409), jadi kartu basi tidak pernah menimpa pilihan warga.
+    return this.aksi('wilayah', { kodeKabKota }, { versi: false, ulang: false });
+  }
+
+  /**
+   * Aksi terstruktur POST /api/urusan/[id]/<jalur>, bawaannya dengan versi terbaru; 409 → ambil status lalu coba
+   * sekali lagi (kecuali `ulang: false`).
+   */
+  private async aksi(
+    jalur: string,
+    isi: Record<string, unknown>,
+    opsi: { versi: boolean; ulang: boolean } = { versi: true, ulang: true },
+  ): Promise<'ok' | 'konflik' | 'galat'> {
     const id = this.keadaan.id;
     if (!id) return 'galat';
     const kirim = () =>
-      this.ambil(`/api/urusan/${encodeURIComponent(id)}/rencana/setujui`, {
+      this.ambil(`/api/urusan/${encodeURIComponent(id)}/${jalur}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ expectedVersion: this.keadaan.version }),
+        body: JSON.stringify(opsi.versi ? { ...isi, expectedVersion: this.keadaan.version } : isi),
       });
     try {
       let res = await kirim();
+      if (res.status === 409 && !opsi.ulang) return 'konflik';
       if (res.status === 409) {
         const st = await this.statusTerbaru(id);
         if (!st || st.berjalan) return st ? 'konflik' : 'galat';
@@ -160,9 +190,15 @@ export class UrusanStore implements StoreUrusan {
       if (!res.ok) return 'galat';
       // Versi baru langsung dari respons (event `state` di stream membawa versi yang sama), agar pesan
       // berikutnya tidak memakai versi basi dan memicu 409.
-      const j = (await res.json().catch(() => null)) as { version?: unknown } | null;
+      const j = (await res.json().catch(() => null)) as { version?: unknown; turnId?: unknown } | null;
       if (typeof j?.version === 'number' && j.version > this.keadaan.version)
         this.keadaan.version = j.version;
+      // Aksi yang melanjutkan giliran agen (mis. "Ya, betul" tanpa rencana): tandai berjalan kecuali sudah selesai.
+      if (
+        typeof j?.turnId === 'string' &&
+        !this.keadaan.events.some((e) => e.type === 'done' && e.turnId === j.turnId)
+      )
+        this.keadaan = mulaiTurnBaru(this.keadaan);
       if (this.keadaan.status === 'diam' || this.keadaan.status === 'terputus') this.sambung(id);
       return 'ok';
     } catch {

@@ -29,12 +29,11 @@
     { nilai: 1.5, label: 'Sangat besar', aa: 'text-2xl leading-6' },
   ];
 
-  let kodeWilayah = $state(lokal.data.wilayah.kodeKabKota);
+  let kodeWilayah = $state(lokal.data.wilayah?.kodeKabKota ?? '');
   let wilayahTersimpan = $state(false);
   function simpanWilayah() {
     const k = data.kota.find((x) => x.kodeKabKota === kodeWilayah);
-    if (!k) return;
-    lokal.aturWilayah({ kodeKabKota: k.kodeKabKota, nama: k.nama });
+    lokal.aturWilayah(k ? { kodeKabKota: k.kodeKabKota, nama: k.nama } : null);
     wilayahTersimpan = true;
   }
 
@@ -246,8 +245,8 @@
           Wilayah layanan
         </h2>
         <p id="d-wilayah" class="text-base leading-[25px] text-body">
-          Kab/kota tempat KTP Anda terdaftar. Urusin memakai ini untuk memilih situs dan aturan Disdukcapil
-          yang benar.
+          Opsional. Kab/kota tempat KTP Anda terdaftar, dipakai sebagai usulan: di setiap urusan Urusin tetap
+          menanyakan dulu sebelum memilih situs dan aturan Disdukcapil.
         </p>
       </div>
       <form
@@ -268,6 +267,7 @@
               autocomplete="address-level2"
               class="h-12 w-full appearance-none rounded-xl border border-line-2 bg-surface pr-10 pl-4 text-base text-ink transition-colors hover:border-line cursor-pointer"
             >
+              <option value="" class="bg-surface text-ink">Belum dipilih</option>
               {#each data.kota as k (k.kodeKabKota)}
                 <option value={k.kodeKabKota} class="bg-surface text-ink">{k.nama}</option>
               {/each}
@@ -284,7 +284,9 @@
         >
       </form>
       <p role="status" class="text-[0.9375rem] text-hijau-ink">
-        {#if wilayahTersimpan}Wilayah disimpan: {lokal.data.wilayah.nama}.{/if}
+        {#if wilayahTersimpan}{lokal.data.wilayah
+            ? `Wilayah disimpan: ${lokal.data.wilayah.nama}.`
+            : 'Pilihan wilayah dihapus.'}{/if}
       </p>
     </section>
 

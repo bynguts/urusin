@@ -4,6 +4,8 @@ import type { GateRule, UrusanState } from '@urusin/contracts';
 import type { QuotaStatus } from './quota.js';
 import { paramsHash, type HarnessStore, type UrusanRow } from './store.js';
 import { CONFIRMATION_FIELD, modelFacingSchema, type ToolDef, type ToolRegistry } from './tools.js';
+import { ADMINDUK } from './grounding.js';
+import { wilayahBelumSiap, wilayahUrusan } from './wilayah.js';
 
 export type GateInput = {
   urusan: UrusanRow;
@@ -57,6 +59,25 @@ export class PolicyGate {
     // (1) tool diizinkan di state ini.
     if (!tool.allowedStates.includes(input.state)) {
       return deny('TOOL_NOT_ALLOWED_IN_STATE', `tool ini tidak tersedia pada tahap ${input.state}`);
+    }
+
+    // (1b) gerbang wilayah: rencana tidak boleh disusun sebelum wilayah KTP dipastikan warga (dikunci di kode).
+    if (tool.butuhWilayah === true) {
+      const belum = wilayahBelumSiap(input.urusan.jenis, wilayahUrusan(this.store, input.urusan));
+      if (belum) return deny('WILAYAH_BELUM_DITETAPKAN', belum);
+    }
+    // Jawaban persyaratan kependudukan juga menunggu wilayah dipastikan warga (kartu usulan saja belum cukup):
+    // aturan dan kanal berbeda per kab/kota.
+    const jenis = input.urusan.jenis;
+    if (tool.butuhWilayah === 'adminduk' && jenis !== null && ADMINDUK.has(jenis)) {
+      const w = wilayahUrusan(this.store, input.urusan);
+      const belum = w.ktp ? undefined : wilayahBelumSiap(jenis === 'pindah' ? null : jenis, w);
+      // Tanpa penegasan ini model menjawab persyaratan di teks bebas (tanpa verifikasi kutipan) saat ditolak.
+      if (belum)
+        return deny(
+          'WILAYAH_BELUM_DITETAPKAN',
+          `${belum}. Jangan menjawab persyaratan atau mengutip sumber di teks bebas sebelum wilayah ditetapkan.`,
+        );
     }
 
     // (2) lapis 2 PII: tolak placeholder/PII di SEMUA string yang ditulis model, sebelum zod.
