@@ -22,7 +22,7 @@ for store in /home/runner/_work/.pnpm-store "$HOME/.local/share/pnpm/store"; do
   fi
 done
 # ~/.npm dan ~/.cache dipakai self-installer pnpm/action-setup (npm install @pnpm/exe): simpan sampai 1 GB.
-for c in "$HOME/.cache" "$HOME/.npm"; do
+for c in "$HOME/.cache" "$HOME/.npm" /home/runner/_work/.npm-cache; do
   if [ -d "$c" ] && [ "$(du -sm "$c" | cut -f1)" -gt 1024 ]; then rm -rf "$c"; fi
 done
 cache="${ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE:-}"
