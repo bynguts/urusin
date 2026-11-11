@@ -24,9 +24,10 @@ for i in $(seq 1 "${RUNNERS:-1}"); do
     --cpus "${CPUS:-6}" --memory "${MEMORY:-2g}" --memory-swap "${MEMORY_SWAP:-3g}" --pids-limit 4096 \
     --label urusin.ci-runner-laptop=1 -v "$name-work:/home/runner/_work" "$IMAGE" >/dev/null
   # shellcheck disable=SC2016  # $1..$3 dan $t dievaluasi bash di dalam kontainer
-  if ! gh api -X POST "repos/$REPO/actions/runners/registration-token" --jq .token |
+  if ! out="$(gh api -X POST "repos/$REPO/actions/runners/registration-token" --jq .token |
     docker exec -i "$name" bash -c 'read -r t && ACTIONS_RUNNER_INPUT_TOKEN="$t" ./config.sh --unattended \
-      --url "https://github.com/$1" --name "$2" --labels "$3" --work _work --replace' _ "$REPO" "$name" "$LABEL"; then
+      --url "https://github.com/$1" --name "$2" --labels "$3" --work _work --replace' _ "$REPO" "$name" "$LABEL" 2>&1)"; then
+    printf '%s\n' "$out" | grep -v '^\[RUNNER ' | tail -n 20 >&2
     docker rm -f "$name" >/dev/null
     echo "$name: pendaftaran gagal, kontainer dibuang" >&2
     exit 1

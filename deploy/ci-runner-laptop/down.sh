@@ -16,8 +16,12 @@ for name in $(docker ps -a --filter label=urusin.ci-runner-laptop=1 --format '{{
   docker rm -f "$name" >/dev/null && docker volume rm "$name-work" >/dev/null && echo "$name: kontainer dan volume dihapus"
 done
 docker image rm "$IMAGE" >/dev/null 2>&1
+# Runner yang baru saja dimatikan di tengah job masih "busy" beberapa saat (HTTP 422): ulangi sampai 2 menit.
 for id in $(gh api "repos/$REPO/actions/runners" --jq "$SEL | .[].id"); do
-  gh api -X DELETE "repos/$REPO/actions/runners/$id" && echo "registrasi runner $id dihapus"
+  for _ in $(seq 1 24); do
+    gh api -X DELETE "repos/$REPO/actions/runners/$id" >/dev/null 2>&1 && { echo "registrasi runner $id dihapus"; break; }
+    sleep 5
+  done
 done
 left="$(gh api "repos/$REPO/actions/runners" --jq "$SEL | length")"
 echo "sisa runner berlabel $LABEL: $left"
