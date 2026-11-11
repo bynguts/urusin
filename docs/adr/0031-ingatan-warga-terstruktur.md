@@ -15,8 +15,10 @@ sederhana), dokumen yang sudah ada di brankas, dan status urusan lainnya.
   sendiri `v1|ingatan|<pemilik>`. Ingatan ikut crypto-shred dan ikut umur tamu/demo. Saat tamu masuk ke akun,
   ingatan tamu TIDAK digabung diam-diam (perangkat bisa dipakai bersama): butirnya dititipkan di `dariTamu` milik
   akun (`titipDariTamu`, tidak dipakai di prompt) dan Pengaturan menampilkan pilihan sekali "Ada N hal yang
-  diingat di perangkat ini sebelum Anda masuk. [Bawa ke akun] [Buang]". "Bawa ke akun" (`gabungIngatan`)
-  tidak pernah menggusur butir akun: butir tunggal akun menang dan catatan tamu hanya mengisi slot kosong.
+  diingat di perangkat ini sebelum Anda masuk: … [Bawa ke akun] [Buang]" beserta isinya. Hanya butir non-sensitif
+  (wilayah, preferensi) yang dititipkan; butir yang butuh persetujuan (aksesibilitas, catatan) dan usulan tamu
+  dibuang, karena persetujuan orang lain di perangkat bersama tidak berlaku untuk pemilik akun. Titipan kedaluwarsa
+  30 hari sesudah titipan terakhir. "Bawa ke akun" (`gabungIngatan`) tidak pernah menggusur butir akun.
 - Isinya terbatas pada jenis butir yang tetap: wilayah (KTP, domisili, tujuan pindah terakhir), preferensi
   (bahasa sederhana, lansia, kanal online/datang, aksesibilitas), dan paling banyak 10 catatan pendek
   (≤ 200 karakter). Daftar dokumen (jenisnya saja) dan ringkasan urusan lain (jenis, status, langkah
@@ -27,15 +29,21 @@ sederhana), dokumen yang sudah ada di brankas, dan status urusan lainnya.
   `preferensiDinyatakan`, dijalankan di awal turn atas pesan yang sudah diredaksi). Kalimat tanya, bentuk ingkar,
   dan kepemilikan tidak dicatat: "saya" hanya dianggap subjek di awal klausa, sesudah tanda baca, atau sesudah
   kata penghubung ("anak bungsu saya tuli", "pasien saya pakai kursi roda", "ibu saya sudah tua" dilewati).
-- Catatan juga ditulis dengan aturan tetap, tidak dikarang model: hanya kalimat yang memuat permintaan
-  ("tolong ingat …", "catat ya …") di pesan warga GILIRAN INI, diambil persis tanpa frasa permintaannya
-  (`catatanDiminta`). Lewat tool, catatan hanya diterima bila sama persis dengan kutipan itu; parafrase ditolak.
+- Catatan juga diambil dengan aturan tetap, tidak dikarang model: hanya perintah LANGSUNG ke Urusin di AWAL
+  pesan pendek (≤ 2 kalimat, satu baris) giliran ini ("tolong ingat …", "mohon dicatat ya …", "ingat ya, …"),
+  diambil persis tanpa frasa permintaannya (`catatanDiminta`). Bentuk pengumuman ("Harap diingat bahwa …",
+  "Mohon diingat bahwa …"), permintaan di tengah teks, dan pesan tempelan/diteruskan diabaikan. Lewat tool,
+  catatan hanya diterima bila sama persis dengan kutipan itu. Catatan selalu menjadi USULAN dengan kartu
+  `Ingat ini? "…" [Ya, ingat] [Tidak]`, sama seperti aksesibilitas.
 - Tool `ingatan__ingat` tersisa untuk melupakan dan preferensi yang dinyatakan dengan kata lain. Wilayah lewat
-  tool ditolak (`WILAYAH_OTOMATIS`); hapus wajib menyebut objeknya di pesan giliran itu. Sesudah turn membaca
-  konten tak tepercaya (hasil tool ber-spotlight: rag, dom, ocr, tool_output, berkas), tool ini tidak ditawarkan
-  dan ditolak gate `UNTRUSTED_CONTENT_READ`, jadi injeksi tidak bisa menanam ingatan lintas urusan (INJ-12).
-- Kebutuhan aksesibilitas (data kesehatan) tidak langsung diingat: tercatat sebagai `usulan` dan muncul kartu
-  persetujuan "Ingat bahwa Anda …? [Ya, ingat] [Tidak]". Usulan tidak masuk prompt sampai warga menyetujui.
+  tool ditolak (`WILAYAH_OTOMATIS`); hapus wajib menyebut objeknya di pesan giliran itu. Sesudah konten tak
+  tepercaya masuk konteks, tool ini tidak ditawarkan dan ditolak gate `UNTRUSTED_CONTENT_READ` (INJ-12). Penandanya
+  `takTepercaya` di `ToolResult` (potongan RAG dan klaim jawaban yang diturunkan darinya, keluaran tool luar),
+  bukan pola teks. Kuncinya tetap menyala di turn berikutnya selama hasil tool bertanda `kontenLuar` masih ada di
+  riwayat urusan; melupakan tetap bisa lewat kartu dan Pengaturan.
+- Kebutuhan aksesibilitas (data kesehatan) dan catatan tidak langsung diingat: tercatat sebagai `usulan` dan
+  muncul kartu persetujuan ("Ingat bahwa Anda …?" / `Ingat ini? "…"`, [Ya, ingat] [Tidak]). Usulan tidak masuk
+  prompt sampai warga menyetujui.
 - Setiap butir lolos skema, pemindai PII, dan bukti ucapan warga. Pemindai menolak NIK, KK, HP, email, nama ibu
   (termasuk "ibunda saya bernama", "nama gadis ibu"), alamat lengkap (jalan/RT/RW, juga dusun/desa/kelurahan),
   placeholder, deret angka panjang dengan pemisah apa pun (garis miring, garis bawah, koma, angka non-Latin,
