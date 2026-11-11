@@ -15,17 +15,29 @@
 > Tidak ada PAT di box (runner hanya memegang kredensialnya sendiri, ikut terhapus). Tetap rotasi/cabut token
 > lokal yang dipakai untuk membuat registration token. Baru setelah itu ubah visibilitas repo ke Public.
 
-## Kapan dipakai
+## Status dan kapan dipakai
 
-Disiapkan, **tidak terpasang**. Dipasang hanya bila run CI/Release gagal karena batas menit atau billing
-GitHub Actions (pesan seperti "spending limit" / "minutes quota"), dan hanya selama repo masih private.
-Setiap pemasangan dan pengaktifan tetap butuh persetujuan per kejadian (aturan do-no-harm agent-vm).
+**Status: terpasang dan aktif.** Runner `urusin-self-agent-vm` (label `self-hosted`, `Linux`, `ARM64`,
+`urusin-self`) terdaftar di agent-vm, dan variabel repo `URUSIN_RUNNER=urusin-self` diset 2026-11-10. Semua
+job non-`pull_request` di CI/Release/Security/audit-branch berjalan di sini; job `pull_request` tetap di
+`ubuntu-latest` (lihat ekspresi `runs-on` di bawah).
+
+**Rencana: dicopot sebelum repo dibuat Public** (perintah di kotak atas, lalu verifikasi `total_count` = 0 dan
+variabel kosong). Sesudah itu semua job kembali ke runner GitHub, dan berkas di folder ini tinggal sebagai
+cadangan yang tidak terpasang.
+
+Runner hanya dipasang bila run CI/Release gagal karena batas menit atau billing GitHub Actions (pesan seperti
+"spending limit" / "minutes quota"), dan hanya selama repo masih private. Setiap pemasangan dan pengaktifan
+tetap butuh persetujuan per kejadian (aturan do-no-harm agent-vm).
 
 ## Cara kerja
 
 - **Satu variabel repo memindahkan semua job.** Setiap job di `ci.yml`, `release.yml`, `security.yml`, dan
-  `audit-branch.yml` memakai `runs-on: ${{ vars.URUSIN_RUNNER || 'ubuntu-latest' }}`. Set
+  `audit-branch.yml` memakai
+  `runs-on: ${{ (github.event_name != 'pull_request' && vars.URUSIN_RUNNER) || 'ubuntu-latest' }}`. Set
   `URUSIN_RUNNER=urusin-self` untuk pindah ke agent-vm; hapus variabelnya untuk kembali. Tanpa ubah kode.
+  Pengecualian `pull_request` bukan pengaman untuk repo publik: PR dari fork menjalankan YAML versi PR itu
+  sendiri dan bisa menulis `runs-on: [self-hosted, urusin-self]`, jadi runner tetap wajib dicopot.
   `codeql.yml` dan `scorecard.yml` tetap di runner GitHub (keduanya hanya bermakna saat repo publik).
 - **Langkah yang tidak aman di host punya varian self-hosted** (`if: runner.environment == 'self-hosted'`):
   - **E2E dan Lighthouse** berjalan di image Playwright resmi (digest = basis `apps/pendamping/Dockerfile`,
