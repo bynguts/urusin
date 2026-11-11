@@ -41,7 +41,7 @@ const STALE_DAYS = 30;
 const MIN_QUOTE_CHARS = 12;
 export const MAX_KLAIM = 8;
 /** Batas klaim yang diminta dari model (MAX_KLAIM tetap jaring pengaman): jawaban panjang menenggelamkan warga. */
-export const KLAIM_RINGKAS = 6;
+export const KLAIM_RINGKAS = 4;
 export const MAX_KLAIM_CHARS = 400;
 
 /** Token faktual yang harus terbukti di kutipan: angka (termasuk Rp/titik/koma), URL, dan nomor telepon. */
@@ -385,6 +385,7 @@ export async function generateGroundedAnswer(opts: GroundedGenerationOptions) {
         '- kutipanPersis HARUS salinan kata per kata dari sumber (boleh tanpa tanda "' +
           DATAMARK +
           '", kembalikan jadi spasi biasa). refId HARUS salah satu ID di dalam kurung siku pada sumber.',
+        '- kutipanPersis cukup potongan TERPENDEK yang membuktikan klaim (6-25 kata), biasanya satu kutipan per klaim; jangan menyalin seluruh daftar. Jawaban ringkas lebih cepat sampai ke warga.',
         '- Jangan membuat klaim tanpa kutipan. Bila sumber tidak memuat jawabannya, kembalikan klaim kosong dan isi handoff.',
         '- Jangan menulis nomor identitas, nomor HP, atau email warga.',
       ].join('\n'),
