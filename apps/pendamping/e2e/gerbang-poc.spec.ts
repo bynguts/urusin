@@ -58,6 +58,16 @@ const HALAMAN: Record<string, string> = {
   '/spa': kerangka(`<div id="app">Memuat...</div><script>setTimeout(() => {
   document.getElementById('app').innerHTML = '<form><label>Nama Lengkap <input name="nama"></label></form>';
 }, 1500);</script>`),
+  // Probe gel4 6171: layar muat + konten opacity 0, baru tampil 800 ms setelah load dengan transisi 700 ms.
+  '/pudar':
+    kerangka(`<style>#muat{position:fixed;top:200px;left:0;right:0;bottom:0;background:#fff}#isi{opacity:0;transition:opacity .7s}
+#isi.tampil{opacity:1}</style><nav><a href="/beranda">Beranda</a></nav><div id="isi"><form><label>Nama Pudar <input name="nama"></label>
+<label>Tempat Lahir Pudar <input name="tempat"></label><button type="button">Lanjut</button></form></div>
+<div id="muat">Memuat...</div>
+<script>addEventListener('load', () => setTimeout(() => {
+  document.getElementById('isi').classList.add('tampil');
+  document.getElementById('muat').remove();
+}, 800));</script>`),
   // Probe 3674: redirect JS halaman sendiri (bukan aksi AI) ke ?p=close_form; dan redirect ke jalur tulis.
   '/alih': kerangka(
     `<p>Mengalihkan...</p><script>setTimeout(() => { location.href = '/tutup?p=close_form'; }, 300);</script>`,
@@ -604,6 +614,16 @@ test('kode N4: tautan target=_blank yang diketuk warga dibuka di halaman utama (
         { timeout: 10_000 },
       )
       .toBe('/permohonan/kk');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 6171: konten fade-in teramati setelah transisi selesai (tenang menunggu animasi)', async () => {
+  const { manager, p } = await sesi(situs, '/pudar', 'pudar');
+  try {
+    expect(satu(p, 'Nama Pudar')).toMatchObject({ peran: 'teks', isian: 'kosong' });
+    expect(satu(p, 'Tempat Lahir Pudar')).toMatchObject({ peran: 'teks' });
   } finally {
     await manager.shutdown();
   }
