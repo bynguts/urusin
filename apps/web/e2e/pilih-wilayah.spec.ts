@@ -11,7 +11,9 @@ test('cari wilayah, batalkan, simpan, dan hapus pilihan tanpa mengubahnya menjad
   await kota.press('Enter');
   await expect(kota).toHaveValue('Kota Surabaya');
   await page.getByRole('button', { name: 'Simpan wilayah' }).click();
-  await expect(page.getByRole('status')).toContainText('Wilayah disimpan: Kota Surabaya.');
+  await expect(page.getByRole('status').filter({ hasText: 'Wilayah disimpan' })).toContainText(
+    'Wilayah disimpan: Kota Surabaya.',
+  );
 
   await kota.fill('wilayah-tidak-ada');
   await expect(page.getByRole('status').filter({ hasText: 'Wilayah tidak ditemukan' })).toBeVisible();

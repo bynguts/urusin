@@ -100,7 +100,7 @@ LIMITS=(--cpus 1.5 "${LIMITS_SISA[@]}")
 # Bobot CPU bawaan (1024, sama dengan kontainer lain), bukan 256: dengan 256 kontainer perf hanya mendapat 1/4
 # jatah saat host sibuk, task teramati memanjang lalu dikali multiplier, dan TBT melonjak (run 43032218573,
 # 43042454102). Kuota 1,5 CPU tetap menjadi batas atas, jadi layanan lain tidak pernah kehilangan lebih dari itu.
-LIMITS_PERF=(--cpu-period 10000 --cpu-quota 15000 --cpu-shares 1024 "${LIMITS_DASAR[@]}")
+LIMITS_PERF=(--cpu-period 10000 --cpu-quota 15000 --cpu-shares 256 "${LIMITS_DASAR[@]}")
 
 # Platform build: arm64 selalu (agent-vm). amd64 hanya bila binfmt qemu-x86_64 SUDAH terdaftar di host
 # (paket distro); skrip ini tidak pernah memasang binfmt (itu perubahan kernel host).
