@@ -1,7 +1,15 @@
 import { redirect } from '@sveltejs/kit';
 import { AkunError } from '@urusin/akun';
-import { hapusAkunCookie } from '#lib/server/akun.js';
+import { hapusAkunCookie, pemilikVault } from '#lib/server/akun.js';
 import { gagalForm, teks } from '#lib/server/akun-form.js';
+import {
+  bawaIngatanTamu,
+  buangIngatanTamu,
+  daftarIngatan,
+  hapusButirIngatan,
+  hapusSemuaIngatan,
+  titipanIngatanTamu,
+} from '#lib/server/ingatan.js';
 import { daftarKota } from '#lib/server/referensi.js';
 import { getRuntime } from '#lib/server/runtime.js';
 import { hapusTerakhir, rotasiSid } from '#lib/server/sesi.js';
@@ -10,16 +18,68 @@ import type { Actions, PageServerLoad } from './$types';
 /** Tujuan masuk ulang (Google atau sandi) sebelum menghapus akun tanpa sandi, lalu kembali ke zona bahaya. */
 const MASUK_ULANG = `/masuk?ulang=1&lanjut=${encodeURIComponent('/pengaturan#zona-bahaya')}`;
 
-export const load: PageServerLoad = ({ locals }) => ({
+/** Kembali ke bagian ingatan setelah menghapus (POST-redirect-GET: muat ulang tidak mengirim ulang). */
+const KE_INGATAN = '/pengaturan#ingatan';
+
+/**
+ * Yang Urusin ingat (ADR 0031): butir ingatan pemilik vault perangkat/akun ini (label tanpa PII), jumlah titipan
+ * tamu yang menunggu pilihan warga (isinya, bukan hanya jumlah), dan `rusak` bila isinya tidak bisa dibaca (warga tetap bisa menghapus semua).
+ */
+async function muatIngatanPengaturan(event: Parameters<PageServerLoad>[0]) {
+  const rt = await getRuntime();
+  const p = pemilikVault(rt, event, { buat: false });
+  if (!p) return { ingatan: [], ingatanTamu: [], ingatanRusak: false };
+  try {
+    return {
+      ingatan: daftarIngatan(rt.akun, p.id),
+      ingatanTamu: titipanIngatanTamu(rt.akun, p.id),
+      ingatanRusak: false,
+    };
+  } catch {
+    return { ingatan: [], ingatanTamu: [], ingatanRusak: true };
+  }
+}
+
+export const load: PageServerLoad = async (event) => ({
   kota: daftarKota().map((k) => ({ kodeKabKota: k.kodeKabKota, nama: k.nama })),
+  ...(await muatIngatanPengaturan(event)),
   /**
    * Zona bahaya (akun saja, bukan sesi juri): hapus akun meminta sandi (akun bersandi) atau masuk ulang
    * (Google saja).
    */
-  zonaBahaya: locals.akun?.jenis === 'akun' ? { punyaSandi: locals.akun.punyaSandi } : null,
+  zonaBahaya: event.locals.akun?.jenis === 'akun' ? { punyaSandi: event.locals.akun.punyaSandi } : null,
 });
 
 export const actions: Actions = {
+  /** "Bawa ke akun": hal yang diingat di perangkat ini sebelum masuk digabung (tanpa menggusur ingatan akun). */
+  bawaIngatanTamu: async (event) => {
+    const rt = await getRuntime();
+    const p = pemilikVault(rt, event, { buat: false });
+    if (p) bawaIngatanTamu(rt.akun, p.id);
+    redirect(303, KE_INGATAN);
+  },
+  /** "Buang": hal yang diingat di perangkat ini sebelum masuk dihapus tanpa dipakai. */
+  buangIngatanTamu: async (event) => {
+    const rt = await getRuntime();
+    const p = pemilikVault(rt, event, { buat: false });
+    if (p) buangIngatanTamu(rt.akun, p.id);
+    redirect(303, KE_INGATAN);
+  },
+  /** Hapus satu butir ingatan (tombol "Hapus" per butir). Jalan tanpa JS. */
+  hapusIngatan: async (event) => {
+    const id = teks(await event.request.formData(), 'id');
+    const rt = await getRuntime();
+    const p = pemilikVault(rt, event, { buat: false });
+    if (p && /^ing_[0-9a-f]{16}$/.test(id)) hapusButirIngatan(rt.akun, p.id, id);
+    redirect(303, KE_INGATAN);
+  },
+  /** "Hapus semua ingatan" (hak hapus UU PDP 27/2022). */
+  hapusSemuaIngatan: async (event) => {
+    const rt = await getRuntime();
+    const p = pemilikVault(rt, event, { buat: false });
+    if (p) hapusSemuaIngatan(rt.akun, p.id);
+    redirect(303, KE_INGATAN);
+  },
   /** "Keluar dari semua perangkat": hapus semua sesi akun (termasuk perangkat ini), putar sid, ke /masuk. */
   keluarSemua: async ({ locals, cookies }) => {
     if (locals.akun?.jenis !== 'akun') redirect(303, '/masuk');

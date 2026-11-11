@@ -108,8 +108,15 @@ function ringkasEvent(type: string, payload: Record<string, unknown>): string {
     case 'wilayah': {
       const nama = (payload.ktp as { nama?: string } | undefined)?.nama ?? '?';
       return payload.status === 'usulan'
-        ? `Wilayah KTP diusulkan (${payload.sumber === 'data_diri' ? 'Data Diri' : payload.sumber === 'warga' ? 'percakapan' : 'pilihan perangkat'}): ${nama}`
+        ? `Wilayah KTP diusulkan (${payload.sumber === 'data_diri' ? 'Data Diri' : payload.sumber === 'warga' ? 'percakapan' : payload.sumber === 'ingatan' ? 'Ingatan warga' : 'pilihan perangkat'}): ${nama}`
         : `Wilayah KTP dipastikan warga: ${nama}`;
+    }
+    case 'ingatan': {
+      // Jenis butir saja: isi catatan warga tidak masuk jejak.
+      const jenis = String((payload.butir as { jenis?: string } | undefined)?.jenis ?? '?');
+      return payload.aksi === 'hapus'
+        ? `Ingatan warga dihapus: ${jenis}`
+        : `Ingatan warga disimpan: ${jenis}`;
     }
     case 'jejak_pendamping':
       return ringkasJejakPendamping((payload.catatan ?? {}) as Record<string, unknown>);

@@ -2,13 +2,17 @@
   import { SvelteMap } from 'svelte/reactivity';
   import { tick, untrack } from 'svelte';
   import { resolve } from '$app/paths';
-  import type { EventOf, KutipanTerverifikasi } from '#lib/contracts.js';
+  import type { EventOf, IngatanResponse, KutipanTerverifikasi } from '#lib/contracts.js';
   import Icon from '#lib/components/Icon.svelte';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
   import KartuChecklist from '#lib/components/urusan/KartuChecklist.svelte';
   import KartuGalat from '#lib/components/urusan/KartuGalat.svelte';
   import KartuGiliran from '#lib/components/urusan/KartuGiliran.svelte';
   import KartuHandoff from '#lib/components/urusan/KartuHandoff.svelte';
+  import KartuIngatan, {
+    type HasilBatal,
+    type IngatanLive,
+  } from '#lib/components/urusan/KartuIngatan.svelte';
   import KartuJawaban from '#lib/components/urusan/KartuJawaban.svelte';
   import KartuKonfirmasi from '#lib/components/urusan/KartuKonfirmasi.svelte';
   import KartuRencana from '#lib/components/urusan/KartuRencana.svelte';
@@ -171,6 +175,48 @@
       } else el.scrollIntoView({ block: 'center', behavior });
     });
   });
+
+  /**
+   * Isi Ingatan warga saat ini (GET /api/ingatan): kartu menampilkan status dan isi yang SEBENARNYA dari sini, bukan
+   * dari event (event hanya membawa label generik untuk catatan/aksesibilitas). null = belum/gagal dimuat.
+   */
+  let ingatanLive = $state<Map<string, Exclude<IngatanLive, null | undefined>> | null>(null);
+  const jumlahKartuIngatan = $derived(linimasa.filter((it) => it.jenis === 'ingatan').length);
+
+  async function muatIngatanLive(): Promise<void> {
+    const r = await fetch('/api/ingatan').catch(() => null);
+    if (!r?.ok) return;
+    const d = (await r.json()) as IngatanResponse;
+    const m = new SvelteMap<string, Exclude<IngatanLive, null | undefined>>();
+    for (const b of d.butir) m.set(b.id, { status: 'butir', label: b.label });
+    for (const b of d.usulan ?? []) m.set(b.id, { status: 'usulan', label: b.label });
+    ingatanLive = m;
+  }
+
+  $effect(() => {
+    if (jumlahKartuIngatan > 0) void untrack(() => muatIngatanLive());
+  });
+
+  const liveIngatan = (id: string): IngatanLive => (ingatanLive ? (ingatanLive.get(id) ?? null) : undefined);
+
+  /**
+   * "Batalkan"/"Tidak" di kartu ingatan: hapus butir/usulan itu, lalu muat ulang GET /api/ingatan. 404 tidak
+   * dianggap "Dibatalkan": kartu menampilkan status sebenarnya dari daftar yang dimuat ulang (isi yang sama bisa
+   * saja masih diingat di butir lain, mis. sesudah "Bawa ke akun").
+   */
+  async function batalkanIngatan(id: string): Promise<HasilBatal> {
+    const r = await fetch(`/api/ingatan/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => null);
+    await muatIngatanLive();
+    if (r?.ok) return 'dihapus';
+    return r?.status === 404 && ingatanLive !== null && !ingatanLive.has(id) ? 'tidak_ada' : 'gagal';
+  }
+
+  /** "Ya, ingat" di kartu persetujuan: usulan menjadi butir. */
+  async function setujuiIngatan(id: string): Promise<boolean> {
+    const r = await fetch(`/api/ingatan/${encodeURIComponent(id)}`, { method: 'POST' }).catch(() => null);
+    await muatIngatanLive();
+    return ingatanLive?.get(id)?.status === 'butir' || r?.ok === true;
+  }
 
   function judulDariPesan(t: string | undefined): string {
     if (!t) return 'Urusan baru';
@@ -456,6 +502,14 @@
                 >
                   <Icon name="centang-bulat" class="size-4 shrink-0" />{it.teks} · {waktuSingkat(it.at)}
                 </p>
+              {:else if it.jenis === 'ingatan'}
+                <KartuIngatan
+                  ingatan={it.e}
+                  dibatalkan={it.dibatalkan}
+                  live={liveIngatan(it.e.butir.id)}
+                  onbatalkan={() => batalkanIngatan(it.e.butir.id)}
+                  onsetujui={() => setujuiIngatan(it.e.butir.id)}
+                />
               {:else if it.jenis === 'teks'}
                 <PesanAgen avatar={p.avatar}
                   ><p class="leading-relaxed whitespace-pre-line">{it.teks}</p></PesanAgen

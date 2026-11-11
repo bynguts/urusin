@@ -8,6 +8,7 @@ import {
   wilayahUrusan,
 } from '@urusin/harness';
 import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
+import { ingatWilayahUrusan } from '#lib/server/ingatan.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { segarkanJaringanId } from '#lib/server/pendamping.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
@@ -64,6 +65,8 @@ export const POST: RequestHandler = async (event) => {
       { ktp: body.data.kodeKabKota },
       publish,
     );
+    // Wilayah yang dibenarkan warga lewat kartu juga diingat untuk urusan berikutnya (ADR 0031).
+    ingatWilayahUrusan(rt.akun, cur, { ktp: body.data.kodeKabKota }, publish);
     if (cur.state === 'BARU') cur = majukan(rt.store, cur, ['MEMAHAMI'], publish);
     const sebelum = cur.state;
     cur = usulkanRencanaOtomatis(rt.store, cur, publish, rt.deps.ragDb);

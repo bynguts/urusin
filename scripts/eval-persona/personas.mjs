@@ -15,6 +15,9 @@
 //   masuk                'juri' = "Masuk sebagai juri" dulu (akun demo, Data Diri sintetis berwilayah Wonogiri)
 //   kodeBolehRencana     kode tambahan yang sah untuk rencana awal (warga mengganti wilayah di tengah jalan);
 //                        rencana TERAKHIR tetap wajib untuk kodeBenar
+//   sebelum              urusan PERTAMA di sesi yang sama (tidak dinilai): {pesanPertama, kartu, skenario?, maksGiliran?}
+//   ingatan              harapan ingatan lintas urusan (ADR 0031): {preferensi: jenis butir yang wajib tercatat di
+//                        urusan pertama}; urusan kedua wajib diusulkan wilayah dari ingatan (cekIngatan)
 import { nikSintetis } from './lib/periksa.mjs';
 
 export const PERSONA = [
@@ -254,6 +257,48 @@ export const PERSONA = [
     adapterBoleh: ['telunjuk-sakti-wonogiri'],
     harapan:
       'Setelah warga mengoreksi wilayah, Urusin menetapkan ulang wilayah ke Kabupaten Sukoharjo (konfirmasi), membuang rencana Wonogiri, dan memberi rencana/syarat akta kelahiran untuk Sukoharjo (aturan nasional, kanal Dispendukcapil Sukoharjo). Setelah koreksi tidak boleh ada lagi tautan/kartu/Browser Pendamping Wonogiri.',
+  },
+  {
+    id: 'p18-lansia-sleman-urusan-kedua',
+    judul: 'Lansia di Kab. Sleman, urusan kedua: preferensi dan wilayah dari urusan pertama',
+    sebelum: {
+      pesanPertama:
+        'Selamat siang. Saya sudah lansia, umur 71. Tolong pakai bahasa yang sederhana ya, saya kurang paham istilah. KTP saya hilang, mau bikin lagi.',
+      kartu:
+        'Kamu Pak Harjo (71). KTP-el dan KK kamu Kabupaten Sleman, Kecamatan Mlati. KTP-el hilang di pasar minggu lalu, KK ada. Pesanmu pendek dan sopan. Kalau ditanya KTP terdaftar di mana, jawab "Sleman". Bila ada kartu wilayah Kabupaten Sleman, tekan "Ya, betul". Setelah tahu langkahnya, kamu selesai.',
+      maksGiliran: 6,
+    },
+    pesanPertama: 'Selamat sore. Sekarang saya mau urus KK baru, KK saya rusak kena air hujan.',
+    kartu:
+      'Kamu Pak Harjo (71), orang yang sama yang kemarin sudah mengurus KTP hilang lewat Urusin. KK kamu (Kabupaten Sleman, Kecamatan Mlati) basah kena hujan dan tulisannya luntur. KTP-el baru sudah jadi. Kamu tidak mengulang cerita soal umur atau bahasa kecuali ditanya. Bila Urusin mengusulkan Kabupaten Sleman, tekan "Ya, betul". Kalau jawaban terlalu panjang atau memakai istilah sulit, bilang tidak paham.',
+    kodeBenar: ['3404'],
+    kataWilayah: ['sleman', 'mlati'],
+    wilayahTerkait: ['sleman'],
+    adapterBoleh: [],
+    ingatan: { preferensi: ['lansia', 'bahasa_sederhana'] },
+    harapan:
+      'Ini urusan KEDUA warga. Di urusan pertama warga sudah menyatakan lansia dan minta bahasa sederhana, dan KTP Kabupaten Sleman sudah ditetapkan. Urusin TIDAK menanyakan wilayah dari nol: mengusulkan Kabupaten Sleman dari ingatan dan meminta konfirmasi; memakai bahasa sangat sederhana dan sabar tanpa ditanya ulang soal umur/bahasa; syarat penggantian KK rusak (KK yang rusak, KTP-el) bersumber; arahkan ke Disdukcapil Sleman dengan langkah konkret. Tidak ada Wonogiri.',
+  },
+  {
+    id: 'p19-kursi-roda-semarang-urusan-kedua',
+    judul: 'Pengguna kursi roda di Kota Semarang, urusan kedua: lebih suka online',
+    sebelum: {
+      pesanPertama:
+        'Halo. Saya pakai kursi roda, jadi saya lebih suka urus online saja. Saya mau bikin akta kelahiran anak saya yang baru lahir minggu lalu.',
+      kartu:
+        'Kamu Dewi (34), pengguna kursi roda. KTP-el dan KK kamu Kota Semarang, Kecamatan Tembalang. Anak lahir 7 hari lalu di RS di Semarang, surat lahir dan buku nikah ada. Bahasa sopan, ringkas. Kalau ditanya KTP terdaftar di mana, jawab "Kota Semarang". Bila ada kartu wilayah Kota Semarang, tekan "Ya, betul". Setelah tahu langkahnya, kamu selesai (jangan buka Browser Pendamping).',
+      maksGiliran: 6,
+    },
+    pesanPertama: 'Halo lagi. Sekarang saya mau urus KIA untuk anak saya yang sulung, umurnya 6 tahun.',
+    kartu:
+      'Kamu Dewi (34), orang yang sama yang kemarin mengurus akta kelahiran lewat Urusin; pengguna kursi roda dan lebih suka mengurus online. Anak sulungmu 6 tahun, akta kelahirannya ada, KK Kota Semarang. Kamu tidak mengulang soal kursi roda atau online kecuali ditanya. Bila Urusin mengusulkan Kota Semarang, tekan "Ya, betul". Jangan buka Browser Pendamping.',
+    kodeBenar: ['3374'],
+    kataWilayah: ['kota semarang', 'semarang', 'tembalang'],
+    wilayahTerkait: ['semarang'],
+    adapterBoleh: ['sidnok-semarang'],
+    ingatan: { preferensi: ['aksesibilitas', 'kanal'] },
+    harapan:
+      "Ini urusan KEDUA warga. Di urusan pertama warga menyatakan pengguna kursi roda dan lebih suka mengurus online; KTP Kota Semarang sudah ditetapkan. Urusin TIDAK menanyakan wilayah dari nol: mengusulkan Kota Semarang dari ingatan lalu konfirmasi; mengutamakan jalur online resmi Kota Semarang (Si D'nOK) dan tidak menyuruh datang tanpa alasan; bila ada langkah yang harus datang, menyinggung kebutuhan aksesibilitas; syarat KIA (aturan nasional Permendagri 2/2016) bersumber. Tidak ada Wonogiri.",
   },
 ];
 

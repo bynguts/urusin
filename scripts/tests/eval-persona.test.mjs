@@ -642,3 +642,66 @@ describe('korpus pasal (ingest sumber *-pasal ke salinan DB eval)', async () => 
     );
   });
 });
+
+describe('ingatan lintas urusan (ADR 0031)', async () => {
+  const { cekIngatan } = await import('../eval-persona/lib/periksa.mjs');
+  const { renderEvent } = await import('../eval-persona/lib/layar.mjs');
+  const { cariPersona } = await import('../eval-persona/personas.mjs');
+  const ingat = (jenis, label) => ev('ingatan', { aksi: 'simpan', butir: { id: 'ing_1', jenis, label } });
+  const usulanIngatan = (kode, nama) =>
+    ev('wilayah', { status: 'usulan', sumber: 'ingatan', ktp: { kodeKabKota: kode, nama } });
+  const persona = { kodeBenar: ['3404'], ingatan: { preferensi: ['lansia', 'bahasa_sederhana'] } };
+  const urusan1 = [
+    warga('Saya sudah lansia, tolong bahasa yang sederhana'),
+    urusin(
+      ingat('lansia', 'Warga lansia'),
+      ingat('bahasa_sederhana', 'Ingin dijelaskan dengan bahasa sederhana'),
+    ),
+  ];
+
+  it('lulus: preferensi tercatat di urusan 1, urusan 2 diusulkan wilayah dari ingatan tanpa tanya ulang', () => {
+    const r = cekIngatan(
+      urusan1,
+      [
+        warga('mau urus KK'),
+        urusin(usulanIngatan('3404', 'Kabupaten Sleman'), teks('KTP Anda di Sleman, betul?')),
+      ],
+      persona,
+    );
+    assert.equal(r.lulus, true, r.bukti);
+    assert.deepEqual(r.tercatat, ['lansia', 'bahasa_sederhana']);
+  });
+  it('gagal bila preferensi tidak tercatat, usulan tidak dari ingatan, atau wilayah ditanya dari nol', () => {
+    const kedua = [warga('mau urus KK'), urusin(usulanIngatan('3404', 'Kabupaten Sleman'))];
+    assert.equal(
+      cekIngatan([urusan1[0], urusin(ingat('lansia', 'Warga lansia'))], kedua, persona).lulus,
+      false,
+    );
+    assert.equal(
+      cekIngatan(urusan1, [warga('x'), urusin(teks('KTP Anda terdaftar di kabupaten/kota mana?'))], persona)
+        .lulus,
+      false,
+    );
+    assert.equal(
+      cekIngatan(urusan1, [warga('x'), urusin(usulanIngatan('3312', 'Wonogiri'))], persona).lulus,
+      false,
+    );
+  });
+  it('null untuk persona satu urusan', () => {
+    assert.equal(cekIngatan(undefined, [], persona), null);
+    assert.equal(cekIngatan(urusan1, [], { kodeBenar: ['3404'] }), null);
+  });
+  it('kartu ingatan dan usulan dari ingatan tampil seperti di UI', () => {
+    assert.match(renderEvent(ingat('lansia', 'Warga lansia')), /Urusin mengingat: Warga lansia/);
+    assert.match(
+      renderEvent(usulanIngatan('3404', 'Kabupaten Sleman')),
+      /Urusin ingat dari urusan Anda sebelumnya/,
+    );
+  });
+  it('persona dua urusan lengkap (urusan pertama + harapan ingatan)', () => {
+    for (const p of cariPersona(['p18', 'p19'])) {
+      assert.ok(p.sebelum?.pesanPertama && p.sebelum?.kartu, p.id);
+      assert.ok(p.ingatan?.preferensi?.length, p.id);
+    }
+  });
+});

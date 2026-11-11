@@ -9,6 +9,7 @@ const TIPE = [
   'handoff',
   'plan_card',
   'wilayah',
+  'ingatan',
   'checklist',
   'eligibility',
   'execution_request',

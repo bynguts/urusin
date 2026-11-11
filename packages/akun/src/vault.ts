@@ -12,6 +12,7 @@ import { newId } from './token.js';
  * - DEK acak 256-bit per pemilik, disimpan TERBUNGKUS (AES-256-GCM dengan KEK) di `user_keys`.
  * - Data Diri (JSON) dan berkas dokumen dienkripsi AES-256-GCM dengan DEK; AAD = versi skema + jenis objek +
  *   pemilik (+ id dokumen), sehingga baris/berkas yang dipindah ke pemilik lain gagal didekripsi.
+ * - Ingatan warga (ADR 0031): satu dokumen JSON per pemilik di `vault_ingatan`, DEK yang sama, AAD sendiri.
  * - Crypto-shred: hapus DEK terbungkus → semua ciphertext pemilik itu tidak bisa dibuka lagi.
  * - Rotasi KEK: `kekLama` (URUSIN_PII_KEY_PREV) membuka DEK lama lalu langsung dibungkus ulang dengan KEK baru;
  *   `bungkusUlangSemua()` melakukannya untuk semua pemilik sekaligus (`pnpm kek:rotate`).
@@ -60,6 +61,7 @@ export class VaultError extends Error {
 export const aad = {
   dek: (u: string) => `${AAD_VERSION}|dek|${u}`,
   dataDiri: (u: string) => `${AAD_VERSION}|data-diri|${u}`,
+  ingatan: (u: string) => `${AAD_VERSION}|ingatan|${u}`,
   dokumen: (u: string, d: string) => `${AAD_VERSION}|dokumen|${u}|${d}`,
   judul: (u: string, d: string) => `${AAD_VERSION}|judul|${u}|${d}`,
 };
@@ -189,9 +191,10 @@ export class Vault {
       this.db
         .prepare(
           `SELECT 1 FROM vault_data_diri WHERE user_id = ?
-           UNION ALL SELECT 1 FROM vault_documents WHERE user_id = ? LIMIT 1`,
+           UNION ALL SELECT 1 FROM vault_documents WHERE user_id = ?
+           UNION ALL SELECT 1 FROM vault_ingatan WHERE user_id = ? LIMIT 1`,
         )
-        .get(userId, userId) !== undefined
+        .get(userId, userId, userId) !== undefined
     );
   }
 
@@ -217,6 +220,45 @@ export class Vault {
       )
       .run(userId, ct, at);
     return at;
+  }
+
+  /**
+   * Ingatan warga (ADR 0031) sebagai JSON terenkripsi. Isinya divalidasi pemanggil (@urusin/harness `IngatanSchema`);
+   * vault hanya menyimpan dan membuka. null = belum ada (atau DEK sudah di-shred). Baris yang ada tetapi gagal
+   * dibuka/diurai MELEMPAR (dan memberi alert operator): pemanggil tidak boleh membacanya kosong lalu menimpanya.
+   */
+  getIngatan(userId: string): { data: unknown; updatedAt: string } | null {
+    const row = this.db
+      .prepare('SELECT ciphertext, updated_at FROM vault_ingatan WHERE user_id = ?')
+      .get(userId) as { ciphertext: Buffer; updated_at: string } | undefined;
+    if (!row) return null;
+    const dek = this.dek(userId, false);
+    if (!dek) return null;
+    try {
+      const json = open(dek, row.ciphertext, aad.ingatan(userId)).toString('utf8');
+      return { data: JSON.parse(json) as unknown, updatedAt: row.updated_at };
+    } catch (e) {
+      this.opts.alert?.(`ingatan pemilik ${userId} tidak bisa dibuka: ${(e as Error).message}`);
+      throw e instanceof VaultError ? e : new VaultError('isi ingatan rusak');
+    }
+  }
+
+  setIngatan(userId: string, data: unknown): string {
+    const dek = this.dek(userId, true)!;
+    const at = this.now().toISOString();
+    const ct = seal(dek, Buffer.from(JSON.stringify(data), 'utf8'), aad.ingatan(userId));
+    this.db
+      .prepare(
+        `INSERT INTO vault_ingatan (user_id, ciphertext, updated_at) VALUES (?,?,?)
+         ON CONFLICT(user_id) DO UPDATE SET ciphertext = excluded.ciphertext, updated_at = excluded.updated_at`,
+      )
+      .run(userId, ct, at);
+    return at;
+  }
+
+  /** Hapus seluruh ingatan pemilik (hak hapus UU PDP 27/2022). true bila ada yang dihapus. */
+  hapusIngatan(userId: string): boolean {
+    return this.db.prepare('DELETE FROM vault_ingatan WHERE user_id = ?').run(userId).changes > 0;
   }
 
   private filePath(userId: string, docId: string): string {
@@ -383,12 +425,35 @@ export class Vault {
    * Berkas baru ditulis sekarang; baris DB diganti oleh `terapkan()` (di dalam transaksi pemanggil), yang juga
    * menghancurkan DEK `dari`. `batalkan()` menghapus berkas baru bila transaksi gagal; `selesai()` menghapus
    * berkas lama setelah commit. Data Diri digabung: nilai akun yang sudah ada menang, isian tamu melengkapi.
+   * Ingatan tamu TIDAK digabung: `titipIngatan` (pemanggil memberi `titipDariTamu` dari @urusin/harness)
+   * menitipkannya di ingatan akun sampai warga memilih "Bawa ke akun" atau "Buang". Tanpa itu ingatan tamu dibuang
+   * bersama DEK-nya (aman: tidak ada yang masuk diam-diam).
    */
-  siapkanPindah(dari: string, ke: string): RencanaPindah {
+  siapkanPindah(
+    dari: string,
+    ke: string,
+    titipIngatan?: (akun: unknown, tamu: unknown, at: string) => unknown,
+  ): RencanaPindah {
     const tulisBaru: string[] = [];
     const lama = this.getDataDiri(dari);
+    // Ingatan yang tidak bisa dibuka (sudah di-alert oleh getIngatan) tidak menggagalkan login dan tidak ditimpa.
+    const bacaAman = (u: string) => {
+      try {
+        return { ok: true as const, isi: this.getIngatan(u) };
+      } catch {
+        return { ok: false as const };
+      }
+    };
+    const tamuLama = titipIngatan ? bacaAman(dari) : null;
+    const ingatanLama = tamuLama?.ok ? tamuLama.isi : null;
     const docs = this.muatPindah(ke, this.dokumenSendiri(dari));
-    if (!lama && docs.length === 0) {
+    const terapkanIngatan = () => {
+      if (!ingatanLama || !titipIngatan) return;
+      const akun = bacaAman(ke);
+      if (akun.ok)
+        this.setIngatan(ke, titipIngatan(akun.isi?.data, ingatanLama.data, this.now().toISOString()));
+    };
+    if (!lama && !ingatanLama && docs.length === 0) {
       return {
         terapkan: () => this.shredDb(dari),
         batalkan: () => undefined,
@@ -422,6 +487,7 @@ export class Vault {
     }
     return {
       terapkan: () => {
+        terapkanIngatan();
         if (lama) {
           const sekarang = this.getDataDiri(ke)?.data ?? {};
           const gabung: Record<string, unknown> = { ...lama.data };
@@ -475,6 +541,7 @@ export class Vault {
     this.db.prepare('DELETE FROM user_keys WHERE user_id = ?').run(userId);
     this.db.prepare('DELETE FROM vault_data_diri WHERE user_id = ?').run(userId);
     this.db.prepare('DELETE FROM vault_documents WHERE user_id = ?').run(userId);
+    this.db.prepare('DELETE FROM vault_ingatan WHERE user_id = ?').run(userId);
   }
 
   hapusBerkas(userId: string): void {

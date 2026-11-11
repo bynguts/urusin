@@ -216,6 +216,38 @@ export function cekWilayahSebelumRencana(langkah, persona, kodeUrusan) {
 }
 
 /** (i) Tanpa crash, 4xx/5xx, event galat, turn yang tidak selesai, atau turn buntu tanpa keluaran. */
+/**
+ * Ingatan lintas urusan (ADR 0031), untuk persona dengan `sebelum`: preferensi yang warga nyatakan di urusan
+ * pertama tercatat (kartu "Urusin mengingat"), dan di urusan kedua wilayah KTP diusulkan dari ingatan (sumber
+ * `ingatan`, kode benar) tanpa pertanyaan wilayah dari nol. Null bila persona tidak punya urusan pertama.
+ */
+export function cekIngatan(langkahSebelum, langkah, persona) {
+  if (!langkahSebelum || !persona.ingatan) return null;
+  const tercatat = semuaEvent(langkahSebelum)
+    .filter((e) => e.type === 'ingatan' && e.aksi === 'simpan')
+    .map((e) => e.butir);
+  const jenis = new Set(tercatat.map((b) => b.jenis));
+  const kurang = (persona.ingatan.preferensi ?? []).filter((j) => !jenis.has(j));
+  const kedua = semuaEvent(langkah);
+  const usulan = kedua.find((e) => e.type === 'wilayah' && e.status === 'usulan' && e.sumber === 'ingatan');
+  const usulanBenar = Boolean(usulan && (persona.kodeBenar ?? []).includes(usulan.ktp?.kodeKabKota));
+  const tanyaUlang = kedua.some(
+    (e) =>
+      e.type === 'assistant_text' && /kabupaten\/kota mana|di kab(?:upaten)?\/kota mana/i.test(e.delta ?? ''),
+  );
+  const bukti = [
+    `urusan 1 tercatat: ${tercatat.map((b) => b.label).join('; ') || '(tidak ada)'}`,
+    kurang.length
+      ? `preferensi tidak tercatat: ${kurang.join(', ')}`
+      : 'semua preferensi yang diharapkan tercatat',
+    usulan
+      ? `urusan 2: usulan wilayah dari ingatan ${usulan.ktp?.nama ?? '?'}${usulanBenar ? '' : ' (kode salah)'}`
+      : 'urusan 2: tidak ada usulan wilayah dari ingatan',
+    tanyaUlang ? 'agen menanyakan wilayah dari nol' : 'wilayah tidak ditanyakan dari nol',
+  ].join('; ');
+  return { lulus: kurang.length === 0 && usulanBenar && !tanyaUlang, bukti, tercatat: [...jenis] };
+}
+
 export function cekGalat(langkah, opsi = {}) {
   const izin = new Set(opsi.izinkanKode ?? []);
   const masalah = [];
