@@ -1,6 +1,6 @@
 import type net from 'node:net';
 import { hostsSesi } from '@urusin/adapters';
-import { EGRESS_ASET_UMUM } from '@urusin/core';
+import { EGRESS_ASET_UMUM, PORTAL_WILAYAH } from '@urusin/core';
 import type {
   AksiSesiInternal,
   HasilAksi,
@@ -155,6 +155,16 @@ describe('programDari(generik)', () => {
       'brunhild.challenges.cloudflare.com',
       ...EGRESS_ASET_UMUM,
     ]);
+    // Host aset .go.id milik portal (`hostAset`, probe gel4 3310/3404) ikut bawaan.
+    for (const [kode, aset] of [
+      ['3404', 'dukcapil-cdn.slemankab.go.id'],
+      ['3310', 'api.diskominfo.klaten.go.id'],
+    ] as const) {
+      const origin = `https://${PORTAL_WILAYAH[kode]!.hosts[0]}`;
+      await h.manager.create(input(`aset-${kode}`, { origin, params: { kode, jalur: '/' } }));
+      await h.flush();
+      expect(hostsSesi(h.runs.at(-1)!.init.program), kode).toContain(aset);
+    }
     // CDN boleh diminta eksplisit oleh web.
     expect(
       await hostsDari('u4', { kode: '3312', hosts: 'telunjuksakti.wonogirikab.go.id,unpkg.com' }),

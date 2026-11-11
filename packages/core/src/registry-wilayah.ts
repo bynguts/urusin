@@ -1,6 +1,6 @@
 // BERKAS HASIL GENERATOR (scripts/gen-registry-wilayah.mjs). Jangan diubah tangan.
 // Sumber: data/wilayah/kontak-dukcapil.json (situs info terverifikasi) dan data/wilayah/portal-dukcapil.json
-// (kanal daring hasil recon). 183 wilayah, 56 berjenis web, 176 host persis.
+// (kanal daring hasil recon). 183 wilayah, 56 berjenis web, 177 host persis.
 import type { OfficialDomain } from './registry.js';
 
 /** A portal akun, B formulir web tanpa akun, C aplikasi saja, D WhatsApp/chatbot, E kanal nasional/kantor, F tidak diketahui. */
@@ -1754,7 +1754,7 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     kelas: 'A',
     jenis: 'web',
     url: 'https://pakonom.banjarkota.go.id/',
-    hosts: ['pakonom.banjarkota.go.id'],
+    hosts: ['pakonom.banjarkota.go.id', 'bebeong.banjarkota.go.id'],
     hostInfo: ['disdukcapil.banjarkota.go.id'],
     sumber: 'https://pakonom.banjarkota.go.id/',
     login: [],
@@ -1762,9 +1762,9 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     domisili: 'tidak_diketahui',
     aksesWilayah: 'id-only',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-11',
     catatan:
-      'PAK ONOM. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare "you have been blocked" dari IP Singapura).',
+      'PAK ONOM. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare "you have been blocked" dari IP Singapura). OBS 2026-11-11: tombol MASUK portal memanggil bukalogin() ke bebeong.banjarkota.go.id/open_layanan/pakonom (subdomain pemkot yang sama), jadi host login ikut registry.',
   },
   '3302': {
     kode: '3302',
@@ -3772,14 +3772,22 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Banjar',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '3279',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-11',
   },
   {
     host: 'pakonom.banjarkota.go.id',
     instansi: 'Disdukcapil Kota Banjar',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '3279',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-11',
+    aksesWilayah: 'id-only',
+  },
+  {
+    host: 'bebeong.banjarkota.go.id',
+    instansi: 'Disdukcapil Kota Banjar',
+    layanan: 'Portal layanan adminduk daring (kelas A)',
+    wilayah: '3279',
+    verifiedAt: '2026-11-11',
     aksesWilayah: 'id-only',
   },
   {

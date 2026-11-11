@@ -86,9 +86,13 @@ export function isEntriBersumber(o) {
   }
 }
 
+/** Field entri yang memang berisi nomor/email kontak instansi (skema data/wilayah/kanal-layanan.json). */
+const FIELD_KONTAK = new Set(['nilai', 'kontak']);
+
 /**
- * Pindai berkas JSON kontak resmi instansi. Telepon/email hanya lolos bila berupa nilai langsung milik entri
- * bersumber (isEntriBersumber); di tempat lain (catatan, entri tanpa sumber, kunci, objek bersarang) tetap ditolak.
+ * Pindai berkas JSON kontak resmi instansi. Telepon/email hanya lolos di field kontak (FIELD_KONTAK: `nilai`, `kontak`)
+ * milik entri bersumber (isEntriBersumber); di tempat lain (field lain entri itu, catatan, entri tanpa sumber, kunci,
+ * objek bersarang) tetap ditolak.
  * NIK dan private key selalu ditolak, dan penanda pii-scan:allow tidak berlaku. JSON rusak dipindai sebagai teks biasa.
  * Temuan memakai jalur JSON (mis. `$.entri[3].nilai`) sebagai `line`.
  * @param {string} text
@@ -114,7 +118,8 @@ export function scanKontakJson(text, opts = {}) {
       const bersumber = isEntriBersumber(v);
       for (const [k, x] of Object.entries(v)) {
         periksa(k, `${jalur} (kunci)`, false);
-        if (typeof x === 'string' || typeof x === 'number') periksa(x, `${jalur}.${k}`, bersumber);
+        if (typeof x === 'string' || typeof x === 'number')
+          periksa(x, `${jalur}.${k}`, bersumber && FIELD_KONTAK.has(k));
         else telusur(x, `${jalur}.${k}`);
       }
     } else if (typeof v === 'string' || typeof v === 'number') periksa(v, jalur, false);

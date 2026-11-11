@@ -149,6 +149,8 @@ const NEG_AKAR = [
   'sahkan',
   'terbitkan',
   'lapor',
+  // Review gel4 (PoC C): "Rampungkan" = menyelesaikan pengajuan.
+  'rampung',
 ];
 /** Kata NEG pendek: hanya cocok sebagai token utuh (supaya "ya" tidak mengenai "layanan"). */
 const NEG_TOKEN = [
@@ -227,6 +229,7 @@ const NEG_JALUR = [
   'kunci',
   'sahkan',
   'terbit',
+  'rampung',
 ];
 /** Frasa NEG dua kata ("tanda tangan", "tanda-tangan") untuk nama dan jalur. */
 const RE_FRASA_NEG = /tanda[^a-z0-9]{0,3}tangan/;
@@ -475,7 +478,8 @@ function adaFormulirTerlihat(doc: Document): boolean {
 /**
  * Halaman deklarasi/tinjauan akhir: frasa pernyataan/ringkasan di luar navigasi/FAQ pada halaman yang punya
  * kolom isian atau tombol, atau checkbox pernyataan yang terlihat. Dihitung ulang setiap klik (kunci halaman
- * akhir).
+ * akhir). Kolom wajib yang masih kosong TIDAK membatalkannya (review G4): AI tetap boleh mengisi kolom di
+ * halaman akhir, tetapi klik, centang, dan redirect halaman tetap terkunci.
  */
 export function halamanAkhir(doc: Document): boolean {
   if (adaFormulirTerlihat(doc) && RE_HALAMAN_AKHIR.some((re) => re.test(teksHalaman(doc)))) return true;
@@ -631,6 +635,11 @@ export function jalurTulis(url: string): boolean {
   }
 }
 
+/** Token id/kelas/ikon tombol menu ponsel (hamburger). */
+const TOKEN_MENU: readonly string[] = ['bars', 'hamburger', 'burger', 'toggler', 'menu', 'navicon'];
+/** Nama tombol pembuka pemilih tanggal. */
+const RE_PEMBUKA_TANGGAL = /^((buka|tampilkan|pilih|lihat) )?(kalender|calendar|tanggal|date ?picker)$/;
+
 /** Aturan §3 atas fitur. Murni: fitur yang sama selalu menghasilkan kelas yang sama. */
 export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: AturanKlasifikasi } {
   const nama = [f.teksTampak, f.ariaLabel, f.nilai, f.title].filter(Boolean);
@@ -643,7 +652,7 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
     return { kelas: 'masuk', aturan: 'K3_MASUK' };
   if (f.submitterAsli) return { kelas: 'kirim', aturan: 'K4_SUBMITTER' };
   if (f.atributBerbahaya) return { kelas: 'kirim', aturan: 'K5_ATRIBUT' };
-  if (f.halamanAkhir || f.dalamDialogKonfirmasi) return { kelas: 'kirim', aturan: 'K6_AKHIR_DIALOG' };
+  if (f.dalamDialogKonfirmasi) return { kelas: 'kirim', aturan: 'K6_AKHIR_DIALOG' };
 
   // Frasa menu persis (Daftar Layanan, Status Pengajuan) melewati cek NAMA saja; id/kelas/ikon/jalur tetap.
   const menuAman = tautan && nama.length > 0 && nama.every((n) => MENU_AMAN.has(bersihkanPanah(lipatNeg(n))));
@@ -652,6 +661,23 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
   const negNama = !menuAman && nama.some((n) => cocokNeg(n, NEG_AKAR));
   const negIkon = negToken(f.ikon);
   const negLain = negToken(f.idKelas) || (tautan && jalurNeg(f.href.jalur)) || f.href.download;
+  const tombolBiasa =
+    (f.tag === 'button' && !f.submitterAsli && f.type !== 'reset') ||
+    (f.tag === 'input' && f.type === 'button') ||
+    f.role === 'button';
+
+  // Pembuka pemilih tanggal ("Buka kalender", probe 3324/3404) bukan tombol kirim walau di halaman akhir. Label
+  // ini tidak membuka klik: di halaman akhir klik AI tetap ditolak kunci halaman (runner A_HALAMAN_AKHIR,
+  // validator HALAMAN_AKHIR_TERKUNCI); tanggal diketik AI ke kolomnya.
+  if (
+    tombolBiasa &&
+    nama.length > 0 &&
+    nama.every((n) => RE_PEMBUKA_TANGGAL.test(bersihkanPanah(n))) &&
+    !negLain &&
+    !negIkon
+  )
+    return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
+  if (f.halamanAkhir) return { kelas: 'kirim', aturan: 'K6_AKHIR_DIALOG' };
   if (negLain) return { kelas: 'kirim', aturan: 'K7_NEG' };
   // Ikon saja (probe SIDAK: feather credit-card = ikon KTP/KK) pada tautan GET bersih: pembuka, diketuk warga.
   if (negIkon && !negNama)
@@ -665,17 +691,21 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
       ? { kelas: 'kirim', aturan: 'K7_NEG_NAMA_TAUTAN' }
       : { kelas: 'kirim', aturan: 'K7_NEG' };
 
+  // Tombol menu ikon saja (hamburger fa-bars / navbar-toggler, probe 3279 dan 6371): membuka menu ponsel, AI boleh.
+  // Bukan submitter (K4 di atas) dan klik AI tetap hanya GET di gerbang tulis worker.
+  if (
+    !f.teksCuriga &&
+    nama.length === 0 &&
+    tombolBiasa &&
+    [...f.ikon, ...f.idKelas].some((t) => TOKEN_MENU.includes(t))
+  )
+    return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
   // Homoglif / karakter tak terlihat / tanpa nama: tidak pernah cocok positif.
   if (f.teksCuriga || nama.length === 0) return { kelas: 'tidak_pasti', aturan: 'K7B_TEKS_CURIGA' };
 
   if (tautan && f.href.ada && f.href.host && !f.href.js && !f.href.hanyaFragmen)
     return { kelas: 'navigasi', aturan: 'K8_NAVIGASI' };
   if (f.kendaliLokal) return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
-
-  const tombolBiasa =
-    (f.tag === 'button' && !f.submitterAsli && f.type !== 'reset') ||
-    (f.tag === 'input' && f.type === 'button') ||
-    f.role === 'button';
   const namaUtama = bersihkanPanah(f.teksTampak || f.nilai);
   if (
     tombolBiasa &&

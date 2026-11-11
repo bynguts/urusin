@@ -7,6 +7,7 @@ import { css, fill, gate, nav, upload, urlIncludes } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
 import {
   chromiumArgs,
+  izinRute,
   pesanGagal,
   pidsOfProfile,
   PROFIL_PREFS,
@@ -18,7 +19,7 @@ import {
 import { loadConfig } from './config.js';
 import { createTouchMapper, toCdp } from './input.js';
 import { runnerExpression, runnerScript, toInjectable } from './runner-script.js';
-import { detectBotWall, suspicious } from './waf.js';
+import { detectBotWall, suspicious, wallBisaDiverifikasi } from './waf.js';
 
 const EDGE_ENV = {
   PENDAMPING_EDGE_URL: 'http://pendamping-edge:3129',
@@ -189,6 +190,55 @@ describe('proxy peramban', () => {
   });
 });
 
+describe('rute peramban: host aset umum (re-review MEDIUM)', () => {
+  const izin = new Set([
+    'portal.contoh.go.id:443',
+    'unpkg.com:443',
+    'fonts.gstatic.com:443',
+    'www.google.com:443',
+  ]);
+  const req = (url: string, resourceType: string, nav = false) => ({
+    url: () => url,
+    resourceType: () => resourceType,
+    isNavigationRequest: () => nav,
+  });
+
+  it('CDN/fon: hanya script/stylesheet/font/image; navigasi dokumen dan XHR ditolak', () => {
+    for (const t of ['script', 'stylesheet', 'font', 'image'])
+      expect(izinRute(izin, req('https://unpkg.com/jquery@3/dist/jquery.min.js', t)), t).toBe(true);
+    expect(izinRute(izin, req('https://fonts.gstatic.com/s/inter/v1/a.woff2', 'font'))).toBe(true);
+    expect(izinRute(izin, req('https://unpkg.com/paket-jahat@1.0.0/index.html', 'document', true))).toBe(
+      false,
+    );
+    expect(izinRute(izin, req('https://unpkg.com/paket-jahat@1.0.0/index.html', 'document', false))).toBe(
+      false,
+    );
+    for (const t of ['xhr', 'fetch', 'media', 'websocket', 'other', 'ping'])
+      expect(izinRute(izin, req('https://unpkg.com/x.json', t)), t).toBe(false);
+  });
+
+  it('re-review LOW: host aset pemda (hostAset) = subresource saja, dokumen dan XHR ditolak', () => {
+    const izinPemda = new Set(['dukcapilonline.slemankab.go.id:443', 'dukcapil-cdn.slemankab.go.id:443']);
+    const cdn = 'https://dukcapil-cdn.slemankab.go.id/x';
+    for (const t of ['script', 'stylesheet', 'font', 'image'])
+      expect(izinRute(izinPemda, req(`${cdn}.js`, t)), t).toBe(true);
+    for (const t of ['xhr', 'fetch']) expect(izinRute(izinPemda, req(`${cdn}.json`, t)), t).toBe(false);
+    expect(izinRute(izinPemda, req(`${cdn}.html`, 'document', true))).toBe(false);
+    expect(izinRute(izinPemda, req(`${cdn}.html`, 'document', false))).toBe(false);
+    expect(
+      izinRute(izinPemda, req('https://dukcapilonline.slemankab.go.id/Flow/signin', 'document', true)),
+    ).toBe(true);
+  });
+
+  it('host portal tidak terpengaruh; allowlist dan reCAPTCHA tetap berlaku', () => {
+    expect(izinRute(izin, req('https://portal.contoh.go.id/permohonan', 'document', true))).toBe(true);
+    expect(izinRute(izin, req('https://portal.contoh.go.id/api/x', 'xhr'))).toBe(true);
+    expect(izinRute(izin, req('https://jahat.contoh.com/', 'document', true))).toBe(false);
+    expect(izinRute(izin, req('https://www.google.com/search?q=x', 'document', true))).toBe(false);
+    expect(izinRute(izin, req('https://www.google.com/recaptcha/api2/anchor', 'document', true))).toBe(true);
+  });
+});
+
 describe('profil sementara', () => {
   it('pengelola sandi, autofill, kamera/mikrofon mati; breakpad mati', () => {
     expect(PROFIL_PREFS).toMatchObject({
@@ -334,6 +384,36 @@ describe('deteksi WAF / bot wall', () => {
     ).toBe('imperva');
     expect(detectBotWall({ status: 429, headers: {} })).toBe('rate-limit');
     expect(detectBotWall({ status: 503, headers: {}, body: 'Sucuri WebSite Firewall' })).toBe('sucuri');
+  });
+
+  it('probe gel4: blokir keras Cloudflare tidak dikira tantangan walau memuat skrip telemetri JSD', () => {
+    const jsd = '<script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script>';
+    const cf = { 'cf-ray': '8f0000000000abcd-SIN' };
+    expect(
+      detectBotWall({
+        status: 403,
+        headers: cf,
+        body: `<title>Attention Required! | Cloudflare</title><h1>Sorry, you have been blocked</h1>${jsd}`,
+      }),
+    ).toBe('cloudflare-block');
+    expect(
+      detectBotWall({ status: 403, headers: cf, body: `<h2>Sorry, you have been blocked</h2>${jsd}` }),
+    ).toBe('cloudflare-block');
+    // Tantangan berbahasa Indonesia ("Tunggu sebentar...") dengan opsi tantangan.
+    expect(
+      detectBotWall({
+        status: 403,
+        headers: cf,
+        body: '<title>Tunggu sebentar...</title><script>window._cf_chl_opt={cType:"managed"}</script>',
+      }),
+    ).toBe('cloudflare-challenge');
+    expect(detectBotWall({ status: 403, headers: cf, body: '<title>Tunggu sebentar...</title>' })).toBe(
+      'cloudflare-challenge',
+    );
+    // 403 biasa dari server asal yang kebetulan memuat skrip telemetri: bukan bot wall.
+    expect(detectBotWall({ status: 403, headers: cf, body: `<p>Akses ditolak</p>${jsd}` })).toBeNull();
+    expect(wallBisaDiverifikasi('cloudflare-block')).toBe(false);
+    expect(wallBisaDiverifikasi('cloudflare-challenge')).toBe(true);
   });
 
   it('halaman login ber-CAPTCHA biasa dan 404 bukan bot wall', () => {

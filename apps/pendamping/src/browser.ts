@@ -24,13 +24,15 @@ import { chromium, type BrowserContext, type CDPSession, type Page } from 'playw
 import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import {
+  asetUmumBoleh,
   createGerbangTulis,
+  hostAset,
   jalurPihakKetigaBoleh,
   JENDELA_WARGA_MS,
   type GerbangTulis,
   type PermintaanGerbang,
 } from './gerbang-tulis.js';
-import { GenerikRun, PESAN_GENERIK, tanganRunner } from './generik.js';
+import { GenerikRun, naikHttps, PESAN_GENERIK, tanganRunner } from './generik.js';
 import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
 import { daftarEdge, type ProxyEdge } from './isolasi.js';
 import { pesanBerkasKurang, pesanIsiSendiri } from './isian.js';
@@ -257,22 +259,74 @@ export const PROFIL_PREFS = Object.freeze({
 });
 
 /**
- * Kontrol yang ketukannya membuka jendela tulis warga di halaman kotor (N4). Kolom ketik (input teks, textarea,
- * contenteditable) bukan kontrol walau di dalam label.
+ * Kontrol yang ketukannya membuka jendela tulis warga di halaman kotor (N4): hanya tombol kirim dan tautan.
+ * Kontrol isian (radio, centang, pilihan, label, summary) dan kolom ketik tidak: menyentuhnya bukan maksud
+ * mengirim, jadi retry tertunda dari klik AI tidak boleh ikut lolos (re-review N4, PoC A).
  */
 const SEL_KONTROL_KETUK =
-  'button, a[href], area[href], input[type="submit"], input[type="image"], input[type="button"], input[type="checkbox"], input[type="radio"], [role="button"], [role="link"], [role="checkbox"], [role="radio"], label, summary, select';
+  'button:not([type="reset"]), a[href], area[href], input[type="submit"], input[type="image"], input[type="button"], [role="button"], [role="link"]';
+/**
+ * Dokumen kotor oleh aksi AI yang tidak bisa dimuat ulang (re-review A2): hanya tombol submit asli. Bukan
+ * `type=button` dan bukan tautan (termasuk tautan fragmen), karena handler-nya tidak mengirim formulir sendiri.
+ */
+const SEL_KIRIM_ASLI =
+  'button[type="submit"], form button:not([type]), button[form]:not([type]), input[type="submit"], input[type="image"]';
 const SEL_KOLOM_KETIK =
   'textarea, [contenteditable=""], [contenteditable="true"], input:not([type="submit"], [type="image"], [type="button"], [type="checkbox"], [type="radio"], [type="reset"], [type="file"])';
 
 /** Kendali yang dihitung `tenang()` untuk menilai DOM sudah stabil. */
 const SEL_KENDALI_TENANG = 'input, textarea, select, button, a[href], [role="button"], [role="link"]';
 
+/**
+ * Konten belum tampil (probe gel4 6171: `#page-content` opacity 0, baru opacity 1 800 ms setelah load + transisi
+ * 700 ms): ada transisi/animasi CSS berhingga yang sedang jalan, atau elemen di viewport (>= 2000 px persegi,
+ * kedalaman <= 4 dari body) yang memuat kolom isian masih opacity < 0,1 / visibility hidden. Animasi tak berhingga
+ * (spinner) dan elemen tanpa kotak (display:none, mis. modal tertutup) diabaikan. Dievaluasi di dunia terisolasi
+ * (hanya membaca DOM/gaya).
+ */
+export const KONTEN_BELUM_TAMPIL_EXPR = `(() => {
+  const anim = document.getAnimations().some((a) => {
+    if (a.playState !== 'running') return false;
+    const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : undefined;
+    return !!t && Number.isFinite(t.endTime);
+  });
+  if (anim) return true;
+  const vw = innerWidth, vh = innerHeight, luas = vw * vh;
+  if (!document.body || luas <= 0) return false;
+  const calon = document.body.querySelectorAll(':scope > *, :scope > * > *, :scope > * > * > *, :scope > * > * > * > *');
+  for (const el of calon) {
+    const r = el.getBoundingClientRect();
+    const lebar = Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0));
+    const tinggi = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+    if (lebar * tinggi < 2000) continue;
+    const g = getComputedStyle(el);
+    if ((Number(g.opacity) < 0.1 || g.visibility === 'hidden') && el.querySelector('input:not([type="hidden"]), select, textarea'))
+      return true;
+  }
+  return false;
+})()`;
+
 /** URL lolos allowlist host:port sesi (lapis `context.route`; sama dengan proxy egress). */
 export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): boolean {
   const u = URL.parse(url);
   const port = Number(u?.port || (u?.protocol === 'https:' ? 443 : 80));
   return (u?.protocol === 'https:' || u?.protocol === 'http:') && allowedHosts.has(`${u.hostname}:${port}`);
+}
+
+/**
+ * Saringan rute peramban (lapis kedua setelah proxy): host:port di allowlist, www.google.com hanya /recaptcha/,
+ * dan host aset umum (CDN/fon) hanya subresource script/stylesheet/font/image, tidak pernah navigasi dokumen.
+ */
+export function izinRute(
+  allowedHosts: ReadonlySet<string>,
+  req: { url(): string; resourceType(): string; isNavigationRequest(): boolean },
+): boolean {
+  const url = req.url();
+  return (
+    urlDiAllowlist(allowedHosts, url) &&
+    jalurPihakKetigaBoleh(url) &&
+    asetUmumBoleh({ url, resourceType: req.resourceType(), dokumen: req.isNavigationRequest() })
+  );
 }
 
 /**
@@ -327,6 +381,11 @@ export async function launchIsolated(
    * adapter (tanpa gerbang).
    */
   gerbang?: GerbangTulis,
+  /**
+   * Navigasi dokumen bingkai utama GET ke `http://` host sesi yang hanya terdaftar untuk https (probe gel4 9171):
+   * permintaan http dibatalkan (tidak pernah terkirim) dan bentuk https-nya diserahkan ke sini untuk dibuka.
+   */
+  onNaikHttps: (url: string) => void = () => {},
 ): Promise<Isolated> {
   const rules = egressRules(hosts, config.fixtureOrigins);
   const allowedHosts = new Set(rules.map((r) => `${r.host}:${r.port}`));
@@ -386,7 +445,20 @@ export async function launchIsolated(
     });
     await context.route('**/*', (route) => {
       const req = route.request();
-      const ok = urlDiAllowlist(allowedHosts, req.url()) && jalurPihakKetigaBoleh(req.url());
+      const ok = izinRute(allowedHosts, req);
+      if (!ok && req.method() === 'GET' && permintaanGerbang(req).utama) {
+        const https = naikHttps(req.url(), (u) =>
+          izinRute(allowedHosts, {
+            url: () => u,
+            resourceType: () => 'document',
+            isNavigationRequest: () => true,
+          }),
+        );
+        if (https) {
+          onNaikHttps(https);
+          return route.abort('aborted');
+        }
+      }
       if (!ok) {
         const host = URL.parse(req.url())?.hostname;
         const dokumen = gerbang ? permintaanGerbang(req).utama : false;
@@ -485,6 +557,8 @@ type KendaliGerbang = {
   tulisWarga: () => void;
   /** Dokumen kotor atau halaman akhir: redirect halaman sendiri tidak pernah lolos. */
   ketat: () => boolean;
+  /** Tautan http:// host sesi yang diketuk warga: buka bentuk https-nya (probe gel4 9171). */
+  naikHttps: (url: string) => void;
 };
 
 export async function startBrowserRun(config: Config, init: RunInit): Promise<ActiveRun> {
@@ -496,6 +570,7 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
     hostDiblokir: () => {},
     tulisWarga: () => {},
     ketat: () => false,
+    naikHttps: () => {},
   };
   const gerbang = init.generik
     ? createGerbangTulis({
@@ -519,6 +594,7 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
       }
     },
     gerbang,
+    (url) => kendali.naikHttps(url),
   );
   try {
     return await wire(config, init, iso, gerbang ? { gerbang, kendali, hosts } : undefined);
@@ -586,15 +662,30 @@ export async function wire(
 
   /** Keputusan ketukan saat halaman kotor (ditetapkan saat pointer down, dipakai pointer up yang sama). */
   let ketukKotorSah = false;
+  /**
+   * Ketukan warga terakhir yang dinilai "kirim final" (kotak sorot serah `final`, atau tombol submit asli di
+   * halaman akhir). Tulis warga di jendela ketukan ini saja yang membuat sukses diterima otomatis (re-review LOW).
+   */
+  let ketukFinalTerakhir = Number.NEGATIVE_INFINITY;
 
   /**
    * Ketukan warga mengenai kotak sorot serah terakhir, atau kontrol nyata (DOM.getNodeForLocation lalu `closest`
    * di dunia terisolasi, prototipe halaman tidak dipakai). Gagal = tidak.
    */
-  async function ketukanKeKontrol(x: number, y: number): Promise<boolean> {
+  async function ketukanKeKontrol(x: number, y: number, keras: boolean): Promise<boolean> {
+    return (
+      (await ketukanDiSorot(x, y)) || ketukanPadaKontrol(x, y, keras ? SEL_KIRIM_ASLI : SEL_KONTROL_KETUK)
+    );
+  }
+
+  async function ketukanDiSorot(x: number, y: number): Promise<boolean> {
     const kotak = await generik?.kotakSorot();
-    if (kotak && x >= kotak.x && x <= kotak.x + kotak.lebar && y >= kotak.y && y <= kotak.y + kotak.tinggi)
-      return true;
+    return (
+      !!kotak && x >= kotak.x && x <= kotak.x + kotak.lebar && y >= kotak.y && y <= kotak.y + kotak.tinggi
+    );
+  }
+
+  async function ketukanPadaKontrol(x: number, y: number, sel: string): Promise<boolean> {
     try {
       const { backendNodeId } = (await cdp.send('DOM.getNodeForLocation', {
         x: Math.round(x),
@@ -611,7 +702,7 @@ export async function wire(
       if (!object.objectId) return false;
       const r = (await cdp.send('Runtime.callFunctionOn', {
         objectId: object.objectId,
-        functionDeclaration: `function () { const e = this.nodeType === 1 ? this : this.parentElement; return !!(e && !e.matches(${JSON.stringify(SEL_KOLOM_KETIK)}) && !e.closest('[contenteditable=""], [contenteditable="true"]') && e.closest(${JSON.stringify(SEL_KONTROL_KETUK)})); }`,
+        functionDeclaration: `function () { const e = this.nodeType === 1 ? this : this.parentElement; return !!(e && !e.matches(${JSON.stringify(SEL_KOLOM_KETIK)}) && !e.closest('[contenteditable=""], [contenteditable="true"]') && e.closest(${JSON.stringify(sel)})); }`,
         returnByValue: true,
       })) as { result: { value?: unknown } };
       return r.result.value === true;
@@ -1112,6 +1203,7 @@ export async function wire(
     const izinHost = new Set(egressRules(gen.hosts, config.fixtureOrigins).map((r) => `${r.host}:${r.port}`));
     const urlBoleh = (url: string) =>
       urlDiAllowlist(izinHost, url) &&
+      !hostAset(url) &&
       checkUrl(url, { testMode: fixtureOrigins.length > 0, fixtureOrigins }).ok;
     // Review kode N4: tautan target=_blank yang diketuk warga membuka pop-up yang tidak terlihat di layar. Pop-up
     // selalu ditutup; navigasi GET-nya (hanya dari ketukan warga, lolos allowlist) dibuka di halaman utama.
@@ -1150,9 +1242,17 @@ export async function wire(
           .locator(SEL_KENDALI_TENANG)
           .count()
           .catch(() => -1);
-        if (n > 0 && n === sebelum) return;
+        if (n > 0 && n === sebelum) break;
         sebelum = n;
         await new Promise((r) => setTimeout(r, 250));
+      }
+      // Konten fade-in (probe gel4 6171): tunggu transisi/animasi berhingga selesai dan konten besar yang memuat
+      // kendali tidak lagi transparan, paling lama 3 detik.
+      const batasPudar = Date.now() + 3_000;
+      while (!destroyed && Date.now() < batasPudar) {
+        const belum = await nilaiTerisolasi(KONTEN_BELUM_TAMPIL_EXPR).catch(() => false);
+        if (belum !== true) return;
+        await new Promise((r) => setTimeout(r, 100));
       }
     };
     generik = new GenerikRun({
@@ -1210,23 +1310,29 @@ export async function wire(
     gen.kendali.blokir = (c, j) => run.blokir(c, j);
     gen.kendali.hostDiblokir = (host, dokumen) => run.hostDiblokir(host, dokumen);
     gen.kendali.ketat = () => run.ketat;
+    // Hanya dari ketukan warga yang baru saja terjadi (navigasi AI sudah dinaikkan di GenerikRun.navigasi).
+    gen.kendali.naikHttps = (url) => {
+      if (destroyed || !gen.kendali.wargaPegang() || !urlBoleh(url)) return;
+      setTimeout(() => void cdp.send('Page.navigate', { url }).catch(() => undefined), 0);
+    };
     // Review kode N1: warga mengirim sendiri (mis. setelah AI menyerah, loop di web sudah berhenti). Halaman sukses
-    // sesudah tulis warga = sesi siaga berhasil tanpa menunggu /selesai. Diperiksa saat dokumen utama dimuat dan
+    // sesudah kirim final warga (kotak sorot `final` / submit asli di halaman akhir) = sesi siaga berhasil tanpa
+    // menunggu /selesai; tulis warga lain tetap butuh /selesai. Diperiksa saat dokumen utama dimuat dan
     // sebentar sesudah tulis warga (SPA: hasil lewat XHR tanpa muat ulang).
     let memeriksaSukses = false;
     const periksaSuksesWarga = async () => {
-      if (!manual || destroyed || memeriksaSukses || !run.adaTulisWargaSejakAksiAi()) return;
+      if (!manual || destroyed || memeriksaSukses || !run.adaKirimFinalWargaSejakAksiAi()) return;
       memeriksaSukses = true;
       try {
         const p = await run.amati(true).catch(() => null);
-        if (p?.sinyal.sukses && run.adaTulisWargaSejakAksiAi()) hooks.suksesWarga?.(p);
+        if (p?.sinyal.sukses && run.adaKirimFinalWargaSejakAksiAi()) hooks.suksesWarga?.(p);
       } finally {
         memeriksaSukses = false;
       }
     };
     page.on('load', () => void periksaSuksesWarga());
     gen.kendali.tulisWarga = () => {
-      run.tulisWarga();
+      run.tulisWarga(Date.now() - ketukFinalTerakhir <= JENDELA_WARGA_MS);
       for (const ms of [1_500, 5_000]) setTimeout(() => void periksaSuksesWarga(), ms).unref?.();
     };
   }
@@ -1269,13 +1375,22 @@ export async function wire(
         ((m.type === 'pointer' || m.type === 'key') && (m.aksi === 'down' || m.aksi === 'up'));
       let buka = nyata && !pantau.aktif;
       // N4: halaman kotor (tulis tertunda dari klik AI masih berdenyut) = jendela tulis hanya untuk ketukan yang
-      // mengenai kotak sorot atau kontrol (tombol/tautan/label/pilihan). Ketikan dan ketukan di area kosong tidak.
+      // mengenai kotak sorot, tombol kirim, atau tautan. Ketikan, kontrol isian, dan area kosong tidak. Kotor oleh
+      // aksi AI yang tidak bisa dimuat ulang (A2): hanya kotak sorot atau tombol submit asli.
       if (buka && g?.kotor) {
         if (m.type !== 'pointer') buka = false;
-        else if (m.aksi === 'down') buka = ketukKotorSah = await ketukanKeKontrol(m.x, m.y);
+        else if (m.aksi === 'down') buka = ketukKotorSah = await ketukanKeKontrol(m.x, m.y, g.kotorKeras);
         else buka = ketukKotorSah;
       }
       if (buka) inputWargaTerakhir = Date.now();
+      // Re-review LOW: kirim final warga = ketukan pada kotak sorot serah `final`, atau tombol submit asli di
+      // halaman akhir. Tulis warga lain (mis. "cek status") tidak membuat sukses diterima otomatis.
+      if (buka && g && m.type === 'pointer' && m.aksi === 'down') {
+        const final =
+          (g.sorotFinal && (await ketukanDiSorot(m.x, m.y))) ||
+          (g.akhir && (await ketukanPadaKontrol(m.x, m.y, SEL_KIRIM_ASLI)));
+        if (final) ketukFinalTerakhir = Date.now();
+      }
       for (const cmd of toCdp(m, touch)) {
         await cdp.send(cmd.method as 'Input.insertText', cmd.params as never).catch(() => undefined);
       }

@@ -266,6 +266,9 @@ const TABEL: [string, string, KelasKendali][] = [
   ['tautan Terbitkan', '<a href="/dok/12" data-uji>Terbitkan Akta</a>', 'kirim'],
   ['tautan Laporkan', '<a href="/dok/12" data-uji>Laporkan Kelahiran</a>', 'kirim'],
   ['tautan Kunci Data', '<a href="/dok/12" data-uji>Kunci Data</a>', 'kirim'],
+  ['tautan Rampungkan', '<a href="/p/12/go3" data-uji>Rampungkan</a>', 'kirim'],
+  ['tombol Rampungkan Pengajuan', '<button type="button" data-uji>Rampungkan Pengajuan</button>', 'kirim'],
+  ['tautan netral ke jalur rampung', '<a href="/dok/12/rampung" data-uji>Buka</a>', 'kirim'],
   ['tautan netral ke jalur tanda-tangan', '<a href="/dok/12/tanda-tangan" data-uji>Buka</a>', 'kirim'],
   ['tautan netral ke jalur tte', '<a href="/dok/12/tte" data-uji>Buka</a>', 'kirim'],
   ['tombol Tanda Tangan', '<button type="button" data-uji>Tanda Tangan</button>', 'kirim'],
@@ -452,6 +455,42 @@ describe('K7_NEG_NAMA_TAUTAN: tautan yang kena NEG hanya lewat nama', () => {
   });
 });
 
+describe('probe gel4: tombol menu ikon saja dan pembuka kalender', () => {
+  it('hamburger ikon saja (kendaliLokal atau ikon bars) = ui_lokal', () => {
+    for (const html of [
+      // 3279: navbar-toggler Bootstrap dengan data-toggle collapse.
+      '<nav class="navbar"><button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#m" data-uji><i class="fa fa-bars"></i></button></nav>',
+      // 6371: tombol Tailwind tanpa type di luar form, hanya ikon fa-bars.
+      '<header><button class="md:hidden focus:outline-none" data-uji><i class="fas fa-bars"></i></button></header>',
+      '<button type="button" aria-expanded="false" data-uji><span class="material-icons">menu</span></button>',
+    ])
+      expect(kelasDari(html), html).toBe('ui_lokal');
+  });
+
+  it('ikon saja tanpa token menu, submitter, atau tautan tetap bukan ui_lokal', () => {
+    expect(kelasDari('<button type="button" data-uji><i class="fa fa-star"></i></button>')).toBe(
+      'tidak_pasti',
+    );
+    expect(
+      kelasDari('<form><input name="q"><button data-uji><i class="fa fa-bars"></i></button></form>'),
+    ).toBe('kirim');
+    expect(kelasDari('<button type="button" data-uji><i class="fa fa-paper-plane"></i></button>')).toBe(
+      'kirim',
+    );
+    expect(
+      kelasDari(`<button type="button" aria-label="${CYR_A}" data-uji><i class="fa fa-bars"></i></button>`),
+    ).toBe('tidak_pasti');
+  });
+
+  it('pembuka kalender = ui_lokal; nama lain atau submitter tidak', () => {
+    for (const nama of ['Buka kalender', 'Pilih tanggal', 'Calendar'])
+      expect(kelasDari(`<button type="button" data-uji>${nama}</button>`), nama).toBe('ui_lokal');
+    expect(kelasDari('<form><input name="t"><button data-uji>Buka kalender</button></form>')).toBe('kirim');
+    expect(kelasDari('<button type="button" data-uji>Kirim tanggal</button>')).toBe('kirim');
+    expect(kelasDari('<a href="/kalender" data-uji>Kalender</a>')).toBe('navigasi');
+  });
+});
+
 describe('halamanAkhir', () => {
   const akhir = (html: string) => {
     document.body.innerHTML = html;
@@ -504,6 +543,40 @@ describe('halamanAkhir', () => {
     ).toBe(true);
     expect(akhir('<label><input type="checkbox"> Saya bersedia menerima sanksi</label>')).toBe(true);
     expect(akhir('<label><input type="checkbox"> Alamat domisili sama dengan KTP</label>')).toBe(false);
+  });
+
+  it('probe 3324/3404: form pendaftaran bercentang S&K tetap halaman akhir; pembuka kalender ui_lokal', () => {
+    const sk =
+      '<label><input type="checkbox" required> Saya telah membaca dan menyetujui Syarat dan Ketentuan</label>';
+    document.body.innerHTML = `<form method="post"><h2>Pendaftaran Akun</h2>
+      <label>Tanggal lahir <input name="tgl" required placeholder="DD-MM-YYYY"></label>
+      <button type="button" aria-label="Buka kalender"></button>${sk}<button type="submit">Daftar</button></form>`;
+    expect(halamanAkhir(document)).toBe(true);
+    expect(klasifikasi(document.querySelector('[aria-label="Buka kalender"]')!).kelas).toBe('ui_lokal');
+    expect(klasifikasi(document.querySelector('button[type="submit"]')!).kelas).toBe('kirim');
+    // Tombol lain di halaman akhir tetap kirim (K6), termasuk Lanjut.
+    document.body.insertAdjacentHTML('beforeend', '<button type="button" id="l">Lanjut</button>');
+    expect(klasifikasi(document.getElementById('l')!)).toMatchObject({
+      kelas: 'kirim',
+      aturan: 'K6_AKHIR_DIALOG',
+    });
+  });
+
+  it('review G4: kolom wajib kosong tidak membatalkan halaman tinjauan akhir', () => {
+    const html = `<h2>Periksa kembali data permohonan</h2><p>Dengan ini saya menyatakan data benar.</p>
+      <label>Catatan untuk petugas <input name="catatan" required></label><button type="button" id="b">Lanjut</button>
+      <form method="post" action="/api/final"><button type="submit">Kirim Permohonan</button></form>`;
+    expect(akhir(html)).toBe(true);
+    expect(klasifikasi(document.getElementById('b')!).kelas).toBe('kirim');
+    expect(akhir(html.replace('<p>Dengan ini saya menyatakan data benar.</p>', ''))).toBe(true);
+  });
+
+  it('pembuka kalender di dialog konfirmasi tetap kirim', () => {
+    expect(
+      kelasDari(
+        '<div role="alertdialog"><p>Kirim permohonan?</p><button type="button" data-uji>Buka kalender</button></div>',
+      ),
+    ).toBe('kirim');
   });
 
   it('halaman formulir biasa bukan halaman akhir; frasa di dalam textarea/skrip diabaikan', () => {

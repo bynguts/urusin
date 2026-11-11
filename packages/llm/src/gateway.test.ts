@@ -216,23 +216,16 @@ describe('larangan SDK vendor lain', () => {
       filePath: join(root, 'packages/llm/src/contoh.ts'),
     });
     expect(res?.messages.map((m) => m.ruleId)).toContain('no-restricted-imports');
-  }, 30_000);
+  }, 120_000);
 
   it('tidak ada import SDK vendor lain di source repo', () => {
     const offenders: string[] = [];
     const walk = (dir: string) => {
       for (const name of readdirSync(dir)) {
+        // Folder tersembunyi (.svelte-kit, .turbo, .lighthouseci, ...) dan keluaran build/tes bukan source.
         if (
-          [
-            'node_modules',
-            'dist',
-            'build',
-            '.svelte-kit',
-            '.turbo',
-            '.git',
-            'test-results',
-            'playwright-report',
-          ].includes(name)
+          name.startsWith('.') ||
+          ['node_modules', 'dist', 'build', 'coverage', 'test-results', 'playwright-report'].includes(name)
         )
           continue;
         const p = join(dir, name);
@@ -250,7 +243,8 @@ describe('larangan SDK vendor lain', () => {
       }
     }
     expect(offenders).toEqual([]);
-  });
+    // Pemindaian disk (dan ESLint di atas) melambat saat turbo menjalankan banyak tugas paralel: batas longgar.
+  }, 120_000);
 });
 
 describe('stream selalu eksplisit di body permintaan', () => {

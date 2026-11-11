@@ -45,12 +45,18 @@ Adapter tulisan tangan hanya ada untuk Telunjuk Sakti dan beberapa alur baca. Wa
   warga, bukan AI. Tinjau ulang bila ada portal nyata yang memakai CAPTCHA tak terlihat pada tombol non-final.
 - Tulis tertunda dari aksi AI (timer/retry, review N2/N4): tulis non-GET yang diblokir menandai dokumen "kotor"
   sampai navigasi bingkai utama berikutnya ter-commit. Dokumen kotor tidak lagi dapat jendela XHR isi; blokir
-  saat AI diam sesudah AI bertindak di dokumen itu = muat ulang lewat GET (sekali per URL) lalu serah ke warga;
-  ketukan warga hanya membuka jendela tulis bila mengenai kotak sorot atau kontrol (tombol, tautan, label,
-  pilihan), bukan area kosong, kolom ketik, atau ketikan. Sisa risiko diterima: (1) percobaan tulis tertunda
-  PERTAMA yang kebetulan jatuh di dalam jendela isi (≤ `JENDELA_ISI_MS`) sebelum ada blokir apa pun tetap lolos;
-  (2) di dokumen kotor yang tidak dimuat ulang, ketukan warga pada kontrol nyata membuka jendela 3 detik yang
-  juga dipakai timer halaman. Dipertimbangkan: atribusi lewat stack inisiator CDP (`Network.requestWillBeSent`
+  saat AI diam sesudah AI bertindak di dokumen itu = muat ulang lewat GET (sekali per URL tanpa fragmen) lalu
+  serah ke warga. Eskalasi klik/isi AI yang diblokir (GERBANG_MEMBLOKIR) juga memuat ulang dokumen kotor SEBELUM
+  warga memegang kendali (re-review A2), sehingga timer/retry dari klik AI mati; biayanya, isian AI di halaman
+  itu hilang dan AI mengisi ulang setelah warga menekan Lanjutkan. Bila muat ulang tidak bisa (kotor kedua di
+  URL yang sama), ketukan warga hanya membuka jendela tulis bila mengenai kotak sorot atau tombol submit asli
+  (`button type=submit`, `input submit/image`); bukan `type=button`, bukan tautan (termasuk tautan fragmen). Di
+  dokumen kotor tanpa aksi AI, ketukan pada tombol kirim atau tautan juga membuka jendela; kontrol isian (radio,
+  centang, pilihan, label, summary), area kosong, kolom ketik, dan ketikan tidak (re-review N4, PoC A).
+  Sisa risiko diterima: (1) percobaan tulis tertunda PERTAMA yang kebetulan jatuh di dalam jendela isi
+  (≤ `JENDELA_ISI_MS`) sebelum ada blokir apa pun tetap lolos; (2) di dokumen kotor yang tidak dimuat ulang,
+  ketukan warga pada kotak sorot atau tombol submit asli membuka jendela 3 detik yang juga dipakai timer halaman
+  (warga memang sedang bermaksud mengirim). Dipertimbangkan: atribusi lewat stack inisiator CDP (`Network.requestWillBeSent`
   `initiator.stack`) untuk membedakan tulis dari handler ketukan warga dan dari timer; belum dipakai karena
   stack async tidak andal lintas `setTimeout`/promise dan menambah lapis CDP Network di samping rute Playwright.
 - Sisa risiko diterima (redirect halaman sendiri, probe 3674): saat AI diam atau sesudah navigasi AI ke `navKe`,
@@ -59,6 +65,22 @@ Adapter tulisan tangan hanya ada untuk Telunjuk Sakti dan beberapa alur baca. Wa
   sudah diterima: GET ke jalur bersih di host allowlist. Batasnya: di dokumen kotor (N2) dan di dokumen yang
   pengamatan terakhirnya halaman akhir, redirect itu tidak pernah lolos (mode ketat gerbang, juga saat warga
   memegang kendali tanpa mengetuk); dokumen baru yang ter-commit mengakhiri mode ketat.
+  Contoh konkret yang tetap lolos (re-review gelombang-4, PoC G): di dokumen BERSIH (belum ada tulis yang
+  diblokir) yang bukan halaman akhir, AI mengklik tombol "Lanjut" `type=button`; handler halaman menunda
+  `location.href = '/permohonan/12/go?langkah=akhir&ok=1'` 1,5 detik. Saat itu AI sudah diam (`ai_diam`), jalur
+  dan kuerinya tidak berbunyi tulis, jadi GET bingkai utama itu terkirim (penghitung PoC = 1) dan sesi tetap di
+  mode AI. Bila server memperlakukan GET seperti itu sebagai pengiriman, satu langkah terjadi tanpa ketukan warga.
+  Varian dengan kata tulis di kueri (PoC G2, form GET `?aksi=final`) tetap diblokir. Mitigasinya bukan di gerbang:
+  portal yang mengubah keadaan lewat GET melanggar semantik HTTP, recon host baru memeriksanya, dan halaman akhir
+  tetap mengunci serah. Tinjau ulang bila recon menemukan portal nyata yang mengirim permohonan lewat GET.
+- Tujuan `buka_tautan` (re-review TOCTOU, PoC E3): URL absolut yang ditampilkan ke warga disimpan saat giliran
+  `ketuk_tautan` dikirim; href yang dibaca ulang saat warga menekan Buka harus sama persis (host, jalur, kueri),
+  selain itu tidak dibuka dan giliran tetap di warga. Host aset umum (CDN/fon, `EGRESS_ASET_UMUM`) hanya untuk
+  subresource script/stylesheet/font/image (rute peramban); navigasi dokumen bingkai mana pun ke host itu
+  ditolak di rute dan di gerbang tulis pada SEMUA jendela (termasuk warga), dan bukan tujuan navigasi AI,
+  tautan, atau pop-up. Alasannya: unpkg/jsdelivr menyajikan HTML paket npm siapa saja sebagai text/html,
+  sementara bilah atas layar tetap menampilkan origin portal. Konsekuensinya XHR/fetch ke CDN (mis. JSON dari
+  jsdelivr) juga ditolak; tinjau ulang bila recon menemukan portal yang membutuhkannya.
 
 ## Rujukan berkas utama
 

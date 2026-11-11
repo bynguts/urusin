@@ -158,6 +158,14 @@ describe('lint registry wilayah (ADR 0030)', () => {
     expect(PORTAL_WILAYAH['1102']!.hostInfo).toContain('disdukcapil.acehtenggarakab.go.id');
   });
 
+  it('probe 2026-11-11: login PAK ONOM (3279) di host pemkot lain, ikut portal dan id-only', () => {
+    const h = 'bebeong.banjarkota.go.id';
+    expect(PORTAL_WILAYAH['3279']!.hosts).toContain(h);
+    expect(hostsWilayah('3279')).toContain(h);
+    expect(isOfficialUrl(`https://${h}/open_layanan/pakonom`)).toBe(true);
+    expect(getOfficialDomain(h)).toMatchObject({ wilayah: '3279', aksesWilayah: 'id-only' });
+  });
+
   it('urutan kanal routing multi-kanal', () => {
     expect(URUTAN_KANAL).toEqual(['portal_web', 'ikd', 'whatsapp', 'kantor']);
   });

@@ -1,8 +1,13 @@
 import { createHash } from 'node:crypto';
+import { EGRESS_ASET_UMUM } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
 import {
+  asetUmumBoleh,
   catatanBlokir,
   createGerbangTulis,
+  hostAset,
+  hostAsetUmum,
+  hostAsetWilayah,
   jalurPihakKetigaBoleh,
   JENDELA_ISI_MS,
   putuskan,
@@ -251,6 +256,77 @@ describe('putuskan (tabel lengkap)', () => {
       expect(putuskan(isi, iframe(m), T)).toBe('blokir');
       expect(putuskan(isi, beacon(m), T)).toBe('blokir');
     }
+  });
+
+  it('hostAsetUmum: CDN/fon bawaan sesi dikenali (bukan tujuan navigasi), domain resmi tidak (re-review LOW)', () => {
+    for (const h of EGRESS_ASET_UMUM) {
+      expect(hostAsetUmum(`https://${h}/npm/x@1/index.html`), h).toBe(true);
+      expect(hostAsetUmum(`https://${h.toUpperCase()}./a`), h).toBe(true);
+    }
+    expect(hostAsetUmum('https://unpkg.com/paket-jahat@1.0.0/index.html')).toBe(true);
+    expect(hostAsetUmum('https://disdukcapil.contoh.go.id/permohonan')).toBe(false);
+    expect(hostAsetUmum('https://challenges.cloudflare.com/turnstile/v0/api.js')).toBe(false);
+    expect(hostAsetUmum('https://cdn.jsdelivr.net.jahat.com/')).toBe(false);
+    expect(hostAsetUmum('bukan url')).toBe(false);
+  });
+
+  it('putuskan: dokumen dari host aset umum diblokir di SEMUA jendela, subresource GET-nya tidak (re-review MEDIUM)', () => {
+    const cdn = 'https://unpkg.com/paket-jahat@1.0.0/index.html';
+    const dok = (utama: boolean): PermintaanGerbang => ({
+      metode: 'GET',
+      dokumen: true,
+      utama,
+      xhr: false,
+      url: cdn,
+    });
+    const sub: PermintaanGerbang = {
+      metode: 'GET',
+      dokumen: false,
+      utama: false,
+      xhr: false,
+      url: 'https://unpkg.com/jquery@3/dist/jquery.min.js',
+    };
+    const jendela: Jendela[] = [
+      { jenis: 'warga' },
+      { jenis: 'ai_diam' },
+      { jenis: 'ai_diam', tungguWarga: true },
+      { jenis: 'ai_isi', sampai: T + 3_000 },
+      { jenis: 'ai_klik', navKe: cdn },
+    ];
+    for (const j of jendela) {
+      for (const ketat of [false, true]) {
+        expect(putuskan(j, dok(true), T, ketat), `${JSON.stringify(j)} utama`).toBe('blokir');
+        expect(putuskan(j, dok(false), T, ketat), `${JSON.stringify(j)} iframe`).toBe('blokir');
+      }
+      if (j.jenis !== 'ai_klik') expect(putuskan(j, sub, T), JSON.stringify(j)).toBe('lanjut');
+    }
+    expect(asetUmumBoleh({ url: cdn, resourceType: 'document', dokumen: true })).toBe(false);
+    expect(asetUmumBoleh({ url: sub.url, resourceType: 'script', dokumen: false })).toBe(true);
+    expect(asetUmumBoleh({ url: sub.url, resourceType: 'fetch', dokumen: false })).toBe(false);
+    expect(asetUmumBoleh({ url: U, resourceType: 'fetch', dokumen: false })).toBe(true);
+  });
+
+  it('re-review LOW: hostAset pemda (3310/3404) hanya subresource, dokumen diblokir di semua jendela', () => {
+    for (const host of ['dukcapil-cdn.slemankab.go.id', 'api.diskominfo.klaten.go.id']) {
+      const url = `https://${host}/halaman.html`;
+      expect(hostAsetWilayah(url), host).toBe(true);
+      expect(hostAset(url), host).toBe(true);
+      for (const t of ['script', 'stylesheet', 'font', 'image'])
+        expect(asetUmumBoleh({ url, resourceType: t, dokumen: false }), `${host} ${t}`).toBe(true);
+      expect(asetUmumBoleh({ url, resourceType: 'document', dokumen: true }), host).toBe(false);
+      for (const t of ['xhr', 'fetch', 'media'])
+        expect(asetUmumBoleh({ url, resourceType: t, dokumen: false }), `${host} ${t}`).toBe(false);
+      const dok: PermintaanGerbang = { metode: 'GET', dokumen: true, utama: true, xhr: false, url };
+      for (const j of [
+        { jenis: 'warga' },
+        { jenis: 'ai_diam' },
+        { jenis: 'ai_diam', tungguWarga: true },
+      ] as Jendela[])
+        expect(putuskan(j, dok, T), `${host} ${JSON.stringify(j)}`).toBe('blokir');
+    }
+    // Host portal sendiri bukan host aset.
+    expect(hostAsetWilayah('https://dukcapilonline.slemankab.go.id/Flow/signin')).toBe(false);
+    expect(hostAsetWilayah(U)).toBe(false);
   });
 
   it('jalurPihakKetigaBoleh: www.google.com hanya /recaptcha/ (review L3)', () => {
