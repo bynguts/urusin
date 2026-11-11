@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { EGRESS_ASET_UMUM } from '@urusin/core';
 import { jalurTulis } from '@urusin/executor';
 
 /**
@@ -83,6 +84,18 @@ export function urlTantangan(url: string, hostCloudflare = false): boolean {
 export function jalurPihakKetigaBoleh(url: string): boolean {
   const u = URL.parse(url);
   return !u || u.hostname.toLowerCase() !== 'www.google.com' || u.pathname.startsWith('/recaptcha/');
+}
+
+const HOST_ASET_UMUM: ReadonlySet<string> = new Set(EGRESS_ASET_UMUM);
+
+/**
+ * Host aset umum (CDN pustaka, fon) yang ikut bawaan sesi: hanya untuk subresource. CDN seperti unpkg/jsdelivr
+ * menyajikan HTML dari paket siapa saja, jadi tidak pernah boleh menjadi dokumen (bingkai mana pun) atau tujuan
+ * navigasi AI/tautan/pop-up (re-review LOW).
+ */
+export function hostAsetUmum(url: string): boolean {
+  const h = URL.parse(url)?.hostname.toLowerCase().replace(/\.$/, '');
+  return h !== undefined && HOST_ASET_UMUM.has(h);
 }
 
 /** Metode yang tidak mengubah keadaan server (preflight CORS ikut di sini). */

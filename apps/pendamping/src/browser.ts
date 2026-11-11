@@ -25,6 +25,7 @@ import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import {
   createGerbangTulis,
+  hostAsetUmum,
   jalurPihakKetigaBoleh,
   JENDELA_WARGA_MS,
   type GerbangTulis,
@@ -387,7 +388,11 @@ export async function launchIsolated(
     });
     await context.route('**/*', (route) => {
       const req = route.request();
-      const ok = urlDiAllowlist(allowedHosts, req.url()) && jalurPihakKetigaBoleh(req.url());
+      // Host aset umum (CDN/fon) hanya untuk subresource: navigasi dokumen ke sana ditolak seperti host lain.
+      const ok =
+        urlDiAllowlist(allowedHosts, req.url()) &&
+        jalurPihakKetigaBoleh(req.url()) &&
+        !(req.isNavigationRequest() && hostAsetUmum(req.url()));
       if (!ok) {
         const host = URL.parse(req.url())?.hostname;
         const dokumen = gerbang ? permintaanGerbang(req).utama : false;
@@ -1113,6 +1118,7 @@ export async function wire(
     const izinHost = new Set(egressRules(gen.hosts, config.fixtureOrigins).map((r) => `${r.host}:${r.port}`));
     const urlBoleh = (url: string) =>
       urlDiAllowlist(izinHost, url) &&
+      !hostAsetUmum(url) &&
       checkUrl(url, { testMode: fixtureOrigins.length > 0, fixtureOrigins }).ok;
     // Review kode N4: tautan target=_blank yang diketuk warga membuka pop-up yang tidak terlihat di layar. Pop-up
     // selalu ditutup; navigasi GET-nya (hanya dari ketukan warga, lolos allowlist) dibuka di halaman utama.

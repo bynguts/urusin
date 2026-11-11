@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
+import { EGRESS_ASET_UMUM } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
 import {
   catatanBlokir,
   createGerbangTulis,
+  hostAsetUmum,
   jalurPihakKetigaBoleh,
   JENDELA_ISI_MS,
   putuskan,
@@ -251,6 +253,18 @@ describe('putuskan (tabel lengkap)', () => {
       expect(putuskan(isi, iframe(m), T)).toBe('blokir');
       expect(putuskan(isi, beacon(m), T)).toBe('blokir');
     }
+  });
+
+  it('hostAsetUmum: CDN/fon bawaan sesi dikenali (bukan tujuan navigasi), domain resmi tidak (re-review LOW)', () => {
+    for (const h of EGRESS_ASET_UMUM) {
+      expect(hostAsetUmum(`https://${h}/npm/x@1/index.html`), h).toBe(true);
+      expect(hostAsetUmum(`https://${h.toUpperCase()}./a`), h).toBe(true);
+    }
+    expect(hostAsetUmum('https://unpkg.com/paket-jahat@1.0.0/index.html')).toBe(true);
+    expect(hostAsetUmum('https://disdukcapil.contoh.go.id/permohonan')).toBe(false);
+    expect(hostAsetUmum('https://challenges.cloudflare.com/turnstile/v0/api.js')).toBe(false);
+    expect(hostAsetUmum('https://cdn.jsdelivr.net.jahat.com/')).toBe(false);
+    expect(hostAsetUmum('bukan url')).toBe(false);
   });
 
   it('jalurPihakKetigaBoleh: www.google.com hanya /recaptcha/ (review L3)', () => {
