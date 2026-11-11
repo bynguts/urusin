@@ -7,8 +7,8 @@
 <!-- Badge coverage sengaja tidak ada: angka coverage dihitung CI per paket (job "Coverage") tetapi belum dipublikasikan sebagai badge. -->
 
 Agen AI yang ikut mengurus layanan administrasi kependudukan bersama warga. Urusin membaca syarat dari sumber
-resmi dan menyusun langkahnya. Pengisian formulir di situs resmi dikerjakan lewat **Browser Pendamping** (belum
-live, lihat Status di bawah). Login, OTP, CAPTCHA, dan **tombol Kirim terakhir selalu ditekan warga sendiri**.
+resmi dan menyusun langkahnya. Pengisian formulir di situs resmi dikerjakan lewat **Browser Pendamping** (live,
+lihat Status di bawah). Login, OTP, CAPTCHA, dan **tombol Kirim terakhir selalu ditekan warga sendiri**.
 
 - **Aplikasi langsung:** <https://urusinai.web.id>
 - **Masuk tanpa akun:** buka aplikasi lalu pilih "Coba tanpa daftar", atau "Masuk sebagai juri" di halaman Masuk
@@ -16,18 +16,25 @@ live, lihat Status di bawah). Login, OTP, CAPTCHA, dan **tombol Kirim terakhir s
 - **Versi yang berjalan:** baris kecil `v<sha7>` di bawah halaman Pengaturan (bertaut ke commit di GitHub), atau
   field `versi` di [`/api/kemampuan`](https://urusinai.web.id/api/kemampuan).
 
-**Status (2026-11-09).** README ini hanya mengklaim yang sudah berjalan. Yang belum aktif di produksi ditandai
+**Status (2026-11-11).** README ini hanya mengklaim yang sudah berjalan. Yang belum aktif di produksi ditandai
 **(belum live)**.
 
-| Bagian                                                               | Status                                           |
-| -------------------------------------------------------------------- | ------------------------------------------------ |
-| Percakapan agen, RAG bersumber, router 514 kab/kota, Peristiwa Hidup | Live di <https://urusinai.web.id>                |
-| Akun (email + sandi, Google), mode tamu, tombol juri, vault, Jejak   | Live                                             |
-| Browser Pendamping (pengisian formulir di situs resmi)               | Live (portal `kirim-asli` + situs latihan)       |
-| Situs latihan publik `fixtures.urusinai.web.id`                      | Belum live: dipakai lokal untuk e2e dan Mode Uji |
+| Bagian                                                               | Status                                          |
+| -------------------------------------------------------------------- | ----------------------------------------------- |
+| Percakapan agen, RAG bersumber, router 514 kab/kota, Peristiwa Hidup | Live di <https://urusinai.web.id>               |
+| Akun (email + sandi, Google), mode tamu, tombol juri, vault, Jejak   | Live                                            |
+| Browser Pendamping (pengisian formulir di situs resmi)               | Live: worker VPS + worker wilayah `id` (laptop) |
+| Situs latihan publik `fixtures.urusinai.web.id` (Mode Uji)           | Live                                            |
 
-Untuk daerah tanpa portal yang didukung adapter, Urusin berhenti di rencana bersumber dan daftar berkas, lalu
-memandu warga mengisi sendiri di situs resmi (mode dipandu).
+Tier per wilayah hanya dua, dan tidak ada yang mengirim otomatis penuh:
+
+- **Semi:** AI mengisi dan mengunggah berkas di situs resmi (adapter deterministik di Telunjuk Sakti Wonogiri,
+  Navigator generik di portal wilayah lain yang terdaftar); login, CAPTCHA, dan tombol Kirim tetap warga.
+- **Dipandu:** daerah tanpa portal yang didukung. Urusin berhenti di rencana bersumber dan daftar berkas, lalu
+  memandu warga mengisi sendiri di situs resmi.
+
+Alur **baca-saja** (cek status permohonan di Surabaya dan Semarang) berjalan otomatis sampai halaman yang
+meminta login atau CAPTCHA warga.
 
 ## 1. Nama tim dan anggota
 
@@ -151,7 +158,7 @@ flowchart LR
   EDGE --> FX
 ```
 
-**Alur satu urusan** (langkah 3–5 berjalan saat Browser Pendamping aktif; sampai itu, mode dipandu):
+**Alur satu urusan** (langkah 3–5 untuk wilayah bertier semi; wilayah dipandu berhenti di rencana dan panduan):
 
 1. Warga bercerita di web app. Harness menentukan intent dan daerah (router NIK), lalu mencari syarat lewat RAG
    (BM25 + vektor, RRF, rerank, gerbang abstain).
@@ -179,7 +186,7 @@ Detail C4 (konteks, kontainer), pipeline pengiriman, dan diagram urutan PII ada 
 | Bagian                        | Lokasi                                                                                    |
 | ----------------------------- | ----------------------------------------------------------------------------------------- |
 | Web app, API, broker sesi     | `apps/web`                                                                                |
-| Browser Pendamping (branch)   | `apps/pendamping`, `packages/executor`, `packages/adapters`, `packages/pendamping-client` |
+| Browser Pendamping            | `apps/pendamping`, `packages/executor`, `packages/adapters`, `packages/pendamping-client` |
 | Situs latihan                 | `apps/fixtures`                                                                           |
 | Agen, state machine, eval     | `packages/harness`                                                                        |
 | Akun, sesi, vault             | `packages/akun`                                                                           |
@@ -193,9 +200,36 @@ Detail C4 (konteks, kontainer), pipeline pengiriman, dan diagram urutan PII ada 
 
 ## 6. Instalasi, konfigurasi, dan menjalankan
 
+### Demo lengkap di localhost (satu perintah, Docker)
+
+Web + Browser Pendamping + situs latihan (replika portal) + DB berisi akun juri, di satu laptop tanpa VPS.
+Prasyarat: Docker Desktop/Engine dengan Compose v2, bash (Git Bash di Windows), ±5 GB disk untuk image.
+
+```bash
+bash scripts/demo-final.sh up    # build image sekali (~10 menit), naikkan, lalu preflight hijau/merah
+```
+
+Buka <http://localhost> → **Masuk** → **"Masuk sebagai juri"** → Beranda → **Kelahiran** → Kabupaten Wonogiri →
+**Mulai urusan ini**. Semua portal resmi dipetakan ke replika lokal (`127.0.0.1:4320`, bilah "Mode uji"), jadi
+situs pemerintah asli tidak pernah dibuka. Kredensial replika tercetak di halaman loginnya.
+
+| Perintah                               | Kegunaan                                                                  |
+| -------------------------------------- | ------------------------------------------------------------------------- |
+| `bash scripts/demo-final.sh cek`       | Preflight: layanan, waktu respons, LLM/fallback, RAG, Pendamping, juri    |
+| `bash scripts/demo-final.sh offline`   | Saklar satu langkah bila internet/proxy LLM mati: agen pakai DemoProvider |
+| `bash scripts/demo-final.sh online`    | Kembali ke LLM                                                            |
+| `bash scripts/demo-final.sh log web`   | Log satu layanan (`web`, `pendamping`, `fixtures`, `gerbang`)             |
+| `bash scripts/demo-final.sh down`      | Hentikan (data demo tetap); `reset` = hapus juga DB demo                  |
+| `bash scripts/demo-final.sh up --ghcr` | Tarik image GHCR untuk commit ini alih-alih build (butuh login GHCR)      |
+
+Tanpa LLM terkonfigurasi demo memakai DemoProvider. LLM diambil dari env `LLM_BASE_URL`/`LLM_API_KEY`/
+`LLM_AGENT_MODEL` saat `up` (atau berkas `DEMO_LLM_ENV`). Korpus RAG produksi dipakai bila ada di
+`deploy/data/demo/rag.db` (diabaikan git). Detail topologi: [`deploy/compose.demo.yml`](deploy/compose.demo.yml).
+
+### Pengembangan
+
 **Prasyarat:** Node.js 26 (lihat `.nvmrc`) dan pnpm 11. E2E butuh Chromium Playwright
-(`pnpm exec playwright install chromium`); Browser Pendamping (branch `feat/browser-pendamping`) juga butuh Xvfb
-di Linux.
+(`pnpm exec playwright install chromium`); Browser Pendamping juga butuh Xvfb di Linux.
 
 ```bash
 pnpm install                 # memasang dependensi dan hook commit
@@ -223,14 +257,14 @@ Isi variabel di bawah untuk fitur penuh. Daftar lengkap dan penjelasannya ada di
 | Masuk dengan Google     | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, plus redirect URI untuk setiap host di `deploy/hosts.json`       |
 | Turnstile (juri, login) | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`                                                                 |
 | Kuota dan biaya         | `URUSIN_LIMIT_*`, `URUSIN_TAMU_PER_IP_HARI`, `URUSIN_DEMO_*`, `URUSIN_DAILY_USD_CAP`, `URUSIN_DAILY_IDR_CAP` |
-| Browser Pendamping      | `PENDAMPING_*` (URL worker, rahasia HMAC, batas sesi dan memori), ikut branch Pendamping                     |
+| Browser Pendamping      | `PENDAMPING_*` (URL worker, rahasia HMAC, batas sesi dan memori)                                             |
 | Situs latihan           | `FIXTURES_PROFILE`, `FIXTURES_PORT`, `FIXTURES_PUBLIC_ORIGIN`                                                |
 
 Perintah lain:
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test    # sama dengan CI
-pnpm e2e                                    # Playwright (web; e2e Pendamping ikut branch-nya)
+pnpm e2e                                    # Playwright (web dan Browser Pendamping terhadap fixtures)
 pnpm coverage                               # coverage per paket dengan ambang
 pnpm budget                                 # anggaran JS awal per rute (≤ 70 KB gzip)
 pnpm rag:ingest && pnpm rag:eval            # bangun korpus RAG dan ukur retrieval
@@ -362,8 +396,8 @@ dibagikan.
 ## Pengujian dan CI
 
 - Lebih dari 1.200 tes unit (Vitest) di 10 paket, ditambah e2e Playwright: alur akun, unduh di perangkat baru,
-  Google lewat IdP tiruan, stempel versi, dan alur utama di 390 px dan 1440 px. E2E Browser Pendamping terhadap
-  situs latihan ada di branch `feat/browser-pendamping`.
+  Google lewat IdP tiruan, stempel versi, dan alur utama di 390 px dan 1440 px. E2E Browser Pendamping berjalan
+  terhadap situs latihan (`apps/pendamping/e2e`).
 - **CI (`.github/workflows/ci.yml`):**
   - lint, format, typecheck, test, build;
   - anggaran bundle;
@@ -382,7 +416,7 @@ dibagikan.
 
 - JS awal per rute ≤ 70 KB gzip (`pnpm budget`), total transfer per rute ≤ 250 KiB (Lighthouse CI), font sendiri satu berkas
   woff2, ikon SVG inline.
-- Browser Pendamping (diukur di kontainer branch-nya): sekitar 213 MB idle dan 170–210 MB tambahan per sesi.
+- Browser Pendamping (diukur di kontainernya): sekitar 213 MB idle dan 170–210 MB tambahan per sesi.
   - Sesi aktif dibatasi (bawaan 2) dengan antrean.
   - Worker tambahan bisa berjalan di laptop anggota lewat Tailscale.
 - Biaya LLM dicatat per urusan dari `usage` dan dibatasi harian. Angka publik latensi dan biaya ada di
@@ -390,13 +424,13 @@ dibagikan.
 
 ## Batasan yang diketahui
 
-- **Browser Pendamping belum aktif di produksi.** Pengisian formulir otomatis menunggu merge
-  `feat/browser-pendamping`; sampai itu, langkah di situs resmi dikerjakan warga dengan panduan Urusin.
-- **Situs latihan publik** `fixtures.urusinai.web.id` belum aktif; situs latihan hanya berjalan lokal.
 - **Situs pemerintah:**
   - Baru satu portal berstatus `kirim-asli` (Telunjuk Sakti Wonogiri) dan dua `read-only` (Surabaya,
     Semarang).
-  - 20 daerah lain masih `pending-recon` dan memakai mode dipandu.
+  - Portal wilayah lain yang terdaftar (`pending-recon`) ditawari Navigator generik bertier semi; pengirimannya
+    belum divalidasi seperti Wonogiri. Daerah tanpa portal terdaftar memakai mode dipandu.
+  - Mode Uji (juri/tamu) hanya membuka portal yang punya replika. Di luar Telunjuk Sakti, replika Surabaya dan
+    Semarang hanya punya cek status, jadi urusan tulis di sana (dan di portal tanpa replika) beralih ke panduan.
   - Situs `id-only` (Si D'nOK) hanya bisa diisi dari worker berlokasi Indonesia; Telunjuk Sakti (`id-utama`)
     dilayani server, warga sendiri mengetuk kotak verifikasi keamanan bila muncul.
 - **Email** saat ini berjalan dalam mode log (Resend belum diaktifkan): email verifikasi dan atur ulang sandi
@@ -404,8 +438,6 @@ dibagikan.
 - **Input suara dan pengingat** (`URUSIN_FEATURE_VOICE`, `URUSIN_FEATURE_REMINDERS`) masih nonaktif.
 - **Persetujuan "Izinkan isi"** (saat Pendamping aktif) disimpan di memori proses, jadi restart server berarti
   warga menekannya lagi.
-- **Model agen di produksi** saat ini tanpa kemampuan vision (`/api/kemampuan`: `vision: false`); fitur yang
-  butuh vision turun ke mode tanpa vision.
 
 ## Dokumentasi
 
