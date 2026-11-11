@@ -62,5 +62,8 @@ docker logs -f urusin-ci-laptop-1 # pantau
 ```
 
 Menjalankan `up.sh` lagi saat kontainer sudah ada hanya memastikan kontainer jalan (tanpa daftar ulang).
+Ganti image (mis. setelah mengubah `Dockerfile`/hook) tanpa membuang cache di volume: tunggu runner idle, lalu
+`docker rm -f urusin-ci-laptop-1 && deploy/ci-runner-laptop/up.sh` (volume `urusin-ci-laptop-1-work` dipakai lagi,
+registrasi diganti `--replace`).
 Laptop mati/tidur dengan `URUSIN_RUNNER_UJI` masih diset = kelima job antre sampai laptop hidup lagi. Sebelum
 laptop dimatikan lama, jalankan `down.sh` (atau `gh variable delete URUSIN_RUNNER_UJI --repo bynguts/urusin`).
