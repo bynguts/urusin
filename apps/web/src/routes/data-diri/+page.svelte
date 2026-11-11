@@ -221,7 +221,13 @@
           </div>
         </form>
       {:else}
-        <div class="overflow-hidden rounded-2xl border border-line bg-surface">
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex (Area gulir perlu fokus agar kolom tabel bisa dijangkau dengan tombol panah.) -->
+        <div
+          role="region"
+          aria-label="Tabel data diri"
+          tabindex="0"
+          class="min-w-0 overflow-x-auto rounded-2xl border border-line bg-surface"
+        >
           <table class="w-full border-collapse text-left">
             <caption class="sr-only">Data diri tersimpan</caption>
             <thead class="border-b border-line bg-card text-[13px] font-semibold text-card-ink">

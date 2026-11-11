@@ -273,6 +273,7 @@ export const DokumenAkunSchema = z.object({
   mime: z.enum(MIME_DOKUMEN),
   ukuran: z.number().int().nonnegative(),
   disimpanPada: IsoWaktuSchema,
+  bacaSaja: z.boolean().optional(),
 });
 export type DokumenAkun = z.infer<typeof DokumenAkunSchema>;
 export const DaftarDokumenResponseSchema = z.object({ dokumen: z.array(DokumenAkunSchema) });
