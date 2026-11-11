@@ -295,15 +295,24 @@ describe('harness memajukan MEMAHAMI -> RENCANA_DIUSULKAN sendiri', () => {
     expect(env.store.verifyChain(u.id).ok).toBe(true);
   });
 
-  it('tanpa kota atau jenis non-peristiwa: tidak ada rencana otomatis', async () => {
+  it('tanpa kota atau jenis tanpa rencana bersumber: tidak ada rencana otomatis', async () => {
     for (const [kode, jenis] of [
       [undefined, 'kelahiran'],
+      [undefined, 'ktp'],
       ['3312', 'lainnya'],
-      ['3312', 'ktp'],
+      ['3312', 'akta'],
     ] as const) {
       const { env, u, out } = await jalankan(kode, jenis);
       expect(out.events.some((e) => e.type === 'plan_card')).toBe(false);
       expect(env.store.getUrusanOrThrow(u.id).state).toBe('MEMAHAMI');
+    }
+  });
+
+  it('KK/KTP-el + kota diketahui: rencana minimal bersumber Perpres 96/2018 juga diusulkan sendiri', async () => {
+    for (const jenis of ['kk', 'ktp'] as const) {
+      const { env, u, out } = await jalankan('3312', jenis);
+      expect(out.events.some((e) => e.type === 'plan_card')).toBe(true);
+      expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
     }
   });
 

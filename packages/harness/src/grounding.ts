@@ -2,6 +2,7 @@ import { OFFICIAL_DOMAINS, type OfficialDomain } from '@urusin/core';
 import { kanalFor } from '@urusin/rag';
 import {
   KANAL_NASIONAL,
+  kanalProvinsi,
   kanalWilayah,
   kontakDukcapil,
   kontakLayanan,
@@ -131,6 +132,12 @@ export type HandoffContext = {
    * untuk KTP patah), jadi kanal hand-off hanya diambil dari data kanal resmi per layanan.
    */
   chunks?: readonly ChunkRecord[] | undefined;
+  /**
+   * Warga bukan penduduk kab/kota ini (KTP di tempat lain, mis. KTP Surabaya bertanya ke Disdukcapil Semarang):
+   * portal layanan wilayah ini hanya untuk penduduknya (login NIK setempat), jadi kanal pertamanya situs informasi
+   * Disdukcapil, bukan portal.
+   */
+  bukanPenduduk?: boolean | undefined;
 };
 
 type KanalHandoff = PayloadOf<'handoff'>['kanal'][number];
@@ -184,7 +191,7 @@ function kanalKontakLayanan(kode: string, layanan: LayananKontak): KanalHandoff 
  * Disdukcapil wilayah KTP (kanal registry, situs terverifikasi beserta alamatnya, lalu kontak layanan resmi);
  * tanpa wilayah: Ditjen Dukcapil.
  */
-function kanalAdminduk(kode: string | null): KanalHandoff[] {
+function kanalAdminduk(kode: string | null, bukanPenduduk = false): KanalHandoff[] {
   const nasional = `${KANAL_NASIONAL.judul}, ${KANAL_NASIONAL.instansi}`;
   if (!kode) return [{ nama: nasional, url: KANAL_NASIONAL.url }];
   const k = kanalWilayah(kode);
@@ -197,8 +204,13 @@ function kanalAdminduk(kode: string | null): KanalHandoff[] {
       : kode.startsWith('31') && w && k.jenis === 'portal'
         ? `Suku Dinas Dukcapil ${w.nama} lewat ${k.judul}, portal ${k.instansi}`
         : k.instansi;
-  const out: KanalHandoff[] = [{ nama, url: k.url }];
+  // Bukan penduduk setempat (p03): portal berlogin NIK setempat dilewati bila ada situs informasi Disdukcapil.
+  const lewatiPortal = bukanPenduduk && k.jenis === 'portal' && Boolean(kontakDukcapil(kode));
+  const out: KanalHandoff[] = lewatiPortal ? [] : [{ nama, url: k.url }];
   if (kode.startsWith('31')) out.push(DUKCAPIL_DKI);
+  // Tanpa situs Disdukcapil kab/kota (kanal pertama = situs pemda): situs Dinas Dukcapil/Pemerintah provinsi menyusul.
+  const prov = k.jenis === 'pemda' ? kanalProvinsi(kode) : undefined;
+  if (prov) out.push({ nama: prov.instansi, url: prov.url });
   const kontak = kontakDukcapil(kode);
   if (kontak && w)
     out.push({
@@ -222,7 +234,7 @@ function kanalAdminduk(kode: string | null): KanalHandoff[] {
  * bansos ke Kemensos dan dinas sosial, cek DPT ke KPU, pengaduan ke SP4N-LAPOR!, adminduk ke Disdukcapil wilayah KTP.
  * Jenis lain: kosong, karena Urusin belum punya data kanalnya (tidak menebak dari chunk).
  */
-function kanalLayanan(jenis: string | null, kode: string | null): KanalHandoff[] {
+function kanalLayanan(jenis: string | null, kode: string | null, bukanPenduduk = false): KanalHandoff[] {
   const w = kode ? wilayahByKode(kode) : undefined;
   switch (jenis) {
     case 'skck':
@@ -254,7 +266,7 @@ function kanalLayanan(jenis: string | null, kode: string | null): KanalHandoff[]
     case 'pengaduan':
       return domainResmi((d) => d.layanan === 'Pengaduan publik');
     default:
-      return jenis === null || ADMINDUK.has(jenis) ? kanalAdminduk(kode) : [];
+      return jenis === null || ADMINDUK.has(jenis) ? kanalAdminduk(kode, bukanPenduduk) : [];
   }
 }
 
@@ -262,7 +274,7 @@ function kanalLayanan(jenis: string | null, kode: string | null): KanalHandoff[]
 export function handoffChannels(ctx: HandoffContext): KanalHandoff[] {
   const kode = ctx.kodeKabKota && /^\d{4}$/.test(ctx.kodeKabKota) ? ctx.kodeKabKota : null;
   const out: KanalHandoff[] = [];
-  for (const k of kanalLayanan(ctx.jenis ?? null, kode)) {
+  for (const k of kanalLayanan(ctx.jenis ?? null, kode, ctx.bukanPenduduk === true)) {
     const ada = out.find((o) =>
       k.url ? o.url !== undefined && kunciUrl(o.url) === kunciUrl(k.url) : !o.url && o.nama === k.nama,
     );

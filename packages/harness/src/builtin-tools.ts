@@ -36,7 +36,7 @@ import {
   kartuRencana,
   kodeKtp,
   kodeYurisdiksi,
-  rencanaPeristiwa,
+  rencanaUrusan,
   wilayahUrusan,
 } from './wilayah.js';
 
@@ -212,7 +212,7 @@ export const urusanUsulkanRencana = defineTool({
 export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkRecord[] {
   const w = wilayahUrusan(ctx.store, ctx.urusan);
   if (!ctx.urusan.jenis || !w.ktp) return [];
-  const r = rencanaPeristiwa(ctx.urusan.jenis, {
+  const r = rencanaUrusan(ctx.urusan.jenis, {
     ktp: w.ktp.kodeKabKota,
     domisili: w.domisili?.kodeKabKota ?? null,
     tujuan: w.tujuan?.kodeKabKota ?? null,
@@ -233,6 +233,10 @@ export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkR
     ];
   });
 }
+
+/** Kanal kab/kota selain wilayah KTP warga (di luar pindah, yang tujuannya memang calon tempat tinggal). */
+const bukanPenduduk = (jenis: string | null, ktp: { kodeKabKota: string } | null, kode: string | null) =>
+  jenis !== 'pindah' && Boolean(ktp && kode && kode !== ktp.kodeKabKota);
 
 /**
  * Hand-off tanpa pengulangan: warga yang sudah diarahkan ke kanal yang sama tidak diberi hand-off identik lagi.
@@ -270,7 +274,9 @@ function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?
       ? [
           ...[kode, ...kodeLain]
             .filter((k, i, a): k is string => Boolean(k) && a.indexOf(k) === i)
-            .flatMap((k) => handoffChannels({ kodeKabKota: k, jenis })),
+            .flatMap((k) =>
+              handoffChannels({ kodeKabKota: k, jenis, bukanPenduduk: bukanPenduduk(jenis, w.ktp, k) }),
+            ),
           { nama: KANAL_NASIONAL.instansi, url: KANAL_NASIONAL.url },
         ]
       : [];
@@ -318,7 +324,11 @@ export const urusanJawabPersyaratan = defineTool({
     const chunks = [...ctx.store.getChunks(ctx.urusan.id), ...chunkRencana(ctx)];
     // Pindah: pertanyaan tentang Disdukcapil tujuan diarahkan ke tujuan, selain itu (SKPWNI) ke asal.
     const kode = kodeYurisdiksi(ctx.store, ctx.urusan, `${args.pertanyaan}\n${ctx.pesanWarga}`);
-    const ctxHandoff = { kodeKabKota: kode, jenis: ctx.urusan.jenis };
+    const ctxHandoff = {
+      kodeKabKota: kode,
+      jenis: ctx.urusan.jenis,
+      bukanPenduduk: bukanPenduduk(ctx.urusan.jenis, wilayahUrusan(ctx.store, ctx.urusan).ktp, kode),
+    };
     if (chunks.length === 0)
       return handoffTanpaUlang(ctx, buildHandoff({ ...ctxHandoff, chunks }, 'tanpa_sumber'), kode);
 

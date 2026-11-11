@@ -2,9 +2,13 @@ import { ADAPTERS } from '@urusin/adapters';
 import type { EventPayload, PayloadOf, WilayahRef } from '@urusin/contracts';
 import { cariPengetahuanTool } from '@urusin/rag';
 import {
+  KANAL_NASIONAL,
+  kanalDisdukcapil,
+  kanalProvinsi,
   kanalWilayah,
   kontakLayanan,
   namaPendekWilayah,
+  rencanaLayanan,
   rencanaWilayah,
   ringkasKontak,
   temukanWilayah,
@@ -312,6 +316,26 @@ export function rencanaPeristiwa(
   return { ...r, tier: 'semi', catatan: `${r.catatan} ${pendamping.keterangan}`, pendamping };
 }
 
+/** Rencana yang dipakai kartu dan potongan persyaratan: Peristiwa Hidup, atau rencana minimal KK/KTP-el. */
+export type RencanaUrusan = Pick<
+  RencanaWilayah,
+  'judul' | 'tier' | 'catatan' | 'langkah' | 'khususWilayah'
+> & {
+  slug: string;
+  pendamping?: BantuanPendamping;
+};
+
+/**
+ * Rencana Peristiwa Hidup (lihat `rencanaPeristiwa`), atau untuk urusan KK/KTP-el rencana minimal bersumber Perpres
+ * 96/2018 dengan kanal resmi wilayah (Disdukcapil, cadangan pemda/provinsi/nasional). undefined untuk jenis lain.
+ */
+export function rencanaUrusan(
+  jenis: string,
+  w: { ktp: string | null; domisili?: string | null; tujuan?: string | null },
+): RencanaUrusan | undefined {
+  return rencanaPeristiwa(jenis, w) ?? rencanaLayanan(jenis, { ktp: w.ktp, domisili: w.domisili ?? null });
+}
+
 /**
  * Sumber nasional/provinsi/wilayah dari korpus RAG (BM25 sinkron) untuk langkah pertama rencana. Filter wilayah
  * korpus hanya meloloskan chunk nasional, provinsi, atau kab/kota ini, jadi tidak ada sumber kota lain.
@@ -333,14 +357,14 @@ function sumberKorpus(ragDb: Db | undefined, judul: string, kode: string) {
   }
 }
 
-/** Kartu rencana (event plan_card) untuk urusan ini; undefined bila jenisnya bukan Peristiwa Hidup. */
+/** Kartu rencana (event plan_card) untuk urusan ini; undefined bila jenisnya tidak punya rencana (lihat `rencanaUrusan`). */
 export function kartuRencana(
   jenis: string,
   w: WilayahUrusan,
   ragDb?: Db,
 ): PayloadOf<'plan_card'> | undefined {
   if (!w.ktp) return undefined;
-  const r = rencanaPeristiwa(jenis, {
+  const r = rencanaUrusan(jenis, {
     ktp: w.ktp.kodeKabKota,
     domisili: w.domisili?.kodeKabKota ?? null,
     tujuan: w.tujuan?.kodeKabKota ?? null,
@@ -381,10 +405,13 @@ export function kartuRencana(
 export function kalimatKanal(kode: string): string {
   const k = kanalWilayah(kode);
   const nama = wilayahByKode(kode)?.nama ?? kode;
-  const baris =
-    k.jenis === 'nasional'
+  // Tanpa situs Disdukcapil: situs resmi pemda/provinsi sebagai sumber informasi, bukan tempat mengajukan.
+  const prov = k.jenis === 'pemda' ? kanalProvinsi(kode) : undefined;
+  const baris = kanalDisdukcapil(k)
+    ? `${nama}: kanal resmi ${k.judul} (${k.url}).`
+    : k.jenis === 'nasional'
       ? `${nama}: situs Disdukcapil belum terverifikasi; kanal nasional ${k.url}.`
-      : `${nama}: kanal resmi ${k.judul} (${k.url}).`;
+      : `${nama}: situs Disdukcapil belum terverifikasi; informasi resmi daerah di ${k.judul} (${k.url})${prov ? ` dan ${prov.judul} (${prov.url})` : ''}; kanal nasional ${KANAL_NASIONAL.url}. Pengajuan di kantor Disdukcapil ${nama}.`;
   const kontak = kontakLayanan(kode, 'adminduk');
   const ringkas = kontak ? ringkasKontak(kontak) : '';
   const sumber = kontak?.sumber[0];
