@@ -826,6 +826,39 @@ test('kode N1 + re-review LOW: AI menyerah, warga mengirim sendiri (bukan kotak 
   }
 });
 
+test('N1 "Saya sudah mengirim": AI berhenti, /selesai 409 sebelum warga mengirim, berhasil sesudahnya', async () => {
+  const { manager, o, sesiId, p } = await sesi(situs, '/kirim-warga', 'berhenti-kirim');
+  try {
+    // Halaman non-akhir: sukses otomatis tidak berlaku; hanya laporan warga (/selesai) yang diperiksa worker.
+    expect(p.sinyal.halamanAkhir).toBe(false);
+    await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'serahkan', alasan: 'berhenti' }],
+    });
+    await expect.poll(() => manager.status(o).mode, { timeout: 10_000 }).toBe('takeover');
+    // Warga menekan "Saya sudah mengirim" sebelum mengirim: ditolak (belum ada tulis warga).
+    await expect(manager.selesai(o)).rejects.toMatchObject({ status: 409 });
+    const sebelum = situs.hitung('/sukses');
+    await ketuk(manager, sesiId, 150, 340);
+    await expect.poll(() => situs.hitung('/sukses'), { timeout: 10_000 }).toBe(sebelum + 1);
+    await expect
+      .poll(
+        () =>
+          manager
+            .selesai(o)
+            .then((v) => v.status)
+            .catch(() => 'belum'),
+        { timeout: 10_000 },
+      )
+      .toBe('siaga');
+    expect(manager.status(o).hasil).toBe('berhasil');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
 for (const jalur of ['/dasbor', '/label', '/draf'])
   test(`N3 (PoC F ${jalur}): bukan sukses; /selesai = 409 tanpa pengiriman warga`, async () => {
     const { manager, o, sesiId, p } = await sesi(situs, jalur, `f${jalur.slice(1)}`);
