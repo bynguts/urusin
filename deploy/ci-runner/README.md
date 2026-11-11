@@ -105,17 +105,24 @@ Karena itu runner ini hanya untuk repo private dan wajib dicopot sebelum Public.
 
 ## Batas sumber daya (agent-vm: 2 vCPU, 11 GB RAM, dipakai bersama)
 
-| Bagian                                           | Batas                                                                                                                                                                                              |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit `urusin-ci-runner` (runner + langkah host)  | `CPUQuota=150%` (1,5 dari 2 CPU), `CPUWeight=20`, `IOWeight=10`, `Nice=10`, `MemoryHigh=3500M`, `MemoryMax=4G`, tanpa swap, `TasksMax=2048`                                                        |
-| Kontainer dari `ci-docker` (di luar cgroup unit) | `--cpus 1.5 --cpu-shares 256 --memory 4g --memory-swap 4g --pids-limit 2048`; `pw perf`: `--cpu-period 10000 --cpu-quota 15000` (tetap 1,5 CPU, jeda throttle CFS lebih pendek) ganti `--cpus 1.5` |
-| Builder buildkit `urusin-ci`                     | CPU 1,5 (shares 256), memori 4g, cache ≤ 1,5 GB (gc setelah tiap build, 7 hari)                                                                                                                    |
-| Paralel                                          | 1 runner = 1 job sekaligus (CI penuh berjalan berurutan, lebih lambat)                                                                                                                             |
+| Bagian                                           | Batas                                                                                                                                                                                                                                                              |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Unit `urusin-ci-runner` (runner + langkah host)  | `CPUQuota=150%` (1,5 dari 2 CPU), `CPUWeight=20`, `IOWeight=10`, `Nice=10`, `MemoryHigh=3500M`, `MemoryMax=4G`, tanpa swap, `TasksMax=2048`                                                                                                                        |
+| Kontainer dari `ci-docker` (di luar cgroup unit) | `--cpus 1.5 --cpu-shares 256 --memory 4g --memory-swap 4g --pids-limit 2048`; `pw perf`: `--cpu-period 10000 --cpu-quota 15000 --cpu-shares 1024` (tetap 1,5 CPU, jeda throttle CFS lebih pendek, bobot setara kontainer lain) ganti `--cpus 1.5 --cpu-shares 256` |
+| Builder buildkit `urusin-ci`                     | CPU 1,5 (shares 256), memori 4g, cache ≤ 1,5 GB (gc setelah tiap build, 7 hari)                                                                                                                                                                                    |
+| Paralel                                          | 1 runner = 1 job sekaligus (CI penuh berjalan berurutan, lebih lambat)                                                                                                                                                                                             |
 
 Layanan pengguna (proxy :20128, Caddy, kontainer lain, Xvfb :99) selalu punya ≥ 0,5 CPU terjamin dan menang ~5:1 saat CPU berebut (bobot 20 vs 100 / shares 256 vs 1024), serta ≥ 4 GB RAM. Batas 1,5 CPU dipilih karena e2e akun.spec flaky di 1 CPU (lulus 17/17 di 4 CPU). `IOWeight`
 hampir tidak berpengaruh di agent-vm (scheduler disk `none`); perlindungan I/O nyata = batas CPU/memori + penjaga disk. Timeout
 job berat di workflow otomatis ×3 saat `URUSIN_RUNNER` diset. Skor Lighthouse di ARM 1,5 CPU bisa lebih rendah dari
 runner GitHub; bila gagal hanya di runner ini, ulangi atau putuskan di lead (ambang tidak dilonggarkan diam-diam).
+
+Pengukuran Lighthouse di host bersama (`pw perf` -> `scripts/lhci-jalan.mjs`, ambang tetap): sebelum mulai menunggu load
+1 menit < jumlah CPU (paling lama 5 menit), lalu tiap run yang `benchmarkIndex`-nya < 0,85 x kalibrasi (host sibuk saat
+run itu) diulang, paling banyak menggandakan jumlah run. Kontainer perf memakai bobot CPU bawaan (1024) agar tidak
+kalah 1:4 saat CPU berebut; kuota 1,5 CPU tetap batas atasnya, jadi layanan pengguna tetap punya >= 0,5 CPU. Bukti
+kontensi: run 43032218573 (/pengaturan TBT 384, 319, 249, 46, 75) dan 43042454102 (/, /urusanku, /dokumen,
+/data-diri, /bantuan gagal; sampel kalibrasi 1123, 1176, 841) pada kode yang sama.
 
 ## Pasang (hanya setelah go dari lead/pengguna)
 
