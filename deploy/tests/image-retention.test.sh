@@ -47,6 +47,19 @@ rm -f "$SHIM_DIR/rm.log"
 out="$(SHIM_RM_BUSY="$(d 2)" bash "$SB/deploy/image-retention.sh" --apply 2>&1)"; rc=$?
 check "exit 0, peringatan untuk web@2, fixtures@e tetap dihapus" '[ $rc -eq 0 ] && grep -q "gagal menghapus $W@$(d 2)" <<<"$out" && grep -q "hapus $F@$(d e)" <<<"$out"'
 
+echo "3b. image di .env (PENDAMPING_IMAGE) dan image kontainer tidak pernah direncanakan dihapus"
+P=ghcr.io/bynguts/urusin-pendamping
+rm -f "$SHIM_DIR/rm.log"
+printf '%s\t%s\n%s\t%s\n%s\t%s\n' "$P" "$(d a)" "$P" "$(d b)" "$P" "$(d c)" >> "$SHIM_DIR/images.tsv"
+printf 'DOMAIN=urusin.test\nPENDAMPING_IMAGE=%s@%s\nPENDAMPING_INTERNAL_TOKEN=rahasia-jangan-dicetak\n' "$P" "$(d a)" > "$SB/deploy/.env"
+printf '%s@%s\ncaddy:2\nghcr.io/bynguts/urusin-web:latest\n' "$P" "$(d b)" > "$SHIM_DIR/ps.txt"
+out="$(bash "$SB/deploy/image-retention.sh" --apply 2>&1)"; rc=$?
+check "PENDAMPING_IMAGE (.env) dipertahankan" '[ $rc -eq 0 ] && grep -q "simpan $P@$(d a)" <<<"$out" && ! grep -q "$P@$(d a)" "$SHIM_DIR/rm.log"'
+check "image kontainer (docker ps -a) dipertahankan" 'grep -q "simpan $P@$(d b)" <<<"$out" && ! grep -q "$P@$(d b)" "$SHIM_DIR/rm.log"'
+check "pendamping lain yang tidak dipakai tetap dihapus" 'grep -qx "$P@$(d c)" "$SHIM_DIR/rm.log"'
+check "isi rahasia .env tidak tercetak" '! grep -q rahasia-jangan-dicetak <<<"$out"'
+rm -f "$SHIM_DIR/ps.txt" "$SB/deploy/.env"
+
 echo "4. argumen tidak dikenal / KEEP_LAST bukan angka"
 bash "$SB/deploy/image-retention.sh" --force >/dev/null 2>&1; rc=$?
 check "--force ditolak (exit 2)" '[ $rc -eq 2 ]'
