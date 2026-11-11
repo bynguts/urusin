@@ -78,6 +78,8 @@ services:
       DATABASE_URL: file:/data/urusin.db
       # Saklar satu langkah `demo-final.sh offline|online`: 1 = DemoProvider walau LLM_* terisi.
       URUSIN_LLM_DISABLED: ${DEMO_LLM_DISABLED:-0}
+      # Pin kapabilitas LLM: proxy lambat saat boot tidak boleh menjatuhkan demo ke mode tanpa tool calling.
+      LLM_CAPS_PIN: ${DEMO_LLM_CAPS_PIN:-{"tools":true,"parallel_tool_calls":true,"json_schema_strict":true,"streaming_tools":true,"vision":true,"transcriptions":false,"embeddings":false}}
       # Korpus RAG produksi bila ada di deploy/data/demo/rag.db (skrip mengisi path ini); kosong = korpus contoh.
       URUSIN_RAG_DB: ${DEMO_RAG_DB:-}
       # Turnstile mati: widget-nya dimuat dari Cloudflare dan gagal saat internet venue putus. Tombol juri tetap
