@@ -13,6 +13,7 @@ import {
   type VaultOptions,
 } from '@urusin/akun';
 import {
+  CacheJawaban,
   DemoProvider,
   HarnessError,
   createDemoRagDb,
@@ -370,6 +371,9 @@ async function buildFromEnv(): Promise<Runtime> {
       caps,
       prices,
       quota: quotaFromEnv(env),
+      // Masukan jawaban bersumber yang sama persis (pesan + potongan) tidak menunggu model lagi; verifikasi
+      // kutipan tetap dijalankan ulang tiap kali.
+      cacheJawaban: new CacheJawaban(),
       // Kunci HMAC placeholder = HKDF(URUSIN_PII_KEY, 'urusin/placeholder-hmac/v1'), terpisah dari KEK vault.
       ...(piiKey ? { piiKey: kunciPlaceholderHmac(piiKey) } : {}),
     },

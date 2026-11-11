@@ -201,6 +201,21 @@ export function wilayahDariPesan(teks: string): { kode: string; ktp: boolean } |
 }
 
 /**
+ * Tujuan pindah dari pesan warga, tanpa LLM: tepat satu kab/kota yang disebut sesudah "ke" ("pindah dari Kota
+ * Semarang ke Kabupaten Sleman"). Lebih dari satu, atau nama ganda (Bekasi): null, agen yang bertanya.
+ */
+export function tujuanDariPesan(teks: string): string | null {
+  const ke = [
+    ...new Set(
+      temukanWilayah(teks)
+        .filter((s) => s.sebelum === 'ke')
+        .map((s) => s.wilayah.kodeKabKota),
+    ),
+  ];
+  return ke.length === 1 ? ke[0]! : null;
+}
+
+/**
  * Teks agen yang isinya hanya pertanyaan konfirmasi wilayah ("KTP Anda terdaftar di X, betul?"): kartu wilayah
  * sudah menanyakannya, jadi teks ini tidak ditampilkan lagi (pertanyaan ganda).
  */

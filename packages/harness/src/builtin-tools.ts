@@ -18,6 +18,7 @@ import { z } from 'zod';
 import type { PayloadOf } from '@urusin/contracts';
 import {
   ADMINDUK,
+  CacheJawaban,
   KALIMAT_TETAP,
   buildHandoff,
   generateGroundedAnswer,
@@ -381,14 +382,20 @@ export const urusanJawabPersyaratan = defineTool({
     if (chunks.length === 0)
       return handoffTanpaUlang(ctx, buildHandoff({ ...ctxHandoff, chunks }, 'tanpa_sumber'), kode);
 
-    const gen = await generateGroundedAnswer({
-      provider: ctx.deps.provider,
-      model: ctx.deps.model,
-      caps: ctx.deps.caps,
-      pertanyaan: args.pertanyaan,
-      chunks,
-      signal: ctx.signal,
-    });
+    const cache = ctx.deps.cacheJawaban;
+    const kunci = cache ? CacheJawaban.kunci(ctx.deps.model, args.pertanyaan, chunks) : '';
+    const tersimpan = cache?.ambil(kunci);
+    const gen = tersimpan
+      ? { ...tersimpan, usage: [] }
+      : await generateGroundedAnswer({
+          provider: ctx.deps.provider,
+          model: ctx.deps.model,
+          caps: ctx.deps.caps,
+          pertanyaan: args.pertanyaan,
+          chunks,
+          signal: ctx.signal,
+        });
+    if (cache && !tersimpan) cache.simpan(kunci, gen.data, gen.method);
     const verified = verifyGrounded(gen.data, chunks, ctxHandoff, ctx.deps.now());
     const usage = { usage: gen.usage, structuredMode: gen.method };
     if (verified.handoff) return { ...handoffTanpaUlang(ctx, verified.handoff, kode), ...usage };

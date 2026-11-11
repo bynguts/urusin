@@ -1,0 +1,498 @@
+{
+  "label": "sesudah",
+  "model": "pythia",
+  "tanggal": "2026-11-11T22:08:32.727Z",
+  "caps": {
+    "tools": true,
+    "parallel_tool_calls": true,
+    "json_schema_strict": true,
+    "vision": true,
+    "streaming_tools": true
+  },
+  "hasil": [
+    {
+      "id": "wonogiri-ktp-rusak",
+      "ulang": 0,
+      "status": "selesai",
+      "totalMs": 16469,
+      "pertamaMs": 774,
+      "pertamaJenis": "plan_card",
+      "rencanaMs": 774,
+      "jawabanMs": 16465,
+      "ragMs": 7,
+      "ragPanggilan": 1,
+      "llm": [
+        {
+          "tujuan": "struktur:jawab_persyaratan",
+          "mulaiMs": 801,
+          "selesaiMs": 16458,
+          "tokenMasuk": 5206,
+          "tokenKeluar": 376,
+          "stream": false
+        }
+      ],
+      "llmMs": 15657,
+      "validasiMs": 7,
+      "renderMs": 4,
+      "tokenMasuk": 5206,
+      "tokenKeluar": 376,
+      "benar": {
+        "jenis": "ktp",
+        "jenisOk": true,
+        "kodeKtp": "3312",
+        "wilayahOk": true,
+        "kanalOk": true,
+        "refIdOk": true,
+        "refIdJumlah": 3,
+        "rencana": true
+      }
+    },
+    {
+      "id": "surabaya-akta-lahir",
+      "ulang": 0,
+      "status": "selesai",
+      "totalMs": 15654,
+      "pertamaMs": 16,
+      "pertamaJenis": "plan_card",
+      "rencanaMs": 16,
+      "jawabanMs": 14841,
+      "ragMs": 12,
+      "ragPanggilan": 1,
+      "llm": [
+        {
+          "tujuan": "struktur:jawab_persyaratan",
+          "mulaiMs": 37,
+          "selesaiMs": 14820,
+          "tokenMasuk": 4120,
+          "tokenKeluar": 519,
+          "stream": false
+        }
+      ],
+      "llmMs": 14783,
+      "validasiMs": 21,
+      "renderMs": 813,
+      "tokenMasuk": 4120,
+      "tokenKeluar": 519,
+      "benar": {
+        "jenis": "kelahiran",
+        "jenisOk": true,
+        "kodeKtp": "3578",
+        "wilayahOk": true,
+        "kanalOk": true,
+        "refIdOk": true,
+        "refIdJumlah": 4,
+        "rencana": true
+      }
+    },
+    {
+      "id": "semarang-pindah",
+      "ulang": 0,
+      "status": "selesai",
+      "totalMs": 15805,
+      "pertamaMs": 16,
+      "pertamaJenis": "plan_card",
+      "rencanaMs": 16,
+      "jawabanMs": 15803,
+      "ragMs": 7,
+      "ragPanggilan": 1,
+      "llm": [
+        {
+          "tujuan": "struktur:jawab_persyaratan",
+          "mulaiMs": 35,
+          "selesaiMs": 15799,
+          "tokenMasuk": 6122,
+          "tokenKeluar": 474,
+          "stream": false
+        }
+      ],
+      "llmMs": 15764,
+      "validasiMs": 4,
+      "renderMs": 2,
+      "tokenMasuk": 6122,
+      "tokenKeluar": 474,
+      "benar": {
+        "jenis": "pindah",
+        "jenisOk": true,
+        "kodeKtp": "3374",
+        "wilayahOk": true,
+        "kanalOk": true,
+        "refIdOk": true,
+        "refIdJumlah": 4,
+        "rencana": true
+      }
+    },
+    {
+      "id": "jaksel-kia",
+      "ulang": 0,
+      "status": "selesai",
+      "totalMs": 20310,
+      "pertamaMs": 20308,
+      "pertamaJenis": "assistant_text",
+      "rencanaMs": null,
+      "jawabanMs": null,
+      "ragMs": 10,
+      "ragPanggilan": 1,
+      "llm": [
+        {
+          "tujuan": "struktur:klasifikasi_urusan",
+          "mulaiMs": 3,
+          "selesaiMs": 1384,
+          "tokenMasuk": 2318,
+          "tokenKeluar": 18,
+          "stream": false
+        },
+        {
+          "tujuan": "agen:tool_loop",
+          "mulaiMs": 1413,
+          "selesaiMs": 7201,
+          "tokenMasuk": 7780,
+          "tokenKeluar": 116,
+          "stream": false
+        },
+        {
+          "tujuan": "struktur:jawab_persyaratan",
+          "mulaiMs": 7218,
+          "selesaiMs": 14459,
+          "tokenMasuk": 4550,
+          "tokenKeluar": 95,
+          "stream": false
+        },
+        {
+          "tujuan": "agen:tool_loop",
+          "mulaiMs": 14484,
+          "selesaiMs": 20306,
+          "tokenMasuk": 9390,
+          "tokenKeluar": 101,
+          "stream": false
+        }
+      ],
+      "llmMs": 20232,
+      "validasiMs": null,
+      "renderMs": 4,
+      "tokenMasuk": 24038,
+      "tokenKeluar": 330,
+      "benar": {
+        "jenis": "lainnya",
+        "jenisOk": true,
+        "kodeKtp": "3174",
+        "wilayahOk": true,
+        "kanalOk": false,
+        "refIdOk": null,
+        "refIdJumlah": 0,
+        "rencana": false
+      }
+    },
+    {
+      "id": "makassar-kk-baru",
+      "ulang": 0,
+      "status": "selesai",
+      "totalMs": 5720,
+      "pertamaMs": 11,
+      "pertamaJenis": "plan_card",
+      "rencanaMs": 11,
+      "jawabanMs": 5719,
+      "ragMs": 5,
+      "ragPanggilan": 1,
+      "llm": [
+        {
+          "tujuan": "struktur:jawab_persyaratan",
+          "mulaiMs": 22,
+          "selesaiMs": 5717,
+          "tokenMasuk": 4588,
+          "tokenKeluar": 190,
+          "stream": false
+        }
+      ],
+      "llmMs": 5695,
+      "validasiMs": 2,
+      "renderMs": 1,
+      "tokenMasuk": 4588,
+      "tokenKeluar": 190,
+      "benar": {
+        "jenis": "kk",
+        "jenisOk": true,
+        "kodeKtp": "7371",
+        "wilayahOk": true,
+        "kanalOk": true,
+        "refIdOk": true,
+        "refIdJumlah": 1,
+        "rencana": true
+      }
+    },
+    {
+      "id": "jayapura-ktp-17",
+      "ulang": 0,
+      "status": "selesai",
+      "totalMs": 5863,
+      "pertamaMs": 9,
+      "pertamaJenis": "plan_card",
+      "rencanaMs": 9,
+      "jawabanMs": 5861,
+      "ragMs": 7,
+      "ragPanggilan": 1,
+      "llm": [
+        {
+          "tujuan": "struktur:jawab_persyaratan",
+          "mulaiMs": 26,
+          "selesaiMs": 5859,
+          "tokenMasuk": 4818,
+          "tokenKeluar": 83,
+          "stream": false
+        }
+      ],
+      "llmMs": 5833,
+      "validasiMs": 2,
+      "renderMs": 2,
+      "tokenMasuk": 4818,
+      "tokenKeluar": 83,
+      "benar": {
+        "jenis": "ktp",
+        "jenisOk": true,
+        "kodeKtp": "9171",
+        "wilayahOk": true,
+        "kanalOk": true,
+        "refIdOk": null,
+        "refIdJumlah": 0,
+        "rencana": true
+      }
+    },
+    {
+      "id": "wonogiri-ktp-rusak",
+      "ulang": 1,
+      "status": "selesai",
+      "totalMs": 11887,
+      "pertamaMs": 12,
+      "pertamaJenis": "plan_card",
+      "rencanaMs": 12,
+      "jawabanMs": 11885,
+      "ragMs": 6,
+      "ragPanggilan": 1,
+      "llm": [
+        {
+          "tujuan": "struktur:jawab_persyaratan",
+          "mulaiMs": 25,
+          "selesaiMs": 11882,
+          "tokenMasuk": 5236,
+          "tokenKeluar": 329,
+          "stream": false
+        }
+      ],
+      "llmMs": 11857,
+      "validasiMs": 3,
+      "renderMs": 2,
+      "tokenMasuk": 5236,
+      "tokenKeluar": 329,
+      "benar": {
+        "jenis": "ktp",
+        "jenisOk": true,
+        "kodeKtp": "3312",
+        "wilayahOk": true,
+        "kanalOk": true,
+        "refIdOk": true,
+        "refIdJumlah": 2,
+        "rencana": true
+      }
+    },
+    {
+      "id": "surabaya-akta-lahir",
+      "ulang": 1,
+      "status": "selesai",
+      "totalMs": 18131,
+      "pertamaMs": 8,
+      "pertamaJenis": "plan_card",
+      "rencanaMs": 8,
+      "jawabanMs": 18130,
+      "ragMs": 7,
+      "ragPanggilan": 1,
+      "llm": [
+        {
+          "tujuan": "struktur:jawab_persyaratan",
+          "mulaiMs": 24,
+          "selesaiMs": 18128,
+          "tokenMasuk": 4120,
+          "tokenKeluar": 549,
+          "stream": false
+        }
+      ],
+      "llmMs": 18104,
+      "validasiMs": 2,
+      "renderMs": 1,
+      "tokenMasuk": 4120,
+      "tokenKeluar": 549,
+      "benar": {
+        "jenis": "kelahiran",
+        "jenisOk": true,
+        "kodeKtp": "3578",
+        "wilayahOk": true,
+        "kanalOk": true,
+        "refIdOk": true,
+        "refIdJumlah": 3,
+        "rencana": true
+      }
+    },
+    {
+      "id": "semarang-pindah",
+      "ulang": 1,
+      "status": "selesai",
+      "totalMs": 19830,
+      "pertamaMs": 12,
+      "pertamaJenis": "plan_card",
+      "rencanaMs": 12,
+      "jawabanMs": 19828,
+      "ragMs": 5,
+      "ragPanggilan": 1,
+      "llm": [
+        {
+          "tujuan": "struktur:jawab_persyaratan",
+          "mulaiMs": 26,
+          "selesaiMs": 19826,
+          "tokenMasuk": 6098,
+          "tokenKeluar": 652,
+          "stream": false
+        }
+      ],
+      "llmMs": 19800,
+      "validasiMs": 2,
+      "renderMs": 2,
+      "tokenMasuk": 6098,
+      "tokenKeluar": 652,
+      "benar": {
+        "jenis": "pindah",
+        "jenisOk": true,
+        "kodeKtp": "3374",
+        "wilayahOk": true,
+        "kanalOk": true,
+        "refIdOk": true,
+        "refIdJumlah": 3,
+        "rencana": true
+      }
+    },
+    {
+      "id": "jaksel-kia",
+      "ulang": 1,
+      "status": "selesai",
+      "totalMs": 14746,
+      "pertamaMs": 14737,
+      "pertamaJenis": "handoff",
+      "rencanaMs": 14742,
+      "jawabanMs": 14737,
+      "ragMs": 5,
+      "ragPanggilan": 1,
+      "llm": [
+        {
+          "tujuan": "struktur:klasifikasi_urusan",
+          "mulaiMs": 2,
+          "selesaiMs": 1373,
+          "tokenMasuk": 2318,
+          "tokenKeluar": 17,
+          "stream": false
+        },
+        {
+          "tujuan": "paksa:urusan__usulkan_rencana",
+          "mulaiMs": 1399,
+          "selesaiMs": 8782,
+          "tokenMasuk": 9312,
+          "tokenKeluar": 177,
+          "stream": false
+        },
+        {
+          "tujuan": "struktur:jawab_persyaratan",
+          "mulaiMs": 1386,
+          "selesaiMs": 14735,
+          "tokenMasuk": 4562,
+          "tokenKeluar": 78,
+          "stream": false
+        }
+      ],
+      "llmMs": 22103,
+      "validasiMs": 2,
+      "renderMs": 9,
+      "tokenMasuk": 16192,
+      "tokenKeluar": 272,
+      "benar": {
+        "jenis": "akta",
+        "jenisOk": true,
+        "kodeKtp": "3174",
+        "wilayahOk": true,
+        "kanalOk": true,
+        "refIdOk": null,
+        "refIdJumlah": 0,
+        "rencana": true
+      }
+    },
+    {
+      "id": "makassar-kk-baru",
+      "ulang": 1,
+      "status": "selesai",
+      "totalMs": 8450,
+      "pertamaMs": 11,
+      "pertamaJenis": "plan_card",
+      "rencanaMs": 11,
+      "jawabanMs": 8449,
+      "ragMs": 7,
+      "ragPanggilan": 1,
+      "llm": [
+        {
+          "tujuan": "struktur:jawab_persyaratan",
+          "mulaiMs": 28,
+          "selesaiMs": 8447,
+          "tokenMasuk": 4578,
+          "tokenKeluar": 282,
+          "stream": false
+        }
+      ],
+      "llmMs": 8419,
+      "validasiMs": 2,
+      "renderMs": 1,
+      "tokenMasuk": 4578,
+      "tokenKeluar": 282,
+      "benar": {
+        "jenis": "kk",
+        "jenisOk": true,
+        "kodeKtp": "7371",
+        "wilayahOk": true,
+        "kanalOk": true,
+        "refIdOk": true,
+        "refIdJumlah": 2,
+        "rencana": true
+      }
+    },
+    {
+      "id": "jayapura-ktp-17",
+      "ulang": 1,
+      "status": "selesai",
+      "totalMs": 9219,
+      "pertamaMs": 11,
+      "pertamaJenis": "plan_card",
+      "rencanaMs": 11,
+      "jawabanMs": 9217,
+      "ragMs": 6,
+      "ragPanggilan": 1,
+      "llm": [
+        {
+          "tujuan": "struktur:jawab_persyaratan",
+          "mulaiMs": 25,
+          "selesaiMs": 9216,
+          "tokenMasuk": 4828,
+          "tokenKeluar": 87,
+          "stream": false
+        }
+      ],
+      "llmMs": 9191,
+      "validasiMs": 1,
+      "renderMs": 2,
+      "tokenMasuk": 4828,
+      "tokenKeluar": 87,
+      "benar": {
+        "jenis": "ktp",
+        "jenisOk": true,
+        "kodeKtp": "9171",
+        "wilayahOk": true,
+        "kanalOk": true,
+        "refIdOk": null,
+        "refIdJumlah": 0,
+        "rencana": true
+      }
+    }
+  ]
+}

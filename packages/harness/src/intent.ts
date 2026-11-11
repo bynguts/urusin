@@ -43,7 +43,15 @@ const KATA_KUNCI: readonly [IntentJenis, RegExp][] = [
   ['kematian', /\b(meninggal|wafat|almarhum|almarhumah|akta kematian)\b/i],
   [
     'ktp',
-    /\b(ktp|e-?ktp|ktp-?el)\b(\s+\S+){0,3}?\s+(rusak|hilang|ilang|retak|patah|pudar|terbelah)\b|\b(ganti|mengganti|cetak ulang|perekaman)\s+(\S+\s+){0,2}?(ktp|e-?ktp|ktp-?el)\b/i,
+    /\b(ktp|e-?ktp|ktp-?el)\b(\s+\S+){0,3}?\s+(rusak|hilang|ilang|retak|patah|pudar|terbelah)\b|\b(ganti|mengganti|cetak ulang|perekaman)\s+(\S+\s+){0,2}?(ktp|e-?ktp|ktp-?el)\b|\b(bikin|buat|membuat)\s+(ktp|e-?ktp|ktp-?el)\b/i,
+  ],
+  [
+    'pindah',
+    /\bpindah\s+(domisili|alamat|rumah|tempat tinggal|kependudukan|penduduk)\b|\b(surat pindah|skpwni)\b/i,
+  ],
+  [
+    'kk',
+    /\b(kk|kartu keluarga)\s+baru\b|\b(bikin|buat|membuat|urus|mengurus)\s+(kk|kartu keluarga)\b|\bpisah\s+(dari\s+)?(kk|kartu keluarga)\b/i,
   ],
   ['bansos', /\b(bansos|bantuan sosial|pkh|bpnt|blt|dtks|dtsen)\b/i],
   ['pajak_kendaraan', /\b(pajak\s+(kendaraan|motor|mobil)|samsat|pkb)\b/i],

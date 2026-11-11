@@ -10,7 +10,14 @@ import {
   wilayahByKode,
   type LayananKontak,
 } from '@urusin/registry';
-import { generateStructured, type CapabilityFlags, type ChatMessage, type ChatProvider } from '@urusin/llm';
+import { createHash } from 'node:crypto';
+import {
+  generateStructured,
+  type CapabilityFlags,
+  type ChatMessage,
+  type ChatProvider,
+  type StructuredMethod,
+} from '@urusin/llm';
 import { z } from 'zod';
 import type { KutipanTerverifikasi, PayloadOf } from '@urusin/contracts';
 import { DATAMARK, idDelimiter, newNonce, spotlight, spotlightPolicyText } from './spotlight.js';
@@ -418,4 +425,45 @@ export async function generateGroundedAnswer(opts: GroundedGenerationOptions) {
     maxTokens: opts.maxTokens ?? 1500,
     signal: opts.signal,
   });
+}
+
+/**
+ * Cache keluaran generator jawaban bersumber per (model, pertanyaan ternormalisasi, potongan sumber persis). Hanya
+ * keluaran mentah model yang disimpan: verifikasi kutipan (`verifyGrounded`) tetap dijalankan ulang tiap kali atas
+ * potongan dan tanggal saat itu, jadi refId/kutipan yang tidak cocok tetap dibuang. Masukan yang sama persis
+ * (warga lain dengan pesan sama di wilayah yang sama, demo yang diulang) tidak menunggu model 10-20 detik lagi.
+ */
+export class CacheJawaban {
+  private readonly isi = new Map<string, { at: number; data: GroundedAnswer; method: StructuredMethod }>();
+
+  constructor(
+    private readonly maks = 256,
+    private readonly ttlMs = 6 * 3_600_000,
+    private readonly now: () => number = () => Date.now(),
+  ) {}
+
+  static kunci(model: string, pertanyaan: string, chunks: readonly ChunkRecord[]): string {
+    const h = createHash('sha256').update(`${model}\n${normalizeForMatch(pertanyaan)}`);
+    for (const c of chunks) h.update(`\n${c.refId}\n${c.url}\n${c.verifiedAt ?? ''}\n${c.text}`);
+    return h.digest('hex');
+  }
+
+  ambil(kunci: string): { data: GroundedAnswer; method: StructuredMethod } | undefined {
+    const e = this.isi.get(kunci);
+    if (!e) return undefined;
+    if (this.now() - e.at > this.ttlMs) {
+      this.isi.delete(kunci);
+      return undefined;
+    }
+    // LRU: entri yang dipakai pindah ke belakang.
+    this.isi.delete(kunci);
+    this.isi.set(kunci, e);
+    return { data: e.data, method: e.method };
+  }
+
+  simpan(kunci: string, data: GroundedAnswer, method: StructuredMethod): void {
+    this.isi.delete(kunci);
+    this.isi.set(kunci, { at: this.now(), data, method });
+    while (this.isi.size > this.maks) this.isi.delete(this.isi.keys().next().value!);
+  }
 }
