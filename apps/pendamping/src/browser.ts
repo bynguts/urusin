@@ -265,6 +265,12 @@ export const PROFIL_PREFS = Object.freeze({
  */
 const SEL_KONTROL_KETUK =
   'button:not([type="reset"]), a[href], area[href], input[type="submit"], input[type="image"], input[type="button"], [role="button"], [role="link"]';
+/**
+ * Dokumen kotor oleh aksi AI yang tidak bisa dimuat ulang (re-review A2): hanya tombol submit asli. Bukan
+ * `type=button` dan bukan tautan (termasuk tautan fragmen), karena handler-nya tidak mengirim formulir sendiri.
+ */
+const SEL_KIRIM_ASLI =
+  'button[type="submit"], form button:not([type]), button[form]:not([type]), input[type="submit"], input[type="image"]';
 const SEL_KOLOM_KETIK =
   'textarea, [contenteditable=""], [contenteditable="true"], input:not([type="submit"], [type="image"], [type="button"], [type="checkbox"], [type="radio"], [type="reset"], [type="file"])';
 
@@ -610,7 +616,8 @@ export async function wire(
    * Ketukan warga mengenai kotak sorot serah terakhir, atau kontrol nyata (DOM.getNodeForLocation lalu `closest`
    * di dunia terisolasi, prototipe halaman tidak dipakai). Gagal = tidak.
    */
-  async function ketukanKeKontrol(x: number, y: number): Promise<boolean> {
+  async function ketukanKeKontrol(x: number, y: number, keras: boolean): Promise<boolean> {
+    const sel = keras ? SEL_KIRIM_ASLI : SEL_KONTROL_KETUK;
     const kotak = await generik?.kotakSorot();
     if (kotak && x >= kotak.x && x <= kotak.x + kotak.lebar && y >= kotak.y && y <= kotak.y + kotak.tinggi)
       return true;
@@ -630,7 +637,7 @@ export async function wire(
       if (!object.objectId) return false;
       const r = (await cdp.send('Runtime.callFunctionOn', {
         objectId: object.objectId,
-        functionDeclaration: `function () { const e = this.nodeType === 1 ? this : this.parentElement; return !!(e && !e.matches(${JSON.stringify(SEL_KOLOM_KETIK)}) && !e.closest('[contenteditable=""], [contenteditable="true"]') && e.closest(${JSON.stringify(SEL_KONTROL_KETUK)})); }`,
+        functionDeclaration: `function () { const e = this.nodeType === 1 ? this : this.parentElement; return !!(e && !e.matches(${JSON.stringify(SEL_KOLOM_KETIK)}) && !e.closest('[contenteditable=""], [contenteditable="true"]') && e.closest(${JSON.stringify(sel)})); }`,
         returnByValue: true,
       })) as { result: { value?: unknown } };
       return r.result.value === true;
@@ -1289,10 +1296,11 @@ export async function wire(
         ((m.type === 'pointer' || m.type === 'key') && (m.aksi === 'down' || m.aksi === 'up'));
       let buka = nyata && !pantau.aktif;
       // N4: halaman kotor (tulis tertunda dari klik AI masih berdenyut) = jendela tulis hanya untuk ketukan yang
-      // mengenai kotak sorot, tombol kirim, atau tautan. Ketikan, kontrol isian, dan area kosong tidak.
+      // mengenai kotak sorot, tombol kirim, atau tautan. Ketikan, kontrol isian, dan area kosong tidak. Kotor oleh
+      // aksi AI yang tidak bisa dimuat ulang (A2): hanya kotak sorot atau tombol submit asli.
       if (buka && g?.kotor) {
         if (m.type !== 'pointer') buka = false;
-        else if (m.aksi === 'down') buka = ketukKotorSah = await ketukanKeKontrol(m.x, m.y);
+        else if (m.aksi === 'down') buka = ketukKotorSah = await ketukanKeKontrol(m.x, m.y, g.kotorKeras);
         else buka = ketukKotorSah;
       }
       if (buka) inputWargaTerakhir = Date.now();
