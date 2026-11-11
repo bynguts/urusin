@@ -12,7 +12,7 @@ import {
 import { generateStructured, type CapabilityFlags, type ChatMessage, type ChatProvider } from '@urusin/llm';
 import { z } from 'zod';
 import type { KutipanTerverifikasi, PayloadOf } from '@urusin/contracts';
-import { DATAMARK, newNonce, spotlight, spotlightPolicyText } from './spotlight.js';
+import { DATAMARK, idDelimiter, newNonce, spotlight, spotlightPolicyText } from './spotlight.js';
 import type { ChunkRecord } from './store.js';
 import { textFragmentUrl } from './textfragment.js';
 
@@ -304,7 +304,11 @@ export function verifyGrounded(
   ctx: Omit<HandoffContext, 'chunks'> = {},
   now: Date = new Date(),
 ): GroundedResult {
+  // Model kerap menyalin id dari atribut delimiter spotlight (`wonogiri-ktp-el_1`), bukan dari kurung siku
+  // (`wonogiri-ktp-el#1`). Tanpa padanan ini SEMUA klaim atas chunk ber-`#` dibuang dan warga mendapat hand-off
+  // "belum ada sumber resmi" walau sumbernya ada (QA warga: KTP-el rusak Wonogiri). Id persis tetap menang.
   const byId = new Map(chunks.map((c) => [c.refId, c]));
+  for (const c of chunks) if (!byId.has(idDelimiter(c.refId))) byId.set(idDelimiter(c.refId), c);
   const klaim: GroundedResult['klaim'] = [];
   let dropped = 0;
 
@@ -323,7 +327,7 @@ export function verifyGrounded(
         break;
       }
       citations.push({
-        refId: c.refId,
+        refId: chunk.refId,
         kutipanPersis: exact,
         url: chunk.url,
         judul: chunk.judul,
