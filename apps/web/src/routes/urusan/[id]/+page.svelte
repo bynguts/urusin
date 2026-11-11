@@ -178,13 +178,19 @@
     return s.length > 40 ? `${s.slice(0, 38)}…` : s;
   }
 
-  async function kirim(t: string) {
+  /** Perintah tombol terakhir yang terkirim (untuk "Coba lagi"); null bila yang terakhir tulisan warga. */
+  let aksiTerakhir: string | null = null;
+
+  /** `aksi`: perintah tombol (mis. Lanjutkan), bukan tulisan warga: tidak tampil sebagai gelembung pesan. */
+  async function kirim(t: string, aksi = false) {
     mengirim = true;
     pesanKomposer = null;
     const setelahSeq = k.lastSeq;
     const hasil = await store.kirim(t);
     mengirim = false;
     if (hasil === 'ok') {
+      aksiTerakhir = aksi ? t : null;
+      if (aksi) return;
       lokal.catatPesan(data.urusan.id, { teks: t, setelahSeq });
       pesan = lokal.pesanWarga(data.urusan.id);
       teks = '';
@@ -225,6 +231,7 @@
   }
 
   function ulangTerakhir() {
+    if (aksiTerakhir) return void kirim(aksiTerakhir, true);
     const t = pesan.at(-1)?.teks;
     if (t) void kirim(t);
   }
@@ -552,7 +559,7 @@
             {#if k.perluLanjut && !k.sedangBerjalan}
               <button
                 type="button"
-                onclick={() => void kirim('lanjut')}
+                onclick={() => void kirim('lanjut', true)}
                 class="ml-[46px] inline-flex h-12 items-center gap-2 self-start rounded-full border border-line-2 bg-surface px-5 text-base text-ink shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] hover:bg-card"
               >
                 Lanjutkan <Icon name="panah" class="size-4.5" />
