@@ -177,6 +177,11 @@ bersamaan dengan deploy web.
 
 ## Demo final di localhost
 
+> **Jalur utama final sekarang `bash scripts/demo-final.sh up`** (README §6): web + Pendamping + replika di
+> `http://localhost`, tanpa Tailscale dan tanpa internet (kecuali LLM), dan tidak menyentuh worker ini. Jalur di
+> bawah hanya cadangan bila ingin memakai worker produksi laptop ini; Mode Uji-nya butuh internet ke
+> `fixtures.$DOMAIN`.
+
 Final dijalankan di laptop ini: web lokal `http://localhost:3000` (deploy/compose.local.yml) + worker ini.
 
 ```sh
