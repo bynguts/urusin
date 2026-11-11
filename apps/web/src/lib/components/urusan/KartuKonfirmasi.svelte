@@ -41,9 +41,9 @@
       <Icon name="instansi" class="size-[18px]" />
     </span>
     <div class="min-w-0 flex-1">
-      <h3 class="text-base leading-[22px] font-semibold text-ink">
+      <h2 class="text-base leading-[22px] font-semibold text-ink">
         {permintaan?.ringkasan || gate.pesan || 'Formulir resmi'}
-      </h3>
+      </h2>
       {#if situs}
         <p class="flex items-center gap-[5px] text-sm leading-[19px] text-card-ink">
           <Icon name="gembok" class="size-3" />{domain(situs)}

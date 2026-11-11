@@ -208,7 +208,7 @@
             </div>
             <div class="flex flex-1 flex-col gap-1.5 px-4 pt-3.5 pb-4">
               <div class="flex items-center justify-between gap-2">
-                <h3 class="text-[17px] leading-[25px] font-semibold text-ink">
+                <h2 class="text-[17px] leading-[25px] font-semibold text-ink">
                   <a
                     href="/api/vault/{encodeURIComponent(d.id)}"
                     target="_blank"
@@ -221,7 +221,7 @@
                     class="outline-none after:absolute after:inset-0"
                     >{d.judul}<span class="sr-only"> (lihat berkas)</span></a
                   >
-                </h3>
+                </h2>
                 <span
                   class="inline-flex shrink-0 items-center gap-[5px] rounded-full bg-hijau px-2.5 py-1 text-[12.5px] leading-[15px] text-hijau-ink"
                   ><Icon name="centang-bulat" class="size-3.5" />Siap</span

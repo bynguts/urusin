@@ -24,7 +24,7 @@
     : 'border-line bg-surface'}"
 >
   <div class="flex flex-wrap items-center justify-between gap-2">
-    <h3 class="text-[17px] leading-[26px] font-semibold text-ink">Dokumen untuk urusan ini</h3>
+    <h2 class="text-[17px] leading-[26px] font-semibold text-ink">Dokumen untuk urusan ini</h2>
     {#if kurang.length}
       <span
         class="inline-flex items-center gap-[5px] rounded-full bg-kuning px-2.5 py-1 text-[12.5px] leading-[15px] text-kuning-ink"
