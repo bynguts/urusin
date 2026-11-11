@@ -265,11 +265,46 @@ export const PROFIL_PREFS = Object.freeze({
  */
 const SEL_KONTROL_KETUK =
   'button:not([type="reset"]), a[href], area[href], input[type="submit"], input[type="image"], input[type="button"], [role="button"], [role="link"]';
+/**
+ * Dokumen kotor oleh aksi AI yang tidak bisa dimuat ulang (re-review A2): hanya tombol submit asli. Bukan
+ * `type=button` dan bukan tautan (termasuk tautan fragmen), karena handler-nya tidak mengirim formulir sendiri.
+ */
+const SEL_KIRIM_ASLI =
+  'button[type="submit"], form button:not([type]), button[form]:not([type]), input[type="submit"], input[type="image"]';
 const SEL_KOLOM_KETIK =
   'textarea, [contenteditable=""], [contenteditable="true"], input:not([type="submit"], [type="image"], [type="button"], [type="checkbox"], [type="radio"], [type="reset"], [type="file"])';
 
 /** Kendali yang dihitung `tenang()` untuk menilai DOM sudah stabil. */
 const SEL_KENDALI_TENANG = 'input, textarea, select, button, a[href], [role="button"], [role="link"]';
+
+/**
+ * Konten belum tampil (probe gel4 6171: `#page-content` opacity 0, baru opacity 1 800 ms setelah load + transisi
+ * 700 ms): ada transisi/animasi CSS berhingga yang sedang jalan, atau elemen di viewport (>= 2000 px persegi,
+ * kedalaman <= 4 dari body) yang memuat kolom isian masih opacity < 0,1 / visibility hidden. Animasi tak berhingga
+ * (spinner) dan elemen tanpa kotak (display:none, mis. modal tertutup) diabaikan. Dievaluasi di dunia terisolasi
+ * (hanya membaca DOM/gaya).
+ */
+export const KONTEN_BELUM_TAMPIL_EXPR = `(() => {
+  const anim = document.getAnimations().some((a) => {
+    if (a.playState !== 'running') return false;
+    const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : undefined;
+    return !!t && Number.isFinite(t.endTime);
+  });
+  if (anim) return true;
+  const vw = innerWidth, vh = innerHeight, luas = vw * vh;
+  if (!document.body || luas <= 0) return false;
+  const calon = document.body.querySelectorAll(':scope > *, :scope > * > *, :scope > * > * > *, :scope > * > * > * > *');
+  for (const el of calon) {
+    const r = el.getBoundingClientRect();
+    const lebar = Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0));
+    const tinggi = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+    if (lebar * tinggi < 2000) continue;
+    const g = getComputedStyle(el);
+    if ((Number(g.opacity) < 0.1 || g.visibility === 'hidden') && el.querySelector('input:not([type="hidden"]), select, textarea'))
+      return true;
+  }
+  return false;
+})()`;
 
 /** URL lolos allowlist host:port sesi (lapis `context.route`; sama dengan proxy egress). */
 export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): boolean {
@@ -610,7 +645,8 @@ export async function wire(
    * Ketukan warga mengenai kotak sorot serah terakhir, atau kontrol nyata (DOM.getNodeForLocation lalu `closest`
    * di dunia terisolasi, prototipe halaman tidak dipakai). Gagal = tidak.
    */
-  async function ketukanKeKontrol(x: number, y: number): Promise<boolean> {
+  async function ketukanKeKontrol(x: number, y: number, keras: boolean): Promise<boolean> {
+    const sel = keras ? SEL_KIRIM_ASLI : SEL_KONTROL_KETUK;
     const kotak = await generik?.kotakSorot();
     if (kotak && x >= kotak.x && x <= kotak.x + kotak.lebar && y >= kotak.y && y <= kotak.y + kotak.tinggi)
       return true;
@@ -630,7 +666,7 @@ export async function wire(
       if (!object.objectId) return false;
       const r = (await cdp.send('Runtime.callFunctionOn', {
         objectId: object.objectId,
-        functionDeclaration: `function () { const e = this.nodeType === 1 ? this : this.parentElement; return !!(e && !e.matches(${JSON.stringify(SEL_KOLOM_KETIK)}) && !e.closest('[contenteditable=""], [contenteditable="true"]') && e.closest(${JSON.stringify(SEL_KONTROL_KETUK)})); }`,
+        functionDeclaration: `function () { const e = this.nodeType === 1 ? this : this.parentElement; return !!(e && !e.matches(${JSON.stringify(SEL_KOLOM_KETIK)}) && !e.closest('[contenteditable=""], [contenteditable="true"]') && e.closest(${JSON.stringify(sel)})); }`,
         returnByValue: true,
       })) as { result: { value?: unknown } };
       return r.result.value === true;
@@ -1170,9 +1206,17 @@ export async function wire(
           .locator(SEL_KENDALI_TENANG)
           .count()
           .catch(() => -1);
-        if (n > 0 && n === sebelum) return;
+        if (n > 0 && n === sebelum) break;
         sebelum = n;
         await new Promise((r) => setTimeout(r, 250));
+      }
+      // Konten fade-in (probe gel4 6171): tunggu transisi/animasi berhingga selesai dan konten besar yang memuat
+      // kendali tidak lagi transparan, paling lama 3 detik.
+      const batasPudar = Date.now() + 3_000;
+      while (!destroyed && Date.now() < batasPudar) {
+        const belum = await nilaiTerisolasi(KONTEN_BELUM_TAMPIL_EXPR).catch(() => false);
+        if (belum !== true) return;
+        await new Promise((r) => setTimeout(r, 100));
       }
     };
     generik = new GenerikRun({
@@ -1289,10 +1333,11 @@ export async function wire(
         ((m.type === 'pointer' || m.type === 'key') && (m.aksi === 'down' || m.aksi === 'up'));
       let buka = nyata && !pantau.aktif;
       // N4: halaman kotor (tulis tertunda dari klik AI masih berdenyut) = jendela tulis hanya untuk ketukan yang
-      // mengenai kotak sorot, tombol kirim, atau tautan. Ketikan, kontrol isian, dan area kosong tidak.
+      // mengenai kotak sorot, tombol kirim, atau tautan. Ketikan, kontrol isian, dan area kosong tidak. Kotor oleh
+      // aksi AI yang tidak bisa dimuat ulang (A2): hanya kotak sorot atau tombol submit asli.
       if (buka && g?.kotor) {
         if (m.type !== 'pointer') buka = false;
-        else if (m.aksi === 'down') buka = ketukKotorSah = await ketukanKeKontrol(m.x, m.y);
+        else if (m.aksi === 'down') buka = ketukKotorSah = await ketukanKeKontrol(m.x, m.y, g.kotorKeras);
         else buka = ketukKotorSah;
       }
       if (buka) inputWargaTerakhir = Date.now();

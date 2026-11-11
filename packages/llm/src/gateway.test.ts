@@ -222,17 +222,10 @@ describe('larangan SDK vendor lain', () => {
     const offenders: string[] = [];
     const walk = (dir: string) => {
       for (const name of readdirSync(dir)) {
+        // Folder tersembunyi (.svelte-kit, .turbo, .lighthouseci, ...) dan keluaran build/tes bukan source.
         if (
-          [
-            'node_modules',
-            'dist',
-            'build',
-            '.svelte-kit',
-            '.turbo',
-            '.git',
-            'test-results',
-            'playwright-report',
-          ].includes(name)
+          name.startsWith('.') ||
+          ['node_modules', 'dist', 'build', 'coverage', 'test-results', 'playwright-report'].includes(name)
         )
           continue;
         const p = join(dir, name);
@@ -250,7 +243,8 @@ describe('larangan SDK vendor lain', () => {
       }
     }
     expect(offenders).toEqual([]);
-  });
+    // Pemindaian disk ikut melambat saat turbo menjalankan banyak tugas paralel (CI): batas longgar.
+  }, 60_000);
 });
 
 describe('stream selalu eksplisit di body permintaan', () => {

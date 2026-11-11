@@ -476,14 +476,30 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     await h.run.amati();
     const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] });
     expect(r).toEqual([{ indeks: 0, kode: 'GERBANG_MEMBLOKIR', kelas: 'lanjut' }]);
-    expect(h.jendelaSaatAksi).toEqual([{ jenis: 'ai_klik' }]);
+    // Re-review A2: dokumen kotor oleh klik AI dimuat ulang (GET URL yang sama) SEBELUM serah ke warga.
+    const url = 'https://portal.contoh.go.id/form';
+    expect(h.jendelaSaatAksi).toEqual([{ jenis: 'ai_klik' }, { jenis: 'ai_klik', navKe: url }]);
+    expect(h.navigasi).toEqual([url]);
     expect(h.serah).toEqual([
-      { alasan: 'periksa', pesan: PESAN_GENERIK.periksa, sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 } },
+      { alasan: 'periksa', pesan: PESAN_GENERIK.kotor_klik, sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 } },
     ]);
     expect(h.jejak).toContainEqual(
       expect.objectContaining({ jenis: 'blokir', metode: 'POST', jendela: 'ai_klik' }),
     );
     expect(h.gerbang.jendela()).toEqual({ jenis: 'ai_diam' });
+    h.run.dokumenBaru();
+    expect(h.run.kotorKeras).toBe(false);
+
+    // Kotor kedua di URL yang sama: tidak dimuat ulang lagi; jendela warga dipersempit (kotorKeras).
+    await h.run.amati();
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] });
+    expect(h.navigasi).toEqual([url]);
+    expect(h.serah.at(-1)).toEqual({
+      alasan: 'periksa',
+      pesan: PESAN_GENERIK.periksa,
+      sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 },
+    });
+    expect(h.run.kotorKeras).toBe(true);
   });
 
   it('blokir saat ai_diam hanya dicatat (tanpa eskalasi)', async () => {

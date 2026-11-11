@@ -165,6 +165,8 @@ export const PESAN_GENERIK = {
     'AI tidak yakin langkah berikutnya. Lanjutkan sendiri, atau tekan Lanjutkan untuk mencoba lagi.',
   kotor:
     'Halaman ini mencoba mengirim data sendiri, jadi AI berhenti dan halaman dimuat ulang. Periksa halaman, lalu lanjutkan sendiri.',
+  kotor_klik:
+    'Tombol ini mencoba mengirim data ke situs, jadi AI berhenti dan halaman dimuat ulang agar tidak ada kiriman tertunda. Tekan Lanjutkan agar AI mengisi ulang, atau isi lalu tekan sendiri tombol yang disorot.',
   berhenti: 'AI berhenti di sini. Lanjutkan sendiri dari layar ini.',
   tautan_berubah:
     'Alamat tautan ini berubah setelah ditampilkan, jadi tidak dibuka. Periksa halaman, lalu lanjutkan sendiri.',
@@ -358,6 +360,14 @@ export class GenerikRun {
     return this.kotorDok;
   }
 
+  /**
+   * Dokumen kotor oleh tulis yang dipicu aksi AI dan belum dimuat ulang (muat ulang sekali per URL sudah dipakai):
+   * timer/retry AI mungkin masih hidup, jadi jendela tulis warga hanya untuk kotak sorot atau tombol submit asli.
+   */
+  get kotorKeras(): boolean {
+    return this.kotorDok && this.aiBertindakDok;
+  }
+
   /** Serah akhir `berhenti` aktif (warga melanjutkan sendiri; `kembalikan` tetap giliran warga). */
   get berhenti(): boolean {
     return this.berhentiAkhir;
@@ -418,20 +428,31 @@ export class GenerikRun {
     }
   }
 
+  /**
+   * Muat ulang dokumen kotor lewat GET (mematikan semua timer/retry halaman), sekali per URL per sesi. Dipanggil
+   * di dalam `serial`. false = tidak dimuat ulang (URL di luar allowlist atau URL ini sudah pernah dimuat ulang).
+   */
+  private async muatUlangKotor(): Promise<boolean> {
+    // Tanpa fragmen: ketukan tautan `#bantuan` tidak membuat URL "baru" untuk batas sekali per URL.
+    const u = URL.parse(this.d.tangan.urlKini());
+    if (u) u.hash = '';
+    const url = u?.href ?? '';
+    if (!url || !this.d.urlBoleh(url) || this.muatUlangTerakhir === url) return false;
+    this.muatUlangTerakhir = url;
+    this.tulisWargaSejakAi = false;
+    this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: url });
+    try {
+      await this.d.tangan.navigasi(url);
+      await this.d.tangan.tenang();
+    } finally {
+      this.d.gerbang.setAi({ jenis: 'ai_diam' });
+    }
+    return true;
+  }
+
   private serahkanKotor(): Promise<void> {
     return this.serial(async () => {
-      const url = this.d.tangan.urlKini();
-      if (this.d.urlBoleh(url) && this.muatUlangTerakhir !== url) {
-        this.muatUlangTerakhir = url;
-        this.tulisWargaSejakAi = false;
-        this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: url });
-        try {
-          await this.d.tangan.navigasi(url);
-          await this.d.tangan.tenang();
-        } finally {
-          this.d.gerbang.setAi({ jenis: 'ai_diam' });
-        }
-      }
+      await this.muatUlangKotor();
       this.sorotJalur = undefined;
       this.d.jejak({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'tidak_yakin' });
       this.d.serahkan('periksa', PESAN_GENERIK.kotor);
@@ -694,9 +715,22 @@ export class GenerikRun {
   private async eskalasiBila(ref: RefTersimpan | undefined): Promise<boolean> {
     const a = this.aksiBerjalan;
     if (!a || (a.blokir.length === 0 && !a.hostLain)) return false;
+    // Re-review A2: tulis AI yang diblokir bisa meninggalkan timer/retry (setInterval) yang terus mencoba. Dokumen
+    // dimuat ulang SEBELUM warga memegang kendali agar timer itu mati; bila tidak bisa (sekali per URL), jendela
+    // tulis warga hanya untuk kotak sorot atau tombol submit asli (`kotorKeras`).
+    let dimuatUlang = false;
+    if (this.kotorDok && this.aiBertindakDok) {
+      dimuatUlang = await this.muatUlangKotor();
+      if (!dimuatUlang) this.kotorDiserahkan = true;
+    }
     const sorot = ref ? await this.d.tangan.sorot(ref.jalur).catch(() => undefined) : undefined;
     this.sorotJalur = ref?.jalur;
-    this.d.serahkan('periksa', a.hostLain ? PESAN_GENERIK.hostLain : PESAN_GENERIK.periksa, sorot);
+    const pesan = a.hostLain
+      ? PESAN_GENERIK.hostLain
+      : dimuatUlang
+        ? PESAN_GENERIK.kotor_klik
+        : PESAN_GENERIK.periksa;
+    this.d.serahkan('periksa', pesan, sorot);
     return true;
   }
 

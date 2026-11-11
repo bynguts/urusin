@@ -58,6 +58,16 @@ const HALAMAN: Record<string, string> = {
   '/spa': kerangka(`<div id="app">Memuat...</div><script>setTimeout(() => {
   document.getElementById('app').innerHTML = '<form><label>Nama Lengkap <input name="nama"></label></form>';
 }, 1500);</script>`),
+  // Probe gel4 6171: layar muat + konten opacity 0, baru tampil 800 ms setelah load dengan transisi 700 ms.
+  '/pudar':
+    kerangka(`<style>#muat{position:fixed;top:200px;left:0;right:0;bottom:0;background:#fff}#isi{opacity:0;transition:opacity .7s}
+#isi.tampil{opacity:1}</style><nav><a href="/beranda">Beranda</a></nav><div id="isi"><form><label>Nama Pudar <input name="nama"></label>
+<label>Tempat Lahir Pudar <input name="tempat"></label><button type="button">Lanjut</button></form></div>
+<div id="muat">Memuat...</div>
+<script>addEventListener('load', () => setTimeout(() => {
+  document.getElementById('isi').classList.add('tampil');
+  document.getElementById('muat').remove();
+}, 800));</script>`),
   // Probe 3674: redirect JS halaman sendiri (bukan aksi AI) ke ?p=close_form; dan redirect ke jalur tulis.
   '/alih': kerangka(
     `<p>Mengalihkan...</p><script>setTimeout(() => { location.href = '/tutup?p=close_form'; }, 300);</script>`,
@@ -80,8 +90,13 @@ const HALAMAN: Record<string, string> = {
 #ok{position:fixed;left:0;top:600px;width:300px;height:40px}
 #rl{position:fixed;left:0;top:650px;width:300px;height:30px}
 #c{position:fixed;left:0;top:690px;width:300px;height:30px;margin:0}
-#s{position:fixed;left:0;top:730px;width:300px;height:30px}</style>
+#s{position:fixed;left:0;top:730px;width:300px;height:30px}
+#bantuan{position:fixed;left:0;top:120px;width:300px;height:30px;display:block}
+#info{position:fixed;left:0;top:160px;width:300px;height:30px}
+#kirim{position:fixed;left:0;top:780px;width:300px;height:40px}</style>
 <button type="button" id="b">Lanjut</button><div id="kosong">area kosong</div>
+<a id="bantuan" href="#bantuan">Bantuan</a><button type="button" id="info">Info</button>
+<form method="post" action="/api/warga-a2"><button type="submit" id="kirim">Kirim formulir</button></form>
 <label>Nama <input id="nama" name="nama"></label>
 <button type="button" id="ok" onclick="fetch('/api/warga-a',{method:'POST',body:'x'})">Kirim saya</button>
 <label id="rl"><input type="radio" name="jk" value="L"> Laki-laki</label>
@@ -262,12 +277,13 @@ test('F1: retry fetch POST dari klik AI tidak lolos setelah serah ke warga tanpa
       mode: 'takeover',
       hasil: [{ indeks: 0, kode: 'GERBANG_MEMBLOKIR', kelas: 'lanjut' }],
     });
-    // Retry halaman (6 x 400 ms) berjalan selama warga memegang kendali tetapi belum menyentuh layar.
+    // Retry halaman (6 x 400 ms) mati: dokumen kotor oleh klik AI dimuat ulang sebelum serah (re-review A2),
+    // jadi tidak ada percobaan lagi selama warga memegang kendali.
     await new Promise((r) => setTimeout(r, 3_500));
     expect(situs.hitung('/api/ajukan')).toBe(0);
     const blokir = manager.kurasJejak(o).catatan.filter((c) => c.jenis === 'blokir');
-    expect(blokir.length).toBeGreaterThanOrEqual(2);
-    expect(blokir.map((c) => (c.jenis === 'blokir' ? c.jendela : ''))).toContain('ai_diam');
+    expect(blokir.length).toBeGreaterThanOrEqual(1);
+    expect(new Set(blokir.map((c) => (c.jenis === 'blokir' ? c.jendela : '')))).toEqual(new Set(['ai_klik']));
 
     // Kontrol positif: ketukan warga nyata membuka jendela tulis dan permintaannya sampai.
     for (const aksi of ['down', 'up'] as const)
@@ -617,6 +633,16 @@ test('kode N4: tautan target=_blank yang diketuk warga dibuka di halaman utama (
   }
 });
 
+test('probe gel4 6171: konten fade-in teramati setelah transisi selesai (tenang menunggu animasi)', async () => {
+  const { manager, p } = await sesi(situs, '/pudar', 'pudar');
+  try {
+    expect(satu(p, 'Nama Pudar')).toMatchObject({ peran: 'teks', isian: 'kosong' });
+    expect(satu(p, 'Tempat Lahir Pudar')).toMatchObject({ peran: 'teks' });
+  } finally {
+    await manager.shutdown();
+  }
+});
+
 test('probe 3208: SPA lambat (0 elemen saat load) teramati setelah DOM tenang', async () => {
   const { manager, p } = await sesi(situs, '/spa', 'spa');
   try {
@@ -831,8 +857,18 @@ test('N2: POST tertunda dari klik AI tidak lolos; halaman kotor dimuat ulang dan
   }
 });
 
-test('N4: halaman kotor = ketukan area kosong/kolom ketik/kontrol isian dan ketikan tidak membuka jendela tulis', async () => {
+test('N4/A2: klik AI yang meninggalkan retry = dimuat ulang sebelum serah; kotor kedua = hanya submit asli', async () => {
   const { manager, o, sesiId, p } = await sesi(situs, '/retry-tanpa-batas', 'retry-tb');
+  const events: PendampingEvent[] = [];
+  await manager.attach(sesiId, {
+    send: (m: PendampingServerMessage) => void (m.type === 'event' && events.push(m.event)),
+    frame: () => {},
+    ack: () => {},
+    close: () => {},
+  });
+  const tunggu = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const pesanTerakhir = () =>
+    events.filter((e) => e.jenis === 'giliran_anda').at(-1) as { pesan?: string } | undefined;
   try {
     const r = await manager.aksi(o, {
       ...o,
@@ -842,22 +878,60 @@ test('N4: halaman kotor = ketukan area kosong/kolom ketik/kontrol isian dan keti
     });
     expect(r.hasil).toEqual([{ indeks: 0, kode: 'GERBANG_MEMBLOKIR', kelas: 'lanjut' }]);
     expect(manager.status(o).mode).toBe('takeover');
-    await ketuk(manager, sesiId, 100, 400);
-    await new Promise((r) => setTimeout(r, 1_500));
-    expect(situs.hitung('/api/final-a')).toBe(0);
-    await ketuk(manager, sesiId, 100, 540);
-    await manager.handleClient(sesiId, { type: 'text', teks: 'Budi' });
-    await new Promise((r) => setTimeout(r, 1_500));
-    expect(situs.hitung('/api/final-a')).toBe(0);
-    // Re-review N4 (PoC A): radio (lewat label), centang, dan pilihan = kontrol isian, bukan maksud mengirim.
-    for (const y of [665, 705, 745]) {
-      await ketuk(manager, sesiId, 150, y);
-      await new Promise((r) => setTimeout(r, 1_000));
+    expect(pesanTerakhir()?.pesan).toContain('dimuat ulang');
+    // Timer retry mati bersama dokumen lama: ketukan apa pun (termasuk tautan fragmen dan type=button) tidak
+    // meloloskan apa-apa dari klik AI.
+    for (const [x, y] of [
+      [100, 400],
+      [100, 540],
+      [150, 665],
+      [150, 705],
+      [150, 745],
+      [150, 135],
+      [150, 175],
+    ] as const) {
+      await ketuk(manager, sesiId, x, y);
+      await tunggu(700);
       expect(situs.hitung('/api/final-a'), `ketukan y=${y}`).toBe(0);
     }
-    // Kontrol positif: ketukan pada tombol nyata membuka jendela warga (tulis warga sampai).
+    await manager.handleClient(sesiId, { type: 'text', teks: 'Budi' });
+    await tunggu(1_000);
+    expect(situs.hitung('/api/final-a')).toBe(0);
+    // Kontrol positif: dokumen baru bersih, tombol type=button milik warga tetap mengirim.
+    const wargaA = situs.hitung('/api/warga-a');
     await ketuk(manager, sesiId, 100, 620);
-    await expect.poll(() => situs.hitung('/api/warga-a'), { timeout: 10_000 }).toBe(1);
+    await expect.poll(() => situs.hitung('/api/warga-a'), { timeout: 10_000 }).toBe(wargaA + 1);
+
+    // Kotor kedua di URL yang sama: muat ulang sekali per URL sudah terpakai, timer hidup. Jendela tulis hanya
+    // untuk kotak sorot atau tombol submit asli; tautan fragmen, type=button, dan kontrol isian tidak.
+    await manager.handleClient(sesiId, { type: 'kembalikan' });
+    await expect.poll(() => manager.status(o).mode, { timeout: 10_000 }).toBe('ai');
+    const p2 = (await manager.amati(o)).pengamatan;
+    const r2 = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p2.seq,
+      aksi: [{ jenis: 'klik', ref: satu(p2, 'Lanjut').ref }],
+    });
+    expect(r2.hasil).toEqual([{ indeks: 0, kode: 'GERBANG_MEMBLOKIR', kelas: 'lanjut' }]);
+    expect(manager.status(o).mode).toBe('takeover');
+    expect(pesanTerakhir()?.pesan).not.toContain('dimuat ulang');
+    const wargaA2 = situs.hitung('/api/warga-a');
+    for (const [x, y] of [
+      [100, 400],
+      [150, 665],
+      [150, 135],
+      [150, 175],
+      [100, 620],
+    ] as const) {
+      await ketuk(manager, sesiId, x, y);
+      await tunggu(1_000);
+      expect(situs.hitung('/api/final-a'), `kotor kedua, ketukan y=${y}`).toBe(0);
+    }
+    expect(situs.hitung('/api/warga-a')).toBe(wargaA2);
+    // Kontrol positif: tombol submit asli warga sampai.
+    await ketuk(manager, sesiId, 150, 800);
+    await expect.poll(() => situs.hitung('/api/warga-a2'), { timeout: 10_000 }).toBe(1);
   } finally {
     await manager.shutdown();
   }
