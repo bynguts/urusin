@@ -43,9 +43,12 @@ dipakai, sehingga semua job CI antre serial (> 1 jam per run). Runner kedua ini 
 ## Batas sumber daya
 
 VM Docker Desktop laptop dibatasi 4 GB RAM + 2 GB swap (`~/.wslconfig`) dan juga menjalankan worker prod
-`urusin-worker-id-*` (memori 1,3 GB, 2 CPU). Runner: `--cpus 6 --memory 2g --memory-swap 3g --pids-limit 4096`,
-tanpa port terbuka (port 4330/3000 worker tidak disentuh). Ubah lewat env `CPUS`, `MEMORY`, `MEMORY_SWAP`,
-`RUNNERS` (jumlah kontainer, bawaan 1) saat `up.sh`. Menaikkan `~/.wslconfig` butuh restart WSL, yang ikut
+`urusin-worker-id-*` (memori 1,3 GB, 2 CPU). Runner:
+`--cpuset-cpus 0-3 --memory 2560m --memory-swap 3584m --pids-limit 4096`, tanpa port terbuka (port 4330/3000
+worker tidak disentuh). `--cpuset-cpus` dipakai (bukan hanya `--cpus`) supaya `nproc` di kontainer = 4: dengan
+`--cpus` saja turbo/vitest melihat 12 CPU, memecah tes ke 12 worker, memori mentok 2 GB, swap, lalu tes egress
+timeout. Ubah lewat env `CPUSET`, `MEMORY`, `MEMORY_SWAP`, `RUNNERS` (jumlah kontainer, bawaan 1) saat `up.sh`,
+atau langsung `docker update --cpuset-cpus/--memory/--memory-swap urusin-ci-laptop-1` tanpa daftar ulang. Menaikkan `~/.wslconfig` butuh restart WSL, yang ikut
 mematikan worker; jangan dilakukan diam-diam.
 
 Disk: `docker_data.vhdx` ada di C: (sempit). Image runner ~1 GB, workspace dibersihkan setiap job.

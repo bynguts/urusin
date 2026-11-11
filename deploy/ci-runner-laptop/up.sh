@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Menyalakan runner CI kedua di laptop (Docker Desktop, Linux x64) dan mengarahkan job non-ci-docker ke sana.
 #   deploy/ci-runner-laptop/up.sh
-# Env opsional: RUNNERS (bawaan 1), CPUS (6), MEMORY (2g), MEMORY_SWAP (3g).
+# Env opsional: RUNNERS (bawaan 1), CPUSET (0-3), MEMORY (2560m), MEMORY_SWAP (3584m).
 # VM Docker Desktop laptop hanya 4 GB (+2 GB swap, ~/.wslconfig) dan dipakai bersama worker urusin-worker-id-*,
-# jadi memori dibatasi 2 GB per runner. Tanpa port terbuka, tanpa socket Docker di dalam kontainer.
+# jadi memori dibatasi 2,5 GB per runner. --cpuset-cpus (bukan hanya --cpus) agar nproc/availableParallelism di
+# kontainer = 4: turbo/vitest tidak memecah kerja ke 12 worker lalu swap. Tanpa port terbuka, tanpa socket Docker.
 # Token registrasi hanya lewat stdin ke config.sh di dalam kontainer; tidak pernah ke env/argumen/berkas.
 set -euo pipefail
 export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
@@ -21,7 +22,7 @@ for i in $(seq 1 "${RUNNERS:-1}"); do
     continue
   fi
   docker run -d --name "$name" --restart unless-stopped \
-    --cpus "${CPUS:-6}" --memory "${MEMORY:-2g}" --memory-swap "${MEMORY_SWAP:-3g}" --pids-limit 4096 \
+    --cpuset-cpus "${CPUSET:-0-3}" --memory "${MEMORY:-2560m}" --memory-swap "${MEMORY_SWAP:-3584m}" --pids-limit 4096 \
     --label urusin.ci-runner-laptop=1 -v "$name-work:/home/runner/_work" "$IMAGE" >/dev/null
   # shellcheck disable=SC2016  # $1..$3 dan $t dievaluasi bash di dalam kontainer
   if ! out="$(gh api -X POST "repos/$REPO/actions/runners/registration-token" --jq .token |
