@@ -223,6 +223,10 @@ export const PESAN_MEMORI =
 /** Generik: giliran masuk akun/CAPTCHA/OTP terdeteksi selesai (halaman berganti, formulir masuk hilang). */
 export const PESAN_GILIRAN_SELESAI = 'Giliran Anda selesai. AI melanjutkan.';
 
+/** Generik: viewport dilebarkan karena tombol masuk situs hanya tampil di layar lebar (probe gel4 3279). */
+export const PESAN_LAYAR_LEBAR =
+  'Tombol masuk situs ini hanya muncul di layar lebar, jadi tampilan dilebarkan. Perbesar layar bila tulisan terlalu kecil.';
+
 const PESAN_VERIFIKASI =
   "Situs meminta verifikasi keamanan. Ketuk kotak 'Verify you are human', lalu tunggu sebentar. AI menunggu dan tidak akan mengekliknya.";
 
@@ -336,6 +340,37 @@ export const KONTEN_BELUM_TAMPIL_EXPR = `(() => {
   }
   return false;
 })()`;
+
+/**
+ * Kendali masuk (nama persis masuk/login/sign in, seperti klasifikator) yang tampil vs tersembunyi oleh
+ * `display:none` responsif (probe gel4 3279: tombol MASUK `d-none d-lg-block`, tak tampil di lebar ponsel walau
+ * menu dibuka). Tidak dihitung: yang sengaja disembunyikan (`[hidden]`, aria-hidden, template) dan yang
+ * tersembunyi di wadah buka-tutup (collapse/offcanvas/dropdown/modal/drawer/dialog): itu dibuka lewat menu.
+ * Dievaluasi di dunia terisolasi (hanya membaca DOM/gaya).
+ */
+export const KENDALI_MASUK_EXPR = `(() => {
+  const NAMA = /^(masuk|login|log in|sign in|signin|masuk akun)$/;
+  const BUKA = /(^|[^a-z])(collapse|offcanvas|dropdown|modal|drawer)([^a-z]|$)/i;
+  const SEL = 'a, button, [role="button"], input[type="submit"], input[type="button"]';
+  let terlihat = 0, tersembunyi = 0;
+  for (const el of document.querySelectorAll(SEL)) {
+    const mentah = el.textContent || el.getAttribute('aria-label') || el.value || '';
+    const nama = String(mentah).toLowerCase().replace(/[^a-z]+/g, ' ').trim();
+    if (!NAMA.test(nama) || el.closest('[hidden], [aria-hidden="true"], template')) continue;
+    if (el.getClientRects().length > 0) {
+      if (getComputedStyle(el).visibility !== 'hidden') terlihat++;
+      continue;
+    }
+    let n = el;
+    while (n && getComputedStyle(n).display !== 'none') n = n.parentElement;
+    if (!n || n.tagName === 'DIALOG' || BUKA.test((n.id || '') + ' ' + (n.getAttribute('class') || ''))) continue;
+    tersembunyi++;
+  }
+  return { terlihat, tersembunyi };
+})()`;
+
+/** Lebar CSS yang dicoba (batas sm/md/lg/xl/xxl kerangka CSS umum) untuk memunculkan kendali masuk. */
+const LEBAR_RESPONSIF = [768, 992, 1200, 1400] as const;
 
 /** URL lolos allowlist host:port sesi (lapis `context.route`; sama dengan proxy egress). */
 export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): boolean {
@@ -1278,6 +1313,16 @@ export async function wire(
       })();
     });
     const { izin, jejak } = init.generik;
+    /** Viewport ponsel asli selama dilebarkan untuk dokumen `dokLebar` (origin + jalur). */
+    let lebarAsli: { width: number; height: number } | undefined;
+    let dokLebar: string | undefined;
+    const halamanUrl = (url: string) => {
+      const u = URL.parse(url);
+      return u ? `${u.origin}${u.pathname}` : url;
+    };
+    const hitungMasuk = async () =>
+      (await nilaiTerisolasi(KENDALI_MASUK_EXPR).catch(() => undefined)) as
+        { terlihat: number; tersembunyi: number } | undefined;
     const tenang = async () => {
       // Jeda singkat agar handler klik sempat memicu permintaan; bila navigasi dimulai, tunggu muat (<= 10 detik).
       await new Promise((r) => setTimeout(r, 400));
@@ -1334,6 +1379,30 @@ export async function wire(
         },
         tenang,
         urlKini: () => page.url(),
+        async lebarkan() {
+          if (lebarAsli || destroyed || ditahan()) return false;
+          const awal = await hitungMasuk();
+          if (!awal || awal.terlihat > 0 || awal.tersembunyi === 0) return false;
+          const asli = page.viewportSize() ?? { width: init.viewport.lebar, height: init.viewport.tinggi };
+          for (const lebar of LEBAR_RESPONSIF) {
+            if (lebar <= asli.width) continue;
+            // Rasio layar ponsel dipertahankan: frame tetap memenuhi layar warga (diperkecil, bukan dipotong).
+            await page.setViewportSize({
+              width: lebar,
+              height: Math.round((lebar * asli.height) / asli.width),
+            });
+            await new Promise((r) => setTimeout(r, 250));
+            if (destroyed) return false;
+            if (((await hitungMasuk())?.terlihat ?? 0) > 0) {
+              lebarAsli = asli;
+              dokLebar = halamanUrl(page.url());
+              hooks.mode('ai', PESAN_LAYAR_LEBAR);
+              return true;
+            }
+          }
+          await page.setViewportSize(asli).catch(() => {});
+          return false;
+        },
       }),
       gerbang: gen.gerbang,
       izin,
@@ -1367,10 +1436,7 @@ export async function wire(
      * Halaman sukses dibiarkan ke Navigator (pantau sukses). Gagal masuk yang tetap di formulir = tetap giliran
      * warga; tombol "Sudah, lanjutkan" di web tetap jadi cadangan (`kembalikan`).
      */
-    const halamanKini = () => {
-      const u = URL.parse(page.url());
-      return u ? `${u.origin}${u.pathname}` : page.url();
-    };
+    const halamanKini = () => halamanUrl(page.url());
     let serahGiliran: { nav: number; halaman: string; judul: string } | undefined;
     let serahPoll: ReturnType<typeof setInterval> | undefined;
     let memeriksaSerah = false;
@@ -1415,8 +1481,16 @@ export async function wire(
       }
     };
     // Dokumen bingkai utama baru (cross-document, ter-commit) = timer dokumen lama mati: bendera kotor direset.
-    cdp.on('Page.frameNavigated', (e: { frame: { parentId?: string } }) => {
-      if (!e.frame.parentId) run.dokumenBaru();
+    cdp.on('Page.frameNavigated', (e: { frame: { parentId?: string; url: string } }) => {
+      if (e.frame.parentId) return;
+      run.dokumenBaru();
+      // Dokumen lain (mis. halaman masuk sesudah tombol MASUK): kembali ke lebar ponsel.
+      if (lebarAsli && halamanUrl(e.frame.url) !== dokLebar) {
+        const asli = lebarAsli;
+        lebarAsli = undefined;
+        dokLebar = undefined;
+        void page.setViewportSize(asli).catch(() => {});
+      }
     });
     await cdp.send('Page.enable').catch(() => {});
     gen.kendali.wargaTunggu = ditahan;

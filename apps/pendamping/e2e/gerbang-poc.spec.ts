@@ -2,7 +2,7 @@ import http from 'node:http';
 import type net from 'node:net';
 import { expect, test } from '@playwright/test';
 import type { Pengamatan, PendampingEvent, PendampingServerMessage } from '@urusin/contracts';
-import { createBrowserFactory } from '../src/browser.js';
+import { createBrowserFactory, PESAN_LAYAR_LEBAR } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
 import { ADAPTER_GENERIK, PendampingError, SessionManager, sidHashOf } from '../src/sessions.js';
 
@@ -211,6 +211,27 @@ const HALAMAN: Record<string, string> = {
 <label><input type="checkbox" name="sk" required> Saya telah membaca dan menyetujui Syarat dan Ketentuan</label>
 <button type="submit">Daftar Sekarang</button></form>`),
 };
+
+/**
+ * Probe gel4 3279: beranda responsif ala Bootstrap. Tombol MASUK `d-none d-lg-block` (tak tampil < 992 px walau
+ * menu dibuka); judul dokumen = lebar viewport saat ini. `/responsif-menu`: MASUK hanya di menu collapse
+ * tertutup (dibuka lewat hamburger, bukan dengan melebarkan layar).
+ */
+const RESPONSIF = (isi: string) =>
+  `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">` +
+  `<style>.d-none{display:none}@media (min-width:992px){.d-lg-block{display:block}}.collapse:not(.show){display:none}</style>` +
+  `<title>Uji</title></head><body>${isi}` +
+  `<script>const t=()=>{document.title='lebar '+innerWidth};t();setInterval(t,100)</script></body></html>`;
+HALAMAN['/responsif'] = RESPONSIF(`<header><a href="/responsif">PAK ONOM</a>
+<button type="button" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('show')"><i class="fa fa-bars"></i></button>
+<nav id="nav" class="collapse"><a href="/responsif-bantuan">Bantuan</a>
+<a href="javascript:void(0)" class="btn d-none d-lg-block" onclick="location.href='/responsif-masuk'">MASUK</a></nav>
+<a href="javascript:void(0)" class="btn d-none d-lg-block" onclick="location.href='/responsif-masuk'">MASUK</a></header>
+<h1>Selamat datang</h1><p>Pelayanan administrasi kependudukan online.</p><a href="/responsif-bantuan">Bantuan</a>`);
+HALAMAN['/responsif-bantuan'] = RESPONSIF('<h1>Bantuan</h1><a href="/responsif">Beranda</a>');
+HALAMAN['/responsif-menu'] = RESPONSIF(`<header><a href="/responsif-menu">PAK ONOM</a>
+<button type="button" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('show')"><i class="fa fa-bars"></i></button>
+<nav id="nav" class="collapse"><a href="/responsif-masuk">Masuk</a></nav></header><h1>Selamat datang</h1>`);
 
 /**
  * Probe gel4 (1101/3312/7371): halaman Cloudflare tiruan (403 + cf-ray), keduanya memuat skrip telemetri JSD
@@ -1312,6 +1333,44 @@ test('probe 3324/3404: pembuka kalender ui_lokal, tetapi klik AI di halaman akhi
     });
     expect(r.hasil).toEqual([{ indeks: 0, kode: 'HALAMAN_AKHIR' }]);
     expect(situs.hitung('/api/daftar')).toBe(0);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 3279: tombol MASUK khusus layar lebar -> viewport dilebarkan, dokumen lain kembali ke lebar ponsel', async () => {
+  const { manager, o, p } = await sesi(situs, '/responsif', 'responsif');
+  try {
+    // Lebar ponsel (390) menyembunyikan MASUK; worker melebarkan ke 992 (batas lg) dan memberi tahu warga.
+    expect(p.judul).toBe('lebar 992');
+    expect(semua(p, 'MASUK').length).toBeGreaterThan(0);
+    expect(manager.status(o).pesan).toBe(PESAN_LAYAR_LEBAR);
+    // Tidak ada yang diklik worker saat melebarkan.
+    expect(situs.hitung('/responsif-masuk')).toBe(0);
+    const bantuan = semua(p, 'Bantuan').find((e) => e.kelas === 'navigasi');
+    expect(bantuan).toBeTruthy();
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'klik', ref: bantuan!.ref }],
+    });
+    expect(r.hasil[0]?.kode).toBe('ok');
+    // Dokumen lain: kembali ke lebar ponsel.
+    await expect
+      .poll(async () => (await manager.amati(o)).pengamatan.judul, { timeout: 10_000 })
+      .toBe('lebar 390');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe gel4 3279: MASUK di menu collapse tertutup -> tidak dilebarkan (dibuka lewat menu)', async () => {
+  const { manager, o, p } = await sesi(situs, '/responsif-menu', 'responsif-menu');
+  try {
+    expect(p.judul).toBe('lebar 390');
+    expect(manager.status(o).pesan).not.toBe(PESAN_LAYAR_LEBAR);
+    expect(semua(p, 'Masuk')).toEqual([]);
   } finally {
     await manager.shutdown();
   }

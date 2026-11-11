@@ -63,6 +63,11 @@ export type TanganHalaman = {
   tenang(): Promise<void>;
   /** URL dokumen utama yang ter-commit saat ini (mis. `chrome-error://...` bila navigasi gagal). */
   urlKini(): string;
+  /**
+   * Probe gel4 3279: tombol masuk situs hanya tampil di layar lebar (`d-none d-lg-block`). Lebarkan viewport bila
+   * itu memunculkannya; true = lebar berubah (amati ulang).
+   */
+  lebarkan?(): Promise<boolean>;
 };
 
 /** Tujuan tautan pembuka untuk giliran `ketuk_tautan` (event `giliran_anda.tautan`; `ref` kembali lewat `buka_tautan`). */
@@ -94,6 +99,7 @@ export function tanganRunner(deps: {
   navigasi(url: string): Promise<void>;
   tenang(): Promise<void>;
   urlKini(): string;
+  lebarkan?(): Promise<boolean>;
 }): TanganHalaman {
   return {
     async amati(seq, diisi) {
@@ -121,6 +127,7 @@ export function tanganRunner(deps: {
     },
     tenang: deps.tenang,
     urlKini: deps.urlKini,
+    ...(deps.lebarkan ? { lebarkan: deps.lebarkan } : {}),
   };
 }
 
@@ -567,6 +574,14 @@ export class GenerikRun {
     const cek = PengamatanSchema.safeParse(p);
     if (!cek.success) return null;
     if (pantau) return cek.data;
+    // Halaman tanpa formulir dan tanpa kendali masuk: mungkin tombol masuknya disembunyikan di layar ponsel
+    // (probe gel4 3279). Tangan melebarkan viewport hanya bila itu benar-benar memunculkan kendali masuk.
+    const polos =
+      !cek.data.sinyal.login &&
+      !cek.data.elemen.some(
+        (e) => e.kelas === 'masuk' || e.tautanPembuka || !['tombol', 'tautan', 'tab'].includes(e.peran),
+      );
+    if (polos && (await this.d.tangan.lebarkan?.())) return this.amatiSekarang(false);
     this.peta = r.peta;
     this.seqTerakhir = seq;
     this.kunciAkhir = cek.data.sinyal.halamanAkhir;
