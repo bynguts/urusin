@@ -4,8 +4,15 @@ import http from 'node:http';
 import net, { BlockList, isIP } from 'node:net';
 import type { networkInterfaces } from 'node:os';
 import type { Duplex } from 'node:stream';
-import { browserUnion, checkConnect, checkConnectHost, EgressBlockedError } from '@urusin/egress';
+import {
+  browserUnion,
+  checkConnect,
+  checkConnectHost,
+  EgressBlockedError,
+  type BrowserScope,
+} from '@urusin/egress';
 import { dialUpstream, type Resolver } from './egress.js';
+import { domainPemdaSesi } from './gerbang-tulis.js';
 import { bacaIsiBertanda, createPenjagaUlang, headerDari } from './tanda.js';
 
 /**
@@ -194,16 +201,19 @@ export function createEdgeProxy(
     port: number,
   ): Promise<{ ok: true; address: string } | { ok: false; reason: string }> {
     let addresses: string[];
+    let lingkup: BrowserScope = { sesi, union: cfg.union };
     try {
       // Port, IP literal, union, set sesi diperiksa SEBELUM DNS: host di luar izin tidak pernah di-resolve.
-      checkConnectHost(host, port, 'browser', { sesi, union: cfg.union });
+      // Domain pemda diturunkan edge sendiri dari host sesi (yang sudah dibatasi union), bukan dari worker.
+      lingkup = { sesi, union: cfg.union, domainPemda: domainPemdaSesi(sesi) };
+      checkConnectHost(host, port, 'browser', lingkup);
       addresses = await resolve(host);
     } catch (e) {
       return { ok: false, reason: e instanceof EgressBlockedError ? e.message : 'dns_gagal' };
     }
     if (addresses.length === 0) return { ok: false, reason: 'dns_kosong' };
     try {
-      for (const ip of addresses) checkConnect(host, port, ip, 'browser', { sesi, union: cfg.union });
+      for (const ip of addresses) checkConnect(host, port, ip, 'browser', lingkup);
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : 'diblokir' };
     }

@@ -24,7 +24,9 @@ import { chromium, type BrowserContext, type CDPSession, type Page } from 'playw
 import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import {
+  asetPemdaSama,
   asetUmumBoleh,
+  domainPemdaSesi,
   createGerbangTulis,
   hostAset,
   jalurPihakKetigaBoleh,
@@ -387,23 +389,23 @@ export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): 
 /**
  * Saringan rute peramban (lapis kedua setelah proxy): host:port di allowlist, www.google.com hanya /recaptcha/,
  * dan host aset umum (CDN/fon) hanya subresource script/stylesheet/font/image, tidak pernah navigasi dokumen
- * (host aset pemda .go.id: juga XHR/fetch GET).
+ * (host aset pemda .go.id: juga XHR/fetch GET). Host di luar allowlist hanya untuk GET gambar/style/fon dari
+ * subdomain pemda yang sama (`pemda`, probe gel5 3310).
  */
 export function izinRute(
   allowedHosts: ReadonlySet<string>,
   req: { url(): string; method(): string; resourceType(): string; isNavigationRequest(): boolean },
+  pemda: ReadonlySet<string> = new Set(),
 ): boolean {
   const url = req.url();
-  return (
-    urlDiAllowlist(allowedHosts, url) &&
-    jalurPihakKetigaBoleh(url) &&
-    asetUmumBoleh({
-      url,
-      metode: req.method(),
-      resourceType: req.resourceType(),
-      dokumen: req.isNavigationRequest(),
-    })
-  );
+  const r = {
+    url,
+    metode: req.method(),
+    resourceType: req.resourceType(),
+    dokumen: req.isNavigationRequest(),
+  };
+  if (!urlDiAllowlist(allowedHosts, url)) return asetPemdaSama(r, pemda);
+  return jalurPihakKetigaBoleh(url) && asetUmumBoleh(r);
 }
 
 /**
@@ -466,6 +468,9 @@ export async function launchIsolated(
 ): Promise<Isolated> {
   const rules = egressRules(hosts, config.fixtureOrigins);
   const allowedHosts = new Set(rules.map((r) => `${r.host}:${r.port}`));
+  // Domain pemda portal sesi: subdomainnya boleh untuk gambar/style/fon (rute) di :443 (proxy; edge menurunkan
+  // sendiri dari host sesi yang sama).
+  const pemda = domainPemdaSesi(hosts);
   // Produksi: satu-satunya jalan keluar = pendamping-edge (kontainer ini tidak punya rute lain). Dev/e2e:
   // proxy egress di dalam proses dengan kebijakan yang sama.
   const edge = config.edge
@@ -475,7 +480,7 @@ export async function launchIsolated(
         config.ttlMs + 5 * 60_000,
       )
     : undefined;
-  const proxy = edge ? undefined : await startEgressProxy(rules, { upstream: config.upstreamProxy });
+  const proxy = edge ? undefined : await startEgressProxy(rules, { upstream: config.upstreamProxy, pemda });
   proxy?.onBlocked(onBlocked);
   const tutupProxy = async () => {
     await proxy?.close();
@@ -522,7 +527,7 @@ export async function launchIsolated(
     });
     await context.route('**/*', (route) => {
       const req = route.request();
-      const ok = izinRute(allowedHosts, req);
+      const ok = izinRute(allowedHosts, req, pemda);
       if (!ok && req.method() === 'GET' && permintaanGerbang(req).utama) {
         const https = naikHttps(req.url(), (u) =>
           izinRute(allowedHosts, {

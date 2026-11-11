@@ -432,6 +432,59 @@ test('probe gel4 3310: XHR/fetch GET ke host aset pemda .go.id lolos rute; tulis
   }
 });
 
+test('probe gel5 3310: gambar/style dari subdomain pemda yang sama lolos rute + proxy; jenis lain dan pemda lain tidak', async () => {
+  // Proxy hulu tiruan: CONNECT yang sampai = lolos rute peramban DAN proxy egress sesi (lalu ditolak 502).
+  const connect: string[] = [];
+  const hulu = http.createServer();
+  hulu.on('connect', (req, socket) => {
+    connect.push(req.url ?? '');
+    socket.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+  });
+  await new Promise<void>((ok) => hulu.listen(0, '127.0.0.1', ok));
+  const config = loadConfig({
+    PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN,
+    PENDAMPING_HEADLESS: '1',
+    PENDAMPING_UPSTREAM_PROXY: `http://127.0.0.1:${(hulu.address() as net.AddressInfo).port}`,
+  });
+  const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true }, [
+    'sakura.dukcapil.klaten.go.id',
+    'unpkg.com',
+  ]);
+  const gagal = new Map<string, string>();
+  iso.context.on('requestfailed', (r) => gagal.set(r.url(), r.failure()?.errorText ?? '?'));
+  const GAMBAR = 'https://cdn.klaten.go.id/logo.png';
+  const STYLE = 'https://cdn.dukcapil.klaten.go.id/tema.css';
+  const LAIN = 'https://cdn.slemankab.go.id/logo.png';
+  const SKRIP = 'https://cdn.klaten.go.id/app.js';
+  const DATA = 'https://cdn.klaten.go.id/data.json';
+  try {
+    const page = await iso.context.newPage();
+    await page.evaluate(
+      async (u) => {
+        const img = (src: string) => Object.assign(document.createElement('img'), { src });
+        document.body.append(img(u.GAMBAR), img(u.LAIN));
+        document.head.append(
+          Object.assign(document.createElement('link'), { rel: 'stylesheet', href: u.STYLE }),
+        );
+        document.head.append(Object.assign(document.createElement('script'), { src: u.SKRIP }));
+        await fetch(u.DATA, { mode: 'no-cors', cache: 'no-store' }).catch(() => undefined);
+      },
+      { GAMBAR, STYLE, LAIN, SKRIP, DATA },
+    );
+    await expect.poll(() => gagal.size, { timeout: 10_000 }).toBeGreaterThanOrEqual(5);
+    // Gambar/style subdomain pemda sesi: lolos rute dan proxy (gagal hanya karena proxy hulu tiruan).
+    for (const u of [GAMBAR, STYLE]) expect(gagal.get(u), u).not.toMatch(/ERR_BLOCKED_BY_CLIENT/);
+    expect(connect).toContain('cdn.klaten.go.id:443');
+    expect(connect).toContain('cdn.dukcapil.klaten.go.id:443');
+    // Pemda lain, skrip, dan fetch ke subdomain yang sama: dibatalkan di peramban.
+    for (const u of [LAIN, SKRIP, DATA]) expect(gagal.get(u), u).toMatch(/^net::ERR_BLOCKED_BY_CLIENT/);
+    expect(connect.some((c) => c.startsWith('cdn.slemankab.go.id'))).toBe(false);
+  } finally {
+    await iso.close();
+    hulu.close();
+  }
+});
+
 test('residu: profil sesi (cookie, Login Data) terhapus total setelah ditutup; pengelola sandi mati', async () => {
   const config = loadConfig({ PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN, PENDAMPING_HEADLESS: '1' });
   const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true }, [

@@ -444,3 +444,21 @@ describe('proxy balik edge', () => {
     expect(((await r.json()) as { kode: string }).kode).toBe('LAYANAN_TIDAK_TERSEDIA');
   });
 });
+
+describe('probe gel5 3310: edge, subdomain pemda yang sama', () => {
+  it('domain pemda diturunkan dari host sesi: cdn.<pemda sesi> lolos, pemda lain/privat tidak', async () => {
+    const sesi = new Set([HOST]);
+    const p = createEdgeProxy(cfg, createDaftarSesi(4), async (h) =>
+      h === 'privat.wonogirikab.go.id' ? ['10.0.0.9'] : ['93.184.216.34'],
+    );
+    expect(await p.decide(sesi, 'cdn.wonogirikab.go.id', 443)).toEqual({
+      ok: true,
+      address: '93.184.216.34',
+    });
+    expect(await p.decide(sesi, 'cdn.klaten.go.id', 443)).toMatchObject({ ok: false });
+    expect(await p.decide(sesi, 'cdn.wonogirikab.go.id', 80)).toMatchObject({ ok: false });
+    expect(await p.decide(sesi, 'privat.wonogirikab.go.id', 443)).toMatchObject({ ok: false });
+    // Sesi tanpa host .go.id: tidak ada domain pemda.
+    expect(await p.decide(new Set(), 'cdn.wonogirikab.go.id', 443)).toMatchObject({ ok: false });
+  });
+});

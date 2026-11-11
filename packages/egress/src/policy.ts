@@ -16,7 +16,10 @@ import { EGRESS_PIHAK_KETIGA, OFFICIAL_DOMAINS } from '@urusin/core';
  *   - `ingest` (rag:ingest/verify, CLI kanal/kontak): registry domain resmi + sufiks `.go.id`, https:443.
  *   - `browser` (proxy CONNECT peramban Browser Pendamping, `checkConnect`): HANYA https:443 ke host persis
  *     yang ada di set sesi DAN di union registry (domain resmi + pihak ketiga terdaftar, mis. Turnstile).
- *     Tanpa pengecualian proxy LLM, tanpa wildcard `*.go.id`, tanpa IP literal.
+ *     Tanpa pengecualian proxy LLM, tanpa wildcard `*.go.id`, tanpa IP literal. Satu-satunya perluasan:
+ *     subdomain domain pemda (`label.go.id`) yang SAMA dengan host portal sesi (`domainPemda` lingkup sesi,
+ *     probe gel5 3310: cdn.klaten.go.id untuk sakura.dukcapil.klaten.go.id); jenis permintaannya dibatasi di
+ *     rute peramban (hanya GET gambar/style/fon).
  * - Setiap alamat hasil resolusi DNS diperiksa: loopback, privat, link-local, CGNAT, dan padanan IPv6
  *   ditolak. Satu alamat terlarang saja sudah cukup untuk menolak seluruh host.
  */
@@ -291,8 +294,24 @@ export function browserUnion(tambahan: readonly string[] = []): Set<string> {
   );
 }
 
-/** Lingkup satu sesi peramban: host persis sesi itu; `union` = batas global (bawaan `browserUnion()`). */
-export type BrowserScope = { sesi: ReadonlySet<string>; union?: ReadonlySet<string> };
+/**
+ * Domain pemda sebuah host .go.id = label tepat sebelum `.go.id` (`sakura.dukcapil.klaten.go.id` ->
+ * `klaten.go.id`); undefined untuk host bukan .go.id.
+ */
+export function domainPemda(host: string): string | undefined {
+  const h = unbracket(host).toLowerCase().replace(/\.$/, '');
+  return /(?:^|\.)([a-z0-9-]+\.go\.id)$/.exec(h)?.[1];
+}
+
+/**
+ * Lingkup satu sesi peramban: host persis sesi itu; `union` = batas global (bawaan `browserUnion()`);
+ * `domainPemda` = domain pemda portal sesi (subdomainnya boleh di luar union, lihat checkConnectHost).
+ */
+export type BrowserScope = {
+  sesi: ReadonlySet<string>;
+  union?: ReadonlySet<string>;
+  domainPemda?: ReadonlySet<string>;
+};
 
 /**
  * Keputusan CONNECT proxy peramban (profil `browser`), dipanggil SETELAH proxy me-resolve DNS sendiri untuk
@@ -329,6 +348,8 @@ export function checkConnectHost(
   const h = unbracket(host).toLowerCase().replace(/\.$/, '');
   if (port !== 443) throw new EgressBlockedError(`${h}:${port} bukan https:443`);
   if (isIP(h) !== 0) throw new EgressBlockedError(`IP literal ${h} tidak diizinkan untuk peramban`);
+  const d = domainPemda(h);
+  if (d !== undefined && scope.domainPemda?.has(d)) return h;
   if (!(scope.union ?? BROWSER_UNION).has(h))
     throw new EgressBlockedError(`host ${h} di luar union registry`);
   if (!scope.sesi.has(h)) throw new EgressBlockedError(`host ${h} di luar allowlist sesi`);

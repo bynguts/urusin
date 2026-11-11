@@ -349,3 +349,28 @@ describe('host di allowlist yang DNS-nya menunjuk ke loopback/privat (klasifikas
     expect(canaryHits).toBe(0);
   });
 });
+
+describe('probe gel5 3310: proxy dalam proses, subdomain pemda yang sama', () => {
+  const decide = createEgressPolicy(
+    egressRules(['sakura.dukcapil.klaten.go.id'], []),
+    async (h) => (h === 'cdn.privat.klaten.go.id' ? ['10.0.0.9'] : ['103.10.20.31']),
+    new Set(['klaten.go.id']),
+  );
+
+  it('subdomain pemda sesi di :443 lolos; pemda lain, port lain, alamat privat tidak', async () => {
+    expect(await decide('cdn.klaten.go.id', 443)).toEqual({
+      ok: true,
+      address: '103.10.20.31',
+      local: false,
+    });
+    expect(await decide('cdn.slemankab.go.id', 443)).toMatchObject({
+      ok: false,
+      reason: 'host_tidak_diizinkan',
+    });
+    expect(await decide('cdn.klaten.go.id', 80)).toMatchObject({ ok: false, reason: 'host_tidak_diizinkan' });
+    expect(await decide('cdn.privat.klaten.go.id', 443)).toMatchObject({
+      ok: false,
+      reason: 'alamat_privat',
+    });
+  });
+});

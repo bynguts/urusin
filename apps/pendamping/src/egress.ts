@@ -2,7 +2,7 @@ import { lookup as dnsLookup } from 'node:dns/promises';
 import http from 'node:http';
 import net, { isIP } from 'node:net';
 import type { Duplex } from 'node:stream';
-import { isBlockedAddress } from '@urusin/egress';
+import { domainPemda, isBlockedAddress } from '@urusin/egress';
 
 /**
  * Proxy egress pengizin (allowlisting forward proxy) per sesi. Chromium memakai `--proxy-server` ke sini
@@ -53,11 +53,18 @@ function normHost(host: string): string {
     .toLowerCase();
 }
 
-export function createEgressPolicy(rules: readonly EgressRule[], resolve: Resolver = defaultResolver) {
+/** `pemda`: domain pemda portal sesi; subdomainnya boleh di :443 (sama dengan edge, probe gel5 3310). */
+export function createEgressPolicy(
+  rules: readonly EgressRule[],
+  resolve: Resolver = defaultResolver,
+  pemda: ReadonlySet<string> = new Set(),
+) {
   const byKey = new Map(rules.map((r) => [`${normHost(r.host)}:${r.port}`, r]));
   return async function decide(rawHost: string, port: number): Promise<EgressDecision> {
     const host = normHost(rawHost);
-    const rule = byKey.get(`${host}:${port}`);
+    const d = port === 443 && isIP(host) === 0 ? domainPemda(host) : undefined;
+    const rule: EgressRule | undefined =
+      byKey.get(`${host}:${port}`) ?? (d !== undefined && pemda.has(d) ? { host, port } : undefined);
     if (!rule) return { ok: false, reason: 'host_tidak_diizinkan' };
     let addresses: string[];
     try {
@@ -136,9 +143,9 @@ export function dialUpstream(upstream: URL, host: string, port: number): Promise
 
 export async function startEgressProxy(
   rules: readonly EgressRule[],
-  opts: { resolve?: Resolver; upstream?: URL | undefined } = {},
+  opts: { resolve?: Resolver; upstream?: URL | undefined; pemda?: ReadonlySet<string> } = {},
 ): Promise<EgressProxy> {
-  const decide = createEgressPolicy(rules, opts.resolve);
+  const decide = createEgressPolicy(rules, opts.resolve, opts.pemda);
   const listeners: ((host: string) => void)[] = [];
   const sockets = new Set<Duplex>();
   const blocked = (host: string) => {
