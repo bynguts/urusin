@@ -140,6 +140,8 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
     if ((it.jenis === 'galat' || it.jenis === 'waktu-habis') && i < idxTerakhirWarga) it.terakhir = false;
     // Usulan wilayah yang sudah dijawab (wilayah ditetapkan sesudahnya) tidak bisa dikonfirmasi lagi.
     if (it.jenis === 'wilayah' && it.e.seq < wilayahDitetapkanSeq) it.terakhir = false;
+    // Teks model ditampilkan polos: penanda tebal Markdown ("**Kota Medan**") tidak boleh tampil mentah.
+    if (it.jenis === 'teks') it.teks = it.teks.replace(/\*\*([^*\n]+)\*\*/g, '$1');
   }
   return out;
 }
@@ -194,4 +196,28 @@ export function unikPerRef<T extends { refId: string }>(kutipan: readonly T[]): 
   const peta = new Map<string, T>();
   for (const q of kutipan) if (!peta.has(q.refId)) peta.set(q.refId, q);
   return [...peta.values()];
+}
+
+/** Parameter rute Pendamping (jalur portal, kode wilayah, id layanan): penanda teknis, bukan isian warga. */
+const PARAM_TEKNIS = new Set(['jalur', 'kode', 'jenis', 'layanan_id', 'layananId', 'urusinCode']);
+
+/** Baris "periksa sebelum AI mengisi": tanpa parameter teknis; daftar berkas adapter dibuat terbaca. */
+export function barisKonfirmasi(
+  params: Readonly<Record<string, string | number | boolean>>,
+): [label: string, nilai: string][] {
+  return Object.entries(params)
+    .filter(([k]) => !PARAM_TEKNIS.has(k))
+    .slice(0, 12)
+    .map(([k, v]): [string, string] =>
+      k === 'berkas' && typeof v === 'string'
+        ? [
+            'Berkas yang diunggah',
+            v
+              .split(',')
+              .map((b) => b.trim().toUpperCase())
+              .filter(Boolean)
+              .join(', '),
+          ]
+        : [labelParam(k), nilaiParam(v)],
+    );
 }

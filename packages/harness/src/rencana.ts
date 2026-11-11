@@ -5,6 +5,7 @@ import { getOfficialDomain } from '@urusin/core';
 import { findBundel, namaPendekWilayah, routeByKode, wilayahByKode } from '@urusin/registry';
 import { ConflictError, HarnessError } from './errors.js';
 import { ADAPTER_GENERIK, alasanDipandu, portalWebWilayah } from './generik.js';
+import { ADMINDUK } from './grounding.js';
 import { canTransition } from './state.js';
 import { paramsHash, type HarnessStore, type UrusanRow } from './store.js';
 import { wilayahBelumSiap, wilayahUrusan } from './wilayah.js';
@@ -119,7 +120,8 @@ function langkahAdapter(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): LangkahTul
  */
 export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): RutePendamping {
   const kode = u.kodeKabKota && /^\d{4}$/.test(u.kodeKabKota) ? u.kodeKabKota : null;
-  if (!kode) return { jalur: 'dipandu', alasan: alasanDipandu(null) };
+  // Layanan non-adminduk (Samsat, bansos, LAPOR!) tidak lewat Disdukcapil: alasan portal Dukcapil tidak berlaku.
+  if (!kode || (u.jenis && !ADMINDUK.has(u.jenis))) return { jalur: 'dipandu', alasan: alasanDipandu(null) };
   const w = wilayahByKode(kode);
   const nama = w ? namaPendekWilayah(w.nama) : undefined;
   const r = ruteDasar(u.jenis, kode, nama);

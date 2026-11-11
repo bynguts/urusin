@@ -2,7 +2,7 @@
   import type { EventOf } from '#lib/contracts.js';
   import Icon from '../Icon.svelte';
   import { domain } from '#lib/urusan-status.js';
-  import { labelParam, nilaiParam } from './linimasa.js';
+  import { barisKonfirmasi } from './linimasa.js';
 
   /**
    * Konfirmasi sebelum AI bekerja (App 05): situs + instansi tujuan, ringkasan isian tersamar, peringatan
@@ -29,7 +29,7 @@
     onbatal: () => void;
   } = $props();
 
-  const baris = $derived(Object.entries(permintaan?.params ?? {}).slice(0, 12));
+  const baris = $derived(barisKonfirmasi(permintaan?.params ?? {}));
 </script>
 
 <section
@@ -58,12 +58,12 @@
 
   {#if baris.length}
     <dl class="grid sm:grid-cols-2">
-      {#each baris as [k, v] (k)}
+      {#each baris as [label, nilai], i (i)}
         <div
           class="flex min-h-[53.5px] flex-col justify-center border-b border-line px-4 py-1.5 sm:odd:border-r"
         >
-          <dt class="text-[13px] leading-[17px] text-muted">{labelParam(k)}</dt>
-          <dd class="text-base leading-[22px] text-ink">{nilaiParam(v)}</dd>
+          <dt class="text-[13px] leading-[17px] text-muted">{label}</dt>
+          <dd class="text-base leading-[22px] text-ink">{nilai}</dd>
         </div>
       {/each}
     </dl>
