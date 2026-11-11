@@ -2,7 +2,7 @@ import http from 'node:http';
 import type net from 'node:net';
 import { expect, test } from '@playwright/test';
 import type { Pengamatan, PendampingEvent, PendampingServerMessage } from '@urusin/contracts';
-import { createBrowserFactory, PESAN_LAYAR_LEBAR } from '../src/browser.js';
+import { createBrowserFactory, PESAN_LAYAR_LEBAR, pesanGangguan } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
 import { ADAPTER_GENERIK, PendampingError, SessionManager, sidHashOf } from '../src/sessions.js';
 
@@ -242,6 +242,16 @@ const RESPON_KHUSUS: Record<string, { status: number; html: string }> = {
   '/cf-tantangan': {
     status: 403,
     html: `<!doctype html><html><head><title>Tunggu sebentar...</title></head><body><p>Melakukan verifikasi keamanan</p><script>window._cf_chl_opt={cType:'managed'}</script>${JSD}</body></html>`,
+  },
+  // Smoke 3279: origin Apache mati di balik Cloudflare (503 tanpa kendali, skrip injeksi Cloudflare ikut).
+  '/gangguan-503': {
+    status: 503,
+    html: `<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><head><title>503 Service Unavailable</title></head><body><h1>Service Unavailable</h1><p>The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later.</p>${JSD}</body></html>`,
+  },
+  // 500 yang tetap berfungsi (warning PHP, halaman berisi formulir): bukan gangguan.
+  '/galat-500-berisi': {
+    status: 500,
+    html: '<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Layanan</title></head><body><p>Warning: Undefined variable</p><form><label>NIK Pemohon <input name="nik"></label></form><a href="/bantuan">Bantuan</a></body></html>',
   },
   '/cf-blokir': {
     status: 403,
@@ -1371,6 +1381,27 @@ test('probe gel4 3279: MASUK di menu collapse tertutup -> tidak dilebarkan (dibu
     expect(p.judul).toBe('lebar 390');
     expect(manager.status(o).pesan).not.toBe(PESAN_LAYAR_LEBAR);
     expect(semua(p, 'Masuk')).toEqual([]);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('smoke 3279: situs 503 tanpa kendali sejak dokumen pertama -> sesi berakhir jujur (gangguan), bukan halaman kosong', async () => {
+  const { manager, o } = await sesi(situs, '/gangguan-503', 'gangguan-503', false);
+  try {
+    await expect.poll(() => manager.status(o).status, { timeout: 20_000 }).toBe('gagal');
+    expect(manager.status(o).pesan).toBe(pesanGangguan(new URL(situs.origin).host, 503));
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('smoke 3279: halaman 500 yang tetap berisi formulir tidak dianggap gangguan', async () => {
+  const { manager, o, p } = await sesi(situs, '/galat-500-berisi', 'galat-500-berisi');
+  try {
+    expect(satu(p, 'NIK Pemohon')).toMatchObject({ peran: 'teks' });
+    await new Promise((r) => setTimeout(r, 3_000));
+    expect(manager.status(o).status).toBe('berjalan');
   } finally {
     await manager.shutdown();
   }

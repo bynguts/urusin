@@ -98,6 +98,11 @@ export function pesanGagal(code: string, host: string, net?: string): string {
   }
 }
 
+/** Situs instansi menjawab 5xx tanpa satu kendali pun (smoke 3279: Apache 503 di balik Cloudflare). */
+export function pesanGangguan(host: string, status: number): string {
+  return `Situs ${host} sedang gangguan (HTTP ${status}): server instansi tidak melayani saat ini, bukan masalah di Urusin. Coba lagi beberapa saat lagi.`;
+}
+
 export function stepLabel(step: Step | undefined): string {
   if (!step) return 'Selesai';
   const t = 'target' in step ? step.target[0] : undefined;
@@ -713,6 +718,8 @@ export async function wire(
   let status: Cursor['status'] | undefined;
   // Verifikasi situs (B-b): nomor dokumen utama, sinyal tantangan dari respons terakhir, mesin status.
   let navKe = 0;
+  /** Pernah ada dokumen utama berstatus < 400 di sesi ini (5xx sesudahnya bukan "situs mati"). */
+  let dokSehat = false;
   let tantanganRespons = false;
   let tantanganPoll: ReturnType<typeof setInterval> | undefined;
   let sorotTantanganTerkirim = false;
@@ -1043,18 +1050,40 @@ export async function wire(
       .then(() => periksaMasuk())
       .finally(() => void interp.onTabUpdated(1, { status: 'complete' }));
   });
+  /**
+   * Dokumen utama pertama sesi berstatus 5xx dan bukan bot wall/tantangan (smoke 3279: Apache 503 "maintenance
+   * downtime" di balik Cloudflare = TERBUKA_KOSONG, AI "mengisi" halaman kosong). Setelah dimuat, halaman galat
+   * tanpa satu kendali pun = sesi berakhir jujur: situs sedang gangguan. Halaman 5xx yang tetap berisi kendali
+   * (PHP ber-warning tapi berfungsi) dibiarkan.
+   */
+  const periksaGangguan = async (nav: number, kode: number, url: string) => {
+    await page.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+    await new Promise((r) => setTimeout(r, 1_000));
+    if (nav !== navKe || destroyed || dokSehat || tantanganRespons || ditahan()) return;
+    const n = await page
+      .locator(SEL_KENDALI_TENANG)
+      .count()
+      .catch(() => -1);
+    if (n !== 0 || nav !== navKe || destroyed) return;
+    const host = URL.parse(url)?.host ?? new URL(program.origin).host;
+    console.log(`pendamping: situs gangguan status=${kode} host=${host}`);
+    hooks.ended('gagal', 'gagal', pesanGangguan(host, kode), { kode: 'SITUS_GANGGUAN' });
+  };
   page.on('response', async (resp) => {
     const req = resp.request();
     if (!req.isNavigationRequest() || req.frame() !== page.mainFrame()) return;
     navKe++;
     const info = { status: resp.status(), headers: resp.headers() };
+    if (info.status < 400) dokSehat = true;
     tantanganRespons = /challenge/i.test(info.headers['cf-mitigated'] ?? '');
     if (tantanganRespons) void tanganiTantangan(true);
-    if (!suspicious(info)) return;
     const nav = navKe;
+    const gangguan = info.status >= 500 && !dokSehat;
+    if (!suspicious(info)) return void (gangguan && periksaGangguan(nav, info.status, resp.url()));
     const body = await resp.text().catch(() => '');
     const wall = detectBotWall({ ...info, body: body.slice(0, 20_000) });
-    if (!wall || nav !== navKe) return;
+    if (nav !== navKe) return;
+    if (!wall) return void (gangguan && !tantanganRespons && periksaGangguan(nav, info.status, resp.url()));
     if (wallBisaDiverifikasi(wall)) {
       tantanganRespons = true;
       return void tanganiTantangan(true);
