@@ -25,7 +25,7 @@
     </span>
     <div class="min-w-0 flex-1">
       <div class="flex flex-wrap items-center gap-2">
-        <h3 class="text-base font-semibold text-ink">{JUDUL[gate.jenis]}</h3>
+        <h2 class="text-base font-semibold text-ink">{JUDUL[gate.jenis]}</h2>
         <Chip nada="anda" ikon="tangan">Giliran Anda</Chip>
       </div>
       <p class="mt-1 text-[0.9375rem] text-body">{gate.pesan}</p>
