@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { UrusinEvent } from '#lib/contracts.js';
-import { bangunLinimasa, labelParam, labelProgres, nilaiParam, unikPerRef } from './linimasa.js';
+import {
+  bangunLinimasa,
+  barisKonfirmasi,
+  labelParam,
+  labelProgres,
+  nilaiParam,
+  unikPerRef,
+} from './linimasa.js';
 
 const at = '2026-11-09T01:00:00.000Z';
 const ev = (seq: number, type: string, isi: Record<string, unknown> = {}) =>
@@ -123,5 +130,19 @@ describe('unikPerRef', () => {
     ]);
     expect(out.map((q) => q.refId)).toEqual(['wonogiri-ktp-el#1', 'wonogiri-ktp-el#2']);
     expect(out[0]?.kutipanPersis).toBe('Tatap muka langsung');
+  });
+});
+
+describe('barisKonfirmasi', () => {
+  it('menyembunyikan parameter rute dan membuat daftar berkas terbaca', () => {
+    // Telunjuk Sakti Wonogiri (adapter) dan portal generik Makassar, seperti tampil di produksi.
+    expect(barisKonfirmasi({ layanan_id: 23, berkas: 'kk,ktp,surat' })).toEqual([
+      ['Berkas yang diunggah', 'KK, KTP, SURAT'],
+    ]);
+    expect(barisKonfirmasi({ jenis: 'kelahiran', kode: '7371', jalur: '/' })).toEqual([]);
+    expect(barisKonfirmasi({ namaAnak: '{{DIRI:nama}}', setuju: true })).toEqual([
+      ['Nama anak', 'Diambil dari Data Diri Anda'],
+      ['Setuju', 'Ya'],
+    ]);
   });
 });

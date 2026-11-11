@@ -195,3 +195,27 @@ export function unikPerRef<T extends { refId: string }>(kutipan: readonly T[]): 
   for (const q of kutipan) if (!peta.has(q.refId)) peta.set(q.refId, q);
   return [...peta.values()];
 }
+
+/** Parameter rute Pendamping (jalur portal, kode wilayah, id layanan): penanda teknis, bukan isian warga. */
+const PARAM_TEKNIS = new Set(['jalur', 'kode', 'jenis', 'layanan_id', 'layananId', 'urusinCode']);
+
+/** Baris "periksa sebelum AI mengisi": tanpa parameter teknis; daftar berkas adapter dibuat terbaca. */
+export function barisKonfirmasi(
+  params: Readonly<Record<string, string | number | boolean>>,
+): [label: string, nilai: string][] {
+  return Object.entries(params)
+    .filter(([k]) => !PARAM_TEKNIS.has(k))
+    .slice(0, 12)
+    .map(([k, v]): [string, string] =>
+      k === 'berkas' && typeof v === 'string'
+        ? [
+            'Berkas yang diunggah',
+            v
+              .split(',')
+              .map((b) => b.trim().toUpperCase())
+              .filter(Boolean)
+              .join(', '),
+          ]
+        : [labelParam(k), nilaiParam(v)],
+    );
+}
