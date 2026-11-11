@@ -1,7 +1,9 @@
 import type { HapusIngatanResponse, IngatanResponse } from '@urusin/contracts';
+import { VaultError } from '@urusin/akun';
+import { IngatanError } from '@urusin/harness';
 import { akunErrorResponse, pemilikVault, tolakBacaVault } from '#lib/server/akun.js';
-import { apiJson } from '#lib/server/http.js';
-import { daftarIngatan, hapusSemuaIngatan } from '#lib/server/ingatan.js';
+import { apiError, apiJson } from '#lib/server/http.js';
+import { daftarIngatan, daftarUsulan, hapusSemuaIngatan } from '#lib/server/ingatan.js';
 import { getRuntime } from '#lib/server/runtime.js';
 import type { RequestHandler } from './$types';
 
@@ -15,8 +17,15 @@ export const GET: RequestHandler = async (event) => {
   try {
     const rt = await getRuntime();
     const p = pemilikVault(rt, event, { buat: false });
-    return apiJson({ butir: p ? daftarIngatan(rt.akun, p.id) : [] } satisfies IngatanResponse);
+    if (!p) return apiJson({ butir: [] } satisfies IngatanResponse);
+    const usulan = daftarUsulan(rt.akun, p.id);
+    return apiJson({
+      butir: daftarIngatan(rt.akun, p.id),
+      ...(usulan.length ? { usulan } : {}),
+    } satisfies IngatanResponse);
   } catch (e) {
+    if (e instanceof VaultError || e instanceof IngatanError)
+      return apiError(503, 'INGATAN_TIDAK_TERBACA', 'Ingatan sedang tidak bisa dibaca. Coba lagi nanti.');
     return akunErrorResponse(e);
   }
 };

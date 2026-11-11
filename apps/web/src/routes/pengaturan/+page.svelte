@@ -377,7 +377,50 @@
           pribadi seperti NIK atau alamat, dan wilayah tetap ditanyakan dulu sebelum dipakai.
         </p>
       </div>
-      {#if data.ingatan.length > 0}
+      {#if data.ingatanTamu > 0}
+        <div
+          role="group"
+          aria-label="Ingatan dari perangkat ini"
+          class="flex flex-col gap-3 rounded-[18px] border border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-[22px]"
+        >
+          <p class="text-[0.9375rem] text-body">
+            Ada {data.ingatanTamu} hal yang diingat di perangkat ini sebelum Anda masuk.
+          </p>
+          <div class="flex flex-wrap gap-3">
+            <form method="POST" action="?/bawaIngatanTamu">
+              <button
+                type="submit"
+                class="inline-flex min-h-12 shrink-0 items-center justify-center rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90"
+                >Bawa ke akun</button
+              >
+            </form>
+            <form method="POST" action="?/buangIngatanTamu">
+              <button
+                type="submit"
+                class="inline-flex min-h-12 items-center rounded-full border border-line-2 bg-surface px-5 font-semibold text-ink hover:bg-card"
+                >Buang</button
+              >
+            </form>
+          </div>
+        </div>
+      {/if}
+      {#if data.ingatanRusak}
+        <div
+          class="flex flex-col gap-3 rounded-[18px] border border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-[22px]"
+        >
+          <p role="status" class="text-[0.9375rem] text-body">
+            Ingatan tidak bisa dibaca saat ini. Anda tetap bisa menghapus semuanya.
+          </p>
+          <form method="POST" action="?/hapusSemuaIngatan">
+            <button
+              type="submit"
+              class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full border border-galat-garis bg-surface px-5 font-semibold text-galat hover:bg-mawar"
+            >
+              <Icon name="hapus" class="size-4.5" /> Hapus semua ingatan
+            </button>
+          </form>
+        </div>
+      {:else if data.ingatan.length > 0}
         <ul aria-label="Butir yang diingat" class="overflow-hidden rounded-[18px] border border-line">
           {#each data.ingatan as b (b.id)}
             <li

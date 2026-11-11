@@ -1,10 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons/payload tanpa tipe */
 import { isRedirect } from '@sveltejs/kit';
-import { HapusIngatanResponseSchema, IngatanResponseSchema } from '@urusin/contracts';
+import {
+  HapusIngatanResponseSchema,
+  IngatanResponseSchema,
+  SetujuiIngatanResponseSchema,
+} from '@urusin/contracts';
 import { DemoProvider, wilayahUrusan } from '@urusin/harness';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DELETE as hapusSemuaApi, GET as ingatanApi } from '../../routes/api/ingatan/+server';
-import { DELETE as hapusButirApi } from '../../routes/api/ingatan/[id]/+server';
+import { DELETE as hapusButirApi, POST as setujuiApi } from '../../routes/api/ingatan/[id]/+server';
 import { POST as buatUrusan } from '../../routes/api/urusan/+server';
 import { POST as tetapkan } from '../../routes/api/urusan/[id]/wilayah/+server';
 import { actions as pengaturanPage, load as pengaturanLoad } from '../../routes/pengaturan/+page.server';
@@ -147,5 +151,88 @@ describe('ingatan warga lewat web', () => {
       dihapus: 0,
     });
     expect((await ingatanApi(ev(new Request(`${ORIGIN}/api/ingatan`)))).status).toBe(403);
+  });
+
+  const AT = '2026-11-11T00:00:00.000Z';
+  const reqId = (method: string) => new Request(`${ORIGIN}/x`, { method, headers: { origin: ORIGIN } });
+
+  it('kartu persetujuan: usulan aksesibilitas muncul sebagai pertanyaan; "Ya, ingat" → butir; "Tidak" → hilang', async () => {
+    const tamu = rt.akun.pastikanTamu('sid-uji', { ip: '127.0.0.1', userAgent: null });
+    rt.akun.vault.setIngatan(tamu, {
+      versi: 1,
+      butir: [],
+      usulan: [
+        { id: 'ing_00000000000000a1', jenis: 'aksesibilitas', nilai: 'tuli', at: AT },
+        { id: 'ing_00000000000000a2', jenis: 'aksesibilitas', nilai: 'pakai kursi roda', at: AT },
+      ],
+    });
+    const isi = async () => IngatanResponseSchema.parse(await (await ingatanApi(ev(get()))).json());
+    expect((await isi()).usulan?.map((b) => b.label)).toEqual([
+      'Ingat bahwa Anda tuli?',
+      'Ingat bahwa Anda pakai kursi roda?',
+    ]);
+    expect((await isi()).butir).toEqual([]);
+    // sesi lain tidak bisa menyetujui
+    expect((await setujuiApi(ev(reqId('POST'), { id: 'ing_00000000000000a1' }, 'sid-lain'))).status).toBe(
+      404,
+    );
+    const ya = await setujuiApi(ev(reqId('POST'), { id: 'ing_00000000000000a1' }));
+    expect(SetujuiIngatanResponseSchema.parse(await ya.json())).toMatchObject({
+      disetujui: 1,
+      butir: { id: 'ing_00000000000000a1', label: 'Kebutuhan aksesibilitas: tuli' },
+    });
+    expect((await setujuiApi(ev(reqId('POST'), { id: 'ing_00000000000000a1' }))).status).toBe(404);
+    // "Tidak": usulan kedua dibuang tanpa pernah diingat
+    expect((await hapusButirApi(ev(reqId('DELETE'), { id: 'ing_00000000000000a2' }))).status).toBe(200);
+    const akhir = await isi();
+    expect(akhir.butir.map((b) => b.label)).toEqual(['Kebutuhan aksesibilitas: tuli']);
+    expect(akhir.usulan).toBeUndefined();
+  });
+
+  it('isi rusak: GET 503 (bukan kosong), Pengaturan memberi tahu, "Hapus semua" tetap bisa', async () => {
+    const tamu = rt.akun.pastikanTamu('sid-uji', { ip: '127.0.0.1', userAgent: null });
+    rt.akun.vault.setIngatan(tamu, { versi: 1, butir: [] });
+    rt.akun.vault.setIngatan(tamu, { versi: 9 }); // bentuk asing (tidak lolos skema)
+    const r = await ingatanApi(ev(get()));
+    expect(r.status).toBe(503);
+    expect(((await r.json()) as any).kode).toBe('INGATAN_TIDAK_TERBACA');
+    const muat = async () => (await pengaturanLoad(ev(new Request(`${ORIGIN}/pengaturan`)) as never)) as any;
+    expect(await muat()).toMatchObject({ ingatan: [], ingatanRusak: true });
+    // penulisan lewat kartu tidak menimpa isi yang rusak
+    expect((await hapusButirApi(ev(reqId('DELETE'), { id: 'ing_00000000000000a1' }))).status).not.toBe(200);
+    expect(rt.akun.vault.getIngatan(tamu)!.data).toEqual({ versi: 9 });
+    await redirectDari(pengaturanPage.hapusSemuaIngatan(ev(form({})) as never));
+    expect(rt.akun.vault.getIngatan(tamu)).toBeNull();
+    expect(await muat()).toMatchObject({ ingatan: [], ingatanRusak: false });
+  });
+
+  it('Pengaturan: titipan tamu sesudah masuk → "Ada N hal …" dengan Bawa ke akun / Buang', async () => {
+    const pemilik = rt.akun.pastikanTamu('sid-uji', { ip: '127.0.0.1', userAgent: null });
+    const awal = {
+      versi: 1,
+      butir: [{ id: 'ing_00000000000000b1', jenis: 'kanal', nilai: 'datang', at: AT }],
+      dariTamu: [
+        { id: 'ing_00000000000000b2', jenis: 'kanal', nilai: 'online', at: AT },
+        { id: 'ing_00000000000000b3', jenis: 'lansia', nilai: 'ya', at: AT },
+      ],
+    };
+    rt.akun.vault.setIngatan(pemilik, awal);
+    const muat = async () => (await pengaturanLoad(ev(new Request(`${ORIGIN}/pengaturan`)) as never)) as any;
+    expect(await muat()).toMatchObject({ ingatanTamu: 2 });
+    expect((await muat()).ingatan.map((b: any) => b.label)).toEqual(['Lebih suka datang langsung ke kantor']);
+    expect(await redirectDari(pengaturanPage.bawaIngatanTamu(ev(form({})) as never))).toBe(
+      '/pengaturan#ingatan',
+    );
+    const sesudah = await muat();
+    expect(sesudah.ingatanTamu).toBe(0);
+    expect(sesudah.ingatan.map((b: any) => b.jenis)).toEqual(['lansia', 'kanal']);
+    expect(sesudah.ingatan.find((b: any) => b.jenis === 'kanal').label).toBe(
+      'Lebih suka datang langsung ke kantor',
+    ); // akun menang
+
+    rt.akun.vault.setIngatan(pemilik, awal);
+    await redirectDari(pengaturanPage.buangIngatanTamu(ev(form({})) as never));
+    expect(await muat()).toMatchObject({ ingatanTamu: 0 });
+    expect((await muat()).ingatan.map((b: any) => b.jenis)).toEqual(['kanal']);
   });
 });

@@ -21,10 +21,15 @@ test('urusan kedua memakai ingatan sebagai usulan, lalu ingatan dihapus di Penga
   await expect(log).toContainText('KTP Anda terdaftar di kabupaten/kota mana?', { timeout: 20_000 });
 
   const komposer = page.getByLabel('Tulis jawaban atau pertanyaan');
-  await komposer.fill('Saya sudah lansia. KTP saya Kabupaten Wonogiri.');
+  await komposer.fill('Saya sudah lansia dan tuli. KTP saya Kabupaten Wonogiri.');
   await page.getByRole('button', { name: 'Kirim' }).click();
   await expect(log).toContainText('Urusin mengingat: Warga lansia', { timeout: 20_000 });
   await expect(log).toContainText('Urusin mengingat: Wilayah KTP: Kabupaten Wonogiri');
+
+  // Kebutuhan aksesibilitas (data sensitif) hanya diingat setelah warga menyetujui di kartu.
+  await expect(log).toContainText('Ingat bahwa Anda tuli?');
+  await log.getByRole('button', { name: 'Ya, ingat' }).click();
+  await expect(log).toContainText('Urusin mengingat: Kebutuhan aksesibilitas: tuli');
 
   // Warga membatalkan satu ingatan langsung dari kartu chat.
   await log.getByRole('button', { name: 'Batalkan ingatan Warga lansia' }).click();
@@ -46,6 +51,7 @@ test('urusan kedua memakai ingatan sebagai usulan, lalu ingatan dihapus di Penga
   const bagian = page.getByRole('region', { name: 'Yang Urusin ingat' });
   const daftar = bagian.getByRole('list', { name: 'Butir yang diingat' });
   await expect(daftar).toContainText('Wilayah KTP: Kabupaten Wonogiri');
+  await expect(daftar).toContainText('Kebutuhan aksesibilitas: tuli');
   await expect(daftar).not.toContainText('Warga lansia');
   await bagian.getByRole('button', { name: 'Hapus semua ingatan' }).click();
   await expect(page).toHaveURL(/\/pengaturan#ingatan$/);
