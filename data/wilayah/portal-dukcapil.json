@@ -44,25 +44,27 @@
       "hosts": ["simpeladminduk.acehselatankab.go.id"],
       "sumber": "https://sidak.acehprov.go.id/kabkota",
       "login": ["email_sandi", "username_sandi", "google"],
-      "proteksi": [],
+      "proteksi": ["cloudflare", "turnstile"],
       "domisili": "tidak_diketahui",
       "platform": "sidak-aceh",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
+      "verifiedAt": "2026-11-12",
+      "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar). OBS 2026-11-12: dari Singapura /login dan /layanan/* macet di interstitial JSD Cloudflare tanpa kotak centang (probe gel4, gel4-prod, gel5-prod); dari jaringan Indonesia beranda dan /login terbuka, /layanan/* memunculkan kotak centang \"Verify you are human\" yang diselesaikan warga (worker laptop ID).",
+      "aksesWilayah": "id-only"
     },
     "1102": {
-      "kelas": "F",
-      "jenis": "tidak_diketahui",
-      "hosts": [],
+      "kelas": "A",
+      "jenis": "web",
+      "url": "https://simpel.acehtenggarakab.go.id/login",
+      "hosts": ["simpel.acehtenggarakab.go.id"],
       "hostInfo": ["disdukcapil.acehtenggarakab.go.id"],
-      "sumber": "https://sidak.acehprov.go.id/kabkota",
-      "login": [],
+      "sumber": "https://simpel.acehtenggarakab.go.id/",
+      "login": ["email_sandi"],
       "proteksi": [],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (host ternyata situs informasi CMS Disdukcapil, bukan tenant SIDAK). Portal tercatat sebelumnya: disdukcapil.acehtenggarakab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
+      "verifiedAt": "2026-11-12",
+      "catatan": "OBS 2026-11-12: SIMPEL (Sistem Informasi Manajemen Pelayanan) Disdukcapil Aceh Tenggara, bukan tenant SIDAK. Masuk email + sandi tanpa CAPTCHA; daftar akun di /register (NIK, email, HP, kecamatan/kelurahan). Layanan KTP-el, KK, KIA, pindah, akta lahir/mati/kawin/cerai, penduduk rentan di /backoffice/masyarakat_*/create (wajib masuk). disdukcapil.acehtenggarakab.go.id tetap situs informasi (standar pelayanan online: website, WhatsApp, atau email)."
     },
     "1103": {
       "kelas": "A",
@@ -219,16 +221,17 @@
       "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
     },
     "1114": {
-      "kelas": "F",
-      "jenis": "tidak_diketahui",
+      "kelas": "D",
+      "jenis": "whatsapp",
       "hosts": [],
-      "sumber": "https://sidak.acehprov.go.id/kabkota",
+      "hostInfo": ["dukcapil.acehjayakab.go.id"],
+      "sumber": "https://dukcapil.acehjayakab.go.id/halaman/lko",
       "login": [],
       "proteksi": [],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (sertifikat TLS tidak cocok dengan nama host, ERR_CERT_COMMON_NAME_INVALID, dari jaringan Indonesia dan Singapura). Portal tercatat sebelumnya: sipayo.acehjayakab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
+      "verifiedAt": "2026-11-12",
+      "catatan": "OBS 2026-11-12: portal SIDAK sipayo.acehjayakab.go.id tidak bisa dibuka peramban (sertifikat TLS untuk \"acehjayakabgo.id\", kedaluwarsa 2026-10-14: ERR_CERT_COMMON_NAME_INVALID). Halaman \"Layanan Kependudukan Online\" situs Disdukcapil: pelayanan online lewat WhatsApp petugas dan Facebook (nomor di halaman sumber). Dipandu, bukan Browser Pendamping."
     },
     "1115": {
       "kelas": "A",
@@ -245,28 +248,30 @@
       "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
     },
     "1116": {
-      "kelas": "F",
-      "jenis": "tidak_diketahui",
-      "hosts": [],
-      "sumber": "https://sidak.acehprov.go.id/kabkota",
-      "login": [],
-      "proteksi": [],
+      "kelas": "B",
+      "jenis": "web",
+      "url": "https://disdukcapil.acehtamiangkab.go.id/katalog",
+      "hosts": ["disdukcapil.acehtamiangkab.go.id"],
+      "sumber": "https://disdukcapil.acehtamiangkab.go.id/",
+      "login": ["tanpa_akun"],
+      "proteksi": ["cloudflare"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (Cloudflare \"404 Domain Not Found\"). Portal tercatat sebelumnya: silatersipu.acehtamiangkab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
+      "verifiedAt": "2026-11-12",
+      "catatan": "OBS 2026-11-12: silatersipu.acehtamiangkab.go.id mati (AcehCMS \"404 - Domain Not Found\"). Situs Disdukcapil kini portal layanan (SPA di balik Cloudflare): /katalog berisi 8 layanan, tiap /layanan/<slug> memuat formulir \"Ajukan Permohonan\" (NIK, nama, HP, alamat, unggah berkas PDF, tombol \"Kirim Berkas Permohonan\") tanpa wajib akun; masuk akun hanya untuk isian otomatis. Tautan \"SiKEPO\" di halaman layanan = sistem kepegawaian ASN, bukan layanan warga."
     },
     "1117": {
       "kelas": "F",
       "jenis": "tidak_diketahui",
       "hosts": [],
-      "sumber": "https://sidak.acehprov.go.id/kabkota",
+      "sumber": "https://disdukcapil.benermeriahkab.go.id/",
       "login": [],
       "proteksi": [],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (nama host tidak ada di DNS (NXDOMAIN)). Portal tercatat sebelumnya: cecah.benermeriahkab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
+      "verifiedAt": "2026-11-12",
+      "catatan": "OBS 2026-11-12: portal daring tidak bisa dipakai (cecah.benermeriahkab.go.id NXDOMAIN di DNS publik, padahal menu \"LAYANAN ONLINE\" situs Disdukcapil masih menautkannya; \"Formulir Pendaftaran\" hanya folder unduhan). Tidak ada kanal pengajuan daring lain yang teramati: dipandu ke situs Disdukcapil/kantor.",
+      "hostInfo": ["disdukcapil.benermeriahkab.go.id"]
     },
     "1118": {
       "kelas": "A",
@@ -283,16 +288,17 @@
       "catatan": "Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar)."
     },
     "1171": {
-      "kelas": "F",
-      "jenis": "tidak_diketahui",
-      "hosts": [],
-      "sumber": "https://sidak.acehprov.go.id/kabkota",
-      "login": [],
+      "kelas": "A",
+      "jenis": "web",
+      "url": "https://sihati.bandaacehkota.go.id/login",
+      "hosts": ["sihati.bandaacehkota.go.id"],
+      "sumber": "https://disdukcapil.bandaacehkota.go.id/",
+      "login": ["email_sandi"],
       "proteksi": [],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (nama host tidak ada di DNS (NXDOMAIN)). Portal tercatat sebelumnya: primadona.bandaacehkota.go.id, sihati.bandaacehkota.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
+      "verifiedAt": "2026-11-12",
+      "catatan": "OBS 2026-11-12: primadona.bandaacehkota.go.id (tenant SIDAK) NXDOMAIN. SiHati Online (ditautkan situs Disdukcapil, menu \"AKTA KELAHIRAN & KEMATIAN\") hidup: masuk email + sandi tanpa CAPTCHA, daftar akun (nama, email, NIK, HP). Hanya akta kelahiran dan akta kematian (/layanan/akta-*/create, wajib masuk); layanan lain dipandu."
     },
     "1172": {
       "kelas": "A",
@@ -312,13 +318,13 @@
       "kelas": "F",
       "jenis": "tidak_diketahui",
       "hosts": [],
-      "sumber": "https://sidak.acehprov.go.id/kabkota",
+      "sumber": "https://disdukcapil.lhokseumawekota.go.id/",
       "login": [],
       "proteksi": [],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (nama host tidak ada di DNS (NXDOMAIN)). Portal tercatat sebelumnya: simpedu.lhokseumawekota.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
+      "verifiedAt": "2026-11-12",
+      "catatan": "OBS 2026-11-12: portal daring tidak bisa dipakai (simpedu.lhokseumawekota.go.id NXDOMAIN di DNS publik; situs Disdukcapil hanya informasi layanan dan unduhan formulir, tanpa pengajuan daring). Dipandu ke situs Disdukcapil/kantor."
     },
     "1174": {
       "kelas": "A",
@@ -520,16 +526,19 @@
       "aksesWilayah": "id-only"
     },
     "1471": {
-      "kelas": "F",
-      "jenis": "tidak_diketahui",
-      "hosts": [],
-      "sumber": "https://appdukcapil.pekanbaru.go.id/",
-      "login": [],
+      "kelas": "B",
+      "jenis": "web",
+      "url": "https://appdukcapil.pekanbaru.go.id/",
+      "hosts": ["appdukcapil.pekanbaru.go.id"],
+      "hostInfo": ["sipenduduk.pekanbaru.go.id"],
+      "sumber": "https://disdukcapil.pekanbaru.go.id/",
+      "login": ["tanpa_akun"],
       "proteksi": [],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (halaman login /Home/login 404 (\"Coming Soon - Sipenduduk V3\")). Portal tercatat sebelumnya: appdukcapil.pekanbaru.go.id, sipenduduk.pekanbaru.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
+      "verifiedAt": "2026-11-12",
+      "jamLayanan": "Senin-Jumat 09.00-13.59 WIB (formulir daring)",
+      "catatan": "OBS 2026-11-12: Pusat Aplikasi Disdukcapil (ditautkan situs Disdukcapil): formulir tanpa akun Cendekia (KIA, /kia), Lado PKU (SKPWNI keluar), Pedang Biru (KK pendatang), Sinematik (pengiriman dokumen), cek kode permohonan. Formulir hanya dibuka pada jam layanan (di luar jam /kia/permohonan/permohonan_individu dialihkan ke /kia). sipenduduk.pekanbaru.go.id = informasi, unduh formulir, lacak berkas (/Home/login 404)."
     },
     "1502": {
       "kelas": "D",
@@ -587,9 +596,10 @@
       "proteksi": ["captcha_gambar", "cloudflare"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "SLAWE / Sipadek; permohonan dan lacak. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare \"you have been blocked\" dari IP Singapura).",
-      "aksesWilayah": "id-only"
+      "verifiedAt": "2026-11-12",
+      "catatan": "SLAWE / Sipadek; permohonan dan lacak. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare \"you have been blocked\" dari IP Singapura). OBS 2026-11-12: URL masuk tetap beranda; tombol PERMOHONAN per layanan (tautan bertoken, stabil antar-muat) dialihkan 307 ke /404 di luar jam layanan (modal situs: \"SILAHKAN MENGAJUKAN DI HARI KERJA JAM 08:00 - 16:00\"); Kutipan Akta Kematian dan Mobil Dukling hanya membuka modal gangguan/pengembangan.",
+      "aksesWilayah": "id-only",
+      "jamLayanan": "Senin-Jumat 08.00-16.00 WIB"
     },
     "1811": {
       "kelas": "D",
@@ -993,29 +1003,30 @@
       "catatan": "Paklay Komplit (kelas A belum pasti; host belum tercatat, WAF sliding verification)."
     },
     "3314": {
-      "kelas": "F",
-      "jenis": "tidak_diketahui",
-      "hosts": [],
-      "sumber": "https://sianton.dukcapil.sragenkab.go.id/",
-      "login": [],
-      "proteksi": [],
+      "kelas": "A",
+      "jenis": "web",
+      "url": "https://pandu-online.sragenkab.go.id/signin.html",
+      "hosts": ["pandu-online.sragenkab.go.id"],
+      "sumber": "https://dukcapil.sragenkab.go.id/",
+      "login": ["nik_sandi", "email_sandi", "hp_sandi", "google"],
+      "proteksi": ["captcha_gambar"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (sertifikat TLS tidak valid (jaringan Indonesia) dan waktu habis (Singapura)). Portal tercatat sebelumnya: sianton.dukcapil.sragenkab.go.id, pandu-online.sragenkab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
+      "verifiedAt": "2026-11-12",
+      "catatan": "OBS 2026-11-12: sianton.dukcapil.sragenkab.go.id ditolak peramban (sertifikat *.sragenkab.go.id tidak mencakup subdomain dua tingkat: ERR_CERT_COMMON_NAME_INVALID). PANDU Online (ditautkan situs Disdukcapil, menu \"Pandu\"): masuk NIK/email/HP + sandi; daftar akun di signup.html (NIK, nama, email, HP, captcha) atau Google."
     },
     "3315": {
       "kelas": "A",
       "jenis": "web",
-      "url": "https://klikdukcapil.grobogan.go.id/",
+      "url": "https://klikdukcapil.grobogan.go.id/login",
       "hosts": ["klikdukcapil.grobogan.go.id"],
       "sumber": "https://klikdukcapil.grobogan.go.id/",
-      "login": ["username_sandi"],
+      "login": ["nik_sandi"],
       "proteksi": ["turnstile", "captcha_gambar"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "KLiK Dukcapil; 1 akun = 1 email + 1 WA."
+      "verifiedAt": "2026-11-12",
+      "catatan": "KLiK Dukcapil; 1 akun = 1 email + 1 WA. OBS 2026-11-12: beranda / hanya carousel + tautan BERANDA (/beranda, halaman berat); tautan masuk ada di /beranda. Masuk langsung di /login: NIK + sandi + Turnstile; daftar akun di /registrasi."
     },
     "3321": {
       "kelas": "A",
@@ -1231,8 +1242,8 @@
       "proteksi": [],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "OBS 2026-11-10: portal daring tidak bisa dipakai (Cloudflare \"you have been blocked\" dari jaringan Indonesia dan Singapura). Portal tercatat sebelumnya: poedak.gresikkab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang."
+      "verifiedAt": "2026-11-12",
+      "catatan": "OBS 2026-11-12: portal daring tidak bisa dipakai (Cloudflare \"Sorry, you have been blocked\" untuk poedak.gresikkab.go.id dan gresikkab.go.id, dari jaringan Indonesia (laptop worker ID, Chromium biasa) maupun Singapura). Tanpa jalur jaringan lain yang sah: dipandu."
     },
     "3571": {
       "kelas": "A",
