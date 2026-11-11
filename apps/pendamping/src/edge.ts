@@ -201,11 +201,10 @@ export function createEdgeProxy(
     port: number,
   ): Promise<{ ok: true; address: string } | { ok: false; reason: string }> {
     let addresses: string[];
-    let lingkup: BrowserScope = { sesi, union: cfg.union };
+    // Domain pemda diturunkan edge sendiri dari host sesi (yang sudah dibatasi union), bukan dari worker.
+    const lingkup: BrowserScope = { sesi, union: cfg.union, domainPemda: domainPemdaSesi(sesi) };
     try {
       // Port, IP literal, union, set sesi diperiksa SEBELUM DNS: host di luar izin tidak pernah di-resolve.
-      // Domain pemda diturunkan edge sendiri dari host sesi (yang sudah dibatasi union), bukan dari worker.
-      lingkup = { sesi, union: cfg.union, domainPemda: domainPemdaSesi(sesi) };
       checkConnectHost(host, port, 'browser', lingkup);
       addresses = await resolve(host);
     } catch (e) {

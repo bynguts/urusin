@@ -364,11 +364,20 @@ export function aktifEl(el: Element): boolean {
 }
 
 /** Nilai data-(bs-)toggle yang hanya membuka/menutup panel di halaman yang sama (Bootstrap dan sejenisnya). */
-const TOGEL_PANEL: ReadonlySet<string> = new Set(['collapse', 'offcanvas', 'dropdown', 'modal', 'tab', 'pill']);
+const TOGEL_PANEL: ReadonlySet<string> = new Set([
+  'collapse',
+  'offcanvas',
+  'dropdown',
+  'modal',
+  'tab',
+  'pill',
+]);
 
 function pembukaPanelDari(el: Element, tag: string, rawHref: string | null): boolean {
   if (formPemilik(el)) return false;
-  const togel = (el.getAttribute('data-bs-toggle') ?? el.getAttribute('data-toggle') ?? '').trim().toLowerCase();
+  const togel = (el.getAttribute('data-bs-toggle') ?? el.getAttribute('data-toggle') ?? '')
+    .trim()
+    .toLowerCase();
   if (!TOGEL_PANEL.has(togel) && !(el.hasAttribute('aria-controls') && el.hasAttribute('aria-expanded')))
     return false;
   if (tag !== 'a' && tag !== 'area') return true;
