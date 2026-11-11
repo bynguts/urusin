@@ -472,50 +472,13 @@ function adaFormulirTerlihat(doc: Document): boolean {
   return false;
 }
 
-/** Tipe input berisi data warga (bukan sandi, centang, berkas, atau tombol). */
-const TIPE_ISIAN_DATA = new Set(['text', 'email', 'tel', 'number', 'date', 'datetime-local', 'month']);
-/** Kolom tantangan yang memang diisi warga di halaman akhir (sama dengan penanda terlarang OTP/CAPTCHA amatan). */
-const RE_KOLOM_TANTANGAN =
-  /captcha|\botp\b|one.?time|kode (verifikasi|otp|sms|wa|whatsapp|aktivasi|keamanan|gambar|unik|pengaman)|verification code|security code|\btoken\b|\bpin\b|ketik(kan)? (kode|karakter|teks|huruf|angka)/;
-const SEL_GAMBAR_CAPTCHA =
-  'img[src*="captcha" i], img[alt*="captcha" i], img[id*="captcha" i], img[class*="captcha" i], .g-recaptcha, .h-captcha';
-
-/**
- * Masih ada kolom data WAJIB yang kosong dan bisa diisi di isi formulir: halaman masih tahap pengisian
- * (formulir pendaftaran dengan centang S&K di bawahnya, probe 3324/3404), bukan tinjauan akhir. Kolom
- * OTP/CAPTCHA (termasuk yang bersebelahan dengan gambar CAPTCHA) tidak dihitung: itu tugas warga di halaman akhir.
- */
-function isianWajibKosong(doc: Document): boolean {
-  for (const el of doc.querySelectorAll('input, textarea')) {
-    const k = el as HTMLInputElement;
-    if (el.tagName === 'INPUT' && !TIPE_ISIAN_DATA.has(k.type)) continue;
-    if (!k.required && atribut(el, 'aria-required') !== 'true') continue;
-    if (k.value !== '' || k.readOnly || !aktifEl(el) || !terlihatEl(el) || el.closest(SEL_BUKAN_ISI_FORM))
-      continue;
-    if (atribut(el, 'autocomplete') === 'one-time-code') continue;
-    const cari = normalTeks(
-      [labelSederhana(el), atribut(el, 'placeholder'), el.id, atribut(el, 'name'), atribut(el, 'class')].join(
-        ' ',
-      ),
-    );
-    if (RE_KOLOM_TANTANGAN.test(cari)) continue;
-    let wadah = el.parentElement;
-    let dekatCaptcha = false;
-    for (let i = 0; i < 3 && wadah && !dekatCaptcha; i++, wadah = wadah.parentElement)
-      dekatCaptcha = !!wadah.querySelector(SEL_GAMBAR_CAPTCHA);
-    if (!dekatCaptcha) return true;
-  }
-  return false;
-}
-
 /**
  * Halaman deklarasi/tinjauan akhir: frasa pernyataan/ringkasan di luar navigasi/FAQ pada halaman yang punya
  * kolom isian atau tombol, atau checkbox pernyataan yang terlihat. Dihitung ulang setiap klik (kunci halaman
- * akhir). Halaman yang masih punya kolom data wajib kosong bukan halaman akhir: tombol kirimnya tetap `kirim`
- * (K4/K7), centang pernyataan tetap terlarang, dan klik AI tetap hanya GET di gerbang tulis worker.
+ * akhir). Kolom wajib yang masih kosong TIDAK membatalkannya (review G4): AI tetap boleh mengisi kolom di
+ * halaman akhir, tetapi klik, centang, dan redirect halaman tetap terkunci.
  */
 export function halamanAkhir(doc: Document): boolean {
-  if (isianWajibKosong(doc)) return false;
   if (adaFormulirTerlihat(doc) && RE_HALAMAN_AKHIR.some((re) => re.test(teksHalaman(doc)))) return true;
   for (const el of doc.querySelectorAll('input[type="checkbox"], [role="checkbox"]')) {
     if (terlihatEl(el) && checkboxPernyataan(el, labelSederhana(el))) return true;
@@ -686,7 +649,7 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
     return { kelas: 'masuk', aturan: 'K3_MASUK' };
   if (f.submitterAsli) return { kelas: 'kirim', aturan: 'K4_SUBMITTER' };
   if (f.atributBerbahaya) return { kelas: 'kirim', aturan: 'K5_ATRIBUT' };
-  if (f.halamanAkhir || f.dalamDialogKonfirmasi) return { kelas: 'kirim', aturan: 'K6_AKHIR_DIALOG' };
+  if (f.dalamDialogKonfirmasi) return { kelas: 'kirim', aturan: 'K6_AKHIR_DIALOG' };
 
   // Frasa menu persis (Daftar Layanan, Status Pengajuan) melewati cek NAMA saja; id/kelas/ikon/jalur tetap.
   const menuAman = tautan && nama.length > 0 && nama.every((n) => MENU_AMAN.has(bersihkanPanah(lipatNeg(n))));
@@ -695,6 +658,23 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
   const negNama = !menuAman && nama.some((n) => cocokNeg(n, NEG_AKAR));
   const negIkon = negToken(f.ikon);
   const negLain = negToken(f.idKelas) || (tautan && jalurNeg(f.href.jalur)) || f.href.download;
+  const tombolBiasa =
+    (f.tag === 'button' && !f.submitterAsli && f.type !== 'reset') ||
+    (f.tag === 'input' && f.type === 'button') ||
+    f.role === 'button';
+
+  // Pembuka pemilih tanggal ("Buka kalender", probe 3324/3404) bukan tombol kirim walau di halaman akhir. Label
+  // ini tidak membuka klik: di halaman akhir klik AI tetap ditolak kunci halaman (runner A_HALAMAN_AKHIR,
+  // validator HALAMAN_AKHIR_TERKUNCI); tanggal diketik AI ke kolomnya.
+  if (
+    tombolBiasa &&
+    nama.length > 0 &&
+    nama.every((n) => RE_PEMBUKA_TANGGAL.test(bersihkanPanah(n))) &&
+    !negLain &&
+    !negIkon
+  )
+    return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
+  if (f.halamanAkhir) return { kelas: 'kirim', aturan: 'K6_AKHIR_DIALOG' };
   if (negLain) return { kelas: 'kirim', aturan: 'K7_NEG' };
   // Ikon saja (probe SIDAK: feather credit-card = ikon KTP/KK) pada tautan GET bersih: pembuka, diketuk warga.
   if (negIkon && !negNama)
@@ -707,11 +687,6 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
     return tautanGetBiasa(f)
       ? { kelas: 'kirim', aturan: 'K7_NEG_NAMA_TAUTAN' }
       : { kelas: 'kirim', aturan: 'K7_NEG' };
-
-  const tombolBiasa =
-    (f.tag === 'button' && !f.submitterAsli && f.type !== 'reset') ||
-    (f.tag === 'input' && f.type === 'button') ||
-    f.role === 'button';
 
   // Tombol menu ikon saja (hamburger fa-bars / navbar-toggler, probe 3279 dan 6371): membuka menu ponsel, AI boleh.
   // Bukan submitter (K4 di atas) dan klik AI tetap hanya GET di gerbang tulis worker.
@@ -728,9 +703,6 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
   if (tautan && f.href.ada && f.href.host && !f.href.js && !f.href.hanyaFragmen)
     return { kelas: 'navigasi', aturan: 'K8_NAVIGASI' };
   if (f.kendaliLokal) return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
-  // Pembuka widget tanggal ("Buka kalender", probe 3324): UI lokal di samping kolom tanggal.
-  if (tombolBiasa && nama.every((n) => RE_PEMBUKA_TANGGAL.test(bersihkanPanah(n))))
-    return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
   const namaUtama = bersihkanPanah(f.teksTampak || f.nilai);
   if (
     tombolBiasa &&

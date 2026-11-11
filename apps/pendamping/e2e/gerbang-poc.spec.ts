@@ -152,6 +152,20 @@ const HALAMAN: Record<string, string> = {
 <label><input type="checkbox" name="kabar"> Kirimi saya kabar</label>
 <label><input type="checkbox" name="sama"> Alamat domisili sama dengan KTP</label>
 <label>Nama <input name="nama"></label></form>`),
+  // Review G4: halaman tinjauan + kolom wajib kosong; "Lanjut" memicu redirect tertunda.
+  '/akhir-catatan':
+    kerangka(`<h2>Periksa kembali data permohonan</h2><p>Dengan ini saya menyatakan data benar.</p>
+<label>Catatan untuk petugas <input name="catatan" required></label><button type="button" id="b">Lanjut</button>
+<form method="post" action="/api/final-g4"><button type="submit">Kirim Permohonan</button></form>
+<script>document.getElementById('b').addEventListener('click', () => {
+  setTimeout(() => { location.href = '/permohonan/12/go4?ok=1'; }, 1500);
+});</script>`),
+  // Probe 3324/3404: form pendaftaran bercentang S&K dengan tombol pembuka kalender di samping kolom tanggal.
+  '/daftar-kalender': kerangka(`<form method="post" action="/api/daftar"><h2>Pendaftaran Akun</h2>
+<label>Tanggal lahir <input name="tgl" required placeholder="DD-MM-YYYY"></label>
+<button type="button" aria-label="Buka kalender" onclick="document.title='kalender'"><i class="bi bi-calendar3"></i></button>
+<label><input type="checkbox" name="sk" required> Saya telah membaca dan menyetujui Syarat dan Ketentuan</label>
+<button type="submit">Daftar Sekarang</button></form>`),
 };
 
 async function situsUji() {
@@ -858,6 +872,47 @@ test('F6: WebSocket di sesi generik ditolak sebelum tersambung ke server', async
       })
       .toBe(true);
     expect(situs.upgrade()).toBe(0);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('review G4: tinjauan akhir + kolom wajib kosong tetap terkunci; Lanjut ditolak, redirect tidak lolos', async () => {
+  const { manager, o, p } = await sesi(situs, '/akhir-catatan', 'akhir-catatan');
+  try {
+    expect(p.sinyal.halamanAkhir).toBe(true);
+    const lanjut = satu(p, 'Lanjut');
+    expect(lanjut.kelas).toBe('kirim');
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'klik', ref: lanjut.ref }],
+    });
+    expect(r.hasil).toEqual([{ indeks: 0, kode: 'HALAMAN_AKHIR' }]);
+    await new Promise((r) => setTimeout(r, 2_500));
+    expect(situs.hitung('/permohonan/12/go4')).toBe(0);
+    expect(situs.hitung('/api/final-g4')).toBe(0);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('probe 3324/3404: pembuka kalender ui_lokal, tetapi klik AI di halaman akhir tetap ditolak', async () => {
+  const { manager, o, p } = await sesi(situs, '/daftar-kalender', 'daftar-kalender');
+  try {
+    expect(p.sinyal.halamanAkhir).toBe(true);
+    const kalender = satu(p, 'Buka kalender');
+    expect(kalender.kelas).toBe('ui_lokal');
+    expect(satu(p, 'Daftar Sekarang').kelas).toBe('kirim');
+    const r = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'klik', ref: kalender.ref }],
+    });
+    expect(r.hasil).toEqual([{ indeks: 0, kode: 'HALAMAN_AKHIR' }]);
+    expect(situs.hitung('/api/daftar')).toBe(0);
   } finally {
     await manager.shutdown();
   }
