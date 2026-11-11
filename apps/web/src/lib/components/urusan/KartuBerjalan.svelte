@@ -8,7 +8,11 @@
    * Kartu "Urusan berjalan" App 01: avatar 40 bercincin putih, judul 17/600, titik status + teks 15,
    * satu tombol 44. Kartu utama (menunggu warga) bergaris gelap dengan tombol gelap.
    */
-  let { urusan, utama = false }: { urusan: UrusanBerjalan; utama?: boolean } = $props();
+  let {
+    urusan,
+    utama = false,
+    memuat = false,
+  }: { urusan: UrusanBerjalan; utama?: boolean; memuat?: boolean } = $props();
 
   const p = $derived(findPeristiwa(urusan.peristiwa ?? '') ?? URUSAN_LAIN);
   const info = $derived(infoStatus(urusan.ringkasan?.state));
@@ -45,7 +49,7 @@
             : ''}"
           aria-hidden="true"
         ></span>
-        {urusan.ringkasan ? info.label : 'Memuat status…'}
+        {urusan.ringkasan ? info.label : memuat ? 'Memuat status…' : 'Status belum tersedia'}
       </span>
     </div>
   </div>

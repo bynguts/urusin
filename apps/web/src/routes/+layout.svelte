@@ -26,6 +26,29 @@
   const polos = $derived(rutWeb(page.url.pathname) || rutAuth(page.url.pathname));
   const akun = $derived(page.data.akun as { email: string } | null | undefined);
   let menuBuka = $state(false);
+  let tombolMenu = $state<HTMLButtonElement>();
+  let menuHp = $state<HTMLElement>();
+
+  $effect(() => {
+    if (!menuBuka) return;
+    const diLuar = (e: Event) => {
+      if (e.target instanceof Node && !menuHp?.contains(e.target) && !tombolMenu?.contains(e.target))
+        menuBuka = false;
+    };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      menuBuka = false;
+      tombolMenu?.focus();
+    };
+    document.addEventListener('pointerdown', diLuar);
+    document.addEventListener('focusin', diLuar);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', diLuar);
+      document.removeEventListener('focusin', diLuar);
+      document.removeEventListener('keydown', escape);
+    };
+  });
 
   // Preferensi tampilan diterapkan di <html>: ukuran huruf, kontras, gerak. Aplikasi beroperasi dalam mode terang.
   // Hanya nilai yang berbeda yang ditulis. Nilai bawaan sudah ada di app.html (skala bawaan = cadangan
@@ -95,6 +118,7 @@
             aria-label={menuBuka ? 'Tutup menu' : 'Buka menu'}
             aria-expanded={menuBuka}
             aria-controls="menu-app-hp"
+            bind:this={tombolMenu}
             onclick={() => (menuBuka = !menuBuka)}
           >
             <Icon name={menuBuka ? 'tutup' : 'menu'} class="size-5" />
@@ -103,6 +127,7 @@
         {#if menuBuka}
           <nav
             id="menu-app-hp"
+            bind:this={menuHp}
             aria-label="Menu"
             class="absolute inset-x-4 top-[4.75rem] rounded-[1.25rem] border border-line bg-surface p-3 shadow-lembut"
           >

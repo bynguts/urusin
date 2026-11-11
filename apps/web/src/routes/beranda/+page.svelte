@@ -1,5 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { afterNavigate } from '$app/navigation';
+  import { tick } from 'svelte';
   import { resolve } from '$app/paths';
   import latarUtama1x from '#lib/assets/img/app/latar-utama-1156.webp';
   import latarUtama2x from '#lib/assets/img/app/latar-utama-2312.webp';
@@ -32,6 +34,14 @@
   let bisaDikte = $state(false);
   let mendikte = $state(false);
   let hentikanDikte: (() => void) | undefined;
+  let kotakPesan = $state<HTMLTextAreaElement>();
+
+  afterNavigate(({ to }) => {
+    if (!to?.url.searchParams.has('baru')) return;
+    hentikanDikte?.();
+    pesan = '';
+    void tick().then(() => kotakPesan?.focus());
+  });
 
   const wilayah = $derived(lokal.data.wilayah);
   // Urusan yang menunggu warga tampil paling depan dan jadi kartu utama (App 01: "Tinjau rencana").
@@ -109,6 +119,7 @@
         maxlength="2000"
         required
         bind:value={pesan}
+        bind:this={kotakPesan}
         aria-describedby={form?.pesanWarga ? 'galat-pesan' : undefined}
         placeholder="Contoh: Anak saya baru lahir, saya harus mengurus apa?"
         class="block max-h-60 min-h-[26px] w-full resize-none bg-transparent text-[18px] leading-[26px] text-ink [field-sizing:content] placeholder:text-muted focus:outline-none"
@@ -197,7 +208,7 @@
     </ul>
   </section>
 
-  {#if berjalan.length}
+  {#if berjalan.length || daftar.galat}
     <section aria-labelledby="judul-berjalan" class="flex w-full flex-col gap-3">
       <div class="flex flex-wrap items-center justify-between gap-x-4">
         <h2 id="judul-berjalan" class="text-[20px] leading-[29px] font-semibold tracking-[-0.3px] text-ink">
@@ -210,9 +221,24 @@
           Lihat semua di Urusanku <Icon name="panah" class="size-4" />
         </a>
       </div>
+      {#if daftar.galat}
+        <div
+          role="alert"
+          class="flex flex-wrap items-center gap-3 rounded-xl bg-kuning px-4 py-3 text-sm text-kuning-ink"
+        >
+          <p class="min-w-0 flex-1">Status terbaru belum bisa dimuat. Periksa koneksi, lalu coba lagi.</p>
+          <button
+            type="button"
+            disabled={daftar.memuat}
+            onclick={() => void daftar.muat(lokal.data.urusan)}
+            class="min-h-12 rounded-full border border-current px-4 font-semibold disabled:opacity-60"
+            >Coba lagi</button
+          >
+        </div>
+      {/if}
       <div class="flex flex-col gap-3 md:flex-row">
         {#each berjalan as u (u.id)}
-          <KartuBerjalan urusan={u} utama={u.id === utamaId} />
+          <KartuBerjalan urusan={u} utama={u.id === utamaId} memuat={daftar.memuat} />
         {/each}
       </div>
     </section>
