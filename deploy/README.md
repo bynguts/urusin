@@ -536,7 +536,7 @@ nama itu lagi di sisi operator, jadi alamat yang akhirnya dihubungi ditentukan D
 proxy milik sendiri yang resolvernya dipercaya.
 
 Batas `pendamping`: `mem_limit`/`memswap_limit 1300m` (2 sesi x 512 MB + Node/Xvfb), pengawas menghentikan
-sesi di 450 MB RSS, `cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `ulimits core 0`,
+sesi di 450 MB RSS (worker-id laptop: 1 sesi, 1100 MB), `cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `ulimits core 0`,
 `init: true`. `pendamping-edge`: 128 MB, `cpus: 0.5`, `pids_limit: 64`.
 
 ## Uji skrip (tanpa Docker)

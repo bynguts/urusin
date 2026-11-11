@@ -5,7 +5,7 @@ import type net from 'node:net';
 import { expect, test, type Page } from '@playwright/test';
 import { byRole, click, css } from '@urusin/core';
 import type { PendampingEvent, SesiPendamping, TiketPendampingResponse } from '@urusin/contracts';
-import { createBrowserFactory, launchIsolated } from '../src/browser.js';
+import { createBrowserFactory, launchIsolated, PESAN_MEMORI } from '../src/browser.js';
 import { loadConfig } from '../src/config.js';
 import { runnerExpression } from '../src/runner-script.js';
 import { SessionManager, sidHashOf } from '../src/sessions.js';
@@ -401,7 +401,7 @@ test('residu: profil sesi (cookie, Login Data) terhapus total setelah ditutup; p
   expect(existsSync(dir)).toBe(false);
 });
 
-test('pengawas memori: sesi di atas anggaran dihentikan (gagal) dan slot dibebaskan', async () => {
+test('pengawas memori: sesi di atas anggaran dihentikan, warga diarahkan ke panduan, slot dibebaskan', async () => {
   const config = {
     ...loadConfig({
       PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN,
@@ -421,8 +421,11 @@ test('pengawas memori: sesi di atas anggaran dihentikan (gagal) dan slot dibebas
     origin: 'https://telunjuksakti.wonogirikab.go.id',
     params: { layanan_id: 1 },
   });
-  await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('gagal');
-  expect(manager.status(o).pesan).toMatch(/memori lebih dari batas peramban pendamping \(\d+ MB dari 0 MB\)/);
+  await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('dipandu');
+  expect(manager.status(o).hasil).toBe('drift');
+  // Pesan warga jelas dan menuju panduan; angka MB hanya di log operator.
+  expect(manager.status(o).pesan).toBe(PESAN_MEMORI);
+  expect(manager.status(o).pesan).not.toMatch(/\d+ MB/);
   // Slot dibebaskan setelah Chromium (dengan sandbox: lebih banyak proses) selesai ditutup.
   await expect.poll(() => manager.antrean(), { timeout: 10_000 }).toEqual({ aktif: 0, maks: 2, menunggu: 0 });
   await manager.shutdown();

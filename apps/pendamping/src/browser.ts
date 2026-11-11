@@ -216,6 +216,10 @@ const PESAN_MASUK =
 /** Pengajuan terkirim: sesi ditutup, peramban beserta login dan cookie dihapus. */
 export const PESAN_TERKIRIM = 'Pengajuan terkirim. Browser ditutup; login dan cookie ikut dihapus.';
 
+/** Pengawas memori menghentikan sesi (situs terlalu berat untuk peramban server): warga diarahkan ke panduan. */
+export const PESAN_MEMORI =
+  'Halaman situs ini terlalu berat untuk peramban pendamping Urusin, jadi sesi dihentikan. Kami beralih ke panduan langkah: buka situs resmi di perangkat Anda sendiri.';
+
 const PESAN_VERIFIKASI =
   "Situs meminta verifikasi keamanan. Ketuk kotak 'Verify you are human', lalu tunggu sebentar. AI menunggu dan tidak akan mengekliknya.";
 
@@ -1023,12 +1027,9 @@ export async function wire(
           `pendamping: sesi dihentikan kode=MEMORI_SESI mb=${mb} batas=${config.sessionMemMb} ` +
             `host=${new URL(program.origin).host}`,
         );
-        hooks.ended(
-          'gagal',
-          'gagal',
-          `Halaman ini memakai memori lebih dari batas peramban pendamping (${mb} MB dari ${config.sessionMemMb} MB). Lanjutkan lewat panduan.`,
-          { kode: 'MEMORI_SESI' },
-        );
+        // Bukan kesalahan warga: situsnya terlalu berat untuk peramban server. Arahkan ke panduan (dipandu),
+        // angka MB hanya di log operator.
+        hooks.ended('dipandu', 'drift', PESAN_MEMORI, { kode: 'MEMORI_SESI' });
       }
     } catch {
       // peramban sedang ditutup
