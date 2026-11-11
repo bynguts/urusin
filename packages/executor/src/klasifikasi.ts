@@ -149,6 +149,8 @@ const NEG_AKAR = [
   'sahkan',
   'terbitkan',
   'lapor',
+  // Review gel4 (PoC C): "Rampungkan" = menyelesaikan pengajuan.
+  'rampung',
 ];
 /** Kata NEG pendek: hanya cocok sebagai token utuh (supaya "ya" tidak mengenai "layanan"). */
 const NEG_TOKEN = [
@@ -228,6 +230,7 @@ const NEG_JALUR = [
   'sahkan',
   'terbit',
   'lapor',
+  'rampung',
 ];
 /** Frasa NEG dua kata ("tanda tangan", "tanda-tangan") untuk nama dan jalur. */
 const RE_FRASA_NEG = /tanda[^a-z0-9]{0,3}tangan/;
