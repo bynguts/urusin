@@ -175,12 +175,14 @@ export function kodeDisebut(teks: string): string[] {
   return [...new Set(kode)];
 }
 
-const KATA_KTP = /\b(ktp|e-?ktp|ktp-?el|kk|kartu keluarga|kartu tanda penduduk)\b/i;
+// "Saya warga Kota Medan" = menyatakan diri penduduk (ber-KTP) di sana; "tinggal di" hanya domisili.
+const KATA_KTP =
+  /\b(ktp|e-?ktp|ktp-?el|kk|kartu keluarga|kartu tanda penduduk)\b|\b(saya|aku|kami)\s+warga\b/i;
 
 /**
- * Wilayah dari pesan warga, tanpa LLM: `ktp` = warga sendiri menyebut KTP/KK-nya di kab/kota itu (satu kalimat
- * memuat kata KTP/KK dan nama tempatnya, dan seluruh pesan hanya menyebut satu kab/kota), `disebut` = satu
- * kab/kota disebut tanpa kata KTP/KK ("warga Kota Medan", "tinggal di Wonogiri"): cukup diusulkan sebagai kartu.
+ * Wilayah dari pesan warga, tanpa LLM: `ktp` = warga sendiri menyebut KTP/KK-nya di kab/kota itu, atau "saya
+ * warga X" (satu kalimat memuat kata itu dan nama tempatnya, dan seluruh pesan hanya menyebut satu kab/kota),
+ * `disebut` = satu kab/kota disebut tanpa kata itu ("tinggal di Wonogiri"): cukup diusulkan sebagai kartu.
  * Nama ganda (Bekasi, Semarang) atau dua kab/kota: null, agen yang bertanya.
  */
 export function wilayahDariPesan(teks: string): { kode: string; ktp: boolean } | null {

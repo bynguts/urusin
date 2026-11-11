@@ -69,12 +69,13 @@ describe('klasifikasi kata kunci', () => {
 });
 
 describe('wilayah dari pesan', () => {
-  it('KTP/KK disebut: ditetapkan; hanya tempat: kartu usulan; nama ganda: agen bertanya', () => {
+  it('KTP/KK/"saya warga" disebut: ditetapkan; hanya tempat: kartu usulan; nama ganda: agen bertanya', () => {
     expect(wilayahDariPesan('Anak saya lahir di Makassar. KTP saya Kota Makassar.')).toEqual({
       kode: '7371',
       ktp: true,
     });
-    expect(wilayahDariPesan('Saya warga Kota Medan.')).toEqual({ kode: '1271', ktp: false });
+    expect(wilayahDariPesan('Saya warga Kota Medan.')).toEqual({ kode: '1271', ktp: true });
+    expect(wilayahDariPesan('Saya tinggal di Kota Medan.')).toEqual({ kode: '1271', ktp: false });
     expect(wilayahDariPesan('KTP saya Bekasi')).toBeNull();
     expect(wilayahDariPesan('KTP saya Kota Semarang, bukan Wonogiri lagi')).toBeNull();
   });
@@ -147,7 +148,7 @@ describe('alur cepat sampai rencana', () => {
     const u = buatUrusanTerwilayah(env.store, {});
     const out = await runTurn(env.deps, {
       urusanId: u.id,
-      userText: 'Saya warga Kota Medan, mau cek bansos.',
+      userText: 'Saya tinggal di Kota Medan, mau cek bansos.',
     });
     expect(of(out.events, 'wilayah').map((e) => e.ktp.kodeKabKota)).toContain('1271');
     expect(of(out.events, 'assistant_text')).toHaveLength(0);
