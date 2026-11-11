@@ -491,6 +491,65 @@ describe('probe gel4: tombol menu ikon saja dan pembuka kalender', () => {
   });
 });
 
+describe('probe gel5 3402: pembuka panel lokal bernama NEG', () => {
+  const aturan = (html: string) => {
+    document.body.innerHTML = html;
+    const k = klasifikasi(document.querySelector('[data-uji]')!);
+    return { kelas: k.kelas, aturan: k.aturan };
+  };
+
+  const PANEL = '<div id="panel" class="offcanvas"></div><div id="akun" class="collapse"></div>';
+
+  it('"Masuk atau Daftar" pembuka offcanvas/collapse/dropdown (href #, /, atau tombol) di luar form = ui_lokal', () => {
+    for (const html of [
+      `<a href="#" class="d-sm-none" data-bs-toggle="offcanvas" data-bs-target="#panel" data-uji>Masuk atau Daftar</a>${PANEL}`,
+      `<a href="/" data-toggle="collapse" data-target="#akun" data-uji>Masuk atau Daftar</a>${PANEL}`,
+      `<a href="#akun" aria-controls="akun" aria-expanded="false" data-uji>Daftar</a>${PANEL}`,
+      '<div class="dropdown"><button type="button" data-bs-toggle="dropdown" data-uji>Login / Register</button><ul class="dropdown-menu"></ul></div>',
+      `<button type="button" aria-controls="panel" aria-expanded="false" data-uji>Akun Saya</button>${PANEL}`,
+    ])
+      expect(aturan(html), html).toMatchObject({ kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' });
+  });
+
+  it('tanpa toggle panel, di dalam form, href jalur lain, id/kelas/ikon NEG, atau panel tidak ada: tetap kirim', () => {
+    for (const html of [
+      '<a href="/daftar" data-uji>Masuk atau Daftar</a>',
+      `<a href="/daftar" data-bs-toggle="collapse" data-bs-target="#akun" data-uji>Daftar</a>${PANEL}`,
+      `<form><input name="q"><button type="button" data-bs-toggle="collapse" data-bs-target="#akun" data-uji>Daftar</button></form>${PANEL}`,
+      `<a href="#" class="btn-submit" data-bs-toggle="modal" data-bs-target="#panel" data-uji>Daftar</a>${PANEL}`,
+      `<a href="#" data-bs-toggle="modal" data-bs-target="#panel" data-uji><i class="fa fa-paper-plane"></i> Daftar</a>${PANEL}`,
+      // Panel target tidak ada di DOM.
+      '<a href="#" data-bs-toggle="offcanvas" data-bs-target="#tidak-ada" data-uji>Masuk atau Daftar</a>',
+      '<button type="button" aria-controls="tidak-ada" aria-expanded="false" data-uji>Daftar</button>',
+      '<button type="button" data-bs-toggle="dropdown" data-uji>Daftar</button>',
+    ])
+      expect(kelasDari(html), html).toBe('kirim');
+  });
+
+  it('nama bukan kata akun (Kirim Pengajuan, Hapus Akun, Bayar) dengan toggle panel di luar form: tetap kirim', () => {
+    for (const nama of ['Kirim Pengajuan', 'Hapus Akun', 'Bayar', 'Daftar Ulang Pembayaran'])
+      for (const html of [
+        `<button type="button" aria-controls="panel" aria-expanded="false" data-uji>${nama}</button>${PANEL}`,
+        `<a href="#" data-bs-toggle="modal" data-bs-target="#panel" data-uji>${nama}</a>${PANEL}`,
+        `<div role="button" data-bs-toggle="modal" data-bs-target="#panel" data-uji>${nama}</div>${PANEL}`,
+      ])
+        expect(kelasDari(html), html).toBe('kirim');
+  });
+
+  it('<button form="f"> dan div role=button yang men-submit form: tetap kirim walau bernama akun', () => {
+    expect(
+      kelasDari(
+        `<form id="f"><input name="nik"></form><button form="f" data-bs-toggle="modal" data-bs-target="#panel" data-uji>Daftar</button>${PANEL}`,
+      ),
+    ).toBe('kirim');
+    expect(
+      kelasDari(
+        `<form id="f"><input name="nik"></form><div role="button" onclick="document.getElementById('f').submit()" data-uji>Kirim Pengajuan</div>`,
+      ),
+    ).toBe('kirim');
+  });
+});
+
 describe('halamanAkhir', () => {
   const akhir = (html: string) => {
     document.body.innerHTML = html;

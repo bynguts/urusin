@@ -2,6 +2,7 @@ import http from 'node:http';
 import net from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  cnameTetapGoId,
   createEgressPolicy,
   egressRules,
   isBlockedAddress,
@@ -347,5 +348,84 @@ describe('host di allowlist yang DNS-nya menunjuk ke loopback/privat (klasifikas
     });
     expect(http403).toBe(403);
     expect(canaryHits).toBe(0);
+  });
+});
+
+describe('probe gel5 3310: proxy dalam proses, aset pemda tepat waktu', () => {
+  const PEMDA = new Set(['klaten.go.id']);
+  const resolve = async (h: string) => (h === 'cdn.privat.klaten.go.id' ? ['10.0.0.9'] : ['103.10.20.31']);
+  const cname = async (h: string) =>
+    (
+      ({
+        'cdn.klaten.go.id': ['edge.klaten.go.id.'],
+        'cdn.luar.klaten.go.id': ['klaten.cdn-luar.example.'],
+        'putar.klaten.go.id': ['putar.klaten.go.id.'],
+      }) as Record<string, string[]>
+    )[h] ?? [];
+
+  it('hanya host yang disetujui rute; saudara belum disetujui, apex, pemda lain, CNAME luar ditolak', async () => {
+    const aset = new Set([
+      'cdn.klaten.go.id',
+      'cdn.privat.klaten.go.id',
+      'cdn.luar.klaten.go.id',
+      'cdn.slemankab.go.id',
+    ]);
+    const decide = createEgressPolicy(
+      egressRules(['sakura.dukcapil.klaten.go.id'], []),
+      resolve,
+      PEMDA,
+      aset,
+      cname,
+    );
+    expect(await decide('cdn.klaten.go.id', 443)).toEqual({
+      ok: true,
+      address: '103.10.20.31',
+      local: false,
+    });
+    // Tujuan redirect ke host saudara yang belum disetujui (redirect tidak melewati rute) dan apex: ditolak.
+    expect(await decide('x.klaten.go.id', 443)).toMatchObject({ ok: false, reason: 'host_tidak_diizinkan' });
+    expect(await decide('klaten.go.id', 443)).toMatchObject({ ok: false, reason: 'host_tidak_diizinkan' });
+    expect(await decide('cdn.slemankab.go.id', 443)).toMatchObject({
+      ok: false,
+      reason: 'host_tidak_diizinkan',
+    });
+    expect(await decide('cdn.klaten.go.id', 80)).toMatchObject({ ok: false, reason: 'host_tidak_diizinkan' });
+    expect(await decide('cdn.privat.klaten.go.id', 443)).toMatchObject({
+      ok: false,
+      reason: 'alamat_privat',
+    });
+    expect(await decide('cdn.luar.klaten.go.id', 443)).toMatchObject({
+      ok: false,
+      reason: 'cname_luar_go_id',
+    });
+  });
+
+  it('setujuiAset hanya subdomain pemda sesi; sesudah disetujui baru lolos', async () => {
+    const px = await startEgressProxy(egressRules(['sakura.dukcapil.klaten.go.id'], []), {
+      pemda: PEMDA,
+      resolve,
+      cname,
+    });
+    try {
+      expect(await px.decide('cdn.klaten.go.id', 443)).toMatchObject({ ok: false });
+      expect(px.setujuiAset('CDN.klaten.go.id')).toBe(true);
+      expect(px.setujuiAset('cdn.slemankab.go.id')).toBe(false);
+      expect(px.setujuiAset('evil.example')).toBe(false);
+      expect(await px.decide('cdn.klaten.go.id', 443)).toMatchObject({ ok: true });
+      expect(await px.decide('x.klaten.go.id', 443)).toMatchObject({ ok: false });
+    } finally {
+      await px.close();
+    }
+  });
+
+  it('cnameTetapGoId: tetap .go.id = ya; keluar, putaran, galat DNS = tidak', async () => {
+    expect(await cnameTetapGoId('cdn.klaten.go.id', cname)).toBe(true);
+    expect(await cnameTetapGoId('cdn.luar.klaten.go.id', cname)).toBe(false);
+    expect(await cnameTetapGoId('putar.klaten.go.id', cname)).toBe(false);
+    expect(
+      await cnameTetapGoId('cdn.klaten.go.id', async () => {
+        throw Object.assign(new Error('timeout'), { code: 'ETIMEOUT' });
+      }),
+    ).toBe(false);
   });
 });

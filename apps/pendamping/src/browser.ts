@@ -24,7 +24,9 @@ import { chromium, type BrowserContext, type CDPSession, type Page } from 'playw
 import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
 import {
+  asetPemdaSama,
   asetUmumBoleh,
+  domainPemdaSesi,
   createGerbangTulis,
   hostAset,
   jalurPihakKetigaBoleh,
@@ -377,6 +379,12 @@ export const KENDALI_MASUK_EXPR = `(() => {
 /** Lebar CSS yang dicoba (batas sm/md/lg/xl/xxl kerangka CSS umum) untuk memunculkan kendali masuk. */
 const LEBAR_RESPONSIF = [768, 992, 1200, 1400] as const;
 
+/** WebSocket (ws/wss) ke host:port allowlist sesi (ws = http, wss = https untuk pencocokan port bawaan). */
+export function wsDiAllowlist(allowedHosts: ReadonlySet<string>, u: URL): boolean {
+  if (u.protocol !== 'ws:' && u.protocol !== 'wss:') return false;
+  return urlDiAllowlist(allowedHosts, `${u.protocol === 'wss:' ? 'https:' : 'http:'}//${u.host}/`);
+}
+
 /** URL lolos allowlist host:port sesi (lapis `context.route`; sama dengan proxy egress). */
 export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): boolean {
   const u = URL.parse(url);
@@ -387,23 +395,81 @@ export function urlDiAllowlist(allowedHosts: ReadonlySet<string>, url: string): 
 /**
  * Saringan rute peramban (lapis kedua setelah proxy): host:port di allowlist, www.google.com hanya /recaptcha/,
  * dan host aset umum (CDN/fon) hanya subresource script/stylesheet/font/image, tidak pernah navigasi dokumen
- * (host aset pemda .go.id: juga XHR/fetch GET).
+ * (host aset pemda .go.id: juga XHR/fetch GET). Host di luar allowlist hanya untuk GET gambar/style/fon dari
+ * subdomain pemda yang sama (`pemda`, probe gel5 3310).
  */
 export function izinRute(
   allowedHosts: ReadonlySet<string>,
   req: { url(): string; method(): string; resourceType(): string; isNavigationRequest(): boolean },
+  pemda: ReadonlySet<string> = new Set(),
 ): boolean {
   const url = req.url();
-  return (
-    urlDiAllowlist(allowedHosts, url) &&
-    jalurPihakKetigaBoleh(url) &&
-    asetUmumBoleh({
-      url,
-      metode: req.method(),
-      resourceType: req.resourceType(),
-      dokumen: req.isNavigationRequest(),
-    })
-  );
+  const r = {
+    url,
+    metode: req.method(),
+    resourceType: req.resourceType(),
+    dokumen: req.isNavigationRequest(),
+  };
+  if (!urlDiAllowlist(allowedHosts, url)) return asetPemdaSama(r, pemda);
+  return jalurPihakKetigaBoleh(url) && asetUmumBoleh(r);
+}
+
+/** Jenis subresource yang boleh berakhir di host aset pemda yang disetujui (sama dengan `asetPemdaSama`). */
+const TIPE_ASET_REDIRECT: ReadonlySet<string> = new Set(['image', 'stylesheet', 'font']);
+
+/**
+ * Respons yang tiba lewat hop redirect di host di luar allowlist sesi (hop redirect tidak melewati rute; proxy
+ * hanya meloloskan host aset pemda yang sudah disetujui) dengan jenis selain gambar/style/fon: pelanggaran.
+ * `skrip` = jenis script (pemuatan bingkainya dihentikan pemanggil).
+ */
+export function pelanggaranRedirect(
+  allowedHosts: ReadonlySet<string>,
+  resp: { url(): string; request(): { resourceType(): string; redirectedFrom(): unknown } },
+): { host: string; skrip: boolean } | undefined {
+  const req = resp.request();
+  if (!req.redirectedFrom() || urlDiAllowlist(allowedHosts, resp.url())) return undefined;
+  const tipe = req.resourceType();
+  if (TIPE_ASET_REDIRECT.has(tipe)) return undefined;
+  const host = URL.parse(resp.url())?.hostname;
+  return host ? { host, skrip: tipe === 'script' } : undefined;
+}
+
+type BingkaiJaga = { url(): string; goto(url: string): Promise<unknown> };
+
+/**
+ * Penjaga bingkai (lapis setelah rute): dokumen yang ter-commit di host http(s) di luar allowlist (mis. tujuan
+ * redirect 30x yang tidak melewati rute, ke host aset pemda yang sudah disetujui) tidak dipakai. Bingkai utama:
+ * blokir dokumen, kembali ke halaman sebelumnya (atau halaman kosong). Subframe: blokir, lalu about:blank.
+ */
+export function jagaUtama(
+  p: {
+    on(e: 'framenavigated', fn: (f: BingkaiJaga) => void): unknown;
+    mainFrame(): BingkaiJaga;
+    url(): string;
+    goBack(o: { timeout: number }): Promise<unknown>;
+    goto(url: string): Promise<unknown>;
+  },
+  allowedHosts: ReadonlySet<string>,
+  onBlocked: (host: string, dokumen?: boolean) => void,
+): void {
+  const luar = (url: string) => {
+    const u = URL.parse(url);
+    return u && /^https?:$/.test(u.protocol) && !urlDiAllowlist(allowedHosts, u.href) ? u : undefined;
+  };
+  p.on('framenavigated', (f) => {
+    const u = luar(f.url());
+    if (!u) return;
+    if (f !== p.mainFrame()) {
+      onBlocked(u.hostname, false);
+      void f.goto('about:blank').catch(() => {});
+      return;
+    }
+    onBlocked(u.hostname, true);
+    void (async () => {
+      await p.goBack({ timeout: 5_000 }).catch(() => null);
+      if (luar(p.url())) await p.goto('about:blank').catch(() => {});
+    })();
+  });
 }
 
 /**
@@ -466,6 +532,9 @@ export async function launchIsolated(
 ): Promise<Isolated> {
   const rules = egressRules(hosts, config.fixtureOrigins);
   const allowedHosts = new Set(rules.map((r) => `${r.host}:${r.port}`));
+  // Domain pemda portal sesi: subdomainnya boleh untuk gambar/style/fon (rute) di :443 (proxy; edge menurunkan
+  // sendiri dari host sesi yang sama).
+  const pemda = domainPemdaSesi(hosts);
   // Produksi: satu-satunya jalan keluar = pendamping-edge (kontainer ini tidak punya rute lain). Dev/e2e:
   // proxy egress di dalam proses dengan kebijakan yang sama.
   const edge = config.edge
@@ -475,7 +544,7 @@ export async function launchIsolated(
         config.ttlMs + 5 * 60_000,
       )
     : undefined;
-  const proxy = edge ? undefined : await startEgressProxy(rules, { upstream: config.upstreamProxy });
+  const proxy = edge ? undefined : await startEgressProxy(rules, { upstream: config.upstreamProxy, pemda });
   proxy?.onBlocked(onBlocked);
   const tutupProxy = async () => {
     await proxy?.close();
@@ -516,13 +585,33 @@ export async function launchIsolated(
     // dianggap tantangan oleh gerbang tulis (review L3; proteksi di registry belum lengkap).
     const hostCf = new Set<string>();
     context.on('response', (resp) => {
+      // Hop redirect ke host di luar allowlist (host aset pemda yang disetujui) selain gambar/style/fon:
+      // dicatat; script juga dihentikan pemuatannya (best effort, badannya mungkin sudah tiba).
+      const langgar = pelanggaranRedirect(allowedHosts, resp);
+      if (langgar) {
+        onBlocked(langgar.host, false);
+        if (langgar.skrip) {
+          try {
+            void resp
+              .request()
+              .frame()
+              .evaluate('window.stop()')
+              .catch(() => {});
+          } catch {
+            // bingkai sudah lepas
+          }
+        }
+      }
       if (hostCf.size >= 64 || !resp.headers()['cf-ray']) return;
       const h = URL.parse(resp.url())?.host;
       if (h) hostCf.add(h);
     });
-    await context.route('**/*', (route) => {
+    // Persetujuan host aset pemda tepat waktu di proxy/edge, per host (termasuk yang masih berjalan): edge tidak
+    // dipanggil per gambar. Yang gagal dilepas agar bisa dicoba lagi.
+    const asetDisetujui = new Map<string, Promise<boolean>>();
+    await context.route('**/*', async (route) => {
       const req = route.request();
-      const ok = izinRute(allowedHosts, req);
+      const ok = izinRute(allowedHosts, req, pemda);
       if (!ok && req.method() === 'GET' && permintaanGerbang(req).utama) {
         const https = naikHttps(req.url(), (u) =>
           izinRute(allowedHosts, {
@@ -545,6 +634,27 @@ export async function launchIsolated(
         // tetap di halaman sebelumnya dan diberi giliran.
         return route.abort(dokumen ? 'aborted' : 'blockedbyclient');
       }
+      // Aset pemda di luar allowlist (lolos izinRute = GET gambar/style/fon subdomain pemda sesi): proxy/edge baru
+      // meloloskan host itu SETELAH disetujui di sini. Tujuan redirect 30x tidak melewati rute ini (Playwright
+      // meneruskan hop redirect tanpa handler), jadi host saudara yang belum disetujui tetap ditolak di jaringan.
+      if (!urlDiAllowlist(allowedHosts, req.url())) {
+        const host = URL.parse(req.url())?.hostname ?? '';
+        let setuju = asetDisetujui.get(host);
+        if (!setuju) {
+          const baru = proxy
+            ? Promise.resolve(proxy.setujuiAset(host))
+            : edge!.setujuiAset(host).catch(() => false);
+          setuju = baru;
+          asetDisetujui.set(host, baru);
+          void baru.then((ok) => {
+            if (!ok && asetDisetujui.get(host) === baru) asetDisetujui.delete(host);
+          });
+        }
+        if (!(await setuju)) {
+          onBlocked(host, false);
+          return route.abort('blockedbyclient');
+        }
+      }
       // `aborted` (net::ERR_ABORTED): navigasi dokumen yang dibatalkan tidak meng-commit halaman galat, jadi
       // warga tetap melihat formulir yang sama (dengan isiannya) untuk ditekan sendiri.
       if (
@@ -557,16 +667,26 @@ export async function launchIsolated(
         return route.abort('aborted');
       return route.continue();
     });
-    // Gerbang tulis tidak melihat frame WebSocket (proxy hanya memeriksa host): sesi generik menolak setiap
-    // koneksi WebSocket sebelum tersambung ke server (gagal tertutup), dicatat sebagai blokir `WSOCKET`.
-    if (gerbang)
-      await context.routeWebSocket(
-        () => true,
-        (ws) => {
+    // WebSocket tidak lewat context.route. Semua sesi: hanya ke host:port allowlist sesi (aset pemda tepat waktu
+    // tidak termasuk). Generik: gerbang tulis tidak melihat frame WebSocket, jadi setiap koneksi ditolak sebelum
+    // tersambung (gagal tertutup), dicatat sebagai blokir `WSOCKET`.
+    await context.routeWebSocket(
+      () => true,
+      (ws) => {
+        const u = URL.parse(ws.url());
+        if (gerbang) {
           gerbang.tolak({ metode: 'WSOCKET', dokumen: false, utama: false, xhr: false, url: ws.url() });
           return ws.close({ code: 1008, reason: 'websocket tidak diizinkan di sesi pendamping' });
-        },
-      );
+        }
+        if (u && wsDiAllowlist(allowedHosts, u)) return void ws.connectToServer();
+        if (u) onBlocked(u.hostname, false);
+        return ws.close({ code: 1008, reason: 'websocket di luar allowlist sesi' });
+      },
+    );
+    // Penjaga bingkai utama dan subframe (lapis setelah rute).
+    const jaga = (p: Page) => jagaUtama(p, allowedHosts, onBlocked);
+    for (const p of context.pages()) jaga(p);
+    context.on('page', jaga);
     const ctx = context;
     return {
       context: ctx,
@@ -1043,6 +1163,25 @@ export async function wire(
     loading = true;
     void interp.onTabUpdated(1, { status: 'loading' });
   });
+  // Permintaan yang sedang berjalan (bingkai mana pun): batas tunggu konten fade-in dihitung dari jaringan idle,
+  // bukan dari event load saja (probe gel5 6171: terowongan lambat). Long-poll (> 10 dtk) tidak dihitung.
+  const jalanJaringan = new Map<object, number>();
+  let aktivitasJaringan = Date.now();
+  page.on('request', (r) => {
+    jalanJaringan.set(r, Date.now());
+    aktivitasJaringan = Date.now();
+  });
+  const reqSelesai = (r: object) => {
+    jalanJaringan.delete(r);
+    aktivitasJaringan = Date.now();
+  };
+  page.on('requestfinished', reqSelesai);
+  page.on('requestfailed', reqSelesai);
+  const jaringanIdle = () => {
+    const t = Date.now();
+    for (const [r, mulai] of jalanJaringan) if (t - mulai > 10_000) jalanJaringan.delete(r);
+    return jalanJaringan.size === 0 && t - aktivitasJaringan >= 500;
+  };
   page.on('load', () => {
     loading = false;
     // Periksa tantangan dan status masuk dulu agar interpreter tidak melangkah di halaman tantangan/login.
@@ -1352,6 +1491,8 @@ export async function wire(
     const hitungMasuk = async () =>
       (await nilaiTerisolasi(KENDALI_MASUK_EXPR).catch(() => undefined)) as
         { terlihat: number; tersembunyi: number } | undefined;
+    const belumTampil = async () =>
+      (await nilaiTerisolasi(KONTEN_BELUM_TAMPIL_EXPR).catch(() => false)) === true;
     const tenang = async () => {
       // Jeda singkat agar handler klik sempat memicu permintaan; bila navigasi dimulai, tunggu muat (<= 10 detik).
       await new Promise((r) => setTimeout(r, 400));
@@ -1371,11 +1512,16 @@ export async function wire(
         await new Promise((r) => setTimeout(r, 250));
       }
       // Konten fade-in (probe gel4 6171): tunggu transisi/animasi berhingga selesai dan konten besar yang memuat
-      // kendali tidak lagi transparan, paling lama 3 detik.
-      const batasPudar = Date.now() + 3_000;
-      while (!destroyed && Date.now() < batasPudar) {
-        const belum = await nilaiTerisolasi(KONTEN_BELUM_TAMPIL_EXPR).catch(() => false);
-        if (belum !== true) return;
+      // kendali tidak lagi transparan. Batas 3 detik dihitung sejak jaringan idle (gel5: konten dibuka sesudah
+      // data XHR/terowongan lambat, bukan sesudah load), paling lambat sejak 8 detik menunggu idle.
+      const mulaiPudar = Date.now();
+      let idleSejak: number | undefined;
+      while (!destroyed) {
+        if (!(await belumTampil())) return;
+        const t = Date.now();
+        if (idleSejak === undefined && jaringanIdle()) idleSejak = t;
+        const pangkal = idleSejak ?? (t - mulaiPudar >= 8_000 ? mulaiPudar + 8_000 : undefined);
+        if (pangkal !== undefined && t >= pangkal + 3_000) return;
         await new Promise((r) => setTimeout(r, 100));
       }
     };
@@ -1407,6 +1553,7 @@ export async function wire(
           }
         },
         tenang,
+        belumTampil,
         urlKini: () => page.url(),
         async lebarkan() {
           if (lebarAsli || destroyed || ditahan()) return false;

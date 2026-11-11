@@ -6,6 +6,7 @@ import {
   buildAllowlist,
   checkConnect,
   checkConnectHost,
+  domainPemda,
   EgressBlockedError,
   isBlockedAddress,
   isLlmProxy,
@@ -287,6 +288,30 @@ describe('checkConnect (profil browser)', () => {
     expect(() =>
       checkConnect('oss.go.id', 443, '1.2.3.4', 'runtime' as 'browser', { sesi: new Set(['oss.go.id']) }),
     ).toThrow(/bukan untuk CONNECT/);
+  });
+
+  it('probe gel5 3310: aset pemda disetujui tepat waktu lolos tanpa union; belum disetujui, apex, pemda lain tidak', () => {
+    const domain = new Set(['klaten.go.id']);
+    const lingkup = {
+      sesi,
+      domainPemda: domain,
+      asetPemda: new Set(['cdn.klaten.go.id', 'cdn.slemankab.go.id']),
+    };
+    // Host saudara belum disetujui (mis. tujuan redirect) dan apex pemda: ditolak.
+    expect(() => checkConnectHost('x.klaten.go.id', 443, 'browser', lingkup)).toThrow(/union registry/);
+    expect(() => checkConnectHost('klaten.go.id', 443, 'browser', lingkup)).toThrow(/union registry/);
+    expect(() => checkConnectHost('cdn.klaten.go.id', 443, 'browser', { sesi, domainPemda: domain })).toThrow(
+      /union registry/,
+    );
+    expect(domainPemda('sakura.dukcapil.KLATEN.go.id.')).toBe('klaten.go.id');
+    expect(domainPemda('klaten.go.id')).toBe('klaten.go.id');
+    expect(domainPemda('go.id')).toBeUndefined();
+    expect(domainPemda('klaten.go.id.evil.example')).toBeUndefined();
+    expect(checkConnectHost('cdn.klaten.go.id', 443, 'browser', lingkup)).toBe('cdn.klaten.go.id');
+    expect(() => checkConnectHost('cdn.klaten.go.id', 443, 'browser', { sesi })).toThrow(/union registry/);
+    expect(() => checkConnectHost('cdn.slemankab.go.id', 443, 'browser', lingkup)).toThrow(/union registry/);
+    expect(() => checkConnectHost('cdn.klaten.go.id', 80, 'browser', lingkup)).toThrow(/https:443/);
+    expect(() => checkConnect('cdn.klaten.go.id', 443, '10.0.0.5', 'browser', lingkup)).toThrow(/terlarang/);
   });
 
   it('checkConnectHost (sebelum DNS): sama dengan checkConnect tanpa alamat; mengembalikan host ternormalisasi', () => {
