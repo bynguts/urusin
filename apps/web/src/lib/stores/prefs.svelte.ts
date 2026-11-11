@@ -45,6 +45,15 @@ export class PrefsStore implements StorePrefs {
 
   atur<K extends keyof Prefs>(kunci: K, nilai: Prefs[K]): void {
     this.nilai = bersihkanPrefs({ ...this.nilai, [kunci]: nilai });
+    this.simpan();
+  }
+
+  reset(): void {
+    this.nilai = { ...PREFS_AWAL };
+    this.simpan();
+  }
+
+  private simpan(): void {
     try {
       this.gudang?.setItem(KUNCI, JSON.stringify(this.nilai));
     } catch {

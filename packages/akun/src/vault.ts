@@ -71,6 +71,8 @@ export type DokumenMeta = {
   mime: string;
   size: number;
   createdAt: string;
+  /** Rujukan contoh bersama pada salinan demo, tidak bisa dihapus. */
+  bacaSaja?: boolean;
 };
 
 export type BatasVault = {
@@ -322,6 +324,7 @@ export class Vault {
       mime: d.mime,
       size: d.bytes.length,
       createdAt: u.created_at,
+      bacaSaja: true,
     }));
   }
 

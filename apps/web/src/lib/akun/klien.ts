@@ -12,6 +12,7 @@ export type DokumenAkun = {
   mime: string;
   ukuran: number;
   disimpanPada: string;
+  bacaSaja?: boolean;
 };
 export type DataDiri = DataDiriRingkas & { kodeKabKota?: string; statusPerkawinan?: string };
 

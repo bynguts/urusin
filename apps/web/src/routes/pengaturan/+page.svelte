@@ -42,6 +42,10 @@
   function hapusLokal() {
     if (!confirm('Hapus daftar urusan, pesan, dan pengaturan dari perangkat ini?')) return;
     lokal.hapusSemua();
+    prefs.reset();
+    tts.berhenti();
+    kodeWilayah = '';
+    wilayahTersimpan = false;
     dataDihapus = true;
   }
 
