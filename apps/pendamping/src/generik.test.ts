@@ -975,7 +975,8 @@ describe('redaksi', () => {
       for (const v of [nik, nama, kk, spasi, nama.toUpperCase()]) expect(json).not.toContain(v);
       expect(p!.teks).toContain(PH_NIK);
     }
-  });
+    // 200 iterasi (~3 detik sendirian): batas longgar agar tidak gagal saat turbo paralel.
+  }, 30_000);
 
   it('L2: pemisah bukan huruf/angka sampai 4 karakter tetap disamarkan', () => {
     const angka = acak(16, '0123456789');
