@@ -140,6 +140,8 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
     if ((it.jenis === 'galat' || it.jenis === 'waktu-habis') && i < idxTerakhirWarga) it.terakhir = false;
     // Usulan wilayah yang sudah dijawab (wilayah ditetapkan sesudahnya) tidak bisa dikonfirmasi lagi.
     if (it.jenis === 'wilayah' && it.e.seq < wilayahDitetapkanSeq) it.terakhir = false;
+    // Teks model ditampilkan polos: penanda tebal Markdown ("**Kota Medan**") tidak boleh tampil mentah.
+    if (it.jenis === 'teks') it.teks = it.teks.replace(/\*\*([^*\n]+)\*\*/g, '$1');
   }
   return out;
 }
