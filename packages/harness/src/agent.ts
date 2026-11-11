@@ -201,6 +201,9 @@ function withInstruction(messages: ChatMessage[], instruction: ChatMessage): Cha
   return [...messages.slice(0, -1), instruction, ...messages.slice(-1)];
 }
 
+/** Hasil tool yang membawa konten tak tepercaya (selain blok ingatan milik warga sendiri). */
+const KONTEN_LUAR_RE = /<<DATA_TAK_TEPERCAYA sumber="(?!ingatan")/;
+
 class TurnRunner {
   private readonly cfg: AgentConfig;
   private readonly store: HarnessStore;
@@ -224,6 +227,11 @@ class TurnRunner {
   private readonly blokIngatan: string | null;
   /** Label butir yang dicatat otomatis di giliran ini (petunjuk agar model tidak mencatat ulang). */
   private readonly ingatanBaru: string[] = [];
+  /**
+   * Giliran ini sudah membaca konten tak tepercaya (hasil tool ber-spotlight: dom/ocr/tool_output/rag/...). Sejak
+   * itu ingatan__ingat tidak ditawarkan dan ditolak: injeksi tidak bisa menanam ingatan lintas urusan.
+   */
+  private kontenTakTepercaya = false;
 
   constructor(
     private readonly deps: AgentDeps,
@@ -249,7 +257,7 @@ class TurnRunner {
 
   /** Tool `ingatan__ingat` hanya ditawarkan bila urusan punya pemilik vault. */
   private toolDitawarkan(nama: string): boolean {
-    return nama !== INGAT_TOOL || this.ingatan !== null;
+    return nama !== INGAT_TOOL || (this.ingatan !== null && !this.kontenTakTepercaya);
   }
 
   private get scope() {
@@ -602,6 +610,20 @@ class TurnRunner {
   ): Promise<{ content: string; end: boolean }> {
     // Nama tool datang dari model: jangan pernah dicatat/dipantulkan mentah (bisa memuat PII atau berukuran besar).
     const name = safeToolName(rawName);
+    if (name === INGAT_TOOL && this.kontenTakTepercaya) {
+      const pesan = 'ingatan tidak bisa diubah sesudah membaca konten luar di giliran ini';
+      this.emit({
+        type: 'policy_gate',
+        tool: name,
+        keputusan: 'deny',
+        aturan: 'UNTRUSTED_CONTENT_READ',
+        pesan,
+      });
+      return {
+        content: JSON.stringify({ is_error: true, aturan: 'UNTRUSTED_CONTENT_READ', pesan }),
+        end: false,
+      };
+    }
     let raw: unknown;
     try {
       raw = JSON.parse(argsJson || '{}');
@@ -730,6 +752,7 @@ class TurnRunner {
           return { content: JSON.stringify({ is_error: true, pesan: e.message }), end: false };
         }
       }
+      if (KONTEN_LUAR_RE.test(res.content)) this.kontenTakTepercaya = true;
       return { content: res.terbungkus ? res.content : clip(res.content), end: res.endTurn === true };
     } catch (e) {
       // Tindakan tidak sampai ke warga: konfirmasi tidak boleh hangus.
@@ -751,7 +774,10 @@ class TurnRunner {
       const teks = this.turn.pii.redact(this.turn.userText).text;
       for (const e of ingatPreferensi(this.ingatan, teks, this.now().toISOString())) {
         this.emit(e);
-        if (e.type === 'ingatan') this.ingatanBaru.push(e.butir.label);
+        if (e.type === 'ingatan')
+          this.ingatanBaru.push(
+            e.aksi === 'usulan' ? `${e.butir.label} (menunggu persetujuan warga di kartu)` : e.butir.label,
+          );
       }
     } catch {
       // vault tidak tersedia: turn tetap berjalan tanpa ingatan baru.

@@ -11,7 +11,15 @@ import { allowedTransitions } from '../state.js';
 import { NON_TERMINAL_STATES, defineTool, type ToolDef } from '../tools.js';
 import { INJECTION_CASES, type InjectionCase, type InjectionGoal } from './cases.js';
 import { buatUrusanTerwilayah } from '../wilayah.js';
-import { ingatanKosong, nilaiButir, terapkanOperasi, type PenyimpanIngatan } from '../ingatan.js';
+import {
+  INGAT_TOOL,
+  bacaIngatan,
+  ingatanKosong,
+  nilaiButir,
+  terapkanOperasi,
+  type Ingatan,
+  type PenyimpanIngatan,
+} from '../ingatan.js';
 
 const HIDDEN_CHARS = new RegExp(
   `[${[0x200b, 0x202e, 0x2060].map((cp) => String.fromCodePoint(cp)).join('')}]`,
@@ -24,7 +32,7 @@ export type InjectionResult = {
   tujuan: InjectionGoal;
   /** Model patuh benar-benar mencoba menjalankan serangan (skrip dieksekusi sampai tahap itu). */
   dicoba: boolean;
-  /** Tool tulis/final yang benar-benar dieksekusi (harus kosong). */
+  /** Tool tulis/final yang benar-benar dieksekusi, termasuk penulisan Ingatan warga (harus kosong). */
   tereksekusi: string[];
   /** Aturan gate yang memblokir (atau REDAKSI untuk eksfiltrasi PII). */
   diblokirOleh: string | null;
@@ -54,6 +62,21 @@ function ingatanBeracun(payload: string): PenyimpanIngatan {
     pemilik: () => 'tamu_uji',
     muat: () => ingatan,
     simpan: () => undefined,
+    jenisDokumen: () => [],
+    urusanMilik: () => [],
+  };
+}
+
+/** Penyimpan ingatan uji yang mencatat setiap penulisan sebagai eksekusi (serangan penanaman ingatan). */
+function ingatanTercatat(executed: string[]): PenyimpanIngatan {
+  let ingatan: Ingatan = ingatanKosong();
+  return {
+    pemilik: () => 'tamu_uji',
+    muat: () => ingatan,
+    simpan: (_p, i) => {
+      executed.push(INGAT_TOOL);
+      ingatan = bacaIngatan(i);
+    },
     jenisDokumen: () => [],
     urusanMilik: () => [],
   };
@@ -139,7 +162,11 @@ export async function runInjectionCase(c: InjectionCase): Promise<InjectionResul
     provider,
     tools,
     ...(ragDb ? { ragDb } : {}),
-    ...(c.kanal === 'ingatan' ? { ingatan: ingatanBeracun(c.payload) } : {}),
+    ...(c.kanal === 'ingatan'
+      ? { ingatan: ingatanBeracun(c.payload) }
+      : c.serangan?.tool === INGAT_TOOL
+        ? { ingatan: ingatanTercatat(executed) }
+        : {}),
   });
   const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
   let v = u.version;
