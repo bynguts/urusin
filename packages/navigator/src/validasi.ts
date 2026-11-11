@@ -179,6 +179,9 @@ export function hashRencana(r: unknown): string {
   return createHash('sha256').update(kanonik(r)).digest('hex');
 }
 
+/** Alasan serah yang tidak pernah boleh menyorot tombol kirim akhir (hanya `final` yang boleh). */
+const SERAH_BUKAN_KIRIM: readonly string[] = ['masuk_akun', 'otp', 'captcha', 'tidak_yakin'];
+
 const tulisan = (a: Aksi): boolean =>
   a.jenis === 'isi' || a.jenis === 'pilih' || a.jenis === 'centang' || a.jenis === 'unggah';
 
@@ -242,6 +245,11 @@ export function validasiRencana(mentah: unknown, p: Pengamatan, opsi: OpsiValida
       if (a.alasan === 'ketuk_tautan' && (!tautanWarga(e) || p.sinyal.halamanAkhir))
         langgar.add('KELAS_KLIK_DITOLAK');
       if (a.alasan === 'isi_sendiri' && e && !PERAN_KOLOM.includes(e.peran)) langgar.add('PERAN_TIDAK_COCOK');
+      // Tombol kirim akhir hanya boleh disorot sebagai serah `final`: sorotan "masuk akun"/"OTP"/"tidak yakin"
+      // ke tombol Kirim menggiring warga menekan kiriman yang tidak mereka tinjau (review keamanan gel-4).
+      // `isi_sendiri` sudah ditolak lewat peran, `ketuk_tautan` lewat `tautanWarga` di atas.
+      if (SERAH_BUKAN_KIRIM.includes(a.alasan) && e?.kelas === 'kirim' && !tautanWarga(e))
+        langgar.add('KELAS_KLIK_DITOLAK');
       return;
     }
     const e = elemen.get(a.ref);
