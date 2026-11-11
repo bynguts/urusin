@@ -30,9 +30,9 @@ new_sandbox() {
   export SHIM_DIR="$SB/state"
   : > "$SHIM_DIR/calls.log"
   unset SHIM_LABEL SHIM_PROVENANCE SHIM_SERVE_BLUE SHIM_SERVE_GREEN SHIM_DOWN_BLUE SHIM_DOWN_GREEN \
-    SHIM_PUBLIC_FAIL SHIM_TLS_FAIL REQUIRE_PROVENANCE SHIM_DOCKER_VERSION
+    SHIM_PUBLIC_FAIL SHIM_TLS_FAIL REQUIRE_PROVENANCE SHIM_DOCKER_VERSION SHIM_KEMAMPUAN SHIM_KEMAMPUAN_GAGAL
   export PATH="$HERE/shims:$PATH_ORIG"
-  export WAIT_SECONDS=2 SETTLE_SECONDS=0
+  export WAIT_SECONDS=2 SETTLE_SECONDS=0 CAPS_WAIT_SECONDS=6
 }
 run_deploy() { (cd "$SB/deploy" && bash ./deploy.sh "$@") > "$SB/out.log" 2>&1; RC=$?; }
 images() { cat "$SB/deploy/.env.images"; }
@@ -202,6 +202,25 @@ export SHIM_LABEL="$SHA_B" SHIM_SS_WILDCARD_PORT=4310
 run_deploy "$SHA_B" "$DIG_B"
 check "warna aktif (:4310) terikat 0.0.0.0: deploy gagal + rollback" '[ $RC -ne 0 ] && grep -q "web-blue (aktif, :4310) mendengarkan di luar 127.0.0.1" "$SB/out.log" && grep -q ROLLBACK "$SB/out.log"'
 unset SHIM_SS_WILDCARD_PORT
+
+echo "13f. mode LLM: kapabilitas.ai harus normal sebelum promosi"
+new_sandbox
+export SHIM_LABEL="$SHA_A" SHIM_KEMAMPUAN='{"llm":"llm","kapabilitas":{"ai":"normal","vision":true},"probe":"ok"}'
+run_deploy "$SHA_A" "$DIG_A"
+check "llm + ai normal: deploy sukses" '[ $RC -eq 0 ] && grep -q "kapabilitas AI normal (probe ok)" "$SB/out.log"'
+check "kemampuan diperiksa di warna idle" 'grep -q "http://127.0.0.1:4310/api/kemampuan" "$SHIM_DIR/calls.log"'
+export SHIM_LABEL="$SHA_B" SHIM_KEMAMPUAN='{"llm":"llm","kapabilitas":{"ai":"tanpa_ai","vision":false},"probe":"mencoba_ulang"}'
+run_deploy "$SHA_B" "$DIG_B"
+check "llm + tanpa_ai (probe galat): gagal + rollback, blue tetap melayani A" \
+  '[ $RC -ne 0 ] && grep -q "probe=mencoba_ulang" "$SB/out.log" && grep -q ROLLBACK "$SB/out.log" && [ "$(cat "$SHIM_DIR/promoted")" = blue ] && [ "$(cat "$SHIM_DIR/running.blue")" = "$SHA_A" ]'
+export SHIM_KEMAMPUAN='{"llm":"llm","kapabilitas":{"ai":"hemat","vision":true},"probe":"ok"}'
+run_deploy "$SHA_B" "$DIG_B"
+check "llm + hemat (kuota): peringatan, deploy sukses" '[ $RC -eq 0 ] && grep -q "kapabilitas AI hemat" "$SB/out.log"'
+unset SHIM_KEMAMPUAN
+export SHIM_KEMAMPUAN_GAGAL=1 SHIM_LABEL="$SHA_A"
+run_deploy "$SHA_A" "$DIG_A"
+check "/api/kemampuan tak menjawab: gagal + rollback" '[ $RC -ne 0 ] && grep -q "llm=? ai=?" "$SB/out.log" && grep -q ROLLBACK "$SB/out.log"'
+unset SHIM_KEMAMPUAN_GAGAL
 
 echo "13e. smoke publik lewat /api/ready; /api/health publik harus 404"
 new_sandbox

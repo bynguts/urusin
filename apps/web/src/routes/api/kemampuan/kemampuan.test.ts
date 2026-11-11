@@ -94,6 +94,24 @@ describe('GET /api/kemampuan (publik)', () => {
     });
   });
 
+  it('mode LLM: status probe kapabilitas (mencoba_ulang) tanpa detail galat; mode demo tanpa field probe', async () => {
+    const probe = await import('#lib/server/probe-ulang.js');
+    probe.aturStatusProbe({
+      status: 'mencoba_ulang',
+      percobaan: 2,
+      berikutnyaPada: '2026-11-11T00:00:30.000Z',
+      galat: ['tools'],
+    });
+    const { GET } = await withRuntime({ mode: 'llm', harness: { caps: { tools: false } } });
+    const { body } = await get(GET);
+    expect(body['llm']).toBe('llm');
+    expect(body['probe']).toBe('mencoba_ulang');
+    expect(body['kapabilitas']).toMatchObject({ ai: 'tanpa_ai' });
+    const demo = await withRuntime();
+    expect((await get(demo.GET)).body).not.toHaveProperty('probe');
+    probe.aturStatusProbe(undefined);
+  });
+
   it('runtime gagal dirakit: 200 dengan semua kemampuan mati', async () => {
     const rt = await import('#lib/server/runtime.js');
     rt.setRuntimeForTests(Promise.reject(new Error('URUSIN_PII_KEY wajib')));

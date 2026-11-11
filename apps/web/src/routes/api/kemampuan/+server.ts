@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { KeadaanKapabilitas } from '#lib/contracts.js';
 import { versiPublik } from '#lib/server/build-info.js';
+import { statusProbe } from '#lib/server/probe-ulang.js';
 import { runtimeWithin, type Runtime } from '#lib/server/runtime.js';
 import type { RequestHandler } from './$types';
 
@@ -16,6 +17,8 @@ export type Kemampuan = {
   fitur: { pencarianHybrid: boolean; rerank: boolean };
   /** Stempel versi publik (M11): `v<sha7>` + tautan commit di repo publik. */
   versi: ReturnType<typeof versiPublik>;
+  /** Mode LLM saja: status probe kapabilitas (`mencoba_ulang` = probe boot galat, diulang di latar). */
+  probe?: 'pin' | 'ok' | 'mencoba_ulang';
 };
 
 /** Mode AI global: kuota harian (70% = hemat, habis = tanpa AI) dan dukungan tool calling dari probe. */
@@ -57,5 +60,7 @@ export const GET: RequestHandler = async () => {
     fitur: { pencarianHybrid: cari?.vektor ?? false, rerank: cari?.rerank ?? false },
     versi: versiPublik(),
   };
+  const probe = rt.mode === 'llm' ? statusProbe()?.status : undefined;
+  if (probe) body.probe = probe;
   return json(body, { headers });
 };

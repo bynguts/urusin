@@ -1,6 +1,7 @@
 import OpenAI, { toFile } from 'openai';
 import { egressFetch, type EgressFetch } from '@urusin/egress';
 import type { LlmConfig } from './config.js';
+import { completionDariSse } from './stream.js';
 import type {
   ChatCompletion,
   ChatCompletionChunk,
@@ -44,9 +45,14 @@ export class OpenAIProvider implements ChatProvider {
       : this.client;
   }
 
-  create(params: ChatParams, opts: RequestOptions = {}): Promise<ChatCompletion> {
+  async create(params: ChatParams, opts: RequestOptions = {}): Promise<ChatCompletion> {
     // `stream` selalu eksplisit: provider nyata mengalirkan SSE bila field ini dihilangkan.
-    return this.client.chat.completions.create({ ...params, stream: false }, { signal: opts.signal });
+    const r: unknown = await this.client.chat.completions.create(
+      { ...params, stream: false },
+      { signal: opts.signal },
+    );
+    // Proxy yang tetap membalas SSE untuk stream:false: SDK mengembalikan teks mentah (bukan JSON).
+    return typeof r === 'string' ? completionDariSse(r) : (r as ChatCompletion);
   }
 
   async stream(

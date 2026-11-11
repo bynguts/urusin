@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { violationCounts } from '#lib/server/csp-report.js';
+import { statusProbe } from '#lib/server/probe-ulang.js';
 import { runningTurns } from '#lib/server/running-turns.js';
 import { runtimeWithin, type RagInfo } from '#lib/server/runtime.js';
 import { appVersion, gitSha } from '#lib/server/build-info.js';
@@ -30,6 +31,8 @@ export const GET: RequestHandler = async () =>
       version: appVersion(),
       // Korpus RAG dari runtime: ready (+ jumlah chunk/vektor, model embedding, leg pencarian), demo, memuat, error.
       rag: await ragHealth(),
+      // Mode LLM: status probe kapabilitas (pin | ok | mencoba_ulang + percobaan, jadwal berikutnya, cap galat).
+      ...(statusProbe() ? { probe: statusProbe() } : {}),
       // Turn agen yang sedang berjalan; deploy.sh menunggu 0 sebelum menghentikan warna lama.
       runningTurns: runningTurns(),
       // Hitungan pelanggaran CSP per direktif sejak proses start (tanpa isi laporan).
