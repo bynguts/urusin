@@ -31,8 +31,12 @@ dipakai, sehingga semua job CI antre serial (> 1 jam per run). Runner kedua ini 
   restart). Node dan pnpm dipasang tiap job oleh `actions/setup-node` dan `pnpm/action-setup`; git sudah ada di
   image.
 - Runner persisten dengan kebersihan per job (bukan ephemeral, supaya tidak ada token/PAT di kontainer): hook
-  `job-completed.sh` mengosongkan workspace, menghapus pnpm store dan cache user. Yang tersisa di volume
-  `urusin-ci-laptop-N-work` hanya `_tool` (Node dari setup-node, ~200 MB).
+  `job-completed.sh` menghapus berkas tak terlacak di workspace (`git clean -ffdx`: node_modules, build,
+  coverage) dan cache user. Yang sengaja disimpan, karena jaringan laptop ke GitHub lambat (~0,1-0,3 MB/s):
+  `.git` workspace (checkout cukup fetch inkremental), arsip action yang dipin SHA
+  (`ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE`, "Set up job" tidak mengunduh ulang), Node di `_tool`, dan pnpm store
+  lokal (dibatasi `PNPM_STORE_MAX_MB`, bawaan 2048). Di runner ini `ci.yml` mematikan `cache: pnpm` setup-node
+  (`runner.name` berawalan `urusin-ci-laptop`) sehingga install memakai store lokal, bukan unduh cache GitHub.
 - Token registrasi dibuat `gh` di laptop dan hanya masuk lewat stdin ke `config.sh` di dalam kontainer
   (`ACTIONS_RUNNER_INPUT_TOKEN`, bukan argumen). Tidak ada token di repo, image, env kontainer, atau berkas.
 

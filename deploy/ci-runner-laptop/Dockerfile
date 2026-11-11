@@ -8,7 +8,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 USER runner
 # _work dibuat milik user runner agar volume bernama mewarisi pemiliknya.
-RUN mkdir -p /home/runner/_work /home/runner/urusin
+RUN mkdir -p /home/runner/_work/_actcache /home/runner/urusin
 COPY --chown=runner:runner --chmod=755 entrypoint.sh job-completed.sh /home/runner/urusin/
-ENV ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/home/runner/urusin/job-completed.sh
+ENV ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/home/runner/urusin/job-completed.sh \
+    ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE=/home/runner/_work/_actcache
 ENTRYPOINT ["/home/runner/urusin/entrypoint.sh"]
