@@ -24,7 +24,7 @@ live, lihat Status di bawah). Login, OTP, CAPTCHA, dan **tombol Kirim terakhir s
 | Percakapan agen, RAG bersumber, router 514 kab/kota, Peristiwa Hidup | Live di <https://urusinai.web.id>                |
 | Akun (email + sandi, Google), mode tamu, tombol juri, vault, Jejak   | Live                                             |
 | Browser Pendamping (pengisian formulir di situs resmi)               | Live (portal `kirim-asli` + situs latihan)       |
-| Situs latihan publik `fixtures.urusinai.web.id`                      | Belum live: dipakai lokal untuk e2e dan Mode Uji |
+| Situs latihan publik `fixtures.urusinai.web.id`                      | Live untuk Mode Uji; tes e2e pakai salinan lokal |
 
 Untuk daerah tanpa portal yang didukung adapter, Urusin berhenti di rencana bersumber dan daftar berkas, lalu
 memandu warga mengisi sendiri di situs resmi (mode dipandu).
