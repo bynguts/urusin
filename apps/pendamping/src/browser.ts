@@ -414,6 +414,64 @@ export function izinRute(
   return jalurPihakKetigaBoleh(url) && asetUmumBoleh(r);
 }
 
+/** Jenis subresource yang boleh berakhir di host aset pemda yang disetujui (sama dengan `asetPemdaSama`). */
+const TIPE_ASET_REDIRECT: ReadonlySet<string> = new Set(['image', 'stylesheet', 'font']);
+
+/**
+ * Respons yang tiba lewat hop redirect di host di luar allowlist sesi (hop redirect tidak melewati rute; proxy
+ * hanya meloloskan host aset pemda yang sudah disetujui) dengan jenis selain gambar/style/fon: pelanggaran.
+ * `skrip` = jenis script (pemuatan bingkainya dihentikan pemanggil).
+ */
+export function pelanggaranRedirect(
+  allowedHosts: ReadonlySet<string>,
+  resp: { url(): string; request(): { resourceType(): string; redirectedFrom(): unknown } },
+): { host: string; skrip: boolean } | undefined {
+  const req = resp.request();
+  if (!req.redirectedFrom() || urlDiAllowlist(allowedHosts, resp.url())) return undefined;
+  const tipe = req.resourceType();
+  if (TIPE_ASET_REDIRECT.has(tipe)) return undefined;
+  const host = URL.parse(resp.url())?.hostname;
+  return host ? { host, skrip: tipe === 'script' } : undefined;
+}
+
+type BingkaiJaga = { url(): string; goto(url: string): Promise<unknown> };
+
+/**
+ * Penjaga bingkai (lapis setelah rute): dokumen yang ter-commit di host http(s) di luar allowlist (mis. tujuan
+ * redirect 30x yang tidak melewati rute, ke host aset pemda yang sudah disetujui) tidak dipakai. Bingkai utama:
+ * blokir dokumen, kembali ke halaman sebelumnya (atau halaman kosong). Subframe: blokir, lalu about:blank.
+ */
+export function jagaUtama(
+  p: {
+    on(e: 'framenavigated', fn: (f: BingkaiJaga) => void): unknown;
+    mainFrame(): BingkaiJaga;
+    url(): string;
+    goBack(o: { timeout: number }): Promise<unknown>;
+    goto(url: string): Promise<unknown>;
+  },
+  allowedHosts: ReadonlySet<string>,
+  onBlocked: (host: string, dokumen?: boolean) => void,
+): void {
+  const luar = (url: string) => {
+    const u = URL.parse(url);
+    return u && /^https?:$/.test(u.protocol) && !urlDiAllowlist(allowedHosts, u.href) ? u : undefined;
+  };
+  p.on('framenavigated', (f) => {
+    const u = luar(f.url());
+    if (!u) return;
+    if (f !== p.mainFrame()) {
+      onBlocked(u.hostname, false);
+      void f.goto('about:blank').catch(() => {});
+      return;
+    }
+    onBlocked(u.hostname, true);
+    void (async () => {
+      await p.goBack({ timeout: 5_000 }).catch(() => null);
+      if (luar(p.url())) await p.goto('about:blank').catch(() => {});
+    })();
+  });
+}
+
 /**
  * Bentuk permintaan untuk gerbang tulis: metode, navigasi dokumen di bingkai mana pun (`dokumen`) dan di bingkai
  * utama (`utama`), XHR/fetch, dan URL awal rantai redirect. Navigasi tanpa bingkai yang bisa ditelusuri
@@ -527,12 +585,30 @@ export async function launchIsolated(
     // dianggap tantangan oleh gerbang tulis (review L3; proteksi di registry belum lengkap).
     const hostCf = new Set<string>();
     context.on('response', (resp) => {
+      // Hop redirect ke host di luar allowlist (host aset pemda yang disetujui) selain gambar/style/fon:
+      // dicatat; script juga dihentikan pemuatannya (best effort, badannya mungkin sudah tiba).
+      const langgar = pelanggaranRedirect(allowedHosts, resp);
+      if (langgar) {
+        onBlocked(langgar.host, false);
+        if (langgar.skrip) {
+          try {
+            void resp
+              .request()
+              .frame()
+              .evaluate('window.stop()')
+              .catch(() => {});
+          } catch {
+            // bingkai sudah lepas
+          }
+        }
+      }
       if (hostCf.size >= 64 || !resp.headers()['cf-ray']) return;
       const h = URL.parse(resp.url())?.host;
       if (h) hostCf.add(h);
     });
-    // Host aset pemda yang sudah disetujui tepat waktu di proxy/edge (cache agar edge tidak dipanggil per gambar).
-    const asetDisetujui = new Set<string>();
+    // Persetujuan host aset pemda tepat waktu di proxy/edge, per host (termasuk yang masih berjalan): edge tidak
+    // dipanggil per gambar. Yang gagal dilepas agar bisa dicoba lagi.
+    const asetDisetujui = new Map<string, Promise<boolean>>();
     await context.route('**/*', async (route) => {
       const req = route.request();
       const ok = izinRute(allowedHosts, req, pemda);
@@ -563,13 +639,20 @@ export async function launchIsolated(
       // meneruskan hop redirect tanpa handler), jadi host saudara yang belum disetujui tetap ditolak di jaringan.
       if (!urlDiAllowlist(allowedHosts, req.url())) {
         const host = URL.parse(req.url())?.hostname ?? '';
-        if (!asetDisetujui.has(host)) {
-          const setuju = proxy ? proxy.setujuiAset(host) : await edge!.setujuiAset(host);
-          if (!setuju) {
-            onBlocked(host, false);
-            return route.abort('blockedbyclient');
-          }
-          asetDisetujui.add(host);
+        let setuju = asetDisetujui.get(host);
+        if (!setuju) {
+          const baru = proxy
+            ? Promise.resolve(proxy.setujuiAset(host))
+            : edge!.setujuiAset(host).catch(() => false);
+          setuju = baru;
+          asetDisetujui.set(host, baru);
+          void baru.then((ok) => {
+            if (!ok && asetDisetujui.get(host) === baru) asetDisetujui.delete(host);
+          });
+        }
+        if (!(await setuju)) {
+          onBlocked(host, false);
+          return route.abort('blockedbyclient');
         }
       }
       // `aborted` (net::ERR_ABORTED): navigasi dokumen yang dibatalkan tidak meng-commit halaman galat, jadi
@@ -600,24 +683,10 @@ export async function launchIsolated(
         return ws.close({ code: 1008, reason: 'websocket di luar allowlist sesi' });
       },
     );
-    // Penjaga bingkai utama (lapis setelah rute): dokumen utama yang ter-commit di host di luar allowlist (mis.
-    // tujuan redirect 30x yang tidak melewati rute, ke host aset pemda yang sudah disetujui) tidak dipakai:
-    // dicatat sebagai blokir dokumen, lalu kembali ke halaman sebelumnya (atau halaman kosong).
-    const jagaUtama = (p: Page) =>
-      p.on('framenavigated', (f) => {
-        if (f !== p.mainFrame()) return;
-        const u = URL.parse(f.url());
-        if (!u || !/^https?:$/.test(u.protocol) || urlDiAllowlist(allowedHosts, u.href)) return;
-        onBlocked(u.hostname, true);
-        void (async () => {
-          await p.goBack({ timeout: 5_000 }).catch(() => null);
-          const kini = URL.parse(p.url());
-          if (kini && /^https?:$/.test(kini.protocol) && !urlDiAllowlist(allowedHosts, kini.href))
-            await p.goto('about:blank').catch(() => {});
-        })();
-      });
-    for (const p of context.pages()) jagaUtama(p);
-    context.on('page', jagaUtama);
+    // Penjaga bingkai utama dan subframe (lapis setelah rute).
+    const jaga = (p: Page) => jagaUtama(p, allowedHosts, onBlocked);
+    for (const p of context.pages()) jaga(p);
+    context.on('page', jaga);
     const ctx = context;
     return {
       context: ctx,
