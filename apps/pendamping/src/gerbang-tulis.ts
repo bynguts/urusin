@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { EGRESS_ASET_UMUM } from '@urusin/core';
+import { EGRESS_ASET_UMUM, PLATFORM_WILAYAH, PORTAL_WILAYAH } from '@urusin/core';
 import { jalurTulis } from '@urusin/executor';
 
 /**
@@ -98,16 +98,44 @@ export function hostAsetUmum(url: string): boolean {
   return h !== undefined && HOST_ASET_UMUM.has(h);
 }
 
+/**
+ * Host aset .go.id milik portal (`hostAset` registry wilayah: CDN/API pemda, probe gel4 3310/3404), kecuali yang
+ * juga host portal/info/platform di wilayah mana pun.
+ */
+const HOST_ASET_WILAYAH: ReadonlySet<string> = (() => {
+  const portal = new Set([
+    ...Object.values(PORTAL_WILAYAH).flatMap((p) => [...p.hosts, ...p.hostInfo]),
+    ...Object.values(PLATFORM_WILAYAH).flatMap((p) => p.hosts),
+  ]);
+  return new Set(
+    Object.values(PORTAL_WILAYAH)
+      .flatMap((p) => p.hostAset ?? [])
+      .filter((h) => !portal.has(h)),
+  );
+})();
+
+/** Host aset pemda (`hostAset`): sama seperti aset umum, bukan dokumen dan bukan tujuan navigasi (re-review LOW). */
+export function hostAsetWilayah(url: string): boolean {
+  const h = URL.parse(url)?.hostname.toLowerCase().replace(/\.$/, '');
+  return h !== undefined && HOST_ASET_WILAYAH.has(h);
+}
+
+/** Host yang hanya melayani subresource: aset umum (CDN/fon) atau aset pemda (`hostAset`). */
+export function hostAset(url: string): boolean {
+  return hostAsetUmum(url) || hostAsetWilayah(url);
+}
+
 /** Jenis sumber daya yang boleh diambil dari host aset umum (Playwright `resourceType`). */
 const TIPE_ASET_UMUM: ReadonlySet<string> = new Set(['script', 'stylesheet', 'font', 'image']);
 
 /**
  * Host aset umum hanya melayani subresource script/stylesheet/font/image; navigasi dokumen (bingkai mana pun),
  * XHR/fetch, dan jenis lain ke host itu ditolak (re-review MEDIUM: unpkg menyajikan HTML paket npm sebagai
- * text/html sementara bilah atas tetap menampilkan origin portal). Host lain tidak terpengaruh.
+ * text/html sementara bilah atas tetap menampilkan origin portal). Host aset pemda (`hostAset`) diperlakukan
+ * sama (re-review LOW). Host lain tidak terpengaruh.
  */
 export function asetUmumBoleh(r: { url: string; resourceType: string; dokumen: boolean }): boolean {
-  return !hostAsetUmum(r.url) || (!r.dokumen && TIPE_ASET_UMUM.has(r.resourceType));
+  return !hostAset(r.url) || (!r.dokumen && TIPE_ASET_UMUM.has(r.resourceType));
 }
 
 /** Metode yang tidak mengubah keadaan server (preflight CORS ikut di sini). */
@@ -137,8 +165,8 @@ export function putuskan(
   /** Dokumen kotor (N2) atau halaman akhir: GET bingkai utama di luar navKe (redirect halaman) diblokir. */
   ketat = false,
 ): Putusan {
-  // Dokumen dari host aset umum (CDN/fon) tidak pernah lolos, di jendela mana pun termasuk warga.
-  if (r.dokumen && hostAsetUmum(r.url)) return 'blokir';
+  // Dokumen dari host aset (CDN/fon, aset pemda) tidak pernah lolos, di jendela mana pun termasuk warga.
+  if (r.dokumen && hostAset(r.url)) return 'blokir';
   if (j.jenis === 'warga') return 'lanjut';
   // Telemetri/verifikasi tantangan (Turnstile flow, reCAPTCHA reload) bukan tulis ke portal: lolos di semua
   // jendela AI agar widget tidak gagal karena balapan dengan klik AI (probe #14). Navigasi dokumen tidak.

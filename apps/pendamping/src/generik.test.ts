@@ -828,6 +828,30 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     expect(h.navigasi).toHaveLength(1);
   });
 
+  it('re-review LOW: hanya tulis warga dari kirim final yang dihitung kirim final; serah final menandai sorot', async () => {
+    const h = harness({ amati: () => PEMBUKA(), peta: PETA_PEMBUKA });
+    await h.run.amati();
+    expect(h.run.sorotFinal).toBe(false);
+    h.run.tulisWarga();
+    expect(h.run.adaTulisWargaSejakAksiAi()).toBe(true);
+    expect(h.run.adaKirimFinalWargaSejakAksiAi()).toBe(false);
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'serahkan', alasan: 'final', ref: 'e3' }] });
+    expect(h.run.sorotFinal).toBe(true);
+    h.run.tulisWarga(true);
+    expect(h.run.adaKirimFinalWargaSejakAksiAi()).toBe(true);
+    // Serah lain mengganti sorot final; dokumen baru juga.
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e3' }] });
+    expect(h.run.sorotFinal).toBe(false);
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'serahkan', alasan: 'final', ref: 'e3' }] });
+    h.run.dokumenBaru();
+    expect(h.run.sorotFinal).toBe(false);
+    // Aksi AI berikutnya mereset keduanya.
+    await h.run.amati();
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] });
+    expect(h.run.adaTulisWargaSejakAksiAi()).toBe(false);
+    expect(h.run.adaKirimFinalWargaSejakAksiAi()).toBe(false);
+  });
+
   it('berhenti: serah akhir tercatat; mode ketat = dokumen kotor atau halaman akhir dokumen ini', async () => {
     const h = harness({ amati: () => PEMBUKA(true), peta: PETA_PEMBUKA });
     expect(h.run.ketat).toBe(false);

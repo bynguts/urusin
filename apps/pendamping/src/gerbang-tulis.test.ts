@@ -5,7 +5,9 @@ import {
   asetUmumBoleh,
   catatanBlokir,
   createGerbangTulis,
+  hostAset,
   hostAsetUmum,
+  hostAsetWilayah,
   jalurPihakKetigaBoleh,
   JENDELA_ISI_MS,
   putuskan,
@@ -302,6 +304,29 @@ describe('putuskan (tabel lengkap)', () => {
     expect(asetUmumBoleh({ url: sub.url, resourceType: 'script', dokumen: false })).toBe(true);
     expect(asetUmumBoleh({ url: sub.url, resourceType: 'fetch', dokumen: false })).toBe(false);
     expect(asetUmumBoleh({ url: U, resourceType: 'fetch', dokumen: false })).toBe(true);
+  });
+
+  it('re-review LOW: hostAset pemda (3310/3404) hanya subresource, dokumen diblokir di semua jendela', () => {
+    for (const host of ['dukcapil-cdn.slemankab.go.id', 'api.diskominfo.klaten.go.id']) {
+      const url = `https://${host}/halaman.html`;
+      expect(hostAsetWilayah(url), host).toBe(true);
+      expect(hostAset(url), host).toBe(true);
+      for (const t of ['script', 'stylesheet', 'font', 'image'])
+        expect(asetUmumBoleh({ url, resourceType: t, dokumen: false }), `${host} ${t}`).toBe(true);
+      expect(asetUmumBoleh({ url, resourceType: 'document', dokumen: true }), host).toBe(false);
+      for (const t of ['xhr', 'fetch', 'media'])
+        expect(asetUmumBoleh({ url, resourceType: t, dokumen: false }), `${host} ${t}`).toBe(false);
+      const dok: PermintaanGerbang = { metode: 'GET', dokumen: true, utama: true, xhr: false, url };
+      for (const j of [
+        { jenis: 'warga' },
+        { jenis: 'ai_diam' },
+        { jenis: 'ai_diam', tungguWarga: true },
+      ] as Jendela[])
+        expect(putuskan(j, dok, T), `${host} ${JSON.stringify(j)}`).toBe('blokir');
+    }
+    // Host portal sendiri bukan host aset.
+    expect(hostAsetWilayah('https://dukcapilonline.slemankab.go.id/Flow/signin')).toBe(false);
+    expect(hostAsetWilayah(U)).toBe(false);
   });
 
   it('jalurPihakKetigaBoleh: www.google.com hanya /recaptcha/ (review L3)', () => {

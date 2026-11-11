@@ -217,6 +217,19 @@ describe('rute peramban: host aset umum (re-review MEDIUM)', () => {
       expect(izinRute(izin, req('https://unpkg.com/x.json', t)), t).toBe(false);
   });
 
+  it('re-review LOW: host aset pemda (hostAset) = subresource saja, dokumen dan XHR ditolak', () => {
+    const izinPemda = new Set(['dukcapilonline.slemankab.go.id:443', 'dukcapil-cdn.slemankab.go.id:443']);
+    const cdn = 'https://dukcapil-cdn.slemankab.go.id/x';
+    for (const t of ['script', 'stylesheet', 'font', 'image'])
+      expect(izinRute(izinPemda, req(`${cdn}.js`, t)), t).toBe(true);
+    for (const t of ['xhr', 'fetch']) expect(izinRute(izinPemda, req(`${cdn}.json`, t)), t).toBe(false);
+    expect(izinRute(izinPemda, req(`${cdn}.html`, 'document', true))).toBe(false);
+    expect(izinRute(izinPemda, req(`${cdn}.html`, 'document', false))).toBe(false);
+    expect(
+      izinRute(izinPemda, req('https://dukcapilonline.slemankab.go.id/Flow/signin', 'document', true)),
+    ).toBe(true);
+  });
+
   it('host portal tidak terpengaruh; allowlist dan reCAPTCHA tetap berlaku', () => {
     expect(izinRute(izin, req('https://portal.contoh.go.id/permohonan', 'document', true))).toBe(true);
     expect(izinRute(izin, req('https://portal.contoh.go.id/api/x', 'xhr'))).toBe(true);
