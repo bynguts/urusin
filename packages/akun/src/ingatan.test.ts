@@ -3,7 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   bacaIngatan,
+  bawaDariTamu,
   ingatanKosong,
+  jumlahDariTamu,
   nilaiButir,
   openHarnessDb,
   terapkanOperasi,
@@ -25,8 +27,10 @@ let t: number;
 let db: Db;
 let mailer: MemoryMailer;
 let akun: AkunService;
+let alert: string[];
 
 beforeEach(() => {
+  alert = [];
   t = Date.parse('2026-11-11T08:00:00.000Z');
   db = openHarnessDb();
   mailer = new MemoryMailer();
@@ -40,6 +44,7 @@ beforeEach(() => {
       {
         now: () => new Date(t),
         diskPersen: () => 10,
+        alert: (p) => alert.push(p),
       },
     ),
     publicOrigin: 'https://urusin.example.com',
@@ -105,6 +110,15 @@ describe('vault ingatan: enkripsi + AAD', () => {
     expect(() => open(Buffer.alloc(32), baris.ciphertext, aad.ingatan(tamu))).toThrow(VaultError);
   });
 
+  it('gagal dibuka = galat + alert operator (bukan dibaca kosong lalu ditimpa)', () => {
+    const tamu = akun.pastikanTamu('sid-a', ctx);
+    akun.vault.setIngatan(tamu, ingatan(['lansia']));
+    db.prepare('UPDATE vault_ingatan SET ciphertext = ? WHERE user_id = ?').run(Buffer.alloc(40, 1), tamu);
+    expect(() => akun.vault.getIngatan(tamu)).toThrow(VaultError);
+    expect(alert.at(-1)).toMatch(/ingatan pemilik .* tidak bisa dibuka/);
+    expect(alert.at(-1)).not.toMatch(/lansia/);
+  });
+
   it('hapus semua ingatan; crypto-shred ikut menghapus ingatan', () => {
     const tamu = akun.pastikanTamu('sid-a', ctx);
     akun.vault.setIngatan(tamu, ingatan(['lansia']));
@@ -151,7 +165,7 @@ describe('pemilik ingatan sebuah urusan', () => {
 });
 
 describe('rotasi tamu → akun', () => {
-  it('ingatan tamu digabung ke akun (akun menang untuk butir tunggal), DEK tamu hancur', async () => {
+  it('ingatan tamu DITITIPKAN (tidak dipakai) sampai warga memilih; Bawa ke akun tidak menggusur akun; DEK tamu hancur', async () => {
     const a = await akunTerverifikasi();
     akun.vault.setIngatan(a.id, ingatan(['ktp', 'Kabupaten Wonogiri'], ['catatan', 'suka pagi']));
     const tamu = akun.pastikanTamu('sid-lama', ctx);
@@ -166,6 +180,11 @@ describe('rotasi tamu → akun', () => {
     expect(g.butir.map((b) => [b.jenis, b.nilai])).toEqual([
       ['ktp', '3312'],
       ['catatan', 'suka pagi'],
+    ]);
+    expect(jumlahDariTamu(g)).toBe(4);
+    expect(bawaDariTamu(g).butir.map((b) => [b.jenis, b.nilai])).toEqual([
+      ['ktp', '3312'],
+      ['catatan', 'suka pagi'],
       ['lansia', 'ya'],
       ['catatan', 'diantar cucu'],
     ]);
@@ -173,13 +192,28 @@ describe('rotasi tamu → akun', () => {
     expect(db.prepare('SELECT COUNT(*) n FROM user_keys WHERE user_id = ?').get(tamu)).toEqual({ n: 0 });
   });
 
-  it('tamu yang hanya punya ingatan (tanpa Data Diri/dokumen) tetap dipindah', async () => {
+  it('tamu yang hanya punya ingatan (tanpa Data Diri/dokumen) tetap dititipkan, tidak langsung dipakai', async () => {
     const a = await akunTerverifikasi();
     const tamu = akun.pastikanTamu('sid-lama', ctx);
     akun.vault.setIngatan(tamu, ingatan(['bahasa_sederhana']));
     akun.rotasiPemilik({ sidLama: 'sid-lama', sidBaru: 'sid-baru', userId: a.id });
-    expect(bacaIngatan(akun.vault.getIngatan(a.id)!.data).butir.map((b) => b.jenis)).toEqual([
-      'bahasa_sederhana',
-    ]);
+    const g = bacaIngatan(akun.vault.getIngatan(a.id)!.data);
+    expect(g.butir).toEqual([]);
+    expect(g.dariTamu?.map((b) => b.jenis)).toEqual(['bahasa_sederhana']);
+  });
+
+  it('ingatan akun yang rusak tidak ditimpa titipan dan tidak menggagalkan login', async () => {
+    const a = await akunTerverifikasi();
+    akun.vault.setIngatan(a.id, ingatan(['lansia']));
+    const rusak = Buffer.alloc(40, 2);
+    db.prepare('UPDATE vault_ingatan SET ciphertext = ? WHERE user_id = ?').run(rusak, a.id);
+    const tamu = akun.pastikanTamu('sid-lama', ctx);
+    akun.vault.setIngatan(tamu, ingatan(['kanal', 'online']));
+    akun.rotasiPemilik({ sidLama: 'sid-lama', sidBaru: 'sid-baru', userId: a.id });
+    const baris = db.prepare('SELECT ciphertext FROM vault_ingatan WHERE user_id = ?').get(a.id) as {
+      ciphertext: Buffer;
+    };
+    expect(baris.ciphertext.equals(rusak)).toBe(true);
+    expect(alert.some((p) => /tidak bisa dibuka/.test(p))).toBe(true);
   });
 });

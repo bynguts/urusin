@@ -222,7 +222,8 @@ export class Vault {
 
   /**
    * Ingatan warga (ADR 0031) sebagai JSON terenkripsi. Isinya divalidasi pemanggil (@urusin/harness `IngatanSchema`);
-   * vault hanya menyimpan dan membuka. null = belum ada (atau DEK sudah di-shred).
+   * vault hanya menyimpan dan membuka. null = belum ada (atau DEK sudah di-shred). Baris yang ada tetapi gagal
+   * dibuka/diurai MELEMPAR (dan memberi alert operator): pemanggil tidak boleh membacanya kosong lalu menimpanya.
    */
   getIngatan(userId: string): { data: unknown; updatedAt: string } | null {
     const row = this.db
@@ -231,8 +232,13 @@ export class Vault {
     if (!row) return null;
     const dek = this.dek(userId, false);
     if (!dek) return null;
-    const json = open(dek, row.ciphertext, aad.ingatan(userId)).toString('utf8');
-    return { data: JSON.parse(json) as unknown, updatedAt: row.updated_at };
+    try {
+      const json = open(dek, row.ciphertext, aad.ingatan(userId)).toString('utf8');
+      return { data: JSON.parse(json) as unknown, updatedAt: row.updated_at };
+    } catch (e) {
+      this.opts.alert?.(`ingatan pemilik ${userId} tidak bisa dibuka: ${(e as Error).message}`);
+      throw e instanceof VaultError ? e : new VaultError('isi ingatan rusak');
+    }
   }
 
   setIngatan(userId: string, data: unknown): string {
@@ -416,29 +422,32 @@ export class Vault {
    * Berkas baru ditulis sekarang; baris DB diganti oleh `terapkan()` (di dalam transaksi pemanggil), yang juga
    * menghancurkan DEK `dari`. `batalkan()` menghapus berkas baru bila transaksi gagal; `selesai()` menghapus
    * berkas lama setelah commit. Data Diri digabung: nilai akun yang sudah ada menang, isian tamu melengkapi.
-   * Ingatan digabung dengan `gabungIngatan` (pemanggil memberi `gabungIngatan` dari @urusin/harness); tanpa itu
-   * ingatan akun yang sudah ada menang utuh dan ingatan tamu hanya dipakai bila akun belum punya.
+   * Ingatan tamu TIDAK digabung: `titipIngatan` (pemanggil memberi `titipDariTamu` dari @urusin/harness)
+   * menitipkannya di ingatan akun sampai warga memilih "Bawa ke akun" atau "Buang". Tanpa itu ingatan tamu dibuang
+   * bersama DEK-nya (aman: tidak ada yang masuk diam-diam).
    */
   siapkanPindah(
     dari: string,
     ke: string,
-    gabungIngatan?: (akun: unknown, tamu: unknown) => unknown,
+    titipIngatan?: (akun: unknown, tamu: unknown) => unknown,
   ): RencanaPindah {
     const tulisBaru: string[] = [];
     const lama = this.getDataDiri(dari);
-    const ingatanLama = this.getIngatan(dari);
+    // Ingatan yang tidak bisa dibuka (sudah di-alert oleh getIngatan) tidak menggagalkan login dan tidak ditimpa.
+    const bacaAman = (u: string) => {
+      try {
+        return { ok: true as const, isi: this.getIngatan(u) };
+      } catch {
+        return { ok: false as const };
+      }
+    };
+    const tamuLama = titipIngatan ? bacaAman(dari) : null;
+    const ingatanLama = tamuLama?.ok ? tamuLama.isi : null;
     const docs = this.muatPindah(ke, this.dokumenSendiri(dari));
     const terapkanIngatan = () => {
-      if (!ingatanLama) return;
-      const sekarang = this.getIngatan(ke)?.data;
-      this.setIngatan(
-        ke,
-        sekarang === undefined
-          ? ingatanLama.data
-          : gabungIngatan
-            ? gabungIngatan(sekarang, ingatanLama.data)
-            : sekarang,
-      );
+      if (!ingatanLama || !titipIngatan) return;
+      const akun = bacaAman(ke);
+      if (akun.ok) this.setIngatan(ke, titipIngatan(akun.isi?.data, ingatanLama.data));
     };
     if (!lama && !ingatanLama && docs.length === 0) {
       return {

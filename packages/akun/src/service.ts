@@ -1,4 +1,4 @@
-import { gabungIngatan, type Db } from '@urusin/harness';
+import { titipDariTamu, type Db } from '@urusin/harness';
 import { dataDiriSintetis } from './demo.js';
 import { maskEmail, normalizeEmail } from './email.js';
 import { AkunError } from './errors.js';
@@ -1097,7 +1097,7 @@ export class AkunService {
     const tamu = this.db.prepare("SELECT id FROM users WHERE jenis = 'tamu' AND sid_hash = ?").get(hl) as
       { id: string } | undefined;
     let rencana: RencanaPindah | undefined;
-    if (tamu && p.userId) rencana = this.deps.vault.siapkanPindah(tamu.id, p.userId, gabungIngatan);
+    if (tamu && p.userId) rencana = this.deps.vault.siapkanPindah(tamu.id, p.userId, titipDariTamu);
     let urusanDipindahkan = 0;
     try {
       this.tx(() => {
