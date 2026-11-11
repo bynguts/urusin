@@ -40,3 +40,4 @@ atau kode; "Diterima" tidak berarti sudah diimplementasikan, dan kolom Status me
 | [0028](0028-akun-dan-login.md)                                   | Akun opsional: email + sandi dan Google, sesi server, vault terenkripsi per akun                   | keputusan pengguna |
 | [0029](0029-browser-pendamping.md)                               | Browser Pendamping di server sebagai eksekutor                                                     | keputusan tim      |
 | [0030](0030-browser-pendamping-generik.md)                       | Browser Pendamping generik untuk portal tanpa adapter                                              | keputusan tim      |
+| [0031](0031-ingatan-warga-terstruktur.md)                        | Ingatan warga terstruktur di vault, bukan memori LLM pihak ketiga                                  | keputusan tim      |
