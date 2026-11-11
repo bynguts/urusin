@@ -27,7 +27,7 @@ export function renderEvent(e) {
     }
     case 'wilayah':
       return e.status === 'usulan'
-        ? `[KARTU WILAYAH] KTP Anda terdaftar di ${e.ktp.nama}? (usulan dari ${e.sumber === 'data_diri' ? 'Data Diri akun Anda' : e.sumber === 'warga' ? 'percakapan ini' : 'pilihan wilayah di perangkat ini'}; rencana disusun setelah Anda memastikannya)`
+        ? `[KARTU WILAYAH] KTP Anda terdaftar di ${e.ktp.nama}? (usulan dari ${e.sumber === 'data_diri' ? 'Data Diri akun Anda' : e.sumber === 'warga' ? 'percakapan ini' : e.sumber === 'ingatan' ? 'yang Urusin ingat dari urusan Anda sebelumnya' : 'pilihan wilayah di perangkat ini'}; rencana disusun setelah Anda memastikannya)`
         : `(sistem) ${kalimatWilayah(e)}`;
     case 'grounded_answer': {
       const klaim = e.klaim.map(
@@ -42,6 +42,10 @@ export function renderEvent(e) {
       return `[KARTU BROWSER PENDAMPING] ${e.ringkasan}${e.origin ? ` Situs: ${e.origin}` : ''}${e.bacaSaja ? ' (baca saja)' : ''}`;
     case 'gate':
       return e.jenis === 'konfirmasi' ? `[KONFIRMASI] ${e.pesan}` : `[MENUNGGU WARGA: ${e.jenis}] ${e.pesan}`;
+    case 'ingatan':
+      return e.aksi === 'hapus'
+        ? `[KARTU INGATAN] Urusin melupakan: ${e.butir.label}`
+        : `[KARTU INGATAN] Urusin mengingat: ${e.butir.label} (tombol Batalkan)`;
     case 'error':
       return `[GALAT] ${e.pesanWarga}`;
     default:

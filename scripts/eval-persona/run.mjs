@@ -27,11 +27,13 @@ import { opsiAksiWilayah } from './lib/klien.mjs';
 import { barisKorpusPasal, siapkanKorpusPasal } from './lib/korpus.mjs';
 import { jalankanPercakapan } from './lib/percakapan.mjs';
 import { renderLangkahAgen } from './lib/layar.mjs';
+import { SesiWarga } from './lib/klien.mjs';
 import {
   cekBocorWilayah,
   cekFinalOlehWarga,
   cekGalat,
   cekGemaPii,
+  cekIngatan,
   cekPendamping,
   cekWilayahSebelumRencana,
   pendekkanHash,
@@ -264,16 +266,38 @@ async function main() {
     });
     const wilayahPerangkat = kodePerangkat(p, opsi['wilayah-awal'], wilayahBawaan);
     log(`mulai ${p.id} (wilayah perangkat ${wilayahPerangkat || 'kosong'})`);
+    const ip = `198.51.100.${10 + idx}`;
+    // Persona dua urusan (ingatan lintas urusan): urusan pertama di sesi (cookie) yang sama, tidak dinilai.
+    let pertama = null;
+    let sesi;
+    if (p.sebelum) {
+      const s1 = new SesiWarga({ origin, ip });
+      pertama = await jalankanPercakapan({
+        origin,
+        ip,
+        persona: { ...p, ...p.sebelum, id: `${p.id}#urusan1` },
+        llmWarga,
+        wilayahPerangkat,
+        aksiWilayah,
+        maksGiliran: Number(p.sebelum.maksGiliran ?? maksGiliran),
+        log,
+        sesi: s1,
+      });
+      sesi = new SesiWarga({ origin, ip });
+      sesi.cookie = s1.cookie;
+    }
     const h = await jalankanPercakapan({
       origin,
-      ip: `198.51.100.${10 + idx}`,
+      ip,
       persona: p,
       llmWarga,
       wilayahPerangkat,
       aksiWilayah,
       maksGiliran,
       log,
+      ...(sesi ? { sesi } : {}),
     });
+    const ingatan = cekIngatan(pertama?.langkah, h.langkah, p);
     const dbTemuan = server ? pindaiDb(server.dbPath, h.rahasia) : null;
     const deterministik = {
       a: cekWilayahSebelumRencana(h.langkah, p, h.kodeUrusan),
@@ -324,6 +348,7 @@ async function main() {
       ms: h.ms,
       url: urlTampil(h.langkah),
       deterministik,
+      ...(ingatan ? { ingatan } : {}),
       juri: juri ? JSON.parse(samarkan(JSON.stringify(juri), h.rahasia)) : null,
       nilai,
       pemakaian: {
@@ -340,10 +365,15 @@ async function main() {
       join(keluar, 'transkrip', `${p.id}.txt`),
       `${p.judul}\n${'='.repeat(p.judul.length)}\n\n${teks}\n`,
     );
+    if (pertama)
+      writeFileSync(
+        join(keluar, 'transkrip', `${p.id}.urusan1.txt`),
+        `${p.judul} (urusan pertama, tidak dinilai)\n\n${samarkan(transkripTeks(pertama), pertama.rahasia)}\n`,
+      );
     log(
       `selesai ${p.id}: ${Object.entries(nilai)
         .map(([k, v]) => `${k}=${simbol(v.lulus)[0]}`)
-        .join(' ')}`,
+        .join(' ')}${ingatan ? ` ingatan=${simbol(ingatan.lulus)[0]}` : ''}`,
     );
     return rekam;
   });
@@ -415,6 +445,12 @@ function tabelSkor(r) {
     ...baris,
     `| **total lulus** | | ${total.join(' | ')} | | |`,
     '',
+    ...(r.hasil.some((h) => h.ingatan)
+      ? [
+          `Ingatan lintas urusan (persona dua urusan): ${r.hasil.filter((h) => h.ingatan?.lulus).length}/${r.hasil.filter((h) => h.ingatan).length} lulus`,
+          '',
+        ]
+      : []),
     'Kriteria: ' + k.map((x) => `${x} = ${KRITERIA[x]}`).join('; '),
     '',
     ...r.hasil.flatMap((h) => [
@@ -424,6 +460,7 @@ function tabelSkor(r) {
         (x) =>
           `- **${x} ${simbol(h.nilai[x].lulus)}**: ${h.nilai[x].bukti.replace(/\s+/g, ' ').slice(0, 400)}`,
       ),
+      ...(h.ingatan ? [`- **ingatan ${simbol(h.ingatan.lulus)}**: ${h.ingatan.bukti}`] : []),
       ...(h.juri?.cacat?.length
         ? [
             '',
