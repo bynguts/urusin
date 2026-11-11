@@ -73,7 +73,10 @@
     Urusin tidak mengingat: {label}
     <a href="{resolve('/pengaturan')}#ingatan" class={tombol}>Lihat yang diingat</a>
   {:else if usulan}
-    {live?.label ?? 'Ingat kebutuhan aksesibilitas yang Anda sebut tadi?'}
+    {live?.label ??
+      (ingatan.butir.jenis === 'catatan'
+        ? 'Ingat catatan yang Anda minta tadi?'
+        : 'Ingat kebutuhan aksesibilitas yang Anda sebut tadi?')}
     <button type="button" onclick={setujui} disabled={sibuk} aria-busy={sibuk || undefined} class={tombol}
       >Ya, ingat</button
     >

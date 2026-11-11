@@ -10,6 +10,7 @@ import {
   ingatWilayah,
   jumlahDariTamu,
   ktpDariIngatan,
+  titipanAktif,
   setujuiUsulan,
   tampilButir,
   type Ingatan,
@@ -57,11 +58,14 @@ export function daftarIngatan(akun: AkunService, pemilik: string): ButirIngatanT
   return daftarTampil(muatIngatan(akun, pemilik));
 }
 
-/** Usulan yang menunggu persetujuan, dengan label berupa pertanyaan ("Ingat bahwa Anda tuli?"). */
+/**
+ * Usulan yang menunggu persetujuan, dengan label berupa pertanyaan: "Ingat bahwa Anda tuli?" (aksesibilitas) atau
+ * `Ingat ini? "…"` (catatan).
+ */
 export function daftarUsulan(akun: AkunService, pemilik: string): ButirIngatanTampil[] {
   return (muatIngatan(akun, pemilik).usulan ?? []).map((b) => ({
     ...tampilButir(b),
-    label: `Ingat bahwa Anda ${b.nilai}?`.slice(0, 260),
+    label: (b.jenis === 'catatan' ? `Ingat ini? "${b.nilai}"` : `Ingat bahwa Anda ${b.nilai}?`).slice(0, 260),
   }));
 }
 
@@ -102,9 +106,15 @@ export function hapusSemuaIngatan(akun: AkunService, pemilik: string): number {
   return n;
 }
 
-/** Jumlah hal yang diingat di perangkat ini sebagai tamu sebelum warga masuk (menunggu pilihan). */
-export function jumlahIngatanTamu(akun: AkunService, pemilik: string): number {
-  return jumlahDariTamu(muatIngatan(akun, pemilik));
+/**
+ * Hal yang diingat di perangkat ini sebagai tamu sebelum warga masuk (menunggu pilihan), ditampilkan isinya agar
+ * warga tahu apa yang akan dibawa. Hanya butir non-sensitif yang belum kedaluwarsa; titipan kedaluwarsa dibuang.
+ */
+export function titipanIngatanTamu(akun: AkunService, pemilik: string): ButirIngatanTampil[] {
+  const i = muatIngatan(akun, pemilik);
+  const aktif = titipanAktif(i);
+  if (aktif.length === 0 && i.dariTamu?.length) simpanAtauHapus(akun, pemilik, buangDariTamu(i));
+  return daftarTampil({ versi: 1, butir: aktif });
 }
 
 /** "Bawa ke akun": titipan tamu digabung tanpa menggusur butir akun. */

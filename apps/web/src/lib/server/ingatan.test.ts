@@ -214,17 +214,24 @@ describe('ingatan warga lewat web', () => {
       dariTamu: [
         { id: 'ing_00000000000000b2', jenis: 'kanal', nilai: 'online', at: AT },
         { id: 'ing_00000000000000b3', jenis: 'lansia', nilai: 'ya', at: AT },
+        // titipan lama yang memuat butir sensitif: tidak ditampilkan dan tidak dibawa
+        { id: 'ing_00000000000000b4', jenis: 'aksesibilitas', nilai: 'tuli', at: AT },
       ],
+      dariTamuSejak: new Date().toISOString(),
     };
     rt.akun.vault.setIngatan(pemilik, awal);
     const muat = async () => (await pengaturanLoad(ev(new Request(`${ORIGIN}/pengaturan`)) as never)) as any;
-    expect(await muat()).toMatchObject({ ingatanTamu: 2 });
+    // isi titipan ditampilkan sebelum warga memilih
+    expect((await muat()).ingatanTamu.map((b: any) => b.label)).toEqual([
+      'Warga lansia',
+      'Lebih suka mengurus online',
+    ]);
     expect((await muat()).ingatan.map((b: any) => b.label)).toEqual(['Lebih suka datang langsung ke kantor']);
     expect(await redirectDari(pengaturanPage.bawaIngatanTamu(ev(form({})) as never))).toBe(
       '/pengaturan#ingatan',
     );
     const sesudah = await muat();
-    expect(sesudah.ingatanTamu).toBe(0);
+    expect(sesudah.ingatanTamu).toEqual([]);
     expect(sesudah.ingatan.map((b: any) => b.jenis)).toEqual(['lansia', 'kanal']);
     expect(sesudah.ingatan.find((b: any) => b.jenis === 'kanal').label).toBe(
       'Lebih suka datang langsung ke kantor',
@@ -232,7 +239,25 @@ describe('ingatan warga lewat web', () => {
 
     rt.akun.vault.setIngatan(pemilik, awal);
     await redirectDari(pengaturanPage.buangIngatanTamu(ev(form({})) as never));
-    expect(await muat()).toMatchObject({ ingatanTamu: 0 });
+    expect(await muat()).toMatchObject({ ingatanTamu: [] });
     expect((await muat()).ingatan.map((b: any) => b.jenis)).toEqual(['kanal']);
+
+    // kedaluwarsa (30 hari): tidak ditampilkan dan dibuang dari vault
+    rt.akun.vault.setIngatan(pemilik, { ...awal, dariTamuSejak: '2020-01-01T00:00:00.000Z' });
+    expect(await muat()).toMatchObject({ ingatanTamu: [] });
+    expect((rt.akun.vault.getIngatan(pemilik)!.data as any).dariTamu).toBeUndefined();
+  });
+
+  it('usulan catatan tampil sebagai "Ingat ini?" dengan isi persisnya', async () => {
+    const tamu = rt.akun.pastikanTamu('sid-uji', { ip: '127.0.0.1', userAgent: null });
+    rt.akun.vault.setIngatan(tamu, {
+      versi: 1,
+      butir: [],
+      usulan: [{ id: 'ing_00000000000000c1', jenis: 'catatan', nilai: 'saya kerja shift malam', at: AT }],
+    });
+    const isi = IngatanResponseSchema.parse(await (await ingatanApi(ev(get()))).json());
+    expect(isi.usulan?.map((b) => b.label)).toEqual(['Ingat ini? "saya kerja shift malam"']);
+    expect((await setujuiApi(ev(reqId('POST'), { id: 'ing_00000000000000c1' }))).status).toBe(200);
+    expect((await daftar()).map((b) => b.label)).toEqual(['Catatan: saya kerja shift malam']);
   });
 });

@@ -377,15 +377,18 @@
           pribadi seperti NIK atau alamat, dan wilayah tetap ditanyakan dulu sebelum dipakai.
         </p>
       </div>
-      {#if data.ingatanTamu > 0}
+      {#if data.ingatanTamu.length > 0}
         <div
           role="group"
           aria-label="Ingatan dari perangkat ini"
-          class="flex flex-col gap-3 rounded-[18px] border border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-[22px]"
+          class="flex flex-col gap-3 rounded-[18px] border border-line p-4 sm:p-[22px]"
         >
           <p class="text-[0.9375rem] text-body">
-            Ada {data.ingatanTamu} hal yang diingat di perangkat ini sebelum Anda masuk.
+            Ada {data.ingatanTamu.length} hal yang diingat di perangkat ini sebelum Anda masuk:
           </p>
+          <ul aria-label="Diingat di perangkat ini" class="flex flex-col gap-1 text-[0.9375rem] text-ink">
+            {#each data.ingatanTamu as b (b.id)}<li>{b.label}</li>{/each}
+          </ul>
           <div class="flex flex-wrap gap-3">
             <form method="POST" action="?/bawaIngatanTamu">
               <button

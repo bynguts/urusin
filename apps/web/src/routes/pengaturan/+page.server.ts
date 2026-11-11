@@ -8,7 +8,7 @@ import {
   daftarIngatan,
   hapusButirIngatan,
   hapusSemuaIngatan,
-  jumlahIngatanTamu,
+  titipanIngatanTamu,
 } from '#lib/server/ingatan.js';
 import { daftarKota } from '#lib/server/referensi.js';
 import { getRuntime } from '#lib/server/runtime.js';
@@ -23,20 +23,20 @@ const KE_INGATAN = '/pengaturan#ingatan';
 
 /**
  * Yang Urusin ingat (ADR 0031): butir ingatan pemilik vault perangkat/akun ini (label tanpa PII), jumlah titipan
- * tamu yang menunggu pilihan warga, dan `rusak` bila isinya tidak bisa dibaca (warga tetap bisa menghapus semua).
+ * tamu yang menunggu pilihan warga (isinya, bukan hanya jumlah), dan `rusak` bila isinya tidak bisa dibaca (warga tetap bisa menghapus semua).
  */
 async function muatIngatanPengaturan(event: Parameters<PageServerLoad>[0]) {
   const rt = await getRuntime();
   const p = pemilikVault(rt, event, { buat: false });
-  if (!p) return { ingatan: [], ingatanTamu: 0, ingatanRusak: false };
+  if (!p) return { ingatan: [], ingatanTamu: [], ingatanRusak: false };
   try {
     return {
       ingatan: daftarIngatan(rt.akun, p.id),
-      ingatanTamu: jumlahIngatanTamu(rt.akun, p.id),
+      ingatanTamu: titipanIngatanTamu(rt.akun, p.id),
       ingatanRusak: false,
     };
   } catch {
-    return { ingatan: [], ingatanTamu: 0, ingatanRusak: true };
+    return { ingatan: [], ingatanTamu: [], ingatanRusak: true };
   }
 }
 

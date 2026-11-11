@@ -3,6 +3,7 @@ import {
   type HapusIngatanResponse,
   type SetujuiIngatanResponse,
 } from '@urusin/contracts';
+import { IngatanError } from '@urusin/harness';
 import { akunErrorResponse, pemilikVault } from '#lib/server/akun.js';
 import { apiError, apiJson } from '#lib/server/http.js';
 import { hapusButirIngatan, setujuiIngatan } from '#lib/server/ingatan.js';
@@ -20,6 +21,8 @@ export const POST: RequestHandler = async (event) => {
     if (!butir) return apiError(404, 'NOT_FOUND', 'Usulan ingatan tidak ditemukan.');
     return apiJson({ disetujui: 1, butir } satisfies SetujuiIngatanResponse);
   } catch (e) {
+    if (e instanceof IngatanError && e.kode === 'PENUH')
+      return apiError(409, 'INGATAN_PENUH', 'Catatan sudah 10. Hapus catatan lama di Pengaturan dulu.');
     return akunErrorResponse(e);
   }
 };
