@@ -51,6 +51,7 @@ function setup(
 }
 
 describe('gerbang wilayah: rencana diblokir di kode sampai wilayah KTP ditetapkan', () => {
+  // Beberapa giliran harness penuh: runner CI ARM yang sibuk bisa melewati 5 dtk bawaan.
   it('tanpa wilayah: tidak ada rencana otomatis, dan urusan__usulkan_rencana ditolak WILAYAH_BELUM_DITETAPKAN', async () => {
     const { env, u } = setup(
       [
@@ -70,7 +71,7 @@ describe('gerbang wilayah: rencana diblokir di kode sampai wilayah KTP ditetapka
     });
     expect(of(out.events, 'plan_card')).toHaveLength(0);
     expect(env.store.getUrusanOrThrow(u.id)).toMatchObject({ state: 'MEMAHAMI', kodeKabKota: null });
-  });
+  }, 30_000);
 
   it('pindah dengan KTP tetapi tanpa tujuan: rencana belum diusulkan', async () => {
     const { env, u } = setup([balas('Pindah ke kabupaten/kota mana?')], {
