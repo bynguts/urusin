@@ -8,6 +8,7 @@ import { makeEnv } from './testing.js';
 import {
   buatUrusanTerwilayah,
   hanyaTanyaWilayah,
+  tetapkanWilayah,
   usulkanWilayah,
   wilayahDariPesan,
   wilayahUrusan,
@@ -122,8 +123,53 @@ describe('alur cepat sampai rencana', () => {
     });
     expect(env.store.getUrusanOrThrow(u.id)).toMatchObject({ jenis: 'ktp', state: 'RENCANA_DIUSULKAN' });
     expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).ktp?.kodeKabKota).toBe('3312');
-    expect(of(out.events, 'grounded_answer')).toHaveLength(1);
-    expect(of(out.events, 'plan_card')).toHaveLength(1);
+    expect(of(out.events, 'grounded_answer')[0]!.klaim).toHaveLength(1);
+    // Rencana menautkan sumber jawaban yang mendasarinya, tetap jujur bahwa langkahnya karangan asisten.
+    const catatan = of(out.events, 'plan_card')[0]!.catatan ?? '';
+    expect(catatan).toMatch(/^Langkah disusun asisten dari jawaban bersumber di atas/);
+    expect(catatan).toContain('Disdukcapil Kabupaten Wonogiri, https://disdukcapil.contoh.go.id/ktp-el');
+    expect(catatan).toContain('belum bersumber');
+  });
+
+  it('jawaban bersumber untuk wilayah lama tidak ditautkan ke rencana wilayah baru', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        tool('urusan__usulkan_rencana', {
+          ringkasan: 'Ganti KTP-el rusak',
+          langkah: [{ judul: 'Datang ke Disdukcapil', jenis: 'offline' }],
+        }),
+      ],
+    });
+    const env = makeEnv({ provider, ragDb: ragKtp() });
+    let u = env.store.createUrusan({ jenis: 'ktp' });
+    const pub = publisher(env, u.id);
+    const tetapkan = (kode: string) => (u = tetapkanWilayah(env.store, u, { ktp: kode }, pub));
+    tetapkan('3312');
+    pub({
+      type: 'grounded_answer',
+      klaim: [
+        {
+          teks: 'Bawa KTP-el rusak.',
+          kutipan: [
+            {
+              refId: 'contoh-ktp-el#0',
+              kutipanPersis: SYARAT,
+              url: 'https://disdukcapil.contoh.go.id/ktp-el',
+              judul: 'KTP-el',
+              instansi: 'Disdukcapil Kabupaten Wonogiri',
+              verifiedAt: null,
+              textFragmentUrl: 'https://disdukcapil.contoh.go.id/ktp-el',
+              perluDicekUlang: true,
+            },
+          ],
+        },
+      ],
+      klaimDibuang: 0,
+      kalimatTetap: 'Keputusan ada di petugas.',
+    });
+    tetapkan('3311');
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Tolong buatkan rencananya.' });
+    expect(of(out.events, 'plan_card')[0]!.catatan).toMatch(/^Langkah disusun asisten, belum bersumber\./);
   });
 
   it('usulan Data Diri: giliran pertama hanya kartu (tanpa model, tanpa teks ganda)', async () => {
