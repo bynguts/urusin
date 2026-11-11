@@ -140,6 +140,32 @@ export function tautanWarga(e: ElemenAmatan | undefined): boolean {
   return e?.peran === 'tautan' && e.kelas === 'kirim' && e.tautanPembuka === true;
 }
 
+/** Nama CTA pembuka pengajuan ("Mulai Pendaftaran", "Ajukan Permohonan", "Daftar Sekarang"). */
+const RE_CTA_PENGAJUAN = /(^|[^a-z])(mulai|ajukan|buat|daftar)([^a-z]|$)/;
+/** Bukan pengajuan layanan: daftar/masuk akun, batal, hapus, keluar. */
+const RE_CTA_BUKAN = /akun|account|member|regist|login|masuk|keluar|logout|batal|hapus/;
+
+/**
+ * Tautan pembuka pengajuan di halaman pintu (tanpa kolom isian, bukan halaman akhir/masuk/tantangan): satu-satunya
+ * nama `tautanWarga` yang berbunyi mulai/ajukan/buat/daftar layanan (probe 9171 PaceMace: "Mulai Pendaftaran"
+ * di samping "Persyaratan & Formulir"). Tujuan Navigator selalu MENGAJUKAN urusan, jadi CTA ini didahulukan di
+ * atas tautan informasi; loop menyerahkannya ke warga (`ketuk_tautan`) tanpa bertanya ke model. Nama ganda
+ * (menu ponsel + desktop) dihitung satu; dua CTA berbeda = ambigu, diputuskan model.
+ */
+export function pembukaPengajuan(p: Pengamatan): string | undefined {
+  const s = p.sinyal;
+  if (s.halamanAkhir || s.login || s.otp || s.captcha || s.tantangan || s.sukses) return undefined;
+  if (p.elemen.some((e) => PERAN_KOLOM.includes(e.peran))) return undefined;
+  const calon = new Map<string, string>();
+  for (const e of p.elemen) {
+    if (!tautanWarga(e)) continue;
+    const nama = normalLabel(e.nama);
+    if (!RE_CTA_PENGAJUAN.test(nama) || RE_CTA_BUKAN.test(nama)) continue;
+    if (!calon.has(nama)) calon.set(nama, e.ref);
+  }
+  return calon.size === 1 ? [...calon.values()][0] : undefined;
+}
+
 export type OpsiValidasi = {
   /** Placeholder yang boleh dipakai (bawaan: semua kunci KATALOG_PLACEHOLDER). */
   katalog?: ReadonlySet<string>;

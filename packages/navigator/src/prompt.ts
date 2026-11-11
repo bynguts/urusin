@@ -63,6 +63,7 @@ function aturanSistem(tujuan: string): string {
     '- Unggah: pakai nama berkas dari KATALOG BERKAS.',
     '- Klik HANYA elemen dengan kelas navigasi, ui_lokal, atau lanjut. Paling banyak satu klik, dan harus aksi terakhir.',
     '- Tautan kelas tautan_warga membuka formulir layanan tetapi hanya boleh diketuk warga: bila formulir yang dituju ada di balik tautan itu, rencanakan klik ke ref itu sebagai aksi terakhir (sistem menyerahkannya ke warga).',
+    '- Tujuanmu MENGAJUKAN urusan: di halaman tanpa formulir, tautan pembuka pengajuan (mis. "Mulai Pendaftaran", "Ajukan Permohonan", "Buat Permohonan", "Daftar Layanan") didahulukan di atas tautan informasi (persyaratan, unduh formulir, panduan, alur, cek status, berita).',
     '- Jangan mengisi, mencentang, atau mengeklik elemen bertanda terlarang (sandi, otp, captcha, pernyataan).',
     '- Tombol kirim/simpan/ajukan/daftar dan halaman tinjauan atau pernyataan SELALU dikerjakan warga: akhiri dengan {"jenis":"serahkan","alasan":"final"}.',
     '- Halaman masuk akun, OTP, atau CAPTCHA: {"jenis":"serahkan","alasan":"masuk_akun"|"otp"|"captcha"}.',
