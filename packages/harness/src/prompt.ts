@@ -165,7 +165,7 @@ export function buildStateNote(input: {
     );
   if (input.ingatanAktif) {
     lines.push(
-      'INGATAN WARGA: wilayah yang ditetapkan, preferensi yang warga nyatakan jelas (lansia, bahasa sederhana, online/datang), dan catatan yang warga minta diingat ("tolong ingat …") dicatat otomatis oleh sistem; kebutuhan aksesibilitas diusulkan ke warga lewat kartu persetujuan. Panggil ingatan__ingat hanya bila warga di pesannya sekarang meminta sesuatu dilupakan (sebut apa) atau menyatakan preferensi dengan kata lain. Jangan pernah menyimpan data pribadi.',
+      'INGATAN WARGA: wilayah yang ditetapkan, preferensi yang warga nyatakan jelas (lansia, bahasa sederhana, online/datang), dicatat otomatis oleh sistem; catatan yang warga minta diingat ("tolong ingat …" di awal pesan) dan kebutuhan aksesibilitas diusulkan ke warga lewat kartu persetujuan. Panggil ingatan__ingat hanya bila warga di pesannya sekarang meminta sesuatu dilupakan (sebut apa) atau menyatakan preferensi dengan kata lain. Jangan pernah menyimpan data pribadi.',
     );
     if (input.ingatanBaru?.length)
       lines.push(

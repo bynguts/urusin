@@ -107,11 +107,12 @@ export const ragCariPengetahuan = defineTool({
       ),
   }),
   allowedStates: NON_TERMINAL_STATES,
+  kontenLuar: true,
   async execute(ctx, args): Promise<ToolResult> {
     // Wilayah urusan yang sudah dipastikan warga menang atas kode tebakan model.
     const kode = kodeKtp(ctx.store, ctx.urusan) ?? args.kodeKabKota ?? null;
     const out = await retrieve(ctx, args.query, kode, args.layanan);
-    return { content: formatHits(out.hasil, ctx.nonce, 4, kode), terbungkus: true };
+    return { content: formatHits(out.hasil, ctx.nonce, 4, kode), terbungkus: true, takTepercaya: true };
   },
 });
 
@@ -123,6 +124,7 @@ export const dukcapilCekPersyaratan = defineTool({
   spanOperation: 'retrieval',
   input: z.object({ kodeKabKota, layanan: llmText().max(80) }),
   allowedStates: NON_TERMINAL_STATES,
+  kontenLuar: true,
   async execute(ctx, args): Promise<ToolResult> {
     const kode = kodeKtp(ctx.store, ctx.urusan) ?? args.kodeKabKota;
     const { entry } = routeByKode(kode);
@@ -133,6 +135,7 @@ export const dukcapilCekPersyaratan = defineTool({
       content: `${head}
 ${formatHits(out.hasil, ctx.nonce, 4, kode)}`,
       terbungkus: true,
+      takTepercaya: true,
     };
   },
 });
@@ -314,6 +317,8 @@ export const urusanJawabPersyaratan = defineTool({
   butuhWilayah: 'adminduk',
   input: z.object({ pertanyaan: llmText().max(500) }),
   allowedStates: NON_TERMINAL_STATES,
+  // Klaim jawaban diturunkan dari potongan RAG (tak tepercaya) dan dikembalikan ke model.
+  kontenLuar: true,
   async execute(ctx, args): Promise<ToolResult> {
     const chunks = [...ctx.store.getChunks(ctx.urusan.id), ...chunkRencana(ctx)];
     // Pindah: pertanyaan tentang Disdukcapil tujuan diarahkan ke tujuan, selain itu (SKPWNI) ke asal.
@@ -341,6 +346,7 @@ export const urusanJawabPersyaratan = defineTool({
     return {
       // Isi klaim ikut dikembalikan ke model agar balasan berikutnya tidak menyangkal jawaban yang sudah tampil.
       content: `Jawaban bersumber (${verified.klaim.length} klaim) sudah ditampilkan kepada warga: ${verified.klaim.map((k) => k.teks).join(' | ')}. Jangan menyangkal atau mengulanginya.`,
+      takTepercaya: true,
       endTurn: true,
       events: [{ type: 'grounded_answer', ...data }],
       ...usage,

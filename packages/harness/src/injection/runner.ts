@@ -109,7 +109,11 @@ function contentTool(kanal: InjectionCase['kanal'], payload: string): ToolDef {
     effect: 'read',
     input: z.object({}),
     allowedStates: NON_TERMINAL_STATES,
-    execute: (ctx) => ({ content: spotlight(CHANNEL_SOURCE[kanal], payload, { nonce: ctx.nonce }) }),
+    kontenLuar: true,
+    execute: (ctx) => ({
+      content: spotlight(CHANNEL_SOURCE[kanal], payload, { nonce: ctx.nonce }),
+      takTepercaya: true,
+    }),
   }) as unknown as ToolDef;
 }
 

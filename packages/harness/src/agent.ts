@@ -201,9 +201,6 @@ function withInstruction(messages: ChatMessage[], instruction: ChatMessage): Cha
   return [...messages.slice(0, -1), instruction, ...messages.slice(-1)];
 }
 
-/** Hasil tool yang membawa konten tak tepercaya (selain blok ingatan milik warga sendiri). */
-const KONTEN_LUAR_RE = /<<DATA_TAK_TEPERCAYA sumber="(?!ingatan")/;
-
 class TurnRunner {
   private readonly cfg: AgentConfig;
   private readonly store: HarnessStore;
@@ -228,8 +225,9 @@ class TurnRunner {
   /** Label butir yang dicatat otomatis di giliran ini (petunjuk agar model tidak mencatat ulang). */
   private readonly ingatanBaru: string[] = [];
   /**
-   * Giliran ini sudah membaca konten tak tepercaya (hasil tool ber-spotlight: dom/ocr/tool_output/rag/...). Sejak
-   * itu ingatan__ingat tidak ditawarkan dan ditolak: injeksi tidak bisa menanam ingatan lintas urusan.
+   * Konten tak tepercaya sudah masuk konteks: hasil tool bertanda `takTepercaya` di turn ini, atau hasil tool
+   * `kontenLuar` yang masih ada di riwayat urusan. Selama itu ingatan__ingat tidak ditawarkan dan ditolak: injeksi
+   * tidak bisa menanam/menghapus ingatan lintas urusan.
    */
   private kontenTakTepercaya = false;
 
@@ -253,6 +251,19 @@ class TurnRunner {
     const k = deps.ingatan ? muatKonteks(deps.ingatan, deps.store, turn.urusanId) : null;
     this.ingatan = k && deps.ingatan ? { pemilik: k.pemilik, penyimpan: deps.ingatan } : null;
     this.blokIngatan = k ? blokIngatan(k, this.nonce) : null;
+    if (this.ingatan) this.kontenTakTepercaya = this.riwayatMemuatKontenLuar();
+  }
+
+  /** Riwayat urusan (jendela yang sama dengan prompt) memuat hasil tool `kontenLuar`. */
+  private riwayatMemuatKontenLuar(): boolean {
+    const nama = new Map<string, string>();
+    for (const m of this.store.loadHistory(this.turn.urusanId)) {
+      if (m.role === 'assistant' && m.tool_calls)
+        for (const c of m.tool_calls) if (c.type === 'function') nama.set(c.id, c.function.name);
+      if (m.role === 'tool' && this.deps.registry.get(nama.get(m.tool_call_id) ?? '')?.kontenLuar)
+        return true;
+    }
+    return false;
   }
 
   /** Tool `ingatan__ingat` hanya ditawarkan bila urusan punya pemilik vault. */
@@ -752,7 +763,7 @@ class TurnRunner {
           return { content: JSON.stringify({ is_error: true, pesan: e.message }), end: false };
         }
       }
-      if (KONTEN_LUAR_RE.test(res.content)) this.kontenTakTepercaya = true;
+      if (res.takTepercaya || tool.kontenLuar) this.kontenTakTepercaya = true;
       return { content: res.terbungkus ? res.content : clip(res.content), end: res.endTurn === true };
     } catch (e) {
       // Tindakan tidak sampai ke warga: konfirmasi tidak boleh hangus.

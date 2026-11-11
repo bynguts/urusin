@@ -35,6 +35,8 @@ export const IngatanSchema = z.object({
    * "Bawa ke akun" (`bawaDariTamu`) atau "Buang" (`buangDariTamu`). Tidak pernah digabung diam-diam saat login.
    */
   dariTamu: z.array(ButirIngatanSchema).max(40).optional(),
+  /** Waktu titipan tamu terakhir ditambahkan; titipan kedaluwarsa `TITIPAN_HARI` hari sesudahnya. */
+  dariTamuSejak: z.string().datetime().optional(),
 });
 export type Ingatan = z.infer<typeof IngatanSchema>;
 
@@ -51,6 +53,13 @@ const TUNGGAL: ReadonlySet<JenisButirIngatan> = new Set([
   'aksesibilitas',
 ]);
 const WILAYAH: ReadonlySet<JenisButirIngatan> = new Set(['ktp', 'domisili', 'tujuan']);
+/**
+ * Butir yang hanya diingat setelah warga menekan "Ya, ingat" di kartu persetujuan: aksesibilitas (data kesehatan)
+ * dan catatan teks bebas (bisa berasal dari pesan yang ditempel/diteruskan warga).
+ */
+const BUTUH_PERSETUJUAN: ReadonlySet<JenisButirIngatan> = new Set(['aksesibilitas', 'catatan']);
+/** Titipan tamu (lihat `titipDariTamu`) kedaluwarsa sesudah sekian hari tanpa pilihan warga. */
+export const TITIPAN_HARI = 30;
 
 /** Penyimpanan ingatan (diisi web dari vault akun). `pemilik` null = urusan tanpa pemilik vault: tanpa ingatan. */
 export interface PenyimpanIngatan {
@@ -115,6 +124,7 @@ export function bacaIngatan(raw: unknown): Ingatan {
     butir: r.data.butir.filter((_, i) => simpan.has(i)),
     usulan: (r.data.usulan ?? []).slice(-USULAN_MAKS),
     dariTamu: r.data.dariTamu ?? [],
+    ...(r.data.dariTamuSejak ? { dariTamuSejak: r.data.dariTamuSejak } : {}),
   });
 }
 
@@ -124,7 +134,9 @@ function rapikan(i: Ingatan): Ingatan {
     versi: 1,
     butir: i.butir,
     ...(i.usulan?.length ? { usulan: i.usulan } : {}),
-    ...(i.dariTamu?.length ? { dariTamu: i.dariTamu } : {}),
+    ...(i.dariTamu?.length
+      ? { dariTamu: i.dariTamu, ...(i.dariTamuSejak ? { dariTamuSejak: i.dariTamuSejak } : {}) }
+      : {}),
   };
 }
 
@@ -157,30 +169,41 @@ export function gabungIngatan(akun: unknown, tamu: unknown): Ingatan {
 
 /**
  * Login di perangkat yang punya ingatan tamu: butir tamu DITITIPKAN di `dariTamu` akun (tidak dipakai) sampai warga
- * memilih. Titipan lama tetap; butir tamu yang sama tidak diduplikasi. Usulan tamu (belum disetujui) dibuang.
+ * memilih. Hanya butir non-sensitif (wilayah, preferensi); butir yang butuh persetujuan (aksesibilitas, catatan)
+ * dan usulan tamu dibuang: persetujuan orang lain di perangkat bersama tidak berlaku untuk pemilik akun. Titipan
+ * lama tetap, tanpa duplikat; kedaluwarsa `TITIPAN_HARI` hari sesudah titipan terakhir.
  */
-export function titipDariTamu(akun: unknown, tamu: unknown): Ingatan {
+export function titipDariTamu(akun: unknown, tamu: unknown, at: string = new Date().toISOString()): Ingatan {
   const a = bacaIngatan(akun);
   const t = bacaIngatan(tamu);
   const kunci = (b: ButirIngatan) => `${b.jenis}|${normalTeks(b.nilai)}`;
-  const lama = a.dariTamu ?? [];
+  const lama = titipanAktif(a, at);
   const ada = new Set(lama.map(kunci));
-  const baru = t.butir.filter((b) => !ada.has(kunci(b)));
-  return rapikan({ ...a, dariTamu: [...lama, ...baru].slice(-40) });
+  const baru = t.butir.filter((b) => !BUTUH_PERSETUJUAN.has(b.jenis) && !ada.has(kunci(b)));
+  if (baru.length === 0) return rapikan({ ...a, dariTamu: lama });
+  return rapikan({ ...a, dariTamu: [...lama, ...baru].slice(-40), dariTamuSejak: at });
+}
+
+/** Titipan tamu yang masih berlaku (belum kedaluwarsa, tanpa butir yang butuh persetujuan). */
+export function titipanAktif(ingatan: Ingatan, now: string = new Date().toISOString()): ButirIngatan[] {
+  const sejak = ingatan.dariTamuSejak ? Date.parse(ingatan.dariTamuSejak) : NaN;
+  if (!Number.isFinite(sejak) || Date.parse(now) - sejak > TITIPAN_HARI * 86_400_000) return [];
+  return (ingatan.dariTamu ?? []).filter((b) => !BUTUH_PERSETUJUAN.has(b.jenis));
 }
 
 /** Jumlah butir tamu yang menunggu pilihan warga. */
-export const jumlahDariTamu = (ingatan: Ingatan): number => ingatan.dariTamu?.length ?? 0;
+export const jumlahDariTamu = (ingatan: Ingatan, now?: string): number => titipanAktif(ingatan, now).length;
 
 /** "Bawa ke akun": titipan tamu digabung (aturan `gabungIngatan`, tanpa menggusur butir akun) lalu titipan hilang. */
-export function bawaDariTamu(ingatan: Ingatan): Ingatan {
-  const { dariTamu = [], ...akun } = ingatan;
-  return gabungIngatan(akun, { versi: 1, butir: dariTamu });
+export function bawaDariTamu(ingatan: Ingatan, now?: string): Ingatan {
+  const aktif = titipanAktif(ingatan, now);
+  return gabungIngatan(buangDariTamu(ingatan), { versi: 1, butir: aktif });
 }
 
 /** "Buang": titipan tamu dihapus tanpa dipakai. */
 export function buangDariTamu(ingatan: Ingatan): Ingatan {
-  return rapikan({ ...ingatan, dariTamu: [] });
+  const { dariTamuSejak: _s, ...sisa } = ingatan;
+  return rapikan({ ...sisa, dariTamu: [] });
 }
 
 const normalTeks = (s: string) => s.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -257,12 +280,17 @@ const BUKTI: Partial<Record<JenisButirIngatan, (nilai: string) => RegExp>> = {
 };
 
 /**
- * Warga meminta sesuatu diingat lintas urusan ("tolong ingat …", "catat ya …", "ingat ya, saya …"). Satu-satunya
- * jalan catatan masuk ingatan; isinya selalu kutipan persis dari pesan yang memuat permintaan ini.
+ * Perintah LANGSUNG ke Urusin di AWAL pesan ("tolong ingat …", "mohon dicatat ya …", "catat ya …", "ingat ya, saya
+ * …"), boleh didahului sapaan/partikel pendek. Bentuk pengumuman ("Harap diingat bahwa …", "… diingat bahwa …")
+ * dan permintaan di tengah teks tidak dihitung: pesan berantai yang diteruskan warga tidak boleh jadi catatan.
  */
 export const MINTA_DIINGAT_RE =
-  /\b(?:tolong|mohon|minta|harap)\s+(?:di)?(?:ingat|catat)(?:kan|in)?\b|\b(?:ingat|catat)(?:kan|in)?\s+(?:ya,?\s+)?(?:bahwa|kalau|kalo)\b|\b(?:ingat|catat)\s+ya\b|\bdiingat\s+(?:ya|saja|aja)\b/i;
-export const mintaDiingat = (teks: string): boolean => MINTA_DIINGAT_RE.test(teks);
+  /^(?:(?:oh|eh|nah|iya|ya|pak|bu|mas|mbak|kak|dik|dek|bang|halo|hai)\b[\s,.!]*)*(?:(?:tolong|mohon|minta)\s+(?:di)?(?:ingat|catat)(?:kan|in)?(?!\s+bahwa\b)|(?:ingat|catat)(?:kan|in)?\s+ya)\b/i;
+/** Pesan tempelan/diteruskan (lebih dari 2 kalimat atau berbaris banyak) tidak pernah dianggap permintaan ingat. */
+const pesanTempelan = (teks: string) =>
+  /\n/.test(teks.trim()) || teks.split(/(?<=[.!?])\s+/).filter((k) => k.trim()).length > 2;
+export const mintaDiingat = (teks: string): boolean =>
+  !pesanTempelan(teks) && MINTA_DIINGAT_RE.test(teks.normalize('NFKC').trim());
 
 /** Teks `nilai` muncul persis (setelah normalisasi spasi/huruf) di `pesan`. */
 const kutipanPersis = (nilai: string, pesan: string) => {
@@ -271,28 +299,28 @@ const kutipanPersis = (nilai: string, pesan: string) => {
 };
 
 /**
- * Catatan yang warga minta diingat, diambil deterministik dari pesan giliran ini: kalimat yang memuat permintaan,
- * tanpa frasa permintaannya ("Tolong ingat ya, saya kerja shift malam" → "saya kerja shift malam"). Bila kalimat
- * itu hanya berisi permintaan, kalimat berikutnya yang diambil. Hasil selalu potongan persis pesan warga.
+ * Catatan yang warga minta diingat, diambil deterministik dari pesan giliran ini: pesan pendek (≤ 2 kalimat, satu
+ * baris) yang DIAWALI permintaan, tanpa frasa permintaannya ("Tolong ingat ya, saya kerja shift malam" → "saya kerja
+ * shift malam"). Bila kalimat pertama hanya berisi permintaan, kalimat kedua yang diambil. Hasil selalu potongan
+ * persis pesan warga, dan tetap menjadi USULAN yang menunggu "Ya, ingat".
  */
 export function catatanDiminta(teks: string): string | null {
+  if (!mintaDiingat(teks)) return null;
   const kalimat = teks
     .normalize('NFKC')
     .split(/(?<=[.!?\n])/)
     .map((k) => k.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
-  for (let i = 0; i < kalimat.length; i++) {
-    const k = kalimat[i]!;
-    const m = MINTA_DIINGAT_RE.exec(k);
-    if (!m || k.endsWith('?')) continue;
-    const sisa = k
-      .slice(m.index + m[0].length)
-      .replace(/^(?:\s*(?:ya|yah|ya,|dong|deh|juga)\b)*\s*[,:;-]?\s*(?:bahwa|kalau|kalo)?\s*/i, '')
-      .replace(/[.!\s]+$/, '');
-    const isi =
-      sisa.split(/\s+/).filter(Boolean).length >= 2 ? sisa : kalimat[i + 1]?.replace(/[.!\s]+$/, '');
-    if (isi && isi.length <= BATAS_INGATAN.panjangMaks && kutipanPersis(isi, teks)) return isi;
-  }
+  const [k, berikut] = kalimat;
+  const m = k ? MINTA_DIINGAT_RE.exec(k) : null;
+  if (!k || !m || k.endsWith('?')) return null;
+  const sisa = k
+    .slice(m.index + m[0].length)
+    .replace(/^(?:\s*(?:ya|yah|ya,|dong|deh|juga)\b)*\s*[,:;-]?\s*(?:bahwa|kalau|kalo)?\s*/i, '')
+    .replace(/[.!\s]+$/, '');
+  const isi = sisa.split(/\s+/).filter(Boolean).length >= 2 ? sisa : berikut?.replace(/[.!\s]+$/, '');
+  if (isi && !isi.endsWith('?') && isi.length <= BATAS_INGATAN.panjangMaks && kutipanPersis(isi, teks))
+    return isi;
   return null;
 }
 
@@ -786,9 +814,6 @@ export const INGAT_TOOL = 'ingatan__ingat';
 
 export type IngatanTurn = { pemilik: string; penyimpan: PenyimpanIngatan };
 
-/** Butir sensitif: disimpan hanya setelah warga menekan "Ya, ingat" di kartu persetujuan. */
-const BUTUH_PERSETUJUAN: ReadonlySet<JenisButirIngatan> = new Set(['aksesibilitas']);
-
 const kartuDari = (b: ButirIngatan) => ({ id: b.id, jenis: b.jenis, label: labelKartu(b) });
 
 /**
@@ -818,9 +843,10 @@ export function jalankanOperasi(
     if (!sasaran) throw new IngatanError('TIDAK_ADA', 'butir ingatan tidak ditemukan');
     if (!KATA_HAPUS_RE.test(bukti.terakhir) || !objekDisebut(sasaran, bukti.terakhir)) tolakBukti();
   }
-  if (bukti && op.aksi === 'simpan' && BUTUH_PERSETUJUAN.has(op.jenis)) {
-    const ada = sekarang.butir.find((b) => b.jenis === op.jenis && b.nilai === nilai);
-    const sama = (sekarang.usulan ?? []).find((b) => b.jenis === op.jenis && b.nilai === nilai);
+  if (bukti && op.aksi !== 'hapus' && BUTUH_PERSETUJUAN.has(op.jenis)) {
+    const samaNilai = (b: ButirIngatan) => b.jenis === op.jenis && normalTeks(b.nilai) === normalTeks(nilai!);
+    const ada = sekarang.butir.find(samaNilai);
+    const sama = (sekarang.usulan ?? []).find(samaNilai);
     if (ada || sama)
       return {
         hasil: { ingatan: sekarang, butir: (ada ?? sama)!, aksi: 'simpan', berubah: false },

@@ -57,6 +57,11 @@ export type ToolResult = {
   content: string;
   /** Konten sudah dianggarkan per bagian dan dibungkus spotlight: harness TIDAK boleh memotongnya (penutup pembungkus hilang). */
   terbungkus?: boolean;
+  /**
+   * Hasil ini memuat konten tak tepercaya (potongan RAG, teks halaman/OCR/berkas, keluaran tool luar) atau klaim
+   * turunannya. Sejak itu `ingatan__ingat` dikunci di turn ini (ADR 0031).
+   */
+  takTepercaya?: boolean;
   events?: EmittableEvent[];
   execution?: ExecutionRequest;
   /** Transisi state yang diminta tool; diterapkan harness lewat CAS dan state machine. */
@@ -85,6 +90,11 @@ export type ToolDef<S extends z.ZodType = z.ZodType> = {
   butuhWilayah?: boolean | 'adminduk';
   /** Operasi span OTel; default `execute_tool`. */
   spanOperation?: 'execute_tool' | 'retrieval';
+  /**
+   * Hasil tool ini dapat memuat konten tak tepercaya. Dipakai untuk riwayat: selama hasilnya masih ada di riwayat
+   * urusan, `ingatan__ingat` tetap dikunci di turn berikutnya (hasil di riwayat tidak membawa `takTepercaya`).
+   */
+  kontenLuar?: boolean;
   execute(ctx: ToolContext, args: z.infer<S>): Promise<ToolResult> | ToolResult;
 };
 
