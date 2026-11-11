@@ -192,6 +192,14 @@
               </button>
             {/if}
           </div>
+        {:else if data.giliran.alasan === 'login' || data.giliran.alasan === 'masuk_akun'}
+          <!-- Masuk akun / CAPTCHA / OTP: worker mendeteksi sendiri giliran yang selesai (halaman berganti, formulir
+               masuk hilang) lalu AI lanjut. Bila belum terdeteksi, warga menekan ini sebagai cadangan. -->
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick={onkembalikan} data-sudah-lanjut class={TOMBOL_GELAP}>
+              <Icon name="putar" class="size-[15px]" />Sudah, lanjutkan
+            </button>
+          </div>
         {:else if data.giliran.alasan === 'berhenti'}
           {@render sudahKirim()}
         {/if}

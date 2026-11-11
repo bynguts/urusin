@@ -220,6 +220,9 @@ export const PESAN_TERKIRIM = 'Pengajuan terkirim. Browser ditutup; login dan co
 export const PESAN_MEMORI =
   'Halaman situs ini terlalu berat untuk peramban pendamping Urusin, jadi sesi dihentikan. Kami beralih ke panduan langkah: buka situs resmi di perangkat Anda sendiri.';
 
+/** Generik: giliran masuk akun/CAPTCHA/OTP terdeteksi selesai (halaman berganti, formulir masuk hilang). */
+export const PESAN_GILIRAN_SELESAI = 'Giliran Anda selesai. AI melanjutkan.';
+
 const PESAN_VERIFIKASI =
   "Situs meminta verifikasi keamanan. Ketuk kotak 'Verify you are human', lalu tunggu sebentar. AI menunggu dan tidak akan mengekliknya.";
 
@@ -682,6 +685,8 @@ export async function wire(
   let tantanganNav = -1;
   /** Nomor dokumen serah generik `login` (CAPTCHA/kode) terakhir yang masih dipegang warga. */
   let serahLoginNav: number | undefined;
+  /** Generik: mulai/hentikan pemantauan selesainya giliran masuk akun/CAPTCHA/OTP (diisi saat generik dibuat). */
+  let mulaiPantauSerah: (pantauSerah: boolean) => Promise<void> = async () => {};
   let pesanTantangan = '';
   const pantau = createPantauTantangan(2);
   // Probe masuk akun (adapter): warga keluar/terlempar ke login -> takeover masuk_akun sampai masuk lagi.
@@ -1339,6 +1344,9 @@ export async function wire(
         // Serah CAPTCHA/kode (`login`) di dokumen ini: bila dokumen yang sama ternyata halaman tantangan, serah ini
         // ikut selesai saat tantangannya lolos (lihat langkahTantangan).
         serahLoginNav = alasan === 'login' ? navKe : undefined;
+        // Giliran masuk akun / CAPTCHA / OTP: worker memantau sendiri kapan giliran itu selesai (AI lanjut tanpa
+        // menunggu tombol warga). Serah lain (final, isi sendiri, tautan, berhenti) tetap menunggu warga.
+        void mulaiPantauSerah(alasan === 'login' || alasan === 'masuk_akun');
         hooks.mode('takeover', pesan);
         hooks.event({
           jenis: 'giliran_anda',
@@ -1352,6 +1360,60 @@ export async function wire(
       tidakBisa: (pesan) => hooks.ended('dipandu', 'drift', pesan),
     });
     const run = generik;
+
+    /**
+     * Giliran masuk akun / CAPTCHA / OTP selesai tanpa tombol warga: dokumen utama berganti (nomor dokumen, jalur,
+     * atau judul) DAN pengamatan baca-saja tidak lagi menunjukkan formulir masuk, CAPTCHA, OTP, atau tantangan.
+     * Halaman sukses dibiarkan ke Navigator (pantau sukses). Gagal masuk yang tetap di formulir = tetap giliran
+     * warga; tombol "Sudah, lanjutkan" di web tetap jadi cadangan (`kembalikan`).
+     */
+    const halamanKini = () => {
+      const u = URL.parse(page.url());
+      return u ? `${u.origin}${u.pathname}` : page.url();
+    };
+    let serahGiliran: { nav: number; halaman: string; judul: string } | undefined;
+    let serahPoll: ReturnType<typeof setInterval> | undefined;
+    let memeriksaSerah = false;
+    const hentiPantauSerah = () => {
+      serahGiliran = undefined;
+      clearInterval(serahPoll);
+      serahPoll = undefined;
+    };
+    mulaiPantauSerah = async (pantauSerah: boolean) => {
+      hentiPantauSerah();
+      if (!pantauSerah) return;
+      const awal = { nav: navKe, halaman: halamanKini(), judul: await page.title().catch(() => '') };
+      if (!manual || destroyed) return;
+      serahGiliran = awal;
+      serahPoll = setInterval(() => void periksaSerahSelesai(), 1000);
+      serahPoll.unref?.();
+    };
+    const periksaSerahSelesai = async () => {
+      const s = serahGiliran;
+      if (!s || destroyed || !manual || run.berhenti) return hentiPantauSerah();
+      if (memeriksaSerah || pantau.aktif || masukAktif || loading) return;
+      memeriksaSerah = true;
+      try {
+        const berganti =
+          navKe !== s.nav ||
+          halamanKini() !== s.halaman ||
+          (await page.title().catch(() => s.judul)) !== s.judul;
+        if (!berganti) return;
+        const p = await run.amati(true).catch(() => null);
+        if (!p || serahGiliran !== s || !manual || destroyed || pantau.aktif) return;
+        const { login, captcha, otp, tantangan, sukses } = p.sinyal;
+        if (login || captcha || otp || tantangan || sukses) return;
+        hentiPantauSerah();
+        manual = false;
+        serahLoginNav = undefined;
+        jejak({ jenis: 'ambil_alih', fase: 'selesai' });
+        hooks.activity();
+        hooks.mode('ai', PESAN_GILIRAN_SELESAI);
+        resume();
+      } finally {
+        memeriksaSerah = false;
+      }
+    };
     // Dokumen bingkai utama baru (cross-document, ter-commit) = timer dokumen lama mati: bendera kotor direset.
     cdp.on('Page.frameNavigated', (e: { frame: { parentId?: string } }) => {
       if (!e.frame.parentId) run.dokumenBaru();
