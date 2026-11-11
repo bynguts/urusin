@@ -18,10 +18,15 @@ sederhana), dokumen yang sudah ada di brankas, dan status urusan lainnya.
   (bahasa sederhana, lansia, kanal online/datang, aksesibilitas), dan paling banyak 10 catatan pendek
   (≤ 200 karakter). Daftar dokumen (jenisnya saja) dan ringkasan urusan lain (jenis, status, langkah
   berikutnya, tenggat menurut aturan nasional) tidak disimpan ulang. Keduanya dihitung saat turn dimulai.
-- Penulisan lewat tool `ingatan__ingat` dan pencatatan otomatis wilayah yang sudah DITETAPKAN warga (kecuali
-  kematian, karena wilayahnya milik almarhum). Setiap butir lolos skema, pemindai PII (NIK, KK, HP, email, nama
-  ibu, alamat lengkap, placeholder, deret angka panjang), dan bukti bahwa warga sendiri yang menyatakannya di
-  urusan itu. PII masuk ke Data Diri lewat placeholder, tidak ke ingatan. Warga melihat kartu "Urusin
+- Penulisan otomatis dengan aturan tetap, bukan tebakan model: wilayah yang sudah DITETAPKAN warga (kecuali
+  kematian, karena wilayahnya milik almarhum) dan preferensi yang warga NYATAKAN sendiri di pesannya (lansia/usia
+  lanjut, minta bahasa sederhana/pelan, disabilitas/aksesibilitas, lebih suka online atau datang langsung;
+  `preferensiDinyatakan`, dijalankan di awal turn atas pesan yang sudah diredaksi). Kalimat tanya, bentuk ingkar,
+  dan kepemilikan ("ibu saya sudah tua") tidak dicatat. Tool `ingatan__ingat` dipakai model untuk catatan yang
+  warga MINTA diingat ("tolong ingat …"; catatan keadaan ditambah petunjuk khusus bila permintaan itu terdeteksi)
+  dan preferensi yang dinyatakan dengan kata lain. Setiap butir lolos skema, pemindai PII (NIK, KK, HP, email,
+  nama ibu, alamat lengkap, placeholder, deret angka panjang), dan bukti bahwa warga sendiri yang menyatakannya
+  di urusan itu. PII masuk ke Data Diri lewat placeholder, tidak ke ingatan. Warga melihat kartu "Urusin
   mengingat: …" dengan tombol Batalkan, dan bagian "Yang Urusin ingat" di Pengaturan menyediakan hapus per
   butir serta "Hapus semua ingatan" (hak hapus UU PDP 27/2022).
 - Blok "Yang Urusin tahu tentang warga ini" (≤ 600 token) disisipkan sesudah prompt sistem statis. Datanya
@@ -49,3 +54,6 @@ sederhana), dokumen yang sudah ada di brankas, dan status urusan lainnya.
   ingatan dihapus dan terhapus bersama urusannya. Jejak hanya mencatat jenis butir.
 - Bukti "dinyatakan warga" untuk teks bebas memakai heuristik tumpang tindih kata (≥ 60%). Model masih bisa
   merapikan kalimat, tetapi tidak bisa mengarang isi baru.
+- Preferensi yang hanya tersirat ("ibu ndak ngerti") sengaja tidak dicatat otomatis: salah catat lebih mahal
+  daripada bertanya. Eval persona dua urusan (p18, p19) mengukur bahwa preferensi tercatat di urusan pertama dan
+  wilayah diusulkan dari ingatan di urusan kedua.
