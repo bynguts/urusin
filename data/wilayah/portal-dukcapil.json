@@ -911,14 +911,14 @@
       "kelas": "A",
       "jenis": "web",
       "url": "https://pakonom.banjarkota.go.id/",
-      "hosts": ["pakonom.banjarkota.go.id"],
+      "hosts": ["pakonom.banjarkota.go.id", "bebeong.banjarkota.go.id"],
       "sumber": "https://pakonom.banjarkota.go.id/",
       "login": [],
       "proteksi": ["cloudflare"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "PAK ONOM. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare \"you have been blocked\" dari IP Singapura).",
+      "verifiedAt": "2026-11-11",
+      "catatan": "PAK ONOM. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare \"you have been blocked\" dari IP Singapura). OBS 2026-11-11: tombol MASUK portal memanggil bukalogin() ke bebeong.banjarkota.go.id/open_layanan/pakonom (subdomain pemkot yang sama), jadi host login ikut registry.",
       "aksesWilayah": "id-only"
     },
     "3306": {

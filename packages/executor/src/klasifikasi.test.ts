@@ -452,6 +452,42 @@ describe('K7_NEG_NAMA_TAUTAN: tautan yang kena NEG hanya lewat nama', () => {
   });
 });
 
+describe('probe gel4: tombol menu ikon saja dan pembuka kalender', () => {
+  it('hamburger ikon saja (kendaliLokal atau ikon bars) = ui_lokal', () => {
+    for (const html of [
+      // 3279: navbar-toggler Bootstrap dengan data-toggle collapse.
+      '<nav class="navbar"><button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#m" data-uji><i class="fa fa-bars"></i></button></nav>',
+      // 6371: tombol Tailwind tanpa type di luar form, hanya ikon fa-bars.
+      '<header><button class="md:hidden focus:outline-none" data-uji><i class="fas fa-bars"></i></button></header>',
+      '<button type="button" aria-expanded="false" data-uji><span class="material-icons">menu</span></button>',
+    ])
+      expect(kelasDari(html), html).toBe('ui_lokal');
+  });
+
+  it('ikon saja tanpa token menu, submitter, atau tautan tetap bukan ui_lokal', () => {
+    expect(kelasDari('<button type="button" data-uji><i class="fa fa-star"></i></button>')).toBe(
+      'tidak_pasti',
+    );
+    expect(
+      kelasDari('<form><input name="q"><button data-uji><i class="fa fa-bars"></i></button></form>'),
+    ).toBe('kirim');
+    expect(kelasDari('<button type="button" data-uji><i class="fa fa-paper-plane"></i></button>')).toBe(
+      'kirim',
+    );
+    expect(
+      kelasDari(`<button type="button" aria-label="${CYR_A}" data-uji><i class="fa fa-bars"></i></button>`),
+    ).toBe('tidak_pasti');
+  });
+
+  it('pembuka kalender = ui_lokal; nama lain atau submitter tidak', () => {
+    for (const nama of ['Buka kalender', 'Pilih tanggal', 'Calendar'])
+      expect(kelasDari(`<button type="button" data-uji>${nama}</button>`), nama).toBe('ui_lokal');
+    expect(kelasDari('<form><input name="t"><button data-uji>Buka kalender</button></form>')).toBe('kirim');
+    expect(kelasDari('<button type="button" data-uji>Kirim tanggal</button>')).toBe('kirim');
+    expect(kelasDari('<a href="/kalender" data-uji>Kalender</a>')).toBe('navigasi');
+  });
+});
+
 describe('halamanAkhir', () => {
   const akhir = (html: string) => {
     document.body.innerHTML = html;
@@ -504,6 +540,37 @@ describe('halamanAkhir', () => {
     ).toBe(true);
     expect(akhir('<label><input type="checkbox"> Saya bersedia menerima sanksi</label>')).toBe(true);
     expect(akhir('<label><input type="checkbox"> Alamat domisili sama dengan KTP</label>')).toBe(false);
+  });
+
+  it('probe 3324/3404: form pendaftaran dengan kolom wajib kosong + centang S&K bukan halaman akhir', () => {
+    const sk =
+      '<label><input type="checkbox" required> Saya telah membaca dan menyetujui Syarat dan Ketentuan</label>';
+    const form = (isi: string) =>
+      `<form method="post"><h2>Pendaftaran Akun</h2>${isi}${sk}<button type="submit">Daftar</button></form>`;
+    expect(akhir(form('<label>NIK <input name="nik" required></label>'))).toBe(false);
+    expect(akhir(form('<label>Email <input type="email" aria-required="true"></label>'))).toBe(false);
+    // Tombol pembuka kalender di form itu = ui_lokal; submit tetap kirim.
+    document.body.innerHTML = form(
+      '<label>Tanggal lahir <input name="tgl" required placeholder="DD-MM-YYYY"></label><button type="button" aria-label="Buka kalender"></button>',
+    );
+    expect(klasifikasi(document.querySelector('[aria-label="Buka kalender"]')!).kelas).toBe('ui_lokal');
+    expect(klasifikasi(document.querySelector('button[type="submit"]')!).kelas).toBe('kirim');
+  });
+
+  it('kolom terisi, opsional, sandi, OTP, atau CAPTCHA tidak membuka kunci halaman akhir', () => {
+    const sk = '<label><input type="checkbox"> Dengan ini saya menyatakan data di atas benar</label>';
+    for (const kolom of [
+      '<input name="nik" required value="isi">',
+      '<input name="catatan">',
+      '<input type="password" name="sandi" required>',
+      '<input name="kode" autocomplete="one-time-code" required>',
+      '<label>Kode OTP <input name="kode" required></label>',
+      '<label>Captcha <input name="hasil" required></label>',
+      '<div><img src="/gambar/captcha.png"><input name="jawaban" required></div>',
+      '<input name="nik" required readonly>',
+      '<input name="nik" required style="display:none">',
+    ])
+      expect(akhir(`<form>${kolom}${sk}<button type="button">Kirim</button></form>`), kolom).toBe(true);
   });
 
   it('halaman formulir biasa bukan halaman akhir; frasa di dalam textarea/skrip diabaikan', () => {
