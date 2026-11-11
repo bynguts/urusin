@@ -23,6 +23,15 @@ import { HarnessError, TurnInProgressError } from './errors.js';
 import { tierUrusan } from './rencana.js';
 import { toEvent } from './envelope.js';
 import { buildHandoff } from './grounding.js';
+import {
+  INGAT_TOOL,
+  blokIngatan,
+  ingatPreferensi,
+  ingatWilayah,
+  muatKonteks,
+  type IngatanTurn,
+  type PenyimpanIngatan,
+} from './ingatan.js';
 import { classifyIntent, klasifikasiKataKunci } from './intent.js';
 import { PiiInterceptor } from './pii.js';
 import { PolicyGate } from './policy.js';
@@ -105,6 +114,8 @@ export type AgentDeps = {
   now?: (() => Date) | undefined;
   /** Mutex per-urusan in-process (server tunggal). Dibagi antar pemanggilan; default instance global modul. */
   locks?: Set<string> | undefined;
+  /** Ingatan warga lintas urusan (ADR 0031); tanpa ini tidak ada blok ingatan dan tool `ingatan__ingat`. */
+  ingatan?: PenyimpanIngatan | undefined;
 };
 
 export type TurnOutcome = {
@@ -225,6 +236,9 @@ function withInstruction(messages: ChatMessage[], instruction: ChatMessage): Cha
   return [...messages.slice(0, -1), instruction, ...messages.slice(-1)];
 }
 
+/** Hasil tool di mode degraded disisipkan sebagai pesan user `HASIL_TOOL <nama>: …`. */
+const HASIL_TOOL_RE = /^HASIL_TOOL ([a-z0-9]+__[a-z0-9_]+):/;
+
 class TurnRunner {
   private readonly cfg: AgentConfig;
   private readonly store: HarnessStore;
@@ -243,6 +257,17 @@ class TurnRunner {
   private costIdr = 0;
   private degraded = false;
   private lanjutkan = false;
+  /** Ingatan pemilik urusan, dimuat sekali per turn (blok prompt stabil selama turn). */
+  private readonly ingatan: IngatanTurn | null;
+  private readonly blokIngatan: string | null;
+  /** Label butir yang dicatat otomatis di giliran ini (petunjuk agar model tidak mencatat ulang). */
+  private readonly ingatanBaru: string[] = [];
+  /**
+   * Konten tak tepercaya sudah masuk konteks: hasil tool bertanda `takTepercaya` di turn ini, atau hasil tool
+   * `kontenLuar` yang masih ada di riwayat urusan. Selama itu ingatan__ingat tidak ditawarkan dan ditolak: injeksi
+   * tidak bisa menanam/menghapus ingatan lintas urusan.
+   */
+  private kontenTakTepercaya = false;
 
   constructor(
     private readonly deps: AgentDeps,
@@ -261,6 +286,32 @@ class TurnRunner {
     this.urusan = deps.store.getUrusanOrThrow(turn.urusanId);
     this.version = turn.version;
     this.turnMessages.push({ role: 'user', content: turn.userText });
+    const k = deps.ingatan ? muatKonteks(deps.ingatan, deps.store, turn.urusanId) : null;
+    this.ingatan = k && deps.ingatan ? { pemilik: k.pemilik, penyimpan: deps.ingatan } : null;
+    this.blokIngatan = k ? blokIngatan(k, this.nonce) : null;
+    if (this.ingatan) this.kontenTakTepercaya = this.riwayatMemuatKontenLuar();
+  }
+
+  /**
+   * Riwayat urusan (jendela yang sama dengan prompt) memuat hasil tool `kontenLuar`: pesan `tool` biasa, atau
+   * pesan `HASIL_TOOL <nama>: …` dari mode degraded (tanpa tool calling).
+   */
+  private riwayatMemuatKontenLuar(): boolean {
+    const nama = new Map<string, string>();
+    const luar = (n: string | undefined) => this.deps.registry.get(n ?? '')?.kontenLuar === true;
+    for (const m of this.store.loadHistory(this.turn.urusanId)) {
+      if (m.role === 'assistant' && m.tool_calls)
+        for (const c of m.tool_calls) if (c.type === 'function') nama.set(c.id, c.function.name);
+      if (m.role === 'tool' && luar(nama.get(m.tool_call_id))) return true;
+      if (m.role === 'user' && typeof m.content === 'string' && luar(HASIL_TOOL_RE.exec(m.content)?.[1]))
+        return true;
+    }
+    return false;
+  }
+
+  /** Tool `ingatan__ingat` hanya ditawarkan bila urusan punya pemilik vault. */
+  private toolDitawarkan(nama: string): boolean {
+    return nama !== INGAT_TOOL || (this.ingatan !== null && !this.kontenTakTepercaya);
   }
 
   private get scope() {
@@ -331,6 +382,8 @@ class TurnRunner {
     cut = Math.max(cut, 0);
     return this.turn.pii.redactMessages([
       { role: 'system', content: buildSystemPrompt() },
+      // Ingatan warga (ADR 0031) sesudah prompt statis: prefix statis tetap bisa di-cache provider.
+      ...(this.blokIngatan ? [{ role: 'system' as const, content: this.blokIngatan }] : []),
       ...history,
       ...turnMsgs.slice(0, cut),
       { role: 'system', content: note },
@@ -344,9 +397,11 @@ class TurnRunner {
       jenis: this.urusan.jenis,
       kodeKabKota: this.urusan.kodeKabKota,
       wilayah: wilayahUrusan(this.store, this.urusan),
-      tools: this.deps.registry.forState(this.urusan.state),
+      tools: this.deps.registry.forState(this.urusan.state).filter((t) => this.toolDitawarkan(t.name)),
       confirmations: this.store.activeConfirmations(this.turn.urusanId),
       pesanWarga: this.turn.pii.redact(this.turn.userText).text,
+      ingatanAktif: this.ingatan !== null,
+      ingatanBaru: this.ingatanBaru,
     });
   }
 
@@ -456,6 +511,7 @@ class TurnRunner {
 
   private async body(): Promise<void> {
     if (this.urusan.state === 'BARU') this.applyTransition('MEMAHAMI');
+    this.ingatPreferensi();
     this.progress('Memahami kebutuhan Anda…');
     if (this.urusan.jenis === null) await this.classify();
     this.wilayahDariPesan();
@@ -496,6 +552,7 @@ class TurnRunner {
         (e) => void this.emit(e),
       );
       this.version = this.urusan.version;
+      this.ingatWilayah({ ktp: hasil.kode });
       return;
     }
     const ktp = refWilayah(hasil.kode);
@@ -596,7 +653,9 @@ class TurnRunner {
     for (let step = 0; step < this.cfg.maxSteps; step++) {
       const q = this.quotaStatus();
       if (q.mode === 'habis') return this.quotaStop(q);
-      const tools = this.deps.registry.openaiTools(this.urusan.state);
+      const tools = this.deps.registry
+        .openaiTools(this.urusan.state)
+        .filter((t) => t.type !== 'function' || this.toolDitawarkan(t.function.name));
       const span = this.deps.tracer.start(this.scope, `chat ${this.deps.model}`, 'chat');
       let completion: ChatCompletion;
       // Setelah terpotong: ruang token dua kali lipat dan instruksi balasan singkat (eval p06: satu balasan
@@ -745,6 +804,20 @@ class TurnRunner {
   ): Promise<{ content: string; end: boolean; answer?: boolean }> {
     // Nama tool datang dari model: jangan pernah dicatat/dipantulkan mentah (bisa memuat PII atau berukuran besar).
     const name = safeToolName(rawName);
+    if (name === INGAT_TOOL && this.kontenTakTepercaya) {
+      const pesan = 'ingatan tidak bisa diubah sesudah membaca konten luar di giliran ini';
+      this.emit({
+        type: 'policy_gate',
+        tool: name,
+        keputusan: 'deny',
+        aturan: 'UNTRUSTED_CONTENT_READ',
+        pesan,
+      });
+      return {
+        content: JSON.stringify({ is_error: true, aturan: 'UNTRUSTED_CONTENT_READ', pesan }),
+        end: false,
+      };
+    }
     let raw: unknown;
     try {
       raw = JSON.parse(argsJson || '{}');
@@ -825,6 +898,7 @@ class TurnRunner {
       nonce: this.nonce,
       pesanWarga: this.turn.userText,
       signal: this.llmSignal(),
+      ingatan: this.ingatan ?? undefined,
     };
     try {
       const res = await tool.execute(ctx, outcome.args as never);
@@ -858,6 +932,7 @@ class TurnRunner {
             (e) => void this.emit(e),
           );
           this.version = this.urusan.version;
+          this.ingatWilayah(res.wilayah);
         } catch (e) {
           if (!(e instanceof HarnessError)) throw e;
           return { content: JSON.stringify({ is_error: true, pesan: e.message }), end: false };
@@ -871,6 +946,7 @@ class TurnRunner {
           return { content: JSON.stringify({ is_error: true, pesan: e.message }), end: false };
         }
       }
+      if (res.takTepercaya || tool.kontenLuar) this.kontenTakTepercaya = true;
       return {
         content: res.terbungkus ? res.content : clip(res.content),
         end: res.endTurn === true,
@@ -886,14 +962,46 @@ class TurnRunner {
     }
   }
 
+  /**
+   * Preferensi yang warga nyatakan di pesan ini (lansia, bahasa sederhana, aksesibilitas, kanal) dicatat dengan
+   * aturan tetap, bukan tebakan model; teks yang dipakai sudah diredaksi. Gagal simpan tidak menggagalkan turn.
+   */
+  private ingatPreferensi(): void {
+    if (!this.ingatan) return;
+    try {
+      const teks = this.turn.pii.redact(this.turn.userText).text;
+      for (const e of ingatPreferensi(this.ingatan, teks, this.now().toISOString())) {
+        this.emit(e);
+        if (e.type === 'ingatan')
+          this.ingatanBaru.push(
+            e.aksi === 'usulan' ? `${e.butir.label} (menunggu persetujuan warga di kartu)` : e.butir.label,
+          );
+      }
+    } catch {
+      // vault tidak tersedia: turn tetap berjalan tanpa ingatan baru.
+    }
+  }
+
+  /** Wilayah yang baru ditetapkan warga dicatat ke ingatan (kartu "Urusin mengingat"); gagal simpan tidak menggagalkan turn. */
+  private ingatWilayah(w: { ktp: string; domisili?: string | null; tujuan?: string | null }): void {
+    if (!this.ingatan) return;
+    try {
+      for (const e of ingatWilayah(this.ingatan, this.urusan.jenis, w, this.now().toISOString()))
+        this.emit(e);
+    } catch {
+      // vault tidak tersedia (mis. pemilik baru saja dihapus): wilayah urusan tetap tercatat.
+    }
+  }
+
   // --- mode degraded: JSON satu aksi per turn (json_object + zod), tetap lewat policy gate ---
 
   private async degradedAction(): Promise<void> {
     const q = this.quotaStatus();
     if (q.mode === 'habis') return this.quotaStop(q);
-    const tools = this.deps.registry.forState(this.urusan.state);
+    const tools = this.deps.registry.forState(this.urusan.state).filter((t) => this.toolDitawarkan(t.name));
     const catalog = this.deps.registry
       .describe(this.urusan.state)
+      .filter((t) => this.toolDitawarkan(t.name))
       .map((t) => `- ${t.name}: ${t.description} parameter=${JSON.stringify(t.parameters)}`)
       .join('\n');
     const instruction: ChatMessage = {

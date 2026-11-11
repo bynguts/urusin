@@ -38,6 +38,7 @@ import { createRagSearcher, openDb, type RagSearchInfo } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { httpKeluar } from './http-keluar.js';
 import { aturStatusProbe, pantauProbe } from './probe-ulang.js';
+import { penyimpanIngatan } from './ingatan.js';
 import { buatOidcFixture, type OidcFixture } from './oidc-fixture.js';
 import { peringatanKuotaJuri, peringatanTurnstile, turnstileFromEnv, type Turnstile } from './turnstile.js';
 import { RateLimiter } from './limiter.js';
@@ -228,11 +229,17 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   // Korpus nyata: jalur produksi hybrid (BM25 + vektor Jina) + rerank endpoint, jatuh ke BM25 bila penyedia
   // gagal. Korpus demo tetap BM25 sinkron (tanpa vektor, tanpa jaringan).
   const searcher = config.ragDbPath ? createRagSearcher(ragDb, init.env ?? process.env) : undefined;
+  // Ingatan warga (ADR 0031) disimpan di vault akun; AkunService dirakit sesudah harness (butuh store).
+  const akunRef: { akun?: AkunService } = {};
   const h = createHarness({
     provider: init.provider ?? new DemoProvider(),
     db,
     ragDb,
     ragSearch: searcher?.search,
+    ingatan: penyimpanIngatan(() => {
+      if (!akunRef.akun) throw new Error('akun belum siap');
+      return akunRef.akun;
+    }),
     ...init.harness,
   });
   h.store.reapExpiredTurns();
@@ -257,6 +264,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     },
   };
   const { akun, oidcFixture } = createAkun(db, config, (id) => h.store.deleteUrusan(id), init.akun);
+  akunRef.akun = akun;
   const turnstile = init.akun?.turnstile ?? turnstileFromEnv();
   for (const peringatan of [
     peringatanTurnstile(turnstile, init.env ?? process.env),
@@ -329,10 +337,18 @@ export function quotaFromEnv(env: Record<string, string | undefined>) {
   return quota;
 }
 
+/**
+ * Mode LLM hanya bila LLM_BASE_URL, LLM_API_KEY, dan LLM_AGENT_MODEL terisi DAN saklar darurat
+ * `URUSIN_LLM_DISABLED=1` tidak aktif (mis. internet venue putus saat demo: DemoProvider, tanpa jaringan).
+ */
+export function llmAktif(env: Record<string, string | undefined>): boolean {
+  if (env.URUSIN_LLM_DISABLED?.trim() === '1') return false;
+  return Boolean(env.LLM_BASE_URL && env.LLM_API_KEY && env.LLM_AGENT_MODEL);
+}
+
 async function buildFromEnv(): Promise<Runtime> {
   const env = process.env;
-  const haveLlm = Boolean(env.LLM_BASE_URL && env.LLM_API_KEY && env.LLM_AGENT_MODEL);
-  if (!haveLlm) return createRuntime({ mode: 'demo' });
+  if (!llmAktif(env)) return createRuntime({ mode: 'demo' });
 
   const cfg = loadLlmConfig(env);
   const provider = new OpenAIProvider(cfg);

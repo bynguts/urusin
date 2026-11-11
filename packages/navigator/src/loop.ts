@@ -284,6 +284,8 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
   let wargaPegang = false;
   /** Placeholder yang ditolak warga per halaman fisik: diisi warga sendiri, tidak diminta izin lagi. */
   const ditolakHalaman = new Map<string, Set<string>>();
+  /** Halaman fisik tempat giliran CAPTCHA/OTP sudah dikerjakan warga lalu kendali kembali ke AI. */
+  const giliranSelesai = new Set<string>();
 
   const resi = (akhir: string) =>
     buatResi({
@@ -709,9 +711,16 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
             : p.sinyal.login
               ? 'masuk_akun'
               : null;
-      if (giliran) {
+      // CAPTCHA/OTP di halaman yang BUKAN formulir masuk (mis. kode keamanan di formulir permohonan) yang sudah
+      // dikerjakan warga lalu kendali kembali ke AI: kolomnya tetap ada (terlarang untuk AI), jadi halaman ini
+      // dikerjakan AI seperti biasa, tidak diserahkan lagi tanpa akhir. Formulir masuk selalu giliran warga.
+      const kunciGiliran = halamanStruktur(p);
+      const sudahDikerjakan =
+        (giliran === 'captcha' || giliran === 'otp') && !p.sinyal.login && giliranSelesai.has(kunciGiliran);
+      if (giliran && !sudahDikerjakan) {
         const h = setelahSerahkan(giliran, await serahkanTunggu(giliran, p.seq, undefined, p));
         if (h) return h;
+        if (giliran === 'captcha' || giliran === 'otp') giliranSelesai.add(kunciGiliran);
         continue;
       }
 

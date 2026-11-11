@@ -16,10 +16,35 @@ video submission (lihat aturan 3 di [`video-demo.md`](video-demo.md)); tempatnya
   `kapabilitas.ai` = `normal`.
 - Laptop 1280–1440 px, zoom 100%, jendela privat tanpa ekstensi. Laptop lebih aman daripada HP untuk panggung:
   siaran situs tampil besar di kolom kiri dan panel Rencana terlihat di kanan.
-- Satu jaringan hanya boleh membuat **3 salinan juri per hari**. Gladi memakai satu, panggung memakai satu,
-  sisakan satu cadangan. Sesi juri berlaku 24 jam, jadi gladi pagi bisa dipakai lagi siang hari (buat urusan
-  baru untuk tiap peragaan).
+- Batas salinan juri: **50 per IP per hari** di produksi (bawaan kode, `URUSIN_DEMO_PER_IP_HARI`) dan 500 di
+  demo localhost. Sesi juri berlaku 24 jam, jadi gladi pagi bisa dipakai lagi siang hari (buat urusan baru
+  untuk tiap peragaan).
 - Kredensial replika tercetak di halaman login replika: **HP `08000000001`**, **kode CAPTCHA `DEV123`**.
+
+## Final offline: localhost (laptop presenter)
+
+Di final, alur yang sama berjalan di `http://localhost` dari `bash scripts/demo-final.sh up` (README §6):
+replika di `127.0.0.1:4320`, bilah atas siaran menulis **127.0.0.1 · Mode uji** dan banner replika "Situs uji —
+bukan situs pemerintah". Kredensial replika sama (HP `08000000001`, CAPTCHA `DEV123`).
+
+- **Sebelum naik panggung:** `bash scripts/demo-final.sh cek` harus berakhir **SIAP DEMO** (semua hijau). Catatan
+  "sesi Pendamping sisa gladi" boleh, tetapi lebih aman `docker restart urusin-demo-pendamping-1` dulu.
+- **Internet venue atau proxy LLM mati (gladi wajib mencoba sekali):** `bash scripts/demo-final.sh offline`
+  (±1 menit, hanya web yang dibuat ulang). Agen memakai DemoProvider; alur Wonogiri tidak berubah karena
+  pengisian Telunjuk Sakti memakai adapter deterministik, bukan model. Kembali: `bash scripts/demo-final.sh online`.
+  Yang hilang di mode offline: jawaban bebas berkualitas LLM dan Navigator generik (portal tanpa adapter).
+- **Layar proyektor:** keluarkan **1920×1080**, zoom peramban 100%, layar penuh (F11), dan tutup sidebar (ikon
+  panel di samping logo) sebelum membuka situs. Di 1280×720 siaran replika hanya ±0,43× dan tidak terbaca dari
+  kursi juri; di 1920×1080 ±0,68×.
+- **Waktu terukur (2026-11-11, localhost, Playwright, klik tanpa jeda):** Masuk sebagai juri sampai nomor
+  permohonan **20 detik** (mode LLM, 1920×1080), **18 detik** (offline), **31 detik** (LLM, 1280×720; jawaban
+  AI konfirmasi wilayah ±11 detik). Peragaan manusia dengan narasi: anggarkan ±1 menit 15 detik seperti run 9.
+
+**Segmen D3 (kartu Dipandu):** pilih **Kota Yogyakarta** (atau Kabupaten Bogor) di Peristiwa Hidup →
+Kelahiran. Kartunya bertier **"Dipandu langkah demi langkah"** (tanpa portal terverifikasi; Urusin memberi rencana
+bersumber dan kanal resmi). Jangan memakai Surabaya atau Kota Malang untuk segmen ini: kartunya bertier semi
+("AI bisa bantu mengisi di situs resmi") karena Navigator generik, tetapi di Mode Uji replika Surabaya hanya punya
+cek status dan Malang tanpa replika, sehingga baru beralih ke panduan setelah "Setujui dan buka situs".
 
 ## Langkah dan waktu
 

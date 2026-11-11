@@ -11,6 +11,11 @@ Agen tidak menulis UI. Yang tersedia untukmu:
 
 ## 1. Alur layar
 
+Tombol **Tutup** di bilah atas tersedia di semua keadaan browser. UI memanggil `DELETE` sesi, lalu kembali
+ke percakapan setelah server mengonfirmasi penutupan (404 juga berarti sesi sudah tidak ada). Jika gagal,
+panel tetap terbuka dan menampilkan pesan; penutupan bisa dicoba ulang. Nomor hasil tetap disimpan di
+keadaan sesi. Di desktop, panel rencana/chat bergulir sendiri tanpa menggeser browser di sebelahnya.
+
 ```
 kartu rencana (confirm) ──► [Isi dengan Browser Pendamping]
         │ POST /api/urusan/[id]/pendamping {executionId}

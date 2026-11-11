@@ -47,3 +47,18 @@ describe('DaftarUrusan: pemuatan yang terputus', () => {
     expect([d.galat, d.memuat]).toEqual([false, false]);
   });
 });
+
+describe('DaftarUrusan: permintaan menggantung', () => {
+  it('berakhir sebagai galat setelah batas tunggu, tidak "Memuat status…" selamanya', async () => {
+    const d = new DaftarUrusan(
+      ((_u: string, init?: RequestInit) =>
+        new Promise<Response>((_, tolak) =>
+          init?.signal?.addEventListener('abort', () => tolak(init.signal!.reason)),
+        )) as typeof fetch,
+      20,
+    );
+    await d.muat([catatan]);
+    expect([d.memuat, d.galat]).toEqual([false, true]);
+    expect(d.isi[0]?.ringkasan).toBeNull();
+  });
+});

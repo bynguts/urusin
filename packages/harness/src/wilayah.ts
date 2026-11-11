@@ -55,8 +55,8 @@ export type WilayahUrusan = {
   ktp: WilayahRef | null;
   domisili: WilayahRef | null;
   tujuan: WilayahRef | null;
-  /** warga = wilayah yang sudah ditanyakan agen di percakapan (lihat `selaraskanUsulan`). */
-  usulan: { ktp: WilayahRef; sumber: 'data_diri' | 'pilihan' | 'warga' } | null;
+  /** warga = wilayah yang sudah ditanyakan agen di percakapan (lihat `selaraskanUsulan`); ingatan = ADR 0031. */
+  usulan: { ktp: WilayahRef; sumber: 'data_diri' | 'pilihan' | 'warga' | 'ingatan' } | null;
 };
 
 export function refWilayah(kode: string): WilayahRef | null {
@@ -154,11 +154,14 @@ export function wilayahBelumSiap(jenis: string | null, w: WilayahUrusan): string
   return undefined;
 }
 
-/** Catat usulan wilayah (Data Diri atau pemilih perangkat). Tidak mengubah urusan: warga tetap harus memastikan. */
+/**
+ * Catat usulan wilayah (Data Diri, pemilih perangkat, atau Ingatan warga). Tidak mengubah urusan: warga tetap harus
+ * memastikan.
+ */
 export function usulkanWilayah(
   urusanId: string,
   kode: string,
-  sumber: 'data_diri' | 'pilihan',
+  sumber: 'data_diri' | 'pilihan' | 'ingatan',
   publish: Publish,
 ): boolean {
   const ktp = refWilayah(kode);

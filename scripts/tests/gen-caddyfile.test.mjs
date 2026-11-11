@@ -110,7 +110,7 @@ describe('gen-caddyfile', () => {
   it('--worker: HANYA upgrade WS GET /pendamping/w/<id>/ws/* ke IP Tailscale; sisanya 404; cookie hanya sid', () => {
     const text = render('primary', hosts.primary, {
       pendamping: true,
-      workers: ['laptop-a=100.100.223.10:4330', 'laptop-b=100.64.0.7:4331'],
+      workers: ['laptop-a=100.64.0.10:4330', 'laptop-b=100.64.0.7:4331'],
     });
     const code = text.replace(/^\s*#.*$/gm, '');
     assert.ok(
@@ -125,7 +125,7 @@ describe('gen-caddyfile', () => {
           '\t}',
           '\thandle @w_laptop-a {',
           '\t\turi strip_prefix /pendamping/w/laptop-a',
-          '\t\treverse_proxy 100.100.223.10:4330 {',
+          '\t\treverse_proxy 100.64.0.10:4330 {',
           '\t\t\theader_up Cookie "__Host-urusin_sid={http.request.cookie.__Host-urusin_sid}"',
           '\t\t\theader_up -Authorization',
           '\t\t}',
@@ -197,15 +197,15 @@ describe('gen-caddyfile', () => {
       // Nol di depan oktet ditolak (sebagian parser membacanya oktal: 100.064 = 100.52).
       'laptop-a=100.064.0.1:4330',
       'laptop-a=100.64.00.1:4330',
-      'laptop-a=100.100.223.010:4330',
+      'laptop-a=100.64.0.010:4330',
       'laptop-a=laptop.tailnet.ts.net:4330',
-      'laptop-a=100.100.223.10',
-      'laptop-a=100.100.223.10:0',
-      'laptop-a=100.100.223.10:70000',
-      'Laptop=100.100.223.10:4330',
-      '-a=100.100.223.10:4330',
-      'a/b=100.100.223.10:4330',
-      'a=100.100.223.10:4330\n}',
+      'laptop-a=100.64.0.10',
+      'laptop-a=100.64.0.10:0',
+      'laptop-a=100.64.0.10:70000',
+      'Laptop=100.64.0.10:4330',
+      '-a=100.64.0.10:4330',
+      'a/b=100.64.0.10:4330',
+      'a=100.64.0.10:4330\n}',
       undefined,
     ])
       assert.throws(r([bad]), String(bad));
@@ -235,7 +235,7 @@ describe('gen-caddyfile', () => {
     assert.equal(jalan('--check', ...args), 2);
     assert.equal(jalan('--check'), 0, 'cek snippet ter-commit tetap');
     // --worker ikut flag: snippet dengan worker hanya cocok bila flag --worker yang sama diberikan.
-    const w = ['--worker', 'laptop-a=100.100.223.10:4330'];
+    const w = ['--worker', 'laptop-a=100.64.0.10:4330'];
     assert.equal(jalan(...args, ...w, '--out', file), 0);
     assert.equal(jalan('--check', ...args, ...w, '--file', file), 0);
     assert.equal(jalan('--check', ...args, '--file', file), 1);

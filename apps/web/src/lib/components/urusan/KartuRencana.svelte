@@ -42,9 +42,9 @@
   >
     <span class="flex items-center gap-2.5">
       <Icon name="rencana" class="size-[18px]" />
-      <h3 class="text-[17px] leading-[26px] font-semibold text-ink">
+      <h2 class="text-[17px] leading-[26px] font-semibold text-ink">
         Rencana · {rencana.langkah.length} langkah
-      </h3>
+      </h2>
     </span>
     {#if kelayakan && kelayakan.mungkin.length && !kelayakan.perluKonfirmasi.length}
       <span

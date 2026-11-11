@@ -252,6 +252,37 @@ describe('render server komponen', () => {
     expect(tanpa).not.toContain('Kirim pengajuan');
   });
 
+  it('giliran masuk akun/CAPTCHA: tombol cadangan "Sudah, lanjutkan"; giliran kirim tanpa tombol itu', () => {
+    const noop = () => {};
+    const layar = (alasan: 'login' | 'masuk_akun' | 'final' | 'verifikasi_situs') =>
+      render(LayarPendamping, {
+        props: {
+          data: {
+            ...dataAwal(),
+            keadaan: 'giliran',
+            mode: 'takeover',
+            giliran: { jenis: 'giliran_anda', alasan, pesan: 'Giliran Anda.' },
+          },
+          situs: 'https://contoh-layanan.go.id',
+          onambilalih: noop,
+          onkembalikan: noop,
+          onhentikan: noop,
+          ontutup: noop,
+          onmulailagi: noop,
+          onpanduan: noop,
+        },
+      }).body;
+    const tombol = /<button[^>]*data-sudah-lanjut[^>]*>[\s\S]*?Sudah, lanjutkan\s*<\/button>/;
+    for (const alasan of ['login', 'masuk_akun'] as const) {
+      const body = layar(alasan);
+      expect(body, alasan).toMatch(tombol);
+      expect(body, alasan).toContain('Masuk akun di situs resmi');
+    }
+    // Kirim akhir dan verifikasi situs: tidak ada jalan pintas "lanjutkan" (warga sendiri yang mengirim/mencentang).
+    for (const alasan of ['final', 'verifikasi_situs'] as const)
+      expect(layar(alasan), alasan).not.toMatch(tombol);
+  });
+
   it('giliran ketuk_tautan: judul netral, tombol Buka ber-host+jalur dan Lanjutkan; berhenti tanpa Lanjutkan', () => {
     const noop = () => {};
     const tautan = {

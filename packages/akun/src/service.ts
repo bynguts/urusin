@@ -1,4 +1,4 @@
-import type { Db } from '@urusin/harness';
+import { bacaIngatan, buangTitipanKedaluwarsa, titipDariTamu, type Db } from '@urusin/harness';
 import { dataDiriSintetis } from './demo.js';
 import { maskEmail, normalizeEmail } from './email.js';
 import { AkunError } from './errors.js';
@@ -1052,8 +1052,31 @@ export class AkunService {
       this.iso(-this.ttl.belumVerifikasiSec),
       now,
     );
+    lain += this.sapuTitipanIngatan(now);
     if (tamu + demo + belumVerifikasi > 0) this.lipatWal();
     return { tamu, demo, belumVerifikasi, lain };
+  }
+
+  /** Titipan ingatan tamu yang kedaluwarsa (ADR 0031, 30 hari) dibuang dari ingatan akun. Isi rusak dilewati. */
+  private sapuTitipanIngatan(now: string): number {
+    const ids = this.db
+      .prepare(
+        "SELECT i.user_id AS id FROM vault_ingatan i JOIN users u ON u.id = i.user_id WHERE u.jenis = 'akun'",
+      )
+      .all() as { id: string }[];
+    let n = 0;
+    for (const { id } of ids) {
+      try {
+        const raw = this.deps.vault.getIngatan(id);
+        const bersih = raw ? buangTitipanKedaluwarsa(bacaIngatan(raw.data), now) : null;
+        if (!bersih) continue;
+        this.deps.vault.setIngatan(id, bersih);
+        n++;
+      } catch {
+        // isi tidak bisa dibaca: sudah di-alert vault, tidak ditimpa
+      }
+    }
+    return n;
   }
 
   // --- kepemilikan urusan dan rotasi pemilik ---
@@ -1097,7 +1120,7 @@ export class AkunService {
     const tamu = this.db.prepare("SELECT id FROM users WHERE jenis = 'tamu' AND sid_hash = ?").get(hl) as
       { id: string } | undefined;
     let rencana: RencanaPindah | undefined;
-    if (tamu && p.userId) rencana = this.deps.vault.siapkanPindah(tamu.id, p.userId);
+    if (tamu && p.userId) rencana = this.deps.vault.siapkanPindah(tamu.id, p.userId, titipDariTamu);
     let urusanDipindahkan = 0;
     try {
       this.tx(() => {
@@ -1120,6 +1143,42 @@ export class AkunService {
     }
     rencana?.selesai();
     return { urusanDipindahkan, vaultDipindahkan: rencana !== undefined };
+  }
+
+  /**
+   * Pemilik vault yang memegang Ingatan warga sebuah urusan (ADR 0031), dari catatan pemilik urusan saja: akun
+   * sinkron (terverifikasi) atau salinan demo → dirinya; urusan tamu → tamu yang memegang hash sid itu (belum
+   * kedaluwarsa). Akun yang emailnya belum terverifikasi, urusan tanpa pemilik, atau tamu yang sudah disapu → null
+   * (tanpa ingatan: gagal tertutup).
+   */
+  pemilikIngatanUrusan(urusanId: string): string | null {
+    const r = this.db
+      .prepare(
+        `SELECT o.user_id AS uid, o.guest_sid_hash AS sh, u.jenis AS jenis, u.email_verified_at AS verif
+         FROM urusan_owner o LEFT JOIN users u ON u.id = o.user_id WHERE o.urusan_id = ?`,
+      )
+      .get(urusanId) as
+      { uid: string | null; sh: string | null; jenis: string | null; verif: string | null } | undefined;
+    if (!r) return null;
+    if (r.uid) return r.jenis === 'demo' || (r.jenis === 'akun' && r.verif) ? r.uid : null;
+    if (!r.sh) return null;
+    const t = this.db
+      .prepare("SELECT id FROM users WHERE jenis = 'tamu' AND sid_hash = ? AND expires_at > ?")
+      .get(r.sh, this.iso()) as { id: string } | undefined;
+    return t?.id ?? null;
+  }
+
+  /** Urusan milik pemilik vault: akun/demo lewat user_id, tamu lewat hash sid-nya (untuk ringkasan ingatan). */
+  urusanPemilikVault(pemilikId: string): string[] {
+    return (
+      this.db
+        .prepare(
+          `SELECT o.urusan_id FROM urusan_owner o WHERE o.user_id = ?
+           UNION SELECT o.urusan_id FROM urusan_owner o JOIN users u ON u.sid_hash = o.guest_sid_hash
+           WHERE u.id = ? AND u.jenis = 'tamu'`,
+        )
+        .all(pemilikId, pemilikId) as { urusan_id: string }[]
+    ).map((r) => r.urusan_id);
   }
 
   urusanMilik(userId: string): string[] {

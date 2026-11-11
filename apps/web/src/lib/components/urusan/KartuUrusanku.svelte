@@ -77,7 +77,7 @@
     />
   </div>
   <div class="flex flex-col gap-1">
-    <h3 class="text-[19px] leading-7 font-semibold tracking-[-0.3px] text-ink">{urusan.judul}</h3>
+    <h2 class="text-[19px] leading-7 font-semibold tracking-[-0.3px] text-ink">{urusan.judul}</h2>
     <p class="text-base leading-[23px] text-card-ink">{keterangan}</p>
   </div>
   <div class="flex flex-col gap-1.5">

@@ -12,8 +12,9 @@ Berkas: `compose.prod.yml`, `Caddyfile.urusin.primary` (+ `.fallback`), `hardeni
 `tests/` (harness tanpa Docker). Layout datar (agent-vm) juga butuh `scripts/db-backup.mjs` dan `scripts/db-restore.mjs`
 (salinan `apps/web/scripts/`), dibaca `backup.sh`/`restore.sh`.
 
-> **Runner CI self-hosted (`ci-runner/`): cadangan bila menit GitHub Actions habis, TIDAK terpasang.**
-> Bila pernah dipasang, **WAJIB dicopot sebelum repo dibuat Public** (submission, tenggat 2026-11-14): di repo
+> **Runner CI self-hosted (`ci-runner/`): cadangan bila menit GitHub Actions habis. Status: TERPASANG di
+> agent-vm sejak 2026-11-10 (`URUSIN_RUNNER=urusin-self`), dicopot sebelum repo dibuat Public.**
+> Runner ini **WAJIB dicopot sebelum repo dibuat Public** (submission, tenggat 2026-11-14): di repo
 > publik PR dari fork bisa menjalankan kode di runner self-hosted, yaitu di agent-vm. Repo publik mendapat menit
 > GitHub gratis, jadi runner tidak dibutuhkan lagi. Urutan: `uninstall.sh` (remove-token lewat stdin) →
 > `gh variable delete URUSIN_RUNNER --repo bynguts/urusin` → `gh api repos/bynguts/urusin/actions/runners --jq .total_count`
@@ -558,7 +559,7 @@ nama itu lagi di sisi operator, jadi alamat yang akhirnya dihubungi ditentukan D
 proxy milik sendiri yang resolvernya dipercaya.
 
 Batas `pendamping`: `mem_limit`/`memswap_limit 1300m` (2 sesi x 512 MB + Node/Xvfb), pengawas menghentikan
-sesi di 450 MB RSS, `cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `ulimits core 0`,
+sesi di 450 MB RSS (worker-id laptop: 1 sesi, 1100 MB), `cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `ulimits core 0`,
 `init: true`. `pendamping-edge`: 128 MB, `cpus: 0.5`, `pids_limit: 64`.
 
 ## Uji skrip (tanpa Docker)

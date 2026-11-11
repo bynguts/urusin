@@ -1,5 +1,6 @@
 // Klien HTTP yang meniru peramban warga (apps/web/src/lib/stores/urusan.svelte.ts + beranda):
-//   - pesan pertama lewat form action Beranda `?/mulai` (use:enhance, header x-sveltekit-action) dengan
+//   - pesan pertama lewat form action `?/mulai`: landing `/` untuk tamu (sejak c08a753 `/beranda?/mulai` wajib
+//     login), `/beranda` untuk akun yang sudah masuk (use:enhance, header x-sveltekit-action) dengan
 //     `kodeKabKota` tersembunyi = wilayah perangkat (WILAYAH_AWAL di lib/stores/lokal.svelte.ts bila belum diubah);
 //   - pesan berikutnya lewat POST /api/urusan/[id]/turn {teks, expectedVersion} (pulih dari 409 seperti UI);
 //   - "Setujui rencana" lewat POST /api/urusan/[id]/rencana/setujui;
@@ -32,6 +33,7 @@ export class SesiWarga {
     this.lastSeq = 0;
     this.penunggu = [];
     this.aliran = null;
+    this.masuk = false;
   }
 
   header(extra = {}) {
@@ -60,10 +62,10 @@ export class SesiWarga {
     return res;
   }
 
-  /** Pesan pertama dari kotak cerita Beranda. Mengembalikan { status, kode?, pesanWarga? }. */
+  /** Pesan pertama dari kotak cerita landing (warga tamu). Mengembalikan { status, kode?, pesanWarga? }. */
   async mulai(pesan, kodeKabKota) {
     const form = new URLSearchParams({ pesan, kodeKabKota: kodeKabKota ?? '' });
-    const res = await this.http('/beranda?/mulai', {
+    const res = await this.http(this.masuk ? '/beranda?/mulai' : '/?/mulai', {
       method: 'POST',
       headers: {
         'content-type': 'application/x-www-form-urlencoded',
@@ -84,6 +86,9 @@ export class SesiWarga {
       this.sambung();
       return { status: 303 };
     }
+    // Dialihkan ke tempat lain (mis. /masuk): urusan tidak dibuat, jangan dianggap berhasil.
+    if (j.type === 'redirect')
+      return { status: 401, kode: 'DIALIHKAN', pesanWarga: `dialihkan ke ${j.location ?? '?'}` };
     const data = dataAksi(j.data);
     const pesanWarga =
       typeof data.pesanWarga === 'string'
@@ -231,6 +236,7 @@ export class SesiWarga {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ turnstile: 'XXXX.DUMMY.TOKEN.XXXX' }),
     });
+    this.masuk = res.status === 200;
     return { status: res.status, kode: (await res.json().catch(() => ({}))).kode };
   }
 

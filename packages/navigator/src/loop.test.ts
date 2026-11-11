@@ -563,6 +563,51 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
     ]);
   });
 
+  it('CAPTCHA di formulir (bukan halaman masuk): sekali giliran warga, lalu AI mengerjakan halamannya', async () => {
+    const form = halamanForm();
+    const formCaptcha = halamanForm({
+      sinyal: { ...form.sinyal, captcha: true },
+      elemen: [
+        ...form.elemen,
+        { ref: 'e20', peran: 'teks', nama: 'Kode Keamanan', isian: 'kosong', terlarang: 'captcha' },
+      ],
+    });
+    const worker = new WorkerPalsu([formCaptcha, halamanTinjau()]);
+    worker.setujuiSemua = true;
+    // Warga mengetik kodenya lalu mengembalikan kendali: halaman (dan kolom CAPTCHA-nya) masih sama.
+    worker.saatSerahkan = (alasan) => (alasan === 'captcha' ? { aksi: 'kembalikan' } : { aksi: 'selesai' });
+    const provider = new ProviderSkrip((n) => (n === 0 ? RENCANA_FORM : SERAHKAN_FINAL));
+    const { hasil } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
+    expect(worker.semuaAksi.filter((a) => a.jenis === 'serahkan' && a.alasan === 'captcha')).toHaveLength(1);
+    expect(worker.semuaAksi.some((a) => a.jenis === 'isi')).toBe(true);
+    expect(provider.calls).toHaveLength(2);
+  });
+
+  it('halaman masuk ber-CAPTCHA yang masih tampil setelah kendali kembali tetap diserahkan ke warga', async () => {
+    const login = halaman({
+      sidik: 'login',
+      sinyal: { ...halamanForm().sinyal, login: true, captcha: true },
+      elemen: [
+        { ref: 'e1', peran: 'teks', nama: 'Kata sandi', terlarang: 'sandi' },
+        { ref: 'e2', peran: 'teks', nama: 'Kode Keamanan', terlarang: 'captcha' },
+      ],
+    });
+    const worker = new WorkerPalsu([login, halamanTinjau()]);
+    let n = 0;
+    worker.saatSerahkan = (alasan) =>
+      alasan === 'captcha'
+        ? ++n < 2
+          ? { aksi: 'kembalikan' }
+          : { aksi: 'kembalikan', ke: 1 }
+        : { aksi: 'selesai' };
+    const provider = new ProviderSkrip(() => SERAHKAN_FINAL);
+    const { hasil } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
+    expect(worker.semuaAksi.filter((a) => a.jenis === 'serahkan' && a.alasan === 'captcha')).toHaveLength(2);
+    expect(provider.calls).toHaveLength(1);
+  });
+
   it('N9: serah ber-ref sesudah ikat ulang memakai ref dan seq pengamatan baru (tanpa LLM tambahan)', async () => {
     const form = halamanForm();
     const geser = halamanForm({

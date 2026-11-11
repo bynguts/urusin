@@ -20,6 +20,7 @@ const publikDokumen = (d: DokumenMeta) =>
     mime: d.mime,
     ukuran: d.size,
     disimpanPada: d.createdAt,
+    ...(d.bacaSaja ? { bacaSaja: true } : {}),
   });
 
 /**

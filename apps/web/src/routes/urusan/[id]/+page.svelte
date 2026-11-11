@@ -2,13 +2,17 @@
   import { SvelteMap } from 'svelte/reactivity';
   import { tick, untrack } from 'svelte';
   import { resolve } from '$app/paths';
-  import type { EventOf, KutipanTerverifikasi } from '#lib/contracts.js';
+  import type { EventOf, IngatanResponse, KutipanTerverifikasi } from '#lib/contracts.js';
   import Icon from '#lib/components/Icon.svelte';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
   import KartuChecklist from '#lib/components/urusan/KartuChecklist.svelte';
   import KartuGalat from '#lib/components/urusan/KartuGalat.svelte';
   import KartuGiliran from '#lib/components/urusan/KartuGiliran.svelte';
   import KartuHandoff from '#lib/components/urusan/KartuHandoff.svelte';
+  import KartuIngatan, {
+    type HasilBatal,
+    type IngatanLive,
+  } from '#lib/components/urusan/KartuIngatan.svelte';
   import KartuJawaban from '#lib/components/urusan/KartuJawaban.svelte';
   import KartuKonfirmasi from '#lib/components/urusan/KartuKonfirmasi.svelte';
   import KartuRencana from '#lib/components/urusan/KartuRencana.svelte';
@@ -58,8 +62,11 @@
   const keadaanUrusan = $derived(k.state ?? data.urusan.state);
   // Panel Rencana selama Browser Pendamping berjalan mengikuti giliran nyata sesi (login, AI mengisi, Kirim),
   // bukan state urusan yang sudah melompat ke "tekan Kirim" sejak eksekusi disetujui.
+  // Selama browser masih antre/disiapkan, langkah masuk akun belum dimulai (bukan "Selesai").
+  const persiapanPendamping = $derived(sesi.data.keadaan === 'antre' || sesi.data.keadaan === 'menyiapkan');
   const keadaanPanel = $derived.by(() => {
     const d = sesi.data;
+    if (persiapanPendamping) return 'BERKAS_SIAP' as const;
     if (d.keadaan === 'ai') return 'MENGISI' as const;
     if (d.keadaan === 'giliran' && d.giliran)
       return d.giliran.alasan === 'final'
@@ -91,6 +98,20 @@
   });
   const instansi = $derived(k.rencana?.langkah.find((x) => x.sumber.length)?.sumber[0]?.instansi);
   const pendampingAktif = $derived(!pendampingDitutup && sesi.data.keadaan !== 'mati');
+  // Pesan agen di panel Pendamping hanya bila itu item terakhir percakapan; pertanyaan lama yang sudah
+  // dijawab (mis. wilayah KTP) tidak ditampilkan lagi.
+  const pesanPanel = $derived(linimasa.slice(-1).filter((x) => x.jenis === 'teks'));
+  // Kartu "Setujui dan buka situs" yang bisa ditindaklanjuti (paling banyak satu).
+  const konfirmasiAktif = $derived.by(() => {
+    const it = linimasa.findLast((x) => x.jenis === 'konfirmasi');
+    return it?.jenis === 'konfirmasi' &&
+      it.terakhir &&
+      !k.sedangBerjalan &&
+      it.permintaan !== null &&
+      (keadaanUrusan === 'MENUNGGU_KONFIRMASI' || it.permintaan.bacaSaja === true)
+      ? it.key
+      : null;
+  });
   const kosong = $derived(linimasa.length === 0 && !k.sedangBerjalan);
 
   // Hanya bergantung pada id urusan; store dan catatan perangkat dibaca/ditulis tanpa dilacak.
@@ -129,19 +150,93 @@
     });
   });
 
+  // Kartu persetujuan yang baru aktif digulir ke tengah layar sekali: di HP komposer lengket menutupi bagian
+  // bawah percakapan, jadi tombol "Setujui dan buka situs" tidak terlihat. Gerak halus kecuali warga memilih
+  // kurangi gerakan (sistem atau Pengaturan).
+  let konfirmasiDigulir: string | null = null;
+  $effect(() => {
+    const key = konfirmasiAktif;
+    if (!key || key === konfirmasiDigulir) return;
+    konfirmasiDigulir = key;
+    void tick().then(() => {
+      const kartu = document.querySelector<HTMLElement>(`[data-konfirmasi="${CSS.escape(key)}"]`);
+      const el = kartu?.querySelector<HTMLElement>('footer') ?? kartu;
+      if (!el) return;
+      const tenang =
+        matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        document.documentElement.dataset.gerak === 'kurang';
+      const behavior = tenang ? ('auto' as const) : ('smooth' as const);
+      const wadah = daftarPercakapan;
+      // Laptop: percakapan punya gulir sendiri; gulir wadahnya saja agar bingkai aplikasi tidak ikut bergeser.
+      if (wadah && wadah.scrollHeight > wadah.clientHeight) {
+        const r = el.getBoundingClientRect();
+        const w = wadah.getBoundingClientRect();
+        wadah.scrollTo({ top: wadah.scrollTop + r.top - w.top - (w.height - r.height) / 2, behavior });
+      } else el.scrollIntoView({ block: 'center', behavior });
+    });
+  });
+
+  /**
+   * Isi Ingatan warga saat ini (GET /api/ingatan): kartu menampilkan status dan isi yang SEBENARNYA dari sini, bukan
+   * dari event (event hanya membawa label generik untuk catatan/aksesibilitas). null = belum/gagal dimuat.
+   */
+  let ingatanLive = $state<Map<string, Exclude<IngatanLive, null | undefined>> | null>(null);
+  const jumlahKartuIngatan = $derived(linimasa.filter((it) => it.jenis === 'ingatan').length);
+
+  async function muatIngatanLive(): Promise<void> {
+    const r = await fetch('/api/ingatan').catch(() => null);
+    if (!r?.ok) return;
+    const d = (await r.json()) as IngatanResponse;
+    const m = new SvelteMap<string, Exclude<IngatanLive, null | undefined>>();
+    for (const b of d.butir) m.set(b.id, { status: 'butir', label: b.label });
+    for (const b of d.usulan ?? []) m.set(b.id, { status: 'usulan', label: b.label });
+    ingatanLive = m;
+  }
+
+  $effect(() => {
+    if (jumlahKartuIngatan > 0) void untrack(() => muatIngatanLive());
+  });
+
+  const liveIngatan = (id: string): IngatanLive => (ingatanLive ? (ingatanLive.get(id) ?? null) : undefined);
+
+  /**
+   * "Batalkan"/"Tidak" di kartu ingatan: hapus butir/usulan itu, lalu muat ulang GET /api/ingatan. 404 tidak
+   * dianggap "Dibatalkan": kartu menampilkan status sebenarnya dari daftar yang dimuat ulang (isi yang sama bisa
+   * saja masih diingat di butir lain, mis. sesudah "Bawa ke akun").
+   */
+  async function batalkanIngatan(id: string): Promise<HasilBatal> {
+    const r = await fetch(`/api/ingatan/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => null);
+    await muatIngatanLive();
+    if (r?.ok) return 'dihapus';
+    return r?.status === 404 && ingatanLive !== null && !ingatanLive.has(id) ? 'tidak_ada' : 'gagal';
+  }
+
+  /** "Ya, ingat" di kartu persetujuan: usulan menjadi butir. */
+  async function setujuiIngatan(id: string): Promise<boolean> {
+    const r = await fetch(`/api/ingatan/${encodeURIComponent(id)}`, { method: 'POST' }).catch(() => null);
+    await muatIngatanLive();
+    return ingatanLive?.get(id)?.status === 'butir' || r?.ok === true;
+  }
+
   function judulDariPesan(t: string | undefined): string {
     if (!t) return 'Urusan baru';
     const s = t.replace(/\s+/g, ' ').trim();
     return s.length > 40 ? `${s.slice(0, 38)}…` : s;
   }
 
-  async function kirim(t: string) {
+  /** Perintah tombol terakhir yang terkirim (untuk "Coba lagi"); null bila yang terakhir tulisan warga. */
+  let aksiTerakhir: string | null = null;
+
+  /** `aksi`: perintah tombol (mis. Lanjutkan), bukan tulisan warga: tidak tampil sebagai gelembung pesan. */
+  async function kirim(t: string, aksi = false) {
     mengirim = true;
     pesanKomposer = null;
     const setelahSeq = k.lastSeq;
     const hasil = await store.kirim(t);
     mengirim = false;
     if (hasil === 'ok') {
+      aksiTerakhir = aksi ? t : null;
+      if (aksi) return;
       lokal.catatPesan(data.urusan.id, { teks: t, setelahSeq });
       pesan = lokal.pesanWarga(data.urusan.id);
       teks = '';
@@ -182,6 +277,7 @@
   }
 
   function ulangTerakhir() {
+    if (aksiTerakhir) return void kirim(aksiTerakhir, true);
     const t = pesan.at(-1)?.teks;
     if (t) void kirim(t);
   }
@@ -313,17 +409,19 @@
       <div id="panel-konteks" class="{panelHpBuka ? '' : 'max-lg:hidden'} lg:min-h-full">
         <PanelKonteks
           state={keadaanPanel}
+          jenis={data.urusan.jenis}
           sedangBerjalan={k.sedangBerjalan}
           rencana={k.rencana}
           checklist={k.checklist}
           {kutipan}
           bind:tab
           {sorot}
+          persiapan={persiapanPendamping}
         >
           {#snippet bawah()}
             {#if pendampingAktif}
               <div class="flex flex-col gap-3 border-t border-line pt-4">
-                {#each linimasa.filter((x) => x.jenis === 'teks').slice(-1) as it (it.key)}
+                {#each pesanPanel as it (it.key)}
                   {#if it.jenis === 'teks'}
                     <PesanAgen avatar={p.avatar}><p class="text-[0.9375rem]">{it.teks}</p></PesanAgen>
                   {/if}
@@ -404,6 +502,14 @@
                 >
                   <Icon name="centang-bulat" class="size-4 shrink-0" />{it.teks} · {waktuSingkat(it.at)}
                 </p>
+              {:else if it.jenis === 'ingatan'}
+                <KartuIngatan
+                  ingatan={it.e}
+                  dibatalkan={it.dibatalkan}
+                  live={liveIngatan(it.e.butir.id)}
+                  onbatalkan={() => batalkanIngatan(it.e.butir.id)}
+                  onsetujui={() => setujuiIngatan(it.e.butir.id)}
+                />
               {:else if it.jenis === 'teks'}
                 <PesanAgen avatar={p.avatar}
                   ><p class="leading-relaxed whitespace-pre-line">{it.teks}</p></PesanAgen
@@ -446,19 +552,18 @@
               {:else if it.jenis === 'konfirmasi'}
                 <PesanAgen avatar={p.avatar}>
                   <p>Sebelum saya membuka situs resmi, periksa dulu data yang akan diisi:</p>
-                  <KartuKonfirmasi
-                    gate={it.gate}
-                    permintaan={it.permintaan}
-                    {situs}
-                    aktif={it.terakhir &&
-                      !k.sedangBerjalan &&
-                      it.permintaan !== null &&
-                      (keadaanUrusan === 'MENUNGGU_KONFIRMASI' || it.permintaan.bacaSaja === true)}
-                    status={konfirmasi?.key === it.key ? konfirmasi.status : 'menunggu'}
-                    pesanGalat={it.terakhir ? konfirmasiGalat : undefined}
-                    onsetujui={() => void setujui(it.key, it.gate, it.permintaan)}
-                    onbatal={() => void kirim('Batalkan, saya belum mau melanjutkan.')}
-                  />
+                  <div data-konfirmasi={it.key}>
+                    <KartuKonfirmasi
+                      gate={it.gate}
+                      permintaan={it.permintaan}
+                      {situs}
+                      aktif={it.key === konfirmasiAktif}
+                      status={konfirmasi?.key === it.key ? konfirmasi.status : 'menunggu'}
+                      pesanGalat={it.terakhir ? konfirmasiGalat : undefined}
+                      onsetujui={() => void setujui(it.key, it.gate, it.permintaan)}
+                      onbatal={() => void kirim('Batalkan, saya belum mau melanjutkan.')}
+                    />
+                  </div>
                 </PesanAgen>
               {:else if it.jenis === 'giliran'}
                 <PesanAgen avatar={p.avatar}>
@@ -508,7 +613,7 @@
             {#if k.perluLanjut && !k.sedangBerjalan}
               <button
                 type="button"
-                onclick={() => void kirim('lanjut')}
+                onclick={() => void kirim('lanjut', true)}
                 class="ml-[46px] inline-flex h-12 items-center gap-2 self-start rounded-full border border-line-2 bg-surface px-5 text-base text-ink shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] hover:bg-card"
               >
                 Lanjutkan <Icon name="panah" class="size-4.5" />

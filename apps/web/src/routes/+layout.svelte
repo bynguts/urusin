@@ -94,8 +94,8 @@
       class="relative flex min-w-0 flex-1 flex-col bg-bg lg:overflow-y-auto lg:overscroll-contain lg:rounded-2xl lg:bg-surface lg:shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] lg:outline lg:outline-1 lg:-outline-offset-1 lg:outline-line"
       id="panel-utama"
     >
-      <!-- Bilah atas HP (frame IzXAR) -->
-      <div
+      <!-- Bilah atas HP (frame IzXAR); <header> = landmark banner agar logo dan tombolnya di dalam landmark. -->
+      <header
         class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-line bg-bg/95 pr-5 pl-5 backdrop-blur lg:hidden"
       >
         <a href={resolve('/beranda')} class="flex h-11 items-center gap-2" aria-label="Urusin, ke Beranda">
@@ -149,7 +149,7 @@
             </a>
           </nav>
         {/if}
-      </div>
+      </header>
 
       <main
         id="konten"
