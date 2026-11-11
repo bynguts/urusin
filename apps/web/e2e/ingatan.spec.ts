@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 // Ingatan warga (ADR 0031) dengan DemoProvider: urusan 1 → agen mencatat preferensi + wilayah KTP → urusan 2 tidak
-// menanyakan ulang dari nol (tetap konfirmasi "betul?") → Pengaturan: hapus ingatan → hilang.
+// menanyakan ulang dari nol (kartu usulan, warga memastikan) → Pengaturan: hapus ingatan → hilang.
 test.beforeEach(async ({ context }) => {
   const oktet = () => Math.floor(Math.random() * 250) + 1;
   await context.setExtraHTTPHeaders({
@@ -35,16 +35,22 @@ test('urusan kedua memakai ingatan sebagai usulan, lalu ingatan dihapus di Penga
   await log.getByRole('button', { name: 'Batalkan ingatan Warga lansia' }).click();
   await expect(log).toContainText('Dibatalkan, Urusin tidak mengingat: Warga lansia');
 
-  // Urusan 2: wilayah dari ingatan hanya usulan; agen mengonfirmasi, tidak bertanya "di mana" dari nol.
+  // Urusan 2: wilayah dari ingatan hanya usulan di kartu (tanpa teks pertanyaan ganda); warga yang memastikan.
   await page.goto('/peristiwa/perkawinan');
   await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
   await expect(page).toHaveURL(/\/urusan\/u_[0-9a-f]{32}$/);
-  await expect(page.getByRole('region', { name: 'Konfirmasi wilayah KTP' })).toContainText(
-    'yang Urusin ingat dari urusan Anda sebelumnya',
-    { timeout: 20_000 },
-  );
-  await expect(log).toContainText('KTP Anda terdaftar di Kabupaten Wonogiri, betul?', { timeout: 20_000 });
+  const konfirmasi = page.getByRole('region', { name: 'Konfirmasi wilayah KTP' });
+  await expect(konfirmasi).toContainText('yang Urusin ingat dari urusan Anda sebelumnya', {
+    timeout: 20_000,
+  });
+  await expect(konfirmasi).toContainText('KTP Anda terdaftar di Kabupaten Wonogiri?');
+  await expect(log).not.toContainText('KTP Anda terdaftar di Kabupaten Wonogiri, betul?');
   await expect(log).not.toContainText('KTP Anda terdaftar di kabupaten/kota mana?');
+  await expect(page.getByRole('button', { name: 'Setujui rencana', exact: true })).toHaveCount(0);
+  await konfirmasi.getByRole('button', { name: 'Ya, betul', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Setujui rencana', exact: true })).toBeEnabled({
+    timeout: 20_000,
+  });
 
   // Pengaturan: daftar ingatan, lalu hapus semua (hak hapus UU PDP).
   await page.goto('/pengaturan#ingatan');

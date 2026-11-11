@@ -158,7 +158,9 @@ test('pengaturan: saklar, ukuran huruf, wilayah, reload, batal dan konfirmasi ha
   await wilayah.fill('Surabaya');
   await page.getByRole('option', { name: 'Kota Surabaya', exact: true }).click();
   await page.getByRole('button', { name: 'Simpan wilayah', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Wilayah disimpan: Kota Surabaya.');
+  await expect(page.getByRole('status').filter({ hasText: 'Wilayah disimpan' })).toContainText(
+    'Wilayah disimpan: Kota Surabaya.',
+  );
   await page.reload();
   await expect(wilayah).toHaveValue('Kota Surabaya');
   await expect(page.getByRole('radio', { name: 'Sangat besar', exact: true })).toBeChecked();

@@ -40,7 +40,9 @@ test('cari wilayah, batalkan, simpan, dan hapus pilihan tanpa mengubahnya menjad
   await kota.fill('Belum dipilih');
   await kota.press('Enter');
   await page.getByRole('button', { name: 'Simpan wilayah' }).click();
-  await expect(page.getByRole('status')).toContainText('Pilihan wilayah dihapus.');
+  await expect(page.getByRole('status').filter({ hasText: 'Pilihan wilayah dihapus' })).toContainText(
+    'Pilihan wilayah dihapus.',
+  );
   await page.goto('/peristiwa/kelahiran');
   await expect(page).not.toHaveURL(/kodeKabKota=/);
 });
