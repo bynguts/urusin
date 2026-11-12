@@ -2287,7 +2287,7 @@
   <section class="n-get-started lp192" id="cara-kerja">
     <div class="n-heading lp193">
       <h2 class="n-title lp106">Mulai dalam hitungan menit</h2>
-      <div class="n-sub lp194">Gratis, tanpa daftar panjang, dan tidak perlu paham istilah dulu.</div>
+      <div class="n-sub lp194">Gratis, daftar cukup sekali, dan tidak perlu paham istilah dulu.</div>
     </div>
     <div class="n-columns lp107">
       <div class="lp195">
@@ -2845,8 +2845,9 @@
         <div class="n-answer-row lp269">
           <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
-              Aman. Data dan berkasmu disimpan terenkripsi di server per akun. Model AI tidak pernah menerima
-              data identitas asli (NIK, KK, nama), dan data tamu terhapus otomatis setelah 72 jam.
+              Aman. Data dan berkasmu disimpan terenkripsi di server, terikat ke akunmu. Model AI tidak pernah
+              menerima data identitas asli (NIK, KK, nama), dan semuanya bisa kamu hapus kapan saja di
+              Pengaturan.
             </div>
           </div>
         </div>

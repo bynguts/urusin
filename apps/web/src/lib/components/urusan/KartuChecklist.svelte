@@ -52,7 +52,7 @@
     <div class="flex flex-wrap items-center gap-2.5 pt-1">
       <a
         href={resolve('/dokumen')}
-        class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-5 text-base leading-6 font-semibold text-primer-ink hover:opacity-90"
+        class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-5 text-base leading-6 font-semibold text-primer-ink"
       >
         <Icon name="kamera" class="size-[18px]" /> Lengkapi dokumen
       </a>

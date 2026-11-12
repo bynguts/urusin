@@ -263,7 +263,7 @@
               </summary>
               <p class="tj29">
                 Bisa. Dokumen bisa dihapus satu per satu di halaman Dokumen, dan seluruh akun beserta isinya
-                di Pengaturan, bagian Zona bahaya. Tanpa akun, data terhapus sendiri 72 jam setelah dibuat.
+                di Pengaturan, bagian Zona bahaya.
               </p>
             </details>
           </div>

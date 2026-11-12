@@ -185,7 +185,7 @@
         <a
           href="#tanya-{t.ke}"
           onclick={() => buka(t.ke)}
-          class="flex flex-1 items-center gap-3.5 rounded-2xl border border-line bg-surface p-3.5 shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] transition-all duration-200 hover:-translate-y-0.5 hover:bg-card hover:shadow-md active:translate-y-0"
+          class="flex flex-1 items-center gap-3.5 rounded-2xl border border-line bg-surface p-3.5 shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] hover:bg-card"
         >
           <span
             class="grid size-[72px] shrink-0 place-items-center rounded-[14px] {t.latar} dark:bg-bg-2"
@@ -254,9 +254,9 @@
             }}
             target={p.luar ? '_blank' : undefined}
             rel={p.luar ? 'noopener noreferrer' : undefined}
-            class="flex items-center gap-3 rounded-[14px] px-3.5 py-3 transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 {p.gelap
-              ? 'bg-primer text-primer-ink hover:opacity-90'
-              : 'border border-line bg-surface text-ink hover:bg-card hover:shadow-xs'}"
+            class="flex items-center gap-3 rounded-[14px] px-3.5 py-3 {p.gelap
+              ? 'bg-primer text-primer-ink'
+              : 'border border-line bg-surface text-ink hover:bg-card'}"
           >
             <span
               class="grid size-10 shrink-0 place-items-center rounded-xl {p.gelap

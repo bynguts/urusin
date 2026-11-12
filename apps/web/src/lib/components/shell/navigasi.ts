@@ -32,7 +32,7 @@ export function rutAuth(pathname: string): boolean {
 }
 
 /** Halaman Web publik berdesain landing (frame Web pen): tanpa kerangka aplikasi. `/urusan/<id>` tetap aplikasi. */
-export const RUTE_WEB = ['/', '/cara-kerja', '/urusan', '/privasi', '/tanya-jawab'] as const;
+export const RUTE_WEB = ['/', '/cara-kerja', '/urusan', '/privasi', '/syarat', '/tanya-jawab'] as const;
 
 export function rutWeb(pathname: string): boolean {
   return (RUTE_WEB as readonly string[]).includes(pathname);

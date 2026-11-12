@@ -122,7 +122,7 @@
         <div class="pv28" role="row">
           <div class="pv29 pv-c0" role="rowheader">Data diri dan berkas</div>
           <div class="pv30 pv-c1" role="cell" data-label="Disimpan di">Brankas Urusin, terenkripsi</div>
-          <div class="pv30 pv-c2" role="cell" data-label="Berapa lama">Sampai dihapus; tamu 72 jam</div>
+          <div class="pv30 pv-c2" role="cell" data-label="Berapa lama">Sampai kamu menghapusnya</div>
           <div class="pv30 pv-c3" role="cell" data-label="Bisa dihapus">Ya, kapan saja</div>
         </div>
         <div class="pv28" role="row">

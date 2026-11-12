@@ -217,6 +217,11 @@
   .lp .lp267 {
     white-space: normal;
   }
+  .lp :is(.lp266, .lp270).n-balon {
+    padding: 11px 16px;
+    font-size: 16px;
+    line-height: 1.5;
+  }
   .lp .lp265 {
     padding-left: 12px;
   }
@@ -243,7 +248,7 @@
     zoom: 0.62;
     margin-top: 0;
   }
-  /* Balon sapaan tidak ikut mengecil (1 / 0,62): huruf tetap 14px seperti balon FAQ. left/top dalam
+  /* Balon sapaan tidak ikut mengecil (1 / 0,62): huruf tetap 14px seperti di desktop. left/top dalam
      satuan balon sendiri = piksel nyata; ekor tetap menunjuk kepala karakter merah muda. */
   .lp .n-cta-panel > .n-companions > .lp294 {
     zoom: 1.6129;

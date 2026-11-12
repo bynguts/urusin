@@ -35,7 +35,7 @@ afterEach(() => {
 
 describe('anti-CSRF: Origin persis di request pengubah state', () => {
   it('Origin sama persis lolos', async () => {
-    expect(await run(req('/api/urusan', ORIGIN))).toMatchObject({ status: 200, reached: true });
+    expect(await run(req('/api/data', ORIGIN))).toMatchObject({ status: 200, reached: true });
   });
 
   it.each([
@@ -47,21 +47,21 @@ describe('anti-CSRF: Origin persis di request pengubah state', () => {
     ['origin chrome-extension', 'chrome-extension://abcdefghijklmnopabcdefghijklmnop'],
     ['null', 'null'],
   ])('%s → 403 dan tidak sampai ke handler', async (_n, origin) => {
-    const r = await run(req('/api/urusan', origin));
+    const r = await run(req('/api/data', origin));
     expect(r).toMatchObject({ status: 403, reached: false });
     expect(r.body).toEqual({ kode: 'CSRF', pesanWarga: expect.any(String) });
   });
 
   it('GET tidak diperiksa; PUT/PATCH/DELETE diperiksa', async () => {
-    expect((await run(req('/api/urusan', null, 'GET'))).status).toBe(200);
+    expect((await run(req('/api/data', null, 'GET'))).status).toBe(200);
     for (const method of ['PUT', 'PATCH', 'DELETE'])
       expect((await run(req('/api/data', 'https://x.example', method))).status, method).toBe(403);
   });
 
   it('origin publik dikonfigurasi lewat URUSIN_PUBLIC_ORIGIN', async () => {
     process.env.URUSIN_PUBLIC_ORIGIN = 'https://urusin.example';
-    expect((await run(req('/api/urusan', 'https://urusin.example'))).status).toBe(200);
-    expect((await run(req('/api/urusan', ORIGIN))).status).toBe(403);
+    expect((await run(req('/api/data', 'https://urusin.example'))).status).toBe(200);
+    expect((await run(req('/api/data', ORIGIN))).status).toBe(403);
   });
 });
 

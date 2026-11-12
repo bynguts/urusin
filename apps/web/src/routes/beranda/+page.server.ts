@@ -14,12 +14,6 @@ export const load: PageServerLoad = ({ locals, url }) => {
 };
 
 export const actions: Actions = {
-  /**
-   * Mulai urusan dari kotak cerita Beranda atau tombol di halaman peristiwa (jalan tanpa JavaScript). Wajib
-   * login seperti `load`; tamu memulai lewat landing (`/?/mulai`).
-   */
-  mulai: (event) => {
-    if (!event.locals.akun) redirect(303, '/masuk');
-    return mulaiUrusanDariForm(event);
-  },
+  /** Mulai urusan dari kotak cerita Beranda (jalan tanpa JavaScript). Tanpa sesi → /daftar lalu kembali. */
+  mulai: (event) => mulaiUrusanDariForm(event),
 };

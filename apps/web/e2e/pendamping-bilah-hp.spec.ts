@@ -1,4 +1,5 @@
 import { expect, test, type Page, type WebSocketRoute } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
 // Layar Browser Pendamping di HP 390x844 (QA Padang, Kota Tangerang, Banjarmasin): kartu giliran di atas siaran bisa
 // tergulir keluar layar, jadi bilah bawah yang lengket WAJIB memuat instruksi "Giliran Anda" DAN tombol aksi
@@ -45,6 +46,7 @@ async function bukaPendamping(page: Page): Promise<Tiruan> {
     });
   });
 
+  await daftarAkunUji(page);
   await page.goto('/peristiwa/kelahiran');
   const kota = page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' });
   await expect(kota).toHaveAttribute('aria-autocomplete', 'list');

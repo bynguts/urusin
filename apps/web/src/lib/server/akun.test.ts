@@ -39,7 +39,7 @@ import { GET as verifikasiEmailLama } from '../../routes/verifikasi-email/+serve
 import { AKUN_COOKIE, OAUTH_COOKIE, TAUTKAN_COOKIE } from './akun';
 import { modeUjiPendamping } from './pendamping/pemilik';
 import { createRuntime, googleRedirectUri, setRuntimeForTests, type Runtime } from './runtime';
-import { SID_COOKIE, TERAKHIR_COOKIE } from './sesi';
+import { ensureSession, SID_COOKIE, TERAKHIR_COOKIE } from './sesi';
 import { TURNSTILE_TOKEN_FIXTURE, turnstileFromEnv } from './turnstile';
 
 const ORIGIN = 'http://localhost:3000';
@@ -181,6 +181,19 @@ async function lewatHook(
     url: URL;
   };
   return handle({ event: event as never, resolve: () => Promise.resolve(handler(event as never)) });
+}
+
+/**
+ * Data tamu lama (dibuat sebelum wajib akun, masih ada di DB saat deploy): handler dipanggil langsung dengan sid
+ * perangkat, sebab hooks kini menolak API urusan/brankas tanpa sesi akun (401 BELUM_MASUK).
+ */
+function tamuLama(
+  request: Request,
+  jar: Jar,
+  handler: (e: never) => Promise<Response> | Response,
+  params: Record<string, string> = {},
+) {
+  return Promise.resolve(handler(ev(request, { jar, params, locals: { sid: ensureSession(jar as never) } })));
 }
 
 /** Daftar lewat API: akun penuh dan sesi langsung terpasang di `jar` (tanpa email verifikasi, ADR 0032). */
@@ -358,10 +371,10 @@ describe('daftar memindahkan data tamu ke akun baru', () => {
     const sidTamu = 'a'.repeat(32);
     const jar = new Jar({ [SID_COOKIE]: sidTamu });
     const buat = async () =>
-      ((await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any).id as string;
+      ((await (await tamuLama(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any).id as string;
     const u1 = await buat();
     const u2 = await buat();
-    expect((await lewatHook(put({ namaLengkap: 'Tamu Uji' }), jar, dataDiriPut)).status).toBe(200);
+    expect((await tamuLama(put({ namaLengkap: 'Tamu Uji' }), jar, dataDiriPut)).status).toBe(200);
     expect(hitung("SELECT COUNT(*) n FROM users WHERE jenis = 'tamu'")).toBe(1);
 
     const { body } = await daftarAkun(EMAIL, SANDI, jar);
@@ -383,14 +396,17 @@ describe('daftar memindahkan data tamu ke akun baru', () => {
     expect(g.dataDiri).toEqual({ namaLengkap: 'Tamu Uji' });
     // Cookie tamu lama tidak lagi memiliki apa pun.
     const bekas = new Jar({ [SID_COOKIE]: sidTamu });
-    const r = await lewatHook(new Request(`${ORIGIN}/api/urusan/${u1}`), bekas, statusUrusan, { id: u1 });
+    const r = await tamuLama(new Request(`${ORIGIN}/api/urusan/${u1}`), bekas, statusUrusan, { id: u1 });
     expect(r.status).toBe(404);
+    // Lewat hooks, tanpa sesi akun bahkan tidak sampai ke handler: wajib akun.
+    const h = await lewatHook(new Request(`${ORIGIN}/api/urusan/${u1}`), bekas, statusUrusan, { id: u1 });
+    expect([h.status, (await h.json()).kode]).toEqual([401, 'BELUM_MASUK']);
   });
 
   it('form action: data tamu pindah, lalu ke /beranda dengan sesi akun', async () => {
     const jar = new Jar({ [SID_COOKIE]: 'b'.repeat(32) });
-    const { id } = (await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any;
-    await lewatHook(put({ namaLengkap: 'Tamu Form' }), jar, dataDiriPut);
+    const { id } = (await (await tamuLama(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any;
+    await tamuLama(put({ namaLengkap: 'Tamu Form' }), jar, dataDiriPut);
     const r = await caught(daftarPage.default(ev(form({ email: EMAIL, sandi: SANDI }, '/daftar'), { jar })));
     expect(isRedirect(r) && [r.status, r.location]).toEqual([303, '/beranda']);
     const akun = akunDari(jar);
@@ -409,10 +425,10 @@ describe('sesi akun aktif dengan sid yang masih memegang data tamu (review L1)',
     // Sisa data tamu pada sid perangkat ini (mis. vault satu perangkat akun lama sebelum ADR 0032).
     const sidTamu = 'c'.repeat(32);
     const tamu = new Jar({ [SID_COOKIE]: sidTamu });
-    const u = ((await (await lewatHook(post({}, '/api/urusan'), tamu, buatUrusan)).json()) as any)
+    const u = ((await (await tamuLama(post({}, '/api/urusan'), tamu, buatUrusan)).json()) as any)
       .id as string;
     expect(
-      (await lewatHook(put({ namaLengkap: 'Nama Tamu', tempatLahir: 'Wonogiri' }), tamu, dataDiriPut)).status,
+      (await tamuLama(put({ namaLengkap: 'Nama Tamu', tempatLahir: 'Wonogiri' }), tamu, dataDiriPut)).status,
     ).toBe(200);
     const tamuId = rt.akun.tamuDariSid(sidTamu)!;
     rt.akun.vault.putDocument(tamuId, {
@@ -424,9 +440,9 @@ describe('sesi akun aktif dengan sid yang masih memegang data tamu (review L1)',
     // Data tamu sid LAIN (perangkat/orang lain) tidak boleh ikut terambil.
     const sidLain = 'd'.repeat(32);
     const lain = new Jar({ [SID_COOKIE]: sidLain });
-    const uLain = ((await (await lewatHook(post({}, '/api/urusan'), lain, buatUrusan)).json()) as any)
+    const uLain = ((await (await tamuLama(post({}, '/api/urusan'), lain, buatUrusan)).json()) as any)
       .id as string;
-    await lewatHook(put({ namaLengkap: 'Orang Lain' }), lain, dataDiriPut);
+    await tamuLama(put({ namaLengkap: 'Orang Lain' }), lain, dataDiriPut);
 
     jar.set(SID_COOKIE, sidTamu, {});
     const res = await lewatHook(get('/api/akun'), jar, sesiAkun);
@@ -446,7 +462,7 @@ describe('sesi akun aktif dengan sid yang masih memegang data tamu (review L1)',
     expect(rt.akun.sidMemegangDataTamu(sidTamu)).toBe(false);
     expect(rt.akun.tamuDariSid(sidTamu)).toBeUndefined();
     const curi = new Jar({ [SID_COOKIE]: sidTamu });
-    expect((await lewatHook(get(`/api/urusan/${u}`), curi, statusUrusan, { id: u })).status).toBe(404);
+    expect((await tamuLama(get(`/api/urusan/${u}`), curi, statusUrusan, { id: u })).status).toBe(404);
     // tamu sid lain utuh dan tetap miliknya
     expect(rt.akun.adalahPemilikUrusan(uLain, { sid: sidLain })).toBe(true);
     expect(rt.akun.vault.getDataDiri(rt.akun.tamuDariSid(sidLain)!)?.data).toEqual({
@@ -469,8 +485,8 @@ describe('Browser Pendamping: akun hasil daftar = portal asli; tamu dan juri = M
           .join('; '),
       },
     });
-  const urusanBaru = async (jar: Jar) => {
-    const { id } = (await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any;
+  const urusanBaru = async (jar: Jar, kirim: typeof tamuLama = lewatHook) => {
+    const { id } = (await (await kirim(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any;
     return rt.store.getUrusan(id)!;
   };
 
@@ -494,16 +510,16 @@ describe('Browser Pendamping: akun hasil daftar = portal asli; tamu dan juri = M
 
   it('urusan tamu yang dibawa saat daftar ikut jadi portal asli', async () => {
     const jar = new Jar({ [SID_COOKIE]: 'c'.repeat(32) });
-    const u = await urusanBaru(jar);
+    const u = await urusanBaru(jar, tamuLama);
     expect(await modeUjiPendamping(permintaan(jar), u)).toBe(true);
     await daftarAkun(EMAIL, SANDI, jar);
     expect(await modeUjiPendamping(permintaan(jar), u)).toBe(false);
   });
 
-  it('tamu tanpa akun dan salinan demo juri tetap Mode Uji', async () => {
+  it('urusan tamu lama tanpa akun dan salinan demo juri tetap Mode Uji', async () => {
     const tamu = new Jar();
-    const uTamu = await urusanBaru(tamu);
-    await lewatHook(put({ namaLengkap: 'Tamu' }), tamu, dataDiriPut);
+    const uTamu = await urusanBaru(tamu, tamuLama);
+    await tamuLama(put({ namaLengkap: 'Tamu' }), tamu, dataDiriPut);
     expect(await modeUjiPendamping(permintaan(tamu), uTamu)).toBe(true);
     const { jar } = await masukJuri();
     const uJuri = await urusanBaru(jar);
@@ -701,19 +717,19 @@ describe('keluar, ubah sandi, reset, hapus akun', () => {
       lewatHook(new Request(`${ORIGIN}/api/urusan/${id}`), jar, statusUrusan, { id }).then((r) => r.status);
     expect(await buka(a.jar)).toBe(200);
     await lewatHook(post({}, '/api/akun/keluar'), a.jar, keluarApi);
-    expect(await buka(a.jar)).toBe(404); // perangkat bersama: setelah keluar tidak terbuka
+    expect(await buka(a.jar)).toBe(401); // perangkat bersama: setelah keluar tidak terbuka (wajib akun)
     await masuk(a.jar);
     expect(await buka(a.jar)).toBe(200);
     // Perangkat lain, akun yang sama: ikut akun (bukan cookie perangkat).
     expect(await buka((await masuk()).jar)).toBe(200);
-    // Pemilik lain: akun lain (salinan juri, tanpa hash sandi) dan tamu → 404 yang sama.
+    // Pemilik lain: akun lain (salinan juri, tanpa hash sandi) → 404; tanpa sesi → 401 wajib akun.
     expect(await buka((await masukJuri()).jar)).toBe(404);
-    expect(await buka(new Jar())).toBe(404);
+    expect(await buka(new Jar())).toBe(401);
   });
 
-  it('juri: urusan tamu yang dimulai sebelum masuk ikut salinan demonya (tidak yatim di sid)', async () => {
+  it('juri: urusan tamu lama yang dimulai sebelum masuk ikut salinan demonya (tidak yatim di sid)', async () => {
     const jar = new Jar();
-    const { id } = (await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any;
+    const { id } = (await (await tamuLama(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any;
     const ts = { turnstile: TURNSTILE_TOKEN_FIXTURE };
     expect((await juriApi(ev(post(ts, '/api/akun/juri'), { jar, ip: '10.9.0.1' }))).status).toBe(200);
     const demo = akunDari(jar);
@@ -960,41 +976,109 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
     expect([r.status, (await r.json()).kode]).toEqual([507, 'PENYIMPANAN_PENUH']);
   });
 
-  it('tamu malas: menjelajah dan membuat urusan tanpa pesan tidak membuat baris pengguna', async () => {
+  it('wajib akun: tanpa sesi, API urusan/brankas/ingatan → 401 BELUM_MASUK dan tidak membuat baris apa pun', async () => {
     const jar = new Jar();
-    await lewatHook(get('/api/akun'), jar, sesiAkun);
-    const v = VaultResponseSchema.parse(await (await lewatHook(vget('/api/vault'), jar, vaultList)).json());
+    expect((await lewatHook(get('/api/akun'), jar, sesiAkun)).status).toBe(200);
+    let sampai = 0;
+    const handler = () => {
+      sampai++;
+      return new Response('ok');
+    };
+    for (const req of [
+      vget('/api/vault'),
+      vget('/api/vault/data-diri'),
+      put({ namaLengkap: 'Tamu' }),
+      post({}, '/api/urusan'),
+      post({ pesan: 'halo' }, '/api/urusan'),
+      get('/api/urusan?ids=u_' + '0'.repeat(32)),
+      post({ teks: 'halo' }, `/api/urusan/u_${'0'.repeat(32)}/turn`),
+      get(`/api/urusan/u_${'0'.repeat(32)}/stream`),
+      get('/api/ingatan'),
+    ]) {
+      const r = await lewatHook(req, jar, handler);
+      expect([req.method, new URL(req.url).pathname, r.status], req.url).toEqual([
+        req.method,
+        new URL(req.url).pathname,
+        401,
+      ]);
+      expect(GalatApiSchema.parse(await r.json()).kode).toBe('BELUM_MASUK');
+    }
+    expect(sampai).toBe(0);
+    expect(hitung('SELECT COUNT(*) n FROM users')).toBe(0);
+    expect(hitung('SELECT COUNT(*) n FROM urusan')).toBe(0);
+    // API publik tetap terbuka tanpa akun.
+    expect((await lewatHook(get('/api/wilayah'), jar, handler)).status).toBe(200);
+  });
+
+  it('wajib akun: halaman aplikasi tanpa sesi → 303 ke /masuk?next=…; halaman informatif tetap publik', async () => {
+    const buka = (path: string, id: string, jar = new Jar()) =>
+      handle({
+        event: { ...(ev(get(path), { jar }) as object), route: { id } } as never,
+        resolve: () => Promise.resolve(new Response('ok')),
+      });
+    const urusan = `/urusan/u_${'0'.repeat(32)}`;
+    for (const [path, id] of [
+      [urusan, '/urusan/[id]'],
+      [`/jejak/u_${'0'.repeat(32)}?head=ab`, '/jejak/[id]'],
+      ['/urusanku', '/urusanku'],
+      ['/data-diri', '/data-diri'],
+      ['/dokumen', '/dokumen'],
+      ['/pengaturan', '/pengaturan'],
+    ]) {
+      const r = await caught(buka(path, id));
+      expect(isRedirect(r) && [r.status, r.location]).toEqual([
+        303,
+        `/masuk?next=${encodeURIComponent(path)}`,
+      ]);
+    }
+    for (const [path, id] of [
+      ['/', '/'],
+      ['/urusan', '/urusan'],
+      ['/peristiwa/kelahiran', '/peristiwa/[slug]'],
+      ['/tanya-jawab', '/tanya-jawab'],
+      ['/privasi', '/privasi'],
+      ['/bantuan', '/bantuan'],
+    ])
+      expect((await buka(path, id)).status, path).toBe(200);
+    // Akun yang masuk melewati gerbang.
+    const { jar } = await daftarAkun();
+    expect((await buka(urusan, '/urusan/[id]', jar)).status).toBe(200);
+  });
+
+  it('tamu lama malas: menjelajah dan membuat urusan tanpa pesan tidak membuat baris pengguna', async () => {
+    const jar = new Jar();
+    const v = VaultResponseSchema.parse(await (await tamuLama(vget('/api/vault'), jar, vaultList)).json());
     expect([v.pemilik, v.dataDiri.ada, v.dokumen]).toEqual(['tamu', false, []]);
-    await lewatHook(vget('/api/vault/data-diri'), jar, dataDiriGet);
-    await lewatHook(post({}, '/api/urusan'), jar, buatUrusan);
+    await tamuLama(vget('/api/vault/data-diri'), jar, dataDiriGet);
+    await tamuLama(post({}, '/api/urusan'), jar, buatUrusan);
     expect(hitung('SELECT COUNT(*) n FROM users')).toBe(0);
     // tulis vault pertama membuat tamu
-    expect((await lewatHook(put({ namaLengkap: 'Tamu' }), jar, dataDiriPut)).status).toBe(200);
+    expect((await tamuLama(put({ namaLengkap: 'Tamu' }), jar, dataDiriPut)).status).toBe(200);
     expect(hitung("SELECT COUNT(*) n FROM users WHERE jenis = 'tamu'")).toBe(1);
   });
 
-  it('tamu malas: turn pertama membuat tamu; kuota pembuatan tamu per IP → 429 TAMU_PENUH', async () => {
+  it('tamu lama malas: turn pertama membuat tamu; kuota pembuatan tamu per IP → 429 TAMU_PENUH', async () => {
     buatRt({ kuota: { tamuPerIpHari: 1, demoPerIpHari: 3, demoAktifMaks: 200 } }, new ModelDiam());
     const jar = new Jar();
-    const u = await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json();
+    const u = await (await tamuLama(post({}, '/api/urusan'), jar, buatUrusan)).json();
     expect(hitung('SELECT COUNT(*) n FROM users')).toBe(0);
-    const t = await lewatHook(post({ teks: 'halo' }, `/api/urusan/${u.id}/turn`), jar, turnApi, { id: u.id });
+    const t = await tamuLama(post({ teks: 'halo' }, `/api/urusan/${u.id}/turn`), jar, turnApi, { id: u.id });
     expect(t.status).toBe(202);
     expect(hitung("SELECT COUNT(*) n FROM users WHERE jenis = 'tamu'")).toBe(1);
     const lain = new Jar();
-    const r = await lewatHook(post({ pesan: 'halo' }, '/api/urusan'), lain, buatUrusan);
+    const r = await tamuLama(post({ pesan: 'halo' }, '/api/urusan'), lain, buatUrusan);
     expect([r.status, (await r.json()).kode]).toEqual([429, 'TAMU_PENUH']);
     for (const c of rt.running.values()) c.abort();
   });
 
-  it('rotasi tamu → akun: urusan + vault tamu pindah ke akun dalam satu langkah; perangkat lain melihatnya', async () => {
+  it('rotasi tamu lama → akun: urusan + vault tamu pindah ke akun dalam satu langkah; perangkat lain melihatnya', async () => {
     await daftarAkun();
     const jar = new Jar({ [SID_COOKIE]: 'a'.repeat(32) });
-    const buat = async () =>
-      ((await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any).id;
-    const u1 = await buat();
-    const u2 = await buat();
-    await lewatHook(put({ namaLengkap: 'Tamu Uji' }), jar, dataDiriPut);
+    const buat = async (kirim: typeof tamuLama = lewatHook) =>
+      ((await (await kirim(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any).id;
+    const u1 = await buat(tamuLama);
+    const u2 = await buat(tamuLama);
+    await tamuLama(put({ namaLengkap: 'Tamu Uji' }), jar, dataDiriPut);
     const { body } = await masuk(jar);
     expect([body.urusanDipindahkan, body.vaultDipindahkan]).toEqual([2, true]);
     expect(jar.get(SID_COOKIE)).not.toBe('a'.repeat(32));

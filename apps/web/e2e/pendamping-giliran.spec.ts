@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
 // Giliran `ketuk_tautan` lewat UI warga (bukan API): layanan pendamping digantikan tiruan di batas jaringan
 // peramban (POST /pendamping + /tiket di-route, WebSocket viewer di-routeWebSocket). Layar, SesiPendampingUi
@@ -61,6 +62,7 @@ test('giliran ketuk_tautan: warga menekan Buka di layar; viewer mengirim buka_ta
   });
 
   // Jalur warga yang sama dengan pendamping-gerbang: Wonogiri → rencana → persetujuan → buka situs.
+  await daftarAkunUji(page);
   await page.goto('/peristiwa/kelahiran');
   await expect(page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' })).toHaveAttribute(
     'aria-autocomplete',

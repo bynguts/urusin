@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
 // Temuan QA warga (360–1366 px): panel Rencana, kartu persetujuan Browser Pendamping, tab Sumber, tombol
 // Lanjutkan, landmark + urutan heading, dan status kartu Beranda. Server memakai DemoProvider; tidak ada yang
@@ -64,6 +65,7 @@ test('360 px: kartu persetujuan tergulir ke tampilan, tidak tertutup komposer, j
 }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  await daftarAkunUji(page);
   const setujui = await mulaiWonogiri(page);
   await setujui.click();
   const buka = page.getByRole('button', { name: 'Setujui dan buka situs' });
@@ -104,6 +106,7 @@ test('360 px: kartu persetujuan tergulir ke tampilan, tidak tertutup komposer, j
 });
 
 test('tombol Lanjutkan mengirim aksi tanpa gelembung "lanjut" dari warga', async ({ page }) => {
+  await daftarAkunUji(page);
   await page.goto('/peristiwa/kelahiran');
   const { status, id } = await page.evaluate(async () => {
     const r = await fetch('/api/urusan', {

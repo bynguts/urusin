@@ -185,10 +185,6 @@ html {
   color: var(--sb-text-body, #252522a6);
   font-size: 16px;
   font-weight: 400;
-  transition:
-    background-color 150ms ease-out,
-    color 150ms ease-out,
-    transform 150ms ease-out;
 }
 
 .tj14,

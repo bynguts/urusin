@@ -60,7 +60,7 @@
 </script>
 
 <article
-  class="flex min-w-0 flex-col gap-3.5 rounded-[18px] p-5 shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 {utama
+  class="flex min-w-0 flex-col gap-3.5 rounded-[18px] p-5 shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] {utama
     ? 'border-[1.5px] border-ink bg-surface'
     : 'border border-line bg-card'}"
 >
@@ -115,8 +115,8 @@
     {/if}
     <a
       href={resolve('/urusan/[id]', { id: urusan.id })}
-      class="inline-flex h-[46px] items-center rounded-full px-[18px] text-[15px] leading-[22px] font-semibold transition-all duration-150 ease-out active:scale-[0.98] {utama
-        ? 'bg-primer text-primer-ink hover:opacity-90'
+      class="inline-flex h-[46px] items-center rounded-full px-[18px] text-[15px] leading-[22px] font-semibold {utama
+        ? 'bg-primer text-primer-ink'
         : 'border border-line-2 bg-surface text-ink hover:bg-bg'}"
     >
       {info.aksi}<span class="sr-only">: {urusan.judul}</span>

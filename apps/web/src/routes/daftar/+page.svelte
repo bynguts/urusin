@@ -105,7 +105,8 @@
       {/if}
     </div>
     <p class="text-sm text-body">
-      Dengan mendaftar, Anda setuju dengan Syarat layanan dan
+      Dengan mendaftar, Anda setuju dengan
+      <a href={resolve('/syarat')} class="font-semibold text-ink underline">Syarat layanan</a> dan
       <a href={resolve('/privasi')} class="font-semibold text-ink underline">Kebijakan privasi</a> Urusin.
     </p>
     <button
@@ -124,8 +125,5 @@
         class="inline-flex min-h-12 items-center font-semibold text-ink">Masuk</a
       >
     </p>
-    <a href={resolve('/')} class="inline-flex min-h-12 items-center font-semibold text-ink underline"
-      >Coba tanpa daftar</a
-    >
   </div>
 </KerangkaAuth>

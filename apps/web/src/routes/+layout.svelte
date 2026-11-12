@@ -105,7 +105,7 @@
         <div class="flex items-center gap-2">
           <button
             type="button"
-            class="grid size-11 place-items-center rounded-full bg-bg-2 text-ink transition-colors hover:bg-card"
+            class="grid size-11 place-items-center rounded-full bg-bg-2 text-ink hover:bg-card"
             aria-label="Bantuan suara"
             aria-pressed={prefs.nilai.bacakanOtomatis}
             onclick={() => prefs.atur('bacakanOtomatis', !prefs.nilai.bacakanOtomatis)}
@@ -114,7 +114,7 @@
           </button>
           <button
             type="button"
-            class="grid size-11 place-items-center rounded-full bg-bg-2 text-ink transition-colors hover:bg-card"
+            class="grid size-11 place-items-center rounded-full bg-bg-2 text-ink hover:bg-card"
             aria-label={menuBuka ? 'Tutup menu' : 'Buka menu'}
             aria-expanded={menuBuka}
             aria-controls="menu-app-hp"

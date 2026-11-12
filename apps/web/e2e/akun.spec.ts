@@ -339,38 +339,36 @@ test('#46 hapus akun: user/sesi/vault/berkas/DEK hilang, nol PII plaintext di DB
     if (existsSync(f)) expect(readFileSync(f).includes(Buffer.from(NIK))).toBe(false);
 });
 
-test('#47 coba tanpa daftar: menjelajah tidak membuat baris; juri terisolasi; data tamu pindah saat mendaftar', async ({
+test('#47 wajib akun: tanpa sesi tidak ada jalur tamu (401, tanpa baris); juri terisolasi', async ({
   page,
   context,
   browser,
 }) => {
   await pakaiIp(context);
   const sebelum = hitung('SELECT COUNT(*) n FROM users');
-  await page.goto('/');
-  await page.goto('/masuk');
-  await page.getByRole('link', { name: 'Coba tanpa daftar' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  const urusanSebelum = hitung('SELECT COUNT(*) n FROM urusan');
+  for (const path of ['/masuk', '/daftar']) {
+    await page.goto(path);
+    await expect(page.getByRole('link', { name: 'Coba tanpa daftar' })).toHaveCount(0);
+  }
   expect((await sesiApi(page)).masuk).toBe(false);
-  const v = await api(page, 'GET', '/api/vault');
-  expect([v.status, v.json.pemilik, v.json.dataDiri.ada]).toEqual([200, 'tamu', false]);
-  expect((await api(page, 'GET', '/api/vault/data-diri')).status).toBe(200);
-  expect((await api(page, 'POST', '/api/urusan', {})).status).toBe(201);
+  for (const [m, p, b] of [
+    ['GET', '/api/vault', undefined],
+    ['GET', '/api/vault/data-diri', undefined],
+    ['PUT', '/api/vault/data-diri', { namaLengkap: 'Tamu E2E' }],
+    ['POST', '/api/urusan', {}],
+    ['POST', '/api/urusan', { pesan: 'Mau urus akta kelahiran' }],
+  ] as const) {
+    const r = await api(page, m, p, b);
+    expect([m, p, r.status, r.json?.kode]).toEqual([m, p, 401, 'BELUM_MASUK']);
+  }
   expect(hitung('SELECT COUNT(*) n FROM users')).toBe(sebelum);
+  expect(hitung('SELECT COUNT(*) n FROM urusan')).toBe(urusanSebelum);
 
-  // tulis vault pertama membuat tamu; daftar (langsung masuk) memindahkan data tamu ke akun
-  expect((await api(page, 'PUT', '/api/vault/data-diri', { namaLengkap: 'Tamu E2E' })).status).toBe(200);
-  expect(hitung('SELECT COUNT(*) n FROM users')).toBe(sebelum + 1);
-  const email = emailBaru('e47');
-  await akunBaru(page, email);
-  await masuk(page, email, SANDI);
-  await expect(page).toHaveURL(/\/$/); // nama dari data tamu: profil lengkap
-  expect(hitung('SELECT COUNT(*) n FROM users')).toBe(sebelum + 1); // tamu sudah dilebur ke akun
-  const hp = await konteksHp(browser);
-  await masuk(hp.page, email, SANDI);
-  expect((await api(hp.page, 'GET', '/api/vault/data-diri')).json.dataDiri).toEqual({
-    namaLengkap: 'Tamu E2E',
-  });
-  await hp.ctx.close();
+  // Setelah daftar, jalur yang sama terbuka untuk akun itu.
+  await daftar(page, emailBaru('e47'));
+  expect((await api(page, 'PUT', '/api/vault/data-diri', { namaLengkap: 'Warga E2E' })).status).toBe(200);
+  expect((await api(page, 'POST', '/api/urusan', {})).status).toBe(201);
 
   // dua juri: salinan terisolasi per klik
   const a = await konteksHp(browser);
@@ -539,7 +537,7 @@ test('#48b daftar langsung masuk; email ganda ditolak tanpa mengubah sandi; Goog
   await expect(page).toHaveURL(/\/beranda$/);
 });
 
-test('tamu di portal tanpa situs latihan diajak daftar; setelah daftar kembali ke urusan yang sama dengan portal asli', async ({
+test('tanpa sesi di portal asli (Kota Malang): mulai → daftar → kembali ke rencana yang sama → portal asli', async ({
   page,
   context,
 }) => {
@@ -550,6 +548,20 @@ test('tamu di portal tanpa situs latihan diajak daftar; setelah daftar kembali k
   // Kota Malang: daerah Browser Pendamping aktif (ADR 0033) dengan portal web asli tanpa situs latihan.
   await kota.fill('Malang');
   await page.getByRole('option', { name: 'Kota Malang', exact: true }).click();
+  await expect(page).toHaveURL(/kodeKabKota=\d{4}$/);
+  const rencana = new URL(page.url());
+  const tujuan = `${rencana.pathname}${rencana.search}`;
+
+  // wajib akun: tanpa sesi tombol mulai mengarah ke /daftar dengan tujuan rencana ini (wilayah ikut)
+  await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
+  await expect(page).toHaveURL(`/daftar?next=${encodeURIComponent(tujuan)}`);
+  const email = emailBaru('warga-malang');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel(/Kata sandi/).fill(SANDI);
+  await page.getByRole('button', { name: 'Daftar', exact: true }).click();
+  await expect(page).toHaveURL(tujuan);
+  expect(await sesiApi(page)).toMatchObject({ masuk: true, akun: { email, sinkron: true } });
+
   await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
   await expect(page).toHaveURL(/\/urusan\/u_[0-9a-f]{32}$/);
   const urlUrusan = page.url();
@@ -560,20 +572,7 @@ test('tamu di portal tanpa situs latihan diajak daftar; setelah daftar kembali k
   await expect(setujuiRencana).toBeEnabled({ timeout: 20_000 });
   await setujuiRencana.click();
 
-  // tamu: tidak ada tawaran palsu "Setujui dan buka situs"; ajakan masuk/daftar yang jujur
-  const ajak = page.getByRole('link', { name: 'Masuk / Daftar (gratis, 30 detik)' });
-  await expect(ajak).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole('button', { name: 'Setujui dan buka situs' })).toHaveCount(0);
-  await ajak.click();
-  await expect(page).toHaveURL(/\/daftar\?next=%2Furusan%2Fu_/);
-  const email = emailBaru('tamu-malang');
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel(/Kata sandi/).fill(SANDI);
-  await page.getByRole('button', { name: 'Daftar', exact: true }).click();
-
-  // kembali ke urusan yang sama (pindah ke akun), rencana tetap, kini portal asli ditawarkan
-  await expect(page).toHaveURL(urlUrusan);
-  expect(await sesiApi(page)).toMatchObject({ masuk: true, akun: { email, sinkron: true } });
+  // akun: portal asli ditawarkan, tanpa ajakan masuk/daftar
   await expect(page.getByRole('button', { name: 'Setujui dan buka situs' })).toBeEnabled({ timeout: 20_000 });
   await expect(page.getByRole('link', { name: 'Masuk / Daftar (gratis, 30 detik)' })).toHaveCount(0);
   const id = urlUrusan.split('/').at(-1)!;

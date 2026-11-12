@@ -367,7 +367,7 @@ dibagikan.
   - Persetujuan saat mendaftar.
   - Hak akses, perbaikan, dan penghapusan lewat UI: Data Diri, Dokumen, dan Pengaturan → Zona bahaya (hapus
     akun, keluar dari semua perangkat). Kebijakan privasi lengkap: [`docs/privasi.md`](docs/privasi.md).
-  - Retensi terbatas: tamu 72 jam, salinan juri 24 jam.
+  - Retensi terbatas: data ikut akun dan bisa dihapus kapan saja; salinan juri 24 jam.
   - Pengungkapan pemroses dan transfer lintas negara: Resend (AS), Google, Oracle Cloud Singapura. DPIA ada di
     [ADR 0028](docs/adr/0028-akun-dan-login.md).
 - **Akun.**

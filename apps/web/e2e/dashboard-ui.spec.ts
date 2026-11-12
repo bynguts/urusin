@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
 test.beforeEach(async ({ context }) => {
   const octet = () => Math.floor(Math.random() * 250) + 1;
@@ -78,6 +79,7 @@ test('dialog unggah dibuka ulang dengan berkas kosong dan bisa memilih berkas ya
       },
     });
   });
+  await daftarAkunUji(page);
   await page.goto('/dokumen');
   const tambah = page.getByRole('button', { name: 'Tambah dokumen', exact: true });
   await tambah.click();
@@ -109,6 +111,7 @@ for (const width of [320, 1024]) {
     await page.addInitScript(() =>
       localStorage.setItem('urusin.prefs.v1', JSON.stringify({ ukuranHuruf: 1.5 })),
     );
+    await daftarAkunUji(page);
     await page.goto('/pengaturan');
     await expect(page.getByRole('combobox', { name: 'Kab/kota', exact: true })).toHaveAttribute(
       'aria-autocomplete',

@@ -58,6 +58,7 @@ describe('navigasi', () => {
     expect(rutAuth('/masukan')).toBe(false);
     expect(rutWeb('/cara-kerja')).toBe(true);
     expect(rutWeb('/urusan')).toBe(true);
+    expect(rutWeb('/syarat')).toBe(true);
     expect(rutWeb(`/urusan/u_${'a'.repeat(32)}`)).toBe(false);
     expect(menuAktif('/beranda', '/peristiwa/kelahiran')).toBe(true);
     expect(menuAktif('/beranda', '/urusanku')).toBe(false);

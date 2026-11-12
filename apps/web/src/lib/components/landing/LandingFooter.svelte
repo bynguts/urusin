@@ -44,6 +44,6 @@
   </div>
   <div class="n-bottom lp303">
     <a class="lp304" href={resolve('/privasi')}> Kebijakan privasi </a>
-    <div class="lp304">Syarat layanan</div>
+    <a class="lp304" href={resolve('/syarat')}> Syarat layanan </a>
   </div>
 </footer>
