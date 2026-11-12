@@ -479,12 +479,12 @@
       "url": "https://sirancak.disdukcapil.padang.go.id/",
       "hosts": ["sirancak.disdukcapil.padang.go.id"],
       "sumber": "https://sirancak.disdukcapil.padang.go.id/",
-      "login": [],
+      "login": ["nik_sandi"],
       "proteksi": [],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "SIRANCAK v2.0; akun diverifikasi admin."
+      "verifiedAt": "2026-11-12",
+      "catatan": "SIRANCAK v2.0. OBS 2026-11-12: masuk NIK + sandi di /masuk tanpa CAPTCHA. Daftar akun hanya bisa dari ponsel warga (swafoto memegang KTP lewat kamera langsung, OTP WhatsApp terbalik, email @gmail.com), lalu diverifikasi admin. Formulir per layanan di /layanan/{idForm}."
     },
     "1372": {
       "kelas": "A",
@@ -624,17 +624,17 @@
       "catatan": "Layanan lewat WhatsApp."
     },
     "1871": {
-      "kelas": "B",
+      "kelas": "A",
       "jenis": "web",
-      "url": "https://disdukcapil.bandarlampungkota.go.id/pendaftaran",
+      "url": "https://disdukcapil.bandarlampungkota.go.id/pelayanan/auth",
       "hosts": ["disdukcapil.bandarlampungkota.go.id"],
-      "sumber": "https://disdukcapil.bandarlampungkota.go.id/pendaftaran",
-      "login": ["tanpa_akun"],
+      "sumber": "https://disdukcapil.bandarlampungkota.go.id/pelayanan/auth",
+      "login": ["email_sandi"],
       "proteksi": ["captcha_hitung", "cloudflare"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "COKELAT (Cukup Daftar Online): pendaftaran layanan + tanggal layanan."
+      "verifiedAt": "2026-11-12",
+      "catatan": "OBS 2026-11-12: kanal warga = PERMEN MANIS 2.0 (masuk /pelayanan/auth dengan email + sandi; daftar /pelayanan/auth/register_akun dengan OTP email 6 digit, tanpa verifikasi admin). Kode Keamanan (soal penjumlahan) di setiap formulir; masuk terkunci 15 menit setelah 5 kali gagal. COKELAT /pendaftaran tidak bisa dikirim warga (\"Hanya petugas yang dapat membuat antrian!\")."
     },
     "1872": {
       "kelas": "A",
@@ -910,12 +910,12 @@
       "url": "https://silondomaju.depok.go.id/",
       "hosts": ["silondomaju.depok.go.id"],
       "sumber": "https://silondomaju.depok.go.id/",
-      "login": ["email_sandi", "otp_email"],
-      "proteksi": ["slider"],
+      "login": ["email_sandi"],
+      "proteksi": ["turnstile", "slider"],
       "domisili": "khusus_penduduk",
-      "bukti": "PRI",
-      "verifiedAt": "2026-11-08",
-      "catatan": "Silondo Maju (wajib akun sejak 1 Okt 2026); lacak status publik."
+      "bukti": "OBS",
+      "verifiedAt": "2026-11-12",
+      "catatan": "Silondo Maju (wajib akun sejak 1 Okt 2026). OBS 2026-11-12: masuk email + sandi lewat modal Turnstile (interaction-only) lalu puzzle geser; OTP email ada di kode tetapi saat ini nonaktif. Tautan langsung /public/layanan/* = 404, layanan dibuka dari kartu beranda; lacak status /tracker."
     },
     "3279": {
       "kelas": "A",
@@ -1074,9 +1074,9 @@
       "login": ["nik_sandi"],
       "proteksi": ["captcha_hitung", "waf"],
       "domisili": "khusus_penduduk",
-      "bukti": "PRI",
-      "verifiedAt": "2026-11-08",
-      "catatan": "Si DnOK; sandi dari sistem, khusus warga Kota Semarang."
+      "bukti": "OBS",
+      "verifiedAt": "2026-11-12",
+      "catatan": "Si D'nOK. OBS 2026-11-12: masuk NIK + sandi + CAPTCHA soal matematika; WAF menolak Chromium headless (403 http_bot_simple), Chromium headed lolos. Sandi dikirim lewat WA/email setelah daftar; profil wajib dilengkapi sebelum mengajukan. Khusus warga Kota Semarang usia 17 tahun ke atas."
     },
     "3375": {
       "kelas": "F",
@@ -1264,12 +1264,12 @@
       "url": "https://siapel.malangkota.go.id/",
       "hosts": ["siapel.malangkota.go.id"],
       "sumber": "https://siapel.malangkota.go.id/",
-      "login": ["email_sandi", "otp_email"],
-      "proteksi": ["captcha_gambar", "hcaptcha"],
+      "login": ["email_sandi"],
+      "proteksi": ["captcha_hitung"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "SIAPEL; aktivasi lewat email; lacak publik."
+      "verifiedAt": "2026-11-12",
+      "catatan": "SIAPEL. OBS 2026-11-12: masuk email + sandi + CAPTCHA gambar soal penjumlahan (bukan hCaptcha); akun diaktifkan lewat tautan email. Lacak publik /cek_permohonan. Layanan pindah tidak ada di SIAPEL."
     },
     "3578": {
       "kelas": "A",
@@ -1304,9 +1304,9 @@
       "login": ["akun_kota"],
       "proteksi": [],
       "domisili": "khusus_penduduk",
-      "bukti": "PRI",
-      "verifiedAt": "2026-11-08",
-      "catatan": "Sobat Dukcapil; masuk dengan akun Tangerang LIVE, tanpa CAPTCHA."
+      "bukti": "OBS",
+      "verifiedAt": "2026-11-12",
+      "catatan": "Sobat Dukcapil. OBS 2026-11-12: masuk dengan akun Tangerang LIVE (NIK/email + sandi), tanpa CAPTCHA/OTP. Akun dibuat sendiri lewat aplikasi Tangerang LIVE (registrasi web menolak peramban otomatis)."
     },
     "3674": {
       "kelas": "B",
