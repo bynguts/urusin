@@ -37,6 +37,7 @@ import {
 } from '@urusin/llm';
 import { createRagSearcher, openDb, type RagSearchInfo } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
+import { embeddingDariEnv, intentEmbedding, type Embedding } from './embedding.js';
 import { httpKeluar } from './http-keluar.js';
 import { aturStatusProbe, pantauProbe } from './probe-ulang.js';
 import { penyimpanIngatan } from './ingatan.js';
@@ -137,6 +138,8 @@ export type Runtime = ReturnType<typeof createHarness> & {
   turnstile: Turnstile;
   /** IdP OIDC tiruan (hanya e2e, URUSIN_OIDC_FIXTURE=1). */
   oidcFixture?: OidcFixture | undefined;
+  /** Sidecar embedding self-hosted (null = mati): jalur cepat intent dan peringkat tautan Navigator. */
+  embedding?: Embedding | null | undefined;
 };
 
 /** Komponen akun yang bisa diganti tes (mailer palsu, Google palsu, folder vault sementara). */
@@ -241,11 +244,14 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   const searcher = config.ragDbPath ? createRagSearcher(ragDb, init.env ?? process.env) : undefined;
   // Ingatan warga (ADR 0031) disimpan di vault akun; AkunService dirakit sesudah harness (butuh store).
   const akunRef: { akun?: AkunService } = {};
+  const embedding = embeddingDariEnv(init.env ?? process.env);
+  const klasifikasiEmbedding = intentEmbedding(embedding);
   const h = createHarness({
     provider: init.provider ?? new DemoProvider(),
     db,
     ragDb,
     ragSearch: searcher?.search,
+    ...(klasifikasiEmbedding ? { intentEmbedding: klasifikasiEmbedding } : {}),
     ingatan: penyimpanIngatan(() => {
       if (!akunRef.akun) throw new Error('akun belum siap');
       return akunRef.akun;
@@ -294,6 +300,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     akun,
     turnstile,
     oidcFixture,
+    embedding,
   };
 }
 
