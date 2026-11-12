@@ -282,6 +282,13 @@
         <p class="pv24">
           Urusin bukan situs pemerintah; logo instansi ditampilkan untuk merujuk sumber informasi resmi.
         </p>
+        <p class="pv24 pv-atribusi">
+          Logo instansi dari <a href="https://commons.wikimedia.org/">Wikimedia Commons</a>; logo Jasa Raharja
+          oleh PT Jasa Raharja (Persero),
+          <a href="https://commons.wikimedia.org/wiki/File:PT_Jasa_Raharja_(Persero).svg">berkas di Commons</a
+          >,
+          <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.
+        </p>
       </div>
     </section>
   </div>
