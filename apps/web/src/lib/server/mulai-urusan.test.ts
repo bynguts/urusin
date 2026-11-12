@@ -2,6 +2,7 @@ import { DemoProvider } from '@urusin/harness';
 import { isRedirect } from '@sveltejs/kit';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mulaiUrusanDariForm } from './mulai-urusan';
+import { RateLimiter } from './limiter';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
 import { PESAN_PII } from './http';
 import { SID_COOKIE } from './sesi';
@@ -78,5 +79,22 @@ describe('mulaiUrusanDariForm: PII', () => {
     expect(r.data.kode).toBe('PII_IN_PAYLOAD');
     expect(r.data.pesan).not.toContain(nik);
     expect(rt.store.db.prepare('SELECT COUNT(*) n FROM urusan').get()).toEqual({ n: 0 });
+  });
+});
+
+describe('mulaiUrusanDariForm: batas laju', () => {
+  it('429 menyebut waktu tunggu nyata (±N menit) dan pesan warga tetap utuh untuk dikirim ulang', async () => {
+    rt.limits.buat.sesi = new RateLimiter(1, 3_600_000);
+    await mulai({ peristiwa: 'kelahiran' }, '10.0.0.4');
+    const r = (await mulaiUrusanDariForm(eventForm({ pesan: 'mau urus akta' }, '10.0.0.4'))) as {
+      status: number;
+      data: { pesanWarga: string; pesan: string; kode?: string };
+    };
+    expect(r.status).toBe(429);
+    expect(r.data.kode).toBe('RATE_LIMITED');
+    expect(r.data.pesanWarga).toMatch(
+      /^Terlalu banyak urusan baru dalam waktu singkat\. Coba lagi dalam ±\d+ menit\.$/,
+    );
+    expect(r.data.pesan).toBe('mau urus akta');
   });
 });

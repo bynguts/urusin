@@ -53,9 +53,14 @@ export type RuntimeConfig = {
   /** Jeda sebelum loop LLM dibatalkan setelah semua pelanggan SSE putus. */
   disconnectGraceMs: number;
   heartbeatMs: number;
-  /** Batas laju: urusan baru per jam dan turn per menit, masing-masing per IP dan per sesi. */
+  /**
+   * Batas laju: urusan baru per jam dan turn per menit. Urusan baru warga ber-akun (juga salinan demo) dihitung
+   * per akun; tamu per sesi, dengan batas per IP longgar sebagai rem banjir saja (CGNAT seluler, warnet, dan
+   * kantor kelurahan berbagi satu IP).
+   */
   buatPerJamIp: number;
   buatPerJamSesi: number;
+  buatPerJamAkun: number;
   turnPerMenitIp: number;
   turnPerMenitSesi: number;
 };
@@ -70,8 +75,9 @@ export function readConfig(env: Record<string, string | undefined> = process.env
     ragDbPath: env.URUSIN_RAG_DB?.trim() || undefined,
     disconnectGraceMs: num(env.URUSIN_SSE_DISCONNECT_GRACE_MS, 10_000),
     heartbeatMs: num(env.URUSIN_SSE_HEARTBEAT_MS, 15_000),
-    buatPerJamIp: num(env.URUSIN_LIMIT_BUAT_IP_PER_JAM, 20),
+    buatPerJamIp: num(env.URUSIN_LIMIT_BUAT_IP_PER_JAM, 120),
     buatPerJamSesi: num(env.URUSIN_LIMIT_BUAT_SESI_PER_JAM, 10),
+    buatPerJamAkun: num(env.URUSIN_LIMIT_BUAT_AKUN_PER_JAM, 30),
     turnPerMenitIp: num(env.URUSIN_LIMIT_TURN_IP_PER_MENIT, 30),
     turnPerMenitSesi: num(env.URUSIN_LIMIT_TURN_SESI_PER_MENIT, 20),
   };
@@ -119,8 +125,11 @@ export type Runtime = ReturnType<typeof createHarness> & {
   running: Map<string, AbortController>;
   /** Catat + siarkan satu event di luar turn (hasil eksekusi, konfirmasi): sumber kebenaran tetap tabel events. */
   publish(urusanId: string, e: EventPayload): UrusinEvent;
-  /** Pembatas laju per aksi; kunci IP dan sesi dihitung terpisah. */
-  limits: Record<'buat' | 'turn', { ip: RateLimiter; sesi: RateLimiter }>;
+  /**
+   * Pembatas laju per aksi; kunci IP dan sesi dihitung terpisah. `akun` (bila ada) menggantikan IP + sesi untuk
+   * warga yang masuk (akun atau demo).
+   */
+  limits: Record<'buat' | 'turn', { ip: RateLimiter; sesi: RateLimiter; akun?: RateLimiter }>;
   /** Akun warga, sesi login, dan vault terenkripsi per pemilik (ADR 0028). */
   akun: AkunService;
   /** Turnstile untuk "Masuk sebagai juri" dan login setelah 3 kegagalan. */
@@ -257,6 +266,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     buat: {
       ip: new RateLimiter(config.buatPerJamIp, jam),
       sesi: new RateLimiter(config.buatPerJamSesi, jam),
+      akun: new RateLimiter(config.buatPerJamAkun, jam),
     },
     turn: {
       ip: new RateLimiter(config.turnPerMenitIp, menit),
