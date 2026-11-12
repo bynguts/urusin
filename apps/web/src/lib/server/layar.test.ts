@@ -101,7 +101,7 @@ describe('load layar', () => {
     const cookies = kue();
     cookies.set(SID_COOKIE, SID);
     cookies.set(TERAKHIR_COOKIE, u.id);
-    expect(await muatLanding({ cookies, locals: {} } as never)).toBeUndefined();
+    expect(await muatLanding({ cookies, locals: {} } as never)).toEqual({ jumlahDaerahPendamping: 10 });
     expect(cookies.get(TERAKHIR_COOKIE)).toBe(u.id);
     expect(rt.store.getUrusan(u.id)).not.toBeNull();
   });
@@ -125,7 +125,9 @@ describe('load layar', () => {
       const cookies = kue();
       cookies.set(SID_COOKIE, 'b'.repeat(32));
       cookies.set(TERAKHIR_COOKIE, id);
-      expect(await muatLanding({ cookies, locals: { akun } } as never)).toBeUndefined();
+      expect(await muatLanding({ cookies, locals: { akun } } as never)).toEqual({
+        jumlahDaerahPendamping: 10,
+      });
     }
   });
 

@@ -258,7 +258,7 @@ describe('jalur cepat: kasus yang harus lewat model', () => {
 });
 
 describe('rencana paralel', () => {
-  it('jawaban hand-off: rencana paralel dibatalkan, rencana disusun berurutan dengan hand-off di konteks', async () => {
+  it('jawaban tanpa kutipan (adminduk = panduan umum, ADR 0033): rencana paralel dibatalkan, rencana berurutan', async () => {
     const rencana = tool('urusan__usulkan_rencana', {
       ringkasan: 'Salinan akta rusak',
       langkah: [{ judul: 'Datang ke Disdukcapil Wonogiri', jenis: 'offline' }],
@@ -279,14 +279,17 @@ describe('rencana paralel', () => {
     });
     const req = creates(provider);
     expect(req).toHaveLength(4);
-    expect(req.filter(dipaksa)).toHaveLength(2);
-    // Permintaan berurutan melihat hasil hand-off.
+    // Hanya rencana paralel yang dipaksa (lalu dibatalkan); model berikutnya melihat arahan panduan umum.
+    expect(req.filter(dipaksa)).toHaveLength(1);
     expect(JSON.stringify(req[3]!.messages)).toContain('"name":"urusan__jawab_persyaratan"');
-    expect(of(out.events, 'handoff')).toHaveLength(1);
+    expect(JSON.stringify(req[3]!.messages)).toContain(
+      'Panduan umum (belum dari sumber resmi daerah, cek ulang di kanal resmi):',
+    );
+    expect(of(out.events, 'handoff')).toHaveLength(0);
     expect(of(out.events, 'plan_card')).toHaveLength(1);
   });
 
-  it('hand-off ulang (kanal sudah diberikan, tanpa event baru): rencana paralel juga dibatalkan', async () => {
+  it('kanal sudah pernah diberikan: tetap panduan umum tanpa hand-off baru, rencana paralel dibatalkan', async () => {
     const rencana = tool('urusan__usulkan_rencana', {
       ringkasan: 'Salinan akta rusak',
       langkah: [{ judul: 'Datang ke Disdukcapil Wonogiri', jenis: 'offline' }],
@@ -319,7 +322,9 @@ describe('rencana paralel', () => {
     // hand-off ulang dan menyusun rencana sendiri.
     expect(req.filter(dipaksa)).toHaveLength(1);
     expect(langkahAgen(req[3]!)).toBe(true);
-    expect(JSON.stringify(req[3]!.messages)).toMatch(/JANGAN ulangi/);
+    expect(JSON.stringify(req[3]!.messages)).toContain(
+      'Panduan umum (belum dari sumber resmi daerah, cek ulang di kanal resmi):',
+    );
     expect(JSON.stringify(req[3]!.messages)).not.toContain('rencana paralel, dibatalkan');
     expect(of(out.events, 'plan_card')).toHaveLength(1);
   });
@@ -380,21 +385,36 @@ describe('cache jawaban', () => {
           ],
         }),
       });
-    const provider = new FakeProvider({ replies: [salah(), salah()] });
+    const provider = new FakeProvider({
+      replies: [
+        salah(),
+        fakeCompletion({ content: 'Panduan umum ...' }),
+        salah(),
+        fakeCompletion({ content: 'Panduan umum ...' }),
+      ],
+    });
     const env = makeEnv({ provider, ragDb: ragKtp(), cacheJawaban: new CacheJawaban() });
     const teks = 'KTP saya rusak. KTP saya Kabupaten Wonogiri. Gimana cara gantinya?';
     await runTurn(env.deps, { urusanId: env.store.createUrusan({}).id, userText: teks });
     await runTurn(env.deps, { urusanId: env.store.createUrusan({}).id, userText: teks });
-    expect(creates(provider)).toHaveLength(2);
+    // Generator jawaban dipanggil di kedua giliran (tidak dari cache), masing-masing diikuti balasan model.
+    expect(creates(provider)).toHaveLength(4);
   });
 
   it('hand-off tidak disimpan', async () => {
-    const provider = new FakeProvider({ replies: [handoff(), handoff()] });
+    const provider = new FakeProvider({
+      replies: [
+        handoff(),
+        fakeCompletion({ content: 'Panduan umum ...' }),
+        handoff(),
+        fakeCompletion({ content: 'Panduan umum ...' }),
+      ],
+    });
     const env = makeEnv({ provider, ragDb: ragKtp(), cacheJawaban: new CacheJawaban() });
     const teks = 'KTP saya rusak. KTP saya Kabupaten Wonogiri. Gimana cara gantinya?';
     await runTurn(env.deps, { urusanId: env.store.createUrusan({}).id, userText: teks });
     await runTurn(env.deps, { urusanId: env.store.createUrusan({}).id, userText: teks });
-    expect(creates(provider)).toHaveLength(2);
+    expect(creates(provider)).toHaveLength(4);
   });
 });
 

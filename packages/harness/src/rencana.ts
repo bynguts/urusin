@@ -13,6 +13,7 @@ import { ConflictError, HarnessError } from './errors.js';
 import { ADAPTER_GENERIK, alasanDipandu, portalWebWilayah } from './generik.js';
 import { ADMINDUK } from './grounding.js';
 import { canTransition } from './state.js';
+import { pendampingAktif } from '@urusin/registry';
 import { paramsHash, type HarnessStore, type UrusanRow } from './store.js';
 import { wilayahBelumSiap, wilayahUrusan } from './wilayah.js';
 
@@ -60,10 +61,11 @@ export type LangkahTulisPendamping = {
 
 /**
  * `sebab: 'jaringan_id'`: portal hanya menerima IP Indonesia (registry `aksesWilayah: 'id-only'`) dan tidak ada
- * worker berjaringan Indonesia yang sehat; kartu rencana menyebut alasan itu sejak awal.
+ * worker berjaringan Indonesia yang sehat; kartu rencana menyebut alasan itu sejak awal. `sebab: 'pengembangan'`:
+ * wilayah di luar `DAERAH_PENDAMPING_AKTIF` (ADR 0033), Browser Pendamping-nya sedang dikembangkan.
  */
 export type RutePendamping =
-  LangkahTulisPendamping | { jalur: 'dipandu'; alasan: string; sebab?: 'jaringan_id' };
+  LangkahTulisPendamping | { jalur: 'dipandu'; alasan: string; sebab?: 'jaringan_id' | 'pengembangan' };
 
 /**
  * Ada worker Browser Pendamping berjaringan Indonesia (`region: 'id'`) yang sehat? Dipasang web (hooks.server) dengan
@@ -130,6 +132,9 @@ export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): Rut
   if (!kode || (u.jenis && !ADMINDUK.has(u.jenis))) return { jalur: 'dipandu', alasan: alasanDipandu(null) };
   const w = wilayahByKode(kode);
   const nama = w ? namaPendekWilayah(w.nama) : undefined;
+  // Pendamping hanya di daerah yang dijamin (ADR 0033); daerah lain dipandu, Pendamping-nya "sedang dikembangkan".
+  if (!pendampingAktif(kode))
+    return { jalur: 'dipandu', alasan: alasanDipandu(kode, nama), sebab: 'pengembangan' };
   const r = ruteDasar(u.jenis, kode, nama);
   if (r.jalur !== 'dipandu' && hanyaJaringanId(r.origin) && !jaringanIdSiap())
     return {

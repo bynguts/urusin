@@ -5,6 +5,7 @@ import {
   hostsWilayah,
   type PortalWilayah,
 } from '@urusin/core';
+import { kalimatPendampingBerkembang, pendampingAktif } from '@urusin/registry';
 
 /**
  * Routing Navigator generik dan allowlist isi vault di atas registry wilayah (`PORTAL_WILAYAH`, hasil
@@ -114,15 +115,21 @@ const KANAL_DIPANDU: Readonly<Partial<Record<PortalWilayah['jenis'], string>>> =
 
 /**
  * Alasan jujur (templat, bukan keluaran model) saat urusan tidak bisa dikerjakan Browser Pendamping di wilayah
- * ini. `wilayah` = nama pendek kab/kota bila diketahui.
+ * ini. `wilayah` = nama pendek kab/kota bila diketahui. Daerah di luar `DAERAH_PENDAMPING_AKTIF` (ADR 0033): kalimat
+ * positif "Urusin memandu, Pendamping sedang dikembangkan", bukan jalan buntu.
  */
 export function alasanDipandu(kode: string | null | undefined, wilayah?: string): string {
   const p = portalWilayah(kode);
   const di = wilayah ? ` ${wilayah}` : '';
   const kanal = p ? KANAL_DIPANDU[p.jenis] : undefined;
+  if (kode && /^\d{4}$/.test(kode) && !pendampingAktif(kode))
+    return `Rencana disetujui. ${kalimatPendampingBerkembang(
+      wilayah ?? 'wilayah Anda',
+      kanal ? `Disdukcapil${di} melayani pengajuan lewat ${kanal}.` : undefined,
+    )}`;
   if (kanal)
     return `Rencana disetujui. Disdukcapil${di} melayani pengajuan lewat ${kanal}, bukan formulir web, jadi Browser Pendamping tidak bisa mengisinya. Ikuti langkahnya bersama saya.`;
   if (p?.jenis === 'web' && p.login.length > 0 && p.login.every((l) => LOGIN_PIHAK_KETIGA.has(l)))
     return `Rencana disetujui. Portal Disdukcapil${di} hanya bisa dimasuki dengan akun Google, dan login Google tidak dibuka di Browser Pendamping, jadi AI tidak bisa mengisinya. Ikuti langkahnya bersama saya: Anda membuka portalnya sendiri.`;
-  return 'Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.';
+  return 'Rencana disetujui. Untuk urusan ini, Urusin memandu Anda langkah demi langkah lewat kanal resmi; ikuti langkahnya bersama saya.';
 }
