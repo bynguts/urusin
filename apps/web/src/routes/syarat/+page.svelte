@@ -129,9 +129,9 @@
       <div class="pv22">
         <h2 class="pv23" id="judul-akun">Akun dan penghapusan data</h2>
         <p class="pv24">
-          Kamu bisa memakai Urusin tanpa akun; data tamu terhapus sendiri 72 jam setelah dibuat. Bila punya
-          akun, jaga sandimu dan jangan berbagi akun. Dokumen bisa dihapus satu per satu, dan akun beserta
-          seluruh isinya bisa dihapus kapan saja dari Pengaturan. Rinciannya ada di halaman
+          Untuk memakai Urusin kamu perlu akun; data dan dokumenmu tersimpan terenkripsi di akun itu. Jaga
+          sandimu dan jangan berbagi akun. Dokumen bisa dihapus satu per satu, dan akun beserta seluruh isinya
+          bisa dihapus kapan saja dari Pengaturan. Rinciannya ada di halaman
           <a href={resolve('/privasi')}>Privasi</a>.
         </p>
       </div>
