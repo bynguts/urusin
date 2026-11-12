@@ -47,7 +47,17 @@ export type MasukanPrompt = {
   daftarAkun?: boolean;
   /** Baris sinyal peringkat tautan (hanya ref, tanpa teks halaman); lihat peringkat-tautan.ts. */
   petunjukTautan?: string | null | undefined;
+  /** Mode demo "lihat saja" di situs asli: hanya navigasi (ditegakkan validator dan worker, bukan prompt saja). */
+  lihatSaja?: boolean;
 };
+
+/** Aturan tambahan mode demo "lihat saja" (pesan sistem). Penegaknya validator + worker, bukan teks ini. */
+export const ATURAN_LIHAT_SAJA = [
+  'MODE LIHAT SAJA (demo, situs resmi asli, data contoh):',
+  '- JANGAN isi, pilih, centang, atau unggah apa pun.',
+  '- Klik HANYA kelas navigasi atau ui_lokal, atau tautan_warga, untuk menuju halaman layanan yang tepat. JANGAN klik kelas lanjut.',
+  '- Begitu halaman formulir, masuk akun, atau tombol lanjut/simpan tercapai: {"jenis":"serahkan","alasan":"tidak_yakin"}.',
+].join('\n');
 
 export const NAMA_SKEMA = 'rencana_halaman';
 
@@ -137,10 +147,11 @@ export function pesanRencana(m: MasukanPrompt): ChatMessage[] {
   ].join('\n');
   // Petunjuk tepercaya di pesan sistem; teks halaman tetap di pesan pengguna (terbungkus).
   const petunjuk = blokPetunjukPortal(m.petunjukPortal);
+  const sistem = m.lihatSaja ? `${aturanSistem(m.tujuan)}\n\n${ATURAN_LIHAT_SAJA}` : aturanSistem(m.tujuan);
   return [
     {
       role: 'system',
-      content: petunjuk ? `${aturanSistem(m.tujuan)}\n\n${petunjuk}` : aturanSistem(m.tujuan),
+      content: petunjuk ? `${sistem}\n\n${petunjuk}` : sistem,
     },
     { role: 'user', content: user },
   ];

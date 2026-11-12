@@ -69,6 +69,7 @@
     menutup = false,
     onmulailagi,
     onpanduan,
+    onsimulasi,
   }: {
     data: DataPendamping;
     situs: string;
@@ -87,6 +88,11 @@
     menutup?: boolean;
     onmulailagi: () => void;
     onpanduan: () => void;
+    /**
+     * Akun demo di situs asli (lihat saja) dan portalnya punya replika: buka simulasi pengisian dengan data contoh
+     * di replika. undefined = tombol tidak ditampilkan (akun warga biasa tidak pernah melihatnya).
+     */
+    onsimulasi?: (() => void) | undefined;
   } = $props();
 
   const k = $derived(data.keadaan);
@@ -131,7 +137,9 @@
   const judulGiliran = $derived(
     tombolKirim
       ? `Periksa isian, lalu tekan ${tombolKirim}`
-      : ((data.giliran && JUDUL_GILIRAN[data.giliran.alasan]) ?? 'Giliran Anda'),
+      : data.situs?.lihatSaja && data.giliran?.alasan === 'berhenti'
+        ? 'Mode demo: AI hanya melihat'
+        : ((data.giliran && JUDUL_GILIRAN[data.giliran.alasan]) ?? 'Giliran Anda'),
   );
   const isiGiliran = $derived(
     data.giliran
@@ -234,10 +242,11 @@
       <Icon name="gembok" class="size-4 shrink-0 text-ink" label="Koneksi aman" />
       <span class="truncate text-[15px] font-semibold text-ink">{domain(data.situs?.origin ?? situs)}</span>
       {#if data.situs?.replika}
-        <!-- Mode Uji: yang terbuka replika uji milik Urusin, bukan situs pemerintah asli. -->
+        <!-- Mode Uji: yang terbuka replika uji milik Urusin dengan data contoh, bukan situs pemerintah asli. -->
         <span
+          data-label-simulasi
           class="shrink-0 rounded-full border border-kuning-garis bg-kuning-lembar px-2 py-0.5 text-xs font-semibold text-ink"
-          title="Replika uji, bukan situs pemerintah asli">Mode uji</span
+          title="Simulasi di replika dengan data contoh, bukan situs pemerintah asli">Simulasi</span
         >
       {:else if instansi}<span class="hidden truncate text-sm text-card-ink sm:inline">{instansi}</span>{/if}
     </div>
@@ -377,9 +386,17 @@
             {data.pesan ??
               'Buka situs resmi sendiri. Urusin menunjukkan langkahnya, data yang perlu disalin, dan berkas yang perlu diunggah.'}
           </p>
-          <button type="button" onclick={onpanduan} class={TOMBOL_GELAP}
-            ><Icon name="panah" class="size-[15px]" />Buka panduan</button
-          >
+          <div class="flex flex-wrap justify-center gap-2">
+            <button type="button" onclick={onpanduan} class={TOMBOL_GELAP}
+              ><Icon name="panah" class="size-[15px]" />Buka panduan</button
+            >
+            {#if onsimulasi}
+              <!-- Demo juri: situs asli tidak bisa dibuka dari server, simulasi di replika tetap tersedia. -->
+              <button type="button" onclick={onsimulasi} data-simulasi class={TOMBOL_TERANG}
+                ><Icon name="ai" class="size-[15px]" />Lihat contoh pengisian (simulasi)</button
+              >
+            {/if}
+          </div>
         {:else if k === 'berakhir'}
           <!-- Sesi hilang di tengah jalan (worker restart, jaringan, timeout): bukan jalan buntu. -->
           <span class="{LINGKAR} bg-bg-2 text-muted"><Icon name="terputus" class="size-[21.6px]" /></span>
@@ -436,6 +453,12 @@
       </p>
       <div class="flex flex-wrap items-center gap-2">
         {@render aksiGiliran(data.giliran)}
+        {#if onsimulasi}
+          <!-- Demo juri: simulasi pengisian di replika (data contoh), bukan situs resmi asli. -->
+          <button type="button" onclick={onsimulasi} data-simulasi class={TOMBOL_TERANG}>
+            <Icon name="ai" class="size-[15px]" />Lihat contoh pengisian (simulasi)
+          </button>
+        {/if}
         <button
           type="button"
           onclick={onhentikan}

@@ -20,6 +20,8 @@ import {
   normalLabel,
   pembukaPengajuan,
   halamanDaftarAkun,
+  halamanFormulir,
+  klikLihatSaja,
   petunjukWarga,
   pintuAkun,
   validasiRencana,
@@ -95,6 +97,11 @@ export type OpsiLoop = {
   hostsBoleh: ReadonlySet<string>;
   /** Mode Uji: setiap pengamatan WAJIB di host replika; selain itu loop langsung berhenti. */
   modeUji?: { hostsFixture: ReadonlySet<string> } | undefined;
+  /**
+   * Demo "lihat saja" di situs resmi asli: validator menolak setiap tulisan dan klik selain navigasi murni, dan
+   * loop berhenti (`lihat_saja`, pesan templat) di halaman masuk/formulir/langkah menyimpan tanpa memanggil model.
+   */
+  lihatSaja?: boolean | undefined;
   validasi?: OpsiValidasi;
   kodeKabKota?: string | null | undefined;
   /** Petunjuk peta portal TEPERCAYA (registry, ADR 0034) untuk setiap prompt halaman. */
@@ -298,6 +305,9 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
   let buktiAkhir: PendampingBukti | undefined;
   const tidur = o.tidur ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const pantauMs = o.pantauMs ?? 5_000;
+  const opsiValidasi: OpsiValidasi | undefined = o.lihatSaja
+    ? { ...o.validasi, lihatSaja: true }
+    : o.validasi;
   let sesiLain = false;
   /** Halaman sukses yang terlihat saat warga memegang kendali (warga sendiri yang menekan Kirim). */
   let suksesWarga: Pengamatan | null = null;
@@ -684,7 +694,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
           if (!terikat) return { kode: 'ulang' };
           // Validasi ulang terhadap pengamatan baru (tanpa LLM). Aksi yang dikirim kini = rencana hasil ikat
           // ulang (dicatat dengan hash-nya sendiri), persetujuan tetap milik rencana asal (`asal`).
-          const v = validasiRencana({ aksi: terikat }, baru, o.validasi);
+          const v = validasiRencana({ aksi: terikat }, baru, opsiValidasi);
           o.jejak({
             jenis: 'validasi',
             rencanaHash: v.rencanaHash,
@@ -700,6 +710,8 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         case 'KELAS_DITOLAK':
         case 'HALAMAN_AKHIR':
         case 'TERLARANG':
+          // Lihat saja: worker menolak langkah yang bisa menyimpan = berhenti jujur, bukan giliran Kirim.
+          if (o.lihatSaja) return { kode: 'serahkan', alasan: 'lihat_saja', seq: obs.seq };
           return { kode: 'serahkan', alasan: 'final', ref: refAksi(sisa[i]), seq: obs.seq };
         case 'GERBANG_MEMBLOKIR':
           // Worker sudah membatalkan permintaan dan menyerahkan kendali (`periksa`) ke warga: warga sendiri yang
@@ -742,6 +754,11 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       const habis = ang.habis();
       if (habis) return await serahkanAkhir(habis, p.seq);
 
+      // Lihat saja (demo, situs asli): halaman masuk/OTP/daftar akun/formulir/akhir = berhenti di sini dengan pesan
+      // templat yang jujur, tanpa LLM. Data contoh tidak pernah diketik ke sistem pemerintah.
+      if (o.lihatSaja && (halamanFormulir(p) || halamanDaftarAkun(p)))
+        return await serahkanAkhir('lihat_saja', p.seq);
+
       // Giliran warga yang pasti (tanpa LLM).
       // Formulir masuk ber-CAPTCHA/verifikasi situs = giliran masuk akun (pesannya menyebut kode/verifikasi
       // keamanan), bukan "CAPTCHA" saja (QA prod gel6 Medan: formulir masuk dengan widget verifikasi).
@@ -776,6 +793,17 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       // masuk akun bila kendali masuknya hanya bisa ditekan warga. Sekali per halaman fisik, tanpa LLM.
       const pintu = pintuDipakai.has(kunciGiliran) ? undefined : pintuAkun(p);
       if (pintu) pintuDipakai.add(kunciGiliran);
+      // Lihat saja: kendali masuk yang bukan navigasi murni (tombol/`lanjut`) tidak dibuka AI = berhenti di sini.
+      if (
+        o.lihatSaja &&
+        pintu &&
+        (pintu.jenis === 'serahkan' ||
+          !klikLihatSaja(
+            p.elemen.find((e) => e.ref === pintu.ref),
+            p,
+          ))
+      )
+        return await serahkanAkhir('lihat_saja', p.seq);
       if (pintu?.jenis === 'serahkan') {
         const h = setelahSerahkan('masuk_akun', await serahkanTunggu('masuk_akun', p.seq, pintu.ref, p));
         if (h) return h;
@@ -807,6 +835,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         ...(o.validasi?.berkas ? { berkas: [...o.validasi.berkas] } : {}),
         kodeKabKota: o.kodeKabKota,
         ...(daftarAkun ? { daftarAkun: true } : {}),
+        ...(o.lihatSaja ? { lihatSaja: true } : {}),
         ...(o.petunjukPortal ? { petunjukPortal: o.petunjukPortal } : {}),
         ...(umpanBalik?.sidik === p.sidik ? { umpanBalik: umpanBalik.aturan } : {}),
         petunjukTautan: await o.peringkatTautan?.(p, o.tujuan, o.signal).catch(() => null),
@@ -842,7 +871,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       }
       ang.catatLlm(minta.panggilan);
       const v = minta.ok
-        ? validasiRencana(minta.rencana, p, o.validasi)
+        ? validasiRencana(minta.rencana, p, opsiValidasi)
         : { ok: false as const, aturan: ['SKEMA_TIDAK_SAH' as const], rencanaHash: hashRencana(null) };
       if (minta.ok && v.ok)
         o.jejak({
@@ -864,6 +893,10 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         aturan: v.ok ? [] : v.aturan.slice(0, 25),
       });
       if (!v.ok) {
+        // Lihat saja: model ingin mengisi atau menekan langkah yang bisa menyimpan = formulir/langkah tulis sudah
+        // tercapai. Berhenti jujur, tidak dicoba ulang.
+        if (v.aturan.includes('LIHAT_SAJA_TULIS') || v.aturan.includes('LIHAT_SAJA_KLIK'))
+          return await serahkanAkhir('lihat_saja', p.seq);
         ang.gagal();
         umpanBalik = { sidik: p.sidik, aturan: v.aturan };
         continue;
@@ -904,7 +937,8 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
           continue;
         }
         if (r.kode === 'serahkan') {
-          if (r.alasan === 'host_luar') return await serahkanAkhir('host_luar', p.seq);
+          if (r.alasan === 'host_luar' || r.alasan === 'lihat_saja')
+            return await serahkanAkhir(r.alasan, r.seq ?? p.seq);
           const h = setelahSerahkan(r.alasan, await serahkanTunggu(r.alasan, r.seq ?? p.seq, r.ref));
           if (h) return h;
           continue;
@@ -931,6 +965,9 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         return { akhir: 'dipandu', pesan: PESAN_DIPANDU, resi: resi('dipandu') };
       }
       if (terminal?.jenis === 'serahkan') {
+        // Lihat saja: setiap serah dari model (formulir, masuk akun, tidak yakin) = berhenti jujur; AI demo tidak
+        // melanjutkan sesudah giliran warga.
+        if (o.lihatSaja) return await serahkanAkhir('lihat_saja', obsAkhir.seq);
         const alasan = alasanDariKontrak(terminal.alasan);
         // Badan sempat diikat ulang ke pengamatan baru: ref serah ikut diikat ulang (seq-nya juga yang baru).
         let ref = terminal.ref;

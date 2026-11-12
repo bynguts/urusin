@@ -5,7 +5,12 @@ sampai nomor permohonan. Semua angka waktu diambil dari **run 9** di `https://ur
 9 Nov 2026 16:48 UTC, layar 390 px), yang berhasil sampai nomor permohonan `FX-REG-0002`. Persetujuan sampai
 Kirim memakan waktu **28 detik**.
 
-Yang terbuka di sini adalah **replika uji** `fixtures.urusinai.web.id` dengan chip **Mode uji** di bilah atas,
+> **Demo situs asli:** **Setujui dan buka situs** di akun juri membuka **situs resmi asli**
+> dalam mode **lihat saja** (AI hanya menavigasi menu/tautan, tidak mengisi apa pun dan tidak menekan Lanjut/Kirim,
+> lalu berhenti dengan banner **Mode demo: AI hanya melihat**). Alur replika di bawah dimulai dari tombol
+> **Lihat contoh pengisian (simulasi)** di bilah giliran; chip bilah atas kini **Simulasi**.
+
+Yang terbuka di sini adalah **replika uji** `fixtures.urusinai.web.id` dengan chip **Simulasi** di bilah atas,
 bukan situs pemerintah. Data yang diisi berasal dari salinan demo juri (sintetis). Jangan memakai alur ini di
 video submission (lihat aturan 3 di [`video-demo.md`](video-demo.md)); tempatnya di pitch
 ([`pitch-7-menit.md`](pitch-7-menit.md)), dan pembawa acara mengumumkan bahwa ini replika.

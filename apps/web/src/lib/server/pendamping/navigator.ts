@@ -152,6 +152,8 @@ export function hostsFixture(env?: Record<string, string | undefined>): Set<stri
 
 type Berjalan = {
   executionId: string;
+  /** Loop Mode Uji (replika): eksekusi yang sama bisa dibuka ulang sebagai simulasi juri (loop berbeda). */
+  uji: boolean;
   ac: AbortController;
   /** Persetujuan terakhir warga: rencanaHash → baris yang disetujui. Hanya di memori (sesi pendek). */
   persetujuan: Map<string, PersetujuanHalaman>;
@@ -172,14 +174,21 @@ function tandaiPernahJalan(executionId: string): void {
   if (pernahJalan.size > PERNAH_JALAN_MAKS) pernahJalan.delete(pernahJalan.values().next().value as string);
 }
 
+/** Kunci "pernah jalan": eksekusi + mode (simulasi juri memakai executionId yang sama di replika). */
+const kunciLoop = (m: Pick<MasukanNavigator, 'executionId' | 'modeUji'>) =>
+  m.modeUji ? `${m.executionId}#uji` : m.executionId;
+/** Loop yang berjalan adalah loop eksekusi DAN mode yang sama. */
+const loopSama = (b: Berjalan | undefined, m: Pick<MasukanNavigator, 'executionId' | 'modeUji'>) =>
+  b !== undefined && b.executionId === m.executionId && b.uji === m.modeUji;
+
 /** executionId loop yang sedang berjalan untuk urusan ini (untuk uji dan diagnosa). */
 export const navigatorBerjalan = (urusanId: string): string | undefined =>
   berjalan.get(urusanId)?.executionId;
 
 /** Loop eksekusi ini sudah diganti loop eksekusi lain di urusan yang sama: hasilnya basi untuk layar. */
-const diganti = (urusanId: string, executionId: string): boolean => {
+const diganti = (urusanId: string, m: Pick<MasukanNavigator, 'executionId' | 'modeUji'>): boolean => {
   const kini = berjalan.get(urusanId);
-  return kini !== undefined && kini.executionId !== executionId;
+  return kini !== undefined && !loopSama(kini, m);
 };
 
 export type MasukanNavigator = {
@@ -187,6 +196,8 @@ export type MasukanNavigator = {
   executionId: string;
   owner: PemilikSesiInternal;
   modeUji: boolean;
+  /** Demo di situs resmi asli: AI hanya menavigasi (validator + worker menolak tulisan dan Lanjut/Kirim). */
+  lihatSaja?: boolean | undefined;
 };
 
 export type DepsNavigator = {
@@ -261,7 +272,7 @@ export async function jalankanNavigatorUrusan(
       degraded: false,
     });
   const tangan = deps.tangan ?? tanganWorker(deps.cfg, m.owner, deps.fetcher, m.executionId);
-  tandaiPernahJalan(m.executionId);
+  tandaiPernahJalan(kunciLoop(m));
   let hasil: HasilNavigator | undefined;
   const pesanWarga = rt.store
     .loadHistory(id)
@@ -281,9 +292,10 @@ export async function jalankanNavigatorUrusan(
         : {}),
       hostsBoleh: m.modeUji ? fixture : new Set(hostsPortalWilayah(m.urusan.kodeKabKota)),
       modeUji: m.modeUji ? { hostsFixture: fixture } : undefined,
+      lihatSaja: m.lihatSaja === true,
       kodeKabKota: m.urusan.kodeKabKota,
       jejak,
-      persetujuan: (h) => (b?.executionId === m.executionId ? b.persetujuan.get(h) : undefined),
+      persetujuan: (h) => (loopSama(b, m) ? b?.persetujuan.get(h) : undefined),
       // Navigator bukan giliran percakapan yang sedang diklaim: turnCount dipakai apa adanya.
       kuotaHabis: () =>
         rt.quota.check(rt.store.getUrusanOrThrow(id), { countThisTurn: false }).mode === 'habis',
@@ -310,7 +322,7 @@ export async function jalankanNavigatorUrusan(
   });
   // Loop lama yang diganti eksekusi baru (sesi lama diakhiri, sesi baru dibuat): resinya tetap di jejak
   // eksekusinya sendiri, tetapi pesannya tidak diterbitkan ke layar yang kini milik eksekusi baru.
-  if (diganti(id, m.executionId)) return hasil;
+  if (diganti(id, m)) return hasil;
   rt.publish(m.urusan.id, { type: 'progress', label: hasil.pesan });
   // Halaman sukses = berhasil (TERKIRIM), dicatat sekali per eksekusi; laporan "dibatalkan" yang datang
   // kemudian saat warga menutup sesi tidak menimpanya.
@@ -325,14 +337,14 @@ export async function jalankanNavigatorUrusan(
  */
 export function mulaiNavigator(rt: Runtime, m: MasukanNavigator, deps: DepsNavigator): boolean {
   const lama = berjalan.get(m.urusan.id);
-  if (lama?.executionId === m.executionId) return false;
-  // Loop lama milik eksekusi lain (sesi lama diakhiri dari layar lalu sesi baru dibuat): hentikan dan ganti.
+  if (loopSama(lama, m)) return false;
+  // Loop lama milik eksekusi/mode lain (sesi lama diakhiri dari layar lalu sesi baru dibuat): hentikan dan ganti.
   lama?.ac.abort();
   const ac = new AbortController();
-  berjalan.set(m.urusan.id, { executionId: m.executionId, ac, persetujuan: new Map() });
+  berjalan.set(m.urusan.id, { executionId: m.executionId, uji: m.modeUji, ac, persetujuan: new Map() });
   void jalankanNavigatorUrusan(rt, m, { ...deps, signal: ac.signal })
     .catch(() => {
-      if (diganti(m.urusan.id, m.executionId)) return;
+      if (diganti(m.urusan.id, m)) return;
       rt.publish(m.urusan.id, {
         type: 'progress',
         label: 'Bantuan AI berhenti karena gangguan. Anda tetap bisa melanjutkan sendiri dari layar.',
@@ -360,8 +372,8 @@ export async function pulihkanNavigator(
   m: MasukanNavigator,
   deps: DepsNavigator,
 ): Promise<boolean> {
-  if (berjalan.get(m.urusan.id)?.executionId === m.executionId) return false;
-  if (!pernahJalan.has(m.executionId)) return mulaiNavigator(rt, m, deps);
+  if (loopSama(berjalan.get(m.urusan.id), m)) return false;
+  if (!pernahJalan.has(kunciLoop(m))) return mulaiNavigator(rt, m, deps);
   const jejak = (catatan: CatatanPendamping) =>
     void rt.publish(m.urusan.id, { type: 'jejak_pendamping', executionId: m.executionId, catatan });
   await serahkanKeWarga(

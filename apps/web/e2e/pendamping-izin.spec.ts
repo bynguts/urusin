@@ -116,7 +116,7 @@ test('portal tampil dulu, baru lembar izin; "Saya isi sendiri" = portal terbuka 
   kirimFrame!();
   await expect(page.getByRole('dialog', DIALOG)).toBeVisible();
   await expect(page.getByText('Menyiapkan browser khusus urusan ini…')).toHaveCount(0);
-  await expect(page.getByText('Mode uji', { exact: true })).toBeVisible();
+  await expect(page.getByText('Simulasi', { exact: true })).toBeVisible();
   // Menunggu izin: panel tidak mengaku "AI sedang mengisi".
   await expect(page.locator('#panel-konteks')).toContainText('Menunggu izin Anda');
   await expect(page.locator('#panel-konteks')).not.toContainText('AI sedang mengisi');

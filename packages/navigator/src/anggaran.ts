@@ -1,3 +1,5 @@
+import { PESAN_LIHAT_SAJA } from '@urusin/contracts';
+
 /**
  * Anggaran Navigator (ADR 0030): batas panggilan LLM, aksi, halaman, dan waktu AI per eksekusi. Waktu warga
  * memegang kendali (login, CAPTCHA, persetujuan) tidak dihitung. Anggaran habis, halaman yang sama berulang
@@ -35,7 +37,9 @@ export type AlasanAmbilAlih =
   /** Kuota AI runtime (per urusan / harian) habis: sama dengan kuota agen percakapan. */
   | 'kuota'
   /** Penyedia LLM gagal dua kali berturut-turut (429, timeout): bukan galat Browser Pendamping. */
-  | 'layanan_ai';
+  | 'layanan_ai'
+  /** Demo "lihat saja" di situs asli: halaman masuk/formulir/langkah menyimpan tercapai, AI berhenti. */
+  | 'lihat_saja';
 
 /** Pesan untuk warga per alasan: templat tetap, tanpa teks dari model atau halaman. */
 export const PESAN_AMBIL_ALIH: Readonly<Record<AlasanAmbilAlih, string>> = {
@@ -63,6 +67,7 @@ export const PESAN_AMBIL_ALIH: Readonly<Record<AlasanAmbilAlih, string>> = {
     'Batas bantuan AI untuk urusan ini sudah tercapai. Silakan lanjutkan sendiri dari layar ini; data yang sudah terisi tetap ada.',
   layanan_ai:
     'Layanan AI sedang tidak bisa dihubungi. Silakan lanjutkan sendiri dari layar ini; data yang sudah terisi tetap ada.',
+  lihat_saja: PESAN_LIHAT_SAJA,
 };
 
 export type SisaAnggaran = {

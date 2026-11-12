@@ -3,6 +3,7 @@ import {
   AKSI_TERMINAL,
   AlasanSerahkanSchema,
   KELAS_BOLEH_KLIK_AI,
+  KELAS_BOLEH_KLIK_LIHAT_SAJA,
   NamaBerkasAdapterSchema,
   PlaceholderVaultSchema,
   RefSchema,
@@ -41,6 +42,8 @@ export const ATURAN = [
   'KELAS_KLIK_DITOLAK',
   'KLIK_BUKAN_AKHIR',
   'HALAMAN_AKHIR_TERKUNCI',
+  'LIHAT_SAJA_TULIS',
+  'LIHAT_SAJA_KLIK',
 ] as const;
 export type IdAturan = (typeof ATURAN)[number];
 
@@ -300,7 +303,33 @@ export type OpsiValidasi = {
   katalog?: ReadonlySet<string>;
   /** Nama berkas yang boleh diunggah (bawaan: KATALOG_BERKAS). */
   berkas?: ReadonlySet<string>;
+  /**
+   * Mode demo "lihat saja" di situs resmi asli: tidak ada isi/pilih/centang/unggah (`LIHAT_SAJA_TULIS`), dan klik
+   * hanya navigasi murni (`klikLihatSaja`, selain itu `LIHAT_SAJA_KLIK`). Worker mengulang gerbang yang sama.
+   */
+  lihatSaja?: boolean;
 };
+
+/**
+ * Klik yang boleh di mode "lihat saja": kelas `navigasi`/`ui_lokal` (menu, tautan, tab), atau tautan pembuka
+ * yang dibuka worker lewat navigasi GET ke href-nya (bukan klik, tanpa handler JS halaman). `lanjut` (bisa
+ * menyimpan draf), `kirim`, dan kelas lain tidak pernah; halaman akhir tidak pernah.
+ */
+export function klikLihatSaja(e: ElemenAmatan | undefined, p: Pick<Pengamatan, 'sinyal'>): boolean {
+  if (!e || e.terlarang || p.sinyal.halamanAkhir || !PERAN_KLIK.includes(e.peran)) return false;
+  return (e.kelas !== undefined && KELAS_BOLEH_KLIK_LIHAT_SAJA.includes(e.kelas)) || tautanWarga(e);
+}
+
+/**
+ * Halaman formulir untuk mode "lihat saja": halaman masuk/OTP/daftar akun, halaman akhir, atau lebih dari
+ * `KOLOM_PINTU_MAKS` kolom isian yang bukan terlarang (kotak cari / cek nomor di beranda bukan formulir). Di sini
+ * AI demo berhenti dan menyerahkan ke warga, tanpa memanggil model.
+ */
+export function halamanFormulir(p: Pengamatan): boolean {
+  const s = p.sinyal;
+  if (s.login || s.otp || s.halamanAkhir) return true;
+  return p.elemen.filter((e) => PERAN_KOLOM.includes(e.peran) && !e.terlarang).length > KOLOM_PINTU_MAKS;
+}
 
 export type PutusanValidasi =
   | {
@@ -408,6 +437,9 @@ export function validasiRencana(mentah: unknown, p: Pengamatan, opsi: OpsiValida
       langgar.add('REF_TIDAK_DIAMATI');
       return;
     }
+    // Lihat saja (demo, situs asli): tidak ada tulisan sama sekali; klik hanya navigasi murni.
+    if (opsi.lihatSaja && tulisan(a)) langgar.add('LIHAT_SAJA_TULIS');
+    if (opsi.lihatSaja && a.jenis === 'klik' && !klikLihatSaja(e, p)) langgar.add('LIHAT_SAJA_KLIK');
     if (tulisan(a)) {
       if (refTulis.has(a.ref)) langgar.add('REF_GANDA');
       refTulis.add(a.ref);

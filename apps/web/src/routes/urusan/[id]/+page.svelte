@@ -144,6 +144,30 @@
     if (origin && data.pendamping.originReplika.includes(origin)) return undefined;
     return `/urusan/${data.urusan.id}`;
   }
+  /**
+   * Demo juri di situs asli (lihat saja): simulasi pengisian di replika dengan data contoh, hanya bila portal ini
+   * punya replika. Akun warga biasa tidak pernah melihat tombolnya.
+   */
+  const simulasiTersedia = $derived.by(() => {
+    if (data.pendamping.peran !== 'juri' || sesi.data.situs?.replika) return false;
+    const url = k.permintaanEksekusi?.origin ?? situs;
+    try {
+      return url ? data.pendamping.originReplika.includes(new URL(url).origin) : false;
+    } catch {
+      return false;
+    }
+  });
+  async function mulaiSimulasi() {
+    const e = k.permintaanEksekusi;
+    if (!e || !(await sesi.tutupSekarang())) return;
+    pendampingDitutup = false;
+    void sesi.mulai(
+      e.executionId,
+      () => canvas,
+      () => inputTeks,
+      { simulasi: true },
+    );
+  }
   // Kartu "Setujui dan buka situs" yang bisa ditindaklanjuti (paling banyak satu).
   const konfirmasiAktif = $derived.by(() => {
     const it = linimasa.findLast((x) => x.jenis === 'konfirmasi');
@@ -596,6 +620,7 @@
               tab = 'rencana';
               panelHpBuka = true;
             }}
+            onsimulasi={simulasiTersedia ? () => void mulaiSimulasi() : undefined}
           />
         </div>
       {:else}

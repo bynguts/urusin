@@ -17,6 +17,8 @@ export type StatusPendamping = {
   aiBerakhir?: string;
   /** Sesi sudah ditutup (hasil eksekusi tercatat): dibatalkan/berhasil/gagal/... */
   hasil?: string;
+  /** Demo (akun juri) di situs resmi asli, mode "lihat saja": AI hanya menavigasi, tidak pernah mengisi. */
+  lihatSaja?: true;
 };
 
 type JejakEvent = {
@@ -45,6 +47,8 @@ export function statusPendamping(store: HarnessStore, urusanId: string): StatusP
       s.giliran = c.fase === 'mulai' ? (typeof c.alasan === 'string' ? c.alasan : 'warga') : 'ai';
     } else if (c.jenis === 'resi' && typeof c.akhir === 'string') {
       s.aiBerakhir = c.akhir;
+    } else if (c.jenis === 'lihat_saja') {
+      s.lihatSaja = true;
     }
   }
   const hasil = store.hasilEksekusi(urusanId, executionId);
@@ -68,11 +72,21 @@ const GILIRAN: Readonly<Record<string, string>> = {
 const GILIRAN_LAIN =
   'Sekarang warga memegang layar dan AI menunggu. Warga bisa menekan Lanjutkan di layar agar AI mencoba lagi.';
 
+const LIHAT_SAJA = [
+  '- Sesi ini DEMO (akun juri) di situs resmi ASLI dalam mode lihat saja: AI hanya membuka dan menavigasi halaman, TIDAK mengisi kolom apa pun dan TIDAK menekan Lanjut/Simpan/Kirim, karena data demo adalah data contoh yang tidak boleh masuk ke sistem pemerintah. JANGAN bilang AI sudah, sedang, atau akan mengisi di sesi ini.',
+  '- Bila ditanya kenapa AI tidak mengisi: jelaskan dengan ramah bahwa dengan akun sendiri (Daftar atau Masuk dengan Google) AI mengisi kolom dari Data Diri setelah warga menekan Izinkan isi, dan tombol Kirim selalu warga yang menekan. Contoh pengisian dengan data contoh bisa dilihat lewat tombol "Lihat contoh pengisian (simulasi)" di layar bila tersedia.',
+];
+
 /** Baris catatan state dari status nyata Pendamping (tanpa nilai isian, tanpa teks halaman). */
 export function barisStatusPendamping(s: StatusPendamping): string {
   const out = [
     'STATUS NYATA BROWSER PENDAMPING (dari jejak sistem; satu-satunya dasar ucapanmu tentang isian):',
   ];
+  if (s.lihatSaja) {
+    out.push(...LIHAT_SAJA);
+    if (s.hasil) out.push(`- Sesi Browser Pendamping sudah ditutup (hasil: ${s.hasil}).`);
+    return out.join('\n');
+  }
   if (s.hasil) {
     out.push(
       `- Sesi Browser Pendamping sudah ditutup (hasil: ${s.hasil}). Tidak ada isian yang menunggu diperiksa; jangan menyuruh warga menekan Selesai.`,

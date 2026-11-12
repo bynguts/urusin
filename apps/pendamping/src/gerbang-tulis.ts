@@ -330,6 +330,11 @@ export function createGerbangTulis(opts: {
   onTulisWarga?: () => void;
   /** Mode ketat (dokumen kotor / halaman akhir), dibaca setiap permintaan. */
   ketat?: () => boolean;
+  /**
+   * Demo "lihat saja" di situs asli: AI tidak pernah mendapat jendela `ai_isi` (XHR non-GET); jendela AI paling
+   * longgar = `ai_klik` (GET saja). Tulis hanya lewat input warga sendiri (jendela `warga`).
+   */
+  lihatSaja?: boolean;
   now?: () => number;
 }): GerbangTulis {
   const now = opts.now ?? Date.now;
@@ -343,7 +348,7 @@ export function createGerbangTulis(opts: {
   return {
     jendela,
     setAi(j) {
-      ai = j;
+      ai = opts.lihatSaja && j.jenis === 'ai_isi' ? { jenis: 'ai_diam' } : j;
     },
     periksa(r) {
       const j = jendela();

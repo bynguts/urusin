@@ -67,8 +67,11 @@ export type DataPendamping = {
     kolom?: KolomButuh[] | undefined;
     rencanaHash?: string | undefined;
   } | null;
-  /** Situs yang benar-benar dibuka peramban + apakah itu replika uji (Mode Uji), dari status server. */
-  situs: { origin: string; replika: boolean } | null;
+  /**
+   * Situs yang benar-benar dibuka peramban + apakah itu replika uji (Mode Uji), dari status server. `lihatSaja`:
+   * demo juri di situs asli (AI hanya menavigasi, tanpa isian).
+   */
+  situs: { origin: string; replika: boolean; lihatSaja?: boolean } | null;
   /**
    * Bingkai portal (atau replika Mode Uji) sudah tergambar di layar warga. Sebelum itu lembar "Izinkan AI mengisi?"
    * tidak dibuka: warga melihat situsnya dulu, baru izin isi diminta.
@@ -163,11 +166,15 @@ export class SesiPendampingUi {
     return `/api/urusan/${encodeURIComponent(this.urusanId)}/pendamping`;
   }
 
-  /** Mulai sesi untuk `executionId` yang sudah disetujui warga, lalu sambungkan layar ke canvas. */
+  /**
+   * Mulai sesi untuk `executionId` yang sudah disetujui warga, lalu sambungkan layar ke canvas. `simulasi` (akun
+   * demo saja): replika uji dengan data contoh, bukan situs resmi asli.
+   */
   async mulai(
     executionId: string,
     canvas: () => HTMLCanvasElement | null,
     inputTeks: () => HTMLTextAreaElement | null,
+    opsi: { simulasi?: boolean } = {},
   ) {
     this.data = { ...dataAwal(), keadaan: 'menyiapkan' };
     this.statusServer = null;
@@ -178,7 +185,11 @@ export class SesiPendampingUi {
       res = await this.ambil(this.dasar, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ executionId, viewport: viewportPerangkat() }),
+        body: JSON.stringify({
+          executionId,
+          viewport: viewportPerangkat(),
+          ...(opsi.simulasi ? { simulasi: true } : {}),
+        }),
       });
     } catch {
       this.data = { ...this.data, keadaan: 'terputus', pesan: 'Koneksi terputus. Periksa internet Anda.' };
@@ -319,7 +330,9 @@ export class SesiPendampingUi {
       keadaan: keadaanDariSesi(s, this.data.giliran !== null, this.data.tayang),
       pesan: s.pesan ?? this.data.pesan,
       bukti: s.bukti ?? this.data.bukti,
-      situs: s.situs ? { origin: s.situs, replika: s.replika === true } : this.data.situs,
+      situs: s.situs
+        ? { origin: s.situs, replika: s.replika === true, ...(s.lihatSaja ? { lihatSaja: true } : {}) }
+        : this.data.situs,
     };
     this.jadwalPantauAi();
   }
