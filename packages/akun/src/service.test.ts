@@ -1328,3 +1328,21 @@ describe('penyapu', () => {
       expect(hitung(`SELECT COUNT(*) n FROM ${tabel}`)).toBe(0);
   });
 });
+
+describe('rem akun massal (review H1)', () => {
+  it('daftar: plafon harian 40 akun per IP; jendela jam baru tidak mereset plafon harian', async () => {
+    for (let i = 0; i < 40; i++) {
+      if (i > 0 && i % 20 === 0) t += 3_600_001; // lewati batas 20/jam, tetap di hari yang sama
+      await akun.daftar({ email: `massal${i}@example.com`, sandi: SANDI }, ctx);
+    }
+    t += 3_600_001;
+    const e = await galat(akun.daftar({ email: 'massal-x@example.com', sandi: SANDI }, ctx));
+    expect(e.kode).toBe('RATE_LIMITED');
+    expect(e.retryAfterSec).toBeGreaterThan(3600);
+    expect(db.prepare("SELECT COUNT(*) n FROM users WHERE email = 'massal-x@example.com'").get()).toEqual({
+      n: 0,
+    });
+    // IP lain tidak terdampak
+    await akun.daftar({ email: 'massal-y@example.com', sandi: SANDI }, { ...ctx, ip: '198.51.100.7' });
+  }, 60_000);
+});

@@ -102,9 +102,10 @@ export const pesanLaju = (aksi: Aksi, retryAfterSec: number): string =>
   `${PESAN_LAJU[aksi]} Coba lagi dalam ${lamaTunggu(retryAfterSec)}.`;
 
 /**
- * Kuota laju. Warga yang masuk (akun atau demo) dihitung per akun bila pembatas `akun` ada, tanpa batas per IP:
- * banyak warga sah berbagi satu IP (CGNAT, warnet, kantor kelurahan). Tamu dihitung per sesi dan per IP (rem
- * banjir). 429 + Retry-After + pesan berwaktu tunggu bila lewat; undefined bila boleh lanjut.
+ * Kuota laju. Warga yang masuk (akun atau demo) dihitung per akun bila pembatas `akun` ada, BERSAMA plafon per IP
+ * `ipAkun` yang longgar: banyak warga sah berbagi satu IP (CGNAT, warnet, kantor kelurahan), tetapi akun massal
+ * dari satu IP tidak boleh tanpa plafon biaya LLM. Tamu dihitung per sesi dan per IP (rem banjir). 429 +
+ * Retry-After + pesan berwaktu tunggu bila lewat; undefined bila boleh lanjut.
  */
 export function batasi(
   rt: Runtime,
@@ -116,15 +117,17 @@ export function batasi(
 ): Response | undefined {
   const lim = rt.limits[aksi];
   const akunId = event.locals.akun?.id;
+  let ip = 'tak-dikenal';
+  try {
+    ip = event.getClientAddress();
+  } catch {
+    // tanpa alamat klien: semuanya berbagi satu kunci (lebih ketat, bukan lebih longgar)
+  }
   let hasil;
-  if (akunId && lim.akun) hasil = [lim.akun.consume(`akun:${akunId}`)];
-  else {
-    let ip = 'tak-dikenal';
-    try {
-      ip = event.getClientAddress();
-    } catch {
-      // tanpa alamat klien: semuanya berbagi satu kunci (lebih ketat, bukan lebih longgar)
-    }
+  if (akunId && lim.akun) {
+    hasil = [lim.akun.consume(`akun:${akunId}`)];
+    if (lim.ipAkun) hasil.push(lim.ipAkun.consume(`ipakun:${kunciIp(ip)}`));
+  } else {
     const sid = event.locals.sid ?? 'tanpa-sesi';
     hasil = [lim.ip.consume(`ip:${kunciIp(ip)}`), lim.sesi.consume(`sid:${sid}`)];
   }

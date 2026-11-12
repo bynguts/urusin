@@ -44,9 +44,14 @@ type Aksi = 'masuk' | 'daftar' | 'lupa' | 'token';
 const MENIT = 60_000;
 const JAM = 60 * MENIT;
 /** Batas laju per aksi: per IP dan per email (kunci = hash email ternormalisasi). */
-export const DEFAULT_LIMITS: Record<Aksi, { ip: LimitRule; email?: LimitRule }> = {
+export const DEFAULT_LIMITS: Record<Aksi, { ip: LimitRule; email?: LimitRule; ipHari?: LimitRule }> = {
   masuk: { ip: { limit: 20, windowMs: 15 * MENIT }, email: { limit: 10, windowMs: 15 * MENIT } },
-  daftar: { ip: { limit: 20, windowMs: JAM }, email: { limit: 3, windowMs: JAM } },
+  // Daftar langsung jadi akun penuh (ADR 0032): selain 20/jam, plafon harian per IP membatasi akun massal.
+  daftar: {
+    ip: { limit: 20, windowMs: JAM },
+    email: { limit: 3, windowMs: JAM },
+    ipHari: { limit: 40, windowMs: 24 * JAM },
+  },
   lupa: { ip: { limit: 20, windowMs: JAM }, email: { limit: 3, windowMs: JAM } },
   token: { ip: { limit: 30, windowMs: 15 * MENIT } },
 };
@@ -252,7 +257,10 @@ export class AkunService {
   private readonly now: () => Date;
   private readonly log: (line: string) => void;
   private readonly alert: (pesan: string) => void;
-  private readonly lim: Record<Aksi, { ip: Limiter; email?: Limiter | undefined }>;
+  private readonly lim: Record<
+    Aksi,
+    { ip: Limiter; email?: Limiter | undefined; ipHari?: Limiter | undefined }
+  >;
   private readonly inflight = new Set<Promise<boolean>>();
   private readonly pengikat: PengikatPemilik[] = [];
   /** Hash sandi acak untuk menyamakan waktu respons saat email tidak dikenal. */
@@ -270,7 +278,11 @@ export class AkunService {
     this.lim = Object.fromEntries(
       Object.entries(limits).map(([k, v]) => [
         k,
-        { ip: deps.limiter(v.ip), email: v.email ? deps.limiter(v.email) : undefined },
+        {
+          ip: deps.limiter(v.ip),
+          email: v.email ? deps.limiter(v.email) : undefined,
+          ipHari: 'ipHari' in v && v.ipHari ? deps.limiter(v.ipHari) : undefined,
+        },
       ]),
     ) as AkunService['lim'];
     // Baris yang dihapus ditimpa nol di berkas DB (bukan sekadar ditandai bebas).
@@ -325,6 +337,7 @@ export class AkunService {
     const l = this.lim[aksi];
     const hasil = [l.ip.consume(`${aksi}:ip:${kunciIp(ctx.ip)}`)];
     if (email && l.email) hasil.push(l.email.consume(`${aksi}:email:${sha256Hex(email)}`));
+    if (l.ipHari) hasil.push(l.ipHari.consume(`${aksi}:iphari:${kunciIp(ctx.ip)}`));
     const kena = hasil.find((h) => !h.ok);
     if (kena) throw new AkunError('RATE_LIMITED', kena.retryAfterSec);
   }
