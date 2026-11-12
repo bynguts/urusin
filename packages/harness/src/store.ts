@@ -34,6 +34,10 @@ export type UrusanRow = {
   costIdr: number;
   /** Nomor permohonan dari situs resmi setelah pengajuan terkirim (bukti Browser Pendamping). */
   nomorPermohonan: string | null;
+  /** Judul daftar (migrasi 0007): dari AI setelah turn pertama, atau nama pilihan warga. null = belum ada. */
+  judul?: string | null;
+  /** true = judul diganti warga sendiri (tidak pernah ditimpa AI). */
+  judulManual?: boolean;
 };
 
 export type StoredEvent = {
@@ -90,11 +94,17 @@ type UrusanDbRow = {
   tokens_out: number;
   cost_idr: number;
   nomor_permohonan: string | null;
+  judul: string | null;
+  judul_sumber: 'ai' | 'warga' | null;
 };
 
-/** Baris urusan + nomor permohonan (tabel anak, migrasi 0004). */
+/** Baris urusan + nomor permohonan (tabel anak, migrasi 0004) + judul (tabel anak, migrasi 0007). */
 const SELECT_URUSAN =
-  'SELECT u.*, n.nomor AS nomor_permohonan FROM urusan u LEFT JOIN nomor_permohonan n ON n.urusan_id = u.id';
+  'SELECT u.*, n.nomor AS nomor_permohonan, j.judul AS judul, j.sumber AS judul_sumber FROM urusan u ' +
+  'LEFT JOIN nomor_permohonan n ON n.urusan_id = u.id LEFT JOIN judul_urusan j ON j.urusan_id = u.id';
+
+/** Judul daftar: 1–80 karakter tanpa baris baru (validasi isi/PII dilakukan pemanggil sebelum menyimpan). */
+const JUDUL_MAKS = 80;
 
 /** Sama dengan skema `bukti.nomor` Browser Pendamping (@urusin/contracts). */
 const NOMOR_PERMOHONAN_RE = /^[A-Za-z0-9][A-Za-z0-9 ./_-]{0,63}$/;
@@ -112,6 +122,8 @@ const toUrusan = (r: UrusanDbRow): UrusanRow => ({
   tokensOut: r.tokens_out,
   costIdr: r.cost_idr,
   nomorPermohonan: r.nomor_permohonan ?? null,
+  judul: r.judul ?? null,
+  judulManual: r.judul_sumber === 'warga',
 });
 
 export type StoreOptions = {
@@ -583,6 +595,27 @@ export class HarnessStore {
            ON CONFLICT(urusan_id) DO UPDATE SET nomor = excluded.nomor, at = excluded.at`,
         )
         .run(nomor, this.iso(), urusanId).changes === 1
+    );
+  }
+
+  /**
+   * Simpan judul urusan. `ai`: hanya bila belum ada judul sama sekali (dibuat sekali; judul warga tidak pernah
+   * ditimpa). `warga`: selalu menang. Teks tetap dilewatkan redaksi PII. Tidak menaikkan version.
+   */
+  simpanJudul(urusanId: string, judul: string, sumber: 'ai' | 'warga'): boolean {
+    const bersih = redactForStorage(judul.replace(/\s+/g, ' ').trim()).slice(0, JUDUL_MAKS);
+    if (!bersih) return false;
+    const saatKonflik =
+      sumber === 'warga'
+        ? 'DO UPDATE SET judul = excluded.judul, sumber = excluded.sumber, at = excluded.at'
+        : 'DO NOTHING';
+    return (
+      this.db
+        .prepare(
+          `INSERT INTO judul_urusan (urusan_id, judul, sumber, at) SELECT id, ?, ?, ? FROM urusan WHERE id = ?
+           ON CONFLICT(urusan_id) ${saatKonflik}`,
+        )
+        .run(bersih, sumber, this.iso(), urusanId).changes === 1
     );
   }
 

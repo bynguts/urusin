@@ -77,6 +77,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
           dibuatPada: u.createdAt,
           diubahPada: u.updatedAt,
           ...(u.nomorPermohonan ? { nomorPermohonan: u.nomorPermohonan } : {}),
+          ...(u.judul ? { judul: u.judul, judulManual: u.judulManual === true } : {}),
         })),
     } satisfies DaftarUrusanResponse);
   } catch (e) {

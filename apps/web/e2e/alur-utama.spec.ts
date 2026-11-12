@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { daftarAkunUji } from './akun-uji';
+import { JUDUL_KELAHIRAN, daftarAkunUji } from './akun-uji';
 
 // IP klien sendiri per tes (lewat X-Forwarded-For, seperti di belakang Caddy): kuota tamu/urusan baru per IP
 // tidak terbagi antartes atau antarulangan (--repeat-each).
@@ -44,7 +44,7 @@ for (const lebar of [390, 1440]) {
 
     // Urusan tercatat di Urusanku akun ini
     await page.goto('/urusanku');
-    await expect(page.getByRole('heading', { name: 'Akta kelahiran' }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: JUDUL_KELAHIRAN }).first()).toBeVisible();
 
     // Akun dengan urusan terakhir di perangkat ini: landing melanjutkan ke Beranda
     await page.goto('/');

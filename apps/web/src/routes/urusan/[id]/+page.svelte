@@ -37,6 +37,7 @@
   import { SesiPendampingUi } from '#lib/pendamping/sesi.svelte.js';
   import { judulUrusan, peristiwaDariJenis } from '#lib/peristiwa.js';
   import { ambilLokal } from '#lib/stores/app.svelte.js';
+  import { ambilJudul } from '#lib/judul-urusan.js';
   import type { PesanWarga } from '#lib/stores/lokal.svelte.js';
   import { UrusanStore } from '#lib/stores/urusan.svelte.js';
   import { waktuSingkat } from '#lib/urusan-status.js';
@@ -94,7 +95,15 @@
   // Sejak "Setujui rencana" ditekan sampai state urusan bergerak: progres jujur, bukan layar diam.
   let menungguSetuju = $state(false);
   const menyiapkanLanjutan = $derived(menungguSetuju && keadaanUrusan === 'RENCANA_DIUSULKAN');
-  const judul = $derived(judulJenis ?? lokal.cari(data.urusan.id)?.judul ?? 'Urusan baru');
+  // Judul server (AI setelah turn pertama, atau nama pilihan warga) menang atas judul jenis.
+  // svelte-ignore state_referenced_locally
+  let judulServer = $state<string | null>(data.urusan.judul);
+  // Catatan perangkat diselaraskan dengan judul server (dan ikut berubah saat warga mengganti nama di sidebar).
+  const judul = $derived(
+    judulServer
+      ? (lokal.cari(data.urusan.id)?.judul ?? judulServer)
+      : (judulJenis ?? lokal.cari(data.urusan.id)?.judul ?? 'Urusan baru'),
+  );
   const linimasa = $derived(bangunLinimasa(k.events, pesan, jenisKini));
   const kutipan = $derived.by(() => {
     const peta = new SvelteMap<string, KutipanTerverifikasi & { nomor: number }>();
@@ -155,7 +164,7 @@
     untrack(() => {
       const c = lokal.cari(data.urusan.id);
       if (!c || c.peristiwa === jenis) return;
-      lokal.catatUrusan({ ...c, judul: judulUrusan(jenis) ?? c.judul, peristiwa: jenis });
+      lokal.catatUrusan({ ...c, judul: judulServer ?? judulUrusan(jenis) ?? c.judul, peristiwa: jenis });
     });
   });
 
@@ -170,6 +179,7 @@
   });
 
   function buka(id: string) {
+    judulServer = data.urusan.judul;
     pesan = lokal.pesanWarga(id);
     const tertunda = lokal.ambilTertunda() ?? data.pesanAwal;
     if (tertunda && pesan.length === 0) {
@@ -178,12 +188,40 @@
     }
     lokal.catatUrusan({
       id,
-      judul: judulUrusan(data.urusan.jenis) ?? lokal.cari(id)?.judul ?? judulDariPesan(pesan[0]?.teks),
+      judul:
+        data.urusan.judul ??
+        judulUrusan(data.urusan.jenis) ??
+        lokal.cari(id)?.judul ??
+        judulDariPesan(pesan[0]?.teks),
       peristiwa: data.urusan.jenis,
       dibuatPada: data.urusan.dibuatPada,
     });
     store.sambung(id);
   }
+
+  /**
+   * Judul AI dibuat server sesudah turn pertama selesai (async, maks ±4 detik): setelah turn selesai dan belum
+   * ada judul, tanyakan beberapa kali lalu perbarui header dan sidebar (catatan perangkat).
+   */
+  let cekJudulKe = 0;
+  async function tungguJudul(id: string) {
+    const giliran = ++cekJudulKe;
+    for (const jeda of [800, 2000, 4500]) {
+      await new Promise((r) => setTimeout(r, jeda));
+      if (giliran !== cekJudulKe || judulServer) return;
+      const j = (await ambilJudul([id])).get(id);
+      if (j) {
+        judulServer = j;
+        lokal.ubahJudul(id, j);
+        return;
+      }
+    }
+  }
+  $effect(() => {
+    if (k.sedangBerjalan || judulServer || !k.events.some((e) => e.type === 'done')) return;
+    const id = data.urusan.id;
+    untrack(() => void tungguJudul(id));
+  });
 
   // Gulir ke pesan terbaru saat ada item baru.
   $effect(() => {
