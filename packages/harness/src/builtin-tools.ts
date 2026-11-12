@@ -29,7 +29,14 @@ import {
 import { spotlight } from './spotlight.js';
 import { paramsHash, type ChunkRecord } from './store.js';
 import { NON_TERMINAL_STATES, defineTool, type ToolContext, type ToolDef, type ToolResult } from './tools.js';
-import { kalimatJaringanId, keteranganPendamping, rutePendamping, tierUrusan } from './rencana.js';
+import {
+  kalimatJaringanId,
+  kalimatOfflinePortal,
+  keteranganPendamping,
+  rutePendamping,
+  tierUrusan,
+  varianUrusan,
+} from './rencana.js';
 import {
   AFIRMASI,
   TEKS_WILAYAH,
@@ -131,7 +138,12 @@ export const dukcapilCekPersyaratan = defineTool({
     const kode = kodeKtp(ctx.store, ctx.urusan) ?? args.kodeKabKota;
     const { entry } = routeByKode(kode);
     const out = await retrieve(ctx, `persyaratan ${args.layanan}`, kode, undefined);
-    const tier = tierUrusan({ jenis: ctx.urusan.jenis, kodeKabKota: kode }) ?? entry.tier;
+    const tier =
+      tierUrusan({
+        jenis: ctx.urusan.jenis,
+        kodeKabKota: kode,
+        varian: varianUrusan(ctx.store, ctx.urusan),
+      }) ?? entry.tier;
     const head = `${entry.nama}: tingkat ${tier}, validasi ${entry.validasi}. ${kalimatKanal(kode)}`;
     return {
       content: `${head}
@@ -210,7 +222,9 @@ export const urusanUsulkanRencana = defineTool({
     const w = wilayahUrusan(ctx.store, ctx.urusan);
     const ktp = w.ktp!; // dijamin gerbang wilayah (butuhWilayah)
     // Peristiwa Hidup: rencana deterministik untuk wilayah ini menang atas langkah karangan model.
-    const kartu = ctx.urusan.jenis ? kartuRencana(ctx.urusan.jenis, w, ctx.deps.ragDb) : undefined;
+    const kartu = ctx.urusan.jenis
+      ? kartuRencana(ctx.urusan.jenis, w, ctx.deps.ragDb, varianUrusan(ctx.store, ctx.urusan))
+      : undefined;
     const k = kanalWilayah(ktp.kodeKabKota);
     const online = onlineTerverifikasi(ktp);
     return {
@@ -269,6 +283,7 @@ export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkR
     ktp: w.ktp.kodeKabKota,
     domisili: w.domisili?.kodeKabKota ?? null,
     tujuan: w.tujuan?.kodeKabKota ?? null,
+    varian: varianUrusan(ctx.store, ctx.urusan),
   });
   if (!r) return [];
   return r.langkah.flatMap((l) => {
@@ -705,16 +720,22 @@ export const wilayahTetapkan = defineTool({
     const { entry } = routeByKode(ktp.kodeKabKota);
     // Sama dengan rute yang ditawarkan saat rencana disetujui (adapter -> generik -> dipandu).
     const rute = ctx.urusan.jenis
-      ? rutePendamping({ jenis: ctx.urusan.jenis, kodeKabKota: ktp.kodeKabKota })
+      ? rutePendamping({
+          jenis: ctx.urusan.jenis,
+          kodeKabKota: ktp.kodeKabKota,
+          varian: varianUrusan(ctx.store, ctx.urusan),
+        })
       : undefined;
     const pendamping =
       rute && rute.jalur !== 'dipandu'
         ? `Browser Pendamping: ${keteranganPendamping(rute)}`
-        : rute?.sebab === 'jaringan_id'
-          ? `Browser Pendamping belum tersedia untuk urusan ini (tingkat dipandu): ${kalimatJaringanId(ktp.nama)}`
-          : entry.adapterId
-            ? `Browser Pendamping punya adapter di ${entry.portal?.nama ?? entry.nama}.`
-            : 'Browser Pendamping belum tersedia untuk urusan ini: tingkat dipandu (warga mengisi sendiri dengan panduan).';
+        : rute?.sebab === 'offline_portal'
+          ? `Browser Pendamping tidak dibuka untuk urusan ini (tingkat dipandu): ${kalimatOfflinePortal(rute.offline)}`
+          : rute?.sebab === 'jaringan_id'
+            ? `Browser Pendamping belum tersedia untuk urusan ini (tingkat dipandu): ${kalimatJaringanId(ktp.nama)}`
+            : entry.adapterId
+              ? `Browser Pendamping punya adapter di ${entry.portal?.nama ?? entry.nama}.`
+              : 'Browser Pendamping belum tersedia untuk urusan ini: tingkat dipandu (warga mengisi sendiri dengan panduan).';
     return {
       content: [
         `${TEKS_WILAYAH.ditetapkan} ${ktp.nama}. ${kalimatKanal(ktp.kodeKabKota)} ${pendamping}`,

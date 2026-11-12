@@ -97,11 +97,18 @@ function tips(jenis: string | null, jamLayanan: string | undefined): string[] {
 export function paketDipandu(
   jenis: string | null,
   w: { ktp: WilayahRef; tujuan?: WilayahRef | null },
+  /**
+   * Peta portal (ADR 0034): layanan ini tidak online di portal daerah aktif. Pesan menyebut alasan dan jalur resmi
+   * yang benar, dan portal web tidak ditawarkan sebagai kanal pengajuan.
+   */
+  offline?: { alasan: string; alternatif: { teks: string } },
 ): PaketDipandu {
   const kode = w.ktp.kodeKabKota;
   const pendek = namaPendekWilayah(w.ktp.nama);
   const p = portalWilayah(kode);
-  const kanal = kanalDipandu(kode, jenis);
+  const kanal = kanalDipandu(kode, jenis).filter(
+    (k) => !(offline && p?.jenis === 'web' && p.url && k.url === p.url),
+  );
   // Pindah: Disdukcapil tujuan menerbitkan KK/KTP-el baru, jadi kanal utamanya ikut.
   const tujuan =
     jenis === 'pindah' && w.tujuan && w.tujuan.kodeKabKota !== kode
@@ -118,10 +125,15 @@ export function paketDipandu(
         : undefined;
   const gratis = fakta('gratis');
   const f = formulir(jenis);
+  const pesanOffline = offline
+    ? `${offline.alasan} ${offline.alternatif.teks} Urusin memandu langkahnya bersama Anda.`
+    : undefined;
   return {
     pesan: berkembang
       ? kalimatPendampingBerkembang(pendek, sisipan)
-      : `Untuk urusan ini, Urusin memandu Anda langkah demi langkah lewat kanal resmi Disdukcapil ${pendek}.`,
+      : pesanOffline && pesanOffline.length <= 600
+        ? pesanOffline
+        : `Untuk urusan ini, Urusin memandu Anda langkah demi langkah lewat kanal resmi Disdukcapil ${pendek}.`,
     pendampingBerkembang: berkembang,
     kanal,
     biaya: gratis

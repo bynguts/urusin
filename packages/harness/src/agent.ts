@@ -20,7 +20,7 @@ import type { EventBus } from './bus.js';
 import type { Db } from './db.js';
 import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/contracts';
 import { HarnessError, TurnInProgressError } from './errors.js';
-import { tierUrusan } from './rencana.js';
+import { tierUrusan, urusanRute, varianUrusan } from './rencana.js';
 import { toEvent } from './envelope.js';
 import { ADMINDUK, buildHandoff, type CacheJawaban } from './grounding.js';
 import {
@@ -342,7 +342,7 @@ class TurnRunner {
   }
 
   private tier(): 'semi' | 'dipandu' | null {
-    return tierUrusan(this.urusan);
+    return tierUrusan(urusanRute(this.store, this.urusan));
   }
 
   private applyTransition(to: UrusanState): void {
@@ -408,6 +408,7 @@ class TurnRunner {
       jenis: this.urusan.jenis,
       kodeKabKota: this.urusan.kodeKabKota,
       wilayah: wilayahUrusan(this.store, this.urusan),
+      varian: varianUrusan(this.store, this.urusan),
       tools: this.deps.registry.forState(this.urusan.state).filter((t) => this.toolDitawarkan(t.name)),
       confirmations: this.store.activeConfirmations(this.turn.urusanId),
       pesanWarga: this.turn.pii.redact(this.turn.userText).text,
