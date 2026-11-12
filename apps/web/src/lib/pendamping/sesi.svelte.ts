@@ -208,13 +208,17 @@ export class SesiPendampingUi {
     };
   }
 
+  /** Tiket sekali pakai. Galat jaringan (sinyal putus sesaat) dicoba ulang; jawaban server tidak. */
   private async tiket(): Promise<{ wsUrl: string; tiket: string } | null> {
-    try {
-      const r = await this.ambil(`${this.dasar}/tiket`, { method: 'POST' });
-      if (!r.ok) return null;
-      return (await r.json()) as { wsUrl: string; tiket: string };
-    } catch {
-      return null;
+    for (let coba = 1; ; coba++) {
+      try {
+        const r = await this.ambil(`${this.dasar}/tiket`, { method: 'POST' });
+        if (!r.ok) return null;
+        return (await r.json()) as { wsUrl: string; tiket: string };
+      } catch {
+        if (coba >= 3) return null;
+        await new Promise((ok) => setTimeout(ok, 300 * coba));
+      }
     }
   }
 
