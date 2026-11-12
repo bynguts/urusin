@@ -10,7 +10,7 @@ import {
   type PendampingSorot,
   type PendampingViewport,
 } from '@urusin/contracts';
-import { type Step, type Target } from '@urusin/core';
+import { aturanBlokirAset, asetDiblokir, type Step, type Target } from '@urusin/core';
 import {
   checkUrl,
   Interpreter,
@@ -559,6 +559,9 @@ export async function launchIsolated(
   // Domain pemda portal sesi: subdomainnya boleh untuk gambar/style/fon (rute) di :443 (proxy; edge menurunkan
   // sendiri dari host sesi yang sama).
   const pemda = domainPemdaSesi(hosts);
+  // Peta portal (ADR 0034): aset dekoratif berat portal sesi (mis. banner cms.depok.go.id, ikon SVG ~120 KB,
+  // GIF 404 3,6 MB) dibatalkan; hanya gambar/fon/media yang cocok pola, formulir tetap utuh.
+  const blokirAset = aturanBlokirAset(hosts);
   // Produksi: satu-satunya jalan keluar = pendamping-edge (kontainer ini tidak punya rute lain). Dev/e2e:
   // proxy egress di dalam proses dengan kebijakan yang sama.
   const edge = config.edge
@@ -636,6 +639,7 @@ export async function launchIsolated(
     const asetDisetujui = new Map<string, Promise<boolean>>();
     await context.route('**/*', async (route) => {
       const req = route.request();
+      if (asetDiblokir(blokirAset, req.url(), req.resourceType())) return route.abort('blockedbyclient');
       const ok = izinRute(allowedHosts, req, pemda);
       if (!ok && req.method() === 'GET' && permintaanGerbang(req).utama) {
         const https = naikHttps(req.url(), (u) =>
