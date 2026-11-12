@@ -8,7 +8,7 @@ import {
   type PemilikSesiInternal,
 } from '@urusin/contracts';
 import type { EgressFetch } from '@urusin/egress';
-import { hostsPortalWilayah, type UrusanRow } from '@urusin/harness';
+import { hostsPortalWilayah, petunjukPortalUrusan, type UrusanRow } from '@urusin/harness';
 import type { ChatProvider, Usage } from '@urusin/llm';
 import {
   hashRencana,
@@ -261,17 +261,19 @@ export async function jalankanNavigatorUrusan(
   const tangan = deps.tangan ?? tanganWorker(deps.cfg, m.owner, deps.fetcher, m.executionId);
   tandaiPernahJalan(m.executionId);
   let hasil: HasilNavigator | undefined;
+  const pesanWarga = rt.store
+    .loadHistory(id)
+    .flatMap((p) => (p.role === 'user' && typeof p.content === 'string' ? [p.content] : []));
   try {
     hasil = await jalankanNavigator({
       executionId: m.executionId,
       tangan,
       llm: { ...llm, provider: providerTerukur(llm.provider, catatPemakaian) },
-      tujuan: tujuanPendamping(
-        m.urusan.jenis,
-        rt.store
-          .loadHistory(id)
-          .flatMap((p) => (p.role === 'user' && typeof p.content === 'string' ? [p.content] : [])),
-      ),
+      tujuan: tujuanPendamping(m.urusan.jenis, pesanWarga),
+      // Peta portal TEPERCAYA (registry, ADR 0034) untuk portal asli; Mode Uji membuka replika, jadi tanpa petunjuk.
+      ...(m.modeUji
+        ? {}
+        : { petunjukPortal: petunjukPortalUrusan(m.urusan.jenis, m.urusan.kodeKabKota, pesanWarga) }),
       hostsBoleh: m.modeUji ? fixture : new Set(hostsPortalWilayah(m.urusan.kodeKabKota)),
       modeUji: m.modeUji ? { hostsFixture: fixture } : undefined,
       kodeKabKota: m.urusan.kodeKabKota,

@@ -55,13 +55,13 @@ describe('registry wilayah untuk Navigator', () => {
   });
 
   it('params sesi generik: kode + jalur masuk portal; host sesi dari bawaan wilayah di worker', () => {
-    // Kota Surabaya: portal di jalur /app; Kota Bandar Lampung: /pendaftaran.
+    // Kota Surabaya: portal di jalur /app; Kota Bandar Lampung: Permen Manis /pelayanan/auth (peta portal, ADR 0034).
     expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: '3578' })).toMatchObject({
       jalur: 'generik',
       params: { kode: '3578', jalur: '/app' },
     });
     const bdl = rutePendamping({ jenis: 'kelahiran', kodeKabKota: '1871' });
-    expect(bdl).toMatchObject({ params: { kode: '1871', jalur: '/pendaftaran' } });
+    expect(bdl).toMatchObject({ params: { kode: '1871', jalur: '/pelayanan/auth' } });
     if (bdl.jalur === 'generik') expect(bdl.params).not.toHaveProperty('hosts');
   });
 
@@ -87,9 +87,9 @@ describe('registry wilayah untuk Navigator', () => {
   });
 
   it('probe portal nyata: jalur masuk portal dari registry sampai params sesi (bukan "/")', () => {
-    // 1871 "/" situs info, 3321 "/" halaman default IIS, 3571 "/" halaman kosong.
+    // 1871 "/" situs info (kanal warga Permen Manis), 3321 "/" halaman default IIS, 3571 "/" halaman kosong.
     for (const [kode, jalur] of [
-      ['1871', '/pendaftaran'],
+      ['1871', '/pelayanan/auth'],
       ['3321', '/Siap_Om'],
       ['3571', '/sakti'],
     ] as const) {
@@ -362,8 +362,12 @@ describe('setiap layanan adminduk × wilayah berportal web mendapat rute Browser
     for (const kode of prioritasWeb)
       for (const jenis of ADMINDUK) {
         const r = rutePendamping({ jenis, kodeKabKota: kode });
-        expect(r.jalur, `${jenis} × ${kode}`).not.toBe('dipandu');
-        if (r.jalur === 'dipandu') continue;
+        if (r.jalur === 'dipandu') {
+          // Satu-satunya dipandu yang sah di daerah aktif: layanan memang tidak ada online di portal (peta, ADR 0034).
+          expect(r.sebab, `${jenis} × ${kode}`).toBe('offline_portal');
+          expect(tierUrusan({ jenis, kodeKabKota: kode }), `${jenis} × ${kode}`).toBe('dipandu');
+          continue;
+        }
         if (r.jalur === 'generik') {
           expect(r.origin, `${jenis} × ${kode}`).toBe(portalWebWilayah(kode)!.origin);
           expect(r.params, `${jenis} × ${kode}`).toMatchObject({ jenis, kode });
@@ -377,15 +381,22 @@ describe('setiap layanan adminduk × wilayah berportal web mendapat rute Browser
     aturJaringanId(() => true);
     const LAYANAN = ['kelahiran', 'kk', 'pindah', 'kia', 'ktp'];
     const gagal: string[] = [];
+    const offline: string[] = [];
     for (const kode of DAERAH)
       for (const jenis of LAYANAN) {
         const r = rutePendamping({ jenis, kodeKabKota: kode });
         const portal = portalWebWilayah(kode);
+        if (r.jalur === 'dipandu' && r.sebab === 'offline_portal') {
+          offline.push(`${jenis} × ${kode}`);
+          continue;
+        }
         if (r.jalur === 'dipandu' || !portal || new URL(r.origin).host !== new URL(portal.origin).host)
           gagal.push(`${jenis} × ${kode}: ${r.jalur === 'dipandu' ? r.alasan : r.origin}`);
         else expect(rencanaUrusan(jenis, { ktp: kode })?.pendamping, `${jenis} × ${kode}`).toBeDefined();
       }
     expect(gagal).toEqual([]);
+    // Sel offline menurut peta portal (tanpa varian disebut warga): dipandu jujur, bukan sesi buntu.
+    expect(offline.sort()).toEqual(['kia × 3578', 'ktp × 1371', 'ktp × 3374', 'pindah × 3573']);
   });
 
   it('QA Wonogiri: cetak ulang KTP-el rusak = Browser Pendamping di Telunjuk Sakti, bukan "belum bisa dibantu"', () => {

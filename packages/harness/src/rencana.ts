@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { ADAPTERS } from '@urusin/adapters';
 import type { EventPayload, UrusanState } from '@urusin/contracts';
-import { getOfficialDomain } from '@urusin/core';
+import { getOfficialDomain, ketersediaanLayanan, type AlternatifOffline } from '@urusin/core';
 import {
   bundelPendamping,
   findBundel,
   namaPendekWilayah,
   routeByKode,
+  varianDisebut,
   wilayahByKode,
 } from '@urusin/registry';
 import { ConflictError, HarnessError } from './errors.js';
@@ -41,7 +42,7 @@ export function majukan(
     publish({
       type: 'state',
       state: ke,
-      tier: tier !== undefined ? tier : tierUrusan(cur),
+      tier: tier !== undefined ? tier : tierUrusan(urusanRute(store, cur)),
       version: cur.version,
       dari,
     });
@@ -65,7 +66,37 @@ export type LangkahTulisPendamping = {
  * wilayah di luar `DAERAH_PENDAMPING_AKTIF` (ADR 0033), Browser Pendamping-nya sedang dikembangkan.
  */
 export type RutePendamping =
-  LangkahTulisPendamping | { jalur: 'dipandu'; alasan: string; sebab?: 'jaringan_id' | 'pengembangan' };
+  | LangkahTulisPendamping
+  | { jalur: 'dipandu'; alasan: string; sebab?: 'jaringan_id' | 'pengembangan' }
+  | {
+      jalur: 'dipandu';
+      alasan: string;
+      /**
+       * Peta portal (ADR 0034): layanan/varian ini tidak bisa diajukan online di portal daerah aktif. `alternatif`
+       * = jalur resmi yang benar (loket/TPDK, aplikasi lain), bukan Browser Pendamping.
+       */
+      sebab: 'offline_portal';
+      offline: { alasan: string; alternatif: AlternatifOffline };
+    };
+
+/** Urusan untuk keputusan rute: jenis, wilayah KTP, dan varian layanan yang disebut warga (bila ada). */
+export type UrusanRute = Pick<UrusanRow, 'jenis' | 'kodeKabKota'> & { varian?: string | undefined };
+
+/** Varian layanan yang disebut warga di urusan ini (pesan warga terbaru yang menyebut varian menentukan). */
+export function varianUrusan(store: HarnessStore, u: Pick<UrusanRow, 'id' | 'jenis'>): string | undefined {
+  return u.jenis ? varianDisebut(u.jenis, store.pesanWarga(u.id)) : undefined;
+}
+
+/** Urusan + varian dari pesan warga: masukan `rutePendamping` yang sama di kartu, catatan state, dan persetujuan. */
+export function urusanRute(store: HarnessStore, u: UrusanRow): UrusanRute {
+  const varian = varianUrusan(store, u);
+  return { jenis: u.jenis, kodeKabKota: u.kodeKabKota, ...(varian ? { varian } : {}) };
+}
+
+/** Kalimat jujur untuk warga: layanan ini tidak online di portal daerah, lalu jalur resmi yang benar. */
+export function kalimatOfflinePortal(o: { alasan: string; alternatif: AlternatifOffline }): string {
+  return `${o.alasan} ${o.alternatif.teks} Browser Pendamping tidak dibuka untuk urusan ini; Urusin memandu langkahnya bersama Anda.`;
+}
 
 /**
  * Ada worker Browser Pendamping berjaringan Indonesia (`region: 'id'`) yang sehat? Dipasang web (hooks.server) dengan
@@ -126,7 +157,7 @@ function langkahAdapter(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): LangkahTul
  * WILAYAH_BELUM_DITETAPKAN tetap berlaku di tool rencana). Portal `id-only` hanya ditawarkan bila ada worker
  * berjaringan Indonesia yang sehat (`aturJaringanId`); selain itu dipandu dengan `sebab: 'jaringan_id'`.
  */
-export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): RutePendamping {
+export function rutePendamping(u: UrusanRute): RutePendamping {
   const kode = u.kodeKabKota && /^\d{4}$/.test(u.kodeKabKota) ? u.kodeKabKota : null;
   // Layanan non-adminduk (Samsat, bansos, LAPOR!) tidak lewat Disdukcapil: alasan portal Dukcapil tidak berlaku.
   if (!kode || (u.jenis && !ADMINDUK.has(u.jenis))) return { jalur: 'dipandu', alasan: alasanDipandu(null) };
@@ -135,7 +166,18 @@ export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): Rut
   // Pendamping hanya di daerah yang dijamin (ADR 0033); daerah lain dipandu, Pendamping-nya "sedang dikembangkan".
   if (!pendampingAktif(kode))
     return { jalur: 'dipandu', alasan: alasanDipandu(kode, nama), sebab: 'pengembangan' };
-  const r = ruteDasar(u.jenis, kode, nama);
+  // Peta portal (ADR 0034): layanan/varian yang tidak ada online di portal daerah ini tidak membuka Pendamping.
+  const peta = ketersediaanLayanan(kode, u.jenis, u.varian);
+  if (peta.dipetakan && !peta.online) {
+    const offline = { alasan: peta.alasan, alternatif: peta.alternatif };
+    return {
+      jalur: 'dipandu',
+      alasan: `Rencana disetujui. ${kalimatOfflinePortal(offline)}`,
+      sebab: 'offline_portal',
+      offline,
+    };
+  }
+  const r = ruteDasar(u.jenis, kode, nama, peta.dipetakan ? peta.jalurMasuk : undefined);
   if (r.jalur !== 'dipandu' && hanyaJaringanId(r.origin) && !jaringanIdSiap())
     return {
       jalur: 'dipandu',
@@ -145,7 +187,13 @@ export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): Rut
   return r;
 }
 
-function ruteDasar(jenis: UrusanRow['jenis'], kode: string, nama: string | undefined): RutePendamping {
+function ruteDasar(
+  jenis: UrusanRow['jenis'],
+  kode: string,
+  nama: string | undefined,
+  /** Jalur awal sesi dari peta portal (langsung ke halaman masuk/formulir layanan), bila dipetakan. */
+  jalurPeta?: string,
+): RutePendamping {
   const adapter = langkahAdapter({ jenis, kodeKabKota: kode });
   if (adapter) return adapter;
   // Peristiwa Hidup atau layanan adminduk umum (KTP-el, KK, KIA, akta): semuanya punya bundel tujuan Navigator.
@@ -158,7 +206,7 @@ function ruteDasar(jenis: UrusanRow['jenis'], kode: string, nama: string | undef
       flowId: bundel.slug,
       // Jalur masuk portal (mis. `/Siap_Om`, `/login`). Host sesi tidak dikirim: worker memakai bawaan wilayah
       // `kode` (host portal + platform + host tantangan sesuai proteksi portal), satu sumber dengan registry.
-      params: { jenis: bundel.slug, kode, jalur: new URL(portal.url).pathname },
+      params: { jenis: bundel.slug, kode, jalur: jalurPeta ?? new URL(portal.url).pathname },
       origin: portal.origin,
       nama: `Ajukan ${bundel.frasa} di portal resmi Disdukcapil ${nama ?? portal.nama}`,
     };
@@ -178,14 +226,14 @@ export function keteranganPendamping(r: LangkahTulisPendamping): string {
  * (adapter atau Navigator generik, lihat `rutePendamping`). Jenis belum diketahui: tier registry kota.
  */
 export function tierUrusan(
-  u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>,
+  u: UrusanRute,
   /** Rute yang sudah diputuskan untuk urusan ini (supaya tier dan tindakan dari satu keputusan yang sama). */
   rute?: RutePendamping,
 ): 'semi' | 'dipandu' | null {
   const kode = u.kodeKabKota && /^\d{4}$/.test(u.kodeKabKota) ? u.kodeKabKota : null;
   if (!kode) return null;
   if (!u.jenis) return routeByKode(kode).entry.tier;
-  return (rute ?? rutePendamping({ jenis: u.jenis, kodeKabKota: kode })).jalur === 'dipandu'
+  return (rute ?? rutePendamping({ jenis: u.jenis, kodeKabKota: kode, varian: u.varian })).jalur === 'dipandu'
     ? 'dipandu'
     : 'semi';
 }
@@ -197,16 +245,14 @@ export function tierUrusan(
 export function tierEksekusi(store: HarnessStore, u: UrusanRow): 'semi' | 'dipandu' | null {
   const p = store.eventsOfType(u.id, 'state', 1)[0]?.payload;
   const t = p !== null && typeof p === 'object' && 'tier' in p ? p.tier : undefined;
-  return t === 'semi' || t === 'dipandu' || t === null ? t : tierUrusan(u);
+  return t === 'semi' || t === 'dipandu' || t === null ? t : tierUrusan(urusanRute(store, u));
 }
 
 /**
  * Langkah rencana yang bisa dikerjakan Browser Pendamping untuk urusan ini (adapter atau Navigator generik),
  * atau undefined bila dipandu.
  */
-export function langkahPendamping(
-  u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>,
-): LangkahTulisPendamping | undefined {
+export function langkahPendamping(u: UrusanRute): LangkahTulisPendamping | undefined {
   const r = rutePendamping(u);
   return r.jalur === 'dipandu' ? undefined : r;
 }
@@ -232,7 +278,7 @@ export function setujuiRencana(
   if (belum) throw new HarnessError('WILAYAH_BELUM_DITETAPKAN', belum, 409);
   // Satu keputusan rute untuk seluruh persetujuan: tier di event state dan tindakan tidak bisa berbeda walau
   // kesehatan worker berjaringan Indonesia berubah di tengah jalan.
-  const jalan = rutePendamping(u);
+  const jalan = rutePendamping(urusanRute(store, u));
   const tier = tierUrusan(u, jalan);
   let cur = majukan(store, u, ['RENCANA_DISETUJUI'], publish, tier);
   if (jalan.jalur === 'dipandu') {

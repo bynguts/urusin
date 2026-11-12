@@ -43,8 +43,21 @@ describe('adapter bawaan', () => {
           kind: 'elementExists',
           target: [css('input[type="password"]'), { by: 'name', value: 'password' }],
         },
-        message: 'Giliran Anda: ketik kata sandi dan kode CAPTCHA, lalu tekan Masuk.',
+        message: 'Giliran Anda: ketik kata sandi dan kode CAPTCHA, lalu tekan Login.',
       },
+    });
+    // Portal asli (peta 2026-11-12, pohon aksesibilitas): tombol `input[name=loginSubmit]` tanpa id bernama "Login";
+    // sorotan dan perlindungan khusus-warga harus mengenainya, bukan hanya `#loginSubmit`/"Masuk" milik replika.
+    const login = steps.find((s) => s.op === 'gate.human');
+    expect(login?.op === 'gate.human' && login.highlight).toEqual(
+      expect.arrayContaining([byName('loginSubmit'), byRole('button', 'Login')]),
+    );
+    expect(humanOnlyTargets(steps)[0]).toEqual(expect.arrayContaining([byRole('button', 'Login')]));
+    // Verifikasi unggah: penanda replika dulu, lalu cadangan untuk DOM portal asli yang belum teramati.
+    const unggah = steps.find((s) => s.op === 'click' && s.effect === 'write');
+    expect(unggah?.op === 'click' && unggah.verify).toEqual({
+      kind: 'countIncreased',
+      target: [css('.uploaded-item'), css('table tbody tr'), css('img[src*="upload" i]')],
     });
     // Giliran kirim menyebut tombol yang ada di halaman ("Selesai"); tanpa tombol itu teksnya netral.
     expect(steps[finalGateIndex(steps)]).toMatchObject({

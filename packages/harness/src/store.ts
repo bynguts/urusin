@@ -359,6 +359,19 @@ export class HarnessStore {
       .run(now, now).changes;
   }
 
+  /**
+   * Teks pesan warga urusan ini, terlama ke terbaru, termasuk turn yang sedang berjalan (untuk varian layanan yang
+   * disebut warga; tidak pernah dikirim ke model dari sini).
+   */
+  pesanWarga(urusanId: string, maks = 12): string[] {
+    const rows = this.db
+      .prepare('SELECT user_text FROM turns WHERE urusan_id = ? ORDER BY seq DESC LIMIT ?')
+      .all(urusanId, maks) as { user_text: string | null }[];
+    return rows
+      .reverse()
+      .flatMap((r) => (typeof r.user_text === 'string' && r.user_text ? [r.user_text] : []));
+  }
+
   /** Riwayat percakapan (pesan pengguna + pesan turn) untuk `maxTurns` turn terakhir yang selesai. */
   loadHistory(urusanId: string, maxTurns = 12): ChatMessage[] {
     const rows = this.db

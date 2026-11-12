@@ -483,6 +483,29 @@ function disebut(re: RegExp, teks: string): boolean {
   return false;
 }
 
+/** Varian yang disebut di pesan TERBARU yang menyebut varian mana pun (kosong = belum disebut). */
+function varianCocok(slug: string, pesanWarga: readonly string[]): readonly VarianLayanan[] {
+  const varian = VARIAN_LAYANAN[slug] ?? [];
+  let cocok: readonly VarianLayanan[] = [];
+  for (let i = pesanWarga.length - 1; i >= 0 && cocok.length === 0; i--)
+    cocok = varian.filter((v) => disebut(v.kataKunci, pesanWarga[i] ?? ''));
+  return cocok;
+}
+
+/**
+ * Id varian layanan (`VARIAN_LAYANAN`) yang disebut warga untuk jenis urusan ini, hanya bila tepat SATU (pesan
+ * terbaru yang menyebut varian menentukan). Belum disebut atau lebih dari satu = undefined (tidak menebak).
+ */
+export function varianDisebut(
+  jenis: string | null | undefined,
+  pesanWarga: readonly string[] = [],
+): string | undefined {
+  const b = jenis ? bundelPendamping(jenis) : undefined;
+  if (!b) return undefined;
+  const cocok = varianCocok(b.slug, pesanWarga);
+  return cocok.length === 1 ? cocok[0]!.id : undefined;
+}
+
 const SERAHKAN = 'bila portal meminta konfirmasi jenis layanan, serahkan ke warga';
 
 /**
@@ -499,9 +522,7 @@ export function tujuanPendamping(
   if (!b) return `Layanan kependudukan; ${SERAHKAN}`;
   const varian = VARIAN_LAYANAN[b.slug] ?? [];
   if (varian.length === 0) return `${b.judul}; ${SERAHKAN}`;
-  let cocok: readonly VarianLayanan[] = [];
-  for (let i = pesanWarga.length - 1; i >= 0 && cocok.length === 0; i--)
-    cocok = varian.filter((v) => disebut(v.kataKunci, pesanWarga[i] ?? ''));
+  const cocok = varianCocok(b.slug, pesanWarga);
   if (cocok.length === 1) return `${b.judul}: ${cocok[0]!.judul}; ${SERAHKAN}`;
   const daftar = (cocok.length > 1 ? cocok : varian).map((x) => x.judul).join('; ');
   const ket =
