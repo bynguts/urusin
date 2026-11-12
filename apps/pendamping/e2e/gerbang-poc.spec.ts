@@ -626,7 +626,31 @@ test('F5 + N7: centang pernyataan/non-data ditolak; halaman berpernyataan = kunc
   }
 });
 
-test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka formulir, Lanjutkan = ai', async () => {
+test('QA gel6 tautan pembuka: AI membuka sendiri lewat GET di host yang sama, tanpa klik handler halaman', async () => {
+  const { manager, o, p } = await sesi(situs, '/beranda', 'beranda-ai');
+  try {
+    const pembuka = satu(p, 'Ajukan Permohonan Kartu Keluarga');
+    expect(pembuka).toMatchObject({ peran: 'tautan', kelas: 'kirim', tautanPembuka: true });
+    const klik = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'klik', ref: pembuka.ref }],
+    });
+    expect(klik.hasil[0]).toMatchObject({ indeks: 0, kode: 'ok' });
+    await expect.poll(() => situs.hitung('/permohonan/kk'), { timeout: 10_000 }).toBe(1);
+    expect(situs.hitung('/permohonan/12/ajukan')).toBe(0);
+    expect(manager.status(o).mode).toBe('ai');
+    expect((await manager.amati(o)).pengamatan.jalur).toBe('/permohonan/kk');
+    expect(manager.kurasJejak(o).catatan).toContainEqual(
+      expect.objectContaining({ jenis: 'klik', kelas: 'kirim', fitur: ['tautanPembuka', 'navigasiGet'] }),
+    );
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('tautan pembuka: serah ketuk_tautan, ketukan warga membuka formulir, Lanjutkan = ai', async () => {
   const { manager, o, sesiId, p } = await sesi(situs, '/beranda', 'beranda');
   const events: PendampingEvent[] = [];
   await manager.attach(sesiId, {
@@ -639,14 +663,7 @@ test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka form
     const pembuka = satu(p, 'Ajukan Permohonan Kartu Keluarga');
     expect(pembuka).toMatchObject({ peran: 'tautan', kelas: 'kirim', tautanPembuka: true });
     expect(satu(p, 'Ajukan Sekarang')).not.toHaveProperty('tautanPembuka');
-    const klik = await manager.aksi(o, {
-      ...o,
-      rencanaHash: H,
-      seq: p.seq,
-      aksi: [{ jenis: 'klik', ref: pembuka.ref }],
-    });
-    expect(klik.hasil).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK', kelas: 'kirim' }]);
-    expect(situs.hitung('/permohonan/kk')).toBe(0);
+    const awal = situs.hitung('/permohonan/kk');
 
     await manager.aksi(o, {
       ...o,
@@ -669,7 +686,7 @@ test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka form
     });
     expect(manager.status(o).mode).toBe('takeover');
     await new Promise((r) => setTimeout(r, 300));
-    expect(situs.hitung('/permohonan/kk')).toBe(0);
+    expect(situs.hitung('/permohonan/kk')).toBe(awal);
 
     const sorot = giliran()!.sorot!;
     for (const aksi of ['down', 'up'] as const)
@@ -682,7 +699,7 @@ test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka form
         tombol: 'left',
         klik: 1,
       });
-    await expect.poll(() => situs.hitung('/permohonan/kk'), { timeout: 10_000 }).toBe(1);
+    await expect.poll(() => situs.hitung('/permohonan/kk'), { timeout: 10_000 }).toBe(awal + 1);
     expect(situs.hitung('/permohonan/12/ajukan')).toBe(0);
 
     await manager.handleClient(sesiId, { type: 'kembalikan' });
