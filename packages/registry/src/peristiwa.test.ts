@@ -8,7 +8,25 @@ import {
   bundelPendamping,
   findBundel,
   tujuanPendamping,
+  varianDisebut,
 } from './peristiwa.js';
+
+describe('varianDisebut', () => {
+  it('jenis kosong atau tak dikenal = undefined', () => {
+    expect(varianDisebut(undefined, ['ktp hilang'])).toBeUndefined();
+    expect(varianDisebut('bukan-jenis', ['ktp hilang'])).toBeUndefined();
+    expect(varianDisebut('ktp')).toBeUndefined();
+  });
+  it('tepat satu varian disebut = id varian; pesan terbaru menentukan', () => {
+    expect(varianDisebut('ktp', ['ktp saya hilang kemarin'])).toBe('hilang');
+    expect(varianDisebut('ktp', ['ktp saya hilang', 'eh ternyata cuma rusak'])).toBe('rusak');
+  });
+  it('lebih dari satu atau tidak ada varian = undefined (tidak menebak)', () => {
+    expect(varianDisebut('ktp', ['ktp rusak dan juga hilang'])).toBeUndefined();
+    expect(varianDisebut('ktp', ['mau urus ktp'])).toBeUndefined();
+    expect(varianDisebut('ktp', ['ktp saya tidak hilang'])).toBeUndefined();
+  });
+});
 
 describe('PERISTIWA_BUNDEL', () => {
   it('empat bundel dengan slug yang dipakai beranda web', () => {
