@@ -102,6 +102,7 @@ const URUSAN_LAIN: readonly [string, RegExp][] = [
   ],
   ['perceraian', /\b(cerai|perceraian|bercerai)\b/i],
   ['kelahiran', /\b(akta\s+(kelahiran|lahir)|kelahiran)\b/i],
+  ['kk', /\b(ganti|ubah|perbarui|update|tambah\w*)\s+(\S+\s+)?(kk|kartu keluarga)\b/i],
   ['akta', /\bakta\b(?!\s+(kelahiran|lahir|kematian|nikah|perkawinan|cerai|perceraian))/i],
 ];
 
@@ -118,7 +119,7 @@ const MINTA_URUS =
 
 /** Penanda risiko: jalan pintas, pemalsuan, atau data yang diubah; selalu ditanggapi model (menolak/menjelaskan). */
 const RISIKO =
-  /\b(dituakan|dituain|dimudakan|dimudain|tua(kan|in)|muda(kan|in)|orang\s+dalam|calo|palsu\w*|memalsu\w*|dipalsu\w*|tanpa\s+syarat|nembak|ditembak|pelicin|sogok\w*|suap\w*|joki|ngarang|mengarang|rekayasa\w*|manipulasi\w*|umur(nya)?\s+(di)?(ubah|ganti|naikkan|turunkan)|bayar\w*(\s+\S+){0,3}\s+(biar|supaya|agar)\s+(cepat|cepet|kilat|langsung))\b/i;
+  /\b(dituakan|dituain|dimudakan|dimudain|tua(kan|in)|muda(kan|in)|orang\s+dalam|calo|palsu\w*|memalsu\w*|dipalsu\w*|tanpa\s+syarat|nembak|ditembak|pelicin|sogok\w*|suap\w*|joki|ngarang|mengarang|rekayasa\w*|manipulasi\w*|umur(nya)?\s+(di)?(ubah|ganti|naikkan|turunkan)|bayar\w*(\s+\S+){0,3}\s+(biar|supaya|agar)\s+(cepat|cepet|kilat|langsung)|atas\s+nama\s+orang\s+lain|nik\s+(orang\s+lain|lain)|data\s+orang\s+lain|ktp\s+(ganda|dobel|kedua)|dimundur\w*|tanggal\s+mundur|backdate|bisa\s+diatur|(di)?atur\s+aja|abaikan\s+(instruksi|aturan))\b/i;
 
 /** Tindak lanjut pengajuan yang sedang berjalan (cek status), walau tanpa kata "status". */
 const TINDAK_LANJUT =

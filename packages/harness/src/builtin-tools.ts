@@ -347,6 +347,7 @@ function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?
   }
   const rencana = chunkRencana(ctx).map((c) => c.text);
   return {
+    handoff: true,
     content: [
       `Hand-off ke kanal resmi yang sama (${h.kanal.map((k) => k.url ?? k.nama).join(', ')}) SUDAH diberikan sebelumnya: JANGAN ulangi kanal itu dan jangan mengulang jawaban tadi.`,
       rencana.length > 0

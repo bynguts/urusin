@@ -206,7 +206,13 @@ export function wilayahDariPesan(teks: string): { kode: string; ktp: boolean } |
  * ditetapkan, agen yang menanyakan/memastikannya (wilayah__tetapkan atas jawaban warga).
  */
 export function tujuanDariPesan(teks: string): string | null {
-  if (!/\bpindah\s+(domisili\s+)?(dari\s+[^.?!\n]{1,60}?\s+)?ke\s+\S/i.test(teks)) return null;
+  // Rentang "pindah ... ke <nama kab/kota>" dalam satu klausa; kab/kota di luar rentang ini (mis. "pindah ke rumah
+  // baru… Minggu depan saya ke Kabupaten Sleman") bukan tujuan pindah.
+  const rentang =
+    /\bpindah\s+(domisili\s+)?(dari\s+[^.?!\n…,;]{1,60}?\s+)?ke\s+((kota|kabupaten|kab\.?)\s+)?(administrasi\s+)?[^\s.?!\n…,;]+(\s+[^\s.?!\n…,;]+){0,2}/i.exec(
+      teks,
+    )?.[0];
+  if (!rentang) return null;
   if (
     /\b(mungkin|belum\s+(tahu|tau|pasti|yakin)|rencana\w*|kayaknya|sepertinya|antara|atau|bisa\s+jadi|masih\s+bingung)\b/i.test(
       teks,
@@ -215,7 +221,7 @@ export function tujuanDariPesan(teks: string): string | null {
     return null;
   const ke = [
     ...new Set(
-      temukanWilayah(teks)
+      temukanWilayah(rentang)
         .filter((s) => s.sebelum === 'ke')
         .map((s) => s.wilayah.kodeKabKota),
     ),
