@@ -10,6 +10,7 @@ import {
 } from './klasifikasi.js';
 import type {
   ElemenAmatan,
+  IsyaratKolom,
   Pengamatan,
   PeranElemen as PeranElemenKontrak,
   SinyalHalaman,
@@ -309,6 +310,67 @@ export function namaAksesibel(el: Element): { nama: string; dariPlaceholder: boo
   return { nama: n, dariPlaceholder: false };
 }
 
+const AUTOCOMPLETE: Readonly<Record<string, IsyaratKolom>> = {
+  tel: 'tel',
+  'tel-national': 'tel',
+  'tel-local': 'tel',
+  mobile: 'tel',
+  email: 'email',
+  bday: 'tanggal_lahir',
+  name: 'nama',
+  'given-name': 'nama',
+  'family-name': 'nama',
+  'street-address': 'alamat',
+  'address-line1': 'alamat',
+  'postal-code': 'kode_pos',
+};
+
+/** Token `name`/`id` (snake, kebab, camel) -> isyarat. Hanya token utuh; "username" bukan "name". */
+const TOKEN_ISYARAT: readonly [RegExp, IsyaratKolom][] = [
+  [/^(no|nomor)?(hp|telp|telepon|tlp|handphone|ponsel|wa|whatsapp|phone|mobile|msisdn)$/, 'tel'],
+  [/^(e?mail|surel)$/, 'email'],
+  [/^(tgl|tanggal)lahir$|^(birth|dob|bday)(date)?$|^tanggallahir$/, 'tanggal_lahir'],
+  [/^(kodepos|postal(code)?|zip(code)?)$/, 'kode_pos'],
+  [/^(alamat|address)$/, 'alamat'],
+  [/^(nama(lengkap)?|fullname|name)$/, 'nama'],
+];
+
+/**
+ * Jenis data kolom dari atribut terstruktur: `autocomplete` (token terakhir), `type` (tel/email), lalu `name`/`id`.
+ * Nilai situs tidak pernah keluar dari fungsi ini; hanya enum.
+ */
+export function isyaratDari(el: Element): IsyaratKolom | undefined {
+  if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return undefined;
+  const ac = (el.getAttribute('autocomplete') ?? '').trim().toLowerCase().split(/\s+/).at(-1) ?? '';
+  const dariAc = Object.hasOwn(AUTOCOMPLETE, ac)
+    ? AUTOCOMPLETE[ac]
+    : /^bday-/.test(ac)
+      ? 'tanggal_lahir'
+      : /^address-line\d$/.test(ac)
+        ? 'alamat'
+        : undefined;
+  if (dariAc) return dariAc;
+  const tipe = tipeInput(el);
+  if (tipe === 'tel') return 'tel';
+  if (tipe === 'email') return 'email';
+  for (const atr of [el.getAttribute('name'), el.id]) {
+    if (!atr) continue;
+    // "no_hp" -> "nohp", "tglLahir" -> "tgllahir", "user[phone]" -> "phone": gabungan token per segmen.
+    const segmen = atr
+      .replace(/([a-z])([A-Z])/g, '$1_$2')
+      .toLowerCase()
+      .split(/[[\]]+/)
+      .filter(Boolean);
+    for (const s of segmen) {
+      const utuh = s.replace(/[^a-z0-9]+/g, '');
+      const token = s.split(/[^a-z0-9]+/).filter(Boolean);
+      for (const [re, isyarat] of TOKEN_ISYARAT)
+        if (re.test(utuh) || token.some((t) => re.test(t))) return isyarat;
+    }
+  }
+  return undefined;
+}
+
 function wajibDari(el: Element): boolean {
   if (el.hasAttribute('required') || el.getAttribute('aria-required') === 'true') return true;
   return /\*\s*$/.test(labelUntuk(el).trim());
@@ -575,6 +637,8 @@ export function bangunPengamatan(doc: Document, opsi: OpsiAmati): HasilAmati {
         e.tautanPembuka = true;
     } else {
       if (c.grup ? c.grup.some((r) => wajibDari(r)) : wajibDari(el)) e.wajib = true;
+      const isyarat = c.grup ? undefined : isyaratDari(el);
+      if (isyarat) e.isyarat = isyarat;
       const terlarang = terlarangDari(el, nama, petunjuk);
       if (terlarang) {
         e.terlarang = terlarang;

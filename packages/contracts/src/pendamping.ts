@@ -232,6 +232,14 @@ export type PeranElemen = z.infer<typeof PeranElemenSchema>;
 export const TerlarangSchema = z.enum(['sandi', 'otp', 'captcha', 'pernyataan']);
 export type Terlarang = z.infer<typeof TerlarangSchema>;
 
+/**
+ * Isyarat jenis data kolom dari atribut halaman yang terstruktur (bukan teks bebas): `autocomplete`, `type`, lalu
+ * token `name`/`id`. Hanya enum, jadi tidak membawa teks situs ke model. Dipakai validator untuk menilai kecocokan
+ * kolom dengan data (mis. kolom `type=tel` berlabel "Kontak" lazim untuk Nomor HP). Tidak pernah untuk NIK/KK.
+ */
+export const IsyaratKolomSchema = z.enum(['tel', 'email', 'tanggal_lahir', 'nama', 'alamat', 'kode_pos']);
+export type IsyaratKolom = z.infer<typeof IsyaratKolomSchema>;
+
 /** Keadaan isian kolom: tidak pernah nilai mentah, hanya keadaan atau placeholder vault yang diisi worker. */
 export const IsianElemenSchema = z.union([
   z.enum(['kosong', 'terisi_situs', 'terisi_warga']),
@@ -250,6 +258,8 @@ export const ElemenAmatanSchema = z.object({
   /** Hanya tombol/tautan: kelas dari klasifikator deterministik. */
   kelas: KelasKendaliSchema.optional(),
   terlarang: TerlarangSchema.optional(),
+  /** (aditif) Hanya kolom isian: jenis data menurut atribut terstruktur halaman (lihat IsyaratKolomSchema). */
+  isyarat: IsyaratKolomSchema.optional(),
   /**
    * Tautan GET berkelas `kirim` HANYA karena namanya (mis. "Ajukan Permohonan"): jalur, id/kelas, dan ikon
    * bersih. Kemungkinan pembuka formulir, tetapi tetap TIDAK boleh diklik AI: serahkan ke warga untuk diketuk

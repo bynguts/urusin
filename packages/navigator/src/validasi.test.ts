@@ -199,6 +199,52 @@ describe('validator rencana: rencana sah', () => {
     expect(kelaziman('{{PEMOHON.NAMA}}', { peran: 'teks', nama: 'Kata kunci pencarian' })).toBe('samar');
   });
 
+  it('Nomor HP: placeholder 0819xxxx, label HP/telepon/WhatsApp, type/autocomplete tel = lazim (QA Bandar Lampung)', () => {
+    const hp = '{{PEMOHON.HP}}';
+    for (const e of [
+      { peran: 'teks' as const, nama: 'No. HP', petunjuk: '0819xxxxxxxx' },
+      { peran: 'teks' as const, nama: 'Nomor Telepon' },
+      { peran: 'teks' as const, nama: 'WhatsApp' },
+      { peran: 'teks' as const, nama: 'No. Seluler' },
+      // Label samar, tetapi placeholder berformat nomor seluler.
+      { peran: 'teks' as const, nama: 'Kontak', petunjuk: '0819xxxxxxxx' },
+      { peran: 'teks' as const, nama: '0819xxxxxxxx' },
+      { peran: 'angka' as const, nama: 'Nomor', petunjuk: '+62 812-3456-7890' }, // pii-scan:allow contoh format sintetis
+      // Label samar, tetapi atribut terstruktur kolom (type=tel / autocomplete=tel / name=no_hp).
+      { peran: 'teks' as const, nama: 'Kontak', isyarat: 'tel' as const },
+    ])
+      expect(kelaziman(hp, e), JSON.stringify(e)).toBe('lazim');
+    const v = validasiRencana(rencana({ jenis: 'isi', ref: 'e20', nilai: hp }), {
+      ...halamanForm(),
+      elemen: [
+        ...halamanForm().elemen,
+        { ref: 'e20', peran: 'teks', nama: 'Nomor Kontak', petunjuk: '0819xxxxxxxx' },
+      ],
+    });
+    expect(v.ok && v.kolom).toEqual([{ placeholder: hp, labelPortal: 'Nomor Kontak' }]);
+  });
+
+  it('peringatan tetap muncul bila memang meragukan', () => {
+    const hp = '{{PEMOHON.HP}}';
+    // Nomor HP ke kolom "Nama Ibu" (name=nama_ibu): samar, baris ditandai tidakLazim.
+    expect(kelaziman(hp, { peran: 'teks', nama: 'Nama Ibu', isyarat: 'nama' })).toBe('samar');
+    expect(kelaziman(hp, { peran: 'teks', nama: 'Nama Ibu' })).toBe('samar');
+    // Isyarat jenis lain tidak membuat HP lazim; angka acak bukan contoh nomor seluler.
+    expect(kelaziman(hp, { peran: 'teks', nama: 'Kontak', isyarat: 'email' })).toBe('samar');
+    expect(kelaziman(hp, { peran: 'teks', nama: 'Nomor Rekening', petunjuk: '1234567890' })).toBe('samar');
+    // Email: contoh format / isyarat.
+    expect(
+      kelaziman('{{PEMOHON.EMAIL}}', { peran: 'teks', nama: 'Kontak', petunjuk: 'nama@contoh.com' }), // pii-scan:allow contoh sintetis
+    ).toBe('lazim');
+    // Data sensitif tidak pernah lazim lewat isyarat atau contoh format.
+    expect(kelaziman('{{PEMOHON.NIK}}', { peran: 'teks', nama: 'Kontak', isyarat: 'tel' })).toBe('asing');
+    const v = validasiRencana(rencana({ jenis: 'isi', ref: 'e20', nilai: hp }), {
+      ...halamanForm(),
+      elemen: [...halamanForm().elemen, { ref: 'e20', peran: 'teks', nama: 'Nama Ibu', isyarat: 'nama' }],
+    });
+    expect(v.ok && v.kolom).toEqual([{ placeholder: hp, labelPortal: 'Nama Ibu', tidakLazim: true }]);
+  });
+
   it('homoglif pada label NIK tidak pernah dianggap lazim (default tolak)', () => {
     const e = { peran: 'teks' as const, nama: 'NІK' /* І Kiril */ };
     expect(kelaziman('{{PEMOHON.NIK}}', e)).toBe('asing');
