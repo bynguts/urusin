@@ -231,6 +231,17 @@ describe('kendaliAkun (QA prod gel6: beranda pintu akun)', () => {
     expect(r.keluar).toBe(false);
     expect(kendaliAkun([el('e8', 'Login / Register', 'kirim')]).masuk?.ref).toBe('e8');
     expect(kendaliAkun([el('e5', 'DAFTAR AKUN', 'kirim'), el('e4', 'LOGIN')]).masuk?.ref).toBe('e4');
+    // Semarang (Si D'nOK): "Pendaftaran Baru" = daftar akun; "Perpindahan Keluar" (layanan) bukan kendali akun.
+    const sidnok = kendaliAkun([
+      el('e8', 'Pendaftaran Baru', 'kirim'),
+      el('e9', 'Login'),
+      el('e14', 'Perpindahan Keluar PERPINDAHAN KELUAR', 'kirim'),
+    ]);
+    expect(sidnok).toEqual({
+      masuk: expect.objectContaining({ ref: 'e9' }),
+      daftar: expect.objectContaining({ ref: 'e8' }),
+      keluar: false,
+    });
   });
 
   it('nama campuran, tersembunyi, atau panjang bukan kendali akun; Keluar/Logout = sesi aktif', () => {

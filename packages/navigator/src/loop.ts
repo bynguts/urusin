@@ -737,11 +737,12 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       if (habis) return await serahkanAkhir(habis, p.seq);
 
       // Giliran warga yang pasti (tanpa LLM).
-      // Formulir masuk ber-CAPTCHA = giliran masuk akun (pesannya menyebut kode keamanan), bukan "CAPTCHA" saja.
-      const giliran: AlasanAmbilAlih | null = p.sinyal.tantangan
-        ? 'captcha'
-        : p.sinyal.login
-          ? 'masuk_akun'
+      // Formulir masuk ber-CAPTCHA/verifikasi situs = giliran masuk akun (pesannya menyebut kode/verifikasi
+      // keamanan), bukan "CAPTCHA" saja (QA prod gel6 Medan: formulir masuk dengan widget verifikasi).
+      const giliran: AlasanAmbilAlih | null = p.sinyal.login
+        ? 'masuk_akun'
+        : p.sinyal.tantangan
+          ? 'captcha'
           : p.sinyal.captcha
             ? 'captcha'
             : p.sinyal.otp

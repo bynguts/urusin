@@ -1042,6 +1042,18 @@ describe('QA prod gel6: giliran cepat di beranda pintu akun, tanpa diam lama', (
     expect(jejak).toContainEqual(expect.objectContaining({ jenis: 'rencana', model: 'aturan:pintu_akun' }));
   });
 
+  it('Medan: formulir masuk dengan widget verifikasi situs = giliran masuk akun, bukan CAPTCHA saja', async () => {
+    const worker = new WorkerPalsu([
+      masuk({ sinyal: { ...halamanForm().sinyal, login: true, tantangan: true } }),
+    ]);
+    worker.saatSerahkan = () => ({ aksi: 'selesai' });
+    const provider = new ProviderSkrip(() => SERAHKAN_FINAL);
+    const { hasil } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'masuk_akun' });
+    expect(provider.calls).toHaveLength(0);
+    expect(worker.semuaAksi).toEqual([{ jenis: 'serahkan', alasan: 'masuk_akun' }]);
+  });
+
   it('Padang/Banjarmasin: LOGIN didahulukan dari DAFTAR AKUN; "Login / Register" pembuka GET dibuka AI', async () => {
     for (const elemen of [
       [
@@ -1073,6 +1085,32 @@ describe('QA prod gel6: giliran cepat di beranda pintu akun, tanpa diam lama', (
       expect(provider.calls).toHaveLength(0);
       expect(worker.semuaAksi[0]).toEqual({ jenis: 'klik', ref: elemen[0]!.nama === 'LOGIN' ? 'e4' : 'e8' });
     }
+  });
+
+  it('Semarang (Si D\'nOK-like): Login + "Pendaftaran Baru" di antara tautan layanan = AI membuka Login sendiri', async () => {
+    const beranda = halaman({
+      sidik: 'sidnok',
+      jalur: '/',
+      judul: "Pelayanan | Si D'nOK",
+      elemen: [
+        { ref: 'e3', peran: 'tautan', nama: 'Pelayanan', kelas: 'navigasi' },
+        { ref: 'e4', peran: 'tautan', nama: 'Cek Status Pengajuan', kelas: 'navigasi' },
+        { ref: 'e8', peran: 'tautan', nama: 'Pendaftaran Baru', kelas: 'kirim', tautanPembuka: true },
+        { ref: 'e9', peran: 'tautan', nama: 'Login', kelas: 'navigasi' },
+        { ref: 'e13', peran: 'tautan', nama: 'Perubahan Biodata Kartu Keluarga', kelas: 'navigasi' },
+        { ref: 'e14', peran: 'tautan', nama: 'Perpindahan Keluar', kelas: 'kirim', tautanPembuka: true },
+      ],
+    });
+    const worker = new WorkerPalsu([beranda, masuk()]);
+    worker.saatSerahkan = () => ({ aksi: 'selesai' });
+    const provider = new ProviderSkrip(() => SERAHKAN_FINAL);
+    const { hasil } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'masuk_akun' });
+    expect(provider.calls).toHaveLength(0);
+    expect(worker.semuaAksi).toEqual([
+      { jenis: 'klik', ref: 'e9' },
+      { jenis: 'serahkan', alasan: 'masuk_akun' },
+    ]);
   });
 
   it('tombol masuk yang hanya bisa ditekan warga: giliran masuk akun langsung dengan sorotan, tanpa LLM', async () => {
