@@ -10,7 +10,7 @@ import { newId } from './token.js';
  * Vault per pemilik (akun, tamu, atau salinan demo) dengan envelope encryption (ADR 0028):
  * - KEK = HKDF-SHA256(URUSIN_PII_KEY, label `urusin/kek/v1`), terpisah dari kunci HMAC placeholder.
  * - DEK acak 256-bit per pemilik, disimpan TERBUNGKUS (AES-256-GCM dengan KEK) di `user_keys`.
- * - Data Diri (JSON) dan berkas dokumen dienkripsi AES-256-GCM dengan DEK; AAD = versi skema + jenis objek +
+ * - Data Diri (JSON: "Saya" + anggota keluarga, blob versi 2) dan berkas dokumen dienkripsi AES-256-GCM dengan DEK; AAD = versi skema + jenis objek +
  *   pemilik (+ id dokumen), sehingga baris/berkas yang dipindah ke pemilik lain gagal didekripsi.
  * - Ingatan warga (ADR 0031): satu dokumen JSON per pemilik di `vault_ingatan`, DEK yang sama, AAD sendiri.
  * - Crypto-shred: hapus DEK terbungkus → semua ciphertext pemilik itu tidak bisa dibuka lagi.
@@ -65,6 +65,24 @@ export const aad = {
   dokumen: (u: string, d: string) => `${AAD_VERSION}|dokumen|${u}|${d}`,
   judul: (u: string, d: string) => `${AAD_VERSION}|judul|${u}|${d}`,
 };
+
+/** Anggota keluarga di blob Data Diri versi 2 (isi divalidasi pemanggil). */
+export type Anggota = Record<string, unknown> & { id: string };
+
+/** Ketersediaan data per hubungan, tanpa nilai. */
+export type RingkasanData = {
+  dataDiri: boolean;
+  ayah: boolean;
+  ibu: boolean;
+  pasangan: boolean;
+  anak: number;
+  lainnya: number;
+};
+
+/** Versi blob Data Diri dengan data keluarga. */
+const BLOB_VERSI = 2;
+/** Paling banyak anggota keluarga per pemilik (cermin `ANGGOTA_KELUARGA_MAKS` @urusin/contracts). */
+export const ANGGOTA_MAKS = 20;
 
 export type DokumenMeta = {
   id: string;
@@ -198,7 +216,13 @@ export class Vault {
     );
   }
 
-  getDataDiri(userId: string): { data: Record<string, unknown>; updatedAt: string } | null {
+  /**
+   * Blob Data Diri terenkripsi. Versi 2 = `{versi: 2, saya, anggota}` (data keluarga); blob lama (objek Data Diri
+   * polos, tanpa `versi`) dibaca sebagai `saya` tanpa anggota dan menjadi versi 2 pada tulis berikutnya.
+   */
+  private bacaBlob(
+    userId: string,
+  ): { saya: Record<string, unknown>; anggota: Anggota[]; updatedAt: string } | null {
     const row = this.db
       .prepare('SELECT ciphertext, updated_at FROM vault_data_diri WHERE user_id = ?')
       .get(userId) as { ciphertext: Buffer; updated_at: string } | undefined;
@@ -206,13 +230,19 @@ export class Vault {
     const dek = this.dek(userId, false);
     if (!dek) return null;
     const json = open(dek, row.ciphertext, aad.dataDiri(userId)).toString('utf8');
-    return { data: JSON.parse(json) as Record<string, unknown>, updatedAt: row.updated_at };
+    const raw = JSON.parse(json) as Record<string, unknown>;
+    if (raw.versi === BLOB_VERSI && raw.saya !== null && typeof raw.saya === 'object') {
+      const anggota = Array.isArray(raw.anggota) ? (raw.anggota as Anggota[]) : [];
+      return { saya: raw.saya as Record<string, unknown>, anggota, updatedAt: row.updated_at };
+    }
+    return { saya: raw, anggota: [], updatedAt: row.updated_at };
   }
 
-  setDataDiri(userId: string, data: Record<string, unknown>): string {
+  private tulisBlob(userId: string, saya: Record<string, unknown>, anggota: readonly Anggota[]): string {
     const dek = this.dek(userId, true)!;
     const at = this.now().toISOString();
-    const ct = seal(dek, Buffer.from(JSON.stringify(data), 'utf8'), aad.dataDiri(userId));
+    const blob = { versi: BLOB_VERSI, saya, anggota };
+    const ct = seal(dek, Buffer.from(JSON.stringify(blob), 'utf8'), aad.dataDiri(userId));
     this.db
       .prepare(
         `INSERT INTO vault_data_diri (user_id, ciphertext, updated_at) VALUES (?,?,?)
@@ -220,6 +250,72 @@ export class Vault {
       )
       .run(userId, ct, at);
     return at;
+  }
+
+  /** Data Diri "Saya" (pemohon). Anggota keluarga ada di `getKeluarga`. */
+  getDataDiri(userId: string): { data: Record<string, unknown>; updatedAt: string } | null {
+    const b = this.bacaBlob(userId);
+    return b ? { data: b.saya, updatedAt: b.updatedAt } : null;
+  }
+
+  /** Ganti Data Diri "Saya"; anggota keluarga tetap. */
+  setDataDiri(userId: string, data: Record<string, unknown>): string {
+    return this.tulisBlob(userId, data, this.bacaBlob(userId)?.anggota ?? []);
+  }
+
+  /** Anggota keluarga pemilik (isi divalidasi pemanggil, `AnggotaKeluargaSchema` @urusin/contracts). */
+  getKeluarga(userId: string): { anggota: Anggota[]; updatedAt: string } | null {
+    const b = this.bacaBlob(userId);
+    return b ? { anggota: b.anggota, updatedAt: b.updatedAt } : null;
+  }
+
+  /** Tambah anggota (id baru `agt_...`). Sudah `ANGGOTA_MAKS` anggota → VaultError. */
+  tambahAnggota(userId: string, data: Record<string, unknown>): { anggota: Anggota; updatedAt: string } {
+    const b = this.bacaBlob(userId);
+    const daftar = b?.anggota ?? [];
+    if (daftar.length >= ANGGOTA_MAKS) throw new VaultError('anggota keluarga penuh');
+    const anggota: Anggota = { ...data, id: newId('agt') };
+    const updatedAt = this.tulisBlob(userId, b?.saya ?? {}, [...daftar, anggota]);
+    return { anggota, updatedAt };
+  }
+
+  /** Ganti isi satu anggota (id tetap). null bila id tidak ada. */
+  ubahAnggota(
+    userId: string,
+    id: string,
+    data: Record<string, unknown>,
+  ): { anggota: Anggota; updatedAt: string } | null {
+    const b = this.bacaBlob(userId);
+    if (!b?.anggota.some((a) => a.id === id)) return null;
+    const anggota: Anggota = { ...data, id };
+    const daftar = b.anggota.map((a) => (a.id === id ? anggota : a));
+    return { anggota, updatedAt: this.tulisBlob(userId, b.saya, daftar) };
+  }
+
+  /** Hapus satu anggota. false bila id tidak ada. */
+  hapusAnggota(userId: string, id: string): boolean {
+    const b = this.bacaBlob(userId);
+    if (!b?.anggota.some((a) => a.id === id)) return false;
+    this.tulisBlob(
+      userId,
+      b.saya,
+      b.anggota.filter((a) => a.id !== id),
+    );
+    return true;
+  }
+
+  /** Ketersediaan data TANPA nilai (untuk agen): Data Diri terisi? anggota per hubungan. */
+  ringkasanData(userId: string): RingkasanData {
+    const b = this.bacaBlob(userId);
+    const hit = (...h: string[]) => (b?.anggota ?? []).filter((a) => h.includes(String(a.hubungan))).length;
+    return {
+      dataDiri: Object.values(b?.saya ?? {}).some((v) => v !== undefined && v !== ''),
+      ayah: hit('ayah') > 0,
+      ibu: hit('ibu') > 0,
+      pasangan: hit('pasangan', 'suami', 'istri') > 0,
+      anak: hit('anak'),
+      lainnya: hit('lainnya'),
+    };
   }
 
   /**
@@ -435,7 +531,7 @@ export class Vault {
     titipIngatan?: (akun: unknown, tamu: unknown, at: string) => unknown,
   ): RencanaPindah {
     const tulisBaru: string[] = [];
-    const lama = this.getDataDiri(dari);
+    const lama = this.bacaBlob(dari);
     // Ingatan yang tidak bisa dibuka (sudah di-alert oleh getIngatan) tidak menggagalkan login dan tidak ditimpa.
     const bacaAman = (u: string) => {
       try {
@@ -489,10 +585,17 @@ export class Vault {
       terapkan: () => {
         terapkanIngatan();
         if (lama) {
-          const sekarang = this.getDataDiri(ke)?.data ?? {};
-          const gabung: Record<string, unknown> = { ...lama.data };
-          for (const [k, v] of Object.entries(sekarang)) if (v !== undefined && v !== '') gabung[k] = v;
-          this.setDataDiri(ke, gabung);
+          const akun = this.bacaBlob(ke);
+          const gabung: Record<string, unknown> = { ...lama.saya };
+          for (const [k, v] of Object.entries(akun?.saya ?? {}))
+            if (v !== undefined && v !== '') gabung[k] = v;
+          // Anggota tamu melengkapi anggota akun (yang NIK-nya sudah ada di akun tidak digandakan).
+          const anggotaAkun = akun?.anggota ?? [];
+          const nikAkun = new Set(anggotaAkun.map((a) => a.nik).filter((n) => typeof n === 'string'));
+          const tambahan = lama.anggota
+            .filter((a) => typeof a.nik !== 'string' || !nikAkun.has(a.nik))
+            .map((a) => ({ ...a, id: newId('agt') }));
+          this.tulisBlob(ke, gabung, [...anggotaAkun, ...tambahan].slice(0, ANGGOTA_MAKS));
         }
         const ins = this.db.prepare(
           `INSERT INTO vault_documents (id, user_id, jenis, judul_ct, mime, size, created_at)

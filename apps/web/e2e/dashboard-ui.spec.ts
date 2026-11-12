@@ -20,6 +20,27 @@ async function masuk(page: import('@playwright/test').Page) {
   await page.waitForLoadState('networkidle');
 }
 
+test('header Pengaturan tetap di atas saat panel digulir melewati satu layar', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 640 });
+  await masuk(page);
+  await page.goto('/pengaturan');
+  await page.waitForLoadState('networkidle');
+  const header = page.locator('#konten header');
+  const top = await header.evaluate((e) => e.getBoundingClientRect().top);
+  const panel = page.locator('#panel-utama');
+  await panel.hover();
+  await page.mouse.wheel(0, 1200);
+  await expect.poll(() => panel.evaluate((e) => e.scrollTop)).toBeGreaterThan(640);
+  await expect.poll(() => header.evaluate((e) => e.getBoundingClientRect().top)).toBeCloseTo(top, 0);
+  await expect(header.getByRole('heading', { name: 'Pengaturan', exact: true })).toBeInViewport();
+  await page
+    .getByRole('navigation', { name: 'Bagian pengaturan' })
+    .getByRole('link', { name: 'Wilayah layanan', exact: true })
+    .click();
+  await expect(page.getByRole('heading', { name: 'Wilayah layanan', exact: true })).toBeInViewport();
+  await expect(header).toBeInViewport();
+});
+
 test('Urusan baru membersihkan draf dan memfokuskan kotak cerita, termasuk klik berulang', async ({
   page,
 }) => {

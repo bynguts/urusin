@@ -43,27 +43,51 @@ function akhiran(placeholder: string): string | undefined {
   return m?.[1]?.split('.').at(-1);
 }
 
+/** Data anggota keluarga di brankas: `{{AYAH|IBU|ANAK|PASANGAN.<KUNCI>}}` (dan `{{PEMOHON.AYAH|IBU.<KUNCI>}}`). */
+const PERAN: Record<string, string> = { AYAH: 'ayah', IBU: 'ibu', ANAK: 'anak', PASANGAN: 'pasangan' };
+const ANGGOTA: Record<string, string> = {
+  NAMA: 'Nama lengkap',
+  NAMA_LENGKAP: 'Nama lengkap',
+  NIK: 'NIK',
+  TGL_LAHIR: 'Tanggal lahir',
+  TANGGAL_LAHIR: 'Tanggal lahir',
+  JK: 'Jenis kelamin',
+  JENIS_KELAMIN: 'Jenis kelamin',
+  TEMPAT_LAHIR: 'Tempat lahir',
+};
+const ALIAS: Record<string, string> = {
+  NAMA_IBU: 'Nama lengkap ibu',
+  NAMA_AYAH: 'Nama lengkap ayah',
+};
+
 /**
- * Kunci Data Diri: HANYA `{{PEMOHON.<KUNCI>}}` (satu segmen). `{{ANAK.NIK}}`, `{{ORANG2.NIK}}`, atau
- * `{{PEMOHON.AYAH.NAMA}}` bukan data pemohon, jadi diketik warga sendiri (`isi_sendiri`).
+ * Label data brankas untuk placeholder, atau undefined: `{{PEMOHON.<KUNCI>}}` (Data Diri "Saya", plus
+ * `NAMA_IBU`/`NAMA_AYAH`) dan data anggota keluarga. `{{ORANG2.NIK}}`, `{{ANAK.AYAH.NAMA}}` bukan data brankas,
+ * jadi diketik warga sendiri (`isi_sendiri`). Cermin `fieldDataDiri` di apps/web/src/lib/pendamping/isi-data.ts.
  */
-function kunciDataDiri(placeholder: string): string | undefined {
-  const a = /^\{\{PEMOHON\.([A-Z0-9_]+)\}\}$/.exec(placeholder)?.[1];
-  return a !== undefined && Object.hasOwn(DATA_DIRI, a) ? a : undefined;
+function labelDataDiri(placeholder: string): string | undefined {
+  const m = /^\{\{([A-Z][A-Z0-9_]*)\.([A-Z0-9_]+)(?:\.([A-Z0-9_]+))?\}\}$/.exec(placeholder);
+  if (!m) return undefined;
+  const [, ns = '', a = '', b] = m;
+  const anggota = (p: string, k: string) =>
+    Object.hasOwn(PERAN, p) && Object.hasOwn(ANGGOTA, k) ? `${ANGGOTA[k]} ${PERAN[p]}` : undefined;
+  if (b !== undefined) return ns === 'PEMOHON' && (a === 'AYAH' || a === 'IBU') ? anggota(a, b) : undefined;
+  if (ns !== 'PEMOHON') return anggota(ns, a);
+  return Object.hasOwn(DATA_DIRI, a) ? DATA_DIRI[a] : Object.hasOwn(ALIAS, a) ? ALIAS[a] : undefined;
 }
 
 /** Placeholder yang dipenuhi Data Diri (boleh menahan AI sampai "Izinkan isi"). */
 export function dariDataDiri(placeholder: string): boolean {
-  return kunciDataDiri(placeholder) !== undefined;
+  return labelDataDiri(placeholder) !== undefined;
 }
 
 /** Pesan giliran warga untuk nilai isian (bisa memuat beberapa placeholder); tanpa nilai apa pun. */
 export function pesanIsiSendiri(value: string): string {
   const label = [...value.matchAll(/\{\{[^{}]+\}\}/g)]
     .map((m) => {
-      const d = kunciDataDiri(m[0]);
+      const d = labelDataDiri(m[0]);
       const a = akhiran(m[0]);
-      return d !== undefined ? DATA_DIRI[d] : a && Object.hasOwn(LAIN, a) ? LAIN[a] : undefined;
+      return d ?? (a && Object.hasOwn(LAIN, a) ? LAIN[a] : undefined);
     })
     .find((l) => l !== undefined);
   return `Ketik ${label ?? 'isian yang diminta'} di kolom yang disorot, lalu tekan Lanjutkan.`;

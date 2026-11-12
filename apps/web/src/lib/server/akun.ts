@@ -1,7 +1,9 @@
 import { AkunError, type Akun as AkunInternal } from '@urusin/akun';
 import {
+  AnggotaKeluargaSchema,
   DataDiriSchema,
   type Akun,
+  type AnggotaKeluarga,
   type DataDiriResponse,
   type LengkapiProfilRequest,
   type StatusEmail,
@@ -184,6 +186,14 @@ export function tolakBacaVault(request: Request): Response | undefined {
   if (site !== 'same-origin' || (origin !== null && origin !== publicOrigin()))
     return apiError(403, 'CSRF', 'Permintaan ditolak karena berasal dari situs yang tidak dikenal.');
   return undefined;
+}
+
+/** Anggota keluarga pemilik yang sah menurut kontrak (isi blob yang tidak sah dilewati, bukan dilempar). */
+export function anggotaKeluarga(rt: Runtime, ownerId: string): AnggotaKeluarga[] {
+  return (rt.akun.vault.getKeluarga(ownerId)?.anggota ?? []).flatMap((a) => {
+    const r = AnggotaKeluargaSchema.safeParse(a);
+    return r.success ? [r.data] : [];
+  });
 }
 
 /** Gabungkan nama lengkap (dan HP) ke Data Diri terenkripsi pemilik. */

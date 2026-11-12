@@ -6,3 +6,4 @@ export * from './pendamping.js';
 export * from './fixtures.js';
 export * from './akun.js';
 export * from './ingatan.js';
+export * from './keluarga.js';

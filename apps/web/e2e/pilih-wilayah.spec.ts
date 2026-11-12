@@ -40,6 +40,8 @@ test('cari wilayah, batalkan, simpan, dan hapus pilihan tanpa mengubahnya menjad
   await expect(ktp).toHaveValue('Kabupaten Wonogiri');
 
   await page.goto('/pengaturan');
+  // Tunggu hidrasi: sebelum itu locator menangkap <select> SSR yang lalu disembunyikan (QA CI g10: fill timeout).
+  await expect(kota).toHaveAttribute('aria-autocomplete', 'list');
   await kota.fill('Belum dipilih');
   await kota.press('Enter');
   await page.getByRole('button', { name: 'Simpan wilayah' }).click();

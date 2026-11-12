@@ -119,7 +119,13 @@ async function masuk(page: Page, email: string, sandi: string, turnstile?: strin
     await page
       .locator('form[action="?/masuk"] input[name="turnstile"]')
       .evaluate((el, v) => ((el as HTMLInputElement).value = v), turnstile);
+  // Tunggu jawaban POST masuk (cookie sesi) sebelum lanjut: `networkidle` saja bisa terpenuhi sebelum
+  // pengiriman formulir dimulai di runner CI yang sibuk (QA CI g10: PUT berikutnya 401).
+  const jawab = page.waitForResponse(
+    (r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/masuk',
+  );
   await page.getByRole('button', { name: 'Masuk', exact: true }).click();
+  await jawab;
   await page.waitForLoadState('networkidle');
 }
 

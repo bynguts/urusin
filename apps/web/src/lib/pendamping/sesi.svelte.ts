@@ -452,10 +452,18 @@ export class SesiPendampingUi {
    * Navigator generik: `pilihan` = baris yang dicentang warga di lembar; persetujuan terikat `rencanaHash`
    * halaman itu. Baris yang tidak dicentang diisi warga sendiri (AI menyerahkannya setelah baris lain terisi).
    */
-  async izinkanIsi(pilihan?: { placeholder: string[]; berkas: string[] }): Promise<string | undefined> {
+  async izinkanIsi(pilihan?: {
+    placeholder: string[];
+    berkas: string[];
+    anakId?: string;
+  }): Promise<string | undefined> {
     const butuh = this.data.butuhData;
     if (!butuh) return undefined;
-    const writeList = daftarWrite(pilihan?.placeholder ?? butuh.placeholder, pilihan?.berkas ?? butuh.berkas);
+    const writeList = daftarWrite(
+      pilihan?.placeholder ?? butuh.placeholder,
+      pilihan?.berkas ?? butuh.berkas,
+      pilihan?.anakId,
+    );
     if (writeList.length === 0) {
       const sendiri = butuh.placeholder.map(labelPlaceholder).filter((l, i, a) => a.indexOf(l) === i);
       return `Isi sendiri di layar: ${sendiri.join(', ')}.`;

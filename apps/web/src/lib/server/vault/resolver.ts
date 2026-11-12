@@ -1,6 +1,8 @@
 import { AkunError, hashDaftarWrite } from '@urusin/akun';
 import { hostsPortalWilayah } from '@urusin/harness';
 import { SEED_ENTRIES } from '@urusin/registry';
+import { AWALAN_ANAK, entriAnak, nilaiIsian } from '#lib/pendamping/isi-data.js';
+import { anggotaKeluarga } from '#lib/server/akun.js';
 import { originFixtures } from '#lib/server/hosts.js';
 import type { Runtime } from '#lib/server/runtime.js';
 
@@ -97,7 +99,7 @@ export function resolusiIsi(
     writeListHash: hashIkatan(p.writeList, p.rencanaHash),
     targetOrigin: origin,
   });
-  const data = rt.akun.vault.getDataDiri(p.ownerId)?.data ?? {};
+  const data: Record<string, string | undefined> = dataIsian(rt, p.ownerId, p.writeList);
   const nilai: Record<string, string> = {};
   const berkas: BerkasIsi[] = [];
   const docs = rt.akun.vault.listDocuments(p.ownerId);
@@ -109,10 +111,24 @@ export function resolusiIsi(
       if (d) berkas.push({ nama, judul: d.meta.judul, mime: d.meta.mime, bytes: d.bytes });
       continue;
     }
+    if (entriAnak(field)) continue;
     const v = data[field];
     if (typeof v === 'string' && v !== '') nilai[field] = v;
   }
   return { nilai, berkas };
+}
+
+/**
+ * Nilai isian per kunci (`nik`, `ibu.nik`, `anak.tanggalLahir`, ...) dari Data Diri + anggota keluarga. Anak yang
+ * dimaksud = entri `anak:<id>` di daftar write (ikut di hash persetujuan), atau otomatis bila hanya satu anak.
+ */
+export function dataIsian(
+  rt: Runtime,
+  ownerId: string,
+  writeList: readonly string[],
+): Record<string, string | undefined> {
+  const anakId = writeList.find(entriAnak)?.slice(AWALAN_ANAK.length);
+  return nilaiIsian(rt.akun.vault.getDataDiri(ownerId)?.data ?? {}, anggotaKeluarga(rt, ownerId), anakId);
 }
 
 /** Seperti `resolusiIsi`, hanya nilai Data Diri. */

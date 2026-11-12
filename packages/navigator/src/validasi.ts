@@ -85,8 +85,8 @@ type EntriKatalog = {
 };
 
 /**
- * Katalog placeholder yang boleh dipakai model: data pemohon di Data Diri (cermin `fieldDataDiri` web, diuji
- * di apps/web). Satu placeholder kanonik per field.
+ * Katalog placeholder yang boleh dipakai model: data pemohon di Data Diri dan anggota keluarganya (cermin
+ * `fieldDataDiri` web, diuji di apps/web). Satu placeholder kanonik per field.
  */
 export const KATALOG_PLACEHOLDER: Readonly<Record<string, EntriKatalog>> = {
   '{{PEMOHON.NIK}}': {
@@ -128,7 +128,33 @@ export const KATALOG_PLACEHOLDER: Readonly<Record<string, EntriKatalog>> = {
     isyarat: 'email',
     contoh: /[a-z0-9._%+-]+@[a-z0-9-]+\.[a-z]/,
   },
+  ...katalogKeluarga(),
 };
+
+/**
+ * Data anggota keluarga di brankas (akta kelahiran, KK, KIA, pindah): `{{AYAH|IBU|ANAK|PASANGAN.<KUNCI>}}`.
+ * Tanpa isyarat atribut kolom: autocomplete `name`/`bday` portal hampir selalu tentang pemohon, bukan anggota.
+ */
+function katalogKeluarga(): Record<string, EntriKatalog> {
+  const out: Record<string, EntriKatalog> = {};
+  for (const [ns, siapa] of [
+    ['AYAH', 'ayah'],
+    ['IBU', 'ibu'],
+    ['ANAK', 'anak'],
+    ['PASANGAN', 'pasangan'],
+  ] as const) {
+    out[`{{${ns}.NAMA}}`] = { label: `Nama lengkap ${siapa}`, pola: /\bnama\b/ };
+    out[`{{${ns}.NIK}}`] = {
+      label: `NIK ${siapa}`,
+      pola: /\bnik\b|nomor induk kependudukan|no\.? ?induk kependudukan/,
+      sensitif: true,
+    };
+    out[`{{${ns}.TEMPAT_LAHIR}}`] = { label: `Tempat lahir ${siapa}`, pola: /tempat lahir/ };
+    out[`{{${ns}.TGL_LAHIR}}`] = { label: `Tanggal lahir ${siapa}`, pola: /tanggal lahir|tgl\.? lahir/ };
+    out[`{{${ns}.JK}}`] = { label: `Jenis kelamin ${siapa}`, pola: /jenis kelamin|kelamin|gender/ };
+  }
+  return out;
+}
 
 /** Berkas Dokumen akun yang boleh diunggah model (`berkas:<JENIS>` di daftar write). */
 export const KATALOG_BERKAS: readonly string[] = ['KTP', 'KK', 'AKTA', 'SURAT', 'FOTO', 'BUKU_NIKAH'];
