@@ -15,6 +15,7 @@ const ROUTES = [
   '/daftar',
   '/lupa-sandi',
   '/privasi',
+  '/syarat',
   '/cara-kerja',
   '/urusan',
   '/tanya-jawab',
