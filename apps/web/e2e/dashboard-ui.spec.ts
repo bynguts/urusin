@@ -20,11 +20,59 @@ async function masuk(page: import('@playwright/test').Page) {
   await page.waitForLoadState('networkidle');
 }
 
+test('layar laptop dengan huruf besar: header, pencarian bantuan, dan aksi unggah tetap terlihat', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 640 });
+  await page.addInitScript(() =>
+    localStorage.setItem('urusin.prefs.v1', JSON.stringify({ ukuranHuruf: 1.5 })),
+  );
+  await masuk(page);
+  await page.goto('/pengaturan');
+  const bacakan = page.getByRole('button', { name: 'Bacakan', exact: true });
+  if (await bacakan.count()) {
+    expect(
+      await bacakan.evaluate((e) => {
+        const tombol = e.getBoundingClientRect();
+        const header = e.closest('header')!.getBoundingClientRect();
+        return tombol.top >= header.top && tombol.bottom <= header.bottom;
+      }),
+    ).toBe(true);
+  }
+  await page.goto('/bantuan');
+  const cari = page.getByRole('searchbox', { name: 'Cari bantuan' });
+  await cari.fill('OTP');
+  expect(
+    await cari.evaluate((e) => {
+      const kontrol = e.parentElement!.getBoundingClientRect();
+      const section = e.closest('section')!.getBoundingClientRect();
+      return kontrol.top >= section.top && kontrol.bottom < section.bottom;
+    }),
+  ).toBe(true);
+  await expect(page.getByText('Apakah boleh menulis OTP atau NIK di chat?', { exact: true })).toBeVisible();
+  await page.goto('/dokumen');
+  await page.getByRole('button', { name: 'Tambah dokumen', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Tambah dokumen' });
+  for (const nama of ['Batal', 'Simpan']) {
+    const tombol = dialog.getByRole('button', { name: nama, exact: true });
+    expect(
+      await tombol.evaluate((e) => {
+        const r = e.getBoundingClientRect();
+        return r.top >= 0 && r.bottom <= innerHeight && r.right <= innerWidth;
+      }),
+    ).toBe(true);
+  }
+  await dialog.getByLabel('Foto atau PDF', { exact: true }).scrollIntoViewIfNeeded();
+  await expect(dialog.getByLabel('Foto atau PDF', { exact: true })).toBeInViewport();
+  await dialog.getByRole('button', { name: 'Batal', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+});
+
 test('Urusan baru membersihkan draf dan memfokuskan kotak cerita, termasuk klik berulang', async ({
   page,
 }) => {
   await masuk(page);
-  const kotak = page.getByLabel('Ceritakan urusan Anda');
+  const kotak = page.getByLabel('Tulis pertanyaan Anda');
   await kotak.fill('Draf lama yang belum dikirim');
   const baru = page.getByRole('link', { name: 'Urusan baru', exact: true });
   await baru.click();

@@ -22,7 +22,7 @@
   <title>Syarat layanan · Urusin</title>
   <meta
     name="description"
-    content="Aturan memakai Urusin: apa yang dikerjakan Urusin, apa yang tetap kamu kerjakan sendiri, dan batas tanggung jawab kami."
+    content="Aturan memakai Urusin: apa yang dikerjakan Urusin, apa yang tetap Anda kerjakan sendiri, dan batas tanggung jawab kami."
   />
 </svelte:head>
 
@@ -33,7 +33,7 @@
     <div class="pv2">
       <h1 class="pv5" id="judul-syarat">Syarat layanan Urusin</h1>
       <p class="pv6">
-        Aturan singkat memakai Urusin: apa yang kami kerjakan, apa yang tetap kamu kerjakan sendiri, dan batas
+        Aturan singkat memakai Urusin: apa yang kami kerjakan, apa yang tetap Anda kerjakan sendiri, dan batas
         tanggung jawab kami.
       </p>
       <p class="sy-berlaku">Berlaku sejak 12 November 2026.</p>
@@ -57,8 +57,8 @@
       <div class="pv22">
         <h2 class="pv23" id="judul-bukan-instansi">Urusin bukan instansi pemerintah</h2>
         <p class="pv24">
-          Urusin membantu kamu memahami syarat dan mengisi formulir di situs layanan resmi. Kami tidak
-          berafiliasi dengan instansi mana pun dan tidak bisa mempercepat, menjamin, atau mengubah hasil
+          Urusin membantu menjelaskan persyaratan, mencari rujukan, dan menyusun langkah pengurusan. Kami
+          tidak berafiliasi dengan instansi mana pun dan tidak bisa mempercepat, menjamin, atau mengubah hasil
           permohonan.
         </p>
         <p class="pv24">
@@ -70,19 +70,19 @@
 
     <section class="pv21" aria-labelledby="judul-kendali">
       <div class="pv22">
-        <h2 class="pv23" id="judul-kendali">Langkah penting tetap kamu yang lakukan</h2>
+        <h2 class="pv23" id="judul-kendali">Langkah penting tetap Anda yang lakukan</h2>
       </div>
       <ul class="sy-daftar">
         <li>
-          <strong>Password, kode OTP, dan CAPTCHA</strong> di situs pemerintah selalu kamu ketik sendiri. Urusin
+          <strong>Password, kode OTP, dan CAPTCHA</strong> di situs pemerintah selalu Anda ketik sendiri. Urusin
           tidak menyimpannya.
         </li>
         <li>
-          Formulir baru diisi setelah kamu menyetujuinya, dan <strong
-            >tombol Kirim terakhir selalu kamu tekan sendiri</strong
-          >. Urusin tidak pernah mengirim permohonan atas namamu.
+          Browser Pendamping masih berstatus Coming soon. Pengisian formulir serta <strong
+            >tombol Kirim terakhir selalu Anda tekan sendiri</strong
+          >. Urusin tidak pernah mengirim permohonan atas nama Anda.
         </li>
-        <li>Kamu bisa menghentikan pengisian kapan saja.</li>
+        <li>Anda dapat menghentikan percakapan kapan saja.</li>
       </ul>
     </section>
 
@@ -90,9 +90,10 @@
       <div class="pv22">
         <h2 class="pv23" id="judul-ai">AI bisa keliru</h2>
         <p class="pv24">
-          Penjelasan, daftar syarat, dan isian formulir disusun dengan bantuan AI. Hasilnya bisa salah, kurang
-          lengkap, atau sudah tidak berlaku. <strong>Selalu periksa ulang</strong> isian dan syaratnya di situs
-          resmi atau ke instansi sebelum menekan Kirim. Bila ada perbedaan, yang berlaku adalah ketentuan instansi.
+          Penjelasan, daftar syarat, dan rencana langkah disusun dengan bantuan AI. Hasilnya bisa salah,
+          kurang lengkap, atau sudah tidak berlaku. <strong>Selalu periksa ulang</strong> isian dan syaratnya di
+          situs resmi atau ke instansi sebelum menekan Kirim. Bila ada perbedaan, yang berlaku adalah ketentuan
+          instansi.
         </p>
       </div>
     </section>
@@ -114,7 +115,7 @@
       </div>
       <ul class="sy-daftar">
         <li>Memakai data atau dokumen orang lain tanpa izin pemiliknya.</li>
-        <li>Mengisi data palsu, memalsukan dokumen, atau mengajukan permohonan yang bukan hakmu.</li>
+        <li>Mengisi data palsu, memalsukan dokumen, atau mengajukan permohonan yang bukan hak Anda.</li>
         <li>Memakai Urusin untuk menembus pengamanan situs pemerintah atau situs lain.</li>
         <li>
           Mencoba membobol, membebani, atau mengotomasi Urusin di luar pemakaian wajar. Temuan celah keamanan
@@ -129,9 +130,9 @@
       <div class="pv22">
         <h2 class="pv23" id="judul-akun">Akun dan penghapusan data</h2>
         <p class="pv24">
-          Untuk memakai Urusin kamu perlu akun; data dan dokumenmu tersimpan terenkripsi di akun itu. Jaga
-          sandimu dan jangan berbagi akun. Dokumen bisa dihapus satu per satu, dan akun beserta seluruh isinya
-          bisa dihapus kapan saja dari Pengaturan. Rinciannya ada di halaman
+          Untuk memakai Urusin Anda perlu akun; data dan dokumen Anda tersimpan terenkripsi di akun itu. Jaga
+          kata sandi Anda dan jangan berbagi akun. Dokumen bisa dihapus satu per satu, dan akun beserta
+          seluruh isinya bisa dihapus kapan saja dari Pengaturan. Rinciannya ada di halaman
           <a href={resolve('/privasi')}>Privasi</a>.
         </p>
       </div>
@@ -144,8 +145,8 @@
           Urusin disediakan apa adanya. Kami berusaha agar layanan selalu tersedia dan benar, tetapi tidak
           bisa menjaminnya: situs pemerintah bisa berubah atau terganggu di luar kendali kami. Sejauh
           diizinkan hukum, kami tidak bertanggung jawab atas kerugian karena isian yang dikirim tanpa
-          diperiksa, keputusan instansi, atau gangguan situs pihak lain. Ketentuan ini tidak mengurangi hakmu
-          sebagai konsumen menurut hukum Indonesia.
+          diperiksa, keputusan instansi, atau gangguan situs pihak lain. Ketentuan ini tidak mengurangi hak
+          Anda sebagai konsumen menurut hukum Indonesia.
         </p>
       </div>
     </section>
@@ -155,7 +156,7 @@
         <h2 class="pv23" id="judul-kontak">Kontak</h2>
         <p class="pv24">
           Urusin dikembangkan dan dioperasikan oleh Tim Urusin (LOGICODIX 2026). Pertanyaan, keberatan, atau
-          permintaan soal datamu bisa dikirim lewat kontak di
+          permintaan soal data Anda bisa dikirim lewat kontak di
           <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- tautan eksternal ke repo publik -->
           <a href={KONTAK} rel="external noopener">kebijakan keamanan Urusin</a>. Bila syarat ini berubah,
           tanggal berlaku di atas ikut diperbarui.

@@ -26,7 +26,7 @@
 
   // Label pelaku App 03: Anda netral (tinta 6%), AI nila, Instansi biru.
   const PELAKU: Record<string, { label: string; kelas: string; ikon: NamaIkon }> = {
-    'online-adapter': { label: 'AI', kelas: 'bg-nila text-nila-ink', ikon: 'ai' },
+    'online-adapter': { label: 'Anda', kelas: 'bg-ink/[0.06] text-ink', ikon: 'orang' },
     'online-manual': { label: 'Anda', kelas: 'bg-ink/[0.06] text-ink', ikon: 'orang' },
     offline: { label: 'Instansi', kelas: 'bg-biru text-biru-ink', ikon: 'instansi' },
     // Cara (online/loket) belum terverifikasi: warga memastikannya di kanal Disdukcapil setempat.
@@ -64,11 +64,7 @@
       <p class="flex items-center gap-1.5 font-semibold text-ink">
         <Icon name="lokasi" class="size-4 shrink-0 text-brand" />
         {rencana.wilayah.ktp.nama}{rencana.wilayah.tujuan ? ` → ${rencana.wilayah.tujuan.nama}` : ''}
-        <span class="font-normal text-muted"
-          >· {rencana.tier === 'semi'
-            ? 'AI bisa bantu mengisi di situs resmi'
-            : 'Dipandu langkah demi langkah'}</span
-        >
+        <span class="font-normal text-muted">· Panduan pengurusan</span>
       </p>
       {#if rencana.catatan}<p class="text-body">{rencana.catatan}</p>{/if}
     </div>
@@ -200,7 +196,7 @@
         class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-6 font-semibold text-primer-ink disabled:opacity-80"
       >
         <Icon name={sibuk ? 'memuat' : 'centang'} class="size-[18px] {sibuk ? 'animate-spin' : ''}" />
-        Setujui rencana
+        Simpan rencana
       </button>
       <button
         type="button"
@@ -208,7 +204,7 @@
         class="inline-flex h-12 items-center rounded-full border border-line-2 bg-surface px-5 text-base leading-6 text-ink hover:bg-card"
         >Ubah</button
       >
-      <p class="text-sm leading-[21px] text-muted">Belum ada data yang dikirim.</p>
+      <p class="text-sm leading-[21px] text-muted">Pengajuan dilakukan melalui kanal resmi.</p>
     </footer>
   {/if}
 </section>

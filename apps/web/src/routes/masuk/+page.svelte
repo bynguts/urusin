@@ -31,11 +31,11 @@
 <svelte:head><title>Masuk · Urusin</title></svelte:head>
 
 <KerangkaAuth
-  judul="Urusan administrasi,&#10;kini ada yang menemani"
-  sub="Lanjutkan urusan keluarga Anda dari HP, laptop, atau komputer mana saja."
+  judul="Lanjutkan percakapan&#10;Anda bersama Urusin"
+  sub="Masuk untuk membuka pertanyaan dan rencana yang tersimpan di akun Anda."
 >
   <h1 class="text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Masuk ke Urusin</h1>
-  <p class="mt-2 text-[1.0625rem] leading-[25px] text-body">Lanjutkan urusan keluarga Anda.</p>
+  <p class="mt-2 text-[1.0625rem] leading-[25px] text-body">Masuk untuk melanjutkan percakapan.</p>
 
   {#if galat}
     <div
@@ -142,15 +142,10 @@
   </div>
 
   {#if data.juri}
-    <section class="mt-4 rounded-2xl border border-line bg-card p-4.5 sm:p-5">
-      <div class="flex items-center gap-2">
-        <span class="inline-flex size-2 rounded-full bg-hijau" aria-hidden="true"></span>
-        <h2 class="text-[0.9375rem] font-semibold text-ink">Mode Evaluasi &amp; Juri</h2>
-      </div>
+    <section class="mt-4 rounded-2xl border border-line bg-card p-4">
+      <h2 class="text-[0.9375rem] font-semibold text-ink">Demo juri</h2>
       <p class="mt-1.5 text-[0.875rem] leading-relaxed text-body">
-        Eksplorasi seluruh alur Urusin secara instan dengan salinan demo dan data contoh siap pakai tanpa
-        perlu mendaftar. Sesi ini terisolasi, aman, dan terhapus otomatis dalam 24 jam tanpa dikirim ke
-        instansi resmi.
+        Data contoh, tanpa daftar. Sesi terhapus dalam 24 jam.
       </p>
       <form
         method="POST"

@@ -284,8 +284,7 @@
         >
         <h3 class="text-[19px] font-semibold text-ink">Disimpan di brankas Urusin</h3>
         <p class="text-base leading-[25px] text-muted">
-          Disimpan terenkripsi dan hanya dipakai untuk formulir yang Anda setujui. Anda bisa melihat kapan dan
-          di mana data dipakai.
+          Kelola identitas yang Anda simpan dalam akun. Jangan menuliskan NIK atau nomor KK di percakapan.
         </p>
         {#if terakhir}
           <a

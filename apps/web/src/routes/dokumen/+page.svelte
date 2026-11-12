@@ -268,7 +268,7 @@
     <div class="flex flex-wrap items-center gap-3 rounded-[14px] bg-bg-2 px-[18px] py-3.5">
       <Icon name="gembok" class="size-[18px] shrink-0 text-ink" />
       <p class="flex-1 text-[15px] leading-[22px] text-card-ink">
-        Dokumen tidak dikirim ke mana pun sampai Anda menyetujui pemakaiannya di sebuah urusan.
+        Berkas tersimpan dalam brankas akun. Menyimpan dokumen di sini tidak mengajukannya ke instansi.
       </p>
       {#if dapatDihapus.length}
         <button

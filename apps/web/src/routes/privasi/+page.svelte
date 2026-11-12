@@ -34,10 +34,10 @@
 
   <section class="pv1" aria-labelledby="judul-privasi">
     <div class="pv2">
-      <h1 class="pv5" id="judul-privasi">Data keluargamu tetap milikmu</h1>
+      <h1 class="pv5" id="judul-privasi">Data keluarga Anda tetap milik Anda</h1>
       <p class="pv6">
-        Urusin hanya memakai data yang kamu setujui, untuk urusan yang kamu pilih.<br />
-        Login dan kode OTP situs pemerintah tidak pernah kami simpan.
+        Urusin hanya memakai data yang Anda setujui, untuk urusan yang Anda pilih.<br />
+        Jangan tuliskan kata sandi atau kode OTP dalam percakapan.
       </p>
     </div>
     <div class="pv7" aria-hidden="true">
@@ -66,15 +66,15 @@
 
   <section class="pv10" aria-labelledby="judul-kendali">
     <div class="pv11">
-      <h2 class="pv12" id="judul-kendali">Kamu tetap pegang kendali atas datamu</h2>
+      <h2 class="pv12" id="judul-kendali">Anda tetap pegang kendali atas data Anda</h2>
       <img class="pv13" src={perisai} alt="" width="180" height="180" loading="lazy" decoding="async" />
     </div>
     <div class="pv14">
       <div class="pv15">
         <div class="pv16">
           <div class="pv17"><img src="/pen/i-5719b4b3db.svg" alt="" width="17" height="17" /></div>
-          <h3 class="pv18">Kamu yang memutuskan</h3>
-          <p class="pv19">AI baru mengisi formulir setelah kamu setuju. Login dan Kirim selalu kamu.</p>
+          <h3 class="pv18">Anda yang memutuskan</h3>
+          <p class="pv19">Pilih informasi yang Anda ceritakan, simpan, dan hapus melalui akun Anda.</p>
         </div>
         <div class="pv16">
           <div class="pv17"><img src="/pen/i-2b05f4f519.svg" alt="" width="17" height="17" /></div>
@@ -106,7 +106,7 @@
       <div class="pv22">
         <h2 class="pv23" id="judul-data">Data apa saja yang disimpan</h2>
         <p class="pv24">
-          Hanya yang dibutuhkan untuk urusanmu. Brankas ada di server kami di Singapura, yang memegang
+          Hanya yang dibutuhkan untuk urusan Anda. Brankas ada di server kami di Singapura, yang memegang
           kuncinya. Email (Resend) belum aktif.
           <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- tautan eksternal ke repo publik -->
           <a href={KEBIJAKAN} rel="external noopener">Kebijakan lengkap</a>.
@@ -122,7 +122,7 @@
         <div class="pv28" role="row">
           <div class="pv29 pv-c0" role="rowheader">Data diri dan berkas</div>
           <div class="pv30 pv-c1" role="cell" data-label="Disimpan di">Brankas Urusin, terenkripsi</div>
-          <div class="pv30 pv-c2" role="cell" data-label="Berapa lama">Sampai kamu menghapusnya</div>
+          <div class="pv30 pv-c2" role="cell" data-label="Berapa lama">Sampai Anda menghapusnya</div>
           <div class="pv30 pv-c3" role="cell" data-label="Bisa dihapus">Ya, kapan saja</div>
         </div>
         <div class="pv28" role="row">
@@ -166,7 +166,7 @@
         <h2 class="pv23" id="judul-pihak">Pihak lain yang memproses data</h2>
         <p class="pv24">
           Kami tidak menjual data, tidak memasang iklan, dan tidak memakai pelacak pihak ketiga. Pengiriman ke
-          pihak di luar Indonesia adalah transfer data lintas negara (UU PDP Pasal 56) atas persetujuanmu.
+          pihak di luar Indonesia adalah transfer data lintas negara (UU PDP Pasal 56) atas persetujuan Anda.
         </p>
       </div>
       <div class="pv25" role="table" aria-label="Pihak lain yang memproses data">
@@ -184,22 +184,11 @@
           <div class="pv30 pv-c2" role="cell" data-label="Peran">Server dan basis data Urusin</div>
           <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Singapura</div>
         </div>
+
         <div class="pv28" role="row">
-          <div class="pv29 pv-c0" role="rowheader">
-            Laptop tim Urusin (Browser Pendamping jaringan Indonesia)
-          </div>
+          <div class="pv29 pv-c0" role="rowheader">Penyedia model AI yang dikonfigurasi Urusin</div>
           <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
-            Login dan isian yang kamu ketik di sesi situs yang hanya menerima jaringan Indonesia (mis.
-            Telunjuk Sakti Wonogiri). Hanya di memori selama sesi aktif, dihapus saat sesi ditutup. Tersambung
-            lewat Tailscale, terenkripsi
-          </div>
-          <div class="pv30 pv-c2" role="cell" data-label="Peran">Menjalankan peramban pendamping</div>
-          <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Indonesia</div>
-        </div>
-        <div class="pv28" role="row">
-          <div class="pv29 pv-c0" role="rowheader">OpenAI (model GPT, lewat proxy model tim)</div>
-          <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
-            Teks percakapan, termasuk nama dan teks bebas yang kamu ketik. NIK, KK, HP, dan email diganti
+            Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti
             penanda sebelum dikirim
           </div>
           <div class="pv30 pv-c2" role="cell" data-label="Peran">
@@ -208,9 +197,9 @@
           <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Di luar Indonesia</div>
         </div>
         <div class="pv28" role="row">
-          <div class="pv29 pv-c0" role="rowheader">Google (bila kamu memilihnya)</div>
+          <div class="pv29 pv-c0" role="rowheader">Google (bila Anda memilihnya)</div>
           <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
-            Proses masuk dengan akun Google kamu
+            Proses masuk dengan akun Google Anda
           </div>
           <div class="pv30 pv-c2" role="cell" data-label="Peran">Masuk dengan Google</div>
           <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Global</div>
@@ -218,7 +207,7 @@
         <div class="pv28" role="row">
           <div class="pv29 pv-c0" role="rowheader">Resend</div>
           <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
-            Alamat email kamu dan isi email verifikasi atau atur ulang sandi. Saat ini belum aktif
+            Alamat email Anda dan isi email verifikasi atau atur ulang sandi. Saat ini belum aktif
           </div>
           <div class="pv30 pv-c2" role="cell" data-label="Peran">Pengiriman email</div>
           <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Amerika Serikat</div>
@@ -246,12 +235,12 @@
 
     <section class="pv21" aria-labelledby="judul-hak">
       <div class="pv22">
-        <h2 class="pv23" id="judul-hak">Hak kamu atas data</h2>
+        <h2 class="pv23" id="judul-hak">Hak Anda atas data</h2>
       </div>
       <div class="pv33">
         <div class="pv34">
           <div class="pv35"><img src="/pen/i-c7556fee16.svg" alt="" width="20" height="20" /></div>
-          <h3 class="pv36">Unduh datamu</h3>
+          <h3 class="pv36">Unduh data Anda</h3>
           <p class="pv37">Lihat Data Diri dan unduh setiap dokumen kapan saja.</p>
           <a class="pv38" href={resolve('/dokumen')}>
             Unduh data <img src="/pen/i-104b85f31d.svg" alt="" width="16" height="16" />
@@ -259,7 +248,7 @@
         </div>
         <div class="pv34">
           <div class="pv35"><img src="/pen/i-4018b025a6.svg" alt="" width="20" height="20" /></div>
-          <h3 class="pv36">Lihat jejak pengisian</h3>
+          <h3 class="pv36">Lihat riwayat urusan</h3>
           <p class="pv37">Periksa setiap langkah urusan: siapa yang bertindak, kapan, dan apa hasilnya.</p>
           <a class="pv38" href={resolve('/urusanku')}>
             Buka jejak <img src="/pen/i-104b85f31d.svg" alt="" width="16" height="16" />
@@ -276,9 +265,9 @@
       </div>
     </section>
 
-    <section class="pv21" aria-labelledby="judul-sumber">
+    <section class="pv21" aria-labelledby="sumber-informasi">
       <div class="pv22">
-        <h2 class="pv23" id="judul-sumber">Sumber informasi resmi</h2>
+        <h2 class="pv23" id="sumber-informasi">Sumber informasi resmi</h2>
         <p class="pv24">
           Urusin bukan situs pemerintah; logo instansi ditampilkan untuk merujuk sumber informasi resmi.
         </p>

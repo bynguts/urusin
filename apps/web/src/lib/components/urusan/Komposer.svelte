@@ -50,7 +50,7 @@
       maxlength="2000"
       disabled={nonaktif}
       aria-describedby={pesan ? 'komposer-pesan' : undefined}
-      placeholder="Tulis jawaban atau pertanyaan lain…"
+      placeholder="Tulis jawaban atau pertanyaan lanjutan…"
       class="max-h-40 min-h-[42px] flex-1 resize-none bg-transparent py-2 text-base text-ink [field-sizing:content] placeholder:text-muted focus:outline-none sm:text-[17px] sm:leading-[26px]"
     ></textarea>
     <button

@@ -94,6 +94,8 @@ const SUSUN_RENCANA_PARALEL =
   'Sistem sedang menyusun jawaban bersumber dari potongan di atas untuk warga. Sekarang susun rencana langkah untuk warga dengan urusan__usulkan_rencana: ringkasan satu kalimat, 1-4 langkah konkret sesuai potongan sumber resmi di atas dan kanal resmi wilayah ini (dokumen yang dibawa di "bawa"). Jangan menulis balasan teks.';
 
 export type AgentConfig = {
+  /** Produk hanya menawarkan percakapan dan panduan; otomasi browser belum diluncurkan. */
+  modeChatbot?: boolean;
   /** Batas waktu satu turn (rencana: 120 detik). */
   turnTimeoutMs: number;
   /** Batas waktu satu panggilan LLM (rencana: 60 detik + 1 retry). */
@@ -398,7 +400,7 @@ class TurnRunner {
     while (cut > 0 && turnMsgs[cut]?.role === 'tool') cut--;
     cut = Math.max(cut, 0);
     return this.turn.pii.redactMessages([
-      { role: 'system', content: buildSystemPrompt() },
+      { role: 'system', content: buildSystemPrompt(this.deps.config?.modeChatbot) },
       // Ingatan warga (ADR 0031) sesudah prompt statis: prefix statis tetap bisa di-cache provider.
       ...(this.blokIngatan ? [{ role: 'system' as const, content: this.blokIngatan }] : []),
       ...history,

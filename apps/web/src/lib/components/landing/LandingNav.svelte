@@ -47,12 +47,12 @@
   </nav>
   <div class="lp10">
     {#if page.data.akun}
-      <a class="lp8" href={resolve('/beranda')}>
-        <span class="lp9"> Beranda </span>
+      <a class="lp8" href={resolve('/urusanku')}>
+        <span class="lp9"> Urusanku </span>
       </a>
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
       <a class="lp11" href={resolve('/beranda')}>
-        <span class="lp12"> Buka beranda </span>
+        <span class="lp12"> Buka Urusin </span>
       </a>
     {:else}
       <a class="lp8" href={resolve('/masuk')}>
@@ -60,7 +60,7 @@
       </a>
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
       <a class="lp11" href={targetMulai}>
-        <span class="lp12"> Mulai gratis </span>
+        <span class="lp12"> Mulai chat </span>
       </a>
     {/if}
   </div>

@@ -105,7 +105,8 @@
     if (el && panel && window.innerWidth >= 1024) {
       const panelRect = panel.getBoundingClientRect();
       const elRect = el.getBoundingClientRect();
-      const targetScrollTop = panel.scrollTop + (elRect.top - panelRect.top) - 67.5 - 12;
+      const tinggiHeader = panel.querySelector('header')?.getBoundingClientRect().height ?? 0;
+      const targetScrollTop = panel.scrollTop + (elRect.top - panelRect.top) - tinggiHeader - 12;
       panel.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
       history.replaceState(null, '', `#${id}`);
     } else if (el) {
@@ -140,7 +141,7 @@
 <div class="flex flex-1 items-start">
   <nav
     aria-label="Bagian pengaturan"
-    class="hidden w-[259.5px] shrink-0 border-r border-line bg-card px-4 py-5 lg:sticky lg:top-[67.5px] lg:self-start lg:h-[calc(100dvh-67.5px-24px)] lg:overflow-y-auto lg:block"
+    class="hidden w-[259.5px] shrink-0 border-r border-line bg-card px-4 py-5 lg:sticky lg:top-[var(--tinggi-header-halaman)] lg:self-start lg:h-[calc(100dvh-var(--tinggi-header-halaman)-1.5rem)] lg:overflow-y-auto lg:block"
   >
     <ul class="flex flex-col gap-1">
       {#each BAGIAN as b (b.id)}
@@ -149,12 +150,12 @@
             href="#{b.id}"
             onclick={(e) => scrollKeBagian(b.id, e)}
             aria-current={aktif === b.id ? 'true' : undefined}
-            class="flex h-12 items-center gap-2.5 rounded-xl px-3 text-base leading-[23px] transition-all duration-150 {aktif ===
+            class="flex min-h-12 items-center gap-2.5 rounded-xl px-3 py-2 text-base leading-[23px] transition-all duration-150 {aktif ===
             b.id
               ? 'bg-surface font-semibold text-ink shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
               : 'text-card-ink hover:bg-surface/60'}"
           >
-            <Icon name={b.ikon} class="size-[18px] text-ink" />{b.label}
+            <Icon name={b.ikon} class="size-[18px] shrink-0 text-ink" />{b.label}
           </a>
         </li>
       {/each}

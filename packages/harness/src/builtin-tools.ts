@@ -776,8 +776,8 @@ export const dukcapilKlikSelesai = defineTool({
   },
 });
 
-export function builtinTools(): ToolDef[] {
-  return [
+export function builtinTools(modeChatbot = false): ToolDef[] {
+  const tools = [
     ragCariPengetahuan,
     dukcapilCekPersyaratan,
     urusanUsulkanRencana,
@@ -789,4 +789,13 @@ export function builtinTools(): ToolDef[] {
     ossCariNib,
     wilayahTetapkan,
   ] as unknown as ToolDef[];
+  if (!modeChatbot) return tools;
+  const browser = new Set([
+    'dukcapil__ajukan_layanan',
+    'dukcapil__klik_selesai',
+    'dukcapil__cek_status',
+    'samsat__cek_pkb',
+    'oss__cari_nib',
+  ]);
+  return tools.filter((t) => !browser.has(t.name));
 }

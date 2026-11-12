@@ -27,12 +27,14 @@
     nada = 'netral',
     ikon,
     besar = false,
+    wrap = false,
     class: kelas = '',
     children,
   }: {
     nada?: Nada;
     ikon?: NamaIkon | undefined;
     besar?: boolean;
+    wrap?: boolean;
     class?: string;
     children: Snippet;
   } = $props();
@@ -54,9 +56,11 @@
 </script>
 
 <span
-  class="inline-flex shrink-0 items-center gap-1.5 rounded-full font-medium whitespace-nowrap {besar
-    ? 'px-3 py-1.5 text-sm'
-    : 'px-2.5 py-1 text-[0.8125rem]'} {NADA[nada]} {kelas}"
+  class="inline-flex shrink-0 items-center gap-1.5 rounded-full font-medium {wrap
+    ? 'max-w-full whitespace-normal'
+    : 'whitespace-nowrap'} {besar ? 'px-3 py-1.5 text-sm' : 'px-2.5 py-1 text-[0.8125rem]'} {NADA[
+    nada
+  ]} {kelas}"
 >
   {#if ikon}<Icon name={ikon} class="size-[1.05em] shrink-0" />{/if}
   {@render children()}

@@ -208,6 +208,7 @@ html {
   -webkit-text-size-adjust: 100%;
   /* Ukuran huruf dari Pengaturan: 1 = 16px dasar peramban; semua ukuran memakai rem. */
   font-size: calc(100% * var(--skala-huruf, 1));
+  --tinggi-header-halaman: max(67.5px, calc(3.75rem + 1px));
   background: var(--sb-bg-secondary);
   scrollbar-width: thin;
   scrollbar-color: #25252233 transparent;

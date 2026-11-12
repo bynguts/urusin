@@ -372,10 +372,14 @@ export type BantuanPendamping = { jalur: 'adapter' | 'generik'; host: string; ke
 export function rencanaPeristiwa(
   slug: string,
   w: { ktp: string | null; domisili?: string | null; tujuan?: string | null; varian?: string | undefined },
+  browserTersedia = true,
 ): (RencanaWilayah & { pendamping?: BantuanPendamping; offline?: OfflinePortal }) | undefined {
-  const r = rencanaWilayah(slug, { ...w, pendampingTersedia });
+  const r = rencanaWilayah(slug, {
+    ...w,
+    pendampingTersedia: browserTersedia ? pendampingTersedia : () => false,
+  });
   if (!r || !w.ktp) return r;
-  return denganRute(r, w.ktp, w.varian);
+  return denganRute(r, w.ktp, w.varian, browserTersedia);
 }
 
 /** Layanan yang tidak online di portal daerah aktif (peta portal, ADR 0034): alasan + jalur resmi yang benar. */
@@ -400,11 +404,11 @@ function refPeta(kode: string, url?: string): Langkah['sourceRef'][number] {
 export function langkahPrasyaratAkun(kode: string, p: PrasyaratAkun): Langkah {
   const perangkat =
     p.perangkat === 'ponsel'
-      ? 'Langkah ini hanya bisa Anda kerjakan sendiri di ponsel Anda; Browser Pendamping baru dibuka setelah akunnya aktif.'
+      ? 'Langkah ini Anda kerjakan sendiri di ponsel. Lanjutkan pengajuan melalui kanal resmi setelah akun aktif.'
       : 'Anda kerjakan sendiri (AI tidak membuat akun, tidak mengisi sandi, kode OTP, atau CAPTCHA). Lewati bila sudah punya akun.';
   return {
     id: ID_LANGKAH_AKUN,
-    judul: `Sebelum Browser Pendamping: ${p.judul}`,
+    judul: `Persiapan pengajuan: ${p.judul}`,
     jenis: 'online-manual',
     dependsOn: [],
     dokumen: [],
@@ -479,6 +483,7 @@ function denganRute<
   r: R,
   ktp: string,
   varian?: string,
+  browserTersedia = true,
 ): Omit<R, 'tier'> & { tier: 'semi' | 'dipandu'; pendamping?: BantuanPendamping; offline?: OfflinePortal } {
   const rute = rutePendamping({ jenis: r.slug, kodeKabKota: ktp, varian });
   if (rute.jalur === 'dipandu' && rute.sebab === 'offline_portal') {
@@ -500,6 +505,7 @@ function denganRute<
       offline: rute.offline,
     };
   }
+  if (!browserTersedia) return { ...r, tier: 'dipandu' };
   // Akun portal yang harus dibuat warga sendiri: langkah pertama, sebelum Browser Pendamping dibuka.
   const peta = ketersediaanLayanan(ktp, r.slug, varian);
   const prasyarat = peta.dipetakan && peta.online && peta.prasyarat ? peta.prasyarat : undefined;

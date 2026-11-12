@@ -1,5 +1,6 @@
 import type { Kota, PeristiwaResponse } from '@urusin/contracts';
 import { rencanaPeristiwa } from '@urusin/harness';
+import { BROWSER_PENDAMPING_TERSEDIA } from '#lib/fitur.js';
 import { SEMUA_WILAYAH, kanalWilayah, routeByKode, type CityEntry } from '@urusin/registry';
 
 export const STALE_HARI = 30;
@@ -29,7 +30,7 @@ export function perluDicekUlang(verifiedAt: string | null, now: Date = new Date(
  * tidak dikenal.
  */
 export function peristiwaView(slug: string, kodeKabKota: string | null): PeristiwaResponse | null {
-  const r = rencanaPeristiwa(slug, { ktp: kodeKabKota });
+  const r = rencanaPeristiwa(slug, { ktp: kodeKabKota }, BROWSER_PENDAMPING_TERSEDIA);
   if (!r) return null;
   const kota = r.ktp ? kotaView(routeByKode(r.ktp.kodeKabKota).entry) : null;
   return {
