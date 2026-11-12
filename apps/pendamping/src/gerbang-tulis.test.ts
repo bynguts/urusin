@@ -10,6 +10,7 @@ import {
   hostAset,
   hostAsetUmum,
   hostAsetWilayah,
+  hostUnggahWilayah,
   jalurPihakKetigaBoleh,
   JENDELA_ISI_MS,
   putuskan,
@@ -309,6 +310,22 @@ describe('putuskan (tabel lengkap)', () => {
     expect(asetUmumBoleh({ url: sub.url, resourceType: 'fetch', dokumen: false, metode: 'GET' })).toBe(false);
     expect(asetUmumBoleh({ url: sub.url, resourceType: 'xhr', dokumen: false, metode: 'GET' })).toBe(false);
     expect(asetUmumBoleh({ url: U, resourceType: 'fetch', dokumen: false })).toBe(true);
+  });
+
+  it('hostUnggah Klampid (3578): XHR/fetch unggah semua metode, tidak pernah dokumen/navigasi', () => {
+    const url = 'https://s3.klampid.disdukcapilsurabaya.id/dispenduk/attachment/x/berkas.jpg';
+    expect(hostUnggahWilayah(url)).toBe(true);
+    expect(hostAset(url)).toBe(true);
+    expect(hostUnggahWilayah('https://wargaklampid-dispendukcapil.surabaya.go.id/app')).toBe(false);
+    for (const t of ['xhr', 'fetch'])
+      for (const m of ['PUT', 'POST', 'OPTIONS', 'GET'])
+        expect(asetUmumBoleh({ url, resourceType: t, dokumen: false, metode: m }), `${t} ${m}`).toBe(true);
+    expect(asetUmumBoleh({ url, resourceType: 'image', dokumen: false, metode: 'GET' })).toBe(true);
+    expect(asetUmumBoleh({ url, resourceType: 'document', dokumen: true, metode: 'GET' })).toBe(false);
+    for (const t of ['websocket', 'media', 'other'])
+      expect(asetUmumBoleh({ url, resourceType: t, dokumen: false, metode: 'GET' }), t).toBe(false);
+    const dok: PermintaanGerbang = { metode: 'GET', dokumen: true, utama: true, xhr: false, url };
+    expect(putuskan({ jenis: 'warga' }, dok, T)).toBe('blokir');
   });
 
   it('re-review LOW: hostAset pemda (3310/3404) hanya subresource, dokumen diblokir di semua jendela', () => {

@@ -1,6 +1,6 @@
 // BERKAS HASIL GENERATOR (scripts/gen-registry-wilayah.mjs). Jangan diubah tangan.
 // Sumber: data/wilayah/kontak-dukcapil.json (situs info terverifikasi) dan data/wilayah/portal-dukcapil.json
-// (kanal daring hasil recon). 283 wilayah, 61 berjenis web, 302 host persis.
+// (kanal daring hasil recon). 283 wilayah, 61 berjenis web, 303 host persis.
 import type { OfficialDomain } from './registry.js';
 
 /** A portal akun, B formulir web tanpa akun, C aplikasi saja, D WhatsApp/chatbot, E kanal nasional/kantor, F tidak diketahui. */
@@ -44,6 +44,11 @@ export type PortalWilayah = {
    * bukan host portal (vault/AI tidak ke sana).
    */
   hostAset?: readonly string[];
+  /**
+   * Host tujuan unggahan berkas (XHR/fetch halaman portal ke penyimpanan objek, mis. S3 Klampid): ikut egress sesi
+   * wilayah ini SAJA, tidak pernah dokumen/navigasi, bukan tujuan AI/vault. Di luar .go.id wajib `sumber` .go.id.
+   */
+  hostUnggah?: readonly string[];
   /** Halaman bukti; wajib .go.id untuk host di luar .go.id. */
   sumber?: string;
   login: readonly LoginPortal[];
@@ -2663,6 +2668,7 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     url: 'https://wargaklampid-dispendukcapil.surabaya.go.id/app',
     hosts: ['wargaklampid-dispendukcapil.surabaya.go.id'],
     hostInfo: ['disdukcapil.surabaya.go.id'],
+    hostUnggah: ['s3.klampid.disdukcapilsurabaya.id'],
     sumber: 'https://wargaklampid-dispendukcapil.surabaya.go.id/app',
     login: ['username_sandi'],
     proteksi: ['recaptcha'],
@@ -2670,7 +2676,7 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     bukti: 'OBS',
     verifiedAt: '2026-11-12',
     catatan:
-      'Klampid NG (Next.js, alur chat-room "Cak Takon"). OBS 2026-11-12: masuk /app/login dengan username + sandi + reCAPTCHA v2 (Google/OTP email masih ada di kode tetapi tidak tampil); ada SSO Wargaku. Akun baru wajib "Verifikasi Akun Klampid" dan verifikasi nomor HP lewat bot WhatsApp sebelum kartu layanan aktif. KIA dan pindah datang tidak tampil untuk akun warga. Unggahan memakai host S3 non-.go.id (s3.klampid.disdukcapilsurabaya.id) yang belum masuk registry.',
+      'Klampid NG (Next.js, alur chat-room "Cak Takon"). OBS 2026-11-12: masuk /app/login dengan username + sandi + reCAPTCHA v2 (Google/OTP email masih ada di kode tetapi tidak tampil); ada SSO Wargaku. Akun baru wajib "Verifikasi Akun Klampid" dan verifikasi nomor HP lewat bot WhatsApp sebelum kartu layanan aktif. KIA dan pindah datang tidak tampil untuk akun warga. Unggahan berkas ke penyimpanan objek s3.klampid.disdukcapilsurabaya.id (dirujuk bundle portal; hostUnggah, hanya sesi 3578).',
   },
   '3579': {
     kode: '3579',
@@ -5843,6 +5849,13 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     verifiedAt: '2026-11-12',
   },
   {
+    host: 's3.klampid.disdukcapilsurabaya.id',
+    instansi: 'Disdukcapil Kota Surabaya',
+    layanan: 'Unggah berkas portal layanan (penyimpanan objek)',
+    wilayah: '3578',
+    verifiedAt: '2026-11-12',
+  },
+  {
     host: 'wargaklampid-dispendukcapil.surabaya.go.id',
     instansi: 'Disdukcapil Kota Surabaya',
     layanan: 'Portal layanan adminduk daring (kelas A)',
@@ -6613,7 +6626,7 @@ export const EGRESS_PIHAK_KETIGA_WILAYAH: readonly string[] = ['challenges.cloud
 export function hostsWilayah(kode: string): string[] {
   const p = Object.hasOwn(PORTAL_WILAYAH, kode) ? PORTAL_WILAYAH[kode] : undefined;
   if (!p) return [];
-  const sendiri = [...p.hostInfo, ...p.hosts, ...(p.hostAset ?? [])];
+  const sendiri = [...p.hostInfo, ...p.hosts, ...(p.hostAset ?? []), ...(p.hostUnggah ?? [])];
   if (p.platform && Object.hasOwn(PLATFORM_WILAYAH, p.platform))
     sendiri.push(...PLATFORM_WILAYAH[p.platform]!.hosts);
   if (sendiri.length === 0) return [];
