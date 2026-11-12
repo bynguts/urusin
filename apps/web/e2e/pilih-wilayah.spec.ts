@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
 test('cari wilayah, batalkan, simpan, dan hapus pilihan tanpa mengubahnya menjadi teks bebas', async ({
   page,
 }) => {
+  await daftarAkunUji(page);
   await page.goto('/pengaturan');
   const kota = page.getByRole('combobox', { name: 'Kab/kota', exact: true });
   await expect(kota).toHaveAttribute('aria-autocomplete', 'list');
@@ -58,6 +60,7 @@ test('pilihan di ponsel bisa disentuh, keluar dengan Tab, dan tidak melebar dari
     hasTouch: true,
   });
   try {
+    await daftarAkunUji(page);
     await page.goto('/pengaturan');
     const kota = page.getByRole('combobox', { name: 'Kab/kota', exact: true });
     await expect(kota).toHaveAttribute('aria-autocomplete', 'list');

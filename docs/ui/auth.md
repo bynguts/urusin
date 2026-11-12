@@ -6,7 +6,7 @@ Keputusan dan model ancaman ada di [ADR 0028](../adr/0028-akun-dan-login.md) dan
 
 ## Prinsip
 
-- **Login tidak wajib.** "Coba tanpa daftar" (mode tamu) dan **"Masuk sebagai juri"** harus selalu terlihat di Masuk. Saat warga masuk dari peramban yang sama, urusan dan Data Diri tamu otomatis pindah ke akun.
+- **Wajib akun.** Tidak ada mode tamu. Memulai atau membuka urusan butuh sesi: tanpa sesi, tombol mulai mengarah ke `/daftar?next=<tujuan>`, halaman aplikasi (urusan, Urusanku, Data Diri, Dokumen, Pengaturan) ke `/masuk?next=<tujuan>`, dan API urusan/brankas/ingatan menjawab 401 `BELUM_MASUK`. Setelah daftar atau masuk, warga kembali ke tujuan semula. Halaman informatif (landing, katalog layanan/peristiwa, Tanya jawab, Bantuan, Privasi, Syarat) tetap publik. **"Masuk sebagai juri"** tetap selalu terlihat di Masuk. Data tamu lama (sebelum wajib akun) masih digabung ke akun saat warga masuk dari peramban yang sama, lalu disapu seperti biasa.
 - **Masuk dan lupa sandi tidak menyebut apakah email terdaftar.** Hanya Daftar yang menjawab `EMAIL_SUDAH_TERDAFTAR` ("Email ini sudah terdaftar. Silakan masuk.", dengan tautan Masuk).
 - **`pesanWarga` boleh ditampilkan langsung.** Pakai `kode` untuk logika (misalnya memunculkan Turnstile atau formulir konfirmasi sandi).
 - **Email bisa tertunda.** Email hanya dipakai untuk atur ulang sandi dan pemberitahuan tautan Google. Selama Resend belum dikonfigurasi, `/lupa-sandi` mengembalikan `tersedia: false`: tampilkan pesan jujur bahwa atur ulang lewat email belum tersedia (`ATUR_ULANG_NONAKTIF`), tanpa formulir.
@@ -94,7 +94,7 @@ Galat berbentuk `{ kode, pesanWarga }`; 429 membawa `Retry-After`. POST/PUT/DELE
 ## Dipakai e2e (jangan diubah tanpa memperbarui `apps/web/e2e/akun.spec.ts`)
 
 - Label input: "Email", "Kata sandi" (Masuk), label yang memuat "Kata sandi" (Daftar), "Kata sandi baru", "Nama lengkap".
-- Tombol: "Daftar", "Masuk", "Lanjutkan dengan Google" (Daftar: "Daftar dengan Google"), "Masuk sebagai juri", "Kirim tautan", "Simpan kata sandi", "Simpan". Tautan: "Coba tanpa daftar" (→ `/beranda`).
+- Tombol: "Daftar", "Masuk", "Lanjutkan dengan Google" (Daftar: "Daftar dengan Google"), "Masuk sebagai juri", "Kirim tautan", "Simpan kata sandi", "Simpan". Tautan persetujuan di Daftar: "Syarat layanan" (→ `/syarat`) dan "Kebijakan privasi" (→ `/privasi`). Tombol Google hanya tampil bila `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` terisi.
 - Formulir masuk `action="?/masuk"` dan formulir juri `data-juri`, masing-masing dengan `input[name="turnstile"]` (e2e mengisinya dengan token uji). Penanda tautan Google: elemen `[data-tautkan]`.
 - Pesan sukses `role="status"`: "Tautan berlaku 30 menit", "Kata sandi baru tersimpan".
 - Pesan galat `role="alert"` dengan `data-kode="<KODE>"`.

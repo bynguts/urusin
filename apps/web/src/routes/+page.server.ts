@@ -6,7 +6,7 @@ import { bacaTerakhir, SID_COOKIE } from '#lib/server/sesi.js';
 import { urusanMilik } from '#lib/server/urusan-akses.js';
 import type { Actions, PageServerLoad } from './$types';
 
-/** Riwayat urusan tamu bukan sesi login: landing tetap terbuka sampai warga memilih masuk aplikasi. */
+/** Landing tetap publik; akun yang punya urusan terakhir di perangkat ini langsung ke Beranda. */
 export const load: PageServerLoad = async ({ cookies, locals }) => {
   // Klaim cakupan Browser Pendamping dari satu sumber kebenaran (ADR 0033).
   const data = { jumlahDaerahPendamping: DAERAH_PENDAMPING_AKTIF.length };
@@ -19,7 +19,10 @@ export const load: PageServerLoad = async ({ cookies, locals }) => {
 };
 
 export const actions: Actions = {
-  /** Mulai urusan dari kotak cerita Beranda atau tombol di halaman peristiwa (jalan tanpa JavaScript). */
+  /**
+   * Mulai urusan dari kartu landing/katalog atau tombol di halaman peristiwa (jalan tanpa JavaScript). Wajib akun:
+   * tanpa sesi → /daftar?next=/peristiwa/<slug>, lalu warga kembali ke rencana itu setelah daftar.
+   */
   mulai: (event) => mulaiUrusanDariForm(event),
 };
 

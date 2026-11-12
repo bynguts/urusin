@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
-// QA prod (tamu di HP 390): wilayah yang disimpan di Pengaturan > Wilayah layanan harus dipakai saat urusan dimulai
-// dari kartu peristiwa di landing. Landing tanpa JavaScript (csr=false) tidak bisa membaca localStorage, jadi
-// pilihan itu sampai ke server lewat cookie dan menjadi kartu usulan "KTP Anda terdaftar di …?".
-test('tamu di HP: wilayah dari Pengaturan menjadi usulan saat mulai dari kartu peristiwa landing', async ({
+// QA prod (warga di HP 390, sudah masuk): wilayah yang disimpan di Pengaturan > Wilayah layanan harus dipakai saat
+// urusan dimulai dari kartu peristiwa di landing. Landing tanpa JavaScript (csr=false) tidak bisa membaca
+// localStorage, jadi pilihan itu sampai ke server lewat cookie dan menjadi kartu usulan "KTP Anda terdaftar di …?".
+test('warga di HP: wilayah dari Pengaturan menjadi usulan saat mulai dari kartu peristiwa landing', async ({
   browser,
 }) => {
   const page = await browser.newPage({
@@ -14,6 +15,7 @@ test('tamu di HP: wilayah dari Pengaturan menjadi usulan saat mulai dari kartu p
     extraHTTPHeaders: { 'x-forwarded-proto': 'http', 'x-forwarded-for': '10.20.30.61' },
   });
   try {
+    await daftarAkunUji(page);
     await page.goto('/pengaturan');
     const kota = page.getByRole('combobox', { name: 'Kab/kota', exact: true });
     // Tunggu hidrasi: sebelum itu kolomnya masih <select> SSR.
