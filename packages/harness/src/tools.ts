@@ -71,6 +71,8 @@ export type ToolResult = {
   nextState?: UrusanState;
   /** Wilayah yang ditetapkan tool (`wilayah__tetapkan`); diterapkan harness lewat CAS + event audit. */
   wilayah?: { ktp: string; domisili?: string | null; tujuan?: string | null };
+  /** Jawaban berakhir hand-off, termasuk hand-off ulang tanpa event baru: rencana paralel dibatalkan. */
+  handoff?: boolean;
   /** Akhiri turn setelah tool ini (mis. jawaban bersumber sudah dikirim ke warga). */
   endTurn?: boolean;
   /** Pemakaian token dari panggilan LLM bersarang di dalam tool (untuk meter biaya). */

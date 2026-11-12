@@ -1149,7 +1149,7 @@ class TurnRunner {
         content: res.terbungkus ? res.content : clip(res.content),
         end: res.endTurn === true,
         answer: tool.effect === 'answer',
-        handoff: (res.events ?? []).some((e) => e.type === 'handoff'),
+        handoff: res.handoff === true || (res.events ?? []).some((e) => e.type === 'handoff'),
       };
     } catch (e) {
       // Tindakan tidak sampai ke warga: konfirmasi tidak boleh hangus.
