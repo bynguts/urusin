@@ -195,7 +195,7 @@
       type="submit"
       disabled={mengirim}
       aria-busy={mengirim || undefined}
-      class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90"
+      class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink"
     >
       Mulai urusan ini <Icon
         name={mengirim ? 'memuat' : 'panah'}

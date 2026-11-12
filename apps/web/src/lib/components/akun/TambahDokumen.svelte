@@ -113,7 +113,7 @@
       <button
         type="submit"
         disabled={mengunggah}
-        class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90 disabled:opacity-60"
+        class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink disabled:opacity-60"
       >
         <Icon name={mengunggah ? 'memuat' : 'unggah'} class="size-4.5 {mengunggah ? 'animate-spin' : ''}" />
         {mengunggah ? 'Mengunggah…' : 'Simpan'}

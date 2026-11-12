@@ -31,7 +31,7 @@
     </p>
     <a
       href={resolve('/masuk')}
-      class="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-primer font-semibold text-primer-ink hover:opacity-90"
+      class="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-primer font-semibold text-primer-ink"
       >Masuk <Icon name="panah" class="size-4.5" /></a
     >
   {:else if data.tokenBerlaku}
@@ -72,7 +72,7 @@
       <button
         type="submit"
         disabled={sibuk}
-        class="flex min-h-14 w-full items-center justify-center rounded-full bg-primer font-semibold text-primer-ink hover:opacity-90 disabled:opacity-60"
+        class="flex min-h-14 w-full items-center justify-center rounded-full bg-primer font-semibold text-primer-ink disabled:opacity-60"
         >Simpan kata sandi</button
       >
     </form>
@@ -89,7 +89,7 @@
     </p>
     <a
       href={resolve('/lupa-sandi')}
-      class="mt-6 flex min-h-14 w-full items-center justify-center rounded-full bg-primer font-semibold text-primer-ink hover:opacity-90"
+      class="mt-6 flex min-h-14 w-full items-center justify-center rounded-full bg-primer font-semibold text-primer-ink"
       >Minta tautan baru</a
     >
   {/if}

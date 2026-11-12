@@ -50,7 +50,7 @@
         onclick={() => (ciut = !ciut)}
         aria-expanded={!ciut}
         aria-label={ciut ? 'Buka menu samping' : 'Ciutkan menu samping'}
-        class="grid size-9 place-items-center rounded-xl text-ink transition-all duration-150 active:scale-90 hover:bg-surface/70"
+        class="grid size-9 place-items-center rounded-xl text-ink hover:bg-surface/70"
       >
         <Icon name="panel" class="size-[18px]" />
       </button>
@@ -60,7 +60,7 @@
   <a
     href="{resolve('/beranda')}?baru"
     aria-label={ciut ? 'Urusan baru' : undefined}
-    class="flex min-h-[41px] items-center justify-center gap-1.5 rounded-full bg-primer py-2.5 text-sm leading-[21px] font-medium text-primer-ink transition-all duration-150 ease-out hover:opacity-90 active:scale-[0.98] {ciut
+    class="flex min-h-[41px] items-center justify-center gap-1.5 rounded-full bg-primer py-2.5 text-sm leading-[21px] font-medium text-primer-ink {ciut
       ? 'px-0'
       : 'px-6'}"
   >
@@ -76,7 +76,7 @@
             href={resolve(item.href)}
             aria-current={kini ? 'page' : undefined}
             aria-label={ciut ? item.label : undefined}
-            class="flex h-12 items-center gap-3 rounded-xl px-3 text-base leading-[22px] text-card-ink transition-all duration-150 ease-out hover:bg-surface/60 active:scale-[0.98] aria-[current=page]:bg-surface aria-[current=page]:font-semibold aria-[current=page]:text-ink aria-[current=page]:shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]"
+            class="flex h-12 items-center gap-3 rounded-xl px-3 text-base leading-[22px] text-card-ink hover:bg-surface/60 aria-[current=page]:bg-surface aria-[current=page]:font-semibold aria-[current=page]:text-ink aria-[current=page]:shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]"
           >
             <Icon name={item.ikon} class="size-5 shrink-0 text-ink" />{#if !ciut}{item.label}{/if}
           </a>
@@ -99,7 +99,7 @@
             <a
               href={resolve('/urusan/[id]', { id: u.id })}
               aria-current={u.id === idKini ? 'page' : undefined}
-              class="flex h-10 items-center rounded-[10px] px-3 text-[15px] text-card-ink transition-all duration-150 ease-out hover:bg-surface/60 active:scale-[0.98] aria-[current=page]:bg-surface aria-[current=page]:font-semibold aria-[current=page]:text-ink"
+              class="flex h-10 items-center rounded-[10px] px-3 text-[15px] text-card-ink hover:bg-surface/60 aria-[current=page]:bg-surface aria-[current=page]:font-semibold aria-[current=page]:text-ink"
             >
               <span class="truncate">{u.judul}</span>
             </a>
@@ -114,7 +114,7 @@
   <a
     href={resolve(akun ? '/pengaturan' : '/masuk')}
     aria-label={ciut ? (akun ? namaAkun : 'Masuk') : undefined}
-    class="flex h-14 shrink-0 items-center rounded-[14px] border border-line bg-surface transition-all duration-150 ease-out hover:bg-card active:scale-[0.99] {ciut
+    class="flex h-14 shrink-0 items-center rounded-[14px] border border-line bg-surface hover:bg-card {ciut
       ? 'justify-center p-0'
       : 'gap-2.5 px-2.5'}"
   >

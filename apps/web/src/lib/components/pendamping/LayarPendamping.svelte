@@ -153,7 +153,7 @@
 
   // Tombol papan u5rYk: tinggi 44, padding 0 16, jarak 7, 15/600.
   const TOMBOL_GELAP =
-    'inline-flex h-11 items-center gap-[7px] rounded-full bg-primer px-4 text-[15px] font-semibold whitespace-nowrap text-primer-ink hover:opacity-90';
+    'inline-flex h-11 items-center gap-[7px] rounded-full bg-primer px-4 text-[15px] font-semibold whitespace-nowrap text-primer-ink';
   const TOMBOL_TERANG =
     'inline-flex h-11 items-center gap-[7px] rounded-full border border-line-2 bg-surface px-4 text-[15px] font-semibold whitespace-nowrap text-ink hover:bg-card';
   const LINGKAR = 'grid size-12 shrink-0 place-items-center rounded-full';
@@ -175,7 +175,7 @@
           type="button"
           onclick={onbukatautan}
           data-buka-tautan
-          class="inline-flex min-h-11 max-w-full items-center gap-[7px] rounded-full bg-primer px-4 py-2 text-left text-[15px] font-semibold text-primer-ink hover:opacity-90"
+          class="inline-flex min-h-11 max-w-full items-center gap-[7px] rounded-full bg-primer px-4 py-2 text-left text-[15px] font-semibold text-primer-ink"
         >
           <span class="min-w-0 break-words"
             >Buka “{tautan.nama || 'tautan'}”
@@ -538,7 +538,7 @@
           onclick={onsudahkirim}
           disabled={data.memeriksaKirim}
           data-sudah-kirim
-          class="inline-flex min-h-11 items-center justify-center rounded-full bg-primer px-3 py-1.5 text-center text-sm leading-tight font-semibold text-primer-ink hover:opacity-90 disabled:opacity-60"
+          class="inline-flex min-h-11 items-center justify-center rounded-full bg-primer px-3 py-1.5 text-center text-sm leading-tight font-semibold text-primer-ink disabled:opacity-60"
           >Saya sudah mengirim</button
         >
       </div>

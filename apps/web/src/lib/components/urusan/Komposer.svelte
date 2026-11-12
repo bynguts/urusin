@@ -57,7 +57,7 @@
       type="submit"
       disabled={sibuk || nonaktif || !teks.trim()}
       aria-busy={sibuk || undefined}
-      class="grid size-[42px] shrink-0 place-items-center rounded-full bg-primer text-primer-ink hover:opacity-90 disabled:opacity-50"
+      class="grid size-[42px] shrink-0 place-items-center rounded-full bg-primer text-primer-ink disabled:opacity-50"
     >
       <Icon
         name={sibuk ? 'memuat' : 'panah-atas'}

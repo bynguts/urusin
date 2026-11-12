@@ -104,7 +104,7 @@
         >
         <a
           href="{resolve('/daftar')}?next={encodeURIComponent(perluMasuk)}"
-          class="inline-flex h-[52px] items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-6 font-semibold text-primer-ink hover:opacity-90"
+          class="inline-flex h-[52px] items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-6 font-semibold text-primer-ink"
           >Masuk / Daftar (gratis, 30 detik)</a
         >
       </div>
@@ -122,7 +122,7 @@
         onclick={onsetujui}
         disabled={status === 'mengirim'}
         aria-busy={status === 'mengirim' || undefined}
-        class="inline-flex h-[52px] items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-6 font-semibold text-primer-ink hover:opacity-90 disabled:opacity-80"
+        class="inline-flex h-[52px] items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-6 font-semibold text-primer-ink disabled:opacity-80"
       >
         <Icon
           name={status === 'mengirim' ? 'memuat' : 'centang'}

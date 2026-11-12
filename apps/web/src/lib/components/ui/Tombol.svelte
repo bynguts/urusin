@@ -5,7 +5,7 @@
   import type { NamaIkon } from '../ikon.js';
 
   /**
-   * Button/Primary, Button/Secondary, Button/Text dari design system. Radius pill, hover opacity .9,
+   * Button/Primary, Button/Secondary, Button/Text dari design system. Radius pill, tanpa efek hover,
    * busy opacity .8. Tinggi minimum 48 px (target sentuh), walau ukuran sumber lebih kecil.
    */
   type Varian = 'primer' | 'sekunder' | 'teks' | 'bahaya';
@@ -38,7 +38,7 @@
   }: Props = $props();
 
   const VARIAN: Record<Varian, string> = {
-    primer: 'bg-primer text-primer-ink hover:opacity-90',
+    primer: 'bg-primer text-primer-ink',
     sekunder: 'bg-surface text-ink shadow-lembut hover:bg-card',
     teks: 'text-ink hover:bg-bg-2 px-2!',
     bahaya: 'bg-surface text-galat border border-galat-garis/60 hover:bg-mawar',
@@ -51,7 +51,7 @@
 
   const cls = $derived(
     [
-      'inline-flex select-none items-center justify-center gap-1.5 rounded-full font-medium transition-opacity duration-150 ease-seimbang disabled:cursor-not-allowed disabled:opacity-50 aria-busy:opacity-80',
+      'inline-flex select-none items-center justify-center gap-1.5 rounded-full font-medium disabled:cursor-not-allowed disabled:opacity-50 aria-busy:opacity-80',
       VARIAN[varian],
       UKURAN[ukuran],
       lebar ? 'w-full' : '',

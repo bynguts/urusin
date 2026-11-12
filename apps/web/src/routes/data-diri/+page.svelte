@@ -151,7 +151,7 @@
       <button
         type="button"
         onclick={() => mulaiUbah()}
-        class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-primer px-5 text-sm font-semibold text-primer-ink transition-transform duration-150 hover:opacity-90 active:scale-95"
+        class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-primer px-5 text-sm font-semibold text-primer-ink"
       >
         <Icon name="tambah-orang" class="size-4" />
         {kosong ? 'Isi data diri' : 'Ubah data diri'}
@@ -214,7 +214,7 @@
             <button
               type="submit"
               disabled={menyimpan}
-              class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90 disabled:opacity-60"
+              class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink disabled:opacity-60"
             >
               {menyimpan ? 'Menyimpan…' : 'Simpan data diri'}
             </button>
