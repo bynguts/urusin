@@ -25,11 +25,14 @@ export type ItemLinimasa =
   | { jenis: 'waktu-habis'; key: string; terakhir: boolean }
   | { jenis: 'terkirim'; key: string; at: string };
 
-/** Kalimat sistem untuk transisi state yang perlu dilihat warga (lainnya cukup di panel). */
+/**
+ * Kalimat sistem untuk transisi state yang perlu dilihat warga (lainnya cukup di panel). BERKAS_SIAP dan MENGISI
+ * sengaja tidak di sini: harness memajukan keduanya sebagai pembukuan saat rencana disetujui (sebelum berkas
+ * diperiksa dan sebelum situs dibuka). "Semua dokumen siap" hanya dari checklist yang benar-benar lengkap (lihat
+ * `bangunLinimasa`); fase isi nyata tampil di layar Browser Pendamping.
+ */
 const KALIMAT_STATE: Partial<Record<EventOf<'state'>['state'], string>> = {
   RENCANA_DISETUJUI: 'Anda menyetujui rencana',
-  BERKAS_SIAP: 'Semua dokumen siap',
-  MENGISI: 'AI mulai mengisi formulir di situs resmi',
   DIPANDU: 'Beralih ke mode dipandu: Anda mengisi sendiri dengan panduan',
   DIBATALKAN: 'Urusan dibatalkan',
   GAGAL_AMAN: 'Urusin berhenti dengan aman. Tidak ada yang dikirim.',
@@ -37,7 +40,12 @@ const KALIMAT_STATE: Partial<Record<EventOf<'state'>['state'], string>> = {
   SELESAI: 'Urusan selesai',
 };
 
-export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly PesanWarga[]): ItemLinimasa[] {
+/** `jenis` (opsional) = jenis urusan, untuk kalimat wilayah yang tepat per jenis (lihat `kalimatWilayah`). */
+export function bangunLinimasa(
+  events: readonly UrusinEvent[],
+  pesan: readonly PesanWarga[],
+  jenis?: string | null,
+): ItemLinimasa[] {
   const out: ItemLinimasa[] = [];
   const warga = [...pesan].sort((a, b) => a.setelahSeq - b.setelahSeq);
   let iw = 0;
@@ -45,6 +53,8 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
   const permintaan = new Map<string, EventOf<'execution_request'>>();
   let permintaanTerakhir: EventOf<'execution_request'> | null = null;
   let wilayahDitetapkanSeq = 0;
+  // Checklist terakhir yang sudah tiba: dasar satu-satunya untuk "Semua dokumen siap".
+  let checklistTerakhir: EventOf<'checklist'> | null = null;
 
   const sisipkanWarga = (sampaiSeq: number) => {
     while (iw < warga.length && warga[iw]!.setelahSeq < sampaiSeq) {
@@ -80,13 +90,14 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
         out.push({ jenis: 'rencana', key, e, terakhir: false });
         break;
       case 'checklist':
+        checklistTerakhir = e;
         out.push({ jenis: 'checklist', key, e });
         break;
       case 'wilayah':
         if (e.status === 'usulan') out.push({ jenis: 'wilayah', key, e, terakhir: false });
         else {
           wilayahDitetapkanSeq = e.seq;
-          out.push({ jenis: 'sistem', key, teks: kalimatWilayah(e), at: e.at });
+          out.push({ jenis: 'sistem', key, teks: kalimatWilayah(e, jenis), at: e.at });
         }
         break;
       case 'ingatan':
@@ -118,7 +129,10 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
         break;
       case 'state': {
         if (e.state === 'TERKIRIM') out.push({ jenis: 'terkirim', key, at: e.at });
-        else {
+        else if (e.state === 'BERKAS_SIAP') {
+          if (e.dari !== e.state && dokumenLengkap(checklistTerakhir))
+            out.push({ jenis: 'sistem', key, teks: 'Semua dokumen siap', at: e.at });
+        } else {
           const teks = KALIMAT_STATE[e.state];
           if (teks && e.dari !== e.state) out.push({ jenis: 'sistem', key, teks, at: e.at });
         }
@@ -154,10 +168,22 @@ export function bangunLinimasa(events: readonly UrusinEvent[], pesan: readonly P
   return out;
 }
 
-/** "Wilayah KTP: Kabupaten Wonogiri" + tujuan pindah/domisili bila ada. */
-export function kalimatWilayah(e: EventOf<'wilayah'>): string {
-  let t = `Wilayah KTP: ${e.ktp.nama}`;
-  if (e.tujuan) t += ` · pindah ke ${e.tujuan.nama}`;
+/** Checklist ada, tidak kosong, dan semua butirnya `ok`. */
+function dokumenLengkap(c: EventOf<'checklist'> | null): boolean {
+  return !!c && c.item.length > 0 && c.item.every((i) => i.status === 'ok');
+}
+
+/**
+ * Kalimat wilayah yang ditetapkan, netral terhadap jenis urusan: wilayah yang menentukan layanan tidak selalu
+ * wilayah KTP pelapor (kematian: domisili almarhum). Pindah: "Pindah dari X ke Y". Domisili berbeda ditambahkan.
+ */
+export function kalimatWilayah(e: EventOf<'wilayah'>, jenis?: string | null): string {
+  let t =
+    e.tujuan || jenis === 'pindah'
+      ? e.tujuan
+        ? `Pindah dari ${e.ktp.nama} ke ${e.tujuan.nama}`
+        : `Pindah dari ${e.ktp.nama}`
+      : `Wilayah layanan: ${e.ktp.nama}`;
   if (e.domisili) t += ` · tinggal di ${e.domisili.nama}`;
   return t;
 }

@@ -105,9 +105,27 @@ export function judulUrusan(jenis: string | null | undefined): string | null {
   return (jenis && JUDUL_JENIS[jenis]) || null;
 }
 
-/** Peristiwa untuk lencana/avatar dari jenis urusan; jenis lain jatuh ke "KTP & dokumen". */
+/**
+ * Peristiwa untuk lencana/avatar dari jenis urusan. Empat Peristiwa Hidup memakai lencananya sendiri; jenis lain
+ * (ktp, kk, skck, ...) memakai tampilan "Urusan lain" dengan label jenisnya. "KTP & dokumen" hanya bila jenisnya
+ * belum diketahui.
+ */
 export function peristiwaDariJenis(jenis: string | null | undefined): Peristiwa {
-  return findPeristiwa(jenis ?? '') ?? URUSAN_LAIN;
+  if (!jenis) return URUSAN_LAIN;
+  const p = findPeristiwa(jenis);
+  if (p) return p;
+  const label = judulUrusan(jenis) ?? labelSlug(jenis);
+  return label ? { ...URUSAN_LAIN, lencana: label } : URUSAN_LAIN;
+}
+
+/** `pajak_kendaraan` → "Pajak kendaraan" untuk jenis yang belum punya judul; teks polos pendek. */
+function labelSlug(jenis: string): string | null {
+  const t = jenis
+    .replace(/[^a-z0-9]+/gi, ' ')
+    .trim()
+    .toLowerCase()
+    .slice(0, 30);
+  return t ? t[0]!.toUpperCase() + t.slice(1) : null;
 }
 
 /** Kelas latar + tinta lencana per warna pendamping. */

@@ -408,6 +408,7 @@ export function kartuRencana(
       ? `${r.judul} · ${namaPendekWilayah(w.ktp.nama)} → ${namaPendekWilayah(w.tujuan.nama)}`
       : `${r.judul} · ${namaPendekWilayah(w.ktp.nama)}`;
   return {
+    jenis,
     ringkasan,
     langkah: r.langkah.map((l, i) => {
       const sumber = i === 0 ? [...l.sourceRef, ...korpus] : l.sourceRef;

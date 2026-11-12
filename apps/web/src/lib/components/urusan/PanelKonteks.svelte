@@ -92,6 +92,19 @@
     return out;
   });
   const dokSiap = $derived(checklist?.item.filter((i) => i.status === 'ok').length ?? 0);
+  // Tanpa checklist hasil pemeriksaan berkas: daftar dokumen persyaratan dari rencana (unik, urutan langkah).
+  // Statusnya tidak diketahui, jadi chip netral "Siapkan", bukan "Siap"/"Belum ada".
+  const dokRencana = $derived(dokumenRencana(rencana));
+
+  function dokumenRencana(r: EventOf<'plan_card'> | null): string[] {
+    const out = new SvelteSet<string>();
+    for (const l of r?.langkah ?? [])
+      for (const d of l.dokumen?.length ? l.dokumen : l.bawa) {
+        const t = d.trim();
+        if (t) out.add(t);
+      }
+    return [...out];
+  }
 
   function keadaanLangkah(i: number): 'selesai' | 'kini' | 'nanti' {
     const n = i + 1;
@@ -229,9 +242,26 @@
               </li>
             {/each}
           </ul>
+        {:else if dokRencana.length}
+          <div class="mb-2.5 flex items-center justify-between text-sm leading-[21px] font-semibold">
+            <span class="text-muted">Dokumen untuk urusan ini</span>
+            <span class="text-ink">{dokRencana.length} dokumen</span>
+          </div>
+          <ul class="flex flex-col gap-2.5">
+            {#each dokRencana as d (d)}
+              <li
+                class="flex min-h-[52px] items-center justify-between gap-3 rounded-xl border border-line bg-surface py-1.5 pr-2.5 pl-3.5"
+              >
+                <span class="min-w-0 flex-1 text-base text-ink">{d}</span>
+                <Chip nada="netral" ikon="jam">Siapkan</Chip>
+              </li>
+            {/each}
+          </ul>
         {:else}
           <p class="rounded-xl bg-card p-4 text-[0.9375rem] text-body">
-            Daftar dokumen muncul setelah rencana disetujui.
+            {rencana
+              ? 'Rencana ini tidak meminta dokumen khusus. Ikuti langkah di tab Rencana.'
+              : 'Daftar dokumen muncul setelah Urusin menyusun rencana.'}
           </p>
         {/if}
       </div>

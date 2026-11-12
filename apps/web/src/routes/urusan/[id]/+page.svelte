@@ -74,10 +74,16 @@
         : ('MENUNGGU_LOGIN_WARGA' as const);
     return keadaanUrusan;
   });
-  const p = $derived(peristiwaDariJenis(data.urusan.jenis));
-  const judulJenis = $derived(judulUrusan(data.urusan.jenis));
+  // Jenis urusan terkini: halaman bisa dimuat sebelum harness mengklasifikasi (jenis null), jadi rencana yang
+  // tiba lewat stream membawa jenisnya; tanpa itu lencana tertahan di "KTP & dokumen" untuk kelahiran/pindah.
+  const jenisKini = $derived(k.rencana?.jenis ?? data.urusan.jenis);
+  const p = $derived(peristiwaDariJenis(jenisKini));
+  const judulJenis = $derived(judulUrusan(jenisKini));
+  // Sejak "Setujui rencana" ditekan sampai state urusan bergerak: progres jujur, bukan layar diam.
+  let menungguSetuju = $state(false);
+  const menyiapkanLanjutan = $derived(menungguSetuju && keadaanUrusan === 'RENCANA_DIUSULKAN');
   const judul = $derived(judulJenis ?? lokal.cari(data.urusan.id)?.judul ?? 'Urusan baru');
-  const linimasa = $derived(bangunLinimasa(k.events, pesan));
+  const linimasa = $derived(bangunLinimasa(k.events, pesan, jenisKini));
   const kutipan = $derived.by(() => {
     const peta = new SvelteMap<string, KutipanTerverifikasi & { nomor: number }>();
     for (const e of k.events)
@@ -113,6 +119,17 @@
       : null;
   });
   const kosong = $derived(linimasa.length === 0 && !k.sedangBerjalan);
+
+  // Jenis baru diketahui setelah halaman dimuat: perbarui catatan perangkat (judul + lencana Urusanku).
+  $effect(() => {
+    const jenis = k.rencana?.jenis;
+    if (!jenis || jenis === data.urusan.jenis) return;
+    untrack(() => {
+      const c = lokal.cari(data.urusan.id);
+      if (!c || c.peristiwa === jenis) return;
+      lokal.catatUrusan({ ...c, judul: judulUrusan(jenis) ?? c.judul, peristiwa: jenis });
+    });
+  });
 
   // Hanya bergantung pada id urusan; store dan catatan perangkat dibaca/ditulis tanpa dilacak.
   $effect(() => {
@@ -250,9 +267,11 @@
 
   async function setujuiRencana() {
     mengirim = true;
+    menungguSetuju = true;
     pesanKomposer = null;
     const hasil = await store.setujuiRencana();
     mengirim = false;
+    if (hasil !== 'ok') menungguSetuju = false;
     if (hasil === 'konflik')
       pesanKomposer =
         'Urusin masih memproses langkah sebelumnya. Tunggu sebentar, lalu tekan Setujui rencana lagi.';
@@ -409,7 +428,7 @@
       <div id="panel-konteks" class="{panelHpBuka ? '' : 'max-lg:hidden'} lg:min-h-full">
         <PanelKonteks
           state={keadaanPanel}
-          jenis={data.urusan.jenis}
+          jenis={jenisKini}
           sedangBerjalan={k.sedangBerjalan}
           rencana={k.rencana}
           checklist={k.checklist}
@@ -601,6 +620,16 @@
               {/if}
             {/each}
 
+            {#if menyiapkanLanjutan && !k.sedangBerjalan}
+              <p
+                role="status"
+                data-menyiapkan-lanjutan
+                class="flex items-center gap-2 pl-[46px] text-[15px] leading-[23px] text-muted"
+              >
+                <Icon name="memuat" class="size-4 animate-spin" />
+                Menyiapkan langkah berikutnya…
+              </p>
+            {/if}
             {#if k.sedangBerjalan}
               <p
                 role="status"
