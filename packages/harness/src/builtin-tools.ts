@@ -18,6 +18,7 @@ import { z } from 'zod';
 import type { PayloadOf } from '@urusin/contracts';
 import {
   ADMINDUK,
+  CacheJawaban,
   KALIMAT_TETAP,
   buildHandoff,
   generateGroundedAnswer,
@@ -302,7 +303,8 @@ function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?
     const kode = kodeUtama ?? kodeKtp(ctx.store, ctx.urusan);
     const luar = bukanPenduduk(ctx.urusan.jenis, wilayahUrusan(ctx.store, ctx.urusan).ktp, kode ?? null);
     const kanal = kode ? kanalDipandu(kode, ctx.urusan.jenis, luar) : h.kanal;
-    return { content: arahanPanduanUmum(kanal.length > 0 ? kanal : h.kanal) };
+    // `handoff`: tidak ada jawaban bersumber, jadi rencana paralel jalur cepat dibatalkan seperti hand-off.
+    return { handoff: true, content: arahanPanduanUmum(kanal.length > 0 ? kanal : h.kanal) };
   }
   const kunci = (k: { url?: string | undefined; nama: string }) => (k.url ? kunciUrl(k.url) : k.nama);
   const sudah = new Set(
@@ -358,6 +360,7 @@ function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?
   }
   const rencana = chunkRencana(ctx).map((c) => c.text);
   return {
+    handoff: true,
     content: [
       `Hand-off ke kanal resmi yang sama (${h.kanal.map((k) => k.url ?? k.nama).join(', ')}) SUDAH diberikan sebelumnya: JANGAN ulangi kanal itu dan jangan mengulang jawaban tadi.`,
       rencana.length > 0
@@ -393,15 +396,24 @@ export const urusanJawabPersyaratan = defineTool({
     if (chunks.length === 0)
       return handoffTanpaUlang(ctx, buildHandoff({ ...ctxHandoff, chunks }, 'tanpa_sumber'), kode);
 
-    const gen = await generateGroundedAnswer({
-      provider: ctx.deps.provider,
-      model: ctx.deps.model,
-      caps: ctx.deps.caps,
-      pertanyaan: args.pertanyaan,
-      chunks,
-      signal: ctx.signal,
-    });
+    const cache = ctx.deps.cacheJawaban;
+    const kunci = cache ? CacheJawaban.kunci(ctx.deps.model, args.pertanyaan, chunks) : '';
+    const tersimpan = cache?.ambil(kunci);
+    const gen = tersimpan
+      ? { ...tersimpan, usage: [] }
+      : await generateGroundedAnswer({
+          provider: ctx.deps.provider,
+          model: ctx.deps.model,
+          caps: ctx.deps.caps,
+          pertanyaan: args.pertanyaan,
+          chunks,
+          signal: ctx.signal,
+        });
     const verified = verifyGrounded(gen.data, chunks, ctxHandoff, ctx.deps.now());
+    // Hanya jawaban yang lolos verifikasi utuh (ada klaim, tidak ada yang dibuang) yang disimpan: keluaran model
+    // yang sebagian salah kutip atau berakhir hand-off selalu dicoba ulang ke model.
+    if (cache && !tersimpan && !verified.handoff && verified.klaim.length > 0 && verified.klaimDibuang === 0)
+      cache.simpan(kunci, gen.data, gen.method);
     const usage = { usage: gen.usage, structuredMode: gen.method };
     if (verified.handoff) return { ...handoffTanpaUlang(ctx, verified.handoff, kode), ...usage };
     const data: PayloadOf<'grounded_answer'> = {

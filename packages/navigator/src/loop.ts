@@ -13,8 +13,15 @@ import {
 } from '@urusin/contracts';
 import { Anggaran, PESAN_AMBIL_ALIH, type AlasanAmbilAlih } from './anggaran.js';
 import { buatResi, buktiDariPengamatan, ringkasBukti, type Resi } from './bukti.js';
-import { mintaRencana, type KonfigLlm } from './prompt.js';
-import { hashRencana, normalLabel, validasiRencana, type IdAturan, type OpsiValidasi } from './validasi.js';
+import { mintaRencana, type KonfigLlm, type MasukanPrompt } from './prompt.js';
+import {
+  hashRencana,
+  normalLabel,
+  pembukaPengajuan,
+  validasiRencana,
+  type IdAturan,
+  type OpsiValidasi,
+} from './validasi.js';
 
 /**
  * Loop Navigator generik (ADR 0030): amati → rencana (LLM) → validasi → aksi (persetujuan warga per halaman
@@ -679,6 +686,8 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
   }
 
   let umpanBalik: { sidik: string; aturan: IdAturan[] } | null = null;
+  /** Halaman (sidik) yang CTA pengajuannya sudah diserahkan tanpa LLM: kunjungan berikutnya ditanya ke model. */
+  const ctaDipakai = new Set<string>();
   try {
     ang.mulaiAi();
     for (;;) {
@@ -725,7 +734,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       }
 
       if (o.kuotaHabis?.()) return await serahkanAkhir('kuota', p.seq);
-      const masukan = {
+      const masukan: MasukanPrompt = {
         pengamatan: p,
         tujuan: o.tujuan,
         ...(o.validasi?.katalog ? { katalog: [...o.validasi.katalog] } : {}),
@@ -734,8 +743,21 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         ...(umpanBalik?.sidik === p.sidik ? { umpanBalik: umpanBalik.aturan } : {}),
       };
       let minta: Awaited<ReturnType<typeof mintaRencana>>;
+      // Halaman pintu dengan satu CTA pengajuan ("Mulai Pendaftaran"): CTA didahulukan di atas tautan informasi
+      // ("Persyaratan") tanpa LLM, sekali per halaman; validator mengubah kliknya jadi serah `ketuk_tautan`.
+      const cta: string | undefined = ctaDipakai.has(p.sidik) ? undefined : pembukaPengajuan(p);
+      if (cta !== undefined) ctaDipakai.add(p.sidik);
       try {
-        minta = await mintaRencana(o.llm, masukan, o.signal);
+        minta =
+          cta !== undefined
+            ? {
+                ok: true,
+                rencana: { aksi: [{ jenis: 'klik', ref: cta }] },
+                panggilan: 0,
+                tokenMasuk: 0,
+                tokenKeluar: 0,
+              }
+            : await mintaRencana(o.llm, masukan, o.signal);
       } catch (e) {
         if (batal()) throw e;
         // Galat penyedia LLM (429, timeout): coba sekali lagi, lalu serahkan dengan alasan yang jujur.
@@ -753,7 +775,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       if (minta.ok && v.ok)
         o.jejak({
           jenis: 'rencana',
-          model: o.llm.model.slice(0, 100) || '-',
+          model: (cta !== undefined ? 'aturan:cta_pengajuan' : o.llm.model).slice(0, 100) || '-',
           tokenMasuk: minta.tokenMasuk,
           tokenKeluar: minta.tokenKeluar,
           rencanaHash: v.rencanaHash,

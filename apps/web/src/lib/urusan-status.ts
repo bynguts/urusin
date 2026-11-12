@@ -34,7 +34,7 @@ const PELAKU_JENIS: Record<JenisLangkah, string> = {
 };
 
 /** Jenis urusan adminduk yang dikerjakan lewat formulir resmi (lima langkah sebelum rencananya ada). */
-const JENIS_ADMINDUK = new Set(['kelahiran', 'kematian', 'perkawinan', 'pindah', 'ktp', 'kk', 'akta']);
+const JENIS_ADMINDUK = new Set(['kelahiran', 'kematian', 'perkawinan', 'pindah', 'ktp', 'kk', 'kia', 'akta']);
 
 /**
  * Langkah panel Rencana. Lima langkah Browser Pendamping (masuk akun → AI mengisi → Kirim) hanya untuk rencana

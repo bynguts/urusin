@@ -9,7 +9,6 @@ export const load: LayoutServerLoad = ({ locals }) => ({
     ? {
         jenis: locals.akun.jenis === 'demo' ? ('demo' as const) : ('akun' as const),
         email: locals.akun.email,
-        emailTerverifikasi: locals.akun.emailVerifiedAt !== null,
       }
     : null,
 });

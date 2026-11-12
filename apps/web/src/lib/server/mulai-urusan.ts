@@ -71,11 +71,11 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
   const rt = await getRuntime();
   event.locals.sid = ensureSession(event.cookies);
   const ditolak = batasi(rt, event, 'buat');
-  if (ditolak)
-    return fail(429, {
-      pesanWarga: 'Terlalu banyak urusan baru dalam waktu singkat. Tunggu sebentar lalu coba lagi.',
-      pesan,
-    } satisfies GagalMulai);
+  if (ditolak) {
+    // Pesan sudah memuat waktu tunggu nyata dari Retry-After ("Coba lagi dalam ±N menit").
+    const isi = (await ditolak.json()) as { pesanWarga: string };
+    return fail(429, { pesanWarga: isi.pesanWarga, pesan, kode: 'RATE_LIMITED' } satisfies GagalMulai);
+  }
 
   if (pesan) {
     const tamu = pastikanTamuUntukTurn(rt, event);

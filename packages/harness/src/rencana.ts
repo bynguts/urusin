@@ -2,7 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { ADAPTERS } from '@urusin/adapters';
 import type { EventPayload, UrusanState } from '@urusin/contracts';
 import { getOfficialDomain } from '@urusin/core';
-import { findBundel, namaPendekWilayah, routeByKode, wilayahByKode } from '@urusin/registry';
+import {
+  bundelPendamping,
+  findBundel,
+  namaPendekWilayah,
+  routeByKode,
+  wilayahByKode,
+} from '@urusin/registry';
 import { ConflictError, HarnessError } from './errors.js';
 import { ADAPTER_GENERIK, alasanDipandu, portalWebWilayah } from './generik.js';
 import { ADMINDUK } from './grounding.js';
@@ -142,7 +148,8 @@ export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): Rut
 function ruteDasar(jenis: UrusanRow['jenis'], kode: string, nama: string | undefined): RutePendamping {
   const adapter = langkahAdapter({ jenis, kodeKabKota: kode });
   if (adapter) return adapter;
-  const bundel = jenis ? findBundel(jenis) : undefined;
+  // Peristiwa Hidup atau layanan adminduk umum (KTP-el, KK, KIA, akta): semuanya punya bundel tujuan Navigator.
+  const bundel = jenis ? bundelPendamping(jenis) : undefined;
   const portal = portalWebWilayah(kode);
   if (bundel && portal)
     return {
@@ -153,7 +160,7 @@ function ruteDasar(jenis: UrusanRow['jenis'], kode: string, nama: string | undef
       // `kode` (host portal + platform + host tantangan sesuai proteksi portal), satu sumber dengan registry.
       params: { jenis: bundel.slug, kode, jalur: new URL(portal.url).pathname },
       origin: portal.origin,
-      nama: `Ajukan ${bundel.judul.toLowerCase()} di portal resmi Disdukcapil ${nama ?? portal.nama}`,
+      nama: `Ajukan ${bundel.frasa} di portal resmi Disdukcapil ${nama ?? portal.nama}`,
     };
   return { jalur: 'dipandu', alasan: alasanDipandu(kode, nama) };
 }

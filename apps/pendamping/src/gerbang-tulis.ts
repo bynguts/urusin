@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { EGRESS_ASET_UMUM, PLATFORM_WILAYAH, PORTAL_WILAYAH } from '@urusin/core';
+import { domainPemda } from '@urusin/egress';
 import { jalurTulis } from '@urusin/executor';
 
 /**
@@ -153,6 +154,45 @@ export function asetUmumBoleh(r: {
     r.metode?.toUpperCase() === 'GET' &&
     !hostAsetUmum(r.url) &&
     /\.go\.id$/.test(URL.parse(r.url)?.hostname.toLowerCase().replace(/\.$/, '') ?? '')
+  );
+}
+
+/**
+ * Domain pemda (`label.go.id`) host portal sesi. Host aset umum/aset pemda terdaftar tidak ikut menentukan (CDN
+ * pemda lain yang dipakai bersama tidak membuka domain pemda itu).
+ */
+export function domainPemdaSesi(hosts: Iterable<string>): Set<string> {
+  const out = new Set<string>();
+  for (const h of hosts) {
+    if (hostAset(`https://${h}/`)) continue;
+    const d = domainPemda(h);
+    if (d) out.add(d);
+  }
+  return out;
+}
+
+/** Jenis subresource yang boleh dari subdomain pemda yang sama tanpa terdaftar. */
+const TIPE_ASET_PEMDA: ReadonlySet<string> = new Set(['image', 'stylesheet', 'font']);
+
+/**
+ * Probe gel5 3310: gambar/style/fon dari subdomain .go.id milik pemda yang SAMA dengan portal sesi
+ * (cdn.klaten.go.id, cdn.dukcapil.klaten.go.id untuk sakura.dukcapil.klaten.go.id) tanpa didaftarkan satu per
+ * satu. Hanya https:443, GET, bukan dokumen. Proxy/edge mengizinkan host itu dengan lingkup `domainPemda` yang
+ * sama; jenis lain (XHR, skrip, navigasi) tetap butuh host terdaftar.
+ */
+export function asetPemdaSama(
+  r: { url: string; resourceType: string; dokumen: boolean; metode?: string | undefined },
+  domain: ReadonlySet<string>,
+): boolean {
+  const u = URL.parse(r.url);
+  if (!u || u.protocol !== 'https:' || (u.port !== '' && u.port !== '443')) return false;
+  const d = domainPemda(u.hostname);
+  return (
+    d !== undefined &&
+    domain.has(d) &&
+    !r.dokumen &&
+    r.metode?.toUpperCase() === 'GET' &&
+    TIPE_ASET_PEMDA.has(r.resourceType)
   );
 }
 

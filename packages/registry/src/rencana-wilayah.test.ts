@@ -253,6 +253,19 @@ describe('rencanaLayanan: rencana minimal KK/KTP-el bersumber pasal Perpres 96/2
     ]);
   });
 
+  it('KIA: persyaratan Permendagri 7/2026 (aturan berlaku) + kanal resmi wilayah KTP', () => {
+    const r = rencanaLayanan('kia', { ktp: '3171' })!;
+    expect(r.judul).toBe('Kartu Identitas Anak (KIA)');
+    const teks = JSON.stringify(r.langkah);
+    expect(teks).toMatch(/pas foto berwarna 2x3 cm/);
+    expect(teks).toMatch(/KTP-el asli orang tua tidak lagi disyaratkan/);
+    expect(teks).toMatch(/aplikasi IKD/);
+    expect(teks).not.toMatch(/Permendagri 2\/2016/);
+    expect(r.langkah[0]!.sourceRef.map((s) => s.url)).toContain(
+      'https://peraturan.bpk.go.id/Download/423299/permendagri-no-7-tahun-2026.pdf',
+    );
+  });
+
   it('jenis lain: tidak ada rencana (model tidak diberi sumber karangan)', () => {
     expect(rencanaLayanan('akta', { ktp: '3312' })).toBeUndefined();
     expect(rencanaLayanan('kelahiran', { ktp: '3312' })).toBeUndefined();

@@ -22,7 +22,6 @@ export const NAV_HP: readonly ItemNav[] = NAV.slice(0, 4);
 export const RUTE_AUTH = [
   '/masuk',
   '/daftar',
-  '/verifikasi-email',
   '/lupa-sandi',
   '/atur-ulang-sandi',
   '/lengkapi-profil',

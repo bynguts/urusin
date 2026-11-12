@@ -2,7 +2,9 @@ import { createHash } from 'node:crypto';
 import { EGRESS_ASET_UMUM } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
 import {
+  asetPemdaSama,
   asetUmumBoleh,
+  domainPemdaSesi,
   catatanBlokir,
   createGerbangTulis,
   hostAset,
@@ -496,5 +498,36 @@ describe('createGerbangTulis', () => {
     pegang = false;
     tunggu = false;
     expect(g.jendela()).toEqual({ jenis: 'ai_klik' });
+  });
+});
+
+describe('probe gel5 3310: aset subdomain pemda yang sama', () => {
+  const pemda = domainPemdaSesi(['sakura.dukcapil.klaten.go.id', 'unpkg.com', 'challenges.cloudflare.com']);
+  const r = (url: string, resourceType = 'image', metode = 'GET', dokumen = false) => ({
+    url,
+    resourceType,
+    metode,
+    dokumen,
+  });
+
+  it('domain pemda hanya dari host portal .go.id (bukan CDN umum)', () => {
+    expect([...pemda]).toEqual(['klaten.go.id']);
+  });
+
+  it('GET gambar/style/fon https dari subdomain pemda yang sama: boleh', () => {
+    expect(asetPemdaSama(r('https://cdn.klaten.go.id/logo.png'), pemda)).toBe(true);
+    expect(asetPemdaSama(r('https://cdn.dukcapil.klaten.go.id/a.css', 'stylesheet'), pemda)).toBe(true);
+    expect(asetPemdaSama(r('https://klaten.go.id/f.woff2', 'font'), pemda)).toBe(true);
+  });
+
+  it('jenis/metode/dokumen/pemda/skema lain: tidak', () => {
+    expect(asetPemdaSama(r('https://cdn.klaten.go.id/x.json', 'xhr'), pemda)).toBe(false);
+    expect(asetPemdaSama(r('https://cdn.klaten.go.id/x.js', 'script'), pemda)).toBe(false);
+    expect(asetPemdaSama(r('https://cdn.klaten.go.id/', 'document', 'GET', true), pemda)).toBe(false);
+    expect(asetPemdaSama(r('https://cdn.klaten.go.id/logo.png', 'image', 'POST'), pemda)).toBe(false);
+    expect(asetPemdaSama(r('https://cdn.slemankab.go.id/logo.png'), pemda)).toBe(false);
+    expect(asetPemdaSama(r('http://cdn.klaten.go.id/logo.png'), pemda)).toBe(false);
+    expect(asetPemdaSama(r('https://cdn.klaten.go.id:8443/logo.png'), pemda)).toBe(false);
+    expect(asetPemdaSama(r('https://klaten.go.id.evil.example/logo.png'), pemda)).toBe(false);
   });
 });

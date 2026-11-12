@@ -53,6 +53,12 @@ export type FiturKendali = {
   aktif: boolean;
   /** role=tab, aria-controls, aria-expanded, data-(bs-)toggle, atau <summary>. */
   kendaliLokal: boolean;
+  /**
+   * Hanya membuka panel di halaman (probe gel5 3402): data-(bs-)toggle collapse/offcanvas/dropdown/modal/tab/pill
+   * atau aria-controls + aria-expanded, di luar form, tautan dengan href kosong/`#...`/`/`, dan panel targetnya
+   * (aria-controls / data-(bs-)target / href #id / menu dropdown saudara) benar-benar ada di DOM.
+   */
+  pembukaPanel: boolean;
   /** Nama memuat homoglif/aksara non-Latin atau karakter tak terlihat. */
   teksCuriga: boolean;
 };
@@ -358,6 +364,70 @@ export function aktifEl(el: Element): boolean {
   return true;
 }
 
+/** Nilai data-(bs-)toggle yang hanya membuka/menutup panel di halaman yang sama (Bootstrap dan sejenisnya). */
+const TOGEL_PANEL: ReadonlySet<string> = new Set([
+  'collapse',
+  'offcanvas',
+  'dropdown',
+  'modal',
+  'tab',
+  'pill',
+]);
+
+/** Panel target pembuka benar-benar ada di dokumen (bukan sekadar atribut toggle). */
+function targetPanelAda(el: Element, togel: string, h: string): boolean {
+  const doc = el.ownerDocument;
+  const ids = (el.getAttribute('aria-controls') ?? '').split(/\s+/).filter(Boolean);
+  if (ids.some((id) => doc.getElementById(id) !== null)) return true;
+  for (const sel of [el.getAttribute('data-bs-target'), el.getAttribute('data-target')]) {
+    if (!sel) continue;
+    try {
+      if (doc.querySelector(sel) !== null) return true;
+    } catch {
+      // selektor tidak sah: bukan target
+    }
+  }
+  if (h.length > 1 && h.startsWith('#') && doc.getElementById(h.slice(1)) !== null) return true;
+  return togel === 'dropdown' && el.parentElement?.querySelector('.dropdown-menu') != null;
+}
+
+function pembukaPanelDari(el: Element, tag: string, rawHref: string | null): boolean {
+  if (formPemilik(el)) return false;
+  const togel = (el.getAttribute('data-bs-toggle') ?? el.getAttribute('data-toggle') ?? '')
+    .trim()
+    .toLowerCase();
+  if (!TOGEL_PANEL.has(togel) && !(el.hasAttribute('aria-controls') && el.hasAttribute('aria-expanded')))
+    return false;
+  const h = (rawHref ?? '').trim();
+  if ((tag === 'a' || tag === 'area') && !(h === '' || h.startsWith('#') || h === '/')) return false;
+  return targetPanelAda(el, togel, h);
+}
+
+/** Kata nama kendali akun (masuk/daftar/login/register/akun) dan penghubungnya. */
+const KATA_AUTH: ReadonlySet<string> = new Set([
+  'masuk',
+  'daftar',
+  'login',
+  'log',
+  'logon',
+  'signin',
+  'signup',
+  'sign',
+  'register',
+  'registrasi',
+  'akun',
+]);
+const KATA_AUTH_PELENGKAP: ReadonlySet<string> = new Set(['in', 'up', 'saya', 'atau', 'dan', 'or', 'and']);
+
+/**
+ * Nama yang SELURUHNYA kata akun ("Masuk atau Daftar", "Login / Register", "Akun Saya"): satu-satunya nama
+ * NEG yang boleh menjadi pembuka panel lokal. "Hapus Akun", "Kirim Pengajuan", "Bayar" tidak.
+ */
+function namaAuth(n: string): boolean {
+  const t = tokenKata(lipatNeg(bersihkanPanah(n)));
+  return t.some((k) => KATA_AUTH.has(k)) && t.every((k) => KATA_AUTH.has(k) || KATA_AUTH_PELENGKAP.has(k));
+}
+
 function formPemilik(el: Element): HTMLFormElement | null {
   return (el as HTMLInputElement).form ?? el.closest('form');
 }
@@ -575,6 +645,7 @@ export function fiturKendali(el: Element, akhir?: boolean): FiturKendali {
       el.hasAttribute('aria-expanded') ||
       el.hasAttribute('data-toggle') ||
       el.hasAttribute('data-bs-toggle'),
+    pembukaPanel: pembukaPanelDari(el, tag, rawHref),
     teksCuriga: teksCurigaDari(
       ...[
         teksTampak,
@@ -679,6 +750,11 @@ export function putuskanKelas(f: FiturKendali): { kelas: KelasKendali; aturan: A
     return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
   if (f.halamanAkhir) return { kelas: 'kirim', aturan: 'K6_AKHIR_DIALOG' };
   if (negLain) return { kelas: 'kirim', aturan: 'K7_NEG' };
+  // Pembuka panel lokal akun ("Masuk atau Daftar" membuka offcanvas, probe gel5 3402): kata NEG di NAMA saja tidak
+  // menjadikannya kirim, HANYA bila namanya seluruhnya kata akun dan panelnya ada. Tidak ada request tulis dari
+  // membuka panel; gerbang tulis worker tetap menjaga klik AI.
+  if (f.pembukaPanel && !negIkon && !f.teksCuriga && nama.length > 0 && nama.every(namaAuth))
+    return { kelas: 'ui_lokal', aturan: 'K9_UI_LOKAL' };
   // Ikon saja (probe SIDAK: feather credit-card = ikon KTP/KK) pada tautan GET bersih: pembuka, diketuk warga.
   if (negIkon && !negNama)
     return tautanGetBiasa(f)

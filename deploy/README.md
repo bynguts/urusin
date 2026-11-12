@@ -563,8 +563,8 @@ dengan NAMA host (setelah nama itu dan semua alamatnya lolos kebijakan di edge);
 nama itu lagi di sisi operator, jadi alamat yang akhirnya dihubungi ditentukan DNS proxy hulu. Pakai hanya
 proxy milik sendiri yang resolvernya dipercaya.
 
-Batas `pendamping`: `mem_limit`/`memswap_limit 1300m` (2 sesi x 512 MB + Node/Xvfb), pengawas menghentikan
-sesi di 450 MB RSS (worker-id laptop: 1 sesi, 1100 MB), `cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `ulimits core 0`,
+Batas `pendamping`: `mem_limit`/`memswap_limit` = `PENDAMPING_MEM_LIMIT` (bawaan 2500m: 2 sesi x 1100 MB + Node/Xvfb), pengawas menghentikan
+sesi di `PENDAMPING_SESSION_MEM_MB` (bawaan 1100 MB RSS; 450 MB terlalu ketat untuk portal prioritas) (worker-id laptop: 1 sesi, 1100 MB), `cpus: 1.0`, `cpu_shares: 256`, `pids_limit: 512`, `/tmp` tmpfs 768 MB, `ulimits core 0`,
 `init: true`. `pendamping-edge`: 128 MB, `cpus: 0.5`, `pids_limit: 64`.
 
 ## Uji skrip (tanpa Docker)

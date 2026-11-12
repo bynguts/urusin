@@ -3,9 +3,13 @@
   import { resolve } from '$app/paths';
   import Icon from '#lib/components/Icon.svelte';
   import KerangkaAuth from '#lib/components/auth/KerangkaAuth.svelte';
-  import { formAuth, galatAuth } from '#lib/components/auth/form.js';
+  import { dataAuth, formAuth, galatAuth } from '#lib/components/auth/form.js';
 
-  /** App 18 Lupa kata sandi. Jawaban sukses sama untuk email terdaftar maupun tidak. */
+  /**
+   * App 18 Lupa kata sandi. Jawaban sukses sama untuk email terdaftar maupun tidak. Tanpa pengirim email
+   * (`tersedia` false) formulir disembunyikan: tidak ada jalur atur ulang selain tautan email (ADR 0032).
+   */
+  const data = $derived(dataAuth<{ tersedia: boolean; googleAktif: boolean }>());
   const form = $derived(formAuth());
   const galat = $derived(galatAuth());
   let sibuk = $state(false);
@@ -20,7 +24,18 @@
   <span class="grid size-14 place-items-center rounded-2xl bg-bg-2"
     ><Icon name="gembok" class="size-6" /></span
   >
-  {#if form?.terkirim}
+  {#if data.tersedia === false}
+    <h1 class="mt-5 text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Lupa kata sandi</h1>
+    <p role="status" data-kode="ATUR_ULANG_NONAKTIF" class="mt-3 text-[1.0625rem] leading-[25px] text-body">
+      Maaf, atur ulang kata sandi lewat email belum tersedia di Urusin. Kami tidak bisa memulihkan kata sandi
+      tanpa email, demi keamanan akun Anda.
+    </p>
+    {#if data.googleAktif}
+      <p class="mt-3 text-[1.0625rem] leading-[25px] text-body">
+        Bila akun Anda tertaut Google, masuk dengan tombol Google di halaman Masuk.
+      </p>
+    {/if}
+  {:else if form?.terkirim}
     <h1 class="mt-5 text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Cek email Anda</h1>
     <p role="status" class="mt-3 text-[1.0625rem] leading-[25px] text-body">
       Bila <span class="font-semibold text-ink">{form.email}</span> terdaftar, kami sudah mengirim tautan untuk
