@@ -1495,3 +1495,97 @@ describe('rem Browser Pendamping portal asli (review M1)', () => {
     expect(mulaiSesi().every((c) => c.body.modeUji === true)).toBe(true);
   });
 });
+
+describe('demo juri membuka situs resmi asli (mode lihat saja); replika hanya simulasi yang diminta', () => {
+  const RESMI = 'https://telunjuksakti.wonogirikab.go.id';
+  const evIp = (request: Request, id: string, ip = '10.9.9.9') =>
+    ({ request, params: { id }, url: new URL(request.url), getClientAddress: () => ip }) as never;
+  function runtimeAkun(config: Partial<Runtime['config']> = {}) {
+    rt = createRuntime({
+      provider: new DemoProvider(),
+      config: { dbPath: ':memory:', ...config },
+      akun: { mailer: new MemoryMailer(), google: null, vault: { diskPersen: () => 10 } },
+    });
+    setRuntimeForTests(rt);
+  }
+  function juriDengan(u: { id: string }) {
+    const { token, akun } = rt.akun.buatDemo({ ip: '127.0.0.1', userAgent: null });
+    rt.akun.catatPemilikUrusan(u.id, { akun });
+    return `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${token}`;
+  }
+  const mulaiSesi = () => calls.filter((c) => c.url.endsWith('/internal/sesi'));
+  const lihatSajaTercatat = (id: string) =>
+    rt.store
+      .eventsOfType(id, 'jejak_pendamping', 50)
+      .some((e) => (e.payload as { catatan?: { jenis?: string } }).catatan?.jenis === 'lihat_saja');
+
+  it('bawaan: worker dipanggil dengan origin RESMI, modeUji false + lihatSaja true; jejak lihat_saja tercatat', async () => {
+    runtimeAkun();
+    const u = urusanDenganEksekusi();
+    const res = await mulai(evIp(req('POST', { executionId: 'x_1' }, juriDengan(u)), u.id));
+    expect(res.status).toBe(201);
+    expect(mulaiSesi()).toHaveLength(1);
+    expect(mulaiSesi()[0]!.body).toMatchObject({ origin: RESMI, modeUji: false, lihatSaja: true });
+    expect(lihatSajaTercatat(u.id)).toBe(true);
+  });
+
+  it('simulasi diminta: replika Mode Uji (modeUji true), tanpa lihatSaja dan tanpa jejak lihat_saja', async () => {
+    runtimeAkun();
+    const u = urusanDenganEksekusi();
+    const res = await mulai(evIp(req('POST', { executionId: 'x_1', simulasi: true }, juriDengan(u)), u.id));
+    expect(res.status).toBe(201);
+    const body = mulaiSesi()[0]!.body as { modeUji?: boolean; lihatSaja?: boolean };
+    expect(body.modeUji).toBe(true);
+    expect(body.lihatSaja).toBeUndefined();
+    expect(lihatSajaTercatat(u.id)).toBe(false);
+  });
+
+  it('simulasi di portal tanpa replika (Sleman): 422 PENDAMPING_TANPA_REPLIKA, worker tidak dipanggil', async () => {
+    runtimeAkun();
+    const u = rt.store.createUrusan({ kodeKabKota: '3404' });
+    rt.publish(u.id, {
+      type: 'execution_request',
+      executionId: 'x_g',
+      adapterId: 'generik',
+      flowId: 'kelahiran',
+      ringkasan: 'Ajukan akta kelahiran',
+      params: { jenis: 'kelahiran', kode: '3404' },
+      tool: 'dukcapil__ajukan_layanan',
+      paramsHash: 'h',
+    });
+    const res = await mulai(evIp(req('POST', { executionId: 'x_g', simulasi: true }, juriDengan(u)), u.id));
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { kode: string }).kode).toBe('PENDAMPING_TANPA_REPLIKA');
+    expect(mulaiSesi()).toHaveLength(0);
+  });
+
+  it('akun warga biasa: simulasi diabaikan, tetap situs resmi tanpa lihatSaja (guardrail tidak berubah)', async () => {
+    runtimeAkun();
+    const { token, akun } = await rt.akun.daftar(
+      { email: 'warga@example.com', sandi: 'kuda-lari-cepat-9' },
+      { ip: '127.0.0.1', userAgent: null },
+    );
+    const u = urusanDenganEksekusi();
+    rt.akun.catatPemilikUrusan(u.id, { akun });
+    const cookie = `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${token}`;
+    expect(
+      (await mulai(evIp(req('POST', { executionId: 'x_1', simulasi: true }, cookie), u.id))).status,
+    ).toBe(201);
+    const body = mulaiSesi()[0]!.body as { origin: string; modeUji?: boolean; lihatSaja?: boolean };
+    expect(body).toMatchObject({ origin: RESMI, modeUji: false });
+    expect(body.lihatSaja).toBeUndefined();
+  });
+
+  it('demo di situs asli ikut rem portal asli (per IP): sesi kedua dari IP yang sama ditolak 429', async () => {
+    runtimeAkun({ pendampingPerJamIp: 1 });
+    reply = (path) => ({ status: path.endsWith('/status') ? 200 : 201, body: sesi({ status: 'selesai' }) });
+    const u1 = urusanDenganEksekusi();
+    const u2 = urusanDenganEksekusi();
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, juriDengan(u1)), u1.id))).status).toBe(201);
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, juriDengan(u2)), u2.id))).status).toBe(429);
+    // Simulasi (replika) tidak kena rem portal asli.
+    expect(
+      (await mulai(evIp(req('POST', { executionId: 'x_1', simulasi: true }, juriDengan(u2)), u2.id))).status,
+    ).toBe(201);
+  });
+});

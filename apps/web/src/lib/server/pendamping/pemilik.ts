@@ -25,9 +25,10 @@ export const pemeriksaPemilikVault: PemeriksaPemilikAkun = async (request, urusa
 };
 
 /**
- * Peran warga terhadap Browser Pendamping: `akun` = portal resmi asli; `juri` = salinan demo (selalu Mode Uji,
- * panduan bila tanpa replika); `tamu` = Mode Uji hanya bila portalnya punya replika, selain itu diajak masuk/daftar
- * dulu (tawaran tanpa replika itu palsu: sesi pasti beralih ke panduan).
+ * Peran warga terhadap Browser Pendamping: `akun` = portal resmi asli; `juri` = salinan demo: portal resmi asli
+ * dalam mode "lihat saja" (AI hanya menavigasi, tanpa isian), atau simulasi Mode Uji di replika bila diminta
+ * (`simulasi`); `tamu` = Mode Uji hanya bila portalnya punya replika, selain itu diajak masuk/daftar dulu
+ * (tawaran tanpa replika itu palsu: sesi pasti beralih ke panduan).
  */
 /** Pesan untuk tamu yang mencoba membuka portal tanpa situs latihan. */
 export const PESAN_PERLU_MASUK =
@@ -47,12 +48,33 @@ export function peranPendamping(akun: { jenis: string } | undefined): PeranPenda
 }
 
 /**
- * Mode Uji Browser Pendamping untuk urusan ini: true kecuali pemiliknya akun warga biasa (bukan salinan demo juri,
- * bukan tamu) yang sedang masuk. Mode Uji membuka replika di fixtures, tidak pernah portal resmi asli.
+ * Mode Browser Pendamping untuk urusan ini.
+ * - Akun warga biasa pemilik urusan: portal resmi asli (`simulasi` diabaikan).
+ * - Akun demo (juri) pemilik urusan: portal resmi asli dalam mode `lihatSaja` (AI hanya menavigasi; data demo
+ *   tidak pernah diketik ke sistem pemerintah). `simulasi: true` = Mode Uji di replika dengan data contoh.
+ * - Selain itu (tamu, atau urusan milik orang lain): Mode Uji. Mode Uji membuka replika di fixtures, tidak pernah
+ *   portal resmi asli.
  */
-export async function modeUjiPendamping(request: Request, urusan: UrusanRow): Promise<boolean> {
+export async function modePendamping(
+  request: Request,
+  urusan: UrusanRow,
+  opsi: { simulasi?: boolean | undefined } = {},
+): Promise<{ modeUji: boolean; lihatSaja: boolean }> {
   const rt = await getRuntime();
   const akun = await akunDari(request);
   const pemilik = rt.akun.pemilikVaultUrusan(urusan.id, { akun, sid: sidDariRequest(request) ?? undefined });
-  return !(akun && akun.jenis === 'akun' && pemilik === akun.id);
+  if (!akun || pemilik !== akun.id) return { modeUji: true, lihatSaja: false };
+  if (akun.jenis === 'akun') return { modeUji: false, lihatSaja: false };
+  if (akun.jenis === 'demo')
+    return opsi.simulasi === true ? { modeUji: true, lihatSaja: false } : { modeUji: false, lihatSaja: true };
+  return { modeUji: true, lihatSaja: false };
+}
+
+/** Mode Uji (replika) untuk urusan ini; lihat `modePendamping`. */
+export async function modeUjiPendamping(
+  request: Request,
+  urusan: UrusanRow,
+  opsi: { simulasi?: boolean | undefined } = {},
+): Promise<boolean> {
+  return (await modePendamping(request, urusan, opsi)).modeUji;
 }

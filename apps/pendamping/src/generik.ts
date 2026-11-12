@@ -1,5 +1,7 @@
 import {
   KELAS_BOLEH_KLIK_AI,
+  KELAS_BOLEH_KLIK_LIHAT_SAJA,
+  PESAN_LIHAT_SAJA,
   KelasKendaliSchema,
   PengamatanSchema,
   kendaliAkun,
@@ -191,6 +193,12 @@ export type GenerikDeps = {
   tidakBisa(pesan: string): void;
   /** Fase AI yang jujur untuk layar warga (membuka situs/halaman, membaca halaman, mengisi formulir). */
   fase?(f: FaseAi): void;
+  /**
+   * Demo "lihat saja" di situs resmi asli: worker menolak setiap isi/pilih/centang/unggah (`TERLARANG`) dan klik
+   * selain kelas `navigasi`/`ui_lokal` atau tautan pembuka GET (`KELAS_DITOLAK`), SEBELUM lembar izin atau
+   * halaman disentuh. Lapis kedua setelah validator web; gerbang tulis jaringan lapis ketiga.
+   */
+  lihatSaja?: boolean;
   now?: () => number;
 };
 
@@ -857,6 +865,17 @@ export class GenerikRun {
         }));
     }
 
+    // Lihat saja (demo, situs asli): tolak tulisan dan klik yang bukan navigasi murni sebelum apa pun dijalankan
+    // (termasuk lembar izin). Aksi pertama yang ditolak menghentikan rencana; sisanya DILEWATI.
+    if (this.d.lihatSaja) {
+      const tolak = aksi.findIndex((a) => this.ditolakLihatSaja(a) !== undefined);
+      if (tolak >= 0)
+        return aksi.map((a, indeks) => ({
+          indeks,
+          kode: indeks === tolak ? this.ditolakLihatSaja(a)! : 'DILEWATI',
+        }));
+    }
+
     // Pra-periksa persetujuan: pasangan (sidik, placeholder) dan berkas untuk rencana INI.
     const perluIzin = new Set<number>();
     const kolom: KolomIzin[] = [];
@@ -916,6 +935,18 @@ export class GenerikRun {
     return hasil;
   }
 
+  /** Kode penolakan mode lihat saja untuk satu aksi, atau undefined bila boleh. */
+  private ditolakLihatSaja(a: Aksi): KodeHasilAksi | undefined {
+    if (a.jenis === 'isi' || a.jenis === 'pilih' || a.jenis === 'centang' || a.jenis === 'unggah')
+      return 'TERLARANG';
+    if (a.jenis !== 'klik') return undefined;
+    if (this.kunciAkhir) return 'HALAMAN_AKHIR';
+    // Tautan pembuka dibuka lewat navigasi GET ke href (bukan klik); kelas lain harus navigasi murni.
+    if (this.refPembuka.has(a.ref)) return undefined;
+    const kelas = this.kelasRef.get(a.ref);
+    return kelas !== undefined && KELAS_BOLEH_KLIK_LIHAT_SAJA.includes(kelas) ? undefined : 'KELAS_DITOLAK';
+  }
+
   private async satu(
     a: Aksi,
     rencanaHash: string,
@@ -944,7 +975,9 @@ export class GenerikRun {
       const pesan =
         a.alasan === 'ketuk_tautan'
           ? PESAN_GENERIK.ketuk_tautan
-          : (this.pesanGiliran(a.alasan, a.ref) ?? pesanSerah(a.alasan, namaRef, sorot !== undefined));
+          : a.alasan === 'berhenti' && this.d.lihatSaja
+            ? PESAN_LIHAT_SAJA
+            : (this.pesanGiliran(a.alasan, a.ref) ?? pesanSerah(a.alasan, namaRef, sorot !== undefined));
       this.d.serahkan(ALASAN_GILIRAN[a.alasan], pesan, sorot, tautan, namaKendali(namaRef));
       return { kode: 'ok', halamanBerganti: true };
     }

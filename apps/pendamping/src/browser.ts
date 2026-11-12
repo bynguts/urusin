@@ -887,6 +887,7 @@ export async function startBrowserRun(config: Config, init: RunInit): Promise<Ac
         onBlokir: (c, j) => kendali.blokir(c, j),
         onTulisWarga: () => kendali.tulisWarga(),
         ketat: () => kendali.ketat(),
+        lihatSaja: init.generik.lihatSaja === true,
       })
     : undefined;
   const hosts = hostsSesi(init.program);
@@ -1787,6 +1788,7 @@ export async function wire(
       izin,
       urlBoleh,
       jejak,
+      lihatSaja: init.generik.lihatSaja === true,
       serahkan(alasan, pesan, box, tautan, kendali) {
         manual = true;
         faseTerakhir = undefined;

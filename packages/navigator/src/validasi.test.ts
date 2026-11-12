@@ -159,8 +159,23 @@ describe('validator rencana: suite penolakan (setiap penolakan punya id aturan)'
     expect(tolak(rencana({ jenis: 'serahkan', alasan: 'final' }), p)).toEqual([]);
   });
 
+  it('demo lihat saja: tulisan dan klik lanjut ditolak, navigasi tetap boleh', () => {
+    const v = (mentah: unknown): IdAturan[] => {
+      const r = validasiRencana(mentah, halamanForm(), { lihatSaja: true });
+      return r.ok ? [] : r.aturan;
+    };
+    expect(v(rencana({ jenis: 'isi', ref: 'e2', nilai: '{{PEMOHON.NAMA}}' }))).toContain('LIHAT_SAJA_TULIS');
+    expect(v(rencana({ jenis: 'klik', ref: 'e11' }))).toContain('LIHAT_SAJA_KLIK');
+    expect(v(rencana({ jenis: 'klik', ref: 'e10' }))).toEqual([]);
+  });
+
   it('setiap id aturan punya kasus uji di suite ini', () => {
-    const teruji = new Set([...kasus.map((k) => k[2]), 'HALAMAN_AKHIR_TERKUNCI']);
+    const teruji = new Set([
+      ...kasus.map((k) => k[2]),
+      'HALAMAN_AKHIR_TERKUNCI',
+      'LIHAT_SAJA_TULIS',
+      'LIHAT_SAJA_KLIK',
+    ]);
     expect(ATURAN.filter((a) => !teruji.has(a))).toEqual([]);
   });
 

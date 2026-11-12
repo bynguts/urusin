@@ -2,6 +2,7 @@ import { MemoryMailer } from '@urusin/akun/testing';
 import {
   AksiSesiInternalSchema,
   CatatanPendampingSchema,
+  PESAN_LIHAT_SAJA,
   SelesaiSesiInternalSchema,
   TungguSesiInternalSchema,
   type Aksi,
@@ -29,6 +30,7 @@ import {
   jalankanNavigatorUrusan,
   mulaiNavigator,
   navigatorBerjalan,
+  pulihkanNavigator,
   tanganWorker,
 } from './navigator';
 import type { TanganPendamping } from '@urusin/navigator';
@@ -292,6 +294,59 @@ describe('broker Navigator web', () => {
       [{ jenis: 'serahkan', alasan: 'berhenti' }],
     ]);
     expect(llm.provider.calls).toHaveLength(0);
+  });
+
+  it('demo lihat saja di situs asli: halaman formulir/akhir = berhenti jujur tanpa LLM dan tanpa aksi halaman', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran', kodeKabKota: '3312' });
+    const w = workerPalsu('telunjuksakti.wonogirikab.go.id');
+    const llm = llmFinal();
+    const h = await jalankanNavigatorUrusan(
+      rt,
+      {
+        urusan: u,
+        executionId: 'x_uji',
+        owner: { urusanId: u.id, sidHash: OWNER.sidHash },
+        modeUji: false,
+        lihatSaja: true,
+      },
+      { cfg: CFG, fetcher: w.fetcher, llm },
+    );
+    expect(h).toMatchObject({ akhir: 'ambil_alih', alasan: 'lihat_saja', pesan: PESAN_LIHAT_SAJA });
+    expect(w.panggilan.filter((p) => p.path === '/internal/sesi/aksi').map((p) => p.body.aksi)).toEqual([
+      [{ jenis: 'serahkan', alasan: 'berhenti' }],
+    ]);
+    expect(llm.provider.calls).toHaveLength(0);
+    const progress = rt.store
+      .eventsOfType(u.id, 'progress', 5)
+      .map((e) => (e.payload as { label: string }).label);
+    expect(progress).toContain(PESAN_LIHAT_SAJA);
+  });
+
+  it('simulasi juri sesudah lihat saja (executionId sama): loop replika baru dipasang, loop asli tidak diulang', async () => {
+    const u = rt.store.createUrusan({ jenis: 'kelahiran', kodeKabKota: '3312' });
+    const owner = { urusanId: u.id, sidHash: OWNER.sidHash };
+    const asli = workerPalsu('telunjuksakti.wonogirikab.go.id');
+    await jalankanNavigatorUrusan(
+      rt,
+      { urusan: u, executionId: 'x_simulasi', owner, modeUji: false, lihatSaja: true },
+      { cfg: CFG, fetcher: asli.fetcher, llm: llmFinal() },
+    );
+    const replika = workerPalsu(HOST_REPLIKA);
+    const deps = { cfg: CFG, fetcher: replika.fetcher, llm: llmFinal() };
+    // Loop lihat saja eksekusi ini pernah jalan: tidak dipasang ulang (anggaran tidak direset).
+    expect(
+      await pulihkanNavigator(
+        rt,
+        { urusan: u, executionId: 'x_simulasi', owner, modeUji: false, lihatSaja: true },
+        deps,
+      ),
+    ).toBe(false);
+    // Simulasi (Mode Uji) untuk eksekusi yang sama = loop lain.
+    expect(
+      await pulihkanNavigator(rt, { urusan: u, executionId: 'x_simulasi', owner, modeUji: true }, deps),
+    ).toBe(true);
+    expect(navigatorBerjalan(u.id)).toBe('x_simulasi');
+    hentikanNavigator(u.id);
   });
 
   it('biaya LLM Navigator masuk kuota runtime urusan yang sama (token + biaya harian)', async () => {

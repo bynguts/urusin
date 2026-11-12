@@ -23,6 +23,7 @@ import type {
   SesiPendamping,
   TungguSesiResponse,
 } from '@urusin/contracts';
+import { PESAN_LIHAT_SAJA } from '@urusin/contracts';
 import { ADAPTERS, buildProgram, requiredData, type Params, type Program } from '@urusin/adapters';
 import {
   EGRESS_ASET_UMUM,
@@ -134,8 +135,11 @@ export type RunInit = {
   viewport: PendampingViewport;
   hooks: Hooks;
   data: { value(token: string): string | undefined; file(name: string): UploadFile | undefined };
-  /** Navigator generik (ADR 0030): persetujuan per rencana + catatan audit. undefined = sesi adapter. */
-  generik?: { izin: IzinGenerik; jejak(c: CatatanPendamping): void } | undefined;
+  /**
+   * Navigator generik (ADR 0030): persetujuan per rencana + catatan audit. undefined = sesi adapter.
+   * `lihatSaja`: demo di situs asli, worker menolak tulisan dan klik selain navigasi murni (lihat GenerikDeps).
+   */
+  generik?: { izin: IzinGenerik; jejak(c: CatatanPendamping): void; lihatSaja?: boolean } | undefined;
 };
 
 export type RunFactory = (init: RunInit) => Promise<ActiveRun>;
@@ -177,6 +181,13 @@ type Sesi = {
   berkasDitunggu?: string | undefined;
   /** Sesi Navigator generik (adapterId `generik`). */
   generik: boolean;
+  /**
+   * Demo "lihat saja" di situs resmi asli (`MulaiSesiInternal.lihatSaja`): tanpa isian dan tanpa jalur Izinkan
+   * isi; sesi adapter bawaan tidak menjalankan langkahnya sama sekali (portal tampil, lalu giliran warga).
+   */
+  lihatSaja: boolean;
+  /** Sesi adapter lihat saja sudah diserahkan ke warga (giliran diputar ulang saat penampil tersambung). */
+  lihatSajaDiserahkan?: boolean | undefined;
   /**
    * Rencana halaman yang menunggu lembar "Izinkan AI mengisi?" (sidik hanya di worker). `origin` = origin halaman
    * tempat nilai diisi (tujuan persetujuan), bukan sekadar origin awal sesi.
@@ -293,6 +304,13 @@ const PESAN = {
     'Permohonan terkirim. Simpan nomor bukti di layar; peramban tetap terbuka sampai Anda menutupnya, tidak ada yang disimpan.',
 } as const;
 
+/** Giliran warga sesi adapter lihat saja (demo di situs asli): AI tidak menjalankan langkah apa pun. */
+const GILIRAN_LIHAT_SAJA: PendampingEvent = {
+  jenis: 'giliran_anda',
+  alasan: 'berhenti',
+  pesan: PESAN_LIHAT_SAJA,
+};
+
 /** Mode awal sesi Navigator generik: situs resmi sedang dibuka, belum ada yang diisi. */
 export const PESAN_MEMBUKA_SITUS = 'AI sedang membuka situs resmi.';
 
@@ -365,7 +383,8 @@ export class SessionManager {
       if (
         existing.program.origin === program.origin &&
         !existing.generik &&
-        input.adapterId !== ADAPTER_GENERIK
+        input.adapterId !== ADAPTER_GENERIK &&
+        existing.lihatSaja === (input.lihatSaja === true)
       )
         return this.lanjutkan(existing, input.executionId, program);
       await this.end(
@@ -382,6 +401,7 @@ export class SessionManager {
       program,
       viewport: input.viewport ?? DEFAULT_VIEWPORT,
       generik: input.adapterId === ADAPTER_GENERIK,
+      lihatSaja: input.lihatSaja === true,
     });
   }
 
@@ -418,6 +438,7 @@ export class SessionManager {
   }
 
   private async lanjutkan(s: Sesi, executionId: string, program: Program): Promise<SesiPendamping> {
+    // Hanya dipanggil bila mode lihat saja sesi lama sama dengan permintaan baru (lihat `create`).
     s.executionId = executionId;
     s.program = program;
     s.butuh = butuhDari(program.steps);
@@ -501,7 +522,7 @@ export class SessionManager {
 
   private async enqueue(
     base: Pick<Sesi, 'urusanId' | 'sidHash' | 'executionId' | 'program' | 'manualUrl' | 'viewport'> &
-      Partial<Pick<Sesi, 'debug' | 'generik'>>,
+      Partial<Pick<Sesi, 'debug' | 'generik' | 'lihatSaja'>>,
   ): Promise<SesiPendamping> {
     if (this.active.size >= this.config.maxSessions && this.queue.length >= this.config.maxQueue)
       throw new PendampingError('ANTREAN_PENUH', 429, 'antrean pendamping penuh');
@@ -523,6 +544,7 @@ export class SessionManager {
       aiDimulai: false,
       galatInputTerkirim: false,
       generik: base.generik ?? false,
+      lihatSaja: base.lihatSaja ?? false,
       jejak: [],
       jejakTerbuang: 0,
       penunggu: new Set(),
@@ -619,6 +641,8 @@ export class SessionManager {
     )
       return { placeholder: [], berkas: [] };
     const s = this.requireMenungguData(owner);
+    // Lihat saja (demo, situs asli): tidak ada nilai yang masuk ke sesi ini sama sekali.
+    if (s.lihatSaja) throw new PendampingError('PESAN_TIDAK_SAH', 409, 'mode lihat saja: AI tidak mengisi');
     if (s.generik) return this.isiGenerik(s, isian, rencanaHash, berkasDisetujui);
     for (const [k, v] of Object.entries(isian)) if (s.butuh.placeholder.includes(k)) s.vault.set(k, v);
     const kurang = this.kurang(s);
@@ -681,6 +705,8 @@ export class SessionManager {
     b: Pick<BerkasSesiInternal, 'nama' | 'namaBerkas' | 'mime' | 'dataBase64'>,
   ): Promise<{ placeholder: string[]; berkas: string[] }> {
     const s = this.requireMenungguData(owner);
+    if (s.lihatSaja)
+      throw new PendampingError('PESAN_TIDAK_SAH', 409, 'mode lihat saja: AI tidak mengunggah');
     const boleh = s.berkasDitunggu !== undefined ? [s.berkasDitunggu] : s.butuh.berkas;
     if (!boleh.includes(b.nama) || (s.files.size >= MAX_FILES && !s.files.has(b.nama)))
       throw new PendampingError('PESAN_TIDAK_SAH', 422, 'berkas ini tidak dibutuhkan sesi');
@@ -962,6 +988,8 @@ export class SessionManager {
     s.lastActivity = this.now();
     viewer.send({ type: 'status', sesi: this.view(s) });
     if (s.mode) viewer.send({ type: 'mode', mode: s.mode, ...(s.pesan ? { pesan: s.pesan } : {}) });
+    if (s.lihatSajaDiserahkan && s.mode === 'takeover')
+      viewer.send({ type: 'event', event: GILIRAN_LIHAT_SAJA });
     if (s.status === 'menunggu_data' && !s.run?.ditahanTantangan?.())
       viewer.send({
         type: 'butuh_data',
@@ -1022,6 +1050,11 @@ export class SessionManager {
     // Sesi debug tidak punya AI: kendali selalu di tangan penguji.
     if (!s.run || TERMINAL.has(s.status) || s.manualUrl || s.status === 'siaga') return;
     logSesi('kendali', { sesi: s.id, aksi, status: s.status });
+    // Adapter lihat saja: tidak ada AI yang bisa dilanjutkan; Lanjutkan tetap giliran warga (pesan demo diulang).
+    if (s.lihatSajaDiserahkan) {
+      if (aksi === 'kembalikan') this.emit(s, GILIRAN_LIHAT_SAJA);
+      return;
+    }
     this.catat(s, { jenis: 'ambil_alih', fase: aksi === 'ambil_alih' ? 'mulai' : 'selesai' });
     this.tolakIzin(s);
     if (aksi === 'ambil_alih') {
@@ -1092,6 +1125,7 @@ export class SessionManager {
       ...(s.bukti ? { bukti: s.bukti } : {}),
       situs: s.program.origin,
       replika: this.config.fixtureOrigins.includes(s.program.origin),
+      ...(s.lihatSaja ? { lihatSaja: true } : {}),
     };
   }
 
@@ -1167,7 +1201,9 @@ export class SessionManager {
         viewport: s.viewport,
         hooks,
         data: { value: (t) => s.vault.get(t), file: (n) => s.files.get(n) },
-        generik: s.generik ? { izin: this.izinGenerik(s), jejak: (c) => this.catat(s, c) } : undefined,
+        generik: s.generik
+          ? { izin: this.izinGenerik(s), jejak: (c) => this.catat(s, c), lihatSaja: s.lihatSaja }
+          : undefined,
       });
       if (TERMINAL.has(s.status)) return void (await run.destroy()); // diakhiri saat memulai
       s.run = run;
@@ -1191,6 +1227,9 @@ export class SessionManager {
     // Tantangan situs di halaman awal: warga menyelesaikannya dulu (mode takeover dari peramban). Izin isi dan
     // mode 'ai' menunggu `tantanganLolos`.
     if (s.run.ditahanTantangan?.()) return void logSesi('izin_ditunda', { sesi: s.id, alasan: 'tantangan' });
+    // Adapter bawaan di mode lihat saja: langkahnya selalu mengisi dari Data Diri, jadi tidak dijalankan sama
+    // sekali. Portal asli sudah tampil (`bukaAwal`); kendali ke warga dengan pesan templat yang jujur.
+    if (s.lihatSaja && !s.generik) return this.serahLihatSaja(s);
     const k = this.kurang(s);
     if (k.placeholder.length > 0 || k.berkas.length > 0) {
       logSesi('izin_diminta', { sesi: s.id, kolom: k.placeholder.length, berkas: k.berkas.length });
@@ -1204,6 +1243,19 @@ export class SessionManager {
     this.setMode(s, 'ai', s.generik ? PESAN_MEMBUKA_SITUS : 'AI sedang mengisi formulir.');
     this.broadcastStatus(s);
     await s.run.mulaiAi();
+  }
+
+  /** Sesi adapter lihat saja: tanpa izin isi dan tanpa langkah AI; giliran warga dengan pesan demo. */
+  private serahLihatSaja(s: Sesi): void {
+    if (!s.run || TERMINAL.has(s.status)) return;
+    logSesi('lihat_saja', { sesi: s.id });
+    s.status = 'berjalan';
+    s.lihatSajaDiserahkan = true;
+    s.run.ambilAlih();
+    this.catat(s, { jenis: 'ambil_alih', fase: 'mulai', alasan: 'berhenti' });
+    this.setMode(s, 'takeover', PESAN_LIHAT_SAJA);
+    this.emit(s, GILIRAN_LIHAT_SAJA);
+    this.broadcastStatus(s);
   }
 
   private siaga(s: Sesi, pesan: string, bukti?: PendampingBukti): void {
