@@ -1,0 +1,33 @@
+{
+  "name": "@urusin/embedding",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Klien embedding self-hosted (sidecar llama.cpp): timeout pendek, cache LRU, kosinus, prototipe; fail-open",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "bakeoff": "node eval/bakeoff.mjs"
+  },
+  "dependencies": {
+    "@urusin/egress": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@vitest/coverage-v8": "5.1.0",
+    "vitest": "5.1.0"
+  }
+}

@@ -142,6 +142,28 @@ describe('assertTargetAllowed', () => {
     );
   });
 
+  it('sidecar embedding (URUSIN_EMBED_URL): aturan origin internal yang sama, hanya port persis', () => {
+    const a = buildAllowlist('runtime', { URUSIN_EMBED_URL: 'http://127.0.0.1:4340' });
+    expect([...(a.internal ?? [])]).toEqual(['http://127.0.0.1:4340']);
+    expect(assertTargetAllowed('http:', '127.0.0.1', 4340, a)).toBe(true);
+    expect(() => assertTargetAllowed('http:', '127.0.0.1', 4341, a)).toThrow(EgressBlockedError);
+    for (const url of [
+      'http://embedding:8080',
+      'https://127.0.0.1:4340',
+      'http://127.0.0.1:2019',
+      'http://10.1.1.1:80',
+    ])
+      expect(buildAllowlist('runtime', { URUSIN_EMBED_URL: url }).internal?.size, url).toBe(0);
+    expect(() =>
+      assertTargetAllowed(
+        'http:',
+        '127.0.0.1',
+        4340,
+        buildAllowlist('ingest', { URUSIN_EMBED_URL: 'http://127.0.0.1:4340' }),
+      ),
+    ).toThrow(EgressBlockedError);
+  });
+
   it('isLlmProxy: hanya 127.0.0.1:20128', () => {
     expect(isLlmProxy(new URL('http://127.0.0.1:20128/v1'))).toBe(true);
     expect(isLlmProxy(new URL('http://127.0.0.1:2019/'))).toBe(false);

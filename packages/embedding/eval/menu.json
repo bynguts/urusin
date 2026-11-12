@@ -1,0 +1,337 @@
+{
+  "keterangan": "Set eval sintetis: tujuan Navigator (string persis keluaran tujuanPendamping di @urusin/registry) -> label menu/tautan portal. Label diambil dari menu portal nyata (Klampid Surabaya, tenant SIDAK, Telunjuk Sakti, replika fixtures) dan pola umum portal Disdukcapil. `benar` = semua label yang termasuk layanan tujuan (sinyal relevansi layanan; aturan prompt tetap memilih tautan pengajuan di atas tautan informasi).",
+  "menu": {
+    "klampid_sby": [
+      "Akta Kelahiran",
+      "Akta Kelahiran (Kolektif)",
+      "AKTA KELAHIRAN FASKES",
+      "Akta Kematian",
+      "Akta Kematian (Kolektif)",
+      "Akta Perkawinan",
+      "Akta Perceraian",
+      "Akta Pengesahan Anak",
+      "Pengangkatan Anak",
+      "Kutipan Kedua Akta Catatan Sipil (Cetak Ulang Akta)",
+      "Pembatalan Akta Kelahiran dan Kematian",
+      "Salinan Akta Kelahiran (Hanya Untuk Dokumen Migrasi ke Luar Negeri)",
+      "Cetak Ulang KK",
+      "Pecah KK",
+      "TAMBAH JIWA",
+      "KK MERAH",
+      "Pindah Keluar",
+      "Pindah Datang",
+      "Pindah Dalam Kota",
+      "Batal Pindah Dalam Kota",
+      "Cetak Ulang SKPWNI",
+      "Pengajuan KTP Elektronik",
+      "Perubahan Biodata",
+      "Buka Blokir",
+      "Hapus Data Ganda",
+      "Keabsahan",
+      "Legalisir",
+      "Pengajuan Melalui IKD",
+      "Helpdesk",
+      "Verifikasi Akun Klampid"
+    ],
+    "sidak": [
+      "Beranda",
+      "Akta Kelahiran",
+      "Akta Kematian",
+      "Kartu Identitas Anak",
+      "Kartu Keluarga",
+      "KTP-el",
+      "Pindah Datang",
+      "Pindah Keluar",
+      "Lacak Permohonan",
+      "Masuk",
+      "Daftar Akun"
+    ],
+    "telunjuk_sakti": [
+      "KTP Baru",
+      "KTP Perubahan Data",
+      "KTP Hilang",
+      "KTP Rusak",
+      "KK Baru",
+      "KK Perubahan Data",
+      "KK Hilang/Rusak",
+      "KIA Baru",
+      "Akta Kelahiran",
+      "Akta Kematian",
+      "Perpindahan Keluar",
+      "Kedatangan",
+      "Cek Status Pengajuan",
+      "Persyaratan Layanan",
+      "Unduh Formulir"
+    ],
+    "generik_a": [
+      "Pencatatan Kelahiran",
+      "Akta 1-18",
+      "Layanan Akta Kelahiran Terintegrasi",
+      "Pencatatan Kematian",
+      "Pencatatan Perkawinan",
+      "Legalisir",
+      "KIA",
+      "Pindah Datang",
+      "SKPWNI",
+      "Perekaman KTP-el",
+      "Cetak Ulang KTP-el",
+      "Penerbitan KK",
+      "Pengaduan",
+      "Berita",
+      "Galeri"
+    ],
+    "generik_b": [
+      "Beranda",
+      "Profil Dinas",
+      "Layanan Online",
+      "Persyaratan Akta Kelahiran",
+      "Persyaratan KTP-el",
+      "Daftar Antrean Online",
+      "Mulai Pendaftaran Akta Kelahiran",
+      "Ajukan Permohonan KK",
+      "Ajukan Pindah Penduduk",
+      "Permohonan Kartu Identitas Anak",
+      "Permohonan Akta Kematian",
+      "Cek Status",
+      "Kontak Kami",
+      "FAQ"
+    ],
+    "generik_c": [
+      "Layanan Pendaftaran Penduduk",
+      "Layanan Pencatatan Sipil",
+      "Biodata Penduduk WNI",
+      "Kartu Keluarga Baru Karena Membentuk Keluarga Baru",
+      "Perubahan KK Karena Penambahan Anggota Keluarga",
+      "KTP-el Hilang atau Rusak",
+      "Surat Keterangan Pindah",
+      "Surat Keterangan Kedatangan",
+      "Akta Kelahiran Usia 0-60 Hari",
+      "Akta Kelahiran Terlambat",
+      "Akta Kematian",
+      "Akta Perkawinan Non Muslim",
+      "Akta Perceraian",
+      "Kartu Identitas Anak 0-5 Tahun",
+      "Kartu Identitas Anak 5-17 Tahun",
+      "Survei Kepuasan Masyarakat"
+    ],
+    "replika": [
+      "Daftar Layanan",
+      "Formulir Permohonan Kartu Keluarga",
+      "Formulir Permohonan KTP-el",
+      "Permohonan Pindah Datang",
+      "Perpindahan Keluar",
+      "Perubahan Data KK",
+      "KK Baru (Pecah KK)",
+      "KK Hilang/Rusak",
+      "Akta Kelahiran",
+      "Pengecekan Status",
+      "Riwayat Permohonan",
+      "Bantuan"
+    ]
+  },
+  "kasus": [
+    {
+      "kueri": "Kelahiran",
+      "menu": "klampid_sby",
+      "benar": ["Akta Kelahiran", "Akta Kelahiran (Kolektif)", "AKTA KELAHIRAN FASKES"]
+    },
+    { "kueri": "Kematian", "menu": "klampid_sby", "benar": ["Akta Kematian", "Akta Kematian (Kolektif)"] },
+    { "kueri": "Perkawinan", "menu": "klampid_sby", "benar": ["Akta Perkawinan"] },
+    {
+      "kueri": "Pindah: pindah keluar (SKPWNI)",
+      "menu": "klampid_sby",
+      "benar": ["Pindah Keluar", "Cetak Ulang SKPWNI"]
+    },
+    {
+      "kueri": "Pindah: pindah datang (lapor datang/SKDWNI)",
+      "menu": "klampid_sby",
+      "benar": ["Pindah Datang"]
+    },
+    {
+      "kueri": "Kartu Keluarga (KK): cetak ulang karena hilang",
+      "menu": "klampid_sby",
+      "benar": ["Cetak Ulang KK"]
+    },
+    { "kueri": "Kartu Keluarga (KK): KK baru", "menu": "klampid_sby", "benar": ["Pecah KK"] },
+    {
+      "kueri": "Kartu Keluarga (KK): penambahan anggota keluarga",
+      "menu": "klampid_sby",
+      "benar": ["TAMBAH JIWA"]
+    },
+    {
+      "kueri": "KTP elektronik (KTP-el): cetak ulang karena rusak",
+      "menu": "klampid_sby",
+      "benar": ["Pengajuan KTP Elektronik"]
+    },
+    {
+      "kueri": "Akta pencatatan sipil: akta perceraian",
+      "menu": "klampid_sby",
+      "benar": ["Akta Perceraian"]
+    },
+    {
+      "kueri": "Akta pencatatan sipil: kutipan kedua (akta hilang atau rusak)",
+      "menu": "klampid_sby",
+      "benar": ["Kutipan Kedua Akta Catatan Sipil (Cetak Ulang Akta)"]
+    },
+    {
+      "kueri": "Akta pencatatan sipil: pengakuan, pengesahan, atau pengangkatan anak",
+      "menu": "klampid_sby",
+      "benar": ["Akta Pengesahan Anak", "Pengangkatan Anak"]
+    },
+
+    { "kueri": "Kelahiran", "menu": "sidak", "benar": ["Akta Kelahiran"] },
+    { "kueri": "Kematian", "menu": "sidak", "benar": ["Akta Kematian"] },
+    { "kueri": "Kartu Identitas Anak (KIA): KIA baru", "menu": "sidak", "benar": ["Kartu Identitas Anak"] },
+    { "kueri": "Kartu Keluarga (KK): perubahan data", "menu": "sidak", "benar": ["Kartu Keluarga"] },
+    { "kueri": "KTP elektronik (KTP-el): cetak ulang karena hilang", "menu": "sidak", "benar": ["KTP-el"] },
+    { "kueri": "Pindah: pindah datang (lapor datang/SKDWNI)", "menu": "sidak", "benar": ["Pindah Datang"] },
+    { "kueri": "Pindah: pindah keluar (SKPWNI)", "menu": "sidak", "benar": ["Pindah Keluar"] },
+
+    {
+      "kueri": "KTP elektronik (KTP-el): KTP-el baru (pertama kali)",
+      "menu": "telunjuk_sakti",
+      "benar": ["KTP Baru"]
+    },
+    {
+      "kueri": "KTP elektronik (KTP-el): cetak ulang karena hilang",
+      "menu": "telunjuk_sakti",
+      "benar": ["KTP Hilang"]
+    },
+    {
+      "kueri": "KTP elektronik (KTP-el): cetak ulang karena rusak",
+      "menu": "telunjuk_sakti",
+      "benar": ["KTP Rusak"]
+    },
+    {
+      "kueri": "KTP elektronik (KTP-el): perubahan data",
+      "menu": "telunjuk_sakti",
+      "benar": ["KTP Perubahan Data"]
+    },
+    { "kueri": "Kartu Keluarga (KK): KK baru", "menu": "telunjuk_sakti", "benar": ["KK Baru"] },
+    {
+      "kueri": "Kartu Keluarga (KK): cetak ulang karena rusak",
+      "menu": "telunjuk_sakti",
+      "benar": ["KK Hilang/Rusak"]
+    },
+    {
+      "kueri": "Kartu Keluarga (KK): perubahan data",
+      "menu": "telunjuk_sakti",
+      "benar": ["KK Perubahan Data"]
+    },
+    { "kueri": "Kartu Identitas Anak (KIA): KIA baru", "menu": "telunjuk_sakti", "benar": ["KIA Baru"] },
+    { "kueri": "Kelahiran", "menu": "telunjuk_sakti", "benar": ["Akta Kelahiran"] },
+    { "kueri": "Pindah: pindah keluar (SKPWNI)", "menu": "telunjuk_sakti", "benar": ["Perpindahan Keluar"] },
+    {
+      "kueri": "Pindah: pindah datang (lapor datang/SKDWNI)",
+      "menu": "telunjuk_sakti",
+      "benar": ["Kedatangan"]
+    },
+
+    {
+      "kueri": "Kelahiran",
+      "menu": "generik_a",
+      "benar": ["Pencatatan Kelahiran", "Akta 1-18", "Layanan Akta Kelahiran Terintegrasi"]
+    },
+    { "kueri": "Kematian", "menu": "generik_a", "benar": ["Pencatatan Kematian"] },
+    { "kueri": "Perkawinan", "menu": "generik_a", "benar": ["Pencatatan Perkawinan"] },
+    { "kueri": "Kartu Identitas Anak (KIA): KIA baru", "menu": "generik_a", "benar": ["KIA"] },
+    { "kueri": "Pindah: pindah keluar (SKPWNI)", "menu": "generik_a", "benar": ["SKPWNI"] },
+    {
+      "kueri": "KTP elektronik (KTP-el): cetak ulang karena rusak",
+      "menu": "generik_a",
+      "benar": ["Cetak Ulang KTP-el"]
+    },
+    {
+      "kueri": "KTP elektronik (KTP-el): KTP-el baru (pertama kali)",
+      "menu": "generik_a",
+      "benar": ["Perekaman KTP-el"]
+    },
+    { "kueri": "Kartu Keluarga (KK): KK baru", "menu": "generik_a", "benar": ["Penerbitan KK"] },
+
+    {
+      "kueri": "Kelahiran",
+      "menu": "generik_b",
+      "benar": ["Mulai Pendaftaran Akta Kelahiran", "Persyaratan Akta Kelahiran"]
+    },
+    { "kueri": "Kematian", "menu": "generik_b", "benar": ["Permohonan Akta Kematian"] },
+    {
+      "kueri": "Kartu Keluarga (KK): penambahan anggota keluarga",
+      "menu": "generik_b",
+      "benar": ["Ajukan Permohonan KK"]
+    },
+    { "kueri": "Pindah: pindah keluar (SKPWNI)", "menu": "generik_b", "benar": ["Ajukan Pindah Penduduk"] },
+    {
+      "kueri": "Kartu Identitas Anak (KIA): cetak ulang karena hilang",
+      "menu": "generik_b",
+      "benar": ["Permohonan Kartu Identitas Anak"]
+    },
+    {
+      "kueri": "KTP elektronik (KTP-el): perubahan data",
+      "menu": "generik_b",
+      "benar": ["Persyaratan KTP-el"]
+    },
+
+    {
+      "kueri": "Kartu Keluarga (KK): KK baru",
+      "menu": "generik_c",
+      "benar": ["Kartu Keluarga Baru Karena Membentuk Keluarga Baru"]
+    },
+    {
+      "kueri": "Kartu Keluarga (KK): penambahan anggota keluarga",
+      "menu": "generik_c",
+      "benar": ["Perubahan KK Karena Penambahan Anggota Keluarga"]
+    },
+    {
+      "kueri": "KTP elektronik (KTP-el): cetak ulang karena hilang",
+      "menu": "generik_c",
+      "benar": ["KTP-el Hilang atau Rusak"]
+    },
+    { "kueri": "Pindah: pindah keluar (SKPWNI)", "menu": "generik_c", "benar": ["Surat Keterangan Pindah"] },
+    {
+      "kueri": "Pindah: pindah datang (lapor datang/SKDWNI)",
+      "menu": "generik_c",
+      "benar": ["Surat Keterangan Kedatangan"]
+    },
+    {
+      "kueri": "Kelahiran",
+      "menu": "generik_c",
+      "benar": ["Akta Kelahiran Usia 0-60 Hari", "Akta Kelahiran Terlambat"]
+    },
+    { "kueri": "Kematian", "menu": "generik_c", "benar": ["Akta Kematian"] },
+    { "kueri": "Perkawinan", "menu": "generik_c", "benar": ["Akta Perkawinan Non Muslim"] },
+    { "kueri": "Akta pencatatan sipil: akta perceraian", "menu": "generik_c", "benar": ["Akta Perceraian"] },
+    {
+      "kueri": "Kartu Identitas Anak (KIA): KIA baru",
+      "menu": "generik_c",
+      "benar": ["Kartu Identitas Anak 0-5 Tahun", "Kartu Identitas Anak 5-17 Tahun"]
+    },
+
+    {
+      "kueri": "Kartu Keluarga (KK): KK baru",
+      "menu": "replika",
+      "benar": ["KK Baru (Pecah KK)", "Formulir Permohonan Kartu Keluarga"]
+    },
+    {
+      "kueri": "Kartu Keluarga (KK): perubahan data",
+      "menu": "replika",
+      "benar": ["Perubahan Data KK", "Formulir Permohonan Kartu Keluarga"]
+    },
+    {
+      "kueri": "Kartu Keluarga (KK): cetak ulang karena hilang",
+      "menu": "replika",
+      "benar": ["KK Hilang/Rusak", "Formulir Permohonan Kartu Keluarga"]
+    },
+    {
+      "kueri": "KTP elektronik (KTP-el): cetak ulang karena rusak",
+      "menu": "replika",
+      "benar": ["Formulir Permohonan KTP-el"]
+    },
+    {
+      "kueri": "Pindah: pindah datang (lapor datang/SKDWNI)",
+      "menu": "replika",
+      "benar": ["Permohonan Pindah Datang"]
+    },
+    { "kueri": "Pindah: pindah keluar (SKPWNI)", "menu": "replika", "benar": ["Perpindahan Keluar"] },
+    { "kueri": "Kelahiran", "menu": "replika", "benar": ["Akta Kelahiran"] }
+  ]
+}

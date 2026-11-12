@@ -33,6 +33,7 @@ import {
   type PenyimpanIngatan,
 } from './ingatan.js';
 import { alasanBukanJalurCepat, classifyIntent, klasifikasiKataKunci } from './intent.js';
+import type { KlasifikasiIntentEmbedding } from './intent-embedding.js';
 import { PiiInterceptor } from './pii.js';
 import { PolicyGate } from './policy.js';
 import { buildStateNote, buildSystemPrompt, mintaPemalsuan } from './prompt.js';
@@ -125,6 +126,8 @@ export type AgentDeps = {
   ingatan?: PenyimpanIngatan | undefined;
   /** Cache keluaran generator jawaban bersumber (lihat `CacheJawaban`). */
   cacheJawaban?: CacheJawaban | undefined;
+  /** Jalur cepat intent lewat sidecar embedding (fail-open); tanpa ini klasifikasi = kata kunci lalu LLM. */
+  intentEmbedding?: KlasifikasiIntentEmbedding | undefined;
 };
 
 export type TurnOutcome = {
@@ -776,13 +779,20 @@ class TurnRunner {
       this.version = this.urusan.version;
       return;
     }
+    const teks = this.turn.pii.redact(this.turn.userText).text;
+    const cepat = await this.deps.intentEmbedding?.klasifikasi(teks, this.ctrl.signal).catch(() => null);
+    if (cepat) {
+      this.urusan = this.store.setJenis(this.turn.urusanId, this.version, cepat);
+      this.version = this.urusan.version;
+      return;
+    }
     const span = this.deps.tracer.start(this.scope, `chat ${this.deps.model}`, 'chat');
     try {
       const r = await classifyIntent({
         provider: this.deps.provider,
         model: this.deps.model,
         caps: this.deps.caps,
-        text: this.turn.pii.redact(this.turn.userText).text,
+        text: teks,
         signal: this.llmSignal(),
       });
       const acc = this.account(r.usage);

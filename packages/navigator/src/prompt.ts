@@ -43,6 +43,8 @@ export type MasukanPrompt = {
   nonce?: string;
   /** Petunjuk peta portal TEPERCAYA dari registry (ADR 0034), masuk pesan sistem; lihat `blokPetunjukPortal`. */
   petunjukPortal?: string | undefined;
+  /** Baris sinyal peringkat tautan (hanya ref, tanpa teks halaman); lihat peringkat-tautan.ts. */
+  petunjukTautan?: string | null | undefined;
 };
 
 export const NAMA_SKEMA = 'rencana_halaman';
@@ -122,6 +124,7 @@ export function pesanRencana(m: MasukanPrompt): ChatMessage[] {
       .map((k) => `${k} (${Object.hasOwn(KATALOG_PLACEHOLDER, k) ? KATALOG_PLACEHOLDER[k]!.label : 'data'})`)
       .join(', ')}`,
     `KATALOG BERKAS: ${berkas.join(', ') || 'tidak ada'}`,
+    ...(m.petunjukTautan ? [m.petunjukTautan] : []),
     ...(m.umpanBalik?.length
       ? [`UMPAN BALIK: rencana sebelumnya untuk halaman ini ditolak validator: ${m.umpanBalik.join(', ')}.`]
       : []),

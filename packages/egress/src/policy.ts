@@ -161,7 +161,19 @@ const PORT_TERLARANG = new Set([2019, LLM_PROXY.port]);
  * dan port eksplisit; selain itu diabaikan (tetap diblokir).
  */
 export function pendampingInternalOrigins(env: Record<string, string | undefined>): Set<string> {
-  const raw: (string | undefined)[] = [env.PENDAMPING_INTERNAL_URL];
+  return originInternal([env.PENDAMPING_INTERNAL_URL, ...urlWorkers(env)]);
+}
+
+/**
+ * Origin sidecar embedding self-hosted (`URUSIN_EMBED_URL`, packages/embedding): aturan sama dengan worker
+ * pendamping (http, IP literal 127.0.0.1/Tailscale, port eksplisit, bukan port terlarang).
+ */
+export function embeddingInternalOrigins(env: Record<string, string | undefined>): Set<string> {
+  return originInternal([env.URUSIN_EMBED_URL]);
+}
+
+function urlWorkers(env: Record<string, string | undefined>): string[] {
+  const raw: string[] = [];
   try {
     const w: unknown = JSON.parse(env.PENDAMPING_WORKERS ?? '[]');
     if (Array.isArray(w))
@@ -170,6 +182,10 @@ export function pendampingInternalOrigins(env: Record<string, string | undefined
   } catch {
     /* JSON rusak: tidak ada worker tambahan */
   }
+  return raw;
+}
+
+function originInternal(raw: readonly (string | undefined)[]): Set<string> {
   const out = new Set<string>();
   for (const r of raw) {
     let u: URL;
@@ -235,7 +251,7 @@ export function buildAllowlist(
     ...(llm && isIP(llm.host) === 4 && TAILSCALE.check(llm.host, 'ipv4') && llm.port === LLM_PROXY.port
       ? { llmTailscale: originKey(llm.protocol, llm.host, llm.port) }
       : {}),
-    internal: pendampingInternalOrigins(env),
+    internal: new Set([...pendampingInternalOrigins(env), ...embeddingInternalOrigins(env)]),
   };
 }
 
