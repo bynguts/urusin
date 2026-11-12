@@ -137,7 +137,7 @@
               type="button"
               onclick={bicara}
               aria-pressed={mendikte}
-              class="inline-flex h-10 items-center gap-2 rounded-full bg-bg-2 px-3.5 text-[15px] leading-[22px] text-card-ink transition-all duration-150 ease-out hover:bg-line-3 active:scale-95"
+              class="inline-flex h-10 items-center gap-2 rounded-full bg-bg-2 px-3.5 text-[15px] leading-[22px] text-card-ink hover:bg-line-3"
             >
               <Icon name="mikrofon" class="size-4 text-ink" />
               {mendikte ? 'Mendengarkan…' : 'Bicara'}
@@ -145,7 +145,7 @@
           {/if}
           <a
             href="{resolve('/pengaturan')}#wilayah"
-            class="inline-flex h-10 items-center gap-2 rounded-full border border-line-2 px-3.5 text-[15px] leading-[22px] text-ink transition-all duration-150 ease-out hover:bg-card active:scale-95"
+            class="inline-flex h-10 items-center gap-2 rounded-full border border-line-2 px-3.5 text-[15px] leading-[22px] text-ink hover:bg-card"
           >
             <Icon name="lokasi" class="size-4 text-brand" />
             {wilayah?.nama ?? 'Pilih wilayah'}
@@ -156,7 +156,7 @@
           type="submit"
           disabled={mengirim}
           aria-busy={mengirim || undefined}
-          class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-[23px] font-semibold text-primer-ink transition-all duration-150 ease-out hover:opacity-90 active:scale-[0.98] disabled:opacity-80"
+          class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-[23px] font-semibold text-primer-ink disabled:opacity-80"
         >
           Kirim
           <Icon name={mengirim ? 'memuat' : 'panah'} class="size-[17px] {mengirim ? 'animate-spin' : ''}" />
@@ -176,7 +176,7 @@
         <li class="min-w-0">
           <a
             href={resolve('/peristiwa/[slug]', { slug: p.slug })}
-            class="group flex h-full flex-col overflow-hidden rounded-[18px] border border-line bg-surface shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] transition-all duration-200 hover:-translate-y-1 hover:shadow-md active:translate-y-0"
+            class="group flex h-full flex-col overflow-hidden rounded-[18px] border border-line bg-surface shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a]"
           >
             <span
               class="panggung panggung-{p.warna} relative block h-[140px] w-full overflow-hidden"
@@ -187,7 +187,7 @@
                 alt=""
                 width="118"
                 height="128"
-                class="absolute top-3 left-1/2 h-32 w-[118px] -translate-x-1/2 object-contain transition-transform duration-250 ease-out group-hover:scale-105"
+                class="absolute top-3 left-1/2 h-32 w-[118px] -translate-x-1/2 object-contain"
               />
             </span>
             <span class="flex flex-1 flex-col gap-1 px-4 pt-3.5 pb-4">
@@ -195,10 +195,7 @@
                 class="flex items-center justify-between gap-2 text-[18px] leading-[26px] font-semibold text-ink"
               >
                 {p.judul}
-                <Icon
-                  name="panah"
-                  class="size-[18px] shrink-0 transition-transform group-hover:translate-x-0.5"
-                />
+                <Icon name="panah" class="size-[18px] shrink-0" />
               </span>
               <span class="text-[15px] leading-[21px] text-muted">{p.ringkas}</span>
             </span>

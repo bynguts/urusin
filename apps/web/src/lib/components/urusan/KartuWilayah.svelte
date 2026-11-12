@@ -55,7 +55,7 @@
         onclick={onbenar}
         disabled={sibuk}
         aria-busy={sibuk || undefined}
-        class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-6 font-semibold text-primer-ink hover:opacity-90 disabled:opacity-80"
+        class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-6 font-semibold text-primer-ink disabled:opacity-80"
       >
         <Icon name={sibuk ? 'memuat' : 'centang'} class="size-[18px] {sibuk ? 'animate-spin' : ''}" />
         Ya, betul

@@ -76,7 +76,7 @@
     <button
       type="submit"
       disabled={sibuk}
-      class="mt-1 flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-primer font-semibold text-primer-ink hover:opacity-90 disabled:opacity-60"
+      class="mt-1 flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-primer font-semibold text-primer-ink disabled:opacity-60"
     >
       Simpan dan mulai <Icon name="panah" class="size-4.5" />
     </button>

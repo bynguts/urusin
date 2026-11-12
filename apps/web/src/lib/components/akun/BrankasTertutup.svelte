@@ -20,7 +20,7 @@
     <a
       data-masuk-ulang
       href="{resolve('/masuk')}?ulang=1&lanjut={encodeURIComponent(next)}"
-      class="mt-2 inline-flex min-h-12 items-center rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90"
+      class="mt-2 inline-flex min-h-12 items-center rounded-full bg-primer px-6 font-semibold text-primer-ink"
       >Masuk lagi</a
     >
   {:else if alasan === 'perlu-masuk'}
@@ -30,7 +30,7 @@
     </p>
     <a
       href="{resolve('/masuk')}?next={encodeURIComponent(next)}"
-      class="mt-2 inline-flex min-h-12 items-center rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90"
+      class="mt-2 inline-flex min-h-12 items-center rounded-full bg-primer px-6 font-semibold text-primer-ink"
       >Masuk</a
     >
   {:else}

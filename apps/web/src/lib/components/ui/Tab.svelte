@@ -40,7 +40,7 @@
       tabindex={pilih ? 0 : -1}
       onclick={() => (nilai = p.nilai)}
       onkeydown={(e) => tekan(e, i)}
-      class="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-[10px] px-3 text-[15px] leading-5 transition-colors {pilih
+      class="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-[10px] px-3 text-[15px] leading-5 {pilih
         ? 'bg-surface font-semibold text-ink shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]'
         : 'text-card-ink hover:text-ink'}"
     >

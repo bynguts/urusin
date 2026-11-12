@@ -147,7 +147,7 @@
       <button
         type="button"
         onclick={bukaTambah}
-        class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-primer px-5 text-sm font-semibold text-primer-ink transition-transform duration-150 hover:opacity-90 active:scale-95"
+        class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-primer px-5 text-sm font-semibold text-primer-ink"
       >
         <Icon name="tambah" class="size-4" /> Tambah dokumen
       </button>
@@ -169,7 +169,7 @@
             type="button"
             aria-pressed={pilih}
             onclick={() => (filter = j as typeof filter)}
-            class="inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-3.5 text-[15px] leading-[22px] transition-all duration-150 active:scale-95 {pilih
+            class="inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-3.5 text-[15px] leading-[22px] {pilih
               ? 'bg-primer font-semibold text-primer-ink shadow-xs'
               : 'border border-line-2 bg-surface text-ink hover:bg-card hover:border-line'}"
           >
@@ -186,7 +186,7 @@
       <ul class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {#each tampil as d (d.id)}
           <li
-            class="relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 focus-within:outline-2 focus-within:outline-ink"
+            class="relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a] focus-within:outline-2 focus-within:outline-ink"
           >
             <div class="flex h-[104px] items-center justify-center {LATAR[d.jenis]}" aria-hidden="true">
               {#if d.jenis === 'ktp'}

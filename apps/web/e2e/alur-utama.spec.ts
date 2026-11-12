@@ -94,6 +94,22 @@ for (const lebar of [390, 1440]) {
   });
 }
 
+// /syarat: statis tanpa JS (pola /privasi), dicapai dari tautan "Syarat layanan" di footer.
+for (const lebar of [390, 1440]) {
+  test(`syarat layanan dari footer di ${lebar}px`, async ({ page }) => {
+    await page.setViewportSize({ width: lebar, height: lebar < 600 ? 844 : 960 });
+    const res = await page.goto('/syarat');
+    expect(res?.status()).toBe(200);
+    await expect(page).toHaveTitle('Syarat layanan · Urusin');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Syarat layanan Urusin');
+    expect(await page.locator('script').count()).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
+    await page.goto('/privasi');
+    await page.locator('footer').getByRole('link', { name: 'Syarat layanan' }).click();
+    await expect(page).toHaveURL(/\/syarat$/);
+  });
+}
+
 // Halaman Web publik dari frame pen (Cara kerja, Urusan, Tanya jawab): statis tanpa JS, tanpa geser samping,
 // dicapai dari navigasi landing; tanya jawab memakai <details> yang tetap jalan tanpa JavaScript.
 const HALAMAN_WEB = [

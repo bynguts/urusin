@@ -436,24 +436,13 @@
   }
 }
 
-/* Interaksi: tombol terangkat, panah "Pelajari" bergeser, karakter kartu menyembul, kartu subpage */
+/* Interaksi: panah "Pelajari" bergeser, karakter kartu menyembul. Tombol (pill hitam/putih, tombol
+   kartu, tautan aksi subpage) sengaja TANPA efek hover apa pun (keputusan pemilik); fokus keyboard
+   tetap terlihat lewat outline :focus-visible di landing-dasar.css. */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116, .lp130, .ur-tombol, .pv38, .tj13, .tj15, .tj17, .tj19),
   .lp .lp117 > img,
   .lp :is(.lp110, .lp127) {
-    transition:
-      transform 0.25s var(--lp-e),
-      translate 0.35s var(--lp-e),
-      opacity 0.15s ease,
-      box-shadow 0.2s ease,
-      background-color 0.2s ease;
-  }
-  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116, .lp130, .ur-tombol, .pv38):hover {
-    transform: translateY(-1px);
-    opacity: 0.92;
-  }
-  .lp :is(.lp11, .lp17, .lp20, .lp58, .lp116, .lp130, .ur-tombol):active {
-    transform: scale(0.98);
+    transition: translate 0.35s var(--lp-e);
   }
   .lp .lp117:hover > img {
     translate: 3px 0;
@@ -487,7 +476,6 @@
   .lp .tj17:hover,
   .lp .tj19:hover {
     background-color: #efe6dc !important;
-    transform: translateY(-1px);
   }
   .lp .tj-q summary:hover {
     color: #ed5a31;

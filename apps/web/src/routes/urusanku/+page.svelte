@@ -47,7 +47,7 @@
         type="button"
         aria-pressed={pilih}
         onclick={() => (filter = f.nilai)}
-        class="inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-medium transition-all duration-150 active:scale-95 {pilih
+        class="inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-medium {pilih
           ? 'bg-primer font-semibold text-primer-ink shadow-xs'
           : 'border border-line-2 bg-surface text-ink hover:bg-card hover:border-line'}"
       >
@@ -86,7 +86,7 @@
       </p>
       <a
         href={resolve('/beranda')}
-        class="mt-2 inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90"
+        class="mt-2 inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink"
       >
         <Icon name="tambah" class="size-4.5" /> Mulai urusan
       </a>

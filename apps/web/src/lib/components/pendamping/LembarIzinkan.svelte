@@ -202,7 +202,7 @@
         onclick={() => onizinkan(generik ? pilihan : undefined)}
         disabled={sibuk || (generik && !adaPilihan)}
         aria-busy={sibuk || undefined}
-        class="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink hover:opacity-90 disabled:opacity-80"
+        class="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink disabled:opacity-80"
       >
         <Icon name={sibuk ? 'memuat' : 'centang'} class="size-4.5 {sibuk ? 'animate-spin' : ''}" /> Izinkan isi
       </button>

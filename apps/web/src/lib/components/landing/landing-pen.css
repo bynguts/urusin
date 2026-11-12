@@ -83,9 +83,6 @@
   height: 36px;
   padding: 8px 16px;
   width: fit-content;
-  transition:
-    background-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    color 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .lp8:hover {
   background-color: var(--sb-bg-secondary, #f7f2ed);
@@ -101,7 +98,6 @@
   line-height: 1.2;
   white-space: nowrap;
   display: block;
-  transition: color 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .lp10 {
   align-items: center;
@@ -122,16 +118,6 @@
   gap: 6px;
   padding: 8px 20px;
   width: fit-content;
-  transition:
-    opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lp11:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-.lp11:active {
-  transform: translateY(0);
 }
 .lp12 {
   color: #fffcfa;
@@ -221,18 +207,6 @@
   min-height: 44px;
   padding: 10px 24px;
   width: fit-content;
-  transition:
-    background-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.15s ease;
-}
-.lp20:hover {
-  background-color: var(--sb-bg-secondary, #f7f2ed);
-  border-color: var(--sb-stroke-secondary, #e6dbd1);
-  transform: translateY(-1px);
-}
-.lp20:active {
-  transform: translateY(0);
 }
 .lp21 {
   color: var(--sb-text-primary, #252522);
@@ -644,16 +618,6 @@
   min-height: 44px;
   padding: 10px 24px;
   width: fit-content;
-  transition:
-    opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lp58:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-.lp58:active {
-  transform: translateY(0);
 }
 .lp59 {
   color: #fffcfa;
@@ -2386,11 +2350,13 @@
   line-height: 1.529;
   white-space: nowrap;
 }
+/* Panel perbandingan: 330px supaya jendela "Form error 404" (top 130 + 170) berjarak 30px dari tepi
+   bawah, sama dengan jarak atas/kirinya; kartu "Langkahmu" kanan berjarak 28px di kiri, kanan dan bawah. */
 .lp227 {
   background-color: var(--sb-bg-card, #fcf8f5);
   border-radius: 20px;
   flex-shrink: 0;
-  height: 300px;
+  height: 330px;
   outline-offset: -0.5px;
   outline: 1px solid var(--sb-stroke, #efe6dc);
   overflow: hidden;
@@ -2527,7 +2493,7 @@
   height: 164px;
   left: 360px;
   position: absolute;
-  top: 130px;
+  top: 160px;
   width: 150px;
   z-index: 3;
   object-fit: contain;
@@ -2568,10 +2534,10 @@
   flex-direction: column;
   gap: 10px;
   left: 28px;
+  right: 28px;
+  bottom: 28px;
   padding: 16px;
   position: absolute;
-  top: 104px;
-  width: 420px;
   z-index: 0;
 }
 .lp245 {
@@ -2782,10 +2748,6 @@
   outline: 2px solid #252522;
   outline-offset: 2px;
 }
-.lp .n-faq-item summary:hover .n-balon {
-  filter: drop-shadow(0px 0px 0.5px #0000001f) drop-shadow(0px 8px 12px #25252218);
-  transform: translateY(-1px);
-}
 .lp265 {
   align-items: flex-start;
   display: flex;
@@ -2801,28 +2763,28 @@
   flex-direction: row;
   flex-shrink: 0;
   width: fit-content;
-  transition:
-    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    filter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 /*
- * Balon chat bersama (.n-balon): pertanyaan FAQ (putih), jawaban FAQ (.n-balon--gelap) dan sapaan
- * "Mau urus apa hari ini?" di panel ajakan memakai bentuk, ukuran huruf, padding, sudut, bayangan dan ekor
- * yang sama. Ekor = mask SVG berwarna latar balon (inherit), di belakang isi (z-index -1 dalam konteks
- * tumpukan balon); drop-shadow (bukan box-shadow) supaya bayangan ikut membungkus ekor tanpa sambungan.
- * Balon putih berekor kiri bawah, balon gelap dicerminkan ke kanan bawah.
+ * Balon chat (.n-balon): gaya balon sapaan "Mau urus apa hari ini?" di panel ajakan (sudut 16px, bayangan
+ * drop-shadow tipis, huruf reguler). Balon FAQ memakai gaya yang sama dalam ukuran besar (17px; 16px di
+ * ponsel). Ekor = mask SVG berwarna latar balon (inherit) di belakang isi (z-index -1 dalam konteks
+ * tumpukan balon); drop-shadow (bukan box-shadow) supaya bayangan ikut membungkus ekor. Garis bentuk ekor
+ * jatuh tepat di tepi kiri dan tepi bawah balon (offset = 1/4 lebar ekor), dan sudut berekor dibuat kecil
+ * agar tertutup penuh oleh ekor: tanpa tangga, tanpa sudut membulat yang menyembul. Balon putih berekor
+ * kiri bawah; balon gelap dicerminkan ke kanan bawah.
  */
 .lp .n-balon {
   position: relative;
   isolation: isolate;
   background-color: var(--sb-bg-white, #ffffff);
   color: var(--sb-text-primary, #252522);
-  border-radius: 16px;
+  border-radius: 16px 16px 16px 4px;
   padding: 9px 14px;
   font-size: 14px;
   font-weight: 400;
   line-height: 1.429;
   filter: drop-shadow(0px 0px 0.5px #0000001f) drop-shadow(0px 6px 9px #2525220d);
+  --ekor-w: 18px;
 }
 .lp .n-balon > * {
   color: inherit;
@@ -2830,34 +2792,36 @@
   font-weight: inherit;
   line-height: inherit;
 }
-/* Sudut berekor dibuat kecil: tepi ekor jadi satu-satunya tepi di sudut itu (tanpa garis sambungan). */
-.lp .n-balon {
-  border-bottom-left-radius: 4px;
+.lp .n-balon::before {
+  content: '';
+  position: absolute;
+  bottom: calc(var(--ekor-w) / -4);
+  left: calc(var(--ekor-w) / -4);
+  width: var(--ekor-w);
+  height: calc(var(--ekor-w) * 1.25);
+  z-index: -1;
+  background: inherit;
+  pointer-events: none;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 30'%3E%3Cpath d='M24 0v24H14c-4 2.5-9.5 5-14 6 3.5-3.5 6-9 6-16V0z'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 30'%3E%3Cpath d='M24 0v24H14c-4 2.5-9.5 5-14 6 3.5-3.5 6-9 6-16V0z'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+}
+/* Balon FAQ: gaya sama, ukuran besar */
+.lp :is(.lp266, .lp270).n-balon {
+  padding: 12px 18px;
+  font-size: 17px;
+  line-height: 1.529;
+  --ekor-w: 24px;
 }
 .lp .n-balon--gelap {
   background-color: #111110;
   color: #ffffff;
-  border-bottom-left-radius: 16px;
-  border-bottom-right-radius: 4px;
-}
-.lp .n-balon::before {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: -4px;
-  width: 16px;
-  height: 20px;
-  z-index: -1;
-  background: inherit;
-  pointer-events: none;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 20'%3E%3Cpath d='M16 0v16H9c-2.5 1.5-6 3.3-9 4 2.3-2.3 4-6 4-10.7V0z'/%3E%3C/svg%3E")
-    center / 100% 100% no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 20'%3E%3Cpath d='M16 0v16H9c-2.5 1.5-6 3.3-9 4 2.3-2.3 4-6 4-10.7V0z'/%3E%3C/svg%3E")
-    center / 100% 100% no-repeat;
+  border-radius: 16px 16px 4px 16px;
 }
 .lp .n-balon--gelap::before {
   left: auto;
-  right: -4px;
+  right: calc(var(--ekor-w) / -4);
   transform: scaleX(-1);
 }
 .lp267 {

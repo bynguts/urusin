@@ -18,7 +18,7 @@
         <a
           href={resolve(item.href)}
           aria-current={kini ? 'page' : undefined}
-          class="flex min-h-[5.125rem] min-w-0 flex-col items-center justify-center gap-1.5 px-1 text-[clamp(14px,0.875rem,16px)] text-muted transition-all duration-150 active:scale-95 aria-[current=page]:font-semibold aria-[current=page]:text-ink"
+          class="flex min-h-[5.125rem] min-w-0 flex-col items-center justify-center gap-1.5 px-1 text-[clamp(14px,0.875rem,16px)] text-muted aria-[current=page]:font-semibold aria-[current=page]:text-ink"
         >
           <Icon name={item.ikon} class="size-5" />
           <span class="max-w-full text-center leading-tight">{item.label}</span>
