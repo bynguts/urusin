@@ -1346,3 +1346,62 @@ describe('rem akun massal (review H1)', () => {
     await akun.daftar({ email: 'massal-y@example.com', sandi: SANDI }, { ...ctx, ip: '198.51.100.7' });
   }, 60_000);
 });
+
+describe('atur ulang pada email yang belum terbukti (review H2)', () => {
+  const terbukti = (id: string) =>
+    (db.prepare('SELECT at FROM email_terbukti WHERE user_id = ?').get(id) as { at: string } | undefined)
+      ?.at ?? null;
+  async function resetLewatEmail(sandi = SANDI2) {
+    await akun.lupaSandi(EMAIL, ctx);
+    await akun.emailSelesai();
+    await akun.aturUlangSandi(tokenDari(mailer.last(EMAIL, 'atur-ulang')!.link), sandi, ctx);
+  }
+
+  it('penyerobot email: urusan, vault, berkas, dan ingatannya dihancurkan sebelum akun pindah ke pemilik kotak surat', async () => {
+    const dihapus: string[] = [];
+    akun = buat({
+      hapusUrusan: (id) => {
+        dihapus.push(id);
+        db.prepare('DELETE FROM urusan WHERE id = ?').run(id);
+      },
+    });
+    const a = (await daftarAkun()).akun; // didaftarkan penyerobot dengan sandinya sendiri
+    expect(terbukti(a.id)).toBeNull();
+    urusan('u_serobot', 'u_lain');
+    akun.catatPemilikUrusan('u_serobot', { akun: a });
+    akun.catatPemilikUrusan('u_lain', { sid: 'tamu-lain' });
+    akun.vault.setDataDiri(a.id, { namaLengkap: 'Data Tanaman Penyerobot' });
+    akun.vault.putDocument(a.id, { jenis: 'ktp', judul: 'KTP', mime: 'image/png', bytes: Buffer.from('x') });
+    akun.vault.setIngatan(a.id, { catatan: 'ingatan tanaman' });
+    expect(readdirSync(vaultDir)).toEqual([a.id]);
+
+    await resetLewatEmail();
+    expect(dihapus).toEqual(['u_serobot']);
+    expect(akun.urusanMilik(a.id)).toEqual([]);
+    expect(akun.vault.getDataDiri(a.id)).toBeNull();
+    expect(akun.vault.getIngatan(a.id)).toBeNull();
+    for (const tabel of ['user_keys', 'vault_data_diri', 'vault_documents', 'vault_ingatan'])
+      expect(db.prepare(`SELECT COUNT(*) n FROM ${tabel}`).get()).toEqual({ n: 0 });
+    expect(readdirSync(vaultDir)).toEqual([]);
+    expect(terbukti(a.id)).not.toBeNull();
+    // akun tetap milik pemilik kotak surat dengan sandi barunya
+    await expect(akun.masuk({ email: EMAIL, sandi: SANDI2 }, ctx)).resolves.toBeDefined();
+  });
+
+  it('email sudah terbukti: atur ulang berikutnya TIDAK menghapus data warga', async () => {
+    const a = (await daftarAkun()).akun;
+    await resetLewatEmail(); // bukti pertama (akun masih kosong)
+    akun.vault.setDataDiri(a.id, { namaLengkap: 'Warga Asli' });
+    akun.vault.setIngatan(a.id, { catatan: 'ingatan warga' });
+    t += 60 * 60_000;
+    await resetLewatEmail(SANDI);
+    expect(akun.vault.getDataDiri(a.id)?.data).toEqual({ namaLengkap: 'Warga Asli' });
+    expect(akun.vault.getIngatan(a.id)?.data).toEqual({ catatan: 'ingatan warga' });
+  });
+
+  it('akun baru lewat Google tercatat terbukti (atur ulang tidak menghapus datanya)', async () => {
+    const r = await googleLogin({ sub: 'g-h2', email: 'gugel@example.com', email_verified: true, name: 'G' });
+    if (r.jenis !== 'masuk') throw new Error('harus masuk');
+    expect(terbukti(r.akun.id)).not.toBeNull();
+  });
+});

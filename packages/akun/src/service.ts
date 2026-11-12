@@ -830,7 +830,9 @@ export class AkunService {
   /**
    * Atur ulang sandi dengan token reset. Sandi diperiksa DULU (token tidak terbakar oleh sandi yang ditolak).
    * Berhasil → semua sesi akun dihapus, tautan lama batal, identitas Google dicabut (pemilik kotak surat
-   * memegang akun), kunci dibuka.
+   * memegang akun), kunci dibuka. Bila email akun BELUM pernah dibuktikan (tanpa baris `email_terbukti`: didaftarkan
+   * dengan sandi oleh siapa pun), pemegang lama mungkin penyerobot: urusan, vault, dan ingatannya dihancurkan
+   * DULU sebelum akun berpindah ke pemilik kotak surat, lalu email dicatat terbukti (ADR 0032).
    */
   async aturUlangSandi(token: string, sandiBaru: string, ctx: KonteksPermintaan): Promise<Akun> {
     this.batasi('token', ctx);
@@ -839,18 +841,25 @@ export class AkunService {
     this.sandiAtauGagal(sandiBaru, this.userById(t.user_id)!.email);
     const hash = await hashPassword(sandiBaru);
     const userId = this.pakaiToken(token, 'reset');
+    const belumTerbukti = !this.db.prepare('SELECT 1 FROM email_terbukti WHERE user_id = ?').get(userId);
     this.tx(() => {
+      if (belumTerbukti) {
+        this.hapusUrusanSemua(this.urusanMilik(userId));
+        this.deps.vault.shredDb(userId); // DEK, Data Diri, dokumen, ingatan
+      }
       this.db
         .prepare(
           'UPDATE users SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?',
         )
         .run(hash, this.iso(), userId);
+      this.catatEmailTerbukti(userId);
       this.db.prepare('DELETE FROM auth_sessions WHERE user_id = ?').run(userId);
       this.db
         .prepare('UPDATE email_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL')
         .run(this.iso(), userId);
       this.cabutIdentitas(userId); // tautan Google (mungkin milik penyerang) dicabut; warga bisa menautkan lagi
     });
+    if (belumTerbukti) this.deps.vault.hapusBerkas(userId);
     const u = this.userById(userId)!;
     this.bukaKunci(u.email!);
     return toAkun(u);
@@ -882,6 +891,13 @@ export class AkunService {
   }
 
   // --- hapus akun dan penyapu ---
+
+  /** Kepemilikan kotak surat terbukti (Google terverifikasi / tautan atur ulang); idempoten. */
+  private catatEmailTerbukti(userId: string): void {
+    this.db
+      .prepare('INSERT OR IGNORE INTO email_terbukti (user_id, at) VALUES (?, ?)')
+      .run(userId, this.iso());
+  }
 
   private hapusUrusanSemua(ids: string[]): void {
     const hapus =
@@ -1330,6 +1346,7 @@ export class AkunService {
           "INSERT INTO users (id, jenis, email, email_verified_at, created_at) VALUES (?, 'akun', ?, ?, ?)",
         )
         .run(userId, email, this.iso(), this.iso());
+      this.catatEmailTerbukti(userId); // Google sudah memastikan email (claims.emailVerified)
       this.tautkanIdentitas(userId, claims.sub, 'daftar');
       return { userId };
     });

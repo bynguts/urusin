@@ -67,8 +67,14 @@ bisa "ikut berpindah" ke pihak lain.
 - **Penyerobotan email (squatting).** Orang yang mendaftar lebih dulu dengan email korban memegang akun itu, dan
   korban tidak bisa masuk dengan Google untuk email tersebut. Data korban tidak bocor karena akun itu kosong dari
   data korban. Mitigasinya: bila Resend aktif, pemilik kotak surat bisa memakai "Lupa sandi". Atur ulang mencabut
-  sesi dan identitas Google lama, dan akun berpindah ke pemilik kotak surat. Selama email ditahan, korban tidak
-  bisa merebut kembali email itu. Ini risiko yang diterima.
+  sesi dan identitas Google lama, dan akun berpindah ke pemilik kotak surat. Aktif tidak sama dengan terbukti:
+  tabel `email_terbukti` mencatat kepemilikan kotak surat yang pernah dibuktikan (tautan verifikasi lama, Google
+  dengan email terverifikasi, atau tautan atur ulang). Bila atur ulang terjadi pada akun yang emailnya belum
+  terbukti, urusan, vault (crypto-shred, termasuk berkas), dan ingatan pemegang lama dihancurkan DULU sebelum
+  sandi berganti, lalu email dicatat terbukti. Pemilik asli tidak mewarisi data atau jebakan yang ditanam
+  penyerobot. Konsekuensinya, warga yang mendaftar dengan sandi lalu lupa sandi sebelum emailnya pernah terbukti
+  juga kehilangan isi akunnya. Selama email ditahan, korban tidak bisa merebut kembali email itu. Ini risiko yang
+  diterima.
 - Akun tidak lagi disapu otomatis. Pembersihan hanya untuk tamu (72 jam) dan salinan demo (24 jam).
 - Turnstile tidak ditambahkan ke daftar. Produksi menjalankan Turnstile `nonaktif`, jadi rem pembuatan akun massal
   tetap batas laju daftar per IP dan per email.

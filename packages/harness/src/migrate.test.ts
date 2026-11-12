@@ -135,6 +135,10 @@ describe('migrasi berversi', () => {
       { id: 'akun_lama', email_verified_at: '2026-11-01T00:00:00.000Z' },
       { id: 'tamu_1', email_verified_at: null },
     ]);
+    // review H2: aktivasi TIDAK sama dengan bukti kepemilikan email; hanya yang dulu terverifikasi yang terbukti
+    expect(db.prepare('SELECT user_id, at FROM email_terbukti').all()).toEqual([
+      { user_id: 'akun_aktif', at: '2026-11-03T00:00:00.000Z' },
+    ]);
     expect(
       db.prepare("SELECT used_at IS NOT NULL AS dipakai FROM email_tokens WHERE token_hash = 't1'").get(),
     ).toEqual({
