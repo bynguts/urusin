@@ -26,6 +26,7 @@ import {
   type GerbangTulis,
   type Jendela,
 } from './gerbang-tulis.js';
+import { galatSitus, halamanGalatChrome, pesanAlihLuar, pesanSitusBermasalah } from './galat-nav.js';
 
 /**
  * GenerikRun: "tangan" Navigator generik di worker (ADR 0030). Otak (LLM + validator) ada di web; worker
@@ -63,6 +64,8 @@ export type TanganHalaman = {
   tenang(): Promise<void>;
   /** URL dokumen utama yang ter-commit saat ini (mis. `chrome-error://...` bila navigasi gagal). */
   urlKini(): string;
+  /** Galat jaringan navigasi bingkai utama terakhir (`net::ERR_*`), bila ada. */
+  galatNav?(): string | undefined;
   /**
    * Probe gel4 3279: tombol masuk situs hanya tampil di layar lebar (`d-none d-lg-block`). Lebarkan viewport bila
    * itu memunculkannya; true = lebar berubah (amati ulang).
@@ -99,6 +102,7 @@ export function tanganRunner(deps: {
   navigasi(url: string): Promise<void>;
   tenang(): Promise<void>;
   urlKini(): string;
+  galatNav?(): string | undefined;
   lebarkan?(): Promise<boolean>;
 }): TanganHalaman {
   return {
@@ -127,6 +131,7 @@ export function tanganRunner(deps: {
     },
     tenang: deps.tenang,
     urlKini: deps.urlKini,
+    ...(deps.galatNav ? { galatNav: deps.galatNav } : {}),
     ...(deps.lebarkan ? { lebarkan: deps.lebarkan } : {}),
   };
 }
@@ -320,7 +325,13 @@ export class GenerikRun {
   /** Nama kolom (sudah diredaksi) per ref dari pengamatan terakhir: label lembar persetujuan. */
   private namaRef = new Map<string, string>();
   /** Selama satu aksi/navigasi AI: blokir gerbang dan host di luar allowlist yang terjadi karenanya. */
-  private aksiBerjalan: { blokir: CatatanBlokir[]; hostLain: boolean } | undefined;
+  private aksiBerjalan:
+    | {
+        blokir: CatatanBlokir[];
+        hostLain: boolean;
+        situsGalat?: { host: string; net: string; alih: boolean };
+      }
+    | undefined;
   private antre: Promise<unknown> = Promise.resolve();
   private readonly now: () => number;
   /**
@@ -532,8 +543,22 @@ export class GenerikRun {
    * atau halaman tolak proxy)? Catat host kandidat, kembalikan peramban ke halaman sebelumnya (GET ke URL yang
    * sudah lolos allowlist), dan tandai aksi untuk diserahkan ke warga.
    */
-  private async keluarAllowlist(urlSebelum: string | undefined): Promise<void> {
+  private async keluarAllowlist(urlSebelum: string | undefined, tujuan?: string): Promise<void> {
     const kini = this.d.tangan.urlKini();
+    // Halaman galat Chromium (sertifikat, DNS, koneksi): situs resmi itu sendiri bermasalah, BUKAN host di luar
+    // allowlist. Tanpa halaman sebelumnya yang sah, galat apa pun tidak pernah diserahkan ke warga.
+    if (this.aksiBerjalan && halamanGalatChrome(kini)) {
+      const net = this.d.tangan.galatNav?.();
+      const sah = urlSebelum !== undefined && this.d.urlBoleh(urlSebelum);
+      if (galatSitus(net) || !sah) {
+        const host = URL.parse(tujuan ?? urlSebelum ?? '')?.host || 'resmi';
+        // Proxy menolak hop redirect ke host lain: tetap dipandu (halaman galat tidak diserahkan), host dicatat.
+        const lain = galatSitus(net) ? undefined : this.hostDitolakTerakhir;
+        if (lain) this.d.jejak({ jenis: 'host_kandidat', host: lain });
+        this.aksiBerjalan.situsGalat = { host, net: net ?? 'net::ERR_FAILED', alih: lain !== undefined };
+        return;
+      }
+    }
     if (!this.aksiBerjalan || this.d.urlBoleh(kini)) return;
     const u = URL.parse(kini);
     const host = u && /^https?:$/.test(u.protocol) ? u.host : this.hostDitolakTerakhir;
@@ -773,6 +798,11 @@ export class GenerikRun {
 
   private async eskalasiBila(ref: RefTersimpan | undefined): Promise<boolean> {
     const a = this.aksiBerjalan;
+    if (a?.situsGalat) {
+      const { host, net, alih } = a.situsGalat;
+      this.d.tidakBisa(alih ? pesanAlihLuar(host) : pesanSitusBermasalah(host, net));
+      return true;
+    }
     if (!a || (a.blokir.length === 0 && !a.hostLain)) return false;
     // Re-review A2: tulis AI yang diblokir bisa meninggalkan timer/retry (setInterval) yang terus mencoba. Dokumen
     // dimuat ulang SEBELUM warga memegang kendali agar timer itu mati; bila tidak bisa (sekali per URL), jendela
@@ -823,7 +853,7 @@ export class GenerikRun {
     this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: u.href });
     await this.d.tangan.navigasi(u.href);
     await this.d.tangan.tenang();
-    await this.keluarAllowlist(urlSebelum);
+    await this.keluarAllowlist(urlSebelum, u.href);
     if (await this.eskalasiBila(ref)) return { kode: 'GERBANG_MEMBLOKIR' as const, ...k };
     return { kode: 'ok' as const, ...k, halamanBerganti: true };
   }
@@ -874,7 +904,7 @@ export class GenerikRun {
         this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: u.href });
         await this.d.tangan.navigasi(u.href);
         await this.d.tangan.tenang();
-        await this.keluarAllowlist(urlSebelum);
+        await this.keluarAllowlist(urlSebelum, u.href);
         this.d.gerbang.setAi({ jenis: 'ai_diam' });
         await this.eskalasiBila(ref ? this.peta[ref] : undefined);
       } finally {
@@ -896,7 +926,7 @@ export class GenerikRun {
         this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: url });
         await this.d.tangan.navigasi(url);
         await this.d.tangan.tenang();
-        await this.keluarAllowlist(undefined);
+        await this.keluarAllowlist(undefined, url);
         this.d.gerbang.setAi({ jenis: 'ai_diam' });
         await this.eskalasiBila(undefined);
       } finally {

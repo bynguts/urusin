@@ -1,6 +1,7 @@
 import { randomInt } from 'node:crypto';
 import type { CatatanPendamping, Pengamatan } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
+import { pesanAlihLuar, pesanSitusBermasalah } from './galat-nav.js';
 import { createGerbangTulis, JENDELA_ISI_MS, type Jendela } from './gerbang-tulis.js';
 import {
   GenerikRun,
@@ -69,6 +70,8 @@ type Opsi = {
   peta?: PetaRef;
   /** Href tautan pembuka per ref (op runner `tautan`). */
   tautan?: Record<string, string>;
+  /** Galat jaringan navigasi saat dokumen = halaman galat Chromium (`chrome-error://`). */
+  galatNav?: string;
   /** Tangan `lebarkan` (probe gel4 3279); undefined = tangan tanpa kemampuan itu. */
   lebarkan?: () => Promise<boolean>;
 };
@@ -112,6 +115,7 @@ function harness(o: Opsi = {}) {
     tautan: async (r) => o.tautan?.[r],
     tenang: async () => {},
     urlKini: () => urlKini,
+    galatNav: () => (urlKini.startsWith('chrome-error:') ? o.galatNav : undefined),
     ...(o.lebarkan ? { lebarkan: o.lebarkan } : {}),
   };
   const izin: IzinGenerik = {
@@ -492,17 +496,63 @@ describe('GenerikRun: host di luar allowlist', () => {
     expect(h.jejak).toContainEqual({ jenis: 'host_kandidat', host: 'sso.lain.example' });
   });
 
-  it('halaman awal di-redirect lewat proxy: diserahkan ke warga, tanpa navigasi balik', async () => {
+  it('halaman awal di-redirect lewat proxy: dipandu, halaman galat Chromium tidak diserahkan', async () => {
     const awal = 'https://portal.contoh.go.id/';
     const h = harness({
       urlBoleh: hanyaPortal,
       alihkan: { [awal]: 'chrome-error://chromewebdata/' },
+      galatNav: 'net::ERR_TUNNEL_CONNECTION_FAILED',
       saatNavigasi: (run) => run.hostDiblokir('lain.example', undefined),
     });
     await h.run.mulai(awal);
     expect(h.navigasi).toEqual([awal]);
     expect(h.jejak).toContainEqual({ jenis: 'host_kandidat', host: 'lain.example' });
-    expect(h.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.hostLain, sorot: undefined }]);
+    expect(h.serah).toEqual([]);
+    expect(h.tidakBisa).toEqual([pesanAlihLuar('portal.contoh.go.id')]);
+  });
+
+  it('QA prod Malang: halaman awal = layar peringatan TLS -> dipandu jujur, bukan "di luar daftar"', async () => {
+    const awal = 'https://siapel.malangkota.go.id/';
+    const h = harness({
+      urlBoleh: (u) => URL.parse(u)?.host === 'siapel.malangkota.go.id',
+      alihkan: { [awal]: 'chrome-error://chromewebdata/' },
+      galatNav: 'net::ERR_CERT_AUTHORITY_INVALID',
+    });
+    await h.run.mulai(awal);
+    expect(h.serah).toEqual([]);
+    expect(h.jejak.filter((c) => c.jenis === 'host_kandidat')).toEqual([]);
+    expect(h.tidakBisa).toEqual([
+      pesanSitusBermasalah('siapel.malangkota.go.id', 'net::ERR_CERT_AUTHORITY_INVALID'),
+    ]);
+    expect(h.tidakBisa[0]).not.toContain('di luar daftar');
+    expect(h.tidakBisa[0]).toContain('dispendukcapil.malangkota.go.id');
+  });
+
+  it.each(['net::ERR_CERT_DATE_INVALID', 'net::ERR_NAME_NOT_RESOLVED', 'net::ERR_CONNECTION_TIMED_OUT'])(
+    'tautan ke host resmi berakhir di halaman galat %s: dipandu, tanpa navigasi balik atau giliran',
+    async (net) => {
+      const pindah = 'https://portal.contoh.go.id/pindah';
+      const h = harness({
+        aksi: () => ({ status: 'navigasi', aturan: 'K8_NAVIGASI', kelas: 'navigasi', href: pindah }),
+        urlBoleh: hanyaPortal,
+        alihkan: { [pindah]: 'chrome-error://chromewebdata/' },
+        galatNav: net,
+      });
+      await h.run.amati();
+      const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+      expect(r[0]?.kode).toBe('GERBANG_MEMBLOKIR');
+      expect(h.navigasi).toEqual([pindah]);
+      expect(h.serah).toEqual([]);
+      expect(h.tidakBisa).toEqual([pesanSitusBermasalah('portal.contoh.go.id', net)]);
+    },
+  );
+
+  it('halaman galat tanpa kode galat di halaman awal: tetap dipandu (galat Chromium tidak pernah diserahkan)', async () => {
+    const awal = 'https://portal.contoh.go.id/';
+    const h = harness({ urlBoleh: hanyaPortal, alihkan: { [awal]: 'chrome-error://chromewebdata/' } });
+    await h.run.mulai(awal);
+    expect(h.serah).toEqual([]);
+    expect(h.tidakBisa).toEqual([pesanSitusBermasalah('portal.contoh.go.id', 'net::ERR_FAILED')]);
   });
 
   it('penolakan proxy untuk subresource (dokumen tetap di allowlist): tidak dicatat, tidak diserahkan', async () => {
