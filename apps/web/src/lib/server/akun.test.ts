@@ -223,7 +223,7 @@ describe('API akun: daftar (langsung masuk) → sesi → masuk', () => {
       profilLengkap: false,
       sinkron: true,
     });
-    expect(body.akun).not.toHaveProperty('emailTerverifikasi');
+    expect(body.akun).toHaveProperty('emailTerverifikasi', true); // deprecated, selalu true
     expect([body.urusanDipindahkan, body.vaultDipindahkan, body.googleTertaut]).toEqual([0, false, false]);
     expect(res.headers.get('set-cookie')).toBeNull(); // cookie lewat event.cookies, bukan header manual
     expect(mailer.sent).toHaveLength(0); // tidak ada email verifikasi
@@ -237,7 +237,7 @@ describe('API akun: daftar (langsung masuk) → sesi → masuk', () => {
 
     const s = await lewatHook(get('/api/akun'), jar, sesiAkun);
     const mentah = (await s.json()) as any;
-    expect(mentah.akun).not.toHaveProperty('emailTerverifikasi');
+    expect(mentah.akun).toHaveProperty('emailTerverifikasi', true);
     const sesi = SesiAkunResponseSchema.parse(mentah);
     expect(sesi.masuk).toBe(true);
     expect(sesi.email).toEqual({ mode: 'log', tertunda: false });
@@ -398,6 +398,63 @@ describe('daftar memindahkan data tamu ke akun baru', () => {
     expect(rt.akun.vault.getDataDiri(akun.id)?.data).toEqual({ namaLengkap: 'Tamu Form' });
     const s = SesiAkunResponseSchema.parse(await (await lewatHook(get('/api/akun'), jar, sesiAkun)).json());
     expect(s.masuk && [s.akun.email, s.akun.sinkron, s.akun.profilLengkap]).toEqual([EMAIL, true, true]);
+  });
+});
+
+describe('sesi akun aktif dengan sid yang masih memegang data tamu (review L1)', () => {
+  it('hooks menggabungkan urusan + vault tamu ke akun (data akun tidak ditimpa) lalu memutar sid', async () => {
+    const { jar } = await daftarAkun();
+    const id = akunDari(jar).id;
+    await lewatHook(put({ namaLengkap: 'Nama Akun', pekerjaan: 'Petani' }), jar, dataDiriPut);
+    // Sisa data tamu pada sid perangkat ini (mis. vault satu perangkat akun lama sebelum ADR 0032).
+    const sidTamu = 'c'.repeat(32);
+    const tamu = new Jar({ [SID_COOKIE]: sidTamu });
+    const u = ((await (await lewatHook(post({}, '/api/urusan'), tamu, buatUrusan)).json()) as any)
+      .id as string;
+    expect(
+      (await lewatHook(put({ namaLengkap: 'Nama Tamu', tempatLahir: 'Wonogiri' }), tamu, dataDiriPut)).status,
+    ).toBe(200);
+    const tamuId = rt.akun.tamuDariSid(sidTamu)!;
+    rt.akun.vault.putDocument(tamuId, {
+      jenis: 'ktp',
+      judul: 'KTP',
+      mime: 'image/png',
+      bytes: Buffer.from('x'),
+    });
+    // Data tamu sid LAIN (perangkat/orang lain) tidak boleh ikut terambil.
+    const sidLain = 'd'.repeat(32);
+    const lain = new Jar({ [SID_COOKIE]: sidLain });
+    const uLain = ((await (await lewatHook(post({}, '/api/urusan'), lain, buatUrusan)).json()) as any)
+      .id as string;
+    await lewatHook(put({ namaLengkap: 'Orang Lain' }), lain, dataDiriPut);
+
+    jar.set(SID_COOKIE, sidTamu, {});
+    const res = await lewatHook(get('/api/akun'), jar, sesiAkun);
+    expect(res.status).toBe(200);
+    const sidBaru = jar.get(SID_COOKIE)!;
+    expect(sidBaru).toMatch(/^[0-9a-f]{32}$/);
+    expect(sidBaru).not.toBe(sidTamu);
+    expect(rt.akun.urusanMilik(id)).toEqual([u]);
+    // Data Diri digabung: nilai akun menang, isian tamu melengkapi; dokumen tamu ikut pindah.
+    expect(rt.akun.vault.getDataDiri(id)?.data).toEqual({
+      namaLengkap: 'Nama Akun',
+      pekerjaan: 'Petani',
+      tempatLahir: 'Wonogiri',
+    });
+    expect(rt.akun.vault.listDocuments(id).map((d) => d.judul)).toEqual(['KTP']);
+    // sid lama tidak lagi memegang apa pun
+    expect(rt.akun.sidMemegangDataTamu(sidTamu)).toBe(false);
+    expect(rt.akun.tamuDariSid(sidTamu)).toBeUndefined();
+    const curi = new Jar({ [SID_COOKIE]: sidTamu });
+    expect((await lewatHook(get(`/api/urusan/${u}`), curi, statusUrusan, { id: u })).status).toBe(404);
+    // tamu sid lain utuh dan tetap miliknya
+    expect(rt.akun.adalahPemilikUrusan(uLain, { sid: sidLain })).toBe(true);
+    expect(rt.akun.vault.getDataDiri(rt.akun.tamuDariSid(sidLain)!)?.data).toEqual({
+      namaLengkap: 'Orang Lain',
+    });
+    // permintaan berikutnya: tidak ada lagi yang perlu digabung, sid tidak diputar ulang
+    await lewatHook(get('/api/akun'), jar, sesiAkun);
+    expect(jar.get(SID_COOKIE)).toBe(sidBaru);
   });
 });
 
@@ -1378,7 +1435,7 @@ describe('form action halaman akun (App 15–20)', () => {
     expect(isRedirect(d) && [d.status, d.location]).toEqual([303, '/beranda']);
     expect(dj.store.get(AKUN_COOKIE)!.opts).toMatchObject({ httpOnly: true, secure: true, sameSite: 'lax' });
     const sd = await (await lewatHook(get('/api/akun'), dj, sesiAkun)).json();
-    expect(sd.akun).not.toHaveProperty('emailTerverifikasi');
+    expect(sd.akun).toHaveProperty('emailTerverifikasi', true);
     const s = SesiAkunResponseSchema.parse(sd);
     expect(s.masuk && [s.akun.jenis, s.akun.email, s.akun.sinkron]).toEqual(['akun', EMAIL, true]);
     expect(mailer.sent).toHaveLength(0);

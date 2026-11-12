@@ -67,8 +67,22 @@ bisa "ikut berpindah" ke pihak lain.
 - **Penyerobotan email (squatting).** Orang yang mendaftar lebih dulu dengan email korban memegang akun itu, dan
   korban tidak bisa masuk dengan Google untuk email tersebut. Data korban tidak bocor karena akun itu kosong dari
   data korban. Mitigasinya: bila Resend aktif, pemilik kotak surat bisa memakai "Lupa sandi". Atur ulang mencabut
-  sesi dan identitas Google lama, dan akun berpindah ke pemilik kotak surat. Selama email ditahan, korban tidak
-  bisa merebut kembali email itu. Ini risiko yang diterima.
+  sesi dan identitas Google lama, dan akun berpindah ke pemilik kotak surat. Aktif tidak sama dengan terbukti:
+  tabel `email_terbukti` mencatat kepemilikan kotak surat yang pernah dibuktikan (tautan verifikasi lama, Google
+  dengan email terverifikasi, atau tautan atur ulang). Bila atur ulang terjadi pada akun yang emailnya belum
+  terbukti, urusan, vault (crypto-shred, termasuk berkas), dan ingatan pemegang lama dihancurkan DULU sebelum
+  sandi berganti, lalu email dicatat terbukti. Pemilik asli tidak mewarisi data atau jebakan yang ditanam
+  penyerobot. Konsekuensinya, warga yang mendaftar dengan sandi lalu lupa sandi sebelum emailnya pernah terbukti
+  juga kehilangan isi akunnya. Selama email ditahan, korban tidak bisa merebut kembali email itu. Ini risiko yang
+  diterima.
 - Akun tidak lagi disapu otomatis. Pembersihan hanya untuk tamu (72 jam) dan salinan demo (24 jam).
 - Turnstile tidak ditambahkan ke daftar. Produksi menjalankan Turnstile `nonaktif`, jadi rem pembuatan akun massal
-  tetap batas laju daftar per IP dan per email.
+  tetap batas laju daftar per IP dan per email: 20/jam dan 40/hari per IP. Kuota urusan akun juga punya plafon
+  per IP yang longgar (600/jam), dihitung bersama batas per akun.
+- Browser Pendamping portal asli punya rem per akun: satu sesi aktif per akun, maksimal 6 sesi mulai per jam per
+  akun dan 30 per jam per IP. Mode Uji (tamu dan juri) tidak kena rem ini. Catatan sesi aktif dan pembatasnya
+  disimpan di memori proses web. Ini cukup karena produksi menjalankan satu instance web aktif (pergantian
+  blue/green). Bila suatu saat web berjalan multi-instance, rem ini harus dipindah ke penyimpanan bersama.
+- Sesi akun yang aktif tetapi `urusin_sid`-nya masih memegang data tamu (misalnya vault satu perangkat akun lama
+  sebelum ADR ini) digabungkan ke akun di hooks lalu sid diputar. Data akun tidak ditimpa, dan data tamu milik
+  sid lain tidak tersentuh.

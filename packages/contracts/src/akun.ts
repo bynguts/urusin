@@ -21,6 +21,8 @@ export const KodeGalatAkunSchema = z.enum([
   'SANDI_TERLALU_PANJANG',
   'SANDI_TERLALU_UMUM',
   'KREDENSIAL_SALAH',
+  /** @deprecated ADR 0032: verifikasi email dihapus; server tidak pernah lagi mengirim kode ini. */
+  'EMAIL_BELUM_TERVERIFIKASI',
   'EMAIL_SUDAH_TERDAFTAR',
   'TERKUNCI',
   'RATE_LIMITED',
@@ -63,6 +65,11 @@ export const AkunSchema = z.object({
   jenis: JenisPenggunaSchema.exclude(['tamu']),
   /** null untuk salinan demo. */
   email: z.string().nullable(),
+  /**
+   * @deprecated ADR 0032: verifikasi email dihapus; server selalu mengisi true. Dipertahankan demi kompatibilitas
+   * kontrak (contracts-take1), jangan dipakai untuk keputusan apa pun.
+   */
+  emailTerverifikasi: z.boolean(),
   /** false = akun hanya lewat Google (bisa membuat sandi di Ubah sandi tanpa sandi lama). */
   punyaSandi: z.boolean(),
   terhubungGoogle: z.boolean(),
@@ -126,6 +133,14 @@ export const TerkirimResponseSchema = z.object({
  * sudah terdaftar → 409 `EMAIL_SUDAH_TERDAFTAR`.
  */
 export const DaftarRequestSchema = z.object({ email: EmailAkunSchema, sandi: SandiSchema });
+
+// --- (dihapus) POST /api/akun/verifikasi dan /api/akun/verifikasi/kirim-ulang ---
+/** @deprecated ADR 0032: verifikasi email dihapus, endpoint tidak ada lagi. Dipertahankan demi kompatibilitas kontrak. */
+export const VerifikasiEmailRequestSchema = z.object({ token: TokenEmailSchema, sandi: SandiSchema });
+/** @deprecated ADR 0032: verifikasi email dihapus, endpoint tidak ada lagi. Dipertahankan demi kompatibilitas kontrak. */
+export const VerifikasiEmailResponseSchema = z.object({ terverifikasi: z.literal(true) });
+/** @deprecated ADR 0032: verifikasi email dihapus, endpoint tidak ada lagi. Dipertahankan demi kompatibilitas kontrak. */
+export const KirimUlangVerifikasiRequestSchema = z.object({ email: EmailAkunSchema });
 
 // --- POST /api/akun/masuk ---
 export const MasukRequestSchema = z.object({
