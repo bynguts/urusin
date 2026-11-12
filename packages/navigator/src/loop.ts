@@ -19,6 +19,7 @@ import {
   hashRencana,
   normalLabel,
   pembukaPengajuan,
+  halamanDaftarAkun,
   petunjukWarga,
   pintuAkun,
   validasiRencana,
@@ -744,7 +745,12 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       // Giliran warga yang pasti (tanpa LLM).
       // Formulir masuk ber-CAPTCHA/verifikasi situs = giliran masuk akun (pesannya menyebut kode/verifikasi
       // keamanan), bukan "CAPTCHA" saja (QA prod gel6 Medan: formulir masuk dengan widget verifikasi).
-      const giliran: AlasanAmbilAlih | null = p.sinyal.login
+      // Formulir daftar/buat akun (kolom sandi + kolom data diri) bukan formulir masuk: AI mengisi kolom data diri
+      // yang diizinkan warga, lalu menyerahkan username/sandi/Daftar (QA prod 2026-11-12 Klampid: giliran
+      // masuk_akun berulang di halaman Buat Akun sampai AI berhenti tanpa mengisi apa pun).
+      const daftarAkun = halamanDaftarAkun(p);
+      const login = p.sinyal.login && !daftarAkun;
+      const giliran: AlasanAmbilAlih | null = login
         ? 'masuk_akun'
         : p.sinyal.tantangan
           ? 'captcha'
@@ -758,7 +764,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       // dikerjakan AI seperti biasa, tidak diserahkan lagi tanpa akhir. Formulir masuk selalu giliran warga.
       const kunciGiliran = halamanStruktur(p);
       const sudahDikerjakan =
-        (giliran === 'captcha' || giliran === 'otp') && !p.sinyal.login && giliranSelesai.has(kunciGiliran);
+        (giliran === 'captcha' || giliran === 'otp') && !login && giliranSelesai.has(kunciGiliran);
       if (giliran && !sudahDikerjakan) {
         const h = setelahSerahkan(giliran, await serahkanTunggu(giliran, p.seq, undefined, p));
         if (h) return h;
@@ -800,6 +806,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         ...(o.validasi?.katalog ? { katalog: [...o.validasi.katalog] } : {}),
         ...(o.validasi?.berkas ? { berkas: [...o.validasi.berkas] } : {}),
         kodeKabKota: o.kodeKabKota,
+        ...(daftarAkun ? { daftarAkun: true } : {}),
         ...(o.petunjukPortal ? { petunjukPortal: o.petunjukPortal } : {}),
         ...(umpanBalik?.sidik === p.sidik ? { umpanBalik: umpanBalik.aturan } : {}),
         petunjukTautan: await o.peringkatTautan?.(p, o.tujuan, o.signal).catch(() => null),

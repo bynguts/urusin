@@ -4,6 +4,8 @@ import { findStrictViolations, toStrictJsonSchema } from '@urusin/llm';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
+  halamanDaftarAkun,
+  kolomKredensial,
   petunjukWarga,
   pintuAkun,
   ATURAN,
@@ -520,5 +522,97 @@ describe('QA prod gel6: pintu akun dan petunjuk warga', () => {
     expect(
       petunjukWarga(p([{ ref: 'e1', peran: 'tombol', nama: 'Daftar', kelas: 'kirim' }])),
     ).toBeUndefined();
+  });
+});
+
+describe('halamanDaftarAkun + kolom kredensial (QA prod 2026-11-12 Klampid "Buat Akun")', () => {
+  const sinyal = { ...halamanForm().sinyal, login: true };
+  const buatAkun = (): Pengamatan => ({
+    ...halamanForm(),
+    jalur: '/app/register',
+    judul: 'Buat Akun',
+    sinyal,
+    elemen: [
+      { ref: 'e1', peran: 'teks', nama: 'NIK' },
+      { ref: 'e2', peran: 'teks', nama: 'Username' },
+      { ref: 'e3', peran: 'teks', nama: 'Email' },
+      { ref: 'e4', peran: 'teks', nama: 'Nomor Telepon' },
+      { ref: 'e5', peran: 'teks', nama: 'Password', terlarang: 'sandi' },
+      { ref: 'e6', peran: 'tombol', nama: 'Daftar', kelas: 'kirim' },
+    ],
+  });
+  const masuk = (elemen: Pengamatan['elemen'], judul = 'Masuk'): Pengamatan => ({
+    ...halamanForm(),
+    jalur: '/login',
+    judul,
+    teks: 'Silakan masuk',
+    sinyal,
+    elemen,
+  });
+
+  it('formulir Buat Akun = daftar akun; formulir masuk (NIK/email + sandi + CAPTCHA) bukan', () => {
+    expect(halamanDaftarAkun(buatAkun())).toBe(true);
+    expect(
+      halamanDaftarAkun(
+        masuk([
+          { ref: 'e1', peran: 'teks', nama: 'NIK' },
+          { ref: 'e2', peran: 'teks', nama: 'Kata sandi', terlarang: 'sandi' },
+          { ref: 'e3', peran: 'teks', nama: 'Kode keamanan', terlarang: 'captcha' },
+          { ref: 'e4', peran: 'centang', nama: 'Ingat saya' },
+        ]),
+      ),
+    ).toBe(false);
+    expect(
+      halamanDaftarAkun(
+        masuk([
+          { ref: 'e1', peran: 'teks', nama: 'Username' },
+          { ref: 'e2', peran: 'teks', nama: 'Password', terlarang: 'sandi' },
+        ]),
+      ),
+    ).toBe(false);
+    // Sandi + konfirmasi sandi = daftar akun walau kolom datanya sedikit.
+    expect(
+      halamanDaftarAkun(
+        masuk([
+          { ref: 'e1', peran: 'teks', nama: 'Email' },
+          { ref: 'e2', peran: 'teks', nama: 'Password', terlarang: 'sandi' },
+          { ref: 'e3', peran: 'teks', nama: 'Ulangi Password', terlarang: 'sandi' },
+        ]),
+      ),
+    ).toBe(true);
+    // Dua kolom data + penanda daftar di judul.
+    expect(
+      halamanDaftarAkun(
+        masuk(
+          [
+            { ref: 'e1', peran: 'teks', nama: 'Email' },
+            { ref: 'e2', peran: 'teks', nama: 'Nomor HP' },
+            { ref: 'e3', peran: 'teks', nama: 'Password', terlarang: 'sandi' },
+          ],
+          'Registrasi Akun',
+        ),
+      ),
+    ).toBe(true);
+    // Tanpa kolom sandi: bukan halaman akun.
+    expect(halamanDaftarAkun({ ...buatAkun(), sinyal: halamanForm().sinyal })).toBe(false);
+  });
+
+  it('username/nama pengguna/sandi tidak pernah diisi AI (KOLOM_TERLARANG), data diri boleh', () => {
+    const p = buatAkun();
+    expect(tolak(rencana({ jenis: 'isi', ref: 'e2', nilai: '{{PEMOHON.EMAIL}}' }), p)).toEqual([
+      'KOLOM_TERLARANG',
+    ]);
+    const v = validasiRencana(
+      rencana(
+        { jenis: 'isi', ref: 'e1', nilai: '{{PEMOHON.NIK}}' },
+        { jenis: 'isi', ref: 'e3', nilai: '{{PEMOHON.EMAIL}}' },
+        { jenis: 'isi', ref: 'e4', nilai: '{{PEMOHON.HP}}' },
+        { jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e2' },
+      ),
+      p,
+    );
+    expect(v.ok).toBe(true);
+    expect(kolomKredensial({ nama: 'Nama Pengguna' })).toBe(true);
+    expect(kolomKredensial({ nama: 'Nama Lengkap' })).toBe(false);
   });
 });
