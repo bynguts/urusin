@@ -113,6 +113,11 @@ export const WilayahRencanaSchema = z.object({
 });
 
 export const PlanCardEventSchema = event('plan_card', {
+  /**
+   * (aditif) Jenis urusan hasil klasifikasi harness (mis. `kelahiran`, `pindah`, `ktp`) saat rencana disusun, agar
+   * header urusan yang dimuat sebelum klasifikasi tetap menampilkan jenis yang benar tanpa muat ulang.
+   */
+  jenis: z.string().min(1).max(40).optional(),
   ringkasan: z.string(),
   langkah: z.array(LangkahKartuSchema).min(1),
   /** Wilayah yang menjadi dasar rencana (selalu ada pada rencana dari harness sejak gerbang wilayah). */

@@ -3,6 +3,7 @@ import { KodeKabKotaSchema } from '@urusin/contracts';
 import { wilayahByKode } from '@urusin/registry';
 import { findPeristiwa } from '#lib/peristiwa.js';
 import { pemilikVault } from '#lib/server/akun.js';
+import { kodeWilayahTersimpan } from '#lib/server/mulai-urusan.js';
 import { segarkanJaringanId } from '#lib/server/pendamping.js';
 import { daftarKota, peristiwaView } from '#lib/server/referensi.js';
 import { getRuntime } from '#lib/server/runtime.js';
@@ -10,7 +11,8 @@ import type { PageServerLoad } from './$types';
 
 /**
  * Rencana peristiwa (★2): langkah + sumber resmi untuk kab/kota terpilih (`?kodeKabKota=`), tanpa JS pun jalan.
- * Tanpa pilihan: kab/kota KTP di Data Diri akun (bila ada) diisikan sebagai usulan; di urusan tetap dikonfirmasi.
+ * Tanpa pilihan: kab/kota KTP di Data Diri akun (bila ada), atau wilayah layanan perangkat (cookie Pengaturan),
+ * diisikan sebagai usulan; di urusan tetap dikonfirmasi.
  */
 export const load: PageServerLoad = async (event) => {
   const { params, url } = event;
@@ -26,6 +28,10 @@ export const load: PageServerLoad = async (event) => {
     if (typeof k === 'string' && wilayahByKode(k)) {
       kode = k;
       dariDataDiri = true;
+    } else {
+      // Pilihan wilayah perangkat (Pengaturan): halaman sudah memakainya sebelum JavaScript siap.
+      const t = kodeWilayahTersimpan(event.cookies);
+      if (t && wilayahByKode(t)) kode = t;
     }
   }
   if (kode) await segarkanJaringanId();

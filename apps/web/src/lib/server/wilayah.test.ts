@@ -11,6 +11,7 @@ import { POST as setujui } from '../../routes/api/urusan/[id]/rencana/setujui/+s
 import { POST as tetapkan } from '../../routes/api/urusan/[id]/wilayah/+server';
 import { GET as wilayahApi } from '../../routes/api/wilayah/+server';
 import { load as muatPeristiwa } from '../../routes/peristiwa/[slug]/+page.server';
+import { WILAYAH_COOKIE } from './mulai-urusan';
 import { daftarKota, peristiwaView } from './referensi';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
 
@@ -133,6 +134,30 @@ describe('wilayah dulu: usulan saat urusan dibuat', () => {
     )) as any;
     expect(tamu).toMatchObject({ kodeDipilih: null, dariDataDiri: false });
     expect(JSON.stringify(tamu.rencana)).not.toMatch(/wonogiri/i);
+  });
+
+  it('tamu dengan wilayah tersimpan (cookie Pengaturan): halaman peristiwa dan POST /api/urusan memakainya', async () => {
+    const denganKue = (request: Request, params: Record<string, string> = {}) => {
+      const e = ev(request, params) as { cookies: ReturnType<typeof kue> };
+      e.cookies.set(WILAYAH_COOKIE, '3404');
+      return e as never;
+    };
+    const d = (await muatPeristiwa(
+      denganKue(new Request(`${ORIGIN}/peristiwa/kematian`), { slug: 'kematian' }),
+    )) as any;
+    expect(d).toMatchObject({ kodeDipilih: '3404', dariDataDiri: false });
+    // ?kodeKabKota eksplisit (termasuk kosong = "belum memilih") tetap menang atas cookie.
+    const kosong = (await muatPeristiwa(
+      denganKue(new Request(`${ORIGIN}/peristiwa/kematian?kodeKabKota=`), { slug: 'kematian' }),
+    )) as any;
+    expect(kosong.kodeDipilih).toBeNull();
+
+    const res = await buatUrusan(denganKue(post({ peristiwa: 'kematian' })));
+    const { id } = (await res.json()) as { id: string };
+    await selesai(id);
+    expect(payloads(id, 'wilayah').map((e) => [e.status, e.sumber, e.ktp.kodeKabKota])).toEqual([
+      ['usulan', 'pilihan', '3404'],
+    ]);
   });
 });
 

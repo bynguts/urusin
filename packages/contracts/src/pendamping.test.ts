@@ -158,6 +158,23 @@ describe('kontrak pendamping', () => {
     expect(giliran({ ...t, nama: 'x'.repeat(81) })).toBe(false);
   });
 
+  it('tambahan aditif: nama kendali sasaran giliran (`kendali`), maks 40, opsional', () => {
+    const giliran = (kendali?: string) =>
+      PendampingServerMessageSchema.safeParse({
+        type: 'event',
+        event: {
+          jenis: 'giliran_anda',
+          alasan: 'masuk_akun',
+          pesan: 'p',
+          ...(kendali !== undefined ? { kendali } : {}),
+        },
+      }).success;
+    expect(giliran()).toBe(true);
+    expect(giliran('Masuk')).toBe(true);
+    expect(giliran('')).toBe(false);
+    expect(giliran('x'.repeat(41))).toBe(false);
+  });
+
   it('tambahan aditif N2: alasan serah dan giliran berhenti', () => {
     expect(AlasanSerahkanSchema.safeParse('berhenti').success).toBe(true);
     expect(

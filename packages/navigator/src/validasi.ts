@@ -10,6 +10,7 @@ import {
   SebabTidakBisaSchema,
   type Aksi,
   type ElemenAmatan,
+  type IsyaratKolom,
   type KolomButuh,
   type Pengamatan,
   type PeranElemen,
@@ -76,6 +77,10 @@ type EntriKatalog = {
   pola: RegExp;
   /** Nomor identitas: hanya ke kolom yang tampak seperti kolom itu. */
   sensitif?: true;
+  /** Isyarat atribut kolom (autocomplete/type/name) yang lazim untuk data ini (hanya data non-sensitif). */
+  isyarat?: IsyaratKolom;
+  /** Contoh format di label/placeholder yang menandai kolom data ini (mis. "0819xxxxxxxx" untuk HP). */
+  contoh?: RegExp;
 };
 
 /**
@@ -93,20 +98,35 @@ export const KATALOG_PLACEHOLDER: Readonly<Record<string, EntriKatalog>> = {
     pola: /\b(no\.?|nomor) ?kk\b|\bkk\b|kartu keluarga/,
     sensitif: true,
   },
-  '{{PEMOHON.NAMA}}': { label: 'Nama lengkap', pola: /\bnama\b/ },
+  '{{PEMOHON.NAMA}}': { label: 'Nama lengkap', pola: /\bnama\b/, isyarat: 'nama' },
   '{{PEMOHON.TEMPAT_LAHIR}}': { label: 'Tempat lahir', pola: /tempat lahir/ },
-  '{{PEMOHON.TANGGAL_LAHIR}}': { label: 'Tanggal lahir', pola: /tanggal lahir|tgl\.? lahir/ },
+  '{{PEMOHON.TANGGAL_LAHIR}}': {
+    label: 'Tanggal lahir',
+    pola: /tanggal lahir|tgl\.? lahir/,
+    isyarat: 'tanggal_lahir',
+  },
   '{{PEMOHON.JENIS_KELAMIN}}': { label: 'Jenis kelamin', pola: /jenis kelamin|kelamin|gender/ },
   '{{PEMOHON.AGAMA}}': { label: 'Agama', pola: /agama/ },
   '{{PEMOHON.PEKERJAAN}}': { label: 'Pekerjaan', pola: /pekerjaan/ },
-  '{{PEMOHON.ALAMAT}}': { label: 'Alamat', pola: /alamat/ },
+  '{{PEMOHON.ALAMAT}}': { label: 'Alamat', pola: /alamat/, isyarat: 'alamat' },
   '{{PEMOHON.RT}}': { label: 'RT', pola: /\brt\b/ },
   '{{PEMOHON.RW}}': { label: 'RW', pola: /\brw\b/ },
   '{{PEMOHON.KELURAHAN}}': { label: 'Kelurahan/desa', pola: /kelurahan|desa/ },
   '{{PEMOHON.KECAMATAN}}': { label: 'Kecamatan', pola: /kecamatan/ },
-  '{{PEMOHON.KODE_POS}}': { label: 'Kode pos', pola: /kode ?pos/ },
-  '{{PEMOHON.HP}}': { label: 'Nomor HP', pola: /\bhp\b|handphone|telepon|telp|ponsel|whatsapp|\bwa\b/ },
-  '{{PEMOHON.EMAIL}}': { label: 'Email', pola: /e-?mail|surel/ },
+  '{{PEMOHON.KODE_POS}}': { label: 'Kode pos', pola: /kode ?pos/, isyarat: 'kode_pos' },
+  '{{PEMOHON.HP}}': {
+    label: 'Nomor HP',
+    pola: /\bhp\b|handphone|telepon|telp|tlp|ponsel|seluler|whatsapp|\bwa\b|\bphone\b|\bmobile\b/,
+    isyarat: 'tel',
+    // Placeholder/contoh nomor seluler Indonesia: "0819xxxxxxxx", "08xx-xxxx-xxxx", "+62 812 ...", "628123...".
+    contoh: /(?:^|[^\d])(?:\+?62|0)[\s-]?8[\dx*]{1,3}[\s.-]?[\dx*]{3,}/,
+  },
+  '{{PEMOHON.EMAIL}}': {
+    label: 'Email',
+    pola: /e-?mail|surel/,
+    isyarat: 'email',
+    contoh: /[a-z0-9._%+-]+@[a-z0-9-]+\.[a-z]/,
+  },
 };
 
 /** Berkas Dokumen akun yang boleh diunggah model (`berkas:<JENIS>` di daftar write). */
@@ -214,12 +234,16 @@ const tulisan = (a: Aksi): boolean =>
 /** Seberapa lazim kolom berlabel `nama` untuk placeholder `ph`: lazim, samar (ditandai), atau asing. */
 export function kelaziman(
   ph: string,
-  e: Pick<ElemenAmatan, 'nama' | 'petunjuk' | 'peran'>,
+  e: Pick<ElemenAmatan, 'nama' | 'petunjuk' | 'peran' | 'isyarat'>,
 ): 'lazim' | 'samar' | 'asing' {
   const entri = Object.hasOwn(KATALOG_PLACEHOLDER, ph) ? KATALOG_PLACEHOLDER[ph] : undefined;
   if (!entri) return 'asing';
   const label = normalLabel(`${e.nama} ${e.petunjuk ?? ''}`);
   if (entri.pola.test(label)) return 'lazim';
+  // Label samar ("Kontak", "Nomor") tetapi atribut kolom (autocomplete/type/name) atau contoh format di placeholder
+  // jelas untuk data ini: lazim. Hanya data non-sensitif; NIK/KK tetap harus cocok lewat label.
+  if (!entri.sensitif && ((entri.isyarat && e.isyarat === entri.isyarat) || entri.contoh?.test(label)))
+    return 'lazim';
   if (entri.sensitif && e.peran !== 'area' && IDENTITAS_SAMAR.test(label)) return 'samar';
   // Data non-sensitif ke kolom yang labelnya tidak cocok: tetap boleh, tetapi ditandai di lembar (F8).
   return entri.sensitif ? 'asing' : 'samar';

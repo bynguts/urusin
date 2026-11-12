@@ -221,6 +221,7 @@ export const urusanUsulkanRencana = defineTool({
           ? { type: 'plan_card', ...kartu }
           : {
               type: 'plan_card',
+              ...(ctx.urusan.jenis ? { jenis: ctx.urusan.jenis } : {}),
               ringkasan: args.ringkasan,
               // Model tidak boleh menjanjikan Browser Pendamping: tanpa alur adapter, semua langkah online = manual,
               // dan "online" hanya bila pengajuan online wilayah ini terverifikasi; selain itu cek kanal setempat.

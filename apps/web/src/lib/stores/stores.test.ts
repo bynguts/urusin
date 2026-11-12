@@ -5,7 +5,7 @@ import { ConnectivityStore } from './connectivity.svelte';
 import { PREFS_AWAL, PrefsStore, bersihkanPrefs } from './prefs.svelte';
 import { keadaanAwal, terapkanEvent } from './reduksi';
 import { TtsStore, adaSuaraIndonesia } from './tts.svelte';
-import { UrusanStore, type SumberEvent } from './urusan.svelte';
+import { SENYAP_MAKS_MS, SUSUL_AKSI_MS, UrusanStore, type SumberEvent } from './urusan.svelte';
 
 const skenario = (nama: string) => bacaSkenarioSse(nama)!;
 const jalankan = (nama: string) => skenario(nama).reduce(terapkanEvent, keadaanAwal());
@@ -355,5 +355,77 @@ describe('CapabilitiesStore dan ConnectivityStore', () => {
 
   it('connectivity: default online di SSR/tanpa window', () => {
     expect(new ConnectivityStore(undefined).keadaan).toEqual({ online: true, hemat: false });
+  });
+});
+
+describe('UrusanStore: koneksi basi tidak menahan kartu', () => {
+  const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status });
+  const stateEv = (seq: number, version: number) =>
+    ({
+      type: 'state',
+      seq,
+      at: 'x',
+      chainHead: 'h',
+      dari: 'A',
+      state: 'MENUNGGU_KONFIRMASI',
+      version,
+    }) as never;
+
+  it('watchdog: tanpa frame (heartbeat pun tidak) > SENYAP_MAKS_MS → sambung ulang dari lastSeq', () => {
+    vi.useFakeTimers();
+    SumberPalsu.semua = [];
+    const store = new UrusanStore((u) => new SumberPalsu(u), vi.fn() as never);
+    store.sambung('u_abc');
+    const a = SumberPalsu.semua[0]!;
+    a.kirim(stateEv(1, 3));
+    // Heartbeat menjaga koneksi tetap dianggap hidup.
+    for (let i = 0; i < 4; i++) {
+      vi.advanceTimersByTime(15_000);
+      a.kirim({ type: 'heartbeat', seq: 1, at: 'x', chainHead: 'h' } as never);
+    }
+    expect(SumberPalsu.semua).toHaveLength(1);
+    vi.advanceTimersByTime(SENYAP_MAKS_MS + 5_000);
+    expect(a.tutup).toBe(true);
+    expect(SumberPalsu.semua).toHaveLength(2);
+    expect(SumberPalsu.semua[1]!.url).toBe('/api/urusan/u_abc/stream?lastEventId=1');
+    store.putus();
+    vi.advanceTimersByTime(SENYAP_MAKS_MS * 3);
+    expect(SumberPalsu.semua).toHaveLength(2);
+    vi.useRealTimers();
+  });
+
+  it('setujuiRencana: event state belum tiba dalam SUSUL_AKSI_MS → sambung ulang (replay DB)', async () => {
+    vi.useFakeTimers();
+    SumberPalsu.semua = [];
+    const ambil = vi
+      .fn()
+      .mockResolvedValue(json({ state: 'MENUNGGU_KONFIRMASI', version: 10, pendamping: true }));
+    const store = new UrusanStore((u) => new SumberPalsu(u), ambil as never);
+    store.sambung('u_abc');
+    SumberPalsu.semua[0]!.kirim(stateEv(5, 5));
+    expect(await store.setujuiRencana()).toBe('ok');
+    vi.advanceTimersByTime(SUSUL_AKSI_MS + 10);
+    expect(SumberPalsu.semua).toHaveLength(2);
+    expect(SumberPalsu.semua[1]!.url).toBe('/api/urusan/u_abc/stream?lastEventId=5');
+    store.putus();
+    vi.useRealTimers();
+  });
+
+  it('setujuiRencana: event state sudah tiba → tidak sambung ulang', async () => {
+    vi.useFakeTimers();
+    SumberPalsu.semua = [];
+    const ambil = vi
+      .fn()
+      .mockResolvedValue(json({ state: 'MENUNGGU_KONFIRMASI', version: 10, pendamping: true }));
+    const store = new UrusanStore((u) => new SumberPalsu(u), ambil as never);
+    store.sambung('u_abc');
+    const a = SumberPalsu.semua[0]!;
+    a.kirim(stateEv(5, 5));
+    expect(await store.setujuiRencana()).toBe('ok');
+    a.kirim(stateEv(6, 10));
+    vi.advanceTimersByTime(SUSUL_AKSI_MS + 10);
+    expect(SumberPalsu.semua).toHaveLength(1);
+    store.putus();
+    vi.useRealTimers();
   });
 });

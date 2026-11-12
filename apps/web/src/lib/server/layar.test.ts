@@ -7,11 +7,14 @@ import { actions as beranda, load as muatLanding } from '../../routes/+page.serv
 import { load as muatJejak } from '../../routes/jejak/[id]/+page.server';
 import { load as muatPeristiwa } from '../../routes/peristiwa/[slug]/+page.server';
 import { load as muatUrusan } from '../../routes/urusan/[id]/+page.server';
-import LayarPendamping from '../components/pendamping/LayarPendamping.svelte';
+import LayarPendamping, {
+  instruksiGiliran,
+  labelKerjaAi,
+} from '../components/pendamping/LayarPendamping.svelte';
 import Chip from '../components/ui/Chip.svelte';
 import KartuRencana from '../components/urusan/KartuRencana.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
-import { dataAwal, type DataPendamping } from '../pendamping/sesi.svelte';
+import { dataAwal, type DataPendamping, type GiliranAnda } from '../pendamping/sesi.svelte';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
 import { SID_COOKIE, TERAKHIR_COOKIE } from './sesi';
 
@@ -461,5 +464,86 @@ describe('Browser Pendamping setelah Kirim', () => {
   it('teks "Browser ditutup" hanya saat sesi benar-benar ditutup (mode done)', async () => {
     expect(await layar({ keadaan: 'selesai', mode: 'done' })).toContain(DITUTUP);
     expect(await layar({ keadaan: 'selesai', mode: 'takeover' })).not.toContain(DITUTUP);
+  });
+});
+
+describe('Browser Pendamping: status mengikuti fase nyata dan giliran selalu jelas', () => {
+  const noop = () => {};
+  const layar = (data: Partial<DataPendamping>) =>
+    render(LayarPendamping, {
+      props: {
+        data: { ...dataAwal(), ...data },
+        situs: 'https://contoh-layanan.go.id',
+        onambilalih: noop,
+        onkembalikan: noop,
+        onhentikan: noop,
+        ontutup: noop,
+        onmulailagi: noop,
+        onpanduan: noop,
+      },
+    }).body;
+  const giliran = (alasan: GiliranAnda['alasan'], extra: Partial<GiliranAnda> = {}): GiliranAnda => ({
+    jenis: 'giliran_anda',
+    alasan,
+    pesan: 'Giliran Anda.',
+    ...extra,
+  });
+
+  it('AI tanpa fase spesifik: "AI sedang membaca halaman…", tidak pernah "Mengisi formulir"', () => {
+    expect(labelKerjaAi(null)).toBe('AI sedang membaca halaman…');
+    expect(labelKerjaAi({ label: '  ' })).toBe('AI sedang membaca halaman…');
+    expect(labelKerjaAi({ label: 'Mengunggah KTP' })).toBe('Mengunggah KTP');
+    const b = layar({ keadaan: 'ai', mode: 'ai' });
+    expect(b).toContain('AI sedang membaca halaman…');
+    expect(b).not.toContain('Mengisi formulir');
+    expect(b).not.toContain('AI sedang mengisi');
+    expect(b).toContain('AI sedang bekerja');
+  });
+
+  it('instruksi giliran menyebut kendali sasaran bila ada, tanpa mengarang nama', () => {
+    expect(instruksiGiliran(giliran('masuk_akun', { kendali: 'LOGIN' }))).toBe(
+      'ketuk “LOGIN” di situs, lalu masuk akun',
+    );
+    expect(instruksiGiliran(giliran('masuk_akun'))).toBe('masuk akun di situs');
+    expect(instruksiGiliran(giliran('final', { tombol: 'Selesai' }))).toBe(
+      'periksa isian, lalu tekan “Selesai”',
+    );
+    expect(instruksiGiliran(giliran('periksa', { kendali: 'Tutup' }))).toMatch(/ketuk “Tutup”/);
+    expect(instruksiGiliran(giliran('periksa'))).toBe('periksa halaman di situs');
+    expect(instruksiGiliran(null)).toBe('isi formulir di layar ini');
+  });
+
+  it('setiap jenis giliran: bilah bawah berisi instruksi DAN tombol aksi giliran itu', () => {
+    const kasus: [GiliranAnda['alasan'], RegExp][] = [
+      ['masuk_akun', /data-sudah-lanjut[^>]*>[\s\S]*?Sudah, lanjutkan/],
+      ['login', /data-sudah-lanjut[^>]*>[\s\S]*?Sudah, lanjutkan/],
+      ['periksa', /data-sudah-lanjut[^>]*>[\s\S]*?Lanjutkan/],
+      ['isi_sendiri', /<button[^>]*>[\s\S]*?Lanjutkan\s*<\/button>/],
+      ['berhenti', /data-sudah-kirim[^>]*>Saya sudah mengirim/],
+    ];
+    for (const [alasan, tombol] of kasus) {
+      const b = layar({ keadaan: 'giliran', mode: 'takeover', giliran: giliran(alasan) });
+      const bilah = b.slice(b.indexOf('data-bilah-giliran'));
+      expect(bilah, alasan).toContain('Giliran Anda: ');
+      expect(bilah, alasan).toMatch(tombol);
+      // Lengket di bawah layar HP.
+      expect(b, alasan).toMatch(/data-bilah-giliran[^>]*max-lg:sticky max-lg:bottom-0/);
+    }
+  });
+
+  it('dijeda: status ringkas, "Minta AI bantu mengisi" + "Saya sudah mengirim", Batalkan di menu ⋯', () => {
+    const b = layar({ keadaan: 'dijeda', mode: 'takeover' });
+    expect(b).toContain('Giliran Anda: isi formulir di layar ini.');
+    expect(b).toMatch(/data-minta-ai[^>]*>[\s\S]*?Minta AI bantu mengisi/);
+    expect(b).toMatch(/<details[\s\S]*aria-label="Pilihan lain"[\s\S]*data-batalkan[^>]*>Batalkan/);
+    expect(b).not.toContain('Mau lanjut atau batalkan?');
+  });
+
+  it('sesi berakhir: alasan jujur + Buka lagi situsnya + Buka panduan', () => {
+    const b = layar({ keadaan: 'berakhir', pesan: 'Koneksi ke peramban pendamping terputus.' });
+    expect(b).toContain('Sesi Browser Pendamping berakhir');
+    expect(b).toContain('Koneksi ke peramban pendamping terputus.');
+    expect(b).toMatch(/data-buka-lagi[^>]*>[\s\S]*?Buka lagi situsnya/);
+    expect(b).toMatch(/data-buka-panduan[^>]*>[\s\S]*?Buka panduan/);
   });
 });

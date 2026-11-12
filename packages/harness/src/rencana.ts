@@ -234,6 +234,8 @@ export function setujuiRencana(
     publish({ type: 'progress', label: jalan.alasan });
     return { urusan: cur, executionId: null };
   }
+  // Pembukuan tabel state: MENYIAPKAN_BERKAS/BERKAS_SIAP/MENGISI dilewati dalam satu langkah sinkron sebelum berkas
+  // diperiksa dan sebelum situs dibuka. Bukan kejadian nyata: linimasa web tidak menurunkan kalimat dari ketiganya.
   cur = majukan(
     store,
     cur,
