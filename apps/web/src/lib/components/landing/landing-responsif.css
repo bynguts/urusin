@@ -156,11 +156,17 @@
   .lp .n-intro-characters {
     zoom: 0.64;
   }
-  .lp .n-wordmarks {
-    flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
-    gap: 16px 28px;
+  /* Marquee instansi tetap berjalan satu baris selebar layar; jarak = padding akhir set (loop mulus) */
+  .lp .n-marquee-track > .n-wordmarks {
+    gap: 40px;
+    padding-right: 40px;
+  }
+  /* aturan teks ponsel di atas (max-width:100%, white-space:normal) tidak berlaku untuk marquee */
+  .lp :is(.lp45-marquee, .n-marquee-track, .n-wordmarks) {
+    max-width: none;
+  }
+  .lp .n-wordmarks .lp48 {
+    white-space: nowrap;
   }
   .lp .n-prompt-text {
     width: 100%;

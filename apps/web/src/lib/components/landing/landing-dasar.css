@@ -63,9 +63,10 @@
     contain-intrinsic-size: auto 1250px;
   }
   /* Marquee ubin (3 x 64 ubin) ikut ditunda: bagian layanan masih dalam jangkauan render awal
-     content-visibility (~2,5 layar), barisnya tepat di luarnya. Tinggi = 3 x 68px + 2 x 16px. */
+     content-visibility (~2,5 layar), barisnya tepat di luarnya. Tinggi = 3 x 68px + 2 x 16px + ruang
+     bayangan 4px + 12px. */
   .lp .lp88 {
     content-visibility: auto;
-    contain-intrinsic-size: auto 236px;
+    contain-intrinsic-size: auto 252px;
   }
 }

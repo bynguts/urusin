@@ -243,6 +243,43 @@
   white-space: nowrap;
   display: block;
 }
+/*
+ * Pasangan tombol ajakan (hero, intro, tanya jawab, panel ajakan): dua kolom 1fr pada wadah fit-content,
+ * jadi kedua tombol selebar tombol yang terpanjang dan setinggi yang sama (48px, padding dan huruf sama).
+ * Layar sangat sempit: ditumpuk, keduanya selebar wadah.
+ */
+.lp .n-aksi {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 12px;
+}
+.lp .n-aksi > a {
+  box-sizing: border-box;
+  width: auto;
+  min-height: 48px;
+  padding: 12px 24px;
+}
+/* Tombol gelap diberi bingkai transparan selebar bingkai tombol putih supaya ukurannya identik. */
+.lp .n-aksi > a:not(.lp20) {
+  border: 1px solid transparent;
+}
+.lp .n-aksi > a > span {
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+@media (max-width: 767px) {
+  .lp .n-aksi > a {
+    padding-inline: 16px;
+  }
+}
+@media (max-width: 379px) {
+  .lp .n-aksi {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+}
 .lp22 {
   align-items: flex-start;
   display: flex;
@@ -451,7 +488,8 @@
   gap: 20px;
   padding: 8px var(--lp-gx) 88px var(--lp-gx);
   width: 100%;
-  overflow: hidden;
+  /* clip (bukan hidden): marquee selebar viewport dipotong di tepi strip tanpa geser samping */
+  overflow-x: clip;
 }
 .lp44 {
   color: var(--sb-text-body, #252522a6);
@@ -462,9 +500,11 @@
   line-height: 1.5;
   white-space: nowrap;
 }
+/* Full-bleed: keluar dari padding strip sampai tepi kiri-kanan viewport, seperti baris ubin layanan. */
 .lp45-marquee {
-  width: 100%;
-  max-width: 1080px;
+  width: 100vw;
+  max-width: none;
+  margin-inline: calc(50% - 50vw);
   overflow: hidden;
   position: relative;
   padding: 8px 0;
@@ -971,6 +1011,8 @@
   flex-shrink: 0;
   gap: 16px;
   overflow: hidden;
+  /* ruang bayangan ubin: tanpa ini baris bawah terpotong rata di tepi bawah (kotak putih tampak terpenggal) */
+  padding: 4px 0 12px;
   position: relative;
   width: 100%;
 }
@@ -1001,9 +1043,10 @@
 }
 .lp91 {
   flex-shrink: 0;
-  height: 30px;
+  height: 40px;
+  object-fit: contain;
   overflow: visible;
-  width: 30px;
+  width: 40px;
 }
 .lp92 {
   align-items: flex-start;
@@ -1027,7 +1070,7 @@
   z-index: 2;
 }
 .lp94 {
-  height: 236px;
+  bottom: 0;
   left: calc(50% - 720px);
   position: absolute;
   top: 0px;
@@ -1037,7 +1080,7 @@
   background-size: 100% 100%;
 }
 .lp95 {
-  height: 236px;
+  bottom: 0;
   left: calc(50% + 360px);
   position: absolute;
   top: 0px;
@@ -1515,9 +1558,12 @@
   display: flex;
   flex-direction: row;
   height: 131px;
-  left: 300px;
+  /* Duduk tepat di tepi atas kartu .lp133 (anak kartu): alas duduk ada di 71,8% tinggi gambar
+     (baris 188 dari 262), jadi gambar diturunkan 28,2% dari tingginya sendiri. */
+  bottom: 100%;
+  right: 5px;
+  transform: translateY(28.2%);
   position: absolute;
-  top: 14px;
   width: 120px;
   z-index: 1;
   object-fit: contain;
@@ -2572,11 +2618,14 @@
   align-items: flex-start;
   display: flex;
   flex-direction: row;
-  height: 142px;
-  left: 340px;
+  height: 131px;
+  /* Duduk tepat di tepi atas kartu .lp244 (anak kartu): alas duduk ada di 77,5% tinggi gambar
+     (baris 220 dari 284). 120px (bukan 130px) supaya pecinya tetap di dalam panel .lp227. */
+  bottom: 100%;
+  right: -17px;
+  transform: translateY(22.5%);
   position: absolute;
-  top: 12px;
-  width: 130px;
+  width: 120px;
   z-index: 1;
   object-fit: contain;
 }
@@ -2734,7 +2783,7 @@
   outline-offset: 2px;
 }
 .n-faq-item summary:hover .lp266 {
-  box-shadow: 0px 8px 24px #25252218;
+  filter: drop-shadow(0px 8px 12px #25252218);
   transform: translateY(-1px);
 }
 .lp265 {
@@ -2750,15 +2799,48 @@
   align-items: flex-start;
   background-color: var(--sb-bg-white, #ffffff);
   border-radius: 24px;
-  box-shadow: 0px 6px 20px #2525220d;
+  /* drop-shadow (bukan box-shadow) supaya bayangan ikut membungkus ekor balon */
+  filter: drop-shadow(0px 6px 10px #2525220d);
   display: flex;
   flex-direction: row;
   flex-shrink: 0;
   padding: 14px 24px;
+  position: relative;
   width: fit-content;
   transition:
     transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    filter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/*
+ * Ekor balon chat: satu bentuk (mask SVG) dipakai balon pertanyaan (kiri bawah), balon jawaban (kanan
+ * bawah, dicerminkan) dan balon sapaan di panel ajakan. Warna = latar balon (inherit), digambar di belakang
+ * isi balon (z-index -1 dalam konteks tumpukan balon) sehingga sambungannya tanpa garis.
+ */
+.lp :is(.lp266, .lp270, .lp294)::before {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: -6px;
+  width: 24px;
+  height: 30px;
+  z-index: -1;
+  background: inherit;
+  pointer-events: none;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 30'%3E%3Cpath d='M24 0v24H14c-4 2.5-9.5 5-14 6 3.5-3.5 6-9 6-16V0z'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 30'%3E%3Cpath d='M24 0v24H14c-4 2.5-9.5 5-14 6 3.5-3.5 6-9 6-16V0z'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+}
+.lp .lp294::before {
+  bottom: -5px;
+  left: -5px;
+  width: 18px;
+  height: 22.5px;
+}
+.lp .lp270::before {
+  left: auto;
+  right: -6px;
+  transform: scaleX(-1);
 }
 .lp267 {
   color: var(--sb-text-primary, #252522);
@@ -2767,19 +2849,8 @@
   line-height: 1.529;
   white-space: nowrap;
 }
-.lp268 {
-  flex-shrink: 0;
-  height: 14px;
-  overflow: visible;
-  width: 18px;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  transform-origin: center;
-}
-.n-faq-item[open] .lp268 {
-  transform: rotate(90deg);
-}
 .n-faq-item[open] .lp266 {
-  box-shadow: 0px 8px 24px #25252214;
+  filter: drop-shadow(0px 8px 12px #25252214);
 }
 .lp269 {
   align-items: flex-start;
@@ -2841,6 +2912,8 @@
   flex-direction: row;
   flex-shrink: 0;
   padding: 14px 24px;
+  position: relative;
+  isolation: isolate;
   width: 620px;
   max-width: 100%;
 }
@@ -3112,16 +3185,16 @@
 .lp294 {
   align-items: flex-start;
   background-color: var(--sb-bg-white, #ffffff);
-  border-radius: 16px 16px 16px 4px;
-  box-shadow:
-    0px 6px 18px #2525220d,
-    0px 0px 1px #0000000f;
+  border-radius: 16px;
+  filter: drop-shadow(0px 0px 0.5px #0000001f) drop-shadow(0px 6px 9px #2525220d);
   display: flex;
   flex-direction: row;
-  left: 150px;
+  /* Sapaan milik karakter merah muda yang melambai (.lp291): ekor kiri bawah menunjuk kepalanya,
+     balon di atas kepala ungu (.lp289) tanpa menutup wajah siapa pun. */
+  left: 80px;
   padding: 9px 14px;
   position: absolute;
-  top: 140px;
+  top: 160px;
   width: fit-content;
   z-index: 5;
 }

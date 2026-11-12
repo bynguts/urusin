@@ -275,6 +275,15 @@
         </div>
       </div>
     </section>
+
+    <section class="pv21" aria-labelledby="judul-sumber">
+      <div class="pv22">
+        <h2 class="pv23" id="judul-sumber">Sumber informasi resmi</h2>
+        <p class="pv24">
+          Urusin bukan situs pemerintah; logo instansi ditampilkan untuk merujuk sumber informasi resmi.
+        </p>
+      </div>
+    </section>
   </div>
 
   <LandingFooter />
