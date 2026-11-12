@@ -2067,7 +2067,8 @@
           <h3 class="lp146">Bantu isi formulir</h3>
           <div class="lp147">
             Situs resmi dibuka di Browser Pendamping, lalu AI mengisi dengan izinmu. Login, OTP, dan Kirim
-            tetap kamu.
+            tetap kamu. Kini aktif di {page.data.jumlahDaerahPendamping} kota/kabupaten; daerah lain dipandu langkah
+            demi langkah.
           </div>
         </div>
       </div>

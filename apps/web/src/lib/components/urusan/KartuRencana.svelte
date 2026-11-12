@@ -2,6 +2,7 @@
   import type { EventOf } from '#lib/contracts.js';
   import Icon from '../Icon.svelte';
   import type { NamaIkon } from '../ikon.js';
+  import { domain } from '#lib/urusan-status.js';
 
   /**
    * Kartu rencana (App 03): langkah bernomor dengan label pelaku (Anda/AI/Instansi), kelayakan, dan tombol
@@ -70,6 +71,90 @@
         >
       </p>
       {#if rencana.catatan}<p class="text-body">{rencana.catatan}</p>{/if}
+    </div>
+  {/if}
+  {#if rencana.dipandu}
+    {@const d = rencana.dipandu}
+    <div
+      data-testid="kartu-dipandu"
+      class="flex flex-col gap-3 border-b border-line px-4 py-3.5 text-sm leading-[21px] sm:px-[18px]"
+    >
+      <p class="flex items-start gap-2 rounded-xl bg-biru px-3 py-2.5 text-[0.9375rem] text-biru-ink">
+        <Icon name="peta" class="mt-0.5 size-[18px] shrink-0" />
+        <span>{d.pesan}</span>
+      </p>
+      {#if d.kanal.length}
+        <div>
+          <p class="font-semibold text-ink">Kanal resmi daerah</p>
+          <ul class="mt-1.5 flex flex-col gap-2">
+            {#each d.kanal as k (k.nama + (k.url ?? ''))}
+              <li>
+                {#if k.url}
+                  <a
+                    href={k.url}
+                    target="_blank"
+                    rel="external noopener noreferrer"
+                    class="flex min-h-12 items-center gap-3 rounded-xl border border-line-2 bg-surface px-3.5 py-2 hover:bg-bg"
+                  >
+                    <Icon name="instansi" class="size-5 shrink-0 text-muted" />
+                    <span class="min-w-0 flex-1">
+                      <span class="block font-medium text-ink">{k.nama}</span>
+                      <span class="block truncate text-muted">{domain(k.url)}</span>
+                      {#if k.kontak}<span class="block text-body">{k.kontak}</span>{/if}
+                    </span>
+                    <Icon name="tautan-luar" class="size-4 shrink-0" />
+                    <span class="sr-only">(buka di tab baru)</span>
+                  </a>
+                {:else}
+                  <p class="rounded-xl border border-line-2 bg-surface px-3.5 py-2.5">
+                    {k.nama}{k.kontak ? ` · ${k.kontak}` : ''}
+                  </p>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
+      <dl class="grid gap-2 sm:grid-cols-2">
+        <div>
+          <dt class="font-semibold text-ink">Biaya</dt>
+          <dd class="text-body">
+            {d.biaya.teks}
+            {#if d.biaya.sumber}<a
+                href={d.biaya.sumber.url}
+                target="_blank"
+                rel="external noopener noreferrer"
+                class="text-brand underline">Sumber</a
+              >{/if}
+          </dd>
+        </div>
+        <div>
+          <dt class="font-semibold text-ink">Perkiraan waktu</dt>
+          <dd class="text-body">
+            {d.waktu.teks}{#if d.waktu.umum}<span class="text-muted">
+                (panduan umum, cek ulang di kanal resmi)</span
+              >{/if}
+          </dd>
+        </div>
+      </dl>
+      {#if d.tips.length}
+        <div>
+          <p class="font-semibold text-ink">
+            Tips <span class="font-normal text-muted">(panduan umum, cek ulang di kanal resmi)</span>
+          </p>
+          <ul class="list-disc pl-5 text-body">
+            {#each d.tips as t (t)}<li>{t}</li>{/each}
+          </ul>
+        </div>
+      {/if}
+      {#if d.lanjutan.length}
+        <div>
+          <p class="font-semibold text-ink">Yang bisa saya bantu berikutnya</p>
+          <ul class="list-disc pl-5 text-body">
+            {#each d.lanjutan as t (t)}<li>{t}</li>{/each}
+          </ul>
+        </div>
+      {/if}
     </div>
   {/if}
   <ol class="flex flex-col gap-2.5 px-4 py-3.5 sm:px-[18px]">
