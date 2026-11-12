@@ -61,13 +61,23 @@ export async function readBody<T>(
   return { ok: true, data: parsed.data };
 }
 
+/**
+ * Id buram buatan server (`x_<uuid>`, `u_<hex32>`, `t_<uuid>`, ...): heksadesimal acak bisa kebetulan
+ * berpola nomor HP/NIK (potongan UUID yang diawali 08 lalu deret angka), sehingga urusan macet
+ * permanen dengan 422 PII_IN_PAYLOAD. Hanya bidang berakhiran `Id`/`id` yang nilainya PERSIS berbentuk
+ * id buram yang dilewati; teks bebas dan bidang lain tetap dipindai.
+ */
+const ID_BURAM = /^[a-z]_(?:[0-9a-f]{16,64}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+const KUNCI_ID = /(?:^id|Id)$/;
+
 /** Semua string di dalam JSON (pada daun, bukan hasil serialisasi: escape JSON tidak menyembunyikan apa pun). */
 function stringLeaves(raw: unknown): { teks: string[]; kode: string | undefined } {
   const teks: string[] = [];
-  const kunjungi = (v: unknown) => {
-    if (typeof v === 'string') teks.push(v);
-    else if (Array.isArray(v)) v.forEach(kunjungi);
-    else if (typeof v === 'object' && v !== null) Object.values(v).forEach(kunjungi);
+  const kunjungi = (v: unknown, kunci?: string) => {
+    if (typeof v === 'string') {
+      if (!(kunci !== undefined && KUNCI_ID.test(kunci) && ID_BURAM.test(v))) teks.push(v);
+    } else if (Array.isArray(v)) v.forEach((x) => kunjungi(x));
+    else if (typeof v === 'object' && v !== null) for (const [k, x] of Object.entries(v)) kunjungi(x, k);
   };
   kunjungi(raw);
   const k = (raw as { kodeKabKota?: unknown } | null)?.kodeKabKota;
