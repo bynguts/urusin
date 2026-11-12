@@ -296,6 +296,42 @@ describe('createPendampingViewer', () => {
     expect(canvas.style.touchAction).toBe('none');
   });
 
+  it('IME berkomposisi (keyboard ponsel): selisih dikirim seketika, koreksi = hapus + ganti, commit tidak dobel', async () => {
+    const { input } = setup();
+    await tick();
+    const ws = FakeWs.all[0]!;
+    ws.open();
+    ws.push({ type: 'mode', mode: 'takeover' });
+    const ketik = (v: string) => {
+      input.value = v;
+      input.fire('input', { isComposing: true, inputType: 'insertCompositionText' });
+    };
+    input.fire('compositionstart', {});
+    ketik('s');
+    ketik('sa');
+    ketik('san');
+    ketik('sab'); // koreksi otomatis mengganti huruf terakhir
+    ketik('sa'); // hapus di dalam komposisi
+    input.fire('compositionend', { data: 'sa' });
+    input.fire('input', { isComposing: false, inputType: 'insertText' }); // bukan komposisi: diabaikan
+    input.fire('compositionstart', {});
+    ketik('x');
+    input.fire('compositionend', { data: 'xy' }); // commit berbeda dari komposisi terakhir
+    expect(ws.sent.slice(1).map((m) => (m.type === 'text' ? m.teks : m.aksi === 'down' ? '⌫' : ''))).toEqual([
+      's',
+      'a',
+      'n',
+      '⌫',
+      '',
+      'b',
+      '⌫',
+      '',
+      'x',
+      'y',
+    ]);
+    expect(input.value).toBe('');
+  });
+
   it('gestur memakai rect kanvas saat pointerdown walau halaman bergeser sebelum pointerup', async () => {
     const { canvas, viewer } = setup();
     await tick();

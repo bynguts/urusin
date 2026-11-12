@@ -65,7 +65,7 @@
   let konfirmasi = $state<{ key: string; status: 'mengirim' | 'disetujui' } | null>(null);
   let konfirmasiGalat = $state<string | undefined>(undefined);
   let canvas: HTMLCanvasElement | null = $state(null);
-  let inputTeks: HTMLTextAreaElement | null = $state(null);
+  let inputTeks: HTMLInputElement | null = $state(null);
   let izin = $state<{ sibuk: boolean; pesan?: string }>({ sibuk: false });
 
   const k = $derived(store.keadaan);

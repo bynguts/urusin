@@ -173,7 +173,7 @@ export class SesiPendampingUi {
   async mulai(
     executionId: string,
     canvas: () => HTMLCanvasElement | null,
-    inputTeks: () => HTMLTextAreaElement | null,
+    inputTeks: () => HTMLInputElement | null,
     opsi: { simulasi?: boolean } = {},
   ) {
     this.data = { ...dataAwal(), keadaan: 'menyiapkan' };
@@ -254,7 +254,7 @@ export class SesiPendampingUi {
     pabrik: PabrikViewer,
     canvas: HTMLCanvasElement,
     wsUrl: string,
-    inputTeks?: HTMLTextAreaElement,
+    inputTeks?: HTMLInputElement,
   ) {
     this.tutup();
     const v = pabrik(canvas, wsUrl, {
