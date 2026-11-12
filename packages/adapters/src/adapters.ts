@@ -115,22 +115,35 @@ const telunjukSakti: Adapter = {
         if (typeof berkas === 'string') return berkas;
         return [
           nav(`${TS_BASE}/users/login`),
+          // Portal asli: input HP ber-id `exampleInputEmail`, name `hp` (peta 2026-11-12); replika: `#hp`.
           fill([css('#hp'), byName('hp')], placeholder('PEMOHON', 'HP')),
           gate.human('Giliran Anda: ketik kode CAPTCHA, lalu tekan Masuk.', {
-            // Teks mengikuti kolom yang benar-benar ada di halaman masuk.
+            // Teks mengikuti kolom yang benar-benar ada di halaman masuk. Portal asli selalu punya kolom sandi
+            // dan tombolnya `<input type=submit name=loginSubmit value="Login">` tanpa id (nama aksesibel "Login").
             messageIf: {
               check: elementExists([css('input[type="password"]'), byName('password')]),
-              message: 'Giliran Anda: ketik kata sandi dan kode CAPTCHA, lalu tekan Masuk.',
+              message: 'Giliran Anda: ketik kata sandi dan kode CAPTCHA, lalu tekan Login.',
             },
             until: urlIncludes(`${TS_BASE}/welcome`),
-            highlight: [css('#loginSubmit'), byRole('button', 'Masuk')],
+            highlight: [
+              css('#loginSubmit'),
+              byName('loginSubmit'),
+              byRole('button', 'Login'),
+              byRole('button', 'Masuk'),
+            ],
           }),
           nav(`${TS_BASE}/pendaftaran/uploadberkas/${id}`),
           ...berkas.flatMap((nama) => [
             upload([css('#uploadImage'), byName('uploadImage')], filePlaceholder(nama)),
-            click([css('#btnSubmit'), byRole('button', 'Upload')], {
+            click([css('#btnSubmit'), byName('btnSubmit'), byRole('button', 'Upload')], {
               effect: 'write',
-              verify: countIncreased(css('.uploaded-item')),
+              // `.uploaded-item` = replika. DOM daftar unggahan portal asli belum teramati (di balik login):
+              // cadangan baris tabel/gambar unggahan. Tidak bertambah = berhenti aman (tanpa unggah ganda).
+              verify: countIncreased([
+                css('.uploaded-item'),
+                css('table tbody tr'),
+                css('img[src*="upload" i]'),
+              ]),
               expectReload: true,
             }),
           ]),
