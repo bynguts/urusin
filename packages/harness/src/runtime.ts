@@ -8,6 +8,7 @@ import { openHarnessDb, type Db } from './db.js';
 import type { CacheJawaban } from './grounding.js';
 import { DEFAULT_QUOTA, QuotaMeter, type QuotaConfig } from './quota.js';
 import { ingatanIngat, type PenyimpanIngatan } from './ingatan.js';
+import type { KlasifikasiIntentEmbedding } from './intent-embedding.js';
 import { HarnessStore } from './store.js';
 import { ToolRegistry, type ToolDef } from './tools.js';
 import { Tracer } from './trace.js';
@@ -33,6 +34,8 @@ export type HarnessOptions = {
   ingatan?: PenyimpanIngatan;
   /** Cache keluaran generator jawaban bersumber (mode LLM produksi); tanpa ini tiap jawaban memanggil model. */
   cacheJawaban?: CacheJawaban;
+  /** Jalur cepat intent lewat sidecar embedding (fail-open), lihat `buatKlasifikasiIntent`. */
+  intentEmbedding?: KlasifikasiIntentEmbedding;
 };
 
 /** Komposisi akar: store + registry + kuota + tracer + bus → `AgentDeps` siap dipakai `runTurn`. */
@@ -67,6 +70,7 @@ export function createHarness(opts: HarnessOptions) {
     locks: new Set(),
     ingatan: opts.ingatan,
     cacheJawaban: opts.cacheJawaban,
+    intentEmbedding: opts.intentEmbedding,
   };
   return { deps, store, registry, quota, bus };
 }

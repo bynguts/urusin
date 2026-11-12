@@ -180,10 +180,23 @@
     animation: lp-send-pulse 8s ease-in-out infinite;
   }
 
-  /* Marquee logo instansi resmi (.lp43 / .lp45-marquee) */
+  /* Marquee logo instansi resmi (.lp43 / .lp45-marquee): selebar viewport, memudar hanya di tepi layar */
   .lp .lp45-marquee {
-    mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+    --lp-pudar: min(200px, 14%);
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--lp-pudar),
+      #000 calc(100% - var(--lp-pudar)),
+      transparent
+    );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--lp-pudar),
+      #000 calc(100% - var(--lp-pudar)),
+      transparent
+    );
   }
   .lp .n-marquee-track {
     will-change: transform;
@@ -234,15 +247,21 @@
 
   /* Tiga baris ubin layanan: marquee kiri, kanan, kiri. Salinan ubin (<i>, 16 di kiri + 16 di kanan
      tiap baris) digambar dengan CSS agar HTML tetap ringan; posisi awal = desain. Baris 2 dan 3 memutar
-     urutan ikon 7 dan 14 langkah, sama seperti ubin aslinya. */
+     urutan logo 7 dan 14 langkah, sama seperti ubin aslinya. Baris berjalan selebar viewport dan memudar
+     lewat mask di kedua tepi layar (menggantikan tirai .lp94/.lp95 yang berhenti di +-720px). */
   .lp .lp88 {
     overflow: clip;
+    --lp-pudar: min(360px, 25%);
     mask-image: linear-gradient(
       90deg,
-      transparent calc(50% - 720px),
-      #000 0 calc(50% + 720px),
-      transparent 0
+      transparent,
+      #000 var(--lp-pudar),
+      #000 calc(100% - var(--lp-pudar)),
+      transparent
     );
+  }
+  .lp .lp88 > :is(.lp94, .lp95) {
+    display: none;
   }
   .lp .lp88 i {
     display: block;
@@ -250,7 +269,7 @@
     width: 68px;
     height: 68px;
     border-radius: 18px;
-    background: #fff no-repeat center / 30px 30px;
+    background: #fff no-repeat center / 40px 40px;
     background-image: var(--lp-gerbang), var(--lp-u);
     box-shadow:
       0px 0px 1px #0000000f,
@@ -260,82 +279,82 @@
   .lp .lp89 > i:nth-child(16n + 1),
   .lp .lp92 > i:nth-child(16n + 10),
   .lp .lp93 > i:nth-child(16n + 3) {
-    --lp-u: url(/pen/i-95c2220383.svg);
+    --lp-u: url(/logo-layanan/kemendagri.webp);
   }
   .lp .lp89 > i:nth-child(16n + 2),
   .lp .lp92 > i:nth-child(16n + 11),
   .lp .lp93 > i:nth-child(16n + 4) {
-    --lp-u: url(/pen/i-864bab7921.svg);
+    --lp-u: url(/logo-layanan/bpjs-kesehatan.svg);
   }
   .lp .lp89 > i:nth-child(16n + 3),
   .lp .lp92 > i:nth-child(16n + 12),
   .lp .lp93 > i:nth-child(16n + 5) {
-    --lp-u: url(/pen/i-a6a3008acd.svg);
+    --lp-u: url(/logo-layanan/polri.webp);
   }
   .lp .lp89 > i:nth-child(16n + 4),
   .lp .lp92 > i:nth-child(16n + 13),
   .lp .lp93 > i:nth-child(16n + 6) {
-    --lp-u: url(/pen/i-32c8923562.svg);
+    --lp-u: url(/logo-layanan/kemenkes.svg);
   }
   .lp .lp89 > i:nth-child(16n + 5),
   .lp .lp92 > i:nth-child(16n + 14),
   .lp .lp93 > i:nth-child(16n + 7) {
-    --lp-u: url(/pen/i-fa94228208.svg);
+    --lp-u: url(/logo-layanan/imigrasi.webp);
   }
   .lp .lp89 > i:nth-child(16n + 6),
   .lp .lp92 > i:nth-child(16n + 15),
   .lp .lp93 > i:nth-child(16n + 8) {
-    --lp-u: url(/pen/i-61026f0797.svg);
+    --lp-u: url(/logo-layanan/djp.svg);
   }
   .lp .lp89 > i:nth-child(16n + 7),
   .lp .lp92 > i:nth-child(16n + 16),
   .lp .lp93 > i:nth-child(16n + 9) {
-    --lp-u: url(/pen/i-622991afbb.svg);
+    --lp-u: url(/logo-layanan/kemenag.svg);
   }
   .lp .lp89 > i:nth-child(16n + 8),
   .lp .lp92 > i:nth-child(16n + 1),
   .lp .lp93 > i:nth-child(16n + 10) {
-    --lp-u: url(/pen/i-81414dc20e.svg);
+    --lp-u: url(/logo-layanan/bpjs-ketenagakerjaan.svg);
   }
   .lp .lp89 > i:nth-child(16n + 9),
   .lp .lp92 > i:nth-child(16n + 2),
   .lp .lp93 > i:nth-child(16n + 11) {
-    --lp-u: url(/pen/i-e795588273.svg);
+    --lp-u: url(/logo-layanan/kemendikdasmen.svg);
   }
   .lp .lp89 > i:nth-child(16n + 10),
   .lp .lp92 > i:nth-child(16n + 3),
   .lp .lp93 > i:nth-child(16n + 12) {
-    --lp-u: url(/pen/i-e87b88ff2b.svg);
+    --lp-u: url(/logo-layanan/atr-bpn.webp);
   }
   .lp .lp89 > i:nth-child(16n + 11),
   .lp .lp92 > i:nth-child(16n + 4),
   .lp .lp93 > i:nth-child(16n + 13) {
-    --lp-u: url(/pen/i-3da007ab49.svg);
+    --lp-u: url(/logo-layanan/jasa-raharja.svg);
   }
   .lp .lp89 > i:nth-child(16n + 12),
   .lp .lp92 > i:nth-child(16n + 5),
   .lp .lp93 > i:nth-child(16n + 14) {
-    --lp-u: url(/pen/i-941a068b12.svg);
+    --lp-u: url(/logo-layanan/kemensos.svg);
   }
   .lp .lp89 > i:nth-child(16n + 13),
   .lp .lp92 > i:nth-child(16n + 6),
   .lp .lp93 > i:nth-child(16n + 15) {
-    --lp-u: url(/pen/i-2ec80010b1.svg);
+    --lp-u: url(/logo-layanan/kemenkum.svg);
   }
   .lp .lp89 > i:nth-child(16n + 14),
   .lp .lp92 > i:nth-child(16n + 7),
   .lp .lp93 > i:nth-child(16n + 16) {
-    --lp-u: url(/pen/i-ec2f9348f0.svg);
+    --lp-u: url(/logo-layanan/pos-indonesia.svg);
   }
   .lp .lp89 > i:nth-child(16n + 15),
   .lp .lp92 > i:nth-child(16n + 8),
   .lp .lp93 > i:nth-child(16n + 1) {
-    --lp-u: url(/pen/i-5212f25c3d.svg);
+    --lp-u: url(/logo-layanan/kemnaker.svg);
   }
   .lp .lp89 > i:nth-child(16n + 16),
   .lp .lp92 > i:nth-child(16n + 9),
   .lp .lp93 > i:nth-child(16n + 2) {
-    --lp-u: url(/pen/i-62fa004883.svg);
+    --lp-u: url(/logo-layanan/kpu.webp);
   }
   .lp :is(.lp89, .lp92, .lp93) {
     --lp-k: 2.667px;
@@ -669,12 +688,13 @@
       0px 2px 4px #0000000a;
   }
 }
+/* Track = 3 set identik; geser tepat satu set (1/3 track) lalu ulang tanpa sambungan. */
 @keyframes lp-marquee-slide {
   0% {
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translateX(calc(-100% / 3));
   }
 }
 
@@ -1128,5 +1148,29 @@
   91.333%,
   100% {
     transform: scaleX(0);
+  }
+}
+
+/* Tanpa gerak: marquee instansi jadi satu set statis (lima instansi) yang terbungkus rapi di tengah. */
+@media (prefers-reduced-motion: reduce) {
+  .lp .lp45-marquee {
+    width: 100%;
+    max-width: 1080px;
+    margin-inline: 0;
+  }
+  .lp .n-marquee-track {
+    width: 100%;
+    justify-content: center;
+  }
+  .lp .n-marquee-track > .n-wordmarks {
+    flex-wrap: wrap;
+    flex-shrink: 1;
+    justify-content: center;
+    gap: 16px 40px;
+    padding-right: 0;
+  }
+  .lp .n-marquee-track > .n-wordmarks[aria-hidden='true'],
+  .lp .n-wordmarks > .lp46:nth-child(n + 6) {
+    display: none;
   }
 }

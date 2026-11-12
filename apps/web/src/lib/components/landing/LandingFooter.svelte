@@ -17,11 +17,7 @@
         <img class="lp5" src={mark} alt="" width="26" height="26" loading="lazy" decoding="async" />
         <div class="lp298">Urusin</div>
       </div>
-      <div class="lp299">
-        © 2026 Urusin.
-        <br />
-        Bukan situs pemerintah.
-      </div>
+      <div class="lp299">© 2026 Urusin.</div>
     </div>
     <div class="n-columns lp300">
       <div class="lp301">
@@ -49,6 +45,5 @@
   <div class="n-bottom lp303">
     <a class="lp304" href={resolve('/privasi')}> Kebijakan privasi </a>
     <div class="lp304">Syarat layanan</div>
-    <a class="lp304" href={resolve('/pengaturan')}> Hapus data saya </a>
   </div>
 </footer>

@@ -14,6 +14,7 @@ import {
 import { Anggaran, PESAN_AMBIL_ALIH, type AlasanAmbilAlih } from './anggaran.js';
 import { buatResi, buktiDariPengamatan, ringkasBukti, type Resi } from './bukti.js';
 import { mintaRencana, type KonfigLlm, type MasukanPrompt } from './prompt.js';
+import type { PeringkatTautan } from './peringkat-tautan.js';
 import {
   hashRencana,
   normalLabel,
@@ -87,6 +88,8 @@ export type OpsiLoop = {
   llm: KonfigLlm;
   /** Judul urusan dari registry (bukan teks warga). */
   tujuan: string;
+  /** (bendera) Peringkat tautan lewat embedding sebagai sinyal prompt; lihat peringkat-tautan.ts. */
+  peringkatTautan?: PeringkatTautan | undefined;
   /** Host persis yang boleh dikerjakan AI: host wilayah urusan (atau host replika di Mode Uji). */
   hostsBoleh: ReadonlySet<string>;
   /** Mode Uji: setiap pengamatan WAJIB di host replika; selain itu loop langsung berhenti. */
@@ -799,6 +802,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         kodeKabKota: o.kodeKabKota,
         ...(o.petunjukPortal ? { petunjukPortal: o.petunjukPortal } : {}),
         ...(umpanBalik?.sidik === p.sidik ? { umpanBalik: umpanBalik.aturan } : {}),
+        petunjukTautan: await o.peringkatTautan?.(p, o.tujuan, o.signal).catch(() => null),
       };
       let minta: Awaited<ReturnType<typeof mintaRencana>>;
       // Halaman pintu dengan satu CTA pengajuan ("Mulai Pendaftaran"): CTA didahulukan di atas tautan informasi

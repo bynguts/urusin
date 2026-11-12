@@ -103,6 +103,11 @@ for (const [width, scale] of [
     await masuk(page);
     await page.goto('/data-diri');
     await expect(page.getByRole('button', { name: 'Ubah data diri', exact: true })).toBeVisible();
+    // Hapus data tetap terjangkau dari Data diri (footer situs tidak lagi memuatnya).
+    await expect(page.getByRole('link', { name: 'Hapus data saya' })).toHaveAttribute(
+      'href',
+      /pengaturan#zona-bahaya$/,
+    );
     const tabel = page.getByRole('table', { name: 'Data diri tersimpan' });
     const ubah = tabel.getByRole('button', { name: 'Ubah Nama lengkap', exact: true });
     const akses = await ubah.evaluate((e) => {

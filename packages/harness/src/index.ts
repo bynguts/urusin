@@ -9,6 +9,8 @@ export * from './spotlight.js';
 export * from './textfragment.js';
 export * from './grounding.js';
 export * from './intent.js';
+export * from './intent-embedding.js';
+export * from './intent-prototipe.js';
 export * from './tools.js';
 export * from './builtin-tools.js';
 export * from './policy.js';
