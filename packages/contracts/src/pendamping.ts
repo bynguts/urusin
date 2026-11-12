@@ -276,6 +276,66 @@ export const ElemenAmatanSchema = z.object({
 });
 export type ElemenAmatan = z.infer<typeof ElemenAmatanSchema>;
 
+/** Kosakata nama kendali akun warga: SELURUH kata nama harus dari sini (label halaman tidak tepercaya). */
+const KATA_AKUN: ReadonlySet<string> = new Set(
+  (
+    'masuk login log in sign signin daftar pendaftaran register registrasi signup up buat akun account baru ' +
+    'sekarang disini di sini ke sudah belum punya anda saya my warga pengguna user member here now create ' +
+    'gratis new free atau or dan and sso'
+  ).split(' '),
+);
+const RE_KATA_MASUK = /(^| )(masuk|login|signin|log in|sign in|sso)( |$)/;
+const RE_KATA_DAFTAR =
+  /(^| )(daftar|pendaftaran|register|registrasi|signup|sign up|buat akun|create account)( |$)/;
+const RE_KATA_KELUAR = /(^| )(keluar|logout|log out|signout|sign out|logoff)( |$)/;
+/** Kata tambahan kendali keluar ("Keluar Aplikasi", "Log Out"); layanan "Perpindahan Keluar" bukan kendali akun. */
+const KATA_KELUAR: ReadonlySet<string> = new Set(
+  'keluar logout out signout logoff off aplikasi dari'.split(' '),
+);
+
+/** Nama kendali dinormalkan untuk pencocokan kata: huruf kecil, tanpa diakritik/tanda baca. */
+function kataNama(nama: string): string {
+  return nama
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Kendali akun warga yang terlihat di satu pengamatan (beranda/menu portal): tombol/tautan yang namanya HANYA
+ * berisi kata akun (maks. 6 kata), mis. "Masuk", "Sudah punya akun? Masuk", "LOGIN", "Daftar Akun Gratis",
+ * "Belum punya akun? Daftar". `masuk` didahulukan atas "Login / Register" (nama gabungan = masuk).
+ * `keluar` = ada kendali keluar/logout (warga sudah masuk), juga hanya dari kata akun/keluar (QA prod gel6
+ * Semarang: tautan layanan "Perpindahan Keluar" bukan tanda sesi). Kendali tersembunyi/tantangan tidak dihitung.
+ */
+export function kendaliAkun(elemen: readonly ElemenAmatan[]): {
+  masuk?: ElemenAmatan;
+  daftar?: ElemenAmatan;
+  keluar: boolean;
+} {
+  let masuk: ElemenAmatan | undefined;
+  let daftar: ElemenAmatan | undefined;
+  let keluar = false;
+  for (const e of elemen) {
+    if (e.peran !== 'tombol' && e.peran !== 'tautan') continue;
+    const k = kataNama(e.nama);
+    const kata = k.split(' ');
+    if (
+      RE_KATA_KELUAR.test(k) &&
+      kata.length <= 4 &&
+      kata.every((w) => KATA_AKUN.has(w) || KATA_KELUAR.has(w))
+    )
+      keluar = true;
+    if (e.kelas === 'tantangan' || e.kelas === 'tidak_pasti' || !k) continue;
+    if (kata.length > 6 || !kata.every((w) => KATA_AKUN.has(w))) continue;
+    if (RE_KATA_MASUK.test(k)) masuk ??= e;
+    else if (RE_KATA_DAFTAR.test(k)) daftar ??= e;
+  }
+  return { ...(masuk ? { masuk } : {}), ...(daftar ? { daftar } : {}), keluar };
+}
+
 export const SinyalHalamanSchema = z.object({
   login: z.boolean(),
   otp: z.boolean(),
@@ -611,6 +671,11 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
     indeks: z.number().int().nonnegative(),
     total: z.number().int().positive(),
     label: z.string(),
+    /**
+     * (aditif) Navigator generik: fase AI yang jujur (`membuka` situs/halaman, `membaca` halaman, `mengisi`
+     * formulir). `indeks`/`total` tidak bermakna (selalu 0/1); layar tidak menampilkan penghitung bila ada.
+     */
+    fase: z.enum(['membuka', 'membaca', 'mengisi']).optional(),
   }),
   /** Giliran warga: login/OTP/CAPTCHA (`login`), pengiriman akhir (`final`), atau diminta warga. */
   z.object({

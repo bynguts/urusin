@@ -4,6 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { pesanAlihLuar, pesanSitusBermasalah } from './galat-nav.js';
 import { createGerbangTulis, JENDELA_ISI_MS, type Jendela } from './gerbang-tulis.js';
 import {
+  labelAman,
+  namaPortal,
+  pesanMasukAkun,
+  pesanPetunjuk,
   GenerikRun,
   naikHttps,
   PESAN_GENERIK,
@@ -432,6 +436,41 @@ describe('GenerikRun: host di luar allowlist', () => {
     const h = harness({ saatNavigasi: (run) => run.hostDiblokir('lain.example', true) });
     await h.run.mulai('https://portal.contoh.go.id/');
     expect(h.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.hostLain, sorot: undefined }]);
+  });
+
+  it('QA prod gel6 Klampid: POST XHR skrip halaman saat dimuat diblokir dan dicatat, bukan giliran "periksa"', async () => {
+    const post = (dokumen: boolean) => ({
+      metode: 'POST',
+      dokumen,
+      utama: dokumen,
+      xhr: !dokumen,
+      url: 'https://portal.contoh.go.id/api/sesi',
+    });
+    const h = harness({ saatNavigasi: () => expect(h.gerbang.periksa(post(false))).toBe('blokir') });
+    await h.run.mulai('https://portal.contoh.go.id/app');
+    expect(h.serah).toEqual([]);
+    expect(h.jejak).toContainEqual(
+      expect.objectContaining({ jenis: 'blokir', metode: 'POST', jendela: 'ai_klik' }),
+    );
+
+    // Tautan pembuka GET yang dibuka AI: sama, XHR halaman tujuan bukan tombol yang ditekan AI.
+    const t = harness({
+      amati: () =>
+        pengamatan({
+          elemen: [{ ref: 'e4', peran: 'tautan', nama: 'Masuk', kelas: 'kirim', tautanPembuka: true }],
+        }),
+      tautan: { e4: 'https://portal.contoh.go.id/app/login' },
+      saatNavigasi: () => expect(t.gerbang.periksa(post(false))).toBe('blokir'),
+    });
+    await t.run.amati();
+    const r = await t.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+    expect(r[0]?.kode).toBe('ok');
+    expect(t.serah).toEqual([]);
+
+    // Navigasi dokumen tulis (form POST) saat dimuat tetap eskalasi.
+    const d = harness({ saatNavigasi: () => expect(d.gerbang.periksa(post(true))).toBe('blokir') });
+    await d.run.mulai('https://portal.contoh.go.id/app');
+    expect(d.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.kirim_halaman, sorot: undefined }]);
   });
 
   const hanyaPortal = (u: string) => URL.parse(u)?.host === 'portal.contoh.go.id';
@@ -1193,6 +1232,43 @@ describe('GenerikRun: konten fade-in masih transparan (probe gel5 6171)', () => 
     await h.run.amati();
     expect(ditanya).toBe(1);
     expect(h.diisiDikirim).toHaveLength(2);
+  });
+});
+
+describe('QA prod gel6: pesan giliran masuk akun dan petunjuk (templat + label akun)', () => {
+  it('namaPortal: label host pertama (ejaan judul bila ada); kata umum/panjang = tanpa nama', () => {
+    expect(namaPortal('sibisa.medan.go.id', 'SIBISA - Layanan Kependudukan Online')).toBe('SIBISA');
+    expect(namaPortal('siapel.malangkota.go.id', 'Login - SIAPEL.')).toBe('SIAPEL');
+    expect(namaPortal('telunjuksakti.wonogirikab.go.id', 'TelunjukSakti')).toBe('TelunjukSakti');
+    expect(namaPortal('sirancak.disdukcapil.padang.go.id', 'beranda')).toBe('SIRANCAK');
+    expect(namaPortal('disdukcapil.bandarlampungkota.go.id')).toBeUndefined();
+    expect(namaPortal('wargaklampid-dispendukcapil.surabaya.go.id')).toBeUndefined();
+  });
+
+  it('beranda: Masuk didahulukan, Daftar sebagai pilihan bagi yang belum punya akun (Padang)', () => {
+    expect(pesanMasukAkun({ portal: 'SIRANCAK', masuk: 'LOGIN', daftar: 'DAFTAR AKUN' })).toBe(
+      'Ketuk "LOGIN" kalau sudah punya akun, lalu masuk dengan akun SIRANCAK Anda. Belum punya akun? Ketuk "DAFTAR AKUN". AI melanjutkan setelah Anda masuk.',
+    );
+  });
+
+  it('formulir masuk: "Masuk dengan akun X Anda" (+ CAPTCHA bila ada), tanpa nama portal = situs ini', () => {
+    expect(pesanMasukAkun({ portal: 'SIBISA', formulir: true, daftar: 'Daftar Akun Gratis' })).toBe(
+      'Masuk dengan akun SIBISA Anda. Belum punya akun? Ketuk "Daftar Akun Gratis". AI melanjutkan setelah Anda masuk.',
+    );
+    expect(pesanMasukAkun({ formulir: true, captcha: true })).toBe(
+      'Masuk dengan akun Anda di situs ini, termasuk kode keamanan (CAPTCHA). AI melanjutkan setelah Anda masuk.',
+    );
+    expect(pesanMasukAkun({ portal: 'SIBISA', formulir: true, verifikasi: true })).toBe(
+      'Masuk dengan akun SIBISA Anda, termasuk verifikasi keamanan situs. AI melanjutkan setelah Anda masuk.',
+    );
+  });
+
+  it('petunjuk: label pendek dikutip; label mencurigakan (nomor, URL, panjang) tidak', () => {
+    expect(pesanPetunjuk('Lihat Layanan')).toContain('"Lihat Layanan"');
+    expect(labelAman('Kode antrean 98765')).toBeUndefined();
+    expect(labelAman('buka https://evil.example')).toBeUndefined();
+    expect(labelAman('satu dua tiga empat lima enam')).toBeUndefined();
+    expect(pesanPetunjuk(undefined)).toBe(PESAN_GENERIK.tidak_yakin);
   });
 });
 

@@ -283,6 +283,9 @@ const PESAN = {
     'Permohonan terkirim. Simpan nomor bukti di layar; peramban tetap terbuka sampai Anda menutupnya, tidak ada yang disimpan.',
 } as const;
 
+/** Mode awal sesi Navigator generik: situs resmi sedang dibuka, belum ada yang diisi. */
+export const PESAN_MEMBUKA_SITUS = 'AI sedang membuka situs resmi.';
+
 export const sidHashOf = (sid: string) => createHash('sha256').update(sid).digest('hex');
 
 /**
@@ -1187,7 +1190,8 @@ export class SessionManager {
     logSesi('ai_mulai', { sesi: s.id });
     s.aiDimulai = true;
     s.status = 'berjalan';
-    this.setMode(s, 'ai', 'AI sedang mengisi formulir.');
+    // Navigator generik baru membuka situs (fase jujur; "mengisi" hanya saat benar-benar mengisi).
+    this.setMode(s, 'ai', s.generik ? PESAN_MEMBUKA_SITUS : 'AI sedang mengisi formulir.');
     this.broadcastStatus(s);
     await s.run.mulaiAi();
   }

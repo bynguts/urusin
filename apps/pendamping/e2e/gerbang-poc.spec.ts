@@ -248,6 +248,23 @@ HALAMAN['/responsif-form'] = RESPONSIF(`<header><a href="/responsif-form">Portal
 <a href="/responsif-masuk" class="btn d-none d-lg-block">MASUK</a></header>
 <form action="/cari"><label>Cari layanan <input name="q"></label></form><a href="/responsif-bantuan">Bantuan</a>`);
 HALAMAN['/responsif-bantuan'] = RESPONSIF('<h1>Bantuan</h1><a href="/responsif">Beranda</a>');
+// QA prod gel6 Medan: beranda pintu akun yang event load-nya tertahan gambar yang menggantung.
+HALAMAN['/beranda-gantung'] = RESPONSIF(`<header><a href="/beranda-gantung">SIBISA</a>
+<a href="/responsif-bantuan">Daftar Akun Gratis</a><a href="/responsif-masuk">Sudah punya akun? Masuk</a></header>
+<h1>Layanan Kependudukan Online</h1><img src="/gantung" alt="">`);
+// QA prod gel6 Depok: Masuk hanya di menu offcanvas ponsel yang dibuka tombol ber-aria-controls.
+HALAMAN['/menu-depok'] = RESPONSIF(`<header><a href="/menu-depok">Silondo Maju</a>
+<button type="button" aria-controls="menu" aria-expanded="false" onclick="document.getElementById('menu').classList.add('show');this.setAttribute('aria-expanded','true')"><svg class="ikon"></svg></button>
+<div id="menu" class="offcanvas"><a href="/responsif-bantuan">Beranda</a><a href="/responsif-masuk">Login</a><a href="/responsif-bantuan">Register</a></div></header>
+<h1>Layanan Kependudukan Online</h1><a href="/responsif-bantuan">Lihat Layanan</a>
+<form action="/cari"><label>Ketik Nomor Pendaftaran <input name="q"></label></form>`);
+// QA prod gel6 Tangerang: menu ponsel tertutup = pembungkus layar penuh visibility hidden berisi tautan.
+HALAMAN['/menu-pudar'] =
+  RESPONSIF(`<style>.th-menu-wrapper{position:fixed;inset:0;visibility:hidden;opacity:0}
+.th-menu-wrapper a{display:block;padding:40px 16px}</style><header><a href="/menu-pudar">SOBAT</a></header>
+<div class="th-menu-wrapper"><div class="th-menu-area"><a href="/responsif-bantuan">Beranda Menu</a>
+<a href="/responsif-bantuan">Layanan Menu</a><a href="/responsif-bantuan">Kontak Menu</a></div></div>
+<form action="/cari"><label>Cari layanan <input name="q"></label></form><a href="/responsif-bantuan">Kartu Keluarga</a>`);
 HALAMAN['/responsif-menu'] = RESPONSIF(`<header><a href="/responsif-menu">PAK ONOM</a>
 <button type="button" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('show')"><i class="fa fa-bars"></i></button>
 <nav id="nav" class="collapse"><a href="/responsif-masuk">Masuk</a></nav></header><h1>Selamat datang</h1>`);
@@ -321,6 +338,11 @@ async function situsUji() {
     if (req.method !== 'GET' || !(jalur in HALAMAN)) hitung.set(jalur, (hitung.get(jalur) ?? 0) + 1);
     req.resume();
     req.on('end', () => {
+      // QA prod gel6 (Medan/Tangerang): sumber daya yang menggantung menahan event load > 30 dtk.
+      if (jalur === '/gantung') {
+        setTimeout(() => res.writeHead(204).end(), 40_000).unref();
+        return;
+      }
       if (jalur === '/data-lambat') {
         setTimeout(() => {
           res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
@@ -604,7 +626,31 @@ test('F5 + N7: centang pernyataan/non-data ditolak; halaman berpernyataan = kunc
   }
 });
 
-test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka formulir, Lanjutkan = ai', async () => {
+test('QA gel6 tautan pembuka: AI membuka sendiri lewat GET di host yang sama, tanpa klik handler halaman', async () => {
+  const { manager, o, p } = await sesi(situs, '/beranda', 'beranda-ai');
+  try {
+    const pembuka = satu(p, 'Ajukan Permohonan Kartu Keluarga');
+    expect(pembuka).toMatchObject({ peran: 'tautan', kelas: 'kirim', tautanPembuka: true });
+    const klik = await manager.aksi(o, {
+      ...o,
+      rencanaHash: H,
+      seq: p.seq,
+      aksi: [{ jenis: 'klik', ref: pembuka.ref }],
+    });
+    expect(klik.hasil[0]).toMatchObject({ indeks: 0, kode: 'ok' });
+    await expect.poll(() => situs.hitung('/permohonan/kk'), { timeout: 10_000 }).toBe(1);
+    expect(situs.hitung('/permohonan/12/ajukan')).toBe(0);
+    expect(manager.status(o).mode).toBe('ai');
+    expect((await manager.amati(o)).pengamatan.jalur).toBe('/permohonan/kk');
+    expect(manager.kurasJejak(o).catatan).toContainEqual(
+      expect.objectContaining({ jenis: 'klik', kelas: 'kirim', fitur: ['tautanPembuka', 'navigasiGet'] }),
+    );
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('tautan pembuka: serah ketuk_tautan, ketukan warga membuka formulir, Lanjutkan = ai', async () => {
   const { manager, o, sesiId, p } = await sesi(situs, '/beranda', 'beranda');
   const events: PendampingEvent[] = [];
   await manager.attach(sesiId, {
@@ -617,14 +663,7 @@ test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka form
     const pembuka = satu(p, 'Ajukan Permohonan Kartu Keluarga');
     expect(pembuka).toMatchObject({ peran: 'tautan', kelas: 'kirim', tautanPembuka: true });
     expect(satu(p, 'Ajukan Sekarang')).not.toHaveProperty('tautanPembuka');
-    const klik = await manager.aksi(o, {
-      ...o,
-      rencanaHash: H,
-      seq: p.seq,
-      aksi: [{ jenis: 'klik', ref: pembuka.ref }],
-    });
-    expect(klik.hasil).toEqual([{ indeks: 0, kode: 'KELAS_DITOLAK', kelas: 'kirim' }]);
-    expect(situs.hitung('/permohonan/kk')).toBe(0);
+    const awal = situs.hitung('/permohonan/kk');
 
     await manager.aksi(o, {
       ...o,
@@ -647,7 +686,7 @@ test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka form
     });
     expect(manager.status(o).mode).toBe('takeover');
     await new Promise((r) => setTimeout(r, 300));
-    expect(situs.hitung('/permohonan/kk')).toBe(0);
+    expect(situs.hitung('/permohonan/kk')).toBe(awal);
 
     const sorot = giliran()!.sorot!;
     for (const aksi of ['down', 'up'] as const)
@@ -660,7 +699,7 @@ test('tautan pembuka: AI ditolak, serah ketuk_tautan, ketukan warga membuka form
         tombol: 'left',
         klik: 1,
       });
-    await expect.poll(() => situs.hitung('/permohonan/kk'), { timeout: 10_000 }).toBe(1);
+    await expect.poll(() => situs.hitung('/permohonan/kk'), { timeout: 10_000 }).toBe(awal + 1);
     expect(situs.hitung('/permohonan/12/ajukan')).toBe(0);
 
     await manager.handleClient(sesiId, { type: 'kembalikan' });
@@ -1406,7 +1445,9 @@ test('probe gel4 3279: MASUK di menu collapse tertutup -> tidak dilebarkan (dibu
   try {
     expect(p.judul).toBe('lebar 390');
     expect(manager.status(o).pesan).not.toBe(PESAN_LAYAR_LEBAR);
-    expect(semua(p, 'Masuk')).toEqual([]);
+    // QA prod gel6 Depok: menu hamburger dibuka sendiri (tanpa melebarkan layar), Masuk kini teramati.
+    expect(semua(p, 'Masuk').map((e) => e.kelas)).toEqual(['navigasi']);
+    expect(situs.hitung('/responsif-masuk')).toBe(0);
   } finally {
     await manager.shutdown();
   }
@@ -1474,6 +1515,46 @@ test('probe gel5 6171: konten dibuka sesudah data XHR lambat -> batas tunggu dar
   try {
     for (const nama of ['Kartu Keluarga Data', 'Akta Kelahiran Data', 'Pindah Datang Data'])
       expect(satu(p, nama).kelas, nama).toBe('navigasi');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('QA gel6 Medan: load tertahan sumber daya menggantung -> pengamatan pertama tetap cepat (DOM siap), fase jujur', async () => {
+  const t0 = Date.now();
+  const { manager, o, p, events } = await sesi(situs, '/beranda-gantung', 'beranda-gantung', true, true);
+  try {
+    // Dulu: tunggu load sampai batas 10 dtk sebelum pengamatan pertama.
+    expect(Date.now() - t0).toBeLessThan(8_000);
+    expect(satu(p, 'Sudah punya akun? Masuk').kelas).toBe('navigasi');
+    const fase = events.flatMap((e) => (e.jenis === 'langkah' ? [e.fase ?? e.label] : []));
+    expect(fase).toEqual(expect.arrayContaining(['membuka', 'membaca']));
+    expect(fase).not.toContain('mengisi');
+    expect(manager.status(o).pesan).not.toMatch(/mengisi/i);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('QA gel6 Tangerang: menu ponsel tertutup (layar penuh, tersembunyi) bukan konten pudar yang ditunggu', async () => {
+  const { manager, o } = await sesi(situs, '/menu-pudar', 'menu-pudar', false);
+  try {
+    const t0 = Date.now();
+    const p = (await manager.amati(o)).pengamatan;
+    // Dulu: tunggu pudar sampai jaringan idle + 3 dtk, dua kali (tenang awal dan amati ulang).
+    expect(Date.now() - t0).toBeLessThan(2_500);
+    expect(satu(p, 'Kartu Keluarga').peran).toBe('tautan');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('QA gel6 Depok: Login di menu offcanvas (pembuka aria-controls tanpa nama) terbuka sendiri dan teramati', async () => {
+  const { manager, p } = await sesi(situs, '/menu-depok', 'menu-depok');
+  try {
+    expect(p.judul).toBe('lebar 390');
+    expect(satu(p, 'Login').kelas).toBe('navigasi');
+    expect(situs.hitung('/responsif-masuk')).toBe(0);
   } finally {
     await manager.shutdown();
   }
