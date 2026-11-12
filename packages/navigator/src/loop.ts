@@ -91,6 +91,8 @@ export type OpsiLoop = {
   modeUji?: { hostsFixture: ReadonlySet<string> } | undefined;
   validasi?: OpsiValidasi;
   kodeKabKota?: string | null | undefined;
+  /** Petunjuk peta portal TEPERCAYA (registry, ADR 0034) untuk setiap prompt halaman. */
+  petunjukPortal?: string | undefined;
   jejak: (c: CatatanPendamping) => void;
   /**
    * Baris yang benar-benar disetujui warga untuk `rencanaHash` (placeholder isian + nama berkas). Baris yang
@@ -740,6 +742,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         ...(o.validasi?.katalog ? { katalog: [...o.validasi.katalog] } : {}),
         ...(o.validasi?.berkas ? { berkas: [...o.validasi.berkas] } : {}),
         kodeKabKota: o.kodeKabKota,
+        ...(o.petunjukPortal ? { petunjukPortal: o.petunjukPortal } : {}),
         ...(umpanBalik?.sidik === p.sidik ? { umpanBalik: umpanBalik.aturan } : {}),
       };
       let minta: Awaited<ReturnType<typeof mintaRencana>>;

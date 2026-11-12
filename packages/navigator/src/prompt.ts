@@ -8,6 +8,7 @@ import {
   type ChatProvider,
   type RequestOptions,
 } from '@urusin/llm';
+import { blokPetunjukPortal } from './petunjuk.js';
 import {
   KATALOG_BERKAS,
   KATALOG_PLACEHOLDER,
@@ -40,6 +41,8 @@ export type MasukanPrompt = {
   /** Id aturan validator dari rencana sebelumnya di halaman yang sama (umpan balik, bukan teks bebas). */
   umpanBalik?: readonly IdAturan[];
   nonce?: string;
+  /** Petunjuk peta portal TEPERCAYA dari registry (ADR 0034), masuk pesan sistem; lihat `blokPetunjukPortal`. */
+  petunjukPortal?: string | undefined;
 };
 
 export const NAMA_SKEMA = 'rencana_halaman';
@@ -123,8 +126,13 @@ export function pesanRencana(m: MasukanPrompt): ChatMessage[] {
       ? [`UMPAN BALIK: rencana sebelumnya untuk halaman ini ditolak validator: ${m.umpanBalik.join(', ')}.`]
       : []),
   ].join('\n');
+  // Petunjuk tepercaya di pesan sistem; teks halaman tetap di pesan pengguna (terbungkus).
+  const petunjuk = blokPetunjukPortal(m.petunjukPortal);
   return [
-    { role: 'system', content: aturanSistem(m.tujuan) },
+    {
+      role: 'system',
+      content: petunjuk ? `${aturanSistem(m.tujuan)}\n\n${petunjuk}` : aturanSistem(m.tujuan),
+    },
     { role: 'user', content: user },
   ];
 }
