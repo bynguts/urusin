@@ -312,8 +312,10 @@ const SEL_KENDALI_TENANG = 'input, textarea, select, button, a[href], [role="but
  *   (>= 20% viewport: blok konten, bukan menu tarik-turun kecil yang memang tersembunyi);
  * - layar muat (id/kelas loader/preloader/loading/spinner) fixed/absolute yang masih menutupi >= 50% viewport.
  * Jeda setTimeout sebelum transisi mulai tertangkap karena kontennya masih transparan. Elemen tanpa kotak
- * (display:none, mis. modal tertutup) diabaikan. Pemanggil membatasi tunggu 3 detik. Dievaluasi di dunia
- * terisolasi (hanya membaca DOM/gaya).
+ * (display:none, mis. modal tertutup) diabaikan, begitu juga menu/laci/modal tertutup yang memang disembunyikan
+ * (QA prod gel6 Tangerang: `.th-menu-wrapper` layar penuh visibility hidden; nama id/kelas menu, `nav`,
+ * `aria-hidden`, `role=dialog` pada elemen pudar itu atau leluhurnya yang juga pudar). Pemanggil membatasi
+ * tunggu 3 detik. Dievaluasi di dunia terisolasi (hanya membaca DOM/gaya).
  */
 export const KONTEN_BELUM_TAMPIL_EXPR = `(() => {
   const anim = document.getAnimations().some((a) => {
@@ -327,6 +329,16 @@ export const KONTEN_BELUM_TAMPIL_EXPR = `(() => {
   const ISIAN = 'input:not([type="hidden"]), select, textarea';
   const KENDALI = ISIAN + ', a[href], button, [role="button"], [role="link"]';
   const pudar = (g) => Number(g.opacity) < 0.1 || g.visibility === 'hidden';
+  const RE_MENU = /(^|[^a-z])(menu|nav|navbar|navigation|offcanvas|drawer|sidebar|sidenav|modal|popup|dropdown)([^a-z]|$)/i;
+  const menuTertutup = (el) => {
+    for (let x = el; x && x !== document.body; x = x.parentElement) {
+      if (x !== el && !pudar(getComputedStyle(x))) return false;
+      if (x.tagName === 'NAV' || x.getAttribute('aria-hidden') === 'true' || x.getAttribute('role') === 'dialog')
+        return true;
+      if (RE_MENU.test((x.id || '') + ' ' + (x.getAttribute('class') || ''))) return true;
+    }
+    return false;
+  };
   if ([document.documentElement, document.body].some((el) => pudar(getComputedStyle(el))) && document.body.querySelector(KENDALI))
     return true;
   const RE_MUAT = /(^|[^a-z])(pre-?loader|loader|loading|spinner)([^a-z]|$)/i;
@@ -341,6 +353,7 @@ export const KONTEN_BELUM_TAMPIL_EXPR = `(() => {
     if (tampak < 2000) continue;
     const g = getComputedStyle(el);
     if (pudar(g)) {
+      if (menuTertutup(el)) continue;
       if (el.querySelector(ISIAN)) return true;
       if (tampak >= luas * 0.2 && el.querySelector(KENDALI)) return true;
       continue;
@@ -898,6 +911,11 @@ export async function wire(
   let loading = false;
   /** Waktu DOMContentLoaded dokumen utama terakhir (load bisa tertahan sumber daya yang menggantung). */
   let dclPada: number | undefined;
+  /**
+   * Batas tunggu fade-in sudah habis di dokumen utama ini (QA prod gel6 Tangerang: elemen besar yang tetap
+   * transparan): tenang berikutnya di dokumen yang sama tidak menunggu pudar lagi selama jaringan idle.
+   */
+  let pudarHabis = false;
   let destroyed = false;
   let manual = false;
   let resumeWaiters: (() => void)[] = [];
@@ -1232,6 +1250,7 @@ export async function wire(
     if (f !== page.mainFrame()) return;
     loading = true;
     dclPada = undefined;
+    pudarHabis = false;
     void interp.onTabUpdated(1, { status: 'loading' });
   });
   page.on('domcontentloaded', () => {
@@ -1598,12 +1617,16 @@ export async function wire(
       // data XHR/terowongan lambat, bukan sesudah load), paling lambat sejak 8 detik menunggu idle.
       const mulaiPudar = Date.now();
       let idleSejak: number | undefined;
+      if (pudarHabis && jaringanIdle()) return;
       while (!destroyed) {
         if (!(await belumTampil())) return;
         const t = Date.now();
         if (idleSejak === undefined && jaringanIdle()) idleSejak = t;
         const pangkal = idleSejak ?? (t - mulaiPudar >= 8_000 ? mulaiPudar + 8_000 : undefined);
-        if (pangkal !== undefined && t >= pangkal + 3_000) return;
+        if (pangkal !== undefined && t >= pangkal + 3_000) {
+          pudarHabis = true;
+          return;
+        }
         await new Promise((r) => setTimeout(r, 100));
       }
     };

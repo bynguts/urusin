@@ -426,6 +426,41 @@ describe('GenerikRun: host di luar allowlist', () => {
     expect(h.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.hostLain, sorot: undefined }]);
   });
 
+  it('QA prod gel6 Klampid: POST XHR skrip halaman saat dimuat diblokir dan dicatat, bukan giliran "periksa"', async () => {
+    const post = (dokumen: boolean) => ({
+      metode: 'POST',
+      dokumen,
+      utama: dokumen,
+      xhr: !dokumen,
+      url: 'https://portal.contoh.go.id/api/sesi',
+    });
+    const h = harness({ saatNavigasi: () => expect(h.gerbang.periksa(post(false))).toBe('blokir') });
+    await h.run.mulai('https://portal.contoh.go.id/app');
+    expect(h.serah).toEqual([]);
+    expect(h.jejak).toContainEqual(
+      expect.objectContaining({ jenis: 'blokir', metode: 'POST', jendela: 'ai_klik' }),
+    );
+
+    // Tautan pembuka GET yang dibuka AI: sama, XHR halaman tujuan bukan tombol yang ditekan AI.
+    const t = harness({
+      amati: () =>
+        pengamatan({
+          elemen: [{ ref: 'e4', peran: 'tautan', nama: 'Masuk', kelas: 'kirim', tautanPembuka: true }],
+        }),
+      tautan: { e4: 'https://portal.contoh.go.id/app/login' },
+      saatNavigasi: () => expect(t.gerbang.periksa(post(false))).toBe('blokir'),
+    });
+    await t.run.amati();
+    const r = await t.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+    expect(r[0]?.kode).toBe('ok');
+    expect(t.serah).toEqual([]);
+
+    // Navigasi dokumen tulis (form POST) saat dimuat tetap eskalasi.
+    const d = harness({ saatNavigasi: () => expect(d.gerbang.periksa(post(true))).toBe('blokir') });
+    await d.run.mulai('https://portal.contoh.go.id/app');
+    expect(d.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.periksa, sorot: undefined }]);
+  });
+
   const hanyaPortal = (u: string) => URL.parse(u)?.host === 'portal.contoh.go.id';
 
   it('probe gel4 9171: naikHttps menaikkan http:// host sesi https-saja, tidak pernah membuka http polos', () => {
@@ -1153,6 +1188,9 @@ describe('QA prod gel6: pesan giliran masuk akun dan petunjuk (templat + label a
     );
     expect(pesanMasukAkun({ formulir: true, captcha: true })).toBe(
       'Masuk dengan akun Anda di situs ini, termasuk kode keamanan (CAPTCHA). AI melanjutkan setelah Anda masuk.',
+    );
+    expect(pesanMasukAkun({ portal: 'SIBISA', formulir: true, verifikasi: true })).toBe(
+      'Masuk dengan akun SIBISA Anda, termasuk verifikasi keamanan situs. AI melanjutkan setelah Anda masuk.',
     );
   });
 

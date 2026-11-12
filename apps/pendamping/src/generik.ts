@@ -233,11 +233,17 @@ export function pesanMasukAkun(o: {
   daftar?: string | undefined;
   formulir?: boolean;
   captcha?: boolean;
+  verifikasi?: boolean;
 }): string {
   const akun = o.portal ? `akun ${o.portal} Anda` : 'akun Anda di situs ini';
+  const keamanan = o.captcha
+    ? ', termasuk kode keamanan (CAPTCHA)'
+    : o.verifikasi
+      ? ', termasuk verifikasi keamanan situs'
+      : '';
   const awal =
     o.formulir || !o.masuk
-      ? `Masuk dengan ${akun}${o.captcha ? ', termasuk kode keamanan (CAPTCHA)' : ''}.`
+      ? `Masuk dengan ${akun}${keamanan}.`
       : `Ketuk "${kutip(o.masuk)}" kalau sudah punya akun, lalu masuk dengan ${akun}.`;
   const daftar = o.daftar ? ` Belum punya akun? Ketuk "${kutip(o.daftar)}".` : '';
   return `${awal}${daftar} AI melanjutkan setelah Anda masuk.`;
@@ -408,7 +414,12 @@ export class GenerikRun {
   /** Pengamatan terakhir (non-pantau): kendali akun untuk pesan giliran masuk. */
   private amatanTerakhir: Pengamatan | undefined;
   /** Selama satu aksi/navigasi AI: blokir gerbang dan host di luar allowlist yang terjadi karenanya. */
-  private aksiBerjalan: { blokir: CatatanBlokir[]; hostLain: boolean } | undefined;
+  /**
+   * `muat`: aksi berjalan berupa navigasi GET tanpa klik (mulai, tautan pembuka, tautan navigasi). XHR/fetch tulis
+   * yang diblokir selama dokumen tujuan dimuat berasal dari skrip halaman itu sendiri (QA prod gel6 Klampid: POST
+   * saat SPA dimulai), bukan dari tombol yang ditekan AI: tetap diblokir dan dicatat, tetapi bukan eskalasi.
+   */
+  private aksiBerjalan: { blokir: CatatanBlokir[]; hostLain: boolean; muat?: true } | undefined;
   private antre: Promise<unknown> = Promise.resolve();
   private readonly now: () => number;
   /**
@@ -541,7 +552,8 @@ export class GenerikRun {
     // lewat batas jendela cukup dicatat. Klik: setiap blokir = eskalasi.
     const tulisLain = c.dokumen || !c.xhr;
     if (this.aksiBerjalan) {
-      if (j.jenis === 'ai_klik' || tulisLain) this.aksiBerjalan.blokir.push(c);
+      const klikAi = j.jenis === 'ai_klik' && !this.aksiBerjalan.muat;
+      if (klikAi || tulisLain) this.aksiBerjalan.blokir.push(c);
       return;
     }
     // Di luar aksi: tulis yang diblokir tepat setelah isi (onchange form.submit(), sendBeacon) = warga.
@@ -921,6 +933,7 @@ export class GenerikRun {
       daftar: akun.daftar?.nama,
       formulir,
       captcha: p.sinyal.captcha,
+      verifikasi: p.sinyal.tantangan,
     });
   }
 
@@ -980,6 +993,7 @@ export class GenerikRun {
       return { kode: 'GERBANG_MEMBLOKIR' as const, ...k };
     }
     u.hash = '';
+    if (this.aksiBerjalan) this.aksiBerjalan.muat = true;
     this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: u.href });
     await this.d.tangan.navigasi(u.href);
     await this.d.tangan.tenang();
@@ -1027,7 +1041,7 @@ export class GenerikRun {
       this.aiBertindakDok = true;
       this.tulisWargaSejakAi = false;
       this.kirimFinalWarga = false;
-      this.aksiBerjalan = { blokir: [], hostLain: false };
+      this.aksiBerjalan = { blokir: [], hostLain: false, muat: true };
       this.hostDitolakTerakhir = undefined;
       const urlSebelum = this.d.tangan.urlKini();
       try {
@@ -1048,7 +1062,7 @@ export class GenerikRun {
   /** Halaman awal sesi (origin program): navigasi AI ke URL persis itu saja. */
   async mulai(url: string): Promise<void> {
     await this.serial(async () => {
-      this.aksiBerjalan = { blokir: [], hostLain: false };
+      this.aksiBerjalan = { blokir: [], hostLain: false, muat: true };
       this.hostDitolakTerakhir = undefined;
       this.tulisWargaSejakAi = false;
       this.kirimFinalWarga = false;

@@ -258,6 +258,13 @@ HALAMAN['/menu-depok'] = RESPONSIF(`<header><a href="/menu-depok">Silondo Maju</
 <div id="menu" class="offcanvas"><a href="/responsif-bantuan">Beranda</a><a href="/responsif-masuk">Login</a><a href="/responsif-bantuan">Register</a></div></header>
 <h1>Layanan Kependudukan Online</h1><a href="/responsif-bantuan">Lihat Layanan</a>
 <form action="/cari"><label>Ketik Nomor Pendaftaran <input name="q"></label></form>`);
+// QA prod gel6 Tangerang: menu ponsel tertutup = pembungkus layar penuh visibility hidden berisi tautan.
+HALAMAN['/menu-pudar'] =
+  RESPONSIF(`<style>.th-menu-wrapper{position:fixed;inset:0;visibility:hidden;opacity:0}
+.th-menu-wrapper a{display:block;padding:40px 16px}</style><header><a href="/menu-pudar">SOBAT</a></header>
+<div class="th-menu-wrapper"><div class="th-menu-area"><a href="/responsif-bantuan">Beranda Menu</a>
+<a href="/responsif-bantuan">Layanan Menu</a><a href="/responsif-bantuan">Kontak Menu</a></div></div>
+<form action="/cari"><label>Cari layanan <input name="q"></label></form><a href="/responsif-bantuan">Kartu Keluarga</a>`);
 HALAMAN['/responsif-menu'] = RESPONSIF(`<header><a href="/responsif-menu">PAK ONOM</a>
 <button type="button" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('show')"><i class="fa fa-bars"></i></button>
 <nav id="nav" class="collapse"><a href="/responsif-masuk">Masuk</a></nav></header><h1>Selamat datang</h1>`);
@@ -1507,6 +1514,19 @@ test('QA gel6 Medan: load tertahan sumber daya menggantung -> pengamatan pertama
     expect(fase).toEqual(expect.arrayContaining(['membuka', 'membaca']));
     expect(fase).not.toContain('mengisi');
     expect(manager.status(o).pesan).not.toMatch(/mengisi/i);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('QA gel6 Tangerang: menu ponsel tertutup (layar penuh, tersembunyi) bukan konten pudar yang ditunggu', async () => {
+  const { manager, o } = await sesi(situs, '/menu-pudar', 'menu-pudar', false);
+  try {
+    const t0 = Date.now();
+    const p = (await manager.amati(o)).pengamatan;
+    // Dulu: tunggu pudar sampai jaringan idle + 3 dtk, dua kali (tenang awal dan amati ulang).
+    expect(Date.now() - t0).toBeLessThan(2_500);
+    expect(satu(p, 'Kartu Keluarga').peran).toBe('tautan');
   } finally {
     await manager.shutdown();
   }
