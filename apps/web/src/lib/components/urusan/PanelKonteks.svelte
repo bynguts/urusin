@@ -27,6 +27,7 @@
     tab = $bindable('rencana'),
     sorot = null,
     persiapan = false,
+    menungguIzin = false,
     bawah,
   }: {
     state: UrusanState | null;
@@ -40,13 +41,17 @@
     sorot?: string | null;
     /** Browser Pendamping masih antre/disiapkan: langkah sekarang belum dimulai, yang bekerja Urusin. */
     persiapan?: boolean;
+    /** Lembar izin isi Browser Pendamping sedang terbuka (AI belum mengisi). */
+    menungguIzin?: boolean;
     bawah?: Snippet | undefined;
   } = $props();
 
   const info = $derived(
     persiapan
       ? { ...infoStatus(state), label: 'Menyiapkan browser', nada: 'ai' as const }
-      : infoStatus(state),
+      : menungguIzin
+        ? { ...infoStatus(state), label: 'Menunggu izin Anda', nada: 'anda' as const }
+        : infoStatus(state),
   );
 
   const JUDUL: Partial<Record<UrusanState, string>> = {

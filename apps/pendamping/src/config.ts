@@ -62,6 +62,8 @@ export type Config = {
   /** Batas RSS pohon proses Chromium per sesi (MB); lewat = sesi dihancurkan. */
   sessionMemMb: number;
   memCheckMs: number;
+  /** Batas navigasi halaman utama tanpa commit (ms); lewat = situs dinyatakan tidak terjangkau. */
+  navBatasMs: number;
   /** Batas heap V8 per renderer (MB). */
   jsHeapMb: number;
   /** NODE_ENV=production: override fixture hanya dipakai sesi Mode Uji (juri/tamu). */
@@ -113,6 +115,7 @@ export const DEFAULTS = Object.freeze({
   wsBufferBytes: 128 * 1024,
   sessionMemMb: 450,
   memCheckMs: 10_000,
+  navBatasMs: 45_000,
   jsHeapMb: 256,
 });
 
@@ -234,6 +237,7 @@ export function loadConfig(
     wsBufferBytes: Math.max(16 * 1024, num(env.PENDAMPING_WS_BUFFER_BYTES, DEFAULTS.wsBufferBytes)),
     sessionMemMb: num(env.PENDAMPING_SESSION_MEM_MB, DEFAULTS.sessionMemMb),
     memCheckMs: Math.max(200, num(env.PENDAMPING_MEM_CHECK_MS, DEFAULTS.memCheckMs)),
+    navBatasMs: Math.max(500, num(env.PENDAMPING_NAV_BATAS_MS, DEFAULTS.navBatasMs)),
     jsHeapMb: num(env.PENDAMPING_JS_HEAP_MB, DEFAULTS.jsHeapMb),
     production,
     fixtureOrigins,

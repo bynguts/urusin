@@ -110,13 +110,19 @@ export function pesanGangguan(host: string, status: number): string {
  * Batas navigasi halaman utama sampai dokumen ter-commit. Lebih dari ini = situs tidak terjangkau dari worker ini
  * (mis. portal yang hanya melayani IP Indonesia): sesi berakhir dengan pesan dan jalur panduan, bukan kanvas putih.
  */
-export const NAV_BATAS_MS = Number(process.env.PENDAMPING_NAV_BATAS_MS) || 45_000;
-
-/** Kode galat jaringan dari galat Playwright (`net::ERR_*`); timeout tanpa kode = ERR_TIMED_OUT. */
+/**
+ * Kode galat jaringan dari galat Playwright (`net::ERR_*`); timeout tanpa kode = ERR_TIMED_OUT. Unduhan (server
+ * menjawab dengan berkas, bukan dokumen) = ERR_ABORTED: situsnya terjangkau.
+ */
 export function netDariGalat(e: unknown): string {
   const t = e instanceof Error ? e.message : String(e);
   return (
-    /net::ERR_[A-Z0-9_]+/.exec(t)?.[0] ?? (/timeout/i.test(t) ? 'net::ERR_TIMED_OUT' : 'net::ERR_FAILED')
+    /net::ERR_[A-Z0-9_]+/.exec(t)?.[0] ??
+    (/download is starting/i.test(t)
+      ? 'net::ERR_ABORTED'
+      : /timeout/i.test(t)
+        ? 'net::ERR_TIMED_OUT'
+        : 'net::ERR_FAILED')
   );
 }
 
@@ -877,10 +883,14 @@ export async function wire(
   let commitKe = 0;
   /** Halaman awal portal sudah dibuka (`bukaAwal`): warga tidak pernah mendapat about:blank. */
   let awalDibuka = false;
+  /** `mulaiAi` sudah dipanggil (izin isi diberikan). Sebelum itu tidak ada "AI melanjutkan". */
+  let aiMulai = false;
+  let terjangkauGagal = false;
   const hostSesi = () => URL.parse(program.origin)?.host ?? '-';
-  /** Portal tidak terjangkau dari worker ini: sesi berakhir jujur dengan pesan + jalur panduan. */
+  /** Portal tidak terjangkau dari worker ini: sesi berakhir jujur dengan pesan + jalur panduan (sekali). */
   const tidakTerjangkau = (net: string) => {
-    if (destroyed) return;
+    if (destroyed || terjangkauGagal) return;
+    terjangkauGagal = true;
     logSesi('nav_gagal', { sesi: init.sesiId, host: hostSesi(), net });
     hooks.ended('gagal', 'gagal', pesanGagal('SITUS_TIDAK_TERJANGKAU', hostSesi(), net), {
       kode: 'SITUS_TIDAK_TERJANGKAU',
@@ -889,7 +899,7 @@ export async function wire(
   };
   /**
    * Navigasi CDP dengan batas: `Page.navigate` yang menggantung (koneksi ke situs tidak pernah dijawab) dihentikan
-   * sesudah NAV_BATAS_MS. Hasil: galat jaringan (`net::ERR_*`) atau undefined bila navigasi berjalan.
+   * sesudah config.navBatasMs. Hasil: galat jaringan (`net::ERR_*`) atau undefined bila navigasi berjalan.
    */
   const navigasiCdp = async (url: string): Promise<string | undefined> => {
     let batas: ReturnType<typeof setTimeout> | undefined;
@@ -897,19 +907,19 @@ export async function wire(
       cdp.send('Page.navigate', { url }).catch(() => undefined) as Promise<
         { errorText?: string } | undefined
       >,
-      new Promise<'batas'>((res) => (batas = setTimeout(() => res('batas'), NAV_BATAS_MS))),
+      new Promise<'batas'>((res) => (batas = setTimeout(() => res('batas'), config.navBatasMs))),
     ]).finally(() => clearTimeout(batas));
     if (r !== 'batas') return r?.errorText || undefined;
     void cdp.send('Page.stopLoading').catch(() => undefined);
     return 'net::ERR_TIMED_OUT';
   };
-  /** Pengawas: navigasi ke `url` yang tidak ter-commit dalam NAV_BATAS_MS = situs tidak terjangkau. */
+  /** Pengawas: navigasi ke `url` yang tidak ter-commit dalam config.navBatasMs = situs tidak terjangkau. */
   const awasiCommit = (url: string) => {
     const awal = commitKe;
     setTimeout(() => {
       if (destroyed || commitKe !== awal || navTerakhir !== url || ditahan()) return;
       tidakTerjangkau(navGagal && navGagal !== 'net::ERR_ABORTED' ? navGagal : 'net::ERR_TIMED_OUT');
-    }, NAV_BATAS_MS).unref?.();
+    }, config.navBatasMs).unref?.();
   };
   let kembaliKe: string | undefined;
   /** AI diam selama warga memegang kendali, tantangan situs aktif, atau warga perlu masuk akun. */
@@ -1480,7 +1490,11 @@ export async function wire(
       }
       if (manual || status === 'waiting_gate' || status === 'waiting_citizen' || status === 'handoff')
         hooks.mode('takeover', 'Verifikasi selesai. Lanjutkan sendiri.');
-      else hooks.mode('ai', 'Verifikasi selesai. AI melanjutkan pengisian.');
+      else if (!aiMulai) {
+        // Tantangan di halaman awal, sebelum izin isi: AI belum pernah mulai, jadi bukan "AI melanjutkan".
+        hooks.mode('takeover', 'Verifikasi selesai.');
+        hooks.tantanganLolos?.();
+      } else hooks.mode('ai', 'Verifikasi selesai. AI melanjutkan pengisian.');
       resume();
       return;
     }
@@ -1764,13 +1778,23 @@ export async function wire(
     return `${program.origin}${awal?.op === 'nav' ? awal.path : '/'}`;
   };
   /** Halaman awal gagal dibuka / tidak pernah ter-commit = situs tidak terjangkau (bukan kanvas putih). */
-  const periksaNavAwal = async (t0: number, c0: number) => {
-    // Peristiwa commit bisa tiba sesaat sesudah navigasi kembali: tunggu sampai batas yang sama.
+  const periksaNavAwal = async (t0: number, c0: number, n0: number): Promise<boolean> => {
+    // Peristiwa commit bisa tiba sesaat sesudah navigasi kembali: tunggu sampai batas yang sama. Server sudah
+    // menjawab (respons navigasi terlihat) tanpa dokumen, mis. 204 atau unduhan: cukup tunggu sebentar.
     const gagalNyata = () =>
       (navGagal && navGagal !== 'net::ERR_ABORTED') || page.url().startsWith('chrome-error:');
-    while (!destroyed && commitKe === c0 && !gagalNyata() && Date.now() - t0 < NAV_BATAS_MS)
+    const batas = () =>
+      navKe !== n0 ? Math.min(config.navBatasMs, Date.now() - t0 + 2_000) : config.navBatasMs;
+    let akhir = batas();
+    while (!destroyed && commitKe === c0 && !gagalNyata() && Date.now() - t0 < akhir) {
       await new Promise((r) => setTimeout(r, 200));
-    if (destroyed) return;
+      if (navKe !== n0 && akhir === config.navBatasMs) akhir = batas();
+    }
+    if (destroyed) return false;
+    if (commitKe === c0 && !gagalNyata() && navKe !== n0) {
+      logSesi('nav_awal_tanpa_dokumen', { sesi: init.sesiId, host: hostSesi(), ms: Date.now() - t0 });
+      return true;
+    }
     const net =
       navGagal && navGagal !== 'net::ERR_ABORTED'
         ? navGagal
@@ -1779,8 +1803,32 @@ export async function wire(
           : commitKe === c0
             ? 'net::ERR_TIMED_OUT'
             : undefined;
-    if (net) return tidakTerjangkau(net);
+    if (net) {
+      tidakTerjangkau(net);
+      return false;
+    }
     logSesi('nav_awal', { sesi: init.sesiId, host: hostSesi(), ms: Date.now() - t0 });
+    return true;
+  };
+  /**
+   * Buka halaman awal portal tanpa aksi AI (sekali per sesi), lalu periksa tantangan situs SEBELUM izin isi
+   * diminta: Cloudflare di halaman awal = giliran warga dulu, lembar izin menunggu tantangan lolos.
+   */
+  const bukaPortal = async () => {
+    if (init.manualUrl || destroyed || awalDibuka) return;
+    awalDibuka = true;
+    const url = urlAwal();
+    const t0 = Date.now();
+    const c0 = commitKe;
+    const n0 = navKe;
+    navTerakhir = url;
+    navGagal = undefined;
+    await page
+      .goto(url, { waitUntil: 'commit', timeout: config.navBatasMs })
+      .catch((e: unknown) => void (navGagal ??= netDariGalat(e)));
+    if (!(await periksaNavAwal(t0, c0, n0)) || destroyed) return;
+    await page.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => {});
+    await periksaTantangan();
   };
   const api: ActiveRun = {
     ...(g
@@ -1793,6 +1841,7 @@ export async function wire(
         }
       : {}),
     async mulaiAi() {
+      aiMulai = true;
       if (g) {
         // Generik: AI hanya membuka halaman awal; selanjutnya otak di web memanggil amati/aksi.
         if (generikDimulai) return;
@@ -1800,8 +1849,9 @@ export async function wire(
         awalDibuka = true;
         const t0 = Date.now();
         const c0 = commitKe;
+        const n0 = navKe;
         await g.mulai(urlAwal());
-        return void (await periksaNavAwal(t0, c0));
+        return void (await periksaNavAwal(t0, c0, n0));
       }
       if (init.manualUrl) {
         // Mode debug: tidak ada AI; penguji manusia memegang kendali sejak awal.
@@ -1818,18 +1868,9 @@ export async function wire(
       // Adapter: halaman langkah pertama (mis. halaman masuk) tampil dulu, tanpa isian atau klik AI; izin isi
       // baru diminta sesudahnya, saat AI akan mengisi. Generik membuka halamannya sendiri di `mulaiAi` (tanpa
       // izin di muka; izin per halaman sesudah halaman tampil).
-      if (g || init.manualUrl || destroyed || awalDibuka) return;
-      awalDibuka = true;
-      const url = urlAwal();
-      const t0 = Date.now();
-      const c0 = commitKe;
-      navTerakhir = url;
-      navGagal = undefined;
-      await page
-        .goto(url, { waitUntil: 'commit', timeout: NAV_BATAS_MS })
-        .catch((e: unknown) => void (navGagal ??= netDariGalat(e)));
-      await periksaNavAwal(t0, c0);
+      if (!g) await bukaPortal();
     },
+    ditahanTantangan: () => pantau.aktif,
     async input(m) {
       // Jendela tulis warga dibuka SEBELUM input diteruskan (handler klik halaman berjalan saat dispatch).
       const nyata =
@@ -1862,8 +1903,9 @@ export async function wire(
     },
     ambilAlih() {
       manual = true;
-      // Warga mengambil alih (atau menolak izin) sebelum portal terbuka: buka portalnya, jangan about:blank.
-      if (!awalDibuka && !destroyed) void api.bukaAwal?.();
+      // Warga mengambil alih (atau menolak izin) sebelum portal terbuka, juga sesi generik yang belum memulai
+      // Navigator: buka portalnya, jangan about:blank.
+      void bukaPortal();
     },
     async gantiProgram(p, id) {
       await interp.cancel().catch(() => {});
@@ -1896,8 +1938,8 @@ export async function wire(
       // Gerbang warga belum terpenuhi: tetap giliran warga; selain itu AI lanjut.
       if (status === 'waiting_gate') void interp.recheckGate();
       else if (status === 'waiting_citizen') void interp.citizenDone();
-      // Adapter yang belum pernah mulai (izin isi belum diberikan): bukan "AI melanjutkan"; sesi meminta izin lagi.
-      else if (status === undefined && !g) return;
+      // AI yang belum pernah mulai (izin isi belum diberikan): bukan "AI melanjutkan"; sesi meminta izin lagi.
+      else if (!aiMulai) return;
       else if (status !== 'handoff') hooks.mode('ai', 'AI melanjutkan pengisian.');
     },
     async setViewer(send) {

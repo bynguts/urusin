@@ -54,7 +54,11 @@ const KATA_KUNCI: readonly [IntentJenis, RegExp][] = [
     'kk',
     /\b(kk|kartu keluarga)\s+baru\b|\b(bikin|buat|membuat|urus|mengurus)\s+(kk|kartu keluarga)\b|\bpisah\s+(dari\s+)?(kk|kartu keluarga)\b/i,
   ],
-  ['kia', /\b(kia|kartu identitas anak|kartu anak)\b/i],
+  /** "KIA" juga merek mobil: "pajak mobil KIA", "Kia Sonet" bukan Kartu Identitas Anak. */
+  [
+    'kia',
+    /(?<!\b(?:mobil|motor|kendaraan|dealer|merek|merk)\s+)\bkia\b(?!\s+(?:sonet|picanto|seltos|carens|carnival|rio|sportage|motors?)\b)|\b(kartu identitas anak|kartu anak)\b/i,
+  ],
   ['bansos', /\b(bansos|bantuan sosial|pkh|bpnt|blt|dtks|dtsen)\b/i],
   ['pajak_kendaraan', /\b(pajak\s+(kendaraan|motor|mobil)|samsat|pkb)\b/i],
   ['skck', /\bskck\b/i],
