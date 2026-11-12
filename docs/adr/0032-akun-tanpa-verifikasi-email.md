@@ -77,4 +77,12 @@ bisa "ikut berpindah" ke pihak lain.
   diterima.
 - Akun tidak lagi disapu otomatis. Pembersihan hanya untuk tamu (72 jam) dan salinan demo (24 jam).
 - Turnstile tidak ditambahkan ke daftar. Produksi menjalankan Turnstile `nonaktif`, jadi rem pembuatan akun massal
-  tetap batas laju daftar per IP dan per email.
+  tetap batas laju daftar per IP dan per email: 20/jam dan 40/hari per IP. Kuota urusan akun juga punya plafon
+  per IP yang longgar (600/jam), dihitung bersama batas per akun.
+- Browser Pendamping portal asli punya rem per akun: satu sesi aktif per akun, maksimal 6 sesi mulai per jam per
+  akun dan 30 per jam per IP. Mode Uji (tamu dan juri) tidak kena rem ini. Catatan sesi aktif dan pembatasnya
+  disimpan di memori proses web. Ini cukup karena produksi menjalankan satu instance web aktif (pergantian
+  blue/green). Bila suatu saat web berjalan multi-instance, rem ini harus dipindah ke penyimpanan bersama.
+- Sesi akun yang aktif tetapi `urusin_sid`-nya masih memegang data tamu (misalnya vault satu perangkat akun lama
+  sebelum ADR ini) digabungkan ke akun di hooks lalu sid diputar. Data akun tidak ditimpa, dan data tamu milik
+  sid lain tidak tersentuh.

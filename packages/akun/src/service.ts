@@ -424,6 +424,23 @@ export class AkunService {
 
   // --- tamu (dibuat malas) dan salinan demo ---
 
+  /**
+   * Apakah cookie urusin_sid ini masih memegang data tamu (baris tamu/vault, atau urusan tamu), termasuk tamu yang
+   * sudah lewat masa berlaku tetapi belum disapu. Dipakai hooks untuk menggabungkan sisa data tamu ke akun aktif.
+   */
+  sidMemegangDataTamu(sid: string | undefined): boolean {
+    if (!sid) return false;
+    const h = hashSid(sid);
+    return (
+      this.db
+        .prepare(
+          `SELECT 1 FROM users WHERE jenis = 'tamu' AND sid_hash = ?
+           UNION ALL SELECT 1 FROM urusan_owner WHERE guest_sid_hash = ? LIMIT 1`,
+        )
+        .get(h, h) !== undefined
+    );
+  }
+
   /** Tamu milik cookie urusin_sid (belum kedaluwarsa), tanpa membuat. */
   tamuDariSid(sid: string | undefined): string | undefined {
     if (!sid) return undefined;

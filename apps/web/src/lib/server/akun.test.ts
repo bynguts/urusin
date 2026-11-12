@@ -401,6 +401,63 @@ describe('daftar memindahkan data tamu ke akun baru', () => {
   });
 });
 
+describe('sesi akun aktif dengan sid yang masih memegang data tamu (review L1)', () => {
+  it('hooks menggabungkan urusan + vault tamu ke akun (data akun tidak ditimpa) lalu memutar sid', async () => {
+    const { jar } = await daftarAkun();
+    const id = akunDari(jar).id;
+    await lewatHook(put({ namaLengkap: 'Nama Akun', pekerjaan: 'Petani' }), jar, dataDiriPut);
+    // Sisa data tamu pada sid perangkat ini (mis. vault satu perangkat akun lama sebelum ADR 0032).
+    const sidTamu = 'c'.repeat(32);
+    const tamu = new Jar({ [SID_COOKIE]: sidTamu });
+    const u = ((await (await lewatHook(post({}, '/api/urusan'), tamu, buatUrusan)).json()) as any)
+      .id as string;
+    expect(
+      (await lewatHook(put({ namaLengkap: 'Nama Tamu', tempatLahir: 'Wonogiri' }), tamu, dataDiriPut)).status,
+    ).toBe(200);
+    const tamuId = rt.akun.tamuDariSid(sidTamu)!;
+    rt.akun.vault.putDocument(tamuId, {
+      jenis: 'ktp',
+      judul: 'KTP',
+      mime: 'image/png',
+      bytes: Buffer.from('x'),
+    });
+    // Data tamu sid LAIN (perangkat/orang lain) tidak boleh ikut terambil.
+    const sidLain = 'd'.repeat(32);
+    const lain = new Jar({ [SID_COOKIE]: sidLain });
+    const uLain = ((await (await lewatHook(post({}, '/api/urusan'), lain, buatUrusan)).json()) as any)
+      .id as string;
+    await lewatHook(put({ namaLengkap: 'Orang Lain' }), lain, dataDiriPut);
+
+    jar.set(SID_COOKIE, sidTamu, {});
+    const res = await lewatHook(get('/api/akun'), jar, sesiAkun);
+    expect(res.status).toBe(200);
+    const sidBaru = jar.get(SID_COOKIE)!;
+    expect(sidBaru).toMatch(/^[0-9a-f]{32}$/);
+    expect(sidBaru).not.toBe(sidTamu);
+    expect(rt.akun.urusanMilik(id)).toEqual([u]);
+    // Data Diri digabung: nilai akun menang, isian tamu melengkapi; dokumen tamu ikut pindah.
+    expect(rt.akun.vault.getDataDiri(id)?.data).toEqual({
+      namaLengkap: 'Nama Akun',
+      pekerjaan: 'Petani',
+      tempatLahir: 'Wonogiri',
+    });
+    expect(rt.akun.vault.listDocuments(id).map((d) => d.judul)).toEqual(['KTP']);
+    // sid lama tidak lagi memegang apa pun
+    expect(rt.akun.sidMemegangDataTamu(sidTamu)).toBe(false);
+    expect(rt.akun.tamuDariSid(sidTamu)).toBeUndefined();
+    const curi = new Jar({ [SID_COOKIE]: sidTamu });
+    expect((await lewatHook(get(`/api/urusan/${u}`), curi, statusUrusan, { id: u })).status).toBe(404);
+    // tamu sid lain utuh dan tetap miliknya
+    expect(rt.akun.adalahPemilikUrusan(uLain, { sid: sidLain })).toBe(true);
+    expect(rt.akun.vault.getDataDiri(rt.akun.tamuDariSid(sidLain)!)?.data).toEqual({
+      namaLengkap: 'Orang Lain',
+    });
+    // permintaan berikutnya: tidak ada lagi yang perlu digabung, sid tidak diputar ulang
+    await lewatHook(get('/api/akun'), jar, sesiAkun);
+    expect(jar.get(SID_COOKIE)).toBe(sidBaru);
+  });
+});
+
 describe('Browser Pendamping: akun hasil daftar = portal asli; tamu dan juri = Mode Uji', () => {
   /** Request seperti dari peramban: semua cookie jar di header Cookie. */
   const permintaan = (jar: Jar) =>

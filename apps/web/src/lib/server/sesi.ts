@@ -142,8 +142,7 @@ export function batasi(
  * Putar cookie urusin_sid (anti fiksasi saat naik hak tamu → akun, §3.26.6). Pemanggil wajib mengikat ulang
  * semua yang terikat hash sid lama dalam satu transaksi (`AkunService.rotasiPemilik`).
  */
-export function rotasiSid(cookies: Cookies): string {
-  const sid = randomBytes(16).toString('hex');
+export function rotasiSid(cookies: Cookies, sid: string = randomBytes(16).toString('hex')): string {
   cookies.set(SID_COOKIE, sid, SID_OPSI);
   return sid;
 }
