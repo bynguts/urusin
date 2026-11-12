@@ -1356,3 +1356,36 @@ describe('broker Browser Pendamping', () => {
     expect(checkOrigin('DELETE', '/api/urusan/u/pendamping', null, ORIGIN)).toMatchObject({ allowed: false });
   });
 });
+
+describe('tamu di portal tanpa situs latihan', () => {
+  const eksekusiGenerik = (kode: string) => {
+    const u = rt.store.createUrusan({ kodeKabKota: kode });
+    rt.publish(u.id, {
+      type: 'execution_request',
+      executionId: 'x_g',
+      adapterId: 'generik',
+      flowId: 'kelahiran',
+      ringkasan: 'Ajukan akta kelahiran',
+      params: { jenis: 'kelahiran', kode },
+      tool: 'dukcapil__ajukan_layanan',
+      paramsHash: 'h',
+    });
+    return u;
+  };
+
+  it('Sleman (tanpa replika): 403 PERLU_MASUK dengan ajakan masuk/daftar, worker tidak dipanggil', async () => {
+    const u = eksekusiGenerik('3404');
+    const res = await mulai(ev(req('POST', { executionId: 'x_g' }), u.id));
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { kode: string; pesanWarga: string };
+    expect(body.kode).toBe('PERLU_MASUK');
+    expect(body.pesanWarga).toMatch(/masuk atau daftar/);
+    expect(calls.filter((c) => c.url.endsWith('/internal/sesi'))).toHaveLength(0);
+  });
+
+  it('Wonogiri (punya replika): tamu tetap ditawari Mode Uji, worker dipanggil dengan modeUji', async () => {
+    const u = eksekusiGenerik('3312');
+    await mulai(ev(req('POST', { executionId: 'x_g' }), u.id));
+    expect(calls.find((c) => c.url.endsWith('/internal/sesi'))?.body).toMatchObject({ modeUji: true });
+  });
+});

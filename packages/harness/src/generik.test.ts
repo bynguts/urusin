@@ -1,6 +1,7 @@
 import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/contracts';
 import { PORTAL_WILAYAH } from '@urusin/core';
 import { FakeProvider, fakeCompletion } from '@urusin/llm';
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
 import { openHarnessDb } from './db.js';
@@ -10,6 +11,8 @@ import {
   hostsAiWilayah,
   hostsPortalWilayah,
   jalurModeUji,
+  ORIGIN_REPLIKA_UJI,
+  punyaReplikaUji,
   portalWebWilayah,
 } from './generik.js';
 import { catatanDipandu } from './builtin-tools.js';
@@ -345,5 +348,22 @@ describe('jejak Navigator di halaman Jejak', () => {
       'Validator menerima rencana cdcdcdcd (ikat ulang dari abababab)',
       'Resi Navigator (selesai): 3 halaman, 9 aksi, 4 panggilan LLM, hash abababab',
     ]);
+  });
+});
+
+describe('origin replika Mode Uji (tawaran tamu tidak palsu)', () => {
+  it('sama persis dengan sisi kiri PENDAMPING_ORIGIN_OVERRIDES di deploy/compose.prod.yml', () => {
+    const compose = readFileSync(new URL('../../../deploy/compose.prod.yml', import.meta.url), 'utf8');
+    const baris = /PENDAMPING_ORIGIN_OVERRIDES: >-\s*\n\s*(\S+)/.exec(compose)![1]!;
+    const kiri = baris.split(',').map((pasangan) => pasangan.split('=')[0]);
+    expect(new Set(kiri)).toEqual(ORIGIN_REPLIKA_UJI);
+  });
+
+  it('punyaReplikaUji: per origin (jalur diabaikan); portal tanpa replika, URL rusak, dan kosong → false', () => {
+    expect(punyaReplikaUji('https://telunjuksakti.wonogirikab.go.id/layanan/akta')).toBe(true);
+    expect(punyaReplikaUji('https://dukcapilonline.slemankab.go.id')).toBe(false);
+    expect(punyaReplikaUji('http://telunjuksakti.wonogirikab.go.id')).toBe(false);
+    expect(punyaReplikaUji('bukan url')).toBe(false);
+    expect(punyaReplikaUji(null)).toBe(false);
   });
 });

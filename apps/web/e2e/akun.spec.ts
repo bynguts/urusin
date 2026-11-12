@@ -539,6 +539,52 @@ test('#48b daftar langsung masuk; email ganda ditolak tanpa mengubah sandi; Goog
   await expect(page).toHaveURL(/\/beranda$/);
 });
 
+test('tamu di portal tanpa situs latihan diajak daftar; setelah daftar kembali ke urusan yang sama dengan portal asli', async ({
+  page,
+  context,
+}) => {
+  await pakaiIp(context);
+  await page.goto('/peristiwa/kelahiran');
+  const kota = page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' });
+  await expect(kota).toHaveAttribute('aria-autocomplete', 'list'); // terhidrasi: select menjadi combobox
+  await kota.fill('Sleman');
+  await page.getByRole('option', { name: 'Kabupaten Sleman', exact: true }).click();
+  await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
+  await expect(page).toHaveURL(/\/urusan\/u_[0-9a-f]{32}$/);
+  const urlUrusan = page.url();
+  const benar = page.getByRole('button', { name: 'Ya, betul' });
+  await expect(benar).toBeEnabled({ timeout: 20_000 });
+  await benar.click();
+  const setujuiRencana = page.getByRole('button', { name: 'Setujui rencana' });
+  await expect(setujuiRencana).toBeEnabled({ timeout: 20_000 });
+  await setujuiRencana.click();
+
+  // tamu: tidak ada tawaran palsu "Setujui dan buka situs"; ajakan masuk/daftar yang jujur
+  const ajak = page.getByRole('link', { name: 'Masuk / Daftar (gratis, 30 detik)' });
+  await expect(ajak).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'Setujui dan buka situs' })).toHaveCount(0);
+  await ajak.click();
+  await expect(page).toHaveURL(/\/daftar\?next=%2Furusan%2Fu_/);
+  const email = emailBaru('tamu-sleman');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel(/Kata sandi/).fill(SANDI);
+  await page.getByRole('button', { name: 'Daftar', exact: true }).click();
+
+  // kembali ke urusan yang sama (pindah ke akun), rencana tetap, kini portal asli ditawarkan
+  await expect(page).toHaveURL(urlUrusan);
+  expect(await sesiApi(page)).toMatchObject({ masuk: true, akun: { email, sinkron: true } });
+  await expect(page.getByRole('button', { name: 'Setujui dan buka situs' })).toBeEnabled({ timeout: 20_000 });
+  await expect(page.getByRole('link', { name: 'Masuk / Daftar (gratis, 30 detik)' })).toHaveCount(0);
+  const id = urlUrusan.split('/').at(-1)!;
+  expect(
+    hitung(
+      'SELECT COUNT(*) n FROM urusan_owner o JOIN users u ON u.id = o.user_id WHERE o.urusan_id = ? AND u.email = ?',
+      id,
+      email,
+    ),
+  ).toBe(1);
+});
+
 test('#49 zona bahaya di Pengaturan: keluar dari semua perangkat, lalu hapus akun lewat form tanpa JS', async ({
   page,
   context,

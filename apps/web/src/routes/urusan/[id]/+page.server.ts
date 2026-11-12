@@ -3,6 +3,8 @@ import { getRuntime, publicOrigin } from '#lib/server/runtime.js';
 import { PESAN_AWAL_COOKIE } from '#lib/server/mulai-urusan.js';
 import { catatTerakhir, SID_COOKIE } from '#lib/server/sesi.js';
 import { urusanMilik } from '#lib/server/urusan-akses.js';
+import { peranPendamping } from '#lib/server/pendamping/pemilik.js';
+import { ORIGIN_REPLIKA_UJI } from '@urusin/harness';
 import type { PageServerLoad } from './$types';
 
 const ID_RE = /^u_[0-9a-f]{32}$/;
@@ -23,6 +25,8 @@ export const load: PageServerLoad = async ({ params, setHeaders, cookies, locals
   if (pesanAwal !== null) cookies.delete(PESAN_AWAL_COOKIE, { path: `/urusan/${u.id}` });
   return {
     pesanAwal,
+    /** Peran Browser Pendamping (akun → portal asli; tamu → Mode Uji hanya untuk origin replika). */
+    pendamping: { peran: peranPendamping(locals.akun), originReplika: [...ORIGIN_REPLIKA_UJI] },
     urusan: {
       id: u.id,
       jenis: u.jenis,
