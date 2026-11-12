@@ -79,6 +79,8 @@ export type Hooks = {
    * setelah AI menyerah dan loop Navigator di web sudah berhenti (review kode N1). Sesi masuk `siaga` berhasil.
    */
   suksesWarga?(p: Pengamatan): void;
+  /** Tantangan situs di halaman awal lolos sebelum AI pernah mulai: izin isi boleh diminta sekarang. */
+  tantanganLolos?(): void;
 };
 
 export type Frame = FrameMasuk;
@@ -103,6 +105,11 @@ export type ActiveRun = {
    * tetap mulai dari awal saat `mulaiAi`. Opsional: run tanpa halaman awal (generik membuka halamannya sendiri).
    */
   bukaAwal?(): Promise<void>;
+  /**
+   * Tantangan situs (mis. Cloudflare) sedang dipegang warga. Selama itu izin isi tidak diminta dan mode tidak
+   * diganti ke 'ai' (ketukan warga di kotak verifikasi harus tetap diterima).
+   */
+  ditahanTantangan?(): boolean;
   input(m: Extract<PendampingClientMessage, { type: 'pointer' | 'wheel' | 'key' | 'text' }>): Promise<void>;
   ambilAlih(): void;
   kembalikan(): void;
@@ -942,7 +949,7 @@ export class SessionManager {
     s.lastActivity = this.now();
     viewer.send({ type: 'status', sesi: this.view(s) });
     if (s.mode) viewer.send({ type: 'mode', mode: s.mode, ...(s.pesan ? { pesan: s.pesan } : {}) });
-    if (s.status === 'menunggu_data')
+    if (s.status === 'menunggu_data' && !s.run?.ditahanTantangan?.())
       viewer.send({
         type: 'butuh_data',
         ...this.kurang(s),
@@ -1134,6 +1141,9 @@ export class SessionManager {
         if (!s.generik || TERMINAL.has(s.status) || s.status === 'siaga' || !p.sinyal.sukses) return;
         this.terimaSukses(s, p);
       },
+      tantanganLolos: () => {
+        if (s.status === 'menunggu_data' && !s.aiDimulai) void this.maybeStartAi(s);
+      },
     };
     try {
       const run = await this.factory({
@@ -1165,6 +1175,9 @@ export class SessionManager {
 
   private async maybeStartAi(s: Sesi): Promise<void> {
     if (!s.run || s.aiDimulai || s.status !== 'menunggu_data') return;
+    // Tantangan situs di halaman awal: warga menyelesaikannya dulu (mode takeover dari peramban). Izin isi dan
+    // mode 'ai' menunggu `tantanganLolos`.
+    if (s.run.ditahanTantangan?.()) return void logSesi('izin_ditunda', { sesi: s.id, alasan: 'tantangan' });
     const k = this.kurang(s);
     if (k.placeholder.length > 0 || k.berkas.length > 0) {
       logSesi('izin_diminta', { sesi: s.id, kolom: k.placeholder.length, berkas: k.berkas.length });

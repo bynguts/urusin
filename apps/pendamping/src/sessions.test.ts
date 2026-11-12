@@ -1160,4 +1160,61 @@ describe('portal tampil dulu sebelum izin isi (QA prod: lembar izin di atas kanv
     expect(run.calls).not.toContain('mulaiAi');
     expect(h.manager.status(owner('u-tolak')).status).toBe('menunggu_data');
   });
+
+  it('tantangan situs di halaman awal: giliran warga tetap, izin dan mode AI menunggu tantangan lolos', async () => {
+    // Peramban: Cloudflare terdeteksi di halaman awal -> mode takeover (warga mengetuk kotak verifikasi).
+    let tantangan = true;
+    const h = harness({}, async (run) => {
+      run.ditahanTantangan = () => tantangan;
+      run.init.hooks.mode('takeover', 'Selesaikan verifikasi situs.');
+    });
+    const s = await h.manager.create(input('u-cf'));
+    await h.flush();
+    await h.flush();
+    const run = h.runs[0]!;
+    expect(h.manager.status(owner('u-cf'))).toMatchObject({ status: 'menunggu_data', mode: 'takeover' });
+    const v = h.viewer();
+    await h.manager.attach(s.sesiId, v as never);
+    // Lembar izin tidak muncul di atas tantangan; ketukan warga diterima (tidak ditimpa mode 'ai').
+    expect(v.sent.map((m) => m.type)).not.toContain('butuh_data');
+    await h.manager.handleClient(s.sesiId, {
+      type: 'pointer',
+      aksi: 'down',
+      x: 5,
+      y: 5,
+      jenis: 'touch',
+      tombol: 'left',
+    });
+    expect(run.calls).toContain('input:pointer');
+    expect(v.sent.filter((m) => m.type === 'galat')).toHaveLength(0);
+    // Data lengkap selama tantangan: AI tetap tidak mulai, mode tetap takeover.
+    await h.manager.isiData(owner('u-cf'), { '{{PEMOHON.HP}}': '08000000001' });
+    expect(run.calls).not.toContain('mulaiAi');
+    expect(h.manager.status(owner('u-cf')).mode).toBe('takeover');
+    // Tantangan lolos: sesi melanjutkan dari izin (di sini data sudah lengkap, jadi AI mulai).
+    tantangan = false;
+    run.init.hooks.tantanganLolos?.();
+    await h.flush();
+    expect(run.calls).toContain('mulaiAi');
+    expect(h.manager.status(owner('u-cf'))).toMatchObject({ status: 'berjalan', mode: 'ai' });
+  });
+
+  it('tantangan lolos sebelum data lengkap: lembar izin baru dikirim sesudah lolos', async () => {
+    let tantangan = true;
+    const h = harness({}, async (run) => {
+      run.ditahanTantangan = () => tantangan;
+      run.init.hooks.mode('takeover', 'Selesaikan verifikasi situs.');
+    });
+    const s = await h.manager.create(input('u-cf2'));
+    await h.flush();
+    await h.flush();
+    const v = h.viewer();
+    await h.manager.attach(s.sesiId, v as never);
+    expect(v.sent.map((m) => m.type)).not.toContain('butuh_data');
+    tantangan = false;
+    h.runs[0]!.init.hooks.tantanganLolos?.();
+    await h.flush();
+    expect(v.sent.map((m) => m.type)).toContain('butuh_data');
+    expect(h.runs[0]!.calls).not.toContain('mulaiAi');
+  });
 });

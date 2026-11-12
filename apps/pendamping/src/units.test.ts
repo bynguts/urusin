@@ -9,6 +9,7 @@ import {
   chromiumArgs,
   izinRute,
   jagaUtama,
+  netDariGalat,
   pelanggaranRedirect,
   pesanGagal,
   pidsOfProfile,
@@ -28,7 +29,29 @@ const EDGE_ENV = {
   PENDAMPING_EDGE_TOKEN: 'e'.repeat(40),
 };
 
+describe('netDariGalat: kode galat navigasi untuk pesan "situs tidak terjangkau"', () => {
+  it('kode net::ERR_* dari pesan Playwright; timeout tanpa kode; unduhan = situs terjangkau', () => {
+    expect(
+      netDariGalat(new Error('page.goto: net::ERR_NAME_NOT_RESOLVED at https://contoh.go.id/\nCall log:')),
+    ).toBe('net::ERR_NAME_NOT_RESOLVED');
+    expect(netDariGalat(new Error('page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://x/'))).toBe(
+      'net::ERR_TUNNEL_CONNECTION_FAILED',
+    );
+    expect(netDariGalat(new Error('page.goto: Timeout 45000ms exceeded.'))).toBe('net::ERR_TIMED_OUT');
+    // Server menjawab dengan berkas: bukan "tidak terjangkau" (ERR_ABORTED diabaikan pemeriksa navigasi awal).
+    expect(netDariGalat(new Error('page.goto: Download is starting'))).toBe('net::ERR_ABORTED');
+    expect(netDariGalat('galat aneh')).toBe('net::ERR_FAILED');
+    expect(netDariGalat(undefined)).toBe('net::ERR_FAILED');
+  });
+});
+
 describe('config', () => {
+  it('batas navigasi tanpa commit: default 45 detik, bisa diatur, minimal 500 ms', () => {
+    expect(loadConfig({}).navBatasMs).toBe(45_000);
+    expect(loadConfig({ PENDAMPING_NAV_BATAS_MS: '2000' }).navBatasMs).toBe(2_000);
+    expect(loadConfig({ PENDAMPING_NAV_BATAS_MS: '10' }).navBatasMs).toBe(500);
+  });
+
   it('sha /health: 12 hex pertama GIT_SHA; selain hex (dev/kosong) tidak dilaporkan', () => {
     expect(loadConfig({ GIT_SHA: 'c9aa9afcf41cfb55e362e39fe8546eaa8876135e' }).sha).toBe('c9aa9afcf41c');
     expect(loadConfig({ GIT_SHA: 'dev' }).sha).toBeUndefined();
