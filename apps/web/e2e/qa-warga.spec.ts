@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { daftarAkunUji } from './akun-uji';
+import { JUDUL_KELAHIRAN, daftarAkunUji } from './akun-uji';
 
 // Temuan QA warga (360–1366 px): panel Rencana, kartu persetujuan Browser Pendamping, tab Sumber, tombol
 // Lanjutkan, landmark + urutan heading, dan status kartu Beranda. Server memakai DemoProvider; tidak ada yang
@@ -101,7 +101,7 @@ test('360 px: kartu persetujuan tergulir ke tampilan, tidak tertutup komposer, j
 
   expect.soft(await diLuarLandmark(page)).toEqual([]);
   await page.goto('/urusanku');
-  await expect(page.getByRole('heading', { name: 'Akta kelahiran' }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: JUDUL_KELAHIRAN }).first()).toBeVisible();
   expect.soft(await headingLoncat(page)).toEqual([]);
 });
 
@@ -158,7 +158,7 @@ test('Beranda: kartu urusan lama tidak tertahan di "Memuat status…"', async ({
   // Pindah lewat navigasi aplikasi (tanpa muat ulang), lalu muat ulang penuh.
   await page.getByRole('link', { name: 'Beranda' }).first().click();
   await expect(page).toHaveURL(/\/beranda$/);
-  const kartu = page.getByRole('article').filter({ hasText: 'Akta kelahiran' });
+  const kartu = page.getByRole('article').filter({ hasText: JUDUL_KELAHIRAN });
   await expect(kartu).toContainText('Tinjau rencana', { timeout: 10_000 });
   await expect(kartu).not.toContainText('Memuat status');
   await page.reload();

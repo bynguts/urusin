@@ -5,13 +5,26 @@
   import Icon from '../Icon.svelte';
   import type { NamaIkon } from '../ikon.js';
   import Lencana from './Lencana.svelte';
+  import MenuUrusan from './MenuUrusan.svelte';
   import type { UrusanBerjalan } from './daftar.svelte.js';
 
   /**
    * Kartu urusan App 10: lencana + avatar 36, judul 19/600, keterangan 16, progres 5 ruas 6 px,
    * chip "siapa yang ditunggu" + satu tombol 46. Kartu utama putih bergaris gelap 1.5 px.
    */
-  let { urusan, utama = false }: { urusan: UrusanBerjalan; utama?: boolean } = $props();
+  let {
+    urusan,
+    utama = false,
+    onganti,
+  }: {
+    urusan: UrusanBerjalan;
+    utama?: boolean;
+    /** Buka dialog "Ganti nama" untuk urusan ini (menu titik tiga). */
+    onganti?: ((id: string, judul: string) => void) | undefined;
+  } = $props();
+
+  // Judul catatan perangkat: halaman menyelaraskannya dengan judul server (AI atau nama pilihan warga).
+  const judul = $derived(urusan.judul);
 
   const p = $derived(peristiwaDariJenis(urusan.peristiwa));
   const state = $derived(urusan.ringkasan?.state);
@@ -66,18 +79,23 @@
 >
   <div class="flex items-center justify-between gap-3">
     <Lencana peristiwa={p} />
-    <img
-      src={p.avatar}
-      alt=""
-      width="36"
-      height="36"
-      class="size-9 shrink-0 rounded-full shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] ring-2 ring-surface {KELAS_WARNA[
-        p.warna
-      ]}"
-    />
+    <div class="flex items-center gap-1">
+      <img
+        src={p.avatar}
+        alt=""
+        width="36"
+        height="36"
+        class="size-9 shrink-0 rounded-full shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] ring-2 ring-surface {KELAS_WARNA[
+          p.warna
+        ]}"
+      />
+      {#if onganti}<MenuUrusan label={judul} onganti={() => onganti(urusan.id, judul)} />{/if}
+    </div>
   </div>
   <div class="flex flex-col gap-1">
-    <h2 class="text-[19px] leading-7 font-semibold tracking-[-0.3px] text-ink">{urusan.judul}</h2>
+    <h2 class="truncate text-[19px] leading-7 font-semibold tracking-[-0.3px] text-ink" title={judul}>
+      {judul}
+    </h2>
     <p class="text-base leading-[23px] text-card-ink">{keterangan}</p>
   </div>
   <div class="flex flex-col gap-1.5">
@@ -119,7 +137,7 @@
         ? 'bg-primer text-primer-ink'
         : 'border border-line-2 bg-surface text-ink hover:bg-bg'}"
     >
-      {info.aksi}<span class="sr-only">: {urusan.judul}</span>
+      {info.aksi}<span class="sr-only">: {judul}</span>
     </a>
   </div>
 </article>

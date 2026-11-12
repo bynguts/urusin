@@ -9,6 +9,8 @@
   import Icon from '#lib/components/Icon.svelte';
   import type { NamaIkon } from '#lib/components/ikon.js';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
+  import TeksBertaut from '#lib/components/ui/TeksBertaut.svelte';
+  import { domain } from '#lib/urusan-status.js';
   import { ambilLokal } from '#lib/stores/app.svelte.js';
   import type { PageProps } from './$types';
 
@@ -233,7 +235,7 @@
             />
           </summary>
           <div class="flex flex-col gap-1.5 px-[18px] pb-3.5 text-[15px] leading-[22px] text-card-ink">
-            {#each f.jawab as p, i (i)}<p>{p}</p>{/each}
+            {#each f.jawab as p, i (i)}<p><TeksBertaut teks={p} /></p>{/each}
           </div>
         </details>
       {:else}
@@ -270,6 +272,7 @@
               <span class="text-sm leading-5 {p.gelap ? 'text-primer-ink/70' : 'text-muted'}"
                 >{p.ringkas}</span
               >
+              {#if p.luar}<span class="tautan truncate text-sm leading-5">{domain(p.href)}</span>{/if}
             </span>
             <Icon name="kanan" class="size-[17px] shrink-0" />
             {#if p.luar}<span class="sr-only">(membuka situs resmi di tab baru)</span>{/if}

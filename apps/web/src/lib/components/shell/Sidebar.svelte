@@ -5,6 +5,8 @@
   import Icon from '../Icon.svelte';
   import { NAV, menuAktif } from './navigasi.js';
   import { ambilLokal } from '#lib/stores/app.svelte.js';
+  import GantiNamaUrusan from '../urusan/GantiNamaUrusan.svelte';
+  import MenuUrusan from '../urusan/MenuUrusan.svelte';
 
   /**
    * Menu samping App 01–14 (Rafi): 248 px, logo + Urusan baru + lima menu + Urusan aktif + kartu akun.
@@ -25,6 +27,9 @@
   );
   const idKini = $derived(page.url.pathname.match(/^\/(?:urusan|jejak)\/(u_[0-9a-f]{32})/)?.[1]);
   let ciut = $state(false);
+
+  const menu: Record<string, MenuUrusan | undefined> = {};
+  let gantiNama = $state<GantiNamaUrusan>();
 </script>
 
 <aside
@@ -95,18 +100,30 @@
       </h2>
       <ul class="flex flex-col gap-0.5">
         {#each aktif as u (u.id)}
-          <li>
+          <li class="group relative flex items-center" data-urusan-aktif={u.id}>
             <a
               href={resolve('/urusan/[id]', { id: u.id })}
               aria-current={u.id === idKini ? 'page' : undefined}
-              class="flex h-10 items-center rounded-[10px] px-3 text-[15px] text-card-ink hover:bg-surface/60 aria-[current=page]:bg-surface aria-[current=page]:font-semibold aria-[current=page]:text-ink"
+              title={u.judul}
+              oncontextmenu={(e) => {
+                e.preventDefault();
+                void menu[u.id]?.buka();
+              }}
+              class="flex h-10 min-w-0 flex-1 items-center rounded-[10px] pr-10 pl-3 text-[15px] text-card-ink hover:bg-surface/60 aria-[current=page]:bg-surface aria-[current=page]:font-semibold aria-[current=page]:text-ink"
             >
               <span class="truncate">{u.judul}</span>
             </a>
+            <MenuUrusan
+              bind:this={menu[u.id]}
+              label={u.judul}
+              onganti={() => gantiNama?.buka(u.id, u.judul)}
+              class="absolute right-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 [@media(pointer:coarse)]:opacity-100"
+            />
           </li>
         {/each}
       </ul>
     </section>
+    <GantiNamaUrusan bind:this={gantiNama} />
   {/if}
 
   <div class="flex-1"></div>

@@ -1,8 +1,10 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { untrack } from 'svelte';
   import Icon from '#lib/components/Icon.svelte';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
   import KartuUrusanku from '#lib/components/urusan/KartuUrusanku.svelte';
+  import GantiNamaUrusan from '#lib/components/urusan/GantiNamaUrusan.svelte';
   import { DaftarUrusan } from '#lib/components/urusan/daftar.svelte.js';
   import { ambilLokal } from '#lib/stores/app.svelte.js';
   import { infoStatus } from '#lib/urusan-status.js';
@@ -10,11 +12,16 @@
   /** Urusanku (App 10, ★8 Lacak): semua urusan di perangkat ini, siapa yang ditunggu, langkah berikutnya. */
   const lokal = ambilLokal();
   const daftar = new DaftarUrusan();
+  daftar.onjudul = (id, judul) => lokal.ubahJudul(id, judul);
+  // Muat ulang status hanya bila daftar id berubah (bukan saat judul di perangkat diperbarui).
+  const idsLokal = $derived(lokal.data.urusan.map((u) => u.id).join(','));
   let filter = $state<'semua' | 'anda' | 'instansi' | 'selesai'>('semua');
   let dimuat = $state(false);
+  let gantiNama = $state<GantiNamaUrusan>();
 
   $effect(() => {
-    void daftar.muat(lokal.data.urusan).then(() => (dimuat = true));
+    void idsLokal;
+    untrack(() => void daftar.muat(lokal.data.urusan).then(() => (dimuat = true)));
   });
 
   const kelompok = (u: (typeof daftar.isi)[number]) => infoStatus(u.ringkasan?.state).kelompok;
@@ -38,6 +45,7 @@
 <svelte:head><title>Urusanku · Urusin</title></svelte:head>
 
 <HeaderHalaman judul="Urusanku" />
+<GantiNamaUrusan bind:this={gantiNama} ontersimpan={() => void daftar.muat(lokal.data.urusan)} />
 
 <div class="flex w-full flex-col gap-6 px-4 py-5 sm:px-10 sm:py-6">
   <div role="group" aria-label="Saring urusan" class="flex flex-wrap items-center gap-2">
@@ -70,7 +78,11 @@
   {#if tampil.length}
     <div class="grid gap-4 md:grid-cols-2">
       {#each tampil as u (u.id)}
-        <KartuUrusanku urusan={u} utama={u.id === utamaId} />
+        <KartuUrusanku
+          urusan={{ ...u, judul: lokal.cari(u.id)?.judul ?? u.judul }}
+          utama={u.id === utamaId}
+          onganti={(id, judul) => gantiNama?.buka(id, judul)}
+        />
       {/each}
     </div>
   {:else if dimuat || !lokal.data.urusan.length}

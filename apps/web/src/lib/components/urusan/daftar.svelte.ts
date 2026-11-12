@@ -12,6 +12,8 @@ export class DaftarUrusan {
   memuat = $state(false);
   galat = $state(false);
   private urutan = 0;
+  /** Judul server (AI atau nama pilihan warga) per urusan; halaman meneruskannya ke catatan perangkat (sidebar). */
+  onjudul?: (id: string, judul: string) => void;
 
   constructor(
     private readonly ambil: typeof fetch = (...a) => fetch(...a),
@@ -36,6 +38,7 @@ export class DaftarUrusan {
       if (urutan !== this.urutan) return;
       const peta = Object.fromEntries(j.urusan.map((u) => [u.id, u]));
       this.isi = catatan.map((c) => ({ ...c, ringkasan: peta[c.id] ?? null }));
+      for (const u of j.urusan) if (u.judul) this.onjudul?.(u.id, u.judul);
     } catch {
       if (urutan === this.urutan) this.galat = true;
     } finally {

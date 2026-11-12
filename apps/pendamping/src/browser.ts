@@ -968,6 +968,9 @@ export async function wire(
   let mulaiPantauSerah: (pantauSerah: boolean) => Promise<void> = async () => {};
   let pesanTantangan = '';
   const pantau = createPantauTantangan(2);
+  /** Waktu dokumen tantangan saat ini didaftarkan, dan ketukan/ketikan warga terakhir selama tantangan aktif. */
+  let tantanganDokPada = 0;
+  let sentuhTantanganTerakhir = Number.NEGATIVE_INFINITY;
   // Probe masuk akun (adapter): warga keluar/terlempar ke login -> takeover masuk_akun sampai masuk lagi.
   let masukAktif = false;
   let masukPoll: ReturnType<typeof setInterval> | undefined;
@@ -1568,8 +1571,13 @@ export async function wire(
   }
   async function langkahTantangan(ada: boolean): Promise<void> {
     if (destroyed) return;
-    const hasil = pantau.amati(ada, navKe, page.url());
+    const disentuh = sentuhTantanganTerakhir >= tantanganDokPada;
+    const hasil = pantau.amati(ada, navKe, page.url(), Date.now(), disentuh);
     if (hasil === 'tidak_ada') return;
+    // Jejak operator (tanpa URL/nilai): membedakan "warga mengetuk lalu ditolak situs" dari "situs mengulang sendiri".
+    if (hasil !== 'masih')
+      logSesi('tantangan', { sesi: init.sesiId, hasil, disentuh, gagal: pantau.gagal, nav: navKe });
+    if (hasil === 'mulai' || hasil === 'ulang') tantanganDokPada = Date.now();
     if (hasil === 'gagal') {
       clearInterval(tantanganPoll);
       tantanganPoll = undefined;
@@ -2011,6 +2019,7 @@ export async function wire(
         m.type === 'text' ||
         ((m.type === 'pointer' || m.type === 'key') && (m.aksi === 'down' || m.aksi === 'up'));
       let buka = nyata && !pantau.aktif;
+      if (nyata && pantau.aktif) sentuhTantanganTerakhir = Date.now();
       // N4: halaman kotor (tulis tertunda dari klik AI masih berdenyut) = jendela tulis hanya untuk ketukan yang
       // mengenai kotak sorot, tombol kirim, atau tautan. Ketikan, kontrol isian, dan area kosong tidak. Kotor oleh
       // aksi AI yang tidak bisa dimuat ulang (A2): hanya kotak sorot atau tombol submit asli.
