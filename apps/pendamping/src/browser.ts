@@ -34,7 +34,7 @@ import {
   type GerbangTulis,
   type PermintaanGerbang,
 } from './gerbang-tulis.js';
-import { GenerikRun, naikHttps, PESAN_GENERIK, tanganRunner } from './generik.js';
+import { GenerikRun, naikHttps, PESAN_GENERIK, tanganRunner, type FaseAi } from './generik.js';
 import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
 import { daftarEdge, type ProxyEdge } from './isolasi.js';
 import { pesanBerkasKurang, pesanIsiSendiri } from './isian.js';
@@ -231,6 +231,13 @@ export const PESAN_MEMORI =
 export const PESAN_GILIRAN_SELESAI = 'Giliran Anda selesai. AI melanjutkan.';
 
 /** Generik: viewport dilebarkan karena tombol masuk situs hanya tampil di layar lebar (probe gel4 3279). */
+/** Label fase Navigator generik di bilah bawah layar warga. */
+export const LABEL_FASE: Readonly<Record<FaseAi, string>> = {
+  membuka: 'Membuka situs',
+  membaca: 'Membaca halaman',
+  mengisi: 'Mengisi formulir',
+};
+
 export const PESAN_LAYAR_LEBAR =
   'Tombol masuk situs ini hanya muncul di layar lebar, jadi tampilan dilebarkan. Perbesar layar bila tulisan terlalu kecil.';
 
@@ -374,6 +381,67 @@ export const KENDALI_MASUK_EXPR = `(() => {
     tersembunyi++;
   }
   return { terlihat, tersembunyi };
+})()`;
+
+/**
+ * QA prod Depok: kendali masuk hanya ada di menu hamburger/offcanvas/collapse yang tertutup di layar ponsel.
+ * Mencari kendali masuk (nama hanya kata akun, memuat masuk/login) yang tersembunyi di wadah buka-tutup, lalu
+ * pembuka panelnya yang terlihat: target `aria-controls` / `data-(bs-)target` / `href="#id"` yang memuat kendali
+ * itu, atau (bila tidak ada) satu-satunya tombol menu (label/kelas/ikon menu). Pembuka di dalam form, submit,
+ * atau ber-href jalur lain tidak pernah diklik. `buka`: klik pembukanya (dunia terisolasi; event DOM yang sama),
+ * hasil true bila ada yang diklik. `cek`: jumlah kendali masuk yang kini terlihat.
+ */
+export const menuMasukExpr = (mode: 'buka' | 'cek') => `(() => {
+  const AKUN = new Set('masuk login log in sign signin akun daftar register atau or dan sso'.split(' '));
+  const namaDari = (el) => String(el.textContent || el.getAttribute('aria-label') || el.value || '')
+    .toLowerCase().replace(/[^a-z]+/g, ' ').trim();
+  const masuk = (el) => {
+    const n = namaDari(el);
+    const k = n ? n.split(' ') : [];
+    return k.length > 0 && k.length <= 5 && k.every((w) => AKUN.has(w)) && /(^| )(masuk|login|signin|sign in|log in)( |$)/.test(n);
+  };
+  const terlihat = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+  const SEL = 'a, button, [role="button"]';
+  const semua = [...document.querySelectorAll(SEL)].filter((el) => masuk(el) && !el.closest('[hidden], [aria-hidden="true"], template'));
+  if (${JSON.stringify(mode)} === 'cek') return semua.filter(terlihat).length;
+  if (semua.some(terlihat)) return false;
+  const BUKA = /(^|[^a-z])(collapse|offcanvas|dropdown|modal|drawer|menu|nav|sidebar|mobile)([^a-z]|$)/i;
+  const wadah = [];
+  for (const el of semua) {
+    let n = el;
+    while (n && getComputedStyle(n).display !== 'none' && getComputedStyle(n).visibility !== 'hidden') n = n.parentElement;
+    if (n && n !== document.body && n.tagName !== 'DIALOG' && BUKA.test((n.id || '') + ' ' + (n.getAttribute('class') || '') + ' ' + n.tagName))
+      wadah.push(n);
+  }
+  if (wadah.length === 0) return false;
+  const aman = (el) => {
+    if (!terlihat(el) || el.closest('form') || el.matches('[type="submit"], input')) return false;
+    if (el.tagName === 'A') {
+      const h = (el.getAttribute('href') || '').trim();
+      if (h && !h.startsWith('#') && h !== '/' && !/^javascript:\\s*(void\\(0\\);?)?$/i.test(h)) return false;
+    }
+    return true;
+  };
+  const target = (el) => {
+    const t = [];
+    for (const id of (el.getAttribute('aria-controls') || '').split(/\\s+/).filter(Boolean)) t.push(document.getElementById(id));
+    for (const sel of [el.getAttribute('data-bs-target'), el.getAttribute('data-target'), el.getAttribute('href')]) {
+      if (!sel || !sel.startsWith('#') || sel.length < 2) continue;
+      try { t.push(document.querySelector(sel)); } catch {}
+    }
+    return t.filter(Boolean);
+  };
+  const pembuka = [...document.querySelectorAll(SEL)].filter(aman);
+  let pilih = pembuka.find((el) => target(el).some((t) => wadah.some((w) => t === w || t.contains(w) || w.contains(t))));
+  if (!pilih) {
+    const MENU = /(^|[^a-z])(menu|navigasi|navigation|toggle|toggler|hamburger|burger|bars|navbar-toggler|menu-toggle|nav-toggle)([^a-z]|$)/i;
+    const calon = pembuka.filter((el) => MENU.test(namaDari(el) + ' ' + (el.getAttribute('class') || '') + ' ' + (el.getAttribute('title') || '') + ' ' +
+      [...el.querySelectorAll('i, svg, span')].map((x) => x.getAttribute('class') || '').join(' ')));
+    if (calon.length === 1) pilih = calon[0];
+  }
+  if (!pilih) return false;
+  pilih.click();
+  return true;
 })()`;
 
 /** Lebar CSS yang dicoba (batas sm/md/lg/xl/xxl kerangka CSS umum) untuk memunculkan kendali masuk. */
@@ -828,6 +896,8 @@ export async function wire(
   const cdp: CDPSession = await context.newCDPSession(page);
 
   let loading = false;
+  /** Waktu DOMContentLoaded dokumen utama terakhir (load bisa tertahan sumber daya yang menggantung). */
+  let dclPada: number | undefined;
   let destroyed = false;
   let manual = false;
   let resumeWaiters: (() => void)[] = [];
@@ -1161,7 +1231,11 @@ export async function wire(
   page.on('framenavigated', (f) => {
     if (f !== page.mainFrame()) return;
     loading = true;
+    dclPada = undefined;
     void interp.onTabUpdated(1, { status: 'loading' });
+  });
+  page.on('domcontentloaded', () => {
+    dclPada = Date.now();
   });
   // Permintaan yang sedang berjalan (bingkai mana pun): batas tunggu konten fade-in dihitung dari jaringan idle,
   // bukan dari event load saja (probe gel5 6171: terowongan lambat). Long-poll (> 10 dtk) tidak dihitung.
@@ -1495,9 +1569,17 @@ export async function wire(
       (await nilaiTerisolasi(KONTEN_BELUM_TAMPIL_EXPR).catch(() => false)) === true;
     const tenang = async () => {
       // Jeda singkat agar handler klik sempat memicu permintaan; bila navigasi dimulai, tunggu muat (<= 10 detik).
+      // QA prod gel6 (Medan/Tangerang: event load tertahan sumber daya yang menggantung > 30 dtk): DOM yang sudah
+      // siap (DOMContentLoaded) cukup sesudah jaringan diam sejenak, paling lama 3 detik sesudahnya.
       await new Promise((r) => setTimeout(r, 400));
       const batas = Date.now() + 10_000;
-      while (loading && !destroyed && Date.now() < batas) await new Promise((r) => setTimeout(r, 100));
+      const domCukup = () => {
+        if (dclPada === undefined) return false;
+        const t = Date.now();
+        return t - dclPada >= 3_000 || (t - dclPada >= 600 && t - aktivitasJaringan >= 500);
+      };
+      while (loading && !destroyed && Date.now() < batas && !domCukup())
+        await new Promise((r) => setTimeout(r, 100));
       // SPA (probe 3208): kendali baru muncul setelah load. Tunggu jumlahnya > 0 dan sama pada dua bacaan
       // berturut-turut (<= 5 detik). Hitungan lewat locator (dunia utilitas Playwright), tanpa skrip halaman.
       const batasDom = Date.now() + 5_000;
@@ -1579,6 +1661,16 @@ export async function wire(
           await page.setViewportSize(asli).catch(() => {});
           return false;
         },
+        async bukaMenuMasuk() {
+          if (destroyed || ditahan()) return false;
+          if ((await nilaiTerisolasi(menuMasukExpr('buka')).catch(() => false)) !== true) return false;
+          // Transisi menu (collapse/offcanvas) sampai kendali masuk terlihat, paling lama 1,5 detik.
+          for (let i = 0; i < 6 && !destroyed; i++) {
+            await new Promise((r) => setTimeout(r, 250));
+            if (((await nilaiTerisolasi(menuMasukExpr('cek')).catch(() => 0)) as number) > 0) return true;
+          }
+          return false;
+        },
       }),
       gerbang: gen.gerbang,
       izin,
@@ -1586,6 +1678,7 @@ export async function wire(
       jejak,
       serahkan(alasan, pesan, box, tautan) {
         manual = true;
+        faseTerakhir = undefined;
         // Serah CAPTCHA/kode (`login`) di dokumen ini: bila dokumen yang sama ternyata halaman tantangan, serah ini
         // ikut selesai saat tantangannya lolos (lihat langkahTantangan).
         serahLoginNav = alasan === 'login' ? navKe : undefined;
@@ -1603,8 +1696,15 @@ export async function wire(
       },
       // Situs tidak bisa dikerjakan AI (mis. hanya lewat WhatsApp): dipandu, bukan gagal (sama dengan drift adapter).
       tidakBisa: (pesan) => hooks.ended('dipandu', 'drift', pesan),
+      // Fase jujur untuk layar warga (bukan "Mengisi formulir" sepanjang waktu); tidak dikirim saat giliran warga.
+      fase(f) {
+        if (manual || ditahan() || destroyed || f === faseTerakhir) return;
+        faseTerakhir = f;
+        hooks.event({ jenis: 'langkah', indeks: 0, total: 1, label: LABEL_FASE[f], fase: f });
+      },
     });
     const run = generik;
+    let faseTerakhir: FaseAi | undefined;
 
     /**
      * Giliran masuk akun / CAPTCHA / OTP selesai tanpa tombol warga: dokumen utama berganti (nomor dokumen, jalur,

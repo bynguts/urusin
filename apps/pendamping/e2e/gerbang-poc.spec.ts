@@ -248,6 +248,16 @@ HALAMAN['/responsif-form'] = RESPONSIF(`<header><a href="/responsif-form">Portal
 <a href="/responsif-masuk" class="btn d-none d-lg-block">MASUK</a></header>
 <form action="/cari"><label>Cari layanan <input name="q"></label></form><a href="/responsif-bantuan">Bantuan</a>`);
 HALAMAN['/responsif-bantuan'] = RESPONSIF('<h1>Bantuan</h1><a href="/responsif">Beranda</a>');
+// QA prod gel6 Medan: beranda pintu akun yang event load-nya tertahan gambar yang menggantung.
+HALAMAN['/beranda-gantung'] = RESPONSIF(`<header><a href="/beranda-gantung">SIBISA</a>
+<a href="/responsif-bantuan">Daftar Akun Gratis</a><a href="/responsif-masuk">Sudah punya akun? Masuk</a></header>
+<h1>Layanan Kependudukan Online</h1><img src="/gantung" alt="">`);
+// QA prod gel6 Depok: Masuk hanya di menu offcanvas ponsel yang dibuka tombol ber-aria-controls.
+HALAMAN['/menu-depok'] = RESPONSIF(`<header><a href="/menu-depok">Silondo Maju</a>
+<button type="button" aria-controls="menu" aria-expanded="false" onclick="document.getElementById('menu').classList.add('show');this.setAttribute('aria-expanded','true')"><svg class="ikon"></svg></button>
+<div id="menu" class="offcanvas"><a href="/responsif-bantuan">Beranda</a><a href="/responsif-masuk">Login</a><a href="/responsif-bantuan">Register</a></div></header>
+<h1>Layanan Kependudukan Online</h1><a href="/responsif-bantuan">Lihat Layanan</a>
+<form action="/cari"><label>Ketik Nomor Pendaftaran <input name="q"></label></form>`);
 HALAMAN['/responsif-menu'] = RESPONSIF(`<header><a href="/responsif-menu">PAK ONOM</a>
 <button type="button" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('show')"><i class="fa fa-bars"></i></button>
 <nav id="nav" class="collapse"><a href="/responsif-masuk">Masuk</a></nav></header><h1>Selamat datang</h1>`);
@@ -321,6 +331,11 @@ async function situsUji() {
     if (req.method !== 'GET' || !(jalur in HALAMAN)) hitung.set(jalur, (hitung.get(jalur) ?? 0) + 1);
     req.resume();
     req.on('end', () => {
+      // QA prod gel6 (Medan/Tangerang): sumber daya yang menggantung menahan event load > 30 dtk.
+      if (jalur === '/gantung') {
+        setTimeout(() => res.writeHead(204).end(), 40_000).unref();
+        return;
+      }
       if (jalur === '/data-lambat') {
         setTimeout(() => {
           res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
@@ -1406,7 +1421,9 @@ test('probe gel4 3279: MASUK di menu collapse tertutup -> tidak dilebarkan (dibu
   try {
     expect(p.judul).toBe('lebar 390');
     expect(manager.status(o).pesan).not.toBe(PESAN_LAYAR_LEBAR);
-    expect(semua(p, 'Masuk')).toEqual([]);
+    // QA prod gel6 Depok: menu hamburger dibuka sendiri (tanpa melebarkan layar), Masuk kini teramati.
+    expect(semua(p, 'Masuk').map((e) => e.kelas)).toEqual(['navigasi']);
+    expect(situs.hitung('/responsif-masuk')).toBe(0);
   } finally {
     await manager.shutdown();
   }
@@ -1474,6 +1491,33 @@ test('probe gel5 6171: konten dibuka sesudah data XHR lambat -> batas tunggu dar
   try {
     for (const nama of ['Kartu Keluarga Data', 'Akta Kelahiran Data', 'Pindah Datang Data'])
       expect(satu(p, nama).kelas, nama).toBe('navigasi');
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('QA gel6 Medan: load tertahan sumber daya menggantung -> pengamatan pertama tetap cepat (DOM siap), fase jujur', async () => {
+  const t0 = Date.now();
+  const { manager, o, p, events } = await sesi(situs, '/beranda-gantung', 'beranda-gantung', true, true);
+  try {
+    // Dulu: tunggu load sampai batas 10 dtk sebelum pengamatan pertama.
+    expect(Date.now() - t0).toBeLessThan(8_000);
+    expect(satu(p, 'Sudah punya akun? Masuk').kelas).toBe('navigasi');
+    const fase = events.flatMap((e) => (e.jenis === 'langkah' ? [e.fase ?? e.label] : []));
+    expect(fase).toEqual(expect.arrayContaining(['membuka', 'membaca']));
+    expect(fase).not.toContain('mengisi');
+    expect(manager.status(o).pesan).not.toMatch(/mengisi/i);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('QA gel6 Depok: Login di menu offcanvas (pembuka aria-controls tanpa nama) terbuka sendiri dan teramati', async () => {
+  const { manager, p } = await sesi(situs, '/menu-depok', 'menu-depok');
+  try {
+    expect(p.judul).toBe('lebar 390');
+    expect(satu(p, 'Login').kelas).toBe('navigasi');
+    expect(situs.hitung('/responsif-masuk')).toBe(0);
   } finally {
     await manager.shutdown();
   }

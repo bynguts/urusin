@@ -3,6 +3,10 @@ import type { CatatanPendamping, Pengamatan } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
 import { createGerbangTulis, JENDELA_ISI_MS, type Jendela } from './gerbang-tulis.js';
 import {
+  labelAman,
+  namaPortal,
+  pesanMasukAkun,
+  pesanPetunjuk,
   GenerikRun,
   naikHttps,
   PESAN_GENERIK,
@@ -1124,5 +1128,39 @@ describe('GenerikRun: konten fade-in masih transparan (probe gel5 6171)', () => 
     await h.run.amati();
     expect(ditanya).toBe(1);
     expect(h.diisiDikirim).toHaveLength(2);
+  });
+});
+
+describe('QA prod gel6: pesan giliran masuk akun dan petunjuk (templat + label akun)', () => {
+  it('namaPortal: label host pertama (ejaan judul bila ada); kata umum/panjang = tanpa nama', () => {
+    expect(namaPortal('sibisa.medan.go.id', 'SIBISA - Layanan Kependudukan Online')).toBe('SIBISA');
+    expect(namaPortal('siapel.malangkota.go.id', 'Login - SIAPEL.')).toBe('SIAPEL');
+    expect(namaPortal('telunjuksakti.wonogirikab.go.id', 'TelunjukSakti')).toBe('TelunjukSakti');
+    expect(namaPortal('sirancak.disdukcapil.padang.go.id', 'beranda')).toBe('SIRANCAK');
+    expect(namaPortal('disdukcapil.bandarlampungkota.go.id')).toBeUndefined();
+    expect(namaPortal('wargaklampid-dispendukcapil.surabaya.go.id')).toBeUndefined();
+  });
+
+  it('beranda: Masuk didahulukan, Daftar sebagai pilihan bagi yang belum punya akun (Padang)', () => {
+    expect(pesanMasukAkun({ portal: 'SIRANCAK', masuk: 'LOGIN', daftar: 'DAFTAR AKUN' })).toBe(
+      'Ketuk "LOGIN" kalau sudah punya akun, lalu masuk dengan akun SIRANCAK Anda. Belum punya akun? Ketuk "DAFTAR AKUN". AI melanjutkan setelah Anda masuk.',
+    );
+  });
+
+  it('formulir masuk: "Masuk dengan akun X Anda" (+ CAPTCHA bila ada), tanpa nama portal = situs ini', () => {
+    expect(pesanMasukAkun({ portal: 'SIBISA', formulir: true, daftar: 'Daftar Akun Gratis' })).toBe(
+      'Masuk dengan akun SIBISA Anda. Belum punya akun? Ketuk "Daftar Akun Gratis". AI melanjutkan setelah Anda masuk.',
+    );
+    expect(pesanMasukAkun({ formulir: true, captcha: true })).toBe(
+      'Masuk dengan akun Anda di situs ini, termasuk kode keamanan (CAPTCHA). AI melanjutkan setelah Anda masuk.',
+    );
+  });
+
+  it('petunjuk: label pendek dikutip; label mencurigakan (nomor, URL, panjang) tidak', () => {
+    expect(pesanPetunjuk('Lihat Layanan')).toContain('"Lihat Layanan"');
+    expect(labelAman('Kode antrean 98765')).toBeUndefined();
+    expect(labelAman('buka https://evil.example')).toBeUndefined();
+    expect(labelAman('satu dua tiga empat lima enam')).toBeUndefined();
+    expect(pesanPetunjuk(undefined)).toBe(PESAN_GENERIK.tidak_yakin);
   });
 });
