@@ -56,5 +56,8 @@ ADR 0033 menjamin Browser Pendamping di 10 daerah, tetapi registry hanya tahu "p
 - Kesepuluh daerah aktif punya entri. Sel berkeyakinan rendah (mis. KTP-el Medan, KK/pindah/KIA Wonogiri, semua
   formulir Banjarmasin) tetap online dengan jebakan "bila menu tidak ada, jawab tidak_bisa" di petunjuk.
 - Prasyarat akun ikut tampil di depan langkah adapter (Wonogiri akta kelahiran), dengan "Lewati bila sudah punya akun".
+- Langkah pengajuan kartu memakai peta: daftar berkas portal menjadi "Dokumen yang disiapkan" HANYA bila
+  `berkasLengkap` (daftar dari halaman resmi, mis. QUESTION_DATA 15 varian Depok); pertanyaan pilihan formulir dan
+  jam layanan (Medan hanya hari kerja, Banjarmasin Senin-Kamis/Jumat) ditulis di keterangannya.
 - Unggahan Klampid Surabaya memakai host S3 di luar .go.id (`s3.klampid.disdukcapilsurabaya.id`) yang belum ada di
   registry/egress sesi; perlu keputusan terpisah sebelum unggah berkas di Surabaya bisa jalan.

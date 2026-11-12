@@ -1,6 +1,12 @@
 import { ADAPTERS } from '@urusin/adapters';
 import type { EventPayload, PayloadOf, WilayahRef } from '@urusin/contracts';
-import { ketersediaanLayanan, petaPortal, type AlternatifOffline, type PrasyaratAkun } from '@urusin/core';
+import {
+  ketersediaanLayanan,
+  petaPortal,
+  type AlternatifOffline,
+  type Ketersediaan,
+  type PrasyaratAkun,
+} from '@urusin/core';
 import { cariPengetahuanTool } from '@urusin/rag';
 import {
   KANAL_NASIONAL,
@@ -428,6 +434,40 @@ function langkahOffline(kode: string, o: OfflinePortal): Langkah {
   };
 }
 
+/** Pertanyaan pilihan formulir portal yang disebut di kartu (selebihnya ditanyakan AI saat mengisi). */
+const MAKS_PERTANYAAN_KARTU = 4;
+
+/**
+ * Langkah pengajuan (langkah pertama selain prasyarat akun/jalur resmi) diperkaya peta portal: daftar berkas LENGKAP
+ * dari halaman resmi portal sebagai "Dokumen yang disiapkan" (hanya bila `berkasLengkap`; daftar dugaan tidak
+ * menimpa dokumen registry), pertanyaan pilihan formulir yang perlu dijawab warga, dan jam layanan formulir.
+ */
+export function denganPersiapanPortal(
+  langkah: Langkah[],
+  s: Extract<Ketersediaan, { dipetakan: true; online: true }>,
+): Langkah[] {
+  const i = langkah.findIndex((l) => l.id !== ID_LANGKAH_AKUN && l.id !== ID_LANGKAH_OFFLINE);
+  if (i < 0) return langkah;
+  const tambahan: string[] = [];
+  const pilihan = (s.field ?? []).filter((f) => f.opsi?.length).slice(0, MAKS_PERTANYAAN_KARTU);
+  if (pilihan.length)
+    tambahan.push(
+      `Formulir ${s.peta.namaPortal} menanyakan: ${pilihan.map((f) => `${f.label} (${f.opsi!.join(' / ')})`).join('; ')}.`,
+    );
+  if (s.jam) tambahan.push(`Formulir ${s.peta.namaPortal} hanya bisa diisi ${s.jam}.`);
+  const dokumen = s.berkasLengkap && s.berkas?.length ? [...s.berkas] : undefined;
+  if (!tambahan.length && !dokumen) return langkah;
+  return langkah.map((l, j) =>
+    j === i
+      ? {
+          ...l,
+          ...(dokumen ? { dokumen } : {}),
+          keterangan: [l.keterangan, ...tambahan].filter(Boolean).join(' '),
+        }
+      : l,
+  );
+}
+
 /**
  * Tier, catatan, langkah, dan bantuan Pendamping kartu rencana dari `rutePendamping` (satu keputusan rute), ditambah
  * peta portal: layanan offline di portal daerah = dipandu dengan jalur resmi yang benar; prasyarat akun = langkah
@@ -463,7 +503,9 @@ function denganRute<
   // Akun portal yang harus dibuat warga sendiri: langkah pertama, sebelum Browser Pendamping dibuka.
   const peta = ketersediaanLayanan(ktp, r.slug, varian);
   const prasyarat = peta.dipetakan && peta.online && peta.prasyarat ? peta.prasyarat : undefined;
-  const r2 = prasyarat ? { ...r, langkah: [langkahPrasyaratAkun(ktp, prasyarat), ...r.langkah] } : r;
+  const rAkun = prasyarat ? { ...r, langkah: [langkahPrasyaratAkun(ktp, prasyarat), ...r.langkah] } : r;
+  const r2 =
+    peta.dipetakan && peta.online ? { ...rAkun, langkah: denganPersiapanPortal(rAkun.langkah, peta) } : rAkun;
   // Portal `id-only` tanpa worker berjaringan Indonesia: dipandu sejak kartu, dengan alasan yang jujur.
   if (rute.jalur === 'dipandu' && rute.sebab === 'jaringan_id') {
     const kab = wilayahByKode(ktp);

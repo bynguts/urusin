@@ -172,6 +172,18 @@ describe('petunjukPortal: teks tepercaya untuk Navigator', () => {
     expect(t).toMatch(/tab "Pendaftaran"/);
   });
 
+  it('Depok: berkas dan pertanyaan per varian (QUESTION_DATA) menimpa milik sel', () => {
+    const hilang = ketersediaanLayanan('3276', 'ktp', 'hilang');
+    expect(hilang).toMatchObject({ online: true, berkasLengkap: true, keyakinan: 'tinggi' });
+    expect(hilang.dipetakan && hilang.online && hilang.berkas).toContain(
+      'Surat keterangan hilang dari kepolisian',
+    );
+    const t = petunjukPortal('3276', 'pindah', 'datang')!;
+    expect(t).toMatch(/Status Kartu Keluarga\?\* \[select: KK Baru \/ KK Tetap/);
+    expect(t).toMatch(/Surat pernyataan alamat tujuan yang ditandatangani Ketua RT/);
+    expect(petunjukPortal('3276', 'pindah')).toMatch(/Jenis Kepindahan\*/);
+  });
+
   it('sel offline atau belum dipetakan: tanpa petunjuk', () => {
     expect(petunjukPortal('3374', 'ktp')).toBeUndefined();
     expect(petunjukPortal('3201', 'kk')).toBeUndefined();

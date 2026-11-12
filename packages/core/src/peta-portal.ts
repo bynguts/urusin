@@ -39,6 +39,8 @@ export type KolomPeta = {
   nama?: string;
   tipe: 'teks' | 'angka' | 'select' | 'tanggal' | 'file' | 'radio' | 'checkbox';
   wajib?: boolean;
+  /** Pilihan jawaban (select/radio) bila diketahui, mis. pertanyaan dinamis portal. */
+  opsi?: readonly string[];
 };
 
 /** Ke mana warga diarahkan bila layanan ini tidak bisa diajukan online di portal. */
@@ -63,6 +65,11 @@ export type VarianSel = {
   /** Jalur awal sesi untuk varian ini (mis. antrean perekaman tanpa akun). */
   jalurMasuk?: string;
   butuhLogin?: boolean;
+  /** Kolom/pertanyaan formulir varian ini (menimpa milik sel). */
+  field?: readonly KolomPeta[];
+  /** Berkas persyaratan varian ini (menimpa milik sel). */
+  berkas?: readonly string[];
+  berkasLengkap?: boolean;
 };
 
 export type SelPeta = {
@@ -82,6 +89,11 @@ export type SelPeta = {
   jebakan?: readonly string[];
   field?: readonly KolomPeta[];
   berkas?: readonly string[];
+  /**
+   * `berkas` adalah daftar LENGKAP dari halaman resmi portal (bukan dugaan/replika): kartu rencana memakainya
+   * sebagai "Dokumen yang disiapkan" untuk langkah pengajuan.
+   */
+  berkasLengkap?: boolean;
   tombolAkhir?: string;
   jam?: string;
   keyakinan: 'tinggi' | 'sedang' | 'rendah';
@@ -130,6 +142,22 @@ const k = (label: string, nama: string, tipe: KolomPeta['tipe'], wajib?: boolean
 });
 
 const berkasKolom = (label: string): KolomPeta => k(label, '', 'file', true);
+
+/** Pertanyaan dinamis wajib (QUESTION_DATA Silondo Maju): pilihan atau angka. */
+const tanya = (label: string, nama: string, opsi?: readonly string[]): KolomPeta =>
+  opsi ? { label, nama, tipe: 'select', wajib: true, opsi } : { label, nama, tipe: 'angka', wajib: true };
+
+// --- Kota Depok (Silondo Maju): QUESTION_DATA 15 varian (pemetaan 2026-11-12, keyakinan tinggi untuk berkas) ---
+const YA_TIDAK = ['Ya', 'Tidak'] as const;
+const DPK_STATUS_KAWIN = [
+  'Belum Kawin',
+  'Cerai Belum Tercatat',
+  'Cerai Tercatat',
+  'Kawin Belum Tercatat',
+  'Kawin Tercatat',
+] as const;
+const DPK_UBAH_DATA =
+  'Formulir F-1.06 + dokumen pendukung (bila ada perubahan elemen data anggota KK: agama, pendidikan, pekerjaan, golongan darah, dll.)';
 
 // --- Kota Tangerang: kolom bersama tiap formulir (fragmen /pelayanan/form, keyakinan tinggi) ---
 const TNG_PEMOHON: readonly KolomPeta[] = [
@@ -676,15 +704,21 @@ export const PETA_PORTAL: Readonly<Record<string, PetaPortal>> = Object.freeze({
           'tab Pendaftaran',
         ],
         butuhLogin: true,
-        jebakan: ['Anak usia 1-18 tahun, di atas 18 tahun, dan orang asing punya kartu layanan sendiri.'],
-        field: [k('Jenis Kelahiran (tunggal 1; kembar 2, 3, 4 dst)', '', 'teks', true)],
-        berkas: [
-          'Formulir F-2.01 A',
-          'Kartu Keluarga',
-          'Surat keterangan lahir atau F-2.03 SPTJM kelahiran',
-          'Buku nikah/akta perkawinan atau F-2.04 SPTJM suami istri',
+        jebakan: [
+          'Anak usia 1-18 tahun memakai kartu "Akta Kelahiran Usia 1-18 Tahun" (berkas dan pertanyaan sama); di atas 18 tahun dan orang asing punya kartu sendiri.',
+          'Jenis Kelahiran 2 atau lebih (kembar) menggandakan unggahan F-2.01 A dan surat keterangan lahir per anak.',
         ],
-        keyakinan: 'sedang',
+        field: [
+          tanya('Jenis Kelahiran (tunggal isi 1; kembar isi 2, 3, 4 dst)', 'dynamic_question_1777003445'),
+        ],
+        berkas: [
+          'Formulir F-2.01 A pelaporan pencatatan sipil',
+          'Kartu Keluarga',
+          'Surat keterangan lahir (RS/puskesmas/dokter/bidan/kepala desa/lurah) atau F-2.03 SPTJM kebenaran data kelahiran',
+          'Buku nikah/akta perkawinan (halaman nomor dan tanggal) atau F-2.04 SPTJM kebenaran pasangan suami istri',
+        ],
+        berkasLengkap: true,
+        keyakinan: 'tinggi',
       },
       kk: {
         online: true,
@@ -694,15 +728,107 @@ export const PETA_PORTAL: Readonly<Record<string, PetaPortal>> = Object.freeze({
           'Layanan Unggulan',
           'Kartu Keluarga',
           'Penerbitan Kartu Keluarga (perubahan elemen data)',
+          'tab Pendaftaran',
         ],
         butuhLogin: true,
+        jebakan: [
+          'Pisah KK dalam satu alamat punya kartu sendiri: "Penerbitan Kartu Keluarga Baru (Pisah KK dalam 1 (satu) alamat)".',
+        ],
+        field: [
+          tanya(
+            'Status Perkawinan Kepala Keluarga pada KK lama?',
+            'dynamic_question_1791215484',
+            DPK_STATUS_KAWIN,
+          ),
+          tanya(
+            'Berapa jumlah dokumen otentik pendukung kebenaran data (perubahan elemen data) yang diunggah?',
+            'dynamic_question_1785210573',
+          ),
+        ],
+        berkas: [
+          'Formulir F-1.02 pendaftaran peristiwa kependudukan',
+          'KTP-el lama',
+          'Kartu Keluarga lama',
+          'Buku nikah/akta perkawinan (bila status kepala keluarga Kawin Belum Tercatat)',
+          'Akta perceraian (bila status kepala keluarga Cerai Belum Tercatat)',
+          DPK_UBAH_DATA,
+        ],
+        berkasLengkap: true,
         varian: {
           baru: {
             online: true,
-            namaDiPortal: 'KK Baru membentuk Keluarga Baru (Perkawinan/Cerai Hidup) atau Pisah KK',
+            namaDiPortal: 'Penerbitan Kartu Keluarga Baru membentuk Keluarga Baru (Perkawinan/Cerai Hidup)',
+            jalurMenu: [
+              'Beranda',
+              'Layanan Unggulan',
+              'Kartu Keluarga',
+              'Penerbitan Kartu Keluarga Baru membentuk Keluarga Baru (Perkawinan/Cerai Hidup)',
+              'tab Pendaftaran',
+            ],
+            field: [
+              tanya(
+                'Apakah ada perubahan elemen data anggota pada KK?',
+                'dynamic_question_1785210823',
+                YA_TIDAK,
+              ),
+            ],
+            berkas: [
+              'Formulir F-1.02 pendaftaran peristiwa kependudukan',
+              'KTP-el lama',
+              'Kartu Keluarga lama',
+              'Buku nikah/kutipan akta perkawinan atau akta perceraian, atau F-1.05 SPTJM perkawinan/perceraian belum tercatat (ditandatangani kedua pihak)',
+              DPK_UBAH_DATA,
+            ],
+            berkasLengkap: true,
+          },
+          hilang: {
+            online: true,
+            namaDiPortal: 'Penerbitan Kartu Keluarga QR Code karena hilang/rusak/KK lama belum QR Code',
+            field: [
+              tanya('Alasan Penerbitan Kartu Keluarga?', 'dynamic_question_1791216614', [
+                'Hilang',
+                'Rusak/KK lama (belum QR code)',
+              ]),
+              tanya(
+                'Status Perkawinan Kepala Keluarga dalam KK lama?',
+                'dynamic_question_1791216549',
+                DPK_STATUS_KAWIN,
+              ),
+            ],
+            berkas: [
+              'Formulir F-1.02 pendaftaran peristiwa kependudukan',
+              'KTP-el',
+              'Surat keterangan hilang dari kepolisian',
+              'Buku nikah/akta perkawinan (bila status kepala keluarga Kawin Belum Tercatat)',
+              'Akta perceraian (bila status kepala keluarga Cerai Belum Tercatat)',
+            ],
+            berkasLengkap: true,
+          },
+          rusak: {
+            online: true,
+            namaDiPortal: 'Penerbitan Kartu Keluarga QR Code karena hilang/rusak/KK lama belum QR Code',
+            field: [
+              tanya('Alasan Penerbitan Kartu Keluarga?', 'dynamic_question_1791216614', [
+                'Hilang',
+                'Rusak/KK lama (belum QR code)',
+              ]),
+              tanya(
+                'Status Perkawinan Kepala Keluarga dalam KK lama?',
+                'dynamic_question_1791216549',
+                DPK_STATUS_KAWIN,
+              ),
+            ],
+            berkas: [
+              'Formulir F-1.02 pendaftaran peristiwa kependudukan',
+              'KTP-el',
+              'Kartu Keluarga lama/rusak',
+              'Buku nikah/akta perkawinan (bila status kepala keluarga Kawin Belum Tercatat)',
+              'Akta perceraian (bila status kepala keluarga Cerai Belum Tercatat)',
+            ],
+            berkasLengkap: true,
           },
         },
-        keyakinan: 'rendah',
+        keyakinan: 'tinggi',
       },
       pindah: {
         online: true,
@@ -712,39 +838,179 @@ export const PETA_PORTAL: Readonly<Record<string, PetaPortal>> = Object.freeze({
           'Layanan Unggulan',
           'Perpindahan & Kedatangan',
           'Pindah Keluar (SKPWNI) Antar Kab/Kota/Prov',
+          'tab Pendaftaran',
         ],
         butuhLogin: true,
+        jebakan: [
+          'Pindah antar kecamatan dan antar kelurahan (dalam Kota Depok) punya kartu sendiri dengan berkas seperti pindah datang.',
+        ],
+        field: [
+          tanya('Jenis Kepindahan', 'dynamic_question_1765262371', [
+            'Kepala Keluarga',
+            'Kepala Keluarga dan Seluruh Anggota Keluarga',
+            'Kepala Keluarga dan Sebagian Anggota Keluarga',
+            'Anggota Keluarga',
+          ]),
+        ],
+        berkas: [
+          'Formulir F-1.03 pendaftaran perpindahan penduduk',
+          'Kartu Keluarga',
+          'KTP-el (17 tahun ke atas) atau akta kelahiran/ijazah terakhir (belum 17 tahun)',
+          'Surat pernyataan persetujuan pindah (bila tidak seluruh anggota keluarga ikut pindah)',
+        ],
+        berkasLengkap: true,
         varian: {
-          datang: { online: true, namaDiPortal: 'Pindah Datang (SKDWNI) Antar Kab/Kota/Prov' },
+          datang: {
+            online: true,
+            namaDiPortal: 'Pindah Datang (SKDWNI) Antar Kab/Kota/Prov',
+            jalurMenu: [
+              'Beranda',
+              'Layanan Unggulan',
+              'Perpindahan & Kedatangan',
+              'Pindah Datang (SKDWNI) Antar Kab/Kota/Prov',
+              'tab Pendaftaran',
+            ],
+            field: [
+              tanya(
+                'Apakah yang pindah status perkawinan dalam KK kawin/cerai hidup?',
+                'dynamic_question_1785212771',
+                YA_TIDAK,
+              ),
+              tanya('Status Kartu Keluarga?', 'dynamic_question_1785212662', [
+                'KK Baru',
+                'KK Tetap (yang pindah Kepala Keluarga)',
+                'Numpang KK',
+              ]),
+              tanya(
+                'Apakah (alamat yang digunakan) kepemilikan lahan/rumah punya sendiri?',
+                'dynamic_question_1785212575',
+                YA_TIDAK,
+              ),
+              tanya(
+                'Apakah ada perubahan elemen data anggota pada KK',
+                'dynamic_question_1785212397',
+                YA_TIDAK,
+              ),
+            ],
+            berkas: [
+              'SKPWNI (surat keterangan pindah) dari daerah asal',
+              'KTP-el',
+              'Surat pernyataan alamat tujuan yang ditandatangani Ketua RT',
+              'Buku nikah/akta perkawinan atau akta perceraian (bila yang pindah kawin/cerai hidup)',
+              'KK tumpangan, F-1.03A kuasa pengasuhan anak, dan F-1.03B pernyataan bersedia menerima anggota keluarga (bila belum 17 tahun/numpang KK)',
+              'F-1.03C pernyataan tidak keberatan penggunaan alamat (bila rumah bukan milik sendiri)',
+              DPK_UBAH_DATA,
+            ],
+            berkasLengkap: true,
+          },
         },
-        jebakan: ['Pindah antar kecamatan dan antar kelurahan punya kartu sendiri.'],
-        keyakinan: 'rendah',
+        keyakinan: 'tinggi',
       },
       kia: {
         online: true,
         namaDiPortal: 'Penerbitan Kartu Identitas Anak (KIA) Baru',
-        jalurMenu: ['Beranda', 'Layanan Unggulan', 'Kartu Identitas Anak (KIA)', 'Penerbitan KIA Baru'],
+        jalurMenu: [
+          'Beranda',
+          'Layanan Unggulan',
+          'Kartu Identitas Anak (KIA)',
+          'Penerbitan KIA Baru',
+          'tab Pendaftaran',
+        ],
         butuhLogin: true,
+        jebakan: ['Jumlah anak menggandakan blok unggahan per anak.'],
+        field: [
+          tanya('Berapa anak yang akan dibuatkan KIA?', 'dynamic_question_1766541834'),
+          tanya('Berapa jumlah anak usia 5-17 tahun kurang 1 (satu) hari?', 'dynamic_question_1766540512'),
+        ],
+        berkas: [
+          'Formulir F-1.02 pendaftaran peristiwa kependudukan',
+          'Akta kelahiran anak',
+          'Kartu Keluarga',
+          'Pas foto anak berwarna 2x3, close up, .jpg maksimal 2 MB (anak 5-17 tahun)',
+        ],
+        berkasLengkap: true,
         varian: {
-          hilang: { online: true, namaDiPortal: 'KIA karena Hilang atau Rusak' },
-          rusak: { online: true, namaDiPortal: 'KIA karena Hilang atau Rusak' },
+          hilang: {
+            online: true,
+            namaDiPortal: 'Penerbitan Kartu Identitas Anak (KIA) karena Hilang atau Rusak',
+            field: [
+              tanya(
+                'Berapa anak yang akan dibuatkan KIA karena hilang/rusak?',
+                'dynamic_question_1766545764',
+              ),
+            ],
+            berkas: [
+              'Formulir F-1.02 pendaftaran peristiwa kependudukan',
+              'Surat keterangan kehilangan dari kepolisian',
+              'Kartu Keluarga',
+              'Pas foto anak berwarna 2x3, close up, .jpg maksimal 2 MB (anak 5-17 tahun)',
+            ],
+            berkasLengkap: true,
+          },
+          rusak: {
+            online: true,
+            namaDiPortal: 'Penerbitan Kartu Identitas Anak (KIA) karena Hilang atau Rusak',
+            field: [
+              tanya(
+                'Berapa anak yang akan dibuatkan KIA karena hilang/rusak?',
+                'dynamic_question_1766545764',
+              ),
+            ],
+            berkas: [
+              'Formulir F-1.02 pendaftaran peristiwa kependudukan',
+              'KIA yang rusak',
+              'Kartu Keluarga',
+              'Pas foto anak berwarna 2x3, close up, .jpg maksimal 2 MB (anak 5-17 tahun)',
+            ],
+            berkasLengkap: true,
+          },
         },
-        keyakinan: 'rendah',
+        keyakinan: 'tinggi',
       },
       ktp_el: {
         online: true,
         namaDiPortal: 'Penerbitan KTPel Baru',
-        jalurMenu: ['Beranda', 'Layanan Unggulan', 'Kartu Tanda Penduduk (KTP)', 'Penerbitan KTPel Baru'],
+        jalurMenu: [
+          'Beranda',
+          'Layanan Unggulan',
+          'Kartu Tanda Penduduk (KTP)',
+          'Penerbitan KTPel Baru',
+          'tab Pendaftaran',
+        ],
         butuhLogin: true,
+        jebakan: [
+          'KTP-el baru: setelah pengajuan diverifikasi lengkap, jadwal perekaman muncul di laman "Pengajuan Saya"; perekaman di SDP kecamatan sesuai KK.',
+        ],
+        berkas: ['Formulir F-1.02 pendaftaran peristiwa kependudukan', 'Akta kelahiran', 'Kartu Keluarga'],
+        berkasLengkap: true,
         varian: {
-          hilang: { online: true, namaDiPortal: 'Penerbitan KTPel karena hilang' },
-          rusak: { online: true, namaDiPortal: 'Penerbitan KTPel karena rusak' },
+          hilang: {
+            online: true,
+            namaDiPortal: 'Penerbitan KTPel karena hilang',
+            berkas: [
+              'Formulir F-1.02 pendaftaran peristiwa kependudukan',
+              'Kartu Keluarga',
+              'Surat keterangan hilang dari kepolisian',
+            ],
+            berkasLengkap: true,
+          },
+          rusak: {
+            online: true,
+            namaDiPortal: 'Penerbitan KTPel karena rusak',
+            berkas: [
+              'Formulir F-1.02 pendaftaran peristiwa kependudukan',
+              'Kartu Keluarga',
+              'KTP-el yang rusak',
+            ],
+            berkasLengkap: true,
+          },
         },
-        keyakinan: 'rendah',
+        keyakinan: 'tinggi',
       },
     },
     buktiTanggal: '2026-11-12',
-    sumber: 'HTML publik beranda dan halaman layanan, skrip halaman (pemetaan baca-saja)',
+    sumber:
+      'HTML publik beranda dan halaman layanan, skrip halaman, QUESTION_DATA 15 varian (pemetaan baca-saja)',
   },
 
   '3671': {
@@ -1332,6 +1598,7 @@ export const PETA_PORTAL: Readonly<Record<string, PetaPortal>> = Object.freeze({
       'Modal "Informasi Terbaru" terbuka otomatis di halaman masuk dan menutupi formulir: tekan "Tutup" dulu.',
       'Kolom NIK bernama "username" (placeholder "Masukkan NIK Anda").',
       'Layanan dipilih dari Beranda akun (/masyarakat/beranda) setelah masuk; formulir di balik login belum terpetakan, ikuti label di layar.',
+      'Id layanan publik (/statistik/data): Akta Kelahiran 1, Perpindahan Penduduk 3, Kartu keluarga 4, KTP 5, KIA 6; halaman permohonan di bawah /masyarakat/permohonan/... (parameternya belum teramati).',
       'Riwayat Permohonan: tabel lebar, tombol detail (ikon "i" hijau) di kolom paling kanan.',
       'Server kadang lambat atau timeout: tunggu sebelum mengulang.',
     ],
@@ -1533,6 +1800,11 @@ export type Ketersediaan =
       butuhLogin: boolean;
       /** Akun yang harus dibuat warga sendiri sebelum Pendamping (hanya bila layanan ini butuh masuk). */
       prasyarat?: PrasyaratAkun;
+      field?: readonly KolomPeta[];
+      berkas?: readonly string[];
+      berkasLengkap?: boolean;
+      jam?: string;
+      keyakinan: SelPeta['keyakinan'];
     }
   | {
       dipetakan: true;
@@ -1576,6 +1848,9 @@ export function ketersediaanLayanan(
   const namaDiPortal = v?.namaDiPortal ?? sel.namaDiPortal;
   const rute = v?.rute ?? sel.rute;
   const jalurMenu = v?.jalurMenu ?? sel.jalurMenu;
+  const field = v?.field ?? sel.field;
+  const berkas = v?.berkas ?? sel.berkas;
+  const berkasLengkap = v?.berkas ? v.berkasLengkap : sel.berkasLengkap;
   return {
     dipetakan: true,
     online: true,
@@ -1589,6 +1864,10 @@ export function ketersediaanLayanan(
     jalurMasuk: v?.jalurMasuk ?? sel.jalurMasuk ?? peta.jalurMasuk,
     butuhLogin,
     ...(butuhLogin && peta.prasyaratAkun ? { prasyarat: peta.prasyaratAkun } : {}),
+    ...(field?.length ? { field } : {}),
+    ...(berkas?.length ? { berkas, ...(berkasLengkap ? { berkasLengkap: true } : {}) } : {}),
+    ...(sel.jam ? { jam: sel.jam } : {}),
+    keyakinan: sel.keyakinan,
   };
 }
 
@@ -1621,14 +1900,19 @@ export function petunjukPortal(
     baris.push(
       `Tidak online di portal ini: ${sel.offline.alasan} Bila warga ternyata butuh varian itu, jawab tidak_bisa.`,
     );
-  if (sel.jam) baris.push(`Jam layanan formulir: ${sel.jam}.`);
+  if (s.jam) baris.push(`Jam layanan formulir: ${s.jam}.`);
   const jebakan = [...(sel.jebakan ?? []), ...peta.jebakan];
   if (jebakan.length) baris.push('Jebakan UI:', ...jebakan.map((j) => `- ${j}`));
-  if (sel.field?.length) {
-    const label = sel.field.slice(0, BATAS_KOLOM).map((f) => `${f.label}${f.wajib ? '*' : ''} [${f.tipe}]`);
+  if (s.field?.length) {
+    const label = s.field
+      .slice(0, BATAS_KOLOM)
+      .map(
+        (f) =>
+          `${f.label}${f.wajib ? '*' : ''} [${f.tipe}${f.opsi?.length ? `: ${f.opsi.join(' / ')}` : ''}]`,
+      );
     baris.push(`Kolom yang diketahui (* wajib): ${label.join('; ')}.`);
   }
-  if (sel.berkas?.length) baris.push(`Berkas persyaratan: ${sel.berkas.join('; ')}.`);
+  if (s.berkas?.length) baris.push(`Berkas persyaratan: ${s.berkas.join('; ')}.`);
   if (sel.tombolAkhir) baris.push(`Tombol akhir: ${sel.tombolAkhir} (selalu ditekan warga).`);
   const teks = baris.join('\n');
   return teks.length > BATAS_PETUNJUK ? `${teks.slice(0, BATAS_PETUNJUK - 1)}…` : teks;

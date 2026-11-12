@@ -251,3 +251,37 @@ describe('Kartu rencana dan persetujuan memakai varian dari pesan warga', () => 
     ).toBeNull();
   });
 });
+
+describe('Persiapan dari peta portal di langkah pengajuan kartu', () => {
+  const ajukan = (kode: string, jenis: Jenis, varian?: string) => {
+    const kartu = kartuRencana(jenis, wilayah(kode, jenis), undefined, varian)!;
+    return kartu.langkah.find((l) => l.id !== ID_LANGKAH_AKUN && l.id !== ID_LANGKAH_OFFLINE)!;
+  };
+
+  it('Depok KK hilang: dokumen lengkap dari portal + pertanyaan formulir pilihan', () => {
+    const l = ajukan('3276', 'kk', 'hilang');
+    expect(l.dokumen).toContain('Surat keterangan hilang dari kepolisian');
+    expect(l.keterangan).toMatch(
+      /Alasan Penerbitan Kartu Keluarga\? \(Hilang \/ Rusak\/KK lama \(belum QR code\)\)/,
+    );
+    expect(ajukan('3276', 'kk').dokumen).toContain('Kartu Keluarga lama');
+    expect(ajukan('3276', 'pindah', 'datang').dokumen).toContain(
+      'SKPWNI (surat keterangan pindah) dari daerah asal',
+    );
+  });
+
+  it('Medan dan Banjarmasin: jam formulir tertulis di kartu', () => {
+    expect(ajukan('1271', 'kk').keterangan).toMatch(
+      /Formulir SIBISA hanya bisa diisi Senin-Jumat \(bukan hari libur\)/,
+    );
+    expect(ajukan('6371', 'kelahiran').keterangan).toMatch(
+      /Senin-Kamis 08\.00-14\.00 WITA, Jumat sampai 10\.00 WITA/,
+    );
+  });
+
+  it('berkas dugaan (bukan daftar lengkap portal) tidak menimpa dokumen registry', () => {
+    const l = ajukan('3312', 'kelahiran');
+    expect(l.dokumen?.some((d) => /Formulir pelaporan/.test(d))).toBe(true);
+    expect(l.dokumen).not.toContain('KK orang tua');
+  });
+});
