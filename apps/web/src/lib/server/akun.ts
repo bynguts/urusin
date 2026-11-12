@@ -107,6 +107,7 @@ export function akunPublik(rt: Runtime, a: AkunInternal, sid?: string): Akun {
     id: a.id,
     jenis: a.jenis === 'demo' ? 'demo' : 'akun',
     email: a.email,
+    emailTerverifikasi: true, // deprecated (ADR 0032): selalu true, tidak ada verifikasi email
     punyaSandi: a.punyaSandi,
     terhubungGoogle: rt.akun.terhubungGoogle(a.id),
     profilLengkap: typeof nama === 'string' && nama.trim().length > 0,

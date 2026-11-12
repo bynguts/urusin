@@ -24,6 +24,7 @@ describe('kontrak akun', () => {
         id: 'akun_1',
         jenis: 'akun',
         email: 'warga@example.com',
+        emailTerverifikasi: true,
         punyaSandi: true,
         terhubungGoogle: false,
         profilLengkap: false,
@@ -56,7 +57,8 @@ describe('kontrak akun', () => {
     expect(Object.keys(ENDPOINT_AKUN)).not.toContain('verifikasi');
     expect(Object.keys(ENDPOINT_AKUN)).not.toContain('kirimUlangVerifikasi');
     expect(KodeGalatAkunSchema.options).toContain('EMAIL_SUDAH_TERDAFTAR');
-    expect(KodeGalatAkunSchema.options).not.toContain('EMAIL_BELUM_TERVERIFIKASI');
+    // Dipertahankan (deprecated) demi pembekuan kontrak; server tidak pernah mengirimnya.
+    expect(KodeGalatAkunSchema.options).toContain('EMAIL_BELUM_TERVERIFIKASI');
     expect(TerkirimResponseSchema.safeParse({ terkirim: true }).success).toBe(false);
     expect(TerkirimResponseSchema.safeParse({ terkirim: true, tertunda: true }).success).toBe(true);
     expect(

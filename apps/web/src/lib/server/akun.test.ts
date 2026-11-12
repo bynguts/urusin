@@ -223,7 +223,7 @@ describe('API akun: daftar (langsung masuk) → sesi → masuk', () => {
       profilLengkap: false,
       sinkron: true,
     });
-    expect(body.akun).not.toHaveProperty('emailTerverifikasi');
+    expect(body.akun).toHaveProperty('emailTerverifikasi', true); // deprecated, selalu true
     expect([body.urusanDipindahkan, body.vaultDipindahkan, body.googleTertaut]).toEqual([0, false, false]);
     expect(res.headers.get('set-cookie')).toBeNull(); // cookie lewat event.cookies, bukan header manual
     expect(mailer.sent).toHaveLength(0); // tidak ada email verifikasi
@@ -237,7 +237,7 @@ describe('API akun: daftar (langsung masuk) → sesi → masuk', () => {
 
     const s = await lewatHook(get('/api/akun'), jar, sesiAkun);
     const mentah = (await s.json()) as any;
-    expect(mentah.akun).not.toHaveProperty('emailTerverifikasi');
+    expect(mentah.akun).toHaveProperty('emailTerverifikasi', true);
     const sesi = SesiAkunResponseSchema.parse(mentah);
     expect(sesi.masuk).toBe(true);
     expect(sesi.email).toEqual({ mode: 'log', tertunda: false });
@@ -1378,7 +1378,7 @@ describe('form action halaman akun (App 15–20)', () => {
     expect(isRedirect(d) && [d.status, d.location]).toEqual([303, '/beranda']);
     expect(dj.store.get(AKUN_COOKIE)!.opts).toMatchObject({ httpOnly: true, secure: true, sameSite: 'lax' });
     const sd = await (await lewatHook(get('/api/akun'), dj, sesiAkun)).json();
-    expect(sd.akun).not.toHaveProperty('emailTerverifikasi');
+    expect(sd.akun).toHaveProperty('emailTerverifikasi', true);
     const s = SesiAkunResponseSchema.parse(sd);
     expect(s.masuk && [s.akun.jenis, s.akun.email, s.akun.sinkron]).toEqual(['akun', EMAIL, true]);
     expect(mailer.sent).toHaveLength(0);
