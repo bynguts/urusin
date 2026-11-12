@@ -17,6 +17,7 @@ export function page(title: string, body: Content) {
         <style>
           body {
             font-family: system-ui, sans-serif;
+            font-size: 18px;
             margin: 0;
             color: #111;
             background: #fff;
@@ -46,6 +47,22 @@ export function page(title: string, body: Content) {
           label {
             display: block;
             margin: 8px 0 2px;
+          }
+          /* Terbaca di siaran Browser Pendamping (bingkai diperkecil di layar juri). */
+          input[type='text'],
+          input:not([type]),
+          select {
+            font: inherit;
+            font-size: 1.1rem;
+            padding: 8px 10px;
+            width: 100%;
+            max-width: 480px;
+            box-sizing: border-box;
+          }
+          button {
+            font: inherit;
+            font-size: 1.1rem;
+            padding: 8px 18px;
           }
           .note {
             background: #f3f4f6;

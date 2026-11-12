@@ -1,6 +1,12 @@
 import { MulaiPendampingRequestSchema } from '@urusin/contracts';
 import { matchOfficialOrigin } from '@urusin/core';
-import { ADAPTER_GENERIK, jalurModeUji, mulaiPengajuan, punyaReplikaUji } from '@urusin/harness';
+import {
+  ADAPTER_GENERIK,
+  alurSimulasiUntuk,
+  jalurModeUji,
+  mulaiPengajuan,
+  punyaReplikaUji,
+} from '@urusin/harness';
 import { routeByKode } from '@urusin/registry';
 import { catatHasilEksekusi } from '#lib/server/eksekusi.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
@@ -82,19 +88,24 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
       if (ditolak) return ditolak;
     }
     const cfg = pendampingConfig();
-    const generik = offered.data.adapterId === ADAPTER_GENERIK;
+    // Simulasi demo: formulir contoh di replika (alur deterministik, sudah "masuk" tanpa dinding login replika)
+    // bila replika portal ini punya; selain itu (replika baca-saja) alur eksekusi apa adanya di replika.
+    const sim = body.data.simulasi === true && modeUji ? alurSimulasiUntuk(origin) : undefined;
+    const adapterSesi = sim?.adapterId ?? offered.data.adapterId;
+    const generik = adapterSesi === ADAPTER_GENERIK;
     // Mode Uji generik: replika dipasang di awalan override worker; jalur portal asli hanya dibawa bila replika
     // mendeklarasikannya, selain itu akar replika.
-    const paramsSesi =
-      modeUji && generik
+    const paramsSesi = sim
+      ? {}
+      : modeUji && generik
         ? { ...offered.data.params, jalur: jalurModeUji(origin, offered.data.params.jalur) }
         : offered.data.params;
     const r = await mulaiSesi(cfg, {
       urusanId: a.u.id,
       sidHash: a.sidHash,
       executionId: offered.data.executionId,
-      adapterId: offered.data.adapterId,
-      flowId: offered.data.flowId,
+      adapterId: adapterSesi,
+      flowId: sim?.flowId ?? offered.data.flowId,
       origin,
       params: paramsSesi,
       modeUji,
@@ -138,18 +149,15 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
           sidHash: a.sidHash,
         });
       a.rt.publish(a.u.id, { type: 'progress', label: 'Browser Pendamping disiapkan.' });
-      if (offered.data.bacaSaja !== true)
+      // Simulasi bukan pengajuan: state urusan tidak dimajukan.
+      if (offered.data.bacaSaja !== true && !sim)
         mulaiPengajuan(a.rt.store, a.u.id, (e) => void a.rt.publish(a.u.id, e));
       // Portal wilayah tanpa adapter: otak Navigator generik di web menggerakkan sesi lewat kanal internal.
       // Worker idempoten per executionId: POST ulang (reload) tidak memasang loop baru beranggaran penuh untuk
       // eksekusi yang pernah jalan, dan sesi siaga/berakhir tidak digerakkan sama sekali.
       // Sesi yang sudah ada dengan mode lain (lihat saja vs simulasi; mis. penutupan sebelumnya gagal) tidak
       // digerakkan dengan mode permintaan ini.
-      if (
-        offered.data.adapterId === ADAPTER_GENERIK &&
-        !SESI_TANPA_LOOP.has(r.data.status) &&
-        (r.data.lihatSaja === true) === lihatSaja
-      )
+      if (generik && !SESI_TANPA_LOOP.has(r.data.status) && (r.data.lihatSaja === true) === lihatSaja)
         await pulihkanNavigator(
           a.rt,
           {
@@ -165,7 +173,7 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
     // Mode Uji generik tanpa replika (worker menolak 422): panduan langkah dengan pesan templat.
     else if (
       modeUji &&
-      offered.data.adapterId === ADAPTER_GENERIK &&
+      generik &&
       r.response.status === 422 &&
       (await r.response
         .clone()
@@ -209,6 +217,8 @@ export const GET: RequestHandler = async ({ request, params }) => {
     if (
       offered.success &&
       offered.data.adapterId === ADAPTER_GENERIK &&
+      // Sesi simulasi = alur adapter deterministik di replika, bukan Navigator.
+      r.data.simulasi !== true &&
       r.data.mode === 'ai' &&
       (r.data.status === 'berjalan' || r.data.status === 'menunggu_data')
     ) {

@@ -267,6 +267,27 @@ describe('SessionManager', () => {
     expect(tanpa.runs).toHaveLength(0);
   });
 
+  it('alur simulasi (hanyaUji) hanya di replika Mode Uji; tanpa modeUji ditolak, tidak pernah ke situs asli', async () => {
+    const fx = 'https://fixtures.urusin.test';
+    const ov = new Map([['https://telunjuksakti.wonogirikab.go.id', fx]]);
+    const h = harness({ production: true, fixtureOrigins: [fx], originOverrides: ov });
+    const sim = { flowId: 'simulasi', params: {} };
+    await expect(h.manager.create(input('u-warga', { ...sim, modeUji: false }))).rejects.toMatchObject({
+      kode: 'ADAPTER_TIDAK_ADA',
+    });
+    await expect(
+      h.manager.create(input('u-demo', { ...sim, modeUji: false, lihatSaja: true })),
+    ).rejects.toMatchObject({ kode: 'ADAPTER_TIDAK_ADA' });
+    expect(h.runs).toHaveLength(0);
+    const s = await h.manager.create(input('u-juri', { ...sim, modeUji: true }));
+    await h.flush();
+    expect(s).toMatchObject({ situs: fx, replika: true, simulasi: true });
+    expect(h.runs[0]!.init.program.origin).toBe(fx);
+    // Sesi biasa tidak membawa tanda simulasi.
+    const biasa = await h.manager.create(input('u-juri2', { modeUji: true }));
+    expect(biasa).not.toHaveProperty('simulasi');
+  });
+
   it('demo lihat saja (adapter): situs RESMI walau replika ada; langkah adapter tidak dijalankan, tanpa izin isi', async () => {
     const fx = 'https://fixtures.urusin.test';
     const ov = new Map([['https://telunjuksakti.wonogirikab.go.id', fx]]);

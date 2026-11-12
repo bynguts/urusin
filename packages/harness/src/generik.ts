@@ -76,6 +76,12 @@ export function punyaReplikaUji(url: string | null | undefined): boolean {
   }
 }
 
+/**
+ * Alur simulasi pengisian (akun demo) untuk origin resmi ini: adapter + flow formulir contoh di replika, atau
+ * undefined bila replikanya tidak punya formulir (mis. alur baca-saja Samsat/OSS).
+ */
+export { alurSimulasiUntuk } from '@urusin/adapters';
+
 /** Jalur awal sesi Mode Uji: jalur portal bila replika host itu mendeklarasikannya, selain itu `/`. */
 export function jalurModeUji(
   origin: string,

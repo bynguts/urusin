@@ -139,7 +139,9 @@
       ? `Periksa isian, lalu tekan ${tombolKirim}`
       : data.situs?.lihatSaja && data.giliran?.alasan === 'berhenti'
         ? 'Mode demo: AI hanya melihat'
-        : ((data.giliran && JUDUL_GILIRAN[data.giliran.alasan]) ?? 'Giliran Anda'),
+        : data.situs?.replika && (data.giliran?.alasan === 'login' || data.giliran?.alasan === 'masuk_akun')
+          ? 'Masuk akun di situs uji'
+          : ((data.giliran && JUDUL_GILIRAN[data.giliran.alasan]) ?? 'Giliran Anda'),
   );
   const isiGiliran = $derived(
     data.giliran
@@ -206,7 +208,8 @@
         <Icon name="putar" class="size-[15px]" />Sudah, lanjutkan
       </button>
     </div>
-  {:else if g.alasan === 'berhenti'}
+  {:else if g.alasan === 'berhenti' && !data.situs?.lihatSaja}
+    <!-- Demo lihat saja: tidak ada yang bisa dikirim, jadi tidak ada "Saya sudah mengirim". -->
     {@render sudahKirim()}
   {:else if g.alasan === 'periksa'}
     <!-- Periksa halaman (gerbang memblokir kiriman): warga memeriksa/menekan sendiri, lalu AI boleh lanjut. -->
@@ -554,16 +557,20 @@
           data-minta-ai
           class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-line-2 bg-surface px-3 py-1.5 text-center text-sm leading-tight font-semibold text-ink hover:bg-card"
         >
-          <Icon name="ai" class="size-4 shrink-0" />Minta AI bantu mengisi
+          <Icon name="ai" class="size-4 shrink-0" />{data.situs?.lihatSaja
+            ? 'Minta AI lanjut melihat'
+            : 'Minta AI bantu mengisi'}
         </button>
-        <button
-          type="button"
-          onclick={onsudahkirim}
-          disabled={data.memeriksaKirim}
-          data-sudah-kirim
-          class="inline-flex min-h-11 items-center justify-center rounded-full bg-primer px-3 py-1.5 text-center text-sm leading-tight font-semibold text-primer-ink disabled:opacity-60"
-          >Saya sudah mengirim</button
-        >
+        {#if !data.situs?.lihatSaja}
+          <button
+            type="button"
+            onclick={onsudahkirim}
+            disabled={data.memeriksaKirim}
+            data-sudah-kirim
+            class="inline-flex min-h-11 items-center justify-center rounded-full bg-primer px-3 py-1.5 text-center text-sm leading-tight font-semibold text-primer-ink disabled:opacity-60"
+            >Saya sudah mengirim</button
+          >
+        {/if}
       </div>
     </div>
   {/if}

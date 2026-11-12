@@ -131,6 +131,11 @@ export const SesiPendampingSchema = z.object({
    * apa pun dan tidak menekan Lanjut/Kirim (data demo adalah data contoh).
    */
   lihatSaja: z.boolean().optional(),
+  /**
+   * (aditif) Sesi simulasi pengisian (akun demo) di replika uji: alur formulir contoh deterministik, bukan
+   * Navigator generik. Tanpa dinding login replika; tidak ada yang terkirim ke pemerintah.
+   */
+  simulasi: z.boolean().optional(),
 });
 export type SesiPendamping = z.infer<typeof SesiPendampingSchema>;
 

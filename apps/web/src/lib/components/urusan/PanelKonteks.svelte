@@ -12,7 +12,14 @@
   import TeksBertaut from '../ui/TeksBertaut.svelte';
   import Tab from '../ui/Tab.svelte';
   import Titik from '../ui/Titik.svelte';
-  import { LANGKAH_RENCANA, infoStatus, langkahKini, langkahPanel, tanggal } from '#lib/urusan-status.js';
+  import {
+    LANGKAH_RENCANA,
+    infoStatus,
+    langkahKini,
+    langkahPanel,
+    tanggal,
+    type PanelSesi,
+  } from '#lib/urusan-status.js';
 
   /**
    * Panel konteks 400 px (App 02–09): status + judul langkah sekarang + progres per langkah, lalu tab Rencana,
@@ -30,6 +37,7 @@
     sorot = null,
     persiapan = false,
     menungguIzin = false,
+    sesiDemo,
     bawah,
   }: {
     state: UrusanState | null;
@@ -45,15 +53,19 @@
     persiapan?: boolean;
     /** Lembar izin isi Browser Pendamping sedang terbuka (AI belum mengisi). */
     menungguIzin?: boolean;
+    /** Sesi demo (lihat saja / simulasi): langkah dan status dari sesi nyata per mode, bukan state urusan. */
+    sesiDemo?: PanelSesi | undefined;
     bawah?: Snippet | undefined;
   } = $props();
 
   const info = $derived(
-    persiapan
-      ? { ...infoStatus(state), label: 'Menyiapkan browser', nada: 'ai' as const }
-      : menungguIzin
-        ? { ...infoStatus(state), label: 'Menunggu izin Anda', nada: 'anda' as const }
-        : infoStatus(state),
+    sesiDemo
+      ? { ...infoStatus(state), label: sesiDemo.label, nada: sesiDemo.nada }
+      : persiapan
+        ? { ...infoStatus(state), label: 'Menyiapkan browser', nada: 'ai' as const }
+        : menungguIzin
+          ? { ...infoStatus(state), label: 'Menunggu izin Anda', nada: 'anda' as const }
+          : infoStatus(state),
   );
 
   const JUDUL: Partial<Record<UrusanState, string>> = {
@@ -78,11 +90,12 @@
     GAGAL_AMAN: 'Urusin berhenti dengan aman',
   };
 
-  const langkah = $derived(langkahPanel(rencana, jenis));
-  const sekarang = $derived(langkahKini(state, langkah));
+  const langkah = $derived(sesiDemo?.langkah ?? langkahPanel(rencana, jenis));
+  const sekarang = $derived(sesiDemo?.sekarang ?? langkahKini(state, langkah));
   // Di luar lima langkah Pendamping, judulnya langkah rencana yang sedang dikerjakan warga.
   const judul = $derived(
-    (langkah !== LANGKAH_RENCANA && sekarang >= 1 && langkah[sekarang - 1]?.judul) ||
+    (sesiDemo && sesiDemo.sekarang > sesiDemo.langkah.length && 'Sesi demo selesai') ||
+      (langkah !== LANGKAH_RENCANA && sekarang >= 1 && langkah[sekarang - 1]?.judul) ||
       (state && JUDUL[state]) ||
       'Urusin sedang memahami kebutuhan Anda',
   );

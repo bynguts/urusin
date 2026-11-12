@@ -231,6 +231,8 @@ const KATA_UMUM_HOST = new Set([
   'online',
   'disdukcapil',
   'dukcapil',
+  // Host replika uji (fixtures.urusinai.web.id): bukan nama portal, jangan sampai "akun FIXTURES Anda".
+  'fixtures',
 ]);
 
 /**

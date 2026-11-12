@@ -55,6 +55,11 @@ export type Program = {
   masuk?: ProbeMasuk | undefined;
   bukti?: BuktiSelektor | undefined;
   bacaSaja?: boolean | undefined;
+  /**
+   * Alur simulasi (`FLOW_SIMULASI`): halaman formulir contoh yang HANYA ada di replika uji. Worker menolak
+   * program ini di luar Mode Uji, jadi tidak pernah dijalankan ke portal resmi.
+   */
+  hanyaUji?: boolean | undefined;
 };
 export type BuildResult = { ok: true; program: Program } | { ok: false; code: string; message: string };
 
@@ -63,6 +68,7 @@ type FlowDef = {
   bukti?: BuktiSelektor;
   bacaSaja?: boolean;
   kamera?: boolean;
+  hanyaUji?: boolean;
 };
 export type Adapter = {
   origin: string;
@@ -77,6 +83,34 @@ export function hostsSesi(program: Pick<Program, 'origin' | 'hosts'>): string[] 
     ...new Set([new URL(program.origin).hostname, ...(program.hosts ?? [])].map((h) => h.toLowerCase())),
   ];
 }
+
+/** Id alur simulasi demo juri di replika uji (lihat `alurSimulasi`). */
+export const FLOW_SIMULASI = 'simulasi';
+/** Jalur formulir simulasi di replika (relatif awalan replika; tidak ada di portal resmi). */
+export const JALUR_SIMULASI = '/simulasi/formulir';
+
+/**
+ * Simulasi pengisian (akun demo juri, Mode Uji): replika membuka formulir contoh yang sudah "masuk" (tanpa
+ * dinding login replika), AI mengisi Data Diri contoh lewat placeholder yang diizinkan warga di lembar izin,
+ * lalu warga sendiri yang menekan Kirim (simulasi). Deterministik: tidak bergantung pada model, jalan juga
+ * saat demo offline. `hanyaUji`: worker menolaknya di luar Mode Uji (portal resmi tidak punya jalur ini).
+ */
+const alurSimulasi: FlowDef = {
+  hanyaUji: true,
+  langkah: () => [
+    nav(JALUR_SIMULASI),
+    fill([css('#nama'), byName('nama')], placeholder('PEMOHON', 'NAMA')),
+    fill([css('#nik'), byName('nik')], placeholder('PEMOHON', 'NIK')),
+    fill([css('#tempat_lahir'), byName('tempat_lahir')], placeholder('PEMOHON', 'TEMPAT_LAHIR')),
+    fill([css('#tanggal_lahir'), byName('tanggal_lahir')], placeholder('PEMOHON', 'TANGGAL_LAHIR')),
+    fill([css('#alamat'), byName('alamat')], placeholder('PEMOHON', 'ALAMAT')),
+    fill([css('#hp'), byName('hp')], placeholder('PEMOHON', 'HP')),
+    gate.human('Simulasi terisi. Periksa isian, lalu tekan sendiri Kirim (simulasi).', {
+      until: urlIncludes('/simulasi/terkirim'),
+      highlight: [css('#kirim'), byRole('button', 'Kirim (simulasi)')],
+    }),
+  ],
+};
 
 /** Telunjuk Sakti Wonogiri (struktur dari recon read-only; direplikasi di apps/fixtures). */
 const TS_BASE = '/telunjuksakti/index.php';
@@ -172,6 +206,7 @@ const telunjukSakti: Adapter = {
       },
       bacaSaja: true,
     },
+    [FLOW_SIMULASI]: alurSimulasi,
   },
 };
 
@@ -239,6 +274,7 @@ const klampidSurabaya: Adapter = {
       },
       bacaSaja: true,
     },
+    [FLOW_SIMULASI]: alurSimulasi,
   },
 };
 
@@ -259,6 +295,7 @@ const sidnokSemarang: Adapter = {
       bukti: { status: [css('#container-status .box .font-medium')] },
       bacaSaja: true,
     },
+    [FLOW_SIMULASI]: alurSimulasi,
   },
 };
 
@@ -311,8 +348,23 @@ export function buildProgram(
       ...(adapter.masuk ? { masuk: adapter.masuk } : {}),
       ...(flow.bukti ? { bukti: flow.bukti } : {}),
       ...(flow.bacaSaja ? { bacaSaja: true } : {}),
+      ...(flow.hanyaUji ? { hanyaUji: true } : {}),
     },
   };
+}
+
+/**
+ * Adapter + alur simulasi untuk origin resmi ini (replika punya formulir simulasi), atau undefined. Dipakai
+ * web untuk tombol "Lihat contoh pengisian (simulasi)" akun demo; hanya dijalankan di Mode Uji.
+ */
+export function alurSimulasiUntuk(
+  origin: string,
+  adapters: Readonly<Record<string, Adapter>> = ADAPTERS,
+): { adapterId: string; flowId: string } | undefined {
+  for (const [adapterId, a] of Object.entries(adapters))
+    if (a.origin === origin && Object.hasOwn(a.flows, FLOW_SIMULASI))
+      return { adapterId, flowId: FLOW_SIMULASI };
+  return undefined;
 }
 
 /** Indeks gate.human terakhir di level atas: gerbang pengiriman akhir (tombol Kirim/Selesai). */

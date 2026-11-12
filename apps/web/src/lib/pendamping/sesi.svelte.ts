@@ -69,9 +69,9 @@ export type DataPendamping = {
   } | null;
   /**
    * Situs yang benar-benar dibuka peramban + apakah itu replika uji (Mode Uji), dari status server. `lihatSaja`:
-   * demo juri di situs asli (AI hanya menavigasi, tanpa isian).
+   * demo juri di situs asli (AI hanya menavigasi, tanpa isian). `simulasi`: formulir contoh di replika uji.
    */
-  situs: { origin: string; replika: boolean; lihatSaja?: boolean } | null;
+  situs: { origin: string; replika: boolean; lihatSaja?: boolean; simulasi?: boolean } | null;
   /**
    * Bingkai portal (atau replika Mode Uji) sudah tergambar di layar warga. Sebelum itu lembar "Izinkan AI mengisi?"
    * tidak dibuka: warga melihat situsnya dulu, baru izin isi diminta.
@@ -331,7 +331,12 @@ export class SesiPendampingUi {
       pesan: s.pesan ?? this.data.pesan,
       bukti: s.bukti ?? this.data.bukti,
       situs: s.situs
-        ? { origin: s.situs, replika: s.replika === true, ...(s.lihatSaja ? { lihatSaja: true } : {}) }
+        ? {
+            origin: s.situs,
+            replika: s.replika === true,
+            ...(s.lihatSaja ? { lihatSaja: true } : {}),
+            ...(s.simulasi ? { simulasi: true } : {}),
+          }
         : this.data.situs,
     };
     this.jadwalPantauAi();
