@@ -8,6 +8,7 @@ import { registerGenerik } from './generik/index.js';
 import { registerPoisoned } from './poisoned.js';
 import { registerSamsatOss } from './samsat-oss.js';
 import { registerSemarang } from './semarang.js';
+import { registerSimulasi } from './simulasi.js';
 import { registerSurabaya } from './surabaya.js';
 import { createStore, nomorRegistrasi, SERVICES, type Session } from './store.js';
 
@@ -295,6 +296,8 @@ export function createApp(config: Config) {
   registerSurabaya(app);
   registerSemarang(app, { secure });
   registerSamsatOss(app);
+  // Formulir simulasi demo juri (sudah "masuk", tanpa dinding login replika) di replika berformulir.
+  registerSimulasi(app);
   registerUjiCf(app, { kotak: config.profile === 'local' });
   // Replika portal generik untuk Navigator (ADR 0030); varian injeksi/umpan + halaman racun hanya di local.
   registerGenerik(app, { secure, local: config.profile === 'local' });

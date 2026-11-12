@@ -25,6 +25,69 @@ export const LANGKAH_RENCANA = [
 
 export type LangkahPanel = { readonly judul: string; readonly pelaku: string };
 
+/** Akun demo di situs resmi asli (lihat saja): tidak ada masuk akun, isian, atau Kirim. */
+export const LANGKAH_DEMO_LIHAT: readonly LangkahPanel[] = [
+  { judul: 'Setujui membuka situs resmi', pelaku: 'Anda' },
+  { judul: 'AI membuka dan menavigasi situs resmi', pelaku: 'AI' },
+  { judul: 'Lihat sendiri atau coba simulasi', pelaku: 'Anda' },
+];
+/** Akun demo, simulasi di replika uji: formulir contoh tanpa masuk akun. */
+export const LANGKAH_SIMULASI: readonly LangkahPanel[] = [
+  { judul: 'Buka replika uji (simulasi)', pelaku: 'AI' },
+  { judul: 'Izinkan isi data contoh', pelaku: 'Anda' },
+  { judul: 'AI mengisi formulir simulasi', pelaku: 'AI' },
+  { judul: 'Tekan Kirim (simulasi)', pelaku: 'Anda' },
+];
+
+/** Panel Rencana yang mengikuti sesi demo (bukan lima langkah pengajuan asli). */
+export type PanelSesi = {
+  langkah: readonly LangkahPanel[];
+  /** 1..langkah.length = langkah aktif; langkah.length + 1 = semua selesai. */
+  sekarang: number;
+  label: string;
+  nada: NadaStatus;
+};
+
+/**
+ * Panel Rencana untuk sesi demo Browser Pendamping, dari keadaan sesi NYATA per mode: lihat saja di situs resmi
+ * asli, atau simulasi di replika. undefined = sesi biasa (panel lima langkah dari state urusan).
+ */
+export function panelSesiDemo(s: {
+  situs: { lihatSaja?: boolean | undefined; simulasi?: boolean | undefined } | null;
+  keadaan: string;
+  giliran: { alasan: string } | null;
+  menungguIzin: boolean;
+}): PanelSesi | undefined {
+  // Tanpa sesi (belum dibuka atau sudah ditutup dari layar): panel urusan biasa.
+  if (s.keadaan === 'mati') return undefined;
+  const selesai = s.keadaan === 'selesai' || s.keadaan === 'berakhir' || s.keadaan === 'kedaluwarsa';
+  const siap = s.keadaan === 'antre' || s.keadaan === 'menyiapkan';
+  if (s.situs?.lihatSaja) {
+    const n = LANGKAH_DEMO_LIHAT.length;
+    if (selesai)
+      return { langkah: LANGKAH_DEMO_LIHAT, sekarang: n + 1, label: 'Sesi selesai', nada: 'selesai' };
+    if (siap || s.keadaan === 'ai')
+      return {
+        langkah: LANGKAH_DEMO_LIHAT,
+        sekarang: 2,
+        label: siap ? 'Menyiapkan browser' : 'AI melihat-lihat situs',
+        nada: 'ai',
+      };
+    return { langkah: LANGKAH_DEMO_LIHAT, sekarang: 3, label: 'Giliran Anda', nada: 'anda' };
+  }
+  if (s.situs?.simulasi) {
+    const L = LANGKAH_SIMULASI;
+    if (selesai) return { langkah: L, sekarang: L.length + 1, label: 'Simulasi selesai', nada: 'selesai' };
+    if (siap) return { langkah: L, sekarang: 1, label: 'Menyiapkan browser', nada: 'ai' };
+    if (s.menungguIzin) return { langkah: L, sekarang: 2, label: 'Menunggu izin Anda', nada: 'anda' };
+    if (s.keadaan === 'ai') return { langkah: L, sekarang: 3, label: 'AI sedang mengisi', nada: 'ai' };
+    if (s.giliran?.alasan === 'final')
+      return { langkah: L, sekarang: 4, label: 'Menunggu Anda', nada: 'anda' };
+    return { langkah: L, sekarang: 3, label: 'Giliran Anda', nada: 'anda' };
+  }
+  return undefined;
+}
+
 /** Pelaku langkah rencana, sama dengan label di kartu rencana. */
 const PELAKU_JENIS: Record<JenisLangkah, string> = {
   'online-adapter': 'AI',

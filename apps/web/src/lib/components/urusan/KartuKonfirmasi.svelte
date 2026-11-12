@@ -8,7 +8,8 @@
   /**
    * Konfirmasi sebelum AI bekerja (App 05): situs + instansi tujuan, ringkasan isian tersamar, peringatan
    * bahwa tombol Kirim tetap milik warga, lalu Batalkan / Setujui dan buka situs. `perluMasuk` (tamu di portal
-   * tanpa situs latihan): tombol Setujui diganti ajakan masuk/daftar yang kembali ke urusan ini.
+   * tanpa situs latihan): tombol Setujui diganti ajakan masuk/daftar yang kembali ke urusan ini. `demo` (akun demo
+   * juri): situs resmi dibuka dalam mode lihat saja, jadi teksnya tidak menjanjikan pengisian.
    */
   let {
     gate,
@@ -18,6 +19,7 @@
     status = 'menunggu',
     pesanGalat,
     perluMasuk,
+    demo = false,
     onsetujui,
     onbatal,
   }: {
@@ -30,6 +32,8 @@
     pesanGalat?: string | undefined;
     /** Path urusan ini bila tamu perlu akun untuk membuka portal asli (daftar lalu kembali ke sini). */
     perluMasuk?: string | undefined;
+    /** Akun demo (juri): situs resmi dibuka dalam mode lihat saja, AI tidak mengisi apa pun. */
+    demo?: boolean;
     onsetujui: () => void;
     onbatal: () => void;
   } = $props();
@@ -38,7 +42,8 @@
 </script>
 
 <section
-  aria-label="Periksa sebelum AI mengisi"
+  aria-label={demo ? 'Periksa sebelum membuka situs' : 'Periksa sebelum AI mengisi'}
+  data-demo={demo || undefined}
   class="overflow-hidden rounded-[18px] border border-line bg-surface shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]"
 >
   <header class="flex min-h-[64.5px] flex-wrap items-center gap-3 border-b border-line bg-card px-4 py-3">
@@ -48,7 +53,9 @@
     <!-- min-w-40: di HP chip "Situs resmi" turun baris alih-alih menjepit judul jadi 1–2 kata per baris. -->
     <div class="min-w-40 flex-1">
       <h2 class="text-base leading-[22px] font-semibold text-ink">
-        {permintaan?.ringkasan || gate.pesan || 'Formulir resmi'}
+        {demo
+          ? 'Buka situs resmi dalam mode demo (lihat saja)'
+          : permintaan?.ringkasan || gate.pesan || 'Formulir resmi'}
       </h2>
       {#if situs}
         <p class="flex items-center gap-[5px] text-sm leading-[19px] text-card-ink">
@@ -73,16 +80,28 @@
         </div>
       {/each}
     </dl>
+  {:else if demo}
+    <p class="border-b border-line px-4 py-3 text-[15px] text-body">
+      Izinkan Browser Pendamping membuka situs resmi untuk dilihat? Tidak ada yang diisi atau dikirim.
+    </p>
   {:else if gate.pesan && permintaan?.ringkasan}
     <p class="border-b border-line px-4 py-3 text-[15px] text-body">{gate.pesan}</p>
   {/if}
 
   <p class="flex items-center gap-2.5 bg-kuning px-4 py-3 text-sm leading-5 text-kuning-ink">
     <Icon name="info" class="size-4 shrink-0" />
-    <span>
-      Anda akan masuk akun di Browser Pendamping. Kata sandi tidak disimpan. AI hanya mengisi kolom dan
-      mengunggah berkas; tombol Kirim tetap Anda yang tekan. Persetujuan berlaku 10 menit.
-    </span>
+    {#if demo}
+      <span>
+        Mode demo: AI hanya membuka dan menavigasi situs resmi asli. Tidak ada kolom yang diisi dan tidak ada
+        tombol Lanjut atau Kirim yang ditekan, karena data demo adalah data contoh. Persetujuan berlaku 10
+        menit.
+      </span>
+    {:else}
+      <span>
+        Anda akan masuk akun di Browser Pendamping. Kata sandi tidak disimpan. AI hanya mengisi kolom dan
+        mengunggah berkas; tombol Kirim tetap Anda yang tekan. Persetujuan berlaku 10 menit.
+      </span>
+    {/if}
   </p>
 
   {#if pesanGalat}

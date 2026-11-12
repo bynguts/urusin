@@ -12,6 +12,7 @@
   import Icon from '#lib/components/Icon.svelte';
   import KartuBerjalan from '#lib/components/urusan/KartuBerjalan.svelte';
   import { DaftarUrusan } from '#lib/components/urusan/daftar.svelte.js';
+  import { aksiEnter } from '#lib/components/urusan/komposer.js';
   import { PERISTIWA, type Warna } from '#lib/peristiwa.js';
   import { ambilLokal } from '#lib/stores/app.svelte.js';
   import type { PageProps } from './$types';
@@ -38,6 +39,13 @@
   let mendikte = $state(false);
   let hentikanDikte: (() => void) | undefined;
   let kotakPesan = $state<HTMLTextAreaElement>();
+
+  // Sama dengan komposer urusan: Enter = kirim, Shift+Enter = baris baru (layar sentuh: Enter = baris baru).
+  function tekan(e: KeyboardEvent) {
+    if (mengirim || aksiEnter(e, matchMedia('(pointer: coarse)').matches) !== 'kirim') return;
+    e.preventDefault();
+    (e.currentTarget as HTMLTextAreaElement).form?.requestSubmit();
+  }
 
   afterNavigate(({ to }) => {
     if (!to?.url.searchParams.has('baru')) return;
@@ -124,6 +132,8 @@
         required
         bind:value={pesan}
         bind:this={kotakPesan}
+        onkeydown={tekan}
+        enterkeyhint="send"
         aria-describedby={form?.pesanWarga ? 'galat-pesan' : undefined}
         placeholder="Contoh: Anak saya baru lahir, saya harus mengurus apa?"
         class="block max-h-60 min-h-[26px] w-full resize-none bg-transparent text-[18px] leading-[26px] text-ink [field-sizing:content] placeholder:text-muted focus:outline-none"

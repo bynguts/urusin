@@ -220,6 +220,9 @@ export function createPendampingViewer(
   let gerakTerakhir = 0;
   let menggambar = false;
   let frameTertunda: { jpeg: Uint8Array; meta: PendampingFrameMeta; seq: number | undefined } | null = null;
+  // Frame terakhir yang tergambar: digambar ulang saat ukuran kanvas berubah (mis. jendela HP -> desktop) tanpa
+  // menunggu frame baru, supaya gambar tidak meregang mengikuti ukuran CSS baru.
+  let terakhir: { jpeg: Uint8Array; meta: PendampingFrameMeta } | null = null;
 
   const setKoneksi = (s: ViewerStatus) => {
     koneksi = s;
@@ -264,6 +267,7 @@ export function createPendampingViewer(
         );
       }
       img.close?.();
+      terakhir = { jpeg, meta: m };
       meta = m;
       emit('frame', m);
     } catch {
@@ -480,6 +484,20 @@ export function createPendampingViewer(
 
   void sambung();
 
+  const amatiUkuran =
+    typeof ResizeObserver === 'undefined'
+      ? undefined
+      : new ResizeObserver(() => {
+          const t = terakhir;
+          if (!t || ditutup) return;
+          const rect = canvas.getBoundingClientRect();
+          const r = dpr();
+          if (canvas.width === Math.round(rect.width * r) && canvas.height === Math.round(rect.height * r))
+            return;
+          void gambar(t.jpeg, t.meta);
+        });
+  amatiUkuran?.observe(canvas);
+
   return {
     get mode() {
       return mode;
@@ -499,6 +517,7 @@ export function createPendampingViewer(
     akhiri: () => kirim({ type: 'akhiri' }),
     tutup() {
       ditutup = true;
+      amatiUkuran?.disconnect();
       clearTimeout(timerUlang);
       clearInterval(timerPing);
       for (const [t, type, fn] of pasang) t.removeEventListener(type, fn);

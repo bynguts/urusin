@@ -39,6 +39,17 @@ describe('DaftarUrusan: pemuatan yang terputus', () => {
     expect(d.isi[0]?.ringkasan?.state).toBe('TERKIRIM');
   });
 
+  it('server menjawab tanpa urusan ini (salinan demo lama/akun lain): ditandai hilang, bukan galat', async () => {
+    const lain = { ...catatan, id: `u_${'b'.repeat(32)}` };
+    const d = new DaftarUrusan((async () =>
+      Response.json({ urusan: [{ id: catatan.id, state: 'TERKIRIM' }] })) as typeof fetch);
+    await d.muat([catatan, lain]);
+    expect(d.galat).toBe(false);
+    expect(d.isi[0]).toMatchObject({ ringkasan: { state: 'TERKIRIM' } });
+    expect(d.isi[0]).not.toHaveProperty('hilang');
+    expect(d.isi[1]).toMatchObject({ ringkasan: null, hilang: true });
+  });
+
   it('galat sebelumnya dibersihkan setelah daftar lokal dihapus', async () => {
     const d = new DaftarUrusan((async () => new Response('', { status: 503 })) as typeof fetch);
     await d.muat([catatan]);

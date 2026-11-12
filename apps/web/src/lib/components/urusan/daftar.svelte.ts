@@ -1,7 +1,14 @@
 import type { DaftarUrusanResponse, RingkasanUrusan } from '#lib/contracts.js';
 import type { CatatanUrusan } from '#lib/stores/lokal.svelte.js';
 
-export type UrusanBerjalan = CatatanUrusan & { ringkasan: RingkasanUrusan | null };
+export type UrusanBerjalan = CatatanUrusan & {
+  ringkasan: RingkasanUrusan | null;
+  /**
+   * Server menjawab, tetapi urusan ini tidak ada untuk akun/sesi sekarang (mis. salinan demo juri lama yang
+   * sudah dihapus setelah 24 jam, atau urusan akun lain di perangkat yang sama).
+   */
+  hilang?: true;
+};
 
 /**
  * Status terbaru urusan yang tercatat di perangkat ini (GET /api/urusan?ids=). Id yang tidak dikenal server
@@ -37,7 +44,9 @@ export class DaftarUrusan {
       const j = (await res.json()) as DaftarUrusanResponse;
       if (urutan !== this.urutan) return;
       const peta = Object.fromEntries(j.urusan.map((u) => [u.id, u]));
-      this.isi = catatan.map((c) => ({ ...c, ringkasan: peta[c.id] ?? null }));
+      this.isi = catatan.map((c) =>
+        peta[c.id] ? { ...c, ringkasan: peta[c.id]! } : { ...c, ringkasan: null, hilang: true as const },
+      );
       for (const u of j.urusan) if (u.judul) this.onjudul?.(u.id, u.judul);
     } catch {
       if (urutan === this.urutan) this.galat = true;

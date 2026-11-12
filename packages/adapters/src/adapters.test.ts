@@ -12,6 +12,8 @@ import {
 import { describe, expect, it } from 'vitest';
 import {
   ADAPTERS,
+  FLOW_SIMULASI,
+  alurSimulasiUntuk,
   buildProgram,
   finalGateIndex,
   hostsSesi,
@@ -214,5 +216,42 @@ describe('adapter bawaan', () => {
       ok: false,
       code: 'ADAPTER_HOST_TIDAK_TERDAFTAR',
     });
+  });
+});
+
+describe('alur simulasi (hanya replika uji)', () => {
+  const ORIGIN = {
+    'telunjuk-sakti-wonogiri': 'https://telunjuksakti.wonogirikab.go.id',
+    'klampid-surabaya': 'https://wargaklampid-dispendukcapil.surabaya.go.id',
+    'sidnok-semarang': 'https://sidnok.semarangkota.go.id',
+  } as const;
+
+  it.each(Object.entries(ORIGIN))(
+    '%s: program bertanda hanyaUji, mengisi data pemohon, final lewat gate.human',
+    (id, o) => {
+      expect(alurSimulasiUntuk(o)).toEqual({ adapterId: id, flowId: FLOW_SIMULASI });
+      const r = buildProgram(id, FLOW_SIMULASI, {});
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.program.hanyaUji).toBe(true);
+      const { steps } = r.program;
+      expect(steps[0]).toMatchObject({ op: 'nav' });
+      expect(steps.filter((s) => s.op === 'fill')).toHaveLength(6);
+      expect(requiredData(steps).placeholder).toContain('{{PEMOHON.NAMA}}');
+      // Tanpa dinding login: satu-satunya gate.human adalah gerbang kirim akhir.
+      expect(steps.filter((s) => s.op === 'gate.human')).toHaveLength(1);
+      expect(steps[finalGateIndex(steps)]).toMatchObject({
+        op: 'gate.human',
+        until: { value: expect.stringContaining('/simulasi/terkirim') },
+      });
+    },
+  );
+
+  it('alur biasa tidak bertanda hanyaUji; origin tanpa formulir replika tidak punya alur simulasi', () => {
+    const r = buildProgram('telunjuk-sakti-wonogiri', 'ajukan', { layanan_id: 1 });
+    expect(r.ok && r.program.hanyaUji).toBeFalsy();
+    expect(alurSimulasiUntuk('https://samsat-pkb2.jakarta.go.id')).toBeUndefined();
+    expect(alurSimulasiUntuk('https://oss.go.id')).toBeUndefined();
+    expect(alurSimulasiUntuk('https://contoh.go.id')).toBeUndefined();
   });
 });

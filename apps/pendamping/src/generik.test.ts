@@ -1365,6 +1365,8 @@ describe('QA prod gel6: pesan giliran masuk akun dan petunjuk (templat + label a
     expect(namaPortal('sibisa.medan.go.id', 'SIBISA - Layanan Kependudukan Online')).toBe('SIBISA');
     expect(namaPortal('siapel.malangkota.go.id', 'Login - SIAPEL.')).toBe('SIAPEL');
     expect(namaPortal('telunjuksakti.wonogirikab.go.id', 'TelunjukSakti')).toBe('TelunjukSakti');
+    // Host replika uji bukan nama portal (QA demo juri: "Masuk dengan akun FIXTURES Anda").
+    expect(namaPortal('fixtures.urusinai.web.id', 'Login Warga (fixture)')).toBeUndefined();
     expect(namaPortal('sirancak.disdukcapil.padang.go.id', 'beranda')).toBe('SIRANCAK');
     expect(namaPortal('disdukcapil.bandarlampungkota.go.id')).toBeUndefined();
     expect(namaPortal('wargaklampid-dispendukcapil.surabaya.go.id')).toBeUndefined();

@@ -1547,13 +1547,60 @@ describe('demo juri membuka situs resmi asli (mode lihat saja); replika hanya si
   it('simulasi diminta: replika Mode Uji (modeUji true), tanpa lihatSaja dan tanpa jejak lihat_saja', async () => {
     runtimeAkun();
     const u = urusanDenganEksekusi();
+    const stateAwal = rt.store.getUrusanOrThrow(u.id).state;
     const res = await mulai(evIp(req('POST', { executionId: 'x_1', simulasi: true }, juriDengan(u)), u.id));
     expect(res.status).toBe(201);
-    const body = mulaiSesi()[0]!.body as { modeUji?: boolean; lihatSaja?: boolean };
+    const body = mulaiSesi()[0]!.body as {
+      modeUji?: boolean;
+      lihatSaja?: boolean;
+      adapterId: string;
+      flowId: string;
+      params: object;
+    };
     expect(body.modeUji).toBe(true);
     expect(body.lihatSaja).toBeUndefined();
+    // Formulir simulasi replika (tanpa dinding login replika), bukan alur pengajuan asli.
+    expect(body).toMatchObject({ adapterId: 'telunjuk-sakti-wonogiri', flowId: 'simulasi', params: {} });
     expect(lihatSajaTercatat(u.id)).toBe(false);
     expect(catatanMode(u.id)).toEqual(['simulasi']);
+    // Simulasi bukan pengajuan: state urusan tidak dimajukan.
+    expect(rt.store.getUrusanOrThrow(u.id).state).toBe(stateAwal);
+  });
+
+  it('hasil sesi simulasi (Kirim simulasi) tidak dicatat sebagai pengiriman urusan', async () => {
+    runtimeAkun();
+    const u = urusanDenganEksekusi();
+    const cookie = juriDengan(u);
+    expect(
+      (await mulai(evIp(req('POST', { executionId: 'x_1', simulasi: true }, cookie), u.id))).status,
+    ).toBe(201);
+    const stateAwal = rt.store.getUrusanOrThrow(u.id).state;
+    reply = () => ({
+      status: 200,
+      body: sesi({
+        replika: true,
+        simulasi: true,
+        status: 'siaga',
+        mode: 'ai',
+        hasil: 'berhasil',
+        antrean: null,
+        bukti: { nomor: 'SIM-1' },
+      }),
+    });
+    await status(evIp(req('GET', undefined, cookie), u.id));
+    expect(rt.store.getUrusanOrThrow(u.id).nomorPermohonan).toBeNull();
+    expect(rt.store.getUrusanOrThrow(u.id).state).toBe(stateAwal);
+  });
+
+  it('bukan simulasi (lihat saja): alur pengajuan asli tetap dipakai', async () => {
+    runtimeAkun();
+    const u = urusanDenganEksekusi();
+    await mulai(evIp(req('POST', { executionId: 'x_1' }, juriDengan(u)), u.id));
+    expect(mulaiSesi()[0]!.body).toMatchObject({
+      adapterId: 'telunjuk-sakti-wonogiri',
+      flowId: 'ajukan',
+      params: { layanan_id: 1 },
+    });
   });
 
   it('lihat saja lalu simulasi: catatan mode terakhir = simulasi, agen chat tidak lagi bilang situs asli', async () => {

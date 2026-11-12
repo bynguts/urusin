@@ -76,6 +76,11 @@ test('juri: situs resmi lihat saja dengan pesan jujur; tombol simulasi membuka r
   await setujui.click();
   const buka = page.getByRole('button', { name: 'Setujui dan buka situs' });
   await expect(buka).toBeEnabled({ timeout: 20_000 });
+  // Kartu izin demo jujur: membuka untuk dilihat, bukan "AI mengisi".
+  const kartu = page.getByRole('region', { name: 'Periksa sebelum membuka situs' });
+  await expect(kartu).toContainText('mode demo (lihat saja)');
+  await expect(kartu).toContainText('Tidak ada kolom yang diisi');
+  await expect(kartu).not.toContainText('AI hanya mengisi');
   await buka.click();
 
   // Permintaan pertama: situs resmi (tanpa `simulasi`); layar jujur "lihat saja", tanpa label Simulasi.
@@ -88,6 +93,8 @@ test('juri: situs resmi lihat saja dengan pesan jujur; tombol simulasi membuka r
   await expect(browser).toContainText('telunjuksakti.wonogirikab.go.id');
   const tombol = browser.getByRole('button', { name: 'Lihat contoh pengisian (simulasi)' });
   await expect(tombol).toBeVisible();
+  // Lihat saja tidak mengirim apa pun: tidak ada "Saya sudah mengirim".
+  await expect(page.getByRole('button', { name: 'Saya sudah mengirim' })).toHaveCount(0);
   // HP 390 px: tidak ada gulir horizontal.
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 

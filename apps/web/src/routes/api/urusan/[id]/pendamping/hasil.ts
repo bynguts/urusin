@@ -26,6 +26,8 @@ export function eksekusiDitawarkan(a: Extract<Akses, { ok: true }>, executionId:
  * (nomor registrasi/status) bila ada. Dipakai GET status dan "Saya sudah mengirim".
  */
 export function catatHasilSesi(a: Extract<Akses, { ok: true }>, s: SesiPendamping): void {
+  // Simulasi demo di replika: tidak ada pengajuan, jadi hasilnya tidak dicatat sebagai hasil eksekusi urusan.
+  if (s.simulasi === true) return;
   const hasil = hasilAkhir(s);
   const offered = eksekusiDitawarkan(a, s.executionId);
   if (!hasil || !offered.success) return;
