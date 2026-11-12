@@ -28,7 +28,7 @@ Dalam cakupan:
   lookalike), pelanggaran gate kedua Browser Pendamping, injeksi prompt yang menyebabkan aksi tulis tanpa persetujuan
   warga, kebocoran rahasia, atau kelemahan CSP/CSRF.
 - Akun dan vault ([ADR 0028](docs/adr/0028-akun-dan-login.md)): pengambilalihan akun atau sesi (cookie
-  `__Host-urusin_akun`/`__Host-urusin_sid`, token email verifikasi dan atur ulang sandi, penautan Google OIDC),
+  `__Host-urusin_akun`/`__Host-urusin_sid`, token atur ulang sandi, penautan Google OIDC; ADR 0032),
   melewati penguncian login atau kuota tamu/demo, membaca atau mengunduh Data Diri dan dokumen milik orang lain,
   membuka vault tanpa kunci, dan persetujuan "Izinkan isi" yang bisa dipakai untuk origin atau pemilik lain.
 
@@ -88,7 +88,7 @@ In scope:
   (lookalike origins), violating the Browser Pendamping second gate, prompt injection that causes a write action
   without the citizen's approval, secret leaks, or CSP/CSRF weaknesses.
 - Accounts and the vault ([ADR 0028](docs/adr/0028-akun-dan-login.md)): account or session takeover (the
-  `__Host-urusin_akun`/`__Host-urusin_sid` cookies, email verification and password-reset tokens, Google OIDC
+  `__Host-urusin_akun`/`__Host-urusin_sid` cookies, password-reset tokens, Google OIDC
   linking), getting past the login lockout or the guest/demo quotas, reading or downloading someone else's Data
   Diri and documents, opening the vault without the key, and an "Izinkan isi" consent that works for another
   origin or owner.

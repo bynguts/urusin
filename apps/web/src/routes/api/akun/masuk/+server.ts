@@ -15,8 +15,7 @@ import type { RequestHandler } from './$types';
 
 /**
  * Masuk email + sandi (Turnstile wajib setelah 3 kegagalan). Berhasil: cookie sesi BARU (rotasi), urusin_sid
- * diputar dan data tamu dipindahkan ke akun (bila email terverifikasi), Google yang menunggu bukti sandi
- * ditautkan.
+ * diputar dan data tamu dipindahkan ke akun, Google yang menunggu bukti sandi ditautkan.
  */
 export const POST: RequestHandler = async (event) => {
   const body = await readAkunBody(event.request, MasukRequestSchema);

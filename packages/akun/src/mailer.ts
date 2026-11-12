@@ -8,7 +8,7 @@ import { maskEmail } from './email.js';
  */
 export type HttpFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
-export type JenisEmail = 'verifikasi' | 'atur-ulang' | 'sudah-terdaftar' | 'google-ditautkan';
+export type JenisEmail = 'atur-ulang' | 'google-ditautkan';
 
 export type EmailMessage = {
   to: string;
@@ -24,7 +24,7 @@ export interface Mailer {
   readonly kind: 'resend' | 'log' | 'memory';
   /**
    * true = email TIDAK sampai ke penerima (mode log di produksi, Resend belum dikonfigurasi). Layanan akun
-   * selalu melaporkan `tertunda` sehingga warga mendapat pesan jujur; verifikasi tidak memblokir.
+   * selalu melaporkan `tertunda` dan menonaktifkan lupa sandi dengan pesan jujur (ADR 0032).
    */
   readonly ditahan?: boolean;
   send(msg: EmailMessage): Promise<void>;
@@ -126,8 +126,8 @@ export const EMAIL_FROM_DEFAULT = 'Urusin <no-reply@urusinai.web.id>';
  * - `resend`: `RESEND_API_KEY` wajib (eksplisit tanpa kunci = server menolak boot), pengirim
  *   `URUSIN_EMAIL_FROM`.
  * - `log`: tidak mengirim apa pun. Di dev/CI tautan dicatat ke log (+ `URUSIN_EMAIL_OUTBOX` opsional). Di
- *   produksi (tanpa `CI=true`) email DITAHAN: tanpa tautan di log, semua respons `tertunda`, verifikasi tidak
- *   memblokir (akun dipakai seperti tamu di perangkat itu). App tetap boot tanpa kredensial Resend.
+ *   produksi (tanpa `CI=true`) email DITAHAN: tanpa tautan di log, semua respons `tertunda`, lupa sandi
+ *   nonaktif (akun tidak butuh email untuk aktif, ADR 0032). App tetap boot tanpa kredensial Resend.
  */
 export function mailerFromEnv(
   env: Record<string, string | undefined>,

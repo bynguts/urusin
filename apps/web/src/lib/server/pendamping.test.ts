@@ -736,23 +736,25 @@ describe('broker Browser Pendamping', () => {
     };
     beforeEach(() => vi.stubEnv('PENDAMPING_WORKERS', JSON.stringify([VPS, LAPTOP])));
 
-    /** Akun warga terverifikasi yang masuk dan memiliki urusannya: sesi di portal asli, bukan Mode Uji. */
+    /**
+     * Akun warga yang baru daftar (langsung masuk, tanpa email verifikasi; ADR 0032) dan memiliki urusannya:
+     * sesi di portal asli, bukan Mode Uji.
+     */
     async function urusanAkunNyata(kota: 'wonogiri' | 'semarang' = 'wonogiri') {
-      const mailer = new MemoryMailer();
       rt = createRuntime({
         provider: new DemoProvider(),
         config: { dbPath: ':memory:' },
-        akun: { mailer, google: null, vault: { diskPersen: () => 10 } },
+        akun: { mailer: new MemoryMailer(), google: null, vault: { diskPersen: () => 10 } },
       });
       setRuntimeForTests(rt);
       const ktx = { ip: '127.0.0.1', userAgent: null };
-      const [email, sandi] = ['warga@example.com', 'kuda-lari-cepat-9'];
-      await rt.akun.daftar({ email, sandi }, ktx);
-      const token = new URL(mailer.last(email, 'verifikasi')!.link!).searchParams.get('token')!;
-      const akun = await rt.akun.verifikasiEmail(token, sandi, ktx);
+      const { token, akun } = await rt.akun.daftar(
+        { email: 'warga@example.com', sandi: 'kuda-lari-cepat-9' },
+        ktx,
+      );
       const u = urusanDenganEksekusi(kota);
       rt.akun.catatPemilikUrusan(u.id, { akun });
-      return { u, cookie: `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${rt.akun.buatSesi(akun.id, ktx)}` };
+      return { u, cookie: `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${token}` };
     }
 
     it('CSP connect-src: hanya origin WS worker di luar origin web (final lokal), produksi tidak berubah', () => {

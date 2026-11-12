@@ -12,7 +12,7 @@ import {
   RESEND_ENDPOINT,
   type HttpFetch,
 } from './mailer.js';
-import { emailAturUlang, emailSudahTerdaftar, emailVerifikasi } from './templates.js';
+import { emailAturUlang, emailGoogleDitautkan } from './templates.js';
 
 const KEY = Buffer.alloc(32, 1).toString('base64');
 const tolak: HttpFetch = () => Promise.reject(new Error('tidak dipakai'));
@@ -26,7 +26,7 @@ describe('ResendMailer', () => {
       return new Response(JSON.stringify({ id: 'x', echo: 'warga@example.com' }), { status });
     };
     const m = new ResendMailer({ apiKey: 're_uji', from: 'Urusin <noreply@example.com>', fetch });
-    const msg = emailVerifikasi('warga@example.com', 'https://urusin.example.com/verifikasi-email?token=abc');
+    const msg = emailAturUlang('warga@example.com', 'https://urusin.example.com/atur-ulang-sandi?token=abc');
     await m.send(msg);
     expect(calls[0]!.url).toBe(RESEND_ENDPOINT);
     expect(RESEND_ENDPOINT).toBe('https://api.resend.com/emails');
@@ -38,8 +38,8 @@ describe('ResendMailer', () => {
       to: ['warga@example.com'],
       subject: msg.subject,
     });
-    expect(body.html).toContain('verifikasi-email?token=abc');
-    expect(body.text).toContain('verifikasi-email?token=abc');
+    expect(body.html).toContain('atur-ulang-sandi?token=abc');
+    expect(body.text).toContain('atur-ulang-sandi?token=abc');
     status = 422;
     const e = await m.send(msg).catch((x: unknown) => x);
     expect(e).toBeInstanceOf(MailerError);
@@ -114,15 +114,14 @@ describe('DevMailer dan pemilihan mailer dari env', () => {
   });
 
   it('templat: HTML ter-escape, teks polos, bahasa Indonesia', () => {
-    const m = emailSudahTerdaftar(
-      'a@example.com',
-      'https://x.example.com/masuk?a=1&b=<2>',
-      'https://x.example.com/lupa-sandi',
-    );
+    const m = emailGoogleDitautkan('a@example.com', 'https://x.example.com/pengaturan?a=1&b=<2>');
+    expect(m.jenis).toBe('google-ditautkan');
     expect(m.html).toContain('a=1&amp;b=&lt;2&gt;');
-    expect(m.text).toContain('https://x.example.com/masuk?a=1&b=<2>');
-    expect(m.text).toContain('Lupa kata sandi?');
+    expect(m.html).toContain('lang="id"');
+    expect(m.text).toContain('https://x.example.com/pengaturan?a=1&b=<2>');
+    expect(m.text).toContain('Bila itu bukan Anda');
     expect(m.html).not.toContain('<script');
+    expect(emailAturUlang('a@example.com', 'https://x.example.com/r').jenis).toBe('atur-ulang');
   });
 });
 

@@ -52,7 +52,9 @@ describe('status urusan', () => {
 describe('navigasi', () => {
   it('layar akun tanpa kerangka; menu aktif termasuk halaman turunan', () => {
     expect(rutAuth('/masuk')).toBe(true);
-    expect(rutAuth('/verifikasi-email')).toBe(true);
+    expect(rutAuth('/daftar')).toBe(true);
+    // Verifikasi email dihapus (ADR 0032): /verifikasi-email hanya pengalih, bukan layar akun.
+    expect(rutAuth('/verifikasi-email')).toBe(false);
     expect(rutAuth('/masukan')).toBe(false);
     expect(rutWeb('/cara-kerja')).toBe(true);
     expect(rutWeb('/urusan')).toBe(true);
