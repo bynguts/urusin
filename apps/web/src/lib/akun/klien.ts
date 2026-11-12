@@ -95,6 +95,46 @@ export const simpanDataDiri = (data: DataDiri) =>
     body: JSON.stringify(data),
   });
 
+/** Anggota keluarga (salinan struktural `AnggotaKeluarga` @urusin/contracts). */
+export type HubunganKeluarga = 'pasangan' | 'suami' | 'istri' | 'anak' | 'ayah' | 'ibu' | 'lainnya';
+export type AnggotaKeluargaInput = {
+  hubungan: HubunganKeluarga;
+  namaLengkap: string;
+  nik?: string;
+  tanggalLahir?: string;
+  jenisKelamin?: 'laki-laki' | 'perempuan';
+  tempatLahir?: string;
+};
+export type AnggotaKeluarga = AnggotaKeluargaInput & { id: string };
+export const ANGGOTA_KELUARGA_MAKS = 20;
+
+export const LABEL_HUBUNGAN: Record<HubunganKeluarga, string> = {
+  pasangan: 'Pasangan',
+  suami: 'Suami',
+  istri: 'Istri',
+  anak: 'Anak',
+  ayah: 'Ayah',
+  ibu: 'Ibu',
+  lainnya: 'Lainnya',
+};
+
+export const ambilKeluarga = () =>
+  panggil<{ anggota: AnggotaKeluarga[]; diubahPada: string | null }>('/api/vault/keluarga');
+
+/** Tambah (tanpa `id`) atau ubah (dengan `id`) satu anggota keluarga. */
+export const simpanAnggota = (data: AnggotaKeluargaInput, id?: string) =>
+  panggil<{ anggota: AnggotaKeluarga; diubahPada: string }>(
+    id ? `/api/vault/keluarga/${encodeURIComponent(id)}` : '/api/vault/keluarga',
+    {
+      method: id ? 'PUT' : 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(data),
+    },
+  );
+
+export const hapusAnggota = (id: string) =>
+  panggil<{ terhapus: true }>(`/api/vault/keluarga/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
 export const daftarDokumen = () => panggil<{ dokumen: DokumenAkun[] }>('/api/vault');
 
 export function unggahDokumen(berkas: File, jenis: JenisDokumen, judul: string) {

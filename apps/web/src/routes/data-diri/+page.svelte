@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import Icon from '#lib/components/Icon.svelte';
+  import AnggotaKeluarga from '#lib/components/akun/AnggotaKeluarga.svelte';
   import BrankasTertutup from '#lib/components/akun/BrankasTertutup.svelte';
   import TabBrankas from '#lib/components/akun/TabBrankas.svelte';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
@@ -165,118 +166,130 @@
     <BrankasTertutup alasan={hasil.alasan} pesan={hasil.pesan} />
   {:else}
     <div class="grid items-start gap-5 lg:grid-cols-[1fr_340px]">
-      {#if ubah}
-        <form
-          onsubmit={simpan}
-          novalidate
-          class="grid gap-4 rounded-kartu border border-line p-4 sm:grid-cols-6 sm:p-5"
-        >
-          {#each KOLOM as c (c.k)}
-            <div
-              class={c.lebar === 'penuh'
-                ? 'sm:col-span-6'
-                : c.lebar === 'sepertiga'
-                  ? 'sm:col-span-2'
-                  : 'sm:col-span-3'}
+      <div class="flex min-w-0 flex-col gap-8">
+        <section aria-labelledby="judul-saya" class="flex min-w-0 flex-col gap-4">
+          <h2 id="judul-saya" class="text-[19px] font-semibold text-ink">Saya</h2>
+          {#if ubah}
+            <form
+              onsubmit={simpan}
+              novalidate
+              class="grid gap-4 rounded-kartu border border-line p-4 sm:grid-cols-6 sm:p-5"
             >
-              <Field id="dd-{c.k}" label={c.label} petunjuk={c.petunjuk} galat={galat[c.k]}>
-                {#snippet children({ describedby, invalid })}
-                  <input
-                    id="dd-{c.k}"
-                    name={c.k}
-                    type={c.tipe ?? 'text'}
-                    inputmode={c.mode === 'numeric' ? 'numeric' : c.mode}
-                    autocomplete={(c.auto ?? 'off') as HTMLInputElement['autocomplete']}
-                    pattern={c.pola}
-                    bind:value={draf[c.k]}
-                    aria-describedby={describedby}
-                    aria-invalid={invalid}
-                    class="h-12 w-full rounded-xl border bg-surface px-3 text-base text-ink {invalid
-                      ? 'border-galat-garis'
-                      : 'border-line-2'}"
-                  />
-                {/snippet}
-              </Field>
-            </div>
-          {/each}
-          {#if galatSimpan}
-            <p role="alert" class="rounded-xl bg-mawar px-4 py-3 text-[0.9375rem] text-galat sm:col-span-6">
-              {galatSimpan}
-            </p>
-          {/if}
-          <div class="flex flex-wrap justify-end gap-2 sm:col-span-6">
-            <button
-              type="button"
-              onclick={() => (ubah = false)}
-              class="inline-flex min-h-12 items-center rounded-full border border-line-2 px-5 font-semibold text-ink hover:bg-card"
-              >Batal</button
-            >
-            <button
-              type="submit"
-              disabled={menyimpan}
-              class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink disabled:opacity-60"
-            >
-              {menyimpan ? 'Menyimpan…' : 'Simpan data diri'}
-            </button>
-          </div>
-        </form>
-      {:else}
-        <!-- svelte-ignore a11y_no_noninteractive_tabindex (Area gulir perlu fokus agar kolom tabel bisa dijangkau dengan tombol panah.) -->
-        <div
-          role="region"
-          aria-label="Tabel data diri"
-          tabindex="0"
-          class="min-w-0 overflow-x-auto rounded-2xl border border-line bg-surface"
-        >
-          <table class="w-full border-collapse text-left">
-            <caption class="sr-only">Data diri tersimpan</caption>
-            <thead class="border-b border-line bg-card text-[13px] font-semibold text-card-ink">
-              <tr>
-                <th scope="col" class="w-[36%] py-2.5 pr-2 pl-5 font-semibold sm:w-[206px]">Data</th>
-                <th scope="col" class="px-2 py-2.5 font-semibold">Isi</th>
-                <th scope="col" class="w-[96px] py-2.5 pr-5 pl-2"><span class="sr-only">Aksi</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each RINGKAS as k (k)}
-                {@const c = KOLOM.find((x) => x.k === k)!}
-                {@const v = data[k] as string | undefined}
-                <tr class="h-[57.5px] border-t border-line first:border-t-0">
-                  <th scope="row" class="py-2 pr-2 pl-5 text-[15px] font-normal text-card-ink">{c.label}</th>
-                  <td class="px-2 py-2 text-[17px] font-medium break-words text-ink">
-                    {#if v}
-                      <span class="inline-flex flex-wrap items-center gap-2">
-                        {tampilNilai(k, v)}
-                        {#if c.rahasia}
-                          <button
-                            type="button"
-                            onclick={() => (lihat[k] = !lihat[k])}
-                            aria-pressed={!!lihat[k]}
-                            class="-my-3 grid size-11 place-items-center rounded-full font-normal text-ink hover:bg-bg-2"
-                          >
-                            <Icon name={lihat[k] ? 'mata-tutup' : 'mata'} class="size-4" />
-                            <span class="sr-only">{lihat[k] ? 'Sembunyikan' : 'Tampilkan'} {c.label}</span>
-                          </button>
-                        {/if}
-                      </span>
-                    {:else}
-                      <span class="font-normal text-muted">Belum diisi</span>
-                    {/if}
-                  </td>
-                  <td class="py-1 pr-5 pl-2 text-right">
-                    <button
-                      type="button"
-                      onclick={() => mulaiUbah(k)}
-                      class="-mr-3 inline-flex h-11 items-center rounded-full px-3 text-[15px] font-semibold text-ink hover:bg-bg-2"
-                      >Ubah<span class="sr-only"> {c.label}</span></button
-                    >
-                  </td>
-                </tr>
+              {#each KOLOM as c (c.k)}
+                <div
+                  class={c.lebar === 'penuh'
+                    ? 'sm:col-span-6'
+                    : c.lebar === 'sepertiga'
+                      ? 'sm:col-span-2'
+                      : 'sm:col-span-3'}
+                >
+                  <Field id="dd-{c.k}" label={c.label} petunjuk={c.petunjuk} galat={galat[c.k]}>
+                    {#snippet children({ describedby, invalid })}
+                      <input
+                        id="dd-{c.k}"
+                        name={c.k}
+                        type={c.tipe ?? 'text'}
+                        inputmode={c.mode === 'numeric' ? 'numeric' : c.mode}
+                        autocomplete={(c.auto ?? 'off') as HTMLInputElement['autocomplete']}
+                        pattern={c.pola}
+                        bind:value={draf[c.k]}
+                        aria-describedby={describedby}
+                        aria-invalid={invalid}
+                        class="h-12 w-full rounded-xl border bg-surface px-3 text-base text-ink {invalid
+                          ? 'border-galat-garis'
+                          : 'border-line-2'}"
+                      />
+                    {/snippet}
+                  </Field>
+                </div>
               {/each}
-            </tbody>
-          </table>
-        </div>
-      {/if}
+              {#if galatSimpan}
+                <p
+                  role="alert"
+                  class="rounded-xl bg-mawar px-4 py-3 text-[0.9375rem] text-galat sm:col-span-6"
+                >
+                  {galatSimpan}
+                </p>
+              {/if}
+              <div class="flex flex-wrap justify-end gap-2 sm:col-span-6">
+                <button
+                  type="button"
+                  onclick={() => (ubah = false)}
+                  class="inline-flex min-h-12 items-center rounded-full border border-line-2 px-5 font-semibold text-ink hover:bg-card"
+                  >Batal</button
+                >
+                <button
+                  type="submit"
+                  disabled={menyimpan}
+                  class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink disabled:opacity-60"
+                >
+                  {menyimpan ? 'Menyimpan…' : 'Simpan data diri'}
+                </button>
+              </div>
+            </form>
+          {:else}
+            <!-- svelte-ignore a11y_no_noninteractive_tabindex (Area gulir perlu fokus agar kolom tabel bisa dijangkau dengan tombol panah.) -->
+            <div
+              role="region"
+              aria-label="Tabel data diri"
+              tabindex="0"
+              class="min-w-0 overflow-x-auto rounded-2xl border border-line bg-surface"
+            >
+              <table class="w-full border-collapse text-left">
+                <caption class="sr-only">Data diri tersimpan</caption>
+                <thead class="border-b border-line bg-card text-[13px] font-semibold text-card-ink">
+                  <tr>
+                    <th scope="col" class="w-[36%] py-2.5 pr-2 pl-5 font-semibold sm:w-[206px]">Data</th>
+                    <th scope="col" class="px-2 py-2.5 font-semibold">Isi</th>
+                    <th scope="col" class="w-[96px] py-2.5 pr-5 pl-2"><span class="sr-only">Aksi</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each RINGKAS as k (k)}
+                    {@const c = KOLOM.find((x) => x.k === k)!}
+                    {@const v = data[k] as string | undefined}
+                    <tr class="h-[57.5px] border-t border-line first:border-t-0">
+                      <th scope="row" class="py-2 pr-2 pl-5 text-[15px] font-normal text-card-ink"
+                        >{c.label}</th
+                      >
+                      <td class="px-2 py-2 text-[17px] font-medium break-words text-ink">
+                        {#if v}
+                          <span class="inline-flex flex-wrap items-center gap-2">
+                            {tampilNilai(k, v)}
+                            {#if c.rahasia}
+                              <button
+                                type="button"
+                                onclick={() => (lihat[k] = !lihat[k])}
+                                aria-pressed={!!lihat[k]}
+                                class="-my-3 grid size-11 place-items-center rounded-full font-normal text-ink hover:bg-bg-2"
+                              >
+                                <Icon name={lihat[k] ? 'mata-tutup' : 'mata'} class="size-4" />
+                                <span class="sr-only">{lihat[k] ? 'Sembunyikan' : 'Tampilkan'} {c.label}</span
+                                >
+                              </button>
+                            {/if}
+                          </span>
+                        {:else}
+                          <span class="font-normal text-muted">Belum diisi</span>
+                        {/if}
+                      </td>
+                      <td class="py-1 pr-5 pl-2 text-right">
+                        <button
+                          type="button"
+                          onclick={() => mulaiUbah(k)}
+                          class="-mr-3 inline-flex h-11 items-center rounded-full px-3 text-[15px] font-semibold text-ink hover:bg-bg-2"
+                          >Ubah<span class="sr-only"> {c.label}</span></button
+                        >
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </section>
+        <AnggotaKeluarga onsimpan={(p) => (pesanStatus = p)} />
+      </div>
 
       <aside class="flex flex-col items-start gap-3.5 rounded-2xl border border-line bg-card p-6">
         <span class="grid size-11 place-items-center rounded-xl border border-line bg-surface"

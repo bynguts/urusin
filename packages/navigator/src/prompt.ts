@@ -64,6 +64,7 @@ function aturanSistem(tujuan: string): string {
     '- Jawab HANYA dengan JSON {"aksi":[...]} sesuai skema. Tanpa teks lain.',
     '- Rujuk elemen HANYA dengan ref dari daftar ELEMEN (mis. e3). Jangan mengarang ref.',
     '- Isi kolom HANYA dengan placeholder dari KATALOG DATA, ke kolom yang labelnya memang meminta data itu. JANGAN PERNAH menulis nilai, URL, teks bebas, tombol keyboard, atau kode.',
+    '- PEMOHON = warga yang mengajukan. AYAH/IBU/ANAK/PASANGAN hanya untuk kolom di bagian orang itu (mis. "Data Ibu", "Nama Ayah", "Data Bayi/Anak"); kolom tanpa penanda orang = PEMOHON.',
     '- Pilihan: pakai {"opsi":n} dengan n indeks dari daftar opsi elemen itu, atau placeholder katalog.',
     '- Unggah: pakai nama berkas dari KATALOG BERKAS.',
     '- Klik HANYA elemen dengan kelas navigasi, ui_lokal, atau lanjut. Paling banyak satu klik, dan harus aksi terakhir.',

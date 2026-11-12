@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '../Icon.svelte';
+  import { ambilKeluarga } from '#lib/akun/klien.js';
   import { fieldDataDiri, labelPlaceholder } from '#lib/pendamping/isi-data.js';
   import type { KolomButuh } from '#lib/pendamping/tipe.js';
 
@@ -30,9 +31,35 @@
     pesan?: string | undefined;
     kolom?: readonly KolomButuh[] | undefined;
     rencanaHash?: string | undefined;
-    onizinkan: (pilihan?: { placeholder: string[]; berkas: string[] }) => void;
+    onizinkan: (pilihan?: { placeholder: string[]; berkas: string[]; anakId?: string }) => void;
     ontolak: () => void;
   } = $props();
+
+  /**
+   * Anak yang dimaksud: bila data `{{ANAK.*}}` diminta dan lebih dari satu anak tersimpan, warga memilih di sini
+   * (nama hanya untuk warga sendiri, dari brankasnya; server menerima `anak:<id>` di daftar write). Satu anak =
+   * otomatis di server.
+   */
+  const butuhAnak = $derived(
+    [...placeholder, ...(kolom ?? []).map((k) => k.placeholder)].some((p) =>
+      fieldDataDiri(p)?.startsWith('anak.'),
+    ),
+  );
+  let daftarAnak = $state<{ id: string; nama: string }[]>([]);
+  let anakId = $state<string | undefined>(undefined);
+  $effect(() => {
+    if (!buka || !butuhAnak) return;
+    void ambilKeluarga().then((r) => {
+      if (!r.ok) return;
+      daftarAnak = r.data.anggota
+        .filter((a) => a.hubungan === 'anak')
+        .map((a) => ({ id: a.id, nama: a.namaLengkap }));
+      if (!daftarAnak.some((a) => a.id === anakId)) anakId = undefined;
+    });
+  });
+  const pilihAnak = $derived(butuhAnak && daftarAnak.length > 1);
+  const denganAnak = <T extends object>(p: T): T & { anakId?: string } =>
+    pilihAnak && anakId ? { ...p, anakId } : p;
 
   let dialog: HTMLDialogElement | undefined = $state();
   const label = $derived([...new Set(placeholder.map(labelPlaceholder))]);
@@ -187,6 +214,26 @@
         </ul>
       </div>
     {/if}
+    {#if pilihAnak}
+      <fieldset class="flex flex-col gap-2">
+        <legend class="text-sm font-semibold">Anak yang dimaksud</legend>
+        {#each daftarAnak as a (a.id)}
+          <label class="flex items-center gap-3 rounded-xl bg-bg-2 px-3 py-2.5 text-sm">
+            <input
+              type="radio"
+              name="anak-dimaksud"
+              value={a.id}
+              bind:group={anakId}
+              class="size-4.5 accent-primer"
+            />
+            {a.nama}
+          </label>
+        {/each}
+        {#if !anakId}
+          <p class="text-sm text-body">Belum dipilih: data anak diisi sendiri di layar.</p>
+        {/if}
+      </fieldset>
+    {/if}
     {#if pesan}
       <p role="alert" class="rounded-xl bg-kuning px-4 py-3 text-[0.9375rem] text-kuning-ink">{pesan}</p>
     {/if}
@@ -199,7 +246,14 @@
       >
       <button
         type="button"
-        onclick={() => onizinkan(generik ? pilihan : undefined)}
+        onclick={() =>
+          onizinkan(
+            generik
+              ? denganAnak(pilihan)
+              : pilihAnak && anakId
+                ? { placeholder: [...placeholder], berkas: [...berkas], anakId }
+                : undefined,
+          )}
         disabled={sibuk || (generik && !adaPilihan)}
         aria-busy={sibuk || undefined}
         class="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink disabled:opacity-80"

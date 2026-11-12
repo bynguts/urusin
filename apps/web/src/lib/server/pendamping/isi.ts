@@ -1,7 +1,13 @@
 import { AkunError, type Akun } from '@urusin/akun';
-import { kolomDari, labelPlaceholder } from '#lib/pendamping/isi-data.js';
+import { entriAnak, kolomDari, labelPlaceholder } from '#lib/pendamping/isi-data.js';
 import type { Runtime } from '#lib/server/runtime.js';
-import { AWALAN_BERKAS, izinkanIsi, resolusiIsi, type BerkasIsi } from '#lib/server/vault/resolver.js';
+import {
+  AWALAN_BERKAS,
+  dataIsian,
+  izinkanIsi,
+  resolusiIsi,
+  type BerkasIsi,
+} from '#lib/server/vault/resolver.js';
 
 /**
  * Jalur isi Pendamping (A-M1): SATU-SATUNYA pemanggil penyelesai nilai PII. Peramban hanya mengirim
@@ -47,7 +53,7 @@ function fieldDari(writeList: readonly string[]): string[] {
   if (writeList.length === 0 || writeList.length > MAKS_ENTRI) throw new AkunError('IZIN_TIDAK_VALID');
   const fields = new Set<string>();
   for (const w of writeList) {
-    if (/^berkas:[A-Z][A-Z0-9_]{0,39}$/.test(w)) fields.add(w);
+    if (/^berkas:[A-Z][A-Z0-9_]{0,39}$/.test(w) || entriAnak(w)) fields.add(w);
     else {
       const k = kolomDari(w);
       if (!k) throw new AkunError('IZIN_TIDAK_VALID');
@@ -86,14 +92,14 @@ export function izinkanIsiUrusan(
     kodeWilayah,
     rencanaHash: p.rencanaHash,
   });
-  const data = rt.akun.vault.getDataDiri(ownerId)?.data ?? {};
+  const data = dataIsian(rt, ownerId, p.writeList);
   const jenisAda = new Set(rt.akun.vault.listDocuments(ownerId).map((d) => d.jenis));
   const kurang: string[] = [];
   for (const w of p.writeList) {
     if (w.startsWith(AWALAN_BERKAS)) {
       if (!jenisAda.has(w.slice(AWALAN_BERKAS.length).toLowerCase()))
         kurang.push(w.slice(AWALAN_BERKAS.length));
-    } else {
+    } else if (!entriAnak(w)) {
       const v = data[kolomDari(w)!];
       if (typeof v !== 'string' || v === '') kurang.push(labelPlaceholder(w));
     }

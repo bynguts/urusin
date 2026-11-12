@@ -10,20 +10,36 @@ describe('placeholder Data Diri vs diketik warga', () => {
       expect(dariDataDiri(p)).toBe(false);
   });
 
-  it('Data Diri HANYA {{PEMOHON.<KUNCI>}}: data orang lain/bertingkat diketik warga sendiri', () => {
+  it('data keluarga di brankas (AYAH/IBU/ANAK/PASANGAN, NAMA_IBU) ikut menahan AI', () => {
     for (const p of [
       '{{ANAK.NIK}}',
-      '{{ORANG2.NIK}}',
       '{{ANAK.TEMPAT_LAHIR}}',
+      '{{ANAK.TGL_LAHIR}}',
+      '{{IBU.NAMA}}',
+      '{{AYAH.NIK}}',
+      '{{PASANGAN.JK}}',
       '{{PEMOHON.AYAH.NAMA}}',
+      '{{PEMOHON.NAMA_IBU}}',
+    ])
+      expect(dariDataDiri(p)).toBe(true);
+    expect(pesanIsiSendiri('{{ANAK.NIK}}')).toBe(
+      'Ketik NIK anak di kolom yang disorot, lalu tekan Lanjutkan.',
+    );
+    expect(pesanIsiSendiri('{{PEMOHON.NAMA_IBU}}')).toContain('Nama lengkap ibu');
+  });
+
+  it('data orang lain/bertingkat di luar brankas diketik warga sendiri', () => {
+    for (const p of [
+      '{{ORANG2.NIK}}',
+      '{{ANAK.AYAH.NAMA}}',
       '{{PEMOHON.ALAMAT.RT}}',
       '{{XPEMOHON.NIK}}',
+      '{{ANAK.HP}}',
+      '{{KAKEK.NIK}}',
     ])
       expect(dariDataDiri(p)).toBe(false);
-    expect(pesanIsiSendiri('{{ANAK.NIK}}')).toBe(
-      'Ketik isian yang diminta di kolom yang disorot, lalu tekan Lanjutkan.',
-    );
     expect(dariDataDiri('{{X.constructor}}')).toBe(false);
+    expect(dariDataDiri('{{ANAK.constructor}}')).toBe(false);
   });
 
   it('pesan giliran menyebut label, tanpa nilai; label tak dikenal = umum', () => {
@@ -53,5 +69,13 @@ describe('kontrak Data Diri pendamping <-> web', () => {
     const web = kunci('../../web/src/lib/pendamping/isi-data.ts', 'KOLOM');
     expect(pendamping.length).toBeGreaterThan(10);
     expect(pendamping).toEqual(web);
+  });
+
+  it('kunci anggota keluarga dan alias pemohon sama di kedua sisi', () => {
+    const web = '../../web/src/lib/pendamping/isi-data.ts';
+    expect(kunci('./isian.ts', 'ANGGOTA')).toEqual(kunci(web, 'KOLOM_ANGGOTA'));
+    expect(kunci('./isian.ts', 'ANGGOTA').length).toBeGreaterThan(5);
+    expect(kunci('./isian.ts', 'ALIAS')).toEqual(kunci(web, 'ALIAS_PEMOHON'));
+    expect(kunci('./isian.ts', 'ALIAS')).toHaveLength(2);
   });
 });
