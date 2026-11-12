@@ -1,7 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { afterNavigate } from '$app/navigation';
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { resolve } from '$app/paths';
   import latarUtama1x from '#lib/assets/img/app/latar-utama-1156.webp';
   import latarUtama2x from '#lib/assets/img/app/latar-utama-2312.webp';
@@ -28,6 +28,9 @@
 
   const lokal = ambilLokal();
   const daftar = new DaftarUrusan();
+  daftar.onjudul = (id, judul) => lokal.ubahJudul(id, judul);
+  // Muat ulang status hanya bila daftar id berubah (bukan saat judul di perangkat diperbarui).
+  const idsLokal = $derived(lokal.data.urusan.map((u) => u.id).join(','));
   // svelte-ignore state_referenced_locally
   let pesan = $state(form?.pesan ?? '');
   let mengirim = $state(false);
@@ -55,7 +58,8 @@
   $effect(() => {
     // Modul dikte dimuat saat tombol Bicara ditekan supaya JS awal Beranda tetap di bawah anggaran.
     bisaDikte = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
-    void daftar.muat(lokal.data.urusan);
+    void idsLokal;
+    untrack(() => void daftar.muat(lokal.data.urusan));
   });
 
   async function bicara() {
@@ -235,7 +239,11 @@
       {/if}
       <div class="flex flex-col gap-3 md:flex-row">
         {#each berjalan as u (u.id)}
-          <KartuBerjalan urusan={u} utama={u.id === utamaId} memuat={daftar.memuat} />
+          <KartuBerjalan
+            urusan={{ ...u, judul: lokal.cari(u.id)?.judul ?? u.judul }}
+            utama={u.id === utamaId}
+            memuat={daftar.memuat}
+          />
         {/each}
       </div>
     </section>

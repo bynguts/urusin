@@ -3,6 +3,8 @@
   import Icon from '../Icon.svelte';
   import type { NamaIkon } from '../ikon.js';
   import { domain } from '#lib/urusan-status.js';
+  import Tautan from '../ui/Tautan.svelte';
+  import TeksBertaut from '../ui/TeksBertaut.svelte';
 
   /**
    * Kartu rencana (App 03): langkah bernomor dengan label pelaku (Anda/AI/Instansi), kelayakan, dan tombol
@@ -70,7 +72,7 @@
             : 'Dipandu langkah demi langkah'}</span
         >
       </p>
-      {#if rencana.catatan}<p class="text-body">{rencana.catatan}</p>{/if}
+      {#if rencana.catatan}<p class="text-body"><TeksBertaut teks={rencana.catatan} /></p>{/if}
     </div>
   {/if}
   {#if rencana.dipandu}
@@ -81,7 +83,7 @@
     >
       <p class="flex items-start gap-2 rounded-xl bg-biru px-3 py-2.5 text-[0.9375rem] text-biru-ink">
         <Icon name="peta" class="mt-0.5 size-[18px] shrink-0" />
-        <span>{d.pesan}</span>
+        <span><TeksBertaut teks={d.pesan} /></span>
       </p>
       {#if d.kanal.length}
         <div>
@@ -99,10 +101,10 @@
                     <Icon name="instansi" class="size-5 shrink-0 text-muted" />
                     <span class="min-w-0 flex-1">
                       <span class="block font-medium text-ink">{k.nama}</span>
-                      <span class="block truncate text-muted">{domain(k.url)}</span>
+                      <span class="tautan block truncate">{domain(k.url)}</span>
                       {#if k.kontak}<span class="block text-body">{k.kontak}</span>{/if}
                     </span>
-                    <Icon name="tautan-luar" class="size-4 shrink-0" />
+                    <Icon name="tautan-luar" class="size-4 shrink-0 text-tautan" />
                     <span class="sr-only">(buka di tab baru)</span>
                   </a>
                 {:else}
@@ -119,19 +121,16 @@
         <div>
           <dt class="font-semibold text-ink">Biaya</dt>
           <dd class="text-body">
-            {d.biaya.teks}
-            {#if d.biaya.sumber}<a
-                href={d.biaya.sumber.url}
-                target="_blank"
-                rel="external noopener noreferrer"
-                class="text-brand underline">Sumber</a
+            <TeksBertaut teks={d.biaya.teks} />
+            {#if d.biaya.sumber}<Tautan href={d.biaya.sumber.url} rel="external noopener noreferrer"
+                >Sumber</Tautan
               >{/if}
           </dd>
         </div>
         <div>
           <dt class="font-semibold text-ink">Perkiraan waktu</dt>
           <dd class="text-body">
-            {d.waktu.teks}{#if d.waktu.umum}<span class="text-muted">
+            <TeksBertaut teks={d.waktu.teks} />{#if d.waktu.umum}<span class="text-muted">
                 (panduan umum, cek ulang di kanal resmi)</span
               >{/if}
           </dd>
@@ -143,7 +142,7 @@
             Tips <span class="font-normal text-muted">(panduan umum, cek ulang di kanal resmi)</span>
           </p>
           <ul class="list-disc pl-5 text-body">
-            {#each d.tips as t (t)}<li>{t}</li>{/each}
+            {#each d.tips as t (t)}<li><TeksBertaut teks={t} /></li>{/each}
           </ul>
         </div>
       {/if}
@@ -151,7 +150,7 @@
         <div>
           <p class="font-semibold text-ink">Yang bisa saya bantu berikutnya</p>
           <ul class="list-disc pl-5 text-body">
-            {#each d.lanjutan as t (t)}<li>{t}</li>{/each}
+            {#each d.lanjutan as t (t)}<li><TeksBertaut teks={t} /></li>{/each}
           </ul>
         </div>
       {/if}
@@ -166,14 +165,16 @@
           >{i + 1}</span
         >
         <div class="min-w-0 flex-1">
-          <span class="block text-base leading-[22px] text-ink">{l.judul}</span>
+          <span class="block text-base leading-[22px] text-ink"><TeksBertaut teks={l.judul} /></span>
           {#if l.dokumen?.length}
             <p class="mt-1 text-sm leading-[21px] font-semibold text-ink">Dokumen yang disiapkan:</p>
             <ul class="list-disc pl-5 text-sm leading-[21px] text-body">
-              {#each l.dokumen as d (d)}<li>{d}</li>{/each}
+              {#each l.dokumen as d (d)}<li><TeksBertaut teks={d} /></li>{/each}
             </ul>
           {/if}
-          {#if l.keterangan}<p class="mt-1 text-sm leading-[21px] text-muted">{l.keterangan}</p>{/if}
+          {#if l.keterangan}<p class="mt-1 text-sm leading-[21px] text-muted">
+              <TeksBertaut teks={l.keterangan} />
+            </p>{/if}
         </div>
         <span
           class="inline-flex shrink-0 items-center gap-[5px] rounded-full px-2.5 py-[3px] text-[13px] leading-5 font-semibold {p.kelas}"

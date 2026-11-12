@@ -101,8 +101,18 @@ export const RingkasanUrusanSchema = z.object({
   diubahPada: IsoWaktuSchema,
   /** Nomor permohonan dari situs resmi setelah pengajuan terkirim (bukti Browser Pendamping). */
   nomorPermohonan: z.string().min(1).max(64).optional(),
+  /** Judul daftar: dibuat AI setelah turn pertama (bebas PII) atau nama pilihan warga. */
+  judul: z.string().min(1).max(80).optional(),
+  /** true = judul diganti warga sendiri; AI tidak pernah menimpanya. */
+  judulManual: z.boolean().optional(),
 });
 export const DaftarUrusanResponseSchema = z.object({ urusan: z.array(RingkasanUrusanSchema) });
+
+// --- PUT /api/urusan/[id]/judul (ganti nama oleh warga) ---
+export const GantiJudulRequestSchema = z.object({ judul: z.string().trim().min(1).max(60) });
+export const GantiJudulResponseSchema = z.object({ judul: z.string().min(1).max(80) });
+export type GantiJudulRequest = z.infer<typeof GantiJudulRequestSchema>;
+export type GantiJudulResponse = z.infer<typeof GantiJudulResponseSchema>;
 
 // --- GET /api/urusan/[id]/jejak dan /api/transparansi ---
 export const JejakItemSchema = z.discriminatedUnion('jenis', [
@@ -261,6 +271,7 @@ export const ENDPOINT = {
   tetapkanWilayah: { method: 'POST', path: '/api/urusan/[id]/wilayah', sukses: 200, diimplementasi: true },
   statusUrusan: { method: 'GET', path: '/api/urusan/[id]', sukses: 200, diimplementasi: true },
   daftarUrusan: { method: 'GET', path: '/api/urusan', sukses: 200, diimplementasi: true },
+  gantiJudul: { method: 'PUT', path: '/api/urusan/[id]/judul', sukses: 200, diimplementasi: true },
   stream: { method: 'GET', path: '/api/urusan/[id]/stream', sukses: 200, diimplementasi: true },
   jejak: { method: 'GET', path: '/api/urusan/[id]/jejak', sukses: 200, diimplementasi: true },
   peristiwa: { method: 'GET', path: '/api/peristiwa/[slug]', sukses: 200, diimplementasi: true },

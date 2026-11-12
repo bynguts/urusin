@@ -40,6 +40,7 @@ import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { cariWebDariEnv } from './cari-web.js';
 import { embeddingDariEnv, intentEmbedding, type Embedding } from './embedding.js';
 import { httpKeluar } from './http-keluar.js';
+import { buatJudulUrusan, judulDemo } from './judul-urusan.js';
 import { aturStatusProbe, pantauProbe } from './probe-ulang.js';
 import { penyimpanIngatan } from './ingatan.js';
 import { buatOidcFixture, type OidcFixture } from './oidc-fixture.js';
@@ -132,6 +133,8 @@ export type Runtime = ReturnType<typeof createHarness> & {
   rag: RagInfo;
   /** 'demo' = FakeProvider berskrip (tanpa kunci LLM); 'llm' = provider OpenAI-compatible nyata. */
   mode: 'demo' | 'llm';
+  /** Judul urusan dibuat AI setelah turn pertama (tes dengan provider berskrip mematikannya: antrean tidak tergeser). */
+  judulAi: boolean;
   /** Turn yang sedang berjalan per urusan (untuk pembatalan saat klien putus). */
   running: Map<string, AbortController>;
   /** Catat + siarkan satu event di luar turn (hasil eksekusi, konfirmasi): sumber kebenaran tetap tabel events. */
@@ -176,6 +179,8 @@ type RuntimeInit = {
   provider?: ChatProvider;
   harness?: Partial<HarnessOptions>;
   mode?: Runtime['mode'];
+  /** Judul urusan oleh AI setelah turn pertama. Bawaan: aktif untuk provider demo bawaan; mode llm menyalakannya. */
+  judulAi?: boolean;
   akun?: AkunInit;
   /** Env penyedia embedding/rerank dan gerbang abstain untuk pencari RAG (default process.env). */
   env?: Record<string, string | undefined>;
@@ -263,7 +268,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   // Cari web cadangan (Exa): hanya bila EXA_API_KEY terisi; tanpa itu web__cari tidak ditawarkan ke model.
   const cariWeb = cariWebDariEnv(init.env ?? process.env);
   const h = createHarness({
-    provider: init.provider ?? new DemoProvider(),
+    provider: init.provider ?? new DemoProvider({ override: judulDemo }),
     db,
     ragDb,
     ragSearch: searcher?.search,
@@ -316,6 +321,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     config,
     rag,
     mode: init.mode ?? 'demo',
+    judulAi: init.judulAi ?? !init.provider,
     running,
     publish,
     limits,
@@ -406,6 +412,7 @@ async function buildFromEnv(): Promise<Runtime> {
   const rt = createRuntime({
     mode: 'llm',
     provider,
+    judulAi: true,
     harness: {
       model: cfg.models.agent,
       caps,
@@ -471,6 +478,8 @@ export function startTurnInBackground(
     .catch(() => undefined)
     .finally(() => {
       if (rt.running.get(args.urusanId) === ctrl) rt.running.delete(args.urusanId);
+      // Judul urusan oleh AI sekali setelah turn pertama warga (async, fail-open, tidak menahan turn/stream).
+      if (rt.judulAi) void buatJudulUrusan(rt, args.urusanId);
     });
   return { turnId: prepared.turnId };
 }

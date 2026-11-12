@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { daftarAkunUji } from './akun-uji';
+import { JUDUL_KELAHIRAN, daftarAkunUji } from './akun-uji';
 
 // Semua data uji berada di DB sementara runner. CRUD brankas lewat UI dan backend sebenarnya, tanpa mock API.
 test.beforeEach(async ({ context }) => {
@@ -199,8 +199,8 @@ test('navigasi sidebar dan filter Urusanku membuka urusan yang benar', async ({ 
   await filter.getByRole('button', { name: /Menunggu instansi/ }).click();
   await expect(page.getByText('Tidak ada urusan di kelompok ini', { exact: true })).toBeVisible();
   await filter.getByRole('button', { name: /Menunggu Anda/ }).click();
-  await expect(page.getByRole('article')).toContainText('Akta kelahiran');
-  await page.getByRole('link', { name: /Tinjau rencana\s*:\s*Akta kelahiran/ }).click();
+  await expect(page.getByRole('article')).toContainText(JUDUL_KELAHIRAN);
+  await page.getByRole('link', { name: /Tinjau rencana\s*:\s*(Akta|Mengurus) kelahiran/ }).click();
   await expect(page).toHaveURL(url);
   await page.getByRole('button', { name: 'Buka menu samping', exact: true }).click();
   await expect(page.getByRole('complementary', { name: 'Menu samping' })).toContainText('Urusan aktif');

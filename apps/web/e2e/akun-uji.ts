@@ -1,5 +1,11 @@
 import { expect, type Page } from '@playwright/test';
 
+/**
+ * Judul urusan kelahiran di daftar: judul jenis ("Akta kelahiran") sampai judul AI selesai dibuat, lalu judul
+ * dari FakeProvider demo untuk pesan awal "Saya ingin mengurus kelahiran" ("Mengurus kelahiran").
+ */
+export const JUDUL_KELAHIRAN = /Akta kelahiran|Mengurus kelahiran/;
+
 /** Sandi akun uji e2e (bukan sandi umum, ≥ 10 karakter). */
 export const SANDI_UJI = 'kuda-lari-cepat-9';
 

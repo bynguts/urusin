@@ -2,6 +2,7 @@
   import { resolve } from '$app/paths';
   import type { EventOf } from '#lib/contracts.js';
   import Icon from '../Icon.svelte';
+  import TeksBertaut from '../ui/TeksBertaut.svelte';
 
   /**
    * Hasil cek berkas (App 04): hijau/kuning/merah selalu dengan ikon + alasan dalam bahasa awam, lalu satu aksi
@@ -43,7 +44,7 @@
       <li class="flex gap-2 text-base leading-6">
         <Icon name={s.ikon} class="mt-1 size-4 shrink-0 {s.kelas}" label={s.label} />
         <span class="text-card-ink">
-          {it.label}{#if it.alasan}<span>: {it.alasan}</span>{/if}
+          <TeksBertaut teks={it.label} />{#if it.alasan}<span>: <TeksBertaut teks={it.alasan} /></span>{/if}
         </span>
       </li>
     {/each}

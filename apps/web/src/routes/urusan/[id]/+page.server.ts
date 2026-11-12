@@ -34,6 +34,7 @@ export const load: PageServerLoad = async ({ params, setHeaders, cookies, locals
       state: u.state,
       dibuatPada: u.createdAt,
       nomorPermohonan: u.nomorPermohonan,
+      judul: u.judul ?? null,
     },
   };
 };

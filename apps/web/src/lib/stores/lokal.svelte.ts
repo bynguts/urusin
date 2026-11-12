@@ -130,6 +130,17 @@ export class LokalStore {
     this.simpan();
   }
 
+  /** Perbarui judul (AI atau nama pilihan warga dari server) tanpa mengubah urutan daftar. */
+  ubahJudul(id: string, judul: string): void {
+    const j = judul.trim().slice(0, 120);
+    if (!j || !this.data.urusan.some((u) => u.id === id && u.judul !== j)) return;
+    this.data = {
+      ...this.data,
+      urusan: this.data.urusan.map((u) => (u.id === id ? { ...u, judul: j } : u)),
+    };
+    this.simpan();
+  }
+
   cari(id: string): CatatanUrusan | undefined {
     return this.data.urusan.find((u) => u.id === id);
   }
