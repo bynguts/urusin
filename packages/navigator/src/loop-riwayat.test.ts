@@ -50,7 +50,8 @@ function formGalat(sidik: string, galat: string): Pengamatan {
         : e.ref === 'e2'
           ? { ...e, isian: '{{PEMOHON.NAMA}}' }
           : e.ref === 'e3'
-            ? { ...e, isian: 'terisi_situs', galat }
+            ? // Pilihan berindeks hasil AI tampak `terisi_warga` di amatan worker (bukan placeholder).
+              { ...e, isian: 'terisi_warga', galat }
             : e,
     ),
   };

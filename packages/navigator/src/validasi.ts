@@ -255,6 +255,12 @@ export type OpsiValidasi = {
   katalog?: ReadonlySet<string>;
   /** Nama berkas yang boleh diunggah (bawaan: KATALOG_BERKAS). */
   berkas?: ReadonlySet<string>;
+  /**
+   * Ref kolom yang diisi AI SENDIRI di langkah tepat sebelumnya lalu ditolak situs (periksa-sesudah-aksi, tanpa
+   * warga memegang kendali di antaranya). Pilihan/radio/centang hasil AI tampak `terisi_warga` di amatan; hanya
+   * kolom ini yang boleh ditulis ulang untuk koreksi. Kolom lain yang terisi warga tetap KOLOM_DIISI_WARGA.
+   */
+  koreksiAi?: ReadonlySet<string>;
 };
 
 export type PutusanValidasi =
@@ -368,7 +374,7 @@ export function validasiRencana(mentah: unknown, p: Pengamatan, opsi: OpsiValida
       if (refTulis.has(a.ref)) langgar.add('REF_GANDA');
       refTulis.add(a.ref);
       if (e.terlarang) langgar.add('KOLOM_TERLARANG');
-      if (e.isian === 'terisi_warga') langgar.add('KOLOM_DIISI_WARGA');
+      if (e.isian === 'terisi_warga' && !opsi.koreksiAi?.has(a.ref)) langgar.add('KOLOM_DIISI_WARGA');
     }
     switch (a.jenis) {
       case 'isi': {

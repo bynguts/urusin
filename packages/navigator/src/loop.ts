@@ -924,7 +924,13 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       }
       ang.catatLlm(minta.panggilan);
       const v = minta.ok
-        ? validasiRencana(minta.rencana, p, o.validasi)
+        ? validasiRencana(
+            minta.rencana,
+            p,
+            periksa?.koreksi.length
+              ? { ...o.validasi, koreksiAi: new Set(periksa.koreksi.map((k) => k.ref)) }
+              : o.validasi,
+          )
         : { ok: false as const, aturan: ['SKEMA_TIDAK_SAH' as const], rencanaHash: hashRencana(null) };
       if (minta.ok && v.ok)
         o.jejak({

@@ -10,6 +10,7 @@ import {
 } from './periksa-isian.js';
 import { pesanRencana } from './prompt.js';
 import { halamanForm } from './testing.js';
+import { validasiRencana } from './validasi.js';
 
 const NONCE = 'n0nce2';
 const bungkus = (t: string, id: string, max: number) =>
@@ -113,5 +114,23 @@ describe('periksa-sesudah-aksi', () => {
     );
     expect(u.indexOf('PERIKSA HASIL')).toBeGreaterThan(u.indexOf('KATALOG DATA'));
     expect(u.indexOf('RIWAYAT')).toBeGreaterThan(u.indexOf('PERIKSA HASIL'));
+  });
+});
+
+describe('validator: koreksi kolom hasil AI', () => {
+  it('hanya ref koreksiAi yang boleh ditulis ulang walau tampak terisi_warga', () => {
+    const p = sesudah({
+      e3: { isian: 'terisi_warga', galat: 'Pilih jenis lain' },
+      e8: { isian: 'terisi_warga' },
+    });
+    const pilih = { aksi: [{ jenis: 'pilih', ref: 'e3', nilai: { opsi: 2 } }] };
+    expect(validasiRencana(pilih, p)).toMatchObject({ ok: false, aturan: ['KOLOM_DIISI_WARGA'] });
+    expect(validasiRencana(pilih, p, { koreksiAi: new Set(['e3']) }).ok).toBe(true);
+    // Kolom lain yang diisi warga tetap terlindungi selama koreksi.
+    const catatan = { aksi: [{ jenis: 'isi', ref: 'e8', nilai: '{{PEMOHON.ALAMAT}}' }] };
+    expect(validasiRencana(catatan, p, { koreksiAi: new Set(['e3']) })).toMatchObject({
+      ok: false,
+      aturan: ['KOLOM_DIISI_WARGA'],
+    });
   });
 });
