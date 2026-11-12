@@ -1,6 +1,7 @@
 import type { Hono } from 'hono';
 import { html, page } from '../layout.js';
 import { registerAkun } from './akun.js';
+import { KOREKSI, registerKoreksi } from './koreksi.js';
 import { registerPoisonedGenerik, RACUN } from './poisoned-generik.js';
 import { registerTanpaAkun } from './tanpa-akun.js';
 import { buatPenghitung, GENERIK, VARIAN_LOKAL, VARIAN_PUBLIK, type Varian } from './umum.js';
@@ -32,6 +33,7 @@ export function registerGenerik(app: Hono, opts: { secure: boolean; local: boole
                 </li>`,
             )}
           </ul>
+          <p><a href="${KOREKSI}/">Wizard yang menolak pilihan pertama (koreksi)</a></p>
           ${opts.local ? html`<p><a href="${RACUN}/">Halaman racun (local)</a></p>` : ''}`,
       ),
     ),
@@ -39,6 +41,7 @@ export function registerGenerik(app: Hono, opts: { secure: boolean; local: boole
   registerAkun(app, o);
   registerTanpaAkun(app, o);
   registerWizard(app, o);
+  registerKoreksi(app, o);
   if (opts.local) registerPoisonedGenerik(app, hitung);
   return hitung;
 }
