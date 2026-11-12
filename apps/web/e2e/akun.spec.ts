@@ -547,8 +547,9 @@ test('tamu di portal tanpa situs latihan diajak daftar; setelah daftar kembali k
   await page.goto('/peristiwa/kelahiran');
   const kota = page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' });
   await expect(kota).toHaveAttribute('aria-autocomplete', 'list'); // terhidrasi: select menjadi combobox
-  await kota.fill('Sleman');
-  await page.getByRole('option', { name: 'Kabupaten Sleman', exact: true }).click();
+  // Kota Malang: daerah Browser Pendamping aktif (ADR 0033) dengan portal web asli tanpa situs latihan.
+  await kota.fill('Malang');
+  await page.getByRole('option', { name: 'Kota Malang', exact: true }).click();
   await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
   await expect(page).toHaveURL(/\/urusan\/u_[0-9a-f]{32}$/);
   const urlUrusan = page.url();
@@ -565,7 +566,7 @@ test('tamu di portal tanpa situs latihan diajak daftar; setelah daftar kembali k
   await expect(page.getByRole('button', { name: 'Setujui dan buka situs' })).toHaveCount(0);
   await ajak.click();
   await expect(page).toHaveURL(/\/daftar\?next=%2Furusan%2Fu_/);
-  const email = emailBaru('tamu-sleman');
+  const email = emailBaru('tamu-malang');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel(/Kata sandi/).fill(SANDI);
   await page.getByRole('button', { name: 'Daftar', exact: true }).click();
