@@ -1276,13 +1276,14 @@
       "jenis": "web",
       "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/app",
       "hosts": ["wargaklampid-dispendukcapil.surabaya.go.id"],
+      "hostUnggah": ["s3.klampid.disdukcapilsurabaya.id"],
       "sumber": "https://wargaklampid-dispendukcapil.surabaya.go.id/app",
       "login": ["username_sandi"],
       "proteksi": ["recaptcha"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
       "verifiedAt": "2026-11-12",
-      "catatan": "Klampid NG (Next.js, alur chat-room \"Cak Takon\"). OBS 2026-11-12: masuk /app/login dengan username + sandi + reCAPTCHA v2 (Google/OTP email masih ada di kode tetapi tidak tampil); ada SSO Wargaku. Akun baru wajib \"Verifikasi Akun Klampid\" dan verifikasi nomor HP lewat bot WhatsApp sebelum kartu layanan aktif. KIA dan pindah datang tidak tampil untuk akun warga. Unggahan memakai host S3 non-.go.id (s3.klampid.disdukcapilsurabaya.id) yang belum masuk registry."
+      "catatan": "Klampid NG (Next.js, alur chat-room \"Cak Takon\"). OBS 2026-11-12: masuk /app/login dengan username + sandi + reCAPTCHA v2 (Google/OTP email masih ada di kode tetapi tidak tampil); ada SSO Wargaku. Akun baru wajib \"Verifikasi Akun Klampid\" dan verifikasi nomor HP lewat bot WhatsApp sebelum kartu layanan aktif. KIA dan pindah datang tidak tampil untuk akun warga. Unggahan berkas ke penyimpanan objek s3.klampid.disdukcapilsurabaya.id (dirujuk bundle portal; hostUnggah, hanya sesi 3578)."
     },
     "3603": {
       "kelas": "E",

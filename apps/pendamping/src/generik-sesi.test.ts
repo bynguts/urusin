@@ -165,6 +165,26 @@ describe('programDari(generik)', () => {
       await h.flush();
       expect(hostsSesi(h.runs.at(-1)!.init.program), kode).toContain(aset);
     }
+    // Host unggah Klampid (`hostUnggah`, S3 di luar .go.id) hanya ikut sesi Surabaya (3578), tidak wilayah lain.
+    const S3_KLAMPID = 's3.klampid.disdukcapilsurabaya.id';
+    await h.manager.create(
+      input('unggah-3578', {
+        origin: 'https://wargaklampid-dispendukcapil.surabaya.go.id',
+        params: { kode: '3578', jalur: '/app' },
+      }),
+    );
+    await h.flush();
+    expect(hostsSesi(h.runs.at(-1)!.init.program)).toContain(S3_KLAMPID);
+    for (const kode of ['3374', '1271', '3276', '3312']) {
+      const origin = `https://${PORTAL_WILAYAH[kode]!.hosts[0]}`;
+      await h.manager.create(input(`tanpa-unggah-${kode}`, { origin, params: { kode, jalur: '/' } }));
+      await h.flush();
+      expect(hostsSesi(h.runs.at(-1)!.init.program), kode).not.toContain(S3_KLAMPID);
+    }
+    // Wilayah lain juga tidak bisa memintanya eksplisit.
+    await expect(
+      h.manager.create(input('minta-unggah-3312', { params: { kode: '3312', hosts: S3_KLAMPID } })),
+    ).rejects.toMatchObject({ status: 422 });
     // CDN boleh diminta eksplisit oleh web.
     expect(
       await hostsDari('u4', { kode: '3312', hosts: 'telunjuksakti.wonogirikab.go.id,unpkg.com' }),

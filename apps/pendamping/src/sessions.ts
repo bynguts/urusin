@@ -238,7 +238,17 @@ function hostsSesiWilayah(kode: string): { boleh: Set<string>; bawaan: string[] 
     boleh: new Set([...hostsWilayah(kode), ...tantangan, ...EGRESS_ASET_UMUM]),
     // Aset umum (CDN/fon) ikut bawaan: tanpa itu ~21 portal nyata rusak tampilannya (probe #4). Host aset .go.id
     // milik portal (`hostAset`, CDN/API pemda) juga: tanpa itu XHR/aset 3310 dan 3404 diblokir (probe gel4).
-    bawaan: [...new Set([...p.hosts, ...(p.hostAset ?? []), ...platform, ...tantangan, ...EGRESS_ASET_UMUM])],
+    // Host unggah portal (`hostUnggah`, mis. S3 Klampid 3578): tanpa itu unggah berkas di portal itu diblokir.
+    bawaan: [
+      ...new Set([
+        ...p.hosts,
+        ...(p.hostAset ?? []),
+        ...(p.hostUnggah ?? []),
+        ...platform,
+        ...tantangan,
+        ...EGRESS_ASET_UMUM,
+      ]),
+    ],
   };
 }
 
