@@ -1,6 +1,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import mark from '#lib/assets/img/pen-landing/urusin-mark-52.webp';
+  const emailKontak = 'hello@urusinai.web.id'; // pii-scan:allow -- kontak publik
 
   /**
    * Footer situs publik dari frame pen Rafi (n2rpg / F6RSq). Gaya di landing-pen.css (kelas lpN). Tautan Produk
@@ -18,6 +19,7 @@
         <div class="lp298">Urusin</div>
       </div>
       <div class="lp299">© 2026 Urusin.</div>
+      <a class="lp302" href="mailto:{emailKontak}">{emailKontak}</a>
     </div>
     <div class="n-columns lp300">
       <div class="lp301">
