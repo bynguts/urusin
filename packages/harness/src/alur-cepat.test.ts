@@ -3,6 +3,7 @@ import type { EventOf, EventPayload, UrusinEvent } from '@urusin/contracts';
 import { openDb, upsertChunks } from '@urusin/rag';
 import { describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
+import { demoIntent } from './demo.js';
 import { CacheJawaban } from './grounding.js';
 import { klasifikasiKataKunci } from './intent.js';
 import { makeEnv } from './testing.js';
@@ -65,6 +66,9 @@ describe('klasifikasi kata kunci', () => {
     ['Mau bikin KIA untuk anak saya, KTP Jakarta Selatan', 'kia'],
     ['Cara urus kartu identitas anak?', 'kia'],
     ['kartu anak hilang', 'kia'],
+    ['Mau bayar pajak mobil KIA saya', 'pajak_kendaraan'],
+    ['bayar pajak mobil KIA', 'pajak_kendaraan'],
+    ['Pajak Kia Sonet di Samsat berapa?', 'pajak_kendaraan'],
   ])('%s -> %s', (teks, jenis) => expect(klasifikasiKataKunci(teks)).toBe(jenis));
 
   it.each([
@@ -77,6 +81,13 @@ describe('klasifikasi kata kunci', () => {
   ])('tidak jelas atau lebih dari satu jenis: LLM (%s)', (teks) =>
     expect(klasifikasiKataKunci(teks)).toBeNull(),
   );
+
+  it('KIA merek mobil bukan Kartu Identitas Anak (model demo juga)', () => {
+    expect(demoIntent('bayar pajak mobil KIA')).toBe('pajak_kendaraan');
+    expect(demoIntent('Mobil Kia Picanto saya mogok, KTP Surabaya')).toBe('ktp');
+    expect(demoIntent('Mau bikin KIA untuk anak')).toBe('kia');
+    expect(klasifikasiKataKunci('Mobil Kia Picanto saya mogok')).toBeNull();
+  });
 });
 
 describe('wilayah dari pesan', () => {
