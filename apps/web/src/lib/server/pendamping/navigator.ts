@@ -11,6 +11,7 @@ import type { EgressFetch } from '@urusin/egress';
 import { hostsPortalWilayah, type UrusanRow } from '@urusin/harness';
 import type { ChatProvider, Usage } from '@urusin/llm';
 import {
+  buatPeringkatTautan,
   hashRencana,
   jalankanNavigator,
   type HasilNavigator,
@@ -23,6 +24,7 @@ import type { ZodType } from 'zod';
 import { originFixtures } from '#lib/server/hosts.js';
 import { panggilPemilik, type BodyPemilik, type PendampingConfig } from '#lib/server/pendamping.js';
 import { catatHasilEksekusi } from '#lib/server/eksekusi.js';
+import { navigatorEmbeddingAktif } from '#lib/server/embedding.js';
 import type { Runtime } from '#lib/server/runtime.js';
 
 /**
@@ -272,6 +274,9 @@ export async function jalankanNavigatorUrusan(
           .loadHistory(id)
           .flatMap((p) => (p.role === 'user' && typeof p.content === 'string' ? [p.content] : [])),
       ),
+      ...(rt.embedding && navigatorEmbeddingAktif(process.env)
+        ? { peringkatTautan: buatPeringkatTautan(rt.embedding.penyemat, rt.embedding.profil) }
+        : {}),
       hostsBoleh: m.modeUji ? fixture : new Set(hostsPortalWilayah(m.urusan.kodeKabKota)),
       modeUji: m.modeUji ? { hostsFixture: fixture } : undefined,
       kodeKabKota: m.urusan.kodeKabKota,
