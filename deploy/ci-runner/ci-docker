@@ -291,7 +291,7 @@ cmd_smoke() {
       # Pengerasan compose (nobody, read-only, tanpa kapabilitas, tanpa jaringan) + uji semantik di dalam image.
       smoke_run 300 "${LIMITS[@]}" --platform "linux/$arch" --network none --read-only --tmpfs /tmp:size=16m \
         --user 65534:65534 --cap-drop ALL --security-opt no-new-privileges:true --entrypoint sh "$ref" -c \
-        '/app/llama-server & for i in $(seq 1 120); do curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && break; kill -0 $! || exit 1; sleep 2; done; /usr/local/bin/embed-smoke'
+        '/app/llama-server & for i in $(seq 1 120); do /usr/local/bin/embed-sehat 2>/dev/null && break; kill -0 $! || exit 1; sleep 2; done; /usr/local/bin/embed-smoke'
       ;;
   esac
   echo "::endgroup::"

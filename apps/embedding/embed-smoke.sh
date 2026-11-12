@@ -1,11 +1,23 @@
-#!/bin/sh
-# Uji semantik sidecar embedding di DALAM image (tanpa python/jq; dipakai smoke Release dan ci-docker).
+#!/bin/bash
+# Uji semantik sidecar embedding di DALAM image (tanpa python/jq/curl; dipakai smoke Release dan ci-docker).
+# HTTP lewat /dev/tcp bash karena image sengaja tidak memuat curl.
 # Kueri "akta kelahiran" (awalan profil gemma, sama dengan klien @urusin/embedding) harus lebih dekat ke label
 # "Pencatatan Kelahiran" daripada "Pembayaran Pajak Kendaraan Bermotor", dan vektor harus ternormalisasi.
 set -eu
-URL="${EMBED_SMOKE_URL:-http://127.0.0.1:8080}"
+PORT="${LLAMA_ARG_PORT:-8080}"
 BODY="{\"input\":[\"task: search result | query: mau bikin akta kelahiran anak\",\"title: none | text: Pencatatan Kelahiran\",\"title: none | text: Pembayaran Pajak Kendaraan Bermotor\"]}"
-OUT="$(curl -fsS -m 120 -H 'content-type: application/json' -d "$BODY" "$URL/v1/embeddings")"
+PANJANG="$(printf '%s' "$BODY" | LC_ALL=C wc -c)"
+exec 3<>"/dev/tcp/127.0.0.1/$PORT"
+printf 'POST /v1/embeddings HTTP/1.0\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s' \
+  "$PANJANG" "$BODY" >&3
+RESP="$(timeout 120 cat <&3)"
+exec 3<&-
+case "$(printf '%s\n' "$RESP" | head -n 1)" in
+  "HTTP/1."?" 200"*) ;;
+  *) echo "embed-smoke: status HTTP bukan 200"; exit 1 ;;
+esac
+# Badan respons = semua setelah baris kosong pemisah header.
+OUT="$(printf '%s\n' "$RESP" | tr -d '\r' | sed '1,/^$/d')"
 printf '%s' "$OUT" | tr -d ' \n' | awk '
   {
     s = $0; n = 0

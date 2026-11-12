@@ -139,7 +139,7 @@ jobs:
               # "Pajak Kendaraan" (model terbakar, pooling dan tokenizer benar). arm64 di QEMU lambat: timeout longgar.
               timeout 900 docker run --rm --platform "linux/${arch}" --network none --read-only --tmpfs /tmp:size=16m \
                 --user 65534:65534 --cap-drop ALL --security-opt no-new-privileges:true --entrypoint sh "$REF" -c \
-                '/app/llama-server & for i in $(seq 1 240); do curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && break; kill -0 $! || exit 1; sleep 2; done; /usr/local/bin/embed-smoke'
+                '/app/llama-server & for i in $(seq 1 240); do /usr/local/bin/embed-sehat 2>/dev/null && break; kill -0 $! || exit 1; sleep 2; done; /usr/local/bin/embed-smoke'
             else
               timeout 600 docker run --rm --platform "linux/${arch}" --entrypoint sh "$REF" -c                 'node dist/server.js & sleep 5; node -e "fetch(\"http://127.0.0.1:4000/health\").then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" && echo "fixtures ok"'
             fi

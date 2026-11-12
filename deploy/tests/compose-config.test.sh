@@ -104,7 +104,7 @@ check('embedding: non-root, read_only, cap_drop ALL tanpa cap_add, no-new-privil
 check('embedding: mem <= 1,5 GiB, memswap = mem, cpus, pids, core 0, restart unless-stopped',
   Number(em.mem_limit) <= 1610612736 && Number(em.memswap_limit) === Number(em.mem_limit) && Number(em.cpus) > 0 &&
   Number(em.pids_limit) > 0 && (em.ulimits.core.hard ?? 0) === 0 && em.restart === 'unless-stopped');
-check('embedding: healthcheck /health', em.healthcheck.test.join(' ').includes('/health'));
+check('embedding: healthcheck embed-sehat', em.healthcheck.test.join(' ').includes('/usr/local/bin/embed-sehat'));
 check('hanya edge, fixtures, dan embedding yang mempublikasikan port', Object.entries(cfg.services).every(([n, s]) =>
   !s.ports || s.ports.length === 0 || n === 'pendamping-edge' || n === 'fixtures' || n === 'embedding'));
 process.exit(bad ? 1 : 0);
