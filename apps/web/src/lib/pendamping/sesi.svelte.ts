@@ -1,4 +1,4 @@
-import { daftarWrite, labelPlaceholder } from './isi-data.js';
+import { daftarWrite, labelPlaceholder, pesanDataKurang } from './isi-data.js';
 import type {
   KolomButuh,
   KoneksiViewer,
@@ -493,8 +493,14 @@ export class SesiPendampingUi {
     if (!res.ok) return j?.pesanWarga ?? 'Izin belum tercatat. Coba lagi atau isi sendiri.';
     const kurang = j?.kurang ?? [];
     // Navigator generik: AI langsung lanjut; baris yang tidak disetujui diserahkan ke warga di layar nanti.
+    // Data yang tidak ada di Data Diri disebut jujur (QA prod 2026-11-12: Data Diri kosong, AI diam saja).
+    // Lembar sudah tertutup, jadi pesannya di bilah sesi.
     if (rencanaHash) {
-      this.data = { ...this.data, butuhData: null };
+      this.data = {
+        ...this.data,
+        butuhData: null,
+        ...(kurang.length ? { pesan: pesanDataKurang(kurang) } : {}),
+      };
       return undefined;
     }
     if (awal && kurang.length === 0) this.data = { ...this.data, butuhData: null };

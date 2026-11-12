@@ -1,6 +1,7 @@
 import type { UrusanState } from '@urusin/contracts';
 import { DAFTAR_PENDAMPING_AKTIF, FAKTA_HUKUM, routeByKode } from '@urusin/registry';
 import { spotlightPolicyText } from './spotlight.js';
+import { barisStatusPendamping, type StatusPendamping } from './status-pendamping.js';
 import type { ToolDef } from './tools.js';
 import {
   kalimatJaringanId,
@@ -70,7 +71,7 @@ const PANDUAN_STATE: Partial<Record<UrusanState, string>> = {
   MENUNGGU_KONFIRMASI:
     'Browser Pendamping siap. Minta warga memeriksa kartu konfirmasi lalu menekan "Setujui dan buka situs"; warga sendiri yang masuk akun dan menekan Selesai.',
   MENUNGGU_SUBMIT_WARGA:
-    'Browser Pendamping sedang berjalan. Warga memeriksa isian di layar lalu menekan Selesai sendiri.',
+    'Browser Pendamping sudah dibuka. Warga sendiri yang masuk akun, menekan kirim di situs, lalu Selesai. Jangan pernah mengklaim kolom sudah terisi atau isian menunggu diperiksa kecuali STATUS NYATA BROWSER PENDAMPING menyebut AI sudah mengisinya.',
 };
 
 /**
@@ -172,6 +173,8 @@ export function buildStateNote(input: {
   ingatanAktif?: boolean;
   /** Butir ingatan yang baru dicatat otomatis di giliran ini (label). */
   ingatanBaru?: readonly string[];
+  /** Status nyata Browser Pendamping eksekusi terakhir (`statusPendamping`). */
+  pendamping?: StatusPendamping | undefined;
 }): string {
   const lines = [
     `STATE URUSAN: ${input.state}`,
@@ -200,6 +203,8 @@ export function buildStateNote(input: {
   }
   const bantuan = PANDUAN_STATE[input.state];
   if (bantuan) lines.push(bantuan);
+  if (input.pendamping && (input.state === 'MENGUNGGAH' || input.state === 'MENUNGGU_SUBMIT_WARGA'))
+    lines.push(barisStatusPendamping(input.pendamping));
   if (input.confirmations.length > 0) {
     lines.push(
       `Konfirmasi warga yang aktif: ${input.confirmations.map((c) => `${c.id} untuk ${c.tool}`).join('; ')}.`,

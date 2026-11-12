@@ -217,6 +217,11 @@ export function daftarWrite(
   return [...new Set([...data, ...anak, ...berkas.map((b) => `berkas:${b.toUpperCase()}`)])];
 }
 
+/** Pesan jujur saat izin tercatat tetapi Data Diri tidak memuat sebagian data yang diminta AI. */
+export function pesanDataKurang(kurang: readonly string[]): string {
+  return `Data Diri Anda di Urusin belum memuat: ${[...new Set(kurang)].join(', ')}. AI tidak bisa mengisinya; isi sendiri di layar, atau lengkapi Data Diri.`;
+}
+
 /** Isian yang bisa dipenuhi dari Data Diri + daftar label yang harus warga isi sendiri. */
 export function petakanIsian(
   placeholder: readonly string[],

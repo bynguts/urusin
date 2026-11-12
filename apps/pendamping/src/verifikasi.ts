@@ -41,10 +41,21 @@ function halaman(url: string): string {
 }
 
 /**
- * Mesin status tantangan. `amati(ada, navKe, url, now)` dipanggil setiap pemeriksaan; `navKe` = nomor dokumen
- * utama (naik pada setiap respons navigasi lintas-dokumen, bukan history API), `url` = URL halaman utama.
+ * Batas satu episode tantangan tanpa lolos bila situs terus memuat ulang tantangannya sendiri (tanpa ketukan
+ * warga): sesudahnya beralih ke dipandu, bukan menunggu sampai sesi kedaluwarsa.
+ */
+export const BATAS_TANTANGAN_MS = 3 * 60_000;
+
+/**
+ * Mesin status tantangan. `amati(ada, navKe, url, now, disentuh)` dipanggil setiap pemeriksaan; `navKe` = nomor
+ * dokumen utama (naik pada setiap respons navigasi lintas-dokumen, bukan history API), `url` = URL halaman utama,
+ * `disentuh` = warga mengetuk/mengetik di layar sejak dokumen tantangan saat ini dimuat (undefined = tidak
+ * diketahui, dihitung seperti disentuh).
  * - tantangan muncul -> `mulai`; masih di dokumen yang sama -> `masih`;
- * - tantangan dimuat ulang (dokumen baru, masih tantangan) -> satu kegagalan (`ulang`);
+ * - tantangan dimuat ulang (dokumen baru, masih tantangan) SESUDAH warga menyentuhnya -> satu kegagalan
+ *   (`ulang`). Dimuat ulang oleh situs sendiri tanpa sentuhan warga (Cloudflare mengulang tantangan
+ *   terkelola sendiri; QA prod 2026-11-12 Wonogiri: dipandu 50 detik sesudah tantangan muncul) -> `mulai` lagi
+ *   tanpa menghabiskan kesempatan warga, sampai `BATAS_TANTANGAN_MS` sejak episode dimulai -> `gagal`;
  * - tantangan muncul lagi setelah sempat lolos, di halaman yang SAMA dalam `JENDELA_ULANG_MS` -> satu
  *   kegagalan (loop: situs menolak hasil verifikasi);
  * - tantangan muncul lagi di halaman lain atau setelah jendela lewat -> tantangan baru (`mulai`, hitungan
@@ -58,7 +69,13 @@ export function createPantauTantangan(maksGagal = 2) {
   /** Halaman tempat tantangan terakhir aktif. */
   let halamanTantangan = '';
   let lolosPada: number | undefined;
+  /** Awal episode tantangan (tantangan baru, bukan muat ulang). */
+  let episodePada = 0;
   let selesai = false;
+  const habis = (): HasilPantau => {
+    selesai = true;
+    return 'gagal';
+  };
   return {
     get aktif() {
       return aktif;
@@ -66,7 +83,7 @@ export function createPantauTantangan(maksGagal = 2) {
     get gagal() {
       return gagal;
     },
-    amati(ada: boolean, navKe: number, url: string, now = Date.now()): HasilPantau {
+    amati(ada: boolean, navKe: number, url: string, now = Date.now(), disentuh?: boolean): HasilPantau {
       if (selesai) return 'gagal';
       if (!ada) {
         if (!aktif) return 'tidak_ada';
@@ -74,7 +91,14 @@ export function createPantauTantangan(maksGagal = 2) {
         lolosPada = now;
         return 'lolos';
       }
+      if (aktif && now - episodePada >= BATAS_TANTANGAN_MS) return habis();
       if (aktif && navKe === nav) return 'masih';
+      if (aktif && disentuh === false) {
+        // Situs memuat ulang tantangannya sendiri: bukan kegagalan warga, sorot ulang kotaknya.
+        nav = navKe;
+        halamanTantangan = halaman(url);
+        return 'mulai';
+      }
       const loop =
         !aktif &&
         lolosPada !== undefined &&
@@ -82,15 +106,13 @@ export function createPantauTantangan(maksGagal = 2) {
         halaman(url) === halamanTantangan;
       const ulang = aktif || loop;
       if (!aktif && !loop) gagal = 0;
+      if (!aktif) episodePada = now;
       aktif = true;
       nav = navKe;
       halamanTantangan = halaman(url);
       if (!ulang) return 'mulai';
       gagal++;
-      if (gagal >= maksGagal) {
-        selesai = true;
-        return 'gagal';
-      }
+      if (gagal >= maksGagal) return habis();
       return 'ulang';
     },
   };

@@ -21,6 +21,7 @@ import type { Db } from './db.js';
 import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/contracts';
 import { HarnessError, TurnInProgressError } from './errors.js';
 import { tierUrusan, urusanRute, varianUrusan } from './rencana.js';
+import { statusPendamping } from './status-pendamping.js';
 import { toEvent } from './envelope.js';
 import { ADMINDUK, buildHandoff, type CacheJawaban } from './grounding.js';
 import {
@@ -420,6 +421,7 @@ class TurnRunner {
       pesanWarga: this.turn.pii.redact(this.turn.userText).text,
       ingatanAktif: this.ingatan !== null,
       ingatanBaru: this.ingatanBaru,
+      pendamping: statusPendamping(this.store, this.turn.urusanId),
     });
   }
 
