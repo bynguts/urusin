@@ -8,6 +8,8 @@
   import type { EventOf, KutipanTerverifikasi, UrusanState } from '#lib/contracts.js';
   import Icon from '../Icon.svelte';
   import Chip from '../ui/Chip.svelte';
+  import Tautan from '../ui/Tautan.svelte';
+  import TeksBertaut from '../ui/TeksBertaut.svelte';
   import Tab from '../ui/Tab.svelte';
   import Titik from '../ui/Titik.svelte';
   import { LANGKAH_RENCANA, infoStatus, langkahKini, langkahPanel, tanggal } from '#lib/urusan-status.js';
@@ -197,7 +199,7 @@
                 >
               {/if}
               <div class="flex min-w-0 flex-col gap-px">
-                <p class="text-base leading-[22px] font-semibold text-ink">{l.judul}</p>
+                <p class="text-base leading-[22px] font-semibold text-ink"><TeksBertaut teks={l.judul} /></p>
                 <p
                   class="text-sm leading-5 {k === 'selesai'
                     ? 'text-hijau-ink'
@@ -236,7 +238,7 @@
                   ? 'border-line'
                   : 'border-[#e6d2b0]'}"
               >
-                <span class="min-w-0 flex-1 text-base text-ink">{it.label}</span>
+                <span class="min-w-0 flex-1 text-base text-ink"><TeksBertaut teks={it.label} /></span>
                 {#if it.status === 'ok'}
                   <Chip nada="hijau" ikon="centang-bulat">Siap</Chip>
                 {:else if it.status === 'kurang'}
@@ -257,7 +259,7 @@
               <li
                 class="flex min-h-[52px] items-center justify-between gap-3 rounded-xl border border-line bg-surface py-1.5 pr-2.5 pl-3.5"
               >
-                <span class="min-w-0 flex-1 text-base text-ink">{d}</span>
+                <span class="min-w-0 flex-1 text-base text-ink"><TeksBertaut teks={d} /></span>
                 <Chip nada="netral" ikon="jam">Siapkan</Chip>
               </li>
             {/each}
@@ -306,15 +308,13 @@
                 · diperiksa {tanggal(q.verifiedAt)}
               {/if}
             </p>
-            <a
+            <Tautan
               href={q.textFragmentUrl || q.url}
-              target="_blank"
               rel="external noopener noreferrer"
-              class="inline-flex h-11 items-center gap-2 self-start rounded-full bg-bg-2 px-3.5 text-[15px] leading-[23px] text-ink hover:bg-line-3"
+              class="inline-flex min-h-11 items-center gap-1.5 self-start text-[15px] leading-[23px] font-medium"
             >
               Buka & sorot di situs resmi <Icon name="keluar" class="size-4" />
-              <span class="sr-only">(tab baru)</span>
-            </a>
+            </Tautan>
           </article>
         {/each}
         {#each sumberRencana as s, i (s.url)}
@@ -327,15 +327,13 @@
               {s.judul}
             </h3>
             <p class="text-sm leading-[21px] text-muted">{s.instansi}</p>
-            <a
+            <Tautan
               href={s.url}
-              target="_blank"
               rel="external noopener noreferrer"
-              class="inline-flex h-11 items-center gap-2 self-start rounded-full bg-bg-2 px-3.5 text-[15px] leading-[23px] text-ink hover:bg-line-3"
+              class="inline-flex min-h-11 items-center gap-1.5 self-start text-[15px] leading-[23px] font-medium"
             >
               Buka situs resmi <Icon name="keluar" class="size-4" />
-              <span class="sr-only">(tab baru)</span>
-            </a>
+            </Tautan>
           </article>
         {/each}
         {#if !kutipan.length && !sumberRencana.length}

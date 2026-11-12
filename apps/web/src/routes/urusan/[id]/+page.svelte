@@ -19,6 +19,14 @@
   import KartuWilayah from '#lib/components/urusan/KartuWilayah.svelte';
   import KartuTerkirim from '#lib/components/urusan/KartuTerkirim.svelte';
   import Komposer from '#lib/components/urusan/Komposer.svelte';
+  import {
+    judulLampiran,
+    pecahPenanda,
+    teksDenganLampiran,
+    type Lampiran,
+  } from '#lib/components/urusan/komposer.js';
+  import TeksBertaut from '#lib/components/ui/TeksBertaut.svelte';
+  import { unggahDokumen } from '#lib/akun/klien.js';
   import Lencana from '#lib/components/urusan/Lencana.svelte';
   import PanelKonteks, { type TabPanel } from '#lib/components/urusan/PanelKonteks.svelte';
   import PesanAgen from '#lib/components/urusan/PesanAgen.svelte';
@@ -43,6 +51,7 @@
 
   let pesan = $state<PesanWarga[]>([]);
   let teks = $state('');
+  let lampiran = $state<Lampiran[]>([]);
   let komposer: HTMLTextAreaElement | null = $state(null);
   let mengirim = $state(false);
   let pesanKomposer = $state<string | null>(null);
@@ -264,18 +273,54 @@
   let aksiTerakhir: string | null = null;
 
   /** `aksi`: perintah tombol (mis. Lanjutkan), bukan tulisan warga: tidak tampil sebagai gelembung pesan. */
+  /**
+   * Lampiran chat masuk brankas terenkripsi (POST /api/vault, batas ukuran/jumlah brankas berlaku) SEBELUM
+   * pesan dikirim. Ke agen hanya penanda jenis ("[warga melampirkan dokumen: KTP (gambar)]"): isi berkas dan
+   * nama berkas (bisa memuat NIK) tidak pernah masuk body /turn. Lampiran yang sudah tersimpan tidak diunggah
+   * ulang bila pengiriman pesan gagal.
+   */
+  async function simpanLampiran(): Promise<boolean> {
+    for (const l of lampiran) {
+      if (l.docId) continue;
+      const r = await unggahDokumen(l.berkas, l.jenis, judulLampiran(l.jenis, judulJenis ?? null));
+      if (!r.ok) {
+        pesanKomposer = `Lampiran belum tersimpan: ${r.pesan}`;
+        return false;
+      }
+      l.docId = r.data.id;
+    }
+    return true;
+  }
+
   async function kirim(t: string, aksi = false) {
     mengirim = true;
     pesanKomposer = null;
+    const lamp = aksi ? [] : lampiran;
+    if (lamp.length && !(await simpanLampiran())) {
+      mengirim = false;
+      return;
+    }
+    const isi = aksi
+      ? t
+      : teksDenganLampiran(
+          t,
+          lamp.map((l) => ({ jenis: l.jenis, mime: l.berkas.type })),
+        );
+    if (isi.length > 2000) {
+      mengirim = false;
+      pesanKomposer = 'Pesan terlalu panjang. Persingkat tulisan Anda, lalu kirim lagi.';
+      return;
+    }
     const setelahSeq = k.lastSeq;
-    const hasil = await store.kirim(t);
+    const hasil = await store.kirim(isi);
     mengirim = false;
     if (hasil === 'ok') {
       aksiTerakhir = aksi ? t : null;
       if (aksi) return;
-      lokal.catatPesan(data.urusan.id, { teks: t, setelahSeq });
+      lokal.catatPesan(data.urusan.id, { teks: isi, setelahSeq });
       pesan = lokal.pesanWarga(data.urusan.id);
       teks = '';
+      lampiran = [];
     } else if (hasil === 'konflik') {
       pesanKomposer =
         'Urusin masih memproses langkah sebelumnya, tunggu sebentar. Pesan Anda tetap di sini; kirim lagi sebentar lagi.';
@@ -462,11 +507,14 @@
               <div class="flex flex-col gap-3 border-t border-line pt-4">
                 {#each pesanPanel as it (it.key)}
                   {#if it.jenis === 'teks'}
-                    <PesanAgen avatar={p.avatar}><p class="text-[0.9375rem]">{it.teks}</p></PesanAgen>
+                    <PesanAgen avatar={p.avatar}
+                      ><p class="text-[0.9375rem]"><TeksBertaut teks={it.teks} /></p></PesanAgen
+                    >
                   {/if}
                 {/each}
                 <Komposer
                   bind:teks
+                  bind:lampiran
                   bind:elemen={komposer}
                   sibuk={mengirim}
                   pesan={pesanKomposer}
@@ -530,11 +578,32 @@
 
             {#each linimasa as it (it.key)}
               {#if it.jenis === 'warga'}
-                <p
-                  class="max-w-[min(85%,460px)] self-end rounded-[18px_18px_4px_18px] bg-bg-2 px-4 py-3 text-base whitespace-pre-line text-ink sm:text-[17px] sm:leading-[26px]"
+                {@const w = pecahPenanda(it.teks)}
+                <div
+                  data-pelaku="warga"
+                  class="flex max-w-[min(85%,460px)] flex-col gap-2 self-end rounded-[18px_18px_4px_18px] bg-bg-2 px-4 py-3 text-base text-ink sm:text-[17px] sm:leading-[26px]"
                 >
-                  {it.teks}
-                </p>
+                  {#if w.lampiran.length}
+                    <ul aria-label="Lampiran terkirim" class="flex flex-wrap gap-2">
+                      {#each w.lampiran as l, i (i)}
+                        <li>
+                          <a
+                            href={resolve('/dokumen')}
+                            class="inline-flex min-h-10 items-center gap-2 rounded-xl border border-line-2 bg-surface px-3 text-sm font-medium text-ink hover:bg-card"
+                          >
+                            <Icon
+                              name={l.bentuk === 'PDF' ? 'berkas-teks' : 'berkas-gambar'}
+                              class="size-4 shrink-0"
+                            />
+                            {l.label} ({l.bentuk})
+                            <span class="sr-only">, tersimpan di Dokumen</span>
+                          </a>
+                        </li>
+                      {/each}
+                    </ul>
+                  {/if}
+                  {#if w.teks}<p class="whitespace-pre-line"><TeksBertaut teks={w.teks} /></p>{/if}
+                </div>
               {:else if it.jenis === 'sistem'}
                 <p
                   class="flex items-center justify-center gap-1.5 text-center text-sm leading-[21px] text-muted"
@@ -551,7 +620,9 @@
                 />
               {:else if it.jenis === 'teks'}
                 <PesanAgen avatar={p.avatar}
-                  ><p class="leading-relaxed whitespace-pre-line">{it.teks}</p></PesanAgen
+                  ><p class="leading-relaxed whitespace-pre-line">
+                    <TeksBertaut teks={it.teks} />
+                  </p></PesanAgen
                 >
               {:else if it.jenis === 'jawaban'}
                 <PesanAgen avatar={p.avatar}>
@@ -678,6 +749,7 @@
           <div class="w-full">
             <Komposer
               bind:teks
+              bind:lampiran
               bind:elemen={komposer}
               sibuk={mengirim}
               pesan={pesanKomposer}

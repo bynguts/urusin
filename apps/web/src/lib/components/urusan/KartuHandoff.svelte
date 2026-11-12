@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { EventOf } from '#lib/contracts.js';
   import Icon from '../Icon.svelte';
+  import TeksBertaut from '../ui/TeksBertaut.svelte';
   import { domain } from '#lib/urusan-status.js';
 
   /** Hand-off: belum ada sumber resmi yang cukup, jadi warga diarahkan ke kanal resmi (bukan jawaban karangan). */
@@ -12,7 +13,9 @@
     <Icon name="info" class="size-5 shrink-0" />
     Belum ada sumber resmi untuk ini
   </p>
-  <p class="mt-2 text-[0.9375rem] text-body">{handoff.alasan.replace(/\s*\(https?:[^)]+\)/g, '')}</p>
+  <p class="mt-2 text-[0.9375rem] text-body">
+    <TeksBertaut teks={handoff.alasan.replace(/\s*\(https?:[^)]+\)/g, '')} />
+  </p>
   {#if handoff.kanal.length}
     <ul class="mt-3 flex flex-col gap-2">
       {#each handoff.kanal as k (k.nama + (k.url ?? ''))}
@@ -27,10 +30,10 @@
               <Icon name="instansi" class="size-5 shrink-0 text-muted" />
               <span class="min-w-0 flex-1">
                 <span class="block text-[0.9375rem] font-medium text-ink">{k.nama}</span>
-                <span class="block truncate text-sm text-muted">{domain(k.url)}</span>
+                <span class="tautan block truncate text-sm">{domain(k.url)}</span>
                 {#if k.kontak}<span class="block text-sm text-body">{k.kontak}</span>{/if}
               </span>
-              <Icon name="keluar" class="size-4 shrink-0" />
+              <Icon name="keluar" class="size-4 shrink-0 text-tautan" />
               <span class="sr-only">(buka di tab baru)</span>
             </a>
           {:else}

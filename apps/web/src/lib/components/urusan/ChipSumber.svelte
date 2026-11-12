@@ -32,7 +32,7 @@
   <span class="grid size-5 shrink-0 place-items-center rounded-full bg-bg-2 text-xs leading-3 font-semibold"
     >{nomor}</span
   >
-  <span class="truncate">{domain(url)}</span>
+  <span class="tautan truncate">{domain(url)}</span>
   {#if perluDicekUlang}
     <span class="shrink-0 text-kuning-ink">· cek ulang</span>
   {:else if diperiksa}
