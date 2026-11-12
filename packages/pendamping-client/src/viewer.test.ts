@@ -4,6 +4,7 @@ import {
   createPendampingViewer,
   dekodeFrameBiner,
   modifier,
+  PENJAGA_INPUT,
   petakanKoordinat,
   tataLetak,
   type ViewerOptions,
@@ -123,8 +124,12 @@ class FakeInput extends FakeTarget {
   setAttribute(k: string, v: string) {
     this.attrs[k] = v;
   }
+  seleksi: [number, number] | null = null;
   focus() {
     this.focused++;
+  }
+  setSelectionRange(a: number, b: number) {
+    this.seleksi = [a, b];
   }
 }
 
@@ -292,7 +297,7 @@ describe('createPendampingViewer', () => {
     ]);
     expect(canvas.captured).toEqual([1]);
     expect(input.focused).toBe(1);
-    expect(input.value).toBe('');
+    expect(input.value).toBe(PENJAGA_INPUT);
     expect(canvas.style.touchAction).toBe('none');
   });
 
@@ -329,7 +334,52 @@ describe('createPendampingViewer', () => {
       'x',
       'y',
     ]);
-    expect(input.value).toBe('');
+    expect(input.value).toBe(PENJAGA_INPUT);
+  });
+
+  it('Backspace di kotak "kosong" (keyboard Android): penjaga terhapus -> Backspace, ditanam ulang, tanpa dobel', async () => {
+    const { input } = setup();
+    await tick();
+    const ws = FakeWs.all[0]!;
+    ws.open();
+    // Kotak tersembunyi tidak pernah benar-benar kosong: penjaga + kursor di belakangnya.
+    expect(input.value).toBe(PENJAGA_INPUT);
+    expect(input.seleksi).toEqual([1, 1]);
+    ws.push({ type: 'mode', mode: 'takeover' });
+    const kiriman = () =>
+      ws.sent
+        .slice(1)
+        .map((m) => (m.type === 'text' ? m.teks : m.type === 'key' ? `${m.key}:${m.aksi}` : m.type));
+    // 1) Keyboard yang hanya mengirim `input` (tanpa beforeinput) dan menghapus penjaga.
+    input.value = '';
+    input.fire('input', { isComposing: false, inputType: 'deleteContentBackward' });
+    expect(kiriman()).toEqual(['Backspace:down', 'Backspace:up']);
+    expect(input.value).toBe(PENJAGA_INPUT);
+    // 2) beforeinput yang tidak bisa dibatalkan (penjaga tetap terhapus) + input: satu Backspace saja.
+    input.fire('beforeinput', { inputType: 'deleteContentBackward', preventDefault() {} });
+    input.value = '';
+    input.fire('input', { isComposing: false, inputType: 'deleteContentBackward' });
+    expect(kiriman()).toHaveLength(4);
+    expect(input.value).toBe(PENJAGA_INPUT);
+    await new Promise((ok) => setTimeout(ok, 5));
+    // 3) Huruf lewat input saja (tanpa beforeinput): penjaga tidak ikut terkirim.
+    input.value = `${PENJAGA_INPUT}k`;
+    input.fire('input', { isComposing: false, inputType: 'insertText', data: 'k' });
+    expect(kiriman().slice(4)).toEqual(['k']);
+    // 4) Komposisi di belakang penjaga: penjaga tidak dihitung sebagai teks.
+    input.fire('compositionstart', {});
+    input.value = `${PENJAGA_INPUT}ab`;
+    input.fire('input', { isComposing: true, inputType: 'insertCompositionText' });
+    input.fire('compositionend', { data: 'ab' });
+    expect(kiriman().slice(5)).toEqual(['ab']);
+    expect(input.value).toBe(PENJAGA_INPUT);
+    // 5) Backspace fisik di kotak tersembunyi tidak dikirim dari keydown (dikirim sekali lewat beforeinput).
+    input.fire('keydown', { ...key('Backspace'), target: input });
+    input.fire('keyup', { ...key('Backspace'), target: input });
+    expect(kiriman()).toHaveLength(6);
+    // 6) Fokus sandi: type password, penjaga tetap ada.
+    ws.push({ type: 'fokus', jenis: 'sandi' });
+    expect([input.type, input.value]).toEqual(['password', PENJAGA_INPUT]);
   });
 
   it('gestur memakai rect kanvas saat pointerdown walau halaman bergeser sebelum pointerup', async () => {
@@ -524,7 +574,7 @@ describe('createPendampingViewer', () => {
     input.value = 'sisa';
     ws.push({ type: 'fokus', jenis: 'sandi' });
     expect(input.type).toBe('password');
-    expect(input.value).toBe('');
+    expect(input.value).toBe(PENJAGA_INPUT);
     ws.push({ type: 'fokus', jenis: 'otp' });
     expect(input.type).toBe('text');
     expect(input.attrs).toMatchObject({ autocomplete: 'one-time-code', inputmode: 'numeric' });
