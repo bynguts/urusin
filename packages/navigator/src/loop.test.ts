@@ -616,6 +616,57 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
     ]);
   });
 
+  it('formulir Buat Akun (sandi + NIK/email/HP): AI mengisi data diri, username/sandi diserahkan ke warga', async () => {
+    // QA prod 2026-11-12 Klampid: halaman Buat Akun dianggap formulir masuk (ada kolom sandi), giliran masuk_akun
+    // diulang setiap warga mengembalikan kendali sampai AI berhenti tanpa mengisi apa pun.
+    const daftar = halaman({
+      sidik: 'buat-akun',
+      jalur: '/app/register',
+      judul: 'Buat Akun',
+      sinyal: { ...halamanForm().sinyal, login: true },
+      elemen: [
+        {
+          ref: 'e1',
+          peran: 'radio',
+          nama: 'Apakah anda warga Surabaya?',
+          opsi: ['Ya', 'Tidak'],
+          isian: 'kosong',
+        },
+        { ref: 'e2', peran: 'teks', nama: 'NIK', isian: 'kosong' },
+        { ref: 'e3', peran: 'teks', nama: 'Username', isian: 'kosong' },
+        { ref: 'e4', peran: 'teks', nama: 'Email', isian: 'kosong' },
+        { ref: 'e5', peran: 'teks', nama: 'Nomor Telepon', isian: 'kosong' },
+        { ref: 'e6', peran: 'teks', nama: 'Password', isian: 'kosong', terlarang: 'sandi' },
+        { ref: 'e7', peran: 'tombol', nama: 'Daftar', kelas: 'kirim' },
+      ],
+    });
+    const worker = new WorkerPalsu([daftar]);
+    worker.setujuiSemua = true;
+    worker.saatSerahkan = () => ({ aksi: 'selesai' });
+    const rencana = {
+      aksi: [
+        { jenis: 'pilih', ref: 'e1', nilai: { opsi: 0 } },
+        { jenis: 'isi', ref: 'e2', nilai: '{{PEMOHON.NIK}}' },
+        { jenis: 'isi', ref: 'e4', nilai: '{{PEMOHON.EMAIL}}' },
+        { jenis: 'isi', ref: 'e5', nilai: '{{PEMOHON.HP}}' },
+        { jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e3' },
+      ],
+    };
+    const provider = new ProviderSkrip(() => rencana);
+    const { hasil } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'isi_sendiri' });
+    // Tidak ada giliran masuk_akun: halaman direncanakan model dengan sinyal daftar_akun.
+    expect(worker.semuaAksi.some((a) => a.jenis === 'serahkan' && a.alasan === 'masuk_akun')).toBe(false);
+    expect(provider.calls).toHaveLength(1);
+    expect(JSON.stringify(provider.calls[0])).toContain('daftar_akun');
+    expect(worker.semuaAksi.filter((a) => a.jenis === 'isi').map((a) => 'ref' in a && a.ref)).toEqual([
+      'e2',
+      'e4',
+      'e5',
+    ]);
+    expect(worker.semuaAksi.at(-1)).toEqual({ jenis: 'serahkan', alasan: 'isi_sendiri', ref: 'e3' });
+  });
+
   it('CAPTCHA di formulir (bukan halaman masuk): sekali giliran warga, lalu AI mengerjakan halamannya', async () => {
     const form = halamanForm();
     const formCaptcha = halamanForm({

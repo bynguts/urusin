@@ -570,6 +570,14 @@ export class HarnessStore {
     );
   }
 
+  /** Hasil eksekusi yang sudah dicatat (dibatalkan/berhasil/...), atau undefined. */
+  hasilEksekusi(urusanId: string, executionId: string): string | undefined {
+    const r = this.db
+      .prepare('SELECT status FROM execution_results WHERE urusan_id = ? AND execution_id = ?')
+      .get(urusanId, executionId) as { status: string } | undefined;
+    return r?.status;
+  }
+
   /**
    * Simpan nomor permohonan dari situs resmi. Hanya bentuk nomor registrasi (skema bukti pendamping) yang
    * diterima; selain itu diabaikan (false). Tidak menaikkan version: bukan transisi state.

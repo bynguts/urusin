@@ -43,6 +43,8 @@ export type MasukanPrompt = {
   nonce?: string;
   /** Petunjuk peta portal TEPERCAYA dari registry (ADR 0034), masuk pesan sistem; lihat `blokPetunjukPortal`. */
   petunjukPortal?: string | undefined;
+  /** Halaman daftar/buat akun portal (`halamanDaftarAkun`): sinyal `daftar_akun` + aturannya. */
+  daftarAkun?: boolean;
   /** Baris sinyal peringkat tautan (hanya ref, tanpa teks halaman); lihat peringkat-tautan.ts. */
   petunjukTautan?: string | null | undefined;
 };
@@ -72,6 +74,7 @@ function aturanSistem(tujuan: string): string {
     '- Jangan mengisi, mencentang, atau mengeklik elemen bertanda terlarang (sandi, otp, captcha, pernyataan).',
     '- Tombol kirim/simpan/ajukan/daftar dan halaman tinjauan atau pernyataan SELALU dikerjakan warga: akhiri dengan {"jenis":"serahkan","alasan":"final"}.',
     '- Halaman masuk akun, OTP, atau CAPTCHA: {"jenis":"serahkan","alasan":"masuk_akun"|"otp"|"captcha"}.',
+    '- SINYAL daftar_akun (formulir daftar/buat akun portal, BUKAN formulir masuk): isi kolom data diri dari KATALOG DATA (NIK, email, nomor HP, nama, dsb.) dan pilih opsi yang jelas; JANGAN isi username/nama pengguna/sandi/PIN. Akhiri dengan {"jenis":"serahkan","alasan":"isi_sendiri","ref":<kolom username atau sandi pertama>}.',
     '- Kolom yang datanya tidak ada di katalog: {"jenis":"serahkan","alasan":"isi_sendiri","ref":"eN"}.',
     '- Layanan tidak ada di situs ini, atau hanya lewat aplikasi/WhatsApp: {"jenis":"tidak_bisa","sebab":...}.',
     '- Bila ragu: {"jenis":"serahkan","alasan":"tidak_yakin"}.',
@@ -112,10 +115,12 @@ export function pesanRencana(m: MasukanPrompt): ChatMessage[] {
   const user = [
     `HALAMAN: host ${p.host} | jalur ${data(p.jalur, 'jalur', 200)} | judul ${data(p.judul, 'judul', 200)}`,
     `SINYAL: ${
-      Object.entries(s)
-        .filter(([, v]) => v)
-        .map(([k]) => k)
-        .join(', ') || 'tidak ada'
+      [
+        ...Object.entries(s)
+          .filter(([k, v]) => v && !(m.daftarAkun && k === 'login'))
+          .map(([k]) => k),
+        ...(m.daftarAkun ? ['daftar_akun'] : []),
+      ].join(', ') || 'tidak ada'
     }`,
     `TEKS HALAMAN: ${data(p.teks, 'teks', 2500)}`,
     'ELEMEN:',
