@@ -6,6 +6,7 @@ import type { CacheJawaban } from './grounding.js';
 import type { EventPayload, PayloadOf, UrusanState } from '@urusin/contracts';
 import type { IngatanTurn } from './ingatan.js';
 import type { UrusanRow, HarnessStore } from './store.js';
+import type { LayananCariWeb } from './web-cari.js';
 import { TERMINAL_STATES, URUSAN_STATES } from './state.js';
 
 /**
@@ -36,6 +37,8 @@ export type ToolDeps = {
   ragSearch?: RagSearcher['search'] | undefined;
   /** Cache keluaran generator jawaban bersumber (lihat `CacheJawaban`); tanpa ini tiap jawaban memanggil model. */
   cacheJawaban?: CacheJawaban | undefined;
+  /** Cari web cadangan (Exa) + batas lajunya; tanpa ini `web__cari` tidak terdaftar. */
+  cariWeb?: LayananCariWeb | undefined;
   now: () => Date;
 };
 

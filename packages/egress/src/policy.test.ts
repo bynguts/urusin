@@ -12,6 +12,7 @@ import {
   isLlmProxy,
   AUTH_HOSTS,
   TURNSTILE_HOSTS,
+  EXA_HOSTS,
   isPendampingInternal,
   JINA_HOSTS,
   LLM_PROXY,
@@ -200,12 +201,19 @@ describe('assertTargetAllowed', () => {
   });
 
   it('runtime: host akun (Google, Resend, Turnstile) lewat https:443 saja; ingest menolak (ADR 0028)', () => {
-    for (const h of [...AUTH_HOSTS, ...TURNSTILE_HOSTS]) {
+    for (const h of [...AUTH_HOSTS, ...TURNSTILE_HOSTS, ...EXA_HOSTS]) {
       expect(assertTargetAllowed('https:', h, 443, allow)).toBe(false);
       expect(() => assertTargetAllowed('http:', h, 80, allow)).toThrow(EgressBlockedError);
       expect(() => assertTargetAllowed('https:', h, 443, ingest)).toThrow(EgressBlockedError);
     }
     expect(() => assertTargetAllowed('https:', 'evil.googleapis.com', 443, allow)).toThrow(
+      EgressBlockedError,
+    );
+    // Exa: hanya host API persis, bukan subdomain/situs lain dan bukan peramban.
+    expect(EXA_HOSTS).toEqual(['api.exa.ai']);
+    for (const h of ['exa.ai', 'dashboard.exa.ai', 'api.exa.ai.evil.com'])
+      expect(() => assertTargetAllowed('https:', h, 443, allow)).toThrow(EgressBlockedError);
+    expect(() => checkConnectHost('api.exa.ai', 443, 'browser', { sesi: new Set(['api.exa.ai']) })).toThrow(
       EgressBlockedError,
     );
   });

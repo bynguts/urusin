@@ -42,6 +42,7 @@ import { newNonce } from './spotlight.js';
 import type { HarnessStore, TurnStatus, UrusanRow } from './store.js';
 import { clip, ringkasRiwayat, type ToolContext, type ToolRegistry } from './tools.js';
 import { OTEL, type Tracer } from './trace.js';
+import type { LayananCariWeb } from './web-cari.js';
 import {
   hanyaTanyaWilayah,
   kartuRencana,
@@ -128,6 +129,8 @@ export type AgentDeps = {
   cacheJawaban?: CacheJawaban | undefined;
   /** Jalur cepat intent lewat sidecar embedding (fail-open); tanpa ini klasifikasi = kata kunci lalu LLM. */
   intentEmbedding?: KlasifikasiIntentEmbedding | undefined;
+  /** Cari web cadangan (Exa); tool `web__cari` hanya terdaftar bila ada. */
+  cariWeb?: LayananCariWeb | undefined;
 };
 
 export type TurnOutcome = {
@@ -1102,6 +1105,7 @@ class TurnRunner {
         ragDb: this.deps.ragDb,
         ragSearch: this.deps.ragSearch,
         cacheJawaban: this.deps.cacheJawaban,
+        cariWeb: this.deps.cariWeb,
         now: this.now,
       },
       nonce: this.nonce,

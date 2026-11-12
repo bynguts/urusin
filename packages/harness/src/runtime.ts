@@ -12,6 +12,7 @@ import type { KlasifikasiIntentEmbedding } from './intent-embedding.js';
 import { HarnessStore } from './store.js';
 import { ToolRegistry, type ToolDef } from './tools.js';
 import { Tracer } from './trace.js';
+import { BATAS_WEB_DEFAULT, BatasCariWeb, webCari, type BatasWebConfig, type CariWeb } from './web-cari.js';
 
 export type HarnessOptions = {
   provider: ChatProvider;
@@ -36,6 +37,10 @@ export type HarnessOptions = {
   cacheJawaban?: CacheJawaban;
   /** Jalur cepat intent lewat sidecar embedding (fail-open), lihat `buatKlasifikasiIntent`. */
   intentEmbedding?: KlasifikasiIntentEmbedding;
+  /** Cari web cadangan (Exa, fail-open). Tanpa ini tool `web__cari` TIDAK didaftarkan ke model. */
+  cariWeb?: CariWeb;
+  /** Batas laju cari web (default `BATAS_WEB_DEFAULT`). */
+  batasWeb?: Partial<BatasWebConfig>;
 };
 
 /** Komposisi akar: store + registry + kuota + tracer + bus → `AgentDeps` siap dipakai `runTurn`. */
@@ -48,6 +53,7 @@ export function createHarness(opts: HarnessOptions) {
   const registry = new ToolRegistry([
     ...(opts.tools ?? builtinTools()),
     ...(opts.ingatan ? [ingatanIngat] : []),
+    ...(opts.cariWeb ? [webCari] : []),
   ]);
   const quota = new QuotaMeter(store, opts.prices ?? { inputPerMTok: 0, outputPerMTok: 0, audioPerMin: 0 }, {
     ...DEFAULT_QUOTA,
@@ -71,6 +77,12 @@ export function createHarness(opts: HarnessOptions) {
     ingatan: opts.ingatan,
     cacheJawaban: opts.cacheJawaban,
     intentEmbedding: opts.intentEmbedding,
+    cariWeb: opts.cariWeb
+      ? {
+          cari: opts.cariWeb,
+          batas: new BatasCariWeb({ ...BATAS_WEB_DEFAULT, ...opts.batasWeb }, () => now().getTime()),
+        }
+      : undefined,
   };
   return { deps, store, registry, quota, bus };
 }

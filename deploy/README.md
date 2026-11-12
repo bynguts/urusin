@@ -212,6 +212,12 @@ agen) sampai restart. Sekarang:
   start bila hanya rahasianya), widget tampil di /masuk dan token wajib; daftarkan hostname app di widget Cloudflare.
   `URUSIN_OIDC_FIXTURE`/`URUSIN_TURNSTILE_FIXTURE` tidak boleh ada di produksi: server menolak boot.
 
+- Cari web cadangan (opsional): `EXA_API_KEY` di `.env` (dibaca lewat `env_file`). Terisi = tool agen `web__cari`
+  aktif (Exa `POST https://api.exa.ai/search`, host `api.exa.ai` sudah di allowlist egress runtime); kosong = tool
+  tidak didaftarkan dan agen jalan tanpa web. Hanya dipakai bila korpus RAG tidak cukup: sumber `*.go.id` dulu,
+  kueri berisi data pribadi ditolak sebelum jaringan, timeout 6 detik dan fail-open, batas 5/urusan, 20/akun,
+  120 global per jam.
+
 ## Kunci vault (`URUSIN_PII_KEY`): escrow dan rotasi
 
 `URUSIN_PII_KEY` menurunkan KEK vault (HKDF `urusin/kek/v1`) dan kunci HMAC placeholder

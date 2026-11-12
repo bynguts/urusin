@@ -259,6 +259,7 @@ Isi variabel di bawah untuk fitur penuh. Daftar lengkap dan penjelasannya ada di
 | Email                   | `URUSIN_EMAIL_MODE`, `RESEND_API_KEY`, `URUSIN_EMAIL_FROM`                                                   |
 | Masuk dengan Google     | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, plus redirect URI untuk setiap host di `deploy/hosts.json`       |
 | Turnstile (juri, login) | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`                                                                 |
+| Cari web cadangan (Exa) | `EXA_API_KEY` (kosong = tool `web__cari` mati)                                                               |
 | Kuota dan biaya         | `URUSIN_LIMIT_*`, `URUSIN_TAMU_PER_IP_HARI`, `URUSIN_DEMO_*`, `URUSIN_DAILY_USD_CAP`, `URUSIN_DAILY_IDR_CAP` |
 | Browser Pendamping      | `PENDAMPING_*` (URL worker, rahasia HMAC, batas sesi dan memori)                                             |
 | Situs latihan           | `FIXTURES_PROFILE`, `FIXTURES_PORT`, `FIXTURES_PUBLIC_ORIGIN`                                                |
