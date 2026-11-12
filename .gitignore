@@ -26,6 +26,8 @@ coverage/
 *.db.*
 *.sqlite
 *.sqlite-*
+# Basis data NSS uji e2e (hanya sertifikat uji publik, tanpa kunci; dibangun buat-nssdb.sh).
+!apps/pendamping/e2e/tls/nssdb/*.db
 deploy/data/
 
 # Hasil pengujian
