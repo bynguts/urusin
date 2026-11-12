@@ -253,7 +253,11 @@ describe('GenerikRun: gerbang demo "lihat saja" di situs asli', () => {
     expect((await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e6' }] }))[0]?.kode).toBe('ok');
     await h.run.amati();
     expect((await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] }))[0]?.kode).toBe('ok');
-    expect(h.panggilan.map((p) => p.jenis)).toEqual(['klik', 'klik']);
+    // Klasifikasi ulang di halaman juga membawa flag demo (runner menolak kelas `lanjut`).
+    expect(h.panggilan).toEqual([
+      { jenis: 'klik', ref: 'e6', lihatSaja: true },
+      { jenis: 'klik', ref: 'e4', lihatSaja: true },
+    ]);
     await h.run.amati();
     expect((await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e7' }] }))[0]?.kode).toBe('ok');
     expect(h.navigasi).toEqual(['https://portal.contoh.go.id/daftar']);

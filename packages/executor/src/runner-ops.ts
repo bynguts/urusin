@@ -55,7 +55,8 @@ export type AksiRunner =
   | { jenis: 'pilih'; ref: string; placeholder: string; nilai: string }
   | { jenis: 'centang'; ref: string; nilai: boolean }
   | { jenis: 'unggah'; ref: string; berkas: UploadFile }
-  | { jenis: 'klik'; ref: string };
+  /** `lihatSaja`: demo di situs resmi asli; klasifikasi ulang di halaman juga menolak kelas `lanjut`. */
+  | { jenis: 'klik'; ref: string; lihatSaja?: true };
 
 /**
  * Hasil per aksi untuk jejak audit (tanpa nilai). `ok` = dikerjakan; `navigasi` = klik tautan GET yang
@@ -471,11 +472,13 @@ function kerjakanCentang(el: Element, nilai: boolean): Putusan {
  * Klik AI: klasifikasi DIJALANKAN ULANG di tugas JS yang sama tepat sebelum klik (tanpa await di antaranya),
  * sehingga halaman tidak sempat mengganti tombol di antara pemeriksaan dan klik.
  */
-function kerjakanKlik(doc: Document, el: Element): Putusan {
+function kerjakanKlik(doc: Document, el: Element, lihatSaja: boolean): Putusan {
   if (halamanAkhir(doc)) return tolak('ditolak', 'A_HALAMAN_AKHIR', RunnerCode.HALAMAN_AKHIR);
   const k = klasifikasi(el, false);
   const dasar = { kelas: k.kelas, fitur: fiturAudit(k.fitur) };
-  if (!bolehDiklikAi(k.kelas)) return { ...dasar, ...tolak('ditolak', k.aturan, RunnerCode.KLIK_DITOLAK) };
+  // Demo lihat saja: hanya navigasi murni (navigasi/ui_lokal); `lanjut` ditolak di halaman juga.
+  if (!bolehDiklikAi(k.kelas) || (lihatSaja && k.kelas === 'lanjut'))
+    return { ...dasar, ...tolak('ditolak', k.aturan, RunnerCode.KLIK_DITOLAK) };
   if (k.kelas === 'navigasi') {
     // Bukan el.click(): worker memeriksa allowlist lalu Page.navigate(href) (tanpa popup/target=_blank).
     return { ...dasar, status: 'navigasi', aturan: k.aturan, href: (el as HTMLAnchorElement).href };
@@ -487,7 +490,7 @@ function kerjakanKlik(doc: Document, el: Element): Putusan {
 function satuAksi(doc: Document, a: AksiRunner, peta: PetaRef): Putusan {
   const el = elemenRef(doc, peta, a.ref);
   if (!(el instanceof Element)) return el;
-  if (a.jenis === 'klik') return kerjakanKlik(doc, el);
+  if (a.jenis === 'klik') return kerjakanKlik(doc, el, a.lihatSaja === true);
   // Aksi tulis: field harus terlihat, aktif, tidak readonly, dan tidak terlarang (sandi/OTP/CAPTCHA/pernyataan).
   if (!bisaDiubah(el)) return tolak('gagal', 'A_NONAKTIF', RunnerCode.ELEMEN_NONAKTIF);
   // Penanda terlarang dihitung ulang dari DOM saat ini, bukan dari pengamatan yang bisa basi.

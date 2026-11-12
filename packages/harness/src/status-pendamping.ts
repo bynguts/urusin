@@ -19,6 +19,8 @@ export type StatusPendamping = {
   hasil?: string;
   /** Demo (akun juri) di situs resmi asli, mode "lihat saja": AI hanya menavigasi, tidak pernah mengisi. */
   lihatSaja?: true;
+  /** Demo (akun juri) beralih ke simulasi di replika uji: AI mengisi data contoh, bukan ke situs pemerintah. */
+  simulasi?: true;
 };
 
 type JejakEvent = {
@@ -32,7 +34,7 @@ export function statusPendamping(store: HarnessStore, urusanId: string): StatusP
     { executionId?: unknown } | undefined;
   const executionId = typeof req?.executionId === 'string' ? req.executionId : undefined;
   if (!executionId) return undefined;
-  const s: StatusPendamping = { kolomDiisi: 0, izinKosong: false, giliran: 'ai' };
+  let s: StatusPendamping = { kolomDiisi: 0, izinKosong: false, giliran: 'ai' };
   const jejak = store
     .eventsOfType(urusanId, 'jejak_pendamping', 500)
     .map((e) => e.payload as JejakEvent)
@@ -47,8 +49,12 @@ export function statusPendamping(store: HarnessStore, urusanId: string): StatusP
       s.giliran = c.fase === 'mulai' ? (typeof c.alasan === 'string' ? c.alasan : 'warga') : 'ai';
     } else if (c.jenis === 'resi' && typeof c.akhir === 'string') {
       s.aiBerakhir = c.akhir;
-    } else if (c.jenis === 'lihat_saja') {
-      s.lihatSaja = true;
+    } else if (c.jenis === 'lihat_saja' || c.jenis === 'simulasi') {
+      // Sesi baru untuk eksekusi yang sama (demo: situs asli <-> simulasi replika): catatan mode terakhir yang
+      // berlaku, dan jejak sesi sebelumnya tidak terbawa.
+      s = { kolomDiisi: 0, izinKosong: false, giliran: 'ai' };
+      if (c.jenis === 'lihat_saja') s.lihatSaja = true;
+      else s.simulasi = true;
     }
   }
   const hasil = store.hasilEksekusi(urusanId, executionId);
@@ -87,6 +93,10 @@ export function barisStatusPendamping(s: StatusPendamping): string {
     if (s.hasil) out.push(`- Sesi Browser Pendamping sudah ditutup (hasil: ${s.hasil}).`);
     return out.join('\n');
   }
+  if (s.simulasi)
+    out.push(
+      '- Sesi ini SIMULASI (akun juri) di replika uji, BUKAN situs pemerintah: yang diisi AI adalah data contoh dan tidak ada yang terkirim ke sistem pemerintah. Sebut ini simulasi bila membicarakan isian.',
+    );
   if (s.hasil) {
     out.push(
       `- Sesi Browser Pendamping sudah ditutup (hasil: ${s.hasil}). Tidak ada isian yang menunggu diperiksa; jangan menyuruh warga menekan Selesai.`,
