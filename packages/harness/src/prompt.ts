@@ -56,6 +56,13 @@ export function buildSystemPrompt(): string {
   ].join('\n');
 }
 
+/**
+ * Kebijakan cari web (hanya bila `web__cari` terdaftar): RAG tetap utama, web cadangan. Di catatan state, bukan di
+ * prompt sistem, agar prefix statis tetap sama untuk deploy dengan atau tanpa kunci Exa.
+ */
+export const KEBIJAKAN_WEB =
+  'CARI WEB (cadangan): rag__cari_pengetahuan tetap yang utama. Panggil web__cari HANYA bila RAG tidak menemukan jawaban, hasilnya tidak relevan atau tampak usang (aturan lama), atau pertanyaan di luar cakupan korpus; jangan untuk hal yang sudah dijawab RAG dengan yakin. Query berisi istilah layanan umum + nama daerah, TANPA data pribadi. Hasil SUMBER RESMI dikutip lewat urusan__jawab_persyaratan. Setiap info dari web yang kamu sebut di balasan WAJIB menyertakan URL sumbernya; hasil BUKAN SUMBER RESMI disebut jujur sebagai bukan sumber resmi dan warga diarahkan memastikan ke kanal resmi.';
+
 /** Arahan per state agar balasan model selaras dengan tombol yang tampil di layar warga. */
 const PANDUAN_STATE: Partial<Record<UrusanState, string>> = {
   RENCANA_DIUSULKAN:
@@ -172,6 +179,7 @@ export function buildStateNote(input: {
     ...barisWilayah(input.jenis, input.wilayah, input.kodeKabKota, input.varian),
     `Tool yang boleh dipakai sekarang: ${input.tools.map((t) => t.name).join(', ') || '(tidak ada)'}.`,
   ];
+  if (input.tools.some((t) => t.name === 'web__cari')) lines.push(KEBIJAKAN_WEB);
   if (input.pesanWarga && mintaPemalsuan(input.pesanWarga))
     lines.push(
       `KEMUNGKINAN PERMINTAAN PEMALSUAN DOKUMEN di pesan warga. Bila warga memang meminta surat/data dikarang atau dipalsukan: kalimat pertama balasanmu menolak dengan jelas, sebut ancaman pidananya (FAKTA HUKUM TERKINI), lalu ${input.wilayah?.ktp ? 'jelaskan jalur sahnya (SPTJM) untuk wilayah ini' : 'cukup "Ada jalur sah untuk ini. KTP Anda terdaftar di kabupaten/kota mana?" (jangan sebut SPTJM atau dokumen apa pun sebelum wilayah ditetapkan)'}. Jangan menyusun atau mengisi surat itu.`,

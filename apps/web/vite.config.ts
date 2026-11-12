@@ -49,7 +49,9 @@ export default defineConfig(({ command, mode }) => {
             'manifest-src': ['self'],
             'object-src': ['none'],
             'base-uri': ['self'],
-            'form-action': ['self'],
+            // Tombol Google = formulir GET ke /auth/google yang dialihkan ke Google; Chrome menegakkan form-action pada
+            // pengalihan, jadi origin otorisasi Google harus diizinkan (tanpa ini tombol diam).
+            'form-action': ['self', 'https://accounts.google.com'],
             'frame-src': ['self', TURNSTILE, ...VERIFY_HOSTS],
             'frame-ancestors': ['none'],
             // Pelaporan pelanggaran: report-uri untuk browser lama, report-to merujuk endpoint

@@ -10,7 +10,7 @@ import { randomBytes } from 'node:crypto';
 export const DATAMARK = 'ˆ'; // ˆ
 
 export type UntrustedSource =
-  'rag' | 'dom' | 'tool_output' | 'ocr' | 'user_file' | 'ingatan' | 'pertanyaan_warga';
+  'rag' | 'dom' | 'tool_output' | 'ocr' | 'user_file' | 'ingatan' | 'pertanyaan_warga' | 'web';
 
 export const DEFAULT_MAX_UNTRUSTED_CHARS = 1200;
 
