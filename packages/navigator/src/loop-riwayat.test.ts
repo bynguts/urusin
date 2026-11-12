@@ -201,3 +201,54 @@ describe('periksa-sesudah-aksi di loop', () => {
     expect(user(provider.calls[0])).not.toContain('RIWAYAT');
   });
 });
+
+describe('periksa-sesudah-aksi: warga sempat memegang kendali', () => {
+  /** Pengamatan perencanaan ke-`n` (bukan pantau) dijawab mode takeover sekali: warga memegang layar sendiri. */
+  function wargaPegangPada(worker: WorkerPalsu, n: number): void {
+    const asli = worker.amati.bind(worker);
+    let ke = 0;
+    worker.amati = async (opsi) => {
+      const a = await asli(opsi);
+      return !opsi?.pantau && ++ke === n ? { ...a, mode: 'takeover' } : a;
+    };
+  }
+
+  for (const [nama, takeoverPada, tolakDulu] of [
+    ['di antara isian AI dan pengamatan berikutnya', 2, false],
+    ['sesudah rencana koreksi pertama ditolak validator', 3, true],
+  ] as const)
+    it(`${nama}: kolom bergalat tidak dikecualikan, tulis ulang ditolak KOLOM_DIISI_WARGA`, async () => {
+      const worker = new WorkerPalsu([
+        halamanForm(),
+        formGalat('sidik-galat', 'Pilih jenis lain.'),
+        halamanTinjau(),
+      ]);
+      worker.setujuiSemua = true;
+      wargaPegangPada(worker, takeoverPada);
+      const provider = new ProviderSkrip((n, params) => {
+        if (n === 0) return RENCANA_FORM;
+        if (user(params).includes('halamanAkhir')) return SERAHKAN_FINAL;
+        if (tolakDulu && n === 1) return { aksi: [{ jenis: 'klik', ref: 'e99' }] };
+        return {
+          aksi: [
+            { jenis: 'pilih', ref: 'e3', nilai: { opsi: 2 } },
+            { jenis: 'klik', ref: 'e11' },
+          ],
+        };
+      });
+      const { hasil, jejak } = jalankan(worker, provider);
+      const h = await hasil;
+      expect(h.akhir).toBe('ambil_alih');
+      expect(h).not.toMatchObject({ alasan: 'final' });
+      // Kolom yang mungkin sudah diubah warga tidak pernah ditulis ulang AI.
+      expect(worker.semuaAksi).not.toContainEqual({ jenis: 'pilih', ref: 'e3', nilai: { opsi: 2 } });
+      expect(jejak).toContainEqual(
+        expect.objectContaining({ jenis: 'validasi', putusan: 'tolak', aturan: ['KOLOM_DIISI_WARGA'] }),
+      );
+      // Sesudah warga memegang kendali, prompt tidak lagi memuat PERIKSA HASIL untuk isian lama.
+      const sesudah = provider.calls.slice(tolakDulu ? 2 : 1).map(user);
+      expect(sesudah.length).toBeGreaterThan(0);
+      for (const u of sesudah) expect(u).not.toContain('PERIKSA HASIL');
+      if (tolakDulu) expect(user(provider.calls[1])).toContain('PERIKSA HASIL');
+    });
+});
