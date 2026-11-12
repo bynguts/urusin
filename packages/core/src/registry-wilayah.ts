@@ -666,9 +666,9 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     domisili: 'tidak_diketahui',
     aksesWilayah: 'id-only',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     catatan:
-      'SIBISA; daftar dengan NIK, KK, email, WA, foto KTP dan swafoto. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (koneksi ditolak dari IP Singapura). Turnstile tertanam di /portal.',
+      'SIBISA. OBS 2026-11-12: masuk /portal/ dengan NIK + sandi + Turnstile (5 kali gagal = blokir 15 menit). Daftar /portal/daftar: data diri + Turnstile, OTP email, lalu foto KTP + swafoto memegang KTP yang disetujui petugas. Formulir pengajuan hanya Senin-Jumat selain libur; unggahan hanya gambar. Hanya bisa dibuka dari jaringan Indonesia.',
   },
   '1272': {
     kode: '1272',
@@ -2016,9 +2016,10 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     login: ['hp_sandi'],
     proteksi: ['captcha_gambar', 'cloudflare'],
     domisili: 'tidak_diketahui',
-    bukti: 'PRI',
-    verifiedAt: '2026-11-08',
-    catatan: 'Telunjuk Sakti; 42 layanan termasuk SKPWNI/SKDWNI; adapter khusus sudah ada.',
+    bukti: 'OBS',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'Telunjuk Sakti (42 layanan termasuk SKPWNI/SKDWNI; adapter khusus untuk akta kelahiran). OBS 2026-11-12: masuk /telunjuksakti/index.php/users/login dengan nomor HP + sandi + captcha gambar. Cloudflare menahan Chromium headless; Chromium headed lolos di navigasi pertama, navigasi berikutnya bisa memunculkan tantangan Turnstile interaktif. "Selesai" adalah tautan GET yang langsung mengirim permohonan.',
   },
   '3313': {
     kode: '3313',
@@ -2663,12 +2664,13 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     hosts: ['wargaklampid-dispendukcapil.surabaya.go.id'],
     hostInfo: ['disdukcapil.surabaya.go.id'],
     sumber: 'https://wargaklampid-dispendukcapil.surabaya.go.id/app',
-    login: ['username_sandi', 'google', 'otp_email'],
+    login: ['username_sandi'],
     proteksi: ['recaptcha'],
     domisili: 'tidak_diketahui',
-    bukti: 'PRI',
-    verifiedAt: '2026-11-08',
-    catatan: 'Klampid NG (SPA, alur chat-room); situs info sedang pemeliharaan saat dicek.',
+    bukti: 'OBS',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'Klampid NG (Next.js, alur chat-room "Cak Takon"). OBS 2026-11-12: masuk /app/login dengan username + sandi + reCAPTCHA v2 (Google/OTP email masih ada di kode tetapi tidak tampil); ada SSO Wargaku. Akun baru wajib "Verifikasi Akun Klampid" dan verifikasi nomor HP lewat bot WhatsApp sebelum kartu layanan aktif. KIA dan pindah datang tidak tampil untuk akun warga. Unggahan memakai host S3 non-.go.id (s3.klampid.disdukcapilsurabaya.id) yang belum masuk registry.',
   },
   '3579': {
     kode: '3579',
@@ -3513,8 +3515,9 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     proteksi: ['turnstile'],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
-    catatan: 'Parakacil Online.',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'Parakacil Online. OBS 2026-11-12: masuk /auth/login dengan NIK (kolom "username") + sandi + Turnstile; modal "Informasi Terbaru" menutupi formulir saat dimuat. Daftar /auth/register: email + WhatsApp + captcha gambar, OTP email, lalu data diri dan sandi. Layanan Senin-Kamis 08.00-14.00 WITA, Jumat sampai 10.00 WITA.',
   },
   '6372': {
     kode: '6372',
@@ -4762,7 +4765,7 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Medan',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '1271',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     aksesWilayah: 'id-only',
   },
   {
@@ -5485,14 +5488,14 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kabupaten Wonogiri',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '3312',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'telunjuksakti.wonogirikab.go.id',
     instansi: 'Disdukcapil Kabupaten Wonogiri',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '3312',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'dukcapil.sragenkab.go.id',
@@ -5837,14 +5840,14 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Surabaya',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '3578',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'wargaklampid-dispendukcapil.surabaya.go.id',
     instansi: 'Disdukcapil Kota Surabaya',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '3578',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'dispendukcapil.batukota.go.id',
@@ -6224,14 +6227,14 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Banjarmasin',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '6371',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'parakacil.banjarmasinkota.go.id',
     instansi: 'Disdukcapil Kota Banjarmasin',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '6371',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'disdukcapil.banjarbarukota.go.id',
