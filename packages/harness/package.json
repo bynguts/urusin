@@ -29,6 +29,7 @@
     "@urusin/adapters": "workspace:*",
     "@urusin/contracts": "workspace:*",
     "@urusin/core": "workspace:*",
+    "@urusin/embedding": "workspace:*",
     "@urusin/llm": "workspace:*",
     "@urusin/rag": "workspace:*",
     "@urusin/registry": "workspace:*",

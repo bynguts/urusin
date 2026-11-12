@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@urusin/contracts": "workspace:*",
+    "@urusin/embedding": "workspace:*",
     "@urusin/harness": "workspace:*",
     "@urusin/llm": "workspace:*",
     "zod": "4.6.7"
