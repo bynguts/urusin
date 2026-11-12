@@ -25,10 +25,11 @@ test('cari wilayah, batalkan, simpan, dan hapus pilihan tanpa mengubahnya menjad
   await page.reload();
   await expect(kota).toHaveValue('Kota Surabaya');
 
+  // Pilihan perangkat sampai ke server lewat cookie: rencananya langsung dirender untuk Surabaya (tanpa JS pun).
   await page.goto('/peristiwa/kelahiran');
-  await expect(page).toHaveURL(/kodeKabKota=3578/);
   const ktp = page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' });
   await expect(ktp).toHaveValue('Kota Surabaya');
+  await expect(page.locator('input[type="hidden"][name="kodeKabKota"]')).toHaveValue('3578');
   await ktp.fill('Wonogiri');
   await ktp.press('ArrowDown');
   await expect(ktp).toHaveAttribute('aria-activedescendant', /kota-opsi-0/);
