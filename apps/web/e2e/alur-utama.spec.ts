@@ -69,6 +69,17 @@ for (const lebar of [390, 1440]) {
       'href',
       /pengaturan#zona-bahaya$/,
     );
+    // Penafian pindah dari footer ke halaman ini; footer tidak lagi memuat penafian maupun tautan hapus data.
+    await expect(
+      page.getByText(
+        'Urusin bukan situs pemerintah; logo instansi ditampilkan untuk merujuk sumber informasi resmi.',
+      ),
+    ).toBeVisible();
+    // <footer> ada di dalam <main> (frame pen), jadi bukan landmark contentinfo: cari lewat tag.
+    const footer = page.locator('footer');
+    await expect(footer).toBeVisible();
+    await expect(footer).not.toContainText('Bukan situs pemerintah');
+    await expect(footer.getByRole('link', { name: 'Hapus data saya' })).toHaveCount(0);
     if (lebar >= 1024) {
       await page.goto('/');
       await page

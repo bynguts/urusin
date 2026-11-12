@@ -298,6 +298,12 @@
         {#if hasil.data.diubahPada}
           <p class="text-sm text-muted">Terakhir diubah {tanggal(hasil.data.diubahPada)}</p>
         {/if}
+        <a
+          href="{resolve('/pengaturan')}#zona-bahaya"
+          class="-my-2 inline-flex items-center gap-1.5 py-2 text-[15px] font-semibold text-galat hover:underline"
+        >
+          Hapus data saya <Icon name="panah" class="size-4" />
+        </a>
       </aside>
     </div>
     <p role="status" class="text-[15px] text-hijau-ink empty:hidden">{pesanStatus}</p>

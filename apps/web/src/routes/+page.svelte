@@ -258,7 +258,7 @@
         Urusin adalah pendamping yang mengubah ceritamu jadi langkah yang jelas, dari dokumen sampai situs
         resmi.
       </div>
-      <div class="lp16">
+      <div class="n-aksi lp16">
         <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
         <a class="lp17" href={targetMulai}>
           <img class="lp18" src="/pen/i-25435a991f.svg" alt="" width="16" height="16" decoding="async" />
@@ -726,6 +726,129 @@
             <div class="lp48">Samsat</div>
           </div>
         </div>
+        <!-- Set 3 (layar sangat lebar: track tetap lebih panjang dari viewport + satu set) -->
+        <div class="n-wordmarks lp45" aria-hidden="true">
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-3438e81725.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Dukcapil</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-533e38ff50.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">BPJS Kesehatan</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-63d80529c0.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Kemenag</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-53c23c4d87.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Imigrasi</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-c49f4545a4.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Samsat</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-3438e81725.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Dukcapil</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-533e38ff50.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">BPJS Kesehatan</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-63d80529c0.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Kemenag</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-53c23c4d87.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Imigrasi</div>
+          </div>
+          <div class="lp46">
+            <img
+              class="lp47"
+              src="/pen/i-c49f4545a4.svg"
+              alt=""
+              width="22"
+              height="22"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="lp48">Samsat</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -753,7 +876,7 @@
         Pendampingmu menyusun dokumen, instansi, dan urutan langkah sesuai daerahmu, lalu menemanimu sampai
         selesai.
       </div>
-      <div class="lp57">
+      <div class="n-aksi lp57">
         <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
         <a class="lp58" href={targetMulai}>
           <span class="lp59"> Mulai urusan </span>
@@ -898,10 +1021,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-95c2220383.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemendagri.webp"
+            alt="Logo Kementerian Dalam Negeri (Dukcapil)"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -909,10 +1032,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-864bab7921.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/bpjs-kesehatan.svg"
+            alt="Logo BPJS Kesehatan"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -920,10 +1043,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-a6a3008acd.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/polri.webp"
+            alt="Logo Kepolisian Negara Republik Indonesia"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -931,10 +1054,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-32c8923562.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemenkes.svg"
+            alt="Logo Kementerian Kesehatan"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -942,10 +1065,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-fa94228208.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/imigrasi.webp"
+            alt="Logo Direktorat Jenderal Imigrasi"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -953,10 +1076,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-61026f0797.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/djp.svg"
+            alt="Logo Direktorat Jenderal Pajak"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -964,10 +1087,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-622991afbb.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemenag.svg"
+            alt="Logo Kementerian Agama"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -975,10 +1098,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-81414dc20e.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/bpjs-ketenagakerjaan.svg"
+            alt="Logo BPJS Ketenagakerjaan"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -986,10 +1109,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-e795588273.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemendikdasmen.svg"
+            alt="Logo Kementerian Pendidikan Dasar dan Menengah"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -997,10 +1120,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-e87b88ff2b.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/atr-bpn.webp"
+            alt="Logo Kementerian ATR/BPN"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1008,10 +1131,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-3da007ab49.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/jasa-raharja.svg"
+            alt="Logo Jasa Raharja"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1019,10 +1142,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-941a068b12.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemensos.svg"
+            alt="Logo Kementerian Sosial"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1030,10 +1153,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-2ec80010b1.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemenkum.svg"
+            alt="Logo Kementerian Hukum"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1041,10 +1164,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-ec2f9348f0.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/pos-indonesia.svg"
+            alt="Logo Pos Indonesia"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1052,10 +1175,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-5212f25c3d.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemnaker.svg"
+            alt="Logo Kementerian Ketenagakerjaan"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1063,10 +1186,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-62fa004883.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kpu.webp"
+            alt="Logo Komisi Pemilihan Umum"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1078,10 +1201,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-81414dc20e.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/bpjs-ketenagakerjaan.svg"
+            alt="Logo BPJS Ketenagakerjaan"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1089,10 +1212,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-e795588273.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemendikdasmen.svg"
+            alt="Logo Kementerian Pendidikan Dasar dan Menengah"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1100,10 +1223,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-e87b88ff2b.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/atr-bpn.webp"
+            alt="Logo Kementerian ATR/BPN"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1111,10 +1234,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-3da007ab49.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/jasa-raharja.svg"
+            alt="Logo Jasa Raharja"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1122,10 +1245,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-941a068b12.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemensos.svg"
+            alt="Logo Kementerian Sosial"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1133,10 +1256,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-2ec80010b1.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemenkum.svg"
+            alt="Logo Kementerian Hukum"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1144,10 +1267,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-ec2f9348f0.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/pos-indonesia.svg"
+            alt="Logo Pos Indonesia"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1155,10 +1278,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-5212f25c3d.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemnaker.svg"
+            alt="Logo Kementerian Ketenagakerjaan"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1166,10 +1289,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-62fa004883.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kpu.webp"
+            alt="Logo Komisi Pemilihan Umum"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1177,10 +1300,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-95c2220383.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemendagri.webp"
+            alt="Logo Kementerian Dalam Negeri (Dukcapil)"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1188,10 +1311,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-864bab7921.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/bpjs-kesehatan.svg"
+            alt="Logo BPJS Kesehatan"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1199,10 +1322,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-a6a3008acd.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/polri.webp"
+            alt="Logo Kepolisian Negara Republik Indonesia"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1210,10 +1333,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-32c8923562.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemenkes.svg"
+            alt="Logo Kementerian Kesehatan"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1221,10 +1344,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-fa94228208.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/imigrasi.webp"
+            alt="Logo Direktorat Jenderal Imigrasi"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1232,10 +1355,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-61026f0797.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/djp.svg"
+            alt="Logo Direktorat Jenderal Pajak"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1243,10 +1366,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-622991afbb.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemenag.svg"
+            alt="Logo Kementerian Agama"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1258,10 +1381,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-5212f25c3d.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemnaker.svg"
+            alt="Logo Kementerian Ketenagakerjaan"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1269,10 +1392,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-62fa004883.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kpu.webp"
+            alt="Logo Komisi Pemilihan Umum"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1280,10 +1403,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-95c2220383.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemendagri.webp"
+            alt="Logo Kementerian Dalam Negeri (Dukcapil)"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1291,10 +1414,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-864bab7921.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/bpjs-kesehatan.svg"
+            alt="Logo BPJS Kesehatan"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1302,10 +1425,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-a6a3008acd.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/polri.webp"
+            alt="Logo Kepolisian Negara Republik Indonesia"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1313,10 +1436,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-32c8923562.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemenkes.svg"
+            alt="Logo Kementerian Kesehatan"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1324,10 +1447,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-fa94228208.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/imigrasi.webp"
+            alt="Logo Direktorat Jenderal Imigrasi"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1335,10 +1458,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-61026f0797.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/djp.svg"
+            alt="Logo Direktorat Jenderal Pajak"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1346,10 +1469,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-622991afbb.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemenag.svg"
+            alt="Logo Kementerian Agama"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1357,10 +1480,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-81414dc20e.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/bpjs-ketenagakerjaan.svg"
+            alt="Logo BPJS Ketenagakerjaan"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1368,10 +1491,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-e795588273.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemendikdasmen.svg"
+            alt="Logo Kementerian Pendidikan Dasar dan Menengah"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1379,10 +1502,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-e87b88ff2b.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/atr-bpn.webp"
+            alt="Logo Kementerian ATR/BPN"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1390,10 +1513,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-3da007ab49.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/jasa-raharja.svg"
+            alt="Logo Jasa Raharja"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1401,10 +1524,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-941a068b12.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemensos.svg"
+            alt="Logo Kementerian Sosial"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1412,10 +1535,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-2ec80010b1.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/kemenkum.svg"
+            alt="Logo Kementerian Hukum"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1423,10 +1546,10 @@
         <div class="lp90">
           <img
             class="lp91"
-            src="/pen/i-ec2f9348f0.svg"
-            alt=""
-            width="30"
-            height="30"
+            src="/logo-layanan/pos-indonesia.svg"
+            alt="Logo Pos Indonesia"
+            width="40"
+            height="40"
             loading="lazy"
             decoding="async"
           />
@@ -1837,19 +1960,19 @@
             <div class="lp11">
               <div class="lp143">Lanjutkan</div>
             </div>
+            <img
+              class="lp144"
+              src={g5535a9a}
+              srcset="{g5535a9a} 120w, {ge675d89} 155w, {g1a6f689} 240w"
+              sizes="(max-width: 767px) 84px, 120px"
+              alt=""
+              width="120"
+              height="131"
+              loading="lazy"
+              decoding="async"
+              aria-hidden="true"
+            />
           </div>
-          <img
-            class="lp144"
-            src={g5535a9a}
-            srcset="{g5535a9a} 120w, {ge675d89} 155w, {g1a6f689} 240w"
-            sizes="(max-width: 767px) 84px, 120px"
-            alt=""
-            width="120"
-            height="131"
-            loading="lazy"
-            decoding="async"
-            aria-hidden="true"
-          />
         </div>
         <div class="n-feature-text lp145">
           <h3 class="lp146">Ingat posisi terakhir</h3>
@@ -2531,19 +2654,19 @@
               </div>
               <div class="lp249">Menyusul</div>
             </div>
+            <img
+              class="lp250"
+              src={g1ab60a9}
+              srcset="{g1ab60a9} 130w, {g153fc93} 168w, {g4405d37} 260w"
+              sizes="(max-width: 767px) 84px, 120px"
+              alt=""
+              width="120"
+              height="131"
+              loading="lazy"
+              decoding="async"
+              aria-hidden="true"
+            />
           </div>
-          <img
-            class="lp250"
-            src={g1ab60a9}
-            srcset="{g1ab60a9} 130w, {g153fc93} 168w, {g4405d37} 260w"
-            sizes="(max-width: 767px) 91px, 130px"
-            alt=""
-            width="130"
-            height="142"
-            loading="lazy"
-            decoding="async"
-            aria-hidden="true"
-          />
         </div>
         <div class="n-list lp241">
           <div class="lp52">
@@ -2688,7 +2811,7 @@
     <div class="n-heading lp263">
       <h2 class="n-title lp106">Pertanyaan yang sering diajukan</h2>
       <div class="n-sub lp194">Masih ragu? Tanya saja, kami senang mendengarnya.</div>
-      <div class="lp57">
+      <div class="n-aksi lp57">
         <a class="lp58" href={resolve('/bantuan')}>
           <span class="lp59"> Hubungi kami </span>
         </a>
@@ -2700,21 +2823,12 @@
     <div class="n-bubbles lp264">
       <details class="n-faq-item" name="faq" open>
         <summary class="lp265">
-          <div class="lp266">
+          <div class="n-balon lp266">
             <span class="lp267">Apakah Urusin bagian dari pemerintah?</span>
           </div>
-          <img
-            class="lp268"
-            src="/pen/i-6c52db901b.svg"
-            alt=""
-            width="18"
-            height="14"
-            loading="lazy"
-            decoding="async"
-          />
         </summary>
         <div class="n-answer-row lp269">
-          <div class="n-answer lp270">
+          <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
               Bukan. Urusin membantumu memahami dan menyiapkan urusan. Keputusan layanan tetap di instansi
               terkait.
@@ -2724,21 +2838,12 @@
       </details>
       <details class="n-faq-item" name="faq">
         <summary class="lp265">
-          <div class="lp266">
+          <div class="n-balon lp266">
             <span class="lp267">Apakah data saya aman?</span>
           </div>
-          <img
-            class="lp268"
-            src="/pen/i-6c52db901b.svg"
-            alt=""
-            width="18"
-            height="14"
-            loading="lazy"
-            decoding="async"
-          />
         </summary>
         <div class="n-answer-row lp269">
-          <div class="n-answer lp270">
+          <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
               Aman. Data dan berkasmu disimpan terenkripsi di server per akun. Model AI tidak pernah menerima
               data identitas asli (NIK, KK, nama), dan data tamu terhapus otomatis setelah 72 jam.
@@ -2748,21 +2853,12 @@
       </details>
       <details class="n-faq-item" name="faq">
         <summary class="lp265">
-          <div class="lp266">
+          <div class="n-balon lp266">
             <span class="lp267">Bisa dipakai untuk mengurus orang tua saya?</span>
           </div>
-          <img
-            class="lp268"
-            src="/pen/i-6c52db901b.svg"
-            alt=""
-            width="18"
-            height="14"
-            loading="lazy"
-            decoding="async"
-          />
         </summary>
         <div class="n-answer-row lp269">
-          <div class="n-answer lp270">
+          <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
               Bisa. Kamu bisa mendampingi orang tua atau anggota keluarga lain untuk menyiapkan syarat,
               mengunggah berkas, dan memandu pengisian di situs resmi.
@@ -2772,21 +2868,12 @@
       </details>
       <details class="n-faq-item" name="faq">
         <summary class="lp265">
-          <div class="lp266">
+          <div class="n-balon lp266">
             <span class="lp267">Apakah AI bisa mengirim formulir sendiri?</span>
           </div>
-          <img
-            class="lp268"
-            src="/pen/i-6c52db901b.svg"
-            alt=""
-            width="18"
-            height="14"
-            loading="lazy"
-            decoding="async"
-          />
         </summary>
         <div class="n-answer-row lp269">
-          <div class="n-answer lp270">
+          <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
               Tidak. AI hanya mengisi kolom yang sudah kamu setujui di Browser Pendamping. Login, CAPTCHA,
               OTP, dan tombol Kirim akhir selalu dikerjakan oleh kamu sendiri.
@@ -2796,21 +2883,12 @@
       </details>
       <details class="n-faq-item" name="faq">
         <summary class="lp265">
-          <div class="lp266">
+          <div class="n-balon lp266">
             <span class="lp267">Bagaimana kalau informasinya sudah berubah?</span>
           </div>
-          <img
-            class="lp268"
-            src="/pen/i-6c52db901b.svg"
-            alt=""
-            width="18"
-            height="14"
-            loading="lazy"
-            decoding="async"
-          />
         </summary>
         <div class="n-answer-row lp269">
-          <div class="n-answer lp270">
+          <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
               Urusin membaca syarat langsung dari regulasi dan portal resmi daerah yang dilengkapi tanggal
               verifikasi. Bila ada perubahan atau situs belum didukung, Urusin akan memberi tahu dan beralih
@@ -2821,21 +2899,12 @@
       </details>
       <details class="n-faq-item" name="faq">
         <summary class="lp265">
-          <div class="lp266">
+          <div class="n-balon lp266">
             <span class="lp267">Berapa biayanya?</span>
           </div>
-          <img
-            class="lp268"
-            src="/pen/i-6c52db901b.svg"
-            alt=""
-            width="18"
-            height="14"
-            loading="lazy"
-            decoding="async"
-          />
         </summary>
         <div class="n-answer-row lp269">
-          <div class="n-answer lp270">
+          <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
               Gratis. Seluruh layanan Urusin tidak dipungut biaya. Layanan adminduk di Disdukcapil menurut
               Undang-Undang juga gratis; jika ada biaya resmi (mis. leges/materai), dibayarkan langsung ke
@@ -2888,7 +2957,7 @@
         <div class="n-sub lp285">
           Gratis dan langsung dari browser. Ceritakan apa yang terjadi, Urusin yang menyusun langkahnya.
         </div>
-        <div class="lp52">
+        <div class="n-aksi lp52">
           <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
           <a class="lp17" href={targetMulai}>
             <img
@@ -3001,7 +3070,7 @@
           loading="lazy"
           decoding="async"
         />
-        <div class="lp294">
+        <div class="n-balon lp294">
           <div class="lp213">Mau urus apa hari ini?</div>
         </div>
       </div>

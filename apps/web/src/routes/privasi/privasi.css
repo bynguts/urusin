@@ -223,6 +223,11 @@
   line-height: 27px;
   width: 640px;
 }
+/* Atribusi logo (CC BY-SA untuk Jasa Raharja): lebih kecil dari paragraf; gaya tautan dari .pv24 a. */
+.pv24.pv-atribusi {
+  font-size: 14px;
+  line-height: 21px;
+}
 .pv24 a {
   color: var(--sb-text-primary, #252522);
   text-decoration: underline;
