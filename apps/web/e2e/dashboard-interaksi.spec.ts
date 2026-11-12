@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
 // Semua data uji berada di DB sementara runner. CRUD brankas lewat UI dan backend sebenarnya, tanpa mock API.
 test.beforeEach(async ({ context }) => {
@@ -27,6 +28,7 @@ const PNG = Buffer.from(
 test('dokumen: unggah, filter, unduh, batal hapus, hapus jenis terakhir, dan hapus semua', async ({
   page,
 }) => {
+  await daftarAkunUji(page);
   await page.goto('/dokumen');
   await expect(page.getByText('Belum ada dokumen', { exact: true })).toBeVisible();
   for (const [jenis, judul] of [
@@ -152,6 +154,7 @@ for (const [width, scale] of [
 test('pengaturan: saklar, ukuran huruf, wilayah, reload, batal dan konfirmasi hapus data lokal', async ({
   page,
 }) => {
+  await daftarAkunUji(page);
   await page.goto('/pengaturan');
   const wilayah = page.getByRole('combobox', { name: 'Kab/kota', exact: true });
   await expect(wilayah).toHaveAttribute('aria-autocomplete', 'list');

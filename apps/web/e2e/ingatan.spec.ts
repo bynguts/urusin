@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
 // Ingatan warga (ADR 0031) dengan DemoProvider: urusan 1 → agen mencatat preferensi + wilayah KTP → urusan 2 tidak
 // menanyakan ulang dari nol (kartu usulan, warga memastikan) → Pengaturan: hapus ingatan → hilang.
@@ -15,6 +16,7 @@ test('urusan kedua memakai ingatan sebagai usulan, lalu ingatan dihapus di Penga
   const log = page.getByRole('log', { name: 'Percakapan urusan' });
 
   // Urusan 1: kelahiran; agen menanyakan wilayah KTP dari nol (belum ada ingatan).
+  await daftarAkunUji(page);
   await page.goto('/peristiwa/kelahiran');
   await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
   await expect(page).toHaveURL(/\/urusan\/u_[0-9a-f]{32}$/);

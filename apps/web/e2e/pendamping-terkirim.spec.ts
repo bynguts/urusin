@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
 // N1 lewat UI warga: AI berhenti (serah akhir `berhenti`), warga mengirim sendiri di situs, lalu menekan
 // "Saya sudah mengirim". Layanan pendamping digantikan tiruan di batas jaringan peramban seperti
@@ -71,6 +72,7 @@ test('N1: AI berhenti, warga mengirim sendiri, "Saya sudah mengirim" -> 409 juju
   });
 
   // Jalur warga yang sama dengan pendamping-giliran: Wonogiri → rencana → persetujuan → buka situs.
+  await daftarAkunUji(page);
   await page.goto('/peristiwa/kelahiran');
   await expect(page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' })).toHaveAttribute(
     'aria-autocomplete',

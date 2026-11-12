@@ -71,7 +71,7 @@ export function usulkanWilayahAwal(
 
 /**
  * Form action "mulai urusan" (Beranda dan Rencana peristiwa): sama dengan POST /api/urusan, tetapi lewat
- * formulir biasa agar tetap jalan tanpa JavaScript. Berhasil → 303 ke /urusan/[id].
+ * formulir biasa agar tetap jalan tanpa JavaScript. Berhasil → 303 ke /urusan/[id]; tanpa sesi → 303 ke /daftar.
  */
 export async function mulaiUrusanDariForm(event: RequestEvent) {
   const form = await event.request.formData();
@@ -83,6 +83,14 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
   const kode = ambil('kodeKabKota');
   const peristiwaRaw = ambil('peristiwa');
   const peristiwa = PERISTIWA.find((p) => p === peristiwaRaw) as Peristiwa | undefined;
+  // Wajib akun: tanpa sesi → daftar dulu, lalu kembali ke rencana peristiwa (wilayah terpilih ikut) atau Beranda.
+  if (!event.locals.akun) {
+    const tujuan =
+      peristiwa && peristiwa !== 'lainnya'
+        ? `/peristiwa/${peristiwa}${/^\d{4}$/.test(kode) ? `?kodeKabKota=${kode}` : ''}`
+        : '/beranda';
+    redirect(303, `/daftar?next=${encodeURIComponent(tujuan)}`);
+  }
   if (!pesan && !peristiwa)
     return fail(422, { pesanWarga: 'Tulis dulu apa yang ingin Anda urus.', pesan } satisfies GagalMulai);
   // Sama dengan readBody di POST /api/urusan: NIK/KK/HP/email tidak boleh menuju model. Pesan tidak digemakan.

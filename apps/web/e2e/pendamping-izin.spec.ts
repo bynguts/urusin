@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
 // QA produksi: lembar "Izinkan AI mengisi?" muncul saat layar masih "Menyiapkan" (portal belum tampil), menolak
 // izin berakhir di layar putih, dan portal yang tidak terjangkau membuat layar putih tanpa pesan. Layanan
@@ -39,6 +40,7 @@ function frameBiner(seq: number, jpeg: Buffer): Buffer {
 
 /** Jalur warga yang sama dengan pendamping-gerbang: Wonogiri → rencana → persetujuan → buka situs. */
 async function bukaSitus(page: Page) {
+  await daftarAkunUji(page);
   await page.goto('/peristiwa/kelahiran');
   const kota = page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' });
   await expect(kota).toHaveAttribute('aria-autocomplete', 'list');

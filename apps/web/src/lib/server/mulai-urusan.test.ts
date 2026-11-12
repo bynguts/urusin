@@ -1,3 +1,4 @@
+import type { Akun } from '@urusin/akun';
 import { DemoProvider } from '@urusin/harness';
 import { isRedirect } from '@sveltejs/kit';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -8,19 +9,27 @@ import { PESAN_PII } from './http';
 import { SID_COOKIE } from './sesi';
 
 let rt: Runtime;
-beforeEach(() => {
+/** Wajib akun: formulir mulai urusan dipakai warga yang masuk (akun email + sandi, tanpa Data Diri). */
+let akun: Akun;
+beforeEach(async () => {
   rt = createRuntime({
     provider: new DemoProvider(),
     config: { dbPath: ':memory:', heartbeatMs: 15_000, disconnectGraceMs: 0 },
   });
   setRuntimeForTests(rt);
+  akun = (await rt.akun.daftar({ email: 'warga@example.com', sandi: 'kuda-lari-cepat-9' }, KTX)).akun;
 });
 afterEach(() => setRuntimeForTests(undefined));
 
 const SID = 'a'.repeat(32);
 const KTX = { ip: '10.0.0.9', userAgent: null };
 
-function eventForm(fields: Record<string, string>, ip: string, kue: Record<string, string> = {}) {
+function eventForm(
+  fields: Record<string, string>,
+  ip: string,
+  kue: Record<string, string> = {},
+  locals: App.Locals = { akun },
+) {
   const body = new FormData();
   for (const [k, v] of Object.entries(fields)) body.set(k, v);
   const jar = new Map<string, string>([[SID_COOKIE, SID], ...Object.entries(kue)]);
@@ -28,7 +37,7 @@ function eventForm(fields: Record<string, string>, ip: string, kue: Record<strin
     request: new Request('http://localhost:3000/beranda?/mulai', { method: 'POST', body }),
     url: new URL('http://localhost:3000/beranda?/mulai'),
     params: {},
-    locals: {} as App.Locals,
+    locals,
     cookies: {
       get: (k: string) => jar.get(k),
       set: (k: string, v: string) => void jar.set(k, v),
@@ -56,18 +65,29 @@ async function mulai(
 
 /** Formulir "mulai urusan" (Beranda / Rencana peristiwa) harus mengikat pemilik seperti POST /api/urusan. */
 describe('mulaiUrusanDariForm: pemilik urusan', () => {
-  it('peristiwa tanpa pesan: urusan terikat ke sid, endpoint Pendamping mengenali pemiliknya', async () => {
-    rt.akun.pastikanTamu(SID, KTX);
+  it('peristiwa tanpa pesan: urusan terikat ke akun, endpoint Pendamping mengenali pemiliknya', async () => {
     const id = await mulai({ peristiwa: 'kelahiran', kodeKabKota: '3312' }, '10.0.0.1');
-    expect(rt.akun.pemilikVaultUrusan(id, { sid: SID })).toBe(rt.akun.tamuDariSid(SID));
-    expect(rt.akun.pemilikVaultUrusan(id, { sid: 'b'.repeat(32) })).toBeUndefined();
+    expect(rt.akun.urusanMilik(akun.id)).toEqual([id]);
+    expect(rt.akun.pemilikVaultUrusan(id, { akun, sid: 'b'.repeat(32) })).toBe(akun.id);
+    expect(rt.akun.pemilikVaultUrusan(id, { sid: SID })).toBeUndefined();
   });
 
-  it('dengan pesan: tamu dibuat (seperti /turn) dan urusan terikat padanya', async () => {
+  it('dengan pesan: tidak ada baris tamu, urusan terikat ke akun', async () => {
     const id = await mulai({ pesan: 'Anak saya lahir minggu lalu', kodeKabKota: '3312' }, '10.0.0.2');
-    const tamu = rt.akun.tamuDariSid(SID);
-    expect(tamu).toBeDefined();
-    expect(rt.akun.pemilikVaultUrusan(id, { sid: SID })).toBe(tamu);
+    expect(rt.akun.tamuDariSid(SID)).toBeUndefined();
+    expect(rt.akun.urusanMilik(akun.id)).toEqual([id]);
+  });
+
+  it('tanpa sesi akun: 303 ke /daftar?next=<rencana peristiwa>, tidak ada urusan atau tamu dibuat', async () => {
+    let lokasi = '';
+    try {
+      await mulaiUrusanDariForm(eventForm({ peristiwa: 'pindah', kodeKabKota: '3404' }, '10.0.0.5', {}, {}));
+    } catch (e) {
+      if (isRedirect(e)) lokasi = e.location;
+    }
+    expect(lokasi).toBe(`/daftar?next=${encodeURIComponent('/peristiwa/pindah?kodeKabKota=3404')}`);
+    expect(rt.store.db.prepare('SELECT COUNT(*) n FROM urusan').get()).toEqual({ n: 0 });
+    expect(rt.akun.tamuDariSid(SID)).toBeUndefined();
   });
 });
 
@@ -88,7 +108,7 @@ describe('mulaiUrusanDariForm: PII', () => {
 
 describe('mulaiUrusanDariForm: batas laju', () => {
   it('429 menyebut waktu tunggu nyata (±N menit) dan pesan warga tetap utuh untuk dikirim ulang', async () => {
-    rt.limits.buat.sesi = new RateLimiter(1, 3_600_000);
+    rt.limits.buat.akun = new RateLimiter(1, 3_600_000);
     await mulai({ peristiwa: 'kelahiran' }, '10.0.0.4');
     const r = (await mulaiUrusanDariForm(eventForm({ pesan: 'mau urus akta' }, '10.0.0.4'))) as {
       status: number;

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
 // ADR 0033: daerah di luar 10 daerah Browser Pendamping aktif tetap dipandu lengkap dengan kartu positif
 // "sedang dikembangkan", kanal resmi daerah yang bisa diklik, dan tanpa jalan buntu. Server memakai DemoProvider.
@@ -13,6 +14,7 @@ test.beforeEach(async ({ context }) => {
 test('Kota Jayapura: kartu dipandu "sedang dikembangkan", kanal resmi bisa diklik, tanpa Browser Pendamping', async ({
   page,
 }) => {
+  await daftarAkunUji(page);
   await page.goto('/peristiwa/kelahiran');
   const kota = page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' });
   // Kotak cari baru tampil setelah hidrasi (sebelumnya select tanpa JavaScript).

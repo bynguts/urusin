@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
 // Jalur demo Browser Pendamping (DemoProvider, tanpa layanan pendamping di e2e web): pilih Kab. Wonogiri →
 // "Ya, betul" (wilayah KTP dipastikan) → rencana akta kelahiran Wonogiri → "Setujui rencana" (aksi terstruktur,
@@ -12,6 +13,7 @@ test('Setujui rencana menawarkan Browser Pendamping; persetujuan tidak hilang se
     if (r.request().method() === 'POST' && /\/api\/urusan\/u_[0-9a-f]+\//.test(r.url()))
       panggilan.push({ url: new URL(r.url()).pathname, status: r.status() });
   });
+  await daftarAkunUji(page);
   await page.goto('/peristiwa/kelahiran');
   await expect(page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' })).toHaveAttribute(
     'aria-autocomplete',

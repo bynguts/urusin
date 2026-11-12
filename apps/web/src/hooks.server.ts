@@ -1,10 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import { assertAkunEnv } from '@urusin/akun';
 import { aturJaringanId } from '@urusin/harness';
+import { redirect } from '@sveltejs/kit';
 import type { Handle } from '@sveltejs/kit/hooks';
 import { installEgressBackstop } from '@urusin/egress';
 import { AKUN_COOKIE, hapusAkunCookie } from '#lib/server/akun.js';
 import { assertHostEnv } from '#lib/server/hosts.js';
+import { apiError } from '#lib/server/http.js';
 import { catatGalatApi } from '#lib/server/log-galat.js';
 import { checkOrigin } from '#lib/server/origin.js';
 import {
@@ -36,6 +38,30 @@ pasangPemeriksaPemilikAkun(pemeriksaPemilikVault);
 // tanpa itu dipandu sejak kartu rencana, bukan baru saat sesi dimulai.
 aturJaringanId(jaringanIdSiap);
 panaskanJaringanId();
+
+/** API urusan, brankas, dan ingatan hanya untuk akun/demo yang masuk (wajib akun, tanpa mode tamu). */
+const API_WAJIB_AKUN = /^\/api\/(urusan|vault|ingatan)(\/|$)/;
+/** Halaman aplikasi (bukan halaman informatif): tanpa sesi → /masuk lalu kembali ke sini. /beranda punya load sendiri. */
+const HALAMAN_WAJIB_AKUN = new Set([
+  '/urusan/[id]',
+  '/jejak/[id]',
+  '/urusanku',
+  '/data-diri',
+  '/dokumen',
+  '/pengaturan',
+]);
+
+/**
+ * Wajib akun: membuka atau memulai urusan butuh sesi login. API → 401 `BELUM_MASUK`; halaman → 303 ke /masuk
+ * dengan `next` (redirect yang dilempar di hook dijawab SvelteKit sebagai JSON untuk permintaan data klien).
+ */
+function wajibAkun(routeId: string | null, url: URL): Response | undefined {
+  if (API_WAJIB_AKUN.test(url.pathname))
+    return apiError(401, 'BELUM_MASUK', 'Masuk atau daftar dulu untuk memulai dan membuka urusan.');
+  if (routeId && HALAMAN_WAJIB_AKUN.has(routeId))
+    redirect(303, `/masuk?next=${encodeURIComponent(url.pathname + url.search)}`);
+  return undefined;
+}
 
 /**
  * Anti-CSRF (rencana §3.2): request pengubah state wajib membawa `Origin` yang PERSIS sama dengan
@@ -90,6 +116,10 @@ export const handle: Handle = async ({ event, resolve }) => {
         hapusTerakhir(event.cookies);
       }
     }
+  }
+  if (!event.locals.akun) {
+    const tolak = wajibAkun(event.route?.id ?? null, event.url);
+    if (tolak) return tolak;
   }
   const response = await resolve(event);
   // WS worker Pendamping di origin lain (demo final lokal: ws://localhost:4330) harus diizinkan connect-src;

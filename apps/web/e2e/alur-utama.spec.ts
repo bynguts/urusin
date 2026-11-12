@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { daftarAkunUji } from './akun-uji';
 
 // IP klien sendiri per tes (lewat X-Forwarded-For, seperti di belakang Caddy): kuota tamu/urusan baru per IP
 // tidak terbagi antartes atau antarulangan (--repeat-each).
@@ -10,11 +11,13 @@ test.beforeEach(async ({ context }) => {
   });
 });
 
-// Alur utama warga: Landing → Rencana peristiwa → layar urusan (percakapan) di HP 390px dan laptop 1440px.
+// Alur utama warga (wajib akun): Landing → Rencana peristiwa → layar urusan (percakapan) di HP 390px dan laptop
+// 1440px. Warga daftar dulu; tanpa sesi tombol mulai mengarah ke /daftar (lihat wajib-akun.spec.ts).
 // Server memakai DemoProvider (tanpa kunci LLM), jadi tidak ada yang dikirim ke situs pemerintah.
 for (const lebar of [390, 1440]) {
   test(`landing → peristiwa → urusan di ${lebar}px`, async ({ page }) => {
     await page.setViewportSize({ width: lebar, height: lebar < 600 ? 844 : 960 });
+    await daftarAkunUji(page);
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Urusan administrasi');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
@@ -39,16 +42,13 @@ for (const lebar of [390, 1440]) {
     await expect(log).toContainText('Apa saja dokumen yang perlu saya bawa?');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
 
-    // Urusan tercatat di Urusanku perangkat ini
+    // Urusan tercatat di Urusanku akun ini
     await page.goto('/urusanku');
     await expect(page.getByRole('heading', { name: 'Akta kelahiran' }).first()).toBeVisible();
 
-    // Riwayat tamu tidak mengalihkan landing; dashboard /beranda terlindungi (dialihkan ke /masuk bila belum login)
+    // Akun dengan urusan terakhir di perangkat ini: landing melanjutkan ke Beranda
     await page.goto('/');
-    await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Urusan administrasi');
-    await page.goto('/beranda');
-    await expect(page).toHaveURL(/\/masuk\?lanjut=%2Fberanda$/);
+    await expect(page).toHaveURL(/\/beranda$/);
   });
 }
 
@@ -144,6 +144,7 @@ for (const lebar of [390, 1440]) {
 test('pesan lanjutan berturut-turut tidak pernah 409 dan tidak menampilkan "masih memproses"', async ({
   page,
 }) => {
+  await daftarAkunUji(page);
   const statusTurn: number[] = [];
   page.on('response', (r) => {
     if (/\/api\/urusan\/u_[0-9a-f]+\/turn$/.test(r.url()) && r.request().method() === 'POST')

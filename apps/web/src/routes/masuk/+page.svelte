@@ -139,9 +139,6 @@
         class="inline-flex min-h-12 items-center font-semibold text-ink">Daftar</a
       >
     </p>
-    <a href={resolve('/')} class="inline-flex min-h-12 items-center font-semibold text-ink underline"
-      >Coba tanpa daftar</a
-    >
   </div>
 
   {#if data.juri}

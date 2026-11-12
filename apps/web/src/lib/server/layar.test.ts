@@ -41,7 +41,7 @@ function kue() {
   };
 }
 
-const kirimForm = (isi: Record<string, string>) =>
+const kirimForm = (isi: Record<string, string>, locals: App.Locals = {}) =>
   ({
     request: new Request('http://localhost:3000/?/mulai', {
       method: 'POST',
@@ -50,7 +50,7 @@ const kirimForm = (isi: Record<string, string>) =>
     }),
     url: new URL('http://localhost:3000/?/mulai'),
     params: {},
-    locals: {},
+    locals,
     cookies: kue(),
     getClientAddress: () => '127.0.0.1',
   }) as never;
@@ -64,8 +64,37 @@ async function tangkap(p: unknown): Promise<unknown> {
 }
 
 describe('form action mulai urusan (tanpa JS)', () => {
+  /** Wajib akun: formulir mulai hanya untuk warga yang masuk. */
+  const warga = async (): Promise<App.Locals> => ({
+    akun: (
+      await rt.akun.daftar(
+        { email: 'warga@example.com', sandi: 'kuda-lari-cepat-9' },
+        { ip: '127.0.0.1', userAgent: null },
+      )
+    ).akun,
+  });
+
+  it('tanpa sesi akun: 303 ke /daftar lalu kembali ke rencana peristiwa (wilayah ikut); tidak ada urusan dibuat', async () => {
+    const r = await tangkap(beranda.mulai(kirimForm({ peristiwa: 'kelahiran', kodeKabKota: '3312' })));
+    expect(r).toMatchObject({
+      status: 303,
+      location: `/daftar?next=${encodeURIComponent('/peristiwa/kelahiran?kodeKabKota=3312')}`,
+    });
+    const tanpaKode = await tangkap(beranda.mulai(kirimForm({ peristiwa: 'kematian', kodeKabKota: 'x' })));
+    expect(tanpaKode).toMatchObject({
+      location: `/daftar?next=${encodeURIComponent('/peristiwa/kematian')}`,
+    });
+    // Cerita bebas atau "lainnya": kembali ke Beranda (kotak cerita).
+    for (const isi of [{ pesan: 'Mau urus akta' }, { peristiwa: 'lainnya' }] as Record<string, string>[])
+      expect(await tangkap(beranda.mulai(kirimForm(isi)))).toMatchObject({
+        status: 303,
+        location: `/daftar?next=${encodeURIComponent('/beranda')}`,
+      });
+    expect(rt.store.db.prepare('SELECT COUNT(*) n FROM urusan').get()).toEqual({ n: 0 });
+  });
+
   it('pesan kosong → 422 dengan pesan warga', async () => {
-    const r = (await beranda.mulai(kirimForm({ pesan: '  ' }))) as {
+    const r = (await beranda.mulai(kirimForm({ pesan: '  ' }, await warga()))) as {
       status: number;
       data: { pesanWarga: string };
     };
@@ -74,7 +103,9 @@ describe('form action mulai urusan (tanpa JS)', () => {
   });
 
   it('dari kartu peristiwa → urusan dibuat dengan jenis + usulan kab/kota, lalu 303 ke layar urusan', async () => {
-    const r = await tangkap(beranda.mulai(kirimForm({ peristiwa: 'kelahiran', kodeKabKota: '3312' })));
+    const r = await tangkap(
+      beranda.mulai(kirimForm({ peristiwa: 'kelahiran', kodeKabKota: '3312' }, await warga())),
+    );
     expect(isRedirect(r)).toBe(true);
     const lokasi = (r as { location: string }).location;
     expect(lokasi).toMatch(/^\/urusan\/u_[0-9a-f]{32}$/);

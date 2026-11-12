@@ -476,8 +476,7 @@
         </h2>
         <p class="text-base leading-[25px] text-body">
           Daftar urusan dan pengaturan ini disimpan di perangkat ini. Data Diri dan dokumen disimpan
-          terenkripsi di server: terhapus 72 jam setelah dibuat bila tanpa akun, atau ikut akun Anda sampai
-          Anda menghapusnya.
+          terenkripsi di server dan ikut akun Anda sampai Anda menghapusnya.
         </p>
       </div>
       <div
