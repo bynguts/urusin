@@ -113,12 +113,15 @@ test('N1: AI berhenti, warga mengirim sendiri, "Saya sudah mengirim" -> 409 juju
   expect(await page.locator('#panel-utama').evaluate((e) => e.scrollTop)).toBe(0);
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
   await page.screenshot({ path: test.info().outputPath('pendamping-scroll.png') });
-  await expect(lembar.getByRole('button', { name: 'Lanjutkan' })).toHaveCount(0);
-  const sudah = lembar.getByRole('button', { name: 'Saya sudah mengirim' });
+  // Tombol aksi giliran ada di bilah bawah yang lengket (selalu terlihat di HP), bersama instruksinya.
+  const bilah = page.locator('[data-bilah-giliran]');
+  await expect(bilah).toContainText('Giliran Anda: lanjutkan sendiri di situs');
+  await expect(bilah.getByRole('button', { name: 'Lanjutkan' })).toHaveCount(0);
+  const sudah = bilah.getByRole('button', { name: 'Saya sudah mengirim' });
 
   // Belum terlihat terkirim (worker 409): pesan jujur, sesi tetap di tangan warga.
   await sudah.click();
-  await expect(lembar.getByRole('alert')).toHaveText(PESAN_BELUM);
+  await expect(bilah.getByRole('alert')).toHaveText(PESAN_BELUM);
   expect(terkirim).toBe(1);
 
   // Sesudah warga benar-benar mengirim: worker menerima, layar siaga dengan nomor permohonan.

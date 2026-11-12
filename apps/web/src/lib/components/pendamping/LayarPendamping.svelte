@@ -1,3 +1,47 @@
+<script lang="ts" module>
+  import type { GiliranAnda } from '#lib/pendamping/sesi.svelte.js';
+
+  /**
+   * Instruksi ringkas "Giliran Anda: …" untuk bilah bawah yang selalu terlihat di HP. Mengikuti alasan giliran dan
+   * menyebut kendali sasaran bila worker mengirim namanya (`kendali`, `tombol`, `tautan.nama`: teks situs, tampil
+   * sebagai teks biasa). Tanpa giliran (warga mengambil alih / dijeda) = isi formulir di layar.
+   */
+  export function instruksiGiliran(g: GiliranAnda | null): string {
+    if (!g) return 'isi formulir di layar ini';
+    const k = g.kendali ? `“${g.kendali}”` : undefined;
+    switch (g.alasan) {
+      case 'login':
+        return 'selesaikan masuk akun, kode, atau CAPTCHA di situs';
+      case 'masuk_akun':
+        return k ? `ketuk ${k} di situs, lalu masuk akun` : 'masuk akun di situs';
+      case 'verifikasi_situs':
+        return 'selesaikan pemeriksaan keamanan situs';
+      case 'final':
+        return g.tombol ? `periksa isian, lalu tekan “${g.tombol}”` : 'periksa isian, lalu kirim sendiri';
+      case 'isi_sendiri':
+        return k ? `isi ${k} di situs, lalu tekan Lanjutkan` : 'isi kolom di situs, lalu tekan Lanjutkan';
+      case 'berkas_kurang':
+        return 'tambahkan dokumen yang kurang';
+      case 'ketuk_tautan':
+        return g.tautan?.nama ? `buka “${g.tautan.nama}”` : 'buka tautan di situs';
+      case 'berhenti':
+        return 'lanjutkan sendiri di situs';
+      case 'periksa':
+        return k ? `periksa halaman, lalu ketuk ${k} bila sudah benar` : 'periksa halaman di situs';
+      default:
+        return 'lanjutkan di situs';
+    }
+  }
+
+  /**
+   * Label kerja AI di bilah bawah: fase nyata dari worker (`langkah.label` adapter). Navigator generik belum
+   * mengirim fase, jadi bawaannya jujur "membaca halaman", tidak pernah "Mengisi formulir".
+   */
+  export function labelKerjaAi(langkah: { label: string } | null): string {
+    return langkah?.label.trim() || 'AI sedang membaca halaman…';
+  }
+</script>
+
 <script lang="ts">
   import { resolve } from '$app/paths';
   import Icon from '../Icon.svelte';
@@ -117,6 +161,55 @@
   const TEKS = 'w-full max-w-[280px] text-center text-sm leading-5 text-muted';
 </script>
 
+{#snippet aksiGiliran(g: GiliranAnda)}
+  <!-- Tombol aksi giliran: di bilah bawah yang lengket di HP, jadi selalu terlihat bersama instruksinya. -->
+  {#if ['isi_sendiri', 'berkas_kurang', 'ketuk_tautan'].includes(g.alasan)}
+    <!-- Kolom di luar Data Diri (mis. nomor kitir), Dokumen yang belum ada, atau tautan pembuka formulir
+           yang hanya boleh diketuk warga: warga, lalu AI lanjut. -->
+    <div class="flex flex-wrap gap-2">
+      {#if g.alasan === 'berkas_kurang'}
+        <a href={resolve('/dokumen')} target="_blank" rel="noopener" class={TOMBOL_TERANG}>Buka Dokumen</a>
+      {/if}
+      {#if tautan}
+        <button
+          type="button"
+          onclick={onbukatautan}
+          data-buka-tautan
+          class="inline-flex min-h-11 max-w-full items-center gap-[7px] rounded-full bg-primer px-4 py-2 text-left text-[15px] font-semibold text-primer-ink hover:opacity-90"
+        >
+          <span class="min-w-0 break-words"
+            >Buka “{tautan.nama || 'tautan'}”
+            <span class="font-normal opacity-80">({tautan.host}{tautan.jalur})</span></span
+          >
+        </button>
+      {/if}
+      {#if !tautan}
+        <!-- Tautan pembuka dengan tujuan dari worker: Buka (worker yang membuka, lalu AI lanjut). -->
+        <button type="button" onclick={onkembalikan} class={TOMBOL_GELAP}>
+          <Icon name="putar" class="size-[15px]" />Lanjutkan
+        </button>
+      {/if}
+    </div>
+  {:else if g.alasan === 'login' || g.alasan === 'masuk_akun'}
+    <!-- Masuk akun / CAPTCHA / OTP: worker mendeteksi sendiri giliran yang selesai (halaman berganti, formulir
+           masuk hilang) lalu AI lanjut. Bila belum terdeteksi, warga menekan ini sebagai cadangan. -->
+    <div class="flex flex-wrap gap-2">
+      <button type="button" onclick={onkembalikan} data-sudah-lanjut class={TOMBOL_GELAP}>
+        <Icon name="putar" class="size-[15px]" />Sudah, lanjutkan
+      </button>
+    </div>
+  {:else if g.alasan === 'berhenti'}
+    {@render sudahKirim()}
+  {:else if g.alasan === 'periksa'}
+    <!-- Periksa halaman (gerbang memblokir kiriman): warga memeriksa/menekan sendiri, lalu AI boleh lanjut. -->
+    <div class="flex flex-wrap gap-2">
+      <button type="button" onclick={onkembalikan} data-sudah-lanjut class={TOMBOL_GELAP}>
+        <Icon name="putar" class="size-[15px]" />Lanjutkan
+      </button>
+    </div>
+  {/if}
+{/snippet}
+
 {#snippet sudahKirim()}
   <!-- AI berhenti: warga mengirim sendiri, lalu Urusin memeriksa halaman suksesnya lewat worker. -->
   <div class="flex flex-wrap gap-2">
@@ -133,7 +226,7 @@
 
 <section
   aria-label="Browser Pendamping"
-  class="flex h-full min-h-[32rem] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_4px_16px_#0000000d] lg:min-h-0"
+  class="flex h-full min-h-[32rem] flex-col overflow-clip rounded-2xl border border-line bg-surface shadow-[0_4px_16px_#0000000d] lg:min-h-0"
 >
   <!-- Bilah atas (Top bar): gembok + domain resmi + instansi, chip mode di kanan -->
   <div class="flex min-h-[55.5px] shrink-0 items-center gap-2.5 border-b border-line bg-card px-4">
@@ -182,76 +275,6 @@
           {judulGiliran}
         </p>
         {#if isiGiliran}<p class="text-[15px] leading-[23px] text-muted">{isiGiliran}</p>{/if}
-        {#if ['isi_sendiri', 'berkas_kurang', 'ketuk_tautan'].includes(data.giliran.alasan)}
-          <!-- Kolom di luar Data Diri (mis. nomor kitir), Dokumen yang belum ada, atau tautan pembuka formulir
-               yang hanya boleh diketuk warga: warga, lalu AI lanjut. -->
-          <div class="flex flex-wrap gap-2">
-            {#if data.giliran.alasan === 'berkas_kurang'}
-              <a href={resolve('/dokumen')} target="_blank" rel="noopener" class={TOMBOL_TERANG}
-                >Buka Dokumen</a
-              >
-            {/if}
-            {#if tautan}
-              <button
-                type="button"
-                onclick={onbukatautan}
-                data-buka-tautan
-                class="inline-flex min-h-11 max-w-full items-center gap-[7px] rounded-full bg-primer px-4 py-2 text-left text-[15px] font-semibold text-primer-ink hover:opacity-90"
-              >
-                <span class="min-w-0 break-words"
-                  >Buka “{tautan.nama || 'tautan'}”
-                  <span class="font-normal opacity-80">({tautan.host}{tautan.jalur})</span></span
-                >
-              </button>
-            {/if}
-            {#if !tautan}
-              <!-- Tautan pembuka dengan tujuan dari worker: Buka (worker yang membuka, lalu AI lanjut). -->
-              <button type="button" onclick={onkembalikan} class={TOMBOL_GELAP}>
-                <Icon name="putar" class="size-[15px]" />Lanjutkan
-              </button>
-            {/if}
-          </div>
-        {:else if data.giliran.alasan === 'login' || data.giliran.alasan === 'masuk_akun'}
-          <!-- Masuk akun / CAPTCHA / OTP: worker mendeteksi sendiri giliran yang selesai (halaman berganti, formulir
-               masuk hilang) lalu AI lanjut. Bila belum terdeteksi, warga menekan ini sebagai cadangan. -->
-          <div class="flex flex-wrap gap-2">
-            <button type="button" onclick={onkembalikan} data-sudah-lanjut class={TOMBOL_GELAP}>
-              <Icon name="putar" class="size-[15px]" />Sudah, lanjutkan
-            </button>
-          </div>
-        {:else if data.giliran.alasan === 'berhenti'}
-          {@render sudahKirim()}
-        {/if}
-      </div>
-    </div>
-  {:else if k === 'dijeda'}
-    <!-- Dijeda (papan 06): warga mengambil alih, AI berhenti sampai warga memilih Lanjutkan -->
-    <div
-      role="status"
-      class="flex shrink-0 flex-wrap items-center gap-3.5 border-b border-line bg-bg-2 px-[18px] py-3.5"
-    >
-      <span class="grid size-[34px] shrink-0 place-items-center rounded-full bg-surface text-muted">
-        <Icon name="jeda" class="size-[17px]" />
-      </span>
-      <div class="flex min-w-[min(100%,14rem)] flex-1 basis-56 flex-col gap-1.5">
-        <p class="text-[17px] leading-normal font-bold text-ink">AI berhenti</p>
-        <p class="text-[15px] leading-[23px] text-muted">
-          Yang Anda ketik tidak dicatat dan tidak dilihat AI. Mau lanjut atau batalkan?
-        </p>
-        {#if data.pesanKirim}<p role="alert" class="text-[15px] text-galat">{data.pesanKirim}</p>{/if}
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <button type="button" onclick={onkembalikan} class={TOMBOL_GELAP}>
-          <Icon name="putar" class="size-[15px]" />Lanjutkan
-        </button>
-        <button type="button" onclick={onhentikan} class={TOMBOL_TERANG}>Batalkan</button>
-        <button
-          type="button"
-          onclick={onsudahkirim}
-          disabled={data.memeriksaKirim}
-          data-sudah-kirim
-          class={TOMBOL_TERANG}>Saya sudah mengirim</button
-        >
       </div>
     </div>
   {:else if k === 'siaga'}
@@ -357,6 +380,19 @@
           <button type="button" onclick={onpanduan} class={TOMBOL_GELAP}
             ><Icon name="panah" class="size-[15px]" />Buka panduan</button
           >
+        {:else if k === 'berakhir'}
+          <!-- Sesi hilang di tengah jalan (worker restart, jaringan, timeout): bukan jalan buntu. -->
+          <span class="{LINGKAR} bg-bg-2 text-muted"><Icon name="terputus" class="size-[21.6px]" /></span>
+          <p class={JUDUL}>Sesi Browser Pendamping berakhir</p>
+          <p role="status" class={TEKS}>{data.pesan ?? 'Koneksi ke peramban pendamping terputus.'}</p>
+          <div class="flex flex-wrap justify-center gap-2">
+            <button type="button" onclick={onmulailagi} data-buka-lagi class={TOMBOL_GELAP}
+              ><Icon name="ulang" class="size-[15px]" />Buka lagi situsnya</button
+            >
+            <button type="button" onclick={onpanduan} data-buka-panduan class={TOMBOL_TERANG}
+              ><Icon name="peta" class="size-[15px]" />Buka panduan</button
+            >
+          </div>
         {:else if k === 'galat'}
           <span class="{LINGKAR} bg-merah text-galat"><Icon name="peringatan" class="size-[21.6px]" /></span>
           <p class={JUDUL}>AI berhenti</p>
@@ -382,17 +418,41 @@
     {/if}
   </div>
 
-  <!-- Bilah bawah (Bottom bar): progres + Ambil alih + Hentikan -->
-  {#if k === 'ai' || k === 'giliran'}
+  <!-- Bilah bawah (Bottom bar): progres + Ambil alih + Hentikan. Di HP lengket di bawah layar: kartu giliran di atas
+       siaran bisa tergulir keluar, jadi instruksi "Giliran Anda" selalu terlihat di sini. -->
+  {#if k === 'giliran' && data.giliran}
     <div
-      class="flex min-h-[75.5px] shrink-0 flex-wrap items-center gap-x-4 gap-y-3 border-t border-line bg-card px-4 py-3"
+      data-bilah-bawah
+      data-bilah-giliran
+      class="flex shrink-0 flex-col gap-2.5 border-t border-kuning-garis bg-kuning-lembar px-4 py-3 max-lg:sticky max-lg:bottom-0 max-lg:z-10"
+    >
+      <p
+        role="status"
+        data-instruksi-giliran
+        class="flex items-start gap-2 text-[15px] font-semibold text-ink"
+      >
+        <Icon name="tangan" class="mt-0.5 size-4 shrink-0" />
+        <span>Giliran Anda: {instruksiGiliran(data.giliran)}</span>
+      </p>
+      <div class="flex flex-wrap items-center gap-2">
+        {@render aksiGiliran(data.giliran)}
+        <button
+          type="button"
+          onclick={onhentikan}
+          class="ml-auto inline-flex h-11 items-center gap-1.5 rounded-full border border-galat bg-surface px-3.5 text-sm font-semibold whitespace-nowrap text-galat hover:bg-merah"
+        >
+          <Icon name="jeda" class="size-4" />Hentikan
+        </button>
+      </div>
+    </div>
+  {:else if k === 'ai' || k === 'giliran'}
+    <div
+      data-bilah-bawah
+      class="flex min-h-[75.5px] shrink-0 flex-wrap items-center gap-x-4 gap-y-3 border-t border-line bg-card px-4 py-3 max-lg:sticky max-lg:bottom-0 max-lg:z-10"
     >
       <div class="flex min-w-[10rem] flex-1 flex-col gap-2">
         <div class="flex items-start justify-between gap-2">
-          <span class="truncate text-[15px] font-semibold text-ink">
-            {#if k === 'giliran' && data.giliran?.alasan === 'final'}Formulir terisi · AI menunggu Anda{:else if data.langkah}{data
-                .langkah.label}{:else}Mengisi formulir{/if}
-          </span>
+          <span class="truncate text-[15px] font-semibold text-ink">{labelKerjaAi(data.langkah)}</span>
           {#if data.langkah}<span class="shrink-0 text-sm whitespace-nowrap text-card-ink"
               >{data.langkah.indeks + 1} dari {data.langkah.total}</span
             >{/if}
@@ -405,10 +465,7 @@
           aria-valuemin="0"
           aria-valuemax="100"
         >
-          <div
-            class="h-full rounded-[3px] {k === 'giliran' ? 'bg-hijau-ink' : 'bg-nila-ink'}"
-            style="width: {persen}%"
-          ></div>
+          <div class="h-full rounded-[3px] bg-nila-ink" style="width: {persen}%"></div>
         </div>
       </div>
       {#if k === 'ai'}
@@ -427,6 +484,64 @@
       >
         <Icon name="jeda" class="size-[17px]" />Hentikan
       </button>
+    </div>
+  {:else if k === 'dijeda'}
+    <!-- Dijeda: warga memegang kendali. Status ringkas yang lengket di HP; Batalkan di menu ⋯ agar tidak memakan
+         layar. Di 390 px: instruksi + ⋯ satu baris, dua tombol berbagi satu baris. -->
+    <div
+      data-bilah-bawah
+      class="flex shrink-0 flex-col gap-2 border-t border-kuning-garis bg-kuning-lembar px-4 py-2.5 max-lg:sticky max-lg:bottom-0 max-lg:z-10"
+    >
+      <div class="flex items-start gap-2">
+        <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+          <p
+            role="status"
+            data-instruksi-giliran
+            class="flex items-start gap-2 text-[15px] font-semibold text-ink"
+          >
+            <Icon name="tangan" class="mt-0.5 size-4 shrink-0" />
+            <span>Giliran Anda: {instruksiGiliran(null)}.</span>
+          </p>
+          <p class="text-sm leading-5 text-muted">Yang Anda ketik tidak dicatat dan tidak dilihat AI.</p>
+        </div>
+        <details class="relative shrink-0">
+          <summary
+            aria-label="Pilihan lain"
+            class="-my-1 grid size-11 cursor-pointer list-none place-items-center rounded-full text-lg font-bold text-ink hover:bg-bg-2 [&::-webkit-details-marker]:hidden"
+            >⋯</summary
+          >
+          <div
+            class="absolute right-0 bottom-full z-20 mb-2 min-w-40 rounded-xl border border-line bg-surface p-1 shadow-[0_4px_16px_#0000001f]"
+          >
+            <button
+              type="button"
+              onclick={onhentikan}
+              data-batalkan
+              class="flex h-11 w-full items-center rounded-lg px-3 text-left text-[15px] font-semibold text-galat hover:bg-merah"
+              >Batalkan</button
+            >
+          </div>
+        </details>
+      </div>
+      {#if data.pesanKirim}<p role="alert" class="text-sm text-galat">{data.pesanKirim}</p>{/if}
+      <div class="grid grid-cols-2 gap-2 lg:flex lg:flex-wrap">
+        <button
+          type="button"
+          onclick={onkembalikan}
+          data-minta-ai
+          class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-line-2 bg-surface px-3 py-1.5 text-center text-sm leading-tight font-semibold text-ink hover:bg-card"
+        >
+          <Icon name="ai" class="size-4 shrink-0" />Minta AI bantu mengisi
+        </button>
+        <button
+          type="button"
+          onclick={onsudahkirim}
+          disabled={data.memeriksaKirim}
+          data-sudah-kirim
+          class="inline-flex min-h-11 items-center justify-center rounded-full bg-primer px-3 py-1.5 text-center text-sm leading-tight font-semibold text-primer-ink hover:opacity-90 disabled:opacity-60"
+          >Saya sudah mengirim</button
+        >
+      </div>
     </div>
   {/if}
 </section>

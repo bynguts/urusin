@@ -250,6 +250,7 @@ describe('Browser Pendamping', () => {
     expect(keadaanDariSesi({ status: 'berjalan', mode: 'takeover' }, true)).toBe('giliran');
     expect(keadaanDariSesi({ status: 'siaga', mode: 'takeover' }, false)).toBe('siaga');
     expect(keadaanDariSesi({ status: 'gagal', mode: 'ai' }, false)).toBe('galat');
-    expect(keadaanDariSesi({ status: 'dibatalkan', mode: 'ai' }, false)).toBe('mati');
+    // Dibatalkan server (bukan tombol warga: hentikan menutup layar sendiri) = berakhir, layar tidak hilang.
+    expect(keadaanDariSesi({ status: 'dibatalkan', mode: 'ai' }, false)).toBe('berakhir');
   });
 });

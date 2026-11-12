@@ -12,7 +12,9 @@ import type {
 
 /**
  * Keadaan layar Browser Pendamping (papan "Browser Pendamping · Keadaan", 11 keadaan) + `siaga`: langkah selesai,
- * peramban server MASIH hidup sebentar untuk langkah berikutnya (bukan "ditutup").
+ * peramban server MASIH hidup sebentar untuk langkah berikutnya (bukan "ditutup"). `berakhir`: sesi hilang di
+ * tengah jalan tanpa pesan akhir (worker restart, jaringan putus, dibatalkan server) — bukan selesai; layar tetap
+ * tampil dengan alasan + "Buka lagi situsnya" dan "Buka panduan".
  */
 export type KeadaanLayar =
   | 'mati'
@@ -27,7 +29,21 @@ export type KeadaanLayar =
   | 'terputus'
   | 'dipandu'
   | 'galat'
+  | 'berakhir'
   | 'tidak_tersedia';
+
+/** Alasan jujur saat koneksi ke peramban pendamping hilang tanpa pesan akhir dari server. */
+export const PESAN_TERPUTUS_AKHIR = 'Koneksi ke peramban pendamping terputus.';
+
+/** Keadaan yang masih menunggu kelanjutan sesi: tutupnya koneksi tanpa pesan akhir di sini = terputus, bukan selesai. */
+const MASIH_BERJALAN: ReadonlySet<KeadaanLayar> = new Set([
+  'antre',
+  'menyiapkan',
+  'ai',
+  'giliran',
+  'dijeda',
+  'terputus',
+]);
 
 /** Pesan bila "Tutup sekarang" gagal (ditampilkan di lembar siaga). */
 export const PESAN_GAGAL_TUTUP = 'Browser belum bisa ditutup. Coba lagi; browser juga tutup sendiri.';
@@ -96,7 +112,8 @@ export function keadaanDariSesi(s: Pick<SesiPendamping, 'status' | 'mode'>, gili
     case 'gagal':
       return 'galat';
     case 'dibatalkan':
-      return 'mati';
+      // Dibatalkan oleh server (bukan tombol warga: `hentikan` menutup layar sendiri) = sesi berakhir, bukan hilang.
+      return 'berakhir';
   }
 }
 
@@ -222,6 +239,17 @@ export class SesiPendampingUi {
       v.on('butuh_data', (b) => (this.data = { ...this.data, butuhData: b })),
       v.on('galat', (g) => (this.data = { ...this.data, pesan: g.pesanWarga })),
       v.on('koneksi', (k) => {
+        // Viewer berhenti menyambung (ulang habis, kode tanpa-ulang) tanpa mode `done` = sesi hilang di tengah jalan.
+        if (k === 'selesai' && this.data.mode !== 'done' && MASIH_BERJALAN.has(this.data.keadaan)) {
+          this.data = {
+            ...this.data,
+            koneksi: k,
+            keadaan: 'berakhir',
+            giliran: null,
+            pesan: PESAN_TERPUTUS_AKHIR,
+          };
+          return;
+        }
         const keadaan =
           k === 'putus' ? 'terputus' : this.data.keadaan === 'terputus' ? 'ai' : this.data.keadaan;
         this.data = { ...this.data, koneksi: k, keadaan };
