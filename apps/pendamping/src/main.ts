@@ -1,11 +1,14 @@
 import { createBrowserFactory, pidsOfProfile } from './browser.js';
 import { loadConfig } from './config.js';
 import { periksaSandbox, periksaTanpaRute } from './isolasi.js';
+import { envNss } from './nss.js';
 import { createServer } from './server.js';
 import { SessionManager } from './sessions.js';
 import { ensureDisplay } from './xvfb.js';
 
 const config = loadConfig(process.env);
+// Basis data NSS intermediate CA disiapkan saat boot: sumber rusak = gagal start, bukan sesi tanpa intermediate.
+envNss(config.nssDb);
 // Chromium headed butuh layar: di server Linux tanpa DISPLAY, jalankan satu Xvfb milik proses ini.
 const xvfb = await ensureDisplay(process.env, config.headless);
 // Gagal tertutup sebelum menerima sesi: dengan edge (produksi) kontainer tidak boleh punya rute keluar
