@@ -1,8 +1,13 @@
 import { randomInt } from 'node:crypto';
 import type { CatatanPendamping, Pengamatan } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
+import { pesanAlihLuar, pesanSitusBermasalah } from './galat-nav.js';
 import { createGerbangTulis, JENDELA_ISI_MS, type Jendela } from './gerbang-tulis.js';
 import {
+  labelAman,
+  namaPortal,
+  pesanMasukAkun,
+  pesanPetunjuk,
   GenerikRun,
   naikHttps,
   PESAN_GENERIK,
@@ -73,6 +78,8 @@ type Opsi = {
   peta?: PetaRef;
   /** Href tautan pembuka per ref (op runner `tautan`). */
   tautan?: Record<string, string>;
+  /** Galat jaringan navigasi saat dokumen = halaman galat Chromium (`chrome-error://`). */
+  galatNav?: string;
   /** Tangan `lebarkan` (probe gel4 3279); undefined = tangan tanpa kemampuan itu. */
   lebarkan?: () => Promise<boolean>;
   belumTampil?: () => Promise<boolean>;
@@ -117,6 +124,7 @@ function harness(o: Opsi = {}) {
     tautan: async (r) => o.tautan?.[r],
     tenang: async () => {},
     urlKini: () => urlKini,
+    galatNav: () => (urlKini.startsWith('chrome-error:') ? o.galatNav : undefined),
     ...(o.lebarkan ? { lebarkan: o.lebarkan } : {}),
     ...(o.belumTampil ? { belumTampil: o.belumTampil } : {}),
   };
@@ -430,6 +438,41 @@ describe('GenerikRun: host di luar allowlist', () => {
     expect(h.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.hostLain, sorot: undefined }]);
   });
 
+  it('QA prod gel6 Klampid: POST XHR skrip halaman saat dimuat diblokir dan dicatat, bukan giliran "periksa"', async () => {
+    const post = (dokumen: boolean) => ({
+      metode: 'POST',
+      dokumen,
+      utama: dokumen,
+      xhr: !dokumen,
+      url: 'https://portal.contoh.go.id/api/sesi',
+    });
+    const h = harness({ saatNavigasi: () => expect(h.gerbang.periksa(post(false))).toBe('blokir') });
+    await h.run.mulai('https://portal.contoh.go.id/app');
+    expect(h.serah).toEqual([]);
+    expect(h.jejak).toContainEqual(
+      expect.objectContaining({ jenis: 'blokir', metode: 'POST', jendela: 'ai_klik' }),
+    );
+
+    // Tautan pembuka GET yang dibuka AI: sama, XHR halaman tujuan bukan tombol yang ditekan AI.
+    const t = harness({
+      amati: () =>
+        pengamatan({
+          elemen: [{ ref: 'e4', peran: 'tautan', nama: 'Masuk', kelas: 'kirim', tautanPembuka: true }],
+        }),
+      tautan: { e4: 'https://portal.contoh.go.id/app/login' },
+      saatNavigasi: () => expect(t.gerbang.periksa(post(false))).toBe('blokir'),
+    });
+    await t.run.amati();
+    const r = await t.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+    expect(r[0]?.kode).toBe('ok');
+    expect(t.serah).toEqual([]);
+
+    // Navigasi dokumen tulis (form POST) saat dimuat tetap eskalasi.
+    const d = harness({ saatNavigasi: () => expect(d.gerbang.periksa(post(true))).toBe('blokir') });
+    await d.run.mulai('https://portal.contoh.go.id/app');
+    expect(d.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.kirim_halaman, sorot: undefined }]);
+  });
+
   const hanyaPortal = (u: string) => URL.parse(u)?.host === 'portal.contoh.go.id';
 
   it('probe gel4 9171: naikHttps menaikkan http:// host sesi https-saja, tidak pernah membuka http polos', () => {
@@ -507,17 +550,63 @@ describe('GenerikRun: host di luar allowlist', () => {
     expect(h.jejak).toContainEqual({ jenis: 'host_kandidat', host: 'sso.lain.example' });
   });
 
-  it('halaman awal di-redirect lewat proxy: diserahkan ke warga, tanpa navigasi balik', async () => {
+  it('halaman awal di-redirect lewat proxy: dipandu, halaman galat Chromium tidak diserahkan', async () => {
     const awal = 'https://portal.contoh.go.id/';
     const h = harness({
       urlBoleh: hanyaPortal,
       alihkan: { [awal]: 'chrome-error://chromewebdata/' },
+      galatNav: 'net::ERR_TUNNEL_CONNECTION_FAILED',
       saatNavigasi: (run) => run.hostDiblokir('lain.example', undefined),
     });
     await h.run.mulai(awal);
     expect(h.navigasi).toEqual([awal]);
     expect(h.jejak).toContainEqual({ jenis: 'host_kandidat', host: 'lain.example' });
-    expect(h.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.hostLain, sorot: undefined }]);
+    expect(h.serah).toEqual([]);
+    expect(h.tidakBisa).toEqual([pesanAlihLuar('portal.contoh.go.id')]);
+  });
+
+  it('QA prod Malang: halaman awal = layar peringatan TLS -> dipandu jujur, bukan "di luar daftar"', async () => {
+    const awal = 'https://siapel.malangkota.go.id/';
+    const h = harness({
+      urlBoleh: (u) => URL.parse(u)?.host === 'siapel.malangkota.go.id',
+      alihkan: { [awal]: 'chrome-error://chromewebdata/' },
+      galatNav: 'net::ERR_CERT_AUTHORITY_INVALID',
+    });
+    await h.run.mulai(awal);
+    expect(h.serah).toEqual([]);
+    expect(h.jejak.filter((c) => c.jenis === 'host_kandidat')).toEqual([]);
+    expect(h.tidakBisa).toEqual([
+      pesanSitusBermasalah('siapel.malangkota.go.id', 'net::ERR_CERT_AUTHORITY_INVALID'),
+    ]);
+    expect(h.tidakBisa[0]).not.toContain('di luar daftar');
+    expect(h.tidakBisa[0]).toContain('dispendukcapil.malangkota.go.id');
+  });
+
+  it.each(['net::ERR_CERT_DATE_INVALID', 'net::ERR_NAME_NOT_RESOLVED', 'net::ERR_CONNECTION_TIMED_OUT'])(
+    'tautan ke host resmi berakhir di halaman galat %s: dipandu, tanpa navigasi balik atau giliran',
+    async (net) => {
+      const pindah = 'https://portal.contoh.go.id/pindah';
+      const h = harness({
+        aksi: () => ({ status: 'navigasi', aturan: 'K8_NAVIGASI', kelas: 'navigasi', href: pindah }),
+        urlBoleh: hanyaPortal,
+        alihkan: { [pindah]: 'chrome-error://chromewebdata/' },
+        galatNav: net,
+      });
+      await h.run.amati();
+      const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+      expect(r[0]?.kode).toBe('GERBANG_MEMBLOKIR');
+      expect(h.navigasi).toEqual([pindah]);
+      expect(h.serah).toEqual([]);
+      expect(h.tidakBisa).toEqual([pesanSitusBermasalah('portal.contoh.go.id', net)]);
+    },
+  );
+
+  it('halaman galat tanpa kode galat di halaman awal: tetap dipandu (galat Chromium tidak pernah diserahkan)', async () => {
+    const awal = 'https://portal.contoh.go.id/';
+    const h = harness({ urlBoleh: hanyaPortal, alihkan: { [awal]: 'chrome-error://chromewebdata/' } });
+    await h.run.mulai(awal);
+    expect(h.serah).toEqual([]);
+    expect(h.tidakBisa).toEqual([pesanSitusBermasalah('portal.contoh.go.id', 'net::ERR_FAILED')]);
   });
 
   it('penolakan proxy untuk subresource (dokumen tetap di allowlist): tidak dicatat, tidak diserahkan', async () => {
@@ -1143,6 +1232,43 @@ describe('GenerikRun: konten fade-in masih transparan (probe gel5 6171)', () => 
     await h.run.amati();
     expect(ditanya).toBe(1);
     expect(h.diisiDikirim).toHaveLength(2);
+  });
+});
+
+describe('QA prod gel6: pesan giliran masuk akun dan petunjuk (templat + label akun)', () => {
+  it('namaPortal: label host pertama (ejaan judul bila ada); kata umum/panjang = tanpa nama', () => {
+    expect(namaPortal('sibisa.medan.go.id', 'SIBISA - Layanan Kependudukan Online')).toBe('SIBISA');
+    expect(namaPortal('siapel.malangkota.go.id', 'Login - SIAPEL.')).toBe('SIAPEL');
+    expect(namaPortal('telunjuksakti.wonogirikab.go.id', 'TelunjukSakti')).toBe('TelunjukSakti');
+    expect(namaPortal('sirancak.disdukcapil.padang.go.id', 'beranda')).toBe('SIRANCAK');
+    expect(namaPortal('disdukcapil.bandarlampungkota.go.id')).toBeUndefined();
+    expect(namaPortal('wargaklampid-dispendukcapil.surabaya.go.id')).toBeUndefined();
+  });
+
+  it('beranda: Masuk didahulukan, Daftar sebagai pilihan bagi yang belum punya akun (Padang)', () => {
+    expect(pesanMasukAkun({ portal: 'SIRANCAK', masuk: 'LOGIN', daftar: 'DAFTAR AKUN' })).toBe(
+      'Ketuk "LOGIN" kalau sudah punya akun, lalu masuk dengan akun SIRANCAK Anda. Belum punya akun? Ketuk "DAFTAR AKUN". AI melanjutkan setelah Anda masuk.',
+    );
+  });
+
+  it('formulir masuk: "Masuk dengan akun X Anda" (+ CAPTCHA bila ada), tanpa nama portal = situs ini', () => {
+    expect(pesanMasukAkun({ portal: 'SIBISA', formulir: true, daftar: 'Daftar Akun Gratis' })).toBe(
+      'Masuk dengan akun SIBISA Anda. Belum punya akun? Ketuk "Daftar Akun Gratis". AI melanjutkan setelah Anda masuk.',
+    );
+    expect(pesanMasukAkun({ formulir: true, captcha: true })).toBe(
+      'Masuk dengan akun Anda di situs ini, termasuk kode keamanan (CAPTCHA). AI melanjutkan setelah Anda masuk.',
+    );
+    expect(pesanMasukAkun({ portal: 'SIBISA', formulir: true, verifikasi: true })).toBe(
+      'Masuk dengan akun SIBISA Anda, termasuk verifikasi keamanan situs. AI melanjutkan setelah Anda masuk.',
+    );
+  });
+
+  it('petunjuk: label pendek dikutip; label mencurigakan (nomor, URL, panjang) tidak', () => {
+    expect(pesanPetunjuk('Lihat Layanan')).toContain('"Lihat Layanan"');
+    expect(labelAman('Kode antrean 98765')).toBeUndefined();
+    expect(labelAman('buka https://evil.example')).toBeUndefined();
+    expect(labelAman('satu dua tiga empat lima enam')).toBeUndefined();
+    expect(pesanPetunjuk(undefined)).toBe(PESAN_GENERIK.tidak_yakin);
   });
 });
 

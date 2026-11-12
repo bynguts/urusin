@@ -204,6 +204,19 @@ describe('SesiPendampingUi: portal tampil dulu, baru izin isi (QA prod)', () => 
     );
     expect(ui.data).toMatchObject({ keadaan: 'galat', pesan });
   });
+
+  it('tiket gagal karena jaringan putus sesaat: dicoba ulang, viewer tetap tersambung', async () => {
+    let gagal = 2;
+    const { ui, panggilan } = await tersambung((url, init) => {
+      if (url.endsWith('/tiket')) {
+        if (gagal-- > 0) throw new TypeError('Failed to fetch');
+        return Response.json({ wsUrl: 'ws://x/s', tiket: 't' });
+      }
+      return Response.json(sesi({ status: 'memulai', mode: null }), { status: init?.method ? 201 : 200 });
+    });
+    expect(panggilan.filter((p) => p.endsWith('/tiket'))).toHaveLength(3);
+    expect(ui.data.keadaan).not.toBe('galat');
+  });
 });
 
 describe('SesiPendampingUi: sesi hilang di tengah jalan bukan jalan buntu', () => {

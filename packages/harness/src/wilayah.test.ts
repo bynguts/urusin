@@ -13,6 +13,7 @@ import { ringkasRiwayat } from './tools.js';
 import { makeEnv } from './testing.js';
 import {
   AFIRMASI,
+  ID_LANGKAH_AKUN,
   buatUrusanTerwilayah,
   kodeYurisdiksi,
   refWilayah,
@@ -141,7 +142,10 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
         expect(kartu.dipandu?.pendampingBerkembang).toBe(!pendampingAktif(kode));
       }
       expect(kartu.langkah.some((l) => l.jenis === 'online-adapter')).toBe(false);
-      expect(kartu.langkah[0]!.sumber[0]!.url).toBe(url);
+      // Daerah terpetakan (ADR 0034): prasyarat akun portal sendiri dulu, lalu langkah layanan dari kanal resminya.
+      if (kartu.langkah[0]!.id === ID_LANGKAH_AKUN)
+        expect(new URL(kartu.langkah[0]!.sumber[0]!.url).origin).toBe(new URL(url).origin);
+      expect(kartu.langkah.find((l) => l.id !== ID_LANGKAH_AKUN)!.sumber[0]!.url).toBe(url);
       expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
       // Setujui rencana: tanpa adapter tulis. Portal `web` di registry -> Navigator generik ke portal wilayah itu
       // sendiri (ADR 0030); selain itu tidak ada Browser Pendamping.
@@ -375,7 +379,10 @@ describe('KTP ≠ domisili dan pindah (asal → tujuan)', () => {
     const kartu = of(out.events, 'plan_card')[0]!;
     expect(kartu.ringkasan).toBe('Pindah · Kota Surabaya → Kab. Bekasi');
     expect(kartu.wilayah?.tujuan).toEqual({ kodeKabKota: '3216', nama: 'Kabupaten Bekasi' });
-    const [pwni, ...tujuan] = kartu.langkah;
+    // Prasyarat akun Klampid (portal asal, ADR 0034) mendahului surat pindah.
+    expect(kartu.langkah[0]).toMatchObject({ id: ID_LANGKAH_AKUN });
+    expect(kartu.langkah[0]!.sumber[0]!.url).toMatch(/surabaya\.go\.id/);
+    const [pwni, ...tujuan] = kartu.langkah.slice(1);
     expect(pwni!.judul).toMatch(/SKPWNI.*Kota Surabaya/);
     expect(pwni!.sumber[0]!.url).toMatch(/surabaya\.go\.id/);
     for (const l of tujuan) expect(l.sumber[0]!.url).toMatch(/bekasikab\.go\.id/);

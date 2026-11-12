@@ -64,9 +64,12 @@
   // bukan state urusan yang sudah melompat ke "tekan Kirim" sejak eksekusi disetujui.
   // Selama browser masih antre/disiapkan, langkah masuk akun belum dimulai (bukan "Selesai").
   const persiapanPendamping = $derived(sesi.data.keadaan === 'antre' || sesi.data.keadaan === 'menyiapkan');
+  // Lembar izin isi terbuka: AI belum mengisi apa pun, panel menunggu izin warga.
+  const menungguIzin = $derived(sesi.data.butuhData !== null && sesi.data.tayang);
   const keadaanPanel = $derived.by(() => {
     const d = sesi.data;
     if (persiapanPendamping) return 'BERKAS_SIAP' as const;
+    if (menungguIzin) return 'MENUNGGU_KONFIRMASI' as const;
     if (d.keadaan === 'ai') return 'MENGISI' as const;
     if (d.keadaan === 'giliran' && d.giliran)
       return d.giliran.alasan === 'final'
@@ -452,6 +455,7 @@
           bind:tab
           {sorot}
           persiapan={persiapanPendamping}
+          {menungguIzin}
         >
           {#snippet bawah()}
             {#if pendampingAktif}

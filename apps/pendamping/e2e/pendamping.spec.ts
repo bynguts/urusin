@@ -792,3 +792,83 @@ test('langkah 0 tak bisa membuka situs (CONNECT ditolak) -> gagal dengan alasan 
   expect(pesan).not.toContain('berhenti dengan aman');
   await manager.shutdown();
 });
+
+/**
+ * Server uji lokal dengan `jawab` untuk setiap permintaan, lalu sesi adapter (portal dialihkan ke server itu)
+ * dengan batas navigasi kecil. Baris log JSON sesi dikumpulkan (hanya `ev`).
+ */
+async function sesiKe(
+  jawab: http.RequestListener,
+  urusanId: string,
+): Promise<{
+  manager: SessionManager;
+  o: { urusanId: string; sidHash: string };
+  ev: string[];
+  tutup: () => Promise<void>;
+}> {
+  const soket = new Set<net.Socket>();
+  const server = http.createServer(jawab);
+  server.on('connection', (c) => {
+    soket.add(c);
+    c.on('close', () => soket.delete(c));
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const origin = `http://127.0.0.1:${(server.address() as net.AddressInfo).port}`;
+  const config = {
+    ...loadConfig({
+      PENDAMPING_FIXTURE_ORIGINS: origin,
+      PENDAMPING_ORIGIN_OVERRIDES: `https://telunjuksakti.wonogirikab.go.id=${origin}`,
+      PENDAMPING_HEADLESS: '1',
+    }),
+    navBatasMs: 2_000,
+  };
+  const ev: string[] = [];
+  const asli = console.log;
+  console.log = (...a: unknown[]) => {
+    const m = /"ev":"([a-z_]+)"/.exec(String(a[0]));
+    if (m) ev.push(m[1]!);
+    asli(...a);
+  };
+  const manager = new SessionManager(config, createBrowserFactory(config));
+  const o = { urusanId, sidHash: SID };
+  await manager.create({
+    ...o,
+    executionId: `x_${urusanId}`,
+    adapterId: 'telunjuk-sakti-wonogiri',
+    flowId: 'ajukan',
+    origin: 'https://telunjuksakti.wonogirikab.go.id',
+    params: { layanan_id: 1 },
+    modeUji: true,
+  });
+  const tutup = async () => {
+    console.log = asli;
+    await manager.shutdown();
+    for (const c of soket) c.destroy();
+    await new Promise<void>((ok) => server.close(() => ok()));
+  };
+  return { manager, o, ev, tutup };
+}
+
+test('commit halaman awal tidak pernah tiba (server diam) -> gagal ERR_TIMED_OUT, nav_gagal sekali', async () => {
+  const { manager, o, ev, tutup } = await sesiKe(() => {}, 'u-diam');
+  try {
+    await expect.poll(() => manager.status(o).status, { timeout: 20_000 }).toBe('gagal');
+    expect(manager.status(o).pesan).toContain('net::ERR_TIMED_OUT');
+    await new Promise((r) => setTimeout(r, 2_500)); // pengawas lain (bila ada) sempat berbunyi
+    expect(ev.filter((e) => e === 'nav_gagal')).toHaveLength(1);
+    expect(ev).not.toContain('izin_diminta');
+  } finally {
+    await tutup();
+  }
+});
+
+test('server menjawab tanpa dokumen (204) -> bukan "tidak terjangkau"; izin isi tetap diminta', async () => {
+  const { manager, o, ev, tutup } = await sesiKe((_req, res) => void res.writeHead(204).end(), 'u-204');
+  try {
+    await expect.poll(() => manager.status(o).status, { timeout: 20_000 }).toBe('menunggu_data');
+    expect(ev).toContain('nav_awal_tanpa_dokumen');
+    expect(ev).not.toContain('nav_gagal');
+  } finally {
+    await tutup();
+  }
+});

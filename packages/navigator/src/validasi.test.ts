@@ -4,6 +4,8 @@ import { findStrictViolations, toStrictJsonSchema } from '@urusin/llm';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
+  petunjukWarga,
+  pintuAkun,
   ATURAN,
   KATALOG_PLACEHOLDER,
   RencanaKetatSchema,
@@ -264,7 +266,7 @@ describe('validator rencana: rencana sah', () => {
   });
 });
 
-describe('tautan pembuka (kirim karena nama saja): serah ketuk_tautan, bukan klik AI', () => {
+describe('tautan pembuka (kirim karena nama saja): AI membukanya lewat navigasi GET worker', () => {
   const beranda = (over: Partial<Pengamatan> = {}): Pengamatan => ({
     ...halamanForm(),
     elemen: [
@@ -275,15 +277,13 @@ describe('tautan pembuka (kirim karena nama saja): serah ketuk_tautan, bukan kli
     ...over,
   });
 
-  it('klik terakhir ke tautan pembuka diganti serahkan ketuk_tautan; hash mengikat rencana pengganti', () => {
+  it('QA gel6: klik ke tautan pembuka diterima apa adanya (bukan giliran warga "Buka"); hash = rencana itu', () => {
     const p = beranda();
     const v = validasiRencana(rencana({ jenis: 'klik', ref: 'e1' }), p);
-    expect(v).toMatchObject({
-      ok: true,
-      rencana: { aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e1' }] },
-    });
-    const pengganti = { aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e1' }] };
-    expect(v.rencanaHash).toBe(hashRencana({ ...pengganti, host: p.host, sidik: p.sidik, seq: p.seq }));
+    expect(v).toMatchObject({ ok: true, rencana: { aksi: [{ jenis: 'klik', ref: 'e1' }] } });
+    expect(v.rencanaHash).toBe(
+      hashRencana({ aksi: [{ jenis: 'klik', ref: 'e1' }], host: p.host, sidik: p.sidik, seq: p.seq }),
+    );
   });
 
   it('tanpa penanda, bukan tautan, atau di halaman akhir: tetap ditolak sebagai klik kirim', () => {
@@ -445,5 +445,80 @@ describe('skema ketat', () => {
       }),
       { numRuns: 300 },
     );
+  });
+});
+
+describe('QA prod gel6: pintu akun dan petunjuk warga', () => {
+  const p = (elemen: Pengamatan['elemen'], sinyal: Partial<Pengamatan['sinyal']> = {}): Pengamatan => ({
+    ...halamanForm(),
+    sinyal: { ...halamanForm().sinyal, ...sinyal },
+    elemen,
+  });
+
+  it('pintuAkun: masuk yang boleh dibuka = buka; tombol masuk = serahkan; Masuk didahulukan atas Daftar', () => {
+    expect(
+      pintuAkun(
+        p([
+          { ref: 'e5', peran: 'tautan', nama: 'DAFTAR AKUN', kelas: 'kirim', tautanPembuka: true },
+          { ref: 'e4', peran: 'tautan', nama: 'LOGIN', kelas: 'navigasi' },
+        ]),
+      ),
+    ).toEqual({ jenis: 'buka', ref: 'e4' });
+    expect(pintuAkun(p([{ ref: 'e1', peran: 'tombol', nama: 'Masuk', kelas: 'masuk' }]))).toEqual({
+      jenis: 'serahkan',
+      ref: 'e1',
+    });
+  });
+
+  it('pintuAkun: bukan untuk halaman masuk, sesi aktif, formulir, CTA layanan tanpa daftar akun, nama campuran', () => {
+    const masuk = { ref: 'e1', peran: 'tautan' as const, nama: 'Masuk', kelas: 'navigasi' as const };
+    expect(pintuAkun(p([masuk], { login: true }))).toBeUndefined();
+    expect(
+      pintuAkun(p([masuk, { ref: 'e2', peran: 'tautan', nama: 'Logout', kelas: 'navigasi' }])),
+    ).toBeUndefined();
+    expect(pintuAkun(p([...halamanForm().elemen, masuk]))).toBeUndefined();
+    expect(
+      pintuAkun(
+        p([
+          masuk,
+          { ref: 'e8', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', tautanPembuka: true },
+        ]),
+      ),
+    ).toBeUndefined();
+    expect(
+      pintuAkun(
+        p([{ ref: 'e1', peran: 'tautan', nama: 'Masuk & Ajukan', kelas: 'kirim', tautanPembuka: true }]),
+      ),
+    ).toBeUndefined();
+    expect(
+      pintuAkun(p([{ ref: 'e1', peran: 'tautan', nama: 'Surat Masuk Dinas', kelas: 'navigasi' }])),
+    ).toBeUndefined();
+  });
+
+  it('klik tautan pembuka di halaman akhir tetap ditolak (kelas dan kunci akhir)', () => {
+    const akhir = p([{ ref: 'e1', peran: 'tautan', nama: 'Login', kelas: 'kirim', tautanPembuka: true }], {
+      halamanAkhir: true,
+    });
+    expect(tolak(rencana({ jenis: 'klik', ref: 'e1' }), akhir)).toEqual(
+      expect.arrayContaining(['KELAS_KLIK_DITOLAK', 'HALAMAN_AKHIR_TERKUNCI']),
+    );
+  });
+
+  it('petunjukWarga: akun lalu layanan lalu menu; tombol kirim tidak pernah disorot', () => {
+    expect(
+      petunjukWarga(
+        p([
+          { ref: 'e1', peran: 'tombol', nama: 'Kirim Pengajuan', kelas: 'kirim' },
+          { ref: 'e2', peran: 'tautan', nama: 'Lihat Layanan', kelas: 'navigasi' },
+          { ref: 'e3', peran: 'tombol', nama: 'Toggle menu', kelas: 'ui_lokal' },
+        ]),
+      ),
+    ).toBe('e2');
+    expect(petunjukWarga(p([{ ref: 'e3', peran: 'tombol', nama: 'Toggle menu', kelas: 'ui_lokal' }]))).toBe(
+      'e3',
+    );
+    expect(
+      petunjukWarga(p([{ ref: 'e1', peran: 'tombol', nama: 'Daftar', kelas: 'kirim' }])),
+    ).toBeUndefined();
   });
 });

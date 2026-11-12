@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { assertAkunEnv } from '@urusin/akun';
 import { aturJaringanId } from '@urusin/harness';
 import type { Handle } from '@sveltejs/kit/hooks';
@@ -15,7 +16,7 @@ import {
 } from '#lib/server/pendamping.js';
 import { pemeriksaPemilikVault } from '#lib/server/pendamping/pemilik.js';
 import { getRuntime, publicOrigin } from '#lib/server/runtime.js';
-import { ensureSession, hapusTerakhir, migrasiSid, rotasiSid } from '#lib/server/sesi.js';
+import { ensureSession, hapusTerakhir, migrasiSid, rotasiSid, SID_COOKIE } from '#lib/server/sesi.js';
 import { turnstileFromEnv } from '#lib/server/turnstile.js';
 
 // Backstop egress (review v11 M2): web berjalan di network host. Jadikan Agent egress runtime (LLM + Jina,
@@ -65,12 +66,22 @@ export const handle: Handle = async ({ event, resolve }) => {
   // atau vault satu-perangkat pemakai sebelumnya. Runtime gagal (bukan sesi kedaluwarsa) tidak memutar apa pun.
   const token = event.cookies.get(AKUN_COOKIE);
   if (token) {
-    const s = await getRuntime()
-      .then((rt) => rt.akun.sesi(token) ?? 'kedaluwarsa')
-      .catch(() => null);
-    if (s && s !== 'kedaluwarsa') {
+    const rt = await getRuntime().catch(() => null);
+    const s = rt ? (rt.akun.sesi(token) ?? 'kedaluwarsa') : null;
+    if (rt && s && s !== 'kedaluwarsa') {
       event.locals.akun = s.akun;
       event.locals.akunSesi = { tokenHash: s.tokenHash, authAt: s.authAt, pernahUnduh: s.pernahUnduh };
+      // Sesi akun aktif tetapi urusin_sid masih memegang data tamu (mis. vault satu perangkat akun lama sebelum
+      // ADR 0032, atau urusan tamu yang dibuat sebelum cookie akun terbaca): gabungkan ke akun (data akun menang,
+      // tidak ditimpa) lalu putar sid (anti fiksasi), agar data itu tidak tertinggal lalu disapu penyapu tamu.
+      // Hanya sid milik cookie permintaan ini; data tamu sid lain tidak tersentuh.
+      const sidLama = event.cookies.get(SID_COOKIE);
+      if (s.akun.jenis === 'akun' && rt.akun.sidMemegangDataTamu(sidLama)) {
+        const sidBaru = randomBytes(16).toString('hex');
+        rt.akun.rotasiPemilik({ sidLama, sidBaru, userId: s.akun.id, akunId: s.akun.id });
+        rotasiSid(event.cookies, sidBaru);
+        if (event.locals.sid) event.locals.sid = sidBaru;
+      }
     } else {
       hapusAkunCookie(event.cookies);
       if (s === 'kedaluwarsa') {

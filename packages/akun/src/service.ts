@@ -44,9 +44,14 @@ type Aksi = 'masuk' | 'daftar' | 'lupa' | 'token';
 const MENIT = 60_000;
 const JAM = 60 * MENIT;
 /** Batas laju per aksi: per IP dan per email (kunci = hash email ternormalisasi). */
-export const DEFAULT_LIMITS: Record<Aksi, { ip: LimitRule; email?: LimitRule }> = {
+export const DEFAULT_LIMITS: Record<Aksi, { ip: LimitRule; email?: LimitRule; ipHari?: LimitRule }> = {
   masuk: { ip: { limit: 20, windowMs: 15 * MENIT }, email: { limit: 10, windowMs: 15 * MENIT } },
-  daftar: { ip: { limit: 20, windowMs: JAM }, email: { limit: 3, windowMs: JAM } },
+  // Daftar langsung jadi akun penuh (ADR 0032): selain 20/jam, plafon harian per IP membatasi akun massal.
+  daftar: {
+    ip: { limit: 20, windowMs: JAM },
+    email: { limit: 3, windowMs: JAM },
+    ipHari: { limit: 40, windowMs: 24 * JAM },
+  },
   lupa: { ip: { limit: 20, windowMs: JAM }, email: { limit: 3, windowMs: JAM } },
   token: { ip: { limit: 30, windowMs: 15 * MENIT } },
 };
@@ -252,7 +257,10 @@ export class AkunService {
   private readonly now: () => Date;
   private readonly log: (line: string) => void;
   private readonly alert: (pesan: string) => void;
-  private readonly lim: Record<Aksi, { ip: Limiter; email?: Limiter | undefined }>;
+  private readonly lim: Record<
+    Aksi,
+    { ip: Limiter; email?: Limiter | undefined; ipHari?: Limiter | undefined }
+  >;
   private readonly inflight = new Set<Promise<boolean>>();
   private readonly pengikat: PengikatPemilik[] = [];
   /** Hash sandi acak untuk menyamakan waktu respons saat email tidak dikenal. */
@@ -270,7 +278,11 @@ export class AkunService {
     this.lim = Object.fromEntries(
       Object.entries(limits).map(([k, v]) => [
         k,
-        { ip: deps.limiter(v.ip), email: v.email ? deps.limiter(v.email) : undefined },
+        {
+          ip: deps.limiter(v.ip),
+          email: v.email ? deps.limiter(v.email) : undefined,
+          ipHari: 'ipHari' in v && v.ipHari ? deps.limiter(v.ipHari) : undefined,
+        },
       ]),
     ) as AkunService['lim'];
     // Baris yang dihapus ditimpa nol di berkas DB (bukan sekadar ditandai bebas).
@@ -325,6 +337,7 @@ export class AkunService {
     const l = this.lim[aksi];
     const hasil = [l.ip.consume(`${aksi}:ip:${kunciIp(ctx.ip)}`)];
     if (email && l.email) hasil.push(l.email.consume(`${aksi}:email:${sha256Hex(email)}`));
+    if (l.ipHari) hasil.push(l.ipHari.consume(`${aksi}:iphari:${kunciIp(ctx.ip)}`));
     const kena = hasil.find((h) => !h.ok);
     if (kena) throw new AkunError('RATE_LIMITED', kena.retryAfterSec);
   }
@@ -410,6 +423,23 @@ export class AkunService {
   }
 
   // --- tamu (dibuat malas) dan salinan demo ---
+
+  /**
+   * Apakah cookie urusin_sid ini masih memegang data tamu (baris tamu/vault, atau urusan tamu), termasuk tamu yang
+   * sudah lewat masa berlaku tetapi belum disapu. Dipakai hooks untuk menggabungkan sisa data tamu ke akun aktif.
+   */
+  sidMemegangDataTamu(sid: string | undefined): boolean {
+    if (!sid) return false;
+    const h = hashSid(sid);
+    return (
+      this.db
+        .prepare(
+          `SELECT 1 FROM users WHERE jenis = 'tamu' AND sid_hash = ?
+           UNION ALL SELECT 1 FROM urusan_owner WHERE guest_sid_hash = ? LIMIT 1`,
+        )
+        .get(h, h) !== undefined
+    );
+  }
 
   /** Tamu milik cookie urusin_sid (belum kedaluwarsa), tanpa membuat. */
   tamuDariSid(sid: string | undefined): string | undefined {
@@ -817,7 +847,9 @@ export class AkunService {
   /**
    * Atur ulang sandi dengan token reset. Sandi diperiksa DULU (token tidak terbakar oleh sandi yang ditolak).
    * Berhasil → semua sesi akun dihapus, tautan lama batal, identitas Google dicabut (pemilik kotak surat
-   * memegang akun), kunci dibuka.
+   * memegang akun), kunci dibuka. Bila email akun BELUM pernah dibuktikan (tanpa baris `email_terbukti`: didaftarkan
+   * dengan sandi oleh siapa pun), pemegang lama mungkin penyerobot: urusan, vault, dan ingatannya dihancurkan
+   * DULU sebelum akun berpindah ke pemilik kotak surat, lalu email dicatat terbukti (ADR 0032).
    */
   async aturUlangSandi(token: string, sandiBaru: string, ctx: KonteksPermintaan): Promise<Akun> {
     this.batasi('token', ctx);
@@ -826,18 +858,25 @@ export class AkunService {
     this.sandiAtauGagal(sandiBaru, this.userById(t.user_id)!.email);
     const hash = await hashPassword(sandiBaru);
     const userId = this.pakaiToken(token, 'reset');
+    const belumTerbukti = !this.db.prepare('SELECT 1 FROM email_terbukti WHERE user_id = ?').get(userId);
     this.tx(() => {
+      if (belumTerbukti) {
+        this.hapusUrusanSemua(this.urusanMilik(userId));
+        this.deps.vault.shredDb(userId); // DEK, Data Diri, dokumen, ingatan
+      }
       this.db
         .prepare(
           'UPDATE users SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?',
         )
         .run(hash, this.iso(), userId);
+      this.catatEmailTerbukti(userId);
       this.db.prepare('DELETE FROM auth_sessions WHERE user_id = ?').run(userId);
       this.db
         .prepare('UPDATE email_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL')
         .run(this.iso(), userId);
       this.cabutIdentitas(userId); // tautan Google (mungkin milik penyerang) dicabut; warga bisa menautkan lagi
     });
+    if (belumTerbukti) this.deps.vault.hapusBerkas(userId);
     const u = this.userById(userId)!;
     this.bukaKunci(u.email!);
     return toAkun(u);
@@ -869,6 +908,13 @@ export class AkunService {
   }
 
   // --- hapus akun dan penyapu ---
+
+  /** Kepemilikan kotak surat terbukti (Google terverifikasi / tautan atur ulang); idempoten. */
+  private catatEmailTerbukti(userId: string): void {
+    this.db
+      .prepare('INSERT OR IGNORE INTO email_terbukti (user_id, at) VALUES (?, ?)')
+      .run(userId, this.iso());
+  }
 
   private hapusUrusanSemua(ids: string[]): void {
     const hapus =
@@ -1317,6 +1363,7 @@ export class AkunService {
           "INSERT INTO users (id, jenis, email, email_verified_at, created_at) VALUES (?, 'akun', ?, ?, ?)",
         )
         .run(userId, email, this.iso(), this.iso());
+      this.catatEmailTerbukti(userId); // Google sudah memastikan email (claims.emailVerified)
       this.tautkanIdentitas(userId, claims.sub, 'daftar');
       return { userId };
     });

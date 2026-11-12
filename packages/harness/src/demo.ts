@@ -38,7 +38,10 @@ const INTENT_KEYWORDS: [RegExp, IntentJenis][] = [
   [/lapor|pengaduan|aduan|keluhan/i, 'pengaduan'],
   [/\bktp\b|ktp-el/i, 'ktp'],
   [/\bkk\b|kartu keluarga/i, 'kk'],
-  [/\bkia\b|kartu identitas anak|kartu anak/i, 'kia'],
+  [
+    /(?<!\b(?:mobil|motor|kendaraan|dealer|merek|merk)\s+)\bkia\b(?!\s+(?:sonet|picanto|seltos|carens|carnival|rio|sportage|motors?)\b)|kartu identitas anak|kartu anak/i,
+    'kia',
+  ],
   [/akta/i, 'akta'],
 ];
 

@@ -4,7 +4,7 @@ import { handle } from '../../hooks.server';
 import { POST as buatUrusan } from '../../routes/api/urusan/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
 import { RateLimiter } from './limiter';
-import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
+import { createRuntime, readConfig, setRuntimeForTests, type Runtime } from './runtime';
 import { lamaTunggu, MIGRASI_SID_SAMPAI, migrasiSid, SID_COOKIE } from './sesi';
 
 const ORIGIN = 'http://localhost:3000';
@@ -257,6 +257,22 @@ describe('batas urusan baru: per akun untuk warga ber-akun, IP longgar hanya unt
     );
     expect(body.pesanWarga).toMatch(/Coba lagi dalam ±\d+ menit\.$/);
     expect((await buatUrusan(evAkun('100.64.0.1', 'sb', b))).status).toBe(201);
+  });
+
+  it('H1: plafon per IP untuk akun dihitung BERSAMA batas akun (akun massal dari satu IP tetap berhenti)', async () => {
+    setup({ buatPerJamAkun: 100, buatPerJamIpAkun: 3 });
+    expect(readConfig({}).buatPerJamIpAkun).toBe(600);
+    const id = async (n: string) =>
+      (await rt.akun.daftar({ email: `${n}@example.com`, sandi: 'kuda-lari-cepat-9' }, { ip: '10.8.8.8' }))
+        .akun.id;
+    const akun = [await id('massal-1'), await id('massal-2'), await id('massal-3'), await id('massal-4')];
+    for (const a of akun.slice(0, 3))
+      expect((await buatUrusan(evAkun('100.64.9.9', `s-${a}`, a))).status).toBe(201);
+    // akun keempat masih punya kuota akun penuh, tetapi IP-nya sudah mencapai plafon
+    const ditolak = await buatUrusan(evAkun('100.64.9.9', 's-4', akun[3]!));
+    expect(ditolak.status).toBe(429);
+    expect(Number(ditolak.headers.get('retry-after'))).toBeGreaterThan(0);
+    expect((await buatUrusan(evAkun('100.64.9.10', 's-5', akun[3]!))).status).toBe(201);
   });
 
   it('lamaTunggu: detik di bawah 90, selain itu menit dibulatkan ke atas', () => {

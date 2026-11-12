@@ -430,8 +430,8 @@
       "proteksi": ["turnstile"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "SIBISA; daftar dengan NIK, KK, email, WA, foto KTP dan swafoto. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (koneksi ditolak dari IP Singapura). Turnstile tertanam di /portal.",
+      "verifiedAt": "2026-11-12",
+      "catatan": "SIBISA. OBS 2026-11-12: masuk /portal/ dengan NIK + sandi + Turnstile (5 kali gagal = blokir 15 menit). Daftar /portal/daftar: data diri + Turnstile, OTP email, lalu foto KTP + swafoto memegang KTP yang disetujui petugas. Formulir pengajuan hanya Senin-Jumat selain libur; unggahan hanya gambar. Hanya bisa dibuka dari jaringan Indonesia.",
       "aksesWilayah": "id-only"
     },
     "1304": {
@@ -479,12 +479,12 @@
       "url": "https://sirancak.disdukcapil.padang.go.id/",
       "hosts": ["sirancak.disdukcapil.padang.go.id"],
       "sumber": "https://sirancak.disdukcapil.padang.go.id/",
-      "login": [],
+      "login": ["nik_sandi"],
       "proteksi": [],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "SIRANCAK v2.0; akun diverifikasi admin."
+      "verifiedAt": "2026-11-12",
+      "catatan": "SIRANCAK v2.0. OBS 2026-11-12: masuk NIK + sandi di /masuk tanpa CAPTCHA. Daftar akun hanya bisa dari ponsel warga (swafoto memegang KTP lewat kamera langsung, OTP WhatsApp terbalik, email @gmail.com), lalu diverifikasi admin. Formulir per layanan di /layanan/{idForm}."
     },
     "1372": {
       "kelas": "A",
@@ -624,17 +624,17 @@
       "catatan": "Layanan lewat WhatsApp."
     },
     "1871": {
-      "kelas": "B",
+      "kelas": "A",
       "jenis": "web",
-      "url": "https://disdukcapil.bandarlampungkota.go.id/pendaftaran",
+      "url": "https://disdukcapil.bandarlampungkota.go.id/pelayanan/auth",
       "hosts": ["disdukcapil.bandarlampungkota.go.id"],
-      "sumber": "https://disdukcapil.bandarlampungkota.go.id/pendaftaran",
-      "login": ["tanpa_akun"],
+      "sumber": "https://disdukcapil.bandarlampungkota.go.id/pelayanan/auth",
+      "login": ["email_sandi"],
       "proteksi": ["captcha_hitung", "cloudflare"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "COKELAT (Cukup Daftar Online): pendaftaran layanan + tanggal layanan."
+      "verifiedAt": "2026-11-12",
+      "catatan": "OBS 2026-11-12: kanal warga = PERMEN MANIS 2.0 (masuk /pelayanan/auth dengan email + sandi; daftar /pelayanan/auth/register_akun dengan OTP email 6 digit, tanpa verifikasi admin). Kode Keamanan (soal penjumlahan) di setiap formulir; masuk terkunci 15 menit setelah 5 kali gagal. COKELAT /pendaftaran tidak bisa dikirim warga (\"Hanya petugas yang dapat membuat antrian!\")."
     },
     "1872": {
       "kelas": "A",
@@ -910,12 +910,12 @@
       "url": "https://silondomaju.depok.go.id/",
       "hosts": ["silondomaju.depok.go.id"],
       "sumber": "https://silondomaju.depok.go.id/",
-      "login": ["email_sandi", "otp_email"],
-      "proteksi": ["slider"],
+      "login": ["email_sandi"],
+      "proteksi": ["turnstile", "slider"],
       "domisili": "khusus_penduduk",
-      "bukti": "PRI",
-      "verifiedAt": "2026-11-08",
-      "catatan": "Silondo Maju (wajib akun sejak 1 Okt 2026); lacak status publik."
+      "bukti": "OBS",
+      "verifiedAt": "2026-11-12",
+      "catatan": "Silondo Maju (wajib akun sejak 1 Okt 2026). OBS 2026-11-12: masuk email + sandi lewat modal Turnstile (interaction-only) lalu puzzle geser; OTP email ada di kode tetapi saat ini nonaktif. Tautan langsung /public/layanan/* = 404, layanan dibuka dari kartu beranda; lacak status /tracker."
     },
     "3279": {
       "kelas": "A",
@@ -987,9 +987,9 @@
       "login": ["hp_sandi"],
       "proteksi": ["captcha_gambar", "cloudflare"],
       "domisili": "tidak_diketahui",
-      "bukti": "PRI",
-      "verifiedAt": "2026-11-08",
-      "catatan": "Telunjuk Sakti; 42 layanan termasuk SKPWNI/SKDWNI; adapter khusus sudah ada."
+      "bukti": "OBS",
+      "verifiedAt": "2026-11-12",
+      "catatan": "Telunjuk Sakti (42 layanan termasuk SKPWNI/SKDWNI; adapter khusus untuk akta kelahiran). OBS 2026-11-12: masuk /telunjuksakti/index.php/users/login dengan nomor HP + sandi + captcha gambar. Cloudflare menahan Chromium headless; Chromium headed lolos di navigasi pertama, navigasi berikutnya bisa memunculkan tantangan Turnstile interaktif. \"Selesai\" adalah tautan GET yang langsung mengirim permohonan."
     },
     "3313": {
       "kelas": "F",
@@ -1074,9 +1074,9 @@
       "login": ["nik_sandi"],
       "proteksi": ["captcha_hitung", "waf"],
       "domisili": "khusus_penduduk",
-      "bukti": "PRI",
-      "verifiedAt": "2026-11-08",
-      "catatan": "Si DnOK; sandi dari sistem, khusus warga Kota Semarang."
+      "bukti": "OBS",
+      "verifiedAt": "2026-11-12",
+      "catatan": "Si D'nOK. OBS 2026-11-12: masuk NIK + sandi + CAPTCHA soal matematika; WAF menolak Chromium headless (403 http_bot_simple), Chromium headed lolos. Sandi dikirim lewat WA/email setelah daftar; profil wajib dilengkapi sebelum mengajukan. Khusus warga Kota Semarang usia 17 tahun ke atas."
     },
     "3375": {
       "kelas": "F",
@@ -1264,25 +1264,26 @@
       "url": "https://siapel.malangkota.go.id/",
       "hosts": ["siapel.malangkota.go.id"],
       "sumber": "https://siapel.malangkota.go.id/",
-      "login": ["email_sandi", "otp_email"],
-      "proteksi": ["captcha_gambar", "hcaptcha"],
+      "login": ["email_sandi"],
+      "proteksi": ["captcha_hitung"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "SIAPEL; aktivasi lewat email; lacak publik."
+      "verifiedAt": "2026-11-12",
+      "catatan": "SIAPEL. OBS 2026-11-12: masuk email + sandi + CAPTCHA gambar soal penjumlahan (bukan hCaptcha); akun diaktifkan lewat tautan email. Lacak publik /cek_permohonan. Layanan pindah tidak ada di SIAPEL."
     },
     "3578": {
       "kelas": "A",
       "jenis": "web",
       "url": "https://wargaklampid-dispendukcapil.surabaya.go.id/app",
       "hosts": ["wargaklampid-dispendukcapil.surabaya.go.id"],
+      "hostUnggah": ["s3.klampid.disdukcapilsurabaya.id"],
       "sumber": "https://wargaklampid-dispendukcapil.surabaya.go.id/app",
-      "login": ["username_sandi", "google", "otp_email"],
+      "login": ["username_sandi"],
       "proteksi": ["recaptcha"],
       "domisili": "tidak_diketahui",
-      "bukti": "PRI",
-      "verifiedAt": "2026-11-08",
-      "catatan": "Klampid NG (SPA, alur chat-room); situs info sedang pemeliharaan saat dicek."
+      "bukti": "OBS",
+      "verifiedAt": "2026-11-12",
+      "catatan": "Klampid NG (Next.js, alur chat-room \"Cak Takon\"). OBS 2026-11-12: masuk /app/login dengan username + sandi + reCAPTCHA v2 (Google/OTP email masih ada di kode tetapi tidak tampil); ada SSO Wargaku. Akun baru wajib \"Verifikasi Akun Klampid\" dan verifikasi nomor HP lewat bot WhatsApp sebelum kartu layanan aktif. KIA dan pindah datang tidak tampil untuk akun warga. Unggahan berkas ke penyimpanan objek s3.klampid.disdukcapilsurabaya.id (dirujuk bundle portal; hostUnggah, hanya sesi 3578)."
     },
     "3603": {
       "kelas": "E",
@@ -1304,9 +1305,9 @@
       "login": ["akun_kota"],
       "proteksi": [],
       "domisili": "khusus_penduduk",
-      "bukti": "PRI",
-      "verifiedAt": "2026-11-08",
-      "catatan": "Sobat Dukcapil; masuk dengan akun Tangerang LIVE, tanpa CAPTCHA."
+      "bukti": "OBS",
+      "verifiedAt": "2026-11-12",
+      "catatan": "Sobat Dukcapil. OBS 2026-11-12: masuk dengan akun Tangerang LIVE (NIK/email + sandi), tanpa CAPTCHA/OTP. Akun dibuat sendiri lewat aplikasi Tangerang LIVE (registrasi web menolak peramban otomatis)."
     },
     "3674": {
       "kelas": "B",
@@ -1447,8 +1448,8 @@
       "proteksi": ["turnstile"],
       "domisili": "tidak_diketahui",
       "bukti": "OBS",
-      "verifiedAt": "2026-11-10",
-      "catatan": "Parakacil Online."
+      "verifiedAt": "2026-11-12",
+      "catatan": "Parakacil Online. OBS 2026-11-12: masuk /auth/login dengan NIK (kolom \"username\") + sandi + Turnstile; modal \"Informasi Terbaru\" menutupi formulir saat dimuat. Daftar /auth/register: email + WhatsApp + captcha gambar, OTP email, lalu data diri dan sandi. Layanan Senin-Kamis 08.00-14.00 WITA, Jumat sampai 10.00 WITA."
     },
     "6402": {
       "kelas": "A",

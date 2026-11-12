@@ -37,6 +37,7 @@ import { networkInterfaces } from 'node:os';
  * | PENDAMPING_DEBUG_TOKEN           | (mati)       | >= 32 karakter: aktifkan /debug (kemudi manual via stream)  |
  * | PENDAMPING_DEV_PAGE              | (mati)       | 1 = halaman /dev untuk e2e; tidak pernah di produksi        |
  * | PENDAMPING_CHROMIUM_PATH         | (Playwright) | Lokasi Chromium alternatif                                  |
+ * | PENDAMPING_NSS_DB                | (tidak ada)  | Basis data NSS intermediate CA (image: /app/nssdb), nss.ts  |
  */
 export type Config = {
   port: number;
@@ -62,6 +63,8 @@ export type Config = {
   /** Batas RSS pohon proses Chromium per sesi (MB); lewat = sesi dihancurkan. */
   sessionMemMb: number;
   memCheckMs: number;
+  /** Batas navigasi halaman utama tanpa commit (ms); lewat = situs dinyatakan tidak terjangkau. */
+  navBatasMs: number;
   /** Batas heap V8 per renderer (MB). */
   jsHeapMb: number;
   /** NODE_ENV=production: override fixture hanya dipakai sesi Mode Uji (juri/tamu). */
@@ -85,6 +88,8 @@ export type Config = {
   /** Halaman /dev (penampil tanpa gaya untuk e2e). Tidak pernah aktif bila NODE_ENV=production. */
   devPage: boolean;
   chromiumPath: string | undefined;
+  /** Direktori basis data NSS berisi intermediate CA publik (tanpa trust), disalin ke HOME Chromium (nss.ts). */
+  nssDb?: string | undefined;
   /**
    * Headed (bawaan, di server lewat Xvfb): situs dengan Cloudflare menantang Chromium headless.
    * Headless hanya untuk CI terhadap fixture; sesi ke origin non-fixture ditolak saat headless.
@@ -113,6 +118,7 @@ export const DEFAULTS = Object.freeze({
   wsBufferBytes: 128 * 1024,
   sessionMemMb: 450,
   memCheckMs: 10_000,
+  navBatasMs: 45_000,
   jsHeapMb: 256,
 });
 
@@ -234,6 +240,7 @@ export function loadConfig(
     wsBufferBytes: Math.max(16 * 1024, num(env.PENDAMPING_WS_BUFFER_BYTES, DEFAULTS.wsBufferBytes)),
     sessionMemMb: num(env.PENDAMPING_SESSION_MEM_MB, DEFAULTS.sessionMemMb),
     memCheckMs: Math.max(200, num(env.PENDAMPING_MEM_CHECK_MS, DEFAULTS.memCheckMs)),
+    navBatasMs: Math.max(500, num(env.PENDAMPING_NAV_BATAS_MS, DEFAULTS.navBatasMs)),
     jsHeapMb: num(env.PENDAMPING_JS_HEAP_MB, DEFAULTS.jsHeapMb),
     production,
     fixtureOrigins,
@@ -244,6 +251,7 @@ export function loadConfig(
     debugToken,
     devPage: !production && env.PENDAMPING_DEV_PAGE === '1',
     chromiumPath: env.PENDAMPING_CHROMIUM_PATH || undefined,
+    nssDb: env.PENDAMPING_NSS_DB?.trim() || undefined,
     headless,
     sha: /^[0-9a-f]{7,40}$/.test(env.GIT_SHA ?? '') ? env.GIT_SHA!.slice(0, 12) : undefined,
   };

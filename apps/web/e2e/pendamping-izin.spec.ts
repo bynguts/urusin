@@ -115,12 +115,19 @@ test('portal tampil dulu, baru lembar izin; "Saya isi sendiri" = portal terbuka 
   await expect(page.getByRole('dialog', DIALOG)).toBeVisible();
   await expect(page.getByText('Menyiapkan browser khusus urusan ini…')).toHaveCount(0);
   await expect(page.getByText('Mode uji', { exact: true })).toBeVisible();
+  // Menunggu izin: panel tidak mengaku "AI sedang mengisi".
+  await expect(page.locator('#panel-konteks')).toContainText('Menunggu izin Anda');
+  await expect(page.locator('#panel-konteks')).not.toContainText('AI sedang mengisi');
 
   // Tolak izin: kendali ke warga di portal yang sudah terbuka (layar siaran, bukan kosong/Menyiapkan).
   await page.getByRole('button', { name: 'Saya isi sendiri' }).click();
   await expect.poll(() => dariWarga).toContain('ambil_alih');
   await expect(page.getByRole('dialog', DIALOG)).toHaveCount(0);
-  await expect(page.getByText('AI berhenti')).toBeVisible();
+  // Giliran warga di portal yang sama (alasan nyata: isi sendiri), bukan layar galat "AI berhenti".
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Giliran Anda: isi formulir di layar ini.' }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Saya sudah mengirim' })).toBeVisible();
   await expect(page.getByText('Menyiapkan browser khusus urusan ini…')).toHaveCount(0);
 });
 

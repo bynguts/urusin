@@ -1,7 +1,14 @@
 import { CatatanPendampingSchema, type CatatanPendamping, type Pengamatan } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
 import { Anggaran, BATAS_ANGGARAN, PESAN_AMBIL_ALIH } from './anggaran.js';
-import { PESAN_BERHENTI, PESAN_DIPANDU, halamanStruktur, jalankanNavigator, type OpsiLoop } from './loop.js';
+import {
+  PESAN_BERHENTI,
+  PESAN_DIPANDU,
+  TANPA_KEMAJUAN,
+  halamanStruktur,
+  jalankanNavigator,
+  type OpsiLoop,
+} from './loop.js';
 import { HOST_UJI, ProviderSkrip, WorkerPalsu, halaman, halamanForm, halamanTinjau } from './testing.js';
 
 const CAPS = { json_schema_strict: true, tools: false };
@@ -341,8 +348,8 @@ describe('ketahanan: worker belum siap, galat sesaat, dan LLM gagal', () => {
   });
 });
 
-describe('tautan pembuka formulir: warga mengetuk, AI melanjutkan', () => {
-  it('klik ke tautan pembuka = serah ketuk_tautan (bukan klik AI, bukan final); sesudah kembali AI mengisi', async () => {
+describe('tautan pembuka formulir: AI membukanya sendiri (navigasi GET worker), lalu mengisi', () => {
+  it('QA gel6: klik ke tautan pembuka dijalankan AI (bukan giliran ketuk_tautan, bukan final); lalu AI mengisi', async () => {
     const beranda = halaman({
       sidik: 'beranda',
       jalur: '/generik/tanpa-akun/',
@@ -359,12 +366,11 @@ describe('tautan pembuka formulir: warga mengetuk, AI melanjutkan', () => {
     const provider = new ProviderSkrip((n) =>
       n === 0 ? { aksi: [{ jenis: 'klik', ref: 'e1' }] } : n === 1 ? RENCANA_FORM : SERAHKAN_FINAL,
     );
-    const { hasil, jejak } = jalankan(worker, provider);
+    const { hasil } = jalankan(worker, provider);
     expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
-    expect(worker.semuaAksi.filter((a) => a.jenis === 'klik').map((a) => a.ref)).not.toContain('e1');
-    expect(worker.semuaAksi).toContainEqual({ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e1' });
-    expect(jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'ketuk_tautan' });
-    // Formulir di balik tautan tetap diisi AI sesudah warga mengembalikan kendali.
+    expect(worker.semuaAksi).toContainEqual({ jenis: 'klik', ref: 'e1' });
+    expect(worker.semuaAksi.some((a) => a.jenis === 'serahkan' && a.alasan === 'ketuk_tautan')).toBe(false);
+    // Formulir di balik tautan diisi AI tanpa giliran warga di antaranya.
     expect(worker.semuaAksi.some((a) => a.jenis === 'isi')).toBe(true);
   });
 
@@ -401,7 +407,7 @@ describe('tautan pembuka formulir: warga mengetuk, AI melanjutkan', () => {
     expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
     expect(promptBeranda).toEqual([]);
     expect(worker.semuaAksi.filter((a) => a.jenis === 'klik').map((a) => a.ref)).not.toContain('e6');
-    expect(worker.semuaAksi).toContainEqual({ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e8' });
+    expect(worker.semuaAksi).toContainEqual({ jenis: 'klik', ref: 'e8' });
     expect(jejak).toContainEqual(
       expect.objectContaining({
         jenis: 'rencana',
@@ -631,7 +637,7 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
     expect(provider.calls).toHaveLength(2);
   });
 
-  it('halaman masuk ber-CAPTCHA yang masih tampil setelah kendali kembali tetap diserahkan ke warga', async () => {
+  it('halaman masuk ber-CAPTCHA yang masih tampil setelah kendali kembali tetap diserahkan ke warga (masuk akun)', async () => {
     const login = halaman({
       sidik: 'login',
       sinyal: { ...halamanForm().sinyal, login: true, captcha: true },
@@ -643,7 +649,7 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
     const worker = new WorkerPalsu([login, halamanTinjau()]);
     let n = 0;
     worker.saatSerahkan = (alasan) =>
-      alasan === 'captcha'
+      alasan === 'masuk_akun'
         ? ++n < 2
           ? { aksi: 'kembalikan' }
           : { aksi: 'kembalikan', ke: 1 }
@@ -651,7 +657,10 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
     const provider = new ProviderSkrip(() => SERAHKAN_FINAL);
     const { hasil } = jalankan(worker, provider);
     expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'final' });
-    expect(worker.semuaAksi.filter((a) => a.jenis === 'serahkan' && a.alasan === 'captcha')).toHaveLength(2);
+    // Formulir masuk ber-CAPTCHA = giliran masuk akun (pesan worker menyebut kode keamanan).
+    expect(worker.semuaAksi.filter((a) => a.jenis === 'serahkan' && a.alasan === 'masuk_akun')).toHaveLength(
+      2,
+    );
     expect(provider.calls).toHaveLength(1);
   });
 
@@ -988,5 +997,203 @@ describe('giliran warga, ikat ulang, dan keluar jujur', () => {
       signal: ac.signal,
     });
     expect(await hasil).toMatchObject({ akhir: 'berhenti', alasan: 'dibatalkan' });
+  });
+});
+
+describe('QA prod gel6: giliran cepat di beranda pintu akun, tanpa diam lama', () => {
+  const masuk = (over: Partial<Pengamatan> = {}) =>
+    halaman({
+      sidik: 'login',
+      jalur: '/login',
+      judul: 'Login',
+      sinyal: { ...halamanForm().sinyal, login: true },
+      elemen: [
+        { ref: 'e1', peran: 'teks', nama: 'NIK' },
+        { ref: 'e2', peran: 'teks', nama: 'Kata sandi', terlarang: 'sandi' },
+        { ref: 'e3', peran: 'tombol', nama: 'Masuk', kelas: 'masuk' },
+      ],
+      ...over,
+    });
+
+  it('Medan: "Sudah punya akun? Masuk" dibuka AI sendiri tanpa LLM; giliran masuk akun di formulir masuknya', async () => {
+    const beranda = halaman({
+      sidik: 'sibisa',
+      jalur: '/',
+      judul: 'SIBISA - Layanan Kependudukan Online',
+      elemen: [
+        { ref: 'e2', peran: 'tombol', nama: 'Buka menu', kelas: 'ui_lokal' },
+        { ref: 'e3', peran: 'tautan', nama: 'Daftar Akun Gratis', kelas: 'kirim', tautanPembuka: true },
+        { ref: 'e4', peran: 'tautan', nama: 'Sudah punya akun? Masuk', kelas: 'navigasi' },
+        { ref: 'e12', peran: 'tombol', nama: 'Lihat detail', kelas: 'tidak_pasti' },
+        { ref: 'e15', peran: 'tautan', nama: 'Masuk & Ajukan', kelas: 'kirim', tautanPembuka: true },
+        { ref: 'e17', peran: 'tautan', nama: 'Mulai Daftar', kelas: 'kirim' },
+      ],
+    });
+    const worker = new WorkerPalsu([beranda, masuk()]);
+    worker.saatSerahkan = () => ({ aksi: 'selesai' });
+    const provider = new ProviderSkrip(() => SERAHKAN_FINAL);
+    const { hasil, jejak } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'masuk_akun' });
+    expect(provider.calls).toHaveLength(0);
+    expect(worker.semuaAksi).toEqual([
+      { jenis: 'klik', ref: 'e4' },
+      { jenis: 'serahkan', alasan: 'masuk_akun' },
+    ]);
+    expect(jejak).toContainEqual(expect.objectContaining({ jenis: 'rencana', model: 'aturan:pintu_akun' }));
+  });
+
+  it('Medan: formulir masuk dengan widget verifikasi situs = giliran masuk akun, bukan CAPTCHA saja', async () => {
+    const worker = new WorkerPalsu([
+      masuk({ sinyal: { ...halamanForm().sinyal, login: true, tantangan: true } }),
+    ]);
+    worker.saatSerahkan = () => ({ aksi: 'selesai' });
+    const provider = new ProviderSkrip(() => SERAHKAN_FINAL);
+    const { hasil } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'masuk_akun' });
+    expect(provider.calls).toHaveLength(0);
+    expect(worker.semuaAksi).toEqual([{ jenis: 'serahkan', alasan: 'masuk_akun' }]);
+  });
+
+  it('Padang/Banjarmasin: LOGIN didahulukan dari DAFTAR AKUN; "Login / Register" pembuka GET dibuka AI', async () => {
+    for (const elemen of [
+      [
+        { ref: 'e4', peran: 'tautan' as const, nama: 'LOGIN', kelas: 'navigasi' as const },
+        {
+          ref: 'e5',
+          peran: 'tautan' as const,
+          nama: 'DAFTAR AKUN',
+          kelas: 'kirim' as const,
+          tautanPembuka: true as const,
+        },
+      ],
+      [
+        { ref: 'e5', peran: 'tautan' as const, nama: 'Bantuan', kelas: 'navigasi' as const },
+        {
+          ref: 'e8',
+          peran: 'tautan' as const,
+          nama: 'Login / Register',
+          kelas: 'kirim' as const,
+          tautanPembuka: true as const,
+        },
+      ],
+    ]) {
+      const worker = new WorkerPalsu([halaman({ sidik: 'beranda', jalur: '/', elemen }), masuk()]);
+      worker.saatSerahkan = () => ({ aksi: 'selesai' });
+      const provider = new ProviderSkrip(() => SERAHKAN_FINAL);
+      const { hasil } = jalankan(worker, provider);
+      expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'masuk_akun' });
+      expect(provider.calls).toHaveLength(0);
+      expect(worker.semuaAksi[0]).toEqual({ jenis: 'klik', ref: elemen[0]!.nama === 'LOGIN' ? 'e4' : 'e8' });
+    }
+  });
+
+  it('Semarang (Si D\'nOK-like): Login + "Pendaftaran Baru" di antara tautan layanan = AI membuka Login sendiri', async () => {
+    const beranda = halaman({
+      sidik: 'sidnok',
+      jalur: '/',
+      judul: "Pelayanan | Si D'nOK",
+      elemen: [
+        { ref: 'e3', peran: 'tautan', nama: 'Pelayanan', kelas: 'navigasi' },
+        { ref: 'e4', peran: 'tautan', nama: 'Cek Status Pengajuan', kelas: 'navigasi' },
+        { ref: 'e8', peran: 'tautan', nama: 'Pendaftaran Baru', kelas: 'kirim', tautanPembuka: true },
+        { ref: 'e9', peran: 'tautan', nama: 'Login', kelas: 'navigasi' },
+        { ref: 'e13', peran: 'tautan', nama: 'Perubahan Biodata Kartu Keluarga', kelas: 'navigasi' },
+        { ref: 'e14', peran: 'tautan', nama: 'Perpindahan Keluar', kelas: 'kirim', tautanPembuka: true },
+      ],
+    });
+    const worker = new WorkerPalsu([beranda, masuk()]);
+    worker.saatSerahkan = () => ({ aksi: 'selesai' });
+    const provider = new ProviderSkrip(() => SERAHKAN_FINAL);
+    const { hasil } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'masuk_akun' });
+    expect(provider.calls).toHaveLength(0);
+    expect(worker.semuaAksi).toEqual([
+      { jenis: 'klik', ref: 'e9' },
+      { jenis: 'serahkan', alasan: 'masuk_akun' },
+    ]);
+  });
+
+  it('tombol masuk yang hanya bisa ditekan warga: giliran masuk akun langsung dengan sorotan, tanpa LLM', async () => {
+    const beranda = halaman({
+      sidik: 'beranda',
+      jalur: '/',
+      elemen: [
+        { ref: 'e1', peran: 'tombol', nama: 'Login', kelas: 'masuk' },
+        { ref: 'e2', peran: 'tautan', nama: 'Daftar', kelas: 'navigasi' },
+      ],
+    });
+    const worker = new WorkerPalsu([beranda]);
+    worker.saatSerahkan = () => ({ aksi: 'selesai' });
+    const provider = new ProviderSkrip(() => SERAHKAN_FINAL);
+    const { hasil } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'masuk_akun' });
+    expect(provider.calls).toHaveLength(0);
+    expect(worker.semuaAksi).toEqual([{ jenis: 'serahkan', alasan: 'masuk_akun', ref: 'e1' }]);
+  });
+
+  it('sudah masuk (ada Keluar) atau formulir panjang: bukan pintu akun, model yang memutuskan', async () => {
+    const sesi = halaman({
+      sidik: 'dasbor',
+      jalur: '/',
+      elemen: [
+        { ref: 'e1', peran: 'tautan', nama: 'Masuk', kelas: 'navigasi' },
+        { ref: 'e2', peran: 'tautan', nama: 'Keluar', kelas: 'navigasi' },
+      ],
+    });
+    const form = halamanForm({
+      elemen: [
+        ...halamanForm().elemen,
+        { ref: 'e30', peran: 'tautan', nama: 'Sudah punya akun? Masuk', kelas: 'navigasi' },
+      ],
+    });
+    for (const p of [sesi, form]) {
+      const worker = new WorkerPalsu([p]);
+      worker.saatSerahkan = () => ({ aksi: 'selesai' });
+      const provider = new ProviderSkrip(() => SERAHKAN_FINAL);
+      await jalankan(worker, provider).hasil;
+      expect(provider.calls.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('Depok: tanpa kemajuan 3 putaran (carousel/panel saja) = giliran warga dengan petunjuk, bukan diam', async () => {
+    const carousel = (i: number) =>
+      halaman({
+        seq: i,
+        sidik: `carousel-${i}`,
+        jalur: '/',
+        judul: 'Silondo Maju',
+        elemen: [
+          { ref: 'e3', peran: 'tombol', nama: '', kelas: 'ui_lokal' },
+          { ref: 'e4', peran: 'tautan', nama: 'Lihat Layanan', kelas: 'navigasi' },
+          { ref: 'e6', peran: 'tombol', nama: `Banner ${i}`, kelas: 'ui_lokal' },
+        ],
+      });
+    const worker = new WorkerPalsu(Array.from({ length: 10 }, (_, i) => carousel(i)));
+    worker.saatSerahkan = () => ({ aksi: 'selesai' });
+    const provider = new ProviderSkrip(() => ({ aksi: [{ jenis: 'klik', ref: 'e6' }] }));
+    const { hasil } = jalankan(worker, provider);
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'tidak_yakin' });
+    expect(provider.calls).toHaveLength(TANPA_KEMAJUAN.putaran);
+    expect(worker.semuaAksi.at(-1)).toEqual({ jenis: 'serahkan', alasan: 'tidak_yakin', ref: 'e4' });
+  });
+
+  it('tanpa kemajuan >= 15 dtk waktu AI (LLM lambat) = giliran warga sesudah satu putaran', async () => {
+    let t = 0;
+    const p = (i: number) =>
+      halaman({
+        seq: i,
+        sidik: `p-${i}`,
+        jalur: '/',
+        elemen: [{ ref: 'e1', peran: 'tombol', nama: `Slide ${i}`, kelas: 'ui_lokal' }],
+      });
+    const worker = new WorkerPalsu(Array.from({ length: 10 }, (_, i) => p(i)));
+    worker.saatSerahkan = () => ({ aksi: 'selesai' });
+    const provider = new ProviderSkrip(() => {
+      t += TANPA_KEMAJUAN.ms + 1_000;
+      return { aksi: [{ jenis: 'klik', ref: 'e1' }] };
+    });
+    const { hasil } = jalankan(worker, provider, { jam: () => t });
+    expect(await hasil).toMatchObject({ akhir: 'ambil_alih', alasan: 'tidak_yakin' });
+    expect(provider.calls).toHaveLength(1);
   });
 });

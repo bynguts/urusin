@@ -4,3 +4,4 @@ export * from './loop.js';
 export * from './peringkat-tautan.js';
 export * from './prompt.js';
 export * from './validasi.js';
+export * from './petunjuk.js';

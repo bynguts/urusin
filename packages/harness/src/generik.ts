@@ -3,9 +3,23 @@ import {
   PLATFORM_WILAYAH,
   PORTAL_WILAYAH,
   hostsWilayah,
+  petunjukPortal,
   type PortalWilayah,
 } from '@urusin/core';
-import { kalimatPendampingBerkembang, pendampingAktif } from '@urusin/registry';
+import { kalimatPendampingBerkembang, pendampingAktif, varianDisebut } from '@urusin/registry';
+
+/**
+ * Petunjuk peta portal (TEPERCAYA, registry Urusin; ADR 0034) untuk Navigator sesi urusan ini: portal wilayah KTP ×
+ * layanan tujuan × varian yang disebut warga. Teks warga tidak ikut; hanya id varian hasil pencocokan kata kunci.
+ * undefined bila wilayah/layanan belum dipetakan atau layanannya offline di portal itu.
+ */
+export function petunjukPortalUrusan(
+  jenis: string | null | undefined,
+  kodeKabKota: string | null | undefined,
+  pesanWarga: readonly string[] = [],
+): string | undefined {
+  return petunjukPortal(kodeKabKota, jenis, varianDisebut(jenis, pesanWarga));
+}
 
 /**
  * Routing Navigator generik dan allowlist isi vault di atas registry wilayah (`PORTAL_WILAYAH`, hasil

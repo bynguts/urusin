@@ -1389,3 +1389,109 @@ describe('tamu di portal tanpa situs latihan', () => {
     expect(calls.find((c) => c.url.endsWith('/internal/sesi'))?.body).toMatchObject({ modeUji: true });
   });
 });
+
+describe('rem Browser Pendamping portal asli (review M1)', () => {
+  const evIp = (request: Request, id: string, ip: string) =>
+    ({ request, params: { id }, url: new URL(request.url), getClientAddress: () => ip }) as never;
+
+  function runtimeAkun(config: Partial<Runtime['config']> = {}) {
+    rt = createRuntime({
+      provider: new DemoProvider(),
+      config: { dbPath: ':memory:', ...config },
+      akun: { mailer: new MemoryMailer(), google: null, vault: { diskPersen: () => 10 } },
+    });
+    setRuntimeForTests(rt);
+  }
+  async function wargaBaru(email: string) {
+    const { token, akun } = await rt.akun.daftar(
+      { email, sandi: 'kuda-lari-cepat-9' },
+      { ip: '127.0.0.1', userAgent: null },
+    );
+    return { akun, cookie: `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${token}` };
+  }
+  function urusanMilik(akun: Parameters<Runtime['akun']['catatPemilikUrusan']>[1]['akun']) {
+    const u = urusanDenganEksekusi();
+    rt.akun.catatPemilikUrusan(u.id, { akun });
+    return u;
+  }
+  const mulaiSesi = () => calls.filter((c) => c.url.endsWith('/internal/sesi'));
+
+  it('satu sesi asli aktif per akun: urusan kedua ditolak 409 selama sesi pertama masih hidup', async () => {
+    runtimeAkun();
+    const w = await wargaBaru('warga@example.com');
+    const u1 = urusanMilik(w.akun);
+    const u2 = urusanMilik(w.akun);
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, w.cookie), u1.id, '10.1.1.1'))).status).toBe(
+      201,
+    );
+    reply = (path) => ({ status: path.endsWith('/status') ? 200 : 201, body: sesi({ status: 'berjalan' }) });
+    const res = await mulai(evIp(req('POST', { executionId: 'x_1' }, w.cookie), u2.id, '10.1.1.1'));
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { kode: string; pesanWarga: string };
+    expect(body.kode).toBe('SESI_ASLI_AKTIF');
+    expect(body.pesanWarga).toMatch(/masih terbuka untuk urusan lain/);
+    expect(mulaiSesi()).toHaveLength(1);
+    // Sesi pertama sudah selesai: urusan kedua boleh dimulai.
+    reply = (path) => ({ status: path.endsWith('/status') ? 200 : 201, body: sesi({ status: 'selesai' }) });
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, w.cookie), u2.id, '10.1.1.1'))).status).toBe(
+      201,
+    );
+    expect(mulaiSesi()).toHaveLength(2);
+  });
+
+  it('maksimal 6 sesi mulai per jam per akun: ke-7 ditolak 429 + Retry-After, pesan ramah; muat ulang tidak dihitung', async () => {
+    runtimeAkun();
+    const w = await wargaBaru('warga@example.com');
+    reply = (path) => ({ status: path.endsWith('/status') ? 200 : 201, body: sesi({ status: 'selesai' }) });
+    for (let i = 0; i < 6; i++) {
+      const u = urusanMilik(w.akun);
+      expect(
+        (await mulai(evIp(req('POST', { executionId: 'x_1' }, w.cookie), u.id, `10.2.0.${i}`))).status,
+      ).toBe(201);
+      // POST ulang eksekusi yang sama (muat ulang halaman) tidak memakan kuota
+      expect(
+        (await mulai(evIp(req('POST', { executionId: 'x_1' }, w.cookie), u.id, `10.2.0.${i}`))).status,
+      ).toBe(201);
+    }
+    const u7 = urusanMilik(w.akun);
+    const res = await mulai(evIp(req('POST', { executionId: 'x_1' }, w.cookie), u7.id, '10.2.9.9'));
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get('retry-after'))).toBeGreaterThan(0);
+    const body = (await res.json()) as { kode: string; pesanWarga: string };
+    expect(body.kode).toBe('RATE_LIMITED');
+    expect(body.pesanWarga).toMatch(/coba lagi dalam ±?\d+ (menit|detik)/);
+    expect(mulaiSesi()).toHaveLength(12);
+  });
+
+  it('maksimal sesi mulai per jam per IP lintas akun: lewat plafon -> 429; IP lain tetap boleh', async () => {
+    runtimeAkun({ pendampingPerJamIp: 2 });
+    reply = (path) => ({ status: path.endsWith('/status') ? 200 : 201, body: sesi({ status: 'selesai' }) });
+    const warga = [
+      await wargaBaru('a@example.com'),
+      await wargaBaru('b@example.com'),
+      await wargaBaru('c@example.com'),
+    ];
+    const hasil = [];
+    for (const w of warga)
+      hasil.push(
+        (await mulai(evIp(req('POST', { executionId: 'x_1' }, w.cookie), urusanMilik(w.akun).id, '10.3.3.3')))
+          .status,
+      );
+    expect(hasil).toEqual([201, 201, 429]);
+    const c = warga[2]!;
+    expect(
+      (await mulai(evIp(req('POST', { executionId: 'x_1' }, c.cookie), urusanMilik(c.akun).id, '10.3.3.4')))
+        .status,
+    ).toBe(201);
+  });
+
+  it('Mode Uji (tamu/juri) tidak kena rem: banyak sesi dari satu IP tetap sampai ke worker', async () => {
+    runtimeAkun({ pendampingPerJamIp: 1, pendampingPerJamAkun: 1 });
+    for (let i = 0; i < 8; i++) {
+      const u = urusanDenganEksekusi();
+      expect((await mulai(evIp(req('POST', { executionId: 'x_1' }), u.id, '10.4.4.4'))).status).toBe(201);
+    }
+    expect(mulaiSesi()).toHaveLength(8);
+    expect(mulaiSesi().every((c) => c.body.modeUji === true)).toBe(true);
+  });
+});

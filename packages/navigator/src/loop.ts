@@ -19,6 +19,8 @@ import {
   hashRencana,
   normalLabel,
   pembukaPengajuan,
+  petunjukWarga,
+  pintuAkun,
   validasiRencana,
   type IdAturan,
   type OpsiValidasi,
@@ -94,6 +96,8 @@ export type OpsiLoop = {
   modeUji?: { hostsFixture: ReadonlySet<string> } | undefined;
   validasi?: OpsiValidasi;
   kodeKabKota?: string | null | undefined;
+  /** Petunjuk peta portal TEPERCAYA (registry, ADR 0034) untuk setiap prompt halaman. */
+  petunjukPortal?: string | undefined;
   jejak: (c: CatatanPendamping) => void;
   /**
    * Baris yang benar-benar disetujui warga untuk `rencanaHash` (placeholder isian + nama berkas). Baris yang
@@ -250,6 +254,25 @@ export function halamanStruktur(p: Pengamatan): string {
     jalur: p.jalur,
     judul: normalLabel(p.judul),
     elemen: p.elemen.map((e) => `${e.peran}:${normalLabel(e.nama)}`),
+  });
+}
+
+/**
+ * Batas tanpa kemajuan (QA prod Depok: 93 dtk diam di beranda): waktu AI atau putaran rencana LLM di halaman
+ * yang sama (host + jalur + judul + kerangka kolom isian) tanpa satu isian pun = giliran warga dengan petunjuk
+ * terbaik (`petunjukWarga`), bukan diam lama. Klik yang hanya membuka panel/menggeser carousel bukan kemajuan.
+ */
+export const TANPA_KEMAJUAN = { ms: 15_000, putaran: 3 } as const;
+
+/** Kunci kemajuan halaman: berubah bila halaman berpindah atau formulir (kerangka kolom) berganti. */
+export function kunciKemajuan(p: Pengamatan): string {
+  return hashRencana({
+    host: p.host,
+    jalur: p.jalur,
+    judul: normalLabel(p.judul),
+    kolom: p.elemen
+      .filter((e) => !['tombol', 'tautan', 'tab'].includes(e.peran))
+      .map((e) => `${e.peran}:${normalLabel(e.nama)}`),
   });
 }
 
@@ -689,8 +712,12 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
   }
 
   let umpanBalik: { sidik: string; aturan: IdAturan[] } | null = null;
-  /** Halaman (sidik) yang CTA pengajuannya sudah diserahkan tanpa LLM: kunjungan berikutnya ditanya ke model. */
+  /** Halaman (sidik) yang CTA pengajuannya sudah dibuka tanpa LLM: kunjungan berikutnya ditanya ke model. */
   const ctaDipakai = new Set<string>();
+  /** Halaman fisik yang pintu akunnya sudah dikerjakan tanpa LLM: kunjungan berikutnya ditanya ke model. */
+  const pintuDipakai = new Set<string>();
+  /** Halaman tanpa kemajuan sejak waktu AI `ms`, dengan `putaran` rencana LLM. */
+  let kemajuan = { kunci: '', ms: 0, putaran: 0 };
   try {
     ang.mulaiAi();
     for (;;) {
@@ -715,13 +742,16 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       if (habis) return await serahkanAkhir(habis, p.seq);
 
       // Giliran warga yang pasti (tanpa LLM).
-      const giliran: AlasanAmbilAlih | null =
-        p.sinyal.captcha || p.sinyal.tantangan
+      // Formulir masuk ber-CAPTCHA/verifikasi situs = giliran masuk akun (pesannya menyebut kode/verifikasi
+      // keamanan), bukan "CAPTCHA" saja (QA prod gel6 Medan: formulir masuk dengan widget verifikasi).
+      const giliran: AlasanAmbilAlih | null = p.sinyal.login
+        ? 'masuk_akun'
+        : p.sinyal.tantangan
           ? 'captcha'
-          : p.sinyal.otp
-            ? 'otp'
-            : p.sinyal.login
-              ? 'masuk_akun'
+          : p.sinyal.captcha
+            ? 'captcha'
+            : p.sinyal.otp
+              ? 'otp'
               : null;
       // CAPTCHA/OTP di halaman yang BUKAN formulir masuk (mis. kode keamanan di formulir permohonan) yang sudah
       // dikerjakan warga lalu kendali kembali ke AI: kolomnya tetap ada (terlarang untuk AI), jadi halaman ini
@@ -736,6 +766,33 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         continue;
       }
 
+      // Beranda pintu akun: AI membuka halaman masuk sendiri (giliran warga di formulirnya), atau langsung giliran
+      // masuk akun bila kendali masuknya hanya bisa ditekan warga. Sekali per halaman fisik, tanpa LLM.
+      const pintu = pintuDipakai.has(kunciGiliran) ? undefined : pintuAkun(p);
+      if (pintu) pintuDipakai.add(kunciGiliran);
+      if (pintu?.jenis === 'serahkan') {
+        const h = setelahSerahkan('masuk_akun', await serahkanTunggu('masuk_akun', p.seq, pintu.ref, p));
+        if (h) return h;
+        kemajuan = { kunci: '', ms: 0, putaran: 0 };
+        continue;
+      }
+
+      // Tanpa kemajuan terlalu lama / terlalu banyak putaran: giliran warga dengan petunjuk, bukan diam.
+      const kunciMaju = kunciKemajuan(p);
+      if (kunciMaju !== kemajuan.kunci) kemajuan = { kunci: kunciMaju, ms: ang.waktuAiMs(), putaran: 0 };
+      else if (
+        kemajuan.putaran >= TANPA_KEMAJUAN.putaran ||
+        ang.waktuAiMs() - kemajuan.ms >= TANPA_KEMAJUAN.ms
+      ) {
+        kemajuan = { kunci: '', ms: 0, putaran: 0 };
+        const h = setelahSerahkan(
+          'tidak_yakin',
+          await serahkanTunggu('tidak_yakin', p.seq, petunjukWarga(p), p),
+        );
+        if (h) return h;
+        continue;
+      }
+
       if (o.kuotaHabis?.()) return await serahkanAkhir('kuota', p.seq);
       const masukan: MasukanPrompt = {
         pengamatan: p,
@@ -743,14 +800,18 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         ...(o.validasi?.katalog ? { katalog: [...o.validasi.katalog] } : {}),
         ...(o.validasi?.berkas ? { berkas: [...o.validasi.berkas] } : {}),
         kodeKabKota: o.kodeKabKota,
+        ...(o.petunjukPortal ? { petunjukPortal: o.petunjukPortal } : {}),
         ...(umpanBalik?.sidik === p.sidik ? { umpanBalik: umpanBalik.aturan } : {}),
         petunjukTautan: await o.peringkatTautan?.(p, o.tujuan, o.signal).catch(() => null),
       };
       let minta: Awaited<ReturnType<typeof mintaRencana>>;
       // Halaman pintu dengan satu CTA pengajuan ("Mulai Pendaftaran"): CTA didahulukan di atas tautan informasi
-      // ("Persyaratan") tanpa LLM, sekali per halaman; validator mengubah kliknya jadi serah `ketuk_tautan`.
-      const cta: string | undefined = ctaDipakai.has(p.sidik) ? undefined : pembukaPengajuan(p);
-      if (cta !== undefined) ctaDipakai.add(p.sidik);
+      // ("Persyaratan") tanpa LLM, sekali per halaman; worker membukanya lewat navigasi GET. Pintu akun `buka`
+      // (kendali masuk yang boleh dibuka AI) didahulukan di atas CTA.
+      const ctaPengajuan = ctaDipakai.has(p.sidik) || pintu ? undefined : pembukaPengajuan(p);
+      if (ctaPengajuan !== undefined) ctaDipakai.add(p.sidik);
+      const cta: string | undefined = pintu?.jenis === 'buka' ? pintu.ref : ctaPengajuan;
+      if (cta === undefined) kemajuan.putaran++;
       try {
         minta =
           cta !== undefined
@@ -779,7 +840,11 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       if (minta.ok && v.ok)
         o.jejak({
           jenis: 'rencana',
-          model: (cta !== undefined ? 'aturan:cta_pengajuan' : o.llm.model).slice(0, 100) || '-',
+          model:
+            (pintu ? 'aturan:pintu_akun' : cta !== undefined ? 'aturan:cta_pengajuan' : o.llm.model).slice(
+              0,
+              100,
+            ) || '-',
           tokenMasuk: minta.tokenMasuk,
           tokenKeluar: minta.tokenKeluar,
           rencanaHash: v.rencanaHash,
@@ -838,6 +903,13 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
           continue;
         }
         obsAkhir = r.obs;
+        // Isian yang benar-benar dijalankan = kemajuan (formulir panjang di satu halaman tidak dihitung diam).
+        if (
+          badan.some(
+            (a) => a.jenis === 'isi' || a.jenis === 'pilih' || a.jenis === 'centang' || a.jenis === 'unggah',
+          )
+        )
+          kemajuan = { kunci: '', ms: 0, putaran: 0 };
       }
       ang.berhasil();
       if (terminal?.jenis === 'tidak_bisa') {

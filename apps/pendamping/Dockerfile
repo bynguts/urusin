@@ -48,6 +48,21 @@ FROM --platform=$BUILDPLATFORM node:26-slim@sha256:5adad64f9a1fca2d51972caa65983
 COPY --from=pwbasis /usr/lib/*-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-ptp-helper /tmp/
 RUN cp /tmp/gst-ptp-helper /gst-ptp-helper
 
+# Basis data NSS Chromium berisi intermediate CA publik yang sering tidak dikirim server .go.id (QA prod:
+# siapel.malangkota.go.id hanya mengirim leaf). Chromium di sini tidak bisa AIA fetching (egress hanya CONNECT :443
+# ke host resmi), jadi intermediate dibundel. HANYA intermediate, trust ",," (bukan trust anchor): validasi rantai
+# sampai Chrome Root Store, nama host, dan masa berlaku tetap penuh. Sidik SHA-256 diperiksa terhadap
+# certs/intermediate.json (periksa.mjs). Format sql NSS sama di semua arsitektur: dibangun di platform build.
+FROM --platform=$BUILDPLATFORM node:26-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS nss
+RUN apt-get update && apt-get install -y --no-install-recommends libnss3-tools && rm -rf /var/lib/apt/lists/*
+COPY apps/pendamping/certs /certs
+RUN node /certs/periksa.mjs /certs \
+ && mkdir /nssdb && certutil -N -d sql:/nssdb --empty-password \
+ && for f in /certs/intermediate/*.crt; do certutil -A -d sql:/nssdb -t ",," -n "$(basename "$f" .crt)" -i "$f" || exit 1; done \
+ && certutil -L -d sql:/nssdb | grep -c ',,' \
+ && ! certutil -L -d sql:/nssdb | grep -E '[CPT][A-Za-z]*,|,[CPT]' \
+ && chmod 0444 /nssdb/*
+
 FROM pwbasis AS pw-amd64
 ENV PENDAMPING_CHROME_DIR=/ms-playwright/chromium-1254/chrome-linux64     PENDAMPING_GST_DIR=/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0
 FROM pwbasis AS pw-arm64
@@ -87,6 +102,13 @@ COPY --from=pwbasis --chmod=0755 /usr/lib/dbus-1.0/dbus-daemon-launch-helper /us
 # Capability berkas juga dicabut: gst-ptp-helper (cap_net_bind_service,cap_net_admin,cap_sys_nice=ep) diganti
 # salinan tanpa xattr dari tahap `tanpacap`. Smoke rilis memeriksa `getcap -r /` kosong.
 COPY --from=tanpacap --chmod=0755 /gst-ptp-helper ${PENDAMPING_GST_DIR}/gst-ptp-helper
+# Intermediate CA (tahap `nss`): disalin saat boot ke HOME Chromium di tmpfs (src/nss.ts; NSS butuh berkas yang bisa
+# ditulis, root filesystem produksi read-only).
+COPY --from=nss /nssdb /app/nssdb
+ENV PENDAMPING_NSS_DB=/app/nssdb
+# Kebijakan terkelola Chromium (Chrome for Testing membaca /etc/opt/chrome_for_testing, diukur): layar peringatan TLS
+# tanpa tautan "Proceed", jadi warga tidak bisa menembus galat sertifikat dari kanvas.
+COPY apps/pendamping/certs/kebijakan-chromium.json /etc/opt/chrome_for_testing/policies/managed/urusin.json
 LABEL org.opencontainers.image.source="https://github.com/bynguts/urusin" \
       org.opencontainers.image.revision=$GIT_SHA
 WORKDIR /app

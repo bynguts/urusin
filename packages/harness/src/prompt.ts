@@ -2,7 +2,13 @@ import type { UrusanState } from '@urusin/contracts';
 import { DAFTAR_PENDAMPING_AKTIF, FAKTA_HUKUM, routeByKode } from '@urusin/registry';
 import { spotlightPolicyText } from './spotlight.js';
 import type { ToolDef } from './tools.js';
-import { kalimatJaringanId, keteranganPendamping, rutePendamping, tierUrusan } from './rencana.js';
+import {
+  kalimatJaringanId,
+  kalimatOfflinePortal,
+  keteranganPendamping,
+  rutePendamping,
+  tierUrusan,
+} from './rencana.js';
 import {
   TEKS_WILAYAH,
   kalimatKanal,
@@ -64,33 +70,39 @@ const PANDUAN_STATE: Partial<Record<UrusanState, string>> = {
  * Tier yang berlaku: tier rencana Peristiwa Hidup bila jenisnya punya rencana (mis. pindah di Wonogiri tetap dipandu),
  * selain itu tier kab/kota di registry.
  */
-function tierWilayah(jenis: string | null, w: WilayahUrusan): 'semi' | 'dipandu' {
+function tierWilayah(jenis: string | null, w: WilayahUrusan, varian?: string): 'semi' | 'dipandu' {
   const ktp = w.ktp!.kodeKabKota;
   const r = jenis
     ? rencanaPeristiwa(jenis, {
         ktp,
         domisili: w.domisili?.kodeKabKota ?? null,
         tujuan: w.tujuan?.kodeKabKota ?? null,
+        varian,
       })
     : undefined;
   return r ? r.tier : routeByKode(ktp).entry.tier;
 }
 
 /** Baris wilayah di catatan state: yang sudah dipastikan, usulan yang belum, dan apa yang masih harus ditanyakan. */
-function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: string | null): string[] {
+function barisWilayah(
+  jenis: string | null,
+  w: WilayahUrusan | undefined,
+  kode: string | null,
+  varian?: string,
+): string[] {
   if (!w) return [`Kode kab/kota: ${kode ?? 'belum diketahui'}.`];
   const out: string[] = [];
   if (w.ktp) {
     out.push(
       `${TEKS_WILAYAH.baris} ${w.ktp.nama} (${w.ktp.kodeKabKota}), ${TEKS_WILAYAH.sudah} ${kalimatKanal(w.ktp.kodeKabKota)}`,
       'Jangan tanyakan atau minta konfirmasi wilayah KTP lagi.',
-      tierWilayah(jenis, w) === 'semi'
+      tierWilayah(jenis, w, varian) === 'semi'
         ? 'Browser Pendamping tersedia di wilayah ini untuk mengisi pengajuan.'
         : 'Browser Pendamping tidak tersedia di wilayah ini (tingkat dipandu): JANGAN menyuruh warga menekan "Setujui dan buka situs" dan jangan menjanjikan AI mengisi; pandu langkah demi langkah lewat kanal resmi. Cek status baca-saja hanya lewat dukcapil__cek_status.',
     );
     if (w.domisili) out.push(`Domisili: ${w.domisili.nama} (berbeda dari KTP).`);
     if (w.tujuan) out.push(`Tujuan pindah: ${w.tujuan.nama}.`);
-    if (jenis) out.push(barisPendamping(jenis, w.ktp.kodeKabKota));
+    if (jenis) out.push(barisPendamping(jenis, w.ktp.kodeKabKota, varian));
   } else {
     out.push(TEKS_WILAYAH.belum);
     if (w.usulan) {
@@ -110,15 +122,17 @@ function barisWilayah(jenis: string | null, w: WilayahUrusan | undefined, kode: 
 }
 
 /** Satu baris state note: Browser Pendamping untuk urusan ini (sama dengan yang ditawarkan saat persetujuan). */
-function barisPendamping(jenis: string, kode: string): string {
-  const r = rutePendamping({ jenis, kodeKabKota: kode });
+function barisPendamping(jenis: string, kode: string, varian?: string): string {
+  const r = rutePendamping({ jenis, kodeKabKota: kode, varian });
+  if (r.jalur === 'dipandu' && r.sebab === 'offline_portal')
+    return `BROWSER PENDAMPING: tidak dibuka untuk urusan ini (tingkat dipandu) karena layanan ini tidak bisa diajukan online di portal daerah. Sampaikan jujur dan arahkan ke jalur resmi ini (jangan mengarang kantor/kanal lain): ${kalimatOfflinePortal(r.offline)}`;
   if (r.jalur === 'dipandu' && r.sebab === 'pengembangan')
     return `BROWSER PENDAMPING: sedang dikembangkan untuk wilayah ini (tingkat dipandu; aktif di ${DAFTAR_PENDAMPING_AKTIF}). Pandu warga langkah demi langkah: dokumen, kanal resmi daerah (sebut nama dan situsnya dari catatan wilayah), perkiraan waktu, biaya gratis. Tawarkan bantuan yang memang ada: memandu mengisi formulir, urusan tersimpan di Urusanku, membantu kendala di loket.`;
   if (r.jalur === 'dipandu')
     return r.sebab === 'jaringan_id'
       ? `BROWSER PENDAMPING: tidak tersedia untuk urusan ini (tingkat dipandu); pandu warga mengisi sendiri. Alasan untuk warga: ${kalimatJaringanId()}`
       : 'BROWSER PENDAMPING: tidak tersedia untuk urusan ini (tingkat dipandu); pandu warga mengisi sendiri.';
-  return `BROWSER PENDAMPING (tingkat ${tierUrusan({ jenis, kodeKabKota: kode })}, ${r.jalur === 'generik' ? 'Navigator generik' : 'adapter'}): ${keteranganPendamping(r)}`;
+  return `BROWSER PENDAMPING (tingkat ${tierUrusan({ jenis, kodeKabKota: kode, varian })}, ${r.jalur === 'generik' ? 'Navigator generik' : 'adapter'}): ${keteranganPendamping(r)}`;
 }
 
 /**
@@ -141,6 +155,8 @@ export function buildStateNote(input: {
   jenis: string | null;
   kodeKabKota: string | null;
   wilayah?: WilayahUrusan;
+  /** Varian layanan yang disebut warga (peta portal per varian, ADR 0034). */
+  varian?: string | undefined;
   tools: readonly ToolDef[];
   confirmations: readonly { id: string; tool: string }[];
   /** Pesan warga giliran ini (sudah diredaksi). */
@@ -153,7 +169,7 @@ export function buildStateNote(input: {
   const lines = [
     `STATE URUSAN: ${input.state}`,
     `Jenis urusan: ${input.jenis ?? 'belum diketahui'}.`,
-    ...barisWilayah(input.jenis, input.wilayah, input.kodeKabKota),
+    ...barisWilayah(input.jenis, input.wilayah, input.kodeKabKota, input.varian),
     `Tool yang boleh dipakai sekarang: ${input.tools.map((t) => t.name).join(', ') || '(tidak ada)'}.`,
   ];
   if (input.pesanWarga && mintaPemalsuan(input.pesanWarga))
