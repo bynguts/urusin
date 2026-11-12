@@ -5,7 +5,7 @@ import { getRuntime } from '#lib/server/runtime.js';
 import type { RequestHandler } from './$types';
 
 /**
- * Data Diri pemilik (akun terverifikasi/demo: ikut akun; selain itu vault satu perangkat), terenkripsi at rest.
+ * Data Diri pemilik (akun/demo: ikut akun; selain itu vault satu perangkat), terenkripsi at rest.
  * Nilai hanya untuk pemiliknya sendiri (cek Sec-Fetch-Site + Origin, no-store), tidak pernah dicatat dan
  * tidak pernah masuk prompt model (model hanya melihat placeholder). Akun di sesi yang belum pernah membuka
  * brankas ("perangkat baru") butuh bukti kredensial <= 15 menit → 401 PERLU_MASUK_ULANG.

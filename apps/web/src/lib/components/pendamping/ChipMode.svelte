@@ -4,13 +4,13 @@
   import type { KeadaanLayar } from '#lib/pendamping/sesi.svelte.js';
 
   /**
-   * Chip mode Browser Pendamping (u5rYk "Chip mode", ukuran penuh App 06/07): nila = AI sedang mengisi,
+   * Chip mode Browser Pendamping (u5rYk "Chip mode", ukuran penuh App 06/07): nila = AI sedang bekerja,
    * kunyit = Giliran Anda, netral = antre/menyiapkan/dijeda/terputus/berakhir. Selalu ikon + teks.
    */
   let { keadaan }: { keadaan: KeadaanLayar } = $props();
 
   const CHIP: Record<KeadaanLayar, { teks: string; ikon: NamaIkon; nada: string } | undefined> = {
-    ai: { teks: 'AI sedang mengisi', ikon: 'ai', nada: 'bg-nila text-nila-ink' },
+    ai: { teks: 'AI sedang bekerja', ikon: 'ai', nada: 'bg-nila text-nila-ink' },
     giliran: { teks: 'Giliran Anda', ikon: 'tangan', nada: 'bg-kuning text-kuning-ink' },
     antre: { teks: 'Antre', ikon: 'antre', nada: 'bg-bg-2 text-muted' },
     menyiapkan: { teks: 'Menyiapkan', ikon: 'memuat', nada: 'bg-bg-2 text-muted' },
@@ -23,6 +23,7 @@
     dipandu: { teks: 'Mode dipandu', ikon: 'peta', nada: 'bg-merah text-galat' },
     tidak_tersedia: { teks: 'Mode dipandu', ikon: 'peta', nada: 'bg-merah text-galat' },
     galat: { teks: 'Berhenti', ikon: 'peringatan', nada: 'bg-merah text-galat' },
+    berakhir: { teks: 'Sesi berakhir', ikon: 'terputus', nada: 'bg-bg-2 text-muted' },
   };
   const c = $derived(CHIP[keadaan]);
 </script>

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { runTurn } from './agent.js';
 import { chunkRencana } from './builtin-tools.js';
 import { portalWebWilayah } from './generik.js';
+import { DAFTAR_PENDAMPING_AKTIF, pendampingAktif } from '@urusin/registry';
 import { aturJaringanId, rutePendamping, setujuiRencana } from './rencana.js';
 import { buildStateNote, buildSystemPrompt, mintaPemalsuan } from './prompt.js';
 import { jejakView } from './trace.js';
@@ -120,10 +121,12 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
       const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
       const kartu = of(out.events, 'plan_card')[0]!;
       expect(kartu).toBeDefined();
-      expect(JSON.stringify(kartu)).not.toMatch(/wonogiri/i);
+      // Daftar daerah Browser Pendamping aktif (ADR 0033) memang menyebut Wonogiri; isi rencana tidak.
+      expect(JSON.stringify(kartu).replace(DAFTAR_PENDAMPING_AKTIF, '')).not.toMatch(/wonogiri/i);
       expect(kartu.wilayah?.ktp).toEqual({ kodeKabKota: kode, nama });
-      // Tier jujur: `semi` hanya bila Navigator generik benar-benar ditawarkan (portal web wilayah itu sendiri).
-      const portalWeb = portalWebWilayah(kode);
+      // Tier jujur: `semi` hanya bila Navigator generik benar-benar ditawarkan (portal web wilayah itu sendiri,
+      // di daerah Browser Pendamping aktif; ADR 0033).
+      const portalWeb = pendampingAktif(kode) ? portalWebWilayah(kode) : undefined;
       expect(kartu.tier).toBe(portalWeb ? 'semi' : 'dipandu');
       if (portalWeb) {
         const host = new URL(portalWeb.origin).host;
@@ -133,7 +136,10 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
           keterangan: `AI membantu mengisi formulir di ${host}; Anda sendiri yang masuk akun, lolos verifikasi, dan menekan Kirim.`,
         });
         expect(kartu.catatan).toContain(kartu.pendamping!.keterangan);
-      } else expect(kartu.pendamping).toBeUndefined();
+      } else {
+        expect(kartu.pendamping).toBeUndefined();
+        expect(kartu.dipandu?.pendampingBerkembang).toBe(!pendampingAktif(kode));
+      }
       expect(kartu.langkah.some((l) => l.jenis === 'online-adapter')).toBe(false);
       expect(kartu.langkah[0]!.sumber[0]!.url).toBe(url);
       expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
@@ -142,7 +148,7 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
       const events: EventPayload[] = [];
       const r = setujuiRencana(env.store, u.id, (e) => void events.push(e));
       const req = events.find((e): e is EventOf<'execution_request'> => e.type === 'execution_request');
-      const portal = portalWebWilayah(kode);
+      const portal = portalWeb;
       if (portal) {
         expect(r.executionId).not.toBeNull();
         expect(req).toMatchObject({ adapterId: 'generik', origin: portal.origin, params: { kode } });
@@ -162,7 +168,7 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
     ],
     // Sidnok Semarang `id-only` tanpa worker berjaringan Indonesia yang sehat: dipandu sejak kartu.
     ['3374', false, 'dipandu', 'hanya bisa dibuka dari jaringan Indonesia'],
-    ['1211', true, 'dipandu', 'BROWSER PENDAMPING: tidak tersedia untuk urusan ini (tingkat dipandu)'],
+    ['1211', true, 'dipandu', 'BROWSER PENDAMPING: sedang dikembangkan untuk wilayah ini (tingkat dipandu'],
   ])(
     '%s (worker ID sehat: %s): tier state, kartu, dan catatan state untuk agen sama dengan rute Pendamping (%s)',
     async (kode, idSehat, tier, baris) => {
@@ -571,32 +577,25 @@ describe('temuan eval persona W2: ganti wilayah membuang sumber wilayah lama', (
   });
 });
 
-describe('temuan eval persona W6: hand-off tidak diulang identik', () => {
-  it('pertanyaan tanpa sumber berulang: kanal lain, lalu langkah lain tanpa hand-off yang sama', async () => {
+describe('temuan eval persona W6 / ADR 0033: adminduk tanpa sumber = panduan umum, bukan hand-off', () => {
+  it('pertanyaan tanpa sumber berulang: tiap kali panduan umum bertanda jujur dengan kanal resmi, tanpa hand-off', async () => {
     const jawab = tool('urusan__jawab_persyaratan', { pertanyaan: 'nomor antrean berapa?' });
-    // Jenis tanpa rencana (KK punya rencana yang dokumennya ikut jadi sumber, jadi tidak selalu hand-off).
-    const { env, u, provider } = setup([jawab, jawab, jawab, balas('Coba datang langsung ke kantor.')], {
+    // Jenis tanpa rencana (KK punya rencana yang dokumennya ikut jadi sumber).
+    const { env, u, provider } = setup([jawab, balas('Panduan umum ...'), jawab, balas('Panduan umum ...')], {
       jenis: 'akta',
       kodeKabKota: '3312',
     });
-    // Rencana sudah diusulkan: hand-off tidak lagi diikuti penyusunan rencana di giliran yang sama.
     let cur = env.store.getUrusanOrThrow(u.id);
     if (cur.state === 'BARU') cur = env.store.transition(u.id, cur.version, 'MEMAHAMI');
     env.store.transition(u.id, cur.version, 'RENCANA_DIUSULKAN');
-    const kanal = async () => {
+    for (let i = 0; i < 2; i++) {
       const out = await runTurn(env.deps, { urusanId: u.id, userText: 'nomor antrean berapa?' });
-      return of(out.events, 'handoff').map((h) => h.kanal.map((k) => k.url));
-    };
-    const [pertama] = await kanal();
-    const [kedua] = await kanal();
-    expect(pertama!.length).toBeGreaterThan(0);
-    expect(kedua!.length).toBeGreaterThan(0);
-    // Kanal kedua tidak mengulang satu pun kanal pertama.
-    const norm = (x?: string) => (x ?? '').toLowerCase().replace(/\/+$/, '');
-    expect(kedua!.some((k) => pertama!.map(norm).includes(norm(k)))).toBe(false);
-    // Semua kanal sudah diberikan: tidak ada hand-off lagi, model diminta memberi langkah lain.
-    expect(await kanal()).toHaveLength(0);
-    expect(hasilTool(provider)).toMatch(/JANGAN ulangi/);
+      expect(of(out.events, 'handoff')).toHaveLength(0);
+      const arahan = hasilTool(provider);
+      expect(arahan).toContain('Panduan umum (belum dari sumber resmi daerah, cek ulang di kanal resmi):');
+      expect(arahan).toMatch(/telunjuksakti\.wonogirikab\.go\.id|disdukcapil\.wonogirikab\.go\.id/);
+      expect(arahan).not.toMatch(/surabaya|semarang/i);
+    }
   });
 
   it('SKCK: hand-off berulang tidak pernah dialihkan ke Disdukcapil', async () => {
@@ -884,11 +883,12 @@ describe('temuan eval persona p02: hand-off pindah ke Disdukcapil yang ditanyaka
     expect(kodeYurisdiksi(env.store, kk, 'Disdukcapil Bekasi di mana?')).toBe('3312');
   });
 
-  it('pertanyaan tentang Disdukcapil tujuan tanpa sumber: hand-off ke Kab. Bekasi, bukan Wonogiri', async () => {
+  it('pertanyaan tentang Disdukcapil tujuan tanpa sumber: panduan umum dengan kanal Kab. Bekasi, bukan Wonogiri', async () => {
     const provider = new FakeProvider({
       replies: [
         tool('urusan__jawab_persyaratan', { pertanyaan: 'alamat kantor Disdukcapil Bekasi' }),
         fakeCompletion({ content: JSON.stringify({ klaim: [], handoff: null }) }),
+        balas('Panduan umum ...'),
       ],
     });
     const env = makeEnv({ provider });
@@ -897,9 +897,10 @@ describe('temuan eval persona p02: hand-off pindah ke Disdukcapil yang ditanyaka
       urusanId: u.id,
       userText: 'Kantor Disdukcapil Bekasi yang harus saya datangi di mana?',
     });
-    const h = of(out.events, 'handoff')[0]!;
-    expect(h.kanal[0]!.url).toMatch(/bekasikab/);
-    expect(JSON.stringify(h)).not.toMatch(/wonogiri/i);
+    expect(of(out.events, 'handoff')).toHaveLength(0);
+    const arahan = hasilTool(provider);
+    expect(arahan).toMatch(/bekasikab/);
+    expect(arahan).not.toMatch(/wonogiri/i);
   });
 });
 
@@ -940,11 +941,12 @@ describe('temuan eval persona p03: hand-off ikut domisili yang disebut warga', (
     expect(kodeYurisdiksi(env.store, kk, 'Disdukcapil Kabupaten Bekasi di mana?')).toBe('3578');
   });
 
-  it('pertanyaan tentang Disdukcapil domisili tanpa sumber: hand-off ke domisili, KTP jadi pengganti', async () => {
+  it('pertanyaan tentang Disdukcapil domisili tanpa sumber: panduan umum dengan kanal domisili', async () => {
     const provider = new FakeProvider({
       replies: [
         tool('urusan__jawab_persyaratan', { pertanyaan: 'alamat Disdukcapil Bekasi' }),
         fakeCompletion({ content: JSON.stringify({ klaim: [], handoff: null }) }),
+        balas('Panduan umum ...'),
       ],
     });
     const env = makeEnv({ provider });
@@ -953,9 +955,10 @@ describe('temuan eval persona p03: hand-off ikut domisili yang disebut warga', (
       urusanId: u.id,
       userText: 'Alamat Disdukcapil Bekasi di mana kak? Aku tinggal di sana.',
     });
-    const h = of(out.events, 'handoff')[0]!;
-    expect(h.kanal[0]!.url).toMatch(/bekasikab/);
-    expect(JSON.stringify(h.kanal[0])).not.toMatch(/surabaya/i);
+    expect(of(out.events, 'handoff')).toHaveLength(0);
+    const arahan = hasilTool(provider);
+    expect(arahan).toMatch(/bekasikab/);
+    expect(arahan).not.toMatch(/surabaya/i);
   });
 });
 
@@ -984,11 +987,12 @@ describe('QA produksi: pengantin baru Kota Jayapura (KK), wilayah kecil tetap be
 });
 
 describe('temuan eval persona p03: Disdukcapil domisili untuk warga ber-KTP lain', () => {
-  it('hand-off ke domisili memakai situs informasi Disdukcapil, bukan portal berlogin NIK setempat', async () => {
+  it('kanal domisili memakai situs informasi Disdukcapil, bukan portal berlogin NIK setempat', async () => {
     const provider = new FakeProvider({
       replies: [
         tool('urusan__jawab_persyaratan', { pertanyaan: 'alamat Disdukcapil Kota Semarang' }),
         fakeCompletion({ content: JSON.stringify({ klaim: [], handoff: null }) }),
+        balas('Panduan umum ...'),
       ],
     });
     const env = makeEnv({ provider });
@@ -998,9 +1002,10 @@ describe('temuan eval persona p03: Disdukcapil domisili untuk warga ber-KTP lain
       urusanId: u.id,
       userText: 'Disdukcapil Kota Semarang di mana kak?',
     });
-    const h = of(out.events, 'handoff')[0]!;
-    expect(h.kanal[0]!.url).toMatch(/dispendukcapil\.semarangkota\.go\.id/);
-    expect(h.kanal.map((k) => k.url ?? '').join(' ')).not.toMatch(/sidnok/);
+    expect(of(out.events, 'handoff')).toHaveLength(0);
+    const arahan = hasilTool(provider);
+    expect(arahan).toMatch(/dispendukcapil\.semarangkota\.go\.id/);
+    expect(arahan).not.toMatch(/sidnok/);
   });
 });
 

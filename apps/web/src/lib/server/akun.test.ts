@@ -19,8 +19,6 @@ import { POST as masukApi } from '../../routes/api/akun/masuk/+server';
 import { POST as profilApi } from '../../routes/api/akun/profil/+server';
 import { POST as ubahSandiApi } from '../../routes/api/akun/ubah-sandi/+server';
 import { GET as urusanAkun } from '../../routes/api/akun/urusan/+server';
-import { POST as verifikasiApi } from '../../routes/api/akun/verifikasi/+server';
-import { POST as kirimUlangApi } from '../../routes/api/akun/verifikasi/kirim-ulang/+server';
 import { POST as buatUrusan } from '../../routes/api/urusan/+server';
 import { GET as statusUrusan } from '../../routes/api/urusan/[id]/+server';
 import { POST as turnApi } from '../../routes/api/urusan/[id]/turn/+server';
@@ -34,11 +32,12 @@ import { GET as oidcGet, POST as oidcPost } from '../../routes/dev/oidc/authoriz
 import { actions as aturUlangPage, load as aturUlangLoad } from '../../routes/atur-ulang-sandi/+page.server';
 import { actions as daftarPage } from '../../routes/daftar/+page.server';
 import { actions as profilPage, load as profilLoad } from '../../routes/lengkapi-profil/+page.server';
-import { actions as lupaPage } from '../../routes/lupa-sandi/+page.server';
+import { actions as lupaPage, load as lupaLoad } from '../../routes/lupa-sandi/+page.server';
 import { actions as masukPage, load as masukLoad } from '../../routes/masuk/+page.server';
 import { actions as pengaturanPage, load as pengaturanLoad } from '../../routes/pengaturan/+page.server';
-import { actions as verifPage, load as verifLoad } from '../../routes/verifikasi-email/+page.server';
+import { GET as verifikasiEmailLama } from '../../routes/verifikasi-email/+server';
 import { AKUN_COOKIE, OAUTH_COOKIE, TAUTKAN_COOKIE } from './akun';
+import { modeUjiPendamping } from './pendamping/pemilik';
 import { createRuntime, googleRedirectUri, setRuntimeForTests, type Runtime } from './runtime';
 import { SID_COOKIE, TERAKHIR_COOKIE } from './sesi';
 import { TURNSTILE_TOKEN_FIXTURE, turnstileFromEnv } from './turnstile';
@@ -184,11 +183,11 @@ async function lewatHook(
   return handle({ event: event as never, resolve: () => Promise.resolve(handler(event as never)) });
 }
 
-async function daftarVerifikasi(email = EMAIL, sandi = SANDI) {
-  expect((await daftarApi(ev(post({ email, sandi })))).status).toBe(202);
-  const token = tokenDari(mailer.last(email, 'verifikasi')!.link);
-  const res = await verifikasiApi(ev(post({ token, sandi })));
+/** Daftar lewat API: akun penuh dan sesi langsung terpasang di `jar` (tanpa email verifikasi, ADR 0032). */
+async function daftarAkun(email = EMAIL, sandi = SANDI, jar = new Jar()) {
+  const res = await daftarApi(ev(post({ email, sandi }, '/api/akun/daftar'), { jar }));
   expect(res.status).toBe(200);
+  return { res, jar, body: (await res.json()) as any };
 }
 
 async function masuk(jar = new Jar(), email = EMAIL, sandi = SANDI, extra: Record<string, string> = {}) {
@@ -212,36 +211,48 @@ async function caught(p: Promise<unknown> | unknown): Promise<unknown> {
   throw new Error('tidak melempar');
 }
 
-describe('API akun: daftar → verifikasi → masuk → sesi', () => {
-  it('alur lengkap lewat hooks; cookie __Host- HttpOnly Secure Lax berisi token yang hanya disimpan hash-nya', async () => {
-    await daftarVerifikasi();
-    const { res, jar, body } = await masuk();
-    expect(res.status).toBe(200);
-    expect(body.next).toBe('/lacak');
+describe('API akun: daftar (langsung masuk) → sesi → masuk', () => {
+  it('daftar = akun penuh + sesi lewat hooks; cookie __Host- HttpOnly Secure Lax berisi token yang hanya disimpan hash-nya', async () => {
+    const { res, jar, body } = await daftarAkun();
+    expect(body.next).toBe('/beranda');
     expect(body.akun).toMatchObject({
       jenis: 'akun',
       email: EMAIL,
-      emailTerverifikasi: true,
       punyaSandi: true,
+      terhubungGoogle: false,
       profilLengkap: false,
       sinkron: true,
     });
+    expect(body.akun).not.toHaveProperty('emailTerverifikasi');
+    expect([body.urusanDipindahkan, body.vaultDipindahkan, body.googleTertaut]).toEqual([0, false, false]);
+    expect(res.headers.get('set-cookie')).toBeNull(); // cookie lewat event.cookies, bukan header manual
+    expect(mailer.sent).toHaveLength(0); // tidak ada email verifikasi
     const c = jar.store.get(AKUN_COOKIE)!;
     expect(c.opts).toMatchObject({ path: '/', httpOnly: true, secure: true, sameSite: 'lax' });
     expect(c.opts.maxAge).toBeGreaterThan(29 * 24 * 3600);
     expect(AKUN_COOKIE.startsWith('__Host-')).toBe(true);
+    expect(jar.get(SID_COOKIE)).toMatch(/^[0-9a-f]{32}$/);
     const rows = rt.store.db.prepare('SELECT token_hash FROM auth_sessions').all();
     expect(rows).toEqual([{ token_hash: sha256Hex(c.value) }]);
 
     const s = await lewatHook(get('/api/akun'), jar, sesiAkun);
-    const sesi = SesiAkunResponseSchema.parse(await s.json());
+    const mentah = (await s.json()) as any;
+    expect(mentah.akun).not.toHaveProperty('emailTerverifikasi');
+    const sesi = SesiAkunResponseSchema.parse(mentah);
     expect(sesi.masuk).toBe(true);
     expect(sesi.email).toEqual({ mode: 'log', tertunda: false });
     if (sesi.masuk) {
+      expect([sesi.akun.email, sesi.akun.sinkron]).toEqual([EMAIL, true]);
       expect(sesi.perangkat).toHaveLength(1);
       expect(sesi.perangkat[0]!.perangkatIni).toBe(true);
       expect(sesi.metode).toEqual({ email: true, google: true, juri: true });
     }
+
+    // Perangkat lain: masuk biasa dengan sandi yang sama, ke tujuan `next`.
+    const m = await masuk();
+    expect([m.res.status, m.body.next]).toEqual([200, '/lacak']);
+    expect(m.body.akun).toMatchObject({ email: EMAIL, sinkron: true });
+    expect(akunDari(m.jar).id).toBe(akunDari(jar).id);
   });
 
   it('tamu: GET /api/akun masuk=false; cookie tidak sah dihapus oleh hook', async () => {
@@ -263,107 +274,201 @@ describe('API akun: daftar → verifikasi → masuk → sesi', () => {
     expect([r3.status, b3.kode]).toEqual([422, 'SANDI_TERLALU_UMUM']);
     expect(GalatApiSchema.parse(b3)).toBeTruthy();
     expect(JSON.stringify(b3)).not.toContain('password123');
-    const ok = await daftarApi(ev(post({ email: 'lain@example.com', sandi: SANDI })));
-    expect([ok.status, await ok.json()]).toEqual([202, { terkirim: true, tertunda: false }]);
+    expect(hitung('SELECT COUNT(*) n FROM users')).toBe(0);
+    const ok = await daftarAkun('lain@example.com');
+    expect(ok.body.akun.email).toBe('lain@example.com');
   });
 
-  it('verifikasi butuh sandi saat mendaftar (tautan saja tidak cukup); kirim ulang 202', async () => {
-    await daftarApi(ev(post({ email: EMAIL, sandi: SANDI })));
-    const token = tokenDari(mailer.last(EMAIL, 'verifikasi')!.link);
-    const salah = await verifikasiApi(ev(post({ token, sandi: SANDI2 })));
-    expect([salah.status, (await salah.json()).kode]).toEqual([401, 'KREDENSIAL_SALAH']);
-    const tanpa = await verifikasiApi(ev(post({ token })));
-    expect(tanpa.status).toBe(422);
-    expect((await kirimUlangApi(ev(post({ email: EMAIL })))).status).toBe(202);
-    expect(mailer.sent.filter((m) => m.jenis === 'verifikasi')).toHaveLength(2);
-    // tautan lama tidak berlaku lagi setelah kirim ulang; yang terbaru berlaku
-    expect((await verifikasiApi(ev(post({ token, sandi: SANDI })))).status).toBe(400);
-    const baru = tokenDari(mailer.last(EMAIL, 'verifikasi')!.link);
-    expect((await verifikasiApi(ev(post({ token: baru, sandi: SANDI })))).status).toBe(200);
+  it('email ganda: API 409 EMAIL_SUDAH_TERDAFTAR tanpa sesi; form action fail 409 dengan kode; akun lama utuh', async () => {
+    const pertama = await daftarAkun();
+    const id = akunDari(pertama.jar).id;
+    const jar = new Jar();
+    const r = await daftarApi(ev(post({ email: EMAIL, sandi: SANDI2 }, '/api/akun/daftar'), { jar }));
+    const b = (await r.json()) as any;
+    expect([r.status, b.kode]).toEqual([409, 'EMAIL_SUDAH_TERDAFTAR']);
+    expect(GalatApiSchema.parse(b).pesanWarga).toBe('Email ini sudah terdaftar. Silakan masuk.');
+    expect(JSON.stringify(b)).not.toContain(SANDI2);
+    expect(r.headers.get('set-cookie')).toBeNull();
+    expect(jar.get(AKUN_COOKIE)).toBeUndefined();
+
+    const halaman = (await daftarPage.default(
+      ev(form({ email: EMAIL, sandi: SANDI2 }, '/daftar'), { jar }),
+    )) as any;
+    expect(halaman).toMatchObject({
+      status: 409,
+      data: { kode: 'EMAIL_SUDAH_TERDAFTAR', email: EMAIL },
+    });
+    expect(JSON.stringify(halaman.data)).not.toContain(SANDI2);
+    expect(jar.get(AKUN_COOKIE)).toBeUndefined();
+
+    // Akun lama tidak berubah: sesinya tetap, sandi lama berlaku, sandi penyerang tidak.
+    expect(hitung('SELECT COUNT(*) n FROM users')).toBe(1);
+    expect(hitung('SELECT COUNT(*) n FROM auth_sessions')).toBe(1);
+    expect(rt.akun.sesi(pertama.jar.get(AKUN_COOKIE))?.akun.id).toBe(id);
+    expect((await masuk(new Jar(), EMAIL, SANDI2)).res.status).toBe(401);
+    expect((await masuk(new Jar(), EMAIL, SANDI)).res.status).toBe(200);
   });
 
-  it('email tertunda (kuota penyedia habis): 202 jujur dengan tertunda=true, status email ikut di /api/akun', async () => {
+  it('daftar tidak mengirim email: penyedia email gagal tidak menghalangi akun (API dan form action)', async () => {
     mailer.gagal = true;
-    const r = await daftarApi(ev(post({ email: EMAIL, sandi: SANDI })));
-    expect([r.status, await r.json()]).toEqual([202, { terkirim: true, tertunda: true }]);
+    const { body } = await daftarAkun();
+    expect(body.akun).toMatchObject({ email: EMAIL, sinkron: true });
+    const jar = new Jar();
+    const r = await caught(daftarPage.default(ev(form({ email: 'b@example.com', sandi: SANDI }), { jar })));
+    expect(isRedirect(r) && r.location).toBe('/beranda');
+    expect(akunDari(jar).email).toBe('b@example.com');
+    expect(mailer.sent).toHaveLength(0);
     const s = SesiAkunResponseSchema.parse(
       await (await lewatHook(get('/api/akun'), new Jar(), sesiAkun)).json(),
     );
-    expect(s.email.tertunda).toBe(true);
-    const page = (await daftarPage.default(ev(form({ email: 'b@example.com', sandi: SANDI })))) as any;
-    expect(page).toEqual({ terkirim: true, tertunda: true, email: 'b@example.com' });
+    expect(s.email.tertunda).toBe(false);
   });
 });
 
 describe('produksi tanpa auth.env: email ditahan, Google tersembunyi, app tetap jalan', () => {
-  it('daftar 202 tertunda, masuk tanpa verifikasi seperti tamu, tombol Google tidak tampil', async () => {
+  it('daftar langsung jadi akun sinkron, tombol Google tidak tampil, lupa sandi nonaktif dengan jujur', async () => {
     buatRt({ mailer: new DevMailer(() => undefined, undefined, true), google: null });
     const s = SesiAkunResponseSchema.parse(
       await (await lewatHook(get('/api/akun'), new Jar(), sesiAkun)).json(),
     );
     expect([s.metode.google, s.email]).toEqual([false, { mode: 'log', tertunda: true }]);
     expect(((await masukLoad(ev(get('/masuk')) as never)) as any).googleAktif).toBe(false);
-    const r = await daftarApi(ev(post({ email: EMAIL, sandi: SANDI })));
-    expect([r.status, await r.json()]).toEqual([202, { terkirim: true, tertunda: true }]);
+    const d = await daftarAkun();
+    expect(d.body.akun).toMatchObject({ jenis: 'akun', sinkron: true });
     const { res, body } = await masuk();
     expect(res.status).toBe(200);
-    expect(body.akun).toMatchObject({ emailTerverifikasi: false, sinkron: false });
+    expect(body.akun).toMatchObject({ sinkron: true });
+
+    // Lupa sandi: tautan tidak akan pernah sampai → 503 ATUR_ULANG_NONAKTIF (API, form action), load tersedia:false.
+    expect(await lupaLoad(ev(get('/lupa-sandi')) as never)).toEqual({ tersedia: false, googleAktif: false });
+    const api = await lupaApi(ev(post({ email: EMAIL })));
+    const ab = (await api.json()) as any;
+    expect([api.status, ab.kode]).toEqual([503, 'ATUR_ULANG_NONAKTIF']);
+    expect(GalatApiSchema.parse(ab)).toBeTruthy();
+    expect(await lupaPage.default(ev(form({ email: EMAIL }, '/lupa-sandi')))).toMatchObject({
+      status: 503,
+      data: { kode: 'ATUR_ULANG_NONAKTIF', email: EMAIL },
+    });
+    expect(hitung('SELECT COUNT(*) n FROM email_tokens')).toBe(0);
   });
 });
 
-describe('akun belum terverifikasi = tamu (tidak sinkron)', () => {
-  it('boleh masuk, tetapi vault tetap di perangkat ini; setelah verifikasi data pindah ke akun', async () => {
-    await daftarApi(ev(post({ email: EMAIL, sandi: SANDI })));
-    const { res, jar, body } = await masuk();
-    expect(res.status).toBe(200);
-    expect(body.akun).toMatchObject({ emailTerverifikasi: false, sinkron: false });
-    expect(body.urusanDipindahkan).toBe(0);
-    await lewatHook(put({ namaLengkap: 'Warga Uji' }), jar, dataDiriPut);
-    const v = VaultResponseSchema.parse(await (await lewatHook(vget('/api/vault'), jar, vaultList)).json());
-    expect([v.pemilik, v.sinkron, v.dataDiri.ada]).toEqual(['tamu', false, true]);
-    const id = akunDari(jar).id;
-    expect(rt.akun.vault.getDataDiri(id)).toBeNull();
-    // perangkat lain tidak melihat Data Diri
-    const lain = await masuk();
-    const g = await (await lewatHook(vget('/api/vault/data-diri'), lain.jar, dataDiriGet)).json();
-    expect(g.dataDiri).toEqual({});
+describe('daftar memindahkan data tamu ke akun baru', () => {
+  it('API: urusan + vault tamu pindah ke akun dalam satu langkah; sid diputar; perangkat lain melihatnya', async () => {
+    const sidTamu = 'a'.repeat(32);
+    const jar = new Jar({ [SID_COOKIE]: sidTamu });
+    const buat = async () =>
+      ((await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any).id as string;
+    const u1 = await buat();
+    const u2 = await buat();
+    expect((await lewatHook(put({ namaLengkap: 'Tamu Uji' }), jar, dataDiriPut)).status).toBe(200);
+    expect(hitung("SELECT COUNT(*) n FROM users WHERE jenis = 'tamu'")).toBe(1);
 
-    await verifikasiApi(ev(post({ token: tokenDari(mailer.last(EMAIL, 'verifikasi')!.link), sandi: SANDI })));
-    expect(rt.akun.sesi(jar.get(AKUN_COOKIE))).toBeNull(); // sesi dicabut saat verifikasi
-    const lagi = await masuk(jar);
-    expect(lagi.body).toMatchObject({ vaultDipindahkan: true, akun: { sinkron: true, profilLengkap: true } });
-    expect(rt.akun.vault.getDataDiri(id)?.data).toEqual({ namaLengkap: 'Warga Uji' });
+    const { body } = await daftarAkun(EMAIL, SANDI, jar);
+    expect([body.urusanDipindahkan, body.vaultDipindahkan]).toEqual([2, true]);
+    expect(body.akun).toMatchObject({ sinkron: true, profilLengkap: true });
+    expect(jar.get(SID_COOKIE)).not.toBe(sidTamu);
+    const id = akunDari(jar).id;
+    expect(rt.akun.urusanMilik(id).sort()).toEqual([u1, u2].sort());
+    expect(rt.akun.vault.getDataDiri(id)?.data).toEqual({ namaLengkap: 'Tamu Uji' });
     expect(hitung("SELECT COUNT(*) n FROM users WHERE jenis = 'tamu'")).toBe(0);
+    const v = VaultResponseSchema.parse(await (await lewatHook(vget('/api/vault'), jar, vaultList)).json());
+    expect([v.pemilik, v.sinkron, v.dataDiri.ada]).toEqual(['akun', true, true]);
+
+    // Perangkat lain (masuk dengan sandi): urusan dan Data Diri ikut akun.
+    const laptop = await masuk();
+    const daftar = await (await lewatHook(get('/api/akun/urusan'), laptop.jar, urusanAkun)).json();
+    expect(daftar.urusan.map((u: any) => u.id).sort()).toEqual([u1, u2].sort());
+    const g = await (await lewatHook(vget('/api/vault/data-diri'), laptop.jar, dataDiriGet)).json();
+    expect(g.dataDiri).toEqual({ namaLengkap: 'Tamu Uji' });
+    // Cookie tamu lama tidak lagi memiliki apa pun.
+    const bekas = new Jar({ [SID_COOKIE]: sidTamu });
+    const r = await lewatHook(new Request(`${ORIGIN}/api/urusan/${u1}`), bekas, statusUrusan, { id: u1 });
+    expect(r.status).toBe(404);
+  });
+
+  it('form action: data tamu pindah, lalu ke /beranda dengan sesi akun', async () => {
+    const jar = new Jar({ [SID_COOKIE]: 'b'.repeat(32) });
+    const { id } = (await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any;
+    await lewatHook(put({ namaLengkap: 'Tamu Form' }), jar, dataDiriPut);
+    const r = await caught(daftarPage.default(ev(form({ email: EMAIL, sandi: SANDI }, '/daftar'), { jar })));
+    expect(isRedirect(r) && [r.status, r.location]).toEqual([303, '/beranda']);
+    const akun = akunDari(jar);
+    expect(rt.akun.urusanMilik(akun.id)).toEqual([id]);
+    expect(rt.akun.vault.getDataDiri(akun.id)?.data).toEqual({ namaLengkap: 'Tamu Form' });
+    const s = SesiAkunResponseSchema.parse(await (await lewatHook(get('/api/akun'), jar, sesiAkun)).json());
+    expect(s.masuk && [s.akun.email, s.akun.sinkron, s.akun.profilLengkap]).toEqual([EMAIL, true, true]);
+  });
+});
+
+describe('Browser Pendamping: akun hasil daftar = portal asli; tamu dan juri = Mode Uji', () => {
+  /** Request seperti dari peramban: semua cookie jar di header Cookie. */
+  const permintaan = (jar: Jar) =>
+    new Request(`${ORIGIN}/x`, {
+      headers: {
+        cookie: jar
+          .getAll()
+          .map((c) => `${c.name}=${c.value}`)
+          .join('; '),
+      },
+    });
+  const urusanBaru = async (jar: Jar) => {
+    const { id } = (await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any;
+    return rt.store.getUrusan(id)!;
+  };
+
+  it('daftar lewat API dan form action → urusan akun itu bukan Mode Uji', async () => {
+    const api = await daftarAkun();
+    const sesi = SesiAkunResponseSchema.parse(
+      await (await lewatHook(get('/api/akun'), api.jar, sesiAkun)).json(),
+    );
+    expect(sesi.masuk && sesi.akun.sinkron).toBe(true);
+    const uApi = await urusanBaru(api.jar);
+    expect(rt.akun.urusanMilik(akunDari(api.jar).id)).toEqual([uApi.id]);
+    expect(await modeUjiPendamping(permintaan(api.jar), uApi)).toBe(false);
+
+    const jar = new Jar();
+    await caught(daftarPage.default(ev(form({ email: 'form@example.com', sandi: SANDI }), { jar })));
+    const uForm = await urusanBaru(jar);
+    expect(await modeUjiPendamping(permintaan(jar), uForm)).toBe(false);
+    // Akun lain yang masuk tidak bisa memakai urusan itu sebagai portal asli.
+    expect(await modeUjiPendamping(permintaan(api.jar), uForm)).toBe(true);
+  });
+
+  it('urusan tamu yang dibawa saat daftar ikut jadi portal asli', async () => {
+    const jar = new Jar({ [SID_COOKIE]: 'c'.repeat(32) });
+    const u = await urusanBaru(jar);
+    expect(await modeUjiPendamping(permintaan(jar), u)).toBe(true);
+    await daftarAkun(EMAIL, SANDI, jar);
+    expect(await modeUjiPendamping(permintaan(jar), u)).toBe(false);
+  });
+
+  it('tamu tanpa akun dan salinan demo juri tetap Mode Uji', async () => {
+    const tamu = new Jar();
+    const uTamu = await urusanBaru(tamu);
+    await lewatHook(put({ namaLengkap: 'Tamu' }), tamu, dataDiriPut);
+    expect(await modeUjiPendamping(permintaan(tamu), uTamu)).toBe(true);
+    const { jar } = await masukJuri();
+    const uJuri = await urusanBaru(jar);
+    expect(akunDari(jar).jenis).toBe('demo');
+    expect(await modeUjiPendamping(permintaan(jar), uJuri)).toBe(true);
   });
 });
 
 describe('keamanan', () => {
-  it('enumerasi: daftar/lupa/kirim-ulang memberi status dan body identik untuk email ada dan tidak ada', async () => {
-    await daftarVerifikasi();
-    const pasangan = [
-      [
-        () => daftarApi(ev(post({ email: EMAIL, sandi: SANDI2 }))),
-        () => daftarApi(ev(post({ email: 'baru@example.com', sandi: SANDI2 }))),
-      ],
-      [() => lupaApi(ev(post({ email: EMAIL }))), () => lupaApi(ev(post({ email: 'tidakada@example.com' })))],
-      [
-        () => kirimUlangApi(ev(post({ email: EMAIL }))),
-        () => kirimUlangApi(ev(post({ email: 'tidakada2@example.com' }))),
-      ],
-    ] as const;
-    for (const [ada, tidak] of pasangan) {
-      const a = await ada();
-      const b = await tidak();
-      expect(a.status).toBe(b.status);
-      expect(await a.text()).toBe(await b.text());
-    }
+  it('enumerasi: lupa sandi dan masuk memberi status dan body identik untuk email ada dan tidak ada', async () => {
+    await daftarAkun();
+    const a = await lupaApi(ev(post({ email: EMAIL })));
+    const b = await lupaApi(ev(post({ email: 'tidakada@example.com' })));
+    expect(a.status).toBe(b.status);
+    expect(await a.text()).toBe(await b.text());
     const salahSandi = await masuk(new Jar(), EMAIL, SANDI2);
     const tidakAda = await masuk(new Jar(), 'hantu@example.com', SANDI2);
     expect([salahSandi.res.status, salahSandi.body]).toEqual([tidakAda.res.status, tidakAda.body]);
   });
 
   it('penguncian: Turnstile wajib setelah 3 gagal, terkunci 15 menit setelah 5; pesan sama untuk email ada/tidak', async () => {
-    await daftarVerifikasi();
+    await daftarAkun();
     // Dua email berjalan bersamaan (hash argon2 boleh 2 serentak): penghitung kegagalan per email, jadi
     // urutan di dalam satu email tetap; waktu tes kira-kira separuh.
     const uji = async (email: string) => {
@@ -386,20 +491,17 @@ describe('keamanan', () => {
     expect((await masuk()).res.status).toBe(200);
   });
 
-  it('token sekali pakai: verifikasi dan reset tidak bisa dipakai ulang', async () => {
-    await daftarApi(ev(post({ email: EMAIL, sandi: SANDI })));
-    const v = tokenDari(mailer.last(EMAIL, 'verifikasi')!.link);
-    expect((await verifikasiApi(ev(post({ token: v, sandi: SANDI })))).status).toBe(200);
-    const ulang = await verifikasiApi(ev(post({ token: v, sandi: SANDI })));
-    expect([ulang.status, (await ulang.json()).kode]).toEqual([400, 'TOKEN_TIDAK_VALID']);
+  it('token sekali pakai: tautan atur ulang tidak bisa dipakai ulang', async () => {
+    await daftarAkun();
     await lupaApi(ev(post({ email: EMAIL })));
     const r = tokenDari(mailer.last(EMAIL, 'atur-ulang')!.link);
     expect((await aturUlangApi(ev(post({ token: r, sandi: SANDI2 })))).status).toBe(200);
-    expect((await aturUlangApi(ev(post({ token: r, sandi: SANDI })))).status).toBe(400);
+    const ulang = await aturUlangApi(ev(post({ token: r, sandi: SANDI })));
+    expect([ulang.status, (await ulang.json()).kode]).toEqual([400, 'TOKEN_TIDAK_VALID']);
   });
 
   it('CSRF: POST akun (API dan form action) dengan Origin asing/tanpa Origin ditolak 403 oleh hook', async () => {
-    await daftarVerifikasi();
+    await daftarAkun();
     let dipanggil = false;
     const tandai = () => {
       dipanggil = true;
@@ -422,7 +524,7 @@ describe('keamanan', () => {
   });
 
   it('fiksasi sesi: cookie tanam tidak pernah jadi sesi; login merotasi token sesi DAN urusin_sid', async () => {
-    await daftarVerifikasi();
+    await daftarAkun();
     const tanam = 'B'.repeat(43);
     const sidTanam = 'c'.repeat(32);
     const jar = new Jar({ [AKUN_COOKIE]: tanam, [SID_COOKIE]: sidTanam });
@@ -437,7 +539,7 @@ describe('keamanan', () => {
   });
 
   it('open redirect: next= asing diganti "/" di API, form masuk, halaman masuk, dan Google', async () => {
-    await daftarVerifikasi();
+    await daftarAkun();
     for (const next of [
       '//evil.example.com',
       'https://evil.example.com',
@@ -472,8 +574,7 @@ describe('keamanan', () => {
 
 describe('keluar, ubah sandi, reset, hapus akun', () => {
   it('keluar (perangkat ini) dan keluar dari semua perangkat', async () => {
-    await daftarVerifikasi();
-    const a = await masuk();
+    const a = await daftarAkun(); // sesi dari daftar = perangkat pertama
     const b = await masuk();
     const sidSebelum = a.jar.get(SID_COOKIE);
     expect(sidSebelum).toMatch(/^[0-9a-f]{32}$/);
@@ -507,7 +608,7 @@ describe('keluar, ubah sandi, reset, hapus akun', () => {
     expect(b.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
 
     // Aksi Pengaturan hanya untuk akun warga: satu akun bersandi untuk keduanya.
-    await daftarVerifikasi();
+    await daftarAkun();
     const c = await masuk();
     c.jar.set(TERAKHIR_COOKIE, terakhir, {});
     await caught(
@@ -536,10 +637,8 @@ describe('keluar, ubah sandi, reset, hapus akun', () => {
     expect(e.jar.get(TERAKHIR_COOKIE)).toBeUndefined();
   });
 
-  it('akun belum terverifikasi: buat urusan → keluar → masuk lagi → urusan tetap terbuka; pemilik lain 404', async () => {
-    expect((await daftarApi(ev(post({ email: EMAIL, sandi: SANDI })))).status).toBe(202);
-    const a = await masuk();
-    expect(akunDari(a.jar).emailVerifiedAt).toBeNull();
+  it('akun hasil daftar: buat urusan → keluar → masuk lagi → urusan tetap terbuka; pemilik lain 404', async () => {
+    const a = await daftarAkun();
     const { id } = (await (await lewatHook(post({}, '/api/urusan'), a.jar, buatUrusan)).json()) as any;
     const buka = (jar: Jar) =>
       lewatHook(new Request(`${ORIGIN}/api/urusan/${id}`), jar, statusUrusan, { id }).then((r) => r.status);
@@ -568,7 +667,7 @@ describe('keluar, ubah sandi, reset, hapus akun', () => {
   });
 
   it('ubah sandi merotasi cookie; reset menghapus semua sesi', async () => {
-    await daftarVerifikasi();
+    await daftarAkun();
     const a = await masuk();
     const b = await masuk();
     const lama = a.jar.get(AKUN_COOKIE)!;
@@ -593,7 +692,7 @@ describe('keluar, ubah sandi, reset, hapus akun', () => {
   });
 
   it('hapus akun: wajib sandi + konfirmasi; data, vault, urusan hilang; cookie dihapus', async () => {
-    await daftarVerifikasi();
+    await daftarAkun();
     const a = await masuk();
     await lewatHook(put({ namaLengkap: 'Warga Uji' }), a.jar, dataDiriPut);
     const salah = await lewatHook(
@@ -616,7 +715,7 @@ describe('keluar, ubah sandi, reset, hapus akun', () => {
   it('zona bahaya (form action): keluar semua → /masuk; hapus akun butuh HAPUS + sandi, lalu ke /', async () => {
     const tamu = await caught(pengaturanPage.keluarSemua(ev(form({}, '/pengaturan?/keluarSemua'))));
     expect(isRedirect(tamu) && tamu.location).toBe('/masuk');
-    await daftarVerifikasi();
+    await daftarAkun();
     const a = await masuk();
     const b = await masuk();
     expect(
@@ -658,7 +757,7 @@ describe('keluar, ubah sandi, reset, hapus akun', () => {
 
 describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', () => {
   it('Data Diri terenkripsi: HP dan laptop (dua sesi) melihat data yang sama', async () => {
-    await daftarVerifikasi();
+    await daftarAkun();
     const hp = await masuk();
     const laptop = await masuk();
     const r = await lewatHook(
@@ -689,7 +788,7 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
   });
 
   it('baca vault hanya same-origin: tanpa Sec-Fetch-Site, lintas situs, atau Origin asing → 403', async () => {
-    await daftarVerifikasi();
+    await daftarAkun();
     const a = await masuk();
     await lewatHook(put({ namaLengkap: 'Warga Uji' }), a.jar, dataDiriPut);
     for (const h of [
@@ -711,7 +810,7 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
   });
 
   it('dokumen: unggah terenkripsi, unduh no-store, re-auth di perangkat baru, batas 9 MB/jenis/10 berkas', async () => {
-    await daftarVerifikasi();
+    await daftarAkun();
     const a = await masuk();
     const multipart = (berkas: Blob, jenis = 'ktp', judul = 'KTP saya') => {
       const fd = new FormData();
@@ -790,7 +889,7 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
 
   it('volume host penuh → 507 dengan pesan jujur', async () => {
     buatRt({ vault: { diskPersen: () => 90 } });
-    await daftarVerifikasi();
+    await daftarAkun();
     const a = await masuk();
     const fd = new FormData();
     fd.set('berkas', new Blob(['x'], { type: 'image/png' }), 'a.png');
@@ -832,7 +931,7 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
   });
 
   it('rotasi tamu → akun: urusan + vault tamu pindah ke akun dalam satu langkah; perangkat lain melihatnya', async () => {
-    await daftarVerifikasi();
+    await daftarAkun();
     const jar = new Jar({ [SID_COOKIE]: 'a'.repeat(32) });
     const buat = async () =>
       ((await (await lewatHook(post({}, '/api/urusan'), jar, buatUrusan)).json()) as any).id;
@@ -1015,14 +1114,18 @@ describe('Google OAuth lewat rute', () => {
     expect(b.location).toBe('/lengkapi-profil?next=%2Flacak');
   });
 
-  it('#48: email sama dengan akun sandi TERVERIFIKASI → tidak ditautkan otomatis; tertaut setelah bukti sandi', async () => {
-    await daftarVerifikasi();
+  it('#48: email sama dengan akun sandi → tidak ditautkan/diambil alih; tertaut setelah bukti sandi', async () => {
+    const pemilik = await daftarAkun();
+    const id = akunDari(pemilik.jar).id;
     const jar = new Jar();
     const g = await alurGoogle({ sub: 'g-sama', email: EMAIL, email_verified: true }, '/lacak', jar);
     expect(g.location).toBe('/masuk?galat=GOOGLE_PERLU_SANDI&next=%2Flacak');
     expect(jar.get(AKUN_COOKIE)).toBeUndefined();
-    expect(jar.get(TAUTKAN_COOKIE)).toBeTruthy();
+    expect(jar.store.get(TAUTKAN_COOKIE)!.opts).toMatchObject({ httpOnly: true, secure: true });
     expect(hitung('SELECT COUNT(*) n FROM oauth_identities')).toBe(0);
+    // Tidak ada pengambilalihan: sesi dan sandi pemilik tetap, tidak ada akun baru.
+    expect(rt.akun.sesi(pemilik.jar.get(AKUN_COOKIE))?.akun.id).toBe(id);
+    expect(hitung('SELECT COUNT(*) n FROM users')).toBe(1);
     const l = (await masukLoad(ev(get('/masuk?galat=GOOGLE_PERLU_SANDI'), { jar }) as never)) as any;
     expect([l.galat.kode, l.tautkan]).toEqual(['GOOGLE_PERLU_SANDI', true]);
     // sandi salah tidak menautkan
@@ -1030,24 +1133,36 @@ describe('Google OAuth lewat rute', () => {
     expect(hitung('SELECT COUNT(*) n FROM oauth_identities')).toBe(0);
     const { body } = await masuk(jar);
     expect(body.googleTertaut).toBe(true);
+    expect(body.akun).toMatchObject({ id, terhubungGoogle: true, punyaSandi: true });
     expect(jar.get(TAUTKAN_COOKIE)).toBeUndefined();
+    const s = SesiAkunResponseSchema.parse(await (await lewatHook(get('/api/akun'), jar, sesiAkun)).json());
+    expect(s.masuk && s.akun.terhubungGoogle).toBe(true);
     // berikutnya Google langsung masuk ke akun yang sama
     const lagi = await alurGoogle({ sub: 'g-sama', email: EMAIL, email_verified: true });
-    expect(akunDari(lagi.jar).id).toBe(akunDari(jar).id);
+    expect(akunDari(lagi.jar).id).toBe(id);
   });
 
-  it('review keamanan: menautkan hanya untuk akun terverifikasi dengan bukti kredensial <= 15 menit', async () => {
-    // akun belum terverifikasi: /auth/google bukan mode tautan (state tanpa user_id)
-    await daftarApi(ev(post({ email: 'pra@example.com', sandi: SANDI2 })));
-    const pra = await masuk(new Jar(), 'pra@example.com', SANDI2);
-    const sesiPra = rt.akun.sesi(pra.jar.get(AKUN_COOKIE))!;
-    await mulai(pra.jar, '/pengaturan', {
-      akun: sesiPra.akun,
-      akunSesi: { tokenHash: sesiPra.tokenHash, authAt: sesiPra.authAt, pernahUnduh: false },
+  it('akun Google saja: daftar dengan email itu → 409, akun Google tetap utuh', async () => {
+    const g = await alurGoogle({
+      sub: 'g-dulu',
+      email: 'gdulu@example.com',
+      email_verified: true,
+      name: 'G',
     });
-    expect(hitung('SELECT COUNT(*) n FROM oauth_states WHERE user_id IS NOT NULL')).toBe(0);
-    // akun terverifikasi dengan sesi > 15 menit: masuk ulang dulu, lalu kembali ke /auth/google
-    await daftarVerifikasi();
+    const id = akunDari(g.jar).id;
+    const r = await daftarApi(ev(post({ email: 'gdulu@example.com', sandi: SANDI })));
+    expect([r.status, ((await r.json()) as any).kode]).toEqual([409, 'EMAIL_SUDAH_TERDAFTAR']);
+    expect(akunDari(g.jar)).toMatchObject({ id, punyaSandi: false });
+    expect(rt.akun.terhubungGoogle(id)).toBe(true);
+  });
+
+  it('review keamanan: menautkan butuh bukti kredensial <= 15 menit (akun hasil daftar langsung boleh)', async () => {
+    // akun baru dari daftar (authAt = sekarang): /auth/google = mode tautan (state membawa user_id)
+    const baru = await daftarAkun('baru@example.com', SANDI2);
+    await mulai(baru.jar, '/pengaturan', localsDari(baru.jar));
+    expect(hitung('SELECT COUNT(*) n FROM oauth_states WHERE user_id IS NOT NULL')).toBe(1);
+    // sesi > 15 menit: masuk ulang dulu, lalu kembali ke /auth/google
+    await daftarAkun();
     const { jar } = await masuk(new Jar());
     const s = rt.akun.sesi(jar.get(AKUN_COOKIE))!;
     const basi = new Date(Date.now() - 20 * 60_000).toISOString();
@@ -1071,11 +1186,12 @@ describe('Google OAuth lewat rute', () => {
         }),
       ),
     );
-    expect(hitung('SELECT COUNT(*) n FROM oauth_states WHERE user_id IS NOT NULL')).toBe(0);
+    expect(hitung('SELECT COUNT(*) n FROM oauth_states WHERE user_id IS NOT NULL')).toBe(1);
+    expect(hitung('SELECT COUNT(*) n FROM oauth_states')).toBe(2);
   });
 
   it('review keamanan: lepas Google lewat API (akun bersandi saja)', async () => {
-    await daftarVerifikasi();
+    await daftarAkun();
     const { jar } = await masuk(new Jar());
     const s = rt.akun.sesi(jar.get(AKUN_COOKIE))!;
     const locals = {
@@ -1096,8 +1212,8 @@ describe('Google OAuth lewat rute', () => {
   });
 
   it('#48: tiket tautan tidak bisa dipakai akun lain', async () => {
-    await daftarVerifikasi();
-    await daftarVerifikasi('lain@example.com');
+    await daftarAkun();
+    await daftarAkun('lain@example.com');
     const jar = new Jar();
     await alurGoogle({ sub: 'g-x', email: EMAIL, email_verified: true }, '/', jar);
     const { body } = await masuk(jar, 'lain@example.com');
@@ -1105,23 +1221,8 @@ describe('Google OAuth lewat rute', () => {
     expect(hitung('SELECT COUNT(*) n FROM oauth_identities')).toBe(0);
   });
 
-  it('#48b: akun sandi BELUM terverifikasi tidak menghalangi pemilik email; Google mengambil alih akun', async () => {
-    // penyerang mendaftar lebih dulu dengan email korban, lalu masuk dan menulis data
-    await daftarApi(ev(post({ email: EMAIL, sandi: SANDI2 })));
-    const penyerang = await masuk(new Jar(), EMAIL, SANDI2);
-    expect(penyerang.res.status).toBe(200);
-    const korban = await alurGoogle({ sub: 'g-korban', email: EMAIL, email_verified: true, name: 'Korban' });
-    expect(korban.location).toBe('/lengkapi-profil?next=%2Flacak'); // akun lama: nama belum ada
-    expect(rt.akun.sesi(penyerang.jar.get(AKUN_COOKIE))).toBeNull(); // sesi penyerang dicabut
-    expect((await masuk(new Jar(), EMAIL, SANDI2)).res.status).toBe(401); // sandi penyerang dihapus
-    expect(akunDari(korban.jar)).toMatchObject({ email: EMAIL, punyaSandi: false });
-    // tautan verifikasi lama milik penyerang tidak berlaku lagi
-    const lama = tokenDari(mailer.last(EMAIL, 'verifikasi')!.link);
-    expect((await verifikasiApi(ev(post({ token: lama, sandi: SANDI2 })))).status).toBe(400);
-  });
-
   it('sedang masuk: Google DITAUTKAN ke akun itu (bukti = sesi); identitas milik akun lain ditolak', async () => {
-    await daftarVerifikasi();
+    await daftarAkun();
     const a = await masuk();
     const locals = localsDari(a.jar);
     const r = await alurGoogle(
@@ -1269,20 +1370,18 @@ describe('IdP OIDC tiruan (dev, URUSIN_OIDC_FIXTURE)', () => {
 });
 
 describe('form action halaman akun (App 15–20)', () => {
-  it('daftar → verifikasi (load tidak memakai token; POST + sandi) → masuk → lengkapi profil → tujuan', async () => {
-    const d = (await daftarPage.default(ev(form({ email: EMAIL, sandi: SANDI }))))!;
-    expect(d).toEqual({ terkirim: true, tertunda: false, email: EMAIL });
-    const token = tokenDari(mailer.last(EMAIL, 'verifikasi')!.link);
-    const l = (await verifLoad(ev(get(`/verifikasi-email?token=${token}`)) as never)) as any;
-    expect(l.tokenBerlaku).toBe(true);
-    expect(
-      ((await verifLoad(ev(get(`/verifikasi-email?token=${token}`)) as never)) as any).tokenBerlaku,
-    ).toBe(true);
-    const tanpaSandi = (await verifPage.pastikan(ev(form({ token })))) as any;
-    expect(tanpaSandi.data.kode).toBe('KREDENSIAL_SALAH');
-    expect(await verifPage.pastikan(ev(form({ token, sandi: SANDI })))).toEqual({ terverifikasi: true });
-    const lagi = (await verifPage.pastikan(ev(form({ token, sandi: SANDI })))) as any;
-    expect([lagi.status, lagi.data.kode]).toEqual([400, 'TOKEN_TIDAK_VALID']);
+  it('daftar (form) → sesi + /beranda → masuk → lengkapi profil → tujuan', async () => {
+    const dj = new Jar();
+    const d = await caught(
+      daftarPage.default(ev(form({ email: EMAIL, sandi: SANDI }, '/daftar'), { jar: dj })),
+    );
+    expect(isRedirect(d) && [d.status, d.location]).toEqual([303, '/beranda']);
+    expect(dj.store.get(AKUN_COOKIE)!.opts).toMatchObject({ httpOnly: true, secure: true, sameSite: 'lax' });
+    const sd = await (await lewatHook(get('/api/akun'), dj, sesiAkun)).json();
+    expect(sd.akun).not.toHaveProperty('emailTerverifikasi');
+    const s = SesiAkunResponseSchema.parse(sd);
+    expect(s.masuk && [s.akun.jenis, s.akun.email, s.akun.sinkron]).toEqual(['akun', EMAIL, true]);
+    expect(mailer.sent).toHaveLength(0);
 
     const jar = new Jar();
     const m = await caught(
@@ -1306,11 +1405,23 @@ describe('form action halaman akun (App 15–20)', () => {
     expect(isRedirect(tamu) && tamu.location).toContain('/masuk?next=');
   });
 
+  it('/verifikasi-email (tautan lama di kotak surat) → 303 ke /masuk, atau /beranda bila sudah masuk', async () => {
+    // Handler sinkron: redirect dilempar langsung, jadi dibungkus agar tertangkap `caught`.
+    const buka = async (e: never) => verifikasiEmailLama(e);
+    const anon = await caught(buka(ev(get(`/verifikasi-email?token=${'x'.repeat(43)}`))));
+    expect(isRedirect(anon) && [anon.status, anon.location]).toEqual([303, '/masuk']);
+    const { jar } = await daftarAkun();
+    const masukLama = await caught(
+      buka(ev(get('/verifikasi-email?token=x'), { jar, locals: localsDari(jar) })),
+    );
+    expect(isRedirect(masukLama) && [masukLama.status, masukLama.location]).toEqual([303, '/beranda']);
+  });
+
   it('masuk gagal → fail dengan kode, email dikembalikan, sandi tidak', async () => {
     const r = (await masukPage.masuk(ev(form({ email: EMAIL, sandi: SANDI })))) as any;
     expect([r.status, r.data.kode, r.data.email]).toEqual([401, 'KREDENSIAL_SALAH', EMAIL]);
     expect(JSON.stringify(r.data)).not.toContain(SANDI);
-    await daftarVerifikasi();
+    await daftarAkun();
     const jar = new Jar();
     await masuk(jar);
     const sudah = await caught(
@@ -1327,8 +1438,9 @@ describe('form action halaman akun (App 15–20)', () => {
     expect([luar.next, luar.ulang]).toEqual(['/', null]);
   });
 
-  it('lupa → atur ulang lewat halaman; kirim ulang verifikasi lewat halaman', async () => {
-    await daftarVerifikasi();
+  it('lupa → atur ulang lewat halaman; daftar dengan email rusak → fail', async () => {
+    expect(await lupaLoad(ev(get('/lupa-sandi')) as never)).toEqual({ tersedia: true, googleAktif: true });
+    await daftarAkun();
     expect(await lupaPage.default(ev(form({ email: EMAIL })))).toEqual({
       terkirim: true,
       tertunda: false,
@@ -1351,12 +1463,6 @@ describe('form action halaman akun (App 15–20)', () => {
     ).toBe(false);
     expect((await masuk(new Jar(), EMAIL, SANDI2)).res.status).toBe(200);
 
-    await daftarPage.default(ev(form({ email: 'baru@example.com', sandi: SANDI })));
-    expect(await verifPage.kirimUlang(ev(form({ email: 'baru@example.com' })))).toEqual({
-      terkirim: true,
-      tertunda: false,
-      email: 'baru@example.com',
-    });
     const salah = (await daftarPage.default(ev(form({ email: 'bukan', sandi: SANDI })))) as any;
     expect(salah.data.kode).toBe('EMAIL_TIDAK_VALID');
   });

@@ -32,7 +32,7 @@ import {
   type IngatanTurn,
   type PenyimpanIngatan,
 } from './ingatan.js';
-import { classifyIntent, klasifikasiKataKunci } from './intent.js';
+import { alasanBukanJalurCepat, classifyIntent, klasifikasiKataKunci } from './intent.js';
 import { PiiInterceptor } from './pii.js';
 import { PolicyGate } from './policy.js';
 import { buildStateNote, buildSystemPrompt, mintaPemalsuan } from './prompt.js';
@@ -558,7 +558,13 @@ class TurnRunner {
     const w = wilayahUrusan(this.store, u);
     if (wilayahBelumSiap(u.jenis, w)) return false;
     const teks = this.teksWarga;
-    if (mintaPemalsuan(teks) || /\{\{[A-Z]+\d*\.[A-Z_]+\}\}/.test(teks) || /\bstatus\b/i.test(teks))
+    // Saringan positif: hanya permintaan syarat/cara mengurus SATU urusan, tanpa penanda risiko (dituakan, orang
+    // dalam, calo, ...), tanpa tindak lanjut pengajuan lama, tanpa negasi. Selebihnya model menanggapi lebih dulu.
+    if (
+      mintaPemalsuan(teks) ||
+      /\{\{[A-Z]+\d*\.[A-Z_]+\}\}/.test(teks) ||
+      alasanBukanJalurCepat(teks, u.jenis) !== null
+    )
       return false;
     if (this.store.loadHistory(this.turn.urusanId, 1).length > 0) return false;
     const ada = new Set(this.deps.registry.forState(u.state).map((t) => t.name));
@@ -599,8 +605,11 @@ class TurnRunner {
     }
     const j = await this.jawabDanRencana(teks.slice(0, 500), 'call_jawab_cepat');
     if (j.rencana) return true;
-    if (!j.end || j.dipaksa) await this.toolLoop();
-    else if (j.answer && this.perluRencana()) await this.toolLoop(true);
+    // Rencana paralel sudah dicoba: loop berikutnya tidak memaksanya lagi. Hand-off/rencana belum ada: rencana
+    // berurutan dengan hasil jawaban di konteks.
+    if (j.dipaksa) await this.toolLoop('sudah');
+    else if (!j.end) await this.toolLoop();
+    else if (j.answer && this.perluRencana()) await this.toolLoop('paksa');
     return true;
   }
 
@@ -644,7 +653,9 @@ class TurnRunner {
       { role: 'tool', tool_call_id: id, content: r.content },
     );
     const hasil = { end: r.end, answer: r.answer === true, rencana: false, dipaksa: false };
-    if (!rencana || !r.end || !hasil.answer || !this.perluRencana()) {
+    // Hand-off (tanpa jawaban bersumber): rencana paralel yang disusun dari potongan dibatalkan; rencana disusun
+    // berurutan dengan hasil hand-off di konteks (lihat pemanggil).
+    if (!rencana || !r.end || !hasil.answer || r.handoff || !this.perluRencana()) {
       await hentikan();
       return hasil;
     }
@@ -823,10 +834,13 @@ class TurnRunner {
     return !wilayahBelumSiap(u.jenis, w) && kartuRencana(u.jenis, w) === undefined;
   }
 
-  /** `paksaAwal`: langkah pertama langsung meminta rencana (jawaban sudah tampil, lihat `jalurCepat`). */
-  private async toolLoop(paksaAwal = false): Promise<void> {
-    let paksaRencana = paksaAwal;
-    let rencanaDipaksa = paksaAwal;
+  /**
+   * `rencana`: `paksa` = langkah pertama langsung meminta rencana (jawaban sudah tampil, lihat `jalurCepat`);
+   * `sudah` = rencana sudah dipaksa sekali di giliran ini (paralel), tidak dipaksa lagi.
+   */
+  private async toolLoop(rencana: 'biasa' | 'paksa' | 'sudah' = 'biasa'): Promise<void> {
+    let paksaRencana = rencana === 'paksa';
+    let rencanaDipaksa = rencana !== 'biasa';
     for (let step = 0; step < this.cfg.maxSteps; step++) {
       const q = this.quotaStatus();
       if (q.mode === 'habis') return this.quotaStop(q);
@@ -984,7 +998,7 @@ class TurnRunner {
   private async handleToolCall(
     rawName: string,
     argsJson: string,
-  ): Promise<{ content: string; end: boolean; answer?: boolean }> {
+  ): Promise<{ content: string; end: boolean; answer?: boolean; handoff?: boolean }> {
     // Nama tool datang dari model: jangan pernah dicatat/dipantulkan mentah (bisa memuat PII atau berukuran besar).
     const name = safeToolName(rawName);
     if (name === INGAT_TOOL && this.kontenTakTepercaya) {
@@ -1135,6 +1149,7 @@ class TurnRunner {
         content: res.terbungkus ? res.content : clip(res.content),
         end: res.endTurn === true,
         answer: tool.effect === 'answer',
+        handoff: res.handoff === true || (res.events ?? []).some((e) => e.type === 'handoff'),
       };
     } catch (e) {
       // Tindakan tidak sampai ke warga: konfirmasi tidak boleh hangus.

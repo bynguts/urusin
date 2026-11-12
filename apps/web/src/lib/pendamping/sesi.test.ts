@@ -1,6 +1,6 @@
 import type { SesiPendamping } from '@urusin/contracts';
 import { describe, expect, it, vi } from 'vitest';
-import { PANTAU_AI_MS, SesiPendampingUi } from './sesi.svelte.js';
+import { keadaanDariSesi, PANTAU_AI_MS, PESAN_TERPUTUS_AKHIR, SesiPendampingUi } from './sesi.svelte.js';
 
 const sesi = (extra: Partial<SesiPendamping> = {}): SesiPendamping => ({
   sesiId: '00000000-0000-4000-8000-000000000001',
@@ -171,5 +171,61 @@ describe('SesiPendampingUi: setelah Kirim, teks jujur soal peramban', () => {
       'DELETE /api/urusan/u/pendamping',
     ]);
     expect([ui.data.keadaan, ui.data.mode]).toEqual(['selesai', 'done']);
+  });
+});
+
+describe('SesiPendampingUi: portal tampil dulu, baru izin isi (QA prod)', () => {
+  it('menunggu_data sebelum bingkai pertama = Menyiapkan; bingkai portal tergambar = situs terlihat', async () => {
+    const { ui, kirim } = await tersambung((url, init) =>
+      url.endsWith('/tiket')
+        ? Response.json({ wsUrl: 'ws://x/s', tiket: 't' })
+        : Response.json(sesi({ status: 'memulai', mode: null }), { status: init?.method ? 201 : 200 }),
+    );
+    kirim('status', sesi({ status: 'menunggu_data', mode: null }));
+    kirim('butuh_data', { placeholder: ['{{PEMOHON.HP}}'], berkas: [], origin: 'https://x.go.id' });
+    expect(ui.data).toMatchObject({ keadaan: 'menyiapkan', tayang: false });
+    expect(ui.data.butuhData).not.toBeNull();
+    kirim('frame', { lebar: 390, tinggi: 844, skala: 1, offsetAtas: 0, scrollX: 0, scrollY: 0 });
+    expect(ui.data).toMatchObject({ keadaan: 'ai', tayang: true });
+    // Status berikutnya (mis. sambung ulang) tidak kembali menutupi portal.
+    kirim('status', sesi({ status: 'menunggu_data', mode: null }));
+    expect(ui.data.keadaan).toBe('ai');
+  });
+
+  it('tiket gagal karena sesi sudah berakhir: pesan akhir server tampil, bukan Menyiapkan selamanya', async () => {
+    const pesan =
+      'Halaman x.go.id tidak bisa dibuka: situs tidak menjawab tepat waktu. Lanjutkan lewat panduan.';
+    const { ui } = await tersambung((url, init) =>
+      url.endsWith('/tiket')
+        ? new Response('{}', { status: 404 })
+        : init?.method === 'POST'
+          ? Response.json(sesi({ status: 'memulai', mode: null }), { status: 201 })
+          : Response.json(sesi({ status: 'gagal', mode: 'done', hasil: 'gagal', pesan })),
+    );
+    expect(ui.data).toMatchObject({ keadaan: 'galat', pesan });
+  });
+});
+
+describe('SesiPendampingUi: sesi hilang di tengah jalan bukan jalan buntu', () => {
+  it('koneksi viewer selesai tanpa mode done saat AI/giliran berjalan = berakhir dengan alasan jujur', async () => {
+    const { ui, kirim } = await tersambung(jawabBawaan);
+    kirim('mode', { mode: 'ai' });
+    expect(ui.data.keadaan).toBe('ai');
+    kirim('koneksi', 'putus');
+    expect(ui.data.keadaan).toBe('terputus');
+    kirim('koneksi', 'selesai');
+    expect(ui.data).toMatchObject({ keadaan: 'berakhir', giliran: null, pesan: PESAN_TERPUTUS_AKHIR });
+  });
+
+  it('penutupan sungguhan (selesai + mode done) tetap selesai, bukan berakhir', async () => {
+    const { ui, kirim } = await tersambung(jawabBawaan);
+    kirim('event', { jenis: 'selesai', hasil: 'berhasil', pesan: 'Terkirim.' });
+    kirim('mode', { mode: 'done' });
+    kirim('koneksi', 'selesai');
+    expect(ui.data.keadaan).toBe('selesai');
+  });
+
+  it('status dibatalkan dari server = berakhir (layar tetap tampil), bukan mati/hilang', () => {
+    expect(keadaanDariSesi({ status: 'dibatalkan', mode: 'takeover' }, false)).toBe('berakhir');
   });
 });

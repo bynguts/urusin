@@ -1,12 +1,14 @@
 <script lang="ts">
   import type { EventOf } from '#lib/contracts.js';
+  import { resolve } from '$app/paths';
   import Icon from '../Icon.svelte';
   import { domain } from '#lib/urusan-status.js';
   import { barisKonfirmasi } from './linimasa.js';
 
   /**
    * Konfirmasi sebelum AI bekerja (App 05): situs + instansi tujuan, ringkasan isian tersamar, peringatan
-   * bahwa tombol Kirim tetap milik warga, lalu Batalkan / Setujui dan buka situs.
+   * bahwa tombol Kirim tetap milik warga, lalu Batalkan / Setujui dan buka situs. `perluMasuk` (tamu di portal
+   * tanpa situs latihan): tombol Setujui diganti ajakan masuk/daftar yang kembali ke urusan ini.
    */
   let {
     gate,
@@ -15,6 +17,7 @@
     aktif,
     status = 'menunggu',
     pesanGalat,
+    perluMasuk,
     onsetujui,
     onbatal,
   }: {
@@ -25,6 +28,8 @@
     aktif: boolean;
     status?: 'menunggu' | 'mengirim' | 'disetujui';
     pesanGalat?: string | undefined;
+    /** Path urusan ini bila tamu perlu akun untuk membuka portal asli (daftar lalu kembali ke sini). */
+    perluMasuk?: string | undefined;
     onsetujui: () => void;
     onbatal: () => void;
   } = $props();
@@ -84,7 +89,27 @@
     <p role="alert" class="px-4 pt-3 text-[15px] font-medium text-galat">{pesanGalat}</p>
   {/if}
 
-  {#if aktif && status !== 'disetujui'}
+  {#if aktif && perluMasuk}
+    <div data-perlu-masuk class="px-4 pt-3 pb-3.5">
+      <p class="text-[15px] leading-[22px] text-body">
+        Untuk membuka situs resmi ini bersama AI, masuk atau daftar dulu. Tanpa verifikasi email; urusan dan
+        rencana ini ikut pindah ke akun Anda.
+      </p>
+      <div class="mt-3 flex flex-wrap items-center gap-2.5">
+        <button
+          type="button"
+          onclick={onbatal}
+          class="inline-flex h-[46px] items-center rounded-full border border-line-2 bg-surface px-5 text-base leading-6 text-ink hover:bg-card"
+          >Batalkan</button
+        >
+        <a
+          href="{resolve('/daftar')}?next={encodeURIComponent(perluMasuk)}"
+          class="inline-flex h-[52px] items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-6 font-semibold text-primer-ink hover:opacity-90"
+          >Masuk / Daftar (gratis, 30 detik)</a
+        >
+      </div>
+    </div>
+  {:else if aktif && status !== 'disetujui'}
     <footer class="flex flex-wrap items-center gap-2.5 px-4 pt-3 pb-3.5">
       <button
         type="button"

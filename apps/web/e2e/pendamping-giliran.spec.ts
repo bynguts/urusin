@@ -88,9 +88,12 @@ test('giliran ketuk_tautan: warga menekan Buka di layar; viewer mengirim buka_ta
   await expect(lembar).toContainText('AI tidak mengetuk tautan ini; Anda yang membukanya.');
   expect(dariWarga.map((m) => m.type)).not.toContain('kembalikan');
 
-  const bukaTautan = lembar.getByRole('button', { name: /^Buka “Daftar Akta Kelahiran”/ });
+  // Tombol aksi giliran ada di bilah bawah yang lengket (selalu terlihat di HP), bersama instruksinya.
+  const bilah = page.locator('[data-bilah-giliran]');
+  await expect(bilah).toContainText('Giliran Anda: buka “Daftar Akta Kelahiran”');
+  const bukaTautan = bilah.getByRole('button', { name: /^Buka “Daftar Akta Kelahiran”/ });
   await expect(bukaTautan).toContainText('(telunjuksakti.wonogirikab.go.id/akta)');
-  await expect(lembar.getByRole('button', { name: 'Lanjutkan' })).toHaveCount(0);
+  await expect(bilah.getByRole('button', { name: 'Lanjutkan' })).toHaveCount(0);
   await bukaTautan.click();
   await expect
     .poll(() => dariWarga.filter((m) => m.type === 'buka_tautan'))

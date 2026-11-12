@@ -13,6 +13,21 @@ type Peristiwa = (typeof PERISTIWA)[number];
 
 export const PESAN_AWAL_COOKIE = 'urusin_pesan_awal';
 
+/**
+ * Wilayah layanan yang dipilih di perangkat (Pengaturan atau halaman peristiwa), ditulis `LokalStore` di peramban.
+ * Hanya kode kab/kota 4 digit (bukan PII). Server memakainya sebagai usulan bila formulir tidak membawa kode, mis.
+ * landing tanpa JavaScript (`csr = false`) yang tidak bisa membaca localStorage.
+ */
+export const WILAYAH_COOKIE = 'urusin_wilayah';
+
+/** Kode kab/kota dari cookie wilayah perangkat; undefined bila tidak ada atau formatnya salah. */
+export function kodeWilayahTersimpan(
+  cookies: Pick<RequestEvent['cookies'], 'get'> | undefined,
+): string | undefined {
+  const v = cookies?.get(WILAYAH_COOKIE);
+  return v && /^\d{4}$/.test(v) ? v : undefined;
+}
+
 export type GagalMulai = { pesanWarga: string; pesan: string; kode?: string };
 
 /**
@@ -21,8 +36,10 @@ export type GagalMulai = { pesanWarga: string; pesan: string; kode?: string };
  * mengonfirmasi (kartu "Ya, betul" atau di obrolan) sebelum rencana disusun: perangkat bisa dipakai bersama dan
  * Data Diri bisa usang. Pesan pertama yang menyebut kab/kota lain menang: usulan perangkat/Data Diri tidak
  * diterbitkan, agar kartu tidak bertentangan dengan wilayah yang ditanyakan agen dari pesan itu.
- * Tanpa keduanya, wilayah KTP dari Ingatan warga (urusan sebelumnya, ADR 0031) menjadi usulan dengan aturan yang
- * sama: tetap dikonfirmasi warga. Dipanggil sesudah pemilik urusan dicatat.
+ * Tanpa keduanya, wilayah layanan yang tersimpan di perangkat (cookie `WILAYAH_COOKIE`, ditulis Pengaturan) menjadi
+ * usulan `pilihan`: titik mulai tanpa JavaScript (landing) tidak bisa mengirimnya lewat formulir. Selain itu, wilayah
+ * KTP dari Ingatan warga (urusan sebelumnya, ADR 0031) menjadi usulan dengan aturan yang sama: tetap dikonfirmasi
+ * warga. Dipanggil sesudah pemilik urusan dicatat.
  */
 export function usulkanWilayahAwal(
   rt: Runtime,
@@ -44,6 +61,10 @@ export function usulkanWilayahAwal(
     return;
   }
   if (pilihan || dataDiri) return;
+  // Formulir tanpa kode (landing, kartu peristiwa tanpa JS): pilihan wilayah perangkat dari cookie. Kode yang tidak
+  // ada di registry ditolak `usulkanWilayah`.
+  const tersimpan = kodePilihan ? undefined : kodeWilayahTersimpan(event.cookies);
+  if (tersimpan && cocok(tersimpan) && usulkanWilayah(urusanId, tersimpan, 'pilihan', publish)) return;
   const ingatan = ktpIngatanUrusan(rt.akun, urusanId);
   if (ingatan && cocok(ingatan)) usulkanWilayah(urusanId, ingatan, 'ingatan', publish);
 }
@@ -71,11 +92,11 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
   const rt = await getRuntime();
   event.locals.sid = ensureSession(event.cookies);
   const ditolak = batasi(rt, event, 'buat');
-  if (ditolak)
-    return fail(429, {
-      pesanWarga: 'Terlalu banyak urusan baru dalam waktu singkat. Tunggu sebentar lalu coba lagi.',
-      pesan,
-    } satisfies GagalMulai);
+  if (ditolak) {
+    // Pesan sudah memuat waktu tunggu nyata dari Retry-After ("Coba lagi dalam ±N menit").
+    const isi = (await ditolak.json()) as { pesanWarga: string };
+    return fail(429, { pesanWarga: isi.pesanWarga, pesan, kode: 'RATE_LIMITED' } satisfies GagalMulai);
+  }
 
   if (pesan) {
     const tamu = pastikanTamuUntukTurn(rt, event);

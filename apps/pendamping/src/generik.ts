@@ -13,6 +13,7 @@ import {
   type PendampingEvent,
   type PendampingSorot,
   type Pengamatan,
+  type SinyalHalaman,
 } from '@urusin/contracts';
 import type {
   AksiRunner,
@@ -173,7 +174,14 @@ export type GenerikDeps = {
   urlBoleh(url: string): boolean;
   jejak(c: CatatanPendamping): void;
   /** Warga memegang kendali (takeover) dengan pesan bertemplat + sorotan (+ tujuan tautan untuk `ketuk_tautan`). */
-  serahkan(alasan: AlasanGiliran, pesan: string, sorot?: PendampingSorot, tautan?: TautanGiliran): void;
+  serahkan(
+    alasan: AlasanGiliran,
+    pesan: string,
+    sorot?: PendampingSorot,
+    tautan?: TautanGiliran,
+    /** Nama kendali sasaran giliran (sudah dibersihkan `namaKendali`), untuk instruksi ringkas di UI. */
+    kendali?: string,
+  ): void;
   /** Situs tidak bisa dikerjakan otomatis: sesi beralih ke mode dipandu. */
   tidakBisa(pesan: string): void;
   /** Fase AI yang jujur untuk layar warga (membuka situs/halaman, membaca halaman, mengisi formulir). */
@@ -276,9 +284,94 @@ export const PESAN_GENERIK = {
   kotor_klik:
     'Tombol ini mencoba mengirim data ke situs, jadi AI berhenti dan halaman dimuat ulang agar tidak ada kiriman tertunda. Tekan Lanjutkan agar AI mengisi ulang, atau isi lalu tekan sendiri tombol yang disorot.',
   berhenti: 'AI berhenti di sini. Lanjutkan sendiri dari layar ini.',
+  kirim_halaman:
+    'Halaman ini mencoba mengirim data ke situs, jadi AI berhenti. Periksa halaman, lalu lanjutkan sendiri.',
+  kirim_isi:
+    'Halaman ini mencoba mengirim data sendiri setelah AI mengisi kolom, jadi AI berhenti. Periksa isian, lalu lanjutkan sendiri.',
   tautan_berubah:
     'Alamat tautan ini berubah setelah ditampilkan, jadi tidak dibuka. Periksa halaman, lalu lanjutkan sendiri.',
 } as const;
+
+/**
+ * Nama kendali dari halaman untuk pesan giliran. Teks situs (tidak tepercaya): hanya teks polos, tanda kutip dan
+ * karakter kendali dibuang, dipotong. undefined = tidak ada nama yang layak disebut.
+ */
+export function namaKendali(nama: string | undefined): string | undefined {
+  const t = (nama ?? '')
+    .replace(/[\p{Cc}\p{Cf}"'`\u201C\u201D\u2018\u2019\u00AB\u00BB]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t) return undefined;
+  return t.length > 40 ? `${t.slice(0, 39).trimEnd()}…` : t;
+}
+
+/** Keadaan halaman saat AI berhenti: kendali yang memicu (nama/kelas), sorotan, dan sinyal halaman. */
+export type KonteksGiliran = {
+  nama?: string | undefined;
+  kelas?: KelasKendali | undefined;
+  /** Kotak sorot benar-benar ada (elemen masih terlihat). Tanpa ini pesan tidak boleh menyebut "disorot". */
+  disorot: boolean;
+  /** Nama kendali masuk akun di halaman (kelas `masuk`), bila ada. */
+  masuk?: string | undefined;
+  sinyal?: Pick<SinyalHalaman, 'login' | 'captcha' | 'tantangan'> | undefined;
+};
+
+/**
+ * Pesan giliran saat gerbang tulis memblokir kiriman dari aksi AI (bertemplat, tidak pernah teks LLM). Kalimatnya
+ * mengikuti alasan sebenarnya: halaman masuk akun, pemeriksaan keamanan, jendela/pengumuman yang harus ditutup,
+ * atau kendali yang mengirim data. Kendali target disebut namanya; "disorot" hanya bila sorotannya ada.
+ * `dimuatUlang` = dokumen kotor sudah dimuat ulang sebelum diserahkan.
+ */
+export function pesanEskalasi(k: KonteksGiliran, dimuatUlang = false): string {
+  const q = (n: string) => `"${n}"`;
+  const nama = namaKendali(k.nama);
+  const masuk = namaKendali(k.masuk);
+  const yangDisorot = k.disorot ? ' yang disorot' : '';
+  if (k.sinyal?.captcha || k.sinyal?.tantangan) return PESAN_GENERIK.captcha;
+  if (k.sinyal?.login)
+    return `Situs ini meminta Anda masuk akun, jadi AI berhenti. Masuk sendiri${
+      masuk ? ` lewat ${q(masuk)}` : ''
+    }; AI tidak membaca sandi Anda. Setelah masuk, tekan Lanjutkan.`;
+  const sesudah = masuk && masuk !== nama ? ` Untuk masuk akun, tekan ${q(masuk)}.` : '';
+  if (dimuatUlang) {
+    if (nama)
+      return `Tombol ${q(nama)} mencoba mengirim data ke situs, jadi AI berhenti dan halaman dimuat ulang agar tidak ada kiriman tertunda. Tekan Lanjutkan agar AI mengisi ulang, atau isi lalu tekan sendiri ${q(nama)}${yangDisorot}.${sesudah}`;
+    return (k.disorot ? PESAN_GENERIK.kotor_klik : PESAN_GENERIK.kotor) + sesudah;
+  }
+  if (nama && k.kelas === 'ui_lokal')
+    return `Jendela atau pengumuman di halaman ini mengirim data saat ditutup lewat ${q(nama)}, jadi AI tidak melanjutkan. Tutup sendiri lewat ${q(nama)}${yangDisorot}, lalu tekan Lanjutkan.${sesudah}`;
+  if (nama)
+    return `${q(nama)}${yangDisorot} mengirim data ke situs, jadi AI berhenti. Periksa halaman, lalu tekan sendiri ${q(nama)} bila sudah benar.${sesudah}`;
+  if (k.disorot) return PESAN_GENERIK.periksa + sesudah;
+  return PESAN_GENERIK.kirim_halaman + sesudah;
+}
+
+/** Kendali yang disebut di instruksi ringkas giliran eskalasi: tombol masuk di halaman login, selain itu pemicunya. */
+export function kendaliEskalasi(k: KonteksGiliran): string | undefined {
+  if (k.sinyal?.captcha || k.sinyal?.tantangan) return undefined;
+  return namaKendali(k.sinyal?.login ? k.masuk : k.nama);
+}
+
+/** Pesan serah dari Navigator (aksi `serahkan`): menyebut kendali target bila ada (mis. tombol Masuk). */
+export function pesanSerah(
+  alasan: Extract<Aksi, { jenis: 'serahkan' }>['alasan'],
+  nama: string | undefined,
+  disorot: boolean,
+): string {
+  const n = namaKendali(nama);
+  if (!n) return PESAN_GENERIK[alasan];
+  const yangDisorot = disorot ? ' yang disorot' : '';
+  switch (alasan) {
+    case 'masuk_akun':
+      return `Masuk ke akun Anda: tekan "${n}"${yangDisorot}, lalu masuk sendiri. AI melanjutkan setelah Anda masuk.`;
+    case 'isi_sendiri':
+      return `Isi sendiri kolom "${n}"${yangDisorot}, lalu tekan Lanjutkan.`;
+    case 'final':
+      return `Periksa semua isian. Hanya Anda yang boleh menekan "${n}"${yangDisorot}.`;
+    default:
+      return PESAN_GENERIK[alasan];
+  }
+}
 
 const PESAN_TIDAK_BISA: Record<Extract<Aksi, { jenis: 'tidak_bisa' }>['sebab'], string> = {
   layanan_tidak_ada:
@@ -413,8 +506,13 @@ export class GenerikRun {
   private namaRef = new Map<string, string>();
   /** Pengamatan terakhir (non-pantau): kendali akun untuk pesan giliran masuk. */
   private amatanTerakhir: Pengamatan | undefined;
-  /** Selama satu aksi/navigasi AI: blokir gerbang dan host di luar allowlist yang terjadi karenanya. */
+  /** Kelas kendali per ref dan sinyal halaman dari pengamatan terakhir: dasar kalimat giliran yang tepat. */
+  private kelasRef = new Map<string, KelasKendali>();
+  private sinyalKini: SinyalHalaman | undefined;
+  /** Nama kendali masuk akun (kelas `masuk`) pertama di pengamatan terakhir. */
+  private namaMasuk: string | undefined;
   /**
+   * Selama satu aksi/navigasi AI: blokir gerbang dan host di luar allowlist yang terjadi karenanya.
    * `muat`: aksi berjalan berupa navigasi GET tanpa klik (mulai, tautan pembuka, tautan navigasi). XHR/fetch tulis
    * yang diblokir selama dokumen tujuan dimuat berasal dari skrip halaman itu sendiri (QA prod gel6 Klampid: POST
    * saat SPA dimulai), bukan dari tombol yang ditekan AI: tetap diblokir dan dicatat, tetapi bukan eskalasi.
@@ -558,7 +656,7 @@ export class GenerikRun {
     }
     // Di luar aksi: tulis yang diblokir tepat setelah isi (onchange form.submit(), sendBeacon) = warga.
     if (j.jenis === 'ai_isi' && tulisLain && this.now() <= j.sampai + JENDELA_ISI_MS) {
-      this.d.serahkan('periksa', PESAN_GENERIK.periksa);
+      this.d.serahkan('periksa', PESAN_GENERIK.kirim_isi);
       return;
     }
     // N2: tulis tertunda (timer/retry dari aksi AI) saat AI diam = halaman kotor -> muat ulang (GET, mematikan
@@ -698,6 +796,11 @@ export class GenerikRun {
     this.kunciAkhir = cek.data.sinyal.halamanAkhir;
     this.akhirDok = cek.data.sinyal.halamanAkhir;
     this.namaRef = new Map(cek.data.elemen.map((e) => [e.ref, e.nama]));
+    this.kelasRef = new Map(
+      cek.data.elemen.flatMap((e): [string, KelasKendali][] => (e.kelas ? [[e.ref, e.kelas]] : [])),
+    );
+    this.sinyalKini = cek.data.sinyal;
+    this.namaMasuk = cek.data.elemen.find((e) => e.kelas === 'masuk')?.nama;
     this.refPembuka = new Set(cek.data.elemen.filter((e) => e.tautanPembuka).map((e) => e.ref));
     this.amatanTerakhir = cek.data;
     this.pembukaAktif = undefined;
@@ -810,7 +913,12 @@ export class GenerikRun {
       this.pembukaUrl = tujuan?.href;
       this.berhentiAkhir = a.alasan === 'berhenti';
       this.d.jejak({ jenis: 'ambil_alih', fase: 'mulai', alasan: a.alasan });
-      this.d.serahkan(ALASAN_GILIRAN[a.alasan], this.pesanSerah(a.alasan, a.ref), sorot, tautan);
+      const namaRef = a.ref ? this.namaRef.get(a.ref) : undefined;
+      const pesan =
+        a.alasan === 'ketuk_tautan'
+          ? PESAN_GENERIK.ketuk_tautan
+          : (this.pesanGiliran(a.alasan, a.ref) ?? pesanSerah(a.alasan, namaRef, sorot !== undefined));
+      this.d.serahkan(ALASAN_GILIRAN[a.alasan], pesan, sorot, tautan, namaKendali(namaRef));
       return { kode: 'ok', halamanBerganti: true };
     }
     if (a.jenis === 'tidak_bisa') {
@@ -875,13 +983,14 @@ export class GenerikRun {
       if (op.jenis === 'klik' && r) this.catatKlik(op.ref, r);
       if (!r) return { kode: 'GALAT' };
       const kelas = r.kelas && KelasKendaliSchema.safeParse(r.kelas).success ? r.kelas : undefined;
-      if (r.status === 'navigasi') return await this.navigasi(r.href, ref, kelas, urlSebelum);
+      if (r.status === 'navigasi') return await this.navigasi(r.href, ref, kelas, urlSebelum, op.ref);
       const kode = kodeDari(r);
       if (kode === 'ok' && op.jenis === 'klik') {
         await this.d.tangan.tenang();
         await this.keluarAllowlist(urlSebelum);
       }
-      if (await this.eskalasiBila(ref)) return { kode: 'GERBANG_MEMBLOKIR', ...(kelas ? { kelas } : {}) };
+      if (await this.eskalasiBila(ref, op.ref))
+        return { kode: 'GERBANG_MEMBLOKIR', ...(kelas ? { kelas } : {}) };
       return {
         kode,
         ...(kelas ? { kelas } : {}),
@@ -892,7 +1001,7 @@ export class GenerikRun {
     }
   }
 
-  private async eskalasiBila(ref: RefTersimpan | undefined): Promise<boolean> {
+  private async eskalasiBila(ref: RefTersimpan | undefined, refId?: string): Promise<boolean> {
     const a = this.aksiBerjalan;
     if (!a || (a.blokir.length === 0 && !a.hostLain)) return false;
     // Re-review A2: tulis AI yang diblokir bisa meninggalkan timer/retry (setInterval) yang terus mencoba. Dokumen
@@ -906,27 +1015,28 @@ export class GenerikRun {
     const sorot = ref ? await this.d.tangan.sorot(ref.jalur).catch(() => undefined) : undefined;
     this.sorotJalur = ref?.jalur;
     this.serahFinal = false;
-    const pesan = a.hostLain
-      ? PESAN_GENERIK.hostLain
-      : dimuatUlang
-        ? PESAN_GENERIK.kotor_klik
-        : PESAN_GENERIK.periksa;
-    this.d.serahkan('periksa', pesan, sorot);
+    const k = this.konteks(refId, sorot);
+    const pesan = a.hostLain ? PESAN_GENERIK.hostLain : pesanEskalasi(k, dimuatUlang);
+    this.d.serahkan('periksa', pesan, sorot, undefined, kendaliEskalasi(k));
     return true;
   }
 
-  /** Pesan giliran bertemplat; giliran masuk akun dan petunjuk menyebut kendali halaman yang relevan. */
-  private pesanSerah(
+  /**
+   * Pesan giliran masuk akun (nama portal, Masuk didahulukan dari Daftar) dan petunjuk saat AI tidak maju.
+   * undefined = pakai `pesanSerah` (mis. serah masuk akun yang menyorot kendali bukan kendali akun).
+   */
+  private pesanGiliran(
     alasan: Extract<Aksi, { jenis: 'serahkan' }>['alasan'],
     ref: string | undefined,
-  ): string {
+  ): string | undefined {
     const p = this.amatanTerakhir;
     if (alasan === 'tidak_yakin' && ref) return pesanPetunjuk(this.namaRef.get(ref));
-    if (alasan !== 'masuk_akun' || !p) return PESAN_GENERIK[alasan];
+    if (alasan !== 'masuk_akun' || !p) return undefined;
     const akun = kendaliAkun(p.elemen);
     const formulir = p.sinyal.login;
     const masuk: ElemenAmatan | undefined = ref ? p.elemen.find((e) => e.ref === ref) : undefined;
     const masukAkun = masuk && kendaliAkun([masuk]).masuk ? masuk : undefined;
+    if (masuk && !masukAkun && !formulir) return undefined;
     return pesanMasukAkun({
       portal: namaPortal(p.host, p.judul),
       masuk: formulir ? undefined : masukAkun?.nama,
@@ -960,11 +1070,22 @@ export class GenerikRun {
     this.tulisWargaSejakAi = false;
     this.kirimFinalWarga = false;
     try {
-      return await this.navigasi(u.href, ref, undefined, this.d.tangan.urlKini());
+      return await this.navigasi(u.href, ref, undefined, this.d.tangan.urlKini(), refId);
     } finally {
       this.aksiBerjalan = undefined;
       this.d.gerbang.setAi({ jenis: 'ai_diam' });
     }
+  }
+
+  /** Konteks kalimat giliran dari pengamatan terakhir: nama/kelas kendali pemicu, sorotan, sinyal halaman. */
+  private konteks(refId: string | undefined, sorot: PendampingSorot | undefined): KonteksGiliran {
+    return {
+      nama: refId ? this.namaRef.get(refId) : undefined,
+      kelas: refId ? this.kelasRef.get(refId) : undefined,
+      disorot: sorot !== undefined,
+      masuk: this.namaMasuk,
+      sinyal: this.sinyalKini,
+    };
   }
 
   private async klik(refId: string, ref: RefTersimpan) {
@@ -983,6 +1104,7 @@ export class GenerikRun {
     ref: RefTersimpan,
     kelas: KelasKendali | undefined,
     urlSebelum: string,
+    refId?: string,
   ) {
     const k = kelas ? { kelas } : {};
     const u = href ? URL.parse(naikHttps(href, this.d.urlBoleh) ?? href) : null;
@@ -998,7 +1120,7 @@ export class GenerikRun {
     await this.d.tangan.navigasi(u.href);
     await this.d.tangan.tenang();
     await this.keluarAllowlist(urlSebelum);
-    if (await this.eskalasiBila(ref)) return { kode: 'GERBANG_MEMBLOKIR' as const, ...k };
+    if (await this.eskalasiBila(ref, refId)) return { kode: 'GERBANG_MEMBLOKIR' as const, ...k };
     return { kode: 'ok' as const, ...k, halamanBerganti: true };
   }
 

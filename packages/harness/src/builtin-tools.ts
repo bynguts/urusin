@@ -40,6 +40,7 @@ import {
   rencanaUrusan,
   wilayahUrusan,
 } from './wilayah.js';
+import { arahanPanduanUmum, kanalDipandu, paketDipandu } from './dipandu.js';
 
 const kodeKabKota = z.string().regex(/^\d{4}$/);
 
@@ -221,6 +222,7 @@ export const urusanUsulkanRencana = defineTool({
           ? { type: 'plan_card', ...kartu }
           : {
               type: 'plan_card',
+              ...(ctx.urusan.jenis ? { jenis: ctx.urusan.jenis } : {}),
               ringkasan: args.ringkasan,
               // Model tidak boleh menjanjikan Browser Pendamping: tanpa alur adapter, semua langkah online = manual,
               // dan "online" hanya bila pengajuan online wilayah ini terverifikasi; selain itu cek kanal setempat.
@@ -244,6 +246,9 @@ export const urusanUsulkanRencana = defineTool({
               },
               tier: 'dipandu',
               catatan: catatanDipandu(ctx.urusan.jenis, ktp, k, sumberJawabanTerakhir(ctx)),
+              ...(ctx.urusan.jenis === null || ADMINDUK.has(ctx.urusan.jenis)
+                ? { dipandu: paketDipandu(ctx.urusan.jenis, { ktp, tujuan: w.tujuan }) }
+                : {}),
             },
       ],
     };
@@ -293,6 +298,15 @@ const bukanPenduduk = (jenis: string | null, ktp: { kodeKabKota: string } | null
  * memberi langkah lain (isi kartu rencana atau datang ke kantor) tanpa mengulang kanal.
  */
 function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?: string | null): ToolResult {
+  // Urusan adminduk tidak berakhir hand-off (ADR 0033): model memberi panduan umum yang ditandai jujur, ditutup
+  // kanal resmi daerah yang berwenang (yurisdiksi `kodeUtama`, portal penduduk dilewati untuk warga luar daerah).
+  if (ctx.urusan.jenis === null || ADMINDUK.has(ctx.urusan.jenis)) {
+    const kode = kodeUtama ?? kodeKtp(ctx.store, ctx.urusan);
+    const luar = bukanPenduduk(ctx.urusan.jenis, wilayahUrusan(ctx.store, ctx.urusan).ktp, kode ?? null);
+    const kanal = kode ? kanalDipandu(kode, ctx.urusan.jenis, luar) : h.kanal;
+    // `handoff`: tidak ada jawaban bersumber, jadi rencana paralel jalur cepat dibatalkan seperti hand-off.
+    return { handoff: true, content: arahanPanduanUmum(kanal.length > 0 ? kanal : h.kanal) };
+  }
   const kunci = (k: { url?: string | undefined; nama: string }) => (k.url ? kunciUrl(k.url) : k.nama);
   const sudah = new Set(
     ctx.store
@@ -347,6 +361,7 @@ function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?
   }
   const rencana = chunkRencana(ctx).map((c) => c.text);
   return {
+    handoff: true,
     content: [
       `Hand-off ke kanal resmi yang sama (${h.kanal.map((k) => k.url ?? k.nama).join(', ')}) SUDAH diberikan sebelumnya: JANGAN ulangi kanal itu dan jangan mengulang jawaban tadi.`,
       rencana.length > 0
@@ -395,8 +410,11 @@ export const urusanJawabPersyaratan = defineTool({
           chunks,
           signal: ctx.signal,
         });
-    if (cache && !tersimpan) cache.simpan(kunci, gen.data, gen.method);
     const verified = verifyGrounded(gen.data, chunks, ctxHandoff, ctx.deps.now());
+    // Hanya jawaban yang lolos verifikasi utuh (ada klaim, tidak ada yang dibuang) yang disimpan: keluaran model
+    // yang sebagian salah kutip atau berakhir hand-off selalu dicoba ulang ke model.
+    if (cache && !tersimpan && !verified.handoff && verified.klaim.length > 0 && verified.klaimDibuang === 0)
+      cache.simpan(kunci, gen.data, gen.method);
     const usage = { usage: gen.usage, structuredMode: gen.method };
     if (verified.handoff) return { ...handoffTanpaUlang(ctx, verified.handoff, kode), ...usage };
     const data: PayloadOf<'grounded_answer'> = {

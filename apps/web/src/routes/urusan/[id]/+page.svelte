@@ -74,10 +74,16 @@
         : ('MENUNGGU_LOGIN_WARGA' as const);
     return keadaanUrusan;
   });
-  const p = $derived(peristiwaDariJenis(data.urusan.jenis));
-  const judulJenis = $derived(judulUrusan(data.urusan.jenis));
+  // Jenis urusan terkini: halaman bisa dimuat sebelum harness mengklasifikasi (jenis null), jadi rencana yang
+  // tiba lewat stream membawa jenisnya; tanpa itu lencana tertahan di "KTP & dokumen" untuk kelahiran/pindah.
+  const jenisKini = $derived(k.rencana?.jenis ?? data.urusan.jenis);
+  const p = $derived(peristiwaDariJenis(jenisKini));
+  const judulJenis = $derived(judulUrusan(jenisKini));
+  // Sejak "Setujui rencana" ditekan sampai state urusan bergerak: progres jujur, bukan layar diam.
+  let menungguSetuju = $state(false);
+  const menyiapkanLanjutan = $derived(menungguSetuju && keadaanUrusan === 'RENCANA_DIUSULKAN');
   const judul = $derived(judulJenis ?? lokal.cari(data.urusan.id)?.judul ?? 'Urusan baru');
-  const linimasa = $derived(bangunLinimasa(k.events, pesan));
+  const linimasa = $derived(bangunLinimasa(k.events, pesan, jenisKini));
   const kutipan = $derived.by(() => {
     const peta = new SvelteMap<string, KutipanTerverifikasi & { nomor: number }>();
     for (const e of k.events)
@@ -101,6 +107,22 @@
   // Pesan agen di panel Pendamping hanya bila itu item terakhir percakapan; pertanyaan lama yang sudah
   // dijawab (mis. wilayah KTP) tidak ditampilkan lagi.
   const pesanPanel = $derived(linimasa.slice(-1).filter((x) => x.jenis === 'teks'));
+  /**
+   * Tamu di portal tanpa situs latihan: tawaran "Setujui dan buka situs" palsu (sesi pasti beralih ke panduan),
+   * jadi kartu mengajak masuk/daftar dan kembali ke urusan ini (urusan tamu pindah ke akun).
+   */
+  function perluMasuk(permintaan: { origin?: string | undefined } | null): string | undefined {
+    if (data.pendamping.peran !== 'tamu') return undefined;
+    const url = permintaan?.origin ?? situs;
+    let origin: string | null;
+    try {
+      origin = url ? new URL(url).origin : null;
+    } catch {
+      origin = null;
+    }
+    if (origin && data.pendamping.originReplika.includes(origin)) return undefined;
+    return `/urusan/${data.urusan.id}`;
+  }
   // Kartu "Setujui dan buka situs" yang bisa ditindaklanjuti (paling banyak satu).
   const konfirmasiAktif = $derived.by(() => {
     const it = linimasa.findLast((x) => x.jenis === 'konfirmasi');
@@ -113,6 +135,17 @@
       : null;
   });
   const kosong = $derived(linimasa.length === 0 && !k.sedangBerjalan);
+
+  // Jenis baru diketahui setelah halaman dimuat: perbarui catatan perangkat (judul + lencana Urusanku).
+  $effect(() => {
+    const jenis = k.rencana?.jenis;
+    if (!jenis || jenis === data.urusan.jenis) return;
+    untrack(() => {
+      const c = lokal.cari(data.urusan.id);
+      if (!c || c.peristiwa === jenis) return;
+      lokal.catatUrusan({ ...c, judul: judulUrusan(jenis) ?? c.judul, peristiwa: jenis });
+    });
+  });
 
   // Hanya bergantung pada id urusan; store dan catatan perangkat dibaca/ditulis tanpa dilacak.
   $effect(() => {
@@ -250,9 +283,11 @@
 
   async function setujuiRencana() {
     mengirim = true;
+    menungguSetuju = true;
     pesanKomposer = null;
     const hasil = await store.setujuiRencana();
     mengirim = false;
+    if (hasil !== 'ok') menungguSetuju = false;
     if (hasil === 'konflik')
       pesanKomposer =
         'Urusin masih memproses langkah sebelumnya. Tunggu sebentar, lalu tekan Setujui rencana lagi.';
@@ -409,7 +444,7 @@
       <div id="panel-konteks" class="{panelHpBuka ? '' : 'max-lg:hidden'} lg:min-h-full">
         <PanelKonteks
           state={keadaanPanel}
-          jenis={data.urusan.jenis}
+          jenis={jenisKini}
           sedangBerjalan={k.sedangBerjalan}
           rencana={k.rencana}
           checklist={k.checklist}
@@ -560,6 +595,7 @@
                       aktif={it.key === konfirmasiAktif}
                       status={konfirmasi?.key === it.key ? konfirmasi.status : 'menunggu'}
                       pesanGalat={it.terakhir ? konfirmasiGalat : undefined}
+                      perluMasuk={perluMasuk(it.permintaan)}
                       onsetujui={() => void setujui(it.key, it.gate, it.permintaan)}
                       onbatal={() => void kirim('Batalkan, saya belum mau melanjutkan.')}
                     />
@@ -601,6 +637,16 @@
               {/if}
             {/each}
 
+            {#if menyiapkanLanjutan && !k.sedangBerjalan}
+              <p
+                role="status"
+                data-menyiapkan-lanjutan
+                class="flex items-center gap-2 pl-[46px] text-[15px] leading-[23px] text-muted"
+              >
+                <Icon name="memuat" class="size-4 animate-spin" />
+                Menyiapkan langkah berikutnya…
+              </p>
+            {/if}
             {#if k.sedangBerjalan}
               <p
                 role="status"
@@ -648,8 +694,9 @@
   </div>
 </div>
 
+<!-- Izin isi hanya setelah portal (atau replika Mode Uji) tergambar: warga melihat situsnya dulu. -->
 <LembarIzinkan
-  buka={sesi.data.butuhData !== null}
+  buka={sesi.data.butuhData !== null && sesi.data.tayang}
   placeholder={sesi.data.butuhData?.placeholder ?? []}
   berkas={sesi.data.butuhData?.berkas ?? []}
   kolom={sesi.data.butuhData?.kolom}

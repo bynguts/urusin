@@ -41,3 +41,5 @@ atau kode; "Diterima" tidak berarti sudah diimplementasikan, dan kolom Status me
 | [0029](0029-browser-pendamping.md)                               | Browser Pendamping di server sebagai eksekutor                                                     | keputusan tim      |
 | [0030](0030-browser-pendamping-generik.md)                       | Browser Pendamping generik untuk portal tanpa adapter                                              | keputusan tim      |
 | [0031](0031-ingatan-warga-terstruktur.md)                        | Ingatan warga terstruktur di vault, bukan memori LLM pihak ketiga                                  | keputusan tim      |
+| [0032](0032-akun-tanpa-verifikasi-email.md)                      | Akun tanpa verifikasi email; penautan Google wajib bukti sandi                                     | keputusan pemilik  |
+| [0033](0033-pendamping-10-daerah-dan-mode-dipandu.md)            | Browser Pendamping di 10 daerah prioritas, daerah lain dipandu AI                                  | keputusan pemilik  |

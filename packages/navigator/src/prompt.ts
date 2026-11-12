@@ -96,6 +96,7 @@ export function pesanRencana(m: MasukanPrompt): ChatMessage[] {
     if (e.kelas) bagian.push(`kelas=${tautanWarga(e) ? 'tautan_warga' : e.kelas}`);
     if (e.terlarang) bagian.push(`terlarang=${e.terlarang}`);
     if (e.form) bagian.push(`form=${e.form}`);
+    if (e.isyarat) bagian.push(`isyarat=${e.isyarat}`);
     bagian.push(`nama=${data(e.nama, e.ref, 200)}`);
     if (e.petunjuk) bagian.push(`petunjuk=${data(e.petunjuk, e.ref, 200)}`);
     if (e.galat) bagian.push(`galat=${data(e.galat, e.ref, 200)}`);

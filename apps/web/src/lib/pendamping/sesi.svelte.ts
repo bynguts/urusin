@@ -12,7 +12,9 @@ import type {
 
 /**
  * Keadaan layar Browser Pendamping (papan "Browser Pendamping · Keadaan", 11 keadaan) + `siaga`: langkah selesai,
- * peramban server MASIH hidup sebentar untuk langkah berikutnya (bukan "ditutup").
+ * peramban server MASIH hidup sebentar untuk langkah berikutnya (bukan "ditutup"). `berakhir`: sesi hilang di
+ * tengah jalan tanpa pesan akhir (worker restart, jaringan putus, dibatalkan server) — bukan selesai; layar tetap
+ * tampil dengan alasan + "Buka lagi situsnya" dan "Buka panduan".
  */
 export type KeadaanLayar =
   | 'mati'
@@ -27,7 +29,21 @@ export type KeadaanLayar =
   | 'terputus'
   | 'dipandu'
   | 'galat'
+  | 'berakhir'
   | 'tidak_tersedia';
+
+/** Alasan jujur saat koneksi ke peramban pendamping hilang tanpa pesan akhir dari server. */
+export const PESAN_TERPUTUS_AKHIR = 'Koneksi ke peramban pendamping terputus.';
+
+/** Keadaan yang masih menunggu kelanjutan sesi: tutupnya koneksi tanpa pesan akhir di sini = terputus, bukan selesai. */
+const MASIH_BERJALAN: ReadonlySet<KeadaanLayar> = new Set([
+  'antre',
+  'menyiapkan',
+  'ai',
+  'giliran',
+  'dijeda',
+  'terputus',
+]);
 
 /** Pesan bila "Tutup sekarang" gagal (ditampilkan di lembar siaga). */
 export const PESAN_GAGAL_TUTUP = 'Browser belum bisa ditutup. Coba lagi; browser juga tutup sendiri.';
@@ -53,6 +69,11 @@ export type DataPendamping = {
   } | null;
   /** Situs yang benar-benar dibuka peramban + apakah itu replika uji (Mode Uji), dari status server. */
   situs: { origin: string; replika: boolean } | null;
+  /**
+   * Bingkai portal (atau replika Mode Uji) sudah tergambar di layar warga. Sebelum itu lembar "Izinkan AI mengisi?"
+   * tidak dibuka: warga melihat situsnya dulu, baru izin isi diminta.
+   */
+  tayang: boolean;
   /** "Saya sudah mengirim": sedang diperiksa worker. */
   memeriksaKirim?: boolean;
   /** Jawaban jujur bila pengiriman belum terlihat (409) atau pemeriksaan gagal. */
@@ -71,17 +92,28 @@ export function dataAwal(): DataPendamping {
     koneksi: null,
     butuhData: null,
     situs: null,
+    tayang: false,
   };
 }
 
-/** Status sesi server → keadaan layar. */
-export function keadaanDariSesi(s: Pick<SesiPendamping, 'status' | 'mode'>, giliran: boolean): KeadaanLayar {
+/**
+ * Status sesi server → keadaan layar. `menunggu_data` (izin isi diminta) sesudah portal tayang bukan "Menyiapkan":
+ * situsnya tetap terlihat di balik lembar izin, AI menunggu izin untuk mengisi.
+ */
+export function keadaanDariSesi(
+  s: Pick<SesiPendamping, 'status' | 'mode'>,
+  giliran: boolean,
+  tayang = false,
+): KeadaanLayar {
   switch (s.status) {
     case 'antre':
       return 'antre';
     case 'memulai':
-    case 'menunggu_data':
       return 'menyiapkan';
+    case 'menunggu_data':
+      if (!tayang) return 'menyiapkan';
+      if (s.mode === 'takeover') return giliran ? 'giliran' : 'dijeda';
+      return 'ai';
     case 'siaga':
       return 'siaga';
     case 'berjalan':
@@ -96,7 +128,8 @@ export function keadaanDariSesi(s: Pick<SesiPendamping, 'status' | 'mode'>, gili
     case 'gagal':
       return 'galat';
     case 'dibatalkan':
-      return 'mati';
+      // Dibatalkan oleh server (bukan tombol warga: `hentikan` menutup layar sendiri) = sesi berakhir, bukan hilang.
+      return 'berakhir';
   }
 }
 
@@ -117,6 +150,8 @@ export class SesiPendampingUi {
   private tersinkron: string | null = null;
   private executionId: string | null = null;
   private pantauAi: ReturnType<typeof setTimeout> | null = null;
+  /** Status server terakhir: keadaan dihitung ulang saat bingkai portal pertama tergambar. */
+  private statusServer: Pick<SesiPendamping, 'status' | 'mode'> | null = null;
 
   constructor(
     private readonly urusanId: string,
@@ -135,6 +170,7 @@ export class SesiPendampingUi {
     inputTeks: () => HTMLTextAreaElement | null,
   ) {
     this.data = { ...dataAwal(), keadaan: 'menyiapkan' };
+    this.statusServer = null;
     this.executionId = executionId;
     const pabrik = await this.pabrik();
     let res: Response;
@@ -169,8 +205,24 @@ export class SesiPendampingUi {
     this.terapkanSesi(j);
     const tiket = await this.tiket();
     const c = canvas();
-    if (!tiket || !c) return;
+    // Tanpa tiket (mis. sesi sudah berakhir karena portal tidak terjangkau): baca status akhir dari server agar
+    // layar menampilkan pesan dan jalur panduan, bukan "Menyiapkan" selamanya.
+    if (!tiket) return this.statusAkhir();
+    if (!c) return;
     this.sambung(pabrik, c, tiket.wsUrl, inputTeks() ?? undefined);
+  }
+
+  private async statusAkhir(): Promise<void> {
+    const s = await this.ambil(this.dasar)
+      .then((r) => (r.ok ? (r.json() as Promise<SesiPendamping>) : null))
+      .catch(() => null);
+    if (s?.status && s.status !== 'antre' && s.status !== 'memulai') return this.terapkanSesi(s);
+    this.data = {
+      ...this.data,
+      keadaan: 'galat',
+      pesan:
+        s?.pesan ?? 'Browser Pendamping tidak bisa dibuka sekarang. Ikuti panduan untuk mengisi sendiri.',
+    };
   }
 
   private async tiket(): Promise<{ wsUrl: string; tiket: string } | null> {
@@ -220,8 +272,31 @@ export class SesiPendampingUi {
       }),
       v.on('event', (e) => this.terapkanEvent(e)),
       v.on('butuh_data', (b) => (this.data = { ...this.data, butuhData: b })),
+      v.on('frame', () => {
+        if (this.data.tayang) return;
+        const s = this.statusServer;
+        this.data = {
+          ...this.data,
+          tayang: true,
+          keadaan:
+            s?.status === 'menunggu_data' && this.data.keadaan === 'menyiapkan'
+              ? keadaanDariSesi(s, this.data.giliran !== null, true)
+              : this.data.keadaan,
+        };
+      }),
       v.on('galat', (g) => (this.data = { ...this.data, pesan: g.pesanWarga })),
       v.on('koneksi', (k) => {
+        // Viewer berhenti menyambung (ulang habis, kode tanpa-ulang) tanpa mode `done` = sesi hilang di tengah jalan.
+        if (k === 'selesai' && this.data.mode !== 'done' && MASIH_BERJALAN.has(this.data.keadaan)) {
+          this.data = {
+            ...this.data,
+            koneksi: k,
+            keadaan: 'berakhir',
+            giliran: null,
+            pesan: PESAN_TERPUTUS_AKHIR,
+          };
+          return;
+        }
         const keadaan =
           k === 'putus' ? 'terputus' : this.data.keadaan === 'terputus' ? 'ai' : this.data.keadaan;
         this.data = { ...this.data, koneksi: k, keadaan };
@@ -231,12 +306,13 @@ export class SesiPendampingUi {
 
   terapkanSesi(s: SesiPendamping): void {
     this.executionId = s.executionId;
+    this.statusServer = { status: s.status, mode: s.mode };
     if (s.hasil && (s.status === 'selesai' || s.status === 'siaga')) void this.sinkronHasil();
     this.data = {
       ...this.data,
       mode: s.mode,
       antrean: s.antrean,
-      keadaan: keadaanDariSesi(s, this.data.giliran !== null),
+      keadaan: keadaanDariSesi(s, this.data.giliran !== null, this.data.tayang),
       pesan: s.pesan ?? this.data.pesan,
       bukti: s.bukti ?? this.data.bukti,
       situs: s.situs ? { origin: s.situs, replika: s.replika === true } : this.data.situs,

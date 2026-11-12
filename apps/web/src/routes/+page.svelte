@@ -213,6 +213,8 @@
   const demo1 = `${s1_659} 659w, ${s1_842} 842w, ${s1_1080} 1080w, ${s1_1318} 1318w, ${s1_1760} 1760w, ${s1_2160} 2160w`;
   const demo3 = `${s3_659} 659w, ${s3_842} 842w, ${s3_1080} 1080w, ${s3_1318} 1318w, ${s3_1760} 1760w, ${s3_2160} 2160w`;
   const targetMulai = $derived(page.data.akun ? resolve('/beranda') : resolve('/daftar'));
+  /** Galat tombol "Mulai urus" (/?/mulai), mis. batas laju dengan waktu tunggu nyata. */
+  const galatMulai = $derived((page.form as { pesanWarga?: string; kode?: string } | null)?.pesanWarga);
 </script>
 
 <svelte:head>
@@ -224,6 +226,15 @@
 </svelte:head>
 
 <main class="lp0 lp" id="konten">
+  {#if galatMulai}
+    <p
+      role="alert"
+      data-kode={(page.form as { kode?: string } | null)?.kode}
+      class="mx-auto max-w-3xl rounded-xl bg-mawar px-4 py-3 text-[0.9375rem] font-medium text-galat"
+    >
+      {galatMulai}
+    </p>
+  {/if}
   <section class="lp1" id="atas">
     <img
       class="n-hero-pattern lp2"
@@ -2067,7 +2078,8 @@
           <h3 class="lp146">Bantu isi formulir</h3>
           <div class="lp147">
             Situs resmi dibuka di Browser Pendamping, lalu AI mengisi dengan izinmu. Login, OTP, dan Kirim
-            tetap kamu.
+            tetap kamu. Kini aktif di {page.data.jumlahDaerahPendamping} kota/kabupaten; daerah lain dipandu langkah
+            demi langkah.
           </div>
         </div>
       </div>

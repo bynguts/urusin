@@ -21,6 +21,7 @@ import type { Db } from './db.js';
 import { HarnessError } from './errors.js';
 import { kalimatJaringanId, keteranganPendamping, majukan, rutePendamping } from './rencana.js';
 import type { HarnessStore, UrusanRow } from './store.js';
+import { paketDipandu } from './dipandu.js';
 
 type Publish = (e: EventPayload) => void;
 type PayloadWilayah = PayloadOf<'wilayah'>;
@@ -201,13 +202,27 @@ export function wilayahDariPesan(teks: string): { kode: string; ktp: boolean } |
 }
 
 /**
- * Tujuan pindah dari pesan warga, tanpa LLM: tepat satu kab/kota yang disebut sesudah "ke" ("pindah dari Kota
- * Semarang ke Kabupaten Sleman"). Lebih dari satu, atau nama ganda (Bekasi): null, agen yang bertanya.
+ * Tujuan pindah dari pesan warga, tanpa LLM: hanya pola tegas "pindah (domisili) (dari X) ke Y" tanpa kata ragu
+ * (mungkin, belum tahu, rencana, ...), dan tepat satu kab/kota sesudah "ke". Selain itu null: tujuan tidak
+ * ditetapkan, agen yang menanyakan/memastikannya (wilayah__tetapkan atas jawaban warga).
  */
 export function tujuanDariPesan(teks: string): string | null {
+  // Rentang "pindah ... ke <nama kab/kota>" dalam satu klausa; kab/kota di luar rentang ini (mis. "pindah ke rumah
+  // baru… Minggu depan saya ke Kabupaten Sleman") bukan tujuan pindah.
+  const rentang =
+    /\bpindah\s+(domisili\s+)?(dari\s+[^.?!\n…,;]{1,60}?\s+)?ke\s+((kota|kabupaten|kab\.?)\s+)?(administrasi\s+)?[^\s.?!\n…,;]+(\s+[^\s.?!\n…,;]+){0,2}/i.exec(
+      teks,
+    )?.[0];
+  if (!rentang) return null;
+  if (
+    /\b(mungkin|belum\s+(tahu|tau|pasti|yakin)|rencana\w*|kayaknya|sepertinya|antara|atau|bisa\s+jadi|masih\s+bingung)\b/i.test(
+      teks,
+    )
+  )
+    return null;
   const ke = [
     ...new Set(
-      temukanWilayah(teks)
+      temukanWilayah(rentang)
         .filter((s) => s.sebelum === 'ke')
         .map((s) => s.wilayah.kodeKabKota),
     ),
@@ -346,10 +361,18 @@ export function rencanaPeristiwa(
 ): (RencanaWilayah & { pendamping?: BantuanPendamping }) | undefined {
   const r = rencanaWilayah(slug, { ...w, pendampingTersedia });
   if (!r || !w.ktp) return r;
-  const rute = rutePendamping({ jenis: r.slug, kodeKabKota: w.ktp });
+  return denganRute(r, w.ktp);
+}
+
+/** Tier, catatan, dan bantuan Pendamping kartu rencana dari `rutePendamping` (satu keputusan rute). */
+function denganRute<R extends { slug: string; tier: 'semi' | 'dipandu'; catatan: string }>(
+  r: R,
+  ktp: string,
+): Omit<R, 'tier'> & { tier: 'semi' | 'dipandu'; pendamping?: BantuanPendamping } {
+  const rute = rutePendamping({ jenis: r.slug, kodeKabKota: ktp });
   // Portal `id-only` tanpa worker berjaringan Indonesia: dipandu sejak kartu, dengan alasan yang jujur.
   if (rute.jalur === 'dipandu' && rute.sebab === 'jaringan_id') {
-    const kab = wilayahByKode(w.ktp);
+    const kab = wilayahByKode(ktp);
     const kalimat = kalimatJaringanId(kab ? namaPendekWilayah(kab.nama) : undefined);
     return { ...r, tier: 'dipandu', catatan: `${r.catatan} ${kalimat}` };
   }
@@ -380,7 +403,11 @@ export function rencanaUrusan(
   jenis: string,
   w: { ktp: string | null; domisili?: string | null; tujuan?: string | null },
 ): RencanaUrusan | undefined {
-  return rencanaPeristiwa(jenis, w) ?? rencanaLayanan(jenis, { ktp: w.ktp, domisili: w.domisili ?? null });
+  const peristiwa = rencanaPeristiwa(jenis, w);
+  if (peristiwa) return peristiwa;
+  const layanan = rencanaLayanan(jenis, { ktp: w.ktp, domisili: w.domisili ?? null });
+  // KK/KTP-el di portal web wilayah: Browser Pendamping ditawarkan sama seperti Peristiwa Hidup.
+  return layanan && w.ktp ? denganRute(layanan, w.ktp) : layanan;
 }
 
 /**
@@ -423,6 +450,7 @@ export function kartuRencana(
       ? `${r.judul} · ${namaPendekWilayah(w.ktp.nama)} → ${namaPendekWilayah(w.tujuan.nama)}`
       : `${r.judul} · ${namaPendekWilayah(w.ktp.nama)}`;
   return {
+    jenis,
     ringkasan,
     langkah: r.langkah.map((l, i) => {
       const sumber = i === 0 ? [...l.sourceRef, ...korpus] : l.sourceRef;
@@ -444,7 +472,9 @@ export function kartuRencana(
     },
     tier: r.tier,
     catatan: r.catatan,
-    ...(r.pendamping ? { pendamping: r.pendamping } : {}),
+    ...(r.pendamping
+      ? { pendamping: r.pendamping }
+      : { dipandu: paketDipandu(jenis, { ktp: w.ktp, tujuan: w.tujuan }) }),
   };
 }
 

@@ -261,6 +261,10 @@
           Browser sungguhan yang berjalan di server Urusin dan tampil langsung di layarmu. Kamu melihat situs
           pemerintah yang asli, tapi yang mengisi formulir adalah AI.
         </p>
+        <p class="ck75" data-testid="cakupan-pendamping">
+          Saat ini aktif di {page.data.daerahPendamping}. Di daerah lain, Urusin memandu langkah demi langkah
+          lewat kanal resmi daerahmu, dan Browser Pendamping untuk daerah itu sedang kami kembangkan.
+        </p>
         <div class="ck76">
           <div class="ck77">
             <img

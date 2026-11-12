@@ -34,6 +34,15 @@ export type PabrikSumber = (url: string) => SumberEvent;
 
 const CLOSED = 2;
 const JEDA_ULANG_MS = [1000, 2000, 4000, 8000, 15000];
+/**
+ * Server mengirim heartbeat tiap 15 dtk. Tanpa frame apa pun selama ini = koneksi basi yang tidak dilaporkan
+ * browser (jaringan HP, proxy): tutup dan sambung ulang dari lastSeq. Bukti prod: kartu persetujuan baru
+ * terlihat ~63 dtk setelah server menerbitkannya.
+ */
+export const SENYAP_MAKS_MS = 35_000;
+const PERIKSA_SENYAP_MS = 5_000;
+/** Aksi terstruktur sukses tetapi event state-nya belum tiba selama ini = susul lewat sambung ulang (replay DB). */
+export const SUSUL_AKSI_MS = 2_000;
 
 /**
  * Store urusan: event SSE → state turunan, dengan sambung ulang dan resume `Last-Event-ID`
@@ -45,6 +54,9 @@ export class UrusanStore implements StoreUrusan {
   private sumber: SumberEvent | null = null;
   private percobaan = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
+  private frameTerakhir = 0;
+  private pengawas: ReturnType<typeof setInterval> | undefined;
+  private susul: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly pabrik: PabrikSumber = (url) => new EventSource(url) as unknown as SumberEvent,
@@ -62,8 +74,11 @@ export class UrusanStore implements StoreUrusan {
     const url = `/api/urusan/${encodeURIComponent(id)}/stream?lastEventId=${this.keadaan.lastSeq}`;
     const es = this.pabrik(url);
     this.sumber = es;
+    this.frameTerakhir = Date.now();
+    this.awasiSenyap(id);
     for (const tipe of TIPE) {
       es.addEventListener(tipe, (m) => {
+        if (this.sumber === es) this.frameTerakhir = Date.now();
         this.percobaan = 0;
         this.keadaan.status = 'tersambung';
         try {
@@ -82,8 +97,38 @@ export class UrusanStore implements StoreUrusan {
     };
   }
 
+  /** Watchdog: koneksi yang diam lebih lama dari SENYAP_MAKS_MS (heartbeat pun tidak) disambung ulang. */
+  private awasiSenyap(id: string): void {
+    clearInterval(this.pengawas);
+    this.pengawas = setInterval(() => {
+      if (!this.sumber || this.keadaan.id !== id) return;
+      if (Date.now() - this.frameTerakhir > SENYAP_MAKS_MS) this.sambungUlang(id);
+    }, PERIKSA_SENYAP_MS);
+  }
+
+  /** Tutup sumber sekarang dan buka yang baru dari lastSeq (server memutar ulang event dari DB). */
+  private sambungUlang(id: string): void {
+    clearTimeout(this.timer);
+    this.sumber?.close();
+    this.sumber = null;
+    this.keadaan.status = 'menghubungkan';
+    this.buka(id);
+  }
+
+  /** Setelah aksi sukses: bila event `state` versi itu belum tiba lewat stream dalam SUSUL_AKSI_MS, sambung ulang. */
+  private pastikanTersusul(id: string, versi: number): void {
+    clearTimeout(this.susul);
+    this.susul = setTimeout(() => {
+      if (this.keadaan.id !== id || !this.sumber) return;
+      const tiba = this.keadaan.events.some((e) => e.type === 'state' && e.version >= versi);
+      if (!tiba) this.sambungUlang(id);
+    }, SUSUL_AKSI_MS);
+  }
+
   putus(): void {
     clearTimeout(this.timer);
+    clearInterval(this.pengawas);
+    clearTimeout(this.susul);
     this.sumber?.close();
     this.sumber = null;
     if (this.keadaan.status !== 'diam') this.keadaan.status = 'diam';
@@ -148,7 +193,8 @@ export class UrusanStore implements StoreUrusan {
    * Browser Pendamping, kartu konfirmasi) mengalir lewat stream.
    */
   setujuiRencana(): Promise<'ok' | 'konflik' | 'galat'> {
-    return this.aksi('rencana/setujui', {});
+    // Persetujuan selalu menerbitkan event state (RENCANA_DISETUJUI dst.): tunggu itu tiba, susul bila tidak.
+    return this.aksi('rencana/setujui', {}, { versi: true, ulang: true, tungguState: true });
   }
 
   /**
@@ -168,7 +214,7 @@ export class UrusanStore implements StoreUrusan {
   private async aksi(
     jalur: string,
     isi: Record<string, unknown>,
-    opsi: { versi: boolean; ulang: boolean } = { versi: true, ulang: true },
+    opsi: { versi: boolean; ulang: boolean; tungguState?: boolean } = { versi: true, ulang: true },
   ): Promise<'ok' | 'konflik' | 'galat'> {
     const id = this.keadaan.id;
     if (!id) return 'galat';
@@ -194,6 +240,7 @@ export class UrusanStore implements StoreUrusan {
       const j = (await res.json().catch(() => null)) as { version?: unknown; turnId?: unknown } | null;
       if (typeof j?.version === 'number' && j.version > this.keadaan.version)
         this.keadaan.version = j.version;
+      if (opsi.tungguState && typeof j?.version === 'number') this.pastikanTersusul(id, j.version);
       // Aksi yang melanjutkan giliran agen (mis. "Ya, betul" tanpa rencana): tandai berjalan kecuali sudah selesai.
       if (
         typeof j?.turnId === 'string' &&

@@ -79,7 +79,7 @@ sederhana), dokumen yang sudah ada di brankas, dan status urusan lainnya.
 
 ## Konsekuensi
 
-- Akun yang emailnya belum terverifikasi tidak memakai ingatan (pemilik vaultnya terikat sid, bukan urusan).
+- Setiap akun memakai ingatannya sendiri (ADR 0032 menghapus akun "belum terverifikasi").
   Ingatan aktif setelah email diverifikasi; tamu memakai ingatan tamunya sendiri.
 - Event `ingatan` di rantai audit memuat label butir; untuk catatan dan aksesibilitas hanya label generik, jadi
   isi teks bebas tidak tertinggal di event setelah ingatan dihapus. Jejak hanya mencatat jenis butir.

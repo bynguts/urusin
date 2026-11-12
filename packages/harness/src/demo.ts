@@ -38,6 +38,7 @@ const INTENT_KEYWORDS: [RegExp, IntentJenis][] = [
   [/lapor|pengaduan|aduan|keluhan/i, 'pengaduan'],
   [/\bktp\b|ktp-el/i, 'ktp'],
   [/\bkk\b|kartu keluarga/i, 'kk'],
+  [/\bkia\b|kartu identitas anak|kartu anak/i, 'kia'],
   [/akta/i, 'akta'],
 ];
 
@@ -123,7 +124,9 @@ const STOP = new Set([
 
 /** Sumber paling relevan dari blok SUMBER (`[refId] judul` + blok data ber-spotlight); null bila tak ada yang cocok. */
 function bestSource(prompt: string): { refId: string; quote: string } | null {
-  const question = /Pertanyaan warga: ([^\n]*)/.exec(prompt)?.[1]?.toLowerCase() ?? '';
+  // Pertanyaan dibungkus spotlight: ambil isinya, tanda datamark kembali jadi spasi.
+  const baris = /Pertanyaan warga: ([^\n]*)/.exec(prompt)?.[1] ?? '';
+  const question = (/>>([\s\S]*?)<</.exec(baris)?.[1] ?? baris).split(DATAMARK).join(' ').toLowerCase();
   const stems = [...new Set(question.match(/\p{L}{3,}/gu) ?? [])]
     .filter((w) => !STOP.has(w))
     .map((w) => w.slice(0, 5));

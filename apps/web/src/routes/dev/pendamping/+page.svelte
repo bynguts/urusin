@@ -19,6 +19,7 @@
     'terputus',
     'dipandu',
     'galat',
+    'berakhir',
   ];
   const langkah = { indeks: 4, total: 8, label: 'Mengisi formulir' };
 

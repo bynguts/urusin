@@ -51,20 +51,6 @@ function pesan(
   };
 }
 
-export function emailVerifikasi(to: string, link: string): EmailMessage {
-  return pesan(
-    to,
-    'verifikasi',
-    'Pastikan email Anda untuk Urusin',
-    [
-      'Terima kasih sudah mendaftar di Urusin.',
-      'Tekan tombol di bawah, lalu masukkan kata sandi yang Anda buat saat mendaftar di situs Urusin.',
-    ],
-    { teks: 'Pastikan email', href: link },
-    'Tautan berlaku 24 jam dan hanya bisa dipakai sekali. Bila Anda tidak mendaftar, abaikan email ini.',
-  );
-}
-
 export function emailAturUlang(to: string, link: string): EmailMessage {
   return pesan(
     to,
@@ -76,21 +62,6 @@ export function emailAturUlang(to: string, link: string): EmailMessage {
     ],
     { teks: 'Buat kata sandi baru', href: link },
     'Tautan berlaku 30 menit dan hanya bisa dipakai sekali. Bila Anda tidak memintanya, abaikan email ini.',
-  );
-}
-
-/** Dikirim bila seseorang mendaftar memakai email yang sudah punya akun terverifikasi (anti-enumerasi). */
-export function emailSudahTerdaftar(to: string, linkMasuk: string, linkLupa: string): EmailMessage {
-  return pesan(
-    to,
-    'sudah-terdaftar',
-    'Email Anda sudah punya akun Urusin',
-    [
-      'Seseorang mencoba mendaftar di Urusin dengan email ini, padahal akunnya sudah ada.',
-      `Bila itu Anda, silakan masuk. Lupa kata sandi? Buka ${linkLupa}`,
-    ],
-    { teks: 'Masuk ke Urusin', href: linkMasuk },
-    'Bila bukan Anda, abaikan email ini. Akun Anda tetap aman.',
   );
 }
 

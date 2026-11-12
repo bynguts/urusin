@@ -387,3 +387,35 @@ describe('properti: pengamatan tidak pernah memuat nilai isian', () => {
     expect(diperiksa).toBeGreaterThan(1000);
   }, 60_000); // 300 halaman DOM nyata + parse zod; jauh di atas 5 s bawaan saat turbo paralel
 });
+
+describe('isyarat kolom dari atribut terstruktur (autocomplete, type, name/id)', () => {
+  it('tel/email/tanggal lahir/kode pos/nama; hanya enum, tidak pernah teks situs', () => {
+    document.body.innerHTML = `<form>
+      <input aria-label="Kontak" type="tel">
+      <input aria-label="Kontak 2" autocomplete="section-a shipping tel-national">
+      <input aria-label="Kontak 3" name="data[no_hp]">
+      <input aria-label="Kontak 4" id="nomorWhatsapp">
+      <input aria-label="Surat" type="email">
+      <input aria-label="Lahir" name="tglLahir">
+      <input aria-label="Pos" autocomplete="postal-code">
+      <input aria-label="Ibu" name="nama_ibu">
+      <input aria-label="Pengguna" name="username">
+      <input aria-label="Catatan" name="keterangan">
+    </form>`;
+    const { pengamatan: p } = amati();
+    const isyarat = Object.fromEntries(p.elemen.map((e) => [e.nama, e.isyarat]));
+    expect(isyarat).toEqual({
+      Kontak: 'tel',
+      'Kontak 2': 'tel',
+      'Kontak 3': 'tel',
+      'Kontak 4': 'tel',
+      Surat: 'email',
+      Lahir: 'tanggal_lahir',
+      Pos: 'kode_pos',
+      Ibu: 'nama',
+      Pengguna: undefined,
+      Catatan: undefined,
+    });
+    expect(PengamatanSchema.safeParse(p).success).toBe(true);
+  });
+});

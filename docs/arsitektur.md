@@ -79,7 +79,7 @@ Catatan pembacaan:
     peramban.
   - Dengan akun: vault terenkripsi per akun (DEK per pemilik dibungkus KEK dari `URUSIN_PII_KEY`) ikut lintas
     perangkat.
-  - Salinan demo juri disimpan 24 jam, akun belum terverifikasi 24 jam. Hapus = crypto-shred.
+  - Salinan demo juri disimpan 24 jam; akun tidak disapu (tanpa verifikasi email, ADR 0032). Hapus = crypto-shred.
 - **Pemroses dan lokasi:**
   - VPS Oracle Cloud Singapura: DB, berkas vault terenkripsi, dan Browser Pendamping.
   - Resend (Amerika Serikat): hanya menerima alamat email dan tautan. Saat ini mode log, jadi belum ada email

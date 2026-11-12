@@ -2,11 +2,18 @@ import { randomUUID } from 'node:crypto';
 import { ADAPTERS } from '@urusin/adapters';
 import type { EventPayload, UrusanState } from '@urusin/contracts';
 import { getOfficialDomain } from '@urusin/core';
-import { findBundel, namaPendekWilayah, routeByKode, wilayahByKode } from '@urusin/registry';
+import {
+  bundelPendamping,
+  findBundel,
+  namaPendekWilayah,
+  routeByKode,
+  wilayahByKode,
+} from '@urusin/registry';
 import { ConflictError, HarnessError } from './errors.js';
 import { ADAPTER_GENERIK, alasanDipandu, portalWebWilayah } from './generik.js';
 import { ADMINDUK } from './grounding.js';
 import { canTransition } from './state.js';
+import { pendampingAktif } from '@urusin/registry';
 import { paramsHash, type HarnessStore, type UrusanRow } from './store.js';
 import { wilayahBelumSiap, wilayahUrusan } from './wilayah.js';
 
@@ -54,10 +61,11 @@ export type LangkahTulisPendamping = {
 
 /**
  * `sebab: 'jaringan_id'`: portal hanya menerima IP Indonesia (registry `aksesWilayah: 'id-only'`) dan tidak ada
- * worker berjaringan Indonesia yang sehat; kartu rencana menyebut alasan itu sejak awal.
+ * worker berjaringan Indonesia yang sehat; kartu rencana menyebut alasan itu sejak awal. `sebab: 'pengembangan'`:
+ * wilayah di luar `DAERAH_PENDAMPING_AKTIF` (ADR 0033), Browser Pendamping-nya sedang dikembangkan.
  */
 export type RutePendamping =
-  LangkahTulisPendamping | { jalur: 'dipandu'; alasan: string; sebab?: 'jaringan_id' };
+  LangkahTulisPendamping | { jalur: 'dipandu'; alasan: string; sebab?: 'jaringan_id' | 'pengembangan' };
 
 /**
  * Ada worker Browser Pendamping berjaringan Indonesia (`region: 'id'`) yang sehat? Dipasang web (hooks.server) dengan
@@ -124,6 +132,9 @@ export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): Rut
   if (!kode || (u.jenis && !ADMINDUK.has(u.jenis))) return { jalur: 'dipandu', alasan: alasanDipandu(null) };
   const w = wilayahByKode(kode);
   const nama = w ? namaPendekWilayah(w.nama) : undefined;
+  // Pendamping hanya di daerah yang dijamin (ADR 0033); daerah lain dipandu, Pendamping-nya "sedang dikembangkan".
+  if (!pendampingAktif(kode))
+    return { jalur: 'dipandu', alasan: alasanDipandu(kode, nama), sebab: 'pengembangan' };
   const r = ruteDasar(u.jenis, kode, nama);
   if (r.jalur !== 'dipandu' && hanyaJaringanId(r.origin) && !jaringanIdSiap())
     return {
@@ -137,7 +148,8 @@ export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): Rut
 function ruteDasar(jenis: UrusanRow['jenis'], kode: string, nama: string | undefined): RutePendamping {
   const adapter = langkahAdapter({ jenis, kodeKabKota: kode });
   if (adapter) return adapter;
-  const bundel = jenis ? findBundel(jenis) : undefined;
+  // Peristiwa Hidup atau layanan adminduk umum (KTP-el, KK, KIA, akta): semuanya punya bundel tujuan Navigator.
+  const bundel = jenis ? bundelPendamping(jenis) : undefined;
   const portal = portalWebWilayah(kode);
   if (bundel && portal)
     return {
@@ -148,7 +160,7 @@ function ruteDasar(jenis: UrusanRow['jenis'], kode: string, nama: string | undef
       // `kode` (host portal + platform + host tantangan sesuai proteksi portal), satu sumber dengan registry.
       params: { jenis: bundel.slug, kode, jalur: new URL(portal.url).pathname },
       origin: portal.origin,
-      nama: `Ajukan ${bundel.judul.toLowerCase()} di portal resmi Disdukcapil ${nama ?? portal.nama}`,
+      nama: `Ajukan ${bundel.frasa} di portal resmi Disdukcapil ${nama ?? portal.nama}`,
     };
   return { jalur: 'dipandu', alasan: alasanDipandu(kode, nama) };
 }
@@ -227,6 +239,8 @@ export function setujuiRencana(
     publish({ type: 'progress', label: jalan.alasan });
     return { urusan: cur, executionId: null };
   }
+  // Pembukuan tabel state: MENYIAPKAN_BERKAS/BERKAS_SIAP/MENGISI dilewati dalam satu langkah sinkron sebelum berkas
+  // diperiksa dan sebelum situs dibuka. Bukan kejadian nyata: linimasa web tidak menurunkan kalimat dari ketiganya.
   cur = majukan(
     store,
     cur,

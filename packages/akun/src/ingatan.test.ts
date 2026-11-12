@@ -69,11 +69,9 @@ const urusan = (...ids: string[]) => {
     db.prepare("INSERT INTO urusan (id, state, created_at, updated_at) VALUES (?,'BARU','x','x')").run(id);
 };
 
-async function akunTerverifikasi() {
-  await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
-  const link = mailer.last(EMAIL, 'verifikasi')!.link;
-  await akun.verifikasiEmail(new URL(link).searchParams.get('token')!, SANDI, ctx);
-  return (await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).akun;
+/** Daftar langsung menghasilkan akun penuh (ADR 0032: tanpa verifikasi email). */
+async function akunBaru(email = EMAIL) {
+  return (await akun.daftar({ email, sandi: SANDI }, ctx)).akun;
 }
 
 describe('vault ingatan: enkripsi + AAD', () => {
@@ -133,20 +131,20 @@ describe('vault ingatan: enkripsi + AAD', () => {
 });
 
 describe('pemilik ingatan sebuah urusan', () => {
-  it('tamu lewat hash sid; akun terverifikasi → dirinya; akun belum terverifikasi / tanpa pemilik → null', async () => {
-    urusan('u_tamu', 'u_akun', 'u_yatim', 'u_belum');
+  it('tamu lewat hash sid; akun (langsung setelah daftar) dan demo → dirinya; tanpa pemilik → null', async () => {
+    urusan('u_tamu', 'u_akun', 'u_yatim', 'u_demo');
     const tamu = akun.pastikanTamu('sid-a', ctx);
     akun.catatPemilikUrusan('u_tamu', { sid: 'sid-a' });
     expect(akun.pemilikIngatanUrusan('u_tamu')).toBe(tamu);
     expect(akun.urusanPemilikVault(tamu)).toEqual(['u_tamu']);
     expect(akun.pemilikIngatanUrusan('u_yatim')).toBeNull();
+    expect(akun.pemilikIngatanUrusan('u_tidak_ada')).toBeNull();
 
-    await akun.daftar({ email: 'belum@example.com', sandi: SANDI }, ctx);
-    const belum = (await akun.masuk({ email: 'belum@example.com', sandi: SANDI }, ctx)).akun;
-    akun.catatPemilikUrusan('u_belum', { akun: belum });
-    expect(akun.pemilikIngatanUrusan('u_belum')).toBeNull();
+    const demo = akun.buatDemo(ctx).akun;
+    akun.catatPemilikUrusan('u_demo', { akun: demo });
+    expect(akun.pemilikIngatanUrusan('u_demo')).toBe(demo.id);
 
-    const a = await akunTerverifikasi();
+    const a = await akunBaru();
     akun.catatPemilikUrusan('u_akun', { akun: a });
     expect(akun.pemilikIngatanUrusan('u_akun')).toBe(a.id);
     expect(akun.urusanPemilikVault(a.id)).toEqual(['u_akun']);
@@ -166,7 +164,7 @@ describe('pemilik ingatan sebuah urusan', () => {
 
 describe('rotasi tamu → akun', () => {
   it('ingatan tamu DITITIPKAN (tidak dipakai) sampai warga memilih; Bawa ke akun tidak menggusur akun; DEK tamu hancur', async () => {
-    const a = await akunTerverifikasi();
+    const a = await akunBaru();
     akun.vault.setIngatan(a.id, ingatan(['ktp', 'Kabupaten Wonogiri'], ['catatan', 'suka pagi']));
     const tamu = akun.pastikanTamu('sid-lama', ctx);
     akun.vault.setIngatan(
@@ -193,7 +191,7 @@ describe('rotasi tamu → akun', () => {
   });
 
   it('tamu yang hanya punya ingatan (tanpa Data Diri/dokumen) tetap dititipkan, tidak langsung dipakai', async () => {
-    const a = await akunTerverifikasi();
+    const a = await akunBaru();
     const tamu = akun.pastikanTamu('sid-lama', ctx);
     akun.vault.setIngatan(tamu, ingatan(['bahasa_sederhana']));
     akun.rotasiPemilik({ sidLama: 'sid-lama', sidBaru: 'sid-baru', userId: a.id });
@@ -203,7 +201,7 @@ describe('rotasi tamu → akun', () => {
   });
 
   it('penyapu bersihkan() membuang titipan tamu yang kedaluwarsa (30 hari), yang masih berlaku tetap', async () => {
-    const a = await akunTerverifikasi();
+    const a = await akunBaru();
     const lansia = {
       id: 'ing_00000000000000d1',
       jenis: 'lansia',
@@ -227,7 +225,7 @@ describe('rotasi tamu → akun', () => {
   });
 
   it('ingatan akun yang rusak tidak ditimpa titipan dan tidak menggagalkan login', async () => {
-    const a = await akunTerverifikasi();
+    const a = await akunBaru();
     akun.vault.setIngatan(a.id, ingatan(['lansia']));
     const rusak = Buffer.alloc(40, 2);
     db.prepare('UPDATE vault_ingatan SET ciphertext = ? WHERE user_id = ?').run(rusak, a.id);

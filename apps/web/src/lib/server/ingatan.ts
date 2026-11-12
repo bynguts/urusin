@@ -19,7 +19,7 @@ import {
 } from '@urusin/harness';
 
 /**
- * Ingatan warga (ADR 0031) di atas vault akun: pemilik = pemilik vault urusan (akun terverifikasi/demo, atau tamu
+ * Ingatan warga (ADR 0031) di atas vault akun: pemilik = pemilik vault urusan (akun/demo, atau tamu
  * lewat hash sid; lihat `pemilikIngatanUrusan`). Isi yang tidak bisa dibuka/diurai MELEMPAR (alert operator), tidak
  * dibaca kosong: penulisan berikutnya tidak boleh menimpa ingatan warga. Agen menangkap galat ini dan berjalan
  * tanpa ingatan di turn itu (`muatKonteks`).

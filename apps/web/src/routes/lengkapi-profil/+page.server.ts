@@ -17,8 +17,8 @@ export const load: PageServerLoad = async (event) => {
 
 export const actions: Actions = {
   /**
-   * Simpan nama lengkap (dan HP opsional) ke Data Diri terenkripsi pemilik vault (akun terverifikasi; akun yang
-   * belum terverifikasi menyimpan di vault perangkat ini seperti tamu), lalu ke tujuan.
+   * Simpan nama lengkap (dan HP opsional) ke Data Diri terenkripsi pemilik vault (akun/demo: ikut akun; tamu:
+   * vault perangkat ini), lalu ke tujuan.
    */
   default: async (event) => {
     if (!event.locals.akun) redirect(303, '/masuk');

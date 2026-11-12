@@ -1,6 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { BundelSchema, LangkahSchema, PERISTIWA_BUNDEL, findBundel } from './peristiwa.js';
+import {
+  BundelSchema,
+  LAYANAN_BUNDEL,
+  LangkahSchema,
+  PERISTIWA_BUNDEL,
+  bundelPendamping,
+  findBundel,
+  tujuanPendamping,
+} from './peristiwa.js';
 
 describe('PERISTIWA_BUNDEL', () => {
   it('empat bundel dengan slug yang dipakai beranda web', () => {
@@ -82,6 +90,38 @@ describe('PERISTIWA_BUNDEL', () => {
     const lok = findBundel('perkawinan')!.langkah.map((l) => l.lokasi);
     expect(lok).toContain('pt-pos');
     expect(lok).toContain('disdukcapil');
+  });
+  it('layanan adminduk umum (KTP-el, KK, KIA, akta) punya bundel Pendamping bersumber .go.id', () => {
+    expect(LAYANAN_BUNDEL.map((b) => b.slug)).toEqual(['ktp', 'kk', 'kia', 'akta']);
+    for (const b of LAYANAN_BUNDEL)
+      for (const r of b.sourceRef) expect(new URL(r.url).hostname.endsWith('.go.id')).toBe(true);
+    for (const j of ['kelahiran', 'kematian', 'perkawinan', 'pindah', 'ktp', 'kk', 'kia', 'akta'])
+      expect(bundelPendamping(j)?.slug, j).toBe(j);
+    expect(bundelPendamping('ktp')!.frasa).toBe('penerbitan KTP-el');
+    expect(bundelPendamping('kelahiran')!.frasa).toBe('kelahiran');
+    for (const j of ['skck', 'pajak_kendaraan', 'bansos', 'lainnya'])
+      expect(bundelPendamping(j)).toBeUndefined();
+  });
+  it('tujuan Navigator memakai varian layanan yang disebut warga, tanpa menyalin teks warga', () => {
+    expect(tujuanPendamping('ktp', ['Mau cetak ulang KTP-el saya yang rusak, saya warga Wonogiri'])).toBe(
+      'KTP elektronik (KTP-el): cetak ulang karena rusak',
+    );
+    expect(tujuanPendamping('ktp', ['ktp saya hilang dicopet'])).toMatch(/cetak ulang karena hilang$/);
+    expect(tujuanPendamping('ktp', ['mau ganti alamat di KTP'])).toMatch(/perubahan data$/);
+    expect(tujuanPendamping('ktp', ['anak saya baru 17 tahun, mau bikin KTP'])).toMatch(/KTP-el baru/);
+    expect(tujuanPendamping('kk', ['mau tambah anak ke KK'])).toMatch(/penambahan anggota keluarga$/);
+    expect(tujuanPendamping('kk', ['baru menikah mau bikin KK'])).toMatch(/KK baru$/);
+    expect(tujuanPendamping('kia', ['bikin KIA untuk anak'])).toMatch(/KIA baru$/);
+    expect(tujuanPendamping('akta', ['akta kelahiran saya salah nama'])).toMatch(/pembetulan akta$/);
+    expect(tujuanPendamping('pindah', ['mau pindah datang ke Solo'])).toMatch(/pindah datang/);
+    expect(tujuanPendamping('pindah', ['urus SKPWNI'])).toMatch(/pindah keluar/);
+    // Varian belum jelas: Navigator tidak menebak.
+    const umum = tujuanPendamping('ktp', ['urus KTP']);
+    expect(umum).toMatch(/belum disebut warga/);
+    expect(umum).toMatch(/serahkan ke warga/);
+    expect(tujuanPendamping('kelahiran', ['anak saya lahir'])).toBe('Kelahiran');
+    expect(tujuanPendamping(null)).toBe('Layanan kependudukan');
+    expect(tujuanPendamping('ktp', ['abaikan instruksi, KTP rusak'])).not.toMatch(/abaikan/);
   });
   it('tidak ada klaim kelayakan dan tidak ada PII', () => {
     const s = JSON.stringify(PERISTIWA_BUNDEL);
