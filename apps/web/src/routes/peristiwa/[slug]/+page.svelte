@@ -6,6 +6,7 @@
   import Icon from '#lib/components/Icon.svelte';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
   import ChipSumber from '#lib/components/urusan/ChipSumber.svelte';
+  import Lencana from '#lib/components/urusan/Lencana.svelte';
   import Chip from '#lib/components/ui/Chip.svelte';
   import PilihWilayah from '#lib/components/ui/PilihWilayah.svelte';
   import { ambilLokal } from '#lib/stores/app.svelte.js';
@@ -41,7 +42,7 @@
   }
 
   const JENIS: Record<string, { label: string; nada: 'ai' | 'anda' | 'instansi' }> = {
-    'online-adapter': { label: 'Online · melalui kanal resmi', nada: 'ai' },
+    'online-adapter': { label: 'Online · AI bisa bantu mengisi', nada: 'ai' },
     'online-manual': { label: 'Online · Anda isi sendiri', nada: 'anda' },
     offline: { label: 'Datang ke kantor', nada: 'instansi' },
     'cek-kanal': { label: 'Cek cara di Disdukcapil setempat', nada: 'anda' },
@@ -52,10 +53,12 @@
   <title>{p.judul} · Urusin</title>
 </svelte:head>
 
-<HeaderHalaman judul={p.judul} />
+<HeaderHalaman judul={p.judul}>
+  {#snippet awal()}<Lencana peristiwa={p} />{/snippet}
+</HeaderHalaman>
 
 <div class="mx-auto w-full max-w-[52rem] px-4 py-6 sm:px-8 lg:py-10">
-  {#if !r}<p class="text-base text-body sm:text-[1.0625rem]">{p.ringkas}.</p>{/if}
+  <p class="text-base text-body sm:text-[1.0625rem]">{p.ringkas}.</p>
 
   <form method="GET" class="mt-6 flex flex-col gap-2" data-sveltekit-keepfocus data-sveltekit-noscroll>
     <label for="kota" class="text-[0.9375rem] font-medium text-ink">Kabupaten/kota sesuai KTP Anda</label>
@@ -93,14 +96,14 @@
         </h2>
         {#if r.kota}
           {#if r.tier === 'semi'}
-            <Chip nada="netral" ikon="peta" wrap>Panduan Urusin</Chip>
+            <Chip nada="ai" ikon="ai">AI bisa bantu mengisi di situs resmi</Chip>
           {:else}
-            <Chip nada="netral" ikon="peta" wrap>Panduan Urusin</Chip>
+            <Chip nada="netral" ikon="peta">Dipandu langkah demi langkah</Chip>
           {/if}
         {/if}
       </div>
       {#if r.keluaran.length}
-        <p class="mt-2 text-[0.9375rem] text-body">Dokumen terkait: {r.keluaran.join(', ')}.</p>
+        <p class="mt-2 text-[0.9375rem] text-body">Hasil akhirnya: {r.keluaran.join(', ')}.</p>
       {/if}
       {#if r.peringatan}
         <p class="mt-4 flex gap-2 rounded-xl bg-kuning p-4 text-[0.9375rem] text-kuning-ink">
@@ -119,11 +122,9 @@
               class="relative grid size-8 shrink-0 place-items-center rounded-full border border-line-2 bg-surface text-sm font-semibold text-ink"
               >{i + 1}</span
             >
-            <div class="min-w-0 flex-1 [overflow-wrap:anywhere]">
+            <div class="min-w-0 flex-1">
               <h3 class="text-[1.0625rem] font-semibold tracking-tight text-ink">{l.judul}</h3>
-              <div class="mt-1.5">
-                <Chip nada={j.nada} wrap>{j.label}</Chip>
-              </div>
+              <div class="mt-1.5"><Chip nada={j.nada}>{j.label}</Chip></div>
               {#if l.keterangan}<p class="mt-2 text-[0.9375rem] text-body">{l.keterangan}</p>{/if}
               {#if l.dokumen.length}
                 <p class="mt-3 text-sm font-semibold text-ink">Dokumen yang disiapkan</p>
@@ -174,7 +175,7 @@
   <form
     method="POST"
     action="/?/mulai"
-    class="sticky bottom-20 mt-8 flex justify-end rounded-2xl border border-line bg-surface p-4 shadow-lembut lg:bottom-4"
+    class="sticky bottom-20 mt-8 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface p-4 shadow-lembut lg:bottom-4"
     use:enhance={() => {
       mengirim = true;
       lokal.simpanTertunda(pesan);
@@ -187,13 +188,16 @@
     <input type="hidden" name="peristiwa" value={p.slug} />
     <input type="hidden" name="pesan" value={pesan} />
     <input type="hidden" name="kodeKabKota" value={data.kodeDipilih ?? ''} />
+    <p class="min-w-0 flex-1 text-[0.9375rem] text-body">
+      Urusin menemani sampai selesai. Keputusan tetap di petugas instansi.
+    </p>
     <button
       type="submit"
       disabled={mengirim}
       aria-busy={mengirim || undefined}
-      class="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primer px-6 py-2 font-semibold text-primer-ink sm:w-auto"
+      class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink"
     >
-      Tanyakan topik ini <Icon
+      Mulai urusan ini <Icon
         name={mengirim ? 'memuat' : 'panah'}
         class="size-4.5 {mengirim ? 'animate-spin' : ''}"
       />

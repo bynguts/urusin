@@ -1,6 +1,5 @@
 <script lang="ts">
   import { SvelteMap } from 'svelte/reactivity';
-  import { BROWSER_PENDAMPING_TERSEDIA } from '#lib/fitur.js';
   import { tick, untrack } from 'svelte';
   import { resolve } from '$app/paths';
   import type { EventOf, IngatanResponse, KutipanTerverifikasi } from '#lib/contracts.js';
@@ -107,9 +106,7 @@
     return adapter?.sumber[0]?.url ?? l?.[0]?.sumber[0]?.url ?? null;
   });
   const instansi = $derived(k.rencana?.langkah.find((x) => x.sumber.length)?.sumber[0]?.instansi);
-  const pendampingAktif = $derived(
-    BROWSER_PENDAMPING_TERSEDIA && !pendampingDitutup && sesi.data.keadaan !== 'mati',
-  );
+  const pendampingAktif = $derived(!pendampingDitutup && sesi.data.keadaan !== 'mati');
   // Pesan agen di panel Pendamping hanya bila itu item terakhir percakapan; pertanyaan lama yang sudah
   // dijawab (mis. wilayah KTP) tidak ditampilkan lagi.
   const pesanPanel = $derived(linimasa.slice(-1).filter((x) => x.jenis === 'teks'));
@@ -593,6 +590,7 @@
                 <PesanAgen avatar={p.avatar}><KartuChecklist checklist={it.e} /></PesanAgen>
               {:else if it.jenis === 'konfirmasi'}
                 <PesanAgen avatar={p.avatar}>
+                  <p>Sebelum saya membuka situs resmi, periksa dulu data yang akan diisi:</p>
                   <div data-konfirmasi={it.key}>
                     <KartuKonfirmasi
                       gate={it.gate}

@@ -1,4 +1,3 @@
-import { BROWSER_PENDAMPING_TERSEDIA } from '#lib/fitur.js';
 import type { EventOf, JenisLangkah, UrusanState } from '#lib/contracts.js';
 
 export type NadaStatus = 'anda' | 'ai' | 'instansi' | 'selesai' | 'netral';
@@ -46,14 +45,6 @@ export function langkahPanel(
   rencana: Pick<EventOf<'plan_card'>, 'langkah' | 'pendamping'> | null,
   jenis?: string | null,
 ): readonly LangkahPanel[] {
-  // Produk saat ini chatbot: tidak menampilkan tahap login/pengisian browser yang belum tersedia.
-  if (!BROWSER_PENDAMPING_TERSEDIA)
-    return (
-      rencana?.langkah.map((l) => ({
-        judul: l.judul,
-        pelaku: l.jenis === 'offline' ? 'Instansi' : 'Anda',
-      })) ?? []
-    );
   if (rencana)
     return rencana.pendamping
       ? LANGKAH_RENCANA

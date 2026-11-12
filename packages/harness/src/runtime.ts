@@ -51,7 +51,7 @@ export function createHarness(opts: HarnessOptions) {
     ...(opts.piiKey ? { piiKey: opts.piiKey } : {}),
   });
   const registry = new ToolRegistry([
-    ...(opts.tools ?? builtinTools(opts.config?.modeChatbot)),
+    ...(opts.tools ?? builtinTools()),
     ...(opts.ingatan ? [ingatanIngat] : []),
     ...(opts.cariWeb ? [webCari] : []),
   ]);

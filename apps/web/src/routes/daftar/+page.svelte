@@ -21,8 +21,8 @@
 <svelte:head><title>Daftar · Urusin</title></svelte:head>
 
 <KerangkaAuth
-  judul="Mulai bertanya,&#10;simpan percakapannya"
-  sub="Buat akun untuk bertanya tentang layanan publik dan membuka kembali urusan Anda."
+  judul="Satu akun untuk&#10;semua urusan keluarga"
+  sub="Gratis. Data keluarga disimpan terenkripsi di brankas Urusin."
 >
   <h1 class="text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Buat akun Urusin</h1>
 

@@ -269,7 +269,6 @@ export function setujuiRencana(
   urusanId: string,
   publish: Publish,
   expectedVersion?: number,
-  pendampingTersedia = true,
 ): { urusan: UrusanRow; executionId: string | null } {
   const u = store.getUrusanOrThrow(urusanId);
   if (u.state !== 'RENCANA_DIUSULKAN' || (expectedVersion !== undefined && expectedVersion !== u.version))
@@ -279,9 +278,7 @@ export function setujuiRencana(
   if (belum) throw new HarnessError('WILAYAH_BELUM_DITETAPKAN', belum, 409);
   // Satu keputusan rute untuk seluruh persetujuan: tier di event state dan tindakan tidak bisa berbeda walau
   // kesehatan worker berjaringan Indonesia berubah di tengah jalan.
-  const jalan: RutePendamping = pendampingTersedia
-    ? rutePendamping(urusanRute(store, u))
-    : { jalur: 'dipandu', alasan: 'Rencana tersimpan. Siapkan dokumen dan lanjutkan melalui kanal resmi.' };
+  const jalan = rutePendamping(urusanRute(store, u));
   const tier = tierUrusan(u, jalan);
   let cur = majukan(store, u, ['RENCANA_DISETUJUI'], publish, tier);
   if (jalan.jalur === 'dipandu') {

@@ -1,7 +1,7 @@
 import { render } from 'svelte/server';
 import { describe, expect, it } from 'vitest';
 import type { EventOf } from '#lib/contracts.js';
-import { langkahKini, langkahPanel } from '#lib/urusan-status.js';
+import { LANGKAH_RENCANA, langkahKini, langkahPanel } from '#lib/urusan-status.js';
 import { peristiwaDariJenis } from '#lib/peristiwa.js';
 import Lencana from './Lencana.svelte';
 import PanelKonteks from './PanelKonteks.svelte';
@@ -57,20 +57,19 @@ describe('panel Rencana mengikuti rencana dan tier', () => {
     expect(body).not.toContain('AI mengisi formulir');
   });
 
-  it('rencana lama dengan browser tetap ditampilkan sebagai panduan tanpa tahap otomasi', () => {
-    expect(langkahPanel(aktaSemi, 'kelahiran')).toEqual([{ judul: 'Ajukan akta kelahiran', pelaku: 'Anda' }]);
+  it('rencana yang dibantu Browser Pendamping tetap lima langkah', () => {
+    expect(langkahPanel(aktaSemi, 'kelahiran')).toBe(LANGKAH_RENCANA);
     const body = panel({ state: 'MENUNGGU_LOGIN_WARGA', rencana: aktaSemi, jenis: 'kelahiran' });
-    expect(body).toContain('Langkah 1 dari 1');
-    expect(body).toContain('Ajukan akta kelahiran');
-    expect(body).not.toContain('AI mengisi formulir');
+    expect(body).toContain('Langkah 2 dari 5');
+    expect(body).toContain('Masuk akun di situs resmi');
   });
 
   it('Browser Pendamping masih disiapkan: langkah 2–3 belum "Selesai"', () => {
     const body = panel({ state: 'BERKAS_SIAP', rencana: aktaSemi, persiapan: true });
-    expect(body).toContain('Langkah 1 dari 1');
+    expect(body).toContain('Langkah 2 dari 5');
     expect(body).toContain('Menyiapkan browser');
     // Hanya langkah 1 yang selesai (ikon centang berlabel "Selesai" + teks "Selesai").
-    expect(body.match(/>Selesai</g) ?? []).toHaveLength(0);
+    expect(body.match(/>Selesai</g) ?? []).toHaveLength(1);
   });
 
   it('tab Sumber menghitung sumber rencana yang belum dikutip, unik per URL', () => {
@@ -95,8 +94,8 @@ describe('panel Rencana mengikuti rencana dan tier', () => {
     expect(campur.match(/Buka situs resmi/g) ?? []).toHaveLength(3);
   });
 
-  it('sebelum rencana tidak menampilkan daftar tahapan browser', () => {
-    expect(langkahPanel(null, 'kelahiran')).toEqual([]);
+  it('sebelum rencana: lima langkah hanya untuk adminduk; urusan informasi tanpa daftar statis', () => {
+    expect(langkahPanel(null, 'kelahiran')).toBe(LANGKAH_RENCANA);
     expect(langkahPanel(null, 'pengaduan')).toEqual([]);
     expect(langkahPanel(null, null)).toEqual([]);
     const body = panel({ state: 'MEMAHAMI', jenis: 'pengaduan' });

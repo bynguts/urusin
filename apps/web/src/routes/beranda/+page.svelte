@@ -73,7 +73,7 @@
 </script>
 
 <svelte:head>
-  <title>Beranda · Urusin</title>
+  <title>Urusin: urus layanan publik bersama</title>
 </svelte:head>
 
 <div
@@ -91,10 +91,11 @@
       id="judul-beranda"
       class="text-[32px] leading-[1.1] font-medium tracking-[-1.3px] text-ink sm:text-[40px] sm:leading-[44px]"
     >
-      Apa yang ingin Anda tanyakan?
+      Apa yang ingin Anda urus?
     </h1>
     <p class="w-full max-w-[640px] text-base text-body sm:text-[17px] sm:leading-[25px]">
-      Tanyakan persyaratan, dokumen, atau langkah pengurusan yang belum Anda pahami.
+      Ceritakan dengan bahasa sehari-hari. Urusin memastikan dulu kab/kota KTP Anda, mencari aturan resmi
+      wilayah itu, lalu menyusun langkahnya.
     </p>
 
     <form
@@ -110,7 +111,7 @@
         };
       }}
     >
-      <label for="pesan" class="sr-only">Tulis pertanyaan Anda</label>
+      <label for="pesan" class="sr-only">Ceritakan urusan Anda</label>
       <textarea
         id="pesan"
         name="pesan"
@@ -167,7 +168,7 @@
   <section aria-labelledby="judul-peristiwa" class="flex w-full flex-col gap-4">
     <div class="flex items-center justify-between">
       <h2 id="judul-peristiwa" class="text-[20px] leading-[29px] font-semibold tracking-[-0.3px] text-ink">
-        Pilih topik percakapan
+        Atau mulai dari peristiwa hidup
       </h2>
     </div>
     <ul class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">

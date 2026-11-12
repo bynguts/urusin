@@ -1,5 +1,4 @@
 import { MulaiPendampingRequestSchema } from '@urusin/contracts';
-import { BROWSER_PENDAMPING_TERSEDIA, PESAN_BROWSER_COMING_SOON } from '#lib/fitur.js';
 import { matchOfficialOrigin } from '@urusin/core';
 import { ADAPTER_GENERIK, jalurModeUji, mulaiPengajuan, punyaReplikaUji } from '@urusin/harness';
 import { routeByKode } from '@urusin/registry';
@@ -39,7 +38,6 @@ const SESI_TANPA_LOOP: ReadonlySet<string> = new Set([
  * Layanan pendamping menolak origin yang tidak sama dengan origin adapter.
  */
 export const POST: RequestHandler = async ({ request, params, getClientAddress }) => {
-  if (!BROWSER_PENDAMPING_TERSEDIA) return apiError(503, 'COMING_SOON', PESAN_BROWSER_COMING_SOON);
   const body = await readBody(request, MulaiPendampingRequestSchema);
   if (!body.ok) return body.response;
   try {

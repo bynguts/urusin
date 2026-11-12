@@ -16,14 +16,6 @@ function urusanDiusulkan(kodeKabKota: string, jenis: string) {
 }
 
 describe('Setujui rencana -> Browser Pendamping (deterministik, tanpa model)', () => {
-  it('produk chatbot menyimpan rencana tanpa menawarkan atau memulai sesi browser', () => {
-    const { store, u, events, publish } = urusanDiusulkan('3312', 'kelahiran');
-    const r = setujuiRencana(store, u.id, publish, u.version, false);
-    expect(r.urusan.state).toBe('RENCANA_DISETUJUI');
-    expect(r.executionId).toBeNull();
-    expect(events.some((e) => e.type === 'execution_request' || e.type === 'gate')).toBe(false);
-    expect(events.filter((e) => e.type === 'state')).toHaveLength(1);
-  });
   it('akta kelahiran Wonogiri: maju ke MENUNGGU_KONFIRMASI, lalu execution_request + gerbang konfirmasi', () => {
     const { store, u, events, publish } = urusanDiusulkan('3312', 'kelahiran');
     const r = setujuiRencana(store, u.id, publish, u.version);

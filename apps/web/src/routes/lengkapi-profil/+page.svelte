@@ -14,7 +14,7 @@
 
 <svelte:head><title>Lengkapi profil · Urusin</title></svelte:head>
 
-<KerangkaAuth judul={sapaan} sub="Lengkapi nama yang ingin Anda simpan dalam profil akun.">
+<KerangkaAuth judul={sapaan} sub="Satu pertanyaan singkat supaya formulir terisi dengan nama yang benar.">
   <h1 class="text-[2rem] leading-[37px] font-semibold tracking-[-0.9px] text-ink">Lengkapi profil</h1>
   <p class="mt-2 text-[1.0625rem] leading-[25px] text-body">Bisa diubah kapan saja di Dokumen › Data diri.</p>
   {#if galat}
@@ -71,9 +71,7 @@
         aria-describedby="hp-petunjuk"
         class="h-14 w-full rounded-[14px] border border-line-2 bg-surface px-4 text-[1.125rem] text-ink"
       />
-      <p id="hp-petunjuk" class="text-sm text-muted">
-        Disimpan sebagai bagian dari profil Anda. Jangan menuliskannya dalam chat.
-      </p>
+      <p id="hp-petunjuk" class="text-sm text-muted">Dipakai untuk mengisi formulir yang meminta nomor HP.</p>
     </div>
     <button
       type="submit"

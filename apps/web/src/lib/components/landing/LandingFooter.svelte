@@ -6,6 +6,8 @@
    * Footer situs publik dari frame pen Rafi (n2rpg / F6RSq). Gaya di landing-pen.css (kelas lpN). Tautan Produk
    * dan Bantuan menuju halaman Web; `diLanding` = "Sumber rujukan" berupa jangkar halaman ini.
    */
+  let { diLanding = false }: { diLanding?: boolean } = $props();
+  const ke = (jangkar: string) => (diLanding ? `#${jangkar}` : `${resolve('/')}#${jangkar}`);
 </script>
 
 <footer class="n-footer lp295">
@@ -23,16 +25,19 @@
         <!-- eslint-disable svelte/no-navigation-without-resolve -- `ke()` sudah memakai resolve('/') -->
         <a class="lp302" href={resolve('/cara-kerja')}> Cara kerja </a>
         <a class="lp302" href={resolve('/urusan')}> Urusan </a>
+        <a class="lp302" href={resolve('/cara-kerja')}> Browser Pendamping </a>
       </div>
       <div class="lp301">
         <div class="lp299">Bantuan</div>
         <a class="lp302" href={resolve('/tanya-jawab')}> Tanya jawab </a>
-        <a class="lp302" href={resolve('/bantuan')}> Panduan penggunaan </a>
+        <a class="lp302" href={resolve('/bantuan')}> Hubungi kami </a>
+        <a class="lp302" href={resolve('/urusan')}> Untuk keluarga </a>
       </div>
       <div class="lp301">
         <div class="lp299">Tentang</div>
-        <span class="lp302">Tim Urusin · LOGICODIX 2026</span>
-        <a class="lp302" href="{resolve('/privasi')}#sumber-informasi">Sumber rujukan</a>
+        <div class="lp302">Tentang kami</div>
+        <a class="lp302" href={resolve('/privasi')}> Privasi </a>
+        <a class="lp302" href={ke('privasi')}> Sumber rujukan </a>
         <!-- eslint-enable svelte/no-navigation-without-resolve -->
       </div>
     </div>

@@ -274,7 +274,6 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
       return akunRef.akun;
     }),
     ...init.harness,
-    config: { ...init.harness?.config, modeChatbot: true },
   });
   h.store.reapExpiredTurns();
   const publish = (urusanId: string, e: EventPayload): UrusinEvent => {

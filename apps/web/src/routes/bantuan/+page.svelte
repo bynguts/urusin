@@ -2,6 +2,8 @@
   import { resolve } from '$app/paths';
   import { tick } from 'svelte';
   import blueBerpikir from '#lib/assets/img/blue-berpikir.webp';
+  import objBrowser from '#lib/assets/img/obj-browser.webp';
+  import objPerisai from '#lib/assets/img/obj-perisai.webp';
   import latar1x from '#lib/assets/img/app/latar-bantuan-1076.webp';
   import latar2x from '#lib/assets/img/app/latar-bantuan-2152.webp';
   import Icon from '#lib/components/Icon.svelte';
@@ -16,91 +18,76 @@
   type Tanya = { id: string; tanya: string; jawab: string[] };
   const FAQ: Tanya[] = [
     {
-      id: 'mulai',
-      tanya: 'Bagaimana memulai percakapan?',
+      id: 'pemerintah',
+      tanya: 'Apakah Urusin bagian dari pemerintah?',
+      jawab: ['Bukan. Urusin membantu memahami dan menyiapkan urusan. Keputusan tetap di instansi resmi.'],
+    },
+    {
+      id: 'aman',
+      tanya: 'Apakah data saya aman?',
       jawab: [
-        'Buka Beranda, tuliskan kebutuhan Anda, lalu tekan Kirim. Lanjutkan menjawab pertanyaan Urusin di percakapan yang terbuka.',
+        'Data diri dan dokumen Anda hanya dipakai untuk urusan yang Anda setujui. AI tidak melihat kata sandi atau kode OTP Anda.',
+        'Browser Pendamping berjalan di server Urusin dan dihapus saat sesi berakhir: tidak ada cookie, riwayat, atau rekaman layar yang disimpan.',
       ],
     },
     {
-      id: 'wilayah',
-      tanya: 'Bagaimana mengganti wilayah layanan?',
+      id: 'kirim',
+      tanya: 'Kenapa Urusin tidak menekan Kirim?',
       jawab: [
-        'Buka Pengaturan, pilih Wilayah layanan, cari kabupaten atau kota, lalu tekan Simpan wilayah. Pilihan ini menjadi usulan; wilayah setiap urusan tetap dikonfirmasi dalam chat.',
-      ],
-    },
-    {
-      id: 'sumber',
-      tanya: 'Bagaimana memeriksa sumber jawaban?',
-      jawab: [
-        'Tekan tautan rujukan pada jawaban atau buka tab Sumber di panel percakapan. Jika rujukan belum tersedia, minta penjelasan lebih lanjut dan pastikan persyaratan ke instansi terkait.',
-      ],
-    },
-    {
-      id: 'lanjut',
-      tanya: 'Di mana percakapan sebelumnya?',
-      jawab: [
-        'Buka Urusanku, lalu pilih urusan yang ingin dilanjutkan. Gunakan percakapan yang sama untuk pertanyaan lanjutan tentang urusan tersebut.',
-      ],
-    },
-    {
-      id: 'unggah',
-      tanya: 'Bagaimana menyimpan dokumen?',
-      jawab: [
-        'Buka Dokumen, tekan Tambah dokumen, pilih jenisnya, lalu unggah foto atau PDF. Beri nama agar mudah ditemukan dan tekan Simpan. Berkas dapat diunduh atau dihapus dari halaman yang sama.',
-      ],
-    },
-    {
-      id: 'otp',
-      tanya: 'Apakah boleh menulis OTP atau NIK di chat?',
-      jawab: [
-        'Jangan tuliskan kata sandi, OTP, NIK, atau nomor KK dalam chat. Jika ingin menyimpan identitas, gunakan Data diri di brankas akun. Pengajuan layanan tetap Anda lakukan melalui kanal resmi.',
+        'Pengajuan ke instansi adalah keputusan Anda. AI berhenti sebelum tombol Kirim, Anda memeriksa isian, lalu Anda sendiri yang menekannya.',
       ],
     },
     {
       id: 'situs-berubah',
-      tanya: 'Bagaimana jika tautan instansi tidak bisa dibuka?',
+      tanya: 'Bagaimana kalau situs resmi berubah?',
       jawab: [
-        'Sebutkan tautan dan kendalanya di percakapan. Urusin dapat membantu mencari informasi kanal resmi lain. Jangan tuliskan kata sandi atau kode masuk.',
+        'Urusin berhenti dengan aman dan beralih ke mode dipandu: Anda mendapat langkah demi langkah untuk mengisi sendiri, lengkap dengan sumber resmi.',
+      ],
+    },
+    {
+      id: 'otp',
+      tanya: 'Kenapa kode OTP dan kata sandi harus saya ketik sendiri?',
+      jawab: [
+        'Kode OTP dan kata sandi adalah kunci akun Anda. Saat diminta, layar berganti ke "Giliran Anda": AI berhenti dan tidak melihat yang Anda ketik.',
+      ],
+    },
+    {
+      id: 'unggah',
+      tanya: 'Bagaimana supaya dokumen yang diunggah lolos pemeriksaan?',
+      jawab: [
+        'Foto di tempat terang, seluruh halaman masuk bingkai, tidak terpotong, dan tulisan terbaca. Simpan dulu di menu Dokumen supaya bisa dipakai ulang.',
+        'Format yang diterima: JPG, PNG, atau PDF.',
       ],
     },
     {
       id: 'pendamping',
-      tanya: 'Apakah Browser Pendamping sudah tersedia?',
+      tanya: 'Apa itu Browser Pendamping?',
       jawab: [
-        'Browser Pendamping berstatus Coming soon. Saat ini gunakan Urusin untuk memahami syarat dan langkah pengurusan, lalu buka layanan resmi sendiri.',
+        'Situs resmi dibuka di server Urusin dan tampil di layar Anda. AI mengisi formulir dengan data yang Anda izinkan, dan Anda bisa mengambil alih kapan saja.',
       ],
     },
   ];
 
-  const TOPIK: {
-    judul: string;
-    ringkas: string;
-    ikon: NamaIkon;
-    latar: string;
-    ke: string;
-    gambar?: string;
-  }[] = [
+  const TOPIK: { judul: string; ringkas: string; gambar?: string; latar: string; ke: string }[] = [
     {
-      judul: 'Melanjutkan percakapan',
-      ringkas: 'Temukan kembali urusan yang pernah Anda mulai.',
-      ikon: 'obrolan',
-      latar: 'bg-bg-2',
-      ke: 'lanjut',
-    },
-    {
-      judul: 'Memeriksa sumber',
-      ringkas: 'Buka rujukan yang digunakan pada jawaban.',
-      ikon: 'tautan-luar',
-      latar: 'bg-bg-2',
-      ke: 'sumber',
-    },
-    {
-      judul: 'Menyimpan dokumen',
-      ringkas: 'Tambahkan foto atau PDF ke brankas akun.',
-      ikon: 'berkas-unggah',
-      latar: 'bg-bg-2',
+      judul: 'Mengunggah dokumen',
+      ringkas: 'Supaya foto atau pindaian langsung lolos pemeriksaan.',
+      latar: 'bg-[#f4efe4]',
       ke: 'unggah',
+    },
+    {
+      judul: 'Browser Pendamping',
+      ringkas: 'Situs resmi tampil di layar, AI mengisi dengan izin Anda.',
+      gambar: objBrowser,
+      latar: 'bg-[#f6ece6]',
+      ke: 'pendamping',
+    },
+    {
+      judul: 'Kenapa OTP harus Anda?',
+      ringkas: 'Data dan keputusan tetap di tangan Anda.',
+      gambar: objPerisai,
+      latar: 'bg-hijau',
+      ke: 'otp',
     },
   ];
 
@@ -130,8 +117,8 @@
   const pintasan = $derived<Pintasan[]>([
     {
       ikon: 'obrolan',
-      judul: 'Buka Urusin',
-      ringkas: 'Kembali ke percakapan',
+      judul: 'Tanya Rose',
+      ringkas: 'Jawaban disertai sumber resmi',
       href: resolve('/beranda'),
       gelap: true,
     },
@@ -161,13 +148,13 @@
 
 <div class="flex w-full flex-col gap-[22px] px-4 py-6 sm:px-10 sm:py-7">
   <section
-    class="latar-bantuan relative isolate overflow-hidden rounded-[20px] border border-line lg:min-h-[180px]"
+    class="latar-bantuan relative isolate overflow-hidden rounded-[20px] border border-line lg:h-[180px]"
     style:--latar-1x="url({latar1x})"
     style:--latar-2x="url({latar2x})"
   >
-    <div class="relative z-10 flex flex-col gap-3.5 p-5 sm:p-7 lg:w-[calc(100%-12rem)] lg:max-w-[676px]">
+    <div class="flex flex-col gap-3.5 p-5 sm:p-7 lg:absolute lg:top-7 lg:left-7 lg:w-[620px] lg:p-0">
       <h2 class="text-[26px] leading-8 font-semibold tracking-[-0.7px] text-ink sm:text-[28px]">
-        Bantuan menggunakan Urusin
+        Ada yang bisa dibantu?
       </h2>
       <label for="cari-bantuan" class="sr-only">Cari bantuan</label>
       <div
@@ -207,7 +194,7 @@
             {#if t.gambar}
               <img src={t.gambar} alt="" width="60" height="60" class="size-[60px] object-contain" />
             {:else}
-              <Icon name={t.ikon} class="size-[30px] text-brand" />
+              <Icon name="berkas-unggah" class="size-[30px] text-brand" />
             {/if}
           </span>
           <span class="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -225,7 +212,7 @@
         id="judul-faq"
         class="border-b border-line bg-card px-[18px] py-3.5 text-base leading-[23px] font-semibold text-ink"
       >
-        Panduan penggunaan
+        Pertanyaan yang sering ditanya
       </h2>
       {#each tampil as f (f.id)}
         <details

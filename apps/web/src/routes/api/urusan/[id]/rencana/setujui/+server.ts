@@ -1,7 +1,7 @@
 import { TurnInProgressError, isTerminal, setujuiRencana } from '@urusin/harness';
 import { z } from 'zod';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
-import { BROWSER_PENDAMPING_TERSEDIA } from '#lib/fitur.js';
+import { segarkanJaringanId } from '#lib/server/pendamping.js';
 import { getRuntime } from '#lib/server/runtime.js';
 import { urusanMilik } from '#lib/server/urusan-akses.js';
 import type { RequestHandler } from './$types';
@@ -20,17 +20,12 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
   try {
     const rt = await getRuntime();
     // Portal `id-only` hanya ditawarkan bila worker berjaringan Indonesia sehat SAAT persetujuan.
+    await segarkanJaringanId();
     const u = urusanMilik(rt, params.id, locals);
     if (!u) return apiError(404, 'NOT_FOUND', 'Urusan tidak ditemukan.');
     if (isTerminal(u.state)) return apiError(409, 'TERMINAL', 'Urusan ini sudah selesai.');
     if (rt.running.has(u.id) || rt.store.hasRunningTurn(u.id)) throw new TurnInProgressError();
-    const r = setujuiRencana(
-      rt.store,
-      u.id,
-      (e) => void rt.publish(u.id, e),
-      body.data.expectedVersion,
-      BROWSER_PENDAMPING_TERSEDIA,
-    );
+    const r = setujuiRencana(rt.store, u.id, (e) => void rt.publish(u.id, e), body.data.expectedVersion);
     return apiJson({ state: r.urusan.state, version: r.urusan.version, pendamping: r.executionId !== null });
   } catch (e) {
     return errorResponse(e);
