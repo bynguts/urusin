@@ -479,7 +479,8 @@ export function jagaUtama(
       void f.goto('about:blank').catch(() => {});
       return;
     }
-    onBlocked(u.hostname, true);
+    // `host` (dengan port non-baku), sama dengan catatan `keluarAllowlist`: allowlist sesi berbasis host:port.
+    onBlocked(u.host, true);
     void (async () => {
       await p.goBack({ timeout: 5_000 }).catch(() => null);
       if (luar(p.url())) await p.goto('about:blank').catch(() => {});
