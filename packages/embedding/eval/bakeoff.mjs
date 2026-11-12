@@ -34,6 +34,8 @@ const PROFIL = {
   'qwen3-eos': { q: (t, i) => `Instruct: ${i}\nQuery:${t}<|endoftext|>`, d: (t) => `${t}<|endoftext|>` },
   granite: { q: (t) => t, d: (t) => t },
   e5: { q: (t) => `query: ${t}`, d: (t) => `passage: ${t}` },
+  // jina-embeddings-v5-text-*-retrieval (prompts sentence-transformers resmi; pooling token terakhir).
+  jina: { q: (t) => `Query: ${t}`, d: (t) => `Document: ${t}` },
 };
 
 const { values: arg } = parseArgs({
