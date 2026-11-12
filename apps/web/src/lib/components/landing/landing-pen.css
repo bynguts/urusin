@@ -2782,8 +2782,8 @@
   outline: 2px solid #252522;
   outline-offset: 2px;
 }
-.n-faq-item summary:hover .lp266 {
-  filter: drop-shadow(0px 8px 12px #25252218);
+.lp .n-faq-item summary:hover .n-balon {
+  filter: drop-shadow(0px 0px 0.5px #0000001f) drop-shadow(0px 8px 12px #25252218);
   transform: translateY(-1px);
 }
 .lp265 {
@@ -2797,60 +2797,71 @@
 }
 .lp266 {
   align-items: flex-start;
-  background-color: var(--sb-bg-white, #ffffff);
-  border-radius: 24px;
-  /* drop-shadow (bukan box-shadow) supaya bayangan ikut membungkus ekor balon */
-  filter: drop-shadow(0px 6px 10px #2525220d);
   display: flex;
   flex-direction: row;
   flex-shrink: 0;
-  padding: 14px 24px;
-  position: relative;
   width: fit-content;
   transition:
     transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
     filter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 /*
- * Ekor balon chat: satu bentuk (mask SVG) dipakai balon pertanyaan (kiri bawah), balon jawaban (kanan
- * bawah, dicerminkan) dan balon sapaan di panel ajakan. Warna = latar balon (inherit), digambar di belakang
- * isi balon (z-index -1 dalam konteks tumpukan balon) sehingga sambungannya tanpa garis.
+ * Balon chat bersama (.n-balon): pertanyaan FAQ (putih), jawaban FAQ (.n-balon--gelap) dan sapaan
+ * "Mau urus apa hari ini?" di panel ajakan memakai bentuk, ukuran huruf, padding, sudut, bayangan dan ekor
+ * yang sama. Ekor = mask SVG berwarna latar balon (inherit), di belakang isi (z-index -1 dalam konteks
+ * tumpukan balon); drop-shadow (bukan box-shadow) supaya bayangan ikut membungkus ekor tanpa sambungan.
+ * Balon putih berekor kiri bawah, balon gelap dicerminkan ke kanan bawah.
  */
-.lp :is(.lp266, .lp270, .lp294)::before {
+.lp .n-balon {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--sb-bg-white, #ffffff);
+  color: var(--sb-text-primary, #252522);
+  border-radius: 16px;
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.429;
+  filter: drop-shadow(0px 0px 0.5px #0000001f) drop-shadow(0px 6px 9px #2525220d);
+}
+.lp .n-balon > * {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+/* Sudut berekor dibuat kecil: tepi ekor jadi satu-satunya tepi di sudut itu (tanpa garis sambungan). */
+.lp .n-balon {
+  border-bottom-left-radius: 4px;
+}
+.lp .n-balon--gelap {
+  background-color: #111110;
+  color: #ffffff;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 4px;
+}
+.lp .n-balon::before {
   content: '';
   position: absolute;
-  bottom: -6px;
-  left: -6px;
-  width: 24px;
-  height: 30px;
+  bottom: -4px;
+  left: -4px;
+  width: 16px;
+  height: 20px;
   z-index: -1;
   background: inherit;
   pointer-events: none;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 30'%3E%3Cpath d='M24 0v24H14c-4 2.5-9.5 5-14 6 3.5-3.5 6-9 6-16V0z'/%3E%3C/svg%3E")
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 20'%3E%3Cpath d='M16 0v16H9c-2.5 1.5-6 3.3-9 4 2.3-2.3 4-6 4-10.7V0z'/%3E%3C/svg%3E")
     center / 100% 100% no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 30'%3E%3Cpath d='M24 0v24H14c-4 2.5-9.5 5-14 6 3.5-3.5 6-9 6-16V0z'/%3E%3C/svg%3E")
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 20'%3E%3Cpath d='M16 0v16H9c-2.5 1.5-6 3.3-9 4 2.3-2.3 4-6 4-10.7V0z'/%3E%3C/svg%3E")
     center / 100% 100% no-repeat;
 }
-.lp .lp294::before {
-  bottom: -5px;
-  left: -5px;
-  width: 18px;
-  height: 22.5px;
-}
-.lp .lp270::before {
+.lp .n-balon--gelap::before {
   left: auto;
-  right: -6px;
+  right: -4px;
   transform: scaleX(-1);
 }
 .lp267 {
-  color: var(--sb-text-primary, #252522);
-  font-size: 17px;
-  font-weight: 500;
-  line-height: 1.529;
   white-space: nowrap;
-}
-.n-faq-item[open] .lp266 {
-  filter: drop-shadow(0px 8px 12px #25252214);
 }
 .lp269 {
   align-items: flex-start;
@@ -2906,23 +2917,14 @@
 }
 .lp270 {
   align-items: flex-start;
-  background-color: #111110;
-  border-radius: 24px;
   display: flex;
   flex-direction: row;
   flex-shrink: 0;
-  padding: 14px 24px;
-  position: relative;
-  isolation: isolate;
   width: 620px;
   max-width: 100%;
 }
 .lp271 {
-  color: #ffffff;
   flex: 1 1 0;
-  font-size: 17px;
-  font-weight: 500;
-  line-height: 1.529;
 }
 .lp272 {
   align-items: flex-start;
@@ -3184,15 +3186,11 @@
 }
 .lp294 {
   align-items: flex-start;
-  background-color: var(--sb-bg-white, #ffffff);
-  border-radius: 16px;
-  filter: drop-shadow(0px 0px 0.5px #0000001f) drop-shadow(0px 6px 9px #2525220d);
   display: flex;
   flex-direction: row;
   /* Sapaan milik karakter merah muda yang melambai (.lp291): ekor kiri bawah menunjuk kepalanya,
      balon di atas kepala ungu (.lp289) tanpa menutup wajah siapa pun. */
   left: 80px;
-  padding: 9px 14px;
   position: absolute;
   top: 160px;
   width: fit-content;

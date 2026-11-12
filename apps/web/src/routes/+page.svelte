@@ -2823,12 +2823,12 @@
     <div class="n-bubbles lp264">
       <details class="n-faq-item" name="faq" open>
         <summary class="lp265">
-          <div class="lp266">
+          <div class="n-balon lp266">
             <span class="lp267">Apakah Urusin bagian dari pemerintah?</span>
           </div>
         </summary>
         <div class="n-answer-row lp269">
-          <div class="n-answer lp270">
+          <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
               Bukan. Urusin membantumu memahami dan menyiapkan urusan. Keputusan layanan tetap di instansi
               terkait.
@@ -2838,12 +2838,12 @@
       </details>
       <details class="n-faq-item" name="faq">
         <summary class="lp265">
-          <div class="lp266">
+          <div class="n-balon lp266">
             <span class="lp267">Apakah data saya aman?</span>
           </div>
         </summary>
         <div class="n-answer-row lp269">
-          <div class="n-answer lp270">
+          <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
               Aman. Data dan berkasmu disimpan terenkripsi di server per akun. Model AI tidak pernah menerima
               data identitas asli (NIK, KK, nama), dan data tamu terhapus otomatis setelah 72 jam.
@@ -2853,12 +2853,12 @@
       </details>
       <details class="n-faq-item" name="faq">
         <summary class="lp265">
-          <div class="lp266">
+          <div class="n-balon lp266">
             <span class="lp267">Bisa dipakai untuk mengurus orang tua saya?</span>
           </div>
         </summary>
         <div class="n-answer-row lp269">
-          <div class="n-answer lp270">
+          <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
               Bisa. Kamu bisa mendampingi orang tua atau anggota keluarga lain untuk menyiapkan syarat,
               mengunggah berkas, dan memandu pengisian di situs resmi.
@@ -2868,12 +2868,12 @@
       </details>
       <details class="n-faq-item" name="faq">
         <summary class="lp265">
-          <div class="lp266">
+          <div class="n-balon lp266">
             <span class="lp267">Apakah AI bisa mengirim formulir sendiri?</span>
           </div>
         </summary>
         <div class="n-answer-row lp269">
-          <div class="n-answer lp270">
+          <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
               Tidak. AI hanya mengisi kolom yang sudah kamu setujui di Browser Pendamping. Login, CAPTCHA,
               OTP, dan tombol Kirim akhir selalu dikerjakan oleh kamu sendiri.
@@ -2883,12 +2883,12 @@
       </details>
       <details class="n-faq-item" name="faq">
         <summary class="lp265">
-          <div class="lp266">
+          <div class="n-balon lp266">
             <span class="lp267">Bagaimana kalau informasinya sudah berubah?</span>
           </div>
         </summary>
         <div class="n-answer-row lp269">
-          <div class="n-answer lp270">
+          <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
               Urusin membaca syarat langsung dari regulasi dan portal resmi daerah yang dilengkapi tanggal
               verifikasi. Bila ada perubahan atau situs belum didukung, Urusin akan memberi tahu dan beralih
@@ -2899,12 +2899,12 @@
       </details>
       <details class="n-faq-item" name="faq">
         <summary class="lp265">
-          <div class="lp266">
+          <div class="n-balon lp266">
             <span class="lp267">Berapa biayanya?</span>
           </div>
         </summary>
         <div class="n-answer-row lp269">
-          <div class="n-answer lp270">
+          <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
               Gratis. Seluruh layanan Urusin tidak dipungut biaya. Layanan adminduk di Disdukcapil menurut
               Undang-Undang juga gratis; jika ada biaya resmi (mis. leges/materai), dibayarkan langsung ke
@@ -3070,7 +3070,7 @@
           loading="lazy"
           decoding="async"
         />
-        <div class="lp294">
+        <div class="n-balon lp294">
           <div class="lp213">Mau urus apa hari ini?</div>
         </div>
       </div>
