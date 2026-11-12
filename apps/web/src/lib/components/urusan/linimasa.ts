@@ -190,6 +190,7 @@ export function kalimatWilayah(e: EventOf<'wilayah'>, jenis?: string | null): st
 
 const LABEL_ALAT: Record<string, string> = {
   rag__cari_pengetahuan: 'Mencari sumber resmi…',
+  web__cari: 'Mencari di situs resmi pemerintah…',
   urusan__jawab_persyaratan: 'Menyusun jawaban dari sumber resmi…',
   urusan__susun_rencana: 'Menyusun rencana…',
 };

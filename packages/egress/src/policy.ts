@@ -11,7 +11,7 @@ import { EGRESS_PIHAK_KETIGA, OFFICIAL_DOMAINS } from '@urusin/core';
  *   resolve ke loopback tetap ditolak.
  * - Gateway LLM Tailscale pada port 20128 hanya boleh pada origin persis `LLM_BASE_URL`, profil runtime.
  * - Dua profil terpisah (L2):
- *   - `runtime` (server web): host Jina + host akun (Google, Resend) + origin base URL
+ *   - `runtime` (server web): host Jina + host akun (Google, Resend) + Exa (cari web) + origin base URL
  *     LLM/embedding/rerank dari env operator.
  *   - `ingest` (rag:ingest/verify, CLI kanal/kontak): registry domain resmi + sufiks `.go.id`, https:443.
  *   - `browser` (proxy CONNECT peramban Browser Pendamping, `checkConnect`): HANYA https:443 ke host persis
@@ -45,6 +45,9 @@ export const AUTH_HOSTS: readonly string[] = Object.freeze([
 
 /** Verifikasi token Turnstile (siteverify) untuk "Masuk sebagai juri" dan login setelah 3 kegagalan. */
 export const TURNSTILE_HOSTS: readonly string[] = Object.freeze(['challenges.cloudflare.com']);
+
+/** API pencarian web Exa (tool agen `web__cari`, cadangan RAG; aktif hanya bila `EXA_API_KEY` terisi). */
+export const EXA_HOSTS: readonly string[] = Object.freeze(['api.exa.ai']);
 
 /** Sufiks domain pemerintah yang boleh diambil korpus RAG (`rag:ingest` / `rag:verify`). */
 export const OFFICIAL_SUFFIX = '.go.id';
@@ -244,7 +247,7 @@ export function buildAllowlist(
   }
   const llm = parseOrigin(env.LLM_BASE_URL);
   return {
-    hosts: new Set([...JINA_HOSTS, ...AUTH_HOSTS, ...TURNSTILE_HOSTS]),
+    hosts: new Set([...JINA_HOSTS, ...AUTH_HOSTS, ...TURNSTILE_HOSTS, ...EXA_HOSTS]),
     suffixes: [],
     configured,
     llmProxy: !!llm && llm.host === LLM_PROXY.host && llm.port === LLM_PROXY.port,

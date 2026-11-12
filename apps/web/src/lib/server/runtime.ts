@@ -37,6 +37,7 @@ import {
 } from '@urusin/llm';
 import { createRagSearcher, openDb, type RagSearchInfo } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
+import { cariWebDariEnv } from './cari-web.js';
 import { embeddingDariEnv, intentEmbedding, type Embedding } from './embedding.js';
 import { httpKeluar } from './http-keluar.js';
 import { aturStatusProbe, pantauProbe } from './probe-ulang.js';
@@ -259,12 +260,15 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   const akunRef: { akun?: AkunService } = {};
   const embedding = embeddingDariEnv(init.env ?? process.env);
   const klasifikasiEmbedding = intentEmbedding(embedding);
+  // Cari web cadangan (Exa): hanya bila EXA_API_KEY terisi; tanpa itu web__cari tidak ditawarkan ke model.
+  const cariWeb = cariWebDariEnv(init.env ?? process.env);
   const h = createHarness({
     provider: init.provider ?? new DemoProvider(),
     db,
     ragDb,
     ragSearch: searcher?.search,
     ...(klasifikasiEmbedding ? { intentEmbedding: klasifikasiEmbedding } : {}),
+    ...(cariWeb ? { cariWeb } : {}),
     ingatan: penyimpanIngatan(() => {
       if (!akunRef.akun) throw new Error('akun belum siap');
       return akunRef.akun;

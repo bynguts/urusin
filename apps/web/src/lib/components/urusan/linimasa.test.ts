@@ -117,6 +117,7 @@ describe('bangunLinimasa', () => {
 describe('label untuk warga', () => {
   it('labelProgres menyembunyikan nama tool teknis', () => {
     expect(labelProgres('Menjalankan rag__cari_pengetahuan…')).toBe('Mencari sumber resmi…');
+    expect(labelProgres('Menjalankan web__cari…', 'web__cari')).toBe('Mencari di situs resmi pemerintah…');
     expect(labelProgres('Menjalankan alat_baru…')).toBe('Urusin sedang bekerja…');
     expect(labelProgres(null, 'urusan__susun_rencana')).toBe('Menyusun rencana…');
     expect(labelProgres(null)).toBe('Urusin sedang bekerja…');

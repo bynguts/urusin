@@ -51,6 +51,10 @@ import { arahanPanduanUmum, kanalDipandu, paketDipandu } from './dipandu.js';
 
 const kodeKabKota = z.string().regex(/^\d{4}$/);
 
+/** Saran ke model saat korpus RAG kosong dan `web__cari` terdaftar. */
+export const SARAN_WEB =
+  'Korpus belum punya jawabannya: coba web__cari dengan kueri umum yang sama (tanpa data pribadi) sebelum mengarahkan warga.';
+
 type Hit = ReturnType<typeof cariPengetahuanTool.execute>['hasil'][number];
 
 /**
@@ -121,7 +125,10 @@ export const ragCariPengetahuan = defineTool({
     // Wilayah urusan yang sudah dipastikan warga menang atas kode tebakan model.
     const kode = kodeKtp(ctx.store, ctx.urusan) ?? args.kodeKabKota ?? null;
     const out = await retrieve(ctx, args.query, kode, args.layanan);
-    return { content: formatHits(out.hasil, ctx.nonce, 4, kode), terbungkus: true, takTepercaya: true };
+    const content = formatHits(out.hasil, ctx.nonce, 4, kode);
+    // RAG kosong dan cari web aktif: cadangan web__cari (sumber resmi dulu) sebelum mengarahkan ke kanal.
+    const web = out.hasil.length === 0 && ctx.deps.cariWeb ? `\n${SARAN_WEB}` : '';
+    return { content: `${content}${web}`, terbungkus: true, takTepercaya: true };
   },
 });
 
