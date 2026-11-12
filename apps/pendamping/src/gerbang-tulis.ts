@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { EGRESS_ASET_UMUM, PLATFORM_WILAYAH, PORTAL_WILAYAH } from '@urusin/core';
+import { domainPemda } from '@urusin/egress';
 import { jalurTulis } from '@urusin/executor';
 
 /**
@@ -114,6 +115,20 @@ const HOST_ASET_WILAYAH: ReadonlySet<string> = (() => {
   );
 })();
 
+/**
+ * Host unggah portal (`hostUnggah` registry wilayah, mis. S3 Klampid 3578): tujuan unggahan XHR halaman portal.
+ * Hanya ada di allowlist sesi wilayah pemiliknya; di sini diperlakukan sebagai host subresource (bukan dokumen,
+ * bukan tujuan navigasi AI).
+ */
+const HOST_UNGGAH_WILAYAH: ReadonlySet<string> = new Set(
+  Object.values(PORTAL_WILAYAH).flatMap((p) => p.hostUnggah ?? []),
+);
+
+export function hostUnggahWilayah(url: string): boolean {
+  const h = URL.parse(url)?.hostname.toLowerCase().replace(/\.$/, '');
+  return h !== undefined && HOST_UNGGAH_WILAYAH.has(h);
+}
+
 /** Host aset pemda (`hostAset`): sama seperti aset umum, bukan dokumen dan bukan tujuan navigasi (re-review LOW). */
 export function hostAsetWilayah(url: string): boolean {
   const h = URL.parse(url)?.hostname.toLowerCase().replace(/\.$/, '');
@@ -122,7 +137,7 @@ export function hostAsetWilayah(url: string): boolean {
 
 /** Host yang hanya melayani subresource: aset umum (CDN/fon) atau aset pemda (`hostAset`). */
 export function hostAset(url: string): boolean {
-  return hostAsetUmum(url) || hostAsetWilayah(url);
+  return hostAsetUmum(url) || hostAsetWilayah(url) || hostUnggahWilayah(url);
 }
 
 /** Jenis sumber daya yang boleh diambil dari host aset umum (Playwright `resourceType`). */
@@ -147,12 +162,54 @@ export function asetUmumBoleh(r: {
 }): boolean {
   if (!hostAset(r.url)) return true;
   if (r.dokumen) return false;
+  // Host unggah: XHR/fetch semua metode (unggah PUT/POST + preflight) dan subresource biasa. Tulisnya tetap
+  // lewat gerbang tulis (jendela AI isi / warga); kirim akhir portal tetap milik warga.
+  if (hostUnggahWilayah(r.url)) return TIPE_XHR.has(r.resourceType) || TIPE_ASET_UMUM.has(r.resourceType);
   if (TIPE_ASET_UMUM.has(r.resourceType)) return true;
   return (
     TIPE_XHR.has(r.resourceType) &&
     r.metode?.toUpperCase() === 'GET' &&
     !hostAsetUmum(r.url) &&
     /\.go\.id$/.test(URL.parse(r.url)?.hostname.toLowerCase().replace(/\.$/, '') ?? '')
+  );
+}
+
+/**
+ * Domain pemda (`label.go.id`) host portal sesi. Host aset umum/aset pemda terdaftar tidak ikut menentukan (CDN
+ * pemda lain yang dipakai bersama tidak membuka domain pemda itu).
+ */
+export function domainPemdaSesi(hosts: Iterable<string>): Set<string> {
+  const out = new Set<string>();
+  for (const h of hosts) {
+    if (hostAset(`https://${h}/`)) continue;
+    const d = domainPemda(h);
+    if (d) out.add(d);
+  }
+  return out;
+}
+
+/** Jenis subresource yang boleh dari subdomain pemda yang sama tanpa terdaftar. */
+const TIPE_ASET_PEMDA: ReadonlySet<string> = new Set(['image', 'stylesheet', 'font']);
+
+/**
+ * Probe gel5 3310: gambar/style/fon dari subdomain .go.id milik pemda yang SAMA dengan portal sesi
+ * (cdn.klaten.go.id, cdn.dukcapil.klaten.go.id untuk sakura.dukcapil.klaten.go.id) tanpa didaftarkan satu per
+ * satu. Hanya https:443, GET, bukan dokumen. Proxy/edge mengizinkan host itu dengan lingkup `domainPemda` yang
+ * sama; jenis lain (XHR, skrip, navigasi) tetap butuh host terdaftar.
+ */
+export function asetPemdaSama(
+  r: { url: string; resourceType: string; dokumen: boolean; metode?: string | undefined },
+  domain: ReadonlySet<string>,
+): boolean {
+  const u = URL.parse(r.url);
+  if (!u || u.protocol !== 'https:' || (u.port !== '' && u.port !== '443')) return false;
+  const d = domainPemda(u.hostname);
+  return (
+    d !== undefined &&
+    domain.has(d) &&
+    !r.dokumen &&
+    r.metode?.toUpperCase() === 'GET' &&
+    TIPE_ASET_PEMDA.has(r.resourceType)
   );
 }
 

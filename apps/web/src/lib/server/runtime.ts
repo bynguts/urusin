@@ -13,6 +13,7 @@ import {
   type VaultOptions,
 } from '@urusin/akun';
 import {
+  CacheJawaban,
   DemoProvider,
   HarnessError,
   createDemoRagDb,
@@ -53,9 +54,19 @@ export type RuntimeConfig = {
   /** Jeda sebelum loop LLM dibatalkan setelah semua pelanggan SSE putus. */
   disconnectGraceMs: number;
   heartbeatMs: number;
-  /** Batas laju: urusan baru per jam dan turn per menit, masing-masing per IP dan per sesi. */
+  /**
+   * Batas laju: urusan baru per jam dan turn per menit. Urusan baru warga ber-akun (juga salinan demo) dihitung
+   * per akun; tamu per sesi, dengan batas per IP longgar sebagai rem banjir saja (CGNAT seluler, warnet, dan
+   * kantor kelurahan berbagi satu IP). Akun juga kena plafon per IP yang jauh lebih longgar (`buatPerJamIpAkun`),
+   * dihitung BERSAMA batas akun: akun massal dari satu IP tetap punya plafon biaya LLM.
+   */
   buatPerJamIp: number;
   buatPerJamSesi: number;
+  buatPerJamAkun: number;
+  buatPerJamIpAkun: number;
+  /** Rem Browser Pendamping portal asli: sesi mulai per jam per akun dan per IP (Mode Uji/juri tidak kena). */
+  pendampingPerJamAkun: number;
+  pendampingPerJamIp: number;
   turnPerMenitIp: number;
   turnPerMenitSesi: number;
 };
@@ -70,8 +81,12 @@ export function readConfig(env: Record<string, string | undefined> = process.env
     ragDbPath: env.URUSIN_RAG_DB?.trim() || undefined,
     disconnectGraceMs: num(env.URUSIN_SSE_DISCONNECT_GRACE_MS, 10_000),
     heartbeatMs: num(env.URUSIN_SSE_HEARTBEAT_MS, 15_000),
-    buatPerJamIp: num(env.URUSIN_LIMIT_BUAT_IP_PER_JAM, 20),
+    buatPerJamIp: num(env.URUSIN_LIMIT_BUAT_IP_PER_JAM, 120),
     buatPerJamSesi: num(env.URUSIN_LIMIT_BUAT_SESI_PER_JAM, 10),
+    buatPerJamAkun: num(env.URUSIN_LIMIT_BUAT_AKUN_PER_JAM, 30),
+    buatPerJamIpAkun: num(env.URUSIN_LIMIT_BUAT_IP_AKUN_PER_JAM, 600),
+    pendampingPerJamAkun: num(env.URUSIN_LIMIT_PENDAMPING_AKUN_PER_JAM, 6),
+    pendampingPerJamIp: num(env.URUSIN_LIMIT_PENDAMPING_IP_PER_JAM, 30),
     turnPerMenitIp: num(env.URUSIN_LIMIT_TURN_IP_PER_MENIT, 30),
     turnPerMenitSesi: num(env.URUSIN_LIMIT_TURN_SESI_PER_MENIT, 20),
   };
@@ -119,8 +134,16 @@ export type Runtime = ReturnType<typeof createHarness> & {
   running: Map<string, AbortController>;
   /** Catat + siarkan satu event di luar turn (hasil eksekusi, konfirmasi): sumber kebenaran tetap tabel events. */
   publish(urusanId: string, e: EventPayload): UrusinEvent;
-  /** Pembatas laju per aksi; kunci IP dan sesi dihitung terpisah. */
-  limits: Record<'buat' | 'turn', { ip: RateLimiter; sesi: RateLimiter }>;
+  /**
+   * Pembatas laju per aksi; kunci IP dan sesi dihitung terpisah. `akun` (bila ada) menggantikan IP + sesi tamu
+   * untuk warga yang masuk (akun atau demo), selalu bersama plafon `ipAkun` per IP.
+   */
+  limits: Record<
+    'buat' | 'turn',
+    { ip: RateLimiter; sesi: RateLimiter; akun?: RateLimiter; ipAkun?: RateLimiter }
+  > & { pendamping: { akun: RateLimiter; ip: RateLimiter } };
+  /** Sesi Browser Pendamping portal asli terakhir per akun (satu sesi aktif per akun). */
+  sesiAsliAkun: Map<string, { urusanId: string; sidHash: string; executionId: string }>;
   /** Akun warga, sesi login, dan vault terenkripsi per pemilik (ADR 0028). */
   akun: AkunService;
   /** Turnstile untuk "Masuk sebagai juri" dan login setelah 3 kegagalan. */
@@ -257,10 +280,16 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     buat: {
       ip: new RateLimiter(config.buatPerJamIp, jam),
       sesi: new RateLimiter(config.buatPerJamSesi, jam),
+      akun: new RateLimiter(config.buatPerJamAkun, jam),
+      ipAkun: new RateLimiter(config.buatPerJamIpAkun, jam),
     },
     turn: {
       ip: new RateLimiter(config.turnPerMenitIp, menit),
       sesi: new RateLimiter(config.turnPerMenitSesi, menit),
+    },
+    pendamping: {
+      akun: new RateLimiter(config.pendampingPerJamAkun, jam),
+      ip: new RateLimiter(config.pendampingPerJamIp, jam),
     },
   };
   const { akun, oidcFixture } = createAkun(db, config, (id) => h.store.deleteUrusan(id), init.akun);
@@ -280,6 +309,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     running,
     publish,
     limits,
+    sesiAsliAkun: new Map(),
     akun,
     turnstile,
     oidcFixture,
@@ -370,6 +400,9 @@ async function buildFromEnv(): Promise<Runtime> {
       caps,
       prices,
       quota: quotaFromEnv(env),
+      // Masukan jawaban bersumber yang sama persis (pesan + potongan) tidak menunggu model lagi; verifikasi
+      // kutipan tetap dijalankan ulang tiap kali.
+      cacheJawaban: new CacheJawaban(),
       // Kunci HMAC placeholder = HKDF(URUSIN_PII_KEY, 'urusin/placeholder-hmac/v1'), terpisah dari KEK vault.
       ...(piiKey ? { piiKey: kunciPlaceholderHmac(piiKey) } : {}),
     },

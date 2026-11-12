@@ -8,6 +8,9 @@ import { describe, expect, it } from 'vitest';
 import {
   chromiumArgs,
   izinRute,
+  jagaUtama,
+  netDariGalat,
+  pelanggaranRedirect,
   pesanGagal,
   pidsOfProfile,
   PROFIL_PREFS,
@@ -26,7 +29,29 @@ const EDGE_ENV = {
   PENDAMPING_EDGE_TOKEN: 'e'.repeat(40),
 };
 
+describe('netDariGalat: kode galat navigasi untuk pesan "situs tidak terjangkau"', () => {
+  it('kode net::ERR_* dari pesan Playwright; timeout tanpa kode; unduhan = situs terjangkau', () => {
+    expect(
+      netDariGalat(new Error('page.goto: net::ERR_NAME_NOT_RESOLVED at https://contoh.go.id/\nCall log:')),
+    ).toBe('net::ERR_NAME_NOT_RESOLVED');
+    expect(netDariGalat(new Error('page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://x/'))).toBe(
+      'net::ERR_TUNNEL_CONNECTION_FAILED',
+    );
+    expect(netDariGalat(new Error('page.goto: Timeout 45000ms exceeded.'))).toBe('net::ERR_TIMED_OUT');
+    // Server menjawab dengan berkas: bukan "tidak terjangkau" (ERR_ABORTED diabaikan pemeriksa navigasi awal).
+    expect(netDariGalat(new Error('page.goto: Download is starting'))).toBe('net::ERR_ABORTED');
+    expect(netDariGalat('galat aneh')).toBe('net::ERR_FAILED');
+    expect(netDariGalat(undefined)).toBe('net::ERR_FAILED');
+  });
+});
+
 describe('config', () => {
+  it('batas navigasi tanpa commit: default 45 detik, bisa diatur, minimal 500 ms', () => {
+    expect(loadConfig({}).navBatasMs).toBe(45_000);
+    expect(loadConfig({ PENDAMPING_NAV_BATAS_MS: '2000' }).navBatasMs).toBe(2_000);
+    expect(loadConfig({ PENDAMPING_NAV_BATAS_MS: '10' }).navBatasMs).toBe(500);
+  });
+
   it('sha /health: 12 hex pertama GIT_SHA; selain hex (dev/kosong) tidak dilaporkan', () => {
     expect(loadConfig({ GIT_SHA: 'c9aa9afcf41cfb55e362e39fe8546eaa8876135e' }).sha).toBe('c9aa9afcf41c');
     expect(loadConfig({ GIT_SHA: 'dev' }).sha).toBeUndefined();
@@ -249,6 +274,105 @@ describe('rute peramban: host aset umum (re-review MEDIUM)', () => {
     expect(izinRute(izin, req('https://jahat.contoh.com/', 'document', true))).toBe(false);
     expect(izinRute(izin, req('https://www.google.com/search?q=x', 'document', true))).toBe(false);
     expect(izinRute(izin, req('https://www.google.com/recaptcha/api2/anchor', 'document', true))).toBe(true);
+  });
+});
+
+describe('penjaga bingkai dan redirect (review gel5 L1-L3)', () => {
+  const izin = new Set(['portal.klaten.go.id:443', '127.0.0.1:4000']);
+  const tiruan = () => {
+    const goto: string[] = [];
+    const bingkai = (url: string) => ({
+      url: () => url,
+      goto: async (u: string) => void goto.push(`sub:${u}`),
+    });
+    let dengar: ((f: ReturnType<typeof bingkai>) => void) | undefined;
+    let kini = 'https://portal.klaten.go.id/awal';
+    let mundurKe = kini;
+    const utama = { url: () => kini, goto: async () => undefined };
+    const blokir: [string, boolean | undefined][] = [];
+    const page = {
+      on: (_e: 'framenavigated', fn: (f: ReturnType<typeof bingkai>) => void) => void (dengar = fn),
+      mainFrame: () => utama,
+      url: () => kini,
+      goBack: async () => void (kini = mundurKe),
+      goto: async (u: string) => {
+        goto.push(`utama:${u}`);
+        kini = u;
+      },
+    };
+    jagaUtama(page, izin, (h, d) => void blokir.push([h, d]));
+    return {
+      goto,
+      blokir,
+      navUtama: (url: string, mundur: string) => {
+        kini = url;
+        mundurKe = mundur;
+        dengar!(utama as unknown as ReturnType<typeof bingkai>);
+      },
+      navSub: (url: string) => dengar!(bingkai(url)),
+    };
+  };
+  const tunggu = () => new Promise((ok) => setTimeout(ok, 0));
+
+  it('bingkai utama di luar allowlist: blokir dokumen, kembali; bila masih di luar, about:blank', async () => {
+    const t = tiruan();
+    t.navUtama('https://cdn.klaten.go.id/x.html', 'https://portal.klaten.go.id/awal');
+    await tunggu();
+    expect(t.blokir).toEqual([['cdn.klaten.go.id', true]]);
+    expect(t.goto).toEqual([]);
+    t.navUtama('https://cdn.klaten.go.id/x.html', 'https://cdn.klaten.go.id/y.html');
+    await tunggu();
+    expect(t.goto).toEqual(['utama:about:blank']);
+  });
+
+  it('subframe di luar allowlist: blokir (bukan dokumen utama) lalu about:blank', async () => {
+    const t = tiruan();
+    t.navSub('https://cdn.klaten.go.id/iklan.html');
+    t.navSub('http://127.0.0.1:4001/');
+    await tunggu();
+    expect(t.blokir).toEqual([
+      ['cdn.klaten.go.id', false],
+      ['127.0.0.1', false],
+    ]);
+    expect(t.goto).toEqual(['sub:about:blank', 'sub:about:blank']);
+  });
+
+  it('allowlist, port bawaan, dan skema non-http tidak disentuh', async () => {
+    const t = tiruan();
+    for (const u of [
+      'https://portal.klaten.go.id/a',
+      'http://127.0.0.1:4000/b',
+      'about:blank',
+      'about:srcdoc',
+    ])
+      t.navSub(u);
+    t.navUtama('https://portal.klaten.go.id:443/c', 'https://portal.klaten.go.id/awal');
+    t.navUtama('chrome-error://chromewebdata/', 'https://portal.klaten.go.id/awal');
+    await tunggu();
+    expect(t.blokir).toEqual([]);
+    expect(t.goto).toEqual([]);
+  });
+
+  it('pelanggaranRedirect: hanya hop redirect ke luar allowlist selain gambar/style/fon', () => {
+    const resp = (url: string, tipe: string, redirect = true) => ({
+      url: () => url,
+      request: () => ({ resourceType: () => tipe, redirectedFrom: () => (redirect ? {} : null) }),
+    });
+    expect(pelanggaranRedirect(izin, resp('https://cdn.klaten.go.id/app.js', 'script'))).toEqual({
+      host: 'cdn.klaten.go.id',
+      skrip: true,
+    });
+    for (const t of ['document', 'xhr', 'fetch', 'media', 'other'])
+      expect(pelanggaranRedirect(izin, resp('https://cdn.klaten.go.id/x', t)), t).toEqual({
+        host: 'cdn.klaten.go.id',
+        skrip: false,
+      });
+    for (const t of ['image', 'stylesheet', 'font'])
+      expect(pelanggaranRedirect(izin, resp('https://cdn.klaten.go.id/x', t)), t).toBeUndefined();
+    expect(
+      pelanggaranRedirect(izin, resp('https://cdn.klaten.go.id/app.js', 'script', false)),
+    ).toBeUndefined();
+    expect(pelanggaranRedirect(izin, resp('https://portal.klaten.go.id/app.js', 'script'))).toBeUndefined();
   });
 });
 

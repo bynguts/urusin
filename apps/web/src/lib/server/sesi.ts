@@ -86,24 +86,54 @@ export function bacaTerakhir(cookies: Cookies): string | null {
 
 type Aksi = 'buat' | 'turn';
 
-/** Kuota per-IP dan per-sesi. 429 + Retry-After bila lewat; undefined bila boleh lanjut. Titik pasang Turnstile nanti. */
+/** Waktu tunggu Retry-After untuk warga: "±45 detik" di bawah 90 detik, selain itu "±N menit" (dibulatkan ke atas). */
+export function lamaTunggu(detik: number): string {
+  const s = Math.max(1, Math.ceil(detik));
+  return s < 90 ? `±${s} detik` : `±${Math.ceil(s / 60)} menit`;
+}
+
+const PESAN_LAJU: Record<Aksi, string> = {
+  buat: 'Terlalu banyak urusan baru dalam waktu singkat.',
+  turn: 'Terlalu banyak pesan dalam waktu singkat.',
+};
+
+/** Pesan 429 yang menyebut waktu tunggu nyata (sama dengan header Retry-After). */
+export const pesanLaju = (aksi: Aksi, retryAfterSec: number): string =>
+  `${PESAN_LAJU[aksi]} Coba lagi dalam ${lamaTunggu(retryAfterSec)}.`;
+
+/**
+ * Kuota laju. Warga yang masuk (akun atau demo) dihitung per akun bila pembatas `akun` ada, BERSAMA plafon per IP
+ * `ipAkun` yang longgar: banyak warga sah berbagi satu IP (CGNAT, warnet, kantor kelurahan), tetapi akun massal
+ * dari satu IP tidak boleh tanpa plafon biaya LLM. Tamu dihitung per sesi dan per IP (rem banjir). 429 +
+ * Retry-After + pesan berwaktu tunggu bila lewat; undefined bila boleh lanjut.
+ */
 export function batasi(
   rt: Runtime,
-  event: { locals: { sid?: string | undefined }; getClientAddress: () => string },
+  event: {
+    locals: { sid?: string | undefined; akun?: { id: string } | undefined };
+    getClientAddress: () => string;
+  },
   aksi: Aksi,
 ): Response | undefined {
+  const lim = rt.limits[aksi];
+  const akunId = event.locals.akun?.id;
   let ip = 'tak-dikenal';
   try {
     ip = event.getClientAddress();
   } catch {
     // tanpa alamat klien: semuanya berbagi satu kunci (lebih ketat, bukan lebih longgar)
   }
-  const sid = event.locals.sid ?? 'tanpa-sesi';
-  const lim = rt.limits[aksi];
-  const hasil = [lim.ip.consume(`ip:${kunciIp(ip)}`), lim.sesi.consume(`sid:${sid}`)];
+  let hasil;
+  if (akunId && lim.akun) {
+    hasil = [lim.akun.consume(`akun:${akunId}`)];
+    if (lim.ipAkun) hasil.push(lim.ipAkun.consume(`ipakun:${kunciIp(ip)}`));
+  } else {
+    const sid = event.locals.sid ?? 'tanpa-sesi';
+    hasil = [lim.ip.consume(`ip:${kunciIp(ip)}`), lim.sesi.consume(`sid:${sid}`)];
+  }
   const kena = hasil.find((h) => !h.ok);
   if (!kena) return undefined;
-  const res = apiError(429, 'RATE_LIMITED', 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.');
+  const res = apiError(429, 'RATE_LIMITED', pesanLaju(aksi, kena.retryAfterSec));
   res.headers.set('retry-after', String(kena.retryAfterSec));
   return res;
 }
@@ -112,8 +142,7 @@ export function batasi(
  * Putar cookie urusin_sid (anti fiksasi saat naik hak tamu → akun, §3.26.6). Pemanggil wajib mengikat ulang
  * semua yang terikat hash sid lama dalam satu transaksi (`AkunService.rotasiPemilik`).
  */
-export function rotasiSid(cookies: Cookies): string {
-  const sid = randomBytes(16).toString('hex');
+export function rotasiSid(cookies: Cookies, sid: string = randomBytes(16).toString('hex')): string {
   cookies.set(SID_COOKIE, sid, SID_OPSI);
   return sid;
 }

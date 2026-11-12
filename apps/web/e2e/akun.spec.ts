@@ -50,7 +50,7 @@ const hitung = (sql: string, ...p: (string | number)[]) =>
   db((d) => Number((d.prepare(sql).get(...p) as { n: number }).n));
 
 /** Tautan terakhir di outbox mailer mode log untuk penerima + jenis (menunggu sampai muncul). */
-async function tautan(email: string, jenis: 'verifikasi' | 'atur-ulang', setelah = 0): Promise<string> {
+async function tautan(email: string, jenis: 'atur-ulang', setelah = 0): Promise<string> {
   let link: string | undefined;
   await expect
     .poll(
@@ -98,18 +98,17 @@ async function api(page: Page, method: string, path: string, body?: unknown) {
   );
 }
 
-async function daftar(page: Page, email: string, sandi = SANDI) {
-  await page.goto('/daftar');
+/** Isi formulir daftar (ADR 0032: tanpa verifikasi email; sukses = langsung masuk). */
+async function isiDaftar(page: Page, email: string, sandi = SANDI, path = '/daftar') {
+  await page.goto(path);
   await page.getByLabel('Email').fill(email);
   await page.getByLabel(/Kata sandi/).fill(sandi);
   await page.getByRole('button', { name: 'Daftar', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Cek email Anda');
 }
 
-async function verifikasi(page: Page, email: string, sandi = SANDI, setelah = 0) {
-  await page.goto(await tautan(email, 'verifikasi', setelah));
-  await page.getByLabel(/Kata sandi/).fill(sandi);
-  await page.getByRole('button', { name: 'Pastikan email saya' }).click();
+async function daftar(page: Page, email: string, sandi = SANDI) {
+  await isiDaftar(page, email, sandi);
+  await expect(page).toHaveURL(/\/beranda$/);
 }
 
 async function masuk(page: Page, email: string, sandi: string, turnstile?: string) {
@@ -124,15 +123,15 @@ async function masuk(page: Page, email: string, sandi: string, turnstile?: strin
   await page.waitForLoadState('networkidle');
 }
 
+/** Akun baru lewat UI, lalu keluar (tes berikutnya masuk dengan sandi seperti warga di perangkat lain). */
 async function akunBaru(page: Page, email: string) {
   await daftar(page, email);
-  await verifikasi(page, email);
-  await expect(page.getByRole('status')).toContainText('Email sudah dipastikan');
+  expect((await api(page, 'POST', '/api/akun/keluar', {})).status).toBe(200);
 }
 
 const sesiApi = async (page: Page) => (await api(page, 'GET', '/api/akun')).json;
 
-test('#43 daftar → verifikasi → masuk → Data Diri tersimpan → masuk di HP (konteks kedua) → data sama', async ({
+test('#43 daftar (langsung masuk) → keluar → masuk → Data Diri tersimpan → masuk di HP → data sama', async ({
   page,
   context,
   browser,
@@ -358,7 +357,7 @@ test('#47 coba tanpa daftar: menjelajah tidak membuat baris; juri terisolasi; da
   expect((await api(page, 'POST', '/api/urusan', {})).status).toBe(201);
   expect(hitung('SELECT COUNT(*) n FROM users')).toBe(sebelum);
 
-  // tulis vault pertama membuat tamu; daftar + verifikasi + masuk memindahkan data tamu ke akun
+  // tulis vault pertama membuat tamu; daftar (langsung masuk) memindahkan data tamu ke akun
   expect((await api(page, 'PUT', '/api/vault/data-diri', { namaLengkap: 'Tamu E2E' })).status).toBe(200);
   expect(hitung('SELECT COUNT(*) n FROM users')).toBe(sebelum + 1);
   const email = emailBaru('e47');
@@ -480,7 +479,7 @@ test('#48 Google lewat IdP OIDC tiruan: PKCE/state/nonce ditegakkan; email sama 
   await expect(page).toHaveURL(/\/masuk\?galat=GOOGLE_GAGAL$/);
   expect((await sesiApi(page)).masuk).toBe(false);
 
-  // email sama dengan akun sandi terverifikasi: TIDAK tertaut otomatis; tertaut setelah bukti sandi
+  // email sama dengan akun sandi (tanpa verifikasi, ADR 0032): TIDAK tertaut otomatis; tertaut setelah bukti sandi
   const email = emailBaru('e48');
   await akunBaru(page, email);
   const sub = `sub-${unik()}`;
@@ -495,43 +494,96 @@ test('#48 Google lewat IdP OIDC tiruan: PKCE/state/nonce ditegakkan; email sama 
   expect((await sesiApi(page)).akun).toMatchObject({ email, terhubungGoogle: true });
 });
 
-test('#48b pra-akun: belum terverifikasi tidak memblokir; Google mengambil alih; daftar ulang membatalkan sandi lama', async ({
+test('#48b daftar langsung masuk; email ganda ditolak tanpa mengubah sandi; Google tidak mengambil alih', async ({
   page,
   context,
   browser,
 }) => {
   await pakaiIp(context);
-  // penyerang mendaftar lebih dulu dengan email korban (tidak bisa memverifikasi) lalu masuk
+  // daftar = akun penuh + sesi aktif, tanpa email apa pun
   const email = emailBaru('e48b');
-  const penyerang = await konteksHp(browser);
-  await daftar(penyerang.page, email, SANDI2);
-  await masuk(penyerang.page, email, SANDI2);
-  expect((await sesiApi(penyerang.page)).akun).toMatchObject({ emailTerverifikasi: false, sinkron: false });
-  // pemilik asli masuk dengan Google (email_verified): akun diambil alih, sandi + sesi penyerang dihapus
-  await mulaiGoogle(page);
-  await setujuiGoogle(page, { sub: `sub-${unik()}`, email });
-  await expect(page).toHaveURL(/\/lengkapi-profil|\/$/);
-  expect((await sesiApi(page)).akun).toMatchObject({ email, emailTerverifikasi: true, punyaSandi: false });
-  expect((await sesiApi(penyerang.page)).masuk).toBe(false);
-  await masuk(penyerang.page, email, SANDI2);
-  await expect(penyerang.page.getByRole('alert')).toHaveAttribute('data-kode', 'KREDENSIAL_SALAH');
-  await penyerang.ctx.close();
+  const pertama = await konteksHp(browser);
+  await daftar(pertama.page, email, SANDI2);
+  expect(await sesiApi(pertama.page)).toMatchObject({ masuk: true, akun: { email, sinkron: true } });
+  expect(
+    hitung('SELECT COUNT(*) n FROM email_tokens t JOIN users u ON u.id = t.user_id WHERE u.email = ?', email),
+  ).toBe(0);
 
-  // daftar ulang (email belum terverifikasi): tautan baru meminta sandi terbaru; sandi lama batal
-  const email2 = emailBaru('e48b2');
-  await api(page, 'POST', '/api/akun/keluar', {});
-  await daftar(page, email2, SANDI2);
-  await tautan(email2, 'verifikasi');
-  await daftar(page, email2, SANDI);
-  await verifikasi(page, email2, SANDI2, 1);
+  // email ganda: galat jelas + tautan Masuk; sandi pemilik pertama tidak berubah
+  await isiDaftar(page, email.toUpperCase(), SANDI);
+  await expect(page.getByRole('alert')).toHaveAttribute('data-kode', 'EMAIL_SUDAH_TERDAFTAR');
+  await expect(page.getByRole('alert')).toContainText('sudah terdaftar. Silakan masuk.');
+  await expect(page.getByRole('alert').getByRole('link', { name: 'Masuk' })).toBeVisible();
+  expect((await sesiApi(page)).masuk).toBe(false);
+  await masuk(page, email, SANDI);
   await expect(page.getByRole('alert')).toHaveAttribute('data-kode', 'KREDENSIAL_SALAH');
-  await verifikasi(page, email2, SANDI, 1);
-  await expect(page.getByRole('status')).toContainText('Email sudah dipastikan');
-  await api(page, 'POST', '/api/akun/keluar', {});
-  await masuk(page, email2, SANDI2);
-  await expect(page.getByRole('alert')).toHaveAttribute('data-kode', 'KREDENSIAL_SALAH');
-  await masuk(page, email2, SANDI);
-  expect((await sesiApi(page)).akun).toMatchObject({ email: email2, sinkron: true });
+
+  // Google ber-email sama: tidak mengambil alih; sesi pemilik sandi utuh; tertaut hanya dengan bukti sandi
+  const sub = `sub-${unik()}`;
+  await mulaiGoogle(page);
+  await setujuiGoogle(page, { sub, email });
+  await expect(page).toHaveURL(/\/masuk\?galat=GOOGLE_PERLU_SANDI/);
+  expect((await sesiApi(page)).masuk).toBe(false);
+  expect(hitung('SELECT COUNT(*) n FROM oauth_identities WHERE sub = ?', sub)).toBe(0);
+  expect((await sesiApi(pertama.page)).akun).toMatchObject({
+    email,
+    punyaSandi: true,
+    terhubungGoogle: false,
+  });
+  await pertama.ctx.close();
+  await masuk(page, email, SANDI2);
+  expect((await sesiApi(page)).akun).toMatchObject({ email, terhubungGoogle: true, punyaSandi: true });
+
+  // tautan verifikasi lama di kotak surat: dialihkan, tidak ada halaman verifikasi lagi
+  await page.goto('/verifikasi-email?token=' + 'A'.repeat(43));
+  await expect(page).toHaveURL(/\/beranda$/);
+});
+
+test('tamu di portal tanpa situs latihan diajak daftar; setelah daftar kembali ke urusan yang sama dengan portal asli', async ({
+  page,
+  context,
+}) => {
+  await pakaiIp(context);
+  await page.goto('/peristiwa/kelahiran');
+  const kota = page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' });
+  await expect(kota).toHaveAttribute('aria-autocomplete', 'list'); // terhidrasi: select menjadi combobox
+  // Kota Malang: daerah Browser Pendamping aktif (ADR 0033) dengan portal web asli tanpa situs latihan.
+  await kota.fill('Malang');
+  await page.getByRole('option', { name: 'Kota Malang', exact: true }).click();
+  await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
+  await expect(page).toHaveURL(/\/urusan\/u_[0-9a-f]{32}$/);
+  const urlUrusan = page.url();
+  const benar = page.getByRole('button', { name: 'Ya, betul' });
+  await expect(benar).toBeEnabled({ timeout: 20_000 });
+  await benar.click();
+  const setujuiRencana = page.getByRole('button', { name: 'Setujui rencana' });
+  await expect(setujuiRencana).toBeEnabled({ timeout: 20_000 });
+  await setujuiRencana.click();
+
+  // tamu: tidak ada tawaran palsu "Setujui dan buka situs"; ajakan masuk/daftar yang jujur
+  const ajak = page.getByRole('link', { name: 'Masuk / Daftar (gratis, 30 detik)' });
+  await expect(ajak).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'Setujui dan buka situs' })).toHaveCount(0);
+  await ajak.click();
+  await expect(page).toHaveURL(/\/daftar\?next=%2Furusan%2Fu_/);
+  const email = emailBaru('tamu-malang');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel(/Kata sandi/).fill(SANDI);
+  await page.getByRole('button', { name: 'Daftar', exact: true }).click();
+
+  // kembali ke urusan yang sama (pindah ke akun), rencana tetap, kini portal asli ditawarkan
+  await expect(page).toHaveURL(urlUrusan);
+  expect(await sesiApi(page)).toMatchObject({ masuk: true, akun: { email, sinkron: true } });
+  await expect(page.getByRole('button', { name: 'Setujui dan buka situs' })).toBeEnabled({ timeout: 20_000 });
+  await expect(page.getByRole('link', { name: 'Masuk / Daftar (gratis, 30 detik)' })).toHaveCount(0);
+  const id = urlUrusan.split('/').at(-1)!;
+  expect(
+    hitung(
+      'SELECT COUNT(*) n FROM urusan_owner o JOIN users u ON u.id = o.user_id WHERE o.urusan_id = ? AND u.email = ?',
+      id,
+      email,
+    ),
+  ).toBe(1);
 });
 
 test('#49 zona bahaya di Pengaturan: keluar dari semua perangkat, lalu hapus akun lewat form tanpa JS', async ({

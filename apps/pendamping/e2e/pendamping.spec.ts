@@ -3,6 +3,7 @@ import http from 'node:http';
 import { join } from 'node:path';
 import type net from 'node:net';
 import { expect, test, type Page } from '@playwright/test';
+import { WebSocketServer } from 'ws';
 import { byRole, click, css } from '@urusin/core';
 import type { PendampingEvent, SesiPendamping, TiketPendampingResponse } from '@urusin/contracts';
 import { createBrowserFactory, launchIsolated, PESAN_MEMORI } from '../src/browser.js';
@@ -432,6 +433,212 @@ test('probe gel4 3310: XHR/fetch GET ke host aset pemda .go.id lolos rute; tulis
   }
 });
 
+test('probe gel5 3310: gambar/style dari subdomain pemda yang sama lolos rute + proxy; jenis lain dan pemda lain tidak', async () => {
+  // Proxy hulu tiruan: CONNECT yang sampai = lolos rute peramban DAN proxy egress sesi (lalu ditolak 502).
+  const connect: string[] = [];
+  const hulu = http.createServer();
+  hulu.on('connect', (req, socket) => {
+    connect.push(req.url ?? '');
+    socket.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+  });
+  await new Promise<void>((ok) => hulu.listen(0, '127.0.0.1', ok));
+  const config = loadConfig({
+    PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN,
+    PENDAMPING_HEADLESS: '1',
+    PENDAMPING_UPSTREAM_PROXY: `http://127.0.0.1:${(hulu.address() as net.AddressInfo).port}`,
+  });
+  const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true }, [
+    'sakura.dukcapil.klaten.go.id',
+    'unpkg.com',
+  ]);
+  const gagal = new Map<string, string>();
+  iso.context.on('requestfailed', (r) => gagal.set(r.url(), r.failure()?.errorText ?? '?'));
+  const GAMBAR = 'https://cdn.klaten.go.id/logo.png';
+  const STYLE = 'https://cdn.dukcapil.klaten.go.id/tema.css';
+  const LAIN = 'https://cdn.slemankab.go.id/logo.png';
+  const SKRIP = 'https://cdn.klaten.go.id/app.js';
+  const DATA = 'https://cdn.klaten.go.id/data.json';
+  try {
+    const page = await iso.context.newPage();
+    await page.evaluate(
+      async (u) => {
+        const img = (src: string) => Object.assign(document.createElement('img'), { src });
+        document.body.append(img(u.GAMBAR), img(u.LAIN));
+        document.head.append(
+          Object.assign(document.createElement('link'), { rel: 'stylesheet', href: u.STYLE }),
+        );
+        document.head.append(Object.assign(document.createElement('script'), { src: u.SKRIP }));
+        await fetch(u.DATA, { mode: 'no-cors', cache: 'no-store' }).catch(() => undefined);
+      },
+      { GAMBAR, STYLE, LAIN, SKRIP, DATA },
+    );
+    await expect.poll(() => gagal.size, { timeout: 10_000 }).toBeGreaterThanOrEqual(5);
+    // Gambar/style subdomain pemda sesi: lolos rute dan proxy (gagal hanya karena proxy hulu tiruan).
+    for (const u of [GAMBAR, STYLE]) expect(gagal.get(u), u).not.toMatch(/ERR_BLOCKED_BY_CLIENT/);
+    expect(connect).toContain('cdn.klaten.go.id:443');
+    expect(connect).toContain('cdn.dukcapil.klaten.go.id:443');
+    // Pemda lain, skrip, dan fetch ke subdomain yang sama: dibatalkan di peramban.
+    for (const u of [LAIN, SKRIP, DATA]) expect(gagal.get(u), u).toMatch(/^net::ERR_BLOCKED_BY_CLIENT/);
+    expect(connect.some((c) => c.startsWith('cdn.slemankab.go.id'))).toBe(false);
+  } finally {
+    await iso.close();
+    hulu.close();
+  }
+});
+
+/** Server http lokal (origin fixture terdaftar) dengan rute tetap + WebSocket; `hit` per jalur. */
+async function serverLokal(rute: Record<string, (res: http.ServerResponse) => void>) {
+  const hit = new Map<string, number>();
+  const s = http.createServer((req, res) => {
+    const jalur = new URL(req.url ?? '/', 'http://x').pathname;
+    hit.set(jalur, (hit.get(jalur) ?? 0) + 1);
+    req.resume();
+    req.on('end', () => {
+      const f = rute[jalur];
+      if (f) return f(res);
+      res.writeHead(404).end();
+    });
+  });
+  const wss = new WebSocketServer({ noServer: true });
+  let ws = 0;
+  s.on('upgrade', (req, socket, head) => {
+    ws++;
+    wss.handleUpgrade(req, socket, head, (c) => c.send('halo'));
+  });
+  await new Promise<void>((ok) => s.listen(0, '127.0.0.1', ok));
+  return {
+    origin: `http://127.0.0.1:${(s.address() as net.AddressInfo).port}`,
+    hit: (j: string) => hit.get(j) ?? 0,
+    ws: () => ws,
+    tutup: () => {
+      wss.close();
+      s.closeAllConnections();
+      s.close();
+    },
+  };
+}
+
+/** Proxy hulu tiruan: setiap CONNECT dicatat lalu ditolak 502 (tidak pernah sampai ke situs asli). */
+async function huluTiruan() {
+  const connect: string[] = [];
+  const hulu = http.createServer();
+  hulu.on('connect', (req, socket) => {
+    connect.push(req.url ?? '');
+    socket.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+  });
+  await new Promise<void>((ok) => hulu.listen(0, '127.0.0.1', ok));
+  return {
+    url: `http://127.0.0.1:${(hulu.address() as net.AddressInfo).port}`,
+    connect,
+    tutup: () => hulu.close(),
+  };
+}
+
+test('review gel5 3310: hop redirect 302/307 (skrip, dokumen, POST, apex) ke host saudara pemda tidak pernah lolos proxy', async () => {
+  const alih =
+    (lokasi: string, status = 302) =>
+    (res: http.ServerResponse) =>
+      void res.writeHead(status, { location: lokasi, 'cache-control': 'no-store' }).end();
+  const lokal = await serverLokal({
+    '/awal': (res) =>
+      void res
+        .writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+        .end(
+          '<!doctype html><title>Awal</title><img src="https://cdn.klaten.go.id/logo.png">' +
+            '<script src="/alih-skrip"></script><script src="/alih-apex"></script>',
+        ),
+    '/alih-skrip': alih('https://x.klaten.go.id/app.js'),
+    '/alih-apex': alih('https://klaten.go.id/app.js'),
+    '/alih-dok': alih('https://x.klaten.go.id/'),
+    '/alih-post': alih('https://x.klaten.go.id/terima', 307),
+  });
+  const hulu = await huluTiruan();
+  const config = loadConfig({
+    PENDAMPING_FIXTURE_ORIGINS: `${FIXTURE_ORIGIN},${lokal.origin}`,
+    PENDAMPING_HEADLESS: '1',
+    PENDAMPING_UPSTREAM_PROXY: hulu.url,
+  });
+  const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true }, [
+    'sakura.dukcapil.klaten.go.id',
+  ]);
+  try {
+    const page = await iso.context.newPage();
+    await page.goto(`${lokal.origin}/awal`);
+    await page.evaluate(
+      (u) => fetch(u, { method: 'POST', body: 'x', mode: 'no-cors' }).catch(() => undefined),
+      `${lokal.origin}/alih-post`,
+    );
+    await page.goto(`${lokal.origin}/alih-dok`).catch(() => undefined);
+    // Gambar subdomain pemda: disetujui rute, lalu lolos proxy (sampai hulu tiruan).
+    await expect.poll(() => hulu.connect, { timeout: 10_000 }).toContain('cdn.klaten.go.id:443');
+    for (const j of ['/alih-skrip', '/alih-apex', '/alih-dok', '/alih-post']) expect(lokal.hit(j), j).toBe(1);
+    // Hop redirect tidak melewati rute: host saudara yang belum disetujui dan apex pemda ditolak proxy.
+    await new Promise((ok) => setTimeout(ok, 1_000));
+    expect(hulu.connect.filter((c) => c !== 'cdn.klaten.go.id:443')).toEqual([]);
+  } finally {
+    await iso.close();
+    hulu.tutup();
+    lokal.tutup();
+  }
+});
+
+test('review gel5: WebSocket sesi adapter hanya ke host:port allowlist sesi, selebihnya ditutup (termasuk host aset pemda)', async () => {
+  const lokal = await serverLokal({
+    '/awal': (res) =>
+      void res
+        .writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+        .end('<!doctype html><title>WS</title><img src="https://cdn.klaten.go.id/logo.png">'),
+  });
+  const lain = await serverLokal({});
+  const hulu = await huluTiruan();
+  const config = loadConfig({
+    PENDAMPING_FIXTURE_ORIGINS: `${FIXTURE_ORIGIN},${lokal.origin}`,
+    PENDAMPING_HEADLESS: '1',
+    PENDAMPING_UPSTREAM_PROXY: hulu.url,
+  });
+  const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true }, [
+    'sakura.dukcapil.klaten.go.id',
+  ]);
+  try {
+    const page = await iso.context.newPage();
+    await page.goto(`${lokal.origin}/awal`);
+    // Host aset pemda sudah disetujui (gambar): lolos proxy, tetapi BUKAN allowlist sesi untuk WebSocket.
+    await expect.poll(() => hulu.connect, { timeout: 10_000 }).toContain('cdn.klaten.go.id:443');
+    await new Promise((ok) => setTimeout(ok, 500));
+    const sebelum = hulu.connect.length;
+    const hasil = await page.evaluate(
+      (urls) =>
+        Promise.all(
+          urls.map(
+            (u) =>
+              new Promise<string>((ok) => {
+                const w = new WebSocket(u);
+                w.onmessage = (e) => ok(`pesan:${String(e.data)}`);
+                w.onclose = () => ok('tutup');
+                setTimeout(() => ok('waktu-habis'), 8_000);
+              }),
+          ),
+        ),
+      [
+        lokal.origin.replace('http:', 'ws:') + '/ws',
+        lain.origin.replace('http:', 'ws:') + '/ws',
+        'wss://cdn.klaten.go.id/ws',
+      ],
+    );
+    expect(hasil).toEqual(['pesan:halo', 'tutup', 'tutup']);
+    expect(lokal.ws()).toBe(1);
+    expect(lain.ws()).toBe(0);
+    await new Promise((ok) => setTimeout(ok, 1_000));
+    // WebSocket ke host aset pemda ditutup di peramban: tidak ada CONNECT baru ke proxy.
+    expect(hulu.connect.length).toBe(sebelum);
+  } finally {
+    await iso.close();
+    hulu.tutup();
+    lokal.tutup();
+    lain.tutup();
+  }
+});
+
 test('residu: profil sesi (cookie, Login Data) terhapus total setelah ditutup; pengelola sandi mati', async () => {
   const config = loadConfig({ PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN, PENDAMPING_HEADLESS: '1' });
   const iso = await launchIsolated(config, { lebar: 390, tinggi: 844, dpr: 1, seluler: true }, [
@@ -490,6 +697,68 @@ test('pengawas memori: sesi di atas anggaran dihentikan, warga diarahkan ke pand
   await manager.shutdown();
 });
 
+/** Jumlah piksel gelap (teks/kendali) di frame JPEG: halaman about:blank = 0. */
+async function pikselGelap(page: Page, jpeg: Uint8Array): Promise<number> {
+  await page.setContent('<canvas id="c"></canvas>');
+  return page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/jpeg;base64,${b64}`;
+    await img.decode();
+    const c = document.getElementById('c') as HTMLCanvasElement;
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i]! + d[i + 1]! + d[i + 2]! < 300) n++;
+    return n;
+  }, Buffer.from(jpeg).toString('base64'));
+}
+
+test('portal tampil SEBELUM izin isi; menolak izin = warga memegang portal yang sudah terbuka', async ({
+  page,
+}) => {
+  const config = loadConfig({
+    PENDAMPING_FIXTURE_ORIGINS: FIXTURE_ORIGIN,
+    PENDAMPING_ORIGIN_OVERRIDES: `https://telunjuksakti.wonogirikab.go.id=${FIXTURE_ORIGIN}`,
+    PENDAMPING_HEADLESS: '1',
+  });
+  const manager = new SessionManager(config, createBrowserFactory(config));
+  const o = { urusanId: 'u-portal-dulu', sidHash: SID };
+  try {
+    const s = await manager.create({
+      ...o,
+      executionId: 'x_portal_dulu',
+      adapterId: 'telunjuk-sakti-wonogiri',
+      flowId: 'ajukan',
+      origin: 'https://telunjuksakti.wonogirikab.go.id',
+      params: { layanan_id: 11 },
+      modeUji: true,
+    });
+    await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('menunggu_data');
+    const pesan: { type: string }[] = [];
+    const frame: Uint8Array[] = [];
+    const viewer = {
+      send: (m: { type: string }) => void pesan.push(m),
+      frame: (f: { jpeg: Uint8Array }) => void frame.push(f.jpeg),
+      ack: () => {},
+      close: () => {},
+    };
+    await manager.attach(s.sesiId, viewer as never);
+    // Izin diminta, dan yang tampil di layar warga sudah halaman portal (bukan about:blank putih).
+    expect(pesan.map((m) => m.type)).toContain('butuh_data');
+    await expect.poll(() => frame.length, { timeout: 15_000 }).toBeGreaterThan(0);
+    expect(await pikselGelap(page, frame.at(-1)!)).toBeGreaterThan(50);
+    // "Saya isi sendiri": kendali ke warga, sesi tetap hidup di portal yang sama.
+    await manager.handleClient(s.sesiId, { type: 'ambil_alih' });
+    expect(manager.status(o)).toMatchObject({ mode: 'takeover' });
+    expect(['menunggu_data', 'berjalan']).toContain(manager.status(o).status);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
 test('langkah 0 tak bisa membuka situs (CONNECT ditolak) -> gagal dengan alasan jaringan yang jelas', async () => {
   // Replika https di port tertutup: proxy egress menjawab CONNECT dengan 502, Chromium menampilkan halaman
   // galat (net::ERR_TUNNEL_CONNECTION_FAILED), persis pola produksi bila edge tidak bisa tersambung.
@@ -514,12 +783,92 @@ test('langkah 0 tak bisa membuka situs (CONNECT ditolak) -> gagal dengan alasan 
     params: { layanan_id: 1 },
     modeUji: true,
   });
-  await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('menunggu_data');
-  await manager.isiData(o, {}); // Data Diri kosong: AI tetap mulai (kolom diisi warga nanti)
+  // Halaman awal dibuka SEBELUM izin isi: situs tidak terjangkau = sesi berakhir jujur, tanpa lembar izin dan
+  // tanpa kanvas putih.
   await expect.poll(() => manager.status(o).status, { timeout: 30_000 }).toBe('gagal');
   const pesan = manager.status(o).pesan ?? '';
   expect(pesan).toContain(`Halaman 127.0.0.1:${port} tidak bisa dibuka`);
   expect(pesan).toMatch(/net::ERR_[A-Z_]+/);
   expect(pesan).not.toContain('berhenti dengan aman');
   await manager.shutdown();
+});
+
+/**
+ * Server uji lokal dengan `jawab` untuk setiap permintaan, lalu sesi adapter (portal dialihkan ke server itu)
+ * dengan batas navigasi kecil. Baris log JSON sesi dikumpulkan (hanya `ev`).
+ */
+async function sesiKe(
+  jawab: http.RequestListener,
+  urusanId: string,
+): Promise<{
+  manager: SessionManager;
+  o: { urusanId: string; sidHash: string };
+  ev: string[];
+  tutup: () => Promise<void>;
+}> {
+  const soket = new Set<net.Socket>();
+  const server = http.createServer(jawab);
+  server.on('connection', (c) => {
+    soket.add(c);
+    c.on('close', () => soket.delete(c));
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const origin = `http://127.0.0.1:${(server.address() as net.AddressInfo).port}`;
+  const config = {
+    ...loadConfig({
+      PENDAMPING_FIXTURE_ORIGINS: origin,
+      PENDAMPING_ORIGIN_OVERRIDES: `https://telunjuksakti.wonogirikab.go.id=${origin}`,
+      PENDAMPING_HEADLESS: '1',
+    }),
+    navBatasMs: 2_000,
+  };
+  const ev: string[] = [];
+  const asli = console.log;
+  console.log = (...a: unknown[]) => {
+    const m = /"ev":"([a-z_]+)"/.exec(String(a[0]));
+    if (m) ev.push(m[1]!);
+    asli(...a);
+  };
+  const manager = new SessionManager(config, createBrowserFactory(config));
+  const o = { urusanId, sidHash: SID };
+  await manager.create({
+    ...o,
+    executionId: `x_${urusanId}`,
+    adapterId: 'telunjuk-sakti-wonogiri',
+    flowId: 'ajukan',
+    origin: 'https://telunjuksakti.wonogirikab.go.id',
+    params: { layanan_id: 1 },
+    modeUji: true,
+  });
+  const tutup = async () => {
+    console.log = asli;
+    await manager.shutdown();
+    for (const c of soket) c.destroy();
+    await new Promise<void>((ok) => server.close(() => ok()));
+  };
+  return { manager, o, ev, tutup };
+}
+
+test('commit halaman awal tidak pernah tiba (server diam) -> gagal ERR_TIMED_OUT, nav_gagal sekali', async () => {
+  const { manager, o, ev, tutup } = await sesiKe(() => {}, 'u-diam');
+  try {
+    await expect.poll(() => manager.status(o).status, { timeout: 20_000 }).toBe('gagal');
+    expect(manager.status(o).pesan).toContain('net::ERR_TIMED_OUT');
+    await new Promise((r) => setTimeout(r, 2_500)); // pengawas lain (bila ada) sempat berbunyi
+    expect(ev.filter((e) => e === 'nav_gagal')).toHaveLength(1);
+    expect(ev).not.toContain('izin_diminta');
+  } finally {
+    await tutup();
+  }
+});
+
+test('server menjawab tanpa dokumen (204) -> bukan "tidak terjangkau"; izin isi tetap diminta', async () => {
+  const { manager, o, ev, tutup } = await sesiKe((_req, res) => void res.writeHead(204).end(), 'u-204');
+  try {
+    await expect.poll(() => manager.status(o).status, { timeout: 20_000 }).toBe('menunggu_data');
+    expect(ev).toContain('nav_awal_tanpa_dokumen');
+    expect(ev).not.toContain('nav_gagal');
+  } finally {
+    await tutup();
+  }
 });

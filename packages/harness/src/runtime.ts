@@ -5,6 +5,7 @@ import type { AgentDeps } from './agent.js';
 import { EventBus } from './bus.js';
 import { builtinTools } from './builtin-tools.js';
 import { openHarnessDb, type Db } from './db.js';
+import type { CacheJawaban } from './grounding.js';
 import { DEFAULT_QUOTA, QuotaMeter, type QuotaConfig } from './quota.js';
 import { ingatanIngat, type PenyimpanIngatan } from './ingatan.js';
 import { HarnessStore } from './store.js';
@@ -30,6 +31,8 @@ export type HarnessOptions = {
   piiKey?: string;
   /** Ingatan warga lintas urusan (ADR 0031): bila ada, tool `ingatan__ingat` ikut terdaftar. */
   ingatan?: PenyimpanIngatan;
+  /** Cache keluaran generator jawaban bersumber (mode LLM produksi); tanpa ini tiap jawaban memanggil model. */
+  cacheJawaban?: CacheJawaban;
 };
 
 /** Komposisi akar: store + registry + kuota + tracer + bus → `AgentDeps` siap dipakai `runTurn`. */
@@ -63,6 +66,7 @@ export function createHarness(opts: HarnessOptions) {
     now,
     locks: new Set(),
     ingatan: opts.ingatan,
+    cacheJawaban: opts.cacheJawaban,
   };
   return { deps, store, registry, quota, bus };
 }

@@ -21,7 +21,9 @@ export const KodeGalatAkunSchema = z.enum([
   'SANDI_TERLALU_PANJANG',
   'SANDI_TERLALU_UMUM',
   'KREDENSIAL_SALAH',
+  /** @deprecated ADR 0032: verifikasi email dihapus; server tidak pernah lagi mengirim kode ini. */
   'EMAIL_BELUM_TERVERIFIKASI',
+  'EMAIL_SUDAH_TERDAFTAR',
   'TERKUNCI',
   'RATE_LIMITED',
   'TOKEN_TIDAK_VALID',
@@ -49,6 +51,7 @@ export const KodeGalatAkunSchema = z.enum([
   'HANYA_AKUN',
   'IZIN_TIDAK_VALID',
   'NILAI_SINTETIS_DITOLAK',
+  'ATUR_ULANG_NONAKTIF',
   'CSRF',
 ]);
 export type KodeGalatAkun = z.infer<typeof KodeGalatAkunSchema>;
@@ -62,6 +65,10 @@ export const AkunSchema = z.object({
   jenis: JenisPenggunaSchema.exclude(['tamu']),
   /** null untuk salinan demo. */
   email: z.string().nullable(),
+  /**
+   * @deprecated ADR 0032: verifikasi email dihapus; server selalu mengisi true. Dipertahankan demi kompatibilitas
+   * kontrak (contracts-take1), jangan dipakai untuk keputusan apa pun.
+   */
   emailTerverifikasi: z.boolean(),
   /** false = akun hanya lewat Google (bisa membuat sandi di Ubah sandi tanpa sandi lama). */
   punyaSandi: z.boolean(),
@@ -69,8 +76,8 @@ export const AkunSchema = z.object({
   /** false → arahkan ke layar Lengkapi profil (nama lengkap belum ada di Data Diri). */
   profilLengkap: z.boolean(),
   /**
-   * true = Data Diri + dompet ikut akun di semua perangkat (akun terverifikasi, atau demo). false = email
-   * belum dipastikan: vault tetap satu perangkat seperti tamu (tampilkan "Pastikan email untuk sinkron").
+   * true = Data Diri + dompet ikut akun di semua perangkat. Selalu true untuk akun dan demo (ADR 0032: tidak
+   * ada verifikasi email); field dipertahankan agar klien yang membacanya tetap sah.
    */
   sinkron: z.boolean(),
   dibuatPada: IsoWaktuSchema,
@@ -120,15 +127,19 @@ export const TerkirimResponseSchema = z.object({
   tertunda: z.boolean(),
 });
 
-// --- POST /api/akun/daftar (202) ---
+// --- POST /api/akun/daftar ---
+/**
+ * Daftar = akun penuh + sesi langsung (ADR 0032), respons sama dengan masuk (`MasukResponse`). Email yang
+ * sudah terdaftar → 409 `EMAIL_SUDAH_TERDAFTAR`.
+ */
 export const DaftarRequestSchema = z.object({ email: EmailAkunSchema, sandi: SandiSchema });
 
-// --- POST /api/akun/verifikasi ---
-/** `sandi` = kata sandi yang dibuat saat mendaftar (anti pra-pembajakan lewat tautan orang lain). */
+// --- (dihapus) POST /api/akun/verifikasi dan /api/akun/verifikasi/kirim-ulang ---
+/** @deprecated ADR 0032: verifikasi email dihapus, endpoint tidak ada lagi. Dipertahankan demi kompatibilitas kontrak. */
 export const VerifikasiEmailRequestSchema = z.object({ token: TokenEmailSchema, sandi: SandiSchema });
+/** @deprecated ADR 0032: verifikasi email dihapus, endpoint tidak ada lagi. Dipertahankan demi kompatibilitas kontrak. */
 export const VerifikasiEmailResponseSchema = z.object({ terverifikasi: z.literal(true) });
-
-// --- POST /api/akun/verifikasi/kirim-ulang (202) ---
+/** @deprecated ADR 0032: verifikasi email dihapus, endpoint tidak ada lagi. Dipertahankan demi kompatibilitas kontrak. */
 export const KirimUlangVerifikasiRequestSchema = z.object({ email: EmailAkunSchema });
 
 // --- POST /api/akun/masuk ---
@@ -281,7 +292,7 @@ export const DaftarDokumenResponseSchema = z.object({ dokumen: z.array(DokumenAk
 /** GET /api/vault: isi vault TANPA nilai (nilai hanya di respons detail yang diminta pemilik). */
 export const VaultResponseSchema = z.object({
   pemilik: JenisPenggunaSchema,
-  /** false = vault satu perangkat (tamu, atau akun yang emailnya belum dipastikan). */
+  /** false = vault satu perangkat (tamu). */
   sinkron: z.boolean(),
   dataDiri: z.object({ ada: z.boolean(), diubahPada: IsoWaktuSchema.nullable() }),
   dokumen: z.array(DokumenAkunSchema),
@@ -301,9 +312,7 @@ export const HapusDokumenResponseSchema = z.object({ terhapus: z.literal(true) }
  */
 export const ENDPOINT_AKUN = {
   sesi: { method: 'GET', path: '/api/akun', sukses: 200 },
-  daftar: { method: 'POST', path: '/api/akun/daftar', sukses: 202 },
-  verifikasi: { method: 'POST', path: '/api/akun/verifikasi', sukses: 200 },
-  kirimUlangVerifikasi: { method: 'POST', path: '/api/akun/verifikasi/kirim-ulang', sukses: 202 },
+  daftar: { method: 'POST', path: '/api/akun/daftar', sukses: 200 },
   masuk: { method: 'POST', path: '/api/akun/masuk', sukses: 200 },
   juri: { method: 'POST', path: '/api/akun/juri', sukses: 200 },
   konfirmasiSandi: { method: 'POST', path: '/api/akun/konfirmasi-sandi', sukses: 200 },

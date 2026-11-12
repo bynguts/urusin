@@ -73,16 +73,44 @@ export function namaPendek(nama: string): string {
     .replace(/^Kabupaten /, 'Kab. ');
 }
 
+/** Nama cookie wilayah perangkat; sama dengan `WILAYAH_COOKIE` di server (lib/server/mulai-urusan.ts). */
+export const KUE_WILAYAH = 'urusin_wilayah';
+
+/**
+ * Baris `document.cookie` untuk wilayah perangkat: hanya kode kab/kota 4 digit (bukan PII), setahun, SameSite=Lax.
+ * `null` (atau kode tidak valid) = hapus. Server membacanya sebagai usulan wilayah saat formulir tidak membawa kode
+ * (landing tanpa JavaScript tidak bisa membaca localStorage).
+ */
+export function kueWilayah(kode: string | null, aman: boolean): string {
+  const ada = kode !== null && /^\d{4}$/.test(kode);
+  return `${KUE_WILAYAH}=${ada ? kode : ''}; Path=/; Max-Age=${ada ? 31_536_000 : 0}; SameSite=Lax${aman ? '; Secure' : ''}`;
+}
+
+function tulisKueWilayah(kode: string | null): void {
+  try {
+    if (typeof document === 'undefined') return;
+    document.cookie = kueWilayah(kode, location.protocol === 'https:');
+  } catch {
+    // cookie diblokir: wilayah tetap dipakai halaman ber-JavaScript lewat localStorage/memori
+  }
+}
+
 export class LokalStore {
   data = $state<DataLokal>(bersihkanLokal(null));
 
-  constructor(private readonly gudang: Pick<Storage, 'getItem' | 'setItem'> | undefined = ambilGudang()) {
+  constructor(
+    private readonly gudang: Pick<Storage, 'getItem' | 'setItem'> | undefined = ambilGudang(),
+    private readonly kue: (kode: string | null) => void = tulisKueWilayah,
+  ) {
     try {
       const raw = this.gudang?.getItem(KUNCI);
       if (raw) this.data = bersihkanLokal(JSON.parse(raw));
     } catch {
       // data rusak: mulai dari kosong
     }
+    // Pilihan lama (sebelum cookie ada) ikut sampai ke server. Tanpa pilihan, cookie tidak dihapus di sini:
+    // localStorage bisa diblokir sementara cookie masih menyimpan pilihan warga.
+    if (this.data.wilayah) this.kue(this.data.wilayah.kodeKabKota);
   }
 
   private simpan(): void {
@@ -109,6 +137,7 @@ export class LokalStore {
   aturWilayah(w: Wilayah | null): void {
     this.data = { ...this.data, wilayah: bersihkanLokal({ versiWilayah: 2, wilayah: w }).wilayah };
     this.simpan();
+    this.kue(this.data.wilayah?.kodeKabKota ?? null);
   }
 
   atur(kunci: 'kontrasTinggi' | 'kurangiGerak', nilai: boolean): void {
@@ -121,6 +150,7 @@ export class LokalStore {
     this.hapusKunci(KUNCI_TERTUNDA);
     this.data = bersihkanLokal(null);
     this.simpan();
+    this.kue(null);
   }
 
   /**

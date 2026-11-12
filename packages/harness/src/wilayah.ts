@@ -1,5 +1,12 @@
 import { ADAPTERS } from '@urusin/adapters';
 import type { EventPayload, PayloadOf, WilayahRef } from '@urusin/contracts';
+import {
+  ketersediaanLayanan,
+  petaPortal,
+  type AlternatifOffline,
+  type Ketersediaan,
+  type PrasyaratAkun,
+} from '@urusin/core';
 import { cariPengetahuanTool } from '@urusin/rag';
 import {
   KANAL_NASIONAL,
@@ -19,8 +26,16 @@ import {
 } from '@urusin/registry';
 import type { Db } from './db.js';
 import { HarnessError } from './errors.js';
-import { kalimatJaringanId, keteranganPendamping, majukan, rutePendamping } from './rencana.js';
+import {
+  kalimatJaringanId,
+  kalimatOfflinePortal,
+  keteranganPendamping,
+  majukan,
+  rutePendamping,
+  varianUrusan,
+} from './rencana.js';
 import type { HarnessStore, UrusanRow } from './store.js';
+import { paketDipandu } from './dipandu.js';
 
 type Publish = (e: EventPayload) => void;
 type PayloadWilayah = PayloadOf<'wilayah'>;
@@ -201,6 +216,35 @@ export function wilayahDariPesan(teks: string): { kode: string; ktp: boolean } |
 }
 
 /**
+ * Tujuan pindah dari pesan warga, tanpa LLM: hanya pola tegas "pindah (domisili) (dari X) ke Y" tanpa kata ragu
+ * (mungkin, belum tahu, rencana, ...), dan tepat satu kab/kota sesudah "ke". Selain itu null: tujuan tidak
+ * ditetapkan, agen yang menanyakan/memastikannya (wilayah__tetapkan atas jawaban warga).
+ */
+export function tujuanDariPesan(teks: string): string | null {
+  // Rentang "pindah ... ke <nama kab/kota>" dalam satu klausa; kab/kota di luar rentang ini (mis. "pindah ke rumah
+  // baru… Minggu depan saya ke Kabupaten Sleman") bukan tujuan pindah.
+  const rentang =
+    /\bpindah\s+(domisili\s+)?(dari\s+[^.?!\n…,;]{1,60}?\s+)?ke\s+((kota|kabupaten|kab\.?)\s+)?(administrasi\s+)?[^\s.?!\n…,;]+(\s+[^\s.?!\n…,;]+){0,2}/i.exec(
+      teks,
+    )?.[0];
+  if (!rentang) return null;
+  if (
+    /\b(mungkin|belum\s+(tahu|tau|pasti|yakin)|rencana\w*|kayaknya|sepertinya|antara|atau|bisa\s+jadi|masih\s+bingung)\b/i.test(
+      teks,
+    )
+  )
+    return null;
+  const ke = [
+    ...new Set(
+      temukanWilayah(rentang)
+        .filter((s) => s.sebelum === 'ke')
+        .map((s) => s.wilayah.kodeKabKota),
+    ),
+  ];
+  return ke.length === 1 ? ke[0]! : null;
+}
+
+/**
  * Teks agen yang isinya hanya pertanyaan konfirmasi wilayah ("KTP Anda terdaftar di X, betul?"): kartu wilayah
  * sudah menanyakannya, jadi teks ini tidak ditampilkan lagi (pertanyaan ganda).
  */
@@ -327,25 +371,155 @@ export type BantuanPendamping = { jalur: 'adapter' | 'generik'; host: string; ke
  */
 export function rencanaPeristiwa(
   slug: string,
-  w: { ktp: string | null; domisili?: string | null; tujuan?: string | null },
-): (RencanaWilayah & { pendamping?: BantuanPendamping }) | undefined {
+  w: { ktp: string | null; domisili?: string | null; tujuan?: string | null; varian?: string | undefined },
+): (RencanaWilayah & { pendamping?: BantuanPendamping; offline?: OfflinePortal }) | undefined {
   const r = rencanaWilayah(slug, { ...w, pendampingTersedia });
   if (!r || !w.ktp) return r;
-  const rute = rutePendamping({ jenis: r.slug, kodeKabKota: w.ktp });
+  return denganRute(r, w.ktp, w.varian);
+}
+
+/** Layanan yang tidak online di portal daerah aktif (peta portal, ADR 0034): alasan + jalur resmi yang benar. */
+export type OfflinePortal = { alasan: string; alternatif: AlternatifOffline };
+
+/** Id langkah prasyarat akun portal (dikerjakan warga sendiri SEBELUM Browser Pendamping). */
+export const ID_LANGKAH_AKUN = 'akun-portal';
+/** Id langkah jalur resmi untuk layanan yang tidak online di portal daerah. */
+export const ID_LANGKAH_OFFLINE = 'jalur-resmi';
+
+function refPeta(kode: string, url?: string): Langkah['sourceRef'][number] {
+  const p = petaPortal(kode)!;
+  const kab = wilayahByKode(kode);
+  return {
+    url: url ?? `https://${p.host}/`,
+    judul: `${p.namaPortal} (peta portal Urusin, dicek ${p.buktiTanggal})`,
+    instansi: `Disdukcapil ${kab ? namaPendekWilayah(kab.nama) : kode}`,
+  };
+}
+
+/** Langkah "siapkan akun sendiri" dari peta portal, ditaruh SEBELUM langkah yang dikerjakan Browser Pendamping. */
+export function langkahPrasyaratAkun(kode: string, p: PrasyaratAkun): Langkah {
+  const perangkat =
+    p.perangkat === 'ponsel'
+      ? 'Langkah ini hanya bisa Anda kerjakan sendiri di ponsel Anda; Browser Pendamping baru dibuka setelah akunnya aktif.'
+      : 'Anda kerjakan sendiri (AI tidak membuat akun, tidak mengisi sandi, kode OTP, atau CAPTCHA). Lewati bila sudah punya akun.';
+  return {
+    id: ID_LANGKAH_AKUN,
+    judul: `Sebelum Browser Pendamping: ${p.judul}`,
+    jenis: 'online-manual',
+    dependsOn: [],
+    dokumen: [],
+    bawa: [],
+    keterangan: `${p.langkah.map((l, i) => `${i + 1}. ${l}`).join(' ')} ${perangkat}`,
+    sourceRef: [refPeta(kode, p.url)],
+    verifiedAt: null,
+  };
+}
+
+/** Langkah jalur resmi untuk layanan yang tidak online di portal daerah (loket/TPDK/aplikasi lain). */
+function langkahOffline(kode: string, o: OfflinePortal): Langkah {
+  return {
+    id: ID_LANGKAH_OFFLINE,
+    judul:
+      o.alternatif.jenis === 'kantor'
+        ? 'Ajukan langsung di kantor (tidak tersedia online)'
+        : 'Ajukan lewat kanal resmi lain',
+    jenis: o.alternatif.jenis === 'kantor' ? 'offline' : 'online-manual',
+    ...(o.alternatif.jenis === 'kantor' ? { lokasi: o.alternatif.lokasi ?? 'disdukcapil' } : {}),
+    dependsOn: [],
+    dokumen: [],
+    bawa: [],
+    keterangan: `${o.alasan} ${o.alternatif.teks}`,
+    sourceRef: [refPeta(kode)],
+    verifiedAt: null,
+  };
+}
+
+/** Pertanyaan pilihan formulir portal yang disebut di kartu (selebihnya ditanyakan AI saat mengisi). */
+const MAKS_PERTANYAAN_KARTU = 4;
+
+/**
+ * Langkah pengajuan (langkah pertama selain prasyarat akun/jalur resmi) diperkaya peta portal: daftar berkas LENGKAP
+ * dari halaman resmi portal sebagai "Dokumen yang disiapkan" (hanya bila `berkasLengkap`; daftar dugaan tidak
+ * menimpa dokumen registry), pertanyaan pilihan formulir yang perlu dijawab warga, dan jam layanan formulir.
+ */
+export function denganPersiapanPortal(
+  langkah: Langkah[],
+  s: Extract<Ketersediaan, { dipetakan: true; online: true }>,
+): Langkah[] {
+  const i = langkah.findIndex((l) => l.id !== ID_LANGKAH_AKUN && l.id !== ID_LANGKAH_OFFLINE);
+  if (i < 0) return langkah;
+  const tambahan: string[] = [];
+  const pilihan = (s.field ?? []).filter((f) => f.opsi?.length).slice(0, MAKS_PERTANYAAN_KARTU);
+  if (pilihan.length)
+    tambahan.push(
+      `Formulir ${s.peta.namaPortal} menanyakan: ${pilihan.map((f) => `${f.label} (${f.opsi!.join(' / ')})`).join('; ')}.`,
+    );
+  if (s.jam) tambahan.push(`Formulir ${s.peta.namaPortal} hanya bisa diisi ${s.jam}.`);
+  const dokumen = s.berkasLengkap && s.berkas?.length ? [...s.berkas] : undefined;
+  if (!tambahan.length && !dokumen) return langkah;
+  return langkah.map((l, j) =>
+    j === i
+      ? {
+          ...l,
+          ...(dokumen ? { dokumen } : {}),
+          keterangan: [l.keterangan, ...tambahan].filter(Boolean).join(' '),
+        }
+      : l,
+  );
+}
+
+/**
+ * Tier, catatan, langkah, dan bantuan Pendamping kartu rencana dari `rutePendamping` (satu keputusan rute), ditambah
+ * peta portal: layanan offline di portal daerah = dipandu dengan jalur resmi yang benar; prasyarat akun = langkah
+ * pertama yang dikerjakan warga sendiri sebelum Browser Pendamping.
+ */
+function denganRute<
+  R extends { slug: string; tier: 'semi' | 'dipandu'; catatan: string; langkah: Langkah[] },
+>(
+  r: R,
+  ktp: string,
+  varian?: string,
+): Omit<R, 'tier'> & { tier: 'semi' | 'dipandu'; pendamping?: BantuanPendamping; offline?: OfflinePortal } {
+  const rute = rutePendamping({ jenis: r.slug, kodeKabKota: ktp, varian });
+  if (rute.jalur === 'dipandu' && rute.sebab === 'offline_portal') {
+    // Pengajuan online yang tidak ada di portal ini tidak boleh tampil sebagai "online".
+    const langkah = r.langkah.map((l) =>
+      l.jenis === 'online-manual' || l.jenis === 'online-adapter'
+        ? {
+            ...l,
+            jenis: 'offline' as const,
+            lokasi: l.lokasi ?? rute.offline.alternatif.lokasi ?? 'disdukcapil',
+          }
+        : l,
+    );
+    return {
+      ...r,
+      tier: 'dipandu',
+      catatan: `${r.catatan} ${kalimatOfflinePortal(rute.offline)}`,
+      langkah: [langkahOffline(ktp, rute.offline), ...langkah],
+      offline: rute.offline,
+    };
+  }
+  // Akun portal yang harus dibuat warga sendiri: langkah pertama, sebelum Browser Pendamping dibuka.
+  const peta = ketersediaanLayanan(ktp, r.slug, varian);
+  const prasyarat = peta.dipetakan && peta.online && peta.prasyarat ? peta.prasyarat : undefined;
+  const rAkun = prasyarat ? { ...r, langkah: [langkahPrasyaratAkun(ktp, prasyarat), ...r.langkah] } : r;
+  const r2 =
+    peta.dipetakan && peta.online ? { ...rAkun, langkah: denganPersiapanPortal(rAkun.langkah, peta) } : rAkun;
   // Portal `id-only` tanpa worker berjaringan Indonesia: dipandu sejak kartu, dengan alasan yang jujur.
   if (rute.jalur === 'dipandu' && rute.sebab === 'jaringan_id') {
-    const kab = wilayahByKode(w.ktp);
+    const kab = wilayahByKode(ktp);
     const kalimat = kalimatJaringanId(kab ? namaPendekWilayah(kab.nama) : undefined);
-    return { ...r, tier: 'dipandu', catatan: `${r.catatan} ${kalimat}` };
+    return { ...r2, tier: 'dipandu', catatan: `${r.catatan} ${kalimat}` };
   }
-  if (rute.jalur === 'dipandu') return r;
+  if (rute.jalur === 'dipandu') return r2;
   const pendamping: BantuanPendamping = {
     jalur: rute.jalur,
     host: new URL(rute.origin).host,
     keterangan: keteranganPendamping(rute),
   };
-  if (rute.jalur === 'adapter') return { ...r, pendamping };
-  return { ...r, tier: 'semi', catatan: `${r.catatan} ${pendamping.keterangan}`, pendamping };
+  if (rute.jalur === 'adapter') return { ...r2, pendamping };
+  return { ...r2, tier: 'semi', catatan: `${r.catatan} ${pendamping.keterangan}`, pendamping };
 }
 
 /** Rencana yang dipakai kartu dan potongan persyaratan: Peristiwa Hidup, atau rencana minimal KK/KTP-el. */
@@ -355,6 +529,7 @@ export type RencanaUrusan = Pick<
 > & {
   slug: string;
   pendamping?: BantuanPendamping;
+  offline?: OfflinePortal;
 };
 
 /**
@@ -363,9 +538,13 @@ export type RencanaUrusan = Pick<
  */
 export function rencanaUrusan(
   jenis: string,
-  w: { ktp: string | null; domisili?: string | null; tujuan?: string | null },
+  w: { ktp: string | null; domisili?: string | null; tujuan?: string | null; varian?: string | undefined },
 ): RencanaUrusan | undefined {
-  return rencanaPeristiwa(jenis, w) ?? rencanaLayanan(jenis, { ktp: w.ktp, domisili: w.domisili ?? null });
+  const peristiwa = rencanaPeristiwa(jenis, w);
+  if (peristiwa) return peristiwa;
+  const layanan = rencanaLayanan(jenis, { ktp: w.ktp, domisili: w.domisili ?? null });
+  // KK/KTP-el di portal web wilayah: Browser Pendamping ditawarkan sama seperti Peristiwa Hidup.
+  return layanan && w.ktp ? denganRute(layanan, w.ktp, w.varian) : layanan;
 }
 
 /**
@@ -394,12 +573,15 @@ export function kartuRencana(
   jenis: string,
   w: WilayahUrusan,
   ragDb?: Db,
+  /** Varian layanan yang disebut warga (`varianUrusan`), untuk sel peta portal per varian. */
+  varian?: string,
 ): PayloadOf<'plan_card'> | undefined {
   if (!w.ktp) return undefined;
   const r = rencanaUrusan(jenis, {
     ktp: w.ktp.kodeKabKota,
     domisili: w.domisili?.kodeKabKota ?? null,
     tujuan: w.tujuan?.kodeKabKota ?? null,
+    varian,
   });
   if (!r) return undefined;
   const korpus = r.khususWilayah ? [] : sumberKorpus(ragDb, r.judul, w.ktp.kodeKabKota);
@@ -407,10 +589,16 @@ export function kartuRencana(
     r.slug === 'pindah' && w.tujuan
       ? `${r.judul} · ${namaPendekWilayah(w.ktp.nama)} → ${namaPendekWilayah(w.tujuan.nama)}`
       : `${r.judul} · ${namaPendekWilayah(w.ktp.nama)}`;
+  // Sumber korpus menempel di langkah persyaratan pertama, bukan di langkah tambahan peta portal.
+  const iKorpus = Math.max(
+    0,
+    r.langkah.findIndex((l) => l.id !== ID_LANGKAH_AKUN && l.id !== ID_LANGKAH_OFFLINE),
+  );
   return {
+    jenis,
     ringkasan,
     langkah: r.langkah.map((l, i) => {
-      const sumber = i === 0 ? [...l.sourceRef, ...korpus] : l.sourceRef;
+      const sumber = i === iKorpus ? [...l.sourceRef, ...korpus] : l.sourceRef;
       return {
         id: l.id,
         judul: l.judul,
@@ -429,7 +617,9 @@ export function kartuRencana(
     },
     tier: r.tier,
     catatan: r.catatan,
-    ...(r.pendamping ? { pendamping: r.pendamping } : {}),
+    ...(r.pendamping
+      ? { pendamping: r.pendamping }
+      : { dipandu: paketDipandu(jenis, { ktp: w.ktp, tujuan: w.tujuan }, r.offline) }),
   };
 }
 
@@ -465,7 +655,7 @@ export function usulkanRencanaOtomatis(
   if (u.state !== 'MEMAHAMI' || !u.jenis) return u;
   const w = wilayahUrusan(store, u);
   if (wilayahBelumSiap(u.jenis, w)) return u;
-  const kartu = kartuRencana(u.jenis, w, ragDb);
+  const kartu = kartuRencana(u.jenis, w, ragDb, varianUrusan(store, u));
   if (!kartu) return u;
   publish({ type: 'plan_card', ...kartu });
   return majukan(store, u, ['RENCANA_DIUSULKAN'], publish);

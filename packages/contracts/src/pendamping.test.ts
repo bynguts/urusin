@@ -3,6 +3,8 @@ import {
   AlasanSerahkanSchema,
   decodePendampingFrame,
   encodePendampingFrame,
+  kendaliAkun,
+  PendampingEventSchema,
   ENDPOINT,
   MulaiPendampingRequestSchema,
   MulaiSesiInternalSchema,
@@ -158,6 +160,23 @@ describe('kontrak pendamping', () => {
     expect(giliran({ ...t, nama: 'x'.repeat(81) })).toBe(false);
   });
 
+  it('tambahan aditif: nama kendali sasaran giliran (`kendali`), maks 40, opsional', () => {
+    const giliran = (kendali?: string) =>
+      PendampingServerMessageSchema.safeParse({
+        type: 'event',
+        event: {
+          jenis: 'giliran_anda',
+          alasan: 'masuk_akun',
+          pesan: 'p',
+          ...(kendali !== undefined ? { kendali } : {}),
+        },
+      }).success;
+    expect(giliran()).toBe(true);
+    expect(giliran('Masuk')).toBe(true);
+    expect(giliran('')).toBe(false);
+    expect(giliran('x'.repeat(41))).toBe(false);
+  });
+
   it('tambahan aditif N2: alasan serah dan giliran berhenti', () => {
     expect(AlasanSerahkanSchema.safeParse('berhenti').success).toBe(true);
     expect(
@@ -202,5 +221,61 @@ describe('kontrak pendamping', () => {
     expect(PendampingServerMessageSchema.safeParse({ type: 'fokus', jenis: 'sandi' }).success).toBe(true);
     // Nomor bukti hanya karakter aman (tidak bisa membawa markup/instruksi panjang).
     expect(SesiPendampingSchema.shape.bukti.safeParse({ nomor: '<script>' }).success).toBe(false);
+  });
+});
+
+describe('kendaliAkun (QA prod gel6: beranda pintu akun)', () => {
+  const el = (
+    ref: string,
+    nama: string,
+    kelas: 'navigasi' | 'kirim' | 'masuk' | 'tidak_pasti' = 'navigasi',
+  ) => ({
+    ref,
+    peran: 'tautan' as const,
+    nama,
+    kelas,
+  });
+
+  it('masuk dan daftar akun dari nama yang SELURUHNYA kata akun; masuk didahulukan', () => {
+    const r = kendaliAkun([
+      el('e3', 'Daftar Akun Gratis', 'kirim'),
+      el('e4', 'Sudah punya akun? Masuk'),
+      el('e15', 'Masuk & Ajukan', 'kirim'),
+      el('e16', 'Belum punya akun'),
+    ]);
+    expect(r.masuk?.ref).toBe('e4');
+    expect(r.daftar?.ref).toBe('e3');
+    expect(r.keluar).toBe(false);
+    expect(kendaliAkun([el('e8', 'Login / Register', 'kirim')]).masuk?.ref).toBe('e8');
+    expect(kendaliAkun([el('e5', 'DAFTAR AKUN', 'kirim'), el('e4', 'LOGIN')]).masuk?.ref).toBe('e4');
+    // Semarang (Si D'nOK): "Pendaftaran Baru" = daftar akun; "Perpindahan Keluar" (layanan) bukan kendali akun.
+    const sidnok = kendaliAkun([
+      el('e8', 'Pendaftaran Baru', 'kirim'),
+      el('e9', 'Login'),
+      el('e14', 'Perpindahan Keluar PERPINDAHAN KELUAR', 'kirim'),
+    ]);
+    expect(sidnok).toEqual({
+      masuk: expect.objectContaining({ ref: 'e9' }),
+      daftar: expect.objectContaining({ ref: 'e8' }),
+      keluar: false,
+    });
+  });
+
+  it('nama campuran, tersembunyi, atau panjang bukan kendali akun; Keluar/Logout = sesi aktif', () => {
+    const r = kendaliAkun([
+      el('e1', 'Surat Masuk'),
+      el('e2', 'Masuk', 'tidak_pasti'),
+      el('e3', 'Daftar Layanan'),
+      el('e4', 'Masuk ke akun anda sekarang juga dan nikmati'),
+      el('e5', 'Keluar'),
+    ]);
+    expect(r).toEqual({ keluar: true });
+  });
+
+  it('event langkah: fase aditif opsional', () => {
+    const base = { jenis: 'langkah', indeks: 0, total: 1, label: 'Membaca halaman' };
+    expect(PendampingEventSchema.safeParse(base).success).toBe(true);
+    expect(PendampingEventSchema.safeParse({ ...base, fase: 'membaca' }).success).toBe(true);
+    expect(PendampingEventSchema.safeParse({ ...base, fase: 'menebak' }).success).toBe(false);
   });
 });

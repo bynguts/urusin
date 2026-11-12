@@ -44,12 +44,6 @@
       class="mt-5 rounded-xl bg-mawar px-4 py-3 text-[0.9375rem] text-galat"
     >
       <p>{galat.pesanWarga}</p>
-      {#if galat.kode === 'EMAIL_BELUM_TERVERIFIKASI'}
-        <a
-          href={resolve('/verifikasi-email')}
-          class="mt-1 inline-flex min-h-12 items-center font-semibold underline">Kirim ulang tautan</a
-        >
-      {/if}
     </div>
   {/if}
 
@@ -141,7 +135,7 @@
   <div class="mt-4 flex flex-wrap items-center justify-between gap-2 text-[0.9375rem] text-body">
     <p>
       Belum punya akun? <a
-        href={resolve('/daftar')}
+        href="{resolve('/daftar')}?next={encodeURIComponent(next)}"
         class="inline-flex min-h-12 items-center font-semibold text-ink">Daftar</a
       >
     </p>

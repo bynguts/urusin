@@ -16,6 +16,7 @@ import { FIXTURE_LOCAL_ORIGIN, FIXTURE_ORIGIN, FIXTURES_PORT } from '../playwrig
 type Rekam = {
   events: PendampingEvent[];
   modes: string[];
+  lolosAwal: number;
   ended?: { status: PendampingStatus; hasil: PendampingHasil; pesan: string };
 };
 
@@ -31,12 +32,13 @@ const VIEWPORT = { lebar: 390, tinggi: 844, dpr: 2, seluler: true };
 async function mulai(
   jalur: string,
   origin = FIXTURE_ORIGIN,
+  awal = false,
 ): Promise<{ run: ActiveRun; rekam: Rekam; halaman: Page }> {
   const config = loadConfig({
     PENDAMPING_FIXTURE_ORIGINS: `${FIXTURE_ORIGIN},${FIXTURE_LINTAS},${FIXTURE_LOCAL_ORIGIN}`,
     PENDAMPING_HEADLESS: '1',
   });
-  const rekam: Rekam = { events: [], modes: [] };
+  const rekam: Rekam = { events: [], modes: [], lolosAwal: 0 };
   const hooks: Hooks = {
     mode: (m, pesan) => rekam.modes.push(`${m}:${pesan ?? ''}`),
     fokus: () => {},
@@ -45,6 +47,7 @@ async function mulai(
     ended: (status, hasil, pesan) => void (rekam.ended ??= { status, hasil, pesan }),
     langkahSelesai: (pesan) => void (rekam.ended ??= { status: 'siaga', hasil: 'berhasil', pesan }),
     berkasKurang: () => {},
+    tantanganLolos: () => void rekam.lolosAwal++,
   };
   const program: Program = { origin, steps: [nav(jalur), fill(css('#nopol'), 'B 1234 UJI')] };
   const iso = await launchIsolated(config, VIEWPORT, hostsSesi(program));
@@ -61,7 +64,9 @@ async function mulai(
     iso,
   );
   const halaman = iso.context.pages()[0]!;
-  await run.mulaiAi();
+  // `awal`: seperti sesi sungguhan, portal dibuka dulu (bukaAwal) dan AI baru mulai sesudah izin isi.
+  if (awal) await run.bukaAwal!();
+  else await run.mulaiAi();
   return { run, rekam, halaman };
 }
 
@@ -113,6 +118,31 @@ test('tantangan situs: AI berhenti, warga mengetuk sendiri, AI melanjutkan pengi
       .poll(() => rekam.ended, { timeout: 30_000 })
       .toMatchObject({ status: 'siaga', hasil: 'berhasil' });
     expect(rekam.modes).toContain('ai:Verifikasi selesai. AI melanjutkan pengisian.');
+  } finally {
+    await run.destroy();
+  }
+});
+
+test('tantangan di halaman AWAL sebelum izin isi: tertahan, warga mengetuk, lolos tanpa "AI melanjutkan"', async () => {
+  const { run, rekam, halaman } = await mulai('/uji-cf/', FIXTURE_ORIGIN, true);
+  try {
+    // bukaAwal kembali sesudah tantangan terdeteksi: sesi menahan lembar izin dan tidak mengganti mode ke 'ai'.
+    expect(run.ditahanTantangan?.()).toBe(true);
+    expect(rekam.modes.at(-1)).toMatch(/^takeover:Situs meminta verifikasi/);
+    const sorot = await tungguSorot(rekam, 'Situs meminta verifikasi');
+    await ketuk(run, sorot);
+    await expect.poll(() => rekam.lolosAwal, { timeout: 30_000 }).toBe(1);
+    expect(run.ditahanTantangan?.()).toBe(false);
+    // AI belum pernah mulai: bukan "AI melanjutkan", dan tidak ada yang diisi sebelum izin.
+    expect(rekam.modes.some((m) => m.startsWith('ai:'))).toBe(false);
+    expect(rekam.modes.at(-1)).toBe('takeover:Verifikasi selesai.');
+    expect(await nilaiNopol(halaman)).toBe('');
+    // Izin isi diberikan: AI mulai dan mengisi.
+    await run.mulaiAi();
+    await expect
+      .poll(() => rekam.ended, { timeout: 30_000 })
+      .toMatchObject({ status: 'siaga', hasil: 'berhasil' });
+    expect(await nilaiNopol(halaman)).toBe('B 1234 UJI');
   } finally {
     await run.destroy();
   }

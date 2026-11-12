@@ -20,6 +20,8 @@ export type ProxyEdge = {
   server: string;
   username: string;
   password: string;
+  /** Setujui host aset pemda di edge (POST /sesi/<user>/aset, bertanda); false = ditolak/gagal. */
+  setujuiAset(host: string): Promise<boolean>;
   hapus(): Promise<void>;
 };
 
@@ -53,6 +55,17 @@ export async function daftarEdge(
     server: `http://${ip}:${edge.proxyPort}`,
     username,
     password,
+    async setujuiAset(host) {
+      const jalur = `${path}/aset`;
+      const isiAset = JSON.stringify({ host });
+      const r = await fetcher(new URL(jalur, edge.kontrol).href, {
+        method: 'POST',
+        headers: { ...headerTanda(edge.token, 'POST', jalur, isiAset), 'content-type': 'application/json' },
+        body: isiAset,
+        signal: AbortSignal.timeout(5000),
+      }).catch(() => undefined);
+      return r?.status === 201;
+    },
     async hapus() {
       await fetcher(url, {
         method: 'DELETE',

@@ -336,11 +336,11 @@ function langkahPindah(asal: Wilayah | null, tujuan: Wilayah | null): Langkah[] 
   ];
 }
 
-/** Jenis urusan di luar Peristiwa Hidup yang punya rencana nasional bersumber (Perpres 96/2018). */
-export const JENIS_LAYANAN = ['kk', 'ktp'] as const;
+/** Jenis urusan di luar Peristiwa Hidup yang punya rencana nasional bersumber (Perpres 96/2018, Permendagri 7/2026). */
+export const JENIS_LAYANAN = ['kk', 'ktp', 'kia'] as const;
 export type JenisLayanan = (typeof JENIS_LAYANAN)[number];
 
-/** Rencana minimal untuk urusan KK/KTP-el: persyaratan nasional bersumber pasal + kanal resmi wilayah KTP. */
+/** Rencana minimal untuk urusan KK/KTP-el/KIA: persyaratan nasional bersumber pasal + kanal resmi wilayah KTP. */
 export type RencanaLayanan = {
   slug: JenisLayanan;
   judul: string;
@@ -357,6 +357,35 @@ function langkahLayanan(slug: JenisLayanan, ktp: Wilayah | null, kanal: KanalWil
   const dinasKtp = disebut(ktp, 'Disdukcapil kab/kota sesuai KTP Anda');
   const cara = lewatKanal(kanal, ktp);
   const ref = [sumber(kanal), REF_PERPRES_TEKS, REF_PERPRES];
+  if (slug === 'kia')
+    return [
+      L({
+        id: 'ajukan',
+        judul: `Ajukan KIA ke ${dinasKtp}`,
+        jenis: caraAjukan(ktp),
+        dependsOn: [],
+        dokumen: [
+          'Anak di bawah 5 tahun yang terbit bersama akta kelahiran: fotokopi KK (atau wali)',
+          'Anak di bawah 5 tahun yang sudah punya akta: fotokopi kutipan akta kelahiran dan fotokopi KK (atau wali), tanpa pas foto',
+          'Anak 5 sampai 17 tahun kurang sehari: fotokopi kutipan akta kelahiran, fotokopi KK (atau wali), dan 1 lembar pas foto berwarna 2x3 cm',
+          'KIA hilang: surat keterangan kehilangan dari kepolisian; KIA rusak: KIA yang rusak',
+        ],
+        bawa: [],
+        keterangan: `Persyaratan nasional (Permendagri 7/2026 Ps. 6, 11, dan 12); KTP-el asli orang tua tidak lagi disyaratkan. KIA juga bisa diajukan online lewat aplikasi IKD (Ps. 24 sampai 26). ${cara}`,
+        sourceRef: [sumber(kanal), REF_PMD7_2026],
+      }),
+      L({
+        id: 'ambil',
+        judul: `Terima KIA dari ${dinasKtp}`,
+        jenis: 'cek-kanal',
+        lokasi: 'disdukcapil',
+        dependsOn: ['ajukan'],
+        dokumen: [],
+        bawa: ['Bukti pengajuan'],
+        keterangan: `KIA bisa dicetak di Anjungan Dukcapil Mandiri (Permendagri 7/2026). ${cara}`,
+        sourceRef: [sumber(kanal), REF_PMD7_2026],
+      }),
+    ];
   if (slug === 'kk')
     return [
       L({
@@ -443,7 +472,9 @@ export function rencanaLayanan(
   }
   return {
     slug,
-    judul: slug === 'kk' ? 'Kartu Keluarga (KK)' : 'KTP elektronik (KTP-el)',
+    judul: { kk: 'Kartu Keluarga (KK)', ktp: 'KTP elektronik (KTP-el)', kia: 'Kartu Identitas Anak (KIA)' }[
+      slug
+    ],
     tier: 'dipandu',
     catatan,
     langkah: langkahLayanan(slug, ktp, kanalKtp),

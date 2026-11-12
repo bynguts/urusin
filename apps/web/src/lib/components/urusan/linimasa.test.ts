@@ -3,6 +3,7 @@ import type { UrusinEvent } from '#lib/contracts.js';
 import {
   bangunLinimasa,
   barisKonfirmasi,
+  kalimatWilayah,
   labelParam,
   labelProgres,
   nilaiParam,
@@ -61,7 +62,7 @@ describe('bangunLinimasa', () => {
     expect(out[1]).toEqual({
       jenis: 'sistem',
       key: 'e2',
-      teks: 'Wilayah KTP: Kabupaten Wonogiri · pindah ke Kota Surabaya',
+      teks: 'Pindah dari Kabupaten Wonogiri ke Kota Surabaya',
       at,
     });
   });
@@ -172,5 +173,68 @@ describe('teks agen', () => {
     expect(out).toMatchObject([
       { jenis: 'teks', teks: 'KTP Anda terdaftar di Kota Medan, betul? Pakai 2 * 3 berkas.' },
     ]);
+  });
+});
+
+describe('linimasa mengikuti kejadian nyata', () => {
+  const burstSetuju = [
+    ev(1, 'state', { dari: 'RENCANA_DIUSULKAN', state: 'RENCANA_DISETUJUI' }),
+    ev(2, 'state', { dari: 'RENCANA_DISETUJUI', state: 'MENYIAPKAN_BERKAS' }),
+    ev(3, 'state', { dari: 'MENYIAPKAN_BERKAS', state: 'BERKAS_SIAP' }),
+    ev(4, 'state', { dari: 'BERKAS_SIAP', state: 'MENGISI' }),
+    ev(5, 'state', { dari: 'MENGISI', state: 'MENUNGGU_KONFIRMASI' }),
+  ];
+
+  it('persetujuan rencana: tanpa "Semua dokumen siap" dan tanpa "AI mulai mengisi" dari state pembukuan', () => {
+    const teks = bangunLinimasa(burstSetuju, []).map((x) => (x.jenis === 'sistem' ? x.teks : x.jenis));
+    expect(teks).toEqual(['Anda menyetujui rencana']);
+  });
+
+  it('"Semua dokumen siap" hanya bila checklist terakhir lengkap', () => {
+    const lengkap = ev(0, 'checklist', {
+      item: [
+        { id: 'a', label: 'KTP', status: 'ok' },
+        { id: 'b', label: 'KK', status: 'ok' },
+      ],
+    });
+    const kurang = ev(0, 'checklist', {
+      item: [
+        { id: 'a', label: 'KTP', status: 'ok' },
+        { id: 'b', label: 'KK', status: 'perlu' },
+      ],
+    });
+    const sistem = (cl: UrusinEvent) =>
+      bangunLinimasa(
+        [{ ...cl, seq: 1 } as UrusinEvent, ...burstSetuju.map((e) => ({ ...e, seq: e.seq + 1 }))],
+        [],
+      )
+        .filter((x) => x.jenis === 'sistem')
+        .map((x) => x.jenis === 'sistem' && x.teks);
+    expect(sistem(lengkap)).toEqual(['Anda menyetujui rencana', 'Semua dokumen siap']);
+    expect(sistem(kurang)).toEqual(['Anda menyetujui rencana']);
+    expect(sistem(ev(0, 'checklist', { item: [] }))).toEqual(['Anda menyetujui rencana']);
+  });
+
+  it('kalimat wilayah netral per jenis: layanan, pindah asal ke tujuan, domisili', () => {
+    const sleman = { kodeKabKota: '3404', nama: 'Kabupaten Sleman' };
+    const smg = { kodeKabKota: '3374', nama: 'Kota Semarang' };
+    const w = (isi: Record<string, unknown>) =>
+      ev(1, 'wilayah', { status: 'ditetapkan', sumber: 'warga', ...isi }) as Extract<
+        UrusinEvent,
+        { type: 'wilayah' }
+      >;
+    expect(kalimatWilayah(w({ ktp: sleman }), 'kematian')).toBe('Wilayah layanan: Kabupaten Sleman');
+    expect(kalimatWilayah(w({ ktp: sleman }))).toBe('Wilayah layanan: Kabupaten Sleman');
+    expect(kalimatWilayah(w({ ktp: smg, tujuan: sleman }), 'pindah')).toBe(
+      'Pindah dari Kota Semarang ke Kabupaten Sleman',
+    );
+    expect(kalimatWilayah(w({ ktp: smg }), 'pindah')).toBe('Pindah dari Kota Semarang');
+    expect(kalimatWilayah(w({ ktp: smg, domisili: sleman }), 'kelahiran')).toBe(
+      'Wilayah layanan: Kota Semarang · tinggal di Kabupaten Sleman',
+    );
+    expect(kalimatWilayah(w({ ktp: sleman }), 'kematian')).not.toMatch(/KTP/);
+    // bangunLinimasa meneruskan jenis
+    const out = bangunLinimasa([w({ ktp: sleman })], [], 'kematian');
+    expect(out[0]).toMatchObject({ jenis: 'sistem', teks: 'Wilayah layanan: Kabupaten Sleman' });
   });
 });

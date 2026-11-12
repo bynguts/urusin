@@ -98,7 +98,7 @@ export function statusEmail(rt: Runtime): StatusEmail {
   return { mode: rt.akun.modeEmail === 'resend' ? 'resend' : 'log', tertunda: rt.akun.emailTertunda };
 }
 
-/** Bentuk publik akun/demo (kontrak). `sid` = cookie urusin_sid (profil akun belum terverifikasi ada di tamu). */
+/** Bentuk publik akun/demo (kontrak). `sid` = cookie urusin_sid (profil tamu, bila pemilik bukan akun/demo). */
 export function akunPublik(rt: Runtime, a: AkunInternal, sid?: string): Akun {
   const sinkron = rt.akun.sinkron(a);
   const pemilikVault = sinkron ? a.id : rt.akun.tamuDariSid(sid);
@@ -107,7 +107,7 @@ export function akunPublik(rt: Runtime, a: AkunInternal, sid?: string): Akun {
     id: a.id,
     jenis: a.jenis === 'demo' ? 'demo' : 'akun',
     email: a.email,
-    emailTerverifikasi: a.emailVerifiedAt !== null,
+    emailTerverifikasi: true, // deprecated (ADR 0032): selalu true, tidak ada verifikasi email
     punyaSandi: a.punyaSandi,
     terhubungGoogle: rt.akun.terhubungGoogle(a.id),
     profilLengkap: typeof nama === 'string' && nama.trim().length > 0,
@@ -119,8 +119,8 @@ export function akunPublik(rt: Runtime, a: AkunInternal, sid?: string): Akun {
 /**
  * Selesaikan login: hapus sesi lama yang dibawa cookie (rotasi), pasang cookie token baru, putar urusin_sid
  * dan ikat ulang semua yang terikat sid lama dalam satu transaksi (urusan tamu pindah ke akun/demo yang masuk;
- * vault tamu pindah hanya ke akun terverifikasi, selain itu tetap terikat sid baru), lalu tautkan identitas
- * Google yang menunggu bukti sandi bila ada cookie tiketnya.
+ * vault tamu pindah ke akun, untuk demo tetap terikat sid baru), lalu tautkan identitas Google yang menunggu
+ * bukti sandi bila ada cookie tiketnya.
  */
 export function pasangSesi(
   rt: Runtime,
@@ -136,11 +136,10 @@ export function pasangSesi(
   setAkunCookie(cookies, token, maxAge);
   const sidLama = cookies.get(SID_COOKIE);
   const sidBaru = rotasiSid(cookies);
-  const terverifikasi = akun.jenis === 'akun' && akun.emailVerifiedAt !== null;
   const r = rt.akun.rotasiPemilik({
     sidLama,
     sidBaru,
-    userId: terverifikasi ? akun.id : null,
+    userId: akun.jenis === 'akun' ? akun.id : null,
     akunId: akun.id,
   });
   let googleTertaut = false;
@@ -161,9 +160,8 @@ export type PemilikVault = { id: string; jenis: 'akun' | 'tamu' | 'demo'; sinkro
 type VaultEvent = EventLike & { locals: App.Locals; cookies: Cookies };
 
 /**
- * Pemilik vault untuk permintaan ini: akun terverifikasi/demo → dirinya (sinkron antar perangkat); selain itu
- * (tamu, atau akun yang emailnya belum dipastikan) → tamu terikat cookie urusin_sid, dibuat malas hanya bila
- * `buat` (tulis pertama). null = belum ada vault (baca saja).
+ * Pemilik vault untuk permintaan ini: akun/demo → dirinya (sinkron antar perangkat); tamu → tamu terikat cookie
+ * urusin_sid, dibuat malas hanya bila `buat` (tulis pertama). null = belum ada vault (baca saja).
  */
 export function pemilikVault(rt: Runtime, event: VaultEvent, opts: { buat: boolean }): PemilikVault | null {
   const a = event.locals.akun;

@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AkunError } from './errors.js';
 import { GoogleOidc } from './google.js';
 import { deriveKek } from './keys.js';
-import { MailerError, MemoryMailer } from './mailer.js';
+import { DevMailer, MailerError, MemoryMailer } from './mailer.js';
 import {
   AkunService,
   amanNext,
@@ -71,9 +71,9 @@ beforeEach(async () => {
 const tokenDari = (link: string) => new URL(link).searchParams.get('token')!;
 const hitung = (sql: string, ...a: unknown[]) => (db.prepare(sql).get(...a) as { n: number }).n;
 
-async function daftarTerverifikasi(email = EMAIL, sandi = SANDI) {
-  await akun.daftar({ email, sandi }, ctx);
-  await akun.verifikasiEmail(tokenDari(mailer.last(email, 'verifikasi')!.link), sandi, ctx);
+/** Daftar = akun penuh + sesi langsung (ADR 0032), tanpa email verifikasi. */
+function daftarAkun(email = EMAIL, sandi = SANDI) {
+  return akun.daftar({ email, sandi }, ctx);
 }
 
 async function galat(p: Promise<unknown> | (() => unknown)): Promise<AkunError> {
@@ -91,36 +91,33 @@ function urusan(...ids: string[]) {
     db.prepare("INSERT INTO urusan (id, state, created_at, updated_at) VALUES (?,'BARU','x','x')").run(id);
 }
 
-describe('daftar → verifikasi → masuk', () => {
-  it('alur lengkap; tautan verifikasi sekali pakai, butuh sandi, dan menunjuk origin publik', async () => {
-    expect(await akun.daftar({ email: ' Warga@Example.com ', sandi: SANDI }, ctx)).toEqual({
-      tertunda: false,
-    });
-    const m = mailer.last(EMAIL, 'verifikasi')!;
-    expect(m.link).toMatch(/^https:\/\/urusin\.example\.com\/verifikasi-email\?token=[A-Za-z0-9_-]{43}$/);
-    expect(m.text).toContain(m.link);
-    expect(m.html).toContain('lang="id"');
+describe('daftar → masuk (tanpa verifikasi email, ADR 0032)', () => {
+  it('daftar langsung memberi akun penuh + sesi sah; tanpa email; email_verified_at terisi', async () => {
+    const d = await akun.daftar({ email: ' Warga@Example.com ', sandi: SANDI }, ctx);
+    expect(d.akun).toMatchObject({ jenis: 'akun', email: EMAIL, punyaSandi: true });
+    expect(d.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(akun.sesi(d.token)?.akun.id).toBe(d.akun.id);
+    expect(akun.sinkron(d.akun)).toBe(true);
+    await akun.emailSelesai();
+    expect(mailer.sent).toEqual([]);
+    const row = db.prepare('SELECT email_verified_at, created_at FROM users WHERE id = ?').get(d.akun.id) as {
+      email_verified_at: string | null;
+      created_at: string;
+    };
+    expect(row.email_verified_at).not.toBeNull();
+    expect(row.email_verified_at).toBe(row.created_at);
+    expect(hitung('SELECT COUNT(*) n FROM email_tokens')).toBe(0);
+    expect(db.prepare('SELECT token_hash, user_agent FROM auth_sessions').all()).toEqual([
+      { token_hash: sha256Hex(d.token), user_agent: 'Chrome di Android' },
+    ]);
 
-    // belum terverifikasi tetap BOLEH masuk (berperilaku seperti tamu)
-    const awal = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
-    expect(awal.akun.emailVerifiedAt).toBeNull();
-    expect(akun.sinkron(awal.akun)).toBe(false);
     expect((await galat(akun.masuk({ email: EMAIL, sandi: SANDI2 }, ctx))).kode).toBe('KREDENSIAL_SALAH');
-
-    // sandi salah tidak membakar token
-    expect((await galat(akun.verifikasiEmail(tokenDari(m.link), SANDI2, ctx))).kode).toBe('KREDENSIAL_SALAH');
-    const a = await akun.verifikasiEmail(tokenDari(m.link), SANDI, ctx);
-    expect(a.emailVerifiedAt).not.toBeNull();
-    expect(akun.sesi(awal.token)).toBeNull(); // verifikasi mencabut semua sesi
-    expect((await galat(akun.verifikasiEmail(tokenDari(m.link), SANDI, ctx))).kode).toBe('TOKEN_TIDAK_VALID');
-
     const { token, akun: masuk } = await akun.masuk({ email: 'WARGA@example.com', sandi: SANDI }, ctx);
     expect(masuk.email).toBe(EMAIL);
     expect(akun.sinkron(masuk)).toBe(true);
-    const s = akun.sesi(token)!;
-    expect(s.akun.id).toBe(a.id);
-    const rows = db.prepare('SELECT token_hash, user_agent FROM auth_sessions').all();
-    expect(rows).toEqual([{ token_hash: sha256Hex(token), user_agent: 'Chrome di Android' }]);
+    expect(token).not.toBe(d.token);
+    expect(akun.sesi(token)!.akun.id).toBe(d.akun.id);
+    expect(akun.sesi(d.token)).not.toBeNull(); // masuk lagi tidak mencabut sesi dari daftar
     expect(JSON.stringify(db.prepare('SELECT * FROM auth_sessions').all())).not.toContain(token);
   });
 
@@ -135,66 +132,58 @@ describe('daftar → verifikasi → masuk', () => {
       'SANDI_TERLALU_UMUM',
     );
   });
+});
 
-  it('token verifikasi kedaluwarsa setelah 24 jam; kirim ulang membatalkan tautan lama', async () => {
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
-    const lama = mailer.last(EMAIL, 'verifikasi')!.link;
-    expect(await akun.kirimUlangVerifikasi(EMAIL, ctx)).toEqual({ tertunda: false });
+describe('email ganda: hanya daftar yang menyatakan "sudah terdaftar" (ADR 0032)', () => {
+  it('daftar dua kali (beda huruf besar/spasi) → EMAIL_SUDAH_TERDAFTAR; sandi asli tetap, sandi kedua tidak berlaku', async () => {
+    const asli = await daftarAkun();
+    for (const email of [EMAIL, ' WARGA@example.COM ']) {
+      const e = await galat(akun.daftar({ email, sandi: SANDI2 }, { ip: '198.51.100.1' }));
+      expect([e.kode, e.status, e.pesanWarga]).toEqual([
+        'EMAIL_SUDAH_TERDAFTAR',
+        409,
+        'Email ini sudah terdaftar. Silakan masuk.',
+      ]);
+    }
+    expect(hitung('SELECT COUNT(*) n FROM users')).toBe(1);
+    expect(akun.sesi(asli.token)).not.toBeNull(); // sesi pemilik tidak tersentuh
+    const { akun: masuk } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
+    expect(masuk.id).toBe(asli.akun.id);
+    expect((await galat(akun.masuk({ email: EMAIL, sandi: SANDI2 }, ctx))).kode).toBe('KREDENSIAL_SALAH');
     await akun.emailSelesai();
-    const baru = mailer.last(EMAIL, 'verifikasi')!.link;
-    expect(baru).not.toBe(lama);
-    expect((await galat(akun.verifikasiEmail(tokenDari(lama), SANDI, ctx))).kode).toBe('TOKEN_TIDAK_VALID');
-    expect(akun.tokenBerlaku(tokenDari(baru), 'verify')).toBe(true);
-    t += 24 * JAM + 1;
-    expect((await galat(akun.verifikasiEmail(tokenDari(baru), SANDI, ctx))).kode).toBe('TOKEN_TIDAK_VALID');
-    expect((await galat(akun.verifikasiEmail('bukan token', SANDI, ctx))).kode).toBe('TOKEN_TIDAK_VALID');
+    expect(mailer.sent).toEqual([]);
+  });
+
+  it('daftar paralel dengan email yang sama: satu akun, sisanya EMAIL_SUDAH_TERDAFTAR', async () => {
+    const hasil = await Promise.allSettled(
+      [SANDI, SANDI2].map((sandi, i) => akun.daftar({ email: EMAIL, sandi }, { ip: `10.4.0.${i}` })),
+    );
+    expect(hasil.filter((h) => h.status === 'fulfilled')).toHaveLength(1);
+    const ditolak = hasil.filter((h): h is PromiseRejectedResult => h.status === 'rejected');
+    expect(ditolak.map((h) => (h.reason as AkunError).kode)).toEqual(['EMAIL_SUDAH_TERDAFTAR']);
+    expect(hitung('SELECT COUNT(*) n FROM users')).toBe(1);
+  });
+
+  it('daftar dengan email akun Google-saja → EMAIL_SUDAH_TERDAFTAR; akun itu tetap tanpa sandi', async () => {
+    const g = await googleLogin({ sub: 'g-only', email: EMAIL, email_verified: true });
+    if (g.jenis !== 'masuk') throw new Error('harus masuk');
+    expect((await galat(akun.daftar({ email: EMAIL, sandi: SANDI }, ctx))).kode).toBe(
+      'EMAIL_SUDAH_TERDAFTAR',
+    );
+    expect(akun.akun(g.akun.id)?.punyaSandi).toBe(false);
+    expect(
+      (db.prepare('SELECT password_hash FROM users WHERE id = ?').get(g.akun.id) as { password_hash: null })
+        .password_hash,
+    ).toBeNull();
+    expect((await galat(akun.masuk({ email: EMAIL, sandi: SANDI }, ctx))).kode).toBe('KREDENSIAL_SALAH');
+    expect(akun.terhubungGoogle(g.akun.id)).toBe(true);
   });
 });
 
-describe('#48b pengambilalihan pra-akun dan penyerobotan email', () => {
-  it('akun belum terverifikasi tidak memblokir: daftar ulang mengirim tautan baru, sandi lama batal saat verifikasi', async () => {
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, { ip: '198.51.100.1' }); // "penyerang" lebih dulu
-    const linkPenyerang = mailer.last(EMAIL)!.link;
-    const sesiPenyerang = (await akun.masuk({ email: EMAIL, sandi: SANDI }, { ip: '198.51.100.1' })).token;
-    expect(await akun.daftar({ email: EMAIL, sandi: SANDI2 }, ctx)).toEqual({ tertunda: false }); // pemilik asli
-    const linkPemilik = mailer.last(EMAIL)!.link;
-    expect(linkPemilik).not.toBe(linkPenyerang);
-    expect((await galat(akun.verifikasiEmail(tokenDari(linkPenyerang), SANDI, ctx))).kode).toBe(
-      'TOKEN_TIDAK_VALID',
-    );
-    // tautan pemilik hanya selesai dengan sandi pemilik (bukan sandi penyerang)
-    expect((await galat(akun.verifikasiEmail(tokenDari(linkPemilik), SANDI, ctx))).kode).toBe(
-      'KREDENSIAL_SALAH',
-    );
-    await akun.verifikasiEmail(tokenDari(linkPemilik), SANDI2, ctx);
-    expect(akun.sesi(sesiPenyerang)).toBeNull();
-    expect((await galat(akun.masuk({ email: EMAIL, sandi: SANDI }, ctx))).kode).toBe('KREDENSIAL_SALAH');
-    await expect(akun.masuk({ email: EMAIL, sandi: SANDI2 }, ctx)).resolves.toBeDefined();
-  });
-
-  it('tautan dari daftar penyerang di kotak surat korban tidak bisa diselesaikan tanpa sandi penyerang', async () => {
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, { ip: '198.51.100.1' });
-    const link = mailer.last(EMAIL)!.link;
-    expect((await galat(akun.verifikasiEmail(tokenDari(link), SANDI2, ctx))).kode).toBe('KREDENSIAL_SALAH');
-    expect(akun.tokenBerlaku(tokenDari(link), 'verify')).toBe(true);
-    expect(hitung('SELECT COUNT(*) n FROM users WHERE email_verified_at IS NOT NULL')).toBe(0);
-  });
-
-  it('Google email_verified mengambil alih akun belum terverifikasi: sandi + sesi dihapus', async () => {
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, { ip: '198.51.100.7' });
-    const link = mailer.last(EMAIL)!.link;
-    const sesiPenyerang = (await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).token;
-    const r = await googleLogin({ sub: 'g-3', email: EMAIL, email_verified: true });
-    if (r.jenis !== 'masuk') throw new Error('harus masuk');
-    expect(r.akun.punyaSandi).toBe(false);
-    expect(r.akun.emailVerifiedAt).not.toBeNull();
-    expect(akun.sesi(sesiPenyerang)).toBeNull();
-    expect((await galat(akun.masuk({ email: EMAIL, sandi: SANDI }, ctx))).kode).toBe('KREDENSIAL_SALAH');
-    expect((await galat(akun.verifikasiEmail(tokenDari(link), SANDI, ctx))).kode).toBe('TOKEN_TIDAK_VALID');
-  });
-
-  it('akun terverifikasi TIDAK tertaut otomatis ke Google ber-email sama; tertaut setelah bukti sandi', async () => {
-    await daftarTerverifikasi();
+describe('#48b Google ber-email sama dengan akun yang ada: tautkan dengan bukti sandi, tidak ada ambil alih', () => {
+  it('Google ber-email sama → perlu-tautkan (tanpa sesi, tanpa identitas, sandi + sesi lama utuh); tertaut setelah masuk', async () => {
+    const d = await daftarAkun();
+    const sesiLain = (await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).token;
     expect((await galat(googleLogin({ sub: 'g-2', email: EMAIL, email_verified: false }))).kode).toBe(
       'GOOGLE_EMAIL_BELUM_TERVERIFIKASI',
     );
@@ -202,11 +191,15 @@ describe('#48b pengambilalihan pra-akun dan penyerobotan email', () => {
     expect(r).toMatchObject({ jenis: 'perlu-tautkan', next: '/lacak' });
     if (r.jenis !== 'perlu-tautkan') throw new Error('harus perlu-tautkan');
     expect(hitung('SELECT COUNT(*) n FROM oauth_identities')).toBe(0);
-    expect(hitung('SELECT COUNT(*) n FROM auth_sessions')).toBe(0);
+    expect(hitung('SELECT COUNT(*) n FROM auth_sessions')).toBe(2); // tidak ada sesi baru, yang lama utuh
+    expect(akun.sesi(d.token)?.akun.id).toBe(d.akun.id);
+    expect(akun.sesi(sesiLain)?.akun.id).toBe(d.akun.id);
+    expect(akun.akun(d.akun.id)?.punyaSandi).toBe(true);
+    expect(akun.terhubungGoogle(d.akun.id)).toBe(false);
     // tiket tidak berlaku untuk akun lain
-    await daftarTerverifikasi('lain@example.com');
-    const lain = (await akun.masuk({ email: 'lain@example.com', sandi: SANDI }, ctx)).akun;
+    const lain = (await daftarAkun('lain@example.com')).akun;
     expect(akun.tautkanGoogle(r.tiket, lain.id)).toBe(false);
+    expect(akun.terhubungGoogle(lain.id)).toBe(false);
     // tiket sekali pakai: setelah percobaan salah di atas sudah hangus → minta lagi
     const r2 = await googleLogin({ sub: 'g-2', email: EMAIL, email_verified: true });
     if (r2.jenis !== 'perlu-tautkan') throw new Error('harus perlu-tautkan');
@@ -216,48 +209,56 @@ describe('#48b pengambilalihan pra-akun dan penyerobotan email', () => {
     const lagi = await googleLogin({ sub: 'g-2', email: EMAIL, email_verified: true });
     expect(lagi).toMatchObject({ jenis: 'masuk', akun: { id: pemilik.id, punyaSandi: true } });
     expect(akun.tautkanGoogle(undefined, pemilik.id)).toBe(false);
+    // sandi tetap berlaku setelah ditautkan
+    await expect(akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).resolves.toBeDefined();
+  });
+
+  it('akun sandi yang sudah punya identitas Google lain: Google ber-email sama tetap perlu-tautkan, identitas lama tetap', async () => {
+    const d = await daftarAkun('b@example.com');
+    db.prepare(
+      "INSERT INTO oauth_identities (provider, sub, user_id, created_at, asal) VALUES ('google', 'g-b-lama', ?, 'x', 'tautan')",
+    ).run(d.akun.id);
+    const r = await googleLogin({ sub: 'g-b-asli', email: 'b@example.com', email_verified: true });
+    expect(r.jenis).toBe('perlu-tautkan');
+    expect(db.prepare('SELECT sub FROM oauth_identities WHERE user_id = ?').all(d.akun.id)).toEqual([
+      { sub: 'g-b-lama' },
+    ]);
+    expect(akun.sesi(d.token)).not.toBeNull();
   });
 
   it('tiket tautan kedaluwarsa 10 menit', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     const r = await googleLogin({ sub: 'g-9', email: EMAIL, email_verified: true });
     if (r.jenis !== 'perlu-tautkan') throw new Error('harus perlu-tautkan');
     const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
     t += 11 * 60_000;
     expect(akun.tautkanGoogle(r.tiket, a.id)).toBe(false);
   });
+});
 
-  it('penyapu 24 jam menghapus akun belum terverifikasi tanpa tautan aktif; daftar ulang memperpanjang', async () => {
-    await akun.daftar({ email: 'basi@example.com', sandi: SANDI }, ctx);
-    await akun.daftar({ email: 'ulang@example.com', sandi: SANDI }, ctx);
-    await daftarTerverifikasi();
-    t += 20 * JAM;
-    await akun.daftar({ email: 'ulang@example.com', sandi: SANDI2 }, { ip: '10.2.2.2' }); // tautan baru 24 jam
-    t += 5 * JAM;
-    const r = akun.bersihkan();
-    expect(r.belumVerifikasi).toBe(1);
-    expect(db.prepare('SELECT email FROM users ORDER BY email').all()).toEqual([
-      { email: 'ulang@example.com' },
-      { email: EMAIL },
-    ]);
-    t += 20 * JAM;
-    expect(akun.bersihkan().belumVerifikasi).toBe(1);
-    expect(db.prepare('SELECT email FROM users').all()).toEqual([{ email: EMAIL }]);
+describe('baris akun lama (email_verified_at NULL, sebelum migrasi 0006)', () => {
+  it('diperlakukan sebagai akun penuh: sinkron, pemilik vault/ingatan urusan; penyapu tidak menghapusnya', async () => {
+    db.prepare(
+      "INSERT INTO users (id, jenis, email, email_verified_at, password_hash, created_at) VALUES ('akun_lama', 'akun', 'lama@example.com', NULL, NULL, ?)",
+    ).run(new Date(t).toISOString());
+    const lama = akun.akun('akun_lama')!;
+    expect(lama).toMatchObject({ jenis: 'akun', email: 'lama@example.com' });
+    expect(akun.sinkron(lama)).toBe(true);
+    urusan('u_lama');
+    akun.catatPemilikUrusan('u_lama', { akun: lama, sid: 'sid-lama' });
+    expect(akun.pemilikVaultUrusan('u_lama', { akun: lama, sid: 'sid-lama' })).toBe('akun_lama');
+    expect(akun.pemilikIngatanUrusan('u_lama')).toBe('akun_lama');
+    expect(akun.tamuDariSid('sid-lama')).toBeUndefined(); // bukan vault tamu satu perangkat
+    t += 30 * 24 * JAM;
+    expect(akun.bersihkan()).toMatchObject({ tamu: 0, demo: 0 });
+    expect(hitung("SELECT COUNT(*) n FROM users WHERE id = 'akun_lama'")).toBe(1);
+    expect(akun.urusanMilik('akun_lama')).toEqual(['u_lama']);
   });
 });
 
 describe('anti-enumerasi', () => {
-  it('daftar dengan email yang sudah terverifikasi: hasil sama, email "sudah terdaftar", sandi tidak berubah', async () => {
-    await daftarTerverifikasi();
-    const n = mailer.sent.length;
-    expect(await akun.daftar({ email: EMAIL, sandi: SANDI2 }, ctx)).toEqual({ tertunda: false });
-    expect(mailer.sent.length).toBe(n + 1);
-    expect(mailer.sent.at(-1)!.jenis).toBe('sudah-terdaftar');
-    await expect(akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).resolves.toBeDefined();
-  });
-
   it('masuk: email tak dikenal, akun Google-saja, dan sandi salah → galat identik', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     await googleLogin({ sub: 'g-only', email: 'gonly@example.com', email_verified: true });
     const a = await galat(akun.masuk({ email: 'tidakada@example.com', sandi: SANDI }, ctx));
     const b = await galat(akun.masuk({ email: EMAIL, sandi: SANDI2 }, ctx));
@@ -272,12 +273,10 @@ describe('anti-enumerasi', () => {
     }
   });
 
-  it('lupa sandi dan kirim ulang: hasil sama untuk email ada/tidak ada; hanya yang ada yang menerima email', async () => {
-    await daftarTerverifikasi();
+  it('lupa sandi: hasil sama untuk email ada/tidak ada; hanya yang ada yang menerima email', async () => {
+    await daftarAkun();
     const n = mailer.sent.length;
     expect(await akun.lupaSandi('tidakada@example.com', ctx)).toEqual({ tertunda: false });
-    expect(await akun.kirimUlangVerifikasi('tidakada@example.com', ctx)).toEqual({ tertunda: false });
-    expect(await akun.kirimUlangVerifikasi(EMAIL, ctx)).toEqual({ tertunda: false }); // sudah terverifikasi
     await akun.emailSelesai();
     expect(mailer.sent.length).toBe(n);
     expect(await akun.lupaSandi(EMAIL, ctx)).toEqual({ tertunda: false });
@@ -288,7 +287,7 @@ describe('anti-enumerasi', () => {
 
 describe('lupa sandi → atur ulang', () => {
   it('reset 30 menit, sekali pakai, menghapus semua sesi, sandi lama tidak berlaku', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     const s1 = (await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).token;
     const s2 = (await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).token;
     await akun.lupaSandi(EMAIL, ctx);
@@ -309,7 +308,7 @@ describe('lupa sandi → atur ulang', () => {
   });
 
   it('token reset kedaluwarsa setelah 30 menit; permintaan baru membatalkan tautan lama', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     await akun.lupaSandi(EMAIL, ctx);
     await akun.emailSelesai();
     const pertama = tokenDari(mailer.last(EMAIL, 'atur-ulang')!.link);
@@ -322,25 +321,25 @@ describe('lupa sandi → atur ulang', () => {
     expect((await galat(akun.aturUlangSandi(kedua, SANDI2, ctx))).kode).toBe('TOKEN_TIDAK_VALID');
   });
 
-  it('token verifikasi bukan token reset (dan sebaliknya); reset memverifikasi email', async () => {
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
-    const v = tokenDari(mailer.last(EMAIL, 'verifikasi')!.link);
-    expect((await galat(akun.aturUlangSandi(v, SANDI2, ctx))).kode).toBe('TOKEN_TIDAK_VALID');
-    await akun.lupaSandi(EMAIL, ctx);
-    await akun.emailSelesai();
-    const r = tokenDari(mailer.last(EMAIL, 'atur-ulang')!.link);
-    expect((await galat(akun.verifikasiEmail(r, SANDI, ctx))).kode).toBe('TOKEN_TIDAK_VALID');
-    const a = await akun.aturUlangSandi(r, SANDI2, ctx);
-    expect(a.emailVerifiedAt).not.toBeNull();
-    expect(akun.tokenBerlaku(v, 'verify')).toBe(false); // tautan verifikasi lama ikut batal
+  it('email ditahan (produksi tanpa Resend): lupa sandi ATUR_ULANG_NONAKTIF, aturUlangTersedia false', async () => {
+    expect(akun.aturUlangTersedia).toBe(true);
+    const log: string[] = [];
+    akun = buat({ mailer: new DevMailer((l) => log.push(l), undefined, true) });
+    expect(akun.aturUlangTersedia).toBe(false);
+    await daftarAkun(); // daftar tetap jalan tanpa email
+    for (const email of [EMAIL, 'tidakada@example.com', 'bukan-email']) {
+      const e = await galat(akun.lupaSandi(email, ctx));
+      expect([e.kode, e.status]).toEqual(['ATUR_ULANG_NONAKTIF', 503]);
+    }
+    expect(hitung('SELECT COUNT(*) n FROM email_tokens')).toBe(0);
+    expect(log).toEqual([]);
   });
 });
 
 describe('sesi', () => {
   it('kedaluwarsa idle dan absolut; aktivitas memperpanjang idle', async () => {
     akun = buat({ ttl: { sesiIdleSec: 3600, sesiAbsolutSec: 3 * 3600 } });
-    await daftarTerverifikasi();
-    const { token } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
+    const { token } = await daftarAkun();
     t += 50 * 60_000;
     expect(akun.sesi(token)).not.toBeNull();
     t += 50 * 60_000;
@@ -357,7 +356,7 @@ describe('sesi', () => {
   });
 
   it('login selalu menerbitkan token baru (rotasi); token buatan klien tidak pernah diterima (fiksasi)', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     const a = (await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).token;
     const b = (await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).token;
     expect(a).not.toBe(b);
@@ -367,8 +366,7 @@ describe('sesi', () => {
   });
 
   it('keluar, keluar dari semua perangkat, daftar perangkat', async () => {
-    await daftarTerverifikasi();
-    const a = (await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).token;
+    const a = (await daftarAkun()).token;
     const b = (await akun.masuk({ email: EMAIL, sandi: SANDI }, { ip: '1.1.1.1', userAgent: null })).token;
     const s = akun.sesi(a)!;
     const p = akun.perangkat(s.akun.id, s.tokenHash);
@@ -386,8 +384,7 @@ describe('sesi', () => {
   });
 
   it('unduh berkas: sesi yang belum pernah mengunduh butuh bukti kredensial ≤ 15 menit', async () => {
-    await daftarTerverifikasi();
-    const { token } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
+    const { token } = await daftarAkun(); // sesi dari daftar = bukti kredensial baru
     expect(() => akun.izinkanUnduh(akun.sesi(token)!)).not.toThrow(); // baru login
     t += 60 * 60_000;
     expect(() => akun.izinkanUnduh(akun.sesi(token)!)).not.toThrow(); // sesi ini sudah pernah mengunduh
@@ -421,7 +418,7 @@ describe('#45 pembatas laju, Turnstile, dan penguncian', () => {
     akun = buat({
       limits: { masuk: { ip: { limit: 1000, windowMs: 60_000 }, email: { limit: 1000, windowMs: 60_000 } } },
     });
-    await daftarTerverifikasi();
+    await daftarAkun();
     for (let i = 0; i < LOCKOUT.turnstileSetelah; i++)
       expect((await galat(akun.masuk({ email: EMAIL, sandi: SANDI2 }, ctx))).kode).toBe('KREDENSIAL_SALAH');
     expect(akun.perluTurnstile(EMAIL)).toBe(true);
@@ -449,7 +446,7 @@ describe('#45 pembatas laju, Turnstile, dan penguncian', () => {
     akun = buat({
       limits: { masuk: { ip: { limit: 1000, windowMs: 60_000 }, email: { limit: 1000, windowMs: 60_000 } } },
     });
-    await daftarTerverifikasi();
+    await daftarAkun();
     const tk = { ...ctx, turnstileOk: true };
     const hasil = await Promise.all(
       Array.from({ length: 12 }, () => galat(akun.masuk({ email: EMAIL, sandi: SANDI2 }, tk))),
@@ -463,7 +460,7 @@ describe('#45 pembatas laju, Turnstile, dan penguncian', () => {
     akun = buat({
       limits: { masuk: { ip: { limit: 1000, windowMs: 60_000 }, email: { limit: 1000, windowMs: 60_000 } } },
     });
-    await daftarTerverifikasi();
+    await daftarAkun();
     const tk = { ...ctx, turnstileOk: true };
     for (let i = 0; i < LOCKOUT.kunciSetelah; i++)
       await galat(akun.masuk({ email: EMAIL, sandi: SANDI2 }, tk));
@@ -482,37 +479,43 @@ describe('#45 pembatas laju, Turnstile, dan penguncian', () => {
   });
 
   it('jendela 15 menit: kegagalan lama tidak dihitung', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     for (let i = 0; i < 2; i++) await galat(akun.masuk({ email: EMAIL, sandi: SANDI2 }, ctx));
     t += 16 * 60_000;
     for (let i = 0; i < 2; i++) await galat(akun.masuk({ email: EMAIL, sandi: SANDI2 }, ctx));
     expect(akun.perluTurnstile(EMAIL)).toBe(false);
   });
 
-  it('batas per email dan per IP untuk daftar, lupa, kirim ulang, token, masuk', async () => {
+  it('batas per email dan per IP untuk daftar, lupa, token, masuk', async () => {
     for (let i = 0; i < 3; i++) await akun.lupaSandi(EMAIL, { ip: `10.0.0.${i}` });
     expect((await galat(akun.lupaSandi(EMAIL, { ip: '10.0.0.9' }))).kode).toBe('RATE_LIMITED');
-    for (let i = 0; i < 20; i++) await akun.kirimUlangVerifikasi(`k${i}@example.com`, ctx);
-    const e = await galat(akun.kirimUlangVerifikasi('lain@example.com', ctx)); // per IP (20/jam)
+    for (let i = 0; i < 20; i++) await akun.lupaSandi(`k${i}@example.com`, ctx);
+    const e = await galat(akun.lupaSandi('lain@example.com', ctx)); // per IP (20/jam)
     expect(e.kode).toBe('RATE_LIMITED');
     expect(e.retryAfterSec).toBeGreaterThan(0);
-    for (let i = 0; i < 30; i++) await galat(akun.verifikasiEmail('A'.repeat(43), SANDI, { ip: '9.9.9.9' }));
-    expect((await galat(akun.verifikasiEmail('A'.repeat(43), SANDI, { ip: '9.9.9.9' }))).kode).toBe(
+    for (let i = 0; i < 30; i++) await galat(akun.aturUlangSandi('A'.repeat(43), SANDI2, { ip: '9.9.9.9' }));
+    expect((await galat(akun.aturUlangSandi('A'.repeat(43), SANDI2, { ip: '9.9.9.9' }))).kode).toBe(
       'RATE_LIMITED',
     );
-    for (let i = 0; i < 3; i++)
-      await akun.daftar({ email: 'd@example.com', sandi: SANDI }, { ip: `10.1.0.${i}` });
+    // daftar per email: percobaan dengan email yang sudah terdaftar tetap dihitung
+    await akun.daftar({ email: 'd@example.com', sandi: SANDI }, { ip: '10.1.0.0' });
+    for (let i = 1; i < 3; i++)
+      expect(
+        (await galat(akun.daftar({ email: 'd@example.com', sandi: SANDI }, { ip: `10.1.0.${i}` }))).kode,
+      ).toBe('EMAIL_SUDAH_TERDAFTAR');
     expect((await galat(akun.daftar({ email: 'd@example.com', sandi: SANDI }, ctx))).kode).toBe(
       'RATE_LIMITED',
     );
     t += JAM + 1;
-    await expect(akun.daftar({ email: 'd@example.com', sandi: SANDI }, ctx)).resolves.toBeDefined();
+    expect((await galat(akun.daftar({ email: 'd@example.com', sandi: SANDI }, ctx))).kode).toBe(
+      'EMAIL_SUDAH_TERDAFTAR',
+    );
   });
 });
 
 describe('ubah sandi dan hapus akun', () => {
   it('ubah sandi: wajib sandi lama, rotasi sesi ini, sesi lain dihapus', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     const a = (await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).token;
     const b = (await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).token;
     const id = akun.sesi(a)!.akun.id;
@@ -543,7 +546,7 @@ describe('ubah sandi dan hapus akun', () => {
         db.prepare('DELETE FROM urusan WHERE id = ?').run(id);
       },
     });
-    await daftarTerverifikasi();
+    await daftarAkun();
     const { token, akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
     urusan('u_1', 'u_2');
     akun.catatPemilikUrusan('u_1', { akun: a });
@@ -576,8 +579,10 @@ describe('ubah sandi dan hapus akun', () => {
     expect(db.prepare('SELECT urusan_id FROM urusan_owner').all()).toEqual([{ urusan_id: 'u_2' }]);
     expect((await galat(akun.hapusAkun(a.id, { konfirmasi: 'HAPUS' }))).kode).toBe('BELUM_MASUK');
     dihapus = [];
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, { ip: '10.9.9.9' });
-    expect(mailer.last(EMAIL)!.jenis).toBe('verifikasi');
+    // email bebas lagi: daftar ulang membuat akun baru (kosong)
+    const ulang = await akun.daftar({ email: EMAIL, sandi: SANDI }, { ip: '10.9.9.9' });
+    expect(ulang.akun.id).not.toBe(a.id);
+    expect(akun.urusanMilik(ulang.akun.id)).toEqual([]);
   });
 });
 
@@ -731,13 +736,13 @@ describe('#47 rotasi tamu → akun (§3.26.6)', () => {
     return tamu;
   }
 
-  it('akun terverifikasi: urusan + vault tamu pindah (enkripsi ulang), DEK tamu dihancurkan, pengikat Pendamping ikut', async () => {
+  it('akun: urusan + vault tamu pindah (enkripsi ulang), DEK tamu dihancurkan, pengikat Pendamping ikut', async () => {
     db.exec('CREATE TABLE pendamping_sesi (id TEXT PRIMARY KEY, owner_hash TEXT NOT NULL)');
     db.prepare("INSERT INTO pendamping_sesi VALUES ('p1', ?)").run(hashSid('sid-lama'));
     akun.daftarPengikatPemilik(({ hashLama, hashBaru }) => {
       db.prepare('UPDATE pendamping_sesi SET owner_hash = ? WHERE owner_hash = ?').run(hashBaru, hashLama);
     });
-    await daftarTerverifikasi();
+    await daftarAkun();
     const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
     akun.vault.setDataDiri(a.id, { namaLengkap: 'Nama Akun' });
     const tamu = await siapkanTamu('sid-lama');
@@ -781,7 +786,7 @@ describe('#47 rotasi tamu → akun (§3.26.6)', () => {
   });
 
   it('pengikat yang gagal membatalkan seluruh rotasi (atomik); berkas baru dibuang', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
     const tamu = await siapkanTamu('sid-lama');
     akun.daftarPengikatPemilik(() => {
@@ -797,8 +802,7 @@ describe('#47 rotasi tamu → akun (§3.26.6)', () => {
     expect(readdirSync(join(vaultDir, a.id))).toEqual([]);
   });
 
-  it('akun belum terverifikasi: tetap seperti tamu, data diikat ke sid baru', async () => {
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
+  it('tanpa akun (userId null): tamu tetap tamu, data diikat ke sid baru', async () => {
     const tamu = await siapkanTamu('sid-lama');
     const r = akun.rotasiPemilik({ sidLama: 'sid-lama', sidBaru: 'sid-baru', userId: null });
     expect(r).toEqual({ urusanDipindahkan: 2, vaultDipindahkan: false });
@@ -808,7 +812,7 @@ describe('#47 rotasi tamu → akun (§3.26.6)', () => {
   });
 
   it('tamu tanpa isi vault: baris tamu dihapus, tidak ada berkas', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
     const tamu = akun.pastikanTamu('sid-kosong', ctx);
     expect(
@@ -817,9 +821,8 @@ describe('#47 rotasi tamu → akun (§3.26.6)', () => {
     expect(hitung('SELECT COUNT(*) n FROM users WHERE id = ?', tamu)).toBe(0);
   });
 
-  it('catat pemilik: akun belum terverifikasi dicatat sebagai akunnya (bukan sid); tanpa pemilik diabaikan', async () => {
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
-    const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
+  it('catat pemilik: akun yang baru daftar dicatat sebagai akunnya (bukan sid); tanpa pemilik diabaikan', async () => {
+    const { akun: a } = await daftarAkun();
     urusan('u_x', 'u_y');
     akun.catatPemilikUrusan('u_x', { akun: a, sid: 'sid-z' });
     akun.catatPemilikUrusan('u_y', {});
@@ -828,23 +831,23 @@ describe('#47 rotasi tamu → akun (§3.26.6)', () => {
     ]);
   });
 
-  it('akun belum terverifikasi: buat urusan → keluar (sid diputar) → masuk lagi → urusan tetap terbuka; orang lain 404', async () => {
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
-    const m1 = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
-    expect(akun.sinkron(m1.akun)).toBe(false);
-    // Vault akun belum terverifikasi tetap satu perangkat (tamu terikat sid); urusan dicatat ke akunnya.
-    const tamu = akun.pastikanTamu('sid-1', ctx);
+  it('akun yang baru daftar: buat urusan → keluar (sid diputar) → masuk lagi → urusan tetap terbuka; orang lain 404', async () => {
+    const m1 = await daftarAkun();
+    expect(akun.sinkron(m1.akun)).toBe(true);
+    // Vault langsung milik akun (sinkron), bukan tamu terikat sid; urusan dicatat ke akunnya.
     urusan('u_a');
     akun.catatPemilikUrusan('u_a', { akun: m1.akun, sid: 'sid-1' });
-    expect(akun.pemilikVaultUrusan('u_a', { akun: m1.akun, sid: 'sid-1' })).toBe(tamu);
+    expect(akun.pemilikVaultUrusan('u_a', { akun: m1.akun, sid: 'sid-1' })).toBe(m1.akun.id);
+    expect(akun.tamuDariSid('sid-1')).toBeUndefined();
     // Keluar: sesi dihapus, sid diputar (tanpa rotasi pemilik). Masuk lagi di sid baru.
     akun.keluar(m1.token);
     const m2 = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
-    akun.rotasiPemilik({ sidLama: 'sid-2', sidBaru: 'sid-3', userId: null, akunId: m2.akun.id });
+    akun.rotasiPemilik({ sidLama: 'sid-2', sidBaru: 'sid-3', userId: m2.akun.id });
+    expect(akun.pemilikVaultUrusan('u_a', { akun: m2.akun, sid: 'sid-3' })).toBe(m2.akun.id);
     expect(akun.adalahPemilikUrusan('u_a', { akun: m2.akun, sid: 'sid-3' })).toBe(true);
     expect(akun.urusanMilik(m2.akun.id)).toEqual(['u_a']);
     // Pemilik lain: akun lain, sid lama, sid lain, tanpa apa-apa → tetap bukan pemilik.
-    await daftarTerverifikasi(EMAIL_LAIN, SANDI2);
+    await daftarAkun(EMAIL_LAIN, SANDI2);
     const lain = (await akun.masuk({ email: EMAIL_LAIN, sandi: SANDI2 }, ctx)).akun;
     expect(akun.adalahPemilikUrusan('u_a', { akun: lain, sid: 'sid-3' })).toBe(false);
     expect(akun.adalahPemilikUrusan('u_a', { sid: 'sid-1' })).toBe(false);
@@ -852,9 +855,8 @@ describe('#47 rotasi tamu → akun (§3.26.6)', () => {
     expect(akun.pemilikVaultUrusan('u_a', { akun: lain, sid: 'sid-1' })).toBeUndefined();
   });
 
-  it('masuk (belum terverifikasi atau demo) memindahkan urusan tamu ke akunnya; vault tamu tetap terikat sid baru', async () => {
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
-    const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
+  it('akunId tanpa userId (akun atau demo) memindahkan urusan tamu ke akunnya; vault tamu tetap terikat sid baru', async () => {
+    const { akun: a } = await daftarAkun();
     const tamu = akun.pastikanTamu('sid-lama', ctx);
     urusan('u_t1');
     akun.catatPemilikUrusan('u_t1', { sid: 'sid-lama' });
@@ -870,28 +872,6 @@ describe('#47 rotasi tamu → akun (§3.26.6)', () => {
     akun.rotasiPemilik({ sidLama: 'sid-baru', sidBaru: 'sid-juri', userId: null, akunId: demo.id });
     expect(akun.adalahPemilikUrusan('u_t2', { akun: demo, sid: 'sid-lain' })).toBe(true);
     expect(akun.adalahPemilikUrusan('u_t2', { sid: 'sid-juri' })).toBe(false);
-  });
-
-  it('pemilik kotak surat memverifikasi akun orang lain: urusan pemegang lama tidak diwariskan; pemilik sendiri tetap', async () => {
-    // Penyerobot mendaftar email korban, masuk tanpa verifikasi, membuat urusan.
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
-    const penyerobot = (await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).akun;
-    urusan('u_tanam');
-    akun.catatPemilikUrusan('u_tanam', { akun: penyerobot });
-    // Korban mendaftar dengan sandinya sendiri lalu memverifikasi dari kotak suratnya.
-    await akun.daftar({ email: EMAIL, sandi: SANDI2 }, ctx);
-    await akun.verifikasiEmail(tokenDari(mailer.last(EMAIL, 'verifikasi')!.link), SANDI2, ctx);
-    expect(akun.urusanMilik(penyerobot.id)).toEqual([]);
-    expect(hitung("SELECT COUNT(*) n FROM urusan WHERE id = 'u_tanam'")).toBe(0);
-
-    // Pemilik sendiri (sandi sama, termasuk daftar ulang dengan sandi yang sama): urusannya tetap.
-    await akun.daftar({ email: EMAIL_LAIN, sandi: SANDI }, ctx);
-    const sendiri = (await akun.masuk({ email: EMAIL_LAIN, sandi: SANDI }, ctx)).akun;
-    urusan('u_milik');
-    akun.catatPemilikUrusan('u_milik', { akun: sendiri });
-    await akun.daftar({ email: EMAIL_LAIN, sandi: SANDI }, ctx);
-    await akun.verifikasiEmail(tokenDari(mailer.last(EMAIL_LAIN, 'verifikasi')!.link), SANDI, ctx);
-    expect(akun.urusanMilik(sendiri.id)).toEqual(['u_milik']);
   });
 });
 
@@ -943,7 +923,7 @@ describe('token persetujuan "Izinkan isi"', () => {
 
 describe('hapus akun: bukti kredensial (zona bahaya)', () => {
   it('PoC: sandi salah ikut penguncian; akun Google saja butuh masuk <= 15 menit; demo cukup HAPUS', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
     for (let i = 0; i < 5; i++)
       expect((await galat(akun.hapusAkun(a.id, { konfirmasi: 'HAPUS', sandi: SANDI2 }))).kode).toBe(
@@ -995,7 +975,7 @@ describe('#48 Google OIDC', () => {
     expect(row.next).toBe('/lacak');
   });
 
-  it('akun baru terverifikasi, nama prefill ke Data Diri terenkripsi, login berikutnya lewat sub yang sama', async () => {
+  it('akun baru, nama prefill ke Data Diri terenkripsi, login berikutnya lewat sub yang sama', async () => {
     const r = await googleLogin(
       { sub: 'g-1', email: 'Baru@Example.com', email_verified: true, name: 'Warga Baru' },
       { next: '/lacak' },
@@ -1004,7 +984,7 @@ describe('#48 Google OIDC', () => {
     expect(r.baru).toBe(true);
     expect(r.next).toBe('/lacak');
     expect(r.akun).toMatchObject({ email: 'baru@example.com', punyaSandi: false, jenis: 'akun' });
-    expect(r.akun.emailVerifiedAt).not.toBeNull();
+    expect(akun.sinkron(r.akun)).toBe(true);
     expect(akun.terhubungGoogle(r.akun.id)).toBe(true);
     expect(akun.vault.getDataDiri(r.akun.id)?.data).toEqual({ namaLengkap: 'Warga Baru' });
     const lagi = await googleLogin({ sub: 'g-1', email: 'ganti@example.com', email_verified: false });
@@ -1012,7 +992,7 @@ describe('#48 Google OIDC', () => {
   });
 
   it('menautkan saat sedang masuk (bukti = sesi): hanya untuk akun yang memulai, sub tidak boleh milik akun lain', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
     expect(
       (
@@ -1183,31 +1163,35 @@ describe('keamanan tautan Google (review keamanan 133322f)', () => {
   const idDari = (email: string) =>
     (db.prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: string }).id;
 
-  it('PoC pra-akun: akun belum terverifikasi tidak bisa menautkan Google; identitas lama dicabut saat verifikasi', async () => {
-    const ip = { ip: '198.51.100.9' };
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, ip); // penyerang mendaftar email korban
-    const { akun: pra } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ip);
+  it('mode tautan langsung untuk akun yang baru daftar (tanpa verifikasi); hanya akun, bukti kredensial <= 15 menit', async () => {
+    const d = await daftarAkun();
+    const basi = new Date(t - 16 * 60_000).toISOString();
+    expect(
+      (await galat(() => akun.googleMulai('/pengaturan', { userId: d.akun.id, authAt: basi }))).kode,
+    ).toBe('PERLU_MASUK_ULANG');
+    expect((await galat(() => akun.googleMulai('/pengaturan', { userId: d.akun.id }))).kode).toBe(
+      'PERLU_MASUK_ULANG',
+    );
+    const demo = akun.buatDemo({ ip: '198.51.100.60' }).akun;
+    expect(
+      (await galat(() => akun.googleMulai('/', { userId: demo.id, authAt: new Date(t).toISOString() }))).kode,
+    ).toBe('HANYA_AKUN');
     expect(
       (
-        await galat(
-          googleLogin(
-            { sub: 'g-penyerang', email: 'penyerang@example.com', email_verified: true },
-            { userId: pra.id, userIdSaatIni: pra.id },
-          ),
+        await galat(() =>
+          akun.googleMulai('/', { userId: 'akun_tidak_ada', authAt: new Date(t).toISOString() }),
         )
       ).kode,
-    ).toBe('EMAIL_BELUM_TERVERIFIKASI');
-    // identitas warisan (sebelum perbaikan) tetap dicabut saat pemilik asli memastikan email
-    tanam('g-lama', pra.id);
-    await akun.daftar({ email: EMAIL, sandi: SANDI2 }, ctx); // korban
-    await akun.verifikasiEmail(tokenDari(mailer.last(EMAIL, 'verifikasi')!.link), SANDI2, ctx);
-    expect(identitas(pra.id)).toEqual([]);
-    const r = await googleLogin({ sub: 'g-lama', email: 'penyerang@example.com', email_verified: true });
-    expect(r.jenis).toBe('masuk');
-    if (r.jenis === 'masuk') expect(r.akun.id).not.toBe(pra.id);
+    ).toBe('HANYA_AKUN');
+    const r = await googleLogin(
+      { sub: 'g-baru', email: 'pribadi-baru@example.com', email_verified: true },
+      { userId: d.akun.id, userIdSaatIni: d.akun.id },
+    );
+    expect(r).toMatchObject({ jenis: 'masuk', akun: { id: d.akun.id } });
+    expect(identitas(d.akun.id)).toEqual([{ sub: 'g-baru', asal: 'tautan' }]);
   });
 
-  it('PoC pra-akun: atur ulang sandi dan pengambilalihan Google mencabut identitas lama', async () => {
+  it('PoC: atur ulang sandi lewat email mencabut identitas Google lama', async () => {
     await akun.daftar({ email: EMAIL, sandi: SANDI }, { ip: '198.51.100.9' });
     const id = idDari(EMAIL);
     tanam('g-a', id);
@@ -1215,24 +1199,10 @@ describe('keamanan tautan Google (review keamanan 133322f)', () => {
     await akun.emailSelesai();
     await akun.aturUlangSandi(tokenDari(mailer.last(EMAIL, 'atur-ulang')!.link), SANDI2, ctx);
     expect(identitas(id)).toEqual([]);
-
-    await akun.daftar({ email: 'b@example.com', sandi: SANDI }, { ip: '198.51.100.9' });
-    const idB = idDari('b@example.com');
-    tanam('g-b-lama', idB);
-    const r = await googleLogin({ sub: 'g-b-asli', email: 'b@example.com', email_verified: true });
-    expect(r).toMatchObject({ jenis: 'masuk', akun: { id: idB } });
-    expect(identitas(idB)).toEqual([{ sub: 'g-b-asli', asal: 'daftar' }]);
-  });
-
-  it('penyapu menghapus akun belum terverifikasi walau punya identitas Google', async () => {
-    await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
-    tanam('g-s', idDari(EMAIL));
-    t += 25 * JAM;
-    expect(akun.bersihkan().belumVerifikasi).toBe(1);
   });
 
   it('mulai menautkan butuh bukti kredensial <= 15 menit; tautan baru mengirim email pemberitahuan', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
     const basi = new Date(t - 16 * 60_000).toISOString();
     expect((await galat(() => akun.googleMulai('/pengaturan', { userId: a.id, authAt: basi }))).kode).toBe(
@@ -1258,7 +1228,7 @@ describe('keamanan tautan Google (review keamanan 133322f)', () => {
     akun.keluarSemua(g.akun.id);
     expect(identitas(g.akun.id)).toEqual([{ sub: 'g-asal', asal: 'daftar' }]);
 
-    await daftarTerverifikasi();
+    await daftarAkun();
     const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
     await googleLogin(
       { sub: 'g-x', email: 'x@example.com', email_verified: true },
@@ -1307,36 +1277,44 @@ describe('email tertunda (kuota Resend habis / DNS belum siap)', () => {
       alert: (p) => alert.push(p),
     });
     expect(akun.modeEmail).toBe('resend');
-    expect(await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx)).toEqual({ tertunda: true });
+    // daftar tidak mengirim email, jadi tidak terpengaruh kegagalan kirim
+    await expect(akun.daftar({ email: EMAIL, sandi: SANDI }, ctx)).resolves.toMatchObject({
+      akun: { email: EMAIL },
+    });
+    expect(akun.emailTertunda).toBe(false);
+    await akun.lupaSandi(EMAIL, ctx);
+    await akun.emailSelesai();
     expect(akun.emailTertunda).toBe(true);
     expect(await akun.lupaSandi('siapa@example.com', ctx)).toEqual({ tertunda: true }); // global, bukan per email
-    await akun.kirimUlangVerifikasi(EMAIL, ctx);
+    await akun.lupaSandi(EMAIL, ctx);
     await akun.emailSelesai();
     expect(alert).toEqual(['email tertunda: pengiriman email gagal: kuota penyedia habis (HTTP 429)']);
     expect(log.join('\n')).not.toContain(EMAIL);
     expect(log[0]).toContain('w***@example.com');
-    // verifikasi tidak memblokir: akun tetap bisa masuk
     await expect(akun.masuk({ email: EMAIL, sandi: SANDI }, ctx)).resolves.toBeDefined();
     gagal = false;
     t += 16 * 60_000;
     expect(akun.emailTertunda).toBe(false);
-    expect(await akun.daftar({ email: 'b@example.com', sandi: SANDI }, ctx)).toEqual({ tertunda: false });
+    expect(await akun.lupaSandi('b@example.com', ctx)).toEqual({ tertunda: false });
   });
 
-  it('email ditahan (mode log di produksi): selalu tertunda, akun tetap bisa masuk seperti tamu', async () => {
+  it('email ditahan (mode log di produksi): selalu tertunda, daftar tetap akun penuh, lupa sandi nonaktif', async () => {
     const terkirim: string[] = [];
     akun = buat({ mailer: { kind: 'log', ditahan: true, send: async (m) => void terkirim.push(m.jenis) } });
-    expect([akun.modeEmail, akun.emailTertunda]).toEqual(['log', true]);
-    expect(await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx)).toEqual({ tertunda: true });
-    expect(await akun.lupaSandi(EMAIL, ctx)).toEqual({ tertunda: true });
+    expect([akun.modeEmail, akun.emailTertunda, akun.aturUlangTersedia]).toEqual(['log', true, false]);
+    const d = await akun.daftar({ email: EMAIL, sandi: SANDI }, ctx);
+    expect(akun.sinkron(d.akun)).toBe(true);
+    expect((await galat(akun.lupaSandi(EMAIL, ctx))).kode).toBe('ATUR_ULANG_NONAKTIF');
     const { akun: a } = await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
-    expect([a.emailVerifiedAt, akun.sinkron(a)]).toEqual([null, false]);
+    expect(akun.sinkron(a)).toBe(true);
+    await akun.emailSelesai();
+    expect(terkirim).toEqual([]);
   });
 });
 
 describe('penyapu', () => {
   it('bersihkan: sesi/token/state/izin kedaluwarsa', async () => {
-    await daftarTerverifikasi();
+    await daftarAkun();
     await akun.masuk({ email: EMAIL, sandi: SANDI }, ctx);
     akun.googleMulai();
     const tamu = akun.pastikanTamu('sid-p', ctx);
@@ -1348,5 +1326,82 @@ describe('penyapu', () => {
     expect(db.prepare('SELECT email FROM users').all()).toEqual([{ email: EMAIL }]);
     for (const tabel of ['auth_sessions', 'oauth_states', 'pii_izin', 'email_tokens'])
       expect(hitung(`SELECT COUNT(*) n FROM ${tabel}`)).toBe(0);
+  });
+});
+
+describe('rem akun massal (review H1)', () => {
+  it('daftar: plafon harian 40 akun per IP; jendela jam baru tidak mereset plafon harian', async () => {
+    for (let i = 0; i < 40; i++) {
+      if (i > 0 && i % 20 === 0) t += 3_600_001; // lewati batas 20/jam, tetap di hari yang sama
+      await akun.daftar({ email: `massal${i}@example.com`, sandi: SANDI }, ctx);
+    }
+    t += 3_600_001;
+    const e = await galat(akun.daftar({ email: 'massal-x@example.com', sandi: SANDI }, ctx));
+    expect(e.kode).toBe('RATE_LIMITED');
+    expect(e.retryAfterSec).toBeGreaterThan(3600);
+    expect(db.prepare("SELECT COUNT(*) n FROM users WHERE email = 'massal-x@example.com'").get()).toEqual({
+      n: 0,
+    });
+    // IP lain tidak terdampak
+    await akun.daftar({ email: 'massal-y@example.com', sandi: SANDI }, { ...ctx, ip: '198.51.100.7' });
+  }, 60_000);
+});
+
+describe('atur ulang pada email yang belum terbukti (review H2)', () => {
+  const terbukti = (id: string) =>
+    (db.prepare('SELECT at FROM email_terbukti WHERE user_id = ?').get(id) as { at: string } | undefined)
+      ?.at ?? null;
+  async function resetLewatEmail(sandi = SANDI2) {
+    await akun.lupaSandi(EMAIL, ctx);
+    await akun.emailSelesai();
+    await akun.aturUlangSandi(tokenDari(mailer.last(EMAIL, 'atur-ulang')!.link), sandi, ctx);
+  }
+
+  it('penyerobot email: urusan, vault, berkas, dan ingatannya dihancurkan sebelum akun pindah ke pemilik kotak surat', async () => {
+    const dihapus: string[] = [];
+    akun = buat({
+      hapusUrusan: (id) => {
+        dihapus.push(id);
+        db.prepare('DELETE FROM urusan WHERE id = ?').run(id);
+      },
+    });
+    const a = (await daftarAkun()).akun; // didaftarkan penyerobot dengan sandinya sendiri
+    expect(terbukti(a.id)).toBeNull();
+    urusan('u_serobot', 'u_lain');
+    akun.catatPemilikUrusan('u_serobot', { akun: a });
+    akun.catatPemilikUrusan('u_lain', { sid: 'tamu-lain' });
+    akun.vault.setDataDiri(a.id, { namaLengkap: 'Data Tanaman Penyerobot' });
+    akun.vault.putDocument(a.id, { jenis: 'ktp', judul: 'KTP', mime: 'image/png', bytes: Buffer.from('x') });
+    akun.vault.setIngatan(a.id, { catatan: 'ingatan tanaman' });
+    expect(readdirSync(vaultDir)).toEqual([a.id]);
+
+    await resetLewatEmail();
+    expect(dihapus).toEqual(['u_serobot']);
+    expect(akun.urusanMilik(a.id)).toEqual([]);
+    expect(akun.vault.getDataDiri(a.id)).toBeNull();
+    expect(akun.vault.getIngatan(a.id)).toBeNull();
+    for (const tabel of ['user_keys', 'vault_data_diri', 'vault_documents', 'vault_ingatan'])
+      expect(db.prepare(`SELECT COUNT(*) n FROM ${tabel}`).get()).toEqual({ n: 0 });
+    expect(readdirSync(vaultDir)).toEqual([]);
+    expect(terbukti(a.id)).not.toBeNull();
+    // akun tetap milik pemilik kotak surat dengan sandi barunya
+    await expect(akun.masuk({ email: EMAIL, sandi: SANDI2 }, ctx)).resolves.toBeDefined();
+  });
+
+  it('email sudah terbukti: atur ulang berikutnya TIDAK menghapus data warga', async () => {
+    const a = (await daftarAkun()).akun;
+    await resetLewatEmail(); // bukti pertama (akun masih kosong)
+    akun.vault.setDataDiri(a.id, { namaLengkap: 'Warga Asli' });
+    akun.vault.setIngatan(a.id, { catatan: 'ingatan warga' });
+    t += 60 * 60_000;
+    await resetLewatEmail(SANDI);
+    expect(akun.vault.getDataDiri(a.id)?.data).toEqual({ namaLengkap: 'Warga Asli' });
+    expect(akun.vault.getIngatan(a.id)?.data).toEqual({ catatan: 'ingatan warga' });
+  });
+
+  it('akun baru lewat Google tercatat terbukti (atur ulang tidak menghapus datanya)', async () => {
+    const r = await googleLogin({ sub: 'g-h2', email: 'gugel@example.com', email_verified: true, name: 'G' });
+    if (r.jenis !== 'masuk') throw new Error('harus masuk');
+    expect(terbukti(r.akun.id)).not.toBeNull();
   });
 });

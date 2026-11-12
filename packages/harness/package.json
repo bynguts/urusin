@@ -22,7 +22,8 @@
     "test": "vitest run",
     "eval": "tsc -p tsconfig.build.json && node dist/eval/cli.js",
     "record:fixtures": "tsc -p tsconfig.build.json && node dist/eval/record.js",
-    "migrate": "tsc -p tsconfig.build.json && node dist/migrate-cli.js"
+    "migrate": "tsc -p tsconfig.build.json && node dist/migrate-cli.js",
+    "bench:latensi": "tsc -p tsconfig.build.json && node dist/eval/latensi.js"
   },
   "dependencies": {
     "@urusin/adapters": "workspace:*",

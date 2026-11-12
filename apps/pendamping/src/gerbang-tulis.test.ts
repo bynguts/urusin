@@ -2,12 +2,15 @@ import { createHash } from 'node:crypto';
 import { EGRESS_ASET_UMUM } from '@urusin/core';
 import { describe, expect, it } from 'vitest';
 import {
+  asetPemdaSama,
   asetUmumBoleh,
+  domainPemdaSesi,
   catatanBlokir,
   createGerbangTulis,
   hostAset,
   hostAsetUmum,
   hostAsetWilayah,
+  hostUnggahWilayah,
   jalurPihakKetigaBoleh,
   JENDELA_ISI_MS,
   putuskan,
@@ -309,6 +312,22 @@ describe('putuskan (tabel lengkap)', () => {
     expect(asetUmumBoleh({ url: U, resourceType: 'fetch', dokumen: false })).toBe(true);
   });
 
+  it('hostUnggah Klampid (3578): XHR/fetch unggah semua metode, tidak pernah dokumen/navigasi', () => {
+    const url = 'https://s3.klampid.disdukcapilsurabaya.id/dispenduk/attachment/x/berkas.jpg';
+    expect(hostUnggahWilayah(url)).toBe(true);
+    expect(hostAset(url)).toBe(true);
+    expect(hostUnggahWilayah('https://wargaklampid-dispendukcapil.surabaya.go.id/app')).toBe(false);
+    for (const t of ['xhr', 'fetch'])
+      for (const m of ['PUT', 'POST', 'OPTIONS', 'GET'])
+        expect(asetUmumBoleh({ url, resourceType: t, dokumen: false, metode: m }), `${t} ${m}`).toBe(true);
+    expect(asetUmumBoleh({ url, resourceType: 'image', dokumen: false, metode: 'GET' })).toBe(true);
+    expect(asetUmumBoleh({ url, resourceType: 'document', dokumen: true, metode: 'GET' })).toBe(false);
+    for (const t of ['websocket', 'media', 'other'])
+      expect(asetUmumBoleh({ url, resourceType: t, dokumen: false, metode: 'GET' }), t).toBe(false);
+    const dok: PermintaanGerbang = { metode: 'GET', dokumen: true, utama: true, xhr: false, url };
+    expect(putuskan({ jenis: 'warga' }, dok, T)).toBe('blokir');
+  });
+
   it('re-review LOW: hostAset pemda (3310/3404) hanya subresource, dokumen diblokir di semua jendela', () => {
     for (const host of ['dukcapil-cdn.slemankab.go.id', 'api.diskominfo.klaten.go.id']) {
       const url = `https://${host}/halaman.html`;
@@ -496,5 +515,36 @@ describe('createGerbangTulis', () => {
     pegang = false;
     tunggu = false;
     expect(g.jendela()).toEqual({ jenis: 'ai_klik' });
+  });
+});
+
+describe('probe gel5 3310: aset subdomain pemda yang sama', () => {
+  const pemda = domainPemdaSesi(['sakura.dukcapil.klaten.go.id', 'unpkg.com', 'challenges.cloudflare.com']);
+  const r = (url: string, resourceType = 'image', metode = 'GET', dokumen = false) => ({
+    url,
+    resourceType,
+    metode,
+    dokumen,
+  });
+
+  it('domain pemda hanya dari host portal .go.id (bukan CDN umum)', () => {
+    expect([...pemda]).toEqual(['klaten.go.id']);
+  });
+
+  it('GET gambar/style/fon https dari subdomain pemda yang sama: boleh', () => {
+    expect(asetPemdaSama(r('https://cdn.klaten.go.id/logo.png'), pemda)).toBe(true);
+    expect(asetPemdaSama(r('https://cdn.dukcapil.klaten.go.id/a.css', 'stylesheet'), pemda)).toBe(true);
+    expect(asetPemdaSama(r('https://klaten.go.id/f.woff2', 'font'), pemda)).toBe(true);
+  });
+
+  it('jenis/metode/dokumen/pemda/skema lain: tidak', () => {
+    expect(asetPemdaSama(r('https://cdn.klaten.go.id/x.json', 'xhr'), pemda)).toBe(false);
+    expect(asetPemdaSama(r('https://cdn.klaten.go.id/x.js', 'script'), pemda)).toBe(false);
+    expect(asetPemdaSama(r('https://cdn.klaten.go.id/', 'document', 'GET', true), pemda)).toBe(false);
+    expect(asetPemdaSama(r('https://cdn.klaten.go.id/logo.png', 'image', 'POST'), pemda)).toBe(false);
+    expect(asetPemdaSama(r('https://cdn.slemankab.go.id/logo.png'), pemda)).toBe(false);
+    expect(asetPemdaSama(r('http://cdn.klaten.go.id/logo.png'), pemda)).toBe(false);
+    expect(asetPemdaSama(r('https://cdn.klaten.go.id:8443/logo.png'), pemda)).toBe(false);
+    expect(asetPemdaSama(r('https://klaten.go.id.evil.example/logo.png'), pemda)).toBe(false);
   });
 });

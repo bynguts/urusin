@@ -153,9 +153,18 @@ export function susun(kabkota, kontak, portal) {
       if (p.hosts.includes(h) || hostInfo.includes(h)) galat.push(`${ctx}: host aset ganda "${h}"`);
     }
     if (hostAset.length > 0 && p.jenis !== 'web') galat.push(`${ctx}: hostAset hanya untuk jenis web`);
+    // Host unggah portal (penyimpanan objek tujuan unggahan XHR halaman portal): hanya sesi wilayah ini, bukan
+    // dokumen/navigasi. Di luar .go.id wajib bersumber halaman .go.id (dicek bersama `hosts` di bawah).
+    const hostUnggah = [...new Set(p.hostUnggah ?? [])];
+    for (const h of hostUnggah) {
+      cekHost(h, ctx);
+      if (p.hosts.includes(h) || hostInfo.includes(h) || hostAset.includes(h))
+        galat.push(`${ctx}: host unggah ganda "${h}"`);
+    }
+    if (hostUnggah.length > 0 && p.jenis !== 'web') galat.push(`${ctx}: hostUnggah hanya untuk jenis web`);
     const sumber = p.sumber ?? i?.sumber;
     const su = sumber ? cekUrl(sumber, ctx) : null;
-    if (p.hosts.some((h) => !hostGoId(h))) {
+    if ([...p.hosts, ...hostUnggah].some((h) => !hostGoId(h))) {
       // Host resmi di luar .go.id hanya bila ditautkan dari halaman .go.id.
       if (!su || !hostGoId(su.hostname)) galat.push(`${ctx}: host bukan .go.id tanpa sumber halaman .go.id`);
     }
@@ -168,6 +177,7 @@ export function susun(kabkota, kontak, portal) {
       hosts: [...p.hosts],
       hostInfo,
       ...(hostAset.length ? { hostAset } : {}),
+      ...(hostUnggah.length ? { hostUnggah } : {}),
       ...(sumber ? { sumber } : {}),
       login: [...p.login],
       proteksi: [...p.proteksi],
@@ -213,6 +223,13 @@ export function susun(kabkota, kontak, portal) {
       tambah(h, {
         instansi,
         layanan: 'Aset portal layanan (CDN/API)',
+        wilayah: w.kode,
+        verifiedAt: w.verifiedAt,
+      });
+    for (const h of w.hostUnggah ?? [])
+      tambah(h, {
+        instansi,
+        layanan: 'Unggah berkas portal layanan (penyimpanan objek)',
         wilayah: w.kode,
         verifiedAt: w.verifiedAt,
       });
@@ -278,6 +295,11 @@ export type PortalWilayah = {
    * bukan host portal (vault/AI tidak ke sana).
    */
   hostAset?: readonly string[];
+  /**
+   * Host tujuan unggahan berkas (XHR/fetch halaman portal ke penyimpanan objek, mis. S3 Klampid): ikut egress sesi
+   * wilayah ini SAJA, tidak pernah dokumen/navigasi, bukan tujuan AI/vault. Di luar .go.id wajib \`sumber\` .go.id.
+   */
+  hostUnggah?: readonly string[];
   /** Halaman bukti; wajib .go.id untuk host di luar .go.id. */
   sumber?: string;
   login: readonly LoginPortal[];
@@ -329,7 +351,7 @@ export const EGRESS_PIHAK_KETIGA_WILAYAH: readonly string[] = ['challenges.cloud
 export function hostsWilayah(kode: string): string[] {
   const p = Object.hasOwn(PORTAL_WILAYAH, kode) ? PORTAL_WILAYAH[kode] : undefined;
   if (!p) return [];
-  const sendiri = [...p.hostInfo, ...p.hosts, ...(p.hostAset ?? [])];
+  const sendiri = [...p.hostInfo, ...p.hosts, ...(p.hostAset ?? []), ...(p.hostUnggah ?? [])];
   if (p.platform && Object.hasOwn(PLATFORM_WILAYAH, p.platform)) sendiri.push(...PLATFORM_WILAYAH[p.platform]!.hosts);
   if (sendiri.length === 0) return [];
   return [...new Set([...sendiri, ...EGRESS_PIHAK_KETIGA_WILAYAH])];

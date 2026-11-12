@@ -105,6 +105,47 @@ describe('migrasi berversi', () => {
     b.close();
   });
 
+  it('0006: akun sandi lama tanpa email_verified_at jadi aktif sejak dibuat; tamu dan akun lain tidak tersentuh', () => {
+    const db = new Database(':memory:');
+    const semua = loadMigrations();
+    const v6 = semua.findIndex((m) => m.name.includes('akun_tanpa_verifikasi'));
+    expect(semua[v6]!.version).toBe(6);
+    runMigrations(db, semua.slice(0, v6));
+    const tambah = db.prepare(
+      'INSERT INTO users (id, jenis, email, email_verified_at, sid_hash, created_at, expires_at) VALUES (?,?,?,?,?,?,?)',
+    );
+    tambah.run('akun_lama', 'akun', 'lama@example.com', null, null, '2026-11-01T00:00:00.000Z', null);
+    tambah.run(
+      'akun_aktif',
+      'akun',
+      'aktif@example.com',
+      '2026-11-03T00:00:00.000Z',
+      null,
+      '2026-11-02T00:00:00.000Z',
+      null,
+    );
+    tambah.run('tamu_1', 'tamu', null, null, 'h1', '2026-11-04T00:00:00.000Z', '2026-11-07T00:00:00.000Z');
+    db.prepare(
+      "INSERT INTO email_tokens (token_hash, user_id, purpose, created_at, expires_at) VALUES ('t1','akun_lama','verify','x','9999')",
+    ).run();
+    runMigrations(db, semua);
+    expect(schemaVersion(db)).toBe(semua.length);
+    expect(db.prepare('SELECT id, email_verified_at FROM users ORDER BY id').all()).toEqual([
+      { id: 'akun_aktif', email_verified_at: '2026-11-03T00:00:00.000Z' },
+      { id: 'akun_lama', email_verified_at: '2026-11-01T00:00:00.000Z' },
+      { id: 'tamu_1', email_verified_at: null },
+    ]);
+    // review H2: aktivasi TIDAK sama dengan bukti kepemilikan email; hanya yang dulu terverifikasi yang terbukti
+    expect(db.prepare('SELECT user_id, at FROM email_terbukti').all()).toEqual([
+      { user_id: 'akun_aktif', at: '2026-11-03T00:00:00.000Z' },
+    ]);
+    expect(
+      db.prepare("SELECT used_at IS NOT NULL AS dipakai FROM email_tokens WHERE token_hash = 't1'").get(),
+    ).toEqual({
+      dipakai: 1,
+    });
+  });
+
   it('berkas migrasi harus berurutan tanpa lompatan', () => {
     const d = tmp();
     writeFileSync(join(d, '0001_a.sql'), 'SELECT 1;');

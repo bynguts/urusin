@@ -3,8 +3,23 @@ import {
   PLATFORM_WILAYAH,
   PORTAL_WILAYAH,
   hostsWilayah,
+  petunjukPortal,
   type PortalWilayah,
 } from '@urusin/core';
+import { kalimatPendampingBerkembang, pendampingAktif, varianDisebut } from '@urusin/registry';
+
+/**
+ * Petunjuk peta portal (TEPERCAYA, registry Urusin; ADR 0034) untuk Navigator sesi urusan ini: portal wilayah KTP ×
+ * layanan tujuan × varian yang disebut warga. Teks warga tidak ikut; hanya id varian hasil pencocokan kata kunci.
+ * undefined bila wilayah/layanan belum dipetakan atau layanannya offline di portal itu.
+ */
+export function petunjukPortalUrusan(
+  jenis: string | null | undefined,
+  kodeKabKota: string | null | undefined,
+  pesanWarga: readonly string[] = [],
+): string | undefined {
+  return petunjukPortal(kodeKabKota, jenis, varianDisebut(jenis, pesanWarga));
+}
 
 /**
  * Routing Navigator generik dan allowlist isi vault di atas registry wilayah (`PORTAL_WILAYAH`, hasil
@@ -37,6 +52,29 @@ export function hostsPortalWilayah(kode: string | null | undefined): string[] {
  * jadi Mode Uji membuka akar replika (`/`). Tambah baris hanya bila replikanya memang melayani jalur itu.
  */
 export const JALUR_REPLIKA: Readonly<Record<string, readonly string[]>> = Object.freeze({});
+
+/**
+ * Origin resmi yang punya situs latihan (replika di apps/fixtures) untuk Mode Uji. Harus sama dengan sisi kiri
+ * `PENDAMPING_ORIGIN_OVERRIDES` di deploy/compose.prod.yml (dijaga tes). Tamu hanya ditawari Browser Pendamping
+ * Mode Uji untuk origin ini; portal lain butuh akun (portal asli) supaya tawarannya tidak palsu.
+ */
+export const ORIGIN_REPLIKA_UJI: ReadonlySet<string> = new Set([
+  'https://telunjuksakti.wonogirikab.go.id',
+  'https://wargaklampid-dispendukcapil.surabaya.go.id',
+  'https://sidnok.semarangkota.go.id',
+  'https://samsat-pkb2.jakarta.go.id',
+  'https://oss.go.id',
+]);
+
+/** Apakah situs resmi ini punya replika Mode Uji? URL kosong atau tidak sah → false (gagal tertutup). */
+export function punyaReplikaUji(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    return ORIGIN_REPLIKA_UJI.has(new URL(url).origin);
+  } catch {
+    return false;
+  }
+}
 
 /** Jalur awal sesi Mode Uji: jalur portal bila replika host itu mendeklarasikannya, selain itu `/`. */
 export function jalurModeUji(
@@ -91,15 +129,21 @@ const KANAL_DIPANDU: Readonly<Partial<Record<PortalWilayah['jenis'], string>>> =
 
 /**
  * Alasan jujur (templat, bukan keluaran model) saat urusan tidak bisa dikerjakan Browser Pendamping di wilayah
- * ini. `wilayah` = nama pendek kab/kota bila diketahui.
+ * ini. `wilayah` = nama pendek kab/kota bila diketahui. Daerah di luar `DAERAH_PENDAMPING_AKTIF` (ADR 0033): kalimat
+ * positif "Urusin memandu, Pendamping sedang dikembangkan", bukan jalan buntu.
  */
 export function alasanDipandu(kode: string | null | undefined, wilayah?: string): string {
   const p = portalWilayah(kode);
   const di = wilayah ? ` ${wilayah}` : '';
   const kanal = p ? KANAL_DIPANDU[p.jenis] : undefined;
+  if (kode && /^\d{4}$/.test(kode) && !pendampingAktif(kode))
+    return `Rencana disetujui. ${kalimatPendampingBerkembang(
+      wilayah ?? 'wilayah Anda',
+      kanal ? `Disdukcapil${di} melayani pengajuan lewat ${kanal}.` : undefined,
+    )}`;
   if (kanal)
     return `Rencana disetujui. Disdukcapil${di} melayani pengajuan lewat ${kanal}, bukan formulir web, jadi Browser Pendamping tidak bisa mengisinya. Ikuti langkahnya bersama saya.`;
   if (p?.jenis === 'web' && p.login.length > 0 && p.login.every((l) => LOGIN_PIHAK_KETIGA.has(l)))
     return `Rencana disetujui. Portal Disdukcapil${di} hanya bisa dimasuki dengan akun Google, dan login Google tidak dibuka di Browser Pendamping, jadi AI tidak bisa mengisinya. Ikuti langkahnya bersama saya: Anda membuka portalnya sendiri.`;
-  return 'Rencana disetujui. Situs ini belum bisa dibantu Browser Pendamping; ikuti langkahnya bersama saya.';
+  return 'Rencana disetujui. Untuk urusan ini, Urusin memandu Anda langkah demi langkah lewat kanal resmi; ikuti langkahnya bersama saya.';
 }

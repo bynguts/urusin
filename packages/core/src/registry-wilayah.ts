@@ -1,6 +1,6 @@
 // BERKAS HASIL GENERATOR (scripts/gen-registry-wilayah.mjs). Jangan diubah tangan.
 // Sumber: data/wilayah/kontak-dukcapil.json (situs info terverifikasi) dan data/wilayah/portal-dukcapil.json
-// (kanal daring hasil recon). 283 wilayah, 56 berjenis web, 295 host persis.
+// (kanal daring hasil recon). 283 wilayah, 61 berjenis web, 303 host persis.
 import type { OfficialDomain } from './registry.js';
 
 /** A portal akun, B formulir web tanpa akun, C aplikasi saja, D WhatsApp/chatbot, E kanal nasional/kantor, F tidak diketahui. */
@@ -44,6 +44,11 @@ export type PortalWilayah = {
    * bukan host portal (vault/AI tidak ke sana).
    */
   hostAset?: readonly string[];
+  /**
+   * Host tujuan unggahan berkas (XHR/fetch halaman portal ke penyimpanan objek, mis. S3 Klampid): ikut egress sesi
+   * wilayah ini SAJA, tidak pernah dokumen/navigasi, bukan tujuan AI/vault. Di luar .go.id wajib `sumber` .go.id.
+   */
+  hostUnggah?: readonly string[];
   /** Halaman bukti; wajib .go.id untuk host di luar .go.id. */
   sumber?: string;
   login: readonly LoginPortal[];
@@ -92,28 +97,31 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     hostInfo: [],
     sumber: 'https://sidak.acehprov.go.id/kabkota',
     login: ['email_sandi', 'username_sandi', 'google'],
-    proteksi: [],
+    proteksi: ['cloudflare', 'turnstile'],
     domisili: 'tidak_diketahui',
     platform: 'sidak-aceh',
+    aksesWilayah: 'id-only',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
-    catatan: 'Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar).',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'Tenant SIDAK (7 layanan: akta lahir/mati, KIA, KK, KTP-el, pindah datang/keluar). OBS 2026-11-12: dari Singapura /login dan /layanan/* macet di interstitial JSD Cloudflare tanpa kotak centang (probe gel4, gel4-prod, gel5-prod); dari jaringan Indonesia beranda dan /login terbuka, /layanan/* memunculkan kotak centang "Verify you are human" yang diselesaikan warga (worker laptop ID).',
   },
   '1102': {
     kode: '1102',
     nama: 'Kabupaten Aceh Tenggara',
-    kelas: 'F',
-    jenis: 'tidak_diketahui',
-    hosts: [],
+    kelas: 'A',
+    jenis: 'web',
+    url: 'https://simpel.acehtenggarakab.go.id/login',
+    hosts: ['simpel.acehtenggarakab.go.id'],
     hostInfo: ['disdukcapil.acehtenggarakab.go.id'],
-    sumber: 'https://sidak.acehprov.go.id/kabkota',
-    login: [],
+    sumber: 'https://simpel.acehtenggarakab.go.id/',
+    login: ['email_sandi'],
     proteksi: [],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     catatan:
-      'OBS 2026-11-10: portal daring tidak bisa dipakai (host ternyata situs informasi CMS Disdukcapil, bukan tenant SIDAK). Portal tercatat sebelumnya: disdukcapil.acehtenggarakab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang.',
+      'OBS 2026-11-12: SIMPEL (Sistem Informasi Manajemen Pelayanan) Disdukcapil Aceh Tenggara, bukan tenant SIDAK. Masuk email + sandi tanpa CAPTCHA; daftar akun di /register (NIK, email, HP, kecamatan/kelurahan). Layanan KTP-el, KK, KIA, pindah, akta lahir/mati/kawin/cerai, penduduk rentan di /backoffice/masyarakat_*/create (wajib masuk). disdukcapil.acehtenggarakab.go.id tetap situs informasi (standar pelayanan online: website, WhatsApp, atau email).',
   },
   '1103': {
     kode: '1103',
@@ -305,18 +313,18 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
   '1114': {
     kode: '1114',
     nama: 'Kabupaten Aceh Jaya',
-    kelas: 'F',
-    jenis: 'tidak_diketahui',
+    kelas: 'D',
+    jenis: 'whatsapp',
     hosts: [],
-    hostInfo: [],
-    sumber: 'https://sidak.acehprov.go.id/kabkota',
+    hostInfo: ['dukcapil.acehjayakab.go.id'],
+    sumber: 'https://dukcapil.acehjayakab.go.id/halaman/lko',
     login: [],
     proteksi: [],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     catatan:
-      'OBS 2026-11-10: portal daring tidak bisa dipakai (sertifikat TLS tidak cocok dengan nama host, ERR_CERT_COMMON_NAME_INVALID, dari jaringan Indonesia dan Singapura). Portal tercatat sebelumnya: sipayo.acehjayakab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang.',
+      'OBS 2026-11-12: portal SIDAK sipayo.acehjayakab.go.id tidak bisa dibuka peramban (sertifikat TLS untuk "acehjayakabgo.id", kedaluwarsa 2026-10-14: ERR_CERT_COMMON_NAME_INVALID). Halaman "Layanan Kependudukan Online" situs Disdukcapil: pelayanan online lewat WhatsApp petugas dan Facebook (nomor di halaman sumber). Dipandu, bukan Browser Pendamping.',
   },
   '1115': {
     kode: '1115',
@@ -338,18 +346,19 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
   '1116': {
     kode: '1116',
     nama: 'Kabupaten Aceh Tamiang',
-    kelas: 'F',
-    jenis: 'tidak_diketahui',
-    hosts: [],
+    kelas: 'B',
+    jenis: 'web',
+    url: 'https://disdukcapil.acehtamiangkab.go.id/katalog',
+    hosts: ['disdukcapil.acehtamiangkab.go.id'],
     hostInfo: ['disdukcapil.acehtamiangkab.go.id'],
-    sumber: 'https://sidak.acehprov.go.id/kabkota',
-    login: [],
-    proteksi: [],
+    sumber: 'https://disdukcapil.acehtamiangkab.go.id/',
+    login: ['tanpa_akun'],
+    proteksi: ['cloudflare'],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     catatan:
-      'OBS 2026-11-10: portal daring tidak bisa dipakai (Cloudflare "404 Domain Not Found"). Portal tercatat sebelumnya: silatersipu.acehtamiangkab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang.',
+      'OBS 2026-11-12: silatersipu.acehtamiangkab.go.id mati (AcehCMS "404 - Domain Not Found"). Situs Disdukcapil kini portal layanan (SPA di balik Cloudflare): /katalog berisi 8 layanan, tiap /layanan/<slug> memuat formulir "Ajukan Permohonan" (NIK, nama, HP, alamat, unggah berkas PDF, tombol "Kirim Berkas Permohonan") tanpa wajib akun; masuk akun hanya untuk isian otomatis. Tautan "SiKEPO" di halaman layanan = sistem kepegawaian ASN, bukan layanan warga.',
   },
   '1117': {
     kode: '1117',
@@ -357,15 +366,15 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     kelas: 'F',
     jenis: 'tidak_diketahui',
     hosts: [],
-    hostInfo: [],
-    sumber: 'https://sidak.acehprov.go.id/kabkota',
+    hostInfo: ['disdukcapil.benermeriahkab.go.id'],
+    sumber: 'https://disdukcapil.benermeriahkab.go.id/',
     login: [],
     proteksi: [],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     catatan:
-      'OBS 2026-11-10: portal daring tidak bisa dipakai (nama host tidak ada di DNS (NXDOMAIN)). Portal tercatat sebelumnya: cecah.benermeriahkab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang.',
+      'OBS 2026-11-12: portal daring tidak bisa dipakai (cecah.benermeriahkab.go.id NXDOMAIN di DNS publik, padahal menu "LAYANAN ONLINE" situs Disdukcapil masih menautkannya; "Formulir Pendaftaran" hanya folder unduhan). Tidak ada kanal pengajuan daring lain yang teramati: dipandu ke situs Disdukcapil/kantor.',
   },
   '1118': {
     kode: '1118',
@@ -387,18 +396,19 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
   '1171': {
     kode: '1171',
     nama: 'Kota Banda Aceh',
-    kelas: 'F',
-    jenis: 'tidak_diketahui',
-    hosts: [],
+    kelas: 'A',
+    jenis: 'web',
+    url: 'https://sihati.bandaacehkota.go.id/login',
+    hosts: ['sihati.bandaacehkota.go.id'],
     hostInfo: ['disdukcapil.bandaacehkota.go.id'],
-    sumber: 'https://sidak.acehprov.go.id/kabkota',
-    login: [],
+    sumber: 'https://disdukcapil.bandaacehkota.go.id/',
+    login: ['email_sandi'],
     proteksi: [],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     catatan:
-      'OBS 2026-11-10: portal daring tidak bisa dipakai (nama host tidak ada di DNS (NXDOMAIN)). Portal tercatat sebelumnya: primadona.bandaacehkota.go.id, sihati.bandaacehkota.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang.',
+      'OBS 2026-11-12: primadona.bandaacehkota.go.id (tenant SIDAK) NXDOMAIN. SiHati Online (ditautkan situs Disdukcapil, menu "AKTA KELAHIRAN & KEMATIAN") hidup: masuk email + sandi tanpa CAPTCHA, daftar akun (nama, email, NIK, HP). Hanya akta kelahiran dan akta kematian (/layanan/akta-*/create, wajib masuk); layanan lain dipandu.',
   },
   '1172': {
     kode: '1172',
@@ -424,14 +434,14 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     jenis: 'tidak_diketahui',
     hosts: [],
     hostInfo: ['disdukcapil.lhokseumawekota.go.id'],
-    sumber: 'https://sidak.acehprov.go.id/kabkota',
+    sumber: 'https://disdukcapil.lhokseumawekota.go.id/',
     login: [],
     proteksi: [],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     catatan:
-      'OBS 2026-11-10: portal daring tidak bisa dipakai (nama host tidak ada di DNS (NXDOMAIN)). Portal tercatat sebelumnya: simpedu.lhokseumawekota.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang.',
+      'OBS 2026-11-12: portal daring tidak bisa dipakai (simpedu.lhokseumawekota.go.id NXDOMAIN di DNS publik; situs Disdukcapil hanya informasi layanan dan unduhan formulir, tanpa pengajuan daring). Dipandu ke situs Disdukcapil/kantor.',
   },
   '1174': {
     kode: '1174',
@@ -661,9 +671,9 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     domisili: 'tidak_diketahui',
     aksesWilayah: 'id-only',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     catatan:
-      'SIBISA; daftar dengan NIK, KK, email, WA, foto KTP dan swafoto. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (koneksi ditolak dari IP Singapura). Turnstile tertanam di /portal.',
+      'SIBISA. OBS 2026-11-12: masuk /portal/ dengan NIK + sandi + Turnstile (5 kali gagal = blokir 15 menit). Daftar /portal/daftar: data diri + Turnstile, OTP email, lalu foto KTP + swafoto memegang KTP yang disetujui petugas. Formulir pengajuan hanya Senin-Jumat selain libur; unggahan hanya gambar. Hanya bisa dibuka dari jaringan Indonesia.',
   },
   '1272': {
     kode: '1272',
@@ -902,12 +912,13 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     hosts: ['sirancak.disdukcapil.padang.go.id'],
     hostInfo: ['disdukcapil.padang.go.id'],
     sumber: 'https://sirancak.disdukcapil.padang.go.id/',
-    login: [],
+    login: ['nik_sandi'],
     proteksi: [],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
-    catatan: 'SIRANCAK v2.0; akun diverifikasi admin.',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'SIRANCAK v2.0. OBS 2026-11-12: masuk NIK + sandi di /masuk tanpa CAPTCHA. Daftar akun hanya bisa dari ponsel warga (swafoto memegang KTP lewat kamera langsung, OTP WhatsApp terbalik, email @gmail.com), lalu diverifikasi admin. Formulir per layanan di /layanan/{idForm}.',
   },
   '1372': {
     kode: '1372',
@@ -1053,18 +1064,20 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
   '1471': {
     kode: '1471',
     nama: 'Kota Pekanbaru',
-    kelas: 'F',
-    jenis: 'tidak_diketahui',
-    hosts: [],
-    hostInfo: ['disdukcapil.pekanbaru.go.id'],
-    sumber: 'https://appdukcapil.pekanbaru.go.id/',
-    login: [],
+    kelas: 'B',
+    jenis: 'web',
+    url: 'https://appdukcapil.pekanbaru.go.id/',
+    hosts: ['appdukcapil.pekanbaru.go.id'],
+    hostInfo: ['disdukcapil.pekanbaru.go.id', 'sipenduduk.pekanbaru.go.id'],
+    sumber: 'https://disdukcapil.pekanbaru.go.id/',
+    login: ['tanpa_akun'],
     proteksi: [],
     domisili: 'tidak_diketahui',
+    jamLayanan: 'Senin-Jumat 09.00-13.59 WIB (formulir daring)',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     catatan:
-      'OBS 2026-11-10: portal daring tidak bisa dipakai (halaman login /Home/login 404 ("Coming Soon - Sipenduduk V3")). Portal tercatat sebelumnya: appdukcapil.pekanbaru.go.id, sipenduduk.pekanbaru.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang.',
+      'OBS 2026-11-12: Pusat Aplikasi Disdukcapil (ditautkan situs Disdukcapil): formulir tanpa akun Cendekia (KIA, /kia), Lado PKU (SKPWNI keluar), Pedang Biru (KK pendatang), Sinematik (pengiriman dokumen), cek kode permohonan. Formulir hanya dibuka pada jam layanan (di luar jam /kia/permohonan/permohonan_individu dialihkan ke /kia). sipenduduk.pekanbaru.go.id = informasi, unduh formulir, lacak berkas (/Home/login 404).',
   },
   '1502': {
     kode: '1502',
@@ -1214,11 +1227,12 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     login: ['email_sandi', 'username_sandi'],
     proteksi: ['captcha_gambar', 'cloudflare'],
     domisili: 'tidak_diketahui',
+    jamLayanan: 'Senin-Jumat 08.00-16.00 WIB',
     aksesWilayah: 'id-only',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     catatan:
-      'SLAWE / Sipadek; permohonan dan lacak. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare "you have been blocked" dari IP Singapura).',
+      'SLAWE / Sipadek; permohonan dan lacak. OBS 2026-11-10: hanya bisa dibuka dari jaringan Indonesia (Cloudflare "you have been blocked" dari IP Singapura). OBS 2026-11-12: URL masuk tetap beranda; tombol PERMOHONAN per layanan (tautan bertoken, stabil antar-muat) dialihkan 307 ke /404 di luar jam layanan (modal situs: "SILAHKAN MENGAJUKAN DI HARI KERJA JAM 08:00 - 16:00"); Kutipan Akta Kematian dan Mobil Dukling hanya membuka modal gangguan/pengembangan.',
   },
   '1802': {
     kode: '1802',
@@ -1343,18 +1357,19 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
   '1871': {
     kode: '1871',
     nama: 'Kota Bandar Lampung',
-    kelas: 'B',
+    kelas: 'A',
     jenis: 'web',
-    url: 'https://disdukcapil.bandarlampungkota.go.id/pendaftaran',
+    url: 'https://disdukcapil.bandarlampungkota.go.id/pelayanan/auth',
     hosts: ['disdukcapil.bandarlampungkota.go.id'],
     hostInfo: ['disdukcapil.bandarlampungkota.go.id'],
-    sumber: 'https://disdukcapil.bandarlampungkota.go.id/pendaftaran',
-    login: ['tanpa_akun'],
+    sumber: 'https://disdukcapil.bandarlampungkota.go.id/pelayanan/auth',
+    login: ['email_sandi'],
     proteksi: ['captcha_hitung', 'cloudflare'],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
-    catatan: 'COKELAT (Cukup Daftar Online): pendaftaran layanan + tanggal layanan.',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'OBS 2026-11-12: kanal warga = PERMEN MANIS 2.0 (masuk /pelayanan/auth dengan email + sandi; daftar /pelayanan/auth/register_akun dengan OTP email 6 digit, tanpa verifikasi admin). Kode Keamanan (soal penjumlahan) di setiap formulir; masuk terkunci 15 menit setelah 5 kali gagal. COKELAT /pendaftaran tidak bisa dikirim warga ("Hanya petugas yang dapat membuat antrian!").',
   },
   '1872': {
     kode: '1872',
@@ -1861,12 +1876,13 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     hosts: ['silondomaju.depok.go.id'],
     hostInfo: [],
     sumber: 'https://silondomaju.depok.go.id/',
-    login: ['email_sandi', 'otp_email'],
-    proteksi: ['slider'],
+    login: ['email_sandi'],
+    proteksi: ['turnstile', 'slider'],
     domisili: 'khusus_penduduk',
-    bukti: 'PRI',
-    verifiedAt: '2026-11-08',
-    catatan: 'Silondo Maju (wajib akun sejak 1 Okt 2026); lacak status publik.',
+    bukti: 'OBS',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'Silondo Maju (wajib akun sejak 1 Okt 2026). OBS 2026-11-12: masuk email + sandi lewat modal Turnstile (interaction-only) lalu puzzle geser; OTP email ada di kode tetapi saat ini nonaktif. Tautan langsung /public/layanan/* = 404, layanan dibuka dari kartu beranda; lacak status /tracker.',
   },
   '3279': {
     kode: '3279',
@@ -2005,9 +2021,10 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     login: ['hp_sandi'],
     proteksi: ['captcha_gambar', 'cloudflare'],
     domisili: 'tidak_diketahui',
-    bukti: 'PRI',
-    verifiedAt: '2026-11-08',
-    catatan: 'Telunjuk Sakti; 42 layanan termasuk SKPWNI/SKDWNI; adapter khusus sudah ada.',
+    bukti: 'OBS',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'Telunjuk Sakti (42 layanan termasuk SKPWNI/SKDWNI; adapter khusus untuk akta kelahiran). OBS 2026-11-12: masuk /telunjuksakti/index.php/users/login dengan nomor HP + sandi + captcha gambar. Cloudflare menahan Chromium headless; Chromium headed lolos di navigasi pertama, navigasi berikutnya bisa memunculkan tantangan Turnstile interaktif. "Selesai" adalah tautan GET yang langsung mengirim permohonan.',
   },
   '3313': {
     kode: '3313',
@@ -2026,34 +2043,36 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
   '3314': {
     kode: '3314',
     nama: 'Kabupaten Sragen',
-    kelas: 'F',
-    jenis: 'tidak_diketahui',
-    hosts: [],
+    kelas: 'A',
+    jenis: 'web',
+    url: 'https://pandu-online.sragenkab.go.id/signin.html',
+    hosts: ['pandu-online.sragenkab.go.id'],
     hostInfo: ['dukcapil.sragenkab.go.id'],
-    sumber: 'https://sianton.dukcapil.sragenkab.go.id/',
-    login: [],
-    proteksi: [],
+    sumber: 'https://dukcapil.sragenkab.go.id/',
+    login: ['nik_sandi', 'email_sandi', 'hp_sandi', 'google'],
+    proteksi: ['captcha_gambar'],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     catatan:
-      'OBS 2026-11-10: portal daring tidak bisa dipakai (sertifikat TLS tidak valid (jaringan Indonesia) dan waktu habis (Singapura)). Portal tercatat sebelumnya: sianton.dukcapil.sragenkab.go.id, pandu-online.sragenkab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang.',
+      'OBS 2026-11-12: sianton.dukcapil.sragenkab.go.id ditolak peramban (sertifikat *.sragenkab.go.id tidak mencakup subdomain dua tingkat: ERR_CERT_COMMON_NAME_INVALID). PANDU Online (ditautkan situs Disdukcapil, menu "Pandu"): masuk NIK/email/HP + sandi; daftar akun di signup.html (NIK, nama, email, HP, captcha) atau Google.',
   },
   '3315': {
     kode: '3315',
     nama: 'Kabupaten Grobogan',
     kelas: 'A',
     jenis: 'web',
-    url: 'https://klikdukcapil.grobogan.go.id/',
+    url: 'https://klikdukcapil.grobogan.go.id/login',
     hosts: ['klikdukcapil.grobogan.go.id'],
     hostInfo: ['disdukcapil.grobogan.go.id'],
     sumber: 'https://klikdukcapil.grobogan.go.id/',
-    login: ['username_sandi'],
+    login: ['nik_sandi'],
     proteksi: ['turnstile', 'captcha_gambar'],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
-    catatan: 'KLiK Dukcapil; 1 akun = 1 email + 1 WA.',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'KLiK Dukcapil; 1 akun = 1 email + 1 WA. OBS 2026-11-12: beranda / hanya carousel + tautan BERANDA (/beranda, halaman berat); tautan masuk ada di /beranda. Masuk langsung di /login: NIK + sandi + Turnstile; daftar akun di /registrasi.',
   },
   '3318': {
     kode: '3318',
@@ -2204,9 +2223,10 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     login: ['nik_sandi'],
     proteksi: ['captcha_hitung', 'waf'],
     domisili: 'khusus_penduduk',
-    bukti: 'PRI',
-    verifiedAt: '2026-11-08',
-    catatan: 'Si DnOK; sandi dari sistem, khusus warga Kota Semarang.',
+    bukti: 'OBS',
+    verifiedAt: '2026-11-12',
+    catatan:
+      "Si D'nOK. OBS 2026-11-12: masuk NIK + sandi + CAPTCHA soal matematika; WAF menolak Chromium headless (403 http_bot_simple), Chromium headed lolos. Sandi dikirim lewat WA/email setelah daftar; profil wajib dilengkapi sebelum mengajukan. Khusus warga Kota Semarang usia 17 tahun ke atas.",
   },
   '3375': {
     kode: '3375',
@@ -2543,9 +2563,9 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     proteksi: [],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     catatan:
-      'OBS 2026-11-10: portal daring tidak bisa dipakai (Cloudflare "you have been blocked" dari jaringan Indonesia dan Singapura). Portal tercatat sebelumnya: poedak.gresikkab.go.id. Tidak dikerjakan Browser Pendamping sampai di-recon ulang.',
+      'OBS 2026-11-12: portal daring tidak bisa dipakai (Cloudflare "Sorry, you have been blocked" untuk poedak.gresikkab.go.id dan gresikkab.go.id, dari jaringan Indonesia (laptop worker ID, Chromium biasa) maupun Singapura). Tanpa jalur jaringan lain yang sah: dipandu.',
   },
   '3528': {
     kode: '3528',
@@ -2617,12 +2637,13 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     hosts: ['siapel.malangkota.go.id'],
     hostInfo: ['dispendukcapil.malangkota.go.id'],
     sumber: 'https://siapel.malangkota.go.id/',
-    login: ['email_sandi', 'otp_email'],
-    proteksi: ['captcha_gambar', 'hcaptcha'],
+    login: ['email_sandi'],
+    proteksi: ['captcha_hitung'],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
-    catatan: 'SIAPEL; aktivasi lewat email; lacak publik.',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'SIAPEL. OBS 2026-11-12: masuk email + sandi + CAPTCHA gambar soal penjumlahan (bukan hCaptcha); akun diaktifkan lewat tautan email. Lacak publik /cek_permohonan. Layanan pindah tidak ada di SIAPEL.',
   },
   '3577': {
     kode: '3577',
@@ -2647,13 +2668,15 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     url: 'https://wargaklampid-dispendukcapil.surabaya.go.id/app',
     hosts: ['wargaklampid-dispendukcapil.surabaya.go.id'],
     hostInfo: ['disdukcapil.surabaya.go.id'],
+    hostUnggah: ['s3.klampid.disdukcapilsurabaya.id'],
     sumber: 'https://wargaklampid-dispendukcapil.surabaya.go.id/app',
-    login: ['username_sandi', 'google', 'otp_email'],
+    login: ['username_sandi'],
     proteksi: ['recaptcha'],
     domisili: 'tidak_diketahui',
-    bukti: 'PRI',
-    verifiedAt: '2026-11-08',
-    catatan: 'Klampid NG (SPA, alur chat-room); situs info sedang pemeliharaan saat dicek.',
+    bukti: 'OBS',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'Klampid NG (Next.js, alur chat-room "Cak Takon"). OBS 2026-11-12: masuk /app/login dengan username + sandi + reCAPTCHA v2 (Google/OTP email masih ada di kode tetapi tidak tampil); ada SSO Wargaku. Akun baru wajib "Verifikasi Akun Klampid" dan verifikasi nomor HP lewat bot WhatsApp sebelum kartu layanan aktif. KIA dan pindah datang tidak tampil untuk akun warga. Unggahan berkas ke penyimpanan objek s3.klampid.disdukcapilsurabaya.id (dirujuk bundle portal; hostUnggah, hanya sesi 3578).',
   },
   '3579': {
     kode: '3579',
@@ -2726,9 +2749,10 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     login: ['akun_kota'],
     proteksi: [],
     domisili: 'khusus_penduduk',
-    bukti: 'PRI',
-    verifiedAt: '2026-11-08',
-    catatan: 'Sobat Dukcapil; masuk dengan akun Tangerang LIVE, tanpa CAPTCHA.',
+    bukti: 'OBS',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'Sobat Dukcapil. OBS 2026-11-12: masuk dengan akun Tangerang LIVE (NIK/email + sandi), tanpa CAPTCHA/OTP. Akun dibuat sendiri lewat aplikasi Tangerang LIVE (registrasi web menolak peramban otomatis).',
   },
   '3673': {
     kode: '3673',
@@ -3497,8 +3521,9 @@ export const PORTAL_WILAYAH: Readonly<Record<string, PortalWilayah>> = {
     proteksi: ['turnstile'],
     domisili: 'tidak_diketahui',
     bukti: 'OBS',
-    verifiedAt: '2026-11-10',
-    catatan: 'Parakacil Online.',
+    verifiedAt: '2026-11-12',
+    catatan:
+      'Parakacil Online. OBS 2026-11-12: masuk /auth/login dengan NIK (kolom "username") + sandi + Turnstile; modal "Informasi Terbaru" menutupi formulir saat dimuat. Daftar /auth/register: email + WhatsApp + captcha gambar, OTP email, lalu data diri dan sandi. Layanan Senin-Kamis 08.00-14.00 WITA, Jumat sampai 10.00 WITA.',
   },
   '6372': {
     kode: '6372',
@@ -4465,14 +4490,22 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kabupaten Aceh Selatan',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '1101',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
+    aksesWilayah: 'id-only',
   },
   {
     host: 'disdukcapil.acehtenggarakab.go.id',
     instansi: 'Disdukcapil Kabupaten Aceh Tenggara',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '1102',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
+  },
+  {
+    host: 'simpel.acehtenggarakab.go.id',
+    instansi: 'Disdukcapil Kabupaten Aceh Tenggara',
+    layanan: 'Portal layanan adminduk daring (kelas A)',
+    wilayah: '1102',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'dukcapillagak.acehtimurkab.go.id',
@@ -4566,6 +4599,13 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     verifiedAt: '2026-11-10',
   },
   {
+    host: 'dukcapil.acehjayakab.go.id',
+    instansi: 'Disdukcapil Kabupaten Aceh Jaya',
+    layanan: 'Situs informasi Disdukcapil',
+    wilayah: '1114',
+    verifiedAt: '2026-11-12',
+  },
+  {
     host: 'sip.naganrayakab.go.id',
     instansi: 'Disdukcapil Kabupaten Nagan Raya',
     layanan: 'Portal layanan adminduk daring (kelas A)',
@@ -4577,7 +4617,14 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kabupaten Aceh Tamiang',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '1116',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
+  },
+  {
+    host: 'disdukcapil.benermeriahkab.go.id',
+    instansi: 'Disdukcapil Kabupaten Bener Meriah',
+    layanan: 'Situs informasi Disdukcapil',
+    wilayah: '1117',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'disdukcapil.pidiejayakab.go.id',
@@ -4598,7 +4645,14 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Banda Aceh',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '1171',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
+  },
+  {
+    host: 'sihati.bandaacehkota.go.id',
+    instansi: 'Disdukcapil Kota Banda Aceh',
+    layanan: 'Portal layanan adminduk daring (kelas A)',
+    wilayah: '1171',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'weh.sabangkota.go.id',
@@ -4612,7 +4666,7 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Lhokseumawe',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '1173',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'siponlangsa.langsakota.go.id',
@@ -4717,7 +4771,7 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Medan',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '1271',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     aksesWilayah: 'id-only',
   },
   {
@@ -4851,14 +4905,14 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Padang',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '1371',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'sirancak.disdukcapil.padang.go.id',
     instansi: 'Disdukcapil Kota Padang',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '1371',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'disdukcapil.solokkota.go.id',
@@ -4944,7 +4998,21 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Pekanbaru',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '1471',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
+  },
+  {
+    host: 'sipenduduk.pekanbaru.go.id',
+    instansi: 'Disdukcapil Kota Pekanbaru',
+    layanan: 'Situs informasi Disdukcapil',
+    wilayah: '1471',
+    verifiedAt: '2026-11-12',
+  },
+  {
+    host: 'appdukcapil.pekanbaru.go.id',
+    instansi: 'Disdukcapil Kota Pekanbaru',
+    layanan: 'Portal layanan adminduk daring (kelas B)',
+    wilayah: '1471',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'disdukcapil.meranginkab.go.id',
@@ -5021,14 +5089,14 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Bengkulu',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '1771',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'slawe.bengkulukota.go.id',
     instansi: 'Disdukcapil Kota Bengkulu',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '1771',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     aksesWilayah: 'id-only',
   },
   {
@@ -5036,7 +5104,7 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Bengkulu',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '1771',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
     aksesWilayah: 'id-only',
   },
   {
@@ -5100,7 +5168,7 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Bandar Lampung',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '1871',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'dukcapil.metrokota.go.id',
@@ -5333,7 +5401,7 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Depok',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '3276',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'disdukcapil.banjarkota.go.id',
@@ -5426,35 +5494,42 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kabupaten Wonogiri',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '3312',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'telunjuksakti.wonogirikab.go.id',
     instansi: 'Disdukcapil Kabupaten Wonogiri',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '3312',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'dukcapil.sragenkab.go.id',
     instansi: 'Disdukcapil Kabupaten Sragen',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '3314',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
+  },
+  {
+    host: 'pandu-online.sragenkab.go.id',
+    instansi: 'Disdukcapil Kabupaten Sragen',
+    layanan: 'Portal layanan adminduk daring (kelas A)',
+    wilayah: '3314',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'disdukcapil.grobogan.go.id',
     instansi: 'Disdukcapil Kabupaten Grobogan',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '3315',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'klikdukcapil.grobogan.go.id',
     instansi: 'Disdukcapil Kabupaten Grobogan',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '3315',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'disdukcapil.patikab.go.id',
@@ -5538,14 +5613,14 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Semarang',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '3374',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'sidnok.semarangkota.go.id',
     instansi: 'Disdukcapil Kota Semarang',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '3374',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'disdukcapil.pekalongankota.go.id',
@@ -5750,14 +5825,14 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Malang',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '3573',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'siapel.malangkota.go.id',
     instansi: 'Disdukcapil Kota Malang',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '3573',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'capil.madiunkota.go.id',
@@ -5771,14 +5846,21 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Surabaya',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '3578',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
+  },
+  {
+    host: 's3.klampid.disdukcapilsurabaya.id',
+    instansi: 'Disdukcapil Kota Surabaya',
+    layanan: 'Unggah berkas portal layanan (penyimpanan objek)',
+    wilayah: '3578',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'wargaklampid-dispendukcapil.surabaya.go.id',
     instansi: 'Disdukcapil Kota Surabaya',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '3578',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'dispendukcapil.batukota.go.id',
@@ -5806,14 +5888,14 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Tangerang',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '3671',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'sobatdukcapil.tangerangkota.go.id',
     instansi: 'Disdukcapil Kota Tangerang',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '3671',
-    verifiedAt: '2026-11-08',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'disdukcapil.serangkota.go.id',
@@ -6158,14 +6240,14 @@ export const DOMAIN_WILAYAH: readonly OfficialDomain[] = [
     instansi: 'Disdukcapil Kota Banjarmasin',
     layanan: 'Situs informasi Disdukcapil',
     wilayah: '6371',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'parakacil.banjarmasinkota.go.id',
     instansi: 'Disdukcapil Kota Banjarmasin',
     layanan: 'Portal layanan adminduk daring (kelas A)',
     wilayah: '6371',
-    verifiedAt: '2026-11-10',
+    verifiedAt: '2026-11-12',
   },
   {
     host: 'disdukcapil.banjarbarukota.go.id',
@@ -6544,7 +6626,7 @@ export const EGRESS_PIHAK_KETIGA_WILAYAH: readonly string[] = ['challenges.cloud
 export function hostsWilayah(kode: string): string[] {
   const p = Object.hasOwn(PORTAL_WILAYAH, kode) ? PORTAL_WILAYAH[kode] : undefined;
   if (!p) return [];
-  const sendiri = [...p.hostInfo, ...p.hosts, ...(p.hostAset ?? [])];
+  const sendiri = [...p.hostInfo, ...p.hosts, ...(p.hostAset ?? []), ...(p.hostUnggah ?? [])];
   if (p.platform && Object.hasOwn(PLATFORM_WILAYAH, p.platform))
     sendiri.push(...PLATFORM_WILAYAH[p.platform]!.hosts);
   if (sendiri.length === 0) return [];

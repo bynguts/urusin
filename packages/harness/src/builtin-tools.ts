@@ -18,6 +18,7 @@ import { z } from 'zod';
 import type { PayloadOf } from '@urusin/contracts';
 import {
   ADMINDUK,
+  CacheJawaban,
   KALIMAT_TETAP,
   buildHandoff,
   generateGroundedAnswer,
@@ -28,7 +29,14 @@ import {
 import { spotlight } from './spotlight.js';
 import { paramsHash, type ChunkRecord } from './store.js';
 import { NON_TERMINAL_STATES, defineTool, type ToolContext, type ToolDef, type ToolResult } from './tools.js';
-import { kalimatJaringanId, keteranganPendamping, rutePendamping, tierUrusan } from './rencana.js';
+import {
+  kalimatJaringanId,
+  kalimatOfflinePortal,
+  keteranganPendamping,
+  rutePendamping,
+  tierUrusan,
+  varianUrusan,
+} from './rencana.js';
 import {
   AFIRMASI,
   TEKS_WILAYAH,
@@ -39,6 +47,7 @@ import {
   rencanaUrusan,
   wilayahUrusan,
 } from './wilayah.js';
+import { arahanPanduanUmum, kanalDipandu, paketDipandu } from './dipandu.js';
 
 const kodeKabKota = z.string().regex(/^\d{4}$/);
 
@@ -129,7 +138,12 @@ export const dukcapilCekPersyaratan = defineTool({
     const kode = kodeKtp(ctx.store, ctx.urusan) ?? args.kodeKabKota;
     const { entry } = routeByKode(kode);
     const out = await retrieve(ctx, `persyaratan ${args.layanan}`, kode, undefined);
-    const tier = tierUrusan({ jenis: ctx.urusan.jenis, kodeKabKota: kode }) ?? entry.tier;
+    const tier =
+      tierUrusan({
+        jenis: ctx.urusan.jenis,
+        kodeKabKota: kode,
+        varian: varianUrusan(ctx.store, ctx.urusan),
+      }) ?? entry.tier;
     const head = `${entry.nama}: tingkat ${tier}, validasi ${entry.validasi}. ${kalimatKanal(kode)}`;
     return {
       content: `${head}
@@ -208,7 +222,9 @@ export const urusanUsulkanRencana = defineTool({
     const w = wilayahUrusan(ctx.store, ctx.urusan);
     const ktp = w.ktp!; // dijamin gerbang wilayah (butuhWilayah)
     // Peristiwa Hidup: rencana deterministik untuk wilayah ini menang atas langkah karangan model.
-    const kartu = ctx.urusan.jenis ? kartuRencana(ctx.urusan.jenis, w, ctx.deps.ragDb) : undefined;
+    const kartu = ctx.urusan.jenis
+      ? kartuRencana(ctx.urusan.jenis, w, ctx.deps.ragDb, varianUrusan(ctx.store, ctx.urusan))
+      : undefined;
     const k = kanalWilayah(ktp.kodeKabKota);
     const online = onlineTerverifikasi(ktp);
     return {
@@ -220,6 +236,7 @@ export const urusanUsulkanRencana = defineTool({
           ? { type: 'plan_card', ...kartu }
           : {
               type: 'plan_card',
+              ...(ctx.urusan.jenis ? { jenis: ctx.urusan.jenis } : {}),
               ringkasan: args.ringkasan,
               // Model tidak boleh menjanjikan Browser Pendamping: tanpa alur adapter, semua langkah online = manual,
               // dan "online" hanya bila pengajuan online wilayah ini terverifikasi; selain itu cek kanal setempat.
@@ -243,6 +260,9 @@ export const urusanUsulkanRencana = defineTool({
               },
               tier: 'dipandu',
               catatan: catatanDipandu(ctx.urusan.jenis, ktp, k, sumberJawabanTerakhir(ctx)),
+              ...(ctx.urusan.jenis === null || ADMINDUK.has(ctx.urusan.jenis)
+                ? { dipandu: paketDipandu(ctx.urusan.jenis, { ktp, tujuan: w.tujuan }) }
+                : {}),
             },
       ],
     };
@@ -263,6 +283,7 @@ export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkR
     ktp: w.ktp.kodeKabKota,
     domisili: w.domisili?.kodeKabKota ?? null,
     tujuan: w.tujuan?.kodeKabKota ?? null,
+    varian: varianUrusan(ctx.store, ctx.urusan),
   });
   if (!r) return [];
   return r.langkah.flatMap((l) => {
@@ -292,6 +313,15 @@ const bukanPenduduk = (jenis: string | null, ktp: { kodeKabKota: string } | null
  * memberi langkah lain (isi kartu rencana atau datang ke kantor) tanpa mengulang kanal.
  */
 function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?: string | null): ToolResult {
+  // Urusan adminduk tidak berakhir hand-off (ADR 0033): model memberi panduan umum yang ditandai jujur, ditutup
+  // kanal resmi daerah yang berwenang (yurisdiksi `kodeUtama`, portal penduduk dilewati untuk warga luar daerah).
+  if (ctx.urusan.jenis === null || ADMINDUK.has(ctx.urusan.jenis)) {
+    const kode = kodeUtama ?? kodeKtp(ctx.store, ctx.urusan);
+    const luar = bukanPenduduk(ctx.urusan.jenis, wilayahUrusan(ctx.store, ctx.urusan).ktp, kode ?? null);
+    const kanal = kode ? kanalDipandu(kode, ctx.urusan.jenis, luar) : h.kanal;
+    // `handoff`: tidak ada jawaban bersumber, jadi rencana paralel jalur cepat dibatalkan seperti hand-off.
+    return { handoff: true, content: arahanPanduanUmum(kanal.length > 0 ? kanal : h.kanal) };
+  }
   const kunci = (k: { url?: string | undefined; nama: string }) => (k.url ? kunciUrl(k.url) : k.nama);
   const sudah = new Set(
     ctx.store
@@ -346,6 +376,7 @@ function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?
   }
   const rencana = chunkRencana(ctx).map((c) => c.text);
   return {
+    handoff: true,
     content: [
       `Hand-off ke kanal resmi yang sama (${h.kanal.map((k) => k.url ?? k.nama).join(', ')}) SUDAH diberikan sebelumnya: JANGAN ulangi kanal itu dan jangan mengulang jawaban tadi.`,
       rencana.length > 0
@@ -381,15 +412,24 @@ export const urusanJawabPersyaratan = defineTool({
     if (chunks.length === 0)
       return handoffTanpaUlang(ctx, buildHandoff({ ...ctxHandoff, chunks }, 'tanpa_sumber'), kode);
 
-    const gen = await generateGroundedAnswer({
-      provider: ctx.deps.provider,
-      model: ctx.deps.model,
-      caps: ctx.deps.caps,
-      pertanyaan: args.pertanyaan,
-      chunks,
-      signal: ctx.signal,
-    });
+    const cache = ctx.deps.cacheJawaban;
+    const kunci = cache ? CacheJawaban.kunci(ctx.deps.model, args.pertanyaan, chunks) : '';
+    const tersimpan = cache?.ambil(kunci);
+    const gen = tersimpan
+      ? { ...tersimpan, usage: [] }
+      : await generateGroundedAnswer({
+          provider: ctx.deps.provider,
+          model: ctx.deps.model,
+          caps: ctx.deps.caps,
+          pertanyaan: args.pertanyaan,
+          chunks,
+          signal: ctx.signal,
+        });
     const verified = verifyGrounded(gen.data, chunks, ctxHandoff, ctx.deps.now());
+    // Hanya jawaban yang lolos verifikasi utuh (ada klaim, tidak ada yang dibuang) yang disimpan: keluaran model
+    // yang sebagian salah kutip atau berakhir hand-off selalu dicoba ulang ke model.
+    if (cache && !tersimpan && !verified.handoff && verified.klaim.length > 0 && verified.klaimDibuang === 0)
+      cache.simpan(kunci, gen.data, gen.method);
     const usage = { usage: gen.usage, structuredMode: gen.method };
     if (verified.handoff) return { ...handoffTanpaUlang(ctx, verified.handoff, kode), ...usage };
     const data: PayloadOf<'grounded_answer'> = {
@@ -680,16 +720,22 @@ export const wilayahTetapkan = defineTool({
     const { entry } = routeByKode(ktp.kodeKabKota);
     // Sama dengan rute yang ditawarkan saat rencana disetujui (adapter -> generik -> dipandu).
     const rute = ctx.urusan.jenis
-      ? rutePendamping({ jenis: ctx.urusan.jenis, kodeKabKota: ktp.kodeKabKota })
+      ? rutePendamping({
+          jenis: ctx.urusan.jenis,
+          kodeKabKota: ktp.kodeKabKota,
+          varian: varianUrusan(ctx.store, ctx.urusan),
+        })
       : undefined;
     const pendamping =
       rute && rute.jalur !== 'dipandu'
         ? `Browser Pendamping: ${keteranganPendamping(rute)}`
-        : rute?.sebab === 'jaringan_id'
-          ? `Browser Pendamping belum tersedia untuk urusan ini (tingkat dipandu): ${kalimatJaringanId(ktp.nama)}`
-          : entry.adapterId
-            ? `Browser Pendamping punya adapter di ${entry.portal?.nama ?? entry.nama}.`
-            : 'Browser Pendamping belum tersedia untuk urusan ini: tingkat dipandu (warga mengisi sendiri dengan panduan).';
+        : rute?.sebab === 'offline_portal'
+          ? `Browser Pendamping tidak dibuka untuk urusan ini (tingkat dipandu): ${kalimatOfflinePortal(rute.offline)}`
+          : rute?.sebab === 'jaringan_id'
+            ? `Browser Pendamping belum tersedia untuk urusan ini (tingkat dipandu): ${kalimatJaringanId(ktp.nama)}`
+            : entry.adapterId
+              ? `Browser Pendamping punya adapter di ${entry.portal?.nama ?? entry.nama}.`
+              : 'Browser Pendamping belum tersedia untuk urusan ini: tingkat dipandu (warga mengisi sendiri dengan panduan).';
     return {
       content: [
         `${TEKS_WILAYAH.ditetapkan} ${ktp.nama}. ${kalimatKanal(ktp.kodeKabKota)} ${pendamping}`,

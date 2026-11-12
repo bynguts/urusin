@@ -1,6 +1,6 @@
 import { MulaiPendampingRequestSchema } from '@urusin/contracts';
 import { matchOfficialOrigin } from '@urusin/core';
-import { ADAPTER_GENERIK, jalurModeUji, mulaiPengajuan } from '@urusin/harness';
+import { ADAPTER_GENERIK, jalurModeUji, mulaiPengajuan, punyaReplikaUji } from '@urusin/harness';
 import { routeByKode } from '@urusin/registry';
 import { catatHasilEksekusi } from '#lib/server/eksekusi.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
@@ -10,7 +10,13 @@ import {
   hentikanNavigator,
   pulihkanNavigator,
 } from '#lib/server/pendamping/navigator.js';
-import { modeUjiPendamping } from '#lib/server/pendamping/pemilik.js';
+import {
+  akunDari,
+  modeUjiPendamping,
+  peranPendamping,
+  PESAN_PERLU_MASUK,
+} from '#lib/server/pendamping/pemilik.js';
+import { catatSesiAsli, remPortalAsli } from '#lib/server/pendamping/rem.js';
 import { akses } from './akses';
 import { ExecutionPayload, catatHasilSesi, eksekusiDitawarkan } from './hasil';
 import type { RequestHandler } from './$types';
@@ -31,7 +37,7 @@ const SESI_TANPA_LOOP: ReadonlySet<string> = new Set([
  * baca-saja non-dukcapil, mis. Samsat/OSS; ditulis kode tool, tersimpan di event) atau portal kota dari registry.
  * Layanan pendamping menolak origin yang tidak sama dengan origin adapter.
  */
-export const POST: RequestHandler = async ({ request, params }) => {
+export const POST: RequestHandler = async ({ request, params, getClientAddress }) => {
   const body = await readBody(request, MulaiPendampingRequestSchema);
   if (!body.ok) return body.response;
   try {
@@ -49,6 +55,26 @@ export const POST: RequestHandler = async ({ request, params }) => {
       return apiError(422, 'ADAPTER_TIDAK_ADA', 'Kota ini belum mendukung Browser Pendamping.');
     // Juri (salinan demo) dan tamu selalu ke replika uji; situs resmi asli hanya untuk akun warga pemiliknya.
     const modeUji = await modeUjiPendamping(request, a.u);
+    // Tamu di portal tanpa replika: jangan buka sesi yang pasti beralih ke panduan; minta masuk/daftar dulu.
+    if (modeUji && !punyaReplikaUji(origin) && peranPendamping(await akunDari(request)) === 'tamu')
+      return apiError(403, 'PERLU_MASUK', PESAN_PERLU_MASUK);
+    // Portal asli (akun warga pemilik): satu sesi aktif per akun + kuota mulai per jam per akun/IP. Mode Uji bebas.
+    const akunAsli = modeUji ? undefined : await akunDari(request);
+    if (akunAsli) {
+      let ip = 'tak-dikenal';
+      try {
+        ip = getClientAddress();
+      } catch {
+        // tanpa alamat klien: semuanya berbagi satu kunci (lebih ketat, bukan lebih longgar)
+      }
+      const ditolak = await remPortalAsli(a.rt, {
+        akunId: akunAsli.id,
+        urusanId: a.u.id,
+        executionId: offered.data.executionId,
+        ip,
+      });
+      if (ditolak) return ditolak;
+    }
     const cfg = pendampingConfig();
     const generik = offered.data.adapterId === ADAPTER_GENERIK;
     // Mode Uji generik: replika dipasang di awalan override worker; jalur portal asli hanya dibawa bila replika
@@ -69,6 +95,13 @@ export const POST: RequestHandler = async ({ request, params }) => {
       ...(body.data.viewport ? { viewport: body.data.viewport } : {}),
     });
     if (r.ok) {
+      if (akunAsli)
+        catatSesiAsli(a.rt, {
+          akunId: akunAsli.id,
+          urusanId: a.u.id,
+          executionId: offered.data.executionId,
+          sidHash: a.sidHash,
+        });
       a.rt.publish(a.u.id, { type: 'progress', label: 'Browser Pendamping disiapkan.' });
       if (offered.data.bacaSaja !== true)
         mulaiPengajuan(a.rt.store, a.u.id, (e) => void a.rt.publish(a.u.id, e));

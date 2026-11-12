@@ -37,7 +37,7 @@ type FakeRun = ActiveRun & {
   frameSink?: Parameters<ActiveRun['setViewer']>[0];
 };
 
-function harness(over: Partial<Config> = {}) {
+function harness(over: Partial<Config> = {}, bukaAwal?: (run: FakeRun) => Promise<void>) {
   let t = 1_000_000;
   const runs: FakeRun[] = [];
   const config = { ...loadConfig({}), ...over };
@@ -56,6 +56,7 @@ function harness(over: Partial<Config> = {}) {
         run.frameSink = s;
       },
       destroy: async () => void calls.push('destroy'),
+      ...(bukaAwal ? { bukaAwal: () => bukaAwal(run) } : {}),
     };
     runs.push(run);
     return run;
@@ -1098,5 +1099,122 @@ describe('server HTTP + WebSocket', () => {
         })
       ).status,
     ).toBe(404);
+  });
+});
+
+describe('portal tampil dulu sebelum izin isi (QA prod: lembar izin di atas kanvas putih)', () => {
+  it('halaman awal portal dibuka SEBELUM menunggu_data/butuh_data; izin diminta sesudahnya', async () => {
+    const urutan: string[] = [];
+    const h: ReturnType<typeof harness> = harness({}, async (run) => {
+      urutan.push(`bukaAwal:${h.manager.status(owner('u-awal')).status}`);
+      run.calls.push('bukaAwal');
+    });
+    await h.manager.create(input('u-awal'));
+    await h.flush();
+    await h.flush();
+    expect(urutan).toEqual(['bukaAwal:memulai']);
+    expect(h.manager.status(owner('u-awal')).status).toBe('menunggu_data');
+    const run = h.runs[0]!;
+    expect(run.calls).not.toContain('mulaiAi');
+    // Warga baru tersambung: status lalu butuh_data; halamannya sudah dibuka sebelum itu.
+    const v = h.viewer();
+    const s = h.manager.status(owner('u-awal'));
+    await h.manager.attach(s.sesiId, v as never);
+    expect(v.sent.map((m) => m.type)).toEqual(['status', 'butuh_data']);
+    expect(run.calls.indexOf('bukaAwal')).toBeLessThan(run.calls.lastIndexOf('viewer'));
+  });
+
+  it('portal tidak terjangkau: sesi berakhir dengan pesan dan kode, tanpa lembar izin', async () => {
+    const h = harness({}, async (run) => {
+      run.init.hooks.ended('gagal', 'gagal', 'Halaman x tidak bisa dibuka. Lanjutkan lewat panduan.', {
+        kode: 'SITUS_TIDAK_TERJANGKAU',
+        net: 'net::ERR_TIMED_OUT',
+      });
+    });
+    await h.manager.create(input('u-putus'));
+    await h.flush();
+    await h.flush();
+    const s = h.manager.status(owner('u-putus'));
+    expect(s.status).toBe('gagal');
+    expect(s.pesan).toMatch(/panduan/);
+    expect(h.runs[0]!.calls).not.toContain('mulaiAi');
+  });
+
+  it('menolak izin / ambil alih sebelum AI mulai: kendali ke warga di portal yang sudah terbuka', async () => {
+    const h = harness({}, async (run) => void run.calls.push('bukaAwal'));
+    await h.manager.create(input('u-tolak'));
+    await h.flush();
+    await h.flush();
+    const s = h.manager.status(owner('u-tolak'));
+    await h.manager.handleClient(s.sesiId, { type: 'ambil_alih' });
+    const run = h.runs[0]!;
+    expect(run.calls.filter((c) => c === 'bukaAwal' || c === 'ambilAlih')).toEqual(['bukaAwal', 'ambilAlih']);
+    expect(h.manager.status(owner('u-tolak')).mode).toBe('takeover');
+    // "Lanjutkan" sebelum AI pernah mulai: izin diminta lagi, bukan "AI sedang mengisi" tanpa pengemudi.
+    const v = h.viewer();
+    await h.manager.attach(s.sesiId, v as never);
+    v.sent.length = 0;
+    await h.manager.handleClient(s.sesiId, { type: 'kembalikan' });
+    await h.flush();
+    expect(v.sent.map((m) => m.type)).toContain('butuh_data');
+    expect(run.calls).not.toContain('mulaiAi');
+    expect(h.manager.status(owner('u-tolak')).status).toBe('menunggu_data');
+  });
+
+  it('tantangan situs di halaman awal: giliran warga tetap, izin dan mode AI menunggu tantangan lolos', async () => {
+    // Peramban: Cloudflare terdeteksi di halaman awal -> mode takeover (warga mengetuk kotak verifikasi).
+    let tantangan = true;
+    const h = harness({}, async (run) => {
+      run.ditahanTantangan = () => tantangan;
+      run.init.hooks.mode('takeover', 'Selesaikan verifikasi situs.');
+    });
+    const s = await h.manager.create(input('u-cf'));
+    await h.flush();
+    await h.flush();
+    const run = h.runs[0]!;
+    expect(h.manager.status(owner('u-cf'))).toMatchObject({ status: 'menunggu_data', mode: 'takeover' });
+    const v = h.viewer();
+    await h.manager.attach(s.sesiId, v as never);
+    // Lembar izin tidak muncul di atas tantangan; ketukan warga diterima (tidak ditimpa mode 'ai').
+    expect(v.sent.map((m) => m.type)).not.toContain('butuh_data');
+    await h.manager.handleClient(s.sesiId, {
+      type: 'pointer',
+      aksi: 'down',
+      x: 5,
+      y: 5,
+      jenis: 'touch',
+      tombol: 'left',
+    });
+    expect(run.calls).toContain('input:pointer');
+    expect(v.sent.filter((m) => m.type === 'galat')).toHaveLength(0);
+    // Data lengkap selama tantangan: AI tetap tidak mulai, mode tetap takeover.
+    await h.manager.isiData(owner('u-cf'), { '{{PEMOHON.HP}}': '08000000001' });
+    expect(run.calls).not.toContain('mulaiAi');
+    expect(h.manager.status(owner('u-cf')).mode).toBe('takeover');
+    // Tantangan lolos: sesi melanjutkan dari izin (di sini data sudah lengkap, jadi AI mulai).
+    tantangan = false;
+    run.init.hooks.tantanganLolos?.();
+    await h.flush();
+    expect(run.calls).toContain('mulaiAi');
+    expect(h.manager.status(owner('u-cf'))).toMatchObject({ status: 'berjalan', mode: 'ai' });
+  });
+
+  it('tantangan lolos sebelum data lengkap: lembar izin baru dikirim sesudah lolos', async () => {
+    let tantangan = true;
+    const h = harness({}, async (run) => {
+      run.ditahanTantangan = () => tantangan;
+      run.init.hooks.mode('takeover', 'Selesaikan verifikasi situs.');
+    });
+    const s = await h.manager.create(input('u-cf2'));
+    await h.flush();
+    await h.flush();
+    const v = h.viewer();
+    await h.manager.attach(s.sesiId, v as never);
+    expect(v.sent.map((m) => m.type)).not.toContain('butuh_data');
+    tantangan = false;
+    h.runs[0]!.init.hooks.tantanganLolos?.();
+    await h.flush();
+    expect(v.sent.map((m) => m.type)).toContain('butuh_data');
+    expect(h.runs[0]!.calls).not.toContain('mulaiAi');
   });
 });

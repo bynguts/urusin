@@ -1,11 +1,20 @@
 import { randomInt } from 'node:crypto';
 import type { CatatanPendamping, Pengamatan } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
+import { pesanAlihLuar, pesanSitusBermasalah } from './galat-nav.js';
 import { createGerbangTulis, JENDELA_ISI_MS, type Jendela } from './gerbang-tulis.js';
 import {
+  labelAman,
+  namaPortal,
+  pesanMasukAkun,
+  pesanPetunjuk,
   GenerikRun,
   naikHttps,
   PESAN_GENERIK,
+  kendaliEskalasi,
+  namaKendali,
+  pesanEskalasi,
+  pesanSerah,
   redaksi,
   tidakLazim,
   type AksiRunner,
@@ -69,8 +78,11 @@ type Opsi = {
   peta?: PetaRef;
   /** Href tautan pembuka per ref (op runner `tautan`). */
   tautan?: Record<string, string>;
+  /** Galat jaringan navigasi saat dokumen = halaman galat Chromium (`chrome-error://`). */
+  galatNav?: string;
   /** Tangan `lebarkan` (probe gel4 3279); undefined = tangan tanpa kemampuan itu. */
   lebarkan?: () => Promise<boolean>;
+  belumTampil?: () => Promise<boolean>;
 };
 
 function harness(o: Opsi = {}) {
@@ -112,7 +124,9 @@ function harness(o: Opsi = {}) {
     tautan: async (r) => o.tautan?.[r],
     tenang: async () => {},
     urlKini: () => urlKini,
+    galatNav: () => (urlKini.startsWith('chrome-error:') ? o.galatNav : undefined),
     ...(o.lebarkan ? { lebarkan: o.lebarkan } : {}),
+    ...(o.belumTampil ? { belumTampil: o.belumTampil } : {}),
   };
   const izin: IzinGenerik = {
     disetujui: (h, sidik, ph) => setuju.get(h)?.has(`${sidik}|${ph}`) ?? false,
@@ -122,14 +136,17 @@ function harness(o: Opsi = {}) {
     berkas: () => undefined,
     vault: () => vault.entries(),
   };
+  const kendaliSerah: (string | undefined)[] = [];
   const run = (ref.run = new GenerikRun({
     tangan,
     gerbang,
     izin,
     urlBoleh: o.urlBoleh ?? (() => true),
     jejak: (c) => void jejak.push(c),
-    serahkan: (alasan, pesan, sorot, tautan) =>
-      void serah.push({ alasan, pesan, sorot, ...(tautan ? { tautan } : {}) }),
+    serahkan: (alasan, pesan, sorot, tautan, kendali) => {
+      kendaliSerah.push(kendali);
+      serah.push({ alasan, pesan, sorot, ...(tautan ? { tautan } : {}) });
+    },
     tidakBisa: (p) => void tidakBisa.push(p),
     now: () => now,
   }));
@@ -141,6 +158,7 @@ function harness(o: Opsi = {}) {
     jendelaSaatAksi,
     jejak,
     serah,
+    kendaliSerah,
     tidakBisa,
     diisiDikirim,
     minta,
@@ -217,11 +235,16 @@ describe('GenerikRun: tombol masuk khusus layar lebar (probe gel4 3279)', () => 
     expect(h.diisiDikirim).toHaveLength(2);
   });
 
-  it('formulir, kendali masuk, atau pantau baca-saja: tidak melebarkan', async () => {
+  it('probe gel5 3402: halaman berformulir/banyak tautan tanpa kendali masuk tetap diperiksa', async () => {
+    let dipanggil = 0;
+    await harness({ amati: () => pengamatan(), lebarkan: async () => (dipanggil++, false) }).run.amati();
+    expect(dipanggil).toBe(1);
+  });
+
+  it('kendali masuk terlihat, formulir masuk, atau pantau baca-saja: tidak melebarkan', async () => {
     let dipanggil = 0;
     const lebarkan = async () => (dipanggil++, false);
     for (const amati of [
-      () => pengamatan(),
       () => beranda(true),
       () => pengamatan({ sinyal: { ...pengamatan().sinyal, login: true }, elemen: [] }),
     ]) {
@@ -415,6 +438,41 @@ describe('GenerikRun: host di luar allowlist', () => {
     expect(h.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.hostLain, sorot: undefined }]);
   });
 
+  it('QA prod gel6 Klampid: POST XHR skrip halaman saat dimuat diblokir dan dicatat, bukan giliran "periksa"', async () => {
+    const post = (dokumen: boolean) => ({
+      metode: 'POST',
+      dokumen,
+      utama: dokumen,
+      xhr: !dokumen,
+      url: 'https://portal.contoh.go.id/api/sesi',
+    });
+    const h = harness({ saatNavigasi: () => expect(h.gerbang.periksa(post(false))).toBe('blokir') });
+    await h.run.mulai('https://portal.contoh.go.id/app');
+    expect(h.serah).toEqual([]);
+    expect(h.jejak).toContainEqual(
+      expect.objectContaining({ jenis: 'blokir', metode: 'POST', jendela: 'ai_klik' }),
+    );
+
+    // Tautan pembuka GET yang dibuka AI: sama, XHR halaman tujuan bukan tombol yang ditekan AI.
+    const t = harness({
+      amati: () =>
+        pengamatan({
+          elemen: [{ ref: 'e4', peran: 'tautan', nama: 'Masuk', kelas: 'kirim', tautanPembuka: true }],
+        }),
+      tautan: { e4: 'https://portal.contoh.go.id/app/login' },
+      saatNavigasi: () => expect(t.gerbang.periksa(post(false))).toBe('blokir'),
+    });
+    await t.run.amati();
+    const r = await t.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+    expect(r[0]?.kode).toBe('ok');
+    expect(t.serah).toEqual([]);
+
+    // Navigasi dokumen tulis (form POST) saat dimuat tetap eskalasi.
+    const d = harness({ saatNavigasi: () => expect(d.gerbang.periksa(post(true))).toBe('blokir') });
+    await d.run.mulai('https://portal.contoh.go.id/app');
+    expect(d.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.kirim_halaman, sorot: undefined }]);
+  });
+
   const hanyaPortal = (u: string) => URL.parse(u)?.host === 'portal.contoh.go.id';
 
   it('probe gel4 9171: naikHttps menaikkan http:// host sesi https-saja, tidak pernah membuka http polos', () => {
@@ -492,17 +550,63 @@ describe('GenerikRun: host di luar allowlist', () => {
     expect(h.jejak).toContainEqual({ jenis: 'host_kandidat', host: 'sso.lain.example' });
   });
 
-  it('halaman awal di-redirect lewat proxy: diserahkan ke warga, tanpa navigasi balik', async () => {
+  it('halaman awal di-redirect lewat proxy: dipandu, halaman galat Chromium tidak diserahkan', async () => {
     const awal = 'https://portal.contoh.go.id/';
     const h = harness({
       urlBoleh: hanyaPortal,
       alihkan: { [awal]: 'chrome-error://chromewebdata/' },
+      galatNav: 'net::ERR_TUNNEL_CONNECTION_FAILED',
       saatNavigasi: (run) => run.hostDiblokir('lain.example', undefined),
     });
     await h.run.mulai(awal);
     expect(h.navigasi).toEqual([awal]);
     expect(h.jejak).toContainEqual({ jenis: 'host_kandidat', host: 'lain.example' });
-    expect(h.serah).toEqual([{ alasan: 'periksa', pesan: PESAN_GENERIK.hostLain, sorot: undefined }]);
+    expect(h.serah).toEqual([]);
+    expect(h.tidakBisa).toEqual([pesanAlihLuar('portal.contoh.go.id')]);
+  });
+
+  it('QA prod Malang: halaman awal = layar peringatan TLS -> dipandu jujur, bukan "di luar daftar"', async () => {
+    const awal = 'https://siapel.malangkota.go.id/';
+    const h = harness({
+      urlBoleh: (u) => URL.parse(u)?.host === 'siapel.malangkota.go.id',
+      alihkan: { [awal]: 'chrome-error://chromewebdata/' },
+      galatNav: 'net::ERR_CERT_AUTHORITY_INVALID',
+    });
+    await h.run.mulai(awal);
+    expect(h.serah).toEqual([]);
+    expect(h.jejak.filter((c) => c.jenis === 'host_kandidat')).toEqual([]);
+    expect(h.tidakBisa).toEqual([
+      pesanSitusBermasalah('siapel.malangkota.go.id', 'net::ERR_CERT_AUTHORITY_INVALID'),
+    ]);
+    expect(h.tidakBisa[0]).not.toContain('di luar daftar');
+    expect(h.tidakBisa[0]).toContain('dispendukcapil.malangkota.go.id');
+  });
+
+  it.each(['net::ERR_CERT_DATE_INVALID', 'net::ERR_NAME_NOT_RESOLVED', 'net::ERR_CONNECTION_TIMED_OUT'])(
+    'tautan ke host resmi berakhir di halaman galat %s: dipandu, tanpa navigasi balik atau giliran',
+    async (net) => {
+      const pindah = 'https://portal.contoh.go.id/pindah';
+      const h = harness({
+        aksi: () => ({ status: 'navigasi', aturan: 'K8_NAVIGASI', kelas: 'navigasi', href: pindah }),
+        urlBoleh: hanyaPortal,
+        alihkan: { [pindah]: 'chrome-error://chromewebdata/' },
+        galatNav: net,
+      });
+      await h.run.amati();
+      const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] });
+      expect(r[0]?.kode).toBe('GERBANG_MEMBLOKIR');
+      expect(h.navigasi).toEqual([pindah]);
+      expect(h.serah).toEqual([]);
+      expect(h.tidakBisa).toEqual([pesanSitusBermasalah('portal.contoh.go.id', net)]);
+    },
+  );
+
+  it('halaman galat tanpa kode galat di halaman awal: tetap dipandu (galat Chromium tidak pernah diserahkan)', async () => {
+    const awal = 'https://portal.contoh.go.id/';
+    const h = harness({ urlBoleh: hanyaPortal, alihkan: { [awal]: 'chrome-error://chromewebdata/' } });
+    await h.run.mulai(awal);
+    expect(h.serah).toEqual([]);
+    expect(h.tidakBisa).toEqual([pesanSitusBermasalah('portal.contoh.go.id', 'net::ERR_FAILED')]);
   });
 
   it('penolakan proxy untuk subresource (dokumen tetap di allowlist): tidak dicatat, tidak diserahkan', async () => {
@@ -576,9 +680,15 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     const url = 'https://portal.contoh.go.id/form';
     expect(h.jendelaSaatAksi).toEqual([{ jenis: 'ai_klik' }, { jenis: 'ai_klik', navKe: url }]);
     expect(h.navigasi).toEqual([url]);
+    // Pesan menyebut kendali yang memicu (nama dari halaman), bukan "tombol ini" yang tak jelas.
     expect(h.serah).toEqual([
-      { alasan: 'periksa', pesan: PESAN_GENERIK.kotor_klik, sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 } },
+      {
+        alasan: 'periksa',
+        pesan: pesanEskalasi({ nama: 'Lanjut', kelas: 'lanjut', disorot: true }, true),
+        sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 },
+      },
     ]);
+    expect(h.serah[0]?.pesan).toMatch(/^Tombol "Lanjut" mencoba mengirim data/);
     expect(h.jejak).toContainEqual(
       expect.objectContaining({ jenis: 'blokir', metode: 'POST', jendela: 'ai_klik' }),
     );
@@ -592,7 +702,8 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     expect(h.navigasi).toEqual([url]);
     expect(h.serah.at(-1)).toEqual({
       alasan: 'periksa',
-      pesan: PESAN_GENERIK.periksa,
+      pesan:
+        '"Lanjut" yang disorot mengirim data ke situs, jadi AI berhenti. Periksa halaman, lalu tekan sendiri "Lanjut" bila sudah benar.',
       sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 },
     });
     expect(h.run.kotorKeras).toBe(true);
@@ -824,7 +935,11 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     });
     expect(r).toEqual([{ indeks: 0, kode: 'ok' }]);
     expect(h.serah).toEqual([
-      { alasan: 'final', pesan: PESAN_GENERIK.final, sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 } },
+      {
+        alasan: 'final',
+        pesan: 'Periksa semua isian. Hanya Anda yang boleh menekan "Kirim" yang disorot.',
+        sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 },
+      },
     ]);
     expect(h.jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'final' });
     await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'tidak_bisa', sebab: 'hanya_aplikasi' }] });
@@ -1082,5 +1197,149 @@ describe('redaksi', () => {
     expect(tidakLazim(PH_NIK, 'Nomor Induk Kependudukan')).toBe(false);
     expect(tidakLazim(PH_NIK, 'Catatan tambahan')).toBe(true);
     expect(tidakLazim(PH_NAMA, 'Catatan tambahan')).toBe(false);
+  });
+});
+
+describe('GenerikRun: konten fade-in masih transparan (probe gel5 6171)', () => {
+  it('sesudah batas tunggu masih transparan: tunggu sekali lagi lalu amati ulang (sekali saja)', async () => {
+    let tampil = false;
+    let ditanya = 0;
+    const h = harness({
+      amati: () =>
+        pengamatan({
+          elemen: tampil
+            ? pengamatan().elemen
+            : [{ ref: 'e4', peran: 'tautan', nama: 'Daftar Layanan', kelas: 'navigasi' }],
+        }),
+      belumTampil: async () => {
+        ditanya++;
+        tampil = true;
+        return true;
+      },
+    });
+    const p = await h.run.amati();
+    expect(ditanya).toBe(1);
+    expect(p?.elemen).toHaveLength(5);
+    expect(h.diisiDikirim).toHaveLength(2);
+  });
+
+  it('pantau baca-saja dan konten yang sudah tampil: tanpa amati ulang', async () => {
+    let ditanya = 0;
+    const belumTampil = async () => (ditanya++, false);
+    const h = harness({ belumTampil });
+    await h.run.amati(true);
+    expect(ditanya).toBe(0);
+    await h.run.amati();
+    expect(ditanya).toBe(1);
+    expect(h.diisiDikirim).toHaveLength(2);
+  });
+});
+
+describe('QA prod gel6: pesan giliran masuk akun dan petunjuk (templat + label akun)', () => {
+  it('namaPortal: label host pertama (ejaan judul bila ada); kata umum/panjang = tanpa nama', () => {
+    expect(namaPortal('sibisa.medan.go.id', 'SIBISA - Layanan Kependudukan Online')).toBe('SIBISA');
+    expect(namaPortal('siapel.malangkota.go.id', 'Login - SIAPEL.')).toBe('SIAPEL');
+    expect(namaPortal('telunjuksakti.wonogirikab.go.id', 'TelunjukSakti')).toBe('TelunjukSakti');
+    expect(namaPortal('sirancak.disdukcapil.padang.go.id', 'beranda')).toBe('SIRANCAK');
+    expect(namaPortal('disdukcapil.bandarlampungkota.go.id')).toBeUndefined();
+    expect(namaPortal('wargaklampid-dispendukcapil.surabaya.go.id')).toBeUndefined();
+  });
+
+  it('beranda: Masuk didahulukan, Daftar sebagai pilihan bagi yang belum punya akun (Padang)', () => {
+    expect(pesanMasukAkun({ portal: 'SIRANCAK', masuk: 'LOGIN', daftar: 'DAFTAR AKUN' })).toBe(
+      'Ketuk "LOGIN" kalau sudah punya akun, lalu masuk dengan akun SIRANCAK Anda. Belum punya akun? Ketuk "DAFTAR AKUN". AI melanjutkan setelah Anda masuk.',
+    );
+  });
+
+  it('formulir masuk: "Masuk dengan akun X Anda" (+ CAPTCHA bila ada), tanpa nama portal = situs ini', () => {
+    expect(pesanMasukAkun({ portal: 'SIBISA', formulir: true, daftar: 'Daftar Akun Gratis' })).toBe(
+      'Masuk dengan akun SIBISA Anda. Belum punya akun? Ketuk "Daftar Akun Gratis". AI melanjutkan setelah Anda masuk.',
+    );
+    expect(pesanMasukAkun({ formulir: true, captcha: true })).toBe(
+      'Masuk dengan akun Anda di situs ini, termasuk kode keamanan (CAPTCHA). AI melanjutkan setelah Anda masuk.',
+    );
+    expect(pesanMasukAkun({ portal: 'SIBISA', formulir: true, verifikasi: true })).toBe(
+      'Masuk dengan akun SIBISA Anda, termasuk verifikasi keamanan situs. AI melanjutkan setelah Anda masuk.',
+    );
+  });
+
+  it('petunjuk: label pendek dikutip; label mencurigakan (nomor, URL, panjang) tidak', () => {
+    expect(pesanPetunjuk('Lihat Layanan')).toContain('"Lihat Layanan"');
+    expect(labelAman('Kode antrean 98765')).toBeUndefined();
+    expect(labelAman('buka https://evil.example')).toBeUndefined();
+    expect(labelAman('satu dua tiga empat lima enam')).toBeUndefined();
+    expect(pesanPetunjuk(undefined)).toBe(PESAN_GENERIK.tidak_yakin);
+  });
+});
+
+describe('kalimat giliran mengikuti alasan sebenarnya', () => {
+  it('menyebut kendali pemicu; "disorot" hanya bila sorotan ada', () => {
+    const tanpaSorot = pesanEskalasi({ nama: 'Simpan', kelas: 'lanjut', disorot: false });
+    expect(tanpaSorot).toContain('"Simpan"');
+    expect(tanpaSorot).not.toMatch(/disorot/);
+    expect(pesanEskalasi({ nama: 'Simpan', disorot: true })).toMatch(/"Simpan" yang disorot/);
+    // Tanpa nama dan tanpa sorotan: tidak ada "tombol ini" / "yang disorot" yang tidak bisa dilihat warga.
+    const polos = pesanEskalasi({ disorot: false });
+    expect(polos).toBe(PESAN_GENERIK.kirim_halaman);
+    expect(polos).not.toMatch(/Tombol ini|disorot/);
+    expect(pesanEskalasi({ disorot: false }, true)).toBe(PESAN_GENERIK.kotor);
+  });
+
+  it('jendela/pengumuman (ui_lokal) di beranda dengan tombol Masuk: minta tutup lalu sebut "Masuk"', () => {
+    const p = pesanEskalasi({ nama: 'Tutup', kelas: 'ui_lokal', disorot: false, masuk: 'Masuk' });
+    expect(p).toMatch(/Jendela atau pengumuman/);
+    expect(p).toContain('lewat "Tutup"');
+    expect(p).toMatch(/Untuk masuk akun, tekan "Masuk"\.$/);
+    expect(p).not.toMatch(/Tombol ini/);
+  });
+
+  it('halaman masuk akun dan CAPTCHA memakai alasan itu, bukan "tombol mengirim data"', () => {
+    const login = pesanEskalasi({
+      nama: 'Kirim',
+      disorot: true,
+      masuk: 'Masuk',
+      sinyal: { login: true, captcha: false, tantangan: false },
+    });
+    expect(login).toMatch(/meminta Anda masuk akun/);
+    expect(login).toContain('lewat "Masuk"');
+    expect(login).not.toMatch(/mengirim data/);
+    expect(pesanEskalasi({ disorot: false, sinyal: { login: false, captcha: true, tantangan: false } })).toBe(
+      PESAN_GENERIK.captcha,
+    );
+  });
+
+  it('nama kendali dari situs dibersihkan (tanpa kutip/karakter kendali) dan dipotong', () => {
+    expect(namaKendali('  "Masuk"\n ')).toBe('Masuk');
+    expect(namaKendali('')).toBeUndefined();
+    expect(namaKendali('x'.repeat(80))?.length).toBe(40);
+  });
+
+  it('serah Navigator menyebut kendali target (mis. Masuk) bila ada', () => {
+    expect(pesanSerah('masuk_akun', 'Masuk', true)).toBe(
+      'Masuk ke akun Anda: tekan "Masuk" yang disorot, lalu masuk sendiri. AI melanjutkan setelah Anda masuk.',
+    );
+    expect(pesanSerah('masuk_akun', undefined, false)).toBe(PESAN_GENERIK.masuk_akun);
+    expect(pesanSerah('tidak_yakin', 'Apa saja', true)).toBe(PESAN_GENERIK.tidak_yakin);
+  });
+
+  it('GenerikRun: serah masuk_akun dengan ref menyebut nama kendali dari pengamatan', async () => {
+    const h = harness();
+    await h.run.amati();
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'serahkan', alasan: 'masuk_akun', ref: 'e3' }] });
+    expect(h.serah.at(-1)).toMatchObject({
+      alasan: 'masuk_akun',
+      pesan: expect.stringContaining('"Lanjut"'),
+    });
+    // Nama kendali ikut terkirim terpisah untuk instruksi ringkas "Giliran Anda" di UI.
+    expect(h.kendaliSerah.at(-1)).toBe('Lanjut');
+  });
+
+  it('kendali eskalasi: tombol masuk di halaman login, pemicu di halaman lain, kosong saat CAPTCHA', () => {
+    const sinyal = { login: true, captcha: false, tantangan: false };
+    expect(kendaliEskalasi({ nama: 'Kirim', masuk: 'Masuk', disorot: false, sinyal })).toBe('Masuk');
+    expect(kendaliEskalasi({ nama: 'Tutup', masuk: 'Masuk', disorot: false })).toBe('Tutup');
+    expect(
+      kendaliEskalasi({ nama: 'Tutup', disorot: false, sinyal: { ...sinyal, login: false, captcha: true } }),
+    ).toBeUndefined();
   });
 });

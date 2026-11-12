@@ -25,13 +25,34 @@ export const pemeriksaPemilikVault: PemeriksaPemilikAkun = async (request, urusa
 };
 
 /**
+ * Peran warga terhadap Browser Pendamping: `akun` = portal resmi asli; `juri` = salinan demo (selalu Mode Uji,
+ * panduan bila tanpa replika); `tamu` = Mode Uji hanya bila portalnya punya replika, selain itu diajak masuk/daftar
+ * dulu (tawaran tanpa replika itu palsu: sesi pasti beralih ke panduan).
+ */
+/** Pesan untuk tamu yang mencoba membuka portal tanpa situs latihan. */
+export const PESAN_PERLU_MASUK =
+  'Untuk membuka situs resmi ini bersama AI, masuk atau daftar dulu (gratis, tanpa verifikasi email). Urusan dan rencana Anda ikut pindah ke akun.';
+
+/** Akun/demo yang masuk menurut cookie sesi permintaan ini (undefined = tamu). */
+export async function akunDari(request: Request) {
+  const rt = await getRuntime();
+  const token = cookieDari(request, AKUN_COOKIE);
+  return token ? rt.akun.sesi(token)?.akun : undefined;
+}
+
+export type PeranPendamping = 'akun' | 'juri' | 'tamu';
+
+export function peranPendamping(akun: { jenis: string } | undefined): PeranPendamping {
+  return akun?.jenis === 'akun' ? 'akun' : akun?.jenis === 'demo' ? 'juri' : 'tamu';
+}
+
+/**
  * Mode Uji Browser Pendamping untuk urusan ini: true kecuali pemiliknya akun warga biasa (bukan salinan demo juri,
  * bukan tamu) yang sedang masuk. Mode Uji membuka replika di fixtures, tidak pernah portal resmi asli.
  */
 export async function modeUjiPendamping(request: Request, urusan: UrusanRow): Promise<boolean> {
   const rt = await getRuntime();
-  const token = cookieDari(request, AKUN_COOKIE);
-  const akun = token ? rt.akun.sesi(token)?.akun : undefined;
+  const akun = await akunDari(request);
   const pemilik = rt.akun.pemilikVaultUrusan(urusan.id, { akun, sid: sidDariRequest(request) ?? undefined });
   return !(akun && akun.jenis === 'akun' && pemilik === akun.id);
 }

@@ -8,7 +8,6 @@ import {
   TerkirimResponseSchema,
   UKURAN_DOKUMEN_MAKS,
   VaultResponseSchema,
-  VerifikasiEmailRequestSchema,
 } from './index.js';
 
 const metode = { email: true, google: false, juri: true };
@@ -25,11 +24,11 @@ describe('kontrak akun', () => {
         id: 'akun_1',
         jenis: 'akun',
         email: 'warga@example.com',
-        emailTerverifikasi: false,
+        emailTerverifikasi: true,
         punyaSandi: true,
         terhubungGoogle: false,
         profilLengkap: false,
-        sinkron: false,
+        sinkron: true,
         dibuatPada: '2026-11-09T00:00:00.000Z',
       },
       perangkat: [],
@@ -51,9 +50,15 @@ describe('kontrak akun', () => {
     expect(DataDiriSchema.safeParse({ tanggalLahir: '1990-02-30x' }).success).toBe(false);
   });
 
-  it('masuk, verifikasi (butuh sandi), terkirim (tertunda), vault tanpa nilai; endpoint terdaftar', () => {
+  it('masuk, daftar tanpa verifikasi, terkirim (tertunda), vault tanpa nilai; endpoint terdaftar', () => {
     expect(MasukRequestSchema.safeParse({ email: 'a@example.com', sandi: 'x' }).success).toBe(true);
-    expect(VerifikasiEmailRequestSchema.safeParse({ token: 't' }).success).toBe(false);
+    // ADR 0032: daftar langsung memberi sesi (200, bentuk MasukResponse); tidak ada lagi endpoint verifikasi.
+    expect(ENDPOINT_AKUN.daftar.sukses).toBe(200);
+    expect(Object.keys(ENDPOINT_AKUN)).not.toContain('verifikasi');
+    expect(Object.keys(ENDPOINT_AKUN)).not.toContain('kirimUlangVerifikasi');
+    expect(KodeGalatAkunSchema.options).toContain('EMAIL_SUDAH_TERDAFTAR');
+    // Dipertahankan (deprecated) demi pembekuan kontrak; server tidak pernah mengirimnya.
+    expect(KodeGalatAkunSchema.options).toContain('EMAIL_BELUM_TERVERIFIKASI');
     expect(TerkirimResponseSchema.safeParse({ terkirim: true }).success).toBe(false);
     expect(TerkirimResponseSchema.safeParse({ terkirim: true, tertunda: true }).success).toBe(true);
     expect(

@@ -8,8 +8,10 @@ import {
   RefSchema,
   RencanaHalamanSchema,
   SebabTidakBisaSchema,
+  kendaliAkun,
   type Aksi,
   type ElemenAmatan,
+  type IsyaratKolom,
   type KolomButuh,
   type Pengamatan,
   type PeranElemen,
@@ -76,6 +78,10 @@ type EntriKatalog = {
   pola: RegExp;
   /** Nomor identitas: hanya ke kolom yang tampak seperti kolom itu. */
   sensitif?: true;
+  /** Isyarat atribut kolom (autocomplete/type/name) yang lazim untuk data ini (hanya data non-sensitif). */
+  isyarat?: IsyaratKolom;
+  /** Contoh format di label/placeholder yang menandai kolom data ini (mis. "0819xxxxxxxx" untuk HP). */
+  contoh?: RegExp;
 };
 
 /**
@@ -93,20 +99,35 @@ export const KATALOG_PLACEHOLDER: Readonly<Record<string, EntriKatalog>> = {
     pola: /\b(no\.?|nomor) ?kk\b|\bkk\b|kartu keluarga/,
     sensitif: true,
   },
-  '{{PEMOHON.NAMA}}': { label: 'Nama lengkap', pola: /\bnama\b/ },
+  '{{PEMOHON.NAMA}}': { label: 'Nama lengkap', pola: /\bnama\b/, isyarat: 'nama' },
   '{{PEMOHON.TEMPAT_LAHIR}}': { label: 'Tempat lahir', pola: /tempat lahir/ },
-  '{{PEMOHON.TANGGAL_LAHIR}}': { label: 'Tanggal lahir', pola: /tanggal lahir|tgl\.? lahir/ },
+  '{{PEMOHON.TANGGAL_LAHIR}}': {
+    label: 'Tanggal lahir',
+    pola: /tanggal lahir|tgl\.? lahir/,
+    isyarat: 'tanggal_lahir',
+  },
   '{{PEMOHON.JENIS_KELAMIN}}': { label: 'Jenis kelamin', pola: /jenis kelamin|kelamin|gender/ },
   '{{PEMOHON.AGAMA}}': { label: 'Agama', pola: /agama/ },
   '{{PEMOHON.PEKERJAAN}}': { label: 'Pekerjaan', pola: /pekerjaan/ },
-  '{{PEMOHON.ALAMAT}}': { label: 'Alamat', pola: /alamat/ },
+  '{{PEMOHON.ALAMAT}}': { label: 'Alamat', pola: /alamat/, isyarat: 'alamat' },
   '{{PEMOHON.RT}}': { label: 'RT', pola: /\brt\b/ },
   '{{PEMOHON.RW}}': { label: 'RW', pola: /\brw\b/ },
   '{{PEMOHON.KELURAHAN}}': { label: 'Kelurahan/desa', pola: /kelurahan|desa/ },
   '{{PEMOHON.KECAMATAN}}': { label: 'Kecamatan', pola: /kecamatan/ },
-  '{{PEMOHON.KODE_POS}}': { label: 'Kode pos', pola: /kode ?pos/ },
-  '{{PEMOHON.HP}}': { label: 'Nomor HP', pola: /\bhp\b|handphone|telepon|telp|ponsel|whatsapp|\bwa\b/ },
-  '{{PEMOHON.EMAIL}}': { label: 'Email', pola: /e-?mail|surel/ },
+  '{{PEMOHON.KODE_POS}}': { label: 'Kode pos', pola: /kode ?pos/, isyarat: 'kode_pos' },
+  '{{PEMOHON.HP}}': {
+    label: 'Nomor HP',
+    pola: /\bhp\b|handphone|telepon|telp|tlp|ponsel|seluler|whatsapp|\bwa\b|\bphone\b|\bmobile\b/,
+    isyarat: 'tel',
+    // Placeholder/contoh nomor seluler Indonesia: "0819xxxxxxxx", "08xx-xxxx-xxxx", "+62 812 ...", "628123...".
+    contoh: /(?:^|[^\d])(?:\+?62|0)[\s-]?8[\dx*]{1,3}[\s.-]?[\dx*]{3,}/,
+  },
+  '{{PEMOHON.EMAIL}}': {
+    label: 'Email',
+    pola: /e-?mail|surel/,
+    isyarat: 'email',
+    contoh: /[a-z0-9._%+-]+@[a-z0-9-]+\.[a-z]/,
+  },
 };
 
 /** Berkas Dokumen akun yang boleh diunggah model (`berkas:<JENIS>` di daftar write). */
@@ -134,11 +155,90 @@ const PERAN_KOLOM: readonly PeranElemen[] = [...PERAN_ISI, ...PERAN_PILIH, 'cent
 
 /**
  * Tautan pembuka formulir yang dikelaskan `kirim` HANYA karena namanya ("Mulai Pendaftaran", "Ajukan
- * Permohonan"; worker menandai `tautanPembuka`). AI tidak mengekliknya; warga yang mengetuk.
+ * Permohonan", "Login / Register"; worker menandai `tautanPembuka`: GET, jalur/id/kelas/ikon bersih). AI boleh
+ * membukanya: worker TIDAK mengekliknya, melainkan menavigasi GET ke href-nya di host allowlist (tanpa handler
+ * JS halaman); gerbang tulis tetap menjaga. Halaman akhir tetap terkunci.
  */
 export function tautanWarga(e: ElemenAmatan | undefined): boolean {
   return e?.peran === 'tautan' && e.kelas === 'kirim' && e.tautanPembuka === true;
 }
+
+/** Nama CTA pembuka pengajuan ("Mulai Pendaftaran", "Ajukan Permohonan", "Daftar Sekarang"). */
+const RE_CTA_PENGAJUAN = /(^|[^a-z])(mulai|ajukan|buat|daftar)([^a-z]|$)/;
+/** Bukan pengajuan layanan: daftar/masuk akun, batal, hapus, keluar. */
+const RE_CTA_BUKAN = /akun|account|member|regist|login|masuk|keluar|logout|batal|hapus/;
+
+/**
+ * Tautan pembuka pengajuan di halaman pintu (tanpa kolom isian, bukan halaman akhir/masuk/tantangan): satu-satunya
+ * nama `tautanWarga` yang berbunyi mulai/ajukan/buat/daftar layanan (probe 9171 PaceMace: "Mulai Pendaftaran"
+ * di samping "Persyaratan & Formulir"). Tujuan Navigator selalu MENGAJUKAN urusan, jadi CTA ini didahulukan di
+ * atas tautan informasi; loop membukanya sendiri (navigasi GET worker) tanpa bertanya ke model. Nama ganda
+ * (menu ponsel + desktop) dihitung satu; dua CTA berbeda = ambigu, diputuskan model.
+ */
+export function pembukaPengajuan(p: Pengamatan): string | undefined {
+  const s = p.sinyal;
+  if (s.halamanAkhir || s.login || s.otp || s.captcha || s.tantangan || s.sukses) return undefined;
+  if (p.elemen.some((e) => PERAN_KOLOM.includes(e.peran))) return undefined;
+  const calon = new Map<string, string>();
+  for (const e of p.elemen) {
+    if (!tautanWarga(e)) continue;
+    const nama = normalLabel(e.nama);
+    if (!RE_CTA_PENGAJUAN.test(nama) || RE_CTA_BUKAN.test(nama)) continue;
+    if (!calon.has(nama)) calon.set(nama, e.ref);
+  }
+  return calon.size === 1 ? [...calon.values()][0] : undefined;
+}
+
+/** Paling banyak kolom isian di beranda pintu akun (kotak cari / cek nomor pendaftaran), bukan formulir. */
+const KOLOM_PINTU_MAKS = 2;
+
+/**
+ * Beranda pintu akun (QA prod Medan/Padang/Depok): kendali masuk akun warga terlihat ("Masuk", "LOGIN",
+ * "Sudah punya akun? Masuk") bersama kendali daftar akun ("Daftar Akun Gratis") atau tanpa CTA pengajuan
+ * layanan lain, belum ada sesi (tidak ada kendali keluar), bukan formulir (paling banyak 2 kolom: cari/cek
+ * status), bukan halaman masuk/OTP/tantangan/akhir/sukses. Deterministik, tanpa LLM:
+ * - `buka`: kendali masuk boleh dibuka AI (navigasi/ui_lokal/lanjut, atau tautan pembuka GET) = AI membuka
+ *   halaman masuk sendiri; giliran warga diberikan di formulir masuk itu (`sinyal.login`).
+ * - `serahkan`: kendali masuk hanya bisa ditekan warga (tombol masuk) = giliran `masuk_akun` dengan sorotan.
+ */
+export function pintuAkun(p: Pengamatan): { jenis: 'buka' | 'serahkan'; ref: string } | undefined {
+  const s = p.sinyal;
+  if (s.halamanAkhir || s.login || s.otp || s.captcha || s.tantangan || s.sukses) return undefined;
+  const kolom = p.elemen.filter((e) => PERAN_KOLOM.includes(e.peran));
+  if (kolom.length > KOLOM_PINTU_MAKS || kolom.some((e) => e.terlarang)) return undefined;
+  const { masuk, daftar, keluar } = kendaliAkun(p.elemen);
+  if (!masuk || keluar) return undefined;
+  if (!daftar && pembukaPengajuan(p) !== undefined) return undefined;
+  const bisaDibuka =
+    (masuk.kelas !== undefined && KELAS_BOLEH_KLIK_AI.includes(masuk.kelas)) || tautanWarga(masuk);
+  return { jenis: bisaDibuka ? 'buka' : 'serahkan', ref: masuk.ref };
+}
+
+/**
+ * Petunjuk terbaik untuk warga saat AI tidak maju (loop tanpa kemajuan): kendali masuk akun, daftar akun, lalu
+ * tautan/tombol layanan (layanan/permohonan/pengajuan/ajukan/mulai/formulir), lalu pembuka menu. undefined bila
+ * tidak ada.
+ */
+export function petunjukWarga(p: Pengamatan): string | undefined {
+  if (p.sinyal.halamanAkhir) return undefined;
+  const akun = kendaliAkun(p.elemen);
+  // Kendali akun yang hanya `kirim` (tombol submit formulir) tidak pernah disorot sebagai petunjuk.
+  const akunBoleh = [akun.masuk, akun.daftar].find((e) => e && (e.kelas !== 'kirim' || tautanWarga(e)));
+  if (!akun.keluar && akunBoleh) return akunBoleh.ref;
+  const klik = p.elemen.filter(
+    (e) =>
+      PERAN_KLIK.includes(e.peran) &&
+      e.kelas !== 'kirim' &&
+      e.kelas !== 'tantangan' &&
+      e.kelas !== 'tidak_pasti' &&
+      !e.terlarang,
+  );
+  const layanan = klik.find((e) => RE_PETUNJUK_LAYANAN.test(normalLabel(e.nama)));
+  if (layanan) return layanan.ref;
+  return klik.find((e) => e.kelas === 'ui_lokal' && RE_PETUNJUK_MENU.test(normalLabel(e.nama)))?.ref;
+}
+const RE_PETUNJUK_LAYANAN = /layanan|permohonan|pengajuan|ajukan|mulai|formulir/;
+const RE_PETUNJUK_MENU = /menu|navigasi|navigation|toggle/;
 
 export type OpsiValidasi = {
   /** Placeholder yang boleh dipakai (bawaan: semua kunci KATALOG_PLACEHOLDER). */
@@ -188,12 +288,16 @@ const tulisan = (a: Aksi): boolean =>
 /** Seberapa lazim kolom berlabel `nama` untuk placeholder `ph`: lazim, samar (ditandai), atau asing. */
 export function kelaziman(
   ph: string,
-  e: Pick<ElemenAmatan, 'nama' | 'petunjuk' | 'peran'>,
+  e: Pick<ElemenAmatan, 'nama' | 'petunjuk' | 'peran' | 'isyarat'>,
 ): 'lazim' | 'samar' | 'asing' {
   const entri = Object.hasOwn(KATALOG_PLACEHOLDER, ph) ? KATALOG_PLACEHOLDER[ph] : undefined;
   if (!entri) return 'asing';
   const label = normalLabel(`${e.nama} ${e.petunjuk ?? ''}`);
   if (entri.pola.test(label)) return 'lazim';
+  // Label samar ("Kontak", "Nomor") tetapi atribut kolom (autocomplete/type/name) atau contoh format di placeholder
+  // jelas untuk data ini: lazim. Hanya data non-sensitif; NIK/KK tetap harus cocok lewat label.
+  if (!entri.sensitif && ((entri.isyarat && e.isyarat === entri.isyarat) || entri.contoh?.test(label)))
+    return 'lazim';
   if (entri.sensitif && e.peran !== 'area' && IDENTITAS_SAMAR.test(label)) return 'samar';
   // Data non-sensitif ke kolom yang labelnya tidak cocok: tetap boleh, tetapi ditandai di lembar (F8).
   return entri.sensitif ? 'asing' : 'samar';
@@ -208,23 +312,15 @@ export function validasiRencana(mentah: unknown, p: Pengamatan, opsi: OpsiValida
   if (!mentahSah.success)
     return { ok: false, aturan: ['SKEMA_TIDAK_SAH'], rencanaHash: hashRencana(mentah ?? null) };
   const elemen = new Map(p.elemen.map((e) => [e.ref, e]));
-  // Klik terakhir ke tautan pembuka formulir (`kirim` hanya karena namanya, F3) diganti serah ke warga
-  // `ketuk_tautan`: AI tidak pernah mengekliknya; warga yang mengetuk, lalu AI melanjutkan. Hash dihitung
-  // dari rencana yang sudah diganti (yang benar-benar dijalankan).
-  const parsed = {
-    ...mentahSah,
-    data: { ...mentahSah.data, aksi: gantiKetukTautan(mentahSah.data.aksi as Aksi[]) },
-  };
+  // Klik ke tautan pembuka formulir (`kirim` hanya karena namanya, F3) diterima: worker membukanya lewat
+  // navigasi GET ke href-nya (host allowlist), bukan klik (QA prod gel6: "Buka 'Login / Register'" sebagai
+  // giliran warga = langkah tambahan yang tidak perlu).
+  const parsed = mentahSah;
   const rencanaHash = hashRencana({ ...parsed.data, host: p.host, sidik: p.sidik, seq: p.seq });
-  const aksi = parsed.data.aksi;
+  const aksi = parsed.data.aksi as Aksi[];
   const katalog = opsi.katalog ?? new Set(Object.keys(KATALOG_PLACEHOLDER));
   const berkasBoleh = opsi.berkas ?? new Set(KATALOG_BERKAS);
 
-  function gantiKetukTautan(a: Aksi[]): Aksi[] {
-    const akhir = a.at(-1);
-    if (akhir?.jenis !== 'klik' || p.sinyal.halamanAkhir || !tautanWarga(elemen.get(akhir.ref))) return a;
-    return [...a.slice(0, -1), { jenis: 'serahkan', alasan: 'ketuk_tautan', ref: akhir.ref }];
-  }
   const langgar = new Set<IdAturan>();
   const kolom = new Map<string, KolomButuh>();
   const berkas = new Set<string>();
@@ -286,7 +382,11 @@ export function validasiRencana(mentah: unknown, p: Pengamatan, opsi: OpsiValida
       case 'klik': {
         if (!PERAN_KLIK.includes(e.peran)) langgar.add('PERAN_TIDAK_COCOK');
         if (e.terlarang) langgar.add('KOLOM_TERLARANG');
-        if (!e.kelas || !KELAS_BOLEH_KLIK_AI.includes(e.kelas)) langgar.add('KELAS_KLIK_DITOLAK');
+        if (
+          (!e.kelas || !KELAS_BOLEH_KLIK_AI.includes(e.kelas)) &&
+          (!tautanWarga(e) || p.sinyal.halamanAkhir)
+        )
+          langgar.add('KELAS_KLIK_DITOLAK');
         if (p.sinyal.halamanAkhir) langgar.add('HALAMAN_AKHIR_TERKUNCI');
         // Klik mengganti halaman: ref sesudahnya basi. Satu klik saja, sebagai aksi terakhir.
         if (i !== aksi.length - 1) langgar.add('KLIK_BUKAN_AKHIR');

@@ -4,11 +4,14 @@ import { findStrictViolations, toStrictJsonSchema } from '@urusin/llm';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
+  petunjukWarga,
+  pintuAkun,
   ATURAN,
   KATALOG_PLACEHOLDER,
   RencanaKetatSchema,
   hashRencana,
   kelaziman,
+  pembukaPengajuan,
   validasiRencana,
   type IdAturan,
 } from './validasi.js';
@@ -199,6 +202,52 @@ describe('validator rencana: rencana sah', () => {
     expect(kelaziman('{{PEMOHON.NAMA}}', { peran: 'teks', nama: 'Kata kunci pencarian' })).toBe('samar');
   });
 
+  it('Nomor HP: placeholder 0819xxxx, label HP/telepon/WhatsApp, type/autocomplete tel = lazim (QA Bandar Lampung)', () => {
+    const hp = '{{PEMOHON.HP}}';
+    for (const e of [
+      { peran: 'teks' as const, nama: 'No. HP', petunjuk: '0819xxxxxxxx' },
+      { peran: 'teks' as const, nama: 'Nomor Telepon' },
+      { peran: 'teks' as const, nama: 'WhatsApp' },
+      { peran: 'teks' as const, nama: 'No. Seluler' },
+      // Label samar, tetapi placeholder berformat nomor seluler.
+      { peran: 'teks' as const, nama: 'Kontak', petunjuk: '0819xxxxxxxx' },
+      { peran: 'teks' as const, nama: '0819xxxxxxxx' },
+      { peran: 'angka' as const, nama: 'Nomor', petunjuk: '+62 812-3456-7890' }, // pii-scan:allow contoh format sintetis
+      // Label samar, tetapi atribut terstruktur kolom (type=tel / autocomplete=tel / name=no_hp).
+      { peran: 'teks' as const, nama: 'Kontak', isyarat: 'tel' as const },
+    ])
+      expect(kelaziman(hp, e), JSON.stringify(e)).toBe('lazim');
+    const v = validasiRencana(rencana({ jenis: 'isi', ref: 'e20', nilai: hp }), {
+      ...halamanForm(),
+      elemen: [
+        ...halamanForm().elemen,
+        { ref: 'e20', peran: 'teks', nama: 'Nomor Kontak', petunjuk: '0819xxxxxxxx' },
+      ],
+    });
+    expect(v.ok && v.kolom).toEqual([{ placeholder: hp, labelPortal: 'Nomor Kontak' }]);
+  });
+
+  it('peringatan tetap muncul bila memang meragukan', () => {
+    const hp = '{{PEMOHON.HP}}';
+    // Nomor HP ke kolom "Nama Ibu" (name=nama_ibu): samar, baris ditandai tidakLazim.
+    expect(kelaziman(hp, { peran: 'teks', nama: 'Nama Ibu', isyarat: 'nama' })).toBe('samar');
+    expect(kelaziman(hp, { peran: 'teks', nama: 'Nama Ibu' })).toBe('samar');
+    // Isyarat jenis lain tidak membuat HP lazim; angka acak bukan contoh nomor seluler.
+    expect(kelaziman(hp, { peran: 'teks', nama: 'Kontak', isyarat: 'email' })).toBe('samar');
+    expect(kelaziman(hp, { peran: 'teks', nama: 'Nomor Rekening', petunjuk: '1234567890' })).toBe('samar');
+    // Email: contoh format / isyarat.
+    expect(
+      kelaziman('{{PEMOHON.EMAIL}}', { peran: 'teks', nama: 'Kontak', petunjuk: 'nama@contoh.com' }), // pii-scan:allow contoh sintetis
+    ).toBe('lazim');
+    // Data sensitif tidak pernah lazim lewat isyarat atau contoh format.
+    expect(kelaziman('{{PEMOHON.NIK}}', { peran: 'teks', nama: 'Kontak', isyarat: 'tel' })).toBe('asing');
+    const v = validasiRencana(rencana({ jenis: 'isi', ref: 'e20', nilai: hp }), {
+      ...halamanForm(),
+      elemen: [...halamanForm().elemen, { ref: 'e20', peran: 'teks', nama: 'Nama Ibu', isyarat: 'nama' }],
+    });
+    expect(v.ok && v.kolom).toEqual([{ placeholder: hp, labelPortal: 'Nama Ibu', tidakLazim: true }]);
+  });
+
   it('homoglif pada label NIK tidak pernah dianggap lazim (default tolak)', () => {
     const e = { peran: 'teks' as const, nama: 'NІK' /* І Kiril */ };
     expect(kelaziman('{{PEMOHON.NIK}}', e)).toBe('asing');
@@ -217,7 +266,7 @@ describe('validator rencana: rencana sah', () => {
   });
 });
 
-describe('tautan pembuka (kirim karena nama saja): serah ketuk_tautan, bukan klik AI', () => {
+describe('tautan pembuka (kirim karena nama saja): AI membukanya lewat navigasi GET worker', () => {
   const beranda = (over: Partial<Pengamatan> = {}): Pengamatan => ({
     ...halamanForm(),
     elemen: [
@@ -228,15 +277,13 @@ describe('tautan pembuka (kirim karena nama saja): serah ketuk_tautan, bukan kli
     ...over,
   });
 
-  it('klik terakhir ke tautan pembuka diganti serahkan ketuk_tautan; hash mengikat rencana pengganti', () => {
+  it('QA gel6: klik ke tautan pembuka diterima apa adanya (bukan giliran warga "Buka"); hash = rencana itu', () => {
     const p = beranda();
     const v = validasiRencana(rencana({ jenis: 'klik', ref: 'e1' }), p);
-    expect(v).toMatchObject({
-      ok: true,
-      rencana: { aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e1' }] },
-    });
-    const pengganti = { aksi: [{ jenis: 'serahkan', alasan: 'ketuk_tautan', ref: 'e1' }] };
-    expect(v.rencanaHash).toBe(hashRencana({ ...pengganti, host: p.host, sidik: p.sidik, seq: p.seq }));
+    expect(v).toMatchObject({ ok: true, rencana: { aksi: [{ jenis: 'klik', ref: 'e1' }] } });
+    expect(v.rencanaHash).toBe(
+      hashRencana({ aksi: [{ jenis: 'klik', ref: 'e1' }], host: p.host, sidik: p.sidik, seq: p.seq }),
+    );
   });
 
   it('tanpa penanda, bukan tautan, atau di halaman akhir: tetap ditolak sebagai klik kirim', () => {
@@ -300,6 +347,74 @@ describe('tautan pembuka (kirim karena nama saja): serah ketuk_tautan, bukan kli
   });
 });
 
+describe('pembukaPengajuan: CTA mulai/daftar layanan didahulukan di atas tautan informasi', () => {
+  // Cermin amatan probe 9171 (PaceMace Kota Jayapura, gel5-prod): beranda tanpa formulir.
+  const paceMace = (over: Partial<Pengamatan> = {}): Pengamatan => ({
+    ...halamanForm(),
+    jalur: '/pacemace/',
+    judul: 'PaceMace - Kota Jayapura',
+    elemen: [
+      { ref: 'e1', peran: 'tautan', nama: 'PaceMace', kelas: 'navigasi' },
+      { ref: 'e2', peran: 'tombol', nama: 'Toggle navigation', kelas: 'ui_lokal' },
+      { ref: 'e6', peran: 'tautan', nama: 'Persyaratan & Formulir', kelas: 'navigasi' },
+      { ref: 'e8', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', tautanPembuka: true },
+      { ref: 'e10', peran: 'tautan', nama: 'Cek Status KTP-el', kelas: 'navigasi' },
+      { ref: 'e12', peran: 'tautan', nama: 'Pojok Dukcapil', kelas: 'navigasi' },
+    ],
+    ...over,
+  });
+
+  it('beranda PaceMace: "Mulai Pendaftaran" dipilih, bukan "Persyaratan & Formulir"', () => {
+    expect(pembukaPengajuan(paceMace())).toBe('e8');
+    // Menu ponsel + desktop memuat CTA yang sama dua kali: tetap satu CTA.
+    const ganda = paceMace({
+      elemen: [
+        ...paceMace().elemen,
+        { ref: 'e20', peran: 'tautan', nama: 'Mulai  pendaftaran', kelas: 'kirim', tautanPembuka: true },
+      ],
+    });
+    expect(pembukaPengajuan(ganda)).toBe('e8');
+    for (const nama of ['Ajukan Permohonan', 'Buat Permohonan Baru', 'Daftar Sekarang'])
+      expect(
+        pembukaPengajuan(
+          paceMace({
+            elemen: [{ ref: 'e3', peran: 'tautan', nama, kelas: 'kirim', tautanPembuka: true }],
+          }),
+        ),
+      ).toBe('e3');
+  });
+
+  it('tidak berlaku: halaman berformulir, halaman masuk/akhir/tantangan, CTA akun, atau dua CTA berbeda', () => {
+    expect(pembukaPengajuan(halamanForm())).toBeUndefined();
+    const s = paceMace().sinyal;
+    for (const k of ['login', 'halamanAkhir', 'tantangan', 'captcha', 'otp'] as const)
+      expect(pembukaPengajuan(paceMace({ sinyal: { ...s, [k]: true } }))).toBeUndefined();
+    const berkolom = paceMace({
+      elemen: [...paceMace().elemen, { ref: 'e30', peran: 'teks', nama: 'Nomor resi' }],
+    });
+    expect(pembukaPengajuan(berkolom)).toBeUndefined();
+    for (const nama of ['Daftar Akun', 'Registrasi', 'Masuk / Daftar'])
+      expect(
+        pembukaPengajuan(
+          paceMace({ elemen: [{ ref: 'e3', peran: 'tautan', nama, kelas: 'kirim', tautanPembuka: true }] }),
+        ),
+      ).toBeUndefined();
+    // Tanpa penanda tautanPembuka (tombol kirim biasa) tidak pernah dipilih.
+    expect(
+      pembukaPengajuan(
+        paceMace({ elemen: [{ ref: 'e3', peran: 'tombol', nama: 'Mulai Pendaftaran', kelas: 'kirim' }] }),
+      ),
+    ).toBeUndefined();
+    const dua = paceMace({
+      elemen: [
+        ...paceMace().elemen,
+        { ref: 'e9', peran: 'tautan', nama: 'Ajukan Akta Kematian', kelas: 'kirim', tautanPembuka: true },
+      ],
+    });
+    expect(pembukaPengajuan(dua)).toBeUndefined();
+  });
+});
+
 describe('skema ketat', () => {
   it('bisa dikirim sebagai json_schema strict', () => {
     const s = toStrictJsonSchema(RencanaKetatSchema);
@@ -330,5 +445,80 @@ describe('skema ketat', () => {
       }),
       { numRuns: 300 },
     );
+  });
+});
+
+describe('QA prod gel6: pintu akun dan petunjuk warga', () => {
+  const p = (elemen: Pengamatan['elemen'], sinyal: Partial<Pengamatan['sinyal']> = {}): Pengamatan => ({
+    ...halamanForm(),
+    sinyal: { ...halamanForm().sinyal, ...sinyal },
+    elemen,
+  });
+
+  it('pintuAkun: masuk yang boleh dibuka = buka; tombol masuk = serahkan; Masuk didahulukan atas Daftar', () => {
+    expect(
+      pintuAkun(
+        p([
+          { ref: 'e5', peran: 'tautan', nama: 'DAFTAR AKUN', kelas: 'kirim', tautanPembuka: true },
+          { ref: 'e4', peran: 'tautan', nama: 'LOGIN', kelas: 'navigasi' },
+        ]),
+      ),
+    ).toEqual({ jenis: 'buka', ref: 'e4' });
+    expect(pintuAkun(p([{ ref: 'e1', peran: 'tombol', nama: 'Masuk', kelas: 'masuk' }]))).toEqual({
+      jenis: 'serahkan',
+      ref: 'e1',
+    });
+  });
+
+  it('pintuAkun: bukan untuk halaman masuk, sesi aktif, formulir, CTA layanan tanpa daftar akun, nama campuran', () => {
+    const masuk = { ref: 'e1', peran: 'tautan' as const, nama: 'Masuk', kelas: 'navigasi' as const };
+    expect(pintuAkun(p([masuk], { login: true }))).toBeUndefined();
+    expect(
+      pintuAkun(p([masuk, { ref: 'e2', peran: 'tautan', nama: 'Logout', kelas: 'navigasi' }])),
+    ).toBeUndefined();
+    expect(pintuAkun(p([...halamanForm().elemen, masuk]))).toBeUndefined();
+    expect(
+      pintuAkun(
+        p([
+          masuk,
+          { ref: 'e8', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', tautanPembuka: true },
+        ]),
+      ),
+    ).toBeUndefined();
+    expect(
+      pintuAkun(
+        p([{ ref: 'e1', peran: 'tautan', nama: 'Masuk & Ajukan', kelas: 'kirim', tautanPembuka: true }]),
+      ),
+    ).toBeUndefined();
+    expect(
+      pintuAkun(p([{ ref: 'e1', peran: 'tautan', nama: 'Surat Masuk Dinas', kelas: 'navigasi' }])),
+    ).toBeUndefined();
+  });
+
+  it('klik tautan pembuka di halaman akhir tetap ditolak (kelas dan kunci akhir)', () => {
+    const akhir = p([{ ref: 'e1', peran: 'tautan', nama: 'Login', kelas: 'kirim', tautanPembuka: true }], {
+      halamanAkhir: true,
+    });
+    expect(tolak(rencana({ jenis: 'klik', ref: 'e1' }), akhir)).toEqual(
+      expect.arrayContaining(['KELAS_KLIK_DITOLAK', 'HALAMAN_AKHIR_TERKUNCI']),
+    );
+  });
+
+  it('petunjukWarga: akun lalu layanan lalu menu; tombol kirim tidak pernah disorot', () => {
+    expect(
+      petunjukWarga(
+        p([
+          { ref: 'e1', peran: 'tombol', nama: 'Kirim Pengajuan', kelas: 'kirim' },
+          { ref: 'e2', peran: 'tautan', nama: 'Lihat Layanan', kelas: 'navigasi' },
+          { ref: 'e3', peran: 'tombol', nama: 'Toggle menu', kelas: 'ui_lokal' },
+        ]),
+      ),
+    ).toBe('e2');
+    expect(petunjukWarga(p([{ ref: 'e3', peran: 'tombol', nama: 'Toggle menu', kelas: 'ui_lokal' }]))).toBe(
+      'e3',
+    );
+    expect(
+      petunjukWarga(p([{ ref: 'e1', peran: 'tombol', nama: 'Daftar', kelas: 'kirim' }])),
+    ).toBeUndefined();
   });
 });

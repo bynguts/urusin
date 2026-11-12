@@ -15,7 +15,7 @@ import type { RequestHandler } from './$types';
 /**
  * Callback OAuth Google. URL ini PERSIS `/auth/google/callback` di setiap host (dari DOMAIN runtime).
  * state query == cookie state → tukar code (PKCE) → verifikasi ID token (nonce) → sesi baru → tujuan aman.
- * Email sama dengan akun TERVERIFIKASI yang belum tertaut → tidak ditautkan otomatis: tiket di cookie
+ * Email sama dengan akun yang sudah ada (ADR 0032) → tidak ditautkan otomatis: tiket di cookie
  * __Host-urusin_tautkan dan warga diminta masuk dengan sandi dulu. Gagal → /masuk?galat=<kode>.
  */
 export const GET: RequestHandler = async (event) => {

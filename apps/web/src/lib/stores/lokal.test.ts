@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LokalStore, bersihkanLokal, namaPendek } from './lokal.svelte.js';
+import { LokalStore, bersihkanLokal, kueWilayah, namaPendek } from './lokal.svelte.js';
 
 const ID = `u_${'a'.repeat(32)}`;
 const ID2 = `u_${'b'.repeat(32)}`;
@@ -81,6 +81,33 @@ describe('LokalStore', () => {
     expect(s.data.urusan).toEqual([]);
     expect(s.data.kontrasTinggi).toBe(false);
     expect(s.pesanWarga(ID)).toEqual([]);
+  });
+
+  it('wilayah perangkat ikut ke cookie (server memakainya di landing tanpa JS); dihapus saat dihapus', () => {
+    const tulis: (string | null)[] = [];
+    const g = gudang();
+    const s = new LokalStore(g, (k) => void tulis.push(k));
+    expect(tulis).toEqual([]); // tanpa pilihan, cookie yang mungkin ada tidak dihapus diam-diam
+    s.aturWilayah({ kodeKabKota: '3404', nama: 'Kab. Sleman' });
+    s.aturWilayah(null);
+    s.aturWilayah({ kodeKabKota: '3374', nama: 'Kota Semarang' });
+    s.hapusSemua();
+    expect(tulis).toEqual(['3404', null, '3374', null]);
+    // Pilihan lama di localStorage (sebelum ada cookie) disinkronkan saat store dibuat.
+    const g2 = gudang();
+    new LokalStore(g2, () => {}).aturWilayah({ kodeKabKota: '3404', nama: 'Kab. Sleman' });
+    const sinkron: (string | null)[] = [];
+    new LokalStore(g2, (k) => void sinkron.push(k));
+    expect(sinkron).toEqual(['3404']);
+  });
+
+  it('baris cookie wilayah: kode 4 digit saja, SameSite=Lax, Secure di https; selain itu hapus', () => {
+    expect(kueWilayah('3404', true)).toBe(
+      'urusin_wilayah=3404; Path=/; Max-Age=31536000; SameSite=Lax; Secure',
+    );
+    expect(kueWilayah('3404', false)).toBe('urusin_wilayah=3404; Path=/; Max-Age=31536000; SameSite=Lax');
+    expect(kueWilayah(null, false)).toBe('urusin_wilayah=; Path=/; Max-Age=0; SameSite=Lax');
+    expect(kueWilayah('34;x', false)).toBe('urusin_wilayah=; Path=/; Max-Age=0; SameSite=Lax');
   });
 
   it('tetap jalan saat penyimpanan rusak atau diblokir', () => {

@@ -8,6 +8,7 @@ import {
   type ChatProvider,
   type RequestOptions,
 } from '@urusin/llm';
+import { blokPetunjukPortal } from './petunjuk.js';
 import {
   KATALOG_BERKAS,
   KATALOG_PLACEHOLDER,
@@ -40,6 +41,8 @@ export type MasukanPrompt = {
   /** Id aturan validator dari rencana sebelumnya di halaman yang sama (umpan balik, bukan teks bebas). */
   umpanBalik?: readonly IdAturan[];
   nonce?: string;
+  /** Petunjuk peta portal TEPERCAYA dari registry (ADR 0034), masuk pesan sistem; lihat `blokPetunjukPortal`. */
+  petunjukPortal?: string | undefined;
 };
 
 export const NAMA_SKEMA = 'rencana_halaman';
@@ -63,6 +66,7 @@ function aturanSistem(tujuan: string): string {
     '- Unggah: pakai nama berkas dari KATALOG BERKAS.',
     '- Klik HANYA elemen dengan kelas navigasi, ui_lokal, atau lanjut. Paling banyak satu klik, dan harus aksi terakhir.',
     '- Tautan kelas tautan_warga membuka formulir layanan tetapi hanya boleh diketuk warga: bila formulir yang dituju ada di balik tautan itu, rencanakan klik ke ref itu sebagai aksi terakhir (sistem menyerahkannya ke warga).',
+    '- Tujuanmu MENGAJUKAN urusan: di halaman tanpa formulir, tautan pembuka pengajuan (mis. "Mulai Pendaftaran", "Ajukan Permohonan", "Buat Permohonan", "Daftar Layanan") didahulukan di atas tautan informasi (persyaratan, unduh formulir, panduan, alur, cek status, berita).',
     '- Jangan mengisi, mencentang, atau mengeklik elemen bertanda terlarang (sandi, otp, captcha, pernyataan).',
     '- Tombol kirim/simpan/ajukan/daftar dan halaman tinjauan atau pernyataan SELALU dikerjakan warga: akhiri dengan {"jenis":"serahkan","alasan":"final"}.',
     '- Halaman masuk akun, OTP, atau CAPTCHA: {"jenis":"serahkan","alasan":"masuk_akun"|"otp"|"captcha"}.',
@@ -95,6 +99,7 @@ export function pesanRencana(m: MasukanPrompt): ChatMessage[] {
     if (e.kelas) bagian.push(`kelas=${tautanWarga(e) ? 'tautan_warga' : e.kelas}`);
     if (e.terlarang) bagian.push(`terlarang=${e.terlarang}`);
     if (e.form) bagian.push(`form=${e.form}`);
+    if (e.isyarat) bagian.push(`isyarat=${e.isyarat}`);
     bagian.push(`nama=${data(e.nama, e.ref, 200)}`);
     if (e.petunjuk) bagian.push(`petunjuk=${data(e.petunjuk, e.ref, 200)}`);
     if (e.galat) bagian.push(`galat=${data(e.galat, e.ref, 200)}`);
@@ -121,8 +126,13 @@ export function pesanRencana(m: MasukanPrompt): ChatMessage[] {
       ? [`UMPAN BALIK: rencana sebelumnya untuk halaman ini ditolak validator: ${m.umpanBalik.join(', ')}.`]
       : []),
   ].join('\n');
+  // Petunjuk tepercaya di pesan sistem; teks halaman tetap di pesan pengguna (terbungkus).
+  const petunjuk = blokPetunjukPortal(m.petunjukPortal);
   return [
-    { role: 'system', content: aturanSistem(m.tujuan) },
+    {
+      role: 'system',
+      content: petunjuk ? `${aturanSistem(m.tujuan)}\n\n${petunjuk}` : aturanSistem(m.tujuan),
+    },
     { role: 'user', content: user },
   ];
 }

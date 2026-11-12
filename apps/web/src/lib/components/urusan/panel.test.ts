@@ -2,6 +2,8 @@ import { render } from 'svelte/server';
 import { describe, expect, it } from 'vitest';
 import type { EventOf } from '#lib/contracts.js';
 import { LANGKAH_RENCANA, langkahKini, langkahPanel } from '#lib/urusan-status.js';
+import { peristiwaDariJenis } from '#lib/peristiwa.js';
+import Lencana from './Lencana.svelte';
 import PanelKonteks from './PanelKonteks.svelte';
 
 const langkah = (jenis: 'online-manual' | 'offline' | 'cek-kanal', judul: string) => ({
@@ -99,5 +101,60 @@ describe('panel Rencana mengikuti rencana dan tier', () => {
     const body = panel({ state: 'MEMAHAMI', jenis: 'pengaduan' });
     expect(body).not.toContain('Masuk akun di situs resmi');
     expect(body).toContain('Langkah muncul di sini setelah Urusin menyusun rencana.');
+  });
+});
+
+describe('tab Dokumen', () => {
+  const rencanaDok = {
+    ...cekBansos,
+    langkah: [
+      {
+        ...langkah('online-manual', 'Ajukan akta'),
+        dokumen: ['KTP orang tua', 'Kartu Keluarga'],
+        bawa: ['x'],
+      },
+      { ...langkah('offline', 'Ambil akta'), dokumen: ['Kartu Keluarga'], bawa: [] },
+      { ...langkah('offline', 'Tanpa dokumen'), bawa: ['Surat keterangan lahir'] },
+    ],
+  } as unknown as EventOf<'plan_card'>;
+
+  it('rencana disetujui tanpa checklist: daftar dokumen unik dari rencana, chip netral', () => {
+    const body = panel({ state: 'RENCANA_DISETUJUI', rencana: rencanaDok, tab: 'dokumen' });
+    expect(body).not.toContain('Daftar dokumen muncul setelah rencana disetujui');
+    expect(body).toContain('Dokumen untuk urusan ini');
+    expect(body).toContain('3 dokumen');
+    for (const d of ['KTP orang tua', 'Kartu Keluarga', 'Surat keterangan lahir']) expect(body).toContain(d);
+    expect(body.match(/Kartu Keluarga/g) ?? []).toHaveLength(1);
+    expect(body).toContain('Siapkan');
+    // Status berkas tidak diketahui: tidak boleh mengklaim "Siap".
+    expect(body).not.toMatch(/>Siap</);
+  });
+
+  it('checklist tetap menang bila ada; tanpa rencana dan rencana tanpa dokumen punya pesan yang tepat', () => {
+    const checklist = {
+      type: 'checklist',
+      item: [{ id: 'k', label: 'KTP', status: 'ok' }],
+    } as unknown as EventOf<'checklist'>;
+    const pakaiCl = panel({ state: 'MENYIAPKAN_BERKAS', rencana: rencanaDok, checklist, tab: 'dokumen' });
+    expect(pakaiCl).toContain('1 / 1 siap');
+    expect(pakaiCl).not.toContain('Siapkan');
+    expect(panel({ state: 'MEMAHAMI', tab: 'dokumen' })).toContain(
+      'Daftar dokumen muncul setelah Urusin menyusun rencana.',
+    );
+    expect(panel({ state: 'RENCANA_DISETUJUI', rencana: cekBansos, tab: 'dokumen' })).toContain(
+      'Rencana ini tidak meminta dokumen khusus.',
+    );
+  });
+});
+
+describe('Lencana header', () => {
+  const lencana = (jenis: string | null) =>
+    render(Lencana, { props: { peristiwa: peristiwaDariJenis(jenis) } }).body;
+  it('akta kelahiran dan pindah tidak lagi "KTP & dokumen"', () => {
+    expect(lencana('kelahiran')).toContain('Kelahiran');
+    expect(lencana('kelahiran')).not.toContain('KTP &amp; dokumen');
+    expect(lencana('pindah')).toContain('Pindah rumah');
+    expect(lencana('kk')).toContain('Kartu Keluarga');
+    expect(lencana(null)).toContain('KTP &amp; dokumen');
   });
 });

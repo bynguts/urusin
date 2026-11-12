@@ -324,3 +324,208 @@ export const PERISTIWA_BUNDEL: readonly Bundel[] = [
 export function findBundel(slug: string): Bundel | undefined {
   return PERISTIWA_BUNDEL.find((b) => b.slug === slug);
 }
+
+/**
+ * Bundel layanan adminduk umum (bukan Peristiwa Hidup): jenis urusan `ktp`, `kk`, `kia`, `akta`. Rencananya disusun
+ * `rencanaLayanan` (persyaratan nasional) atau model; bundel ini memberi Browser Pendamping tujuan layanan di
+ * portal web Disdukcapil wilayah mana pun (Navigator generik), sama seperti bundel Peristiwa Hidup.
+ */
+export const BundelLayananSchema = z.object({
+  slug: z.enum(['ktp', 'kk', 'kia', 'akta']),
+  judul: z.string().min(1),
+  /** Frasa sesudah "Ajukan" di kartu konfirmasi (singkatan tetap huruf besar). */
+  frasa: z.string().min(1),
+  keluaran: z.array(z.string().min(1)).min(1),
+  sourceRef: z.array(SourceRefSchema).min(1),
+});
+export type BundelLayanan = z.infer<typeof BundelLayananSchema>;
+
+export const LAYANAN_BUNDEL: readonly BundelLayanan[] = [
+  {
+    slug: 'ktp',
+    judul: 'KTP elektronik (KTP-el)',
+    frasa: 'penerbitan KTP-el',
+    keluaran: ['KTP-el'],
+    sourceRef: [REF_KTP, REF_PERPRES_TEKS],
+  },
+  {
+    slug: 'kk',
+    judul: 'Kartu Keluarga (KK)',
+    frasa: 'penerbitan Kartu Keluarga',
+    keluaran: ['Kartu Keluarga'],
+    sourceRef: [REF_KK, REF_PERPRES_TEKS],
+  },
+  {
+    slug: 'kia',
+    judul: 'Kartu Identitas Anak (KIA)',
+    frasa: 'penerbitan KIA',
+    keluaran: ['KIA'],
+    sourceRef: [REF_PMD7_2026],
+  },
+  {
+    slug: 'akta',
+    judul: 'Akta pencatatan sipil',
+    frasa: 'pencatatan akta',
+    keluaran: ['Kutipan akta'],
+    sourceRef: [REF_UU24, REF_PERPRES_TEKS],
+  },
+].map((b) => BundelLayananSchema.parse(b));
+
+/** Bundel yang bisa dikerjakan Browser Pendamping untuk jenis urusan ini: Peristiwa Hidup atau layanan adminduk. */
+export function bundelPendamping(jenis: string): { slug: string; judul: string; frasa: string } | undefined {
+  const p = findBundel(jenis);
+  if (p) return { slug: p.slug, judul: p.judul, frasa: p.judul.toLowerCase() };
+  const l = LAYANAN_BUNDEL.find((b) => b.slug === jenis);
+  return l ? { slug: l.slug, judul: l.judul, frasa: l.frasa } : undefined;
+}
+
+/**
+ * Varian layanan seperti yang ditawarkan portal Disdukcapil (mis. Telunjuk Sakti: KTP Baru, KTP Perubahan Data,
+ * KTP Hilang, KTP Rusak). Pemicu berupa frasa, bukan kata lepas: "baru pindah" bukan "KTP baru".
+ */
+export type VarianLayanan = { id: string; judul: string; kataKunci: RegExp };
+
+const RUSAK = /\b(rusak|retak|patah|pudar|terbelah|sobek|robek|luntur|tidak terbaca)\b/i;
+const HILANG = /\b(hilang|ilang|kehilangan|kecurian|dicuri|dicopet|raib)\b/i;
+const UBAH =
+  /\b(perubahan|ubah|mengubah|ganti\s+(data|nama|alamat|status|agama|pekerjaan)|salah\s+(data|nama|tulis|ketik)|perbaik\w*|pembetulan)\b/i;
+
+export const VARIAN_LAYANAN: Readonly<Record<string, readonly VarianLayanan[]>> = {
+  ktp: [
+    { id: 'rusak', judul: 'cetak ulang karena rusak', kataKunci: RUSAK },
+    { id: 'hilang', judul: 'cetak ulang karena hilang', kataKunci: HILANG },
+    { id: 'perubahan-data', judul: 'perubahan data', kataKunci: UBAH },
+    {
+      id: 'baru',
+      judul: 'KTP-el baru (pertama kali)',
+      kataKunci:
+        /\b(ktp(-?el)?\s+(baru|pertama)|(bikin|buat|membuat|rekam|merekam)\s+ktp(-?el)?\s+(baru|pertama)|pertama\s+kali|belum\s+punya|17\s+tahun|perekaman)\b/i,
+    },
+  ],
+  kk: [
+    { id: 'rusak', judul: 'cetak ulang karena rusak', kataKunci: RUSAK },
+    { id: 'hilang', judul: 'cetak ulang karena hilang', kataKunci: HILANG },
+    {
+      id: 'penambahan-anggota',
+      judul: 'penambahan anggota keluarga',
+      kataKunci: /\b(tambah\w*\s+(anggota|anak|istri|suami)|masuk\w*\s+(anak|istri|suami|bayi))\b/i,
+    },
+    {
+      id: 'pengurangan-anggota',
+      judul: 'pengurangan anggota keluarga',
+      kataKunci:
+        /\b(kurang\w*\s+anggota|hapus\w*\s+anggota|keluar\w*\s+dari\s+kk|anggota\s+(meninggal|pindah))\b/i,
+    },
+    { id: 'perubahan-data', judul: 'perubahan data', kataKunci: UBAH },
+    {
+      id: 'baru',
+      judul: 'KK baru',
+      kataKunci:
+        /\b((kk|kartu\s+keluarga)\s+baru|(bikin|buat|membuat)\s+(kk|kartu\s+keluarga)|pisah\s+kk|kk\s+sendiri|(habis|baru|sudah)\s+(menikah|nikah)|belum\s+punya)\b/i,
+    },
+  ],
+  kia: [
+    { id: 'rusak', judul: 'cetak ulang karena rusak', kataKunci: RUSAK },
+    { id: 'hilang', judul: 'cetak ulang karena hilang', kataKunci: HILANG },
+    { id: 'perubahan-data', judul: 'perubahan data', kataKunci: UBAH },
+    {
+      id: 'baru',
+      judul: 'KIA baru',
+      kataKunci: /\b(kia\s+(baru|pertama)|(bikin|buat|membuat)\s+kia|pertama\s+kali|belum\s+punya)\b/i,
+    },
+  ],
+  akta: [
+    { id: 'perceraian', judul: 'akta perceraian', kataKunci: /\b(cerai|perceraian)\b/i },
+    { id: 'perubahan-nama', judul: 'perubahan nama', kataKunci: /\b(ganti|ubah|perubahan)\s+nama\b/i },
+    {
+      id: 'pembetulan',
+      judul: 'pembetulan akta',
+      kataKunci: /\b(salah\s+(data|nama|tulis|ketik)|pembetulan|perbaik\w*|betulkan)\b/i,
+    },
+    {
+      id: 'hilang-rusak',
+      judul: 'kutipan kedua (akta hilang atau rusak)',
+      kataKunci: new RegExp(`${RUSAK.source}|${HILANG.source}`, 'i'),
+    },
+    {
+      id: 'anak',
+      judul: 'pengakuan, pengesahan, atau pengangkatan anak',
+      kataKunci: /\b(pengakuan|pengesahan|pengangkatan|adopsi|angkat)\s+anak\b/i,
+    },
+  ],
+  pindah: [
+    {
+      id: 'datang',
+      judul: 'pindah datang (lapor datang/SKDWNI)',
+      kataKunci: /\b(pindah\s+datang|lapor\s+datang|skdwni|baru\s+datang|pindahan\s+ke\s+sini)\b/i,
+    },
+    {
+      id: 'keluar',
+      judul: 'pindah keluar (SKPWNI)',
+      kataKunci: /\b(pindah\s+keluar|skpwni|surat\s+(keterangan\s+)?pindah|mau\s+pindah|akan\s+pindah)\b/i,
+    },
+  ],
+};
+
+/** Penyangkal tepat sebelum pemicu: "tidak rusak", "bukan hilang", "belum pernah rusak". */
+const SANGKAL = /^(tidak|tak|bukan|belum|nggak|ngga|enggak|gak|ga)$/i;
+
+/** Pemicu cocok setidaknya sekali tanpa penyangkal di dua kata sebelumnya. */
+function disebut(re: RegExp, teks: string): boolean {
+  for (const m of teks.matchAll(new RegExp(re.source, `${re.flags.replace('g', '')}g`))) {
+    const sebelum = teks
+      .slice(0, m.index)
+      .split(/[^\p{L}\p{N}-]+/u)
+      .filter(Boolean)
+      .slice(-2);
+    if (!sebelum.some((k) => SANGKAL.test(k))) return true;
+  }
+  return false;
+}
+
+/** Varian yang disebut di pesan TERBARU yang menyebut varian mana pun (kosong = belum disebut). */
+function varianCocok(slug: string, pesanWarga: readonly string[]): readonly VarianLayanan[] {
+  const varian = VARIAN_LAYANAN[slug] ?? [];
+  let cocok: readonly VarianLayanan[] = [];
+  for (let i = pesanWarga.length - 1; i >= 0 && cocok.length === 0; i--)
+    cocok = varian.filter((v) => disebut(v.kataKunci, pesanWarga[i] ?? ''));
+  return cocok;
+}
+
+/**
+ * Id varian layanan (`VARIAN_LAYANAN`) yang disebut warga untuk jenis urusan ini, hanya bila tepat SATU (pesan
+ * terbaru yang menyebut varian menentukan). Belum disebut atau lebih dari satu = undefined (tidak menebak).
+ */
+export function varianDisebut(
+  jenis: string | null | undefined,
+  pesanWarga: readonly string[] = [],
+): string | undefined {
+  const b = jenis ? bundelPendamping(jenis) : undefined;
+  if (!b) return undefined;
+  const cocok = varianCocok(b.slug, pesanWarga);
+  return cocok.length === 1 ? cocok[0]!.id : undefined;
+}
+
+const SERAHKAN = 'bila portal meminta konfirmasi jenis layanan, serahkan ke warga';
+
+/**
+ * Tujuan Navigator untuk urusan ini: judul bundel dan varian yang disebut warga (dicocokkan dari pesan warga
+ * dengan kata kunci; teks warga sendiri TIDAK ikut ke prompt). Pesan TERBARU yang menyebut varian menentukan.
+ * Varian belum jelas atau lebih dari satu: kandidatnya disebut supaya Navigator menyerahkan pilihan ke warga,
+ * bukan menebak. Konfirmasi jenis layanan di portal selalu diserahkan ke warga.
+ */
+export function tujuanPendamping(
+  jenis: string | null | undefined,
+  pesanWarga: readonly string[] = [],
+): string {
+  const b = jenis ? bundelPendamping(jenis) : undefined;
+  if (!b) return `Layanan kependudukan; ${SERAHKAN}`;
+  const varian = VARIAN_LAYANAN[b.slug] ?? [];
+  if (varian.length === 0) return `${b.judul}; ${SERAHKAN}`;
+  const cocok = varianCocok(b.slug, pesanWarga);
+  if (cocok.length === 1) return `${b.judul}: ${cocok[0]!.judul}; ${SERAHKAN}`;
+  const daftar = (cocok.length > 1 ? cocok : varian).map((x) => x.judul).join('; ');
+  const ket =
+    cocok.length > 1 ? 'warga menyebut lebih dari satu jenis layanan' : 'jenis layanan belum disebut warga';
+  return `${b.judul} (${ket}: ${daftar}; bila portal meminta memilih, serahkan ke warga); ${SERAHKAN}`;
+}
