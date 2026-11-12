@@ -239,6 +239,8 @@ export function putuskan(
   sekarang: number = Date.now(),
   /** Dokumen kotor (N2) atau halaman akhir: GET bingkai utama di luar navKe (redirect halaman) diblokir. */
   ketat = false,
+  /** Demo "lihat saja": GET non-dokumen (XHR/fetch) ber-jalur tulis saat klik AI juga diblokir. */
+  lihatSaja = false,
 ): Putusan {
   // Dokumen dari host aset (CDN/fon, aset pemda) tidak pernah lolos, di jendela mana pun termasuk warga.
   if (r.dokumen && hostAset(r.url)) return 'blokir';
@@ -266,7 +268,7 @@ export function putuskan(
       return r.xhr && sekarang <= j.sampai ? 'lanjut' : 'blokir';
     case 'ai_klik': {
       if (!aman) return 'blokir';
-      if (!r.dokumen) return 'lanjut';
+      if (!r.dokumen) return lihatSaja && jalurTulis(r.url) ? 'blokir' : 'lanjut';
       const navKe = j.navKe;
       if (navKe === undefined) return 'blokir';
       if (!r.utama) return 'lanjut';
@@ -332,7 +334,8 @@ export function createGerbangTulis(opts: {
   ketat?: () => boolean;
   /**
    * Demo "lihat saja" di situs asli: AI tidak pernah mendapat jendela `ai_isi` (XHR non-GET); jendela AI paling
-   * longgar = `ai_klik` (GET saja). Tulis hanya lewat input warga sendiri (jendela `warga`).
+   * longgar = `ai_klik` (GET saja, dan GET non-dokumen ber-jalur tulis juga diblokir). Tulis hanya lewat input
+   * warga sendiri (jendela `warga`).
    */
   lihatSaja?: boolean;
   now?: () => number;
@@ -352,7 +355,7 @@ export function createGerbangTulis(opts: {
     },
     periksa(r) {
       const j = jendela();
-      const p = putuskan(j, r, now(), opts.ketat?.() === true);
+      const p = putuskan(j, r, now(), opts.ketat?.() === true, opts.lihatSaja === true);
       if (p === 'blokir' && j.jenis !== 'warga') opts.onBlokir(catatanBlokir(j, r), j);
       if (p === 'lanjut' && j.jenis === 'warga' && !AMAN.has(r.metode.toUpperCase())) opts.onTulisWarga?.();
       return p;

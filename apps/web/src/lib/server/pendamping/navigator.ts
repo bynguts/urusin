@@ -273,6 +273,9 @@ export async function jalankanNavigatorUrusan(
     });
   const tangan = deps.tangan ?? tanganWorker(deps.cfg, m.owner, deps.fetcher, m.executionId);
   tandaiPernahJalan(kunciLoop(m));
+  // Ganti mode (demo: situs asli <-> simulasi) = sesi peramban baru: kembali ke mode sebelumnya memulai loop
+  // navigasi baru, bukan langsung menyerahkan ke warga seperti loop yang hilang.
+  pernahJalan.delete(kunciLoop({ executionId: m.executionId, modeUji: !m.modeUji }));
   let hasil: HasilNavigator | undefined;
   const pesanWarga = rt.store
     .loadHistory(id)

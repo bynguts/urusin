@@ -295,6 +295,23 @@ describe('GenerikRun: gerbang demo "lihat saja" di situs asli', () => {
     ).toBe('lanjut');
   });
 
+  it('klik AI demo: GET XHR/fetch ber-jalur tulis diblokir; GET biasa lolos; akun biasa tidak berubah', () => {
+    const xhr = (url: string) => ({ metode: 'GET', dokumen: false, utama: false, xhr: true, url });
+    const TULIS = 'https://portal.contoh.go.id/api/simpan-permohonan?kirim=1';
+    const g = createGerbangTulis({
+      wargaPegang: () => false,
+      onBlokir: () => {},
+      lihatSaja: true,
+      now: () => T0,
+    });
+    g.setAi({ jenis: 'ai_klik' });
+    expect(g.periksa(xhr(TULIS))).toBe('blokir');
+    expect(g.periksa(xhr('https://portal.contoh.go.id/api/menu'))).toBe('lanjut');
+    const biasa = createGerbangTulis({ wargaPegang: () => false, onBlokir: () => {}, now: () => T0 });
+    biasa.setAi({ jenis: 'ai_klik' });
+    expect(biasa.periksa(xhr(TULIS))).toBe('lanjut');
+  });
+
   it('serah akhir berhenti di sesi lihat saja memakai pesan demo yang jujur', async () => {
     const h = harness({ amati: beranda, peta: PETA_LS, lihatSaja: true });
     await h.run.amati();

@@ -1626,16 +1626,30 @@ describe('demo juri membuka situs resmi asli (mode lihat saja); replika hanya si
     expect(body.lihatSaja).toBeUndefined();
   });
 
-  it('demo di situs asli ikut rem portal asli (per IP): sesi kedua dari IP yang sama ditolak 429', async () => {
-    runtimeAkun({ pendampingPerJamIp: 1 });
+  it('demo di situs asli: juri satu venue (satu IP) masing-masing bisa demo; plafon IP demo + batas per akun', async () => {
+    runtimeAkun({ pendampingPerJamIp: 1, pendampingDemoPerJamIp: 3, pendampingPerJamAkun: 1 });
     reply = pantul({ status: 'selesai' });
-    const u1 = urusanDenganEksekusi();
-    const u2 = urusanDenganEksekusi();
-    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, juriDengan(u1)), u1.id))).status).toBe(201);
-    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, juriDengan(u2)), u2.id))).status).toBe(429);
+    const u = [1, 2, 3, 4].map(() => urusanDenganEksekusi());
+    const cookie = u.map((x) => juriDengan(x));
+    // Tiga juri berbeda dari IP yang sama: tidak terhalang plafon IP warga (1/jam).
+    for (const i of [0, 1, 2])
+      expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, cookie[i]), u[i]!.id))).status).toBe(201);
+    // Plafon IP demo tetap ada (rem banjir).
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, cookie[3]), u[3]!.id))).status).toBe(429);
+    // Batas per akun tetap (1/jam): salinan demo yang sama, urusan kedua dari IP lain = 429.
+    const { token, akun } = rt.akun.buatDemo({ ip: '127.0.0.1', userAgent: null });
+    const [a1, a2] = [urusanDenganEksekusi(), urusanDenganEksekusi()];
+    for (const x of [a1, a2]) rt.akun.catatPemilikUrusan(x.id, { akun });
+    const sendiri = `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${token}`;
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, sendiri), a1.id, '10.8.8.8'))).status).toBe(
+      201,
+    );
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, sendiri), a2.id, '10.8.8.8'))).status).toBe(
+      429,
+    );
     // Simulasi (replika) tidak kena rem portal asli.
     expect(
-      (await mulai(evIp(req('POST', { executionId: 'x_1', simulasi: true }, juriDengan(u2)), u2.id))).status,
+      (await mulai(evIp(req('POST', { executionId: 'x_1', simulasi: true }, cookie[3]), u[3]!.id))).status,
     ).toBe(201);
   });
 });

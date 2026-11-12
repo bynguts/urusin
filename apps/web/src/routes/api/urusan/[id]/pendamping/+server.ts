@@ -77,6 +77,7 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
         urusanId: a.u.id,
         executionId: offered.data.executionId,
         ip,
+        ...(lihatSaja ? { demo: true } : {}),
       });
       if (ditolak) return ditolak;
     }

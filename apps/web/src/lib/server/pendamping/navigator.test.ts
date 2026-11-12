@@ -346,6 +346,15 @@ describe('broker Navigator web', () => {
       await pulihkanNavigator(rt, { urusan: u, executionId: 'x_simulasi', owner, modeUji: true }, deps),
     ).toBe(true);
     expect(navigatorBerjalan(u.id)).toBe('x_simulasi');
+    // Kembali ke situs asli sesudah simulasi (sesi baru): loop navigasi lihat saja BARU, bukan langsung serah.
+    const lagi = workerPalsu('telunjuksakti.wonogirikab.go.id');
+    expect(
+      await pulihkanNavigator(
+        rt,
+        { urusan: u, executionId: 'x_simulasi', owner, modeUji: false, lihatSaja: true },
+        { cfg: CFG, fetcher: lagi.fetcher, llm: llmFinal() },
+      ),
+    ).toBe(true);
     hentikanNavigator(u.id);
   });
 
