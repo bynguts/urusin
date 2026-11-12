@@ -97,29 +97,23 @@ describe('Browser Pendamping', () => {
       hp: '0800',
     });
     expect(r.isian).toEqual({ '{{PEMOHON.NAMA}}': 'Warga Contoh', '{{PEMOHON.HP}}': '0800' });
-    expect(r.kurang).toEqual(['Data lain', 'Data lain']);
+    expect(r.kurang).toEqual(['Tempat lahir anak', 'Data lain']);
     expect(labelPlaceholder('{{PEMOHON.NIK}}')).toBe('NIK');
     expect(labelPlaceholder('{{KENDARAAN.NOPOL_ANGKA}}')).toBe('Angka nomor polisi');
     expect(labelPlaceholder('{{URUSAN.KITIR}}')).toBe('Nomor kitir');
     expect(labelPlaceholder('{{X.CONSTRUCTOR}}')).toBe('Data lain');
   });
 
-  it('daftar write "Izinkan isi": placeholder Data Diri + berkas:<JENIS>; non-Data Diri tidak ikut', () => {
+  it('daftar write "Izinkan isi": placeholder Data Diri/keluarga + berkas:<JENIS>; lainnya tidak ikut', () => {
     const f = daftarWrite(
       ['{{PEMOHON.NIK}}', '{{ANAK.NIK}}', '{{PEMOHON.HP}}', '{{URUSAN.KITIR}}', '{{PEMOHON.NIK}}'],
       ['ktp'],
     );
-    expect(f).toEqual(['{{PEMOHON.NIK}}', '{{PEMOHON.HP}}', 'berkas:KTP']);
+    expect(f).toEqual(['{{PEMOHON.NIK}}', '{{ANAK.NIK}}', '{{PEMOHON.HP}}', 'berkas:KTP']);
     expect(daftarWrite(['{{KENDARAAN.NOPOL_ANGKA}}'], [])).toEqual([]);
     expect(kolomDari('{{PEMOHON.HP}}')).toBe('hp');
     expect(kolomDari('{{URUSAN.KITIR}}')).toBeUndefined();
-    for (const p of [
-      '{{ANAK.NIK}}',
-      '{{ORANG2.NIK}}',
-      '{{PEMOHON.AYAH.NAMA}}',
-      '{{PEMOHON.ALAMAT.RT}}',
-      '{{XPEMOHON.NIK}}',
-    ])
+    for (const p of ['{{ORANG2.NIK}}', '{{ANAK.AYAH.NAMA}}', '{{PEMOHON.ALAMAT.RT}}', '{{XPEMOHON.NIK}}'])
       expect(kolomDari(p)).toBeUndefined();
   });
 

@@ -57,6 +57,7 @@ export function penyimpanIngatan(akun: () => AkunService): PenyimpanIngatan {
         .vault.listDocuments(pemilik)
         .map((d) => d.jenis),
     urusanMilik: (pemilik) => akun().urusanPemilikVault(pemilik),
+    ketersediaanData: (pemilik) => akun().vault.ringkasanData(pemilik),
   };
 }
 

@@ -79,8 +79,8 @@ describe('validator rencana: suite penolakan (setiap penolakan punya id aturan)'
       'PLACEHOLDER_TIDAK_DIKENAL',
     ],
     [
-      'placeholder orang lain',
-      rencana({ jenis: 'isi', ref: 'e2', nilai: '{{ANAK.NAMA}}' }),
+      'placeholder orang di luar brankas',
+      rencana({ jenis: 'isi', ref: 'e2', nilai: '{{ORANG2.NAMA}}' }),
       'PLACEHOLDER_TIDAK_DIKENAL',
     ],
     [
