@@ -455,8 +455,33 @@ export function createPendampingViewer(
       e.preventDefault?.();
     }
   };
+  // Keyboard ponsel berkomposisi (Gboard dkk. menggarisbawahi kata yang sedang diketik): isi kotak = teks
+  // komposisi. Selisihnya dikirim seketika (hapus + ketik), jadi huruf tampil di situs saat diketik, bukan baru
+  // saat kata di-commit (sebelumnya sandi tanpa spasi tidak pernah sampai sebelum warga mengetuk Masuk).
+  let komposisi = '';
+  const kirimSelisih = (baru: string) => {
+    if (mode !== 'takeover') return;
+    let p = 0;
+    while (p < komposisi.length && p < baru.length && komposisi[p] === baru[p]) p++;
+    for (let i = p; i < komposisi.length; i++) {
+      kirimInput({ type: 'key', aksi: 'down', key: 'Backspace', code: 'Backspace' });
+      kirimInput({ type: 'key', aksi: 'up', key: 'Backspace', code: 'Backspace' });
+    }
+    if (baru.length > p) kirimInput({ type: 'text', teks: baru.slice(p, p + 500) });
+    komposisi = baru;
+  };
+  const onCompositionStart = () => {
+    komposisi = '';
+    if (inputTeks) inputTeks.value = '';
+  };
+  const onInput = (e: Event) => {
+    const ie = e as InputEvent;
+    if (inputTeks && (ie.isComposing || ie.inputType === 'insertCompositionText'))
+      kirimSelisih(inputTeks.value);
+  };
   const onCompositionEnd = (e: CompositionEvent) => {
-    if (e.data) kirimInput({ type: 'text', teks: e.data.slice(0, 500) });
+    kirimSelisih(e.data ?? '');
+    komposisi = '';
     if (inputTeks) inputTeks.value = '';
   };
 
@@ -474,6 +499,8 @@ export function createPendampingViewer(
     aturInputTeks(inputTeks);
     pasang.push(
       [inputTeks, 'beforeinput', onBeforeInput as EventListener],
+      [inputTeks, 'compositionstart', onCompositionStart as EventListener],
+      [inputTeks, 'input', onInput as EventListener],
       [inputTeks, 'compositionend', onCompositionEnd as EventListener],
       [inputTeks, 'keydown', onKey('down') as EventListener],
       [inputTeks, 'keyup', onKey('up') as EventListener],

@@ -75,7 +75,7 @@
     situs: string;
     instansi?: string | undefined;
     canvas?: HTMLCanvasElement | null;
-    inputTeks?: HTMLTextAreaElement | null;
+    inputTeks?: HTMLInputElement | null;
     onambilalih: () => void;
     onkembalikan: () => void;
     /** Giliran ketuk_tautan: buka tautan pembuka yang disorot lewat worker (bukan ketukan di halaman). */
@@ -325,14 +325,18 @@
         tabindex={takeover ? 0 : -1}
       ></canvas>
     </div>
-    <textarea
+    <!-- input (bukan textarea): viewer mengubahnya jadi type=password saat kolom sandi situs fokus, supaya
+         keyboard ponsel tidak menyarankan/mempelajari sandi warga. -->
+    <input
       bind:this={inputTeks}
+      type="text"
       aria-label="Ketik di situs resmi"
       autocomplete="off"
       autocapitalize="off"
       spellcheck="false"
       class="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0"
-      tabindex="-1"></textarea>
+      tabindex="-1"
+    />
 
     {#if k === 'menyiapkan' || k === 'mati'}
       <!-- 02 Menyiapkan browser: kerangka, bukan spinner kosong -->
