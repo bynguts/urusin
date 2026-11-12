@@ -121,6 +121,48 @@ services:
         max-size: 10m
         max-file: '3'
 
+  # Opsional: sidecar embedding self-hosted (llama.cpp llama-server, model dibakar ke image dan dipin sha256;
+  # apps/embedding/Dockerfile, hasil bake-off di packages/embedding/eval/HASIL.md). Aktifkan dengan
+  # `COMPOSE_PROFILES=embedding`, EMBEDDING_IMAGE@digest, dan di .env web:
+  #   URUSIN_EMBED_URL=http://127.0.0.1:4340   (jalur cepat intent; diizinkan egress sebagai origin internal)
+  #   URUSIN_EMBED_NAVIGATOR=1                 (opsional: peringkat tautan sebagai sinyal prompt Navigator)
+  # FAIL-OPEN: layanan ini mati/lambat (> 300 ms) = web kembali ke kata kunci + LLM tanpa galat untuk warga.
+  # Jaringan: bridge sendiri, port HANYA 127.0.0.1:4340 (web di jaringan host menjangkaunya lewat loopback);
+  # tidak ada port publik. Tanpa kapabilitas, root fs read-only, user nobody. Anggaran memori <= 1,5 GB.
+  embedding:
+    profiles: [embedding]
+    image: ${EMBEDDING_IMAGE:-ghcr.io/bynguts/urusin-embedding:unset}
+    restart: unless-stopped
+    networks: [embedding]
+    ports:
+      - '127.0.0.1:4340:8080'
+    init: true
+    user: '65534:65534'
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    mem_limit: ${EMBEDDING_MEM_LIMIT:-768m}
+    memswap_limit: ${EMBEDDING_MEM_LIMIT:-768m}
+    cpus: ${EMBEDDING_CPUS:-2.0}
+    cpu_shares: 512
+    pids_limit: 64
+    ulimits:
+      core: 0
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:8080/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
   # Opsional: Browser Pendamping (Chromium headed per sesi warga di Xvfb; docs/adr/0029-browser-pendamping.md).
   # Aktifkan dengan `COMPOSE_PROFILES=pendamping`, PENDAMPING_IMAGE@digest, dan di .env:
   #   PENDAMPING_INTERNAL_TOKEN=<acak >= 32 karakter>    (dipakai web DAN pendamping)
@@ -269,6 +311,10 @@ networks:
       com.docker.network.bridge.gateway_mode_ipv4: isolated
   # Sisi luar edge (port 127.0.0.1:4330 dan egress yang sudah diperiksa).
   pendamping_luar:
+    driver: bridge
+    enable_ipv6: false
+  # Sidecar embedding: bridge sendiri (tidak berbagi dengan pendamping), hanya untuk publish 127.0.0.1:4340.
+  embedding:
     driver: bridge
     enable_ipv6: false
 

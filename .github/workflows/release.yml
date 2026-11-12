@@ -1,6 +1,6 @@
 name: Release
 
-# Membangun image web + fixtures + pendamping multi-arch (amd64 + arm64).
+# Membangun image web + fixtures + pendamping + embedding multi-arch (amd64 + arm64).
 #   - push ke main : image bertag <sha> (VPS menarik berdasarkan digest, lihat deploy/deploy.sh).
 #   - tag rc* / v* : TIDAK membangun ulang. Image <sha> milik commit bertag di-alias (digest sama) menjadi <tag>,
 #     lalu GitHub Release dibuat dari SBOM hasil run main untuk SHA yang sama. Jadi yang diuji
@@ -48,6 +48,10 @@ jobs:
           - name: pendamping
             dockerfile: apps/pendamping/Dockerfile
             image: ghcr.io/bynguts/urusin-pendamping
+          # Sidecar embedding (llama.cpp + model dipin sha256, dikonversi di platform builder; tanpa QEMU).
+          - name: embedding
+            dockerfile: apps/embedding/Dockerfile
+            image: ghcr.io/bynguts/urusin-embedding
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -129,6 +133,13 @@ jobs:
                 # arm64 di QEMU: Chromium/userns tidak diemulasikan dengan andal; cukup modul termuat.
                 timeout 600 docker run --rm --platform "linux/${arch}" --network none --entrypoint node "$REF"                   -e "Promise.all([import('./dist/config.js'),import('./dist/edge.js'),import('playwright-core')]).then(()=>console.log(process.arch,'modul ok'))"
               fi
+            elif [ "$NAME" = "embedding" ]; then
+              # Boot dengan pengerasan compose (nobody, read-only, tanpa kapabilitas, tanpa jaringan), lalu uji
+              # semantik: kueri "akta kelahiran" harus lebih dekat ke label "Pencatatan Kelahiran" daripada
+              # "Pajak Kendaraan" (model terbakar, pooling dan tokenizer benar). arm64 di QEMU lambat: timeout longgar.
+              timeout 900 docker run --rm --platform "linux/${arch}" --network none --read-only --tmpfs /tmp:size=16m \
+                --user 65534:65534 --cap-drop ALL --security-opt no-new-privileges:true --entrypoint sh "$REF" -c \
+                '/app/llama-server & for i in $(seq 1 240); do curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && break; kill -0 $! || exit 1; sleep 2; done; /usr/local/bin/embed-smoke'
             else
               timeout 600 docker run --rm --platform "linux/${arch}" --entrypoint sh "$REF" -c                 'node dist/server.js & sleep 5; node -e "fetch(\"http://127.0.0.1:4000/health\").then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" && echo "fixtures ok"'
             fi
@@ -201,6 +212,8 @@ jobs:
               echo "deploy/deploy.sh ${GITHUB_SHA} ${IMAGE}@${DIGEST}"
             elif [ "$NAME" = "pendamping" ]; then
               echo "PENDAMPING_IMAGE=${IMAGE}@${DIGEST}"
+            elif [ "$NAME" = "embedding" ]; then
+              echo "EMBEDDING_IMAGE=${IMAGE}@${DIGEST}"
             else
               echo "FIXTURES_IMAGE=${IMAGE}@${DIGEST}"
             fi
@@ -230,7 +243,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Alias image web, fixtures, dan pendamping ke tag rilis (self-hosted)
+      - name: Alias image web, fixtures, pendamping, dan embedding ke tag rilis (self-hosted)
         if: runner.environment == 'self-hosted'
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -244,7 +257,7 @@ jobs:
           # shellcheck disable=SC2024 # ringkasan sengaja ditulis sebagai user runner, bukan root
           printf '%s\n' "$GHCR_TOKEN" | sudo -n /opt/urusin-ci/bin/ci-docker alias "$GITHUB_SHA" "$TAG" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Alias image web, fixtures, dan pendamping ke tag rilis
+      - name: Alias image web, fixtures, pendamping, dan embedding ke tag rilis
         if: runner.environment == 'github-hosted'
         run: |
           {
@@ -253,7 +266,7 @@ jobs:
             echo "Commit bertag: \`${GITHUB_SHA}\` (tidak ada build ulang; digest sama dengan yang diuji di main)"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
-          for image in ghcr.io/bynguts/urusin-web ghcr.io/bynguts/urusin-fixtures ghcr.io/bynguts/urusin-pendamping; do
+          for image in ghcr.io/bynguts/urusin-web ghcr.io/bynguts/urusin-fixtures ghcr.io/bynguts/urusin-pendamping ghcr.io/bynguts/urusin-embedding; do
             if ! digest="$(docker buildx imagetools inspect "${image}:${GITHUB_SHA}" --format '{{.Manifest.Digest}}' 2>/dev/null)" || [ -z "$digest" ]; then
               echo "::error::tidak ada image ${image}:${GITHUB_SHA}. Tag harus menunjuk commit main yang sudah dibangun oleh workflow Release."
               exit 1
@@ -297,7 +310,7 @@ jobs:
       - name: Unduh SBOM dari run tersebut
         run: |
           mkdir -p assets
-          for name in sbom-web sbom-fixtures sbom-pendamping; do
+          for name in sbom-web sbom-fixtures sbom-pendamping sbom-embedding; do
             gh run download "${{ steps.run.outputs.id }}" --dir assets --name "$name"
           done
           ls -l assets

@@ -7,11 +7,11 @@
 # tidak ada --allow security.insecure, CPU/memori/pids dibatasi. Argumen divalidasi ketat.
 #
 #   ci-docker pw <e2e|perf> <workspace> <sha40>       Playwright resmi (versi = basis apps/pendamping/Dockerfile)
-#   ci-docker build <web|fixtures|pendamping> <sha40> <workspace>   token GHCR di stdin; cetak "DIGEST: sha256:..."
-#   ci-docker smoke <web|fixtures|pendamping> <sha256:digest> <workspace>  token GHCR di stdin
-#   ci-docker simpan <web|fixtures|pendamping> <sha256:digest> <workspace> token GHCR di stdin; image native
+#   ci-docker build <web|fixtures|pendamping|embedding> <sha40> <workspace>   token GHCR di stdin; cetak "DIGEST: sha256:..."
+#   ci-docker smoke <web|fixtures|pendamping|embedding> <sha256:digest> <workspace>  token GHCR di stdin
+#   ci-docker simpan <web|fixtures|pendamping|embedding> <sha256:digest> <workspace> token GHCR di stdin; image native
 #                                                      DISIMPAN di docker host + salinan provenance (deploy tanpa login)
-#   ci-docker sbom <web|fixtures|pendamping> <sha256:digest>        token GHCR di stdin; SBOM JSON ke stdout
+#   ci-docker sbom <web|fixtures|pendamping|embedding> <sha256:digest>        token GHCR di stdin; SBOM JSON ke stdout
 #   ci-docker alias <sha40> <rc*|v*>                   token GHCR di stdin; alias :<sha> -> :<tag> (tanpa build)
 #   ci-docker builder-init | builder-gc | builder-rm  builder buildx `urusin-ci` (cache <= 1,5 GB)
 #   ci-docker cleanup                                  hook job-completed: kontainer sisa urusin-ci-pw-*
@@ -46,7 +46,7 @@ disk_guard() {
   [ "$pct" -lt "$DISK_MAX" ] || die "disk ${pct}% >= ${DISK_MAX}%: job ditolak (lapor ke ops; jangan prune global)"
 }
 
-valid_name() { case "$1" in web | fixtures | pendamping) ;; *) die "nama image tidak dikenal: '$1'" ;; esac; }
+valid_name() { case "$1" in web | fixtures | pendamping | embedding) ;; *) die "nama image tidak dikenal: '$1'" ;; esac; }
 valid_sha() { [[ "$1" =~ ^[0-9a-f]{40}$ ]] || die "SHA harus 40 hex: '$1'"; }
 valid_digest() { [[ "$1" =~ ^sha256:[0-9a-f]{64}$ ]] || die "digest harus sha256:<64 hex>: '$1'"; }
 
@@ -287,6 +287,12 @@ cmd_smoke() {
       smoke_run 120 "${LIMITS[@]}" --platform "linux/$arch" --network none --entrypoint node "$ref" \
         -e "import('./dist/edge.js').then((m)=>{m.loadEdgeConfig({PENDAMPING_EDGE_TOKEN:'x'.repeat(40)});console.log('edge ok')})"
       ;;
+    embedding)
+      # Pengerasan compose (nobody, read-only, tanpa kapabilitas, tanpa jaringan) + uji semantik di dalam image.
+      smoke_run 300 "${LIMITS[@]}" --platform "linux/$arch" --network none --read-only --tmpfs /tmp:size=16m \
+        --user 65534:65534 --cap-drop ALL --security-opt no-new-privileges:true --entrypoint sh "$ref" -c \
+        '/app/llama-server & for i in $(seq 1 120); do curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1 && break; kill -0 $! || exit 1; sleep 2; done; /usr/local/bin/embed-smoke'
+      ;;
   esac
   echo "::endgroup::"
   if ! cmp -s "$ws/deploy/pendamping-seccomp.json" "$CI_ROOT/etc/pendamping-seccomp.json"; then
@@ -338,7 +344,7 @@ cmd_alias() {
   valid_sha "$sha"
   [[ "$tag" =~ ^(rc|v)[0-9A-Za-z._-]{1,64}$ ]] || die "tag rilis harus rc*/v*: '$tag'"
   ghcr_login
-  for image in "$REPO_PREFIX-web" "$REPO_PREFIX-fixtures" "$REPO_PREFIX-pendamping"; do
+  for image in "$REPO_PREFIX-web" "$REPO_PREFIX-fixtures" "$REPO_PREFIX-pendamping" "$REPO_PREFIX-embedding"; do
     digest="$(docker buildx imagetools inspect "$image:$sha" --format '{{.Manifest.Digest}}' 2>/dev/null)" || digest=""
     valid_digest "$digest"
     docker buildx imagetools create -t "$image:$tag" "$image@$digest"

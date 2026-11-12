@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Menguji compose.prod.yml hasil render (`docker compose config`): web di jaringan host dan hanya
 # mengikat 127.0.0.1:4310/4311; topologi isolasi Browser Pendamping (pendamping hanya di jaringan
-# internal, edge satu-satunya jalan keluar dan satu-satunya port). Dilewati (exit 0) bila docker compose
+# internal, edge satu-satunya jalan keluar) dan sidecar embedding (hanya 127.0.0.1:4340). Dilewati (exit 0) bila docker compose
 # atau node tidak tersedia.
 set -uo pipefail
 
@@ -17,7 +17,7 @@ trap 'rm -rf "$SB"' EXIT
 cp "$DEPLOY/compose.prod.yml" "$SB/"
 printf 'DOMAIN=urusin.test\n' > "$SB/.env"
 printf 'WEB_IMAGE_BLUE=ghcr.io/x/web@sha256:aa\nWEB_IMAGE_GREEN=ghcr.io/x/web@sha256:bb\n' > "$SB/.env.images"
-(cd "$SB" && docker compose -f compose.prod.yml --env-file .env --env-file .env.images --profile fixtures --profile pendamping config --format json) > "$SB/config.json" \
+(cd "$SB" && docker compose -f compose.prod.yml --env-file .env --env-file .env.images --profile fixtures --profile pendamping --profile embedding config --format json) > "$SB/config.json" \
   || { echo "compose-config: docker compose config gagal"; exit 1; }
 
 node - "$SB/config.json" "$DEPLOY/pendamping-seccomp.json" <<'EOF'
@@ -93,7 +93,19 @@ check('edge: batas mem/cpu/pids, ulimit core 0', Number(edge.mem_limit) <= 13421
   'core' in edge.ulimits && (edge.ulimits.core.hard ?? 0) === 0 && (edge.ulimits.core.soft ?? 0) === 0);
 check('edge: token edge dan pendamping hulu', 'PENDAMPING_EDGE_TOKEN' in edge.environment &&
   edge.environment.EDGE_PENDAMPING_URL === 'http://pendamping:4330');
-check('hanya edge dan fixtures yang mempublikasikan port', Object.entries(cfg.services).every(([n, s]) =>
-  !s.ports || s.ports.length === 0 || n === 'pendamping-edge' || n === 'fixtures'));
+const em = cfg.services.embedding;
+const emNet = Object.values(net).find((n) => n.name === 'urusin_embedding');
+check('embedding: bridge sendiri (bukan host, bukan jaringan pendamping), IPv6 mati', em.network_mode === undefined &&
+  JSON.stringify(Object.keys(em.networks)) === JSON.stringify(['embedding']) && !!emNet && emNet.enable_ipv6 === false);
+check('embedding: publish 127.0.0.1:4340 -> 8080 saja', em.ports.length === 1 && em.ports[0].host_ip === '127.0.0.1' &&
+  String(em.ports[0].published) === '4340' && String(em.ports[0].target) === '8080');
+check('embedding: non-root, read_only, cap_drop ALL tanpa cap_add, no-new-privileges', em.user === '65534:65534' &&
+  em.read_only === true && em.cap_drop.includes('ALL') && !em.cap_add && em.security_opt.includes('no-new-privileges:true'));
+check('embedding: mem <= 1,5 GiB, memswap = mem, cpus, pids, core 0, restart unless-stopped',
+  Number(em.mem_limit) <= 1610612736 && Number(em.memswap_limit) === Number(em.mem_limit) && Number(em.cpus) > 0 &&
+  Number(em.pids_limit) > 0 && (em.ulimits.core.hard ?? 0) === 0 && em.restart === 'unless-stopped');
+check('embedding: healthcheck /health', em.healthcheck.test.join(' ').includes('/health'));
+check('hanya edge, fixtures, dan embedding yang mempublikasikan port', Object.entries(cfg.services).every(([n, s]) =>
+  !s.ports || s.ports.length === 0 || n === 'pendamping-edge' || n === 'fixtures' || n === 'embedding'));
 process.exit(bad ? 1 : 0);
 EOF
