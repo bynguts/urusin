@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BATAS_TANTANGAN_MS,
   createPantauTantangan,
   isChallengeFrameUrl,
   isInterstitialTitle,
@@ -98,5 +99,38 @@ describe('verifikasi situs: mesin status', () => {
     p.amati(false, 4, B, T0 + 3_000);
     expect(p.amati(true, 5, B, T0 + 3_000 + JENDELA_ULANG_MS + 1)).toBe('mulai');
     expect(p.gagal).toBe(0);
+  });
+});
+
+describe('verifikasi situs: muat ulang tantangan tanpa sentuhan warga (QA prod 2026-11-12 Wonogiri)', () => {
+  const W = 'https://telunjuksakti.wonogirikab.go.id/';
+  const T0 = 2_000_000;
+
+  it('situs memuat ulang tantangannya sendiri: kesempatan warga tidak berkurang, kotak disorot ulang', () => {
+    const p = createPantauTantangan(2);
+    expect(p.amati(true, 1, W, T0)).toBe('mulai');
+    // Cloudflare mengulang tantangan terkelola dua kali tanpa ketukan warga: dulu = dipandu (gagal) dalam 50 dtk.
+    expect(p.amati(true, 2, W, T0 + 20_000, false)).toBe('mulai');
+    expect(p.amati(true, 3, W, T0 + 45_000, false)).toBe('mulai');
+    expect(p.gagal).toBe(0);
+    // Warga mengetuk kotaknya lalu situs menolak (dimuat ulang): baru dihitung gagal.
+    expect(p.amati(true, 4, W, T0 + 60_000, true)).toBe('ulang');
+    expect(p.amati(true, 5, W, T0 + 80_000, true)).toBe('gagal');
+  });
+
+  it('tantangan yang terus diulang situs tanpa lolos: dipandu sesudah BATAS_TANTANGAN_MS, bukan menunggu selamanya', () => {
+    const p = createPantauTantangan(2);
+    expect(p.amati(true, 1, W, T0)).toBe('mulai');
+    expect(p.amati(true, 2, W, T0 + 60_000, false)).toBe('mulai');
+    expect(p.amati(true, 2, W, T0 + BATAS_TANTANGAN_MS - 1)).toBe('masih');
+    expect(p.amati(true, 2, W, T0 + BATAS_TANTANGAN_MS)).toBe('gagal');
+  });
+
+  it('lolos lalu tantangan baru: episode dan batas waktunya mulai dari nol', () => {
+    const p = createPantauTantangan(2);
+    expect(p.amati(true, 1, W, T0)).toBe('mulai');
+    expect(p.amati(false, 2, W, T0 + BATAS_TANTANGAN_MS - 5_000)).toBe('lolos');
+    expect(p.amati(true, 3, `${W}lain`, T0 + BATAS_TANTANGAN_MS + 60_000)).toBe('mulai');
+    expect(p.amati(true, 3, `${W}lain`, T0 + BATAS_TANTANGAN_MS + 61_000)).toBe('masih');
   });
 });

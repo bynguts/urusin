@@ -19,6 +19,14 @@
   import KartuWilayah from '#lib/components/urusan/KartuWilayah.svelte';
   import KartuTerkirim from '#lib/components/urusan/KartuTerkirim.svelte';
   import Komposer from '#lib/components/urusan/Komposer.svelte';
+  import {
+    judulLampiran,
+    pecahPenanda,
+    teksDenganLampiran,
+    type Lampiran,
+  } from '#lib/components/urusan/komposer.js';
+  import TeksBertaut from '#lib/components/ui/TeksBertaut.svelte';
+  import { unggahDokumen } from '#lib/akun/klien.js';
   import Lencana from '#lib/components/urusan/Lencana.svelte';
   import PanelKonteks, { type TabPanel } from '#lib/components/urusan/PanelKonteks.svelte';
   import PesanAgen from '#lib/components/urusan/PesanAgen.svelte';
@@ -29,6 +37,7 @@
   import { SesiPendampingUi } from '#lib/pendamping/sesi.svelte.js';
   import { judulUrusan, peristiwaDariJenis } from '#lib/peristiwa.js';
   import { ambilLokal } from '#lib/stores/app.svelte.js';
+  import { ambilJudul } from '#lib/judul-urusan.js';
   import type { PesanWarga } from '#lib/stores/lokal.svelte.js';
   import { UrusanStore } from '#lib/stores/urusan.svelte.js';
   import { waktuSingkat } from '#lib/urusan-status.js';
@@ -43,6 +52,7 @@
 
   let pesan = $state<PesanWarga[]>([]);
   let teks = $state('');
+  let lampiran = $state<Lampiran[]>([]);
   let komposer: HTMLTextAreaElement | null = $state(null);
   let mengirim = $state(false);
   let pesanKomposer = $state<string | null>(null);
@@ -85,7 +95,15 @@
   // Sejak "Setujui rencana" ditekan sampai state urusan bergerak: progres jujur, bukan layar diam.
   let menungguSetuju = $state(false);
   const menyiapkanLanjutan = $derived(menungguSetuju && keadaanUrusan === 'RENCANA_DIUSULKAN');
-  const judul = $derived(judulJenis ?? lokal.cari(data.urusan.id)?.judul ?? 'Urusan baru');
+  // Judul server (AI setelah turn pertama, atau nama pilihan warga) menang atas judul jenis.
+  // svelte-ignore state_referenced_locally
+  let judulServer = $state<string | null>(data.urusan.judul);
+  // Catatan perangkat diselaraskan dengan judul server (dan ikut berubah saat warga mengganti nama di sidebar).
+  const judul = $derived(
+    judulServer
+      ? (lokal.cari(data.urusan.id)?.judul ?? judulServer)
+      : (judulJenis ?? lokal.cari(data.urusan.id)?.judul ?? 'Urusan baru'),
+  );
   const linimasa = $derived(bangunLinimasa(k.events, pesan, jenisKini));
   const kutipan = $derived.by(() => {
     const peta = new SvelteMap<string, KutipanTerverifikasi & { nomor: number }>();
@@ -146,7 +164,7 @@
     untrack(() => {
       const c = lokal.cari(data.urusan.id);
       if (!c || c.peristiwa === jenis) return;
-      lokal.catatUrusan({ ...c, judul: judulUrusan(jenis) ?? c.judul, peristiwa: jenis });
+      lokal.catatUrusan({ ...c, judul: judulServer ?? judulUrusan(jenis) ?? c.judul, peristiwa: jenis });
     });
   });
 
@@ -161,6 +179,7 @@
   });
 
   function buka(id: string) {
+    judulServer = data.urusan.judul;
     pesan = lokal.pesanWarga(id);
     const tertunda = lokal.ambilTertunda() ?? data.pesanAwal;
     if (tertunda && pesan.length === 0) {
@@ -169,12 +188,40 @@
     }
     lokal.catatUrusan({
       id,
-      judul: judulUrusan(data.urusan.jenis) ?? lokal.cari(id)?.judul ?? judulDariPesan(pesan[0]?.teks),
+      judul:
+        data.urusan.judul ??
+        judulUrusan(data.urusan.jenis) ??
+        lokal.cari(id)?.judul ??
+        judulDariPesan(pesan[0]?.teks),
       peristiwa: data.urusan.jenis,
       dibuatPada: data.urusan.dibuatPada,
     });
     store.sambung(id);
   }
+
+  /**
+   * Judul AI dibuat server sesudah turn pertama selesai (async, maks ±4 detik): setelah turn selesai dan belum
+   * ada judul, tanyakan beberapa kali lalu perbarui header dan sidebar (catatan perangkat).
+   */
+  let cekJudulKe = 0;
+  async function tungguJudul(id: string) {
+    const giliran = ++cekJudulKe;
+    for (const jeda of [800, 2000, 4500]) {
+      await new Promise((r) => setTimeout(r, jeda));
+      if (giliran !== cekJudulKe || judulServer) return;
+      const j = (await ambilJudul([id])).get(id);
+      if (j) {
+        judulServer = j;
+        lokal.ubahJudul(id, j);
+        return;
+      }
+    }
+  }
+  $effect(() => {
+    if (k.sedangBerjalan || judulServer || !k.events.some((e) => e.type === 'done')) return;
+    const id = data.urusan.id;
+    untrack(() => void tungguJudul(id));
+  });
 
   // Gulir ke pesan terbaru saat ada item baru.
   $effect(() => {
@@ -264,18 +311,54 @@
   let aksiTerakhir: string | null = null;
 
   /** `aksi`: perintah tombol (mis. Lanjutkan), bukan tulisan warga: tidak tampil sebagai gelembung pesan. */
+  /**
+   * Lampiran chat masuk brankas terenkripsi (POST /api/vault, batas ukuran/jumlah brankas berlaku) SEBELUM
+   * pesan dikirim. Ke agen hanya penanda jenis ("[warga melampirkan dokumen: KTP (gambar)]"): isi berkas dan
+   * nama berkas (bisa memuat NIK) tidak pernah masuk body /turn. Lampiran yang sudah tersimpan tidak diunggah
+   * ulang bila pengiriman pesan gagal.
+   */
+  async function simpanLampiran(): Promise<boolean> {
+    for (const l of lampiran) {
+      if (l.docId) continue;
+      const r = await unggahDokumen(l.berkas, l.jenis, judulLampiran(l.jenis, judulJenis ?? null));
+      if (!r.ok) {
+        pesanKomposer = `Lampiran belum tersimpan: ${r.pesan}`;
+        return false;
+      }
+      l.docId = r.data.id;
+    }
+    return true;
+  }
+
   async function kirim(t: string, aksi = false) {
     mengirim = true;
     pesanKomposer = null;
+    const lamp = aksi ? [] : lampiran;
+    if (lamp.length && !(await simpanLampiran())) {
+      mengirim = false;
+      return;
+    }
+    const isi = aksi
+      ? t
+      : teksDenganLampiran(
+          t,
+          lamp.map((l) => ({ jenis: l.jenis, mime: l.berkas.type })),
+        );
+    if (isi.length > 2000) {
+      mengirim = false;
+      pesanKomposer = 'Pesan terlalu panjang. Persingkat tulisan Anda, lalu kirim lagi.';
+      return;
+    }
     const setelahSeq = k.lastSeq;
-    const hasil = await store.kirim(t);
+    const hasil = await store.kirim(isi);
     mengirim = false;
     if (hasil === 'ok') {
       aksiTerakhir = aksi ? t : null;
       if (aksi) return;
-      lokal.catatPesan(data.urusan.id, { teks: t, setelahSeq });
+      lokal.catatPesan(data.urusan.id, { teks: isi, setelahSeq });
       pesan = lokal.pesanWarga(data.urusan.id);
       teks = '';
+      lampiran = [];
     } else if (hasil === 'konflik') {
       pesanKomposer =
         'Urusin masih memproses langkah sebelumnya, tunggu sebentar. Pesan Anda tetap di sini; kirim lagi sebentar lagi.';
@@ -462,11 +545,14 @@
               <div class="flex flex-col gap-3 border-t border-line pt-4">
                 {#each pesanPanel as it (it.key)}
                   {#if it.jenis === 'teks'}
-                    <PesanAgen avatar={p.avatar}><p class="text-[0.9375rem]">{it.teks}</p></PesanAgen>
+                    <PesanAgen avatar={p.avatar}
+                      ><p class="text-[0.9375rem]"><TeksBertaut teks={it.teks} /></p></PesanAgen
+                    >
                   {/if}
                 {/each}
                 <Komposer
                   bind:teks
+                  bind:lampiran
                   bind:elemen={komposer}
                   sibuk={mengirim}
                   pesan={pesanKomposer}
@@ -530,11 +616,32 @@
 
             {#each linimasa as it (it.key)}
               {#if it.jenis === 'warga'}
-                <p
-                  class="max-w-[min(85%,460px)] self-end rounded-[18px_18px_4px_18px] bg-bg-2 px-4 py-3 text-base whitespace-pre-line text-ink sm:text-[17px] sm:leading-[26px]"
+                {@const w = pecahPenanda(it.teks)}
+                <div
+                  data-pelaku="warga"
+                  class="flex max-w-[min(85%,460px)] flex-col gap-2 self-end rounded-[18px_18px_4px_18px] bg-bg-2 px-4 py-3 text-base text-ink sm:text-[17px] sm:leading-[26px]"
                 >
-                  {it.teks}
-                </p>
+                  {#if w.lampiran.length}
+                    <ul aria-label="Lampiran terkirim" class="flex flex-wrap gap-2">
+                      {#each w.lampiran as l, i (i)}
+                        <li>
+                          <a
+                            href={resolve('/dokumen')}
+                            class="inline-flex min-h-10 items-center gap-2 rounded-xl border border-line-2 bg-surface px-3 text-sm font-medium text-ink hover:bg-card"
+                          >
+                            <Icon
+                              name={l.bentuk === 'PDF' ? 'berkas-teks' : 'berkas-gambar'}
+                              class="size-4 shrink-0"
+                            />
+                            {l.label} ({l.bentuk})
+                            <span class="sr-only">, tersimpan di Dokumen</span>
+                          </a>
+                        </li>
+                      {/each}
+                    </ul>
+                  {/if}
+                  {#if w.teks}<p class="whitespace-pre-line"><TeksBertaut teks={w.teks} /></p>{/if}
+                </div>
               {:else if it.jenis === 'sistem'}
                 <p
                   class="flex items-center justify-center gap-1.5 text-center text-sm leading-[21px] text-muted"
@@ -551,7 +658,9 @@
                 />
               {:else if it.jenis === 'teks'}
                 <PesanAgen avatar={p.avatar}
-                  ><p class="leading-relaxed whitespace-pre-line">{it.teks}</p></PesanAgen
+                  ><p class="leading-relaxed whitespace-pre-line">
+                    <TeksBertaut teks={it.teks} />
+                  </p></PesanAgen
                 >
               {:else if it.jenis === 'jawaban'}
                 <PesanAgen avatar={p.avatar}>
@@ -678,6 +787,7 @@
           <div class="w-full">
             <Komposer
               bind:teks
+              bind:lampiran
               bind:elemen={komposer}
               sibuk={mengirim}
               pesan={pesanKomposer}

@@ -2,6 +2,7 @@
   import type { EventOf } from '#lib/contracts.js';
   import { tanggal } from '#lib/urusan-status.js';
   import ChipSumber from './ChipSumber.svelte';
+  import TeksBertaut from '../ui/TeksBertaut.svelte';
   import { unikPerRef } from './linimasa.js';
 
   /**
@@ -25,7 +26,7 @@
 <div class="flex flex-col gap-3">
   {#each jawaban.klaim as k, i (i)}
     <p>
-      {k.teks}
+      <TeksBertaut teks={k.teks} />
       {#each unikPerRef(k.kutipan) as q (q.refId)}
         <button
           type="button"
@@ -50,6 +51,6 @@
     </div>
   {/if}
   {#if jawaban.kalimatTetap}
-    <p class="text-sm leading-[21px] text-muted">{jawaban.kalimatTetap}</p>
+    <p class="text-sm leading-[21px] text-muted"><TeksBertaut teks={jawaban.kalimatTetap} /></p>
   {/if}
 </div>

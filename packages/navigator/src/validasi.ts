@@ -189,6 +189,35 @@ export function pembukaPengajuan(p: Pengamatan): string | undefined {
   return calon.size === 1 ? [...calon.values()][0] : undefined;
 }
 
+/**
+ * Label kolom kredensial akun (username/nama pengguna/sandi/PIN): milik warga, tidak pernah diisi AI walau
+ * placeholder non-sensitif (email) secara teknis "samar" untuknya.
+ */
+const RE_KREDENSIAL = /user ?name|user ?id|nama pengguna|kata ?sandi|\bsandi\b|password|\bpin\b/;
+export const kolomKredensial = (e: Pick<ElemenAmatan, 'nama' | 'petunjuk'>): boolean =>
+  RE_KREDENSIAL.test(normalLabel(`${e.nama} ${e.petunjuk ?? ''}`));
+
+/** Penanda halaman daftar/buat akun di judul, jalur, atau teks halaman. */
+const RE_DAFTAR_AKUN = /regist|sign ?up|daftar akun|buat akun|pendaftaran akun|akun baru|create account/;
+
+/**
+ * Formulir DAFTAR/BUAT AKUN portal (QA prod 2026-11-12 Klampid "Buat Akun": NIK, Username, Email, Telepon,
+ * Password). `sinyal.login` menyala karena ada kolom sandi, tetapi ini bukan formulir masuk: kolom data diri
+ * (NIK/email/HP) boleh diisi AI dari Data Diri dengan izin warga; username, sandi, CAPTCHA, dan tombol Daftar
+ * tetap milik warga. Formulir masuk biasa paling banyak punya satu kolom data (username/email/NIK) di samping sandi.
+ * Deterministik: dua kolom sandi (sandi + konfirmasi), tiga kolom data atau lebih, atau dua kolom data dengan
+ * penanda daftar akun di judul/jalur/teks.
+ */
+export function halamanDaftarAkun(p: Pengamatan): boolean {
+  if (!p.sinyal.login || p.sinyal.halamanAkhir) return false;
+  const sandi = p.elemen.filter((e) => e.terlarang === 'sandi').length;
+  const data = p.elemen.filter(
+    (e) => [...PERAN_ISI, ...PERAN_PILIH].includes(e.peran) && !e.terlarang && !kolomKredensial(e),
+  ).length;
+  if (sandi >= 2 || data >= 3) return true;
+  return data >= 2 && RE_DAFTAR_AKUN.test(normalLabel(`${p.judul} ${p.jalur} ${p.teks.slice(0, 500)}`));
+}
+
 /** Paling banyak kolom isian di beranda pintu akun (kotak cari / cek nomor pendaftaran), bukan formulir. */
 const KOLOM_PINTU_MAKS = 2;
 
@@ -356,7 +385,8 @@ export function validasiRencana(mentah: unknown, p: Pengamatan, opsi: OpsiValida
     if (tulisan(a)) {
       if (refTulis.has(a.ref)) langgar.add('REF_GANDA');
       refTulis.add(a.ref);
-      if (e.terlarang) langgar.add('KOLOM_TERLARANG');
+      if (e.terlarang || ((a.jenis === 'isi' || a.jenis === 'pilih') && kolomKredensial(e)))
+        langgar.add('KOLOM_TERLARANG');
       if (e.isian === 'terisi_warga') langgar.add('KOLOM_DIISI_WARGA');
     }
     switch (a.jenis) {

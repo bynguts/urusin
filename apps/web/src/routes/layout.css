@@ -77,6 +77,8 @@
   --sb-badge-green-ink: #44683a;
   --sb-badge-blue-bg: #eaf0f5;
   --sb-badge-blue-ink: #4b6889;
+  /* Tautan di dalam konten (pesan, kartu, sumber, bantuan): kontras AA (5,3 s.d. 6,6) di semua latar terang. */
+  --ur-link: #1858c0;
   --sb-badge-purple-bg: #f3eaf4;
   --sb-badge-purple-ink: #894f8e;
   --ur-green-bg: #eaf0df;
@@ -125,6 +127,7 @@
   --sb-badge-green-ink: #b7d7a7;
   --sb-badge-blue-bg: #293641;
   --sb-badge-blue-ink: #b5d2ef;
+  --ur-link: #8ab4f8;
   --sb-badge-purple-bg: #3b2d3d;
   --sb-badge-purple-ink: #dbb3e4;
   --ur-green-bg: #2e3827;
@@ -195,6 +198,7 @@
   --color-daun-ink: var(--sb-badge-green-ink);
   --color-biru: var(--sb-badge-blue-bg);
   --color-biru-ink: var(--sb-badge-blue-ink);
+  --color-tautan: var(--ur-link);
   --color-ungu: var(--sb-badge-purple-bg);
   --color-ungu-ink: var(--sb-badge-purple-ink);
   --radius-base: 10px;
@@ -308,6 +312,24 @@ body {
   }
   p {
     text-wrap: pretty;
+  }
+}
+
+/*
+ * Tautan di dalam konten (Tautan.svelte, TeksBertaut.svelte): biru bergaris bawah, jelas bisa diklik di tema
+ * terang dan gelap. Navigasi dan tombol aplikasi tidak memakai kelas ini. Tanpa transisi saat hover.
+ */
+@layer components {
+  .tautan {
+    color: var(--color-tautan);
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+  }
+  .tautan:hover {
+    text-decoration-thickness: 2px;
   }
 }
 
