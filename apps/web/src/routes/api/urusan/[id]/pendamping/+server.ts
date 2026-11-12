@@ -1,6 +1,6 @@
 import { MulaiPendampingRequestSchema } from '@urusin/contracts';
 import { matchOfficialOrigin } from '@urusin/core';
-import { ADAPTER_GENERIK, jalurModeUji, mulaiPengajuan } from '@urusin/harness';
+import { ADAPTER_GENERIK, jalurModeUji, mulaiPengajuan, punyaReplikaUji } from '@urusin/harness';
 import { routeByKode } from '@urusin/registry';
 import { catatHasilEksekusi } from '#lib/server/eksekusi.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
@@ -10,7 +10,12 @@ import {
   hentikanNavigator,
   pulihkanNavigator,
 } from '#lib/server/pendamping/navigator.js';
-import { modeUjiPendamping } from '#lib/server/pendamping/pemilik.js';
+import {
+  akunDari,
+  modeUjiPendamping,
+  peranPendamping,
+  PESAN_PERLU_MASUK,
+} from '#lib/server/pendamping/pemilik.js';
 import { akses } from './akses';
 import { ExecutionPayload, catatHasilSesi, eksekusiDitawarkan } from './hasil';
 import type { RequestHandler } from './$types';
@@ -49,6 +54,9 @@ export const POST: RequestHandler = async ({ request, params }) => {
       return apiError(422, 'ADAPTER_TIDAK_ADA', 'Kota ini belum mendukung Browser Pendamping.');
     // Juri (salinan demo) dan tamu selalu ke replika uji; situs resmi asli hanya untuk akun warga pemiliknya.
     const modeUji = await modeUjiPendamping(request, a.u);
+    // Tamu di portal tanpa replika: jangan buka sesi yang pasti beralih ke panduan; minta masuk/daftar dulu.
+    if (modeUji && !punyaReplikaUji(origin) && peranPendamping(await akunDari(request)) === 'tamu')
+      return apiError(403, 'PERLU_MASUK', PESAN_PERLU_MASUK);
     const cfg = pendampingConfig();
     const generik = offered.data.adapterId === ADAPTER_GENERIK;
     // Mode Uji generik: replika dipasang di awalan override worker; jalur portal asli hanya dibawa bila replika

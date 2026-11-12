@@ -12,7 +12,7 @@ import type { RequestHandler } from './$types';
 
 /**
  * Lengkapi profil: gabungkan nama lengkap (dan HP opsional) ke Data Diri terenkripsi pemilik vault (akun
- * terverifikasi; akun yang belum terverifikasi menyimpannya di vault satu perangkat seperti tamu).
+ * atau demo: ikut akun di semua perangkat; tamu: vault satu perangkat).
  */
 export const POST: RequestHandler = async (event) => {
   const m = wajibMasuk(event.locals);

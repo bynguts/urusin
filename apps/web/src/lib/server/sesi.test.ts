@@ -5,7 +5,7 @@ import { POST as buatUrusan } from '../../routes/api/urusan/+server';
 import { POST as kirimTurn } from '../../routes/api/urusan/[id]/turn/+server';
 import { RateLimiter } from './limiter';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
-import { MIGRASI_SID_SAMPAI, migrasiSid, SID_COOKIE } from './sesi';
+import { lamaTunggu, MIGRASI_SID_SAMPAI, migrasiSid, SID_COOKIE } from './sesi';
 
 const ORIGIN = 'http://localhost:3000';
 let rt: Runtime;
@@ -216,4 +216,56 @@ describe('kuota per-IP dan per-sesi', () => {
       (rt.store.db.prepare('SELECT COUNT(*) n FROM turns WHERE urusan_id = ?').get(u.id) as { n: number }).n,
     ).toBe(1);
   }, 20_000);
+});
+
+describe('batas urusan baru: per akun untuk warga ber-akun, IP longgar hanya untuk tamu', () => {
+  const evAkun = (ip: string, sid: string, akunId: string) =>
+    ({
+      request: post({}),
+      params: {},
+      url: new URL(`${ORIGIN}/x`),
+      locals: { sid, akun: { id: akunId, jenis: 'akun' } },
+      getClientAddress: () => ip,
+    }) as never;
+
+  it('bawaan: akun 30/jam, IP tamu 120/jam (rem banjir), sesi tamu 10/jam', () => {
+    setup();
+    expect([rt.config.buatPerJamAkun, rt.config.buatPerJamIp, rt.config.buatPerJamSesi]).toEqual([
+      30, 120, 10,
+    ]);
+  });
+
+  it('warga ber-akun di balik satu IP bersama (CGNAT) tidak saling menghabiskan kuota; batas dihitung per akun', async () => {
+    setup({ buatPerJamIp: 1, buatPerJamSesi: 1, buatPerJamAkun: 2 });
+    const akunBaru = async (n: string) =>
+      (await rt.akun.daftar({ email: n + '@example.com', sandi: 'kuda-lari-cepat-9' }, { ip: '10.9.9.9' }))
+        .akun.id;
+    const [a, b] = [await akunBaru('cgnat-a'), await akunBaru('cgnat-b')];
+    // IP dan sesi sudah habis untuk tamu...
+    expect((await buatUrusan(ev(post({}), '100.64.0.1', 'tamu'))).status).toBe(201);
+    expect((await buatUrusan(ev(post({}), '100.64.0.1', 'tamu2'))).status).toBe(429);
+    // ...tetapi warga ber-akun dari IP yang sama tetap bisa, sampai batas akunnya sendiri.
+    for (let i = 0; i < 2; i++) expect((await buatUrusan(evAkun('100.64.0.1', 'sa', a))).status).toBe(201);
+    const habis = await buatUrusan(evAkun('100.64.0.1', 'sa2', a));
+    expect(habis.status).toBe(429);
+    const detik = Number(habis.headers.get('retry-after'));
+    expect(detik).toBeGreaterThan(3500);
+    const body = (await habis.json()) as { kode: string; pesanWarga: string };
+    expect(body.kode).toBe('RATE_LIMITED');
+    expect(body.pesanWarga).toBe(
+      `Terlalu banyak urusan baru dalam waktu singkat. Coba lagi dalam ${lamaTunggu(detik)}.`,
+    );
+    expect(body.pesanWarga).toMatch(/Coba lagi dalam ±\d+ menit\.$/);
+    expect((await buatUrusan(evAkun('100.64.0.1', 'sb', b))).status).toBe(201);
+  });
+
+  it('lamaTunggu: detik di bawah 90, selain itu menit dibulatkan ke atas', () => {
+    expect([lamaTunggu(0), lamaTunggu(45), lamaTunggu(89), lamaTunggu(90), lamaTunggu(3600)]).toEqual([
+      '±1 detik',
+      '±45 detik',
+      '±89 detik',
+      '±2 menit',
+      '±60 menit',
+    ]);
+  });
 });

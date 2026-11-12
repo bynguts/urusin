@@ -736,23 +736,25 @@ describe('broker Browser Pendamping', () => {
     };
     beforeEach(() => vi.stubEnv('PENDAMPING_WORKERS', JSON.stringify([VPS, LAPTOP])));
 
-    /** Akun warga terverifikasi yang masuk dan memiliki urusannya: sesi di portal asli, bukan Mode Uji. */
+    /**
+     * Akun warga yang baru daftar (langsung masuk, tanpa email verifikasi; ADR 0032) dan memiliki urusannya:
+     * sesi di portal asli, bukan Mode Uji.
+     */
     async function urusanAkunNyata(kota: 'wonogiri' | 'semarang' = 'wonogiri') {
-      const mailer = new MemoryMailer();
       rt = createRuntime({
         provider: new DemoProvider(),
         config: { dbPath: ':memory:' },
-        akun: { mailer, google: null, vault: { diskPersen: () => 10 } },
+        akun: { mailer: new MemoryMailer(), google: null, vault: { diskPersen: () => 10 } },
       });
       setRuntimeForTests(rt);
       const ktx = { ip: '127.0.0.1', userAgent: null };
-      const [email, sandi] = ['warga@example.com', 'kuda-lari-cepat-9'];
-      await rt.akun.daftar({ email, sandi }, ktx);
-      const token = new URL(mailer.last(email, 'verifikasi')!.link!).searchParams.get('token')!;
-      const akun = await rt.akun.verifikasiEmail(token, sandi, ktx);
+      const { token, akun } = await rt.akun.daftar(
+        { email: 'warga@example.com', sandi: 'kuda-lari-cepat-9' },
+        ktx,
+      );
       const u = urusanDenganEksekusi(kota);
       rt.akun.catatPemilikUrusan(u.id, { akun });
-      return { u, cookie: `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${rt.akun.buatSesi(akun.id, ktx)}` };
+      return { u, cookie: `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${token}` };
     }
 
     it('CSP connect-src: hanya origin WS worker di luar origin web (final lokal), produksi tidak berubah', () => {
@@ -1352,5 +1354,38 @@ describe('broker Browser Pendamping', () => {
     ])
       expect(checkOrigin('POST', path, 'https://evil.example', ORIGIN)).toMatchObject({ allowed: false });
     expect(checkOrigin('DELETE', '/api/urusan/u/pendamping', null, ORIGIN)).toMatchObject({ allowed: false });
+  });
+});
+
+describe('tamu di portal tanpa situs latihan', () => {
+  const eksekusiGenerik = (kode: string) => {
+    const u = rt.store.createUrusan({ kodeKabKota: kode });
+    rt.publish(u.id, {
+      type: 'execution_request',
+      executionId: 'x_g',
+      adapterId: 'generik',
+      flowId: 'kelahiran',
+      ringkasan: 'Ajukan akta kelahiran',
+      params: { jenis: 'kelahiran', kode },
+      tool: 'dukcapil__ajukan_layanan',
+      paramsHash: 'h',
+    });
+    return u;
+  };
+
+  it('Sleman (tanpa replika): 403 PERLU_MASUK dengan ajakan masuk/daftar, worker tidak dipanggil', async () => {
+    const u = eksekusiGenerik('3404');
+    const res = await mulai(ev(req('POST', { executionId: 'x_g' }), u.id));
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { kode: string; pesanWarga: string };
+    expect(body.kode).toBe('PERLU_MASUK');
+    expect(body.pesanWarga).toMatch(/masuk atau daftar/);
+    expect(calls.filter((c) => c.url.endsWith('/internal/sesi'))).toHaveLength(0);
+  });
+
+  it('Wonogiri (punya replika): tamu tetap ditawari Mode Uji, worker dipanggil dengan modeUji', async () => {
+    const u = eksekusiGenerik('3312');
+    await mulai(ev(req('POST', { executionId: 'x_g' }), u.id));
+    expect(calls.find((c) => c.url.endsWith('/internal/sesi'))?.body).toMatchObject({ modeUji: true });
   });
 });

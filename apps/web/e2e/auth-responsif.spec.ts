@@ -11,7 +11,7 @@ for (const width of [320, 768, 1024, 1440]) {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
 
-    for (const path of ['/masuk', '/daftar', '/lupa-sandi', '/verifikasi-email', '/atur-ulang-sandi']) {
+    for (const path of ['/masuk', '/daftar', '/lupa-sandi', '/atur-ulang-sandi']) {
       await page.goto(path);
       await expect(page.locator('html')).toHaveCSS('font-size', '24px');
       const ukuran = await page.evaluate(() => {

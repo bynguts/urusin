@@ -5,7 +5,7 @@ export type KodeGalatAkun =
   | 'SANDI_TERLALU_PANJANG'
   | 'SANDI_TERLALU_UMUM'
   | 'KREDENSIAL_SALAH'
-  | 'EMAIL_BELUM_TERVERIFIKASI'
+  | 'EMAIL_SUDAH_TERDAFTAR'
   | 'TERKUNCI'
   | 'RATE_LIMITED'
   | 'TOKEN_TIDAK_VALID'
@@ -30,7 +30,8 @@ export type KodeGalatAkun =
   | 'PENYIMPANAN_PENUH'
   | 'PERLU_MASUK_ULANG'
   | 'IZIN_TIDAK_VALID'
-  | 'NILAI_SINTETIS_DITOLAK';
+  | 'NILAI_SINTETIS_DITOLAK'
+  | 'ATUR_ULANG_NONAKTIF';
 
 const PESAN: Record<KodeGalatAkun, [number, string]> = {
   EMAIL_TIDAK_VALID: [422, 'Alamat email belum benar. Periksa lagi.'],
@@ -38,10 +39,7 @@ const PESAN: Record<KodeGalatAkun, [number, string]> = {
   SANDI_TERLALU_PANJANG: [422, 'Kata sandi terlalu panjang. Maksimal 128 karakter.'],
   SANDI_TERLALU_UMUM: [422, 'Kata sandi ini terlalu mudah ditebak. Pilih yang lain.'],
   KREDENSIAL_SALAH: [401, 'Email atau kata sandi salah.'],
-  EMAIL_BELUM_TERVERIFIKASI: [
-    403,
-    'Email belum dipastikan. Buka tautan di email dari kami, atau minta dikirim ulang.',
-  ],
+  EMAIL_SUDAH_TERDAFTAR: [409, 'Email ini sudah terdaftar. Silakan masuk.'],
   TERKUNCI: [429, 'Terlalu banyak percobaan masuk. Tunggu sebentar lalu coba lagi.'],
   RATE_LIMITED: [429, 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.'],
   TOKEN_TIDAK_VALID: [400, 'Tautan sudah tidak berlaku atau sudah dipakai. Minta tautan baru.'],
@@ -76,9 +74,16 @@ const PESAN: Record<KodeGalatAkun, [number, string]> = {
   ],
   IZIN_TIDAK_VALID: [403, 'Persetujuan isi sudah tidak berlaku. Tekan "Izinkan isi" lagi.'],
   NILAI_SINTETIS_DITOLAK: [403, 'Data contoh akun juri tidak boleh dikirim ke situs resmi.'],
+  ATUR_ULANG_NONAKTIF: [
+    503,
+    'Atur ulang kata sandi lewat email belum tersedia. Bila akun Anda tertaut Google, masuk dengan Google.',
+  ],
 };
 
-/** Galat domain akun; `pesanWarga` aman ditampilkan apa adanya (tidak membocorkan apakah email terdaftar). */
+/**
+ * Galat domain akun; `pesanWarga` aman ditampilkan apa adanya. Hanya `EMAIL_SUDAH_TERDAFTAR` (daftar) yang
+ * menyatakan email terdaftar (ADR 0032); masuk dan lupa sandi tetap tidak membocorkannya.
+ */
 export class AkunError extends Error {
   readonly status: number;
   readonly pesanWarga: string;

@@ -1,6 +1,6 @@
 # 0028. Akun warga: email + sandi dan Google, sesi server, vault terenkripsi per pemilik
 
-- **Status:** Diterima (revisi v14: arsitek v13 + critic). Diimplementasikan di `packages/akun`, migrasi `packages/harness/migrations/0003_akun.sql`, rute `apps/web/src/routes/{api/akun,api/vault,auth/google,masuk,daftar,verifikasi-email,lupa-sandi,atur-ulang-sandi,lengkapi-profil,dev/oidc}`, dan penyelesai PII `apps/web/src/lib/server/vault/resolver.ts`. Untuk akun yang masuk, ADR ini menggantikan sebagian [ADR 0007](0007-vault-pii-di-peramban.md).
+- **Status:** Diterima (revisi v14: arsitek v13 + critic). Diimplementasikan di `packages/akun`, migrasi `packages/harness/migrations/0003_akun.sql`, rute `apps/web/src/routes/{api/akun,api/vault,auth/google,masuk,daftar,verifikasi-email,lupa-sandi,atur-ulang-sandi,lengkapi-profil,dev/oidc}`, dan penyelesai PII `apps/web/src/lib/server/vault/resolver.ts`. Untuk akun yang masuk, ADR ini menggantikan sebagian [ADR 0007](0007-vault-pii-di-peramban.md). Verifikasi email dan perilaku akun "belum terverifikasi" digantikan [ADR 0032](0032-akun-tanpa-verifikasi-email.md).
 - **Dicatat:** 2026-11-09
 - **Sumber keputusan:** keputusan pengguna (login Google + email/sandi, email lewat Resend, Data Diri dan dokumen ikut akun lintas perangkat); rencana §3.26–§3.26.6; review arsitek v13 dan critic.
 

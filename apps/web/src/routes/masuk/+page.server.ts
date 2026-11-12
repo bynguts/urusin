@@ -54,7 +54,7 @@ export const load: PageServerLoad = async ({ url, locals, cookies }) => {
 export const actions: Actions = {
   /**
    * Masuk email + sandi (Turnstile setelah 3 kegagalan) → cookie sesi baru, sid diputar, data tamu pindah ke
-   * akun terverifikasi, Google yang menunggu bukti sandi ditautkan, lalu ke tujuan (atau Lengkapi profil).
+   * akun, Google yang menunggu bukti sandi ditautkan, lalu ke tujuan (atau Lengkapi profil).
    */
   masuk: async (event) => {
     const form = await event.request.formData();

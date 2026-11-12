@@ -38,6 +38,29 @@ export function hostsPortalWilayah(kode: string | null | undefined): string[] {
  */
 export const JALUR_REPLIKA: Readonly<Record<string, readonly string[]>> = Object.freeze({});
 
+/**
+ * Origin resmi yang punya situs latihan (replika di apps/fixtures) untuk Mode Uji. Harus sama dengan sisi kiri
+ * `PENDAMPING_ORIGIN_OVERRIDES` di deploy/compose.prod.yml (dijaga tes). Tamu hanya ditawari Browser Pendamping
+ * Mode Uji untuk origin ini; portal lain butuh akun (portal asli) supaya tawarannya tidak palsu.
+ */
+export const ORIGIN_REPLIKA_UJI: ReadonlySet<string> = new Set([
+  'https://telunjuksakti.wonogirikab.go.id',
+  'https://wargaklampid-dispendukcapil.surabaya.go.id',
+  'https://sidnok.semarangkota.go.id',
+  'https://samsat-pkb2.jakarta.go.id',
+  'https://oss.go.id',
+]);
+
+/** Apakah situs resmi ini punya replika Mode Uji? URL kosong atau tidak sah → false (gagal tertutup). */
+export function punyaReplikaUji(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    return ORIGIN_REPLIKA_UJI.has(new URL(url).origin);
+  } catch {
+    return false;
+  }
+}
+
 /** Jalur awal sesi Mode Uji: jalur portal bila replika host itu mendeklarasikannya, selain itu `/`. */
 export function jalurModeUji(
   origin: string,

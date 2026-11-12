@@ -97,7 +97,8 @@ Fitur di bawah berjalan di <https://urusinai.web.id> dan diuji di CI, kecuali ya
   - Nilai diambil server langsung dari vault, tidak pernah lewat peramban atau model.
 - **Akun opsional.** Tanpa akun (mode tamu) semua fitur tetap jalan.
   - Dengan akun (email + kata sandi, atau Google), Data Diri, dokumen, dan daftar urusan ikut ke perangkat lain.
-  - Fitur akun: verifikasi email, lupa sandi, tautkan/lepas Google, keluar, dan Zona bahaya di Pengaturan
+  - Daftar langsung jadi akun penuh tanpa verifikasi email ([ADR 0032](docs/adr/0032-akun-tanpa-verifikasi-email.md)).
+  - Fitur akun: lupa sandi (bila email aktif), tautkan/lepas Google, keluar, dan Zona bahaya di Pengaturan
     (keluar dari semua perangkat, hapus akun dengan konfirmasi HAPUS + sandi atau masuk ulang Google).
 - **Brankas terenkripsi.**
   - Data Diri (NIK, KK, alamat, HP) dan dokumen (foto KTP/KK, PDF) dienkripsi AES-256-GCM dengan kunci per
@@ -366,14 +367,15 @@ dibagikan.
   - Persetujuan saat mendaftar.
   - Hak akses, perbaikan, dan penghapusan lewat UI: Data Diri, Dokumen, dan Pengaturan → Zona bahaya (hapus
     akun, keluar dari semua perangkat). Kebijakan privasi lengkap: [`docs/privasi.md`](docs/privasi.md).
-  - Retensi terbatas: tamu 72 jam, salinan juri 24 jam, akun belum terverifikasi 24 jam.
+  - Retensi terbatas: tamu 72 jam, salinan juri 24 jam.
   - Pengungkapan pemroses dan transfer lintas negara: Resend (AS), Google, Oracle Cloud Singapura. DPIA ada di
     [ADR 0028](docs/adr/0028-akun-dan-login.md).
 - **Akun.**
   - Sandi argon2id, minimal 10 karakter, ditolak bila termasuk 10.000 sandi umum.
   - Sesi di cookie `__Host-` (HttpOnly, Secure, SameSite=Lax); server hanya menyimpan hash token.
   - Kunci bertahap setelah gagal login (30 detik, berlipat sampai 1 jam), dicatat atomik.
-  - Google OIDC dengan PKCE/state/nonce. Menautkan Google butuh email terverifikasi dan masuk ulang ≤ 15 menit.
+  - Google OIDC dengan PKCE/state/nonce. Google tidak pernah mengambil alih akun ber-email sama; menautkan butuh
+    bukti sandi akun itu atau masuk ulang ≤ 15 menit (ADR 0032).
 - **Vault.**
   - AES-256-GCM dengan DEK per pemilik yang dibungkus KEK (`URUSIN_PII_KEY`), plus AAD berversi.
   - Hapus = crypto-shred.
@@ -435,8 +437,9 @@ dibagikan.
     Semarang hanya punya cek status, jadi urusan tulis di sana (dan di portal tanpa replika) beralih ke panduan.
   - Situs `id-only` (Si D'nOK) hanya bisa diisi dari worker berlokasi Indonesia; Telunjuk Sakti (`id-utama`)
     dilayani server, warga sendiri mengetuk kotak verifikasi keamanan bila muncul.
-- **Email** saat ini berjalan dalam mode log (Resend belum diaktifkan): email verifikasi dan atur ulang sandi
-  belum terkirim ke warga. Masuk dengan Google, mode tamu, dan tombol juri tidak terpengaruh.
+- **Email** saat ini berjalan dalam mode log (Resend belum diaktifkan): email atur ulang sandi belum terkirim, jadi
+  Lupa sandi menampilkan pesan bahwa fitur itu belum tersedia. Daftar, masuk, Google, mode tamu, dan tombol juri
+  tidak terpengaruh (akun tidak butuh verifikasi email).
 - **Input suara dan pengingat** (`URUSIN_FEATURE_VOICE`, `URUSIN_FEATURE_REMINDERS`) masih nonaktif.
 - **Persetujuan "Izinkan isi"** (saat Pendamping aktif) disimpan di memori proses, jadi restart server berarti
   warga menekannya lagi.

@@ -101,6 +101,22 @@
   // Pesan agen di panel Pendamping hanya bila itu item terakhir percakapan; pertanyaan lama yang sudah
   // dijawab (mis. wilayah KTP) tidak ditampilkan lagi.
   const pesanPanel = $derived(linimasa.slice(-1).filter((x) => x.jenis === 'teks'));
+  /**
+   * Tamu di portal tanpa situs latihan: tawaran "Setujui dan buka situs" palsu (sesi pasti beralih ke panduan),
+   * jadi kartu mengajak masuk/daftar dan kembali ke urusan ini (urusan tamu pindah ke akun).
+   */
+  function perluMasuk(permintaan: { origin?: string | undefined } | null): string | undefined {
+    if (data.pendamping.peran !== 'tamu') return undefined;
+    const url = permintaan?.origin ?? situs;
+    let origin: string | null;
+    try {
+      origin = url ? new URL(url).origin : null;
+    } catch {
+      origin = null;
+    }
+    if (origin && data.pendamping.originReplika.includes(origin)) return undefined;
+    return `/urusan/${data.urusan.id}`;
+  }
   // Kartu "Setujui dan buka situs" yang bisa ditindaklanjuti (paling banyak satu).
   const konfirmasiAktif = $derived.by(() => {
     const it = linimasa.findLast((x) => x.jenis === 'konfirmasi');
@@ -560,6 +576,7 @@
                       aktif={it.key === konfirmasiAktif}
                       status={konfirmasi?.key === it.key ? konfirmasi.status : 'menunggu'}
                       pesanGalat={it.terakhir ? konfirmasiGalat : undefined}
+                      perluMasuk={perluMasuk(it.permintaan)}
                       onsetujui={() => void setujui(it.key, it.gate, it.permintaan)}
                       onbatal={() => void kirim('Batalkan, saya belum mau melanjutkan.')}
                     />
