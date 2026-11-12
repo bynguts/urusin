@@ -18,7 +18,19 @@ describe('PETA_PORTAL: data peta portal daerah aktif', () => {
   const entri = Object.entries(PETA_PORTAL);
 
   it('setiap portal memetakan kelima layanan, host-nya host portal registry, jalur awalnya sah untuk worker', () => {
-    expect(entri.length).toBeGreaterThanOrEqual(6);
+    // Kesepuluh daerah Browser Pendamping aktif (ADR 0033) terpetakan.
+    expect(entri.map(([kode]) => kode).sort()).toEqual([
+      '1271',
+      '1371',
+      '1871',
+      '3276',
+      '3312',
+      '3374',
+      '3573',
+      '3578',
+      '3671',
+      '6371',
+    ]);
     for (const [kode, p] of entri) {
       expect(p.kode).toBe(kode);
       expect(Object.keys(p.layanan).sort()).toEqual([...LAYANAN_PETA].sort());
@@ -99,9 +111,42 @@ describe('ketersediaanLayanan: sel × varian', () => {
 
   it('varian tak dikenal = nilai sel; wilayah/jenis belum dipetakan = dipetakan:false', () => {
     expect(ketersediaanLayanan('3374', 'kk', 'tidak-ada')).toMatchObject({ online: true });
-    expect(ketersediaanLayanan('3578', 'ktp')).toEqual({ dipetakan: false });
+    expect(ketersediaanLayanan('3201', 'ktp')).toEqual({ dipetakan: false });
     expect(ketersediaanLayanan('3374', 'kematian')).toEqual({ dipetakan: false });
     expect(ketersediaanLayanan(null, 'ktp')).toEqual({ dipetakan: false });
+  });
+
+  it('Surabaya: KIA dan pindah datang tidak untuk akun warga; pindah keluar online di /app', () => {
+    const kia = ketersediaanLayanan('3578', 'kia');
+    expect(kia).toMatchObject({ dipetakan: true, online: false });
+    if (kia.dipetakan && !kia.online) {
+      expect(kia.alternatif.lokasi).toBe('kelurahan-desa');
+      expect(kia.alternatif.teks).toMatch(/sekolah anak/);
+    }
+    expect(ketersediaanLayanan('3578', 'pindah', 'datang')).toMatchObject({ online: false });
+    expect(ketersediaanLayanan('3578', 'pindah')).toMatchObject({
+      online: true,
+      jalurMasuk: '/app',
+      prasyarat: { perangkat: 'bebas' },
+    });
+  });
+
+  it('Wonogiri KTP-el: id layanan per varian (8/9/10/11); Medan, Banjarmasin: jalur halaman masuk', () => {
+    expect(ketersediaanLayanan('3312', 'ktp', 'hilang')).toMatchObject({
+      online: true,
+      rute: '/telunjuksakti/index.php/pendaftaran/syarat/10',
+      jalurMasuk: '/telunjuksakti/index.php/users/login',
+    });
+    expect(ketersediaanLayanan('3312', 'ktp', 'baru')).toMatchObject({
+      rute: '/telunjuksakti/index.php/pendaftaran/syarat/8',
+    });
+    expect(PETA_PORTAL['3312']?.butuhHeaded).toBe(true);
+    expect(ketersediaanLayanan('1271', 'kk')).toMatchObject({
+      online: true,
+      jalurMasuk: '/portal/',
+      rute: '/portal/pengajuan',
+    });
+    expect(ketersediaanLayanan('6371', 'ktp')).toMatchObject({ online: true, jalurMasuk: '/auth/login' });
   });
 });
 
@@ -129,7 +174,8 @@ describe('petunjukPortal: teks tepercaya untuk Navigator', () => {
 
   it('sel offline atau belum dipetakan: tanpa petunjuk', () => {
     expect(petunjukPortal('3374', 'ktp')).toBeUndefined();
-    expect(petunjukPortal('3578', 'kk')).toBeUndefined();
+    expect(petunjukPortal('3201', 'kk')).toBeUndefined();
+    expect(petunjukPortal('3578', 'kia')).toBeUndefined();
   });
 });
 

@@ -396,7 +396,7 @@ describe('setiap layanan adminduk × wilayah berportal web mendapat rute Browser
       }
     expect(gagal).toEqual([]);
     // Sel offline menurut peta portal (tanpa varian disebut warga): dipandu jujur, bukan sesi buntu.
-    expect(offline.sort()).toEqual(['ktp × 1371', 'ktp × 3374', 'pindah × 3573']);
+    expect(offline.sort()).toEqual(['kia × 3578', 'ktp × 1371', 'ktp × 3374', 'pindah × 3573']);
   });
 
   it('QA Wonogiri: cetak ulang KTP-el rusak = Browser Pendamping di Telunjuk Sakti, bukan "belum bisa dibantu"', () => {

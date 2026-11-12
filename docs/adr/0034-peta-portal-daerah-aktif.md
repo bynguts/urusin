@@ -8,11 +8,14 @@ ADR 0033 menjamin Browser Pendamping di 10 daerah, tetapi registry hanya tahu "p
 2026-11-12 (HTML publik, bundle JS, manual PDF resmi; tanpa login dan tanpa kirim) menunjukkan:
 
 - Sebagian layanan tidak ada online di portal daerahnya: KTP-el di Si D'nOK Semarang (TPDK kecamatan), pindah di
-  SIAPEL Malang, KTP-el baru di Sobat Dukcapil Tangerang, KTP-el selain hilang dan KIA selain pemula di SIRANCAK Padang.
-  Membuka Pendamping untuk sel itu pasti berakhir buntu.
+  SIAPEL Malang, KTP-el baru di Sobat Dukcapil Tangerang, KTP-el selain hilang dan KIA selain pemula di SIRANCAK Padang,
+  KIA dan pindah datang untuk akun warga di Klampid Surabaya. Membuka Pendamping untuk sel itu pasti berakhir buntu.
 - Beberapa akun hanya bisa dibuat warga sendiri di luar sesi: SIRANCAK (swafoto kamera langsung, OTP WhatsApp terbalik,
   email Gmail, verifikasi admin), Tangerang LIVE (aplikasi), Si D'nOK (sandi lewat WA/email, profil wajib lengkap),
-  SIAPEL (aktivasi email).
+  SIAPEL (aktivasi email), Klampid (verifikasi akun lewat chat + nomor HP lewat bot WhatsApp), SIBISA Medan (OTP email +
+  KYC foto KTP disetujui petugas), Parakacil (OTP email), Telunjuk Sakti (captcha + tantangan Cloudflare).
+- Telunjuk Sakti Wonogiri, seperti Si D'nOK, menolak Chromium headless (Cloudflare) dan menantang ulang di navigasi
+  berikutnya; jalur awal sesi langsung ke halaman masuk menghemat satu navigasi.
 - Navigator meraba menu: tautan langsung Depok 404, formulir di tab "Pendaftaran", nice-select/Select2, select AJAX
   bertingkat, datepicker digit saja, SweetAlert, tanda tangan canvas.
 - Registry salah untuk Bandar Lampung: COKELAT `/pendaftaran` tidak bisa dikirim warga; kanal warga adalah Permen
@@ -48,6 +51,10 @@ ADR 0033 menjamin Browser Pendamping di 10 daerah, tetapi registry hanya tahu "p
 
 - Sel offline jujur sejak kartu, tanpa sesi buntu. Varian yang tidak disebut warga mengikuti nilai sel (Padang KTP-el
   tanpa varian = dipandu, karena mayoritas KTP-el baru); warga yang menyebut "hilang" mendapat Pendamping.
-- Peta bisa usang; setiap portal mencatat `buktiTanggal`. Field terpetakan penuh hanya Tangerang (5/5); portal lain
-  memetakan rute, menu, berkas, dan jebakan.
-- Surabaya, Medan, Banjarmasin, dan Wonogiri belum punya entri; ditambahkan saat petanya selesai (data saja).
+- Peta bisa usang; setiap portal mencatat `buktiTanggal`. Field terpetakan penuh hanya Tangerang (5/5) dan Medan
+  (nama kolom dari `pengajuan.js`, KTP-el belum pasti); portal lain memetakan rute, menu, berkas, dan jebakan.
+- Kesepuluh daerah aktif punya entri. Sel berkeyakinan rendah (mis. KTP-el Medan, KK/pindah/KIA Wonogiri, semua
+  formulir Banjarmasin) tetap online dengan jebakan "bila menu tidak ada, jawab tidak_bisa" di petunjuk.
+- Prasyarat akun ikut tampil di depan langkah adapter (Wonogiri akta kelahiran), dengan "Lewati bila sudah punya akun".
+- Unggahan Klampid Surabaya memakai host S3 di luar .go.id (`s3.klampid.disdukcapilsurabaya.id`) yang belum ada di
+  registry/egress sesi; perlu keputusan terpisah sebelum unggah berkas di Surabaya bisa jalan.

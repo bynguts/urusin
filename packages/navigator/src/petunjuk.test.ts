@@ -75,7 +75,7 @@ describe('pesanRencana + petunjuk portal', () => {
     expect(p).toContain('/layanan/0045');
     expect(p).toContain('SIRANCAK');
     expect(petunjukPortalUrusan('ktp', '1371', ['mau bikin KTP pertama kali'])).toBeUndefined();
-    expect(petunjukPortalUrusan('kk', '3578', [])).toBeUndefined();
+    expect(petunjukPortalUrusan('kk', '3201', [])).toBeUndefined();
   });
 });
 

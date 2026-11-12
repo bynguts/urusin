@@ -29,8 +29,11 @@ describe('alur demo juri Wonogiri tetap utuh (akta kelahiran, Telunjuk Sakti lay
     const t2 = await runTurn(env.deps, { urusanId: u.id, userText: 'Ya' });
     const kartu = of(t2.events, 'plan_card')[0]!;
     expect(kartu).toMatchObject({ tier: 'semi', ringkasan: 'Kelahiran · Kab. Wonogiri' });
-    expect(kartu.langkah[0]).toMatchObject({ id: 'ajukan', jenis: 'online-adapter' });
-    expect(kartu.langkah[0]!.sumber[0]!.url).toMatch(/disdukcapil\.wonogirikab\.go\.id/);
+    // Prasyarat akun Telunjuk Sakti (peta portal, ADR 0034) dikerjakan warga sendiri sebelum langkah adapter.
+    expect(kartu.langkah[0]).toMatchObject({ id: 'akun-portal', jenis: 'online-manual' });
+    expect(kartu.langkah[0]!.keterangan).toMatch(/Lewati bila sudah punya akun/);
+    expect(kartu.langkah[1]).toMatchObject({ id: 'ajukan', jenis: 'online-adapter' });
+    expect(kartu.langkah[1]!.sumber[0]!.url).toMatch(/disdukcapil\.wonogirikab\.go\.id/);
 
     const events: EventPayload[] = [];
     const r = setujuiRencana(env.store, u.id, (e) => void events.push(e));

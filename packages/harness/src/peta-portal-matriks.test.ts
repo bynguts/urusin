@@ -49,11 +49,14 @@ const MATRIKS: Readonly<Record<string, Record<Jenis, Harap>>> = {
   '3276': semua(g('/')),
   // Sobat Dukcapil: mulai dari beranda (pilih layanan dulu, lalu masuk).
   '3671': semua(g('/')),
-  // Belum dipetakan: perilaku registry sebelumnya (peta menyusul).
-  '3578': semua(g('/app')),
-  '1271': semua(g('/')),
-  '6371': semua(g('/')),
-  '3312': { ...semua(g('/')), kelahiran: { rute: 'adapter' } },
+  // Klampid: KIA tidak tampil untuk akun warga (sekolah/kelurahan); pindah keluar online (datang = varian offline).
+  '3578': { ...semua(g('/app')), kia: { rute: 'offline', alternatif: /kelurahan domisili di Surabaya/ } },
+  // SIBISA: halaman masuk /portal/ (beranda / hanya situs info).
+  '1271': semua(g('/portal/')),
+  // Parakacil: langsung ke halaman masuk.
+  '6371': semua(g('/auth/login')),
+  // Telunjuk Sakti: akta kelahiran tetap adapter; layanan lain langsung ke halaman masuk (Cloudflare per navigasi).
+  '3312': { ...semua(g('/telunjuksakti/index.php/users/login')), kelahiran: { rute: 'adapter' } },
 };
 
 /** Prasyarat akun yang dikerjakan warga sendiri (langkah pertama kartu, sebelum Pendamping). */
@@ -69,6 +72,10 @@ const AKUN: Readonly<Record<string, readonly RegExp[]>> = {
   '1871': [/Kirim OTP melalui Email/],
   '3276': [/silondomaju\.depok\.go\.id\/register/],
   '3671': [/aplikasi Tangerang LIVE/],
+  '3578': [/Verifikasi Akun Klampid/, /bot WhatsApp/],
+  '1271': [/OTP 6 digit/, /swafoto memegang KTP/, /persetujuan petugas/],
+  '6371': [/OTP yang dikirim ke EMAIL/],
+  '3312': [/users\/registration|Daftar Akun/, /captcha/],
 };
 
 const TUJUAN_PINDAH: Readonly<Record<string, string>> = { '3374': '3578' };
@@ -173,6 +180,10 @@ describe('Sel per varian (varian disebut warga)', () => {
     ['1871', 'ktp', 'baru', g('/perekaman')],
     ['3374', 'ktp', 'hilang', { rute: 'offline', alternatif: /surat kehilangan/ }],
     ['3374', 'pindah', 'datang', g('/pelapor/login')],
+    ['3578', 'pindah', 'datang', { rute: 'offline', alternatif: /SKPWNI dari daerah asal/ }],
+    ['3578', 'pindah', 'keluar', g('/app')],
+    ['3312', 'ktp', 'hilang', g('/telunjuksakti/index.php/users/login')],
+    ['3312', 'pindah', 'datang', g('/telunjuksakti/index.php/users/login')],
   ];
   for (const [kode, jenis, varian, harap] of KASUS)
     it(`${kode} × ${jenis} (${varian})`, () => {
