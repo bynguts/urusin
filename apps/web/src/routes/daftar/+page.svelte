@@ -106,8 +106,7 @@
     </div>
     <p class="text-sm text-body">
       Dengan mendaftar, Anda setuju dengan
-      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- halaman /syarat dikelola terpisah dari rute bertipe cabang ini -->
-      <a href="/syarat" class="font-semibold text-ink underline">Syarat layanan</a> dan
+      <a href={resolve('/syarat')} class="font-semibold text-ink underline">Syarat layanan</a> dan
       <a href={resolve('/privasi')} class="font-semibold text-ink underline">Kebijakan privasi</a> Urusin.
     </p>
     <button
