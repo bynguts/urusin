@@ -92,7 +92,7 @@ const KANAL_DIPANDU: Readonly<Partial<Record<PortalWilayah['jenis'], string>>> =
 
 /**
  * Alasan jujur (templat, bukan keluaran model) saat urusan tidak bisa dikerjakan Browser Pendamping di wilayah
- * ini. `wilayah` = nama pendek kab/kota bila diketahui. Daerah di luar `DAERAH_PENDAMPING_AKTIF` (ADR 0032): kalimat
+ * ini. `wilayah` = nama pendek kab/kota bila diketahui. Daerah di luar `DAERAH_PENDAMPING_AKTIF` (ADR 0033): kalimat
  * positif "Urusin memandu, Pendamping sedang dikembangkan", bukan jalan buntu.
  */
 export function alasanDipandu(kode: string | null | undefined, wilayah?: string): string {

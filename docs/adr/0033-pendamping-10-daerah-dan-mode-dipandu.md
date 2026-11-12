@@ -1,4 +1,4 @@
-# 0032. Browser Pendamping di 10 daerah prioritas, daerah lain dipandu AI
+# 0033. Browser Pendamping di 10 daerah prioritas, daerah lain dipandu AI
 
 - **Status:** Diterima. **Dicatat:** 2026-11-12. **Sumber:** keputusan pemilik produk.
 

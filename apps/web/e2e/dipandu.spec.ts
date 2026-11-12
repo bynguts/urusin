@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// ADR 0032: daerah di luar 10 daerah Browser Pendamping aktif tetap dipandu lengkap dengan kartu positif
+// ADR 0033: daerah di luar 10 daerah Browser Pendamping aktif tetap dipandu lengkap dengan kartu positif
 // "sedang dikembangkan", kanal resmi daerah yang bisa diklik, dan tanpa jalan buntu. Server memakai DemoProvider.
 test.beforeEach(async ({ context }) => {
   const oktet = () => Math.floor(Math.random() * 250) + 1;
@@ -15,6 +15,8 @@ test('Kota Jayapura: kartu dipandu "sedang dikembangkan", kanal resmi bisa dikli
 }) => {
   await page.goto('/peristiwa/kelahiran');
   const kota = page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' });
+  // Kotak cari baru tampil setelah hidrasi (sebelumnya select tanpa JavaScript).
+  await expect(kota).toHaveAttribute('aria-autocomplete', 'list');
   await kota.fill('Jayapura');
   await page.getByRole('option', { name: 'Kota Jayapura', exact: true }).click();
   await expect(page).toHaveURL(/kodeKabKota=9171/);

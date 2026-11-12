@@ -68,7 +68,7 @@ describe('registry wilayah untuk Navigator', () => {
     expect(PORTAL_WILAYAH['3201']?.login).toEqual(['google']);
     expect(portalWebWilayah('3201')).toBeUndefined();
     expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: '3201' }).jalur).toBe('dipandu');
-    // Kab. Bogor di luar daerah Pendamping aktif (ADR 0032): kalimat positif, bukan "belum bisa dibantu".
+    // Kab. Bogor di luar daerah Pendamping aktif (ADR 0033): kalimat positif, bukan "belum bisa dibantu".
     expect(alasanDipandu('3201', 'Kab. Bogor')).toMatch(
       /Untuk Kab\. Bogor, Urusin memandu.*sedang kami kembangkan/,
     );
@@ -82,7 +82,7 @@ describe('registry wilayah untuk Navigator', () => {
       ['3571', '/sakti'],
     ] as const) {
       expect(new URL(portalWebWilayah(kode)!.url).pathname, kode).toBe(jalur);
-      // Demak dan Kota Kediri di luar daerah Pendamping aktif (ADR 0032): jalurnya tetap tercatat, rutenya dipandu.
+      // Demak dan Kota Kediri di luar daerah Pendamping aktif (ADR 0033): jalurnya tetap tercatat, rutenya dipandu.
       if (kode !== '1871') {
         expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }), kode).toMatchObject({
           jalur: 'dipandu',
@@ -103,7 +103,7 @@ describe('registry wilayah untuk Navigator', () => {
 
   it('probe portal nyata: portal id-only baru dipandu tanpa worker ID; portal mati/berubah selalu dipandu', () => {
     for (const kode of ['1271', '1372', '1403', '1771', '3275', '3279', '3402', '3674', '6271']) {
-      // Di luar daerah Pendamping aktif (ADR 0032): dipandu apa pun keadaan worker ID.
+      // Di luar daerah Pendamping aktif (ADR 0033): dipandu apa pun keadaan worker ID.
       const aktif = kode === '1271';
       aturJaringanId(() => false);
       expect(rutePendamping({ jenis: 'kelahiran', kodeKabKota: kode }), kode).toMatchObject({

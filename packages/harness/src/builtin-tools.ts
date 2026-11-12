@@ -296,7 +296,7 @@ const bukanPenduduk = (jenis: string | null, ktp: { kodeKabKota: string } | null
  * memberi langkah lain (isi kartu rencana atau datang ke kantor) tanpa mengulang kanal.
  */
 function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?: string | null): ToolResult {
-  // Urusan adminduk tidak berakhir hand-off (ADR 0032): model memberi panduan umum yang ditandai jujur, ditutup
+  // Urusan adminduk tidak berakhir hand-off (ADR 0033): model memberi panduan umum yang ditandai jujur, ditutup
   // kanal resmi daerah yang berwenang (yurisdiksi `kodeUtama`, portal penduduk dilewati untuk warga luar daerah).
   if (ctx.urusan.jenis === null || ADMINDUK.has(ctx.urusan.jenis)) {
     const kode = kodeUtama ?? kodeKtp(ctx.store, ctx.urusan);

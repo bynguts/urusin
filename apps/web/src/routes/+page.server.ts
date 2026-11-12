@@ -8,7 +8,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 /** Riwayat urusan tamu bukan sesi login: landing tetap terbuka sampai warga memilih masuk aplikasi. */
 export const load: PageServerLoad = async ({ cookies, locals }) => {
-  // Klaim cakupan Browser Pendamping dari satu sumber kebenaran (ADR 0032).
+  // Klaim cakupan Browser Pendamping dari satu sumber kebenaran (ADR 0033).
   const data = { jumlahDaerahPendamping: DAERAH_PENDAMPING_AKTIF.length };
   if (!locals.akun) return data;
   const id = bacaTerakhir(cookies);

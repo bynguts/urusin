@@ -1,6 +1,6 @@
 /**
  * Daerah tempat Browser Pendamping (AI ikut mengisi formulir di portal resmi) dijamin aktif. Keputusan pemilik produk
- * 2026-11-12 (ADR 0032): daerah lain dipandu langkah demi langkah dan Pendamping-nya dikomunikasikan sebagai "sedang
+ * 2026-11-12 (ADR 0033): daerah lain dipandu langkah demi langkah dan Pendamping-nya dikomunikasikan sebagai "sedang
  * dikembangkan". Satu sumber kebenaran untuk rute agen (harness), kartu rencana, dan halaman web.
  */
 export const DAERAH_PENDAMPING_AKTIF: readonly { kode: string; nama: string }[] = Object.freeze([

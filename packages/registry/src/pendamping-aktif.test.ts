@@ -7,7 +7,7 @@ import {
   wilayahByKode,
 } from './index.js';
 
-describe('DAERAH_PENDAMPING_AKTIF (keputusan pemilik, ADR 0032)', () => {
+describe('DAERAH_PENDAMPING_AKTIF (keputusan pemilik, ADR 0033)', () => {
   it('tepat 10 daerah prioritas, kode dan nama cocok dengan Kepmendagri', () => {
     expect(DAERAH_PENDAMPING_AKTIF.map((d) => d.kode)).toEqual([
       '3578',

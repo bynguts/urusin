@@ -69,7 +69,7 @@ const PERSONA = [
   },
 ] as const;
 
-describe('ADR 0032: persona daerah non-prioritas dipandu lengkap, tanpa hand-off', () => {
+describe('ADR 0033: persona daerah non-prioritas dipandu lengkap, tanpa hand-off', () => {
   it.each(PERSONA)('$nama', async (p) => {
     // Tanpa rencana deterministik (mis. KIA sebelum bundelnya ada), model yang mengusulkan langkah.
     const deterministik = rencanaUrusan(p.jenis, { ktp: p.kode, tujuan: 'tujuan' in p ? p.tujuan : null });

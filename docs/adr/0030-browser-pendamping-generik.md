@@ -1,6 +1,6 @@
 # 0030. Browser Pendamping generik untuk portal tanpa adapter
 
-- **Status:** Diterima; cakupan wilayahnya dibatasi ke 10 daerah oleh ADR 0032. **Dicatat:** 2026-11-10. **Sumber:** keputusan tim.
+- **Status:** Diterima; cakupan wilayahnya dibatasi ke 10 daerah oleh ADR 0033. **Dicatat:** 2026-11-10. **Sumber:** keputusan tim.
 
 ## Konteks
 

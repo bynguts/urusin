@@ -10,7 +10,7 @@ import { portalWilayah } from './generik.js';
 import { handoffChannels, kunciUrl } from './grounding.js';
 
 /**
- * Mode "AI memandu" (ADR 0032): paket kartu rencana untuk urusan tanpa Browser Pendamping, dan arahan panduan umum
+ * Mode "AI memandu" (ADR 0033): paket kartu rencana untuk urusan tanpa Browser Pendamping, dan arahan panduan umum
  * saat korpus tidak punya sumber yang bisa dikutip. Semua kanal dari registry (tidak ada URL/nomor karangan).
  */
 export type PaketDipandu = NonNullable<PayloadOf<'plan_card'>['dipandu']>;

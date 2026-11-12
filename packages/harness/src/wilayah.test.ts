@@ -119,11 +119,11 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
       const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
       const kartu = of(out.events, 'plan_card')[0]!;
       expect(kartu).toBeDefined();
-      // Daftar daerah Browser Pendamping aktif (ADR 0032) memang menyebut Wonogiri; isi rencana tidak.
+      // Daftar daerah Browser Pendamping aktif (ADR 0033) memang menyebut Wonogiri; isi rencana tidak.
       expect(JSON.stringify(kartu).replace(DAFTAR_PENDAMPING_AKTIF, '')).not.toMatch(/wonogiri/i);
       expect(kartu.wilayah?.ktp).toEqual({ kodeKabKota: kode, nama });
       // Tier jujur: `semi` hanya bila Navigator generik benar-benar ditawarkan (portal web wilayah itu sendiri,
-      // di daerah Browser Pendamping aktif; ADR 0032).
+      // di daerah Browser Pendamping aktif; ADR 0033).
       const portalWeb = pendampingAktif(kode) ? portalWebWilayah(kode) : undefined;
       expect(kartu.tier).toBe(portalWeb ? 'semi' : 'dipandu');
       if (portalWeb) {
@@ -575,7 +575,7 @@ describe('temuan eval persona W2: ganti wilayah membuang sumber wilayah lama', (
   });
 });
 
-describe('temuan eval persona W6 / ADR 0032: adminduk tanpa sumber = panduan umum, bukan hand-off', () => {
+describe('temuan eval persona W6 / ADR 0033: adminduk tanpa sumber = panduan umum, bukan hand-off', () => {
   it('pertanyaan tanpa sumber berulang: tiap kali panduan umum bertanda jujur dengan kanal resmi, tanpa hand-off', async () => {
     const jawab = tool('urusan__jawab_persyaratan', { pertanyaan: 'nomor antrean berapa?' });
     // Jenis tanpa rencana (KK punya rencana yang dokumennya ikut jadi sumber).

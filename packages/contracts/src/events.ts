@@ -134,7 +134,7 @@ export const PlanCardEventSchema = event('plan_card', {
     })
     .optional(),
   /**
-   * Paket mode dipandu (aditif, ADR 0032), hanya bila tanpa `pendamping`: kalimat positif untuk warga, kanal resmi
+   * Paket mode dipandu (aditif, ADR 0033), hanya bila tanpa `pendamping`: kalimat positif untuk warga, kanal resmi
    * daerah yang bisa diklik (portal/situs/WA/kontak dari registry), biaya dan perkiraan waktu, tips, dan bantuan
    * lanjutan yang sungguh tersedia. `pendampingBerkembang` = daerah ini belum termasuk daerah Browser Pendamping aktif.
    * `waktu.umum` / tips = panduan umum (bukan kutipan sumber resmi), wajib ditandai "cek ulang di kanal resmi".

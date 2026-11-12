@@ -56,7 +56,7 @@ export type LangkahTulisPendamping = {
 /**
  * `sebab: 'jaringan_id'`: portal hanya menerima IP Indonesia (registry `aksesWilayah: 'id-only'`) dan tidak ada
  * worker berjaringan Indonesia yang sehat; kartu rencana menyebut alasan itu sejak awal. `sebab: 'pengembangan'`:
- * wilayah di luar `DAERAH_PENDAMPING_AKTIF` (ADR 0032), Browser Pendamping-nya sedang dikembangkan.
+ * wilayah di luar `DAERAH_PENDAMPING_AKTIF` (ADR 0033), Browser Pendamping-nya sedang dikembangkan.
  */
 export type RutePendamping =
   LangkahTulisPendamping | { jalur: 'dipandu'; alasan: string; sebab?: 'jaringan_id' | 'pengembangan' };
@@ -126,7 +126,7 @@ export function rutePendamping(u: Pick<UrusanRow, 'jenis' | 'kodeKabKota'>): Rut
   if (!kode || (u.jenis && !ADMINDUK.has(u.jenis))) return { jalur: 'dipandu', alasan: alasanDipandu(null) };
   const w = wilayahByKode(kode);
   const nama = w ? namaPendekWilayah(w.nama) : undefined;
-  // Pendamping hanya di daerah yang dijamin (ADR 0032); daerah lain dipandu, Pendamping-nya "sedang dikembangkan".
+  // Pendamping hanya di daerah yang dijamin (ADR 0033); daerah lain dipandu, Pendamping-nya "sedang dikembangkan".
   if (!pendampingAktif(kode))
     return { jalur: 'dipandu', alasan: alasanDipandu(kode, nama), sebab: 'pengembangan' };
   const r = ruteDasar(u.jenis, kode, nama);
