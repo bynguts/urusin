@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto';
-import type { CatatanPendamping, Pengamatan } from '@urusin/contracts';
+import { PESAN_LIHAT_SAJA, type CatatanPendamping, type Pengamatan } from '@urusin/contracts';
 import { describe, expect, it } from 'vitest';
 import { pesanAlihLuar, pesanSitusBermasalah } from './galat-nav.js';
 import { createGerbangTulis, JENDELA_ISI_MS, type Jendela } from './gerbang-tulis.js';
@@ -83,6 +83,8 @@ type Opsi = {
   /** Tangan `lebarkan` (probe gel4 3279); undefined = tangan tanpa kemampuan itu. */
   lebarkan?: () => Promise<boolean>;
   belumTampil?: () => Promise<boolean>;
+  /** Demo "lihat saja" di situs asli (GenerikDeps.lihatSaja + gerbang tanpa jendela ai_isi). */
+  lihatSaja?: boolean;
 };
 
 function harness(o: Opsi = {}) {
@@ -103,6 +105,7 @@ function harness(o: Opsi = {}) {
     wargaPegang: () => false,
     onBlokir: (c, j) => ref.run!.blokir(c, j),
     now: () => now,
+    ...(o.lihatSaja ? { lihatSaja: true } : {}),
   });
   const tangan: TanganHalaman = {
     async amati(_seq, diisi) {
@@ -149,6 +152,7 @@ function harness(o: Opsi = {}) {
     },
     tidakBisa: (p) => void tidakBisa.push(p),
     now: () => now,
+    ...(o.lihatSaja ? { lihatSaja: true } : {}),
   }));
   return {
     run,
@@ -200,6 +204,127 @@ describe('GenerikRun: kunci halaman akhir', () => {
     await h.run.amati();
     const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e3' }] });
     expect(r[0]?.kode).toBe('ok');
+  });
+});
+
+describe('GenerikRun: gerbang demo "lihat saja" di situs asli', () => {
+  const beranda = () =>
+    pengamatan({
+      elemen: [
+        ...pengamatan().elemen,
+        { ref: 'e6', peran: 'tombol', nama: 'Menu', kelas: 'ui_lokal' },
+        { ref: 'e7', peran: 'tautan', nama: 'Mulai Pendaftaran', kelas: 'kirim', tautanPembuka: true },
+      ],
+    });
+  const PETA_LS: PetaRef = {
+    ...PETA,
+    e6: { jalur: 'nav > button', sidik: 's-menu' },
+    e7: { jalur: 'main > a', sidik: 's-mulai' },
+  };
+
+  it.each([
+    ['isi', { jenis: 'isi', ref: 'e1', nilai: PH_NAMA }, 'TERLARANG'],
+    ['pilih', { jenis: 'pilih', ref: 'e1', nilai: { opsi: 0 } }, 'TERLARANG'],
+    ['centang', { jenis: 'centang', ref: 'e1', nilai: true }, 'TERLARANG'],
+    ['unggah', { jenis: 'unggah', ref: 'e1', berkas: 'KTP' }, 'TERLARANG'],
+    ['klik lanjut', { jenis: 'klik', ref: 'e3' }, 'KELAS_DITOLAK'],
+    ['klik kirim', { jenis: 'klik', ref: 'e5' }, 'KELAS_DITOLAK'],
+  ] as const)('%s ditolak SEBELUM halaman disentuh dan tanpa lembar izin', async (_n, a, kode) => {
+    const h = harness({ amati: beranda, peta: PETA_LS, lihatSaja: true });
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [a, { jenis: 'klik', ref: 'e4' }] });
+    expect(r).toEqual([
+      { indeks: 0, kode },
+      { indeks: 1, kode: 'DILEWATI' },
+    ]);
+    expect(h.panggilan).toEqual([]);
+    expect(h.navigasi).toEqual([]);
+    expect(h.minta).toEqual([]);
+  });
+
+  it('klik navigasi dan ui_lokal dijalankan; tautan pembuka dibuka lewat navigasi GET', async () => {
+    const h = harness({
+      amati: beranda,
+      peta: PETA_LS,
+      lihatSaja: true,
+      tautan: { e7: 'https://portal.contoh.go.id/daftar' },
+    });
+    await h.run.amati();
+    expect((await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e6' }] }))[0]?.kode).toBe('ok');
+    await h.run.amati();
+    expect((await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e4' }] }))[0]?.kode).toBe('ok');
+    // Klasifikasi ulang di halaman juga membawa flag demo (runner menolak kelas `lanjut`).
+    expect(h.panggilan).toEqual([
+      { jenis: 'klik', ref: 'e6', lihatSaja: true },
+      { jenis: 'klik', ref: 'e4', lihatSaja: true },
+    ]);
+    await h.run.amati();
+    expect((await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'klik', ref: 'e7' }] }))[0]?.kode).toBe('ok');
+    expect(h.navigasi).toEqual(['https://portal.contoh.go.id/daftar']);
+  });
+
+  it('gerbang lihat saja tidak pernah membuka jendela ai_isi (XHR non-GET)', () => {
+    const g = createGerbangTulis({
+      wargaPegang: () => false,
+      onBlokir: () => {},
+      lihatSaja: true,
+      now: () => T0,
+    });
+    g.setAi({ jenis: 'ai_isi', sampai: T0 + JENDELA_ISI_MS });
+    expect(g.jendela()).toEqual({ jenis: 'ai_diam' });
+    expect(
+      g.periksa({
+        metode: 'POST',
+        dokumen: false,
+        utama: false,
+        xhr: true,
+        url: 'https://portal.contoh.go.id/x',
+      }),
+    ).toBe('blokir');
+    // Akun biasa: jendela isi tetap ada (tidak berubah).
+    const biasa = createGerbangTulis({ wargaPegang: () => false, onBlokir: () => {}, now: () => T0 });
+    biasa.setAi({ jenis: 'ai_isi', sampai: T0 + JENDELA_ISI_MS });
+    expect(
+      biasa.periksa({
+        metode: 'POST',
+        dokumen: false,
+        utama: false,
+        xhr: true,
+        url: 'https://portal.contoh.go.id/x',
+      }),
+    ).toBe('lanjut');
+  });
+
+  it('klik AI demo: GET XHR/fetch ber-jalur tulis diblokir; GET biasa lolos; akun biasa tidak berubah', () => {
+    const xhr = (url: string) => ({ metode: 'GET', dokumen: false, utama: false, xhr: true, url });
+    const TULIS = 'https://portal.contoh.go.id/api/simpan-permohonan?kirim=1';
+    const g = createGerbangTulis({
+      wargaPegang: () => false,
+      onBlokir: () => {},
+      lihatSaja: true,
+      now: () => T0,
+    });
+    g.setAi({ jenis: 'ai_klik' });
+    expect(g.periksa(xhr(TULIS))).toBe('blokir');
+    expect(g.periksa(xhr('https://portal.contoh.go.id/api/menu'))).toBe('lanjut');
+    const biasa = createGerbangTulis({ wargaPegang: () => false, onBlokir: () => {}, now: () => T0 });
+    biasa.setAi({ jenis: 'ai_klik' });
+    expect(biasa.periksa(xhr(TULIS))).toBe('lanjut');
+  });
+
+  it('serah akhir berhenti di sesi lihat saja memakai pesan demo yang jujur', async () => {
+    const h = harness({ amati: beranda, peta: PETA_LS, lihatSaja: true });
+    await h.run.amati();
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'serahkan', alasan: 'berhenti' }] });
+    expect(h.serah.at(-1)).toMatchObject({ alasan: 'berhenti', pesan: PESAN_LIHAT_SAJA });
+  });
+
+  it('tanpa lihat saja: isi tetap meminta izin seperti biasa (akun warga tidak berubah)', async () => {
+    const h = harness({ amati: beranda, peta: PETA_LS });
+    await h.run.amati();
+    const r = await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'isi', ref: 'e1', nilai: PH_NAMA }] });
+    expect(r[0]?.kode).toBe('BELUM_DISETUJUI');
+    expect(h.minta).toHaveLength(1);
   });
 });
 

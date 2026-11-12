@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import net from 'node:net';
-import type { MulaiSesiInternal, PendampingServerMessage } from '@urusin/contracts';
+import { PESAN_LIHAT_SAJA, type MulaiSesiInternal, type PendampingServerMessage } from '@urusin/contracts';
 import { ADAPTERS, hostsSesi } from '@urusin/adapters';
 import { afterEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
@@ -265,6 +265,55 @@ describe('SessionManager', () => {
       kode: 'ADAPTER_TIDAK_ADA',
     });
     expect(tanpa.runs).toHaveLength(0);
+  });
+
+  it('demo lihat saja (adapter): situs RESMI walau replika ada; langkah adapter tidak dijalankan, tanpa izin isi', async () => {
+    const fx = 'https://fixtures.urusin.test';
+    const ov = new Map([['https://telunjuksakti.wonogirikab.go.id', fx]]);
+    const h = harness({ production: true, fixtureOrigins: [fx], originOverrides: ov });
+    const s = await h.manager.create(input('u-demo', { modeUji: false, lihatSaja: true }));
+    await h.flush();
+    expect(s).toMatchObject({
+      situs: 'https://telunjuksakti.wonogirikab.go.id',
+      replika: false,
+      lihatSaja: true,
+    });
+    const run = h.runs[0]!;
+    expect(run.init.program.origin).toBe('https://telunjuksakti.wonogirikab.go.id');
+    expect(run.calls).toContain('ambilAlih');
+    expect(run.calls).not.toContain('mulaiAi');
+    expect(h.manager.status(owner('u-demo'))).toMatchObject({ mode: 'takeover', lihatSaja: true });
+    // Penampil yang tersambung belakangan menerima giliran demo, bukan lembar izin isi.
+    const v = h.viewer();
+    await h.manager.attach(s.sesiId, v);
+    expect(v.sent.some((m) => m.type === 'butuh_data')).toBe(false);
+    expect(v.sent).toContainEqual({
+      type: 'event',
+      event: { jenis: 'giliran_anda', alasan: 'berhenti', pesan: PESAN_LIHAT_SAJA },
+    });
+    // Jalur Izinkan isi ditolak di worker: tidak ada nilai yang masuk sesi ini.
+    await expect(h.manager.isiData(owner('u-demo'), { '{{PEMOHON.NAMA}}': 'Contoh' })).rejects.toMatchObject({
+      status: 409,
+    });
+    // Lanjutkan tidak membangunkan AI: tetap giliran warga.
+    await h.manager.handleClient(s.sesiId, { type: 'kembalikan' });
+    expect(run.calls).not.toContain('kembalikan');
+    expect(run.calls).not.toContain('mulaiAi');
+    expect(h.manager.status(owner('u-demo')).mode).toBe('takeover');
+  });
+
+  it('demo lihat saja (generik): bendera lihatSaja diteruskan ke run Navigator; akun warga tidak', async () => {
+    const h = harness({ maxSessions: 2 });
+    const gen = {
+      adapterId: 'generik',
+      flowId: 'kelahiran',
+      origin: 'https://telunjuksakti.wonogirikab.go.id',
+      params: { jalur: '/' },
+    };
+    await h.manager.create(input('u-demo', { ...gen, lihatSaja: true }));
+    await h.manager.create(input('u-warga', gen));
+    await h.flush();
+    expect(h.runs.map((r) => r.init.generik?.lihatSaja)).toEqual([true, false]);
   });
 
   it('Mode Uji: host egress sesi tanpa satu pun *.go.id (OSS: api-prd/gw/s3.oss.go.id dibuang)', async () => {

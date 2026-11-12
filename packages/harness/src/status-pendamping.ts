@@ -17,6 +17,10 @@ export type StatusPendamping = {
   aiBerakhir?: string;
   /** Sesi sudah ditutup (hasil eksekusi tercatat): dibatalkan/berhasil/gagal/... */
   hasil?: string;
+  /** Demo (akun juri) di situs resmi asli, mode "lihat saja": AI hanya menavigasi, tidak pernah mengisi. */
+  lihatSaja?: true;
+  /** Demo (akun juri) beralih ke simulasi di replika uji: AI mengisi data contoh, bukan ke situs pemerintah. */
+  simulasi?: true;
 };
 
 type JejakEvent = {
@@ -30,7 +34,7 @@ export function statusPendamping(store: HarnessStore, urusanId: string): StatusP
     { executionId?: unknown } | undefined;
   const executionId = typeof req?.executionId === 'string' ? req.executionId : undefined;
   if (!executionId) return undefined;
-  const s: StatusPendamping = { kolomDiisi: 0, izinKosong: false, giliran: 'ai' };
+  let s: StatusPendamping = { kolomDiisi: 0, izinKosong: false, giliran: 'ai' };
   const jejak = store
     .eventsOfType(urusanId, 'jejak_pendamping', 500)
     .map((e) => e.payload as JejakEvent)
@@ -45,6 +49,12 @@ export function statusPendamping(store: HarnessStore, urusanId: string): StatusP
       s.giliran = c.fase === 'mulai' ? (typeof c.alasan === 'string' ? c.alasan : 'warga') : 'ai';
     } else if (c.jenis === 'resi' && typeof c.akhir === 'string') {
       s.aiBerakhir = c.akhir;
+    } else if (c.jenis === 'lihat_saja' || c.jenis === 'simulasi') {
+      // Sesi baru untuk eksekusi yang sama (demo: situs asli <-> simulasi replika): catatan mode terakhir yang
+      // berlaku, dan jejak sesi sebelumnya tidak terbawa.
+      s = { kolomDiisi: 0, izinKosong: false, giliran: 'ai' };
+      if (c.jenis === 'lihat_saja') s.lihatSaja = true;
+      else s.simulasi = true;
     }
   }
   const hasil = store.hasilEksekusi(urusanId, executionId);
@@ -68,11 +78,25 @@ const GILIRAN: Readonly<Record<string, string>> = {
 const GILIRAN_LAIN =
   'Sekarang warga memegang layar dan AI menunggu. Warga bisa menekan Lanjutkan di layar agar AI mencoba lagi.';
 
+const LIHAT_SAJA = [
+  '- Sesi ini DEMO (akun juri) di situs resmi ASLI dalam mode lihat saja: AI hanya membuka dan menavigasi halaman, TIDAK mengisi kolom apa pun dan TIDAK menekan Lanjut/Simpan/Kirim, karena data demo adalah data contoh yang tidak boleh masuk ke sistem pemerintah. JANGAN bilang AI sudah, sedang, atau akan mengisi di sesi ini.',
+  '- Bila ditanya kenapa AI tidak mengisi: jelaskan dengan ramah bahwa dengan akun sendiri (Daftar atau Masuk dengan Google) AI mengisi kolom dari Data Diri setelah warga menekan Izinkan isi, dan tombol Kirim selalu warga yang menekan. Contoh pengisian dengan data contoh bisa dilihat lewat tombol "Lihat contoh pengisian (simulasi)" di layar bila tersedia.',
+];
+
 /** Baris catatan state dari status nyata Pendamping (tanpa nilai isian, tanpa teks halaman). */
 export function barisStatusPendamping(s: StatusPendamping): string {
   const out = [
     'STATUS NYATA BROWSER PENDAMPING (dari jejak sistem; satu-satunya dasar ucapanmu tentang isian):',
   ];
+  if (s.lihatSaja) {
+    out.push(...LIHAT_SAJA);
+    if (s.hasil) out.push(`- Sesi Browser Pendamping sudah ditutup (hasil: ${s.hasil}).`);
+    return out.join('\n');
+  }
+  if (s.simulasi)
+    out.push(
+      '- Sesi ini SIMULASI (akun juri) di replika uji, BUKAN situs pemerintah: yang diisi AI adalah data contoh dan tidak ada yang terkirim ke sistem pemerintah. Sebut ini simulasi bila membicarakan isian.',
+    );
   if (s.hasil) {
     out.push(
       `- Sesi Browser Pendamping sudah ditutup (hasil: ${s.hasil}). Tidak ada isian yang menunggu diperiksa; jangan menyuruh warga menekan Selesai.`,

@@ -126,6 +126,11 @@ export const SesiPendampingSchema = z.object({
   situs: z.url().max(2048).optional(),
   /** true bila `situs` adalah replika uji (fixture), bukan situs pemerintah asli. */
   replika: z.boolean().optional(),
+  /**
+   * (aditif) Sesi demo "lihat saja" di situs resmi asli: AI hanya membuka dan menavigasi, tidak mengisi kolom
+   * apa pun dan tidak menekan Lanjut/Kirim (data demo adalah data contoh).
+   */
+  lihatSaja: z.boolean().optional(),
 });
 export type SesiPendamping = z.infer<typeof SesiPendampingSchema>;
 
@@ -134,6 +139,11 @@ export const MulaiPendampingRequestSchema = z.object({
   /** `executionId` dari event `execution_request` yang sudah disetujui warga. */
   executionId: z.string().min(1).max(100),
   viewport: PendampingViewportSchema.optional(),
+  /**
+   * (aditif) Akun demo saja: buka SIMULASI di replika uji dengan data contoh (Mode Uji), bukan situs resmi asli.
+   * Diabaikan untuk akun warga biasa (selalu situs resmi asli).
+   */
+  simulasi: z.boolean().optional(),
 });
 export type MulaiPendampingRequest = z.infer<typeof MulaiPendampingRequestSchema>;
 
@@ -171,6 +181,11 @@ export const MulaiSesiInternalSchema = z.object({
    * pemetaan sesi ditolak. false di produksi = portal resmi asli, override tidak pernah dipakai.
    */
   modeUji: z.boolean().optional(),
+  /**
+   * (aditif) Demo di situs resmi asli: worker menolak setiap isi/pilih/centang/unggah, klik selain navigasi/
+   * ui_lokal (dan tautan pembuka GET), serta jalur Izinkan isi; adapter bawaan tidak dijalankan sama sekali.
+   */
+  lihatSaja: z.boolean().optional(),
 });
 export type MulaiSesiInternal = z.infer<typeof MulaiSesiInternalSchema>;
 
@@ -212,6 +227,18 @@ export const KelasKendaliSchema = z.enum([
 export type KelasKendali = z.infer<typeof KelasKendaliSchema>;
 /** Kelas yang boleh diklik AI. Selain ini klik ditolak di validator web DAN diulang di halaman saat klik. */
 export const KELAS_BOLEH_KLIK_AI: readonly KelasKendali[] = ['navigasi', 'ui_lokal', 'lanjut'];
+/**
+ * Mode "lihat saja" (sesi demo di situs resmi asli): hanya navigasi murni. `lanjut` (bisa menyimpan draf) dan
+ * semua kelas lain ditolak; tautan pembuka (`tautanPembuka`, navigasi GET ke href) tetap boleh.
+ */
+export const KELAS_BOLEH_KLIK_LIHAT_SAJA: readonly KelasKendali[] = ['navigasi', 'ui_lokal'];
+
+/** Pesan templat saat AI berhenti di sesi demo "lihat saja" (halaman masuk / formulir / langkah menyimpan). */
+export const PESAN_LIHAT_SAJA =
+  'Ini situs resmi asli. Di mode demo, Urusin tidak mengetik data contoh ke sistem pemerintah, jadi AI ' +
+  'berhenti di sini tanpa mengisi apa pun. Dengan akun sendiri (Daftar atau Masuk dengan Google), AI mengisi ' +
+  'kolom dari Data Diri Anda setelah Anda menekan Izinkan isi, dan tombol Kirim selalu Anda yang menekan. ' +
+  'Anda tetap boleh mencoba situsnya sendiri dari layar ini.';
 
 export const PeranElemenSchema = z.enum([
   'teks',

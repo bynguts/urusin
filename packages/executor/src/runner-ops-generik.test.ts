@@ -39,6 +39,21 @@ describe('op aksi: klik', () => {
     expect(kirim).not.toHaveBeenCalled();
   });
 
+  it('demo lihat saja: kelas lanjut ditolak di halaman tanpa handler; tanpa flag tetap boleh', () => {
+    const h = pasang('<form><button type="button">Lanjut</button></form>');
+    expect(h.pengamatan.elemen[0]!.kelas).toBe('lanjut');
+    const ditekan = vi.fn();
+    document.querySelector('button')!.addEventListener('click', ditekan);
+    expect(aksi(h.peta, { jenis: 'klik', ref: 'e1', lihatSaja: true })[0]).toMatchObject({
+      status: 'ditolak',
+      kode: 'KLIK_DITOLAK',
+      kelas: 'lanjut',
+    });
+    expect(ditekan).not.toHaveBeenCalled();
+    expect(aksi(h.peta, { jenis: 'klik', ref: 'e1' })[0]).toMatchObject({ status: 'ok', kelas: 'lanjut' });
+    expect(ditekan).toHaveBeenCalledTimes(1);
+  });
+
   it('klasifikasi diulang saat klik: tombol yang berubah jadi submit setelah amati tetap ditolak', () => {
     const h = pasang('<form><button type="button">Lanjut</button></form>');
     expect(h.pengamatan.elemen[0]!.kelas).toBe('lanjut');

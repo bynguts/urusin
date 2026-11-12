@@ -119,6 +119,8 @@ test('N1: AI berhenti, warga mengirim sendiri, "Saya sudah mengirim" -> 409 juju
   const bilah = page.locator('[data-bilah-giliran]');
   await expect(bilah).toContainText('Giliran Anda: lanjutkan sendiri di situs');
   await expect(bilah.getByRole('button', { name: 'Lanjutkan' })).toHaveCount(0);
+  // Akun warga biasa tidak pernah ditawari simulasi (khusus demo juri).
+  await expect(bilah.locator('[data-simulasi]')).toHaveCount(0);
   const sudah = bilah.getByRole('button', { name: 'Saya sudah mengirim' });
 
   // Belum terlihat terkirim (worker 409): pesan jujur, sesi tetap di tangan warga.

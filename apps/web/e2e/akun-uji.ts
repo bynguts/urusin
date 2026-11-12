@@ -42,8 +42,8 @@ export async function daftarAkunUji(
 }
 
 /**
- * "Masuk sebagai juri": salinan demo terisolasi (data sintetis, Browser Pendamping Mode Uji ke replika). Dipakai
- * tes Pendamping yang menguji Mode Uji, yang dulu dijalankan sebagai tamu.
+ * "Masuk sebagai juri": salinan demo terisolasi (data sintetis; Browser Pendamping membuka situs resmi asli dalam
+ * mode lihat saja, replika hanya lewat tombol simulasi). Dipakai tes Pendamping demo juri.
  */
 export async function masukJuriUji(page: Page): Promise<void> {
   await ipSendiri(page);

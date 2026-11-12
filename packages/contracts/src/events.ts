@@ -356,6 +356,16 @@ export const CatatanPendampingSchema = z.discriminatedUnion('jenis', [
    */
   z.object({ jenis: z.literal('jejak_terbuang'), n: z.number().int().positive().max(1_000_000) }),
   /**
+   * Aditif: eksekusi ini berjalan dalam mode demo "lihat saja" di situs resmi asli (tanpa isian, tanpa Lanjut/
+   * Kirim oleh AI). Dasar jujur agen chat (`statusPendamping`).
+   */
+  z.object({ jenis: z.literal('lihat_saja') }),
+  /**
+   * Aditif: eksekusi ini (akun demo) beralih ke SIMULASI di replika uji dengan data contoh. Catatan mode terakhir
+   * (`lihat_saja`/`simulasi`) yang berlaku bagi `statusPendamping`.
+   */
+  z.object({ jenis: z.literal('simulasi') }),
+  /**
    * Aditif: resi akhir satu eksekusi Navigator (tanpa nilai): cara berakhir, hash resi kanonik, dan hitungan
    * anggaran. Bukti nomor (bila ada) dicatat terpisah sebagai `bukti`.
    */

@@ -37,7 +37,7 @@ import { actions as masukPage, load as masukLoad } from '../../routes/masuk/+pag
 import { actions as pengaturanPage, load as pengaturanLoad } from '../../routes/pengaturan/+page.server';
 import { GET as verifikasiEmailLama } from '../../routes/verifikasi-email/+server';
 import { AKUN_COOKIE, OAUTH_COOKIE, TAUTKAN_COOKIE } from './akun';
-import { modeUjiPendamping } from './pendamping/pemilik';
+import { modePendamping, modeUjiPendamping } from './pendamping/pemilik';
 import { createRuntime, googleRedirectUri, setRuntimeForTests, type Runtime } from './runtime';
 import { ensureSession, SID_COOKIE, TERAKHIR_COOKIE } from './sesi';
 import { TURNSTILE_TOKEN_FIXTURE, turnstileFromEnv } from './turnstile';
@@ -516,15 +516,32 @@ describe('Browser Pendamping: akun hasil daftar = portal asli; tamu dan juri = M
     expect(await modeUjiPendamping(permintaan(jar), u)).toBe(false);
   });
 
-  it('urusan tamu lama tanpa akun dan salinan demo juri tetap Mode Uji', async () => {
+  it('urusan tamu lama tetap Mode Uji; salinan demo juri = situs asli lihat saja, replika hanya bila simulasi', async () => {
     const tamu = new Jar();
     const uTamu = await urusanBaru(tamu, tamuLama);
     await tamuLama(put({ namaLengkap: 'Tamu' }), tamu, dataDiriPut);
     expect(await modeUjiPendamping(permintaan(tamu), uTamu)).toBe(true);
+    expect(await modePendamping(permintaan(tamu), uTamu)).toEqual({ modeUji: true, lihatSaja: false });
     const { jar } = await masukJuri();
     const uJuri = await urusanBaru(jar);
     expect(akunDari(jar).jenis).toBe('demo');
-    expect(await modeUjiPendamping(permintaan(jar), uJuri)).toBe(true);
+    expect(await modePendamping(permintaan(jar), uJuri)).toEqual({ modeUji: false, lihatSaja: true });
+    expect(await modePendamping(permintaan(jar), uJuri, { simulasi: true })).toEqual({
+      modeUji: true,
+      lihatSaja: false,
+    });
+    // Juri lain tidak bisa membuka urusan juri ini di situs asli.
+    const lain = await masukJuri(new Jar(), '127.0.0.2');
+    expect(await modePendamping(permintaan(lain.jar), uJuri)).toEqual({ modeUji: true, lihatSaja: false });
+  });
+
+  it('akun warga biasa: simulasi diabaikan, selalu situs asli tanpa lihat saja', async () => {
+    const api = await daftarAkun();
+    const u = await urusanBaru(api.jar);
+    expect(await modePendamping(permintaan(api.jar), u, { simulasi: true })).toEqual({
+      modeUji: false,
+      lihatSaja: false,
+    });
   });
 });
 
