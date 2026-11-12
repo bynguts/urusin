@@ -1437,7 +1437,7 @@ export async function wire(
       izin,
       urlBoleh,
       jejak,
-      serahkan(alasan, pesan, box, tautan) {
+      serahkan(alasan, pesan, box, tautan, kendali) {
         manual = true;
         // Serah CAPTCHA/kode (`login`) di dokumen ini: bila dokumen yang sama ternyata halaman tantangan, serah ini
         // ikut selesai saat tantangannya lolos (lihat langkahTantangan).
@@ -1452,6 +1452,7 @@ export async function wire(
           pesan,
           ...(box ? { sorot: box } : {}),
           ...(tautan ? { tautan } : {}),
+          ...(kendali ? { kendali } : {}),
         });
       },
       // Situs tidak bisa dikerjakan AI (mis. hanya lewat WhatsApp): dipandu, bukan gagal (sama dengan drift adapter).

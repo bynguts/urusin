@@ -641,6 +641,11 @@ export const PendampingEventSchema = z.discriminatedUnion('jenis', [
     sorot: PendampingSorotSchema.optional(),
     /** Hanya `final`: nama tombol kirim yang tersorot, dibaca dari halaman (mis. "Selesai"). */
     tombol: z.string().min(1).max(40).optional(),
+    /**
+     * (aditif) Nama kendali situs yang menjadi sasaran giliran ini (mis. "Masuk", "Tutup"), dibaca dari halaman dan
+     * dibersihkan worker (teks tak tepercaya: tampil sebagai teks biasa). Untuk instruksi ringkas "Giliran Anda".
+     */
+    kendali: z.string().min(1).max(40).optional(),
     /** Hanya `berkas_kurang`: nama berkas adapter dan origin situs tujuan (untuk persetujuan ulang). */
     berkas: z
       .object({ nama: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/), origin: z.url().max(2048) })

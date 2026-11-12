@@ -6,6 +6,10 @@ import {
   GenerikRun,
   naikHttps,
   PESAN_GENERIK,
+  kendaliEskalasi,
+  namaKendali,
+  pesanEskalasi,
+  pesanSerah,
   redaksi,
   tidakLazim,
   type AksiRunner,
@@ -122,14 +126,17 @@ function harness(o: Opsi = {}) {
     berkas: () => undefined,
     vault: () => vault.entries(),
   };
+  const kendaliSerah: (string | undefined)[] = [];
   const run = (ref.run = new GenerikRun({
     tangan,
     gerbang,
     izin,
     urlBoleh: o.urlBoleh ?? (() => true),
     jejak: (c) => void jejak.push(c),
-    serahkan: (alasan, pesan, sorot, tautan) =>
-      void serah.push({ alasan, pesan, sorot, ...(tautan ? { tautan } : {}) }),
+    serahkan: (alasan, pesan, sorot, tautan, kendali) => {
+      kendaliSerah.push(kendali);
+      serah.push({ alasan, pesan, sorot, ...(tautan ? { tautan } : {}) });
+    },
     tidakBisa: (p) => void tidakBisa.push(p),
     now: () => now,
   }));
@@ -141,6 +148,7 @@ function harness(o: Opsi = {}) {
     jendelaSaatAksi,
     jejak,
     serah,
+    kendaliSerah,
     tidakBisa,
     diisiDikirim,
     minta,
@@ -576,9 +584,15 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     const url = 'https://portal.contoh.go.id/form';
     expect(h.jendelaSaatAksi).toEqual([{ jenis: 'ai_klik' }, { jenis: 'ai_klik', navKe: url }]);
     expect(h.navigasi).toEqual([url]);
+    // Pesan menyebut kendali yang memicu (nama dari halaman), bukan "tombol ini" yang tak jelas.
     expect(h.serah).toEqual([
-      { alasan: 'periksa', pesan: PESAN_GENERIK.kotor_klik, sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 } },
+      {
+        alasan: 'periksa',
+        pesan: pesanEskalasi({ nama: 'Lanjut', kelas: 'lanjut', disorot: true }, true),
+        sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 },
+      },
     ]);
+    expect(h.serah[0]?.pesan).toMatch(/^Tombol "Lanjut" mencoba mengirim data/);
     expect(h.jejak).toContainEqual(
       expect.objectContaining({ jenis: 'blokir', metode: 'POST', jendela: 'ai_klik' }),
     );
@@ -592,7 +606,8 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     expect(h.navigasi).toEqual([url]);
     expect(h.serah.at(-1)).toEqual({
       alasan: 'periksa',
-      pesan: PESAN_GENERIK.periksa,
+      pesan:
+        '"Lanjut" yang disorot mengirim data ke situs, jadi AI berhenti. Periksa halaman, lalu tekan sendiri "Lanjut" bila sudah benar.',
       sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 },
     });
     expect(h.run.kotorKeras).toBe(true);
@@ -824,7 +839,11 @@ describe('GenerikRun: klik dan gerbang tulis', () => {
     });
     expect(r).toEqual([{ indeks: 0, kode: 'ok' }]);
     expect(h.serah).toEqual([
-      { alasan: 'final', pesan: PESAN_GENERIK.final, sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 } },
+      {
+        alasan: 'final',
+        pesan: 'Periksa semua isian. Hanya Anda yang boleh menekan "Kirim" yang disorot.',
+        sorot: { x: 1, y: 2, lebar: 3, tinggi: 4 },
+      },
     ]);
     expect(h.jejak).toContainEqual({ jenis: 'ambil_alih', fase: 'mulai', alasan: 'final' });
     await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'tidak_bisa', sebab: 'hanya_aplikasi' }] });
@@ -1082,5 +1101,77 @@ describe('redaksi', () => {
     expect(tidakLazim(PH_NIK, 'Nomor Induk Kependudukan')).toBe(false);
     expect(tidakLazim(PH_NIK, 'Catatan tambahan')).toBe(true);
     expect(tidakLazim(PH_NAMA, 'Catatan tambahan')).toBe(false);
+  });
+});
+
+describe('kalimat giliran mengikuti alasan sebenarnya', () => {
+  it('menyebut kendali pemicu; "disorot" hanya bila sorotan ada', () => {
+    const tanpaSorot = pesanEskalasi({ nama: 'Simpan', kelas: 'lanjut', disorot: false });
+    expect(tanpaSorot).toContain('"Simpan"');
+    expect(tanpaSorot).not.toMatch(/disorot/);
+    expect(pesanEskalasi({ nama: 'Simpan', disorot: true })).toMatch(/"Simpan" yang disorot/);
+    // Tanpa nama dan tanpa sorotan: tidak ada "tombol ini" / "yang disorot" yang tidak bisa dilihat warga.
+    const polos = pesanEskalasi({ disorot: false });
+    expect(polos).toBe(PESAN_GENERIK.kirim_halaman);
+    expect(polos).not.toMatch(/Tombol ini|disorot/);
+    expect(pesanEskalasi({ disorot: false }, true)).toBe(PESAN_GENERIK.kotor);
+  });
+
+  it('jendela/pengumuman (ui_lokal) di beranda dengan tombol Masuk: minta tutup lalu sebut "Masuk"', () => {
+    const p = pesanEskalasi({ nama: 'Tutup', kelas: 'ui_lokal', disorot: false, masuk: 'Masuk' });
+    expect(p).toMatch(/Jendela atau pengumuman/);
+    expect(p).toContain('lewat "Tutup"');
+    expect(p).toMatch(/Untuk masuk akun, tekan "Masuk"\.$/);
+    expect(p).not.toMatch(/Tombol ini/);
+  });
+
+  it('halaman masuk akun dan CAPTCHA memakai alasan itu, bukan "tombol mengirim data"', () => {
+    const login = pesanEskalasi({
+      nama: 'Kirim',
+      disorot: true,
+      masuk: 'Masuk',
+      sinyal: { login: true, captcha: false, tantangan: false },
+    });
+    expect(login).toMatch(/meminta Anda masuk akun/);
+    expect(login).toContain('lewat "Masuk"');
+    expect(login).not.toMatch(/mengirim data/);
+    expect(pesanEskalasi({ disorot: false, sinyal: { login: false, captcha: true, tantangan: false } })).toBe(
+      PESAN_GENERIK.captcha,
+    );
+  });
+
+  it('nama kendali dari situs dibersihkan (tanpa kutip/karakter kendali) dan dipotong', () => {
+    expect(namaKendali('  "Masuk"\n ')).toBe('Masuk');
+    expect(namaKendali('')).toBeUndefined();
+    expect(namaKendali('x'.repeat(80))?.length).toBe(40);
+  });
+
+  it('serah Navigator menyebut kendali target (mis. Masuk) bila ada', () => {
+    expect(pesanSerah('masuk_akun', 'Masuk', true)).toBe(
+      'Masuk ke akun Anda: tekan "Masuk" yang disorot, lalu masuk sendiri. AI melanjutkan setelah Anda masuk.',
+    );
+    expect(pesanSerah('masuk_akun', undefined, false)).toBe(PESAN_GENERIK.masuk_akun);
+    expect(pesanSerah('tidak_yakin', 'Apa saja', true)).toBe(PESAN_GENERIK.tidak_yakin);
+  });
+
+  it('GenerikRun: serah masuk_akun dengan ref menyebut nama kendali dari pengamatan', async () => {
+    const h = harness();
+    await h.run.amati();
+    await h.run.aksi({ rencanaHash: H1, aksi: [{ jenis: 'serahkan', alasan: 'masuk_akun', ref: 'e3' }] });
+    expect(h.serah.at(-1)).toMatchObject({
+      alasan: 'masuk_akun',
+      pesan: expect.stringContaining('"Lanjut"'),
+    });
+    // Nama kendali ikut terkirim terpisah untuk instruksi ringkas "Giliran Anda" di UI.
+    expect(h.kendaliSerah.at(-1)).toBe('Lanjut');
+  });
+
+  it('kendali eskalasi: tombol masuk di halaman login, pemicu di halaman lain, kosong saat CAPTCHA', () => {
+    const sinyal = { login: true, captcha: false, tantangan: false };
+    expect(kendaliEskalasi({ nama: 'Kirim', masuk: 'Masuk', disorot: false, sinyal })).toBe('Masuk');
+    expect(kendaliEskalasi({ nama: 'Tutup', masuk: 'Masuk', disorot: false })).toBe('Tutup');
+    expect(
+      kendaliEskalasi({ nama: 'Tutup', disorot: false, sinyal: { ...sinyal, login: false, captcha: true } }),
+    ).toBeUndefined();
   });
 });
