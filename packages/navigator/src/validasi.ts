@@ -68,8 +68,18 @@ const AksiKetatSchema = z.discriminatedUnion('jenis', [
   }),
   z.strictObject({ jenis: z.literal('tidak_bisa'), sebab: SebabTidakBisaSchema }),
 ]);
-/** Skema structured output (json_schema strict) untuk satu rencana halaman. */
-export const RencanaKetatSchema = z.strictObject({ aksi: z.array(AksiKetatSchema).min(1).max(25) });
+/** Batas karakter `pikir` yang diterima validator (prompt meminta jauh lebih pendek). */
+export const PIKIR_MAKS = 600;
+
+/**
+ * Skema structured output (json_schema strict) untuk satu rencana halaman. `pikir` (opsional, PERTAMA agar model
+ * menalar sebelum memilih aksi) tidak pernah dijalankan, tidak ditampilkan ke warga, dan tidak masuk hash/jejak:
+ * `validasiRencana` membuangnya (bisa menggemakan teks halaman).
+ */
+export const RencanaKetatSchema = z.strictObject({
+  pikir: z.string().max(PIKIR_MAKS).optional(),
+  aksi: z.array(AksiKetatSchema).min(1).max(25),
+});
 
 type EntriKatalog = {
   /** Label untuk prompt dan lembar persetujuan (bukan dari halaman). */
@@ -315,9 +325,10 @@ export function validasiRencana(mentah: unknown, p: Pengamatan, opsi: OpsiValida
   // Klik ke tautan pembuka formulir (`kirim` hanya karena namanya, F3) diterima: worker membukanya lewat
   // navigasi GET ke href-nya (host allowlist), bukan klik (QA prod gel6: "Buka 'Login / Register'" sebagai
   // giliran warga = langkah tambahan yang tidak perlu).
-  const parsed = mentahSah;
-  const rencanaHash = hashRencana({ ...parsed.data, host: p.host, sidik: p.sidik, seq: p.seq });
-  const aksi = parsed.data.aksi as Aksi[];
+  // `pikir` dibuang di sini: rencana yang dijalankan, hash, dan jejaknya hanya `aksi`.
+  const rencanaAksi = { aksi: mentahSah.data.aksi };
+  const rencanaHash = hashRencana({ ...rencanaAksi, host: p.host, sidik: p.sidik, seq: p.seq });
+  const aksi = rencanaAksi.aksi as Aksi[];
   const katalog = opsi.katalog ?? new Set(Object.keys(KATALOG_PLACEHOLDER));
   const berkasBoleh = opsi.berkas ?? new Set(KATALOG_BERKAS);
 
@@ -417,7 +428,7 @@ export function validasiRencana(mentah: unknown, p: Pengamatan, opsi: OpsiValida
 
   if (langgar.size > 0) return { ok: false, aturan: ATURAN.filter((a) => langgar.has(a)), rencanaHash };
   // Pagar akhir: kontrak (satu terminal, di akhir) tetap berlaku.
-  const kontrak = RencanaHalamanSchema.safeParse(parsed.data);
+  const kontrak = RencanaHalamanSchema.safeParse(rencanaAksi);
   if (!kontrak.success) return { ok: false, aturan: ['SKEMA_TIDAK_SAH'], rencanaHash };
   return {
     ok: true,

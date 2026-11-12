@@ -13,8 +13,17 @@ import {
 } from '@urusin/contracts';
 import { Anggaran, PESAN_AMBIL_ALIH, type AlasanAmbilAlih } from './anggaran.js';
 import { buatResi, buktiDariPengamatan, ringkasBukti, type Resi } from './bukti.js';
+import {
+  BATAS_KOREKSI,
+  isianDari,
+  periksaIsian,
+  type HasilPeriksa,
+  type IsianAi,
+  type JejakIsi,
+} from './periksa-isian.js';
 import { mintaRencana, type KonfigLlm, type MasukanPrompt } from './prompt.js';
 import type { PeringkatTautan } from './peringkat-tautan.js';
+import { Riwayat, dataAksi, labelRef } from './riwayat.js';
 import {
   hashRencana,
   normalLabel,
@@ -210,8 +219,11 @@ const ringkasAksi = (aksi: readonly Aksi[]) =>
   }));
 
 type HasilJalan =
-  /** `obs`: pengamatan terakhir yang dipakai (beda dari asal bila ref diikat ulang di tengah jalan). */
-  | { kode: 'ok'; obs: Pengamatan }
+  /**
+   * `obs`: pengamatan terakhir yang dipakai (beda dari asal bila ref diikat ulang di tengah jalan). `isi`: isian
+   * yang dijalankan worker (untuk periksa-sesudah-aksi di pengamatan berikutnya).
+   */
+  | { kode: 'ok'; obs: Pengamatan; isi: JejakIsi }
   | { kode: 'ulang' }
   /** Amati ulang tanpa menghitung gagal (warga sempat memegang kendali; kolom mungkin sudah ia isi). */
   | { kode: 'amati_ulang' }
@@ -319,6 +331,12 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
   const ditolakHalaman = new Map<string, Set<string>>();
   /** Halaman fisik tempat giliran CAPTCHA/OTP sudah dikerjakan warga lalu kendali kembali ke AI. */
   const giliranSelesai = new Set<string>();
+  /** Memori antarhalaman untuk prompt (tanpa nilai; teks halaman dibungkus saat prompt dirakit). */
+  const riwayat = new Riwayat();
+  /** Isian AI langkah terakhir yang belum diperiksa terhadap pengamatan berikutnya. */
+  let isiLalu: JejakIsi | null = null;
+  /** Koreksi yang sudah diminta per kolom (halaman fisik + kunci kolom). */
+  const koreksiN = new Map<string, number>();
 
   const resi = (akhir: string) =>
     buatResi({
@@ -501,9 +519,14 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       if (kode === 'ok' || r.mode === 'takeover') {
         // Serah final yang benar-benar dijalankan: halaman sukses sesudahnya baru boleh diakui.
         if (alasan === 'final') serahFinal = { sidik: sidikTerakhir };
-        return await tungguKendali(true);
+        const t = await tungguKendali(true);
+        if (t === 'ai') riwayat.catat({ jenis: 'serah', alasan, kembali: true });
+        return t;
       }
-      if (coba > 0 || (kode !== 'REF_BASI' && kode !== 'REF_TIDAK_ADA')) return 'ai';
+      if (coba > 0 || (kode !== 'REF_BASI' && kode !== 'REF_TIDAK_ADA')) {
+        riwayat.catat({ jenis: 'serah', alasan, kembali: false });
+        return 'ai';
+      }
       const a = await tangan.amati();
       if (a.mode === 'done') return 'berakhir';
       if (a.mode !== 'ai' || periksaHost(a.pengamatan) !== 'ok') return 'ai';
@@ -591,16 +614,24 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
     const halaman = halamanStruktur(p);
     const catatTolak = (aksi: readonly Aksi[]) => {
       const s = ditolakHalaman.get(halaman) ?? new Set<string>();
+      const baru: string[] = [];
       for (const a of aksi) {
         const k = barisLembar(a);
-        if (k) s.add(k);
+        if (k) {
+          s.add(k);
+          baru.push(k);
+        }
       }
       ditolakHalaman.set(halaman, s);
+      if (baru.length > 0) riwayat.catat({ jenis: 'izin', ditolak: [...new Set(baru)] });
     };
+    /** Isian yang dijalankan worker (kode ok) di permintaan-permintaan aksi ini, dan klik yang dijalankan. */
+    const terisi: IsianAi[] = [];
+    let klik = false;
     const selesai = (): HasilJalan =>
       serahIsi
         ? { kode: 'serahkan', alasan: 'isi_sendiri', ref: serahIsi.ref, seq: obs.seq }
-        : { kode: 'ok', obs };
+        : { kode: 'ok', obs, isi: { halaman: halamanStruktur(obs), isian: terisi, klik } };
     for (;;) {
       if (sisa.length === 0) return selesai();
       let r: AksiSesiResponse;
@@ -623,6 +654,22 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       if (r.mode === 'done') return { kode: 'berakhir' };
       // Satu entri per aksi (kontrak worker); entri hilang dianggap tidak dijalankan.
       const kode = (j: number) => r.hasil.find((h) => h.indeks === j)?.kode ?? 'DILEWATI';
+      // Riwayat: aksi yang dijalankan atau ditolak worker (tanpa nilai); putaran persetujuan tidak dicatat di sini.
+      const tercatat = sisa.flatMap((a, j) => {
+        const k = kode(j);
+        if (k === 'DILEWATI' || k === 'BELUM_DISETUJUI') return [];
+        if (k === 'ok') {
+          const isian = isianDari(obs, a);
+          if (isian) terisi.push(isian);
+          if (a.jenis === 'klik') klik = true;
+        }
+        const label = labelRef(obs, a);
+        const data = dataAksi(a);
+        return [
+          { jenis: a.jenis, kode: k, ...(label !== undefined ? { label } : {}), ...(data ? { data } : {}) },
+        ];
+      });
+      if (tercatat.length > 0) riwayat.catat({ jenis: 'aksi', aksi: tercatat });
 
       // Persetujuan: worker tidak menjalankan apa pun sebelum seluruh baris isian rencana ini disetujui.
       const belum = sisa.filter((_, j) => kode(j) === 'BELUM_DISETUJUI');
@@ -712,6 +759,8 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
   }
 
   let umpanBalik: { sidik: string; aturan: IdAturan[] } | null = null;
+  /** Temuan periksa yang masih berlaku untuk rencana ulang di halaman yang sama (rencana koreksi ditolak). */
+  let periksaUlang: { sidik: string; periksa: HasilPeriksa } | null = null;
   /** Halaman (sidik) yang CTA pengajuannya sudah dibuka tanpa LLM: kunjungan berikutnya ditanya ke model. */
   const ctaDipakai = new Set<string>();
   /** Halaman fisik yang pintu akunnya sudah dikerjakan tanpa LLM: kunjungan berikutnya ditanya ke model. */
@@ -740,6 +789,10 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       ang.catatHalaman(p.sidik, halamanStruktur(p));
       const habis = ang.habis();
       if (habis) return await serahkanAkhir(habis, p.seq);
+      riwayat.catat({ jenis: 'halaman', jalur: p.jalur, judul: p.judul });
+      // Isian langkah lalu hanya dibandingkan dengan pengamatan perencanaan TEPAT sesudahnya.
+      const lalu = isiLalu;
+      isiLalu = null;
 
       // Giliran warga yang pasti (tanpa LLM).
       // Formulir masuk ber-CAPTCHA/verifikasi situs = giliran masuk akun (pesannya menyebut kode/verifikasi
@@ -793,6 +846,39 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         continue;
       }
 
+      // Periksa-sesudah-aksi: isian AI yang ditolak situs dikoreksi model (paling banyak BATAS_KOREKSI kali per
+      // kolom); kolom yang sudah habis jatah koreksinya diserahkan ke warga (deterministik, tanpa LLM).
+      const tunda = periksaUlang as { sidik: string; periksa: HasilPeriksa } | null;
+      let periksa: HasilPeriksa | undefined = tunda?.sidik === p.sidik ? tunda.periksa : undefined;
+      periksaUlang = null;
+      if (lalu) {
+        const temuan = periksaIsian(lalu, p);
+        const habisKoreksi = temuan.find(
+          (t) => (koreksiN.get(`${lalu.halaman}\n${t.isian.kunci}`) ?? 0) >= BATAS_KOREKSI,
+        );
+        for (const t of temuan)
+          riwayat.catat({ jenis: 'koreksi', label: t.isian.label, data: t.isian.data, masalah: t.masalah });
+        if (habisKoreksi) {
+          const h = setelahSerahkan(
+            'isi_sendiri',
+            await serahkanTunggu('isi_sendiri', p.seq, habisKoreksi.ref, p),
+          );
+          if (h) return h;
+          continue;
+        }
+        const ulang = lalu.klik && p.sinyal.galatForm && halamanStruktur(p) === lalu.halaman;
+        if (ulang || temuan.length > 0)
+          periksa = {
+            ulang,
+            koreksi: temuan.map((t) => {
+              const k = `${lalu.halaman}\n${t.isian.kunci}`;
+              const ke = (koreksiN.get(k) ?? 0) + 1;
+              koreksiN.set(k, ke);
+              return { ...t, ke };
+            }),
+          };
+      }
+
       if (o.kuotaHabis?.()) return await serahkanAkhir('kuota', p.seq);
       const masukan: MasukanPrompt = {
         pengamatan: p,
@@ -803,6 +889,9 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
         ...(o.petunjukPortal ? { petunjukPortal: o.petunjukPortal } : {}),
         ...(umpanBalik?.sidik === p.sidik ? { umpanBalik: umpanBalik.aturan } : {}),
         petunjukTautan: await o.peringkatTautan?.(p, o.tujuan, o.signal).catch(() => null),
+        // Halaman saat ini sudah ada di baris HALAMAN: entri riwayat terakhirnya (bila itu) tidak diulang.
+        riwayat: riwayat.daftar.filter((l, i, d) => i < d.length - 1 || l.jenis !== 'halaman'),
+        ...(periksa ? { periksa } : {}),
       };
       let minta: Awaited<ReturnType<typeof mintaRencana>>;
       // Halaman pintu dengan satu CTA pengajuan ("Mulai Pendaftaran"): CTA didahulukan di atas tautan informasi
@@ -859,6 +948,9 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
       if (!v.ok) {
         ang.gagal();
         umpanBalik = { sidik: p.sidik, aturan: v.aturan };
+        riwayat.catat({ jenis: 'tolak', aturan: v.aturan });
+        // Temuan periksa tetap berlaku untuk rencana ulang di halaman yang sama (tanpa menambah hitungan koreksi).
+        if (periksa) periksaUlang = { sidik: p.sidik, periksa };
         continue;
       }
       umpanBalik = null;
@@ -903,6 +995,7 @@ export async function jalankanNavigator(o: OpsiLoop): Promise<HasilNavigator> {
           continue;
         }
         obsAkhir = r.obs;
+        isiLalu = r.isi;
         // Isian yang benar-benar dijalankan = kemajuan (formulir panjang di satu halaman tidak dihitung diam).
         if (
           badan.some(

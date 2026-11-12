@@ -8,7 +8,9 @@ import {
   type ChatProvider,
   type RequestOptions,
 } from '@urusin/llm';
+import { blokPeriksa, type HasilPeriksa } from './periksa-isian.js';
 import { blokPetunjukPortal } from './petunjuk.js';
+import { blokRiwayat, type LangkahRiwayat } from './riwayat.js';
 import {
   KATALOG_BERKAS,
   KATALOG_PLACEHOLDER,
@@ -45,6 +47,10 @@ export type MasukanPrompt = {
   petunjukPortal?: string | undefined;
   /** Baris sinyal peringkat tautan (hanya ref, tanpa teks halaman); lihat peringkat-tautan.ts. */
   petunjukTautan?: string | null | undefined;
+  /** Langkah terakhir eksekusi ini (memori antarhalaman); teks halaman di dalamnya dibungkus seperti teks lain. */
+  riwayat?: readonly LangkahRiwayat[] | undefined;
+  /** Isian AI langkah lalu yang ditolak situs (periksa-sesudah-aksi). */
+  periksa?: HasilPeriksa | undefined;
 };
 
 export const NAMA_SKEMA = 'rencana_halaman';
@@ -61,7 +67,10 @@ function aturanSistem(tujuan: string): string {
   return [
     `Kamu adalah Navigator Urusin. Warga sudah menyetujui urusan "${tujuan}" dan Browser Pendamping sedang membuka satu halaman portal resmi. Susun SATU rencana aksi untuk halaman ini.`,
     'ATURAN KERAS:',
-    '- Jawab HANYA dengan JSON {"aksi":[...]} sesuai skema. Tanpa teks lain.',
+    '- Jawab HANYA dengan JSON {"pikir":"...","aksi":[...]} sesuai skema. Tanpa teks lain.',
+    '- "pikir": penalaran singkatmu SEBELUM memilih aksi (maks 300 karakter, tanpa menyalin data pribadi atau teks halaman panjang): halaman apa ini, apa yang sudah dikerjakan menurut RIWAYAT, apa yang harus dikoreksi menurut PERIKSA HASIL, lalu langkah berikutnya. "pikir" tidak pernah dijalankan dan tidak ditampilkan ke warga.',
+    '- RIWAYAT = fakta sistem tentang langkah sebelumnya: jangan mengulang aksi yang gagal atau ditolak dengan cara yang sama, dan jangan meminta lagi kolom yang warga pilih untuk diisi sendiri. Ref di RIWAYAT sudah tidak berlaku; rujuk hanya ref di ELEMEN.',
+    '- PERIKSA HASIL = situs menolak isianmu sebelumnya: koreksi kolom itu dengan cara lain (opsi lain, placeholder lain yang lebih cocok, atau kolom yang benar), atau serahkan isi_sendiri bila datanya tidak ada di katalog.',
     '- Rujuk elemen HANYA dengan ref dari daftar ELEMEN (mis. e3). Jangan mengarang ref.',
     '- Isi kolom HANYA dengan placeholder dari KATALOG DATA, ke kolom yang labelnya memang meminta data itu. JANGAN PERNAH menulis nilai, URL, teks bebas, tombol keyboard, atau kode.',
     '- Pilihan: pakai {"opsi":n} dengan n indeks dari daftar opsi elemen itu, atau placeholder katalog.',
@@ -128,6 +137,7 @@ export function pesanRencana(m: MasukanPrompt): ChatMessage[] {
     ...(m.umpanBalik?.length
       ? [`UMPAN BALIK: rencana sebelumnya untuk halaman ini ditolak validator: ${m.umpanBalik.join(', ')}.`]
       : []),
+    ...[blokPeriksa(m.periksa, data), blokRiwayat(m.riwayat ?? [], data)].filter((x) => x !== undefined),
   ].join('\n');
   // Petunjuk tepercaya di pesan sistem; teks halaman tetap di pesan pengguna (terbungkus).
   const petunjuk = blokPetunjukPortal(m.petunjukPortal);
@@ -168,8 +178,9 @@ export async function mintaRencana(
       schema: RencanaKetatSchema,
       name: NAMA_SKEMA,
       caps: llm.caps,
-      maxRepairs: 0,
-      maxTokens: 1200,
+      // Satu perbaikan terstruktur (anak tangga json_object); token keluaran ditambah untuk `pikir`.
+      maxRepairs: 1,
+      maxTokens: 1600,
       signal,
     });
     return {

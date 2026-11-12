@@ -396,7 +396,8 @@ describe('tautan pembuka formulir: AI membukanya sendiri (navigasi GET worker), 
       alasan === 'ketuk_tautan' ? { aksi: 'kembalikan', ke: 1 } : { aksi: 'selesai' };
     const promptBeranda: string[] = [];
     const provider = new ProviderSkrip((n, params) => {
-      const isi = JSON.stringify(params.messages);
+      // Hanya baris HALAMAN (halaman yang direncanakan): RIWAYAT halaman berikutnya ikut memuat judul beranda.
+      const isi = String(params.messages[1]?.content).split('\n')[0] ?? '';
       if (isi.includes('PaceMace')) {
         promptBeranda.push(isi);
         return { aksi: [{ jenis: 'klik', ref: 'e6' }] };
