@@ -133,6 +133,23 @@ export const PlanCardEventSchema = event('plan_card', {
       keterangan: z.string().max(300),
     })
     .optional(),
+  /**
+   * Paket mode dipandu (aditif, ADR 0032), hanya bila tanpa `pendamping`: kalimat positif untuk warga, kanal resmi
+   * daerah yang bisa diklik (portal/situs/WA/kontak dari registry), biaya dan perkiraan waktu, tips, dan bantuan
+   * lanjutan yang sungguh tersedia. `pendampingBerkembang` = daerah ini belum termasuk daerah Browser Pendamping aktif.
+   * `waktu.umum` / tips = panduan umum (bukan kutipan sumber resmi), wajib ditandai "cek ulang di kanal resmi".
+   */
+  dipandu: z
+    .object({
+      pesan: z.string().min(1).max(600),
+      pendampingBerkembang: z.boolean(),
+      kanal: z.array(KanalSchema).max(8),
+      biaya: z.object({ teks: z.string().min(1).max(300), sumber: SumberSchema.optional() }),
+      waktu: z.object({ teks: z.string().min(1).max(400), umum: z.boolean() }),
+      tips: z.array(z.string().min(1).max(300)).max(6),
+      lanjutan: z.array(z.string().min(1).max(300)).max(5),
+    })
+    .optional(),
 });
 
 /**
