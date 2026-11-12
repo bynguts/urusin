@@ -272,7 +272,9 @@ export class WorkerPalsu implements TanganPendamping {
       }
       if (a.jenis === 'klik') {
         // Klasifikasi ulang di halaman: hanya kelas yang boleh AI.
-        if (!e.kelas || !['navigasi', 'ui_lokal', 'lanjut'].includes(e.kelas)) {
+        // Tautan pembuka GET (kirim hanya karena nama) dibuka worker lewat navigasi GET, kecuali di halaman akhir.
+        const pembuka = e.tautanPembuka === true && !this.kini.sinyal.halamanAkhir;
+        if ((!e.kelas || !['navigasi', 'ui_lokal', 'lanjut'].includes(e.kelas)) && !pembuka) {
           hasil.push({ indeks, kode: 'KELAS_DITOLAK', kelas: e.kelas ?? 'tidak_pasti' });
           berhenti = true;
           continue;

@@ -2,7 +2,9 @@ import {
   KELAS_BOLEH_KLIK_AI,
   KelasKendaliSchema,
   PengamatanSchema,
+  kendaliAkun,
   type Aksi,
+  type ElemenAmatan,
   type CatatanPendamping,
   type HasilAksi,
   type KelasKendali,
@@ -72,6 +74,11 @@ export type TanganHalaman = {
    * itu memunculkannya; true = lebar berubah (amati ulang).
    */
   lebarkan?(): Promise<boolean>;
+  /**
+   * Buka menu (hamburger/offcanvas/collapse) yang menyembunyikan kendali masuk di layar ponsel (QA prod Depok):
+   * klik pembuka panel lokal yang TARGET-nya memuat kendali masuk tersembunyi. true = menu terbuka.
+   */
+  bukaMenuMasuk?(): Promise<boolean>;
   /** Konten fade-in (blok besar berisi tautan/kolom) masih transparan (probe gel5 6171). */
   belumTampil?(): Promise<boolean>;
 };
@@ -108,6 +115,7 @@ export function tanganRunner(deps: {
   galatNav?(): string | undefined;
   lebarkan?(): Promise<boolean>;
   belumTampil?(): Promise<boolean>;
+  bukaMenuMasuk?(): Promise<boolean>;
 }): TanganHalaman {
   return {
     async amati(seq, diisi) {
@@ -138,6 +146,7 @@ export function tanganRunner(deps: {
     ...(deps.galatNav ? { galatNav: deps.galatNav } : {}),
     ...(deps.lebarkan ? { lebarkan: deps.lebarkan } : {}),
     ...(deps.belumTampil ? { belumTampil: deps.belumTampil } : {}),
+    ...(deps.bukaMenuMasuk ? { bukaMenuMasuk: deps.bukaMenuMasuk } : {}),
   };
 }
 
@@ -180,10 +189,86 @@ export type GenerikDeps = {
   ): void;
   /** Situs tidak bisa dikerjakan otomatis: sesi beralih ke mode dipandu. */
   tidakBisa(pesan: string): void;
+  /** Fase AI yang jujur untuk layar warga (membuka situs/halaman, membaca halaman, mengisi formulir). */
+  fase?(f: FaseAi): void;
   now?: () => number;
 };
 
+export type FaseAi = 'membuka' | 'membaca' | 'mengisi';
+
 // --- Pesan bertemplat (tidak pernah teks LLM) -------------------------------------------------------
+
+/** Label halaman yang dikutip di pesan: satu baris, tanpa tanda kutip, maks. 40 karakter. */
+function kutip(nama: string): string {
+  return nama
+    .replace(/["'`\u201c\u201d\u2018\u2019]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 40);
+}
+
+/** Label aman dikutip di petunjuk umum: huruf/angka/spasi/&/-//, maks. 5 kata, tanpa angka panjang/URL. */
+export function labelAman(nama: string): string | undefined {
+  const k = kutip(nama);
+  if (!k || k.split(' ').length > 5 || !/^[\p{L}\p{N} &/-]+$/u.test(k) || /\d{4,}/.test(k)) return undefined;
+  return k;
+}
+
+const KATA_UMUM_HOST = new Set([
+  'www',
+  'web',
+  'app',
+  'portal',
+  'layanan',
+  'online',
+  'disdukcapil',
+  'dukcapil',
+]);
+
+/**
+ * Nama portal untuk pesan ("akun SIBISA Anda"): label host pertama (sibisa.medan.go.id = SIBISA) bila pendek dan
+ * bukan kata umum; ejaan dari judul halaman bila judul memuatnya. undefined = "akun Anda di situs ini".
+ */
+export function namaPortal(host: string, judul = ''): string | undefined {
+  const label = host.split('.')[0]?.toLowerCase() ?? '';
+  if (!/^[a-z]{3,14}$/.test(label) || KATA_UMUM_HOST.has(label)) return undefined;
+  const m = new RegExp(`(^|[^\\p{L}])(${label})([^\\p{L}]|$)`, 'iu').exec(judul.replace(/[-_]/g, ''));
+  return m?.[2] && m[2] !== m[2].toLowerCase() ? m[2] : label.toUpperCase();
+}
+
+/**
+ * Giliran masuk akun yang menyebut tombolnya (QA prod Medan/Padang): Masuk didahulukan, Daftar sebagai pilihan
+ * bagi yang belum punya akun. Label hanya dari `kendaliAkun` (seluruh katanya kata akun), dikutip pendek.
+ */
+export function pesanMasukAkun(o: {
+  portal?: string | undefined;
+  masuk?: string | undefined;
+  daftar?: string | undefined;
+  formulir?: boolean;
+  captcha?: boolean;
+  verifikasi?: boolean;
+}): string {
+  const akun = o.portal ? `akun ${o.portal} Anda` : 'akun Anda di situs ini';
+  const keamanan = o.captcha
+    ? ', termasuk kode keamanan (CAPTCHA)'
+    : o.verifikasi
+      ? ', termasuk verifikasi keamanan situs'
+      : '';
+  const awal =
+    o.formulir || !o.masuk
+      ? `Masuk dengan ${akun}${keamanan}.`
+      : `Ketuk "${kutip(o.masuk)}" kalau sudah punya akun, lalu masuk dengan ${akun}.`;
+  const daftar = o.daftar ? ` Belum punya akun? Ketuk "${kutip(o.daftar)}".` : '';
+  return `${awal}${daftar} AI melanjutkan setelah Anda masuk.`;
+}
+
+/** Petunjuk saat AI tidak maju: menyebut kendali yang disorot bila labelnya aman dikutip. */
+export function pesanPetunjuk(nama: string | undefined): string {
+  const l = nama ? labelAman(nama) : undefined;
+  return l
+    ? `AI belum menemukan langkah berikutnya di halaman ini. Coba ketuk "${l}" yang disorot, atau lanjutkan sendiri. Tekan Lanjutkan agar AI mencoba lagi.`
+    : PESAN_GENERIK.tidak_yakin;
+}
 
 export const PESAN_GENERIK = {
   periksa:
@@ -389,6 +474,9 @@ function tokenFitur(f: Record<string, unknown> | undefined): string[] {
     .slice(0, 20);
 }
 
+/** Nomor aturan jejak klik untuk tautan pembuka yang dibuka lewat navigasi GET (bukan klasifikator K1..K11). */
+const ATURAN_PEMBUKA_GET = 12;
+
 function nomorAturan(aturan: string): number {
   const n = Number(/^K(\d{1,2})/.exec(aturan)?.[1]);
   return Number.isInteger(n) && n >= 1 && n <= 20 ? n : 11;
@@ -421,16 +509,25 @@ export class GenerikRun {
   private readonly diisi = new Map<string, string>();
   /** Nama kolom (sudah diredaksi) per ref dari pengamatan terakhir: label lembar persetujuan. */
   private namaRef = new Map<string, string>();
+  /** Pengamatan terakhir (non-pantau): kendali akun untuk pesan giliran masuk. */
+  private amatanTerakhir: Pengamatan | undefined;
   /** Kelas kendali per ref dan sinyal halaman dari pengamatan terakhir: dasar kalimat giliran yang tepat. */
   private kelasRef = new Map<string, KelasKendali>();
   private sinyalKini: SinyalHalaman | undefined;
   /** Nama kendali masuk akun (kelas `masuk`) pertama di pengamatan terakhir. */
   private namaMasuk: string | undefined;
-  /** Selama satu aksi/navigasi AI: blokir gerbang dan host di luar allowlist yang terjadi karenanya. */
+  /**
+   * Selama satu aksi/navigasi AI: blokir gerbang dan host di luar allowlist yang terjadi karenanya.
+   * `muat`: aksi berjalan berupa navigasi GET tanpa klik (mulai, tautan pembuka, tautan navigasi). XHR/fetch tulis
+   * yang diblokir selama dokumen tujuan dimuat berasal dari skrip halaman itu sendiri (QA prod gel6 Klampid: POST
+   * saat SPA dimulai), bukan dari tombol yang ditekan AI: tetap diblokir dan dicatat, tetapi bukan eskalasi.
+   * `situsGalat`: navigasi berakhir di halaman galat Chromium (TLS/DNS/koneksi) -> dipandu, bukan giliran warga.
+   */
   private aksiBerjalan:
     | {
         blokir: CatatanBlokir[];
         hostLain: boolean;
+        muat?: true;
         situsGalat?: { host: string; net: string; alih: boolean };
       }
     | undefined;
@@ -566,7 +663,8 @@ export class GenerikRun {
     // lewat batas jendela cukup dicatat. Klik: setiap blokir = eskalasi.
     const tulisLain = c.dokumen || !c.xhr;
     if (this.aksiBerjalan) {
-      if (j.jenis === 'ai_klik' || tulisLain) this.aksiBerjalan.blokir.push(c);
+      const klikAi = j.jenis === 'ai_klik' && !this.aksiBerjalan.muat;
+      if (klikAi || tulisLain) this.aksiBerjalan.blokir.push(c);
       return;
     }
     // Di luar aksi: tulis yang diblokir tepat setelah isi (onchange form.submit(), sendBeacon) = warga.
@@ -685,7 +783,8 @@ export class GenerikRun {
     return this.serial(() => this.amatiSekarang(pantau));
   }
 
-  private async amatiSekarang(pantau: boolean): Promise<Pengamatan | null> {
+  private async amatiSekarang(pantau: boolean, menuDibuka = false): Promise<Pengamatan | null> {
+    if (!pantau) this.d.fase?.('membaca');
     const seq = ++this.seq;
     let r = await this.d.tangan.amati(seq, Object.fromEntries(this.diisi));
     // SPA yang baru merender setelah load (probe 3208): 0 elemen = tunggu DOM tenang lalu amati sekali lagi.
@@ -710,8 +809,15 @@ export class GenerikRun {
     // Tanpa kendali masuk yang terlihat: mungkin tombol masuknya disembunyikan di layar ponsel (probe gel4 3279;
     // gel5 3402: beranda berisi banyak tautan, bukan halaman polos). Tangan memeriksa sendiri kendali masuk yang
     // tersembunyi dan melebarkan viewport hanya bila itu benar-benar memunculkannya.
-    const tanpaMasuk = !cek.data.sinyal.login && !cek.data.elemen.some((e) => e.kelas === 'masuk');
-    if (tanpaMasuk && (await this.d.tangan.lebarkan?.())) return this.amatiSekarang(false);
+    const tanpaMasuk =
+      !cek.data.sinyal.login &&
+      !cek.data.elemen.some((e) => e.kelas === 'masuk') &&
+      kendaliAkun(cek.data.elemen).masuk === undefined;
+    if (tanpaMasuk && (await this.d.tangan.lebarkan?.())) return this.amatiSekarang(false, menuDibuka);
+    // Kendali masuk di menu hamburger yang tertutup (QA prod Depok): menu dibuka sekali (klik panel lokal, tanpa
+    // permintaan tulis), lalu halaman diamati ulang dengan kendali masuk terlihat.
+    if (tanpaMasuk && !menuDibuka && (await this.d.tangan.bukaMenuMasuk?.()))
+      return this.amatiSekarang(false, true);
     this.peta = r.peta;
     this.seqTerakhir = seq;
     this.kunciAkhir = cek.data.sinyal.halamanAkhir;
@@ -723,6 +829,7 @@ export class GenerikRun {
     this.sinyalKini = cek.data.sinyal;
     this.namaMasuk = cek.data.elemen.find((e) => e.kelas === 'masuk')?.nama;
     this.refPembuka = new Set(cek.data.elemen.filter((e) => e.tautanPembuka).map((e) => e.ref));
+    this.amatanTerakhir = cek.data;
     this.pembukaAktif = undefined;
     this.d.jejak({
       jenis: 'amati',
@@ -787,6 +894,13 @@ export class GenerikRun {
       }));
     }
 
+    if (
+      aksi.some(
+        (a) => a.jenis === 'isi' || a.jenis === 'pilih' || a.jenis === 'centang' || a.jenis === 'unggah',
+      )
+    )
+      this.d.fase?.('mengisi');
+    else if (aksi.some((a) => a.jenis === 'klik')) this.d.fase?.('membuka');
     const hasil: HasilAksi[] = [];
     let berhenti = false;
     for (const [indeks, a] of aksi.entries()) {
@@ -826,12 +940,12 @@ export class GenerikRun {
       this.pembukaUrl = tujuan?.href;
       this.berhentiAkhir = a.alasan === 'berhenti';
       this.d.jejak({ jenis: 'ambil_alih', fase: 'mulai', alasan: a.alasan });
+      const namaRef = a.ref ? this.namaRef.get(a.ref) : undefined;
       const pesan =
         a.alasan === 'ketuk_tautan'
           ? PESAN_GENERIK.ketuk_tautan
-          : pesanSerah(a.alasan, a.ref ? this.namaRef.get(a.ref) : undefined, sorot !== undefined);
-      const kendali = namaKendali(a.ref ? this.namaRef.get(a.ref) : undefined);
-      this.d.serahkan(ALASAN_GILIRAN[a.alasan], pesan, sorot, tautan, kendali);
+          : (this.pesanGiliran(a.alasan, a.ref) ?? pesanSerah(a.alasan, namaRef, sorot !== undefined));
+      this.d.serahkan(ALASAN_GILIRAN[a.alasan], pesan, sorot, tautan, namaKendali(namaRef));
       return { kode: 'ok', halamanBerganti: true };
     }
     if (a.jenis === 'tidak_bisa') {
@@ -841,6 +955,8 @@ export class GenerikRun {
     const ref = this.peta[a.ref];
     if (!ref) return { kode: 'REF_TIDAK_ADA' };
 
+    // Tautan pembuka (GET, `kirim` hanya karena namanya): dibuka lewat navigasi GET ke href-nya, bukan klik.
+    if (a.jenis === 'klik' && this.refPembuka.has(a.ref)) return this.bukaPembuka(a.ref, ref);
     if (a.jenis === 'klik') return this.klik(a.ref, ref);
 
     let op: AksiRunner;
@@ -937,6 +1053,62 @@ export class GenerikRun {
     return true;
   }
 
+  /**
+   * Pesan giliran masuk akun (nama portal, Masuk didahulukan dari Daftar) dan petunjuk saat AI tidak maju.
+   * undefined = pakai `pesanSerah` (mis. serah masuk akun yang menyorot kendali bukan kendali akun).
+   */
+  private pesanGiliran(
+    alasan: Extract<Aksi, { jenis: 'serahkan' }>['alasan'],
+    ref: string | undefined,
+  ): string | undefined {
+    const p = this.amatanTerakhir;
+    if (alasan === 'tidak_yakin' && ref) return pesanPetunjuk(this.namaRef.get(ref));
+    if (alasan !== 'masuk_akun' || !p) return undefined;
+    const akun = kendaliAkun(p.elemen);
+    const formulir = p.sinyal.login;
+    const masuk: ElemenAmatan | undefined = ref ? p.elemen.find((e) => e.ref === ref) : undefined;
+    const masukAkun = masuk && kendaliAkun([masuk]).masuk ? masuk : undefined;
+    if (masuk && !masukAkun && !formulir) return undefined;
+    return pesanMasukAkun({
+      portal: namaPortal(p.host, p.judul),
+      masuk: formulir ? undefined : masukAkun?.nama,
+      daftar: akun.daftar?.nama,
+      formulir,
+      captcha: p.sinyal.captcha,
+      verifikasi: p.sinyal.tantangan,
+    });
+  }
+
+  /**
+   * Tautan pembuka GET di host allowlist (QA prod gel6: "Login / Register", "Perpindahan Keluar"): href dibaca ulang
+   * dari DOM lalu dibuka lewat navigasi GET bingkai utama (jendela `ai_klik` dengan navKe), tanpa klik dan tanpa
+   * handler JS halaman. Halaman akhir tetap terkunci; gerbang tulis tetap menjaga.
+   */
+  private async bukaPembuka(refId: string, ref: RefTersimpan) {
+    if (this.kunciAkhir) return { kode: 'HALAMAN_AKHIR' as const };
+    const u = await this.tautanUrl(refId);
+    if (!u) return { kode: 'KELAS_DITOLAK' as const };
+    this.d.jejak({
+      jenis: 'klik',
+      ref: refId,
+      kelas: 'kirim',
+      aturan: ATURAN_PEMBUKA_GET,
+      fitur: ['tautanPembuka', 'navigasiGet'],
+      putusan: 'izinkan',
+    });
+    this.aksiBerjalan = { blokir: [], hostLain: false };
+    this.hostDitolakTerakhir = undefined;
+    this.aiBertindakDok = true;
+    this.tulisWargaSejakAi = false;
+    this.kirimFinalWarga = false;
+    try {
+      return await this.navigasi(u.href, ref, undefined, this.d.tangan.urlKini(), refId);
+    } finally {
+      this.aksiBerjalan = undefined;
+      this.d.gerbang.setAi({ jenis: 'ai_diam' });
+    }
+  }
+
   /** Konteks kalimat giliran dari pengamatan terakhir: nama/kelas kendali pemicu, sorotan, sinyal halaman. */
   private konteks(refId: string | undefined, sorot: PendampingSorot | undefined): KonteksGiliran {
     return {
@@ -975,6 +1147,7 @@ export class GenerikRun {
       return { kode: 'GERBANG_MEMBLOKIR' as const, ...k };
     }
     u.hash = '';
+    if (this.aksiBerjalan) this.aksiBerjalan.muat = true;
     this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: u.href });
     await this.d.tangan.navigasi(u.href);
     await this.d.tangan.tenang();
@@ -1022,7 +1195,7 @@ export class GenerikRun {
       this.aiBertindakDok = true;
       this.tulisWargaSejakAi = false;
       this.kirimFinalWarga = false;
-      this.aksiBerjalan = { blokir: [], hostLain: false };
+      this.aksiBerjalan = { blokir: [], hostLain: false, muat: true };
       this.hostDitolakTerakhir = undefined;
       const urlSebelum = this.d.tangan.urlKini();
       try {
@@ -1043,11 +1216,12 @@ export class GenerikRun {
   /** Halaman awal sesi (origin program): navigasi AI ke URL persis itu saja. */
   async mulai(url: string): Promise<void> {
     await this.serial(async () => {
-      this.aksiBerjalan = { blokir: [], hostLain: false };
+      this.aksiBerjalan = { blokir: [], hostLain: false, muat: true };
       this.hostDitolakTerakhir = undefined;
       this.tulisWargaSejakAi = false;
       this.kirimFinalWarga = false;
       try {
+        this.d.fase?.('membuka');
         this.d.gerbang.setAi({ jenis: 'ai_klik', navKe: url });
         await this.d.tangan.navigasi(url);
         await this.d.tangan.tenang();
