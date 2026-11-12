@@ -23,6 +23,7 @@ import {
 import { chromium, type BrowserContext, type CDPSession, type Page } from 'playwright-core';
 import type { Config } from './config.js';
 import { egressRules, startEgressProxy, type EgressProxy } from './egress.js';
+import { galatSitus, pesanSitusBermasalah } from './galat-nav.js';
 import {
   asetPemdaSama,
   asetUmumBoleh,
@@ -38,6 +39,7 @@ import { GenerikRun, naikHttps, PESAN_GENERIK, tanganRunner } from './generik.js
 import { createTouchMapper, FOKUS_EXPR, toCdp } from './input.js';
 import { daftarEdge, type ProxyEdge } from './isolasi.js';
 import { logSesi } from './log.js';
+import { envNss } from './nss.js';
 import { pesanBerkasKurang, pesanIsiSendiri } from './isian.js';
 import { runnerExpression } from './runner-script.js';
 import type { ActiveRun, Frame, JenisFokus, RunFactory, RunInit } from './sessions.js';
@@ -589,6 +591,7 @@ export async function launchIsolated(
         ...(process.env.DISPLAY ? { DISPLAY: process.env.DISPLAY } : {}),
         ...(process.env.XAUTHORITY ? { XAUTHORITY: process.env.XAUTHORITY } : {}),
         TZ: 'Asia/Jakarta',
+        ...envNss(config.nssDb),
       },
       viewport: { width: viewport.lebar, height: viewport.tinggi },
       deviceScaleFactor: 1,
@@ -1166,6 +1169,9 @@ export async function wire(
             'gagal',
             'Urusin menolak menekan tombol kirim. Hanya Anda yang boleh menekannya.',
           );
+        // Situs resmi itu sendiri bermasalah (sertifikat, DNS, koneksi): dipandu jujur, bukan halaman galat Chromium.
+        if (galatSitus(net))
+          return hooks.ended('dipandu', 'drift', pesanSitusBermasalah(host, net!), { kode: code, net });
         return hooks.ended('gagal', 'gagal', pesanGagal(code, host, net), { kode: code, net });
       }
     }
@@ -1624,6 +1630,7 @@ export async function wire(
         tenang,
         belumTampil,
         urlKini: () => page.url(),
+        galatNav: () => navGagal,
         async lebarkan() {
           if (lebarAsli || destroyed || ditahan()) return false;
           const awal = await hitungMasuk();
