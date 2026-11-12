@@ -77,6 +77,7 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
         urusanId: a.u.id,
         executionId: offered.data.executionId,
         ip,
+        ...(lihatSaja ? { demo: true } : {}),
       });
       if (ditolak) return ditolak;
     }
@@ -100,13 +101,34 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
       ...(lihatSaja ? { lihatSaja: true } : {}),
       ...(body.data.viewport ? { viewport: body.data.viewport } : {}),
     });
+    // Fail closed: demo lihat saja diminta, tetapi worker tidak menegakkannya (image lama membuang field, atau
+    // sesi simulasi lama dengan executionId yang sama). Tutup sesinya, jangan biarkan berjalan tanpa gerbang.
+    if (r.ok && lihatSaja && r.data.lihatSaja !== true) {
+      hentikanNavigator(a.u.id);
+      await panggilPemilik(cfg, '/internal/sesi/akhiri', skema.sesi, {
+        urusanId: a.u.id,
+        sidHash: a.sidHash,
+      });
+      return apiError(
+        503,
+        'LAYANAN_TIDAK_TERSEDIA',
+        'Browser Pendamping sedang tidak tersedia. Coba lagi sebentar lagi.',
+      );
+    }
     if (r.ok) {
-      // Dasar jujur agen chat (`statusPendamping`): eksekusi ini demo lihat saja, AI tidak mengisi apa pun.
-      if (lihatSaja)
+      // Dasar jujur agen chat (`statusPendamping`, catatan terakhir menang): mode sesi yang BENAR-BENAR dibuka
+      // worker, demo lihat saja di situs asli atau simulasi di replika dengan data contoh.
+      const modeSesi =
+        r.data.lihatSaja === true
+          ? 'lihat_saja'
+          : body.data.simulasi === true && r.data.replika === true
+            ? 'simulasi'
+            : undefined;
+      if (modeSesi)
         a.rt.publish(a.u.id, {
           type: 'jejak_pendamping',
           executionId: offered.data.executionId,
-          catatan: { jenis: 'lihat_saja' },
+          catatan: { jenis: modeSesi },
         });
       if (akunAsli)
         catatSesiAsli(a.rt, {

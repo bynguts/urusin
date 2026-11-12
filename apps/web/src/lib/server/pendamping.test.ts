@@ -1507,17 +1507,32 @@ describe('demo juri membuka situs resmi asli (mode lihat saja); replika hanya si
       akun: { mailer: new MemoryMailer(), google: null, vault: { diskPersen: () => 10 } },
     });
     setRuntimeForTests(rt);
+    reply = pantul();
   }
+  /** Worker kini: mengembalikan mode yang dimintanya (lihatSaja; replika untuk Mode Uji). */
+  const pantul =
+    (extra: object = {}) =>
+    (path: string, body: { lihatSaja?: boolean; modeUji?: boolean } | undefined) => ({
+      status: path.endsWith('/status') ? 200 : 201,
+      body: sesi({
+        ...(body?.lihatSaja ? { lihatSaja: true } : {}),
+        ...(body?.modeUji ? { replika: true } : {}),
+        ...extra,
+      }),
+    });
   function juriDengan(u: { id: string }) {
     const { token, akun } = rt.akun.buatDemo({ ip: '127.0.0.1', userAgent: null });
     rt.akun.catatPemilikUrusan(u.id, { akun });
     return `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${token}`;
   }
   const mulaiSesi = () => calls.filter((c) => c.url.endsWith('/internal/sesi'));
-  const lihatSajaTercatat = (id: string) =>
+  const catatanMode = (id: string) =>
     rt.store
       .eventsOfType(id, 'jejak_pendamping', 50)
-      .some((e) => (e.payload as { catatan?: { jenis?: string } }).catatan?.jenis === 'lihat_saja');
+      .map((e) => (e.payload as { catatan?: { jenis?: string } }).catatan?.jenis)
+      .filter((j) => j === 'lihat_saja' || j === 'simulasi')
+      .reverse();
+  const lihatSajaTercatat = (id: string) => catatanMode(id).includes('lihat_saja');
 
   it('bawaan: worker dipanggil dengan origin RESMI, modeUji false + lihatSaja true; jejak lihat_saja tercatat', async () => {
     runtimeAkun();
@@ -1538,6 +1553,41 @@ describe('demo juri membuka situs resmi asli (mode lihat saja); replika hanya si
     expect(body.modeUji).toBe(true);
     expect(body.lihatSaja).toBeUndefined();
     expect(lihatSajaTercatat(u.id)).toBe(false);
+    expect(catatanMode(u.id)).toEqual(['simulasi']);
+  });
+
+  it('lihat saja lalu simulasi: catatan mode terakhir = simulasi, agen chat tidak lagi bilang situs asli', async () => {
+    runtimeAkun();
+    const u = urusanDenganEksekusi();
+    const cookie = juriDengan(u);
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(201);
+    expect(
+      (await mulai(evIp(req('POST', { executionId: 'x_1', simulasi: true }, cookie), u.id))).status,
+    ).toBe(201);
+    // statusPendamping (harness) memakai catatan mode terakhir.
+    expect(catatanMode(u.id)).toEqual(['lihat_saja', 'simulasi']);
+  });
+
+  it('worker mengembalikan sesi mode lain (sesi lama, executionId sama): tidak dicatat sebagai mode diminta', async () => {
+    runtimeAkun();
+    // Sesi lihat saja lama masih hidup; permintaan simulasi menerima sesi itu kembali.
+    reply = pantul({ lihatSaja: true });
+    const u = urusanDenganEksekusi();
+    expect(
+      (await mulai(evIp(req('POST', { executionId: 'x_1', simulasi: true }, juriDengan(u)), u.id))).status,
+    ).toBe(201);
+    expect(catatanMode(u.id)).toEqual(['lihat_saja']);
+  });
+
+  it('fail closed: worker (image lama) tidak menegakkan lihatSaja -> sesi ditutup, 503, tanpa jejak', async () => {
+    runtimeAkun();
+    reply = (path) => ({ status: path.endsWith('/status') ? 200 : 201, body: sesi() });
+    const u = urusanDenganEksekusi();
+    const res = await mulai(evIp(req('POST', { executionId: 'x_1' }, juriDengan(u)), u.id));
+    expect(res.status).toBe(503);
+    expect(((await res.json()) as { kode: string }).kode).toBe('LAYANAN_TIDAK_TERSEDIA');
+    expect(calls.some((c) => c.url.endsWith('/internal/sesi/akhiri'))).toBe(true);
+    expect(catatanMode(u.id)).toEqual([]);
   });
 
   it('simulasi di portal tanpa replika (Sleman): 422 PENDAMPING_TANPA_REPLIKA, worker tidak dipanggil', async () => {
@@ -1576,16 +1626,30 @@ describe('demo juri membuka situs resmi asli (mode lihat saja); replika hanya si
     expect(body.lihatSaja).toBeUndefined();
   });
 
-  it('demo di situs asli ikut rem portal asli (per IP): sesi kedua dari IP yang sama ditolak 429', async () => {
-    runtimeAkun({ pendampingPerJamIp: 1 });
-    reply = (path) => ({ status: path.endsWith('/status') ? 200 : 201, body: sesi({ status: 'selesai' }) });
-    const u1 = urusanDenganEksekusi();
-    const u2 = urusanDenganEksekusi();
-    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, juriDengan(u1)), u1.id))).status).toBe(201);
-    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, juriDengan(u2)), u2.id))).status).toBe(429);
+  it('demo di situs asli: juri satu venue (satu IP) masing-masing bisa demo; plafon IP demo + batas per akun', async () => {
+    runtimeAkun({ pendampingPerJamIp: 1, pendampingDemoPerJamIp: 3, pendampingPerJamAkun: 1 });
+    reply = pantul({ status: 'selesai' });
+    const u = [1, 2, 3, 4].map(() => urusanDenganEksekusi());
+    const cookie = u.map((x) => juriDengan(x));
+    // Tiga juri berbeda dari IP yang sama: tidak terhalang plafon IP warga (1/jam).
+    for (const i of [0, 1, 2])
+      expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, cookie[i]), u[i]!.id))).status).toBe(201);
+    // Plafon IP demo tetap ada (rem banjir).
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, cookie[3]), u[3]!.id))).status).toBe(429);
+    // Batas per akun tetap (1/jam): salinan demo yang sama, urusan kedua dari IP lain = 429.
+    const { token, akun } = rt.akun.buatDemo({ ip: '127.0.0.1', userAgent: null });
+    const [a1, a2] = [urusanDenganEksekusi(), urusanDenganEksekusi()];
+    for (const x of [a1, a2]) rt.akun.catatPemilikUrusan(x.id, { akun });
+    const sendiri = `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${token}`;
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, sendiri), a1.id, '10.8.8.8'))).status).toBe(
+      201,
+    );
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, sendiri), a2.id, '10.8.8.8'))).status).toBe(
+      429,
+    );
     // Simulasi (replika) tidak kena rem portal asli.
     expect(
-      (await mulai(evIp(req('POST', { executionId: 'x_1', simulasi: true }, juriDengan(u2)), u2.id))).status,
+      (await mulai(evIp(req('POST', { executionId: 'x_1', simulasi: true }, cookie[3]), u[3]!.id))).status,
     ).toBe(201);
   });
 });

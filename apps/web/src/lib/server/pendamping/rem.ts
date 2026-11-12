@@ -12,13 +12,14 @@ export const PESAN_SESI_ASLI_AKTIF =
 
 /**
  * Rem Browser Pendamping portal ASLI (review keamanan M1): satu sesi aktif per akun, dan paling banyak N sesi
- * mulai per jam per akun dan per IP. Mode Uji dan juri tidak lewat sini. Mengulang POST untuk eksekusi yang sama
+ * mulai per jam per akun dan per IP. Mode Uji (simulasi juri) tidak lewat sini. Demo juri lihat saja (`demo`)
+ * memakai plafon per IP tersendiri yang longgar (juri satu venue berbagi IP); batas per akun tetap sama. Mengulang POST untuk eksekusi yang sama
  * pada urusan yang sama (muat ulang halaman) tidak dihitung lagi. Mengembalikan respons galat, atau undefined bila
  * boleh lanjut; pemanggil memanggil `catatSesiAsli` setelah sesi berhasil dibuat.
  */
 export async function remPortalAsli(
   rt: Runtime,
-  p: { akunId: string; urusanId: string; executionId: string; ip: string },
+  p: { akunId: string; urusanId: string; executionId: string; ip: string; demo?: boolean },
 ): Promise<Response | undefined> {
   const lama = rt.sesiAsliAkun.get(p.akunId);
   if (lama && lama.urusanId === p.urusanId && lama.executionId === p.executionId) return undefined;
@@ -32,7 +33,7 @@ export async function remPortalAsli(
   }
   const hasil = [
     rt.limits.pendamping.akun.consume(`akun:${p.akunId}`),
-    rt.limits.pendamping.ip.consume(`ip:${kunciIp(p.ip)}`),
+    (p.demo ? rt.limits.pendamping.ipDemo : rt.limits.pendamping.ip).consume(`ip:${kunciIp(p.ip)}`),
   ];
   const kena = hasil.find((h) => !h.ok);
   if (!kena) return undefined;

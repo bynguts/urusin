@@ -1158,7 +1158,10 @@ export class GenerikRun {
     if (this.kunciAkhir) return { kode: 'HALAMAN_AKHIR' as const };
     this.d.gerbang.setAi({ jenis: 'ai_klik' });
     try {
-      return await this.jalankan({ jenis: 'klik', ref: refId }, ref);
+      return await this.jalankan(
+        { jenis: 'klik', ref: refId, ...(this.d.lihatSaja ? { lihatSaja: true as const } : {}) },
+        ref,
+      );
     } finally {
       this.d.gerbang.setAi({ jenis: 'ai_diam' });
     }
@@ -1271,7 +1274,8 @@ export class GenerikRun {
     const kelas = KelasKendaliSchema.safeParse(r.kelas);
     if (!kelas.success) return;
     const izinkan =
-      (r.status === 'ok' || r.status === 'navigasi') && KELAS_BOLEH_KLIK_AI.includes(kelas.data);
+      (r.status === 'ok' || r.status === 'navigasi') &&
+      (this.d.lihatSaja ? KELAS_BOLEH_KLIK_LIHAT_SAJA : KELAS_BOLEH_KLIK_AI).includes(kelas.data);
     this.d.jejak({
       jenis: 'klik',
       ref,

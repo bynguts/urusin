@@ -70,6 +70,11 @@ export type RuntimeConfig = {
   /** Rem Browser Pendamping portal asli: sesi mulai per jam per akun dan per IP (Mode Uji/juri tidak kena). */
   pendampingPerJamAkun: number;
   pendampingPerJamIp: number;
+  /**
+   * Demo juri (lihat saja) di portal asli: plafon per IP tersendiri yang longgar, karena juri satu venue berbagi
+   * satu IP; tiap salinan demo tetap kena batas per akun dan satu sesi aktif per akun.
+   */
+  pendampingDemoPerJamIp: number;
   turnPerMenitIp: number;
   turnPerMenitSesi: number;
 };
@@ -90,6 +95,7 @@ export function readConfig(env: Record<string, string | undefined> = process.env
     buatPerJamIpAkun: num(env.URUSIN_LIMIT_BUAT_IP_AKUN_PER_JAM, 600),
     pendampingPerJamAkun: num(env.URUSIN_LIMIT_PENDAMPING_AKUN_PER_JAM, 6),
     pendampingPerJamIp: num(env.URUSIN_LIMIT_PENDAMPING_IP_PER_JAM, 30),
+    pendampingDemoPerJamIp: num(env.URUSIN_LIMIT_PENDAMPING_DEMO_IP_PER_JAM, 200),
     turnPerMenitIp: num(env.URUSIN_LIMIT_TURN_IP_PER_MENIT, 30),
     turnPerMenitSesi: num(env.URUSIN_LIMIT_TURN_SESI_PER_MENIT, 20),
   };
@@ -146,7 +152,7 @@ export type Runtime = ReturnType<typeof createHarness> & {
   limits: Record<
     'buat' | 'turn',
     { ip: RateLimiter; sesi: RateLimiter; akun?: RateLimiter; ipAkun?: RateLimiter }
-  > & { pendamping: { akun: RateLimiter; ip: RateLimiter } };
+  > & { pendamping: { akun: RateLimiter; ip: RateLimiter; ipDemo: RateLimiter } };
   /** Sesi Browser Pendamping portal asli terakhir per akun (satu sesi aktif per akun). */
   sesiAsliAkun: Map<string, { urusanId: string; sidHash: string; executionId: string }>;
   /** Akun warga, sesi login, dan vault terenkripsi per pemilik (ADR 0028). */
@@ -305,6 +311,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     pendamping: {
       akun: new RateLimiter(config.pendampingPerJamAkun, jam),
       ip: new RateLimiter(config.pendampingPerJamIp, jam),
+      ipDemo: new RateLimiter(config.pendampingDemoPerJamIp, jam),
     },
   };
   const { akun, oidcFixture } = createAkun(db, config, (id) => h.store.deleteUrusan(id), init.akun);
