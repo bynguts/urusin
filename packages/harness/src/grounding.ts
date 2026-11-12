@@ -150,6 +150,7 @@ export const ADMINDUK: ReadonlySet<string> = new Set([
   'pindah',
   'ktp',
   'kk',
+  'kia',
   'akta',
 ]);
 

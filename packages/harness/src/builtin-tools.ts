@@ -39,6 +39,7 @@ import {
   rencanaUrusan,
   wilayahUrusan,
 } from './wilayah.js';
+import { arahanPanduanUmum, kanalDipandu, paketDipandu } from './dipandu.js';
 
 const kodeKabKota = z.string().regex(/^\d{4}$/);
 
@@ -243,6 +244,9 @@ export const urusanUsulkanRencana = defineTool({
               },
               tier: 'dipandu',
               catatan: catatanDipandu(ctx.urusan.jenis, ktp, k, sumberJawabanTerakhir(ctx)),
+              ...(ctx.urusan.jenis === null || ADMINDUK.has(ctx.urusan.jenis)
+                ? { dipandu: paketDipandu(ctx.urusan.jenis, { ktp, tujuan: w.tujuan }) }
+                : {}),
             },
       ],
     };
@@ -292,6 +296,14 @@ const bukanPenduduk = (jenis: string | null, ktp: { kodeKabKota: string } | null
  * memberi langkah lain (isi kartu rencana atau datang ke kantor) tanpa mengulang kanal.
  */
 function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?: string | null): ToolResult {
+  // Urusan adminduk tidak berakhir hand-off (ADR 0032): model memberi panduan umum yang ditandai jujur, ditutup
+  // kanal resmi daerah yang berwenang (yurisdiksi `kodeUtama`, portal penduduk dilewati untuk warga luar daerah).
+  if (ctx.urusan.jenis === null || ADMINDUK.has(ctx.urusan.jenis)) {
+    const kode = kodeUtama ?? kodeKtp(ctx.store, ctx.urusan);
+    const luar = bukanPenduduk(ctx.urusan.jenis, wilayahUrusan(ctx.store, ctx.urusan).ktp, kode ?? null);
+    const kanal = kode ? kanalDipandu(kode, ctx.urusan.jenis, luar) : h.kanal;
+    return { content: arahanPanduanUmum(kanal.length > 0 ? kanal : h.kanal) };
+  }
   const kunci = (k: { url?: string | undefined; nama: string }) => (k.url ? kunciUrl(k.url) : k.nama);
   const sudah = new Set(
     ctx.store

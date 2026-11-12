@@ -21,6 +21,7 @@ import type { Db } from './db.js';
 import { HarnessError } from './errors.js';
 import { kalimatJaringanId, keteranganPendamping, majukan, rutePendamping } from './rencana.js';
 import type { HarnessStore, UrusanRow } from './store.js';
+import { paketDipandu } from './dipandu.js';
 
 type Publish = (e: EventPayload) => void;
 type PayloadWilayah = PayloadOf<'wilayah'>;
@@ -429,7 +430,9 @@ export function kartuRencana(
     },
     tier: r.tier,
     catatan: r.catatan,
-    ...(r.pendamping ? { pendamping: r.pendamping } : {}),
+    ...(r.pendamping
+      ? { pendamping: r.pendamping }
+      : { dipandu: paketDipandu(jenis, { ktp: w.ktp, tujuan: w.tujuan }) }),
   };
 }
 
