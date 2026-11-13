@@ -33,6 +33,13 @@
   left: 0;
   width: 100%;
 }
+/* Label kartu layanan rapat ke pojok kanan atas gambar di semua lebar layar (keputusan pemilik
+   2026-11-14; frame Rafi menaruhnya di tengah-kanan). */
+.lp .lp109 > div {
+  left: auto;
+  right: 14px;
+  top: 14px;
+}
 /* Kartu "Urusan lain": maskot tampil sebagai siluet bayangan gelap (urusan apa pun, belum ada
    pendampingnya), bukan karakter berwarna (keputusan pemilik 2026-11-14). */
 .lp .lp127 {
