@@ -147,6 +147,33 @@ export function alasanBukanJalurCepat(teks: string, jenis: string): string | nul
   return null;
 }
 
+/**
+ * Permintaan yang jelas di luar urusan (Urusin bukan asisten serba bisa): menulis kode/script, mengerjakan PR/soal,
+ * menulis karya kreatif, membuat game. Sengaja sempit (kata kerja + objek yang tegas) agar urusan seperti "buatkan
+ * surat kuasa", "kode pos", atau "program bansos" tidak ikut tertolak; sisanya ditangani aturan CAKUPAN di prompt.
+ */
+const DI_LUAR_URUSAN: readonly RegExp[] = [
+  // "buatkan aku script python", "tulis kode javascript", "bikinin codingan".
+  /\b(buat\w*|bikin\w*|tulis\w*|generate|ngoding\w*|coding\w*)\s+(\S+\s+){0,4}?(script|skrip|codingan|source\s*code|kode\s+program|program\s+komputer)\b/i,
+  /\b(script|skrip|kode|code|coding|codingan|program|fungsi|function|aplikasi|website|bot)\s+(\S+\s+){0,2}?(python|javascript|typescript|java|php|golang|kotlin|c\+\+|c#|html|css|sql|bash|rust)(?![\w+#])/i,
+  /\b(python|javascript|typescript|java|php|golang|kotlin|c\+\+|c#|html|css|sql|bash|rust)(?![\w+#])\s+(\S+\s+){0,2}?(script|skrip|kode|code|coding|codingan|program|fungsi|function)\b/i,
+  // "kerjakan PR matematika", "jawabin soal ujian", "selesaikan tugas sekolah".
+  /\b(kerjakan|kerjain|ngerjain|ngerjakan|mengerjakan|garapin|garapkan|selesaikan|selesaiin|jawabin|jawabkan)\s+(\S+\s+){0,2}?(pr|pekerjaan\s+rumah|tugas\s+(sekolah|kuliah|kampus)|ujian|ulangan|skripsi|makalah)\b/i,
+  /\b(kerjakan|kerjain|ngerjain|ngerjakan|mengerjakan|selesaikan|selesaiin|jawab\w*)\s+(\S+\s+){0,2}?soal\s+(ujian|ulangan|matematika|mtk|fisika|kimia|biologi|olimpiade|utbk|cpns|pr)\b/i,
+  // "buat puisi", "tuliskan esai", "bikinin cerpen", "karang pantun".
+  /\b(buat\w*|bikin\w*|tulis\w*|karang\w*)\s+(\S+\s+){0,2}?(puisi|esai|essay|cerpen|cerita\s+pendek|pantun|novel|dongeng|makalah|skripsi)\b/i,
+  // "buatkan game tebak angka", "main tebak-tebakan".
+  /\b(buat\w*|bikin\w*)\s+(\S+\s+){0,2}?(game|gim|permainan)\b|\bmain\w*\s+(game|tebak[- ]?tebakan|tebak\s+angka)\b/i,
+];
+
+/** Pesan warga jelas meminta hal di luar urusan; dijawab dengan `BALASAN_DI_LUAR_URUSAN` tanpa memanggil LLM. */
+export function mintaDiLuarUrusan(teks: string): boolean {
+  return DI_LUAR_URUSAN.some((re) => re.test(teks));
+}
+
+export const BALASAN_DI_LUAR_URUSAN =
+  'Maaf, saya hanya bisa membantu urusan administrasi kependudukan dan layanan publik, jadi permintaan itu tidak bisa saya kerjakan. Ada urusan yang bisa saya bantu, misalnya akta kelahiran, KTP-el, KK, atau pindah domisili?';
+
 export async function classifyIntent(opts: {
   provider: ChatProvider;
   model: string;

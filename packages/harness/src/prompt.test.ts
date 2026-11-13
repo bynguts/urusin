@@ -17,6 +17,15 @@ describe('fakta hukum di sistem prompt dan korpus contoh', () => {
     expect(prompt).toMatch(/Jangan memakai tabel, HTML/);
   });
 
+  it('cakupan: hanya urusan kependudukan/layanan publik, permintaan lain ditolak tanpa kode', () => {
+    expect(prompt).toMatch(
+      /CAKUPAN: kamu HANYA membantu urusan administrasi kependudukan dan layanan publik/,
+    );
+    expect(prompt).toMatch(/"buatkan aku script python" → kamu: "Maaf, saya hanya bisa membantu/);
+    expect(prompt).toMatch(/jangan memberi sebagian, contoh, kerangka, atau kode apa pun/);
+    expect(prompt).toMatch(/contoh surat pengantar RT, jam buka Disdukcapil/);
+  });
+
   it('pindah: SKPWNI di asal, KK dan KTP-el baru dari tujuan; SKDWNI bukan dokumen nasional', () => {
     expect(prompt).toMatch(/SKPWNI diurus di asal; Disdukcapil tujuan menerbitkan KK dan KTP-el baru/);
     expect(prompt).toMatch(/SKDWNI bukan dokumen nasional/);
