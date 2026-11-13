@@ -42,11 +42,13 @@ test('juri: situs resmi lihat saja dengan pesan jujur; tombol simulasi membuka r
       kedaluwarsaPada: new Date(sekarang + 15 * 60_000).toISOString(),
       situs: simulasi ? REPLIKA : RESMI,
       replika: simulasi,
-      ...(simulasi ? {} : { lihatSaja: true }),
+      ...(simulasi ? { simulasi: true } : { lihatSaja: true }),
     };
     return route.fulfill({ status: 201, json: sesi });
   });
+  let soket: { send: (m: string) => void } | null = null;
   await page.routeWebSocket(WS_TIRUAN, (ws) => {
+    soket = ws;
     ws.onMessage((m) => {
       if ((JSON.parse(String(m)) as { type: string }).type !== 'halo') return;
       ws.send(JSON.stringify({ type: 'status', sesi }));
@@ -105,4 +107,81 @@ test('juri: situs resmi lihat saja dengan pesan jujur; tombol simulasi membuka r
   expect(permintaan[1]!.simulasi).toBe(true);
   await expect(browser.locator('[data-label-simulasi]')).toHaveText('Simulasi');
   await expect(browser.getByRole('button', { name: 'Lihat contoh pengisian (simulasi)' })).toHaveCount(0);
+
+  // Kirim (simulasi) selesai: layar jujur "Simulasi selesai, tidak ada yang dikirim", bukan "Pengajuan terkirim";
+  // header panel tidak lagi "Urusin sedang bekerja".
+  await expect.poll(() => soket !== null).toBe(true);
+  sesi = { ...sesi, status: 'selesai', mode: 'done', hasil: 'berhasil' };
+  soket!.send(
+    JSON.stringify({ type: 'event', event: { jenis: 'selesai', hasil: 'berhasil', pesan: 'Selesai.' } }),
+  );
+  await expect(browser.locator('[data-simulasi-selesai]')).toHaveText('Simulasi selesai');
+  await expect(browser).toContainText('Tidak ada yang dikirim');
+  await expect(page.getByText('Pengajuan terkirim')).toHaveCount(0);
+  await expect(page.getByText('Urusin sedang bekerja')).toHaveCount(0);
+});
+
+test('juri di portal khusus jaringan Indonesia (Semarang) tanpa worker Indonesia: simulasi tetap ditawarkan', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const permintaan: { executionId: string; simulasi?: boolean }[] = [];
+  let sesi: Record<string, unknown> = {};
+  await page.route(/\/api\/urusan\/u_[0-9a-f]+\/pendamping(\/tiket)?$/, async (route) => {
+    const req = route.request();
+    if (req.url().endsWith('/tiket'))
+      return route.fulfill({ json: { wsUrl: WS_TIRUAN, tiket: 'tiket-smg' } });
+    if (req.method() !== 'POST') return route.fulfill({ json: sesi });
+    const body = req.postDataJSON() as { executionId: string; simulasi?: boolean };
+    permintaan.push(body);
+    const sekarang = Date.now();
+    sesi = {
+      sesiId: 'sesi-smg-1',
+      urusanId: new URL(req.url()).pathname.split('/')[3],
+      executionId: body.executionId,
+      status: 'berjalan',
+      mode: 'ai',
+      antrean: null,
+      dibuatPada: new Date(sekarang).toISOString(),
+      kedaluwarsaPada: new Date(sekarang + 15 * 60_000).toISOString(),
+      situs: REPLIKA,
+      replika: true,
+      simulasi: true,
+    };
+    return route.fulfill({ status: 201, json: sesi });
+  });
+  await page.routeWebSocket(WS_TIRUAN, (ws) => {
+    ws.onMessage((m) => {
+      if ((JSON.parse(String(m)) as { type: string }).type !== 'halo') return;
+      ws.send(JSON.stringify({ type: 'status', sesi }));
+      ws.send(JSON.stringify({ type: 'mode', mode: 'ai', pesan: 'AI sedang mengisi formulir contoh.' }));
+    });
+  });
+
+  await masukJuriUji(page);
+  await page.goto('/peristiwa/kelahiran');
+  const kota = page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' });
+  await expect(kota).toHaveAttribute('aria-autocomplete', 'list');
+  await kota.fill('Semarang');
+  await page.getByRole('option', { name: 'Kota Semarang', exact: true }).click();
+  await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
+  await expect(page).toHaveURL(/\/urusan\/u_[0-9a-f]{32}$/);
+  const benar = page.getByRole('button', { name: 'Ya, betul' });
+  await expect(benar).toBeEnabled({ timeout: 20_000 });
+  await benar.click();
+  const setujui = page.getByRole('button', { name: 'Setujui rencana' });
+  await expect(setujui).toBeEnabled({ timeout: 20_000 });
+  await setujui.click();
+
+  // Situs resmi jujur tidak dibuka (tanpa "Setujui dan buka situs"), tetapi simulasi tetap ditawarkan.
+  const kartu = page.locator('[data-simulasi-cadangan]');
+  await expect(kartu).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'Setujui dan buka situs' })).toHaveCount(0);
+  await expect(kartu).toContainText('Situs resmi tidak bisa dibuka');
+  await kartu.getByRole('button', { name: 'Lihat contoh pengisian (simulasi)' }).click();
+  await expect.poll(() => permintaan.length).toBe(1);
+  expect(permintaan[0]).toMatchObject({ executionId: 'simulasi', simulasi: true });
+  const browser = page.getByRole('region', { name: 'Browser Pendamping', exact: true });
+  await expect(browser.locator('[data-label-simulasi]')).toHaveText('Simulasi', { timeout: 20_000 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

@@ -91,6 +91,46 @@ describe('penyelesai nilai PII', () => {
     expect(Object.keys(nilai)).toEqual(['nik']);
   });
 
+  it('salinan demo: data sintetis mengikuti wilayah urusan (SBY 3578/Surabaya, SMG 3374/Semarang)', () => {
+    const { akun } = rt.akun.buatDemo(KTX);
+    const writeList = ['nik', 'noKk', 'tempatLahir', 'kodeKabKota', 'namaLengkap'];
+    const nilai = (kodeWilayah: string | null) => {
+      const token = izinkanIsi(rt, akun.id, writeList, FIXTURES, { kodeWilayah });
+      return resolusiNilai(rt, { ownerId: akun.id, token, writeList, targetOrigin: FIXTURES, kodeWilayah });
+    };
+    const sby = nilai('3578');
+    expect(sby.nik!.slice(0, 4)).toBe('3578');
+    expect(sby.noKk!.slice(0, 4)).toBe('3578');
+    expect(sby).toMatchObject({ tempatLahir: 'Surabaya', kodeKabKota: '3578' });
+    const smg = nilai('3374');
+    expect(smg.nik!.slice(0, 4)).toBe('3374');
+    expect(smg).toMatchObject({ tempatLahir: 'Semarang', kodeKabKota: '3374' });
+    // Wonogiri / tanpa wilayah: templat bawaan; nama tidak bergantung wilayah.
+    for (const k of ['3312', null]) {
+      const w = nilai(k);
+      expect(w.nik!.slice(0, 4)).toBe('3312');
+      expect(w.tempatLahir).toBe('Wonogiri');
+      expect(w.namaLengkap).toBe(sby.namaLengkap);
+    }
+    // Isian yang sudah diubah juri di Data Diri dipertahankan.
+    const dd = rt.akun.vault.getDataDiri(akun.id)?.data ?? {};
+    rt.akun.vault.setDataDiri(akun.id, { ...dd, tempatLahir: 'Klaten' });
+    expect(nilai('3578')).toMatchObject({ tempatLahir: 'Klaten', kodeKabKota: '3578' });
+  });
+
+  it('akun warga biasa: Data Diri apa adanya, tidak diubah wilayah urusan', () => {
+    const token = izinkanIsi(rt, pemilik, ['nik'], SITUS, { kodeWilayah: '3578' });
+    expect(
+      resolusiNilai(rt, {
+        ownerId: pemilik,
+        token,
+        writeList: ['nik'],
+        targetOrigin: SITUS,
+        kodeWilayah: '3578',
+      }),
+    ).toEqual({ nik: NIK });
+  });
+
   it('origin tujuan tidak valid ditolak', () => {
     expect(kode(() => izinkanIsi(rt, pemilik, ['nik'], 'bukan url'))).toBe('IZIN_TIDAK_VALID');
   });

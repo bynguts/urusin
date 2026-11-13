@@ -177,6 +177,43 @@
       { simulasi: true },
     );
   }
+  /**
+   * Demo juri di portal khusus jaringan Indonesia saat worker berjaringan Indonesia mati: rencana dipandu tanpa
+   * permintaan eksekusi (situs resmi jujur tidak dibuka), tetapi simulasi di replika tetap ditawarkan. Server
+   * yang memutuskan (`GET .../pendamping/simulasi`); diperiksa sekali per kartu rencana setelah disetujui.
+   */
+  const kunciCadangan = $derived(
+    data.pendamping.peran === 'juri' &&
+      k.rencana &&
+      !k.rencana.pendamping &&
+      !k.permintaanEksekusi &&
+      keadaanUrusan !== 'BARU' &&
+      keadaanUrusan !== 'MEMAHAMI' &&
+      keadaanUrusan !== 'RENCANA_DIUSULKAN'
+      ? `${data.urusan.id}:${k.rencana.seq}`
+      : null,
+  );
+  let simulasiCadangan = $state<string | null>(null);
+  $effect(() => {
+    const kunci = kunciCadangan;
+    if (!kunci) return;
+    const id = data.urusan.id;
+    void fetch(`/api/urusan/${encodeURIComponent(id)}/pendamping/simulasi`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ tersedia?: boolean }>) : null))
+      .then((j) => {
+        if (j?.tersedia === true) simulasiCadangan = kunci;
+      })
+      .catch(() => {});
+  });
+  function mulaiSimulasiCadangan() {
+    pendampingDitutup = false;
+    void sesi.mulai(
+      'simulasi',
+      () => canvas,
+      () => inputTeks,
+      { simulasi: true },
+    );
+  }
   // Kartu "Setujui dan buka situs" yang bisa ditindaklanjuti (paling banyak satu).
   const konfirmasiAktif = $derived.by(() => {
     const it = linimasa.findLast((x) => x.jenis === 'konfirmasi');
@@ -624,6 +661,7 @@
                   () => canvas,
                   () => inputTeks,
                 );
+              else if (simulasiCadangan !== null) mulaiSimulasiCadangan();
             }}
             onpanduan={() => {
               void sesi.hentikan();
@@ -789,6 +827,27 @@
                 </PesanAgen>
               {/if}
             {/each}
+
+            <!-- Progres "Rencana disetujui…" dari persetujuan dipandu tidak ditutup turn, jadi tidak digerbang
+              sedangBerjalan. -->
+            {#if simulasiCadangan !== null && simulasiCadangan === kunciCadangan}
+              <PesanAgen avatar={p.avatar}>
+                <div data-simulasi-cadangan class="flex flex-col gap-3">
+                  <p>
+                    Situs resmi tidak bisa dibuka dari sini sekarang. Sebagai demo, Anda tetap bisa melihat
+                    contoh pengisiannya di situs latihan dengan data contoh. Tidak ada yang dikirim ke
+                    instansi.
+                  </p>
+                  <button
+                    type="button"
+                    onclick={mulaiSimulasiCadangan}
+                    class="inline-flex min-h-12 items-center gap-2 self-start rounded-full border border-line-2 bg-surface px-5 text-base text-ink shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] hover:bg-card"
+                  >
+                    <Icon name="ai" class="size-4.5" />Lihat contoh pengisian (simulasi)
+                  </button>
+                </div>
+              </PesanAgen>
+            {/if}
 
             {#if menyiapkanLanjutan && !k.sedangBerjalan}
               <p

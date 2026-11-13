@@ -1,7 +1,7 @@
 import { render } from 'svelte/server';
 import { describe, expect, it } from 'vitest';
 import type { EventOf } from '#lib/contracts.js';
-import { LANGKAH_RENCANA, langkahKini, langkahPanel } from '#lib/urusan-status.js';
+import { LANGKAH_RENCANA, langkahKini, langkahPanel, panelSesiDemo } from '#lib/urusan-status.js';
 import { peristiwaDariJenis } from '#lib/peristiwa.js';
 import Lencana from './Lencana.svelte';
 import PanelKonteks from './PanelKonteks.svelte';
@@ -62,6 +62,31 @@ describe('panel Rencana mengikuti rencana dan tier', () => {
     const body = panel({ state: 'MENUNGGU_LOGIN_WARGA', rencana: aktaSemi, jenis: 'kelahiran' });
     expect(body).toContain('Langkah 2 dari 5');
     expect(body).toContain('Masuk akun di situs resmi');
+  });
+
+  it('sesi demo selesai: header label sesi, bukan "Urusin sedang bekerja" walau progres lama tertahan', () => {
+    const selesai = (situs: { simulasi?: boolean; lihatSaja?: boolean }) =>
+      panelSesiDemo({ situs, keadaan: 'selesai', giliran: null, menungguIzin: false });
+    const sim = panel({
+      state: 'BERKAS_SIAP',
+      rencana: aktaSemi,
+      sedangBerjalan: true,
+      sesiDemo: selesai({ simulasi: true }),
+    });
+    expect(sim).toContain('Simulasi selesai');
+    expect(sim).not.toContain('Urusin sedang bekerja');
+    const lihat = panel({
+      state: 'BERKAS_SIAP',
+      rencana: aktaSemi,
+      sedangBerjalan: true,
+      sesiDemo: selesai({ lihatSaja: true }),
+    });
+    expect(lihat).toContain('Sesi selesai');
+    expect(lihat).not.toContain('Urusin sedang bekerja');
+    // Tanpa sesi demo, turn chat yang berjalan tetap terlihat.
+    expect(panel({ state: 'BERKAS_SIAP', rencana: aktaSemi, sedangBerjalan: true })).toContain(
+      'Urusin sedang bekerja',
+    );
   });
 
   it('Browser Pendamping masih disiapkan: langkah 2–3 belum "Selesai"', () => {

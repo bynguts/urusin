@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
 import { createHash } from 'node:crypto';
 import { MemoryMailer } from '@urusin/akun/testing';
-import { DemoProvider } from '@urusin/harness';
+import { aturJaringanId, DemoProvider } from '@urusin/harness';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Kebijakan egress diuji di packages/egress; di sini egressFetch diteruskan ke fetch global yang di-stub.
@@ -16,6 +16,7 @@ import {
   POST as mulai,
 } from '../../routes/api/urusan/[id]/pendamping/+server';
 import { POST as serahkan } from '../../routes/api/urusan/[id]/pendamping/serahkan/+server';
+import { GET as cekCadangan } from '../../routes/api/urusan/[id]/pendamping/simulasi/+server';
 import { POST as izinkanIsi } from '../../routes/api/urusan/[id]/izinkan-isi/+server';
 import { POST as tiket } from '../../routes/api/urusan/[id]/pendamping/tiket/+server';
 import { POST as terkirim } from '../../routes/api/urusan/[id]/pendamping/terkirim/+server';
@@ -1671,6 +1672,115 @@ describe('demo juri membuka situs resmi asli (mode lihat saja); replika hanya si
     const body = mulaiSesi()[0]!.body as { origin: string; modeUji?: boolean; lihatSaja?: boolean };
     expect(body).toMatchObject({ origin: RESMI, modeUji: false });
     expect(body.lihatSaja).toBeUndefined();
+  });
+
+  describe('simulasi cadangan: portal id-only (Semarang) saat worker berjaringan Indonesia mati', () => {
+    beforeEach(() => aturJaringanId(() => false));
+    afterEach(() => aturJaringanId(() => false));
+    /** Rencana dipandu (jaringan_id): tidak ada execution_request sama sekali. */
+    const urusanSmg = (jenis = 'kelahiran') => rt.store.createUrusan({ kodeKabKota: '3374', jenis });
+
+    it('juri: GET tersedia, POST simulasi -> replika Si DnOK (modeUji, formulir simulasi), situs resmi tidak', async () => {
+      runtimeAkun();
+      const u = urusanSmg();
+      const cookie = juriDengan(u);
+      const stateAwal = rt.store.getUrusanOrThrow(u.id).state;
+      const cek = await cekCadangan(evIp(req('GET', undefined, cookie), u.id));
+      expect(await cek.json()).toEqual({ tersedia: true });
+      const res = await mulai(evIp(req('POST', { executionId: 'simulasi', simulasi: true }, cookie), u.id));
+      expect(res.status).toBe(201);
+      expect(mulaiSesi()).toHaveLength(1);
+      expect(mulaiSesi()[0]!.body).toMatchObject({
+        executionId: 'simulasi',
+        adapterId: 'sidnok-semarang',
+        flowId: 'simulasi',
+        params: {},
+        origin: 'https://sidnok.semarangkota.go.id',
+        modeUji: true,
+      });
+      expect(mulaiSesi()[0]!.body.lihatSaja).toBeUndefined();
+      expect(catatanMode(u.id)).toEqual(['simulasi']);
+      // Sesi demo tidak menerbitkan progres di luar turn (header tidak tertahan "sedang bekerja").
+      expect(rt.store.eventsOfType(u.id, 'progress', 10)).toHaveLength(0);
+      expect(rt.store.getUrusanOrThrow(u.id).state).toBe(stateAwal);
+    });
+
+    it('deterministik: worker Indonesia (laptop) mati -> simulasi tetap jalan di worker VPS (umum)', async () => {
+      vi.stubEnv(
+        'PENDAMPING_WORKERS',
+        JSON.stringify([
+          {
+            id: 'vps',
+            url: 'http://127.0.0.1:4330',
+            region: 'umum',
+            maxSessions: 2,
+            wsUrl: 'wss://t.test/ws',
+          },
+          {
+            id: 'laptop-a',
+            url: 'http://100.101.1.2:4330',
+            region: 'id',
+            maxSessions: 1,
+            wsUrl: 'wss://t.test/w/laptop-a/ws',
+            token: 'l'.repeat(40),
+          },
+        ]),
+      );
+      runtimeAkun();
+      kesehatan = (host) => (host === '100.101.1.2:4330' ? 'mati' : { status: 200, body: SEHAT });
+      const u = urusanSmg();
+      const res = await mulai(
+        evIp(req('POST', { executionId: 'simulasi', simulasi: true }, juriDengan(u)), u.id),
+      );
+      expect(res.status).toBe(201);
+      expect(mulaiSesi().map((c) => c.host)).toEqual(['127.0.0.1:4330']);
+    });
+
+    it('tanpa simulasi:true, executionId lain, bukan juri, atau worker Indonesia hidup -> 404, worker tidak dipanggil', async () => {
+      runtimeAkun();
+      const u = urusanSmg();
+      const cookie = juriDengan(u);
+      for (const b of [{ executionId: 'simulasi' }, { executionId: 'x_9', simulasi: true }])
+        expect((await mulai(evIp(req('POST', b, cookie), u.id))).status).toBe(404);
+      // Tamu (tanpa akun) dan akun warga biasa: tidak ada jalur cadangan.
+      const tamu = urusanSmg();
+      expect(
+        (await mulai(evIp(req('POST', { executionId: 'simulasi', simulasi: true }), tamu.id))).status,
+      ).toBe(404);
+      expect(await (await cekCadangan(evIp(req('GET'), tamu.id))).json()).toEqual({ tersedia: false });
+      const { token, akun } = await rt.akun.daftar(
+        { email: ['warga', 'example.com'].join('@'), sandi: 'kuda-lari-cepat-9' },
+        { ip: '127.0.0.1', userAgent: null },
+      );
+      const warga = urusanSmg();
+      rt.akun.catatPemilikUrusan(warga.id, { akun });
+      const cWarga = `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${token}`;
+      expect(
+        (await mulai(evIp(req('POST', { executionId: 'simulasi', simulasi: true }, cWarga), warga.id)))
+          .status,
+      ).toBe(404);
+      // Worker Indonesia hidup: rencana bukan dipandu jaringan_id (ada execution_request biasa).
+      aturJaringanId(() => true);
+      expect(await (await cekCadangan(evIp(req('GET', undefined, cookie), u.id))).json()).toEqual({
+        tersedia: false,
+      });
+      expect(
+        (await mulai(evIp(req('POST', { executionId: 'simulasi', simulasi: true }, cookie), u.id))).status,
+      ).toBe(404);
+      expect(mulaiSesi()).toHaveLength(0);
+    });
+
+    it('wilayah tanpa replika formulir (Sleman, pengembangan/generik): tidak tersedia', async () => {
+      runtimeAkun();
+      const u = rt.store.createUrusan({ kodeKabKota: '3404', jenis: 'kelahiran' });
+      const cookie = juriDengan(u);
+      expect(await (await cekCadangan(evIp(req('GET', undefined, cookie), u.id))).json()).toEqual({
+        tersedia: false,
+      });
+      expect(
+        (await mulai(evIp(req('POST', { executionId: 'simulasi', simulasi: true }, cookie), u.id))).status,
+      ).toBe(404);
+    });
   });
 
   it('demo di situs asli: juri satu venue (satu IP) masing-masing bisa demo; plafon IP demo + batas per akun', async () => {
