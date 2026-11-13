@@ -49,6 +49,11 @@ for (const lebar of [390, 1440]) {
     // Akun dengan urusan terakhir di perangkat ini: landing melanjutkan ke Beranda
     await page.goto('/');
     await expect(page).toHaveURL(/\/beranda$/);
+
+    // Logo di aplikasi sengaja membuka landing (tidak dialihkan balik ke Beranda)
+    await page.getByRole('link', { name: 'Urusin, ke halaman depan' }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('link', { name: 'Buka beranda' })).toBeVisible();
   });
 }
 
