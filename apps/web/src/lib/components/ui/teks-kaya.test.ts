@@ -13,7 +13,7 @@ describe('TeksKaya', () => {
       'Syaratnya:\n\n1. **KTP-el** asli\n2. KK di https://contoh.go.id/kk\n\n## Catatan\n- *gratis*',
     );
     expect(b).toContain('<p>Syaratnya:</p>');
-    expect(b).toMatch(/<ol start="1" class="list-decimal[^"]*">/);
+    expect(b).toMatch(/<ol start="1" role="list"[^>]*><li[^>]*><span aria-hidden="true"[^>]*>1\.<\/span>/);
     expect(b).toContain('<strong class="font-semibold text-ink">KTP-el</strong> asli');
     expect(b).toMatch(
       /<a href="https:\/\/contoh\.go\.id\/kk" target="_blank" rel="noopener noreferrer nofollow"/,

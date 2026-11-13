@@ -53,11 +53,15 @@
 
 {#snippet daftar(d: Daftar)}
   {#if d.urut}
-    <ol start={d.mulai} class="list-decimal space-y-1.5 pl-6 marker:text-muted">
+    <!-- Nomor digambar sendiri: ::marker memakai angka tabular font merek yang tampak seperti monospace. -->
+    <ol start={d.mulai} role="list" class="list-none space-y-1.5">
       {#each d.butir as b, i (i)}
-        <li class="pl-1">
-          {@render inline(b.isi)}
-          {#if b.anak}<div class="mt-1.5">{@render daftar(b.anak)}</div>{/if}
+        <li class="flex gap-2">
+          <span aria-hidden="true" class="min-w-[1.5em] shrink-0 text-right text-muted">{d.mulai + i}.</span>
+          <div class="min-w-0 flex-1">
+            {@render inline(b.isi)}
+            {#if b.anak}<div class="mt-1.5">{@render daftar(b.anak)}</div>{/if}
+          </div>
         </li>
       {/each}
     </ol>
