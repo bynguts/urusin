@@ -13,6 +13,20 @@
   display: contents;
 }
 
+/* Pola titik karakter intro: lebih lebar dan memudar rapi ke segala tepi, tidak terpotong di
+   kanan/bawah (permintaan pemilik 2026-11-14). Lapisan gelombang .n-riak ikut bentuk yang sama. */
+.lp .lp69 > :is(.lp68, .n-riak) {
+  inset: auto;
+  left: -6%;
+  top: -8%;
+  width: 124%;
+  height: 122%;
+  --lp-tepi: radial-gradient(ellipse 50% 50% at 50% 50%, #000 45%, transparent 100%);
+}
+.lp .lp69 > .lp68 {
+  mask-image: var(--lp-tepi);
+}
+
 /* Ilustrasi berukuran tetap: skala utuh */
 @media (max-width: 1111px) {
   .lp {

@@ -898,7 +898,11 @@
       </div>
     </div>
     <div class="n-intro-characters lp69" aria-hidden="true">
-      <img class="lp68" src={g88b7527} alt="" width="560" height="540" loading="lazy" decoding="async" />
+      <img class="lp68" src={g88b7527} alt="" width="560" height="540" loading="lazy" decoding="async" /><span
+        class="n-riak"
+        style="--lp-pola: url({g88b7527})"
+        aria-hidden="true"
+      ></span>
       <div class="lp70"></div>
       <div class="lp71"></div>
       <div class="lp72"></div>
@@ -1599,7 +1603,15 @@
     <div class="n-card-row lp107">
       <div class="lp108">
         <div class="lp109" aria-hidden="true">
-          <img class="lp68" src={g5c7b0aa} alt="" width="333" height="196" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={g5c7b0aa}
+            alt=""
+            width="333"
+            height="196"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({g5c7b0aa})" aria-hidden="true"></span>
           <picture class="lp-pic">
             <source
               media="(max-width: 767px)"
@@ -1654,7 +1666,15 @@
       </div>
       <div class="lp108">
         <div class="lp109" aria-hidden="true">
-          <img class="lp68" src={g870d35b} alt="" width="333" height="196" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={g870d35b}
+            alt=""
+            width="333"
+            height="196"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({g870d35b})" aria-hidden="true"></span>
           <picture class="lp-pic">
             <source
               media="(max-width: 767px)"
@@ -1709,7 +1729,15 @@
       </div>
       <div class="lp108">
         <div class="lp109" aria-hidden="true">
-          <img class="lp68" src={g8836483} alt="" width="333" height="196" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={g8836483}
+            alt=""
+            width="333"
+            height="196"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({g8836483})" aria-hidden="true"></span>
           <picture class="lp-pic">
             <source
               media="(max-width: 767px)"
@@ -1766,7 +1794,15 @@
     <div class="n-card-row lp107">
       <div class="lp108">
         <div class="lp109" aria-hidden="true">
-          <img class="lp68" src={g30dc911} alt="" width="333" height="196" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={g30dc911}
+            alt=""
+            width="333"
+            height="196"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({g30dc911})" aria-hidden="true"></span>
           <picture class="lp-pic">
             <source
               media="(max-width: 767px)"
@@ -1821,7 +1857,15 @@
       </div>
       <div class="lp108">
         <div class="lp109" aria-hidden="true">
-          <img class="lp68" src={g6714886} alt="" width="333" height="196" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={g6714886}
+            alt=""
+            width="333"
+            height="196"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({g6714886})" aria-hidden="true"></span>
           <picture class="lp-pic">
             <source
               media="(max-width: 767px)"
@@ -1876,7 +1920,15 @@
       </div>
       <div class="lp108">
         <div class="lp109" aria-hidden="true">
-          <img class="lp68" src={g34c86fd} alt="" width="333" height="196" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={g34c86fd}
+            alt=""
+            width="333"
+            height="196"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({g34c86fd})" aria-hidden="true"></span>
           <img
             class="lp127"
             src={gce73af8}
@@ -1932,7 +1984,15 @@
     <div class="n-feature-row lp107">
       <div class="lp131">
         <div class="n-visual lp132" aria-hidden="true">
-          <img class="lp68" src={g17d724d} alt="" width="510" height="300" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={g17d724d}
+            alt=""
+            width="510"
+            height="300"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({g17d724d})" aria-hidden="true"></span>
           <div class="lp133">
             <div class="lp52">
               <img
@@ -1984,7 +2044,15 @@
       </div>
       <div class="lp131">
         <div class="n-visual lp148" aria-hidden="true">
-          <img class="lp68" src={gc6bba96} alt="" width="510" height="300" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={gc6bba96}
+            alt=""
+            width="510"
+            height="300"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({gc6bba96})" aria-hidden="true"></span>
           <img
             class="lp149"
             src={gb318a68}
@@ -2122,7 +2190,15 @@
     <div class="n-feature-row lp107">
       <div class="lp131">
         <div class="n-visual lp174" aria-hidden="true">
-          <img class="lp68" src={g8f42574} alt="" width="510" height="300" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={g8f42574}
+            alt=""
+            width="510"
+            height="300"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({g8f42574})" aria-hidden="true"></span>
           <div class="lp175">
             <div class="lp4">
               <img
@@ -2209,7 +2285,15 @@
       </div>
       <div class="lp131">
         <div class="n-visual lp185" aria-hidden="true">
-          <img class="lp68" src={g298eb08} alt="" width="510" height="300" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={g298eb08}
+            alt=""
+            width="510"
+            height="300"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({g298eb08})" aria-hidden="true"></span>
           <div class="n-answer lp186">
             <div class="lp187">
               Untuk pindah antar-kelurahan, kamu perlu surat pengantar RT/RW. Dalam satu kelurahan, tidak
@@ -2293,7 +2377,15 @@
     <div class="n-columns lp107">
       <div class="lp195">
         <div class="n-visual lp196" aria-hidden="true">
-          <img class="lp68" src={g49a4260} alt="" width="310" height="228" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={g49a4260}
+            alt=""
+            width="310"
+            height="228"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({g49a4260})" aria-hidden="true"></span>
           <div class="lp197">
             <div class="lp198">
               <img
@@ -2347,7 +2439,15 @@
       </div>
       <div class="lp195">
         <div class="n-visual lp210" aria-hidden="true">
-          <img class="lp68" src={g9ab00c1} alt="" width="310" height="228" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={g9ab00c1}
+            alt=""
+            width="310"
+            height="228"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({g9ab00c1})" aria-hidden="true"></span>
           <div class="lp211">
             <div class="lp52">
               <div class="lp212">
@@ -2446,7 +2546,15 @@
       </div>
       <div class="lp195">
         <div class="n-visual lp216" aria-hidden="true">
-          <img class="lp68" src={g40ad979} alt="" width="380" height="228" loading="lazy" decoding="async" />
+          <img
+            class="lp68"
+            src={g40ad979}
+            alt=""
+            width="380"
+            height="228"
+            loading="lazy"
+            decoding="async"
+          /><span class="n-riak" style="--lp-pola: url({g40ad979})" aria-hidden="true"></span>
           <img class="lp217" src={ga0cfe92} alt="" width="112" height="122" loading="lazy" decoding="async" />
           <img class="lp218" src={g1a14d28} alt="" width="140" height="153" loading="lazy" decoding="async" />
           <img class="lp217" src={gef0380a} alt="" width="112" height="122" loading="lazy" decoding="async" />
@@ -2465,7 +2573,11 @@
     </div>
   </section>
   <section class="n-comparison lp219">
-    <img class="lp68" src={gdd90def} alt="" width="1440" height="827" loading="lazy" decoding="async" />
+    <img class="lp68" src={gdd90def} alt="" width="1440" height="827" loading="lazy" decoding="async" /><span
+      class="n-riak"
+      style="--lp-pola: url({gdd90def})"
+      aria-hidden="true"
+    ></span>
     <div class="lp220" aria-hidden="true"></div>
     <h2 class="n-title lp221">Mengurus sendiri vs. bersama Urusin</h2>
     <div class="n-columns lp222">
@@ -2808,7 +2920,11 @@
     </div>
   </section>
   <section class="n-faq lp262" id="tanya-jawab">
-    <img class="lp68" src={ge4af363} alt="" width="1440" height="1004" loading="lazy" decoding="async" />
+    <img class="lp68" src={ge4af363} alt="" width="1440" height="1004" loading="lazy" decoding="async" /><span
+      class="n-riak"
+      style="--lp-pola: url({ge4af363})"
+      aria-hidden="true"
+    ></span>
     <div class="n-heading lp263">
       <h2 class="n-title lp106">Pertanyaan yang sering diajukan</h2>
       <div class="n-sub lp194">Masih ragu? Tanya saja, kami senang mendengarnya.</div>
@@ -2939,7 +3055,15 @@
   </section>
   <section class="lp274">
     <div class="n-cta-panel lp275">
-      <img class="lp68" src={g749e4e0} alt="" width="1040" height="432" loading="lazy" decoding="async" />
+      <img
+        class="lp68"
+        src={g749e4e0}
+        alt=""
+        width="1040"
+        height="432"
+        loading="lazy"
+        decoding="async"
+      /><span class="n-riak" style="--lp-pola: url({g749e4e0})" aria-hidden="true"></span>
       <div class="n-copy lp276">
         <div class="lp277">
           <div class="lp278" aria-hidden="true">
