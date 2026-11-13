@@ -282,7 +282,9 @@ export function setujuiRencana(
   const tier = tierUrusan(u, jalan);
   let cur = majukan(store, u, ['RENCANA_DISETUJUI'], publish, tier);
   if (jalan.jalur === 'dipandu') {
-    publish({ type: 'progress', label: jalan.alasan });
+    // Pesan tetap untuk warga, bukan progres: klik ini bukan turn agen, jadi tidak ada `done` yang menutup progres
+    // (dulu `sedangBerjalan` di web tertahan sampai turn chat berikutnya).
+    publish({ type: 'assistant_text', delta: jalan.alasan });
     return { urusan: cur, executionId: null };
   }
   // Pembukuan tabel state: MENYIAPKAN_BERKAS/BERKAS_SIAP/MENGISI dilewati dalam satu langkah sinkron sebelum berkas

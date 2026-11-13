@@ -236,8 +236,9 @@ describe('Kartu rencana dan persetujuan memakai varian dari pesan warga', () => 
     expect(r.executionId).toBeNull();
     expect(r.urusan.state).toBe('RENCANA_DISETUJUI');
     expect(events.some((e) => e.type === 'execution_request' || e.type === 'gate')).toBe(false);
-    const label = events.filter((e) => e.type === 'progress').at(-1);
-    expect(label?.type === 'progress' && label.label).toMatch(/Khatib Sulaiman/);
+    expect(events.some((e) => e.type === 'progress')).toBe(false);
+    const pesan = events.filter((e) => e.type === 'assistant_text').at(-1);
+    expect(pesan?.type === 'assistant_text' && pesan.delta).toMatch(/Khatib Sulaiman/);
   });
 
   it('Tangerang "KTP-el rusak": Pendamping dibuka; "KTP baru": dipandu ke perekaman', () => {

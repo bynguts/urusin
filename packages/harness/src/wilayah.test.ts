@@ -199,8 +199,9 @@ describe('rencana sesuai wilayah: tanpa isi Wonogiri untuk warga daerah lain', (
           'hanya bisa dibuka dari jaringan Indonesia',
         );
         expect(events.some((e) => e.type === 'execution_request' || e.type === 'gate')).toBe(false);
-        expect(events.find((e) => e.type === 'progress')).toMatchObject({
-          label: expect.stringContaining('Browser Pendamping berjaringan Indonesia sedang tidak aktif'),
+        expect(events.some((e) => e.type === 'progress')).toBe(false);
+        expect(events.find((e) => e.type === 'assistant_text')).toMatchObject({
+          delta: expect.stringContaining('Browser Pendamping berjaringan Indonesia sedang tidak aktif'),
         });
       }
     },
