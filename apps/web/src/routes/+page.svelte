@@ -6,6 +6,7 @@
   import '#lib/components/landing/landing-responsif.css';
   import '#lib/components/landing/landing-gerak.css';
   import LandingFooter from '#lib/components/landing/LandingFooter.svelte';
+  import LandingKontak from '#lib/components/landing/LandingKontak.svelte';
   import LandingNav from '#lib/components/landing/LandingNav.svelte';
   import av_rose_melambai_140_avif from '#lib/assets/img/pen-landing/rose-melambai-140.avif';
   import av_rose_melambai_179_avif from '#lib/assets/img/pen-landing/rose-melambai-179.avif';
@@ -3076,6 +3077,7 @@
         </div>
       </div>
     </div>
+    <LandingKontak />
   </section>
   <LandingFooter diLanding />
 </main>
