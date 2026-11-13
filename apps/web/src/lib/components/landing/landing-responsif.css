@@ -37,8 +37,12 @@
   .lp .n-intro-characters > .lp68 {
     display: none;
   }
-  .lp :is(.lp219, .lp262) {
-    background-color: var(--sb-bg-primary, #fffcfa);
+  /* warna dasar = warna gambar latar lama, supaya sambungan dengan bagian tetangga tetap mulus */
+  .lp .lp219 {
+    background-color: #f8f2ed;
+  }
+  .lp .lp262 {
+    background-color: #fefcfb;
   }
 }
 /* Label kartu layanan rapat ke pojok kanan atas gambar di semua lebar layar (keputusan pemilik
