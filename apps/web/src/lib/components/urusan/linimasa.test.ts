@@ -162,7 +162,7 @@ describe('barisKonfirmasi', () => {
 });
 
 describe('teks agen', () => {
-  it('penanda tebal Markdown dibuang, bukan ditampilkan mentah', () => {
+  it('Markdown dipertahankan utuh untuk TeksKaya (tebal dirender, bukan tampil mentah)', () => {
     // QA warga Medan/Surabaya: "KTP Anda terdaftar di **Kota Medan**, betul?"
     const out = bangunLinimasa(
       [
@@ -172,7 +172,7 @@ describe('teks agen', () => {
       [],
     );
     expect(out).toMatchObject([
-      { jenis: 'teks', teks: 'KTP Anda terdaftar di Kota Medan, betul? Pakai 2 * 3 berkas.' },
+      { jenis: 'teks', teks: 'KTP Anda terdaftar di **Kota Medan**, betul? Pakai 2 * 3 berkas.' },
     ]);
   });
 

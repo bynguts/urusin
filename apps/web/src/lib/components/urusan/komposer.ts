@@ -42,6 +42,12 @@ export function tebakJenis(nama: string): JenisDokumen {
   return 'lainnya';
 }
 
+/** Ukuran berkas untuk kartu lampiran: "12 KB", "1,4 MB". */
+export function ukuranBerkas(bita: number): string {
+  if (bita < 1024 * 1024) return `${Math.max(1, Math.round(bita / 1024))} KB`;
+  return `${(bita / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
+}
+
 const BENTUK = (mime: string) => (mime === 'application/pdf' ? 'PDF' : 'gambar');
 
 /** Penanda non-PII untuk agen: "[warga melampirkan dokumen: Kartu Keluarga (gambar)]". */

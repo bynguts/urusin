@@ -460,6 +460,54 @@ select:not(.bg-transparent):focus {
   animation: dasbor-masuk 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Pesan baru di percakapan urusan: memudar sambil naik sedikit (riwayat yang dimuat ulang tidak dianimasikan). */
+@keyframes pesan-masuk {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animasi-pesan-masuk {
+  /* backwards, bukan both: sesudah selesai tanpa transform sisa (tidak membuat containing block untuk fixed). */
+  animation: pesan-masuk 280ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* Indikator AI mengetik: tiga titik bergelombang (gerak dikurangi = titik diam). */
+@keyframes titik-ketik {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+.titik-ketik > span {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: titik-ketik 1.2s ease-in-out infinite;
+}
+
+.titik-ketik > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.titik-ketik > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

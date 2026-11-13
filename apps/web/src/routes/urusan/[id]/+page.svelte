@@ -28,7 +28,9 @@
     type Lampiran,
   } from '#lib/components/urusan/komposer.js';
   import TeksBertaut from '#lib/components/ui/TeksBertaut.svelte';
+  import TeksKaya from '#lib/components/ui/TeksKaya.svelte';
   import { unggahDokumen } from '#lib/akun/klien.js';
+  import { gerakDikurangi } from '#lib/gerak.js';
   import Lencana from '#lib/components/urusan/Lencana.svelte';
   import PanelKonteks, { type TabPanel } from '#lib/components/urusan/PanelKonteks.svelte';
   import PesanAgen from '#lib/components/urusan/PesanAgen.svelte';
@@ -299,10 +301,41 @@
   $effect(() => {
     void linimasa.length;
     void k.progres;
+    void k.sedangBerjalan;
     void tick().then(() => {
       // Gulir hanya percakapannya; scrollIntoView juga menggulir bingkai aplikasi dan browser di sebelahnya.
       if (daftarPercakapan) daftarPercakapan.scrollTop = daftarPercakapan.scrollHeight;
     });
+  });
+
+  /** Selama jawaban AI diungkap bertahap: ikut turun, kecuali warga sedang menggulir ke atas membaca riwayat. */
+  function ikutiKetikan() {
+    const w = daftarPercakapan;
+    if (w && w.scrollHeight - w.scrollTop - w.clientHeight < 160) w.scrollTop = w.scrollHeight;
+  }
+
+  /**
+   * Riwayat (event yang diputar ulang SSE saat halaman dibuka) tampil langsung; hanya item yang tiba sesudahnya
+   * yang dianimasikan (masuk memudar, teks AI diungkap bertahap). Riwayat dianggap selesai setelah stream
+   * tersambung dan tenang sebentar, atau begitu warga mengirim sesuatu.
+   */
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- sengaja tidak reaktif: hanya dibaca saat item dibuat
+  const dikenal = new Set<string>();
+  let riwayatSelesai = $state(false);
+  $effect(() => {
+    if (riwayatSelesai) return;
+    for (const it of linimasa) dikenal.add(it.key);
+    if (k.status !== 'tersambung') return;
+    const t = setTimeout(() => (riwayatSelesai = true), 600);
+    return () => clearTimeout(t);
+  });
+  const baru = (key: string) => riwayatSelesai && !dikenal.has(key);
+
+  /** Pratinjau gambar lampiran yang dikirim di sesi ini (blob lokal, tidak disimpan); setelah muat ulang: chip. */
+  const pratinjauTerkirim = new SvelteMap<string, (string | null)[]>();
+  const kunciPratinjau = (setelahSeq: number, teks: string) => `${setelahSeq}\u0000${teks}`;
+  $effect(() => () => {
+    for (const daftar of pratinjauTerkirim.values()) for (const u of daftar) if (u) URL.revokeObjectURL(u);
   });
 
   // Kartu persetujuan yang baru aktif digulir ke tengah layar sekali: di HP komposer lengket menutupi bagian
@@ -317,10 +350,7 @@
       const kartu = document.querySelector<HTMLElement>(`[data-konfirmasi="${CSS.escape(key)}"]`);
       const el = kartu?.querySelector<HTMLElement>('footer') ?? kartu;
       if (!el) return;
-      const tenang =
-        matchMedia('(prefers-reduced-motion: reduce)').matches ||
-        document.documentElement.dataset.gerak === 'kurang';
-      const behavior = tenang ? ('auto' as const) : ('smooth' as const);
+      const behavior = gerakDikurangi() ? ('auto' as const) : ('smooth' as const);
       const wadah = daftarPercakapan;
       // Laptop: percakapan punya gulir sendiri; gulir wadahnya saja agar bingkai aplikasi tidak ikut bergeser.
       if (wadah && wadah.scrollHeight > wadah.clientHeight) {
@@ -406,6 +436,7 @@
   async function kirim(t: string, aksi = false) {
     mengirim = true;
     pesanKomposer = null;
+    riwayatSelesai = true;
     const lamp = aksi ? [] : lampiran;
     if (lamp.length && !(await simpanLampiran())) {
       mengirim = false;
@@ -436,6 +467,11 @@
     if (hasil === 'ok') {
       aksiTerakhir = aksi ? t : null;
       if (aksi) return;
+      if (lamp.some((l) => l.berkas.type.startsWith('image/')))
+        pratinjauTerkirim.set(
+          kunciPratinjau(setelahSeq, isi),
+          lamp.map((l) => (l.berkas.type.startsWith('image/') ? URL.createObjectURL(l.berkas) : null)),
+        );
       lokal.catatPesan(data.urusan.id, { teks: isi, setelahSeq });
       pesan = lokal.pesanWarga(data.urusan.id);
       teks = '';
@@ -628,7 +664,7 @@
                 {#each pesanPanel as it (it.key)}
                   {#if it.jenis === 'teks'}
                     <PesanAgen avatar={p.avatar}
-                      ><p class="text-[0.9375rem]"><TeksBertaut teks={it.teks} /></p></PesanAgen
+                      ><TeksKaya teks={it.teks} class="text-[0.9375rem]" /></PesanAgen
                     >
                   {/if}
                 {/each}
@@ -699,144 +735,175 @@
             {/if}
 
             {#each linimasa as it (it.key)}
-              {#if it.jenis === 'warga'}
-                {@const w = pecahPenanda(it.teks)}
-                <div
-                  data-pelaku="warga"
-                  class="flex max-w-[min(85%,460px)] flex-col gap-2 self-end rounded-[18px_18px_4px_18px] bg-bg-2 px-4 py-3 text-base text-ink sm:text-[17px] sm:leading-[26px]"
-                >
-                  {#if w.lampiran.length}
-                    <ul aria-label="Lampiran terkirim" class="flex flex-wrap gap-2">
-                      {#each w.lampiran as l, i (i)}
-                        <li>
-                          <a
-                            href={resolve('/dokumen')}
-                            class="inline-flex min-h-10 items-center gap-2 rounded-xl border border-line-2 bg-surface px-3 text-sm font-medium text-ink hover:bg-card"
-                          >
-                            <Icon
-                              name={l.bentuk === 'PDF' ? 'berkas-teks' : 'berkas-gambar'}
-                              class="size-4 shrink-0"
-                            />
-                            {l.label} ({l.bentuk})
-                            <span class="sr-only">, tersimpan di Dokumen</span>
-                          </a>
-                        </li>
-                      {/each}
-                    </ul>
-                  {/if}
-                  {#if w.teks}<p class="whitespace-pre-line"><TeksBertaut teks={w.teks} /></p>{/if}
-                </div>
-              {:else if it.jenis === 'sistem'}
-                <p
-                  class="flex items-center justify-center gap-1.5 text-center text-sm leading-[21px] text-muted"
-                >
-                  <Icon name="centang-bulat" class="size-4 shrink-0" />{it.teks} · {waktuSingkat(it.at)}
-                </p>
-              {:else if it.jenis === 'ingatan'}
-                <KartuIngatan
-                  ingatan={it.e}
-                  dibatalkan={it.dibatalkan}
-                  live={liveIngatan(it.e.butir.id)}
-                  onbatalkan={() => batalkanIngatan(it.e.butir.id)}
-                  onsetujui={() => setujuiIngatan(it.e.butir.id)}
-                />
-              {:else if it.jenis === 'teks'}
-                <PesanAgen avatar={p.avatar}
-                  ><p class="leading-relaxed whitespace-pre-line">
-                    <TeksBertaut teks={it.teks} />
-                  </p></PesanAgen
-                >
-              {:else if it.jenis === 'jawaban'}
-                <PesanAgen avatar={p.avatar}>
-                  <KartuJawaban jawaban={it.e} {nomorKutipan} onpilih={pilihSumber} />
-                </PesanAgen>
-              {:else if it.jenis === 'handoff'}
-                <PesanAgen avatar={p.avatar}><KartuHandoff handoff={it.e} /></PesanAgen>
-              {:else if it.jenis === 'rencana'}
-                <PesanAgen avatar={p.avatar}>
-                  <!-- Judul cadangan berasal dari kalimat warga; hanya judul jenis yang layak disisipkan. -->
-                  <p>
-                    Ini rencana yang saya sarankan{judulJenis ? ` untuk ${judulJenis.toLowerCase()}` : ''}:
-                  </p>
-                  <KartuRencana
-                    rencana={it.e}
-                    kelayakan={k.kelayakan}
-                    bisaSetujui={it.terakhir && keadaanUrusan === 'RENCANA_DIUSULKAN' && !k.sedangBerjalan}
-                    sibuk={mengirim}
-                    onsetujui={() => void setujuiRencana()}
-                    onubah={ubahRencana}
-                  />
-                </PesanAgen>
-              {:else if it.jenis === 'wilayah'}
-                <PesanAgen avatar={p.avatar}>
-                  <KartuWilayah
-                    usulan={it.e}
-                    aktif={it.terakhir &&
-                      (keadaanUrusan === 'BARU' || keadaanUrusan === 'MEMAHAMI') &&
-                      !k.sedangBerjalan}
-                    sibuk={mengirim}
-                    onbenar={() => void wilayahBenar(it.e.ktp.kodeKabKota)}
-                    onbukan={wilayahBukan}
-                  />
-                </PesanAgen>
-              {:else if it.jenis === 'checklist'}
-                <PesanAgen avatar={p.avatar}><KartuChecklist checklist={it.e} /></PesanAgen>
-              {:else if it.jenis === 'konfirmasi'}
-                <PesanAgen avatar={p.avatar}>
-                  <p>
-                    {data.pendamping.peran === 'juri'
-                      ? 'Mode demo: saya membuka situs resmi asli untuk dilihat saja, tanpa mengisi apa pun.'
-                      : 'Sebelum saya membuka situs resmi, periksa dulu data yang akan diisi:'}
-                  </p>
-                  <div data-konfirmasi={it.key}>
-                    <KartuKonfirmasi
-                      gate={it.gate}
-                      permintaan={it.permintaan}
-                      demo={data.pendamping.peran === 'juri'}
-                      {situs}
-                      aktif={it.key === konfirmasiAktif}
-                      status={konfirmasi?.key === it.key ? konfirmasi.status : 'menunggu'}
-                      pesanGalat={it.terakhir ? konfirmasiGalat : undefined}
-                      perluMasuk={perluMasuk(it.permintaan)}
-                      onsetujui={() => void setujui(it.key, it.gate, it.permintaan)}
-                      onbatal={() => void kirim('Batalkan, saya belum mau melanjutkan.')}
-                    />
+              <!-- Pembungkus per item: kolom penuh (gelembung warga tetap rata kanan); item baru memudar masuk. -->
+              <div class="flex min-w-0 flex-col {baru(it.key) ? 'animasi-pesan-masuk' : ''}">
+                {#if it.jenis === 'warga'}
+                  {@const w = pecahPenanda(it.teks)}
+                  {@const pratinjau = pratinjauTerkirim.get(kunciPratinjau(it.setelahSeq, it.teks))}
+                  <div
+                    data-pelaku="warga"
+                    class="flex max-w-[min(85%,460px)] flex-col items-end gap-1.5 self-end text-base text-ink sm:text-[17px] sm:leading-[26px]"
+                  >
+                    {#if w.lampiran.length}
+                      <ul aria-label="Lampiran terkirim" class="flex flex-wrap justify-end gap-2">
+                        {#each w.lampiran as l, i (i)}
+                          {@const gambar = pratinjau?.[i]}
+                          <li class="max-w-full">
+                            {#if gambar}
+                              <a
+                                href={resolve('/dokumen')}
+                                class="flex w-[min(220px,100%)] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] hover:bg-card"
+                              >
+                                <img src={gambar} alt="" class="aspect-[4/3] w-full bg-bg-2 object-cover" />
+                                <span class="flex min-w-0 items-center gap-2 px-3 py-2 text-sm text-ink">
+                                  <Icon name="berkas-gambar" class="size-4 shrink-0 text-muted" />
+                                  <span class="min-w-0 truncate"
+                                    ><span class="font-medium">{l.label}</span>
+                                    <span class="text-muted">({l.bentuk})</span></span
+                                  >
+                                  <span class="sr-only">, tersimpan di Dokumen</span>
+                                </span>
+                              </a>
+                            {:else}
+                              <a
+                                href={resolve('/dokumen')}
+                                class="flex min-h-12 max-w-full items-center gap-2.5 rounded-2xl border border-line bg-surface py-1.5 pr-4 pl-1.5 text-sm text-ink shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] hover:bg-card"
+                              >
+                                <span
+                                  class="grid size-9 shrink-0 place-items-center rounded-xl bg-bg-2 text-ink"
+                                >
+                                  <Icon
+                                    name={l.bentuk === 'PDF' ? 'berkas-teks' : 'berkas-gambar'}
+                                    class="size-[18px]"
+                                  />
+                                </span>
+                                <span class="min-w-0 truncate"
+                                  ><span class="font-medium">{l.label}</span>
+                                  <span class="text-muted">({l.bentuk})</span></span
+                                >
+                                <span class="sr-only">, tersimpan di Dokumen</span>
+                              </a>
+                            {/if}
+                          </li>
+                        {/each}
+                      </ul>
+                    {/if}
+                    {#if w.teks}
+                      <p class="rounded-[18px_18px_4px_18px] bg-bg-2 px-4 py-3 whitespace-pre-line">
+                        <TeksBertaut teks={w.teks} />
+                      </p>
+                    {/if}
                   </div>
-                </PesanAgen>
-              {:else if it.jenis === 'giliran'}
-                <PesanAgen avatar={p.avatar}>
-                  <KartuGiliran
-                    gate={it.gate}
-                    aktif={it.terakhir && !k.sedangBerjalan}
-                    onlanjut={() => void kirim('Sudah, lanjutkan.')}
+                {:else if it.jenis === 'sistem'}
+                  <p
+                    class="flex items-center justify-center gap-1.5 text-center text-sm leading-[21px] text-muted"
+                  >
+                    <Icon name="centang-bulat" class="size-4 shrink-0" />{it.teks} · {waktuSingkat(it.at)}
+                  </p>
+                {:else if it.jenis === 'ingatan'}
+                  <KartuIngatan
+                    ingatan={it.e}
+                    dibatalkan={it.dibatalkan}
+                    live={liveIngatan(it.e.butir.id)}
+                    onbatalkan={() => batalkanIngatan(it.e.butir.id)}
+                    onsetujui={() => setujuiIngatan(it.e.butir.id)}
                   />
-                </PesanAgen>
-              {:else if it.jenis === 'galat'}
-                <PesanAgen avatar={p.avatar}>
-                  <KartuGalat
-                    pesan={it.e.pesanWarga}
-                    bisaUlang={it.e.bisaUlang && it.terakhir}
-                    onulang={ulangTerakhir}
-                  />
-                </PesanAgen>
-              {:else if it.jenis === 'waktu-habis'}
-                <PesanAgen avatar={p.avatar}>
-                  <KartuGalat
-                    pesan="Jawaban terlalu lama. Tulisan Anda aman; coba kirim lagi."
-                    bisaUlang={it.terakhir}
-                    onulang={ulangTerakhir}
-                  />
-                </PesanAgen>
-              {:else if it.jenis === 'terkirim'}
-                <PesanAgen avatar={p.avatar}>
-                  <p>Pengajuan Anda sudah masuk. Nomor permohonannya saya catat supaya mudah dilacak.</p>
-                  <KartuTerkirim
-                    urusanId={data.urusan.id}
-                    nomor={sesi.data.bukti?.nomor ?? data.urusan.nomorPermohonan ?? undefined}
-                    {situs}
-                  />
-                </PesanAgen>
-              {/if}
+                {:else if it.jenis === 'teks'}
+                  <PesanAgen avatar={p.avatar}
+                    ><TeksKaya teks={it.teks} ketik={baru(it.key)} ontumbuh={ikutiKetikan} /></PesanAgen
+                  >
+                {:else if it.jenis === 'jawaban'}
+                  <PesanAgen avatar={p.avatar}>
+                    <KartuJawaban jawaban={it.e} {nomorKutipan} onpilih={pilihSumber} />
+                  </PesanAgen>
+                {:else if it.jenis === 'handoff'}
+                  <PesanAgen avatar={p.avatar}><KartuHandoff handoff={it.e} /></PesanAgen>
+                {:else if it.jenis === 'rencana'}
+                  <PesanAgen avatar={p.avatar}>
+                    <!-- Judul cadangan berasal dari kalimat warga; hanya judul jenis yang layak disisipkan. -->
+                    <p>
+                      Ini rencana yang saya sarankan{judulJenis ? ` untuk ${judulJenis.toLowerCase()}` : ''}:
+                    </p>
+                    <KartuRencana
+                      rencana={it.e}
+                      kelayakan={k.kelayakan}
+                      bisaSetujui={it.terakhir && keadaanUrusan === 'RENCANA_DIUSULKAN' && !k.sedangBerjalan}
+                      sibuk={mengirim}
+                      onsetujui={() => void setujuiRencana()}
+                      onubah={ubahRencana}
+                    />
+                  </PesanAgen>
+                {:else if it.jenis === 'wilayah'}
+                  <PesanAgen avatar={p.avatar}>
+                    <KartuWilayah
+                      usulan={it.e}
+                      aktif={it.terakhir &&
+                        (keadaanUrusan === 'BARU' || keadaanUrusan === 'MEMAHAMI') &&
+                        !k.sedangBerjalan}
+                      sibuk={mengirim}
+                      onbenar={() => void wilayahBenar(it.e.ktp.kodeKabKota)}
+                      onbukan={wilayahBukan}
+                    />
+                  </PesanAgen>
+                {:else if it.jenis === 'checklist'}
+                  <PesanAgen avatar={p.avatar}><KartuChecklist checklist={it.e} /></PesanAgen>
+                {:else if it.jenis === 'konfirmasi'}
+                  <PesanAgen avatar={p.avatar}>
+                    <p>
+                      {data.pendamping.peran === 'juri'
+                        ? 'Mode demo: saya membuka situs resmi asli untuk dilihat saja, tanpa mengisi apa pun.'
+                        : 'Sebelum saya membuka situs resmi, periksa dulu data yang akan diisi:'}
+                    </p>
+                    <div data-konfirmasi={it.key}>
+                      <KartuKonfirmasi
+                        gate={it.gate}
+                        permintaan={it.permintaan}
+                        demo={data.pendamping.peran === 'juri'}
+                        {situs}
+                        aktif={it.key === konfirmasiAktif}
+                        status={konfirmasi?.key === it.key ? konfirmasi.status : 'menunggu'}
+                        pesanGalat={it.terakhir ? konfirmasiGalat : undefined}
+                        perluMasuk={perluMasuk(it.permintaan)}
+                        onsetujui={() => void setujui(it.key, it.gate, it.permintaan)}
+                        onbatal={() => void kirim('Batalkan, saya belum mau melanjutkan.')}
+                      />
+                    </div>
+                  </PesanAgen>
+                {:else if it.jenis === 'giliran'}
+                  <PesanAgen avatar={p.avatar}>
+                    <KartuGiliran
+                      gate={it.gate}
+                      aktif={it.terakhir && !k.sedangBerjalan}
+                      onlanjut={() => void kirim('Sudah, lanjutkan.')}
+                    />
+                  </PesanAgen>
+                {:else if it.jenis === 'galat'}
+                  <PesanAgen avatar={p.avatar}>
+                    <KartuGalat
+                      pesan={it.e.pesanWarga}
+                      bisaUlang={it.e.bisaUlang && it.terakhir}
+                      onulang={ulangTerakhir}
+                    />
+                  </PesanAgen>
+                {:else if it.jenis === 'waktu-habis'}
+                  <PesanAgen avatar={p.avatar}>
+                    <KartuGalat
+                      pesan="Jawaban terlalu lama. Tulisan Anda aman; coba kirim lagi."
+                      bisaUlang={it.terakhir}
+                      onulang={ulangTerakhir}
+                    />
+                  </PesanAgen>
+                {:else if it.jenis === 'terkirim'}
+                  <PesanAgen avatar={p.avatar}>
+                    <p>Pengajuan Anda sudah masuk. Nomor permohonannya saya catat supaya mudah dilacak.</p>
+                    <KartuTerkirim
+                      urusanId={data.urusan.id}
+                      nomor={sesi.data.bukti?.nomor ?? data.urusan.nomorPermohonan ?? undefined}
+                      {situs}
+                    />
+                  </PesanAgen>
+                {/if}
+              </div>
             {/each}
 
             {#if simulasiCadangan !== null && simulasiCadangan === kunciCadangan && !k.sedangBerjalan}
@@ -869,13 +936,25 @@
               </p>
             {/if}
             {#if k.sedangBerjalan}
-              <p
-                role="status"
-                class="flex items-center gap-2 pl-[46px] text-[15px] leading-[23px] text-muted"
-              >
-                <Icon name="memuat" class="size-4 animate-spin" />
-                {labelProgres(k.progres, k.events.findLast((e) => e.type === 'progress')?.toolName)}
-              </p>
+              <!-- AI sedang menyiapkan jawaban: gelembung "mengetik" (tiga titik) dengan label progresnya. -->
+              <div data-mengetik class="flex items-end gap-3.5 {riwayatSelesai ? 'animasi-pesan-masuk' : ''}">
+                <img
+                  src={p.avatar}
+                  alt=""
+                  width="32"
+                  height="32"
+                  class="size-8 shrink-0 rounded-full bg-mawar shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] ring-[1.5px] ring-surface"
+                />
+                <p
+                  role="status"
+                  class="flex min-h-11 max-w-full items-center gap-3 rounded-[18px_18px_18px_4px] bg-bg-2 px-4 py-2.5 text-[15px] leading-[23px] text-body"
+                >
+                  <span aria-hidden="true" class="titik-ketik flex shrink-0 items-center gap-1 text-muted">
+                    <span></span><span></span><span></span>
+                  </span>
+                  {labelProgres(k.progres, k.events.findLast((e) => e.type === 'progress')?.toolName)}
+                </p>
+              </div>
             {/if}
             {#if k.perluLanjut && !k.sedangBerjalan}
               <button

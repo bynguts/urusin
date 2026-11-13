@@ -11,6 +11,12 @@ describe('fakta hukum di sistem prompt dan korpus contoh', () => {
     expect(prompt).not.toMatch(/https?:\/\//);
   });
 
+  it('format balasan: Markdown ringan untuk balasan panjang, tanpa tabel/HTML, balasan pendek tetap polos', () => {
+    expect(prompt).toMatch(/balasan pendek cukup 1-2 kalimat biasa tanpa format/);
+    expect(prompt).toMatch(/daftar bernomor \("1\. "\).*daftar butir \("- "\).*\*\*dua bintang\*\*/);
+    expect(prompt).toMatch(/Jangan memakai tabel, HTML/);
+  });
+
   it('pindah: SKPWNI di asal, KK dan KTP-el baru dari tujuan; SKDWNI bukan dokumen nasional', () => {
     expect(prompt).toMatch(/SKPWNI diurus di asal; Disdukcapil tujuan menerbitkan KK dan KTP-el baru/);
     expect(prompt).toMatch(/SKDWNI bukan dokumen nasional/);

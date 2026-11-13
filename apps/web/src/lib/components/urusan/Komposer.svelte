@@ -8,6 +8,7 @@
     labelLampiran,
     siapkanBerkas,
     tebakJenis,
+    ukuranBerkas,
     type Lampiran,
   } from './komposer.js';
 
@@ -129,38 +130,56 @@
     </p>
   {/if}
   {#if lampiran.length}
-    <div class="flex flex-col gap-1.5">
-      <ul aria-label="Lampiran" class="flex flex-wrap gap-2">
+    <div class="@container flex flex-col gap-1.5">
+      <ul aria-label="Lampiran" class="grid gap-2 @lg:grid-cols-2">
         {#each lampiran as l (l.kunci)}
           <li
             data-lampiran
-            class="flex items-center gap-2 rounded-2xl border border-line-2 bg-surface p-1.5 shadow-[0_0_0.5px_#0000000f,0_1px_0.5px_#0000000f]"
+            class="flex min-w-0 items-center gap-3 rounded-2xl border border-line-2 bg-surface p-2 shadow-[0_0_0.5px_#0000000f,0_1px_0.5px_#0000000f]"
           >
             {#if l.pratinjau}
-              <img src={l.pratinjau} alt="" class="size-10 shrink-0 rounded-lg bg-bg-2 object-cover" />
+              <img
+                src={l.pratinjau}
+                alt=""
+                class="size-14 shrink-0 rounded-xl border border-line bg-bg-2 object-cover"
+              />
             {:else}
-              <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-bg-2 text-ink">
-                <Icon name="berkas-teks" class="size-5" />
+              <span class="grid size-14 shrink-0 place-items-center rounded-xl bg-bg-2 text-ink">
+                <Icon name="berkas-teks" class="size-6" />
               </span>
             {/if}
-            <label for="jenis-{l.kunci}" class="sr-only"
-              >Jenis dokumen lampiran ({l.pratinjau ? 'gambar' : 'PDF'})</label
-            >
-            <select
-              id="jenis-{l.kunci}"
-              bind:value={l.jenis}
-              disabled={l.docId !== undefined}
-              class="h-10 min-w-0 rounded-lg border border-line-2 bg-surface px-2 text-sm text-ink"
-            >
-              {#each Object.keys(LABEL_JENIS) as k (k)}
-                <option value={k}>{labelLampiran(k as Lampiran['jenis'])}</option>
-              {/each}
-            </select>
+            <div class="flex min-w-0 flex-1 flex-col gap-1">
+              <p class="flex min-w-0 items-baseline gap-1.5 text-sm leading-5">
+                <span class="min-w-0 truncate font-medium text-ink">{l.berkas.name}</span>
+                <span class="shrink-0 text-xs text-muted"
+                  >{l.pratinjau ? 'Gambar' : 'PDF'} · {ukuranBerkas(l.berkas.size)}</span
+                >
+              </p>
+              <label for="jenis-{l.kunci}" class="sr-only"
+                >Jenis dokumen lampiran ({l.pratinjau ? 'gambar' : 'PDF'})</label
+              >
+              <div class="relative min-w-0">
+                <select
+                  id="jenis-{l.kunci}"
+                  bind:value={l.jenis}
+                  disabled={l.docId !== undefined}
+                  class="h-9 w-full min-w-0 cursor-pointer appearance-none truncate rounded-lg border border-line-2 bg-card pr-8 pl-2.5 text-sm text-ink hover:border-line-3 focus-visible:outline-2 focus-visible:outline-ink disabled:cursor-default disabled:opacity-70"
+                >
+                  {#each Object.keys(LABEL_JENIS) as k (k)}
+                    <option value={k}>{labelLampiran(k as Lampiran['jenis'])}</option>
+                  {/each}
+                </select>
+                <Icon
+                  name="bawah"
+                  class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-muted"
+                />
+              </div>
+            </div>
             <button
               type="button"
               onclick={() => hapus(l.kunci)}
               aria-label="Hapus lampiran {labelLampiran(l.jenis)}"
-              class="grid size-10 shrink-0 place-items-center rounded-full text-muted hover:bg-card hover:text-ink"
+              class="grid size-10 shrink-0 place-items-center self-start rounded-full text-muted hover:bg-card hover:text-ink"
             >
               <Icon name="tutup" class="size-4" />
             </button>

@@ -5,6 +5,7 @@ import {
   penandaLampiran,
   tebakJenis,
   teksDenganLampiran,
+  ukuranBerkas,
   ukuranPerkecil,
 } from './komposer';
 
@@ -83,5 +84,13 @@ describe('lampiran chat', () => {
     // Tulisan warga yang mirip tetapi tidak persis tetap teks.
     expect(pecahPenanda('saya [warga melampirkan dokumen: KTP (gambar)]').lampiran).toEqual([]);
     expect(pecahPenanda('biasa saja')).toEqual({ lampiran: [], teks: 'biasa saja' });
+  });
+});
+
+describe('ukuranBerkas', () => {
+  it('KB dibulatkan (minimal 1), MB satu desimal dengan koma', () => {
+    expect(ukuranBerkas(200)).toBe('1 KB');
+    expect(ukuranBerkas(150 * 1024)).toBe('150 KB');
+    expect(ukuranBerkas(1.4 * 1024 * 1024)).toBe('1,4 MB');
   });
 });
