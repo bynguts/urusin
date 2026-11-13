@@ -135,7 +135,9 @@ describe('ADR 0033: persona daerah non-prioritas dipandu lengkap, tanpa hand-off
     const r = setujuiRencana(env.store, u.id, (e) => void events.push(e));
     expect(r.executionId).toBeNull();
     expect(events.some((e) => e.type === 'execution_request' || e.type === 'gate')).toBe(false);
-    const label = events.find((e): e is EventOf<'progress'> => e.type === 'progress')?.label ?? '';
+    expect(events.some((e) => e.type === 'progress')).toBe(false);
+    const label =
+      events.find((e): e is EventOf<'assistant_text'> => e.type === 'assistant_text')?.delta ?? '';
     expect(label).toContain('sedang kami kembangkan');
     expect(label).not.toMatch(/belum bisa dibantu/);
   });

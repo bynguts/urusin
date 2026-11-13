@@ -247,6 +247,23 @@ describe('cekGalat', () => {
     ];
     assert.equal(cekGalat(l).lulus, true);
   });
+  it('Setujui rencana dipandu kini menampilkan pesan agen tetap (assistant_text), bukan progres', async () => {
+    const { renderLangkahAgen } = await import('../eval-persona/lib/layar.mjs');
+    const l = [
+      klik('Setujui rencana'),
+      {
+        peran: 'urusin',
+        aksi: 'setujui',
+        status: 'selesai',
+        events: [ev('assistant_text', { delta: 'Rencana disetujui. Kami pandu langkahnya.' })],
+      },
+    ];
+    assert.equal(cekGalat(l).lulus, true);
+    assert.equal(
+      renderLangkahAgen(l[1].events, { denganProgres: true }),
+      'Urusin: Rencana disetujui. Kami pandu langkahnya.',
+    );
+  });
   it('lulus untuk percakapan normal', () => {
     assert.equal(cekGalat([warga('x'), urusin(teks('Baik.'))]).lulus, true);
   });

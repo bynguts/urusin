@@ -278,8 +278,10 @@ describe('routing rencana.ts: adapter -> (platform) -> generik -> dipandu', () =
       const r = setujuiRencana(store, u.id, publish);
       expect(r).toMatchObject({ executionId: null, urusan: { state: 'RENCANA_DISETUJUI' } });
       expect(events.some((e) => e.type === 'execution_request' || e.type === 'gate')).toBe(false);
-      expect(events.find((e) => e.type === 'progress')).toMatchObject({
-        label: expect.stringMatching(kanal),
+      // Pesan tetap (bukan progres yang tidak pernah ditutup `done`).
+      expect(events.some((e) => e.type === 'progress')).toBe(false);
+      expect(events.find((e) => e.type === 'assistant_text')).toMatchObject({
+        delta: expect.stringMatching(kanal),
       });
     }
     // Jenis urusan tak dikenal di wilayah web pun tetap dipandu.
@@ -416,7 +418,13 @@ describe('setiap layanan adminduk × wilayah berportal web mendapat rute Browser
       adapterId: ADAPTER_GENERIK,
       params: { jenis: 'ktp', kode: '3312' },
     });
-    expect(events.some((e) => e.type === 'progress' && /belum bisa dibantu/.test(e.label))).toBe(false);
+    expect(
+      events.some(
+        (e) =>
+          (e.type === 'progress' && /belum bisa dibantu/.test(e.label)) ||
+          (e.type === 'assistant_text' && /belum bisa dibantu/.test(e.delta)),
+      ),
+    ).toBe(false);
     for (const jenis of ['kk', 'kia', 'akta']) {
       const x = urusanDiusulkan('3312', jenis);
       expect(setujuiRencana(x.store, x.u.id, x.publish).executionId, jenis).not.toBeNull();

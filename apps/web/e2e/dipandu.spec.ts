@@ -51,6 +51,17 @@ test('Kota Jayapura: kartu dipandu "sedang dikembangkan", kanal resmi bisa dikli
   });
   await expect(page.getByRole('button', { name: 'Setujui dan buka situs' })).toHaveCount(0);
   await expect(page.getByText(/belum bisa dibantu/)).toHaveCount(0);
+  // Pesan persetujuan dipandu = pesan agen yang menetap, bukan progres tanpa akhir: tidak ada pemuat "sedang
+  // berjalan" di percakapan dan header panel tidak tertahan "Urusin sedang bekerja", juga setelah muat ulang.
+  const log = page.getByRole('log', { name: 'Percakapan urusan' });
+  for (const muatUlang of [false, true]) {
+    if (muatUlang) await page.reload();
+    await expect(log.getByText(/Rencana disetujui\. .*sedang kami kembangkan/)).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(log.getByRole('status')).toHaveCount(0);
+    await expect(page.getByText('Urusin sedang bekerja')).toHaveCount(0);
+  }
 });
 
 test('halaman cara kerja menyebut cakupan Browser Pendamping dengan jujur', async ({ page }) => {

@@ -80,6 +80,11 @@ export function bangunLinimasa(
       case 'done':
         st.teks = null;
         continue;
+      // Progres membuka turn/langkah baru: teks berikutnya tidak menyambung pesan sebelumnya (mis. pesan tetap
+      // "Rencana disetujui…" yang terbit di luar turn, tanpa `done`). Teks model terbit sekali di akhir turn.
+      case 'progress':
+        st.teks = null;
+        continue;
       case 'grounded_answer':
         out.push({ jenis: 'jawaban', key, e });
         break;
