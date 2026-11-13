@@ -1,159 +1,128 @@
 <script lang="ts">
   /**
    * Ajakan kerja sama di landing (di bawah panel ajakan terakhir): pemda, instansi, dan mitra menghubungi tim
-   * lewat email. Tombol utama membuka email dengan subjek terisi; alamatnya tetap terlihat dan bisa disalin.
-   * CSS saja (landing tanpa JavaScript).
+   * lewat email. Memakai bahasa visual landing yang sudah ada: kartu krem bergaris tipis seperti panel ajakan
+   * (lp275), badge pil putih seperti lp277, dan pasangan tombol landing (lp58 hitam, lp20 putih) sehingga
+   * ukuran, huruf, dan hover-nya sama persis. CSS saja (landing tanpa JavaScript).
    */
   const email = 'hello@urusinai.web.id'; // pii-scan:allow -- kontak publik
   const mailto = `mailto:${email}?subject=${encodeURIComponent('Kerja sama Urusin')}`;
 </script>
 
 <div class="kontak" id="kontak">
-  <div class="panel">
-    <div class="isi">
-      <p class="label">Untuk pemda, instansi, dan mitra</p>
-      <h2 class="judul">Mau bawa Urusin ke daerah Anda?</h2>
-      <p class="sub">
-        Kami terbuka untuk kerja sama layanan, integrasi portal, dan uji coba di kelurahan atau komunitas
-        Anda. Ceritakan kebutuhannya, tim kami membalas langsung.
-      </p>
+  <div class="isi">
+    <div class="badge">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor">
+        <path
+          d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      <span>Untuk pemda, instansi, dan mitra</span>
     </div>
-    <div class="aksi">
-      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- mailto, bukan rute -->
-      <a class="tombol" href={mailto}>
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor">
-          <rect x="3" y="5" width="18" height="14" rx="3" stroke-width="1.8" />
-          <path d="m4 7 8 6 8-6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-        <span>Hubungi tim Urusin</span>
-        <svg data-ikon="panah" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none">
-          <path
-            d="M5 12h14m-5-5 5 5-5 5"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-      </a>
-      <p class="alamat">atau tulis ke <span>{email}</span></p>
-    </div>
+    <h2 class="judul">Mau bawa Urusin ke daerah Anda?</h2>
+    <p class="sub">
+      Kami terbuka untuk kerja sama layanan, integrasi portal, dan uji coba di kelurahan atau komunitas Anda.
+    </p>
+  </div>
+  <div class="aksi">
+    <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- mailto, bukan rute -->
+    <a class="lp58" href={mailto}>
+      <span class="lp59">Hubungi tim Urusin</span>
+      <svg data-ikon="panah" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none">
+        <path
+          d="M5 12h14m-5-5 5 5-5 5"
+          stroke="#fffcfa"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </a>
+    <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- mailto, bukan rute -->
+    <a class="lp20" href={mailto}>
+      <span class="lp21">{email}</span>
+    </a>
   </div>
 </div>
 
 <style>
-  /* Kartu bertumpuk: bingkai krem membulat, di dalamnya panel putih membulat berbayang lembut (gaya
-     kartu layanan landing; keputusan pemilik 2026-11-14). */
   .kontak {
     margin-top: 20px;
     width: 100%;
-    padding: 8px;
-    border-radius: 30px;
-    background: var(--sb-bg-card, #fcf8f5);
-    outline: 1px solid var(--sb-stroke, #efe6dc);
-    outline-offset: -0.5px;
-  }
-  .panel {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 32px;
-    padding: 36px 44px;
-    border-radius: 22px;
-    background: radial-gradient(70% 160% at 100% 0%, #fbeee4 0%, #fff0 60%), var(--sb-bg-white, #ffffff);
-    box-shadow:
-      0 0 1px #0000000f,
-      0 1px 1px #0000000f,
-      0 2px 4px #0000000a;
+    padding: 40px 56px;
+    border-radius: 28px;
+    background-color: var(--sb-bg-card, #fcf8f5);
+    outline: 1px solid var(--sb-stroke, #efe6dc);
+    outline-offset: -0.5px;
   }
   .isi {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    align-items: flex-start;
+    gap: 14px;
     max-width: 620px;
   }
-  .label {
-    color: #c2410c;
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 12px 5px 10px;
+    border-radius: 100px;
+    background-color: #ffffffb3;
+    outline: 1px solid var(--sb-stroke, #efe6dc);
+    outline-offset: -0.5px;
+    color: var(--sb-text-card, #252522d1);
     font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .badge svg {
+    color: #c2410c;
+    flex-shrink: 0;
   }
   .judul {
     color: var(--sb-text-primary, #252522);
-    font-size: clamp(22px, 2.2vw, 30px);
+    font-size: clamp(24px, 2.4vw, 34px);
     font-weight: 500;
-    letter-spacing: -0.03em;
-    line-height: 1.15;
+    letter-spacing: -0.034em;
+    line-height: 1.1;
   }
   .sub {
     color: var(--sb-text-body, #252522b3);
-    font-size: 16px;
-    line-height: 1.55;
+    font-size: 17px;
+    line-height: 1.53;
   }
   .aksi {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    display: grid;
+    grid-auto-rows: 1fr;
     gap: 10px;
     flex-shrink: 0;
   }
-  .tombol {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 52px;
-    padding: 14px 26px;
-    border-radius: 100px;
-    background: var(--sb-text-primary, #252522);
-    color: #fffcfa;
-    font-size: 16px;
-    font-weight: 500;
-    white-space: nowrap;
-    box-shadow:
-      0 1px 2px #00000014,
-      0 8px 24px -8px #25252266;
-    transition: background-color 0.15s ease;
+  .aksi > a {
+    width: 100%;
+    min-height: 48px;
   }
-  .tombol:hover {
-    background-color: #3c362d;
-  }
-  .tombol:active {
-    background-color: #4a4237;
-  }
-  .tombol:focus-visible {
-    outline: 2px solid #c2410c;
-    outline-offset: 3px;
-  }
-  .alamat {
-    color: var(--sb-text-body, #252522b3);
-    font-size: 14px;
-  }
-  .alamat span {
-    color: var(--sb-text-primary, #252522);
-    font-weight: 500;
-    user-select: all;
+  .aksi svg {
+    flex-shrink: 0;
   }
   @media (max-width: 767px) {
     .kontak {
-      padding: 6px;
-      border-radius: 24px;
-    }
-    .panel {
       flex-direction: column;
       align-items: stretch;
-      padding: 26px 20px;
-      gap: 22px;
-      border-radius: 19px;
+      padding: 28px 20px;
+      gap: 24px;
+      border-radius: 22px;
     }
-    .tombol {
-      justify-content: center;
-      width: 100%;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .tombol {
-      transition: none;
+    .aksi .lp21 {
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
   }
 </style>
