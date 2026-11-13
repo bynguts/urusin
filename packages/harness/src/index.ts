@@ -28,3 +28,4 @@ export * from './wilayah.js';
 export * from './generik.js';
 export * from './ingatan.js';
 export * from './web-cari.js';
+export * from './gambar.js';

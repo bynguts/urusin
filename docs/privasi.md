@@ -6,8 +6,12 @@ yang sebenarnya; rujukan teknisnya ada di [ADR 0028](adr/0028-akun-dan-login.md)
 
 ## Ringkasnya
 
-- AI Urusin **tidak pernah melihat** NIK, nomor KK, nomor HP, atau email Anda. AI hanya melihat penanda seperti
-  "NIK pemohon".
+- AI Urusin **tidak pernah melihat** NIK, nomor KK, nomor HP, atau email yang Anda ketik. AI hanya melihat penanda
+  seperti "NIK pemohon".
+- **Gambar yang Anda lampirkan di chat dikirim ke AI untuk dibaca** (salinan yang diperkecil di perangkat Anda).
+  Angka yang tampak di foto ikut terlihat oleh model pembaca gambar; model diminta tidak menyalinnya dan hasil
+  bacaannya disaring dari NIK/KK/HP/email sebelum dipakai. Salinan itu tidak disimpan; aslinya tersimpan terenkripsi
+  di Dokumen. PDF tidak dikirim ke AI.
 - Data Diri dan dokumen Anda disimpan **terenkripsi**. Tanpa akun, data itu terhapus sendiri 72 jam setelah
   dibuat.
 - Urusin **tidak pernah menekan tombol Kirim** di situs pemerintah. Anda yang memeriksa dan mengirim.
@@ -59,7 +63,7 @@ berlaku sama.
 | Resend (pengiriman email)                                 | Amerika Serikat   | Alamat email Anda dan isi email verifikasi atau atur ulang sandi. Saat ini belum aktif: belum ada email yang dikirim                                                                                                                         |
 | Google (bila Anda memilihnya)                             | Global            | Proses masuk dengan akun Google Anda                                                                                                                                                                                                         |
 | Laptop tim Urusin (Browser Pendamping jaringan Indonesia) | Indonesia         | Login dan isian yang Anda ketik di sesi situs yang hanya menerima jaringan Indonesia (mis. Telunjuk Sakti Wonogiri). Hanya di memori laptop selama sesi aktif, dihapus saat sesi ditutup. Tersambung ke server lewat Tailscale (terenkripsi) |
-| OpenAI (model GPT, lewat proxy model milik tim)           | Di luar Indonesia | Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti penanda sebelum dikirim                                                                                                                        |
+| OpenAI (model GPT, lewat proxy model milik tim)           | Di luar Indonesia | Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti penanda sebelum dikirim. Gambar yang Anda lampirkan di chat (salinan diperkecil) untuk dibaca isinya                                           |
 | Jina AI (pencarian sumber resmi)                          | Di luar Indonesia | Kalimat pertanyaan yang sudah tanpa data pribadi, hanya bila pencarian berbasis vektor diaktifkan                                                                                                                                            |
 | Cloudflare Turnstile                                      | Global            | Data teknis peramban untuk membedakan manusia dan bot, hanya di tombol juri dan setelah beberapa kali gagal masuk                                                                                                                            |
 

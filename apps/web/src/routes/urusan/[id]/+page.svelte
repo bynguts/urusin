@@ -20,6 +20,8 @@
   import KartuTerkirim from '#lib/components/urusan/KartuTerkirim.svelte';
   import Komposer from '#lib/components/urusan/Komposer.svelte';
   import {
+    GAMBAR_AI_MAKS,
+    gambarUntukAi,
     judulLampiran,
     pecahPenanda,
     teksDenganLampiran,
@@ -383,9 +385,10 @@
   /** `aksi`: perintah tombol (mis. Lanjutkan), bukan tulisan warga: tidak tampil sebagai gelembung pesan. */
   /**
    * Lampiran chat masuk brankas terenkripsi (POST /api/vault, batas ukuran/jumlah brankas berlaku) SEBELUM
-   * pesan dikirim. Ke agen hanya penanda jenis ("[warga melampirkan dokumen: KTP (gambar)]"): isi berkas dan
-   * nama berkas (bisa memuat NIK) tidak pernah masuk body /turn. Lampiran yang sudah tersimpan tidak diunggah
-   * ulang bila pengiriman pesan gagal.
+   * pesan dikirim. Ke agen: penanda jenis ("[warga melampirkan dokumen: KTP (gambar)]") plus salinan gambar yang
+   * diperkecil di perangkat (`gambar` di body /turn, dibaca model vision lalu dibuang); PDF dan nama berkas (bisa
+   * memuat NIK) tidak pernah masuk body /turn. Lampiran yang sudah tersimpan tidak diunggah ulang bila
+   * pengiriman pesan gagal.
    */
   async function simpanLampiran(): Promise<boolean> {
     for (const l of lampiran) {
@@ -419,8 +422,16 @@
       pesanKomposer = 'Pesan terlalu panjang. Persingkat tulisan Anda, lalu kirim lagi.';
       return;
     }
+    const gambar = (
+      await Promise.all(
+        lamp
+          .filter((l) => l.berkas.type.startsWith('image/'))
+          .slice(0, GAMBAR_AI_MAKS)
+          .map((l) => gambarUntukAi(l.berkas)),
+      )
+    ).filter((g): g is string => g !== null);
     const setelahSeq = k.lastSeq;
-    const hasil = await store.kirim(isi);
+    const hasil = await store.kirim(isi, gambar);
     mengirim = false;
     if (hasil === 'ok') {
       aksiTerakhir = aksi ? t : null;

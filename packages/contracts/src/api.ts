@@ -46,6 +46,19 @@ export const TurnRequestSchema = z.object({
   teks: z.string().min(1).max(2000),
   /** Opsional: version yang dilihat klien; basi → 409 dan klien mengantre lalu mengirim ulang. */
   expectedVersion: z.number().int().nonnegative().optional(),
+  /**
+   * Opsional: gambar lampiran giliran ini (salinan yang sudah diperkecil klien, JPEG/PNG/WebP data URL) untuk
+   * dibaca model vision. Aslinya tetap di brankas terenkripsi; gambar ini tidak disimpan server.
+   */
+  gambar: z
+    .array(
+      z
+        .string()
+        .max(2_000_000)
+        .regex(/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/),
+    )
+    .max(3)
+    .optional(),
 });
 export const TurnResponseSchema = z.object({ turnId: z.string().min(1), diterima: z.literal(true) });
 

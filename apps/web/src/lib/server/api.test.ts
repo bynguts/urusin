@@ -23,8 +23,17 @@ import {
   piiKeyFromEnv,
   quotaFromEnv,
   setRuntimeForTests,
+  visionModelDari,
   type Runtime,
 } from './runtime';
+
+describe('visionModelDari', () => {
+  it('LLM_VISION_MODEL bila ada, model agen bila tidak; tidak ada bila kapabilitas vision mati', () => {
+    expect(visionModelDari({ agent: 'agen', vision: 'visi' }, { vision: true })).toBe('visi');
+    expect(visionModelDari({ agent: 'agen' }, { vision: true })).toBe('agen');
+    expect(visionModelDari({ agent: 'agen', vision: 'visi' }, { vision: false })).toBeUndefined();
+  });
+});
 
 const ORIGIN = 'http://localhost:3000';
 // NIK sintetis, dirakit agar pemindai PII repo tidak menandai berkas ini
@@ -159,6 +168,29 @@ describe('POST /api/urusan dan /turn', () => {
     expect(GalatApiSchema.safeParse(j).success).toBe(true);
     expect(rt.store.getUrusanOrThrow(id).turnCount).toBe(1);
     rt.running.get(id)?.abort();
+  });
+
+  it('turn bergambar: data URL gambar valid → 202; bukan data URL gambar → 422', async () => {
+    const id = await kosong();
+    const salah = await kirimTurn(
+      ev(post({ teks: 'ini apa?', gambar: ['https://contoh.invalid/a.jpg'] }), { id }),
+    );
+    expect(salah.status).toBe(422);
+    const terlalu = await kirimTurn(
+      ev(post({ teks: 'ini apa?', gambar: Array(4).fill('data:image/jpeg;base64,AAAA') }), { id }),
+    );
+    expect(terlalu.status).toBe(422);
+    const ok = await kirimTurn(
+      ev(post({ teks: 'ini apa?', gambar: ['data:image/jpeg;base64,AAAA'] }), { id }),
+    );
+    expect(ok.status).toBe(202);
+    for (let i = 0; i < 200 && rt.running.has(id); i++) await new Promise((r) => setTimeout(r, 10));
+    // Mode demo tanpa model vision: progress baca gambar tidak muncul, agen diminta berterus terang.
+    const progress = rt.store
+      .eventsAfter(id, 0)
+      .filter((e) => e.type === 'progress')
+      .map((e) => (e.payload as { label?: string }).label);
+    expect(progress).not.toContain('Membaca gambar lampiran…');
   });
 
   it('pesan lanjutan dengan versi dari done diterima (tanpa 409); status menyebut berjalan atau tidak', async () => {

@@ -39,7 +39,8 @@ import { PiiInterceptor } from './pii.js';
 import { PolicyGate } from './policy.js';
 import { buildStateNote, buildSystemPrompt, mintaPemalsuan } from './prompt.js';
 import type { QuotaMeter, QuotaStatus } from './quota.js';
-import { newNonce } from './spotlight.js';
+import { GAMBAR_MAKS, bacaGambar } from './gambar.js';
+import { newNonce, spotlight } from './spotlight.js';
 import type { HarnessStore, TurnStatus, UrusanRow } from './store.js';
 import { clip, ringkasRiwayat, type ToolContext, type ToolRegistry } from './tools.js';
 import { OTEL, type Tracer } from './trace.js';
@@ -59,6 +60,12 @@ import {
   wilayahDariPesan,
   wilayahUrusan,
 } from './wilayah.js';
+
+/** Penanda lampiran dari klien (lihat `penandaLampiran` di apps/web): "[warga melampirkan dokumen: KTP (gambar)]". */
+const PENANDA_LAMPIRAN_RE = /^\[warga melampirkan dokumen: [^\]()\n]{1,40} \((gambar|PDF)\)\]$/gm;
+
+const CATATAN_TAK_TERBACA =
+  '[Catatan sistem: sebagian lampiran di pesan ini (PDF, atau gambar yang tidak terkirim) BELUM bisa dibaca. Jangan menebak isinya; katakan terus terang dan minta warga menuliskan isi pentingnya (tanpa NIK, nomor KK, atau nomor HP).]';
 
 /** Tool rencana karangan model (urusan tanpa rencana Peristiwa Hidup: KTP rusak, bansos, pajak kendaraan, ...). */
 const TOOL_RENCANA = 'urusan__usulkan_rencana';
@@ -132,6 +139,8 @@ export type AgentDeps = {
   intentEmbedding?: KlasifikasiIntentEmbedding | undefined;
   /** Cari web cadangan (Exa); tool `web__cari` hanya terdaftar bila ada. */
   cariWeb?: LayananCariWeb | undefined;
+  /** Model pembaca gambar lampiran chat (env LLM_VISION_MODEL); tanpa ini agen berterus terang belum bisa membaca. */
+  visionModel?: string | undefined;
 };
 
 export type TurnOutcome = {
@@ -172,7 +181,7 @@ const ActionSchema = z.object({
  */
 export function prepareTurn(
   deps: AgentDeps,
-  args: { urusanId: string; userText: string; expectedVersion?: number },
+  args: { urusanId: string; userText: string; expectedVersion?: number; gambar?: readonly string[] },
 ): { turnId: string; run(signal?: AbortSignal): Promise<TurnOutcome> } {
   const locks = deps.locks ?? GLOBAL_LOCKS;
   if (locks.has(args.urusanId)) throw new TurnInProgressError();
@@ -201,6 +210,7 @@ export function prepareTurn(
         turnId: claim.turnId,
         version: claim.version,
         pii,
+        gambar: args.gambar?.slice(0, GAMBAR_MAKS) ?? [],
       })
         .run(signal)
         .finally(() => locks.delete(args.urusanId)),
@@ -210,7 +220,13 @@ export function prepareTurn(
 /** Jalankan satu turn dari awal sampai akhir. */
 export function runTurn(
   deps: AgentDeps,
-  args: { urusanId: string; userText: string; expectedVersion?: number; signal?: AbortSignal },
+  args: {
+    urusanId: string;
+    userText: string;
+    expectedVersion?: number;
+    signal?: AbortSignal;
+    gambar?: readonly string[];
+  },
 ): Promise<TurnOutcome> {
   return prepareTurn(deps, args).run(args.signal);
 }
@@ -295,6 +311,8 @@ class TurnRunner {
       turnId: string;
       version: number;
       pii: PiiInterceptor;
+      /** Data URL gambar lampiran giliran ini (sudah diperkecil klien), dibaca sekali oleh model vision. */
+      gambar: readonly string[];
     },
   ) {
     this.cfg = { ...DEFAULT_AGENT_CONFIG, ...deps.config };
@@ -531,9 +549,52 @@ class TurnRunner {
     selaraskanUsulan(this.store, this.urusan, teks.content, (e) => void this.emit(e));
   }
 
+  /**
+   * Gambar lampiran giliran ini dibaca model vision sekali; deskripsinya (diredaksi placeholder PII, dibungkus
+   * spotlight sebagai data tak tepercaya) disambung ke pesan warga sehingga ikut riwayat urusan. Gagal/tidak
+   * dikonfigurasi: catatan sistem meminta agen berterus terang bahwa gambarnya belum terbaca.
+   */
+  private async bacaLampiranGambar(): Promise<void> {
+    const n = this.turn.gambar.length;
+    const penanda = [...this.turn.userText.matchAll(PENANDA_LAMPIRAN_RE)].map((m) => m[1]);
+    const takTerbaca =
+      penanda.filter((b) => b === 'PDF').length +
+      Math.max(0, penanda.filter((b) => b === 'gambar').length - n);
+    if (n === 0) {
+      if (takTerbaca > 0) this.sambungKePesanWarga(CATATAN_TAK_TERBACA);
+      return;
+    }
+    if (this.deps.visionModel) this.progress('Membaca gambar lampiran…');
+    const hasil = await bacaGambar({
+      provider: this.deps.provider,
+      model: this.deps.visionModel,
+      gambar: this.turn.gambar,
+      pertanyaan: this.teksWarga,
+      signal: this.llmSignal(),
+    });
+    if (hasil.usage.length) this.account(hasil.usage);
+    const blok = hasil.ok
+      ? `[Isi ${n > 1 ? `${n} gambar` : 'gambar'} lampiran warga di pesan ini, dibaca otomatis oleh sistem pembaca gambar. Jawab berdasarkan isi ini; jangan katakan Anda tidak bisa melihat gambar. Nomor identitas yang terlihat sengaja tidak disalin; jangan meminta atau menuliskannya.]\n${spotlight(
+          'user_file',
+          this.turn.pii.redact(hasil.teks).text,
+          { nonce: this.nonce, id: 'lampiran', maxChars: 1500 },
+        )}`
+      : `[Catatan sistem: warga melampirkan ${n > 1 ? `${n} gambar` : 'gambar'} di pesan ini, tetapi isinya BELUM bisa dibaca (pembaca gambar sedang tidak tersedia). Katakan terus terang bahwa Anda belum bisa melihat gambarnya, lalu minta warga menuliskan isi pentingnya (tanpa NIK, nomor KK, atau nomor HP).]`;
+    if (hasil.ok) this.kontenTakTepercaya = true;
+    this.sambungKePesanWarga(hasil.ok && takTerbaca > 0 ? `${blok}\n${CATATAN_TAK_TERBACA}` : blok);
+  }
+
+  /** Sambung catatan ke pesan warga giliran ini (ikut tersimpan di riwayat urusan bersama pesannya). */
+  private sambungKePesanWarga(blok: string): void {
+    const pertama = this.turnMessages[0];
+    if (pertama?.role === 'user' && typeof pertama.content === 'string')
+      this.turnMessages[0] = { role: 'user', content: `${pertama.content}\n\n${blok}` };
+  }
+
   private async body(): Promise<void> {
     if (this.urusan.state === 'BARU') this.applyTransition('MEMAHAMI');
     this.ingatPreferensi();
+    await this.bacaLampiranGambar();
     this.progress('Memahami kebutuhan Anda…');
     if (this.urusan.jenis === null) await this.classify();
     this.wilayahDariPesan();
@@ -546,8 +607,11 @@ class TurnRunner {
       await this.degradedAction();
       return;
     }
-    if (this.cukupKartuWilayah()) return;
-    if (await this.jalurCepat()) return;
+    // Ada gambar: model yang menanggapi isinya lebih dulu (jalur tanpa model hanya membaca tulisan warga).
+    if (this.turn.gambar.length === 0) {
+      if (this.cukupKartuWilayah()) return;
+      if (await this.jalurCepat()) return;
+    }
     await this.toolLoop();
   }
 

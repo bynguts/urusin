@@ -36,7 +36,11 @@ export async function readBody<T>(
   request: Request,
   schema: ZodType<T>,
   /** Kode kab/kota yang sudah diketahui (mis. dari urusan), agar NIK yang dipecah antar bidang tertangkap. */
-  konteks: { kodeKabKota?: string | null } = {},
+  konteks: {
+    kodeKabKota?: string | null;
+    /** Bidang tingkat atas berisi data biner tervalidasi skema (mis. `gambar` data URL), tidak dipindai sebagai teks. */
+    lewatiBidang?: readonly string[];
+  } = {},
 ): Promise<{ ok: true; data: T } | { ok: false; response: Response }> {
   let raw: unknown;
   try {
@@ -50,8 +54,13 @@ export async function readBody<T>(
       ok: false,
       response: apiError(422, 'BODY_INVALID', 'Isi permintaan tidak sesuai. Periksa lagi.'),
     };
-  const kode = konteks.kodeKabKota ?? stringLeaves(raw).kode;
-  const kinds = [...new Set(stringLeaves(raw).teks.flatMap((t) => detectPii(t, { kodeKabKota: kode })))];
+  const lewati = new Set(konteks.lewatiBidang ?? []);
+  const pindai =
+    lewati.size && typeof raw === 'object' && raw !== null && !Array.isArray(raw)
+      ? Object.fromEntries(Object.entries(raw).filter(([k]) => !lewati.has(k)))
+      : raw;
+  const kode = konteks.kodeKabKota ?? stringLeaves(pindai).kode;
+  const kinds = [...new Set(stringLeaves(pindai).teks.flatMap((t) => detectPii(t, { kodeKabKota: kode })))];
   if (kinds.length > 0) {
     return {
       ok: false,

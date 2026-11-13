@@ -74,6 +74,46 @@ export function pecahPenanda(teks: string): {
 export const judulLampiran = (jenis: JenisDokumen, urusan: string | null) =>
   `${labelLampiran(jenis)} (lampiran urusan: ${urusan ?? 'baru'})`.slice(0, 200);
 
+/** Gambar per pesan yang dibaca AI dan sisi terpanjang salinannya (sama dengan batas /turn). */
+export const GAMBAR_AI_MAKS = 3;
+export const SISI_GAMBAR_AI = 1280;
+const PANJANG_DATA_URL_MAKS = 2_000_000;
+
+/** Ukuran salinan untuk AI: sisi terpanjang paling banyak `maks`, rasio tetap, tidak pernah diperbesar. */
+export function ukuranPerkecil(w: number, h: number, maks = SISI_GAMBAR_AI): { w: number; h: number } {
+  const s = Math.min(1, maks / Math.max(w, h, 1));
+  return { w: Math.max(1, Math.round(w * s)), h: Math.max(1, Math.round(h * s)) };
+}
+
+/**
+ * Salinan gambar lampiran untuk dibaca AI: diperkecil di perangkat (sisi terpanjang 1280 px, JPEG) supaya cepat
+ * dikirim. Aslinya tetap disimpan terenkripsi di brankas. null bila bukan gambar atau peramban gagal membacanya.
+ */
+export async function gambarUntukAi(f: File): Promise<string | null> {
+  if (!f.type.startsWith('image/')) return null;
+  try {
+    const bmp = await createImageBitmap(f);
+    const { w, h } = ukuranPerkecil(bmp.width, bmp.height);
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d');
+    if (!ctx) return null;
+    // Latar putih: PNG transparan (tangkapan layar) tidak berubah hitam saat jadi JPEG.
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(bmp, 0, 0, w, h);
+    bmp.close();
+    for (const q of [0.82, 0.6, 0.4]) {
+      const url = c.toDataURL('image/jpeg', q);
+      if (url.startsWith('data:image/jpeg;base64,') && url.length <= PANJANG_DATA_URL_MAKS) return url;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 const HEIC = /\.(heic|heif)$/i;
 
 /**

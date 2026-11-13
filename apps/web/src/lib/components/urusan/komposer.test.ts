@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { aksiEnter, pecahPenanda, penandaLampiran, tebakJenis, teksDenganLampiran } from './komposer';
+import {
+  aksiEnter,
+  pecahPenanda,
+  penandaLampiran,
+  tebakJenis,
+  teksDenganLampiran,
+  ukuranPerkecil,
+} from './komposer';
+
+describe('ukuranPerkecil (salinan gambar untuk AI)', () => {
+  it('sisi terpanjang jadi 1280 dengan rasio tetap; gambar kecil tidak diperbesar', () => {
+    expect(ukuranPerkecil(4032, 3024)).toEqual({ w: 1280, h: 960 });
+    expect(ukuranPerkecil(1080, 2400)).toEqual({ w: 576, h: 1280 });
+    expect(ukuranPerkecil(800, 600)).toEqual({ w: 800, h: 600 });
+  });
+});
 
 const tombol = (o: Partial<{ key: string; shiftKey: boolean; isComposing: boolean; keyCode: number }>) => ({
   key: 'Enter',

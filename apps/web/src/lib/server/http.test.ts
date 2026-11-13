@@ -39,6 +39,18 @@ describe('readBody: pemindaian PII vs id buram buatan server', () => {
     expect(r2.ok).toBe(false);
   });
 
+  it('lewatiBidang: data URL gambar tidak dipindai, teks di sampingnya tetap dipindai', async () => {
+    const S = z.object({ teks: z.string(), gambar: z.array(z.string()) });
+    // base64 yang kebetulan memuat deret berpola nomor HP tidak boleh membuat pesan bergambar ditolak.
+    const gambar = [`data:image/jpeg;base64,AAAA/${HP}/AAAA`];
+    expect((await readBody(req({ teks: 'ini apa?', gambar }), S, { lewatiBidang: ['gambar'] })).ok).toBe(
+      true,
+    );
+    expect((await readBody(req({ teks: 'ini apa?', gambar }), S)).ok).toBe(false);
+    const r = await readBody(req({ teks: `hubungi ${HP}`, gambar }), S, { lewatiBidang: ['gambar'] });
+    expect(r.ok).toBe(false);
+  });
+
   it('id buram di bidang bukan ...Id tetap dipindai', async () => {
     const r = await readBody(req({ teks: 'x_d744d082-7115-4286-8fc4-48bad27599c8' }), Skema);
     expect(r.ok).toBe(false);
