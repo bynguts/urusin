@@ -26,7 +26,8 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
         'Tidak ada tindakan yang menunggu persetujuan Anda.',
       );
     const c = rt.store.createConfirmationByHash(u.id, tool, paramsHash);
-    rt.publish(u.id, { type: 'progress', label: 'Persetujuan Anda tercatat.' });
+    // Tanpa progres "Persetujuan Anda tercatat.": klik ini bukan turn agen, jadi tidak ada `done` yang menutupnya
+    // (pemuat dan header "Urusin sedang bekerja" tertahan). Kartu konfirmasi sendiri menunjukkan "disetujui".
     return apiJson({ confirmationId: c.id, kedaluwarsa: c.expiresAt } satisfies KonfirmasiResponse, 201);
   } catch (e) {
     return errorResponse(e);

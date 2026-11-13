@@ -260,8 +260,8 @@ describe('broker Navigator web', () => {
     const rencana = jejak.map((j) => j.catatan).find((c) => (c as { jenis: string }).jenis === 'rencana');
     expect((rencana as { rencanaHash: string }).rencanaHash).toBe(h.resi.rencana[0]);
     const progress = rt.store
-      .eventsOfType(u.id, 'progress', 5)
-      .map((e) => (e.payload as { label: string }).label);
+      .eventsOfType(u.id, 'assistant_text', 5)
+      .map((e) => (e.payload as { delta: string }).delta);
     // Warga mengakhiri sesi sesudah serah final: pesan "sesi berakhir", bukan giliran warga yang basi.
     expect(progress).toContain(PESAN_BERHENTI.sesi_berakhir);
     // Jejak worker dikuras sesudah setiap panggilan dan masuk rantai audit urusan.
@@ -317,8 +317,8 @@ describe('broker Navigator web', () => {
     ]);
     expect(llm.provider.calls).toHaveLength(0);
     const progress = rt.store
-      .eventsOfType(u.id, 'progress', 5)
-      .map((e) => (e.payload as { label: string }).label);
+      .eventsOfType(u.id, 'assistant_text', 5)
+      .map((e) => (e.payload as { delta: string }).delta);
     expect(progress).toContain(PESAN_LIHAT_SAJA);
   });
 
@@ -403,12 +403,12 @@ describe('broker Navigator web', () => {
     const aksi = w.panggilan.filter((p) => p.path === '/internal/sesi/aksi').map((p) => p.body.aksi);
     expect(aksi).toEqual([[{ jenis: 'serahkan', alasan: 'berhenti' }]]);
     const progress = rt.store
-      .eventsOfType(u.id, 'progress', 5)
-      .map((e) => (e.payload as { label: string }).label);
+      .eventsOfType(u.id, 'assistant_text', 5)
+      .map((e) => (e.payload as { delta: string }).delta);
     expect(progress).toContain(PESAN_AMBIL_ALIH.kuota);
   });
 
-  it('N8: loop lama yang diganti eksekusi baru tidak menerbitkan progres ke layar (resi tetap di jejaknya)', async () => {
+  it('N8: loop lama yang diganti eksekusi baru tidak menerbitkan pesan ke layar (resi tetap di jejaknya)', async () => {
     const u = rt.store.createUrusan({ jenis: 'kelahiran', kodeKabKota: '3374' });
     /** Tangan yang menahan amati sampai dilepas, lalu gagal (loop yang sudah dibatalkan = dibatalkan). */
     const tahan = () => {
@@ -447,8 +447,8 @@ describe('broker Navigator web', () => {
       ).toBe(true),
     );
     const progress = rt.store
-      .eventsOfType(u.id, 'progress', 10)
-      .map((e) => (e.payload as { label: string }).label);
+      .eventsOfType(u.id, 'assistant_text', 10)
+      .map((e) => (e.payload as { delta: string }).delta);
     expect(progress).not.toContain(PESAN_BERHENTI.dibatalkan);
     expect(navigatorBerjalan(u.id)).toBe('x_b');
     hentikanNavigator(u.id);
@@ -457,7 +457,7 @@ describe('broker Navigator web', () => {
     // Loop yang dihentikan sendiri (bukan diganti) tetap memberi tahu layar.
     await vi.waitFor(() =>
       expect(
-        rt.store.eventsOfType(u.id, 'progress', 10).map((e) => (e.payload as { label: string }).label),
+        rt.store.eventsOfType(u.id, 'assistant_text', 10).map((e) => (e.payload as { delta: string }).delta),
       ).toContain(PESAN_BERHENTI.dibatalkan),
     );
   });
@@ -508,8 +508,8 @@ describe('broker Navigator web', () => {
       [{ jenis: 'serahkan', alasan: 'final' }],
     ]);
     const progress = rt.store
-      .eventsOfType(u.id, 'progress', 10)
-      .map((e) => (e.payload as { label: string }).label);
+      .eventsOfType(u.id, 'assistant_text', 10)
+      .map((e) => (e.payload as { delta: string }).delta);
     expect(progress).toContain('Browser Pendamping melaporkan langkah berhasil.');
     // Laporan "dibatalkan" yang datang kemudian (warga menutup sesi) tidak menimpa: hasil eksekusi sudah ada.
     expect(rt.store.recordExecutionResult(u.id, 'x_uji', 'dibatalkan')).toBe(false);

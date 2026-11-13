@@ -154,11 +154,10 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
           executionId: eks.executionId,
           sidHash: a.sidHash,
         });
-      // Sesi demo (lihat saja / simulasi) di luar turn chat: tanpa progres, supaya header tidak tertahan
-      // "Urusin sedang bekerja" setelah sesi berakhir (progres hanya ditutup event `done` turn berikutnya).
-      if (!modeSesi) a.rt.publish(a.u.id, { type: 'progress', label: 'Browser Pendamping disiapkan.' });
-      // Simulasi bukan pengajuan: state urusan tidak dimajukan.
-      if (eks.bacaSaja !== true && !sim)
+      // Tanpa progres "disiapkan": di luar turn chat tidak ada `done` yang menutupnya (header tertahan "Urusin
+      // sedang bekerja"); layar Browser Pendamping sendiri menunjukkan persiapannya.
+      // Simulasi dan demo lihat saja bukan pengajuan (tidak ada yang dikirim): state urusan tidak dimajukan.
+      if (eks.bacaSaja !== true && !sim && !lihatSaja)
         mulaiPengajuan(a.rt.store, a.u.id, (e) => void a.rt.publish(a.u.id, e));
       // Portal wilayah tanpa adapter: otak Navigator generik di web menggerakkan sesi lewat kanal internal.
       // Worker idempoten per executionId: POST ulang (reload) tidak memasang loop baru beranggaran penuh untuk
