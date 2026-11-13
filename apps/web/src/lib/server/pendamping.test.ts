@@ -241,7 +241,7 @@ describe('broker Browser Pendamping', () => {
     expect((await mulai(ev(req('POST', { executionId: 'x_1' }), u.id))).status).toBe(201);
   });
 
-  it('status: hasil akhir dicatat sekali ke urusan (berhasil -> progres + TERKIRIM bila boleh)', async () => {
+  it('status: hasil akhir dicatat sekali ke urusan (berhasil -> pesan agen + TERKIRIM bila boleh)', async () => {
     const u = urusanDenganEksekusi();
     reply = () => ({
       status: 200,
@@ -253,8 +253,8 @@ describe('broker Browser Pendamping', () => {
     await status(ev(req('GET'), u.id));
     const labels = rt.store
       .eventsAfter(u.id)
-      .filter((e) => e.type === 'progress')
-      .map((e) => (e.payload as { label: string }).label);
+      .filter((e) => e.type === 'assistant_text')
+      .map((e) => (e.payload as { delta: string }).delta);
     expect(labels.filter((l) => l.includes('Browser Pendamping melaporkan'))).toHaveLength(1);
   });
 
@@ -355,7 +355,7 @@ describe('broker Browser Pendamping', () => {
     expect(states.filter((x) => x === 'TERKIRIM')).toHaveLength(1);
   });
 
-  it('status siaga: hasil execution dicatat sekali + bukti (nomor/status) sebagai progres yang diredaksi', async () => {
+  it('status siaga: hasil execution dicatat sekali + bukti (nomor/status) sebagai pesan agen yang diredaksi', async () => {
     const u = urusanDenganEksekusi();
     reply = () => ({
       status: 200,
@@ -371,8 +371,8 @@ describe('broker Browser Pendamping', () => {
     await status(ev(req('GET'), u.id));
     const labels = rt.store
       .eventsAfter(u.id)
-      .filter((e) => e.type === 'progress')
-      .map((e) => (e.payload as { label: string }).label);
+      .filter((e) => e.type === 'assistant_text')
+      .map((e) => (e.payload as { delta: string }).delta);
     expect(labels.filter((l) => l.includes('Browser Pendamping melaporkan langkah berhasil'))).toHaveLength(
       1,
     );
@@ -404,8 +404,8 @@ describe('broker Browser Pendamping', () => {
       await terkirim(ev(req('POST'), u.id));
       const labels = rt.store
         .eventsAfter(u.id)
-        .filter((e) => e.type === 'progress')
-        .map((e) => (e.payload as { label: string }).label);
+        .filter((e) => e.type === 'assistant_text')
+        .map((e) => (e.payload as { delta: string }).delta);
       expect(labels.filter((l) => l.includes('Browser Pendamping melaporkan langkah berhasil'))).toHaveLength(
         1,
       );
@@ -421,7 +421,9 @@ describe('broker Browser Pendamping', () => {
         kode: 'BELUM_TERKIRIM',
         pesanWarga: 'Belum terlihat terkirim. Periksa halaman situsnya, lalu coba lagi.',
       });
-      expect(rt.store.eventsAfter(u.id).filter((e) => e.type === 'progress')).toHaveLength(0);
+      expect(
+        rt.store.eventsAfter(u.id).filter((e) => e.type === 'progress' || e.type === 'assistant_text'),
+      ).toHaveLength(0);
     });
 
     it('bukan pemilik -> 404, tanpa cookie sesi -> 401, Origin asing ditolak; worker tidak dipanggil', async () => {
@@ -484,8 +486,8 @@ describe('broker Browser Pendamping', () => {
     await status(ev(req('GET'), u.id));
     const ev2 = rt.store.eventsAfter(u.id);
     const labels = ev2
-      .filter((e) => e.type === 'progress')
-      .map((e) => (e.payload as { label: string }).label);
+      .filter((e) => e.type === 'assistant_text')
+      .map((e) => (e.payload as { delta: string }).delta);
     expect(
       labels.filter((l) => l.includes('selesai membuka hasilnya. Tidak ada yang dikirim.')),
     ).toHaveLength(1);
@@ -1135,8 +1137,8 @@ describe('broker Browser Pendamping', () => {
       expect(calls).toHaveLength(0);
       const evs = rt.store.eventsAfter(u.id);
       const labels = evs
-        .filter((e) => e.type === 'progress')
-        .map((e) => (e.payload as { label: string }).label);
+        .filter((e) => e.type === 'assistant_text')
+        .map((e) => (e.payload as { delta: string }).delta);
       expect(labels).toContain(PESAN_WILAYAH);
       expect(labels.join()).not.toContain('Tampilan situs berubah');
       expect(evs.some((e) => e.type === 'degraded')).toBe(true);
@@ -1602,6 +1604,69 @@ describe('demo juri membuka situs resmi asli (mode lihat saja); replika hanya si
       flowId: 'ajukan',
       params: { layanan_id: 1 },
     });
+  });
+
+  /** Urusan sampai MENUNGGU_KONFIRMASI (kartu "Setujui dan buka situs"), seperti sesudah Setujui rencana. */
+  function sampaiKonfirmasi(u: { id: string; version: number }) {
+    let v = u.version;
+    for (const st of [
+      'MEMAHAMI',
+      'RENCANA_DIUSULKAN',
+      'RENCANA_DISETUJUI',
+      'MENYIAPKAN_BERKAS',
+      'BERKAS_SIAP',
+      'MENGISI',
+      'MENUNGGU_KONFIRMASI',
+    ] as const)
+      v = rt.store.transition(u.id, v, st).version;
+  }
+  const pesanAgen = (id: string) =>
+    rt.store
+      .eventsAfter(id)
+      .flatMap((e) => (e.type === 'assistant_text' ? [(e.payload as { delta: string }).delta] : []));
+
+  it('lihat saja tidak memajukan state (tidak ada yang dikirim); penutupannya tidak dicatat "Anda membatalkan"', async () => {
+    runtimeAkun();
+    const u = urusanDenganEksekusi();
+    sampaiKonfirmasi(u);
+    const cookie = juriDengan(u);
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(201);
+    // Tidak ada mulaiPengajuan: kartu konfirmasi tetap bisa dipakai membuka lagi.
+    expect(rt.store.getUrusanOrThrow(u.id).state).toBe('MENUNGGU_KONFIRMASI');
+    // Juri beralih ke simulasi: sesi lihat saja ditutup (dibatalkan), lalu status dibaca.
+    reply = () => ({
+      status: 200,
+      body: sesi({ lihatSaja: true, status: 'dibatalkan', mode: 'done', hasil: 'dibatalkan', antrean: null }),
+    });
+    await status(evIp(req('GET', undefined, cookie), u.id));
+    expect(pesanAgen(u.id).join(' ')).not.toMatch(/membatalkan/);
+    expect(rt.store.eventsAfter(u.id).some((e) => e.type === 'progress')).toBe(false);
+    // Hasil eksekusi belum pernah dicatat (masih bisa dicatat sekali): tidak ada hasil palsu.
+    expect(rt.store.recordExecutionResult(u.id, 'x_1', 'dibatalkan')).toBe(true);
+    expect(rt.store.getUrusanOrThrow(u.id).state).toBe('MENUNGGU_KONFIRMASI');
+  });
+
+  it('akun warga biasa: tetap memajukan state, dan hasil dibatalkan tetap tampil jujur sebagai pesan agen', async () => {
+    runtimeAkun();
+    const { token, akun } = await rt.akun.daftar(
+      { email: ['warga', 'example.com'].join('@'), sandi: 'kuda-lari-cepat-9' },
+      { ip: '127.0.0.1', userAgent: null },
+    );
+    const u = urusanDenganEksekusi();
+    sampaiKonfirmasi(u);
+    rt.akun.catatPemilikUrusan(u.id, { akun });
+    const cookie = `${SID_COOKIE}=${SID}; ${AKUN_COOKIE}=${token}`;
+    expect((await mulai(evIp(req('POST', { executionId: 'x_1' }, cookie), u.id))).status).toBe(201);
+    expect(rt.store.getUrusanOrThrow(u.id).state).toBe('MENUNGGU_SUBMIT_WARGA');
+    reply = () => ({
+      status: 200,
+      body: sesi({ status: 'dibatalkan', mode: 'done', hasil: 'dibatalkan', antrean: null }),
+    });
+    await status(evIp(req('GET', undefined, cookie), u.id));
+    expect(pesanAgen(u.id)).toContain('Anda membatalkan langkah di browser pendamping.');
+    expect(rt.store.eventsAfter(u.id).some((e) => e.type === 'progress')).toBe(false);
+    const ev = rt.store.eventsAfter(u.id).find((e) => e.type === 'assistant_text');
+    expect(ev?.payload).toMatchObject({ utuh: true });
   });
 
   it('lihat saja lalu simulasi: catatan mode terakhir = simulasi, agen chat tidak lagi bilang situs asli', async () => {

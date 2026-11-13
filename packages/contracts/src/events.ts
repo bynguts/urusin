@@ -39,7 +39,15 @@ export const ProgressEventSchema = event('progress', {
 });
 
 /** Hanya untuk obrolan ringan di luar persyaratan/prosedur. Jawaban persyaratan tidak pernah di-stream per token. */
-export const AssistantTextEventSchema = event('assistant_text', { delta: z.string() });
+export const AssistantTextEventSchema = event('assistant_text', {
+  delta: z.string(),
+  /**
+   * (aditif) Pesan lengkap yang berdiri sendiri, diterbitkan server di luar turn agen (mis. hasil Browser Pendamping,
+   * persetujuan rencana dipandu): selalu gelembung sendiri di linimasa, tidak disambung dengan teks lain. Pesan ini
+   * menggantikan `progress` di luar turn, yang tidak pernah ditutup `done` (pemuat dan header "sedang bekerja" tertahan).
+   */
+  utuh: z.literal(true).optional(),
+});
 
 export const KutipanTerverifikasiSchema = z.object({
   refId: z.string().min(1),

@@ -176,6 +176,24 @@ describe('teks agen', () => {
     ]);
   });
 
+  it('pesan utuh dari server (di luar turn): gelembung sendiri, tidak menyambung dan tidak disambung', () => {
+    const out = bangunLinimasa(
+      [
+        ev(1, 'assistant_text', { delta: 'Halo.' }),
+        ev(2, 'assistant_text', { delta: 'Browser Pendamping melaporkan langkah berhasil.', utuh: true }),
+        ev(3, 'assistant_text', { delta: 'Bukti dari situs resmi: nomor X.', utuh: true }),
+        ev(4, 'assistant_text', { delta: 'Teks turn berikutnya.' }),
+      ],
+      [],
+    );
+    expect(out.map((x) => x.jenis === 'teks' && x.teks)).toEqual([
+      'Halo.',
+      'Browser Pendamping melaporkan langkah berhasil.',
+      'Bukti dari situs resmi: nomor X.',
+      'Teks turn berikutnya.',
+    ]);
+  });
+
   it('persetujuan dipandu: pesan tetap sendiri; turn berikutnya (tanpa pesan warga) tidak menyambungnya', () => {
     const out = bangunLinimasa(
       [

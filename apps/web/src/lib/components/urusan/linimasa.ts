@@ -71,7 +71,11 @@ export function bangunLinimasa(
     const key = `e${e.seq}`;
     switch (e.type) {
       case 'assistant_text':
-        if (st.teks) st.teks.teks += e.delta;
+        // Pesan utuh dari server (di luar turn): gelembung sendiri, tidak menyambung dan tidak disambung.
+        if (e.utuh) {
+          out.push({ jenis: 'teks', key, teks: e.delta });
+          st.teks = null;
+        } else if (st.teks) st.teks.teks += e.delta;
         else {
           st.teks = { jenis: 'teks', key, teks: e.delta };
           out.push(st.teks);

@@ -23,7 +23,7 @@ import { tujuanPendamping } from '@urusin/registry';
 import type { ZodType } from 'zod';
 import { originFixtures } from '#lib/server/hosts.js';
 import { panggilPemilik, type BodyPemilik, type PendampingConfig } from '#lib/server/pendamping.js';
-import { catatHasilEksekusi } from '#lib/server/eksekusi.js';
+import { catatHasilEksekusi, pesanAgen } from '#lib/server/eksekusi.js';
 import { navigatorEmbeddingAktif } from '#lib/server/embedding.js';
 import type { Runtime } from '#lib/server/runtime.js';
 
@@ -326,7 +326,7 @@ export async function jalankanNavigatorUrusan(
   // Loop lama yang diganti eksekusi baru (sesi lama diakhiri, sesi baru dibuat): resinya tetap di jejak
   // eksekusinya sendiri, tetapi pesannya tidak diterbitkan ke layar yang kini milik eksekusi baru.
   if (diganti(id, m)) return hasil;
-  rt.publish(m.urusan.id, { type: 'progress', label: hasil.pesan });
+  pesanAgen(rt, m.urusan.id, hasil.pesan);
   // Halaman sukses = berhasil (TERKIRIM), dicatat sekali per eksekusi; laporan "dibatalkan" yang datang
   // kemudian saat warga menutup sesi tidak menimpanya.
   if (hasil.akhir === 'selesai')
@@ -348,10 +348,11 @@ export function mulaiNavigator(rt: Runtime, m: MasukanNavigator, deps: DepsNavig
   void jalankanNavigatorUrusan(rt, m, { ...deps, signal: ac.signal })
     .catch(() => {
       if (diganti(m.urusan.id, m)) return;
-      rt.publish(m.urusan.id, {
-        type: 'progress',
-        label: 'Bantuan AI berhenti karena gangguan. Anda tetap bisa melanjutkan sendiri dari layar.',
-      });
+      pesanAgen(
+        rt,
+        m.urusan.id,
+        'Bantuan AI berhenti karena gangguan. Anda tetap bisa melanjutkan sendiri dari layar.',
+      );
     })
     .finally(() => {
       if (berjalan.get(m.urusan.id)?.ac === ac) berjalan.delete(m.urusan.id);
