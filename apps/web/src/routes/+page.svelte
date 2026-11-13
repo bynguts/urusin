@@ -172,7 +172,6 @@
   import g4405d37 from '#lib/assets/img/pen-landing/green-duduk-260.webp';
   import g74850df from '#lib/assets/img/pen-landing/perisai-360.webp';
   import ge4af363 from '#lib/assets/img/pen-landing/faq-cbf9-1457.webp';
-  import pTitikIntro from '#lib/assets/img/pen-landing/intro-characters-cd62-560-titik.webp';
   import gd65804a from '#lib/assets/img/pen-landing/green-berpikir-380.webp';
   import g327a44d from '#lib/assets/img/pen-landing/amber-berpikir-339.webp';
   import g749e4e0 from '#lib/assets/img/pen-landing/cta-panel-51bc-1040.webp';
@@ -855,6 +854,17 @@
     </div>
   </section>
   <section class="n-intro-split lp49">
+    <img
+      class="n-hero-pattern lp2 n-salin-hero"
+      src={g58006f1}
+      alt=""
+      width="1440"
+      height="660"
+      loading="lazy"
+      decoding="async"
+      aria-hidden="true"
+    />
+    <span class="n-hero-gelombang n-salin-hero" style="--lp-pola: url({g58006f1})" aria-hidden="true"></span>
     <div class="n-intro-copy lp50">
       <h2 class="lp51">
         <span class="lp52">
@@ -900,8 +910,6 @@
     </div>
     <div class="n-intro-characters lp69" aria-hidden="true">
       <img class="lp68" src={g88b7527} alt="" width="560" height="540" loading="lazy" decoding="async" />
-      <span class="n-gelombang n-gelombang-intro" style="--lp-pola: url({pTitikIntro})" aria-hidden="true"
-      ></span>
       <div class="lp70"></div>
       <div class="lp71"></div>
       <div class="lp72"></div>
@@ -2534,15 +2542,16 @@
   <section class="n-comparison lp219">
     <img class="lp68" src={gdd90def} alt="" width="1440" height="827" loading="lazy" decoding="async" />
     <img
-      class="n-pola-salin"
+      class="n-hero-pattern lp2 n-salin-hero"
       src={g58006f1}
       alt=""
       width="1440"
       height="660"
       loading="lazy"
       decoding="async"
+      aria-hidden="true"
     />
-    <span class="n-gelombang n-gelombang-salin" style="--lp-pola: url({g58006f1})" aria-hidden="true"></span>
+    <span class="n-hero-gelombang n-salin-hero" style="--lp-pola: url({g58006f1})" aria-hidden="true"></span>
     <div class="lp220" aria-hidden="true"></div>
     <h2 class="n-title lp221">Mengurus sendiri vs. bersama Urusin</h2>
     <div class="n-columns lp222">
@@ -2887,15 +2896,16 @@
   <section class="n-faq lp262" id="tanya-jawab">
     <img class="lp68" src={ge4af363} alt="" width="1440" height="1004" loading="lazy" decoding="async" />
     <img
-      class="n-pola-salin"
+      class="n-hero-pattern lp2 n-salin-hero"
       src={g58006f1}
       alt=""
       width="1440"
       height="660"
       loading="lazy"
       decoding="async"
+      aria-hidden="true"
     />
-    <span class="n-gelombang n-gelombang-salin" style="--lp-pola: url({g58006f1})" aria-hidden="true"></span>
+    <span class="n-hero-gelombang n-salin-hero" style="--lp-pola: url({g58006f1})" aria-hidden="true"></span>
     <div class="n-heading lp263">
       <h2 class="n-title lp106">Pertanyaan yang sering diajukan</h2>
       <div class="n-sub lp194">Masih ragu? Tanya saja, kami senang mendengarnya.</div>
