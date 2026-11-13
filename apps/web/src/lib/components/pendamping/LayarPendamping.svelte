@@ -365,7 +365,11 @@
           <span class="grid size-14 place-items-center rounded-full bg-hijau text-hijau-ink"
             ><Icon name="centang" class="size-[25.2px]" /></span
           >
-          {#if data.bukti?.nomor}
+          {#if data.situs?.simulasi}
+            <!-- Simulasi demo di replika: tidak ada pengajuan, jangan menyebutnya terkirim. -->
+            <p class={JUDUL} data-simulasi-selesai>Simulasi selesai</p>
+            <p class={TEKS}>Tidak ada yang dikirim. Ini situs latihan dengan data contoh.</p>
+          {:else if data.bukti?.nomor}
             <p class="text-[13px] text-muted">Nomor permohonan</p>
             <p class="font-mono text-xl font-semibold text-ink">{data.bukti.nomor}</p>
           {:else}

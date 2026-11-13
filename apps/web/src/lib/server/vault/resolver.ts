@@ -1,4 +1,4 @@
-import { AkunError, hashDaftarWrite } from '@urusin/akun';
+import { AkunError, dataDiriSintetisWilayah, hashDaftarWrite } from '@urusin/akun';
 import { hostsPortalWilayah } from '@urusin/harness';
 import { SEED_ENTRIES } from '@urusin/registry';
 import { AWALAN_ANAK, entriAnak, nilaiIsian } from '#lib/pendamping/isi-data.js';
@@ -99,7 +99,7 @@ export function resolusiIsi(
     writeListHash: hashIkatan(p.writeList, p.rencanaHash),
     targetOrigin: origin,
   });
-  const data: Record<string, string | undefined> = dataIsian(rt, p.ownerId, p.writeList);
+  const data: Record<string, string | undefined> = dataIsian(rt, p.ownerId, p.writeList, p.kodeWilayah);
   const nilai: Record<string, string> = {};
   const berkas: BerkasIsi[] = [];
   const docs = rt.akun.vault.listDocuments(p.ownerId);
@@ -121,14 +121,19 @@ export function resolusiIsi(
 /**
  * Nilai isian per kunci (`nik`, `ibu.nik`, `anak.tanggalLahir`, ...) dari Data Diri + anggota keluarga. Anak yang
  * dimaksud = entri `anak:<id>` di daftar write (ikut di hash persetujuan), atau otomatis bila hanya satu anak.
+ * Salinan demo: data sintetis mengikuti wilayah urusan `kodeWilayah` (simulasi Surabaya = NIK 3578…, lahir di
+ * Surabaya); nilainya tetap hanya boleh ke situs latihan (`pastikanTujuanBoleh`).
  */
 export function dataIsian(
   rt: Runtime,
   ownerId: string,
   writeList: readonly string[],
+  kodeWilayah?: string | null,
 ): Record<string, string | undefined> {
   const anakId = writeList.find(entriAnak)?.slice(AWALAN_ANAK.length);
-  return nilaiIsian(rt.akun.vault.getDataDiri(ownerId)?.data ?? {}, anggotaKeluarga(rt, ownerId), anakId);
+  const dd = rt.akun.vault.getDataDiri(ownerId)?.data ?? {};
+  const data = rt.akun.akun(ownerId)?.jenis === 'demo' ? dataDiriSintetisWilayah(dd, kodeWilayah) : dd;
+  return nilaiIsian(data, anggotaKeluarga(rt, ownerId), anakId);
 }
 
 /** Seperti `resolusiIsi`, hanya nilai Data Diri. */

@@ -10,3 +10,4 @@ export * from './errors.js';
 export * from './service.js';
 export * from './config.js';
 export * from './env.js';
+export { dataDiriSintetisWilayah } from './demo.js';

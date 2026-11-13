@@ -138,7 +138,7 @@
   <div class="flex flex-col gap-3.5 pb-1">
     <div class="flex items-center justify-between gap-3">
       <Titik nada={info.nada} tebal
-        >{sedangBerjalan && info.nada !== 'ai' ? 'Urusin sedang bekerja' : info.label}</Titik
+        >{sedangBerjalan && !sesiDemo && info.nada !== 'ai' ? 'Urusin sedang bekerja' : info.label}</Titik
       >
       <span class="text-sm text-card-ink">
         {#if sekarang >= 1 && sekarang <= langkah.length}Langkah {sekarang} dari {langkah.length}{:else if rencana}Rencana

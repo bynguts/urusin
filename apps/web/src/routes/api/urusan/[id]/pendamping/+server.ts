@@ -24,6 +24,7 @@ import {
 } from '#lib/server/pendamping/pemilik.js';
 import { catatSesiAsli, remPortalAsli } from '#lib/server/pendamping/rem.js';
 import { akses } from './akses';
+import { EKSEKUSI_SIMULASI, simulasiCadangan } from './cadangan';
 import { ExecutionPayload, catatHasilSesi, eksekusiDitawarkan } from './hasil';
 import type { RequestHandler } from './$types';
 
@@ -49,14 +50,19 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
   try {
     const a = await akses(request, params.id);
     if (!a.ok) return a.response;
-    const offered = ExecutionPayload.safeParse(
+    const ditawarkan = ExecutionPayload.safeParse(
       a.rt.store.findOffered(a.u.id, 'execution_request', { executionId: body.data.executionId }),
     );
-    if (!offered.success)
-      return apiError(404, 'EKSEKUSI_TIDAK_DITEMUKAN', 'Permintaan eksekusi ini tidak dikenal.');
+    // Demo juri di portal khusus jaringan Indonesia saat worker Indonesia mati: rencana dipandu tanpa
+    // execution_request, tetapi simulasi di replika tetap boleh (`simulasiCadangan`).
+    const eks = ditawarkan.success
+      ? ditawarkan.data
+      : body.data.simulasi === true && body.data.executionId === EKSEKUSI_SIMULASI
+        ? await simulasiCadangan(request, a)
+        : null;
+    if (!eks) return apiError(404, 'EKSEKUSI_TIDAK_DITEMUKAN', 'Permintaan eksekusi ini tidak dikenal.');
     const origin =
-      offered.data.origin ??
-      (a.u.kodeKabKota ? routeByKode(a.u.kodeKabKota).entry.portal?.origin : undefined);
+      eks.origin ?? (a.u.kodeKabKota ? routeByKode(a.u.kodeKabKota).entry.portal?.origin : undefined);
     if (!origin || !matchOfficialOrigin(origin).ok)
       return apiError(422, 'ADAPTER_TIDAK_ADA', 'Kota ini belum mendukung Browser Pendamping.');
     // Situs resmi asli untuk akun warga pemiliknya, dan untuk juri (salinan demo) dalam mode lihat saja; juri yang
@@ -81,7 +87,7 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
       const ditolak = await remPortalAsli(a.rt, {
         akunId: akunAsli.id,
         urusanId: a.u.id,
-        executionId: offered.data.executionId,
+        executionId: eks.executionId,
         ip,
         ...(lihatSaja ? { demo: true } : {}),
       });
@@ -91,21 +97,21 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
     // Simulasi demo: formulir contoh di replika (alur deterministik, sudah "masuk" tanpa dinding login replika)
     // bila replika portal ini punya; selain itu (replika baca-saja) alur eksekusi apa adanya di replika.
     const sim = body.data.simulasi === true && modeUji ? alurSimulasiUntuk(origin) : undefined;
-    const adapterSesi = sim?.adapterId ?? offered.data.adapterId;
+    const adapterSesi = sim?.adapterId ?? eks.adapterId;
     const generik = adapterSesi === ADAPTER_GENERIK;
     // Mode Uji generik: replika dipasang di awalan override worker; jalur portal asli hanya dibawa bila replika
     // mendeklarasikannya, selain itu akar replika.
     const paramsSesi = sim
       ? {}
       : modeUji && generik
-        ? { ...offered.data.params, jalur: jalurModeUji(origin, offered.data.params.jalur) }
-        : offered.data.params;
+        ? { ...eks.params, jalur: jalurModeUji(origin, eks.params.jalur) }
+        : eks.params;
     const r = await mulaiSesi(cfg, {
       urusanId: a.u.id,
       sidHash: a.sidHash,
-      executionId: offered.data.executionId,
+      executionId: eks.executionId,
       adapterId: adapterSesi,
-      flowId: sim?.flowId ?? offered.data.flowId,
+      flowId: sim?.flowId ?? eks.flowId,
       origin,
       params: paramsSesi,
       modeUji,
@@ -138,19 +144,21 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
       if (modeSesi)
         a.rt.publish(a.u.id, {
           type: 'jejak_pendamping',
-          executionId: offered.data.executionId,
+          executionId: eks.executionId,
           catatan: { jenis: modeSesi },
         });
       if (akunAsli)
         catatSesiAsli(a.rt, {
           akunId: akunAsli.id,
           urusanId: a.u.id,
-          executionId: offered.data.executionId,
+          executionId: eks.executionId,
           sidHash: a.sidHash,
         });
-      a.rt.publish(a.u.id, { type: 'progress', label: 'Browser Pendamping disiapkan.' });
+      // Sesi demo (lihat saja / simulasi) di luar turn chat: tanpa progres, supaya header tidak tertahan
+      // "Urusin sedang bekerja" setelah sesi berakhir (progres hanya ditutup event `done` turn berikutnya).
+      if (!modeSesi) a.rt.publish(a.u.id, { type: 'progress', label: 'Browser Pendamping disiapkan.' });
       // Simulasi bukan pengajuan: state urusan tidak dimajukan.
-      if (offered.data.bacaSaja !== true && !sim)
+      if (eks.bacaSaja !== true && !sim)
         mulaiPengajuan(a.rt.store, a.u.id, (e) => void a.rt.publish(a.u.id, e));
       // Portal wilayah tanpa adapter: otak Navigator generik di web menggerakkan sesi lewat kanal internal.
       // Worker idempoten per executionId: POST ulang (reload) tidak memasang loop baru beranggaran penuh untuk
@@ -162,7 +170,7 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
           a.rt,
           {
             urusan: a.u,
-            executionId: offered.data.executionId,
+            executionId: eks.executionId,
             owner: { urusanId: a.u.id, sidHash: a.sidHash },
             modeUji,
             lihatSaja,
@@ -181,16 +189,16 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
         .then((b: { kode?: unknown }) => b?.kode === 'ADAPTER_TIDAK_ADA')
         .catch(() => false))
     ) {
-      catatHasilEksekusi(a.rt, a.u, offered.data.executionId, 'drift', 'Browser Pendamping', {
+      catatHasilEksekusi(a.rt, a.u, eks.executionId, 'drift', 'Browser Pendamping', {
         labelKhusus: PESAN_MODE_UJI_TANPA_REPLIKA,
       });
       return apiError(422, 'PENDAMPING_TANPA_REPLIKA', PESAN_MODE_UJI_TANPA_REPLIKA);
     }
     // Situs khusus jaringan Indonesia tanpa worker wilayah yang hidup: jujur, lalu beralih ke panduan langkah.
     else if (r.dipandu)
-      catatHasilEksekusi(a.rt, a.u, offered.data.executionId, 'drift', 'Browser Pendamping', {
+      catatHasilEksekusi(a.rt, a.u, eks.executionId, 'drift', 'Browser Pendamping', {
         labelKhusus: r.dipandu,
-        bacaSaja: offered.data.bacaSaja === true,
+        bacaSaja: eks.bacaSaja === true,
       });
     return teruskan(r);
   } catch (e) {
