@@ -69,8 +69,13 @@
         Semua perangkat yang memakai akun ini akan keluar, termasuk perangkat ini.
       </p>
     </div>
-    <Tombol type="submit" varian="sekunder" ikon="log-keluar" sibuk={sibukKeluar} disabled={sibukKeluar}
-      >Keluar dari semua perangkat</Tombol
+    <Tombol
+      type="submit"
+      varian="sekunder"
+      ikon="log-keluar"
+      class="shrink-0 whitespace-nowrap"
+      sibuk={sibukKeluar}
+      disabled={sibukKeluar}>Keluar dari semua perangkat</Tombol
     >
   </form>
 

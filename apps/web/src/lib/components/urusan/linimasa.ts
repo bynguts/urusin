@@ -202,12 +202,15 @@ const LABEL_ALAT: Record<string, string> = {
   urusan__susun_rencana: 'Menyusun rencana…',
 };
 
+/** Label progres umum; gelembung mengetik cukup menampilkan tiga titik (teks ini hanya untuk pembaca layar). */
+export const LABEL_UMUM_PROGRES = 'Urusin sedang bekerja…';
+
 /** Label progres tanpa nama teknis tool (DESIGN.md: jangan tampilkan penanda teknis). */
 export function labelProgres(label: string | null, toolName?: string): string {
   if (toolName && LABEL_ALAT[toolName]) return LABEL_ALAT[toolName]!;
-  if (!label) return 'Urusin sedang bekerja…';
+  if (!label) return LABEL_UMUM_PROGRES;
   const m = /^Menjalankan ([\w-]+)…?$/.exec(label);
-  if (m) return LABEL_ALAT[m[1]!] ?? 'Urusin sedang bekerja…';
+  if (m) return LABEL_ALAT[m[1]!] ?? LABEL_UMUM_PROGRES;
   return label;
 }
 

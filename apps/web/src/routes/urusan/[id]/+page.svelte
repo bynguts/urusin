@@ -34,7 +34,7 @@
   import Lencana from '#lib/components/urusan/Lencana.svelte';
   import PanelKonteks, { type TabPanel } from '#lib/components/urusan/PanelKonteks.svelte';
   import PesanAgen from '#lib/components/urusan/PesanAgen.svelte';
-  import { bangunLinimasa, labelProgres } from '#lib/components/urusan/linimasa.js';
+  import { bangunLinimasa, labelProgres, LABEL_UMUM_PROGRES } from '#lib/components/urusan/linimasa.js';
   import LayarPendamping from '#lib/components/pendamping/LayarPendamping.svelte';
   import LembarIzinkan from '#lib/components/pendamping/LembarIzinkan.svelte';
   import { muatPabrikViewer } from '#lib/pendamping/klien.js';
@@ -947,6 +947,12 @@
               </p>
             {/if}
             {#if k.sedangBerjalan}
+              {@const labelKetik = labelProgres(
+                k.progres,
+                k.events.findLast((e) => e.type === 'progress')?.toolName,
+              )}
+              <!-- Label umum cukup tiga titik (keputusan pemilik 2026-11-14); label alat tetap tertulis. -->
+              {@const cukupTitik = labelKetik === LABEL_UMUM_PROGRES}
               <!-- AI sedang menyiapkan jawaban: gelembung "mengetik" (tiga titik) dengan label progresnya. -->
               <div data-mengetik class="flex items-end gap-3.5 {riwayatSelesai ? 'animasi-pesan-masuk' : ''}">
                 <img
@@ -958,12 +964,14 @@
                 />
                 <p
                   role="status"
-                  class="flex min-h-11 max-w-full items-center gap-3 rounded-[18px_18px_18px_4px] bg-bg-2 px-4 py-2.5 text-[15px] leading-[23px] text-body"
+                  class="flex min-h-11 max-w-full items-center gap-3 rounded-[18px_18px_18px_4px] bg-bg-2 py-2.5 text-[15px] leading-[23px] text-body {cukupTitik
+                    ? 'px-[18px]'
+                    : 'px-4'}"
                 >
                   <span aria-hidden="true" class="titik-ketik flex shrink-0 items-center gap-1 text-muted">
                     <span></span><span></span><span></span>
                   </span>
-                  {labelProgres(k.progres, k.events.findLast((e) => e.type === 'progress')?.toolName)}
+                  <span class={cukupTitik ? 'sr-only' : ''}>{labelKetik}</span>
                 </p>
               </div>
             {/if}

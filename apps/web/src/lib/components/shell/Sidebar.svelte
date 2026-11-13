@@ -34,17 +34,18 @@
 </script>
 
 <aside
-  class="hidden h-full shrink-0 flex-col overflow-y-auto px-2 pt-2.5 pb-2 transition-[width] duration-200 ease-out lg:flex {ciut
-    ? 'w-16 gap-3.5'
-    : 'w-[248px] gap-5'}"
+  class="hidden h-full shrink-0 flex-col overflow-y-auto pt-2.5 pb-2 transition-[width] duration-200 ease-out lg:flex {ciut
+    ? 'w-[68px] items-center gap-3 px-3'
+    : 'w-[248px] gap-5 px-2'}"
   aria-label="Menu samping"
 >
-  <div class="flex items-center justify-between px-1.5 py-1 {ciut ? 'flex-col gap-2' : ''}">
+  <!-- Mode ciut: satu kolom tengah, semua tombol bujur sangkar 44 px agar sejajar (keputusan pemilik 2026-11-14). -->
+  <div class="flex items-center justify-between {ciut ? 'flex-col gap-1.5' : 'px-1.5 py-1'}">
     <a
       href={resolve('/')}
       data-sveltekit-reload
       onclick={tandaiKeLanding}
-      class="flex items-center gap-2 {ciut ? 'justify-center py-1' : ''}"
+      class="flex items-center gap-2 {ciut ? 'size-11 justify-center' : ''}"
       aria-label="Urusin, ke halaman depan"
     >
       <img src={mark} alt="" width="24" height="24" class="size-6" />
@@ -58,7 +59,8 @@
         onclick={() => (ciut = !ciut)}
         aria-expanded={!ciut}
         aria-label={ciut ? 'Buka menu samping' : 'Ciutkan menu samping'}
-        class="grid size-9 place-items-center rounded-xl text-ink hover:bg-surface/70"
+        title={ciut ? 'Buka menu samping' : 'Ciutkan menu samping'}
+        class="grid place-items-center rounded-xl text-ink hover:bg-surface/70 {ciut ? 'size-11' : 'size-9'}"
       >
         <Icon name="panel" class="size-[18px]" />
       </button>
@@ -68,15 +70,16 @@
   <a
     href="{resolve('/beranda')}?baru"
     aria-label={ciut ? 'Urusan baru' : undefined}
-    class="flex min-h-[41px] items-center justify-center gap-1.5 rounded-full bg-primer py-2.5 text-sm leading-[21px] font-medium text-primer-ink {ciut
-      ? 'px-0'
-      : 'px-6'}"
+    title={ciut ? 'Urusan baru' : undefined}
+    class="flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-primer text-sm leading-[21px] font-medium text-primer-ink {ciut
+      ? 'size-11'
+      : 'min-h-[41px] px-6 py-2.5'}"
   >
     <Icon name="tambah" class="size-4" />{#if !ciut}Urusan baru{/if}
   </a>
 
-  <nav aria-label="Navigasi utama">
-    <ul class="flex flex-col gap-1">
+  <nav aria-label="Navigasi utama" class={ciut ? 'border-t border-line pt-3' : ''}>
+    <ul class="flex flex-col {ciut ? 'items-center gap-1.5' : 'gap-1'}">
       {#each NAV as item (item.href)}
         {@const kini = menuAktif(item.href, page.url.pathname)}
         <li>
@@ -84,7 +87,10 @@
             href={resolve(item.href)}
             aria-current={kini ? 'page' : undefined}
             aria-label={ciut ? item.label : undefined}
-            class="flex h-12 items-center gap-3 rounded-xl px-3 text-base leading-[22px] text-card-ink hover:bg-surface/60 aria-[current=page]:bg-surface aria-[current=page]:font-semibold aria-[current=page]:text-ink aria-[current=page]:shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]"
+            title={ciut ? item.label : undefined}
+            class="flex items-center gap-3 rounded-xl {ciut
+              ? 'size-11 justify-center'
+              : 'h-12 px-3'} text-base leading-[22px] text-card-ink hover:bg-surface/60 aria-[current=page]:bg-surface aria-[current=page]:font-semibold aria-[current=page]:text-ink aria-[current=page]:shadow-[0_0_1px_#0000000f,0_2px_4px_#0000000a]"
           >
             <Icon name={item.ikon} class="size-5 shrink-0 text-ink" />{#if !ciut}{item.label}{/if}
           </a>
@@ -134,12 +140,15 @@
   <a
     href={resolve(akun ? '/pengaturan' : '/masuk')}
     aria-label={ciut ? (akun ? namaAkun : 'Masuk') : undefined}
-    class="flex h-14 shrink-0 items-center rounded-[14px] border border-line bg-surface hover:bg-card {ciut
-      ? 'justify-center p-0'
-      : 'gap-2.5 px-2.5'}"
+    title={ciut ? (akun ? namaAkun : 'Masuk') : undefined}
+    class="flex shrink-0 items-center {ciut
+      ? 'size-11 justify-center rounded-full hover:ring-2 hover:ring-line'
+      : 'h-14 gap-2.5 rounded-[14px] border border-line bg-surface px-2.5 hover:bg-card'}"
   >
     <span
-      class="grid size-9 shrink-0 place-items-center rounded-full bg-mawar text-sm leading-none font-semibold text-mawar-ink"
+      class="grid shrink-0 place-items-center rounded-full bg-mawar text-sm leading-none font-semibold text-mawar-ink {ciut
+        ? 'size-10'
+        : 'size-9'}"
       aria-hidden="true"
     >
       {#if akun}{inisial || '?'}{:else}<Icon name="orang" class="size-4" />{/if}
