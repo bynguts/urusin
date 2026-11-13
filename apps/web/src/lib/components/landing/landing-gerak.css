@@ -436,9 +436,9 @@
   }
 }
 
-/* Interaksi: panah "Pelajari" bergeser, karakter kartu menyembul. Tombol (pill hitam/putih, tombol
-   kartu, tautan aksi subpage) sengaja TANPA efek hover apa pun (keputusan pemilik); fokus keyboard
-   tetap terlihat lewat outline :focus-visible di landing-dasar.css. */
+/* Interaksi: panah "Pelajari" bergeser, karakter kartu menyembul. Tombol pil hitam/putih hanya berganti
+   warna saat hover (routes/layout.css; tanpa membesar/bergerak, keputusan pemilik); fokus keyboard tetap
+   terlihat lewat outline :focus-visible di landing-dasar.css. */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .lp .lp117 > img,
   .lp :is(.lp110, .lp127) {

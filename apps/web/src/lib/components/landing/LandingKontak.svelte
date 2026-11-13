@@ -102,25 +102,17 @@
     box-shadow:
       0 1px 2px #00000014,
       0 8px 24px -8px #25252266;
-    transition:
-      transform 0.2s ease,
-      box-shadow 0.2s ease;
+    transition: background-color 0.15s ease;
   }
   .tombol:hover {
-    transform: translateY(-2px);
-    box-shadow:
-      0 1px 2px #00000014,
-      0 14px 32px -10px #25252280;
+    background-color: #3c362d;
+  }
+  .tombol:active {
+    background-color: #4a4237;
   }
   .tombol:focus-visible {
     outline: 2px solid #c2410c;
     outline-offset: 3px;
-  }
-  .panah {
-    transition: transform 0.2s ease;
-  }
-  .tombol:hover .panah {
-    transform: translateX(3px);
   }
   .alamat {
     color: var(--sb-text-body, #252522b3);
@@ -145,12 +137,8 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    .tombol,
-    .panah {
+    .tombol {
       transition: none;
-    }
-    .tombol:hover {
-      transform: none;
     }
   }
 </style>

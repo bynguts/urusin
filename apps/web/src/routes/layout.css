@@ -540,3 +540,17 @@ select:not(.bg-transparent):focus {
     background-position: top center;
   }
 }
+
+/*
+ * Hover tombol pil situs publik (landing, cara kerja, urusan, tanya jawab): warna saja, tanpa membesar atau
+ * bergerak. Lapisan hangat tipis di atas warna dasar: pil hitam jadi sedikit lebih terang, pil putih jadi krem,
+ * jadi satu aturan berlaku untuk keduanya.
+ */
+@media (hover: hover) {
+  :is(.lp17, .lp11, .lp20, .lp58, .lp130, .ck347, .ck350, .ur254, .ur257, .tj92, .tj95):hover {
+    background-image: linear-gradient(rgb(150 120 90 / 0.2), rgb(150 120 90 / 0.2));
+  }
+}
+:is(.lp17, .lp11, .lp20, .lp58, .lp130, .ck347, .ck350, .ur254, .ur257, .tj92, .tj95):active {
+  background-image: linear-gradient(rgb(150 120 90 / 0.3), rgb(150 120 90 / 0.3));
+}
