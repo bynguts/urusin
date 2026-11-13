@@ -38,27 +38,7 @@
   .lp .n-preview-stage {
     animation: lp-angkat 0.7s var(--lp-e) 0.24s both;
   }
-  .lp :is(.lp23, .lp24, .lp25, .lp26, .lp76, .lp79, .lp81, .lp294) {
-    animation: lp-apung 4.2s ease-in-out infinite;
-  }
-  .lp :is(.ck8, .ur8, .tj8, .pv8) {
-    animation: lp-apung 4.5s ease-in-out -1.2s infinite;
-  }
-  .lp :is(.ck9, .ur9, .tj9, .pv9) {
-    animation: lp-apung 5.2s ease-in-out -2.5s infinite;
-  }
-  .lp :is(.lp24, .lp79) {
-    animation-duration: 4.65s;
-    animation-delay: -1.3s;
-  }
-  .lp :is(.lp25, .lp81) {
-    animation-duration: 5.1s;
-    animation-delay: -2.4s;
-  }
-  .lp :is(.lp26, .lp294) {
-    animation-duration: 4.8s;
-    animation-delay: -0.7s;
-  }
+  /* Karakter tidak mengapung (keputusan pemilik 2026-11-14): semua maskot diam di tempatnya. */
 
   /* Pola titik hero: mekar dari tengah bawah, lalu riak gelap menyapu bentuk-bentuknya */
   .lp .n-hero-pattern {
@@ -220,23 +200,11 @@
   }
 
   /* Ponsel: tidak ada gerak di jendela muat (TBT Lighthouse mobile). Hero langsung tampil tanpa
-     animasi masuk; karakter mengapung dan pil kata baru mulai 4 dtk setelah halaman dimuat. Bagian
+     animasi masuk; pil kata baru mulai 4 dtk setelah halaman dimuat. Bagian
      di bawah lipatan tidak perlu: isinya baru dirender (content-visibility) saat mendekati layar. */
   @media (max-width: 767px) {
     .lp :is(.lp14, .n-hero-intro, .lp16, .n-preview-stage) {
       animation: none;
-    }
-    .lp .lp23 {
-      animation-delay: 4s;
-    }
-    .lp .lp24 {
-      animation-delay: 4.4s;
-    }
-    .lp .lp25 {
-      animation-delay: 4.8s;
-    }
-    .lp .lp26 {
-      animation-delay: 4.2s;
     }
     .lp .n-pil-kata > span > span,
     .lp .n-pil {
@@ -505,15 +473,6 @@
 @keyframes lp-angkat {
   from {
     transform: translateY(18px) scale(0.99);
-  }
-}
-@keyframes lp-apung {
-  0%,
-  100% {
-    transform: translateY(2px);
-  }
-  50% {
-    transform: translateY(-6px);
   }
 }
 @keyframes lp-mekar {

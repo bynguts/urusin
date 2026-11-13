@@ -1301,7 +1301,8 @@ html {
   /* HP/tablet: kategori jadi baris yang ikut menempel di atas saat scroll (geser ke samping bila sempit). */
   .tj12 {
     position: sticky;
-    top: 0;
+    /* di bawah header situs yang menempel (64 px) */
+    top: 64px;
     flex-direction: row;
     flex-wrap: nowrap;
     gap: 8px;
@@ -1322,7 +1323,7 @@ html {
   #keamanan,
   #pendamping,
   #biaya {
-    scroll-margin-top: 80px;
+    scroll-margin-top: 144px;
   }
   .tj21 {
     flex: none;

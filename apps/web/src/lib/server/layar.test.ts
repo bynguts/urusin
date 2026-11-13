@@ -16,9 +16,16 @@ import KartuRencana from '../components/urusan/KartuRencana.svelte';
 import KartuUrusanku from '../components/urusan/KartuUrusanku.svelte';
 import { dataAwal, type DataPendamping, type GiliranAnda } from '../pendamping/sesi.svelte';
 import { createRuntime, setRuntimeForTests, type Runtime } from './runtime';
+import { LANDING_COOKIE } from '../ke-landing';
 import { SID_COOKIE, TERAKHIR_COOKIE } from './sesi';
 
 const SID = 'a'.repeat(32);
+
+/** Permintaan landing dari luar situs (tanpa Referer) atau dengan Referer tertentu. */
+const minta = (referer?: string) => ({
+  request: new Request('http://localhost:3000/', referer ? { headers: { referer } } : {}),
+  url: new URL('http://localhost:3000/'),
+});
 
 let rt: Runtime;
 beforeEach(() => {
@@ -132,7 +139,9 @@ describe('load layar', () => {
     const cookies = kue();
     cookies.set(SID_COOKIE, SID);
     cookies.set(TERAKHIR_COOKIE, u.id);
-    expect(await muatLanding({ cookies, locals: {} } as never)).toEqual({ jumlahDaerahPendamping: 10 });
+    expect(await muatLanding({ cookies, locals: {}, ...minta() } as never)).toEqual({
+      jumlahDaerahPendamping: 10,
+    });
     expect(cookies.get(TERAKHIR_COOKIE)).toBe(u.id);
     expect(rt.store.getUrusan(u.id)).not.toBeNull();
   });
@@ -143,9 +152,30 @@ describe('load layar', () => {
     rt.akun.catatPemilikUrusan(u.id, { akun });
     const cookies = kue();
     cookies.set(TERAKHIR_COOKIE, u.id);
-    const result = await tangkap(muatLanding({ cookies, locals: { akun } } as never));
+    const result = await tangkap(muatLanding({ cookies, locals: { akun }, ...minta() } as never));
     expect(isRedirect(result)).toBe(true);
     expect(result).toMatchObject({ status: 303, location: '/beranda' });
+  });
+
+  it('logo aplikasi (penanda singkat) atau tautan dari situs sendiri tetap membuka landing', async () => {
+    const { akun } = rt.akun.buatDemo({ ip: '127.0.0.1' });
+    const u = rt.store.createUrusan({ jenis: 'kelahiran' });
+    rt.akun.catatPemilikUrusan(u.id, { akun });
+    const cookies = kue();
+    cookies.set(TERAKHIR_COOKIE, u.id);
+    cookies.set(LANDING_COOKIE, '1');
+    expect(await muatLanding({ cookies, locals: { akun }, ...minta() } as never)).toEqual({
+      jumlahDaerahPendamping: 10,
+    });
+    expect(cookies.get(LANDING_COOKIE)).toBeUndefined();
+    const dariSitus = minta('http://localhost:3000/beranda');
+    expect(await muatLanding({ cookies, locals: { akun }, ...dariSitus } as never)).toEqual({
+      jumlahDaerahPendamping: 10,
+    });
+    const luar = minta('https://contoh.test/');
+    expect(isRedirect(await tangkap(muatLanding({ cookies, locals: { akun }, ...luar } as never)))).toBe(
+      true,
+    );
   });
 
   it('akun dengan cookie urusan milik orang lain atau yang sudah tidak ada tetap mendapat landing', async () => {
@@ -156,7 +186,7 @@ describe('load layar', () => {
       const cookies = kue();
       cookies.set(SID_COOKIE, 'b'.repeat(32));
       cookies.set(TERAKHIR_COOKIE, id);
-      expect(await muatLanding({ cookies, locals: { akun } } as never)).toEqual({
+      expect(await muatLanding({ cookies, locals: { akun }, ...minta() } as never)).toEqual({
         jumlahDaerahPendamping: 10,
       });
     }

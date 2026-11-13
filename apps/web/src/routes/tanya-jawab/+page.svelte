@@ -83,7 +83,7 @@
       <h1 class="tj5">Pertanyaan yang sering diajukan</h1>
       <p class="tj6">
         Jawaban singkat soal cara kerja, keamanan, Browser Pendamping, dan biaya. Belum ketemu? Tanyakan
-        langsung ke Rose.
+        langsung ke Ana.
       </p>
     </div>
     <div class="tj7">
@@ -478,7 +478,7 @@
     <div class="tj87">
       <div class="tj88">
         <h2 class="tj89">Belum ketemu jawabannya?</h2>
-        <p class="tj90">Tanyakan ke Rose. Jawabannya disertai sumber resmi dan tanggal diperiksa.</p>
+        <p class="tj90">Tanyakan ke Ana. Jawabannya disertai sumber resmi dan tanggal diperiksa.</p>
         <div class="tj91">
           <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
           <a class="tj92" href={targetMulai}>
@@ -491,7 +491,7 @@
               loading="lazy"
               decoding="async"
             />
-            <span class="tj94">Tanya Rose</span>
+            <span class="tj94">Tanya Ana</span>
           </a>
           <a class="tj95" href={resolve('/bantuan')}>
             <span class="tj96">Hubungi kami</span>
