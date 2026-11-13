@@ -7,6 +7,8 @@ import { daftarAkunUji } from './akun-uji';
 // CAPTCHA yang diketik lewat penampil). Di sini layanan pendamping digantikan tiruan di batas jaringan peramban
 // (pola pendamping-bilah-hp.spec.ts) supaya yang diuji adalah layar produksi (LayarPendamping + viewer).
 const WS_TIRUAN = 'ws://127.0.0.1:9/tiruan-pendamping/ws';
+/** Penjaga input tersembunyi (zero-width space), sama dengan PENJAGA_INPUT di @urusin/pendamping-client. */
+const PENJAGA = '​';
 const META = { lebar: 1280, tinggi: 800, skala: 1, offsetAtas: 0, scrollX: 0, scrollY: 0 };
 
 type Masuk = { type: string; teks?: string; aksi?: string; key?: string; x?: number; y?: number };
@@ -153,6 +155,51 @@ test.describe('HP (keyboard layar)', () => {
     await cdp.send('Input.insertText', { text: 'dew' });
     await page.waitForTimeout(200);
     expect(teks(masuk)).toBe('0812dev⌫w');
-    await expect(tersembunyi).toHaveValue('');
+    await expect(tersembunyi).toHaveValue(PENJAGA);
+  });
+
+  test('Backspace keyboard Android (tanpa keydown Backspace) tetap sampai walau semua huruf sudah terhapus, juga di kolom sandi', async ({
+    page,
+  }) => {
+    const { masuk, kirim } = await giliranMasuk(page);
+    const c = kanvas(page);
+    await c.scrollIntoViewIfNeeded();
+    await c.tap();
+    const tersembunyi = page.getByLabel('Ketik di situs resmi');
+    await expect(tersembunyi).toBeFocused();
+    const cdp = await page.context().newCDPSession(page);
+    // Seperti Gboard: keydown "Unidentified" (229) + perintah hapus editor, bukan keydown Backspace. Di kotak yang
+    // benar-benar kosong perintah ini tidak menghasilkan event apa pun (bug Android): penjaga mencegahnya.
+    const hapusAndroid = async () => {
+      await cdp.send('Input.dispatchKeyEvent', {
+        type: 'rawKeyDown',
+        key: 'Unidentified',
+        windowsVirtualKeyCode: 229,
+        commands: ['deleteBackward'],
+      });
+      await cdp.send('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: 'Unidentified',
+        windowsVirtualKeyCode: 229,
+      });
+    };
+    await page.keyboard.insertText('ab');
+    await expect.poll(() => teks(masuk)).toBe('ab');
+    for (let i = 0; i < 4; i++) await hapusAndroid();
+    await expect.poll(() => teks(masuk)).toBe('ab⌫⌫⌫⌫');
+    await expect(tersembunyi).toHaveValue(PENJAGA);
+    expect(await tersembunyi.evaluate((el: HTMLInputElement) => el.selectionStart)).toBe(1);
+    // Kolom sandi: type password tetap berlaku, salah ketik bisa dibetulkan.
+    kirim({ type: 'fokus', jenis: 'sandi' });
+    await expect(tersembunyi).toHaveAttribute('type', 'password');
+    await page.keyboard.insertText('rahasiz');
+    await hapusAndroid();
+    await page.keyboard.insertText('a');
+    await expect.poll(() => teks(masuk)).toBe('ab⌫⌫⌫⌫rahasiz⌫a');
+    for (let i = 0; i < 3; i++) await hapusAndroid();
+    await expect.poll(() => teks(masuk)).toBe('ab⌫⌫⌫⌫rahasiz⌫a⌫⌫⌫');
+    await expect(tersembunyi).toHaveValue(PENJAGA);
+    // Penjaga tidak pernah dikirim ke situs.
+    expect(masuk.some((m) => m.teks?.includes(PENJAGA))).toBe(false);
   });
 });
