@@ -22,6 +22,49 @@
    * terbuka; jawaban lain ditulis dari docs/privasi.md dan perilaku sistem yang berjalan.
    */
   const targetMulai = $derived(page.data.akun ? resolve('/beranda') : resolve('/daftar'));
+
+  /*
+   * Kategori aktif mengikuti bagian yang sedang dibaca: bagian terakhir yang judulnya sudah melewati garis
+   * 140 px dari atas (mentok bawah halaman = bagian terakhir). Sorotan berupa satu latar yang bergeser ke tautan
+   * aktif (posisi diukur dari tautan itu, jadi berlaku untuk susunan kolom di desktop dan baris di HP).
+   */
+  const KATEGORI = ['umum', 'keamanan', 'pendamping', 'biaya'] as const;
+  let aktif = $state<(typeof KATEGORI)[number]>('umum');
+  let nav = $state<HTMLElement>();
+  let sorot = $state({ x: 0, y: 0, w: 0, h: 0, siap: false });
+
+  $effect(() => {
+    const hitung = () => {
+      let a: (typeof KATEGORI)[number] = 'umum';
+      for (const id of KATEGORI) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top <= 140) a = id;
+      }
+      if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4)
+        a = KATEGORI[KATEGORI.length - 1];
+      aktif = a;
+    };
+    hitung();
+    addEventListener('scroll', hitung, { passive: true });
+    addEventListener('resize', hitung);
+    return () => {
+      removeEventListener('scroll', hitung);
+      removeEventListener('resize', hitung);
+    };
+  });
+
+  $effect(() => {
+    const t = nav?.querySelector<HTMLElement>(`.tj-nav-${aktif}`);
+    if (!t) return;
+    const ukur = () => {
+      sorot = { x: t.offsetLeft, y: t.offsetTop, w: t.offsetWidth, h: t.offsetHeight, siap: true };
+      if (nav && nav.scrollWidth > nav.clientWidth)
+        nav.scrollTo({ left: t.offsetLeft - 16, behavior: 'smooth' });
+    };
+    ukur();
+    addEventListener('resize', ukur);
+    return () => removeEventListener('resize', ukur);
+  });
 </script>
 
 <svelte:head>
@@ -69,15 +112,41 @@
   <!-- Content -->
   <section class="tj10">
     <div class="tj11">
-      <nav class="tj12" aria-label="Kategori pertanyaan">
-        <a class="tj13 tj-nav-link tj-nav-umum" href="#umum"><span class="tj14">Umum</span></a>
-        <a class="tj15 tj-nav-link tj-nav-keamanan" href="#keamanan"
-          ><span class="tj16">Keamanan &amp; privasi</span></a
+      <nav
+        class="tj12"
+        aria-label="Kategori pertanyaan"
+        bind:this={nav}
+        data-spy={sorot.siap ? '' : undefined}
+        style:--sx="{sorot.x}px"
+        style:--sy="{sorot.y}px"
+        style:--sw="{sorot.w}px"
+        style:--sh="{sorot.h}px"
+      >
+        <span class="tj-sorot" aria-hidden="true"></span>
+        <a
+          class="tj13 tj-nav-link tj-nav-umum"
+          class:tj-aktif={aktif === 'umum'}
+          aria-current={aktif === 'umum' ? 'location' : undefined}
+          href="#umum"><span class="tj14">Umum</span></a
         >
-        <a class="tj17 tj-nav-link tj-nav-pendamping" href="#pendamping"
-          ><span class="tj18">Browser Pendamping</span></a
+        <a
+          class="tj15 tj-nav-link tj-nav-keamanan"
+          class:tj-aktif={aktif === 'keamanan'}
+          aria-current={aktif === 'keamanan' ? 'location' : undefined}
+          href="#keamanan"><span class="tj16">Keamanan &amp; privasi</span></a
         >
-        <a class="tj19 tj-nav-link tj-nav-biaya" href="#biaya"><span class="tj20">Biaya &amp; akun</span></a>
+        <a
+          class="tj17 tj-nav-link tj-nav-pendamping"
+          class:tj-aktif={aktif === 'pendamping'}
+          aria-current={aktif === 'pendamping' ? 'location' : undefined}
+          href="#pendamping"><span class="tj18">Browser Pendamping</span></a
+        >
+        <a
+          class="tj19 tj-nav-link tj-nav-biaya"
+          class:tj-aktif={aktif === 'biaya'}
+          aria-current={aktif === 'biaya' ? 'location' : undefined}
+          href="#biaya"><span class="tj20">Biaya &amp; akun</span></a
+        >
       </nav>
       <div class="tj21">
         <div class="tj22" id="umum">

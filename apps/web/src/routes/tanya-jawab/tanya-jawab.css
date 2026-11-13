@@ -201,30 +201,27 @@ html {
   white-space: nowrap;
 }
 
-/* Kategori aktif default (Umum saat tanpa target atau saat #umum jadi target) */
-.tj-nav-umum {
+/* Tanpa JavaScript: kategori aktif default (Umum saat tanpa target atau saat #umum jadi target) */
+.tj12:not([data-spy]) .tj-nav-umum {
   background-color: var(--sb-bg-secondary, #f7f2ed);
   color: var(--sb-text-primary, #252522);
-  font-weight: 600;
 }
 
 /* Bila kategori lain jadi target, hilangkan aktif dari Umum */
-.tj11:has(#keamanan:target) .tj-nav-umum,
-.tj11:has(#pendamping:target) .tj-nav-umum,
-.tj11:has(#biaya:target) .tj-nav-umum {
+.tj11:has(#keamanan:target) .tj12:not([data-spy]) .tj-nav-umum,
+.tj11:has(#pendamping:target) .tj12:not([data-spy]) .tj-nav-umum,
+.tj11:has(#biaya:target) .tj12:not([data-spy]) .tj-nav-umum {
   background-color: transparent;
   color: var(--sb-text-body, #252522a6);
-  font-weight: 400;
 }
 
 /* Kategori yang sedang jadi target mendapatkan status aktif */
-.tj11:has(#umum:target) .tj-nav-umum,
-.tj11:has(#keamanan:target) .tj-nav-keamanan,
-.tj11:has(#pendamping:target) .tj-nav-pendamping,
-.tj11:has(#biaya:target) .tj-nav-biaya {
+.tj11:has(#umum:target) .tj12:not([data-spy]) .tj-nav-umum,
+.tj11:has(#keamanan:target) .tj12:not([data-spy]) .tj-nav-keamanan,
+.tj11:has(#pendamping:target) .tj12:not([data-spy]) .tj-nav-pendamping,
+.tj11:has(#biaya:target) .tj12:not([data-spy]) .tj-nav-biaya {
   background-color: var(--sb-bg-secondary, #f7f2ed);
   color: var(--sb-text-primary, #252522);
-  font-weight: 600;
 }
 
 .tj13:hover,
@@ -1160,15 +1157,110 @@ html {
 .tj-q > summary::-webkit-details-marker {
   display: none;
 }
-.tj-q > summary > h3 {
-  font-weight: 500;
-}
+/* Judul pertanyaan tidak berubah tebal saat dibuka (teks tidak "membesar"). */
+.tj-q > summary > h3,
 .tj-q[open] > summary > h3 {
   font-weight: 600;
 }
-.tj-q:not([open]) .tj-ikon-buka,
-.tj-q[open] .tj-ikon-tutup {
+/* Ikon plus/minus frame diganti panah yang berputar saat dibuka. */
+.tj-q .tj-ikon-buka,
+.tj-q .tj-ikon-tutup {
   display: none;
+}
+.tj-q > summary::after {
+  content: '';
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  margin: 0 6px 4px 16px;
+  border-right: 2px solid #252522b3;
+  border-bottom: 2px solid #252522b3;
+  transform: rotate(45deg);
+  transition: transform 0.25s ease;
+}
+.tj-q[open] > summary::after {
+  transform: translateY(4px) rotate(225deg);
+}
+.tj-q > summary:hover::after {
+  border-color: #252522;
+}
+/* Jawaban muncul dari bawah ke atas saat dibuka. */
+.tj-q[open] > :not(summary) {
+  animation: tj-muncul 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes tj-muncul {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tj-q > summary::after {
+    transition: none;
+  }
+  .tj-q[open] > :not(summary) {
+    animation: none;
+  }
+}
+
+/*
+ * Kategori: berat huruf tetap (tidak menebal saat aktif). Dengan JavaScript (data-spy), satu latar .tj-sorot
+ * bergeser ke kategori bagian yang sedang dibaca; tanpa JavaScript tetap memakai aturan :target di atas.
+ */
+.tj-nav-link,
+.tj-nav-umum,
+.tj11:has(:target) .tj-nav-link {
+  font-weight: 500;
+}
+.tj12 {
+  position: sticky;
+}
+.tj-sorot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--sw, 0);
+  height: var(--sh, 0);
+  transform: translate(var(--sx, 0), var(--sy, 0));
+  border-radius: 12px;
+  background-color: var(--sb-bg-secondary, #f7f2ed);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1),
+    width 0.35s cubic-bezier(0.2, 0.7, 0.2, 1),
+    height 0.35s ease;
+}
+.tj12[data-spy] .tj-sorot {
+  opacity: 1;
+}
+.tj12 > a {
+  position: relative;
+  z-index: 1;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+.tj12[data-spy] > a,
+.tj12[data-spy] > a.tj-nav-umum {
+  background-color: transparent;
+  color: var(--sb-text-body, #252522a6);
+}
+.tj12[data-spy] > a.tj-aktif {
+  color: var(--sb-text-primary, #252522);
+}
+.tj12[data-spy] > a:not(.tj-aktif):hover {
+  background-color: #efe6dc80;
+  color: var(--sb-text-primary, #252522);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tj-sorot {
+    transition: none;
+  }
 }
 .tj-q > summary:focus-visible {
   outline: 2px solid #252522;
@@ -1206,15 +1298,31 @@ html {
   .tj7 {
     align-self: center;
   }
+  /* HP/tablet: kategori jadi baris yang ikut menempel di atas saat scroll (geser ke samping bila sempit). */
   .tj12 {
-    position: static;
+    position: sticky;
+    top: 0;
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
     width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 10px 0;
+    background-color: var(--sb-bg-primary, #fffcfa);
+    border-bottom: 1px solid var(--sb-stroke, #efe6dc);
+  }
+  .tj12::-webkit-scrollbar {
+    display: none;
   }
   .tj12 > a {
     width: fit-content;
+  }
+  #umum,
+  #keamanan,
+  #pendamping,
+  #biaya {
+    scroll-margin-top: 80px;
   }
   .tj21 {
     flex: none;
