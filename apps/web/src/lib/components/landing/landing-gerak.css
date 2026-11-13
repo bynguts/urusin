@@ -8,17 +8,12 @@
   inherits: false;
   initial-value: 100%;
 }
-@property --lp-w {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: -30%;
-}
 
 /* Elemen tambahan khusus gerak: tersembunyi di desain statis */
 .lp .lp88 i,
 .lp .n-pil-kata,
 .lp .n-hero-gelombang,
-.lp .n-riak,
+.lp .n-gelombang,
 .lp .n-demo {
   display: none;
 }
@@ -99,56 +94,48 @@
     }
   }
   .lp .n-hero-gelombang::before,
-  .lp .n-hero-gelombang::after {
+  .lp .n-hero-gelombang::after,
+  .lp .n-gelombang::before,
+  .lp .n-gelombang::after {
     content: '';
     position: absolute;
     left: 50%;
-    top: 100%;
-    width: 2200px;
-    height: 2200px;
-    margin: -1100px 0 0 -1100px;
+    top: var(--lp-oy, 100%);
+    width: var(--lp-cincin, 2200px);
+    height: var(--lp-cincin, 2200px);
+    margin: calc(var(--lp-cincin, 2200px) / -2) 0 0 calc(var(--lp-cincin, 2200px) / -2);
     border-radius: 50%;
     background: radial-gradient(closest-side, #25252200 58%, #252522 80%, #25252200);
     opacity: 0;
     animation: lp-riak 7s cubic-bezier(0.25, 0.1, 0.5, 1) 1.2s infinite;
   }
-  .lp .n-hero-gelombang::after {
+  .lp .n-hero-gelombang::after,
+  .lp .n-gelombang::after {
     animation-delay: 4.7s;
   }
 
-  /* Pola titik lain (kartu, visual, panel, latar bagian): gelombang yang sama dengan hero. Lapisan
-     .n-riak = gambar pola yang sama, di-multiply dua kali sehingga titiknya menggelap, dan hanya terlihat
-     di dalam cincin yang mengembang dari tengah bawah (mask, --lp-w beranimasi). Ponsel: tidak ada. */
+  /* Latar besar Perbandingan dan Tanya jawab: gelombang persis seperti hero (cincin gelap yang hanya
+     terlihat lewat titik pola). Topeng *-titik.webp = alfa titik saja dari gambar latar yang buram,
+     dikalibrasi ke alfa pola hero. Kartu kecil sengaja tanpa gerak (keputusan pemilik 2026-11-14). */
+  .lp .n-gelombang {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    mask: var(--lp-pola) center / 100% 100% no-repeat;
+  }
+  .lp .n-gelombang-banding {
+    --lp-oy: 72%;
+    --lp-cincin: 2600px;
+  }
+  .lp .n-gelombang-faq {
+    --lp-oy: 58%;
+    --lp-cincin: 2400px;
+  }
   @media (min-width: 768px) {
-    .lp .n-riak {
+    .lp .n-gelombang {
       display: block;
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-      pointer-events: none;
-      border-radius: inherit;
-      background:
-        var(--lp-pola) center / 100% 100% no-repeat,
-        var(--lp-pola) center / 100% 100% no-repeat;
-      background-blend-mode: multiply;
-      mix-blend-mode: multiply;
-      --lp-tepi: linear-gradient(#000, #000);
-      mask-image:
-        radial-gradient(
-          circle farthest-corner at 50% 100%,
-          transparent calc(var(--lp-w) - 24%),
-          #000 var(--lp-w),
-          transparent calc(var(--lp-w) + 24%)
-        ),
-        var(--lp-tepi);
-      mask-composite: intersect;
-      animation: lp-riak-pola 7.5s cubic-bezier(0.3, 0.1, 0.55, 1) 0.8s infinite backwards;
-    }
-    .lp :is(.lp219, .lp262, .lp275) > .n-riak {
-      animation-duration: 9s;
-    }
-    .lp :is(.lp148, .lp185, .lp210) > .n-riak {
-      animation-delay: 2.4s;
     }
   }
 
@@ -562,15 +549,6 @@
   from {
     opacity: 0;
     --lp-r: 0%;
-  }
-}
-@keyframes lp-riak-pola {
-  0% {
-    --lp-w: -30%;
-  }
-  85%,
-  100% {
-    --lp-w: 130%;
   }
 }
 @keyframes lp-pil-warna {

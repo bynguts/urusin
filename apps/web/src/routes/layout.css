@@ -554,3 +554,25 @@ select:not(.bg-transparent):focus {
 :is(.lp17, .lp11, .lp20, .lp58, .lp130, .ck347, .ck350, .ur254, .ur257, .tj92, .tj95):active {
   background-image: linear-gradient(rgb(150 120 90 / 0.3), rgb(150 120 90 / 0.3));
 }
+
+/*
+ * Panah pada tautan/tombol (keputusan pemilik 2026-11-14): diam miring ke kanan atas, saat hover atau
+ * fokus keyboard berputar lurus dan bergeser sedikit ke kanan. Ikon lain tidak terpengaruh.
+ */
+:is(a, button) [data-ikon='panah'] {
+  transform: rotate(-45deg);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (hover: hover) {
+  :is(a, button):not(:disabled):hover [data-ikon='panah'] {
+    transform: translateX(3px);
+  }
+}
+:is(a, button):focus-visible [data-ikon='panah'] {
+  transform: translateX(3px);
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(a, button) [data-ikon='panah'] {
+    transition: none;
+  }
+}

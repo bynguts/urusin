@@ -9,51 +9,63 @@
 </script>
 
 <div class="kontak" id="kontak">
-  <div class="isi">
-    <p class="label">Untuk pemda, instansi, dan mitra</p>
-    <h2 class="judul">Mau bawa Urusin ke daerah Anda?</h2>
-    <p class="sub">
-      Kami terbuka untuk kerja sama layanan, integrasi portal, dan uji coba di kelurahan atau komunitas Anda.
-      Ceritakan kebutuhannya, tim kami membalas langsung.
-    </p>
-  </div>
-  <div class="aksi">
-    <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- mailto, bukan rute -->
-    <a class="tombol" href={mailto}>
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor">
-        <rect x="3" y="5" width="18" height="14" rx="3" stroke-width="1.8" />
-        <path d="m4 7 8 6 8-6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
-      <span>Hubungi tim Urusin</span>
-      <svg class="panah" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none">
-        <path
-          d="M5 12h14m-5-5 5 5-5 5"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-    </a>
-    <p class="alamat">atau tulis ke <span>{email}</span></p>
+  <div class="panel">
+    <div class="isi">
+      <p class="label">Untuk pemda, instansi, dan mitra</p>
+      <h2 class="judul">Mau bawa Urusin ke daerah Anda?</h2>
+      <p class="sub">
+        Kami terbuka untuk kerja sama layanan, integrasi portal, dan uji coba di kelurahan atau komunitas
+        Anda. Ceritakan kebutuhannya, tim kami membalas langsung.
+      </p>
+    </div>
+    <div class="aksi">
+      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- mailto, bukan rute -->
+      <a class="tombol" href={mailto}>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor">
+          <rect x="3" y="5" width="18" height="14" rx="3" stroke-width="1.8" />
+          <path d="m4 7 8 6 8-6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Hubungi tim Urusin</span>
+        <svg data-ikon="panah" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none">
+          <path
+            d="M5 12h14m-5-5 5 5-5 5"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </a>
+      <p class="alamat">atau tulis ke <span>{email}</span></p>
+    </div>
   </div>
 </div>
 
 <style>
+  /* Kartu bertumpuk: bingkai krem membulat, di dalamnya panel putih membulat berbayang lembut (gaya
+     kartu layanan landing; keputusan pemilik 2026-11-14). */
   .kontak {
     margin-top: 20px;
     width: 100%;
+    padding: 8px;
+    border-radius: 30px;
+    background: var(--sb-bg-card, #fcf8f5);
+    outline: 1px solid var(--sb-stroke, #efe6dc);
+    outline-offset: -0.5px;
+  }
+  .panel {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 32px;
-    padding: 36px 48px;
-    border-radius: 28px;
-    background:
-      radial-gradient(120% 140% at 100% 0%, #f6dccf 0%, transparent 55%),
-      radial-gradient(90% 120% at 0% 100%, #f3e9d9 0%, transparent 60%), #fbf6f0;
-    outline: 1px solid var(--sb-stroke, #efe6dc);
-    outline-offset: -0.5px;
+    padding: 36px 44px;
+    border-radius: 22px;
+    background: radial-gradient(70% 160% at 100% 0%, #fbeee4 0%, #fff0 60%), var(--sb-bg-white, #ffffff);
+    box-shadow:
+      0 0 1px #0000000f,
+      0 1px 2px #0000000d,
+      0 8px 16px -6px #2525221f,
+      0 18px 32px -14px #2525222e;
   }
   .isi {
     display: flex;
@@ -125,11 +137,15 @@
   }
   @media (max-width: 767px) {
     .kontak {
+      padding: 6px;
+      border-radius: 24px;
+    }
+    .panel {
       flex-direction: column;
       align-items: stretch;
-      padding: 28px 22px;
+      padding: 26px 20px;
       gap: 22px;
-      border-radius: 22px;
+      border-radius: 19px;
     }
     .tombol {
       justify-content: center;
