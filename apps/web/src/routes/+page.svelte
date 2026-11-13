@@ -132,7 +132,7 @@
   import g6714886 from '#lib/assets/img/pen-landing/stage-b832-334.webp';
   import g60d4976 from '#lib/assets/img/pen-landing/amber-berdiri-520.webp';
   import g34c86fd from '#lib/assets/img/pen-landing/stage-e79e-334.webp';
-  import gce73af8 from '#lib/assets/img/pen-landing/blue-berdiri-480.webp';
+  import siluetUrusanLain from '#lib/assets/img/pen-landing/siluet-urusan-lain-480.webp';
   import g17d724d from '#lib/assets/img/pen-landing/visual-bef2-510.webp';
   import g8430cc2 from '#lib/assets/img/pen-landing/rose-44.webp';
   import g5535a9a from '#lib/assets/img/pen-landing/amber-duduk-120.webp';
@@ -1879,7 +1879,7 @@
           <img class="lp68" src={g34c86fd} alt="" width="333" height="196" loading="lazy" decoding="async" />
           <img
             class="lp127"
-            src={gce73af8}
+            src={siluetUrusanLain}
             alt=""
             width="240"
             height="262"
