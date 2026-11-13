@@ -61,6 +61,28 @@ test('Enter mengirim, Shift+Enter menambah baris', async ({ page }) => {
   await expect(log.locator('[data-pelaku="warga"]').last()).toContainText('baris dua');
 });
 
+test('Beranda: Enter mengirim, Shift+Enter menambah baris (sama dengan komposer urusan)', async ({
+  page,
+}) => {
+  await daftarAkunUji(page);
+  await page.goto('/beranda');
+  const kirim: string[] = [];
+  await page.route(/\/beranda\?\/mulai/, (route) => {
+    kirim.push(route.request().postData() ?? '');
+    return route.abort();
+  });
+  const kotak = page.getByLabel('Ceritakan urusan Anda');
+  await kotak.click();
+  await kotak.pressSequentially('anak saya lahir');
+  await kotak.press('Shift+Enter');
+  await kotak.pressSequentially('di Wonogiri');
+  await expect(kotak).toHaveValue('anak saya lahir\ndi Wonogiri');
+  expect(kirim).toHaveLength(0);
+  await kotak.press('Enter');
+  await expect.poll(() => kirim.length).toBe(1);
+  expect(new URLSearchParams(kirim[0]).get('pesan')).toBe('anak saya lahir\ndi Wonogiri');
+});
+
 test('URL di pesan AI jadi tautan biru yang bisa diklik dan membuka tab baru', async ({ page, context }) => {
   await context.route('https://contoh.go.id/**', (route) =>
     route.fulfill({ contentType: 'text/html', body: '<title>Situs tiruan</title>ok' }),

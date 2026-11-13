@@ -181,6 +181,24 @@ export function dekodeFrameBiner(
 }
 
 /** Atribut input tersembunyi: tanpa autofill/autokoreksi/kamus; sandi = type password; OTP = one-time-code. */
+/**
+ * Isi penjaga input tersembunyi (zero-width space). Sebagian keyboard Android tidak mengirim apa pun saat
+ * Backspace ditekan di kotak KOSONG, jadi warga tidak bisa membetulkan salah ketik sandinya. Dengan satu karakter
+ * penjaga (kursor di belakangnya), Backspace selalu menghapus sesuatu -> deleteContentBackward -> Backspace ke
+ * situs; penjaga lalu ditanam ulang. Penjaga tidak pernah dikirim ke situs.
+ */
+export const PENJAGA_INPUT = '\u200b';
+
+/** Tanam ulang penjaga dan taruh kursor di belakangnya. */
+export function semaiInput(el: HTMLInputElement | HTMLTextAreaElement): void {
+  if (el.value !== PENJAGA_INPUT) el.value = PENJAGA_INPUT;
+  try {
+    el.setSelectionRange?.(PENJAGA_INPUT.length, PENJAGA_INPUT.length);
+  } catch {
+    // jenis input tanpa seleksi: abaikan
+  }
+}
+
 export function aturInputTeks(el: HTMLInputElement | HTMLTextAreaElement, jenis: JenisFokus = 'teks'): void {
   el.setAttribute('autocomplete', jenis === 'otp' ? 'one-time-code' : 'off');
   el.setAttribute('autocorrect', 'off');
@@ -189,7 +207,7 @@ export function aturInputTeks(el: HTMLInputElement | HTMLTextAreaElement, jenis:
   el.setAttribute('inputmode', jenis === 'otp' || jenis === 'angka' ? 'numeric' : 'text');
   if ('type' in el && el.tagName === 'INPUT')
     (el as HTMLInputElement).type = jenis === 'sandi' ? 'password' : 'text';
-  el.value = '';
+  semaiInput(el);
 }
 
 export function createPendampingViewer(
@@ -220,6 +238,9 @@ export function createPendampingViewer(
   let gerakTerakhir = 0;
   let menggambar = false;
   let frameTertunda: { jpeg: Uint8Array; meta: PendampingFrameMeta; seq: number | undefined } | null = null;
+  // Frame terakhir yang tergambar: digambar ulang saat ukuran kanvas berubah (mis. jendela HP -> desktop) tanpa
+  // menunggu frame baru, supaya gambar tidak meregang mengikuti ukuran CSS baru.
+  let terakhir: { jpeg: Uint8Array; meta: PendampingFrameMeta } | null = null;
 
   const setKoneksi = (s: ViewerStatus) => {
     koneksi = s;
@@ -264,6 +285,7 @@ export function createPendampingViewer(
         );
       }
       img.close?.();
+      terakhir = { jpeg, meta: m };
       meta = m;
       emit('frame', m);
     } catch {
@@ -431,29 +453,84 @@ export function createPendampingViewer(
       return;
     }
     if (!KEY_KHUSUS.has(e.key) && !(mod & 6)) return;
+    // Backspace di input tersembunyi: biarkan menghapus penjaga, dikirim sekali lewat beforeinput/input (jalur
+    // yang sama dengan keyboard Android, yang tidak selalu mengirim keydown Backspace).
+    if (e.key === 'Backspace' && !(mod & 6) && inputTeks && e.target === inputTeks) return;
     e.preventDefault?.();
     kirimInput({ type: 'key', aksi, key: e.key, code: e.code, mod });
   };
 
   const inputTeks = opts.inputTeks;
+  const backspace = () => {
+    kirimInput({ type: 'key', aksi: 'down', key: 'Backspace', code: 'Backspace' });
+    kirimInput({ type: 'key', aksi: 'up', key: 'Backspace', code: 'Backspace' });
+  };
+  // beforeinput keyboard ponsel sering tidak bisa dibatalkan: event `input` sesudahnya tetap datang. Penanda ini
+  // mencegah kiriman ganda; dilepas di task berikutnya (event `input` dikirim dalam task yang sama).
+  let sudahDikirim = false;
+  const tandaiDikirim = () => {
+    sudahDikirim = true;
+    setTimeout(() => (sudahDikirim = false), 0);
+  };
   const onBeforeInput = (e: InputEvent) => {
     if (mode !== 'takeover') return;
     if (e.inputType === 'deleteContentBackward') {
+      tandaiDikirim();
       kirimInput({ type: 'key', aksi: 'down', key: 'Backspace', code: 'Backspace' });
       kirimInput({ type: 'key', aksi: 'up', key: 'Backspace', code: 'Backspace' });
       e.preventDefault?.();
     } else if (e.inputType === 'insertText' && e.data) {
+      tandaiDikirim();
       kirimInput({ type: 'text', teks: e.data.slice(0, 500) });
       e.preventDefault?.();
     } else if (e.inputType === 'insertLineBreak') {
+      tandaiDikirim();
       kirimInput({ type: 'key', aksi: 'down', key: 'Enter', code: 'Enter' });
       kirimInput({ type: 'key', aksi: 'up', key: 'Enter', code: 'Enter' });
       e.preventDefault?.();
     }
   };
+  // Keyboard ponsel berkomposisi (Gboard dkk. menggarisbawahi kata yang sedang diketik): isi kotak = teks
+  // komposisi. Selisihnya dikirim seketika (hapus + ketik), jadi huruf tampil di situs saat diketik, bukan baru
+  // saat kata di-commit (sebelumnya sandi tanpa spasi tidak pernah sampai sebelum warga mengetuk Masuk).
+  let komposisi = '';
+  const kirimSelisih = (baru: string) => {
+    if (mode !== 'takeover') return;
+    let p = 0;
+    while (p < komposisi.length && p < baru.length && komposisi[p] === baru[p]) p++;
+    for (let i = p; i < komposisi.length; i++) {
+      kirimInput({ type: 'key', aksi: 'down', key: 'Backspace', code: 'Backspace' });
+      kirimInput({ type: 'key', aksi: 'up', key: 'Backspace', code: 'Backspace' });
+    }
+    if (baru.length > p) kirimInput({ type: 'text', teks: baru.slice(p, p + 500) });
+    komposisi = baru;
+  };
+  const tanpaPenjaga = (v: string) => v.split(PENJAGA_INPUT).join('');
+  const onCompositionStart = () => {
+    komposisi = '';
+  };
+  const onInput = (e: Event) => {
+    const ie = e as InputEvent;
+    if (!inputTeks) return;
+    if (ie.isComposing || ie.inputType === 'insertCompositionText') {
+      kirimSelisih(tanpaPenjaga(inputTeks.value));
+      return;
+    }
+    // Tanpa beforeinput yang sudah mengirim (peramban/keyboard lama): penjaga hilang = Backspace.
+    if (!sudahDikirim && mode === 'takeover') {
+      const teks = tanpaPenjaga(inputTeks.value);
+      if (ie.inputType === 'deleteContentBackward' || !inputTeks.value.includes(PENJAGA_INPUT)) backspace();
+      else if (teks) kirimInput({ type: 'text', teks: teks.slice(0, 500) });
+    }
+    semaiInput(inputTeks);
+  };
   const onCompositionEnd = (e: CompositionEvent) => {
-    if (e.data) kirimInput({ type: 'text', teks: e.data.slice(0, 500) });
-    if (inputTeks) inputTeks.value = '';
+    kirimSelisih(e.data ?? '');
+    komposisi = '';
+    if (inputTeks) semaiInput(inputTeks);
+  };
+  const onFokus = () => {
+    if (inputTeks && !komposisi) semaiInput(inputTeks);
   };
 
   const pasang: [EventTarget, string, EventListener][] = [
@@ -470,7 +547,10 @@ export function createPendampingViewer(
     aturInputTeks(inputTeks);
     pasang.push(
       [inputTeks, 'beforeinput', onBeforeInput as EventListener],
+      [inputTeks, 'compositionstart', onCompositionStart as EventListener],
+      [inputTeks, 'input', onInput as EventListener],
       [inputTeks, 'compositionend', onCompositionEnd as EventListener],
+      [inputTeks, 'focus', onFokus as EventListener],
       [inputTeks, 'keydown', onKey('down') as EventListener],
       [inputTeks, 'keyup', onKey('up') as EventListener],
     );
@@ -479,6 +559,20 @@ export function createPendampingViewer(
   if (canvas.style) canvas.style.touchAction = 'none'; // gestur sentuh diteruskan, bukan menggulir halaman kita
 
   void sambung();
+
+  const amatiUkuran =
+    typeof ResizeObserver === 'undefined'
+      ? undefined
+      : new ResizeObserver(() => {
+          const t = terakhir;
+          if (!t || ditutup) return;
+          const rect = canvas.getBoundingClientRect();
+          const r = dpr();
+          if (canvas.width === Math.round(rect.width * r) && canvas.height === Math.round(rect.height * r))
+            return;
+          void gambar(t.jpeg, t.meta);
+        });
+  amatiUkuran?.observe(canvas);
 
   return {
     get mode() {
@@ -499,6 +593,7 @@ export function createPendampingViewer(
     akhiri: () => kirim({ type: 'akhiri' }),
     tutup() {
       ditutup = true;
+      amatiUkuran?.disconnect();
       clearTimeout(timerUlang);
       clearInterval(timerPing);
       for (const [t, type, fn] of pasang) t.removeEventListener(type, fn);

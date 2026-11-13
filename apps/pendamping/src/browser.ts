@@ -265,7 +265,8 @@ export const PESAN_LAYAR_LEBAR =
   'Tombol masuk situs ini hanya muncul di layar lebar, jadi tampilan dilebarkan. Perbesar layar bila tulisan terlalu kecil.';
 
 const PESAN_VERIFIKASI =
-  "Situs meminta verifikasi keamanan. Ketuk kotak 'Verify you are human', lalu tunggu sebentar. AI menunggu dan tidak akan mengekliknya.";
+  // Widget bisa berbahasa Indonesia atau Inggris tergantung peramban/situs: sebut keduanya.
+  "Situs meminta verifikasi keamanan. Ketuk kotak verifikasinya ('Verifikasi bahwa Anda adalah manusia' atau 'Verify you are human'), lalu tunggu sebentar. AI menunggu dan tidak akan mengekliknya.";
 
 /** Widget Turnstile sudah menghasilkan token? (hanya ada/tidaknya; nilai token tidak pernah dibaca keluar). */
 const TOKEN_TURNSTILE_ADA = `Array.from(document.querySelectorAll('input[name="cf-turnstile-response"]')).some((e) => e.value.length > 0)`;

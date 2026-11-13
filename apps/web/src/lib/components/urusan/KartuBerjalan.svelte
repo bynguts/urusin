@@ -49,7 +49,13 @@
             : ''}"
           aria-hidden="true"
         ></span>
-        {urusan.ringkasan ? info.label : memuat ? 'Memuat status…' : 'Status belum tersedia'}
+        {urusan.ringkasan
+          ? info.label
+          : memuat
+            ? 'Memuat status…'
+            : urusan.hilang
+              ? 'Tidak tersedia di akun ini'
+              : 'Status belum tersedia'}
       </span>
     </div>
   </div>

@@ -169,7 +169,7 @@ test('kotak centang "Performing security verification" (200, tanpa cf-mitigated)
     const sorot = await tungguSorot(rekam, 'Situs meminta verifikasi keamanan');
     expect(sorot.lebar).toBeGreaterThan(200);
     expect(rekam.modes.at(-1)).toMatch(
-      /^takeover:Situs meminta verifikasi keamanan\. Ketuk kotak 'Verify you are human'/,
+      /^takeover:Situs meminta verifikasi keamanan\. Ketuk kotak verifikasinya \('Verifikasi bahwa Anda adalah manusia' atau 'Verify you are human'\)/,
     );
     // AI menunggu: tidak mencentang, tidak mengisi. Diamati langsung di Chromium, sebelum DAN sesudah jeda.
     expect(await kotakTercentang(halaman)).toBe(false);

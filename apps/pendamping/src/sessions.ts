@@ -423,6 +423,9 @@ export class SessionManager {
     if (!built.ok) throw new PendampingError('ADAPTER_TIDAK_ADA', 422, built.message);
     if (built.program.origin !== new URL(input.origin).origin)
       throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'origin registry tidak cocok dengan adapter');
+    // Alur simulasi (formulir contoh replika) tidak pernah dijalankan ke portal resmi: hanya Mode Uji.
+    if (built.program.hanyaUji === true && input.modeUji !== true)
+      throw new PendampingError('ADAPTER_TIDAK_ADA', 422, 'alur simulasi hanya di replika uji');
     const ov = this.config.originOverrides.get(built.program.origin);
     // Mode Uji (juri/tamu): HANYA replika fixture; tanpa pemetaan untuk situs ini sesi ditolak (gagal tertutup).
     if (input.modeUji === true) {
@@ -1126,6 +1129,7 @@ export class SessionManager {
       situs: s.program.origin,
       replika: this.config.fixtureOrigins.includes(s.program.origin),
       ...(s.lihatSaja ? { lihatSaja: true } : {}),
+      ...(s.program.hanyaUji ? { simulasi: true } : {}),
     };
   }
 

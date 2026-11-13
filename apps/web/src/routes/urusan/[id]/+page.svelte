@@ -40,7 +40,7 @@
   import { ambilJudul } from '#lib/judul-urusan.js';
   import type { PesanWarga } from '#lib/stores/lokal.svelte.js';
   import { UrusanStore } from '#lib/stores/urusan.svelte.js';
-  import { waktuSingkat } from '#lib/urusan-status.js';
+  import { panelSesiDemo, waktuSingkat } from '#lib/urusan-status.js';
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
@@ -65,7 +65,7 @@
   let konfirmasi = $state<{ key: string; status: 'mengirim' | 'disetujui' } | null>(null);
   let konfirmasiGalat = $state<string | undefined>(undefined);
   let canvas: HTMLCanvasElement | null = $state(null);
-  let inputTeks: HTMLTextAreaElement | null = $state(null);
+  let inputTeks: HTMLInputElement | null = $state(null);
   let izin = $state<{ sibuk: boolean; pesan?: string }>({ sibuk: false });
 
   const k = $derived(store.keadaan);
@@ -87,6 +87,15 @@
         : ('MENUNGGU_LOGIN_WARGA' as const);
     return keadaanUrusan;
   });
+  // Sesi demo (lihat saja di situs asli / simulasi di replika): langkah panel per mode dari sesi nyata.
+  const sesiDemo = $derived(
+    panelSesiDemo({
+      situs: sesi.data.situs,
+      keadaan: sesi.data.keadaan,
+      giliran: sesi.data.giliran,
+      menungguIzin,
+    }),
+  );
   // Jenis urusan terkini: halaman bisa dimuat sebelum harness mengklasifikasi (jenis null), jadi rencana yang
   // tiba lewat stream membawa jenisnya; tanpa itu lencana tertahan di "KTP & dokumen" untuk kelahiran/pindah.
   const jenisKini = $derived(k.rencana?.jenis ?? data.urusan.jenis);
@@ -563,6 +572,7 @@
           {sorot}
           persiapan={persiapanPendamping}
           {menungguIzin}
+          {sesiDemo}
         >
           {#snippet bawah()}
             {#if pendampingAktif}
@@ -724,11 +734,16 @@
                 <PesanAgen avatar={p.avatar}><KartuChecklist checklist={it.e} /></PesanAgen>
               {:else if it.jenis === 'konfirmasi'}
                 <PesanAgen avatar={p.avatar}>
-                  <p>Sebelum saya membuka situs resmi, periksa dulu data yang akan diisi:</p>
+                  <p>
+                    {data.pendamping.peran === 'juri'
+                      ? 'Mode demo: saya membuka situs resmi asli untuk dilihat saja, tanpa mengisi apa pun.'
+                      : 'Sebelum saya membuka situs resmi, periksa dulu data yang akan diisi:'}
+                  </p>
                   <div data-konfirmasi={it.key}>
                     <KartuKonfirmasi
                       gate={it.gate}
                       permintaan={it.permintaan}
+                      demo={data.pendamping.peran === 'juri'}
                       {situs}
                       aktif={it.key === konfirmasiAktif}
                       status={konfirmasi?.key === it.key ? konfirmasi.status : 'menunggu'}
