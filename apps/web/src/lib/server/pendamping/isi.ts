@@ -92,7 +92,7 @@ export function izinkanIsiUrusan(
     kodeWilayah,
     rencanaHash: p.rencanaHash,
   });
-  const data = dataIsian(rt, ownerId, p.writeList);
+  const data = dataIsian(rt, ownerId, p.writeList, kodeWilayah);
   const jenisAda = new Set(rt.akun.vault.listDocuments(ownerId).map((d) => d.jenis));
   const kurang: string[] = [];
   for (const w of p.writeList) {

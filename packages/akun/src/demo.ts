@@ -28,6 +28,38 @@ export function dataDiriSintetis(): Record<string, string> {
   };
 }
 
+/**
+ * Bagian Data Diri sintetis yang mengikuti wilayah (kode kab/kota) urusan demo. Hanya wilayah yang punya formulir
+ * simulasi di replika; wilayah lain memakai templat bawaan (Wonogiri). Semuanya fiktif.
+ */
+const WILAYAH_SINTETIS: Readonly<Record<string, Record<string, string>>> = {
+  '3578': { tempatLahir: 'Surabaya', kelurahan: 'Embong Kaliasin', kecamatan: 'Genteng', kodePos: '60271' },
+  '3374': { tempatLahir: 'Semarang', kelurahan: 'Sekayu', kecamatan: 'Semarang Tengah', kodePos: '50132' },
+};
+
+/**
+ * Data Diri sintetis salinan demo, disesuaikan dengan wilayah urusan `kode` (mis. simulasi Surabaya: NIK 3578…,
+ * lahir di Surabaya). Hanya kolom yang MASIH sama dengan templat bawaan yang diganti: isian yang sudah diubah juri
+ * di Data Diri dipertahankan. Wilayah tanpa templat: data apa adanya.
+ */
+export function dataDiriSintetisWilayah(
+  data: Readonly<Record<string, unknown>>,
+  kode: string | null | undefined,
+): Record<string, unknown> {
+  const bagian = kode ? WILAYAH_SINTETIS[kode] : undefined;
+  if (!kode || !bagian) return { ...data };
+  const bawaan = dataDiriSintetis();
+  const wilayah: Record<string, string> = {
+    ...bagian,
+    kodeKabKota: kode,
+    nik: [kode, '01', '410190', '0001'].join(''),
+    noKk: [kode, '01', '020120', '0002'].join(''),
+  };
+  const out: Record<string, unknown> = { ...data };
+  for (const [k, v] of Object.entries(wilayah)) if (data[k] === bawaan[k]) out[k] = v;
+  return out;
+}
+
 /** PNG 1x1 abu-abu: isi berkas contoh. Bukan foto dokumen apa pun; hanya agar alur unggah demo bisa dicoba. */
 const PNG_CONTOH = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
