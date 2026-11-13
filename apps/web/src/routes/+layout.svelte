@@ -9,6 +9,7 @@
   import { NAV, rutAuth, rutWeb } from '#lib/components/shell/navigasi.js';
   import Icon from '#lib/components/Icon.svelte';
   import { ambilLokal, ambilPrefs } from '#lib/stores/app.svelte.js';
+  import { tandaiKeLanding } from '#lib/ke-landing.js';
   import { page } from '$app/state';
   import { resolve } from '$app/paths';
   import { MediaQuery } from 'svelte/reactivity';
@@ -101,6 +102,7 @@
         <a
           href={resolve('/')}
           data-sveltekit-reload
+          onclick={tandaiKeLanding}
           class="flex h-11 items-center gap-2"
           aria-label="Urusin, ke halaman depan"
         >

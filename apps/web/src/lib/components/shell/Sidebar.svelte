@@ -5,6 +5,7 @@
   import Icon from '../Icon.svelte';
   import { NAV, menuAktif } from './navigasi.js';
   import { ambilLokal } from '#lib/stores/app.svelte.js';
+  import { tandaiKeLanding } from '#lib/ke-landing.js';
   import GantiNamaUrusan from '../urusan/GantiNamaUrusan.svelte';
   import MenuUrusan from '../urusan/MenuUrusan.svelte';
 
@@ -42,6 +43,7 @@
     <a
       href={resolve('/')}
       data-sveltekit-reload
+      onclick={tandaiKeLanding}
       class="flex items-center gap-2 {ciut ? 'justify-center py-1' : ''}"
       aria-label="Urusin, ke halaman depan"
     >
