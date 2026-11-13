@@ -6,11 +6,25 @@ import { bacaTerakhir, SID_COOKIE } from '#lib/server/sesi.js';
 import { urusanMilik } from '#lib/server/urusan-akses.js';
 import type { Actions, PageServerLoad } from './$types';
 
-/** Landing tetap publik; akun yang punya urusan terakhir di perangkat ini langsung ke Beranda. */
-export const load: PageServerLoad = async ({ cookies, locals }) => {
+/** Asal tautan sama dengan situs ini (mis. logo di aplikasi): warga sengaja membuka landing. */
+function dariSitusSendiri(request: Request, url: URL): boolean {
+  const ref = request.headers.get('referer');
+  if (!ref) return false;
+  try {
+    return new URL(ref).host === url.host;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Landing tetap publik; akun yang punya urusan terakhir di perangkat ini langsung ke Beranda saat membuka situs
+ * dari luar. Logo di aplikasi sengaja membawa ke landing, jadi tautan dari situs sendiri tidak dialihkan.
+ */
+export const load: PageServerLoad = async ({ cookies, locals, request, url }) => {
   // Klaim cakupan Browser Pendamping dari satu sumber kebenaran (ADR 0033).
   const data = { jumlahDaerahPendamping: DAERAH_PENDAMPING_AKTIF.length };
-  if (!locals.akun) return data;
+  if (!locals.akun || dariSitusSendiri(request, url)) return data;
   const id = bacaTerakhir(cookies);
   if (!id) return data;
   const rt = await getRuntime();
