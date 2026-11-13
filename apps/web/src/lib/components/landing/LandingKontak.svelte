@@ -63,9 +63,8 @@
     background: radial-gradient(70% 160% at 100% 0%, #fbeee4 0%, #fff0 60%), var(--sb-bg-white, #ffffff);
     box-shadow:
       0 0 1px #0000000f,
-      0 1px 2px #0000000d,
-      0 8px 16px -6px #2525221f,
-      0 18px 32px -14px #2525222e;
+      0 1px 1px #0000000f,
+      0 2px 4px #0000000a;
   }
   .isi {
     display: flex;
