@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { AkunError, amanNext } from '@urusin/akun';
+import { AkunError } from '@urusin/akun';
 import {
   akunPublik,
   juriTersedia,
@@ -7,6 +7,7 @@ import {
   masukJuri,
   pasangSesi,
   TAUTKAN_COOKIE,
+  tujuanMasuk,
   turnstileLolos,
 } from '#lib/server/akun.js';
 import { gagalForm, teks } from '#lib/server/akun-form.js';
@@ -32,9 +33,9 @@ const tokenTurnstile = (form: FormData) => teks(form, 'cf-turnstile-response') |
  * `lanjut` adalah alias `next`.
  */
 export const load: PageServerLoad = async ({ url, locals, cookies }) => {
-  const next = amanNext(url.searchParams.get('lanjut') ?? url.searchParams.get('next'));
+  const next = tujuanMasuk(url.searchParams.get('lanjut') ?? url.searchParams.get('next'));
   const ulang = url.searchParams.get('ulang') === '1' && locals.akun?.jenis === 'akun';
-  if (locals.akun && !ulang) redirect(303, next === '/' ? '/beranda' : next);
+  if (locals.akun && !ulang) redirect(303, next);
   const rt = await getRuntime();
   const kode = GALAT_QUERY.find((k) => k === url.searchParams.get('galat'));
   return {
@@ -59,7 +60,7 @@ export const actions: Actions = {
   masuk: async (event) => {
     const form = await event.request.formData();
     const email = teks(form, 'email');
-    const next = amanNext(teks(form, 'next'));
+    const next = tujuanMasuk(teks(form, 'next'));
     const rt = await getRuntime();
     let hasil;
     try {

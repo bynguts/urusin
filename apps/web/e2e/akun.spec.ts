@@ -146,10 +146,10 @@ test('#43 daftar (langsung masuk) → keluar → masuk → Data Diri tersimpan �
   const email = emailBaru('e43');
   await akunBaru(page, email);
   await masuk(page, email, SANDI);
-  await expect(page).toHaveURL(/\/lengkapi-profil\?next=%2F$/);
+  await expect(page).toHaveURL(/\/lengkapi-profil\?next=%2Fberanda$/);
   await page.getByLabel(/Nama lengkap/).fill('Warga Uji E2E');
   await page.getByRole('button', { name: 'Simpan' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/beranda$/);
   const sesi = (await context.cookies()).find((c) => c.name === '__Host-urusin_akun');
   expect(sesi).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Lax', path: '/' });
   const isi = { namaLengkap: 'Warga Uji E2E', nik: NIK, rt: '001' };
@@ -157,7 +157,7 @@ test('#43 daftar (langsung masuk) → keluar → masuk → Data Diri tersimpan �
 
   const hp = await konteksHp(browser);
   await masuk(hp.page, email, SANDI);
-  await expect(hp.page).toHaveURL(/\/$/); // profil sudah lengkap dari laptop
+  await expect(hp.page).toHaveURL(/\/beranda$/); // profil sudah lengkap dari laptop
   const g = await api(hp.page, 'GET', '/api/vault/data-diri');
   expect([g.status, g.cacheControl, g.json.dataDiri]).toEqual([200, 'no-store', isi]);
   const s = await sesiApi(hp.page);
@@ -442,7 +442,7 @@ test('#48 Google lewat IdP OIDC tiruan: PKCE/state/nonce ditegakkan; email sama 
   expect(q.get('redirect_uri')).toBe(`${ORIGIN}/auth/google/callback`);
   const emailG = emailBaru('e48g');
   await setujuiGoogle(page, { sub: `sub-${unik()}`, email: emailG });
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/beranda$/);
   expect((await sesiApi(page)).akun).toMatchObject({ email: emailG, terhubungGoogle: true });
   await api(page, 'POST', '/api/akun/keluar', {});
 

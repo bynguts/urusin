@@ -1,4 +1,4 @@
-import { AkunError, type Akun as AkunInternal } from '@urusin/akun';
+import { AkunError, amanNext, type Akun as AkunInternal } from '@urusin/akun';
 import {
   AnggotaKeluargaSchema,
   DataDiriSchema,
@@ -26,6 +26,15 @@ export const OAUTH_COOKIE = '__Host-urusin_oauth';
 export const TAUTKAN_COOKIE = '__Host-urusin_tautkan';
 
 const BASE = { path: '/', httpOnly: true, secure: true, sameSite: 'lax' } as const;
+
+/**
+ * Tujuan setelah masuk/daftar/lengkapi profil/Google: path aman di situs ini; tanpa tujuan (atau landing `/`)
+ * → Beranda. Landing hanya untuk tamu, warga yang baru masuk langsung ke aplikasi.
+ */
+export function tujuanMasuk(next: string | null | undefined): string {
+  const n = amanNext(next, '/beranda');
+  return n === '/' ? '/beranda' : n;
+}
 
 export function setAkunCookie(cookies: Cookies, token: string, maxAgeSec: number): void {
   cookies.set(AKUN_COOKIE, token, { ...BASE, maxAge: maxAgeSec });
