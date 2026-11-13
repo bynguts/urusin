@@ -14,6 +14,15 @@ const label = (sumber: Sumber, status: Status) =>
   })[status];
 
 /**
+ * Pesan untuk warga yang diterbitkan server DI LUAR turn agen (hasil Browser Pendamping, Navigator): pesan agen
+ * utuh yang menetap di percakapan. Bukan `progress`: progres di luar turn tidak pernah ditutup `done`, jadi pemuat
+ * dan header "Urusin sedang bekerja" tertahan sampai turn chat berikutnya (juga setelah muat ulang).
+ */
+export function pesanAgen(rt: Runtime, urusanId: string, teks: string): void {
+  rt.publish(urusanId, { type: 'assistant_text', delta: teks, utuh: true });
+}
+
+/**
  * Catat hasil sebuah `execution_request` (sekali saja) dan terapkan transisi state: `berhasil` -> TERKIRIM
  * bila state mengizinkan, `drift` -> DIPANDU. Satu-satunya pelapor: status tepercaya dari worker Browser
  * Pendamping (GET /api/urusan/[id]/pendamping); endpoint laporan ekstensi sudah dihapus bersama ekstensinya.
@@ -27,7 +36,7 @@ export function catatHasilEksekusi(
   status: Status,
   sumber: Sumber = 'Browser Pendamping',
   opsi: {
-    /** Label progres pengganti bila alasan sebenarnya bukan perubahan tampilan (mis. worker wilayah mati). */
+    /** Pesan pengganti bila alasan sebenarnya bukan perubahan tampilan (mis. worker wilayah mati). */
     labelKhusus?: string;
     bacaSaja?: boolean;
   } = {},
@@ -44,7 +53,7 @@ export function catatHasilEksekusi(
     opsi.bacaSaja && status === 'berhasil'
       ? `${sumber} selesai membuka hasilnya. Tidak ada yang dikirim.`
       : label(sumber, status);
-  rt.publish(u.id, { type: 'progress', label: opsi.labelKhusus ?? teks });
+  pesanAgen(rt, u.id, opsi.labelKhusus ?? teks);
   if (status === 'drift') rt.publish(u.id, { type: 'degraded', kapabilitas: ['adapter'], mode: null });
   if (!ke || !canTransition(u.state, ke)) return u;
   const current = rt.store.transition(u.id, u.version, ke);

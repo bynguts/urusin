@@ -284,7 +284,7 @@ export function setujuiRencana(
   if (jalan.jalur === 'dipandu') {
     // Pesan tetap untuk warga, bukan progres: klik ini bukan turn agen, jadi tidak ada `done` yang menutup progres
     // (dulu `sedangBerjalan` di web tertahan sampai turn chat berikutnya).
-    publish({ type: 'assistant_text', delta: jalan.alasan });
+    publish({ type: 'assistant_text', delta: jalan.alasan, utuh: true });
     return { urusan: cur, executionId: null };
   }
   // Pembukuan tabel state: MENYIAPKAN_BERKAS/BERKAS_SIAP/MENGISI dilewati dalam satu langkah sinkron sebelum berkas

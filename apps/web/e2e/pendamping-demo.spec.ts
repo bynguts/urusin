@@ -185,3 +185,90 @@ test('juri di portal khusus jaringan Indonesia (Semarang) tanpa worker Indonesia
   await expect(browser.locator('[data-label-simulasi]')).toHaveText('Simulasi', { timeout: 20_000 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
+
+test('SBY lihat saja lalu simulasi, muat ulang: tanpa pemuat tertahan, header tidak "sedang bekerja", tanpa "Anda membatalkan"', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const permintaan: { simulasi?: boolean }[] = [];
+  let sesi: Record<string, unknown> = {};
+  await page.route(/\/api\/urusan\/u_[0-9a-f]+\/pendamping(\/tiket)?$/, async (route) => {
+    const req = route.request();
+    if (req.method() === 'DELETE')
+      return route.fulfill({ json: { ...sesi, status: 'dibatalkan', mode: 'done' } });
+    if (req.url().endsWith('/tiket'))
+      return route.fulfill({ json: { wsUrl: WS_TIRUAN, tiket: `tiket-sby-${permintaan.length}` } });
+    if (req.method() !== 'POST') return route.fulfill({ json: sesi });
+    const body = req.postDataJSON() as { executionId: string; simulasi?: boolean };
+    permintaan.push(body);
+    const simulasi = body.simulasi === true;
+    const sekarang = Date.now();
+    sesi = {
+      sesiId: `sesi-sby-${permintaan.length}`,
+      urusanId: new URL(req.url()).pathname.split('/')[3],
+      executionId: body.executionId,
+      status: 'berjalan',
+      mode: simulasi ? 'ai' : 'takeover',
+      antrean: null,
+      dibuatPada: new Date(sekarang).toISOString(),
+      kedaluwarsaPada: new Date(sekarang + 15 * 60_000).toISOString(),
+      situs: simulasi ? REPLIKA : 'https://wargaklampid-dispendukcapil.surabaya.go.id',
+      replika: simulasi,
+      ...(simulasi ? { simulasi: true } : { lihatSaja: true }),
+    };
+    return route.fulfill({ status: 201, json: sesi });
+  });
+  await page.routeWebSocket(WS_TIRUAN, (ws) => {
+    ws.onMessage((m) => {
+      if ((JSON.parse(String(m)) as { type: string }).type !== 'halo') return;
+      ws.send(JSON.stringify({ type: 'status', sesi }));
+      if (sesi.replika === true) {
+        ws.send(JSON.stringify({ type: 'mode', mode: 'ai', pesan: 'AI sedang mengisi formulir contoh.' }));
+        return;
+      }
+      const pesan = `Ini situs resmi asli. ${PESAN_DEMO}, jadi AI berhenti di sini tanpa mengisi apa pun.`;
+      ws.send(JSON.stringify({ type: 'mode', mode: 'takeover', pesan }));
+      ws.send(JSON.stringify({ type: 'event', event: { jenis: 'giliran_anda', alasan: 'berhenti', pesan } }));
+    });
+  });
+
+  await masukJuriUji(page);
+  await page.goto('/peristiwa/kelahiran');
+  const kota = page.getByRole('combobox', { name: 'Kabupaten/kota sesuai KTP Anda' });
+  await expect(kota).toHaveAttribute('aria-autocomplete', 'list');
+  await kota.fill('Surabaya');
+  await page.getByRole('option', { name: 'Kota Surabaya', exact: true }).click();
+  await page.getByRole('button', { name: 'Mulai urusan ini' }).click();
+  await expect(page).toHaveURL(/\/urusan\/u_[0-9a-f]{32}$/);
+  const benar = page.getByRole('button', { name: 'Ya, betul' });
+  await expect(benar).toBeEnabled({ timeout: 20_000 });
+  await benar.click();
+  const setujui = page.getByRole('button', { name: 'Setujui rencana' });
+  await expect(setujui).toBeEnabled({ timeout: 20_000 });
+  await setujui.click();
+  const buka = page.getByRole('button', { name: 'Setujui dan buka situs' });
+  await expect(buka).toBeEnabled({ timeout: 20_000 });
+  await buka.click();
+  const browser = page.getByRole('region', { name: 'Browser Pendamping', exact: true });
+  const tombol = browser.getByRole('button', { name: 'Lihat contoh pengisian (simulasi)' });
+  await expect(tombol).toBeVisible({ timeout: 20_000 });
+  await tombol.click();
+  await expect(browser.locator('[data-label-simulasi]')).toHaveText('Simulasi');
+  expect(permintaan.map((p) => p.simulasi === true)).toEqual([false, true]);
+
+  // Muat ulang: tidak ada progres di luar turn yang tertahan (persetujuan, sesi disiapkan, hasil eksekusi).
+  await page.reload();
+  const log = page.getByRole('log', { name: 'Percakapan urusan' });
+  // Tunggu riwayat stream terputar ulang (kartu konfirmasi tampil) sebelum memeriksa ketiadaan pemuat.
+  await expect(log.locator('[data-konfirmasi]').last()).toBeVisible({ timeout: 20_000 });
+  await expect(
+    log.getByText(/Anda membatalkan langkah|Persetujuan Anda tercatat|Browser Pendamping disiapkan/),
+  ).toHaveCount(0);
+  await expect(log.getByRole('status')).toHaveCount(0);
+  await expect(page.getByText('Urusin sedang bekerja')).toHaveCount(0);
+  await expect(page.getByText(/Anda membatalkan langkah/)).toHaveCount(0);
+  // Lihat saja tidak mengirim apa pun: kartu "Setujui dan buka situs" masih bisa membuka lagi.
+  await expect(page.getByRole('button', { name: 'Setujui dan buka situs' })).toBeEnabled({
+    timeout: 20_000,
+  });
+});
