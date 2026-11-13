@@ -14,17 +14,32 @@
 }
 
 /* Pola titik karakter intro: lebih lebar dan memudar rapi ke segala tepi, tidak terpotong di
-   kanan/bawah (permintaan pemilik 2026-11-14). Lapisan gelombang .n-riak ikut bentuk yang sama. */
-.lp .lp69 > :is(.lp68, .n-riak) {
+   kanan/bawah (permintaan pemilik 2026-11-14). */
+.lp .lp69 > .lp68 {
   inset: auto;
   left: -6%;
   top: -8%;
   width: 124%;
   height: 122%;
-  --lp-tepi: radial-gradient(ellipse 50% 50% at 50% 50%, #000 45%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 45%, transparent 100%);
 }
-.lp .lp69 > .lp68 {
-  mask-image: var(--lp-tepi);
+
+/* Keputusan pemilik 2026-11-14: garis pemisah di atas bagian intro dibuang; pudar atas Perbandingan
+   selebar bagian (bukan frame 1440 yang menyisakan potongan tegak di layar lebar); bayangan gambar
+   kartu layanan lebih dalam dan lembut. */
+.lp .lp83 {
+  display: none;
+}
+.lp .lp220 {
+  left: 0;
+  width: 100%;
+}
+.lp .lp109 {
+  box-shadow:
+    0 0 1px #0000000f,
+    0 1px 2px #0000000d,
+    0 8px 16px -6px #2525221f,
+    0 18px 32px -14px #2525222e;
 }
 
 /* Ilustrasi berukuran tetap: skala utuh */

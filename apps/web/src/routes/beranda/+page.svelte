@@ -5,6 +5,7 @@
   import { resolve } from '$app/paths';
   import latarUtama1x from '#lib/assets/img/app/latar-utama-1156.webp';
   import latarUtama2x from '#lib/assets/img/app/latar-utama-2312.webp';
+  import latarTitik from '#lib/assets/img/app/latar-utama-1156-titik.webp';
   import panggungMawar from '#lib/assets/img/app/panggung-mawar.webp';
   import panggungDaun from '#lib/assets/img/app/panggung-daun.webp';
   import panggungUngu from '#lib/assets/img/app/panggung-ungu.webp';
@@ -95,6 +96,11 @@
     class="latar-beranda pointer-events-none absolute top-0 left-1/2 -z-10 hidden h-[300px] w-[1156px] -translate-x-1/2 lg:block dark:hidden"
     style:--latar-1x="url({latarUtama1x})"
     style:--latar-2x="url({latarUtama2x})"
+    aria-hidden="true"
+  ></div>
+  <div
+    class="riak-beranda pointer-events-none absolute top-0 left-1/2 -z-10 hidden h-[300px] w-[1156px] -translate-x-1/2 overflow-hidden"
+    style:--titik="url({latarTitik})"
     aria-hidden="true"
   ></div>
 
@@ -190,10 +196,10 @@
         <li class="min-w-0">
           <a
             href={resolve('/peristiwa/[slug]', { slug: p.slug })}
-            class="group flex h-full flex-col overflow-hidden rounded-[18px] border border-line bg-surface shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a]"
+            class="kartu-peristiwa group flex h-full flex-col rounded-[20px] bg-card outline-1 -outline-offset-1 outline-line"
           >
             <span
-              class="panggung panggung-{p.warna} relative block h-[140px] w-full overflow-hidden"
+              class="panggung panggung-{p.warna} relative isolate block h-[140px] w-full overflow-hidden rounded-[20px]"
               style:--panggung="url({PANGGUNG[p.warna]})"
             >
               <img
@@ -295,6 +301,77 @@
         linear-gradient(to right, transparent, #000 14%, #000 86%, transparent),
         linear-gradient(transparent 4px, #000 40px, #000 70%, transparent);
       mask-composite: intersect;
+    }
+  }
+
+  /*
+   * Gelombang di titik latar, sama persis dengan hero landing: cincin gelap mengembang dari tengah bawah
+   * dan hanya terlihat lewat titik (topeng alfa latar-utama-1156-titik). Desktop saja, tanpa gerak bila
+   * pengguna memilih kurangi gerak.
+   */
+  @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+    .riak-beranda {
+      display: block;
+      mask:
+        var(--titik) top center / 1156px 300px no-repeat,
+        linear-gradient(to right, transparent, #000 14%, #000 86%, transparent),
+        linear-gradient(transparent 4px, #000 40px, #000 70%, transparent);
+      mask-composite: intersect;
+    }
+    :global([data-theme='dark']) .riak-beranda {
+      display: none;
+    }
+    .riak-beranda::before,
+    .riak-beranda::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 100%;
+      width: 1400px;
+      height: 1400px;
+      margin: -700px 0 0 -700px;
+      border-radius: 50%;
+      background: radial-gradient(closest-side, #25252200 58%, #252522 80%, #25252200);
+      opacity: 0;
+      animation: riak 7s cubic-bezier(0.25, 0.1, 0.5, 1) 1.2s infinite;
+    }
+    .riak-beranda::after {
+      animation-delay: 4.7s;
+    }
+  }
+  @keyframes riak {
+    0% {
+      opacity: 0;
+      transform: scale(0.05);
+    }
+    10% {
+      opacity: 1;
+    }
+    60% {
+      opacity: 0.9;
+    }
+    90%,
+    100% {
+      opacity: 0;
+      transform: scale(0.85);
+    }
+  }
+
+  /* Kartu peristiwa bertumpuk: panggung membulat berbayang lembut di atas bingkai krem (gaya kartu
+     layanan landing; keputusan pemilik 2026-11-14). */
+  .kartu-peristiwa .panggung {
+    box-shadow:
+      0 0 1px #0000000f,
+      0 1px 2px #0000000d,
+      0 8px 16px -6px #2525221f,
+      0 18px 32px -14px #2525222e;
+  }
+  .kartu-peristiwa {
+    transition: background-color 0.2s ease;
+  }
+  @media (hover: hover) {
+    .kartu-peristiwa:hover {
+      background-color: var(--color-bg-2);
     }
   }
 </style>
