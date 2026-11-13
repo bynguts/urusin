@@ -901,6 +901,8 @@
     </div>
     <div class="n-intro-characters lp69" aria-hidden="true">
       <img class="lp68" src={g88b7527} alt="" width="560" height="540" loading="lazy" decoding="async" />
+      <span class="n-gelombang n-gelombang-intro" style="--lp-pola: url({g88b7527})" aria-hidden="true"
+      ></span>
       <div class="lp70"></div>
       <div class="lp71"></div>
       <div class="lp72"></div>

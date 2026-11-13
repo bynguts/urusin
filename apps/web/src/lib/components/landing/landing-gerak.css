@@ -133,6 +133,21 @@
     --lp-oy: 58%;
     --lp-cincin: 2400px;
   }
+  /* Pola karakter intro: alfa titiknya sudah setara pola hero, jadi gambar aslinya langsung jadi topeng;
+     posisi dan pudar tepi sama dengan gambar pola (.lp69 > .lp68 di landing-responsif.css). */
+  .lp .lp69 > .n-gelombang-intro {
+    inset: auto;
+    left: -6%;
+    top: -8%;
+    width: 124%;
+    height: 122%;
+    --lp-oy: 92%;
+    --lp-cincin: 1700px;
+    mask:
+      var(--lp-pola) center / 100% 100% no-repeat,
+      radial-gradient(ellipse 50% 50% at 50% 50%, #000 45%, transparent 100%);
+    mask-composite: intersect;
+  }
   @media (min-width: 768px) {
     .lp .n-gelombang {
       display: block;
