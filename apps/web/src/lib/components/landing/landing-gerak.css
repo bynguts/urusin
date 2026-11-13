@@ -125,13 +125,19 @@
     pointer-events: none;
     mask: var(--lp-pola) center / 100% 100% no-repeat;
   }
-  .lp .n-gelombang-banding {
-    --lp-oy: 72%;
-    --lp-cincin: 2600px;
-  }
-  .lp .n-gelombang-faq {
-    --lp-oy: 58%;
-    --lp-cincin: 2400px;
+  /* Salinan persis sistem hero: kotak, gambar, ukuran, posisi, dan pudar sama dengan .n-pola-salin
+     (landing-responsif.css), jadi cincin jatuh tepat di titik yang sama. */
+  .lp .n-gelombang-salin {
+    inset: auto;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 660px;
+    mask:
+      var(--lp-pola) top center / cover no-repeat,
+      linear-gradient(to right, transparent, #000 18%, #000 82%, transparent),
+      linear-gradient(#000 50%, transparent);
+    mask-composite: intersect;
   }
   /* Pola karakter intro: alfa titiknya sudah setara pola hero, jadi gambar aslinya langsung jadi topeng;
      posisi dan pudar tepi sama dengan gambar pola (.lp69 > .lp68 di landing-responsif.css). */
