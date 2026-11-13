@@ -33,6 +33,12 @@
   left: 0;
   width: 100%;
 }
+/* Kartu "Urusan lain": maskot tampil sebagai siluet bayangan gelap (urusan apa pun, belum ada
+   pendampingnya), bukan karakter berwarna (keputusan pemilik 2026-11-14). */
+.lp .lp127 {
+  filter: brightness(0) blur(0.6px);
+  opacity: 0.2;
+}
 
 /* Ilustrasi berukuran tetap: skala utuh */
 @media (max-width: 1111px) {
