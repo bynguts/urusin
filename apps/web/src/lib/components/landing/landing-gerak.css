@@ -134,7 +134,7 @@
     width: 100%;
     height: 660px;
     mask:
-      var(--lp-pola) top center / cover no-repeat,
+      var(--lp-pola) var(--lp-posisi, top center) / cover no-repeat,
       linear-gradient(to right, transparent, #000 18%, #000 82%, transparent),
       linear-gradient(#000 50%, transparent);
     mask-composite: intersect;

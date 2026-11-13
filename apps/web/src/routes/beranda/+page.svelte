@@ -293,7 +293,7 @@
   @media (min-width: 1024px) {
     .latar-beranda {
       /* Pola titik hero landing (gambar yang sama dengan lapisan riak di bawah: ukuran dan posisi identik) */
-      background: var(--pola) top center / cover no-repeat;
+      background: var(--pola) center -120px / 1156px auto no-repeat;
       /* Pinggir gambar memudar: menyembunyikan piksel gelap di sudut atas aset dan tepi kotak yang tegas. */
       mask-image:
         linear-gradient(to right, transparent, #000 14%, #000 86%, transparent),
@@ -311,7 +311,7 @@
     .riak-beranda {
       display: block;
       mask:
-        var(--pola) top center / cover no-repeat,
+        var(--pola) center -120px / 1156px auto no-repeat,
         linear-gradient(to right, transparent, #000 14%, #000 86%, transparent),
         linear-gradient(transparent 4px, #000 40px, #000 70%, transparent);
       mask-composite: intersect;

@@ -43,7 +43,7 @@
   height: 660px;
   z-index: -1;
   object-fit: cover;
-  object-position: top center;
+  object-position: var(--lp-posisi, top center);
   pointer-events: none;
   mask-image:
     linear-gradient(to right, transparent, #000 18%, #000 82%, transparent),
@@ -56,6 +56,8 @@
   }
   .lp .lp219 {
     background-color: #f8f2ed;
+    /* bagian pola yang padat di belakang judul dan ikon, bukan tertutup kartu (titik + riak bergeser bersama) */
+    --lp-posisi: center -110px;
   }
   .lp .lp262 {
     background-color: #fefcfb;
