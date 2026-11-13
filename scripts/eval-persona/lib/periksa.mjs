@@ -259,7 +259,8 @@ export function cekGalat(langkah, opsi = {}) {
     const evs = l.events ?? [];
     for (const e of evs.filter((x) => x.type === 'error')) masalah.push(`langkah ${n}: galat ${e.kode}`);
     if (l.status && l.status !== 'selesai') masalah.push(`langkah ${n}: turn ${l.status}`);
-    // Klik "Setujui rencana" bukan turn agen: label status (progress) adalah keluarannya yang tampil.
+    // Klik "Setujui rencana" bukan turn agen. Kini keluarannya pesan agen (assistant_text); transkrip lama
+    // memakai label status (progress), tetap dihitung tampil agar baseline lama bisa dibandingkan.
     const tampil = (e) => teksEvent(e).some(Boolean) || (Boolean(l.aksi) && e.type === 'progress');
     if (!evs.some(tampil)) masalah.push(`langkah ${n}: buntu, tidak ada yang tampil`);
   });

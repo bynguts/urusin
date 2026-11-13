@@ -175,6 +175,23 @@ describe('teks agen', () => {
       { jenis: 'teks', teks: 'KTP Anda terdaftar di Kota Medan, betul? Pakai 2 * 3 berkas.' },
     ]);
   });
+
+  it('persetujuan dipandu: pesan tetap sendiri; turn berikutnya (tanpa pesan warga) tidak menyambungnya', () => {
+    const out = bangunLinimasa(
+      [
+        ev(1, 'state', { dari: 'RENCANA_DIUSULKAN', state: 'RENCANA_DISETUJUI' }),
+        ev(2, 'assistant_text', { delta: 'Rencana disetujui. Kami pandu langkahnya.' }),
+        ev(3, 'progress', { label: 'Memahami kebutuhan Anda…' }),
+        ev(4, 'assistant_text', { delta: 'Lanjut ke langkah berikutnya.' }),
+        ev(5, 'done', { turnId: 't', status: 'selesai', lanjutkan: false, degraded: false }),
+      ],
+      [],
+    );
+    expect(out.filter((x) => x.jenis === 'teks').map((x) => x.jenis === 'teks' && x.teks)).toEqual([
+      'Rencana disetujui. Kami pandu langkahnya.',
+      'Lanjut ke langkah berikutnya.',
+    ]);
+  });
 });
 
 describe('linimasa mengikuti kejadian nyata', () => {

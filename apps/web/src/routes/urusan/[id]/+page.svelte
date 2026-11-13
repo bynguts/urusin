@@ -828,9 +828,7 @@
               {/if}
             {/each}
 
-            <!-- Progres "Rencana disetujui…" dari persetujuan dipandu tidak ditutup turn, jadi tidak digerbang
-              sedangBerjalan. -->
-            {#if simulasiCadangan !== null && simulasiCadangan === kunciCadangan}
+            {#if simulasiCadangan !== null && simulasiCadangan === kunciCadangan && !k.sedangBerjalan}
               <PesanAgen avatar={p.avatar}>
                 <div data-simulasi-cadangan class="flex flex-col gap-3">
                   <p>

@@ -217,9 +217,13 @@ describe('kejujuran tier portal id-only (worker berjaringan Indonesia)', () => {
     expect(kartu.catatan).toContain('hanya bisa dibuka dari jaringan Indonesia');
     expect(setuju.pendamping).toBe(false);
     expect(payloads(id, 'execution_request')).toHaveLength(0);
-    expect(payloads(id, 'progress').map((p) => p.label)).toContainEqual(
+    // Pesan agen yang menetap, bukan progres (klik bukan turn: progres tidak pernah ditutup `done`).
+    expect(payloads(id, 'assistant_text').map((p) => p.delta)).toContainEqual(
       expect.stringContaining('Browser Pendamping berjaringan Indonesia sedang tidak aktif'),
     );
+    expect(
+      payloads(id, 'progress').some((p) => /jaringan Indonesia sedang tidak aktif/.test(String(p.label))),
+    ).toBe(false);
     const view = (await (
       await peristiwaApi(ev(new Request(`${ORIGIN}/x?kodeKabKota=3374`), { slug: 'kelahiran' }))
     ).json()) as {
