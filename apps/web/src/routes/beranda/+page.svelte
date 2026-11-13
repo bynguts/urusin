@@ -3,9 +3,7 @@
   import { afterNavigate } from '$app/navigation';
   import { tick, untrack } from 'svelte';
   import { resolve } from '$app/paths';
-  import latarUtama1x from '#lib/assets/img/app/latar-utama-1156.webp';
-  import latarUtama2x from '#lib/assets/img/app/latar-utama-2312.webp';
-  import latarTitik from '#lib/assets/img/app/latar-utama-1156-titik.webp';
+  import polaHero from '#lib/assets/img/pen-landing/hero-pattern-fcb3-1440.webp';
   import panggungMawar from '#lib/assets/img/app/panggung-mawar.webp';
   import panggungDaun from '#lib/assets/img/app/panggung-daun.webp';
   import panggungUngu from '#lib/assets/img/app/panggung-ungu.webp';
@@ -94,13 +92,12 @@
 >
   <div
     class="latar-beranda pointer-events-none absolute top-0 left-1/2 -z-10 hidden h-[300px] w-[1156px] -translate-x-1/2 lg:block dark:hidden"
-    style:--latar-1x="url({latarUtama1x})"
-    style:--latar-2x="url({latarUtama2x})"
+    style:--pola="url({polaHero})"
     aria-hidden="true"
   ></div>
   <div
     class="riak-beranda pointer-events-none absolute top-0 left-1/2 -z-10 hidden h-[300px] w-[1156px] -translate-x-1/2 overflow-hidden"
-    style:--titik="url({latarTitik})"
+    style:--pola="url({polaHero})"
     aria-hidden="true"
   ></div>
 
@@ -295,7 +292,8 @@
   /* Titik halo di puncak panel (App 01 Main); CSS agar tidak diunduh di ponsel. */
   @media (min-width: 1024px) {
     .latar-beranda {
-      background: image-set(var(--latar-1x) 1x, var(--latar-2x) 2x) top center / 1156px 300px no-repeat;
+      /* Pola titik hero landing (gambar yang sama dengan lapisan riak di bawah: ukuran dan posisi identik) */
+      background: var(--pola) top center / cover no-repeat;
       /* Pinggir gambar memudar: menyembunyikan piksel gelap di sudut atas aset dan tepi kotak yang tegas. */
       mask-image:
         linear-gradient(to right, transparent, #000 14%, #000 86%, transparent),
@@ -306,14 +304,14 @@
 
   /*
    * Gelombang di titik latar, sama persis dengan hero landing: cincin gelap mengembang dari tengah bawah
-   * dan hanya terlihat lewat titik (topeng alfa latar-utama-1156-titik). Desktop saja, tanpa gerak bila
+   * dan hanya terlihat lewat titik (gambar pola yang sama dengan .latar-beranda). Desktop saja, tanpa gerak bila
    * pengguna memilih kurangi gerak.
    */
   @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
     .riak-beranda {
       display: block;
       mask:
-        var(--titik) top center / 1156px 300px no-repeat,
+        var(--pola) top center / cover no-repeat,
         linear-gradient(to right, transparent, #000 14%, #000 86%, transparent),
         linear-gradient(transparent 4px, #000 40px, #000 70%, transparent);
       mask-composite: intersect;

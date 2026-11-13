@@ -172,8 +172,6 @@
   import g4405d37 from '#lib/assets/img/pen-landing/green-duduk-260.webp';
   import g74850df from '#lib/assets/img/pen-landing/perisai-360.webp';
   import ge4af363 from '#lib/assets/img/pen-landing/faq-cbf9-1457.webp';
-  import pTitikBanding from '#lib/assets/img/pen-landing/comparison-2824-1440-titik.webp';
-  import pTitikFaq from '#lib/assets/img/pen-landing/faq-cbf9-1457-titik.webp';
   import pTitikIntro from '#lib/assets/img/pen-landing/intro-characters-cd62-560-titik.webp';
   import gd65804a from '#lib/assets/img/pen-landing/green-berpikir-380.webp';
   import g327a44d from '#lib/assets/img/pen-landing/amber-berpikir-339.webp';
@@ -2535,8 +2533,16 @@
   </section>
   <section class="n-comparison lp219">
     <img class="lp68" src={gdd90def} alt="" width="1440" height="827" loading="lazy" decoding="async" />
-    <span class="n-gelombang n-gelombang-banding" style="--lp-pola: url({pTitikBanding})" aria-hidden="true"
-    ></span>
+    <img
+      class="n-pola-salin"
+      src={g58006f1}
+      alt=""
+      width="1440"
+      height="660"
+      loading="lazy"
+      decoding="async"
+    />
+    <span class="n-gelombang n-gelombang-salin" style="--lp-pola: url({g58006f1})" aria-hidden="true"></span>
     <div class="lp220" aria-hidden="true"></div>
     <h2 class="n-title lp221">Mengurus sendiri vs. bersama Urusin</h2>
     <div class="n-columns lp222">
@@ -2880,7 +2886,16 @@
   </section>
   <section class="n-faq lp262" id="tanya-jawab">
     <img class="lp68" src={ge4af363} alt="" width="1440" height="1004" loading="lazy" decoding="async" />
-    <span class="n-gelombang n-gelombang-faq" style="--lp-pola: url({pTitikFaq})" aria-hidden="true"></span>
+    <img
+      class="n-pola-salin"
+      src={g58006f1}
+      alt=""
+      width="1440"
+      height="660"
+      loading="lazy"
+      decoding="async"
+    />
+    <span class="n-gelombang n-gelombang-salin" style="--lp-pola: url({g58006f1})" aria-hidden="true"></span>
     <div class="n-heading lp263">
       <h2 class="n-title lp106">Pertanyaan yang sering diajukan</h2>
       <div class="n-sub lp194">Masih ragu? Tanya saja, kami senang mendengarnya.</div>
