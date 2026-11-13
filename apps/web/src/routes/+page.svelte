@@ -2767,7 +2767,7 @@
           </div>
           <h3 class="lp260">Data diri di brankas</h3>
           <div class="lp261">
-            NIK dan data pribadi disimpan terenkripsi. AI tidak pernah melihat angka aslinya.
+            NIK dan data pribadi disimpan terenkripsi. Agen AI hanya melihat versi yang disamarkan.
           </div>
         </div>
       </div>
