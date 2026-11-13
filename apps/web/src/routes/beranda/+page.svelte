@@ -290,6 +290,11 @@
   @media (min-width: 1024px) {
     .latar-beranda {
       background: image-set(var(--latar-1x) 1x, var(--latar-2x) 2x) top center / 1156px 300px no-repeat;
+      /* Pinggir gambar memudar: menyembunyikan piksel gelap di sudut atas aset dan tepi kotak yang tegas. */
+      mask-image:
+        linear-gradient(to right, transparent, #000 14%, #000 86%, transparent),
+        linear-gradient(transparent 4px, #000 40px, #000 70%, transparent);
+      mask-composite: intersect;
     }
   }
 </style>

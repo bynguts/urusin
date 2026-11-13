@@ -3,7 +3,8 @@
  * yang sama ditumpuk (DESIGN.md), dan ilustrasi berukuran tetap diperkecil utuh dengan zoom.
  */
 .lp {
-  --lp-gx: max(16px, calc((100vw - 1040px) / 2));
+  /* Lebar isi 1200px (lebih lega dari frame 1040px; keputusan pemilik 2026-11-14). */
+  --lp-gx: max(16px, calc((100vw - 1200px) / 2));
   overflow-x: clip;
 }
 
