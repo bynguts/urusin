@@ -8,11 +8,17 @@
   inherits: false;
   initial-value: 100%;
 }
+@property --lp-w {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: -30%;
+}
 
 /* Elemen tambahan khusus gerak: tersembunyi di desain statis */
 .lp .lp88 i,
 .lp .n-pil-kata,
 .lp .n-hero-gelombang,
+.lp .n-riak,
 .lp .n-demo {
   display: none;
 }
@@ -110,12 +116,53 @@
     animation-delay: 4.7s;
   }
 
-  /* Pil "cerita": huruf diketik bergantian (animasi mengetik / typewriter) */
+  /* Pola titik lain (kartu, visual, panel, latar bagian): gelombang yang sama dengan hero. Lapisan
+     .n-riak = gambar pola yang sama, di-multiply dua kali sehingga titiknya menggelap, dan hanya terlihat
+     di dalam cincin yang mengembang dari tengah bawah (mask, --lp-w beranimasi). Ponsel: tidak ada. */
+  @media (min-width: 768px) {
+    .lp .n-riak {
+      display: block;
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      border-radius: inherit;
+      background:
+        var(--lp-pola) center / 100% 100% no-repeat,
+        var(--lp-pola) center / 100% 100% no-repeat;
+      background-blend-mode: multiply;
+      mix-blend-mode: multiply;
+      --lp-tepi: linear-gradient(#000, #000);
+      mask-image:
+        radial-gradient(
+          circle farthest-corner at 50% 100%,
+          transparent calc(var(--lp-w) - 24%),
+          #000 var(--lp-w),
+          transparent calc(var(--lp-w) + 24%)
+        ),
+        var(--lp-tepi);
+      mask-composite: intersect;
+      animation: lp-riak-pola 7.5s cubic-bezier(0.3, 0.1, 0.55, 1) 0.8s infinite backwards;
+    }
+    .lp :is(.lp219, .lp262, .lp275) > .n-riak {
+      animation-duration: 9s;
+    }
+    .lp :is(.lp148, .lp185, .lp210) > .n-riak {
+      animation-delay: 2.4s;
+    }
+  }
+
+  /* Pil "cerita": huruf diketik bergantian (animasi mengetik / typewriter); warna pil ikut berganti
+     tiap kata (hijau, jingga, biru), sinkron dengan siklus 9 dtk lp-ketik-0/1/2 */
   .lp .n-pil {
     position: relative;
     overflow: hidden;
     display: inline-flex;
     align-items: center;
+    animation: lp-pil-warna 9s infinite both;
+  }
+  .lp .n-pil > .n-pil-kata {
+    color: inherit;
   }
   .lp .n-pil > .lp55:first-child {
     opacity: 0;
@@ -233,7 +280,8 @@
     .lp .lp26 {
       animation-delay: 4.2s;
     }
-    .lp .n-pil-kata > span > span {
+    .lp .n-pil-kata > span > span,
+    .lp .n-pil {
       animation-delay: 4s;
     }
     .lp .n-pil-kata span span:nth-child(2) {
@@ -514,6 +562,36 @@
   from {
     opacity: 0;
     --lp-r: 0%;
+  }
+}
+@keyframes lp-riak-pola {
+  0% {
+    --lp-w: -30%;
+  }
+  85%,
+  100% {
+    --lp-w: 130%;
+  }
+}
+@keyframes lp-pil-warna {
+  0%,
+  28% {
+    background-color: #ebf0e7;
+    color: #4f7347;
+  }
+  33%,
+  61% {
+    background-color: #fbeadc;
+    color: #b0592a;
+  }
+  66%,
+  94% {
+    background-color: #e5edf8;
+    color: #3b6497;
+  }
+  100% {
+    background-color: #ebf0e7;
+    color: #4f7347;
   }
 }
 @keyframes lp-riak {
