@@ -542,7 +542,7 @@
                   loading="lazy"
                   decoding="async"
                 />
-                <p class="ck191">Rose mengisi Nama ayah</p>
+                <p class="ck191">Ana mengisi Nama ayah</p>
               </div>
             </div>
           </div>

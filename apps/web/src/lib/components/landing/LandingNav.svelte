@@ -20,7 +20,9 @@
   ];
 </script>
 
-<header class="n-header lp3">
+<!-- Ruang 64 px di aliran halaman: header sendiri menempel di atas layar saat digulir. -->
+<div class="ruang-header" aria-hidden="true"></div>
+<header class="n-header lp3 header-tempel">
   {#if diLanding}
     <a class="lp4" href="#atas" aria-label="Urusin, ke atas">
       <img class="lp5" src={mark} alt="" width="26" height="26" decoding="async" />
@@ -47,9 +49,6 @@
   </nav>
   <div class="lp10">
     {#if page.data.akun}
-      <a class="lp8" href={resolve('/beranda')}>
-        <span class="lp9"> Beranda </span>
-      </a>
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
       <a class="lp11" href={resolve('/beranda')}>
         <span class="lp12"> Buka beranda </span>
@@ -65,3 +64,51 @@
     {/if}
   </div>
 </header>
+
+<style>
+  /*
+   * Header menempel di atas layar saat digulir (keputusan pemilik 2026-11-14). fixed, bukan sticky: di landing
+   * header berada di dalam bagian hero, jadi sticky akan berhenti di akhir hero. .ruang-header menjaga tata
+   * letak tetap sama. Di puncak halaman header transparan (pola hero tetap terlihat); begitu digulir, latar
+   * krem buram + garis tipis muncul (scroll-driven; peramban tanpa dukungan langsung memakai latar penuh).
+   */
+  /* lompatan ke #bagian tidak tertutup header yang menempel */
+  :global(html) {
+    scroll-padding-top: 72px;
+  }
+  .ruang-header {
+    height: 64px;
+    width: 100%;
+    flex-shrink: 0;
+  }
+  .header-tempel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    max-width: none;
+    background-color: rgb(255 252 250 / 0.86);
+    backdrop-filter: saturate(1.4) blur(14px);
+    -webkit-backdrop-filter: saturate(1.4) blur(14px);
+    box-shadow: 0 1px 0 var(--sb-stroke, #efe6dc);
+  }
+  @supports (animation-timeline: scroll()) {
+    .header-tempel {
+      background-color: rgb(255 252 250 / 0);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      box-shadow: 0 1px 0 rgb(239 230 220 / 0);
+      animation: header-padat linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 72px;
+    }
+  }
+  @keyframes header-padat {
+    to {
+      background-color: rgb(255 252 250 / 0.86);
+      backdrop-filter: saturate(1.4) blur(14px);
+      box-shadow: 0 1px 0 var(--sb-stroke, #efe6dc);
+    }
+  }
+</style>

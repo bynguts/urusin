@@ -119,7 +119,7 @@
   const pintasan = $derived<Pintasan[]>([
     {
       ikon: 'obrolan',
-      judul: 'Tanya Rose',
+      judul: 'Tanya Ana',
       ringkas: 'Jawaban disertai sumber resmi',
       href: resolve('/beranda'),
       gelap: true,
@@ -240,7 +240,7 @@
         </details>
       {:else}
         <p class="px-[18px] py-5 text-[15px] leading-[22px] text-card-ink">
-          Belum ada jawaban untuk "{cari}". Coba kata lain, atau tanyakan langsung ke Rose.
+          Belum ada jawaban untuk "{cari}". Coba kata lain, atau tanyakan langsung ke Ana.
         </p>
       {/each}
     </section>
