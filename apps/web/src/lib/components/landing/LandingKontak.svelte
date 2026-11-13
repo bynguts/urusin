@@ -2,8 +2,8 @@
   /**
    * Ajakan kerja sama di landing (di bawah panel ajakan terakhir): pemda, instansi, dan mitra menghubungi tim
    * lewat email. Memakai bahasa visual landing yang sudah ada: kartu krem bergaris tipis seperti panel ajakan
-   * (lp275), badge pil putih seperti lp277, dan pasangan tombol landing (lp58 hitam, lp20 putih) sehingga
-   * ukuran, huruf, dan hover-nya sama persis. CSS saja (landing tanpa JavaScript).
+   * (lp275), badge pil putih seperti lp277, dan satu tombol landing hitam (lp58) sehingga ukuran, huruf,
+   * dan hover-nya sama persis. CSS saja (landing tanpa JavaScript).
    */
   const email = 'hello@urusinai.web.id'; // pii-scan:allow -- kontak publik
   const mailto = `mailto:${email}?subject=${encodeURIComponent('Kerja sama Urusin')}`;
@@ -30,7 +30,7 @@
   <div class="aksi">
     <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- mailto, bukan rute -->
     <a class="lp58" href={mailto}>
-      <span class="lp59">Hubungi tim Urusin</span>
+      <span class="lp59">Hubungi kami</span>
       <svg data-ikon="panah" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none">
         <path
           d="M5 12h14m-5-5 5 5-5 5"
@@ -40,10 +40,6 @@
           stroke-linejoin="round"
         />
       </svg>
-    </a>
-    <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- mailto, bukan rute -->
-    <a class="lp20" href={mailto}>
-      <span class="lp21">{email}</span>
     </a>
   </div>
 </div>
@@ -101,8 +97,6 @@
   }
   .aksi {
     display: grid;
-    grid-auto-rows: 1fr;
-    gap: 10px;
     flex-shrink: 0;
   }
   .aksi > a {
@@ -119,10 +113,6 @@
       padding: 28px 20px;
       gap: 24px;
       border-radius: 22px;
-    }
-    .aksi .lp21 {
-      white-space: normal;
-      overflow-wrap: anywhere;
     }
   }
 </style>
