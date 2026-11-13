@@ -155,7 +155,22 @@
     window.addEventListener('resize', aturPosisi);
     window.visualViewport?.addEventListener('resize', aturPosisi);
     window.visualViewport?.addEventListener('scroll', aturPosisi);
+    // Isi di atas kolom bisa berubah tinggi tanpa gulir/resize (ukuran huruf, baris yang dimuat belakangan):
+    // daftar `fixed` ikut kolomnya tiap frame selama terbuka, posisi dihitung ulang hanya bila kolom bergeser.
+    let frame = 0;
+    let jejak = '';
+    const ikuti = () => {
+      const r = kontrol?.getBoundingClientRect();
+      const kini = r ? `${r.left}|${r.top}|${r.width}|${r.height}` : '';
+      if (kini !== jejak) {
+        jejak = kini;
+        aturPosisi();
+      }
+      frame = requestAnimationFrame(ikuti);
+    };
+    frame = requestAnimationFrame(ikuti);
     return () => {
+      cancelAnimationFrame(frame);
       document.removeEventListener('pointerdown', diLuar);
       document.removeEventListener('focusin', diLuar);
       document.removeEventListener('scroll', saatScroll, true);
