@@ -3,7 +3,7 @@ import type { PesanWarga } from '#lib/stores/lokal.svelte.js';
 
 /** Satu gelembung/kartu di percakapan urusan, diturunkan dari event SSE + pesan warga di perangkat. */
 export type ItemLinimasa =
-  | { jenis: 'warga'; key: string; teks: string }
+  | { jenis: 'warga'; key: string; teks: string; setelahSeq: number }
   | { jenis: 'sistem'; key: string; teks: string; at: string }
   | { jenis: 'teks'; key: string; teks: string }
   | { jenis: 'jawaban'; key: string; e: EventOf<'grounded_answer'> }
@@ -59,7 +59,7 @@ export function bangunLinimasa(
   const sisipkanWarga = (sampaiSeq: number) => {
     while (iw < warga.length && warga[iw]!.setelahSeq < sampaiSeq) {
       const w = warga[iw]!;
-      out.push({ jenis: 'warga', key: `w${iw}-${w.setelahSeq}`, teks: w.teks });
+      out.push({ jenis: 'warga', key: `w${iw}-${w.setelahSeq}`, teks: w.teks, setelahSeq: w.setelahSeq });
       st.teks = null;
       iw++;
     }
@@ -171,8 +171,6 @@ export function bangunLinimasa(
     if ((it.jenis === 'galat' || it.jenis === 'waktu-habis') && i < idxTerakhirWarga) it.terakhir = false;
     // Usulan wilayah yang sudah dijawab (wilayah ditetapkan sesudahnya) tidak bisa dikonfirmasi lagi.
     if (it.jenis === 'wilayah' && it.e.seq < wilayahDitetapkanSeq) it.terakhir = false;
-    // Teks model ditampilkan polos: penanda tebal Markdown ("**Kota Medan**") tidak boleh tampil mentah.
-    if (it.jenis === 'teks') it.teks = it.teks.replace(/\*\*([^*\n]+)\*\*/g, '$1');
   }
   return out;
 }
