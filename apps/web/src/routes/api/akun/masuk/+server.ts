@@ -1,4 +1,3 @@
-import { amanNext } from '@urusin/akun';
 import { MasukRequestSchema, type MasukResponse } from '@urusin/contracts';
 import {
   akunErrorResponse,
@@ -6,6 +5,7 @@ import {
   konteks,
   pasangSesi,
   readAkunBody,
+  tujuanMasuk,
   turnstileLolos,
 } from '#lib/server/akun.js';
 import { apiJson } from '#lib/server/http.js';
@@ -28,7 +28,7 @@ export const POST: RequestHandler = async (event) => {
     const r = pasangSesi(rt, event.cookies, akun, token, { buktiSandi: true });
     return apiJson({
       akun: akunPublik(rt, akun, event.cookies.get(SID_COOKIE)),
-      next: amanNext(body.data.next),
+      next: tujuanMasuk(body.data.next),
       ...r,
     } satisfies MasukResponse);
   } catch (e) {

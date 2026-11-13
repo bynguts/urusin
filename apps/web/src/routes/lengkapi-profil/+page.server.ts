@@ -1,13 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { amanNext } from '@urusin/akun';
 import { LengkapiProfilRequestSchema } from '@urusin/contracts';
-import { lengkapiProfil, pemilikVault } from '#lib/server/akun.js';
+import { lengkapiProfil, pemilikVault, tujuanMasuk } from '#lib/server/akun.js';
 import { teks } from '#lib/server/akun-form.js';
 import { getRuntime } from '#lib/server/runtime.js';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-  const next = amanNext(event.url.searchParams.get('next'));
+  const next = tujuanMasuk(event.url.searchParams.get('next'));
   if (!event.locals.akun) redirect(303, `/masuk?next=${encodeURIComponent(`/lengkapi-profil?next=${next}`)}`);
   const rt = await getRuntime();
   const p = pemilikVault(rt, event, { buat: false });
@@ -36,6 +35,6 @@ export const actions: Actions = {
     const rt = await getRuntime();
     const p = pemilikVault(rt, event, { buat: true })!;
     lengkapiProfil(rt, p.id, parsed.data);
-    redirect(303, amanNext(teks(form, 'next')));
+    redirect(303, tujuanMasuk(teks(form, 'next')));
   },
 };

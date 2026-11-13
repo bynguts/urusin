@@ -7,6 +7,7 @@ import {
   OAUTH_COOKIE,
   pasangSesi,
   setTautkanCookie,
+  tujuanMasuk,
 } from '#lib/server/akun.js';
 import { getRuntime } from '#lib/server/runtime.js';
 import { SID_COOKIE } from '#lib/server/sesi.js';
@@ -44,7 +45,8 @@ export const GET: RequestHandler = async (event) => {
     redirect(303, `/masuk?galat=GOOGLE_PERLU_SANDI&next=${encodeURIComponent(hasil.next)}`);
   }
   pasangSesi(rt, cookies, hasil.akun, hasil.token);
+  const next = tujuanMasuk(hasil.next);
   if (!akunPublik(rt, hasil.akun, cookies.get(SID_COOKIE)).profilLengkap)
-    redirect(303, `/lengkapi-profil?next=${encodeURIComponent(hasil.next)}`);
-  redirect(303, hasil.next);
+    redirect(303, `/lengkapi-profil?next=${encodeURIComponent(next)}`);
+  redirect(303, next);
 };

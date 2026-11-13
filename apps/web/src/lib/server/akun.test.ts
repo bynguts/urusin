@@ -628,7 +628,7 @@ describe('keamanan', () => {
     expect(rt.akun.sesi(lama)).toBeNull();
   });
 
-  it('open redirect: next= asing diganti "/" di API, form masuk, halaman masuk, dan Google', async () => {
+  it('open redirect: next= asing diganti Beranda di API, form masuk, halaman masuk, dan Google', async () => {
     await daftarAkun();
     for (const next of [
       '//evil.example.com',
@@ -637,9 +637,9 @@ describe('keamanan', () => {
       'javascript:alert(1)',
     ]) {
       const r = await masukApi(ev(post({ email: EMAIL, sandi: SANDI, next })));
-      expect((await r.json()).next).toBe('/');
+      expect((await r.json()).next).toBe('/beranda');
       const l = (await masukLoad(ev(get(`/masuk?next=${encodeURIComponent(next)}`)) as never)) as any;
-      expect(l.next).toBe('/');
+      expect(l.next).toBe('/beranda');
     }
     rt.akun.vault.setDataDiri(rt.store.db.prepare('SELECT id FROM users').pluck().get() as string, {
       namaLengkap: 'Warga',
@@ -647,7 +647,7 @@ describe('keamanan', () => {
     const e = await caught(
       masukPage.masuk(ev(form({ email: EMAIL, sandi: SANDI, next: '//evil.example.com' }))),
     );
-    expect(isRedirect(e) && e.location).toBe('/');
+    expect(isRedirect(e) && e.location).toBe('/beranda');
     const g = await caught(googleMulai(ev(get('/auth/google?next=//evil.example.com'))));
     expect(isRedirect(g)).toBe(true);
     const row = rt.store.db.prepare('SELECT next FROM oauth_states').get() as { next: string };
@@ -1389,7 +1389,7 @@ describe('Google OAuth lewat rute', () => {
       a.jar,
       locals,
     );
-    expect(r.location).toBe('/lengkapi-profil?next=%2F');
+    expect(r.location).toBe('/lengkapi-profil?next=%2Fberanda');
     expect(rt.akun.terhubungGoogle(locals.akun.id)).toBe(true);
     await alurGoogle({ sub: 'g-lain', email: 'g-lain@example.com', email_verified: true, name: 'L' });
     const b = await masuk();
@@ -1593,7 +1593,7 @@ describe('form action halaman akun (App 15–20)', () => {
     )) as any;
     expect([ulang.next, ulang.ulang]).toEqual(['/dokumen?unduh=d1', { email: EMAIL }]);
     const luar = (await masukLoad(ev(get('/masuk?ulang=1&lanjut=//evil.example.com')) as never)) as any;
-    expect([luar.next, luar.ulang]).toEqual(['/', null]);
+    expect([luar.next, luar.ulang]).toEqual(['/beranda', null]);
   });
 
   it('lupa → atur ulang lewat halaman; daftar dengan email rusak → fail', async () => {
