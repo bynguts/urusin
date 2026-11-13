@@ -33,7 +33,13 @@ import {
   type IngatanTurn,
   type PenyimpanIngatan,
 } from './ingatan.js';
-import { alasanBukanJalurCepat, classifyIntent, klasifikasiKataKunci } from './intent.js';
+import {
+  BALASAN_DI_LUAR_URUSAN,
+  alasanBukanJalurCepat,
+  classifyIntent,
+  klasifikasiKataKunci,
+  mintaDiLuarUrusan,
+} from './intent.js';
 import type { KlasifikasiIntentEmbedding } from './intent-embedding.js';
 import { PiiInterceptor } from './pii.js';
 import { PolicyGate } from './policy.js';
@@ -593,6 +599,12 @@ class TurnRunner {
 
   private async body(): Promise<void> {
     if (this.urusan.state === 'BARU') this.applyTransition('MEMAHAMI');
+    // Permintaan jelas di luar urusan (kode, PR, puisi, game): penolakan tetap tanpa LLM; sisanya aturan CAKUPAN.
+    if (mintaDiLuarUrusan(this.teksWarga)) {
+      this.turnMessages.push({ role: 'assistant', content: BALASAN_DI_LUAR_URUSAN });
+      this.emit({ type: 'assistant_text', delta: BALASAN_DI_LUAR_URUSAN });
+      return;
+    }
     this.ingatPreferensi();
     await this.bacaLampiranGambar();
     this.progress('Memahami kebutuhan Anda…');
