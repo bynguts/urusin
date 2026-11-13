@@ -87,6 +87,39 @@ test('pilihan di ponsel bisa disentuh, keluar dengan Tab, dan tidak melebar dari
   }
 });
 
+test('daftar pilihan tetap menempel di kolomnya saat isi di atasnya bergeser tanpa gulir', async ({
+  page,
+}) => {
+  // CI agent-vm (dashboard-interaksi "pengaturan"): isi di atas kolom berubah tinggi sesudah daftar terbuka
+  // (ukuran huruf, baris suara yang dimuat belakangan). Daftar `fixed` tertinggal di posisi lama, di luar layar.
+  await daftarAkunUji(page);
+  await page.goto('/pengaturan');
+  const kota = page.getByRole('combobox', { name: 'Kab/kota', exact: true });
+  await expect(kota).toHaveAttribute('aria-autocomplete', 'list');
+  await kota.fill('Surabaya');
+  const daftar = page.getByRole('listbox');
+  await expect(daftar).toBeVisible();
+  const jarak = async () => {
+    const k = (await kota.boundingBox())!;
+    const d = (await daftar.boundingBox())!;
+    return Math.round(Math.min(Math.abs(d.y - (k.y + k.height)), Math.abs(k.y - (d.y + d.height))));
+  };
+  const awal = await jarak();
+  expect(awal).toBeLessThan(80);
+  // Geser tata letak di atas kolom tanpa peristiwa gulir/resize.
+  await page.evaluate(() => {
+    const s = document.createElement('div');
+    s.style.height = '160px';
+    document.getElementById('wilayah')!.prepend(s);
+  });
+  await expect.poll(jarak).toBeLessThan(80);
+  // Pergeseran bisa mendorong kolom ke bawah layar; warga menggulir ke kolomnya dan daftar tetap ikut.
+  await kota.scrollIntoViewIfNeeded();
+  await expect.poll(jarak).toBeLessThan(80);
+  await page.getByRole('option', { name: 'Kota Surabaya', exact: true }).click();
+  await expect(kota).toHaveValue('Kota Surabaya');
+});
+
 test('tanpa JavaScript, select dan tombol Tampilkan tetap membuka rencana wilayah', async ({ browser }) => {
   const page = await browser.newPage({ baseURL: test.info().project.use.baseURL, javaScriptEnabled: false });
   try {

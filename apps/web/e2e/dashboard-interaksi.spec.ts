@@ -119,7 +119,26 @@ for (const [width, scale] of [
     });
     expect(akses, 'aksi tabel yang melebar harus bisa digeser pengguna').toBe(true);
     const wilayahTabel = page.getByRole('region', { name: 'Tabel data diri', exact: true });
-    if (await wilayahTabel.evaluate((e) => e.scrollWidth > e.clientWidth)) {
+    // Ukur luapan sesudah tata letak tenang: bagian Anggota keluarga dimuat belakangan dan huruf bisa masih
+    // dimuat; luapan sesaat (CI g12 1024px) membuat ArrowRight tidak menggeser apa pun.
+    await expect(page.getByText('Belum ada anggota keluarga.', { exact: false })).toBeVisible();
+    const luapan = () =>
+      wilayahTabel.evaluate(async (e) => {
+        await document.fonts.ready;
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        return e.scrollWidth - e.clientWidth;
+      });
+    let lebih = -1;
+    await expect
+      .poll(async () => {
+        const sebelum = lebih;
+        lebih = await luapan();
+        return lebih === sebelum;
+      })
+      .toBe(true);
+    // Di 320px huruf 150% tabel PASTI melebar: cabang gulir tidak boleh terlewati diam-diam.
+    if (width === 320) expect(lebih, 'tabel 320px harus melebar dan bisa digeser').toBeGreaterThan(0);
+    if (lebih > 0) {
       await wilayahTabel.focus();
       await wilayahTabel.press('ArrowRight');
       await expect.poll(() => wilayahTabel.evaluate((e) => e.scrollLeft)).toBeGreaterThan(0);
@@ -162,7 +181,26 @@ test('pengaturan: saklar, ukuran huruf, wilayah, reload, batal dan konfirmasi ha
   await expect(page.locator('html')).toHaveAttribute('data-kontras', 'tinggi');
   await page.getByRole('switch', { name: 'Kurangi gerakan', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-gerak', 'kurang');
+  const atasAwal = await wilayah.evaluate((e) => e.getBoundingClientRect().top);
   await page.getByText('Sangat besar', { exact: true }).click();
+  // Huruf baru menata ulang halaman lewat transisi (>=1 frame; 150ms tanpa "kurangi gerakan"). Mengisi
+  // sebelum tenang membuat kolom tergeser keluar layar sesudah dibuka (CI g12): tunggu posisinya diam.
+  const atasTenang = () =>
+    wilayah.evaluate(
+      (e) =>
+        new Promise<number | null>((r) => {
+          const a = e.getBoundingClientRect().top;
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => r(e.getBoundingClientRect().top === a ? a : null)),
+          );
+        }),
+    );
+  await expect
+    .poll(async () => {
+      const a = await atasTenang();
+      return a !== null && a !== atasAwal;
+    })
+    .toBe(true);
   await wilayah.fill('Surabaya');
   await page.getByRole('option', { name: 'Kota Surabaya', exact: true }).click();
   await page.getByRole('button', { name: 'Simpan wilayah', exact: true }).click();
