@@ -34,13 +34,25 @@
   data-zona-bahaya
   class="flex max-w-[50rem] scroll-mt-24 flex-col gap-4"
 >
-  <h2 id="h-zona-bahaya" class="text-[1.375rem] tracking-[-0.02em] text-ink">Zona bahaya</h2>
+  <div class="flex flex-col gap-1">
+    <h2
+      id="h-zona-bahaya"
+      class="text-[1.25rem] leading-[1.75rem] font-semibold tracking-[-0.4px] text-galat sm:text-[1.375rem] sm:leading-[1.875rem]"
+    >
+      Zona bahaya
+    </h2>
+    <p
+      class="max-w-[42rem] text-[0.9375rem] leading-[1.375rem] text-body sm:text-base sm:leading-[1.5625rem]"
+    >
+      Berlaku untuk akun Anda di semua perangkat. Baca dulu sebelum menekan tombolnya.
+    </p>
+  </div>
 
   <form
     method="POST"
     action="{aksi}?/keluarSemua"
     data-keluar-semua
-    class="flex flex-col gap-3 rounded-kartu border border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+    class="flex flex-col gap-3 rounded-[18px] border border-line bg-surface px-[16px] py-4 @lg:flex-row @lg:items-center @lg:justify-between sm:px-[22px] sm:py-5"
     use:enhance={() => {
       sibukKeluar = true;
       return async ({ result, update }) => {
@@ -51,9 +63,9 @@
       };
     }}
   >
-    <div class="min-w-0">
-      <p class="font-semibold text-ink">Keluar dari semua perangkat</p>
-      <p class="text-[0.9375rem] text-body">
+    <div class="flex min-w-0 flex-col gap-0.5">
+      <p class="text-[1.0625rem] leading-[1.5625rem] font-semibold text-ink">Keluar dari semua perangkat</p>
+      <p class="text-[0.9375rem] leading-[1.375rem] text-muted">
         Semua perangkat yang memakai akun ini akan keluar, termasuk perangkat ini.
       </p>
     </div>
@@ -66,7 +78,7 @@
     method="POST"
     action="{aksi}?/hapusAkun"
     data-hapus-akun
-    class="flex flex-col gap-4 rounded-kartu border border-galat-garis/60 p-4 sm:p-5"
+    class="flex flex-col gap-4 rounded-[18px] border border-galat-garis/60 bg-surface px-[16px] py-4 sm:px-[22px] sm:py-5"
     use:enhance={() => {
       sibukHapus = true;
       return async ({ result, update }) => {
@@ -77,9 +89,9 @@
       };
     }}
   >
-    <div>
-      <p class="font-semibold text-galat">Hapus akun</p>
-      <p class="text-[0.9375rem] text-body">
+    <div class="flex flex-col gap-0.5">
+      <p class="text-[1.0625rem] leading-[1.5625rem] font-semibold text-galat">Hapus akun</p>
+      <p class="text-[0.9375rem] leading-[1.375rem] text-body">
         Akun, Data Diri, dokumen, dan urusan yang tersimpan di akun dihapus permanen. Kunci enkripsinya ikut
         dihancurkan, jadi data ini tidak bisa dipulihkan, termasuk dari cadangan.
       </p>
@@ -130,7 +142,7 @@
       {/if}
     {/if}
 
-    <div>
+    <div class="border-t border-line pt-4">
       <Tombol type="submit" varian="bahaya" ikon="hapus" sibuk={sibukHapus} disabled={sibukHapus}
         >Hapus akun permanen</Tombol
       >
