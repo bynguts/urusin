@@ -159,7 +159,8 @@
   <ol class="flex flex-col gap-2.5 px-4 py-3.5 sm:px-[18px]">
     {#each rencana.langkah as l, i (l.id)}
       {@const p = PELAKU[l.jenis] ?? PELAKU['online-manual']!}
-      <li class="flex items-start gap-3">
+      <!-- Masuk berurutan hanya bila kartunya baru (.animasi-pesan-masuk, lihat layout.css). -->
+      <li class="langkah-kartu-rencana flex items-start gap-3" style:--urutan={i}>
         <span
           class="grid size-[26px] shrink-0 place-items-center rounded-full border-[1.5px] border-line-2 text-[13px] leading-[13px] font-semibold text-card-ink"
           >{i + 1}</span

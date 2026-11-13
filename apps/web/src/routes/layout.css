@@ -477,6 +477,107 @@ select:not(.bg-transparent):focus {
   animation: pesan-masuk 280ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
+/*
+ * Panel urusan (Rencana, Dokumen, Sumber) dan pergantian mode: hanya opacity/transform, tanpa membesar atau
+ * memantul, semuanya `backwards` (tanpa transform sisa). Elemen dibuat ulang ({#if}/{#key}) saat berganti,
+ * jadi animasinya berjalan sekali per kemunculan; elemen lama langsung dilepas (tanpa animasi keluar).
+ */
+@keyframes panel-masuk-samping {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes panel-masuk-atas {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes memudar-masuk {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Panel konteks pertama kali tampil: di laptop bergeser masuk dari kanan, di HP turun dari atas. */
+.animasi-panel-masuk {
+  animation: panel-masuk-atas 360ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@media (min-width: 1024px) {
+  .animasi-panel-masuk {
+    animation-name: panel-masuk-samping;
+    animation-duration: 420ms;
+  }
+}
+
+/* HP: isi panel yang dilipat turun halus setiap kali dibuka (display none → block memulai ulang animasi). */
+@media (max-width: 1023.98px) {
+  .animasi-lipatan-buka {
+    animation: panel-masuk-atas 280ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+}
+
+/* Status, judul langkah, dan isi tab yang berganti: memudar sambil naik 4 px. */
+.animasi-ganti {
+  animation: dasbor-masuk 260ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* Butir yang baru muncul (langkah rencana, dokumen, sumber) masuk berurutan; jeda dibatasi 8 butir. */
+.animasi-bertahap {
+  animation: pesan-masuk 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(min(var(--urutan, 0), 8) * 45ms);
+}
+
+/* Langkah kartu rencana di percakapan: berurutan hanya saat kartunya baru masuk (bukan riwayat). */
+.animasi-pesan-masuk .langkah-kartu-rencana {
+  animation: pesan-masuk 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(120ms + min(var(--urutan, 0), 8) * 45ms);
+}
+
+/* Pergantian mode area utama (percakapan ⇄ Browser Pendamping): memudar saja, posisi tidak bergeser. */
+.animasi-mode-masuk {
+  animation: memudar-masuk 300ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* Gerak dikurangi: tanpa animasi sama sekali (jeda bertahap tidak boleh menahan butir tetap transparan). */
+@media (prefers-reduced-motion: reduce) {
+  .animasi-panel-masuk,
+  .animasi-lipatan-buka,
+  .animasi-ganti,
+  .animasi-bertahap,
+  .animasi-pesan-masuk .langkah-kartu-rencana,
+  .animasi-mode-masuk {
+    animation: none;
+  }
+}
+
+[data-gerak='kurang']
+  :is(
+    .animasi-panel-masuk,
+    .animasi-lipatan-buka,
+    .animasi-ganti,
+    .animasi-bertahap,
+    .animasi-pesan-masuk .langkah-kartu-rencana,
+    .animasi-mode-masuk
+  ) {
+  animation: none;
+}
+
 /* Indikator AI mengetik: tiga titik bergelombang (gerak dikurangi = titik diam). */
 @keyframes titik-ketik {
   0%,
