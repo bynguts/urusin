@@ -148,7 +148,7 @@
   });
 </script>
 
-<svelte:head><title>Pengaturan Ã‚Â· Urusin</title></svelte:head>
+<svelte:head><title>Pengaturan · Urusin</title></svelte:head>
 
 <HeaderHalaman judul="Pengaturan" />
 
