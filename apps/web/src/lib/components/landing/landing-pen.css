@@ -16,14 +16,20 @@
   position: relative;
   width: 100%;
 }
+/* Pola titik hero: selebar layar (cover, titik tidak gepeng), memudar ke kiri, kanan, dan bawah. */
 .lp2 {
   height: 660px;
-  left: calc(50% - 720px);
+  left: 0;
   position: absolute;
   top: 0px;
   width: 100%;
   z-index: 0;
-  object-fit: fill;
+  object-fit: cover;
+  object-position: top center;
+  mask-image:
+    linear-gradient(to right, transparent, #000 18%, #000 82%, transparent),
+    linear-gradient(#000 50%, transparent);
+  mask-composite: intersect;
 }
 .lp3 {
   align-items: center;
@@ -928,10 +934,10 @@
 .lp83 {
   background-color: #efe6dc;
   height: 1px;
-  left: calc(50% - 520px);
+  left: var(--lp-gx);
   position: absolute;
   top: 0px;
-  width: 1040px;
+  width: calc(100% - 2 * var(--lp-gx));
   z-index: 2;
 }
 .lp84 {
@@ -3237,7 +3243,7 @@
   height: 44.5px;
   margin: -0.5px 0px 0px 0px;
   padding: 24px 0px 0px 0px;
-  width: 1040px;
+  width: 100%;
 }
 .lp304 {
   color: var(--sb-text-body, #252522a6);

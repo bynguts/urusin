@@ -62,22 +62,30 @@
 
   /* Pola titik hero: mekar dari tengah bawah, lalu riak gelap menyapu bentuk-bentuknya */
   .lp .n-hero-pattern {
-    mask-image: radial-gradient(
-      circle farthest-corner at 50% 100%,
-      #000 var(--lp-r),
-      transparent calc(var(--lp-r) + 25%)
-    );
+    mask-image:
+      radial-gradient(
+        circle farthest-corner at 50% 100%,
+        #000 var(--lp-r),
+        transparent calc(var(--lp-r) + 25%)
+      ),
+      linear-gradient(to right, transparent, #000 18%, #000 82%, transparent),
+      linear-gradient(#000 50%, transparent);
+    mask-composite: intersect;
     animation: lp-mekar 2.4s var(--lp-e) 0.1s backwards;
   }
   .lp .n-hero-gelombang {
     position: absolute;
     top: 0;
-    left: calc(50% - 720px);
+    left: 0;
     width: 100%;
     height: 660px;
     overflow: hidden;
     pointer-events: none;
-    mask: var(--lp-pola) 0 0 / 100% 100% no-repeat;
+    mask:
+      var(--lp-pola) top center / cover no-repeat,
+      linear-gradient(to right, transparent, #000 18%, #000 82%, transparent),
+      linear-gradient(#000 50%, transparent);
+    mask-composite: intersect;
   }
   @media (min-width: 768px) {
     .lp .n-hero-gelombang {
