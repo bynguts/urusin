@@ -99,6 +99,19 @@
       (state && JUDUL[state]) ||
       'Urusin sedang memahami kebutuhan Anda',
   );
+  // Teks status dan ringkasan langkah juga menjadi kunci {#key}: setiap berganti, teks baru memudar masuk.
+  const labelStatus = $derived(
+    sedangBerjalan && !sesiDemo && info.nada !== 'ai' ? 'Urusin sedang bekerja' : info.label,
+  );
+  const ringkasLangkah = $derived(
+    sekarang >= 1 && sekarang <= langkah.length
+      ? `Langkah ${sekarang} dari ${langkah.length}`
+      : rencana
+        ? `Rencana · ${rencana.langkah.length} langkah`
+        : 'Menyusun rencana',
+  );
+  // Daftar langkah dibuat ulang (dan masuk berurutan) hanya bila isi langkahnya berganti, bukan saat progres.
+  const kunciLangkah = $derived(langkah.map((l) => l.judul).join('\n'));
   // Sumber resmi langkah-langkah rencana (registry), unik per URL dan belum muncul sebagai kutipan jawaban.
   const sumberRencana = $derived.by(() => {
     const ada = new SvelteSet(kutipan.map((q) => q.url));
@@ -137,15 +150,18 @@
 <div class="flex min-h-full flex-col gap-5 px-4 py-5 sm:p-6">
   <div class="flex flex-col gap-3.5 pb-1">
     <div class="flex items-center justify-between gap-3">
-      <Titik nada={info.nada} tebal
-        >{sedangBerjalan && !sesiDemo && info.nada !== 'ai' ? 'Urusin sedang bekerja' : info.label}</Titik
-      >
-      <span class="text-sm text-card-ink">
-        {#if sekarang >= 1 && sekarang <= langkah.length}Langkah {sekarang} dari {langkah.length}{:else if rencana}Rencana
-          · {rencana.langkah.length} langkah{:else}Menyusun rencana{/if}
-      </span>
+      {#key `${info.nada}:${labelStatus}`}
+        <div class="animasi-ganti flex">
+          <Titik nada={info.nada} tebal>{labelStatus}</Titik>
+        </div>
+      {/key}
+      {#key ringkasLangkah}
+        <span class="animasi-ganti text-sm text-card-ink">{ringkasLangkah}</span>
+      {/key}
     </div>
-    <h2 class="text-xl leading-[26px] font-semibold tracking-[-0.3px] text-ink">{judul}</h2>
+    {#key judul}
+      <h2 class="animasi-ganti text-xl leading-[26px] font-semibold tracking-[-0.3px] text-ink">{judul}</h2>
+    {/key}
     {#if sekarang >= 1}
       <div
         class="grid gap-1"
@@ -181,72 +197,77 @@
 
   <div class="flex-1">
     {#if tab === 'rencana'}
-      <div id="panel-panel-rencana" role="tabpanel" aria-labelledby="panel-tab-rencana">
-        <ol class="flex flex-col">
-          {#each langkah as l, i (i)}
-            {@const k = keadaanLangkah(i)}
-            <li class="relative flex min-h-[70px] gap-3 last:min-h-12">
-              {#if i < langkah.length - 1}
-                <span
-                  class="absolute top-[26px] bottom-0 left-3 w-0.5 {k === 'selesai'
-                    ? 'bg-[#cfe0bf]'
-                    : 'bg-line-2'}"
-                  aria-hidden="true"
-                ></span>
-              {/if}
-              {#if k === 'selesai'}
-                <span
-                  class="relative grid size-[26px] shrink-0 place-items-center rounded-full bg-hijau text-hijau-ink"
-                >
-                  <Icon name="centang" class="size-3.5" label="Selesai" />
-                </span>
-              {:else if k === 'kini'}
-                <span
-                  class="relative grid size-[26px] shrink-0 place-items-center rounded-full bg-primer text-[13px] leading-[13px] font-semibold text-primer-ink"
-                  aria-current="step">{i + 1}</span
-                >
-              {:else}
-                <span
-                  class="relative grid size-[26px] shrink-0 place-items-center rounded-full border-[1.5px] border-line-2 bg-surface text-[13px] leading-[13px] font-semibold text-card-ink"
-                  >{i + 1}</span
-                >
-              {/if}
-              <div class="flex min-w-0 flex-col gap-px">
-                <p class="text-base leading-[22px] font-semibold text-ink"><TeksBertaut teks={l.judul} /></p>
-                <p
-                  class="text-sm leading-5 {k === 'selesai'
-                    ? 'text-hijau-ink'
-                    : k === 'kini'
-                      ? info.nada === 'ai'
-                        ? 'font-medium text-nila-ink'
-                        : 'font-medium text-[#b5481f]'
-                      : 'text-muted'}"
-                >
-                  {#if k === 'selesai'}Selesai{:else if k === 'kini'}{info.nada === 'ai' && !persiapan
-                      ? 'Sedang berjalan'
-                      : info.label}{:else if i === 0}Bisa mulai setelah rencana disetujui{:else}Setelah
-                    langkah {i} · {l.pelaku}{/if}
-                </p>
-              </div>
-            </li>
-          {:else}
-            <li class="rounded-xl bg-card p-4 text-[0.9375rem] text-body">
-              Langkah muncul di sini setelah Urusin menyusun rencana.
-            </li>
-          {/each}
-        </ol>
+      <div id="panel-panel-rencana" role="tabpanel" aria-labelledby="panel-tab-rencana" class="animasi-ganti">
+        {#key kunciLangkah}
+          <ol class="flex flex-col">
+            {#each langkah as l, i (i)}
+              {@const k = keadaanLangkah(i)}
+              <li class="animasi-bertahap relative flex min-h-[70px] gap-3 last:min-h-12" style:--urutan={i}>
+                {#if i < langkah.length - 1}
+                  <span
+                    class="absolute top-[26px] bottom-0 left-3 w-0.5 {k === 'selesai'
+                      ? 'bg-[#cfe0bf]'
+                      : 'bg-line-2'}"
+                    aria-hidden="true"
+                  ></span>
+                {/if}
+                {#if k === 'selesai'}
+                  <span
+                    class="relative grid size-[26px] shrink-0 place-items-center rounded-full bg-hijau text-hijau-ink"
+                  >
+                    <Icon name="centang" class="size-3.5" label="Selesai" />
+                  </span>
+                {:else if k === 'kini'}
+                  <span
+                    class="relative grid size-[26px] shrink-0 place-items-center rounded-full bg-primer text-[13px] leading-[13px] font-semibold text-primer-ink"
+                    aria-current="step">{i + 1}</span
+                  >
+                {:else}
+                  <span
+                    class="relative grid size-[26px] shrink-0 place-items-center rounded-full border-[1.5px] border-line-2 bg-surface text-[13px] leading-[13px] font-semibold text-card-ink"
+                    >{i + 1}</span
+                  >
+                {/if}
+                <div class="flex min-w-0 flex-col gap-px">
+                  <p class="text-base leading-[22px] font-semibold text-ink">
+                    <TeksBertaut teks={l.judul} />
+                  </p>
+                  <p
+                    class="text-sm leading-5 {k === 'selesai'
+                      ? 'text-hijau-ink'
+                      : k === 'kini'
+                        ? info.nada === 'ai'
+                          ? 'font-medium text-nila-ink'
+                          : 'font-medium text-[#b5481f]'
+                        : 'text-muted'}"
+                  >
+                    {#if k === 'selesai'}Selesai{:else if k === 'kini'}{info.nada === 'ai' && !persiapan
+                        ? 'Sedang berjalan'
+                        : info.label}{:else if i === 0}Bisa mulai setelah rencana disetujui{:else}Setelah
+                      langkah {i} · {l.pelaku}{/if}
+                  </p>
+                </div>
+              </li>
+            {:else}
+              <li class="rounded-xl bg-card p-4 text-[0.9375rem] text-body">
+                Langkah muncul di sini setelah Urusin menyusun rencana.
+              </li>
+            {/each}
+          </ol>
+        {/key}
       </div>
     {:else if tab === 'dokumen'}
-      <div id="panel-panel-dokumen" role="tabpanel" aria-labelledby="panel-tab-dokumen">
+      <div id="panel-panel-dokumen" role="tabpanel" aria-labelledby="panel-tab-dokumen" class="animasi-ganti">
         {#if checklist?.item.length}
           <div class="mb-2.5 flex items-center justify-between text-sm leading-[21px] font-semibold">
             <span class="text-muted">Dokumen untuk urusan ini</span>
             <span class="text-ink">{dokSiap} / {checklist.item.length} siap</span>
           </div>
           <ul class="flex flex-col gap-2.5">
-            {#each checklist.item as it (it.id)}
+            {#each checklist.item as it, i (it.id)}
               <li
-                class="flex min-h-[52px] items-center justify-between gap-3 rounded-xl border bg-surface py-1.5 pr-2.5 pl-3.5 {it.status ===
+                style:--urutan={i}
+                class="animasi-bertahap flex min-h-[52px] items-center justify-between gap-3 rounded-xl border bg-surface py-1.5 pr-2.5 pl-3.5 {it.status ===
                 'ok'
                   ? 'border-line'
                   : 'border-[#e6d2b0]'}"
@@ -268,9 +289,10 @@
             <span class="text-ink">{dokRencana.length} dokumen</span>
           </div>
           <ul class="flex flex-col gap-2.5">
-            {#each dokRencana as d (d)}
+            {#each dokRencana as d, i (d)}
               <li
-                class="flex min-h-[52px] items-center justify-between gap-3 rounded-xl border border-line bg-surface py-1.5 pr-2.5 pl-3.5"
+                style:--urutan={i}
+                class="animasi-bertahap flex min-h-[52px] items-center justify-between gap-3 rounded-xl border border-line bg-surface py-1.5 pr-2.5 pl-3.5"
               >
                 <span class="min-w-0 flex-1 text-base text-ink"><TeksBertaut teks={d} /></span>
                 <Chip nada="netral" ikon="jam">Siapkan</Chip>
@@ -290,12 +312,13 @@
         id="panel-panel-sumber"
         role="tabpanel"
         aria-labelledby="panel-tab-sumber"
-        class="flex flex-col gap-3"
+        class="animasi-ganti flex flex-col gap-3"
       >
-        {#each kutipan as q (q.refId)}
+        {#each kutipan as q, i (q.refId)}
           <article
             id="sumber-{q.nomor}"
-            class="flex flex-col gap-2.5 rounded-[14px] bg-surface p-4 {sorot === q.refId
+            style:--urutan={i}
+            class="animasi-bertahap flex flex-col gap-2.5 rounded-[14px] bg-surface p-4 {sorot === q.refId
               ? 'border-[1.5px] border-ink'
               : 'border border-line'}"
           >
@@ -331,7 +354,10 @@
           </article>
         {/each}
         {#each sumberRencana as s, i (s.url)}
-          <article class="flex flex-col gap-2.5 rounded-[14px] border border-line bg-surface p-4">
+          <article
+            style:--urutan={kutipan.length + i}
+            class="animasi-bertahap flex flex-col gap-2.5 rounded-[14px] border border-line bg-surface p-4"
+          >
             <h3 class="flex items-start gap-2 text-base leading-6 font-semibold text-ink">
               <span
                 class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-bg-2 text-xs leading-3 font-semibold text-ink"

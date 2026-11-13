@@ -138,6 +138,11 @@
   });
   const instansi = $derived(k.rencana?.langkah.find((x) => x.sumber.length)?.sumber[0]?.instansi);
   const pendampingAktif = $derived(!pendampingDitutup && sesi.data.keadaan !== 'mati');
+  // Percakapan dianimasikan hanya saat kembali dari Browser Pendamping, bukan saat halaman pertama dimuat.
+  let pernahPendamping = $state(false);
+  $effect(() => {
+    if (pendampingAktif) pernahPendamping = true;
+  });
   // Pesan agen di panel Pendamping hanya bila itu item terakhir percakapan; pertanyaan lama yang sudah
   // dijawab (mis. wilayah KTP) tidak ditampilkan lagi.
   const pesanPanel = $derived(linimasa.slice(-1).filter((x) => x.jenis === 'teks'));
@@ -631,7 +636,7 @@
     <!-- Panel konteks: di HP di atas percakapan dan bisa dilipat; di laptop kolom kanan 400 px. -->
     <aside
       aria-label="Rencana, dokumen, dan sumber"
-      class="order-first min-h-0 border-b border-line bg-card lg:order-last lg:w-[399.5px] lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-l"
+      class="animasi-panel-masuk order-first min-h-0 border-b border-line bg-card lg:order-last lg:w-[399.5px] lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-l"
     >
       <button
         type="button"
@@ -644,7 +649,7 @@
         <span class="flex-1">Rencana, dokumen, dan sumber</span>
         <Icon name={panelHpBuka ? 'atas' : 'bawah'} class="size-5" />
       </button>
-      <div id="panel-konteks" class="{panelHpBuka ? '' : 'max-lg:hidden'} lg:min-h-full">
+      <div id="panel-konteks" class="animasi-lipatan-buka {panelHpBuka ? '' : 'max-lg:hidden'} lg:min-h-full">
         <PanelKonteks
           state={keadaanPanel}
           jenis={jenisKini}
@@ -660,7 +665,7 @@
         >
           {#snippet bawah()}
             {#if pendampingAktif}
-              <div class="flex flex-col gap-3 border-t border-line pt-4">
+              <div class="animasi-ganti flex flex-col gap-3 border-t border-line pt-4">
                 {#each pesanPanel as it (it.key)}
                   {#if it.jenis === 'teks'}
                     <PesanAgen avatar={p.avatar}
@@ -685,7 +690,7 @@
 
     <div class="flex min-h-0 min-w-0 flex-1 flex-col">
       {#if pendampingAktif}
-        <div class="flex min-h-0 flex-1 flex-col p-3 sm:p-5">
+        <div class="animasi-mode-masuk flex min-h-0 flex-1 flex-col p-3 sm:p-5">
           <LayarPendamping
             data={sesi.data}
             situs={situs ?? 'https://situs-resmi.go.id'}
@@ -719,7 +724,13 @@
           />
         </div>
       {:else}
-        <div bind:this={daftarPercakapan} class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <!-- Kembali dari Browser Pendamping: percakapan memudar masuk (muat pertama tidak dianimasikan). -->
+        <div
+          bind:this={daftarPercakapan}
+          class="min-h-0 flex-1 overflow-y-auto overscroll-contain {pernahPendamping
+            ? 'animasi-mode-masuk'
+            : ''}"
+        >
           <div
             role="log"
             aria-label="Percakapan urusan"
