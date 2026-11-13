@@ -196,7 +196,7 @@
         <li class="min-w-0">
           <a
             href={resolve('/peristiwa/[slug]', { slug: p.slug })}
-            class="kartu-peristiwa group flex h-full flex-col rounded-[20px] bg-card outline-1 -outline-offset-1 outline-line"
+            class="kartu-peristiwa group flex h-full flex-col rounded-[20px] bg-card"
           >
             <span
               class="panggung panggung-{p.warna} relative isolate block h-[140px] w-full overflow-hidden rounded-[20px]"
@@ -357,14 +357,13 @@
     }
   }
 
-  /* Kartu peristiwa bertumpuk: panggung membulat berbayang lembut di atas bingkai krem (gaya kartu
-     layanan landing; keputusan pemilik 2026-11-14). */
+  /* Kartu peristiwa persis kartu layanan landing (lp108/lp109): bingkai krem tanpa garis, panggung
+     membulat dengan bayangan tipis yang sama (keputusan pemilik 2026-11-14). */
   .kartu-peristiwa .panggung {
     box-shadow:
       0 0 1px #0000000f,
-      0 1px 2px #0000000d,
-      0 8px 16px -6px #2525221f,
-      0 18px 32px -14px #2525222e;
+      0 1px 1px #0000000f,
+      0 2px 4px #0000000a;
   }
   .kartu-peristiwa {
     transition: background-color 0.2s ease;
