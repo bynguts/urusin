@@ -174,6 +174,7 @@
   import ge4af363 from '#lib/assets/img/pen-landing/faq-cbf9-1457.webp';
   import pTitikBanding from '#lib/assets/img/pen-landing/comparison-2824-1440-titik.webp';
   import pTitikFaq from '#lib/assets/img/pen-landing/faq-cbf9-1457-titik.webp';
+  import pTitikIntro from '#lib/assets/img/pen-landing/intro-characters-cd62-560-titik.webp';
   import gd65804a from '#lib/assets/img/pen-landing/green-berpikir-380.webp';
   import g327a44d from '#lib/assets/img/pen-landing/amber-berpikir-339.webp';
   import g749e4e0 from '#lib/assets/img/pen-landing/cta-panel-51bc-1040.webp';
@@ -901,7 +902,7 @@
     </div>
     <div class="n-intro-characters lp69" aria-hidden="true">
       <img class="lp68" src={g88b7527} alt="" width="560" height="540" loading="lazy" decoding="async" />
-      <span class="n-gelombang n-gelombang-intro" style="--lp-pola: url({g88b7527})" aria-hidden="true"
+      <span class="n-gelombang n-gelombang-intro" style="--lp-pola: url({pTitikIntro})" aria-hidden="true"
       ></span>
       <div class="lp70"></div>
       <div class="lp71"></div>
