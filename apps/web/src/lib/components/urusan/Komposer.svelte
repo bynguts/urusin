@@ -168,7 +168,8 @@
         {/each}
       </ul>
       <p class="px-2 text-sm text-muted">
-        Lampiran disimpan terenkripsi di Dokumen Anda. Isinya tidak dikirim ke AI, hanya jenis dokumennya.
+        Lampiran disimpan terenkripsi di Dokumen Anda. Gambar dikirim ke AI untuk dibaca; PDF belum bisa
+        dibaca AI.
       </p>
     </div>
   {/if}

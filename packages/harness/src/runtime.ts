@@ -41,6 +41,8 @@ export type HarnessOptions = {
   cariWeb?: CariWeb;
   /** Batas laju cari web (default `BATAS_WEB_DEFAULT`). */
   batasWeb?: Partial<BatasWebConfig>;
+  /** Model pembaca gambar lampiran chat (LLM_VISION_MODEL); tanpa ini gambar tidak dibaca. */
+  visionModel?: string | undefined;
 };
 
 /** Komposisi akar: store + registry + kuota + tracer + bus → `AgentDeps` siap dipakai `runTurn`. */
@@ -83,6 +85,7 @@ export function createHarness(opts: HarnessOptions) {
           batas: new BatasCariWeb({ ...BATAS_WEB_DEFAULT, ...opts.batasWeb }, () => now().getTime()),
         }
       : undefined,
+    visionModel: opts.visionModel,
   };
   return { deps, store, registry, quota, bus };
 }

@@ -400,6 +400,14 @@ export function llmAktif(env: Record<string, string | undefined>): boolean {
   return Boolean(env.LLM_BASE_URL && env.LLM_API_KEY && env.LLM_AGENT_MODEL);
 }
 
+/** Model pembaca gambar lampiran: LLM_VISION_MODEL, atau model agen; undefined bila kapabilitas vision mati. */
+export function visionModelDari(
+  models: { agent: string; vision?: string | undefined },
+  caps: { vision: boolean },
+): string | undefined {
+  return caps.vision ? (models.vision ?? models.agent) : undefined;
+}
+
 async function buildFromEnv(): Promise<Runtime> {
   const env = process.env;
   if (!llmAktif(env)) return createRuntime({ mode: 'demo' });
@@ -424,6 +432,9 @@ async function buildFromEnv(): Promise<Runtime> {
       model: cfg.models.agent,
       caps,
       prices,
+      // Gambar lampiran chat dibaca LLM_VISION_MODEL (bawaan: model agen) hanya bila kapabilitas vision menyala
+      // (probe atau LLM_CAPS_PIN); selain itu agen berterus terang belum bisa membaca gambar.
+      visionModel: visionModelDari(cfg.models, caps),
       quota: quotaFromEnv(env),
       // Masukan jawaban bersumber yang sama persis (pesan + potongan) tidak menunggu model lagi; verifikasi
       // kutipan tetap dijalankan ulang tiap kali.
@@ -475,7 +486,7 @@ export function setRuntimeForTests(rt: Runtime | Promise<Runtime> | undefined): 
 /** Klaim turn secara sinkron lalu jalankan di latar belakang; hasilnya mengalir lewat tabel events + bus. */
 export function startTurnInBackground(
   rt: Runtime,
-  args: { urusanId: string; userText: string; expectedVersion?: number },
+  args: { urusanId: string; userText: string; expectedVersion?: number; gambar?: readonly string[] },
 ): { turnId: string } {
   const prepared = prepareTurn(rt.deps, args); // melempar HarnessError 409/404 sebelum apa pun dialirkan
   const ctrl = new AbortController();

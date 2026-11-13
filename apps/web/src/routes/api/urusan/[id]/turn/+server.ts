@@ -25,7 +25,11 @@ export const POST: RequestHandler = async (event) => {
   const tamu = pastikanTamuUntukTurn(rt, event);
   if (tamu) return tamu;
   // NIK terpecah dideteksi memakai wilayah KTP urusan, atau usulannya selama belum ditetapkan.
-  const body = await readBody(request, TurnRequestSchema, { kodeKabKota: kodeUntukPii(rt.store, u) });
+  // `gambar` (data URL tervalidasi skema) tidak dipindai sebagai teks: base64 bukan tulisan warga.
+  const body = await readBody(request, TurnRequestSchema, {
+    kodeKabKota: kodeUntukPii(rt.store, u),
+    lewatiBidang: ['gambar'],
+  });
   if (!body.ok) return body.response;
   try {
     // Rute Browser Pendamping di prompt/tool turn ini menimbang worker berjaringan Indonesia yang sehat.
@@ -34,6 +38,7 @@ export const POST: RequestHandler = async (event) => {
       urusanId: params.id,
       userText: body.data.teks,
       ...(body.data.expectedVersion !== undefined ? { expectedVersion: body.data.expectedVersion } : {}),
+      ...(body.data.gambar?.length ? { gambar: body.data.gambar } : {}),
     });
     return apiJson({ turnId, diterima: true } satisfies TurnResponse, 202);
   } catch (e) {

@@ -160,17 +160,18 @@ export class UrusanStore implements StoreUrusan {
     }
   }
 
-  async kirim(teks: string): Promise<'ok' | 'konflik' | 'galat'> {
+  /** `gambar`: salinan gambar lampiran yang sudah diperkecil (data URL) untuk dibaca AI giliran ini. */
+  async kirim(teks: string, gambar: string[] = []): Promise<'ok' | 'konflik' | 'galat'> {
     const id = this.keadaan.id;
     if (!id) return 'galat';
     try {
-      let res = await this.kirimTurn(id, teks);
+      let res = await this.kirimTurn(id, teks, gambar);
       if (res.status === 409) {
         // Versi basi (klaim turn menaikkan versi tanpa event state) atau turn masih berjalan: ambil status terbaru.
         const st = await this.statusTerbaru(id);
         if (!st || st.berjalan) return st ? 'konflik' : 'galat';
         this.keadaan.version = st.version;
-        res = await this.kirimTurn(id, teks);
+        res = await this.kirimTurn(id, teks, gambar);
         if (res.status === 409) return 'konflik';
       }
       if (!res.ok) return 'galat';
@@ -254,11 +255,15 @@ export class UrusanStore implements StoreUrusan {
     }
   }
 
-  private kirimTurn(id: string, teks: string): Promise<Response> {
+  private kirimTurn(id: string, teks: string, gambar: string[] = []): Promise<Response> {
     return this.ambil(`/api/urusan/${encodeURIComponent(id)}/turn`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ teks, expectedVersion: this.keadaan.version }),
+      body: JSON.stringify({
+        teks,
+        expectedVersion: this.keadaan.version,
+        ...(gambar.length ? { gambar } : {}),
+      }),
     });
   }
 
