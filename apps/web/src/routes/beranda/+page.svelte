@@ -91,12 +91,12 @@
   class="relative isolate flex flex-1 flex-col gap-12 overflow-x-clip px-4 pt-10 pb-10 sm:px-8 lg:px-16 lg:pt-[68px] lg:pb-12"
 >
   <div
-    class="latar-beranda pointer-events-none absolute top-0 left-1/2 -z-10 hidden h-[300px] w-[1156px] -translate-x-1/2 lg:block dark:hidden"
+    class="latar-beranda pointer-events-none absolute top-0 left-0 -z-10 hidden h-[660px] w-full lg:block dark:hidden"
     style:--pola="url({polaHero})"
     aria-hidden="true"
   ></div>
   <div
-    class="riak-beranda pointer-events-none absolute top-0 left-1/2 -z-10 hidden h-[300px] w-[1156px] -translate-x-1/2 overflow-hidden"
+    class="riak-beranda pointer-events-none absolute top-0 left-0 -z-10 hidden h-[660px] w-full overflow-hidden"
     style:--pola="url({polaHero})"
     aria-hidden="true"
   ></div>
@@ -289,31 +289,27 @@
     background: var(--color-bg-2);
   }
 
-  /* Titik halo di puncak panel (App 01 Main); CSS agar tidak diunduh di ponsel. */
+  /*
+   * Salinan 1:1 pola + gelombang hero landing (.lp2 + .n-hero-gelombang di landing-pen.css dan
+   * landing-gerak.css): kotak 660 px selebar panel, gambar cover di atas tengah, pudar 18%/82% dan 50%,
+   * cincin 2200 px dari tengah bawah. Ubah di sana, ubah juga di sini (keputusan pemilik 2026-11-14).
+   */
   @media (min-width: 1024px) {
     .latar-beranda {
-      /* Pola titik hero landing (gambar yang sama dengan lapisan riak di bawah: ukuran dan posisi identik) */
-      background: var(--pola) center -120px / 1156px auto no-repeat;
-      /* Pinggir gambar memudar: menyembunyikan piksel gelap di sudut atas aset dan tepi kotak yang tegas. */
+      background: var(--pola) top center / cover no-repeat;
       mask-image:
-        linear-gradient(to right, transparent, #000 14%, #000 86%, transparent),
-        linear-gradient(transparent 4px, #000 40px, #000 70%, transparent);
+        linear-gradient(to right, transparent, #000 18%, #000 82%, transparent),
+        linear-gradient(#000 50%, transparent);
       mask-composite: intersect;
     }
   }
-
-  /*
-   * Gelombang di titik latar, sama persis dengan hero landing: cincin gelap mengembang dari tengah bawah
-   * dan hanya terlihat lewat titik (gambar pola yang sama dengan .latar-beranda). Desktop saja, tanpa gerak bila
-   * pengguna memilih kurangi gerak.
-   */
   @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
     .riak-beranda {
       display: block;
       mask:
-        var(--pola) center -120px / 1156px auto no-repeat,
-        linear-gradient(to right, transparent, #000 14%, #000 86%, transparent),
-        linear-gradient(transparent 4px, #000 40px, #000 70%, transparent);
+        var(--pola) top center / cover no-repeat,
+        linear-gradient(to right, transparent, #000 18%, #000 82%, transparent),
+        linear-gradient(#000 50%, transparent);
       mask-composite: intersect;
     }
     :global([data-theme='dark']) .riak-beranda {
@@ -325,9 +321,9 @@
       position: absolute;
       left: 50%;
       top: 100%;
-      width: 1400px;
-      height: 1400px;
-      margin: -700px 0 0 -700px;
+      width: 2200px;
+      height: 2200px;
+      margin: -1100px 0 0 -1100px;
       border-radius: 50%;
       background: radial-gradient(closest-side, #25252200 58%, #252522 80%, #25252200);
       opacity: 0;

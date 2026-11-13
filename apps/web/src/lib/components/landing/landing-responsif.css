@@ -13,17 +13,6 @@
   display: contents;
 }
 
-/* Pola titik karakter intro: lebih lebar dan memudar rapi ke segala tepi, tidak terpotong di
-   kanan/bawah (permintaan pemilik 2026-11-14). */
-.lp .lp69 > .lp68 {
-  inset: auto;
-  left: -6%;
-  top: -8%;
-  width: 124%;
-  height: 122%;
-  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 45%, transparent 100%);
-}
-
 /* Keputusan pemilik 2026-11-14: garis pemisah di atas bagian intro dibuang; pudar atas Perbandingan
    selebar bagian (bukan frame 1440 yang menyisakan potongan tegak di layar lebar). */
 .lp .lp83 {
@@ -33,39 +22,23 @@
   left: 0;
   width: 100%;
 }
-/* Perbandingan dan Tanya jawab memakai pola hero yang sama persis (bukan gambar latar buram yang titiknya
-   tidak sejajar dengan lapisan gelombang): warna dasar = warna gambar lama, titik = salinan .lp2 hero. */
-.lp .n-pola-salin {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 660px;
+/* Intro, Perbandingan, Tanya jawab: salinan 1:1 pola + gelombang hero (markup dan kelas yang sama:
+   n-hero-pattern lp2 + n-hero-gelombang), di atas warna dasar hero. Satu-satunya beda: lapisan di
+   belakang isi bagian (z-index -1 dalam bagian yang terisolasi). Ponsel tetap memakai gambar lama
+   karena pola hero memang tidak dimuat di ponsel (keputusan pemilik 2026-11-14). */
+.lp :is(.lp49, .lp219, .lp262) {
+  isolation: isolate;
+}
+.lp .n-salin-hero {
   z-index: -1;
-  object-fit: cover;
-  object-position: var(--lp-posisi, top center);
-  pointer-events: none;
-  mask-image:
-    linear-gradient(to right, transparent, #000 18%, #000 82%, transparent),
-    linear-gradient(#000 50%, transparent);
-  mask-composite: intersect;
 }
 @media (min-width: 768px) {
-  .lp :is(.lp219, .lp262) > .lp68 {
+  .lp :is(.lp219, .lp262) > .lp68,
+  .lp .n-intro-characters > .lp68 {
     display: none;
   }
-  .lp .lp219 {
-    background-color: #f8f2ed;
-    /* bagian pola yang padat di belakang judul dan ikon, bukan tertutup kartu (titik + riak bergeser bersama) */
-    --lp-posisi: center -110px;
-  }
-  .lp .lp262 {
-    background-color: #fefcfb;
-  }
-}
-@media (max-width: 767px) {
-  .lp .n-pola-salin {
-    display: none;
+  .lp :is(.lp219, .lp262) {
+    background-color: var(--sb-bg-primary, #fffcfa);
   }
 }
 /* Label kartu layanan rapat ke pojok kanan atas gambar di semua lebar layar (keputusan pemilik
