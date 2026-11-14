@@ -282,7 +282,8 @@
     store.sambung(id);
     if (titip) {
       lampiran = titip.lampiran;
-      void kirim(titip.teks);
+      // Pesan pertama tetap di urutan paling atas (sebelum kartu wilayah yang terbit saat urusan dibuat).
+      void kirim(titip.teks, false, 0);
     }
   }
 
@@ -446,7 +447,7 @@
     return true;
   }
 
-  async function kirim(t: string, aksi = false) {
+  async function kirim(t: string, aksi = false, urutan?: number) {
     mengirim = true;
     pesanKomposer = null;
     riwayatSelesai = true;
@@ -474,7 +475,7 @@
           .map((l) => gambarUntukAi(l.berkas)),
       )
     ).filter((g): g is string => g !== null);
-    const setelahSeq = k.lastSeq;
+    const setelahSeq = urutan ?? k.lastSeq;
     const hasil = await store.kirim(isi, gambar);
     mengirim = false;
     if (hasil === 'ok') {
