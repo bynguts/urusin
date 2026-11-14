@@ -419,7 +419,8 @@ export const urusanJawabPersyaratan = defineTool({
     if (chunks.length === 0)
       return handoffTanpaUlang(ctx, buildHandoff({ ...ctxHandoff, chunks }, 'tanpa_sumber'), kode);
 
-    const cache = ctx.deps.cacheJawaban;
+    // Foto belum jelas: prompt berbeda (catatan kualitas foto), jadi cache jawaban tidak dipakai.
+    const cache = ctx.catatanFoto ? undefined : ctx.deps.cacheJawaban;
     const kunci = cache ? CacheJawaban.kunci(ctx.deps.model, args.pertanyaan, chunks) : '';
     const tersimpan = cache?.ambil(kunci);
     const gen = tersimpan
@@ -431,6 +432,7 @@ export const urusanJawabPersyaratan = defineTool({
           pertanyaan: args.pertanyaan,
           chunks,
           signal: ctx.signal,
+          catatanFoto: ctx.catatanFoto,
         });
     const verified = verifyGrounded(gen.data, chunks, ctxHandoff, ctx.deps.now());
     // Hanya jawaban yang lolos verifikasi utuh (ada klaim, tidak ada yang dibuang) yang disimpan: keluaran model

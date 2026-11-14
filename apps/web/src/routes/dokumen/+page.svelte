@@ -99,6 +99,10 @@
   async function tersimpan(d: DokumenAkun) {
     if (hasil?.ok) hasil = { ok: true, data: { dokumen: [d, ...hasil.data.dokumen] } };
     else await muat();
+    // Hasil periksa foto diumumkan juga lewat region status (pembaca layar).
+    if (d.periksa?.status === 'perlu_ulang')
+      pesanStatus = `${d.judul} perlu difoto ulang: ${d.periksa.ringkasan || 'foto belum jelas'}.`;
+    else if (d.periksa?.status === 'jelas') pesanStatus = `${d.judul} tersimpan. Fotonya jelas.`;
   }
 
   let pesanStatus = $state('');
@@ -235,11 +239,23 @@
                     >{d.judul}<span class="sr-only"> (lihat berkas)</span></a
                   >
                 </h2>
-                <span
-                  class="inline-flex shrink-0 items-center gap-[5px] rounded-full bg-hijau px-2.5 py-1 text-[12.5px] leading-[15px] text-hijau-ink"
-                  ><Icon name="centang-bulat" class="size-3.5" />Siap</span
-                >
+                {#if d.periksa?.status === 'perlu_ulang'}
+                  <span
+                    class="inline-flex shrink-0 items-center gap-[5px] rounded-full bg-kuning px-2.5 py-1 text-[12.5px] leading-[15px] text-kuning-ink"
+                    ><Icon name="peringatan" class="size-3.5" />Perlu difoto ulang</span
+                  >
+                {:else}
+                  <span
+                    class="inline-flex shrink-0 items-center gap-[5px] rounded-full bg-hijau px-2.5 py-1 text-[12.5px] leading-[15px] text-hijau-ink"
+                    ><Icon name="centang-bulat" class="size-3.5" />{d.periksa?.status === 'jelas'
+                      ? 'Jelas'
+                      : 'Siap'}</span
+                  >
+                {/if}
               </div>
+              {#if d.periksa?.status === 'perlu_ulang' && d.periksa.ringkasan}
+                <p class="text-sm leading-5 text-kuning-ink">{d.periksa.ringkasan}</p>
+              {/if}
               <p class="text-[15px] leading-[22px] text-card-ink">
                 {LABEL_JENIS[d.jenis]} · {ukuranBerkas(d.ukuran)}
               </p>
@@ -274,7 +290,8 @@
     <div class="flex flex-wrap items-center gap-3 rounded-[14px] bg-bg-2 px-[18px] py-3.5">
       <Icon name="gembok" class="size-[18px] shrink-0 text-ink" />
       <p class="flex-1 text-[15px] leading-[22px] text-card-ink">
-        Dokumen tidak dikirim ke mana pun sampai Anda menyetujui pemakaiannya di sebuah urusan.
+        Dokumen tidak dikirim ke situs mana pun sampai Anda menyetujui pemakaiannya di sebuah urusan. Foto
+        hanya dibaca AI untuk memeriksa kejelasannya.
       </p>
       {#if dapatDihapus.length}
         <button

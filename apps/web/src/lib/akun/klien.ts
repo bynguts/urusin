@@ -13,6 +13,12 @@ export type DokumenAkun = {
   ukuran: number;
   disimpanPada: string;
   bacaSaja?: boolean;
+  /** Hasil periksa kejelasan foto; tidak ada = belum pernah diperiksa (dokumen lama, PDF). */
+  periksa?: {
+    status: 'jelas' | 'perlu_ulang' | 'belum';
+    masalah: { bagian: string; jenis: string }[];
+    ringkasan: string;
+  };
 };
 export type DataDiri = DataDiriRingkas & { kodeKabKota?: string; statusPerkawinan?: string };
 
@@ -137,11 +143,24 @@ export const hapusAnggota = (id: string) =>
 
 export const daftarDokumen = () => panggil<{ dokumen: DokumenAkun[] }>('/api/vault');
 
-export function unggahDokumen(berkas: File, jenis: JenisDokumen, judul: string) {
+/**
+ * `periksa`: tunggu hasil periksa kejelasan foto (paling lama 15 detik) dengan `pratinjau` = salinan kecil foto
+ * (data URL JPEG) untuk dibaca AI; tanpa itu foto diperiksa di latar.
+ */
+export function unggahDokumen(
+  berkas: File,
+  jenis: JenisDokumen,
+  judul: string,
+  periksa?: { pratinjau: string | null },
+) {
   const f = new FormData();
   f.set('berkas', berkas);
   f.set('jenis', jenis);
   f.set('judul', judul);
+  if (periksa) {
+    f.set('periksa', 'tunggu');
+    if (periksa.pratinjau) f.set('pratinjau', periksa.pratinjau);
+  }
   return panggil<DokumenAkun>('/api/vault', { method: 'POST', body: f });
 }
 

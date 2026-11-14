@@ -53,6 +53,11 @@ export type ToolContext = {
   signal: AbortSignal;
   /** Ingatan warga pemilik urusan (ADR 0031); tidak ada = urusan tanpa pemilik vault. */
   ingatan?: IngatanTurn | undefined;
+  /**
+   * Foto dokumen lampiran giliran ini belum jelas (peringatan yang sudah tampil ke warga, diredaksi): jawaban
+   * bersumber tidak boleh menyatakan dokumen/foto warga sah atau dapat dipakai.
+   */
+  catatanFoto?: string | undefined;
 };
 
 export type EmittableEvent = EventPayload;

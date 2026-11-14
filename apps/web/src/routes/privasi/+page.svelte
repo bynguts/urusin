@@ -81,7 +81,7 @@
           <h3 class="pv18">Data diri di brankas</h3>
           <p class="pv19">
             NIK dan data pribadi disimpan terenkripsi. AI tidak melihat angka aslinya, kecuali yang tampak di
-            foto yang kamu lampirkan di chat.
+            foto yang kamu lampirkan di chat atau simpan di Dokumen.
           </p>
         </div>
       </div>
@@ -191,8 +191,8 @@
           <div class="pv29 pv-c0" role="rowheader">OpenAI (model GPT, lewat proxy model tim)</div>
           <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
             Teks percakapan, termasuk nama dan teks bebas yang kamu ketik. NIK, KK, HP, dan email diganti
-            penanda sebelum dikirim. Gambar yang kamu lampirkan di chat (salinan diperkecil) untuk dibaca
-            isinya
+            penanda sebelum dikirim. Gambar yang kamu lampirkan di chat atau foto yang kamu simpan di Dokumen
+            (salinan diperkecil) untuk dibaca isinya dan diperiksa kejelasannya
           </div>
           <div class="pv30 pv-c2" role="cell" data-label="Peran">
             Model AI yang menjawab dan menyusun rencana

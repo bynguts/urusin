@@ -2173,8 +2173,8 @@
         <div class="n-feature-text lp145">
           <h3 class="lp146">Periksa foto dokumen</h3>
           <div class="lp147">
-            Kirim foto dokumen di chat, Urusin membacanya. Kalau buram atau terpotong, Urusin bilang dan
-            memintamu memotret ulang.
+            Foto yang kamu kirim di chat atau simpan di Dokumen langsung diperiksa. Kalau buram atau
+            terpotong, Urusin menunjuk bagian mana yang perlu difoto ulang.
           </div>
         </div>
       </div>

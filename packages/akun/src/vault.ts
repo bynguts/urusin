@@ -64,6 +64,7 @@ export const aad = {
   ingatan: (u: string) => `${AAD_VERSION}|ingatan|${u}`,
   dokumen: (u: string, d: string) => `${AAD_VERSION}|dokumen|${u}|${d}`,
   judul: (u: string, d: string) => `${AAD_VERSION}|judul|${u}|${d}`,
+  periksa: (u: string, d: string) => `${AAD_VERSION}|periksa|${u}|${d}`,
 };
 
 /** Anggota keluarga di blob Data Diri versi 2 (isi divalidasi pemanggil). */
@@ -93,6 +94,11 @@ export type DokumenMeta = {
   createdAt: string;
   /** Rujukan contoh bersama pada salinan demo, tidak bisa dihapus. */
   bacaSaja?: boolean;
+  /**
+   * Hasil periksa kejelasan foto (JSON yang disimpan pemanggil, divalidasi skema di lapisan API). Tidak ada =
+   * belum pernah diperiksa (dokumen lama, PDF).
+   */
+  periksa?: Record<string, unknown>;
 };
 
 export type BatasVault = {
@@ -448,6 +454,43 @@ export class Vault {
   }
 
   /**
+   * Simpan (timpa) hasil periksa foto satu dokumen milik `userId`, terenkripsi DEK pemilik. false bila dokumennya
+   * tidak ada lagi (dihapus/dipindah selagi diperiksa) atau pemilik tanpa DEK.
+   */
+  setPeriksa(userId: string, docId: string, periksa: Record<string, unknown>): boolean {
+    if (!ID_RE.test(docId)) return false;
+    const ada = this.db
+      .prepare('SELECT 1 FROM vault_documents WHERE id = ? AND user_id = ?')
+      .get(docId, userId);
+    const dek = ada ? this.dek(userId, false) : null;
+    if (!dek) return false;
+    this.db
+      .prepare('INSERT OR REPLACE INTO vault_periksa (doc_id, ciphertext, at) VALUES (?,?,?)')
+      .run(
+        docId,
+        seal(dek, Buffer.from(JSON.stringify(periksa), 'utf8'), aad.periksa(userId, docId)),
+        this.now().toISOString(),
+      );
+    return true;
+  }
+
+  /** Buka hasil periksa; rusak/tidak terbuka = dianggap belum diperiksa (tidak menggagalkan daftar dokumen). */
+  private bukaPeriksa(
+    dek: Buffer,
+    userId: string,
+    docId: string,
+    ct: Buffer | null,
+  ): Record<string, unknown> | undefined {
+    if (!ct) return undefined;
+    try {
+      const v = JSON.parse(open(dek, ct, aad.periksa(userId, docId)).toString('utf8')) as unknown;
+      return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * Dokumen contoh untuk salinan demo: rujukan bersama baca-saja (byte di memori, tidak ada berkas/baris per
    * salinan), jadi ribuan salinan demo tidak memakan disk. Tidak dihitung ke batas berkas, tidak bisa dihapus.
    */
@@ -473,8 +516,9 @@ export class Vault {
   private dokumenSendiri(userId: string): DokumenMeta[] {
     const rows = this.db
       .prepare(
-        `SELECT id, jenis, judul_ct, mime, size, created_at FROM vault_documents
-         WHERE user_id = ? ORDER BY created_at DESC, id`,
+        `SELECT d.id, d.jenis, d.judul_ct, d.mime, d.size, d.created_at, p.ciphertext AS periksa_ct
+         FROM vault_documents d LEFT JOIN vault_periksa p ON p.doc_id = d.id
+         WHERE d.user_id = ? ORDER BY d.created_at DESC, d.id`,
       )
       .all(userId) as {
       id: string;
@@ -483,18 +527,23 @@ export class Vault {
       mime: string;
       size: number;
       created_at: string;
+      periksa_ct: Buffer | null;
     }[];
     if (rows.length === 0) return [];
     const dek = this.dek(userId, false);
     if (!dek) return [];
-    return rows.map((r) => ({
-      id: r.id,
-      jenis: r.jenis,
-      judul: open(dek, r.judul_ct, aad.judul(userId, r.id)).toString('utf8'),
-      mime: r.mime,
-      size: r.size,
-      createdAt: r.created_at,
-    }));
+    return rows.map((r) => {
+      const periksa = this.bukaPeriksa(dek, userId, r.id, r.periksa_ct);
+      return {
+        id: r.id,
+        jenis: r.jenis,
+        judul: open(dek, r.judul_ct, aad.judul(userId, r.id)).toString('utf8'),
+        mime: r.mime,
+        size: r.size,
+        createdAt: r.created_at,
+        ...(periksa ? { periksa } : {}),
+      };
+    });
   }
 
   getDocument(userId: string, docId: string): { meta: DokumenMeta; bytes: Buffer } | null {
@@ -558,8 +607,15 @@ export class Vault {
     }
     const dekKe = this.dek(ke, true)!;
     const dekDari = this.dek(dari, false)!;
-    const baris: { id: string; jenis: string; judulCt: Buffer; mime: string; size: number; at: string }[] =
-      [];
+    const baris: {
+      id: string;
+      jenis: string;
+      judulCt: Buffer;
+      mime: string;
+      size: number;
+      at: string;
+      periksaCt: Buffer | null;
+    }[] = [];
     try {
       for (const d of docs) {
         const id = newId('dok');
@@ -575,6 +631,10 @@ export class Vault {
           mime: d.mime,
           size: d.size,
           at: d.createdAt,
+          // Hasil periksa foto ikut pindah (dienkripsi ulang dengan DEK akun).
+          periksaCt: d.periksa
+            ? seal(dekKe, Buffer.from(JSON.stringify(d.periksa), 'utf8'), aad.periksa(ke, id))
+            : null,
         });
       }
     } catch (e) {
@@ -601,7 +661,13 @@ export class Vault {
           `INSERT INTO vault_documents (id, user_id, jenis, judul_ct, mime, size, created_at)
            VALUES (?,?,?,?,?,?,?)`,
         );
-        for (const b of baris) ins.run(b.id, ke, b.jenis, b.judulCt, b.mime, b.size, b.at);
+        const insPeriksa = this.db.prepare(
+          'INSERT INTO vault_periksa (doc_id, ciphertext, at) VALUES (?,?,?)',
+        );
+        for (const b of baris) {
+          ins.run(b.id, ke, b.jenis, b.judulCt, b.mime, b.size, b.at);
+          if (b.periksaCt) insPeriksa.run(b.id, b.periksaCt, b.at);
+        }
         this.shredDb(dari);
       },
       batalkan: () => {

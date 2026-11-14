@@ -8,6 +8,7 @@
     type DokumenAkun,
     type JenisDokumen,
   } from '#lib/akun/klien.js';
+  import { gambarUntukAi } from '#lib/components/urusan/komposer.js';
 
   /**
    * Dialog Tambah dokumen (App 11). Dimuat terpisah oleh /dokumen (import dinamis, dipanaskan saat idle):
@@ -45,7 +46,14 @@
     const cek = periksaBerkas(berkas);
     if (cek) return void (galatUnggah = cek);
     mengunggah = true;
-    const r = await unggahDokumen(berkas, jenis, judul.trim() || LABEL_JENIS[jenis]);
+    // Foto diperiksa kejelasannya oleh AI dari salinan kecil (sisi 1280 px) yang dibuat di perangkat.
+    const foto = berkas.type.startsWith('image/');
+    const r = await unggahDokumen(
+      berkas,
+      jenis,
+      judul.trim() || LABEL_JENIS[jenis],
+      foto ? { pratinjau: await gambarUntukAi(berkas) } : undefined,
+    );
     mengunggah = false;
     if (!r.ok) return void (galatUnggah = r.pesan);
     dialog?.close();
@@ -116,7 +124,7 @@
         class="inline-flex min-h-12 items-center gap-2 rounded-full bg-primer px-6 font-semibold text-primer-ink disabled:opacity-60"
       >
         <Icon name={mengunggah ? 'memuat' : 'unggah'} class="size-4.5 {mengunggah ? 'animate-spin' : ''}" />
-        {mengunggah ? 'Mengunggah…' : 'Simpan'}
+        {mengunggah ? (berkas?.type.startsWith('image/') ? 'Memeriksa foto…' : 'Mengunggah…') : 'Simpan'}
       </button>
     </div>
   </form>

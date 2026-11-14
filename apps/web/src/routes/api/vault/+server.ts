@@ -2,6 +2,7 @@ import {
   BERKAS_PER_PEMILIK_MAKS,
   DokumenAkunSchema,
   MIME_DOKUMEN,
+  PeriksaDokumenSchema,
   UKURAN_DOKUMEN_MAKS,
   UnggahDokumenFieldsSchema,
   type VaultResponse,
@@ -9,11 +10,14 @@ import {
 import type { DokumenMeta } from '@urusin/akun';
 import { akunErrorResponse, pemilikVault, tolakBacaVault } from '#lib/server/akun.js';
 import { apiError, apiJson } from '#lib/server/http.js';
+import { periksaUnggahan } from '#lib/server/periksa-dokumen.js';
 import { getRuntime } from '#lib/server/runtime.js';
 import type { RequestHandler } from './$types';
 
-const publikDokumen = (d: DokumenMeta) =>
-  DokumenAkunSchema.parse({
+const publikDokumen = (d: DokumenMeta) => {
+  // Hasil periksa yang tidak sesuai skema (versi lama/rusak) tidak ditampilkan, tidak menggagalkan daftar.
+  const periksa = PeriksaDokumenSchema.safeParse(d.periksa);
+  return DokumenAkunSchema.parse({
     id: d.id,
     jenis: d.jenis,
     judul: d.judul,
@@ -21,7 +25,9 @@ const publikDokumen = (d: DokumenMeta) =>
     ukuran: d.size,
     disimpanPada: d.createdAt,
     ...(d.bacaSaja ? { bacaSaja: true } : {}),
+    ...(periksa.success ? { periksa: periksa.data } : {}),
   });
+};
 
 /**
  * Isi vault pemilik TANPA nilai: ada/tidaknya Data Diri + daftar dokumen (judul milik pemilik sendiri).
@@ -48,7 +54,9 @@ export const GET: RequestHandler = async (event) => {
 
 /**
  * Unggah dokumen (multipart: `berkas`, `jenis`, `judul`). Dienkripsi dengan DEK pemilik sebelum ditulis ke
- * disk. Batas: 10 berkas x 9 MB per pemilik; penyimpanan host penuh → 507 dengan pesan jujur.
+ * disk. Batas: 10 berkas x 9 MB per pemilik; penyimpanan host penuh → 507 dengan pesan jujur. Foto diperiksa
+ * kejelasannya oleh model vision (`periksaUnggahan`): opsional `pratinjau` (data URL kecil dari perangkat) dan
+ * `periksa=tunggu` (respons menunggu hasilnya, paling lama 15 detik).
  */
 export const POST: RequestHandler = async (event) => {
   let form: FormData;
@@ -68,12 +76,16 @@ export const POST: RequestHandler = async (event) => {
   try {
     const rt = await getRuntime();
     const p = pemilikVault(rt, event, { buat: true })!;
-    const meta = rt.akun.vault.putDocument(p.id, {
-      ...fields.data,
-      mime: berkas.type,
-      bytes: Buffer.from(await berkas.arrayBuffer()),
-    });
-    return apiJson(publikDokumen(meta), 201);
+    const bytes = Buffer.from(await berkas.arrayBuffer());
+    const meta = rt.akun.vault.putDocument(p.id, { ...fields.data, mime: berkas.type, bytes });
+    const periksa = await periksaUnggahan(
+      rt,
+      p.id,
+      meta.id,
+      { mime: berkas.type, bytes, pratinjau: form.get('pratinjau') },
+      { tunggu: form.get('periksa') === 'tunggu' },
+    );
+    return apiJson(publikDokumen({ ...meta, ...(periksa ? { periksa } : {}) }), 201);
   } catch (e) {
     return akunErrorResponse(e);
   }
