@@ -173,13 +173,19 @@ describe.each<Mode>(['bm25', 'hybrid'])('abstain / hand-off (mode %s)', (mode) =
   it('mode keluaran sesuai', () => {
     expect(run('ktp hilang', mode).mode).toBe(mode);
   });
-  it('10 pertanyaan di luar cakupan -> tanpaHasil true dengan alasan (ambang 0.3 di celah korpus sintetis)', () => {
+  it('10 pertanyaan di luar cakupan -> selalu beralasan; di_luar_cakupan kosong, skor_rendah tetap diserahkan ke model', () => {
     expect(OUT_OF_SCOPE).toHaveLength(10);
     for (const q of OUT_OF_SCOPE) {
       const out = run(q, mode, 0.3);
-      expect(out.tanpaHasil, q).toBe(true);
-      expect(out.hasil, q).toEqual([]);
       expect(['di_luar_cakupan', 'skor_rendah'], q).toContain(out.alasan);
+      if (out.alasan === 'di_luar_cakupan') {
+        expect(out.tanpaHasil, q).toBe(true);
+        expect(out.hasil, q).toEqual([]);
+      } else {
+        // Relevansi rendah: potongan tetap dikembalikan (ditandai), model memilih memakai atau mencari web.
+        expect(out.tanpaHasil, q).toBe(false);
+        expect(out.hasil.length, q).toBeGreaterThan(0);
+      }
     }
   });
   it('tanpa gerbang (minCoverage 0) kueri di luar cakupan masih mengembalikan hasil', () => {
@@ -197,8 +203,8 @@ describe.each<Mode>(['bm25', 'hybrid'])('abstain / hand-off (mode %s)', (mode) =
     expect(run('ktp hilang di terminal bus', mode).hasil[0]?.id).toBe('ktp-hilang');
   });
   it('ambang dapat dikonfigurasi', () => {
-    expect(run('lirik lagu terbaru', mode, 0.1).tanpaHasil).toBe(false);
-    expect(run('ktp hilang di terminal bus', mode, 0.9).tanpaHasil).toBe(true);
+    expect(run('lirik lagu terbaru', mode, 0.1).alasan).toBeUndefined();
+    expect(run('ktp hilang di terminal bus', mode, 0.9).alasan).toBeDefined();
   });
   it('debug memuat coverage (angka, bukan teks kueri)', () => {
     expect(run('ktp hilang', mode).debug!.coverage).toBeGreaterThan(0.9);
@@ -210,7 +216,9 @@ describe('abstain: konfigurasi', () => {
     expect(DEFAULT_MIN_COVERAGE).toBe(0.1);
     expect(run('resep rendang padang', 'bm25').alasan).toBe('di_luar_cakupan');
     // korpus sintetis punya celah 0.26..0.33, jadi 'skor_rendah' diuji dengan ambang 0.3 eksplisit
-    expect(run('lirik lagu terbaru', 'bm25', 0.3).alasan).toBe('skor_rendah');
+    const rendah = run('lirik lagu terbaru', 'bm25', 0.3);
+    expect(rendah.alasan).toBe('skor_rendah');
+    expect(rendah.hasil.length).toBeGreaterThan(0);
   });
   it('env RAG_ABSTAIN_MIN_COVERAGE menimpa bawaan; nilai tak valid diabaikan', () => {
     const prev = process.env['RAG_ABSTAIN_MIN_COVERAGE'];

@@ -369,7 +369,11 @@ function debugOf(
   };
 }
 
-/** Abstain bila tak ada hasil, atau cakupan leksikal top-3 hasil fusi di bawah ambang. */
+/**
+ * Abstain bila tak ada hasil, atau cakupan leksikal top-3 hasil fusi di bawah ambang. `skor_rendah` hanya menandai:
+ * hasilnya tetap dikembalikan (ditandai relevansi rendah) agar model memilih memakainya atau mencari web;
+ * `di_luar_cakupan` (cakupan 0, layanan luar cakupan) tetap mengosongkan hasil.
+ */
 function abstainOf(s: SyncResult, deps: RetrievalDeps): AbstainReason | undefined {
   if (s.hits.length === 0) return 'di_luar_cakupan';
   const min = deps.minCoverage ?? envMinCoverage() ?? DEFAULT_MIN_COVERAGE;
@@ -389,7 +393,7 @@ export function retrieveSyncFull(
   const t0 = performance.now();
   const s = retrieveSync(db, opts, pipeline, k, deps);
   const alasan = abstainOf(s, deps);
-  const hits = alasan ? [] : s.hits.slice(0, k);
+  const hits = alasan === 'di_luar_cakupan' ? [] : s.hits.slice(0, k);
   return {
     hits,
     alasan,
@@ -428,10 +432,10 @@ export async function retrieve(
   const s = retrieveSync(db, opts, pipeline, topN, deps, extra);
 
   const alasan = abstainOf(s, deps);
-  let hits = alasan ? [] : s.hits.slice(0, k);
+  let hits = alasan === 'di_luar_cakupan' ? [] : s.hits.slice(0, k);
   let rerankStatus: RerankStatus = 'off';
   const t1 = performance.now();
-  if (!alasan && rr && deps.rerank) {
+  if (alasan !== 'di_luar_cakupan' && rr && deps.rerank) {
     const r = await rerankHits(opts.query, s.hits, k, deps.rerank);
     hits = r.hits;
     rerankStatus = r.status;
