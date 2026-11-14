@@ -1,5 +1,3 @@
-# Korpus RAG produksi (salinan lokal), worktree --ref, dan hasil run selain baseline yang di-commit.
+# Korpus RAG produksi (salinan lokal), worktree --ref, dan seluruh keluaran run (dibangkitkan lokal).
 .cache/
-hasil/*
-!hasil/baseline/
-hasil/**/server.log
+hasil/

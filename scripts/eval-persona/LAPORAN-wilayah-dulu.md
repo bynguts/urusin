@@ -4,7 +4,7 @@ Cabang yang diuji: `feat/wilayah-dulu` @ `c869666`, dibangun di worktree terpisa
 (`.cache/wt-c869666`, install + build otomatis). Pembanding: baseline `main` (`c9aa9af`) di `LAPORAN-baseline.md`.
 Korpus RAG, model, ambang, dan env sama. Tanggal run: 2026-11-10. Kode produk tidak diubah.
 
-Hasil lengkap ada di `hasil/baseline/` (§6: kepala cabang `e6dea43`):
+Keluaran run dibangkitkan lokal di `hasil/baseline/` (tidak di-commit; §6: kepala cabang `e6dea43`):
 
 | folder                          | ref     | wilayah perangkat                             | persona |
 | ------------------------------- | ------- | --------------------------------------------- | ------- |
@@ -17,7 +17,7 @@ Hasil lengkap ada di `hasil/baseline/` (§6: kepala cabang `e6dea43`):
 | `wilayah-dulu-e6dea43/`         | e6dea43 | bawaan cabang = kosong                        | p01-p17 |
 | `wilayah-dulu-e6dea43-persona/` | e6dea43 | wilayah persona                               | p01-p17 |
 
-Tabel perbandingan dibuat ulang dengan:
+Tabel perbandingan dibuat ulang (setelah run lokal) dengan:
 
 ```
 node scripts/eval-persona/banding.mjs \
@@ -200,7 +200,7 @@ Selama eval berjalan, `feat/wilayah-dulu` maju tiga commit:
 Harness menyesuaikan diri: `opsiAksiWilayah` membaca `urusan.svelte.ts` worktree yang diuji. Di c869666 aksi
 `wilayah` memakai versi dan kirim ulang setelah 409; di e6dea43 `{ versi: false, ulang: false }`.
 
-Suite yang sama dijalankan ulang (`--ref e6dea43`), hasilnya di `hasil/baseline/wilayah-dulu-e6dea43{,-persona}/`:
+Suite yang sama dijalankan ulang (`--ref e6dea43`), keluarannya (lokal) di `hasil/baseline/wilayah-dulu-e6dea43{,-persona}/`:
 
 | kriteria (lulus)           | a             | b             | c           | d             | e             | f             | g             | h             | i           |
 | -------------------------- | ------------- | ------------- | ----------- | ------------- | ------------- | ------------- | ------------- | ------------- | ----------- |

@@ -1,7 +1,8 @@
 # Laporan baseline eval persona Urusin
 
 Commit yang diuji: `e0bd4a5` (origin/main `c9aa9af` + harness eval saja; kode produk tidak diubah). Tanggal run: 2026-11-10.
-Hasil lengkap: `hasil/baseline/bawaan/` dan `hasil/baseline/wilayah-persona/` (`skor.md`, `skor.json`, `transkrip/*.txt|json`).
+Keluaran lengkap (`skor.md`, `skor.json`, `transkrip/*.txt|json`) dibangkitkan lokal oleh `run.mjs` di
+`hasil/baseline/bawaan/` dan `hasil/baseline/wilayah-persona/`; transkrip mentah tidak di-commit.
 
 ## 1. Cara kerja
 
@@ -41,8 +42,8 @@ pnpm eval:persona --base-url http://localhost:3000  # server yang sudah jalan (t
 Prasyarat: `~/.urusin-secrets/llm.env` (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_AGENT_MODEL`, opsional `JINA_API_KEY`), port
 lokal 20128 bebas, dan korpus di `scripts/eval-persona/.cache/rag.prod.db` (di-gitignore). Salin dari produksi, baca
 saja:
-`ssh ubuntu@<host-agent-vm> 'docker exec urusin-web-blue-1 cat /data/rag.db' > scripts/eval-persona/.cache/rag.prod.db`.
-Keluaran: `scripts/eval-persona/hasil/<label>/`.
+`ssh <user>@<host-produksi> 'docker exec urusin-web-blue-1 cat /data/rag.db' > scripts/eval-persona/.cache/rag.prod.db`.
+Keluaran: `scripts/eval-persona/hasil/<label>/` (dibangkitkan lokal, di-gitignore).
 
 ## 2. Skor baseline
 
@@ -104,7 +105,7 @@ terkait Wonogiri.
 Mengatur wilayah dengan benar hanya menaikkan b/d sedikit: rencana masih memakai bundel Wonogiri (D2) dan korpus tidak
 punya aturan nasional (D7), jadi c tetap 1/15.
 
-**Persona tambahan p16-p17 di main** (`hasil/baseline/bawaan-tambahan/`, mode bawaan) untuk dibandingkan dengan
+**Persona tambahan p16-p17 di main** (label `bawaan-tambahan`, mode bawaan) untuk dibandingkan dengan
 `feat/wilayah-dulu`; hasil lengkap ada di `LAPORAN-wilayah-dulu.md`.
 
 - p16 (Data Diri Wonogiri, KTP Kota Semarang): a/b/c/d gagal. Kartu rencana tetap Wonogiri walau warga menulis "KTP
