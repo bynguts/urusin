@@ -10,6 +10,7 @@ const TIPE = [
   'plan_card',
   'wilayah',
   'ingatan',
+  'berkas',
   'checklist',
   'eligibility',
   'execution_request',
@@ -160,18 +161,25 @@ export class UrusanStore implements StoreUrusan {
     }
   }
 
-  /** `gambar`: salinan gambar lampiran yang sudah diperkecil (data URL) untuk dibaca AI giliran ini. */
-  async kirim(teks: string, gambar: string[] = []): Promise<'ok' | 'konflik' | 'galat'> {
+  /**
+   * `gambar`: salinan gambar lampiran yang sudah diperkecil (data URL) untuk dibaca AI giliran ini. `dokumen`: id
+   * lampiran DOCX/PDF yang sudah tersimpan di brankas (templat; teksnya dibaca server).
+   */
+  async kirim(
+    teks: string,
+    gambar: string[] = [],
+    dokumen: string[] = [],
+  ): Promise<'ok' | 'konflik' | 'galat'> {
     const id = this.keadaan.id;
     if (!id) return 'galat';
     try {
-      let res = await this.kirimTurn(id, teks, gambar);
+      let res = await this.kirimTurn(id, teks, gambar, dokumen);
       if (res.status === 409) {
         // Versi basi (klaim turn menaikkan versi tanpa event state) atau turn masih berjalan: ambil status terbaru.
         const st = await this.statusTerbaru(id);
         if (!st || st.berjalan) return st ? 'konflik' : 'galat';
         this.keadaan.version = st.version;
-        res = await this.kirimTurn(id, teks, gambar);
+        res = await this.kirimTurn(id, teks, gambar, dokumen);
         if (res.status === 409) return 'konflik';
       }
       if (!res.ok) return 'galat';
@@ -255,7 +263,12 @@ export class UrusanStore implements StoreUrusan {
     }
   }
 
-  private kirimTurn(id: string, teks: string, gambar: string[] = []): Promise<Response> {
+  private kirimTurn(
+    id: string,
+    teks: string,
+    gambar: string[] = [],
+    dokumen: string[] = [],
+  ): Promise<Response> {
     return this.ambil(`/api/urusan/${encodeURIComponent(id)}/turn`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -263,6 +276,7 @@ export class UrusanStore implements StoreUrusan {
         teks,
         expectedVersion: this.keadaan.version,
         ...(gambar.length ? { gambar } : {}),
+        ...(dokumen.length ? { dokumen: dokumen.slice(0, 5) } : {}),
       }),
     });
   }

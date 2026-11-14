@@ -38,6 +38,7 @@ import {
 import { createRagSearcher, openDb, type RagSearchInfo } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { cariWebDariEnv } from './cari-web.js';
+import { layananBerkas } from './vault/berkas.js';
 import { embeddingDariEnv, intentEmbedding, type Embedding } from './embedding.js';
 import { httpKeluar } from './http-keluar.js';
 import { buatJudulUrusan, judulDemo } from './judul-urusan.js';
@@ -269,6 +270,8 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   const searcher = config.ragDbPath ? createRagSearcher(ragDb, init.env ?? process.env) : undefined;
   // Ingatan warga (ADR 0031) disimpan di vault akun; AkunService dirakit sesudah harness (butuh store).
   const akunRef: { akun?: AkunService } = {};
+  // Berkas buatan agen membaca brankas lewat runtime yang baru selesai dirakit di akhir fungsi ini.
+  const rtRef: { rt?: Runtime } = {};
   const embedding = embeddingDariEnv(init.env ?? process.env);
   const klasifikasiEmbedding = intentEmbedding(embedding);
   // Cari web cadangan (Exa): hanya bila EXA_API_KEY terisi; tanpa itu web__cari tidak ditawarkan ke model.
@@ -280,6 +283,10 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     ragSearch: searcher?.search,
     ...(klasifikasiEmbedding ? { intentEmbedding: klasifikasiEmbedding } : {}),
     ...(cariWeb ? { cariWeb } : {}),
+    berkas: layananBerkas(() => {
+      if (!rtRef.rt) throw new Error('runtime belum siap');
+      return rtRef.rt;
+    }),
     ingatan: penyimpanIngatan(() => {
       if (!akunRef.akun) throw new Error('akun belum siap');
       return akunRef.akun;
@@ -323,7 +330,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   ])
     if (peringatan) alertOperator(peringatan);
   const rag = ragInfo(ragDb, Boolean(config.ragDbPath), searcher?.info);
-  return {
+  const rt: Runtime = {
     ...h,
     config,
     rag,
@@ -338,6 +345,8 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     oidcFixture,
     embedding,
   };
+  rtRef.rt = rt;
+  return rt;
 }
 
 function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {
@@ -486,7 +495,7 @@ export function setRuntimeForTests(rt: Runtime | Promise<Runtime> | undefined): 
 /** Klaim turn secara sinkron lalu jalankan di latar belakang; hasilnya mengalir lewat tabel events + bus. */
 export function startTurnInBackground(
   rt: Runtime,
-  args: { urusanId: string; userText: string; expectedVersion?: number; gambar?: readonly string[] },
+  args: Parameters<typeof prepareTurn>[1],
 ): { turnId: string } {
   const prepared = prepareTurn(rt.deps, args); // melempar HarnessError 409/404 sebelum apa pun dialirkan
   const ctrl = new AbortController();
