@@ -20,8 +20,14 @@ C4Context
   System_Ext(gov, "Situs layanan pemerintah", "Portal adminduk daerah, LAPOR!, KPU, Kemensos, OSS. Hanya origin yang terdaftar di registry.")
   System_Ext(llm, "OpenAI", "Model GPT lewat Chat Completions (SDK resmi openai). Hanya menerima placeholder, bukan data pribadi.")
   System_Ext(gh, "GitHub", "Repositori, GitHub Actions (CI dan release), GHCR (registry image).")
+  System_Ext(cf, "Cloudflare", "DNS, CDN, dan perlindungan jaringan: tepi publik urusinai.web.id.")
+  System_Ext(google, "Google", "Masuk dengan Google (OIDC), bila warga memilihnya.")
+  System_Ext(exa, "Exa", "Cadangan pencarian web, istilah umum saja.")
 
-  Rel(warga, urusin, "Memakai", "HTTPS dari ponsel atau laptop; layar Browser Pendamping dialirkan ke perangkat")
+  Rel(warga, cf, "Memakai", "HTTPS dari ponsel atau laptop; layar Browser Pendamping dialirkan ke perangkat")
+  Rel(cf, urusin, "Meneruskan lalu lintas web", "HTTPS")
+  Rel(urusin, google, "Verifikasi masuk", "OIDC")
+  Rel(urusin, exa, "Pencarian web cadangan", "HTTPS, tanpa data pribadi")
   Rel(urusin, gov, "Membuka dan mengisi formulir lewat Browser Pendamping", "Chromium di server per sesi, login dan kirim akhir oleh warga")
   Rel(urusin, llm, "Meminta penalaran dan ekstraksi", "HTTPS, placeholder saja")
   Rel(gh, urusin, "Membangun dan menyimpan image, VPS menariknya berdasarkan digest", "Docker pull")
@@ -39,13 +45,17 @@ C4Container
     Container(webui, "Web app", "SvelteKit UI", "Antarmuka dan kanvas layar Browser Pendamping.")
   }
 
-  System_Boundary(vps, "Server Urusin: Oracle Cloud Singapura (Docker Compose)") {
-    Container(caddy, "Caddy", "Caddy 2", "Satu-satunya pintu publik. TLS otomatis, HSTS, kompresi.")
-    Container(web, "web", "SvelteKit adapter-node, Node 26", "Server routes, harness agen, akun, vault terenkripsi, CSP nonce.")
-    Container(fixtures, "fixtures (opsional)", "Hono", "Situs tiruan jinak untuk demo dan uji.")
-    Container(pendamping, "pendamping (opsional)", "Node, Chromium headed di Xvfb", "Satu Chromium per sesi warga, proxy egress per sesi ber-allowlist registry.")
-    Container(embedding, "embedding", "llama.cpp, EmbeddingGemma-300M", "Self-hosted: jenis urusan dan pencarian vektor RAG.")
-    ContainerDb(db, "SQLite", "better-sqlite3, mode WAL", "Urusan dan jejak tanpa PII; akun dan vault (ciphertext AES-256-GCM); korpus RAG dengan indeks BM25 + vektor.")
+  System_Ext(cf, "Cloudflare", "Tepi publik: DNS, CDN, perlindungan jaringan, TLS di edge.")
+
+  System_Boundary(vps, "Server Urusin: Oracle Cloud Singapura") {
+    Container(caddy, "Caddy (host)", "Caddy 2, proses host di luar compose", "Satu-satunya pintu masuk server. TLS, HSTS, kompresi (ADR 0023).")
+    Container_Boundary(compose, "Docker Compose (port hanya 127.0.0.1)") {
+      Container(web, "web", "SvelteKit adapter-node, Node 26", "Server routes, harness agen, akun, vault terenkripsi, CSP nonce.")
+      Container(fixtures, "fixtures (opsional)", "Hono", "Situs tiruan jinak untuk demo dan uji.")
+      Container(pendamping, "pendamping (opsional)", "Node, Chromium headed di Xvfb", "Satu Chromium per sesi warga, proxy egress per sesi ber-allowlist registry.")
+      Container(embedding, "embedding", "llama.cpp, EmbeddingGemma-300M", "Self-hosted: jenis urusan dan pencarian vektor RAG.")
+      ContainerDb(db, "SQLite", "better-sqlite3, mode WAL", "Urusan dan jejak tanpa PII; akun dan vault (ciphertext AES-256-GCM); korpus RAG dengan indeks BM25 + vektor.")
+    }
   }
 
   System_Ext(gov, "Situs layanan pemerintah", "Origin terdaftar di registry")
@@ -53,13 +63,14 @@ C4Container
   System_Ext(gh, "GitHub Actions dan GHCR", "Build multi-arch, image per commit SHA")
 
   Rel(warga, webui, "Memakai")
-  Rel(webui, caddy, "HTTPS, SSE", "placeholder dan fakta turunan, bebas PII")
-  Rel(webui, caddy, "Layar dan input Browser Pendamping", "WebSocket /pendamping/ws, tiket sekali pakai")
+  Rel(webui, cf, "HTTPS, SSE", "placeholder dan fakta turunan, bebas PII")
+  Rel(webui, cf, "Layar dan input Browser Pendamping", "WebSocket /pendamping/ws, tiket sekali pakai")
+  Rel(cf, caddy, "Meneruskan ke origin", "HTTPS")
   Rel(web, pendamping, "API internal bertanda HMAC", "jaringan internal")
   Rel(web, embedding, "Embedding kueri dan teks", "jaringan internal")
   Rel(pendamping, gov, "Menjelajah dan mengisi; kirim akhir oleh warga", "HTTPS lewat proxy egress")
-  Rel(caddy, web, "reverse_proxy, streaming SSE", "jaringan internal")
-  Rel(caddy, fixtures, "reverse_proxy (bila diaktifkan)", "jaringan internal")
+  Rel(caddy, web, "reverse_proxy, streaming SSE", "loopback 127.0.0.1")
+  Rel(caddy, fixtures, "reverse_proxy (bila diaktifkan)", "loopback 127.0.0.1")
   Rel(web, db, "Membaca dan menulis", "file SQLite")
   Rel(web, llm, "Chat Completions", "HTTPS")
   Rel(gh, web, "Image web per SHA, ditarik berdasarkan digest", "deploy.sh")
@@ -67,8 +78,10 @@ C4Container
 
 Catatan pembacaan:
 
-- **Caddy adalah satu-satunya pintu publik.** Kontainer Urusin hanya terbuka ke jaringan internal server.
-  Alasannya ada di [ADR 0023](adr/0023-caddy-host-bersama-port-loopback.md).
+- **Cloudflare adalah tepi publik.** DNS urusinai.web.id ada di Cloudflare dan semua lalu lintas web diproksikan
+  lewat jaringannya (CDN, perlindungan jaringan, TLS di edge). Di server, **Caddy milik host adalah satu-satunya
+  pintu masuk**: Caddy berjalan sebagai proses host, bukan di Docker Compose, dan kontainer Urusin hanya mengikat
+  port loopback `127.0.0.1`. Alasannya ada di [ADR 0023](adr/0023-caddy-host-bersama-port-loopback.md).
 - Container `web` berjalan `read_only`, `cap_drop: [ALL]`, `no-new-privileges`, `mem_limit: 512m`.
 - **Belum ada (rencana):** server MCP, service `worker` pengingat, PWA. Pengingat masih dimatikan lewat
   flag.
@@ -78,12 +91,14 @@ Catatan pembacaan:
   - Dengan akun: vault terenkripsi per akun (DEK per pemilik dibungkus KEK dari `URUSIN_PII_KEY`) ikut lintas
     perangkat.
   - Salinan demo juri disimpan 24 jam; akun tidak disapu (tanpa verifikasi email, ADR 0032). Hapus = crypto-shred.
-- **Pemroses dan lokasi:**
-  - VPS Oracle Cloud Singapura: DB, berkas vault terenkripsi, dan Browser Pendamping.
-  - Resend (Amerika Serikat): opsional dan tidak aktif di produksi, jadi tidak ada email yang
-    terkirim. Bila diaktifkan, hanya menerima alamat email dan tautan.
+- **Pemroses dan lokasi** (sama dengan [`docs/privasi.md`](privasi.md)):
+  - Oracle Cloud (Singapura): DB, berkas vault terenkripsi, pencarian sumber resmi, dan Browser Pendamping.
+  - Cloudflare (global, titik terdekat Singapura): DNS, CDN, dan perlindungan jaringan untuk semua lalu lintas web,
+    serta penerusan email ke hello@urusinai.web.id. Data Diri dan dokumen tetap tersimpan terenkripsi hanya di
+    server Urusin.
   - Google: hanya untuk OIDC, bila warga memilihnya.
-  - Model AI tidak pernah melihat NIK, KK, HP, atau email.
+  - OpenAI (model GPT): teks percakapan dengan penanda; model tidak pernah melihat NIK, KK, HP, atau email.
+  - Exa (Amerika Serikat): cadangan pencarian web, istilah umum tanpa data pribadi.
 - Paket pustaka (bukan kontainer): `@urusin/harness` (agen, state machine, policy gate, audit), `@urusin/akun`
   (akun, sesi, vault), `@urusin/egress` (allowlist HTTP keluar), `@urusin/core` (Step DSL, guard placeholder, registry domain),
   `@urusin/llm` (gateway dan capability probe), `@urusin/registry` (router kab/kota dari prefiks NIK),

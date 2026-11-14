@@ -12,8 +12,7 @@ yang sebenarnya; rujukan teknisnya ada di [ADR 0028](adr/0028-akun-dan-login.md)
   Angka yang tampak di foto ikut terlihat oleh model pembaca gambar; model diminta tidak menyalinnya dan hasil
   bacaannya disaring dari NIK/KK/HP/email sebelum dipakai. Salinan itu tidak disimpan; aslinya tersimpan terenkripsi
   di Dokumen. PDF tidak dikirim ke AI.
-- Data Diri dan dokumen Anda disimpan **terenkripsi**. Tanpa akun, data itu terhapus sendiri 72 jam setelah
-  dibuat.
+- Data Diri dan dokumen Anda disimpan **terenkripsi** di akun Anda dan bisa Anda hapus kapan saja.
 - Urusin **tidak pernah menekan tombol Kirim** di situs pemerintah. Anda yang memeriksa dan mengirim.
 - Kami tidak menjual data, tidak memasang iklan, dan tidak memakai pelacak atau analitik pihak ketiga.
 
@@ -22,24 +21,23 @@ yang sebenarnya; rujukan teknisnya ada di [ADR 0028](adr/0028-akun-dan-login.md)
 Urusin dikembangkan dan dioperasikan oleh Tim Lisan al-Gaib (LOGICODIX 2026) sebagai pengendali data. Pertanyaan dan
 permintaan soal data pribadi bisa dikirim lewat kontak di [`SECURITY.md`](../SECURITY.md).
 
-## Tiga cara memakai Urusin
+## Dua cara memakai Urusin
 
-| Cara                   | Yang terjadi pada data Anda                                                                                                                                                                               |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Tanpa akun** (tamu)  | Data Diri dan dokumen disimpan terenkripsi di server, terikat ke peramban ini lewat cookie. Terhapus otomatis 72 jam setelah dibuat. Daftar urusan dan pengaturan tampilan disimpan di peramban ini saja. |
-| **Dengan akun**        | Data Diri, dokumen, dan daftar urusan disimpan terenkripsi di server dan ikut ke perangkat lain yang Anda pakai untuk masuk. Disimpan sampai Anda menghapusnya atau menghapus akun.                       |
-| **Masuk sebagai juri** | Salinan demo berisi data karangan, bukan data orang sungguhan. Terhapus 24 jam setelah dibuat dan hanya bisa diisikan ke situs latihan.                                                                   |
+| Cara                   | Yang terjadi pada data Anda                                                                                                                                                         |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dengan akun**        | Data Diri, dokumen, dan daftar urusan disimpan terenkripsi di server dan ikut ke perangkat lain yang Anda pakai untuk masuk. Disimpan sampai Anda menghapusnya atau menghapus akun. |
+| **Masuk sebagai juri** | Salinan demo berisi data karangan, bukan data orang sungguhan. Terhapus 24 jam setelah dibuat dan hanya bisa diisikan ke situs latihan.                                             |
 
 ## Data yang kami simpan
 
-| Data                                                                 | Untuk apa                                                  | Bentuk                                                                       |
-| -------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Data Diri (nama, NIK, KK, alamat, HP) dan dokumen (foto KTP/KK, PDF) | Mengisi formulir layanan atas persetujuan Anda             | Terenkripsi AES-256-GCM dengan kunci khusus per pemilik                      |
-| Email dan kata sandi akun                                            | Masuk dan memulihkan akun                                  | Email polos; kata sandi hanya disimpan sebagai hash argon2id                 |
-| Identitas Google (bila Anda memilih masuk dengan Google)             | Masuk                                                      | Nomor identitas akun Google, tanpa kata sandi Google                         |
-| Sesi masuk                                                           | Menjaga Anda tetap masuk dan menampilkan daftar perangkat  | Waktu dan ringkasan jenis peramban; IP dan user agent lengkap tidak disimpan |
-| Isi percakapan dan Jejak urusan                                      | Menjalankan urusan dan menampilkan riwayatnya kepada Anda  | Tanpa NIK, KK, HP, atau email (diganti penanda)                              |
-| Sidik IP (hash)                                                      | Membatasi penyalahgunaan (kuota tamu dan juri, batas laju) | Hash satu arah, bukan alamat IP                                              |
+| Data                                                                 | Untuk apa                                                   | Bentuk                                                                       |
+| -------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Data Diri (nama, NIK, KK, alamat, HP) dan dokumen (foto KTP/KK, PDF) | Mengisi formulir layanan atas persetujuan Anda              | Terenkripsi AES-256-GCM dengan kunci khusus per pemilik                      |
+| Email dan kata sandi akun                                            | Masuk ke akun                                               | Email polos; kata sandi hanya disimpan sebagai hash argon2id                 |
+| Identitas Google (bila Anda memilih masuk dengan Google)             | Masuk                                                       | Nomor identitas akun Google, tanpa kata sandi Google                         |
+| Sesi masuk                                                           | Menjaga Anda tetap masuk dan menampilkan daftar perangkat   | Waktu dan ringkasan jenis peramban; IP dan user agent lengkap tidak disimpan |
+| Isi percakapan dan Jejak urusan                                      | Menjalankan urusan dan menampilkan riwayatnya kepada Anda   | Tanpa NIK, KK, HP, atau email (diganti penanda)                              |
+| Sidik IP (hash)                                                      | Membatasi penyalahgunaan (kuota akun demo juri, batas laju) | Hash satu arah, bukan alamat IP                                              |
 
 ## Browser Pendamping
 
@@ -56,12 +54,13 @@ server itu; untuk situs seperti ini Urusin memandu Anda mengisi sendiri langkah 
 
 ## Pihak lain yang memproses data
 
-| Pihak                         | Lokasi            | Data yang diterima                                                                                                                                                                                                                                                  |
-| ----------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Oracle Cloud (hosting)        | Singapura         | Semua data di atas, dalam bentuk terenkripsi untuk Data Diri dan dokumen. Server ini juga menjalankan mesin pencari sumber resmi Urusin dan Browser Pendamping                                                                                                      |
-| Google (bila Anda memilihnya) | Global            | Proses masuk dengan akun Google Anda                                                                                                                                                                                                                                |
-| OpenAI (model GPT)            | Di luar Indonesia | Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti penanda sebelum dikirim. Gambar yang Anda lampirkan di chat atau foto yang Anda simpan di Dokumen (salinan diperkecil) untuk dibaca isinya dan diperiksa kejelasannya |
-| Exa (pencarian web)           | Amerika Serikat   | Istilah pencarian umum, hanya bila sumber resmi yang tersimpan di Urusin belum cukup (situs `.go.id` lebih dulu). Kueri yang memuat NIK, KK, HP, email, atau data diri tidak pernah dikirim                                                                         |
+| Pihak                                        | Lokasi                            | Data yang diterima                                                                                                                                                                                                                                                               |
+| -------------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Oracle Cloud (hosting)                       | Singapura                         | Semua data di atas, dalam bentuk terenkripsi untuk Data Diri dan dokumen. Server ini juga menjalankan mesin pencari sumber resmi Urusin dan Browser Pendamping                                                                                                                   |
+| Google (bila Anda memilihnya)                | Global                            | Proses masuk dengan akun Google Anda                                                                                                                                                                                                                                             |
+| Cloudflare (DNS, CDN, perlindungan jaringan) | Global (titik terdekat Singapura) | Semua lalu lintas web ke urusinai.web.id melewati jaringan Cloudflare agar cepat dan terlindung dari serangan, termasuk isi yang Anda kirim; Data Diri dan dokumen tetap disimpan terenkripsi hanya di server Urusin. Email ke hello@urusinai.web.id diteruskan lewat Cloudflare |
+| OpenAI (model GPT)                           | Di luar Indonesia                 | Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti penanda sebelum dikirim. Gambar yang Anda lampirkan di chat atau foto yang Anda simpan di Dokumen (salinan diperkecil) untuk dibaca isinya dan diperiksa kejelasannya              |
+| Exa (pencarian web)                          | Amerika Serikat                   | Istilah pencarian umum, hanya bila sumber resmi yang tersimpan di Urusin belum cukup (situs `.go.id` lebih dulu). Kueri yang memuat NIK, KK, HP, email, atau data diri tidak pernah dikirim                                                                                      |
 
 Pencarian sumber resmi (kata kunci dan vektor) berjalan di server Urusin sendiri; pencarian web Exa hanya
 cadangan. Urusin saat ini tidak mengirim email dan tidak memakai layanan anti-bot pihak ketiga; bila salah
@@ -70,26 +69,29 @@ satunya kelak diaktifkan, pihaknya dicantumkan di sini lebih dulu.
 Tombol Bicara memakai fitur dikte bawaan peramban Anda. Di Chrome, peramban mengirim suara itu ke layanan suara
 Google untuk diubah menjadi teks; Urusin hanya menerima teks hasilnya, bukan rekaman suara.
 
-Pengiriman ke Google, OpenAI, dan Exa adalah transfer data ke luar Indonesia (UU PDP Pasal 56). Dasarnya
+Pengiriman ke Cloudflare, Google, OpenAI, dan Exa adalah transfer data ke luar Indonesia (UU PDP Pasal 56). Dasarnya
 persetujuan Anda.
 
 ## Cookie
 
 Urusin hanya memakai cookie yang dibutuhkan agar aplikasi berjalan:
 
-- `__Host-urusin_sid`: mengenali peramban ini untuk kuota dan data tamu (30 hari sejak terakhir dipakai).
+- `__Host-urusin_sid`: mengenali peramban ini untuk batas pemakaian (30 hari sejak terakhir dipakai).
 - `__Host-urusin_sid_segar`: penanda harian agar cookie di atas diperpanjang paling sering sekali sehari (1 hari).
 - `__Host-urusin_akun`: sesi masuk akun (berakhir setelah 7 hari tidak dipakai, paling lama 30 hari).
 - `__Host-urusin_oauth` dan `__Host-urusin_tautkan`: sementara, selama proses masuk atau menautkan Google.
 - `urusin_terakhir`: urusan terakhir yang Anda buka di peramban ini (30 hari).
+- `urusin_wilayah`: kode kabupaten/kota yang Anda pilih sebagai wilayah layanan di perangkat ini, agar urusan baru
+  langsung mengusulkan daerah Anda (1 tahun, atau sampai Anda mengubahnya).
+- `urusin_pesan_awal`: pesan pertama yang Anda ketik saat memulai urusan, diteruskan sekali ke halaman urusan itu
+  lalu dihapus (paling lama 2 menit).
+- `urusin_ke_landing`: penanda singkat saat Anda menekan logo untuk kembali ke halaman depan (30 detik).
 
 ## Berapa lama data disimpan
 
 | Data                                   | Lama disimpan                                                                                                                                                                                                                                                                                                             |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Data tanpa akun (tamu)                 | 72 jam sejak dibuat, aktivitas tidak memperpanjang                                                                                                                                                                                                                                                                        |
 | Salinan juri                           | 24 jam sejak dibuat                                                                                                                                                                                                                                                                                                       |
-| Akun yang emailnya belum dipastikan    | 24 jam sejak dibuat, bila tidak ada tautan verifikasi yang masih berlaku                                                                                                                                                                                                                                                  |
 | Akun dan isinya                        | Sampai Anda menghapusnya                                                                                                                                                                                                                                                                                                  |
 | Sesi, token email, dan tiket sementara | Dibersihkan setiap jam setelah kedaluwarsa                                                                                                                                                                                                                                                                                |
 | Cadangan basis data                    | Dibuat tiap 6 jam dan disimpan 3 hari di server yang sama (`deploy/backup.sh`). Bila salinan di luar server (restic) diaktifkan operator: 14 cadangan harian dan 8 mingguan. Data Diri dan dokumen di dalamnya terenkripsi; percakapan dan Jejak (tanpa NIK, KK, HP, email) ikut tersimpan sampai cadangannya kedaluwarsa |
@@ -106,8 +108,7 @@ cadangan itu kedaluwarsa (3 hari, atau sampai 8 minggu bila salinan di luar serv
   Keluar dan hapus akun → Hapus akun (ketik HAPUS dan kata sandi; akun Google diminta masuk ulang bila login terakhir
   lebih dari 15 menit lalu).
 - **Keluar dari semua perangkat:** Pengaturan → Keluar dan hapus akun.
-- **Menarik persetujuan:** hapus akun, lepas tautan Google di Pengaturan, atau berhenti memakai cara tanpa akun
-  (data terhapus sendiri dalam 72 jam).
+- **Menarik persetujuan:** hapus akun, atau lepas tautan Google di Pengaturan.
 
 ## Keamanan
 
