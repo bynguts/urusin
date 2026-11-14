@@ -172,7 +172,25 @@ export function bangunLinimasa(
     // Usulan wilayah yang sudah dijawab (wilayah ditetapkan sesudahnya) tidak bisa dikonfirmasi lagi.
     if (it.jenis === 'wilayah' && it.e.seq < wilayahDitetapkanSeq) it.terakhir = false;
   }
-  return out;
+  return kartuWilayahSaatPerlu(out, jenis);
+}
+
+/**
+ * Kartu wilayah hanya muncul saat dibutuhkan (keputusan pemilik 2026-11-14), bukan sebagai pembuka obrolan.
+ * Usulan yang terbit saat urusan dibuat (Data Diri, pilihan perangkat, Ingatan) disembunyikan selama jenis urusan
+ * belum jelas, lalu tampil di ujung percakapan begitu jenisnya diketahui (rencana memang menunggu wilayah).
+ * Usulan `warga` terbit tepat saat agen menanyakan wilayah di obrolan, jadi tetap di tempatnya. Usulan awal yang
+ * sudah tidak aktif tidak ditampilkan: wilayah yang ditetapkan tampil sebagai kalimat sistem.
+ */
+function kartuWilayahSaatPerlu(out: ItemLinimasa[], jenis: string | null | undefined): ItemLinimasa[] {
+  const jenisJelas = !!jenis && jenis !== 'lainnya';
+  const hasil: ItemLinimasa[] = [];
+  const ditunda: ItemLinimasa[] = [];
+  for (const it of out) {
+    if (it.jenis !== 'wilayah' || it.e.sumber === 'warga') hasil.push(it);
+    else if (it.terakhir && jenisJelas) ditunda.push(it);
+  }
+  return [...hasil, ...ditunda];
 }
 
 /** Checklist ada, tidak kosong, dan semua butirnya `ok`. */

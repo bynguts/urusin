@@ -42,7 +42,7 @@ describe('bangunLinimasa', () => {
 
   it('usulan wilayah jadi kartu konfirmasi; setelah ditetapkan kartu nonaktif dan muncul kalimat sistem', () => {
     const wonogiri = { kodeKabKota: '3312', nama: 'Kabupaten Wonogiri' };
-    const usulan = ev(1, 'wilayah', { status: 'usulan', ktp: wonogiri, sumber: 'data_diri' });
+    const usulan = ev(1, 'wilayah', { status: 'usulan', ktp: wonogiri, sumber: 'warga' });
     expect(bangunLinimasa([usulan], [])).toEqual([
       { jenis: 'wilayah', key: 'e1', e: usulan, terakhir: true },
     ]);
@@ -65,6 +65,30 @@ describe('bangunLinimasa', () => {
       teks: 'Pindah dari Kabupaten Wonogiri ke Kota Surabaya',
       at,
     });
+  });
+
+  it('usulan awal (Data Diri) bukan pembuka obrolan: tersembunyi sampai jenis jelas, lalu di ujung', () => {
+    const wonogiri = { kodeKabKota: '3312', nama: 'Kabupaten Wonogiri' };
+    const usulan = ev(1, 'wilayah', { status: 'usulan', ktp: wonogiri, sumber: 'data_diri' });
+    const balasan = ev(2, 'assistant_text', { delta: 'Barang apa yang hilang?' });
+    const pesan = [{ teks: 'aku kehilangan barang', setelahSeq: 0 }];
+    // Jenis belum diketahui ("kehilangan barang"): tanpa kartu wilayah.
+    expect(bangunLinimasa([usulan, balasan], pesan, null).map((x) => x.jenis)).toEqual(['warga', 'teks']);
+    expect(bangunLinimasa([usulan, balasan], pesan, 'lainnya').map((x) => x.jenis)).toEqual([
+      'warga',
+      'teks',
+    ]);
+    // Jenis jelas: rencana menunggu wilayah, kartu aktif tampil di ujung percakapan.
+    const out = bangunLinimasa([usulan, balasan], pesan, 'ktp');
+    expect(out.map((x) => x.jenis)).toEqual(['warga', 'teks', 'wilayah']);
+    expect(out.at(-1)).toMatchObject({ terakhir: true });
+    // Sudah ditetapkan: kartu awal hilang, cukup kalimat sistem.
+    const tetap = ev(3, 'wilayah', { status: 'ditetapkan', ktp: wonogiri, sumber: 'warga' });
+    expect(bangunLinimasa([usulan, balasan, tetap], pesan, 'ktp').map((x) => x.jenis)).toEqual([
+      'warga',
+      'teks',
+      'sistem',
+    ]);
   });
 
   it('heartbeat diabaikan; state penting menjadi kalimat sistem; TERKIRIM menjadi kartu', () => {

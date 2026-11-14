@@ -1001,7 +1001,8 @@ class TurnRunner {
       if (!msg || calls.length === 0) {
         const text = this.sanitizeOutput(msg?.content ?? '');
         this.turnMessages.push({ role: 'assistant', content: text });
-        if (text && !this.digantiKartu(text)) this.emit({ type: 'assistant_text', delta: text });
+        if (text && this.digantiKartu(text)) this.terbitkanKartuWilayah(text);
+        else if (text) this.emit({ type: 'assistant_text', delta: text });
         return;
       }
 
@@ -1090,6 +1091,18 @@ class TurnRunner {
     const disebut = kodeDisebut(text);
     if (disebut.length !== 1) return false;
     return w.usulan?.ktp.kodeKabKota === disebut[0] || /\b(betul|benar)\s*\?/i.test(text);
+  }
+
+  /**
+   * Pertanyaan wilayah agen diganti kartu: kartu terbit SAAT INI (sumber `warga`) agar muncul di titik obrolan
+   * tempat agen bertanya. Usulan awal (Data Diri/pilihan/Ingatan) tidak ditampilkan sebagai pembuka obrolan
+   * (lihat kartuWilayahSaatPerlu di web). Kab/kota yang berbeda dari usulan diterbitkan selaraskanUsulan.
+   */
+  private terbitkanKartuWilayah(text: string): void {
+    const w = wilayahUrusan(this.store, this.urusan);
+    const disebut = kodeDisebut(text);
+    if (w.usulan && w.usulan.sumber !== 'warga' && w.usulan.ktp.kodeKabKota === disebut[0])
+      this.emit({ type: 'wilayah', status: 'usulan', ktp: w.usulan.ktp, sumber: 'warga' });
   }
 
   private sanitizeOutput(text: string): string {
