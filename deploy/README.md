@@ -12,19 +12,8 @@ Berkas: `compose.prod.yml`, `Caddyfile.urusin.primary` (+ `.fallback`), `hardeni
 `tests/` (harness tanpa Docker). Layout datar (agent-vm) juga butuh `scripts/db-backup.mjs` dan `scripts/db-restore.mjs`
 (salinan `apps/web/scripts/`), dibaca `backup.sh`/`restore.sh`.
 
-> **Runner CI self-hosted (`ci-runner/`): cadangan bila menit GitHub Actions habis. Status: TERPASANG di
-> agent-vm sejak 2026-11-10 (`URUSIN_RUNNER=urusin-self`), dicopot sebelum repo dibuat Public.**
-> Runner ini **WAJIB dicopot sebelum repo dibuat Public** (submission, tenggat 2026-11-14): di repo
-> publik PR dari fork bisa menjalankan kode di runner self-hosted, yaitu di agent-vm. Repo publik mendapat menit
-> GitHub gratis, jadi runner tidak dibutuhkan lagi. Urutan: `uninstall.sh` (remove-token lewat stdin) →
-> `gh variable delete URUSIN_RUNNER --repo bynguts/urusin` → `gh api repos/bynguts/urusin/actions/runners --jq .total_count`
-> = 0 → rotasi token admin lokal (tidak pernah ada PAT di box) → baru ubah visibilitas. Detail, batas sumber daya, dan keputusan sudoers vs grup docker:
-> [`ci-runner/README.md`](ci-runner/README.md).
->
-> **Runner CI kedua di laptop (`ci-runner-laptop/`, `URUSIN_RUNNER_UJI=urusin-laptop`) untuk job non-ci-docker
-> di `ci.yml`. Juga WAJIB dicopot sebelum Public:** `deploy/ci-runner-laptop/down.sh` (hapus variabel, kontainer,
-> registrasi) → `gh variable delete URUSIN_RUNNER_UJI --repo bynguts/urusin` bila tersisa. Detail:
-> [`ci-runner-laptop/README.md`](ci-runner-laptop/README.md).
+> **CI memakai runner GitHub (`ubuntu-latest`).** Workflow masih menerima runner self-hosted opsional lewat
+> variabel repo `URUSIN_RUNNER`/`URUSIN_RUNNER_UJI`; bila kosong (bawaan), semua job jatuh ke runner GitHub.
 
 ## Instalasi pertama
 
@@ -581,7 +570,6 @@ sesi di `PENDAMPING_SESSION_MEM_MB` (bawaan 1100 MB RSS; 450 MB terlalu ketat un
 bash deploy/tests/deploy.test.sh   # docker/curl/restic/df palsu di tests/shims; juga jalan lewat `pnpm test:scripts`
 bash deploy/tests/image-retention.test.sh
 bash deploy/tests/caddy-install.test.sh
-bash deploy/tests/ci-runner.test.sh       # runner CI self-hosted (docker/df palsu di tests/shims-ci)
 shellcheck -x deploy/*.sh deploy/tests/deploy.test.sh deploy/tests/shims/*
 ```
 

@@ -46,7 +46,7 @@ Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat
   `docker buildx prune --builder default -f` (2,68 GB). Hanya build cache builder default: tanpa image, kontainer,
   volume, network, tanpa `system prune`. df `/`: 85% (avail 15,6 GB) -> 82% (avail 18,1 GB). Sisa 2,7 GB cache
   default masih dipakai image dan tidak disentuh. Bukan izin tetap; prune berikutnya butuh izin baru. Cache
-  builder `urusin-ci` tetap dibatasi 1,5 GB (deploy/ci-runner).
+  builder `urusin-ci` tetap dibatasi 1,5 GB (runner CI self-hosted, sudah dicopot).
 - 2026-11-10 (WIB; host 2026-11-10T06:57Z), **izin per kejadian pengguna**: rute
   `handle /pendamping/w/laptop-a/ws/*` -> `100.64.0.10:4330` (worker Pendamping region `id` di laptop tim
   lewat Tailscale; `100.64.0.10` di catatan ini IP contoh, IP Tailscale asli laptop hanya ada di host). Snippet = keluaran `gen-caddyfile.mjs --set primary --fixtures --pendamping --worker

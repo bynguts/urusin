@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-# df palsu: pemakaian disk dari $SHIM_DF_PCT.
-printf 'Use%%\n %s%%\n' "${SHIM_DF_PCT:-50}"
