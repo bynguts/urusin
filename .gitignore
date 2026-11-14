@@ -40,6 +40,15 @@ blob-report/
 recon/
 .playwright-mcp/
 .omc/
+.codegraph/
+.impeccable/
+# Konfigurasi asisten AI: hanya aturan bersama (settings.json) yang di-commit, bukan setelan lokal.
+.claude/*
+!.claude/settings.json
+# Sisa merge/patch dan cadangan editor
+*.orig
+*.rej
+*.bak
 
 # Editor & OS
 .DS_Store
