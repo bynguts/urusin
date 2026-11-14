@@ -114,26 +114,4 @@
       background: var(--panel-akun) center / 100% 100% no-repeat;
     }
   }
-
-  @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
-    .auth-karakter-1 {
-      animation: auth-apung 4.4s ease-in-out infinite;
-    }
-    .auth-karakter-2 {
-      animation: auth-apung 5.1s ease-in-out -1.5s infinite;
-    }
-    .auth-karakter-3 {
-      animation: auth-apung 4.7s ease-in-out -2.8s infinite;
-    }
-  }
-
-  @keyframes auth-apung {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-5px);
-    }
-  }
 </style>
