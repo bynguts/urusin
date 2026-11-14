@@ -478,8 +478,8 @@
     </div>
   </section>
   <section class="n-trust-strip lp43">
-    <div class="lp44">Merujuk informasi resmi dari</div>
-    <div class="n-marquee-wrapper lp45-marquee" aria-label="Instansi resmi yang dirujuk">
+    <div class="lp44">Merujuk dan mengarahkan ke kanal resmi</div>
+    <div class="n-marquee-wrapper lp45-marquee" aria-label="Kanal resmi yang dirujuk">
       <div class="n-marquee-track">
         <!-- Set 1 (Unit utama) -->
         <div class="n-wordmarks lp45">
@@ -2872,7 +2872,7 @@
           </div>
           <h3 class="lp260">Jejak bisa ditelusuri</h3>
           <div class="lp261">
-            Setiap langkah tercatat dengan rantai hash, jadi tidak bisa diubah diam-diam.
+            Setiap langkah tercatat dengan rantai hash, jadi perubahan diam-diam akan ketahuan.
           </div>
         </div>
         <div class="lp257">
@@ -2989,9 +2989,9 @@
         <div class="n-answer-row lp269">
           <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
-              Urusin membaca syarat langsung dari regulasi dan portal resmi daerah yang dilengkapi tanggal
-              verifikasi. Bila ada perubahan atau situs belum didukung, Urusin akan memberi tahu dan beralih
-              ke mode dipandu.
+              Urusin membaca syarat dari regulasi dan situs resmi (daerahmu bila tersedia, atau Dukcapil
+              pusat), lengkap dengan kutipan dan tanggal verifikasi, jadi kamu selalu bisa cek sumbernya. Bila
+              situsnya belum didukung Browser Pendamping, Urusin beralih ke mode dipandu.
             </div>
           </div>
         </div>

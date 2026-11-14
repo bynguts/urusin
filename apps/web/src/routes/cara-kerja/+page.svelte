@@ -120,8 +120,8 @@
           <p class="ck24">02</p>
           <h3 class="ck25">AI menyusun rencana bersumber</h3>
           <p class="ck26">
-            Syarat diambil dari situs resmi wilayahmu, lengkap dengan kutipan dan tanggal verifikasi. Kalau
-            sumbernya tidak ada, AI tidak mengarang.
+            Syarat diambil dari situs resmi: daerahmu bila tersedia, atau Dukcapil pusat, lengkap dengan
+            kutipan dan tanggal verifikasi. Kalau sumbernya tidak ada, AI tidak mengarang.
           </p>
           <div class="ck27">
             <img
@@ -257,7 +257,7 @@
         </p>
         <p class="ck75" data-testid="cakupan-pendamping">
           Saat ini aktif di {page.data.daerahPendamping}. Di daerah lain, Urusin memandu langkah demi langkah
-          lewat kanal resmi daerahmu, dan Browser Pendamping untuk daerah itu sedang kami kembangkan.
+          lewat kanal resmi daerahmu; daerah baru kami tambahkan bertahap.
         </p>
         <div class="ck76">
           <div class="ck77">
@@ -600,7 +600,7 @@
                 decoding="async"
               />
             </div>
-            <p class="ck212">Mencari syarat dari situs resmi wilayahmu</p>
+            <p class="ck212">Mencari syarat dari situs resmi daerahmu atau Dukcapil pusat</p>
           </div>
           <div class="ck213">
             <div class="ck214">
@@ -701,7 +701,7 @@
                 decoding="async"
               />
             </div>
-            <p class="ck242">Menyimpan cookie atau rekaman layar</p>
+            <p class="ck242">Menyimpan cookie situs pemerintah atau rekaman layar</p>
           </div>
         </div>
       </div>
