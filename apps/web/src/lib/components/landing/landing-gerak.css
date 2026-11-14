@@ -210,6 +210,11 @@
     .lp .n-pil {
       animation-delay: 4s;
     }
+    /* Huruf pertama butuh aturan sendiri: :nth-child(1) di atas (0 ms) lebih spesifik dari baris ini, jadi
+       tanpa ini huruf pertama tiap kata berjalan 4 dtk lebih awal dan hilang saat katanya tampil. */
+    .lp .n-pil-kata span span:nth-child(1) {
+      animation-delay: 4s;
+    }
     .lp .n-pil-kata span span:nth-child(2) {
       animation-delay: 4.022s;
     }

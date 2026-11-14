@@ -213,13 +213,15 @@
         tabindex="-1"
         aria-hidden="true"
       />
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="flex flex-wrap items-center gap-2">
+      <!-- Ponsel (< sm): satu baris; Bicara dan Kirim jadi tombol ikon bulat (label tetap terbaca pembaca layar)
+           dan nama wilayah dipotong bila panjang. Mulai sm tampilan sama seperti desain. -->
+      <div class="flex items-center justify-between gap-2 sm:flex-wrap">
+        <div class="flex min-w-0 items-center gap-2 sm:flex-wrap">
           <button
             type="button"
             onclick={() => inputBerkas?.click()}
             disabled={lampiran.length >= LAMPIRAN_MAKS}
-            class="grid size-10 place-items-center rounded-full bg-bg-2 text-ink hover:bg-line-3 disabled:opacity-50"
+            class="grid size-10 shrink-0 place-items-center rounded-full bg-bg-2 text-ink hover:bg-line-3 disabled:opacity-50"
           >
             <Icon name="klip" class="size-4" label="Lampirkan foto atau PDF" />
           </button>
@@ -228,18 +230,20 @@
               type="button"
               onclick={bicara}
               aria-pressed={mendikte}
-              class="inline-flex h-10 items-center gap-2 rounded-full bg-bg-2 px-3.5 text-[15px] leading-[22px] text-card-ink hover:bg-line-3"
+              class="inline-flex size-10 shrink-0 items-center justify-center gap-2 rounded-full text-[15px] leading-[22px] text-card-ink hover:bg-line-3 sm:w-auto sm:px-3.5 {mendikte
+                ? 'max-sm:bg-line-3 max-sm:ring-2 max-sm:ring-brand sm:bg-bg-2'
+                : 'bg-bg-2'}"
             >
               <Icon name="mikrofon" class="size-4 text-ink" />
-              {mendikte ? 'Mendengarkan…' : 'Bicara'}
+              <span class="max-sm:sr-only">{mendikte ? 'Mendengarkan…' : 'Bicara'}</span>
             </button>
           {/if}
           <a
             href="{resolve('/pengaturan')}#wilayah"
-            class="inline-flex h-10 items-center gap-2 rounded-full border border-line-2 px-3.5 text-[15px] leading-[22px] text-ink hover:bg-card"
+            class="inline-flex h-10 min-w-0 items-center gap-2 rounded-full border border-line-2 px-3.5 text-[15px] leading-[22px] text-ink hover:bg-card"
           >
-            <Icon name="lokasi" class="size-4 text-brand" />
-            {wilayah?.nama ?? 'Pilih wilayah'}
+            <Icon name="lokasi" class="size-4 shrink-0 text-brand" />
+            <span class="truncate">{wilayah?.nama ?? 'Pilih wilayah'}</span>
             <span class="sr-only">{wilayah ? '(ubah wilayah)' : '(opsional)'}</span>
           </a>
         </div>
@@ -247,9 +251,9 @@
           type="submit"
           disabled={mengirim}
           aria-busy={mengirim || undefined}
-          class="inline-flex h-12 items-center gap-2 rounded-full bg-primer px-[22px] text-base leading-[23px] font-semibold text-primer-ink disabled:opacity-80"
+          class="inline-flex size-12 shrink-0 items-center justify-center gap-2 rounded-full bg-primer text-base leading-[23px] font-semibold text-primer-ink disabled:opacity-80 sm:w-auto sm:px-[22px]"
         >
-          Kirim
+          <span class="max-sm:sr-only">Kirim</span>
           <Icon name={mengirim ? 'memuat' : 'panah'} class="size-[17px] {mengirim ? 'animate-spin' : ''}" />
         </button>
       </div>
