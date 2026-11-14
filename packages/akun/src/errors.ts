@@ -61,7 +61,7 @@ const PESAN: Record<KodeGalatAkun, [number, string]> = {
     429,
     'Terlalu banyak sesi tamu dari jaringan ini hari ini. Coba lagi besok, atau daftar akun gratis.',
   ],
-  DEMO_BATAS_IP: [429, 'Akun juri dari jaringan ini sudah dibuat 3 kali hari ini. Coba lagi besok.'],
+  DEMO_BATAS_IP: [429, 'Akun juri dari jaringan ini sudah mencapai batas harian. Coba lagi besok.'],
   DEMO_PENUH: [503, 'Akun juri sedang penuh. Coba lagi nanti atau daftar gratis dengan email.'],
   HANYA_AKUN: [403, 'Fitur ini hanya untuk akun terdaftar.'],
   DOKUMEN_TERLALU_BESAR: [413, 'Berkas terlalu besar. Maksimal 9 MB.'],
