@@ -267,6 +267,12 @@ export const DoneEventSchema = event('done', {
   degraded: z.boolean(),
   /** Versi urusan setelah turn (klaim turn dan klasifikasi menaikkan versi tanpa event `state`); klien memakainya sebagai expectedVersion berikutnya. */
   version: z.number().int().optional(),
+  /**
+   * (aditif) Jenis urusan setelah turn. Klasifikasi tidak menerbitkan event sendiri, dan giliran yang berakhir
+   * tanpa kartu rencana (mis. hanya kartu wilayah) tidak membawa `plan_card.jenis`: tanpa ini halaman yang dimuat
+   * sebelum klasifikasi selesai tidak pernah tahu jenisnya (lencana, kartu wilayah, langkah panel) sampai dimuat ulang.
+   */
+  jenis: z.string().min(1).max(40).optional(),
 });
 
 export const GateRuleSchema = z.enum([

@@ -322,6 +322,10 @@ describe('alur cepat sampai rencana', () => {
     expect(creates(provider)).toHaveLength(0);
     expect(of(out.events, 'assistant_text')).toHaveLength(0);
     expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).usulan?.ktp.kodeKabKota).toBe('3312');
+    // Tanpa kartu rencana, `done` satu-satunya pembawa jenis ke halaman yang dimuat sebelum klasifikasi.
+    expect(of(out.events, 'plan_card')).toHaveLength(0);
+    expect(of(out.events, 'done')[0]?.jenis).toBe(env.store.getUrusanOrThrow(u.id).jenis);
+    expect(of(out.events, 'done')[0]?.jenis).toBeTruthy();
   });
 
   it('pertanyaan wilayah dari model tidak tampil lagi sebagai teks bila kartunya ada', async () => {

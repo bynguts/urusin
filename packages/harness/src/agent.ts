@@ -524,6 +524,7 @@ class TurnRunner {
         lanjutkan: this.lanjutkan,
         degraded: this.degraded,
         version: this.version,
+        ...(this.urusan.jenis ? { jenis: this.urusan.jenis } : {}),
       });
     }
     return {

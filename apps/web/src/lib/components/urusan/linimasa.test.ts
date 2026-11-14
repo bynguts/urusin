@@ -3,6 +3,7 @@ import type { UrusinEvent } from '#lib/contracts.js';
 import {
   bangunLinimasa,
   barisKonfirmasi,
+  jenisTerkini,
   kalimatWilayah,
   labelParam,
   labelProgres,
@@ -89,6 +90,25 @@ describe('bangunLinimasa', () => {
       'teks',
       'sistem',
     ]);
+  });
+
+  it('halaman dimuat sebelum klasifikasi: jenis dari `done` memunculkan kartu Data Diri tanpa muat ulang', () => {
+    // Urutan event prod "syarat akta kelahiran di Wonogiri apa saja?" (giliran hanya kartu wilayah, tanpa rencana).
+    const wonogiri = { kodeKabKota: '3312', nama: 'Kabupaten Wonogiri' };
+    const events = [
+      ev(1, 'wilayah', { status: 'usulan', ktp: wonogiri, sumber: 'data_diri' }),
+      ev(2, 'state', { state: 'MEMAHAMI', dari: 'BARU', tier: null, version: 2 }),
+      ev(3, 'progress', { label: 'Memahami kebutuhan Anda…' }),
+      ev(4, 'done', { turnId: 't1', status: 'selesai', lanjutkan: false, degraded: false, jenis: 'kelahiran' }),
+    ];
+    const pesan = [{ teks: 'syarat akta kelahiran di Wonogiri apa saja?', setelahSeq: 0 }];
+    expect(jenisTerkini(events.slice(0, 3), null)).toBeNull();
+    const jenis = jenisTerkini(events, null);
+    expect(jenis).toBe('kelahiran');
+    expect(bangunLinimasa(events, pesan, jenis).map((x) => x.jenis)).toEqual(['warga', 'wilayah']);
+    // Jenis saat dimuat tetap dipakai bila stream belum membawanya; rencana yang lebih baru menang.
+    expect(jenisTerkini([], 'ktp')).toBe('ktp');
+    expect(jenisTerkini([...events, ev(5, 'plan_card', { jenis: 'pindah', langkah: [] })], null)).toBe('pindah');
   });
 
   it('heartbeat diabaikan; state penting menjadi kalimat sistem; TERKIRIM menjadi kartu', () => {

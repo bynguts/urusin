@@ -35,7 +35,7 @@
   import Lencana from '#lib/components/urusan/Lencana.svelte';
   import PanelKonteks, { type TabPanel } from '#lib/components/urusan/PanelKonteks.svelte';
   import PesanAgen from '#lib/components/urusan/PesanAgen.svelte';
-  import { bangunLinimasa, labelProgres } from '#lib/components/urusan/linimasa.js';
+  import { bangunLinimasa, jenisTerkini, labelProgres } from '#lib/components/urusan/linimasa.js';
   import LayarPendamping from '#lib/components/pendamping/LayarPendamping.svelte';
   import LembarIzinkan from '#lib/components/pendamping/LembarIzinkan.svelte';
   import { muatPabrikViewer } from '#lib/pendamping/klien.js';
@@ -103,7 +103,8 @@
   );
   // Jenis urusan terkini: halaman bisa dimuat sebelum harness mengklasifikasi (jenis null), jadi rencana yang
   // tiba lewat stream membawa jenisnya; tanpa itu lencana tertahan di "KTP & dokumen" untuk kelahiran/pindah.
-  const jenisKini = $derived(k.rencana?.jenis ?? data.urusan.jenis);
+  // Giliran tanpa rencana (mis. hanya kartu wilayah) membawa jenisnya lewat `done`.
+  const jenisKini = $derived(jenisTerkini(k.events, data.urusan.jenis));
   const p = $derived(peristiwaDariJenis(jenisKini));
   const judulJenis = $derived(judulUrusan(jenisKini));
   // Sejak "Setujui rencana" ditekan sampai state urusan bergerak: progres jujur, bukan layar diam.
@@ -239,7 +240,7 @@
 
   // Jenis baru diketahui setelah halaman dimuat: perbarui catatan perangkat (judul + lencana Urusanku).
   $effect(() => {
-    const jenis = k.rencana?.jenis;
+    const jenis = jenisKini;
     if (!jenis || jenis === data.urusan.jenis) return;
     untrack(() => {
       const c = lokal.cari(data.urusan.id);
