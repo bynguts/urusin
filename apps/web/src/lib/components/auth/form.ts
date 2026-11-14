@@ -3,12 +3,12 @@ import { page } from '$app/state';
 /**
  * Akses longgar ke `page.form` / `page.data` layar akun. Server (form action + load) berada di branch
  * feat/auth-akun; dengan membaca lewat `$app/state`, layar ini tetap bisa di-typecheck di main dan tidak
- * bentrok saat merge. Bentuk mengikuti docs/ui/auth.md.
+ * bentrok saat merge. Bentuk mengikuti ADR 0028.
  */
 export type GalatAuth = { kode: string; pesanWarga: string; email?: string };
 export type FormAuth = Partial<GalatAuth> & {
   terkirim?: true;
-  /** Email tertunda/ditahan: tampilkan pesan jujur (docs/ui/auth.md). */
+  /** Email tertunda/ditahan: tampilkan pesan jujur (ADR 0028). */
   tertunda?: boolean;
   berhasil?: true;
   email?: string;

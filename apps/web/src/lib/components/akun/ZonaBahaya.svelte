@@ -11,7 +11,7 @@
    * `/pengaturan` (`?/keluarSemua`, `?/hapusAkun`), jalan tanpa JS; `use:enhance` hanya menambah status sibuk.
    * Hapus akun: ketik HAPUS + sandi (akun bersandi). Akun Google saja diminta masuk ulang dengan Google bila
    * login terakhir lebih dari 15 menit lalu (server mengarahkan ke /masuk?ulang=1, lalu kembali ke sini).
-   * Hanya untuk akun (bukan sesi juri, docs/ui/auth.md).
+   * Hanya untuk akun (bukan sesi juri, ADR 0028).
    */
   let {
     punyaSandi,

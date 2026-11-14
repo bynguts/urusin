@@ -22,7 +22,7 @@ Aturan ADR 0025 tetap berlaku dan ditegakkan di kode yang sama:
 
 ## Model ancaman dan pengungkapan
 
-**Yang berubah dibanding ekstensi:** kredensial dan OTP yang diketik warga melewati server Urusin (WebSocket → Chromium). Ini diungkap ke warga sebelum sesi dimulai (lihat `docs/ui/pendamping.md`). Mitigasinya:
+**Yang berubah dibanding ekstensi:** kredensial dan OTP yang diketik warga melewati server Urusin (WebSocket → Chromium). Ini diungkap ke warga sebelum sesi dimulai. Mitigasinya:
 
 - **Tidak ada persistensi.** Konteks Chromium non-persisten per sesi: tanpa cookie, storage, kata sandi, atau service worker yang tersimpan. Vault dan berkas hanya di memori proses. Sesi dihancurkan saat selesai, setelah TTL 15 menit, atau 3 menit tanpa aktivitas. Frame layar tidak direkam atau dicatat.
 - **Takeover tidak dicatat.** Selama takeover AI dijeda dan isi ketikan tidak masuk log, event, atau LLM.

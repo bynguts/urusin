@@ -4,7 +4,7 @@ import { IsoWaktuSchema, KodeKabKotaSchema } from './common.js';
 /**
  * Kontrak akun warga (ADR 0028): daftar/masuk email + sandi, Google, sesi, Data Diri dan dokumen
  * terenkripsi per akun. Galat memakai `GalatApiSchema` (`{kode, pesanWarga}`) dengan kode dari
- * `KodeGalatAkunSchema`; respons 429 juga membawa header `Retry-After`. Lihat docs/ui/auth.md.
+ * `KodeGalatAkunSchema`; respons 429 juga membawa header `Retry-After`.
  */
 
 export const EmailAkunSchema = z.string().trim().min(3).max(254);
@@ -326,7 +326,7 @@ export const UnggahDokumenFieldsSchema = z.object({
 export const HapusDokumenResponseSchema = z.object({ terhapus: z.literal(true) });
 
 /**
- * Metadata endpoint akun + vault (pelengkap `ENDPOINT`). Rute halaman ada di docs/ui/auth.md. Endpoint vault
+ * Metadata endpoint akun + vault (pelengkap `ENDPOINT`). Endpoint vault
  * GET wajib `Sec-Fetch-Site: same-origin` (fetch biasa dari halaman) dan selalu `Cache-Control: no-store`.
  */
 export const ENDPOINT_AKUN = {

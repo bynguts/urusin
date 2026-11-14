@@ -1,7 +1,7 @@
 import type { DataDiriRingkas } from '#lib/pendamping/isi-data.js';
 
 /**
- * Klien brankas (Data Diri + Dokumen) di `/api/vault` (docs/ui/auth.md). Tamu juga punya brankas di
+ * Klien brankas (Data Diri + Dokumen) di `/api/vault` (ADR 0028). Tamu juga punya brankas di
  * perangkat ini; akun sinkron antar perangkat. Tipe salinan struktural `@urusin/contracts`.
  */
 export type JenisDokumen = 'ktp' | 'kk' | 'akta' | 'surat' | 'foto' | 'lainnya';

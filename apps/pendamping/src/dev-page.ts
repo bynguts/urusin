@@ -1,6 +1,6 @@
 /**
  * HALAMAN DEV SAJA (tanpa gaya) untuk e2e dan uji manual. Bukan UI produk: desain final (banner takeover,
- * "giliran Anda", layar antrean, serah-terima Kirim) milik tim UI di apps/web, lihat docs/ui/pendamping.md.
+ * "giliran Anda", layar antrean, serah-terima Kirim) milik tim UI di apps/web.
  * Aktif hanya bila PENDAMPING_DEV_PAGE=1 dan NODE_ENV bukan production.
  * Parameter: /dev?sesi=<id>&ws=<wsUrl>. Tiket diambil lewat `window.__ambilTiket()` (disediakan pengujian).
  */
