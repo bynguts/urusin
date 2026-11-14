@@ -19,7 +19,7 @@ import {
 import { z } from 'zod';
 import type { EventBus } from './bus.js';
 import type { Db } from './db.js';
-import type { EventOf, EventPayload, UrusanState, UrusinEvent } from '@urusin/contracts';
+import type { EventOf, EventPayload, PayloadOf, UrusanState, UrusinEvent } from '@urusin/contracts';
 import { HarnessError, TurnInProgressError } from './errors.js';
 import { tierUrusan, urusanRute, varianUrusan } from './rencana.js';
 import { statusPendamping } from './status-pendamping.js';
@@ -345,6 +345,11 @@ class TurnRunner {
    * sejak jawaban bersumber pertama; sejak itu balasan teks model disaring ke bukti ini (`saringFakta`).
    */
   private readonly buktiTampil: string[] = [];
+  /**
+   * Jawaban bersumber giliran ini yang belum diterbitkan. Satu giliran = satu jawaban: bila model masih menulis
+   * balasan akhir, balasan itu menjadi isi jawaban dan klaim menjadi sumbernya (`terbitkanJawaban`).
+   */
+  private jawabanTertunda: PayloadOf<'grounded_answer'> | null = null;
 
   constructor(
     private readonly deps: AgentDeps,
@@ -520,9 +525,13 @@ class TurnRunner {
     let errorCode: string | undefined;
     try {
       await this.body();
+      // Giliran berakhir tanpa balasan teks (tool mengakhiri giliran, batas langkah): jawaban tertunda tetap terbit.
+      this.terbitkanJawaban();
       this.proposeRencana();
       this.selaraskanKartuWilayah();
     } catch (err) {
+      // Jawaban bersumber yang sudah terverifikasi tidak hilang karena langkah sesudahnya gagal.
+      this.terbitkanJawaban();
       const reason = this.ctrl.signal.aborted ? (this.ctrl.signal.reason as unknown) : undefined;
       if (reason instanceof TurnAbort && reason.kind === 'timeout') {
         status = 'timeout';
@@ -822,6 +831,7 @@ class TurnRunner {
 
   private quotaStop(q: QuotaStatus): void {
     const handoff = buildHandoff({ kodeKabKota: this.urusan.kodeKabKota, jenis: this.urusan.jenis }, 'kuota');
+    this.terbitkanJawaban();
     this.emit({ type: 'degraded', kapabilitas: ['llm'], mode: 'tanpa_ai' });
     this.emit({
       type: 'error',
@@ -895,14 +905,17 @@ class TurnRunner {
       if (!msg || calls.length === 0) {
         const text = this.saringBalasan(this.sanitizeOutput(msg?.content ?? ''));
         this.turnMessages.push({ role: 'assistant', content: text });
-        if (text && this.digantiKartu(text)) this.terbitkanKartuWilayah(text);
-        else if (text) this.emit({ type: 'assistant_text', delta: text });
+        if (text && this.digantiKartu(text)) {
+          this.terbitkanJawaban();
+          this.terbitkanKartuWilayah(text);
+        } else this.terbitkanJawaban(text);
         return;
       }
 
       const g = await this.jalankanPanggilan(msg.content ?? null, calls);
       if (g.ended) return;
     }
+    this.terbitkanJawaban();
     this.emit({
       type: 'error',
       kode: 'LLM_FAILED',
@@ -946,6 +959,17 @@ class TurnRunner {
    * bukti: klaim/kutipan yang tampil, potongan sumber urusan (korpus/web), fakta hukum terkini, dan pesan warga.
    * Sebelum itu balasan tidak disaring (perilaku lama: model tidak menjawab persyaratan tanpa sumber).
    */
+  /**
+   * Satu jawaban per giliran: jawaban bersumber yang tertunda terbit sekali, dengan balasan akhir model (sudah
+   * disaring) sebagai isinya bila ada. Tanpa jawaban tertunda, balasan terbit sebagai teks biasa.
+   */
+  private terbitkanJawaban(balasan = ''): void {
+    const j = this.jawabanTertunda;
+    this.jawabanTertunda = null;
+    if (j) this.emit({ type: 'grounded_answer', ...j, ...(balasan ? { balasan } : {}) });
+    else if (balasan) this.emit({ type: 'assistant_text', delta: balasan });
+  }
+
   private saringBalasan(text: string): string {
     if (!text || this.buktiTampil.length === 0) return text;
     const bukti = [
@@ -1111,11 +1135,19 @@ class TurnRunner {
       });
       if (tool.effect === 'answer') this.progress('Memverifikasi kutipan ke sumber resmi…');
       for (const e of res.events ?? []) {
-        this.emit(e);
-        // Bukti yang sudah tampil: dasar saringan angka/URL balasan model sesudahnya (`saringBalasan`).
-        if (e.type === 'grounded_answer')
-          for (const k of e.klaim)
-            this.buktiTampil.push(k.teks, ...k.kutipan.map((q) => `${q.kutipanPersis} ${q.url}`));
+        if (e.type !== 'grounded_answer') {
+          this.emit(e);
+          continue;
+        }
+        // Bukti jawaban: dasar saringan angka/URL balasan model sesudahnya (`saringBalasan`).
+        for (const k of e.klaim)
+          this.buktiTampil.push(k.teks, ...k.kutipan.map((q) => `${q.kutipanPersis} ${q.url}`));
+        // Ditahan sampai akhir giliran: satu jawaban per giliran, bukan kartu lalu balasan kedua.
+        const { type: _t, ...isi } = e;
+        const j = this.jawabanTertunda;
+        this.jawabanTertunda = j
+          ? { ...j, klaim: [...j.klaim, ...isi.klaim], klaimDibuang: j.klaimDibuang + isi.klaimDibuang }
+          : isi;
       }
       if (res.execution) {
         this.emit({ type: 'execution_request', ...res.execution });
@@ -1252,9 +1284,9 @@ class TurnRunner {
       });
       const a = gen.data;
       if (a.jenis === 'balas' || !a.nama) {
-        const text = this.sanitizeOutput(a.teks ?? '');
+        const text = this.saringBalasan(this.sanitizeOutput(a.teks ?? ''));
         this.turnMessages.push({ role: 'assistant', content: text });
-        if (text) this.emit({ type: 'assistant_text', delta: text });
+        this.terbitkanJawaban(text);
         return;
       }
       let args: Record<string, unknown> = {};

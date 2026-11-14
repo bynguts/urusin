@@ -7,7 +7,8 @@ export type ItemLinimasa =
   /** `ubahWilayah` = kalimat wilayah yang ditetapkan terakhir: catatan kecil dengan tautan "Ubah". */
   | { jenis: 'sistem'; key: string; teks: string; at: string; ubahWilayah?: boolean }
   | { jenis: 'teks'; key: string; teks: string }
-  | { jenis: 'jawaban'; key: string; e: EventOf<'grounded_answer'> }
+  /** `balasan` = balasan akhir giliran yang sama (isi pesan); klaim menjadi chip sumber di bawahnya. */
+  | { jenis: 'jawaban'; key: string; e: EventOf<'grounded_answer'>; balasan?: string }
   | { jenis: 'handoff'; key: string; e: EventOf<'handoff'> }
   | { jenis: 'rencana'; key: string; e: EventOf<'plan_card'>; terakhir: boolean }
   | { jenis: 'wilayah'; key: string; e: EventOf<'wilayah'>; terakhir: boolean }
@@ -53,6 +54,9 @@ export function bangunLinimasa(
   const warga = [...pesan].sort((a, b) => a.setelahSeq - b.setelahSeq);
   let iw = 0;
   const st: { teks: { jenis: 'teks'; key: string; teks: string } | null } = { teks: null };
+  // Jawaban bersumber giliran berjalan: teks asisten sesudahnya di giliran yang sama (riwayat lama, sebelum harness
+  // menggabungkannya) menjadi isi jawaban itu, jadi satu giliran tetap satu pesan di bawah satu avatar.
+  let jawabanTerbuka: Extract<ItemLinimasa, { jenis: 'jawaban' }> | null = null;
   const permintaan = new Map<string, EventOf<'execution_request'>>();
   let permintaanTerakhir: EventOf<'execution_request'> | null = null;
   let wilayahDitetapkanSeq = 0;
@@ -78,7 +82,11 @@ export function bangunLinimasa(
         if (e.utuh) {
           out.push({ jenis: 'teks', key, teks: e.delta });
           st.teks = null;
-        } else if (st.teks) st.teks.teks += e.delta;
+        } else if (jawabanTerbuka && out.at(-1) === jawabanTerbuka)
+          jawabanTerbuka.balasan = jawabanTerbuka.balasan
+            ? `${jawabanTerbuka.balasan}\n\n${e.delta}`
+            : e.delta;
+        else if (st.teks) st.teks.teks += e.delta;
         else {
           st.teks = { jenis: 'teks', key, teks: e.delta };
           out.push(st.teks);
@@ -86,6 +94,7 @@ export function bangunLinimasa(
         continue;
       case 'done':
         st.teks = null;
+        jawabanTerbuka = null;
         continue;
       // Progres membuka turn/langkah baru: teks berikutnya tidak menyambung pesan sebelumnya (mis. pesan tetap
       // "Rencana disetujui…" yang terbit di luar turn, tanpa `done`). Teks model terbit sekali di akhir turn.
@@ -93,7 +102,8 @@ export function bangunLinimasa(
         st.teks = null;
         continue;
       case 'grounded_answer':
-        out.push({ jenis: 'jawaban', key, e });
+        jawabanTerbuka = { jenis: 'jawaban', key, e, ...(e.balasan ? { balasan: e.balasan } : {}) };
+        out.push(jawabanTerbuka);
         break;
       case 'handoff':
         out.push({ jenis: 'handoff', key, e });
@@ -277,6 +287,8 @@ export function labelAktivitas(events: readonly UrusinEvent[]): string | null {
     if (e.type === 'done') return LABEL_BERPIKIR;
     // Pesan utuh terbit di luar turn (mis. hasil Pendamping), bukan jawaban turn ini.
     if (e.type === 'assistant_text' && !e.utuh) return null;
+    // Jawaban bersumber terbit sekali di akhir giliran (isinya balasan akhir): jawaban sudah tiba.
+    if (e.type === 'grounded_answer') return null;
     if (e.type !== 'progress') continue;
     if (e.toolName) return LABEL_ALAT[e.toolName] ?? labelAlatTakDikenal(e.toolName);
     const m = /^Menjalankan ([\w-]+)…?$/.exec(e.label);

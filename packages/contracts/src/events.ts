@@ -76,6 +76,11 @@ export const GroundedAnswerEventSchema = event('grounded_answer', {
   klaimDibuang: z.number().int().nonnegative(),
   /** Kalimat tetap tentang batas wewenang ("Keputusan ada di petugas ..."). */
   kalimatTetap: z.string(),
+  /**
+   * (aditif) Balasan akhir model di giliran yang sama, sudah disaring ke bukti: isi satu-satunya pesan jawaban
+   * giliran itu; klaim tetap menjadi sumber (chip) di bawahnya. Tanpa ini klaim tampil sebagai daftar.
+   */
+  balasan: z.string().min(1).optional(),
 });
 
 export const KanalSchema = z.object({

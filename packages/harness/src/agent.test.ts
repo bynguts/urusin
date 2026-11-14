@@ -31,8 +31,13 @@ describe('alur normal dengan DemoProvider', () => {
     const t = types(out.events);
     expect(t).toContain('progress');
     expect(t).toContain('grounded_answer');
-    // Jawaban bersumber tidak mengakhiri giliran: model melanjutkan dengan balasannya sendiri.
-    expect(t.indexOf('assistant_text')).toBeGreaterThan(t.indexOf('grounded_answer'));
+    // Jawaban bersumber tidak mengakhiri giliran: model melanjutkan dengan balasannya sendiri, dan balasan itu
+    // menjadi isi SATU jawaban giliran ini (bukan pesan teks kedua).
+    expect(t).not.toContain('assistant_text');
+    expect(t.filter((x) => x === 'grounded_answer')).toHaveLength(1);
+    expect(
+      (out.events.find((e) => e.type === 'grounded_answer') as { balasan?: string }).balasan,
+    ).toBeTruthy();
     expect(t.at(-1)).toBe('done');
     expect(t.indexOf('progress')).toBeLessThan(t.indexOf('grounded_answer'));
 

@@ -515,9 +515,9 @@ export const urusanJawabPersyaratan = defineTool({
     };
     const klaim = verified.klaim.map((k) => k.teks).join(' | ');
     return {
-      // Kartu jawaban bersumber sudah tampil; model melanjutkan dengan balasan inti (angka/URL di balasannya
-      // disaring ke bukti yang sudah tampil oleh harness, lihat `saringFakta` di agen).
-      content: `JAWABAN BERSUMBER SUDAH TAMPIL: ${klaim}. Lanjutkan: jawab inti pertanyaan warga secara spesifik dan lengkap berdasarkan klaim ini (dan hasil pencarian lain yang sudah ada); jangan ulang daftarnya; jangan menambah angka/biaya/tenggat/URL yang tidak ada di sumber.`,
+      // Jawaban bersumber ditahan harness sampai akhir giliran: balasan akhir model menjadi isinya dan klaim menjadi
+      // sumbernya (angka/URL balasan disaring ke bukti, lihat `saringFakta` dan `terbitkanJawaban` di agen).
+      content: `JAWABAN BERSUMBER (sumbernya ditempel di bawah balasan akhirmu): ${klaim}. Lanjutkan dengan SATU balasan akhir untuk warga: jawab inti pertanyaannya secara spesifik dan lengkap berdasarkan klaim ini (dan hasil pencarian lain yang sudah ada); jangan menambah angka/biaya/tenggat/URL yang tidak ada di sumber.`,
       takTepercaya: true,
       endTurn: false,
       events: [{ type: 'grounded_answer', ...data }],
