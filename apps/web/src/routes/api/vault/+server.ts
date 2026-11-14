@@ -72,7 +72,7 @@ export const POST: RequestHandler = async (event) => {
   if (berkas.size > UKURAN_DOKUMEN_MAKS)
     return apiError(413, 'DOKUMEN_TERLALU_BESAR', 'Berkas terlalu besar. Maksimal 9 MB.');
   if (!(MIME_DOKUMEN as readonly string[]).includes(berkas.type))
-    return apiError(415, 'DOKUMEN_JENIS_DITOLAK', 'Gunakan foto (JPG, PNG, WebP) atau PDF.');
+    return apiError(415, 'DOKUMEN_JENIS_DITOLAK', 'Gunakan foto (JPG, PNG, WebP), PDF, atau Word (DOCX).');
   try {
     const rt = await getRuntime();
     const p = pemilikVault(rt, event, { buat: true })!;

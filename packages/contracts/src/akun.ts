@@ -274,7 +274,19 @@ export const LengkapiProfilRequestSchema = z.object({
 
 // --- /api/vault (dompet dokumen) ---
 export const JenisDokumenSchema = z.enum(['ktp', 'kk', 'akta', 'surat', 'foto', 'lainnya']);
-export const MIME_DOKUMEN = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const;
+/** MIME berkas kantor: templat DOCX unggahan warga dan berkas buatan `berkas__buat` (DOCX/XLSX/PPTX). */
+export const MIME_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+export const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+export const MIME_PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+export const MIME_DOKUMEN = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+  MIME_DOCX,
+  MIME_XLSX,
+  MIME_PPTX,
+] as const;
 export const UKURAN_DOKUMEN_MAKS = 9 * 1024 * 1024;
 export const BERKAS_PER_PEMILIK_MAKS = 10;
 /**

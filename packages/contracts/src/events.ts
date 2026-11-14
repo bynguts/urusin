@@ -428,6 +428,19 @@ export const IngatanEventSchema = event('ingatan', {
   butir: ButirIngatanKartuSchema,
 });
 
+/**
+ * (aditif) Berkas buatan agen (`berkas__buat`) sudah tersimpan terenkripsi di Dokumen pemilik: kartu berkas dengan
+ * tombol Unduh (GET /api/vault/[id]). Tidak memuat isi berkas maupun nilai Data Diri.
+ */
+export const BerkasEventSchema = event('berkas', {
+  id: z.string().min(1).max(80),
+  nama: z.string().min(1).max(140),
+  format: z.enum(['docx', 'pdf', 'xlsx', 'pptx']),
+  mime: z.string().min(1).max(120),
+  ukuran: z.number().int().nonnegative(),
+  judul: z.string().min(1).max(200),
+});
+
 export const UrusinEventSchema = z.discriminatedUnion('type', [
   ProgressEventSchema,
   AssistantTextEventSchema,
@@ -448,6 +461,7 @@ export const UrusinEventSchema = z.discriminatedUnion('type', [
   WilayahEventSchema,
   JejakPendampingEventSchema,
   IngatanEventSchema,
+  BerkasEventSchema,
 ]);
 
 export type UrusinEvent = z.infer<typeof UrusinEventSchema>;

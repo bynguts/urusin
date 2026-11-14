@@ -14,6 +14,8 @@ export type ItemLinimasa =
   /** Ingatan warga berubah (ADR 0031); `dibatalkan` = butir ini sudah dihapus lagi di event berikutnya. */
   | { jenis: 'ingatan'; key: string; e: EventOf<'ingatan'>; dibatalkan: boolean }
   | { jenis: 'checklist'; key: string; e: EventOf<'checklist'> }
+  /** Berkas buatan agen (`berkas__buat`) yang tersimpan di Dokumen: kartu dengan tombol Unduh. */
+  | { jenis: 'berkas'; key: string; e: EventOf<'berkas'> }
   | {
       jenis: 'konfirmasi';
       key: string;
@@ -116,6 +118,9 @@ export function bangunLinimasa(
           for (const it of out)
             if (it.jenis === 'ingatan' && it.e.butir.id === e.butir.id) it.dibatalkan = true;
         out.push({ jenis: 'ingatan', key, e, dibatalkan: false });
+        break;
+      case 'berkas':
+        out.push({ jenis: 'berkas', key, e });
         break;
       case 'execution_request':
         permintaan.set(e.paramsHash, e);
@@ -235,6 +240,7 @@ const LABEL_ALAT: Record<string, string> = {
   oss__cari_nib: 'Mencari data NIB…',
   wilayah__tetapkan: 'Mencatat wilayah layanan…',
   ingatan__ingat: 'Mencatat ke ingatan Anda…',
+  berkas__buat: 'Membuat berkas…',
 };
 
 /** Progres harness tanpa `toolName` yang memang aktivitas nyata (selain itu = model sedang berpikir). */

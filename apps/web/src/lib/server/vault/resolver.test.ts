@@ -142,6 +142,8 @@ describe('batas impor: penyelesai hanya dipanggil jalur isi Pendamping', () => {
     const sendiri = [
       join('lib', 'server', 'vault', 'resolver.ts'),
       join('lib', 'server', 'vault', 'resolver.test.ts'),
+      // Pemanggil sah kedua: nilai pemilik ditulis hanya ke berkas buatan agen di Dokumen pemilik itu sendiri.
+      join('lib', 'server', 'vault', 'berkas.ts'),
     ];
     const izin = (rel: string) =>
       rel.startsWith(['lib', 'server', 'pendamping', ''].join(sep)) || sendiri.includes(rel);

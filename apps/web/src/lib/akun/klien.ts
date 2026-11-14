@@ -22,7 +22,17 @@ export type DokumenAkun = {
 };
 export type DataDiri = DataDiriRingkas & { kodeKabKota?: string; statusPerkawinan?: string };
 
-export const MIME_DOKUMEN = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const;
+/** Templat Word yang diisi AI; XLSX/PPTX hanya dari berkas buatan agen (cermin MIME_DOKUMEN @urusin/contracts). */
+export const MIME_DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+export const MIME_DOKUMEN = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+  MIME_DOCX,
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+] as const;
 export const UKURAN_DOKUMEN_MAKS = 9 * 1024 * 1024;
 
 export const LABEL_JENIS: Record<JenisDokumen, string> = {
@@ -170,7 +180,8 @@ export const hapusDokumen = (id: string) =>
 /** Periksa berkas sebelum diunggah (pesan sama dengan server). null = boleh. */
 export function periksaBerkas(f: File): string | null {
   if (f.size > UKURAN_DOKUMEN_MAKS) return 'Berkas terlalu besar. Maksimal 9 MB.';
-  if (!(MIME_DOKUMEN as readonly string[]).includes(f.type)) return 'Gunakan foto (JPG, PNG, WebP) atau PDF.';
+  if (!(MIME_DOKUMEN as readonly string[]).includes(f.type))
+    return 'Gunakan foto (JPG, PNG, WebP), PDF, atau Word (DOCX).';
   return null;
 }
 

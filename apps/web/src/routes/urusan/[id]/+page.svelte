@@ -5,6 +5,7 @@
   import type { EventOf, IngatanResponse, KutipanTerverifikasi } from '#lib/contracts.js';
   import Icon from '#lib/components/Icon.svelte';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
+  import KartuBerkas from '#lib/components/urusan/KartuBerkas.svelte';
   import KartuChecklist from '#lib/components/urusan/KartuChecklist.svelte';
   import KartuGalat from '#lib/components/urusan/KartuGalat.svelte';
   import KartuGiliran from '#lib/components/urusan/KartuGiliran.svelte';
@@ -505,8 +506,10 @@
           .map((l) => gambarUntukAi(l.berkas)),
       )
     ).filter((g): g is string => g !== null);
+    // Templat DOCX/PDF yang sudah tersimpan: server membaca teksnya sendiri dari brankas (hanya id yang dikirim).
+    const dokumen = lamp.flatMap((l) => (l.docId && !l.berkas.type.startsWith('image/') ? [l.docId] : []));
     const setelahSeq = urutan ?? k.lastSeq;
-    const hasil = await store.kirim(isi, gambar);
+    const hasil = await store.kirim(isi, gambar, dokumen);
     mengirim = false;
     if (hasil === 'ok') {
       aksiTerakhir = aksi ? t : null;
@@ -829,11 +832,11 @@
                                 <img src={gambar} alt="" class="size-full object-cover" />
                               {:else}
                                 <Icon
-                                  name={l.bentuk === 'PDF' ? 'berkas-teks' : 'berkas-gambar'}
+                                  name={l.bentuk === 'gambar' ? 'berkas-gambar' : 'berkas-teks'}
                                   class="size-5"
                                 />
                                 <span class="text-[10px] leading-none font-semibold text-muted"
-                                  >{l.bentuk === 'PDF' ? 'PDF' : 'Foto'}</span
+                                  >{l.bentuk === 'gambar' ? 'Foto' : l.bentuk}</span
                                 >
                               {/if}
                               <span class="sr-only"
@@ -910,6 +913,8 @@
                       onbukan={wilayahBukan}
                     />
                   </PesanAgen>
+                {:else if it.jenis === 'berkas'}
+                  <PesanAgen avatar={p.avatar}><KartuBerkas berkas={it.e} /></PesanAgen>
                 {:else if it.jenis === 'checklist'}
                   <PesanAgen avatar={p.avatar}><KartuChecklist checklist={it.e} /></PesanAgen>
                 {:else if it.jenis === 'konfirmasi'}
