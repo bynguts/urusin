@@ -68,7 +68,7 @@ test('halaman cara kerja menyebut cakupan Browser Pendamping dengan jujur', asyn
   await page.goto('/cara-kerja');
   const cakupan = page.getByTestId('cakupan-pendamping');
   await expect(cakupan).toContainText(
-    'Saat ini aktif di Surabaya, Wonogiri, Semarang, Medan, Malang, Depok, Kota Tangerang, Padang, Bandar Lampung, dan Banjarmasin.',
+    'Saat ini aktif di Surabaya, Wonogiri, Malang, Depok, Kota Tangerang, Padang, Bandar Lampung, dan Banjarmasin.',
   );
   await expect(cakupan).toContainText('sedang kami kembangkan');
 });

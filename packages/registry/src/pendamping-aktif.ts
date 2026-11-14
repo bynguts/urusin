@@ -2,19 +2,25 @@
  * Daerah tempat Browser Pendamping (AI ikut mengisi formulir di portal resmi) dijamin aktif. Keputusan pemilik produk
  * 2026-11-12 (ADR 0033): daerah lain dipandu langkah demi langkah dan Pendamping-nya dikomunikasikan sebagai "sedang
  * dikembangkan". Satu sumber kebenaran untuk rute agen (harness), kartu rencana, dan halaman web.
+ *
+ * `siap24Jam: false` = portal hanya menerima jaringan Indonesia (`id-only`), jadi Pendamping-nya hanya jalan bila worker
+ * berjaringan Indonesia sehat (tanpa itu rute harness jatuh ke dipandu `jaringan_id`). Daerah seperti ini tetap dirute
+ * sebagai prioritas, tetapi TIDAK diklaim aktif di situs maupun kalimat warga (2026-11-14: worker laptop dicabut dari
+ * produksi; Semarang dan Medan dikeluarkan dari klaim, keduanya ditolak dari IP server).
  */
-export const DAERAH_PENDAMPING_AKTIF: readonly { kode: string; nama: string }[] = Object.freeze([
-  { kode: '3578', nama: 'Surabaya' },
-  { kode: '3312', nama: 'Wonogiri' },
-  { kode: '3374', nama: 'Semarang' },
-  { kode: '1271', nama: 'Medan' },
-  { kode: '3573', nama: 'Malang' },
-  { kode: '3276', nama: 'Depok' },
-  { kode: '3671', nama: 'Kota Tangerang' },
-  { kode: '1371', nama: 'Padang' },
-  { kode: '1871', nama: 'Bandar Lampung' },
-  { kode: '6371', nama: 'Banjarmasin' },
-]);
+export const DAERAH_PENDAMPING_AKTIF: readonly { kode: string; nama: string; siap24Jam?: false }[] =
+  Object.freeze([
+    { kode: '3578', nama: 'Surabaya' },
+    { kode: '3312', nama: 'Wonogiri' },
+    { kode: '3374', nama: 'Semarang', siap24Jam: false },
+    { kode: '1271', nama: 'Medan', siap24Jam: false },
+    { kode: '3573', nama: 'Malang' },
+    { kode: '3276', nama: 'Depok' },
+    { kode: '3671', nama: 'Kota Tangerang' },
+    { kode: '1371', nama: 'Padang' },
+    { kode: '1871', nama: 'Bandar Lampung' },
+    { kode: '6371', nama: 'Banjarmasin' },
+  ]);
 
 const AKTIF = new Set(DAERAH_PENDAMPING_AKTIF.map((d) => d.kode));
 
@@ -23,9 +29,14 @@ export function pendampingAktif(kode: string | null | undefined): boolean {
   return typeof kode === 'string' && AKTIF.has(kode);
 }
 
-/** "Surabaya, Wonogiri, ..., dan Banjarmasin". */
+/** Daerah yang Pendamping-nya jalan 24/7 dari server Urusin: dasar setiap klaim cakupan kepada warga. */
+export const DAERAH_PENDAMPING_24JAM: readonly { kode: string; nama: string }[] = Object.freeze(
+  DAERAH_PENDAMPING_AKTIF.filter((d) => d.siap24Jam !== false).map(({ kode, nama }) => ({ kode, nama })),
+);
+
+/** "Surabaya, Wonogiri, ..., dan Banjarmasin" (hanya `DAERAH_PENDAMPING_24JAM`). */
 export const DAFTAR_PENDAMPING_AKTIF: string = (() => {
-  const n = DAERAH_PENDAMPING_AKTIF.map((d) => d.nama);
+  const n = DAERAH_PENDAMPING_24JAM.map((d) => d.nama);
   return `${n.slice(0, -1).join(', ')}, dan ${n.at(-1)}`;
 })();
 

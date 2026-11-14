@@ -21,12 +21,12 @@ lihat Status di bawah). Login, OTP, CAPTCHA, dan **tombol Kirim terakhir selalu 
 **Status (2026-11-11).** README ini hanya mengklaim yang sudah berjalan. Yang belum aktif di produksi ditandai
 **(belum live)**.
 
-| Bagian                                                               | Status                                          |
-| -------------------------------------------------------------------- | ----------------------------------------------- |
-| Percakapan agen, RAG bersumber, router 514 kab/kota, Peristiwa Hidup | Live di <https://urusinai.web.id>               |
-| Akun (email + sandi, Google), mode tamu, tombol juri, vault, Jejak   | Live                                            |
-| Browser Pendamping (pengisian formulir di situs resmi)               | Live: worker VPS + worker wilayah `id` (laptop) |
-| Situs latihan publik `fixtures.urusinai.web.id` (Mode Uji)           | Live                                            |
+| Bagian                                                               | Status                                                       |
+| -------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Percakapan agen, RAG bersumber, router 514 kab/kota, Peristiwa Hidup | Live di <https://urusinai.web.id>                            |
+| Akun (email + sandi, Google), mode tamu, tombol juri, vault, Jejak   | Live                                                         |
+| Browser Pendamping (pengisian formulir di situs resmi)               | Live 24/7 dari VPS di 8 kab/kota (`DAERAH_PENDAMPING_24JAM`) |
+| Situs latihan publik `fixtures.urusinai.web.id` (Mode Uji)           | Live                                                         |
 
 Tier per wilayah hanya dua, dan tidak ada yang mengirim otomatis penuh:
 
@@ -181,7 +181,8 @@ flowchart LR
   dan terhapus otomatis 72 jam sejak dibuat. Daftar urusan dan preferensi ada di penyimpanan peramban.
 - **Dengan akun:** vault terenkripsi di server per akun (AES-256-GCM, DEK per pemilik dibungkus KEK dari env
   host), sehingga ikut ke perangkat lain.
-- Tabel harness, log, dan model tidak pernah menerima NIK, KK, HP, atau email mentah.
+- Tabel harness, log, dan model tidak pernah menerima NIK, KK, HP, atau email mentah yang diketik warga. Foto
+  lampiran chat dibaca model vision (salinan diperkecil); hasil bacaannya disaring lagi sebelum masuk konteks agen.
 
 Detail C4 (konteks, kontainer), pipeline pengiriman, dan diagram urutan PII ada di
 [`docs/arsitektur.md`](docs/arsitektur.md). Keputusan desain ada di [`docs/adr/`](docs/adr/README.md).

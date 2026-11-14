@@ -126,7 +126,7 @@
               loading="lazy"
               decoding="async"
             />
-            <p class="ur28">Disdukcapil · BPJS Kesehatan</p>
+            <p class="ur28">Disdukcapil</p>
           </div>
           <div class="ur29"></div>
           <form class="ur-form" method="POST" action="/?/mulai">
@@ -166,7 +166,7 @@
           </div>
           <div class="ur40">
             <p class="ur41">Yang diurus</p>
-            <p class="ur42">Buku nikah · KK baru · KTP status kawin</p>
+            <p class="ur42">Akta perkawinan · KK baru · KTP status kawin</p>
           </div>
           <div class="ur43">
             <img
@@ -272,7 +272,7 @@
           </div>
           <div class="ur75">
             <p class="ur76">Yang diurus</p>
-            <p class="ur77">Akta kematian · Perubahan KK · Klaim BPJS</p>
+            <p class="ur77">Akta kematian · Perubahan KK · KTP-el</p>
           </div>
           <div class="ur78">
             <img
@@ -284,7 +284,7 @@
               loading="lazy"
               decoding="async"
             />
-            <p class="ur80">Disdukcapil · BPJS · Taspen</p>
+            <p class="ur80">Disdukcapil</p>
           </div>
           <div class="ur81"></div>
           <form class="ur-form" method="POST" action="/?/mulai">
@@ -320,11 +320,11 @@
             <h3 class="ur90">
               <a href={resolve('/peristiwa/[slug]', { slug: 'lainnya' })}>KTP &amp; dokumen</a>
             </h3>
-            <p class="ur91">Membuat, memperpanjang, atau mengganti dokumen yang hilang.</p>
+            <p class="ur91">Membuat baru, memperbarui data, atau mengganti dokumen yang hilang.</p>
           </div>
           <div class="ur92">
             <p class="ur93">Yang diurus</p>
-            <p class="ur94">KTP-el · Paspor · SIM</p>
+            <p class="ur94">KTP-el · KK · KIA</p>
           </div>
           <div class="ur95">
             <img
@@ -336,7 +336,7 @@
               loading="lazy"
               decoding="async"
             />
-            <p class="ur97">Disdukcapil · Imigrasi · Polri</p>
+            <p class="ur97">Disdukcapil</p>
           </div>
           <div class="ur98"></div>
           <form class="ur-form" method="POST" action="/?/mulai">
@@ -374,7 +374,7 @@
           </div>
           <div class="ur109">
             <p class="ur110">Yang diurus</p>
-            <p class="ur111">Pajak kendaraan · Izin usaha · Bantuan sosial</p>
+            <p class="ur111">Pajak kendaraan · Akta cerai · Ganti nama</p>
           </div>
           <div class="ur112">
             <img

@@ -140,7 +140,7 @@ describe('load layar', () => {
     cookies.set(SID_COOKIE, SID);
     cookies.set(TERAKHIR_COOKIE, u.id);
     expect(await muatLanding({ cookies, locals: {}, ...minta() } as never)).toEqual({
-      jumlahDaerahPendamping: 10,
+      jumlahDaerahPendamping: 8,
     });
     expect(cookies.get(TERAKHIR_COOKIE)).toBe(u.id);
     expect(rt.store.getUrusan(u.id)).not.toBeNull();
@@ -165,12 +165,12 @@ describe('load layar', () => {
     cookies.set(TERAKHIR_COOKIE, u.id);
     cookies.set(LANDING_COOKIE, '1');
     expect(await muatLanding({ cookies, locals: { akun }, ...minta() } as never)).toEqual({
-      jumlahDaerahPendamping: 10,
+      jumlahDaerahPendamping: 8,
     });
     expect(cookies.get(LANDING_COOKIE)).toBeUndefined();
     const dariSitus = minta('http://localhost:3000/beranda');
     expect(await muatLanding({ cookies, locals: { akun }, ...dariSitus } as never)).toEqual({
-      jumlahDaerahPendamping: 10,
+      jumlahDaerahPendamping: 8,
     });
     const luar = minta('https://contoh.test/');
     expect(isRedirect(await tangkap(muatLanding({ cookies, locals: { akun }, ...luar } as never)))).toBe(
@@ -187,7 +187,7 @@ describe('load layar', () => {
       cookies.set(SID_COOKIE, 'b'.repeat(32));
       cookies.set(TERAKHIR_COOKIE, id);
       expect(await muatLanding({ cookies, locals: { akun }, ...minta() } as never)).toEqual({
-        jumlahDaerahPendamping: 10,
+        jumlahDaerahPendamping: 8,
       });
     }
   });
@@ -459,7 +459,7 @@ describe('render server komponen', () => {
 });
 
 describe('/privasi', () => {
-  it('menyebut setiap pemroses data pihak lain, lokasi pendamping Indonesia, dan retensi cadangan', async () => {
+  it('menyebut setiap pemroses data pihak lain dan retensi cadangan, tanpa worker laptop yang sudah dicabut', async () => {
     // LandingNav membaca `page.data.akun` (CTA tamu vs akun); di luar SvelteKit konteks `page` tidak ada.
     vi.doMock('$app/state', () => ({ page: { data: { akun: null } } }));
     const { default: Privasi } = await import('../../routes/privasi/+page.svelte');
@@ -468,8 +468,6 @@ describe('/privasi', () => {
     for (const pihak of [
       'Oracle Cloud',
       'Singapura',
-      'Laptop tim Urusin',
-      'Tailscale',
       'OpenAI',
       'Google',
       'Resend',
@@ -478,6 +476,9 @@ describe('/privasi', () => {
       'disimpan 3 hari',
     ])
       expect(body, pihak).toContain(pihak);
+    // Worker laptop dicabut dari produksi: tidak boleh lagi tercantum sebagai pemroses.
+    expect(body).not.toContain('Laptop tim Urusin');
+    expect(body).not.toContain('Tailscale');
   });
 });
 

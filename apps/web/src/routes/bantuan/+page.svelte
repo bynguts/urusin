@@ -55,7 +55,7 @@
     },
     {
       id: 'unggah',
-      tanya: 'Bagaimana supaya dokumen yang diunggah lolos pemeriksaan?',
+      tanya: 'Bagaimana supaya dokumen yang diunggah tidak ditolak?',
       jawab: [
         'Foto di tempat terang, seluruh halaman masuk bingkai, tidak terpotong, dan tulisan terbaca. Simpan dulu di menu Dokumen supaya bisa dipakai ulang.',
         'Format yang diterima: JPG, PNG, atau PDF.',
@@ -73,7 +73,7 @@
   const TOPIK: { judul: string; ringkas: string; gambar?: string; latar: string; ke: string }[] = [
     {
       judul: 'Mengunggah dokumen',
-      ringkas: 'Supaya foto atau pindaian langsung lolos pemeriksaan.',
+      ringkas: 'Supaya foto atau pindaian jelas dan tidak ditolak petugas.',
       latar: 'bg-[#f4efe4]',
       ke: 'unggah',
     },
