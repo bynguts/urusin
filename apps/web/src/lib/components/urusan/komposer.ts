@@ -1,4 +1,4 @@
-import { LABEL_JENIS, periksaBerkas, type JenisDokumen } from '#lib/akun/klien.js';
+import { LABEL_JENIS, MIME_DOCX, periksaBerkas, type JenisDokumen } from '#lib/akun/klien.js';
 
 /**
  * Tombol Enter di komposer. Laptop: Enter = kirim, Shift+Enter = baris baru. Layar sentuh (pointer: coarse):
@@ -48,13 +48,15 @@ export function ukuranBerkas(bita: number): string {
   return `${(bita / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
 }
 
-const BENTUK = (mime: string) => (mime === 'application/pdf' ? 'PDF' : 'gambar');
+export type BentukLampiran = 'gambar' | 'PDF' | 'DOCX';
+const BENTUK = (mime: string): BentukLampiran =>
+  mime === 'application/pdf' ? 'PDF' : mime.startsWith('image/') ? 'gambar' : 'DOCX';
 
 /** Penanda non-PII untuk agen: "[warga melampirkan dokumen: Kartu Keluarga (gambar)]". */
 export const penandaLampiran = (jenis: JenisDokumen, mime: string) =>
   `[warga melampirkan dokumen: ${labelLampiran(jenis)} (${BENTUK(mime)})]`;
 
-const POLA_PENANDA = /^\[warga melampirkan dokumen: ([^\]()\n]{1,40}) \((gambar|PDF)\)\]$/;
+const POLA_PENANDA = /^\[warga melampirkan dokumen: ([^\]()\n]{1,40}) \((gambar|PDF|DOCX)\)\]$/;
 
 /** Gabungkan penanda lampiran (satu per baris) dengan tulisan warga. */
 export function teksDenganLampiran(teks: string, lampiran: { jenis: JenisDokumen; mime: string }[]): string {
@@ -63,14 +65,14 @@ export function teksDenganLampiran(teks: string, lampiran: { jenis: JenisDokumen
 
 /** Pisahkan penanda lampiran dari tulisan warga untuk gelembung pesan (chip + teks). */
 export function pecahPenanda(teks: string): {
-  lampiran: { label: string; bentuk: 'gambar' | 'PDF' }[];
+  lampiran: { label: string; bentuk: BentukLampiran }[];
   teks: string;
 } {
-  const lampiran: { label: string; bentuk: 'gambar' | 'PDF' }[] = [];
+  const lampiran: { label: string; bentuk: BentukLampiran }[] = [];
   const sisa: string[] = [];
   for (const baris of teks.split('\n')) {
     const m = POLA_PENANDA.exec(baris);
-    if (m) lampiran.push({ label: m[1]!, bentuk: m[2] as 'gambar' | 'PDF' });
+    if (m) lampiran.push({ label: m[1]!, bentuk: m[2] as BentukLampiran });
     else sisa.push(baris);
   }
   return { lampiran, teks: sisa.join('\n').trim() };
@@ -158,7 +160,11 @@ export async function buatLampiran(
       galat = `Maksimal ${LAMPIRAN_MAKS} lampiran per pesan.`;
       break;
     }
-    const f = await siapkanBerkas(asli);
+    // Sebagian peramban HP tidak mengisi jenis berkas .docx: dikenali dari ekstensinya (templat untuk diisi AI).
+    const f =
+      asli.type === '' && /\.docx$/i.test(asli.name)
+        ? new File([asli], asli.name, { type: MIME_DOCX })
+        : await siapkanBerkas(asli);
     if (typeof f === 'string') {
       galat = f;
       continue;

@@ -98,6 +98,10 @@ Semua fitur di bawah sudah berjalan di <https://urusinai.web.id>.
 - **"Izinkan isi".** Sebelum mengisi, warga melihat data apa yang akan ditulis ke situs mana. Persetujuan berlaku
   sekali, hanya untuk situs itu, dan nilainya diambil server langsung dari brankas, tidak lewat model AI.
 - **Cek status permohonan (baca saja)** untuk portal Surabaya, sampai halaman yang meminta login atau CAPTCHA warga.
+- **Buat dan isi berkas (DOCX/PDF/XLSX/PPTX).** Minta di chat (surat pernyataan, SPTJM, surat kuasa, checklist) atau
+  lampirkan templat DOCX/PDF untuk diisi; berkas A4 tersusun rapi dengan tempat-tanggal dan tanda tangan, tersimpan
+  terenkripsi di Dokumen dengan tombol Unduh. Model hanya menulis penanda; NIK, nama, dan data lain diisi server dari
+  Data Diri saat berkas dibuat. Tanpa kop, stempel, atau tanda tangan instansi.
 - **Akun.** Daftar dengan email + kata sandi atau masuk dengan Google. Data Diri, dokumen, dan daftar urusan ikut ke
   perangkat lain. Di **Pengaturan → Keluar dan hapus akun** warga bisa keluar dari semua perangkat atau menghapus
   akun beserta datanya.
@@ -319,8 +323,8 @@ dibagikan.
   CC BY-SA 4.0); font Lora (SIL Open Font License, lihat
   [`LICENSE-lora.txt`](apps/web/src/lib/assets/fonts/LICENSE-lora.txt)).
 - **Pustaka sumber terbuka utama:** SvelteKit, Svelte, Vite, Tailwind CSS, Playwright, Hono, better-sqlite3, zod,
-  `openai` (SDK resmi), jose, undici, llama.cpp (MIT), Turborepo, Vitest, ESLint, Prettier, commitlint, husky. Versi
-  lengkap ada di `pnpm-lock.yaml`.
+  `openai` (SDK resmi), jose, undici, llama.cpp (MIT), Turborepo, Vitest, ESLint, Prettier, commitlint, husky; berkas
+  unduhan: docx, pdf-lib, exceljs, pptxgenjs, mammoth, unpdf. Versi lengkap ada di `pnpm-lock.yaml`.
 - **Model open-source:** EmbeddingGemma-300M (`google/embeddinggemma-300m`, konversi GGUF Q8_0 oleh ggml-org), tunduk
   pada [Gemma Terms of Use](https://ai.google.dev/gemma/terms); lihat [`apps/embedding/NOTICE`](apps/embedding/NOTICE).
 - **Layanan pihak ketiga:** OpenAI (model GPT), Exa (cadangan pencarian web), Google Identity (OIDC), Cloudflare (DNS,

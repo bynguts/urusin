@@ -1,12 +1,20 @@
 import type { RagSearcher } from '@urusin/rag';
 import { z } from 'zod';
-import type { CapabilityFlags, ChatMessage, ChatProvider, ChatTool, Usage } from '@urusin/llm';
+import type {
+  CapabilityFlags,
+  ChatMessage,
+  ChatProvider,
+  ChatTool,
+  ReasoningEffort,
+  Usage,
+} from '@urusin/llm';
 import type { Db } from './db.js';
 import type { CacheJawaban } from './grounding.js';
 import type { EventPayload, PayloadOf, UrusanState } from '@urusin/contracts';
 import type { IngatanTurn } from './ingatan.js';
 import type { UrusanRow, HarnessStore } from './store.js';
 import type { LayananCariWeb } from './web-cari.js';
+import type { LayananBerkas } from './berkas.js';
 import { TERMINAL_STATES, URUSAN_STATES } from './state.js';
 
 /**
@@ -39,6 +47,10 @@ export type ToolDeps = {
   cacheJawaban?: CacheJawaban | undefined;
   /** Cari web cadangan (Exa) + batas lajunya; tanpa ini `web__cari` tidak terdaftar. */
   cariWeb?: LayananCariWeb | undefined;
+  /** Effort penalaran generator jawaban bersumber (LLM_GROUNDING_REASONING_EFFORT); kosong = global. */
+  reasoningEffortJawaban?: ReasoningEffort | undefined;
+  /** Render + simpan berkas buatan agen (`berkas__buat`); tanpa ini tool itu tidak terdaftar. */
+  berkas?: LayananBerkas | undefined;
   now: () => Date;
 };
 
@@ -58,6 +70,8 @@ export type ToolContext = {
    * bersumber tidak boleh menyatakan dokumen/foto warga sah atau dapat dipakai.
    */
   catatanFoto?: string | undefined;
+  /** Pemilik brankas (Dokumen) peminta giliran ini: tujuan simpan + sumber nilai placeholder `berkas__buat`. */
+  pemilikBerkas?: string | undefined;
 };
 
 export type EmittableEvent = EventPayload;
@@ -109,6 +123,11 @@ export type ToolDef<S extends z.ZodType = z.ZodType> = {
    * urusan, `ingatan__ingat` tetap dikunci di turn berikutnya (hasil di riwayat tidak membawa `takTepercaya`).
    */
   kontenLuar?: boolean;
+  /**
+   * Parameter boleh memuat placeholder brankas sah (`{{PEMOHON.NIK}}`) yang diisi server saat render (`berkas__buat`).
+   * Policy gate tetap menolak NIK/HP/email mentah dan kurung kurawal yang bukan placeholder sah.
+   */
+  placeholderBrankas?: boolean;
   execute(ctx: ToolContext, args: z.infer<S>): Promise<ToolResult> | ToolResult;
 };
 

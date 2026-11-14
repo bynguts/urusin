@@ -66,7 +66,7 @@ export function createRagJsonCall(opts: {
         schema: req.schema,
         name: req.name,
         caps: opts.caps,
-        maxTokens: 300,
+        maxTokens: 2000,
         signal: req.signal,
       })
     ).data;

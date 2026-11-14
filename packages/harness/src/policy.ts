@@ -4,6 +4,7 @@ import type { GateRule, UrusanState } from '@urusin/contracts';
 import type { QuotaStatus } from './quota.js';
 import { paramsHash, type HarnessStore, type UrusanRow } from './store.js';
 import { CONFIRMATION_FIELD, modelFacingSchema, type ToolDef, type ToolRegistry } from './tools.js';
+import { masalahPiiBerkas } from './berkas.js';
 import { wilayahBelumSiap, wilayahUrusan } from './wilayah.js';
 
 export type GateInput = {
@@ -68,8 +69,10 @@ export class PolicyGate {
     // Jawaban persyaratan TIDAK menunggu wilayah: sebelum wilayah KTP ditetapkan tool jawaban hanya memakai
     // potongan nasional (lihat `chunkNasional`), jadi kanal/kantor daerah lain tidak pernah dikutip.
 
-    // (2) lapis 2 PII: tolak placeholder/PII di SEMUA string yang ditulis model, sebelum zod.
-    const issues = findGuardIssues(input.rawArgs);
+    // (2) lapis 2 PII: tolak placeholder/PII di SEMUA string yang ditulis model, sebelum zod. Tool
+    // `placeholderBrankas` (berkas__buat) boleh memuat placeholder brankas sah (diisi server saat render); sisanya
+    // tetap diperiksa: NIK/HP/email mentah dan `{{`/`}}` liar ditolak.
+    const issues = tool.placeholderBrankas ? masalahPiiBerkas(input.rawArgs) : findGuardIssues(input.rawArgs);
     if (issues.length > 0) {
       return deny(
         'PLACEHOLDER_OR_PII_IN_PARAM',

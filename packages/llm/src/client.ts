@@ -37,11 +37,13 @@ export class OpenAIProvider implements ChatProvider {
   private readonly client: OpenAI;
   private readonly reasoning: { reasoning_effort?: NonNullable<LlmConfig['reasoningEffort']> };
   private readonly transcribeClient: OpenAI;
+  private readonly completionTokens: boolean;
 
   constructor(config: LlmConfig, transport: ProviderTransport = {}) {
     this.baseURL = config.baseURL;
     this.client = createOpenAIClient(config, transport);
     this.reasoning = config.reasoningEffort ? { reasoning_effort: config.reasoningEffort } : {};
+    this.completionTokens = config.maxTokensParam === 'max_completion_tokens';
     this.transcribeClient = config.transcribeBaseURL
       ? createOpenAIClient({ ...config, baseURL: config.transcribeBaseURL }, transport)
       : this.client;
@@ -50,7 +52,7 @@ export class OpenAIProvider implements ChatProvider {
   async create(params: ChatParams, opts: RequestOptions = {}): Promise<ChatCompletion> {
     // `stream` selalu eksplisit: provider nyata mengalirkan SSE bila field ini dihilangkan.
     const r: unknown = await this.client.chat.completions.create(
-      { ...this.reasoning, ...params, stream: false },
+      { ...this.reasoning, ...this.batasToken(params), stream: false },
       { signal: opts.signal },
     );
     // Proxy yang tetap membalas SSE untuk stream:false: SDK mengembalikan teks mentah (bukan JSON).
@@ -62,9 +64,16 @@ export class OpenAIProvider implements ChatProvider {
     opts: RequestOptions = {},
   ): Promise<AsyncIterable<ChatCompletionChunk>> {
     return this.client.chat.completions.create(
-      { ...this.reasoning, ...params, stream: true },
+      { ...this.reasoning, ...this.batasToken(params), stream: true },
       { signal: opts.signal },
     );
+  }
+
+  /** `reasoning_effort` di params menimpa nilai global; `max_tokens` dikirim sebagai `max_completion_tokens` bila diatur. */
+  private batasToken<P extends ChatParams | ChatStreamParams>(params: P): P {
+    if (!this.completionTokens || params.max_tokens == null) return params;
+    const { max_tokens, ...rest } = params;
+    return { ...rest, max_completion_tokens: max_tokens } as P;
   }
 
   async transcribe(input: { model: string; audio: Uint8Array; filename: string; language?: string }) {

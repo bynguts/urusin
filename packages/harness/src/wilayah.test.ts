@@ -75,6 +75,32 @@ describe('gerbang wilayah: rencana diblokir di kode sampai wilayah KTP ditetapka
     expect(env.store.getUrusanOrThrow(u.id)).toMatchObject({ state: 'MEMAHAMI', kodeKabKota: null });
   }, 30_000);
 
+  it('tebakan perangkat saja: rencana dan Browser Pendamping tetap tertutup; Data Diri pasti: terbuka', () => {
+    const env = makeEnv({ provider: new FakeProvider() });
+    const a0 = env.store.createUrusan({ jenis: 'kelahiran' });
+    usulkanWilayah(a0.id, '3312', 'pilihan', publisher(env, a0.id));
+    const a = usulkanRencanaOtomatis(
+      env.store,
+      env.store.transition(a0.id, a0.version, 'MEMAHAMI'),
+      publisher(env, a0.id),
+    );
+    expect(a.state).toBe('MEMAHAMI');
+    // Dipaksa ke RENCANA_DIUSULKAN pun, persetujuan (pintu Browser Pendamping) ditolak tanpa wilayah pasti.
+    const paksa = env.store.transition(a.id, a.version, 'RENCANA_DIUSULKAN');
+    expect(() => setujuiRencana(env.store, paksa.id, publisher(env, a.id))).toThrow(
+      /wilayah KTP warga belum/,
+    );
+    const b0 = env.store.createUrusan({ jenis: 'kelahiran' });
+    const b1 = tetapkanWilayah(env.store, b0, { ktp: '3312' }, publisher(env, b0.id), 'data_diri');
+    const b = usulkanRencanaOtomatis(
+      env.store,
+      env.store.transition(b1.id, b1.version, 'MEMAHAMI'),
+      publisher(env, b0.id),
+    );
+    expect(b.state).toBe('RENCANA_DIUSULKAN');
+    expect(wilayahUrusan(env.store, b).ktp?.kodeKabKota).toBe('3312');
+  });
+
   it('pindah dengan KTP tetapi tanpa tujuan: rencana belum diusulkan', async () => {
     const { env, u } = setup([balas('Pindah ke kabupaten/kota mana?')], {
       jenis: 'pindah',
@@ -89,15 +115,14 @@ describe('gerbang wilayah: rencana diblokir di kode sampai wilayah KTP ditetapka
     const { env, u, provider } = setup([balas('KTP Anda terdaftar di Kabupaten Wonogiri, betul?')], {
       jenis: 'kelahiran',
     });
-    usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
-    // Giliran pertama: kartu usulan yang bertanya, agen tidak dipanggil.
+    usulkanWilayah(u.id, '3312', 'pilihan', publisher(env, u.id));
+    // Giliran pertama tetap dijawab agen: agen yang memutuskan apakah wilayah perlu ditanyakan.
     await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
-    expect(provider.calls.filter((c) => c.kind === 'create')).toHaveLength(0);
-    await runTurn(env.deps, { urusanId: u.id, userText: 'Anaknya lahir minggu lalu' });
     const call = provider.calls.find((c) => c.kind === 'create');
     const note = call?.kind === 'create' ? call.params.messages.map((m) => m.content).join('\n') : '';
     expect(note).toContain('WILAYAH KTP: belum ditetapkan.');
-    expect(note).toContain('Usulan (Data Diri akun): Kabupaten Wonogiri');
+    expect(note).toContain('Usulan (pilihan di perangkat, belum pasti): Kabupaten Wonogiri');
+    expect(note).toContain('HANYA bila jawabanmu bergantung pada wilayah');
     expect(note).toContain('WILAYAH DULU');
   });
 
@@ -422,18 +447,23 @@ describe('KTP ≠ domisili dan pindah (asal → tujuan)', () => {
 });
 
 describe('usulan Data Diri: ditawarkan untuk dikonfirmasi, tidak pernah diam-diam', () => {
-  it('"ya" atas usulan Data Diri → wilayah ditetapkan; tanpa itu tetap kosong', async () => {
+  it('"ya" atas usulan perangkat yang ditanyakan agen → wilayah ditetapkan; tanpa itu tetap kosong', async () => {
     const { env, u, provider } = setup(
-      [tool('wilayah__tetapkan', { ktp: 'Kabupaten Wonogiri' }), balas('Baik.')],
+      [
+        balas('KTP Anda terdaftar di Kabupaten Wonogiri, betul?'),
+        tool('wilayah__tetapkan', { ktp: 'Kabupaten Wonogiri' }),
+        balas('Baik.'),
+      ],
       { jenis: 'kelahiran' },
     );
-    usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
-    // Kartu usulan yang bertanya (tanpa teks agen); "ya" yang diketik membenarkan kartu itu.
+    usulkanWilayah(u.id, '3312', 'pilihan', publisher(env, u.id));
+    // Agen menanyakan wilayah (rencana bergantung padanya): pertanyaannya jadi kartu; "ya" membenarkannya.
     const t1 = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
     expect(of(t1.events, 'assistant_text')).toHaveLength(0);
+    expect(of(t1.events, 'wilayah').map((e) => [e.status, e.sumber])).toEqual([['usulan', 'warga']]);
     expect(env.store.getUrusanOrThrow(u.id).kodeKabKota).toBeNull();
     const w = wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id));
-    expect(w).toMatchObject({ ktp: null, usulan: { sumber: 'data_diri', ktp: { kodeKabKota: '3312' } } });
+    expect(w).toMatchObject({ ktp: null, usulan: { sumber: 'warga', ktp: { kodeKabKota: '3312' } } });
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'ya' });
     expect(hasilTool(provider)).toMatch(/Wilayah KTP ditetapkan: Kabupaten Wonogiri/);
     expect(of(out.events, 'plan_card')[0]).toMatchObject({
@@ -720,14 +750,14 @@ describe('temuan eval persona W4: kartu wilayah = wilayah yang ditanyakan agen',
     expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).ktp).toBeNull();
   });
 
-  it('agen menanyakan wilayah yang sama dengan kartu: tidak ada usulan tambahan', async () => {
+  it('agen menanyakan wilayah yang sama dengan usulan: satu kartu di titik pertanyaan, kab/kota sama', async () => {
     const { env, u } = setup([balas('KTP Anda terdaftar di Kabupaten Wonogiri, betul?')], {
       jenis: 'kelahiran',
     });
-    usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
+    usulkanWilayah(u.id, '3312', 'pilihan', publisher(env, u.id));
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau urus akta kelahiran' });
-    expect(of(out.events, 'wilayah')).toHaveLength(0);
-    expect(usulanTerakhir(env, u.id)).toMatchObject({ sumber: 'data_diri' });
+    expect(of(out.events, 'wilayah').map((e) => [e.sumber, e.ktp.kodeKabKota])).toEqual([['warga', '3312']]);
+    expect(usulanTerakhir(env, u.id)).toMatchObject({ sumber: 'warga', ktp: { kodeKabKota: '3312' } });
   });
 });
 
@@ -853,7 +883,9 @@ describe('temuan eval persona p12: wilayah yang sudah dibenarkan tidak ditanyaka
       tools,
       confirmations: [],
     });
-    expect(dataDiri).toContain('Tanyakan sekali: "KTP Anda terdaftar di Kabupaten Bekasi, betul?"');
+    expect(dataDiri).toContain(
+      'Tanyakan sekali, HANYA bila jawabanmu bergantung pada wilayah: "KTP Anda terdaftar di Kabupaten Bekasi, betul?"',
+    );
     const pasti = buildStateNote({
       state: 'MEMAHAMI',
       jenis: 'kelahiran',
@@ -868,10 +900,11 @@ describe('temuan eval persona p12: wilayah yang sudah dibenarkan tidak ditanyaka
 });
 
 describe('temuan eval persona p17: balasan ringkas tanpa kehilangan isi wajib', () => {
-  it('prompt sistem membatasi panjang, mengikuti gaya warga, dan menjaga isi wajib', () => {
+  it('prompt sistem menyesuaikan panjang, mengikuti gaya warga, dan menjaga isi wajib', () => {
     const p = buildSystemPrompt();
-    expect(p).toMatch(/paling banyak 4 kalimat pendek atau 5 butir/);
-    expect(p).toMatch(/Ikuti gaya warga/);
+    expect(p).not.toMatch(/paling banyak 4 kalimat pendek atau 5 butir/);
+    expect(p).toMatch(/Jawab selengkap yang dibutuhkan warga: ringkas untuk hal sederhana/);
+    expect(p).toMatch(/Ikuti gaya bahasa warga/);
     expect(p).toMatch(/warga lansia dijawab dengan kata sehari-hari/);
     expect(p).toMatch(/dan tanpa kode formulir/);
     expect(p).toMatch(/formulir permohonan yang disediakan petugas \(F-1\.02\)": kodenya boleh dalam kurung/);

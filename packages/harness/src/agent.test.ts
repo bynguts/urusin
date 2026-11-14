@@ -617,8 +617,8 @@ describe('balasan terpotong (finish_reason=length)', () => {
     expect(out.events.some((e) => e.type === 'error')).toBe(false);
     const [a, b] = provider.calls.map((c) => (c.kind === 'create' ? c.params : undefined));
     expect(b!.max_tokens).toBe(a!.max_tokens! * 2);
-    expect(JSON.stringify(b!.messages)).toMatch(/Balasanmu tadi terpotong/);
-    expect(JSON.stringify(a!.messages)).not.toMatch(/Balasanmu tadi terpotong/);
+    expect(JSON.stringify(b!.messages)).toMatch(/Balasanmu terpotong; lanjutkan/);
+    expect(JSON.stringify(a!.messages)).not.toMatch(/Balasanmu terpotong/);
   });
 
   it('jenis tak dikenali kata kunci (p06): tanpa klasifikasi LLM terpisah, model yang menetapkan lewat tool', async () => {

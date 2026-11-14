@@ -5,6 +5,7 @@
   import type { EventOf, IngatanResponse, KutipanTerverifikasi } from '#lib/contracts.js';
   import Icon from '#lib/components/Icon.svelte';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
+  import KartuBerkas from '#lib/components/urusan/KartuBerkas.svelte';
   import KartuChecklist from '#lib/components/urusan/KartuChecklist.svelte';
   import KartuGalat from '#lib/components/urusan/KartuGalat.svelte';
   import KartuGiliran from '#lib/components/urusan/KartuGiliran.svelte';
@@ -505,8 +506,10 @@
           .map((l) => gambarUntukAi(l.berkas)),
       )
     ).filter((g): g is string => g !== null);
+    // Templat DOCX/PDF yang sudah tersimpan: server membaca teksnya sendiri dari brankas (hanya id yang dikirim).
+    const dokumen = lamp.flatMap((l) => (l.docId && !l.berkas.type.startsWith('image/') ? [l.docId] : []));
     const setelahSeq = urutan ?? k.lastSeq;
-    const hasil = await store.kirim(isi, gambar);
+    const hasil = await store.kirim(isi, gambar, dokumen);
     mengirim = false;
     if (hasil === 'ok') {
       aksiTerakhir = aksi ? t : null;
@@ -554,6 +557,11 @@
         'Wilayah belum bisa dicatat lewat kartu ini: mungkin sudah dipastikan di obrolan atau perangkat lain, atau Urusin masih bekerja. Muat ulang halaman untuk melihat yang terbaru.';
     else if (hasil === 'galat') pesanKomposer = 'Wilayah belum tercatat. Periksa koneksi, lalu coba lagi.';
   }
+
+  // "Ubah" di catatan wilayah: wilayah KTP hanya bisa diganti (lewat obrolan) sebelum rencana disetujui.
+  const wilayahBisaDiubah = $derived(
+    keadaanUrusan === 'BARU' || keadaanUrusan === 'MEMAHAMI' || keadaanUrusan === 'RENCANA_DIUSULKAN',
+  );
 
   function wilayahBukan() {
     teks = 'KTP saya terdaftar di ';
@@ -824,11 +832,11 @@
                                 <img src={gambar} alt="" class="size-full object-cover" />
                               {:else}
                                 <Icon
-                                  name={l.bentuk === 'PDF' ? 'berkas-teks' : 'berkas-gambar'}
+                                  name={l.bentuk === 'gambar' ? 'berkas-gambar' : 'berkas-teks'}
                                   class="size-5"
                                 />
                                 <span class="text-[10px] leading-none font-semibold text-muted"
-                                  >{l.bentuk === 'PDF' ? 'PDF' : 'Foto'}</span
+                                  >{l.bentuk === 'gambar' ? 'Foto' : l.bentuk}</span
                                 >
                               {/if}
                               <span class="sr-only"
@@ -855,6 +863,10 @@
                     class="flex items-center justify-center gap-1.5 text-center text-sm leading-[21px] text-muted"
                   >
                     <Icon name="centang-bulat" class="size-4 shrink-0" />{it.teks} · {waktuSingkat(it.at)}
+                    {#if it.ubahWilayah && wilayahBisaDiubah}
+                      · <button type="button" onclick={wilayahBukan} class="text-brand underline">Ubah</button
+                      >
+                    {/if}
                   </p>
                 {:else if it.jenis === 'ingatan'}
                   <KartuIngatan
@@ -901,6 +913,8 @@
                       onbukan={wilayahBukan}
                     />
                   </PesanAgen>
+                {:else if it.jenis === 'berkas'}
+                  <PesanAgen avatar={p.avatar}><KartuBerkas berkas={it.e} /></PesanAgen>
                 {:else if it.jenis === 'checklist'}
                   <PesanAgen avatar={p.avatar}><KartuChecklist checklist={it.e} /></PesanAgen>
                 {:else if it.jenis === 'konfirmasi'}

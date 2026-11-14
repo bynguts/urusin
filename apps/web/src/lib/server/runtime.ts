@@ -14,6 +14,8 @@ import {
 } from '@urusin/akun';
 import {
   CacheJawaban,
+  DEFAULT_AGENT_CONFIG,
+  DEFAULT_QUOTA,
   DemoProvider,
   HarnessError,
   createDemoRagDb,
@@ -38,6 +40,7 @@ import {
 import { createRagSearcher, openDb, type RagSearchInfo } from '@urusin/rag';
 import type { EventPayload, UrusinEvent } from '@urusin/contracts';
 import { cariWebDariEnv } from './cari-web.js';
+import { layananBerkas } from './vault/berkas.js';
 import { embeddingDariEnv, intentEmbedding, type Embedding } from './embedding.js';
 import { httpKeluar } from './http-keluar.js';
 import { buatJudulUrusan, judulDemo } from './judul-urusan.js';
@@ -269,6 +272,8 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   const searcher = config.ragDbPath ? createRagSearcher(ragDb, init.env ?? process.env) : undefined;
   // Ingatan warga (ADR 0031) disimpan di vault akun; AkunService dirakit sesudah harness (butuh store).
   const akunRef: { akun?: AkunService } = {};
+  // Berkas buatan agen membaca brankas lewat runtime yang baru selesai dirakit di akhir fungsi ini.
+  const rtRef: { rt?: Runtime } = {};
   const embedding = embeddingDariEnv(init.env ?? process.env);
   const klasifikasiEmbedding = intentEmbedding(embedding);
   // Cari web cadangan (Exa): hanya bila EXA_API_KEY terisi; tanpa itu web__cari tidak ditawarkan ke model.
@@ -280,6 +285,10 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     ragSearch: searcher?.search,
     ...(klasifikasiEmbedding ? { intentEmbedding: klasifikasiEmbedding } : {}),
     ...(cariWeb ? { cariWeb } : {}),
+    berkas: layananBerkas(() => {
+      if (!rtRef.rt) throw new Error('runtime belum siap');
+      return rtRef.rt;
+    }),
     ingatan: penyimpanIngatan(() => {
       if (!akunRef.akun) throw new Error('akun belum siap');
       return akunRef.akun;
@@ -323,7 +332,7 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
   ])
     if (peringatan) alertOperator(peringatan);
   const rag = ragInfo(ragDb, Boolean(config.ragDbPath), searcher?.info);
-  return {
+  const rt: Runtime = {
     ...h,
     config,
     rag,
@@ -338,6 +347,8 @@ export function createRuntime(init: RuntimeInit = {}): Runtime {
     oidcFixture,
     embedding,
   };
+  rtRef.rt = rt;
+  return rt;
 }
 
 function pinnedCaps(raw: string | undefined): CapabilityFlags | undefined {
@@ -379,6 +390,8 @@ export function quotaFromEnv(env: Record<string, string | undefined>) {
     sessionTurnCap: num(env.URUSIN_SESSION_TURN_CAP, 40),
     sessionTokenCap: num(env.URUSIN_SESSION_TOKEN_CAP, 400_000),
     dailyIdrCap: num(env.URUSIN_DAILY_IDR_CAP, 0),
+    maxTokens: num(env.URUSIN_LLM_MAX_TOKENS, DEFAULT_QUOTA.maxTokens),
+    maxTokensHemat: num(env.URUSIN_LLM_MAX_TOKENS_HEMAT, DEFAULT_QUOTA.maxTokensHemat),
   };
   for (const [k, v] of Object.entries(quota)) {
     if (!Number.isFinite(v) || v < 0) throw new Error(`konfigurasi kuota tidak valid: ${k}=${String(v)}`);
@@ -389,6 +402,23 @@ export function quotaFromEnv(env: Record<string, string | undefined>) {
     );
   }
   return quota;
+}
+
+/**
+ * Batas waktu dan langkah agen dari env. Model bernalar effort tinggi bisa berpikir lama: satu panggilan LLM
+ * (URUSIN_LLM_CALL_TIMEOUT_MS) dan satu giliran (URUSIN_TURN_TIMEOUT_MS) dibuat lega; stream SSE tetap hidup lewat
+ * heartbeat (URUSIN_SSE_HEARTBEAT_MS).
+ */
+export function agentConfigFromEnv(env: Record<string, string | undefined>) {
+  const config = {
+    turnTimeoutMs: num(env.URUSIN_TURN_TIMEOUT_MS, DEFAULT_AGENT_CONFIG.turnTimeoutMs),
+    llmTimeoutMs: num(env.URUSIN_LLM_CALL_TIMEOUT_MS, DEFAULT_AGENT_CONFIG.llmTimeoutMs),
+    maxSteps: Math.floor(num(env.URUSIN_AGENT_MAX_STEPS, DEFAULT_AGENT_CONFIG.maxSteps)),
+  };
+  for (const [k, v] of Object.entries(config)) {
+    if (!Number.isFinite(v) || v <= 0) throw new Error(`konfigurasi agen tidak valid: ${k}=${String(v)}`);
+  }
+  return config;
 }
 
 /**
@@ -436,6 +466,11 @@ async function buildFromEnv(): Promise<Runtime> {
       // (probe atau LLM_CAPS_PIN); selain itu agen berterus terang belum bisa membaca gambar.
       visionModel: visionModelDari(cfg.models, caps),
       quota: quotaFromEnv(env),
+      config: agentConfigFromEnv(env),
+      // Penalaran per peran: loop agen (LLM_AGENT_REASONING_EFFORT), jawaban bersumber + vision
+      // (LLM_GROUNDING_REASONING_EFFORT); judul/intent/klasifikasi tetap LLM_REASONING_EFFORT global.
+      reasoningEffort: cfg.agentReasoningEffort,
+      reasoningEffortJawaban: cfg.groundingReasoningEffort,
       // Masukan jawaban bersumber yang sama persis (pesan + potongan) tidak menunggu model lagi; verifikasi
       // kutipan tetap dijalankan ulang tiap kali.
       cacheJawaban: new CacheJawaban(),
@@ -486,7 +521,7 @@ export function setRuntimeForTests(rt: Runtime | Promise<Runtime> | undefined): 
 /** Klaim turn secara sinkron lalu jalankan di latar belakang; hasilnya mengalir lewat tabel events + bus. */
 export function startTurnInBackground(
   rt: Runtime,
-  args: { urusanId: string; userText: string; expectedVersion?: number; gambar?: readonly string[] },
+  args: Parameters<typeof prepareTurn>[1],
 ): { turnId: string } {
   const prepared = prepareTurn(rt.deps, args); // melempar HarnessError 409/404 sebelum apa pun dialirkan
   const ctrl = new AbortController();

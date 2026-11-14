@@ -94,33 +94,42 @@ describe('wilayah dulu: usulan saat urusan dibuat', () => {
     expect(wilayahUrusan(rt.store, rt.store.getUrusanOrThrow(id)).usulan).toBeNull();
   });
 
-  it('pilihan eksplisit di halaman menang atas Data Diri; tanpa pilihan (atau sama) sumbernya Data Diri', async () => {
+  it('Data Diri langsung ditetapkan (tanpa kartu) dan menang atas pilihan perangkat', async () => {
     const akun = akunJuri();
-    const usulan = async (body: Record<string, string>) => {
+    const wilayah = async (body: Record<string, string>) => {
       const res = await buatUrusan(ev(post({ peristiwa: 'kelahiran', ...body }), {}, { akun }));
       const { id } = (await res.json()) as { id: string };
-      return payloads(id, 'wilayah').map((e) => [e.ktp.kodeKabKota, e.sumber]);
+      return payloads(id, 'wilayah').map((e) => [e.ktp.kodeKabKota, e.sumber, e.status]);
     };
-    expect(await usulan({ kodeKabKota: '3578' })).toEqual([['3578', 'pilihan']]);
-    expect(await usulan({})).toEqual([['3312', 'data_diri']]);
-    expect(await usulan({ kodeKabKota: '3312' })).toEqual([['3312', 'data_diri']]);
+    expect(await wilayah({ kodeKabKota: '3578' })).toEqual([['3312', 'data_diri', 'ditetapkan']]);
+    expect(await wilayah({})).toEqual([['3312', 'data_diri', 'ditetapkan']]);
+    expect(await wilayah({ kodeKabKota: '3312' })).toEqual([['3312', 'data_diri', 'ditetapkan']]);
   });
 
-  it('pesan pertama menyebut kab/kota lain: usulan perangkat/Data Diri tidak diterbitkan (W4)', async () => {
+  it('pesan pertama menyebut kab/kota lain: Data Diri/pilihan perangkat tidak dipakai (W4)', async () => {
     const akun = akunJuri();
-    const usulan = async (body: Record<string, string>) => {
+    const wilayah = async (body: Record<string, string>) => {
       const res = await buatUrusan(ev(post({ peristiwa: 'kelahiran', ...body }), {}, { akun }));
       const { id } = (await res.json()) as { id: string };
       await selesai(id);
       return payloads(id, 'wilayah')
-        .filter((e) => e.status === 'usulan' && e.sumber !== 'warga')
-        .map((e) => e.ktp.kodeKabKota);
+        .filter((e) => e.sumber !== 'warga')
+        .map((e) => [e.ktp.kodeKabKota, e.status]);
     };
     expect(
-      await usulan({ kodeKabKota: '3311', pesan: 'KTP saya Kabupaten Wonogiri, mau urus akta' }),
-    ).toEqual(['3312']);
-    expect(await usulan({ pesan: 'KTP saya Kota Surabaya, mau urus akta kelahiran' })).toEqual([]);
-    expect(await usulan({ pesan: 'Saya mau urus akta kelahiran anak' })).toEqual(['3312']);
+      await wilayah({ kodeKabKota: '3311', pesan: 'KTP saya Kabupaten Wonogiri, mau urus akta' }),
+    ).toEqual([['3312', 'ditetapkan']]);
+    expect(await wilayah({ pesan: 'KTP saya Kota Surabaya, mau urus akta kelahiran' })).toEqual([]);
+    expect(await wilayah({ pesan: 'Saya mau urus akta kelahiran anak' })).toEqual([['3312', 'ditetapkan']]);
+  });
+
+  it('pertanyaan umum dengan Data Diri: wilayah dipakai diam-diam, tidak ada kartu wilayah', async () => {
+    const akun = akunJuri();
+    const res = await buatUrusan(ev(post({ pesan: 'kamu bisa ngapain aja' }), {}, { akun }));
+    const { id } = (await res.json()) as { id: string };
+    await selesai(id);
+    expect(payloads(id, 'wilayah').map((e) => [e.status, e.sumber])).toEqual([['ditetapkan', 'data_diri']]);
+    expect(wilayahUrusan(rt.store, rt.store.getUrusanOrThrow(id)).ktp?.kodeKabKota).toBe('3312');
   });
 
   it('halaman peristiwa: tanpa ?kodeKabKota, kab/kota Data Diri diisikan sebagai usulan', async () => {
@@ -241,8 +250,8 @@ describe('POST /api/urusan/[id]/wilayah (tombol "Ya, betul")', () => {
   });
 });
 
-describe('alur juri Wonogiri (Data Diri 3312): satu konfirmasi tambahan, lalu Browser Pendamping layanan 23', () => {
-  it('peristiwa Kelahiran → tanya wilayah → "Ya, betul" → rencana semi → Setujui → pendamping', async () => {
+describe('alur juri Wonogiri (Data Diri 3312): tanpa konfirmasi tambahan, lalu Browser Pendamping layanan 23', () => {
+  it('peristiwa Kelahiran → wilayah Data Diri dipakai → rencana semi → Setujui → pendamping', async () => {
     const akun = akunJuri();
     const r = await Promise.resolve()
       .then(() =>
@@ -262,21 +271,14 @@ describe('alur juri Wonogiri (Data Diri 3312): satu konfirmasi tambahan, lalu Br
     expect(isRedirect(r)).toBe(true);
     const id = (r as { location: string }).location.split('/').at(-1)!;
     await selesai(id);
-    // Turn pertama: menanyakan wilayah KTP lewat kartu (tanpa teks pertanyaan ganda), belum ada rencana.
+    // Turn pertama: wilayah Data Diri sudah pasti, tidak ditanyakan; rencana langsung diusulkan.
     const teks = payloads(id, 'assistant_text')
       .map((e) => e.delta)
       .join('');
     expect(teks).not.toContain('KTP Anda terdaftar di Kabupaten Wonogiri, betul?');
-    expect(wilayahUrusan(rt.store, rt.store.getUrusanOrThrow(id)).usulan).not.toBeNull();
-    expect(payloads(id, 'plan_card')).toEqual([]);
-
-    // Satu-satunya klik tambahan: "Ya, betul".
-    const v = rt.store.getUrusanOrThrow(id).version;
+    expect(payloads(id, 'wilayah').filter((e) => e.status === 'usulan')).toEqual([]);
+    expect(rt.store.getUrusanOrThrow(id).state).toBe('RENCANA_DIUSULKAN');
     // Pemilik urusan = akun juri yang sama (keamanan-pemilik): semua aksi dari sesi akun itu.
-    const j = await (
-      await tetapkan(ev(post({ kodeKabKota: '3312', expectedVersion: v }), { id }, { akun }))
-    ).json();
-    expect(j).toMatchObject({ state: 'RENCANA_DIUSULKAN', rencana: true });
     const [kartu] = payloads(id, 'plan_card');
     expect(kartu).toMatchObject({ ringkasan: 'Kelahiran · Kab. Wonogiri', tier: 'semi' });
     expect(kartu.langkah.some((l: any) => l.jenis === 'online-adapter')).toBe(true);

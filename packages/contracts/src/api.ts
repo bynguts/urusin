@@ -59,6 +59,15 @@ export const TurnRequestSchema = z.object({
     )
     .max(3)
     .optional(),
+  /**
+   * (aditif) Opsional: id dokumen lampiran giliran ini yang SUDAH tersimpan di brankas pemilik (DOCX/PDF templat).
+   * Server membaca teksnya sendiri dari brankas, meredaksi data pribadi, lalu memberikannya ke agen sebagai data
+   * tak tepercaya; dokumen milik orang lain atau jenis lain diabaikan.
+   */
+  dokumen: z
+    .array(z.string().regex(/^[a-z]+_[0-9a-f]{32}$/))
+    .max(5)
+    .optional(),
 });
 export const TurnResponseSchema = z.object({ turnId: z.string().min(1), diterima: z.literal(true) });
 

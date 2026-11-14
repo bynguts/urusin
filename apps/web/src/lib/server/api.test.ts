@@ -18,6 +18,7 @@ import { POST as tetapkanWilayah } from '../../routes/api/urusan/[id]/wilayah/+s
 import { GET as devSse } from '../../routes/dev/fixtures/sse/+server';
 import { catatHasilEksekusi } from './eksekusi';
 import {
+  agentConfigFromEnv,
   createRuntime,
   llmAktif,
   piiKeyFromEnv,
@@ -147,7 +148,9 @@ describe('POST /api/urusan dan /turn', () => {
       'usulan',
       'ditetapkan',
     ]);
-    expect(types).not.toContain('assistant_text');
+    // Jawaban bersumber tidak mengakhiri giliran: balasan model (bila ada) baru tampil sesudahnya.
+    if (types.includes('assistant_text'))
+      expect(types.lastIndexOf('assistant_text')).toBeGreaterThan(types.indexOf('grounded_answer'));
     expect(types.at(-1)).toBe('done');
     expect(events.map((e) => Number(e.id))).toEqual(events.map((_, i) => i + 1));
     for (const e of events)
@@ -617,6 +620,38 @@ describe('temuan 5: kuota harian wajib di mode LLM', () => {
 
   it('menerima batas harian berhingga > 0', () => {
     expect(quotaFromEnv({ URUSIN_DAILY_IDR_CAP: '50000' }).dailyIdrCap).toBe(50000);
+  });
+
+  it('batas token jawaban dari env; bawaan lega untuk model bernalar', () => {
+    expect(quotaFromEnv({ URUSIN_DAILY_IDR_CAP: '50000' })).toMatchObject({
+      maxTokens: 16_000,
+      maxTokensHemat: 8_000,
+    });
+    expect(
+      quotaFromEnv({
+        URUSIN_DAILY_IDR_CAP: '50000',
+        URUSIN_LLM_MAX_TOKENS: '32000',
+        URUSIN_LLM_MAX_TOKENS_HEMAT: '4000',
+      }),
+    ).toMatchObject({ maxTokens: 32_000, maxTokensHemat: 4_000 });
+    expect(() => quotaFromEnv({ URUSIN_DAILY_IDR_CAP: '50000', URUSIN_LLM_MAX_TOKENS: 'x' })).toThrow();
+  });
+});
+
+describe('agentConfigFromEnv', () => {
+  it('bawaan: giliran 300 dtk, panggilan LLM 180 dtk, 12 langkah', () => {
+    expect(agentConfigFromEnv({})).toEqual({ turnTimeoutMs: 300_000, llmTimeoutMs: 180_000, maxSteps: 12 });
+  });
+  it('dibaca dari env; nilai tidak valid menolak boot', () => {
+    expect(
+      agentConfigFromEnv({
+        URUSIN_TURN_TIMEOUT_MS: '600000',
+        URUSIN_LLM_CALL_TIMEOUT_MS: '240000',
+        URUSIN_AGENT_MAX_STEPS: '16',
+      }),
+    ).toEqual({ turnTimeoutMs: 600_000, llmTimeoutMs: 240_000, maxSteps: 16 });
+    expect(() => agentConfigFromEnv({ URUSIN_AGENT_MAX_STEPS: '0' })).toThrow();
+    expect(() => agentConfigFromEnv({ URUSIN_TURN_TIMEOUT_MS: 'abc' })).toThrow();
   });
 });
 

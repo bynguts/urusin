@@ -3,6 +3,7 @@ import { isUnsupportedParamError } from './client.js';
 import { assertCompletionUsable } from './errors.js';
 import { strictSchemaFor, type StrictSchema } from './strict-schema.js';
 import type { CapabilityFlags } from './capabilities.js';
+import type { ReasoningEffort } from './config.js';
 import type { ChatMessage, ChatProvider, RequestOptions, Usage } from './types.js';
 
 export type StructuredMethod = 'json_schema' | 'forced_tool' | 'json_object';
@@ -37,6 +38,8 @@ export type StructuredOptions<T> = {
   /** Maksimal retry perbaikan pada mode json_object (rencana: ≤ 2). */
   maxRepairs?: number;
   maxTokens?: number;
+  /** `reasoning_effort` per panggilan (menimpa LLM_REASONING_EFFORT global); kosong = global. */
+  reasoningEffort?: ReasoningEffort | undefined;
   signal?: RequestOptions['signal'];
 };
 
@@ -65,6 +68,7 @@ function parseWith<T>(
 export async function generateStructured<T>(opts: StructuredOptions<T>): Promise<StructuredResult<T>> {
   const usage: Usage[] = [];
   const maxTokens = opts.maxTokens ?? 1024;
+  const effort = opts.reasoningEffort ? { reasoning_effort: opts.reasoningEffort } : {};
   const reqOpts = { signal: opts.signal };
   let attempts = 0;
   const strict = strictSchemaFor(opts.schema);
@@ -76,6 +80,7 @@ export async function generateStructured<T>(opts: StructuredOptions<T>): Promise
     try {
       const r = await opts.provider.create(
         {
+          ...effort,
           model: opts.model,
           max_tokens: maxTokens,
           messages: opts.messages,
@@ -102,6 +107,7 @@ export async function generateStructured<T>(opts: StructuredOptions<T>): Promise
     try {
       const r = await opts.provider.create(
         {
+          ...effort,
           model: opts.model,
           max_tokens: maxTokens,
           messages: opts.messages,
@@ -140,7 +146,13 @@ export async function generateStructured<T>(opts: StructuredOptions<T>): Promise
   for (let repair = 0; repair <= maxRepairs; repair++) {
     attempts++;
     const r = await opts.provider.create(
-      { model: opts.model, max_tokens: maxTokens, messages, response_format: { type: 'json_object' } },
+      {
+        ...effort,
+        model: opts.model,
+        max_tokens: maxTokens,
+        messages,
+        response_format: { type: 'json_object' },
+      },
       reqOpts,
     );
     if (r.usage) usage.push(r.usage);

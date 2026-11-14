@@ -143,7 +143,7 @@
       bind:this={inputBerkas}
       type="file"
       multiple
-      accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
+      accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       onchange={pilih}
       class="hidden"
       tabindex="-1"
@@ -155,7 +155,7 @@
       disabled={nonaktif || lampiran.length >= LAMPIRAN_MAKS}
       class="grid size-[42px] shrink-0 place-items-center rounded-full text-ink hover:bg-card disabled:opacity-50"
     >
-      <Icon name="klip" class="size-5" label="Lampirkan foto atau PDF" />
+      <Icon name="klip" class="size-5" label="Lampirkan foto, PDF, atau Word" />
     </button>
     <label for="komposer" class="sr-only">Tulis jawaban atau pertanyaan</label>
     <textarea

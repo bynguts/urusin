@@ -80,7 +80,7 @@ async function redirectDari(p: unknown) {
 }
 
 describe('ingatan warga lewat web', () => {
-  it('kartu "Ya, betul" → ingatan KTP + kartu chat; urusan kedua diusulkan dari ingatan (tetap usulan)', async () => {
+  it('kartu "Ya, betul" → ingatan KTP + kartu chat; urusan kedua langsung memakai wilayah ingatan', async () => {
     rt.akun.pastikanTamu('sid-uji', { ip: '127.0.0.1', userAgent: null });
     const id1 = await urusanBaru();
     expect((await tetapkan(ev(post({ kodeKabKota: '3312' }), { id: id1 }))).status).toBe(200);
@@ -94,9 +94,12 @@ describe('ingatan warga lewat web', () => {
     expect((await daftar()).map((b) => b.label)).toEqual(['Wilayah KTP: Kabupaten Wonogiri']);
 
     const id2 = await urusanBaru('sid-uji', 'perkawinan');
+    // Wilayah yang pernah dipastikan warga tidak ditanyakan lagi: ditetapkan dengan jejak sumber `ingatan`.
     const w = wilayahUrusan(rt.store, rt.store.getUrusanOrThrow(id2));
-    expect(w.ktp).toBeNull(); // tidak ditetapkan diam-diam
-    expect(w.usulan).toMatchObject({ ktp: { kodeKabKota: '3312' }, sumber: 'ingatan' });
+    expect(w.ktp?.kodeKabKota).toBe('3312');
+    expect(rt.store.eventsOfType(id2, 'wilayah', 10).map((e) => e.payload)).toEqual([
+      expect.objectContaining({ status: 'ditetapkan', sumber: 'ingatan' }),
+    ]);
 
     // sesi lain tidak melihat dan tidak bisa menghapus ingatan ini
     expect(await daftar('sid-lain')).toEqual([]);
@@ -114,7 +117,10 @@ describe('ingatan warga lewat web', () => {
     expect(HapusIngatanResponseSchema.parse(await r.json())).toEqual({ dihapus: 1 });
     expect(await daftar()).toEqual([]);
     const id3 = await urusanBaru();
-    expect(wilayahUrusan(rt.store, rt.store.getUrusanOrThrow(id3)).usulan).toBeNull();
+    expect(wilayahUrusan(rt.store, rt.store.getUrusanOrThrow(id3))).toMatchObject({
+      ktp: null,
+      usulan: null,
+    });
   });
 
   it('tanpa tamu/akun (belum ada vault): tidak ada ingatan dan tidak ada kartu', async () => {
@@ -126,10 +132,10 @@ describe('ingatan warga lewat web', () => {
 
   it('Pengaturan: daftar butir, hapus per butir, dan "Hapus semua ingatan"; GET butuh same-origin', async () => {
     const tamu = rt.akun.pastikanTamu('sid-uji', { ip: '127.0.0.1', userAgent: null });
-    for (const kode of ['3312', '3374']) {
-      const id = await urusanBaru();
-      await tetapkan(ev(post({ kodeKabKota: kode }), { id }));
-    }
+    // Kedua urusan dibuat sebelum ada ingatan (urusan yang dibuat sesudahnya langsung memakai wilayah ingatan).
+    const ids = [await urusanBaru(), await urusanBaru()];
+    for (const [i, kode] of ['3312', '3374'].entries())
+      await tetapkan(ev(post({ kodeKabKota: kode }), { id: ids[i]! }));
     rt.akun.vault.setIngatan(tamu, {
       ...(rt.akun.vault.getIngatan(tamu)!.data as object),
       butir: [

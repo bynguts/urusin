@@ -1,5 +1,11 @@
 import type { RagSearcher } from '@urusin/rag';
-import { ALL_ON, type CapabilityFlags, type ChatProvider, type Prices } from '@urusin/llm';
+import {
+  ALL_ON,
+  type CapabilityFlags,
+  type ChatProvider,
+  type Prices,
+  type ReasoningEffort,
+} from '@urusin/llm';
 import { redactingProvider } from './guarded-llm.js';
 import type { AgentDeps } from './agent.js';
 import { EventBus } from './bus.js';
@@ -20,6 +26,7 @@ import {
   type BatasWebConfig,
   type CariWeb,
 } from './web-cari.js';
+import { berkasBuat, buatBatasBerkas, type LayananBerkas } from './berkas.js';
 
 export type HarnessOptions = {
   provider: ChatProvider;
@@ -50,6 +57,14 @@ export type HarnessOptions = {
   batasWeb?: Partial<BatasWebConfig>;
   /** Model pembaca gambar lampiran chat (LLM_VISION_MODEL); tanpa ini gambar tidak dibaca. */
   visionModel?: string | undefined;
+  /** Effort penalaran loop agen (LLM_AGENT_REASONING_EFFORT). */
+  reasoningEffort?: ReasoningEffort | undefined;
+  /** Effort penalaran jawaban bersumber + pembaca gambar (LLM_GROUNDING_REASONING_EFFORT). */
+  reasoningEffortJawaban?: ReasoningEffort | undefined;
+  /** Nilai brankas + simpan Dokumen untuk `berkas__buat`; tanpa ini tool itu TIDAK didaftarkan. */
+  berkas?: Omit<LayananBerkas, 'batas'>;
+  /** Batas laju pembuatan berkas (default `BATAS_BERKAS_DEFAULT`). */
+  batasBerkas?: Partial<BatasWebConfig>;
 };
 
 /** Komposisi akar: store + registry + kuota + tracer + bus → `AgentDeps` siap dipakai `runTurn`. */
@@ -64,6 +79,7 @@ export function createHarness(opts: HarnessOptions) {
     ...(opts.ingatan ? [ingatanIngat] : []),
     ...(opts.cariWeb ? [webCari] : []),
     ...(opts.cariWeb?.baca ? [webBaca] : []),
+    ...(opts.berkas ? [berkasBuat] : []),
   ]);
   const quota = new QuotaMeter(store, opts.prices ?? { inputPerMTok: 0, outputPerMTok: 0, audioPerMin: 0 }, {
     ...DEFAULT_QUOTA,
@@ -94,6 +110,11 @@ export function createHarness(opts: HarnessOptions) {
         }
       : undefined,
     visionModel: opts.visionModel,
+    reasoningEffort: opts.reasoningEffort,
+    reasoningEffortJawaban: opts.reasoningEffortJawaban,
+    berkas: opts.berkas
+      ? { ...opts.berkas, batas: buatBatasBerkas(opts.batasBerkas, () => now().getTime()) }
+      : undefined,
   };
   return { deps, store, registry, quota, bus };
 }
