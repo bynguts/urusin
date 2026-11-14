@@ -29,3 +29,4 @@ export * from './generik.js';
 export * from './ingatan.js';
 export * from './web-cari.js';
 export * from './gambar.js';
+export * from './berkas.js';

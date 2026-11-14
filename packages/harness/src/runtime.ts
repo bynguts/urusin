@@ -13,6 +13,7 @@ import { HarnessStore } from './store.js';
 import { ToolRegistry, type ToolDef } from './tools.js';
 import { Tracer } from './trace.js';
 import { BATAS_WEB_DEFAULT, BatasCariWeb, webCari, type BatasWebConfig, type CariWeb } from './web-cari.js';
+import { berkasBuat, buatBatasBerkas, type LayananBerkas } from './berkas.js';
 
 export type HarnessOptions = {
   provider: ChatProvider;
@@ -43,6 +44,10 @@ export type HarnessOptions = {
   batasWeb?: Partial<BatasWebConfig>;
   /** Model pembaca gambar lampiran chat (LLM_VISION_MODEL); tanpa ini gambar tidak dibaca. */
   visionModel?: string | undefined;
+  /** Nilai brankas + simpan Dokumen untuk `berkas__buat`; tanpa ini tool itu TIDAK didaftarkan. */
+  berkas?: Omit<LayananBerkas, 'batas'>;
+  /** Batas laju pembuatan berkas (default `BATAS_BERKAS_DEFAULT`). */
+  batasBerkas?: Partial<BatasWebConfig>;
 };
 
 /** Komposisi akar: store + registry + kuota + tracer + bus → `AgentDeps` siap dipakai `runTurn`. */
@@ -56,6 +61,7 @@ export function createHarness(opts: HarnessOptions) {
     ...(opts.tools ?? builtinTools()),
     ...(opts.ingatan ? [ingatanIngat] : []),
     ...(opts.cariWeb ? [webCari] : []),
+    ...(opts.berkas ? [berkasBuat] : []),
   ]);
   const quota = new QuotaMeter(store, opts.prices ?? { inputPerMTok: 0, outputPerMTok: 0, audioPerMin: 0 }, {
     ...DEFAULT_QUOTA,
@@ -86,6 +92,9 @@ export function createHarness(opts: HarnessOptions) {
         }
       : undefined,
     visionModel: opts.visionModel,
+    berkas: opts.berkas
+      ? { ...opts.berkas, batas: buatBatasBerkas(opts.batasBerkas, () => now().getTime()) }
+      : undefined,
   };
   return { deps, store, registry, quota, bus };
 }

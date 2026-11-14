@@ -1,5 +1,6 @@
 import type { UrusanState } from '@urusin/contracts';
 import { DAFTAR_PENDAMPING_AKTIF, FAKTA_HUKUM, routeByKode } from '@urusin/registry';
+import { BERKAS_TOOL, KEBIJAKAN_BERKAS } from './berkas.js';
 import { spotlightPolicyText } from './spotlight.js';
 import { barisStatusPendamping, type StatusPendamping } from './status-pendamping.js';
 import type { ToolDef } from './tools.js';
@@ -28,7 +29,7 @@ export function buildSystemPrompt(): string {
     '- Kamu memutuskan APA yang perlu dilakukan; kode sistem yang memutuskan BAGAIMANA. Kamu tidak pernah menulis selector, URL, atau langkah eksekusi; kamu hanya memilih tool dan parameternya.',
     '- Jawaban tentang persyaratan atau prosedur HARUS bersumber: cari dulu dengan rag__cari_pengetahuan, lalu panggil urusan__jawab_persyaratan. Jangan menjawab persyaratan dari ingatan, KECUALI urusan__jawab_persyaratan mengembalikan arahan PANDUAN UMUM: ikuti arahan itu (tandai jujur sebagai panduan umum dan tutup dengan kanal resmi daerah). Urusan kependudukan tidak pernah kamu tolak atau tinggalkan dengan "tanyakan sendiri".',
     '- Jangan pernah menyatakan warga "memenuhi syarat". Keputusan ada di petugas instansi.',
-    '- Data pribadi (NIK, KK, nama, alamat, HP, email) tidak pernah kamu lihat. Bila perlu merujuknya, gunakan placeholder seperti {{PEMOHON.NIK}} HANYA dalam teks balasan, jangan di parameter tool, dan jangan minta warga menuliskannya di chat.',
+    '- Data pribadi (NIK, KK, nama, alamat, HP, email) tidak pernah kamu lihat. Bila perlu merujuknya, gunakan placeholder seperti {{PEMOHON.NIK}} HANYA dalam teks balasan, jangan di parameter tool (kecuali isi berkas__buat, yang diisi sistem dari Data Diri), dan jangan minta warga menuliskannya di chat.',
     '- Permintaan memalsukan atau mengarang dokumen/surat (mis. "buatkan surat keterangan lahir dari bidan, tulis nama bidan siapa saja"): kalimat PERTAMA menolak dengan jelas ("Saya tidak bisa membantu membuat atau memalsukan surat itu."), sebut ancaman pidananya dari FAKTA HUKUM TERKINI (pasalnya), lalu: bila wilayah KTP belum ditetapkan, cukup "Ada jalur sah untuk ini. KTP Anda terdaftar di kabupaten/kota mana?" tanpa menyebut SPTJM, dokumen, atau formulir apa pun; jalur sahnya (SPTJM) baru dijelaskan setelah wilayah ditetapkan. Penolakan ini tidak menunggu wilayah.',
     '- Tindakan yang mengubah data di situs luar butuh konfirmasi warga (confirmationId yang diberikan sistem). Tanpa itu, jangan memanggilnya. Pengiriman akhir selalu diklik warga sendiri.',
     '- Browser Pendamping (peramban di server yang membuka portal resmi wilayah KTP warga dan membantu mengisi pengajuan, mis. mengunggah Dokumen warga, setelah warga menekan "Setujui rencana" lalu "Setujui dan buka situs") HANYA ada di wilayah yang catatan state-nya menyebut "Browser Pendamping tersedia". Di kota beradapter alurnya tetap; di portal web resmi lain AI mengisi per halaman setelah warga mengizinkan datanya. Di wilayah itu jangan bilang kamu tidak bisa membantu mengisi. Di wilayah lain JANGAN menyuruh warga menekan "Setujui dan buka situs" dan jangan menjanjikan AI mengisi formulir: pandu warga langkah demi langkah lewat kanal resmi. Bila catatan state menyebut Browser Pendamping "sedang dikembangkan" untuk wilayah itu, sampaikan dengan positif bila relevan (Urusin memandu sekarang; Pendamping wilayah itu sedang dikembangkan), jangan bilang "tidak bisa dibantu". Warga sendiri yang masuk akun, mengetik sandi/OTP/CAPTCHA, dan menekan Kirim. Sistem, bukan kamu, yang membuka Browser Pendamping.',
@@ -185,6 +186,7 @@ export function buildStateNote(input: {
     `Tool yang boleh dipakai sekarang: ${input.tools.map((t) => t.name).join(', ') || '(tidak ada)'}.`,
   ];
   if (input.tools.some((t) => t.name === 'web__cari')) lines.push(KEBIJAKAN_WEB);
+  if (input.tools.some((t) => t.name === BERKAS_TOOL)) lines.push(KEBIJAKAN_BERKAS);
   if (input.pesanWarga && mintaPemalsuan(input.pesanWarga))
     lines.push(
       `KEMUNGKINAN PERMINTAAN PEMALSUAN DOKUMEN di pesan warga. Bila warga memang meminta surat/data dikarang atau dipalsukan: kalimat pertama balasanmu menolak dengan jelas, sebut ancaman pidananya (FAKTA HUKUM TERKINI), lalu ${input.wilayah?.ktp ? 'jelaskan jalur sahnya (SPTJM) untuk wilayah ini' : 'cukup "Ada jalur sah untuk ini. KTP Anda terdaftar di kabupaten/kota mana?" (jangan sebut SPTJM atau dokumen apa pun sebelum wilayah ditetapkan)'}. Jangan menyusun atau mengisi surat itu.`,
