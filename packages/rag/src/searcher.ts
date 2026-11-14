@@ -50,11 +50,12 @@ export function createRagSearcher(
   let embedQuery: Embedder | undefined;
   if (embedCfg && active && active.model === embedCfg.model) {
     const breaker = createBreaker();
-    const raw = createHttpEmbedder(embedCfg, embedCfg.taskQuery, {
-      timeoutMs: QUERY_EMBED_TIMEOUT_MS,
-      maxRetries: 0,
-      fetch: opts.fetch,
-    });
+    const raw = createHttpEmbedder(
+      embedCfg,
+      embedCfg.taskQuery,
+      { timeoutMs: QUERY_EMBED_TIMEOUT_MS, maxRetries: 0, fetch: opts.fetch },
+      embedCfg.prefixQuery,
+    );
     embedQuery = (texts) => breaker.run(() => raw(texts));
   }
   const rrCfg = loadRerankConfig(env);
