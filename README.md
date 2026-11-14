@@ -6,10 +6,10 @@ menyusun langkah dan daftar berkas dari sumber resmi, memeriksa foto dokumen, la
 portal pemerintah lewat **Browser Pendamping**. Login, OTP, CAPTCHA, dan tombol **Kirim** terakhir selalu dikerjakan
 warga sendiri.
 
-- **Aplikasi langsung:** <https://urusinai.web.id>
+- **Web app:** <https://urusinai.web.id>
 - **Video demo (YouTube, 3–5 menit):** **[TAUTAN VIDEO MENYUSUL]**
 - **Akun demonstrasi:** halaman [Masuk](https://urusinai.web.id/masuk) → **Masuk sebagai juri**, tanpa kredensial
-  (lihat [§8](#8-akun-demonstrasi)).
+  (lihat [Akun demonstrasi](#8-akun-demonstrasi)).
 - **Kode sumber:** <https://github.com/bynguts/urusin> (lisensi MIT).
 
 ## Daftar isi
@@ -39,8 +39,8 @@ warga sendiri.
 
 ## 2. Kategori, masalah, solusi, dan target pengguna
 
-- **Kategori:** Web (aplikasi web responsif, dirancang untuk HP lebih dulu, tanpa perlu memasang aplikasi).
-- **Nama aplikasi:** Urusin.
+- **Kategori:** Web (web app responsif, dirancang untuk HP lebih dulu, tanpa perlu memasang apa pun).
+- **Nama web app:** Urusin.
 - **Subtema:** 5. Civic Tech & Community Service.
 
 ### Masalah
