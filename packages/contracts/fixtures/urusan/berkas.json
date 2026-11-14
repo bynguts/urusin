@@ -1,0 +1,35 @@
+{
+  "skema": "sse",
+  "catatan": "Berkas buatan agen (berkas__buat): kartu berkas dengan tombol Unduh; isi berkas tidak ikut dikirim lewat event.",
+  "data": [
+    {
+      "type": "assistant_text",
+      "delta": "Surat permohonan sudah saya buat dan tersimpan di Dokumen Anda.",
+      "seq": 1,
+      "at": "2026-11-14T03:00:00.000Z",
+      "chainHead": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1"
+    },
+    {
+      "type": "berkas",
+      "id": "vlt_0123456789abcdef",
+      "nama": "surat-permohonan.docx",
+      "format": "docx",
+      "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "ukuran": 18432,
+      "judul": "Surat permohonan",
+      "seq": 2,
+      "at": "2026-11-14T03:00:03.000Z",
+      "chainHead": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee2"
+    },
+    {
+      "type": "done",
+      "turnId": "t_contoh-0004",
+      "status": "selesai",
+      "lanjutkan": false,
+      "degraded": false,
+      "seq": 3,
+      "at": "2026-11-14T03:00:03.400Z",
+      "chainHead": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee3"
+    }
+  ]
+}
