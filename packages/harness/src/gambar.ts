@@ -226,9 +226,14 @@ export function uraianMasalah(f: BacaanFoto): string {
     per.set(m.jenis, daftar);
   }
   return [...per]
-    .map(([jenis, bagian]) =>
-      bagian.length ? `bagian ${gabung(bagian)} ${KATA_MASALAH[jenis]}` : `fotonya ${KATA_MASALAH[jenis]}`,
-    )
+    .map(([jenis, bagian]) => {
+      if (!bagian.length) return `fotonya ${KATA_MASALAH[jenis]}`;
+      // "seluruh teks buram", bukan "bagian seluruh teks buram".
+      const frasa = gabung(bagian);
+      return /^(seluruh|semua|hampir)\b/i.test(frasa)
+        ? `${frasa} ${KATA_MASALAH[jenis]}`
+        : `bagian ${frasa} ${KATA_MASALAH[jenis]}`;
+    })
     .join(', ');
 }
 
