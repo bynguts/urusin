@@ -424,46 +424,6 @@ Batasan yang kami tulis apa adanya:
 - [Deploy di server](deploy/README.md)
 - [Kontrak API/SSE](packages/contracts/README.md)
 
-### Catatan riwayat
-
-Pada 8–10 November 2026, beberapa branch fitur yang sudah di-push di-rebase atau di-cherry-pick ke `main`
-sebelum digabung, lalu branch aslinya dihapus. Akibatnya, commit aslinya tidak lagi terjangkau dari branch mana
-pun, dan versi di `main` punya SHA baru (AuthorDate sama, CommitDate lebih baru). `main` sendiri tidak pernah
-di-force-push. Branch-nya diproteksi (`allow_force_pushes=false`, `allow_deletions=false`), dan log Activity
-GitHub mencatat 0 force-push.
-
-Commit aslinya sudah dipulihkan sebagai branch dengan nama aslinya, pada tip terakhir yang pernah di-push:
-`feat/rag-corpus`, `feat/rag-corpus-2`, `chore/ops-security-hardening`, `feat/ui-dashboard`,
-`feat/ui-izin-agen`, `feat/generik-executor`, dan `fix/landing-lhci-median`. Branch ini arsip dan tidak akan
-digabung lagi.
-
-| Branch                         | SHA asli  | Padanan di `main` | Commit                                                       |
-| ------------------------------ | --------- | ----------------- | ------------------------------------------------------------ |
-| `feat/rag-corpus`              | `70cc897` | `9783bef`         | feat(rag): ingest Wonogiri per-service pages and Klampid ... |
-| `feat/rag-corpus`              | `021a630` | `a1cd8cc`         | feat(rag): require non-null verifiedAt on chunks ...         |
-| `feat/rag-corpus`              | `579454e` | `b411698`         | feat(rag): stable Klampid chunk ids ...                      |
-| `feat/rag-corpus`              | `b8634c0` | `29cb8a8`         | feat(rag): abstain precision/recall in eval ...              |
-| `feat/rag-corpus`              | `187cd2e` | `2b96e00`         | feat(rag): 50-question tuning gold set ...                   |
-| `feat/rag-corpus`              | `dfd8c7b` | `7d3fa8e`         | feat(rag): recalibrate abstain minCoverage to 0.1 ...        |
-| `feat/rag-corpus-2`            | `f6d4783` | `f8ff939`         | feat(rag): embedding and rerank providers ...                |
-| `feat/rag-corpus-2`            | `08efe37` | `50ed805`         | docs(rag): real-provider eval matrix ...                     |
-| `feat/rag-corpus-2`            | `5865e64` | `74f5998`         | fix(rag): attach cause to provider errors                    |
-| `chore/ops-security-hardening` | `58be4ca` | `766912a`         | feat(deploy): promote blue/green via /api/ready ...          |
-| `feat/ui-dashboard`            | `48416c3` | `ce07465`         | feat(web): Ringkasan dan kerangka aplikasi baru ...          |
-| `feat/ui-dashboard`            | `0df472a` | `ef75169`         | feat(web): peramban dengan urusan berjalan diarahkan ...     |
-| `feat/generik-executor`        | `384beed` | `4480e4d`         | refactor(executor): tipe pengamatan dari @urusin/contracts   |
-| `feat/generik-executor`        | `ca10a48` | `e7f2c5b`         | test(executor): kompatibilitas runner dengan skema kontrak   |
-| `feat/ui-izin-agen`            | `67c80ce` | tidak ada         | dibatalkan, tidak pernah masuk `main`                        |
-
-Branch arsip juga memuat 6 merge commit tanpa padanan, yang hanya menarik `origin/main` (atau
-`origin/feat/generik-kontrak`) ke branch. Headernya bawaan Git, bukan konvensional, dan tidak pernah masuk
-`main`: `3a86c43` (`feat/rag-corpus`), `2267471` dan `3eb22a1` (`chore/ops-security-hardening`), `85210e6`
-(`feat/ui-dashboard`), `63e7c8d` (`feat/generik-executor`), dan `2211a73` (`fix/landing-lhci-median`).
-
-Sejak itu branch digabung dengan `merge --no-ff` (header `chore: merge <branch> ...`). Commit yang sudah di-push
-tidak di-rebase, di-squash, atau di-amend, dan branch yang belum digabung tidak dihapus. Riwayat tidak pernah
-ditulis ulang; koreksi selalu berupa commit baru, termasuk catatan ini.
-
 ## Lisensi
 
 [MIT](LICENSE) © 2026 Tim Urusin
