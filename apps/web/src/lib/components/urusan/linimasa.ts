@@ -193,6 +193,19 @@ function kartuWilayahSaatPerlu(out: ItemLinimasa[], jenis: string | null | undef
   return [...hasil, ...ditunda];
 }
 
+/**
+ * Jenis urusan terkini dari stream: `plan_card` atau `done` terakhir yang membawanya, selain itu jenis saat halaman
+ * dimuat. Halaman bisa dimuat sebelum harness mengklasifikasi, dan giliran yang hanya berakhir dengan kartu wilayah
+ * tidak punya kartu rencana.
+ */
+export function jenisTerkini(events: readonly UrusinEvent[], awal: string | null): string | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i]!;
+    if ((e.type === 'plan_card' || e.type === 'done') && e.jenis) return e.jenis;
+  }
+  return awal;
+}
+
 /** Checklist ada, tidak kosong, dan semua butirnya `ok`. */
 function dokumenLengkap(c: EventOf<'checklist'> | null): boolean {
   return !!c && c.item.length > 0 && c.item.every((i) => i.status === 'ok');
