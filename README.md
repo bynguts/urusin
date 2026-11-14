@@ -83,7 +83,7 @@ Semua fitur di bawah sudah berjalan di <https://urusinai.web.id>.
   - Bila korpus belum cukup, agen memakai pencarian web Exa sebagai cadangan: situs resmi `.go.id` lebih dulu, hanya
     istilah umum (kueri yang memuat NIK, KK, HP, atau email tidak pernah dikirim).
   - Setiap klaim membawa kutipan yang diverifikasi terhadap potongan sumbernya; chip kutipan membuka halaman resmi.
-  - Bila sumber tidak cukup, agen **abstain** dan mengarahkan ke kanal resmi daerah.
+  - Bila korpus dan pencarian web sama-sama tidak cukup, agen **abstain** dan mengarahkan ke kanal resmi daerah.
 - **Router 514 kabupaten/kota.** Daerah ditentukan dari pilihan warga atau kode wilayah, lengkap dengan kontak
   Disdukcapil dan status dukungan portal tiap daerah.
 - **Pemeriksaan foto dokumen (AI vision).** Foto yang dilampirkan di chat atau disimpan di Dokumen diperiksa: buram,
@@ -211,7 +211,6 @@ scripts/               Skrip demo, eval, dan pemeriksaan repositori
 
 - Node.js 26 (lihat `.nvmrc`) dan pnpm 11 (`corepack enable` atau `npm i -g pnpm@11`).
 - Opsional untuk e2e: Chromium Playwright (`pnpm exec playwright install chromium`).
-- Opsional untuk demo lengkap: Docker dengan Compose v2 dan bash (Git Bash di Windows).
 
 ### Menjalankan untuk pengembangan
 
