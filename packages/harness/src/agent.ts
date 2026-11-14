@@ -633,10 +633,8 @@ class TurnRunner {
       return;
     }
     // Ada gambar: model yang menanggapi isinya lebih dulu (jalur tanpa model hanya membaca tulisan warga).
-    if (this.turn.gambar.length === 0) {
-      if (this.cukupKartuWilayah()) return;
-      if (await this.jalurCepat()) return;
-    }
+    // Wilayah yang belum pasti tidak menghentikan giliran: agen yang memutuskan apakah wilayah perlu ditanyakan.
+    if (this.turn.gambar.length === 0 && (await this.jalurCepat())) return;
     await this.toolLoop();
   }
 
@@ -843,25 +841,6 @@ class TurnRunner {
     const ktp = refWilayah(hasil.kode);
     if (ktp && w.usulan?.ktp.kodeKabKota !== hasil.kode)
       this.emit({ type: 'wilayah', status: 'usulan', ktp, sumber: 'warga' });
-  }
-
-  /**
-   * Giliran pertama yang hanya menunggu konfirmasi wilayah: kartu usulan sudah menanyakannya, jadi agen tidak
-   * dipanggil (balasannya hanya pertanyaan yang sama, dan tombol kartu baru aktif setelah giliran selesai).
-   * Hanya usulan Data Diri/pilihan perangkat: wilayah yang disebut di pesan ini (bisa bersama tujuan pindah atau
-   * keterangan lain) tetap ditanggapi agen, begitu juga pesan yang perlu ditanggapi dulu (pemalsuan, data pribadi,
-   * cek status, jenis belum jelas) dan urusan pindah/kematian (butuh tujuan/domisili almarhum).
-   */
-  private cukupKartuWilayah(): boolean {
-    const u = this.urusan;
-    if (u.state !== 'MEMAHAMI' || !u.jenis || ['lainnya', 'kematian', 'pindah'].includes(u.jenis))
-      return false;
-    const w = wilayahUrusan(this.store, u);
-    if (w.ktp || !w.usulan || w.usulan.sumber === 'warga') return false;
-    const teks = this.teksWarga;
-    if (mintaPemalsuan(teks) || /\{\{[A-Z]+\d*\.[A-Z_]+\}\}/.test(teks) || /\bstatus\b/i.test(teks))
-      return false;
-    return this.store.loadHistory(this.turn.urusanId, 1).length === 0;
   }
 
   private async classify(): Promise<void> {

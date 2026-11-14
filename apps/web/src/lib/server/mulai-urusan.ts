@@ -1,6 +1,6 @@
 import { fail, redirect, type RequestEvent } from '@sveltejs/kit';
 import { detectPii } from '@urusin/core';
-import { kodeDisebut, usulkanWilayah } from '@urusin/harness';
+import { kodeDisebut, refWilayah, tetapkanWilayah, usulkanWilayah } from '@urusin/harness';
 import { pastikanTamuUntukTurn, pemilikVault } from '#lib/server/akun.js';
 import { PESAN_PII } from '#lib/server/http.js';
 import { ktpIngatanUrusan } from '#lib/server/ingatan.js';
@@ -31,15 +31,15 @@ export function kodeWilayahTersimpan(
 export type GagalMulai = { pesanWarga: string; pesan: string; kode?: string };
 
 /**
- * Wilayah dulu: kab/kota yang dipilih di halaman (bila ada) atau dari Data Diri akun dicatat sebagai USULAN saja,
- * sebelum turn pertama. Pilihan eksplisit menang atas Data Diri; bila sama, sumbernya tetap Data Diri. Warga tetap
- * mengonfirmasi (kartu "Ya, betul" atau di obrolan) sebelum rencana disusun: perangkat bisa dipakai bersama dan
- * Data Diri bisa usang. Pesan pertama yang menyebut kab/kota lain menang: usulan perangkat/Data Diri tidak
- * diterbitkan, agar kartu tidak bertentangan dengan wilayah yang ditanyakan agen dari pesan itu.
- * Tanpa keduanya, wilayah layanan yang tersimpan di perangkat (cookie `WILAYAH_COOKIE`, ditulis Pengaturan) menjadi
- * usulan `pilihan`: titik mulai tanpa JavaScript (landing) tidak bisa mengirimnya lewat formulir. Selain itu, wilayah
- * KTP dari Ingatan warga (urusan sebelumnya, ADR 0031) menjadi usulan dengan aturan yang sama: tetap dikonfirmasi
- * warga. Dipanggil sesudah pemilik urusan dicatat.
+ * Wilayah dulu, tanpa bertanya ulang: wilayah KTP dari sumber tepercaya (Data Diri akun, lalu Ingatan warga dari
+ * urusan sebelumnya yang sudah pernah dipastikan, ADR 0031) langsung DITETAPKAN sebelum turn pertama; obrolan cukup
+ * menampilkan catatan kecil "Wilayah layanan: X · Ubah", rencana tidak menunggu. Pesan pertama yang menyebut
+ * kab/kota lain menang: sumber itu tidak dipakai, agen yang menanggapi wilayah dari pesan itu.
+ * Pilihan wilayah perangkat (formulir, atau cookie `WILAYAH_COOKIE` untuk titik mulai tanpa JavaScript) hanya
+ * tebakan (perangkat bisa dipakai bersama): bila berbeda dari sumber tepercaya, atau tanpa sumber tepercaya, dicatat
+ * sebagai USULAN yang tidak menjadi kartu sendiri; agen yang memutuskan apakah wilayah perlu ditanyakan (lihat
+ * `kartuWilayahSaatPerlu` di web), dan Browser Pendamping tetap tertutup sampai wilayah dipastikan. Dipanggil
+ * sesudah pemilik urusan dicatat.
  */
 export function usulkanWilayahAwal(
   rt: Runtime,
@@ -54,19 +54,32 @@ export function usulkanWilayahAwal(
   const dataDiri = typeof dariDataDiri === 'string' ? dariDataDiri : undefined;
   const disebut = kodeDisebut(pesan);
   const cocok = (kode: string) => disebut.length === 0 || disebut.includes(kode);
-  const pilihan = kodePilihan && cocok(kodePilihan) ? kodePilihan : undefined;
-  if (pilihan && pilihan !== dataDiri && usulkanWilayah(urusanId, pilihan, 'pilihan', publish)) return;
-  if (dataDiri && cocok(dataDiri)) {
-    usulkanWilayah(urusanId, dataDiri, 'data_diri', publish);
-    return;
-  }
-  if (pilihan || dataDiri) return;
+  const ingatan = ktpIngatanUrusan(rt.akun, urusanId);
+  const yakin =
+    dataDiri && cocok(dataDiri)
+      ? { kode: dataDiri, sumber: 'data_diri' as const }
+      : ingatan && cocok(ingatan)
+        ? { kode: ingatan, sumber: 'ingatan' as const }
+        : undefined;
   // Formulir tanpa kode (landing, kartu peristiwa tanpa JS): pilihan wilayah perangkat dari cookie. Kode yang tidak
   // ada di registry ditolak `usulkanWilayah`.
-  const tersimpan = kodePilihan ? undefined : kodeWilayahTersimpan(event.cookies);
-  if (tersimpan && cocok(tersimpan) && usulkanWilayah(urusanId, tersimpan, 'pilihan', publish)) return;
-  const ingatan = ktpIngatanUrusan(rt.akun, urusanId);
-  if (ingatan && cocok(ingatan)) usulkanWilayah(urusanId, ingatan, 'ingatan', publish);
+  const perangkatRaw = kodePilihan ?? kodeWilayahTersimpan(event.cookies);
+  const perangkat = perangkatRaw && cocok(perangkatRaw) ? perangkatRaw : undefined;
+  // Pilihan perangkat yang berbeda dari sumber tepercaya (mis. mengurus untuk keluarga di kab/kota lain): ambigu,
+  // jadi hanya usulan dan agen yang memutuskan apakah perlu ditanyakan.
+  if (perangkat && perangkat !== yakin?.kode) {
+    usulkanWilayah(urusanId, perangkat, 'pilihan', publish);
+    return;
+  }
+  // Kode yang tidak ada di registry (Data Diri lama) tidak ditetapkan.
+  if (yakin && refWilayah(yakin.kode))
+    tetapkanWilayah(
+      rt.store,
+      rt.store.getUrusanOrThrow(urusanId),
+      { ktp: yakin.kode },
+      publish,
+      yakin.sumber,
+    );
 }
 
 /**

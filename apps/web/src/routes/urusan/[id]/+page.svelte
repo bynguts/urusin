@@ -555,6 +555,11 @@
     else if (hasil === 'galat') pesanKomposer = 'Wilayah belum tercatat. Periksa koneksi, lalu coba lagi.';
   }
 
+  // "Ubah" di catatan wilayah: wilayah KTP hanya bisa diganti (lewat obrolan) sebelum rencana disetujui.
+  const wilayahBisaDiubah = $derived(
+    keadaanUrusan === 'BARU' || keadaanUrusan === 'MEMAHAMI' || keadaanUrusan === 'RENCANA_DIUSULKAN',
+  );
+
   function wilayahBukan() {
     teks = 'KTP saya terdaftar di ';
     komposer?.focus();
@@ -855,6 +860,10 @@
                     class="flex items-center justify-center gap-1.5 text-center text-sm leading-[21px] text-muted"
                   >
                     <Icon name="centang-bulat" class="size-4 shrink-0" />{it.teks} · {waktuSingkat(it.at)}
+                    {#if it.ubahWilayah && wilayahBisaDiubah}
+                      · <button type="button" onclick={wilayahBukan} class="text-brand underline">Ubah</button
+                      >
+                    {/if}
                   </p>
                 {:else if it.jenis === 'ingatan'}
                   <KartuIngatan

@@ -175,7 +175,8 @@ export const WilayahEventSchema = event('wilayah', {
   ktp: WilayahRefSchema,
   /**
    * data_diri = Data Diri akun; pilihan = pemilih wilayah di perangkat; warga = disebut/dikonfirmasi warga;
-   * ingatan = Ingatan warga dari urusan sebelumnya (aditif, ADR 0031; hanya usulan).
+   * ingatan = Ingatan warga dari urusan sebelumnya (aditif, ADR 0031). Data Diri dan Ingatan (wilayah yang pernah
+   * dipastikan) langsung `ditetapkan` saat urusan dibuat; pilihan perangkat hanya `usulan`.
    */
   sumber: z.enum(['data_diri', 'pilihan', 'warga', 'ingatan']),
   domisili: WilayahRefSchema.optional(),

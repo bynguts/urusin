@@ -66,38 +66,44 @@ describe('bangunLinimasa', () => {
       key: 'e2',
       teks: 'Pindah dari Kabupaten Wonogiri ke Kota Surabaya',
       at,
+      ubahWilayah: true,
     });
   });
 
-  it('usulan awal (Data Diri) bukan pembuka obrolan: tersembunyi sampai jenis jelas, lalu di ujung', () => {
+  it('tebakan perangkat saat urusan dibuat tidak pernah jadi kartu sendiri: hanya bila agen bertanya', () => {
     const wonogiri = { kodeKabKota: '3312', nama: 'Kabupaten Wonogiri' };
-    const usulan = ev(1, 'wilayah', { status: 'usulan', ktp: wonogiri, sumber: 'data_diri' });
-    const balasan = ev(2, 'assistant_text', { delta: 'Barang apa yang hilang?' });
-    const pesan = [{ teks: 'aku kehilangan barang', setelahSeq: 0 }];
-    // Jenis belum diketahui ("kehilangan barang"): tanpa kartu wilayah.
-    expect(bangunLinimasa([usulan, balasan], pesan, null).map((x) => x.jenis)).toEqual(['warga', 'teks']);
-    expect(bangunLinimasa([usulan, balasan], pesan, 'lainnya').map((x) => x.jenis)).toEqual([
-      'warga',
-      'teks',
-    ]);
-    // Jenis jelas: rencana menunggu wilayah, kartu aktif tampil di ujung percakapan.
-    const out = bangunLinimasa([usulan, balasan], pesan, 'ktp');
+    const usulan = ev(1, 'wilayah', { status: 'usulan', ktp: wonogiri, sumber: 'pilihan' });
+    const balasan = ev(2, 'assistant_text', { delta: 'Saya bisa membantu mengurus dokumen kependudukan.' });
+    const pesan = [{ teks: 'kamu bisa ngapain aja', setelahSeq: 0 }];
+    // Pertanyaan umum, jenis apa pun: tanpa kartu wilayah.
+    for (const jenis of [null, 'lainnya', 'ktp'])
+      expect(bangunLinimasa([usulan, balasan], pesan, jenis).map((x) => x.jenis)).toEqual(['warga', 'teks']);
+    // Agen menanyakan wilayah (usulan `warga`): kartu muncul di titik pertanyaan itu.
+    const tanya = ev(3, 'wilayah', { status: 'usulan', ktp: wonogiri, sumber: 'warga' });
+    const out = bangunLinimasa([usulan, balasan, tanya], pesan, 'ktp');
     expect(out.map((x) => x.jenis)).toEqual(['warga', 'teks', 'wilayah']);
     expect(out.at(-1)).toMatchObject({ terakhir: true });
-    // Sudah ditetapkan: kartu awal hilang, cukup kalimat sistem.
-    const tetap = ev(3, 'wilayah', { status: 'ditetapkan', ktp: wonogiri, sumber: 'warga' });
-    expect(bangunLinimasa([usulan, balasan, tetap], pesan, 'ktp').map((x) => x.jenis)).toEqual([
-      'warga',
-      'teks',
-      'sistem',
-    ]);
   });
 
-  it('halaman dimuat sebelum klasifikasi: jenis dari `done` memunculkan kartu Data Diri tanpa muat ulang', () => {
-    // Urutan event prod "syarat akta kelahiran di Wonogiri apa saja?" (giliran hanya kartu wilayah, tanpa rencana).
+  it('wilayah pasti (Data Diri/Ingatan) tampil sebagai catatan kecil dengan Ubah, tanpa kartu', () => {
+    const wonogiri = { kodeKabKota: '3312', nama: 'Kabupaten Wonogiri' };
+    const sleman = { kodeKabKota: '3404', nama: 'Kabupaten Sleman' };
+    const pesan = [{ teks: 'kamu bisa ngapain aja', setelahSeq: 0 }];
+    const awal = ev(1, 'wilayah', { status: 'ditetapkan', ktp: wonogiri, sumber: 'data_diri' });
+    const out = bangunLinimasa([awal], pesan, null);
+    expect(out.map((x) => x.jenis)).toEqual(['warga', 'sistem']);
+    expect(out[1]).toMatchObject({ teks: 'Wilayah layanan: Kabupaten Wonogiri', ubahWilayah: true });
+    // Diubah lewat obrolan: hanya kalimat terbaru yang membawa Ubah.
+    const ganti = ev(2, 'wilayah', { status: 'ditetapkan', ktp: sleman, sumber: 'warga' });
+    const dua = bangunLinimasa([awal, ganti], pesan, null).filter((x) => x.jenis === 'sistem');
+    expect(dua.map((x) => x.jenis === 'sistem' && x.ubahWilayah)).toEqual([false, true]);
+  });
+
+  it('halaman dimuat sebelum klasifikasi: jenis terkini dari `done` (live update tanpa muat ulang)', () => {
+    // Urutan event prod "syarat akta kelahiran di Wonogiri apa saja?": agen menanyakan wilayah, tanpa rencana.
     const wonogiri = { kodeKabKota: '3312', nama: 'Kabupaten Wonogiri' };
     const events = [
-      ev(1, 'wilayah', { status: 'usulan', ktp: wonogiri, sumber: 'data_diri' }),
+      ev(1, 'wilayah', { status: 'usulan', ktp: wonogiri, sumber: 'warga' }),
       ev(2, 'state', { state: 'MEMAHAMI', dari: 'BARU', tier: null, version: 2 }),
       ev(3, 'progress', { label: 'Memahami kebutuhan Anda…' }),
       ev(4, 'done', {
