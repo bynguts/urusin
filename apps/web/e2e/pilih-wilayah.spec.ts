@@ -90,7 +90,7 @@ test('pilihan di ponsel bisa disentuh, keluar dengan Tab, dan tidak melebar dari
 test('daftar pilihan tetap menempel di kolomnya saat isi di atasnya bergeser tanpa gulir', async ({
   page,
 }) => {
-  // CI self-hosted (dashboard-interaksi "pengaturan"): isi di atas kolom berubah tinggi sesudah daftar terbuka
+  // CI (dashboard-interaksi "pengaturan"): isi di atas kolom berubah tinggi sesudah daftar terbuka
   // (ukuran huruf, baris suara yang dimuat belakangan). Daftar `fixed` tertinggal di posisi lama, di luar layar.
   await daftarAkunUji(page);
   await page.goto('/pengaturan');

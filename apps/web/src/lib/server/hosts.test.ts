@@ -22,7 +22,7 @@ describe('assertHostEnv', () => {
 
   it('gagal untuk host di luar daftar', () => {
     expect(() => assertHostEnv({ DOMAIN: 'evil.sslip.io' })).toThrow(/DOMAIN=evil\.sslip\.io/);
-    expect(() => assertHostEnv({ DOMAIN: '158-178-239-106.sslip.io.evil.com' })).toThrow();
+    expect(() => assertHostEnv({ DOMAIN: `${hosts.fallback.app}.evil.com` })).toThrow();
     expect(() => assertHostEnv({ ORIGIN: 'https://evil.example' })).toThrow(/ORIGIN/);
     expect(() => assertHostEnv({ VERIFY_HOST: hosts.primary.app })).toThrow(/VERIFY_HOST/);
   });

@@ -1533,8 +1533,8 @@ describe('Google OAuth lewat rute', () => {
     expect(googleRedirectUri({ DOMAIN: 'urusinai.web.id' }, ORIGIN)).toBe(
       'https://urusinai.web.id/auth/google/callback',
     );
-    expect(googleRedirectUri({ DOMAIN: '158-178-239-106.sslip.io' }, ORIGIN)).toBe(
-      'https://158-178-239-106.sslip.io/auth/google/callback',
+    expect(googleRedirectUri({ DOMAIN: 'cadangan.urusin.test' }, ORIGIN)).toBe(
+      'https://cadangan.urusin.test/auth/google/callback',
     );
     expect(googleRedirectUri({}, ORIGIN)).toBe(`${ORIGIN}/auth/google/callback`);
   });
