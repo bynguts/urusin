@@ -332,7 +332,7 @@
               </summary>
               <p class="tj29">
                 Bisa. Dokumen bisa dihapus satu per satu di halaman Dokumen, dan seluruh akun beserta isinya
-                di Pengaturan, bagian Zona bahaya.
+                di Pengaturan, bagian Keluar dan hapus akun.
               </p>
             </details>
           </div>

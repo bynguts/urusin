@@ -56,11 +56,11 @@ server itu; untuk situs seperti ini Urusin memandu Anda mengisi sendiri langkah 
 
 ## Pihak lain yang memproses data
 
-| Pihak                                           | Lokasi            | Data yang diterima                                                                                                                                                                                                                                                  |
-| ----------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Oracle Cloud (hosting)                          | Singapura         | Semua data di atas, dalam bentuk terenkripsi untuk Data Diri dan dokumen. Server ini juga menjalankan mesin pencari sumber resmi Urusin dan Browser Pendamping                                                                                                      |
-| Google (bila Anda memilihnya)                   | Global            | Proses masuk dengan akun Google Anda                                                                                                                                                                                                                                |
-| OpenAI (model GPT)                              | Di luar Indonesia | Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti penanda sebelum dikirim. Gambar yang Anda lampirkan di chat atau foto yang Anda simpan di Dokumen (salinan diperkecil) untuk dibaca isinya dan diperiksa kejelasannya |
+| Pihak                         | Lokasi            | Data yang diterima                                                                                                                                                                                                                                                  |
+| ----------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Oracle Cloud (hosting)        | Singapura         | Semua data di atas, dalam bentuk terenkripsi untuk Data Diri dan dokumen. Server ini juga menjalankan mesin pencari sumber resmi Urusin dan Browser Pendamping                                                                                                      |
+| Google (bila Anda memilihnya) | Global            | Proses masuk dengan akun Google Anda                                                                                                                                                                                                                                |
+| OpenAI (model GPT)            | Di luar Indonesia | Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti penanda sebelum dikirim. Gambar yang Anda lampirkan di chat atau foto yang Anda simpan di Dokumen (salinan diperkecil) untuk dibaca isinya dan diperiksa kejelasannya |
 
 Pencarian sumber resmi (pencarian kata dan vektor) berjalan di server Urusin sendiri: pertanyaan Anda tidak
 dikirim ke mesin pencari pihak lain. Urusin saat ini tidak mengirim email dan tidak memakai layanan anti-bot
@@ -102,9 +102,9 @@ cadangan itu kedaluwarsa (3 hari, atau sampai 8 minggu bila salinan di luar serv
 - **Melihat dan mengunduh** Data Diri dan dokumen Anda: halaman Data Diri dan Dokumen.
 - **Memperbaiki** Data Diri: halaman Data Diri.
 - **Menghapus** dokumen satu per satu: halaman Dokumen. Menghapus seluruh akun beserta isinya: Pengaturan →
-  Zona bahaya → Hapus akun (ketik HAPUS dan kata sandi; akun Google diminta masuk ulang bila login terakhir
+  Keluar dan hapus akun → Hapus akun (ketik HAPUS dan kata sandi; akun Google diminta masuk ulang bila login terakhir
   lebih dari 15 menit lalu).
-- **Keluar dari semua perangkat:** Pengaturan → Zona bahaya.
+- **Keluar dari semua perangkat:** Pengaturan → Keluar dan hapus akun.
 - **Menarik persetujuan:** hapus akun, lepas tautan Google di Pengaturan, atau berhenti memakai cara tanpa akun
   (data terhapus sendiri dalam 72 jam).
 

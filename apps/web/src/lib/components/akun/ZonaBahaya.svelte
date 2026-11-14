@@ -7,7 +7,7 @@
   import { ambilLokal } from '#lib/stores/app.svelte.js';
 
   /**
-   * Zona bahaya akun (hak hapus UU PDP): "Keluar dari semua perangkat" dan "Hapus akun". Form action di
+   * Keluar dan hapus akun akun (hak hapus UU PDP): "Keluar dari semua perangkat" dan "Hapus akun". Form action di
    * `/pengaturan` (`?/keluarSemua`, `?/hapusAkun`), jalan tanpa JS; `use:enhance` hanya menambah status sibuk.
    * Hapus akun: ketik HAPUS + sandi (akun bersandi). Akun Google saja diminta masuk ulang dengan Google bila
    * login terakhir lebih dari 15 menit lalu (server mengarahkan ke /masuk?ulang=1, lalu kembali ke sini).
@@ -39,7 +39,7 @@
       id="h-zona-bahaya"
       class="text-[1.25rem] leading-[1.75rem] font-semibold tracking-[-0.4px] text-galat sm:text-[1.375rem] sm:leading-[1.875rem]"
     >
-      Zona bahaya
+      Keluar dan hapus akun
     </h2>
     <p
       class="max-w-[42rem] text-[0.9375rem] leading-[1.375rem] text-body sm:text-base sm:leading-[1.5625rem]"

@@ -610,7 +610,7 @@ test('#49 zona bahaya di Pengaturan: keluar dari semua perangkat, lalu hapus aku
   await expect(versi).toHaveText(`v${E2E_GIT_SHA.slice(0, 7)}`);
   await expect(versi).toHaveAttribute('href', `https://github.com/bynguts/urusin/commit/${E2E_GIT_SHA}`);
   const zona = page.locator('[data-zona-bahaya]');
-  await expect(zona.getByRole('heading', { name: 'Zona bahaya' })).toBeVisible();
+  await expect(zona.getByRole('heading', { name: 'Keluar dan hapus akun' })).toBeVisible();
   // Perangkat bersama: daftar urusan di perangkat ini harus ikut hilang saat keluar.
   const urusanLokal = () =>
     page.evaluate(
