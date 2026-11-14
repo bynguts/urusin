@@ -460,10 +460,10 @@ describe('agen: web__cari sebagai cadangan RAG', () => {
     const t = tiruan([AKTA_SBY]);
     const provider = new FakeProvider({
       replies: [
-        // Korpus punya potongan: harness langsung menjalankan jawaban bersumber (generator + rencana paralel).
+        // Korpus punya potongan: model memanggil jawaban bersumber sendiri; generatornya hand-off.
         tool('rag__cari_pengetahuan', { query: 'syarat akta kelahiran' }),
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'syarat akta kelahiran di Surabaya apa?' }),
         fakeCompletion({ content: JSON.stringify({ klaim: [], handoff: { pesan: 'tidak ada' } }) }),
-        fakeCompletion({ content: '(rencana paralel, dibatalkan)' }),
         tool('web__cari', { query: 'syarat akta atas nama Budi Santoso' }),
         tool('web__cari', { query: 'syarat akta kelahiran Kota Surabaya' }),
         tool('urusan__jawab_persyaratan', { pertanyaan: 'syarat akta kelahiran Surabaya' }),

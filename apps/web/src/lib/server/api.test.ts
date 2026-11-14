@@ -148,7 +148,9 @@ describe('POST /api/urusan dan /turn', () => {
       'usulan',
       'ditetapkan',
     ]);
-    expect(types).not.toContain('assistant_text');
+    // Jawaban bersumber tidak mengakhiri giliran: balasan model (bila ada) baru tampil sesudahnya.
+    if (types.includes('assistant_text'))
+      expect(types.lastIndexOf('assistant_text')).toBeGreaterThan(types.indexOf('grounded_answer'));
     expect(types.at(-1)).toBe('done');
     expect(events.map((e) => Number(e.id))).toEqual(events.map((_, i) => i + 1));
     for (const e of events)

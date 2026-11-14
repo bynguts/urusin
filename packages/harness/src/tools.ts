@@ -93,6 +93,8 @@ export type ToolResult = {
   nextState?: UrusanState;
   /** Wilayah yang ditetapkan tool (`wilayah__tetapkan`); diterapkan harness lewat CAS + event audit. */
   wilayah?: { ktp: string; domisili?: string | null; tujuan?: string | null };
+  /** Jenis urusan yang ditetapkan model (`urusan__tetapkan_jenis`); diterapkan harness lewat CAS (`setJenis`). */
+  jenis?: string;
   /** Jawaban berakhir hand-off, termasuk hand-off ulang tanpa event baru: rencana paralel dibatalkan. */
   handoff?: boolean;
   /** Akhiri turn setelah tool ini (mis. jawaban bersumber sudah dikirim ke warga). */
@@ -112,9 +114,8 @@ export type ToolDef<S extends z.ZodType = z.ZodType> = {
   origin?: (args: z.infer<S>, ctx: { urusan: UrusanRow }) => string | undefined;
   /**
    * Gerbang wilayah: tool ditolak (WILAYAH_BELUM_DITETAPKAN) sampai wilayah KTP (dan tujuan pindah) ditetapkan.
-   * 'adminduk' = hanya urusan kependudukan, dan cukup wilayah KTP (jawaban persyaratan tidak menunggu tujuan pindah).
    */
-  butuhWilayah?: boolean | 'adminduk';
+  butuhWilayah?: boolean;
   /** Operasi span OTel; default `execute_tool`. */
   spanOperation?: 'execute_tool' | 'retrieval';
   /**

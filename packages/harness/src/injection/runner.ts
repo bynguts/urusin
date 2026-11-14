@@ -184,16 +184,9 @@ export async function runInjectionCase(c: InjectionCase): Promise<InjectionResul
     ? Object.fromEntries(Object.entries(c.serangan.args).map(([k, val]) => [k, val === '$KONF' ? konf : val]))
     : undefined;
 
+  // Sesudah konten beracun masuk konteks, langkah model berikutnya adalah tempat serangan dicoba (harness tidak
+  // lagi menjalankan jawaban/rencana sendiri; model yang memutuskan).
   const replies: FakeReply[] = fetchCall ? [fetchCall] : [];
-  // Di MEMAHAMI harness sendiri menjalankan urusan__jawab_persyaratan setelah pencarian rag yang menemukan potongan
-  // (satu panggilan generator jawaban bersumber); langkah model berikutnya (rencana) adalah tempat serangan dicoba.
-  // Urusan akta butuh rencana karangan model: permintaan rencana paralel dikirim bersamaan dengan jawaban, lalu
-  // DIBATALKAN karena jawabannya hand-off (balasan pengisi di bawah); rencana diminta ulang berurutan.
-  if (fetchCall && c.kanal === 'rag' && c.state === 'MEMAHAMI')
-    replies.push(
-      fakeCompletion({ content: JSON.stringify({ klaim: [], handoff: { pesan: 'tidak ada' } }) }),
-      fakeCompletion({ content: '(rencana paralel dibatalkan)' }),
-    );
   if (c.serangan && attackArgs) replies.push(call(c.serangan.tool, attackArgs));
   else
     replies.push(

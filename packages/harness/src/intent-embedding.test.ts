@@ -91,9 +91,10 @@ describe('agen: jalur cepat embedding setelah kata kunci', () => {
       'melempar',
       { klasifikasi: () => Promise.reject(new Error('x')), panaskan: () => Promise.resolve(true) },
     ],
-  ])('%s: tetap ke LLM seperti sebelumnya', async (_n, k) => {
+  ])('%s: tanpa klasifikasi LLM terpisah, jenis dibiarkan untuk ditetapkan model', async (_n, k) => {
     const r = await jalankan(k);
-    expect(namaSkema(r.provider)[0]).toBe('klasifikasi_urusan');
-    expect(r.jenis).toBe('kk');
+    // Tidak ada lagi round-trip klasifikasi terstruktur; model menetapkan jenis lewat urusan__tetapkan_jenis.
+    expect(namaSkema(r.provider)).not.toContain('klasifikasi_urusan');
+    expect(r.jenis).toBeNull();
   });
 });

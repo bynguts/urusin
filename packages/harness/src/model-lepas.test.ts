@@ -67,18 +67,17 @@ describe('tanggal hari ini di catatan state', () => {
 });
 
 describe('reasoning_effort per peran', () => {
-  it('panggilan utama agen memakai effort agen; klasifikasi tetap global (tanpa field)', async () => {
+  it('panggilan utama agen memakai effort agen (tanpa klasifikasi LLM terpisah)', async () => {
     const provider = new FakeProvider({
-      replies: [
-        fakeCompletion({ content: JSON.stringify({ jenis: 'lainnya', keyakinan: 0.6 }) }),
-        fakeCompletion({ content: 'Disdukcapil buka Senin-Jumat.' }),
-      ],
+      replies: [fakeCompletion({ content: 'Disdukcapil buka Senin-Jumat.' })],
     });
     const env = makeEnv({ provider, reasoningEffort: 'high', reasoningEffortJawaban: 'medium' });
     const u = env.store.createUrusan({});
     await runTurn(env.deps, { urusanId: u.id, userText: 'Jam buka Disdukcapil jam berapa?' });
-    const [klasifikasi, agen] = createParams(provider);
-    expect(klasifikasi && 'reasoning_effort' in klasifikasi).toBe(false);
+    const panggilan = createParams(provider);
+    // Jenis ditetapkan model lewat urusan__tetapkan_jenis: satu-satunya panggilan adalah langkah agen.
+    expect(panggilan).toHaveLength(1);
+    const agen = panggilan[0];
     expect(agen?.reasoning_effort).toBe('high');
     expect(agen?.max_tokens).toBe(16_000);
   });

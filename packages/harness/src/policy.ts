@@ -4,7 +4,6 @@ import type { GateRule, UrusanState } from '@urusin/contracts';
 import type { QuotaStatus } from './quota.js';
 import { paramsHash, type HarnessStore, type UrusanRow } from './store.js';
 import { CONFIRMATION_FIELD, modelFacingSchema, type ToolDef, type ToolRegistry } from './tools.js';
-import { ADMINDUK } from './grounding.js';
 import { masalahPiiBerkas } from './berkas.js';
 import { wilayahBelumSiap, wilayahUrusan } from './wilayah.js';
 
@@ -67,19 +66,8 @@ export class PolicyGate {
       const belum = wilayahBelumSiap(input.urusan.jenis, wilayahUrusan(this.store, input.urusan));
       if (belum) return deny('WILAYAH_BELUM_DITETAPKAN', belum);
     }
-    // Jawaban persyaratan kependudukan juga menunggu wilayah dipastikan warga (kartu usulan saja belum cukup):
-    // aturan dan kanal berbeda per kab/kota.
-    const jenis = input.urusan.jenis;
-    if (tool.butuhWilayah === 'adminduk' && jenis !== null && ADMINDUK.has(jenis)) {
-      const w = wilayahUrusan(this.store, input.urusan);
-      const belum = w.ktp ? undefined : wilayahBelumSiap(jenis === 'pindah' ? null : jenis, w);
-      // Tanpa penegasan ini model menjawab persyaratan di teks bebas (tanpa verifikasi kutipan) saat ditolak.
-      if (belum)
-        return deny(
-          'WILAYAH_BELUM_DITETAPKAN',
-          `${belum}. Jangan menjawab persyaratan atau mengutip sumber di teks bebas sebelum wilayah ditetapkan.`,
-        );
-    }
+    // Jawaban persyaratan TIDAK menunggu wilayah: sebelum wilayah KTP ditetapkan tool jawaban hanya memakai
+    // potongan nasional (lihat `chunkNasional`), jadi kanal/kantor daerah lain tidak pernah dikutip.
 
     // (2) lapis 2 PII: tolak placeholder/PII di SEMUA string yang ditulis model, sebelum zod. Tool
     // `placeholderBrankas` (berkas__buat) boleh memuat placeholder brankas sah (diisi server saat render); sisanya
