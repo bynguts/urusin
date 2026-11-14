@@ -20,6 +20,7 @@
   import KartuTerkirim from '#lib/components/urusan/KartuTerkirim.svelte';
   import Komposer from '#lib/components/urusan/Komposer.svelte';
   import {
+    ambilTitipanPesanAwal,
     GAMBAR_AI_MAKS,
     gambarUntukAi,
     judulLampiran,
@@ -34,7 +35,7 @@
   import Lencana from '#lib/components/urusan/Lencana.svelte';
   import PanelKonteks, { type TabPanel } from '#lib/components/urusan/PanelKonteks.svelte';
   import PesanAgen from '#lib/components/urusan/PesanAgen.svelte';
-  import { bangunLinimasa, labelProgres, LABEL_UMUM_PROGRES } from '#lib/components/urusan/linimasa.js';
+  import { bangunLinimasa, labelProgres } from '#lib/components/urusan/linimasa.js';
   import LayarPendamping from '#lib/components/pendamping/LayarPendamping.svelte';
   import LembarIzinkan from '#lib/components/pendamping/LembarIzinkan.svelte';
   import { muatPabrikViewer } from '#lib/pendamping/klien.js';
@@ -260,7 +261,10 @@
   function buka(id: string) {
     judulServer = data.urusan.judul;
     pesan = lokal.pesanWarga(id);
-    const tertunda = lokal.ambilTertunda() ?? data.pesanAwal;
+    // Pesan pertama Beranda yang membawa lampiran: dikirim dari sini lewat jalur komposer (brankas + gambar AI).
+    const titip = pesan.length === 0 ? ambilTitipanPesanAwal() : null;
+    if (titip) lokal.ambilTertunda();
+    const tertunda = titip ? null : (lokal.ambilTertunda() ?? data.pesanAwal);
     if (tertunda && pesan.length === 0) {
       lokal.catatPesan(id, { teks: tertunda, setelahSeq: 0 });
       pesan = lokal.pesanWarga(id);
@@ -276,6 +280,10 @@
       dibuatPada: data.urusan.dibuatPada,
     });
     store.sambung(id);
+    if (titip) {
+      lampiran = titip.lampiran;
+      void kirim(titip.teks);
+    }
   }
 
   /**
@@ -759,42 +767,33 @@
                       <ul aria-label="Lampiran terkirim" class="flex flex-wrap justify-end gap-2">
                         {#each w.lampiran as l, i (i)}
                           {@const gambar = pratinjau?.[i]}
-                          <li class="max-w-full">
-                            {#if gambar}
-                              <a
-                                href={resolve('/dokumen')}
-                                class="flex w-[min(220px,100%)] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] hover:bg-card"
-                              >
-                                <img src={gambar} alt="" class="aspect-[4/3] w-full bg-bg-2 object-cover" />
-                                <span class="flex min-w-0 items-center gap-2 px-3 py-2 text-sm text-ink">
-                                  <Icon name="berkas-gambar" class="size-4 shrink-0 text-muted" />
-                                  <span class="min-w-0 truncate"
-                                    ><span class="font-medium">{l.label}</span>
-                                    <span class="text-muted">({l.bentuk})</span></span
-                                  >
-                                  <span class="sr-only">, tersimpan di Dokumen</span>
-                                </span>
-                              </a>
-                            {:else}
-                              <a
-                                href={resolve('/dokumen')}
-                                class="flex min-h-12 max-w-full items-center gap-2.5 rounded-2xl border border-line bg-surface py-1.5 pr-4 pl-1.5 text-sm text-ink shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] hover:bg-card"
-                              >
-                                <span
-                                  class="grid size-9 shrink-0 place-items-center rounded-xl bg-bg-2 text-ink"
+                          <!-- Ubin kecil bernomor (#1, #2, ...): nomor yang sama dipakai AI saat menyebut foto. -->
+                          <li class="relative size-16 shrink-0">
+                            <a
+                              href={resolve('/dokumen')}
+                              title="{l.label} ({l.bentuk}), tersimpan di Dokumen"
+                              class="flex size-16 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl border border-line bg-bg-2 text-ink shadow-[0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a] hover:opacity-90"
+                            >
+                              {#if gambar}
+                                <img src={gambar} alt="" class="size-full object-cover" />
+                              {:else}
+                                <Icon
+                                  name={l.bentuk === 'PDF' ? 'berkas-teks' : 'berkas-gambar'}
+                                  class="size-5"
+                                />
+                                <span class="text-[10px] leading-none font-semibold text-muted"
+                                  >{l.bentuk === 'PDF' ? 'PDF' : 'Foto'}</span
                                 >
-                                  <Icon
-                                    name={l.bentuk === 'PDF' ? 'berkas-teks' : 'berkas-gambar'}
-                                    class="size-[18px]"
-                                  />
-                                </span>
-                                <span class="min-w-0 truncate"
-                                  ><span class="font-medium">{l.label}</span>
-                                  <span class="text-muted">({l.bentuk})</span></span
-                                >
-                                <span class="sr-only">, tersimpan di Dokumen</span>
-                              </a>
-                            {/if}
+                              {/if}
+                              <span class="sr-only"
+                                >Lampiran #{i + 1}: {l.label} ({l.bentuk}), tersimpan di Dokumen</span
+                              >
+                            </a>
+                            <span
+                              aria-hidden="true"
+                              class="pointer-events-none absolute bottom-1 left-1 rounded-md bg-ink/75 px-1 text-[10px] leading-4 font-semibold text-surface"
+                              >#{i + 1}</span
+                            >
                           </li>
                         {/each}
                       </ul>
@@ -951,9 +950,8 @@
                 k.progres,
                 k.events.findLast((e) => e.type === 'progress')?.toolName,
               )}
-              <!-- Label umum cukup tiga titik (keputusan pemilik 2026-11-14); label alat tetap tertulis. -->
-              {@const cukupTitik = labelKetik === LABEL_UMUM_PROGRES}
-              <!-- AI sedang menyiapkan jawaban: gelembung "mengetik" (tiga titik) dengan label progresnya. -->
+              <!-- AI sedang menyiapkan jawaban: cukup tiga titik beranimasi; labelnya hanya untuk pembaca layar
+                   (keputusan pemilik 2026-11-14). -->
               <div data-mengetik class="flex items-end gap-3.5 {riwayatSelesai ? 'animasi-pesan-masuk' : ''}">
                 <img
                   src={p.avatar}
@@ -964,14 +962,12 @@
                 />
                 <p
                   role="status"
-                  class="flex min-h-11 max-w-full items-center gap-3 rounded-[18px_18px_18px_4px] bg-bg-2 py-2.5 text-[15px] leading-[23px] text-body {cukupTitik
-                    ? 'px-[18px]'
-                    : 'px-4'}"
+                  class="flex min-h-11 max-w-full items-center gap-3 rounded-[18px_18px_18px_4px] bg-bg-2 px-[18px] py-2.5 text-[15px] leading-[23px] text-body"
                 >
                   <span aria-hidden="true" class="titik-ketik flex shrink-0 items-center gap-1 text-muted">
                     <span></span><span></span><span></span>
                   </span>
-                  <span class={cukupTitik ? 'sr-only' : ''}>{labelKetik}</span>
+                  <span class="sr-only">{labelKetik}</span>
                 </p>
               </div>
             {/if}

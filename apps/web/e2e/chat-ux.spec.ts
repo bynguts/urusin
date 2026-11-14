@@ -129,7 +129,9 @@ test('lampiran lewat klip dan tempel gambar: chip, tersimpan di Dokumen, isi tid
   });
   const chip = page.locator('[data-lampiran]');
   await expect(chip).toHaveCount(1);
-  await expect(chip.first().getByRole('combobox')).toHaveValue('kk');
+  // Ubin kecil bernomor tanpa pilihan jenis (jenis ditebak dari nama berkas).
+  await expect(chip.first().getByRole('combobox')).toHaveCount(0);
+  await expect(chip.first()).toContainText('#1');
   await expect(chip.first().locator('img')).toHaveAttribute('src', /^blob:/);
 
   // Tempel tangkapan layar (Ctrl+V) ke kotak tulis.
@@ -141,10 +143,10 @@ test('lampiran lewat klip dan tempel gambar: chip, tersimpan di Dokumen, isi tid
     el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
   }, png.toString('base64'));
   await expect(chip).toHaveCount(2);
-  await expect(chip.nth(1).getByRole('combobox')).toHaveValue('lainnya');
+  await expect(chip.nth(1)).toContainText('#2');
 
   // Hapus lalu tempel lagi: tombol hapus bekerja.
-  await page.getByRole('button', { name: 'Hapus lampiran Dokumen lain' }).click();
+  await page.getByRole('button', { name: 'Hapus lampiran #2' }).click();
   await expect(chip).toHaveCount(1);
   await komposer.evaluate((el, b64) => {
     const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -165,9 +167,12 @@ test('lampiran lewat klip dan tempel gambar: chip, tersimpan di Dokumen, isi tid
   const body = turn[0]!;
   expect(body).not.toContain(angka);
   expect(body).not.toContain('.png');
+  // Berkas asli (PNG) tidak ikut; gambar untuk dibaca AI hanya salinan JPEG yang diperkecil di perangkat.
   expect(body).not.toContain(png.toString('base64').slice(0, 24));
-  expect(body).not.toContain('data:image');
-  expect(body.length).toBeLessThan(400);
+  const isi = JSON.parse(body) as { teks: string; gambar?: string[] };
+  expect(isi.teks).not.toContain('data:image');
+  expect(isi.gambar).toHaveLength(2);
+  for (const g of isi.gambar!) expect(g).toMatch(/^data:image\/jpeg;base64,/);
 
   // Gelembung warga: chip lampiran + tulisan; komposer bersih.
   await expect(chip).toHaveCount(0);

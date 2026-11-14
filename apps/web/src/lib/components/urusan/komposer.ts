@@ -1,4 +1,4 @@
-import { LABEL_JENIS, type JenisDokumen } from '#lib/akun/klien.js';
+import { LABEL_JENIS, periksaBerkas, type JenisDokumen } from '#lib/akun/klien.js';
 
 /**
  * Tombol Enter di komposer. Laptop: Enter = kirim, Shift+Enter = baris baru. Layar sentuh (pointer: coarse):
@@ -141,4 +141,54 @@ export async function siapkanBerkas(f: File): Promise<File | string> {
   } catch {
     return 'Foto HEIC belum bisa dibaca di peramban ini. Simpan sebagai JPG, lalu lampirkan lagi.';
   }
+}
+
+/**
+ * Berkas pilihan/tempelan → lampiran baru (HEIC diubah ke JPEG, ukuran/jenis diperiksa, batas per pesan). Dipakai
+ * komposer urusan dan kotak cerita Beranda. `galat` = pesan terakhir untuk warga, bila ada berkas yang ditolak.
+ */
+export async function buatLampiran(
+  berkas: File[],
+  sudahAda: number,
+): Promise<{ baru: Lampiran[]; galat: string | null }> {
+  const baru: Lampiran[] = [];
+  let galat: string | null = null;
+  for (const asli of berkas) {
+    if (sudahAda + baru.length >= LAMPIRAN_MAKS) {
+      galat = `Maksimal ${LAMPIRAN_MAKS} lampiran per pesan.`;
+      break;
+    }
+    const f = await siapkanBerkas(asli);
+    if (typeof f === 'string') {
+      galat = f;
+      continue;
+    }
+    const cek = periksaBerkas(f);
+    if (cek) {
+      galat = cek;
+      continue;
+    }
+    baru.push({
+      kunci: `l-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
+      berkas: f,
+      jenis: tebakJenis(asli.name),
+      pratinjau: f.type.startsWith('image/') ? URL.createObjectURL(f) : null,
+    });
+  }
+  return { baru, galat };
+}
+
+/**
+ * Titipan pesan pertama Beranda yang membawa lampiran (memori klien, sekali pakai): server membuat urusan tanpa
+ * menjalankan turn, lalu halaman urusan mengirim pesan itu bersama lampirannya lewat jalur komposer biasa
+ * (brankas terenkripsi + gambar untuk AI). Hilang bila halaman dimuat ulang penuh: warga melampirkan lagi.
+ */
+let titipan: { teks: string; lampiran: Lampiran[] } | null = null;
+export function titipkanPesanAwal(teks: string, lampiran: Lampiran[]): void {
+  titipan = { teks, lampiran };
+}
+export function ambilTitipanPesanAwal(): { teks: string; lampiran: Lampiran[] } | null {
+  const t = titipan;
+  titipan = null;
+  return t;
 }

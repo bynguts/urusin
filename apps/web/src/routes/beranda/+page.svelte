@@ -11,7 +11,14 @@
   import Icon from '#lib/components/Icon.svelte';
   import KartuBerjalan from '#lib/components/urusan/KartuBerjalan.svelte';
   import { DaftarUrusan } from '#lib/components/urusan/daftar.svelte.js';
-  import { aksiEnter } from '#lib/components/urusan/komposer.js';
+  import LampiranKecil from '#lib/components/urusan/LampiranKecil.svelte';
+  import {
+    aksiEnter,
+    buatLampiran,
+    LAMPIRAN_MAKS,
+    titipkanPesanAwal,
+    type Lampiran,
+  } from '#lib/components/urusan/komposer.js';
   import { PERISTIWA, type Warna } from '#lib/peristiwa.js';
   import { ambilLokal } from '#lib/stores/app.svelte.js';
   import type { PageProps } from './$types';
@@ -38,6 +45,35 @@
   let mendikte = $state(false);
   let hentikanDikte: (() => void) | undefined;
   let kotakPesan = $state<HTMLTextAreaElement>();
+
+  // Lampiran (klip atau tempel foto) sama dengan komposer urusan: ubin kecil bernomor, dikirim bersama pesan
+  // pertama oleh halaman urusan (titipan memori, lihat titipkanPesanAwal).
+  let lampiran = $state<Lampiran[]>([]);
+  let galatLampiran = $state<string | null>(null);
+  let inputBerkas = $state<HTMLInputElement>();
+  const TEKS_LAMPIRAN_SAJA = 'Tolong periksa foto yang saya lampirkan.';
+
+  async function tambahLampiran(berkas: File[]) {
+    const { baru, galat } = await buatLampiran(berkas, lampiran.length);
+    galatLampiran = galat;
+    if (baru.length) lampiran = [...lampiran, ...baru];
+  }
+
+  function hapusLampiran(kunci: string) {
+    const l = lampiran.find((x) => x.kunci === kunci);
+    if (l?.pratinjau) URL.revokeObjectURL(l.pratinjau);
+    lampiran = lampiran.filter((x) => x.kunci !== kunci);
+    galatLampiran = null;
+    kotakPesan?.focus();
+  }
+
+  /** Ctrl+V foto/tangkapan layar: jadi lampiran; teks yang ikut ditempel tetap masuk kotak. */
+  function tempel(e: ClipboardEvent) {
+    const berkas = [...(e.clipboardData?.files ?? [])];
+    if (!berkas.length) return;
+    if (!e.clipboardData?.types.includes('text/plain')) e.preventDefault();
+    void tambahLampiran(berkas);
+  }
 
   // Sama dengan komposer urusan: Enter = kirim, Shift+Enter = baris baru (layar sentuh: Enter = baris baru).
   function tekan(e: KeyboardEvent) {
@@ -117,9 +153,15 @@
       method="POST"
       action="?/mulai"
       class="flex w-full max-w-[760px] flex-col gap-3.5 rounded-[22px] border border-line-2 bg-surface pt-[18px] pr-[18px] pb-3.5 pl-[22px] text-left shadow-[0_10px_30px_#2525220d,0_0_1px_#0000000f,0_1px_1px_#0000000f,0_2px_4px_#0000000a]"
-      use:enhance={() => {
+      use:enhance={({ formData }) => {
         mengirim = true;
-        lokal.simpanTertunda(pesan);
+        if (lampiran.length) {
+          const teks = pesan.trim() || TEKS_LAMPIRAN_SAJA;
+          formData.set('pesan', teks);
+          formData.set('lampiran', '1');
+          titipkanPesanAwal(teks, lampiran);
+          lampiran = [];
+        } else lokal.simpanTertunda(pesan);
         return async ({ update }) => {
           await update({ reset: false });
           mengirim = false;
@@ -132,10 +174,11 @@
         name="pesan"
         rows="1"
         maxlength="2000"
-        required
+        required={lampiran.length === 0}
         bind:value={pesan}
         bind:this={kotakPesan}
         onkeydown={tekan}
+        onpaste={tempel}
         enterkeyhint="send"
         aria-describedby={form?.pesanWarga ? 'galat-pesan' : undefined}
         placeholder="Contoh: Anak saya baru lahir, saya harus mengurus apa?"
@@ -147,8 +190,39 @@
       {#if form?.pesanWarga}
         <p id="galat-pesan" role="alert" class="text-sm font-medium text-galat">{form.pesanWarga}</p>
       {/if}
+      {#if lampiran.length}
+        <div class="flex flex-col gap-1.5 pt-1">
+          <LampiranKecil {lampiran} onhapus={hapusLampiran} />
+          <p class="text-xs text-muted">Foto dibaca AI dan disimpan terenkripsi di Dokumen Anda.</p>
+        </div>
+      {/if}
+      {#if galatLampiran}
+        <p role="alert" class="text-sm font-medium text-galat">{galatLampiran}</p>
+      {/if}
+      <input
+        bind:this={inputBerkas}
+        type="file"
+        multiple
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
+        onchange={(e) => {
+          const input = e.currentTarget;
+          void tambahLampiran([...(input.files ?? [])]);
+          input.value = '';
+        }}
+        class="hidden"
+        tabindex="-1"
+        aria-hidden="true"
+      />
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onclick={() => inputBerkas?.click()}
+            disabled={lampiran.length >= LAMPIRAN_MAKS}
+            class="grid size-10 place-items-center rounded-full bg-bg-2 text-ink hover:bg-line-3 disabled:opacity-50"
+          >
+            <Icon name="klip" class="size-4" label="Lampirkan foto atau PDF" />
+          </button>
           {#if bisaDikte}
             <button
               type="button"

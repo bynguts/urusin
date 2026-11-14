@@ -1,16 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Icon from '../Icon.svelte';
-  import { LABEL_JENIS, periksaBerkas } from '#lib/akun/klien.js';
-  import {
-    aksiEnter,
-    LAMPIRAN_MAKS,
-    labelLampiran,
-    siapkanBerkas,
-    tebakJenis,
-    ukuranBerkas,
-    type Lampiran,
-  } from './komposer.js';
+  import LampiranKecil from './LampiranKecil.svelte';
+  import { aksiEnter, buatLampiran, LAMPIRAN_MAKS, type Lampiran } from './komposer.js';
 
   /**
    * Kotak tulis di bawah percakapan: teks tidak hilang bila pengiriman gagal (WCAG 3.3.7, sesi habis).
@@ -63,32 +55,9 @@
   }
 
   async function tambah(berkas: File[]) {
-    galatLampiran = null;
-    for (const asli of berkas) {
-      if (lampiran.length >= LAMPIRAN_MAKS) {
-        galatLampiran = `Maksimal ${LAMPIRAN_MAKS} lampiran per pesan.`;
-        break;
-      }
-      const f = await siapkanBerkas(asli);
-      if (typeof f === 'string') {
-        galatLampiran = f;
-        continue;
-      }
-      const cek = periksaBerkas(f);
-      if (cek) {
-        galatLampiran = cek;
-        continue;
-      }
-      lampiran = [
-        ...lampiran,
-        {
-          kunci: `l-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
-          berkas: f,
-          jenis: tebakJenis(asli.name),
-          pratinjau: f.type.startsWith('image/') ? URL.createObjectURL(f) : null,
-        },
-      ];
-    }
+    const { baru, galat } = await buatLampiran(berkas, lampiran.length);
+    galatLampiran = galat;
+    if (baru.length) lampiran = [...lampiran, ...baru];
   }
 
   function pilih(e: Event) {
@@ -130,66 +99,11 @@
     </p>
   {/if}
   {#if lampiran.length}
-    <div class="@container flex flex-col gap-1.5">
-      <ul aria-label="Lampiran" class="grid gap-2 @lg:grid-cols-2">
-        {#each lampiran as l (l.kunci)}
-          <li
-            data-lampiran
-            class="flex min-w-0 items-center gap-3 rounded-2xl border border-line-2 bg-surface p-2 shadow-[0_0_0.5px_#0000000f,0_1px_0.5px_#0000000f]"
-          >
-            {#if l.pratinjau}
-              <img
-                src={l.pratinjau}
-                alt=""
-                class="size-14 shrink-0 rounded-xl border border-line bg-bg-2 object-cover"
-              />
-            {:else}
-              <span class="grid size-14 shrink-0 place-items-center rounded-xl bg-bg-2 text-ink">
-                <Icon name="berkas-teks" class="size-6" />
-              </span>
-            {/if}
-            <div class="flex min-w-0 flex-1 flex-col gap-1">
-              <p class="flex min-w-0 items-baseline gap-1.5 text-sm leading-5">
-                <span class="min-w-0 truncate font-medium text-ink">{l.berkas.name}</span>
-                <span class="shrink-0 text-xs text-muted"
-                  >{l.pratinjau ? 'Gambar' : 'PDF'} · {ukuranBerkas(l.berkas.size)}</span
-                >
-              </p>
-              <label for="jenis-{l.kunci}" class="sr-only"
-                >Jenis dokumen lampiran ({l.pratinjau ? 'gambar' : 'PDF'})</label
-              >
-              <div class="relative min-w-0">
-                <select
-                  id="jenis-{l.kunci}"
-                  bind:value={l.jenis}
-                  disabled={l.docId !== undefined}
-                  class="h-9 w-full min-w-0 cursor-pointer appearance-none truncate rounded-lg border border-line-2 bg-card pr-8 pl-2.5 text-sm text-ink hover:border-line-3 focus-visible:outline-2 focus-visible:outline-ink disabled:cursor-default disabled:opacity-70"
-                >
-                  {#each Object.keys(LABEL_JENIS) as k (k)}
-                    <option value={k}>{labelLampiran(k as Lampiran['jenis'])}</option>
-                  {/each}
-                </select>
-                <Icon
-                  name="bawah"
-                  class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-muted"
-                />
-              </div>
-            </div>
-            <button
-              type="button"
-              onclick={() => hapus(l.kunci)}
-              aria-label="Hapus lampiran {labelLampiran(l.jenis)}"
-              class="grid size-10 shrink-0 place-items-center self-start rounded-full text-muted hover:bg-card hover:text-ink"
-            >
-              <Icon name="tutup" class="size-4" />
-            </button>
-          </li>
-        {/each}
-      </ul>
-      <p class="px-2 text-sm text-muted">
-        Lampiran disimpan terenkripsi di Dokumen Anda. Gambar dikirim ke AI untuk dibaca; PDF belum bisa
-        dibaca AI.
-      </p>
+    <!-- Lampiran = ubin kecil bernomor (#1, #2, ...) sesuai urutan yang dibaca AI; tanpa pilihan jenis
+         (keputusan pemilik 2026-11-14). -->
+    <div class="flex flex-col gap-1.5 px-1">
+      <LampiranKecil {lampiran} onhapus={hapus} />
+      <p class="text-xs text-muted">Foto dibaca AI dan disimpan terenkripsi di Dokumen Anda.</p>
     </div>
   {/if}
   <div
