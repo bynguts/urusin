@@ -4,14 +4,13 @@
   import mark from '#lib/assets/img/pen-landing/urusin-mark-52.webp';
 
   /**
-   * Header situs publik dari frame pen Rafi (n2rpg / F6RSq): logo, tautan bagian landing, Privasi, Masuk, Mulai
-   * gratis. Gaya di landing-pen.css (kelas lpN). Tautan menuju halaman Web masing-masing; `aktif` menandai
+   * Header situs publik dari frame pen Rafi (n2rpg / F6RSq): logo, tautan bagian landing, Privasi, dan satu
+   * tombol Masuk. Gaya di landing-pen.css (kelas lpN). Tautan menuju halaman Web masing-masing; `aktif` menandai
    * halaman yang sedang dibuka (pil frame F6RSq).
    */
   type Halaman = 'cara-kerja' | 'urusan' | 'privasi' | 'tanya-jawab';
   let { aktif }: { aktif?: Halaman } = $props();
   const diLanding = $derived(aktif === undefined);
-  const targetMulai = $derived(page.data.akun ? resolve('/beranda') : resolve('/daftar'));
   const TAUTAN: { id: Halaman; label: string; href: string }[] = [
     { id: 'cara-kerja', label: 'Cara kerja', href: resolve('/cara-kerja') },
     { id: 'urusan', label: 'Urusan', href: resolve('/urusan') },
@@ -54,12 +53,10 @@
         <span class="lp12"> Buka beranda </span>
       </a>
     {:else}
-      <a class="lp8" href={resolve('/masuk')}>
-        <span class="lp9"> Masuk </span>
-      </a>
-      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-      <a class="lp11" href={targetMulai}>
-        <span class="lp12"> Mulai gratis </span>
+      <!-- Satu tombol (keputusan pemilik 2026-11-14): /masuk memuat Google, Daftar, dan Masuk sebagai juri;
+           pengunjung baru punya "Mulai urusan" di hero. -->
+      <a class="lp11" href={resolve('/masuk')}>
+        <span class="lp12"> Masuk </span>
       </a>
     {/if}
   </div>
