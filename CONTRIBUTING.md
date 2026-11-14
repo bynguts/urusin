@@ -75,8 +75,9 @@ Ini aturan terpenting di proyek ini.
 pnpm turbo run lint typecheck test build   # semuanya harus hijau sebelum PR
 pnpm format:check                          # Prettier; perbaiki dengan `pnpm format`
 pnpm coverage                              # coverage vitest v8 per paket + tabel ringkasan
-pnpm budget                                # JS awal beranda <= 70 KB gzip (setelah build)
-pnpm e2e                                   # Playwright (web app)
+pnpm budget                                # JS awal per rute <= 70 KB gzip (setelah build)
+pnpm e2e                                   # Playwright (web app dan Browser Pendamping)
+pnpm audit:history                         # riwayat commit: konvensional, author terdaftar
 ```
 
 - Tes unit memakai Vitest (`*.test.ts`), skrip repositori memakai `node:test` (`pnpm test:scripts`).

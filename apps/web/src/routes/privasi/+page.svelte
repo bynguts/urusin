@@ -167,9 +167,9 @@
         <h2 class="pv23" id="judul-pihak">Pihak lain yang memproses data</h2>
         <p class="pv24">
           Kami tidak menjual data, tidak memasang iklan, dan tidak memakai pelacak pihak ketiga. Pencarian
-          sumber resmi berjalan di server kami sendiri, jadi pertanyaanmu tidak dikirim ke mesin pencari pihak
-          lain. Pengiriman ke pihak di luar Indonesia adalah transfer data lintas negara (UU PDP Pasal 56)
-          atas persetujuanmu.
+          sumber resmi berjalan di server kami sendiri; pencarian web hanya dipakai sebagai cadangan, dengan
+          istilah umum tanpa data pribadi. Pengiriman ke pihak di luar Indonesia adalah transfer data lintas
+          negara (UU PDP Pasal 56) atas persetujuanmu.
         </p>
       </div>
       <div class="pv25" role="table" aria-label="Pihak lain yang memproses data">
@@ -208,6 +208,17 @@
           </div>
           <div class="pv30 pv-c2" role="cell" data-label="Peran">Masuk dengan Google</div>
           <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Global</div>
+        </div>
+        <div class="pv28" role="row">
+          <div class="pv29 pv-c0" role="rowheader">Exa (pencarian web)</div>
+          <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
+            Istilah pencarian umum, hanya bila sumber resmi yang tersimpan di Urusin belum cukup. Kueri yang
+            memuat NIK, KK, HP, email, atau data diri tidak pernah dikirim
+          </div>
+          <div class="pv30 pv-c2" role="cell" data-label="Peran">
+            Cadangan pencarian sumber resmi (situs .go.id lebih dulu)
+          </div>
+          <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Amerika Serikat</div>
         </div>
         <div class="pv28" role="row">
           <div class="pv29 pv-c0" role="rowheader">Peramban kamu (bila memakai tombol Bicara)</div>

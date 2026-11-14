@@ -495,6 +495,8 @@ describe('/privasi', () => {
       'OpenAI',
       'Google',
       'mesin pencari sumber resmi',
+      // Cari web cadangan (EXA_API_KEY terisi di produksi) wajib tercantum.
+      'Exa (pencarian web)',
       'disimpan 3 hari',
     ])
       expect(body, pihak).toContain(pihak);
