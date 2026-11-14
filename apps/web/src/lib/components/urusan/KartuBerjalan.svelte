@@ -1,7 +1,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import { findPeristiwa, KELAS_WARNA, URUSAN_LAIN } from '#lib/peristiwa.js';
-  import { infoStatus } from '#lib/urusan-status.js';
+  import { infoRingkasan } from '#lib/urusan-status.js';
   import type { UrusanBerjalan } from './daftar.svelte.js';
 
   /**
@@ -15,7 +15,7 @@
   }: { urusan: UrusanBerjalan; utama?: boolean; memuat?: boolean } = $props();
 
   const p = $derived(findPeristiwa(urusan.peristiwa ?? '') ?? URUSAN_LAIN);
-  const info = $derived(infoStatus(urusan.ringkasan?.state));
+  const info = $derived(infoRingkasan(urusan.ringkasan));
   const TITIK = {
     anda: 'bg-[#c8902e]',
     instansi: 'bg-[#9a958c]',

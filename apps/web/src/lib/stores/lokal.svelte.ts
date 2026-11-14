@@ -19,14 +19,20 @@ export type DataLokal = {
    */
   versiWilayah: 2;
   urusan: CatatanUrusan[];
-  /** Pilihan wilayah di perangkat ini: hanya usulan, selalu dikonfirmasi warga di urusan. null = belum dipilih. */
+  /** Pilihan wilayah di perangkat ini: hanya usulan yang boleh ditanyakan agen di urusan. null = belum dipilih. */
   wilayah: Wilayah | null;
   kontrasTinggi: boolean;
   kurangiGerak: boolean;
+  /**
+   * Penanda akun pemilik daftar urusan di perangkat ini (hash dari server, bukan PII); null = tamu. Bila akun
+   * yang masuk berbeda (atau sudah keluar), daftar, pesan, dan wilayah pemakai sebelumnya dibuang.
+   */
+  pemilik: string | null;
 };
 
 const KUNCI = 'urusin.lokal.v1';
 const ID_RE = /^u_[0-9a-f]{32}$/;
+const PENANDA_RE = /^[0-9a-f]{16}$/;
 const MAKS_URUSAN = 50;
 
 /** Ambil hanya bentuk yang valid dari data tersimpan. */
@@ -62,8 +68,12 @@ export function bersihkanLokal(raw: unknown): DataLokal {
     wilayah,
     kontrasTinggi: o.kontrasTinggi === true,
     kurangiGerak: o.kurangiGerak === true,
+    pemilik: typeof o.pemilik === 'string' && PENANDA_RE.test(o.pemilik) ? o.pemilik : null,
   };
 }
+
+/** Urutan daftar perangkat: terbaru dulu (sama dengan urutan `catatUrusan`). */
+const terbaruDulu = (a: CatatanUrusan, b: CatatanUrusan) => b.dibuatPada.localeCompare(a.dibuatPada);
 
 /** Singkat nama resmi registry: "Kabupaten Wonogiri" → "Kab. Wonogiri". */
 export function namaPendek(nama: string): string {
@@ -145,6 +155,37 @@ export class LokalStore {
     return this.data.urusan.find((u) => u.id === id);
   }
 
+  /** Urusan akun dari server yang belum tercatat di perangkat ini (mis. setelah keluar lalu masuk lagi). */
+  gabungUrusan(daftar: readonly CatatanUrusan[]): void {
+    const baru = daftar.filter((u) => ID_RE.test(u.id) && !this.cari(u.id));
+    if (!baru.length) return;
+    this.data = {
+      ...this.data,
+      urusan: [...this.data.urusan, ...baru].sort(terbaruDulu).slice(0, MAKS_URUSAN),
+    };
+    this.simpan();
+  }
+
+  /** Buang urusan yang menurut server bukan milik akun yang masuk, beserta pesannya di perangkat ini. */
+  buangUrusan(ids: readonly string[]): void {
+    if (!this.data.urusan.some((u) => ids.includes(u.id))) return;
+    for (const id of ids) this.hapusKunci(`${KUNCI_PESAN}${id}`);
+    this.data = { ...this.data, urusan: this.data.urusan.filter((u) => !ids.includes(u.id)) };
+    this.simpan();
+  }
+
+  /**
+   * Perangkat bersama: `penanda` akun yang sedang masuk (null = tamu). Daftar milik akun lain, atau milik akun
+   * yang sudah keluar, dibuang beserta pesan dan wilayahnya. Daftar tamu tetap saat masuk: urusan tamu ikut
+   * pindah ke akun.
+   */
+  sesuaikanPemilik(penanda: string | null): void {
+    if (this.data.pemilik === penanda) return;
+    if (this.data.pemilik !== null) this.kosongkanUrusan();
+    this.data = { ...this.data, pemilik: penanda };
+    this.simpan();
+  }
+
   aturWilayah(w: Wilayah | null): void {
     this.data = { ...this.data, wilayah: bersihkanLokal({ versiWilayah: 2, wilayah: w }).wilayah };
     this.simpan();
@@ -157,10 +198,16 @@ export class LokalStore {
   }
 
   hapusSemua(): void {
-    for (const u of this.data.urusan) this.hapusKunci(`${KUNCI_PESAN}${u.id}`);
-    this.hapusKunci(KUNCI_TERTUNDA);
+    this.kosongkanUrusan();
     this.data = bersihkanLokal(null);
     this.simpan();
+  }
+
+  /** Daftar urusan, pesan per urusan, pesan tertunda, dan wilayah perangkat (tanpa menyimpan). */
+  private kosongkanUrusan(): void {
+    for (const u of this.data.urusan) this.hapusKunci(`${KUNCI_PESAN}${u.id}`);
+    this.hapusKunci(KUNCI_TERTUNDA);
+    this.data = { ...this.data, urusan: [], wilayah: null };
     this.kue(null);
   }
 

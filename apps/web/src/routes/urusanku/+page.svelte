@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
   import { untrack } from 'svelte';
   import Icon from '#lib/components/Icon.svelte';
   import HeaderHalaman from '#lib/components/shell/HeaderHalaman.svelte';
@@ -13,6 +14,10 @@
   const lokal = ambilLokal();
   const daftar = new DaftarUrusan();
   daftar.onjudul = (id, judul) => lokal.ubahJudul(id, judul);
+  daftar.onbaru = (baru) => lokal.gabungUrusan(baru);
+  daftar.onhilang = (ids) => lokal.buangUrusan(ids);
+  // Akun yang masuk: urusan akun ikut dari server (daftar tetap utuh setelah keluar lalu masuk lagi).
+  const milik = $derived(Boolean(page.data.akun));
   // Muat ulang status hanya bila daftar id berubah (bukan saat judul di perangkat diperbarui).
   const idsLokal = $derived(lokal.data.urusan.map((u) => u.id).join(','));
   let filter = $state<'semua' | 'anda' | 'instansi' | 'selesai'>('semua');
@@ -21,7 +26,8 @@
 
   $effect(() => {
     void idsLokal;
-    untrack(() => void daftar.muat(lokal.data.urusan).then(() => (dimuat = true)));
+    const m = milik;
+    untrack(() => void daftar.muat(lokal.data.urusan, { milik: m }).then(() => (dimuat = true)));
   });
 
   const kelompok = (u: (typeof daftar.isi)[number]) => infoStatus(u.ringkasan?.state).kelompok;
@@ -45,7 +51,7 @@
 <svelte:head><title>Urusanku · Urusin</title></svelte:head>
 
 <HeaderHalaman judul="Urusanku" />
-<GantiNamaUrusan bind:this={gantiNama} ontersimpan={() => void daftar.muat(lokal.data.urusan)} />
+<GantiNamaUrusan bind:this={gantiNama} ontersimpan={() => void daftar.muat(lokal.data.urusan, { milik })} />
 
 <div class="flex w-full flex-col gap-6 px-4 py-5 sm:px-10 sm:py-6">
   <!-- Ponsel: satu baris yang digeser (selebar layar, tanpa bilah gulir); mulai sm membungkus seperti desain -->
@@ -90,13 +96,17 @@
         />
       {/each}
     </div>
-  {:else if dimuat || !lokal.data.urusan.length}
+  {:else if dimuat || (!milik && !lokal.data.urusan.length)}
     <div class="mt-3 flex flex-col items-center gap-3 rounded-kartu bg-card px-6 py-10 text-center">
       <span class="grid size-12 place-items-center rounded-full bg-bg-2"
         ><Icon name="urusanku" class="size-6" /></span
       >
       <p class="text-lg font-semibold text-ink">
-        {filter === 'semua' ? 'Belum ada urusan di perangkat ini' : 'Tidak ada urusan di kelompok ini'}
+        {filter !== 'semua'
+          ? 'Tidak ada urusan di kelompok ini'
+          : milik
+            ? 'Belum ada urusan di akun ini'
+            : 'Belum ada urusan di perangkat ini'}
       </p>
       <p class="max-w-md text-[0.9375rem] text-body">
         Urusan yang Anda mulai akan muncul di sini beserta statusnya.

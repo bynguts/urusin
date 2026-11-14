@@ -9,6 +9,7 @@ import {
   LANGKAH_RENCANA,
   domain,
   faseUrusan,
+  infoRingkasan,
   infoStatus,
   tanggal,
   waktuSingkat,
@@ -36,6 +37,15 @@ describe('status urusan', () => {
     expect(infoStatus(null)).toEqual(infoStatus('BARU'));
     expect(infoStatus('MENUNGGU_SUBMIT_WARGA')).toMatchObject({ nada: 'anda', kelompok: 'anda', langkah: 4 });
     expect(infoStatus('TERKIRIM').kelompok).toBe('instansi');
+  });
+
+  it('sudah dijawab tanpa rencana: status netral, bukan "AI menyusun rencana"', () => {
+    expect(infoRingkasan({ state: 'MEMAHAMI', dijawab: true })).toMatchObject({
+      label: 'Sudah dijawab',
+      nada: 'netral',
+    });
+    expect(infoRingkasan({ state: 'MEMAHAMI' })).toEqual(infoStatus('MEMAHAMI'));
+    expect(infoRingkasan(null)).toEqual(infoStatus('BARU'));
   });
 
   it('format waktu dan domain', () => {
