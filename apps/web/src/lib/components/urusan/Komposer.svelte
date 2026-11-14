@@ -39,10 +39,30 @@
     lebarTulis >= 19 * rem ? 'Tulis jawaban atau pertanyaan lain…' : 'Tulis pesan…',
   );
 
+  // Dikte sama dengan Beranda: modul suara dimuat saat mikrofon ditekan; hasil mengganti isi kotak tulis.
+  let bisaDikte = $state(false);
+  let mendikte = $state(false);
+  let hentikanDikte: (() => void) | undefined;
+
   onMount(() => {
     sentuh = matchMedia('(pointer: coarse)').matches;
     rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    bisaDikte = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
+    return () => hentikanDikte?.();
   });
+
+  async function bicara() {
+    if (mendikte) {
+      hentikanDikte?.();
+      return;
+    }
+    mendikte = true;
+    const { mulaiDikte } = await import('#lib/suara.js');
+    hentikanDikte = mulaiDikte(
+      (t) => (teks = t),
+      () => (mendikte = false),
+    );
+  }
 
   const bisaKirim = $derived(!sibuk && !nonaktif && (teks.trim().length > 0 || lampiran.length > 0));
   const keterangan = $derived(
@@ -54,6 +74,7 @@
   function kirim(e: SubmitEvent) {
     e.preventDefault();
     if (!bisaKirim) return;
+    hentikanDikte?.();
     onkirim(teks.trim());
   }
 
@@ -152,6 +173,20 @@
       {placeholder}
       class="max-h-40 min-h-[42px] min-w-0 flex-1 resize-none bg-transparent py-[9px] pl-1 text-base sm:py-2 text-ink [field-sizing:content] placeholder:text-muted focus:outline-none sm:text-[17px] sm:leading-[26px]"
     ></textarea>
+    {#if bisaDikte}
+      <button
+        type="button"
+        onclick={bicara}
+        disabled={nonaktif}
+        aria-pressed={mendikte}
+        aria-label={mendikte ? 'Berhenti mendengarkan' : 'Bicara'}
+        class="grid size-[42px] shrink-0 place-items-center rounded-full text-ink hover:bg-card disabled:opacity-50 {mendikte
+          ? 'bg-card ring-2 ring-brand'
+          : ''}"
+      >
+        <Icon name="mikrofon" class="size-5" />
+      </button>
+    {/if}
     <button
       type="submit"
       disabled={!bisaKirim}

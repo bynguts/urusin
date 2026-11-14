@@ -150,13 +150,16 @@
                 <Icon name={item.ikon} class="size-[1.125rem]" />{item.label}
               </a>
             {/each}
-            <a
-              href={resolve(akun ? '/pengaturan' : '/masuk')}
-              onclick={() => (menuBuka = false)}
-              class="flex min-h-12 items-center gap-3 rounded-xl px-3 text-base font-semibold hover:bg-bg-2"
-            >
-              <Icon name="orang" class="size-[1.125rem]" />{akun ? 'Akun dan pengaturan' : 'Masuk'}
-            </a>
+            <!-- Sudah masuk: akun ada di "Pengaturan" di atas, jadi tidak perlu butir kedua. -->
+            {#if !akun}
+              <a
+                href={resolve('/masuk')}
+                onclick={() => (menuBuka = false)}
+                class="flex min-h-12 items-center gap-3 rounded-xl px-3 text-base font-semibold hover:bg-bg-2"
+              >
+                <Icon name="orang" class="size-[1.125rem]" />Masuk
+              </a>
+            {/if}
           </nav>
         {/if}
       </header>
