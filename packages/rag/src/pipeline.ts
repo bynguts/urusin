@@ -285,34 +285,44 @@ export function retrieveSync(
         { hits: (deps.vectorIds ?? []).map((id) => ({ id })), weight: 1 },
       ])
     : textRanked.map((h) => ({ id: h.id, skor: h.skor }));
-  // Kandidat dua kali batas: bagian pelengkap standar pelayanan (biaya, dasar hukum, ...) yang turun karena
-  // bagianPrior memberi tempat bagi persyaratan/prosedur layanan yang sama di bawahnya.
-  const pool = fusedAll.slice(0, limit * 2);
   const known = new Map<string, Hit>(textRanked.map((h) => [h.id, h]));
-  for (const [id, h] of hydrate(
-    db,
-    pool.map((f) => f.id).filter((id) => !known.has(id)),
-  ))
-    known.set(id, h);
-  const hits = pool
-    .flatMap((f) => {
-      const h = known.get(f.id);
-      return h ? [{ ...h, skor: f.skor * bagianPrior(h.kutipan.judul, opts.query) }] : [];
-    })
-    .sort((a, b) => b.skor - a.skor || a.id.localeCompare(b.id))
-    .slice(0, limit);
+  const rank = (fused: readonly { id: string; skor: number }[]): Hit[] => {
+    // Kandidat dua kali batas: bagian pelengkap standar pelayanan (biaya, dasar hukum, ...) yang turun karena
+    // bagianPrior memberi tempat bagi persyaratan/prosedur layanan yang sama di bawahnya.
+    const pool = fused.slice(0, limit * 2);
+    for (const [id, h] of hydrate(
+      db,
+      pool.map((f) => f.id).filter((id) => !known.has(id)),
+    ))
+      known.set(id, h);
+    return pool
+      .flatMap((f) => {
+        const h = known.get(f.id);
+        return h ? [{ ...h, skor: f.skor * bagianPrior(h.kutipan.judul, opts.query) }] : [];
+      })
+      .sort((a, b) => b.skor - a.skor || a.id.localeCompare(b.id))
+      .slice(0, limit);
+  };
+  const hits = rank(fusedAll);
+  // Gerbang abstain memakai peringkat LEKSIKAL (sama persis dengan mode BM25): leg vektor hanya mengubah urutan
+  // jawaban, tidak mengubah keputusan abstain. Eval 2026-11-14 (EmbeddingGemma): gerbang pada top-3 hasil fusi
+  // meloloskan pertanyaan luar cakupan ("STNK hilang") dan menolak pertanyaan dalam cakupan (pungli KTP).
+  const gateHits = useVector ? rank(textRanked.map((h) => ({ id: h.id, skor: h.skor }))) : hits;
   const t3 = performance.now();
 
   // Layanan luar cakupan yang disebut eksplisit (SIM, SKCK, ...) dan tidak ada di judul chunk mana pun:
-  // cakupan dipaksa 0 sehingga gerbang abstain menjawab di_luar_cakupan.
+  // cakupan dipaksa 0 sehingga gerbang abstain menjawab di_luar_cakupan. Hanya hit vektor tanpa hit leksikal
+  // = cakupan 0 (mode BM25 akan abstain karena tidak ada hasil).
   const oosNoun = outOfScopeNoun(db, opts.query);
   const coverage = oosNoun
     ? 0
-    : hits.length
-      ? coverageOf(db, opts.query, hits.slice(0, 3), expansion.explained, extraTerms, [
+    : gateHits.length
+      ? coverageOf(db, opts.query, gateHits.slice(0, 3), expansion.explained, extraTerms, [
           ...new Set(expansion.terms.flatMap((e) => stemTokens(e))),
         ])
-      : null;
+      : hits.length
+        ? 0
+        : null;
   return {
     hits,
     coverage,
@@ -363,7 +373,7 @@ function debugOf(
 function abstainOf(s: SyncResult, deps: RetrievalDeps): AbstainReason | undefined {
   if (s.hits.length === 0) return 'di_luar_cakupan';
   const min = deps.minCoverage ?? envMinCoverage() ?? DEFAULT_MIN_COVERAGE;
-  // Cakupan leksikal dihitung pada top-3 hasil FUSI, jadi gerbang berlaku juga di mode hybrid.
+  // Cakupan leksikal dihitung pada top-3 peringkat leksikal (lihat syncSearch), jadi berlaku sama di mode hybrid.
   if (min <= 0 || s.coverage === null || s.coverage >= min) return undefined;
   return s.coverage === 0 ? 'di_luar_cakupan' : 'skor_rendah';
 }

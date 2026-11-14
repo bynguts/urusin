@@ -133,6 +133,35 @@ describe('embedder HTTP', () => {
     await createHttpEmbedder({ baseUrl: 'https://j', apiKey: 'k', model: 'm' }, undefined, { fetch })(['a']);
     expect('task' in body).toBe(false);
   });
+  it('awalan teks (EmbeddingGemma) disambung satu spasi setelah redaksi, lalu dipotong ke maxChars', async () => {
+    let input: string[] = [];
+    const fetch: FetchFn = async (_u, init) => {
+      input = (JSON.parse(init.body) as { input: string[] }).input;
+      return res(200, { data: input.map((_t, index) => ({ index, embedding: [1] })) });
+    };
+    const cfg = loadEmbedConfig({
+      LLM_EMBED_MODEL: 'embeddinggemma-300m',
+      LLM_EMBED_BASE_URL: 'http://127.0.0.1:4340/v1',
+      LLM_EMBED_API_KEY: 'lokal',
+      LLM_EMBED_PREFIX_QUERY: ' task: search result | query: ',
+      LLM_EMBED_PREFIX_PASSAGE: 'title: none | text:',
+      LLM_EMBED_MAX_CHARS: '60',
+    })!;
+    expect(cfg).toMatchObject({ prefixQuery: 'task: search result | query:', maxChars: 60 });
+    await createHttpEmbedder(cfg, undefined, { fetch }, cfg.prefixQuery)([`akta NIK ${NIK}`]);
+    expect(input[0]).toBe('task: search result | query: akta NIK [DATA]');
+    await createHttpEmbedder(cfg, undefined, { fetch }, cfg.prefixPassage)(['x'.repeat(100)]);
+    expect(input[0]).toBe(`title: none | text: ${'x'.repeat(40)}`);
+    // Tanpa awalan/batas: teks apa adanya; batas tidak valid diabaikan.
+    expect(
+      loadEmbedConfig({
+        LLM_EMBED_MODEL: 'm',
+        LLM_BASE_URL: 'https://a/v1',
+        LLM_API_KEY: 'k',
+        LLM_EMBED_MAX_CHARS: 'x',
+      }),
+    ).toMatchObject({ prefixQuery: undefined, prefixPassage: undefined, maxChars: undefined });
+  });
 });
 
 describe('cache embedding per (model, task, hash)', () => {

@@ -187,8 +187,9 @@ agen) sampai restart. Sekarang:
   `URUSIN_DAILY_IDR_CAP` (angka > 0, wajib di mode llm).
 - Pencarian sumber resmi berjalan di server Urusin sendiri (kata kunci + vektor): sidecar embedding self-hosted lewat
   `COMPOSE_PROFILES=embedding`, `EMBEDDING_IMAGE`, dan `URUSIN_EMBED_URL=http://127.0.0.1:4340` (lihat
-  `compose.prod.yml`). Tanpa rerank di produksi. Penyedia embedding/rerank eksternal (`LLM_EMBED_*`, `RERANK_*`)
-  hanyalah jalur opsional di kode dan tidak dipakai.
+  `compose.prod.yml`). Tanpa rerank di produksi. Leg vektor RAG memakai sidecar yang sama lewat `LLM_EMBED_*`
+  (contoh EmbeddingGemma di `.env.example`; `LLM_EMBED_MODEL` harus sama dengan model vektor di `rag.db`).
+  Penyedia rerank eksternal (`RERANK_*`) hanyalah jalur opsional di kode dan tidak dipakai.
 - IP klien untuk kuota per-IP: compose sudah mengisi `ADDRESS_HEADER=X-Forwarded-For` dan `XFF_DEPTH=1`.
   Caddy adalah satu-satunya hop dan **menimpa** `X-Forwarded-For` dari klien (klien bukan proxy tepercaya),
   jadi entri terakhir = IP klien asli. Diverifikasi dengan Caddy 2 sungguhan: permintaan dengan

@@ -499,6 +499,22 @@ describe('cari_pengetahuan: pipeline bawaan', () => {
     expect(bpjs?.kutipan.url).toBe('https://contoh.go.id/nas-bpjs');
     expect(bpjs?.verifiedAt).toBe(NOW);
   });
+  it('gerbang abstain hybrid = BM25: leg vektor tidak mengubah cakupan maupun keputusan abstain', () => {
+    for (const query of ['akta kelahiran', 'kk akta', 'resep rendang padang']) {
+      const bm = cariPengetahuanTool.execute(db, { query, k: 4 });
+      const hy = cariPengetahuanTool.execute(db, { query, k: 4 }, { vectorIds: ['nas-bpjs', 'nas-akta'] });
+      expect(hy.mode, query).toBe('hybrid');
+      expect(hy.tanpaHasil, query).toBe(bm.tanpaHasil);
+      if (bm.debug?.coverage !== null) expect(hy.debug?.coverage, query).toBe(bm.debug?.coverage);
+    }
+    // Hanya hit vektor (tanpa hit leksikal) = abstain, sama seperti BM25 yang tidak punya hasil.
+    const only = cariPengetahuanTool.execute(
+      db,
+      { query: 'resep rendang padang' },
+      { vectorIds: ['nas-akta'] },
+    );
+    expect(only).toMatchObject({ tanpaHasil: true, hasil: [] });
+  });
   it('executeAsync: rerank berjalan dan statusnya tercatat; gagal -> urutan fusi', async () => {
     const base = cariPengetahuanTool.execute(db, { query: 'kk akta', k: 3 });
     const p = new FakeProvider({ replies: [reply({ urutan: ['d3'] })] });

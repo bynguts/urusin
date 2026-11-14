@@ -30,19 +30,26 @@ export async function loadRealEmbedder(
   const stats = { query: newStats(), passage: newStats() };
   const mk = (
     task: string | undefined,
+    prefix: string | undefined,
     st: ProviderStats,
     http: { timeoutMs: number; maxRetries: number },
   ): Embedder => {
-    const raw = createHttpEmbedder(cfg, task, { stats: st, fetch: opts.fetch, ...http });
-    return opts.cache ? withEmbedCache(raw, opts.cache, { model: cfg.model, task }) : raw;
+    const raw = createHttpEmbedder(cfg, task, { stats: st, fetch: opts.fetch, ...http }, prefix);
+    // Awalan ikut kunci cache: teks sama dengan awalan berbeda menghasilkan vektor berbeda.
+    const key = prefix ? `${task ?? ''}|${prefix}` : task;
+    return opts.cache ? withEmbedCache(raw, opts.cache, { model: cfg.model, task: key }) : raw;
   };
   // Kueri warga: batas 2 detik tanpa retry + pemutus sirkuit (jatuh ke BM25); dokumen (ingest) boleh lebih lama.
   const breaker = createBreaker();
-  const q = mk(cfg.taskQuery, stats.query, { timeoutMs: QUERY_EMBED_TIMEOUT_MS, maxRetries: 0 });
+  const q = mk(cfg.taskQuery, cfg.prefixQuery, stats.query, {
+    timeoutMs: QUERY_EMBED_TIMEOUT_MS,
+    maxRetries: 0,
+  });
   const embedQuery: Embedder = (texts) => breaker.run(() => q(texts));
-  const embed = mk(cfg.taskPassage, stats.passage, { timeoutMs: 30_000, maxRetries: 2 });
+  // 120 detik: sidecar CPU (llama.cpp, 2 thread) butuh ~40 detik untuk 64 chunk panjang (diukur 2026-11-14).
+  const embed = mk(cfg.taskPassage, cfg.prefixPassage, stats.passage, { timeoutMs: 120_000, maxRetries: 2 });
   try {
-    const [v] = await createHttpEmbedder(cfg, cfg.taskQuery, { fetch: opts.fetch })(['uji']);
+    const [v] = await createHttpEmbedder(cfg, cfg.taskQuery, { fetch: opts.fetch }, cfg.prefixQuery)(['uji']);
     if (!v || v.length === 0) return null;
   } catch {
     return null;
