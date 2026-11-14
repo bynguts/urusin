@@ -18,14 +18,16 @@
   const akun = $derived(page.data.akun as { email: string | null } | null | undefined);
 
   type Bagian = { id: string; label: string; ikon: NamaIkon };
-  /** Urutan sama dengan urutan bagian di halaman; Zona bahaya (hanya akun warga) selalu paling akhir. */
+  /** Urutan sama dengan urutan bagian di halaman; Keluar dan hapus akun (hanya akun warga) selalu paling akhir. */
   const BAGIAN = $derived<Bagian[]>([
     { id: 'tampilan', label: 'Tampilan & suara', ikon: 'huruf' },
     { id: 'wilayah', label: 'Wilayah layanan', ikon: 'lokasi' },
     { id: 'akun', label: 'Akun & keluarga', ikon: 'keluarga' },
     { id: 'ingatan', label: 'Yang Urusin ingat', ikon: 'riwayat' },
     { id: 'privasi', label: 'Privasi & data', ikon: 'perisai-centang' },
-    ...(data.zonaBahaya ? [{ id: 'zona-bahaya', label: 'Zona bahaya', ikon: 'peringatan' as const }] : []),
+    ...(data.zonaBahaya
+      ? [{ id: 'zona-bahaya', label: 'Keluar dan hapus akun', ikon: 'peringatan' as const }]
+      : []),
   ]);
 
   /** Ikon per jenis butir ingatan (ikon yang sudah ada di set). */

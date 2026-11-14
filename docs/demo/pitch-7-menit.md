@@ -30,7 +30,7 @@ dan menjawab pertanyaan lapangan/PSF dan UI.
 | 2:15–2:45 | **Live 3, situs asli:** Pendamping membuka Telunjuk Sakti asli dari instance publik. Bila tantangan Cloudflare muncul, B **mencentang kotaknya sendiri** di layar Pendamping ("Selesaikan pemeriksaan keamanan situs"). Berhenti di halaman login: "Kami tidak login ke akun warga Wonogiri di panggung."                                                                                                                                                         | HP                             | Tech / Etika |
 | 2:45–4:00 | **Live 4, Mode Uji (diumumkan lisan + banner):** pindah ke laptop `localhost`. "Setujui dan buka situs" → Ambil alih: login + CAPTCHA diketik B → lembar **"Izinkan AI mengisi?"** → **Izinkan isi** → AI mengisi dan mengunggah berkas (progres "n dari N") → "Periksa isian, lalu tekan Kirim pengajuan": **B menekan Kirim** → "Nomor permohonan" → "Browser ditutup. Login dan cookie ikut dihapus."                                                          | Laptop (dua panel)             | Tech / UX    |
 | 4:00–5:15 | **Angka (A), maksimal 3 per slide:** lihat tabel "Angka" di bawah.                                                                                                                                                                                                                                                                                                                                                                                                | 3 slide angka                  | Tech / SE    |
-| 5:15–6:15 | **Etika & keamanan (A):** lethal trifecta dan cara memutusnya; pengungkapan Browser Pendamping (kredensial melintas server, tidak disimpan atau dicatat, layar tidak ke AI, sesi dihancurkan, alternatif "Saya isi sendiri"); tanpa penyamaran; egress hanya ke situs resmi; vault + Zona bahaya + UU PDP.                                                                                                                                                        | Slide: diagram 3 kaki trifecta | Etika        |
+| 5:15–6:15 | **Etika & keamanan (A):** lethal trifecta dan cara memutusnya; pengungkapan Browser Pendamping (kredensial melintas server, tidak disimpan atau dicatat, layar tidak ke AI, sesi dihancurkan, alternatif "Saya isi sendiri"); tanpa penyamaran; egress hanya ke situs resmi; vault + Keluar dan hapus akun + UU PDP.                                                                                                                                              | Slide: diagram 3 kaki trifecta | Etika        |
 | 6:15–6:50 | **Dampak & keberlanjutan (B):** 514 kab/kota dikenali (Kepmendagri 300.2.2-2138/2025) → kanal resmi; persyaratan bersumber untuk kota berkorpus; dua tier: semi (AI mengisi, warga Kirim; kirim asli tervalidasi di Wonogiri, portal terdaftar lain lewat Navigator generik) dan dipandu, plus cek status baca-saja (Surabaya, Semarang). Skala = tambah worker Pendamping; biaya dan latensi terbuka di `/api/transparansi`. Adopsi lewat pendamping desa/Pemda. | Slide: peta cakupan            | PSF          |
 | 6:50–7:00 | **Penutup:** slide pemetaan rubrik + QR ke `urusinai.web.id`. "Urusan beres, warga tetap pegang kendali."                                                                                                                                                                                                                                                                                                                                                         | Slide rubrik + QR              | Semua        |
 
@@ -67,7 +67,7 @@ dan menjawab pertanyaan lapangan/PSF dan UI.
    sendiri" (dipandu).
 3. **Tanpa penyamaran:** Chromium headed biasa, tanpa stealth, tanpa jasa pemecah CAPTCHA, tanpa proxy
    residensial. Tantangan Cloudflare dicentang manusia. Situs yang menolak → dipandu.
-4. **Data warga:** vault AES-256-GCM dengan kunci per akun; "Hapus akun" di Zona bahaya menghancurkan kuncinya.
+4. **Data warga:** vault AES-256-GCM dengan kunci per akun; "Hapus akun" di Keluar dan hapus akun menghancurkan kuncinya.
    Sandi argon2id. Tamu terhapus 72 jam, akun juri 24 jam. Pemroses dan transfer lintas batas (Oracle Singapura,
    Resend AS) diungkap di kebijakan privasi (UU PDP).
 5. **Jawaban jujur bila server dibobol:** bocor database saja → isi vault tetap terenkripsi; database **dan**
@@ -91,13 +91,13 @@ dan menjawab pertanyaan lapangan/PSF dan UI.
 
 ## Pemetaan rubrik (slide 6:50)
 
-| Kriteria                  | Bukti di produk                                                                                                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Problem-Solution Fit (25) | Cerita perantau nyata; angka BPS terverifikasi; recon Telunjuk Sakti (42 layanan); Peristiwa Hidup; 514 kab/kota → kanal resmi; HP bisa mengisi lewat Browser Pendamping |
-| Tech Innovation (25)      | Browser Pendamping (screencast CDP + ambil alih); RAG hybrid + rerank (recall@3 100%, abstain 100/100); gateway LLM OpenAI-compatible + capability probe; policy gate    |
-| Software Engineering (25) | Monorepo bertipe, kontrak zod, > 1.200 tes + e2e, coverage berambang, Lighthouse CI, image multi-arch by digest, audit berantai hash, ADR, commit konvensional           |
-| UI/UX (15)                | Desain tim di pen.dev, mobile-first 360 px + dua panel laptop, "Giliran Anda" yang jelas, Bacakan, jalur tanpa daftar, JS ≤ 70 KB                                        |
-| Ethics & Security (10)    | Kirim selalu oleh warga, "Izinkan isi" terikat origin, injection ASR 0% tulis, vault per akun + crypto-shred, Zona bahaya, kebijakan privasi UU PDP, tanpa penyamaran    |
+| Kriteria                  | Bukti di produk                                                                                                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Problem-Solution Fit (25) | Cerita perantau nyata; angka BPS terverifikasi; recon Telunjuk Sakti (42 layanan); Peristiwa Hidup; 514 kab/kota → kanal resmi; HP bisa mengisi lewat Browser Pendamping        |
+| Tech Innovation (25)      | Browser Pendamping (screencast CDP + ambil alih); RAG hybrid + rerank (recall@3 100%, abstain 100/100); gateway LLM OpenAI-compatible + capability probe; policy gate           |
+| Software Engineering (25) | Monorepo bertipe, kontrak zod, > 1.200 tes + e2e, coverage berambang, Lighthouse CI, image multi-arch by digest, audit berantai hash, ADR, commit konvensional                  |
+| UI/UX (15)                | Desain tim di pen.dev, mobile-first 360 px + dua panel laptop, "Giliran Anda" yang jelas, Bacakan, jalur tanpa daftar, JS ≤ 70 KB                                               |
+| Ethics & Security (10)    | Kirim selalu oleh warga, "Izinkan isi" terikat origin, injection ASR 0% tulis, vault per akun + crypto-shred, Keluar dan hapus akun, kebijakan privasi UU PDP, tanpa penyamaran |
 
 ## Rencana gagal (diumumkan sebelumnya)
 
