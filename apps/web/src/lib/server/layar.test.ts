@@ -470,12 +470,14 @@ describe('/privasi', () => {
       'Singapura',
       'OpenAI',
       'Google',
-      'Resend',
-      'Cloudflare Turnstile',
-      'Jina AI',
+      'mesin pencari sumber resmi',
       'disimpan 3 hari',
     ])
       expect(body, pihak).toContain(pihak);
+    // Hanya pihak yang benar-benar memproses data di produksi (email mode log, Turnstile nonaktif, embedding
+    // berjalan di server sendiri): yang tidak aktif tidak boleh tercantum.
+    for (const tidakAktif of ['Resend', 'Cloudflare Turnstile', 'Jina AI'])
+      expect(body, tidakAktif).not.toContain(tidakAktif);
     // Worker laptop dicabut dari produksi: tidak boleh lagi tercantum sebagai pemroses.
     expect(body).not.toContain('Laptop tim Urusin');
     expect(body).not.toContain('Tailscale');

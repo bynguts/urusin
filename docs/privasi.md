@@ -56,18 +56,18 @@ server itu; untuk situs seperti ini Urusin memandu Anda mengisi sendiri langkah 
 
 ## Pihak lain yang memproses data
 
-| Pihak                                           | Lokasi            | Data yang diterima                                                                                                                                                                                 |
-| ----------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Oracle Cloud (hosting)                          | Singapura         | Semua data di atas, dalam bentuk terenkripsi untuk Data Diri dan dokumen                                                                                                                           |
-| Resend (pengiriman email)                       | Amerika Serikat   | Alamat email Anda dan isi email verifikasi atau atur ulang sandi. Hanya bila pengiriman email diaktifkan; selama belum, tidak ada email yang dikirim                                               |
-| Google (bila Anda memilihnya)                   | Global            | Proses masuk dengan akun Google Anda                                                                                                                                                               |
-| OpenAI (model GPT, lewat proxy model milik tim) | Di luar Indonesia | Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti penanda sebelum dikirim. Gambar yang Anda lampirkan di chat (salinan diperkecil) untuk dibaca isinya |
-| Jina AI (pencarian sumber resmi)                | Di luar Indonesia | Kalimat pertanyaan yang sudah tanpa data pribadi, bila pencarian vektor atau pengurutan ulang (rerank) sumber diaktifkan                                                                           |
-| Cloudflare Turnstile                            | Global            | Data teknis peramban di halaman masuk untuk membedakan manusia dan bot; wajib lolos di tombol juri dan setelah beberapa kali gagal masuk                                                           |
+| Pihak                                           | Lokasi            | Data yang diterima                                                                                                                                                                                                                                                  |
+| ----------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Oracle Cloud (hosting)                          | Singapura         | Semua data di atas, dalam bentuk terenkripsi untuk Data Diri dan dokumen. Server ini juga menjalankan mesin pencari sumber resmi Urusin dan Browser Pendamping                                                                                                      |
+| Google (bila Anda memilihnya)                   | Global            | Proses masuk dengan akun Google Anda                                                                                                                                                                                                                                |
+| OpenAI (model GPT, lewat proxy model milik tim) | Di luar Indonesia | Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti penanda sebelum dikirim. Gambar yang Anda lampirkan di chat atau foto yang Anda simpan di Dokumen (salinan diperkecil) untuk dibaca isinya dan diperiksa kejelasannya |
 
-Pengiriman ke Resend, Google, OpenAI, Jina, dan Cloudflare adalah transfer data ke luar Indonesia (UU PDP
-Pasal 56). Dasarnya persetujuan Anda. Bila tidak ingin email Anda melintas batas, pakai masuk dengan Google atau
-cara tanpa akun.
+Pencarian sumber resmi (pencarian kata dan vektor) berjalan di server Urusin sendiri: pertanyaan Anda tidak
+dikirim ke mesin pencari pihak lain. Urusin saat ini tidak mengirim email dan tidak memakai layanan anti-bot
+pihak ketiga; bila salah satunya kelak diaktifkan, pihaknya dicantumkan di sini lebih dulu.
+
+Pengiriman ke Google dan OpenAI adalah transfer data ke luar Indonesia (UU PDP Pasal 56). Dasarnya persetujuan
+Anda.
 
 ## Cookie
 
