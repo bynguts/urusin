@@ -180,6 +180,67 @@ describe('Vault per akun', () => {
     expect(existsSync(join(dir, A, `${doc.id}.bin`))).toBe(false);
   });
 
+  it('hasil periksa foto: terenkripsi, hanya pemilik, dokumen lama tanpa periksa, ikut terhapus dan pindah', () => {
+    const { db, vault, user } = vaultUji();
+    user(A);
+    user(B);
+    const lama = vault.putDocument(A, {
+      jenis: 'kk',
+      judul: 'KK',
+      mime: 'image/png',
+      bytes: Buffer.from('a'),
+    });
+    const doc = vault.putDocument(A, {
+      jenis: 'akta',
+      judul: 'Akta',
+      mime: 'image/jpeg',
+      bytes: Buffer.from('b'),
+    });
+    const periksa = {
+      status: 'perlu_ulang',
+      masalah: [{ bagian: 'bawah', jenis: 'terpotong' }],
+      ringkasan: 'Bagian bawah terpotong',
+    };
+    expect(vault.setPeriksa(B, doc.id, periksa)).toBe(false); // bukan milik B
+    expect(vault.setPeriksa(A, 'dok_x', periksa)).toBe(false);
+    expect(vault.setPeriksa(A, doc.id, periksa)).toBe(true);
+    const daftar = vault.listDocuments(A);
+    expect(daftar.find((d) => d.id === doc.id)?.periksa).toEqual(periksa);
+    // Dokumen lama (belum pernah diperiksa): tanpa field, bukan `belum`.
+    expect(daftar.find((d) => d.id === lama.id)).not.toHaveProperty('periksa');
+    const ct = (
+      db.prepare('SELECT ciphertext FROM vault_periksa WHERE doc_id = ?').get(doc.id) as {
+        ciphertext: Buffer;
+      }
+    ).ciphertext;
+    expect(ct.toString('latin1')).not.toContain('terpotong');
+    // Ciphertext rusak: dianggap belum diperiksa, daftar tetap terbaca.
+    db.prepare('UPDATE vault_periksa SET ciphertext = ? WHERE doc_id = ?').run(Buffer.from('rusak'), doc.id);
+    expect(vault.listDocuments(A).find((d) => d.id === doc.id)).not.toHaveProperty('periksa');
+    vault.setPeriksa(A, doc.id, { ...periksa, status: 'jelas' });
+    expect(vault.listDocuments(A).find((d) => d.id === doc.id)?.periksa?.status).toBe('jelas');
+
+    // Tamu -> akun: hasil periksa ikut pindah (dienkripsi ulang).
+    const T = `tamu_${'c'.repeat(32)}`;
+    user(T);
+    const dt = vault.putDocument(T, {
+      jenis: 'ktp',
+      judul: 'KTP',
+      mime: 'image/png',
+      bytes: Buffer.from('c'),
+    });
+    vault.setPeriksa(T, dt.id, periksa);
+    const r = vault.siapkanPindah(T, B);
+    r.terapkan();
+    r.selesai();
+    expect(vault.listDocuments(B).map((d) => d.periksa)).toEqual([periksa]);
+
+    expect(vault.deleteDocument(A, doc.id)).toBe(true);
+    expect(db.prepare('SELECT COUNT(*) n FROM vault_periksa WHERE doc_id = ?').get(doc.id)).toEqual({ n: 0 });
+    vault.shred(B);
+    expect(db.prepare('SELECT COUNT(*) n FROM vault_periksa').get()).toEqual({ n: 0 });
+  });
+
   it('crypto-shred: DEK hilang, ciphertext yang tersisa tidak bisa dibuka, berkas dan baris terhapus', () => {
     const { db, dir, vault, user } = vaultUji();
     user(A);

@@ -277,6 +277,24 @@ export const JenisDokumenSchema = z.enum(['ktp', 'kk', 'akta', 'surat', 'foto', 
 export const MIME_DOKUMEN = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const;
 export const UKURAN_DOKUMEN_MAKS = 9 * 1024 * 1024;
 export const BERKAS_PER_PEMILIK_MAKS = 10;
+/**
+ * Hasil periksa kejelasan foto dokumen oleh pembaca vision: `jelas`, `perlu_ulang` (buram, terpotong, ...), atau
+ * `belum` (vision tidak tersedia/gagal: tanpa klaim). Teks sudah diredaksi PII. Dokumen lama/PDF tanpa field ini.
+ */
+export const PeriksaDokumenSchema = z.object({
+  status: z.enum(['jelas', 'perlu_ulang', 'belum']),
+  masalah: z
+    .array(
+      z.object({
+        bagian: z.string().max(60),
+        jenis: z.enum(['buram', 'terpotong', 'gelap', 'silau', 'miring', 'tertutup']),
+      }),
+    )
+    .max(6),
+  /** Satu kalimat pendek untuk kartu dokumen, mis. "Bagian bawah terpotong". */
+  ringkasan: z.string().max(300),
+});
+export type PeriksaDokumen = z.infer<typeof PeriksaDokumenSchema>;
 export const DokumenAkunSchema = z.object({
   id: z.string().min(1),
   jenis: JenisDokumenSchema,
@@ -285,6 +303,7 @@ export const DokumenAkunSchema = z.object({
   ukuran: z.number().int().nonnegative(),
   disimpanPada: IsoWaktuSchema,
   bacaSaja: z.boolean().optional(),
+  periksa: PeriksaDokumenSchema.optional(),
 });
 export type DokumenAkun = z.infer<typeof DokumenAkunSchema>;
 export const DaftarDokumenResponseSchema = z.object({ dokumen: z.array(DokumenAkunSchema) });

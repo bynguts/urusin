@@ -1,8 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tes membaca JSON respons tanpa tipe */
 import { DEFAULT_KUOTA, DevMailer, GoogleOidc, sha256Hex, type Akun } from '@urusin/akun';
 import { FakeGoogle, MemoryMailer } from '@urusin/akun/testing';
-import { GalatApiSchema, SesiAkunResponseSchema, VaultResponseSchema } from '@urusin/contracts';
+import {
+  DokumenAkunSchema,
+  GalatApiSchema,
+  SesiAkunResponseSchema,
+  VaultResponseSchema,
+} from '@urusin/contracts';
 import { DemoProvider } from '@urusin/harness';
+import { FakeProvider, fakeCompletion } from '@urusin/llm';
 import { isRedirect } from '@sveltejs/kit';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { handle } from '../../hooks.server';
@@ -57,10 +63,15 @@ let jam: number;
 
 type InitRt = NonNullable<Parameters<typeof createRuntime>[0]>;
 
-function buatRt(akun: InitRt['akun'] = {}, provider: InitRt['provider'] = new DemoProvider()) {
+function buatRt(
+  akun: InitRt['akun'] = {},
+  provider: InitRt['provider'] = new DemoProvider(),
+  harness?: InitRt['harness'],
+) {
   rt = createRuntime({
     provider,
     config: { dbPath: ':memory:', disconnectGraceMs: 0 },
+    ...(harness ? { harness } : {}),
     akun: {
       mailer,
       google: new GoogleOidc({
@@ -975,6 +986,62 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
     );
     expect((await lewatHook(hapus(), b.jar, dokumenDel, { id: doc.id })).status).toBe(404);
     expect((await lewatHook(hapus(), a.jar, dokumenDel, { id: doc.id })).status).toBe(200);
+  });
+
+  it('dokumen: foto diperiksa kejelasannya (periksa=tunggu), hasil ikut di daftar; PDF dan dokumen lama tanpa periksa', async () => {
+    const bacaan = {
+      gambar: [
+        {
+          jenisDokumen: 'Surat Keterangan Kelahiran',
+          terbaca: 'sebagian',
+          masalah: [{ bagian: 'bagian bawah', jenis: 'terpotong' }],
+          ringkasan: `NIK ${NIK_SINTETIS} terlihat.`,
+        },
+      ],
+    };
+    buatRt({}, new FakeProvider({ replies: [fakeCompletion({ content: JSON.stringify(bacaan) })] }), {
+      visionModel: 'visi',
+    });
+    await daftarAkun();
+    const a = await masuk();
+    const unggah = async (berkas: Blob, nama: string, periksa?: string) => {
+      const fd = new FormData();
+      fd.set('berkas', berkas, nama);
+      fd.set('jenis', 'akta');
+      fd.set('judul', nama);
+      if (periksa) fd.set('periksa', periksa);
+      const r = await lewatHook(
+        new Request(`${ORIGIN}/api/vault`, { method: 'POST', headers: { origin: ORIGIN }, body: fd }),
+        a.jar,
+        vaultPost,
+      );
+      expect(r.status).toBe(201);
+      return DokumenAkunSchema.parse(await r.json());
+    };
+    const pdf = await unggah(new Blob(['%PDF-1.7'], { type: 'application/pdf' }), 'akta.pdf', 'tunggu');
+    expect(pdf).not.toHaveProperty('periksa');
+    const foto = await unggah(
+      new Blob([new Uint8Array([0xff, 0xd8, 1])], { type: 'image/jpeg' }),
+      'akta.jpg',
+      'tunggu',
+    );
+    expect(foto.periksa).toEqual({
+      status: 'perlu_ulang',
+      masalah: [{ bagian: 'bagian bawah', jenis: 'terpotong' }],
+      ringkasan: 'Bagian bawah terpotong',
+    });
+    // Dokumen lama (sebelum fitur ini) tanpa baris periksa.
+    const lama = rt.akun.vault.putDocument(akunDari(a.jar).id, {
+      jenis: 'ktp',
+      judul: 'KTP lama',
+      mime: 'image/png',
+      bytes: Buffer.from('x'),
+    });
+    const v = VaultResponseSchema.parse(await (await lewatHook(vget('/api/vault'), a.jar, vaultList)).json());
+    expect(v.dokumen.find((d) => d.id === foto.id)?.periksa?.status).toBe('perlu_ulang');
+    expect(v.dokumen.find((d) => d.id === lama.id)).not.toHaveProperty('periksa');
+    expect(v.dokumen.find((d) => d.id === pdf.id)).not.toHaveProperty('periksa');
+    expect(JSON.stringify(v)).not.toContain(NIK_SINTETIS);
   });
 
   it('volume host penuh → 507 dengan pesan jujur', async () => {
