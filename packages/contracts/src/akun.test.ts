@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DataDiriSchema,
+  DokumenAkunSchema,
   ENDPOINT_AKUN,
   KodeGalatAkunSchema,
   MasukRequestSchema,
@@ -75,5 +76,31 @@ describe('kontrak akun', () => {
       expect(KodeGalatAkunSchema.options).toContain(k);
     expect(ENDPOINT_AKUN.googleCallback.path).toBe('/auth/google/callback');
     expect(ENDPOINT_AKUN.unduhDokumen.path).toBe('/api/vault/[id]');
+  });
+  it('dokumen: `periksa` opsional (dokumen lama tanpa field tetap sah), status dan jenis masalah tertutup', () => {
+    const lama = {
+      id: 'dok_1',
+      jenis: 'ktp',
+      judul: 'KTP',
+      mime: 'image/jpeg',
+      ukuran: 10,
+      disimpanPada: '2026-11-09T00:00:00.000Z',
+    };
+    expect(DokumenAkunSchema.parse(lama)).not.toHaveProperty('periksa');
+    const periksa = {
+      status: 'perlu_ulang',
+      masalah: [{ bagian: 'bawah', jenis: 'terpotong' }],
+      ringkasan: 'Bagian bawah terpotong',
+    };
+    expect(DokumenAkunSchema.parse({ ...lama, periksa }).periksa).toEqual(periksa);
+    expect(DokumenAkunSchema.safeParse({ ...lama, periksa: { ...periksa, status: 'sah' } }).success).toBe(
+      false,
+    );
+    expect(
+      DokumenAkunSchema.safeParse({
+        ...lama,
+        periksa: { ...periksa, masalah: [{ bagian: 'x', jenis: 'jelek' }] },
+      }).success,
+    ).toBe(false);
   });
 });

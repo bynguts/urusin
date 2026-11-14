@@ -385,6 +385,8 @@ export type GroundedGenerationOptions = {
   chunks: readonly ChunkRecord[];
   signal?: AbortSignal | undefined;
   maxTokens?: number | undefined;
+  /** Foto dokumen lampiran warga belum jelas (lihat `ToolContext.catatanFoto`). */
+  catatanFoto?: string | undefined;
 };
 
 /** Minta model menyusun `{klaim:[{teks,kutipan:[{refId,kutipanPersis}]}]}` dari chunk yang diberikan (tanpa streaming). */
@@ -412,6 +414,12 @@ export async function generateGroundedAnswer(opts: GroundedGenerationOptions) {
         '- kutipanPersis cukup potongan TERPENDEK yang membuktikan klaim (6-25 kata), biasanya satu kutipan per klaim; jangan menyalin seluruh daftar. Jawaban ringkas lebih cepat sampai ke warga.',
         '- Jangan membuat klaim tanpa kutipan. Bila sumber tidak memuat jawabannya, kembalikan klaim kosong dan isi handoff.',
         '- Jangan menulis nomor identitas, nomor HP, atau email warga.',
+        ...(opts.catatanFoto
+          ? [
+              `- Foto dokumen yang dilampirkan warga BELUM JELAS (warga sudah diminta memfoto ulang): ${spotlight('user_file', opts.catatanFoto, { nonce, id: 'kualitas_foto', maxChars: 400 })}`,
+              '- Karena itu JANGAN membuat klaim bahwa dokumen atau foto warga sudah sah, lengkap, jelas, atau dapat dipakai. Tulis klaim sebagai persyaratan umum (mis. "Syaratnya surat keterangan lahir dari rumah sakit atau bidan").',
+            ]
+          : []),
       ].join('\n'),
     },
     // Pertanyaan juga dibungkus: di sini ia hanya bahan untuk menentukan apa yang dijawab, bukan perintah

@@ -45,7 +45,7 @@ import { PiiInterceptor } from './pii.js';
 import { PolicyGate } from './policy.js';
 import { buildStateNote, buildSystemPrompt, mintaPemalsuan } from './prompt.js';
 import type { QuotaMeter, QuotaStatus } from './quota.js';
-import { GAMBAR_MAKS, bacaGambar } from './gambar.js';
+import { GAMBAR_MAKS, bacaGambar, peringatanFoto } from './gambar.js';
 import { newNonce, spotlight } from './spotlight.js';
 import type { HarnessStore, TurnStatus, UrusanRow } from './store.js';
 import { clip, ringkasRiwayat, type ToolContext, type ToolRegistry } from './tools.js';
@@ -308,6 +308,8 @@ class TurnRunner {
   private kontenTakTepercaya = false;
   /** Wilayah KTP ditetapkan dari pesan giliran ini sendiri (`wilayahDariPesan`), syarat `jalurCepat`. */
   private wilayahDariTeks = false;
+  /** Peringatan foto lampiran yang belum jelas (sudah tampil ke warga), diteruskan ke jawaban bersumber. */
+  private catatanFoto: string | undefined;
 
   constructor(
     private readonly deps: AgentDeps,
@@ -558,7 +560,9 @@ class TurnRunner {
   /**
    * Gambar lampiran giliran ini dibaca model vision sekali; deskripsinya (diredaksi placeholder PII, dibungkus
    * spotlight sebagai data tak tepercaya) disambung ke pesan warga sehingga ikut riwayat urusan. Gagal/tidak
-   * dikonfigurasi: catatan sistem meminta agen berterus terang bahwa gambarnya belum terbaca.
+   * dikonfigurasi: catatan sistem meminta agen berterus terang bahwa gambarnya belum terbaca. Foto yang buram,
+   * terpotong, dst. langsung disampaikan ke warga (pesan tetap dari harness, sebelum jawaban model) dan agen serta
+   * jawaban bersumber dilarang menyatakan dokumennya sah atau dapat dipakai.
    */
   private async bacaLampiranGambar(): Promise<void> {
     const n = this.turn.gambar.length;
@@ -579,12 +583,20 @@ class TurnRunner {
       signal: this.llmSignal(),
     });
     if (hasil.usage.length) this.account(hasil.usage);
+    const peringatan = hasil.ok && hasil.foto ? peringatanFoto(hasil.foto) : null;
+    let catatanKualitas = '';
+    if (peringatan) {
+      this.catatanFoto = this.turn.pii.redact(peringatan).text;
+      this.emit({ type: 'assistant_text', delta: this.catatanFoto, utuh: true });
+      // Isi peringatan (turunan keluaran vision) hanya ada di dalam blok data; catatan ini teks tetap dari kode.
+      catatanKualitas = `\n[Catatan sistem: foto lampiran belum jelas (lihat "Kondisi foto" pada data di atas) dan peringatan untuk memfoto ulang SUDAH ditampilkan kepada warga; jangan mengulanginya kata per kata. JANGAN menyatakan dokumen atau foto warga sah, lengkap, jelas, atau dapat dipakai sebelum warga mengirim foto yang jelas; boleh menjelaskan persyaratan umumnya.]`;
+    }
     const blok = hasil.ok
       ? `[Isi ${n > 1 ? `${n} gambar` : 'gambar'} lampiran warga di pesan ini, dibaca otomatis oleh sistem pembaca gambar. Jawab berdasarkan isi ini; jangan katakan Anda tidak bisa melihat gambar. Nomor identitas yang terlihat sengaja tidak disalin; jangan meminta atau menuliskannya.]\n${spotlight(
           'user_file',
           this.turn.pii.redact(hasil.teks).text,
           { nonce: this.nonce, id: 'lampiran', maxChars: 1500 },
-        )}`
+        )}${catatanKualitas}`
       : `[Catatan sistem: warga melampirkan ${n > 1 ? `${n} gambar` : 'gambar'} di pesan ini, tetapi isinya BELUM bisa dibaca (pembaca gambar sedang tidak tersedia). Katakan terus terang bahwa Anda belum bisa melihat gambarnya, lalu minta warga menuliskan isi pentingnya (tanpa NIK, nomor KK, atau nomor HP).]`;
     if (hasil.ok) this.kontenTakTepercaya = true;
     this.sambungKePesanWarga(hasil.ok && takTerbaca > 0 ? `${blok}\n${CATATAN_TAK_TERBACA}` : blok);
@@ -1190,6 +1202,7 @@ class TurnRunner {
       pesanWarga: this.turn.userText,
       signal: this.llmSignal(),
       ingatan: this.ingatan ?? undefined,
+      catatanFoto: this.catatanFoto,
     };
     try {
       const res = await tool.execute(ctx, outcome.args as never);
