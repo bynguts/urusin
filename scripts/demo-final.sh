@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Demo final Urusin di SATU laptop (localhost, tanpa VPS dan tanpa Tailscale kecuali untuk LLM): web + Browser
+# Demo final Urusin di SATU laptop (localhost, tanpa server dan tanpa jaringan privat kecuali untuk LLM): web + Browser
 # Pendamping + fixtures + DB berisi akun juri, lewat deploy/compose.demo.yml. Butuh Docker (Compose v2) dan bash
 # (Git Bash di Windows).
 #

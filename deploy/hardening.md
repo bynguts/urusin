@@ -1,7 +1,7 @@
 # Hardening host dan izin deploy
 
-VPS produksi (aarch64, Ubuntu 24.04) dipakai bersama produksi pengguna: Caddy sistem untuk situs lain,
-proxy LLM di `:20128`, kontainer lain, dan aturan iptables khusus. Dokumen ini mencatat **setiap** tulisan
+Host produksi (aarch64, Ubuntu 24.04) juga menjalankan Caddy sistem untuk situs lain dan gateway LLM lokal.
+Dokumen ini mencatat **setiap** tulisan
 Urusin ke host dan izin yang dibutuhkan untuk masing-masing. Apa pun yang tidak tercantum di sini bukan
 milik Urusin dan tidak disentuh.
 
@@ -15,11 +15,11 @@ Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat
 >   each time: timestamped Caddyfile backup, `caddy validate`, status-code snapshot of the
 >   other sites on the same server (env `SITES`) before and after, and auto-rollback if any of them changed.
 
-| Jenis                                      | Cakupan                                                                                                                                                                    | Izin                                                                                                                        |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Tetap (standing), **diberikan 2026-11-08** | `deploy.sh`, rollback (otomatis di `deploy.sh` maupun manual), `restore.sh`, `backup.sh`                                                                                   | Diberikan 2026-11-08. Hanya sumber daya Urusin: kontainer dan volume `urusin-*`, `/opt/urusin`, `127.0.0.1:4310/4311/4320`. |
-| Per kejadian                               | Memasang atau mengubah snippet Caddy (`/etc/caddy/urusin/Caddyfile.urusin` dan baris `import` di `/etc/caddy/Caddyfile`), `caddy reload`                                   | Go-ahead pengguna setiap kali, lewat `deploy/caddy-install.sh` (prosedur di bawah).                                         |
-| Tidak pernah                               | Mengedit blok situs lain di Caddy, restart Caddy, iptables/ufw/tailscale, `daemon.json`, `docker system/image prune`, kontainer/volume/network/image non-Urusin, proxy LLM | Tidak ada izin yang mencakup ini.                                                                                           |
+| Jenis                                      | Cakupan                                                                                                                                                             | Izin                                                                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Tetap (standing), **diberikan 2026-11-08** | `deploy.sh`, rollback (otomatis di `deploy.sh` maupun manual), `restore.sh`, `backup.sh`                                                                            | Diberikan 2026-11-08. Hanya sumber daya Urusin: kontainer dan volume `urusin-*`, `/opt/urusin`, `127.0.0.1:4310/4311/4320`. |
+| Per kejadian                               | Memasang atau mengubah snippet Caddy (`/etc/caddy/urusin/Caddyfile.urusin` dan baris `import` di `/etc/caddy/Caddyfile`), `caddy reload`                            | Go-ahead pengguna setiap kali, lewat `deploy/caddy-install.sh` (prosedur di bawah).                                         |
+| Tidak pernah                               | Mengedit blok situs lain di Caddy, restart Caddy, firewall host, `daemon.json`, `docker system/image prune`, kontainer/volume/network/image non-Urusin, gateway LLM | Tidak ada izin yang mencakup ini.                                                                                           |
 
 - **`image-retention.sh --apply`: izin tetap, diberikan 2026-11-09**, dijalankan setelah setiap deploy Urusin.
   Hanya image `ghcr.io/bynguts/urusin-*` yang lebih lama dari image rollback. Selalu disimpan: image aktif,
@@ -37,7 +37,7 @@ Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat
 - 2026-11-09 (B1, izin per kejadian pengguna untuk DUA perubahan sebagai satu kejadian): rute
   `handle /pendamping/ws/*` -> `127.0.0.1:4330` (edge) dan blok `fixtures.urusinai.web.id` -> `127.0.0.1:4320`.
   Snippet = keluaran `gen-caddyfile.mjs --set primary --fixtures --pendamping --import /opt/urusin/Caddyfile.urusin`
-  dari main 8278852, dipasang dengan prosedur manual di deploy/README.md "Caddy (host)" (skrip menolak
+  dari main 8278852, dipasang dengan prosedur manual setara `caddy-install.sh` (skrip menolak
   `/opt/urusin` yang milik ubuntu; `/etc/caddy/Caddyfile` TIDAK diubah). Backup
   `/var/backups/urusin-caddy/20261109T085708Z` dan `/opt/urusin/Caddyfile.urusin.prev-20261109T085708Z`;
   snapshot situs pengguna sama sebelum dan sesudah.
@@ -48,10 +48,10 @@ Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat
   default masih dipakai image dan tidak disentuh. Bukan izin tetap; prune berikutnya butuh izin baru. Cache
   builder `urusin-ci` tetap dibatasi 1,5 GB (runner CI self-hosted, sudah dicopot).
 - 2026-11-10 (WIB; host 2026-11-10T06:57Z), **izin per kejadian pengguna**: rute
-  `handle /pendamping/w/laptop-a/ws/*` -> `100.64.0.10:4330` (worker Pendamping region `id` di laptop tim
-  lewat Tailscale; `100.64.0.10` di catatan ini IP contoh, IP Tailscale asli laptop hanya ada di host). Snippet = keluaran `gen-caddyfile.mjs --set primary --fixtures --pendamping --worker
+  `handle /pendamping/w/laptop-a/ws/*` -> `100.64.0.10:4330` (worker Pendamping region `id` di jaringan
+  privat; `100.64.0.10` di catatan ini IP contoh). Snippet = keluaran `gen-caddyfile.mjs --set primary --fixtures --pendamping --worker
 laptop-a=100.64.0.10:4330 --import /opt/urusin/Caddyfile.urusin` (diff: +5 baris, rute lain identik),
-  dipasang dengan prosedur manual deploy/README.md "Caddy (host)". Backup `/var/backups/urusin-caddy/20261110T065739Z`
+  dipasang dengan prosedur manual setara `caddy-install.sh`. Backup `/var/backups/urusin-caddy/20261110T065739Z`
   dan `/opt/urusin/Caddyfile.urusin.prev-20261110T065739Z`; status 7 situs sama sebelum/sesudah. Lalu `.env`
   (backup `.env.bak-20261110T065815Z`) + `PENDAMPING_WORKERS` dan `deploy.sh` ulang image yang sama (0f9a8e2):
   `/api/pendamping/antrean` maks 3; `/pendamping/w/laptop-a/health` publik 404.
@@ -143,7 +143,7 @@ Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan meng
 
 ## Jaringan dan egress
 
-- Web memakai `network_mode: host` karena iptables host men-DROP `:20128` dari bridge Docker. Akibatnya
+- Web memakai `network_mode: host` agar menjangkau gateway LLM lokal lewat loopback. Akibatnya
   web berbagi namespace jaringan host, jadi ada dua pagar:
   - **Bind**: `HOST=127.0.0.1`. `deploy.sh` memeriksa dengan `ss -ltn` bahwa `4310`/`4311` hanya terikat
     ke `127.0.0.1`: selama menunggu warna baru sehat, sesudahnya, dan juga pada warna aktif. Alamat lain
@@ -152,7 +152,8 @@ Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan meng
     - Tujuan diperiksa sebelum tersambung, dan setiap alamat hasil DNS diperiksa juga. Loopback, privat,
       link-local (termasuk `169.254.169.254`), CGNAT `100.64/10` dan padanan IPv6 ditolak. Alamat
       IPv4-mapped (`::ffff:a.b.c.d`) diperiksa sebagai IPv4; `::ffff:0:0:0/96`, NAT64 dan 6to4 diblokir utuh.
-    - Pengecualian lokal satu-satunya adalah persis `127.0.0.1:20128` (proxy LLM). Itu pun hanya berlaku bila
+    - Pengecualian lokal satu-satunya untuk LLM adalah alamat gateway LLM lokal (`LLM_PROXY` di
+      `packages/egress/src/policy.ts`). Itu pun hanya berlaku bila
       `LLM_BASE_URL` memang origin itu, dan redirect dari host lain ke sana selalu ditolak.
     - Dua profil terpisah:
       - **runtime** (server web): host Jina dan origin base URL LLM/embedding/rerank dari env;
@@ -166,8 +167,8 @@ Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan meng
       `net`/`tls`, dan `child_process`.
     - Tes membuktikan `127.0.0.1:2019` (admin Caddy), `:4320`, `:22` dan metadata cloud tidak terjangkau,
       juga lewat fetch global setelah boot.
-  - Firewall host (iptables) tidak diubah sebagai pagar tambahan; itu di luar izin Urusin.
-- Fixtures tetap di bridge, tanpa akses ke proxy dan tanpa berbagi jaringan host.
+  - Firewall host tidak diubah sebagai pagar tambahan; itu di luar izin Urusin.
+- Fixtures tetap di bridge, tanpa akses ke gateway LLM dan tanpa berbagi jaringan host.
 
 ### IP klien dan kuota per-IP (`X-Forwarded-For`)
 
@@ -196,7 +197,7 @@ Tes: `bash deploy/tests/caddy-install.test.sh` memakai caddy/curl palsu dan meng
   `ai`/`vision`/`rag`, dan flag fitur pencarian. Endpoint ini tidak memuat sha, versi, nama model, jumlah chunk, biaya,
   atau turn berjalan, sehingga tidak perlu aturan Caddy.
 - Setiap perubahan hanya dengan go-ahead pengguna, lewat `deploy/caddy-install.sh` atau, untuk tata letak
-  `/opt/urusin` saat ini, prosedur manual setara di deploy/README.md "Caddy (host)" (lihat "Model izin").
+  `/opt/urusin` saat ini, prosedur manual yang setara (lihat "Model izin").
 
 ## Catatan rilis: kepemilikan urusan (fix/keamanan-pemilik)
 

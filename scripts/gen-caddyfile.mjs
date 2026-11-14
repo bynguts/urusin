@@ -12,7 +12,7 @@
 //                                             # gagal (exit 1) bila <berkas> (mis. snippet terpasang) menyimpang
 //
 // `--worker laptop-a=100.64.0.10:4330` (boleh berulang, butuh --pendamping): rute WebSocket worker Pendamping
-// tambahan lewat Tailscale, `wss://<app>/pendamping/w/<id>/ws/<uuid>` (HANYA upgrade WebSocket GET; cookie hanya
+// tambahan di jaringan privat, `wss://<app>/pendamping/w/<id>/ws/<uuid>` (HANYA upgrade WebSocket GET; cookie hanya
 // `__Host-urusin_sid`) -> edge worker `/ws/<uuid>`; jalur lain di bawah /pendamping/w/<id>/ 404. Sama dengan
 // `wsUrl` worker itu di PENDAMPING_WORKERS (web).
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -36,7 +36,7 @@ const OKTET = '(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
 const WORKER_RE = new RegExp(`^([a-z0-9][a-z0-9-]{0,31})=(${OKTET}(?:\\.${OKTET}){3}):(\\d{1,5})$`);
 
 /**
- * `<id>=<ip>:<port>` -> worker. IP WAJIB IPv4 literal Tailscale (100.64.0.0/10), sama dengan pengecualian egress
+ * `<id>=<ip>:<port>` -> worker. IP WAJIB IPv4 literal jaringan privat (100.64.0.0/10), sama dengan pengecualian egress
  * web (@urusin/egress `pendampingInternalOrigins`): Caddy tidak pernah meneruskan ke LAN, internet, atau nama DNS.
  */
 export function parseWorker(spec) {

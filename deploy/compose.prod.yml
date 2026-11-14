@@ -3,14 +3,12 @@
 # dan 4311 (web-green) dengan `lb_policy first` (lihat Caddyfile.urusin.primary).
 #
 # JARINGAN: web memakai `network_mode: host` dan mengikat HANYA 127.0.0.1:<port> (HOST=127.0.0.1).
-# Alasan: proxy LLM di host mendengarkan 0.0.0.0:20128, tetapi iptables INPUT men-DROP 20128 dari
-# semua antarmuka kecuali lo/tailscale0; paket dari jaringan bridge Docker (src 172.x) ikut ter-DROP.
-# Dengan jaringan host, web menjangkau proxy lewat loopback (LLM_BASE_URL=http://127.0.0.1:20128/v1)
-# tanpa mengubah firewall. `ports:` tidak berlaku (dan tidak valid) pada network_mode host.
+# Alasan: gateway LLM lokal hanya terjangkau lewat loopback host, jadi web memakai jaringan host
+# (LLM_BASE_URL=http://127.0.0.1:20128/v1). `ports:` tidak berlaku (dan tidak valid) pada network_mode host.
 #
 # Blue/green: deploy.sh memperbarui warna yang menganggur, menunggu sehat, lalu menghentikan warna
-# lama. Keduanya memakai volume `data` yang sama (SQLite WAL, satu host): lihat bagian "Migrasi"
-# di deploy/README.md; hanya warna baru yang boleh menjalankan migrasi (RUN_MIGRATIONS=1).
+# lama. Keduanya memakai volume `data` yang sama (SQLite WAL, satu host): lihat "Migrasi" di
+# deploy/README.md; hanya warna baru yang boleh menjalankan migrasi (RUN_MIGRATIONS=1).
 name: urusin
 
 x-web: &web
@@ -94,7 +92,7 @@ services:
       - data:/data
 
   # Opsional: profil fixture publik (portal palsu untuk demo). Belum tentu ada imagenya.
-  # Tetap di jaringan bridge dengan publish 127.0.0.1:4320: fixtures tidak butuh proxy LLM, jadi
+  # Tetap di jaringan bridge dengan publish 127.0.0.1:4320: fixtures tidak butuh gateway LLM, jadi
   # tidak perlu jaringan host; bridge menjaga isolasi (konten uji tidak melihat port lain di host).
   # Aktifkan dengan `COMPOSE_PROFILES=fixtures` dan FIXTURES_IMAGE@digest.
   fixtures:
@@ -172,7 +170,7 @@ services:
   #   PENDAMPING_DEBUG_TOKEN=<acak >= 32 karakter>        (opsional: /debug kemudi manual lewat SSH -L)
   #   PENDAMPING_UPSTREAM_PROXY=http://host:port          (opsional: egress hulu milik operator, dipakai edge)
   #
-  # ISOLASI (temuan keamanan B1; TANPA iptables, hanya topologi compose):
+  # ISOLASI (temuan keamanan B1; hanya topologi compose, tanpa aturan firewall host):
   # - `pendamping` (Node + Chromium) HANYA di jaringan `pendamping_internal`: `internal: true` (tanpa rute
   #   keluar), gateway IPv4 host `isolated` (host tidak punya alamat di bridge ini, jadi tidak terjangkau),
   #   IPv6 mati. Tidak ada port yang dipublikasikan. Boot gagal-tertutup bila ada rute default atau sandbox
@@ -240,7 +238,7 @@ services:
     # Proses pwuser sendiri tetap tanpa capability efektif/permitted (cap di atas hanya di bounding set dan
     # hanya dipakai helper SUID yang langsung membuangnya); tidak ada biner SUID lain yang bisa memakainya.
     # Profil seccomp Playwright dipangkas: CAP_SYS_ADMIN hanya membuka clone/unshare (bukan mount, bpf, setns,
-    # perf_event_open, dst.); chroot tetap di bawah CAP_SYS_CHROOT. Diukur di deploy/README.md.
+    # perf_event_open, dst.); chroot tetap di bawah CAP_SYS_CHROOT. Lihat docs/adr/0029-browser-pendamping.md.
     cap_drop: [ALL]
     cap_add: [SYS_ADMIN, SYS_CHROOT]
     security_opt:

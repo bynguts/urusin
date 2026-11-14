@@ -1,5 +1,5 @@
 # Gerbang demo final (deploy/compose.demo.yml): satu-satunya port host. Rute sama dengan Caddy produksi
-# (/pendamping/ws/* ke worker, sisanya ke web), plus replika di :4321 dan penerus proxy LLM di 127.0.0.1:20128.
+# (/pendamping/ws/* ke worker, sisanya ke web), plus replika di :4321 dan penerus gateway LLM lokal.
 {
   admin off
   auto_https off

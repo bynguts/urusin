@@ -1,8 +1,8 @@
 # Tambahan untuk demo final di localhost (web lokal di http://localhost:3000, compose.local.yml), dipakai
 # lewat `bash deploy/worker-id/worker.sh up --final`. Perangkat warga = peramban di laptop ini, jadi WS
 # dibuka ke ws://localhost:$WORKER_PORT/ws/<uuid>: cookie __Host-urusin_sid milik localhost ikut terkirim (port
-# tidak memisahkan cookie), sedangkan ke IP Tailscale tidak. Karena itu edge JUGA diikat ke 127.0.0.1 (loopback
-# saja, tetap bukan LAN) dan origin web lokal ditambahkan. Jalur produksi lewat Tailscale tetap aktif.
+# tidak memisahkan cookie), sedangkan ke IP privat tidak. Karena itu edge JUGA diikat ke 127.0.0.1 (loopback
+# saja, tetap bukan LAN) dan origin web lokal ditambahkan. Jalur produksi lewat jaringan privat tetap aktif.
 services:
   pendamping:
     environment:

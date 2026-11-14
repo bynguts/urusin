@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Worker Browser Pendamping region `id` (laptop anggota, Docker Desktop/Linux, lewat Tailscale).
+# Worker Browser Pendamping region `id` (Docker Desktop/Linux, di jaringan privat).
 #
-#   bash deploy/worker-id/worker.sh init            # buat .env (chmod 600) + token acak, IP Tailscale otomatis
+#   bash deploy/worker-id/worker.sh init            # buat .env (chmod 600) + token acak, IP privat otomatis
 #   bash deploy/worker-id/worker.sh build           # bangun image lokal urusin-pendamping:worker-id dari checkout
 #   bash deploy/worker-id/worker.sh up [--final]    # validasi .env lalu jalankan (--final: + localhost:3000)
-#   bash deploy/worker-id/worker.sh sehat [--final] # GET /health lewat IP Tailscale (dan loopback bila --final)
+#   bash deploy/worker-id/worker.sh sehat [--final] # GET /health lewat IP privat (dan loopback bila --final)
 #   bash deploy/worker-id/worker.sh down            # hentikan dan hapus kontainer worker
 #   bash deploy/worker-id/worker.sh web-env publik  # tulis .env.web-publik: PENDAMPING_WORKERS untuk VPS
 #   bash deploy/worker-id/worker.sh web-env final   # tulis .env.web-final: env web lokal (compose.local.yml)
@@ -34,7 +34,7 @@ setel() {
 
 acak() { head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 
-# 0 bila $1 IPv4 literal di 100.64.0.0/10 (Tailscale), sama dengan pengecualian egress web. Oktet 0-255 TANPA nol
+# 0 bila $1 IPv4 literal di 100.64.0.0/10 (jaringan privat), sama dengan pengecualian egress web. Oktet 0-255 TANPA nol
 # di depan (`100.064.0.1` ditolak: `[ -eq ]`/sebagian parser membacanya oktal, dan Caddy/web menolaknya).
 OKTET='(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])'
 ip_tailscale() {

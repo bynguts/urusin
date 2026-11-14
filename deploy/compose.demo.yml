@@ -1,4 +1,4 @@
-# Demo final di SATU laptop, tanpa VPS dan tanpa Tailscale: web + Browser Pendamping + fixtures (replika situs
+# Demo final di SATU laptop, tanpa server dan tanpa jaringan privat: web + Browser Pendamping + fixtures (replika situs
 # pemerintah) + DB (SQLite di volume) di http://localhost. Jalankan lewat skrip, bukan `up` manual:
 #
 #   bash scripts/demo-final.sh up        # siapkan .env.demo, build/pull image, naikkan, lalu preflight
@@ -13,7 +13,7 @@
 #                      portal resmi dipetakan ke replika, jadi situs pemerintah asli tidak pernah dibuka.
 # - fixtures         : 127.0.0.1:4320 (profil public). Juga dibuka ke host di 127.0.0.1:${DEMO_FIXTURES_PORT}
 #                      untuk ditunjukkan langsung ke juri.
-# - LLM (opsional)   : web memanggil 127.0.0.1:20128 (pengecualian egress proxy LLM); gerbang meneruskan ke
+# - LLM (opsional)   : web memanggil 127.0.0.1:20128 (pengecualian egress gateway LLM lokal); gerbang meneruskan ke
 #                      DEMO_LLM_UPSTREAM. Internet/proxy mati: `demo-final.sh offline` (DemoProvider).
 # Produksi (deploy/compose.prod.yml) tetap memakai edge + jaringan internal; berkas ini hanya untuk laptop demo.
 name: urusin-demo
@@ -30,7 +30,7 @@ services:
     restart: unless-stopped
     command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile']
     environment:
-      # Origin proxy LLM sungguhan (mis. http://100.x.y.z:20128 lewat Tailscale). Web memanggilnya lewat
+      # Origin gateway LLM sungguhan (mis. alamat di jaringan privat). Web memanggilnya lewat
       # 127.0.0.1:20128, satu-satunya alamat lokal yang diizinkan kebijakan egress web untuk LLM.
       DEMO_LLM_UPSTREAM: ${DEMO_LLM_UPSTREAM:-http://127.0.0.1:9}
     volumes:

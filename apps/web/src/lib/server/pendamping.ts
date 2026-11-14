@@ -30,7 +30,7 @@ import { SID_COOKIE } from '#lib/server/sesi.js';
  * tidak pernah melihat cookie mentah, hanya sha256-nya, dan sesi terikat ke urusan + hash itu.
  *
  * MULTI-WORKER: `PENDAMPING_WORKERS` = JSON `[{id, url, region, maxSessions, wsUrl, token?}]` (container identik di tiap
- * host; mis. VPS + laptop anggota lewat Tailscale). Rute per `aksesWilayah` registry (sesi akun warga di
+ * host; mis. server utama + worker di jaringan privat). Rute per `aksesWilayah` registry (sesi akun warga di
  * portal asli; Mode Uji selalu tanpa syarat wilayah):
  * - `id-only` (blokir keras IP luar negeri): HANYA worker `region: 'id'`; tak ada yang sehat -> mode dipandu
  *   dengan pesan jujur;
@@ -41,12 +41,12 @@ import { SID_COOKIE } from '#lib/server/sesi.js';
  * Tanpa `PENDAMPING_WORKERS`: satu worker dari `PENDAMPING_INTERNAL_URL` (region
  * `PENDAMPING_INTERNAL_REGION`, bawaan `umum`; URL WS `PENDAMPING_PUBLIC_WS_URL` bila diisi).
  *
- * Rahasia per worker (`token`): wajib untuk worker selain 127.0.0.1 (laptop lewat Tailscale), supaya satu
+ * Rahasia per worker (`token`): wajib untuk worker selain 127.0.0.1 (worker di jaringan privat), supaya satu
  * worker yang bocor tidak bisa memalsukan panggilan ke worker lain. URL WebSocket yang diberikan ke warga
  * DIPATOK ke `wsUrl` worker yang dikonfigurasi: jawaban tiket worker hanya menyumbang id sesi.
  *
  * Semua panggilan lewat `@urusin/egress`: origin worker hanya terjangkau bila `http://IP:port` dengan IP
- * 127.0.0.1 atau Tailscale 100.64.0.0/10 (pengecualian persis di kebijakan egress), bukan nama DNS.
+ * 127.0.0.1 atau jaringan privat 100.64.0.0/10 (pengecualian persis di kebijakan egress), bukan nama DNS.
  */
 
 /**

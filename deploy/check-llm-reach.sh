@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# M11a: periksa dari DALAM kontainer web bahwa proxy LLM terjangkau (host network + loopback).
+# M11a: periksa dari DALAM kontainer web bahwa gateway LLM lokal terjangkau (host network + loopback).
 #
 #   deploy/check-llm-reach.sh <blue|green>
 #

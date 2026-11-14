@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Retensi image Urusin di host: hapus image urusin-* lama dengan `docker image rm <repo>@<digest>`
-# yang ditargetkan. TIDAK PERNAH `docker image/system prune` (VPS dipakai bersama layanan lain) dan
+# yang ditargetkan. TIDAK PERNAH `docker image/system prune` (image di luar Urusin tidak disentuh) dan
 # tidak pernah `-f` (image yang dipakai kontainer ditolak Docker, bukan dipaksa).
 #
 #   deploy/image-retention.sh            # rencana saja (dry-run)
