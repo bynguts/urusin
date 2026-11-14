@@ -1,12 +1,12 @@
-# Worker Browser Pendamping berjaringan Indonesia (region `id`) di laptop anggota tim, lewat Tailscale.
+# Worker Browser Pendamping berjaringan Indonesia (region `id`), worker di jaringan privat.
 # Situs registry `aksesWilayah: 'id-only'` (Si D'nOK) menolak IP datacenter dan hanya bisa dilayani dari sini;
 # `id-utama` (Telunjuk Sakti) memberi server kotak centang yang diketuk warga, laptop ini hanya didahulukan
-# bila lowong. Laptop ini koneksi biasa milik tim. Topologi SAMA dengan compose.prod.yml (pendamping hanya di jaringan internal,
+# bila lowong. Topologi SAMA dengan compose.prod.yml (pendamping hanya di jaringan internal,
 # edge satu-satunya jalan keluar dan satu-satunya port), bedanya:
-# - port edge diikat HANYA ke IP Tailscale laptop (WORKER_TAILSCALE_IP, 100.64.0.0/10), bukan 0.0.0.0/LAN;
-#   worker.sh menolak start bila IP itu bukan Tailscale atau tidak ada di laptop ini;
+# - port edge diikat HANYA ke IP privat worker (WORKER_TAILSCALE_IP, 100.64.0.0/10), bukan 0.0.0.0/LAN;
+#   worker.sh menolak start bila IP itu di luar rentang tersebut atau tidak ada di host ini;
 # - token HMAC milik worker ini sendiri (WORKER_TOKEN), bukan PENDAMPING_INTERNAL_TOKEN produksi;
-# - URL WS publiknya wss://$DOMAIN/pendamping/w/$WORKER_ID/ws (Caddy VPS -> Tailscale -> edge ini).
+# - URL WS publiknya wss://$DOMAIN/pendamping/w/$WORKER_ID/ws (Caddy -> jaringan privat -> edge ini).
 # Jalankan lewat `bash deploy/worker-id/worker.sh up` (memvalidasi .env dulu); lihat README.md di folder ini.
 name: urusin-worker-id
 
@@ -75,7 +75,7 @@ services:
     command: ['node', 'dist/edge-main.js']
     networks: [pendamping_internal, pendamping_luar]
     ports:
-      # HANYA IP Tailscale laptop. Docker Desktop mendengarkan di IP itu saja (bukan LAN, bukan loopback).
+      # HANYA IP privat worker. Docker Desktop mendengarkan di IP itu saja (bukan LAN, bukan loopback).
       - '${WORKER_TAILSCALE_IP:?WORKER_TAILSCALE_IP wajib diisi}:${WORKER_PORT:-4330}:4330'
     depends_on: [pendamping]
     init: true

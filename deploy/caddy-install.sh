@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pasang atau ubah snippet Caddy Urusin di Caddy sistem (host dipakai bersama situs pengguna).
+# Pasang atau ubah snippet Caddy Urusin di Caddy sistem (blok situs lain tidak disentuh).
 # SETIAP pemakaian tanpa --dry-run butuh IZIN PER KEJADIAN dari pengguna (lihat hardening.md).
 # Agen tidak pernah menjalankan skrip ini ke VPS; hanya lead, setelah pengguna setuju.
 #

@@ -4,12 +4,12 @@ import { EGRESS_PIHAK_KETIGA, OFFICIAL_DOMAINS } from '@urusin/core';
 /**
  * Kebijakan egress server (review v11 B2). Web berjalan di network host, jadi SSRF bisa menjangkau
  * layanan loopback milik pengguna (mis. admin API Caddy di 127.0.0.1:2019). Aturannya:
- * - Alamat lokal yang boleh hanya: persis `127.0.0.1:20128` (proxy LLM di host), sebagai IP literal, dan
+ * - Alamat lokal yang boleh hanya: persis `127.0.0.1:20128` (gateway LLM lokal), sebagai IP literal, dan
  *   HANYA bila `LLM_BASE_URL` memang origin itu; serta origin internal worker Browser Pendamping yang
  *   dikonfigurasi operator (`PENDAMPING_INTERNAL_URL` / `PENDAMPING_WORKERS[].url`), HANYA http, IP literal
- *   127.0.0.1 atau Tailscale 100.64.0.0/10 dengan port eksplisit, persis (profil runtime). Nama DNS yang
- *   resolve ke loopback tetap ditolak.
- * - Gateway LLM Tailscale pada port 20128 hanya boleh pada origin persis `LLM_BASE_URL`, profil runtime.
+ *   127.0.0.1 atau jaringan privat 100.64.0.0/10 dengan port eksplisit, persis (profil runtime). Nama DNS
+ *   yang resolve ke loopback tetap ditolak.
+ * - Gateway LLM di jaringan privat pada port 20128 hanya boleh pada origin persis `LLM_BASE_URL`, profil runtime.
  * - Dua profil terpisah (L2):
  *   - `runtime` (server web): host Jina + host akun (Google, Resend) + Exa (cari web) + origin base URL
  *     LLM/embedding/rerank dari env operator.
@@ -72,7 +72,7 @@ const BLOCKED = new BlockList();
 for (const [net, prefix] of [
   ['0.0.0.0', 8], // "this network"
   ['10.0.0.0', 8], // privat
-  ['100.64.0.0', 10], // CGNAT (juga tailscale)
+  ['100.64.0.0', 10], // CGNAT (juga jaringan privat)
   ['127.0.0.0', 8], // loopback
   ['169.254.0.0', 16], // link-local, termasuk metadata cloud 169.254.169.254
   ['172.16.0.0', 12], // privat (termasuk bridge Docker)
@@ -124,9 +124,9 @@ export type Allowlist = {
   configured: ReadonlySet<string>;
   /** true hanya bila LLM_BASE_URL = 127.0.0.1:20128: pengecualian loopback proxy LLM aktif. */
   llmProxy: boolean;
-  /** Gateway LLM Tailscale: origin IP literal persis dari LLM_BASE_URL, hanya port 20128. */
+  /** Gateway LLM di jaringan privat: origin IP literal persis dari LLM_BASE_URL, hanya port 20128. */
   llmTailscale?: string;
-  /** Origin internal worker pendamping (`http://IP:port`, loopback/Tailscale) yang boleh persis. */
+  /** Origin internal worker pendamping (`http://IP:port`, loopback/jaringan privat) yang boleh persis. */
   internal?: ReadonlySet<string>;
 };
 
@@ -160,7 +160,7 @@ const PORT_TERLARANG = new Set([2019, LLM_PROXY.port]);
 
 /**
  * Origin internal worker Browser Pendamping dari env operator: `PENDAMPING_INTERNAL_URL` dan setiap `url`
- * di JSON `PENDAMPING_WORKERS`. Hanya `http:` dengan IP literal 127.0.0.1 atau 100.64.0.0/10 (Tailscale)
+ * di JSON `PENDAMPING_WORKERS`. Hanya `http:` dengan IP literal 127.0.0.1 atau 100.64.0.0/10 (jaringan privat)
  * dan port eksplisit; selain itu diabaikan (tetap diblokir).
  */
 export function pendampingInternalOrigins(env: Record<string, string | undefined>): Set<string> {
@@ -169,7 +169,7 @@ export function pendampingInternalOrigins(env: Record<string, string | undefined
 
 /**
  * Origin sidecar embedding self-hosted (`URUSIN_EMBED_URL`, packages/embedding): aturan sama dengan worker
- * pendamping (http, IP literal 127.0.0.1/Tailscale, port eksplisit, bukan port terlarang).
+ * pendamping (http, IP literal 127.0.0.1/jaringan privat, port eksplisit, bukan port terlarang).
  */
 export function embeddingInternalOrigins(env: Record<string, string | undefined>): Set<string> {
   return originInternal([env.URUSIN_EMBED_URL]);
@@ -348,7 +348,7 @@ export function asetPemdaDisetujui(
  * Keputusan CONNECT proxy peramban (profil `browser`), dipanggil SETELAH proxy me-resolve DNS sendiri untuk
  * SETIAP alamat hasil resolusi; proxy lalu tersambung ke alamat yang sudah diperiksa ini. Melempar
  * EgressBlockedError bila: bukan https:443, host IP literal, host di luar union global atau di luar set
- * sesi, atau alamat terlarang (loopback, privat, CGNAT/Tailscale, link-local/metadata, `::ffff:`, NAT64,
+ * sesi, atau alamat terlarang (loopback, privat, CGNAT, link-local/metadata, `::ffff:`, NAT64,
  * 6to4, IPv4-compatible). Port proxy LLM (20128) dan admin Caddy (2019) tidak pernah lolos (hanya :443).
  */
 export function checkConnect(

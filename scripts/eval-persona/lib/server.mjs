@@ -1,7 +1,7 @@
 // Siapkan dan jalankan web app Urusin hasil build (node build/index.js) seperti produksi, dengan LLM nyata.
 //
 // Egress produksi hanya mengizinkan proxy LLM di 127.0.0.1:20128 (packages/egress/src/policy.ts LLM_PROXY);
-// alamat Tailscale/privat diblokir. Bila LLM_BASE_URL bukan loopback, eval membuka relay TCP lokal
+// alamat privat lain diblokir. Bila LLM_BASE_URL bukan loopback, eval membuka relay TCP lokal
 // 127.0.0.1:20128 -> host LLM sehingga server melihat alamat yang sama dengan produksi.
 import { spawn, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';

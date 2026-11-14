@@ -3,7 +3,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 
 /**
  * Tanda tangan HMAC kanal web -> worker pendamping (dan pendamping -> edge). Worker bisa berada di host lain
- * lewat Tailscale, jadi kanal diautentikasi selain jaringan privat. Yang ditandatangani: waktu (ms), nonce
+ * di jaringan privat, jadi kanal tetap diautentikasi selain mengandalkan jaringan itu. Yang ditandatangani: waktu (ms), nonce
  * acak, metode, jalur, panjang isi (Content-Length) dan sha256 isi yang DIDEKLARASIKAN di header
  * `x-urusin-isi-sha256`. Karena semua itu ada di header, tanda tangan diperiksa SEBELUM satu byte isi dibaca;
  * isi lalu dibaca dengan batas dan di-hash sambil jalan, dan ditolak bila tidak cocok dengan deklarasinya.
