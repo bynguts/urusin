@@ -281,6 +281,8 @@
     });
     store.sambung(id);
     if (titip) {
+      // Teks ikut ditaruh di kotak tulis: bila pengiriman gagal, pesan warga tidak hilang.
+      teks = titip.teks;
       lampiran = titip.lampiran;
       // Pesan pertama tetap di urutan paling atas (sebelum kartu wilayah yang terbit saat urusan dibuat).
       void kirim(titip.teks, false, 0);
@@ -435,15 +437,22 @@
    * pengiriman pesan gagal.
    */
   async function simpanLampiran(): Promise<boolean> {
-    for (const l of lampiran) {
+    // Gagal simpan ke Dokumen (mis. brankas penuh) tidak menahan pesan: fotonya tetap dibaca AI, warga diberi
+    // tahu lampiran mana yang tidak tersimpan.
+    const gagal: string[] = [];
+    let alasan = '';
+    for (const [i, l] of lampiran.entries()) {
       if (l.docId) continue;
       const r = await unggahDokumen(l.berkas, l.jenis, judulLampiran(l.jenis, judulJenis ?? null));
       if (!r.ok) {
-        pesanKomposer = `Lampiran belum tersimpan: ${r.pesan}`;
-        return false;
+        gagal.push(`#${i + 1}`);
+        alasan = r.pesan;
+        continue;
       }
       l.docId = r.data.id;
     }
+    if (gagal.length)
+      pesanKomposer = `Lampiran ${gagal.join(', ')} tetap dibaca AI, tetapi tidak tersimpan di Dokumen: ${alasan}`;
     return true;
   }
 
