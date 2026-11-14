@@ -26,6 +26,9 @@
   // Halaman Web publik berdesain landing dan rute auth tampil tanpa kerangka aplikasi.
   const polos = $derived(rutWeb(page.url.pathname) || rutAuth(page.url.pathname));
   const akun = $derived(page.data.akun as { email: string } | null | undefined);
+  // Halaman satu urusan di HP = layar obrolan (seperti aplikasi chat): komposer menempel di dasar layar, jadi
+  // tanpa navigasi bawah dan tanpa ruang cadangannya. Menu tetap tersedia lewat tombol menu di bilah atas.
+  const rutPercakapan = $derived(/^\/urusan\/[^/]+\/?$/.test(page.url.pathname));
   let menuBuka = $state(false);
   let tombolMenu = $state<HTMLButtonElement>();
   let menuHp = $state<HTMLElement>();
@@ -161,7 +164,9 @@
       <main
         id="konten"
         tabindex="-1"
-        class="flex min-h-0 flex-1 flex-col bg-bg pb-24 outline-none lg:bg-transparent lg:pb-0"
+        class="flex min-h-0 flex-1 flex-col bg-bg outline-none lg:bg-transparent lg:pb-0 {rutPercakapan
+          ? ''
+          : 'pb-24'}"
       >
         {#key page.url.pathname}
           <div
@@ -175,5 +180,5 @@
       </main>
     </div>
   </div>
-  <NavBawah />
+  {#if !rutPercakapan}<NavBawah />{/if}
 {/if}

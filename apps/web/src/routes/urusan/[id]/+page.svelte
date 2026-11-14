@@ -313,22 +313,40 @@
     untrack(() => void tungguJudul(id));
   });
 
-  // Gulir ke pesan terbaru saat ada item baru.
+  /**
+   * Percakapan menempel di dasar selama warga ada di (dekat) pesan terbaru; menggulir ke atas membaca riwayat
+   * melepasnya, dan mengirim sesuatu menempelkannya lagi. Tidak reaktif: hanya dibaca saat menggulir.
+   */
+  let diDasar = true;
+  function catatGulir() {
+    const w = daftarPercakapan;
+    if (w) diDasar = w.scrollHeight - w.scrollTop - w.clientHeight < 96;
+  }
+  /** Gulir hanya percakapannya (scrollIntoView juga menggulir bingkai aplikasi dan browser di sebelahnya). */
+  function ikutiBawah() {
+    const w = daftarPercakapan;
+    if (w && diDasar) w.scrollTop = w.scrollHeight;
+  }
+
+  // Item baru, titik mengetik, atau progres: ikut turun bila warga sedang di dasar.
   $effect(() => {
     void linimasa.length;
     void k.progres;
     void k.sedangBerjalan;
-    void tick().then(() => {
-      // Gulir hanya percakapannya; scrollIntoView juga menggulir bingkai aplikasi dan browser di sebelahnya.
-      if (daftarPercakapan) daftarPercakapan.scrollTop = daftarPercakapan.scrollHeight;
-    });
+    void tick().then(ikutiBawah);
   });
 
-  /** Selama jawaban AI diungkap bertahap: ikut turun, kecuali warga sedang menggulir ke atas membaca riwayat. */
-  function ikutiKetikan() {
+  // Tinggi isi atau wadah berubah (teks diungkap bertahap, kartu membuka, gambar dimuat, keyboard HP membuka,
+  // komposer bertambah baris, panel dilipat): tetap di dasar bila warga memang di dasar.
+  $effect(() => {
     const w = daftarPercakapan;
-    if (w && w.scrollHeight - w.scrollTop - w.clientHeight < 160) w.scrollTop = w.scrollHeight;
-  }
+    if (!w) return;
+    diDasar = true;
+    const ro = new ResizeObserver(ikutiBawah);
+    ro.observe(w);
+    if (w.firstElementChild) ro.observe(w.firstElementChild);
+    return () => ro.disconnect();
+  });
 
   /**
    * Riwayat (event yang diputar ulang SSE saat halaman dibuka) tampil langsung; hanya item yang tiba sesudahnya
@@ -354,9 +372,8 @@
     for (const daftar of pratinjauTerkirim.values()) for (const u of daftar) if (u) URL.revokeObjectURL(u);
   });
 
-  // Kartu persetujuan yang baru aktif digulir ke tengah layar sekali: di HP komposer lengket menutupi bagian
-  // bawah percakapan, jadi tombol "Setujui dan buka situs" tidak terlihat. Gerak halus kecuali warga memilih
-  // kurangi gerakan (sistem atau Pengaturan).
+  // Kartu persetujuan yang baru aktif digulir ke tengah daftar pesan sekali, agar tombol "Setujui dan buka situs"
+  // langsung terlihat. Gerak halus kecuali warga memilih kurangi gerakan (sistem atau Pengaturan).
   let konfirmasiDigulir: string | null = null;
   $effect(() => {
     const key = konfirmasiAktif;
@@ -368,7 +385,7 @@
       if (!el) return;
       const behavior = gerakDikurangi() ? ('auto' as const) : ('smooth' as const);
       const wadah = daftarPercakapan;
-      // Laptop: percakapan punya gulir sendiri; gulir wadahnya saja agar bingkai aplikasi tidak ikut bergeser.
+      // Percakapan punya gulir sendiri; gulir wadahnya saja agar bingkai aplikasi tidak ikut bergeser.
       if (wadah && wadah.scrollHeight > wadah.clientHeight) {
         const r = el.getBoundingClientRect();
         const w = wadah.getBoundingClientRect();
@@ -460,6 +477,7 @@
     mengirim = true;
     pesanKomposer = null;
     riwayatSelesai = true;
+    diDasar = true;
     const lamp = aksi ? [] : lampiran;
     if (lamp.length && !(await simpanLampiran())) {
       mengirim = false;
@@ -511,6 +529,7 @@
     mengirim = true;
     menungguSetuju = true;
     pesanKomposer = null;
+    diDasar = true;
     const hasil = await store.setujuiRencana();
     mengirim = false;
     if (hasil !== 'ok') menungguSetuju = false;
@@ -524,6 +543,7 @@
   async function wilayahBenar(kodeKabKota: string) {
     mengirim = true;
     pesanKomposer = null;
+    diDasar = true;
     const hasil = await store.tetapkanWilayah(kodeKabKota);
     mengirim = false;
     if (hasil === 'konflik')
@@ -634,7 +654,13 @@
   <meta name="referrer" content="no-referrer" />
 </svelte:head>
 
-<div class="flex min-h-0 flex-1 flex-col lg:overflow-hidden">
+<!-- HP, mode percakapan: tinggi tepat satu layar di bawah bilah atas (h-16), jadi daftar pesan menggulir sendiri
+     di antara header dan komposer (seperti aplikasi chat). Mode Pendamping tetap memakai gulir halaman. -->
+<div
+  class="flex min-h-0 flex-1 flex-col lg:overflow-hidden {pendampingAktif
+    ? ''
+    : 'max-lg:h-[calc(100dvh-4rem)] max-lg:max-h-[calc(100dvh-4rem)]'}"
+>
   <HeaderHalaman {judul}>
     {#snippet awal()}<Lencana peristiwa={p} />{/snippet}
   </HeaderHalaman>
@@ -654,11 +680,16 @@
     <!-- Panel konteks: di HP di atas percakapan dan bisa dilipat; di laptop kolom kanan 400 px. -->
     <aside
       aria-label="Rencana, dokumen, dan sumber"
-      class="animasi-panel-masuk order-first min-h-0 border-b border-line bg-card lg:order-last lg:w-[399.5px] lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-l"
+      class="animasi-panel-masuk order-first min-h-0 border-b border-line bg-card lg:order-last lg:w-[399.5px] lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-l {pendampingAktif
+        ? ''
+        : 'max-lg:relative max-lg:max-h-[45dvh] max-lg:shrink-0 max-lg:overflow-y-auto max-lg:overscroll-contain'}"
     >
+      <!-- HP: panel terbuka menggulir di dalam batas tingginya; tombol lipatnya tetap di atas. -->
       <button
         type="button"
-        class="flex min-h-14 w-full items-center gap-2 px-4 text-left text-[0.9375rem] font-semibold text-ink lg:hidden"
+        class="flex min-h-14 w-full items-center gap-2 bg-card px-4 text-left text-[0.9375rem] font-semibold text-ink lg:hidden {pendampingAktif
+          ? ''
+          : 'sticky top-0 z-[1]'}"
         aria-expanded={panelHpBuka}
         aria-controls="panel-konteks"
         onclick={() => (panelHpBuka = !panelHpBuka)}
@@ -742,10 +773,12 @@
           />
         </div>
       {:else}
-        <!-- Kembali dari Browser Pendamping: percakapan memudar masuk (muat pertama tidak dianimasikan). -->
+        <!-- Kembali dari Browser Pendamping: percakapan memudar masuk (muat pertama tidak dianimasikan). `relative`:
+       teks sr-only (absolute) di dalamnya ikut terpotong wadah gulir, tidak memanjangkan halaman. -->
         <div
           bind:this={daftarPercakapan}
-          class="min-h-0 flex-1 overflow-y-auto overscroll-contain {pernahPendamping
+          onscroll={catatGulir}
+          class="relative min-h-0 flex-1 overflow-y-auto overscroll-contain {pernahPendamping
             ? 'animasi-mode-masuk'
             : ''}"
         >
@@ -830,7 +863,7 @@
                   />
                 {:else if it.jenis === 'teks'}
                   <PesanAgen avatar={p.avatar}
-                    ><TeksKaya teks={it.teks} ketik={baru(it.key)} ontumbuh={ikutiKetikan} /></PesanAgen
+                    ><TeksKaya teks={it.teks} ketik={baru(it.key)} ontumbuh={ikutiBawah} /></PesanAgen
                   >
                 {:else if it.jenis === 'jawaban'}
                   <PesanAgen avatar={p.avatar}>
@@ -993,8 +1026,9 @@
           </div>
         </div>
 
+        <!-- Komposer = baris terakhir kolom (bukan lengket di atas pesan): pesan terakhir selalu tampil utuh. -->
         <div
-          class="sticky bottom-[4.5rem] z-10 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pt-3 pb-3 sm:px-10 lg:bottom-0 lg:from-surface lg:via-surface lg:pb-6"
+          class="shrink-0 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-10 lg:from-surface lg:via-surface lg:pb-6"
         >
           <div class="w-full">
             <Komposer

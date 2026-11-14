@@ -30,9 +30,18 @@
   let inputBerkas = $state<HTMLInputElement>();
   let galatLampiran = $state<string | null>(null);
   let sentuh = $state(false);
+  // Kotak tulis kosong = satu baris rapi: placeholder panjang hanya bila muat satu baris (laptop); di HP dan di
+  // panel sempit yang ringkas. SSR (lebar belum diketahui) memakai yang ringkas. Ambang dalam rem (teks panjang
+  // ±17 rem di 17 px) agar ukuran huruf dari Pengaturan tidak membuatnya terlipat.
+  let lebarTulis = $state(0);
+  let rem = $state(16);
+  const placeholder = $derived(
+    lebarTulis >= 19 * rem ? 'Tulis jawaban atau pertanyaan lain…' : 'Tulis pesan…',
+  );
 
   onMount(() => {
     sentuh = matchMedia('(pointer: coarse)').matches;
+    rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
   });
 
   const bisaKirim = $derived(!sibuk && !nonaktif && (teks.trim().length > 0 || lampiran.length > 0));
@@ -132,6 +141,7 @@
       id="komposer"
       bind:this={elemen}
       bind:value={teks}
+      bind:clientWidth={lebarTulis}
       onkeydown={tekan}
       onpaste={tempel}
       rows="1"
@@ -139,8 +149,8 @@
       disabled={nonaktif}
       enterkeyhint={sentuh ? 'enter' : 'send'}
       aria-describedby={keterangan}
-      placeholder="Tulis jawaban atau pertanyaan lain…"
-      class="max-h-40 min-h-[42px] flex-1 resize-none bg-transparent py-2 pl-1 text-base text-ink [field-sizing:content] placeholder:text-muted focus:outline-none sm:text-[17px] sm:leading-[26px]"
+      {placeholder}
+      class="max-h-40 min-h-[42px] min-w-0 flex-1 resize-none bg-transparent py-[9px] pl-1 text-base sm:py-2 text-ink [field-sizing:content] placeholder:text-muted focus:outline-none sm:text-[17px] sm:leading-[26px]"
     ></textarea>
     <button
       type="submit"
