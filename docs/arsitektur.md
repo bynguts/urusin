@@ -36,7 +36,7 @@ C4Container
   Person(warga, "Warga")
 
   System_Boundary(browser, "Perangkat warga (ponsel atau laptop)") {
-    Container(webui, "Web app", "SvelteKit UI", "Antarmuka, daftar urusan lokal (tamu), kanvas layar Browser Pendamping.")
+    Container(webui, "Web app", "SvelteKit UI", "Antarmuka, daftar urusan lokal di peramban, kanvas layar Browser Pendamping.")
   }
 
   System_Boundary(vps, "VPS arm64 (Docker Compose, Caddy milik host)") {
@@ -73,17 +73,16 @@ Catatan pembacaan:
 - Container `web` berjalan `read_only`, `cap_drop: [ALL]`, `no-new-privileges`, `mem_limit: 512m`.
 - **Belum ada (rencana):** server MCP, service `worker` pengingat, PWA. Input suara dan pengingat masih
   dimatikan lewat flag.
-- **Dua mode penyimpanan data pribadi ([ADR 0028](adr/0028-akun-dan-login.md)):**
-  - Tanpa akun (tamu): Data Diri dan dokumen disimpan terenkripsi di server, terikat hash cookie
-    `__Host-urusin_sid`, dan dihapus 72 jam sejak dibuat. Daftar urusan dan preferensi ada di penyimpanan
-    peramban.
+- **Penyimpanan data pribadi ([ADR 0028](adr/0028-akun-dan-login.md)):**
+  - Tidak ada mode tamu: akun wajib. Data tamu lama (sebelum akun wajib) digabung ke akun saat masuk dari
+    peramban yang sama, lalu disapu. Daftar urusan dan preferensi ada di penyimpanan peramban.
   - Dengan akun: vault terenkripsi per akun (DEK per pemilik dibungkus KEK dari `URUSIN_PII_KEY`) ikut lintas
     perangkat.
   - Salinan demo juri disimpan 24 jam; akun tidak disapu (tanpa verifikasi email, ADR 0032). Hapus = crypto-shred.
 - **Pemroses dan lokasi:**
   - VPS Oracle Cloud Singapura: DB, berkas vault terenkripsi, dan Browser Pendamping.
-  - Resend (Amerika Serikat): hanya menerima alamat email dan tautan. Saat ini mode log, jadi belum ada email
-    yang terkirim.
+  - Resend (Amerika Serikat): opsional dan tidak aktif di produksi (`URUSIN_EMAIL_MODE=log`), jadi tidak ada
+    email yang terkirim. Bila diaktifkan, hanya menerima alamat email dan tautan.
   - Google: hanya untuk OIDC, bila warga memilihnya.
   - Model AI tidak pernah melihat NIK, KK, HP, atau email.
 - Paket pustaka (bukan kontainer): `@urusin/harness` (agen, state machine, policy gate, audit), `@urusin/akun`

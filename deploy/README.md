@@ -40,7 +40,7 @@ cd /opt/urusin/deploy
 # 2. Konfigurasi. File ini berisi rahasia: jangan di-commit.
 cp ../.env.example .env
 chmod 600 .env      # deploy.sh menolak .env/.restic-password yang bisa diakses group/others
-$EDITOR .env        # isi DOMAIN, SESSION_SECRET, URUSIN_PII_KEY, LLM_*, VAPID_*, TURNSTILE_*, GOOGLE_*, RESEND_*
+$EDITOR .env        # isi DOMAIN, SESSION_SECRET, URUSIN_PII_KEY, LLM_*, VAPID_*, GOOGLE_* (TURNSTILE_* dan RESEND_* opsional, tidak dipakai di produksi saat ini)
 ```
 
 `.env` di `/opt/urusin/deploy/.env` dibaca compose (`env_file`) dan oleh `deploy.sh`. Izin wajib (diperiksa
@@ -175,7 +175,7 @@ agen) sampai restart. Sekarang:
   `parallel_tool_calls`, `json_schema_strict`, `streaming_tools`) terjawab; yang lolos langsung dinyalakan
   tanpa restart. Jawaban "tidak didukung" yang sah tidak diulang. Status: `/api/health` `.probe`
   (`ok` | `mencoba_ulang` + `percobaan`, `berikutnyaPada`, `galat`) dan `/api/kemampuan` `.probe` (status saja).
-- Klien LLM menerima balasan SSE untuk `stream:false` (proxy pythia melakukannya) dan merakitnya menjadi
+- Klien LLM menerima balasan SSE untuk `stream:false` (sebagian endpoint OpenAI-compatible melakukannya) dan merakitnya menjadi
   chat.completion biasa.
 
 ## Env produksi (placeholder; nilai asli hanya di `.env`, chmod 600)
@@ -185,8 +185,10 @@ agen) sampai restart. Sekarang:
 - `DOMAIN`, `SESSION_SECRET`, `LLM_BASE_URL=http://127.0.0.1:20128/v1`, `LLM_API_KEY`, model LLM.
 - `URUSIN_PII_KEY` (base64 >= 32 byte, wajib di mode llm; `openssl rand -base64 32`),
   `URUSIN_DAILY_IDR_CAP` (angka > 0, wajib di mode llm).
-- Embedding/rerank (Jina): `LLM_EMBED_BASE_URL`, `LLM_EMBED_API_KEY`, `LLM_EMBED_MODEL`,
-  `RERANK_BASE_URL`, `RERANK_API_KEY`, `RERANK_MODEL`.
+- Pencarian sumber resmi berjalan di server Urusin sendiri (kata kunci + vektor): sidecar embedding self-hosted lewat
+  `COMPOSE_PROFILES=embedding`, `EMBEDDING_IMAGE`, dan `URUSIN_EMBED_URL=http://127.0.0.1:4340` (lihat
+  `compose.prod.yml`). Tanpa rerank di produksi. Penyedia embedding/rerank eksternal (`LLM_EMBED_*`, `RERANK_*`)
+  hanyalah jalur opsional di kode dan tidak dipakai.
 - IP klien untuk kuota per-IP: compose sudah mengisi `ADDRESS_HEADER=X-Forwarded-For` dan `XFF_DEPTH=1`.
   Caddy adalah satu-satunya hop dan **menimpa** `X-Forwarded-For` dari klien (klien bukan proxy tepercaya),
   jadi entri terakhir = IP klien asli. Diverifikasi dengan Caddy 2 sungguhan: permintaan dengan
@@ -196,15 +198,15 @@ agen) sampai restart. Sekarang:
 - Akun warga (ADR 0028). Selain `URUSIN_PII_KEY` (wajib, lihat bagian kunci vault di bawah), semuanya opsional:
   app tetap boot tanpa kunci-kunci ini.
 
-  | Kunci                                        | Isi dan perilaku                                                                                                                                                                                                         |
-  | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-  | `URUSIN_EMAIL_MODE`                          | `resend` atau `log`. Kosong = `resend` bila `RESEND_API_KEY` terisi, selain itu `log`. `log` di produksi menahan email (tanpa tautan di log) dan verifikasi tidak memblokir. `resend` tanpa kunci = server menolak boot. |
-  | `RESEND_API_KEY`, `URUSIN_EMAIL_FROM`        | Kunci Resend dan pengirim (SPF/DKIM Resend di DNS domain).                                                                                                                                                               |
-  | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`   | Diisi berdua atau dikosongkan berdua (selain itu server menolak boot). Redirect URI `https://<host app>/auth/google/callback` untuk **kedua** set host di `hosts.json`.                                                  |
-  | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile untuk "Masuk sebagai juri" dan login setelah 3 kegagalan. Aktif bila `TURNSTILE_SECRET_KEY` terisi (bukan placeholder `ganti-dengan-…`); site key dipakai widget.                                   |
-  | `URUSIN_PII_KEY_PREV`                        | Hanya selama rotasi kunci vault (lihat di bawah); hapus setelah `kek:rotate`.                                                                                                                                            |
+  | Kunci                                        | Isi dan perilaku                                                                                                                                                                                                                                          |
+  | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `URUSIN_EMAIL_MODE`                          | `resend` atau `log`. Produksi saat ini memakai `log`. Kosong = `resend` bila `RESEND_API_KEY` terisi, selain itu `log`. `log` di produksi menahan email (tanpa tautan di log) dan verifikasi tidak memblokir. `resend` tanpa kunci = server menolak boot. |
+  | `RESEND_API_KEY`, `URUSIN_EMAIL_FROM`        | Opsional dan tidak dipakai di produksi saat ini (mode `log`). Kunci Resend dan pengirim (SPF/DKIM Resend di DNS domain).                                                                                                                                  |
+  | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`   | Diisi berdua atau dikosongkan berdua (selain itu server menolak boot). Redirect URI `https://<host app>/auth/google/callback` untuk **kedua** set host di `hosts.json`.                                                                                   |
+  | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Opsional dan tidak diisi di produksi saat ini. Cloudflare Turnstile untuk "Masuk sebagai juri" dan login setelah 3 kegagalan. Aktif bila `TURNSTILE_SECRET_KEY` terisi (bukan placeholder `ganti-dengan-…`); site key dipakai widget.                     |
+  | `URUSIN_PII_KEY_PREV`                        | Hanya selama rotasi kunci vault (lihat di bawah); hapus setelah `kek:rotate`.                                                                                                                                                                             |
 
-  Tanpa Turnstile, tombol "Masuk sebagai juri" **tetap jalan** di produksi supaya juri tidak pernah terkunci:
+  Tanpa Turnstile (kondisi produksi saat ini), tombol "Masuk sebagai juri" **tetap jalan** di produksi supaya juri tidak pernah terkunci:
   batas 50 salinan per IP per hari (`URUSIN_DEMO_PER_IP_HARI`, tahan satu NAT aula lomba), 2000 salinan aktif (`URUSIN_DEMO_AKTIF_MAKS`),
   umur 24 jam, dan batas vault tamu/demo tetap berlaku. Server mencatat `[ALERT] Turnstile nonaktif di produksi`
   saat start sebagai pengingat, dan `[ALERT] batas juri rapuh tanpa Turnstile` bila per IP × 4 ≥ batas global
@@ -523,8 +525,8 @@ resmi (mis. halaman login Telunjuk Sakti), lalu kemudikan layar dengan mouse/sen
 centang verifikasi situs, klik sendiri; AI tidak pernah mengklik-nya. Tidak ada AI di mode ini. Matikan
 dengan mengosongkan `PENDAMPING_DEBUG_TOKEN`.
 
-**Mode Uji (juri dan tamu):** web menandai setiap sesi; hanya akun warga biasa pemilik urusan yang dibuka ke
-portal resmi asli. Salinan demo juri dan tamu selalu dibuka ke replika di `https://fixtures.$DOMAIN`
+**Mode Uji (juri):** web menandai setiap sesi; hanya akun warga biasa pemilik urusan yang dibuka ke
+portal resmi asli. Salinan demo juri selalu dibuka ke replika di `https://fixtures.$DOMAIN`
 (`PENDAMPING_ORIGIN_OVERRIDES` di `compose.prod.yml`, butuh profil `fixtures`); situs tanpa replika ditolak, tidak
 pernah jatuh ke situs asli. Edge harus bisa tersambung ke `fixtures.$DOMAIN:443` (IP publik host sendiri).
 

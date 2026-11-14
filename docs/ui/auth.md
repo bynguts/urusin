@@ -8,11 +8,11 @@ Keputusan dan model ancaman ada di [ADR 0028](../adr/0028-akun-dan-login.md) dan
 
 - **Wajib akun.** Tidak ada mode tamu. Memulai atau membuka urusan butuh sesi: tanpa sesi, tombol mulai mengarah ke `/daftar?next=<tujuan>`, halaman aplikasi (urusan, Urusanku, Data Diri, Dokumen, Pengaturan) ke `/masuk?next=<tujuan>`, dan API urusan/brankas/ingatan menjawab 401 `BELUM_MASUK`. Setelah daftar atau masuk, warga kembali ke tujuan semula. Halaman informatif (landing, katalog layanan/peristiwa, Tanya jawab, Bantuan, Privasi, Syarat) tetap publik. **"Masuk sebagai juri"** tetap selalu terlihat di Masuk. Data tamu lama (sebelum wajib akun) masih digabung ke akun saat warga masuk dari peramban yang sama, lalu disapu seperti biasa.
 - **Masuk dan lupa sandi tidak menyebut apakah email terdaftar.** Hanya Daftar yang menjawab `EMAIL_SUDAH_TERDAFTAR` ("Email ini sudah terdaftar. Silakan masuk.", dengan tautan Masuk).
-- **`pesanWarga` boleh ditampilkan langsung.** Pakai `kode` untuk logika (misalnya memunculkan Turnstile atau formulir konfirmasi sandi).
-- **Email bisa tertunda.** Email hanya dipakai untuk atur ulang sandi dan pemberitahuan tautan Google. Selama Resend belum dikonfigurasi, `/lupa-sandi` mengembalikan `tersedia: false`: tampilkan pesan jujur bahwa atur ulang lewat email belum tersedia (`ATUR_ULANG_NONAKTIF`), tanpa formulir.
-- **Daftar = akun penuh.** Daftar langsung masuk (tanpa "Cek email Anda") lalu ke `/beranda` atau `next`. `akun.sinkron` selalu true untuk akun dan demo; hanya tamu yang datanya di perangkat ini.
+- **`pesanWarga` boleh ditampilkan langsung.** Pakai `kode` untuk logika (misalnya memunculkan Turnstile (opsional, tidak aktif di produksi saat ini) atau formulir konfirmasi sandi).
+- **Email bisa tertunda.** Email hanya dipakai untuk atur ulang sandi dan pemberitahuan tautan Google. Selama Resend belum dikonfigurasi (kondisi produksi saat ini: `URUSIN_EMAIL_MODE=log`), `/lupa-sandi` mengembalikan `tersedia: false`: tampilkan pesan jujur bahwa atur ulang lewat email belum tersedia (`ATUR_ULANG_NONAKTIF`), tanpa formulir.
+- **Daftar = akun penuh.** Daftar langsung masuk (tanpa "Cek email Anda") lalu ke `/beranda` atau `next`. `akun.sinkron` selalu true untuk akun dan demo (tidak ada mode tamu).
 - Semua formulir berfungsi **tanpa JavaScript** (form action biasa). `use:enhance` boleh ditambahkan.
-- Status login di setiap halaman lewat `data.akun` dari `+layout.server.ts`: `null` untuk tamu, atau `{ jenis: 'akun' | 'demo', email (null untuk demo) }`.
+- Status login di setiap halaman lewat `data.akun` dari `+layout.server.ts`: `null` bila belum masuk, atau `{ jenis: 'akun' | 'demo', email (null untuk demo) }`.
 
 ## Brankas dan pengaturan perangkat
 
@@ -41,12 +41,12 @@ Data `load`:
 - `/masuk`: `{ next, ulang, googleAktif, juri, turnstileSiteKey, tautkan, galat }`.
   - `?ulang=1&lanjut=/path` = masuk ulang untuk akun yang sudah masuk (`ulang = { email }`, formulir tetap tampil, email terisi, penanda `[data-ulang]`); sandi atau Google memberi sesi segar lalu kembali ke `lanjut` (alias `next`, hanya path situs ini).
   - Unduh dokumen (`unduhDokumen` di `lib/akun/klien.ts`): 401 `PERLU_MASUK_ULANG` → `/masuk?ulang=1&lanjut=/dokumen?unduh=<id>`; `/dokumen?unduh=<id>` melanjutkan unduhan otomatis.
-  - `juri` selalu true: tombol juri selalu tampil. Tanpa kunci Turnstile, batas per IP/global dan kedaluwarsa 24 jam tetap berlaku.
+  - `juri` selalu true: tombol juri selalu tampil. Tanpa kunci Turnstile (kondisi produksi saat ini), batas per IP/global dan kedaluwarsa 24 jam tetap berlaku.
   - `turnstileSiteKey` → render widget Cloudflare Turnstile (skrip `challenges.cloudflare.com`); widget mengisi `cf-turnstile-response` sendiri. Bila ada site key, tampilkan widget di tombol juri selalu, dan di formulir masuk setelah galat `TURNSTILE_WAJIB`.
   - `galat` dari `?galat=`: `GOOGLE_GAGAL`, `GOOGLE_TIDAK_AKTIF`, `GOOGLE_EMAIL_BELUM_TERVERIFIKASI`, `GOOGLE_PERLU_SANDI`, `GOOGLE_SUDAH_DIPAKAI`.
   - `tautkan` true (setelah `GOOGLE_PERLU_SANDI`): "Email ini sudah punya akun. Masuk dengan kata sandi untuk menautkan Google." Setelah masuk dengan sandi, Google tertaut otomatis.
 - `/daftar`: `{ googleAktif, next }`. `/lupa-sandi`: `{ tersedia, googleAktif }`. `/atur-ulang-sandi`: `{ token, tokenBerlaku }`; membuka tautan tidak memakai token. `/verifikasi-email` (tautan lama) dialihkan ke `/beranda` atau `/masuk`.
-- `/lengkapi-profil`: `{ next, namaLengkap }`. Nama disimpan di Data Diri pemilik vault (akun/demo, atau perangkat ini untuk tamu).
+- `/lengkapi-profil`: `{ next, namaLengkap }`. Nama disimpan di Data Diri pemilik vault (akun/demo).
 
 **Masuk dengan Google:** `<form method="GET" action="/auth/google">` + `<input type="hidden" name="next">` (atau tautan `/auth/google?next=…` dengan `data-sveltekit-reload`), hanya bila `googleAktif`. Bila warga sudah masuk, tombol yang sama di Pengaturan akun **menautkan** Google ke akun itu.
 
@@ -84,7 +84,7 @@ Galat berbentuk `{ kode, pesanWarga }`; 429 membawa `Retry-After`. POST/PUT/DELE
 
 ## Keadaan yang perlu didesain
 
-- **Masuk:** galat kredensial; Turnstile muncul setelah 3 gagal; terkunci (30 detik, berlipat sampai 1 jam; pakai `Retry-After`); kembali dari Google gagal; Google perlu sandi (tautkan); tombol juri (dengan widget Turnstile) dan galat batasnya.
+- **Masuk:** galat kredensial; Turnstile muncul setelah 3 gagal (hanya bila Turnstile aktif; tidak di produksi saat ini); terkunci (30 detik, berlipat sampai 1 jam; pakai `Retry-After`); kembali dari Google gagal; Google perlu sandi (tautkan); tombol juri (dengan widget Turnstile) dan galat batasnya.
 - **Daftar:** sandi ditolak; email sudah terdaftar (tautan Masuk); sukses langsung ke beranda.
 - **Lupa / atur ulang:** terkirim; tertunda; belum tersedia (tanpa pengirim email); tautan kedaluwarsa; sandi ditolak; berhasil.
 - **Unduh dokumen di perangkat baru:** dialog "Masukkan kata sandi untuk mengunduh di perangkat ini" (atau "Masuk ulang dengan Google" bila `punyaSandi` false).
