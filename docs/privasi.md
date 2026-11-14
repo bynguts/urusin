@@ -19,7 +19,7 @@ yang sebenarnya; rujukan teknisnya ada di [ADR 0028](adr/0028-akun-dan-login.md)
 
 ## Siapa yang mengelola data
 
-Urusin dikembangkan dan dioperasikan oleh Tim Urusin (LOGICODIX 2026) sebagai pengendali data. Pertanyaan dan
+Urusin dikembangkan dan dioperasikan oleh Tim Lisan al-Gaib (LOGICODIX 2026) sebagai pengendali data. Pertanyaan dan
 permintaan soal data pribadi bisa dikirim lewat kontak di [`SECURITY.md`](../SECURITY.md).
 
 ## Tiga cara memakai Urusin

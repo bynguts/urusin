@@ -154,8 +154,8 @@
       <div class="pv22">
         <h2 class="pv23" id="judul-kontak">Kontak</h2>
         <p class="pv24">
-          Urusin dikembangkan dan dioperasikan oleh Tim Urusin (LOGICODIX 2026). Pertanyaan, keberatan, atau
-          permintaan soal datamu bisa dikirim lewat kontak di
+          Urusin dikembangkan dan dioperasikan oleh Tim Lisan al-Gaib (LOGICODIX 2026). Pertanyaan, keberatan,
+          atau permintaan soal datamu bisa dikirim lewat kontak di
           <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- tautan eksternal ke repo publik -->
           <a href={KONTAK} rel="external noopener">kebijakan keamanan Urusin</a>. Bila syarat ini berubah,
           tanggal berlaku di atas ikut diperbarui.

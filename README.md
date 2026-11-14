@@ -27,11 +27,10 @@ warga sendiri.
 11. [Keamanan, privasi, dan etika](#11-keamanan-privasi-dan-etika)
 12. [Pengujian](#12-pengujian)
 13. [Status dan batasan](#13-status-dan-batasan)
-14. [Dokumentasi lanjutan](#14-dokumentasi-lanjutan)
 
 ## 1. Tim
 
-**Tim Urusin**
+**Tim Lisan al-Gaib**
 
 | Peran                                                      | Anggota                        | Kampus                      | GitHub                                     |
 | ---------------------------------------------------------- | ------------------------------ | --------------------------- | ------------------------------------------ |
@@ -235,42 +234,19 @@ embedding, pencarian memakai BM25 saja.
 
 Daftar lengkap beserta penjelasannya ada di [`.env.example`](.env.example). Yang utama:
 
-| Fitur                      | Variabel                                                                                                 |
-| -------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Agen dengan LLM            | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_AGENT_MODEL`, `LLM_VISION_MODEL`                                     |
-| Pencarian dan embedding    | `URUSIN_EMBED_URL` (sidecar embedding), `EXA_API_KEY` (cadangan web), `RAG_ABSTAIN_MIN_*`, `LLM_EMBED_*` |
-| Brankas dan akun           | `URUSIN_PII_KEY` (wajib di produksi), `URUSIN_PII_KEY_PREV` (rotasi), `SESSION_SECRET`, `URUSIN_VAULT_*` |
-| Masuk dengan Google        | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                                               |
-| Kuota dan biaya            | `URUSIN_LIMIT_*`, `URUSIN_DEMO_*`, `URUSIN_DAILY_USD_CAP`, `URUSIN_DAILY_IDR_CAP`                        |
-| Browser Pendamping         | `PENDAMPING_*` (alamat layanan, rahasia HMAC, batas sesi dan memori)                                     |
-| Situs latihan              | `FIXTURES_PROFILE`, `FIXTURES_PORT`, `FIXTURES_PUBLIC_ORIGIN`                                            |
-| Opsional, mati di produksi | `RESEND_API_KEY`, `URUSIN_EMAIL_*`, `TURNSTILE_*`, `RERANK_*`, `VAPID_*`                                 |
-
-### Demo lengkap di localhost (Docker, satu perintah)
-
-Web, Browser Pendamping, situs latihan, dan akun juri di satu laptop:
-
-```bash
-bash scripts/demo-final.sh up    # build image, jalankan di http://localhost, lalu preflight
-```
-
-| Perintah                             | Kegunaan                                                       |
-| ------------------------------------ | -------------------------------------------------------------- |
-| `bash scripts/demo-final.sh cek`     | Preflight: layanan, waktu respons, LLM, RAG, Pendamping, juri  |
-| `bash scripts/demo-final.sh offline` | Matikan LLM; agen memakai `DemoProvider` (bila internet putus) |
-| `bash scripts/demo-final.sh online`  | Kembali memakai LLM                                            |
-| `bash scripts/demo-final.sh down`    | Hentikan (data demo tetap); `reset` menghapus juga data demo   |
-
-LLM untuk demo diambil dari env `LLM_BASE_URL`, `LLM_API_KEY`, dan `LLM_AGENT_MODEL` saat `up`; tanpa itu demo
-memakai `DemoProvider`. Topologi: [`deploy/compose.demo.yml`](deploy/compose.demo.yml).
+| Fitur               | Variabel                                                                 |
+| ------------------- | ------------------------------------------------------------------------ |
+| Agen AI             | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_AGENT_MODEL`, `LLM_VISION_MODEL`     |
+| Pencarian           | `URUSIN_EMBED_URL`, `LLM_EMBED_*` (vektor), `EXA_API_KEY` (cadangan web) |
+| Brankas dan akun    | `URUSIN_PII_KEY` (wajib di produksi), `SESSION_SECRET`, `URUSIN_VAULT_*` |
+| Masuk dengan Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                               |
+| Browser Pendamping  | `PENDAMPING_*` (alamat layanan, rahasia HMAC, batas sesi)                |
 
 ### Pemeriksaan
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test   # lint, tipe, dan tes unit
-pnpm format:check                          # Prettier
 pnpm e2e                                   # Playwright terhadap situs latihan
-pnpm coverage                              # coverage per paket dengan ambang
 ```
 
 ## 8. Akun demonstrasi
@@ -345,43 +321,23 @@ dibagikan.
 
 ## 11. Keamanan, privasi, dan etika
 
-- **Warga yang memegang kendali.**
-  - AI tidak pernah menekan Kirim, login, atau menyelesaikan CAPTCHA. Tanpa plugin stealth, tanpa layanan pemecah
-    CAPTCHA, tanpa proxy residensial, dan user agent jujur ([ADR 0025](docs/adr/0025-executor-tanpa-bypass-captcha.md)).
-  - AI mengisi hanya setelah "Izinkan isi", untuk satu situs dan satu kali.
-- **Perlindungan data (UU PDP 27/2022).**
-  - Data Diri dan dokumen dienkripsi AES-256-GCM dengan kunci per pemilik; kata sandi di-hash argon2id.
-  - NIK, KK, HP, dan email diganti penanda sebelum teks dikirim ke model AI.
-  - Hak akses, perbaikan, dan penghapusan lewat UI: Data Diri, Dokumen, dan **Pengaturan → Keluar dan hapus akun**.
-    Hapus akun menghancurkan kunci brankas.
-  - Server di Oracle Cloud region Singapura. Cadangan basis data dibuat tiap 6 jam dan disimpan 3 hari.
-  - Tanpa iklan, tanpa pelacak, tanpa analitik pihak ketiga. Kebijakan privasi lengkap, termasuk daftar pemroses dan
-    transfer lintas negara: [`docs/privasi.md`](docs/privasi.md).
-- **Akun.** Sesi di cookie `__Host-` (HttpOnly, Secure, SameSite=Lax), server hanya menyimpan hash token, kunci
-  bertahap setelah gagal masuk, dan Google OIDC dengan PKCE/state/nonce.
-- **Browser Pendamping.**
-  - Konteks Chromium non-persisten per sesi, dihancurkan setelah selesai, 15 menit, atau 3 menit idle. Layar tidak
-    direkam; ketikan warga saat ambil alih tidak dicatat dan tidak dikirim ke AI.
-  - Lalu lintas keluar hanya lewat gerbang egress yang mengizinkan HTTPS ke host sesi dan menolak alamat
-    privat/metadata. Sandbox Chromium aktif, kontainer non-root, filesystem read-only
-    ([ADR 0029](docs/adr/0029-browser-pendamping.md)).
-- **Web.** CSP berbasis nonce/hash, `frame-ancestors 'none'`, dan semua HTTP keluar lewat allowlist `@urusin/egress`.
-- **Rantai pasok dan rahasia.** Semua GitHub Action dipin ke SHA; OSV-Scanner, `pnpm audit --prod`, CodeQL, dan
-  OpenSSF Scorecard; hook pre-commit memindai NIK, HP, email, dan private key. Rahasia hanya di `.env` (diabaikan git);
-  [`.env.example`](.env.example) berisi nama variabel tanpa nilai asli.
-- Kebijakan pelaporan kerentanan: [`SECURITY.md`](SECURITY.md).
+- **Warga memegang kendali.** AI tidak pernah login, menjawab CAPTCHA, atau menekan Kirim; tanpa plugin stealth,
+  pemecah CAPTCHA, atau proxy residensial ([ADR 0025](docs/adr/0025-executor-tanpa-bypass-captcha.md)). Pengisian
+  hanya setelah "Izinkan isi", untuk satu situs dan satu kali.
+- **Perlindungan data (UU PDP 27/2022).** Data Diri dan dokumen dienkripsi AES-256-GCM per pemilik, kata sandi
+  di-hash argon2id, dan NIK/KK/HP/email diganti penanda sebelum dikirim ke AI. Hapus akun menghancurkan kunci
+  brankas. Tanpa iklan, pelacak, atau analitik pihak ketiga. Rinciannya di [`docs/privasi.md`](docs/privasi.md).
+- **Browser Pendamping terisolasi.** Chromium non-persisten per sesi, layar tidak direkam, lalu lintas keluar hanya
+  ke host sesi lewat allowlist ([ADR 0029](docs/adr/0029-browser-pendamping.md)).
+- **Kode dan rahasia.** CSP berbasis nonce, cookie `__Host-`, GitHub Action dipin ke SHA, hook pre-commit memindai
+  data pribadi dan private key, rahasia hanya di `.env`. Pelaporan kerentanan: [`SECURITY.md`](SECURITY.md).
 
 ## 12. Pengujian
 
-- Tes unit Vitest di setiap paket dan tes `node:test` untuk skrip repositori.
-- E2E Playwright: alur akun, akun juri, alur utama di layar HP dan desktop, serta Browser Pendamping terhadap situs
-  latihan (tidak pernah terhadap situs pemerintah asli).
-- Pipeline [`.github/workflows/ci.yml`](.github/workflows/ci.yml): lint, format, typecheck, test, build, anggaran
-  bundle, audit riwayat commit, pemindai PII, e2e, coverage dengan ambang per paket, Lighthouse CI mobile, dan
-  pembekuan kontrak API.
-- Image produksi dibangun multi-arch (`linux/amd64` + `linux/arm64`) dan dipasang berdasarkan digest; server
-  memeriksa kesehatan aplikasi sebelum mengalihkan trafik. Versi yang berjalan terlihat di field `versi` pada
-  <https://urusinai.web.id/api/kemampuan>.
+- Tes unit Vitest di setiap paket dan E2E Playwright (akun, juri, alur utama HP dan desktop, Browser Pendamping
+  terhadap situs latihan, tidak pernah terhadap situs pemerintah asli).
+- Pipeline [`.github/workflows/ci.yml`](.github/workflows/ci.yml): lint, typecheck, test, build, e2e, coverage, audit
+  riwayat commit, dan pemindai data pribadi.
 
 ## 13. Status dan batasan
 
@@ -395,27 +351,18 @@ Status per 14 November 2026:
 | Browser Pendamping                                               | Live 24/7 di 8 kota/kabupaten; Medan, Semarang, dan daerah lain dipandu |
 | Cek status permohonan (baca saja)                                | Live untuk Surabaya                                                     |
 
-Batasan yang kami tulis apa adanya:
+Batasan:
 
-- **Jangkauan portal.** Pengisian otomatis baru tersedia di 8 daerah di atas. Portal yang hanya menerima jaringan
-  Indonesia (Medan, Semarang) belum bisa dibuka dari server di Singapura, sehingga di sana Urusin memandu warga
-  langkah demi langkah. Daerah lain mendapat mode dipandu dengan sumber dan kanal resmi.
-- **Kirim tetap manual, sengaja.** Urusin tidak akan pernah menekan Kirim atau menjawab CAPTCHA atas nama warga.
-- **Email belum dikirim.** Urusin saat ini tidak mengirim email, jadi atur ulang kata sandi lewat email belum
-  tersedia. Masuk dengan Google tetap bisa dipakai sebagai cara masuk alternatif.
-- **Persetujuan "Izinkan isi"** hanya hidup selama proses server berjalan; bila server dimulai ulang, warga cukup
-  menekannya lagi.
+- **Jangkauan portal.** Pengisian otomatis baru di 8 daerah di atas. Portal yang hanya menerima jaringan Indonesia
+  (Medan, Semarang) dan daerah lain mendapat mode dipandu dengan sumber dan kanal resmi.
+- **Email belum dikirim**, jadi atur ulang kata sandi lewat email belum tersedia; Masuk dengan Google tetap bisa
+  dipakai.
 - **Akun juri** hanya membuka situs resmi untuk dilihat; contoh pengisian ditampilkan sebagai simulasi agar data
   karangan tidak pernah terkirim ke situs pemerintah.
 
-## 14. Dokumentasi lanjutan
-
-- [Arsitektur (C4 dan alur data pribadi)](docs/arsitektur.md)
-- [Kebijakan privasi](docs/privasi.md)
-- [Kebijakan keamanan](SECURITY.md)
-- [Architecture Decision Records](docs/adr/README.md)
-- [Kontrak API/SSE](packages/contracts/README.md)
+Dokumentasi lanjutan: [arsitektur](docs/arsitektur.md), [kebijakan privasi](docs/privasi.md),
+[keamanan](SECURITY.md), [ADR](docs/adr/README.md), [kontrak API/SSE](packages/contracts/README.md).
 
 ## Lisensi
 
-[MIT](LICENSE) © 2026 Tim Urusin
+[MIT](LICENSE) © 2026 Tim Lisan al-Gaib
