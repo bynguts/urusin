@@ -50,7 +50,7 @@ import { newNonce, spotlight } from './spotlight.js';
 import type { HarnessStore, TurnStatus, UrusanRow } from './store.js';
 import { clip, ringkasRiwayat, type ToolContext, type ToolRegistry } from './tools.js';
 import { OTEL, type Tracer } from './trace.js';
-import type { LayananCariWeb } from './web-cari.js';
+import { PENANDA_SARAN_WEB, type LayananCariWeb } from './web-cari.js';
 import {
   hanyaTanyaWilayah,
   kartuRencana,
@@ -696,8 +696,8 @@ class TurnRunner {
       },
       { role: 'tool', tool_call_id: id, content: r.content },
     );
-    // Tanpa potongan: model yang mengarahkan warga ke kanal resmi (sama dengan loop biasa).
-    if (!r.content.includes('<<DATA_TAK_TEPERCAYA sumber="rag"')) {
+    // Tanpa potongan, atau korpus perlu dilengkapi web (saran web): model yang melanjutkan (sama dengan loop biasa).
+    if (!r.content.includes('<<DATA_TAK_TEPERCAYA sumber="rag"') || r.content.includes(PENANDA_SARAN_WEB)) {
       await this.toolLoop();
       return true;
     }
@@ -1017,6 +1017,7 @@ class TurnRunner {
         this.urusan.state === 'MEMAHAMI' &&
         calls.every((c) => TOOL_CARI.has(safeToolName(c.function.name))) &&
         g.isi.some((c) => c.includes('<<DATA_TAK_TEPERCAYA sumber="rag"')) &&
+        !g.isi.some((c) => c.includes(PENANDA_SARAN_WEB)) &&
         wilayahUrusan(this.store, this.urusan).ktp
       ) {
         const j = await this.jawabDanRencana(

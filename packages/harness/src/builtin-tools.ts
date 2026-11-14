@@ -48,12 +48,16 @@ import {
   wilayahUrusan,
 } from './wilayah.js';
 import { arahanPanduanUmum, kanalDipandu, paketDipandu } from './dipandu.js';
+import { alasanCariWeb, saranWeb } from './web-cari.js';
 
 const kodeKabKota = z.string().regex(/^\d{4}$/);
 
 /** Saran ke model saat korpus RAG kosong dan `web__cari` terdaftar. */
-export const SARAN_WEB =
-  'Korpus belum punya jawabannya: coba web__cari dengan kueri umum yang sama (tanpa data pribadi) sebelum mengarahkan warga.';
+export const SARAN_WEB = saranWeb('kosong');
+
+/** `web__cari` terdaftar dan belum dicoba untuk urusan ini di giliran ini (saran web tidak berputar). */
+const webBelumDicoba = (ctx: ToolContext) =>
+  ctx.deps.cariWeb !== undefined && !ctx.deps.cariWeb.batas.sudahDicoba(ctx.urusan.id);
 
 type Hit = ReturnType<typeof cariPengetahuanTool.execute>['hasil'][number];
 
@@ -126,8 +130,17 @@ export const ragCariPengetahuan = defineTool({
     const kode = kodeKtp(ctx.store, ctx.urusan) ?? args.kodeKabKota ?? null;
     const out = await retrieve(ctx, args.query, kode, args.layanan);
     const content = formatHits(out.hasil, ctx.nonce, 4, kode);
-    // RAG kosong dan cari web aktif: cadangan web__cari (sumber resmi dulu) sebelum mengarahkan ke kanal.
-    const web = out.hasil.length === 0 && ctx.deps.cariWeb ? `\n${SARAN_WEB}` : '';
+    // Korpus tidak jelas menjawab (kosong, info terkini, celah wilayah, warga minta) dan web aktif: sarankan
+    // web__cari (sumber resmi dulu) sebelum menjawab atau mengarahkan ke kanal.
+    const alasan = webBelumDicoba(ctx)
+      ? alasanCariWeb({
+          hits: out.hasil,
+          kode,
+          teks: `${args.query}\n${ctx.pesanWarga}`,
+          adminduk: ctx.urusan.jenis === null || ADMINDUK.has(ctx.urusan.jenis),
+        })
+      : null;
+    const web = alasan ? `\n${saranWeb(alasan)}` : '';
     return { content: `${content}${web}`, terbungkus: true, takTepercaya: true };
   },
 });
@@ -320,6 +333,13 @@ const bukanPenduduk = (jenis: string | null, ktp: { kodeKabKota: string } | null
  * memberi langkah lain (isi kartu rencana atau datang ke kantor) tanpa mengulang kanal.
  */
 function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?: string | null): ToolResult {
+  // Korpus tidak cukup dan web belum dicoba di giliran ini: cari web dulu, baru panduan umum/hand-off bila web
+  // juga gagal (sesudah dicoba, panggilan berikutnya jatuh ke jalur di bawah).
+  if (webBelumDicoba(ctx))
+    return {
+      handoff: true,
+      content: `${saranWeb('kosong')} Sesudah itu panggil urusan__jawab_persyaratan lagi; bila web juga tidak membantu, tool ini memberi arahan berikutnya.`,
+    };
   // Urusan adminduk tidak berakhir hand-off (ADR 0033): model memberi panduan umum yang ditandai jujur, ditutup
   // kanal resmi daerah yang berwenang (yurisdiksi `kodeUtama`, portal penduduk dilewati untuk warga luar daerah).
   if (ctx.urusan.jenis === null || ADMINDUK.has(ctx.urusan.jenis)) {

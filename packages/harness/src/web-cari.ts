@@ -38,21 +38,36 @@ export type BatasWebConfig = {
   jendelaMs: number;
 };
 
-/** Per jam: 5 pencarian per urusan, 20 per akun, 120 global (≈ USD 1,8/jam pada tarif Exa tertinggi). */
+/** Per jam: 8 pencarian per urusan, 30 per akun, 120 global (≈ USD 1,8/jam pada tarif Exa tertinggi). */
 export const BATAS_WEB_DEFAULT: BatasWebConfig = {
-  perUrusan: 5,
-  perAkun: 20,
+  perUrusan: 8,
+  perAkun: 30,
   global: 120,
   jendelaMs: 3_600_000,
 };
 
+/** Perkiraan satu giliran agen: web__cari yang dicoba dalam jendela ini tidak disarankan ulang. */
+export const JEDA_SARAN_WEB_MS = 120_000;
+
 /** Jendela geser per kunci, di memori proses (server tunggal, seperti RateLimiter di apps/web). */
 export class BatasCariWeb {
   private readonly jejak = new Map<string, number[]>();
+  /** Percobaan terakhir per urusan (termasuk yang kena batas), agar saran web tidak berputar. */
+  private readonly percobaan = new Map<string, number>();
   constructor(
     readonly config: BatasWebConfig = BATAS_WEB_DEFAULT,
     private readonly now: () => number = Date.now,
   ) {}
+
+  tandaiPercobaan(urusanId: string): void {
+    this.percobaan.set(urusanId, this.now());
+  }
+
+  /** web__cari sudah dicoba untuk urusan ini dalam `jedaMs` terakhir (berhasil, kosong, gagal, atau kena batas). */
+  sudahDicoba(urusanId: string, jedaMs = JEDA_SARAN_WEB_MS): boolean {
+    const t = this.percobaan.get(urusanId);
+    return t !== undefined && this.now() - t < jedaMs;
+  }
 
   /** true dan dicatat bila SEMUA kunci masih di bawah batasnya; false tanpa mencatat apa pun. */
   coba(kunci: readonly { kunci: string; batas: number }[]): boolean {
@@ -69,6 +84,56 @@ export class BatasCariWeb {
 }
 
 export type LayananCariWeb = { cari: CariWeb; batas: BatasCariWeb };
+
+/** Alasan menyarankan web__cari sesudah pencarian korpus RAG. */
+export type AlasanCariWeb = 'kosong' | 'diminta' | 'terkini' | 'wilayah';
+
+/** Warga meminta dicarikan di internet. */
+const MINTA_WEB_RE =
+  /\b((men)?cari\w*|telusur\w*|search\w*|googling|browsing|lihat\w*)\s+(\S+\s+){0,3}?(di\s+)?(internet|web|google|online|situs\s+resmi)\b|\b(googling|browsing|searching)\b/i;
+/** Info yang bisa berubah: korpus bisa usang. */
+const TERKINI_RE =
+  /\b(terbaru|terkini|terupdate|update\w*|biaya\w*|tarif\w*|harga\w*|denda\w*|jadwal\w*|jam\s+(buka|layanan|pelayanan|operasional|kerja)|libur\w*|kuota|(aturan|peraturan|kebijakan|ketentuan)\s+baru|berubah|perubahan|masih\s+berlaku)\b/i;
+/** Detail yang khas daerah (kantor, kontak, kanal online). */
+const LOKAL_RE =
+  /\b(alamat\s+(kantor|disdukcapil|dukcapil|dinas|mpp|samsat|polres)|lokasi\w*|di\s*mana|kantor\w*|kontak|telepon|telp|whatsapp|wa|website|situs|aplikasi|portal|online|daring|mpp|mal\s+pelayanan|loket|cabang|gerai)\b/i;
+
+/**
+ * Kapan korpus RAG perlu dilengkapi web: tanpa hasil, warga minta dicarikan, info yang bisa berubah (biaya, jadwal,
+ * aturan baru), atau tidak ada potongan khusus wilayah urusan (kab/kota atau provinsinya) padahal yang ditanya detail
+ * daerah, atau layanannya bukan adminduk (aturan adminduk nasional, layanan lain beda per daerah). null = korpus cukup.
+ */
+export function alasanCariWeb(input: {
+  hits: readonly { kodeWilayah: string | null }[];
+  kode?: string | null | undefined;
+  teks: string;
+  adminduk: boolean;
+}): AlasanCariWeb | null {
+  if (input.hits.length === 0) return 'kosong';
+  if (MINTA_WEB_RE.test(input.teks)) return 'diminta';
+  if (TERKINI_RE.test(input.teks)) return 'terkini';
+  const k = input.kode;
+  const adaWilayah = k
+    ? input.hits.some((h) => h.kodeWilayah === k || h.kodeWilayah === k.slice(0, 2))
+    : true;
+  if (!adaWilayah && (!input.adminduk || LOKAL_RE.test(input.teks))) return 'wilayah';
+  return null;
+}
+
+/** Penanda saran web di hasil tool (jalur cepat memakainya untuk menyerahkan giliran ke model). */
+export const PENANDA_SARAN_WEB = 'SARAN CARI WEB:';
+
+const ALASAN_WEB: Record<AlasanCariWeb, string> = {
+  kosong: 'korpus belum punya jawabannya',
+  diminta: 'warga meminta dicarikan di internet',
+  terkini:
+    'pertanyaan menyangkut info yang bisa berubah (biaya, jadwal, jam layanan, aturan baru), korpus bisa usang',
+  wilayah: 'korpus tidak memuat info khusus wilayah ini',
+};
+
+export function saranWeb(alasan: AlasanCariWeb): string {
+  return `${PENANDA_SARAN_WEB} ${ALASAN_WEB[alasan]}. Panggil web__cari (istilah layanan umum + nama kab/kota, TANPA data pribadi) sebelum menjawab atau mengarahkan warga ke kanal; hasil sumber resmi lalu dikutip lewat urusan__jawab_persyaratan.`;
+}
 
 /** Sufiks domain pemerintah Indonesia. */
 const SUFIKS_RESMI = '.go.id';
@@ -199,7 +264,7 @@ const LANJUT_TANPA_WEB = 'Lanjutkan tanpa web: arahkan warga ke kanal resmi wila
 export const webCari = defineTool({
   name: 'web__cari',
   description:
-    'CADANGAN pencarian web (sumber resmi .go.id dulu). Pakai HANYA bila rag__cari_pengetahuan tidak menemukan jawaban, hasilnya tidak relevan, tampak usang, atau pertanyaan di luar cakupan korpus. Query: istilah umum saja, TANPA data pribadi. Hasil resmi bisa dikutip lewat urusan__jawab_persyaratan; bila menyebut info dari web di balasan, WAJIB sertakan URL sumbernya.',
+    'Pencarian web (sumber resmi .go.id dulu), pelengkap korpus. Pakai bila rag__cari_pengetahuan tidak jelas menjawab: tanpa hasil, hasil lemah/tidak relevan, tidak ada info khusus kab/kota warga, info yang bisa berubah (biaya, jadwal, jam layanan, aturan baru), topik di luar korpus, atau warga minta dicarikan. Query: istilah layanan umum + nama daerah, TANPA data pribadi. Hasil resmi bisa dikutip lewat urusan__jawab_persyaratan; bila menyebut info dari web di balasan, WAJIB sertakan URL sumbernya.',
   effect: 'read',
   spanOperation: 'retrieval',
   input: z.object({
@@ -221,6 +286,7 @@ export const webCari = defineTool({
         content:
           'Kueri web ditolak karena memuat data pribadi. Cari dengan istilah layanan yang umum (mis. "syarat akta kelahiran Kota Surabaya"), tanpa nama, nomor, atau tanggal lahir warga.',
       };
+    web.batas.tandaiPercobaan(ctx.urusan.id);
     const c = web.batas.config;
     const kunci = [
       { kunci: `urusan:${ctx.urusan.id}`, batas: c.perUrusan },

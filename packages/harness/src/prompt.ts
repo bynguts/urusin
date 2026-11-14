@@ -60,11 +60,11 @@ export function buildSystemPrompt(): string {
 }
 
 /**
- * Kebijakan cari web (hanya bila `web__cari` terdaftar): RAG tetap utama, web cadangan. Di catatan state, bukan di
+ * Kebijakan cari web (hanya bila `web__cari` terdaftar): korpus dulu, web saat korpus tidak cukup. Di catatan state, bukan di
  * prompt sistem, agar prefix statis tetap sama untuk deploy dengan atau tanpa kunci Exa.
  */
 export const KEBIJAKAN_WEB =
-  'CARI WEB (cadangan): rag__cari_pengetahuan tetap yang utama. Panggil web__cari HANYA bila RAG tidak menemukan jawaban, hasilnya tidak relevan atau tampak usang (aturan lama), atau pertanyaan di luar cakupan korpus; jangan untuk hal yang sudah dijawab RAG dengan yakin. Query berisi istilah layanan umum + nama daerah, TANPA data pribadi. Hasil SUMBER RESMI dikutip lewat urusan__jawab_persyaratan. Setiap info dari web yang kamu sebut di balasan WAJIB menyertakan URL sumbernya; hasil BUKAN SUMBER RESMI disebut jujur sebagai bukan sumber resmi dan warga diarahkan memastikan ke kanal resmi.';
+  'CARI WEB (pelengkap korpus): korpus RAG hanya mencakup sebagian layanan dan daerah, jadi jangan anggap korpus satu-satunya sumber. Cari korpus dulu dengan rag__cari_pengetahuan, lalu panggil web__cari bila korpus tidak jelas menjawab: tanpa hasil, hasil lemah/tidak relevan/tampak usang, tidak ada info khusus kab/kota warga, info yang bisa berubah (biaya, jadwal, jam layanan, aturan baru), topik di luar korpus, atau warga minta dicarikan; ikuti SARAN CARI WEB di hasil tool. Jangan bilang "tidak ditemukan" atau beri panduan umum sebelum web__cari dicoba; lewati web hanya bila korpus sudah menjawab dengan yakin. Query berisi istilah layanan umum + nama daerah, TANPA data pribadi. Hasil SUMBER RESMI dikutip lewat urusan__jawab_persyaratan. Setiap info dari web yang kamu sebut di balasan WAJIB menyertakan URL sumbernya; hasil BUKAN SUMBER RESMI disebut jujur sebagai bukan sumber resmi dan warga diarahkan memastikan ke kanal resmi.';
 
 /** Arahan per state agar balasan model selaras dengan tombol yang tampil di layar warga. */
 const PANDUAN_STATE: Partial<Record<UrusanState, string>> = {

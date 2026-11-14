@@ -11,13 +11,17 @@ import {
   BatasCariWeb,
   DOMAIN_RESMI_WEB,
   EXA_SEARCH_URL,
+  PENANDA_SARAN_WEB,
+  alasanCariWeb,
   buatCariWebExa,
   hostResmi,
   kueriBerisiDataPribadi,
+  saranWeb,
   webCari,
   type CariWeb,
   type HasilWeb,
 } from './web-cari.js';
+import { openDb, upsertChunks } from '@urusin/rag';
 import { buatUrusanTerwilayah } from './wilayah.js';
 
 const of = <T extends UrusinEvent['type']>(events: readonly UrusinEvent[], t: T) =>
@@ -175,6 +179,28 @@ describe('penjaga kueri dan domain', () => {
     expect(hostResmi('E-OPEN.ID.')).toBe(true);
     expect(hostResmi('go.id.contoh.com')).toBe(false);
     expect(hostResmi('blog.contoh.com')).toBe(false);
+  });
+
+  it('alasanCariWeb: kosong, diminta, terkini, celah wilayah; null bila korpus cukup', () => {
+    const nasional = [{ kodeWilayah: null }];
+    const sby = [{ kodeWilayah: '3578' }];
+    const base = { kode: '3578', adminduk: true };
+    expect(alasanCariWeb({ ...base, hits: [], teks: 'syarat akta' })).toBe('kosong');
+    expect(alasanCariWeb({ ...base, hits: sby, teks: 'tolong carikan di internet syarat akta' })).toBe(
+      'diminta',
+    );
+    expect(alasanCariWeb({ ...base, hits: sby, teks: 'jam buka Disdukcapil Surabaya' })).toBe('terkini');
+    expect(alasanCariWeb({ ...base, hits: sby, teks: 'biaya denda telat lapor kelahiran' })).toBe('terkini');
+    // Korpus hanya nasional: detail daerah (aplikasi/kantor) = celah wilayah; syarat adminduk nasional cukup.
+    expect(alasanCariWeb({ ...base, hits: nasional, teks: 'akta lewat aplikasi apa?' })).toBe('wilayah');
+    expect(alasanCariWeb({ ...base, hits: nasional, teks: 'syarat akta kelahiran' })).toBeNull();
+    // Layanan non-adminduk tanpa potongan daerahnya: web.
+    expect(alasanCariWeb({ ...base, adminduk: false, hits: nasional, teks: 'syarat balik nama' })).toBe(
+      'wilayah',
+    );
+    // Potongan provinsi menutup celah wilayah.
+    expect(alasanCariWeb({ ...base, hits: [{ kodeWilayah: '35' }], teks: 'kantor di mana' })).toBeNull();
+    expect(alasanCariWeb({ ...base, hits: sby, teks: 'syarat akta kelahiran' })).toBeNull();
   });
 
   it('batas laju: semua kunci harus di bawah batas; jendela bergeser', () => {
@@ -428,6 +454,160 @@ describe('agen: web__cari sebagai cadangan RAG', () => {
         .map((e) => e.delta)
         .join(''),
     ).toContain('kanal resmi');
+  });
+
+  it('RAG lemah (jawaban bersumber hand-off): web dicoba dulu, kueri PII ditolak, lalu dikutip dari web', async () => {
+    const t = tiruan([AKTA_SBY]);
+    const provider = new FakeProvider({
+      replies: [
+        // Korpus punya potongan: harness langsung menjalankan jawaban bersumber (generator + rencana paralel).
+        tool('rag__cari_pengetahuan', { query: 'syarat akta kelahiran' }),
+        fakeCompletion({ content: JSON.stringify({ klaim: [], handoff: { pesan: 'tidak ada' } }) }),
+        fakeCompletion({ content: '(rencana paralel, dibatalkan)' }),
+        tool('web__cari', { query: 'syarat akta atas nama Budi Santoso' }),
+        tool('web__cari', { query: 'syarat akta kelahiran Kota Surabaya' }),
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'syarat akta kelahiran Surabaya' }),
+        fakeCompletion({
+          content: JSON.stringify({
+            klaim: [
+              {
+                teks: 'Siapkan surat keterangan lahir dari bidan atau rumah sakit.',
+                kutipan: [
+                  {
+                    refId: refWeb(AKTA_SBY.url),
+                    kutipanPersis: 'surat keterangan lahir dari bidan atau rumah sakit',
+                  },
+                ],
+              },
+            ],
+          }),
+        }),
+        fakeCompletion({ content: 'Selesai.' }),
+        fakeCompletion({ content: 'Selesai.' }),
+      ],
+    });
+    const env = makeEnv({ provider, cariWeb: t.cari });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3578', jenis: 'akta' });
+    env.store.transition(u.id, env.store.getUrusanOrThrow(u.id).version, 'MEMAHAMI');
+    const out = await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'syarat akta kelahiran di Surabaya apa?',
+    });
+
+    const pesan = JSON.stringify(
+      provider.calls.flatMap((c) => (c.kind === 'create' ? [c.params.messages] : [])),
+    );
+    // Hand-off pertama tidak langsung jadi panduan umum: model disuruh mencoba web.
+    expect(pesan).toContain(`${PENANDA_SARAN_WEB} korpus belum punya jawabannya`);
+    expect(pesan).not.toContain('Panduan umum (belum dari sumber resmi daerah');
+    // Kueri berisi data diri tidak pernah dikirim; kueri bersih dikirim sekali.
+    expect(t.panggilan).toEqual([
+      { query: 'syarat akta kelahiran Kota Surabaya', includeDomains: DOMAIN_RESMI_WEB },
+    ]);
+    const jawab = of(out.events, 'grounded_answer');
+    expect(jawab).toHaveLength(1);
+    expect(jawab[0]!.klaim[0]!.kutipan[0]).toMatchObject({ url: AKTA_SBY.url, perluDicekUlang: true });
+  });
+
+  it('korpus dan web sama-sama gagal: baru panduan umum (abstain hanya bila keduanya gagal)', async () => {
+    const t = tiruan([], []);
+    // Tanpa potongan tersimpan: jawaban bersumber langsung hand-off (tanpa generator).
+    const provider = new FakeProvider({
+      replies: [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'syarat akta kelahiran' }),
+        tool('web__cari', { query: 'syarat akta kelahiran Kota Surabaya' }),
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'syarat akta kelahiran' }),
+        fakeCompletion({
+          content: 'Panduan umum (belum dari sumber resmi daerah, cek ulang di kanal resmi): ...',
+        }),
+      ],
+    });
+    const env = makeEnv({ provider, cariWeb: t.cari });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3578', jenis: 'akta' });
+    env.store.transition(u.id, env.store.getUrusanOrThrow(u.id).version, 'MEMAHAMI');
+    await runTurn(env.deps, { urusanId: u.id, userText: 'syarat akta kelahiran apa?' });
+    const req = provider.calls.flatMap((c) => (c.kind === 'create' ? [c.params] : []));
+    expect(t.panggilan).toHaveLength(2);
+    expect(JSON.stringify(req.at(-1)!.messages)).toContain('Jawab sebagai PANDUAN UMUM');
+  });
+
+  it('jalur cepat dengan celah wilayah: tidak menjawab dari korpus saja, model memanggil web__cari', async () => {
+    const db = openDb(':memory:');
+    upsertChunks(db, [
+      {
+        id: 'nasional-ktp#0',
+        text: 'Persyaratan penggantian KTP-el rusak: KTP-el yang rusak dan KK.',
+        sourceRef: {
+          url: 'https://dukcapil.kemendagri.go.id/ktp-el',
+          judul: 'Penggantian KTP-el rusak › persyaratan',
+          instansi: 'Ditjen Dukcapil',
+        },
+        verifiedAt: '2026-11-10T00:00:00.000Z',
+        layanan: 'adminduk',
+      },
+    ]);
+    const t = tiruan([AKTA_SBY]);
+    const provider = new FakeProvider({
+      replies: [
+        tool('web__cari', { query: 'ganti KTP-el rusak online Kota Surabaya' }),
+        fakeCompletion({ content: 'Selesai.' }),
+        fakeCompletion({ content: 'Selesai.' }),
+        fakeCompletion({ content: 'Selesai.' }),
+      ],
+    });
+    const env = makeEnv({ provider, cariWeb: t.cari, ragDb: db });
+    const u = env.store.createUrusan({});
+    await runTurn(env.deps, {
+      urusanId: u.id,
+      userText:
+        'KTP saya rusak. KTP saya terdaftar di Kota Surabaya. Gimana cara gantinya lewat aplikasi online?',
+    });
+    const req = provider.calls.flatMap((c) => (c.kind === 'create' ? [c.params] : []));
+    // Langkah model pertama (bukan generator jawaban) melihat saran web karena korpus tanpa info Surabaya.
+    expect(req[0]!.tool_choice).toBe('auto');
+    expect(JSON.stringify(req[0]!.messages)).toContain(saranWeb('wilayah'));
+    expect(t.panggilan).toHaveLength(1);
+  });
+
+  it('korpus punya potongan tapi info bisa berubah (biaya/jadwal): jawaban otomatis dilewati, model memanggil web__cari', async () => {
+    const db = openDb(':memory:');
+    upsertChunks(db, [
+      {
+        id: 'sby-akta#0',
+        text: 'Persyaratan akta kelahiran: surat keterangan lahir, KK, dan KTP-el orang tua.',
+        sourceRef: {
+          url: 'https://dispendukcapil.surabaya.go.id/akta',
+          judul: 'Akta kelahiran › persyaratan',
+          instansi: 'Dispendukcapil Kota Surabaya',
+        },
+        verifiedAt: '2026-11-10T00:00:00.000Z',
+        kodeWilayah: '3578',
+        layanan: 'adminduk',
+      },
+    ]);
+    const t = tiruan([AKTA_SBY]);
+    const provider = new FakeProvider({
+      replies: [
+        tool('rag__cari_pengetahuan', { query: 'jadwal layanan akta kelahiran' }),
+        tool('web__cari', { query: 'jadwal layanan akta kelahiran Kota Surabaya' }),
+        fakeCompletion({ content: 'Selesai.' }),
+        fakeCompletion({ content: 'Selesai.' }),
+        fakeCompletion({ content: 'Selesai.' }),
+      ],
+    });
+    const env = makeEnv({ provider, cariWeb: t.cari, ragDb: db });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3578', jenis: 'akta' });
+    env.store.transition(u.id, env.store.getUrusanOrThrow(u.id).version, 'MEMAHAMI');
+    await runTurn(env.deps, {
+      urusanId: u.id,
+      userText: 'jadwal layanan akta kelahiran terbaru di Surabaya?',
+    });
+    const req = provider.calls.flatMap((c) => (c.kind === 'create' ? [c.params] : []));
+    // Langkah kedua tetap langkah model (bukan generator jawaban) dan melihat saran web.
+    expect(req[1]!.tool_choice).toBe('auto');
+    expect(JSON.stringify(req[1]!.messages)).toContain('sby-akta#0');
+    expect(JSON.stringify(req[1]!.messages)).toContain(saranWeb('terkini'));
+    expect(t.panggilan).toHaveLength(1);
   });
 
   it('NIK di parameter: gerbang menolak, Exa tidak pernah dipanggil', async () => {
