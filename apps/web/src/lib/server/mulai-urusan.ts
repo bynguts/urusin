@@ -81,6 +81,9 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
   };
   const pesan = ambil('pesan').slice(0, 2000);
   const kode = ambil('kodeKabKota');
+  // Beranda dengan lampiran: halaman urusan sendiri yang mengirim pesan pertama bersama lampirannya (brankas +
+  // gambar untuk AI), jadi turn tidak dimulai di sini.
+  const kirimDariHalaman = ambil('lampiran') === '1';
   const peristiwaRaw = ambil('peristiwa');
   const peristiwa = PERISTIWA.find((p) => p === peristiwaRaw) as Peristiwa | undefined;
   // Wajib akun: tanpa sesi → daftar dulu, lalu kembali ke rencana peristiwa (wilayah terpilih ikut) atau Beranda.
@@ -125,11 +128,16 @@ export async function mulaiUrusanDariForm(event: RequestEvent) {
   // Sama dengan POST /api/urusan: tier portal id-only di turn pertama memakai cache yang tidak dingin.
   await segarkanJaringanId();
   usulkanWilayahAwal(rt, event, u.id, /^\d{4}$/.test(kode) ? kode : undefined, pesan);
-  if (pesan) startTurnInBackground(rt, { urusanId: u.id, userText: pesan });
+  if (pesan && !kirimDariHalaman) startTurnInBackground(rt, { urusanId: u.id, userText: pesan });
   catatTerakhir(event.cookies, u.id, publicOrigin());
   // Formulir terkirim sebelum JavaScript siap: pesan pertama tidak sempat dicatat di perangkat. Titipkan
   // sekali lewat cookie sempit (hanya path urusan ini, 2 menit); halaman urusan membacanya lalu menghapusnya.
-  if (pesan && event.request.headers.get('x-sveltekit-action') !== 'true' && pesan.length <= 1000)
+  if (
+    pesan &&
+    !kirimDariHalaman &&
+    event.request.headers.get('x-sveltekit-action') !== 'true' &&
+    pesan.length <= 1000
+  )
     event.cookies.set(PESAN_AWAL_COOKIE, pesan, {
       path: `/urusan/${u.id}`,
       httpOnly: true,
