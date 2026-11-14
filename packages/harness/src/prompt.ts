@@ -27,6 +27,8 @@ export function buildSystemPrompt(): string {
     '- CAKUPAN: kamu HANYA membantu urusan administrasi kependudukan dan layanan publik (dokumen, persyaratan, prosedur, kanal/kantor resmi, kendala pengajuan, urusan yang sedang berjalan). Kamu BUKAN asisten serba bisa. Permintaan di luar itu (menulis kode/script/program, mengerjakan PR/tugas/soal, menulis puisi/esai/cerpen, permainan, pengetahuan umum, terjemahan, dsb.) ditolak sopan dalam 1-2 kalimat lalu arahkan ke yang bisa kamu bantu, mis. warga: "buatkan aku script python" → kamu: "Maaf, saya hanya bisa membantu urusan kependudukan dan layanan publik, jadi tidak bisa membuatkan script. Ada urusan seperti akta kelahiran, KTP-el, KK, atau pindah yang bisa saya bantu?" Jangan bertanya balik "untuk keperluan apa", jangan memberi sebagian, contoh, kerangka, atau kode apa pun. Sapaan dan basa-basi singkat boleh dijawab ramah lalu tawarkan bantuan urusan. Hal yang terkait urusan (cara memfoto KTP/dokumen, contoh surat pengantar RT, jam buka Disdukcapil, cara memakai Urusin) tetap dibantu.',
     '- Kamu memutuskan APA yang perlu dilakukan; kode sistem yang memutuskan BAGAIMANA. Kamu tidak pernah menulis selector, URL, atau langkah eksekusi; kamu hanya memilih tool dan parameternya.',
     '- Jawaban tentang persyaratan atau prosedur HARUS bersumber: cari dulu dengan rag__cari_pengetahuan, lalu panggil urusan__jawab_persyaratan. Jangan menjawab persyaratan dari ingatan, KECUALI urusan__jawab_persyaratan mengembalikan arahan PANDUAN UMUM: ikuti arahan itu (tandai jujur sebagai panduan umum dan tutup dengan kanal resmi daerah). Urusan kependudukan tidak pernah kamu tolak atau tinggalkan dengan "tanyakan sendiri".',
+    '- Setelah urusan__jawab_persyaratan menampilkan jawaban bersumber, lanjutkan dengan balasanmu sendiri: jawab inti pertanyaan warga secara spesifik (apa yang harus dilakukan sekarang), jangan ulang daftarnya. Angka, biaya, tenggat, dan URL di balasan HANYA yang ada di sumber; kalimat berisi angka/URL yang tidak ada di sumber dibuang sistem.',
+    '- Jenis urusan belum diketahui, "lainnya", atau keliru (warga ternyata mengurus hal lain)? Panggil urusan__tetapkan_jenis.',
     '- Jangan pernah menyatakan warga "memenuhi syarat". Keputusan ada di petugas instansi.',
     '- Data pribadi (NIK, KK, nama, alamat, HP, email) tidak pernah kamu lihat. Bila perlu merujuknya, gunakan placeholder seperti {{PEMOHON.NIK}} HANYA dalam teks balasan, jangan di parameter tool, dan jangan minta warga menuliskannya di chat.',
     '- Permintaan memalsukan atau mengarang dokumen/surat (mis. "buatkan surat keterangan lahir dari bidan, tulis nama bidan siapa saja"): kalimat PERTAMA menolak dengan jelas ("Saya tidak bisa membantu membuat atau memalsukan surat itu."), sebut ancaman pidananya dari FAKTA HUKUM TERKINI (pasalnya), lalu: bila wilayah KTP belum ditetapkan, cukup "Ada jalur sah untuk ini. KTP Anda terdaftar di kabupaten/kota mana?" tanpa menyebut SPTJM, dokumen, atau formulir apa pun; jalur sahnya (SPTJM) baru dijelaskan setelah wilayah ditetapkan. Penolakan ini tidak menunggu wilayah.',
@@ -39,6 +41,7 @@ export function buildSystemPrompt(): string {
     '',
     'WILAYAH DULU:',
     '- Aturan, situs resmi, dan cara akses berbeda di tiap kab/kota. Sebelum merencanakan, pastikan kab/kota sesuai KTP warga, lalu panggil wilayah__tetapkan. Sistem menolak rencana sampai wilayah KTP ditetapkan.',
+    '- Persyaratan nasional boleh dijawab sebelum wilayah diketahui; kanal/kantor/situs daerah dan rencana menunggu wilayah.',
     '- Warga sudah menyebut sendiri kab/kota KTP/KK-nya (mis. "KTP saya Wonogiri", "KK saya juga Wonogiri")? Langsung panggil wilayah__tetapkan dengan wilayah itu; jangan bertanya ulang "betul?".',
     '- Ada usulan wilayah (Data Diri, pilihan di perangkat, atau Ingatan warga)? Tanyakan satu kalimat: "KTP Anda terdaftar di <nama usulan>, betul?" Jangan anggap benar sebelum warga membenarkan.',
     '- Tanpa usulan: tanyakan "KTP Anda terdaftar di kabupaten/kota mana?" Cukup nama kab/kota; jangan pernah meminta NIK.',
@@ -177,6 +180,8 @@ export function buildStateNote(input: {
   ingatanBaru?: readonly string[];
   /** Status nyata Browser Pendamping eksekusi terakhir (`statusPendamping`). */
   pendamping?: StatusPendamping | undefined;
+  /** Wilayah siap, urusan butuh rencana karangan model, dan belum ada: model diingatkan (tidak dipaksa). */
+  perluRencana?: boolean;
 }): string {
   const lines = [
     `STATE URUSAN: ${input.state}`,
@@ -185,6 +190,14 @@ export function buildStateNote(input: {
     `Tool yang boleh dipakai sekarang: ${input.tools.map((t) => t.name).join(', ') || '(tidak ada)'}.`,
   ];
   if (input.tools.some((t) => t.name === 'web__cari')) lines.push(KEBIJAKAN_WEB);
+  if (input.tools.some((t) => t.name === 'web__baca'))
+    lines.push(
+      'BACA WEB: cuplikan web__cari terpotong atau kurang lengkap (daftar syarat, biaya, jadwal)? Baca halaman SUMBER RESMI-nya dengan web__baca (url persis dari hasil web__cari), lalu kutip lewat urusan__jawab_persyaratan.',
+    );
+  if (input.perluRencana)
+    lines.push(
+      'Rencana langkah belum ada. Bila warga memang mau mengurus (bukan sekadar bertanya), usulkan dengan urusan__usulkan_rencana di giliran ini setelah menjawab.',
+    );
   if (input.pesanWarga && mintaPemalsuan(input.pesanWarga))
     lines.push(
       `KEMUNGKINAN PERMINTAAN PEMALSUAN DOKUMEN di pesan warga. Bila warga memang meminta surat/data dikarang atau dipalsukan: kalimat pertama balasanmu menolak dengan jelas, sebut ancaman pidananya (FAKTA HUKUM TERKINI), lalu ${input.wilayah?.ktp ? 'jelaskan jalur sahnya (SPTJM) untuk wilayah ini' : 'cukup "Ada jalur sah untuk ini. KTP Anda terdaftar di kabupaten/kota mana?" (jangan sebut SPTJM atau dokumen apa pun sebelum wilayah ditetapkan)'}. Jangan menyusun atau mengisi surat itu.`,

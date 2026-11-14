@@ -171,6 +171,21 @@ describe('gambar lampiran chat dibaca model vision', () => {
             },
           ],
         });
+      // Model sendiri yang memanggil jawaban bersumber sesudah pencarian.
+      const sudahJawab = p.messages.some(
+        (m) =>
+          m.role === 'assistant' &&
+          m.tool_calls?.some((c) => c.type === 'function' && c.function.name === 'urusan__jawab_persyaratan'),
+      );
+      if (!sudahJawab)
+        return fakeCompletion({
+          toolCalls: [
+            {
+              name: 'urusan__jawab_persyaratan',
+              arguments: JSON.stringify({ pertanyaan: 'ini bisa dipakai buat akta?' }),
+            },
+          ],
+        });
       return fakeCompletion({ content: 'Baik.' });
     };
     const p = new FakeProvider({ replies: Array.from({ length: 12 }, () => balas) });

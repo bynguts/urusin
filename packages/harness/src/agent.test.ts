@@ -22,7 +22,7 @@ function advance(env: ReturnType<typeof makeEnv>, id: string, path: UrusanState[
 }
 
 describe('alur normal dengan DemoProvider', () => {
-  it('pertanyaan persyaratan: progress lalu grounded_answer; TANPA assistant_text mentah', async () => {
+  it('pertanyaan persyaratan: progress lalu grounded_answer; balasan model baru SESUDAH jawaban bersumber', async () => {
     const env = makeEnv({ provider: new DemoProvider() });
     const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312' });
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Apa syarat akta kelahiran anak saya?' });
@@ -31,7 +31,8 @@ describe('alur normal dengan DemoProvider', () => {
     const t = types(out.events);
     expect(t).toContain('progress');
     expect(t).toContain('grounded_answer');
-    expect(t).not.toContain('assistant_text');
+    // Jawaban bersumber tidak mengakhiri giliran: model melanjutkan dengan balasannya sendiri.
+    expect(t.indexOf('assistant_text')).toBeGreaterThan(t.indexOf('grounded_answer'));
     expect(t.at(-1)).toBe('done');
     expect(t.indexOf('progress')).toBeLessThan(t.indexOf('grounded_answer'));
 
@@ -620,7 +621,7 @@ describe('balasan terpotong (finish_reason=length)', () => {
     expect(JSON.stringify(a!.messages)).not.toMatch(/Balasanmu tadi terpotong/);
   });
 
-  it('klasifikasi terpotong (p06): turn tetap berjalan, jenis diklasifikasi ulang giliran berikutnya', async () => {
+  it('jenis tak dikenali kata kunci (p06): tanpa klasifikasi LLM terpisah, model yang menetapkan lewat tool', async () => {
     const provider = new FakeProvider({
       replies: [potong(), fakeCompletion({ content: 'Bisa, Bapak/Ibu.' })],
     });
@@ -630,8 +631,12 @@ describe('balasan terpotong (finish_reason=length)', () => {
     expect(out.status).toBe('selesai');
     expect(out.events.some((e) => e.type === 'error')).toBe(false);
     expect(env.store.getUrusanOrThrow(u.id).jenis).toBeNull();
+    // Panggilan pertama sudah loop agen (bukan klasifikasi terstruktur), dengan tool penetap jenis.
     const c = provider.calls[0];
-    expect(c?.kind === 'create' ? c.params.max_tokens : undefined).toBe(256);
+    const tools = c?.kind === 'create' ? (c.params.tools ?? []) : [];
+    expect(tools.map((t) => (t.type === 'function' ? t.function.name : ''))).toContain(
+      'urusan__tetapkan_jenis',
+    );
   });
 
   it('terpotong lagi: error LLM_LENGTH (bisa diulang), tanpa ulangan ketiga', async () => {

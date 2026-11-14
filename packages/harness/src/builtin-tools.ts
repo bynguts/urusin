@@ -49,6 +49,7 @@ import {
 } from './wilayah.js';
 import { arahanPanduanUmum, kanalDipandu, paketDipandu } from './dipandu.js';
 import { alasanCariWeb, saranWeb } from './web-cari.js';
+import { INTENT_JENIS } from './intent.js';
 
 const kodeKabKota = z.string().regex(/^\d{4}$/);
 
@@ -65,17 +66,31 @@ type Hit = ReturnType<typeof cariPengetahuanTool.execute>['hasil'][number];
  * Anggaran per hit ditetapkan SEBELUM dibungkus (spotlight maxChars); keluaran terbungkus tidak boleh dipotong lagi.
  * Tanpa hasil: sebut kanal resmi wilayah itu sendiri (portal, situs Disdukcapil terverifikasi, atau nasional).
  */
-export function formatHits(hits: readonly Hit[], nonce: string, max = 4, kode?: string | null): string {
+export function formatHits(
+  hits: readonly Hit[],
+  nonce: string,
+  max = 4,
+  kode?: string | null,
+  rendah = false,
+): string {
   if (hits.length === 0)
     return `Tidak ada hasil di basis pengetahuan resmi. Arahkan warga ke kanal resmi${kode ? `: ${kalimatKanal(kode)}` : '.'}`;
-  return hits
-    .slice(0, max)
-    .map(
-      (h) =>
-        `[${h.id}] ${h.kutipan.judul.slice(0, 120)} — ${h.kutipan.instansi.slice(0, 120)} (diverifikasi: ${h.verifiedAt ?? 'belum'})\n` +
-        spotlight('rag', h.text, { nonce, id: h.id, maxChars: 500 }),
-    )
-    .join('\n');
+  // Cakupan di bawah ambang abstain: potongan tetap diserahkan ke model, ditandai, agar model sendiri yang memilih
+  // memakainya atau mencari web (kutipannya tetap diverifikasi bila dipakai).
+  const awal = rendah
+    ? 'RELEVANSI RENDAH: potongan di bawah ini mungkin tidak menjawab pertanyaan warga. Pakai hanya bila memang menjawab; bila tidak, cari di web (bila tersedia) atau arahkan ke kanal resmi.\n'
+    : '';
+  return (
+    awal +
+    hits
+      .slice(0, max)
+      .map(
+        (h) =>
+          `[${h.id}] ${h.kutipan.judul.slice(0, 120)} — ${h.kutipan.instansi.slice(0, 120)} (diverifikasi: ${h.verifiedAt ?? 'belum'}${rendah ? '; relevansi rendah' : ''})\n` +
+          spotlight('rag', h.text, { nonce, id: h.id, maxChars: 500 }),
+      )
+      .join('\n')
+  );
 }
 
 /**
@@ -84,7 +99,7 @@ export function formatHits(hits: readonly Hit[], nonce: string, max = 4, kode?: 
  */
 async function retrieve(ctx: ToolContext, query: string, kode: string | null | undefined, layanan?: string) {
   const ragDb = ctx.deps.ragDb;
-  if (!ragDb) return { hasil: [] as Hit[], tanpaHasil: true };
+  if (!ragDb) return { hasil: [] as Hit[], tanpaHasil: true, alasan: undefined };
   const search = ctx.deps.ragSearch;
   const cari = async (lay?: string) => {
     const input = { query, ...(kode ? { kodeKabKota: kode } : {}), ...(lay ? { layanan: lay } : {}), k: 4 };
@@ -129,7 +144,7 @@ export const ragCariPengetahuan = defineTool({
     // Wilayah urusan yang sudah dipastikan warga menang atas kode tebakan model.
     const kode = kodeKtp(ctx.store, ctx.urusan) ?? args.kodeKabKota ?? null;
     const out = await retrieve(ctx, args.query, kode, args.layanan);
-    const content = formatHits(out.hasil, ctx.nonce, 4, kode);
+    const content = formatHits(out.hasil, ctx.nonce, 4, kode, out.alasan === 'skor_rendah');
     // Korpus tidak jelas menjawab (kosong, info terkini, celah wilayah, warga minta) dan web aktif: sarankan
     // web__cari (sumber resmi dulu) sebelum menjawab atau mengarahkan ke kanal.
     const alasan = webBelumDicoba(ctx)
@@ -167,7 +182,7 @@ export const dukcapilCekPersyaratan = defineTool({
     const head = `${entry.nama}: tingkat ${tier}, validasi ${entry.validasi}. ${kalimatKanal(kode)}`;
     return {
       content: `${head}
-${formatHits(out.hasil, ctx.nonce, 4, kode)}`,
+${formatHits(out.hasil, ctx.nonce, 4, kode, out.alasan === 'skor_rendah')}`,
       terbungkus: true,
       takTepercaya: true,
     };
@@ -322,6 +337,33 @@ export function chunkRencana(ctx: Pick<ToolContext, 'store' | 'urusan'>): ChunkR
   });
 }
 
+/** Host sumber nasional: Kemendagri/Ditjen Dukcapil dan basis data peraturan (UU, Perpres, Permendagri). */
+const HOST_NASIONAL = [
+  'kemendagri.go.id',
+  'peraturan.go.id',
+  'peraturan.bpk.go.id',
+  'jdihn.go.id',
+  'setneg.go.id',
+];
+const INSTANSI_NASIONAL_RE =
+  /\b(ditjen dukcapil|direktorat jenderal kependudukan|kementerian dalam negeri|kemendagri)\b/i;
+
+/**
+ * Potongan bersumber nasional (berlaku di semua kab/kota): host Kemendagri/peraturan, atau instansi pusat. Halaman
+ * Disdukcapil daerah tidak lolos walau memuat kata "Perpres": kanal/kantornya milik daerah lain.
+ */
+export function chunkNasional(c: Pick<ChunkRecord, 'url' | 'instansi'>): boolean {
+  let host = '';
+  try {
+    host = new URL(c.url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return (
+    HOST_NASIONAL.some((h) => host === h || host.endsWith(`.${h}`)) || INSTANSI_NASIONAL_RE.test(c.instansi)
+  );
+}
+
 /** Kanal kab/kota selain wilayah KTP warga (di luar pindah, yang tujuannya memang calon tempat tinggal). */
 const bukanPenduduk = (jenis: string | null, ktp: { kodeKabKota: string } | null, kode: string | null) =>
   jenis !== 'pindah' && Boolean(ktp && kode && kode !== ktp.kodeKabKota);
@@ -420,15 +462,19 @@ function handoffTanpaUlang(ctx: ToolContext, h: PayloadOf<'handoff'>, kodeUtama?
 export const urusanJawabPersyaratan = defineTool({
   name: 'urusan__jawab_persyaratan',
   description:
-    'Susun jawaban bersumber atas pertanyaan persyaratan/prosedur dari potongan yang sudah dicari. Panggil setelah rag__cari_pengetahuan. Dokumen persyaratan rencana wilayah urusan (registry) selalu ikut sebagai sumber.',
+    'Susun jawaban bersumber atas pertanyaan persyaratan/prosedur dari potongan yang sudah dicari (korpus atau web resmi). Panggil setelah rag__cari_pengetahuan/web__cari; isi pertanyaan dengan pertanyaan warga yang sebenarnya. Dokumen persyaratan rencana wilayah urusan (registry) selalu ikut sebagai sumber. Sebelum wilayah KTP ditetapkan hanya sumber nasional (Ditjen Dukcapil, UU, Perpres, Permendagri) yang dipakai.',
   effect: 'answer',
-  butuhWilayah: 'adminduk',
   input: z.object({ pertanyaan: llmText().max(500) }),
   allowedStates: NON_TERMINAL_STATES,
   // Klaim jawaban diturunkan dari potongan RAG (tak tepercaya) dan dikembalikan ke model.
   kontenLuar: true,
   async execute(ctx, args): Promise<ToolResult> {
-    const chunks = [...ctx.store.getChunks(ctx.urusan.id), ...chunkRencana(ctx)];
+    // Persyaratan nasional boleh dijawab sebelum wilayah dipastikan; kantor/kanal/situs daerah lain tidak pernah
+    // dikutip untuk warga yang wilayahnya belum diketahui.
+    const dicari = ctx.store.getChunks(ctx.urusan.id);
+    const chunks = wilayahUrusan(ctx.store, ctx.urusan).ktp
+      ? [...dicari, ...chunkRencana(ctx)]
+      : dicari.filter(chunkNasional);
     // Pindah: pertanyaan tentang Disdukcapil tujuan diarahkan ke tujuan, selain itu (SKPWNI) ke asal.
     const kode = kodeYurisdiksi(ctx.store, ctx.urusan, `${args.pertanyaan}\n${ctx.pesanWarga}`);
     const ctxHandoff = {
@@ -466,11 +512,13 @@ export const urusanJawabPersyaratan = defineTool({
       klaimDibuang: verified.klaimDibuang,
       kalimatTetap: KALIMAT_TETAP,
     };
+    const klaim = verified.klaim.map((k) => k.teks).join(' | ');
     return {
-      // Isi klaim ikut dikembalikan ke model agar balasan berikutnya tidak menyangkal jawaban yang sudah tampil.
-      content: `Jawaban bersumber (${verified.klaim.length} klaim) sudah ditampilkan kepada warga: ${verified.klaim.map((k) => k.teks).join(' | ')}. Jangan menyangkal atau mengulanginya.`,
+      // Kartu jawaban bersumber sudah tampil; model melanjutkan dengan balasan inti (angka/URL di balasannya
+      // disaring ke bukti yang sudah tampil oleh harness, lihat `saringFakta` di agen).
+      content: `JAWABAN BERSUMBER SUDAH TAMPIL: ${klaim}. Lanjutkan: jawab inti pertanyaan warga secara spesifik dan lengkap berdasarkan klaim ini (dan hasil pencarian lain yang sudah ada); jangan ulang daftarnya; jangan menambah angka/biaya/tenggat/URL yang tidak ada di sumber.`,
       takTepercaya: true,
-      endTurn: true,
+      endTurn: false,
       events: [{ type: 'grounded_answer', ...data }],
       ...usage,
     };
@@ -786,6 +834,24 @@ export const wilayahTetapkan = defineTool({
   },
 });
 
+/**
+ * Model menetapkan atau mengoreksi jenis urusan (pengganti klasifikasi LLM terpisah). Hanya saat MEMAHAMI: setelah
+ * rencana diusulkan jenisnya tidak berubah lagi. Diterapkan harness lewat CAS (`store.setJenis`).
+ */
+export const urusanTetapkanJenis = defineTool({
+  name: 'urusan__tetapkan_jenis',
+  description:
+    'Tetapkan atau koreksi jenis urusan warga bila "Jenis urusan" di catatan state belum diketahui, "lainnya", atau keliru. Pilih satu: kelahiran, kematian, perkawinan, pindah, ktp, kk, kia, akta (akta lain), skck, pajak_kendaraan, cek_dpt, bansos, pengaduan, lainnya.',
+  effect: 'plan',
+  input: z.object({ jenis: z.enum(INTENT_JENIS) }),
+  allowedStates: ['MEMAHAMI'],
+  execute(ctx, args): ToolResult {
+    if (ctx.urusan.jenis === args.jenis)
+      return { content: `Jenis urusan sudah ${args.jenis} (tidak berubah).` };
+    return { content: `Jenis urusan ditetapkan: ${args.jenis}.`, jenis: args.jenis };
+  },
+});
+
 /** Terdaftar supaya percobaan memanggilnya ditolak gate dengan aturan yang jelas; tidak pernah ditawarkan ke model. */
 export const dukcapilKlikSelesai = defineTool({
   name: 'dukcapil__klik_selesai',
@@ -810,5 +876,6 @@ export function builtinTools(): ToolDef[] {
     samsatCekPkb,
     ossCariNib,
     wilayahTetapkan,
+    urusanTetapkanJenis,
   ] as unknown as ToolDef[];
 }

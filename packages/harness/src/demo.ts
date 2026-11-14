@@ -229,16 +229,32 @@ function langkahWilayah(
 /** Langkah berikutnya untuk agen: tool-call berikutnya atau balasan teks. */
 function nextAction(
   messages: readonly ChatMessage[],
+  intent: (text: string) => IntentJenis = demoIntent,
 ): { tool: string; args: Record<string, unknown> } | { reply: string } {
   const userText = lastUserText(messages);
   const lastUserIdx = messages.map((m) => m.role).lastIndexOf('user');
   const after = messages.slice(lastUserIdx + 1);
   const lastAssistantTool = [...after].reverse().find((m) => m.role === 'assistant' && m.tool_calls?.length);
-  const toolTerakhir =
+  const namaTerakhir =
     lastAssistantTool?.role === 'assistant' && lastAssistantTool.tool_calls?.[0]?.type === 'function'
       ? lastAssistantTool.tool_calls[0].function.name
       : undefined;
-  const lastToolResult = text([...after].reverse().find((m) => m.role === 'tool'));
+  // Menetapkan jenis bukan langkah alur: sesudahnya lanjut seolah belum ada tool.
+  const toolTerakhir = namaTerakhir === 'urusan__tetapkan_jenis' ? undefined : namaTerakhir;
+  const lastToolResult = toolTerakhir ? text([...after].reverse().find((m) => m.role === 'tool')) : '';
+  // Jenis belum diketahui (kata kunci/embedding harness tidak mengenali): model menetapkannya sendiri.
+  const note = stateNote(messages);
+  if (
+    !namaTerakhir &&
+    /Jenis urusan: belum diketahui\./.test(note) &&
+    /Tool yang boleh dipakai sekarang: [^\n]*\burusan__tetapkan_jenis\b/.test(note)
+  ) {
+    const jenis = intent(userText);
+    return {
+      tool: 'urusan__tetapkan_jenis',
+      args: { jenis: INTENT_JENIS.includes(jenis) ? jenis : 'lainnya' },
+    };
+  }
   const wilayah = langkahWilayah(messages, userText, toolTerakhir, lastToolResult);
   if (wilayah) return wilayah;
   // Wilayah baru saja ditetapkan dan warga bertanya persyaratan: lanjut seolah belum ada tool.
@@ -303,7 +319,7 @@ export class DemoProvider extends FakeProvider {
         handoff: null,
       });
     }
-    const next = nextAction(params.messages);
+    const next = nextAction(params.messages, this.demo.intentOverride ?? demoIntent);
     if (kind === 'action') {
       return asStructured(
         'tool' in next

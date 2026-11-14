@@ -1,9 +1,9 @@
 import type { RagSearcher } from '@urusin/rag';
+import { FAKTA_HUKUM } from '@urusin/registry';
 import {
   LlmContentFilterError,
   LlmLengthError,
   LlmRefusalError,
-  StructuredOutputError,
   assertCompletionUsable,
   generateStructured,
   isLlmTerminalError,
@@ -23,7 +23,7 @@ import { HarnessError, TurnInProgressError } from './errors.js';
 import { tierUrusan, urusanRute, varianUrusan } from './rencana.js';
 import { statusPendamping } from './status-pendamping.js';
 import { toEvent } from './envelope.js';
-import { ADMINDUK, buildHandoff, type CacheJawaban } from './grounding.js';
+import { ADMINDUK, buildHandoff, unsupportedFacts, type CacheJawaban } from './grounding.js';
 import {
   INGAT_TOOL,
   blokIngatan,
@@ -36,7 +36,6 @@ import {
 import {
   BALASAN_DI_LUAR_URUSAN,
   alasanBukanJalurCepat,
-  classifyIntent,
   klasifikasiKataKunci,
   mintaDiLuarUrusan,
 } from './intent.js';
@@ -50,9 +49,10 @@ import { newNonce, spotlight } from './spotlight.js';
 import type { HarnessStore, TurnStatus, UrusanRow } from './store.js';
 import { clip, ringkasRiwayat, type ToolContext, type ToolRegistry } from './tools.js';
 import { OTEL, type Tracer } from './trace.js';
-import { PENANDA_SARAN_WEB, type LayananCariWeb } from './web-cari.js';
+import type { LayananCariWeb } from './web-cari.js';
 import {
   hanyaTanyaWilayah,
+  kalimatKanal,
   kartuRencana,
   kodeDisebut,
   kodeUntukPii,
@@ -76,36 +76,33 @@ const CATATAN_TAK_TERBACA =
 /** Tool rencana karangan model (urusan tanpa rencana Peristiwa Hidup: KTP rusak, bansos, pajak kendaraan, ...). */
 const TOOL_RENCANA = 'urusan__usulkan_rencana';
 
-/** Tool pencarian sumber; langkah yang hanya berisi ini selalu diikuti jawaban bersumber. */
-const TOOL_CARI: ReadonlySet<string> = new Set(['rag__cari_pengetahuan', 'dukcapil__cek_persyaratan']);
 const TOOL_JAWAB = 'urusan__jawab_persyaratan';
 const TOOL_CARI_KORPUS = 'rag__cari_pengetahuan';
 
-/** Kueri pencarian pertama di langkah itu sebagai pertanyaan jawaban bersumber. */
-function kueriCari(calls: readonly { function: { arguments: string } }[]): string | undefined {
-  for (const c of calls) {
-    try {
-      const a = JSON.parse(c.function.arguments || '{}') as { query?: unknown; layanan?: unknown };
-      const q =
-        typeof a.query === 'string'
-          ? a.query
-          : typeof a.layanan === 'string'
-            ? `persyaratan ${a.layanan}`
-            : '';
-      if (q.trim()) return q.trim().slice(0, 500);
-    } catch {
-      // argumen rusak: lewati
-    }
-  }
-  return undefined;
+/** Penanda daftar Markdown di awal baris ("1. ", "- "): angka urutan bukan fakta. */
+const PENANDA_DAFTAR_RE = /^(\s*(?:\d{1,2}[.)]|[-*•])\s+)/;
+
+/**
+ * Buang kalimat balasan model yang memuat angka/URL yang tidak ada di bukti (`unsupportedFacts`): klaim dan kutipan
+ * jawaban bersumber yang sudah tampil, potongan sumber urusan, fakta hukum, dan pesan warga sendiri. Baris daftar
+ * yang semua kalimatnya dibuang ikut hilang; struktur Markdown lain tetap.
+ */
+export function saringFakta(teks: string, bukti: readonly string[]): string {
+  return teks
+    .split('\n')
+    .flatMap((baris) => {
+      const penanda = PENANDA_DAFTAR_RE.exec(baris)?.[1] ?? '';
+      const isi = baris.slice(penanda.length);
+      if (!isi.trim()) return [baris];
+      const kalimat = isi.split(/(?<=[.!?])\s+/);
+      const lolos = kalimat.filter((k) => unsupportedFacts(k, bukti).length === 0);
+      if (lolos.length === kalimat.length) return [baris];
+      return lolos.length > 0 ? [`${penanda}${lolos.join(' ')}`] : [];
+    })
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
-
-const SUSUN_RENCANA =
-  'Jawaban di atas sudah tampil ke warga. Sekarang susun rencana langkah untuk warga dengan urusan__usulkan_rencana: ringkasan satu kalimat, 1-4 langkah konkret sesuai jawaban dan kanal resmi wilayah ini (dokumen yang dibawa di "bawa"). Jangan menulis balasan teks.';
-
-/** Rencana yang diminta bersamaan dengan jawaban bersumber (lihat `jawabDanRencana`): dasarnya potongan sumber. */
-const SUSUN_RENCANA_PARALEL =
-  'Sistem sedang menyusun jawaban bersumber dari potongan di atas untuk warga. Sekarang susun rencana langkah untuk warga dengan urusan__usulkan_rencana: ringkasan satu kalimat, 1-4 langkah konkret sesuai potongan sumber resmi di atas dan kanal resmi wilayah ini (dokumen yang dibawa di "bawa"). Jangan menulis balasan teks.';
 
 export type AgentConfig = {
   /** Batas waktu satu turn (rencana: 120 detik). */
@@ -310,6 +307,11 @@ class TurnRunner {
   private wilayahDariTeks = false;
   /** Peringatan foto lampiran yang belum jelas (sudah tampil ke warga), diteruskan ke jawaban bersumber. */
   private catatanFoto: string | undefined;
+  /**
+   * Bukti yang sudah tampil di giliran ini: klaim + kutipan jawaban bersumber dan potongan sumber urusan. Terisi
+   * sejak jawaban bersumber pertama; sejak itu balasan teks model disaring ke bukti ini (`saringFakta`).
+   */
+  private readonly buktiTampil: string[] = [];
 
   constructor(
     private readonly deps: AgentDeps,
@@ -448,17 +450,16 @@ class TurnRunner {
       ingatanAktif: this.ingatan !== null,
       ingatanBaru: this.ingatanBaru,
       pendamping: statusPendamping(this.store, this.turn.urusanId),
+      perluRencana: this.perluRencana(),
     });
   }
 
-  /** `batal`: sinyal tambahan untuk panggilan paralel yang bisa tidak lagi dibutuhkan (lihat `jawabDanRencana`). */
-  private async callLlm(params: ChatParams, batal?: AbortSignal): Promise<ChatCompletion> {
+  private async callLlm(params: ChatParams): Promise<ChatCompletion> {
     for (let attempt = 0; ; attempt++) {
       try {
-        const signal = batal ? AbortSignal.any([this.llmSignal(), batal]) : this.llmSignal();
-        return await this.deps.provider.create(params, { signal });
+        return await this.deps.provider.create(params, { signal: this.llmSignal() });
       } catch (e) {
-        if (this.ctrl.signal.aborted || batal?.aborted) throw e;
+        if (this.ctrl.signal.aborted) throw e;
         const timedOut = e instanceof Error && (e.name === 'TimeoutError' || e.name === 'APIUserAbortError');
         if (attempt === 0 && (isRetryableError(e) || timedOut)) continue;
         throw e;
@@ -621,7 +622,9 @@ class TurnRunner {
     this.ingatPreferensi();
     await this.bacaLampiranGambar();
     this.progress('Memahami kebutuhan Anda…');
-    if (this.urusan.jenis === null) await this.classify();
+    // "lainnya" diklasifikasi ulang tiap giliran (pesan berikutnya bisa memperjelas); sisanya model yang
+    // menetapkan/mengoreksi lewat urusan__tetapkan_jenis.
+    if (this.urusan.jenis === null || this.urusan.jenis === 'lainnya') await this.classify();
     this.wilayahDariPesan();
     if (this.quotaStatus().mode === 'hemat')
       this.emit({ type: 'degraded', kapabilitas: ['rerank'], mode: 'hemat' });
@@ -643,12 +646,12 @@ class TurnRunner {
   /**
    * Giliran pertama yang jenis dan wilayah KTP-nya ditetapkan dari pesan warga itu sendiri (kata kunci/klasifikasi +
    * `wilayahDariPesan`), tanpa riwayat: langkah model pertama di sini selalu
-   * rag__cari_pengetahuan (lalu jawaban bersumber), jadi harness langsung (1) mengusulkan kartu rencana
-   * deterministik bila jenisnya punya (tampil dalam hitungan milidetik, sebelum LLM), (2) mencari korpus dengan teks
-   * warga lewat gerbang tool yang sama, dan (3) menyusun jawaban bersumber; rencana karangan model diminta PARALEL
-   * dengan jawaban. Hemat satu round-trip LLM (5-9 detik). Hanya kependudukan (layanan lain bisa butuh tool baca
-   * lain, mis. samsat__cek_pkb), dan pesan yang perlu ditanggapi model dulu (pemalsuan, data pribadi, cek status)
-   * tetap lewat loop agen.
+   * rag__cari_pengetahuan, jadi harness langsung (1) mengusulkan kartu rencana deterministik bila jenisnya punya
+   * (tampil dalam hitungan milidetik, sebelum LLM) dan (2) mencari korpus dengan teks warga lewat gerbang tool yang
+   * sama. Hemat satu round-trip LLM. Sesudahnya MODEL yang memutuskan (menjawab bersumber, bertanya, web__cari, ...)
+   * dengan potongan itu di konteks. Hanya kependudukan (layanan lain bisa butuh tool baca lain, mis.
+   * samsat__cek_pkb), dan pesan yang perlu ditanggapi model dulu (pemalsuan, data pribadi, cek status) tetap lewat
+   * loop agen dari awal.
    */
   private async jalurCepat(): Promise<boolean> {
     const u = this.urusan;
@@ -696,116 +699,8 @@ class TurnRunner {
       },
       { role: 'tool', tool_call_id: id, content: r.content },
     );
-    // Tanpa potongan, atau korpus perlu dilengkapi web (saran web): model yang melanjutkan (sama dengan loop biasa).
-    if (!r.content.includes('<<DATA_TAK_TEPERCAYA sumber="rag"') || r.content.includes(PENANDA_SARAN_WEB)) {
-      await this.toolLoop();
-      return true;
-    }
-    const j = await this.jawabDanRencana(teks.slice(0, 500), 'call_jawab_cepat');
-    if (j.rencana) return true;
-    // Rencana paralel sudah dicoba: loop berikutnya tidak memaksanya lagi. Hand-off/rencana belum ada: rencana
-    // berurutan dengan hasil jawaban di konteks.
-    if (j.dipaksa) await this.toolLoop('sudah');
-    else if (!j.end) await this.toolLoop();
-    else if (j.answer && this.perluRencana()) await this.toolLoop('paksa');
+    await this.toolLoop();
     return true;
-  }
-
-  /**
-   * Jawaban bersumber langsung (tanpa round-trip model). Bila urusan ini butuh rencana karangan model, permintaan
-   * rencana berjalan PARALEL dengan generator jawaban (keduanya 5-20 detik di proxy produksi), bukan sesudahnya. Tool
-   * rencana tetap dijalankan SESUDAH jawaban dan lewat gerbang yang sama, agar catatan rencana menautkan sumber
-   * jawaban itu. Rencana paralel yang tidak dipakai (jawaban gagal, rencana tidak lagi perlu) dibatalkan.
-   */
-  private async jawabDanRencana(
-    pertanyaan: string,
-    id: string,
-  ): Promise<{ end: boolean; answer: boolean; rencana: boolean; dipaksa: boolean }> {
-    const args = JSON.stringify({ pertanyaan });
-    // Jawaban dimulai lebih dulu (urutan panggilan model tetap: jawaban, lalu rencana).
-    const jawab = this.handleToolCall(TOOL_JAWAB, args);
-    const batal = new AbortController();
-    const rencana = this.perluRencana()
-      ? this.mintaRencana(batal.signal).then(
-          (c) => ({ c }),
-          (e: unknown) => ({ e }),
-        )
-      : null;
-    const hentikan = async () => {
-      batal.abort();
-      await rencana;
-    };
-    let r: Awaited<ReturnType<TurnRunner['handleToolCall']>>;
-    try {
-      r = await jawab;
-    } catch (e) {
-      await hentikan();
-      throw e;
-    }
-    this.turnMessages.push(
-      {
-        role: 'assistant',
-        content: null,
-        tool_calls: [{ id, type: 'function' as const, function: { name: TOOL_JAWAB, arguments: args } }],
-      },
-      { role: 'tool', tool_call_id: id, content: r.content },
-    );
-    const hasil = { end: r.end, answer: r.answer === true, rencana: false, dipaksa: false };
-    // Hand-off (tanpa jawaban bersumber): rencana paralel yang disusun dari potongan dibatalkan; rencana disusun
-    // berurutan dengan hasil hand-off di konteks (lihat pemanggil).
-    if (!rencana || !r.end || !hasil.answer || r.handoff || !this.perluRencana()) {
-      await hentikan();
-      return hasil;
-    }
-    const out = await rencana;
-    if ('e' in out) {
-      // Galat terminal (penolakan, filter konten) tetap menggagalkan turn; selain itu jatuh ke rencana berurutan.
-      if (this.ctrl.signal.aborted || isLlmTerminalError(out.e)) throw out.e;
-      return hasil;
-    }
-    const msg = out.c.choices[0]?.message;
-    const calls = (msg?.tool_calls ?? []).filter((c) => c.type === 'function');
-    if (!msg || calls.length === 0) return hasil;
-    // Sama dengan langkah rencana berurutan: semua panggilan model lewat gerbang, apa pun namanya.
-    const g = await this.jalankanPanggilan(msg.content ?? null, calls);
-    return { ...hasil, rencana: g.ended, dipaksa: true };
-  }
-
-  /** Permintaan rencana (tool rencana dipaksa) dari konteks saat ini; untuk jalur paralel `jawabDanRencana`. */
-  private async mintaRencana(batal: AbortSignal): Promise<ChatCompletion> {
-    const q = this.quotaStatus();
-    const tools = this.deps.registry
-      .openaiTools(this.urusan.state)
-      .filter((t) => t.type !== 'function' || this.toolDitawarkan(t.function.name));
-    const span = this.deps.tracer.start(this.scope, `chat ${this.deps.model}`, 'chat');
-    let completion: ChatCompletion;
-    try {
-      completion = await this.callLlm(
-        {
-          model: this.deps.model,
-          max_tokens: q.maxTokens,
-          messages: [
-            ...this.buildMessages(this.stateNote()),
-            { role: 'system', content: SUSUN_RENCANA_PARALEL },
-          ],
-          tools,
-          tool_choice: { type: 'function', function: { name: TOOL_RENCANA } },
-        },
-        batal,
-      );
-    } catch (e) {
-      span.end({ status: 'error', errorCode: (e as Error).name, model: this.deps.model });
-      throw e;
-    }
-    const acc = this.account(completion.usage ? [completion.usage] : []);
-    span.end({
-      model: this.deps.model,
-      ...acc,
-      degraded: false,
-      attrs: { [OTEL.operationName]: 'chat', 'urusin.step': 'rencana_paralel' },
-    });
-    assertCompletionUsable(completion, q.maxTokens);
-    return completion;
   }
 
   private get teksWarga(): string {
@@ -867,49 +762,15 @@ class TurnRunner {
   private async classify(): Promise<void> {
     const q = this.quotaStatus();
     if (q.mode === 'habis') return this.quotaStop(q);
-    const kunci = klasifikasiKataKunci(this.teksWarga);
-    if (kunci) {
-      this.urusan = this.store.setJenis(this.turn.urusanId, this.version, kunci);
-      this.version = this.urusan.version;
-      return;
-    }
-    const teks = this.turn.pii.redact(this.turn.userText).text;
-    const cepat = await this.deps.intentEmbedding?.klasifikasi(teks, this.ctrl.signal).catch(() => null);
-    if (cepat) {
-      this.urusan = this.store.setJenis(this.turn.urusanId, this.version, cepat);
-      this.version = this.urusan.version;
-      return;
-    }
-    const span = this.deps.tracer.start(this.scope, `chat ${this.deps.model}`, 'chat');
-    try {
-      const r = await classifyIntent({
-        provider: this.deps.provider,
-        model: this.deps.model,
-        caps: this.deps.caps,
-        text: teks,
-        signal: this.llmSignal(),
-      });
-      const acc = this.account(r.usage);
-      span.end({
-        model: this.deps.model,
-        ...acc,
-        structuredMode: r.method,
-        degraded: r.degraded,
-        attrs: { [OTEL.operationName]: 'chat', 'urusin.step': 'klasifikasi' },
-      });
-      this.urusan = this.store.setJenis(this.turn.urusanId, this.version, r.data.jenis);
-      this.version = this.urusan.version;
-    } catch (e) {
-      span.end({ status: 'error', errorCode: (e as Error).name, model: this.deps.model });
-      if (this.ctrl.signal.aborted) throw e;
-      // Klasifikasi terpotong (eval p06: pesan pembuka warga Asmat): jenis dibiarkan kosong agar diklasifikasi
-      // ulang giliran berikutnya; turn tetap berjalan, warga tidak melihat galat.
-      if (e instanceof LlmLengthError) return;
-      if (isLlmTerminalError(e)) throw e;
-      if (!(e instanceof StructuredOutputError)) throw e;
-      this.urusan = this.store.setJenis(this.turn.urusanId, this.version, 'lainnya');
-      this.version = this.urusan.version;
-    }
+    // Kata kunci lalu sidecar embedding (tanpa round-trip LLM). Tidak dikenali: jenis dibiarkan apa adanya dan
+    // model yang menetapkannya lewat urusan__tetapkan_jenis.
+    const teks = this.teksWarga;
+    const jenis =
+      klasifikasiKataKunci(teks) ??
+      (await this.deps.intentEmbedding?.klasifikasi(teks, this.ctrl.signal).catch(() => null));
+    if (!jenis || jenis === this.urusan.jenis) return;
+    this.urusan = this.store.setJenis(this.turn.urusanId, this.version, jenis);
+    this.version = this.urusan.version;
   }
 
   private quotaStop(q: QuotaStatus): void {
@@ -927,9 +788,9 @@ class TurnRunner {
   // --- mode normal: tool-calling ---
 
   /**
-   * Jawaban (bersumber atau hand-off) baru saja tampil, wilayah sudah siap, dan urusan ini tidak punya rencana
-   * Peristiwa Hidup deterministik (`proposeRencana` menanganinya di akhir turn): rencana disusun di turn yang sama,
-   * agar warga tidak perlu meminta "tolong susun rencananya".
+   * Rencana belum diusulkan (MEMAHAMI), wilayah sudah siap, dan urusan ini tidak punya rencana Peristiwa Hidup
+   * deterministik (`proposeRencana` menanganinya di akhir turn): catatan state mengingatkan model untuk
+   * mengusulkan rencana bila warga memang mau mengurus. Tidak pernah dipaksa (pertanyaan info saja tanpa rencana).
    */
   private perluRencana(): boolean {
     const u = this.urusan;
@@ -939,13 +800,8 @@ class TurnRunner {
     return !wilayahBelumSiap(u.jenis, w) && kartuRencana(u.jenis, w) === undefined;
   }
 
-  /**
-   * `rencana`: `paksa` = langkah pertama langsung meminta rencana (jawaban sudah tampil, lihat `jalurCepat`);
-   * `sudah` = rencana sudah dipaksa sekali di giliran ini (paralel), tidak dipaksa lagi.
-   */
-  private async toolLoop(rencana: 'biasa' | 'paksa' | 'sudah' = 'biasa'): Promise<void> {
-    let paksaRencana = rencana === 'paksa';
-    let rencanaDipaksa = rencana !== 'biasa';
+  /** Loop agen: model memilih tool atau membalas; setiap panggilan lewat gerbang. */
+  private async toolLoop(): Promise<void> {
     for (let step = 0; step < this.cfg.maxSteps; step++) {
       const q = this.quotaStatus();
       if (q.mode === 'habis') return this.quotaStop(q);
@@ -960,27 +816,14 @@ class TurnRunner {
       // pembuka melewati batas, padahal rata-rata balasan < 100 token).
       const maxTokens = this.terpotong ? q.maxTokens * 2 : q.maxTokens;
       const messages = this.buildMessages(this.stateNote());
-      const paksa =
-        paksaRencana && this.deps.registry.forState(this.urusan.state).some((t) => t.name === TOOL_RENCANA);
-      paksaRencana = false;
       try {
         completion = await this.callLlm({
           model: this.deps.model,
           max_tokens: maxTokens,
-          // Instruksi rencana ditaruh paling akhir: menyisipkannya sebelum hasil tool memisahkan grup tool_calls.
-          messages: paksa
-            ? [...messages, { role: 'system', content: SUSUN_RENCANA }]
-            : this.terpotong
-              ? withInstruction(messages, { role: 'system', content: ULANG_RINGKAS })
-              : messages,
-          ...(tools.length > 0
-            ? {
-                tools,
-                tool_choice: paksa
-                  ? ({ type: 'function', function: { name: TOOL_RENCANA } } as const)
-                  : ('auto' as const),
-              }
-            : {}),
+          messages: this.terpotong
+            ? withInstruction(messages, { role: 'system', content: ULANG_RINGKAS })
+            : messages,
+          ...(tools.length > 0 ? { tools, tool_choice: 'auto' as const } : {}),
         });
         const acc = this.account(completion.usage ? [completion.usage] : []);
         span.end({
@@ -1002,7 +845,7 @@ class TurnRunner {
       const msg = completion.choices[0]?.message;
       const calls = (msg?.tool_calls ?? []).filter((c) => c.type === 'function');
       if (!msg || calls.length === 0) {
-        const text = this.sanitizeOutput(msg?.content ?? '');
+        const text = this.saringBalasan(this.sanitizeOutput(msg?.content ?? ''));
         this.turnMessages.push({ role: 'assistant', content: text });
         if (text && this.digantiKartu(text)) this.terbitkanKartuWilayah(text);
         else if (text) this.emit({ type: 'assistant_text', delta: text });
@@ -1010,37 +853,7 @@ class TurnRunner {
       }
 
       const g = await this.jalankanPanggilan(msg.content ?? null, calls);
-      let { ended, dijawab } = g;
-      // Setelah mencari sumber, model selalu memanggil urusan__jawab_persyaratan: langsung dijalankan (hemat satu
-      // round-trip LLM, 10-15 detik di proxy produksi). Hanya saat memahami kebutuhan dengan wilayah KTP pasti dan
-      // pencarian menemukan potongan (hasil terbungkus); tanpa hasil, model yang mengarahkan ke kanal resmi.
-      if (
-        !ended &&
-        this.urusan.state === 'MEMAHAMI' &&
-        calls.every((c) => TOOL_CARI.has(safeToolName(c.function.name))) &&
-        g.isi.some((c) => c.includes('<<DATA_TAK_TEPERCAYA sumber="rag"')) &&
-        !g.isi.some((c) => c.includes(PENANDA_SARAN_WEB)) &&
-        wilayahUrusan(this.store, this.urusan).ktp
-      ) {
-        const j = await this.jawabDanRencana(
-          kueriCari(calls) ?? this.teksWarga.slice(0, 500),
-          `call_jawab_${step}`,
-        );
-        if (j.rencana) return;
-        ended = j.end;
-        dijawab = j.answer;
-        // Rencana paralel sudah dicoba (mis. model memanggil tool lain): tidak dipaksa dua kali.
-        if (j.dipaksa) {
-          rencanaDipaksa = true;
-          continue;
-        }
-      }
-      if (ended && dijawab && !rencanaDipaksa && this.perluRencana()) {
-        rencanaDipaksa = true;
-        paksaRencana = true;
-        continue;
-      }
-      if (ended) return;
+      if (g.ended) return;
     }
     this.emit({
       type: 'error',
@@ -1054,7 +867,7 @@ class TurnRunner {
   private async jalankanPanggilan(
     content: string | null,
     calls: readonly { id: string; function: { name: string; arguments: string } }[],
-  ): Promise<{ ended: boolean; dijawab: boolean; isi: string[] }> {
+  ): Promise<{ ended: boolean }> {
     const group: ChatMessage[] = [
       {
         role: 'assistant',
@@ -1066,9 +879,7 @@ class TurnRunner {
         })),
       },
     ];
-    const isi: string[] = [];
     let ended = false;
-    let dijawab = false;
     for (const call of calls) {
       if (ended) {
         group.push({ role: 'tool', tool_call_id: call.id, content: 'dilewati: turn sudah selesai' });
@@ -1076,12 +887,29 @@ class TurnRunner {
       }
       const r = await this.handleToolCall(call.function.name, call.function.arguments);
       group.push({ role: 'tool', tool_call_id: call.id, content: r.content });
-      isi.push(r.content);
       ended = r.end;
-      dijawab = r.answer === true;
     }
     this.turnMessages.push(...group);
-    return { ended, dijawab, isi };
+    return { ended };
+  }
+
+  /**
+   * Sesudah jawaban bersumber tampil di giliran ini, balasan teks model hanya boleh memuat angka/URL yang ada di
+   * bukti: klaim/kutipan yang tampil, potongan sumber urusan (korpus/web), fakta hukum terkini, dan pesan warga.
+   * Sebelum itu balasan tidak disaring (perilaku lama: model tidak menjawab persyaratan tanpa sumber).
+   */
+  private saringBalasan(text: string): string {
+    if (!text || this.buktiTampil.length === 0) return text;
+    const bukti = [
+      ...this.buktiTampil,
+      ...this.store.getChunks(this.turn.urusanId).map((c) => `${c.text} ${c.url}`),
+      ...FAKTA_HUKUM.map((f) => `${f.teks} ${f.pasal}`),
+      this.teksWarga,
+    ];
+    // Kanal resmi wilayah (registry terverifikasi) yang juga disebut catatan state.
+    const ktp = wilayahUrusan(this.store, this.urusan).ktp;
+    if (ktp) bukti.push(kalimatKanal(ktp.kodeKabKota));
+    return saringFakta(text, bukti);
   }
 
   /**
@@ -1230,7 +1058,13 @@ class TurnRunner {
         attrs: { [OTEL.toolName]: name, [OTEL.operationName]: tool.spanOperation ?? 'execute_tool' },
       });
       if (tool.effect === 'answer') this.progress('Memverifikasi kutipan ke sumber resmi…');
-      for (const e of res.events ?? []) this.emit(e);
+      for (const e of res.events ?? []) {
+        this.emit(e);
+        // Bukti yang sudah tampil: dasar saringan angka/URL balasan model sesudahnya (`saringBalasan`).
+        if (e.type === 'grounded_answer')
+          for (const k of e.klaim)
+            this.buktiTampil.push(k.teks, ...k.kutipan.map((q) => `${q.kutipanPersis} ${q.url}`));
+      }
       if (res.execution) {
         this.emit({ type: 'execution_request', ...res.execution });
         // Tool baca: belum ada gate konfirmasi sebelumnya, jadi warga tetap menyetujui sebelum peramban dibuka.
@@ -1254,6 +1088,15 @@ class TurnRunner {
           );
           this.version = this.urusan.version;
           this.ingatWilayah(res.wilayah);
+        } catch (e) {
+          if (!(e instanceof HarnessError)) throw e;
+          return { content: JSON.stringify({ is_error: true, pesan: e.message }), end: false };
+        }
+      }
+      if (res.jenis) {
+        try {
+          this.urusan = this.store.setJenis(this.turn.urusanId, this.version, res.jenis);
+          this.version = this.urusan.version;
         } catch (e) {
           if (!(e instanceof HarnessError)) throw e;
           return { content: JSON.stringify({ is_error: true, pesan: e.message }), end: false };

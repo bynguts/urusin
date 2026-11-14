@@ -1,4 +1,4 @@
-import { FakeProvider, fakeCompletion, type FakeReply } from '@urusin/llm';
+import { FakeProvider, fakeCompletion } from '@urusin/llm';
 import type { EventOf, EventPayload, UrusinEvent } from '@urusin/contracts';
 import { openDb, upsertChunks } from '@urusin/rag';
 import { describe, expect, it } from 'vitest';
@@ -117,9 +117,10 @@ describe('wilayah dari pesan', () => {
 });
 
 describe('alur cepat sampai rencana', () => {
-  it('pesan menyebut KTP: wilayah ditetapkan tanpa model, rencana sebelum LLM, jawaban langsung dari pencarian', async () => {
+  it('pesan menyebut KTP: wilayah ditetapkan tanpa model, rencana sebelum LLM, model memutuskan dengan hasil pencarian', async () => {
     const provider = new FakeProvider({
       replies: [
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'KTP-el rusak, bagaimana cara ganti?' }),
         fakeCompletion({
           content: JSON.stringify({
             klaim: [
@@ -130,6 +131,7 @@ describe('alur cepat sampai rencana', () => {
             ],
           }),
         }),
+        fakeCompletion({ content: 'Datang ke Disdukcapil Wonogiri dengan KTP-el yang rusak.' }),
       ],
     });
     const env = makeEnv({ provider, ragDb: ragKtp() });
@@ -138,13 +140,17 @@ describe('alur cepat sampai rencana', () => {
       urusanId: u.id,
       userText: 'KTP-el saya rusak, chipnya tidak terbaca. KTP saya Wonogiri. Bagaimana cara ganti?',
     });
-    // Tanpa klasifikasi dan tanpa langkah model: jenis dan wilayah dari pesan, pencarian langsung lewat gerbang,
-    // satu-satunya panggilan model adalah generator jawaban bersumber. KTP-el punya rencana bersumber
-    // (rencanaLayanan): kartunya tampil SEBELUM panggilan model.
-    expect(creates(provider)).toHaveLength(1);
-    expect(creates(provider)[0]!.response_format).toMatchObject({ type: 'json_schema' });
+    // Tanpa klasifikasi: jenis dan wilayah dari pesan, pencarian langsung lewat gerbang (hasilnya sudah di konteks
+    // panggilan model pertama). Model sendiri yang memanggil jawaban bersumber, lalu membalas. KTP-el punya rencana
+    // bersumber (rencanaLayanan): kartunya tampil SEBELUM panggilan model.
+    expect(creates(provider)).toHaveLength(3);
+    const pertama = creates(provider)[0]!;
+    expect(pertama.tool_choice).toBe('auto');
+    expect(JSON.stringify(pertama.messages)).toContain('call_cari_cepat');
+    expect(creates(provider)[1]!.response_format).toMatchObject({ type: 'json_schema' });
     const urutan = out.events.map((e) => e.type);
     expect(urutan.indexOf('plan_card')).toBeLessThan(urutan.indexOf('grounded_answer'));
+    expect(urutan.lastIndexOf('assistant_text')).toBeGreaterThan(urutan.indexOf('grounded_answer'));
     expect(of(out.events, 'policy_gate')).toHaveLength(0);
     expect(env.store.getUrusanOrThrow(u.id)).toMatchObject({ jenis: 'ktp', state: 'RENCANA_DIUSULKAN' });
     expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).ktp?.kodeKabKota).toBe('3312');
@@ -174,58 +180,34 @@ describe('alur cepat sampai rencana', () => {
     expect(tipe.indexOf('plan_card')).toBeLessThan(tipe.indexOf('assistant_text'));
   });
 
-  it('rencana karangan model diminta PARALEL dengan jawaban, lalu dijalankan sesudah jawaban', async () => {
-    let lepas: (() => void) | undefined;
-    const jawabTertahan = new Promise<void>((r) => (lepas = r));
-    const urutan: string[] = [];
-    const jawaban = fakeCompletion({
-      content: JSON.stringify({
-        klaim: [
-          {
-            teks: 'Bawa KTP-el yang rusak dan isi formulir dari petugas.',
-            kutipan: [{ refId: 'contoh-ktp-el#0', kutipanPersis: SYARAT }],
-          },
-        ],
-      }),
-    });
-    const rencana = tool('urusan__usulkan_rencana', {
-      ringkasan: 'Salinan akta rusak',
-      langkah: [{ judul: 'Datang ke Disdukcapil Wonogiri', jenis: 'offline', bawa: ['Akta rusak'] }],
-    });
+  it('rencana karangan model TIDAK dipaksa: pertanyaan info saja tanpa rencana, catatan state hanya mengingatkan', async () => {
     const provider = new FakeProvider({
       replies: [
-        fakeCompletion({ content: JSON.stringify({ jenis: 'akta', keyakinan: 0.9 }) }),
-        (async () => {
-          urutan.push('jawab:mulai');
-          // Jawaban baru selesai SETELAH permintaan rencana dikirim: bukti keduanya berjalan bersamaan.
-          await jawabTertahan;
-          urutan.push('jawab:selesai');
-          return jawaban;
-        }) as unknown as FakeReply,
-        () => {
-          urutan.push('rencana:mulai');
-          lepas!();
-          return rencana;
-        },
+        tool('rag__cari_pengetahuan', { query: 'syarat salinan akta rusak' }),
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'Apa syarat salinan akta yang rusak?' }),
+        fakeCompletion({
+          content: JSON.stringify({
+            klaim: [
+              {
+                teks: 'Bawa KTP-el yang rusak dan isi formulir dari petugas.',
+                kutipan: [{ refId: 'contoh-ktp-el#0', kutipanPersis: SYARAT }],
+              },
+            ],
+          }),
+        }),
+        fakeCompletion({ content: 'Itu persyaratannya. Kabari bila ingin dibantu mengurus.' }),
       ],
     });
     const env = makeEnv({ provider, ragDb: ragKtp() });
-    const u = env.store.createUrusan({});
-    const out = await runTurn(env.deps, {
-      urusanId: u.id,
-      userText: 'Persyaratan salinan akta rusak? KTP saya Wonogiri.',
-    });
-    expect(urutan).toEqual(['jawab:mulai', 'rencana:mulai', 'jawab:selesai']);
-    expect(creates(provider)).toHaveLength(3);
-    // Permintaan rencana dikirim tanpa menunggu hasil jawaban; tool rencana tetap memaksa urusan__usulkan_rencana.
-    const reqRencana = creates(provider)[2]!;
-    expect(reqRencana.tool_choice).toMatchObject({ function: { name: 'urusan__usulkan_rencana' } });
-    expect(JSON.stringify(reqRencana.messages)).not.toContain('"name":"urusan__jawab_persyaratan"');
-    // Kartu rencana menyusul jawaban dan menautkan sumber jawaban itu.
-    const tipe = out.events.map((e) => e.type);
-    expect(tipe.indexOf('grounded_answer')).toBeLessThan(tipe.indexOf('plan_card'));
-    expect(of(out.events, 'plan_card')[0]!.catatan).toContain('https://disdukcapil.contoh.go.id/ktp-el');
-    expect(env.store.getUrusanOrThrow(u.id).state).toBe('RENCANA_DIUSULKAN');
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Apa syarat salinan akta yang rusak?' });
+    expect(out.status).toBe('selesai');
+    // Tidak ada tool_choice paksa dan tidak ada kartu rencana karangan: model memutuskan sendiri.
+    for (const c of creates(provider)) if (c.tools?.length) expect(c.tool_choice).toBe('auto');
+    expect(of(out.events, 'grounded_answer')).toHaveLength(1);
+    expect(of(out.events, 'plan_card')).toHaveLength(0);
+    expect(env.store.getUrusanOrThrow(u.id).state).toBe('MEMAHAMI');
+    expect(JSON.stringify(creates(provider)[0]!.messages)).toContain('Rencana langkah belum ada');
   });
 
   it('pesan yang perlu ditanggapi model dulu (pemalsuan) tidak lewat jalur cepat', async () => {
@@ -254,14 +236,17 @@ describe('alur cepat sampai rencana', () => {
           ],
         }),
       });
-    const provider = new FakeProvider({ replies: [jawaban()] });
-    const env = makeEnv({ provider, ragDb: ragKtp(), cacheJawaban: new CacheJawaban() });
     const teks = 'KTP-el saya rusak, chipnya tidak terbaca. KTP saya Wonogiri. Bagaimana cara ganti?';
+    const jawab = () => tool('urusan__jawab_persyaratan', { pertanyaan: teks });
+    const balas = () => fakeCompletion({ content: 'Bawa KTP-el yang rusak.' });
+    const provider = new FakeProvider({ replies: [jawab(), jawaban(), balas(), jawab(), balas()] });
+    const env = makeEnv({ provider, ragDb: ragKtp(), cacheJawaban: new CacheJawaban() });
     const a = await runTurn(env.deps, { urusanId: env.store.createUrusan({}).id, userText: teks });
     const b = await runTurn(env.deps, { urusanId: env.store.createUrusan({}).id, userText: teks });
-    expect(creates(provider)).toHaveLength(1);
+    // Generator jawaban (json_schema) hanya dipanggil sekali; giliran kedua memakai cache.
+    expect(creates(provider).filter((c) => c.response_format?.type === 'json_schema')).toHaveLength(1);
+    expect(creates(provider)).toHaveLength(5);
     expect(of(b.events, 'grounded_answer')[0]!.klaim).toEqual(of(a.events, 'grounded_answer')[0]!.klaim);
-    expect(b.tokensIn).toBe(0);
   });
 
   it('jawaban bersumber untuk wilayah lama tidak ditautkan ke rencana wilayah baru', async () => {
