@@ -180,6 +180,6 @@ describe('Lencana header', () => {
     expect(lencana('kelahiran')).not.toContain('KTP &amp; dokumen');
     expect(lencana('pindah')).toContain('Pindah rumah');
     expect(lencana('kk')).toContain('Kartu Keluarga');
-    expect(lencana(null)).toContain('KTP &amp; dokumen');
+    expect(lencana(null)).not.toContain('KTP &amp; dokumen');
   });
 });

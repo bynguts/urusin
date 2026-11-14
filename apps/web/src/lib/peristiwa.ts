@@ -73,7 +73,7 @@ export const PERISTIWA: readonly Peristiwa[] = [
 export const URUSAN_LAIN: Peristiwa = {
   slug: 'lainnya',
   judul: 'Urusan lain',
-  lencana: 'KTP & dokumen',
+  lencana: 'Urusan lain',
   ringkas: 'KTP, KK, pengaduan, pajak kendaraan, dan lainnya',
   icon: 'lainnya',
   warna: 'kuning',
@@ -108,8 +108,8 @@ export function judulUrusan(jenis: string | null | undefined): string | null {
 
 /**
  * Peristiwa untuk lencana/avatar dari jenis urusan. Empat Peristiwa Hidup memakai lencananya sendiri; jenis lain
- * (ktp, kk, skck, ...) memakai tampilan "Urusan lain" dengan label jenisnya. "KTP & dokumen" hanya bila jenisnya
- * belum diketahui.
+ * (ktp, kk, skck, ...) memakai tampilan "Urusan lain" dengan label jenisnya. Bila jenisnya belum diketahui,
+ * halaman tidak menampilkan lencana sama sekali (lihat KartuUrusanku dan halaman urusan).
  */
 export function peristiwaDariJenis(jenis: string | null | undefined): Peristiwa {
   if (!jenis) return URUSAN_LAIN;

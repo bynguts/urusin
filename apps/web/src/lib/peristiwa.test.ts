@@ -23,7 +23,7 @@ describe('lencana mengikuti jenis urusan', () => {
     expect(peristiwaDariJenis('kematian').lencana).toBe('Kehilangan keluarga');
     expect(peristiwaDariJenis('perkawinan').lencana).toBe('Menikah');
   });
-  it('jenis lain memakai label jenisnya; "KTP & dokumen" hanya bila jenis belum diketahui', () => {
+  it('jenis lain memakai label jenisnya; jenis kosong jatuh ke "Urusan lain"', () => {
     expect(peristiwaDariJenis('ktp').lencana).toBe('KTP elektronik');
     expect(peristiwaDariJenis('skck').lencana).toBe('SKCK');
     expect(peristiwaDariJenis('pajak_kendaraan').lencana).toBe('Pajak kendaraan');

@@ -636,7 +636,7 @@
 
 <div class="flex min-h-0 flex-1 flex-col lg:overflow-hidden">
   <HeaderHalaman {judul}>
-    {#snippet awal()}<Lencana peristiwa={p} />{/snippet}
+    {#snippet awal()}{#if jenisKini}<Lencana peristiwa={p} />{/if}{/snippet}
   </HeaderHalaman>
 
   {#if k.status === 'terputus'}
