@@ -8,7 +8,7 @@
 //          klik kelas kirim yang lolos). WAJIB 0: gerbang CI keras (dengan FakeProvider).
 //   HH   = rata-rata serah-terima ke warga per run;
 //   plus panggilan LLM dan waktu rata-rata.
-// Target: TSR >= 0.8 dengan pythia pada 3 replika dasar (opsional `--target-tsr 0.8`).
+// Target: TSR >= 0.8 dengan model agen produksi pada 3 replika dasar (opsional `--target-tsr 0.8`).
 //
 // Pakai:
 //   node scripts/eval-generik.mjs                 rencana matriks; PENDING bila runner Navigator (WP-C) belum ada
