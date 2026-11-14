@@ -853,9 +853,9 @@ describe('agen: ingatan dipakai dan dicatat', () => {
 });
 
 describe('DemoProvider (e2e tanpa kunci LLM)', () => {
-  it('preferensi yang warga sebut dicatat sekali, lalu alur wilayah berlanjut; urusan kedua memakai usulan ingatan', async () => {
+  it('preferensi yang warga sebut dicatat sekali, lalu alur wilayah berlanjut; urusan kedua memakai wilayah ingatan', async () => {
     const { DemoProvider } = await import('./demo.js');
-    const { usulkanWilayah, wilayahUrusan } = await import('./wilayah.js');
+    const { tetapkanWilayah, wilayahUrusan } = await import('./wilayah.js');
     const p = penyimpanMemori();
     const env = makeEnv({ provider: new DemoProvider(), ingatan: p });
     const u1 = env.store.createUrusan({ jenis: 'kelahiran' });
@@ -866,21 +866,21 @@ describe('DemoProvider (e2e tanpa kunci LLM)', () => {
     const label = (o: typeof o1) => o.events.flatMap((e) => (e.type === 'ingatan' ? [e.butir.label] : []));
     expect(label(o1)).toEqual(['Warga lansia', 'Wilayah KTP: Kabupaten Wonogiri']);
 
-    // Urusan kedua: usulan dari ingatan (seperti usulkanWilayahAwal di web), agen tetap mengonfirmasi.
-    const u2 = env.store.createUrusan({ jenis: 'perkawinan' });
-    usulkanWilayah(
-      u2.id,
-      '3312',
+    // Urusan kedua: wilayah KTP dari ingatan (sudah pernah dipastikan) langsung ditetapkan, seperti
+    // usulkanWilayahAwal di web; tidak ada kartu atau pertanyaan wilayah, rencana langsung disusun.
+    const u2a = env.store.createUrusan({ jenis: 'perkawinan' });
+    const u2 = tetapkanWilayah(
+      env.store,
+      u2a,
+      { ktp: '3312' },
+      (e) => void env.store.appendEvent(u2a.id, e.type, (({ type: _t, ...r }) => r)(e)),
       'ingatan',
-      (e) => void env.store.appendEvent(u2.id, e.type, (({ type: _t, ...r }) => r)(e)),
     );
-    expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u2.id)).usulan?.sumber).toBe('ingatan');
     const o2 = await runTurn(env.deps, { urusanId: u2.id, userText: 'Mau catat perkawinan' });
-    // Konfirmasi lewat kartu usulan (bukan teks pertanyaan ganda): wilayah belum ditetapkan tanpa warga.
-    expect(o2.events.filter((e) => e.type === 'assistant_text')).toEqual([]);
+    expect(o2.events.filter((e) => e.type === 'wilayah')).toEqual([]);
     const w2 = wilayahUrusan(env.store, env.store.getUrusanOrThrow(u2.id));
-    expect(w2.ktp).toBeNull();
-    expect(w2.usulan).toMatchObject({ sumber: 'ingatan', ktp: { kodeKabKota: '3312' } });
+    expect(w2.ktp?.kodeKabKota).toBe('3312');
+    expect(o2.events.some((e) => e.type === 'plan_card')).toBe(true);
     expect(label(o2)).toEqual([]);
   }, 20_000);
 });

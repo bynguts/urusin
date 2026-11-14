@@ -39,9 +39,11 @@ export function buildSystemPrompt(): string {
     '',
     'WILAYAH DULU:',
     '- Aturan, situs resmi, dan cara akses berbeda di tiap kab/kota. Sebelum merencanakan, pastikan kab/kota sesuai KTP warga, lalu panggil wilayah__tetapkan. Sistem menolak rencana sampai wilayah KTP ditetapkan.',
+    '- KAMU yang memutuskan apakah wilayah perlu ditanyakan. Tanyakan HANYA bila jawabanmu memang bergantung pada wilayah: persyaratan/prosedur layanan tertentu, portal, kantor, biaya, atau menyusun rencana. Pertanyaan umum (apa saja yang bisa Urusin bantu, apa itu KK, sapaan, aturan nasional yang sama di semua daerah) dijawab langsung TANPA menanyakan wilayah.',
+    '- Wilayah KTP yang catatan state-nya "sudah dipastikan" (Data Diri, Ingatan, atau jawaban warga) langsung dipakai: jangan tanyakan atau minta konfirmasi lagi. Bila warga sendiri menyebut wilayah KTP lain, panggil wilayah__tetapkan dengan wilayah itu.',
     '- Warga sudah menyebut sendiri kab/kota KTP/KK-nya (mis. "KTP saya Wonogiri", "KK saya juga Wonogiri")? Langsung panggil wilayah__tetapkan dengan wilayah itu; jangan bertanya ulang "betul?".',
-    '- Ada usulan wilayah (Data Diri, pilihan di perangkat, atau Ingatan warga)? Tanyakan satu kalimat: "KTP Anda terdaftar di <nama usulan>, betul?" Jangan anggap benar sebelum warga membenarkan.',
-    '- Tanpa usulan: tanyakan "KTP Anda terdaftar di kabupaten/kota mana?" Cukup nama kab/kota; jangan pernah meminta NIK.',
+    '- Ada usulan wilayah yang belum pasti (mis. pilihan di perangkat) dan jawabanmu bergantung pada wilayah? Tanyakan satu kalimat: "KTP Anda terdaftar di <nama usulan>, betul?" Jangan anggap benar sebelum warga membenarkan.',
+    '- Tanpa usulan dan jawabanmu bergantung pada wilayah: tanyakan "KTP Anda terdaftar di kabupaten/kota mana?" Cukup nama kab/kota; jangan pernah meminta NIK.',
     '- Warga tidak yakin KTP-nya terdaftar di mana? Bantu menemukannya: minta warga melihat nama kabupaten/kota yang tertulis di KTP atau KK, atau memilihnya di kartu/pilihan kab-kota di layar. Bila belum bisa dicek, jangan berputar menanyakan hal yang sama: tawarkan kab/kota tempat tinggalnya sebagai dugaan sementara ("Biasanya sama dengan tempat tinggal Anda. Kita pakai Kabupaten X dulu? Bisa diubah nanti."), lalu panggil wilayah__tetapkan setelah warga setuju dan lanjutkan. Jangan pernah meminta NIK atau sebagian digit NIK lewat chat.',
     '- Nama ganda (mis. Bekasi: Kota atau Kabupaten) ditanyakan. Kecamatan/kota kecil (mis. Cikarang) boleh kamu petakan ke kab/kotanya, tetapi tanyakan dulu ke warga sebelum menetapkan.',
     '- Konfirmasi wilayah cukup SEKALI. Warga menjawab "iya/betul/benar" (juga "Oh, iya betul, KTP saya di Cikarang Utara") atas wilayah yang kamu tanyakan = sudah dibenarkan: langsung panggil wilayah__tetapkan, jangan menanyakan "betul?" lagi. Wilayah KTP yang sudah ditetapkan tidak ditanyakan lagi.',
@@ -122,12 +124,15 @@ function barisWilayah(
       out.push(
         sumber === 'warga'
           ? `${TEKS_WILAYAH.usulan} (sudah kamu tanyakan di percakapan): ${ktp.nama}. Tanyakan lagi hanya bila warga belum menjawabnya. ${benarkan}`
-          : `${TEKS_WILAYAH.usulan} (${sumber === 'data_diri' ? 'Data Diri akun' : sumber === 'ingatan' ? 'Ingatan warga dari urusan sebelumnya' : 'pilihan di perangkat'}): ${ktp.nama}. Tanyakan sekali: "${tanya}" ${benarkan}`,
+          : `${TEKS_WILAYAH.usulan} (${sumber === 'data_diri' ? 'Data Diri akun' : sumber === 'ingatan' ? 'Ingatan warga dari urusan sebelumnya' : 'pilihan di perangkat, belum pasti'}): ${ktp.nama}. Tanyakan sekali, HANYA bila jawabanmu bergantung pada wilayah: "${tanya}" ${benarkan}`,
       );
     }
   }
   const belum = wilayahBelumSiap(jenis, w);
-  if (belum) out.push(`Rencana belum bisa disusun: ${belum}.`);
+  if (belum)
+    out.push(
+      `Rencana belum bisa disusun: ${belum}. Pertanyaan umum yang tidak bergantung pada wilayah tetap dijawab langsung tanpa menanyakan wilayah.`,
+    );
   return out;
 }
 

@@ -299,6 +299,8 @@ export function tetapkanWilayah(
   u: UrusanRow,
   input: InputWilayah,
   publish: Publish,
+  /** Asal penetapan: warga (obrolan/kartu), atau sumber tepercaya yang diterapkan otomatis (`terapkanWilayahPasti`). */
+  sumber: 'warga' | 'data_diri' | 'ingatan' = 'warga',
 ): UrusanRow {
   const ktp = refWilayah(input.ktp);
   if (!ktp) throw new HarnessError('WILAYAH_TIDAK_DIKENAL', 'kode kab/kota tidak dikenal', 422);
@@ -324,7 +326,7 @@ export function tetapkanWilayah(
       type: 'wilayah',
       status: 'ditetapkan',
       ktp,
-      sumber: 'warga',
+      sumber,
       ...(domisili ? { domisili } : {}),
       ...(tujuan ? { tujuan } : {}),
     });

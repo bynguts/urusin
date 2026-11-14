@@ -310,22 +310,64 @@ describe('alur cepat sampai rencana', () => {
     expect(of(out.events, 'plan_card')[0]!.catatan).toMatch(/^Langkah disusun asisten, belum bersumber\./);
   });
 
-  it('usulan Data Diri: giliran pertama hanya kartu (tanpa model, tanpa teks ganda)', async () => {
-    const provider = new FakeProvider({ replies: [] });
+  it('usulan perangkat: giliran pertama tetap dijawab agen, bukan diganti kartu wilayah', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        fakeCompletion({ content: 'Bisa. Ganti KTP-el rusak diurus di Disdukcapil sesuai KTP Anda.' }),
+      ],
+    });
     const env = makeEnv({ provider, ragDb: ragKtp() });
     const u = env.store.createUrusan({});
-    usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
+    usulkanWilayah(u.id, '3312', 'pilihan', publisher(env, u.id));
     const out = await runTurn(env.deps, {
       urusanId: u.id,
-      userText: 'Saya tinggal di Wonogiri. KTP-el saya rusak, bagaimana cara ganti?',
+      userText: 'KTP-el saya rusak, bagaimana cara ganti?',
     });
-    expect(creates(provider)).toHaveLength(0);
-    expect(of(out.events, 'assistant_text')).toHaveLength(0);
-    expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).usulan?.ktp.kodeKabKota).toBe('3312');
-    // Tanpa kartu rencana, `done` satu-satunya pembawa jenis ke halaman yang dimuat sebelum klasifikasi.
-    expect(of(out.events, 'plan_card')).toHaveLength(0);
+    expect(creates(provider).length).toBeGreaterThan(0);
+    expect(
+      of(out.events, 'assistant_text')
+        .map((e) => e.delta)
+        .join(''),
+    ).toContain('Disdukcapil');
+    // Agen tidak menanyakan wilayah: tidak ada kartu wilayah baru di giliran ini, tebakan perangkat tetap usulan.
+    expect(of(out.events, 'wilayah')).toHaveLength(0);
+    expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).ktp).toBeNull();
+    // `done` tetap membawa jenis ke halaman yang dimuat sebelum klasifikasi.
     expect(of(out.events, 'done')[0]?.jenis).toBe(env.store.getUrusanOrThrow(u.id).jenis);
     expect(of(out.events, 'done')[0]?.jenis).toBeTruthy();
+  });
+
+  it('pertanyaan umum ("kamu bisa ngapain aja") dijawab biasa tanpa kartu wilayah', async () => {
+    const provider = new FakeProvider({
+      replies: [fakeCompletion({ content: 'Saya bisa membantu mengurus dokumen kependudukan.' })],
+    });
+    const env = makeEnv({ provider, ragDb: ragKtp() });
+    // Jenis sesudah klasifikasi pesan umum.
+    const u = env.store.createUrusan({ jenis: 'lainnya' });
+    usulkanWilayah(u.id, '3312', 'pilihan', publisher(env, u.id));
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'kamu bisa ngapain aja' });
+    expect(
+      of(out.events, 'assistant_text')
+        .map((e) => e.delta)
+        .join(''),
+    ).toContain('membantu');
+    expect(of(out.events, 'wilayah')).toHaveLength(0);
+  });
+
+  it('wilayah Data Diri yang diterapkan otomatis: tidak ditanya, rencana langsung disusun', async () => {
+    const provider = new FakeProvider({
+      replies: [fakeCompletion({ content: 'Ini rencana untuk akta kelahiran di Wonogiri.' })],
+    });
+    const env = makeEnv({ provider, ragDb: ragKtp() });
+    let u = env.store.createUrusan({ jenis: 'kelahiran' });
+    u = tetapkanWilayah(env.store, u, { ktp: '3312' }, publisher(env, u.id), 'data_diri');
+    const wilayah = env.store.eventsOfType(u.id, 'wilayah', 5).map((e) => e.payload);
+    expect(wilayah).toEqual([expect.objectContaining({ status: 'ditetapkan', sumber: 'data_diri' })]);
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Anak saya baru lahir, urus akta.' });
+    expect(of(out.events, 'wilayah')).toHaveLength(0);
+    expect(of(out.events, 'plan_card')[0]?.wilayah?.ktp.kodeKabKota).toBe('3312');
+    const isi = creates(provider).flatMap((p) => p.messages.map((m) => JSON.stringify(m.content ?? '')));
+    expect(isi.some((t) => t.includes('Jangan tanyakan atau minta konfirmasi wilayah KTP lagi'))).toBe(true);
   });
 
   it('pertanyaan wilayah dari model tidak tampil lagi sebagai teks bila kartunya ada', async () => {

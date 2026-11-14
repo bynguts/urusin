@@ -4,7 +4,8 @@ import type { PesanWarga } from '#lib/stores/lokal.svelte.js';
 /** Satu gelembung/kartu di percakapan urusan, diturunkan dari event SSE + pesan warga di perangkat. */
 export type ItemLinimasa =
   | { jenis: 'warga'; key: string; teks: string; setelahSeq: number }
-  | { jenis: 'sistem'; key: string; teks: string; at: string }
+  /** `ubahWilayah` = kalimat wilayah yang ditetapkan terakhir: catatan kecil dengan tautan "Ubah". */
+  | { jenis: 'sistem'; key: string; teks: string; at: string; ubahWilayah?: boolean }
   | { jenis: 'teks'; key: string; teks: string }
   | { jenis: 'jawaban'; key: string; e: EventOf<'grounded_answer'> }
   | { jenis: 'handoff'; key: string; e: EventOf<'handoff'> }
@@ -106,7 +107,8 @@ export function bangunLinimasa(
         if (e.status === 'usulan') out.push({ jenis: 'wilayah', key, e, terakhir: false });
         else {
           wilayahDitetapkanSeq = e.seq;
-          out.push({ jenis: 'sistem', key, teks: kalimatWilayah(e, jenis), at: e.at });
+          for (const it of out) if (it.jenis === 'sistem' && it.ubahWilayah) it.ubahWilayah = false;
+          out.push({ jenis: 'sistem', key, teks: kalimatWilayah(e, jenis), at: e.at, ubahWilayah: true });
         }
         break;
       case 'ingatan':
@@ -172,25 +174,17 @@ export function bangunLinimasa(
     // Usulan wilayah yang sudah dijawab (wilayah ditetapkan sesudahnya) tidak bisa dikonfirmasi lagi.
     if (it.jenis === 'wilayah' && it.e.seq < wilayahDitetapkanSeq) it.terakhir = false;
   }
-  return kartuWilayahSaatPerlu(out, jenis);
+  return kartuWilayahSaatPerlu(out);
 }
 
 /**
- * Kartu wilayah hanya muncul saat dibutuhkan (keputusan pemilik 2026-11-14), bukan sebagai pembuka obrolan.
- * Usulan yang terbit saat urusan dibuat (Data Diri, pilihan perangkat, Ingatan) disembunyikan selama jenis urusan
- * belum jelas, lalu tampil di ujung percakapan begitu jenisnya diketahui (rencana memang menunggu wilayah).
- * Usulan `warga` terbit tepat saat agen menanyakan wilayah di obrolan, jadi tetap di tempatnya. Usulan awal yang
- * sudah tidak aktif tidak ditampilkan: wilayah yang ditetapkan tampil sebagai kalimat sistem.
+ * Kartu wilayah hanya muncul saat dibutuhkan (keputusan pemilik 2026-11-14), bukan sebagai pembuka obrolan: hanya
+ * usulan `warga`, yang terbit tepat saat agen memang menanyakan wilayah di obrolan (atau warga menyebut kab/kota).
+ * Tebakan perangkat yang dicatat saat urusan dibuat tidak pernah menjadi kartu sendiri; agen yang memutuskan apakah
+ * jawabannya bergantung pada wilayah. Data Diri/Ingatan langsung ditetapkan (kalimat sistem "Wilayah layanan: X").
  */
-function kartuWilayahSaatPerlu(out: ItemLinimasa[], jenis: string | null | undefined): ItemLinimasa[] {
-  const jenisJelas = !!jenis && jenis !== 'lainnya';
-  const hasil: ItemLinimasa[] = [];
-  const ditunda: ItemLinimasa[] = [];
-  for (const it of out) {
-    if (it.jenis !== 'wilayah' || it.e.sumber === 'warga') hasil.push(it);
-    else if (it.terakhir && jenisJelas) ditunda.push(it);
-  }
-  return [...hasil, ...ditunda];
+function kartuWilayahSaatPerlu(out: ItemLinimasa[]): ItemLinimasa[] {
+  return out.filter((it) => it.jenis !== 'wilayah' || it.e.sumber === 'warga');
 }
 
 /**
