@@ -26,7 +26,7 @@ layak. Kandidat 0,6B (Harrier, Qwen3) lebih besar dua kali lipat, lebih lambat 6
 - **Menu**: kueri = string tujuan Navigator, kandidat = semua label di set menu itu.
 - **Mesin**: laptop **x86-64** (AMD Ryzen 5 8645HS, Windows 11). CPU dipakai bersama agen lain (~40%
   sibuk saat diukur), jadi latensi adalah batas atas yang berisik. Produksi berjalan di **ARM64**
-  (agent-vm). Angka ARM belum diukur di sini; smoke CI arm64 hanya membuktikan image hidup dan benar
+  (VPS). Angka ARM belum diukur di sini; smoke CI arm64 hanya membuktikan image hidup dan benar
   secara semantik.
 - **RAM** = memori privat proses `llama-server` (model dimuat penuh tanpa mmap, konteks 2048).
   Angka kontainer produksi (konteks 1024, 2 slot) ada di bagian Sidecar.

@@ -13,7 +13,7 @@ import { join } from 'node:path';
  *   tanpa cookie ini.
  * Nomor display dipilih Xvfb sendiri (`-displayfd` tanpa `:n`): Xvfb mencoba mengikat soket tiap nomor dan
  * melewati yang sudah dipakai, termasuk soket abstrak `@/tmp/.X11-unix/X<n>` milik Xvfb lain di namespace
- * jaringan yang sama (network_mode host: host agent-vm sudah punya Xvfb :99). Memeriksa berkas lock di /tmp
+ * jaringan yang sama (network_mode host: host produksi sudah punya Xvfb :99). Memeriksa berkas lock di /tmp
  * kontainer saja tidak cukup untuk itu. Cookie dimuat server dari berkas `-auth` saat start (tidak terikat
  * nomor display); entri klien untuk nomor yang terpilih ditambahkan setelah Xvfb siap.
  * Di luar Linux, saat headless, atau bila DISPLAY sudah ada: tidak melakukan apa-apa.

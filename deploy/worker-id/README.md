@@ -1,7 +1,7 @@
 # Worker Browser Pendamping berjaringan Indonesia (laptop, lewat Tailscale)
 
 Worker ini OPSIONAL: Urusin berjalan 24/7 dari server tanpa laptop. Telunjuk Sakti (Disdukcapil Wonogiri)
-berstatus `aksesWilayah: 'id-utama'`: dari IP datacenter (agent-vm, Singapura) Cloudflare memberi tantangan
+berstatus `aksesWilayah: 'id-utama'`: dari IP datacenter (VPS produksi, Singapura) Cloudflare memberi tantangan
 kotak centang (`403 cf-mitigated: challenge`, "Performing security verification") yang diketuk warga sendiri
 lewat Browser Pendamping, lalu AI melanjutkan; bila laptop ini hidup dan masih punya slot, web mendahulukannya
 (laptop penuh atau start gagal di laptop = langsung server). Dari koneksi
@@ -29,13 +29,13 @@ id-only dipandu sejak kartu rencana, bukan gagal. Bila worker sehat tetapi gagal
 lama, token salah, 5xx, putus), urusan itu juga beralih ke panduan langkah dengan pesan jujur.
 
 Folder ini menjalankan worker Pendamping region `id` di laptop anggota (Docker Desktop di Windows/macOS, atau
-Docker Linux), dijangkau web di agent-vm hanya lewat Tailscale. Tanpa stealth/pemalsuan sidik jari, tanpa layanan CAPTCHA, tanpa proxy residensial: warga sendiri
+Docker Linux), dijangkau web di VPS hanya lewat Tailscale. Tanpa stealth/pemalsuan sidik jari, tanpa layanan CAPTCHA, tanpa proxy residensial: warga sendiri
 yang mengetik login/OTP/CAPTCHA, mengklik tantangan bila muncul, dan menekan Kirim/Selesai.
 
 ```
-Peramban warga --wss--> Caddy agent-vm  /pendamping/w/<id>/ws/<uuid>
+Peramban warga --wss--> Caddy VPS  /pendamping/w/<id>/ws/<uuid>
                               | (Tailscale, hanya /ws/*)
-Web agent-vm  --HMAC token worker--> http://<IP Tailscale laptop>:4330  (edge: /internal/*, /health, /ws/<uuid>)
+Web VPS  --HMAC token worker--> http://<IP Tailscale laptop>:4330  (edge: /internal/*, /health, /ws/<uuid>)
                                               |
                               laptop: pendamping-edge --> pendamping (Chromium headed di Xvfb, jaringan internal)
                                               '--> CONNECT https:443 ke host registry, IP Indonesia laptop
@@ -45,7 +45,7 @@ Topologi kontainer sama dengan produksi (`compose.prod.yml`): `pendamping` hanya
 rute keluar, sandbox Chromium aktif, profil seccomp yang sama), `pendamping-edge` satu-satunya port dan
 satu-satunya jalan keluar (union host registry, IP privat/CGNAT ditolak). Bedanya hanya:
 
-| Hal            | agent-vm                      | Laptop (folder ini)                                           |
+| Hal            | VPS                           | Laptop (folder ini)                                           |
 | -------------- | ----------------------------- | ------------------------------------------------------------- |
 | Ikat port edge | `127.0.0.1:4330`              | HANYA IP Tailscale laptop (`WORKER_TAILSCALE_IP`), bukan LAN  |
 | Token HMAC     | `PENDAMPING_INTERNAL_TOKEN`   | `WORKER_TOKEN` milik worker ini (dipasang sbg `token` di web) |
@@ -59,12 +59,12 @@ satu-satunya jalan keluar (union host registry, IP privat/CGNAT ditolak). Bedany
 - Docker Desktop >= 4.x dengan Docker Engine >= 28 (`gateway_mode_ipv4: isolated`; `worker.sh up` menolak versi
   lebih lama), backend WSL2, "Start Docker Desktop when you sign in" aktif. Kontainer `restart: unless-stopped`
   ikut hidup lagi setelah Docker Desktop mulai. Memori VM Docker >= 3 GB (pendamping 1,3 GB + edge 128 MB).
-- Tailscale menyala dan login ke tailnet yang sama dengan agent-vm (`tailscale ip -4` = `WORKER_TAILSCALE_IP`).
+- Tailscale menyala dan login ke tailnet yang sama dengan VPS (`tailscale ip -4` = `WORKER_TAILSCALE_IP`).
   Bila IP Tailscale berubah (perangkat didaftar ulang), ubah `.env`, rute Caddy, dan `PENDAMPING_WORKERS`.
 - Git Bash (Windows) atau bash biasa untuk `worker.sh`.
 
 Docker Desktop: port `100.x.y.z:4330:4330` didengarkan oleh Docker Desktop di IP itu saja (diuji: tidak
-terjangkau dari IP LAN maupun 127.0.0.1, terjangkau dari agent-vm lewat Tailscale). `network_mode: host` TIDAK
+terjangkau dari IP LAN maupun 127.0.0.1, terjangkau dari VPS lewat Tailscale). `network_mode: host` TIDAK
 dipakai: di Docker Desktop itu jaringan VM Linux, bukan jaringan laptop (lihat deploy/README.md).
 
 ## Pertama kali
@@ -76,7 +76,7 @@ bash deploy/worker-id/worker.sh up      # validasi .env (IP 100.64.0.0/10 dan te
 ```
 
 Image: bawaan dibangun dari checkout (pastikan checkout = commit yang sama dengan produksi). Alternatif: isi
-`PENDAMPING_IMAGE=ghcr.io/bynguts/urusin-pendamping@sha256:...` dengan digest yang SAMA dengan agent-vm
+`PENDAMPING_IMAGE=ghcr.io/bynguts/urusin-pendamping@sha256:...` dengan digest yang SAMA dengan VPS
 (`grep PENDAMPING_IMAGE /opt/urusin/.env`) setelah `docker login ghcr.io` memakai PAT `read:packages`.
 
 Boot yang benar (`docker logs urusin-worker-id-pendamping-1`):
@@ -99,7 +99,7 @@ bash deploy/worker-id/worker.sh down    # berhenti; Telunjuk Sakti kembali ke se
 docker compose -p urusin-worker-id logs --tail 50 pendamping pendamping-edge
 ```
 
-Dari agent-vm (baca saja): `curl -fsS http://<IP Tailscale laptop>:4330/health`. Tanpa `"generik":true` =
+Dari VPS (baca saja): `curl -fsS http://<IP Tailscale laptop>:4330/health`. Tanpa `"generik":true` =
 image lama (`worker.sh sehat` memperingatkannya): situs id-only dipandu sampai image diperbarui. `sha` = commit
 image (12 heks), bandingkan dengan produksi.
 
@@ -123,7 +123,7 @@ tidak pernah keluar laptop) dengan 32 byte acak, ditulis lewat env (bukan argume
 `.env`, `.env.web-publik`, dan `.env.web-final` diabaikan git (`.env.*`).
 
 - Untuk web produksi: `bash deploy/worker-id/worker.sh web-env publik` menulis `.env.web-publik` berisi baris
-  `PENDAMPING_WORKERS=[vps, <id>]` lengkap dengan token worker ini. Salin berkas itu ke agent-vm lewat `scp`
+  `PENDAMPING_WORKERS=[vps, <id>]` lengkap dengan token worker ini. Salin berkas itu ke VPS lewat `scp`
   (bukan tempel di chat), lalu gabungkan ke `/opt/urusin/.env` (lead, dengan izin).
 - Rotasi: hapus `.env`, `init`, `up`, lalu ganti `token` worker ini di `PENDAMPING_WORKERS` web. Selama belum
   diganti, worker menjawab 401 ke web (`/health` tetap sehat karena tidak bertanda tangan): situs `id-utama`
@@ -153,7 +153,7 @@ bersamaan dengan deploy web.
 
    Simpan cadangan `.env` di luar checkout (profil sendiri, bukan repo/chat).
 
-2. Pilih image yang SAMA dengan agent-vm: isi `PENDAMPING_IMAGE=ghcr.io/bynguts/urusin-pendamping@sha256:...`
+2. Pilih image yang SAMA dengan VPS: isi `PENDAMPING_IMAGE=ghcr.io/bynguts/urusin-pendamping@sha256:...`
    di `.env` (digest dari `grep PENDAMPING_IMAGE /opt/urusin/.env`; `docker login ghcr.io` dengan PAT
    `read:packages`), atau `worker.sh build` dari checkout yang `HEAD`-nya = commit produksi.
 3. `bash deploy/worker-id/worker.sh up` (compose `-p urusin-worker-id` mengganti kontainer lama; tidak perlu
@@ -164,7 +164,7 @@ bersamaan dengan deploy web.
 5. Dari web: `GET /api/pendamping/antrean` (`maks` = 2 + 1) dan buat urusan uji di salah satu kota id-only:
    kartu rencana harus `semi` (bukan dipandu "jaringan Indonesia sedang tidak aktif").
 
-## Produksi (agent-vm, dikerjakan lead dengan izin)
+## Produksi (VPS, dikerjakan lead dengan izin)
 
 1. Rute Caddy, dibangkitkan (bukan diedit manual):
    `node scripts/gen-caddyfile.mjs --set primary --fixtures --pendamping --worker laptop-a=<IP Tailscale>:4330 --import /opt/urusin/Caddyfile.urusin --out /tmp/Caddyfile.urusin`
@@ -172,9 +172,9 @@ bersamaan dengan deploy web.
    (prefiks dibuang, edge menerima `/ws/<uuid>`); Cookie ditimpa jadi sid saja dan `Authorization` dibuang, jadi
    cookie akun warga tidak pernah sampai ke laptop (edge juga menyaringnya). Jalur lain di bawah
    `/pendamping/w/<id>/` (`/internal/*`, `/health`, `/debug`, GET biasa) dijawab 404 oleh Caddy.
-   Saran ACL Tailscale (admin tailnet): hanya agent-vm yang boleh ke `laptop-a:4330`, mis.
-   `"hosts": {"agent-vm": "100.a.b.c", "laptop-a": "100.x.y.z"}` dan
-   `"acls": [{"action": "accept", "src": ["agent-vm"], "dst": ["laptop-a:4330"]}, ...]` (aturan lain tim tetap
+   Saran ACL Tailscale (admin tailnet): hanya VPS yang boleh ke `laptop-a:4330`, mis.
+   `"hosts": {"vps": "100.a.b.c", "laptop-a": "100.x.y.z"}` dan
+   `"acls": [{"action": "accept", "src": ["vps"], "dst": ["laptop-a:4330"]}, ...]` (aturan lain tim tetap
    ditulis eksplisit; aturan "semua ke semua" bawaan membatalkan pembatasan ini).
 2. Web: `PENDAMPING_INTERNAL_URL` diganti `PENDAMPING_WORKERS` (dari `.env.web-publik`). Skema web WAJIB punya
    `wsUrl` di setiap worker dan `token` untuk worker selain 127.0.0.1; JSON yang tidak sah membuat Pendamping
@@ -201,7 +201,7 @@ Web lokal memanggil worker lewat `http://<IP Tailscale>:4330` (pengecualian egre
 100.64.0.0/10; dari dalam kontainer web, 127.0.0.1 adalah kontainer itu sendiri), sedangkan peramban membuka
 `ws://localhost:4330/ws/<uuid>`: cookie `__Host-urusin_sid` milik localhost ikut terkirim ke port lain di host
 yang sama, ke IP Tailscale tidak. Jadi Tailscale tetap harus menyala saat final (IP-nya hanya dipakai di dalam
-laptop; tidak butuh agent-vm). Mode Uji (juri/tamu) tetap ke replika `fixtures.$DOMAIN` dan butuh internet.
+laptop; tidak butuh VPS). Mode Uji (juri/tamu) tetap ke replika `fixtures.$DOMAIN` dan butuh internet.
 Akun warga biasa (bukan tamu, bukan salinan demo juri) dibuka ke Telunjuk Sakti asli.
 
 Kembali ke mode produksi saja: `bash deploy/worker-id/worker.sh up` (tanpa `--final`; loopback dilepas).

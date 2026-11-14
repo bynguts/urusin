@@ -107,7 +107,7 @@ function infoProses(pid: string, proc: string): ProsesInfo | undefined {
  * Jenis sandbox renderer, atau null bila tidak ada renderer tersandbox. Keduanya WAJIB punya filter seccomp
  * lebih banyak dari proses ini (filter kontainer + seccomp-bpf Chromium; `Seccomp: 2` saja tidak cukup):
  * - `userns`: sandbox namespace (renderer di user namespace lain);
- * - `setuid`: sandbox setuid `chrome-sandbox` (host yang mematikan userns tak berhak, mis. agent-vm): renderer
+ * - `setuid`: sandbox setuid `chrome-sandbox` (host yang mematikan userns tak berhak, mis. server produksi): renderer
  *   di namespace PID baru (NSpid bersarang) dalam user namespace yang sama.
  */
 export function jenisSandboxRenderer(

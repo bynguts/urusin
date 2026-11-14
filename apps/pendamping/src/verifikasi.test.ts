@@ -25,7 +25,7 @@ describe('verifikasi situs: deteksi', () => {
     expect(isInterstitialTitle('Just a moment... (fixture)')).toBe(true);
     expect(isInterstitialTitle('  Checking your browser before accessing')).toBe(true);
     expect(isInterstitialTitle('Tunggu sebentar...')).toBe(true);
-    // Interstitial Cloudflare berkotak centang Turnstile (diamati dari agent-vm, 2026-11-10).
+    // Interstitial Cloudflare berkotak centang Turnstile (diamati dari server produksi, 2026-11-10).
     expect(isInterstitialTitle('Performing security verification')).toBe(true);
     expect(isInterstitialTitle('Performing security verification (fixture)')).toBe(true);
     expect(isInterstitialTitle('Verify you are human')).toBe(true);

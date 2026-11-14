@@ -218,7 +218,7 @@ services:
       # Profil Chromium sementara per sesi + soket/cookie Xvfb; dihapus saat sesi/layanan berakhir.
       - /tmp:size=768m
     # Anggaran: 2 sesi x 1100 MB (pengawas sesi) + Node dan Xvfb (~300 MB). 450 MB terlalu ketat untuk portal
-    # prioritas (Silondo Maju Depok dihentikan pengawas, QA 2026-11-12); diukur: agent-vm ~9 GB RAM tersedia.
+    # prioritas (Silondo Maju Depok dihentikan pengawas, QA 2026-11-12); diukur: VPS ~9 GB RAM tersedia.
     # Host bersama: ubah lewat PENDAMPING_MEM_LIMIT/PENDAMPING_SESSION_MEM_MB di .env, jangan tanpa ukur.
     mem_limit: ${PENDAMPING_MEM_LIMIT:-2500m}
     memswap_limit: ${PENDAMPING_MEM_LIMIT:-2500m}
@@ -229,7 +229,7 @@ services:
     # Tanpa core dump: memori renderer bisa memuat ketikan/kredensial warga.
     ulimits:
       core: 0
-    # Sandbox Chromium AKTIF (tanpa --no-sandbox), ADR 0029. agent-vm mematikan user namespace tak berhak
+    # Sandbox Chromium AKTIF (tanpa --no-sandbox), ADR 0029. VPS produksi mematikan user namespace tak berhak
     # (unprivileged_userns_clone=0, sysctl host tidak kita ubah), jadi namespace renderer dibuat oleh helper
     # SETUID `chrome-sandbox` (root 4755, satu-satunya biner SUID di image). Set minimal, diukur (userns mati):
     # - SYS_ADMIN: helper (euid 0) clone(CLONE_NEWPID|CLONE_NEWNET) untuk renderer; kernel mewajibkan

@@ -3,14 +3,14 @@
 #   docker build -f apps/pendamping/Dockerfile -t urusin-pendamping .
 #
 # Basis runtime = image resmi Playwright 1.65 (Ubuntu noble, Node 26, Chromium + semua pustaka sistem + Xvfb
-# sudah terpasang, multi-arch amd64/arm64; sudah ada di cache agent-vm). Versi Chromium cocok dengan
+# sudah terpasang, multi-arch amd64/arm64; sudah ada di cache VPS). Versi Chromium cocok dengan
 # playwright-core 1.65.0 di lockfile. Tahap runtime HANYA COPY (tanpa RUN), jadi build silang arm64 di
 # runner amd64 tidak butuh QEMU, sama seperti web/fixtures.
 #
 # Headed, bukan headless: situs ber-Cloudflare menantang Chromium headless (diukur tim). Flag Chromium
 # bawaan Playwright tidak diubah (tanpa stealth, tanpa menyembunyikan otomasi; lihat tanpa-evasi.test.ts).
 # Isolasi: sandbox Chromium AKTIF (seccomp-bpf + namespace; profil seccomp Playwright dari compose) dan
-# diperiksa saat boot. Host produksi (agent-vm) mematikan user namespace tak berhak, jadi namespace dibuat
+# diperiksa saat boot. Host produksi (VPS) mematikan user namespace tak berhak, jadi namespace dibuat
 # oleh sandbox SETUID `chrome-sandbox` (lihat tahap runtime dan ADR 0029). Kontainer pendamping hanya di
 # jaringan internal compose; satu-satunya jalan keluar adalah pendamping-edge (image yang sama,
 # `node dist/edge-main.js`). Lihat deploy/compose.prod.yml.

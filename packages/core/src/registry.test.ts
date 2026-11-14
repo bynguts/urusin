@@ -25,7 +25,7 @@ describe('registry domain resmi', () => {
       expect(DOMAIN_WILAYAH.some((d) => d.host === h)).toBe(true);
   });
 
-  it('aksesWilayah dari probe agent-vm: blokir keras = id-only, tantangan interaktif = id-utama', () => {
+  it('aksesWilayah dari probe server produksi: blokir keras = id-only, tantangan interaktif = id-utama', () => {
     const akses = (a: string) => OFFICIAL_DOMAINS.filter((d) => d.aksesWilayah === a).map((d) => d.host);
     // Seed tangan (Sidnok) + host portal wilayah yang ditolak dari IP Singapura (probe portal nyata 2026-11-10)
     // + 1101 (interstitial JSD macet tanpa kotak centang dari Singapura, probe 2026-11-12).
