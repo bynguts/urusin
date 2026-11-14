@@ -4,13 +4,15 @@ import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
 
-// Host verify primary + fallback dari deploy/hosts.json (sumber tunggal); persis, tanpa wildcard.
-const VERIFY_HOSTS = Object.values(
-  JSON.parse(readFileSync(new URL('../../deploy/hosts.json', import.meta.url), 'utf8')) as Record<
-    string,
-    { verify: string }
-  >,
-).map((h): `https://${string}.${string}` => `https://${h.verify}` as `https://${string}.${string}`);
+// Host verify primary dari deploy/hosts.json (sumber tunggal); persis, tanpa wildcard. Host set fallback (IP
+// server) tidak diiklankan di header CSP publik: belum ada halaman yang membingkai host verify.
+const VERIFY_HOSTS = [
+  (
+    JSON.parse(readFileSync(new URL('../../deploy/hosts.json', import.meta.url), 'utf8')) as {
+      primary: { verify: string };
+    }
+  ).primary,
+].map((h): `https://${string}.${string}` => `https://${h.verify}` as `https://${string}.${string}`);
 // Widget Cloudflare Turnstile di /masuk (juri, masuk setelah 3 gagal); dimuat hanya bila kuncinya dikonfigurasi.
 const TURNSTILE = 'https://challenges.cloudflare.com';
 
