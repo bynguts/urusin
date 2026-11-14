@@ -145,8 +145,8 @@
       Apa yang ingin Anda urus?
     </h1>
     <p class="w-full max-w-[640px] text-base text-body sm:text-[17px] sm:leading-[25px]">
-      Ceritakan dengan bahasa sehari-hari. Urusin mencari aturan resmi sesuai wilayah KTP Anda, lalu
-      menyusun langkahnya.
+      Ceritakan dengan bahasa sehari-hari. Urusin mencari aturan resmi sesuai wilayah KTP Anda, lalu menyusun
+      langkahnya.
     </p>
 
     <form

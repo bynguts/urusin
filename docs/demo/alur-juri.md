@@ -34,7 +34,7 @@ bukan situs pemerintah". Kredensial replika sama (HP `08000000001`, CAPTCHA `DEV
 
 - **Sebelum naik panggung:** `bash scripts/demo-final.sh cek` harus berakhir **SIAP DEMO** (semua hijau). Catatan
   "sesi Pendamping sisa gladi" boleh, tetapi lebih aman `docker restart urusin-demo-pendamping-1` dulu.
-- **Internet venue atau proxy LLM mati (gladi wajib mencoba sekali):** `bash scripts/demo-final.sh offline`
+- **Internet venue atau LLM mati (gladi wajib mencoba sekali):** `bash scripts/demo-final.sh offline`
   (±1 menit, hanya web yang dibuat ulang). Agen memakai DemoProvider; alur Wonogiri tidak berubah karena
   pengisian Telunjuk Sakti memakai adapter deterministik, bukan model. Kembali: `bash scripts/demo-final.sh online`.
   Yang hilang di mode offline: jawaban bebas berkualitas LLM dan Navigator generik (portal tanpa adapter).
@@ -60,7 +60,7 @@ manual yang lancar sedikit lebih cepat.
 
 | #   | Yang diklik atau diketik                                                                                                          | Yang tampil                                                                                                                   | Waktu        | Total |
 | --- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------ | ----- |
-| 1   | `/masuk` → **Masuk sebagai juri** (centang Turnstile bila diminta)                                                                | Masuk ke **Beranda** sebagai "Salinan demo juri"                                                                              | ±6 dtk       | –     |
+| 1   | `/masuk` → **Masuk sebagai juri**                                                                                                 | Masuk ke **Beranda** sebagai "Salinan demo juri"                                                                              | ±6 dtk       | –     |
 | 2   | Beranda → kartu **Kelahiran** → kab/kota sudah terisi **Kabupaten Wonogiri** (dari Data Diri salinan juri) → **Mulai urusan ini** | Halaman urusan "Akta kelahiran"; pesan "Saya ingin mengurus kelahiran…" terkirim otomatis                                     | ±2 dtk       | 0:00  |
 | 3   | (tunggu)                                                                                                                          | Kartu **KTP Anda terdaftar di Kabupaten Wonogiri?** dan pertanyaan yang sama dari AI (bisa disertai jawaban bersumber [1][2]) | belum diukur | –     |
 | 3a  | **Ya, betul** (satu-satunya klik tambahan sejak run 9)                                                                            | Baris "Wilayah KTP: Kabupaten Wonogiri" + kartu **Rencana · 3 langkah** dengan label "AI bisa bantu mengisi di situs resmi"   | ±1 dtk       | –     |

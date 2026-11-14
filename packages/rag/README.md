@@ -176,6 +176,10 @@ Keterbatasan korpus yang perlu diketahui sebelum menilai angka:
 
 ### Penyedia embedding dan rerank
 
+Produksi saat ini: pencarian sumber resmi berjalan di server Urusin sendiri (kata kunci + vektor) dengan sidecar
+embedding self-hosted (`URUSIN_EMBED_URL`, lihat `packages/embedding`), tanpa Jina dan tanpa rerank. Penyedia
+eksternal di bawah adalah jalur opsional di kode; angka Jina di bagian evaluasi adalah riwayat 2026-11-08.
+
 Konfigurasi terpisah dari LLM agen (lihat `.env.example`): `LLM_EMBED_BASE_URL` (bawaan `LLM_BASE_URL`),
 `LLM_EMBED_API_KEY`, `LLM_EMBED_MODEL`, `LLM_EMBED_TASK_QUERY` / `LLM_EMBED_TASK_PASSAGE` (field `task` Jina) dan
 `RERANK_BASE_URL` / `RERANK_API_KEY` / `RERANK_MODEL` (`POST /rerank`). `LLM_API_KEY` tidak pernah dikirim ke base URL
@@ -192,7 +196,7 @@ Evaluasi: `pnpm --filter @urusin/rag exec node dist/eval/matrix-cli.js --gold ..
 "jina-embeddings-v3:retrieval.query:retrieval.passage" --rerank "jina-reranker-v3" --combo "jina-embeddings-v3:retrieval.query:retrieval.passage"`
 (kredensial dari env; jangan dicetak atau di-commit).
 
-### Hasil evaluasi penyedia nyata (Jina, 2026-11-08)
+### Hasil evaluasi penyedia nyata (Jina, 2026-11-08; riwayat, bukan konfigurasi produksi sekarang)
 
 Seleksi dua tahap dengan aturan tetap (agar tidak menyetel belasan konfigurasi pada 50 pertanyaan): hybrid menggantikan
 BM25 hanya bila menang >= 2 pertanyaan hits@3 di tuning DAN tidak kalah di held-out; seri jatuh ke pilihan yang lebih
@@ -213,11 +217,11 @@ Abstain di baris BM25 dan hybrid memakai gerbang leksikal 0.1 + leksikon; lantai
 Tuning: BM25 28/38, hybrid 35/38, hybrid + rerank v3 35/38, abstain 100% / 100%. Angka diambil dari eval 2026-11-08
 di bawah (belum diulang setelah penambahan `ikd` ke leksikon luar cakupan, yang tidak menyentuh soal gold).
 
-**Jalur agen (yang di-deploy).** Tool agen `rag__cari_pengetahuan` / `dukcapil__cek_persyaratan` memakai `createRagSearcher`
+**Jalur agen (yang di-deploy saat itu).** Tool agen `rag__cari_pengetahuan` / `dukcapil__cek_persyaratan` memakai `createRagSearcher`
 (BM25 stem + glosarium + vektor RRF + rerank endpoint + gerbang abstain, env yang sama dengan produksi, k=4).
 `pnpm rag:eval-agent --db <rag.db> --gold ../../data/gold/heldout.json --gold ../../data/gold/tuning.json --strict`
 mengukur jalur itu langsung, dan `--strict` gagal bila ada pertanyaan yang jatuh ke fallback. Hasil 2026-11-09 pada DB
-yang di-deploy (v5-omni-small, jina-reranker-v3, lantai 0.05, cakupan 0.1):
+yang di-deploy saat itu (v5-omni-small, jina-reranker-v3, lantai 0.05, cakupan 0.1):
 
 | Jalur agen                 | held-out R@1 / R@3 / MRR@4 | held-out abstain P / R | tuning R@1 / R@3 / MRR@4 | tuning abstain P / R |
 | -------------------------- | -------------------------- | ---------------------: | ------------------------ | -------------------: |
@@ -269,7 +273,7 @@ khusus untuk v3 dan harus dikalibrasi ulang bila model diganti.
 beruntun -> lewati penyedia 30 detik -> BM25 / urutan fusi). Vektor tersimpan bersama model, dimensi dan parameter transformasi;
 kueri dengan model embedding berbeda ditolak (BM25 saja). Eval memakai retry tanpa pemutus karena mengukur kualitas.
 
-**Default** (`.env.example`): `jina-embeddings-v5-omni-small` (task `retrieval.query`/`retrieval.passage`), ingest tanpa
+**Konfigurasi evaluasi 2026-11-08** (bukan produksi sekarang): `jina-embeddings-v5-omni-small` (task `retrieval.query`/`retrieval.passage`), ingest tanpa
 transformasi, `jina-reranker-v3`, `RAG_ABSTAIN_MIN_COVERAGE=0.1`, `RAG_ABSTAIN_MIN_RERANK_SCORE=0.05`. Tanpa kunci apa pun
 pipeline tetap BM25 + stem + glosarium + gerbang leksikal/leksikon. Catatan: gerbang cakupan di eval dihitung dari BM25
 saja, produksi dari top-3 hasil fusi.

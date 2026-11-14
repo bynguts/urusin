@@ -28,8 +28,8 @@ installEgressBackstop();
 
 // Gagal cepat saat startup bila DOMAIN/VERIFY_HOST/FIXTURES_HOST bukan salah satu set di deploy/hosts.json.
 assertHostEnv(process.env);
-// Produksi menolak start tanpa Resend (URUSIN_EMAIL_MODE=log hanya dev/CI), tanpa URUSIN_PII_KEY, atau dengan
-// IdP/Turnstile tiruan (ADR 0028).
+// Produksi menolak start tanpa URUSIN_PII_KEY, dengan IdP/Turnstile tiruan, atau dengan URUSIN_EMAIL_MODE=resend
+// tanpa RESEND_API_KEY. Resend dan Turnstile opsional; mode log sah di produksi (ADR 0028, ADR 0032).
 assertAkunEnv(process.env);
 turnstileFromEnv(process.env);
 // m6: setiap endpoint Browser Pendamping memeriksa pemilik urusan lewat modul akun (404 bila bukan milik).
