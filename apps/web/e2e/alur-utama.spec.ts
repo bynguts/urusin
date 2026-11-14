@@ -115,12 +115,18 @@ for (const lebar of [390, 1440]) {
   });
 }
 
-// Halaman Web publik dari frame pen (Cara kerja, Urusan, Tanya jawab): statis tanpa JS, tanpa geser samping,
-// dicapai dari navigasi landing; tanya jawab memakai <details> yang tetap jalan tanpa JavaScript.
+// Halaman Web publik dari frame pen (Cara kerja, Urusan, Tanya jawab): tanpa geser samping, dicapai dari
+// navigasi landing. Cara kerja dan Urusan statis tanpa JS; tanya jawab dihidrasi hanya untuk penanda kategori
+// yang mengikuti scroll (lihat tanya-jawab/+page.server.ts), akordeonnya tetap <details> yang jalan tanpa JS.
 const HALAMAN_WEB = [
-  { path: '/cara-kerja', nav: 'Cara kerja', h1: 'Dari cerita sampai pengajuan, langkah demi langkah' },
-  { path: '/urusan', nav: 'Urusan', h1: 'Urusan yang bisa dibantu Urusin' },
-  { path: '/tanya-jawab', nav: 'Tanya jawab', h1: 'Pertanyaan yang sering diajukan' },
+  {
+    path: '/cara-kerja',
+    nav: 'Cara kerja',
+    h1: 'Dari cerita sampai pengajuan, langkah demi langkah',
+    statis: true,
+  },
+  { path: '/urusan', nav: 'Urusan', h1: 'Urusan yang bisa dibantu Urusin', statis: true },
+  { path: '/tanya-jawab', nav: 'Tanya jawab', h1: 'Pertanyaan yang sering diajukan', statis: false },
 ];
 for (const lebar of [390, 1440]) {
   test(`halaman web cara kerja, urusan, tanya jawab di ${lebar}px`, async ({ page }) => {
@@ -128,7 +134,7 @@ for (const lebar of [390, 1440]) {
     for (const h of HALAMAN_WEB) {
       await page.goto(h.path);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(h.h1);
-      expect(await page.locator('script').count()).toBe(0);
+      if (h.statis) expect(await page.locator('script').count()).toBe(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(lebar);
     }
     // Kartu peristiwa: judul menuju halaman peristiwa, tombol mulai = formulir POST ke aksi landing
