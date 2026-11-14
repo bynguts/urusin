@@ -262,6 +262,30 @@ describe('render server komponen', () => {
     expect(body).toContain('Langkah 4 dari 5');
     expect(body).toContain('Periksa dan kirim');
     expect(body).toContain(`/urusan/${id}`);
+    expect(body).toContain('Kelahiran');
+  });
+
+  it('kartu Urusanku tanpa jenis tidak menebak lencana kategori', () => {
+    const id = `u_${'e'.repeat(32)}`;
+    const { body } = render(KartuUrusanku, {
+      props: {
+        urusan: {
+          id,
+          judul: 'Kehilangan barang',
+          peristiwa: null,
+          dibuatPada: '2026-11-01T00:00:00.000Z',
+          ringkasan: {
+            id,
+            state: 'BARU',
+            dibuatPada: '2026-11-01T00:00:00.000Z',
+            diubahPada: '2026-11-01T00:00:00.000Z',
+          } as never,
+        },
+      },
+    });
+    expect(body).toContain('Kehilangan barang');
+    expect(body).not.toContain('KTP &amp; dokumen');
+    expect(body).not.toContain('Urusan lain');
   });
 
   it('kartu Urusanku: pengajuan terkirim menampilkan nomor permohonan dan langkah 5', () => {

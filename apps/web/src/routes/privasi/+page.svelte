@@ -190,7 +190,7 @@
           <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Singapura</div>
         </div>
         <div class="pv28" role="row">
-          <div class="pv29 pv-c0" role="rowheader">OpenAI (model GPT, lewat proxy model tim)</div>
+          <div class="pv29 pv-c0" role="rowheader">OpenAI (model GPT)</div>
           <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
             Teks percakapan, termasuk nama dan teks bebas yang kamu ketik. NIK, KK, HP, dan email diganti
             penanda sebelum dikirim. Gambar yang kamu lampirkan di chat atau foto yang kamu simpan di Dokumen
@@ -208,6 +208,15 @@
           </div>
           <div class="pv30 pv-c2" role="cell" data-label="Peran">Masuk dengan Google</div>
           <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Global</div>
+        </div>
+        <div class="pv28" role="row">
+          <div class="pv29 pv-c0" role="rowheader">Peramban kamu (bila memakai tombol Bicara)</div>
+          <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
+            Suara yang kamu dikte. Di Chrome, peramban mengubahnya jadi teks lewat layanan suara Google;
+            Urusin hanya menerima teks hasilnya
+          </div>
+          <div class="pv30 pv-c2" role="cell" data-label="Peran">Dikte suara jadi teks</div>
+          <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Sesuai peramban</div>
         </div>
       </div>
     </section>

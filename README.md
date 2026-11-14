@@ -35,7 +35,7 @@ Tier per wilayah hanya dua, dan tidak ada yang mengirim otomatis penuh:
 - **Dipandu:** daerah tanpa portal yang didukung. Urusin berhenti di rencana bersumber dan daftar berkas, lalu
   memandu warga mengisi sendiri di situs resmi.
 
-Alur **baca-saja** (cek status permohonan di Surabaya dan Semarang) berjalan otomatis sampai halaman yang
+Alur **baca-saja** (cek status permohonan di Surabaya) berjalan otomatis sampai halaman yang
 meminta login atau CAPTCHA warga.
 
 ## 1. Nama tim dan anggota

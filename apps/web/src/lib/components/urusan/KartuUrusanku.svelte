@@ -78,8 +78,9 @@
     : 'border border-line bg-card'}"
 >
   <div class="flex items-center justify-between gap-3">
-    <Lencana peristiwa={p} />
-    <div class="flex items-center gap-1">
+    <!-- Jenis belum diketahui (mis. "kehilangan barang"): tanpa lencana daripada menebak kategori yang salah. -->
+    {#if urusan.peristiwa}<Lencana peristiwa={p} />{/if}
+    <div class="ml-auto flex items-center gap-1">
       <img
         src={p.avatar}
         alt=""
