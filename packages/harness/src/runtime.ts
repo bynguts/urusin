@@ -12,7 +12,14 @@ import type { KlasifikasiIntentEmbedding } from './intent-embedding.js';
 import { HarnessStore } from './store.js';
 import { ToolRegistry, type ToolDef } from './tools.js';
 import { Tracer } from './trace.js';
-import { BATAS_WEB_DEFAULT, BatasCariWeb, webCari, type BatasWebConfig, type CariWeb } from './web-cari.js';
+import {
+  BATAS_WEB_DEFAULT,
+  BatasCariWeb,
+  webBaca,
+  webCari,
+  type BatasWebConfig,
+  type CariWeb,
+} from './web-cari.js';
 
 export type HarnessOptions = {
   provider: ChatProvider;
@@ -56,6 +63,7 @@ export function createHarness(opts: HarnessOptions) {
     ...(opts.tools ?? builtinTools()),
     ...(opts.ingatan ? [ingatanIngat] : []),
     ...(opts.cariWeb ? [webCari] : []),
+    ...(opts.cariWeb?.baca ? [webBaca] : []),
   ]);
   const quota = new QuotaMeter(store, opts.prices ?? { inputPerMTok: 0, outputPerMTok: 0, audioPerMin: 0 }, {
     ...DEFAULT_QUOTA,

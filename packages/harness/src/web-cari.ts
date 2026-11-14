@@ -1,10 +1,16 @@
 import { createHash } from 'node:crypto';
-import { OFFICIAL_DOMAINS, findGuardIssues, getOfficialDomain, llmText } from '@urusin/core';
+import {
+  OFFICIAL_DOMAINS,
+  findGuardIssues,
+  getOfficialDomain,
+  llmText,
+  matchOfficialOrigin,
+} from '@urusin/core';
 import { z } from 'zod';
 import { PiiInterceptor, redactForStorage } from './pii.js';
 import { spotlight } from './spotlight.js';
 import type { ChunkRecord } from './store.js';
-import { NON_TERMINAL_STATES, defineTool, type ToolResult } from './tools.js';
+import { NON_TERMINAL_STATES, defineTool, type ToolContext, type ToolResult } from './tools.js';
 
 /**
  * Cari web (Exa) sebagai CADANGAN saat korpus RAG tidak cukup. Lapis pengaman, berurutan:
@@ -18,6 +24,9 @@ import { NON_TERMINAL_STATES, defineTool, type ToolResult } from './tools.js';
  */
 
 export const EXA_SEARCH_URL = 'https://api.exa.ai/search';
+export const EXA_CONTENTS_URL = 'https://api.exa.ai/contents';
+/** Batas teks satu halaman yang dibaca `web__baca` (Exa `text.maxCharacters`). */
+export const MAKS_TEKS_BACA = 8_000;
 export const WEB_TIMEOUT_MS = 6_000;
 export const WEB_JUMLAH_HASIL = 5;
 /** Anggaran per hasil sebelum dibungkus (judul + URL + tanggal + cuplikan). */
@@ -25,11 +34,17 @@ const MAKS_PER_HASIL = 600;
 
 export type HasilWeb = { judul: string; url: string; cuplikan: string; terbit?: string | undefined };
 
-/** Satu pencarian: `includeDomains` kosong = tanpa filter domain. Melempar bila gagal (pemanggil fail-open). */
-export type CariWeb = (
+/** Isi lengkap satu halaman (Exa `/contents`). Melempar bila gagal (pemanggil fail-open). */
+export type BacaWeb = (url: string, signal: AbortSignal) => Promise<{ judul: string; teks: string } | null>;
+
+/**
+ * Satu pencarian: `includeDomains` kosong = tanpa filter domain. Melempar bila gagal (pemanggil fail-open).
+ * `baca` (opsional, host egress yang sama): baca isi penuh halaman resmi; tanpa ini `web__baca` tidak terdaftar.
+ */
+export type CariWeb = ((
   input: { query: string; includeDomains?: readonly string[] | undefined },
   signal: AbortSignal,
-) => Promise<HasilWeb[]>;
+) => Promise<HasilWeb[]>) & { baca?: BacaWeb | undefined };
 
 export type BatasWebConfig = {
   perUrusan: number;
@@ -201,7 +216,20 @@ export function buatCariWebExa(opts: {
   numResults?: number;
 }): CariWeb {
   const timeoutMs = opts.timeoutMs ?? WEB_TIMEOUT_MS;
-  return async (input, signal) => {
+  const baca: BacaWeb = async (url, signal) => {
+    const res = await opts.fetch(EXA_CONTENTS_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json', 'x-api-key': opts.apiKey },
+      body: JSON.stringify({ urls: [url], text: { maxCharacters: MAKS_TEKS_BACA } }),
+      signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]),
+    });
+    if (!res.ok) throw new Error(`exa ${res.status}`);
+    const body = (await res.json()) as { results?: unknown };
+    const r = (Array.isArray(body.results) ? (body.results as ExaResult[]) : [])[0];
+    if (!r || typeof r.text !== 'string' || !r.text.trim()) return null;
+    return { judul: typeof r.title === 'string' ? r.title : '', teks: r.text.slice(0, MAKS_TEKS_BACA) };
+  };
+  const cari: CariWeb = async (input, signal) => {
     const res = await opts.fetch(EXA_SEARCH_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json', 'x-api-key': opts.apiKey },
@@ -237,6 +265,8 @@ export function buatCariWebExa(opts: {
       ];
     });
   };
+  cari.baca = baca;
+  return cari;
 }
 
 /** Fail-open: galat, timeout, atau batal = null (agen lanjut tanpa web). */
@@ -260,6 +290,13 @@ function formatHasil(h: HasilWeb, resmi: boolean, nonce: string): string {
 }
 
 const LANJUT_TANPA_WEB = 'Lanjutkan tanpa web: arahkan warga ke kanal resmi wilayahnya; jangan mengarang.';
+
+/** Kunci batas laju web (per urusan, per akun, global): `web__cari` dan `web__baca` berbagi kuota yang sama. */
+const kunciBatas = (ctx: ToolContext, c: BatasWebConfig) => [
+  { kunci: `urusan:${ctx.urusan.id}`, batas: c.perUrusan },
+  ...(ctx.ingatan ? [{ kunci: `akun:${ctx.ingatan.pemilik}`, batas: c.perAkun }] : []),
+  { kunci: 'global', batas: c.global },
+];
 
 export const webCari = defineTool({
   name: 'web__cari',
@@ -287,13 +324,7 @@ export const webCari = defineTool({
           'Kueri web ditolak karena memuat data pribadi. Cari dengan istilah layanan yang umum (mis. "syarat akta kelahiran Kota Surabaya"), tanpa nama, nomor, atau tanggal lahir warga.',
       };
     web.batas.tandaiPercobaan(ctx.urusan.id);
-    const c = web.batas.config;
-    const kunci = [
-      { kunci: `urusan:${ctx.urusan.id}`, batas: c.perUrusan },
-      ...(ctx.ingatan ? [{ kunci: `akun:${ctx.ingatan.pemilik}`, batas: c.perAkun }] : []),
-      { kunci: 'global', batas: c.global },
-    ];
-    if (!web.batas.coba(kunci))
+    if (!web.batas.coba(kunciBatas(ctx, web.batas.config)))
       return { content: `Batas pencarian web untuk saat ini tercapai. ${LANJUT_TANPA_WEB}` };
 
     const domain = args.domain
@@ -338,6 +369,91 @@ export const webCari = defineTool({
       content: [
         'Tidak ada hasil dari sumber resmi. Hasil web umum di bawah BUKAN SUMBER RESMI: jangan dijadikan dasar persyaratan. Bila disebut, katakan jelas "bukan sumber resmi", sertakan URL-nya, dan sarankan warga memastikan ke kanal resmi.',
         ...umum.map((h) => formatHasil(h, hostResmi(new URL(h.url).hostname), ctx.nonce)),
+      ].join('\n'),
+      terbungkus: true,
+      takTepercaya: true,
+    };
+  },
+});
+
+/**
+ * URL boleh dibaca `web__baca`: https tanpa userinfo/port, origin terdaftar di registry domain resmi atau host
+ * pemerintah (.go.id, sama dengan saringan `web__cari`). Banyak halaman nasional (mis. dukcapil.kemendagri.go.id)
+ * belum ada di registry Browser Pendamping, padahal itulah sumber resmi yang paling sering dicari.
+ */
+function urlBacaResmi(raw: string): URL | null {
+  const u = urlAman(raw);
+  if (!u || u.protocol !== 'https:' || u.username || u.password || u.port) return null;
+  return matchOfficialOrigin(u.origin).ok || hostResmi(u.hostname) ? u : null;
+}
+
+const kunciHalaman = (u: URL) => `${u.origin}${u.pathname.replace(/\/+$/, '')}${u.search}`;
+
+/**
+ * Baca isi lengkap satu halaman resmi (Exa `/contents`, host egress yang sama `api.exa.ai`). Hanya URL yang sudah
+ * muncul sebagai hasil SUMBER RESMI `web__cari` di urusan ini; kuota sama dengan `web__cari`. Isinya disimpan sebagai
+ * potongan sumber (kutipan tetap diverifikasi) dan dikembalikan terbungkus spotlight.
+ */
+export const webBaca = defineTool({
+  name: 'web__baca',
+  description:
+    'Baca isi lengkap satu halaman resmi yang tadi muncul sebagai SUMBER RESMI di hasil web__cari urusan ini (cuplikan pencarian terlalu pendek, mis. daftar persyaratan atau biaya terpotong). Isi url persis dari hasil web__cari. Hasilnya bisa dikutip lewat urusan__jawab_persyaratan.',
+  effect: 'read',
+  spanOperation: 'retrieval',
+  input: z.object({ url: z.string().min(8).max(2000) }),
+  allowedStates: NON_TERMINAL_STATES,
+  kontenLuar: true,
+  async execute(ctx, args): Promise<ToolResult> {
+    const web = ctx.deps.cariWeb;
+    const baca = web?.cari.baca;
+    if (!web || !baca) return { content: `Membaca halaman web tidak tersedia. ${LANJUT_TANPA_WEB}` };
+    const u = urlBacaResmi(args.url.trim());
+    if (!u)
+      return {
+        content:
+          'URL ditolak: hanya halaman https dari situs pemerintah/registry resmi yang boleh dibaca. Pakai URL SUMBER RESMI dari hasil web__cari.',
+      };
+    const kunci = kunciHalaman(u);
+    const dariCari = ctx.store
+      .getChunks(ctx.urusan.id)
+      .some(
+        (c) =>
+          /^web-[0-9a-f]{10}$/.test(c.refId) && urlBacaResmi(c.url) && kunciHalaman(new URL(c.url)) === kunci,
+      );
+    if (!dariCari)
+      return {
+        content:
+          'URL ditolak: belum pernah muncul sebagai SUMBER RESMI di hasil web__cari urusan ini. Panggil web__cari dulu, lalu baca salah satu URL hasilnya.',
+      };
+    web.batas.tandaiPercobaan(ctx.urusan.id);
+    if (!web.batas.coba(kunciBatas(ctx, web.batas.config)))
+      return { content: `Batas pencarian web untuk saat ini tercapai. ${LANJUT_TANPA_WEB}` };
+    const signal = AbortSignal.any([ctx.signal, AbortSignal.timeout(WEB_TIMEOUT_MS)]);
+    let isi: { judul: string; teks: string } | null;
+    try {
+      isi = await baca(u.href, signal);
+    } catch {
+      return { content: `Halaman gagal dibaca atau terlalu lama. ${LANJUT_TANPA_WEB}` };
+    }
+    if (!isi) return { content: `Halaman ini tidak memuat teks yang bisa dibaca. ${LANJUT_TANPA_WEB}` };
+    const refId = `${refWeb(u.href)}-baca`;
+    const teks = redactForStorage(isi.teks).slice(0, MAKS_TEKS_BACA);
+    const judul = redactForStorage(isi.judul || u.hostname).slice(0, 200);
+    ctx.store.saveChunks(ctx.urusan.id, [
+      {
+        refId,
+        text: teks,
+        url: u.href,
+        judul,
+        instansi: getOfficialDomain(u.hostname)?.instansi ?? u.hostname,
+        // Belum diverifikasi manual: kutipan dari web selalu ditandai "perlu dicek ulang".
+        verifiedAt: null,
+      },
+    ]);
+    return {
+      content: [
+        `Isi halaman resmi (${u.hostname}). Untuk persyaratan/prosedur panggil urusan__jawab_persyaratan (kutipan dan URL otomatis). Bila menyebutnya di balasan, sertakan URL sumbernya.`,
+        `[${refId}] SUMBER RESMI (${u.hostname})\n${spotlight('web', `${judul}\n${u.href}\n${teks}`, { nonce: ctx.nonce, id: refId, maxChars: MAKS_TEKS_BACA + 500 })}`,
       ].join('\n'),
       terbungkus: true,
       takTepercaya: true,
