@@ -1,6 +1,6 @@
 /*
  * Aturan layar < 1440 untuk landing n2rpg. Frame Rafi hanya desktop 1440; di layar lebih sempit bagian
- * yang sama ditumpuk (DESIGN.md), dan ilustrasi berukuran tetap diperkecil utuh dengan zoom.
+ * yang sama ditumpuk (design system tim), dan ilustrasi berukuran tetap diperkecil utuh dengan zoom.
  */
 .lp {
   /* Lebar isi 1200px (lebih lega dari frame 1040px; keputusan pemilik 2026-11-14). */

@@ -3,28 +3,17 @@
 Image web dibangun CI (`.github/workflows/release.yml`) per commit di `main`, multi-arch (amd64 + arm64),
 dan ditarik VPS berdasarkan digest. VPS tidak pernah build.
 
-Target: VPS `agent-vm` (Ubuntu 24.04, Docker + compose v2). Caddy sistem sudah memegang 80/443 dan
+Target: VPS produksi (Ubuntu 24.04, Docker + compose v2). Caddy sistem sudah memegang 80/443 dan
 melayani situs lain; Urusin hanya mengikat `127.0.0.1:4310` (web-blue, host network), `127.0.0.1:4311` (web-green)
 dan `127.0.0.1:4320` (fixtures, opsional). Port terpakai lain di host: 3000, 3100, 8000, 8080, 8082,
 8765, 20128. VPS dipakai bersama layanan lain: jangan menyentuh kontainer/layanan di luar proyek `urusin`.
 
 Berkas: `compose.prod.yml`, `Caddyfile.urusin.primary` (+ `.fallback`), `hardening.md`, `deploy.sh`, `backup.sh`, `restore.sh`, `disk-alert.sh`,
-`tests/` (harness tanpa Docker). Layout datar (agent-vm) juga butuh `scripts/db-backup.mjs` dan `scripts/db-restore.mjs`
+`tests/` (harness tanpa Docker). Layout datar (VPS produksi) juga butuh `scripts/db-backup.mjs` dan `scripts/db-restore.mjs`
 (salinan `apps/web/scripts/`), dibaca `backup.sh`/`restore.sh`.
 
-> **Runner CI self-hosted (`ci-runner/`): cadangan bila menit GitHub Actions habis. Status: TERPASANG di
-> agent-vm sejak 2026-11-10 (`URUSIN_RUNNER=urusin-self`), dicopot sebelum repo dibuat Public.**
-> Runner ini **WAJIB dicopot sebelum repo dibuat Public** (submission, tenggat 2026-11-14): di repo
-> publik PR dari fork bisa menjalankan kode di runner self-hosted, yaitu di agent-vm. Repo publik mendapat menit
-> GitHub gratis, jadi runner tidak dibutuhkan lagi. Urutan: `uninstall.sh` (remove-token lewat stdin) →
-> `gh variable delete URUSIN_RUNNER --repo bynguts/urusin` → `gh api repos/bynguts/urusin/actions/runners --jq .total_count`
-> = 0 → rotasi token admin lokal (tidak pernah ada PAT di box) → baru ubah visibilitas. Detail, batas sumber daya, dan keputusan sudoers vs grup docker:
-> [`ci-runner/README.md`](ci-runner/README.md).
->
-> **Runner CI kedua di laptop (`ci-runner-laptop/`, `URUSIN_RUNNER_UJI=urusin-laptop`) untuk job non-ci-docker
-> di `ci.yml`. Juga WAJIB dicopot sebelum Public:** `deploy/ci-runner-laptop/down.sh` (hapus variabel, kontainer,
-> registrasi) → `gh variable delete URUSIN_RUNNER_UJI --repo bynguts/urusin` bila tersisa. Detail:
-> [`ci-runner-laptop/README.md`](ci-runner-laptop/README.md).
+> **CI memakai runner GitHub (`ubuntu-latest`).** Workflow masih menerima runner self-hosted opsional lewat
+> variabel repo `URUSIN_RUNNER`/`URUSIN_RUNNER_UJI`; bila kosong (bawaan), semua job jatuh ke runner GitHub.
 
 ## Instalasi pertama
 
@@ -45,7 +34,7 @@ $EDITOR .env        # isi DOMAIN, SESSION_SECRET, URUSIN_PII_KEY, LLM_*, VAPID_*
 
 `.env` di `/opt/urusin/deploy/.env` dibaca compose (`env_file`) dan oleh `deploy.sh`. Izin wajib (diperiksa
 `deploy.sh` sebelum menyentuh docker): direktori deploy paling longgar `0751` (bukan 0755/0775), `.env` dan
-`.restic-password` `0600`. Di agent-vm berkas deploy ada langsung di `/opt/urusin` (bukan subfolder `deploy/`).
+`.restic-password` `0600`. Di VPS produksi berkas deploy ada langsung di `/opt/urusin` (bukan subfolder `deploy/`).
 `DOMAIN` wajib dan harus host `app` salah satu set di `deploy/hosts.json`. Compose menurunkan `ORIGIN` dan
 `URUSIN_PUBLIC_ORIGIN` (`https://$DOMAIN`), `VERIFY_HOST` (`verify.$DOMAIN`) dan `FIXTURES_HOST`
 (`fixtures.$DOMAIN`); startup aplikasi menolak host di luar satu set.
@@ -91,7 +80,7 @@ Langkah host (setiap perubahan Caddy = **go-ahead pengguna per kejadian**, prose
    ubuntu); skrip menolak menulis ke sana sebagai root dan menyarankan
    `TARGET=/etc/caddy/urusin/Caddyfile.urusin` (memindahkan snippet, import lama diganti). Backup ke `/var/backups/urusin-caddy/`,
    `caddy validate`, `systemctl reload caddy` (bukan restart), lalu membandingkan kode status
-   gutstore.my.id, admin.gutstore.my.id dan pythia.web.id sebelum/sesudah. Berubah => rollback otomatis.
+   situs lain di server yang sama (lewat env `SITES`) sebelum/sesudah. Berubah => rollback otomatis.
 
    **Tata letak VPS saat ini (`/opt/urusin`, milik ubuntu, mode 0751; snippet 0644):** skrip menolak menulis ke
    sana, dan sarannya (`TARGET=/etc/caddy/urusin/...`) mengubah baris import di `/etc/caddy/Caddyfile`, yang
@@ -103,7 +92,7 @@ Langkah host (setiap perubahan Caddy = **go-ahead pengguna per kejadian**, prose
    node scripts/gen-caddyfile.mjs --set primary [--fixtures] [--pendamping] \
      --import /opt/urusin/Caddyfile.urusin --out /tmp/Caddyfile.urusin.baru
    # di VPS
-   SITES="gutstore.my.id admin.gutstore.my.id pythia.web.id www.pythia.web.id agent-vm.tail25a63e.ts.net urusinai.web.id verify.urusinai.web.id"
+   SITES="<situs-lain-di-caddy-ini> urusinai.web.id verify.urusinai.web.id"   # situs lain di server yang sama
    snap() { for h in $SITES; do echo "$h $(curl -s -o /dev/null -w '%{http_code}' --max-time 10 https://$h/)"; done; }
    TS=$(date -u +%Y%m%dT%H%M%SZ); BK=/var/backups/urusin-caddy/$TS; LIVE=/opt/urusin/Caddyfile.urusin
    sudo install -d -m 700 "$BK" && sudo cp -p "$LIVE" /etc/caddy/Caddyfile "$BK/"   # 1. backup bertimestamp
@@ -478,12 +467,12 @@ pasang lewat `sudo deploy/caddy-install.sh /tmp/Caddyfile.urusin.fixtures` (izin
 ## Browser Pendamping (opsional, butuh persetujuan port 4330)
 
 Chromium **headed** per sesi warga di Xvfb (lihat [ADR 0029](../docs/adr/0029-browser-pendamping.md)). Image
-berbasis `mcr.microsoft.com/playwright:v1.65.0-noble` (~3,6 GB, sudah ada di cache agent-vm). Dua kontainer
+berbasis `mcr.microsoft.com/playwright:v1.65.0-noble` (~3,6 GB, sudah ada di cache VPS). Dua kontainer
 dari image yang sama; isolasi murni dari topologi compose (tanpa iptables):
 
 - `pendamping` (Node + Chromium): HANYA di jaringan `pendamping_internal` (`internal: true`,
   `gateway_mode_ipv4: isolated` sehingga host tidak punya alamat di bridge itu, IPv6 mati). Tanpa port,
-  tanpa rute default. Sandbox Chromium AKTIF (profil seccomp Playwright `pendamping-seccomp.json`). agent-vm
+  tanpa rute default. Sandbox Chromium AKTIF (profil seccomp Playwright `pendamping-seccomp.json`). VPS produksi
   mematikan userns tak berhak, jadi dipakai sandbox setuid `chrome-sandbox` (satu-satunya biner SUID di image):
   `cap_add: [SYS_ADMIN, SYS_CHROOT]` dan TANPA `no-new-privileges`, hanya untuk layanan ini (alasan dan
   pengukuran: ADR 0029). Boot gagal-tertutup bila ada rute keluar atau sandbox (userns/setuid) tidak aktif;
@@ -520,7 +509,7 @@ itu disengaja (gagal tertutup): jangan menambal dengan `--no-sandbox` atau jarin
 Uji topologi tanpa image Urusin: `bash deploy/tests/pendamping-isolation.test.sh` (busybox, jaringan asli).
 
 **Uji klik manusia (mode debug, tanpa Caddy):** dari laptop penguji,
-`ssh -L 4330:127.0.0.1:4330 agent-vm`, buka `http://localhost:4330/debug`, isi token debug dan URL domain
+`ssh -L 4330:127.0.0.1:4330 <host-vps>`, buka `http://localhost:4330/debug`, isi token debug dan URL domain
 resmi (mis. halaman login Telunjuk Sakti), lalu kemudikan layar dengan mouse/sentuh. Bila muncul kotak
 centang verifikasi situs, klik sendiri; AI tidak pernah mengklik-nya. Tidak ada AI di mode ini. Matikan
 dengan mengosongkan `PENDAMPING_DEBUG_TOKEN`.
@@ -581,7 +570,6 @@ sesi di `PENDAMPING_SESSION_MEM_MB` (bawaan 1100 MB RSS; 450 MB terlalu ketat un
 bash deploy/tests/deploy.test.sh   # docker/curl/restic/df palsu di tests/shims; juga jalan lewat `pnpm test:scripts`
 bash deploy/tests/image-retention.test.sh
 bash deploy/tests/caddy-install.test.sh
-bash deploy/tests/ci-runner.test.sh       # runner CI self-hosted (docker/df palsu di tests/shims-ci)
 shellcheck -x deploy/*.sh deploy/tests/deploy.test.sh deploy/tests/shims/*
 ```
 

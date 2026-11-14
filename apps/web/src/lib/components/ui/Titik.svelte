@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  /** Status di panel: titik + teks (DESIGN.md: "Status di panel memakai titik + teks, bukan pill"). */
+  /** Status di panel: titik + teks (design system tim: "Status di panel memakai titik + teks, bukan pill"). */
   let {
     nada = 'netral',
     tebal = false,

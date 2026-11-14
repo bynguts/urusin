@@ -193,7 +193,7 @@ describe('adapter bawaan', () => {
       if (r.ok) expect(hostsSesi(r.program)).toEqual([new URL(a.origin).hostname, ...a.hosts]);
     }
     // Iframe Turnstile (challenges.cloudflare.com) hanya untuk situs yang memang memakainya (diamati dari
-    // agent-vm 2026-11-10: interstitial Telunjuk Sakti, widget di halaman Samsat); Si D'nOK/Klampid tidak.
+    // server produksi 2026-11-10: interstitial Telunjuk Sakti, widget di halaman Samsat); Si D'nOK/Klampid tidak.
     const pakaiTurnstile = Object.entries(ADAPTERS)
       .filter(([, a]) => a.hosts.includes('challenges.cloudflare.com'))
       .map(([id]) => id);

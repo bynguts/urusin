@@ -6,7 +6,7 @@
  *
  * Mengapa: throttling simulasi mengalikan durasi task main-thread yang TERAMATI dengan cpuSlowdownMultiplier
  * yang dikalibrasi dari benchmarkIndex host saat job mulai (scripts/lhci-cpu.mjs). Di runner self-hosted
- * (agent-vm, berbagi CPU dengan layanan lain) host kadang sibuk di tengah job: task teramati memanjang lalu
+ * (VPS, berbagi CPU dengan layanan lain) host kadang sibuk di tengah job: task teramati memanjang lalu
  * dikalikan lagi, sehingga TBT satu rute melonjak (mis. 46 vs 384 ms pada kode yang sama) dan median 5 run ikut
  * gagal bila >= 3 run kena. Run seperti itu mengukur perangkat yang jauh lebih lambat dari target, bukan kodenya.
  *

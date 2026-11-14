@@ -10,6 +10,8 @@ pass=0
 fail=0
 check() { if eval "$2"; then pass=$((pass + 1)); echo "  ok   $1"; else fail=$((fail + 1)); echo "  FAIL $1  [$2]"; fi; }
 export PATH="$HERE/shims-caddy:$PATH" SETTLE_SECONDS=0 FAKE_RELOAD="$HERE/shims-caddy/fake-reload"
+# Situs contoh lain di Caddy yang sama (disuntik lewat SITES; bawaan skrip = domain Urusin).
+export SITES="example-a.test admin.example-a.test example-b.test"
 
 new_sandbox() {
   SB="$(mktemp -d)"
@@ -17,11 +19,11 @@ new_sandbox() {
   export LEGACY_TARGET="$SB/opt/Caddyfile.urusin" BACKUP_DIR="$SB/backups/urusin-caddy"
   mkdir -p "$SHIM_DIR" "$SB/etc" "$SB/opt"
   : > "$SHIM_DIR/calls.log"
-  printf 'gutstore.my.id {\n\treverse_proxy 127.0.0.1:3000\n}\n' > "$CADDYFILE"
+  printf 'example-a.test {\n\treverse_proxy 127.0.0.1:3000\n}\n' > "$CADDYFILE"
   cp "$CADDYFILE" "$SB/caddyfile.orig"
-  echo 200 > "$SHIM_DIR/orig.gutstore.my.id"
-  echo 302 > "$SHIM_DIR/orig.admin.gutstore.my.id"
-  echo 401 > "$SHIM_DIR/orig.pythia.web.id"
+  echo 200 > "$SHIM_DIR/orig.example-a.test"
+  echo 302 > "$SHIM_DIR/orig.admin.example-a.test"
+  echo 401 > "$SHIM_DIR/orig.example-b.test"
   for f in "$SHIM_DIR"/orig.*; do cp "$f" "$SHIM_DIR/code.${f##*/orig.}"; done
   unset SHIM_BREAK_SITE SHIM_RELOAD_FAIL RELOAD_CMD
 }
@@ -55,7 +57,7 @@ run fallback --dry-run
 check "exit 0, validasi snippet + Caddyfile, tanpa reload" '[ $rc -eq 0 ] && [ "$(grep -c "^caddy validate" "$SHIM_DIR/calls.log")" -eq 2 ] && [ "$(reloads)" -eq 0 ]'
 check "dry-run memvalidasi Caddyfile host sebagai user Caddy" 'grep -qF "as_caddy caddy validate --adapter caddyfile --config $CADDYFILE" "$SHIM_DIR/calls.log"'
 check "tidak ada berkas yang diubah atau dibuat" 'cmp -s "$CADDYFILE" "$SB/caddyfile.orig" && [ ! -e "$TARGET" ] && [ ! -e "$BACKUP_DIR" ]'
-check "snapshot ketiga situs pengguna dicatat" 'grep -q "pythia.web.id 401" <<<"$out" && grep -q "admin.gutstore.my.id 302" <<<"$out" && grep -q "gutstore.my.id 200" <<<"$out"'
+check "snapshot ketiga situs pengguna dicatat" 'grep -q "example-b.test 401" <<<"$out" && grep -q "admin.example-a.test 302" <<<"$out" && grep -q "example-a.test 200" <<<"$out"'
 check "rencana menyebut import dan pemasangan" 'grep -qF "akan menambah: import $TARGET" <<<"$out" && grep -q "akan memasang" <<<"$out"'
 
 echo "2. pasang: backup bertimestamp, import sekali, reload sekali"
@@ -77,17 +79,17 @@ check "exit 1, tanpa reload, Caddyfile dipulihkan, target tidak tertinggal" '[ $
 
 echo "4. kode status situs pengguna berubah setelah reload: rollback otomatis"
 new_sandbox
-export SHIM_BREAK_SITE=pythia.web.id
+export SHIM_BREAK_SITE=example-b.test
 run fallback
 check "exit 1, ROLLBACK, reload 2x" '[ $rc -ne 0 ] && grep -q "ROLLBACK: kode status situs pengguna berubah" <<<"$out" && [ "$(reloads)" -eq 2 ]'
 check "Caddyfile kembali seperti semula, target dihapus" 'cmp -s "$CADDYFILE" "$SB/caddyfile.orig" && [ ! -e "$TARGET" ]'
-check "status setelah rollback dilaporkan (pythia kembali 401)" 'grep -A3 "status setelah rollback" <<<"$out" | grep -q "pythia.web.id 401"'
+check "status setelah rollback dilaporkan (example-b.test kembali 401)" 'grep -A3 "status setelah rollback" <<<"$out" | grep -q "example-b.test 401"'
 new_sandbox
 mkdir -p "$(dirname "$TARGET")"
 printf '# lama\n' > "$TARGET"
 printf '\nimport %s\n' "$TARGET" >> "$CADDYFILE"
 cp "$CADDYFILE" "$SB/caddyfile.orig"
-export SHIM_BREAK_SITE=gutstore.my.id
+export SHIM_BREAK_SITE=example-a.test
 run fallback
 check "rollback memulihkan snippet lama persis" '[ $rc -ne 0 ] && [ "$(cat "$TARGET")" = "# lama" ] && cmp -s "$CADDYFILE" "$SB/caddyfile.orig"'
 unset SHIM_BREAK_SITE
@@ -134,7 +136,7 @@ check "baris lama hilang, baris baru tepat satu" '[ $rc -eq 0 ] && ! grep -qxF "
 new_sandbox
 printf '\nimport %s\n' "$LEGACY_TARGET" >> "$CADDYFILE"
 cp "$CADDYFILE" "$SB/caddyfile.orig"
-export SHIM_BREAK_SITE=pythia.web.id
+export SHIM_BREAK_SITE=example-b.test
 run fallback
 check "rollback memulihkan baris lama" '[ $rc -ne 0 ] && cmp -s "$CADDYFILE" "$SB/caddyfile.orig"'
 unset SHIM_BREAK_SITE

@@ -1,6 +1,6 @@
 {
   "label": "sesudah",
-  "model": "pythia",
+  "model": "model-agen",
   "tanggal": "2026-11-11T22:08:32.727Z",
   "caps": {
     "tools": true,

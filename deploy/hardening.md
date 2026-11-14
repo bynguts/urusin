@@ -1,6 +1,6 @@
 # Hardening host dan izin deploy
 
-VPS `agent-vm` (aarch64, Ubuntu 24.04) dipakai bersama produksi pengguna: Caddy sistem untuk situs lain,
+VPS produksi (aarch64, Ubuntu 24.04) dipakai bersama produksi pengguna: Caddy sistem untuk situs lain,
 proxy LLM di `:20128`, kontainer lain, dan aturan iptables khusus. Dokumen ini mencatat **setiap** tulisan
 Urusin ke host dan izin yang dibutuhkan untuk masing-masing. Apa pun yang tidak tercantum di sini bukan
 milik Urusin dan tidak disentuh.
@@ -12,8 +12,8 @@ Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat
 > - STANDING permission for deploy.sh, rollback, restore and backup on Urusin-only resources (urusin-*
 >   containers and volume, /opt/urusin, 127.0.0.1:4310/4311/4320).
 > - PER-EVENT user go-ahead for installing or changing the Caddy snippet and for caddy reload. The procedure
->   each time: timestamped Caddyfile backup, `caddy validate`, status-code snapshot of gutstore.my.id,
->   admin.gutstore.my.id and pythia.web.id before and after, and auto-rollback if any of them changed.
+>   each time: timestamped Caddyfile backup, `caddy validate`, status-code snapshot of the
+>   other sites on the same server (env `SITES`) before and after, and auto-rollback if any of them changed.
 
 | Jenis                                      | Cakupan                                                                                                                                                                    | Izin                                                                                                                        |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
@@ -42,11 +42,11 @@ Keputusan pengguna, **diberikan 2026-11-08** ("Tetap + Caddy per-event"; dicatat
   `/var/backups/urusin-caddy/20261109T085708Z` dan `/opt/urusin/Caddyfile.urusin.prev-20261109T085708Z`;
   snapshot situs pengguna sama sebelum dan sesudah.
 - 2026-11-10 (WIB; host 2026-11-09T18:46Z), **izin satu kali pengguna** (pertanyaan langsung, disampaikan lead):
-  build cache builder Docker **default** di agent-vm dibersihkan sekali dengan
+  build cache builder Docker **default** di VPS dibersihkan sekali dengan
   `docker buildx prune --builder default -f` (2,68 GB). Hanya build cache builder default: tanpa image, kontainer,
   volume, network, tanpa `system prune`. df `/`: 85% (avail 15,6 GB) -> 82% (avail 18,1 GB). Sisa 2,7 GB cache
   default masih dipakai image dan tidak disentuh. Bukan izin tetap; prune berikutnya butuh izin baru. Cache
-  builder `urusin-ci` tetap dibatasi 1,5 GB (deploy/ci-runner).
+  builder `urusin-ci` tetap dibatasi 1,5 GB (runner CI self-hosted, sudah dicopot).
 - 2026-11-10 (WIB; host 2026-11-10T06:57Z), **izin per kejadian pengguna**: rute
   `handle /pendamping/w/laptop-a/ws/*` -> `100.64.0.10:4330` (worker Pendamping region `id` di laptop tim
   lewat Tailscale; `100.64.0.10` di catatan ini IP contoh, IP Tailscale asli laptop hanya ada di host). Snippet = keluaran `gen-caddyfile.mjs --set primary --fixtures --pendamping --worker
@@ -70,8 +70,8 @@ deploy/caddy-install.sh fallback --dry-run   # read-only: snapshot status, valid
 sudo deploy/caddy-install.sh fallback        # hanya setelah go-ahead pengguna (atau `primary`)
 ```
 
-1. Snapshot kode status `https://gutstore.my.id/`, `https://admin.gutstore.my.id/` dan
-   `https://pythia.web.id/` **sebelum** perubahan. `000` berarti tidak terjangkau, dan tetap dibandingkan.
+1. Snapshot kode status HTTPS situs lain di server yang sama (lewat env `SITES`, bawaan domain Urusin)
+   **sebelum** perubahan. `000` berarti tidak terjangkau, dan tetap dibandingkan.
 2. Backup bertimestamp `/etc/caddy/Caddyfile` (dan snippet lama bila ada) ke `/var/backups/urusin-caddy/`
    (milik root, chmod 700). Backup yang sudah ada tidak pernah ditimpa.
 3. Pasang snippet ke TARGET: path dari baris `import .../Caddyfile.urusin` yang sudah ada di Caddyfile host, atau

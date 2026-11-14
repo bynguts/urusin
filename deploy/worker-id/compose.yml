@@ -6,7 +6,7 @@
 # - port edge diikat HANYA ke IP Tailscale laptop (WORKER_TAILSCALE_IP, 100.64.0.0/10), bukan 0.0.0.0/LAN;
 #   worker.sh menolak start bila IP itu bukan Tailscale atau tidak ada di laptop ini;
 # - token HMAC milik worker ini sendiri (WORKER_TOKEN), bukan PENDAMPING_INTERNAL_TOKEN produksi;
-# - URL WS publiknya wss://$DOMAIN/pendamping/w/$WORKER_ID/ws (Caddy agent-vm -> Tailscale -> edge ini).
+# - URL WS publiknya wss://$DOMAIN/pendamping/w/$WORKER_ID/ws (Caddy VPS -> Tailscale -> edge ini).
 # Jalankan lewat `bash deploy/worker-id/worker.sh up` (memvalidasi .env dulu); lihat README.md di folder ini.
 name: urusin-worker-id
 

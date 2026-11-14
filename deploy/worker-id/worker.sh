@@ -6,7 +6,7 @@
 #   bash deploy/worker-id/worker.sh up [--final]    # validasi .env lalu jalankan (--final: + localhost:3000)
 #   bash deploy/worker-id/worker.sh sehat [--final] # GET /health lewat IP Tailscale (dan loopback bila --final)
 #   bash deploy/worker-id/worker.sh down            # hentikan dan hapus kontainer worker
-#   bash deploy/worker-id/worker.sh web-env publik  # tulis .env.web-publik: PENDAMPING_WORKERS untuk agent-vm
+#   bash deploy/worker-id/worker.sh web-env publik  # tulis .env.web-publik: PENDAMPING_WORKERS untuk VPS
 #   bash deploy/worker-id/worker.sh web-env final   # tulis .env.web-final: env web lokal (compose.local.yml)
 #
 # Rahasia hanya ditulis ke berkas chmod 600 di folder ini (diabaikan git), tidak pernah dicetak.

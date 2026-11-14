@@ -15,7 +15,7 @@ export type OfficialDomain = {
   /** Tanggal verifikasi manual (ISO). null = seed dari rencana, verifikasi manual belum dicatat. */
   verifiedAt: string | null;
   /**
-   * Syarat jaringan Browser Pendamping (diukur dari agent-vm, IP pusat data Singapura, Chromium headed biasa):
+   * Syarat jaringan Browser Pendamping (diukur dari server produksi, IP pusat data Singapura, Chromium headed biasa):
    * - `id-only`: situs MEMBLOKIR KERAS IP luar negeri (mis. halaman "Akses Terbatas - Khusus Indonesia", tanpa
    *   apa pun yang bisa diselesaikan warga), jadi hanya worker berwilayah `id` yang bisa membukanya; tanpa worker
    *   `id` yang sehat urusan beralih ke mode dipandu.
@@ -34,7 +34,7 @@ const DOMAIN_SEED: readonly OfficialDomain[] = [
     layanan: 'Telunjuk Sakti (layanan adminduk daring)',
     wilayah: '3312',
     verifiedAt: null,
-    // 2026-11-10 dari agent-vm: 403 cf-mitigated: challenge + kotak centang Turnstile (bukan blokir keras).
+    // 2026-11-10 dari server produksi: 403 cf-mitigated: challenge + kotak centang Turnstile (bukan blokir keras).
     aksesWilayah: 'id-utama',
   },
   {
@@ -110,7 +110,7 @@ const DOMAIN_SEED: readonly OfficialDomain[] = [
     layanan: 'Sidnok (layanan adminduk daring)',
     wilayah: '3374',
     verifiedAt: null,
-    // 2026-11-10 dari agent-vm: 403 "Akses Terbatas - Khusus Indonesia" (WAF ESA), tanpa tantangan.
+    // 2026-11-10 dari server produksi: 403 "Akses Terbatas - Khusus Indonesia" (WAF ESA), tanpa tantangan.
     aksesWilayah: 'id-only',
   },
 ];

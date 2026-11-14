@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       simpan_vps:
-        description: 'Runner self-hosted: simpan image native di docker host agent-vm (deploy tanpa login GHCR)'
+        description: 'Runner self-hosted: simpan image native di docker host VPS (deploy tanpa login GHCR)'
         type: boolean
         default: false
 
@@ -90,7 +90,7 @@ jobs:
           sbom: true
           provenance: mode=max
 
-      # Self-hosted (agent-vm, arm64): build lewat ci-docker dengan builder buildx `urusin-ci` (docker-container,
+      # Self-hosted (VPS produksi, arm64): build lewat ci-docker dengan builder buildx `urusin-ci` (docker-container,
       # cache <= 1,5 GB, gc setelah tiap build, hanya builder itu). amd64 memakai binfmt qemu-x86_64 yang SUDAH ada di host
       # (tidak pernah dipasang oleh CI). Token GHCR lewat stdin. Mencetak "DIGEST: sha256:..." seperti di atas.
       - name: Build dan push (self-hosted, builder urusin-ci)
@@ -159,7 +159,7 @@ jobs:
         run: printf '%s\n' "$GHCR_TOKEN" | sudo -n /opt/urusin-ci/bin/ci-docker smoke "$NAME" "$DIGEST" "$GITHUB_WORKSPACE"
 
       # Opsional (workflow_dispatch simpan_vps=true): setelah smoke lulus, image native DISIMPAN di docker host
-      # agent-vm beserta salinan provenance (/opt/urusin-ci/provenance), memakai GITHUB_TOKEN job ini. deploy.sh
+      # VPS beserta salinan provenance (/opt/urusin-ci/provenance), memakai GITHUB_TOKEN job ini. deploy.sh
       # lalu memakai image lokal tanpa kredensial GHCR di VPS (label revision + provenance tetap diperiksa).
       - name: Simpan image di VPS (self-hosted, simpan_vps)
         if: runner.environment == 'self-hosted' && inputs.simpan_vps

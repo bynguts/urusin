@@ -31,8 +31,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
-      # Runner laptop (deploy/ci-runner-laptop) memakai pnpm store lokal yang persisten: unduhan cache GitHub
-      # dari jaringan laptop lebih lambat daripada install inkremental dari store.
+      # Runner self-hosted bernama urusin-ci-laptop memakai pnpm store lokal yang persisten (tanpa cache GitHub).
       - name: Setup Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -120,7 +119,7 @@ jobs:
           ORIGIN: http://127.0.0.1:4173
         run: node scripts/lhci-jalan.mjs
 
-      # Runner self-hosted (agent-vm): install + build + lhci di kontainer Playwright terbatas lewat ci-docker
+      # Runner self-hosted (opsional, vars.URUSIN_RUNNER): install + build + lhci di kontainer Playwright terbatas lewat ci-docker
       # (user runner tanpa grup docker). Di sana cpuSlowdownMultiplier dikalibrasi dari benchmarkIndex host
       # (scripts/lhci-cpu.mjs, rumus resmi Lighthouse, clamp [1, 4]); target perangkat dan ambang tetap sama.
       # Run yang terukur saat host sibuk (benchmarkIndex < 0,85 x kalibrasi) diulang oleh scripts/lhci-jalan.mjs.
@@ -222,9 +221,9 @@ jobs:
       # Runner ubuntu-24.04 membatasi user namespace tak berhak lewat AppArmor, sehingga Chromium e2e pendamping
       # (diluncurkan di runner, di luar kontainer, tanpa chrome-sandbox setuid) mati dengan "No usable sandbox".
       # Pembatasan dilonggarkan HANYA di runner GitHub sekali pakai ini supaya sandbox userns Chromium tetap
-      # AKTIF; jangan pernah --no-sandbox / chromiumSandbox: false. Bukan untuk agent-vm: produksi memakai
+      # AKTIF; jangan pernah --no-sandbox / chromiumSandbox: false. Bukan untuk server produksi: produksi memakai
       # sandbox setuid di kontainer (ADR 0029) dan boot pendamping tetap gagal-tertutup tanpa sandbox.
-      # HANYA runner GitHub sekali pakai: sysctl host DILARANG di agent-vm (self-hosted memakai kontainer di bawah).
+      # HANYA runner GitHub sekali pakai: sysctl host DILARANG di server produksi (self-hosted memakai kontainer di bawah).
       - name: Izinkan userns tak berhak untuk sandbox Chromium (runner sekali pakai)
         if: runner.environment == 'github-hosted'
         run: |
@@ -327,7 +326,7 @@ jobs:
 
       # Tidak berbuat apa pun selama belum ada tag rc*; setelah ada, langkah di bawah aktif otomatis.
       # Runner self-hosted (cadangan menit habis): rc-compat butuh Docker langsung, jadi DILEWATI dengan peringatan
-      # (cakupan berkurang selama cadangan; lihat deploy/ci-runner/README.md). Kembali ke runner GitHub = jalan lagi.
+      # (cakupan berkurang selama cadangan). Runner GitHub (bawaan bila vars.URUSIN_RUNNER kosong) = selalu jalan.
       # Cek migrasi aditif statis (git diff + node, tanpa Docker): SELALU jalan bila ada tag rc* (output `tag`),
       # termasuk di runner self-hosted. `present` hanya menggerbang langkah rc-compat yang butuh Docker.
       - name: Cari tag rc* terakhir
@@ -469,7 +468,7 @@ jobs:
           case "$(uname -m)" in x86_64) arch=x64 ;; aarch64) arch=arm64 ;; *) echo "::error::arsitektur $(uname -m)"; exit 1 ;; esac
           base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
           tarball="gitleaks_${GITLEAKS_VERSION}_linux_${arch}.tar.gz"
-          # Tarball disimpan di tool cache runner (persisten di self-hosted, mis. runner laptop yang jaringannya
+          # Tarball disimpan di tool cache runner (persisten di runner self-hosted yang jaringannya
           # lambat); checksum tetap diverifikasi setiap job dan tarball yang tidak cocok dibuang.
           cache="${RUNNER_TOOL_CACHE:-$RUNNER_TEMP}/gitleaks/${GITLEAKS_VERSION}"
           mkdir -p "$cache"

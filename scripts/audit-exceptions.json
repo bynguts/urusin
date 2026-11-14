@@ -3,12 +3,12 @@
   "headerFormat": {
     "ed650325811011aef637e1de3f97d6718a0cb136": "merge otomatis git saat menyinkronkan main ke feat/rag-query-pipeline",
     "778617564e103a66eede46c2a7ee59bf3bff298d": "merge otomatis git saat menyinkronkan main ke feat/rag-query-pipeline",
-    "3a86c43de4e3425cc949327475aad47a18430d45": "merge otomatis git di branch feat/rag-corpus (dipulihkan apa adanya, lihat README Catatan riwayat)",
-    "22674718b1b85249c1993d40df5dd767a139cb5d": "merge otomatis git di branch chore/ops-security-hardening (dipulihkan apa adanya, lihat README Catatan riwayat)",
-    "3eb22a11b02a8038b98a4531f86f589edbf40ce5": "merge otomatis git di branch chore/ops-security-hardening (dipulihkan apa adanya, lihat README Catatan riwayat)",
-    "85210e62d29be30f417bf0aec5049375296d7a30": "merge otomatis git di branch feat/ui-dashboard (dipulihkan apa adanya, lihat README Catatan riwayat)",
-    "63e7c8df8b7a74c1251da351d3f51b843aff4d35": "merge otomatis git di branch feat/generik-executor (dipulihkan apa adanya, lihat README Catatan riwayat)",
-    "2211a731a86e1d4d879934882666bb5915c22efc": "merge otomatis git di branch fix/landing-lhci-median (dipulihkan apa adanya, lihat README Catatan riwayat)",
+    "3a86c43de4e3425cc949327475aad47a18430d45": "merge otomatis git di branch feat/rag-corpus (branch arsip, dipulihkan apa adanya)",
+    "22674718b1b85249c1993d40df5dd767a139cb5d": "merge otomatis git di branch chore/ops-security-hardening (branch arsip, dipulihkan apa adanya)",
+    "3eb22a11b02a8038b98a4531f86f589edbf40ce5": "merge otomatis git di branch chore/ops-security-hardening (branch arsip, dipulihkan apa adanya)",
+    "85210e62d29be30f417bf0aec5049375296d7a30": "merge otomatis git di branch feat/ui-dashboard (branch arsip, dipulihkan apa adanya)",
+    "63e7c8df8b7a74c1251da351d3f51b843aff4d35": "merge otomatis git di branch feat/generik-executor (branch arsip, dipulihkan apa adanya)",
+    "2211a731a86e1d4d879934882666bb5915c22efc": "merge otomatis git di branch fix/landing-lhci-median (branch arsip, dipulihkan apa adanya)",
     "c8d701ec9c9e1b914c06269f0adee21243a3c2d5": "judul revert bawaan git di branch fix/ui-polish (PR 9, sudah terdorong; riwayat tidak ditulis ulang)"
   }
 }

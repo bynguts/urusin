@@ -5,7 +5,7 @@
 
 /*
  * Token desain Urusin dari design-rafi/Urusin/design-system (strawberry.tokens.css + variabel ur.* di urusin.pen).
- * Light adalah bawaan; Dark aktif lewat data-theme="dark" di <html> (tanpa deteksi sistem, sesuai DESIGN.md).
+ * Light adalah bawaan; Dark aktif lewat data-theme="dark" di <html> (tanpa deteksi sistem, sesuai design system tim).
  */
 @font-face {
   font-family: 'Strawberry Sans';
@@ -221,7 +221,7 @@ html {
   scrollbar-color: #f7f3ed33 transparent;
 }
 
-/* Scrollbar kustom bernuansa hangat selaras dengan token DESIGN.md (ink, stroke-strong, neutral-bg) */
+/* Scrollbar kustom bernuansa hangat selaras dengan token design system (ink, stroke-strong, neutral-bg) */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

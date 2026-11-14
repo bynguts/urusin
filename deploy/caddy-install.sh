@@ -28,7 +28,8 @@
 #
 # Variabel (opsional): CADDYFILE (/etc/caddy/Caddyfile), TARGET (lihat di atas),
 # DEFAULT_TARGET (/etc/caddy/urusin/Caddyfile.urusin), BACKUP_DIR (/var/backups/urusin-caddy),
-# SITES ("gutstore.my.id admin.gutstore.my.id pythia.web.id"), SETTLE_SECONDS (5).
+# SITES (situs lain di Caddy yang sama untuk snapshot/rollback, dipisah spasi; bawaan domain Urusin
+# sendiri: "urusinai.web.id verify.urusinai.web.id"), SETTLE_SECONDS (5).
 # Tes mengganti fungsi reload_caddy dengan men-source skrip ini (lihat tests/caddy-install.test.sh).
 set -euo pipefail
 
@@ -37,7 +38,7 @@ CADDYFILE="${CADDYFILE:-/etc/caddy/Caddyfile}"
 TARGET="${TARGET:-}"
 DEFAULT_TARGET="${DEFAULT_TARGET:-/etc/caddy/urusin/Caddyfile.urusin}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/urusin-caddy}"
-SITES="${SITES:-gutstore.my.id admin.gutstore.my.id pythia.web.id}"
+SITES="${SITES:-urusinai.web.id verify.urusinai.web.id}"
 SETTLE_SECONDS="${SETTLE_SECONDS:-5}"
 
 die() { echo "caddy-install: $*" >&2; exit 1; }

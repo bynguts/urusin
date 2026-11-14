@@ -1,5 +1,5 @@
 /**
- * Data path ikon garis 24×24 bergaya Lucide (DESIGN.md: "Ikon memakai Lucide"). Disalin sebagai data,
+ * Data path ikon garis 24×24 bergaya Lucide (design system tim: "Ikon memakai Lucide"). Disalin sebagai data,
  * bukan pustaka runtime, supaya bundel klien tetap kecil. Lingkaran ditulis lewat `o()`.
  */
 const o = (cx: number, cy: number, r: number) =>

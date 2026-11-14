@@ -20,7 +20,7 @@
       "executionId": "x_generik-0001",
       "catatan": {
         "jenis": "rencana",
-        "model": "pythia",
+        "model": "model-agen",
         "tokenMasuk": 1800,
         "tokenKeluar": 120,
         "rencanaHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

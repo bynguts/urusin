@@ -18,7 +18,6 @@ describe(
       'caddy-install.test.sh',
       'compose-config.test.sh',
       'pendamping-isolation.test.sh',
-      'ci-runner.test.sh',
       'worker-id.test.sh',
     ]) {
       it(`${name}: lulus semua kasus harness`, () => {
