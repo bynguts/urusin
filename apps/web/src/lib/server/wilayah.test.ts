@@ -94,14 +94,14 @@ describe('wilayah dulu: usulan saat urusan dibuat', () => {
     expect(wilayahUrusan(rt.store, rt.store.getUrusanOrThrow(id)).usulan).toBeNull();
   });
 
-  it('Data Diri langsung ditetapkan (tanpa kartu); pilihan perangkat yang berbeda hanya usulan', async () => {
+  it('Data Diri langsung ditetapkan (tanpa kartu) dan menang atas pilihan perangkat', async () => {
     const akun = akunJuri();
     const wilayah = async (body: Record<string, string>) => {
       const res = await buatUrusan(ev(post({ peristiwa: 'kelahiran', ...body }), {}, { akun }));
       const { id } = (await res.json()) as { id: string };
       return payloads(id, 'wilayah').map((e) => [e.ktp.kodeKabKota, e.sumber, e.status]);
     };
-    expect(await wilayah({ kodeKabKota: '3578' })).toEqual([['3578', 'pilihan', 'usulan']]);
+    expect(await wilayah({ kodeKabKota: '3578' })).toEqual([['3312', 'data_diri', 'ditetapkan']]);
     expect(await wilayah({})).toEqual([['3312', 'data_diri', 'ditetapkan']]);
     expect(await wilayah({ kodeKabKota: '3312' })).toEqual([['3312', 'data_diri', 'ditetapkan']]);
   });

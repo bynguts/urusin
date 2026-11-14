@@ -65,9 +65,10 @@ export function usulkanWilayahAwal(
   // ada di registry ditolak `usulkanWilayah`.
   const perangkatRaw = kodePilihan ?? kodeWilayahTersimpan(event.cookies);
   const perangkat = perangkatRaw && cocok(perangkatRaw) ? perangkatRaw : undefined;
-  // Pilihan perangkat yang berbeda dari sumber tepercaya (mis. mengurus untuk keluarga di kab/kota lain): ambigu,
-  // jadi hanya usulan dan agen yang memutuskan apakah perlu ditanyakan.
-  if (perangkat && perangkat !== yakin?.kode) {
+  // Sumber tepercaya menang atas pilihan perangkat (pilihan perangkat bisa sisa urusan lain). Mengurus untuk
+  // keluarga di kab/kota lain cukup disebut di obrolan; agen yang menetapkan ulang. Tanpa sumber tepercaya,
+  // pilihan perangkat hanya usulan dan agen yang memutuskan apakah perlu ditanyakan.
+  if (perangkat && !yakin) {
     usulkanWilayah(urusanId, perangkat, 'pilihan', publish);
     return;
   }
