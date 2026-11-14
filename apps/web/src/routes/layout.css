@@ -263,6 +263,15 @@ html {
   background-color: #f7f3ed8c;
 }
 
+/* Baris geser ke samping (pil saring di ponsel): tetap bisa digeser dan difokus keyboard, tanpa bilah
+   atau penanda posisi gulir. */
+@utility tanpa-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Sorotan teks bertema hangat selaras dengan brand orange Urusin */
 ::selection {
   background-color: #ed5a3126;

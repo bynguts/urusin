@@ -169,6 +169,28 @@
       lp-typewriter-text 8s steps(48, end) infinite,
       lp-kedip-kursor 0.75s step-end infinite;
   }
+  /* Ponsel: kalimat contoh lebih lebar dari layar, jadi ketikan selebar satu baris memotongnya ("…perbarui
+     Kar"). Di sini kalimat tampil utuh (boleh dua baris) dengan kursor berkedip di ujungnya. */
+  @media (max-width: 639px) {
+    .lp .n-prompt-typewriter {
+      display: inline;
+      overflow: visible;
+      white-space: normal;
+      border-right: 0;
+      padding-right: 0;
+      animation: none;
+    }
+    .lp .n-prompt-typewriter::after {
+      content: '';
+      display: inline-block;
+      width: 2px;
+      height: 1.15em;
+      margin-left: 2px;
+      vertical-align: text-bottom;
+      background: #252522;
+      animation: lp-kedip-kursor-bg 0.75s step-end infinite;
+    }
+  }
   .lp .lp96 .lp104 {
     animation: lp-send-pulse 8s ease-in-out infinite;
   }
@@ -208,6 +230,11 @@
     }
     .lp .n-pil-kata > span > span,
     .lp .n-pil {
+      animation-delay: 4s;
+    }
+    /* Huruf pertama butuh aturan sendiri: :nth-child(1) di atas (0 ms) lebih spesifik dari baris ini, jadi
+       tanpa ini huruf pertama tiap kata berjalan 4 dtk lebih awal dan hilang saat katanya tampil. */
+    .lp .n-pil-kata span span:nth-child(1) {
       animation-delay: 4s;
     }
     .lp .n-pil-kata span span:nth-child(2) {
@@ -611,6 +638,15 @@
   }
   50% {
     border-right-color: transparent;
+  }
+}
+@keyframes lp-kedip-kursor-bg {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
   }
 }
 @keyframes lp-typewriter-text {

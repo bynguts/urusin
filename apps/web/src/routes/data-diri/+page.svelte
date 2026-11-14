@@ -146,16 +146,17 @@
 <HeaderHalaman judul="Data diri" />
 
 <div class="flex w-full flex-col gap-6 px-4 py-5 sm:px-10 sm:py-6">
-  <div class="flex flex-wrap items-center justify-between gap-3">
+  <!-- Ponsel: tab dan tombol tetap sebaris; tombol diringkas jadi "Ubah"/"Isi" (nama lengkap tetap untuk pembaca layar) -->
+  <div class="flex items-center justify-between gap-3 sm:flex-wrap">
     <TabBrankas aktif="data-diri" />
     {#if hasil?.ok && !ubah}
       <button
         type="button"
         onclick={() => mulaiUbah()}
-        class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-primer px-5 text-sm font-semibold text-primer-ink"
+        class="inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full bg-primer px-4 text-sm font-semibold text-primer-ink sm:px-5"
       >
         <Icon name="tambah-orang" class="size-4" />
-        {kosong ? 'Isi data diri' : 'Ubah data diri'}
+        {kosong ? 'Isi' : 'Ubah'}<span class="max-sm:sr-only">&nbsp;data diri</span>
       </button>
     {/if}
   </div>

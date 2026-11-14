@@ -203,6 +203,40 @@
   .lp .n-intro-characters {
     zoom: 0.64;
   }
+  /* Tiga karakter intro (satuan frame 560px, sebelum zoom) bergeser ke kiri supaya anak berkacamata tidak
+     menabrak tepi kanan layar; balon sapaannya ikut, balon kiri dimulai tepat di tepi kotak (tidak keluar). */
+  .lp .n-intro-characters .lp74 {
+    left: -50px;
+  }
+  .lp .n-intro-characters .lp73 {
+    left: 125px;
+  }
+  .lp .n-intro-characters .lp75 {
+    left: 245px;
+  }
+  .lp .n-intro-characters .lp71 {
+    left: 27px;
+  }
+  .lp .n-intro-characters .lp70 {
+    left: 199.8px;
+  }
+  .lp .n-intro-characters .lp72 {
+    left: 322px;
+  }
+  .lp .n-intro-characters .lp79 {
+    left: 0;
+  }
+  .lp .n-intro-characters .lp76 {
+    left: 165px;
+  }
+  .lp .n-intro-characters .lp81 {
+    left: 325px;
+  }
+  /* Kotak prompt contoh berjarak 16px dari tepi layar, sama dengan judul dan kartu ponsel lainnya */
+  .lp .n-prompt-box {
+    width: calc(100% - 32px);
+    max-width: calc(100% - 32px);
+  }
   /* Marquee instansi tetap berjalan satu baris selebar layar; jarak = padding akhir set (loop mulus) */
   .lp .n-marquee-track > .n-wordmarks {
     gap: 40px;
@@ -315,6 +349,13 @@
 @media (max-width: 479px) {
   .lp {
     --lp-z: 0.33;
+  }
+}
+/* Ponsel sempit (< 390px): kotak karakter 560 x 0,64 = 358px lebih lebar dari isi layar; diperkecil
+   supaya muat di antara jarak tepi 16px. */
+@media (max-width: 389px) {
+  .lp .n-intro-characters {
+    zoom: 0.58;
   }
 }
 @media (max-width: 360px) {

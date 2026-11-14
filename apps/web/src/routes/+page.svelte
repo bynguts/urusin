@@ -1577,8 +1577,8 @@
           <span class="lp98"> Urus </span>
           <span class="lp99"> akta kelahiran </span>
           <span class="lp98"> di </span>
-          <span class="lp100"> Dukcapil</span><span class="lp98">, lalu daftarkan ke </span>
-          <span class="lp101"> BPJS Kesehatan </span>
+          <span class="lp100"> Dukcapil</span><span class="lp98">, lalu perbarui </span>
+          <span class="lp101"> Kartu Keluarga </span>
         </span>
       </p>
       <div class="n-prompt-row lp102">

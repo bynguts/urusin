@@ -145,15 +145,16 @@
 <HeaderHalaman judul="Dokumen" />
 
 <div class="flex w-full flex-col gap-6 px-4 py-5 sm:px-10 sm:py-6">
-  <div class="flex flex-wrap items-center justify-between gap-3">
+  <!-- Ponsel: tab dan tombol tetap sebaris; tombol diringkas jadi "Tambah" (nama lengkap tetap untuk pembaca layar) -->
+  <div class="flex items-center justify-between gap-3 sm:flex-wrap">
     <TabBrankas aktif="berkas" />
     {#if hasil?.ok}
       <button
         type="button"
         onclick={bukaTambah}
-        class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-primer px-5 text-sm font-semibold text-primer-ink"
+        class="inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full bg-primer px-4 text-sm font-semibold text-primer-ink sm:px-5"
       >
-        <Icon name="tambah" class="size-4" /> Tambah dokumen
+        <Icon name="tambah" class="size-4" /> Tambah<span class="max-sm:sr-only">&nbsp;dokumen</span>
       </button>
     {/if}
   </div>
@@ -166,7 +167,12 @@
     <BrankasTertutup alasan={hasil.alasan} pesan={hasil.pesan} />
   {:else}
     {#if jenisAda.length > 1}
-      <div role="group" aria-label="Saring dokumen" class="-mb-1 flex gap-2 overflow-x-auto pb-1">
+      <!-- Ponsel: digeser selebar layar tanpa bilah gulir -->
+      <div
+        role="group"
+        aria-label="Saring dokumen"
+        class="-mb-1 flex gap-2 overflow-x-auto pb-1 max-sm:tanpa-scrollbar max-sm:-mx-4 max-sm:px-4"
+      >
         {#each ['semua', ...jenisAda] as j (j)}
           {@const pilih = filter === j}
           <button

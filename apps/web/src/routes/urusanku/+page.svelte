@@ -48,7 +48,12 @@
 <GantiNamaUrusan bind:this={gantiNama} ontersimpan={() => void daftar.muat(lokal.data.urusan)} />
 
 <div class="flex w-full flex-col gap-6 px-4 py-5 sm:px-10 sm:py-6">
-  <div role="group" aria-label="Saring urusan" class="flex flex-wrap items-center gap-2">
+  <!-- Ponsel: satu baris yang digeser (selebar layar, tanpa bilah gulir); mulai sm membungkus seperti desain -->
+  <div
+    role="group"
+    aria-label="Saring urusan"
+    class="flex items-center gap-2 max-sm:tanpa-scrollbar max-sm:-mx-4 max-sm:-my-1 max-sm:overflow-x-auto max-sm:px-4 max-sm:py-1 sm:flex-wrap"
+  >
     {#each FILTER as f (f.nilai)}
       {@const pilih = filter === f.nilai}
       <button
