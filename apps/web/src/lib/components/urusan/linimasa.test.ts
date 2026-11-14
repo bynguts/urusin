@@ -5,6 +5,7 @@ import {
   barisKonfirmasi,
   jenisTerkini,
   kalimatWilayah,
+  labelAktivitas,
   labelParam,
   labelProgres,
   nilaiParam,
@@ -99,7 +100,13 @@ describe('bangunLinimasa', () => {
       ev(1, 'wilayah', { status: 'usulan', ktp: wonogiri, sumber: 'data_diri' }),
       ev(2, 'state', { state: 'MEMAHAMI', dari: 'BARU', tier: null, version: 2 }),
       ev(3, 'progress', { label: 'Memahami kebutuhan Anda…' }),
-      ev(4, 'done', { turnId: 't1', status: 'selesai', lanjutkan: false, degraded: false, jenis: 'kelahiran' }),
+      ev(4, 'done', {
+        turnId: 't1',
+        status: 'selesai',
+        lanjutkan: false,
+        degraded: false,
+        jenis: 'kelahiran',
+      }),
     ];
     const pesan = [{ teks: 'syarat akta kelahiran di Wonogiri apa saja?', setelahSeq: 0 }];
     expect(jenisTerkini(events.slice(0, 3), null)).toBeNull();
@@ -108,7 +115,9 @@ describe('bangunLinimasa', () => {
     expect(bangunLinimasa(events, pesan, jenis).map((x) => x.jenis)).toEqual(['warga', 'wilayah']);
     // Jenis saat dimuat tetap dipakai bila stream belum membawanya; rencana yang lebih baru menang.
     expect(jenisTerkini([], 'ktp')).toBe('ktp');
-    expect(jenisTerkini([...events, ev(5, 'plan_card', { jenis: 'pindah', langkah: [] })], null)).toBe('pindah');
+    expect(jenisTerkini([...events, ev(5, 'plan_card', { jenis: 'pindah', langkah: [] })], null)).toBe(
+      'pindah',
+    );
   });
 
   it('heartbeat diabaikan; state penting menjadi kalimat sistem; TERKIRIM menjadi kartu', () => {
@@ -161,11 +170,51 @@ describe('bangunLinimasa', () => {
 describe('label untuk warga', () => {
   it('labelProgres menyembunyikan nama tool teknis', () => {
     expect(labelProgres('Menjalankan rag__cari_pengetahuan…')).toBe('Mencari sumber resmi…');
-    expect(labelProgres('Menjalankan web__cari…', 'web__cari')).toBe('Mencari di situs resmi pemerintah…');
+    expect(labelProgres('Menjalankan web__cari…', 'web__cari')).toBe('Mencari di web…');
     expect(labelProgres('Menjalankan alat_baru…')).toBe('Urusin sedang bekerja…');
-    expect(labelProgres(null, 'urusan__susun_rencana')).toBe('Menyusun rencana…');
+    expect(labelProgres(null, 'urusan__usulkan_rencana')).toBe('Menyusun rencana…');
     expect(labelProgres(null)).toBe('Urusin sedang bekerja…');
     expect(labelProgres('Membaca peraturan')).toBe('Membaca peraturan');
+  });
+
+  it('labelAktivitas: tool berjalan → kalimatnya; tanpa tool → "Berpikir…"; teks tiba → disembunyikan', () => {
+    const prog = (seq: number, label: string, toolName?: string) =>
+      ev(seq, 'progress', { label, ...(toolName ? { toolName } : {}) });
+    // Awal turn: belum ada progress, atau progress umum harness.
+    expect(labelAktivitas([])).toBe('Berpikir…');
+    expect(labelAktivitas([prog(1, 'Memahami kebutuhan Anda…')])).toBe('Berpikir…');
+    // Tiap tool agen punya kalimat sendiri.
+    const peta: [string, string][] = [
+      ['rag__cari_pengetahuan', 'Mencari sumber resmi…'],
+      ['web__cari', 'Mencari di web…'],
+      ['urusan__usulkan_rencana', 'Menyusun rencana…'],
+      ['dukcapil__ajukan_layanan', 'Menyiapkan Browser Pendamping…'],
+      ['dukcapil__cek_persyaratan', 'Memeriksa persyaratan layanan…'],
+      ['wilayah__tetapkan', 'Mencatat wilayah layanan…'],
+      ['ingatan__ingat', 'Mencatat ke ingatan Anda…'],
+    ];
+    for (const [tool, label] of peta)
+      expect(
+        labelAktivitas([prog(1, 'Memahami kebutuhan Anda…'), prog(2, `Menjalankan ${tool}…`, tool)]),
+      ).toBe(label);
+    // Tool belum dipetakan: tebak dari kata kerja, selain itu "Berpikir…"; nama teknis tidak pernah tampil.
+    expect(labelAktivitas([prog(1, 'Menjalankan web__baca_halaman…', 'web__baca_halaman')])).toBe(
+      'Membaca halaman…',
+    );
+    expect(labelAktivitas([prog(1, 'Menjalankan uji__lakukan…', 'uji__lakukan')])).toBe('Berpikir…');
+    // Vision tanpa toolName.
+    expect(labelAktivitas([prog(1, 'Membaca gambar lampiran…')])).toBe('Memeriksa foto dokumen…');
+    // Tool selesai, model berpikir lagi.
+    expect(labelAktivitas([prog(1, 'Menjalankan web__cari…', 'web__cari'), prog(2, 'Berpikir…')])).toBe(
+      'Berpikir…',
+    );
+    // Teks jawaban mulai tiba: indikator hilang.
+    expect(labelAktivitas([prog(1, 'Berpikir…'), ev(2, 'assistant_text', { delta: 'Halo' })])).toBeNull();
+    // Turn baru setelah `done`: teks turn lalu tidak menyembunyikan indikator; pesan utuh di luar turn juga tidak.
+    expect(labelAktivitas([ev(1, 'assistant_text', { delta: 'Halo' }), ev(2, 'done')])).toBe('Berpikir…');
+    expect(labelAktivitas([ev(1, 'assistant_text', { delta: 'Rencana disetujui', utuh: true })])).toBe(
+      'Berpikir…',
+    );
   });
 
   it('labelParam dan nilaiParam', () => {

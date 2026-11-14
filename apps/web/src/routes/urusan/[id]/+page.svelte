@@ -35,7 +35,7 @@
   import Lencana from '#lib/components/urusan/Lencana.svelte';
   import PanelKonteks, { type TabPanel } from '#lib/components/urusan/PanelKonteks.svelte';
   import PesanAgen from '#lib/components/urusan/PesanAgen.svelte';
-  import { bangunLinimasa, jenisTerkini, labelProgres } from '#lib/components/urusan/linimasa.js';
+  import { bangunLinimasa, jenisTerkini, labelAktivitas } from '#lib/components/urusan/linimasa.js';
   import LayarPendamping from '#lib/components/pendamping/LayarPendamping.svelte';
   import LembarIzinkan from '#lib/components/pendamping/LembarIzinkan.svelte';
   import { muatPabrikViewer } from '#lib/pendamping/klien.js';
@@ -74,6 +74,8 @@
   let izin = $state<{ sibuk: boolean; pesan?: string }>({ sibuk: false });
 
   const k = $derived(store.keadaan);
+  // Indikator aktivitas AI: null = tidak berjalan, atau teks jawaban turn ini sudah tiba.
+  const labelKetik = $derived(k.sedangBerjalan ? labelAktivitas(k.events) : null);
   const keadaanUrusan = $derived(k.state ?? data.urusan.state);
   // Panel Rencana selama Browser Pendamping berjalan mengikuti giliran nyata sesi (login, AI mengisi, Kirim),
   // bukan state urusan yang sudah melompat ke "tekan Kirim" sejak eksekusi disetujui.
@@ -989,13 +991,9 @@
                 Menyiapkan langkah berikutnya…
               </p>
             {/if}
-            {#if k.sedangBerjalan}
-              {@const labelKetik = labelProgres(
-                k.progres,
-                k.events.findLast((e) => e.type === 'progress')?.toolName,
-              )}
-              <!-- AI sedang menyiapkan jawaban: cukup tiga titik beranimasi; labelnya hanya untuk pembaca layar
-                   (keputusan pemilik 2026-11-14). -->
+            {#if labelKetik}
+              <!-- AI sedang bekerja: "Berpikir…" berkilau, berganti kalimat aktivitas saat tool berjalan
+                   (keputusan pemilik 2026-11-14). Hilang begitu teks jawaban tiba. -->
               <div data-mengetik class="flex items-end gap-3.5 {riwayatSelesai ? 'animasi-pesan-masuk' : ''}">
                 <img
                   src={p.avatar}
@@ -1006,12 +1004,10 @@
                 />
                 <p
                   role="status"
-                  class="flex min-h-11 max-w-full items-center gap-3 rounded-[18px_18px_18px_4px] bg-bg-2 px-[18px] py-2.5 text-[15px] leading-[23px] text-body"
+                  data-aktivitas
+                  class="flex min-h-11 max-w-full min-w-0 items-center rounded-[18px_18px_18px_4px] bg-bg-2 px-[18px] py-2.5 text-[15px] leading-[23px] text-body"
                 >
-                  <span aria-hidden="true" class="titik-ketik flex shrink-0 items-center gap-1 text-muted">
-                    <span></span><span></span><span></span>
-                  </span>
-                  <span class="sr-only">{labelKetik}</span>
+                  <span class="teks-berpikir truncate">{labelKetik}</span>
                 </p>
               </div>
             {/if}

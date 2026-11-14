@@ -226,15 +226,63 @@ export function kalimatWilayah(e: EventOf<'wilayah'>, jenis?: string | null): st
   return t;
 }
 
+/** Satu-satunya peta nama tool agen → kalimat aktivitas yang dilihat warga (hanya jenis tool, tanpa isi kueri). */
 const LABEL_ALAT: Record<string, string> = {
   rag__cari_pengetahuan: 'Mencari sumber resmi…',
-  web__cari: 'Mencari di situs resmi pemerintah…',
+  web__cari: 'Mencari di web…',
+  dukcapil__cek_persyaratan: 'Memeriksa persyaratan layanan…',
   urusan__jawab_persyaratan: 'Menyusun jawaban dari sumber resmi…',
+  urusan__usulkan_rencana: 'Menyusun rencana…',
   urusan__susun_rencana: 'Menyusun rencana…',
+  dukcapil__ajukan_layanan: 'Menyiapkan Browser Pendamping…',
+  dukcapil__klik_selesai: 'Menyelesaikan pengajuan…',
+  dukcapil__cek_status: 'Memeriksa status permohonan…',
+  samsat__cek_pkb: 'Memeriksa info pajak kendaraan…',
+  oss__cari_nib: 'Mencari data NIB…',
+  wilayah__tetapkan: 'Mencatat wilayah layanan…',
+  ingatan__ingat: 'Mencatat ke ingatan Anda…',
+};
+
+/** Progres harness tanpa `toolName` yang memang aktivitas nyata (selain itu = model sedang berpikir). */
+const LABEL_LANGKAH: Record<string, string> = {
+  'Membaca gambar lampiran…': 'Memeriksa foto dokumen…',
+  'Memverifikasi kutipan ke sumber resmi…': 'Memeriksa kutipan ke sumber resmi…',
 };
 
 /** Label progres umum; gelembung mengetik cukup menampilkan tiga titik (teks ini hanya untuk pembaca layar). */
 export const LABEL_UMUM_PROGRES = 'Urusin sedang bekerja…';
+
+/** Label indikator aktivitas saat model berpikir (bukan sedang menjalankan tool). */
+export const LABEL_BERPIKIR = 'Berpikir…';
+
+/** Tool baru yang belum dipetakan: tebak dari kata kerjanya, selain itu tetap "Berpikir…". */
+function labelAlatTakDikenal(nama: string): string {
+  const aksi = nama.split('__').pop() ?? nama;
+  if (/(baca|ambil|buka)/.test(aksi)) return 'Membaca halaman…';
+  if (/cari/.test(aksi)) return 'Mencari informasi…';
+  if (/(cek|periksa)/.test(aksi)) return 'Memeriksa data…';
+  return LABEL_BERPIKIR;
+}
+
+/**
+ * Teks indikator "AI sedang bekerja" dari event turn berjalan: progress terakhir menentukan aktivitas (tool →
+ * kalimatnya, tanpa tool → "Berpikir…"). `null` = teks asisten turn ini sudah mulai tiba, indikator disembunyikan.
+ */
+export function labelAktivitas(events: readonly UrusinEvent[]): string | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i]!;
+    // Batas turn sebelumnya: turn baru belum punya progress, model sedang berpikir.
+    if (e.type === 'done') return LABEL_BERPIKIR;
+    // Pesan utuh terbit di luar turn (mis. hasil Pendamping), bukan jawaban turn ini.
+    if (e.type === 'assistant_text' && !e.utuh) return null;
+    if (e.type !== 'progress') continue;
+    if (e.toolName) return LABEL_ALAT[e.toolName] ?? labelAlatTakDikenal(e.toolName);
+    const m = /^Menjalankan ([\w-]+)…?$/.exec(e.label);
+    if (m) return LABEL_ALAT[m[1]!] ?? labelAlatTakDikenal(m[1]!);
+    return LABEL_LANGKAH[e.label] ?? LABEL_BERPIKIR;
+  }
+  return LABEL_BERPIKIR;
+}
 
 /** Label progres tanpa nama teknis tool (design system tim: jangan tampilkan penanda teknis). */
 export function labelProgres(label: string | null, toolName?: string): string {

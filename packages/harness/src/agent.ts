@@ -949,6 +949,8 @@ class TurnRunner {
     for (let step = 0; step < this.cfg.maxSteps; step++) {
       const q = this.quotaStatus();
       if (q.mode === 'habis') return this.quotaStop(q);
+      // Tool selesai, model berpikir lagi: indikator aktivitas di klien kembali ke "Berpikir…" (tanpa toolName).
+      if (step > 0) this.progress('Berpikir…');
       const tools = this.deps.registry
         .openaiTools(this.urusan.state)
         .filter((t) => t.type !== 'function' || this.toolDitawarkan(t.function.name));
