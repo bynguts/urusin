@@ -14,6 +14,8 @@ import {
 } from '@urusin/akun';
 import {
   CacheJawaban,
+  DEFAULT_AGENT_CONFIG,
+  DEFAULT_QUOTA,
   DemoProvider,
   HarnessError,
   createDemoRagDb,
@@ -379,6 +381,8 @@ export function quotaFromEnv(env: Record<string, string | undefined>) {
     sessionTurnCap: num(env.URUSIN_SESSION_TURN_CAP, 40),
     sessionTokenCap: num(env.URUSIN_SESSION_TOKEN_CAP, 400_000),
     dailyIdrCap: num(env.URUSIN_DAILY_IDR_CAP, 0),
+    maxTokens: num(env.URUSIN_LLM_MAX_TOKENS, DEFAULT_QUOTA.maxTokens),
+    maxTokensHemat: num(env.URUSIN_LLM_MAX_TOKENS_HEMAT, DEFAULT_QUOTA.maxTokensHemat),
   };
   for (const [k, v] of Object.entries(quota)) {
     if (!Number.isFinite(v) || v < 0) throw new Error(`konfigurasi kuota tidak valid: ${k}=${String(v)}`);
@@ -389,6 +393,23 @@ export function quotaFromEnv(env: Record<string, string | undefined>) {
     );
   }
   return quota;
+}
+
+/**
+ * Batas waktu dan langkah agen dari env. Model bernalar effort tinggi bisa berpikir lama: satu panggilan LLM
+ * (URUSIN_LLM_CALL_TIMEOUT_MS) dan satu giliran (URUSIN_TURN_TIMEOUT_MS) dibuat lega; stream SSE tetap hidup lewat
+ * heartbeat (URUSIN_SSE_HEARTBEAT_MS).
+ */
+export function agentConfigFromEnv(env: Record<string, string | undefined>) {
+  const config = {
+    turnTimeoutMs: num(env.URUSIN_TURN_TIMEOUT_MS, DEFAULT_AGENT_CONFIG.turnTimeoutMs),
+    llmTimeoutMs: num(env.URUSIN_LLM_CALL_TIMEOUT_MS, DEFAULT_AGENT_CONFIG.llmTimeoutMs),
+    maxSteps: Math.floor(num(env.URUSIN_AGENT_MAX_STEPS, DEFAULT_AGENT_CONFIG.maxSteps)),
+  };
+  for (const [k, v] of Object.entries(config)) {
+    if (!Number.isFinite(v) || v <= 0) throw new Error(`konfigurasi agen tidak valid: ${k}=${String(v)}`);
+  }
+  return config;
 }
 
 /**
@@ -436,6 +457,11 @@ async function buildFromEnv(): Promise<Runtime> {
       // (probe atau LLM_CAPS_PIN); selain itu agen berterus terang belum bisa membaca gambar.
       visionModel: visionModelDari(cfg.models, caps),
       quota: quotaFromEnv(env),
+      config: agentConfigFromEnv(env),
+      // Penalaran per peran: loop agen (LLM_AGENT_REASONING_EFFORT), jawaban bersumber + vision
+      // (LLM_GROUNDING_REASONING_EFFORT); judul/intent/klasifikasi tetap LLM_REASONING_EFFORT global.
+      reasoningEffort: cfg.agentReasoningEffort,
+      reasoningEffortJawaban: cfg.groundingReasoningEffort,
       // Masukan jawaban bersumber yang sama persis (pesan + potongan) tidak menunggu model lagi; verifikasi
       // kutipan tetap dijalankan ulang tiap kali.
       cacheJawaban: new CacheJawaban(),

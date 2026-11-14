@@ -1,4 +1,4 @@
-import type { ChatProvider, Usage } from '@urusin/llm';
+import type { ChatProvider, ReasoningEffort, Usage } from '@urusin/llm';
 import { redactForStorage } from './pii.js';
 
 /**
@@ -65,6 +65,8 @@ export async function bacaGambar(opts: {
   /** Tulisan warga (sudah diredaksi) sebagai fokus: mis. "ini syaratnya apa?". */
   pertanyaan: string;
   signal: AbortSignal;
+  /** Effort penalaran (LLM_GROUNDING_REASONING_EFFORT); kosong = global. */
+  reasoningEffort?: ReasoningEffort | undefined;
 }): Promise<HasilBacaGambar> {
   if (!opts.model) return { ok: false, alasan: 'tidak_dikonfigurasi', usage: [] };
   const gambar = opts.gambar.filter((g) => g.length <= PANJANG_DATA_URL_MAKS && DATA_URL_GAMBAR.test(g));
@@ -72,8 +74,9 @@ export async function bacaGambar(opts: {
   try {
     const r = await opts.provider.create(
       {
+        ...(opts.reasoningEffort ? { reasoning_effort: opts.reasoningEffort } : {}),
         model: opts.model,
-        max_tokens: 700,
+        max_tokens: 4000,
         messages: [
           {
             role: 'user',

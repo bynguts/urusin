@@ -149,6 +149,23 @@ describe('OpenAIProvider lewat HTTP', () => {
     expect(() => provider({ LLM_REASONING_EFFORT: 'super' })).toThrow();
   });
 
+  it('reasoning_effort per panggilan menimpa global', async () => {
+    const msg = { model: 'agen', messages: [{ role: 'user' as const, content: 'hai' }] };
+    await provider({ LLM_REASONING_EFFORT: 'low' }).create({ ...msg, reasoning_effort: 'high' });
+    expect(lastChatBody().reasoning_effort).toBe('high');
+  });
+
+  it('LLM_MAX_TOKENS_PARAM: bawaan max_tokens; max_completion_tokens mengganti nama field', async () => {
+    const msg = { model: 'agen', max_tokens: 16_000, messages: [{ role: 'user' as const, content: 'hai' }] };
+    await provider().create(msg);
+    expect(lastChatBody().max_tokens).toBe(16_000);
+    expect('max_completion_tokens' in lastChatBody()).toBe(false);
+    await provider({ LLM_MAX_TOKENS_PARAM: 'max_completion_tokens' }).create(msg);
+    expect(lastChatBody().max_completion_tokens).toBe(16_000);
+    expect('max_tokens' in lastChatBody()).toBe(false);
+    expect(() => provider({ LLM_MAX_TOKENS_PARAM: 'max_output_tokens' })).toThrow();
+  });
+
   it('create(): balasan bukan JSON maupun SSE = galat (bukan teks mentah)', async () => {
     await expect(
       provider().create({ model: 'bukan-json', messages: [{ role: 'user', content: 'hai' }] }),

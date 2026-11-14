@@ -129,7 +129,8 @@ export async function mintaJudul(
     caps: deps.caps,
     name: NAMA_SKEMA_JUDUL,
     schema: JudulSchema,
-    maxTokens: 60,
+    // Token penalaran ikut dihitung; judul tetap pendek lewat prompt + skema.
+    maxTokens: 1000,
     maxRepairs: 0,
     signal: ctrl.signal,
     messages: [

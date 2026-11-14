@@ -16,6 +16,7 @@ import {
   type CapabilityFlags,
   type ChatMessage,
   type ChatProvider,
+  type ReasoningEffort,
   type StructuredMethod,
 } from '@urusin/llm';
 import { z } from 'zod';
@@ -48,9 +49,9 @@ export const KALIMAT_TETAP = 'Keputusan ada di petugas instansi terkait.';
 const STALE_DAYS = 30;
 const MIN_QUOTE_CHARS = 12;
 export const MAX_KLAIM = 8;
-/** Batas klaim yang diminta dari model (MAX_KLAIM tetap jaring pengaman): jawaban panjang menenggelamkan warga. */
-export const KLAIM_RINGKAS = 4;
-export const MAX_KLAIM_CHARS = 400;
+/** Batas klaim yang diminta dari model (MAX_KLAIM tetap jaring pengaman); keringkasan tiap klaim dijaga prompt. */
+export const KLAIM_RINGKAS = 8;
+export const MAX_KLAIM_CHARS = 600;
 
 /** Token faktual yang harus terbukti di kutipan: angka (termasuk Rp/titik/koma), URL, dan nomor telepon. */
 const FACT_TOKEN_RE = /https?:\/\/\S+|www\.\S+|\+?\d[\d.,/-]*\d|\d/giu;
@@ -387,6 +388,8 @@ export type GroundedGenerationOptions = {
   maxTokens?: number | undefined;
   /** Foto dokumen lampiran warga belum jelas (lihat `ToolContext.catatanFoto`). */
   catatanFoto?: string | undefined;
+  /** Effort penalaran (LLM_GROUNDING_REASONING_EFFORT); kosong = global. */
+  reasoningEffort?: ReasoningEffort | undefined;
 };
 
 /** Minta model menyusun `{klaim:[{teks,kutipan:[{refId,kutipanPersis}]}]}` dari chunk yang diberikan (tanpa streaming). */
@@ -404,7 +407,7 @@ export async function generateGroundedAnswer(opts: GroundedGenerationOptions) {
         'Kamu menyusun jawaban persyaratan/prosedur layanan publik Indonesia HANYA dari sumber resmi di bawah.',
         spotlightPolicyText(),
         'Keluaran: objek JSON {klaim:[{teks, kutipan:[{refId, kutipanPersis}]}], handoff}.',
-        '- Setiap klaim = satu kalimat pendek (paling banyak ±25 kata) untuk warga, dengan Bahasa Indonesia sederhana.',
+        '- Setiap klaim = satu kalimat yang padat dan jelas untuk warga, dengan Bahasa Indonesia sederhana; satu gagasan per klaim.',
         `- Jawab HANYA yang ditanyakan warga, paling banyak ${KLAIM_RINGKAS} klaim, urut dari yang terpenting: dokumen yang wajib disiapkan, lalu kanal/cara mengajukan, lalu langkah berikutnya. Gabungkan dokumen sejenis dalam satu klaim.`,
         '- Teks klaim memakai kata sehari-hari, bukan bahasa peraturan: "petugas Disdukcapil" (bukan "pejabat pencatatan sipil"), "akta dibuatkan" (bukan "menerbitkan kutipan akta"), "lapor" (bukan "pelaporan"). Bahasa peraturan hanya di kutipanPersis.',
         '- Lewati rincian proses internal petugas (pemeriksaan berkas, SMS pemberitahuan, tanda tangan elektronik) dan kasus khusus yang tidak menyangkut warga ini, kecuali ditanyakan.',
@@ -436,7 +439,8 @@ export async function generateGroundedAnswer(opts: GroundedGenerationOptions) {
     schema: GroundedAnswerSchema,
     name: 'jawab_persyaratan',
     caps: opts.caps,
-    maxTokens: opts.maxTokens ?? 1500,
+    maxTokens: opts.maxTokens ?? 4000,
+    reasoningEffort: opts.reasoningEffort,
     signal: opts.signal,
   });
 }

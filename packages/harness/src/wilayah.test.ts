@@ -900,10 +900,11 @@ describe('temuan eval persona p12: wilayah yang sudah dibenarkan tidak ditanyaka
 });
 
 describe('temuan eval persona p17: balasan ringkas tanpa kehilangan isi wajib', () => {
-  it('prompt sistem membatasi panjang, mengikuti gaya warga, dan menjaga isi wajib', () => {
+  it('prompt sistem menyesuaikan panjang, mengikuti gaya warga, dan menjaga isi wajib', () => {
     const p = buildSystemPrompt();
-    expect(p).toMatch(/paling banyak 4 kalimat pendek atau 5 butir/);
-    expect(p).toMatch(/Ikuti gaya warga/);
+    expect(p).not.toMatch(/paling banyak 4 kalimat pendek atau 5 butir/);
+    expect(p).toMatch(/Jawab selengkap yang dibutuhkan warga: ringkas untuk hal sederhana/);
+    expect(p).toMatch(/Ikuti gaya bahasa warga/);
     expect(p).toMatch(/warga lansia dijawab dengan kata sehari-hari/);
     expect(p).toMatch(/dan tanpa kode formulir/);
     expect(p).toMatch(/formulir permohonan yang disediakan petugas \(F-1\.02\)": kodenya boleh dalam kurung/);

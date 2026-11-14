@@ -13,6 +13,7 @@ import {
   type ChatMessage,
   type ChatParams,
   type ChatProvider,
+  type ReasoningEffort,
   type Usage,
 } from '@urusin/llm';
 import { z } from 'zod';
@@ -108,18 +109,19 @@ const SUSUN_RENCANA_PARALEL =
   'Sistem sedang menyusun jawaban bersumber dari potongan di atas untuk warga. Sekarang susun rencana langkah untuk warga dengan urusan__usulkan_rencana: ringkasan satu kalimat, 1-4 langkah konkret sesuai potongan sumber resmi di atas dan kanal resmi wilayah ini (dokumen yang dibawa di "bawa"). Jangan menulis balasan teks.';
 
 export type AgentConfig = {
-  /** Batas waktu satu turn (rencana: 120 detik). */
+  /** Batas waktu satu turn (env URUSIN_TURN_TIMEOUT_MS). */
   turnTimeoutMs: number;
-  /** Batas waktu satu panggilan LLM (rencana: 60 detik + 1 retry). */
+  /** Batas waktu satu panggilan LLM, + 1 retry (env URUSIN_LLM_CALL_TIMEOUT_MS). */
   llmTimeoutMs: number;
-  /** Iterasi tool maksimum per turn (rencana: 8). */
+  /** Iterasi tool maksimum per turn (env URUSIN_AGENT_MAX_STEPS). */
   maxSteps: number;
 };
 
+/** Model bernalar effort tinggi: satu panggilan bisa 30-90 detik (probe proxy: ~50 detik untuk jawaban panjang). */
 export const DEFAULT_AGENT_CONFIG: AgentConfig = {
-  turnTimeoutMs: 120_000,
-  llmTimeoutMs: 60_000,
-  maxSteps: 8,
+  turnTimeoutMs: 300_000,
+  llmTimeoutMs: 180_000,
+  maxSteps: 12,
 };
 
 export type AgentDeps = {
@@ -147,6 +149,10 @@ export type AgentDeps = {
   cariWeb?: LayananCariWeb | undefined;
   /** Model pembaca gambar lampiran chat (env LLM_VISION_MODEL); tanpa ini agen berterus terang belum bisa membaca. */
   visionModel?: string | undefined;
+  /** `reasoning_effort` panggilan utama agen (LLM_AGENT_REASONING_EFFORT); menimpa global. */
+  reasoningEffort?: ReasoningEffort | undefined;
+  /** `reasoning_effort` jawaban bersumber + pembaca gambar (LLM_GROUNDING_REASONING_EFFORT). */
+  reasoningEffortJawaban?: ReasoningEffort | undefined;
 };
 
 export type TurnOutcome = {
@@ -266,8 +272,7 @@ function toErrorEvent(err: unknown): EventPayload & { type: 'error' } {
   return mk('LLM_FAILED', 'Layanan AI sedang bermasalah. Silakan coba lagi.', true);
 }
 
-const ULANG_RINGKAS =
-  'Balasanmu tadi terpotong karena terlalu panjang. Sekarang panggil tool yang tepat, atau balas SANGAT singkat (paling banyak 3 kalimat pendek).';
+const ULANG_RINGKAS = 'Balasanmu terpotong; lanjutkan dengan tool yang tepat atau balasan yang lebih padat.';
 
 /** Sisipkan instruksi sebelum pesan terakhir (pesan pengguna tetap terakhir). */
 function withInstruction(messages: ChatMessage[], instruction: ChatMessage): ChatMessage[] {
@@ -448,6 +453,7 @@ class TurnRunner {
       ingatanAktif: this.ingatan !== null,
       ingatanBaru: this.ingatanBaru,
       pendamping: statusPendamping(this.store, this.turn.urusanId),
+      now: this.now(),
     });
   }
 
@@ -582,6 +588,7 @@ class TurnRunner {
       gambar: this.turn.gambar,
       pertanyaan: this.teksWarga,
       signal: this.llmSignal(),
+      reasoningEffort: this.deps.reasoningEffortJawaban,
     });
     if (hasil.usage.length) this.account(hasil.usage);
     const peringatan = hasil.ok && hasil.foto ? peringatanFoto(hasil.foto) : null;
@@ -780,6 +787,7 @@ class TurnRunner {
     try {
       completion = await this.callLlm(
         {
+          ...(this.deps.reasoningEffort ? { reasoning_effort: this.deps.reasoningEffort } : {}),
           model: this.deps.model,
           max_tokens: q.maxTokens,
           messages: [
@@ -944,6 +952,7 @@ class TurnRunner {
       paksaRencana = false;
       try {
         completion = await this.callLlm({
+          ...(this.deps.reasoningEffort ? { reasoning_effort: this.deps.reasoningEffort } : {}),
           model: this.deps.model,
           max_tokens: maxTokens,
           // Instruksi rencana ditaruh paling akhir: menyisipkannya sebelum hasil tool memisahkan grup tool_calls.
@@ -1091,7 +1100,8 @@ class TurnRunner {
   private sanitizeOutput(text: string): string {
     // eslint-disable-next-line no-control-regex -- membuang karakter kontrol dari teks model
     const clean = text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
-    return this.turn.pii.redact(clean.slice(0, 4000)).text.trim();
+    // Jaring pengaman ukuran saja (±16 rb token keluaran); panjang jawaban diatur prompt, bukan potongan.
+    return this.turn.pii.redact(clean.slice(0, 64_000)).text.trim();
   }
 
   /** Satu-satunya jalur eksekusi tool (normal maupun degraded): selalu lewat policy gate. */
@@ -1192,6 +1202,7 @@ class TurnRunner {
         ragSearch: this.deps.ragSearch,
         cacheJawaban: this.deps.cacheJawaban,
         cariWeb: this.deps.cariWeb,
+        reasoningEffortJawaban: this.deps.reasoningEffortJawaban,
         now: this.now,
       },
       nonce: this.nonce,

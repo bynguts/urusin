@@ -26,11 +26,31 @@ describe('konfigurasi dari env', () => {
     expect(c).toMatchObject({
       baseURL: 'https://llm.example.com/v1',
       models: { agent: 'agen', vision: 'visi', transcribe: undefined },
-      timeoutMs: 60_000,
+      timeoutMs: 180_000,
       maxRetries: 2,
       prices: { inputPerMTok: 0.5, outputPerMTok: 1.5, audioPerMin: 0.006 },
       forcedOff: [],
+      reasoningEffort: undefined,
+      agentReasoningEffort: 'high',
+      groundingReasoningEffort: 'medium',
+      maxTokensParam: 'max_tokens',
     });
+  });
+  it('effort penalaran per peran dari env (bawaan agen high, jawaban bersumber medium)', () => {
+    const c = loadLlmConfig({
+      ...ENV,
+      LLM_REASONING_EFFORT: 'low',
+      LLM_AGENT_REASONING_EFFORT: 'Medium',
+      LLM_GROUNDING_REASONING_EFFORT: 'low',
+      LLM_TIMEOUT_MS: '240000',
+    });
+    expect(c).toMatchObject({
+      reasoningEffort: 'low',
+      agentReasoningEffort: 'medium',
+      groundingReasoningEffort: 'low',
+      timeoutMs: 240_000,
+    });
+    expect(() => loadLlmConfig({ ...ENV, LLM_AGENT_REASONING_EFFORT: 'maksimal' })).toThrow();
   });
   it('LLM_FORCE_NO_* mematikan kapabilitas', () => {
     const c = loadLlmConfig({

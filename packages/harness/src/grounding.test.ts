@@ -398,7 +398,7 @@ describe('temuan 4: fakta di klaim harus terbukti di kutipan', () => {
 
   it('klaim terlalu panjang dan jumlah klaim berlebih dipangkas', () => {
     const q = { refId: 'c1', kutipanPersis: 'Biaya pembuatan akta kelahiran Rp 0' };
-    const panjang = { teks: 'Biaya pembuatan akta kelahiran ' + 'x'.repeat(500), kutipan: [q] };
+    const panjang = { teks: 'Biaya pembuatan akta kelahiran ' + 'x'.repeat(700), kutipan: [q] };
     expect(verifyGrounded({ klaim: [panjang] }, [c], {}, NOW).klaim).toEqual([]);
     const banyak = {
       klaim: Array.from({ length: 12 }, () => ({ teks: 'Biaya akta kelahiran gratis', kutipan: [q] })),
