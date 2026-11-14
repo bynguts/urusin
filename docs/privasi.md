@@ -63,7 +63,7 @@ server itu; untuk situs seperti ini Urusin memandu Anda mengisi sendiri langkah 
 | OpenAI (model GPT)            | Di luar Indonesia | Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti penanda sebelum dikirim. Gambar yang Anda lampirkan di chat atau foto yang Anda simpan di Dokumen (salinan diperkecil) untuk dibaca isinya dan diperiksa kejelasannya |
 | Exa (pencarian web)           | Amerika Serikat   | Istilah pencarian umum, hanya bila sumber resmi yang tersimpan di Urusin belum cukup (situs `.go.id` lebih dulu). Kueri yang memuat NIK, KK, HP, email, atau data diri tidak pernah dikirim                                                                         |
 
-Pencarian sumber resmi (pencarian kata kunci) berjalan di server Urusin sendiri; pencarian web Exa hanya
+Pencarian sumber resmi (kata kunci dan vektor) berjalan di server Urusin sendiri; pencarian web Exa hanya
 cadangan. Urusin saat ini tidak mengirim email dan tidak memakai layanan anti-bot pihak ketiga; bila salah
 satunya kelak diaktifkan, pihaknya dicantumkan di sini lebih dulu.
 

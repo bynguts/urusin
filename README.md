@@ -85,8 +85,8 @@ Semua fitur di bawah sudah berjalan di <https://urusinai.web.id>.
   - Jawaban dialirkan bertahap (SSE). Pertanyaan di luar urusan layanan publik ditolak dengan sopan
     (_guardrail_ di luar topik).
 - **Jawaban bersumber resmi.**
-  - Pencarian kata kunci (BM25 + glosarium istilah warga) atas korpus halaman resmi Dukcapil, Disdukcapil
-    daerah, dan regulasi, di server Urusin sendiri.
+  - Pencarian hibrida (kata kunci BM25 + glosarium istilah warga, digabung vektor EmbeddingGemma) atas korpus
+    halaman resmi Dukcapil, Disdukcapil daerah, dan regulasi, seluruhnya di server Urusin sendiri.
   - Bila korpus belum cukup, agen memakai pencarian web Exa sebagai cadangan: situs resmi `.go.id` lebih dulu,
     istilah umum saja (kueri yang memuat NIK, KK, HP, atau email tidak pernah dikirim).
   - Setiap klaim membawa kutipan yang diverifikasi terhadap potongan sumbernya; chip kutipan membuka halaman
@@ -129,9 +129,9 @@ Semua fitur di bawah sudah berjalan di <https://urusinai.web.id>.
 | Bahasa dan monorepo  | TypeScript (strict), Node.js 26, pnpm 11, Turborepo                                                                          |
 | Web (UI + API)       | SvelteKit 3 + Svelte 5, `@sveltejs/adapter-node`, Vite 8, Tailwind CSS 4                                                     |
 | Agen AI              | Harness buatan sendiri di atas Chat Completions (`@urusin/harness`): state machine urusan, tool bertipe zod, policy gate     |
-| AI                   | OpenAI (model GPT) lewat SDK resmi `openai`; EmbeddingGemma-300M self-hosted (llama.cpp) untuk mengenali jenis urusan        |
+| AI                   | OpenAI (model GPT) lewat SDK resmi `openai`; EmbeddingGemma-300M self-hosted (llama.cpp) untuk jenis urusan dan pencarian    |
 | Browser Pendamping   | Chromium via Playwright, screencast CDP → WebSocket → `<canvas>`; adapter situs (Step DSL) dan Navigator generik             |
-| Basis data           | SQLite (`better-sqlite3`, mode WAL); pencarian BM25 lewat FTS5                                                               |
+| Basis data           | SQLite (`better-sqlite3`, mode WAL); BM25 lewat FTS5 + vektor 768 dimensi, digabung RRF                                      |
 | Kriptografi dan akun | `node:crypto` (argon2id, AES-256-GCM, HKDF), `jose` (verifikasi ID token Google OIDC)                                        |
 | Validasi dan kontrak | zod 4, `@urusin/contracts` (skema event SSE dan endpoint)                                                                    |
 | HTTP keluar          | `undici` dengan allowlist host (`@urusin/egress`): semua panggilan keluar server lewat satu pintu                            |
@@ -172,8 +172,8 @@ flowchart LR
 
 **Alur satu urusan:**
 
-1. Warga bercerita. Agen menentukan layanan dan daerah, lalu mencari syarat di korpus sumber resmi (BM25, di
-   server Urusin sendiri; cadangan pencarian web Exa ke situs resmi bila korpus belum cukup).
+1. Warga bercerita. Agen menentukan layanan dan daerah, lalu mencari syarat di korpus sumber resmi (BM25 +
+   vektor, di server Urusin sendiri; cadangan pencarian web Exa ke situs resmi bila korpus belum cukup).
 2. Sebelum teks dikirim ke model, NIK, KK, nomor HP, dan email diganti penanda seperti `{{PEMOHON.NIK}}`. Teks
    dari halaman web dan hasil tool masuk ke prompt sebagai data tak tepercaya. Guard `noPlaceholder()` dan policy
    gate menolak parameter tool yang memuat PII atau aksi di luar tahap urusan.
@@ -295,13 +295,13 @@ dibagikan.
 
 ### AI di dalam produk
 
-| Bagian produk                                    | Layanan / model                                                                                   |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| Agen percakapan: niat, rencana, pemanggilan tool | OpenAI (model GPT) lewat gateway `@urusin/llm` (SDK `openai`)                                     |
-| Pemeriksaan foto dokumen dan lampiran chat       | OpenAI (model GPT, multimodal); salinan gambar diperkecil, PDF tidak dikirim                      |
-| Navigator Browser Pendamping                     | OpenAI (model GPT) memetakan kolom formulir ke penanda data; nilai asli diisi server dari brankas |
-| Pengenalan jenis urusan (cepat)                  | Embedding open-source EmbeddingGemma-300M self-hosted (llama.cpp) di server Urusin                |
-| Pencarian sumber resmi                           | BM25 di server Urusin; cadangan pencarian web Exa (istilah umum, situs `.go.id` lebih dulu)       |
+| Bagian produk                                    | Layanan / model                                                                                      |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| Agen percakapan: niat, rencana, pemanggilan tool | OpenAI (model GPT) lewat gateway `@urusin/llm` (SDK `openai`)                                        |
+| Pemeriksaan foto dokumen dan lampiran chat       | OpenAI (model GPT, multimodal); salinan gambar diperkecil, PDF tidak dikirim                         |
+| Navigator Browser Pendamping                     | OpenAI (model GPT) memetakan kolom formulir ke penanda data; nilai asli diisi server dari brankas    |
+| Jenis urusan dan pencarian vektor                | Embedding open-source EmbeddingGemma-300M self-hosted (llama.cpp) di server Urusin                   |
+| Pencarian sumber resmi                           | BM25 + vektor di server Urusin; cadangan pencarian web Exa (istilah umum, situs `.go.id` lebih dulu) |
 
 - **Model tidak pernah menerima NIK, KK, nomor HP, atau email.** Semuanya diganti penanda sebelum dikirim, dan
   hasil bacaan gambar disaring lagi sebelum masuk konteks agen.
