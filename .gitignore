@@ -45,6 +45,8 @@ recon/
 # Konfigurasi asisten AI: hanya aturan bersama (settings.json) yang di-commit, bukan setelan lokal.
 .claude/*
 !.claude/settings.json
+# Design system lokal (dibaca alat desain lokal, tidak di-commit)
+DESIGN.md
 # Sisa merge/patch dan cadangan editor
 *.orig
 *.rej

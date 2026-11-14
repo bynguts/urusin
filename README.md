@@ -337,7 +337,7 @@ dibagikan.
   - Kontak Disdukcapil: `data/wilayah/kontak-dukcapil.json`, dengan URL sumber per entri.
   - Glosarium istilah: `data/glossary/`, merujuk sumber di `data/sources.json`.
 - **Aset desain:** desain UI, token, ilustrasi maskot, dan logo dibuat oleh Rafi Cahya Mahardika di pen.dev; font
-  Strawberry Sans sebagai bagian design system tim ([`DESIGN.md`](DESIGN.md)).
+  Strawberry Sans sebagai bagian design system tim.
 - **Pustaka sumber terbuka utama:** SvelteKit, Svelte, Vite, Tailwind CSS, Playwright, Hono, better-sqlite3, zod,
   `openai` (SDK resmi), jose, undici, llama.cpp (MIT), Turborepo, Vitest, ESLint, Prettier, commitlint, husky. Versi
   lengkap ada di `pnpm-lock.yaml`.
@@ -421,8 +421,6 @@ Batasan yang kami tulis apa adanya:
 - [Kebijakan keamanan](SECURITY.md) (Indonesia dan English)
 - [Architecture Decision Records](docs/adr/README.md) (riwayat keputusan; ADR lama yang sudah digantikan tetap
   disimpan sebagai catatan)
-- [Design system](DESIGN.md)
-- [Panduan kontribusi](CONTRIBUTING.md)
 - [Deploy di server](deploy/README.md)
 - [Kontrak API/SSE](packages/contracts/README.md)
 

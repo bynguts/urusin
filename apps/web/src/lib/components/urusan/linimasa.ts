@@ -223,7 +223,7 @@ const LABEL_ALAT: Record<string, string> = {
 /** Label progres umum; gelembung mengetik cukup menampilkan tiga titik (teks ini hanya untuk pembaca layar). */
 export const LABEL_UMUM_PROGRES = 'Urusin sedang bekerja…';
 
-/** Label progres tanpa nama teknis tool (DESIGN.md: jangan tampilkan penanda teknis). */
+/** Label progres tanpa nama teknis tool (design system tim: jangan tampilkan penanda teknis). */
 export function labelProgres(label: string | null, toolName?: string): string {
   if (toolName && LABEL_ALAT[toolName]) return LABEL_ALAT[toolName]!;
   if (!label) return LABEL_UMUM_PROGRES;

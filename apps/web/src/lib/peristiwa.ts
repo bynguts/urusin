@@ -10,7 +10,7 @@ import avatarAmber from '#lib/assets/img/avatar-amber.webp';
 
 export type IconName = 'kelahiran' | 'kematian' | 'perkawinan' | 'pindah' | 'lainnya';
 
-/** Warna pendamping (DESIGN.md: satu warna per pendamping, jangan dicampur). */
+/** Warna pendamping (design system tim: satu warna per pendamping, jangan dicampur). */
 export type Warna = 'mawar' | 'daun' | 'ungu' | 'biru' | 'kuning';
 
 export type Peristiwa = {
