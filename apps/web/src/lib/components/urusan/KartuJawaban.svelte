@@ -3,6 +3,7 @@
   import { tanggal } from '#lib/urusan-status.js';
   import ChipSumber from './ChipSumber.svelte';
   import TeksBertaut from '../ui/TeksBertaut.svelte';
+  import TeksKaya from '../ui/TeksKaya.svelte';
   import { unikPerRef } from './linimasa.js';
 
   /**
@@ -11,10 +12,20 @@
    */
   let {
     jawaban,
+    balasan,
+    ketik = false,
+    ontumbuh,
     nomorKutipan,
     onpilih,
   }: {
     jawaban: EventOf<'grounded_answer'>;
+    /**
+     * Balasan akhir giliran yang sama (satu jawaban per giliran): menjadi isi pesan, klaim tidak lagi didaftar
+     * dan sumbernya tetap tampil sebagai chip di bawahnya.
+     */
+    balasan?: string | undefined;
+    ketik?: boolean;
+    ontumbuh?: (() => void) | undefined;
     /** refId → nomor global di panel Sumber. */
     nomorKutipan: Map<string, number>;
     onpilih?: ((refId: string) => void) | undefined;
@@ -24,20 +35,24 @@
 </script>
 
 <div class="flex flex-col gap-3">
-  {#each jawaban.klaim as k, i (i)}
-    <p>
-      <TeksBertaut teks={k.teks} />
-      {#each unikPerRef(k.kutipan) as q (q.refId)}
-        <button
-          type="button"
-          onclick={() => onpilih?.(q.refId)}
-          class="relative ml-1.5 inline-grid size-5 place-items-center rounded-md bg-primer align-[0.1em] text-xs leading-3 font-semibold text-primer-ink before:absolute before:-inset-3 before:content-['']"
-          aria-label="Lihat sumber {nomorKutipan.get(q.refId) ?? ''}: {q.judul}"
-          >{nomorKutipan.get(q.refId) ?? '•'}</button
-        >
-      {/each}
-    </p>
-  {/each}
+  {#if balasan}
+    <TeksKaya teks={balasan} {ketik} {ontumbuh} />
+  {:else}
+    {#each jawaban.klaim as k, i (i)}
+      <p>
+        <TeksBertaut teks={k.teks} />
+        {#each unikPerRef(k.kutipan) as q (q.refId)}
+          <button
+            type="button"
+            onclick={() => onpilih?.(q.refId)}
+            class="relative ml-1.5 inline-grid size-5 place-items-center rounded-md bg-primer align-[0.1em] text-xs leading-3 font-semibold text-primer-ink before:absolute before:-inset-3 before:content-['']"
+            aria-label="Lihat sumber {nomorKutipan.get(q.refId) ?? ''}: {q.judul}"
+            >{nomorKutipan.get(q.refId) ?? '•'}</button
+          >
+        {/each}
+      </p>
+    {/each}
+  {/if}
   {#if kutipanUnik.length}
     <div class="flex flex-wrap gap-2">
       {#each kutipanUnik as q (q.refId)}

@@ -26,6 +26,11 @@
   // Halaman Web publik berdesain landing dan rute auth tampil tanpa kerangka aplikasi.
   const polos = $derived(rutWeb(page.url.pathname) || rutAuth(page.url.pathname));
   const akun = $derived(page.data.akun as { email: string } | null | undefined);
+  // Perangkat bersama: daftar urusan pemakai sebelumnya dibuang sebelum halaman anak membacanya (sekali saat
+  // dimuat, lalu tiap kali akun berganti tanpa muat ulang halaman).
+  const penanda = () => (page.data.akun as { penanda?: string } | null | undefined)?.penanda ?? null;
+  lokal.sesuaikanPemilik(penanda());
+  $effect.pre(() => lokal.sesuaikanPemilik(penanda()));
   // Halaman satu urusan di HP = layar obrolan (seperti aplikasi chat): komposer menempel di dasar layar, jadi
   // tanpa navigasi bawah dan tanpa ruang cadangannya. Menu tetap tersedia lewat tombol menu di bilah atas.
   const rutPercakapan = $derived(/^\/urusan\/[^/]+\/?$/.test(page.url.pathname));

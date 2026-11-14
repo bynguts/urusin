@@ -127,6 +127,10 @@ export const RingkasanUrusanSchema = z.object({
   judul: z.string().min(1).max(80).optional(),
   /** true = judul diganti warga sendiri; AI tidak pernah menimpanya. */
   judulManual: z.boolean().optional(),
+  /** Jenis urusan (slug peristiwa) bila sudah diketahui: ikon daftar untuk urusan yang belum tercatat di perangkat. */
+  jenis: z.string().min(1).max(40).optional(),
+  /** true = sudah ada jawaban tetapi rencana belum disusun (pertanyaan umum/di luar cakupan), tanpa giliran berjalan. */
+  dijawab: z.boolean().optional(),
 });
 export const DaftarUrusanResponseSchema = z.object({ urusan: z.array(RingkasanUrusanSchema) });
 

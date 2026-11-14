@@ -271,6 +271,57 @@ describe('GET /api/urusan (daftar untuk /lacak)', () => {
     const many = Array.from({ length: 51 }, (_, i) => `u_${i.toString(16).padStart(32, 'a')}`).join(',');
     expect((await daftarUrusan(ev(get(`/api/urusan?ids=${many}`)))).status).toBe(422);
   });
+  it('dijawab: giliran selesai tanpa rencana (BARU/MEMAHAMI) → true; belum ada giliran → tidak ada', async () => {
+    const a = await kosong();
+    const b = await kosong();
+    rt.store.db.prepare('UPDATE urusan SET turn_count = 1 WHERE id = ?').run(a);
+    const j = await (await daftarUrusan(ev(get(`/api/urusan?ids=${a},${b}`)))).json();
+    const peta = Object.fromEntries(j.urusan.map((x: any) => [x.id, x]));
+    expect(peta[a].dijawab).toBe(true);
+    expect(peta[b]).not.toHaveProperty('dijawab');
+    expect(SKEMA_FIXTURE.daftar_urusan.safeParse(j).success).toBe(true);
+  });
+  it('?milik=1: akun yang masuk mendapat urusannya sendiri tanpa ids; akun lain dan tamu tidak', async () => {
+    const sebagai = (locals: App.Locals, path: string, request = get(path)) =>
+      ({
+        request,
+        params: {},
+        url: new URL(request.url),
+        locals,
+        getClientAddress: () => '127.0.0.1',
+      }) as never;
+    const pemilik = rt.akun.buatDemo({ ip: '10.0.0.1' }).akun;
+    const lain = rt.akun.buatDemo({ ip: '10.0.0.2' }).akun;
+    const buat = async (locals: App.Locals, body: unknown) =>
+      ((await (await buatUrusan(sebagai(locals, '/x', post(body)))).json()) as { id: string }).id;
+    const milikA = await buat({ sid: 'sid-hp', akun: pemilik }, { peristiwa: 'kelahiran' });
+    const milikLain = await buat({ sid: 'sid-lain', akun: lain }, {});
+    const tamu = await kosong(); // pemilik: sid-uji (tamu)
+    // Peramban baru setelah keluar-masuk: sid lain, daftar perangkat kosong.
+    const j = await (
+      await daftarUrusan(sebagai({ sid: 'sid-baru', akun: pemilik }, '/api/urusan?milik=1'))
+    ).json();
+    expect(j.urusan.map((x: any) => x.id)).toEqual([milikA]);
+    expect(j.urusan[0].jenis).toBe('kelahiran');
+    expect(SKEMA_FIXTURE.daftar_urusan.safeParse(j).success).toBe(true);
+    // Id milik orang lain yang disebut tetap diabaikan, walau ?milik=1.
+    const campur = await (
+      await daftarUrusan(
+        sebagai({ sid: 'sid-baru', akun: pemilik }, `/api/urusan?milik=1&ids=${milikLain},${tamu}`),
+      )
+    ).json();
+    expect(campur.urusan.map((x: any) => x.id)).toEqual([milikA]);
+    // Tamu (cookie sesi saja): ?milik=1 tidak menambah apa pun.
+    expect(await (await daftarUrusan(sebagai({ sid: 'sid-uji' }, '/api/urusan?milik=1'))).json()).toEqual({
+      urusan: [],
+    });
+    // Tanpa ?milik=1 perilaku lama: hanya ids yang disebut.
+    expect(
+      await (await daftarUrusan(sebagai({ sid: 'sid-baru', akun: pemilik }, '/api/urusan'))).json(),
+    ).toEqual({
+      urusan: [],
+    });
+  });
 });
 
 describe('pemilik urusan: id saja tidak cukup', () => {

@@ -882,7 +882,14 @@
                   >
                 {:else if it.jenis === 'jawaban'}
                   <PesanAgen avatar={p.avatar}>
-                    <KartuJawaban jawaban={it.e} {nomorKutipan} onpilih={pilihSumber} />
+                    <KartuJawaban
+                      jawaban={it.e}
+                      balasan={it.balasan}
+                      ketik={baru(it.key)}
+                      ontumbuh={ikutiBawah}
+                      {nomorKutipan}
+                      onpilih={pilihSumber}
+                    />
                   </PesanAgen>
                 {:else if it.jenis === 'handoff'}
                   <PesanAgen avatar={p.avatar}><KartuHandoff handoff={it.e} /></PesanAgen>

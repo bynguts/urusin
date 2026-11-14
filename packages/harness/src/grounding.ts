@@ -410,6 +410,7 @@ export async function generateGroundedAnswer(opts: GroundedGenerationOptions) {
         '- Setiap klaim = satu kalimat yang padat dan jelas untuk warga, dengan Bahasa Indonesia sederhana; satu gagasan per klaim.',
         `- Jawab HANYA yang ditanyakan warga, paling banyak ${KLAIM_RINGKAS} klaim, urut dari yang terpenting: dokumen yang wajib disiapkan, lalu kanal/cara mengajukan, lalu langkah berikutnya. Gabungkan dokumen sejenis dalam satu klaim.`,
         '- Teks klaim memakai kata sehari-hari, bukan bahasa peraturan: "petugas Disdukcapil" (bukan "pejabat pencatatan sipil"), "akta dibuatkan" (bukan "menerbitkan kutipan akta"), "lapor" (bukan "pelaporan"). Bahasa peraturan hanya di kutipanPersis.',
+        '- Sumber memuat syarat untuk beberapa keadaan (mis. KTP-el rusak vs hilang)? Klaim hanya untuk keadaan warga, dan setiap syarat disebut bersama keadaannya (mis. "Bila KTP-el hilang, ..."); jangan menerapkan syarat keadaan lain ke warga.',
         '- Lewati rincian proses internal petugas (pemeriksaan berkas, SMS pemberitahuan, tanda tangan elektronik) dan kasus khusus yang tidak menyangkut warga ini, kecuali ditanyakan.',
         '- kutipanPersis HARUS salinan kata per kata dari sumber (boleh tanpa tanda "' +
           DATAMARK +

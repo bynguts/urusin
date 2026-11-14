@@ -224,6 +224,20 @@ export function infoStatus(state: UrusanState | null | undefined): InfoStatus {
   return state ? PETA[state] : PETA.BARU;
 }
 
+/** Sudah dijawab tanpa rencana (pertanyaan umum, di luar cakupan): status netral, bukan "AI menyusun rencana". */
+const DIJAWAB: InfoStatus = {
+  label: 'Sudah dijawab',
+  nada: 'netral',
+  langkah: 0,
+  aksi: 'Buka',
+  kelompok: 'lainnya',
+};
+
+/** Status kartu daftar dari ringkasan server (`dijawab` = jawaban ada, rencana belum disusun). */
+export function infoRingkasan(r: { state: UrusanState; dijawab?: boolean } | null | undefined): InfoStatus {
+  return r?.dijawab ? DIJAWAB : infoStatus(r?.state);
+}
+
 /** Empat fase perjalanan urusan di Ringkasan (frame uCOBS: "Langkah 2 dari 4 · Siapkan dokumen"). */
 export const FASE = [
   { judul: 'Kenali kebutuhan', ket: 'Ceritakan kebutuhan Anda, lalu kita tentukan layanan yang sesuai.' },

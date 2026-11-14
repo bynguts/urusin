@@ -59,6 +59,48 @@ describe('DaftarUrusan: pemuatan yang terputus', () => {
   });
 });
 
+describe('DaftarUrusan: akun yang masuk (milik)', () => {
+  it('daftar perangkat kosong setelah keluar-masuk: urusan akun dari server tampil dan dicatat', async () => {
+    const url: string[] = [];
+    const d = new DaftarUrusan((async (u: string) => {
+      url.push(u);
+      return Response.json({
+        urusan: [
+          { id: catatan.id, state: 'MEMAHAMI', jenis: 'ktp', dibuatPada: '2026-11-10T00:00:00Z' },
+          {
+            id: `u_${'c'.repeat(32)}`,
+            state: 'TERKIRIM',
+            judul: 'Ganti KTP rusak',
+            dibuatPada: '2026-11-12T00:00:00Z',
+          },
+        ],
+      });
+    }) as typeof fetch);
+    let baru: string[] = [];
+    d.onbaru = (b) => (baru = b.map((c) => c.judul));
+    await d.muat([], { milik: true });
+    expect(url).toEqual(['/api/urusan?ids=&milik=1']);
+    expect(d.isi.map((u) => [u.judul, u.peristiwa, u.ringkasan?.state])).toEqual([
+      ['Ganti KTP rusak', null, 'TERKIRIM'],
+      ['KTP elektronik', 'ktp', 'MEMAHAMI'],
+    ]);
+    expect(baru).toEqual(['KTP elektronik', 'Ganti KTP rusak']);
+  });
+
+  it('catatan perangkat milik akun lain tidak ditampilkan (judulnya tidak bocor) dan dibuang', async () => {
+    const lain = { ...catatan, id: `u_${'b'.repeat(32)}`, judul: 'Urusan akun sebelumnya' };
+    const d = new DaftarUrusan((async () =>
+      Response.json({
+        urusan: [{ id: catatan.id, state: 'TERKIRIM', dibuatPada: catatan.dibuatPada }],
+      })) as typeof fetch);
+    let hilang: string[] = [];
+    d.onhilang = (ids) => (hilang = ids);
+    await d.muat([catatan, lain], { milik: true });
+    expect(d.isi.map((u) => u.id)).toEqual([catatan.id]);
+    expect(hilang).toEqual([lain.id]);
+  });
+});
+
 describe('DaftarUrusan: permintaan menggantung', () => {
   it('berakhir sebagai galat setelah batas tunggu, tidak "Memuat status…" selamanya', async () => {
     const d = new DaftarUrusan(

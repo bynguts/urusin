@@ -69,16 +69,38 @@ describe('sesudah jawaban bersumber model tetap bicara, angka tanpa sumber dibua
     const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
     const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Bagaimana cara ganti KTP-el rusak?' });
     expect(out.status).toBe('selesai');
-    const tipe = out.events.map((e) => e.type);
-    expect(tipe.indexOf('assistant_text')).toBeGreaterThan(tipe.indexOf('grounded_answer'));
-    const teks = of(out.events, 'assistant_text')
-      .map((e) => e.delta)
-      .join('');
+    // Satu jawaban per giliran: balasan akhir model menjadi isi jawaban bersumber, tanpa pesan teks kedua.
+    expect(of(out.events, 'assistant_text')).toEqual([]);
+    const jawaban = of(out.events, 'grounded_answer');
+    expect(jawaban).toHaveLength(1);
+    expect(jawaban[0]!.klaim[0]!.teks).toBe('Bawa KTP-el yang rusak dan isi formulir dari petugas.');
+    const teks = jawaban[0]!.balasan ?? '';
     expect(teks).toContain('Datang ke Disdukcapil dengan KTP-el yang rusak.');
     expect(teks).toContain('selesai dalam 1 hari kerja');
     expect(teks).not.toContain('50.000');
-    // Hasil tool jawaban meminta model melanjutkan, bukan diam.
-    expect(JSON.stringify(creates(provider).at(-1)!.messages)).toContain('JAWABAN BERSUMBER SUDAH TAMPIL');
+    // Hasil tool jawaban meminta model melanjutkan dengan satu balasan akhir, bukan diam.
+    expect(JSON.stringify(creates(provider).at(-1)!.messages)).toContain('SATU balasan akhir');
+  });
+
+  it('model tidak menulis balasan lagi: jawaban bersumber terbit apa adanya, tetap satu', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        tool('rag__cari_pengetahuan', { query: 'ganti KTP-el rusak' }),
+        tool('urusan__jawab_persyaratan', { pertanyaan: 'Bagaimana cara ganti KTP-el rusak?' }),
+        jawabanSah(),
+        fakeCompletion({ content: '' }),
+      ],
+    });
+    const env = makeEnv({ provider, ragDb: ragKtp() });
+    const u = buatUrusanTerwilayah(env.store, { kodeKabKota: '3312', jenis: 'akta' });
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Bagaimana cara ganti KTP-el rusak?' });
+    expect(of(out.events, 'assistant_text')).toEqual([]);
+    const jawaban = of(out.events, 'grounded_answer');
+    expect(jawaban).toHaveLength(1);
+    expect(jawaban[0]).not.toHaveProperty('balasan');
+    // Terbit sebelum `done` giliran ini.
+    const tipe = out.events.map((e) => e.type);
+    expect(tipe.indexOf('grounded_answer')).toBeLessThan(tipe.indexOf('done'));
   });
 
   it('saringFakta: nomor daftar bukan fakta, URL tanpa sumber dibuang, baris kosong hilang', () => {

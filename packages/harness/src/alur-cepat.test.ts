@@ -150,7 +150,9 @@ describe('alur cepat sampai rencana', () => {
     expect(creates(provider)[1]!.response_format).toMatchObject({ type: 'json_schema' });
     const urutan = out.events.map((e) => e.type);
     expect(urutan.indexOf('plan_card')).toBeLessThan(urutan.indexOf('grounded_answer'));
-    expect(urutan.lastIndexOf('assistant_text')).toBeGreaterThan(urutan.indexOf('grounded_answer'));
+    // Satu jawaban per giliran: balasan model menjadi isi jawaban bersumber, bukan pesan teks kedua.
+    expect(urutan).not.toContain('assistant_text');
+    expect(of(out.events, 'grounded_answer')[0]!.balasan).toBeTruthy();
     expect(of(out.events, 'policy_gate')).toHaveLength(0);
     expect(env.store.getUrusanOrThrow(u.id)).toMatchObject({ jenis: 'ktp', state: 'RENCANA_DIUSULKAN' });
     expect(wilayahUrusan(env.store, env.store.getUrusanOrThrow(u.id)).ktp?.kodeKabKota).toBe('3312');

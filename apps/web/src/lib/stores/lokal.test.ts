@@ -110,6 +110,57 @@ describe('LokalStore', () => {
     expect(kueWilayah('34;x', false)).toBe('urusin_wilayah=; Path=/; Max-Age=0; SameSite=Lax');
   });
 
+  it('perangkat bersama: akun lain atau sesudah keluar → daftar, pesan, dan wilayah sebelumnya dibuang', () => {
+    const A = 'a'.repeat(16);
+    const B = 'b'.repeat(16);
+    const tulis: (string | null)[] = [];
+    const g = gudang();
+    const s = new LokalStore(g, (k) => void tulis.push(k));
+    // Tamu → masuk: daftar tamu tetap (urusan tamu ikut pindah ke akun).
+    s.catatUrusan({ id: ID, judul: 'KTP rusak', peristiwa: null, dibuatPada: 'a' });
+    s.sesuaikanPemilik(A);
+    expect([s.data.urusan.length, s.data.pemilik]).toEqual([1, A]);
+    // Akun A → akun B di peramban yang sama: judul, pesan, dan wilayah A tidak terlihat lagi.
+    s.catatPesan(ID, { teks: 'rahasia A', setelahSeq: 1 });
+    s.aturWilayah({ kodeKabKota: '3404', nama: 'Kab. Sleman' });
+    s.atur('kontrasTinggi', true);
+    s.sesuaikanPemilik(B);
+    expect([s.data.urusan, s.data.wilayah, s.data.pemilik]).toEqual([[], null, B]);
+    expect(s.pesanWarga(ID)).toEqual([]);
+    expect(s.data.kontrasTinggi).toBe(true); // pilihan tampilan perangkat tetap
+    expect(tulis.at(-1)).toBeNull();
+    expect(new LokalStore(g).data.pemilik).toBe(B);
+    // Akun B keluar (sesi habis/tanpa tombol Keluar): tamu berikutnya juga tidak melihat daftar B.
+    s.catatUrusan({ id: ID2, judul: 'Akta B', peristiwa: null, dibuatPada: 'b' });
+    s.sesuaikanPemilik(null);
+    expect([s.data.urusan, s.data.pemilik]).toEqual([[], null]);
+    // Penanda yang sama: tidak mengubah apa pun.
+    s.catatUrusan({ id: ID, judul: 'Tamu', peristiwa: null, dibuatPada: 'c' });
+    s.sesuaikanPemilik(null);
+    expect(s.data.urusan.length).toBe(1);
+    expect(bersihkanLokal({ pemilik: 'bukan penanda' }).pemilik).toBeNull();
+  });
+
+  it('gabungUrusan menambah urusan akun dari server (terbaru dulu); buangUrusan membuang beserta pesannya', () => {
+    const g = gudang();
+    const s = new LokalStore(g);
+    s.catatUrusan({ id: ID, judul: 'Lama', peristiwa: null, dibuatPada: '2026-11-10T00:00:00Z' });
+    s.gabungUrusan([
+      { id: ID, judul: 'Duplikat', peristiwa: null, dibuatPada: '2026-11-10T00:00:00Z' },
+      { id: ID2, judul: 'Baru', peristiwa: 'ktp', dibuatPada: '2026-11-12T00:00:00Z' },
+      { id: 'u_salah', judul: 'x', peristiwa: null, dibuatPada: '2026-11-13T00:00:00Z' },
+    ]);
+    expect(s.data.urusan.map((u) => [u.id, u.judul])).toEqual([
+      [ID2, 'Baru'],
+      [ID, 'Lama'],
+    ]);
+    s.catatPesan(ID, { teks: 'halo', setelahSeq: 1 });
+    s.buangUrusan([ID]);
+    expect(s.data.urusan.map((u) => u.id)).toEqual([ID2]);
+    expect(s.pesanWarga(ID)).toEqual([]);
+    expect(new LokalStore(g).data.urusan.map((u) => u.id)).toEqual([ID2]);
+  });
+
   it('tetap jalan saat penyimpanan rusak atau diblokir', () => {
     const s = new LokalStore({
       getItem: () => '{rusak',

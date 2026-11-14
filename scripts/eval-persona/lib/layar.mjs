@@ -34,7 +34,8 @@ export function renderEvent(e) {
         (k) =>
           `  - ${k.teks}\n    (sumber: ${k.kutipan.map((q) => `${q.judul} — ${q.instansi}, ${q.url}`).join('; ')})`,
       );
-      return `[JAWABAN BERSUMBER]\n${klaim.join('\n')}${e.klaimDibuang ? `\n  (${e.klaimDibuang} klaim dibuang karena kutipan tidak terverifikasi)` : ''}\n  ${e.kalimatTetap}`;
+      // Satu jawaban per giliran: balasan akhir model menjadi isi jawaban, klaim menjadi sumbernya.
+      return `${e.balasan ? `Urusin: ${e.balasan}\n` : ''}[JAWABAN BERSUMBER]\n${klaim.join('\n')}${e.klaimDibuang ? `\n  (${e.klaimDibuang} klaim dibuang karena kutipan tidak terverifikasi)` : ''}\n  ${e.kalimatTetap}`;
     }
     case 'handoff':
       return `[DIARAHKAN KE KANAL RESMI] ${e.alasan}\n${e.kanal.map((k) => `  - ${k.nama}${k.url ? ` ${k.url}` : ''}${k.kontak ? ` (${k.kontak})` : ''}`).join('\n')}`;

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import { KELAS_WARNA, peristiwaDariJenis } from '#lib/peristiwa.js';
-  import { LANGKAH_RENCANA, infoStatus, tanggal } from '#lib/urusan-status.js';
+  import { LANGKAH_RENCANA, infoRingkasan, tanggal } from '#lib/urusan-status.js';
   import Icon from '../Icon.svelte';
   import type { NamaIkon } from '../ikon.js';
   import Lencana from './Lencana.svelte';
@@ -28,7 +28,9 @@
 
   const p = $derived(peristiwaDariJenis(urusan.peristiwa));
   const state = $derived(urusan.ringkasan?.state);
-  const info = $derived(infoStatus(state));
+  const info = $derived(infoRingkasan(urusan.ringkasan));
+  /** Jawaban sudah ada tanpa rencana (pertanyaan umum, di luar cakupan): bukan "AI sedang mencari aturan". */
+  const dijawab = $derived(urusan.ringkasan?.dijawab === true);
   const selesai = $derived(info.langkah > 5);
   const kini = $derived(Math.max(info.langkah, 1));
 
@@ -43,7 +45,9 @@
     urusan.ringkasan
       ? urusan.ringkasan.nomorPermohonan
         ? `Nomor permohonan ${urusan.ringkasan.nomorPermohonan}`
-        : (KETERANGAN[urusan.ringkasan.state] ?? info.label)
+        : dijawab
+          ? 'Pertanyaan Anda sudah dijawab'
+          : (KETERANGAN[urusan.ringkasan.state] ?? info.label)
       : 'Status belum termuat',
   );
   const kiri = $derived(
@@ -51,9 +55,11 @@
       ? 'Semua langkah selesai'
       : state === 'RENCANA_DIUSULKAN'
         ? 'Rencana menunggu persetujuan'
-        : info.langkah === 0
-          ? 'Rencana sedang disusun'
-          : `Langkah ${info.langkah} dari 5`,
+        : dijawab
+          ? 'Belum ada rencana'
+          : info.langkah === 0
+            ? 'Rencana sedang disusun'
+            : `Langkah ${info.langkah} dari 5`,
   );
   const kanan = $derived.by(() => {
     const r = urusan.ringkasan;

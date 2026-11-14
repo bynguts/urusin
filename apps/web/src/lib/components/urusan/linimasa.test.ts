@@ -16,6 +16,46 @@ const at = '2026-11-09T01:00:00.000Z';
 const ev = (seq: number, type: string, isi: Record<string, unknown> = {}) =>
   ({ seq, at, chainHead: 'h', type, ...isi }) as unknown as UrusinEvent;
 
+describe('bangunLinimasa: satu jawaban per giliran', () => {
+  const ja = (seq: number, isi: Record<string, unknown> = {}) =>
+    ev(seq, 'grounded_answer', {
+      klaim: [],
+      klaimDibuang: 0,
+      kalimatTetap: 'Keputusan ada di petugas.',
+      ...isi,
+    });
+
+  it('riwayat lama: jawaban bersumber lalu teks di giliran yang sama → satu pesan, teks jadi isinya', () => {
+    const out = bangunLinimasa(
+      [
+        ja(1),
+        ev(2, 'progress', { label: 'Berpikir…' }),
+        ev(3, 'assistant_text', { delta: 'Calon dari Kanada perlu dokumen tambahan.' }),
+        ev(4, 'done'),
+        ev(6, 'assistant_text', { delta: 'Giliran berikutnya.' }),
+      ],
+      [{ teks: 'lanjut', setelahSeq: 5 }],
+    );
+    expect(out.map((x) => x.jenis)).toEqual(['jawaban', 'warga', 'teks']);
+    expect(out[0]).toMatchObject({ balasan: 'Calon dari Kanada perlu dokumen tambahan.' });
+  });
+
+  it('event baru membawa balasan sendiri; kartu lain di antaranya tidak digabung', () => {
+    const baru = bangunLinimasa([ja(1, { balasan: 'Isi jawaban.' }), ev(2, 'done')], []);
+    expect(baru).toMatchObject([{ jenis: 'jawaban', balasan: 'Isi jawaban.' }]);
+    const terpisah = bangunLinimasa(
+      [ja(1), ev(2, 'berkas', { id: 'vlt_1', nama: 'a.docx' }), ev(3, 'assistant_text', { delta: 'Sudah.' })],
+      [],
+    );
+    expect(terpisah.map((x) => x.jenis)).toEqual(['jawaban', 'berkas', 'teks']);
+    expect(terpisah[0]).not.toHaveProperty('balasan');
+  });
+
+  it('indikator aktivitas hilang begitu jawaban bersumber terbit', () => {
+    expect(labelAktivitas([ev(1, 'progress', { label: 'Berpikir…' }), ja(2)])).toBeNull();
+  });
+});
+
 describe('bangunLinimasa', () => {
   it('kartu ingatan: simpan tampil; hapus berikutnya menandai kartu lama dibatalkan', () => {
     const butir = { id: 'ing_0123456789abcdef', jenis: 'lansia', label: 'Warga lansia' };

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { afterNavigate } from '$app/navigation';
+  import { page } from '$app/state';
   import { tick, untrack } from 'svelte';
   import { resolve } from '$app/paths';
   import polaHero from '#lib/assets/img/pen-landing/hero-pattern-fcb3-1440.webp';
@@ -36,6 +37,10 @@
   const lokal = ambilLokal();
   const daftar = new DaftarUrusan();
   daftar.onjudul = (id, judul) => lokal.ubahJudul(id, judul);
+  daftar.onbaru = (baru) => lokal.gabungUrusan(baru);
+  daftar.onhilang = (ids) => lokal.buangUrusan(ids);
+  // Akun yang masuk: urusan akun ikut dari server (daftar tetap utuh setelah keluar lalu masuk lagi).
+  const milik = $derived(Boolean(page.data.akun));
   // Muat ulang status hanya bila daftar id berubah (bukan saat judul di perangkat diperbarui).
   const idsLokal = $derived(lokal.data.urusan.map((u) => u.id).join(','));
   // svelte-ignore state_referenced_locally
@@ -102,7 +107,8 @@
     // Modul dikte dimuat saat tombol Bicara ditekan supaya JS awal Beranda tetap di bawah anggaran.
     bisaDikte = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
     void idsLokal;
-    untrack(() => void daftar.muat(lokal.data.urusan));
+    const m = milik;
+    untrack(() => void daftar.muat(lokal.data.urusan, { milik: m }));
   });
 
   async function bicara() {
@@ -318,7 +324,7 @@
           <button
             type="button"
             disabled={daftar.memuat}
-            onclick={() => void daftar.muat(lokal.data.urusan)}
+            onclick={() => void daftar.muat(lokal.data.urusan, { milik })}
             class="min-h-12 rounded-full border border-current px-4 font-semibold disabled:opacity-60"
             >Coba lagi</button
           >

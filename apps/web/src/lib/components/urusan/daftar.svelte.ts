@@ -1,4 +1,5 @@
 import type { DaftarUrusanResponse, RingkasanUrusan } from '#lib/contracts.js';
+import { judulUrusan } from '#lib/peristiwa.js';
 import type { CatatanUrusan } from '#lib/stores/lokal.svelte.js';
 
 export type UrusanBerjalan = CatatanUrusan & {
@@ -21,6 +22,10 @@ export class DaftarUrusan {
   private urutan = 0;
   /** Judul server (AI atau nama pilihan warga) per urusan; halaman meneruskannya ke catatan perangkat (sidebar). */
   onjudul?: (id: string, judul: string) => void;
+  /** Mode akun (`milik`): urusan akun yang belum tercatat di perangkat; halaman mencatatnya. */
+  onbaru?: (baru: CatatanUrusan[]) => void;
+  /** Mode akun (`milik`): catatan perangkat yang bukan milik akun ini; halaman membuangnya. */
+  onhilang?: (ids: string[]) => void;
 
   constructor(
     private readonly ambil: typeof fetch = (...a) => fetch(...a),
@@ -28,15 +33,19 @@ export class DaftarUrusan {
     private readonly batasMs = 15_000,
   ) {}
 
-  async muat(catatan: readonly CatatanUrusan[]): Promise<void> {
+  /**
+   * `milik` = akun sedang masuk: server ikut menjawab urusan akun itu sendiri (`?milik=1`), jadi daftar tetap utuh
+   * setelah keluar-masuk; catatan perangkat yang bukan milik akun ini tidak ditampilkan sama sekali.
+   */
+  async muat(catatan: readonly CatatanUrusan[], { milik = false }: { milik?: boolean } = {}): Promise<void> {
     const urutan = ++this.urutan;
     this.isi = catatan.map((c) => ({ ...c, ringkasan: null }));
     this.galat = false;
-    this.memuat = catatan.length > 0;
-    if (!catatan.length) return;
+    this.memuat = catatan.length > 0 || milik;
+    if (!catatan.length && !milik) return;
     try {
       const ids = catatan.map((c) => c.id).join(',');
-      const res = await this.ambil(`/api/urusan?ids=${encodeURIComponent(ids)}`, {
+      const res = await this.ambil(`/api/urusan?ids=${encodeURIComponent(ids)}${milik ? '&milik=1' : ''}`, {
         headers: { accept: 'application/json' },
         signal: AbortSignal.timeout(this.batasMs),
       });
@@ -44,9 +53,27 @@ export class DaftarUrusan {
       const j = (await res.json()) as DaftarUrusanResponse;
       if (urutan !== this.urutan) return;
       const peta = Object.fromEntries(j.urusan.map((u) => [u.id, u]));
-      this.isi = catatan.map((c) =>
+      const lama: UrusanBerjalan[] = catatan.map((c) =>
         peta[c.id] ? { ...c, ringkasan: peta[c.id]! } : { ...c, ringkasan: null, hilang: true as const },
       );
+      if (!milik) this.isi = lama;
+      else {
+        const baru = j.urusan
+          .filter((u) => !catatan.some((c) => c.id === u.id))
+          .map((u) => ({
+            id: u.id,
+            judul: u.judul ?? judulUrusan(u.jenis) ?? 'Urusan baru',
+            peristiwa: u.jenis ?? null,
+            dibuatPada: u.dibuatPada,
+          }));
+        const hilang = lama.filter((c) => c.hilang).map((c) => c.id);
+        this.isi = [
+          ...lama.filter((c) => !c.hilang),
+          ...baru.map((c) => ({ ...c, ringkasan: peta[c.id]! })),
+        ].sort((a, b) => b.dibuatPada.localeCompare(a.dibuatPada));
+        if (hilang.length) this.onhilang?.(hilang);
+        if (baru.length) this.onbaru?.(baru);
+      }
       for (const u of j.urusan) if (u.judul) this.onjudul?.(u.id, u.judul);
     } catch {
       if (urutan === this.urutan) this.galat = true;

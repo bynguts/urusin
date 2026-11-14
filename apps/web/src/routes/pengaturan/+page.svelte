@@ -286,7 +286,7 @@
       {@render kepala(
         'wilayah',
         'Wilayah layanan',
-        'Opsional. Kab/kota tempat KTP Anda terdaftar, dipakai sebagai usulan: di setiap urusan Urusin tetap menanyakan dulu sebelum memilih situs dan aturan Disdukcapil.',
+        'Opsional. Kab/kota tempat KTP Anda terdaftar, disimpan di perangkat ini sebagai usulan: Urusin menanyakannya sekali bila jawabannya bergantung pada wilayah. Wilayah yang sudah pernah Anda pastikan langsung dipakai, dan bisa diubah kapan saja lewat "Ubah" di urusan.',
         'd-wilayah',
       )}
       <form
@@ -406,7 +406,7 @@
       {@render kepala(
         'ingatan',
         'Yang Urusin ingat',
-        'Hal yang Anda sebut sendiri di urusan sebelumnya, supaya tidak perlu bercerita ulang. Tanpa data pribadi seperti NIK atau alamat, dan wilayah tetap ditanyakan dulu sebelum dipakai.',
+        'Hal yang Anda sebut sendiri di urusan sebelumnya, supaya tidak perlu bercerita ulang. Tanpa data pribadi seperti NIK atau alamat. Wilayah yang sudah pernah Anda pastikan langsung dipakai di urusan baru, dan bisa diubah kapan saja lewat "Ubah".',
       )}
       {#if data.ingatanTamu.length > 0}
         <div

@@ -58,9 +58,14 @@ export const POST: RequestHandler = async (event) => {
   }
 };
 
+/** Batas urusan akun yang ikut dijawab `?milik=1` (terbaru dulu), sama dengan batas daftar di perangkat. */
+const MAKS_MILIK = 50;
+
 /**
  * Daftar urusan untuk /lacak. Klien menyebut id urusan yang tercatat di perangkatnya (`?ids=a,b`); hanya urusan
  * milik peminta (akun yang masuk atau cookie sesi ini) yang dijawab. Id lain diabaikan begitu saja.
+ * `?milik=1` dari akun yang masuk: urusan akun itu sendiri (50 terbaru) ikut dijawab, agar daftar kembali utuh
+ * setelah keluar-masuk atau di peramban lain. Tamu (cookie sesi saja) tidak mendapat tambahan apa pun.
  */
 export const GET: RequestHandler = async ({ url, locals }) => {
   const ids = (url.searchParams.get('ids') ?? '')
@@ -71,9 +76,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
     return apiError(422, 'TERLALU_BANYAK', 'Terlalu banyak urusan sekaligus. Maksimal 50.');
   try {
     const rt = await getRuntime();
+    const milik =
+      url.searchParams.get('milik') === '1' && locals.akun
+        ? rt.akun.urusanMilik(locals.akun.id).slice(0, MAKS_MILIK)
+        : [];
     return apiJson({
       urusan: rt.store
-        .listUrusan([...new Set(ids)].filter((id) => rt.akun.adalahPemilikUrusan(id, locals)))
+        .listUrusan([...new Set([...ids, ...milik])].filter((id) => rt.akun.adalahPemilikUrusan(id, locals)))
         .map((u) => ({
           id: u.id,
           state: u.state,
@@ -84,6 +93,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
           diubahPada: u.updatedAt,
           ...(u.nomorPermohonan ? { nomorPermohonan: u.nomorPermohonan } : {}),
           ...(u.judul ? { judul: u.judul, judulManual: u.judulManual === true } : {}),
+          ...(u.jenis ? { jenis: u.jenis } : {}),
+          // Jawaban sudah ada tetapi belum ada rencana: daftar tidak menulis "AI sedang mencari aturan".
+          ...((u.state === 'BARU' || u.state === 'MEMAHAMI') &&
+          u.turnCount > 0 &&
+          !rt.store.hasRunningTurn(u.id)
+            ? { dijawab: true }
+            : {}),
         })),
     } satisfies DaftarUrusanResponse);
   } catch (e) {
