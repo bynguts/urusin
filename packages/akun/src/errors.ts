@@ -66,7 +66,7 @@ const PESAN: Record<KodeGalatAkun, [number, string]> = {
   HANYA_AKUN: [403, 'Fitur ini hanya untuk akun terdaftar.'],
   DOKUMEN_TERLALU_BESAR: [413, 'Berkas terlalu besar. Maksimal 9 MB.'],
   DOKUMEN_JENIS_DITOLAK: [415, 'Jenis berkas tidak didukung. Pakai JPG, PNG, WebP, atau PDF.'],
-  DOKUMEN_KUOTA_PENUH: [409, 'Maksimal 10 berkas. Hapus berkas lama dulu.'],
+  DOKUMEN_KUOTA_PENUH: [409, 'Dokumen sudah penuh. Hapus berkas lama dulu.'],
   PENYIMPANAN_PENUH: [507, 'Penyimpanan sedang penuh, coba lagi nanti.'],
   PERLU_MASUK_ULANG: [
     401,

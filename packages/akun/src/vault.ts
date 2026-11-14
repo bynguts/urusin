@@ -125,11 +125,12 @@ export type BatasVault = {
 };
 
 export const DEFAULT_BATAS_VAULT: BatasVault = Object.freeze({
-  berkasPerPemilik: 10,
+  // Berkas buatan agen (surat, checklist) ikut tersimpan di Dokumen, jadi ruang jumlahnya lebih lega.
+  berkasPerPemilik: 30,
   ukuranMaks: 9 * MIB,
   totalMaks: 2048 * MIB,
   diskPersenMaks: 85,
-  berkasPerTamu: 3,
+  berkasPerTamu: 15,
   bytePerTamu: 20 * MIB,
   porsiTamu: 0.25,
 });

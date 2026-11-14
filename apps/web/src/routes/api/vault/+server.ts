@@ -54,7 +54,7 @@ export const GET: RequestHandler = async (event) => {
 
 /**
  * Unggah dokumen (multipart: `berkas`, `jenis`, `judul`). Dienkripsi dengan DEK pemilik sebelum ditulis ke
- * disk. Batas: 10 berkas x 9 MB per pemilik; penyimpanan host penuh → 507 dengan pesan jujur. Foto diperiksa
+ * disk. Batas: 30 berkas x 9 MB per pemilik; penyimpanan host penuh → 507 dengan pesan jujur. Foto diperiksa
  * kejelasannya oleh model vision (`periksaUnggahan`): opsional `pratinjau` (data URL kecil dari perangkat) dan
  * `periksa=tunggu` (respons menunggu hasilnya, paling lama 15 detik).
  */

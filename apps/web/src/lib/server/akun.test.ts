@@ -910,7 +910,7 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
     }
   });
 
-  it('dokumen: unggah terenkripsi, unduh no-store, re-auth di perangkat baru, batas 9 MB/jenis/10 berkas', async () => {
+  it('dokumen: unggah terenkripsi, unduh no-store, re-auth di perangkat baru, batas 9 MB/jenis/30 berkas', async () => {
     await daftarAkun();
     const a = await masuk();
     const multipart = (berkas: Blob, jenis = 'ktp', judul = 'KTP saya') => {
@@ -972,7 +972,7 @@ describe('vault (/api/vault): Data Diri, dokumen, dan urusan mengikuti akun', ()
       (await lewatHook(multipart(new Blob(['x'], { type: 'image/png' }), 'senjata'), a.jar, vaultPost))
         .status,
     ).toBe(422);
-    for (let i = 1; i < 10; i++)
+    for (let i = 1; i < 30; i++)
       expect(
         (await lewatHook(multipart(new Blob(['x'], { type: 'image/png' })), a.jar, vaultPost)).status,
       ).toBe(201);

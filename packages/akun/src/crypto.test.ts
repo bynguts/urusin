@@ -340,7 +340,7 @@ describe('Vault per akun', () => {
     expect(kode(() => doc(D1, 1))).toBe('PENYIMPANAN_PENUH'); // 23 + 2 = 25 = porsi; tamu + demo berbagi
     expect(kode(() => doc(D2, 21))).toBe('DOKUMEN_KUOTA_PENUH'); // 20 byte per demo
     expect(new Vault(openHarnessDb(), deriveKek(KEY_B64), '/').batas).toMatchObject({
-      berkasPerTamu: 3,
+      berkasPerTamu: 15,
       bytePerTamu: 20 * 1024 * 1024,
       porsiTamu: 0.25,
     });
@@ -411,7 +411,7 @@ describe('Vault per akun', () => {
     expect(alert).toHaveLength(2);
     expect(alert[1]).toMatch(/disk vault 85%/);
     expect(new Vault(openHarnessDb(), deriveKek(KEY_B64), '/').batas).toMatchObject({
-      berkasPerPemilik: 10,
+      berkasPerPemilik: 30,
       ukuranMaks: 9 * 1024 * 1024,
       diskPersenMaks: 85,
     });
