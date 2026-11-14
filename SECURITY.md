@@ -12,7 +12,8 @@ Jangan membuka issue publik untuk kerentanan. Laporkan secara privat lewat salah
 2. Email ke `muhammadbibin70@gmail.com` dengan subjek diawali `[urusin-security]`.
 
 Sertakan: komponen yang terdampak (web, Browser Pendamping, fixtures, paket), langkah mereproduksi, dampak yang Anda
-perkirakan, dan versi (`v<sha7>` di footer aplikasi atau SHA commit). **Jangan melampirkan data pribadi nyata**
+perkirakan, dan versi (`v<sha7>` di bagian bawah halaman Pengaturan, atau `versi.sha7` di
+https://urusinai.web.id/api/kemampuan, atau SHA commit). **Jangan melampirkan data pribadi nyata**
 (NIK, KK, nomor HP, alamat, foto dokumen). Gunakan data karangan.
 
 Kami berusaha membalas dalam beberapa hari kerja. Ini proyek tim kecil: kami tidak menjanjikan SLA atau hadiah
@@ -29,7 +30,7 @@ Dalam cakupan:
   warga, kebocoran rahasia, atau kelemahan CSP/CSRF.
 - Akun dan vault ([ADR 0028](docs/adr/0028-akun-dan-login.md)): pengambilalihan akun atau sesi (cookie
   `__Host-urusin_akun`/`__Host-urusin_sid`, token atur ulang sandi, penautan Google OIDC; ADR 0032),
-  melewati penguncian login atau kuota tamu/demo, membaca atau mengunduh Data Diri dan dokumen milik orang lain,
+  melewati penguncian login atau kuota akun demo, membaca atau mengunduh Data Diri dan dokumen milik orang lain,
   membuka vault tanpa kunci, dan persetujuan "Izinkan isi" yang bisa dipakai untuk origin atau pemilik lain.
 
 Di luar cakupan:
@@ -72,7 +73,8 @@ Do not open a public issue for a vulnerability. Report it privately through one 
 2. Email `muhammadbibin70@gmail.com` with a subject starting with `[urusin-security]`.
 
 Include: the affected component (web, Browser Pendamping, fixtures, packages), reproduction steps, your estimate of the
-impact, and the version (`v<sha7>` in the app footer, or the commit SHA). **Do not attach real personal data**
+impact, and the version (`v<sha7>` at the bottom of the Pengaturan (Settings) page, `versi.sha7` at
+https://urusinai.web.id/api/kemampuan, or the commit SHA). **Do not attach real personal data**
 (national ID numbers, family card numbers, phone numbers, addresses, document photos). Use made-up data.
 
 We aim to reply within a few working days. This is a small-team project: we do not promise an SLA or a bounty.
@@ -89,7 +91,7 @@ In scope:
   without the citizen's approval, secret leaks, or CSP/CSRF weaknesses.
 - Accounts and the vault ([ADR 0028](docs/adr/0028-akun-dan-login.md)): account or session takeover (the
   `__Host-urusin_akun`/`__Host-urusin_sid` cookies, password-reset tokens, Google OIDC
-  linking), getting past the login lockout or the guest/demo quotas, reading or downloading someone else's Data
+  linking), getting past the login lockout or the demo-account quotas, reading or downloading someone else's Data
   Diri and documents, opening the vault without the key, and an "Izinkan isi" consent that works for another
   origin or owner.
 

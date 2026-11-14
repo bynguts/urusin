@@ -84,8 +84,8 @@ Semua fitur di bawah sudah berjalan di <https://urusinai.web.id>.
     istilah umum (kueri yang memuat NIK, KK, HP, atau email tidak pernah dikirim).
   - Setiap klaim membawa kutipan yang diverifikasi terhadap potongan sumbernya; chip kutipan membuka halaman resmi.
   - Bila korpus dan pencarian web sama-sama tidak cukup, agen **abstain** dan mengarahkan ke kanal resmi daerah.
-- **Router 514 kabupaten/kota.** Daerah ditentukan dari pilihan warga atau kode wilayah, lengkap dengan kontak
-  Disdukcapil dan status dukungan portal tiap daerah.
+- **Router 514 kabupaten/kota.** Daerah ditentukan dari pilihan warga atau kode wilayah. Situs Disdukcapil 231 daerah
+  sudah terverifikasi lengkap dengan sumbernya, daerah lain diarahkan ke kanal resmi Dukcapil.
 - **Pemeriksaan foto dokumen (AI vision).** Foto yang dilampirkan di chat atau disimpan di Dokumen diperiksa: buram,
   terpotong, gelap, silau, miring, atau tertutup. Urusin menyebut bagian mana yang perlu difoto ulang.
 - **Browser Pendamping.**
@@ -109,23 +109,23 @@ Semua fitur di bawah sudah berjalan di <https://urusinai.web.id>.
 
 ## 4. Teknologi
 
-| Lapisan              | Yang dipakai                                                                                                             |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Bahasa dan monorepo  | TypeScript (strict), Node.js 26, pnpm 11, Turborepo                                                                      |
-| Web (UI + API)       | SvelteKit 3 + Svelte 5, `@sveltejs/adapter-node`, Vite 8, Tailwind CSS 4                                                 |
-| Agen AI              | Harness buatan sendiri di atas Chat Completions (`@urusin/harness`): state machine urusan, tool bertipe zod, policy gate |
-| AI                   | OpenAI (model GPT) lewat SDK resmi `openai`; EmbeddingGemma-300M self-hosted (llama.cpp)                                 |
-| Pencarian (RAG)      | SQLite FTS5 (BM25) + vektor 768 dimensi, digabung Reciprocal Rank Fusion                                                 |
-| Browser Pendamping   | Chromium via Playwright, screencast CDP → WebSocket → `<canvas>`; adapter situs (Step DSL) dan Navigator generik         |
-| Basis data           | SQLite (`better-sqlite3`, mode WAL)                                                                                      |
-| Kriptografi dan akun | `node:crypto` (argon2id, AES-256-GCM, HKDF), `jose` (verifikasi ID token Google OIDC)                                    |
-| Validasi dan kontrak | zod 4, `@urusin/contracts` (skema event SSE dan endpoint)                                                                |
-| HTTP keluar          | `undici` dengan allowlist host (`@urusin/egress`): semua panggilan keluar server lewat satu pintu                        |
-| Situs latihan        | Hono (`apps/fixtures`): replika jinak portal daerah untuk uji e2e                                                        |
-| Pengujian            | Vitest, Playwright, `node:test`, Lighthouse CI                                                                           |
-| Kualitas             | ESLint, Prettier, commitlint, husky (pemindai PII/secret sebelum commit)                                                 |
-| Hosting              | Docker Compose di Oracle Cloud (Singapura), Caddy (TLS), image multi-arch di GHCR                                        |
-| Layanan pihak ketiga | OpenAI (model GPT), Exa (cadangan pencarian web), Google Identity (masuk dengan Google), GitHub/GHCR, Oracle Cloud       |
+| Lapisan              | Yang dipakai                                                                                                                              |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Bahasa dan monorepo  | TypeScript (strict), Node.js 26, pnpm 11, Turborepo                                                                                       |
+| Web (UI + API)       | SvelteKit 3 + Svelte 5, `@sveltejs/adapter-node`, Vite 8, Tailwind CSS 4                                                                  |
+| Agen AI              | Harness buatan sendiri di atas Chat Completions (`@urusin/harness`): state machine urusan, tool bertipe zod, policy gate                  |
+| AI                   | OpenAI (model GPT) lewat SDK resmi `openai`; EmbeddingGemma-300M self-hosted (llama.cpp)                                                  |
+| Pencarian (RAG)      | SQLite FTS5 (BM25) + vektor 768 dimensi, digabung Reciprocal Rank Fusion                                                                  |
+| Browser Pendamping   | Chromium via Playwright, screencast CDP → WebSocket → `<canvas>`; adapter situs (Step DSL) dan Navigator generik                          |
+| Basis data           | SQLite (`better-sqlite3`, mode WAL)                                                                                                       |
+| Kriptografi dan akun | `node:crypto` (argon2id, AES-256-GCM, HKDF), `jose` (verifikasi ID token Google OIDC)                                                     |
+| Validasi dan kontrak | zod 4, `@urusin/contracts` (skema event SSE dan endpoint)                                                                                 |
+| HTTP keluar          | `undici` dengan allowlist host (`@urusin/egress`): semua panggilan keluar server lewat satu pintu                                         |
+| Situs latihan        | Hono (`apps/fixtures`): replika jinak portal daerah untuk uji e2e                                                                         |
+| Pengujian            | Vitest, Playwright, `node:test`, Lighthouse CI                                                                                            |
+| Kualitas             | ESLint, Prettier, commitlint, husky (pemindai PII/secret sebelum commit)                                                                  |
+| Hosting              | Cloudflare (DNS, CDN) → Caddy (TLS) → Docker Compose di Oracle Cloud (Singapura); image multi-arch di GHCR                                |
+| Layanan pihak ketiga | OpenAI (model GPT), Exa (cadangan pencarian web), Google Identity (masuk dengan Google), Cloudflare (DNS, CDN), GitHub/GHCR, Oracle Cloud |
 
 ## 5. Arsitektur sistem dan alur data
 
@@ -149,7 +149,10 @@ flowchart TB
 
   GOV[["Situs resmi pemerintah"]]
 
-  W -->|"HTTPS"| C
+  CF[["Cloudflare<br/>DNS + CDN"]]
+
+  W -->|"HTTPS"| CF
+  CF --> C
   C --> WEB
   C -->|"layar + input"| PD
   WEB -->|"pencarian RAG"| EMB
@@ -210,7 +213,7 @@ scripts/               Skrip demo, eval, dan pemeriksaan repositori
 ### Prasyarat
 
 - Node.js 26 (lihat `.nvmrc`) dan pnpm 11 (`corepack enable` atau `npm i -g pnpm@11`).
-- Opsional untuk e2e: Chromium Playwright (`pnpm exec playwright install chromium`).
+- Opsional untuk e2e: Chromium Playwright (`pnpm --filter @urusin/web exec playwright install chromium`).
 
 ### Menjalankan untuk pengembangan
 
@@ -220,11 +223,13 @@ cd urusin
 pnpm install --frozen-lockfile   # memasang dependensi dan hook commit
 cp .env.example .env             # isi nilai sendiri; .env diabaikan git
 pnpm build                       # build semua paket workspace
-pnpm --filter @urusin/web dev    # http://localhost:5173
+# server dev membaca konfigurasi dari process.env; --env-file memuat .env di root repo
+pnpm --filter @urusin/web exec node --env-file=../../.env node_modules/vite/bin/vite.js dev   # http://localhost:5173
 ```
 
 Isi `URUSIN_PII_KEY` di `.env` dengan kunci acak 32 byte (base64), misalnya hasil
-`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
+`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Cara lain: ekspor variabelnya di shell
+lalu jalankan `pnpm --filter @urusin/web dev`.
 
 Tanpa kunci LLM aplikasi tetap berjalan: agen memakai `DemoProvider` (skenario tetap, tanpa jaringan). Tanpa sidecar
 embedding, pencarian memakai BM25 saja.
@@ -279,8 +284,8 @@ dibagikan.
 - **Konten luar dianggap data, bukan perintah.** Teks halaman, hasil pencarian, dan isi berkas dibungkus penanda
   (_spotlighting_). Suite uji prompt injection (`packages/harness/src/injection`) memakai model tiruan yang sengaja
   patuh; aksi tulis dan final tetap diblokir policy gate.
-- **Guardrail:** permintaan di luar urusan layanan publik ditolak tanpa memanggil model; jawaban tanpa sumber yang
-  cukup diganti abstain dan rujukan ke kanal resmi.
+- **Guardrail:** permintaan yang jelas di luar urusan (menulis kode, PR, game) ditolak tanpa memanggil model; sisanya
+  dijaga aturan cakupan agen. Jawaban tanpa sumber yang cukup diganti abstain dan rujukan ke kanal resmi.
 - **Kendali biaya:** pemakaian token dicatat per urusan dan dibatasi harian; bila AI tidak tersedia, aplikasi turun ke
   mode hemat atau langkah dari sumber resmi.
 - **Evaluasi:** eval agen (`pnpm eval`), eval retrieval (`pnpm rag:eval`), dan eval persona warga lintas daerah
@@ -304,18 +309,22 @@ dibagikan.
     [`data/wilayah/kabkota.json`](data/wilayah/kabkota.json).
   - Korpus sumber resmi: halaman dan dokumen resmi (Dukcapil, Disdukcapil daerah, regulasi) beserta URL dan tanggal
     aksesnya di [`data/sources.json`](data/sources.json).
-  - Kontak Disdukcapil: [`data/wilayah/kontak-dukcapil.json`](data/wilayah/kontak-dukcapil.json), dengan URL sumber
-    per entri.
+  - Situs Disdukcapil: [`data/wilayah/kontak-dukcapil.json`](data/wilayah/kontak-dukcapil.json); 231 situs `.go.id`
+    terverifikasi, masing-masing dengan URL sumber dan tanggal pemeriksaannya.
   - Glosarium istilah: [`data/glossary/`](data/glossary), merujuk sumber di `data/sources.json`.
 - **Aset desain:** desain UI, token, ilustrasi maskot, dan logo dibuat oleh Rafi Cahya Mahardika di pen.dev; font
   Strawberry Sans sebagai bagian design system tim.
+- **Logo instansi dan font:** logo instansi ([`apps/web/static/logo-layanan`](apps/web/static/logo-layanan)) dari
+  Wikimedia Commons, ditampilkan hanya untuk merujuk sumber resmi (logo Jasa Raharja oleh PT Jasa Raharja (Persero),
+  CC BY-SA 4.0); font Lora (SIL Open Font License, lihat
+  [`LICENSE-lora.txt`](apps/web/src/lib/assets/fonts/LICENSE-lora.txt)).
 - **Pustaka sumber terbuka utama:** SvelteKit, Svelte, Vite, Tailwind CSS, Playwright, Hono, better-sqlite3, zod,
   `openai` (SDK resmi), jose, undici, llama.cpp (MIT), Turborepo, Vitest, ESLint, Prettier, commitlint, husky. Versi
   lengkap ada di `pnpm-lock.yaml`.
 - **Model open-source:** EmbeddingGemma-300M (`google/embeddinggemma-300m`, konversi GGUF Q8_0 oleh ggml-org), tunduk
   pada [Gemma Terms of Use](https://ai.google.dev/gemma/terms); lihat [`apps/embedding/NOTICE`](apps/embedding/NOTICE).
-- **Layanan pihak ketiga:** OpenAI (model GPT), Exa (cadangan pencarian web), Google Identity (OIDC), GitHub dan GHCR,
-  Oracle Cloud.
+- **Layanan pihak ketiga:** OpenAI (model GPT), Exa (cadangan pencarian web), Google Identity (OIDC), Cloudflare (DNS,
+  CDN), GitHub dan GHCR, Oracle Cloud.
 - Tidak memakai template proyek pihak ketiga.
 
 ## 11. Keamanan, privasi, dan etika
@@ -336,7 +345,7 @@ dibagikan.
 - Tes unit Vitest di setiap paket dan E2E Playwright (akun, juri, alur utama HP dan desktop, Browser Pendamping
   terhadap situs latihan, tidak pernah terhadap situs pemerintah asli).
 - Pipeline [`.github/workflows/ci.yml`](.github/workflows/ci.yml): lint, typecheck, test, build, e2e, coverage, audit
-  riwayat commit, dan pemindai data pribadi.
+  riwayat commit, dan pemindai data pribadi (perintah yang sama bisa dijalankan lokal, lihat bagian 7).
 
 ## 13. Status dan batasan
 
