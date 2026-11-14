@@ -7,7 +7,7 @@ import {
   usulkanRencanaOtomatis,
   wilayahUrusan,
 } from '@urusin/harness';
-import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
+import { pastikanTamuUntukTurn, pemilikVault } from '#lib/server/akun.js';
 import { ingatWilayahUrusan } from '#lib/server/ingatan.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { segarkanJaringanId } from '#lib/server/pendamping.js';
@@ -72,12 +72,14 @@ export const POST: RequestHandler = async (event) => {
     cur = usulkanRencanaOtomatis(rt.store, cur, publish, rt.deps.ragDb);
     const rencana = sebelum !== 'RENCANA_DIUSULKAN' && cur.state === 'RENCANA_DIUSULKAN';
     const nama = wilayahUrusan(rt.store, cur).ktp?.nama;
+    const pemilik = pemilikVault(rt, event, { buat: false })?.id;
     const lanjut =
       !rencana && nama && rt.store.loadHistory(cur.id).length > 0 && !pastikanTamuUntukTurn(rt, event)
         ? startTurnInBackground(rt, {
             urusanId: cur.id,
             userText: `Ya, KTP saya terdaftar di ${nama}.`,
             expectedVersion: cur.version,
+            ...(pemilik ? { pemilikBerkas: pemilik } : {}),
           })
         : undefined;
     return apiJson({

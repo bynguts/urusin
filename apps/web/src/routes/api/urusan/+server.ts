@@ -3,7 +3,7 @@ import {
   type BuatUrusanResponse,
   type DaftarUrusanResponse,
 } from '@urusin/contracts';
-import { pastikanTamuUntukTurn } from '#lib/server/akun.js';
+import { pastikanTamuUntukTurn, pemilikVault } from '#lib/server/akun.js';
 import { apiError, apiJson, errorResponse, readBody } from '#lib/server/http.js';
 import { segarkanJaringanId } from '#lib/server/pendamping.js';
 import { getRuntime, startTurnInBackground } from '#lib/server/runtime.js';
@@ -33,8 +33,14 @@ export const POST: RequestHandler = async (event) => {
     await segarkanJaringanId();
     // kodeKabKota dari klien hanya usulan; wilayah KTP ditetapkan setelah warga mengonfirmasi.
     usulkanWilayahAwal(rt, event, u.id, body.data.kodeKabKota, body.data.pesan);
+    // Pemilik brankas peminta: tanpa ini `berkas__buat` tidak ditawarkan di giliran pertama.
+    const pemilik = pemilikVault(rt, event, { buat: false })?.id;
     const turn = body.data.pesan
-      ? startTurnInBackground(rt, { urusanId: u.id, userText: body.data.pesan })
+      ? startTurnInBackground(rt, {
+          urusanId: u.id,
+          userText: body.data.pesan,
+          ...(pemilik ? { pemilikBerkas: pemilik } : {}),
+        })
       : undefined;
     const current = rt.store.getUrusanOrThrow(u.id);
     return apiJson(
