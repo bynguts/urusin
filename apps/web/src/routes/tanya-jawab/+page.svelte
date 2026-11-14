@@ -251,7 +251,7 @@
               </summary>
               <p class="tj29">
                 Tidak ada jaminan, karena keputusan ada di instansi resmi. Urusin membantu menyiapkan isian
-                dan memeriksa foto berkas sebelum dikirim supaya kemungkinan ditolak lebih kecil.
+                dan mengecek kelengkapan berkas sebelum dikirim supaya kemungkinan ditolak lebih kecil.
               </p>
             </details>
           </div>

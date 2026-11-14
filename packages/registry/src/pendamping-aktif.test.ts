@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DAERAH_PENDAMPING_24JAM,
   DAERAH_PENDAMPING_AKTIF,
   DAFTAR_PENDAMPING_AKTIF,
   kalimatPendampingBerkembang,
@@ -30,6 +31,12 @@ describe('DAERAH_PENDAMPING_AKTIF (keputusan pemilik, ADR 0033)', () => {
     }
   });
 
+  it('klaim ke warga hanya 8 daerah yang jalan 24/7 dari server (Semarang dan Medan id-only)', () => {
+    expect(DAERAH_PENDAMPING_24JAM).toHaveLength(8);
+    for (const k of ['3374', '1271']) expect(DAERAH_PENDAMPING_24JAM.map((d) => d.kode)).not.toContain(k);
+    expect(DAERAH_PENDAMPING_24JAM.every((d) => pendampingAktif(d.kode))).toBe(true);
+  });
+
   it('pendampingAktif hanya untuk 10 kode itu', () => {
     expect(pendampingAktif('3312')).toBe(true);
     expect(pendampingAktif('3671')).toBe(true);
@@ -43,7 +50,7 @@ describe('DAERAH_PENDAMPING_AKTIF (keputusan pemilik, ADR 0033)', () => {
     expect(k).toContain('untuk Kota Jayapura sedang kami kembangkan');
     expect(k).toContain(DAFTAR_PENDAMPING_AKTIF);
     expect(DAFTAR_PENDAMPING_AKTIF).toBe(
-      'Surabaya, Wonogiri, Semarang, Medan, Malang, Depok, Kota Tangerang, Padang, Bandar Lampung, dan Banjarmasin',
+      'Surabaya, Wonogiri, Malang, Depok, Kota Tangerang, Padang, Bandar Lampung, dan Banjarmasin',
     );
     expect(k).not.toMatch(/belum bisa dibantu|tidak bisa/);
     expect(kalimatPendampingBerkembang('X', 'Disdukcapil X melayani lewat WhatsApp.')).toContain(

@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { DAERAH_PENDAMPING_AKTIF } from '@urusin/registry';
+import { DAERAH_PENDAMPING_24JAM } from '@urusin/registry';
 import { LANDING_COOKIE } from '#lib/ke-landing.js';
 import { mulaiUrusanDariForm } from '#lib/server/mulai-urusan.js';
 import { getRuntime } from '#lib/server/runtime.js';
@@ -24,7 +24,7 @@ function dariSitusSendiri(request: Request, url: URL): boolean {
  */
 export const load: PageServerLoad = async ({ cookies, locals, request, url }) => {
   // Klaim cakupan Browser Pendamping dari satu sumber kebenaran (ADR 0033).
-  const data = { jumlahDaerahPendamping: DAERAH_PENDAMPING_AKTIF.length };
+  const data = { jumlahDaerahPendamping: DAERAH_PENDAMPING_24JAM.length };
   // Logo aplikasi (penanda singkat; halaman urusan tanpa Referer) atau tautan dari situs sendiri: tampilkan landing.
   const dariLogo = cookies.get(LANDING_COOKIE) !== undefined;
   if (dariLogo) cookies.delete(LANDING_COOKIE, { path: '/' });

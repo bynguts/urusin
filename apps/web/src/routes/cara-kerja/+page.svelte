@@ -140,8 +140,8 @@
           <p class="ck31">03</p>
           <h3 class="ck32">Isi data diri dan foto berkas</h3>
           <p class="ck33">
-            Data disimpan terenkripsi dan agen AI hanya melihat NIK yang disamarkan. Foto berkas diberi tanda
-            hijau, kuning, atau merah.
+            Data disimpan terenkripsi; NIK yang kamu ketik disamarkan sebelum sampai ke AI. Daftar berkas
+            diberi tanda hijau, kuning, atau merah.
           </p>
           <div class="ck34">
             <img
@@ -673,7 +673,7 @@
                 decoding="async"
               />
             </div>
-            <p class="ck234">Melihat NIK aslimu</p>
+            <p class="ck234">Mengirim NIK ketikanmu ke AI</p>
           </div>
           <div class="ck235">
             <div class="ck236">

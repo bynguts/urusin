@@ -108,7 +108,7 @@
         <h2 class="pv23" id="judul-data">Data apa saja yang disimpan</h2>
         <p class="pv24">
           Hanya yang dibutuhkan untuk urusanmu. Brankas ada di server kami di Singapura, yang memegang
-          kuncinya. Email (Resend) belum aktif.
+          kuncinya. Kunci enkripsinya khusus untuk tiap pemilik.
           <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- tautan eksternal ke repo publik -->
           <a href={KEBIJAKAN} rel="external noopener">Kebijakan lengkap</a>.
         </p>
@@ -182,20 +182,10 @@
           <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
             Semua data di atas. Data Diri dan dokumen dalam bentuk terenkripsi
           </div>
-          <div class="pv30 pv-c2" role="cell" data-label="Peran">Server dan basis data Urusin</div>
+          <div class="pv30 pv-c2" role="cell" data-label="Peran">
+            Server, basis data, dan Browser Pendamping Urusin
+          </div>
           <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Singapura</div>
-        </div>
-        <div class="pv28" role="row">
-          <div class="pv29 pv-c0" role="rowheader">
-            Laptop tim Urusin (Browser Pendamping jaringan Indonesia)
-          </div>
-          <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
-            Login dan isian yang kamu ketik di sesi situs yang hanya menerima jaringan Indonesia (mis.
-            Telunjuk Sakti Wonogiri). Hanya di memori selama sesi aktif, dihapus saat sesi ditutup. Tersambung
-            lewat Tailscale, terenkripsi
-          </div>
-          <div class="pv30 pv-c2" role="cell" data-label="Peran">Menjalankan peramban pendamping</div>
-          <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Indonesia</div>
         </div>
         <div class="pv28" role="row">
           <div class="pv29 pv-c0" role="rowheader">OpenAI (model GPT, lewat proxy model tim)</div>
@@ -220,7 +210,8 @@
         <div class="pv28" role="row">
           <div class="pv29 pv-c0" role="rowheader">Resend</div>
           <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
-            Alamat email kamu dan isi email verifikasi atau atur ulang sandi. Saat ini belum aktif
+            Alamat email kamu dan isi email verifikasi atau atur ulang sandi, hanya bila pengiriman email
+            diaktifkan
           </div>
           <div class="pv30 pv-c2" role="cell" data-label="Peran">Pengiriman email</div>
           <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Amerika Serikat</div>
@@ -228,8 +219,8 @@
         <div class="pv28" role="row">
           <div class="pv29 pv-c0" role="rowheader">Cloudflare Turnstile</div>
           <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
-            Data teknis peramban untuk membedakan manusia dan bot, hanya di tombol juri dan setelah beberapa
-            kali gagal masuk
+            Data teknis peramban di halaman masuk untuk membedakan manusia dan bot; wajib lolos di tombol juri
+            dan setelah beberapa kali gagal masuk
           </div>
           <div class="pv30 pv-c2" role="cell" data-label="Peran">Anti-bot</div>
           <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Global</div>
@@ -237,7 +228,7 @@
         <div class="pv28" role="row">
           <div class="pv29 pv-c0" role="rowheader">Jina AI</div>
           <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
-            Kalimat pertanyaan yang sudah tanpa data pribadi, hanya bila pencarian sumber berbasis vektor
+            Kalimat pertanyaan yang sudah tanpa data pribadi, bila pencarian vektor atau pengurutan sumber
             diaktifkan
           </div>
           <div class="pv30 pv-c2" role="cell" data-label="Peran">Pencarian sumber resmi</div>

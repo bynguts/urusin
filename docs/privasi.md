@@ -1,6 +1,6 @@
 # Kebijakan Privasi Urusin
 
-Berlaku sejak 10 November 2026. Sumber teks halaman privasi aplikasi. Isinya harus sama dengan penanganan data
+Berlaku sejak 14 November 2026. Sumber teks halaman privasi aplikasi. Isinya harus sama dengan penanganan data
 yang sebenarnya; rujukan teknisnya ada di [ADR 0028](adr/0028-akun-dan-login.md) (DPIA) dan
 [`docs/arsitektur.md`](arsitektur.md).
 
@@ -44,9 +44,8 @@ permintaan soal data pribadi bisa dikirim lewat kontak di [`SECURITY.md`](../SEC
 ## Browser Pendamping
 
 Saat Urusin mengisi formulir di situs pemerintah, situs itu dibuka di peramban Chromium di server Urusin dan
-layarnya ditampilkan di perangkat Anda. Situs yang hanya menerima jaringan Indonesia (mis. Telunjuk Sakti
-Wonogiri) dibuka di laptop tim Urusin di Indonesia yang tersambung ke server lewat Tailscale; aturan di bawah
-berlaku sama.
+layarnya ditampilkan di perangkat Anda. Situs yang hanya menerima jaringan Indonesia belum bisa dibuka dari
+server itu; untuk situs seperti ini Urusin memandu Anda mengisi sendiri langkah demi langkah.
 
 - Apa yang Anda ketik saat mengambil alih (kata sandi situs pemerintah, OTP, CAPTCHA) melewati server Urusin,
   tetapi **tidak dicatat, tidak disimpan, dan tidak dikirim ke AI**.
@@ -57,15 +56,14 @@ berlaku sama.
 
 ## Pihak lain yang memproses data
 
-| Pihak                                                     | Lokasi            | Data yang diterima                                                                                                                                                                                                                           |
-| --------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Oracle Cloud (hosting)                                    | Singapura         | Semua data di atas, dalam bentuk terenkripsi untuk Data Diri dan dokumen                                                                                                                                                                     |
-| Resend (pengiriman email)                                 | Amerika Serikat   | Alamat email Anda dan isi email verifikasi atau atur ulang sandi. Saat ini belum aktif: belum ada email yang dikirim                                                                                                                         |
-| Google (bila Anda memilihnya)                             | Global            | Proses masuk dengan akun Google Anda                                                                                                                                                                                                         |
-| Laptop tim Urusin (Browser Pendamping jaringan Indonesia) | Indonesia         | Login dan isian yang Anda ketik di sesi situs yang hanya menerima jaringan Indonesia (mis. Telunjuk Sakti Wonogiri). Hanya di memori laptop selama sesi aktif, dihapus saat sesi ditutup. Tersambung ke server lewat Tailscale (terenkripsi) |
-| OpenAI (model GPT, lewat proxy model milik tim)           | Di luar Indonesia | Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti penanda sebelum dikirim. Gambar yang Anda lampirkan di chat (salinan diperkecil) untuk dibaca isinya                                           |
-| Jina AI (pencarian sumber resmi)                          | Di luar Indonesia | Kalimat pertanyaan yang sudah tanpa data pribadi, hanya bila pencarian berbasis vektor diaktifkan                                                                                                                                            |
-| Cloudflare Turnstile                                      | Global            | Data teknis peramban untuk membedakan manusia dan bot, hanya di tombol juri dan setelah beberapa kali gagal masuk                                                                                                                            |
+| Pihak                                           | Lokasi            | Data yang diterima                                                                                                                                                                                 |
+| ----------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Oracle Cloud (hosting)                          | Singapura         | Semua data di atas, dalam bentuk terenkripsi untuk Data Diri dan dokumen                                                                                                                           |
+| Resend (pengiriman email)                       | Amerika Serikat   | Alamat email Anda dan isi email verifikasi atau atur ulang sandi. Hanya bila pengiriman email diaktifkan; selama belum, tidak ada email yang dikirim                                               |
+| Google (bila Anda memilihnya)                   | Global            | Proses masuk dengan akun Google Anda                                                                                                                                                               |
+| OpenAI (model GPT, lewat proxy model milik tim) | Di luar Indonesia | Teks percakapan, termasuk nama dan teks bebas yang Anda ketik. NIK, KK, HP, dan email diganti penanda sebelum dikirim. Gambar yang Anda lampirkan di chat (salinan diperkecil) untuk dibaca isinya |
+| Jina AI (pencarian sumber resmi)                | Di luar Indonesia | Kalimat pertanyaan yang sudah tanpa data pribadi, bila pencarian vektor atau pengurutan ulang (rerank) sumber diaktifkan                                                                           |
+| Cloudflare Turnstile                            | Global            | Data teknis peramban di halaman masuk untuk membedakan manusia dan bot; wajib lolos di tombol juri dan setelah beberapa kali gagal masuk                                                           |
 
 Pengiriman ke Resend, Google, OpenAI, Jina, dan Cloudflare adalah transfer data ke luar Indonesia (UU PDP
 Pasal 56). Dasarnya persetujuan Anda. Bila tidak ingin email Anda melintas batas, pakai masuk dengan Google atau

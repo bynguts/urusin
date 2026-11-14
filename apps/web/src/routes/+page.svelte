@@ -1020,7 +1020,7 @@
       <h2 class="n-services-title lp86">
         Banyak instansi, banyak situs.
         <br />
-        Urusin paham jalannya.
+        Urusin tunjukkan jalannya.
       </h2>
       <div class="n-services-intro lp87">
         Persyaratan tersebar di banyak situs dan berbeda antarwilayah. Urusin membaca sumber resmi, lalu
@@ -1649,7 +1649,7 @@
           </div>
         </div>
         <div class="n-card-body lp114">
-          <div class="lp115">Akta kelahiran, Kartu Keluarga baru, dan BPJS anak dalam satu urutan.</div>
+          <div class="lp115">Akta kelahiran, Kartu Keluarga baru, dan KIA anak dalam satu urutan.</div>
           <form class="lp52" method="POST" action="/?/mulai">
             <input type="hidden" name="peristiwa" value="kelahiran" />
             <button class="lp116" type="submit">
@@ -1711,7 +1711,7 @@
           </div>
         </div>
         <div class="n-card-body lp114">
-          <div class="lp115">Dari surat pengantar RT sampai buku nikah dan KTP dengan status baru.</div>
+          <div class="lp115">Dari pencatatan perkawinan sampai KK dan KTP dengan status baru.</div>
           <form class="lp52" method="POST" action="/?/mulai">
             <input type="hidden" name="peristiwa" value="perkawinan" />
             <button class="lp116" type="submit">
@@ -1837,7 +1837,7 @@
           </div>
         </div>
         <div class="n-card-body lp114">
-          <div class="lp115">Akta kematian, pembaruan KK, hingga klaim dan ahli waris, pelan-pelan.</div>
+          <div class="lp115">Akta kematian dan pembaruan KK keluarga, dipandu pelan-pelan.</div>
           <form class="lp52" method="POST" action="/?/mulai">
             <input type="hidden" name="peristiwa" value="kematian" />
             <button class="lp116" type="submit">
@@ -2173,8 +2173,8 @@
         <div class="n-feature-text lp145">
           <h3 class="lp146">Periksa foto dokumen</h3>
           <div class="lp147">
-            Foto atau pindaian yang kamu unggah diperiksa dulu. Kalau buram, Urusin bilang bagian mana yang
-            perlu diulang.
+            Kirim foto dokumen di chat, Urusin membacanya. Kalau buram atau terpotong, Urusin bilang dan
+            memintamu memotret ulang.
           </div>
         </div>
       </div>
@@ -2262,8 +2262,8 @@
           <h3 class="lp146">Bantu isi formulir</h3>
           <div class="lp147">
             Situs resmi dibuka di Browser Pendamping, lalu AI mengisi dengan izinmu. Login, OTP, dan Kirim
-            tetap kamu. Kini aktif di {page.data.jumlahDaerahPendamping} kota/kabupaten; daerah lain dipandu langkah
-            demi langkah.
+            tetap kamu. Kini aktif 24 jam di {page.data.jumlahDaerahPendamping} kota/kabupaten; daerah lain dipandu
+            langkah demi langkah.
           </div>
         </div>
       </div>
@@ -2501,7 +2501,7 @@
             <div class="lp207">Langkah 2</div>
           </div>
           <h3 class="n-title lp208">Siapkan dokumen</h3>
-          <div class="lp209">Urusin menyusun daftarnya dan memeriksa fotomu sebelum dikirim.</div>
+          <div class="lp209">Urusin menyusun daftarnya dan mengecek kelengkapannya sebelum dikirim.</div>
         </div>
       </div>
       <div class="lp195">
@@ -2534,7 +2534,7 @@
             <div class="lp207">Langkah 3</div>
           </div>
           <h3 class="n-title lp208">Temui pendampingmu</h3>
-          <div class="lp209">Pilih teman yang paling cocok. Semua bisa kamu ganti kapan saja.</div>
+          <div class="lp209">Tiap peristiwa hidup punya teman sendiri yang menemanimu sampai selesai.</div>
         </div>
       </div>
     </div>
@@ -2737,7 +2737,7 @@
                   loading="lazy"
                   decoding="async"
                 />
-                <div class="lp247">BPJS anak</div>
+                <div class="lp247">KIA anak</div>
               </div>
               <div class="lp249">Menyusul</div>
             </div>
@@ -2790,7 +2790,7 @@
               loading="lazy"
               decoding="async"
             />
-            <div class="lp242">Dokumen diperiksa sebelum dikirim</div>
+            <div class="lp242">Kelengkapan berkas dicek sebelum dikirim</div>
           </div>
         </div>
       </div>
@@ -2853,7 +2853,7 @@
           </div>
           <h3 class="lp260">Data diri di brankas</h3>
           <div class="lp261">
-            NIK dan data pribadi disimpan terenkripsi. Agen AI hanya melihat versi yang disamarkan.
+            NIK dan data pribadi disimpan terenkripsi. NIK yang kamu ketik disamarkan sebelum sampai ke AI.
           </div>
         </div>
       </div>
@@ -2888,7 +2888,7 @@
             />
           </div>
           <h3 class="lp260">Hapus kapan saja</h3>
-          <div class="lp261">Datamu milikmu. Hapus semuanya dengan satu tombol.</div>
+          <div class="lp261">Datamu milikmu. Hapus akun dan semua isinya kapan saja.</div>
         </div>
       </div>
     </div>
@@ -2943,9 +2943,9 @@
         <div class="n-answer-row lp269">
           <div class="n-answer n-balon n-balon--gelap lp270">
             <div class="lp271">
-              Aman. Data dan berkasmu disimpan terenkripsi di server, terikat ke akunmu. Model AI tidak pernah
-              menerima data identitas asli (NIK, KK, nama), dan semuanya bisa kamu hapus kapan saja di
-              Pengaturan.
+              Aman. Data dan berkasmu disimpan terenkripsi di server, terikat ke akunmu. NIK, KK, dan nomor HP
+              yang kamu ketik disamarkan sebelum sampai ke AI; foto yang kamu lampirkan hanya dibaca untuk
+              dipahami isinya. Semuanya bisa kamu hapus kapan saja di Pengaturan.
             </div>
           </div>
         </div>
