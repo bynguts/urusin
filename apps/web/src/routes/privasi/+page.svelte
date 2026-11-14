@@ -194,7 +194,7 @@
           <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
             Semua lalu lintas web ke urusinai.web.id melewati jaringan Cloudflare agar cepat dan terlindung
             dari serangan, termasuk isi yang Anda kirim; Data Diri dan dokumen tetap disimpan terenkripsi
-            hanya di server Urusin. Email ke hello@urusinai.web.id diteruskan lewat Cloudflare
+            hanya di server Urusin. Email ke hello@urusinai.web.id diteruskan lewat Cloudflare<!-- pii-scan:allow alamat kontak publik -->
           </div>
           <div class="pv30 pv-c2" role="cell" data-label="Peran">
             Mengantar situs dengan cepat, menahan serangan, dan meneruskan email

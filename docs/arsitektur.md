@@ -94,7 +94,7 @@ Catatan pembacaan:
 - **Pemroses dan lokasi** (sama dengan [`docs/privasi.md`](privasi.md)):
   - Oracle Cloud (Singapura): DB, berkas vault terenkripsi, pencarian sumber resmi, dan Browser Pendamping.
   - Cloudflare (global, titik terdekat Singapura): DNS, CDN, dan perlindungan jaringan untuk semua lalu lintas web,
-    serta penerusan email ke hello@urusinai.web.id. Data Diri dan dokumen tetap tersimpan terenkripsi hanya di
+    serta penerusan email ke hello@urusinai.web.id <!-- pii-scan:allow alamat kontak publik -->. Data Diri dan dokumen tetap tersimpan terenkripsi hanya di
     server Urusin.
   - Google: hanya untuk OIDC, bila warga memilihnya.
   - OpenAI (model GPT): teks percakapan dengan penanda; model tidak pernah melihat NIK, KK, HP, atau email.
