@@ -168,8 +168,8 @@
         <p class="pv24">
           Kami tidak menjual data, tidak memasang iklan, dan tidak memakai pelacak pihak ketiga. Pencarian
           sumber resmi berjalan di server kami sendiri; pencarian web hanya dipakai sebagai cadangan, dengan
-          istilah umum tanpa data pribadi. Pengiriman ke pihak di luar Indonesia adalah transfer data lintas
-          negara (UU PDP Pasal 56) atas persetujuanmu.
+          istilah umum tanpa data pribadi. Pengiriman ke pihak di luar Indonesia (Cloudflare, Google, OpenAI,
+          dan Exa) adalah transfer data lintas negara (UU PDP Pasal 56) atas persetujuanmu.
         </p>
       </div>
       <div class="pv25" role="table" aria-label="Pihak lain yang memproses data">
@@ -188,6 +188,18 @@
             Server, basis data, mesin pencari sumber resmi, dan Browser Pendamping Urusin
           </div>
           <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Singapura</div>
+        </div>
+        <div class="pv28" role="row">
+          <div class="pv29 pv-c0" role="rowheader">Cloudflare (DNS, CDN, perlindungan jaringan)</div>
+          <div class="pv30 pv-c1" role="cell" data-label="Data yang diterima">
+            Semua lalu lintas web ke urusinai.web.id melewati jaringan Cloudflare agar cepat dan terlindung
+            dari serangan, termasuk isi yang Anda kirim; Data Diri dan dokumen tetap disimpan terenkripsi
+            hanya di server Urusin. Email ke hello@urusinai.web.id diteruskan lewat Cloudflare
+          </div>
+          <div class="pv30 pv-c2" role="cell" data-label="Peran">
+            Mengantar situs dengan cepat, menahan serangan, dan meneruskan email
+          </div>
+          <div class="pv30 pv-c3" role="cell" data-label="Lokasi">Global (titik terdekat Singapura)</div>
         </div>
         <div class="pv28" role="row">
           <div class="pv29 pv-c0" role="rowheader">OpenAI (model GPT)</div>

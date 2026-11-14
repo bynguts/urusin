@@ -224,9 +224,9 @@
                 />
               </summary>
               <p class="tj29">
-                Urusin memakai aturan dari situs resmi wilayah yang kamu pilih dan menyebut tanggal terakhir
-                diperiksa. Kalau sumber resmi wilayahmu belum ditemukan, Urusin mengatakannya dan menunjukkan
-                instansi yang bisa ditanya.
+                Urusin memakai aturan dari situs resmi daerah yang kamu pilih bila tersedia, atau Dukcapil
+                pusat, dan menyebut tanggal terakhir diperiksa. Kalau sumber resmi wilayahmu belum ditemukan,
+                Urusin mengatakannya dan menunjukkan instansi yang bisa ditanya.
               </p>
             </details>
             <details class="tj-q tj38">
@@ -387,7 +387,7 @@
               </summary>
               <p class="tj70">
                 Browser Pendamping adalah browser terpisah di server. Login di browsermu tidak ikut, dan
-                memang sengaja tidak disalin demi keamanan. Cukup sekali untuk satu urusan.
+                memang sengaja tidak disalin demi keamanan. Cukup sekali untuk satu sesi pengisian.
               </p>
             </details>
             <details class="tj-q tj71">

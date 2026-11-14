@@ -497,9 +497,12 @@ describe('/privasi', () => {
       'mesin pencari sumber resmi',
       // Cari web cadangan (EXA_API_KEY terisi di produksi) wajib tercantum.
       'Exa (pencarian web)',
+      // DNS + proxy di Cloudflare: semua lalu lintas web lewat jaringannya.
+      'Cloudflare (DNS, CDN, perlindungan jaringan)',
+      'Cloudflare, Google, OpenAI, dan Exa',
       'disimpan 3 hari',
     ])
-      expect(body, pihak).toContain(pihak);
+      expect(body.replace(/\s+/g, ' '), pihak).toContain(pihak);
     // Hanya pihak yang benar-benar memproses data di produksi (email mode log, Turnstile nonaktif, embedding
     // berjalan di server sendiri): yang tidak aktif tidak boleh tercantum.
     for (const tidakAktif of ['Resend', 'Cloudflare Turnstile', 'Jina AI'])
