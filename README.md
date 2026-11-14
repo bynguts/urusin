@@ -85,8 +85,10 @@ Semua fitur di bawah sudah berjalan di <https://urusinai.web.id>.
   - Jawaban dialirkan bertahap (SSE). Pertanyaan di luar urusan layanan publik ditolak dengan sopan
     (_guardrail_ di luar topik).
 - **Jawaban bersumber resmi.**
-  - Pencarian hibrida (kata kunci BM25 + vektor) atas korpus halaman resmi Dukcapil, Disdukcapil daerah, dan
-    regulasi.
+  - Pencarian kata kunci (BM25 + glosarium istilah warga) atas korpus halaman resmi Dukcapil, Disdukcapil
+    daerah, dan regulasi, di server Urusin sendiri.
+  - Bila korpus belum cukup, agen memakai pencarian web Exa sebagai cadangan: situs resmi `.go.id` lebih dulu,
+    istilah umum saja (kueri yang memuat NIK, KK, HP, atau email tidak pernah dikirim).
   - Setiap klaim membawa kutipan yang diverifikasi terhadap potongan sumbernya; chip kutipan membuka halaman
     resmi.
   - Bila sumber tidak cukup, agen **abstain** dan mengarahkan ke kanal resmi daerah.
@@ -127,9 +129,9 @@ Semua fitur di bawah sudah berjalan di <https://urusinai.web.id>.
 | Bahasa dan monorepo  | TypeScript (strict), Node.js 26, pnpm 11, Turborepo                                                                          |
 | Web (UI + API)       | SvelteKit 3 + Svelte 5, `@sveltejs/adapter-node`, Vite 8, Tailwind CSS 4                                                     |
 | Agen AI              | Harness buatan sendiri di atas Chat Completions (`@urusin/harness`): state machine urusan, tool bertipe zod, policy gate     |
-| AI                   | OpenAI (model GPT) lewat SDK resmi `openai`; embedding EmbeddingGemma-300M self-hosted (llama.cpp) di server Urusin          |
+| AI                   | OpenAI (model GPT) lewat SDK resmi `openai`; EmbeddingGemma-300M self-hosted (llama.cpp) untuk mengenali jenis urusan        |
 | Browser Pendamping   | Chromium via Playwright, screencast CDP → WebSocket → `<canvas>`; adapter situs (Step DSL) dan Navigator generik             |
-| Basis data           | SQLite (`better-sqlite3`, mode WAL); BM25 lewat FTS5, vektor dengan cosine di atas blob SQLite                               |
+| Basis data           | SQLite (`better-sqlite3`, mode WAL); pencarian BM25 lewat FTS5                                                               |
 | Kriptografi dan akun | `node:crypto` (argon2id, AES-256-GCM, HKDF), `jose` (verifikasi ID token Google OIDC)                                        |
 | Validasi dan kontrak | zod 4, `@urusin/contracts` (skema event SSE dan endpoint)                                                                    |
 | HTTP keluar          | `undici` dengan allowlist host (`@urusin/egress`): semua panggilan keluar server lewat satu pintu                            |
@@ -137,7 +139,7 @@ Semua fitur di bawah sudah berjalan di <https://urusinai.web.id>.
 | Pengujian            | Vitest, Playwright, `node:test`, Lighthouse CI                                                                               |
 | Kualitas             | ESLint, Prettier, commitlint, husky (pemindai PII/secret sebelum commit)                                                     |
 | CI/CD dan hosting    | GitHub Actions, image multi-arch di GHCR ditarik berdasarkan digest, Docker Compose di Oracle Cloud (Singapura), Caddy (TLS) |
-| Layanan pihak ketiga | OpenAI (model GPT), Google Identity (masuk dengan Google), GitHub Actions/GHCR, Oracle Cloud                                 |
+| Layanan pihak ketiga | OpenAI (model GPT), Exa (cadangan pencarian web), Google Identity (masuk dengan Google), GitHub Actions/GHCR, Oracle Cloud   |
 
 ## 5. Arsitektur sistem dan alur data
 
@@ -155,6 +157,7 @@ flowchart LR
   LLM[["OpenAI<br/>model GPT"]]
   GOOG[["Google<br/>OIDC"]]
   GOV[["Situs resmi pemerintah"]]
+  EXA[["Exa<br/>cadangan pencarian web"]]
 
   W -- "HTTPS + SSE" --> C --> WEB
   W -- "WebSocket layar + input" --> C --> EDGE --> PD
@@ -162,14 +165,15 @@ flowchart LR
   WEB --- EMB
   WEB -- "teks dengan penanda, tanpa NIK/KK/HP/email" --> LLM
   WEB -- "masuk dengan Google" --> GOOG
+  WEB -- "istilah umum, tanpa data pribadi" --> EXA
   WEB -- "mulai sesi, isi dari brankas (HMAC)" --> EDGE
   PD -- "https:443, hanya host sesi" --> EDGE --> GOV
 ```
 
 **Alur satu urusan:**
 
-1. Warga bercerita. Agen menentukan layanan dan daerah, lalu mencari syarat di korpus sumber resmi (BM25 +
-   vektor, di server Urusin sendiri).
+1. Warga bercerita. Agen menentukan layanan dan daerah, lalu mencari syarat di korpus sumber resmi (BM25, di
+   server Urusin sendiri; cadangan pencarian web Exa ke situs resmi bila korpus belum cukup).
 2. Sebelum teks dikirim ke model, NIK, KK, nomor HP, dan email diganti penanda seperti `{{PEMOHON.NIK}}`. Teks
    dari halaman web dan hasil tool masuk ke prompt sebagai data tak tepercaya. Guard `noPlaceholder()` dan policy
    gate menolak parameter tool yang memuat PII atau aksi di luar tahap urusan.
@@ -231,13 +235,13 @@ Daftar lengkap beserta penjelasan tiap variabel ada di [`.env.example`](.env.exa
 | Fitur                      | Variabel                                                                                                 |
 | -------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Agen dengan LLM            | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_AGENT_MODEL`, `LLM_VISION_MODEL`                                     |
-| Pencarian vektor           | `LLM_EMBED_*` (endpoint embedding), `URUSIN_EMBED_URL` (sidecar llama.cpp), `RAG_ABSTAIN_MIN_*`          |
+| Pencarian dan embedding    | `URUSIN_EMBED_URL` (sidecar llama.cpp), `EXA_API_KEY` (cadangan web), `RAG_ABSTAIN_MIN_*`, `LLM_EMBED_*` |
 | Brankas dan akun           | `URUSIN_PII_KEY` (wajib di produksi), `URUSIN_PII_KEY_PREV` (rotasi), `SESSION_SECRET`, `URUSIN_VAULT_*` |
 | Masuk dengan Google        | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                                               |
 | Kuota dan biaya            | `URUSIN_LIMIT_*`, `URUSIN_DEMO_*`, `URUSIN_DAILY_USD_CAP`, `URUSIN_DAILY_IDR_CAP`                        |
 | Browser Pendamping         | `PENDAMPING_*` (URL worker, rahasia HMAC, batas sesi dan memori)                                         |
 | Situs latihan              | `FIXTURES_PROFILE`, `FIXTURES_PORT`, `FIXTURES_PUBLIC_ORIGIN`                                            |
-| Opsional, mati di produksi | `RESEND_API_KEY`, `URUSIN_EMAIL_*`, `TURNSTILE_*`, `EXA_API_KEY`, `RERANK_*`, `VAPID_*`                  |
+| Opsional, mati di produksi | `RESEND_API_KEY`, `URUSIN_EMAIL_*`, `TURNSTILE_*`, `RERANK_*`, `VAPID_*`                                 |
 
 ### Demo lengkap di localhost (Docker, satu perintah)
 
@@ -291,12 +295,13 @@ dibagikan.
 
 ### AI di dalam produk
 
-| Bagian produk                                    | Layanan / model                                                                                      |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| Agen percakapan: niat, rencana, pemanggilan tool | OpenAI (model GPT) lewat gateway `@urusin/llm` (SDK `openai`)                                        |
-| Pemeriksaan foto dokumen dan lampiran chat       | OpenAI (model GPT, multimodal); salinan gambar diperkecil, PDF tidak dikirim                         |
-| Navigator Browser Pendamping                     | OpenAI (model GPT) memetakan kolom formulir ke penanda data; nilai asli diisi server dari brankas    |
-| Pencarian sumber resmi dan pengenalan niat cepat | Embedding open-source self-hosted (llama.cpp) di server Urusin, tanpa layanan pencarian pihak ketiga |
+| Bagian produk                                    | Layanan / model                                                                                   |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| Agen percakapan: niat, rencana, pemanggilan tool | OpenAI (model GPT) lewat gateway `@urusin/llm` (SDK `openai`)                                     |
+| Pemeriksaan foto dokumen dan lampiran chat       | OpenAI (model GPT, multimodal); salinan gambar diperkecil, PDF tidak dikirim                      |
+| Navigator Browser Pendamping                     | OpenAI (model GPT) memetakan kolom formulir ke penanda data; nilai asli diisi server dari brankas |
+| Pengenalan jenis urusan (cepat)                  | Embedding open-source EmbeddingGemma-300M self-hosted (llama.cpp) di server Urusin                |
+| Pencarian sumber resmi                           | BM25 di server Urusin; cadangan pencarian web Exa (istilah umum, situs `.go.id` lebih dulu)       |
 
 - **Model tidak pernah menerima NIK, KK, nomor HP, atau email.** Semuanya diganti penanda sebelum dikirim, dan
   hasil bacaan gambar disaring lagi sebelum masuk konteks agen.
@@ -339,7 +344,8 @@ dibagikan.
 - **Model open-source:** EmbeddingGemma-300M (`google/embeddinggemma-300m`, konversi GGUF Q8_0 oleh ggml-org),
   tunduk pada [Gemma Terms of Use](https://ai.google.dev/gemma/terms); lihat
   [`apps/embedding/NOTICE`](apps/embedding/NOTICE).
-- **Layanan pihak ketiga:** OpenAI (model GPT), Google Identity (OIDC), GitHub Actions dan GHCR, Oracle Cloud.
+- **Layanan pihak ketiga:** OpenAI (model GPT), Exa (cadangan pencarian web), Google Identity (OIDC), GitHub
+  Actions dan GHCR, Oracle Cloud.
 - Tidak memakai template proyek pihak ketiga.
 
 ## 10. Keamanan, privasi, dan etika
