@@ -587,35 +587,36 @@ select:not(.bg-transparent):focus {
   animation: none;
 }
 
-/* Indikator AI mengetik: tiga titik bergelombang (gerak dikurangi = titik diam). */
-@keyframes titik-ketik {
-  0%,
-  60%,
-  100% {
-    transform: translateY(0);
-    opacity: 0.35;
+/* Indikator aktivitas AI ("Berpikir…"): kilau menyapu teks (gerak dikurangi = teks diam). */
+@keyframes teks-berpikir {
+  from {
+    background-position: 100% 0;
   }
-  30% {
-    transform: translateY(-3px);
-    opacity: 1;
+  to {
+    background-position: 0 0;
   }
 }
 
-.titik-ketik > span {
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-  background: currentColor;
-  animation: titik-ketik 1.2s ease-in-out infinite;
+.teks-berpikir {
+  color: var(--color-muted);
 }
 
-.titik-ketik > span:nth-child(2) {
-  animation-delay: 0.15s;
-}
-
-.titik-ketik > span:nth-child(3) {
-  animation-delay: 0.3s;
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-gerak='kurang']) .teks-berpikir {
+    background: linear-gradient(
+      90deg,
+      var(--color-muted) 0%,
+      var(--color-muted) 35%,
+      var(--color-ink) 50%,
+      var(--color-muted) 65%,
+      var(--color-muted) 100%
+    );
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: teks-berpikir 1.8s linear infinite;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

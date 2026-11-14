@@ -560,6 +560,31 @@ describe('timeout, pembatalan, konkurensi', () => {
     expect(provider.calls).toHaveLength(3);
     expect(out.events.find((e) => e.type === 'error')!).toMatchObject({ kode: 'LLM_FAILED' });
   });
+
+  it('indikator aktivitas: progress ber-toolName saat tool mulai, lalu "Berpikir…" saat model berpikir lagi', async () => {
+    const provider = new FakeProvider({
+      replies: [
+        fakeCompletion({
+          toolCalls: [
+            { name: 'rag__cari_pengetahuan', arguments: JSON.stringify({ query: 'syarat akta rahasia' }) },
+          ],
+        }),
+        fakeCompletion({ content: 'Ini jawabannya.' }),
+      ],
+    });
+    const env = makeEnv({ provider });
+    const u = env.store.createUrusan({ jenis: 'akta' });
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'x' });
+    const prog = out.events.flatMap((e) => (e.type === 'progress' ? [e] : []));
+    const iTool = prog.findIndex((e) => e.toolName === 'rag__cari_pengetahuan');
+    expect(iTool).toBeGreaterThanOrEqual(0);
+    // Hanya jenis tool, tanpa isi kueri.
+    expect(JSON.stringify(prog)).not.toContain('rahasia');
+    expect(prog.slice(iTool + 1)).toContainEqual(expect.objectContaining({ label: 'Berpikir…' }));
+    expect(prog.at(-1)).not.toHaveProperty('toolName');
+    const t = types(out.events);
+    expect(t.lastIndexOf('progress')).toBeLessThan(t.indexOf('assistant_text'));
+  });
 });
 
 describe('error LLM bertipe (#22)', () => {
