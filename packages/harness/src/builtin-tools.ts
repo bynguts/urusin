@@ -453,6 +453,7 @@ export const urusanJawabPersyaratan = defineTool({
           chunks,
           signal: ctx.signal,
           catatanFoto: ctx.catatanFoto,
+          reasoningEffort: ctx.deps.reasoningEffortJawaban,
         });
     const verified = verifyGrounded(gen.data, chunks, ctxHandoff, ctx.deps.now());
     // Hanya jawaban yang lolos verifikasi utuh (ada klaim, tidak ada yang dibuang) yang disimpan: keluaran model

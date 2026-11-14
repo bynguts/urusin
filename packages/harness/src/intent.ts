@@ -138,6 +138,8 @@ const TINDAK_LANJUT =
  */
 export function alasanBukanJalurCepat(teks: string, jenis: string): string | null {
   if (RISIKO.test(teks)) return 'risiko';
+  // Pesan campuran (tugas/ujian/game + urusan): model yang menolak tegas bagian di luar cakupan lebih dulu.
+  if (campuranDiLuarUrusan(teks)) return 'di_luar_urusan';
   if (TINDAK_LANJUT.test(teks)) return 'tindak_lanjut';
   if (!MINTA_URUS.test(teks)) return 'bukan_permintaan';
   if (KATA_KUNCI.some(([, re]) => cocokPositif(re, teks) === null)) return 'negasi';
@@ -152,23 +154,47 @@ export function alasanBukanJalurCepat(teks: string, jenis: string): string | nul
  * menulis karya kreatif, membuat game. Sengaja sempit (kata kerja + objek yang tegas) agar urusan seperti "buatkan
  * surat kuasa", "kode pos", atau "program bansos" tidak ikut tertolak; sisanya ditangani aturan CAKUPAN di prompt.
  */
+// "kerjakan PR matematika", "selesaikan tugas sekolah", "selesaikan ujian".
+const TUGAS =
+  /\b(kerjakan|kerjain|ngerjain|ngerjakan|mengerjakan|garapin|garapkan|selesaikan|selesaiin|jawabin|jawabkan)\s+(\S+\s+){0,2}?(pr|pekerjaan\s+rumah|tugas\s+(sekolah|kuliah|kampus)|ujian|ulangan|skripsi|makalah)\b/i;
+// "main tebak-tebakan", "main game".
+const MAIN_GAME = /\bmain\w*\s+(game|tebak[- ]?tebakan|tebak\s+angka)\b/i;
+
 const DI_LUAR_URUSAN: readonly RegExp[] = [
   // "buatkan aku script python", "tulis kode javascript", "bikinin codingan".
   /\b(buat\w*|bikin\w*|tulis\w*|generate|ngoding\w*|coding\w*)\s+(\S+\s+){0,4}?(script|skrip|codingan|source\s*code|kode\s+program|program\s+komputer)\b/i,
   /\b(script|skrip|kode|code|coding|codingan|program|fungsi|function|aplikasi|website|bot)\s+(\S+\s+){0,2}?(python|javascript|typescript|java|php|golang|kotlin|c\+\+|c#|html|css|sql|bash|rust)(?![\w+#])/i,
   /\b(python|javascript|typescript|java|php|golang|kotlin|c\+\+|c#|html|css|sql|bash|rust)(?![\w+#])\s+(\S+\s+){0,2}?(script|skrip|kode|code|coding|codingan|program|fungsi|function)\b/i,
-  // "kerjakan PR matematika", "jawabin soal ujian", "selesaikan tugas sekolah".
-  /\b(kerjakan|kerjain|ngerjain|ngerjakan|mengerjakan|garapin|garapkan|selesaikan|selesaiin|jawabin|jawabkan)\s+(\S+\s+){0,2}?(pr|pekerjaan\s+rumah|tugas\s+(sekolah|kuliah|kampus)|ujian|ulangan|skripsi|makalah)\b/i,
+  TUGAS,
+  // "jawabin soal ujian", "kerjakan soal matematika".
   /\b(kerjakan|kerjain|ngerjain|ngerjakan|mengerjakan|selesaikan|selesaiin|jawab\w*)\s+(\S+\s+){0,2}?soal\s+(ujian|ulangan|matematika|mtk|fisika|kimia|biologi|olimpiade|utbk|cpns|pr)\b/i,
   // "buat puisi", "tuliskan esai", "bikinin cerpen", "karang pantun".
   /\b(buat\w*|bikin\w*|tulis\w*|karang\w*)\s+(\S+\s+){0,2}?(puisi|esai|essay|cerpen|cerita\s+pendek|pantun|novel|dongeng|makalah|skripsi)\b/i,
-  // "buatkan game tebak angka", "main tebak-tebakan".
-  /\b(buat\w*|bikin\w*)\s+(\S+\s+){0,2}?(game|gim|permainan)\b|\bmain\w*\s+(game|tebak[- ]?tebakan|tebak\s+angka)\b/i,
+  // "buatkan game tebak angka".
+  /\b(buat\w*|bikin\w*)\s+(\S+\s+){0,2}?(game|gim|permainan)\b/i,
+  MAIN_GAME,
 ];
+
+/** Istilah urusan adminduk/layanan publik yang membuat pesan campuran tetap layak ditanggapi model. */
+const ISTILAH_URUSAN = /\b(skck|ktp\w*|kk|kartu\s+keluarga|akta|kia|pindah\w*|bansos)\b/i;
+
+/**
+ * Pesan campuran: bagian di luar urusan HANYA tugas/ujian (pola TUGAS) atau "main game", DAN memuat urusan nyata
+ * (mis. "SKCK untuk ujian CPNS"). Tidak ditolak tanpa model; catatan state meminta model menolak tegas bagian
+ * itu dan membantu bagian urusannya. Kode/script, soal, karya kreatif, dan membuat game tidak pernah lolos.
+ */
+export function campuranDiLuarUrusan(teks: string): boolean {
+  const cocok = DI_LUAR_URUSAN.filter((re) => re.test(teks));
+  return (
+    cocok.length > 0 &&
+    cocok.every((re) => re === TUGAS || re === MAIN_GAME) &&
+    (jenisDiminta(teks).size > 0 || ISTILAH_URUSAN.test(teks))
+  );
+}
 
 /** Pesan warga jelas meminta hal di luar urusan; dijawab dengan `BALASAN_DI_LUAR_URUSAN` tanpa memanggil LLM. */
 export function mintaDiLuarUrusan(teks: string): boolean {
-  return DI_LUAR_URUSAN.some((re) => re.test(teks));
+  return DI_LUAR_URUSAN.some((re) => re.test(teks)) && !campuranDiLuarUrusan(teks);
 }
 
 export const BALASAN_DI_LUAR_URUSAN =
@@ -187,8 +213,8 @@ export async function classifyIntent(opts: {
     caps: opts.caps,
     schema: IntentSchema,
     name: 'klasifikasi_urusan',
-    // JSON {jenis, keyakinan} < 30 token; 64 terlalu sempit untuk model yang menambah spasi/penjelasan (eval p06).
-    maxTokens: 256,
+    // JSON {jenis, keyakinan} < 30 token, tetapi token penalaran ikut dihitung (eval p06: 64/256 terpotong).
+    maxTokens: 2000,
     signal: opts.signal,
     messages: [
       { role: 'system', content: INTENT_SYSTEM_PROMPT },

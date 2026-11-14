@@ -616,8 +616,8 @@ describe('balasan terpotong (finish_reason=length)', () => {
     expect(out.events.some((e) => e.type === 'error')).toBe(false);
     const [a, b] = provider.calls.map((c) => (c.kind === 'create' ? c.params : undefined));
     expect(b!.max_tokens).toBe(a!.max_tokens! * 2);
-    expect(JSON.stringify(b!.messages)).toMatch(/Balasanmu tadi terpotong/);
-    expect(JSON.stringify(a!.messages)).not.toMatch(/Balasanmu tadi terpotong/);
+    expect(JSON.stringify(b!.messages)).toMatch(/Balasanmu terpotong; lanjutkan/);
+    expect(JSON.stringify(a!.messages)).not.toMatch(/Balasanmu terpotong/);
   });
 
   it('klasifikasi terpotong (p06): turn tetap berjalan, jenis diklasifikasi ulang giliran berikutnya', async () => {
@@ -631,7 +631,7 @@ describe('balasan terpotong (finish_reason=length)', () => {
     expect(out.events.some((e) => e.type === 'error')).toBe(false);
     expect(env.store.getUrusanOrThrow(u.id).jenis).toBeNull();
     const c = provider.calls[0];
-    expect(c?.kind === 'create' ? c.params.max_tokens : undefined).toBe(256);
+    expect(c?.kind === 'create' ? c.params.max_tokens : undefined).toBe(2000);
   });
 
   it('terpotong lagi: error LLM_LENGTH (bisa diulang), tanpa ulangan ketiga', async () => {

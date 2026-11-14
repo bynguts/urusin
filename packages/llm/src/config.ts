@@ -13,6 +13,16 @@ const optionalStr = z
   .optional()
   .transform((v) => (v === undefined || v.trim() === '' ? undefined : v));
 
+const EFFORT = ['minimal', 'low', 'medium', 'high'] as const;
+export type ReasoningEffort = (typeof EFFORT)[number];
+
+// Kosong/tidak diisi = undefined (bawaan per peran diterapkan di loadLlmConfig).
+const effort = z
+  .string()
+  .optional()
+  .transform((v) => (v === undefined || v.trim() === '' ? undefined : v.trim().toLowerCase()))
+  .pipe(z.enum(EFFORT).optional());
+
 const EnvSchema = z.object({
   LLM_BASE_URL: z.url(),
   LLM_API_KEY: z.string().min(1),
@@ -21,16 +31,20 @@ const EnvSchema = z.object({
   LLM_TRANSCRIBE_MODEL: optionalStr,
   LLM_TRANSCRIBE_BASE_URL: optionalStr,
   LLM_EMBED_MODEL: optionalStr,
-  LLM_TIMEOUT_MS: num(60_000),
+  // Model bernalar effort tinggi bisa berpikir > 1 menit; batas per panggilan agen ada di URUSIN_LLM_CALL_TIMEOUT_MS.
+  LLM_TIMEOUT_MS: num(180_000),
   LLM_MAX_RETRIES: num(2),
   LLM_PRICE_INPUT_PER_MTOK: num(0),
   LLM_PRICE_OUTPUT_PER_MTOK: num(0),
   LLM_PRICE_AUDIO_PER_MIN: num(0),
-  LLM_REASONING_EFFORT: z
+  LLM_REASONING_EFFORT: effort,
+  LLM_AGENT_REASONING_EFFORT: effort,
+  LLM_GROUNDING_REASONING_EFFORT: effort,
+  LLM_MAX_TOKENS_PARAM: z
     .string()
     .optional()
-    .transform((v) => (v === undefined || v.trim() === '' ? undefined : v.trim().toLowerCase()))
-    .pipe(z.enum(['minimal', 'low', 'medium', 'high']).optional()),
+    .transform((v) => (v === undefined || v.trim() === '' ? 'max_tokens' : v.trim()))
+    .pipe(z.enum(['max_tokens', 'max_completion_tokens'])),
 });
 
 export type LlmConfig = {
@@ -52,7 +66,19 @@ export type LlmConfig = {
    * `reasoning_effort` untuk model bernalar (env LLM_REASONING_EFFORT). Kosong = tidak dikirim. Di proxy produksi
    * `low` memangkas token penalaran jawaban bersumber dari ~1000 ke ~150 (puluhan detik per giliran).
    */
-  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high' | undefined;
+  reasoningEffort?: ReasoningEffort | undefined;
+  /**
+   * Effort per peran (menimpa global per panggilan): loop agen (LLM_AGENT_REASONING_EFFORT, bawaan `high`) dan
+   * jawaban bersumber + pembaca gambar (LLM_GROUNDING_REASONING_EFFORT, bawaan `medium`). Judul, intent, dan
+   * klasifikasi tetap memakai `reasoningEffort` global agar cepat.
+   */
+  agentReasoningEffort?: ReasoningEffort | undefined;
+  groundingReasoningEffort?: ReasoningEffort | undefined;
+  /**
+   * Nama field batas token yang dikirim (env LLM_MAX_TOKENS_PARAM). Bawaan `max_tokens` (proxy produksi menerima
+   * keduanya dan menegakkan batasnya sama); `max_completion_tokens` untuk API OpenAI langsung dengan model bernalar.
+   */
+  maxTokensParam?: 'max_tokens' | 'max_completion_tokens' | undefined;
 };
 
 /** Nama env override per kapabilitas, mis. LLM_FORCE_NO_JSON_SCHEMA=1. */
@@ -89,5 +115,8 @@ export function loadLlmConfig(env: Record<string, string | undefined> = process.
     },
     forcedOff: CAPABILITIES.filter((c) => truthy(env[FORCE_ENV[c]])),
     reasoningEffort: e.LLM_REASONING_EFFORT,
+    agentReasoningEffort: e.LLM_AGENT_REASONING_EFFORT ?? 'high',
+    groundingReasoningEffort: e.LLM_GROUNDING_REASONING_EFFORT ?? 'medium',
+    maxTokensParam: e.LLM_MAX_TOKENS_PARAM,
   };
 }

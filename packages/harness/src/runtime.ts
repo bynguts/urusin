@@ -1,5 +1,11 @@
 import type { RagSearcher } from '@urusin/rag';
-import { ALL_ON, type CapabilityFlags, type ChatProvider, type Prices } from '@urusin/llm';
+import {
+  ALL_ON,
+  type CapabilityFlags,
+  type ChatProvider,
+  type Prices,
+  type ReasoningEffort,
+} from '@urusin/llm';
 import { redactingProvider } from './guarded-llm.js';
 import type { AgentDeps } from './agent.js';
 import { EventBus } from './bus.js';
@@ -43,6 +49,10 @@ export type HarnessOptions = {
   batasWeb?: Partial<BatasWebConfig>;
   /** Model pembaca gambar lampiran chat (LLM_VISION_MODEL); tanpa ini gambar tidak dibaca. */
   visionModel?: string | undefined;
+  /** Effort penalaran loop agen (LLM_AGENT_REASONING_EFFORT). */
+  reasoningEffort?: ReasoningEffort | undefined;
+  /** Effort penalaran jawaban bersumber + pembaca gambar (LLM_GROUNDING_REASONING_EFFORT). */
+  reasoningEffortJawaban?: ReasoningEffort | undefined;
 };
 
 /** Komposisi akar: store + registry + kuota + tracer + bus → `AgentDeps` siap dipakai `runTurn`. */
@@ -86,6 +96,8 @@ export function createHarness(opts: HarnessOptions) {
         }
       : undefined,
     visionModel: opts.visionModel,
+    reasoningEffort: opts.reasoningEffort,
+    reasoningEffortJawaban: opts.reasoningEffortJawaban,
   };
   return { deps, store, registry, quota, bus };
 }

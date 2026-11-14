@@ -1,6 +1,13 @@
 import type { RagSearcher } from '@urusin/rag';
 import { z } from 'zod';
-import type { CapabilityFlags, ChatMessage, ChatProvider, ChatTool, Usage } from '@urusin/llm';
+import type {
+  CapabilityFlags,
+  ChatMessage,
+  ChatProvider,
+  ChatTool,
+  ReasoningEffort,
+  Usage,
+} from '@urusin/llm';
 import type { Db } from './db.js';
 import type { CacheJawaban } from './grounding.js';
 import type { EventPayload, PayloadOf, UrusanState } from '@urusin/contracts';
@@ -39,6 +46,8 @@ export type ToolDeps = {
   cacheJawaban?: CacheJawaban | undefined;
   /** Cari web cadangan (Exa) + batas lajunya; tanpa ini `web__cari` tidak terdaftar. */
   cariWeb?: LayananCariWeb | undefined;
+  /** Effort penalaran generator jawaban bersumber (LLM_GROUNDING_REASONING_EFFORT); kosong = global. */
+  reasoningEffortJawaban?: ReasoningEffort | undefined;
   now: () => Date;
 };
 

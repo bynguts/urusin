@@ -29,8 +29,9 @@ export const DEFAULT_QUOTA: QuotaConfig = {
   dailyIdrCap: 0,
   hematAtFraction: 0.7,
   idrPerUsd: 16_500,
-  maxTokens: 1024,
-  maxTokensHemat: 512,
+  // Model bernalar: token penalaran ikut dihitung max_tokens, jadi batasnya lega (jawaban mengalir sepanjang perlu).
+  maxTokens: 16_000,
+  maxTokensHemat: 8_000,
 };
 
 export type QuotaMode = 'normal' | 'hemat' | 'habis';
