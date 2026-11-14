@@ -156,16 +156,20 @@
       {/if}
     </div>
   {/if}
-  <ol class="flex flex-col gap-2.5 px-4 py-3.5 sm:px-[18px]">
+  <ol class="@container flex flex-col gap-2.5 px-4 py-3.5 sm:px-[18px]">
     {#each rencana.langkah as l, i (l.id)}
       {@const p = PELAKU[l.jenis] ?? PELAKU['online-manual']!}
       <!-- Masuk berurutan hanya bila kartunya baru (.animasi-pesan-masuk, lihat layout.css). -->
-      <li class="langkah-kartu-rencana flex items-start gap-3" style:--urutan={i}>
+      <!-- Kartu sempit (HP, panel): label pelaku di atas judul agar kolom teks tetap lebar; kartu lebar: di kanan. -->
+      <li
+        class="langkah-kartu-rencana grid grid-cols-[26px_minmax(0,1fr)] items-start gap-x-3 gap-y-1.5 @md:grid-cols-[26px_minmax(0,1fr)_auto]"
+        style:--urutan={i}
+      >
         <span
-          class="grid size-[26px] shrink-0 place-items-center rounded-full border-[1.5px] border-line-2 text-[13px] leading-[13px] font-semibold text-card-ink"
+          class="row-span-2 grid size-[26px] shrink-0 place-items-center rounded-full border-[1.5px] border-line-2 text-[13px] leading-[13px] font-semibold text-card-ink @md:row-span-1"
           >{i + 1}</span
         >
-        <div class="min-w-0 flex-1">
+        <div class="col-start-2 row-start-2 min-w-0 @md:row-start-1">
           <span class="block text-base leading-[22px] text-ink"><TeksBertaut teks={l.judul} /></span>
           {#if l.dokumen?.length}
             <p class="mt-1 text-sm leading-[21px] font-semibold text-ink">Dokumen yang disiapkan:</p>
@@ -178,7 +182,7 @@
             </p>{/if}
         </div>
         <span
-          class="inline-flex shrink-0 items-center gap-[5px] rounded-full px-2.5 py-[3px] text-[13px] leading-5 font-semibold {p.kelas}"
+          class="col-start-2 row-start-1 inline-flex shrink-0 items-center gap-[5px] justify-self-start rounded-full px-2.5 py-[3px] text-[13px] leading-5 font-semibold @md:col-start-3 {p.kelas}"
           ><Icon name={p.ikon} class="size-[13px]" />{p.label}</span
         >
       </li>
