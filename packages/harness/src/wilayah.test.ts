@@ -100,6 +100,18 @@ describe('gerbang wilayah: rencana diblokir di kode sampai wilayah KTP ditetapka
     expect(note).toContain('Usulan (Data Diri akun): Kabupaten Wonogiri');
     expect(note).toContain('WILAYAH DULU');
   });
+
+  it('pertanyaan wilayah agen diganti kartu yang terbit saat itu juga (sumber warga)', async () => {
+    const { env, u } = setup([balas('KTP Anda terdaftar di Kabupaten Wonogiri, betul?')], {
+      jenis: 'lainnya',
+    });
+    usulkanWilayah(u.id, '3312', 'data_diri', publisher(env, u.id));
+    const out = await runTurn(env.deps, { urusanId: u.id, userText: 'Saya mau tanya soal dokumen' });
+    expect(of(out.events, 'assistant_text')).toHaveLength(0);
+    expect(of(out.events, 'wilayah').map((e) => [e.status, e.sumber, e.ktp.kodeKabKota])).toEqual([
+      ['usulan', 'warga', '3312'],
+    ]);
+  });
 });
 
 // Bawaan harness: tidak ada worker berjaringan Indonesia (web memasang pemeriksa pool worker di hooks.server).
